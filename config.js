@@ -1,17 +1,9 @@
-// Bot Token
+// Self-Bot Token
 export const TOKEN = "MTM3OTYxODk0MTY4NDY4Mjc2NA.GQbIIl.gucYwt8CHvhPiciAuCML5weuM6c2bTls3gDUKo";
 
 // Logger Configuration
 export const LOGGER = {
     CHANNELS: "1382897055034511431"
-};
-
-// Chatbot Configuration
-export const CHATBOT = {
-    API_KEY: "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",
-    MODEL: "gpt-4.1-mini-2025-04-14",
-    BASE_URL: "https://api.openai.com/v1",
-    ALLOWED_SERVER: "1364374298307072010",
 };
 
 // Welcomer Configuration

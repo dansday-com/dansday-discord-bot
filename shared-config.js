@@ -1,5 +1,11 @@
 // Shared Configuration for both Self-Bot and Official Bot
 
+// Environment Configuration
+export const ENV = {
+    PRODUCTION: false, // Set to true for production, false for testing
+    SECRET_KEY: "OwnerDansdayGOBLOX2025"
+};
+
 // Self-Bot Token (for monitoring source servers)
 export const SELF_BOT_TOKEN = "MTM3OTYxODk0MTY4NDY4Mjc2NA.GQbIIl.gucYwt8CHvhPiciAuCML5weuM6c2bTls3gDUKo";
 
@@ -44,7 +50,8 @@ export const FORWARDER = {
     FILES: {
         JSON: "forwarded.json"
     },
-    SOURCE_CHANNELS: {
+    // Production source channels (all channels)
+    PRODUCTION_SOURCE_CHANNELS: {
         "834333621405220884": { group: "blair", type: "announcements", fetchHistory: true }, //announcements
         "834333647796174869": { group: "blair", type: "announcements", fetchHistory: true }, //development-announcements
         "835423033408618496": { group: "blair", type: "changelogs", fetchHistory: true }, //updates
@@ -78,8 +85,14 @@ export const FORWARDER = {
         "1376539587949887499": { group: "growagarden", type: "cosmetics", fetchHistory: false }, //Gag Trading | cosmetics-stock
         "1408933312596279377": { group: "growagarden", type: "merchants", fetchHistory: false }, //Jandel Fan | merchants
         "1394790732300161195": { group: "growagarden", type: "adminabuse", fetchHistory: true }, //Jandel Fan | admin-abuse
-
+    },
+    // Test source channels (limited for testing)
+    TEST_SOURCE_CHANNELS: {
         "1427974951834489014": { group: "tester", type: "retriever", fetchHistory: true }, //for testing purposes
+    },
+    // Get source channels based on environment
+    get SOURCE_CHANNELS() {
+        return ENV.PRODUCTION ? this.PRODUCTION_SOURCE_CHANNELS : this.TEST_SOURCE_CHANNELS;
     },
     TARGET_CHANNELS: {
         "blair": {

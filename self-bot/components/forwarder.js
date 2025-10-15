@@ -1,5 +1,5 @@
 import fs from "fs";
-import { FORWARDER, COMMUNICATION } from "../../shared-config.js";
+import { FORWARDER, COMMUNICATION, ENV } from "../../shared-config.js";
 import logger from "../../logger.js";
 import { delay } from "../../utils.js";
 
@@ -18,7 +18,8 @@ async function sendToOfficialBot(messageData) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'User-Agent': 'Goblox-SelfBot/1.0.0'
+                'User-Agent': 'Goblox-SelfBot/1.0.0',
+                'X-Secret-Key': ENV.SECRET_KEY
             },
             body: JSON.stringify({
                 type: 'message_forward',

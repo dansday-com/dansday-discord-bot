@@ -1,4 +1,4 @@
-import { COMMUNICATION } from "../../shared-config.js";
+import { COMMUNICATION, ENV } from "../../shared-config.js";
 import logger from "../../logger.js";
 
 let webhookServer = null;
@@ -9,6 +9,15 @@ async function handleWebhookRequest(req, res) {
         if (req.method !== 'POST') {
             res.writeHead(405, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: 'Method not allowed' }));
+            return;
+        }
+
+        // Verify secret key
+        const secretKey = req.headers['x-secret-key'];
+        if (!secretKey || secretKey !== ENV.SECRET_KEY) {
+            await logger.log(`❌ Webhook unauthorized access attempt from ${req.connection.remoteAddress}`);
+            res.writeHead(401, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Unauthorized' }));
             return;
         }
 

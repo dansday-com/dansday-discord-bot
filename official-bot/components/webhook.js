@@ -1,4 +1,4 @@
-import { COMMUNICATION } from "../../shared-config.js";
+import { COMMUNICATION } from "../../config.js";
 import logger from "../../logger.js";
 
 let webhookServer = null;
@@ -31,12 +31,18 @@ async function handleWebhookRequest(req, res) {
                 const payload = JSON.parse(body);
 
                 if (payload.type === 'message_forward' && payload.data) {
-                    // Import forwarder dynamically to avoid circular dependency
-                    const { processMessageFromSelfBot } = await import('./forwarder.js');
-                    await processMessageFromSelfBot(payload.data, client);
+                    try {
+                        // Import forwarder dynamically to avoid circular dependency
+                        const { processMessageFromSelfBot } = await import('./forwarder.js');
+                        await processMessageFromSelfBot(payload.data, client);
 
-                    res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ success: true, message: 'Message processed' }));
+                        res.writeHead(200, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ success: true, message: 'Message processed' }));
+                    } catch (forwardErr) {
+                        await logger.log(`❌ Failed to process message: ${forwardErr.message}`);
+                        res.writeHead(500, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ error: 'Failed to process message', details: forwardErr.message }));
+                    }
                 } else {
                     await logger.log(`❌ Invalid payload format: ${JSON.stringify(payload)}`);
                     res.writeHead(400, { 'Content-Type': 'application/json' });

@@ -1,4 +1,4 @@
-import { LOGGER } from "./shared-config.js";
+import { LOGGER } from "./config.js";
 import { formatTimestamp, delay } from "./utils.js";
 
 let logChannel = null;

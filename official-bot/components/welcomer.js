@@ -1,26 +1,5 @@
-import fs from "fs";
-import { WELCOMER } from "../../shared-config.js";
+import { WELCOMER, EMBED } from "../../config.js";
 import logger from "../../logger.js";
-
-let welcomed = {};
-
-// Ensure json directory exists
-const jsonDir = "json";
-if (!fs.existsSync(jsonDir)) {
-    fs.mkdirSync(jsonDir, { recursive: true });
-}
-
-if (fs.existsSync(WELCOMER.FILES.JSON)) {
-    welcomed = JSON.parse(fs.readFileSync(WELCOMER.FILES.JSON, "utf8"));
-}
-
-function saveWelcomed() {
-    // Ensure json directory exists before writing
-    if (!fs.existsSync(jsonDir)) {
-        fs.mkdirSync(jsonDir, { recursive: true });
-    }
-    fs.writeFileSync(WELCOMER.FILES.JSON, JSON.stringify(welcomed, null, 2));
-}
 
 function getRandomMessage() {
     const messages = WELCOMER.MESSAGES;
@@ -28,13 +7,6 @@ function getRandomMessage() {
 }
 
 async function welcomeUser(member, client) {
-    const userId = member.user.id;
-    
-    if (welcomed[userId]) {
-        await logger.log(`⏭️ User ${member.user.tag} (${userId}) already welcomed`);
-        return;
-    }
-
     const welcomeChannelId = WELCOMER.CHANNELS[member.guild.id];
     if (!welcomeChannelId) {
         await logger.log(`❌ No welcome channel configured for guild ${member.guild.id}`);
@@ -48,19 +20,44 @@ async function welcomeUser(member, client) {
     }
 
     try {
-        const message = getRandomMessage().replace("{user}", `<@${userId}>`);
-        await welcomeChannel.send(message);
+        const welcomeMessage = getRandomMessage().replace("{user}", `<@${member.user.id}>`);
         
-        welcomed[userId] = {
-            timestamp: Date.now(),
-            guildId: member.guild.id,
-            username: member.user.username
+        // Create beautiful welcome embed
+        const welcomeEmbed = {
+            color: EMBED.COLOR,
+            title: "🎉 Welcome to the Server!",
+            description: welcomeMessage,
+            thumbnail: {
+                url: member.user.displayAvatarURL({ dynamic: true, size: 256 })
+            },
+            fields: [
+                {
+                    name: "👤 User",
+                    value: `${member.user.tag}`,
+                    inline: true
+                },
+                {
+                    name: "🆔 User ID",
+                    value: `${member.user.id}`,
+                    inline: true
+                },
+                {
+                    name: "📅 Account Created",
+                    value: `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`,
+                    inline: true
+                }
+            ],
+            footer: {
+                text: `Member #${member.guild.memberCount} • ${member.guild.name}`,
+                icon_url: member.guild.iconURL({ dynamic: true })
+            },
+            timestamp: new Date().toISOString()
         };
-        saveWelcomed();
-        
-        await logger.log(`✅ Welcomed ${member.user.tag} (${userId}) in ${member.guild.name}`);
+
+        await welcomeChannel.send({ embeds: [welcomeEmbed] });
+        await logger.log(`✅ Welcomed ${member.user.tag} (${member.user.id}) in ${member.guild.name}`);
     } catch (err) {
-        await logger.log(`❌ Failed to welcome ${member.user.tag} (${userId}): ${err.message}`);
+        await logger.log(`❌ Failed to welcome ${member.user.tag} (${member.user.id}): ${err.message}`);
     }
 }
 

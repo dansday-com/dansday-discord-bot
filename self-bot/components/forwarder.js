@@ -1,27 +1,5 @@
-import fs from "fs";
-import { FORWARDER, COMMUNICATION } from "../../shared-config.js";
+import { FORWARDER, COMMUNICATION } from "../../config.js";
 import logger from "../../logger.js";
-import { delay } from "../../utils.js";
-
-let forwarded = {};
-
-// Ensure json directory exists
-const jsonDir = "json";
-if (!fs.existsSync(jsonDir)) {
-    fs.mkdirSync(jsonDir, { recursive: true });
-}
-
-if (fs.existsSync(FORWARDER.FILES.JSON)) {
-    forwarded = JSON.parse(fs.readFileSync(FORWARDER.FILES.JSON, "utf8"));
-}
-
-function saveForwarded() {
-    // Ensure json directory exists before writing
-    if (!fs.existsSync(jsonDir)) {
-        fs.mkdirSync(jsonDir, { recursive: true });
-    }
-    fs.writeFileSync(FORWARDER.FILES.JSON, JSON.stringify(forwarded, null, 2));
-}
 
 async function sendToOfficialBot(messageData) {
     try {
@@ -50,22 +28,12 @@ async function sendToOfficialBot(messageData) {
 }
 
 async function processMessage(message, channelConfig, client) {
-    const { group, type, fetchHistory } = channelConfig;
-
-    // Check if already processed (for both real-time and historical)
-    if (forwarded[message.id]) {
-        await logger.log(`⏭️ Skipped processing message ${message.id} - already processed`);
-        return;
-    }
+    const { group, type } = channelConfig;
 
     if (FORWARDER.EXCLUDED_USERS.includes(message.author.id)) {
         await logger.log(`⏭️ Skipped processing message ${message.id} from excluded user ${message.author.tag} (${message.author.id})`);
         return;
     }
-
-    // Mark as processing to prevent duplicates
-    forwarded[message.id] = { processing: true, timestamp: Date.now() };
-    saveForwarded();
 
     // Prepare message data for official bot
     const messageData = {
@@ -74,6 +42,7 @@ async function processMessage(message, channelConfig, client) {
         author: {
             id: message.author.id,
             username: message.author.username,
+            displayName: message.author.displayName,
             discriminator: message.author.discriminator,
             avatar: message.author.avatar,
             bot: message.author.bot
@@ -98,72 +67,17 @@ async function processMessage(message, channelConfig, client) {
         embeds: message.embeds,
         forwarderConfig: {
             group,
-            type,
-            fetchHistory
+            type
         },
         timestamp: Date.now()
     };
 
     try {
         await sendToOfficialBot(messageData);
-        
-        // Mark as successfully processed
-        forwarded[message.id] = { processed: true, timestamp: Date.now() };
-        saveForwarded();
-        
         await logger.log(`✅ Processed ${message.id} from ${group} (${type})`);
     } catch (err) {
-        // Remove from processing state if failed
-        delete forwarded[message.id];
-        saveForwarded();
         await logger.log(`❌ Failed to process ${message.id}: ${err.message}`);
-    }
-}
-
-async function fetchHistoricalMessages(client) {
-    const now = Date.now();
-    const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
-
-    for (const [channelId, config] of Object.entries(FORWARDER.SOURCE_CHANNELS)) {
-        if (!config.fetchHistory) continue;
-
-        const channel = await client.channels.fetch(channelId).catch(() => null);
-        if (!channel || !channel.messages) continue;
-
-        try {
-            let lastId;
-            let allMessages = [];
-
-            while (true) {
-                const options = { limit: 100 };
-                if (lastId) options.before = lastId;
-
-                const messages = await channel.messages.fetch(options);
-                if (!messages.size) break;
-
-                for (const msg of messages.values()) {
-                    if (msg.createdTimestamp < sevenDaysAgo) break;
-                    if (!forwarded[msg.id]) {
-                        allMessages.push(msg);
-                    }
-                }
-
-                const oldest = messages.last();
-                if (!oldest || oldest.createdTimestamp < sevenDaysAgo) break;
-                lastId = oldest.id;
-            }
-
-            allMessages.sort((a, b) => a.createdTimestamp - b.createdTimestamp);
-
-            for (const msg of allMessages) {
-                await processMessage(msg, config, client);
-                await delay(5000);
-            }
-
-            await logger.log(`✅ Historical processing done for ${config.group} (${config.type}) - ${allMessages.length} messages`);
-        } catch (err) {
-            await logger.log(`❌ Error fetching for ${config.group} (${config.type}): ${err.message}`);
-        }
+        throw err; // Re-throw to indicate failure
     }
 }
 
@@ -174,8 +88,6 @@ function init(client) {
 
         await processMessage(message, channelConfig, client);
     });
-
-    fetchHistoricalMessages(client);
 }
 
 export default { init };

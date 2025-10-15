@@ -1,35 +1,8 @@
-import fs from "fs";
-import { FORWARDER } from "../../shared-config.js";
+import { FORWARDER, EMBED } from "../../config.js";
 import logger from "../../logger.js";
 
-let forwarded = {};
-
-// Ensure json directory exists
-const jsonDir = "json";
-if (!fs.existsSync(jsonDir)) {
-    fs.mkdirSync(jsonDir, { recursive: true });
-}
-
-if (fs.existsSync(FORWARDER.FILES.JSON)) {
-    forwarded = JSON.parse(fs.readFileSync(FORWARDER.FILES.JSON, "utf8"));
-}
-
-function saveForwarded() {
-    // Ensure json directory exists before writing
-    if (!fs.existsSync(jsonDir)) {
-        fs.mkdirSync(jsonDir, { recursive: true });
-    }
-    fs.writeFileSync(FORWARDER.FILES.JSON, JSON.stringify(forwarded, null, 2));
-}
-
 export async function processMessageFromSelfBot(messageData, client) {
-    const { group, type, fetchHistory } = messageData.forwarderConfig;
-
-    // Check if already processed
-    if (forwarded[messageData.id]) {
-        await logger.log(`⏭️ Skipped forwarding message ${messageData.id} - already forwarded`);
-        return;
-    }
+    const { group, type } = messageData.forwarderConfig;
 
     const targetChannelId = FORWARDER.TARGET_CHANNELS[group][type];
     const roleMention = FORWARDER.ROLE_MENTIONS[group];
@@ -41,45 +14,70 @@ export async function processMessageFromSelfBot(messageData, client) {
     }
 
     try {
-        // Create embed for the forwarded message
-        const embed = {
-            color: 0x0099ff,
-            title: `Message from ${messageData.guild.name}`,
-            description: messageData.content || "*No content*",
-            author: {
-                name: `${messageData.author.username}#${messageData.author.discriminator}`,
-                icon_url: messageData.author.avatar ?
-                    `https://cdn.discordapp.com/avatars/${messageData.author.id}/${messageData.author.avatar}.png` :
-                    `https://cdn.discordapp.com/embed/avatars/${parseInt(messageData.author.discriminator) % 5}.png`
-            },
-            timestamp: new Date(messageData.createdTimestamp).toISOString(),
-            footer: {
-                text: `Channel: ${messageData.channel.name}`
-            }
-        };
+        let embeds = [];
 
-        // Add attachments if any
-        if (messageData.attachments && messageData.attachments.length > 0) {
-            embed.fields = [{
-                name: "Attachments",
-                value: messageData.attachments.map(att => `[${att.name}](${att.url})`).join('\n'),
-                inline: false
-            }];
+        // Check if the original message has embeds
+        if (messageData.embeds && messageData.embeds.length > 0) {
+            // Forward the original embeds
+            embeds = messageData.embeds;
+
+            // Add a small footer to indicate it's forwarded
+            embeds.forEach(embed => {
+                if (!embed.footer) {
+                    embed.footer = {};
+                }
+                embed.footer.text = `From ${messageData.guild.name} • ${messageData.channel.name}`;
+            });
+        } else {
+            // Create our own embed for regular messages
+            const embed = {
+                color: EMBED.COLOR,
+                title: `Message from ${messageData.channel.name}`,
+                description: messageData.content || (messageData.attachments && messageData.attachments.length > 0 ? "" : "*No content*"),
+                author: {
+                    name: messageData.author.displayName || `${messageData.author.username}#${messageData.author.discriminator}`,
+                    icon_url: messageData.author.avatar ?
+                        `https://cdn.discordapp.com/avatars/${messageData.author.id}/${messageData.author.avatar}.png` :
+                        `https://cdn.discordapp.com/embed/avatars/${parseInt(messageData.author.discriminator) % 5}.png`
+                },
+                timestamp: new Date(messageData.createdTimestamp).toISOString(),
+                footer: {
+                    text: `Server: ${messageData.guild.name}`
+                }
+            };
+
+            // Handle attachments - display all attachments directly
+            if (messageData.attachments && messageData.attachments.length > 0) {
+                const firstAttachment = messageData.attachments[0];
+
+                // Display the first attachment directly in the embed
+                embed.image = {
+                    url: firstAttachment.url
+                };
+
+                // Add additional attachments as fields if there are more than one
+                if (messageData.attachments.length > 1) {
+                    embed.fields = [{
+                        name: "Additional Attachments",
+                        value: messageData.attachments.slice(1).map(att => `[${att.name}](${att.url})`).join('\n'),
+                        inline: false
+                    }];
+                }
+            }
+
+            embeds = [embed];
         }
 
-        // Send the message
+        // Send the message with role mention in content (embeds don't support role mentions)
         await targetChannel.send({
             content: roleMention,
-            embeds: [embed]
+            embeds: embeds
         });
-
-        // Mark as forwarded
-        forwarded[messageData.id] = { forwarded: true, timestamp: Date.now() };
-        saveForwarded();
 
         await logger.log(`✅ Forwarded ${messageData.id} from ${group} (${type})`);
     } catch (err) {
         await logger.log(`❌ Failed to forward ${messageData.id}: ${err.message}`);
+        throw err; // Re-throw to indicate failure
     }
 }
 

@@ -1,5 +1,5 @@
 import { Client, GatewayIntentBits } from "discord.js";
-import { OFFICIAL_BOT_TOKEN } from "../shared-config.js";
+import { OFFICIAL_BOT_TOKEN } from "../config.js";
 import logger from "../logger.js";
 import forwarder from "./components/forwarder.js";
 import welcomer from "./components/welcomer.js";

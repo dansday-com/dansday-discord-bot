@@ -26,12 +26,9 @@ A Discord bot system that separates self-bot monitoring from official bot forwar
 goblox-bot/
 ├── main.js                 # Launcher script
 ├── package.json           # Single package.json with all dependencies
-├── shared-config.js       # Shared configuration
+├── config.js              # Configuration
 ├── logger.js              # Shared logger utility
 ├── utils.js               # Shared utilities
-├── json/                  # JSON data storage
-│   ├── forwarded.json    # Forwarded messages tracking
-│   └── welcomed.json     # Welcomed users tracking
 ├── self-bot/
 │   ├── main.js           # Self-bot entry point
 │   └── components/
@@ -54,7 +51,7 @@ goblox-bot/
    > **Note**: This project uses a single `package.json` file for direct admin hosting compatibility.
 
 2. **Configure environment**:
-   - Edit `shared-config.js`
+   - Edit `config.js`
    - Set `ENV.PRODUCTION` to `true` for production or `false` for testing
 
 3. **Configure tokens**:
@@ -62,9 +59,12 @@ goblox-bot/
    - Set `OFFICIAL_BOT_TOKEN` (your official bot token)
 
 4. **Configure communication**:
-   - Set `COMMUNICATION.WEBHOOK_URL` to your website endpoint
+   - Set `COMMUNICATION.WEBHOOK_URL` to local webhook server (default: `http://localhost:7777`)
    - Set `COMMUNICATION.SECRET_KEY` for webhook authentication
    - Set `COMMUNICATION.PORT` for webhook server (default: 7777)
+
+5. **Configure embed appearance**:
+   - Set `EMBED.COLOR` for forwarded message embed color (default: red `0xff0000`)
 
 ## Usage
 
@@ -87,12 +87,12 @@ npm run dev
 ## Communication Method
 
 ### Webhook Communication
-- Self-bot sends message data via HTTP POST to your website (`goblox.dansday.com/api/webhook`)
-- Official bot runs a webhook server to receive the data
+- Self-bot sends message data via HTTP POST to local webhook server (`http://localhost:7777`)
+- Official bot runs a webhook server on port 7777 to receive the data
 - **Secret key authentication** - only authorized self-bot can access webhook
-- **Configurable port** - webhook server runs on port 7777 (configurable)
+- **Local communication** - both bots run on same server, communicate via localhost
 - Real-time communication for instant message forwarding
-- Configured in `shared-config.js` with `COMMUNICATION` settings
+- Configured in `config.js` with `COMMUNICATION` settings
 
 ## Environment Configuration
 
@@ -108,7 +108,7 @@ npm run dev
 
 ## Configuration
 
-All configuration is centralized in `shared-config.js`:
+All configuration is centralized in `config.js`:
 
 - **Source Channels**: Configure which channels to monitor
 - **Target Channels**: Configure where to forward messages
@@ -118,13 +118,12 @@ All configuration is centralized in `shared-config.js`:
 
 ## Data Management
 
-### JSON Storage
-- **Location**: All JSON files are stored in the `json/` subfolder
-- **Files**:
-  - `json/forwarded.json` - Tracks forwarded messages to prevent duplicates
-  - `json/welcomed.json` - Tracks welcomed users to prevent duplicate welcomes
-- **Auto-creation**: JSON directory and files are created automatically if they don't exist
-- **Persistence**: Data persists between bot restarts for reliable operation
+### Real-time Operations
+- **No Historical Fetching**: Messages are only forwarded when the bot is online
+- **No Duplicate Tracking**: Each message is processed once when received
+- **No Welcome Tracking**: New members are welcomed immediately when they join
+- **Simplified Operation**: No complex state management or JSON tracking
+- **Beautiful Embeds**: Welcome messages are sent as rich embeds with user info
 
 ## Security Benefits
 

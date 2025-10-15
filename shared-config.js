@@ -2,8 +2,7 @@
 
 // Environment Configuration
 export const ENV = {
-    PRODUCTION: false, // Set to true for production, false for testing
-    SECRET_KEY: "OwnerDansdayGOBLOX2025"
+    PRODUCTION: false // Set to true for production, false for testing
 };
 
 // Self-Bot Token (for monitoring source servers)
@@ -15,7 +14,11 @@ export const OFFICIAL_BOT_TOKEN = "MTQxNzQ4NzIyOTg4MTgxNTA4MA.GuC-RQ.NHRya3Ryny-
 // Communication Configuration
 export const COMMUNICATION = {
     // Webhook URL for self-bot to send data to official bot
-    WEBHOOK_URL: "https://goblox.dansday.com/api/webhook"
+    WEBHOOK_URL: "https://goblox.dansday.com/api/webhook",
+    // Secret key for webhook authentication
+    SECRET_KEY: "OwnerDansdayGOBLOX2025",
+    // Port for webhook server
+    PORT: 7777
 };
 
 // Logger Configuration

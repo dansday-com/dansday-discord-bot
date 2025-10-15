@@ -1,5 +1,5 @@
 import fs from "fs";
-import { FORWARDER, COMMUNICATION, ENV } from "../../shared-config.js";
+import { FORWARDER, COMMUNICATION } from "../../shared-config.js";
 import logger from "../../logger.js";
 import { delay } from "../../utils.js";
 
@@ -30,7 +30,7 @@ async function sendToOfficialBot(messageData) {
             headers: {
                 'Content-Type': 'application/json',
                 'User-Agent': 'Goblox-SelfBot/1.0.0',
-                'X-Secret-Key': ENV.SECRET_KEY
+                'X-Secret-Key': COMMUNICATION.SECRET_KEY
             },
             body: JSON.stringify({
                 type: 'message_forward',
@@ -52,12 +52,20 @@ async function sendToOfficialBot(messageData) {
 async function processMessage(message, channelConfig, client) {
     const { group, type, fetchHistory } = channelConfig;
 
-    if (fetchHistory && forwarded[message.id]) return;
+    // Check if already processed (for both real-time and historical)
+    if (forwarded[message.id]) {
+        await logger.log(`⏭️ Skipped processing message ${message.id} - already processed`);
+        return;
+    }
 
     if (FORWARDER.EXCLUDED_USERS.includes(message.author.id)) {
         await logger.log(`⏭️ Skipped processing message ${message.id} from excluded user ${message.author.tag} (${message.author.id})`);
         return;
     }
+
+    // Mark as processing to prevent duplicates
+    forwarded[message.id] = { processing: true, timestamp: Date.now() };
+    saveForwarded();
 
     // Prepare message data for official bot
     const messageData = {
@@ -96,14 +104,20 @@ async function processMessage(message, channelConfig, client) {
         timestamp: Date.now()
     };
 
-    await sendToOfficialBot(messageData);
-
-    if (fetchHistory) {
-        forwarded[message.id] = true;
+    try {
+        await sendToOfficialBot(messageData);
+        
+        // Mark as successfully processed
+        forwarded[message.id] = { processed: true, timestamp: Date.now() };
         saveForwarded();
+        
+        await logger.log(`✅ Processed ${message.id} from ${group} (${type})`);
+    } catch (err) {
+        // Remove from processing state if failed
+        delete forwarded[message.id];
+        saveForwarded();
+        await logger.log(`❌ Failed to process ${message.id}: ${err.message}`);
     }
-
-    await logger.log(`✅ Processed ${message.id} from ${group} (${type})`);
 }
 
 async function fetchHistoricalMessages(client) {

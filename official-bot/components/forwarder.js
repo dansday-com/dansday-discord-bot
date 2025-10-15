@@ -25,7 +25,11 @@ function saveForwarded() {
 export async function processMessageFromSelfBot(messageData, client) {
     const { group, type, fetchHistory } = messageData.forwarderConfig;
 
-    if (fetchHistory && forwarded[messageData.id]) return;
+    // Check if already processed
+    if (forwarded[messageData.id]) {
+        await logger.log(`⏭️ Skipped forwarding message ${messageData.id} - already forwarded`);
+        return;
+    }
 
     const targetChannelId = FORWARDER.TARGET_CHANNELS[group][type];
     const roleMention = FORWARDER.ROLE_MENTIONS[group];
@@ -69,10 +73,9 @@ export async function processMessageFromSelfBot(messageData, client) {
             embeds: [embed]
         });
 
-        if (fetchHistory) {
-            forwarded[messageData.id] = true;
-            saveForwarded();
-        }
+        // Mark as forwarded
+        forwarded[messageData.id] = { forwarded: true, timestamp: Date.now() };
+        saveForwarded();
 
         await logger.log(`✅ Forwarded ${messageData.id} from ${group} (${type})`);
     } catch (err) {

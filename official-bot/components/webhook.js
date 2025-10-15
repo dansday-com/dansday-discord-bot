@@ -1,4 +1,4 @@
-import { COMMUNICATION, ENV } from "../../shared-config.js";
+import { COMMUNICATION } from "../../shared-config.js";
 import logger from "../../logger.js";
 
 let webhookServer = null;
@@ -14,7 +14,7 @@ async function handleWebhookRequest(req, res) {
 
         // Verify secret key
         const secretKey = req.headers['x-secret-key'];
-        if (!secretKey || secretKey !== ENV.SECRET_KEY) {
+        if (!secretKey || secretKey !== COMMUNICATION.SECRET_KEY) {
             await logger.log(`❌ Webhook unauthorized access attempt from ${req.connection.remoteAddress}`);
             res.writeHead(401, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: 'Unauthorized' }));
@@ -38,11 +38,13 @@ async function handleWebhookRequest(req, res) {
                     res.writeHead(200, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({ success: true, message: 'Message processed' }));
                 } else {
+                    await logger.log(`❌ Invalid payload format: ${JSON.stringify(payload)}`);
                     res.writeHead(400, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({ error: 'Invalid payload format' }));
                 }
             } catch (parseErr) {
                 await logger.log(`❌ Webhook parse error: ${parseErr.message}`);
+                await logger.log(`❌ Raw body: ${body}`);
                 res.writeHead(400, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ error: 'Invalid JSON' }));
             }
@@ -58,8 +60,7 @@ function startWebhookServer(discordClient) {
     client = discordClient;
 
     if (COMMUNICATION.WEBHOOK_URL) {
-        const url = new URL(COMMUNICATION.WEBHOOK_URL);
-        const port = url.port || 3000;
+        const port = COMMUNICATION.PORT;
 
         // Import http module dynamically
         import('http').then(http => {
@@ -71,7 +72,15 @@ function startWebhookServer(discordClient) {
             });
 
             webhookServer.on('error', (err) => {
-                logger.log(`❌ Webhook server error: ${err.message}`);
+                if (err.code === 'EADDRINUSE') {
+                    logger.log(`❌ Port ${port} is already in use. Trying port ${port + 1}...`);
+                    webhookServer.listen(port + 1, () => {
+                        logger.log(`🌐 Webhook server started on port ${port + 1}`);
+                        logger.log(`📡 Listening for messages at ${COMMUNICATION.WEBHOOK_URL}`);
+                    });
+                } else {
+                    logger.log(`❌ Webhook server error: ${err.message}`);
+                }
             });
         });
     }

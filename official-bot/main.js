@@ -14,7 +14,7 @@ const client = new Client({
     ]
 });
 
-client.on("ready", async () => {
+client.on("clientReady", async () => {
     console.log(`Official bot logged in as ${client.user.tag}`);
     logger.init(client);
     forwarder.init(client);

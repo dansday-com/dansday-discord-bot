@@ -56,7 +56,6 @@ goblox-bot/
 2. **Configure environment**:
    - Edit `shared-config.js`
    - Set `ENV.PRODUCTION` to `true` for production or `false` for testing
-   - Set `ENV.SECRET_KEY` for webhook authentication
 
 3. **Configure tokens**:
    - Set `SELF_BOT_TOKEN` (your self-bot token)
@@ -64,6 +63,8 @@ goblox-bot/
 
 4. **Configure communication**:
    - Set `COMMUNICATION.WEBHOOK_URL` to your website endpoint
+   - Set `COMMUNICATION.SECRET_KEY` for webhook authentication
+   - Set `COMMUNICATION.PORT` for webhook server (default: 7777)
 
 ## Usage
 
@@ -89,8 +90,9 @@ npm run dev
 - Self-bot sends message data via HTTP POST to your website (`goblox.dansday.com/api/webhook`)
 - Official bot runs a webhook server to receive the data
 - **Secret key authentication** - only authorized self-bot can access webhook
+- **Configurable port** - webhook server runs on port 7777 (configurable)
 - Real-time communication for instant message forwarding
-- Configured in `shared-config.js` with `COMMUNICATION.WEBHOOK_URL`
+- Configured in `shared-config.js` with `COMMUNICATION` settings
 
 ## Environment Configuration
 

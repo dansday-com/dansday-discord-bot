@@ -1,21 +1,28 @@
 {
-  "name": "goblox-bot",
-  "version": "1.2.2",
-  "description": "Official Goblox Bot",
+  "name": "goblox-bot-system",
+  "version": "2.0.0",
+  "description": "Goblox Bot System - Self-bot and Official Bot",
   "main": "main.js",
   "type": "module",
   "scripts": {
-    "start": "node main.js"
+    "start": "node main.js",
+    "start:selfbot": "cd self-bot && npm start",
+    "start:official": "cd official-bot && npm start",
+    "install:all": "npm install && cd self-bot && npm install && cd ../official-bot && npm install",
+    "dev": "concurrently \"npm run start:selfbot\" \"npm run start:official\""
   },
   "keywords": [
     "discord",
     "selfbot",
+    "bot",
     "goblox",
-    "discord-bot"
+    "forwarder",
+    "welcomer"
   ],
   "author": "Akbar Yudhanto",
   "license": "MIT",
   "dependencies": {
-    "discord.js-selfbot-v13": "^3.6.1"
-  }
+    "concurrently": "^8.2.2"
+  },
+  "devDependencies": {}
 }

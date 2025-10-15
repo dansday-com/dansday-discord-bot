@@ -1,5 +1,16 @@
-// Self-Bot Token
-export const TOKEN = "MTM3OTYxODk0MTY4NDY4Mjc2NA.GQbIIl.gucYwt8CHvhPiciAuCML5weuM6c2bTls3gDUKo";
+// Shared Configuration for both Self-Bot and Official Bot
+
+// Self-Bot Token (for monitoring source servers)
+export const SELF_BOT_TOKEN = "MTM3OTYxODk0MTY4NDY4Mjc2NA.GQbIIl.gucYwt8CHvhPiciAuCML5weuM6c2bTls3gDUKo";
+
+// Official Bot Token (for forwarding to target servers)
+export const OFFICIAL_BOT_TOKEN = "MTQxNzQ4NzIyOTg4MTgxNTA4MA.GuC-RQ.NHRya3Ryny-oecpXQ8dmRHjvt8gz7qns7hzs98";
+
+// Communication Configuration
+export const COMMUNICATION = {
+    // Webhook URL for self-bot to send data to official bot
+    WEBHOOK_URL: "https://goblox.dansday.com/api/webhook"
+};
 
 // Logger Configuration
 export const LOGGER = {
@@ -67,6 +78,8 @@ export const FORWARDER = {
         "1376539587949887499": { group: "growagarden", type: "cosmetics", fetchHistory: false }, //Gag Trading | cosmetics-stock
         "1408933312596279377": { group: "growagarden", type: "merchants", fetchHistory: false }, //Jandel Fan | merchants
         "1394790732300161195": { group: "growagarden", type: "adminabuse", fetchHistory: true }, //Jandel Fan | admin-abuse
+
+        "1427974951834489014": { group: "tester", type: "retriever", fetchHistory: true }, //for testing purposes
     },
     TARGET_CHANNELS: {
         "blair": {
@@ -111,6 +124,11 @@ export const FORWARDER = {
             merchants: "1383555456722800832",
             adminabuse: "1396359317635993665",
         },
+
+        //for testing purposes
+        "tester": {
+            retriever: "1427974987335204865"
+        }
     },
     ROLE_MENTIONS: {
         "blair": "<@&1377053308937834547>",
@@ -119,7 +137,10 @@ export const FORWARDER = {
         "deadrails": "<@&1377005192792248350>",
         "dig": "<@&1396355600690184212>",
         "fisch": "<@&1377005118599467259>",
-        "growagarden": "<@&1377005009304158421>"
+        "growagarden": "<@&1377005009304158421>",
+
+        //for testing purposes
+        "tester": "<@&1382832767993249813>"
     },
     EXCLUDED_USERS: [
         "678344927997853742",

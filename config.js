@@ -54,6 +54,25 @@ export const WELCOMER = {
     ]
 };
 
+// Booster Configuration
+export const BOOSTER = {
+    CHANNELS: {
+        "1364374298307072010": "1364374299359707212" // Same channel as welcomer, or configure different channels
+    },
+    MESSAGES: [
+        "Terima kasih banyak, {user}! Server boost kamu sangat berarti untuk kami! 💎",
+        "Wah, {user} baru boost server nih! Terima kasih ya, kalian luar biasa! 🚀",
+        "Makasih banget {user} udah boost server! Komunitas kita jadi lebih keren nih! ✨",
+        "Yoo {user}! Terima kasih untuk boost-nya, kalian amazing! 💫",
+        "{user} baru boost server, thank you so much! 🙏",
+        "Terima kasih {user} udah support server dengan boost! Kalian the best! 🔥",
+        "{user} boost server nih! Thank you untuk dukungannya! 🌟",
+        "Keren banget {user}! Terima kasih udah boost server, sangat membantu! 💪",
+        "Wah {user} boost server! Makasih banyak, kalian spesial! 🎉",
+        "{user} baru boost nih! Terima kasih, kalian membuat server ini lebih baik! ❤️"
+    ]
+};
+
 // Forwarder Configuration
 export const FORWARDER = {
     // Production source channels (all channels)

@@ -3,6 +3,7 @@ import { OFFICIAL_BOT_TOKEN } from "../config.js";
 import logger from "../logger.js";
 import forwarder from "./components/forwarder.js";
 import welcomer from "./components/welcomer.js";
+import booster from "./components/booster.js";
 import webhook from "./components/webhook.js";
 import commands from "./components/commands.js";
 import interfaceComponent from "./components/interface.js";
@@ -25,6 +26,7 @@ client.on("clientReady", async () => {
     logger.init(client);
     forwarder.init();
     welcomer.init(client);
+    booster.init(client);
     commands.init(client);
     interfaceComponent.init(client);
 

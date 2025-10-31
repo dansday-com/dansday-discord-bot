@@ -5,6 +5,7 @@ import { handleStatusButton } from './interface/status.js';
 import { handleHelpButton } from './interface/help.js';
 import { handlePauseButton } from './interface/pause.js';
 import { handleSendMessageButton, handleSendMessageModal, handleChannelSelection, handleRoleSelection, handleCompleteSetup } from './interface/sendmessage.js';
+import { handleInactiveButton } from './interface/inactive.js';
 
 // Handle button interactions
 export async function handleButtonInteraction(interaction, client) {
@@ -31,6 +32,9 @@ export async function handleButtonInteraction(interaction, client) {
             break;
         case 'bot_send_message':
             await handleSendMessageButton(interaction);
+            break;
+        case 'bot_inactive':
+            await handleInactiveButton(interaction, client);
             break;
         default:
             // Handle send message related buttons
@@ -86,11 +90,16 @@ export function createInterfaceButtons() {
         .setLabel('📤 Send Message')
         .setStyle(ButtonStyle.Success);
 
-    // Create action row with buttons (reordered: 1. Send Message, 2. Status, 3. Help, 4. Pause)
-    const buttonRow = new ActionRowBuilder()
-        .addComponents(sendMessageButton, statusButton, helpButton, pauseButton);
+    const inactiveButton = new ButtonBuilder()
+        .setCustomId('bot_inactive')
+        .setLabel('📊 Inactive Members')
+        .setStyle(ButtonStyle.Primary);
 
-    return buttonRow;
+    // Create action rows with buttons (max 5 buttons per row)
+    const buttonRow1 = new ActionRowBuilder()
+        .addComponents(sendMessageButton, inactiveButton, statusButton, helpButton, pauseButton);
+
+    return buttonRow1;
 }
 
 // Send interface to channel

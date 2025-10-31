@@ -1,11 +1,19 @@
 import { ModalBuilder, TextInputBuilder, ActionRowBuilder, EmbedBuilder, ChannelSelectMenuBuilder, RoleSelectMenuBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { EMBED } from "../../../config.js";
 import logger from "../../../logger.js";
+import { hasPermission } from "../permissions.js";
 
 // Handle send message button - shows channel selector first
 export async function handleSendMessageButton(interaction) {
     try {
-        // This is a staff-only feature, no additional permission checks needed
+        // Check permissions (Admin and Staff only)
+        if (!hasPermission(interaction.member, 'send_message')) {
+            await interaction.reply({
+                content: '❌ You don\'t have permission to send messages. Admin or Staff role required.',
+                flags: 64
+            });
+            return;
+        }
 
         // Create channel selector
         const channelSelect = new ChannelSelectMenuBuilder()
@@ -37,6 +45,15 @@ export async function handleSendMessageButton(interaction) {
 // Handle channel selection - shows role selector
 export async function handleChannelSelection(interaction) {
     try {
+        // Check permissions
+        if (!hasPermission(interaction.member, 'send_message')) {
+            await interaction.update({
+                content: '❌ You don\'t have permission to send messages.',
+                components: []
+            });
+            return;
+        }
+
         const selectedChannel = interaction.values[0];
         const channel = interaction.guild.channels.cache.get(selectedChannel);
 
@@ -81,6 +98,15 @@ export async function handleChannelSelection(interaction) {
 // Handle role selection - shows message composition interface
 export async function handleRoleSelection(interaction) {
     try {
+        // Check permissions
+        if (!hasPermission(interaction.member, 'send_message')) {
+            await interaction.update({
+                content: '❌ You don\'t have permission to send messages.',
+                components: []
+            });
+            return;
+        }
+
         const selectedRoles = interaction.values;
         const channelId = interaction.customId.replace('send_message_role_select_', '');
         const channel = interaction.guild.channels.cache.get(channelId);
@@ -164,6 +190,15 @@ export async function handleRoleSelection(interaction) {
 // Handle complete setup button (skip role selection)
 export async function handleCompleteSetup(interaction) {
     try {
+        // Check permissions
+        if (!hasPermission(interaction.member, 'send_message')) {
+            await interaction.update({
+                content: '❌ You don\'t have permission to send messages.',
+                components: []
+            });
+            return;
+        }
+
         const channelId = interaction.customId.replace('send_message_complete_', '');
         const channel = interaction.guild.channels.cache.get(channelId);
 
@@ -246,7 +281,14 @@ export async function handleCompleteSetup(interaction) {
 // Handle modal submission
 export async function handleSendMessageModal(interaction) {
     try {
-        // This is a staff-only feature, no additional permission checks needed
+        // Check permissions
+        if (!hasPermission(interaction.member, 'send_message')) {
+            await interaction.reply({
+                content: '❌ You don\'t have permission to send messages.',
+                flags: 64
+            });
+            return;
+        }
 
         // Extract channel ID and role from modal customId
         const customIdParts = interaction.customId.replace('send_message_modal_', '').split('_');

@@ -14,6 +14,14 @@ export const OFFICIAL_BOT_TOKEN = "MTQxNzQ4NzIyOTg4MTgxNTA4MA.GuC-RQ.NHRya3Ryny-
 // Official Bot Application ID
 export const OFFICIAL_BOT_APPLICATION_ID = "1417487229881815080";
 
+// Permissions Configuration
+export const PERMISSIONS = {
+    // Role IDs
+    ADMIN_ROLE: "1364375813356650596",      // Can use all commands and interfaces
+    STAFF_ROLE: "1376631063035777054",     // Can use all interfaces except pause
+    MEMBER_ROLE: "1364380027310968905"      // Can only use status and help
+};
+
 // Communication Configuration
 export const COMMUNICATION = {
     // Webhook URL for self-bot to send data to official bot (local webhook server)
@@ -71,6 +79,17 @@ export const BOOSTER = {
         "Wah {user} boost server! Makasih banyak, kalian spesial! 🎉",
         "{user} baru boost nih! Terima kasih, kalian membuat server ini lebih baik! ❤️"
     ]
+};
+
+// Activity Tracker Configuration
+export const ACTIVITY_TRACKER = {
+    // Categories to search for inactive members (channel categories)
+    ALLOWED_CATEGORIES: [
+        "1375017296539553852",
+        "1375004282809749564"
+    ],
+    // Days of inactivity threshold (90 days = 3 months)
+    INACTIVITY_DAYS: 90
 };
 
 // Forwarder Configuration

@@ -4,6 +4,7 @@ import logger from "../logger.js";
 import forwarder from "./components/forwarder.js";
 import welcomer from "./components/welcomer.js";
 import booster from "./components/booster.js";
+import moderation from "./components/moderation.js";
 import webhook from "./components/webhook.js";
 import commands from "./components/commands.js";
 import interfaceComponent from "./components/interface.js";
@@ -13,7 +14,8 @@ const client = new Client({
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildMembers
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildModeration
     ]
 });
 
@@ -27,6 +29,7 @@ client.on("clientReady", async () => {
     forwarder.init();
     welcomer.init(client);
     booster.init(client);
+    moderation.init(client);
     commands.init(client);
     interfaceComponent.init(client);
 

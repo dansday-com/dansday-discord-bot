@@ -14,6 +14,9 @@ export const OFFICIAL_BOT_TOKEN = "MTQxNzQ4NzIyOTg4MTgxNTA4MA.GuC-RQ.NHRya3Ryny-
 // Official Bot Application ID
 export const OFFICIAL_BOT_APPLICATION_ID = "1417487229881815080";
 
+// Main Channel Configuration
+export const MAIN_CHANNEL = "1364374299359707212";
+
 // Permissions Configuration
 export const PERMISSIONS = {
     // Role IDs
@@ -46,7 +49,7 @@ export const LOGGER = {
 // Welcomer Configuration
 export const WELCOMER = {
     CHANNELS: {
-        "1364374298307072010": "1364374299359707212"
+        "1364374298307072010": MAIN_CHANNEL
     },
     MESSAGES: [
         "Selamat datang, {user}! Semoga betah di sini ya 😄",
@@ -65,7 +68,7 @@ export const WELCOMER = {
 // Booster Configuration
 export const BOOSTER = {
     CHANNELS: {
-        "1364374298307072010": "1364374299359707212"
+        "1364374298307072010": MAIN_CHANNEL
     },
     MESSAGES: [
         "Terima kasih banyak, {user}! Server boost kamu sangat berarti untuk kami! 💎",

@@ -20,12 +20,28 @@ async function welcomeUser(member, client) {
     }
 
     try {
+        // Check if user might be returning (account age vs join date)
+        // If account is much older than their join date, they might be returning
+        const accountAge = Date.now() - member.user.createdTimestamp;
+        const daysSinceAccountCreated = Math.floor(accountAge / (24 * 60 * 60 * 1000));
+        const isReturningMember = member.user.createdTimestamp < Date.now() - (7 * 24 * 60 * 60 * 1000); // Account older than 7 days
+
+        // Fetch member to ensure we have full data
+        try {
+            await member.fetch();
+        } catch (err) {
+            await logger.log(`⚠️ Could not fetch member ${member.user.tag}: ${err.message}`);
+        }
+
         const welcomeMessage = getRandomMessage().replace("{user}", `<@${member.user.id}>`);
+
+        // Adjust title for returning members
+        const title = isReturningMember ? "🎉 Welcome Back to the Server!" : "🎉 Welcome to the Server!";
 
         // Create simple welcome embed
         const welcomeEmbed = {
             color: EMBED.COLOR,
-            title: "🎉 Welcome to the Server!",
+            title: title,
             description: welcomeMessage,
             thumbnail: {
                 url: member.user.displayAvatarURL({ dynamic: true, size: 256 })
@@ -46,7 +62,7 @@ async function welcomeUser(member, client) {
         };
 
         await welcomeChannel.send({ embeds: [welcomeEmbed] });
-        await logger.log(`✅ Welcomed ${member.user.tag} (${member.user.id}) in ${member.guild.name}`);
+        await logger.log(`✅ Welcomed ${member.user.tag} (${member.user.id}) in ${member.guild.name} - Returning: ${isReturningMember}`);
     } catch (err) {
         await logger.log(`❌ Failed to welcome ${member.user.tag} (${member.user.id}): ${err.message}`);
     }
@@ -54,8 +70,12 @@ async function welcomeUser(member, client) {
 
 function init(client) {
     client.on("guildMemberAdd", async (member) => {
+        // Log that member joined event was received
+        await logger.log(`👤 Member join event: ${member.user.tag} (${member.user.id}) joined ${member.guild.name}`);
         await welcomeUser(member, client);
     });
+
+    logger.log("👋 Welcomer component initialized");
 }
 
 export default { init };

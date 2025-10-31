@@ -49,7 +49,9 @@ export const COMMUNICATION = {
 // Embed Configuration
 export const EMBED = {
     // Color for forwarded message embeds (red)
-    COLOR: 0xff0000
+    COLOR: 0xff0000,
+    // Footer text for all embeds
+    FOOTER: `Copyright GO BLOX ${new Date().getFullYear()}`
 };
 
 // Logger Configuration

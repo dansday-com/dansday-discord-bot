@@ -15,7 +15,7 @@ async function sendModerationLog(client, embedData) {
             .setTitle(embedData.title)
             .setDescription(embedData.description)
             .setTimestamp()
-            .setFooter({ text: embedData.guildName || "Moderation Log" });
+            .setFooter({ text: EMBED.FOOTER });
 
         if (embedData.thumbnail) {
             embed.setThumbnail(embedData.thumbnail);
@@ -65,7 +65,6 @@ function init(client) {
                 title: "🔨 Member Banned",
                 description: `<@${user.id}> has been banned from the server.`,
                 thumbnail: user.displayAvatarURL({ dynamic: true, size: 256 }),
-                guildName: guild.name,
                 userTag: user.tag,
                 fields: [
                     {
@@ -102,7 +101,6 @@ function init(client) {
                 title: "✅ Member Unbanned",
                 description: `<@${user.id}> has been unbanned from the server.`,
                 thumbnail: user.displayAvatarURL({ dynamic: true, size: 256 }),
-                guildName: guild.name,
                 userTag: user.tag,
                 fields: [
                     {
@@ -144,7 +142,6 @@ function init(client) {
                 title: "👢 Member Kicked",
                 description: `<@${member.user.id}> has been kicked from the server.`,
                 thumbnail: member.user.displayAvatarURL({ dynamic: true, size: 256 }),
-                guildName: member.guild.name,
                 userTag: member.user.tag,
                 fields: [
                     {

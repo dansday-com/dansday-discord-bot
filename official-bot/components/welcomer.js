@@ -1,4 +1,5 @@
 import { WELCOMER, EMBED } from "../../config.js";
+import { EmbedBuilder } from "discord.js";
 import logger from "../../logger.js";
 
 function getRandomMessage() {
@@ -37,14 +38,12 @@ async function welcomeUser(member, client) {
         const title = isReturningMember ? "🎉 Welcome Back to the Server!" : "🎉 Welcome to the Server!";
 
         // Create simple welcome embed
-        const welcomeEmbed = {
-            color: EMBED.COLOR,
-            title: title,
-            description: welcomeMessage,
-            thumbnail: {
-                url: member.user.displayAvatarURL({ dynamic: true, size: 256 })
-            },
-            fields: [
+        const welcomeEmbed = new EmbedBuilder()
+            .setColor(EMBED.COLOR)
+            .setTitle(title)
+            .setDescription(welcomeMessage)
+            .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 256 }))
+            .addFields([
                 {
                     name: "📅 Account Created",
                     value: `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`,
@@ -55,9 +54,9 @@ async function welcomeUser(member, client) {
                     value: `Member #${member.guild.memberCount}`,
                     inline: true
                 }
-            ],
-            timestamp: new Date().toISOString()
-        };
+            ])
+            .setFooter({ text: EMBED.FOOTER })
+            .setTimestamp();
 
         await welcomeChannel.send({ embeds: [welcomeEmbed] });
         await logger.log(`✅ Welcomed ${member.user.tag} (${member.user.id}) in ${member.guild.name} - Returning: ${isReturningMember}`);

@@ -213,7 +213,7 @@ export async function handleInactiveButton(interaction, client) {
                 }
             ])
             .setTimestamp()
-            .setFooter({ text: `${guild.name}` });
+            .setFooter({ text: EMBED.FOOTER });
 
         await interaction.editReply({ embeds: [inactiveEmbed] });
 

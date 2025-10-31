@@ -77,7 +77,6 @@ async function deployCommands(clearFirst = false) {
 function init(client) {
     // Add client properties for command system
     client.isPaused = false; // Initialize pause state
-    client.commandDefinitions = commandDefinitions; // Store command definitions for reload
 
     // Register setup slash command
     registerSlashCommand('setup', { execute: setupExecute });

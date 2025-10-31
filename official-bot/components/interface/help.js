@@ -1,4 +1,5 @@
 import { EMBED } from "../../../config.js";
+import { EmbedBuilder } from "discord.js";
 import { hasPermission } from "../permissions.js";
 
 // Handle help button
@@ -11,11 +12,11 @@ export async function handleHelpButton(interaction) {
         });
         return;
     }
-    const helpEmbed = {
-        color: EMBED.COLOR,
-        title: "🤖 GO BLOX Bot Interface - Help",
-        description: "Welcome to the GO BLOX Bot interface! Use the buttons below to interact with the bot. All responses are private (ephemeral).",
-        fields: [
+    const helpEmbed = new EmbedBuilder()
+        .setColor(EMBED.COLOR)
+        .setTitle("🤖 GO BLOX Bot Interface - Help")
+        .setDescription("Welcome to the GO BLOX Bot interface! Use the buttons below to interact with the bot. All responses are private (ephemeral).")
+        .addFields([
             {
                 name: "📊 Status Button",
                 value: "View bot status, uptime, and component information.\n**Permission:** Member+",
@@ -38,7 +39,7 @@ export async function handleHelpButton(interaction) {
             },
             {
                 name: "📤 Send Message Button",
-                value: "Send custom embed messages to any channel. Features:\n• Select target channel\n• Optionally mention roles\n• Custom title (required)\n• Custom description (required)\n• Optional image URL\n• Optional color customization\n• Optional footer text\n**Permission:** Staff+",
+                value: "Send custom embed messages to any channel. Features:\n• Select target channel\n• Optionally mention roles\n• Custom title (required)\n• Custom description (required)\n• Optional image URL\n• Optional color customization (hex/decimal/name)\n• Optional footer text (defaults to config footer if empty)\n**Permission:** Staff+",
                 inline: false
             },
             {
@@ -61,12 +62,9 @@ export async function handleHelpButton(interaction) {
                 value: "**Admin:** Full access to all features\n**Staff:** All features except Pause/Resume\n**Supporter:** Can use Custom Supporter Role, Status, and Help\n**Member:** Can use Status, Help, and Feedback",
                 inline: false
             }
-        ],
-        footer: {
-            text: "GO BLOX Bot System"
-        },
-        timestamp: new Date().toISOString()
-    };
+        ])
+        .setFooter({ text: EMBED.FOOTER })
+        .setTimestamp();
 
     await interaction.reply({
         embeds: [helpEmbed],

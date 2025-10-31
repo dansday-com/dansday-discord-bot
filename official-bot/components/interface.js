@@ -79,7 +79,7 @@ export function createInterfaceEmbed(client) {
             url: client.user.displayAvatarURL()
         },
         footer: {
-            text: "GO BLOX Bot"
+            text: EMBED.FOOTER
         },
         timestamp: new Date().toISOString()
     };

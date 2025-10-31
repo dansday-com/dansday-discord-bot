@@ -375,7 +375,7 @@ export async function handleDeleteCustomSupporterRole(interaction) {
             .setTitle('✅ Custom Supporter Role Deleted')
             .setDescription(`Your custom role **${roleName}** has been deleted.`)
             .setTimestamp()
-            .setFooter({ text: guild.name });
+            .setFooter({ text: EMBED.FOOTER });
 
         await interaction.editReply({
             embeds: [successEmbed]
@@ -512,7 +512,7 @@ export async function handleCustomSupporterRoleModal(interaction) {
                         }
                     ])
                     .setTimestamp()
-                    .setFooter({ text: guild.name });
+                    .setFooter({ text: EMBED.FOOTER });
 
                 await interaction.editReply({
                     embeds: [successEmbed]
@@ -654,7 +654,7 @@ export async function handleCustomSupporterRoleModal(interaction) {
                 }
             ])
             .setTimestamp()
-            .setFooter({ text: guild.name });
+            .setFooter({ text: EMBED.FOOTER });
 
         await interaction.editReply({
             embeds: [successEmbed]

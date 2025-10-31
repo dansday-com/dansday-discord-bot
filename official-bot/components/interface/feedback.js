@@ -137,7 +137,7 @@ export async function handleFeedbackModal(interaction) {
                 }
             ])
             .setTimestamp()
-            .setFooter({ text: guild.name });
+            .setFooter({ text: EMBED.FOOTER });
 
         // Send to feedback channel with Staff role mention
         await feedbackChannel.send({
@@ -151,7 +151,7 @@ export async function handleFeedbackModal(interaction) {
             .setTitle('✅ Feedback Submitted!')
             .setDescription('Thank you for your feedback! Your submission has been received.')
             .setTimestamp()
-            .setFooter({ text: guild.name });
+            .setFooter({ text: EMBED.FOOTER });
 
         await interaction.editReply({
             embeds: [successEmbed]

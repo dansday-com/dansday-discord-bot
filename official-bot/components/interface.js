@@ -6,7 +6,7 @@ import { handleHelpButton } from './interface/help.js';
 import { handlePauseButton } from './interface/pause.js';
 import { handleSendMessageButton, handleSendMessageModal, handleChannelSelection, handleRoleSelection, handleCompleteSetup } from './interface/sendmessage.js';
 import { handleInactiveButton } from './interface/inactive.js';
-import { handleBoosterRoleButton, handleBoosterRoleModal } from './interface/boosterrole.js';
+import { handleCustomSupporterRoleButton, handleCustomSupporterRoleModal } from './interface/customsupporterrole.js';
 
 // Handle button interactions
 export async function handleButtonInteraction(interaction, client) {
@@ -42,8 +42,8 @@ export async function handleButtonInteraction(interaction, client) {
         case 'bot_inactive':
             await handleInactiveButton(interaction, client);
             break;
-        case 'bot_booster_role':
-            await handleBoosterRoleButton(interaction);
+        case 'bot_custom_supporter_role':
+            await handleCustomSupporterRoleButton(interaction);
             break;
         default:
             // Handle send message related buttons
@@ -104,17 +104,17 @@ export function createInterfaceButtons() {
         .setLabel('📊 Inactive Members')
         .setStyle(ButtonStyle.Primary);
 
-    const boosterRoleButton = new ButtonBuilder()
-        .setCustomId('bot_booster_role')
-        .setLabel('💎 Custom Booster Role')
+    const customSupporterRoleButton = new ButtonBuilder()
+        .setCustomId('bot_custom_supporter_role')
+        .setLabel('💎 Custom Supporter Role')
         .setStyle(ButtonStyle.Success);
 
     // Create action rows with buttons (max 5 buttons per row)
     const buttonRow1 = new ActionRowBuilder()
         .addComponents(sendMessageButton, inactiveButton, statusButton, helpButton, pauseButton);
-
+    
     const buttonRow2 = new ActionRowBuilder()
-        .addComponents(boosterRoleButton);
+        .addComponents(customSupporterRoleButton);
 
     return [buttonRow1, buttonRow2];
 }
@@ -176,8 +176,8 @@ function init(client) {
 
                 if (interaction.customId.startsWith('send_message_modal_')) {
                     await handleSendMessageModal(interaction);
-                } else if (interaction.customId === 'booster_role_create') {
-                    await handleBoosterRoleModal(interaction);
+                } else if (interaction.customId === 'custom_supporter_role_create') {
+                await handleCustomSupporterRoleModal(interaction);
                 } else {
                     await logger.log(`⚠️ Unknown modal: "${customId}" by ${user.tag} (${user.id})`);
                 }

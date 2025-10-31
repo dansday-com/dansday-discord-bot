@@ -32,9 +32,9 @@ export const PERMISSIONS = {
     // Role IDs
     ADMIN_ROLE: "1364375813356650596",      // Can use all commands and interfaces
     STAFF_ROLE: "1376631063035777054",     // Can use all interfaces except pause
-    MEMBER_ROLE: "1364380027310968905"      // Can only use status and help
+    SUPPORTER_ROLE: "1369054578754060288",   // Can create custom roles
+    MEMBER_ROLE: "1364380027310968905",     // Can only use status and help
 };
-
 
 // Communication Configuration
 export const COMMUNICATION = {
@@ -95,8 +95,8 @@ export const BOOSTER = {
     ]
 };
 
-// Booster Role Configuration
-export const BOOSTER_ROLE = {
+// Custom Supporter Role Configuration
+export const CUSTOM_SUPPORTER_ROLE = {
     // Role position constraints
     ROLE_ABOVE: "1369054578754060288",      // Custom role must be above this role
     ROLE_BELOW: "1376631063035777054"       // Custom role must be below this role

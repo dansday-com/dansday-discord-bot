@@ -1,33 +1,28 @@
 import { ModalBuilder, TextInputBuilder, ActionRowBuilder, TextInputStyle, EmbedBuilder } from 'discord.js';
-import { EMBED, BOOSTER_ROLE } from '../../../config.js';
+import { EMBED, CUSTOM_SUPPORTER_ROLE, PERMISSIONS } from '../../../config.js';
 import logger from '../../../logger.js';
-import { hasPermission } from '../permissions.js';
+import { hasPermission, isSupporter } from '../permissions.js';
 
-// Store booster roles created (userId -> roleId)
+// Store supporter roles created (userId -> roleId)
 // In production, you might want to store this in a database
-const boosterRoles = new Map();
+const supporterRoles = new Map();
 
-// Check if member is boosting
-function isBoosting(member) {
-    return member.premiumSince !== null;
-}
-
-// Check if member already has a custom booster role
-async function hasBoosterRole(member) {
+// Check if member already has a custom supporter role
+async function hasSupporterRole(member) {
     // Check our stored map first
-    if (boosterRoles.has(member.id)) {
-        const roleId = boosterRoles.get(member.id);
+    if (supporterRoles.has(member.id)) {
+        const roleId = supporterRoles.get(member.id);
         const role = member.guild.roles.cache.get(roleId);
         if (role && member.roles.cache.has(roleId)) {
             return { has: true, role };
         }
         // Role might have been deleted, remove from map
-        boosterRoles.delete(member.id);
+        supporterRoles.delete(member.id);
     }
 
     // Check if member has any roles between the position constraints
-    const aboveRole = member.guild.roles.cache.get(BOOSTER_ROLE.ROLE_ABOVE);
-    const belowRole = member.guild.roles.cache.get(BOOSTER_ROLE.ROLE_BELOW);
+    const aboveRole = member.guild.roles.cache.get(CUSTOM_SUPPORTER_ROLE.ROLE_ABOVE);
+    const belowRole = member.guild.roles.cache.get(CUSTOM_SUPPORTER_ROLE.ROLE_BELOW);
 
     if (!aboveRole || !belowRole) {
         return { has: false };
@@ -41,9 +36,8 @@ async function hasBoosterRole(member) {
     // Check if member has any of these roles
     for (const role of allRoles.values()) {
         if (member.roles.cache.has(role.id) && role.managed === false) {
-            // Check if this role name starts with a common pattern or check if it's likely a booster role
-            // For now, we'll assume any role in this position range belongs to a booster
-            boosterRoles.set(member.id, role.id);
+            // For now, we'll assume any role in this position range belongs to a supporter
+            supporterRoles.set(member.id, role.id);
             return { has: true, role };
         }
     }
@@ -100,8 +94,8 @@ function parseColor(colorInput) {
 
 // Get role position between constraints
 async function getRolePosition(guild) {
-    const aboveRole = guild.roles.cache.get(BOOSTER_ROLE.ROLE_ABOVE);
-    const belowRole = guild.roles.cache.get(BOOSTER_ROLE.ROLE_BELOW);
+    const aboveRole = guild.roles.cache.get(CUSTOM_SUPPORTER_ROLE.ROLE_ABOVE);
+    const belowRole = guild.roles.cache.get(CUSTOM_SUPPORTER_ROLE.ROLE_BELOW);
 
     if (!aboveRole || !belowRole) {
         throw new Error('Could not find role position constraints');
@@ -112,35 +106,35 @@ async function getRolePosition(guild) {
     return aboveRole.position + 1;
 }
 
-// Handle booster role button click
-export async function handleBoosterRoleButton(interaction) {
+// Handle custom supporter role button click
+export async function handleCustomSupporterRoleButton(interaction) {
     try {
         const member = interaction.member;
 
-        // Check permissions (members can use this)
-        if (!hasPermission(member, 'booster_role')) {
+        // Check permissions (supporters can use this)
+        if (!hasPermission(member, 'custom_supporter_role')) {
             await interaction.reply({
-                content: '❌ You don\'t have permission to create a custom booster role.',
+                content: '❌ You don\'t have permission to create a custom role. Supporter role required.',
                 flags: 64
             });
             return;
         }
 
-        // Check if member is boosting
-        if (!isBoosting(member)) {
+        // Check if member has supporter role
+        if (!isSupporter(member)) {
             await interaction.reply({
-                content: '❌ **Boost Required**\n\nYou need to boost this server to create a custom role! 💎',
+                content: '❌ **Supporter Role Required**\n\nYou need the <@&' + PERMISSIONS.SUPPORTER_ROLE + '> role to create a custom role! 💎',
                 flags: 64
             });
             return;
         }
 
-        // Check if member already has a booster role
-        const { has, role } = await hasBoosterRole(member);
+        // Check if member already has a custom supporter role
+        const { has, role } = await hasSupporterRole(member);
 
         if (has) {
             await interaction.reply({
-                content: `❌ **Already Have Custom Role**\n\nYou already have a custom booster role: <@&${role.id}>\n\nEach booster can only have one custom role.`,
+                content: `❌ **Already Have Custom Role**\n\nYou already have a custom role: <@&${role.id}>\n\nEach supporter can only have one custom role.`,
                 flags: 64
             });
             return;
@@ -148,8 +142,8 @@ export async function handleBoosterRoleButton(interaction) {
 
         // Show modal for role creation
         const modal = new ModalBuilder()
-            .setCustomId('booster_role_create')
-            .setTitle('💎 Create Custom Booster Role');
+            .setCustomId('custom_supporter_role_create')
+            .setTitle('💎 Create Custom Supporter Role');
 
         // Role name input
         const nameInput = new TextInputBuilder()
@@ -185,10 +179,10 @@ export async function handleBoosterRoleButton(interaction) {
         modal.addComponents(nameRow, colorRow, iconRow);
 
         await interaction.showModal(modal);
-        await logger.log(`💎 Booster role modal shown to ${member.user.tag} (${member.user.id})`);
+        await logger.log(`💎 Supporter role modal shown to ${member.user.tag} (${member.user.id})`);
 
     } catch (error) {
-        await logger.log(`❌ Error showing booster role modal: ${error.message}`);
+        await logger.log(`❌ Error showing supporter role modal: ${error.message}`);
         await interaction.reply({
             content: `❌ Failed to open role creation form: ${error.message}`,
             flags: 64
@@ -196,27 +190,27 @@ export async function handleBoosterRoleButton(interaction) {
     }
 }
 
-// Handle booster role modal submission
-export async function handleBoosterRoleModal(interaction) {
+// Handle custom supporter role modal submission
+export async function handleCustomSupporterRoleModal(interaction) {
     try {
         await interaction.deferReply({ flags: 64 });
 
         const member = interaction.member;
         const guild = interaction.guild;
 
-        // Verify member is still boosting
-        if (!isBoosting(member)) {
+        // Verify member still has supporter role
+        if (!isSupporter(member)) {
             await interaction.editReply({
-                content: '❌ **Boost Required**\n\nYou need to boost this server to create a custom role! 💎'
+                content: '❌ **Supporter Role Required**\n\nYou need the <@&' + PERMISSIONS.SUPPORTER_ROLE + '> role to create a custom role! 💎'
             });
             return;
         }
 
         // Check if they already have a role
-        const { has, role: existingRole } = await hasBoosterRole(member);
+        const { has, role: existingRole } = await hasSupporterRole(member);
         if (has) {
             await interaction.editReply({
-                content: `❌ **Already Have Custom Role**\n\nYou already have a custom booster role: <@&${existingRole.id}>`
+                content: `❌ **Already Have Custom Role**\n\nYou already have a custom role: <@&${existingRole.id}>`
             });
             return;
         }
@@ -243,7 +237,7 @@ export async function handleBoosterRoleModal(interaction) {
             color: roleColor,
             mentionable: false,
             hoist: true, // Show members with this role separately
-            reason: `Custom booster role for ${member.user.tag} (${member.user.id})`
+            reason: `Custom supporter role for ${member.user.tag} (${member.user.id})`
         };
 
         // Get position
@@ -284,12 +278,12 @@ export async function handleBoosterRoleModal(interaction) {
         await member.roles.add(newRole, roleData.reason);
 
         // Store in map
-        boosterRoles.set(member.id, newRole.id);
+        supporterRoles.set(member.id, newRole.id);
 
         // Create success embed
         const successEmbed = new EmbedBuilder()
             .setColor(EMBED.COLOR)
-            .setTitle('✅ Custom Booster Role Created!')
+            .setTitle('✅ Custom Supporter Role Created!')
             .setDescription(`Your custom role **${roleName}** has been created and assigned to you!`)
             .addFields([
                 {
@@ -304,7 +298,7 @@ export async function handleBoosterRoleModal(interaction) {
                 },
                 {
                     name: '📍 Position',
-                    value: `Between <@&${BOOSTER_ROLE.ROLE_ABOVE}> and <@&${BOOSTER_ROLE.ROLE_BELOW}>`,
+                    value: `Between <@&${CUSTOM_SUPPORTER_ROLE.ROLE_ABOVE}> and <@&${CUSTOM_SUPPORTER_ROLE.ROLE_BELOW}>`,
                     inline: true
                 }
             ])
@@ -315,10 +309,10 @@ export async function handleBoosterRoleModal(interaction) {
             embeds: [successEmbed]
         });
 
-        await logger.log(`✅ Created custom booster role "${roleName}" (${newRole.id}) for ${member.user.tag} (${member.user.id})`);
+        await logger.log(`✅ Created custom supporter role "${roleName}" (${newRole.id}) for ${member.user.tag} (${member.user.id})`);
 
     } catch (error) {
-        await logger.log(`❌ Error creating booster role: ${error.message}`);
+        await logger.log(`❌ Error creating supporter role: ${error.message}`);
         await logger.log(`❌ Stack: ${error.stack}`);
 
         try {

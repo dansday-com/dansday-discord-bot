@@ -20,6 +20,11 @@ export function isMember(member) {
     return hasRole(member, PERMISSIONS.MEMBER_ROLE);
 }
 
+// Check if user has supporter role
+export function isSupporter(member) {
+    return hasRole(member, PERMISSIONS.SUPPORTER_ROLE);
+}
+
 // Check permission for specific action
 export function hasPermission(member, action) {
     // Admin has all permissions
@@ -33,9 +38,14 @@ export function hasPermission(member, action) {
         return action !== 'pause' && action !== 'setup';
     }
 
-    // Member permissions: status, help, and booster_role
+    // Supporter permissions: can create custom roles
+    if (isSupporter(member)) {
+        return action === 'custom_supporter_role';
+    }
+
+    // Member permissions: status, help
     if (isMember(member)) {
-        return action === 'status' || action === 'help' || action === 'booster_role';
+        return action === 'status' || action === 'help';
     }
 
     // No permission

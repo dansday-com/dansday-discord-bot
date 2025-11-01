@@ -134,9 +134,14 @@ function init(client) {
             // Check for kick in audit logs
             const kickEntry = await getAuditLogEntry(member.guild, 20, member.user.id); // 20 = MEMBER_KICK
 
-            // Only log if it's a kick (has kick audit entry) or if we can't determine (assume kick)
-            const moderator = kickEntry?.executor || null;
-            const reason = kickEntry?.reason || "No reason provided";
+            // Only log if it's actually a kick (has kick audit entry)
+            // If no kick entry, it's a voluntary leave - don't log it
+            if (!kickEntry) {
+                return; // Member left voluntarily, not a kick
+            }
+
+            const moderator = kickEntry.executor || null;
+            const reason = kickEntry.reason || "No reason provided";
 
             await sendModerationLog(client, {
                 title: "👢 Member Kicked",

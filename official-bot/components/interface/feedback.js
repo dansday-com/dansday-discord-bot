@@ -1,10 +1,7 @@
 import { ModalBuilder, TextInputBuilder, ActionRowBuilder, TextInputStyle, EmbedBuilder } from 'discord.js';
-import { EMBED, PERMISSIONS } from '../../../config.js';
+import { EMBED, PERMISSIONS, FEEDBACK } from '../../../config.js';
 import logger from '../../../logger.js';
 import { hasPermission } from '../permissions.js';
-
-// Feedback channel ID
-const FEEDBACK_CHANNEL_ID = "1409858556164964432";
 
 // Track user submissions (userId -> { count: number, submissions: [{ number, timestamp, message }] })
 const userSubmissions = new Map();
@@ -96,9 +93,9 @@ export async function handleFeedbackModal(interaction) {
         }
 
         // Get feedback channel
-        const feedbackChannel = guild.channels.cache.get(FEEDBACK_CHANNEL_ID);
+        const feedbackChannel = guild.channels.cache.get(FEEDBACK.CHANNEL_ID);
         if (!feedbackChannel) {
-            await logger.log(`❌ Feedback channel not found: ${FEEDBACK_CHANNEL_ID}`);
+            await logger.log(`❌ Feedback channel not found: ${FEEDBACK.CHANNEL_ID}`);
             await interaction.editReply({
                 content: '❌ Failed to submit feedback: Feedback channel not configured.'
             });

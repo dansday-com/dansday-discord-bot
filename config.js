@@ -115,6 +115,12 @@ export const ACTIVITY_TRACKER = {
     INACTIVITY_DAYS: 90
 };
 
+// Feedback Configuration
+export const FEEDBACK = {
+    // Channel ID for feedback submissions
+    CHANNEL_ID: "1409858556164964432"
+};
+
 // Forwarder Configuration
 export const FORWARDER = {
     // Production source channels (all channels)

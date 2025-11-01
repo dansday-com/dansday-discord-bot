@@ -1,18 +1,27 @@
 import { EMBED } from "../../../config.js";
-import logger from "../../../logger.js";
+import { EmbedBuilder } from "discord.js";
+import { hasPermission } from "../permissions.js";
 
 // Handle status button
 export async function handleStatusButton(interaction) {
+    // Check permissions (Admin, Staff, and Member)
+    if (!hasPermission(interaction.member, 'status')) {
+        await interaction.reply({
+            content: '❌ You don\'t have permission to view status.',
+            flags: 64
+        });
+        return;
+    }
     const guild = interaction.guild;
     const uptime = Math.floor(process.uptime());
     const hours = Math.floor(uptime / 3600);
     const minutes = Math.floor((uptime % 3600) / 60);
     const seconds = uptime % 60;
 
-    const statusEmbed = {
-        color: EMBED.COLOR,
-        title: "📊 Bot Status",
-        fields: [
+    const statusEmbed = new EmbedBuilder()
+        .setColor(EMBED.COLOR)
+        .setTitle("📊 Bot Status")
+        .addFields([
             {
                 name: "🟢 Status",
                 value: "🟢 Online",
@@ -33,14 +42,12 @@ export async function handleStatusButton(interaction) {
                 value: `${guild.premiumSubscriptionCount}`,
                 inline: true
             }
-        ],
-        timestamp: new Date().toISOString()
-    };
+        ])
+        .setFooter({ text: EMBED.FOOTER })
+        .setTimestamp();
 
     await interaction.reply({
         embeds: [statusEmbed],
         flags: 64
     });
-
-    await logger.log(`📊 Status button clicked by ${interaction.user.tag} (${interaction.user.id})`);
 }

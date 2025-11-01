@@ -1,11 +1,66 @@
-import { ModalBuilder, TextInputBuilder, ActionRowBuilder, EmbedBuilder, ChannelSelectMenuBuilder, RoleSelectMenuBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { ModalBuilder, TextInputBuilder, ActionRowBuilder, EmbedBuilder, ChannelSelectMenuBuilder, RoleSelectMenuBuilder, ButtonBuilder, ButtonStyle, TextInputStyle } from 'discord.js';
 import { EMBED } from "../../../config.js";
 import logger from "../../../logger.js";
+import { hasPermission } from "../permissions.js";
+
+// Parse color input (hex, decimal, or name)
+function parseColor(colorInput) {
+    if (!colorInput || colorInput.trim() === '') {
+        return null; // Use default
+    }
+
+    const trimmed = colorInput.trim();
+
+    // Try hex format (#RRGGBB or RRGGBB)
+    if (trimmed.startsWith('#')) {
+        const hex = trimmed.substring(1);
+        if (/^[0-9A-Fa-f]{6}$/.test(hex)) {
+            return parseInt(hex, 16);
+        }
+    } else if (/^[0-9A-Fa-f]{6}$/.test(trimmed)) {
+        return parseInt(trimmed, 16);
+    }
+
+    // Try decimal number
+    const decimal = parseInt(trimmed, 10);
+    if (!isNaN(decimal) && decimal >= 0 && decimal <= 0xFFFFFF) {
+        return decimal;
+    }
+
+    // Try color names (basic colors)
+    const colorNames = {
+        'red': 0xFF0000,
+        'green': 0x00FF00,
+        'blue': 0x0000FF,
+        'yellow': 0xFFFF00,
+        'orange': 0xFFA500,
+        'purple': 0x800080,
+        'pink': 0xFFC0CB,
+        'cyan': 0x00FFFF,
+        'black': 0x000000,
+        'white': 0xFFFFFF,
+        'gray': 0x808080,
+        'grey': 0x808080
+    };
+
+    if (colorNames[trimmed.toLowerCase()]) {
+        return colorNames[trimmed.toLowerCase()];
+    }
+
+    return null; // Invalid color, will use default
+}
 
 // Handle send message button - shows channel selector first
 export async function handleSendMessageButton(interaction) {
     try {
-        // This is a staff-only feature, no additional permission checks needed
+        // Check permissions (Admin and Staff only)
+        if (!hasPermission(interaction.member, 'send_message')) {
+            await interaction.reply({
+                content: '❌ You don\'t have permission to send messages. Admin or Staff role required.',
+                flags: 64
+            });
+            return;
+        }
 
         // Create channel selector
         const channelSelect = new ChannelSelectMenuBuilder()
@@ -22,9 +77,6 @@ export async function handleSendMessageButton(interaction) {
             components: [selectRow],
             flags: 64
         });
-
-        await logger.log(`📤 Send message channel selector opened by ${interaction.user.tag} (${interaction.user.id})`);
-
     } catch (error) {
         await interaction.reply({
             content: `❌ Failed to open send message form: ${error.message}`,
@@ -37,6 +89,15 @@ export async function handleSendMessageButton(interaction) {
 // Handle channel selection - shows role selector
 export async function handleChannelSelection(interaction) {
     try {
+        // Check permissions
+        if (!hasPermission(interaction.member, 'send_message')) {
+            await interaction.update({
+                content: '❌ You don\'t have permission to send messages.',
+                components: []
+            });
+            return;
+        }
+
         const selectedChannel = interaction.values[0];
         const channel = interaction.guild.channels.cache.get(selectedChannel);
 
@@ -81,6 +142,15 @@ export async function handleChannelSelection(interaction) {
 // Handle role selection - shows message composition interface
 export async function handleRoleSelection(interaction) {
     try {
+        // Check permissions
+        if (!hasPermission(interaction.member, 'send_message')) {
+            await interaction.update({
+                content: '❌ You don\'t have permission to send messages.',
+                components: []
+            });
+            return;
+        }
+
         const selectedRoles = interaction.values;
         const channelId = interaction.customId.replace('send_message_role_select_', '');
         const channel = interaction.guild.channels.cache.get(channelId);
@@ -97,7 +167,7 @@ export async function handleRoleSelection(interaction) {
         const titleInput = new TextInputBuilder()
             .setCustomId('embed_title')
             .setLabel('Embed Title')
-            .setStyle(1) // Short
+            .setStyle(TextInputStyle.Short)
             .setPlaceholder('Enter the embed title...')
             .setRequired(true)
             .setMaxLength(256);
@@ -105,34 +175,34 @@ export async function handleRoleSelection(interaction) {
         // Description input
         const descriptionInput = new TextInputBuilder()
             .setCustomId('embed_description')
-            .setLabel('Embed Description')
-            .setStyle(2) // Paragraph
-            .setPlaceholder('Enter the embed description...')
-            .setRequired(true);
+            .setLabel('Embed Description (Optional)')
+            .setStyle(TextInputStyle.Paragraph)
+            .setPlaceholder('Enter the embed description (optional)...')
+            .setRequired(false);
 
         // Image URL input
         const imageInput = new TextInputBuilder()
             .setCustomId('embed_image')
             .setLabel('Image URL')
-            .setStyle(1) // Short
+            .setStyle(TextInputStyle.Short)
             .setPlaceholder('https://example.com/image.png')
             .setRequired(false);
 
         // Color input
         const colorInput = new TextInputBuilder()
             .setCustomId('embed_color')
-            .setLabel('Embed Color (hex code)')
-            .setStyle(1) // Short
-            .setPlaceholder('Leave empty for default (FF0000)')
+            .setLabel('Embed Color (Hex/Decimal/Name)')
+            .setStyle(TextInputStyle.Short)
+            .setPlaceholder('#FF5733 or 16729395 or red (optional)')
             .setRequired(false)
-            .setMaxLength(7);
+            .setMaxLength(20);
 
         // Footer input
         const footerInput = new TextInputBuilder()
             .setCustomId('embed_footer')
-            .setLabel('Embed Footer')
-            .setStyle(1) // Short
-            .setPlaceholder('Leave empty for auto-generated footer with sender name')
+            .setLabel('Embed Footer Text')
+            .setStyle(TextInputStyle.Short)
+            .setPlaceholder('Leave empty to use default footer (optional)')
             .setRequired(false)
             .setMaxLength(2048);
 
@@ -164,6 +234,15 @@ export async function handleRoleSelection(interaction) {
 // Handle complete setup button (skip role selection)
 export async function handleCompleteSetup(interaction) {
     try {
+        // Check permissions
+        if (!hasPermission(interaction.member, 'send_message')) {
+            await interaction.update({
+                content: '❌ You don\'t have permission to send messages.',
+                components: []
+            });
+            return;
+        }
+
         const channelId = interaction.customId.replace('send_message_complete_', '');
         const channel = interaction.guild.channels.cache.get(channelId);
 
@@ -179,7 +258,7 @@ export async function handleCompleteSetup(interaction) {
         const titleInput = new TextInputBuilder()
             .setCustomId('embed_title')
             .setLabel('Embed Title')
-            .setStyle(1) // Short
+            .setStyle(TextInputStyle.Short)
             .setPlaceholder('Enter the embed title...')
             .setRequired(true)
             .setMaxLength(256);
@@ -187,34 +266,34 @@ export async function handleCompleteSetup(interaction) {
         // Description input
         const descriptionInput = new TextInputBuilder()
             .setCustomId('embed_description')
-            .setLabel('Embed Description')
-            .setStyle(2) // Paragraph
-            .setPlaceholder('Enter the embed description...')
-            .setRequired(true);
+            .setLabel('Embed Description (Optional)')
+            .setStyle(TextInputStyle.Paragraph)
+            .setPlaceholder('Enter the embed description (optional)...')
+            .setRequired(false);
 
         // Image URL input
         const imageInput = new TextInputBuilder()
             .setCustomId('embed_image')
             .setLabel('Image URL')
-            .setStyle(1) // Short
+            .setStyle(TextInputStyle.Short)
             .setPlaceholder('https://example.com/image.png')
             .setRequired(false);
 
         // Color input
         const colorInput = new TextInputBuilder()
             .setCustomId('embed_color')
-            .setLabel('Embed Color (hex code)')
-            .setStyle(1) // Short
-            .setPlaceholder('Leave empty for default (FF0000)')
+            .setLabel('Embed Color (Hex/Decimal/Name)')
+            .setStyle(TextInputStyle.Short)
+            .setPlaceholder('#FF5733 or 16729395 or red (optional)')
             .setRequired(false)
-            .setMaxLength(7);
+            .setMaxLength(20);
 
         // Footer input
         const footerInput = new TextInputBuilder()
             .setCustomId('embed_footer')
-            .setLabel('Embed Footer')
-            .setStyle(1) // Short
-            .setPlaceholder('Leave empty for auto-generated footer with sender name')
+            .setLabel('Embed Footer Text')
+            .setStyle(TextInputStyle.Short)
+            .setPlaceholder('Leave empty to use default footer (optional)')
             .setRequired(false)
             .setMaxLength(2048);
 
@@ -246,7 +325,14 @@ export async function handleCompleteSetup(interaction) {
 // Handle modal submission
 export async function handleSendMessageModal(interaction) {
     try {
-        // This is a staff-only feature, no additional permission checks needed
+        // Check permissions
+        if (!hasPermission(interaction.member, 'send_message')) {
+            await interaction.reply({
+                content: '❌ You don\'t have permission to send messages.',
+                flags: 64
+            });
+            return;
+        }
 
         // Extract channel ID and role from modal customId
         const customIdParts = interaction.customId.replace('send_message_modal_', '').split('_');
@@ -279,27 +365,24 @@ export async function handleSendMessageModal(interaction) {
             return;
         }
 
-        // Validate that both title and description are provided (now required)
-        if (!title || !description) {
+        // Validate that at least title is provided (title is required)
+        if (!title || !title.trim()) {
             await interaction.reply({
-                content: '❌ Both title and description are required for the embed.',
+                content: '❌ Title is required for the embed.',
                 flags: 64
             });
             return;
         }
 
         // Parse color - use config default if not provided
-        let embedColor = EMBED.COLOR; // Use your default embed color from config
-        if (colorInput) {
-            // Remove # if present and convert to number
-            const cleanColor = colorInput.replace('#', '');
-            if (/^[0-9A-Fa-f]{6}$/.test(cleanColor)) {
-                embedColor = parseInt(cleanColor, 16);
-            } else if (colorInput.startsWith('0x') && /^0x[0-9A-Fa-f]{6}$/.test(colorInput)) {
-                embedColor = parseInt(colorInput, 16);
+        let embedColor = EMBED.COLOR;
+        if (colorInput && colorInput.trim()) {
+            const parsedColor = parseColor(colorInput.trim());
+            if (parsedColor !== null) {
+                embedColor = parsedColor;
             } else {
                 await interaction.reply({
-                    content: '❌ Invalid color format. Please use hex format like #FF0000 or 0xFF0000.',
+                    content: '❌ Invalid color format. Please use hex (#FF0000), decimal (16711680), or color name (red).',
                     flags: 64
                 });
                 return;
@@ -307,19 +390,14 @@ export async function handleSendMessageModal(interaction) {
         }
 
 
-        // Create embed with custom or auto-generated footer
+        // Determine footer text - use custom footer if provided, otherwise use config default
+        const footerText = (footerInput && footerInput.trim()) ? footerInput.trim() : EMBED.FOOTER;
+
+        // Create embed with footer (custom or default)
         const embed = new EmbedBuilder()
             .setColor(embedColor)
+            .setFooter({ text: footerText })
             .setTimestamp();
-
-        // Set footer - use custom footer if provided, otherwise auto-generated
-        if (footerInput && footerInput.trim()) {
-            embed.setFooter({ text: footerInput.trim() });
-        } else {
-            embed.setFooter({
-                text: `Message sent by ${interaction.member.displayName || interaction.user.displayName || interaction.user.username}`
-            });
-        }
 
         if (title) embed.setTitle(title);
         if (description) embed.setDescription(description);

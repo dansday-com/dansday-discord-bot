@@ -5,13 +5,22 @@ import { handleStatusButton } from './interface/status.js';
 import { handleHelpButton } from './interface/help.js';
 import { handlePauseButton } from './interface/pause.js';
 import { handleSendMessageButton, handleSendMessageModal, handleChannelSelection, handleRoleSelection, handleCompleteSetup } from './interface/sendmessage.js';
+import { handleInactiveButton } from './interface/inactive.js';
+import { handleCustomSupporterRoleButton, handleCustomSupporterRoleModal, handleEditCustomSupporterRole, handleDeleteCustomSupporterRole } from './interface/customsupporterrole.js';
+import { handleFeedbackButton, handleFeedbackModal } from './interface/feedback.js';
+import { handleAFKButton, handleAFKModal, handleRemoveAFKButton } from './interface/afk.js';
 
 // Handle button interactions
 export async function handleButtonInteraction(interaction, client) {
     const { customId } = interaction;
+    const user = interaction.user;
+
+    // Log button interaction attempt
+    await logger.log(`🔘 Button clicked: "${customId}" by ${user.tag} (${user.id}) in ${interaction.guild?.name || 'DM'}`);
 
     // Check if bot is paused (except for pause button)
     if (client.isPaused && customId !== 'bot_pause') {
+        await logger.log(`⏸️ Button "${customId}" blocked - bot is paused`);
         await interaction.reply({
             content: '⏸️ Bot is currently paused. Use the Pause/Resume button to resume.',
             flags: 64
@@ -32,13 +41,34 @@ export async function handleButtonInteraction(interaction, client) {
         case 'bot_send_message':
             await handleSendMessageButton(interaction);
             break;
+        case 'bot_inactive':
+            await handleInactiveButton(interaction, client);
+            break;
+        case 'bot_custom_supporter_role':
+            await handleCustomSupporterRoleButton(interaction);
+            break;
+        case 'custom_supporter_role_edit':
+            await handleEditCustomSupporterRole(interaction);
+            break;
+        case 'custom_supporter_role_delete':
+            await handleDeleteCustomSupporterRole(interaction);
+            break;
+                case 'bot_feedback':
+                    await handleFeedbackButton(interaction);
+                    break;
+                case 'bot_afk':
+                    await handleAFKButton(interaction);
+                    break;
+                case 'afk_remove':
+                    await handleRemoveAFKButton(interaction);
+                    break;
         default:
             // Handle send message related buttons
             if (customId.startsWith('send_message_complete_')) {
                 await handleCompleteSetup(interaction);
             } else {
                 await logger.log(`🔍 Unknown button interaction: ${customId}`);
-                await interaction.reply(interaction, {
+                await interaction.reply({
                     content: '❌ Unknown button interaction.',
                     flags: 64
                 });
@@ -50,13 +80,13 @@ export async function handleButtonInteraction(interaction, client) {
 export function createInterfaceEmbed(client) {
     const interfaceEmbed = {
         color: EMBED.COLOR,
-        title: "GO BLOX Bot Interface",
+        title: "GO BLOX Bot Panel",
         description: "Use the buttons below to interact with the bot",
         thumbnail: {
             url: client.user.displayAvatarURL()
         },
         footer: {
-            text: "GO BLOX Bot System"
+            text: EMBED.FOOTER
         },
         timestamp: new Date().toISOString()
     };
@@ -76,6 +106,11 @@ export function createInterfaceButtons() {
         .setLabel('❓ Help')
         .setStyle(ButtonStyle.Secondary);
 
+    const feedbackButton = new ButtonBuilder()
+        .setCustomId('bot_feedback')
+        .setLabel('💬 Feedback')
+        .setStyle(ButtonStyle.Secondary);
+
     const pauseButton = new ButtonBuilder()
         .setCustomId('bot_pause')
         .setLabel('⏸️ Pause/Resume')
@@ -86,11 +121,30 @@ export function createInterfaceButtons() {
         .setLabel('📤 Send Message')
         .setStyle(ButtonStyle.Success);
 
-    // Create action row with buttons (reordered: 1. Send Message, 2. Status, 3. Help, 4. Pause)
-    const buttonRow = new ActionRowBuilder()
-        .addComponents(sendMessageButton, statusButton, helpButton, pauseButton);
+    const inactiveButton = new ButtonBuilder()
+        .setCustomId('bot_inactive')
+        .setLabel('📊 Inactive Members')
+        .setStyle(ButtonStyle.Primary);
 
-    return buttonRow;
+    const customSupporterRoleButton = new ButtonBuilder()
+        .setCustomId('bot_custom_supporter_role')
+        .setLabel('💎 Custom Supporter Role')
+        .setStyle(ButtonStyle.Success);
+
+    // Create action rows with buttons (max 5 buttons per row)
+    // Status and Help always go in the last row
+    const buttonRow1 = new ActionRowBuilder()
+        .addComponents(sendMessageButton, inactiveButton, pauseButton, customSupporterRoleButton);
+
+    const afkButton = new ButtonBuilder()
+        .setCustomId('bot_afk')
+        .setLabel('⏸️ AFK')
+        .setStyle(ButtonStyle.Secondary);
+
+    const buttonRow2 = new ActionRowBuilder()
+        .addComponents(afkButton, statusButton, helpButton, feedbackButton);
+
+    return [buttonRow1, buttonRow2];
 }
 
 // Send interface to channel
@@ -102,7 +156,7 @@ export async function sendInterfaceToChannel(targetChannel, interaction, client)
         // Send the interface to the target channel
         await targetChannel.send({
             embeds: [interfaceEmbed],
-            components: [buttonRow]
+            components: Array.isArray(buttonRow) ? buttonRow : [buttonRow]
         });
 
         await interaction.reply({
@@ -131,7 +185,7 @@ function init(client) {
                 await handleButtonInteraction(interaction, client);
             } catch (error) {
                 await logger.log(`❌ Button interaction error: ${error.message}`);
-                
+
                 try {
                     await interaction.reply({
                         content: `❌ **Button Error**: An error occurred while processing your button click.\n\nPlease try again or contact an administrator.`,
@@ -143,13 +197,25 @@ function init(client) {
             }
         } else if (interaction.isModalSubmit()) {
             // Handle modal submissions
-        try {
-            if (interaction.customId.startsWith('send_message_modal_')) {
-                await handleSendMessageModal(interaction);
-            }
-        } catch (error) {
+            try {
+                const user = interaction.user;
+                const customId = interaction.customId;
+                await logger.log(`📝 Modal submitted: "${customId}" by ${user.tag} (${user.id}) in ${interaction.guild?.name || 'DM'}`);
+
+                if (interaction.customId.startsWith('send_message_modal_')) {
+                    await handleSendMessageModal(interaction);
+                } else if (interaction.customId === 'custom_supporter_role_create') {
+                    await handleCustomSupporterRoleModal(interaction);
+                } else if (interaction.customId === 'feedback_submit') {
+                    await handleFeedbackModal(interaction);
+                } else if (interaction.customId === 'afk_set') {
+                    await handleAFKModal(interaction);
+                } else {
+                    await logger.log(`⚠️ Unknown modal: "${customId}" by ${user.tag} (${user.id})`);
+                }
+            } catch (error) {
                 await logger.log(`❌ Modal submission error: ${error.message}`);
-                
+
                 try {
                     await interaction.reply({
                         content: `❌ **Modal Error**: An error occurred while processing your form submission.\n\nPlease try again or contact an administrator.`,
@@ -161,13 +227,20 @@ function init(client) {
             }
         } else if (interaction.isChannelSelectMenu()) {
             // Handle channel selection
-        try {
-            if (interaction.customId === 'send_message_channel_select') {
-                await handleChannelSelection(interaction);
-            }
-        } catch (error) {
+            try {
+                const user = interaction.user;
+                const customId = interaction.customId;
+                const selectedChannels = interaction.values;
+                await logger.log(`📋 Channel selected: "${customId}" → [${selectedChannels.join(', ')}] by ${user.tag} (${user.id}) in ${interaction.guild?.name || 'DM'}`);
+
+                if (interaction.customId === 'send_message_channel_select') {
+                    await handleChannelSelection(interaction);
+                } else {
+                    await logger.log(`⚠️ Unknown channel select: "${customId}" by ${user.tag} (${user.id})`);
+                }
+            } catch (error) {
                 await logger.log(`❌ Channel selection error: ${error.message}`);
-                
+
                 try {
                     await interaction.reply({
                         content: `❌ **Selection Error**: An error occurred while processing your channel selection.\n\nPlease try again or contact an administrator.`,
@@ -179,14 +252,21 @@ function init(client) {
             }
         } else if (interaction.isRoleSelectMenu()) {
             // Handle role selection
-        try {
-            if (interaction.customId.startsWith('send_message_role_select_')) {
-                await handleRoleSelection(interaction);
-            }
-        } catch (error) {
+            try {
+                const user = interaction.user;
+                const customId = interaction.customId;
+                const selectedRoles = interaction.values;
+                await logger.log(`👥 Role selected: "${customId}" → [${selectedRoles.join(', ')}] by ${user.tag} (${user.id}) in ${interaction.guild?.name || 'DM'}`);
+
+                if (interaction.customId.startsWith('send_message_role_select_')) {
+                    await handleRoleSelection(interaction);
+                } else {
+                    await logger.log(`⚠️ Unknown role select: "${customId}" by ${user.tag} (${user.id})`);
+                }
+            } catch (error) {
                 await logger.log(`❌ Role selection error in interface.js: ${error.message}`);
                 await logger.log(`❌ Role selection error stack: ${error.stack}`);
-                
+
                 try {
                     await interaction.reply({
                         content: `❌ **Selection Error**: An error occurred while processing your role selection.\n\nPlease try again or contact an administrator.`,
@@ -198,14 +278,9 @@ function init(client) {
             }
         }
     });
-    
     logger.log("🎮 Interface component initialized");
 }
 
 export default {
-    init,
-    handleButtonInteraction,
-    createInterfaceEmbed,
-    createInterfaceButtons,
-    sendInterfaceToChannel
+    init
 };

@@ -1,4 +1,5 @@
 import { sendInterfaceToChannel } from '../../interface.js';
+import { hasPermission } from '../../permissions.js';
 
 // Command definition
 export const commandDefinition = {
@@ -17,10 +18,10 @@ export const commandDefinition = {
 // Command execution
 export async function execute(interaction, client) {
     try {
-        // Check if user has permission
-        if (!interaction.member.permissions.has('Administrator')) {
+        // Check if user has permission (Admin only)
+        if (!hasPermission(interaction.member, 'setup')) {
             await interaction.reply({
-                content: '❌ You need Administrator permissions to use this command.',
+                content: '❌ You need Admin role to use this command.',
                 flags: 64
             });
             return;

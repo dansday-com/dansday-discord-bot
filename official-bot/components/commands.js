@@ -19,11 +19,6 @@ function registerSlashCommand(name, command) {
     slashCommands.set(name, command);
 }
 
-// Get all registered slash commands
-function getSlashCommands() {
-    return Array.from(slashCommands.keys());
-}
-
 // Execute a slash command
 async function executeSlashCommand(interaction, client) {
     // Check if bot is paused (except for pause command only)
@@ -82,7 +77,6 @@ async function deployCommands(clearFirst = false) {
 function init(client) {
     // Add client properties for command system
     client.isPaused = false; // Initialize pause state
-    client.commandDefinitions = commandDefinitions; // Store command definitions for reload
 
     // Register setup slash command
     registerSlashCommand('setup', { execute: setupExecute });
@@ -92,6 +86,14 @@ function init(client) {
         if (interaction.isChatInputCommand()) {
             // Handle slash commands
             try {
+                const user = interaction.user;
+                const commandName = interaction.commandName;
+                const options = interaction.options?.data || [];
+                const optionsStr = options.map(opt => `${opt.name}:${opt.value}`).join(', ') || 'none';
+                
+                // Log command attempt
+                await logger.log(`⌨️  Command triggered: /${commandName} ${optionsStr ? `(${optionsStr})` : ''} by ${user.tag} (${user.id}) in ${interaction.guild?.name || 'DM'}`);
+                
                 // Execute slash command and get detailed result
                 const result = await executeSlashCommand(interaction, client);
 
@@ -127,7 +129,9 @@ function init(client) {
                 } else {
                     // Log successful command execution (except for paused state)
                     if (result.reason !== 'paused') {
-                        await logger.log(`✅ Command executed: /${interaction.commandName} by ${interaction.user.tag}`);
+                        await logger.log(`✅ Command executed successfully: /${commandName} by ${user.tag} (${user.id})`);
+                    } else {
+                        await logger.log(`⏸️ Command /${commandName} blocked - bot is paused`);
                     }
                 }
             } catch (error) {
@@ -151,4 +155,4 @@ function init(client) {
     logger.log("🎮 Slash command system initialized");
 }
 
-export default { init, registerSlashCommand, getSlashCommands, deployCommands };
+export default { init, deployCommands };

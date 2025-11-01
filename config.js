@@ -14,6 +14,28 @@ export const OFFICIAL_BOT_TOKEN = "MTQxNzQ4NzIyOTg4MTgxNTA4MA.GuC-RQ.NHRya3Ryny-
 // Official Bot Application ID
 export const OFFICIAL_BOT_APPLICATION_ID = "1417487229881815080";
 
+// Main Channel Configuration
+export const MAIN_CHANNEL_CONFIG = {
+    PRODUCTION: "1364374299359707212",
+    TEST: "1422599583456039228",
+    // Get main channel based on environment
+    get MAIN_CHANNEL() {
+        return ENV.PRODUCTION ? this.PRODUCTION : this.TEST;
+    }
+};
+
+// Export MAIN_CHANNEL for backward compatibility
+export const MAIN_CHANNEL = MAIN_CHANNEL_CONFIG.MAIN_CHANNEL;
+
+// Permissions Configuration
+export const PERMISSIONS = {
+    // Role IDs
+    ADMIN_ROLE: "1364375813356650596",      // Can use all commands and interfaces
+    STAFF_ROLE: "1376631063035777054",     // Can use all interfaces except pause
+    SUPPORTER_ROLE: "1369054578754060288",   // Can create custom roles
+    MEMBER_ROLE: "1364380027310968905",     // Can only use status and help
+};
+
 // Communication Configuration
 export const COMMUNICATION = {
     // Webhook URL for self-bot to send data to official bot (local webhook server)
@@ -27,7 +49,9 @@ export const COMMUNICATION = {
 // Embed Configuration
 export const EMBED = {
     // Color for forwarded message embeds (red)
-    COLOR: 0xff0000
+    COLOR: 0xff0000,
+    // Footer text for all embeds
+    FOOTER: `Copyright GO BLOX ${new Date().getFullYear()}`
 };
 
 // Logger Configuration
@@ -38,7 +62,7 @@ export const LOGGER = {
 // Welcomer Configuration
 export const WELCOMER = {
     CHANNELS: {
-        "1364374298307072010": "1364374299359707212"
+        "1364374298307072010": MAIN_CHANNEL
     },
     MESSAGES: [
         "Selamat datang, {user}! Semoga betah di sini ya 😄",
@@ -52,6 +76,49 @@ export const WELCOMER = {
         "Haii {user}! Jangan lupa baca rules dan langsung nimbrung 😎",
         "Server jadi makin rame nih gara-gara {user} join 🤩"
     ]
+};
+
+// Booster Configuration
+export const BOOSTER = {
+    CHANNELS: {
+        "1364374298307072010": MAIN_CHANNEL
+    },
+    MESSAGES: [
+        "Terima kasih banyak, {user}! Server boost kamu sangat berarti untuk kami! 💎",
+        "Wah, {user} baru boost server nih! Terima kasih ya, kalian luar biasa! 🚀",
+        "Makasih banget {user} udah boost server! Komunitas kita jadi lebih keren nih! ✨",
+        "Yoo {user}! Terima kasih untuk boost-nya, kalian amazing! 💫",
+        "{user} baru boost server, thank you so much! 🙏",
+        "Terima kasih {user} udah support server dengan boost! Kalian the best! 🔥",
+        "{user} boost server nih! Thank you untuk dukungannya! 🌟",
+        "Keren banget {user}! Terima kasih udah boost server, sangat membantu! 💪",
+        "Wah {user} boost server! Makasih banyak, kalian spesial! 🎉",
+        "{user} baru boost nih! Terima kasih, kalian membuat server ini lebih baik! ❤️"
+    ]
+};
+
+// Custom Supporter Role Configuration
+export const CUSTOM_SUPPORTER_ROLE = {
+    // Role position constraints
+    ROLE_BELOW: "1433928533000061028",       // Custom role must be below this role
+    ROLE_ABOVE: "1433928639010836520"      // Custom role must be above this role
+};
+
+// Activity Tracker Configuration
+export const ACTIVITY_TRACKER = {
+    // Categories to search for inactive members (channel categories)
+    ALLOWED_CATEGORIES: [
+        "1375017296539553852",
+        "1375004282809749564"
+    ],
+    // Days of inactivity threshold (90 days = 3 months)
+    INACTIVITY_DAYS: 90
+};
+
+// Feedback Configuration
+export const FEEDBACK = {
+    // Channel ID for feedback submissions
+    CHANNEL_ID: "1409858556164964432"
 };
 
 // Forwarder Configuration
@@ -89,7 +156,6 @@ export const FORWARDER = {
         "1408932641859829852": { group: "growagarden", type: "weather" }, //Jandel Fan | weather
         "1408933312596279377": { group: "growagarden", type: "merchants" }, //Jandel Fan | merchants
         "1394790732300161195": { group: "growagarden", type: "adminabuse" }, //Jandel Fan | admin-abuse
-        "1428373619490160650": { group: "botaccess", type: "receivemessage" }, //for testing purposes
     },
     // Test source channels (limited for testing)
     TEST_SOURCE_CHANNELS: {
@@ -154,9 +220,6 @@ export const FORWARDER = {
         "dig": "<@&1396355600690184212>",
         "fisch": "<@&1377005118599467259>",
         "growagarden": "<@&1377005009304158421>",
-
-        //for testing purposes
-        "botaccess": "<@&1428374816263508019>"
     },
     EXCLUDED_USERS: [
         "678344927997853742",

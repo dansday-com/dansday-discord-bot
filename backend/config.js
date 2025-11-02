@@ -1,8 +1,8 @@
-// Shared Configuration for both Self-Bot and Official Bot
+// Backend Configuration for both Self-Bot and Official Bot
 
 // Environment Configuration
 export const ENV = {
-    PRODUCTION: true // Set to true for production, false for testing
+    PRODUCTION: false // Set to true for production, false for testing
 };
 
 // Self-Bot Token (for monitoring source servers)
@@ -226,3 +226,4 @@ export const FORWARDER = {
         "628400349979344919"
     ]
 };
+

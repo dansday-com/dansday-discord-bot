@@ -31,37 +31,43 @@ A Discord bot system that separates self-bot monitoring from official bot forwar
 
 ```
 go-blox-bot/
-├── main.js                 # Launcher script
+├── frontend.js            # Frontend entry point (control panel server)
+├── backend.js             # Backend entry point (bot launcher)
 ├── package.json           # Single package.json with all dependencies
-├── config.js              # Configuration
-├── logger.js              # Shared logger utility
-├── utils.js               # Shared utilities
-├── self-bot/
-│   ├── main.js           # Self-bot entry point
-│   └── components/
-│       └── forwarder.js  # Message monitoring component
-└── official-bot/
-    ├── main.js           # Official bot entry point
-    └── components/
-        ├── forwarder.js  # Message forwarding component
-        ├── welcomer.js   # User welcoming component
-        ├── webhook.js    # Webhook server component
-        ├── commands.js   # Slash command system
-        ├── interface.js  # Interface component
-        ├── moderation.js # Moderation tracking component
-        ├── permissions.js # Permission checking system
-        ├── commands/     # Command definitions
-        │   └── admin/
-        │       └── setup.js  # Setup command
-        └── interface/    # Interface button handlers
-            ├── status.js # Status button handler
-            ├── help.js   # Help button handler
-            ├── pause.js  # Pause button handler
-            ├── sendmessage.js # Send message button handler
-            ├── inactive.js # Inactive members button handler
-            ├── customsupporterrole.js # Custom supporter role handler
-            ├── feedback.js # Feedback button handler
-            └── afk.js # AFK button handler
+├── frontend/
+│   ├── index.js          # Control panel server
+│   ├── index.html        # Web interface
+│   └── config.js         # Frontend configuration
+├── backend/
+│   ├── config.js         # Backend configuration
+│   ├── logger.js         # Logger utility
+│   ├── utils.js          # Utilities
+│   ├── official-bot/
+│   │   ├── officialbot.js # Official bot entry point
+│   │   └── components/
+│   │       ├── forwarder.js  # Message forwarding component
+│   │       ├── welcomer.js   # User welcoming component
+│   │       ├── webhook.js    # Webhook server component
+│   │       ├── commands.js   # Slash command system
+│   │       ├── interface.js  # Interface component
+│   │       ├── moderation.js # Moderation tracking component
+│   │       ├── permissions.js # Permission checking system
+│   │       ├── commands/     # Command definitions
+│   │       │   └── admin/
+│   │       │       └── setup.js  # Setup command
+│   │       └── interface/    # Interface button handlers
+│   │           ├── status.js # Status button handler
+│   │           ├── help.js   # Help button handler
+│   │           ├── pause.js  # Pause button handler
+│   │           ├── sendmessage.js # Send message button handler
+│   │           ├── inactive.js # Inactive members button handler
+│   │           ├── customsupporterrole.js # Custom supporter role handler
+│   │           ├── feedback.js # Feedback button handler
+│   │           └── afk.js # AFK button handler
+│   └── self-bot/
+│       ├── selfbot.js    # Self-bot entry point
+│       └── components/
+│           └── forwarder.js  # Message monitoring component
 ```
 
 ## Setup
@@ -74,39 +80,52 @@ go-blox-bot/
    > **Note**: This project uses a single `package.json` file for direct admin hosting compatibility.
 
 2. **Configure environment**:
-   - Edit `config.js`
+   - Edit `backend/config.js`
    - Set `ENV.PRODUCTION` to `true` for production or `false` for testing
 
 3. **Configure tokens**:
+   - Edit `backend/config.js`
    - Set `SELF_BOT_TOKEN` (your self-bot token)
    - Set `OFFICIAL_BOT_TOKEN` (your official bot token)
 
 4. **Configure communication**:
+   - Edit `backend/config.js`
    - Set `COMMUNICATION.WEBHOOK_URL` to local webhook server (default: `http://localhost:7777`)
    - Set `COMMUNICATION.SECRET_KEY` for webhook authentication
    - Set `COMMUNICATION.PORT` for webhook server (default: 7777)
 
 5. **Configure embed appearance**:
+   - Edit `backend/config.js`
    - Set `EMBED.COLOR` for embed color (default: red `0xff0000`)
    - Set `EMBED.FOOTER` for footer text (default: "Copyright GO BLOX [year]")
 
+6. **Configure control panel**:
+   - Edit `frontend/config.js`
+   - Set `CONTROL_PANEL.PORT` for web interface (default: 8888)
+   - Set `CONTROL_PANEL.PASSWORD` for access control (change to secure password)
+   - Set `CONTROL_PANEL.ENABLED` to `true` to enable (default: true)
+
 ## Usage
 
-### Start both bots:
+### Start Control Panel (Recommended)
 ```bash
 npm start
 ```
 
-### Start individual bots:
-```bash
-npm run start:selfbot    # Self-bot only
-npm run start:official   # Official bot only
-```
+This starts the **Control Panel web interface**. Then:
+1. Open your browser: `http://your-server-ip:8888` (or `http://localhost:8888`)
+2. Enter password: `goblox2025` (change in `frontend/config.js`)
+3. Click "Start" to start the bot
+4. Use the web interface to Start/Stop/Restart anytime
 
-### Development mode (with auto-restart):
-```bash
-npm run dev
-```
+**Everything controlled from the web frontend - no SSH needed!** 🎉
+
+### Control Panel Features
+- **Start Bot**: Start both bots or choose mode
+- **Stop Bot**: Gracefully stop the bot
+- **Restart Bot**: Restart with one click
+- **Live Status**: Shows PID, uptime, status (updates every 2 seconds)
+- **Password Protected**: All control actions require authentication
 
 ## Slash Commands
 
@@ -311,7 +330,12 @@ The Send Message button provides a step-by-step process:
 
 ## Configuration
 
-All configuration is centralized in `config.js`:
+Configuration is separated into frontend and backend:
+
+### Frontend Configuration (`frontend/config.js`)
+- **CONTROL_PANEL**: Control panel settings (port, password, enabled status)
+
+### Backend Configuration (`backend/config.js`)
 
 ### Core Configuration
 - **Source Channels**: Configure which channels to monitor

@@ -9,8 +9,9 @@ const args = process.argv.slice(2);
 const mode = args[0] || "both";
 
 function startBot(botType) {
-    const botPath = join(__dirname, botType);
-    const child = spawn("node", ["main.js"], {
+    const botPath = join(__dirname, "backend", botType);
+    const scriptName = botType === "self-bot" ? "selfbot.js" : "officialbot.js";
+    const child = spawn("node", [scriptName], {
         cwd: botPath,
         stdio: "inherit",
         shell: true

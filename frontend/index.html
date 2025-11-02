@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GO BLOX Bot Control Panel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .status-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .status-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .status-label {
+            color: #666;
+            font-weight: 500;
+        }
+
+        .status-value {
+            color: #333;
+            font-weight: 600;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-badge.running {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-badge.stopped {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-badge.starting,
+        .status-badge.stopping {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            padding: 14px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-start {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-stop {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-restart {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .auth-section {
+            background: #e9ecef;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .auth-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 10px;
+            transition: border-color 0.3s;
+        }
+
+        .auth-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .message {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .uptime {
+            font-family: 'Courier New', monospace;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .loading {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 GO BLOX Bot Control</h1>
+        <p class="subtitle">Manage your Discord bot remotely</p>
+
+        <div class="auth-section" id="authSection">
+            <input type="password" class="auth-input" id="passwordInput" placeholder="Enter password" autocomplete="off">
+            <button class="btn btn-start" onclick="authenticate()" style="width: 100%; margin-top: 10px;">🔓 Login</button>
+        </div>
+
+        <div id="controlPanel" style="display: none;">
+            <div class="message" id="message"></div>
+
+            <div class="status-card">
+                <div class="status-item">
+                    <span class="status-label">Status:</span>
+                    <span class="status-value">
+                        <span class="status-badge" id="statusBadge">stopped</span>
+                    </span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Process ID:</span>
+                    <span class="status-value" id="pidValue">-</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Uptime:</span>
+                    <span class="status-value uptime" id="uptimeValue">-</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Mode:</span>
+                    <span class="status-value" id="modeValue">-</span>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button class="btn btn-start" id="startBtn" onclick="startBot('both')">▶️ Start</button>
+                <button class="btn btn-stop" id="stopBtn" onclick="stopBot()" disabled>⏹️ Stop</button>
+                <button class="btn btn-restart" id="restartBtn" onclick="restartBot('both')" disabled>🔄 Restart</button>
+            </div>
+
+            <div style="text-align: center; color: #666; font-size: 12px; margin-top: 20px;">
+                <p>Status updates automatically every 2 seconds</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let password = '';
+        let statusInterval = null;
+
+        function authenticate() {
+            const input = document.getElementById('passwordInput');
+            password = input.value;
+            
+            if (!password) {
+                showMessage('Please enter a password', 'error');
+                return;
+            }
+
+            // Try to get status to verify password
+            fetch(`/api/status?password=${encodeURIComponent(password)}`)
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('authSection').style.display = 'none';
+                    document.getElementById('controlPanel').style.display = 'block';
+                    loadStatus();
+                    startStatusPolling();
+                })
+                .catch(err => {
+                    showMessage('Invalid password', 'error');
+                });
+        }
+
+        function loadStatus() {
+            fetch('/api/status')
+                .then(res => res.json())
+                .then(data => {
+                    updateStatus(data);
+                })
+                .catch(err => {
+                    console.error('Failed to load status:', err);
+                });
+        }
+
+        function updateStatus(data) {
+            const status = data.status || 'stopped';
+            
+            // Update status badge
+            const badge = document.getElementById('statusBadge');
+            badge.textContent = status;
+            badge.className = `status-badge ${status}`;
+
+            // Update PID
+            document.getElementById('pidValue').textContent = data.pid || '-';
+
+            // Update uptime
+            const uptimeEl = document.getElementById('uptimeValue');
+            if (data.uptime !== null && data.uptime !== undefined) {
+                uptimeEl.textContent = formatUptime(data.uptime);
+            } else {
+                uptimeEl.textContent = '-';
+            }
+
+            // Update mode
+            document.getElementById('modeValue').textContent = data.mode || '-';
+
+            // Update button states
+            const isRunning = status === 'running';
+            document.getElementById('startBtn').disabled = isRunning || status === 'starting';
+            document.getElementById('stopBtn').disabled = !isRunning && status !== 'starting';
+            document.getElementById('restartBtn').disabled = !isRunning && status !== 'starting';
+        }
+
+        function formatUptime(seconds) {
+            const days = Math.floor(seconds / 86400);
+            const hours = Math.floor((seconds % 86400) / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+
+            if (days > 0) {
+                return `${days}d ${hours}h ${minutes}m`;
+            } else if (hours > 0) {
+                return `${hours}h ${minutes}m ${secs}s`;
+            } else if (minutes > 0) {
+                return `${minutes}m ${secs}s`;
+            } else {
+                return `${secs}s`;
+            }
+        }
+
+        function startBot(mode) {
+            fetch('/api/start', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': password
+                },
+                body: JSON.stringify({ mode })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        showMessage('Bot started successfully!', 'success');
+                        setTimeout(loadStatus, 1000);
+                    } else {
+                        showMessage(`Failed to start: ${data.error}`, 'error');
+                    }
+                })
+                .catch(err => {
+                    showMessage('Failed to start bot', 'error');
+                });
+        }
+
+        function stopBot() {
+            fetch('/api/stop', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': password
+                }
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        showMessage('Bot stopped successfully!', 'success');
+                        setTimeout(loadStatus, 1000);
+                    } else {
+                        showMessage(`Failed to stop: ${data.error}`, 'error');
+                    }
+                })
+                .catch(err => {
+                    showMessage('Failed to stop bot', 'error');
+                });
+        }
+
+        function restartBot(mode) {
+            fetch('/api/restart', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': password
+                },
+                body: JSON.stringify({ mode })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        showMessage('Bot restarting...', 'success');
+                        setTimeout(loadStatus, 2000);
+                    } else {
+                        showMessage(`Failed to restart: ${data.error}`, 'error');
+                    }
+                })
+                .catch(err => {
+                    showMessage('Failed to restart bot', 'error');
+                });
+        }
+
+        function showMessage(text, type) {
+            const msgEl = document.getElementById('message');
+            msgEl.textContent = text;
+            msgEl.className = `message ${type}`;
+            msgEl.style.display = 'block';
+            
+            setTimeout(() => {
+                msgEl.style.display = 'none';
+            }, 5000);
+        }
+
+        function startStatusPolling() {
+            if (statusInterval) clearInterval(statusInterval);
+            statusInterval = setInterval(loadStatus, 2000);
+        }
+
+        // Allow Enter key to authenticate
+        document.getElementById('passwordInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                authenticate();
+            }
+        });
+    </script>
+</body>
+</html>
+
+

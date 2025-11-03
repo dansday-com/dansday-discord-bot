@@ -57,10 +57,10 @@ export async function hasPermission(member, action) {
         return true;
     }
 
-    // Staff permissions: all interfaces except pause (including custom supporter role)
-    // Actions: status, help, send_message, inactive, custom_supporter_role (but not pause or setup)
+    // Staff permissions: all interfaces (including custom supporter role)
+    // Actions: help, send_message, custom_supporter_role (but not setup)
     if (await isStaff(member)) {
-        return action !== 'pause' && action !== 'setup';
+        return action !== 'setup';
     }
 
     // Supporter permissions: can create custom roles
@@ -68,9 +68,9 @@ export async function hasPermission(member, action) {
         return action === 'custom_supporter_role';
     }
 
-    // Member permissions: status, help, feedback, afk
+    // Member permissions: help, feedback, afk
     if (await isMember(member)) {
-        return action === 'status' || action === 'help' || action === 'feedback' || action === 'afk';
+        return action === 'help' || action === 'feedback' || action === 'afk';
     }
 
     // No permission

@@ -21,15 +21,6 @@ function registerSlashCommand(name, command) {
 
 // Execute a slash command
 async function executeSlashCommand(interaction, client) {
-    // Check if bot is paused (except for pause command only)
-    if (client.isPaused && interaction.commandName !== 'pause') {
-        await interaction.reply({
-            content: '⏸️ Bot is currently paused. Use `/pause` to resume.',
-            flags: 64
-        });
-        return { success: true, reason: 'paused' }; // Command was handled (bot is paused)
-    }
-
     const command = slashCommands.get(interaction.commandName);
     if (!command) {
         return { success: false, reason: 'unknown_command' };
@@ -79,9 +70,6 @@ async function deployCommands(clearFirst = false) {
 
 // Initialize the slash command system
 function init(client) {
-    // Add client properties for command system
-    client.isPaused = false; // Initialize pause state
-
     // Register setup slash command
     registerSlashCommand('setup', { execute: setupExecute });
 
@@ -131,12 +119,8 @@ function init(client) {
                         flags: 64
                     });
                 } else {
-                    // Log successful command execution (except for paused state)
-                    if (result.reason !== 'paused') {
-                        await logger.log(`✅ Command executed successfully: /${commandName} by ${user.tag} (${user.id})`);
-                    } else {
-                        await logger.log(`⏸️ Command /${commandName} blocked - bot is paused`);
-                    }
+                    // Log successful command execution
+                    await logger.log(`✅ Command executed successfully: /${commandName} by ${user.tag} (${user.id})`);
                 }
             } catch (error) {
                 // Handle any unexpected errors in the interaction handler itself

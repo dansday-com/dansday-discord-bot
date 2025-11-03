@@ -1,11 +1,8 @@
 import { getEmbedConfig } from "../../config.js";
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import logger from "../../logger.js";
-import { handleStatusButton } from './interface/status.js';
 import { handleHelpButton } from './interface/help.js';
-import { handlePauseButton } from './interface/pause.js';
 import { handleSendMessageButton, handleSendMessageModal, handleChannelSelection, handleRoleSelection, handleCompleteSetup } from './interface/sendmessage.js';
-import { handleInactiveButton } from './interface/inactive.js';
 import { handleCustomSupporterRoleButton, handleCustomSupporterRoleModal, handleEditCustomSupporterRole, handleDeleteCustomSupporterRole } from './interface/customsupporterrole.js';
 import { handleFeedbackButton, handleFeedbackModal } from './interface/feedback.js';
 import { handleAFKButton, handleAFKModal, handleRemoveAFKButton } from './interface/afk.js';
@@ -18,31 +15,12 @@ export async function handleButtonInteraction(interaction, client) {
     // Log button interaction attempt
     await logger.log(`🔘 Button clicked: "${customId}" by ${user.tag} (${user.id}) in ${interaction.guild?.name || 'DM'}`);
 
-    // Check if bot is paused (except for pause button)
-    if (client.isPaused && customId !== 'bot_pause') {
-        await logger.log(`⏸️ Button "${customId}" blocked - bot is paused`);
-        await interaction.reply({
-            content: '⏸️ Bot is currently paused. Use the Pause/Resume button to resume.',
-            flags: 64
-        });
-        return;
-    }
-
     switch (customId) {
-        case 'bot_status':
-            await handleStatusButton(interaction);
-            break;
         case 'bot_help':
             await handleHelpButton(interaction);
             break;
-        case 'bot_pause':
-            await handlePauseButton(interaction, client);
-            break;
         case 'bot_send_message':
             await handleSendMessageButton(interaction);
-            break;
-        case 'bot_inactive':
-            await handleInactiveButton(interaction, client);
             break;
         case 'bot_custom_supporter_role':
             await handleCustomSupporterRoleButton(interaction);
@@ -101,11 +79,6 @@ export async function createInterfaceEmbed(client, guildId) {
 
 // Create interface buttons
 export function createInterfaceButtons() {
-    const statusButton = new ButtonBuilder()
-        .setCustomId('bot_status')
-        .setLabel('📊 Status')
-        .setStyle(ButtonStyle.Primary);
-
     const helpButton = new ButtonBuilder()
         .setCustomId('bot_help')
         .setLabel('❓ Help')
@@ -116,40 +89,26 @@ export function createInterfaceButtons() {
         .setLabel('💬 Feedback')
         .setStyle(ButtonStyle.Secondary);
 
-    const pauseButton = new ButtonBuilder()
-        .setCustomId('bot_pause')
-        .setLabel('⏸️ Pause/Resume')
-        .setStyle(ButtonStyle.Danger);
-
     const sendMessageButton = new ButtonBuilder()
         .setCustomId('bot_send_message')
         .setLabel('📤 Send Message')
         .setStyle(ButtonStyle.Success);
-
-    const inactiveButton = new ButtonBuilder()
-        .setCustomId('bot_inactive')
-        .setLabel('📊 Inactive Members')
-        .setStyle(ButtonStyle.Primary);
 
     const customSupporterRoleButton = new ButtonBuilder()
         .setCustomId('bot_custom_supporter_role')
         .setLabel('💎 Custom Supporter Role')
         .setStyle(ButtonStyle.Success);
 
-    // Create action rows with buttons (max 5 buttons per row)
-    // Status and Help always go in the last row
-    const buttonRow1 = new ActionRowBuilder()
-        .addComponents(sendMessageButton, inactiveButton, pauseButton, customSupporterRoleButton);
-
     const afkButton = new ButtonBuilder()
         .setCustomId('bot_afk')
         .setLabel('⏸️ AFK')
         .setStyle(ButtonStyle.Secondary);
 
-    const buttonRow2 = new ActionRowBuilder()
-        .addComponents(afkButton, statusButton, helpButton, feedbackButton);
+    // Create action rows with buttons (max 5 buttons per row)
+    const buttonRow1 = new ActionRowBuilder()
+        .addComponents(sendMessageButton, customSupporterRoleButton, afkButton, helpButton, feedbackButton);
 
-    return [buttonRow1, buttonRow2];
+    return [buttonRow1];
 }
 
 // Send interface to channel

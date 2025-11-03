@@ -25,16 +25,6 @@ export async function handleHelpButton(interaction) {
                 inline: false
             },
             {
-                name: "📊 Inactive Members",
-                value: "Find members who haven't chatted in the configured inactivity period (90 days).\n**Permission:** Staff+",
-                inline: false
-            },
-            {
-                name: "⏸️ Pause/Resume",
-                value: "Pause or resume the bot's operations.\n**Permission:** Admin+",
-                inline: false
-            },
-            {
                 name: "💎 Custom Supporter Role",
                 value: "Create, edit, or delete a custom role with name, color, and icon.\n**Permission:** Supporter+ or Staff+",
                 inline: false
@@ -42,11 +32,6 @@ export async function handleHelpButton(interaction) {
             {
                 name: "⏸️ AFK",
                 value: "Set yourself as AFK with an optional message. Your nickname will be prefixed with [AFK]. If in voice channel, you'll be automatically muted and deafened. AFK status auto-removes when you send a message or unmute/undeafen in voice. When mentioned while AFK, you'll receive a DM notification.\n**Permission:** Member+",
-                inline: false
-            },
-            {
-                name: "📊 Status",
-                value: "View bot status, uptime, and server information.\n**Permission:** Member+",
                 inline: false
             },
             {
@@ -61,7 +46,7 @@ export async function handleHelpButton(interaction) {
             },
             {
                 name: "🔐 Permissions Summary",
-                value: "**Admin:** Full access\n**Staff:** All except Pause/Resume\n**Supporter:** Custom Supporter Role, Status, Help\n**Member:** AFK, Status, Help, Feedback",
+                value: "**Admin:** Full access\n**Staff:** All interfaces\n**Supporter:** Custom Supporter Role, Help\n**Member:** AFK, Help, Feedback",
                 inline: false
             }
         ])

@@ -1,0 +1,478 @@
+import { createClient } from '@supabase/supabase-js';
+import pg from 'pg';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import dotenv from 'dotenv';
+import logger from '../backend/logger.js';
+
+dotenv.config();
+
+const { Client } = pg;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_KEY || process.env.SUPABASE_PASSWORD;
+
+if (!supabaseUrl || !supabaseKey) {
+    throw new Error('Missing Supabase configuration in .env file. Need SUPABASE_URL and SUPABASE_KEY or SUPABASE_PASSWORD');
+}
+
+// Create Supabase client
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+    auth: {
+        persistSession: false
+    }
+});
+
+// Read and execute schema SQL (only if tables don't exist)
+async function runMigration() {
+    const databaseUrl = process.env.DATABASE_URL;
+    
+    if (!databaseUrl) {
+        throw new Error(
+            'Please set DATABASE_URL in .env file.\n' +
+            'Get it from: Supabase Dashboard > Settings > Database > Connection pooler'
+        );
+    }
+
+    const client = new Client({ connectionString: databaseUrl });
+    
+    try {
+        logger.log('🔌 Connecting to database...');
+        await client.connect();
+        logger.log('✅ Connected to database');
+
+        // Read schema file
+        const schemaPath = join(__dirname, 'schema.sql');
+        const schemaSQL = readFileSync(schemaPath, 'utf-8');
+        
+        logger.log('📦 Executing schema...');
+        
+        await client.query(schemaSQL);
+        
+        logger.log('✅ Database schema created successfully!');
+        logger.log('📊 Tables created: servers, channels, roles, server_settings');
+        logger.log('📈 Indexes created: all indexes');
+        
+    } catch (error) {
+        logger.log(`❌ Migration failed: ${error.message}`);
+        if (error.code === '28P01') {
+            logger.log('💡 Authentication failed. Check your DATABASE_URL or connection credentials.');
+        } else if (error.code === 'ECONNREFUSED') {
+            logger.log('💡 Connection refused. Check your connection string and network.');
+        }
+        throw error;
+    } finally {
+        await client.end();
+        logger.log('🔌 Database connection closed');
+    }
+}
+
+// Check tables first, only migrate if they don't exist
+async function setupDatabase() {
+    // First, check if tables exist using Supabase client
+    logger.log('🔍 Checking database tables...');
+
+    const tables = [
+        { name: 'bots', required: true },
+        { name: 'servers', required: true },
+        { name: 'channels', required: true },
+        { name: 'roles', required: true }
+    ];
+    
+    const missingTables = [];
+    
+    for (const table of tables) {
+        try {
+            const { error } = await supabase
+                .from(table.name)
+                .select('*')
+                .limit(0);
+
+            if (error) {
+                if (error.code === '42P01' || error.message.includes('does not exist') || error.message.includes('schema cache')) {
+                    missingTables.push(table.name);
+                    logger.log(`❌ Table '${table.name}' does not exist`);
+                } else {
+                    logger.log(`⚠️  Table '${table.name}' check failed: ${error.message}`);
+                    if (table.required) {
+                        missingTables.push(table.name);
+                    }
+                }
+            } else {
+                logger.log(`✅ Table '${table.name}' exists`);
+            }
+        } catch (err) {
+            logger.log(`⚠️  Error checking table '${table.name}': ${err.message}`);
+            if (table.required) {
+                missingTables.push(table.name);
+            }
+        }
+    }
+
+    // If tables are missing, try to migrate
+    if (missingTables.length > 0) {
+        logger.log(`❌ Missing tables: ${missingTables.join(', ')}`);
+        
+        // Only migrate if DATABASE_URL is set
+        if (process.env.DATABASE_URL) {
+            try {
+                logger.log('🔧 Attempting automatic table creation...');
+                await runMigration();
+                logger.log('✅ Tables created automatically');
+                return true;
+            } catch (migrateError) {
+                logger.log(`⚠️  Automatic migration failed: ${migrateError.message}`);
+                logger.log('📄 Please run the SQL schema manually in Supabase SQL Editor');
+                throw new Error(`Missing tables: ${missingTables.join(', ')}`);
+            }
+        } else {
+            logger.log('💡 Set DATABASE_URL in .env to enable automatic table creation');
+            logger.log('📄 Or run the SQL schema in Supabase SQL Editor:');
+            logger.log('   1. Open Supabase Dashboard → SQL Editor');
+            logger.log('   2. Copy and paste the contents of database/schema.sql');
+            logger.log('   3. Execute the SQL');
+            throw new Error(`Missing tables: ${missingTables.join(', ')}`);
+        }
+    }
+
+    logger.log('✅ All database tables verified');
+    return true;
+}
+
+// Initialize database on import
+let dbInitialized = false;
+
+export async function initializeDatabase() {
+    if (dbInitialized) return;
+    
+    try {
+        await setupDatabase();
+        dbInitialized = true;
+    } catch (error) {
+        logger.log(`⚠️  Database initialization: ${error.message}`);
+        logger.log(`💡 Set DATABASE_URL in .env to enable automatic table creation`);
+        logger.log(`📄 Or run the SQL schema from database/schema.sql in Supabase SQL Editor`);
+    }
+}
+
+// Bot operations
+export async function getAllBots() {
+    try {
+        await initializeDatabase();
+        const { data, error } = await supabase
+            .from('bots')
+            .select('*')
+            .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        return data || [];
+    } catch (error) {
+        console.error('Error getting bots:', error);
+        return [];
+    }
+}
+
+export async function getBot(botId) {
+    try {
+        await initializeDatabase();
+        const { data, error } = await supabase
+            .from('bots')
+            .select('*')
+            .eq('id', botId)
+            .single();
+        
+        if (error) throw error;
+        return data;
+    } catch (error) {
+        console.error('Error getting bot:', error);
+        return null;
+    }
+}
+
+export async function createBot(botData) {
+    try {
+        await initializeDatabase();
+
+        // Get bot count to generate default name
+        const bots = await getAllBots();
+        const botNumber = bots.length + 1;
+
+        const { data, error } = await supabase
+            .from('bots')
+            .insert({
+                name: botData.name || `Bot#${botNumber}`, // Default name, will be updated when bot connects
+                token: botData.token,
+                application_id: botData.application_id,
+                bot_type: botData.bot_type, // 'official' or 'selfbot'
+                bot_icon: botData.bot_icon || null, // Will be updated from Discord avatar
+                port: botData.port || 7777,
+                connect_to: botData.connect_to || null
+            })
+            .select()
+            .single();
+        
+        if (error) throw error;
+        return data;
+    } catch (error) {
+        console.error('Error creating bot:', error);
+        throw error;
+    }
+}
+
+export async function updateBot(botId, botData) {
+    try {
+        const updateData = {
+            ...botData,
+            updated_at: new Date().toISOString()
+        };
+        
+        // If status changes to running, set uptime_started_at
+        if (botData.status === 'running' && !botData.uptime_started_at) {
+            updateData.uptime_started_at = new Date().toISOString();
+        }
+        
+        // If status changes to stopped, clear uptime_started_at and process_id
+        if (botData.status === 'stopped') {
+            updateData.uptime_started_at = null;
+            updateData.process_id = null;
+        }
+
+        const { data, error } = await supabase
+            .from('bots')
+            .update(updateData)
+            .eq('id', botId)
+            .select()
+            .single();
+        
+        if (error) throw error;
+        return data;
+    } catch (error) {
+        console.error('Error updating bot:', error);
+        throw error;
+    }
+}
+
+export async function deleteBot(botId) {
+    try {
+        const { error } = await supabase
+            .from('bots')
+            .delete()
+            .eq('id', botId);
+        
+        if (error) throw error;
+        return true;
+    } catch (error) {
+        console.error('Error deleting bot:', error);
+        throw error;
+    }
+}
+
+// Discord Server (Guild) operations
+export async function getServersForBot(botId) {
+    try {
+        const { data, error } = await supabase
+            .from('servers')
+            .select('*')
+            .eq('bot_id', botId)
+            .order('name', { ascending: true });
+        
+        if (error) throw error;
+        return data || [];
+    } catch (error) {
+        console.error('Error getting servers:', error);
+        return [];
+    }
+}
+
+export async function getServerByDiscordId(botId, discordServerId) {
+    try {
+        const { data, error } = await supabase
+            .from('servers')
+            .select('*')
+            .eq('bot_id', botId)
+            .eq('discord_server_id', discordServerId)
+            .single();
+        
+        if (error && error.code !== 'PGRST116') throw error;
+        return data || null;
+    } catch (error) {
+        console.error('Error getting server:', error);
+        return null;
+    }
+}
+
+export async function upsertServer(botId, guild) {
+    try {
+        const iconUrl = guild.iconURL ? guild.iconURL({ dynamic: true }) : null;
+        
+        const { data, error } = await supabase
+            .from('servers')
+            .upsert({
+                bot_id: botId,
+                discord_server_id: guild.id,
+                name: guild.name,
+                total_members: guild.memberCount || 0,
+                total_channels: guild.channels?.cache?.size || 0,
+                total_boosters: guild.premiumSubscriptionCount || 0,
+                boost_level: guild.premiumTier || 0,
+                server_icon: iconUrl,
+                updated_at: new Date().toISOString()
+            }, {
+                onConflict: 'bot_id,discord_server_id'
+            })
+            .select()
+            .single();
+        
+        if (error) throw error;
+        return data;
+    } catch (error) {
+        console.error('Error upserting server:', error);
+        throw error;
+    }
+}
+
+// Channel operations
+export async function getChannels(serverId) {
+    try {
+        const { data, error } = await supabase
+            .from('channels')
+            .select('*')
+            .eq('server_id', serverId)
+            .order('name', { ascending: true });
+        
+        if (error) throw error;
+        return data || [];
+    } catch (error) {
+        console.error('Error getting channels:', error);
+        return [];
+    }
+}
+
+export async function upsertChannel(serverId, channelData) {
+    try {
+        const { data, error } = await supabase
+            .from('channels')
+            .upsert({
+                server_id: serverId,
+                discord_channel_id: channelData.id,
+                name: channelData.name,
+                type: channelData.type,
+                category_id: channelData.parent_id || null,
+                updated_at: new Date().toISOString()
+            }, {
+                onConflict: 'server_id,discord_channel_id'
+            })
+            .select()
+            .single();
+        
+        if (error) throw error;
+        return data;
+    } catch (error) {
+        console.error('Error upserting channel:', error);
+        throw error;
+    }
+}
+
+export async function syncChannels(serverId, channels) {
+    try {
+        const operations = channels.map(channel => 
+            upsertChannel(serverId, {
+                id: channel.id,
+                name: channel.name,
+                type: channel.type,
+                parent_id: channel.parent_id || null
+            })
+        );
+        
+        await Promise.all(operations);
+        return true;
+    } catch (error) {
+        console.error('Error syncing channels:', error);
+        return false;
+    }
+}
+
+// Role operations
+export async function getRoles(serverId) {
+    try {
+        const { data, error } = await supabase
+            .from('roles')
+            .select('*')
+            .eq('server_id', serverId)
+            .order('position', { ascending: false });
+        
+        if (error) throw error;
+        return data || [];
+    } catch (error) {
+        console.error('Error getting roles:', error);
+        return [];
+    }
+}
+
+export async function upsertRole(serverId, roleData) {
+    try {
+        const { data, error } = await supabase
+            .from('roles')
+            .upsert({
+                server_id: serverId,
+                discord_role_id: roleData.id,
+                name: roleData.name,
+                position: roleData.position,
+                color: roleData.hexColor,
+                permissions: roleData.permissions?.bitfield?.toString() || null,
+                updated_at: new Date().toISOString()
+            }, {
+                onConflict: 'server_id,discord_role_id'
+            })
+            .select()
+            .single();
+        
+        if (error) throw error;
+        return data;
+    } catch (error) {
+        console.error('Error upserting role:', error);
+        throw error;
+    }
+}
+
+export async function syncRoles(serverId, roles) {
+    try {
+        const operations = roles.map(role => 
+            upsertRole(serverId, {
+                id: role.id,
+                name: role.name,
+                position: role.position,
+                hexColor: role.hexColor,
+                permissions: role.permissions
+            })
+        );
+        
+        await Promise.all(operations);
+        return true;
+    } catch (error) {
+        console.error('Error syncing roles:', error);
+        return false;
+    }
+}
+
+export default {
+    supabase,
+    getAllBots,
+    getBot,
+    createBot,
+    updateBot,
+    deleteBot,
+    getServersForBot,
+    getServerByDiscordId,
+    upsertServer,
+    getChannels,
+    upsertChannel,
+    syncChannels,
+    getRoles,
+    upsertRole,
+    syncRoles
+};
+

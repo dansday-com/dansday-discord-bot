@@ -2,10 +2,10 @@
   "name": "go-blox-bot-system",
   "version": "5.0.0",
   "description": "GO BLOX Bot System - Self-bot and Official Bot",
-  "main": "backend.js",
+  "main": "main.js",
   "type": "module",
   "scripts": {
-    "start": "node frontend.js"
+    "start": "node main.js"
   },
   "keywords": [
     "discord",
@@ -19,10 +19,13 @@
   "author": "Akbar Yudhanto",
   "license": "MIT",
   "dependencies": {
+    "@supabase/supabase-js": "^2.78.0",
     "concurrently": "^9.2.1",
     "debug": "^4.4.3",
     "discord.js": "^14.23.2",
     "discord.js-selfbot-v13": "^3.7.1",
-    "express": "^5.1.0"
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "pg": "^8.16.3"
   }
 }

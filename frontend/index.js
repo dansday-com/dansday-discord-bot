@@ -749,6 +749,65 @@ export async function init() {
         }
     });
 
+    // Get selfbots connected to an official bot (protected)
+    app.get('/api/bots/:id/selfbots', requireAuth, async (req, res) => {
+        try {
+            const officialBot = await db.getBot(req.params.id);
+            if (!officialBot || officialBot.bot_type !== 'official') {
+                return res.status(400).json({ error: 'Bot not found or is not an official bot' });
+            }
+
+            // Get all selfbots that connect to this official bot
+            const allBots = await db.getAllBots();
+            const selfbots = allBots.filter(bot => 
+                bot.bot_type === 'selfbot' && bot.connect_to === req.params.id
+            );
+
+            res.json(selfbots);
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    // Get channels for a specific server from a selfbot (protected)
+    app.get('/api/bots/:selfbotId/servers/:serverId/channels', requireAuth, async (req, res) => {
+        try {
+            const { selfbotId, serverId } = req.params;
+            const { search, discordServerId } = req.query;
+
+            // Verify the server belongs to the selfbot
+            const server = await db.getServerByDiscordId(selfbotId, discordServerId);
+            if (!server || server.id !== serverId) {
+                return res.status(404).json({ error: 'Server not found' });
+            }
+
+            let channels = await db.getChannelsForServer(serverId);
+            
+            // Filter by search term if provided
+            if (search) {
+                const searchLower = search.toLowerCase();
+                channels = channels.filter(ch => 
+                    ch.name?.toLowerCase().includes(searchLower) ||
+                    ch.discord_channel_id?.includes(searchLower)
+                );
+            }
+
+            res.json(channels);
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    // Get roles for a server (protected)
+    app.get('/api/servers/:id/roles', requireAuth, async (req, res) => {
+        try {
+            const roles = await db.getRoles(req.params.id);
+            res.json(roles);
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    });
+
     // Create bot (protected)
     app.post('/api/bots', requireAuth, async (req, res) => {
         try {

@@ -15,24 +15,44 @@ function cleanMessageContent(text) {
 }
 
 export async function processMessageFromSelfBot(messageData, client) {
-    const { group, type } = messageData.forwarderConfig;
+    // Get source channel ID and guild ID from message data
+    const sourceChannelId = messageData.channel?.id;
+    const sourceGuildId = messageData.guild?.id;
 
-    const targetChannelId = FORWARDER.TARGET_CHANNELS[group][type];
-    const roleMention = FORWARDER.ROLE_MENTIONS[group];
+    if (!sourceChannelId || !sourceGuildId) {
+        await logger.log(`❌ Source channel ID or guild ID not provided in message data`);
+        return;
+    }
+
+    // Find forwarder config by source channel and server
+    // This checks all forwarder configs on official bot servers to find one that matches
+    let forwarderConfig;
+    try {
+        forwarderConfig = await FORWARDER.getForwarderConfigBySourceChannel(sourceChannelId, sourceGuildId);
+    } catch (err) {
+        await logger.log(`❌ Error finding forwarder config for source channel ${sourceChannelId}: ${err.message}`);
+        return;
+    }
+
+    // If no forwarder config found, skip forwarding (channel not configured)
+    if (!forwarderConfig) {
+        // Silently skip - this channel is not configured for forwarding
+        return;
+    }
+
+    const targetChannelId = forwarderConfig.target_channel_id;
+    const targetGuildId = forwarderConfig.target_guild_id;
+    const roles = forwarderConfig.roles;
+
     const targetChannel = client.channels.cache.get(targetChannelId);
 
     if (!targetChannel) {
-        await logger.log(`❌ Target channel not found for ${group} (${type}): ${targetChannelId}`);
+        await logger.log(`❌ Target channel not found: ${targetChannelId}`);
         return;
     }
 
     try {
         // Get embed config for the target channel's guild
-        const targetGuildId = targetChannel.guild?.id;
-        if (!targetGuildId) {
-            throw new Error('Target channel does not have a guild ID');
-        }
-        
         const embedConfig = await getEmbedConfig(targetGuildId);
 
         let embeds = [];
@@ -114,14 +134,15 @@ export async function processMessageFromSelfBot(messageData, client) {
             embeds: embeds
         };
 
-        // Add role mention to message content if available
-        if (roleMention) {
-            messageOptions.content = roleMention;
+        // Add role mentions to message content if available
+        if (roles && Array.isArray(roles) && roles.length > 0) {
+            const roleMentions = roles.map(role => `<@&${role.role_id}>`).join(' ');
+            messageOptions.content = roleMentions;
         }
 
         await targetChannel.send(messageOptions);
 
-        await logger.log(`✅ Forwarded ${messageData.id} from ${group} (${type})`);
+        await logger.log(`✅ Forwarded ${messageData.id} from source channel ${sourceChannelId}`);
     } catch (err) {
         await logger.log(`❌ Failed to forward ${messageData.id}: ${err.message}`);
         throw err; // Re-throw to indicate failure

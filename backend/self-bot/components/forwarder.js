@@ -27,14 +27,7 @@ async function sendToOfficialBot(messageData) {
     }
 }
 
-async function processMessage(message, channelConfig) {
-    const { group, type } = channelConfig;
-
-    if (FORWARDER.EXCLUDED_USERS.includes(message.author.id)) {
-        await logger.log(`⏭️ Skipped processing message ${message.id} from excluded user ${message.author.tag} (${message.author.id})`);
-        return;
-    }
-
+async function processMessage(message) {
     // Prepare message data for official bot
     const messageData = {
         id: message.id,
@@ -65,28 +58,33 @@ async function processMessage(message, channelConfig) {
             contentType: att.contentType
         })),
         embeds: message.embeds,
-        forwarderConfig: {
-            group,
-            type
-        },
+        // Source channel and guild info will be used by official bot to find forwarder config
         timestamp: Date.now()
     };
 
     try {
         await sendToOfficialBot(messageData);
-        await logger.log(`✅ Processed ${message.id} from ${group} (${type})`);
+        await logger.log(`✅ Forwarded message ${message.id} from channel ${message.channel.id} to official bot`);
     } catch (err) {
-        await logger.log(`❌ Failed to process ${message.id}: ${err.message}`);
+        await logger.log(`❌ Failed to forward message ${message.id}: ${err.message}`);
         throw err; // Re-throw to indicate failure
     }
 }
 
 function init(client) {
     client.on("messageCreate", async (message) => {
-        const channelConfig = FORWARDER.SOURCE_CHANNELS[message.channel.id];
-        if (!channelConfig) return;
+        // Skip DMs and messages without guild
+        if (!message.guild) return;
 
-        await processMessage(message, channelConfig);
+        // Forward all messages to official bot (no filtering here)
+        // Official bot will check forwarder configs to decide what to forward
+        try {
+            await processMessage(message);
+        } catch (err) {
+            // Log error
+            await logger.log(`❌ Error forwarding message ${message.id}: ${err.message}`);
+            console.error('Forwarder error:', err);
+        }
     });
 }
 

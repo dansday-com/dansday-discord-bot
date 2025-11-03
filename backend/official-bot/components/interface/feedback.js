@@ -112,7 +112,7 @@ export async function handleFeedbackModal(interaction) {
 
         // Get embed config
         const embedConfig = await getEmbedConfig(interaction.guild.id);
-        
+
         // Create feedback embed
         const feedbackEmbed = new EmbedBuilder()
             .setColor(embedConfig.COLOR)

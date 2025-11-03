@@ -33,6 +33,17 @@ CREATE TABLE IF NOT EXISTS servers (
     UNIQUE(bot_id, discord_server_id)
 );
 
+-- Categories table (stores Discord category information, channel type 4)
+CREATE TABLE IF NOT EXISTS categories (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    server_id UUID NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
+    discord_category_id TEXT NOT NULL,
+    name TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(server_id, discord_category_id)
+);
+
 -- Channels table (stores Discord channel information)
 CREATE TABLE IF NOT EXISTS channels (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -40,7 +51,7 @@ CREATE TABLE IF NOT EXISTS channels (
     discord_channel_id TEXT NOT NULL,
     name TEXT,
     type TEXT,
-    category_id TEXT,
+    category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(server_id, discord_channel_id)
@@ -65,7 +76,10 @@ CREATE INDEX IF NOT EXISTS idx_bots_type ON bots(bot_type);
 CREATE INDEX IF NOT EXISTS idx_bots_connect_to ON bots(connect_to);
 CREATE INDEX IF NOT EXISTS idx_servers_bot_id ON servers(bot_id);
 CREATE INDEX IF NOT EXISTS idx_servers_discord_id ON servers(discord_server_id);
+CREATE INDEX IF NOT EXISTS idx_categories_server_id ON categories(server_id);
+CREATE INDEX IF NOT EXISTS idx_categories_discord_id ON categories(discord_category_id);
 CREATE INDEX IF NOT EXISTS idx_channels_server_id ON channels(server_id);
 CREATE INDEX IF NOT EXISTS idx_channels_discord_id ON channels(discord_channel_id);
+CREATE INDEX IF NOT EXISTS idx_channels_category_id ON channels(category_id);
 CREATE INDEX IF NOT EXISTS idx_roles_server_id ON roles(server_id);
 CREATE INDEX IF NOT EXISTS idx_roles_discord_id ON roles(discord_role_id);

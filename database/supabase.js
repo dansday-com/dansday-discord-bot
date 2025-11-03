@@ -78,6 +78,7 @@ async function setupDatabase() {
     const tables = [
         { name: 'bots', required: true },
         { name: 'servers', required: true },
+        { name: 'categories', required: true },
         { name: 'channels', required: true },
         { name: 'roles', required: true }
     ];
@@ -370,8 +371,89 @@ export async function getChannels(serverId) {
     }
 }
 
-export async function upsertChannel(serverId, channelData) {
+// Category operations
+export async function upsertCategory(serverId, categoryData) {
     try {
+        const { data, error } = await supabase
+            .from('categories')
+            .upsert({
+                server_id: serverId,
+                discord_category_id: categoryData.id,
+                name: categoryData.name,
+                updated_at: new Date().toISOString()
+            }, {
+                onConflict: 'server_id,discord_category_id'
+            })
+            .select()
+            .single();
+        
+        if (error) throw error;
+        return data;
+    } catch (error) {
+        console.error('Error upserting category:', error);
+        throw error;
+    }
+}
+
+export async function syncCategories(serverId, categories) {
+    try {
+        if (!categories || categories.length === 0) {
+            return new Map();
+        }
+        
+        // Process in batches to avoid overwhelming the database
+        const batchSize = 20;
+        const batches = [];
+        
+        for (let i = 0; i < categories.length; i += batchSize) {
+            batches.push(categories.slice(i, i + batchSize));
+        }
+        
+        const allResults = [];
+        
+        for (const batch of batches) {
+            const operations = batch.map(category => 
+                upsertCategory(serverId, {
+                    id: category.id,
+                    name: category.name
+                }).catch(err => {
+                    console.error(`Error upserting category ${category.id}:`, err.message);
+                    return null; // Return null on error, continue with others
+                })
+            );
+            
+            const batchResults = await Promise.all(operations);
+            allResults.push(...batchResults.filter(r => r !== null));
+            
+            // Small delay between batches to avoid rate limiting
+            if (batches.length > 1) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+        }
+        
+        // Create a map of discord_category_id to category UUID for channel reference
+        const categoryMap = new Map();
+        allResults.forEach(cat => {
+            if (cat) {
+                categoryMap.set(cat.discord_category_id, cat.id);
+            }
+        });
+        
+        return categoryMap;
+    } catch (error) {
+        console.error('Error syncing categories:', error);
+        return new Map();
+    }
+}
+
+export async function upsertChannel(serverId, channelData, categoryMap = null) {
+    try {
+        // Find category UUID if parent_id is provided
+        let categoryId = null;
+        if (channelData.parent_id && categoryMap) {
+            categoryId = categoryMap.get(channelData.parent_id) || null;
+        }
+        
         const { data, error } = await supabase
             .from('channels')
             .upsert({
@@ -379,7 +461,7 @@ export async function upsertChannel(serverId, channelData) {
                 discord_channel_id: channelData.id,
                 name: channelData.name,
                 type: channelData.type,
-                category_id: channelData.parent_id || null,
+                category_id: categoryId,
                 updated_at: new Date().toISOString()
             }, {
                 onConflict: 'server_id,discord_channel_id'
@@ -395,18 +477,60 @@ export async function upsertChannel(serverId, channelData) {
     }
 }
 
-export async function syncChannels(serverId, channels) {
+export async function syncChannels(serverId, channels, categoryMap = null) {
     try {
-        const operations = channels.map(channel => 
-            upsertChannel(serverId, {
-                id: channel.id,
-                name: channel.name,
-                type: channel.type,
-                parent_id: channel.parent_id || null
-            })
-        );
+        // Ensure no categories (type 4) are included in channels
+        const validChannels = channels.filter(ch => ch.type !== 4);
         
-        await Promise.all(operations);
+        // Also delete any existing category channels that might be in the channels table
+        try {
+            const { data: existingCategoryChannels } = await supabase
+                .from('channels')
+                .select('id, discord_channel_id')
+                .eq('server_id', serverId)
+                .eq('type', '4');
+            
+            if (existingCategoryChannels && existingCategoryChannels.length > 0) {
+                const categoryIds = existingCategoryChannels.map(ch => ch.id);
+                await supabase
+                    .from('channels')
+                    .delete()
+                    .in('id', categoryIds);
+                console.log(`🧹 Removed ${categoryIds.length} category(ies) from channels table`);
+            }
+        } catch (cleanupError) {
+            console.error('Error cleaning up categories from channels table:', cleanupError.message);
+        }
+        
+        // Process in batches to avoid overwhelming the database
+        const batchSize = 20;
+        const batches = [];
+        
+        for (let i = 0; i < validChannels.length; i += batchSize) {
+            batches.push(validChannels.slice(i, i + batchSize));
+        }
+        
+        for (const batch of batches) {
+            const operations = batch.map(channel => 
+                upsertChannel(serverId, {
+                    id: channel.id,
+                    name: channel.name,
+                    type: channel.type,
+                    parent_id: channel.parent_id || null
+                }, categoryMap).catch(err => {
+                    console.error(`Error upserting channel ${channel.id}:`, err.message);
+                    return null; // Return null on error, continue with others
+                })
+            );
+            
+            await Promise.all(operations);
+            
+            // Small delay between batches to avoid rate limiting
+            if (batches.length > 1) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+        }
+        
         return true;
     } catch (error) {
         console.error('Error syncing channels:', error);
@@ -459,17 +583,40 @@ export async function upsertRole(serverId, roleData) {
 
 export async function syncRoles(serverId, roles) {
     try {
-        const operations = roles.map(role => 
-            upsertRole(serverId, {
-                id: role.id,
-                name: role.name,
-                position: role.position,
-                hexColor: role.hexColor,
-                permissions: role.permissions
-            })
-        );
+        if (!roles || roles.length === 0) {
+            return true;
+        }
         
-        await Promise.all(operations);
+        // Process in batches to avoid overwhelming the database
+        const batchSize = 20;
+        const batches = [];
+        
+        for (let i = 0; i < roles.length; i += batchSize) {
+            batches.push(roles.slice(i, i + batchSize));
+        }
+        
+        for (const batch of batches) {
+            const operations = batch.map(role => 
+                upsertRole(serverId, {
+                    id: role.id,
+                    name: role.name,
+                    position: role.position,
+                    hexColor: role.hexColor,
+                    permissions: role.permissions
+                }).catch(err => {
+                    console.error(`Error upserting role ${role.id}:`, err.message);
+                    return null; // Return null on error, continue with others
+                })
+            );
+            
+            await Promise.all(operations);
+            
+            // Small delay between batches to avoid rate limiting
+            if (batches.length > 1) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+        }
+        
         return true;
     } catch (error) {
         console.error('Error syncing roles:', error);
@@ -488,6 +635,8 @@ export default {
     getServerByDiscordId,
     upsertServer,
     getChannels,
+    upsertCategory,
+    syncCategories,
     upsertChannel,
     syncChannels,
     getRoles,

@@ -23,7 +23,7 @@ async function startBotById(botId, bot) {
         await db.updateBot(botId, { status: 'starting' });
     } catch (err) {
         logger.log(`⚠️  Failed to update bot status: ${err.message}`);
-    }
+}
 
     // Check if bot is already running
     const existing = botProcesses.get(botId);
@@ -78,7 +78,7 @@ async function startBotById(botId, bot) {
         };
 
         botProcesses.set(botId, processInfo);
-
+            
         // Handle output
         botProcess.stdout.on('data', (data) => {
             const output = data.toString();
@@ -152,7 +152,7 @@ async function startBotById(botId, bot) {
                 } catch (err) {
                     logger.log(`⚠️  Failed to update bot status to running: ${err.message}`);
                 }
-            } catch (e) {
+                            } catch (e) {
                 // Process doesn't exist or failed to start
                 logger.log(`⚠️  Bot process ${botProcess.pid} may have failed to start`);
                 try {
@@ -216,9 +216,9 @@ async function stopBotById(botId) {
                     });
                 } catch (err) {}
                 return { success: false, error: 'Bot is not running' };
-            }
-        }
-        
+                }
+}
+
         // Update status
         try {
             await db.updateBot(botId, {

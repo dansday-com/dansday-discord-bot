@@ -1,9 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GO BLOX Bot Control Panel</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -13,75 +17,162 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #000000;
             min-height: 100vh;
             padding: 20px;
+            color: #ffffff;
+            transition: background-color 0.5s ease, color 0.5s ease;
+        }
+
+        body.light {
+            background: #f5f5f5;
+            color: #000000;
         }
 
         .container {
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            background: #1a1a1a;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(255, 0, 0, 0.1);
             max-width: 1200px;
             width: 100%;
             margin: 0 auto;
             padding: 40px;
+            border: 1px solid #333333;
+            transition: background-color 0.5s ease, border-color 0.5s ease, box-shadow 0.5s ease;
+        }
+
+        body.light .container {
+            background: #ffffff;
+            border-color: #e0e0e0;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
         }
 
         h1 {
-            color: #333;
+            color: #ffffff;
             margin-bottom: 10px;
             font-size: 28px;
+            font-weight: 700;
+        }
+
+        h2 {
+            color: #ffffff;
+            margin-bottom: 10px;
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        h3 {
+            color: #ffffff;
+            margin-bottom: 10px;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        h4 {
+            color: #ffffff;
+            margin-bottom: 5px;
         }
 
         .subtitle {
-            color: #666;
+            color: #cccccc;
             margin-bottom: 30px;
             font-size: 14px;
         }
 
         .message {
-            padding: 12px;
-            border-radius: 8px;
+            padding: 14px 20px;
+            border-radius: 10px;
             margin-bottom: 20px;
             display: none;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .message.success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
+            background: rgba(220, 53, 69, 0.2);
+            color: #ff6b6b;
+            border: 1px solid rgba(220, 53, 69, 0.4);
         }
 
         .message.error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
+            background: rgba(220, 53, 69, 0.2);
+            color: #ff4444;
+            border: 1px solid rgba(220, 53, 69, 0.4);
         }
 
         .btn {
             padding: 12px 24px;
             border: none;
-            border-radius: 8px;
+            border-radius: 10px;
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:hover::before {
+            width: 300px;
+            height: 300px;
         }
 
         .btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 8px 20px rgba(220, 53, 69, 0.3);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
         }
 
         .btn-primary {
-            background: #667eea;
+            background: #dc3545;
             color: white;
         }
 
+        .btn-primary:hover {
+            background: #c82333;
+            box-shadow: 0 8px 20px rgba(220, 53, 69, 0.4);
+        }
+
         .btn-secondary {
-            background: #6c757d;
+            background: #333333;
             color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #404040;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
         }
 
         .btn-danger {
@@ -89,9 +180,29 @@
             color: white;
         }
 
+        .btn-danger:hover {
+            background: #c82333;
+            box-shadow: 0 8px 20px rgba(220, 53, 69, 0.4);
+        }
+
         .btn-success {
             background: #28a745;
             color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+            box-shadow: 0 8px 20px rgba(40, 167, 69, 0.4);
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #000000;
+        }
+
+        .btn-warning:hover {
+            background: #e0a800;
+            box-shadow: 0 8px 20px rgba(255, 193, 7, 0.4);
         }
 
         /* Bot List View */
@@ -103,18 +214,35 @@
         }
 
         .bot-card {
-            background: #f8f9fa;
-            border-radius: 12px;
-            padding: 20px;
+            background: #0d0d0d;
+            border-radius: 14px;
+            padding: 24px;
             cursor: pointer;
-            transition: all 0.3s ease;
-            border: 2px solid transparent;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid #333333;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .bot-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(220, 53, 69, 0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        .bot-card:hover::before {
+            left: 100%;
         }
 
         .bot-card:hover {
-            border-color: #667eea;
+            border-color: #dc3545;
             transform: translateY(-4px);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 12px 32px rgba(220, 53, 69, 0.2);
         }
 
         .bot-card-header {
@@ -128,43 +256,53 @@
             width: 50px;
             height: 50px;
             border-radius: 50%;
-            background: #667eea;
+            background: #dc3545;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 24px;
+            border: 2px solid #333333;
+            transition: all 0.3s ease;
+        }
+
+        .bot-card:hover .bot-icon {
+            border-color: #dc3545;
+            transform: scale(1.05);
         }
 
         .bot-info h3 {
-            color: #333;
+            color: #ffffff;
             margin-bottom: 5px;
         }
 
         .bot-type {
             display: inline-block;
-            padding: 4px 8px;
+            padding: 4px 12px;
             border-radius: 12px;
             font-size: 11px;
             font-weight: 600;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .bot-type.official {
-            background: #28a745;
+            background: #dc3545;
             color: white;
         }
 
         .bot-type.selfbot {
-            background: #ffc107;
-            color: #333;
+            background: #333333;
+            color: #ffffff;
+            border: 1px solid #dc3545;
         }
 
         /* Form Styles */
         .form-section {
-            background: #f8f9fa;
-            border-radius: 12px;
+            background: #0d0d0d;
+            border-radius: 14px;
             padding: 30px;
             margin-bottom: 20px;
+            border: 1px solid #333333;
         }
 
         .form-group {
@@ -173,7 +311,7 @@
 
         .form-group label {
             display: block;
-            color: #333;
+            color: #ffffff;
             font-weight: 600;
             margin-bottom: 8px;
             font-size: 14px;
@@ -182,17 +320,20 @@
         .form-group input,
         .form-group select {
             width: 100%;
-            padding: 12px;
-            border: 2px solid #dee2e6;
-            border-radius: 8px;
+            padding: 12px 16px;
+            border: 1px solid #333333;
+            border-radius: 10px;
             font-size: 14px;
-            transition: border-color 0.3s;
+            background: #1a1a1a;
+            color: #ffffff;
+            transition: all 0.3s ease;
         }
 
         .form-group input:focus,
         .form-group select:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: #dc3545;
+            box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
         }
 
         /* Server List */
@@ -203,14 +344,17 @@
         }
 
         .server-card {
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 15px;
-            border: 2px solid transparent;
+            background: #0d0d0d;
+            border-radius: 12px;
+            padding: 18px;
+            border: 1px solid #333333;
+            transition: all 0.3s ease;
         }
 
         .server-card:hover {
-            border-color: #667eea;
+            border-color: #dc3545;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(220, 53, 69, 0.15);
         }
 
         .server-icon {
@@ -218,6 +362,7 @@
             height: 40px;
             border-radius: 50%;
             margin-bottom: 10px;
+            border: 2px solid #333333;
         }
 
         .back-btn {
@@ -230,9 +375,152 @@
             align-items: center;
             margin-bottom: 30px;
         }
+
+        /* Theme Toggle Button */
+        .theme-toggle {
+            position: fixed;
+            top: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: #dc3545;
+            border: 2px solid #333333;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            z-index: 1000;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+        }
+
+        body.light .theme-toggle {
+            background: #ffc107;
+            border-color: #e0e0e0;
+            box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+        }
+
+        .theme-toggle:hover {
+            transform: scale(1.1) rotate(180deg);
+            box-shadow: 0 6px 20px rgba(220, 53, 69, 0.5);
+        }
+
+        body.light .theme-toggle:hover {
+            box-shadow: 0 6px 20px rgba(255, 193, 7, 0.5);
+        }
+
+        /* Light mode styles */
+        body.light h1, body.light h2, body.light h3, body.light h4 {
+            color: #000000;
+        }
+
+        body.light .subtitle {
+            color: #666666;
+        }
+
+        body.light .bot-card {
+            background: #ffffff;
+            border-color: #e0e0e0;
+        }
+
+        body.light .bot-card:hover {
+            border-color: #dc3545;
+            box-shadow: 0 12px 32px rgba(220, 53, 69, 0.15);
+        }
+
+        body.light .form-section {
+            background: #ffffff;
+            border-color: #e0e0e0;
+        }
+
+        body.light .form-group label {
+            color: #000000;
+        }
+
+        body.light .form-group input,
+        body.light .form-group select {
+            background: #f5f5f5;
+            border-color: #e0e0e0;
+            color: #000000;
+        }
+
+        body.light .form-group input:focus,
+        body.light .form-group select:focus {
+            border-color: #dc3545;
+        }
+
+        body.light .server-card {
+            background: #ffffff;
+            border-color: #e0e0e0;
+        }
+
+        body.light .server-card:hover {
+            border-color: #dc3545;
+        }
+
+        body.light .message.success,
+        body.light .message.error {
+            background: rgba(220, 53, 69, 0.1);
+            border-color: rgba(220, 53, 69, 0.3);
+        }
+
+        body.light .message.success {
+            color: #28a745;
+        }
+
+        body.light .message.error {
+            color: #dc3545;
+        }
+
+        /* Smooth transitions for all elements */
+        h1, h2, h3, h4, .subtitle, .bot-card, .form-section, .server-card,
+        .form-group input, .form-group select, .bot-card-header, .bot-info h3 {
+            transition: color 0.5s ease, background-color 0.5s ease, border-color 0.5s ease;
+        }
+
+        /* Light mode styles for dynamically generated content */
+        body.light .bot-info-card {
+            background: #ffffff !important;
+            border-color: #e0e0e0 !important;
+        }
+
+        body.light .info-label {
+            color: #666666 !important;
+        }
+
+        body.light .info-value {
+            color: #000000 !important;
+        }
+
+        body.light .server-info {
+            color: #666666 !important;
+        }
+
+        body.light .server-card h4 {
+            color: #000000 !important;
+        }
+
+        body.light .bot-status-text {
+            color: #666666 !important;
+        }
+
+        body.light .empty-message {
+            color: #666666 !important;
+        }
+
+        body.light .form-hint {
+            color: #666666 !important;
+        }
     </style>
 </head>
 <body>
+    <!-- Theme Toggle Button -->
+    <button class="theme-toggle" id="themeToggle" title="Toggle Dark/Light Mode">
+        🌙
+    </button>
+
     <div class="container">
         <h1>🤖 GO BLOX Bot Control</h1>
         <p class="subtitle">Manage your Discord bots remotely</p>
@@ -243,7 +531,7 @@
         <div id="botListView">
             <div class="header-actions">
                 <h2>Your Bots</h2>
-                <button class="btn btn-primary" onclick="showAddBotForm()">➕ Add Bot</button>
+                <button class="btn btn-success" onclick="showAddBotForm()">➕ Add Bot</button>
             </div>
             <div class="bot-list" id="botList"></div>
         </div>
@@ -286,7 +574,7 @@
                     <input type="number" id="botPort" placeholder="7777" value="7777">
                 </div>
 
-                <p style="color: #666; font-size: 12px; margin-top: -10px; margin-bottom: 10px;">
+                <p class="form-hint" style="color: #cccccc; font-size: 12px; margin-top: -10px; margin-bottom: 10px; transition: color 0.5s ease;">
                     💡 Bot name and icon will be automatically synced from Discord when the bot is running
                 </p>
 
@@ -321,8 +609,8 @@
                 if (bots.length === 0) {
                     botListEl.innerHTML = `
                         <div style="grid-column: 1/-1; text-align: center; padding: 40px;">
-                            <p style="color: #666; margin-bottom: 20px;">No bots configured yet</p>
-                            <button class="btn btn-primary" onclick="showAddBotForm()">➕ Add Your First Bot</button>
+                            <p class="empty-message" style="color: #cccccc; margin-bottom: 20px; transition: color 0.5s ease;">No bots configured yet</p>
+                            <button class="btn btn-success" onclick="showAddBotForm()">➕ Add Your First Bot</button>
                         </div>
                     `;
                 } else {
@@ -337,8 +625,8 @@
                                     <span class="bot-type ${bot.bot_type}">${bot.bot_type}</span>
                                 </div>
                             </div>
-                            <div style="color: #666; font-size: 12px;">
-                                <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: ${bot.status === 'running' ? '#10b981' : bot.status === 'starting' ? '#f59e0b' : bot.status === 'stopping' ? '#ef4444' : '#6b7280'}; margin-right: 4px;"></span>
+                            <div class="bot-status-text" style="color: #cccccc; font-size: 12px; transition: color 0.5s ease;">
+                                <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: ${bot.status === 'running' ? '#28a745' : bot.status === 'starting' ? '#ffc107' : bot.status === 'stopping' ? '#ff4444' : '#666666'}; margin-right: 4px; box-shadow: 0 0 6px ${bot.status === 'running' ? 'rgba(40, 167, 69, 0.5)' : bot.status === 'starting' ? 'rgba(255, 193, 7, 0.5)' : 'transparent'};"></span>
                                 ${bot.status || 'stopped'}
                                 ${bot.bot_type === 'official' ? ` • Port: ${bot.port}` : ''}
                             </div>
@@ -502,52 +790,50 @@
                         <div style="display: flex; gap: 10px;">
                             <button class="btn btn-success" onclick="startBot('${bot.id}')" id="startBtn_${bot.id}" ${bot.status === 'running' || bot.status === 'starting' ? 'disabled' : ''}>▶️ Start</button>
                             <button class="btn btn-danger" onclick="stopBot('${bot.id}')" id="stopBtn_${bot.id}" ${bot.status !== 'running' && bot.status !== 'starting' ? 'disabled' : ''}>⏹️ Stop</button>
-                            <button class="btn btn-secondary" onclick="restartBot('${bot.id}')" id="restartBtn_${bot.id}" ${bot.status !== 'running' && bot.status !== 'starting' ? 'disabled' : ''}>🔄 Restart</button>
+                            <button class="btn btn-warning" onclick="restartBot('${bot.id}')" id="restartBtn_${bot.id}" ${bot.status !== 'running' && bot.status !== 'starting' ? 'disabled' : ''}>🔄 Restart</button>
                             <button class="btn btn-danger" onclick="deleteBot('${bot.id}')">🗑️ Delete</button>
                         </div>
                     </div>
 
-                    <div style="background: #f8f9fa; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+                    <div class="bot-info-card" style="background: #0d0d0d; border-radius: 14px; padding: 24px; margin-bottom: 20px; border: 1px solid #333333; transition: background-color 0.5s ease, border-color 0.5s ease;">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px;">
                             <div>
-                                <div style="color: #666; font-size: 12px;">Status</div>
-                                <div style="font-weight: 600;">
-                                    <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${bot.status === 'running' ? '#10b981' : bot.status === 'starting' ? '#f59e0b' : bot.status === 'stopping' ? '#ef4444' : '#6b7280'}; margin-right: 6px;"></span>
+                                <div class="info-label" style="color: #cccccc; font-size: 12px; margin-bottom: 4px; transition: color 0.5s ease;">Status</div>
+                                <div class="info-value" style="font-weight: 600; color: #ffffff; transition: color 0.5s ease;">
+                                    <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${bot.status === 'running' ? '#28a745' : bot.status === 'starting' ? '#ffc107' : bot.status === 'stopping' ? '#ff4444' : '#666666'}; margin-right: 8px; box-shadow: 0 0 8px ${bot.status === 'running' ? 'rgba(40, 167, 69, 0.6)' : bot.status === 'starting' ? 'rgba(255, 193, 7, 0.6)' : 'transparent'};"></span>
                                     ${bot.status || 'stopped'}
                                 </div>
                             </div>
                             ${bot.process_id ? `
                             <div>
-                                <div style="color: #666; font-size: 12px;">Process ID</div>
-                                <div style="font-weight: 600;">${bot.process_id}</div>
+                                <div class="info-label" style="color: #cccccc; font-size: 12px; margin-bottom: 4px; transition: color 0.5s ease;">Process ID</div>
+                                <div class="info-value" style="font-weight: 600; color: #ffffff; transition: color 0.5s ease;">${bot.process_id}</div>
                             </div>
                             ` : ''}
                             ${bot.uptime_ms && bot.uptime_ms > 0 ? `
                             <div>
-                                <div style="color: #666; font-size: 12px;">Uptime</div>
-                                <div style="font-weight: 600;">${formatUptime(bot.uptime_ms)}</div>
+                                <div class="info-label" style="color: #cccccc; font-size: 12px; margin-bottom: 4px; transition: color 0.5s ease;">Uptime</div>
+                                <div class="info-value" style="font-weight: 600; color: #ffffff; transition: color 0.5s ease;">${formatUptime(bot.uptime_ms)}</div>
                             </div>
                             ` : ''}
                             ${bot.bot_type === 'official' ? `
                             <div>
-                                <div style="color: #666; font-size: 12px;">Port</div>
-                                <div style="font-weight: 600;">${bot.port}</div>
+                                <div class="info-label" style="color: #cccccc; font-size: 12px; margin-bottom: 4px; transition: color 0.5s ease;">Port</div>
+                                <div class="info-value" style="font-weight: 600; color: #ffffff; transition: color 0.5s ease;">${bot.port}</div>
                             </div>
                             ${bot.application_id ? `
-                            <div>
-                                <div style="color: #666; font-size: 12px;">Invite URL</div>
-                                <div style="font-weight: 600; font-size: 11px;">
-                                    <a href="https://discord.com/api/oauth2/authorize?client_id=${bot.application_id}&permissions=8&scope=bot" target="_blank" style="color: #667eea; text-decoration: none; word-break: break-all;">
-                                        Invite Bot
-                                    </a>
-                                </div>
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                                <div class="info-label" style="color: #cccccc; font-size: 12px; transition: color 0.5s ease;">Invite Bot</div>
+                                <button class="btn btn-primary" onclick="window.open('https://discord.com/api/oauth2/authorize?client_id=${bot.application_id}&permissions=8&scope=bot', '_blank')" style="font-size: 13px; padding: 8px 16px;">
+                                    🔗 Invite Bot
+                                </button>
                             </div>
                             ` : ''}
                             ` : ''}
                             ${bot.connect_to && bot.connected_bot_name ? `
                             <div>
-                                <div style="color: #666; font-size: 12px;">Connected To</div>
-                                <div style="font-weight: 600;">${bot.connected_bot_name}</div>
+                                <div class="info-label" style="color: #cccccc; font-size: 12px; margin-bottom: 4px; transition: color 0.5s ease;">Connected To</div>
+                                <div class="info-value" style="font-weight: 600; color: #ffffff; transition: color 0.5s ease;">${bot.connected_bot_name}</div>
                             </div>
                             ` : ''}
                         </div>
@@ -555,15 +841,15 @@
 
                     <h3 style="margin-bottom: 20px;">Servers (${servers.length})</h3>
                     <div class="server-list">
-                        ${servers.length === 0 ? '<p style="grid-column: 1/-1; text-align: center; color: #666; padding: 40px;">No servers yet. Bot will sync servers automatically when running.</p>' :
+                        ${servers.length === 0 ? '<p class="empty-message" style="grid-column: 1/-1; text-align: center; color: #cccccc; padding: 40px; transition: color 0.5s ease;">No servers yet. Bot will sync servers automatically when running.</p>' :
                         servers.map(server => `
                             <div class="server-card">
-                                ${server.server_icon ? `<img src="${server.server_icon}" class="server-icon">` : '<div class="server-icon" style="background: #667eea;"></div>'}
-                                <h4>${server.name}</h4>
-                                <div style="font-size: 12px; color: #666; margin-top: 8px;">
-                                    <div>👥 ${server.total_members} members</div>
-                                    <div>📊 Level ${server.boost_level}</div>
-                                    <div>🚀 ${server.total_boosters} boosters</div>
+                                ${server.server_icon ? `<img src="${server.server_icon}" class="server-icon">` : '<div class="server-icon" style="background: #dc3545;"></div>'}
+                                <h4 style="color: #ffffff; transition: color 0.5s ease;">${server.name}</h4>
+                                <div class="server-info" style="font-size: 12px; color: #cccccc; margin-top: 12px; transition: color 0.5s ease;">
+                                    <div style="margin-bottom: 6px;">👥 ${server.total_members} members</div>
+                                    <div style="margin-bottom: 6px;">📊 Level ${server.boost_level}</div>
+                                    <div style="margin-bottom: 6px;">🚀 ${server.total_boosters} boosters</div>
                                     <div>📝 ${server.total_channels} channels</div>
                                 </div>
                             </div>
@@ -736,6 +1022,66 @@
                 msgEl.style.display = 'none';
             }, 5000);
         }
+
+        // Theme Toggle Functionality
+        $(document).ready(function() {
+            // Check for saved theme preference or default to dark
+            const savedTheme = localStorage.getItem('theme') || 'dark';
+            if (savedTheme === 'light') {
+                $('body').addClass('light');
+                $('html').removeClass('dark');
+                $('#themeToggle').text('☀️');
+            } else {
+                $('body').removeClass('light');
+                $('html').addClass('dark');
+                $('#themeToggle').text('🌙');
+            }
+
+            // Theme toggle button click handler
+            $('#themeToggle').on('click', function() {
+                $('body').toggleClass('light');
+                
+                if ($('body').hasClass('light')) {
+                    $('html').removeClass('dark');
+                    $(this).html('☀️').fadeIn(200);
+                    localStorage.setItem('theme', 'light');
+                    
+                    // Animate all cards smoothly
+                    $('.bot-card, .server-card, .form-section').each(function(index) {
+                        $(this).css('opacity', 0);
+                        setTimeout(() => {
+                            $(this).css('transition', 'opacity 0.3s ease');
+                            $(this).css('opacity', 1);
+                        }, index * 20);
+                    });
+                } else {
+                    $('html').addClass('dark');
+                    $(this).html('🌙').fadeIn(200);
+                    localStorage.setItem('theme', 'dark');
+                    
+                    // Animate all cards smoothly
+                    $('.bot-card, .server-card, .form-section').each(function(index) {
+                        $(this).css('opacity', 0);
+                        setTimeout(() => {
+                            $(this).css('transition', 'opacity 0.3s ease');
+                            $(this).css('opacity', 1);
+                        }, index * 20);
+                    });
+                }
+
+                // Add rotation animation
+                $(this).css('transform', 'rotate(360deg)');
+                setTimeout(() => {
+                    $(this).css('transform', 'rotate(0deg)');
+                }, 300);
+            });
+
+            // Smooth fade-in on page load
+            $('.container').css('opacity', 0);
+            setTimeout(() => {
+                $('.container').animate({ opacity: 1 }, 500);
+            }, 100);
+        });
     </script>
 </body>
 </html>

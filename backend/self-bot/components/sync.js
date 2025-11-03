@@ -1,5 +1,6 @@
 import db from '../../../database/supabase.js';
 import logger from '../../logger.js';
+import { separateChannelsAndCategories, mapCategoriesForSync, mapChannelsForSync } from '../../utils.js';
 
 let client = null;
 let botId = null;
@@ -16,7 +17,7 @@ async function findBotById(botId) {
     }
 }
 
-// Sync server info for a guild (selfbots don't sync channels/roles, just server info)
+// Sync server info, channels, and categories for a guild
 async function syncGuildData(guild) {
     try {
         if (!botId) {
@@ -26,8 +27,8 @@ async function syncGuildData(guild) {
 
         // Fetch complete guild data
         await guild.fetch();
-
-        // Sync server info only (selfbots have limited permissions, can't fetch channels/roles)
+        
+        // Sync server info first (always sync this)
         const serverData = await db.upsertServer(botId, guild);
 
         if (!serverData) {
@@ -35,7 +36,35 @@ async function syncGuildData(guild) {
             return;
         }
 
-        logger.log(`✅ Synced server: ${guild.name} (${guild.memberCount} members)`);
+        const serverId = serverData.id;
+
+        // Sync channels and categories if available
+        try {
+            // Try to fetch channels (force refresh)
+            try {
+                await guild.channels.fetch();
+            } catch (fetchError) {
+                logger.log(`⚠️  Could not fetch channels for ${guild.name}: ${fetchError.message}`);
+            }
+            
+            if (guild.channels.cache.size > 0) {
+                // Separate channels and categories (excludes threads automatically)
+                const { categories, channels } = separateChannelsAndCategories(guild.channels.cache);
+                
+                // Sync categories first
+                const categoryMap = await db.syncCategories(serverId, mapCategoriesForSync(categories));
+                
+                // Sync channels (with category reference) - only text and news channels
+                await db.syncChannels(serverId, mapChannelsForSync(channels), categoryMap);
+                
+                logger.log(`✅ Synced server: ${guild.name} (${guild.memberCount} members, ${categories.length} categories, ${channels.length} channels)`);
+            } else {
+                logger.log(`✅ Synced server info: ${guild.name} (${guild.memberCount} members)`);
+            }
+        } catch (error) {
+            logger.log(`❌ Error syncing channels/categories for ${guild.name}: ${error.message}`);
+            logger.log(`✅ Synced server info: ${guild.name} (${guild.memberCount} members)`);
+        }
     } catch (error) {
         logger.log(`❌ Error syncing guild data for ${guild.name}: ${error.message}`);
     }
@@ -50,7 +79,7 @@ async function syncAllGuilds() {
         }
 
         const guilds = client.guilds.cache;
-        
+
         logger.log(`🔄 Syncing ${guilds.size} server(s)...`);
 
         for (const [guildId, guild] of guilds) {
@@ -66,14 +95,16 @@ async function updateBotInfo() {
     if (!botId || !client || !client.user) {
         return;
     }
-    
+
     try {
         const avatarUrl = client.user.displayAvatarURL({ dynamic: true, size: 256 });
+        // Use display name (globalName or displayName) if available, otherwise fall back to username
+        const displayName = client.user.globalName || client.user.displayName || client.user.username;
         await db.updateBot(botId, {
-            name: client.user.username,
+            name: displayName,
             bot_icon: avatarUrl || null
         });
-        logger.log(`✅ Updated selfbot name and icon from Discord: ${client.user.username}`);
+        logger.log(`✅ Updated selfbot name and icon from Discord: ${displayName}`);
     } catch (error) {
         logger.log(`⚠️  Failed to update bot info: ${error.message}`);
     }
@@ -81,7 +112,7 @@ async function updateBotInfo() {
 
 async function init(discordClient, botIdFromEnv) {
     client = discordClient;
-    
+
     // Use BOT_ID from environment (set by control panel)
     if (botIdFromEnv) {
         botId = botIdFromEnv;
@@ -93,6 +124,8 @@ async function init(discordClient, botIdFromEnv) {
             if (client.user) {
                 await updateBotInfo();
             }
+        } else {
+            logger.log(`❌ Selfbot not found in database with ID: ${botId}`);
         }
     } else {
         logger.log(`⚠️  BOT_ID not set. Sync will be limited.`);
@@ -139,12 +172,31 @@ async function init(discordClient, botIdFromEnv) {
         }
     });
 
-    // Periodic sync every 30 seconds
+    // Sync on channel changes
+    client.on('channelCreate', async (channel) => {
+        if (channel.guild && botId) {
+            await syncGuildData(channel.guild);
+        }
+    });
+
+    client.on('channelUpdate', async (oldChannel, newChannel) => {
+        if (newChannel.guild && botId) {
+            await syncGuildData(newChannel.guild);
+        }
+    });
+
+    client.on('channelDelete', async (channel) => {
+        if (channel.guild && botId) {
+            await syncGuildData(channel.guild);
+        }
+    });
+
+    // Periodic sync every 1 minute
     syncInterval = setInterval(async () => {
         if (botId) {
             await syncAllGuilds();
         }
-    }, 30000);
+    }, 60000); // 1 minute
 
     logger.log('🔄 Selfbot sync component initialized');
 }
@@ -163,4 +215,3 @@ export default {
     syncAllGuilds,
     updateBotInfo
 };
-

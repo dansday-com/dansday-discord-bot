@@ -1,5 +1,6 @@
 import db from '../../../database/supabase.js';
 import logger from '../../logger.js';
+import { separateChannelsAndCategories, mapCategoriesForSync, mapChannelsForSync } from '../../utils.js';
 
 let client = null;
 let botId = null;
@@ -50,16 +51,14 @@ async function syncGuildData(guild) {
 
         const serverId = serverData.id;
 
-        // Get all channels
-        const channels = Array.from(guild.channels.cache.values());
+        // Separate channels and categories (excludes threads automatically)
+        const { categories, channels } = separateChannelsAndCategories(guild.channels.cache);
         
-        // Sync channels to database
-        await db.syncChannels(serverId, channels.map(ch => ({
-            id: ch.id,
-            name: ch.name,
-            type: ch.type,
-            parent_id: ch.parentId
-        })));
+        // Sync categories first
+        const categoryMap = await db.syncCategories(serverId, mapCategoriesForSync(categories));
+        
+        // Sync channels (with category reference)
+        await db.syncChannels(serverId, mapChannelsForSync(channels), categoryMap);
 
         // Get all roles
         const roles = Array.from(guild.roles.cache.values());
@@ -73,7 +72,7 @@ async function syncGuildData(guild) {
             permissions: role.permissions
         })));
 
-        logger.log(`✅ Synced server: ${guild.name} (${guild.memberCount} members, ${channels.length} channels, ${roles.length} roles)`);
+        logger.log(`✅ Synced server: ${guild.name} (${guild.memberCount} members, ${categories.length} categories, ${channels.length} channels, ${roles.length} roles)`);
     } catch (error) {
         logger.log(`❌ Error syncing guild data for ${guild.name}: ${error.message}`);
     }
@@ -102,11 +101,13 @@ async function updateBotInfo() {
     
     try {
         const avatarUrl = client.user.displayAvatarURL({ dynamic: true, size: 256 });
+        // Use display name (globalName) if available, otherwise fall back to username
+        const displayName = client.user.globalName || client.user.username;
         await db.updateBot(botId, {
-            name: client.user.username,
+            name: displayName,
             bot_icon: avatarUrl || null
         });
-        logger.log(`✅ Updated bot name and icon from Discord: ${client.user.username}`);
+        logger.log(`✅ Updated bot name and icon from Discord: ${displayName}`);
     } catch (error) {
         logger.log(`⚠️  Failed to update bot info: ${error.message}`);
     }
@@ -189,12 +190,12 @@ async function init(discordClient, botToken) {
         }
     });
 
-    // Real-time sync: Update server stats every 30 seconds
+    // Real-time sync: Update server stats every 1 minute
     syncInterval = setInterval(async () => {
         if (botId) {
             await syncAllGuilds();
         }
-    }, 30 * 1000); // 30 seconds for real-time updates
+    }, 60 * 1000); // 1 minute for real-time updates
 
     // Also sync on member count changes
     client.on('guildMemberAdd', async (member) => {

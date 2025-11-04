@@ -1,50 +1,18 @@
-import { spawn } from "child_process";
-import { fileURLToPath } from "url";
-import { dirname, join } from "path";
+// Frontend Control Panel Server
+// Run this separately to always have control panel access, even when bot is stopped
+// Usage: node main.js
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import controlPanel from './frontend/index.js';
 
-const args = process.argv.slice(2);
-const mode = args[0] || "both";
+console.log('🎛️ Starting Control Panel Server...');
+controlPanel.init().catch(err => {
+    console.error('Failed to start control panel:', err);
+    process.exit(1);
+});
 
-function startBot(botType) {
-    const botPath = join(__dirname, botType);
-    const child = spawn("node", ["main.js"], {
-        cwd: botPath,
-        stdio: "inherit",
-        shell: true
-    });
-
-    child.on("error", (err) => {
-        console.error(`Failed to start ${botType}:`, err);
-    });
-
-    child.on("exit", (code) => {
-        console.log(`${botType} exited with code ${code}`);
-    });
-
-    return child;
-}
-
-console.log("🚀 Starting GO BLOX Bot System...");
-
-if (mode === "selfbot") {
-    console.log("📡 Starting Self-Bot only...");
-    startBot("self-bot");
-} else if (mode === "official") {
-    console.log("🤖 Starting Official Bot only...");
-    startBot("official-bot");
-} else {
-    console.log("🔄 Starting both Self-Bot and Official Bot...");
-    const selfBot = startBot("self-bot");
-    const officialBot = startBot("official-bot");
-
-    // Handle graceful shutdown
-    process.on("SIGINT", () => {
-        console.log("\n🛑 Shutting down bots...");
-        selfBot.kill("SIGINT");
-        officialBot.kill("SIGINT");
-        process.exit(0);
-    });
-}
+// Keep the process alive
+process.on('SIGINT', () => {
+    console.log('\n🛑 Shutting down control panel...');
+    controlPanel.stop();
+    process.exit(0);
+});

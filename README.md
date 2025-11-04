@@ -31,37 +31,42 @@ A Discord bot system that separates self-bot monitoring from official bot forwar
 
 ```
 go-blox-bot/
-├── main.js                 # Launcher script
+├── main.js                # Frontend entry point (control panel server)
 ├── package.json           # Single package.json with all dependencies
-├── config.js              # Configuration
-├── logger.js              # Shared logger utility
-├── utils.js               # Shared utilities
-├── self-bot/
-│   ├── main.js           # Self-bot entry point
-│   └── components/
-│       └── forwarder.js  # Message monitoring component
-└── official-bot/
-    ├── main.js           # Official bot entry point
-    └── components/
-        ├── forwarder.js  # Message forwarding component
-        ├── welcomer.js   # User welcoming component
-        ├── webhook.js    # Webhook server component
-        ├── commands.js   # Slash command system
-        ├── interface.js  # Interface component
-        ├── moderation.js # Moderation tracking component
-        ├── permissions.js # Permission checking system
-        ├── commands/     # Command definitions
-        │   └── admin/
-        │       └── setup.js  # Setup command
-        └── interface/    # Interface button handlers
-            ├── status.js # Status button handler
-            ├── help.js   # Help button handler
-            ├── pause.js  # Pause button handler
-            ├── sendmessage.js # Send message button handler
-            ├── inactive.js # Inactive members button handler
-            ├── customsupporterrole.js # Custom supporter role handler
-            ├── feedback.js # Feedback button handler
-            └── afk.js # AFK button handler
+├── frontend/
+│   ├── index.js          # Control panel server
+│   ├── index.html        # Web interface
+│   └── config.js         # Frontend configuration
+├── backend/
+│   ├── config.js         # Backend configuration
+│   ├── logger.js         # Logger utility
+│   ├── utils.js          # Utilities
+│   ├── official-bot/
+│   │   ├── officialbot.js # Official bot entry point
+│   │   └── components/
+│   │       ├── forwarder.js  # Message forwarding component
+│   │       ├── welcomer.js   # User welcoming component
+│   │       ├── webhook.js    # Webhook server component
+│   │       ├── commands.js   # Slash command system
+│   │       ├── interface.js  # Interface component
+│   │       ├── moderation.js # Moderation tracking component
+│   │       ├── permissions.js # Permission checking system
+│   │       ├── commands/     # Command definitions
+│   │       │   └── admin/
+│   │       │       └── setup.js  # Setup command
+│   │       └── interface/    # Interface button handlers
+│   │           ├── status.js # Status button handler
+│   │           ├── help.js   # Help button handler
+│   │           ├── pause.js  # Pause button handler
+│   │           ├── sendmessage.js # Send message button handler
+│   │           ├── inactive.js # Inactive members button handler
+│   │           ├── customsupporterrole.js # Custom supporter role handler
+│   │           ├── feedback.js # Feedback button handler
+│   │           └── afk.js # AFK button handler
+│   └── self-bot/
+│       ├── selfbot.js    # Self-bot entry point
+│       └── components/
+│           └── forwarder.js  # Message monitoring component
 ```
 
 ## Setup
@@ -74,39 +79,64 @@ go-blox-bot/
    > **Note**: This project uses a single `package.json` file for direct admin hosting compatibility.
 
 2. **Configure environment**:
-   - Edit `config.js`
+   - Edit `backend/config.js`
    - Set `ENV.PRODUCTION` to `true` for production or `false` for testing
 
 3. **Configure tokens**:
+   - Edit `backend/config.js`
    - Set `SELF_BOT_TOKEN` (your self-bot token)
    - Set `OFFICIAL_BOT_TOKEN` (your official bot token)
 
 4. **Configure communication**:
+   - Edit `backend/config.js`
    - Set `COMMUNICATION.WEBHOOK_URL` to local webhook server (default: `http://localhost:7777`)
    - Set `COMMUNICATION.SECRET_KEY` for webhook authentication
    - Set `COMMUNICATION.PORT` for webhook server (default: 7777)
 
 5. **Configure embed appearance**:
+   - Edit `backend/config.js`
    - Set `EMBED.COLOR` for embed color (default: red `0xff0000`)
    - Set `EMBED.FOOTER` for footer text (default: "Copyright GO BLOX [year]")
 
+6. **Configure database (Supabase)**:
+   - Create `.env` file in root directory (copy from `example.env`)
+   - Set `SUPABASE_URL` (your Supabase project URL) - Get from: Settings → API
+   - Set `SUPABASE_KEY` (your Supabase anon key) - Get from: Settings → API
+   - Set `DATABASE_URL` (PostgreSQL connection string) - Get from: Settings → Database → Connection pooler
+   - Run `npm run db:migrate` to create tables, or run SQL schema manually in Supabase SQL Editor
+
+7. **Configure control panel**:
+   - Control panel settings are now in `.env` file
+   - Set `CONTROL_PANEL_PORT` (default: 8888)
+
 ## Usage
 
-### Start both bots:
+### Start Control Panel (Recommended)
 ```bash
 npm start
 ```
 
-### Start individual bots:
-```bash
-npm run start:selfbot    # Self-bot only
-npm run start:official   # Official bot only
-```
+This starts the **Control Panel web interface**. Then:
+1. Open your browser: `http://your-server-ip:8888` (or `http://localhost:8888`)
+2. Complete the initial setup form (first time only):
+   - Enter Official Bot Token (required)
+   - Enter Secret Key (required)
+   - Enter Self-Bot Token (optional)
+   - Configure other settings
+3. Click "Start" to start the bot
+4. Use the web interface to Start/Stop/Restart anytime
 
-### Development mode (with auto-restart):
-```bash
-npm run dev
-```
+**Everything controlled from the web frontend - no SSH needed!** 🎉
+
+**Note:** First-time setup requires database tables. If `DATABASE_URL` is set in `.env`, tables will be created automatically. Otherwise, run the SQL schema from `database/schema.sql` in Supabase SQL Editor.
+
+### Control Panel Features
+- **Initial Setup Form**: Configure bot tokens and settings on first run
+- **Start Bot**: Start both bots or choose mode
+- **Stop Bot**: Gracefully stop the bot
+- **Restart Bot**: Restart with one click
+- **Live Status**: Shows PID, uptime, status (updates every 2 seconds)
+- **Database Integration**: All configurations stored in Supabase
 
 ## Slash Commands
 
@@ -311,7 +341,22 @@ The Send Message button provides a step-by-step process:
 
 ## Configuration
 
-All configuration is centralized in `config.js`:
+Configuration is separated into frontend and backend:
+
+### Environment Configuration (`.env`)
+- **SUPABASE_URL**: Your Supabase project URL (required for database queries)
+- **SUPABASE_KEY**: Your Supabase anon key (required for database queries)
+- **DATABASE_URL**: PostgreSQL connection string (required for automatic table creation)
+- **CONTROL_PANEL_PORT**: Control panel web interface port (default: 8888)
+
+### Database Configuration
+All bot configurations are stored in Supabase database:
+- **servers**: Bot server configurations (tokens, settings)
+- **channels**: Discord channel information (synced from Discord)
+- **roles**: Discord role information (synced from Discord)
+- **server_settings**: Additional server settings
+
+### Backend Configuration (`backend/config.js`)
 
 ### Core Configuration
 - **Source Channels**: Configure which channels to monitor
@@ -389,10 +434,14 @@ Located in `official-bot/components/interface/`:
 
 ## Troubleshooting
 
-1. **Self-bot not receiving messages**: Check source channel IDs and permissions
-2. **Official bot not forwarding**: Check target channel IDs and bot permissions
-3. **Communication issues**: Verify webhook URL or shared storage path
-4. **Token issues**: Ensure tokens are valid and have proper permissions
-5. **Interface not appearing**: Use `/interface #channel` to create the interface
-6. **Permission errors**: Interface creation requires Administrator permissions
-7. **Bot appears paused**: Use the Pause/Resume button in the interface to resume the bot
+1. **Database tables not found**: 
+   - Set `DATABASE_URL` in `.env` and run `npm run db:migrate`
+   - Or manually run SQL schema from `database/schema.sql` in Supabase SQL Editor
+2. **Setup form not working**: Check that database tables exist and Supabase credentials are correct
+3. **Self-bot not receiving messages**: Check source channel IDs and permissions
+4. **Official bot not forwarding**: Check target channel IDs and bot permissions
+5. **Communication issues**: Verify webhook URL and secret key
+6. **Token issues**: Ensure tokens are valid and have proper permissions
+7. **Interface not appearing**: Use `/interface #channel` to create the interface
+8. **Permission errors**: Interface creation requires Administrator permissions
+9. **Bot appears paused**: Use the Pause/Resume button in the interface to resume the bot

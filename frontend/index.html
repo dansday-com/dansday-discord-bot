@@ -23,7 +23,7 @@
         <div class="flex items-center gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 rounded-lg shadow-lg backdrop-blur-sm border text-sm sm:text-base"
             id="messageContent">
             <i id="messageIcon" class="text-lg sm:text-xl flex-shrink-0"></i>
-            <span id="messageText" class="break-words"></span>
+            <span id="messageAlertText" class="break-words"></span>
         </div>
     </div>
 
@@ -444,7 +444,7 @@
             class="bg-gray-800 rounded-2xl border border-gray-700 max-w-lg w-full p-4 sm:p-6 my-4 max-h-[90vh] flex flex-col">
             <!-- Modal Header -->
             <div class="flex items-center justify-between mb-4 sm:mb-6">
-                <h3 class="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+                <h3 id="channelSelectorTitle" class="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
                     <i class="fas fa-hashtag text-red-500"></i>
                     Select Channel
                 </h3>
@@ -467,6 +467,90 @@
             <div id="channelList" class="flex-1 overflow-y-auto space-y-2 min-h-0">
                 <!-- Channels will be rendered here -->
             </div>
+
+            <!-- Confirm Button (for multiselect) -->
+            <div id="channelSelectorConfirm" class="hidden mt-4 pt-4 border-t border-gray-700">
+                <button onclick="confirmMultiselectChannels()"
+                    class="w-full bg-red-600 hover:bg-red-700 text-white py-2.5 sm:py-3 rounded-lg transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 text-sm sm:text-base font-medium">
+                    <i class="fas fa-check"></i>
+                    <span>Confirm Selection</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Welcome Message Modal -->
+    <div id="messageModal"
+        class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div
+            class="bg-gray-800 rounded-2xl border border-gray-700 max-w-lg w-full p-4 sm:p-6 my-4 max-h-[90vh] flex flex-col">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between mb-4 sm:mb-6">
+                <h3 id="messageModalTitle" class="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+                    <i class="fas fa-comment-dots text-red-500"></i>
+                    Add Welcome Message
+                </h3>
+                <button onclick="closeMessageModal()" class="text-gray-400 hover:text-white transition-colors p-1">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Message Form -->
+            <form id="messageForm" onsubmit="return saveWelcomeMessage(event)" class="flex flex-col flex-1 min-h-0">
+                <div class="mb-4 flex-1 flex flex-col min-h-0">
+                    <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                        <i class="fas fa-comment mr-2"></i>Message
+                    </label>
+                    <textarea id="messageText" rows="6"
+                        class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all text-sm sm:text-base resize-none flex-1"
+                        placeholder="Enter welcome message... Use placeholders like {user}, {server}, etc."></textarea>
+                </div>
+
+                <!-- Placeholders Info -->
+                <div class="bg-blue-900 border border-blue-700 rounded-lg p-3 mb-4">
+                    <p class="text-xs text-blue-200 mb-2 font-medium">Available placeholders:</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-blue-300">
+                        <div class="flex items-center gap-2">
+                            <code class="bg-blue-800 px-1.5 py-0.5 rounded text-blue-200">{user}</code>
+                            <span>Mentions the new member</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <code class="bg-blue-800 px-1.5 py-0.5 rounded text-blue-200">{server}</code>
+                            <span>Server name</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <code class="bg-blue-800 px-1.5 py-0.5 rounded text-blue-200">{memberCount}</code>
+                            <span>Total member count</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <code class="bg-blue-800 px-1.5 py-0.5 rounded text-blue-200">{accountAge}</code>
+                            <span>Account age</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <code class="bg-blue-800 px-1.5 py-0.5 rounded text-blue-200">{date}</code>
+                            <span>Current date</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <code class="bg-blue-800 px-1.5 py-0.5 rounded text-blue-200">{time}</code>
+                            <span>Current time</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="flex gap-2 sm:gap-3 pt-2 border-t border-gray-700">
+                    <button type="button" onclick="closeMessageModal()"
+                        class="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2.5 sm:py-3 rounded-lg transition-colors text-sm sm:text-base font-medium">
+                        Cancel
+                    </button>
+                    <button type="submit" id="saveMessageBtn"
+                        class="flex-1 bg-red-600 hover:bg-red-700 text-white py-2.5 sm:py-3 rounded-lg transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 text-sm sm:text-base font-medium disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
+                        <i class="fas fa-spinner fa-spin hidden" id="saveMessageLoading"></i>
+                        <i class="fas fa-check"></i>
+                        <span>Save Message</span>
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -522,7 +606,7 @@
             const alert = document.getElementById('messageAlert');
             const content = document.getElementById('messageContent');
             const icon = document.getElementById('messageIcon');
-            const textEl = document.getElementById('messageText');
+            const textEl = document.getElementById('messageAlertText');
 
             // Remove existing color classes
             content.className = 'flex items-center gap-3 px-6 py-4 rounded-lg shadow-lg backdrop-blur-sm border';
@@ -1698,12 +1782,19 @@
                     `;
                     return; // Exit early, content will be set in promise
                 case 'welcomer':
-                    contentHTML += `
+                    // Render welcomer asynchronously
+                    renderWelcomer(settings).then(html => {
+                        contentContainer.innerHTML = contentHTML + html;
+                    });
+                    // Show loading state
+                    contentContainer.innerHTML = contentHTML + `
                         <div class="bg-gray-700 rounded-lg p-4 sm:p-6">
-                            <p class="text-gray-300 text-sm sm:text-base">Welcomer configuration settings will be available here.</p>
+                            <div class="flex items-center justify-center py-8">
+                                <i class="fas fa-spinner fa-spin text-2xl text-gray-400"></i>
+                            </div>
                         </div>
                     `;
-                    break;
+                    return; // Exit early, content will be set in promise
                 case 'booster':
                     contentHTML += `
                         <div class="bg-gray-700 rounded-lg p-4 sm:p-6">
@@ -1902,14 +1993,136 @@
             `;
         }
 
+        // Render Welcomer Configuration
+        async function renderWelcomer(settings) {
+            let config = {
+                channels: [],
+                messages: []
+            };
+
+            if (settings) {
+                if (settings.settings) {
+                    config = {
+                        channels: settings.settings.channels || [],
+                        messages: settings.settings.messages || []
+                    };
+                } else if (typeof settings === 'object') {
+                    config = {
+                        channels: settings.channels || [],
+                        messages: settings.messages || []
+                    };
+                }
+            }
+
+            // Load channel names for display
+            const channelNames = await loadChannelNames(config.channels || []);
+
+            return `
+                <form id="welcomerConfigForm" class="space-y-4 sm:space-y-6">
+                    <!-- Welcome Channels -->
+                    <div>
+                        <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                            <i class="fas fa-hashtag mr-2"></i>Welcome Channels
+                        </label>
+                        <button type="button" onclick="openChannelSelectorMultiselect('welcomer_channels')"
+                            class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 border border-gray-600 rounded-lg text-white text-left flex items-center justify-between hover:border-gray-500 transition-all text-sm sm:text-base">
+                            <span id="welcomer_channels_display" class="text-gray-300">
+                                ${config.channels && config.channels.length > 0
+                    ? `${config.channels.length} channel${config.channels.length > 1 ? 's' : ''} selected`
+                    : 'Select channels...'}
+                            </span>
+                            <i class="fas fa-chevron-down text-gray-400"></i>
+                        </button>
+                        <input type="hidden" id="welcomer_channels" name="welcomer_channels" value="${(config.channels || []).join(',')}">
+                        ${config.channels && config.channels.length > 0 ? `
+                            <div id="welcomer_channels_selected" class="mt-2 flex flex-wrap gap-2">
+                                ${config.channels.map(chId => `
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-red-600 text-white text-xs rounded-lg">
+                                        ${channelNames[chId] ? `#${channelNames[chId]}` : `Channel ${chId}`}
+                                        <button type="button" onclick="removeWelcomerChannel('${chId}')" class="hover:text-red-200 transition-colors">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </span>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+
+                    <!-- Welcome Messages -->
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="block text-xs sm:text-sm font-medium text-gray-300">
+                                <i class="fas fa-comment-dots mr-2"></i>Welcome Messages
+                            </label>
+                            <button type="button" onclick="openMessageModal()"
+                                class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs sm:text-sm rounded-lg transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] flex items-center gap-1.5">
+                                <i class="fas fa-plus"></i>
+                                <span class="hidden sm:inline">Add Message</span>
+                                <span class="sm:hidden">Add</span>
+                            </button>
+                        </div>
+                        <div id="welcomer_messages_list" class="space-y-2">
+                            ${config.messages && config.messages.length > 0
+                    ? config.messages.map((msg, index) => `
+                                    <div class="bg-gray-700 rounded-lg p-3 sm:p-4 flex items-start justify-between gap-3">
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-white text-sm sm:text-base break-words">${escapeHtml(msg)}</p>
+                                        </div>
+                                        <div class="flex items-center gap-2 flex-shrink-0">
+                                            <button type="button" onclick="editWelcomeMessage(${index})"
+                                                class="p-2 bg-gray-600 hover:bg-gray-500 text-white rounded-lg transition-colors">
+                                                <i class="fas fa-edit text-xs"></i>
+                                            </button>
+                                            <button type="button" onclick="deleteWelcomeMessage(${index})"
+                                                class="p-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors">
+                                                <i class="fas fa-trash text-xs"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                `).join('')
+                    : `
+                                    <div class="bg-gray-700 rounded-lg p-4 sm:p-6 text-center">
+                                        <i class="fas fa-inbox text-3xl text-gray-500 mb-2"></i>
+                                        <p class="text-gray-400 text-sm sm:text-base">No welcome messages configured</p>
+                                        <p class="text-gray-500 text-xs mt-1">Add a message to get started</p>
+                                    </div>
+                                `}
+                        </div>
+                        <input type="hidden" id="welcomer_messages" name="welcomer_messages" value="${JSON.stringify(config.messages || [])}">
+                    </div>
+
+                    <!-- Save Button -->
+                    <div class="pt-4 border-t border-gray-700">
+                        <button type="submit" id="saveWelcomerConfigBtn"
+                            class="w-full bg-red-600 hover:bg-red-700 text-white py-2.5 sm:py-3 rounded-lg transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 text-sm sm:text-base font-medium disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
+                            <i class="fas fa-spinner fa-spin hidden" id="saveWelcomerConfigLoading"></i>
+                            <i class="fas fa-save"></i>
+                            <span>Save Configuration</span>
+                        </button>
+                    </div>
+                </form>
+            `;
+        }
+
+        // Helper function to escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
         // Channel Selector Modal
         let currentChannelField = null;
+        let isMultiselectMode = false;
+        let selectedChannels = [];
         let allChannels = [];
 
         // Open channel selector
         async function openChannelSelector(fieldId) {
             currentChannelField = fieldId;
-            
+            isMultiselectMode = false;
+            selectedChannels = [];
+
             try {
                 // Load channels and categories
                 const [channelsRes, categoriesRes] = await Promise.all([
@@ -1928,7 +2141,52 @@
 
                 allChannels = channelsRes.ok ? await channelsRes.json() : [];
                 allCategories = categoriesRes.ok ? await categoriesRes.json() : [];
-                
+
+                // Update modal title
+                document.getElementById('channelSelectorTitle').innerHTML = '<i class="fas fa-hashtag text-red-500"></i> Select Channel';
+                document.getElementById('channelSelectorConfirm').classList.add('hidden');
+
+                // Show modal
+                document.getElementById('channelSelectorModal').classList.remove('hidden');
+                renderChannelList(allChannels, allCategories);
+            } catch (err) {
+                console.error('Error loading channels:', err);
+                showMessage('Failed to load channels', 'error');
+            }
+        }
+
+        // Open channel selector in multiselect mode
+        async function openChannelSelectorMultiselect(fieldId) {
+            currentChannelField = fieldId;
+            isMultiselectMode = true;
+
+            // Get current selected channels
+            const hiddenInput = document.getElementById(fieldId);
+            selectedChannels = hiddenInput && hiddenInput.value ? hiddenInput.value.split(',').filter(Boolean) : [];
+
+            try {
+                // Load channels and categories
+                const [channelsRes, categoriesRes] = await Promise.all([
+                    fetch(`/api/servers/${currentServerId}/channels`, {
+                        credentials: 'include'
+                    }),
+                    fetch(`/api/servers/${currentServerId}/categories`, {
+                        credentials: 'include'
+                    })
+                ]);
+
+                if (channelsRes.status === 401 || categoriesRes.status === 401) {
+                    await checkAuthStatus();
+                    return;
+                }
+
+                allChannels = channelsRes.ok ? await channelsRes.json() : [];
+                allCategories = categoriesRes.ok ? await categoriesRes.json() : [];
+
+                // Update modal title
+                document.getElementById('channelSelectorTitle').innerHTML = '<i class="fas fa-hashtag text-red-500"></i> Select Channels';
+                document.getElementById('channelSelectorConfirm').classList.remove('hidden');
+
                 // Show modal
                 document.getElementById('channelSelectorModal').classList.remove('hidden');
                 renderChannelList(allChannels, allCategories);
@@ -1943,12 +2201,14 @@
             document.getElementById('channelSelectorModal').classList.add('hidden');
             document.getElementById('channelSearchInput').value = '';
             currentChannelField = null;
+            isMultiselectMode = false;
+            selectedChannels = [];
         }
 
         // Render channel list
         function renderChannelList(channels, categories) {
             const channelList = document.getElementById('channelList');
-            
+
             if (!channels || channels.length === 0) {
                 channelList.innerHTML = `
                     <div class="text-center py-8 text-gray-400 text-sm">
@@ -2011,23 +2271,40 @@
                         </div>
                         <div class="space-y-1">
                             ${categoryChannels.map(channel => {
-                                const channelName = channel.name || `Channel ${channel.discord_channel_id}`;
-                                const channelType = channel.type === '0' ? 'Text' : channel.type === '2' ? 'Voice' : 'Other';
-                                
-                                return `
-                                    <button onclick="selectChannel('${channel.discord_channel_id}', '${channelName.replace(/'/g, "\\'")}')"
-                                        class="w-full text-left px-4 py-2.5 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors flex items-center justify-between group">
-                                        <div class="flex items-center gap-3 flex-1 min-w-0">
-                                            <i class="fas fa-hashtag text-gray-400 group-hover:text-white transition-colors flex-shrink-0 text-sm"></i>
-                                            <div class="flex-1 min-w-0">
-                                                <p class="text-white font-medium truncate text-sm">${channelName}</p>
-                                                <p class="text-xs text-gray-400">${channelType}</p>
+                    const channelName = channel.name || `Channel ${channel.discord_channel_id}`;
+                    const channelType = channel.type === '0' ? 'Text' : channel.type === '2' ? 'Voice' : 'Other';
+                    const isSelected = isMultiselectMode && selectedChannels.includes(channel.discord_channel_id);
+
+                    if (isMultiselectMode) {
+                        return `
+                                        <button onclick="toggleChannelSelection('${channel.discord_channel_id}')"
+                                            class="w-full text-left px-4 py-2.5 ${isSelected ? 'bg-red-900 border border-red-600' : 'bg-gray-700 hover:bg-gray-600'} rounded-lg transition-colors flex items-center justify-between group cursor-pointer">
+                                            <div class="flex items-center gap-3 flex-1 min-w-0">
+                                                <i class="fas fa-hashtag ${isSelected ? 'text-red-400' : 'text-gray-400 group-hover:text-white'} transition-colors flex-shrink-0 text-sm"></i>
+                                                <div class="flex-1 min-w-0">
+                                                    <p class="text-white font-medium truncate text-sm">${channelName}</p>
+                                                    <p class="text-xs text-gray-400">${channelType}</p>
+                                                </div>
                                             </div>
-                                        </div>
-                                        <i class="fas fa-chevron-right text-gray-500 group-hover:text-white transition-colors text-xs"></i>
-                                    </button>
-                                `;
-                            }).join('')}
+                                            ${isSelected ? '<i class="fas fa-check text-red-500 text-sm"></i>' : '<i class="fas fa-check text-transparent text-sm"></i>'}
+                                        </button>
+                                    `;
+                    } else {
+                        return `
+                                        <button onclick="selectChannel('${channel.discord_channel_id}', '${channelName.replace(/'/g, "\\'")}')"
+                                            class="w-full text-left px-4 py-2.5 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors flex items-center justify-between group">
+                                            <div class="flex items-center gap-3 flex-1 min-w-0">
+                                                <i class="fas fa-hashtag text-gray-400 group-hover:text-white transition-colors flex-shrink-0 text-sm"></i>
+                                                <div class="flex-1 min-w-0">
+                                                    <p class="text-white font-medium truncate text-sm">${channelName}</p>
+                                                    <p class="text-xs text-gray-400">${channelType}</p>
+                                                </div>
+                                            </div>
+                                            <i class="fas fa-chevron-right text-gray-500 group-hover:text-white transition-colors text-xs"></i>
+                                        </button>
+                                    `;
+                    }
+                }).join('')}
                         </div>
                     </div>
                 `;
@@ -2046,23 +2323,40 @@
                         </div>
                         <div class="space-y-1">
                             ${uncategorizedChannels.map(channel => {
-                                const channelName = channel.name || `Channel ${channel.discord_channel_id}`;
-                                const channelType = channel.type === '0' ? 'Text' : channel.type === '2' ? 'Voice' : 'Other';
-                                
-                                return `
-                                    <button onclick="selectChannel('${channel.discord_channel_id}', '${channelName.replace(/'/g, "\\'")}')"
-                                        class="w-full text-left px-4 py-2.5 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors flex items-center justify-between group">
-                                        <div class="flex items-center gap-3 flex-1 min-w-0">
-                                            <i class="fas fa-hashtag text-gray-400 group-hover:text-white transition-colors flex-shrink-0 text-sm"></i>
-                                            <div class="flex-1 min-w-0">
-                                                <p class="text-white font-medium truncate text-sm">${channelName}</p>
-                                                <p class="text-xs text-gray-400">${channelType}</p>
+                    const channelName = channel.name || `Channel ${channel.discord_channel_id}`;
+                    const channelType = channel.type === '0' ? 'Text' : channel.type === '2' ? 'Voice' : 'Other';
+                    const isSelected = isMultiselectMode && selectedChannels.includes(channel.discord_channel_id);
+
+                    if (isMultiselectMode) {
+                        return `
+                                        <button onclick="toggleChannelSelection('${channel.discord_channel_id}')"
+                                            class="w-full text-left px-4 py-2.5 ${isSelected ? 'bg-red-900 border border-red-600' : 'bg-gray-700 hover:bg-gray-600'} rounded-lg transition-colors flex items-center justify-between group cursor-pointer">
+                                            <div class="flex items-center gap-3 flex-1 min-w-0">
+                                                <i class="fas fa-hashtag ${isSelected ? 'text-red-400' : 'text-gray-400 group-hover:text-white'} transition-colors flex-shrink-0 text-sm"></i>
+                                                <div class="flex-1 min-w-0">
+                                                    <p class="text-white font-medium truncate text-sm">${channelName}</p>
+                                                    <p class="text-xs text-gray-400">${channelType}</p>
+                                                </div>
                                             </div>
-                                        </div>
-                                        <i class="fas fa-chevron-right text-gray-500 group-hover:text-white transition-colors text-xs"></i>
-                                    </button>
-                                `;
-                            }).join('')}
+                                            ${isSelected ? '<i class="fas fa-check text-red-500 text-sm"></i>' : '<i class="fas fa-check text-transparent text-sm"></i>'}
+                                        </button>
+                                    `;
+                    } else {
+                        return `
+                                        <button onclick="selectChannel('${channel.discord_channel_id}', '${channelName.replace(/'/g, "\\'")}')"
+                                            class="w-full text-left px-4 py-2.5 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors flex items-center justify-between group">
+                                            <div class="flex items-center gap-3 flex-1 min-w-0">
+                                                <i class="fas fa-hashtag text-gray-400 group-hover:text-white transition-colors flex-shrink-0 text-sm"></i>
+                                                <div class="flex-1 min-w-0">
+                                                    <p class="text-white font-medium truncate text-sm">${channelName}</p>
+                                                    <p class="text-xs text-gray-400">${channelType}</p>
+                                                </div>
+                                            </div>
+                                            <i class="fas fa-chevron-right text-gray-500 group-hover:text-white transition-colors text-xs"></i>
+                                        </button>
+                                    `;
+                    }
+                }).join('')}
                         </div>
                     </div>
                 `;
@@ -2080,14 +2374,14 @@
         let allCategories = [];
         function searchChannels() {
             const searchTerm = document.getElementById('channelSearchInput').value.toLowerCase();
-            
+
             if (!searchTerm) {
                 renderChannelList(allChannels, allCategories);
                 return;
             }
 
             // Filter channels by name or ID
-            const filteredChannels = allChannels.filter(ch => 
+            const filteredChannels = allChannels.filter(ch =>
                 (ch.name || '').toLowerCase().includes(searchTerm) ||
                 (ch.discord_channel_id || '').includes(searchTerm)
             );
@@ -2107,7 +2401,7 @@
             });
 
             // Include channels from matching categories
-            const channelsFromMatchingCategories = allChannels.filter(ch => 
+            const channelsFromMatchingCategories = allChannels.filter(ch =>
                 ch.category_id && matchingCategoryIds.has(ch.category_id)
             );
 
@@ -2117,13 +2411,94 @@
                 channelMap.set(ch.id, ch);
             });
             const combinedChannels = Array.from(channelMap.values());
-            
+
             renderChannelList(combinedChannels, allCategories);
         }
 
-        // Select channel
+        // Toggle channel selection (multiselect mode)
+        function toggleChannelSelection(channelId) {
+            if (!isMultiselectMode) return;
+
+            const index = selectedChannels.indexOf(channelId);
+            if (index > -1) {
+                selectedChannels.splice(index, 1);
+            } else {
+                selectedChannels.push(channelId);
+            }
+
+            // Re-render to update checkboxes
+            renderChannelList(allChannels, allCategories);
+        }
+
+        // Confirm multiselect channels
+        async function confirmMultiselectChannels() {
+            if (!currentChannelField || !isMultiselectMode) return;
+
+            // Update hidden input
+            document.getElementById(currentChannelField).value = selectedChannels.join(',');
+
+            // Update display
+            const displayEl = document.getElementById(`${currentChannelField}_display`);
+            if (displayEl) {
+                const count = selectedChannels.length;
+                displayEl.textContent = `${count} channel${count !== 1 ? 's' : ''} selected`;
+            }
+
+            // Update selected channels display
+            await updateSelectedChannelsDisplay();
+
+            closeChannelSelector();
+        }
+
+        // Update selected channels display
+        async function updateSelectedChannelsDisplay() {
+            const hiddenInput = document.getElementById('welcomer_channels');
+            if (!hiddenInput) return;
+
+            const channelIds = hiddenInput.value ? hiddenInput.value.split(',').filter(Boolean) : [];
+            const displayEl = document.getElementById('welcomer_channels_selected');
+
+            if (channelIds.length === 0) {
+                if (displayEl) displayEl.innerHTML = '';
+                return;
+            }
+
+            const channelNames = await loadChannelNames(channelIds);
+
+            if (displayEl) {
+                displayEl.innerHTML = channelIds.map(chId => `
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-red-600 text-white text-xs rounded-lg">
+                        ${channelNames[chId] ? `#${channelNames[chId]}` : `Channel ${chId}`}
+                        <button type="button" onclick="removeWelcomerChannel('${chId}')" class="hover:text-red-200 transition-colors">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </span>
+                `).join('');
+            }
+        }
+
+        // Remove welcomer channel
+        async function removeWelcomerChannel(channelId) {
+            const hiddenInput = document.getElementById('welcomer_channels');
+            if (!hiddenInput) return;
+
+            const channelIds = hiddenInput.value ? hiddenInput.value.split(',').filter(Boolean) : [];
+            const filtered = channelIds.filter(id => id !== channelId);
+            hiddenInput.value = filtered.join(',');
+
+            // Update display
+            const displayEl = document.getElementById('welcomer_channels_display');
+            if (displayEl) {
+                const count = filtered.length;
+                displayEl.textContent = count > 0 ? `${count} channel${count !== 1 ? 's' : ''} selected` : 'Select channels...';
+            }
+
+            await updateSelectedChannelsDisplay();
+        }
+
+        // Select channel (single select mode)
         function selectChannel(channelId, channelName) {
-            if (!currentChannelField) return;
+            if (!currentChannelField || isMultiselectMode) return;
 
             // Update hidden input
             document.getElementById(currentChannelField).value = channelId;
@@ -2135,6 +2510,227 @@
             }
 
             closeChannelSelector();
+        }
+
+        // Welcome Message Management
+        let currentMessageIndex = null;
+        let isSavingMessage = false;
+
+        // Open message modal
+        function openMessageModal(index = null) {
+            currentMessageIndex = index;
+            const modal = document.getElementById('messageModal');
+            const title = document.getElementById('messageModalTitle');
+            const textarea = document.getElementById('messageText');
+
+            if (!modal || !title || !textarea) {
+                showMessage('Message modal elements not found', 'error');
+                return;
+            }
+
+            if (index !== null) {
+                // Edit mode
+                const hiddenInput = document.getElementById('welcomer_messages');
+                if (hiddenInput) {
+                    try {
+                        const messages = JSON.parse(hiddenInput.value || '[]');
+                        if (messages[index] !== undefined) {
+                            textarea.value = messages[index];
+                            title.innerHTML = '<i class="fas fa-comment-dots text-red-500"></i> Edit Welcome Message';
+                        } else {
+                            textarea.value = '';
+                            title.innerHTML = '<i class="fas fa-comment-dots text-red-500"></i> Add Welcome Message';
+                            currentMessageIndex = null;
+                        }
+                    } catch (err) {
+                        textarea.value = '';
+                        title.innerHTML = '<i class="fas fa-comment-dots text-red-500"></i> Add Welcome Message';
+                        currentMessageIndex = null;
+                    }
+                } else {
+                    textarea.value = '';
+                    title.innerHTML = '<i class="fas fa-comment-dots text-red-500"></i> Add Welcome Message';
+                    currentMessageIndex = null;
+                }
+            } else {
+                // Add mode
+                textarea.value = '';
+                title.innerHTML = '<i class="fas fa-comment-dots text-red-500"></i> Add Welcome Message';
+            }
+
+            modal.classList.remove('hidden');
+
+            // Focus textarea after modal is shown
+            setTimeout(() => {
+                const textareaEl = modal.querySelector('textarea#messageText');
+                if (textareaEl) {
+                    textareaEl.focus();
+                    if (textareaEl.value) {
+                        textareaEl.setSelectionRange(textareaEl.value.length, textareaEl.value.length);
+                    }
+                }
+            }, 50);
+        }
+
+        // Close message modal
+        function closeMessageModal() {
+            const modal = document.getElementById('messageModal');
+            if (modal) {
+                modal.classList.add('hidden');
+                const textarea = modal.querySelector('textarea#messageText');
+                if (textarea) {
+                    textarea.value = '';
+                }
+            }
+            currentMessageIndex = null;
+            isSavingMessage = false; // Reset flag when closing modal
+        }
+
+        // Save welcome message
+        function saveWelcomeMessage(event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+
+            // Prevent duplicate submissions
+            if (isSavingMessage) {
+                return false;
+            }
+
+            isSavingMessage = true;
+
+            // Get textarea from within the message modal
+            const messageModal = document.getElementById('messageModal');
+            const textarea = messageModal?.querySelector('textarea#messageText');
+
+            if (!textarea || textarea.tagName !== 'TEXTAREA') {
+                showMessage('Message field not found', 'error');
+                isSavingMessage = false;
+                return false;
+            }
+
+            // Read the value from textarea
+            const message = textarea.value ? String(textarea.value).trim() : '';
+
+            // Validate message
+            if (!message || message.length === 0) {
+                // Only show error if modal is still visible (user is actively trying to save)
+                const messageModal = document.getElementById('messageModal');
+                if (messageModal && !messageModal.classList.contains('hidden')) {
+                    showMessage('Message cannot be empty. Please enter a message.', 'error');
+                    if (textarea) {
+                        textarea.focus();
+                        textarea.style.borderColor = '#ef4444'; // Red border
+                        setTimeout(() => {
+                            if (textarea) textarea.style.borderColor = '';
+                        }, 3000);
+                    }
+                }
+                isSavingMessage = false; // Reset flag on validation failure
+                return false;
+            }
+
+            // Get hidden input for messages
+            const hiddenInput = document.getElementById('welcomer_messages');
+            if (!hiddenInput) {
+                showMessage('Failed to save message - form configuration not found', 'error');
+                isSavingMessage = false;
+                return false;
+            }
+
+            // Parse existing messages
+            let messages = [];
+            try {
+                const existingValue = hiddenInput.value || '[]';
+                if (existingValue && existingValue.trim()) {
+                    messages = JSON.parse(existingValue);
+                }
+            } catch (err) {
+                messages = [];
+            }
+
+            // Add or update message
+            if (currentMessageIndex !== null && currentMessageIndex >= 0 && currentMessageIndex < messages.length) {
+                messages[currentMessageIndex] = message;
+            } else {
+                messages.push(message);
+            }
+
+            // Save messages
+            hiddenInput.value = JSON.stringify(messages);
+
+            // Clear the textarea before closing to prevent duplicate submissions
+            textarea.value = '';
+
+            // Update UI
+            renderWelcomeMessagesList();
+
+            // Close modal first
+            closeMessageModal();
+
+            // Show success message after a brief delay to ensure modal is closed
+            setTimeout(() => {
+                showMessage('Message saved successfully!', 'success');
+                isSavingMessage = false; // Reset flag after success
+            }, 100);
+
+            return false;
+        }
+
+        // Edit welcome message
+        function editWelcomeMessage(index) {
+            openMessageModal(index);
+        }
+
+        // Delete welcome message
+        function deleteWelcomeMessage(index) {
+            const hiddenInput = document.getElementById('welcomer_messages');
+            if (!hiddenInput) return;
+
+            let messages = JSON.parse(hiddenInput.value || '[]');
+            messages.splice(index, 1);
+            hiddenInput.value = JSON.stringify(messages);
+            renderWelcomeMessagesList();
+        }
+
+        // Render welcome messages list
+        function renderWelcomeMessagesList() {
+            const hiddenInput = document.getElementById('welcomer_messages');
+            if (!hiddenInput) return;
+
+            const messages = JSON.parse(hiddenInput.value || '[]');
+            const listContainer = document.getElementById('welcomer_messages_list');
+
+            if (!listContainer) return;
+
+            if (messages.length === 0) {
+                listContainer.innerHTML = `
+                    <div class="bg-gray-700 rounded-lg p-4 sm:p-6 text-center">
+                        <i class="fas fa-inbox text-3xl text-gray-500 mb-2"></i>
+                        <p class="text-gray-400 text-sm sm:text-base">No welcome messages configured</p>
+                        <p class="text-gray-500 text-xs mt-1">Add a message to get started</p>
+                    </div>
+                `;
+            } else {
+                listContainer.innerHTML = messages.map((msg, index) => `
+                    <div class="bg-gray-700 rounded-lg p-3 sm:p-4 flex items-start justify-between gap-3">
+                        <div class="flex-1 min-w-0">
+                            <p class="text-white text-sm sm:text-base break-words">${escapeHtml(msg)}</p>
+                        </div>
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                            <button type="button" onclick="editWelcomeMessage(${index})"
+                                class="p-2 bg-gray-600 hover:bg-gray-500 text-white rounded-lg transition-colors">
+                                <i class="fas fa-edit text-xs"></i>
+                            </button>
+                            <button type="button" onclick="deleteWelcomeMessage(${index})"
+                                class="p-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors">
+                                <i class="fas fa-trash text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            }
         }
 
         // Setup color picker sync when main config is rendered
@@ -2212,6 +2808,75 @@
                 }
             } catch (err) {
                 console.error('Error saving main config:', err);
+                showMessage('Failed to save configuration. Please try again.', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                loadingIcon.classList.add('hidden');
+            }
+        });
+
+        // Handle welcomer config form submission
+        document.addEventListener('submit', async function (e) {
+            if (e.target.id !== 'welcomerConfigForm') return;
+            e.preventDefault();
+
+            const channelsInput = document.getElementById('welcomer_channels');
+            const messagesInput = document.getElementById('welcomer_messages');
+
+            const channels = channelsInput?.value ? channelsInput.value.split(',').filter(Boolean) : [];
+
+            // Parse messages with error handling
+            let messages = [];
+            if (messagesInput?.value) {
+                try {
+                    const parsed = JSON.parse(messagesInput.value);
+                    messages = Array.isArray(parsed) ? parsed : [];
+                } catch (err) {
+                    messages = [];
+                }
+            }
+
+            const formData = {
+                channels: channels,
+                messages: messages
+            };
+
+            // Show loading state
+            const submitBtn = document.getElementById('saveWelcomerConfigBtn');
+            const loadingIcon = document.getElementById('saveWelcomerConfigLoading');
+            submitBtn.disabled = true;
+            loadingIcon.classList.remove('hidden');
+
+            try {
+                const res = await fetch(`/api/servers/${currentServerId}/settings`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        component_name: 'welcomer',
+                        settings: formData
+                    })
+                });
+
+                if (res.status === 401) {
+                    await checkAuthStatus();
+                    return;
+                }
+
+                const data = await res.json();
+
+                if (data.success) {
+                    showMessage('Welcomer configuration saved successfully!', 'success');
+                    // Reload component to show updated values
+                    setTimeout(() => {
+                        loadComponent('welcomer');
+                    }, 500);
+                } else {
+                    showMessage(data.error || 'Failed to save configuration', 'error');
+                }
+            } catch (err) {
                 showMessage('Failed to save configuration. Please try again.', 'error');
             } finally {
                 submitBtn.disabled = false;

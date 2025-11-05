@@ -359,23 +359,6 @@ export async function upsertServer(botId, guild) {
     }
 }
 
-// Channel operations
-export async function getChannels(serverId) {
-    try {
-        const { data, error } = await supabase
-            .from('channels')
-            .select('*')
-            .eq('server_id', serverId)
-            .order('name', { ascending: true });
-
-        if (error) throw error;
-        return data || [];
-    } catch (error) {
-        console.error('Error getting channels:', error);
-        return [];
-    }
-}
-
 // Category operations
 export async function upsertCategory(serverId, categoryData) {
     try {
@@ -725,6 +708,37 @@ async function getServerSettings(serverId, componentName = null) {
         const { data, error } = await query;
 
         if (error) throw error;
+
+        // Update last_accessed timestamp when settings are VIEWED/accessed
+        // This triggers sync after 30-minute cooldown
+        // When ANY component config is viewed, update last_accessed for ALL components of that server
+        // This ensures all components share the same cooldown period
+        // However, don't reset the timer if a sync was already done recently (within 30 minutes)
+        if (data && data.length > 0) {
+            const now = new Date();
+            const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60 * 1000);
+
+            // Check if any component already has a recent last_accessed (within 30 minutes)
+            // This prevents resetting the cooldown if bot just synced and user visits config
+            const hasRecentAccess = data.some(item => {
+                if (!item.last_accessed) return false;
+                const lastAccessTime = new Date(item.last_accessed);
+                return lastAccessTime > thirtyMinutesAgo;
+            });
+
+            // Only update last_accessed if there's no recent access
+            // This ensures visiting config right after bot start doesn't reset the cooldown
+            if (!hasRecentAccess) {
+                const nowISO = now.toISOString();
+                // Update last_accessed for ALL components of this server
+                // (when any component config is viewed, all components get the same cooldown)
+                await supabase
+                    .from('server_settings')
+                    .update({ last_accessed: nowISO })
+                    .eq('server_id', serverId);
+            }
+        }
+
         return componentName ? (data[0] || null) : (data || []);
     } catch (error) {
         console.error('Error getting server settings:', error);
@@ -735,13 +749,15 @@ async function getServerSettings(serverId, componentName = null) {
 async function upsertServerSettings(serverId, componentName, settings) {
     try {
         await initializeDatabase();
+        const now = new Date().toISOString();
         const { data, error } = await supabase
             .from('server_settings')
             .upsert({
                 server_id: serverId,
                 component_name: componentName,
                 settings: settings,
-                updated_at: new Date().toISOString()
+                updated_at: now
+                // Note: last_accessed is NOT updated here - only when viewing/accessing configs
             }, {
                 onConflict: 'server_id,component_name'
             })
@@ -791,6 +807,89 @@ async function getCategoriesForServer(serverId) {
     }
 }
 
+// Get servers that need syncing based on last_accessed (30 minute cooldown)
+// Returns unique server IDs that have last_accessed updated more than 30 minutes ago
+async function getServersNeedingSync(botId) {
+    try {
+        await initializeDatabase();
+
+        // First, get all servers for this bot
+        const servers = await getServersForBot(botId);
+        if (!servers || servers.length === 0) {
+            return [];
+        }
+
+        const serverIds = servers.map(s => s.id);
+
+        // Calculate timestamp 30 minutes ago
+        const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+
+        // Get distinct server_ids from server_settings where:
+        // - last_accessed is not null
+        // - last_accessed is older than 30 minutes
+        // - server belongs to the specified bot
+        const { data, error } = await supabase
+            .from('server_settings')
+            .select('server_id')
+            .in('server_id', serverIds)
+            .not('last_accessed', 'is', null)
+            .lt('last_accessed', thirtyMinutesAgo);
+
+        if (error) throw error;
+
+        // Get unique server IDs
+        const uniqueServerIds = [...new Set((data || []).map(s => s.server_id))];
+
+        return uniqueServerIds;
+    } catch (error) {
+        console.error('Error getting servers needing sync:', error);
+        return [];
+    }
+}
+
+// Mark servers as synced by updating last_accessed timestamp
+// This is used after bot start sync to prevent immediate re-sync
+async function markServersAsSynced(serverIds) {
+    try {
+        await initializeDatabase();
+
+        if (!serverIds || serverIds.length === 0) {
+            return;
+        }
+
+        const now = new Date().toISOString();
+
+        // Update last_accessed for all components of all specified servers
+        const { error } = await supabase
+            .from('server_settings')
+            .update({ last_accessed: now })
+            .in('server_id', serverIds);
+
+        if (error) throw error;
+    } catch (error) {
+        console.error('Error marking servers as synced:', error);
+        throw error;
+    }
+}
+
+// Clear last_accessed for a server after syncing
+// This prevents repeated syncs until settings are accessed again
+async function clearLastAccessed(serverId) {
+    try {
+        await initializeDatabase();
+
+        const { error } = await supabase
+            .from('server_settings')
+            .update({ last_accessed: null })
+            .eq('server_id', serverId);
+
+        if (error) throw error;
+    } catch (error) {
+        console.error('Error clearing last_accessed:', error);
+        throw error;
+    }
+}
+
 export default {
     supabase,
     getAllBots,
@@ -801,7 +900,6 @@ export default {
     getServersForBot,
     getServerByDiscordId,
     upsertServer,
-    getChannels,
     upsertCategory,
     syncCategories,
     upsertChannel,
@@ -817,5 +915,8 @@ export default {
     getServerSettings,
     upsertServerSettings,
     getChannelsForServer,
-    getCategoriesForServer
+    getCategoriesForServer,
+    getServersNeedingSync,
+    markServersAsSynced,
+    clearLastAccessed
 };

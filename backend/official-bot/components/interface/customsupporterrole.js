@@ -7,6 +7,51 @@ import { hasPermission } from '../permissions.js';
 // In production, you might want to store this in a database
 const supporterRoles = new Map();
 
+// Check if a role is a valid custom role (exactly 1 member)
+async function isValidCustomRole(role) {
+    try {
+        // Fetch members to ensure accurate count
+        await role.guild.members.fetch();
+        const memberCount = role.members.size;
+        return memberCount === 1;
+    } catch (err) {
+        await logger.log(`⚠️ Error checking role member count: ${err.message}`);
+        return false;
+    }
+}
+
+// Clean up a single invalid role (not exactly 1 member)
+async function cleanupInvalidRole(role) {
+    try {
+        await role.guild.members.fetch();
+        const memberCount = role.members.size;
+        
+        if (memberCount === 0) {
+            // No members - delete role
+            await role.delete(`Auto-cleanup: Custom role has no members`);
+            await logger.log(`🗑️ Deleted unused custom role: ${role.name} (${role.id}) - no members`);
+        } else if (memberCount > 1) {
+            // More than 1 member - remove from all members and delete
+            const members = Array.from(role.members.values());
+            for (const member of members) {
+                await member.roles.remove(role, `Auto-cleanup: Custom role has multiple members`);
+            }
+            await role.delete(`Auto-cleanup: Custom role has ${memberCount} members (should be exactly 1)`);
+            await logger.log(`🗑️ Deleted invalid custom role: ${role.name} (${role.id}) - has ${memberCount} members (should be exactly 1)`);
+        }
+        
+        // Remove from map if it exists
+        for (const [userId, roleId] of supporterRoles.entries()) {
+            if (roleId === role.id) {
+                supporterRoles.delete(userId);
+                break;
+            }
+        }
+    } catch (err) {
+        await logger.log(`⚠️ Could not cleanup invalid role ${role.name} (${role.id}): ${err.message}`);
+    }
+}
+
 // Check if member already has a custom supporter role
 async function hasSupporterRole(member) {
     // Check our stored map first
@@ -14,38 +59,54 @@ async function hasSupporterRole(member) {
         const roleId = supporterRoles.get(member.id);
         const role = member.guild.roles.cache.get(roleId);
         if (role && member.roles.cache.has(roleId)) {
-            return { has: true, role };
+            // Verify it's still valid (exactly 1 member)
+            if (await isValidCustomRole(role)) {
+                return { has: true, role };
+            } else {
+                // Role is no longer valid (not exactly 1 member), clean it up
+                await cleanupInvalidRole(role);
+                supporterRoles.delete(member.id);
+            }
+        } else {
+            // Role might have been deleted, remove from map
+            supporterRoles.delete(member.id);
         }
-        // Role might have been deleted, remove from map
-        supporterRoles.delete(member.id);
     }
 
     // Get role constraints from database
     const constraints = await CUSTOM_SUPPORTER_ROLE.getRoleConstraints(member.guild.id);
     
-    if (!constraints.ROLE_ABOVE || !constraints.ROLE_BELOW) {
+    if (!constraints.ROLE_START || !constraints.ROLE_END) {
         return { has: false };
     }
 
     // Check if member has any roles between the position constraints
-    const aboveRole = member.guild.roles.cache.get(constraints.ROLE_ABOVE);
-    const belowRole = member.guild.roles.cache.get(constraints.ROLE_BELOW);
+    // ROLE_START is the highest position (top of list), ROLE_END is the lowest position (bottom of list)
+    const startRole = member.guild.roles.cache.get(constraints.ROLE_START);
+    const endRole = member.guild.roles.cache.get(constraints.ROLE_END);
 
-    if (!aboveRole || !belowRole) {
+    if (!startRole || !endRole) {
         return { has: false };
     }
 
     // Get all roles between the constraints
+    // Custom roles should be between start (higher position) and end (lower position)
     const allRoles = member.guild.roles.cache
-        .filter(role => role.position < belowRole.position && role.position > aboveRole.position)
+        .filter(role => role.position < startRole.position && role.position > endRole.position && !role.managed)
         .sort((a, b) => b.position - a.position);
 
-    // Check if member has any of these roles
+    // Check if member has any of these roles and validate they're valid custom roles
     for (const role of allRoles.values()) {
-        if (member.roles.cache.has(role.id) && role.managed === false) {
-            // For now, we'll assume any role in this position range belongs to a supporter
-            supporterRoles.set(member.id, role.id);
-            return { has: true, role };
+        if (member.roles.cache.has(role.id)) {
+            // Validate this role has exactly 1 member
+            if (await isValidCustomRole(role)) {
+                // Valid custom role - store it
+                supporterRoles.set(member.id, role.id);
+                return { has: true, role };
+            } else {
+                // Role exists but is invalid (not exactly 1 member), clean it up
+                await cleanupInvalidRole(role);
+            }
         }
     }
 
@@ -138,20 +199,21 @@ function parseColor(colorInput) {
 async function getRolePosition(guild) {
     const constraints = await CUSTOM_SUPPORTER_ROLE.getRoleConstraints(guild.id);
     
-    if (!constraints.ROLE_ABOVE || !constraints.ROLE_BELOW) {
+    if (!constraints.ROLE_START || !constraints.ROLE_END) {
         throw new Error('Could not find role position constraints');
     }
 
-    const aboveRole = guild.roles.cache.get(constraints.ROLE_ABOVE);
-    const belowRole = guild.roles.cache.get(constraints.ROLE_BELOW);
+    const startRole = guild.roles.cache.get(constraints.ROLE_START);
+    const endRole = guild.roles.cache.get(constraints.ROLE_END);
 
-    if (!aboveRole || !belowRole) {
+    if (!startRole || !endRole) {
         throw new Error('Could not find role position constraints');
     }
 
-    // Position should be just above ROLE_ABOVE (so it appears above it)
+    // Position should be just below ROLE_START (so it appears just below the start role)
     // Discord roles: higher position number = appears higher in list
-    return aboveRole.position + 1;
+    // ROLE_START is the highest position (top), so we place custom role just below it
+    return startRole.position - 1;
 }
 
 // Handle custom supporter role button click
@@ -723,7 +785,7 @@ async function removeCustomRoleIfNoPermission(member) {
     }
 }
 
-// Clean up custom roles - removes roles with no members OR roles where owner lost permission
+// Clean up custom roles - removes roles with no members OR more than 1 member OR roles where owner lost permission
 async function cleanupCustomRoles(client) {
     try {
         await logger.log(`🧹 Checking for custom roles to clean up...`);
@@ -736,57 +798,44 @@ async function cleanupCustomRoles(client) {
                 // Get role constraints from database for this guild
                 const constraints = await CUSTOM_SUPPORTER_ROLE.getRoleConstraints(guild.id);
                 
-                if (!constraints.ROLE_ABOVE || !constraints.ROLE_BELOW) {
+                if (!constraints.ROLE_START || !constraints.ROLE_END) {
                     continue; // No constraints configured for this guild
                 }
 
-                const aboveRole = guild.roles.cache.get(constraints.ROLE_ABOVE);
-                const belowRole = guild.roles.cache.get(constraints.ROLE_BELOW);
+                const startRole = guild.roles.cache.get(constraints.ROLE_START);
+                const endRole = guild.roles.cache.get(constraints.ROLE_END);
 
-                if (!aboveRole || !belowRole) {
+                if (!startRole || !endRole) {
                     continue;
                 }
 
                 // Fetch all members to ensure cache is up to date before checking member counts
-                // This prevents false positives where roles appear to have no members due to incomplete cache
                 await guild.members.fetch();
 
                 // Get all roles between the constraints
+                // ROLE_START is highest position (top), ROLE_END is lowest position (bottom)
                 const customRoles = guild.roles.cache.filter(role =>
-                    role.position < belowRole.position &&
-                    role.position > aboveRole.position &&
+                    role.position < startRole.position &&
+                    role.position > endRole.position &&
                     !role.managed // Exclude bot-managed roles
                 );
 
                 // Check each custom role
                 for (const role of customRoles.values()) {
                     try {
-                        // Get member count for this role (cache should now be accurate)
-                        const members = role.members;
+                        const memberCount = role.members.size;
                         
-                        // Check if role has no members
-                        if (members.size === 0) {
-                            // Role has no members, delete it
-                            try {
-                                await role.delete(`Auto-cleanup: Custom role has no members`);
-                                await logger.log(`🗑️ Deleted unused custom role: ${role.name} (${role.id}) - no members`);
+                        // Check if role has invalid member count (not exactly 1)
+                        if (memberCount !== 1) {
+                            await cleanupInvalidRole(role);
+                            if (memberCount === 0 || memberCount > 1) {
                                 cleanedCount++;
-
-                                // Remove from map if it exists
-                                for (const [userId, roleId] of supporterRoles.entries()) {
-                                    if (roleId === role.id) {
-                                        supporterRoles.delete(userId);
-                                        break;
-                                    }
-                                }
-                            } catch (err) {
-                                await logger.log(`⚠️ Could not delete unused role ${role.name} (${role.id}): ${err.message}`);
                             }
-                            continue; // Skip permission check for roles with no members
+                            continue;
                         }
 
-                        // Role has members - check if owner still has permission
-                        // Find the owner in our map
+                        // Role has exactly 1 member - check if owner still has permission
+                        // Find the owner in our map or from the role's members
                         let ownerId = null;
                         for (const [userId, roleId] of supporterRoles.entries()) {
                             if (roleId === role.id) {
@@ -795,12 +844,22 @@ async function cleanupCustomRoles(client) {
                             }
                         }
 
+                        // If not in map, check the single member
+                        if (!ownerId && role.members.size === 1) {
+                            const member = role.members.first();
+                            if (member) {
+                                ownerId = member.id;
+                                // Store in map for future reference
+                                supporterRoles.set(ownerId, role.id);
+                            }
+                        }
+
                         if (ownerId) {
-                            // We know the owner, check their permission
                             const owner = guild.members.cache.get(ownerId);
                             if (!owner) {
-                                // Owner no longer in guild, but role still has members
-                                // Don't delete - let the guildMemberRemove handler handle it
+                                // Owner no longer in guild, clean up role
+                                await cleanupInvalidRole(role);
+                                cleanedCount++;
                                 continue;
                             }
 
@@ -818,7 +877,6 @@ async function cleanupCustomRoles(client) {
                                 }
                             }
                         }
-                        // If role not in our map, we can't verify owner permission, so leave it alone
                     } catch (err) {
                         await logger.log(`⚠️ Error checking role ${role.name} (${role.id}): ${err.message}`);
                     }
@@ -835,6 +893,73 @@ async function cleanupCustomRoles(client) {
         }
     } catch (err) {
         await logger.log(`❌ Error during custom role cleanup: ${err.message}`);
+    }
+}
+
+// Scan and validate all custom roles on startup - populate map with valid roles
+async function scanAndValidateCustomRoles(client) {
+    try {
+        await logger.log(`🔍 Scanning for existing custom roles...`);
+
+        let validatedCount = 0;
+
+        // Check all guilds the bot is in
+        for (const guild of client.guilds.cache.values()) {
+            try {
+                // Get role constraints from database for this guild
+                const constraints = await CUSTOM_SUPPORTER_ROLE.getRoleConstraints(guild.id);
+                
+                if (!constraints.ROLE_START || !constraints.ROLE_END) {
+                    continue; // No constraints configured for this guild
+                }
+
+                const startRole = guild.roles.cache.get(constraints.ROLE_START);
+                const endRole = guild.roles.cache.get(constraints.ROLE_END);
+
+                if (!startRole || !endRole) {
+                    continue;
+                }
+
+                // Fetch all members to ensure accurate member counts
+                await guild.members.fetch();
+
+                // Get all roles between the constraints
+                // ROLE_START is highest position (top), ROLE_END is lowest position (bottom)
+                const customRoles = guild.roles.cache.filter(role =>
+                    role.position < startRole.position &&
+                    role.position > endRole.position &&
+                    !role.managed // Exclude bot-managed roles
+                );
+
+                // Validate each role
+                for (const role of customRoles.values()) {
+                    try {
+                        const memberCount = role.members.size;
+                        
+                        if (memberCount === 1) {
+                            // Valid custom role - store in map
+                            const member = role.members.first();
+                            if (member) {
+                                supporterRoles.set(member.id, role.id);
+                                validatedCount++;
+                                await logger.log(`✅ Found valid custom role: ${role.name} (${role.id}) for ${member.user.tag} (${member.id})`);
+                            }
+                        } else {
+                            // Invalid role - clean it up
+                            await cleanupInvalidRole(role);
+                        }
+                    } catch (err) {
+                        await logger.log(`⚠️ Error validating role ${role.name} (${role.id}): ${err.message}`);
+                    }
+                }
+            } catch (err) {
+                await logger.log(`⚠️ Error scanning guild ${guild.name}: ${err.message}`);
+            }
+        }
+
+        await logger.log(`✅ Scan complete: Validated ${validatedCount} custom role(s)`);
+    } catch (err) {
+        await logger.log(`❌ Error scanning custom roles: ${err.message}`);
     }
 }
 
@@ -884,14 +1009,18 @@ export function init(client) {
         }
     });
 
-    // Run cleanup periodically (every 6 hours) - removes roles with no members OR without permission
-    // Note: We do NOT run cleanup on startup to avoid deleting roles that still have members
-    // (cache might not be fully loaded on startup, causing false positives)
+    // Scan and validate custom roles on startup - populate map with valid roles (exactly 1 member)
+    // This ensures the interface recognizes existing valid custom roles after bot restart
+    setTimeout(async () => {
+        await scanAndValidateCustomRoles(client);
+    }, 5000); // Wait 5 seconds for all guilds to be ready
+
+    // Run cleanup periodically (every 6 hours) - removes roles with no members, more than 1 member, or without permission
     setInterval(async () => {
         await cleanupCustomRoles(client);
     }, 6 * 60 * 60 * 1000); // 6 hours in milliseconds
 
-    logger.log("💎 Custom supporter role component initialized - Permission monitoring and cleanup active");
+    logger.log("💎 Custom supporter role component initialized - Scanning, validation, and cleanup active");
 }
 
 export default { init };

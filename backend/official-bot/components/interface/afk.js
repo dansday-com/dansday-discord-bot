@@ -3,7 +3,7 @@ import { getEmbedConfig } from '../../../config.js';
 import logger from '../../../logger.js';
 import { hasPermission } from '../permissions.js';
 
-// Store AFK status (userId -> { message, timestamp, originalNickname, wasMutedByBot, wasDeafenedByBot })
+// Store AFK status (userId -> { message, timestamp, originalNickname, hadServerNickname, wasMutedByBot, wasDeafenedByBot })
 const afkUsers = new Map();
 
 // Get AFK status for a user
@@ -14,7 +14,10 @@ export function getAFKStatus(userId) {
 // Set user as AFK
 async function setAFK(member, message, shouldDeafen = true) {
     const userId = member.id;
-    const originalNickname = member.nickname || member.user.username;
+    // Store the original nickname (null if they didn't have a server nickname)
+    // When they don't have a nickname, Discord shows their display name (globalName/displayName)
+    const originalNickname = member.nickname; // null if no server nickname
+    const hadServerNickname = member.nickname !== null;
 
     // Check if user is in a voice channel
     let wasMutedByBot = false;
@@ -46,14 +49,17 @@ async function setAFK(member, message, shouldDeafen = true) {
     afkUsers.set(userId, {
         message: message || 'Away',
         timestamp: Date.now(),
-        originalNickname: originalNickname,
+        originalNickname: originalNickname, // null if no server nickname, otherwise the nickname
+        hadServerNickname: hadServerNickname, // track if they had a server nickname
         wasMutedByBot: wasMutedByBot,
         wasDeafenedByBot: wasDeafenedByBot
     });
 
     // Update nickname with [AFK] prefix
+    // Use display name if they don't have a server nickname
     try {
-        const newNickname = `[AFK] ${originalNickname}`;
+        const nameToUse = originalNickname || member.user.globalName || member.user.displayName || member.user.username;
+        const newNickname = `[AFK] ${nameToUse}`;
         if (newNickname.length <= 32) {
             await member.setNickname(newNickname);
         }
@@ -93,7 +99,15 @@ export async function removeAFK(member, reason = '') {
 
     // Restore original nickname
     try {
-        await member.setNickname(afkData.originalNickname);
+        // If they had a server nickname, restore it
+        // If they didn't have a nickname (originalNickname is null), set to null to restore their natural display name
+        if (afkData.hadServerNickname) {
+            // They had a server nickname, restore it
+            await member.setNickname(afkData.originalNickname);
+        } else {
+            // They didn't have a server nickname, set to null to restore their natural display name
+            await member.setNickname(null);
+        }
     } catch (err) {
         // If nickname can't be set, try clearing it
         try {

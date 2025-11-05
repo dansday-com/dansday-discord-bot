@@ -5,7 +5,7 @@ import { separateChannelsAndCategories, mapCategoriesForSync, mapChannelsForSync
 
 let client = null;
 let botId = null;
-let syncInterval = null;
+let syncCheckInterval = null;
 let loggerInitialized = false;
 
 // Find bot in database by token or ID
@@ -109,6 +109,25 @@ async function syncAllGuilds() {
     }
 }
 
+// Mark all servers as synced (update last_accessed) to prevent immediate re-sync after bot start
+async function markAllServersAsSynced() {
+    if (!botId) return;
+
+    try {
+        const servers = await db.getServersForBot(botId);
+        if (!servers || servers.length === 0) return;
+
+        const serverIds = servers.map(s => s.id);
+
+        // Mark all servers as synced using database function
+        await db.markServersAsSynced(serverIds);
+
+        logger.log(`✅ Marked ${serverIds.length} server(s) as synced (30-minute cooldown active)`);
+    } catch (error) {
+        logger.log(`⚠️  Error marking servers as synced: ${error.message}`);
+    }
+}
+
 // Update bot name and icon from Discord
 async function updateBotInfo() {
     if (!botId || !client || !client.user) {
@@ -158,6 +177,9 @@ async function init(discordClient, botToken) {
                 logger.log('🔄 Starting initial guild data sync...');
                 await syncAllGuilds();
                 logger.log('✅ Initial sync complete');
+
+                // Mark all servers as synced to prevent immediate re-sync if config is visited right after bot start
+                await markAllServersAsSynced();
             }
         }, 2000);
     });
@@ -206,12 +228,40 @@ async function init(discordClient, botToken) {
         }
     });
 
-    // Real-time sync: Update server stats every 1 minute
-    syncInterval = setInterval(async () => {
-        if (botId) {
-            await syncAllGuilds();
+    // Check for servers needing sync (based on last_accessed with 30-minute cooldown)
+    // This runs every 5 minutes to check for servers that need syncing
+    syncCheckInterval = setInterval(async () => {
+        if (!botId || !client) return;
+
+        try {
+            const serverIdsNeedingSync = await db.getServersNeedingSync(botId);
+
+            if (serverIdsNeedingSync.length > 0) {
+                logger.log(`🔄 Found ${serverIdsNeedingSync.length} server(s) needing sync`);
+
+                // Get server data from database to find Discord guild IDs
+                const servers = await db.getServersForBot(botId);
+                const serversToSync = servers.filter(s => serverIdsNeedingSync.includes(s.id));
+
+                for (const server of serversToSync) {
+                    try {
+                        const guild = client.guilds.cache.get(server.discord_server_id);
+                        if (guild) {
+                            await syncGuildData(guild);
+
+                            // Clear last_accessed after syncing to prevent repeated syncs
+                            // This allows the sync to trigger again when settings are next accessed/updated
+                            await db.clearLastAccessed(server.id);
+                        }
+                    } catch (error) {
+                        logger.log(`⚠️  Error syncing server ${server.name}: ${error.message}`);
+                    }
+                }
+            }
+        } catch (error) {
+            logger.log(`⚠️  Error checking servers needing sync: ${error.message}`);
         }
-    }, 60 * 1000); // 1 minute for real-time updates
+    }, 5 * 60 * 1000); // Check every 5 minutes
 
     // Also sync on member count changes
     client.on('guildMemberAdd', async (member) => {
@@ -237,9 +287,9 @@ async function init(discordClient, botToken) {
 }
 
 function stop() {
-    if (syncInterval) {
-        clearInterval(syncInterval);
-        syncInterval = null;
+    if (syncCheckInterval) {
+        clearInterval(syncCheckInterval);
+        syncCheckInterval = null;
     }
 }
 

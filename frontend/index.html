@@ -2334,7 +2334,11 @@
                                 class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-lg text-left transition-colors flex items-center justify-between group">
                                 <div class="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                                     <i class="fas fa-user-shield text-gray-400 group-hover:text-white transition-colors flex-shrink-0"></i>
-                                    <span class="text-gray-300 text-sm sm:text-base">Select Admin Roles</span>
+                                    <span id="admin_roles_button_text" class="text-gray-300 text-sm sm:text-base">
+                                        ${config.admin_roles && config.admin_roles.length > 0
+                                            ? `${config.admin_roles.length} role${config.admin_roles.length > 1 ? 's' : ''} selected`
+                                            : 'Select Admin Roles'}
+                                    </span>
                                 </div>
                                 <i class="fas fa-chevron-right text-gray-500 group-hover:text-white transition-colors text-xs"></i>
                             </button>
@@ -2353,7 +2357,11 @@
                                 class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-lg text-left transition-colors flex items-center justify-between group">
                                 <div class="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                                     <i class="fas fa-user-shield text-gray-400 group-hover:text-white transition-colors flex-shrink-0"></i>
-                                    <span class="text-gray-300 text-sm sm:text-base">Select Staff Roles</span>
+                                    <span id="staff_roles_button_text" class="text-gray-300 text-sm sm:text-base">
+                                        ${config.staff_roles && config.staff_roles.length > 0
+                                            ? `${config.staff_roles.length} role${config.staff_roles.length > 1 ? 's' : ''} selected`
+                                            : 'Select Staff Roles'}
+                                    </span>
                                 </div>
                                 <i class="fas fa-chevron-right text-gray-500 group-hover:text-white transition-colors text-xs"></i>
                             </button>
@@ -2372,7 +2380,11 @@
                                 class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-lg text-left transition-colors flex items-center justify-between group">
                                 <div class="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                                     <i class="fas fa-user-shield text-gray-400 group-hover:text-white transition-colors flex-shrink-0"></i>
-                                    <span class="text-gray-300 text-sm sm:text-base">Select Supporter Roles</span>
+                                    <span id="supporter_roles_button_text" class="text-gray-300 text-sm sm:text-base">
+                                        ${config.supporter_roles && config.supporter_roles.length > 0
+                                            ? `${config.supporter_roles.length} role${config.supporter_roles.length > 1 ? 's' : ''} selected`
+                                            : 'Select Supporter Roles'}
+                                    </span>
                                 </div>
                                 <i class="fas fa-chevron-right text-gray-500 group-hover:text-white transition-colors text-xs"></i>
                             </button>
@@ -2391,7 +2403,11 @@
                                 class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-lg text-left transition-colors flex items-center justify-between group">
                                 <div class="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                                     <i class="fas fa-user-shield text-gray-400 group-hover:text-white transition-colors flex-shrink-0"></i>
-                                    <span class="text-gray-300 text-sm sm:text-base">Select Member Roles</span>
+                                    <span id="member_roles_button_text" class="text-gray-300 text-sm sm:text-base">
+                                        ${config.member_roles && config.member_roles.length > 0
+                                            ? `${config.member_roles.length} role${config.member_roles.length > 1 ? 's' : ''} selected`
+                                            : 'Select Member Roles'}
+                                    </span>
                                 </div>
                                 <i class="fas fa-chevron-right text-gray-500 group-hover:text-white transition-colors text-xs"></i>
                             </button>
@@ -3058,6 +3074,21 @@
 
             if (!Array.isArray(roleIds)) {
                 roleIds = [];
+            }
+
+            // Update button text
+            const buttonTextEl = document.getElementById(`${fieldId}_button_text`);
+            if (buttonTextEl) {
+                const roleTypeMap = {
+                    'admin_roles': 'Admin',
+                    'staff_roles': 'Staff',
+                    'supporter_roles': 'Supporter',
+                    'member_roles': 'Member'
+                };
+                const roleTypeTitle = roleTypeMap[fieldId] || 'Roles';
+                buttonTextEl.textContent = roleIds.length > 0
+                    ? `${roleIds.length} role${roleIds.length > 1 ? 's' : ''} selected`
+                    : `Select ${roleTypeTitle} Roles`;
             }
 
             const displayEl = document.getElementById(`${fieldId}_display`);

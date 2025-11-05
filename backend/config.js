@@ -134,7 +134,7 @@ export async function getMainChannel(guildId) {
     }
 
     const channelId = botConfig.is_testing
-        ? settings.settings.test_channel
+        ? settings.settings.testing_channel
         : settings.settings.production_channel;
 
     if (!channelId) {

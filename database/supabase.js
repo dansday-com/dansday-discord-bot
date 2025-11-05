@@ -429,6 +429,32 @@ export async function syncCategories(serverId, categories) {
             }
         });
 
+        // Remove deleted categories from database
+        // Get all Discord category IDs that should exist
+        const discordCategoryIds = new Set(categories.map(cat => cat.id));
+        
+        // Get all categories in database for this server
+        const { data: dbCategories, error: fetchError } = await supabase
+            .from('categories')
+            .select('id, discord_category_id')
+            .eq('server_id', serverId);
+
+        if (!fetchError && dbCategories) {
+            // Find categories in DB that don't exist in Discord anymore
+            const categoriesToDelete = dbCategories.filter(dbCat => 
+                !discordCategoryIds.has(dbCat.discord_category_id)
+            );
+
+            if (categoriesToDelete.length > 0) {
+                const idsToDelete = categoriesToDelete.map(cat => cat.id);
+                await supabase
+                    .from('categories')
+                    .delete()
+                    .in('id', idsToDelete);
+                console.log(`🧹 Removed ${idsToDelete.length} deleted category(ies) from database`);
+            }
+        }
+
         return categoryMap;
     } catch (error) {
         console.error('Error syncing categories:', error);
@@ -523,6 +549,32 @@ export async function syncChannels(serverId, channels, categoryMap = null) {
             }
         }
 
+        // Remove deleted channels from database
+        // Get all Discord channel IDs that should exist
+        const discordChannelIds = new Set(validChannels.map(ch => ch.id));
+        
+        // Get all channels in database for this server
+        const { data: dbChannels, error: fetchError } = await supabase
+            .from('channels')
+            .select('id, discord_channel_id')
+            .eq('server_id', serverId);
+
+        if (!fetchError && dbChannels) {
+            // Find channels in DB that don't exist in Discord anymore
+            const channelsToDelete = dbChannels.filter(dbCh => 
+                !discordChannelIds.has(dbCh.discord_channel_id)
+            );
+
+            if (channelsToDelete.length > 0) {
+                const idsToDelete = channelsToDelete.map(ch => ch.id);
+                await supabase
+                    .from('channels')
+                    .delete()
+                    .in('id', idsToDelete);
+                console.log(`🧹 Removed ${idsToDelete.length} deleted channel(s) from database`);
+            }
+        }
+
         return true;
     } catch (error) {
         console.error('Error syncing channels:', error);
@@ -606,6 +658,32 @@ export async function syncRoles(serverId, roles) {
             // Small delay between batches to avoid rate limiting
             if (batches.length > 1) {
                 await new Promise(resolve => setTimeout(resolve, 100));
+            }
+        }
+
+        // Remove deleted roles from database
+        // Get all Discord role IDs that should exist
+        const discordRoleIds = new Set(roles.map(role => role.id));
+        
+        // Get all roles in database for this server
+        const { data: dbRoles, error: fetchError } = await supabase
+            .from('roles')
+            .select('id, discord_role_id')
+            .eq('server_id', serverId);
+
+        if (!fetchError && dbRoles) {
+            // Find roles in DB that don't exist in Discord anymore
+            const rolesToDelete = dbRoles.filter(dbRole => 
+                !discordRoleIds.has(dbRole.discord_role_id)
+            );
+
+            if (rolesToDelete.length > 0) {
+                const idsToDelete = rolesToDelete.map(role => role.id);
+                await supabase
+                    .from('roles')
+                    .delete()
+                    .in('id', idsToDelete);
+                console.log(`🧹 Removed ${idsToDelete.length} deleted role(s) from database`);
             }
         }
 

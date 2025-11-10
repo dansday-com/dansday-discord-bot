@@ -25,7 +25,13 @@ function formatLeaderboardRow(entry, index) {
     const name = entry.server_display_name || entry.display_name || entry.username || entry.discord_member_id || `Member ${position}`;
     const xp = entry.experience || 0;
     const calculatedLevel = determineLevel(xp);
-    return `${position}. **${name}** — LVL ${calculatedLevel} • ${formatNumber(xp)} XP`;
+    
+    let medal = "";
+    if (position === 1) medal = "🥇 ";
+    else if (position === 2) medal = "🥈 ";
+    else if (position === 3) medal = "🥉 ";
+    
+    return `${medal}**${name}** — LVL ${calculatedLevel} • ${formatNumber(xp)} XP`;
 }
 
 async function getServerForInteraction(interaction) {
@@ -60,7 +66,7 @@ export async function handleLevelingButton(interaction) {
         await db.recalculateServerMemberRanks(server.id);
 
         const memberLevelData = await db.getMemberLevelByDiscordId(server.id, interaction.user.id);
-        const leaderboard = await db.getServerLeaderboard(server.id, 10);
+        const leaderboard = await db.getServerLeaderboard(server.id, 5);
 
         if (leaderboard && leaderboard.length > 0) {
             let leaderboardUpdated = false;
@@ -74,7 +80,7 @@ export async function handleLevelingButton(interaction) {
                 }
             }
             if (leaderboardUpdated) {
-                const updatedLeaderboard = await db.getServerLeaderboard(server.id, 10);
+                const updatedLeaderboard = await db.getServerLeaderboard(server.id, 5);
                 if (updatedLeaderboard) {
                     leaderboard.length = 0;
                     leaderboard.push(...updatedLeaderboard);
@@ -114,31 +120,33 @@ export async function handleLevelingButton(interaction) {
         profileLines.push(`• **Voice Minutes:** ${formatNumber(memberLevelData?.voice_minutes ?? 0)}`);
         profileLines.push(`• **Rank:** ${memberLevelData?.rank ? `#${memberLevelData.rank}` : "Unranked"}`);
 
-        const leaderboardText = leaderboard && leaderboard.length > 0
-            ? leaderboard.map((entry, idx) => formatLeaderboardRow(entry, idx)).join("\n")
-            : "No leveling data available yet.";
-
-        const levelingEmbed = new EmbedBuilder()
+        const profileEmbed = new EmbedBuilder()
             .setColor(embedConfig.COLOR)
-            .setTitle("📈 Leveling Overview")
-            .setDescription("Track your leveling progress and see the top members in this server.")
+            .setTitle("📈 Your Leveling Stats")
+            .setDescription(`Stats for **${memberDisplayName}**`)
             .addFields(
                 {
-                    name: `Your Stats (${memberDisplayName})`,
+                    name: "Your Progress",
                     value: profileLines.join("\n"),
-                    inline: false
-                },
-                {
-                    name: "🏆 Leaderboard (Top 10)",
-                    value: leaderboardText,
                     inline: false
                 }
             )
             .setFooter({ text: embedConfig.FOOTER })
             .setTimestamp();
 
+        const leaderboardText = leaderboard && leaderboard.length > 0
+            ? leaderboard.map((entry, idx) => formatLeaderboardRow(entry, idx)).join("\n")
+            : "No leveling data available yet.";
+
+        const leaderboardEmbed = new EmbedBuilder()
+            .setColor(embedConfig.COLOR)
+            .setTitle("🏆 Leaderboard (Top 5)")
+            .setDescription(leaderboardText)
+            .setFooter({ text: embedConfig.FOOTER })
+            .setTimestamp();
+
         await interaction.reply({
-            embeds: [levelingEmbed],
+            embeds: [profileEmbed, leaderboardEmbed],
             flags: 64
         });
     } catch (error) {

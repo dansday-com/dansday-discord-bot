@@ -966,9 +966,8 @@ export async function recalculateServerMemberRanks(serverId) {
                      INNER JOIN server_members sm_inner ON sml_inner.member_id = sm_inner.id
                      WHERE sm_inner.server_id = ?
                      ORDER BY sml_inner.experience DESC,
-                              sml_inner.chat_count DESC,
-                              sml_inner.voice_minutes DESC,
-                              sml_inner.id ASC
+                              sml_inner.level DESC,
+                              sml_inner.created_at ASC
                  ) AS ranked
              ) AS ranks ON ranks.id = sml.id
              SET sml.rank = ranks.computed_rank`,
@@ -996,7 +995,7 @@ export async function getMemberLevelByDiscordId(serverId, discordMemberId) {
     return result[0] || null;
 }
 
-export async function getServerLeaderboard(serverId, limit = 10) {
+export async function getServerLeaderboard(serverId, limit = 5) {
     await initializeDatabase();
     if (!serverId) {
         throw new Error('serverId is required to fetch leaderboard');
@@ -1008,7 +1007,7 @@ export async function getServerLeaderboard(serverId, limit = 10) {
          FROM server_member_levels sml
          INNER JOIN server_members sm ON sml.member_id = sm.id
          WHERE sm.server_id = ?
-         ORDER BY sml.experience DESC, sml.chat_count DESC, sml.voice_minutes DESC, sm.id ASC
+         ORDER BY sml.experience DESC, sml.level DESC, sml.created_at ASC
          LIMIT ?`,
         [serverId, safeLimit]
     );

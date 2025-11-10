@@ -81,6 +81,9 @@ async function syncGuildData(guild) {
             permissions: role.permissions
         })));
 
+        const members = Array.from(guild.members.cache.values()).filter(member => !member.user.bot);
+        await db.syncMembers(serverId, members);
+
         logger.log(`✅ Synced server: ${guild.name} (${guild.memberCount} members, ${categories.length} categories, ${channels.length} channels, ${roles.length} roles)`);
     } catch (error) {
         logger.log(`❌ Error syncing guild data for ${guild.name}: ${error.message}`);
@@ -286,6 +289,23 @@ async function init(discordClient, botToken) {
     client.on('guildMemberRemove', async (member) => {
         if (member.guild && botId) {
             await syncGuildData(member.guild);
+        }
+    });
+
+    client.on('guildMemberUpdate', async (oldMember, newMember) => {
+        if (newMember.guild && botId && newMember.user && !newMember.user.bot) {
+            try {
+                const serverData = await db.getServerByDiscordId(botId, newMember.guild.id);
+                if (serverData) {
+                    const dbMember = await db.upsertMember(serverData.id, newMember);
+                    if (dbMember) {
+                        const memberRoles = newMember.roles ? Array.from(newMember.roles.cache.keys()).filter(roleId => roleId !== newMember.guild?.id) : [];
+                        await db.syncMemberRoles(dbMember.id, memberRoles, serverData.id);
+                    }
+                }
+            } catch (error) {
+                logger.log(`❌ Error syncing member roles on update: ${error.message}`);
+            }
         }
     });
 

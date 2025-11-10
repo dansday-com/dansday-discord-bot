@@ -12,7 +12,7 @@ const __dirname = dirname(__filename);
 
 function getConnectionConfig() {
     const databaseUrl = process.env.DATABASE_URL;
-    
+
     if (databaseUrl) {
         try {
             const url = new URL(databaseUrl);
@@ -20,9 +20,9 @@ function getConnectionConfig() {
             if (!url.username) throw new Error('Missing username in DATABASE_URL');
             if (!url.password) throw new Error('Missing password in DATABASE_URL');
             if (!url.pathname || url.pathname.length <= 1) throw new Error('Missing database name in DATABASE_URL');
-            
+
             if (!url.port) throw new Error('Missing port in DATABASE_URL');
-            
+
             return {
                 host: url.hostname,
                 port: parseInt(url.port),
@@ -40,7 +40,7 @@ function getConnectionConfig() {
     if (!process.env.DB_USER) throw new Error('Missing DB_USER environment variable');
     if (!process.env.DB_PASSWORD) throw new Error('Missing DB_PASSWORD environment variable');
     if (!process.env.DB_NAME) throw new Error('Missing DB_NAME environment variable');
-    
+
     return {
         host: process.env.DB_HOST,
         port: parseInt(process.env.DB_PORT),
@@ -92,7 +92,7 @@ async function query(sql, params = []) {
 
 async function runMigration() {
     const connection = await mysql.createConnection(connectionConfig);
-    
+
     try {
         logger.log('🔌 Connecting to database...');
         await connection.connect();
@@ -115,7 +115,7 @@ async function runMigration() {
         }
 
         logger.log('✅ Database schema created successfully!');
-        logger.log('📊 Tables created: panel, panel_logs, bots, servers, server_categories, server_channels, server_roles, server_settings');
+        logger.log('📊 Tables created: panel, panel_logs, bots, servers, server_categories, server_channels, server_roles, server_members, server_member_roles, server_settings');
         logger.log('📈 Indexes created: all indexes');
 
     } catch (error) {
@@ -143,6 +143,8 @@ async function setupDatabase() {
         { name: 'server_categories', required: true },
         { name: 'server_channels', required: true },
         { name: 'server_roles', required: true },
+        { name: 'server_members', required: true },
+        { name: 'server_member_roles', required: true },
         { name: 'server_settings', required: true }
     ];
 
@@ -211,12 +213,12 @@ async function retryOnConnectionError(fn, maxRetries = 3, delayMs = 2000) {
         try {
             return await fn();
         } catch (error) {
-            const isConnectionError = error.code === 'ECONNREFUSED' || 
-                                     error.code === 'ETIMEDOUT' ||
-                                     error.code === 'PROTOCOL_CONNECTION_LOST';
-            
+            const isConnectionError = error.code === 'ECONNREFUSED' ||
+                error.code === 'ETIMEDOUT' ||
+                error.code === 'PROTOCOL_CONNECTION_LOST';
+
             if (isConnectionError && attempt < maxRetries) {
-                console.log(`⚠️  Connection error (attempt ${attempt}/${maxRetries}). Retrying in ${delayMs/1000}s...`);
+                console.log(`⚠️  Connection error (attempt ${attempt}/${maxRetries}). Retrying in ${delayMs / 1000}s...`);
                 await new Promise(resolve => setTimeout(resolve, delayMs));
                 continue;
             }
@@ -446,14 +448,14 @@ export async function syncCategories(serverId, categories) {
         });
 
         const discordCategoryIds = new Set(categories.map(cat => cat.id));
-        
+
         const dbCategories = await query(
             'SELECT id, discord_category_id FROM server_categories WHERE server_id = ?',
             [serverId]
         );
 
         if (dbCategories && dbCategories.length > 0) {
-            const categoriesToDelete = dbCategories.filter(dbCat => 
+            const categoriesToDelete = dbCategories.filter(dbCat =>
                 !discordCategoryIds.has(dbCat.discord_category_id)
             );
 
@@ -549,14 +551,14 @@ export async function syncChannels(serverId, channels, categoryMap = null) {
         await Promise.all(operations);
 
         const discordChannelIds = new Set(validChannels.map(ch => ch.id));
-        
+
         const dbChannels = await query(
             'SELECT id, discord_channel_id FROM server_channels WHERE server_id = ?',
             [serverId]
         );
 
         if (dbChannels && dbChannels.length > 0) {
-            const channelsToDelete = dbChannels.filter(dbCh => 
+            const channelsToDelete = dbChannels.filter(dbCh =>
                 !discordChannelIds.has(dbCh.discord_channel_id)
             );
 
@@ -638,14 +640,14 @@ export async function syncRoles(serverId, roles) {
         await Promise.all(operations);
 
         const discordRoleIds = new Set(roles.map(role => role.id));
-        
+
         const dbRoles = await query(
             'SELECT id, discord_role_id FROM server_roles WHERE server_id = ?',
             [serverId]
         );
 
         if (dbRoles && dbRoles.length > 0) {
-            const rolesToDelete = dbRoles.filter(dbRole => 
+            const rolesToDelete = dbRoles.filter(dbRole =>
                 !discordRoleIds.has(dbRole.discord_role_id)
             );
 
@@ -663,6 +665,205 @@ export async function syncRoles(serverId, roles) {
         return true;
     } catch (error) {
         console.error('Error syncing roles:', error);
+        return false;
+    }
+}
+
+export async function upsertMember(serverId, memberData) {
+    try {
+        const user = memberData.user || memberData;
+        const avatarUrl = user?.displayAvatarURL ? user.displayAvatarURL({ dynamic: true }) : null;
+        const username = user?.username || null;
+        const displayName = user?.globalName || user?.displayName || null;
+        const profileCreatedAt = user?.createdAt ? toMySQLDateTime(user.createdAt) : null;
+        const memberSince = memberData.joinedAt ? toMySQLDateTime(memberData.joinedAt) : null;
+
+        await query(
+            `INSERT INTO server_members (
+                server_id, discord_member_id, username, display_name, avatar, profile_created_at, member_since, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+                username = VALUES(username),
+                display_name = VALUES(display_name),
+                avatar = VALUES(avatar),
+                profile_created_at = VALUES(profile_created_at),
+                member_since = VALUES(member_since),
+                updated_at = VALUES(updated_at)`,
+            [
+                serverId, user?.id || memberData.id, username, displayName,
+                avatarUrl, profileCreatedAt, memberSince, toMySQLDateTime()
+            ]
+        );
+
+        const members = await query(
+            'SELECT * FROM server_members WHERE server_id = ? AND discord_member_id = ?',
+            [serverId, user?.id || memberData.id]
+        );
+        return members[0];
+    } catch (error) {
+        console.error('Error upserting member:', error);
+        throw error;
+    }
+}
+
+export async function syncMemberRoles(memberId, discordRoleIds, serverId) {
+    try {
+        if (!discordRoleIds || discordRoleIds.length === 0) {
+            await query('DELETE FROM server_member_roles WHERE member_id = ?', [memberId]);
+            return true;
+        }
+
+        const placeholders = discordRoleIds.map(() => '?').join(',');
+        const roleMapResult = await query(
+            `SELECT id, discord_role_id FROM server_roles WHERE server_id = ? AND discord_role_id IN (${placeholders})`,
+            [serverId, ...discordRoleIds]
+        );
+
+        const roleMap = new Map();
+        for (const role of roleMapResult) {
+            roleMap.set(role.discord_role_id, role.id);
+        }
+
+        const roleIdsToAdd = [];
+        for (const discordRoleId of discordRoleIds) {
+            const roleId = roleMap.get(discordRoleId);
+            if (roleId) {
+                roleIdsToAdd.push(roleId);
+            }
+        }
+
+        const existingRoles = await query(
+            'SELECT role_id FROM server_member_roles WHERE member_id = ?',
+            [memberId]
+        );
+        const existingRoleIds = new Set(existingRoles.map(r => r.role_id));
+
+        const rolesToAdd = roleIdsToAdd.filter(roleId => !existingRoleIds.has(roleId));
+        const rolesToRemove = Array.from(existingRoleIds).filter(roleId => !roleIdsToAdd.includes(roleId));
+
+        if (rolesToAdd.length > 0) {
+            const placeholders = rolesToAdd.map(() => '(?, ?)').join(', ');
+            const values = rolesToAdd.flatMap(roleId => [memberId, roleId]);
+            await query(
+                `INSERT INTO server_member_roles (member_id, role_id) VALUES ${placeholders}`,
+                values
+            );
+        }
+
+        if (rolesToRemove.length > 0) {
+            const placeholders = rolesToRemove.map(() => '?').join(', ');
+            await query(
+                `DELETE FROM server_member_roles WHERE member_id = ? AND role_id IN (${placeholders})`,
+                [memberId, ...rolesToRemove]
+            );
+        }
+
+        return true;
+    } catch (error) {
+        console.error('Error syncing member roles:', error);
+        return false;
+    }
+}
+
+export async function memberHasAnyRole(discordMemberId, discordRoleIds, serverId) {
+    try {
+        if (!discordRoleIds || discordRoleIds.length === 0) return false;
+        if (!discordMemberId || !serverId) return false;
+
+        const memberResult = await query(
+            'SELECT id FROM server_members WHERE server_id = ? AND discord_member_id = ?',
+            [serverId, discordMemberId]
+        );
+
+        if (!memberResult || memberResult.length === 0) {
+            return false;
+        }
+
+        const memberId = memberResult[0].id;
+
+        const placeholders = discordRoleIds.map(() => '?').join(',');
+        const roleResult = await query(
+            `SELECT sr.id 
+             FROM server_roles sr
+             INNER JOIN server_member_roles smr ON sr.id = smr.role_id
+             WHERE smr.member_id = ? AND sr.discord_role_id IN (${placeholders})`,
+            [memberId, ...discordRoleIds]
+        );
+
+        return roleResult && roleResult.length > 0;
+    } catch (error) {
+        console.error('Error checking member roles:', error);
+        return false;
+    }
+}
+
+export async function syncMembers(serverId, members) {
+    try {
+        if (!members || members.length === 0) {
+            const dbMembers = await query(
+                'SELECT id, discord_member_id FROM server_members WHERE server_id = ?',
+                [serverId]
+            );
+            if (dbMembers && dbMembers.length > 0) {
+                const idsToDelete = dbMembers.map(m => m.id);
+                const placeholders = idsToDelete.map(() => '?').join(',');
+                await query(
+                    `DELETE FROM server_members WHERE id IN (${placeholders})`,
+                    idsToDelete
+                );
+                console.log(`🧹 Removed ${idsToDelete.length} deleted member(s) from database`);
+            }
+            return true;
+        }
+
+        const operations = members.map(async (member) => {
+            try {
+                const dbMember = await upsertMember(serverId, member);
+                if (dbMember) {
+                    const user = member.user || member;
+                    const discordMemberId = user?.id || member.id;
+                    const memberRoles = member.roles ? Array.from(member.roles.cache.keys()).filter(roleId => roleId !== member.guild?.id) : [];
+                    await syncMemberRoles(dbMember.id, memberRoles, serverId);
+                }
+                return dbMember;
+            } catch (err) {
+                const memberId = member.user?.id || member.id;
+                console.error(`Error upserting member ${memberId}:`, err.message);
+                return null;
+            }
+        });
+
+        await Promise.all(operations);
+
+        const discordMemberIds = new Set(members.map(member => {
+            const user = member.user || member;
+            return user?.id || member.id;
+        }));
+
+        const dbMembers = await query(
+            'SELECT id, discord_member_id FROM server_members WHERE server_id = ?',
+            [serverId]
+        );
+
+        if (dbMembers && dbMembers.length > 0) {
+            const membersToDelete = dbMembers.filter(dbMember =>
+                !discordMemberIds.has(dbMember.discord_member_id)
+            );
+
+            if (membersToDelete.length > 0) {
+                const idsToDelete = membersToDelete.map(member => member.id);
+                const placeholders = idsToDelete.map(() => '?').join(',');
+                await query(
+                    `DELETE FROM server_members WHERE id IN (${placeholders})`,
+                    idsToDelete
+                );
+                console.log(`🧹 Removed ${idsToDelete.length} deleted member(s) from database`);
+            }
+        }
+
+        return true;
+    } catch (error) {
+        console.error('Error syncing members:', error);
         return false;
     }
 }
@@ -729,7 +930,7 @@ async function getPanelLogs(limit) {
 
 async function getServerSettings(serverId, componentName = null) {
     await initializeDatabase();
-    
+
     let result;
     if (componentName) {
         result = await query(
@@ -738,8 +939,8 @@ async function getServerSettings(serverId, componentName = null) {
         );
         if (result[0] && result[0].settings) {
             try {
-                result[0].settings = typeof result[0].settings === 'string' 
-                    ? JSON.parse(result[0].settings) 
+                result[0].settings = typeof result[0].settings === 'string'
+                    ? JSON.parse(result[0].settings)
                     : result[0].settings;
             } catch (e) {
                 console.error('Error parsing settings JSON:', e);
@@ -754,8 +955,8 @@ async function getServerSettings(serverId, componentName = null) {
         result = result.map(row => {
             if (row.settings) {
                 try {
-                    row.settings = typeof row.settings === 'string' 
-                        ? JSON.parse(row.settings) 
+                    row.settings = typeof row.settings === 'string'
+                        ? JSON.parse(row.settings)
                         : row.settings;
                 } catch (e) {
                     console.error('Error parsing settings JSON:', e);
@@ -773,7 +974,7 @@ async function upsertServerSettings(serverId, componentName, settings) {
     try {
         await initializeDatabase();
         const now = toMySQLDateTime();
-        
+
         await query(
             `INSERT INTO server_settings (server_id, component_name, settings, updated_at)
              VALUES (?, ?, ?, ?)
@@ -814,12 +1015,12 @@ async function getCategoriesForServer(serverId) {
 
 export async function serversNeedSync(botId) {
     await initializeDatabase();
-    
+
     const servers = await getServersForBot(botId);
     if (!servers || servers.length === 0) {
         return true;
     }
-    
+
     for (const server of servers) {
         const categoriesResult = await query(
             'SELECT COUNT(*) as count FROM server_categories WHERE server_id = ?',
@@ -833,16 +1034,21 @@ export async function serversNeedSync(botId) {
             'SELECT COUNT(*) as count FROM server_roles WHERE server_id = ?',
             [server.id]
         );
-        
+        const membersResult = await query(
+            'SELECT COUNT(*) as count FROM server_members WHERE server_id = ?',
+            [server.id]
+        );
+
         const categoriesCount = categoriesResult[0]?.count || 0;
         const channelsCount = channelsResult[0]?.count || 0;
         const rolesCount = rolesResult[0]?.count || 0;
-        
-        if (categoriesCount === 0 && channelsCount === 0 && rolesCount === 0) {
+        const membersCount = membersResult[0]?.count || 0;
+
+        if (categoriesCount === 0 || channelsCount === 0 || rolesCount === 0 || membersCount === 0) {
             return true;
         }
     }
-    
+
     return false;
 }
 
@@ -862,6 +1068,10 @@ export default {
     getRoles,
     upsertRole,
     syncRoles,
+    upsertMember,
+    syncMembers,
+    syncMemberRoles,
+    memberHasAnyRole,
     getPanel,
     createPanel,
     updatePanelPassword,

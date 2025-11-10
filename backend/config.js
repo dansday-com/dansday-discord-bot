@@ -183,7 +183,21 @@ export const PERMISSIONS = {
 
     async hasAnyRole(member, roleIds) {
         if (!roleIds || roleIds.length === 0) return false;
-        return roleIds.some(roleId => member.roles.cache.has(roleId));
+
+        try {
+            requireBotConfig();
+            const server = await db.getServerByDiscordId(botConfig.id, member.guild.id);
+            if (!server) {
+                return false;
+            }
+
+            const user = member.user || member;
+            const discordMemberId = user?.id || member.id;
+
+            return await db.memberHasAnyRole(discordMemberId, roleIds, server.id);
+        } catch (error) {
+            return false;
+        }
     }
 };
 

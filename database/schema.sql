@@ -93,6 +93,31 @@ CREATE TABLE IF NOT EXISTS server_roles (
     FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS server_members (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    server_id INT NOT NULL,
+    discord_member_id VARCHAR(255) NOT NULL,
+    username TEXT,
+    display_name TEXT,
+    avatar TEXT,
+    profile_created_at TIMESTAMP NULL,
+    member_since TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_server_member (server_id, discord_member_id),
+    FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS server_member_roles (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    member_id INT NOT NULL,
+    role_id INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_member_role (member_id, role_id),
+    FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE,
+    FOREIGN KEY (role_id) REFERENCES server_roles(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS server_settings (
     id INT PRIMARY KEY AUTO_INCREMENT,
     server_id INT NOT NULL,
@@ -116,6 +141,10 @@ CREATE INDEX idx_server_channels_discord_id ON server_channels(discord_channel_i
 CREATE INDEX idx_server_channels_category_id ON server_channels(category_id);
 CREATE INDEX idx_server_roles_server_id ON server_roles(server_id);
 CREATE INDEX idx_server_roles_discord_id ON server_roles(discord_role_id);
+CREATE INDEX idx_server_members_server_id ON server_members(server_id);
+CREATE INDEX idx_server_members_discord_id ON server_members(discord_member_id);
+CREATE INDEX idx_server_member_roles_member_id ON server_member_roles(member_id);
+CREATE INDEX idx_server_member_roles_role_id ON server_member_roles(role_id);
 CREATE INDEX idx_server_settings_server_id ON server_settings(server_id);
 CREATE INDEX idx_server_settings_component ON server_settings(server_id, component_name);
 CREATE INDEX idx_panel_logs_panel_id ON panel_logs(panel_id);

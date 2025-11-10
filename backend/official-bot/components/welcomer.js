@@ -3,7 +3,7 @@ import { EmbedBuilder } from "discord.js";
 import logger from "../../logger.js";
 import db from "../../../database/database.js";
 
-function replacePlaceholders(message, memberId, serverData, memberData) {
+function replacePlaceholders(message, memberId, serverData, memberData, memberCount) {
     const now = new Date();
     const profileCreatedAt = memberData?.profile_created_at ? new Date(memberData.profile_created_at) : null;
     const accountAge = profileCreatedAt ? Math.floor((now.getTime() - profileCreatedAt.getTime()) / (1000 * 60 * 60 * 24)) : 0;
@@ -12,7 +12,7 @@ function replacePlaceholders(message, memberId, serverData, memberData) {
     return message
         .replace(/{user}/g, `<@${memberId}>`)
         .replace(/{server}/g, serverData?.name || 'Unknown Server')
-        .replace(/{memberCount}/g, (serverData?.total_members || 0).toString())
+        .replace(/{memberCount}/g, (memberCount || 0).toString())
         .replace(/{accountAge}/g, accountAgeText)
         .replace(/{date}/g, now.toLocaleDateString())
         .replace(/{time}/g, now.toLocaleTimeString());
@@ -33,7 +33,13 @@ async function welcomeUser(member, client) {
             return;
         }
 
-        const serverData = await db.getServerByDiscordId(botConfig.id, member.guild.id);
+        try {
+            await member.guild.fetch();
+        } catch (fetchError) {
+            await logger.log(`⚠️ Failed to fetch guild ${member.guild.id} before welcome: ${fetchError.message}`);
+        }
+
+        const serverData = await db.upsertServer(botConfig.id, member.guild);
         if (!serverData) {
             await logger.log(`⚠️ Server not found in database for ${member.guild.id}, skipping welcome message`);
             return;
@@ -52,8 +58,9 @@ async function welcomeUser(member, client) {
             return;
         }
 
+        const guildMemberCount = member.guild?.memberCount ?? (serverData?.total_members || 0);
         const randomMessage = messages[Math.floor(Math.random() * messages.length)];
-        const welcomeMessage = replacePlaceholders(randomMessage, member.user.id, serverData, memberData);
+        const welcomeMessage = replacePlaceholders(randomMessage, member.user.id, serverData, memberData, guildMemberCount);
 
         const embedConfig = await getEmbedConfig(member.guild.id);
 
@@ -73,7 +80,7 @@ async function welcomeUser(member, client) {
                 },
                 {
                     name: "👥 Member Count",
-                    value: `Member #${serverData.total_members || 0}`,
+                    value: `Member #${guildMemberCount || 0}`,
                     inline: true
                 }
             ])

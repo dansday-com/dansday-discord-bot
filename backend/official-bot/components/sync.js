@@ -84,6 +84,17 @@ async function syncGuildData(guild) {
         const members = Array.from(guild.members.cache.values()).filter(member => !member.user.bot);
         await db.syncMembers(serverId, members);
 
+        try {
+            const { CUSTOM_SUPPORTER_ROLE } = await import('../../config.js');
+            const constraints = await CUSTOM_SUPPORTER_ROLE.getRoleConstraints(guild.id);
+            if (constraints.ROLE_START && constraints.ROLE_END) {
+                await db.updateCustomRoleFlags(serverId, constraints.ROLE_START, constraints.ROLE_END);
+            } else {
+                await db.updateCustomRoleFlags(serverId, null, null);
+            }
+        } catch (error) {
+        }
+
         logger.log(`✅ Synced server: ${guild.name} (${guild.memberCount} members, ${categories.length} categories, ${channels.length} channels, ${roles.length} roles)`);
     } catch (error) {
         logger.log(`❌ Error syncing guild data for ${guild.name}: ${error.message}`);

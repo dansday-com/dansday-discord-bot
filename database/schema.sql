@@ -112,6 +112,7 @@ CREATE TABLE IF NOT EXISTS server_member_roles (
     id INT PRIMARY KEY AUTO_INCREMENT,
     member_id INT NOT NULL,
     role_id INT NOT NULL,
+    is_custom BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY unique_member_role (member_id, role_id),
     FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE,

@@ -742,10 +742,10 @@ export async function syncMemberRoles(memberId, discordRoleIds, serverId) {
         const rolesToRemove = Array.from(existingRoleIds).filter(roleId => !roleIdsToAdd.includes(roleId));
 
         if (rolesToAdd.length > 0) {
-            const placeholders = rolesToAdd.map(() => '(?, ?)').join(', ');
-            const values = rolesToAdd.flatMap(roleId => [memberId, roleId]);
+            const placeholders = rolesToAdd.map(() => '(?, ?, ?)').join(', ');
+            const values = rolesToAdd.flatMap(roleId => [memberId, roleId, false]);
             await query(
-                `INSERT INTO server_member_roles (member_id, role_id) VALUES ${placeholders}`,
+                `INSERT INTO server_member_roles (member_id, role_id, is_custom) VALUES ${placeholders}`,
                 values
             );
         }
@@ -797,6 +797,95 @@ export async function memberHasAnyRole(discordMemberId, discordRoleIds, serverId
     }
 }
 
+export async function updateCustomRoleFlags(serverId, roleStartId, roleEndId) {
+    try {
+        if (!roleStartId || !roleEndId) {
+            await query(
+                'UPDATE server_member_roles SET is_custom = FALSE WHERE role_id IN (SELECT id FROM server_roles WHERE server_id = ?)',
+                [serverId]
+            );
+            return true;
+        }
+
+        const startRole = await query(
+            'SELECT id, position FROM server_roles WHERE server_id = ? AND discord_role_id = ?',
+            [serverId, roleStartId]
+        );
+        const endRole = await query(
+            'SELECT id, position FROM server_roles WHERE server_id = ? AND discord_role_id = ?',
+            [serverId, roleEndId]
+        );
+
+        if (!startRole || startRole.length === 0 || !endRole || endRole.length === 0) {
+            await query(
+                'UPDATE server_member_roles SET is_custom = FALSE WHERE role_id IN (SELECT id FROM server_roles WHERE server_id = ?)',
+                [serverId]
+            );
+            return true;
+        }
+
+        const startPosition = startRole[0].position;
+        const endPosition = endRole[0].position;
+
+        await query(
+            `UPDATE server_member_roles smr
+             INNER JOIN server_roles sr ON smr.role_id = sr.id
+             SET smr.is_custom = TRUE
+             WHERE sr.server_id = ? AND sr.position < ? AND sr.position > ? AND sr.discord_role_id != ?`,
+            [serverId, startPosition, endPosition, roleStartId]
+        );
+
+        await query(
+            `UPDATE server_member_roles smr
+             INNER JOIN server_roles sr ON smr.role_id = sr.id
+             SET smr.is_custom = FALSE
+             WHERE sr.server_id = ? AND (sr.position >= ? OR sr.position <= ? OR sr.discord_role_id = ?)`,
+            [serverId, startPosition, endPosition, roleStartId]
+        );
+
+        return true;
+    } catch (error) {
+        console.error('Error updating custom role flags:', error);
+        return false;
+    }
+}
+
+export async function memberHasCustomSupporterRole(discordMemberId, serverId) {
+    try {
+        if (!discordMemberId || !serverId) return { has: false, role: null };
+
+        const memberResult = await query(
+            'SELECT id FROM server_members WHERE server_id = ? AND discord_member_id = ?',
+            [serverId, discordMemberId]
+        );
+
+        if (!memberResult || memberResult.length === 0) {
+            return { has: false, role: null };
+        }
+
+        const memberId = memberResult[0].id;
+
+        const roleResult = await query(
+            `SELECT sr.id, sr.discord_role_id, sr.name, sr.position, sr.color
+             FROM server_roles sr
+             INNER JOIN server_member_roles smr ON sr.id = smr.role_id
+             WHERE smr.member_id = ? AND smr.is_custom = TRUE
+             ORDER BY sr.position DESC
+             LIMIT 1`,
+            [memberId]
+        );
+
+        if (roleResult && roleResult.length > 0) {
+            return { has: true, role: roleResult[0] };
+        }
+
+        return { has: false, role: null };
+    } catch (error) {
+        console.error('Error checking custom supporter role:', error);
+        return { has: false, role: null };
+    }
+}
+
 export async function syncMembers(serverId, members) {
     try {
         if (!members || members.length === 0) {
@@ -820,8 +909,6 @@ export async function syncMembers(serverId, members) {
             try {
                 const dbMember = await upsertMember(serverId, member);
                 if (dbMember) {
-                    const user = member.user || member;
-                    const discordMemberId = user?.id || member.id;
                     const memberRoles = member.roles ? Array.from(member.roles.cache.keys()).filter(roleId => roleId !== member.guild?.id) : [];
                     await syncMemberRoles(dbMember.id, memberRoles, serverId);
                 }
@@ -1072,6 +1159,8 @@ export default {
     syncMembers,
     syncMemberRoles,
     memberHasAnyRole,
+    updateCustomRoleFlags,
+    memberHasCustomSupporterRole,
     getPanel,
     createPanel,
     updatePanelPassword,

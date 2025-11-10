@@ -1,22 +1,11 @@
 import { ModalBuilder, TextInputBuilder, ActionRowBuilder, TextInputStyle, EmbedBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
-import { getEmbedConfig, CUSTOM_SUPPORTER_ROLE } from '../../../config.js';
+import { getEmbedConfig, CUSTOM_SUPPORTER_ROLE, getBotConfig } from '../../../config.js';
 import logger from '../../../logger.js';
 import { hasPermission } from '../permissions.js';
+import db from '../../../../database/database.js';
 
 
 const supporterRoles = new Map();
-
-async function isValidCustomRole(role) {
-    try {
-
-        await role.guild.members.fetch();
-        const memberCount = role.members.size;
-        return memberCount === 1;
-    } catch (err) {
-        await logger.log(`⚠️ Error checking role member count: ${err.message}`);
-        return false;
-    }
-}
 
 async function cleanupInvalidRole(role) {
     try {
@@ -49,59 +38,34 @@ async function cleanupInvalidRole(role) {
 }
 
 async function hasSupporterRole(member) {
-
-    if (supporterRoles.has(member.id)) {
-        const roleId = supporterRoles.get(member.id);
-        const role = member.guild.roles.cache.get(roleId);
-        if (role && member.roles.cache.has(roleId)) {
-
-            if (await isValidCustomRole(role)) {
-                return { has: true, role };
-            } else {
-
-                await cleanupInvalidRole(role);
-                supporterRoles.delete(member.id);
-            }
-        } else {
-
-            supporterRoles.delete(member.id);
+    try {
+        const botConfig = getBotConfig();
+        if (!botConfig || !botConfig.id) {
+            return { has: false };
         }
-    }
+        
+        const user = member.user || member;
+        const discordMemberId = user?.id || member.id;
+        
+        const server = await db.getServerByDiscordId(botConfig.id, member.guild.id);
+        if (!server) {
+            return { has: false };
+        }
 
-    const constraints = await CUSTOM_SUPPORTER_ROLE.getRoleConstraints(member.guild.id);
-    
-    if (!constraints.ROLE_START || !constraints.ROLE_END) {
-        return { has: false };
-    }
-
-
-    const startRole = member.guild.roles.cache.get(constraints.ROLE_START);
-    const endRole = member.guild.roles.cache.get(constraints.ROLE_END);
-
-    if (!startRole || !endRole) {
-        return { has: false };
-    }
-
-
-    const allRoles = member.guild.roles.cache
-        .filter(role => role.position < startRole.position && role.position > endRole.position && !role.managed)
-        .sort((a, b) => b.position - a.position);
-
-    for (const role of allRoles.values()) {
-        if (member.roles.cache.has(role.id)) {
-
-            if (await isValidCustomRole(role)) {
-
+        const result = await db.memberHasCustomSupporterRole(discordMemberId, server.id);
+        
+        if (result.has && result.role) {
+            const role = member.guild.roles.cache.get(result.role.discord_role_id);
+            if (role) {
                 supporterRoles.set(member.id, role.id);
                 return { has: true, role };
-            } else {
-
-                await cleanupInvalidRole(role);
             }
         }
-    }
 
-    return { has: false };
+        return { has: false };
+    } catch (error) {
+        return { has: false };
+    }
 }
 
 function isValidImageUrl(url) {

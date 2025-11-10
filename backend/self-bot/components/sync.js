@@ -1,6 +1,5 @@
 import db from '../../../database/database.js';
 import logger from '../../logger.js';
-import { getLoggerChannel } from '../../config.js';
 import { separateChannelsAndCategories, mapCategoriesForSync, mapChannelsForSync } from '../../utils.js';
 
 let client = null;
@@ -122,9 +121,6 @@ async function getLoggerChannelFromOfficialBot(discordGuildId) {
     if (!connectedOfficialBotId) return null;
     
     try {
-        const officialBot = await db.getBot(connectedOfficialBotId);
-        if (!officialBot) return null;
-        
         const officialServer = await db.getServerByDiscordId(connectedOfficialBotId, discordGuildId);
         if (!officialServer) return null;
         

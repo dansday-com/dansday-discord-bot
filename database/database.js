@@ -920,6 +920,15 @@ export async function updateMemberLevelStats(memberId, updates = {}) {
         values.push(toMySQLDateTime(updates.lastMessageAt));
     }
 
+    if (updates.voiceSessionStartedAt !== undefined) {
+        if (updates.voiceSessionStartedAt === null) {
+            clauses.push('voice_session_started_at = NULL');
+        } else {
+            clauses.push('voice_session_started_at = ?');
+            values.push(toMySQLDateTime(updates.voiceSessionStartedAt));
+        }
+    }
+
     if (clauses.length === 0) {
         return await getMemberLevel(memberId);
     }

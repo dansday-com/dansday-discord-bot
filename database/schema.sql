@@ -120,6 +120,7 @@ CREATE TABLE IF NOT EXISTS server_member_levels (
     level INT DEFAULT 1,
     rank INT DEFAULT NULL,
     last_message_at TIMESTAMP NULL,
+    voice_session_started_at TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY unique_member_level (member_id),

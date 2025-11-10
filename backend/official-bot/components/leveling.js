@@ -8,13 +8,11 @@ const permissionCache = new Map();
 
 const messageCooldownMs = (LEVELING?.MESSAGE?.COOLDOWN_SECONDS || 0) * 1000;
 const voiceMinimumMinutes = Math.max(LEVELING?.VOICE?.MINIMUM_SESSION_MINUTES || 0, 0);
+const BASE_XP = 100;
 
-function getRequiredExperienceForLevel(level) {
-    if (level <= 1) {
-        return 0;
-    }
-    const baseXp = 100;
-    return baseXp * Math.pow(2, level - 2);
+export function getLevelRequirement(level) {
+    if (level <= 1) return 0;
+    return BASE_XP * Math.pow(2, level - 2);
 }
 
 function getExperienceForMessage() {
@@ -30,7 +28,7 @@ function determineLevel(experience = 0) {
     if (experience <= 0) return 1;
 
     let level = 1;
-    while (experience >= getRequiredExperienceForLevel(level + 1)) {
+    while (experience >= getLevelRequirement(level + 1)) {
         level += 1;
     }
     return level;
@@ -92,7 +90,7 @@ async function resolveServerAndMember(guild, memberLike) {
 
         return { server, dbMember, guildMember };
     } catch (error) {
-        console.error(`Leveling resolve failure for guild ${guild?.id}:`, error.message);
+        await logger.log(`❌ Leveling resolve failure for guild ${guild?.id}: ${error.message}`, guild?.id);
         return { server: null, dbMember: null, guildMember: null };
     }
 }
@@ -112,7 +110,6 @@ async function getMemberRoleIds(guildId) {
         permissionCache.set(guildId, { timestamp: now, roles });
         return roles;
     } catch (error) {
-        console.error(`Leveling permission fetch failed for guild ${guildId}:`, error.message);
         permissionCache.set(guildId, { timestamp: now, roles: [] });
         return [];
     }
@@ -131,7 +128,6 @@ async function isMemberEligible(guildId, guildMember) {
     try {
         return await PERMISSIONS.hasAnyRole(guildMember, memberRoles);
     } catch (error) {
-        console.error(`Leveling role check failed for guild ${guildId}:`, error.message);
         return false;
     }
 }
@@ -188,11 +184,11 @@ async function handleMessageCreate(message) {
         await handleLevelEvaluation(server, dbMember, stats, message.guild.id);
         recentMessages.set(cooldownKey, now);
     } catch (error) {
-        console.error('Leveling message handler error:', error.message);
+        await logger.log(`❌ Leveling message handler error: ${error.message}`, message.guild?.id);
     }
 }
 
-async function startVoiceSession(state) {
+async function startVoiceSession(state, resumed = false) {
     try {
         if (!state?.channelId || !state.guild) return;
 
@@ -208,6 +204,7 @@ async function startVoiceSession(state) {
         }
 
         await db.ensureMemberLevel(dbMember.id);
+        const levelData = await db.getMemberLevel(dbMember.id);
 
         const sessionKey = `${state.guild.id}:${guildMember.id}`;
         const existingSession = voiceSessions.get(sessionKey);
@@ -215,12 +212,39 @@ async function startVoiceSession(state) {
             clearInterval(existingSession.interval);
         }
 
+        const now = Date.now();
+        let sessionStartTime = now;
+        let elapsedMinutes = 0;
+
+        if (resumed && levelData?.voice_session_started_at) {
+            sessionStartTime = new Date(levelData.voice_session_started_at).getTime();
+            elapsedMinutes = Math.max(0, Math.floor((now - sessionStartTime) / 60000));
+
+            if (elapsedMinutes > 0) {
+                const stats = await db.updateMemberLevelStats(dbMember.id, {
+                    voiceMinutesIncrement: elapsedMinutes,
+                    experienceIncrement: getExperienceForVoiceMinutes(elapsedMinutes)
+                });
+                await handleLevelEvaluation(server, dbMember, stats, state.guild.id);
+                await logger.log(`📈 Resumed voice tracking for ${guildMember.id}: awarded ${elapsedMinutes} minutes, continuing to track`, state.guild.id);
+            }
+
+            await db.updateMemberLevelStats(dbMember.id, {
+                voiceSessionStartedAt: new Date(now)
+            });
+            sessionStartTime = now;
+        } else {
+            await db.updateMemberLevelStats(dbMember.id, {
+                voiceSessionStartedAt: new Date(now)
+            });
+        }
+
         const interval = setInterval(async () => {
             await handleVoiceTick(sessionKey);
         }, 60 * 1000);
 
         voiceSessions.set(sessionKey, {
-            startedAt: Date.now(),
+            startedAt: sessionStartTime,
             serverId: server.id,
             serverName: server.name,
             memberId: dbMember.id,
@@ -230,7 +254,7 @@ async function startVoiceSession(state) {
             trackedMinutes: 0
         });
     } catch (error) {
-        console.error('Leveling voice session start error:', error.message);
+        await logger.log(`❌ Leveling voice session start error: ${error.message}`, state.guild?.id);
     }
 }
 
@@ -245,39 +269,61 @@ async function endVoiceSession(state) {
         const sessionKey = `${guild.id}:${memberId}`;
         const session = voiceSessions.get(sessionKey);
 
-        if (!session || !session.startedAt) {
-            return;
-        }
-
-        if (session.interval) {
+        if (session && session.interval) {
             clearInterval(session.interval);
         }
 
         voiceSessions.delete(sessionKey);
 
-        const elapsedMs = Date.now() - session.startedAt;
+        const botConfig = getBotConfig();
+        if (!botConfig || !botConfig.id) {
+            return;
+        }
+
+        const server = await db.getServerByDiscordId(botConfig.id, guild.id);
+        if (!server) {
+            return;
+        }
+
+        const dbMember = await db.getMemberByDiscordId(server.id, memberId);
+        if (!dbMember) {
+            return;
+        }
+
+        const levelData = await db.getMemberLevel(dbMember.id);
+        if (!levelData || !levelData.voice_session_started_at) {
+            return;
+        }
+
+        const sessionStartTime = new Date(levelData.voice_session_started_at).getTime();
+        const now = Date.now();
+        const elapsedMs = now - sessionStartTime;
         const totalElapsedMinutes = Math.floor(elapsedMs / 60000);
 
         if (totalElapsedMinutes > 0 && totalElapsedMinutes >= voiceMinimumMinutes) {
-            const recordedMinutes = session.trackedMinutes || 0;
+            const recordedMinutes = session?.trackedMinutes || 0;
             const remainingMinutes = Math.max(0, totalElapsedMinutes - recordedMinutes);
 
             if (remainingMinutes > 0) {
-                const stats = await db.updateMemberLevelStats(session.memberId, {
+                const stats = await db.updateMemberLevelStats(dbMember.id, {
                     voiceMinutesIncrement: remainingMinutes,
-                    experienceIncrement: getExperienceForVoiceMinutes(remainingMinutes)
+                    experienceIncrement: getExperienceForVoiceMinutes(remainingMinutes),
+                    voiceSessionStartedAt: null
                 });
 
-                const server = { id: session.serverId, name: guild.name };
-                const dbMember = await db.getMemberByDiscordId(session.serverId, memberId);
-
-                if (dbMember) {
-                    await handleLevelEvaluation(server, dbMember, stats, guild.id);
-                }
+                await handleLevelEvaluation(server, dbMember, stats, guild.id);
+            } else {
+                await db.updateMemberLevelStats(dbMember.id, {
+                    voiceSessionStartedAt: null
+                });
             }
+        } else {
+            await db.updateMemberLevelStats(dbMember.id, {
+                voiceSessionStartedAt: null
+            });
         }
     } catch (error) {
-        console.error('Leveling voice session end error:', error.message);
+        await logger.log(`❌ Leveling voice session end error: ${error.message}`, state.guild?.id);
     }
 }
 
@@ -288,29 +334,76 @@ async function handleVoiceTick(sessionKey) {
     }
 
     try {
+        const botConfig = getBotConfig();
+        if (!botConfig || !botConfig.id) {
+            return;
+        }
+
+        const server = await db.getServerByDiscordId(botConfig.id, session.guildId);
+        if (!server) {
+            return;
+        }
+
+        const dbMember = await db.getMemberByDiscordId(server.id, session.discordMemberId);
+        if (!dbMember) {
+            return;
+        }
+
+        const levelData = await db.getMemberLevel(dbMember.id);
+        if (!levelData || !levelData.voice_session_started_at) {
+            return;
+        }
+
         session.trackedMinutes = (session.trackedMinutes || 0) + 1;
 
         if (session.trackedMinutes >= voiceMinimumMinutes) {
-            const stats = await db.updateMemberLevelStats(session.memberId, {
+            const stats = await db.updateMemberLevelStats(dbMember.id, {
                 voiceMinutesIncrement: 1,
                 experienceIncrement: getExperienceForVoiceMinutes(1)
             });
-
-            const dbMember = await db.getMemberByDiscordId(session.serverId, session.discordMemberId);
-            if (!dbMember) {
-                return;
-            }
 
             const serverInfo = { id: session.serverId, name: session.serverName };
             await handleLevelEvaluation(serverInfo, dbMember, stats, session.guildId);
         }
     } catch (error) {
-        console.error('Leveling voice tick error:', error.message);
+        await logger.log(`❌ Leveling voice tick error: ${error.message}`, session.guildId);
+    }
+}
+
+async function resumeVoiceSessions(client) {
+    try {
+        for (const guild of client.guilds.cache.values()) {
+            let resumedCount = 0;
+            for (const [, voiceState] of guild.voiceStates.cache) {
+                if (voiceState.channelId && voiceState.member) {
+                    try {
+                        await startVoiceSession(voiceState, true);
+                        resumedCount++;
+                    } catch (err) {
+                        await logger.log(`❌ Leveling: failed to resume voice session for ${voiceState.id}: ${err.message}`, guild.id);
+                    }
+                }
+            }
+
+            if (resumedCount > 0) {
+                await logger.log(`📈 Leveling: Resumed ${resumedCount} voice session(s) for guild ${guild.name}`, guild.id);
+            }
+        }
+    } catch (error) {
+        await logger.log(`❌ Leveling resume error: ${error.message}`);
     }
 }
 
 function init(client) {
     client.on("messageCreate", handleMessageCreate);
+
+    if (client.isReady()) {
+        resumeVoiceSessions(client);
+    } else {
+        client.once("ready", () => {
+            resumeVoiceSessions(client);
+        });
+    }
 
     client.on("voiceStateUpdate", async (oldState, newState) => {
         try {
@@ -318,15 +411,15 @@ function init(client) {
             const newChannel = newState?.channelId;
 
             if (!oldChannel && newChannel) {
-                await startVoiceSession(newState);
+                await startVoiceSession(newState, false);
             } else if (oldChannel && !newChannel) {
                 await endVoiceSession(oldState);
             } else if (oldChannel && newChannel && oldChannel !== newChannel) {
                 await endVoiceSession(oldState);
-                await startVoiceSession(newState);
+                await startVoiceSession(newState, false);
             }
         } catch (error) {
-            console.error('Leveling voice state update error:', error.message);
+            await logger.log(`❌ Leveling voice state update error: ${error.message}`, newState.guild?.id);
         }
     });
 
@@ -334,4 +427,3 @@ function init(client) {
 }
 
 export default { init };
-

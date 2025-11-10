@@ -3,6 +3,15 @@ import { getEmbedConfig, getBotConfig } from "../../../config.js";
 import { hasPermission } from "../permissions.js";
 import db from "../../../../database/database.js";
 import logger from "../../../logger.js";
+import { getLevelRequirement } from "../leveling.js";
+
+const PROGRESS_BAR_SLOTS = 10;
+
+function buildProgressBar(ratio) {
+    const filledSlots = Math.round(ratio * PROGRESS_BAR_SLOTS);
+    const emptySlots = PROGRESS_BAR_SLOTS - filledSlots;
+    return `${"█".repeat(Math.max(0, filledSlots))}${"░".repeat(Math.max(0, emptySlots))}`;
+}
 
 function formatNumber(value) {
     if (typeof value !== "number" || Number.isNaN(value)) {
@@ -53,9 +62,21 @@ export async function handleLevelingButton(interaction) {
 
         const memberDisplayName = memberLevelData?.server_display_name || memberLevelData?.display_name || memberLevelData?.username || interaction.user.username;
 
+        const currentLevel = memberLevelData?.level ?? 1;
+        const currentXP = memberLevelData?.experience ?? 0;
+        const nextLevel = currentLevel + 1;
+        const currentLevelRequirement = getLevelRequirement(currentLevel);
+        const nextLevelRequirement = getLevelRequirement(nextLevel);
+        const xpRange = nextLevelRequirement - currentLevelRequirement;
+        const xpIntoLevel = Math.max(0, currentXP - currentLevelRequirement);
+        const progressRatio = xpRange > 0 ? Math.max(0, Math.min(1, xpIntoLevel / xpRange)) : 0;
+        const progressBar = buildProgressBar(progressRatio);
+        const xpProgressText = `${formatNumber(currentXP)} / ${formatNumber(nextLevelRequirement)} XP`;
+
         const profileLines = [];
-        profileLines.push(`• **Level:** ${memberLevelData?.level ?? 1}`);
-        profileLines.push(`• **Experience:** ${formatNumber(memberLevelData?.experience ?? 0)} XP`);
+        profileLines.push(`• **Level:** ${currentLevel}`);
+        profileLines.push(`• **Experience:** ${formatNumber(currentXP)} XP`);
+        profileLines.push(`• **Progress:** ${progressBar} (${xpProgressText})`);
         profileLines.push(`• **Chat Count:** ${formatNumber(memberLevelData?.chat_count ?? 0)}`);
         profileLines.push(`• **Voice Minutes:** ${formatNumber(memberLevelData?.voice_minutes ?? 0)}`);
         profileLines.push(`• **Rank:** ${memberLevelData?.rank ? `#${memberLevelData.rank}` : "Unranked"}`);

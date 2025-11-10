@@ -1,149 +1,160 @@
 import { ModalBuilder, TextInputBuilder, ActionRowBuilder, TextInputStyle, EmbedBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
-import { getEmbedConfig } from '../../../config.js';
+import { getEmbedConfig, getBotConfig } from '../../../config.js';
 import logger from '../../../logger.js';
 import { hasPermission } from '../permissions.js';
+import db from '../../../../database/database.js';
 
-// Store AFK status (userId -> { message, timestamp, originalNickname, hadServerNickname, wasMutedByBot, wasDeafenedByBot })
-const afkUsers = new Map();
-
-// Get AFK status for a user
-export function getAFKStatus(userId) {
-    return afkUsers.get(userId) || null;
-}
-
-// Set user as AFK
-async function setAFK(member, message, shouldDeafen = true) {
-    const userId = member.id;
-    // Store the original nickname (null if they didn't have a server nickname)
-    // When they don't have a nickname, Discord shows their display name (globalName/displayName)
-    const originalNickname = member.nickname; // null if no server nickname
-    const hadServerNickname = member.nickname !== null;
-
-    // Check if user is in a voice channel
-    let wasMutedByBot = false;
-    let wasDeafenedByBot = false;
-    if (member.voice.channel) {
-        try {
-            // Mute the user in voice channel
-            await member.voice.setMute(true);
-            wasMutedByBot = true;
-            await logger.log(`🔇 Muted ${member.user.tag} (${member.user.id}) in voice channel (AFK)`);
-        } catch (err) {
-            await logger.log(`⚠️ Could not mute ${member.user.tag} in voice channel: ${err.message}`);
+export async function getAFKStatus(userId, guildId) {
+    try {
+        const botConfig = getBotConfig();
+        if (!botConfig || !botConfig.id) {
+            return null;
         }
 
-        // Only deafen if user chose to be deafened
-        if (shouldDeafen) {
+        const serverData = await db.getServerByDiscordId(botConfig.id, guildId);
+        if (!serverData) {
+            return null;
+        }
+
+        return await db.getAFKStatus(serverData.id, userId);
+    } catch (error) {
+        return null;
+    }
+}
+
+async function setAFK(member, message, shouldDeafen = true) {
+    try {
+        const botConfig = getBotConfig();
+        if (!botConfig || !botConfig.id) {
+            return;
+        }
+
+        const serverData = await db.getServerByDiscordId(botConfig.id, member.guild.id);
+        if (!serverData) {
+            return;
+        }
+
+        const userId = member.id;
+        await db.upsertMember(serverData.id, member);
+        const memberData = await db.getMemberByDiscordId(serverData.id, userId);
+        const nameToUse = member.nickname || memberData?.display_name || member.user.globalName || member.user.displayName || member.user.username;
+
+        if (member.voice.channel) {
             try {
-                // Deafen the user in voice channel
-                await member.voice.setDeaf(true);
-                wasDeafenedByBot = true;
-                await logger.log(`🔇 Deafened ${member.user.tag} (${member.user.id}) in voice channel (AFK)`);
+                await member.voice.setMute(true);
+                await logger.log(`🔇 Muted ${member.id} in voice channel (AFK)`);
             } catch (err) {
-                await logger.log(`⚠️ Could not deafen ${member.user.tag} in voice channel: ${err.message}`);
+                await logger.log(`⚠️ Could not mute ${member.id} in voice channel: ${err.message}`);
+            }
+
+            if (shouldDeafen) {
+                try {
+                    await member.voice.setDeaf(true);
+                    await logger.log(`🔇 Deafened ${member.id} in voice channel (AFK)`);
+                } catch (err) {
+                    await logger.log(`⚠️ Could not deafen ${member.id} in voice channel: ${err.message}`);
+                }
             }
         }
-    }
 
-    // Store AFK status
-    afkUsers.set(userId, {
-        message: message || 'Away',
-        timestamp: Date.now(),
-        originalNickname: originalNickname, // null if no server nickname, otherwise the nickname
-        hadServerNickname: hadServerNickname, // track if they had a server nickname
-        wasMutedByBot: wasMutedByBot,
-        wasDeafenedByBot: wasDeafenedByBot
-    });
+        await db.setAFKStatus(serverData.id, userId, {
+            message: message || 'Away'
+        });
 
-    // Update nickname with [AFK] prefix
-    // Use display name if they don't have a server nickname
-    try {
-        const nameToUse = originalNickname || member.user.globalName || member.user.displayName || member.user.username;
-        const newNickname = `[AFK] ${nameToUse}`;
-        if (newNickname.length <= 32) {
-            await member.setNickname(newNickname);
+        try {
+            const newNickname = `[AFK] ${nameToUse}`;
+            if (newNickname.length <= 32) {
+                await member.setNickname(newNickname);
+                await db.upsertMember(serverData.id, member);
+            }
+        } catch (err) {
+            await logger.log(`⚠️ Could not update nickname for ${member.id}: ${err.message}`);
         }
-    } catch (err) {
-        await logger.log(`⚠️ Could not update nickname for ${member.user.tag}: ${err.message}`);
+    } catch (error) {
+        await logger.log(`❌ Error setting AFK: ${error.message}`);
     }
 }
 
-// Remove AFK status
 export async function removeAFK(member, reason = '') {
-    const userId = member.id;
-    const afkData = afkUsers.get(userId);
-
-    if (!afkData) {
-        return false; // Not AFK
-    }
-
-    // Unmute if we muted them
-    if (afkData.wasMutedByBot && member.voice.channel) {
-        try {
-            await member.voice.setMute(false);
-            await logger.log(`🔊 Unmuted ${member.user.tag} (${member.user.id}) in voice channel (AFK removed)`);
-        } catch (err) {
-            await logger.log(`⚠️ Could not unmute ${member.user.tag} in voice channel: ${err.message}`);
-        }
-    }
-
-    // Undeafen if we deafened them
-    if (afkData.wasDeafenedByBot && member.voice.channel) {
-        try {
-            await member.voice.setDeaf(false);
-            await logger.log(`🔊 Undeafened ${member.user.tag} (${member.user.id}) in voice channel (AFK removed)`);
-        } catch (err) {
-            await logger.log(`⚠️ Could not undeafen ${member.user.tag} in voice channel: ${err.message}`);
-        }
-    }
-
-    // Restore original nickname
     try {
-        // If they had a server nickname, restore it
-        // If they didn't have a nickname (originalNickname is null), set to null to restore their natural display name
-        if (afkData.hadServerNickname) {
-            // They had a server nickname, restore it
-            await member.setNickname(afkData.originalNickname);
-        } else {
-            // They didn't have a server nickname, set to null to restore their natural display name
-            await member.setNickname(null);
+        const botConfig = getBotConfig();
+        if (!botConfig || !botConfig.id) {
+            return false;
         }
-    } catch (err) {
-        // If nickname can't be set, try clearing it
+
+        const serverData = await db.getServerByDiscordId(botConfig.id, member.guild.id);
+        if (!serverData) {
+            return false;
+        }
+
+        const userId = member.id;
+        const afkData = await db.getAFKStatus(serverData.id, userId);
+
+        if (!afkData) {
+            return false;
+        }
+
+        if (member.voice.channel) {
+            try {
+                await member.voice.setMute(false);
+                await logger.log(`🔊 Unmuted ${member.id} in voice channel (AFK removed)`);
+            } catch (err) {
+                await logger.log(`⚠️ Could not unmute ${member.id} in voice channel: ${err.message}`);
+            }
+
+            try {
+                await member.voice.setDeaf(false);
+                await logger.log(`🔊 Undeafened ${member.id} in voice channel (AFK removed)`);
+            } catch (err) {
+                await logger.log(`⚠️ Could not undeafen ${member.id} in voice channel: ${err.message}`);
+            }
+        }
+
         try {
-            await member.setNickname(null);
-        } catch (err2) {
-            await logger.log(`⚠️ Could not restore nickname for ${member.user.tag}: ${err2.message}`);
+            const memberData = await db.getMemberByDiscordId(serverData.id, userId);
+            if (memberData?.server_display_name) {
+                await member.setNickname(memberData.server_display_name);
+            } else {
+                await member.setNickname(null);
+            }
+            await db.upsertMember(serverData.id, member);
+        } catch (err) {
+            try {
+                await member.setNickname(null);
+                await db.upsertMember(serverData.id, member);
+            } catch (err2) {
+                await logger.log(`⚠️ Could not restore nickname for ${member.id}: ${err2.message}`);
+            }
         }
+
+        await db.removeAFKStatus(serverData.id, userId);
+
+        const duration = Math.floor((Date.now() - afkData.timestamp) / 1000);
+        const minutes = Math.floor(duration / 60);
+        const hours = Math.floor(minutes / 60);
+
+        let durationText = '';
+        if (hours > 0) {
+            durationText = `${hours}h ${minutes % 60}m`;
+        } else if (minutes > 0) {
+            durationText = `${minutes}m`;
+        } else {
+            durationText = `${duration}s`;
+        }
+
+        await logger.log(`✅ Removed AFK status for ${member.id} - Was AFK for ${durationText}${reason ? ` - ${reason}` : ''}`);
+
+        return true;
+    } catch (error) {
+        await logger.log(`❌ Error removing AFK: ${error.message}`);
+        return false;
     }
-
-    // Remove from map
-    afkUsers.delete(userId);
-
-    const duration = Math.floor((Date.now() - afkData.timestamp) / 1000);
-    const minutes = Math.floor(duration / 60);
-    const hours = Math.floor(minutes / 60);
-
-    let durationText = '';
-    if (hours > 0) {
-        durationText = `${hours}h ${minutes % 60}m`;
-    } else if (minutes > 0) {
-        durationText = `${minutes}m`;
-    } else {
-        durationText = `${duration}s`;
-    }
-
-    await logger.log(`✅ Removed AFK status for ${member.user.tag} (${member.user.id}) - Was AFK for ${durationText}${reason ? ` - ${reason}` : ''}`);
-
-    return true;
 }
 
-// Handle AFK button click
 export async function handleAFKButton(interaction) {
     try {
         const member = interaction.member;
 
-        // Check permissions (members can use AFK)
         if (!(await hasPermission(member, 'afk'))) {
             await interaction.reply({
                 content: '❌ You don\'t have permission to use AFK.',
@@ -152,11 +163,10 @@ export async function handleAFKButton(interaction) {
             return;
         }
 
-        // Check if user is already AFK
-        const afkData = afkUsers.get(member.id);
+        const afkData = await getAFKStatus(member.id, member.guild.id);
 
         if (afkData) {
-            // Show options to remove AFK
+
             const removeButton = new ButtonBuilder()
                 .setCustomId('afk_remove')
                 .setLabel('🔄 Remove AFK')
@@ -195,11 +205,10 @@ export async function handleAFKButton(interaction) {
                 components: [buttonRow],
                 flags: 64
             });
-            await logger.log(`⏸️ AFK status shown to ${member.user.tag} (${member.user.id})`);
+            await logger.log(`⏸️ AFK status shown to ${member.id}`);
             return;
         }
 
-        // Show modal to set AFK
         const modal = new ModalBuilder()
             .setCustomId('afk_set')
             .setTitle('⏸️ Set AFK Status');
@@ -225,7 +234,7 @@ export async function handleAFKButton(interaction) {
         modal.addComponents(messageRow, deafenRow);
 
         await interaction.showModal(modal);
-        await logger.log(`⏸️ AFK modal shown to ${member.user.tag} (${member.user.id})`);
+        await logger.log(`⏸️ AFK modal shown to ${member.id}`);
 
     } catch (error) {
         await logger.log(`❌ Error showing AFK modal: ${error.message}`, interaction.guild?.id);
@@ -236,14 +245,12 @@ export async function handleAFKButton(interaction) {
     }
 }
 
-// Handle AFK modal submission
 export async function handleAFKModal(interaction) {
     try {
         await interaction.deferReply({ flags: 64 });
 
         const member = interaction.member;
 
-        // Check permissions
         if (!hasPermission(member, 'afk')) {
             await interaction.editReply({
                 content: '❌ You don\'t have permission to use AFK.'
@@ -251,17 +258,13 @@ export async function handleAFKModal(interaction) {
             return;
         }
 
-        // Get AFK message
         const afkMessage = interaction.fields.getTextInputValue('afk_message')?.trim() || 'Away';
 
-        // Get deafen preference (default to true if not specified or if value is "yes")
         const deafenValue = interaction.fields.getTextInputValue('afk_deafen')?.trim().toLowerCase();
         const shouldDeafen = deafenValue !== 'no';
 
-        // Set AFK
         await setAFK(member, afkMessage, shouldDeafen);
 
-        // Confirm to user
         const voiceInfo = member.voice.channel
             ? (shouldDeafen ? 'You will be muted and deafened in voice.' : 'You will be muted in voice (not deafened).')
             : '';
@@ -283,7 +286,7 @@ export async function handleAFKModal(interaction) {
             embeds: [embed]
         });
 
-        await logger.log(`✅ AFK status set for ${member.user.tag} (${member.user.id}): "${afkMessage}"${shouldDeafen ? ' (will be deafened)' : ' (not deafened)'}`);
+        await logger.log(`✅ AFK status set for ${member.id}: "${afkMessage}"${shouldDeafen ? ' (will be deafened)' : ' (not deafened)'}`);
 
     } catch (error) {
         await logger.log(`❌ Error setting AFK: ${error.message}`, interaction.guild?.id);
@@ -293,12 +296,10 @@ export async function handleAFKModal(interaction) {
     }
 }
 
-// Handle remove AFK button
 export async function handleRemoveAFKButton(interaction) {
     try {
         const member = interaction.member;
 
-        // Check permissions
         if (!hasPermission(member, 'afk')) {
             await interaction.reply({
                 content: '❌ You don\'t have permission to use AFK.',
@@ -307,7 +308,6 @@ export async function handleRemoveAFKButton(interaction) {
             return;
         }
 
-        // Remove AFK
         const wasAFK = await removeAFK(member, 'Manually removed');
 
         if (!wasAFK) {
@@ -318,7 +318,6 @@ export async function handleRemoveAFKButton(interaction) {
             return;
         }
 
-        // Confirm removal
         const embedConfig = await getEmbedConfig(interaction.guild.id);
         const embed = new EmbedBuilder()
             .setColor(embedConfig.COLOR)
@@ -332,7 +331,7 @@ export async function handleRemoveAFKButton(interaction) {
             flags: 64
         });
 
-        await logger.log(`✅ AFK manually removed by ${member.user.tag} (${member.user.id})`);
+        await logger.log(`✅ AFK manually removed by ${member.id}`);
 
     } catch (error) {
         await logger.log(`❌ Error removing AFK: ${error.message}`, interaction.guild?.id);
@@ -343,11 +342,10 @@ export async function handleRemoveAFKButton(interaction) {
     }
 }
 
-// Initialize AFK component with event listeners
 export function init(client) {
-    // Remove AFK when user sends any message
+
     client.on('messageCreate', async (message) => {
-        // Ignore bots and DMs
+
         if (message.author.bot || !message.guild) {
             return;
         }
@@ -358,33 +356,51 @@ export function init(client) {
                 return;
             }
 
-            // Check if user is AFK (message sender)
-            const afkData = getAFKStatus(member.id);
+            const botConfig = getBotConfig();
+            if (!botConfig?.id) {
+                return;
+            }
+
+            const serverData = await db.getServerByDiscordId(botConfig.id, message.guild.id);
+            if (!serverData) {
+                return;
+            }
+
+            const senderData = await db.getMemberByDiscordId(serverData.id, member.id);
+            if (!senderData) {
+                await logger.log(`⚠️ Unable to notify mention for ${member.id}: sender not found in database`, message.guild.id);
+                return;
+            }
+
+            const senderDisplayName = senderData.server_display_name || senderData.display_name;
+            if (!senderDisplayName) {
+                await logger.log(`⚠️ Sender display name missing in database for ${member.id}, skipping AFK DM`, message.guild.id);
+                return;
+            }
+
+            const afkData = await getAFKStatus(member.id, member.guild.id);
             if (afkData) {
                 await removeAFK(member, 'Sent a message');
 
-                // Send welcome back message
                 try {
                     const welcomeMsg = await message.channel.send(`✅ Welcome back, ${member}! Your AFK status has been removed.`);
-                    setTimeout(() => welcomeMsg.delete().catch(() => { }), 5000); // Auto-delete after 5 seconds
+                    setTimeout(() => welcomeMsg.delete().catch(() => { }), 5000);
                 } catch (err) {
-                    // Silent fail if we can't send message
+
                 }
             }
 
-            // Check if message mentions any AFK users
             if (message.mentions.members && message.mentions.members.size > 0) {
                 for (const [mentionedId, mentionedMember] of message.mentions.members) {
-                    // Skip if mentioning self
+
                     if (mentionedId === member.id) {
                         continue;
                     }
 
-                    // Check if mentioned user is AFK
-                    const mentionedAFKData = getAFKStatus(mentionedId);
+                    const mentionedAFKData = await getAFKStatus(mentionedId, member.guild.id);
                     if (mentionedAFKData) {
                         try {
-                            // Calculate AFK duration
+
                             const duration = Math.floor((Date.now() - mentionedAFKData.timestamp) / 1000);
                             const minutes = Math.floor(duration / 60);
                             const hours = Math.floor(minutes / 60);
@@ -398,27 +414,23 @@ export function init(client) {
                                 durationText = `${duration}s`;
                             }
 
-                            // Build AFK message
                             let afkMessage = `⏸️ ${mentionedMember} is currently AFK`;
                             if (mentionedAFKData.message && mentionedAFKData.message !== 'Away') {
                                 afkMessage += `: **${mentionedAFKData.message}**`;
                             }
                             afkMessage += ` (for ${durationText})`;
 
-                            // Send reply (auto-deletes after 10 seconds)
                             const afkNotice = await message.reply(afkMessage);
-                            setTimeout(() => afkNotice.delete().catch(() => { }), 10000); // Auto-delete after 10 seconds
+                            setTimeout(() => afkNotice.delete().catch(() => { }), 10000);
 
-                            // DM the AFK user that they were mentioned
                             try {
-                                const dmMessage = `📬 You were mentioned by ${member.user.tag} in **${message.guild.name}** (#${message.channel.name})\n\n**Message:** ${message.content.substring(0, 200)}${message.content.length > 200 ? '...' : ''}`;
+                                const dmMessage = `📬 You were mentioned by ${senderDisplayName} in **${message.guild.name}** (#${message.channel.name})\n\n**Message:** ${message.content.substring(0, 200)}${message.content.length > 200 ? '...' : ''}`;
                                 await mentionedMember.send(dmMessage);
                             } catch (dmErr) {
-                                // User might have DMs disabled, log but don't fail
-                                await logger.log(`⚠️ Could not DM ${mentionedMember.user.tag} about mention: ${dmErr.message}`);
+                                await logger.log(`⚠️ Could not DM ${mentionedMember.id} about mention: ${dmErr.message}`);
                             }
                         } catch (err) {
-                            await logger.log(`⚠️ Could not send AFK notice for ${mentionedMember.user.tag}: ${err.message}`);
+                            await logger.log(`⚠️ Could not send AFK notice for ${mentionedMember.id}: ${err.message}`);
                         }
                     }
                 }
@@ -428,33 +440,30 @@ export function init(client) {
         }
     });
 
-    // Remove AFK when user unmutes in voice (only for self-mute, server mute requires bot to unmute)
     client.on('voiceStateUpdate', async (oldState, newState) => {
-        // Ignore if not in a guild or if user is a bot
+
         if (!newState.guild || newState.member?.user.bot) {
             return;
         }
 
         try {
-            // Check if user was self-muted and now unmuted (not server mute - users can control self-mute)
+
             const wasSelfMuted = oldState.mute && !oldState.serverMute;
             const isSelfUnmuted = !newState.mute && !newState.serverMute;
 
-            // Check if user was self-deafened and now undeafened
             const wasSelfDeafened = oldState.deaf && !oldState.serverDeaf;
             const isSelfUndeafened = !newState.deaf && !newState.serverDeaf;
 
             if ((wasSelfMuted && isSelfUnmuted) || (wasSelfDeafened && isSelfUndeafened)) {
-                // User self-unmuted or self-undeafened - check if they're AFK
-                const afkData = getAFKStatus(newState.member.id);
+
+                const afkData = await getAFKStatus(newState.member.id, newState.guild.id);
                 if (afkData) {
                     await removeAFK(newState.member, 'Self-unmuted/undeafened in voice channel');
                 }
             }
 
-            // Note: Server mute/deafen (setMute/setDeaf) can only be removed by the bot
-            // So when bot mutes/deafens them for AFK, they must remove AFK to be unmuted/undeafened
-            // removeAFK() function handles the unmuting/undeafening automatically
+
+
         } catch (err) {
             await logger.log(`❌ Error checking AFK in voiceStateUpdate: ${err.message}`);
         }

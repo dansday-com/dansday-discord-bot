@@ -1,125 +1,166 @@
--- GO BLOX Bot System Database Schema
-
--- Panel table (stores panel administrator credentials)
 CREATE TABLE IF NOT EXISTS panel (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id INT PRIMARY KEY AUTO_INCREMENT,
     password_hash TEXT NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- Panel logs table (stores login attempt logs)
 CREATE TABLE IF NOT EXISTS panel_logs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    panel_id UUID REFERENCES panel(id) ON DELETE SET NULL,
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    panel_id INT NULL,
     ip_address TEXT NOT NULL,
     user_agent TEXT,
     success BOOLEAN DEFAULT FALSE,
-    attempted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    attempted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (panel_id) REFERENCES panel(id) ON DELETE SET NULL
 );
 
--- Bots table (stores bot configurations)
 CREATE TABLE IF NOT EXISTS bots (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id INT PRIMARY KEY AUTO_INCREMENT,
     name TEXT NOT NULL,
     token TEXT NOT NULL,
     application_id TEXT,
-    bot_type TEXT NOT NULL CHECK (bot_type IN ('official', 'selfbot')),
+    bot_type ENUM('official', 'selfbot') NOT NULL,
     bot_icon TEXT,
-    port INTEGER,
+    port INT,
     secret_key TEXT,
-    connect_to UUID REFERENCES bots(id) ON DELETE SET NULL,
-    panel_id UUID REFERENCES panel(id) ON DELETE SET NULL,
+    connect_to INT NULL,
+    panel_id INT NULL,
     is_testing BOOLEAN DEFAULT FALSE,
-    status TEXT DEFAULT 'stopped' CHECK (status IN ('running', 'stopped', 'starting', 'stopping')),
-    process_id INTEGER,
-    uptime_started_at TIMESTAMP WITH TIME ZONE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    status ENUM('running', 'stopped', 'starting', 'stopping') DEFAULT 'stopped',
+    process_id INT,
+    uptime_started_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (connect_to) REFERENCES bots(id) ON DELETE SET NULL,
+    FOREIGN KEY (panel_id) REFERENCES panel(id) ON DELETE SET NULL
 );
 
--- Servers table (stores Discord server information per bot)
 CREATE TABLE IF NOT EXISTS servers (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    bot_id UUID NOT NULL REFERENCES bots(id) ON DELETE CASCADE,
-    discord_server_id TEXT NOT NULL,
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    bot_id INT NOT NULL,
+    discord_server_id VARCHAR(255) NOT NULL,
     name TEXT,
-    total_members INTEGER DEFAULT 0,
-    total_channels INTEGER DEFAULT 0,
-    total_boosters INTEGER DEFAULT 0,
-    boost_level INTEGER DEFAULT 0,
+    total_members INT DEFAULT 0,
+    total_channels INT DEFAULT 0,
+    total_boosters INT DEFAULT 0,
+    boost_level INT DEFAULT 0,
     server_icon TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(bot_id, discord_server_id)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_bot_server (bot_id, discord_server_id),
+    FOREIGN KEY (bot_id) REFERENCES bots(id) ON DELETE CASCADE
 );
 
--- Categories table (stores Discord category information, channel type 4)
-CREATE TABLE IF NOT EXISTS categories (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    server_id UUID NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
-    discord_category_id TEXT NOT NULL,
+CREATE TABLE IF NOT EXISTS server_categories (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    server_id INT NOT NULL,
+    discord_category_id VARCHAR(255) NOT NULL,
     name TEXT,
-    position INTEGER,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(server_id, discord_category_id)
+    position INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_server_category (server_id, discord_category_id),
+    FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE
 );
 
--- Channels table (stores Discord channel information)
-CREATE TABLE IF NOT EXISTS channels (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    server_id UUID NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
-    discord_channel_id TEXT NOT NULL,
+CREATE TABLE IF NOT EXISTS server_channels (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    server_id INT NOT NULL,
+    discord_channel_id VARCHAR(255) NOT NULL,
     name TEXT,
     type TEXT,
-    category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
-    position INTEGER,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(server_id, discord_channel_id)
+    category_id INT NULL,
+    position INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_server_channel (server_id, discord_channel_id),
+    FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE,
+    FOREIGN KEY (category_id) REFERENCES server_categories(id) ON DELETE SET NULL
 );
 
--- Roles table (stores Discord role information)
-CREATE TABLE IF NOT EXISTS roles (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    server_id UUID NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
-    discord_role_id TEXT NOT NULL,
+CREATE TABLE IF NOT EXISTS server_roles (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    server_id INT NOT NULL,
+    discord_role_id VARCHAR(255) NOT NULL,
     name TEXT,
-    position INTEGER,
+    position INT,
     color TEXT,
     permissions TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(server_id, discord_role_id)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_server_role (server_id, discord_role_id),
+    FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE
 );
 
--- Server settings table (stores per-server component configurations)
+CREATE TABLE IF NOT EXISTS server_members (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    server_id INT NOT NULL,
+    discord_member_id VARCHAR(255) NOT NULL,
+    username TEXT,
+    display_name TEXT,
+    server_display_name TEXT,
+    avatar TEXT,
+    profile_created_at TIMESTAMP NULL,
+    member_since TIMESTAMP NULL,
+    is_booster BOOLEAN DEFAULT FALSE,
+    booster_since TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_server_member (server_id, discord_member_id),
+    FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS server_member_roles (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    member_id INT NOT NULL,
+    role_id INT NOT NULL,
+    is_custom BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_member_role (member_id, role_id),
+    FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE,
+    FOREIGN KEY (role_id) REFERENCES server_roles(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS server_members_afk (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    member_id INT NOT NULL,
+    message TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_member_afk (member_id),
+    FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS server_settings (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    server_id UUID NOT NULL REFERENCES servers(id) ON DELETE CASCADE,
-    component_name TEXT NOT NULL,
-    settings JSONB NOT NULL DEFAULT '{}',
-    last_accessed TIMESTAMP WITH TIME ZONE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(server_id, component_name)
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    server_id INT NOT NULL,
+    component_name VARCHAR(255) NOT NULL,
+    settings JSON NOT NULL DEFAULT ('{}'),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_server_component (server_id, component_name),
+    FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE
 );
 
--- Indexes for better query performance
-CREATE INDEX IF NOT EXISTS idx_bots_type ON bots(bot_type);
-CREATE INDEX IF NOT EXISTS idx_bots_connect_to ON bots(connect_to);
-CREATE INDEX IF NOT EXISTS idx_bots_panel_id ON bots(panel_id);
-CREATE INDEX IF NOT EXISTS idx_servers_bot_id ON servers(bot_id);
-CREATE INDEX IF NOT EXISTS idx_servers_discord_id ON servers(discord_server_id);
-CREATE INDEX IF NOT EXISTS idx_categories_server_id ON categories(server_id);
-CREATE INDEX IF NOT EXISTS idx_categories_discord_id ON categories(discord_category_id);
-CREATE INDEX IF NOT EXISTS idx_channels_server_id ON channels(server_id);
-CREATE INDEX IF NOT EXISTS idx_channels_discord_id ON channels(discord_channel_id);
-CREATE INDEX IF NOT EXISTS idx_channels_category_id ON channels(category_id);
-CREATE INDEX IF NOT EXISTS idx_roles_server_id ON roles(server_id);
-CREATE INDEX IF NOT EXISTS idx_roles_discord_id ON roles(discord_role_id);
-CREATE INDEX IF NOT EXISTS idx_server_settings_server_id ON server_settings(server_id);
-CREATE INDEX IF NOT EXISTS idx_server_settings_component ON server_settings(server_id, component_name);
-CREATE INDEX IF NOT EXISTS idx_panel_logs_panel_id ON panel_logs(panel_id);
-CREATE INDEX IF NOT EXISTS idx_panel_logs_attempted_at ON panel_logs(attempted_at);
+CREATE INDEX idx_bots_type ON bots(bot_type);
+CREATE INDEX idx_bots_connect_to ON bots(connect_to);
+CREATE INDEX idx_bots_panel_id ON bots(panel_id);
+CREATE INDEX idx_servers_bot_id ON servers(bot_id);
+CREATE INDEX idx_servers_discord_id ON servers(discord_server_id);
+CREATE INDEX idx_server_categories_server_id ON server_categories(server_id);
+CREATE INDEX idx_server_categories_discord_id ON server_categories(discord_category_id);
+CREATE INDEX idx_server_channels_server_id ON server_channels(server_id);
+CREATE INDEX idx_server_channels_discord_id ON server_channels(discord_channel_id);
+CREATE INDEX idx_server_channels_category_id ON server_channels(category_id);
+CREATE INDEX idx_server_roles_server_id ON server_roles(server_id);
+CREATE INDEX idx_server_roles_discord_id ON server_roles(discord_role_id);
+CREATE INDEX idx_server_members_server_id ON server_members(server_id);
+CREATE INDEX idx_server_members_discord_id ON server_members(discord_member_id);
+CREATE INDEX idx_server_member_roles_member_id ON server_member_roles(member_id);
+CREATE INDEX idx_server_member_roles_role_id ON server_member_roles(role_id);
+CREATE INDEX idx_server_members_afk_member_id ON server_members_afk(member_id);
+CREATE INDEX idx_server_settings_server_id ON server_settings(server_id);
+CREATE INDEX idx_server_settings_component ON server_settings(server_id, component_name);
+CREATE INDEX idx_panel_logs_panel_id ON panel_logs(panel_id);
+CREATE INDEX idx_panel_logs_attempted_at ON panel_logs(attempted_at);

@@ -3,12 +3,10 @@ import { getEmbedConfig, PERMISSIONS, FEEDBACK } from '../../../config.js';
 import logger from '../../../logger.js';
 import { hasPermission } from '../permissions.js';
 
-// Handle feedback button click
 export async function handleFeedbackButton(interaction) {
     try {
         const member = interaction.member;
 
-        // Check permissions (members can use feedback)
         if (!(await hasPermission(member, 'feedback'))) {
             await interaction.reply({
                 content: '❌ You don\'t have permission to submit feedback. Member role required.',
@@ -17,7 +15,6 @@ export async function handleFeedbackButton(interaction) {
             return;
         }
 
-        // Create modal for feedback
         const modal = new ModalBuilder()
             .setCustomId('feedback_submit')
             .setTitle('💬 Submit Feedback');
@@ -45,7 +42,6 @@ export async function handleFeedbackButton(interaction) {
     }
 }
 
-// Handle feedback modal submission
 export async function handleFeedbackModal(interaction) {
     try {
         await interaction.deferReply({ flags: 64 });
@@ -54,7 +50,6 @@ export async function handleFeedbackModal(interaction) {
         const guild = interaction.guild;
         const user = interaction.user;
 
-        // Check permissions
         if (!(await hasPermission(member, 'feedback'))) {
             await interaction.editReply({
                 content: '❌ You don\'t have permission to submit feedback. Member role required.'
@@ -62,7 +57,6 @@ export async function handleFeedbackModal(interaction) {
             return;
         }
 
-        // Get feedback message
         const feedbackMessage = interaction.fields.getTextInputValue('feedback_message').trim();
 
         if (!feedbackMessage || feedbackMessage.length === 0) {
@@ -72,7 +66,6 @@ export async function handleFeedbackModal(interaction) {
             return;
         }
 
-        // Get feedback channel from database
         let feedbackChannelId;
         try {
             feedbackChannelId = await FEEDBACK.getChannel(guild.id);
@@ -101,10 +94,8 @@ export async function handleFeedbackModal(interaction) {
             return;
         }
 
-        // Get embed config
         const embedConfig = await getEmbedConfig(interaction.guild.id);
 
-        // Create feedback embed
         const feedbackEmbed = new EmbedBuilder()
             .setColor(embedConfig.COLOR)
             .setTitle('💬 Feedback Submission')
@@ -125,27 +116,24 @@ export async function handleFeedbackModal(interaction) {
             .setTimestamp()
             .setFooter({ text: embedConfig.FOOTER });
 
-        // Get staff roles from permissions configuration
         let staffMentions = '';
         try {
             const permissions = await PERMISSIONS.getPermissions(guild.id);
             const staffRoles = permissions.STAFF_ROLES || [];
             
             if (staffRoles.length > 0) {
-                // Mention all staff roles
+
                 staffMentions = staffRoles.map(roleId => `<@&${roleId}>`).join(' ');
             }
         } catch (err) {
             await logger.log(`⚠️  Error getting staff roles for feedback: ${err.message}`);
         }
 
-        // Send to feedback channel with Staff role mentions
         await feedbackChannel.send({
-            content: staffMentions || undefined, // Only include content if there are staff roles
+            content: staffMentions || undefined,
             embeds: [feedbackEmbed]
         });
 
-        // Confirm to user
         const successEmbed = new EmbedBuilder()
             .setColor(embedConfig.COLOR)
             .setTitle('✅ Feedback Submitted!')

@@ -2,12 +2,10 @@ import { Client, GatewayIntentBits } from "discord.js";
 import { getBotToken, initializeConfig } from "../config.js";
 import logger from "../logger.js";
 
-// Initialize config from database (async)
 let BOT_TOKEN;
 (async () => {
     await initializeConfig();
-    // Use BOT_TOKEN from environment if provided (for control panel), otherwise use database config
-    BOT_TOKEN = process.env.BOT_TOKEN || getBotToken('official');
+    BOT_TOKEN = getBotToken('official');
 })().catch(err => {
     console.error('Failed to initialize config:', err);
     process.exit(1);
@@ -37,17 +35,15 @@ const client = new Client({
 client.on("clientReady", async () => {
     console.log(`Official bot logged in as ${client.user.tag}`);
 
-    // Ensure config is loaded
     if (!BOT_TOKEN) {
         await initializeConfig();
-        BOT_TOKEN = process.env.BOT_TOKEN || getBotToken('official');
+        BOT_TOKEN = getBotToken('official');
     }
     
     if (!BOT_TOKEN) {
         throw new Error('Bot token not available. Cannot proceed.');
     }
 
-    // Deploy slash commands (don't clear first on startup)
     await commands.deployCommands(false);
 
     logger.init(client);
@@ -60,27 +56,21 @@ client.on("clientReady", async () => {
     customSupporterRole.init(client);
     afk.init(client);
 
-    // Initialize sync BEFORE other components to ensure bot info syncs
-    await sync.init(client, BOT_TOKEN); // Sync channels and roles to database
-
-    // Start webhook server
+    await sync.init(client, BOT_TOKEN);
     webhook.startWebhookServer(client);
 });
 
-// Handle graceful shutdown
 process.on("SIGINT", () => {
     console.log("\n🛑 Shutting down official bot...");
-    sync.stop();
     webhook.stopWebhookServer();
     client.destroy();
     process.exit(0);
 });
 
-// Login with token (initialize config first if needed)
 (async () => {
     if (!BOT_TOKEN) {
         await initializeConfig();
-        BOT_TOKEN = process.env.BOT_TOKEN || getBotToken('official');
+        BOT_TOKEN = getBotToken('official');
     }
     
     if (!BOT_TOKEN) {

@@ -5,13 +5,11 @@ import { separateChannelsAndCategories, mapCategoriesForSync, mapChannelsForSync
 
 let client = null;
 let botId = null;
-let syncCheckInterval = null;
 let loggerInitialized = false;
 
-// Find bot in database by token or ID
 async function findBotByToken(token) {
     try {
-        // First try to use BOT_ID from environment (set by control panel)
+
         if (process.env.BOT_ID) {
             const bot = await db.getBot(process.env.BOT_ID);
             if (bot && bot.token === token) {
@@ -19,7 +17,6 @@ async function findBotByToken(token) {
             }
         }
 
-        // Fallback to searching by token
         const bots = await db.getAllBots();
         const bot = bots.find(b => b.token === token);
         return bot;
@@ -29,7 +26,6 @@ async function findBotByToken(token) {
     }
 }
 
-// Sync server info, channels and roles for a guild
 async function syncGuildData(guild) {
     try {
         if (!botId) {
@@ -37,13 +33,17 @@ async function syncGuildData(guild) {
             return;
         }
 
-        // Fetch complete guild data
         await guild.fetch();
-        await guild.members.fetch();
+
+        try {
+            await guild.members.fetch();
+        } catch (memberFetchError) {
+            logger.log(`⚠️  Could not fetch all members for ${guild.name}: ${memberFetchError.message}. Continuing with member count: ${guild.memberCount}`);
+        }
+
         await guild.channels.fetch();
         await guild.roles.fetch();
 
-        // Sync server info first
         const serverData = await db.upsertServer(botId, guild);
 
         if (!serverData) {
@@ -53,7 +53,6 @@ async function syncGuildData(guild) {
 
         const serverId = serverData.id;
 
-        // Initialize logger with channel from this server if not already initialized
         if (!loggerInitialized && client) {
             try {
                 const loggerChannelId = await getLoggerChannel(guild.id);
@@ -63,23 +62,17 @@ async function syncGuildData(guild) {
                     logger.log(`✅ Logger initialized with channel from ${guild.name}`);
                 }
             } catch (error) {
-                // Logger channel not configured for this server, continue
             }
         }
 
-        // Separate channels and categories (excludes threads automatically)
         const { categories, channels } = separateChannelsAndCategories(guild.channels.cache);
 
-        // Sync categories first
         const categoryMap = await db.syncCategories(serverId, mapCategoriesForSync(categories));
 
-        // Sync channels (with category reference)
         await db.syncChannels(serverId, mapChannelsForSync(channels), categoryMap);
 
-        // Get all roles, excluding @everyone (role.id === guild.id)
         const roles = Array.from(guild.roles.cache.values()).filter(role => role.id !== guild.id);
 
-        // Sync roles to database
         await db.syncRoles(serverId, roles.map(role => ({
             id: role.id,
             name: role.name,
@@ -88,13 +81,26 @@ async function syncGuildData(guild) {
             permissions: role.permissions
         })));
 
+        const members = Array.from(guild.members.cache.values()).filter(member => !member.user.bot);
+        await db.syncMembers(serverId, members);
+
+        try {
+            const { CUSTOM_SUPPORTER_ROLE } = await import('../../config.js');
+            const constraints = await CUSTOM_SUPPORTER_ROLE.getRoleConstraints(guild.id);
+            if (constraints.ROLE_START && constraints.ROLE_END) {
+                await db.updateCustomRoleFlags(serverId, constraints.ROLE_START, constraints.ROLE_END);
+            } else {
+                await db.updateCustomRoleFlags(serverId, null, null);
+            }
+        } catch (error) {
+        }
+
         logger.log(`✅ Synced server: ${guild.name} (${guild.memberCount} members, ${categories.length} categories, ${channels.length} channels, ${roles.length} roles)`);
     } catch (error) {
         logger.log(`❌ Error syncing guild data for ${guild.name}: ${error.message}`);
     }
 }
 
-// Sync all guilds the bot is in
 async function syncAllGuilds() {
     if (!client) return;
 
@@ -103,37 +109,17 @@ async function syncAllGuilds() {
         logger.log(`🔄 Official bot sync started: ${guilds.size} server(s)`);
 
         let completed = 0;
-        for (const [guildId, guild] of guilds) {
+        for (const [, guild] of guilds) {
             await syncGuildData(guild);
             completed++;
         }
-        
+
         logger.log(`✅ Official bot sync completed: ${completed}/${guilds.size} server(s)`);
     } catch (error) {
         logger.log(`❌ Error syncing all guilds: ${error.message}`);
     }
 }
 
-// Mark all servers as synced (update last_accessed) to prevent immediate re-sync after bot start
-async function markAllServersAsSynced() {
-    if (!botId) return;
-
-    try {
-        const servers = await db.getServersForBot(botId);
-        if (!servers || servers.length === 0) return;
-
-        const serverIds = servers.map(s => s.id);
-
-        // Mark all servers as synced using database function
-        await db.markServersAsSynced(serverIds);
-
-        logger.log(`✅ Marked ${serverIds.length} server(s) as synced (30-minute cooldown active)`);
-    } catch (error) {
-        logger.log(`⚠️  Error marking servers as synced: ${error.message}`);
-    }
-}
-
-// Update bot name and icon from Discord
 async function updateBotInfo() {
     if (!botId || !client || !client.user) {
         return;
@@ -141,7 +127,7 @@ async function updateBotInfo() {
 
     try {
         const avatarUrl = client.user.displayAvatarURL({ dynamic: true, size: 256 });
-        // Use display name (globalName) if available, otherwise fall back to username
+
         const displayName = client.user.globalName || client.user.username;
         await db.updateBot(botId, {
             name: displayName,
@@ -153,133 +139,196 @@ async function updateBotInfo() {
     }
 }
 
+async function initLoggerChannel() {
+    if (!client || loggerInitialized) return;
+
+    try {
+        let guilds = client.guilds.cache;
+        if (guilds.size === 0) {
+            try {
+                await client.guilds.fetch();
+                guilds = client.guilds.cache;
+            } catch (fetchError) {
+            }
+        }
+
+        for (const [, guild] of guilds) {
+            try {
+                const loggerChannelId = await getLoggerChannel(guild.id);
+                if (loggerChannelId) {
+                    logger.init(client, loggerChannelId);
+                    loggerInitialized = true;
+                    logger.log(`✅ Logger initialized with channel from ${guild.name}`, guild.id);
+                    return;
+                }
+            } catch (error) {
+            }
+        }
+    } catch (error) {
+    }
+}
+
 async function init(discordClient, botToken) {
     client = discordClient;
 
-    // Find bot in database by token
     const bot = await findBotByToken(botToken);
     if (!bot) {
         logger.log(`⚠️  Bot not found in database with token. Sync will be limited.`);
         logger.log(`💡 Create bot entry in database first`);
         return;
     }
-    
+
     botId = bot.id;
     logger.log(`✅ Found bot in database: ${bot.name} (${bot.bot_type})`);
 
-    // Update bot info immediately if client is already ready
     if (client.user) {
         await updateBotInfo();
     }
 
-    // Since sync.init() is called from within clientReady handler, client is already ready
-    // Sync immediately after a short delay to ensure all components are initialized
+    await initLoggerChannel();
+
+
     setTimeout(async () => {
         if (botId) {
-            logger.log('🔄 Starting initial guild data sync...');
-            // Always sync on first bot start (regardless of last_accessed)
-            await syncAllGuilds();
-            logger.log('✅ Initial sync complete');
+            const needsSync = await db.serversNeedSync(botId);
 
-            // Check if this official bot has connected selfbots - wait for them to sync too
-            const allBots = await db.getAllBots();
-            const connectedSelfbots = allBots.filter(b => b.bot_type === 'selfbot' && b.connect_to === botId);
-            
-            if (connectedSelfbots.length > 0) {
-                logger.log(`⏳ Waiting for ${connectedSelfbots.length} connected selfbot(s) to finish syncing...`);
-                // Wait 10 seconds for selfbots to complete their sync (they start 2 seconds after ready)
-                await new Promise(resolve => setTimeout(resolve, 10000));
-                logger.log('✅ Connected selfbots should be synced now');
+            if (needsSync) {
+                logger.log('🔄 Starting initial guild data sync (servers need data sync)...');
+                await syncAllGuilds();
+                logger.log('✅ Initial sync complete');
+
+                const allBots = await db.getAllBots();
+                const botIdNum = typeof botId === 'string' ? parseInt(botId) : botId;
+                const connectedSelfbots = allBots.filter(b => {
+                    if (b.bot_type !== 'selfbot') return false;
+                    if (!b.connect_to) return false;
+                    const connectToNum = typeof b.connect_to === 'string' ? parseInt(b.connect_to) : b.connect_to;
+                    return connectToNum === botIdNum;
+                });
+
+                if (connectedSelfbots.length > 0) {
+                    logger.log(`⏳ Waiting for ${connectedSelfbots.length} connected selfbot(s) to finish syncing...`);
+
+                    await new Promise(resolve => setTimeout(resolve, 10000));
+                    logger.log('✅ Connected selfbots should be synced now');
+                }
+            } else {
+                logger.log('⏭️  Skipping initial sync (servers have data). Sync will run on Discord events only.');
+
+                try {
+                    const { CUSTOM_SUPPORTER_ROLE } = await import('../../config.js');
+                    const guilds = client.guilds.cache;
+
+                    for (const [, guild] of guilds) {
+                        try {
+                            const serverData = await db.getServerByDiscordId(botId, guild.id);
+                            if (serverData) {
+                                const constraints = await CUSTOM_SUPPORTER_ROLE.getRoleConstraints(guild.id);
+                                if (constraints.ROLE_START && constraints.ROLE_END) {
+                                    await db.updateCustomRoleFlags(serverData.id, constraints.ROLE_START, constraints.ROLE_END);
+                                } else {
+                                    await db.updateCustomRoleFlags(serverData.id, null, null);
+                                }
+                            }
+                        } catch (error) {
+                        }
+                    }
+                    logger.log('✅ Recalculated custom supporter role flags for all servers');
+                } catch (error) {
+                }
+
+                logger.log('ℹ️  Note: Booster status (is_booster, booster_since) will be updated automatically when member events occur');
             }
-
-            // Mark all servers as synced to prevent immediate re-sync if config is visited right after bot start
-            // This only marks servers that have settings - new servers without settings will be synced every 5 minutes
-            await markAllServersAsSynced();
         }
     }, 2000);
 
-    // Sync when bot joins a new guild
     client.on('guildCreate', async (guild) => {
         logger.log(`🆕 Bot joined new guild: ${guild.name}`);
         await syncGuildData(guild);
     });
 
-    // Sync when channels are created/updated/deleted
     client.on('channelCreate', async (channel) => {
         if (channel.guild) {
+            const channelType = channel.type === 4 ? 'Category' : channel.type === 0 ? 'Text Channel' : channel.type === 5 ? 'News Channel' : 'Channel';
+            const channelName = channel.name || 'Unknown';
+            await logger.log(`📁 ${channelType} created: **${channelName}** (${channel.id})`, channel.guild.id);
             await syncGuildData(channel.guild);
         }
     });
 
     client.on('channelUpdate', async (oldChannel, newChannel) => {
         if (newChannel.guild) {
+            const channelType = newChannel.type === 4 ? 'Category' : newChannel.type === 0 ? 'Text Channel' : newChannel.type === 5 ? 'News Channel' : 'Channel';
+            const oldName = oldChannel.name || 'Unknown';
+            const newName = newChannel.name || 'Unknown';
+
+            if (oldName !== newName) {
+                await logger.log(`✏️ ${channelType} renamed: **${oldName}** → **${newName}** (${newChannel.id})`, newChannel.guild.id);
+            } else {
+                await logger.log(`✏️ ${channelType} updated: **${newName}** (${newChannel.id})`, newChannel.guild.id);
+            }
             await syncGuildData(newChannel.guild);
         }
     });
 
     client.on('channelDelete', async (channel) => {
         if (channel.guild) {
+            const channelType = channel.type === 4 ? 'Category' : channel.type === 0 ? 'Text Channel' : channel.type === 5 ? 'News Channel' : 'Channel';
+            const channelName = channel.name || 'Unknown';
+            await logger.log(`🗑️ ${channelType} deleted: **${channelName}** (${channel.id})`, channel.guild.id);
             await syncGuildData(channel.guild);
         }
     });
 
-    // Sync when roles are created/updated/deleted
     client.on('roleCreate', async (role) => {
         if (role.guild) {
+            const roleName = role.name || 'Unknown';
+            const roleColor = role.hexColor !== '#000000' ? role.hexColor : 'No color';
+            await logger.log(`🎭 Role created: **${roleName}** (${roleColor}) (${role.id})`, role.guild.id);
             await syncGuildData(role.guild);
         }
     });
 
     client.on('roleUpdate', async (oldRole, newRole) => {
         if (newRole.guild) {
+            const oldName = oldRole.name || 'Unknown';
+            const newName = newRole.name || 'Unknown';
+            const oldColor = oldRole.hexColor !== '#000000' ? oldRole.hexColor : 'No color';
+            const newColor = newRole.hexColor !== '#000000' ? newRole.hexColor : 'No color';
+
+            if (oldName !== newName) {
+                await logger.log(`✏️ Role renamed: **${oldName}** → **${newName}** (${newRole.id})`, newRole.guild.id);
+            } else if (oldColor !== newColor) {
+                await logger.log(`✏️ Role color updated: **${newName}** (${oldColor} → ${newColor}) (${newRole.id})`, newRole.guild.id);
+            } else {
+                await logger.log(`✏️ Role updated: **${newName}** (${newRole.id})`, newRole.guild.id);
+            }
             await syncGuildData(newRole.guild);
         }
     });
 
     client.on('roleDelete', async (role) => {
         if (role.guild) {
+            const roleName = role.name || 'Unknown';
+            await logger.log(`🗑️ Role deleted: **${roleName}** (${role.id})`, role.guild.id);
             await syncGuildData(role.guild);
         }
     });
 
-    // Check for servers needing sync (based on last_accessed with 30-minute cooldown)
-    // This runs every 5 minutes to check for servers that need syncing
-    syncCheckInterval = setInterval(async () => {
-        if (!botId || !client) return;
-
-        try {
-            const serverIdsNeedingSync = await db.getServersNeedingSync(botId);
-
-            if (serverIdsNeedingSync.length > 0) {
-                logger.log(`🔄 Found ${serverIdsNeedingSync.length} server(s) needing sync`);
-
-                // Get server data from database to find Discord guild IDs
-                const servers = await db.getServersForBot(botId);
-                const serversToSync = servers.filter(s => serverIdsNeedingSync.includes(s.id));
-
-                for (const server of serversToSync) {
-                    try {
-                        const guild = client.guilds.cache.get(server.discord_server_id);
-                        if (guild) {
-                            await syncGuildData(guild);
-
-                            // Clear last_accessed after syncing to prevent repeated syncs
-                            // This allows the sync to trigger again when settings are next accessed/updated
-                            await db.clearLastAccessed(server.id);
-                        }
-                    } catch (error) {
-                        logger.log(`⚠️  Error syncing server ${server.name}: ${error.message}`);
-                    }
-                }
-            }
-        } catch (error) {
-            logger.log(`⚠️  Error checking servers needing sync: ${error.message}`);
-        }
-    }, 5 * 60 * 1000); // Check every 5 minutes
-
-    // Also sync on member count changes
     client.on('guildMemberAdd', async (member) => {
         if (member.guild && botId) {
+            try {
+                const serverData = await db.getServerByDiscordId(botId, member.guild.id);
+                if (serverData) {
+                    const dbMember = await db.upsertMember(serverData.id, member);
+                    if (dbMember) {
+                        const memberRoles = member.roles ? Array.from(member.roles.cache.keys()).filter(roleId => roleId !== member.guild.id) : [];
+                        await db.syncMemberRoles(dbMember.id, memberRoles, serverData.id);
+                    }
+                }
+            } catch (error) {
+                await logger.log(`⚠️ Failed to upsert member ${member.id} on join: ${error.message}`, member.guild.id);
+            }
             await syncGuildData(member.guild);
         }
     });
@@ -290,7 +339,23 @@ async function init(discordClient, botToken) {
         }
     });
 
-    // Sync on server boost changes
+    client.on('guildMemberUpdate', async (oldMember, newMember) => {
+        if (newMember.guild && botId && newMember.user && !newMember.user.bot) {
+            try {
+                const serverData = await db.getServerByDiscordId(botId, newMember.guild.id);
+                if (serverData) {
+                    const dbMember = await db.upsertMember(serverData.id, newMember);
+                    if (dbMember) {
+                        const memberRoles = newMember.roles ? Array.from(newMember.roles.cache.keys()).filter(roleId => roleId !== newMember.guild?.id) : [];
+                        await db.syncMemberRoles(dbMember.id, memberRoles, serverData.id);
+                    }
+                }
+            } catch (error) {
+                logger.log(`❌ Error syncing member on update: ${error.message}`);
+            }
+        }
+    });
+
     client.on('guildUpdate', async (oldGuild, newGuild) => {
         if (botId) {
             await syncGuildData(newGuild);
@@ -300,11 +365,4 @@ async function init(discordClient, botToken) {
     logger.log('🔄 Sync component initialized');
 }
 
-function stop() {
-    if (syncCheckInterval) {
-        clearInterval(syncCheckInterval);
-        syncCheckInterval = null;
-    }
-}
-
-export default { init, stop, syncGuildData, syncAllGuilds };
+export default { init, syncGuildData, syncAllGuilds };

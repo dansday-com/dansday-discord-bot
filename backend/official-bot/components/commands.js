@@ -2,16 +2,12 @@ import { REST, Routes } from 'discord.js';
 import { getBotToken, getApplicationId } from "../../config.js";
 import logger from "../../logger.js";
 
-// Import setup command
 import { commandDefinition as setupCommand, execute as setupExecute } from './commands/admin/setup.js';
 
-
-// Define all slash commands in one place
 const commandDefinitions = [
     setupCommand,
 ];
 
-// Execute a slash command
 async function executeSlashCommand(interaction, client) {
     const commandName = interaction.commandName;
     
@@ -28,16 +24,15 @@ async function executeSlashCommand(interaction, client) {
     return { success: false, reason: 'unknown_command' };
 }
 
-// Deploy commands to Discord
 async function deployCommands(clearFirst = false) {
-        const token = process.env.BOT_TOKEN || getBotToken('official');
+        const token = getBotToken('official');
         if (!token) {
             throw new Error('Bot token not available for command deployment.');
         }
         const rest = new REST({ version: '10' }).setToken(token);
 
     try {
-        // Only clear commands if explicitly requested
+
         if (clearFirst) {
             await rest.put(
                 Routes.applicationCommands(getApplicationId()),
@@ -45,35 +40,30 @@ async function deployCommands(clearFirst = false) {
             );
         }
 
-        // Register our commands
         await rest.put(
             Routes.applicationCommands(getApplicationId()),
             { body: commandDefinitions },
         );
     } catch (error) {
-        throw error; // Re-throw so reload command can handle it
+        throw error;
     }
 }
 
-// Initialize the slash command system
 function init(client) {
-    // Listen for slash command interactions
+
     client.on('interactionCreate', async (interaction) => {
         if (interaction.isChatInputCommand()) {
-            // Handle slash commands
+
             try {
                 const user = interaction.user;
                 const commandName = interaction.commandName;
                 const options = interaction.options?.data || [];
                 const optionsStr = options.map(opt => `${opt.name}:${opt.value}`).join(', ') || 'none';
-                
-                // Log command attempt
+
                 await logger.log(`⌨️  Command triggered: /${commandName} ${optionsStr ? `(${optionsStr})` : ''} by ${user.tag} (${user.id}) in ${interaction.guild?.name || 'DM'}`);
-                
-                // Execute slash command and get detailed result
+
                 const result = await executeSlashCommand(interaction, client);
 
-                // Handle different failure scenarios with specific feedback
                 if (!result.success) {
                     let errorMessage;
 
@@ -103,11 +93,11 @@ function init(client) {
                         flags: 64
                     });
                 } else {
-                    // Log successful command execution
+
                     await logger.log(`✅ Command executed successfully: /${commandName} by ${user.tag} (${user.id})`);
                 }
             } catch (error) {
-                // Handle any unexpected errors in the interaction handler itself
+
                 await logger.log(`❌ Critical error in interaction handler: ${error.message}`);
 
                 try {
@@ -121,7 +111,7 @@ function init(client) {
                 }
             }
         }
-        // Note: Button interactions are handled by the interface component
+
     });
 
     logger.log("🎮 Slash command system initialized");

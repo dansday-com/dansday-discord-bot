@@ -1,10 +1,11 @@
-// Frontend Configuration
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Control Panel Configuration
 export const CONTROL_PANEL = {
-    // Port for control panel web interface
     PORT: parseInt(process.env.CONTROL_PANEL_PORT)
 };
+
+if (!CONTROL_PANEL.PORT || isNaN(CONTROL_PANEL.PORT)) {
+    throw new Error('Missing or invalid CONTROL_PANEL_PORT environment variable');
+}

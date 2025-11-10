@@ -28,7 +28,7 @@ async function sendToOfficialBot(messageData) {
 }
 
 async function processMessage(message) {
-    // Prepare message data for official bot
+
     const messageData = {
         id: message.id,
         content: message.content,
@@ -58,7 +58,7 @@ async function processMessage(message) {
             contentType: att.contentType
         })),
         embeds: message.embeds,
-        // Source channel and guild info will be used by official bot to find forwarder config
+
         timestamp: Date.now()
     };
 
@@ -67,28 +67,26 @@ async function processMessage(message) {
         await logger.log(`✅ Forwarded message ${message.id} from channel ${message.channel.id} to official bot`);
     } catch (err) {
         await logger.log(`❌ Failed to forward message ${message.id}: ${err.message}`);
-        throw err; // Re-throw to indicate failure
+        throw err;
     }
 }
 
 function init(client) {
     client.on("messageCreate", async (message) => {
-        // Skip DMs and messages without guild
+
         if (!message.guild) return;
 
-        // Check if this channel should be forwarded before sending
         try {
             const shouldForward = await FORWARDER.shouldForwardChannel(message.channel.id, message.guild.id);
             
             if (!shouldForward) {
-                // Channel not configured for forwarding, skip silently
+
                 return;
             }
 
-            // Channel is configured, forward the message
             await processMessage(message);
         } catch (err) {
-            // Log error
+
             await logger.log(`❌ Error forwarding message ${message.id}: ${err.message}`);
         }
     });

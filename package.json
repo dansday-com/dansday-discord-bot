@@ -1,6 +1,6 @@
 {
   "name": "go-blox-bot-system",
-  "version": "6.1.0",
+  "version": "7.0.0",
   "description": "GO BLOX Bot System - Self-bot and Official Bot",
   "main": "main.js",
   "type": "module",
@@ -17,7 +17,6 @@
   "author": "Akbar Yudhanto",
   "license": "MIT",
   "dependencies": {
-    "@neondatabase/serverless": "^1.0.2",
     "bcrypt": "^6.0.0",
     "concurrently": "^9.2.1",
     "debug": "^4.4.3",
@@ -26,6 +25,6 @@
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "express-session": "^1.18.2",
-    "pg": "^8.16.3"
+    "mysql2": "^3.11.5"
   }
 }

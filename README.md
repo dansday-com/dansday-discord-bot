@@ -106,7 +106,7 @@ GOBLOX/
 ### Management Features
 - **Web Control Panel**: Full web interface for bot management
 - **Multiple Bot Support**: Manage multiple official bots and self-bots
-- **Database-Driven Config**: All settings stored in Neon PostgreSQL (no file editing needed)
+- **Database-Driven Config**: All settings stored in MySQL/MariaDB (no file editing needed)
 - **Real-time Status**: Live bot status, uptime, and process information
 - **Remote Control**: Start/stop/restart bots from anywhere
 - **Session Authentication**: Secure password-protected control panel
@@ -114,10 +114,61 @@ GOBLOX/
 ## Setup
 
 ### Prerequisites
-- Node.js (v18+ recommended)
-- Neon PostgreSQL account (free tier works)
+- Node.js (v18+ recommended) OR Docker & Docker Compose
+- MySQL/MariaDB database (local or remote)
 - Discord bot token(s)
 - Discord application ID (for official bots)
+
+## Quick Start with Docker (Recommended)
+
+### 1. Clone and Configure
+```bash
+# Copy environment file
+cp .env.example .env
+
+# Edit .env and set your values:
+# - DB_ROOT_PASSWORD (for MariaDB)
+# - DB_NAME, DB_USER, DB_PASSWORD
+# - SESSION_SECRET (generate with: openssl rand -base64 32)
+# - CONTROL_PANEL_PORT (default: 8080)
+```
+
+### 2. Start with Docker Compose
+```bash
+docker-compose up -d
+```
+
+This will:
+- Build the application image
+- Start MariaDB database container
+- Start the application container
+- Automatically create database tables
+
+### 3. Access Control Panel
+Open your browser: `http://localhost:8080` (or your configured port)
+
+### 4. View Logs
+```bash
+docker-compose logs -f
+```
+
+### Common Docker Commands
+```bash
+# Stop containers
+docker-compose down
+
+# Restart containers
+docker-compose restart
+
+# Rebuild after code changes
+docker-compose up -d --build
+
+# View logs
+docker-compose logs -f app
+docker-compose logs -f database
+```
+
+## Manual Setup (Without Docker)
 
 ### 1. Install Dependencies
 ```bash
@@ -125,26 +176,34 @@ npm install
 ```
 
 ### 2. Configure Environment Variables
-Create a `.env` file in the root directory (copy from `example.env`):
+Create a `.env` file in the root directory (copy from `.env.example`):
 
 ```env
-# Neon PostgreSQL Configuration (Required)
-DATABASE_URL=postgresql://user:password@host/database?sslmode=require
+# MySQL/MariaDB Configuration (Required)
+# Option 1: Use DATABASE_URL
+DATABASE_URL=mysql://user:password@host:port/database
 
-# Control Panel Configuration
+# Option 2: Use individual variables
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=your_user
+DB_PASSWORD=your_password
+DB_NAME=goblox_bot
+
+# Control Panel Configuration (Required)
 CONTROL_PANEL_PORT=8080
-
-# Session Secret (optional, for production)
 SESSION_SECRET=your-random-secret-key
 ```
 
-**Getting Neon Credentials:**
-- **DATABASE_URL**: Go to Neon Dashboard → Connection Details → Copy connection string
+**For Remote Database (SSH Tunnel):**
+1. Create SSH tunnel: `ssh -p PORT -L 3306:localhost:3306 user@host`
+2. Use `localhost:3306` in your DATABASE_URL
 
 ### 3. Initialize Database
-The database will be automatically initialized when you start the control panel. If `DATABASE_URL` is set, tables will be created automatically. Otherwise, you can manually run the SQL schema:
+The database will be automatically initialized when you start the control panel. Tables will be created automatically from `database/schema.sql` on first startup.
 
-1. Open Neon Dashboard → SQL Editor
+Alternatively, you can manually run the SQL schema:
+1. Connect to your MySQL/MariaDB database
 2. Copy and paste the contents of `database/schema.sql`
 3. Execute the SQL
 
@@ -306,11 +365,11 @@ The `/interface` command creates a visual interface with buttons. All button res
 ## Configuration
 
 ### Database-Driven Configuration
-**All configuration is stored in Neon PostgreSQL database** - no file editing required!
+**All configuration is stored in MySQL/MariaDB database** - no file editing required!
 
 Configuration is managed through:
 1. **Web Control Panel**: Primary method for all settings
-2. **Database**: Settings stored in `server_settings` table with JSONB
+2. **Database**: Settings stored in `server_settings` table with JSON
 
 ### Configuration Components
 
@@ -398,29 +457,30 @@ Each feature is organized as a component for easy maintenance:
 
 ## Database Schema
 
-The system uses Neon PostgreSQL with the following main tables:
+The system uses MySQL/MariaDB with the following main tables:
 
 - **panel**: Panel administrator credentials
 - **panel_logs**: Login attempt logs
 - **bots**: Bot configurations (tokens, ports, status, etc.)
 - **servers**: Discord server information per bot
-- **categories**: Discord category information (type 4 channels)
-- **channels**: Discord channel information
-- **roles**: Discord role information
-- **server_settings**: Component-specific settings per server (JSONB)
+- **server_categories**: Discord category information (type 4 channels)
+- **server_channels**: Discord channel information
+- **server_roles**: Discord role information
+- **server_settings**: Component-specific settings per server (JSON)
 
 ## Troubleshooting
 
 ### Database Issues
 1. **Tables not found**: 
-   - Ensure `DATABASE_URL` is set in `.env`
+   - Ensure database connection is configured in `.env`
    - Database will auto-create tables on first startup
-   - Or manually run `database/schema.sql` in Neon SQL Editor
+   - Or manually run `database/schema.sql` in your MySQL client
 
 2. **Connection errors**: 
-   - Verify `DATABASE_URL` in `.env`
-   - Check `DATABASE_URL` format and credentials
-   - Ensure Neon project is active
+   - Verify database credentials in `.env`
+   - Check database server is running
+   - For remote databases, ensure SSH tunnel is active (if using)
+   - Verify network connectivity to database server
 
 ### Bot Issues
 1. **Bot won't start**: 
@@ -449,10 +509,9 @@ The system uses Neon PostgreSQL with the following main tables:
    - Test health endpoint: `curl -H "x-secret-key: YOUR_KEY" http://localhost:PORT/status`
 
 5. **Sync issues**: 
-   - Sync runs on bot startup automatically
-   - Sync also triggers when configs are accessed or updated
-   - 30-minute cooldown between syncs per server
-   - Check `last_accessed` timestamp in `server_settings` table if sync seems delayed
+   - Sync runs on first bot startup only (when no servers exist in database)
+   - After first startup, sync only runs on Discord events (guild joins, channel changes, role changes, etc.)
+   - No periodic syncs - database is only accessed when Discord events occur
 
 ### Control Panel Issues
 1. **Can't login**: 

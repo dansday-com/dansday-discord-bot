@@ -15,42 +15,44 @@ const projectRoot = join(__dirname, '..');
 
 let app = null;
 let server = null;
-// Store bot processes by bot_id
-let botProcesses = new Map(); // Map<bot_id, { process, pid, startTime, status }>
 
-// Get connected selfbots for an official bot
+let botProcesses = new Map();
+
 async function getConnectedSelfbots(officialBotId) {
     try {
         const allBots = await db.getAllBots();
-        return allBots.filter(b => b.bot_type === 'selfbot' && b.connect_to === officialBotId);
+        const officialBotIdNum = typeof officialBotId === 'string' ? parseInt(officialBotId) : officialBotId;
+        return allBots.filter(b => {
+            if (b.bot_type !== 'selfbot') return false;
+            if (!b.connect_to) return false;
+            const connectToNum = typeof b.connect_to === 'string' ? parseInt(b.connect_to) : b.connect_to;
+            return connectToNum === officialBotIdNum;
+        });
     } catch (error) {
         logger.log(`⚠️  Error getting connected selfbots: ${error.message}`);
         return [];
     }
 }
 
-// Start a specific bot by ID
 async function startBotById(botId, bot) {
-    // Update status to starting
+
     try {
         await db.updateBot(botId, { status: 'starting' });
     } catch (err) {
         logger.log(`⚠️  Failed to update bot status: ${err.message}`);
     }
 
-    // Check if bot is already running
     const existing = botProcesses.get(botId);
     if (existing && existing.process && !existing.process.killed && existing.process.exitCode === null) {
         return { success: false, error: 'Bot is already running' };
     }
 
-    // Check if process is actually running by PID
     if (existing && existing.pid) {
         try {
-            process.kill(existing.pid, 0); // Signal 0 checks if process exists
+            process.kill(existing.pid, 0);
             return { success: false, error: 'Bot process is already running' };
         } catch (e) {
-            // Process doesn't exist, continue
+
         }
     }
 
@@ -68,17 +70,16 @@ async function startBotById(botId, bot) {
             return { success: false, error: `Unknown bot type: ${bot.bot_type}` };
         }
 
-        // Spawn bot process with token as environment variable
-        // Use absolute path to avoid shell issues
+
         const scriptPath = join(botPath, botScript);
         const botProcess = spawn('node', [scriptPath], {
             cwd: botPath,
             stdio: ['ignore', 'pipe', 'pipe'],
-            shell: false, // Don't use shell to avoid spawning extra processes
+            shell: false,
             detached: false,
             env: {
                 ...process.env,
-                BOT_TOKEN: bot.token, // Pass token via environment
+                BOT_TOKEN: bot.token,
                 BOT_ID: botId
             }
         });
@@ -92,7 +93,6 @@ async function startBotById(botId, bot) {
 
         botProcesses.set(botId, processInfo);
 
-        // Handle output
         botProcess.stdout.on('data', (data) => {
             const output = data.toString();
             console.log(`[Bot ${botId}] ${output}`);
@@ -103,7 +103,6 @@ async function startBotById(botId, bot) {
             console.error(`[Bot ${botId} Error] ${output}`);
         });
 
-        // Handle process exit
         botProcess.on('exit', async (code, signal) => {
             const info = botProcesses.get(botId);
             if (info) {
@@ -113,7 +112,6 @@ async function startBotById(botId, bot) {
                 info.process = null;
             }
 
-            // Update bot status in database
             try {
                 await db.updateBot(botId, {
                     status: 'stopped',
@@ -136,7 +134,6 @@ async function startBotById(botId, bot) {
                 info.process = null;
             }
 
-            // Update bot status in database
             try {
                 await db.updateBot(botId, {
                     status: 'stopped',
@@ -148,13 +145,11 @@ async function startBotById(botId, bot) {
             logger.log(`Failed to start bot ${botId}: ${err.message}`);
         });
 
-        // Wait a moment for process to fully start, then update status to running
         setTimeout(async () => {
-            // Verify process is still running
-            try {
-                process.kill(botProcess.pid, 0); // Signal 0 checks if process exists
 
-                // Update status to running in database
+            try {
+                process.kill(botProcess.pid, 0);
+
                 try {
                     await db.updateBot(botId, {
                         status: 'running',
@@ -166,7 +161,7 @@ async function startBotById(botId, bot) {
                     logger.log(`⚠️  Failed to update bot status to running: ${err.message}`);
                 }
             } catch (e) {
-                // Process doesn't exist or failed to start
+
                 logger.log(`⚠️  Bot process ${botProcess.pid} may have failed to start`);
                 try {
                     await db.updateBot(botId, {
@@ -176,15 +171,18 @@ async function startBotById(botId, bot) {
                     });
                 } catch (updateErr) { }
             }
-        }, 2000); // Wait 2 seconds for process to start
+        }, 2000);
 
         logger.log(`✅ Started bot ${botId} (${bot.bot_type}) with PID ${botProcess.pid}`);
-        
-        // If this is an official bot, also start all connected selfbots
+
         if (bot.bot_type === 'official') {
             const connectedSelfbots = await getConnectedSelfbots(botId);
+            logger.log(`🔍 Found ${connectedSelfbots.length} selfbot(s) connected to official bot ${botId}`);
             if (connectedSelfbots.length > 0) {
                 logger.log(`🔄 Starting ${connectedSelfbots.length} connected selfbot(s)...`);
+                for (const selfbot of connectedSelfbots) {
+                    logger.log(`  - Selfbot ${selfbot.id} (${selfbot.name}) - connect_to: ${selfbot.connect_to}`);
+                }
                 const startPromises = connectedSelfbots.map(selfbot => 
                     startBotById(selfbot.id, selfbot).catch(err => {
                         logger.log(`⚠️  Failed to start connected selfbot ${selfbot.id}: ${err.message}`);
@@ -192,8 +190,10 @@ async function startBotById(botId, bot) {
                     })
                 );
                 const results = await Promise.all(startPromises);
-                const successful = results.filter(r => r.success).length;
+                const successful = results.filter(r => r && r.success).length;
                 logger.log(`✅ Started ${successful}/${connectedSelfbots.length} connected selfbot(s)`);
+            } else {
+                logger.log(`ℹ️  No selfbots found connected to official bot ${botId}`);
             }
         }
         
@@ -203,9 +203,8 @@ async function startBotById(botId, bot) {
     }
 }
 
-// Stop a specific bot by ID
 async function stopBotById(botId) {
-    // Update status to stopping
+
     try {
         await db.updateBot(botId, { status: 'stopping' });
     } catch (err) {
@@ -215,11 +214,11 @@ async function stopBotById(botId) {
     const botInfo = botProcesses.get(botId);
 
     if (!botInfo || !botInfo.process) {
-        // Try to find and kill by PID if process info exists
+
         if (botInfo && botInfo.pid) {
             try {
                 process.kill(botInfo.pid, 'SIGINT');
-                // Wait a bit then force kill
+
                 setTimeout(() => {
                     try {
                         process.kill(botInfo.pid, 'SIGKILL');
@@ -227,7 +226,6 @@ async function stopBotById(botId) {
                 }, 2000);
                 botProcesses.delete(botId);
 
-                // Update bot status in database
                 try {
                     await db.updateBot(botId, {
                         status: 'stopped',
@@ -238,7 +236,7 @@ async function stopBotById(botId) {
 
                 return { success: true, message: 'Stopped bot process' };
             } catch (e) {
-                // Update status
+
                 try {
                     await db.updateBot(botId, {
                         status: 'stopped',
@@ -250,7 +248,6 @@ async function stopBotById(botId) {
             }
         }
 
-        // Update status
         try {
             await db.updateBot(botId, {
                 status: 'stopped',
@@ -263,16 +260,14 @@ async function stopBotById(botId) {
 
     botInfo.status = 'stopping';
 
-    // Try graceful shutdown first
     if (botInfo.process && !botInfo.process.killed && botInfo.process.exitCode === null) {
         try {
             botInfo.process.kill('SIGINT');
         } catch (err) {
-            // Process might already be dead
+
         }
     }
 
-    // Force kill after timeout
     setTimeout(() => {
         if (botInfo.process && !botInfo.process.killed && botInfo.process.exitCode === null) {
             try {
@@ -286,7 +281,6 @@ async function stopBotById(botId) {
     botInfo.startTime = null;
     botInfo.process = null;
 
-    // Update bot status in database
     try {
         await db.updateBot(botId, {
             status: 'stopped',
@@ -298,8 +292,7 @@ async function stopBotById(botId) {
 }
 
     logger.log(`⏹️  Stopped bot ${botId}`);
-    
-    // If this was an official bot, also stop all connected selfbots
+
     try {
         const bot = await db.getBot(botId);
         if (bot && bot.bot_type === 'official') {
@@ -324,7 +317,6 @@ async function stopBotById(botId) {
     return { success: true };
 }
 
-// Restart a specific bot by ID
 async function restartBotById(botId, bot) {
     const stopResult = await stopBotById(botId);
 
@@ -332,15 +324,12 @@ async function restartBotById(botId, bot) {
         return { success: false, error: `Failed to stop: ${stopResult.error}` };
     }
 
-    // Wait a moment for process to fully stop
     await new Promise(resolve => setTimeout(resolve, 2000));
 
-    // Now start
     const startResult = await startBotById(botId, bot);
     return startResult;
 }
 
-// Check and fix bot status by verifying if processes are actually running
 async function verifyBotStatuses() {
     try {
         const bots = await db.getAllBots();
@@ -350,15 +339,14 @@ async function verifyBotStatuses() {
             if (bot.status === 'running' || bot.status === 'starting' || bot.status === 'stopping') {
                 if (bot.process_id) {
                     try {
-                        // Check if process actually exists
-                        process.kill(bot.process_id, 0); // Signal 0 doesn't kill, just checks
-                        // Process exists - check if it's still a bot process
+
+                        process.kill(bot.process_id, 0);
+
                     try {
                             const cmdline = readFileSync(`/proc/${bot.process_id}/cmdline`, 'utf8').replace(/\0/g, ' ');
 
-                            // Check if it's actually a bot process
                             if (!cmdline.includes('officialbot.js') && !cmdline.includes('selfbot.js')) {
-                                // Process exists but isn't a bot process - mark as stopped
+
                                 logger.log(`⚠️  Bot ${bot.id} (${bot.name}) has PID ${bot.process_id} but it's not a bot process`);
                                 await db.updateBot(bot.id, {
                                     status: 'stopped',
@@ -367,7 +355,7 @@ async function verifyBotStatuses() {
                                 });
                             }
                         } catch (cmdlineErr) {
-                            // Can't read cmdline, process might be dead - mark as stopped
+
                             logger.log(`⚠️  Bot ${bot.id} (${bot.name}) process ${bot.process_id} appears to be dead`);
                             await db.updateBot(bot.id, {
                                 status: 'stopped',
@@ -376,7 +364,7 @@ async function verifyBotStatuses() {
                             });
                         }
                     } catch (e) {
-                        // Process doesn't exist - mark as stopped
+
                         logger.log(`⚠️  Bot ${bot.id} (${bot.name}) process ${bot.process_id} no longer exists, marking as stopped`);
                         await db.updateBot(bot.id, {
                             status: 'stopped',
@@ -385,7 +373,7 @@ async function verifyBotStatuses() {
                         });
                     }
                 } else {
-                    // No process ID but status says running - mark as stopped
+
                     logger.log(`⚠️  Bot ${bot.id} (${bot.name}) has status "${bot.status}" but no process_id, marking as stopped`);
                     await db.updateBot(bot.id, {
                         status: 'stopped',
@@ -402,9 +390,8 @@ async function verifyBotStatuses() {
     }
 }
 
-// Initialize control panel
 export async function init() {
-    // Initialize database on startup
+
     try {
         await initializeDatabase();
     } catch (error) {
@@ -412,27 +399,28 @@ export async function init() {
         logger.log('📄 The database will be checked when first accessed');
     }
 
-    // Verify and fix bot statuses on startup (in case processes were killed externally)
     await verifyBotStatuses();
 
     app = express();
     app.use(express.json());
 
-    // Session middleware
+    if (!process.env.SESSION_SECRET) {
+        throw new Error('Missing SESSION_SECRET environment variable');
+    }
+    
     app.use(session({
-        secret: process.env.SESSION_SECRET || 'goblox-panel-secret-change-in-production',
+        secret: process.env.SESSION_SECRET,
         resave: false,
         saveUninitialized: false,
         cookie: {
-            secure: false, // Set to true if using HTTPS
+            secure: false,
             httpOnly: true,
-            maxAge: 24 * 60 * 60 * 1000 // 24 hours
+            maxAge: 24 * 60 * 60 * 1000
         }
     }));
 
     app.use(express.static(__dirname));
 
-    // Helper function to get client IP
     function getClientIp(req) {
         return req.headers['x-forwarded-for']?.split(',')[0] ||
             req.headers['x-real-ip'] ||
@@ -442,12 +430,10 @@ export async function init() {
             'unknown';
     }
 
-    // Helper function to get user agent
     function getUserAgent(req) {
         return req.headers['user-agent'] || 'unknown';
     }
 
-    // Authentication middleware
     async function requireAuth(req, res, next) {
         if (req.session && req.session.authenticated) {
             return next();
@@ -455,7 +441,6 @@ export async function init() {
         return res.status(401).json({ error: 'Authentication required' });
     }
 
-    // Check panel setup status (if panel password exists)
     app.get('/api/panel/status', async (req, res) => {
         try {
             const panel = await db.getPanel();
@@ -465,7 +450,6 @@ export async function init() {
         }
     });
 
-    // Register panel password (first time setup)
     app.post('/api/panel/register', async (req, res) => {
         try {
             const { password } = req.body;
@@ -477,7 +461,6 @@ export async function init() {
                 });
             }
 
-            // Check if panel already exists
             const existing = await db.getPanel();
             if (existing) {
                 return res.status(400).json({
@@ -486,18 +469,14 @@ export async function init() {
                 });
             }
 
-            // Hash password
             const saltRounds = 10;
             const passwordHash = await bcrypt.hash(password, saltRounds);
 
-            // Create panel
             const panel = await db.createPanel(passwordHash);
 
-            // Set session
             req.session.authenticated = true;
             req.session.panel_id = panel.id;
 
-            // Wait for session to be saved before sending response
             await new Promise((resolve, reject) => {
                 req.session.save((err) => {
                     if (err) {
@@ -508,8 +487,7 @@ export async function init() {
                     }
                 });
             });
-            
-            // Log registration (successful)
+
             await db.createPanelLog({
                 panel_id: panel.id,
                 ip_address: getClientIp(req),
@@ -524,7 +502,6 @@ export async function init() {
         }
     });
 
-    // Login endpoint
     app.post('/api/panel/login', async (req, res) => {
         try {
             const { password } = req.body;
@@ -536,10 +513,9 @@ export async function init() {
                 });
             }
 
-            // Get panel
             const panel = await db.getPanel();
             if (!panel) {
-                // Log failed attempt
+
                 await db.createPanelLog({
                     panel_id: null,
                     ip_address: getClientIp(req),
@@ -552,10 +528,8 @@ export async function init() {
                 });
             }
 
-            // Verify password
             const isValid = await bcrypt.compare(password, panel.password_hash);
 
-            // Log attempt
             await db.createPanelLog({
                 panel_id: panel.id,
                 ip_address: getClientIp(req),
@@ -570,11 +544,9 @@ export async function init() {
                 });
             }
 
-            // Set session
             req.session.authenticated = true;
             req.session.panel_id = panel.id;
 
-            // Wait for session to be saved before sending response
             await new Promise((resolve, reject) => {
                 req.session.save((err) => {
                     if (err) {
@@ -593,7 +565,6 @@ export async function init() {
         }
     });
 
-    // Logout endpoint
     app.post('/api/panel/logout', (req, res) => {
         req.session.destroy((err) => {
             if (err) {
@@ -603,25 +574,23 @@ export async function init() {
         });
     });
 
-    // Check authentication status
     app.get('/api/panel/auth', (req, res) => {
         res.json({
             authenticated: req.session && req.session.authenticated || false
         });
     });
 
-    // Get all bots (protected)
     app.get('/api/bots', requireAuth, async (req, res) => {
         try {
             const bots = await db.getAllBots();
-            // Don't send tokens in response
+
             const botsWithDetails = await Promise.all(bots.map(async (bot) => {
-                // Verify bot status before returning (if it's marked as running)
+
                 if ((bot.status === 'running' || bot.status === 'starting' || bot.status === 'stopping') && bot.process_id) {
                     try {
-                        process.kill(bot.process_id, 0); // Signal 0 checks if process exists
+                        process.kill(bot.process_id, 0);
                     } catch (e) {
-                        // Process doesn't exist - update status
+
                         await db.updateBot(bot.id, {
                             status: 'stopped',
                             process_id: null,
@@ -646,20 +615,19 @@ export async function init() {
                     uptime_started_at: bot.uptime_started_at || null,
                     created_at: bot.created_at,
                     updated_at: bot.updated_at,
-                    // Include is_testing for official bots
+
                     is_testing: bot.is_testing || false
                 };
 
-                // If selfbot has connect_to, get the connected bot's name and is_testing
                 if (bot.connect_to) {
                     try {
                         const connectedBot = await db.getBot(bot.connect_to);
                         if (connectedBot) {
                             botData.connected_bot_name = connectedBot.name;
-                            // For selfbots, always inherit is_testing from connected bot (both in response and sync in DB)
+
                             if (bot.bot_type === 'selfbot') {
                                 botData.is_testing = connectedBot.is_testing || false;
-                                // Sync selfbot's is_testing in database to match connected bot
+
                                 if (bot.is_testing !== connectedBot.is_testing) {
                                     await db.updateBot(bot.id, { is_testing: connectedBot.is_testing || false });
                                 }
@@ -670,7 +638,6 @@ export async function init() {
                     }
                 }
 
-                // Calculate uptime if running
                 if (botData.status === 'running' && botData.uptime_started_at) {
                     const startTime = new Date(botData.uptime_started_at);
                     const now = new Date();
@@ -688,8 +655,7 @@ export async function init() {
             res.status(500).json({ error: error.message });
                     }
     });
-                    
-    // Get bot by ID (protected)
+
     app.get('/api/bots/:id', requireAuth, async (req, res) => {
                     try {
             const bot = await db.getBot(req.params.id);
@@ -697,18 +663,17 @@ export async function init() {
                 return res.status(404).json({ error: 'Bot not found' });
             }
 
-            // Verify bot status before returning (if it's marked as running)
             if ((bot.status === 'running' || bot.status === 'starting' || bot.status === 'stopping') && bot.process_id) {
                 try {
-                    process.kill(bot.process_id, 0); // Signal 0 checks if process exists
+                    process.kill(bot.process_id, 0);
                     } catch (e) {
-                    // Process doesn't exist - update status
+
                     await db.updateBot(bot.id, {
                         status: 'stopped',
                         process_id: null,
                         uptime_started_at: null
                     });
-                    // Refresh bot data
+
                     const updatedBot = await db.getBot(req.params.id);
                     if (updatedBot) {
                         Object.assign(bot, updatedBot);
@@ -716,22 +681,19 @@ export async function init() {
                 }
             }
 
-            // Don't send token
             const { token, ...botData } = bot;
-            
-            // Ensure is_testing is included (default to false if not set)
+
             botData.is_testing = bot.is_testing || false;
 
-            // If selfbot has connect_to, get the connected bot's name and is_testing
             if (bot.connect_to) {
                 try {
                     const connectedBot = await db.getBot(bot.connect_to);
                     if (connectedBot) {
                         botData.connected_bot_name = connectedBot.name;
-                        // For selfbots, always inherit is_testing from connected bot (both in response and sync in DB)
+
                         if (bot.bot_type === 'selfbot') {
                             botData.is_testing = connectedBot.is_testing || false;
-                            // Sync selfbot's is_testing in database to match connected bot
+
                             if (bot.is_testing !== connectedBot.is_testing) {
                                 await db.updateBot(bot.id, { is_testing: connectedBot.is_testing || false });
                             }
@@ -742,7 +704,6 @@ export async function init() {
                 }
             }
 
-            // Calculate uptime if running
             if (botData.status === 'running' && botData.uptime_started_at) {
                 const startTime = new Date(botData.uptime_started_at);
                 const now = new Date();
@@ -758,7 +719,6 @@ export async function init() {
         }
     });
 
-    // Get servers for a bot (protected)
     app.get('/api/bots/:id/servers', requireAuth, async (req, res) => {
         try {
             const servers = await db.getServersForBot(req.params.id);
@@ -768,7 +728,6 @@ export async function init() {
         }
     });
 
-    // Get server settings (protected)
     app.get('/api/servers/:id/settings', requireAuth, async (req, res) => {
         try {
             const { component } = req.query;
@@ -779,7 +738,6 @@ export async function init() {
         }
                     });
 
-    // Save server settings (protected)
     app.put('/api/servers/:id/settings', requireAuth, async (req, res) => {
         try {
             const { component_name, settings } = req.body;
@@ -793,13 +751,11 @@ export async function init() {
         }
     });
 
-    // Get channels for a server (protected)
     app.get('/api/servers/:id/channels', requireAuth, async (req, res) => {
         try {
             const { search } = req.query;
             let channels = await db.getChannelsForServer(req.params.id);
 
-            // Filter by search term if provided
             if (search) {
                 const searchLower = search.toLowerCase();
                 channels = channels.filter(ch =>
@@ -814,7 +770,6 @@ export async function init() {
         }
     });
 
-    // Get categories for a server (protected)
     app.get('/api/servers/:id/categories', requireAuth, async (req, res) => {
         try {
             const categories = await db.getCategoriesForServer(req.params.id);
@@ -824,7 +779,6 @@ export async function init() {
         }
     });
 
-    // Get selfbots connected to an official bot (protected)
     app.get('/api/bots/:id/selfbots', requireAuth, async (req, res) => {
         try {
             const officialBot = await db.getBot(req.params.id);
@@ -832,33 +786,39 @@ export async function init() {
                 return res.status(400).json({ error: 'Bot not found or is not an official bot' });
             }
 
-            // Get all selfbots that connect to this official bot
             const allBots = await db.getAllBots();
-            const selfbots = allBots.filter(bot =>
-                bot.bot_type === 'selfbot' && bot.connect_to === req.params.id
-            );
+            const officialBotIdNum = typeof req.params.id === 'string' ? parseInt(req.params.id) : req.params.id;
+            const selfbots = allBots.filter(bot => {
+                if (bot.bot_type !== 'selfbot') return false;
+                if (!bot.connect_to) return false;
+                const connectToNum = typeof bot.connect_to === 'string' ? parseInt(bot.connect_to) : bot.connect_to;
+                return connectToNum === officialBotIdNum;
+            });
 
             res.json(selfbots);
         } catch (error) {
             res.status(500).json({ error: error.message });
-                }
-            });
+        }
+    });
 
-    // Get channels for a specific server from a selfbot (protected)
     app.get('/api/bots/:selfbotId/servers/:serverId/channels', requireAuth, async (req, res) => {
         try {
             const { selfbotId, serverId } = req.params;
             const { search, discordServerId } = req.query;
 
-            // Verify the server belongs to the selfbot
             const server = await db.getServerByDiscordId(selfbotId, discordServerId);
-            if (!server || server.id !== serverId) {
+            if (!server) {
                 return res.status(404).json({ error: 'Server not found' });
             }
 
-            let channels = await db.getChannelsForServer(serverId);
+            const serverIdNum = typeof serverId === 'string' ? parseInt(serverId) : serverId;
+            const serverDbIdNum = typeof server.id === 'string' ? parseInt(server.id) : server.id;
+            if (serverDbIdNum !== serverIdNum) {
+                return res.status(404).json({ error: 'Server not found' });
+            }
 
-            // Filter by search term if provided
+            let channels = await db.getChannelsForServer(serverIdNum);
+
             if (search) {
                 const searchLower = search.toLowerCase();
                 channels = channels.filter(ch =>
@@ -873,7 +833,6 @@ export async function init() {
         }
     });
 
-    // Get roles for a server (protected)
     app.get('/api/servers/:id/roles', requireAuth, async (req, res) => {
         try {
             const roles = await db.getRoles(req.params.id);
@@ -883,7 +842,6 @@ export async function init() {
         }
     });
 
-    // Create bot (protected)
     app.post('/api/bots', requireAuth, async (req, res) => {
         try {
             await initializeDatabase();
@@ -899,10 +857,8 @@ export async function init() {
                 connect_to
             } = req.body;
 
-            // Get panel_id from session
             const panel_id = req.session.panel_id;
 
-            // Validate required fields
             if (!token || !bot_type) {
                 return res.status(400).json({
                     success: false,
@@ -917,7 +873,6 @@ export async function init() {
                 });
     }
 
-            // Application ID is required for official bots only
             if (bot_type === 'official' && !application_id) {
                 return res.status(400).json({
                     success: false,
@@ -925,7 +880,6 @@ export async function init() {
                 });
             }
 
-            // Port is required for official bots
             if (bot_type === 'official' && !port) {
                 return res.status(400).json({
                     success: false,
@@ -933,7 +887,6 @@ export async function init() {
                 });
             }
 
-            // Secret Key is required for official bots
             if (bot_type === 'official' && !secret_key) {
                 return res.status(400).json({
                     success: false,
@@ -941,7 +894,6 @@ export async function init() {
                 });
             }
 
-            // If selfbot, connect_to is required
             if (bot_type === 'selfbot' && !connect_to) {
                 return res.status(400).json({
                     success: false,
@@ -949,7 +901,6 @@ export async function init() {
                 });
     }
 
-            // Check if port is already in use (only for official bots, since they use ports)
             if (bot_type === 'official') {
                 const portToUse = port || 7777;
                 const existingBots = await db.getAllBots();
@@ -965,7 +916,6 @@ export async function init() {
                 }
             }
 
-            // For selfbots, get is_testing from connected official bot
             let is_testing = false;
             if (bot_type === 'selfbot' && connect_to) {
                 try {
@@ -977,7 +927,7 @@ export async function init() {
                     logger.log(`⚠️  Failed to get connected bot for is_testing: ${err.message}`);
                 }
             } else if (bot_type === 'official') {
-                // Default to false for official bots
+
                 is_testing = false;
             }
 
@@ -987,7 +937,7 @@ export async function init() {
                 application_id,
                 bot_type,
                 bot_icon: bot_icon || null,
-                port: bot_type === 'official' ? (port || 7777) : null, // Port only for official bots, null for selfbots
+                port: bot_type === 'official' ? (port || 7777) : null,
                 is_testing: is_testing,
                 secret_key: secret_key || null,
                 connect_to: connect_to || null,
@@ -1001,8 +951,6 @@ export async function init() {
     }
     });
 
-
-    // Update bot mode (testing/production) - only for official bots (protected)
     app.put('/api/bots/:id/mode', requireAuth, async (req, res) => {
         try {
             const bot = await db.getBot(req.params.id);
@@ -1013,7 +961,6 @@ export async function init() {
                 });
             }
 
-            // Only allow mode changes for official bots
             if (bot.bot_type !== 'official') {
                 return res.status(400).json({
                     success: false,
@@ -1030,17 +977,18 @@ export async function init() {
                 });
             }
 
-            // Update the official bot's is_testing
             await db.updateBot(req.params.id, { is_testing });
-    
-            // Update all selfbots that connect to this official bot
+
             try {
                 const allBots = await db.getAllBots();
-                const connectedSelfbots = allBots.filter(b =>
-                    b.bot_type === 'selfbot' && b.connect_to === req.params.id
-                );
-                
-                // Update each connected selfbot's is_testing to match
+                const officialBotIdNum = typeof req.params.id === 'string' ? parseInt(req.params.id) : req.params.id;
+                const connectedSelfbots = allBots.filter(b => {
+                    if (b.bot_type !== 'selfbot') return false;
+                    if (!b.connect_to) return false;
+                    const connectToNum = typeof b.connect_to === 'string' ? parseInt(b.connect_to) : b.connect_to;
+                    return connectToNum === officialBotIdNum;
+                });
+
                 for (const selfbot of connectedSelfbots) {
                     await db.updateBot(selfbot.id, { is_testing });
                 }
@@ -1059,7 +1007,6 @@ export async function init() {
         }
     });
 
-    // Delete bot (protected)
     app.delete('/api/bots/:id', requireAuth, async (req, res) => {
         try {
             await db.deleteBot(req.params.id);
@@ -1070,8 +1017,6 @@ export async function init() {
         }
     });
 
-
-    // Control endpoints - bot-specific (protected)
     app.post('/api/start', requireAuth, async (req, res) => {
         const { bot_id } = req.body;
         if (!bot_id) {
@@ -1124,12 +1069,10 @@ export async function init() {
         }
     });
 
-    // Serve the control panel HTML
     app.get('/', (req, res) => {
         res.sendFile(join(__dirname, 'index.html'));
     });
 
-    // Start server
     const port = CONTROL_PANEL.PORT;
     server = app.listen(port, '0.0.0.0', () => {
         logger.log(`🎛️ Control panel started on http://0.0.0.0:${port}`);
@@ -1145,7 +1088,6 @@ export async function init() {
     });
 }
 
-// Stop control panel
 export function stop() {
     if (server) {
         server.close();

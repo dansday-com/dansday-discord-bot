@@ -7,12 +7,10 @@ import { handleCustomSupporterRoleButton, handleCustomSupporterRoleModal, handle
 import { handleFeedbackButton, handleFeedbackModal } from './interface/feedback.js';
 import { handleAFKButton, handleAFKModal, handleRemoveAFKButton } from './interface/afk.js';
 
-// Handle button interactions
 export async function handleButtonInteraction(interaction, client) {
     const { customId } = interaction;
     const user = interaction.user;
 
-    // Log button interaction attempt to the specific server's logger channel
     await logger.log(`🔘 Button clicked: "${customId}" by ${user.tag} (${user.id}) in ${interaction.guild?.name || 'DM'}`, interaction.guild?.id);
 
     switch (customId) {
@@ -41,7 +39,7 @@ export async function handleButtonInteraction(interaction, client) {
                     await handleRemoveAFKButton(interaction);
                     break;
         default:
-            // Handle send message related buttons
+
             if (customId.startsWith('send_message_complete_')) {
                 await handleCompleteSetup(interaction);
             } else {
@@ -54,7 +52,6 @@ export async function handleButtonInteraction(interaction, client) {
     }
 }
 
-// Create interface embed and buttons
 export async function createInterfaceEmbed(client, guildId) {
     if (!guildId) {
         throw new Error('Guild ID is required to create interface embed');
@@ -77,7 +74,6 @@ export async function createInterfaceEmbed(client, guildId) {
     return interfaceEmbed;
 }
 
-// Create interface buttons
 export function createInterfaceButtons() {
     const helpButton = new ButtonBuilder()
         .setCustomId('bot_help')
@@ -104,20 +100,17 @@ export function createInterfaceButtons() {
         .setLabel('⏸️ AFK')
         .setStyle(ButtonStyle.Success);
 
-    // Create action rows with buttons (max 5 buttons per row)
     const buttonRow1 = new ActionRowBuilder()
         .addComponents(sendMessageButton, customSupporterRoleButton, afkButton, feedbackButton, helpButton);
 
     return [buttonRow1];
 }
 
-// Send interface to channel
 export async function sendInterfaceToChannel(targetChannel, interaction, client) {
     try {
         const interfaceEmbed = await createInterfaceEmbed(client, interaction.guild.id);
         const buttonRow = createInterfaceButtons();
 
-        // Send the interface to the target channel
         await targetChannel.send({
             embeds: [interfaceEmbed],
             components: Array.isArray(buttonRow) ? buttonRow : [buttonRow]
@@ -139,26 +132,23 @@ export async function sendInterfaceToChannel(targetChannel, interaction, client)
     }
 }
 
-// Initialize interface component
 function init(client) {
-    // Listen for button interactions
+
     client.on('interactionCreate', async (interaction) => {
         if (interaction.isButton()) {
-            // Skip if interaction is not from a guild
+
             if (!interaction.guild) {
                 return;
             }
 
-            // Check if this server belongs to this bot instance
             try {
                 await getServerForCurrentBot(interaction.guild.id);
             } catch (error) {
-                // Server not found for this bot, ignore interaction
+
                 await logger.log(`⚠️  Server ${interaction.guild.name} (${interaction.guild.id}) not found for this bot, ignoring interaction`);
                 return;
             }
 
-            // Handle button interactions
             try {
                 await handleButtonInteraction(interaction, client);
             } catch (error) {
@@ -174,21 +164,19 @@ function init(client) {
                 }
             }
         } else if (interaction.isModalSubmit()) {
-            // Skip if interaction is not from a guild
+
             if (!interaction.guild) {
                 return;
             }
 
-            // Check if this server belongs to this bot instance
             try {
                 await getServerForCurrentBot(interaction.guild.id);
             } catch (error) {
-                // Server not found for this bot, ignore interaction
+
                 await logger.log(`⚠️  Server ${interaction.guild.name} (${interaction.guild.id}) not found for this bot, ignoring interaction`);
                 return;
             }
 
-            // Handle modal submissions
             try {
                 const user = interaction.user;
                 const customId = interaction.customId;
@@ -218,21 +206,19 @@ function init(client) {
                 }
             }
         } else if (interaction.isChannelSelectMenu()) {
-            // Skip if interaction is not from a guild
+
             if (!interaction.guild) {
                 return;
             }
 
-            // Check if this server belongs to this bot instance
             try {
                 await getServerForCurrentBot(interaction.guild.id);
             } catch (error) {
-                // Server not found for this bot, ignore interaction
+
                 await logger.log(`⚠️  Server ${interaction.guild.name} (${interaction.guild.id}) not found for this bot, ignoring interaction`);
                 return;
             }
 
-            // Handle channel selection
             try {
                 const user = interaction.user;
                 const customId = interaction.customId;
@@ -257,21 +243,19 @@ function init(client) {
                 }
             }
         } else if (interaction.isRoleSelectMenu()) {
-            // Skip if interaction is not from a guild
+
             if (!interaction.guild) {
                 return;
             }
 
-            // Check if this server belongs to this bot instance
             try {
                 await getServerForCurrentBot(interaction.guild.id);
             } catch (error) {
-                // Server not found for this bot, ignore interaction
+
                 await logger.log(`⚠️  Server ${interaction.guild.name} (${interaction.guild.id}) not found for this bot, ignoring interaction`);
                 return;
             }
 
-            // Handle role selection
             try {
                 const user = interaction.user;
                 const customId = interaction.customId;

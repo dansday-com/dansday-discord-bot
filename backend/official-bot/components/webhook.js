@@ -5,7 +5,6 @@ let webhookServer = null;
 let client = null;
 let startTime = null;
 
-// Handle health check endpoint
 async function handleStatusRequest(req, res) {
     try {
         const headers = {
@@ -13,7 +12,6 @@ async function handleStatusRequest(req, res) {
             'Access-Control-Allow-Origin': '*'
         };
 
-        // Require secret key authentication
         const secretKey = req.headers['x-secret-key'];
         if (!secretKey || secretKey !== COMMUNICATION.SECRET_KEY) {
             await logger.log(`❌ Status endpoint unauthorized access attempt from ${req.connection?.remoteAddress || 'unknown'}`);
@@ -63,7 +61,6 @@ async function handleStatusRequest(req, res) {
     }
 }
 
-// Format uptime in human-readable format
 function formatUptime(seconds) {
     const days = Math.floor(seconds / 86400);
     const hours = Math.floor((seconds % 86400) / 3600);
@@ -81,7 +78,7 @@ function formatUptime(seconds) {
 
 async function handleWebhookRequest(req, res) {
     try {
-        // Handle health check endpoint (GET /health)
+
         if (req.method === 'GET' && (req.url === '/health' || req.url === '/')) {
             await handleStatusRequest(req, res);
             return;
@@ -93,7 +90,6 @@ async function handleWebhookRequest(req, res) {
             return;
         }
 
-        // Verify secret key
         const secretKey = req.headers['x-secret-key'];
         if (!secretKey || secretKey !== COMMUNICATION.SECRET_KEY) {
             await logger.log(`❌ Webhook unauthorized access attempt from ${req.connection.remoteAddress}`);
@@ -115,7 +111,6 @@ async function handleWebhookRequest(req, res) {
                     try {
                         await logger.log(`📥 Received message_forward webhook: channel ${payload.data.channel?.id} in guild ${payload.data.guild?.id}`, payload.data.guild?.id);
 
-                        // Import forwarder dynamically to avoid circular dependency
                         const { processMessageFromSelfBot } = await import('./forwarder.js');
                         await processMessageFromSelfBot(payload.data, client);
 
@@ -153,7 +148,6 @@ function startWebhookServer(discordClient) {
     if (COMMUNICATION.WEBHOOK_URL) {
         const port = COMMUNICATION.PORT;
 
-        // Import http module dynamically
         import('http').then(http => {
             webhookServer = http.createServer(handleWebhookRequest);
 

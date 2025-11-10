@@ -3,30 +3,25 @@ import { EmbedBuilder } from "discord.js";
 import logger from "../../logger.js";
 
 async function thankBooster(member, client) {
-    // Get booster channels from database
+
     const boosterChannelIds = await BOOSTER.getChannels(member.guild.id);
-    
-    // If no channels configured, skip
+
     if (!boosterChannelIds || boosterChannelIds.length === 0) {
         await logger.log(`⚠️ No booster channels configured for ${member.guild.name}, skipping booster message`);
         return;
     }
 
-    // Get booster messages from database
     const messages = await BOOSTER.getMessages(member.guild.id);
-    
-    // If no messages configured, skip
+
     if (!messages || messages.length === 0) {
         await logger.log(`⚠️ No booster messages configured for ${member.guild.name}, skipping booster message`);
         return;
     }
 
-    // Select a random message from the list
     const randomMessage = messages[Math.floor(Math.random() * messages.length)];
     const thankMessage = randomMessage.replace("{user}", `<@${member.user.id}>`);
     const embedConfig = await getEmbedConfig(member.guild.id);
 
-    // Send to all configured booster channels
     for (const boosterChannelId of boosterChannelIds) {
         const boosterChannel = client.channels.cache.get(boosterChannelId);
         if (!boosterChannel) {
@@ -36,7 +31,6 @@ async function thankBooster(member, client) {
 
         try {
 
-        // Create booster thank you embed
         const boosterEmbed = new EmbedBuilder()
             .setColor(embedConfig.COLOR)
             .setTitle("💎 Thank You for Boosting!")
@@ -72,11 +66,10 @@ async function thankBooster(member, client) {
 
 function init(client) {
     client.on("guildMemberUpdate", async (oldMember, newMember) => {
-        // Check if member just started boosting
+
         const wasBoosting = oldMember.premiumSince !== null;
         const isBoosting = newMember.premiumSince !== null;
 
-        // Only trigger if they just started boosting (wasn't boosting before, but is now)
         if (!wasBoosting && isBoosting) {
             await thankBooster(newMember, client);
         }

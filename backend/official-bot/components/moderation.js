@@ -34,7 +34,6 @@ async function sendModerationLog(client, embedData, guildId = null) {
     }
 }
 
-// Get audit log entry for moderation actions
 async function getAuditLogEntry(guild, action, targetId) {
     try {
         const auditLogs = await guild.fetchAuditLogs({
@@ -54,11 +53,11 @@ async function getAuditLogEntry(guild, action, targetId) {
 }
 
 function init(client) {
-    // Track bans
+
     client.on("guildBanAdd", async (ban) => {
         try {
             const { guild, user } = ban;
-            const auditEntry = await getAuditLogEntry(guild, 22, user.id); // 22 = MEMBER_BAN_ADD
+            const auditEntry = await getAuditLogEntry(guild, 22, user.id);
 
             const moderator = auditEntry?.executor || null;
             const reason = ban.reason || auditEntry?.reason || "No reason provided";
@@ -91,11 +90,10 @@ function init(client) {
         }
     });
 
-    // Track unbans
     client.on("guildBanRemove", async (ban) => {
         try {
             const { guild, user } = ban;
-            const auditEntry = await getAuditLogEntry(guild, 23, user.id); // 23 = MEMBER_BAN_REMOVE
+            const auditEntry = await getAuditLogEntry(guild, 23, user.id);
 
             const moderator = auditEntry?.executor || null;
 
@@ -122,24 +120,20 @@ function init(client) {
         }
     });
 
-    // Track kicks (member removed but not banned)
     client.on("guildMemberRemove", async (member) => {
         try {
-            // Check if it was a ban (ban event fires before remove, so we check audit logs)
-            const banEntry = await getAuditLogEntry(member.guild, 22, member.user.id); // 22 = MEMBER_BAN_ADD
 
-            // If there's a recent ban entry (within last 5 seconds), it's a ban, not a kick
+            const banEntry = await getAuditLogEntry(member.guild, 22, member.user.id);
+
             if (banEntry && Date.now() - banEntry.createdTimestamp < 5000) {
-                return; // Ban event will handle this
+                return;
             }
 
-            // Check for kick in audit logs
-            const kickEntry = await getAuditLogEntry(member.guild, 20, member.user.id); // 20 = MEMBER_KICK
+            const kickEntry = await getAuditLogEntry(member.guild, 20, member.user.id);
 
-            // Only log if it's actually a kick (has kick audit entry)
-            // If no kick entry, it's a voluntary leave - don't log it
+
             if (!kickEntry) {
-                return; // Member left voluntarily, not a kick
+                return;
             }
 
             const moderator = kickEntry.executor || null;

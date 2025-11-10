@@ -20,8 +20,11 @@ function getExperienceForMessage() {
     return LEVELING?.MESSAGE?.XP || 0;
 }
 
-function getExperienceForVoiceMinutes(minutes) {
+function getExperienceForVoiceMinutes(minutes, isAFK = false) {
     if (!minutes || minutes <= 0) return 0;
+    if (isAFK) {
+        return (LEVELING?.VOICE?.AFK_XP_PER_MINUTE || 5) * minutes;
+    }
     return (LEVELING?.VOICE?.XP_PER_MINUTE || 0) * minutes;
 }
 
@@ -241,15 +244,16 @@ async function startVoiceSession(state, resumed = false) {
 
             if (elapsedMinutes > 0) {
                 const afkStatus = await db.getAFKStatus(server.id, dbMember.discord_member_id);
-                if (!afkStatus) {
-                    const stats = await db.updateMemberLevelStats(dbMember.id, {
-                        voiceMinutesIncrement: elapsedMinutes,
-                        experienceIncrement: getExperienceForVoiceMinutes(elapsedMinutes)
-                    });
-                    await handleLevelEvaluation(server, dbMember, stats, state.guild.id);
-                    await logger.log(`📈 Resumed voice tracking for ${guildMember.id}: awarded ${elapsedMinutes} minutes, continuing to track`, state.guild.id);
+                const isAFK = !!afkStatus;
+                const stats = await db.updateMemberLevelStats(dbMember.id, {
+                    voiceMinutesIncrement: elapsedMinutes,
+                    experienceIncrement: getExperienceForVoiceMinutes(elapsedMinutes, isAFK)
+                });
+                await handleLevelEvaluation(server, dbMember, stats, state.guild.id);
+                if (isAFK) {
+                    await logger.log(`⏸️ Resumed voice tracking for ${guildMember.id}: awarded ${elapsedMinutes} minutes (AFK - reduced XP), continuing to track`, state.guild.id);
                 } else {
-                    await logger.log(`⏸️ Skipped voice XP for ${guildMember.id}: user is AFK`, state.guild.id);
+                    await logger.log(`📈 Resumed voice tracking for ${guildMember.id}: awarded ${elapsedMinutes} minutes, continuing to track`, state.guild.id);
                 }
             }
 
@@ -329,9 +333,11 @@ async function endVoiceSession(state) {
             const remainingMinutes = Math.max(0, totalElapsedMinutes - recordedMinutes);
 
             if (remainingMinutes > 0) {
+                const afkStatus = await db.getAFKStatus(server.id, memberId);
+                const isAFK = !!afkStatus;
                 const stats = await db.updateMemberLevelStats(dbMember.id, {
                     voiceMinutesIncrement: remainingMinutes,
-                    experienceIncrement: getExperienceForVoiceMinutes(remainingMinutes),
+                    experienceIncrement: getExperienceForVoiceMinutes(remainingMinutes, isAFK),
                     voiceSessionStartedAt: null
                 });
 
@@ -382,15 +388,14 @@ async function handleVoiceTick(sessionKey) {
 
         if (session.trackedMinutes >= voiceMinimumMinutes) {
             const afkStatus = await db.getAFKStatus(server.id, session.discordMemberId);
-            if (!afkStatus) {
-                const stats = await db.updateMemberLevelStats(dbMember.id, {
-                    voiceMinutesIncrement: 1,
-                    experienceIncrement: getExperienceForVoiceMinutes(1)
-                });
+            const isAFK = !!afkStatus;
+            const stats = await db.updateMemberLevelStats(dbMember.id, {
+                voiceMinutesIncrement: 1,
+                experienceIncrement: getExperienceForVoiceMinutes(1, isAFK)
+            });
 
-                const serverInfo = { id: session.serverId, name: session.serverName };
-                await handleLevelEvaluation(serverInfo, dbMember, stats, session.guildId);
-            }
+            const serverInfo = { id: session.serverId, name: session.serverName };
+            await handleLevelEvaluation(serverInfo, dbMember, stats, session.guildId);
         }
     } catch (error) {
         await logger.log(`❌ Leveling voice tick error: ${error.message}`, session.guildId);

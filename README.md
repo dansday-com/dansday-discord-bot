@@ -102,13 +102,15 @@ GOBLOX/
 - **Custom Supporter Roles**: Allow supporters to create custom roles with icons and colors
 - **AFK System**: Set AFK status with automatic nickname prefix and voice mute/deafen
 - **Leveling System**: Track member activity with XP, levels, ranks, and leaderboards
-  - XP from messages (+10 XP per message, 30s cooldown)
-  - XP from voice chat (+20 XP per minute, minimum 1 minute)
+  - XP from messages (+10 XP per message, 15s cooldown)
+  - XP from voice chat (+30 XP per minute, minimum 1 minute)
+  - XP from voice when AFK (+5 XP per minute, still counts time)
   - Exponential level curve (Level 2: 100 XP, Level 3: 200 XP, Level 4: 400 XP, etc.)
   - Automatic level recalculation from XP
   - Level up DM notifications
   - Live rank calculation
-  - AFK users excluded from voice XP
+  - Top 5 leaderboard with medal emotes (🥇🥈🥉)
+  - Tie-breaking by who reached level first
 - **Feedback System**: Submit feedback to staff with automatic channel posting
 - **Permission System**: Role-based permissions (Admin, Staff, Supporter, Member)
 - **Testing/Production Modes**: Switch between test and production channels
@@ -329,17 +331,16 @@ The `/interface` command creates a visual interface with buttons. All button res
 - Features:
   - Personal stats: Level, XP, chat count, voice minutes, rank
   - Visual progress bar showing XP towards next level
-  - Top 10 leaderboard with member levels and XP
-  - Automatic level recalculation from XP (fixes manual database changes)
-  - Live rank calculation (updated when viewing interface)
+  - Top 5 leaderboard with medal emotes (🥇🥈🥉) for top 3
+  - Automatic level recalculation from XP
+  - Live rank calculation with tie-breaking (who reached level first)
 - **XP Sources:**
-  - Messages: +10 XP per eligible message (30 seconds cooldown)
-  - Voice chat: +20 XP per minute (minimum 1 minute per tick)
-  - **Note:** AFK users do not earn voice XP
+  - Messages: +10 XP per eligible message (15 seconds cooldown)
+  - Voice chat: +30 XP per minute (minimum 1 minute per tick)
+  - Voice when AFK: +5 XP per minute (still counts time)
 - **Level System:**
   - Exponential XP curve: Level 2 = 100 XP, Level 3 = 200 XP, Level 4 = 400 XP, etc.
   - Level up DM notifications sent automatically
-  - AFK users don't earn voice XP
 - **Permission:** Member+
 
 #### ⏸️ AFK Button
@@ -428,11 +429,13 @@ Configuration is managed through:
 
 #### Leveling Configuration
 - Message XP: +10 XP per eligible message (default)
-- Message cooldown: 30 seconds (default)
-- Voice XP per minute: +20 XP per minute (default)
+- Message cooldown: 15 seconds (default)
+- Voice XP per minute: +30 XP per minute (default)
+- Voice XP when AFK: +5 XP per minute (default, still counts time)
 - Minimum voice session minutes: 1 minute per tick (default)
 - Exponential level curve: Level 2 = 100 XP, Level 3 = 200 XP, Level 4 = 400 XP, etc.
-- AFK users excluded from voice XP
+- Leaderboard: Top 5 with medal emotes for positions 1-3
+- Tie-breaking: Users with same level/XP ranked by who reached it first
 
 ## Testing vs Production Mode
 
@@ -471,7 +474,7 @@ Each feature is organized as a component for easy maintenance:
   - Automatic level calculation from XP
   - Level up DM notifications
   - Voice session resume after bot restarts
-  - AFK status checking (AFK users don't earn voice XP)
+  - AFK status checking (AFK users earn reduced XP: 5 XP/min vs 30 XP/min)
 - **Sync Component**: Event-driven sync system - syncs on bot startup and when configs are accessed/updated (30-minute cooldown)
 
 ### Self-Bot Components

@@ -15,42 +15,37 @@ export async function handleHelpButton(interaction) {
     const embedConfig = await getEmbedConfig(interaction.guild.id);
     const helpEmbed = new EmbedBuilder()
         .setColor(embedConfig.COLOR)
-        .setTitle("🤖 GO BLOX Bot Panel - Help")
-        .setDescription("Welcome to the GO BLOX Bot interface! Use the buttons below to interact with the bot. All responses are private (ephemeral).")
+        .setTitle("🤖 GO BLOX Bot - Help")
+        .setDescription("Use the buttons below to interact with the bot. All responses are private.")
         .addFields([
             {
                 name: "📤 Send Message",
-                value: "Send custom embed messages to any channel with optional role mentions.\n**Permission:** Staff+",
-                inline: false
+                value: "Send custom embed messages to any channel.\n**Permission:** Staff+",
+                inline: true
             },
             {
                 name: "💎 Custom Supporter Role",
-                value: "Create, edit, or delete a custom role with name, color, and icon. Role is automatically positioned between configured role constraints (role start and role end). Each user can have exactly one custom role. Roles are automatically cleaned up if they have no members or more than one member.\n**Permission:** Supporter+ or Staff+",
-                inline: false
+                value: "Create, edit, or delete your custom role.\n**Permission:** Supporter+",
+                inline: true
             },
             {
                 name: "📈 Leveling",
-                value: "View your leveling stats (level, XP, chat count, voice minutes, rank) and see the server leaderboard.\n**XP Formula:** +10 XP per eligible message (30 seconds cooldown), +20 XP per voice minute (minimum 1 minute per tick). **Note:** AFK users do not earn voice XP.\n**Level System:** Exponential XP curve - Level 2 requires 100 XP, Level 3 requires 200 XP, Level 4 requires 400 XP, and so on.\n**Features:**\n• Automatic level recalculation from XP\n• Level up DM notifications\n• Live rank calculation\n• AFK users don't earn voice XP\n**Permission:** Member+",
-                inline: false
+                value: "View your stats and leaderboard.\n**XP:** +10 per message (15s cooldown), +30/min voice, +5/min AFK\n**Permission:** Member+",
+                inline: true
             },
             {
                 name: "⏸️ AFK",
-                value: "Set yourself as AFK with an optional message. Your nickname will be prefixed with [AFK]. If in voice channel, you'll be automatically muted and deafened. AFK status auto-removes when you send a message or unmute/undeafen in voice. When mentioned while AFK, you'll receive a DM notification. Your original display name will be restored when AFK is removed.\n**Permission:** Member+",
-                inline: false
+                value: "Set AFK status with optional message.\n**Permission:** Member+",
+                inline: true
             },
             {
                 name: "💬 Feedback",
-                value: "Submit feedback, suggestions, or concerns to the server staff. All submissions are posted to the configured feedback channel with staff role mentions.\n**Permission:** Member+",
-                inline: false
+                value: "Submit feedback to staff.\n**Permission:** Member+",
+                inline: true
             },
             {
-                name: "❓ Help",
-                value: "Shows this help information.\n**Permission:** Member+",
-                inline: false
-            },
-            {
-                name: "🔐 Permissions Summary",
-                value: "**Admin:** Full access\n**Staff:** All interfaces (Send Message, Custom Supporter Role, Leveling, AFK, Help, Feedback)\n**Supporter:** Custom Supporter Role (plus Member access)\n**Member:** Leveling, AFK, Help, Feedback",
+                name: "🔐 Permissions",
+                value: "**Admin:** Full access\n**Staff:** All features\n**Supporter:** Custom role + Member\n**Member:** Leveling, AFK, Help, Feedback",
                 inline: false
             }
         ])

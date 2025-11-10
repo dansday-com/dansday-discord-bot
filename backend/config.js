@@ -204,10 +204,11 @@ export const PERMISSIONS = {
 export const LEVELING = {
     MESSAGE: {
         XP: 10,
-        COOLDOWN_SECONDS: 30
+        COOLDOWN_SECONDS: 15
     },
     VOICE: {
-        XP_PER_MINUTE: 20,
+        XP_PER_MINUTE: 30,
+        AFK_XP_PER_MINUTE: 5,
         MINIMUM_SESSION_MINUTES: 1
     }
 };

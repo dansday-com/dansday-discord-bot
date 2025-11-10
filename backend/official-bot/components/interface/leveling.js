@@ -1,4 +1,4 @@
-import { EmbedBuilder } from "discord.js";
+import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 import { getEmbedConfig, getBotConfig } from "../../../config.js";
 import { hasPermission } from "../permissions.js";
 import db from "../../../../database/database.js";
@@ -20,20 +20,143 @@ function formatNumber(value) {
     return value.toLocaleString();
 }
 
-function formatLeaderboardRow(entry, index) {
-    const position = entry.rank || index + 1;
-    const name = entry.server_display_name || entry.display_name || entry.username || entry.discord_member_id || `Member ${position}`;
-    const xp = entry.experience || 0;
-    const calculatedLevel = determineLevel(xp);
-    return `${position}. **${name}** — LVL ${calculatedLevel} • ${formatNumber(xp)} XP`;
-}
-
 async function getServerForInteraction(interaction) {
     const botConfig = getBotConfig();
     if (!botConfig || !botConfig.id) {
         return null;
     }
     return await db.getServerByDiscordId(botConfig.id, interaction.guild.id);
+}
+
+async function buildLevelingEmbeds(server, memberLevelData, sortType = 'xp', guildId = null) {
+    const embedConfig = await getEmbedConfig(guildId || server.discord_server_id);
+
+    const memberDisplayName = memberLevelData?.server_display_name || memberLevelData?.display_name || memberLevelData?.username || 'Unknown';
+    const currentXP = memberLevelData?.experience ?? 0;
+    const calculatedLevel = determineLevel(currentXP);
+
+    const currentLevel = calculatedLevel;
+    const nextLevel = currentLevel + 1;
+    const currentLevelRequirement = getLevelRequirement(currentLevel);
+    const nextLevelRequirement = getLevelRequirement(nextLevel);
+    const xpRange = nextLevelRequirement - currentLevelRequirement;
+    const xpIntoLevel = Math.max(0, currentXP - currentLevelRequirement);
+    const progressRatio = xpRange > 0 ? Math.max(0, Math.min(1, xpIntoLevel / xpRange)) : 0;
+    const progressBar = buildProgressBar(progressRatio);
+    const xpProgressText = `${formatNumber(currentXP)} / ${formatNumber(nextLevelRequirement)} XP`;
+
+    const profileLines = [];
+    profileLines.push(`• **Level:** ${currentLevel}`);
+    profileLines.push(`• **Experience:** ${formatNumber(currentXP)} XP`);
+    profileLines.push(`• **Progress:** ${progressBar} (${xpProgressText})`);
+    profileLines.push(`• **Chat Count:** ${formatNumber(memberLevelData?.chat_count ?? 0)}`);
+    profileLines.push(`• **Voice Minutes:** ${formatNumber(memberLevelData?.voice_minutes ?? 0)}`);
+    profileLines.push(`• **Rank:** ${memberLevelData?.rank ? `#${memberLevelData.rank}` : "Unranked"}`);
+
+    const profileEmbed = new EmbedBuilder()
+        .setColor(embedConfig.COLOR)
+        .setTitle("📈 Your Leveling Stats")
+        .setDescription(`Stats for **${memberDisplayName}**`)
+        .addFields(
+            {
+                name: "Your Progress",
+                value: profileLines.join("\n"),
+                inline: false
+            }
+        )
+        .setFooter({ text: embedConfig.FOOTER })
+        .setTimestamp();
+
+    const leaderboard = await db.getServerLeaderboard(server.id, 3, sortType);
+
+    let leaderboardTitle;
+    switch (sortType) {
+        case 'xp':
+            leaderboardTitle = "⭐ Top XP (Top 3)";
+            break;
+        case 'voice':
+            leaderboardTitle = "🎤 Top Voice (Top 3)";
+            break;
+        case 'chat':
+            leaderboardTitle = "💬 Top Chat (Top 3)";
+            break;
+        default:
+            leaderboardTitle = "⭐ Top XP (Top 3)";
+            break;
+    }
+
+    const leaderboardEmbed = new EmbedBuilder()
+        .setColor(embedConfig.COLOR)
+        .setTitle(leaderboardTitle)
+        .setFooter({ text: embedConfig.FOOTER })
+        .setTimestamp();
+
+    if (leaderboard && leaderboard.length > 0) {
+        for (let i = 0; i < Math.min(3, leaderboard.length); i++) {
+            const entry = leaderboard[i];
+            const position = i + 1;
+            const name = entry.server_display_name || entry.display_name || entry.username || entry.discord_member_id || `Member ${position}`;
+            const xp = entry.experience || 0;
+            const calculatedLevel = determineLevel(xp);
+            const avatar = entry.avatar || null;
+
+            let medal = "";
+            let value = "";
+
+            if (position === 1) {
+                medal = "🥇";
+                if (avatar) leaderboardEmbed.setThumbnail(avatar);
+            } else if (position === 2) {
+                medal = "🥈";
+            } else if (position === 3) {
+                medal = "🥉";
+            }
+
+            switch (sortType) {
+                case 'xp':
+                    value = `${medal} **${name}**\n${formatNumber(xp)} XP • Level ${calculatedLevel}`;
+                    break;
+                case 'voice':
+                    value = `${medal} **${name}**\n${formatNumber(entry.voice_minutes || 0)} min • ${formatNumber(xp)} XP`;
+                    break;
+                case 'chat':
+                    value = `${medal} **${name}**\n${formatNumber(entry.chat_count || 0)} messages • ${formatNumber(xp)} XP`;
+                    break;
+                default:
+                    value = `${medal} **${name}**\n${formatNumber(xp)} XP • Level ${calculatedLevel}`;
+                    break;
+            }
+
+            leaderboardEmbed.addFields({
+                name: `#${position}`,
+                value: value,
+                inline: false
+            });
+        }
+    } else {
+        leaderboardEmbed.setDescription("No leveling data available yet.");
+    }
+
+    return { profileEmbed, leaderboardEmbed };
+}
+
+function createLeaderboardButtons(selectedType = 'xp') {
+    const xpButton = new ButtonBuilder()
+        .setCustomId('leaderboard_xp')
+        .setLabel('⭐ Top XP')
+        .setStyle(selectedType === 'xp' ? ButtonStyle.Primary : ButtonStyle.Secondary);
+
+    const voiceButton = new ButtonBuilder()
+        .setCustomId('leaderboard_voice')
+        .setLabel('🎤 Top Voice')
+        .setStyle(selectedType === 'voice' ? ButtonStyle.Primary : ButtonStyle.Secondary);
+
+    const chatButton = new ButtonBuilder()
+        .setCustomId('leaderboard_chat')
+        .setLabel('💬 Top Chat')
+        .setStyle(selectedType === 'chat' ? ButtonStyle.Primary : ButtonStyle.Secondary);
+
+    return new ActionRowBuilder().addComponents(xpButton, voiceButton, chatButton);
 }
 
 export async function handleLevelingButton(interaction) {
@@ -55,90 +178,49 @@ export async function handleLevelingButton(interaction) {
             return;
         }
 
-        const embedConfig = await getEmbedConfig(interaction.guild.id);
+        const guildMember = interaction.member || await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
+        if (!guildMember) {
+            await interaction.reply({
+                content: "❌ Failed to fetch member information. Please try again.",
+                flags: 64
+            });
+            return;
+        }
+
+        const dbMember = await db.upsertMember(server.id, guildMember);
+        if (!dbMember) {
+            await interaction.reply({
+                content: "❌ Failed to create member record. Please try again.",
+                flags: 64
+            });
+            return;
+        }
+
+        await db.ensureMemberLevel(dbMember.id);
 
         await db.recalculateServerMemberRanks(server.id);
 
         const memberLevelData = await db.getMemberLevelByDiscordId(server.id, interaction.user.id);
-        const leaderboard = await db.getServerLeaderboard(server.id, 10);
 
-        if (leaderboard && leaderboard.length > 0) {
-            let leaderboardUpdated = false;
-            for (const entry of leaderboard) {
-                if (entry.id && entry.experience !== undefined) {
-                    const calculatedLevel = determineLevel(entry.experience || 0);
-                    if (calculatedLevel !== (entry.level || 1)) {
-                        await db.updateMemberLevelStats(entry.id, { level: calculatedLevel });
-                        leaderboardUpdated = true;
-                    }
-                }
-            }
-            if (leaderboardUpdated) {
-                const updatedLeaderboard = await db.getServerLeaderboard(server.id, 10);
-                if (updatedLeaderboard) {
-                    leaderboard.length = 0;
-                    leaderboard.push(...updatedLeaderboard);
+        if (memberLevelData && memberLevelData.id) {
+            const calculatedLevel = determineLevel(memberLevelData.experience ?? 0);
+            const storedLevel = memberLevelData.level ?? 1;
+            if (calculatedLevel !== storedLevel) {
+                await db.updateMemberLevelStats(memberLevelData.id, { level: calculatedLevel });
+                const updatedData = await db.getMemberLevelByDiscordId(server.id, interaction.user.id);
+                if (updatedData) {
+                    Object.assign(memberLevelData, updatedData);
                 }
             }
         }
 
-        const memberDisplayName = memberLevelData?.server_display_name || memberLevelData?.display_name || memberLevelData?.username || interaction.user.username;
-
-        const currentXP = memberLevelData?.experience ?? 0;
-        const calculatedLevel = determineLevel(currentXP);
-        const storedLevel = memberLevelData?.level ?? 1;
-
-        if (calculatedLevel !== storedLevel && memberLevelData?.id) {
-            await db.updateMemberLevelStats(memberLevelData.id, { level: calculatedLevel });
-            const updatedData = await db.getMemberLevelByDiscordId(server.id, interaction.user.id);
-            if (updatedData) {
-                Object.assign(memberLevelData, updatedData);
-            }
-        }
-
-        const currentLevel = calculatedLevel;
-        const nextLevel = currentLevel + 1;
-        const currentLevelRequirement = getLevelRequirement(currentLevel);
-        const nextLevelRequirement = getLevelRequirement(nextLevel);
-        const xpRange = nextLevelRequirement - currentLevelRequirement;
-        const xpIntoLevel = Math.max(0, currentXP - currentLevelRequirement);
-        const progressRatio = xpRange > 0 ? Math.max(0, Math.min(1, xpIntoLevel / xpRange)) : 0;
-        const progressBar = buildProgressBar(progressRatio);
-        const xpProgressText = `${formatNumber(currentXP)} / ${formatNumber(nextLevelRequirement)} XP`;
-
-        const profileLines = [];
-        profileLines.push(`• **Level:** ${currentLevel}`);
-        profileLines.push(`• **Experience:** ${formatNumber(currentXP)} XP`);
-        profileLines.push(`• **Progress:** ${progressBar} (${xpProgressText})`);
-        profileLines.push(`• **Chat Count:** ${formatNumber(memberLevelData?.chat_count ?? 0)}`);
-        profileLines.push(`• **Voice Minutes:** ${formatNumber(memberLevelData?.voice_minutes ?? 0)}`);
-        profileLines.push(`• **Rank:** ${memberLevelData?.rank ? `#${memberLevelData.rank}` : "Unranked"}`);
-
-        const leaderboardText = leaderboard && leaderboard.length > 0
-            ? leaderboard.map((entry, idx) => formatLeaderboardRow(entry, idx)).join("\n")
-            : "No leveling data available yet.";
-
-        const levelingEmbed = new EmbedBuilder()
-            .setColor(embedConfig.COLOR)
-            .setTitle("📈 Leveling Overview")
-            .setDescription("Track your leveling progress and see the top members in this server.")
-            .addFields(
-                {
-                    name: `Your Stats (${memberDisplayName})`,
-                    value: profileLines.join("\n"),
-                    inline: false
-                },
-                {
-                    name: "🏆 Leaderboard (Top 10)",
-                    value: leaderboardText,
-                    inline: false
-                }
-            )
-            .setFooter({ text: embedConfig.FOOTER })
-            .setTimestamp();
+        const sortType = 'xp';
+        const { profileEmbed, leaderboardEmbed } = await buildLevelingEmbeds(server, memberLevelData, sortType, interaction.guild.id);
+        const buttons = createLeaderboardButtons(sortType);
 
         await interaction.reply({
-            embeds: [levelingEmbed],
+            embeds: [profileEmbed, leaderboardEmbed],
+            components: [buttons],
             flags: 64
         });
     } catch (error) {
@@ -150,3 +232,49 @@ export async function handleLevelingButton(interaction) {
     }
 }
 
+export async function handleLeaderboardButton(interaction) {
+    try {
+        if (!(await hasPermission(interaction.member, "leveling"))) {
+            await interaction.update({
+                content: "❌ You don't have permission to view leveling information.",
+                components: [],
+                flags: 64
+            }).catch(() => interaction.reply({
+                content: "❌ You don't have permission to view leveling information.",
+                flags: 64
+            }));
+            return;
+        }
+
+        const server = await getServerForInteraction(interaction);
+        if (!server) {
+            await interaction.update({
+                content: "⚠️ This server is not registered with the bot. Please run a sync first.",
+                components: [],
+                flags: 64
+            }).catch(() => interaction.reply({
+                content: "⚠️ This server is not registered with the bot. Please run a sync first.",
+                flags: 64
+            }));
+            return;
+        }
+
+        const sortType = interaction.customId.replace('leaderboard_', '');
+
+        const memberLevelData = await db.getMemberLevelByDiscordId(server.id, interaction.user.id);
+        const { profileEmbed, leaderboardEmbed } = await buildLevelingEmbeds(server, memberLevelData, sortType, interaction.guild.id);
+        const buttons = createLeaderboardButtons(sortType);
+
+        await interaction.update({
+            embeds: [profileEmbed, leaderboardEmbed],
+            components: [buttons],
+            flags: 64
+        });
+    } catch (error) {
+        await logger.log(`❌ Leaderboard button error: ${error.message}`, interaction.guild?.id);
+        await interaction.update({
+            content: `❌ Failed to load leaderboard: ${error.message}`,
+            flags: 64
+        }).catch(() => null);
+    }
+}

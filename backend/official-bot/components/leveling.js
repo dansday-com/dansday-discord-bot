@@ -5,6 +5,7 @@ import logger from "../../logger.js";
 const recentMessages = new Map();
 const voiceSessions = new Map();
 const permissionCache = new Map();
+let clientInstance = null;
 
 const messageCooldownMs = (LEVELING?.MESSAGE?.COOLDOWN_SECONDS || 0) * 1000;
 const voiceMinimumMinutes = Math.max(LEVELING?.VOICE?.MINIMUM_SESSION_MINUTES || 0, 0);
@@ -24,7 +25,7 @@ function getExperienceForVoiceMinutes(minutes) {
     return (LEVELING?.VOICE?.XP_PER_MINUTE || 0) * minutes;
 }
 
-function determineLevel(experience = 0) {
+export function determineLevel(experience = 0) {
     if (experience <= 0) return 1;
 
     let level = 1;
@@ -143,6 +144,24 @@ async function handleLevelEvaluation(server, dbMember, currentStats, guildId) {
         const updatedStats = await db.updateMemberLevelStats(dbMember.id, { level: expectedLevel });
         const memberName = dbMember.display_name || dbMember.username || dbMember.discord_member_id || 'Unknown member';
         await logger.log(`⭐ ${memberName} reached level ${expectedLevel} in ${server.name}`, guildId);
+
+        if (clientInstance && dbMember.discord_member_id) {
+            try {
+                const guild = clientInstance.guilds.cache.get(guildId);
+                if (guild) {
+                    const member = await guild.members.fetch(dbMember.discord_member_id).catch(() => null);
+                    if (member && member.user) {
+                        const dmChannel = await member.user.createDM().catch(() => null);
+                        if (dmChannel) {
+                            await dmChannel.send(`🎉 **Congratulations!** You've reached **Level ${expectedLevel}** in **${server.name}**!\n\nKeep up the great work! 🚀`);
+                        }
+                    }
+                }
+            } catch (error) {
+                await logger.log(`⚠️ Failed to send level up DM to ${dbMember.discord_member_id}: ${error.message}`, guildId);
+            }
+        }
+
         return updatedStats;
     }
 
@@ -395,6 +414,7 @@ async function resumeVoiceSessions(client) {
 }
 
 function init(client) {
+    clientInstance = client;
     client.on("messageCreate", handleMessageCreate);
 
     if (client.isReady()) {

@@ -3,7 +3,7 @@ import { getEmbedConfig, getBotConfig } from "../../../config.js";
 import { hasPermission } from "../permissions.js";
 import db from "../../../../database/database.js";
 import logger from "../../../logger.js";
-import { getLevelRequirement } from "../leveling.js";
+import { getLevelRequirement, determineLevel } from "../leveling.js";
 
 const PROGRESS_BAR_SLOTS = 10;
 
@@ -23,7 +23,9 @@ function formatNumber(value) {
 function formatLeaderboardRow(entry, index) {
     const position = entry.rank || index + 1;
     const name = entry.server_display_name || entry.display_name || entry.username || entry.discord_member_id || `Member ${position}`;
-    return `${position}. **${name}** — LVL ${entry.level || 1} • ${formatNumber(entry.experience || 0)} XP`;
+    const xp = entry.experience || 0;
+    const calculatedLevel = determineLevel(xp);
+    return `${position}. **${name}** — LVL ${calculatedLevel} • ${formatNumber(xp)} XP`;
 }
 
 async function getServerForInteraction(interaction) {
@@ -60,10 +62,41 @@ export async function handleLevelingButton(interaction) {
         const memberLevelData = await db.getMemberLevelByDiscordId(server.id, interaction.user.id);
         const leaderboard = await db.getServerLeaderboard(server.id, 10);
 
+        if (leaderboard && leaderboard.length > 0) {
+            let leaderboardUpdated = false;
+            for (const entry of leaderboard) {
+                if (entry.id && entry.experience !== undefined) {
+                    const calculatedLevel = determineLevel(entry.experience || 0);
+                    if (calculatedLevel !== (entry.level || 1)) {
+                        await db.updateMemberLevelStats(entry.id, { level: calculatedLevel });
+                        leaderboardUpdated = true;
+                    }
+                }
+            }
+            if (leaderboardUpdated) {
+                const updatedLeaderboard = await db.getServerLeaderboard(server.id, 10);
+                if (updatedLeaderboard) {
+                    leaderboard.length = 0;
+                    leaderboard.push(...updatedLeaderboard);
+                }
+            }
+        }
+
         const memberDisplayName = memberLevelData?.server_display_name || memberLevelData?.display_name || memberLevelData?.username || interaction.user.username;
 
-        const currentLevel = memberLevelData?.level ?? 1;
         const currentXP = memberLevelData?.experience ?? 0;
+        const calculatedLevel = determineLevel(currentXP);
+        const storedLevel = memberLevelData?.level ?? 1;
+
+        if (calculatedLevel !== storedLevel && memberLevelData?.id) {
+            await db.updateMemberLevelStats(memberLevelData.id, { level: calculatedLevel });
+            const updatedData = await db.getMemberLevelByDiscordId(server.id, interaction.user.id);
+            if (updatedData) {
+                Object.assign(memberLevelData, updatedData);
+            }
+        }
+
+        const currentLevel = calculatedLevel;
         const nextLevel = currentLevel + 1;
         const currentLevelRequirement = getLevelRequirement(currentLevel);
         const nextLevelRequirement = getLevelRequirement(nextLevel);

@@ -201,6 +201,17 @@ export const PERMISSIONS = {
     }
 };
 
+export const LEVELING = {
+    MESSAGE: {
+        XP: 10,
+        COOLDOWN_SECONDS: 30
+    },
+    VOICE: {
+        XP_PER_MINUTE: 20,
+        MINIMUM_SESSION_MINUTES: 1
+    }
+};
+
 export const COMMUNICATION = {
 
     get WEBHOOK_URL() {

@@ -3,87 +3,14 @@ import logger from "../../logger.js";
 
 let webhookServer = null;
 let client = null;
-let startTime = null;
 
-async function handleStatusRequest(req, res) {
-    try {
-        const headers = {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-        };
-
-        const secretKey = req.headers['x-secret-key'];
-        if (!secretKey || secretKey !== COMMUNICATION.SECRET_KEY) {
-            await logger.log(`❌ Status endpoint unauthorized access attempt from ${req.connection?.remoteAddress || 'unknown'}`);
-            res.writeHead(401, headers);
-            res.end(JSON.stringify({
-                error: 'Unauthorized',
-                message: 'Secret key required. Include x-secret-key header.'
-            }));
-            return;
-        }
-
-        if (!client || !client.isReady()) {
-            res.writeHead(503, headers);
-            res.end(JSON.stringify({
-                status: 'offline',
-                bot: null,
-                uptime: null,
-                guilds: 0,
-                timestamp: new Date().toISOString()
-            }));
-            return;
-        }
-
-        const uptime = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
-        const guildCount = client.guilds.cache.size;
-        const userCount = client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0);
-
-        res.writeHead(200, headers);
-        res.end(JSON.stringify({
-            status: 'online',
-            bot: {
-                id: client.user.id,
-                username: client.user.username,
-                tag: client.user.tag,
-                discriminator: client.user.discriminator
-            },
-            uptime: uptime,
-            uptime_formatted: formatUptime(uptime),
-            guilds: guildCount,
-            users: userCount,
-            timestamp: new Date().toISOString()
-        }));
-    } catch (err) {
-        await logger.log(`❌ Status endpoint error: ${err.message}`);
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Internal server error' }));
-    }
-}
-
-function formatUptime(seconds) {
-    const days = Math.floor(seconds / 86400);
-    const hours = Math.floor((seconds % 86400) / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-
-    const parts = [];
-    if (days > 0) parts.push(`${days}d`);
-    if (hours > 0) parts.push(`${hours}h`);
-    if (minutes > 0) parts.push(`${minutes}m`);
-    if (secs > 0 || parts.length === 0) parts.push(`${secs}s`);
-
-    return parts.join(' ');
+function getClientIp(req) {
+    const address = req.socket?.remoteAddress || req.connection?.remoteAddress || '';
+    return address.startsWith('::ffff:') ? address.slice(7) : address || 'unknown';
 }
 
 async function handleWebhookRequest(req, res) {
     try {
-
-        if (req.method === 'GET' && (req.url === '/health' || req.url === '/')) {
-            await handleStatusRequest(req, res);
-            return;
-        }
-
         if (req.method !== 'POST') {
             res.writeHead(405, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: 'Method not allowed' }));
@@ -92,7 +19,7 @@ async function handleWebhookRequest(req, res) {
 
         const secretKey = req.headers['x-secret-key'];
         if (!secretKey || secretKey !== COMMUNICATION.SECRET_KEY) {
-            await logger.log(`❌ Webhook unauthorized access attempt from ${req.connection.remoteAddress}`);
+            await logger.log(`❌ Webhook unauthorized access attempt from ${getClientIp(req)}`);
             res.writeHead(401, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: 'Unauthorized' }));
             return;
@@ -143,7 +70,6 @@ async function handleWebhookRequest(req, res) {
 
 function startWebhookServer(discordClient) {
     client = discordClient;
-    startTime = Date.now();
 
     if (COMMUNICATION.WEBHOOK_URL) {
         const port = COMMUNICATION.PORT;
@@ -154,7 +80,6 @@ function startWebhookServer(discordClient) {
             webhookServer.listen(port, () => {
                 logger.log(`🌐 Webhook server started on port ${port}`);
                 logger.log(`📡 Listening for messages at ${COMMUNICATION.WEBHOOK_URL}`);
-                logger.log(`❤️ Health check available at http://localhost:${port}/health`);
             });
 
             webhookServer.on('error', (err) => {

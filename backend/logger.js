@@ -8,13 +8,12 @@ async function log(text) {
     const timestamp = formatTimestamp(Date.now(), true);
     const formattedText = `[${timestamp}] ${text}`;
 
-    // Always log to console
-    console.log(formattedText);
-
-    // Store in database using bot_id
+    // Try to store in database first
     try {
         const botConfig = getBotConfig();
         if (!botConfig || !botConfig.id) {
+            // Fallback to console if bot config not available
+            console.log(formattedText);
             return;
         }
 
@@ -24,12 +23,15 @@ async function log(text) {
         // Store log in database
         try {
             await db.insertBotLog(botId, text);
+            // Success - no console output needed
         } catch (error) {
-            // Silently fail database logging to not break the app
+            // Database failed - fallback to console
+            console.log(formattedText);
             console.error('Failed to store log in database:', error.message);
         }
     } catch (error) {
-        // Silently fail to not break the app
+        // Error getting bot config - fallback to console
+        console.log(formattedText);
         console.error('Logger error:', error.message);
     }
 }

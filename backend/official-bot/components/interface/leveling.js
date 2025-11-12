@@ -30,11 +30,26 @@ async function refreshMemberLevelData(serverId, discordMemberId) {
         return null;
     }
 
-    const recalculatedExperience = calculateExperienceFromTotals({
+    // Get guildId from server
+    const botConfig = getBotConfig();
+    let guildId = null;
+    if (botConfig && botConfig.id) {
+        const server = await db.getServersForBot(botConfig.id);
+        const foundServer = server.find(s => s.id === serverId);
+        if (foundServer) {
+            guildId = foundServer.discord_server_id;
+        }
+    }
+
+    if (!guildId) {
+        return levelData;
+    }
+
+    const recalculatedExperience = await calculateExperienceFromTotals({
         chatTotal: levelData.chat_total ?? 0,
         voiceMinutesActive: levelData.voice_minutes_active ?? 0,
         voiceMinutesAfk: levelData.voice_minutes_afk ?? 0
-    });
+    }, guildId);
 
     const currentExperience = levelData.experience ?? 0;
     const updates = {};
@@ -43,7 +58,7 @@ async function refreshMemberLevelData(serverId, discordMemberId) {
         updates.experienceIncrement = recalculatedExperience - currentExperience;
     }
 
-    const recalculatedLevel = determineLevel(recalculatedExperience);
+    const recalculatedLevel = await determineLevel(recalculatedExperience, guildId);
     if ((levelData.level ?? 1) !== recalculatedLevel) {
         updates.level = recalculatedLevel;
     }
@@ -80,16 +95,17 @@ async function getServerForInteraction(interaction) {
 }
 
 async function buildLevelingEmbeds(server, memberLevelData, sortType = 'xp', guildId = null) {
-    const embedConfig = await getEmbedConfig(guildId || server.discord_server_id);
+    const actualGuildId = guildId || server.discord_server_id;
+    const embedConfig = await getEmbedConfig(actualGuildId);
 
     const memberDisplayName = memberLevelData?.server_display_name || memberLevelData?.display_name || memberLevelData?.username || 'Unknown';
     const currentXP = memberLevelData?.experience ?? 0;
-    const calculatedLevel = determineLevel(currentXP);
+    const calculatedLevel = await determineLevel(currentXP, actualGuildId);
 
     const currentLevel = calculatedLevel;
     const nextLevel = currentLevel + 1;
-    const currentLevelRequirement = getLevelRequirement(currentLevel);
-    const nextLevelRequirement = getLevelRequirement(nextLevel);
+    const currentLevelRequirement = await getLevelRequirement(currentLevel, actualGuildId);
+    const nextLevelRequirement = await getLevelRequirement(nextLevel, actualGuildId);
     const xpRange = nextLevelRequirement - currentLevelRequirement;
     const xpIntoLevel = Math.max(0, currentXP - currentLevelRequirement);
     const progressRatio = xpRange > 0 ? Math.max(0, Math.min(1, xpIntoLevel / xpRange)) : 0;
@@ -153,7 +169,7 @@ async function buildLevelingEmbeds(server, memberLevelData, sortType = 'xp', gui
             const position = i + 1;
             const name = entry.server_display_name || entry.display_name || entry.username || entry.discord_member_id || `Member ${position}`;
             const xp = entry.experience || 0;
-            const calculatedLevel = determineLevel(xp);
+            const calculatedLevel = await determineLevel(xp, actualGuildId);
             const avatar = entry.avatar || null;
 
             let medal = "";

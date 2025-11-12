@@ -233,6 +233,58 @@
                     </div>
                     <p class="text-gray-400 text-sm">No servers found</p>
                 </div>
+                <!-- Server List Pagination -->
+                <div id="serverListPagination" class="mt-4 flex items-center justify-between hidden">
+                    <div class="text-xs sm:text-sm text-gray-400">
+                        <span id="serverListPaginationInfo">Showing 0-0 of 0</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button id="serverListPrevBtn" onclick="changeServerListPage(-1)"
+                            class="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium bg-gray-700 text-gray-200 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <span id="serverListPageInfo" class="text-xs sm:text-sm text-gray-300 px-2">Page 1</span>
+                        <button id="serverListNextBtn" onclick="changeServerListPage(1)"
+                            class="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium bg-gray-700 text-gray-200 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bot Logs Terminal -->
+            <div id="botLogsWrapper" class="bg-gray-800 rounded-xl border border-gray-700 p-4 sm:p-6 mt-6">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+                    <div>
+                        <h3 class="text-lg sm:text-xl font-semibold text-white flex items-center gap-2">
+                            <i class="fas fa-terminal text-red-500"></i>
+                            Bot Logs
+                        </h3>
+                        <p class="text-xs text-gray-400 mt-1">
+                            Live logger output (latest 200 entries). Entries are automatically removed after 7 days.
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button id="botLogsAutoScrollBtn" onclick="toggleBotLogsAutoScroll()"
+                            class="px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium bg-red-600 text-white transition-all duration-200 transform hover:scale-105 active:scale-95">
+                            Auto Scroll: On
+                        </button>
+                        <button id="botLogsRefreshBtn" onclick="manualRefreshBotLogs()"
+                            class="px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium bg-gray-700 text-gray-200 hover:bg-gray-600 transition-all duration-200 transform hover:scale-105 active:scale-95 flex items-center gap-2">
+                            <i class="fas fa-sync-alt text-sm"></i>
+                            <span>Refresh</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="bg-gray-900 border border-gray-700 rounded-xl overflow-hidden">
+                    <div id="botLogTerminal" class="h-64 overflow-y-auto bg-black bg-opacity-60 p-3 sm:p-4 font-mono text-xs sm:text-sm text-gray-200 tracking-tight">
+                        <p class="text-gray-500">Loading logs...</p>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between mt-2 text-[0.65rem] sm:text-xs text-gray-500">
+                    <span id="botLogsStatusText">Auto-refreshing every 5 seconds</span>
+                    <span id="botLogsUpdatedAt"></span>
+                </div>
             </div>
         </main>
 
@@ -1375,6 +1427,20 @@
 
         // Bot Detail Functions
         let currentBotId = null;
+        const BOT_LOG_FETCH_LIMIT = 200;
+        const BOT_LOG_POLL_INTERVAL = 5000;
+        let botLogs = [];
+        let botLogsPollingInterval = null;
+        let botLogsLoading = false;
+        let botLogsBotId = null;
+        let botLogsAutoScroll = true;
+        let botLogsLastUpdated = null;
+        let botLogTerminalInitialized = false;
+        
+        // Server List Pagination
+        const SERVERS_PER_PAGE = 10;
+        let allServers = [];
+        let currentServerPage = 1;
 
         // Format number with dots (1.000.000)
         function formatNumber(num) {
@@ -1416,8 +1482,199 @@
             }
         }
 
+        function formatLogTimestamp(dateStr) {
+            if (!dateStr) return '--:--:--';
+            const date = new Date(dateStr);
+            if (Number.isNaN(date.getTime())) {
+                return '--:--:--';
+            }
+            return date.toLocaleTimeString('en-US', {
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        }
+
+        function ensureBotLogElements() {
+            const terminal = document.getElementById('botLogTerminal');
+            if (terminal && !botLogTerminalInitialized) {
+                terminal.addEventListener('scroll', handleBotLogsScroll, { passive: true });
+                botLogTerminalInitialized = true;
+            }
+        }
+
+        function handleBotLogsScroll() {
+            const terminal = document.getElementById('botLogTerminal');
+            if (!terminal) return;
+            const isAtBottom = Math.abs((terminal.scrollTop + terminal.clientHeight) - terminal.scrollHeight) <= 8;
+            if (botLogsAutoScroll !== isAtBottom) {
+                botLogsAutoScroll = isAtBottom;
+                updateBotLogsAutoScrollButton();
+            }
+        }
+
+        function scrollBotLogsToBottom() {
+            const terminal = document.getElementById('botLogTerminal');
+            if (!terminal) return;
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        function updateBotLogsAutoScrollButton() {
+            const btn = document.getElementById('botLogsAutoScrollBtn');
+            if (!btn) return;
+            btn.textContent = `Auto Scroll: ${botLogsAutoScroll ? 'On' : 'Off'}`;
+            btn.classList.toggle('bg-red-600', botLogsAutoScroll);
+            btn.classList.toggle('text-white', botLogsAutoScroll);
+            btn.classList.toggle('bg-gray-700', !botLogsAutoScroll);
+            btn.classList.toggle('text-gray-300', !botLogsAutoScroll);
+        }
+
+        function toggleBotLogsAutoScroll() {
+            botLogsAutoScroll = !botLogsAutoScroll;
+            updateBotLogsAutoScrollButton();
+            if (botLogsAutoScroll) {
+                scrollBotLogsToBottom();
+            }
+        }
+
+        function setBotLogsLoadingState(isLoading) {
+            const refreshBtn = document.getElementById('botLogsRefreshBtn');
+            if (!refreshBtn) return;
+            refreshBtn.disabled = isLoading;
+            const icon = refreshBtn.querySelector('i');
+            if (icon) {
+                icon.classList.toggle('fa-spin', isLoading);
+            }
+        }
+
+        function updateBotLogsMeta(statusText = 'Auto-refreshing every 5 seconds') {
+            const statusEl = document.getElementById('botLogsStatusText');
+            const updatedEl = document.getElementById('botLogsUpdatedAt');
+
+            if (statusEl) {
+                const isError = statusText.toLowerCase().includes('fail');
+                statusEl.textContent = statusText;
+                statusEl.classList.toggle('text-red-400', isError);
+                statusEl.classList.toggle('text-gray-500', !isError);
+            }
+
+            if (updatedEl) {
+                updatedEl.textContent = botLogsLastUpdated
+                    ? `Updated ${botLogsLastUpdated.toLocaleTimeString('en-US', { hour12: false })}`
+                    : '';
+            }
+        }
+
+        function renderBotLogs() {
+            ensureBotLogElements();
+            const terminal = document.getElementById('botLogTerminal');
+            if (!terminal) return;
+
+            if (!botLogs || botLogs.length === 0) {
+                terminal.innerHTML = '<p class="text-gray-500">No logs yet.</p>';
+                return;
+            }
+
+            const lines = botLogs.map(log => {
+                const time = formatLogTimestamp(log.created_at);
+                const message = escapeHtml(log.message || '');
+                return `
+                    <div class="flex items-start gap-3 py-1">
+                        <span class="text-gray-500 whitespace-nowrap">${time}</span>
+                        <span class="text-gray-200 whitespace-pre-wrap break-words flex-1">${message}</span>
+                    </div>
+                `;
+            }).join('');
+
+            terminal.innerHTML = lines;
+
+            if (botLogsAutoScroll) {
+                requestAnimationFrame(() => scrollBotLogsToBottom());
+            }
+        }
+
+        async function loadBotLogs(isInitial = false) {
+            if (!botLogsBotId) return;
+            if (botLogsLoading) return;
+
+            botLogsLoading = true;
+            if (isInitial) {
+                updateBotLogsMeta('Loading logs...');
+            }
+            setBotLogsLoadingState(true);
+
+            try {
+                const response = await fetch(`/api/bots/${botLogsBotId}/logs?limit=${BOT_LOG_FETCH_LIMIT}`, {
+                    credentials: 'include'
+                });
+
+                if (response.status === 401) {
+                    await checkAuthStatus();
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+                const logs = Array.isArray(data.logs) ? data.logs : [];
+                botLogs = logs.slice().reverse();
+                botLogsLastUpdated = new Date();
+                renderBotLogs();
+                updateBotLogsMeta();
+            } catch (error) {
+                console.error('Failed to load bot logs:', error);
+                if (!botLogs.length) {
+                    const terminal = document.getElementById('botLogTerminal');
+                    if (terminal) {
+                        terminal.innerHTML = '<p class="text-red-400">Failed to load logs. Retrying...</p>';
+                    }
+                }
+                updateBotLogsMeta('Failed to load logs. Retrying...');
+            } finally {
+                botLogsLoading = false;
+                setBotLogsLoadingState(false);
+            }
+        }
+
+        function startBotLogPolling(botId) {
+            if (!botId) return;
+
+            stopBotLogPolling();
+
+            botLogsBotId = botId;
+            botLogs = [];
+            botLogsLastUpdated = null;
+            botLogsAutoScroll = true;
+            renderBotLogs();
+            updateBotLogsAutoScrollButton();
+            updateBotLogsMeta('Loading logs...');
+            loadBotLogs(true);
+            botLogsPollingInterval = setInterval(() => loadBotLogs(false), BOT_LOG_POLL_INTERVAL);
+        }
+
+        function stopBotLogPolling() {
+            if (botLogsPollingInterval) {
+                clearInterval(botLogsPollingInterval);
+                botLogsPollingInterval = null;
+            }
+            botLogsBotId = null;
+            botLogsLastUpdated = null;
+            updateBotLogsMeta('Log stream paused');
+        }
+
+        function manualRefreshBotLogs() {
+            if (!botLogsBotId) return;
+            botLogsAutoScroll = true;
+            updateBotLogsAutoScrollButton();
+            loadBotLogs(true);
+        }
+
         // View bot detail
         async function viewBotDetail(botId) {
+            stopBotLogPolling();
             currentBotId = botId;
 
             // Hide dashboard, show bot detail
@@ -1436,6 +1693,7 @@
             stopBotDetailAutoRefresh();
             document.getElementById('botDetailContainer').classList.add('hidden');
             document.getElementById('dashboardContainer').classList.remove('hidden');
+            stopBotLogPolling();
             currentBotId = null;
         }
 
@@ -1656,6 +1914,14 @@
 
             // Server List
             renderServerList(servers);
+
+            if (botLogsBotId !== bot.id) {
+                startBotLogPolling(bot.id);
+            } else {
+                renderBotLogs();
+                updateBotLogsAutoScrollButton();
+                updateBotLogsMeta();
+            }
         }
 
         // Render server list
@@ -1663,14 +1929,28 @@
             const serverListContent = document.getElementById('serverListContent');
             const serverListEmpty = document.getElementById('serverListEmpty');
             const serverCount = document.getElementById('serverCount');
+            const paginationContainer = document.getElementById('serverListPagination');
 
             if (!servers || servers.length === 0) {
                 serverListContent.innerHTML = '';
                 serverListContent.classList.add('hidden');
                 serverListEmpty.classList.remove('hidden');
                 serverCount.textContent = 'No servers';
+                if (paginationContainer) {
+                    paginationContainer.classList.add('hidden');
+                }
                 return;
             }
+
+            // Store all servers and reset to page 1
+            allServers = servers;
+            currentServerPage = 1;
+
+            // Calculate pagination
+            const totalPages = Math.ceil(servers.length / SERVERS_PER_PAGE);
+            const startIdx = (currentServerPage - 1) * SERVERS_PER_PAGE;
+            const endIdx = Math.min(startIdx + SERVERS_PER_PAGE, servers.length);
+            const paginatedServers = servers.slice(startIdx, endIdx);
 
             serverListContent.classList.remove('hidden');
             serverListEmpty.classList.add('hidden');
@@ -1678,7 +1958,7 @@
 
             const isOfficial = window.currentBotType === 'official';
 
-            serverListContent.innerHTML = servers.map(server => {
+            serverListContent.innerHTML = paginatedServers.map(server => {
                 if (isOfficial) {
                     // Official bot - clickable for member list
                     return `
@@ -1781,6 +2061,157 @@
                     `;
                 }
             }).join('');
+
+            // Render pagination
+            if (totalPages > 1 && paginationContainer) {
+                paginationContainer.classList.remove('hidden');
+                updateServerListPagination(totalPages, startIdx, endIdx, servers.length);
+            } else if (paginationContainer) {
+                paginationContainer.classList.add('hidden');
+            }
+        }
+
+        function updateServerListPagination(totalPages, startIdx, endIdx, totalServers) {
+            const prevBtn = document.getElementById('serverListPrevBtn');
+            const nextBtn = document.getElementById('serverListNextBtn');
+            const pageInfo = document.getElementById('serverListPageInfo');
+            const paginationInfo = document.getElementById('serverListPaginationInfo');
+
+            if (prevBtn) {
+                prevBtn.disabled = currentServerPage === 1;
+            }
+            if (nextBtn) {
+                nextBtn.disabled = currentServerPage >= totalPages;
+            }
+            if (pageInfo) {
+                pageInfo.textContent = `Page ${currentServerPage} of ${totalPages}`;
+            }
+            if (paginationInfo) {
+                paginationInfo.textContent = `Showing ${startIdx + 1}-${endIdx} of ${totalServers}`;
+            }
+        }
+
+        function changeServerListPage(direction) {
+            if (!allServers || allServers.length === 0) return;
+
+            const totalPages = Math.ceil(allServers.length / SERVERS_PER_PAGE);
+            const newPage = currentServerPage + direction;
+
+            if (newPage < 1 || newPage > totalPages) return;
+
+            currentServerPage = newPage;
+            const startIdx = (currentServerPage - 1) * SERVERS_PER_PAGE;
+            const endIdx = Math.min(startIdx + SERVERS_PER_PAGE, allServers.length);
+            const paginatedServers = allServers.slice(startIdx, endIdx);
+
+            const serverListContent = document.getElementById('serverListContent');
+            const isOfficial = window.currentBotType === 'official';
+
+            serverListContent.innerHTML = paginatedServers.map(server => {
+                if (isOfficial) {
+                    // Official bot - clickable for member list
+                    return `
+                        <div onclick="viewServerOverview('${server.id}', '${(server.name || 'Unnamed Server').replace(/'/g, "\\'")}')" class="bg-gray-700 rounded-lg border border-gray-600 p-4 hover:border-gray-500 transition-all duration-200 cursor-pointer">
+                            <div class="flex items-center gap-3 mb-3">
+                                <div class="flex-shrink-0 w-12 h-12 rounded-full bg-gray-600 flex items-center justify-center overflow-hidden">
+                                    ${server.server_icon
+                            ? `<img src="${server.server_icon}" alt="${server.name}" class="w-full h-full object-cover">`
+                            : `<i class="fas fa-server text-white text-lg"></i>`
+                        }
+                            </div>
+                                <div class="flex-1 min-w-0">
+                                    <h4 class="font-semibold text-white text-sm sm:text-base truncate" title="${server.name || 'Unnamed Server'}">
+                                        ${server.name || 'Unnamed Server'}
+                                    </h4>
+                                </div>
+                                <i class="fas fa-cog text-gray-400 hover:text-white transition-colors"></i>
+                            </div>
+                            <div class="space-y-2 text-xs sm:text-sm">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-gray-400 flex items-center gap-1.5">
+                                        <i class="fas fa-users w-4"></i>
+                                        Members
+                                    </span>
+                                    <span class="text-white font-medium">${formatNumber(server.total_members || 0)}</span>
+                        </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-gray-400 flex items-center gap-1.5">
+                                        <i class="fas fa-star w-4"></i>
+                                        Boost Level
+                                    </span>
+                                    <span class="text-white font-medium">${server.boost_level || 0}</span>
+                    </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-gray-400 flex items-center gap-1.5">
+                                        <i class="fas fa-gift w-4"></i>
+                                        Total Boosters
+                                    </span>
+                                    <span class="text-white font-medium">${formatNumber(server.total_boosters || 0)}</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-gray-400 flex items-center gap-1.5">
+                                        <i class="fas fa-hashtag w-4"></i>
+                                        Channels
+                                    </span>
+                                    <span class="text-white font-medium">${formatNumber(server.total_channels || 0)}</span>
+                            </div>
+                            </div>
+                    </div>
+                `;
+                } else {
+                    // Selfbot - not clickable, show info message
+                    return `
+                        <div class="bg-gray-700 rounded-lg border border-gray-600 p-4 opacity-75">
+                            <div class="flex items-center gap-3 mb-3">
+                                <div class="flex-shrink-0 w-12 h-12 rounded-full bg-gray-600 flex items-center justify-center overflow-hidden">
+                                    ${server.server_icon
+                            ? `<img src="${server.server_icon}" alt="${server.name}" class="w-full h-full object-cover">`
+                            : `<i class="fas fa-server text-white text-lg"></i>`
+                        }
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <h4 class="font-semibold text-white text-sm sm:text-base truncate" title="${server.name || 'Unnamed Server'}">
+                                        ${server.name || 'Unnamed Server'}
+                                    </h4>
+                                </div>
+                                <i class="fas fa-info-circle text-gray-500" title="Configuration available only for official bots"></i>
+                            </div>
+                            <div class="space-y-2 text-xs sm:text-sm">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-gray-400 flex items-center gap-1.5">
+                                        <i class="fas fa-users w-4"></i>
+                                        Members
+                                    </span>
+                                    <span class="text-white font-medium">${formatNumber(server.total_members || 0)}</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-gray-400 flex items-center gap-1.5">
+                                        <i class="fas fa-star w-4"></i>
+                                        Boost Level
+                                    </span>
+                                    <span class="text-white font-medium">${server.boost_level || 0}</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-gray-400 flex items-center gap-1.5">
+                                        <i class="fas fa-gift w-4"></i>
+                                        Total Boosters
+                                    </span>
+                                    <span class="text-white font-medium">${formatNumber(server.total_boosters || 0)}</span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-gray-400 flex items-center gap-1.5">
+                                        <i class="fas fa-hashtag w-4"></i>
+                                        Channels
+                                    </span>
+                                    <span class="text-white font-medium">${formatNumber(server.total_channels || 0)}</span>
+                                </div>
+                            </div>
+                    </div>
+                `;
+                }
+            }).join('');
+
+            updateServerListPagination(totalPages, startIdx, endIdx, allServers.length);
         }
 
         // Handle bot action (start/stop/restart)
@@ -1906,6 +2337,8 @@
         async function viewServerOverview(serverId, serverName) {
             currentServerId = serverId;
             currentBotIdForServer = currentBotId;
+
+            stopBotLogPolling();
 
             document.getElementById('botDetailContainer').classList.add('hidden');
             document.getElementById('serverConfigContainer').classList.remove('hidden');
@@ -2189,6 +2622,8 @@
         async function viewServerMembers(serverId, serverName) {
             currentServerId = serverId;
             currentBotIdForServer = currentBotId;
+
+            stopBotLogPolling();
 
             // Hide bot detail, show server members
             document.getElementById('botDetailContainer').classList.add('hidden');
@@ -2660,6 +3095,8 @@
             currentServerId = serverId;
             currentBotIdForServer = currentBotId;
 
+            stopBotLogPolling();
+
             // Hide bot detail, show server config
             document.getElementById('botDetailContainer').classList.add('hidden');
             document.getElementById('serverConfigContainer').classList.remove('hidden');
@@ -2724,10 +3161,17 @@
         // Show bot detail (from server config)
         function showBotDetail() {
             stopBotDetailAutoRefresh();
+            stopBotLogPolling();
             document.getElementById('serverConfigContainer').classList.add('hidden');
             document.getElementById('botDetailContainer').classList.remove('hidden');
             currentServerId = null;
             currentComponent = 'main_config';
+
+            if (currentBotId) {
+                loadBotDetail().finally(() => {
+                    startBotDetailAutoRefresh();
+                });
+            }
         }
 
         // Render component navigation

@@ -719,6 +719,45 @@ export async function init() {
         }
     });
 
+    app.get('/api/bots/:id/logs', requireAuth, async (req, res) => {
+        const botId = parseInt(req.params.id, 10);
+        if (Number.isNaN(botId)) {
+            return res.status(400).json({ error: 'Invalid bot ID' });
+        }
+
+        const limitParam = parseInt(req.query.limit, 10);
+        const offsetParam = parseInt(req.query.offset, 10);
+
+        const limit = Number.isNaN(limitParam) ? 200 : Math.min(Math.max(limitParam, 1), 500);
+        const offset = Number.isNaN(offsetParam) || offsetParam < 0 ? 0 : offsetParam;
+
+        try {
+            const bot = await db.getBot(botId);
+            if (!bot) {
+                return res.status(404).json({ error: 'Bot not found' });
+            }
+
+            const logs = await db.getBotLogs(botId, limit, offset);
+
+            res.json({
+                logs: logs.map(log => ({
+                    id: log.id,
+                    message: log.message,
+                    created_at: log.created_at,
+                    bot_name: log.bot_name
+                })),
+                pagination: {
+                    limit,
+                    offset,
+                    count: logs.length
+                }
+            });
+        } catch (error) {
+            logger.log(`❌ Error fetching bot logs: ${error.message}`);
+            res.status(500).json({ error: 'Failed to load bot logs' });
+        }
+    });
+
     app.get('/api/bots/:id/servers', requireAuth, async (req, res) => {
         try {
             const servers = await db.getServersForBot(req.params.id);

@@ -56,6 +56,10 @@ console.log(`🔌 Database connection: mysql://${connectionConfig.user}@${connec
 
 let pool = null;
 
+const BOT_LOG_RETENTION_DAYS = 7;
+const BOT_LOG_PURGE_INTERVAL_MS = 6 * 60 * 60 * 1000;
+let lastBotLogPurgeCheck = 0;
+
 function getPool() {
     if (!pool) {
         pool = mysql.createPool({
@@ -1012,7 +1016,7 @@ export async function getServerLeaderboard(serverId, limit = 3, sortType = 'xp')
         throw new Error('serverId is required to fetch leaderboard');
     }
     const safeLimit = Math.max(1, Math.min(50, limit));
-    
+
     let orderBy;
     switch (sortType) {
         case 'xp':
@@ -1028,7 +1032,7 @@ export async function getServerLeaderboard(serverId, limit = 3, sortType = 'xp')
             orderBy = 'sml.experience DESC, sml.level DESC, sml.created_at ASC';
             break;
     }
-    
+
     const result = await query(
         `SELECT sm.discord_member_id, sm.username, sm.display_name, sm.server_display_name, sm.avatar,
                 sml.experience, sml.level, sml.chat_total,
@@ -1048,7 +1052,7 @@ export async function getServerMembersList(serverId) {
     if (!serverId) {
         throw new Error('serverId is required to fetch members list');
     }
-    
+
     const result = await query(
         `SELECT 
             sm.id,
@@ -1086,7 +1090,7 @@ export async function getServerMembersList(serverId) {
          ORDER BY sml.experience DESC, sml.level DESC, sm.created_at ASC`,
         [serverId]
     );
-    
+
     return result.map(member => ({
         ...member,
         roles: member.roles ? member.roles.split(',').map(role => {
@@ -1577,12 +1581,23 @@ export async function insertBotLog(botId, message) {
     if (!botId || !message) {
         throw new Error('botId and message are required to insert bot log');
     }
-    
+
     try {
         await query(
             'INSERT INTO bot_logs (bot_id, message) VALUES (?, ?)',
             [botId, message]
         );
+
+        const now = Date.now();
+        if (now - lastBotLogPurgeCheck >= BOT_LOG_PURGE_INTERVAL_MS) {
+            lastBotLogPurgeCheck = now;
+            try {
+                await purgeOldBotLogs(BOT_LOG_RETENTION_DAYS);
+            } catch (purgeError) {
+                console.error('Error purging old bot logs:', purgeError);
+            }
+        }
+
         return true;
     } catch (error) {
         console.error('Error inserting bot log:', error);
@@ -1595,7 +1610,7 @@ export async function getBotLogs(botId, limit = 100, offset = 0) {
     if (!botId) {
         throw new Error('botId is required to fetch bot logs');
     }
-    
+
     const result = await query(
         `SELECT bl.*, b.name as bot_name
          FROM bot_logs bl
@@ -1606,6 +1621,20 @@ export async function getBotLogs(botId, limit = 100, offset = 0) {
         [botId, limit, offset]
     );
     return result;
+}
+
+export async function purgeOldBotLogs(retentionDays = BOT_LOG_RETENTION_DAYS) {
+    await initializeDatabase();
+    const days = Number.isFinite(retentionDays) && retentionDays > 0 ? retentionDays : BOT_LOG_RETENTION_DAYS;
+    const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const cutoffStr = cutoff.toISOString().slice(0, 19).replace('T', ' ');
+
+    const result = await query(
+        'DELETE FROM bot_logs WHERE created_at < ?',
+        [cutoffStr]
+    );
+
+    return result?.affectedRows || 0;
 }
 
 export async function getAFKStatus(serverId, discordMemberId) {
@@ -1635,13 +1664,13 @@ export async function setAFKStatus(serverId, discordMemberId, afkData) {
             'SELECT id FROM server_members WHERE server_id = ? AND discord_member_id = ?',
             [serverId, discordMemberId]
         );
-        
+
         if (!memberResult || memberResult.length === 0) {
             return null;
         }
-        
+
         const memberId = memberResult[0].id;
-        
+
         await query(
             `INSERT INTO server_members_afk (
                 member_id, message
@@ -1654,7 +1683,7 @@ export async function setAFKStatus(serverId, discordMemberId, afkData) {
                 afkData.message || 'Away'
             ]
         );
-        
+
         return await getAFKStatus(serverId, discordMemberId);
     } catch (error) {
         console.error('Error setting AFK status:', error);
@@ -1759,6 +1788,7 @@ export default {
     getCategoriesForServer,
     insertBotLog,
     getBotLogs,
+    purgeOldBotLogs,
     serversNeedSync,
     getAFKStatus,
     setAFKStatus,

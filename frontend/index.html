@@ -2086,11 +2086,9 @@
             const stats = (data && data.stats) ? data.stats : {};
             const sync = (data && data.sync) ? data.sync : {};
             const settings = Array.isArray(data?.settings) ? data.settings : [];
-            const rawServerName = data?.name || 'Unnamed Server';
-            const displayServerName = escapeHtml(rawServerName);
+            const displayServerName = escapeHtml(data?.name || 'Unnamed Server');
             const discordServerId = escapeHtml(data?.discord_server_id || 'Unknown ID');
             const boostLevel = data?.boost_level ?? 0;
-            const botIdDisplay = data?.bot_id ? escapeHtml(String(data.bot_id)) : 'N/A';
             const serverIcon = data?.server_icon || '';
             const iconHTML = serverIcon
                 ? `<img src="${serverIcon}" alt="${displayServerName}" class="w-full h-full object-cover" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">`
@@ -2124,7 +2122,6 @@
             const totalVoiceActiveRaw = stats.leveling_total_voice_active ?? 0;
             const avgVoiceActive = membersWithLevelsRaw > 0 ? formatNumber(Math.round(totalVoiceActiveRaw / membersWithLevelsRaw)) : '0';
             const totalVoiceAfk = formatNumber(stats.leveling_total_voice_afk ?? 0);
-            const settingsLastUpdated = formatDateTime(sync.settings_last_updated);
             const settingsHtml = settings.length > 0
                 ? `<div class="mt-3 flex flex-wrap gap-2">
                         ${settings.map(setting => `

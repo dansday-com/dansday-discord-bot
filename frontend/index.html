@@ -3710,9 +3710,6 @@
         let currentForwarderType = 'production';
         let currentEditingForwarderIndex = null;
         let forwarderSelfbots = [];
-        let forwarderSelfbotServers = {};
-        let forwarderSelfbotServerChannels = {};
-        let forwarderSelfbotServerRoles = {};
         let currentForwarderSelfbotId = null;
         let currentForwarderServerId = null;
         let currentForwarderServerDbId = null;
@@ -3957,38 +3954,20 @@
                 console.error('Error loading target channels:', err);
             }
             const uniqueSelfbotIds = [...new Set(forwarders.map(f => f.selfbot_id).filter(Boolean))];
-            await Promise.all(uniqueSelfbotIds.map(async (selfbotId) => {
-                if (!forwarderSelfbotServers[selfbotId]) {
-                    try {
-                        const response = await fetch(`/api/bots/${selfbotId}/servers`, {
-                            credentials: 'include'
-                        });
-                        if (response.ok) {
-                            forwarderSelfbotServers[selfbotId] = await response.json();
-                        }
-                    } catch (err) {
-                        console.error(`Error loading servers for selfbot ${selfbotId}:`, err);
-                        forwarderSelfbotServers[selfbotId] = [];
-                    }
-                }
-            }));
             const forwarderDataPromises = forwarders.map(async (forwarder) => {
                 const channelIds = Array.isArray(forwarder.source_channels)
                     ? forwarder.source_channels.map(ch => ch.channel_id || ch).filter(Boolean)
                     : [];
-                let servers = forwarderSelfbotServers[forwarder.selfbot_id] || [];
-                if (servers.length === 0) {
-                    try {
-                        const response = await fetch(`/api/bots/${forwarder.selfbot_id}/servers`, {
-                            credentials: 'include'
-                        });
-                        if (response.ok) {
-                            servers = await response.json();
-                            forwarderSelfbotServers[forwarder.selfbot_id] = servers;
-                        }
-                    } catch (err) {
-                        console.error(`Error loading servers for selfbot ${forwarder.selfbot_id}:`, err);
+                let servers = [];
+                try {
+                    const response = await fetch(`/api/bots/${forwarder.selfbot_id}/servers`, {
+                        credentials: 'include'
+                    });
+                    if (response.ok) {
+                        servers = await response.json();
                     }
+                } catch (err) {
+                    console.error(`Error loading servers for selfbot ${forwarder.selfbot_id}:`, err);
                 }
                 const forwarderServerIdNum = typeof forwarder.server_id === 'string' ? parseInt(forwarder.server_id) : forwarder.server_id;
                 const selectedServer = servers.find(s => {
@@ -3996,32 +3975,18 @@
                     return serverIdNum === forwarderServerIdNum;
                 });
                 const serverName = selectedServer ? selectedServer.name : '';
-                const cacheKey = `${forwarder.selfbot_id}_${forwarder.server_id}`;
                 let channels = [];
-                if (!forwarderSelfbotServerChannels[cacheKey] || channelIds.some(chId => {
-                    const cached = forwarderSelfbotServerChannels[cacheKey];
-                    if (!cached) return true;
-                    const channel = cached.channels?.find(ch => ch.discord_channel_id === chId);
-                    return !channel || !channel.name;
-                })) {
-                    try {
-                        if (selectedServer) {
-                            const response = await fetch(`/api/bots/${forwarder.selfbot_id}/servers/${forwarder.server_id}/channels?discordServerId=${selectedServer.discord_server_id}`, {
-                                credentials: 'include'
-                            });
-                            if (response.ok) {
-                                channels = await response.json();
-                                forwarderSelfbotServerChannels[cacheKey] = { channels, categories: [] };
-                            }
-                        }
-                    } catch (err) {
-                        console.error('Error loading channels for forwarder:', err);
-                        if (forwarderSelfbotServerChannels[cacheKey]) {
-                            channels = forwarderSelfbotServerChannels[cacheKey].channels || [];
+                try {
+                    if (selectedServer) {
+                        const response = await fetch(`/api/bots/${forwarder.selfbot_id}/servers/${forwarder.server_id}/channels?discordServerId=${selectedServer.discord_server_id}`, {
+                            credentials: 'include'
+                        });
+                        if (response.ok) {
+                            channels = await response.json();
                         }
                     }
-                } else {
-                    channels = forwarderSelfbotServerChannels[cacheKey].channels || [];
+                } catch (err) {
+                    console.error('Error loading channels for forwarder:', err);
                 }
                 const channelMap = {};
                 channelIds.forEach(chId => {
@@ -4122,25 +4087,17 @@
                         serverSelect.value = forwarder.server_id;
                         await onForwarderServerChange();
                         if (currentForwarderSelfbotId && currentForwarderServerDbId && currentForwarderServerId) {
-                            const cacheKey = `${currentForwarderSelfbotId}_${currentForwarderServerDbId}`;
-                            if (!forwarderSelfbotServerChannels[cacheKey]) {
-                                try {
-                                    const [channelsRes, categoriesRes] = await Promise.all([
-                                        fetch(`/api/bots/${currentForwarderSelfbotId}/servers/${currentForwarderServerDbId}/channels?discordServerId=${currentForwarderServerId}`, {
-                                            credentials: 'include'
-                                        }),
-                                        fetch(`/api/servers/${currentForwarderServerDbId}/categories`, {
-                                            credentials: 'include'
-                                        })
-                                    ]);
-                                    if (channelsRes.ok && categoriesRes.ok) {
-                                        const channels = await channelsRes.json();
-                                        const categories = await categoriesRes.json();
-                                        forwarderSelfbotServerChannels[cacheKey] = { channels, categories };
-                                    }
-                                } catch (err) {
-                                    console.error('Error pre-loading channels:', err);
-                                }
+                            try {
+                                await Promise.all([
+                                    fetch(`/api/bots/${currentForwarderSelfbotId}/servers/${currentForwarderServerDbId}/channels?discordServerId=${currentForwarderServerId}`, {
+                                        credentials: 'include'
+                                    }),
+                                    fetch(`/api/servers/${currentForwarderServerDbId}/categories`, {
+                                        credentials: 'include'
+                                    })
+                                ]);
+                            } catch (err) {
+                                console.error('Error pre-loading channels:', err);
                             }
                         }
                         if (forwarder.source_channels) {
@@ -4204,16 +4161,11 @@
             }
             try {
                 let servers = [];
-                if (forwarderSelfbotServers[selfbotId]) {
-                    servers = forwarderSelfbotServers[selfbotId];
-                } else {
-                    const response = await fetch(`/api/bots/${selfbotId}/servers`, {
-                        credentials: 'include'
-                    });
-                    if (response.ok) {
-                        servers = await response.json();
-                        forwarderSelfbotServers[selfbotId] = servers;
-                    }
+                const response = await fetch(`/api/bots/${selfbotId}/servers`, {
+                    credentials: 'include'
+                });
+                if (response.ok) {
+                    servers = await response.json();
                 }
                 servers.forEach(server => {
                     const option = document.createElement('option');
@@ -4237,7 +4189,17 @@
                 fromChannelsBtn.disabled = true;
                 return;
             }
-            const servers = forwarderSelfbotServers[selfbotId] || [];
+            let servers = [];
+            try {
+                const response = await fetch(`/api/bots/${selfbotId}/servers`, {
+                    credentials: 'include'
+                });
+                if (response.ok) {
+                    servers = await response.json();
+                }
+            } catch (err) {
+                console.error('Error loading servers:', err);
+            }
             const serverDbIdNum = typeof serverDbId === 'string' ? parseInt(serverDbId) : serverDbId;
             const selectedServer = servers.find(s => {
                 const serverIdNum = typeof s.id === 'string' ? parseInt(s.id) : s.id;
@@ -4256,7 +4218,6 @@
             try {
                 const hiddenInput = document.getElementById('forwarder_from_channels');
                 selectedChannels = hiddenInput && hiddenInput.value ? hiddenInput.value.split(',').filter(Boolean) : [];
-                const cacheKey = `${currentForwarderSelfbotId}_${currentForwarderServerDbId}`;
                 let channels = [];
                 let categories = [];
                 const [channelsRes, categoriesRes] = await Promise.all([
@@ -4273,7 +4234,6 @@
                 }
                 channels = channelsRes.ok ? await channelsRes.json() : [];
                 categories = categoriesRes.ok ? await categoriesRes.json() : [];
-                forwarderSelfbotServerChannels[cacheKey] = { channels, categories };
                 allChannels = channels;
                 allCategories = categories;
                 document.getElementById('channelSelectorTitle').innerHTML = '<i class="fas fa-hashtag text-red-500"></i> Select From Channels';
@@ -4299,25 +4259,28 @@
             if (displayEl) {
                 displayEl.textContent = `${channelIds.length} channel${channelIds.length > 1 ? 's' : ''} selected`;
             }
-            if (selectedEl && currentForwarderSelfbotId && currentForwarderServerDbId) {
+            if (selectedEl && currentForwarderSelfbotId && currentForwarderServerDbId && currentForwarderServerId) {
                 try {
-                    const cacheKey = `${currentForwarderSelfbotId}_${currentForwarderServerDbId}`;
-                    const cached = forwarderSelfbotServerChannels[cacheKey];
-                    const channels = cached ? cached.channels : [];
-                    const channelMap = {};
-                    channels.forEach(ch => {
-                        if (channelIds.includes(ch.discord_channel_id)) {
-                            channelMap[ch.discord_channel_id] = ch.name || `Channel ${ch.discord_channel_id}`;
-                        }
+                    const response = await fetch(`/api/bots/${currentForwarderSelfbotId}/servers/${currentForwarderServerDbId}/channels?discordServerId=${currentForwarderServerId}`, {
+                        credentials: 'include'
                     });
-                    selectedEl.innerHTML = channelIds.map(chId => `
-                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-red-600 text-white text-xs rounded-lg">
-                            ${channelMap[chId] ? `#${channelMap[chId]}` : `Channel ${chId}`}
-                            <button type="button" onclick="removeForwarderChannel('${chId}')" class="hover:text-red-200 transition-colors">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        </span>
-                    `).join('');
+                    if (response.ok) {
+                        const channels = await response.json();
+                        const channelMap = {};
+                        channels.forEach(ch => {
+                            if (channelIds.includes(ch.discord_channel_id)) {
+                                channelMap[ch.discord_channel_id] = ch.name || `Channel ${ch.discord_channel_id}`;
+                            }
+                        });
+                        selectedEl.innerHTML = channelIds.map(chId => `
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-red-600 text-white text-xs rounded-lg">
+                                ${channelMap[chId] ? `#${channelMap[chId]}` : `Channel ${chId}`}
+                                <button type="button" onclick="removeForwarderChannel('${chId}')" class="hover:text-red-200 transition-colors">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </span>
+                        `).join('');
+                    }
                 } catch (err) {
                     console.error('Error loading channel names:', err);
                 }

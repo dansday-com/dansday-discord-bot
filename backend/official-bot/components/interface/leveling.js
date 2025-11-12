@@ -287,7 +287,7 @@ export async function handleLevelingButton(interaction) {
             flags: 64
         });
     } catch (error) {
-        await logger.log(`❌ Leveling interface error: ${error.message}`, interaction.guild?.id);
+        await logger.log(`❌ Leveling interface error: ${error.message}`);
         await interaction.reply({
             content: `❌ Failed to load leveling information: ${error.message}`,
             flags: 64
@@ -337,7 +337,7 @@ export async function handleLeaderboardButton(interaction) {
             flags: 64
         });
     } catch (error) {
-        await logger.log(`❌ Leaderboard button error: ${error.message}`, interaction.guild?.id);
+        await logger.log(`❌ Leaderboard button error: ${error.message}`);
         await interaction.update({
             content: `❌ Failed to load leaderboard: ${error.message}`,
             flags: 64

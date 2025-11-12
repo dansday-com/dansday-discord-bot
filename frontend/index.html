@@ -3013,8 +3013,7 @@
             // Load channel names for display
             const channelIds = [
                 config.testing_channel,
-                config.production_channel,
-                config.logger_channel
+                config.production_channel
             ].filter(Boolean);
 
             const channelNames = await loadChannelNames(channelIds);
@@ -3045,19 +3044,6 @@
                             <i class="fas fa-chevron-down text-gray-400"></i>
                         </button>
                         <input type="hidden" id="testing_channel" name="testing_channel" value="${config.testing_channel || ''}">
-                    </div>
-
-                    <!-- Channel for Logger -->
-                    <div>
-                        <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
-                            <i class="fas fa-file-alt mr-2"></i>Channel for Logger
-                        </label>
-                        <button type="button" onclick="openChannelSelector('logger_channel')"
-                            class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 border border-gray-600 rounded-lg text-white text-left flex items-center justify-between hover:border-gray-500 transition-all text-sm sm:text-base">
-                            <span id="logger_channel_display" class="text-gray-300">${config.logger_channel && channelNames[config.logger_channel] ? `#${channelNames[config.logger_channel]}` : config.logger_channel ? `Channel ${config.logger_channel}` : 'Select channel...'}</span>
-                            <i class="fas fa-chevron-down text-gray-400"></i>
-                        </button>
-                        <input type="hidden" id="logger_channel" name="logger_channel" value="${config.logger_channel || ''}">
                     </div>
 
                     <!-- Default Embed Color -->
@@ -6024,7 +6010,6 @@
             const formData = {
                 testing_channel: document.getElementById('testing_channel').value || null,
                 production_channel: document.getElementById('production_channel').value || null,
-                logger_channel: document.getElementById('logger_channel').value || null,
                 embed_color: document.getElementById('embed_color').value,
                 embed_footer: document.getElementById('embed_footer').value || null
             };

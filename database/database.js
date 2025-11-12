@@ -115,7 +115,7 @@ async function runMigration() {
         }
 
         logger.log('✅ Database schema created successfully!');
-        logger.log('📊 Tables created: panel, panel_logs, bots, servers, server_categories, server_channels, server_roles, server_members, server_member_levels, server_member_roles, server_members_afk, server_settings');
+        logger.log('📊 Tables created: panel, panel_logs, bots, servers, server_categories, server_channels, server_roles, server_members, server_member_levels, server_member_roles, server_members_afk, server_settings, bot_logs');
         logger.log('📈 Indexes created: all indexes');
 
     } catch (error) {
@@ -147,7 +147,8 @@ async function setupDatabase() {
         { name: 'server_member_levels', required: true },
         { name: 'server_member_roles', required: true },
         { name: 'server_members_afk', required: true },
-        { name: 'server_settings', required: true }
+        { name: 'server_settings', required: true },
+        { name: 'bot_logs', required: true }
     ];
 
     const missingTables = [];
@@ -1571,6 +1572,42 @@ async function getCategoriesForServer(serverId) {
     return result;
 }
 
+export async function insertBotLog(botId, message) {
+    await initializeDatabase();
+    if (!botId || !message) {
+        throw new Error('botId and message are required to insert bot log');
+    }
+    
+    try {
+        await query(
+            'INSERT INTO bot_logs (bot_id, message) VALUES (?, ?)',
+            [botId, message]
+        );
+        return true;
+    } catch (error) {
+        console.error('Error inserting bot log:', error);
+        throw error;
+    }
+}
+
+export async function getBotLogs(botId, limit = 100, offset = 0) {
+    await initializeDatabase();
+    if (!botId) {
+        throw new Error('botId is required to fetch bot logs');
+    }
+    
+    const result = await query(
+        `SELECT bl.*, b.name as bot_name
+         FROM bot_logs bl
+         INNER JOIN bots b ON bl.bot_id = b.id
+         WHERE bl.bot_id = ?
+         ORDER BY bl.created_at DESC
+         LIMIT ? OFFSET ?`,
+        [botId, limit, offset]
+    );
+    return result;
+}
+
 export async function getAFKStatus(serverId, discordMemberId) {
     await initializeDatabase();
     const result = await query(
@@ -1720,6 +1757,8 @@ export default {
     upsertServerSettings,
     getChannelsForServer,
     getCategoriesForServer,
+    insertBotLog,
+    getBotLogs,
     serversNeedSync,
     getAFKStatus,
     setAFKStatus,

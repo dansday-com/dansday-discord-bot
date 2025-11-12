@@ -295,18 +295,6 @@ export async function getEmbedConfig(guildId) {
     };
 }
 
-export async function getLoggerChannel(guildId) {
-    requireBotConfig();
-    requireGuildId(guildId, 'getting logger channel');
-
-    const settings = await getServerSettingsForComponent(guildId, 'main_config');
-
-    if (!settings.settings.logger_channel) {
-        throw new Error(`Logger channel not configured for guild ${guildId}`);
-    }
-
-    return settings.settings.logger_channel;
-}
 
 export const WELCOMER = {
 

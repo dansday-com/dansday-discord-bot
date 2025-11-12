@@ -215,7 +215,7 @@ async function resolveServerAndMember(guild, memberLike) {
 
         return { server, dbMember, guildMember };
     } catch (error) {
-        await logger.log(`❌ Leveling resolve failure for guild ${guild?.id}: ${error.message}`, guild?.id);
+        await logger.log(`❌ Leveling resolve failure for guild ${guild?.id}: ${error.message}`);
         return { server: null, dbMember: null, guildMember: null };
     }
 }
@@ -267,7 +267,7 @@ async function handleLevelEvaluation(server, dbMember, currentStats, guildId) {
     if (expectedLevel !== currentStats.level) {
         const updatedStats = await db.updateMemberLevelStats(dbMember.id, { level: expectedLevel });
         const memberName = dbMember.display_name || dbMember.username || dbMember.discord_member_id || 'Unknown member';
-        await logger.log(`⭐ ${memberName} reached level ${expectedLevel} in ${server.name}`, guildId);
+        await logger.log(`⭐ ${memberName} reached level ${expectedLevel} in ${server.name}`);
 
         if (clientInstance && dbMember.discord_member_id) {
             try {
@@ -282,7 +282,7 @@ async function handleLevelEvaluation(server, dbMember, currentStats, guildId) {
                     }
                 }
             } catch (error) {
-                await logger.log(`⚠️ Failed to send level up DM to ${dbMember.discord_member_id}: ${error.message}`, guildId);
+                await logger.log(`⚠️ Failed to send level up DM to ${dbMember.discord_member_id}: ${error.message}`);
             }
         }
 
@@ -334,12 +334,12 @@ async function handleMessageCreate(message) {
 
         const memberName = dbMember.server_display_name || dbMember.display_name || dbMember.username || message.author.username;
         const currentLevel = await determineLevel(stats.experience || 0, guildId);
-        await logger.log(`💬 Chat XP: ${memberName} (${message.author.id}) gained +${xpGained} XP from chat | Total: ${stats.experience || 0} XP | Level: ${currentLevel}`, message.guild.id);
+        await logger.log(`💬 Chat XP: ${memberName} (${message.author.id}) gained +${xpGained} XP from chat | Total: ${stats.experience || 0} XP | Level: ${currentLevel}`);
 
         await handleLevelEvaluation(server, dbMember, stats, message.guild.id);
         recentMessages.set(cooldownKey, now);
     } catch (error) {
-        await logger.log(`❌ Leveling message handler error: ${error.message}`, message.guild?.id);
+        await logger.log(`❌ Leveling message handler error: ${error.message}`);
     }
 }
 
@@ -404,7 +404,7 @@ async function startVoiceSession(state, resumed = false) {
                 const memberName = dbMember.server_display_name || dbMember.display_name || dbMember.username || guildMember.displayName || guildMember.user.username;
                 const currentLevel = await determineLevel(stats.experience || 0, guildId);
                 const xpType = isAFK ? "AFK Voice" : "Voice";
-                await logger.log(`🎤 ${xpType} XP: ${memberName} (${guildMember.id}) gained +${xpGained} XP from ${minutesSinceReward} minute(s) [resume catch-up] | Total: ${stats.experience || 0} XP | Level: ${currentLevel}`, state.guild.id);
+                await logger.log(`🎤 ${xpType} XP: ${memberName} (${guildMember.id}) gained +${xpGained} XP from ${minutesSinceReward} minute(s) [resume catch-up] | Total: ${stats.experience || 0} XP | Level: ${currentLevel}`);
 
                 await handleLevelEvaluation(server, dbMember, stats, state.guild.id);
             }
@@ -440,7 +440,7 @@ async function startVoiceSession(state, resumed = false) {
             const logMessage = resumed && wasInVoice 
                 ? `🎤 ${xpType} XP: ${memberName} (${guildMember.id}) gained +${xpGained} XP [resume] | Total: ${stats.experience || 0} XP | Level: ${currentLevel}`
                 : `🎤 ${xpType} XP: ${memberName} (${guildMember.id}) gained +${xpGained} XP [join] | Total: ${stats.experience || 0} XP | Level: ${currentLevel}`;
-            await logger.log(logMessage, state.guild.id);
+            await logger.log(logMessage);
 
             await handleLevelEvaluation(server, dbMember, stats, state.guild.id);
         } else if (!lastRewardedAtMs) {
@@ -464,7 +464,7 @@ async function startVoiceSession(state, resumed = false) {
             joinedAt: now
         });
     } catch (error) {
-        await logger.log(`❌ Leveling voice session start error: ${error.message}`, state.guild?.id);
+        await logger.log(`❌ Leveling voice session start error: ${error.message}`);
     }
 }
 
@@ -503,7 +503,7 @@ async function endVoiceSession(state) {
             voiceRewardedAt: null
         });
     } catch (error) {
-        await logger.log(`❌ Leveling voice session end error: ${error.message}`, state.guild?.id);
+        await logger.log(`❌ Leveling voice session end error: ${error.message}`);
     }
 }
 
@@ -560,7 +560,7 @@ async function handleVoiceTick(sessionKey) {
         const memberName = dbMember.server_display_name || dbMember.display_name || dbMember.username || session.discordMemberId;
         const currentLevel = await determineLevel(stats.experience || 0, guildId);
         const xpType = isAFK ? "AFK Voice" : "Voice";
-        await logger.log(`🎤 ${xpType} XP: ${memberName} (${session.discordMemberId}) gained +${xpGained} XP | Total: ${stats.experience || 0} XP | Level: ${currentLevel}`, session.guildId);
+        await logger.log(`🎤 ${xpType} XP: ${memberName} (${session.discordMemberId}) gained +${xpGained} XP | Total: ${stats.experience || 0} XP | Level: ${currentLevel}`);
 
         const serverInfo = { id: session.serverId, name: session.serverName };
         const reconciledStats = await reconcileMemberExperience(dbMember.id, guildId);
@@ -569,7 +569,7 @@ async function handleVoiceTick(sessionKey) {
         }
         await handleLevelEvaluation(serverInfo, dbMember, stats, session.guildId);
     } catch (error) {
-        await logger.log(`❌ Leveling voice tick error: ${error.message}`, session.guildId);
+        await logger.log(`❌ Leveling voice tick error: ${error.message}`);
     }
 }
 
@@ -583,13 +583,13 @@ async function resumeVoiceSessions(client) {
                         await startVoiceSession(voiceState, true);
                         resumedCount++;
                     } catch (err) {
-                        await logger.log(`❌ Leveling: failed to resume voice session for ${voiceState.id}: ${err.message}`, guild.id);
+                        await logger.log(`❌ Leveling: failed to resume voice session for ${voiceState.id}: ${err.message}`);
                     }
                 }
             }
 
             if (resumedCount > 0) {
-                await logger.log(`📈 Leveling: Resumed ${resumedCount} voice session(s) for guild ${guild.name}`, guild.id);
+                await logger.log(`📈 Leveling: Resumed ${resumedCount} voice session(s) for guild ${guild.name}`);
             }
         }
     } catch (error) {
@@ -623,7 +623,7 @@ function init(client) {
                 await startVoiceSession(newState, false);
             }
         } catch (error) {
-            await logger.log(`❌ Leveling voice state update error: ${error.message}`, newState.guild?.id);
+            await logger.log(`❌ Leveling voice state update error: ${error.message}`);
         }
     });
 

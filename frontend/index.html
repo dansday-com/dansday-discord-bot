@@ -2647,7 +2647,7 @@
             allMembers = [];
             memberPermissions = null;
             currentMemberSearch = '';
-            currentMemberSort = 'rank_asc';
+            currentMemberSort = 'rank_high';
 
             // Load member list
             await loadServerMembers(serverId);
@@ -2657,6 +2657,8 @@
         let allMembers = [];
         let currentMemberView = 'all';
         let memberPermissions = null;
+        let currentMemberSearch = '';
+        let currentMemberSort = 'rank_high';
 
         // Load server members list
         async function loadServerMembers(serverId) {
@@ -2800,8 +2802,8 @@
 
             // Apply sort
             const sortSelect = document.getElementById('memberSortSelect');
-            if (sortSelect) {
-                currentMemberSort = sortSelect.value || 'rank_asc';
+        if (sortSelect) {
+            currentMemberSort = sortSelect.value || 'rank_high';
             }
             const sortValue = currentMemberSort;
             filtered.sort((a, b) => {
@@ -2834,9 +2836,9 @@
                         return (b.experience || 0) - (a.experience || 0);
                     case 'xp_asc':
                         return (a.experience || 0) - (b.experience || 0);
-                    case 'rank_asc':
+                case 'rank_high':
                         return (a.rank || 9999) - (b.rank || 9999);
-                    case 'rank_desc':
+                case 'rank_low':
                         return (b.rank || 9999) - (a.rank || 9999);
                     default:
                         return 0;
@@ -2884,8 +2886,8 @@
                             </label>
                             <select id="memberSortSelect"
                                 class="bg-gray-800 border border-gray-600 text-white rounded-lg px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-red-500 transition-all flex-1 sm:flex-initial min-w-0">
-                                <option value="rank_asc">Rank (Low to High)</option>
-                                <option value="rank_desc">Rank (High to Low)</option>
+                                <option value="rank_high">Rank (High to Low)</option>
+                                <option value="rank_low">Rank (Low to High)</option>
                                 <option value="level_desc">Level (High to Low)</option>
                                 <option value="level_asc">Level (Low to High)</option>
                                 <option value="xp_desc">XP (High to Low)</option>
@@ -2921,7 +2923,7 @@
 
                 const sortSelect = document.getElementById('memberSortSelect');
                 if (sortSelect) {
-                    sortSelect.value = currentMemberSort || 'rank_asc';
+                    sortSelect.value = currentMemberSort || 'rank_high';
                     sortSelect.addEventListener('change', (e) => {
                         currentMemberSort = e.target.value;
                         filterAndRenderMembers();
@@ -2938,8 +2940,8 @@
                 }
 
                 const sortSelect = document.getElementById('memberSortSelect');
-                if (sortSelect && sortSelect.value !== (currentMemberSort || 'rank_asc')) {
-                    sortSelect.value = currentMemberSort || 'rank_asc';
+                if (sortSelect && sortSelect.value !== (currentMemberSort || 'rank_high')) {
+                    sortSelect.value = currentMemberSort || 'rank_high';
                 }
             }
 

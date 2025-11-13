@@ -228,6 +228,18 @@ async function setupDatabase() {
             await query('ALTER TABLE server_members ADD COLUMN server_display_name TEXT');
             logger.log('✅ Added server_display_name column');
         }
+
+        const dmPreferenceCheck = await query(
+            `SELECT COLUMN_NAME FROM information_schema.COLUMNS 
+             WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'server_member_levels' AND COLUMN_NAME = 'dm_notifications_enabled'`,
+            [connectionConfig.database]
+        );
+
+        if (!dmPreferenceCheck || dmPreferenceCheck.length === 0) {
+            logger.log('🔧 Adding dm_notifications_enabled column to server_member_levels table...');
+            await query('ALTER TABLE server_member_levels ADD COLUMN dm_notifications_enabled BOOLEAN DEFAULT TRUE AFTER level');
+            logger.log('✅ Added dm_notifications_enabled column');
+        }
     } catch (err) {
         logger.log(`⚠️  Error checking/adding columns: ${err.message}`);
     }
@@ -956,6 +968,22 @@ export async function updateMemberLevelStats(memberId, updates = {}) {
          SET ${clauses.join(', ')}
          WHERE member_id = ?`,
         values
+    );
+
+    return await getMemberLevel(memberId);
+}
+
+export async function setMemberLevelDMPreference(memberId, enabled = true) {
+    await initializeDatabase();
+    if (!memberId) {
+        throw new Error('memberId is required to update DM preference');
+    }
+
+    await query(
+        `UPDATE server_member_levels
+         SET dm_notifications_enabled = ?, updated_at = ?
+         WHERE member_id = ?`,
+        [enabled ? 1 : 0, toMySQLDateTime(), memberId]
     );
 
     return await getMemberLevel(memberId);
@@ -1811,6 +1839,7 @@ export default {
     getMemberLevel,
     ensureMemberLevel,
     updateMemberLevelStats,
+    setMemberLevelDMPreference,
     recalculateServerMemberRanks,
     getMemberLevelByDiscordId,
     getServerLeaderboard,

@@ -6,7 +6,7 @@ import { handleSendMessageButton, handleSendMessageModal, handleChannelSelection
 import { handleCustomSupporterRoleButton, handleCustomSupporterRoleModal, handleEditCustomSupporterRole, handleDeleteCustomSupporterRole } from './interface/customsupporterrole.js';
 import { handleFeedbackButton, handleFeedbackModal } from './interface/feedback.js';
 import { handleAFKButton, handleAFKModal, handleRemoveAFKButton } from './interface/afk.js';
-import { handleLevelingButton, handleLeaderboardButton } from './interface/leveling.js';
+import { handleLevelingButton, handleLeaderboardButton, handleDmToggleButton } from './interface/leveling.js';
 
 export async function handleButtonInteraction(interaction, client) {
     const { customId } = interaction;
@@ -48,6 +48,9 @@ export async function handleButtonInteraction(interaction, client) {
         case 'leaderboard_voice_afk':
         case 'leaderboard_chat':
             await handleLeaderboardButton(interaction);
+            break;
+        case 'leveling_dm_toggle':
+            await handleDmToggleButton(interaction);
             break;
         default:
 

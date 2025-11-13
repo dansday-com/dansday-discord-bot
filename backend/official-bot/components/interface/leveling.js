@@ -31,6 +31,8 @@ async function refreshMemberLevelData(serverId, discordMemberId) {
     }
 
     const previousLevel = levelData.level ?? 1;
+    const dmPreference = levelData.dm_notifications_enabled;
+    const notificationsEnabled = !(dmPreference === false || dmPreference === 0);
 
     const botConfig = getBotConfig();
     let guildId = null;
@@ -79,7 +81,7 @@ async function refreshMemberLevelData(serverId, discordMemberId) {
     if (Object.keys(updates).length > 0) {
         const updatedStats = await db.updateMemberLevelStats(levelData.member_id, updates);
         if (updatedStats) {
-            if (recalculatedLevel > previousLevel && levelData.discord_member_id) {
+            if (recalculatedLevel > previousLevel && levelData.discord_member_id && notificationsEnabled) {
                 await sendLevelChangeDM(guildId, levelData.discord_member_id, serverName, recalculatedLevel);
             }
             return {
@@ -92,7 +94,7 @@ async function refreshMemberLevelData(serverId, discordMemberId) {
     }
 
     if ((levelData.experience ?? 0) !== recalculatedExperience || (levelData.level ?? 1) !== recalculatedLevel) {
-        if (recalculatedLevel > previousLevel && levelData.discord_member_id) {
+        if (recalculatedLevel > previousLevel && levelData.discord_member_id && notificationsEnabled) {
             await sendLevelChangeDM(guildId, levelData.discord_member_id, serverName, recalculatedLevel);
         }
         return {
@@ -143,6 +145,9 @@ async function buildLevelingEmbeds(server, memberLevelData, sortType = 'xp', gui
     profileLines.push(`• ├ Active: ${formatNumber(voiceActive)}`);
     profileLines.push(`• └ AFK: ${formatNumber(voiceAfk)}`);
     profileLines.push(`• **Rank:** ${memberLevelData?.rank ? `#${memberLevelData.rank}` : "Unranked"}`);
+    const dmPreference = memberLevelData?.dm_notifications_enabled;
+    const notificationStatus = !(dmPreference === false || dmPreference === 0);
+    profileLines.push(`• **DM Notifications:** ${notificationStatus ? "Enabled" : "Muted"}`);
 
     const profileEmbed = new EmbedBuilder()
         .setColor(embedConfig.COLOR)
@@ -275,6 +280,15 @@ function createLeaderboardButtons(selectedType = 'xp') {
     return new ActionRowBuilder().addComponents(...buttons);
 }
 
+function createDmToggleRow(dmEnabled = true) {
+    const toggleButton = new ButtonBuilder()
+        .setCustomId('leveling_dm_toggle')
+        .setLabel(dmEnabled ? '🔔 DM On' : '🔕 DM Off')
+        .setStyle(dmEnabled ? ButtonStyle.Success : ButtonStyle.Secondary);
+
+    return new ActionRowBuilder().addComponents(toggleButton);
+}
+
 export async function handleLevelingButton(interaction) {
     try {
         if (!(await hasPermission(interaction.member, "leveling"))) {
@@ -321,10 +335,11 @@ export async function handleLevelingButton(interaction) {
         const sortType = 'xp';
         const { profileEmbed, leaderboardEmbed } = await buildLevelingEmbeds(server, memberLevelData, sortType, interaction.guild.id);
         const buttons = createLeaderboardButtons(sortType);
+        const dmRow = createDmToggleRow(!(memberLevelData?.dm_notifications_enabled === false || memberLevelData?.dm_notifications_enabled === 0));
 
         await interaction.reply({
             embeds: [profileEmbed, leaderboardEmbed],
-            components: [buttons],
+            components: [buttons, dmRow],
             flags: 64
         });
     } catch (error) {
@@ -371,10 +386,11 @@ export async function handleLeaderboardButton(interaction) {
         const memberLevelData = await db.getMemberLevelByDiscordId(server.id, interaction.user.id);
         const { profileEmbed, leaderboardEmbed } = await buildLevelingEmbeds(server, memberLevelData, sortType, interaction.guild.id);
         const buttons = createLeaderboardButtons(sortType);
+        const dmRow = createDmToggleRow(!(memberLevelData?.dm_notifications_enabled === false || memberLevelData?.dm_notifications_enabled === 0));
 
         await interaction.update({
             embeds: [profileEmbed, leaderboardEmbed],
-            components: [buttons],
+            components: [buttons, dmRow],
             flags: 64
         });
     } catch (error) {
@@ -383,5 +399,93 @@ export async function handleLeaderboardButton(interaction) {
             content: `❌ Failed to load leaderboard: ${error.message}`,
             flags: 64
         }).catch(() => null);
+    }
+}
+
+export async function handleDmToggleButton(interaction) {
+    try {
+        if (!(await hasPermission(interaction.member, "leveling"))) {
+            await interaction.reply({
+                content: "❌ You don't have permission to update leveling notifications.",
+                flags: 64
+            }).catch(() => null);
+            return;
+        }
+
+        const server = await getServerForInteraction(interaction);
+        if (!server) {
+            await interaction.reply({
+                content: "⚠️ This server is not registered with the bot. Please run a sync first.",
+                flags: 64
+            }).catch(() => null);
+            return;
+        }
+
+        const guildMember = interaction.member || await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
+        if (!guildMember) {
+            await interaction.reply({
+                content: "❌ Failed to fetch member information. Please try again.",
+                flags: 64
+            }).catch(() => null);
+            return;
+        }
+
+        const dbMember = await db.upsertMember(server.id, guildMember);
+        if (!dbMember) {
+            await interaction.reply({
+                content: "❌ Failed to create member record. Please try again.",
+                flags: 64
+            }).catch(() => null);
+            return;
+        }
+
+        await db.ensureMemberLevel(dbMember.id);
+
+        let memberLevelData = await db.getMemberLevelByDiscordId(server.id, interaction.user.id);
+        if (!memberLevelData) {
+            await interaction.reply({
+                content: "⚠️ No leveling data found for this member.",
+                flags: 64
+            }).catch(() => null);
+            return;
+        }
+
+        const currentlyEnabled = !(memberLevelData.dm_notifications_enabled === false || memberLevelData.dm_notifications_enabled === 0);
+        await db.setMemberLevelDMPreference(memberLevelData.member_id, !currentlyEnabled);
+
+        memberLevelData = await db.getMemberLevelByDiscordId(server.id, interaction.user.id);
+
+        let sortType = 'xp';
+        const leaderboardRow = interaction.message?.components?.[0];
+        if (leaderboardRow && Array.isArray(leaderboardRow.components)) {
+            for (const component of leaderboardRow.components) {
+                if (component.style === ButtonStyle.Primary && typeof component.customId === 'string' && component.customId.startsWith('leaderboard_')) {
+                    sortType = component.customId.replace('leaderboard_', '');
+                    break;
+                }
+            }
+        }
+
+        const { profileEmbed, leaderboardEmbed } = await buildLevelingEmbeds(server, memberLevelData, sortType, interaction.guild.id);
+        const buttons = createLeaderboardButtons(sortType);
+        const dmRow = createDmToggleRow(!(memberLevelData?.dm_notifications_enabled === false || memberLevelData?.dm_notifications_enabled === 0));
+
+        await interaction.update({
+            embeds: [profileEmbed, leaderboardEmbed],
+            components: [buttons, dmRow],
+            flags: 64
+        });
+    } catch (error) {
+        await logger.log(`❌ Leveling DM toggle error: ${error.message}`);
+        if (interaction.replied || interaction.deferred) {
+            await interaction.editReply({
+                content: `❌ Failed to update DM notifications: ${error.message}`
+            }).catch(() => null);
+        } else {
+            await interaction.reply({
+                content: `❌ Failed to update DM notifications: ${error.message}`,
+                flags: 64
+            }).catch(() => null);
+        }
     }
 }

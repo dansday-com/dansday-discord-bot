@@ -305,9 +305,14 @@ async function handleLevelEvaluation(server, dbMember, currentStats, guildId, co
         await logger.log(`⭐ Level stored update (${reason}): ${memberName} -> level ${expectedLevel} in ${server.name}`);
     }
 
+    const dmPreference = finalStats?.dm_notifications_enabled;
+    const notificationsEnabled = !(dmPreference === false || dmPreference === 0);
+
     if (expectedLevel > baselineLevel) {
         const memberName = dbMember.server_display_name || dbMember.display_name || dbMember.username || dbMember.discord_member_id || "Unknown member";
-        if (dbMember.discord_member_id) {
+        if (!notificationsEnabled) {
+            await logger.log(`🔕 Level up detected (${reason}) for ${memberName} but DM notifications are disabled`);
+        } else if (dbMember.discord_member_id) {
             await sendLevelChangeDM(guildId, dbMember.discord_member_id, server.name, expectedLevel, `level-eval:${reason}`);
         }
     }

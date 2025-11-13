@@ -910,7 +910,6 @@ export async function updateMemberLevelStats(memberId, updates = {}) {
         values.push(updates.voiceMinutesAfkIncrement);
     }
 
-    // Always recalculate voice_minutes_total from active + afk when either is being updated (even if increment is 0)
     if (updates.voiceMinutesActiveIncrement !== undefined || updates.voiceMinutesAfkIncrement !== undefined) {
         clauses.push('voice_minutes_total = voice_minutes_active + voice_minutes_afk');
     }
@@ -1275,8 +1274,8 @@ export async function getServerOverview(serverId) {
         ...serverRow,
         stats: {
             members_total: memberCounts[0]?.total || 0,
-            members_boosters: serverRow.total_boosters || 0, // Use total boost count from server record (accounts for multiple boosts per member)
-            members_unique_boosters: memberCounts[0]?.unique_boosters || 0, // Count of unique members who are boosting
+            members_boosters: serverRow.total_boosters || 0,
+            members_unique_boosters: memberCounts[0]?.unique_boosters || 0,
             members_with_levels: leveledCount[0]?.leveled || 0,
             members_afk: afkCount[0]?.afk || 0,
             members_with_custom_roles: customRolesCount[0]?.members_with_custom_roles || 0,

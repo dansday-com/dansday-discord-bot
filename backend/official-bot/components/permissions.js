@@ -36,23 +36,26 @@ async function isSupporter(member) {
 }
 
 export async function hasPermission(member, action) {
+    const isAdminMember = await isAdmin(member);
+    const isStaffMember = await isStaff(member);
+    const isSupporterMember = await isSupporter(member);
+    const isMemberRole = await isMember(member);
 
-    if (await isAdmin(member)) {
+    if (isAdminMember) {
         return true;
     }
 
-    if (await isStaff(member)) {
+    if (isStaffMember) {
         return action !== 'setup';
     }
 
-    if (await isSupporter(member)) {
-        return action === 'custom_supporter_role';
+    if (action === 'custom_supporter_role') {
+        return isSupporterMember || isStaffMember || isAdminMember;
     }
 
-    if (await isMember(member)) {
-        return action === 'help' || action === 'feedback' || action === 'afk' || action === 'leveling';
+    if (action === 'help' || action === 'feedback' || action === 'afk' || action === 'leveling') {
+        return isMemberRole || isSupporterMember || isStaffMember || isAdminMember;
     }
 
     return false;
 }
-

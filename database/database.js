@@ -1112,6 +1112,7 @@ export async function getServerMembersList(serverId) {
             sm.display_name,
             sm.server_display_name,
             sm.avatar,
+            sm.profile_created_at,
             sm.member_since,
             sm.is_booster,
             sm.booster_since,
@@ -1135,7 +1136,7 @@ export async function getServerMembersList(serverId) {
          LEFT JOIN server_roles sr ON smr.role_id = sr.id
          WHERE sm.server_id = ?
          GROUP BY sm.id, sm.discord_member_id, sm.username, sm.display_name, sm.server_display_name, 
-                  sm.avatar, sm.member_since, sm.is_booster, sm.booster_since,
+                  sm.avatar, sm.profile_created_at, sm.member_since, sm.is_booster, sm.booster_since,
                   sml.level, sml.experience, sml.chat_total, sml.voice_minutes_active, 
                   sml.voice_minutes_afk, sml.rank, sma.message, sma.created_at
          ORDER BY sml.experience DESC, sml.level DESC, sm.created_at ASC`,

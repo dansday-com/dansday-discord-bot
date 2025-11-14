@@ -2621,6 +2621,42 @@
                         return (a.rank || 9999) - (b.rank || 9999);
                     case 'rank_low':
                         return (b.rank || 9999) - (a.rank || 9999);
+                    case 'voice_active_desc':
+                        return (b.voice_minutes_active || 0) - (a.voice_minutes_active || 0);
+                    case 'voice_active_asc':
+                        return (a.voice_minutes_active || 0) - (b.voice_minutes_active || 0);
+                    case 'voice_afk_desc':
+                        return (b.voice_minutes_afk || 0) - (a.voice_minutes_afk || 0);
+                    case 'voice_afk_asc':
+                        return (a.voice_minutes_afk || 0) - (b.voice_minutes_afk || 0);
+                    case 'account_created_asc':
+                        const createdA = a.profile_created_at ? new Date(a.profile_created_at).getTime() : 0;
+                        const createdB = b.profile_created_at ? new Date(b.profile_created_at).getTime() : 0;
+                        return createdA - createdB;
+                    case 'account_created_desc':
+                        const createdA2 = a.profile_created_at ? new Date(a.profile_created_at).getTime() : 0;
+                        const createdB2 = b.profile_created_at ? new Date(b.profile_created_at).getTime() : 0;
+                        return createdB2 - createdA2;
+                    case 'afk_first':
+                        const afkA = a.is_afk ? 1 : 0;
+                        const afkB = b.is_afk ? 1 : 0;
+                        return afkB - afkA;
+                    case 'afk_last':
+                        const afkA2 = a.is_afk ? 1 : 0;
+                        const afkB2 = b.is_afk ? 1 : 0;
+                        return afkA2 - afkB2;
+                    case 'chat_desc':
+                        return (b.chat_total || 0) - (a.chat_total || 0);
+                    case 'chat_asc':
+                        return (a.chat_total || 0) - (b.chat_total || 0);
+                    case 'member_since_asc':
+                        const memberSinceA = a.member_since ? new Date(a.member_since).getTime() : 0;
+                        const memberSinceB = b.member_since ? new Date(b.member_since).getTime() : 0;
+                        return memberSinceA - memberSinceB;
+                    case 'member_since_desc':
+                        const memberSinceA2 = a.member_since ? new Date(a.member_since).getTime() : 0;
+                        const memberSinceB2 = b.member_since ? new Date(b.member_since).getTime() : 0;
+                        return memberSinceB2 - memberSinceA2;
                     default:
                         return 0;
                 }
@@ -2667,6 +2703,18 @@
                                 <option value="xp_asc">XP (Low to High)</option>
                                 <option value="name_asc">Name (A-Z)</option>
                                 <option value="name_desc">Name (Z-A)</option>
+                                <option value="voice_active_desc">Voice Active (High to Low)</option>
+                                <option value="voice_active_asc">Voice Active (Low to High)</option>
+                                <option value="voice_afk_desc">Voice AFK (High to Low)</option>
+                                <option value="voice_afk_asc">Voice AFK (Low to High)</option>
+                                <option value="chat_desc">Chat Messages (High to Low)</option>
+                                <option value="chat_asc">Chat Messages (Low to High)</option>
+                                <option value="account_created_asc">Account Created (Oldest First)</option>
+                                <option value="account_created_desc">Account Created (Newest First)</option>
+                                <option value="member_since_asc">Member Since (Oldest First)</option>
+                                <option value="member_since_desc">Member Since (Newest First)</option>
+                                <option value="afk_first">AFK Status (AFK First)</option>
+                                <option value="afk_last">AFK Status (Non-AFK First)</option>
                             </select>
                         </div>
                     </div>
@@ -2754,6 +2802,7 @@
                 const voiceAfk = member.voice_minutes_afk || 0;
                 const rank = member.rank ? `#${member.rank}` : 'N/A';
                 const memberSince = formatDate(member.member_since);
+                const accountCreated = formatDate(member.profile_created_at);
                 const isAfk = member.is_afk || false;
                 const roles = member.roles || [];
                 return `
@@ -2830,6 +2879,15 @@
                                         <div class="min-w-0">
                                             <div class="text-[0.65rem] sm:text-xs text-gray-400 uppercase tracking-wide">Member Since</div>
                                             <div class="text-sm sm:text-base font-bold text-white">${memberSince}</div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2 bg-gray-800 rounded-lg p-2 sm:p-2.5 border border-gray-600">
+                                        <div class="w-9 h-9 sm:w-8 sm:h-8 rounded-lg bg-pink-600 flex items-center justify-center flex-shrink-0">
+                                            <i class="fas fa-user-plus text-white text-xs"></i>
+                                        </div>
+                                        <div class="min-w-0">
+                                            <div class="text-[0.65rem] sm:text-xs text-gray-400 uppercase tracking-wide">Account Created</div>
+                                            <div class="text-sm sm:text-base font-bold text-white">${accountCreated}</div>
                                         </div>
                                     </div>
                                 </div>

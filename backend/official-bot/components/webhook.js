@@ -113,9 +113,17 @@ async function handleSendEmbed(payload) {
         const results = [];
         for (const channelId of channelIds) {
             try {
+                // Validate channel ID
+                if (!channelId || channelId === 'undefined' || channelId === 'null') {
+                    results.push({ channelId: String(channelId), success: false, error: 'Invalid channel ID' });
+                    await logger.log(`❌ Invalid channel ID: ${channelId} in guild ${guild_id}`);
+                    continue;
+                }
+                
                 const channel = await guild.channels.fetch(channelId).catch(() => null);
                 if (!channel) {
-                    results.push({ channelId, success: false, error: 'Channel not found' });
+                    results.push({ channelId: String(channelId), success: false, error: 'Channel not found' });
+                    await logger.log(`❌ Channel ${channelId} not found in guild ${guild_id}`);
                     continue;
                 }
 
@@ -192,7 +200,8 @@ async function handleWebhookRequest(req, res) {
                     }
                 } else if (payload.type === 'send_embed') {
                     try {
-                        await logger.log(`📥 Received send_embed webhook: channel ${payload.channel_id} in guild ${payload.guild_id}`);
+                        const channelIds = payload.channel_ids || (payload.channel_id ? [payload.channel_id] : []);
+                        await logger.log(`📥 Received send_embed webhook: ${channelIds.length} channel(s) in guild ${payload.guild_id}`);
                         const result = await handleSendEmbed(payload);
                         res.writeHead(200, { 'Content-Type': 'application/json' });
                         res.end(JSON.stringify({ success: true, message: 'Embed sent successfully' }));

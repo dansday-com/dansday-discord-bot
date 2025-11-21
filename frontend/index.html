@@ -6506,31 +6506,31 @@
                         el.addEventListener('input', updateEmbedPreview);
                     }
                 });
-                
+
                 // Setup image file upload
                 const imageFileInput = document.getElementById('embed_image_file');
                 if (imageFileInput) {
                     imageFileInput.addEventListener('change', async (e) => {
                         const file = e.target.files[0];
                         if (!file) return;
-                        
+
                         if (!file.type.startsWith('image/')) {
                             showMessage('Please select an image file', 'error');
                             e.target.value = '';
                             return;
                         }
-                        
+
                         if (file.size > 10 * 1024 * 1024) { // 10MB
                             showMessage('Image file is too large. Maximum size is 10MB', 'error');
                             e.target.value = '';
                             return;
                         }
-                        
+
                         // Convert file to base64
                         const reader = new FileReader();
                         reader.onload = async (event) => {
                             const base64Data = event.target.result;
-                            
+
                             try {
                                 const uploadRes = await fetch(`/api/servers/${currentServerId}/upload-embed-image`, {
                                     method: 'POST',
@@ -6540,20 +6540,20 @@
                                     credentials: 'include',
                                     body: JSON.stringify({ image: base64Data })
                                 });
-                                
+
                                 if (uploadRes.status === 401) {
                                     await checkAuthStatus();
                                     e.target.value = '';
                                     return;
                                 }
-                                
+
                                 if (!uploadRes.ok) {
                                     const errorData = await uploadRes.json().catch(() => ({ error: 'Upload failed' }));
                                     showMessage(errorData.error || 'Failed to upload image', 'error');
                                     e.target.value = '';
                                     return;
                                 }
-                                
+
                                 const data = await uploadRes.json();
                                 if (data.success && data.url) {
                                     document.getElementById('embed_uploaded_image_url').value = data.url;
@@ -6577,7 +6577,7 @@
                         reader.readAsDataURL(file);
                     });
                 }
-                
+
                 // Initialize image mode
                 switchImageMode('url');
 
@@ -6607,7 +6607,7 @@
             const fileInput = document.getElementById('embed_image_file');
             const preview = document.getElementById('embed_image_preview');
             const uploadedUrlInput = document.getElementById('embed_uploaded_image_url');
-            
+
             if (mode === 'url') {
                 urlBtn.classList.add('bg-red-600', 'border-red-500');
                 urlBtn.classList.remove('bg-gray-700', 'border-gray-600');
@@ -6629,9 +6629,9 @@
             }
             updateEmbedPreview();
         }
-        
+
         window.switchImageMode = switchImageMode;
-        
+
         function updateEmbedPreview() {
             const preview = document.getElementById('embedPreview');
             if (!preview) return;
@@ -6732,7 +6732,7 @@
                 const uploadedImageUrl = document.getElementById('embed_uploaded_image_url').value || '';
                 let imageUrl = uploadedImageUrl || imageUrlInput || null;
                 let uploadedImagePath = null;
-                
+
                 // If using uploaded image, get the path for cleanup
                 if (uploadedImageUrl) {
                     uploadedImagePath = uploadedImageUrl.replace(/^.*\/uploads\/embed-images\//, '');
@@ -6838,7 +6838,7 @@
                             headers: { 'Content-Type': 'application/json' },
                             credentials: 'include',
                             body: JSON.stringify({ path: uploadedImagePath })
-                        }).catch(() => {});
+                        }).catch(() => { });
                     }
                 }
             } catch (err) {

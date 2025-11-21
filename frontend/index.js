@@ -421,7 +421,7 @@ export async function init() {
 
     // Don't serve static files - only serve index.html explicitly
     // This prevents access to index.js, config.js, and other source files
-    
+
     // Block access to sensitive files (js, json, etc.) except uploads
     app.use((req, res, next) => {
         const path = req.path.toLowerCase();

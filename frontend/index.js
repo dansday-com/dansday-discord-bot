@@ -419,17 +419,17 @@ export async function init() {
         }
     }));
 
-    // Don't serve static files - only serve index.html explicitly
-    // This prevents access to index.js, config.js, and other source files
 
-    // Block access to sensitive files (js, json, etc.) except uploads
+
+
+
     app.use((req, res, next) => {
         const path = req.path.toLowerCase();
-        // Allow uploads directory
+
         if (path.startsWith('/uploads/')) {
             return next();
         }
-        // Block access to .js, .json, .ts, .mjs, .map files
+
         if (path.match(/\.(js|json|ts|mjs|map)$/)) {
             return res.status(403).json({ error: 'Access denied' });
         }
@@ -946,13 +946,13 @@ export async function init() {
                 return res.status(400).json({ success: false, error: 'channel_ids (array) and title are required' });
             }
 
-            // Get server to find bot_id
+
             const server = await db.getServer(serverId);
             if (!server) {
                 return res.status(404).json({ success: false, error: 'Server not found' });
             }
 
-            // Get bot to find port and secret_key
+
             const bot = await db.getBot(server.bot_id);
             if (!bot) {
                 return res.status(404).json({ success: false, error: 'Bot not found' });
@@ -966,23 +966,23 @@ export async function init() {
                 return res.status(400).json({ success: false, error: 'Bot webhook not configured' });
             }
 
-            // Convert relative image URL to absolute URL if needed
+
             let finalImageUrl = image_url;
             if (finalImageUrl && finalImageUrl.startsWith('/uploads/')) {
-                // Get the host from the request
+
                 const protocol = req.protocol || 'http';
                 const host = req.get('host') || `localhost:${CONTROL_PANEL.PORT}`;
                 finalImageUrl = `${protocol}://${host}${finalImageUrl}`;
             }
 
-            // Validate channel_ids - filter out any undefined/null values
+
             const validChannelIds = (channel_ids || []).filter(id => id != null && id !== '' && id !== undefined);
 
             if (validChannelIds.length === 0) {
                 return res.status(400).json({ success: false, error: 'At least one valid channel ID is required' });
             }
 
-            // Call bot's webhook endpoint
+
             const http = await import('http');
             const payload = JSON.stringify({
                 type: 'send_embed',
@@ -1017,7 +1017,7 @@ export async function init() {
                     try {
                         const result = JSON.parse(data);
                         if (webhookRes.statusCode === 200 && result.success) {
-                            // Clean up uploaded image after successful send
+
                             if (uploaded_image_path) {
                                 try {
                                     const filePath = join(projectRoot, 'frontend', 'uploads', 'embed-images', uploaded_image_path);
@@ -1030,7 +1030,7 @@ export async function init() {
                             }
                             res.json({ success: true, message: 'Embed sent successfully' });
                         } else {
-                            // Clean up uploaded image on error too
+
                             if (uploaded_image_path) {
                                 try {
                                     const filePath = join(projectRoot, 'frontend', 'uploads', 'embed-images', uploaded_image_path);
@@ -1047,7 +1047,7 @@ export async function init() {
                             });
                         }
                     } catch (parseErr) {
-                        // Clean up uploaded image on parse error too
+
                         if (uploaded_image_path) {
                             try {
                                 const filePath = join(projectRoot, 'frontend', 'uploads', 'embed-images', uploaded_image_path);
@@ -1073,7 +1073,7 @@ export async function init() {
 
         } catch (error) {
             logger.log(`❌ Error sending embed: ${error.message}`);
-            // Clean up uploaded image on error too
+
             if (req.body.uploaded_image_path) {
                 try {
                     const filePath = join(projectRoot, 'frontend', 'uploads', 'embed-images', req.body.uploaded_image_path);
@@ -1088,7 +1088,7 @@ export async function init() {
         }
     });
 
-    // Upload embed image endpoint
+
     app.post('/api/servers/:id/upload-embed-image', requireAuth, async (req, res) => {
         try {
             const serverId = parseInt(req.params.id);
@@ -1096,12 +1096,12 @@ export async function init() {
                 return res.status(400).json({ success: false, error: 'Invalid server ID' });
             }
 
-            // Check if image data was provided
+
             if (!req.body || !req.body.image) {
                 return res.status(400).json({ success: false, error: 'No image file provided' });
             }
 
-            // Handle base64 image data
+
             let imageData;
             let fileExtension = 'png';
 
@@ -1116,25 +1116,25 @@ export async function init() {
                 return res.status(400).json({ success: false, error: 'Invalid image format' });
             }
 
-            // Validate file size (10MB max)
+
             if (imageData.length > 10 * 1024 * 1024) {
                 return res.status(400).json({ success: false, error: 'Image file is too large. Maximum size is 10MB' });
             }
 
-            // Create uploads directory if it doesn't exist
+
             const uploadsDir = join(projectRoot, 'frontend', 'uploads', 'embed-images');
             if (!existsSync(uploadsDir)) {
                 mkdirSync(uploadsDir, { recursive: true });
             }
 
-            // Generate unique filename
+
             const filename = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
             const filePath = join(uploadsDir, filename);
 
-            // Save file
+
             writeFileSync(filePath, imageData);
 
-            // Return URL
+
             const imageUrl = `/uploads/embed-images/${filename}`;
             res.json({ success: true, url: imageUrl, path: filename });
         } catch (error) {
@@ -1143,7 +1143,7 @@ export async function init() {
         }
     });
 
-    // Delete embed image endpoint
+
     app.post('/api/servers/:id/delete-embed-image', requireAuth, async (req, res) => {
         try {
             const { path: filename } = req.body;
@@ -1165,19 +1165,19 @@ export async function init() {
         }
     });
 
-    // Serve uploaded images with security measures
-    // Note: Images must be publicly accessible for Discord embeds to work
-    // Security: Random unguessable filenames, auto-deletion after use, filename validation
+
+
+
     app.get('/uploads/embed-images/:filename', (req, res) => {
         try {
             const filename = req.params.filename;
-            // Security: prevent directory traversal and validate filename format
-            // Filenames should be: timestamp-randomstring.extension
+
+
             if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
                 return res.status(400).json({ error: 'Invalid filename' });
             }
 
-            // Validate filename format (timestamp-randomstring.ext)
+
             const filenamePattern = /^\d+-[a-z0-9]+\.(jpg|jpeg|png|gif|webp|svg)$/i;
             if (!filenamePattern.test(filename)) {
                 return res.status(400).json({ error: 'Invalid filename format' });
@@ -1185,12 +1185,12 @@ export async function init() {
 
             const filePath = join(projectRoot, 'frontend', 'uploads', 'embed-images', filename);
 
-            // Check if file exists
+
             if (!existsSync(filePath)) {
                 return res.status(404).json({ error: 'File not found' });
             }
 
-            // Determine content type based on file extension
+
             const ext = filename.split('.').pop()?.toLowerCase();
             const contentTypes = {
                 'jpg': 'image/jpeg',
@@ -1202,7 +1202,7 @@ export async function init() {
             };
             const contentType = contentTypes[ext] || 'application/octet-stream';
 
-            // Send file with security headers
+
             res.setHeader('Content-Type', contentType);
             res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
             res.setHeader('X-Content-Type-Options', 'nosniff');

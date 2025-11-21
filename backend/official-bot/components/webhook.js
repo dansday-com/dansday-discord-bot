@@ -53,7 +53,7 @@ async function handleSendEmbed(payload) {
     try {
         const { guild_id, channel_ids, role_ids, title, description, image_url, color, footer } = payload;
 
-        // Support both old format (single channel/role) and new format (multiple)
+
         const channelIds = channel_ids || (payload.channel_id ? [payload.channel_id] : []);
         const roleIds = role_ids || (payload.role_id ? [payload.role_id] : []);
 
@@ -89,7 +89,7 @@ async function handleSendEmbed(payload) {
         if (description) embed.setDescription(description);
         if (image_url) embed.setImage(image_url);
 
-        // Build role mentions
+
         let content = '';
         if (roleIds && roleIds.length > 0) {
             const mentions = [];
@@ -109,17 +109,17 @@ async function handleSendEmbed(payload) {
             embeds: [embed]
         };
 
-        // Send to all channels
+
         const results = [];
         for (const channelId of channelIds) {
             try {
-                // Validate channel ID
+
                 if (!channelId || channelId === 'undefined' || channelId === 'null') {
                     results.push({ channelId: String(channelId), success: false, error: 'Invalid channel ID' });
                     await logger.log(`❌ Invalid channel ID: ${channelId} in guild ${guild_id}`);
                     continue;
                 }
-                
+
                 const channel = await guild.channels.fetch(channelId).catch(() => null);
                 if (!channel) {
                     results.push({ channelId: String(channelId), success: false, error: 'Channel not found' });

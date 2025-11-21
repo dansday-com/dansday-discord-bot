@@ -6279,7 +6279,7 @@
                     </div>
                 `;
 
-                // Setup channel multiselect callback
+
                 const originalConfirmMultiselectChannels = window.confirmMultiselectChannels;
                 window.confirmMultiselectChannels = async function () {
                     if (currentChannelField === 'embed_channels') {
@@ -6298,7 +6298,7 @@
                     }
                 };
 
-                // Setup role multiselect callback
+
                 const originalConfirmRoleSelection = window.confirmRoleSelection;
                 window.confirmRoleSelection = function () {
                     if (currentRoleField === 'embed_roles') {
@@ -6430,7 +6430,7 @@
                 window.removeEmbedChannel = removeEmbedChannel;
                 window.removeEmbedRole = removeEmbedRole;
 
-                // Setup color picker sync
+
                 const colorPicker = document.getElementById('embed_color_picker');
                 const colorInput = document.getElementById('embed_color');
                 if (colorPicker && colorInput) {
@@ -6446,14 +6446,14 @@
                     });
                 }
 
-                // Setup character counters
+
                 function updateCharacterCounter(fieldId, counterId, maxLength) {
                     const field = document.getElementById(fieldId);
                     const counter = document.getElementById(counterId);
                     if (field && counter) {
                         const length = field.value.length;
                         counter.textContent = `${length}/${maxLength}`;
-                        // Check max first, then 90%
+
                         if (length >= maxLength) {
                             counter.classList.add('text-red-400');
                             counter.classList.remove('text-gray-400', 'text-yellow-400');
@@ -6467,7 +6467,7 @@
                     }
                 }
 
-                // Update total embed size counter
+
                 function updateTotalEmbedCounter() {
                     const titleField = document.getElementById('embed_title');
                     const descField = document.getElementById('embed_description');
@@ -6484,7 +6484,7 @@
 
                     totalCounter.textContent = `${totalLength}/${maxTotal}`;
 
-                    // Check max first, then 90%
+
                     if (totalLength >= maxTotal) {
                         totalCounter.classList.add('text-red-400');
                         totalCounter.classList.remove('text-gray-400', 'text-yellow-400');
@@ -6497,7 +6497,7 @@
                     }
                 }
 
-                // Setup preview updates and character counters
+
                 const titleField = document.getElementById('embed_title');
                 const descField = document.getElementById('embed_description');
                 const footerField = document.getElementById('embed_footer');
@@ -6529,10 +6529,10 @@
                     updateCharacterCounter('embed_footer', 'embed_footer_counter', 2048);
                 }
 
-                // Initialize total counter
+
                 updateTotalEmbedCounter();
 
-                // Setup preview updates for other fields
+
                 ['embed_image', 'embed_color'].forEach(id => {
                     const el = document.getElementById(id);
                     if (el) {
@@ -6540,7 +6540,7 @@
                     }
                 });
 
-                // Setup image file upload
+
                 const imageFileInput = document.getElementById('embed_image_file');
                 if (imageFileInput) {
                     imageFileInput.addEventListener('change', async (e) => {
@@ -6553,13 +6553,13 @@
                             return;
                         }
 
-                        if (file.size > 10 * 1024 * 1024) { // 10MB
+                        if (file.size > 10 * 1024 * 1024) {
                             showMessage('Image file is too large. Maximum size is 10MB', 'error');
                             e.target.value = '';
                             return;
                         }
 
-                        // Convert file to base64
+
                         const reader = new FileReader();
                         reader.onload = async (event) => {
                             const base64Data = event.target.result;
@@ -6611,10 +6611,10 @@
                     });
                 }
 
-                // Initialize image mode
+
                 switchImageMode('url');
 
-                // Setup form submission
+
                 const form = document.getElementById('embedBuilderForm');
                 if (form) {
                     form.addEventListener('submit', handleEmbedSubmit);
@@ -6677,7 +6677,7 @@
             const colorInput = document.getElementById('embed_color')?.value || '';
             const footerInput = document.getElementById('embed_footer')?.value || '';
 
-            // Get default config
+
             const defaultColor = embedDefaultColor || '#FF0000';
             let embedColor = defaultColor;
 
@@ -6702,7 +6702,7 @@
                 }
             }
 
-            // Show preview if any field has content (except channels/roles which don't affect preview)
+
             const hasContent = title.trim() || description.trim() || imageUrl.trim() || footerInput.trim();
 
             if (!hasContent) {
@@ -6713,7 +6713,7 @@
             const borderColor = embedColor;
             const footerText = footerInput || embedDefaultFooter || '';
 
-            // Truncate text to Discord limits for display (but keep full text for actual sending)
+
             const displayTitle = title.length > 256 ? title.substring(0, 253) + '...' : title;
             const displayDescription = description.length > 4096 ? description.substring(0, 4093) + '...' : description;
             const displayFooter = footerText.length > 2048 ? footerText.substring(0, 2045) + '...' : footerText;
@@ -6766,14 +6766,14 @@
                 let imageUrl = uploadedImageUrl || imageUrlInput || null;
                 let uploadedImagePath = null;
 
-                // If using uploaded image, get the path for cleanup
+
                 if (uploadedImageUrl) {
-                    uploadedImagePath = uploadedImageUrl.replace(/^.*\/uploads\/embed-images\//, '');
+                    uploadedImagePath = uploadedImageUrl.replace(/^.*\/uploads\/embed-images
                 }
 
-                // Warn if using data URL (base64) as it can be very large
+
                 if (imageUrl && imageUrl.startsWith('data:')) {
-                    if (imageUrl.length > 1000000) { // 1MB
+                    if (imageUrl.length > 1000000) {
                         showMessage('Image data URL is too large. Please use a regular image URL instead.', 'error');
                         submitBtn.disabled = false;
                         loadingIcon.classList.add('hidden');
@@ -6781,7 +6781,7 @@
                     }
                 }
 
-                // Validate total embed size (Discord limit: 6000 characters)
+
                 const title = document.getElementById('embed_title').value;
                 const description = document.getElementById('embed_description').value || '';
                 const footer = document.getElementById('embed_footer').value || '';
@@ -6840,7 +6840,7 @@
 
                 if (data.success) {
                     showMessage(`Embed sent successfully to ${channelIds.length} channel(s)!`, 'success');
-                    // Reset form
+
                     document.getElementById('embedBuilderForm').reset();
                     document.getElementById('embed_channels').value = '';
                     document.getElementById('embed_roles').value = '';
@@ -6853,7 +6853,7 @@
                     if (fileInput) fileInput.value = '';
                     const preview = document.getElementById('embed_image_preview');
                     if (preview) preview.classList.add('hidden');
-                    // Restore default color values
+
                     const colorPicker = document.getElementById('embed_color_picker');
                     const colorInput = document.getElementById('embed_color');
                     if (colorPicker && colorInput && embedDefaultColor) {
@@ -6864,7 +6864,7 @@
                     updateEmbedPreview();
                 } else {
                     showMessage(data.error || 'Failed to send embed', 'error');
-                    // Clean up uploaded image on error too
+
                     if (uploadedImagePath) {
                         fetch(`/api/servers/${currentServerId}/delete-embed-image`, {
                             method: 'POST',

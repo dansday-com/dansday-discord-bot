@@ -17,7 +17,6 @@ async function handleMenuButton(interaction) {
         return;
     }
 
-    // Menu requires member+ permission
     if (!(await hasPermission(member, 'leveling'))) {
         const errorMessage = await getPermissionDeniedMessage(interaction.guild, 'menu');
         await interaction.reply({

@@ -43,17 +43,17 @@ export async function handleGiveawayButton(interaction) {
         const activeGiveaway = await db.getActiveGiveawayByMember(server.id, dbMember.id);
 
         if (activeGiveaway) {
-            const cancelButton = new ButtonBuilder()
-                .setCustomId(`giveaway_cancel_${activeGiveaway.id}`)
-                .setLabel('❌ Cancel Giveaway')
-                .setStyle(ButtonStyle.Danger);
-
             const finishButton = new ButtonBuilder()
                 .setCustomId(`giveaway_finish_${activeGiveaway.id}`)
                 .setLabel('🏁 Finish Giveaway')
                 .setStyle(ButtonStyle.Success);
 
-            const buttonRow = new ActionRowBuilder().addComponents(cancelButton, finishButton);
+            const cancelButton = new ButtonBuilder()
+                .setCustomId(`giveaway_cancel_${activeGiveaway.id}`)
+                .setLabel('❌ Cancel Giveaway')
+                .setStyle(ButtonStyle.Danger);
+
+            const buttonRow = new ActionRowBuilder().addComponents(finishButton, cancelButton);
 
             const activeGiveawayEmbed = new EmbedBuilder()
                 .setColor(embedConfig.COLOR)

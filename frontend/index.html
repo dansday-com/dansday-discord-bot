@@ -3835,6 +3835,7 @@
             const channelId = config.giveaway_channel;
             const channelIds = channelId ? [channelId] : [];
             const channelNames = await loadChannelNames(channelIds);
+            const creatorCanParticipate = config.giveaway_creator_can_participate || false;
             return `
                     <form id="giveawayConfigForm" class="space-y-4 sm:space-y-6">
                         <!-- Giveaway Channel -->
@@ -3849,6 +3850,20 @@
                                 <i class="fas fa-chevron-down text-gray-400"></i>
                             </button>
                             <input type="hidden" id="giveaway_channel" name="giveaway_channel" value="${channelId || ''}">
+                        </div>
+                        <!-- Creator Can Participate -->
+                        <div>
+                            <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                                <i class="fas fa-user-check text-red-500 mr-2"></i>Creator Can Participate
+                            </label>
+                            <p class="text-xs text-gray-400 mb-2">Allow giveaway creators to enter their own giveaways</p>
+                            <div class="flex items-center gap-3">
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="giveaway_creator_can_participate" name="giveaway_creator_can_participate" ${creatorCanParticipate ? 'checked' : ''} class="sr-only peer">
+                                    <div class="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1.5px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
+                                    <span class="ml-3 text-sm text-gray-300" id="giveaway_creator_can_participate_label">${creatorCanParticipate ? 'Yes' : 'No'}</span>
+                                </label>
+                            </div>
                         </div>
                         <!-- Save Button -->
                         <div class="pt-4 border-t border-gray-700">
@@ -6112,7 +6127,8 @@
             if (e.target.id === 'giveawayConfigForm') {
                 e.preventDefault();
                 const formData = {
-                    giveaway_channel: document.getElementById('giveaway_channel').value || null
+                    giveaway_channel: document.getElementById('giveaway_channel').value || null,
+                    giveaway_creator_can_participate: document.getElementById('giveaway_creator_can_participate').checked || false
                 };
                 const submitBtn = document.getElementById('saveGiveawayConfigBtn');
                 const loadingIcon = document.getElementById('saveGiveawayConfigLoading');
@@ -6886,7 +6902,7 @@
 
 
                 if (uploadedImageUrl) {
-                    uploadedImagePath = uploadedImageUrl.replace(/^.*\/uploads\/embed-images\//, '');
+                    uploadedImagePath = uploadedImageUrl.replace(/^.*\/uploads\/embed-images/, '');
                 }
 
 
@@ -7000,6 +7016,15 @@
                 loadingIcon.classList.add('hidden');
             }
         }
+
+        document.addEventListener('change', (e) => {
+            if (e.target.id === 'giveaway_creator_can_participate') {
+                const label = document.getElementById('giveaway_creator_can_participate_label');
+                if (label) {
+                    label.textContent = e.target.checked ? 'Yes' : 'No';
+                }
+            }
+        });
 
         document.getElementById('serverConfigYear').textContent = new Date().getFullYear();
         let botDetailRefreshInterval = null;

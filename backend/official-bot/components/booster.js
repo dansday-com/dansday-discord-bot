@@ -52,7 +52,7 @@ async function thankBooster(member, client) {
         const thankMessage = randomMessage.replace("{user}", `<@${member.user.id}>`);
         const embedConfig = await getEmbedConfig(member.guild.id);
 
-        // Get fresh boost data from Discord guild object
+
         const guildBoostCount = member.guild?.premiumSubscriptionCount ?? (serverData?.total_boosters || 0);
         let guildBoostLevel = 0;
         if (member.guild?.premiumTier) {

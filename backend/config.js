@@ -411,6 +411,19 @@ export const GIVEAWAY = {
 
         const mainChannel = await getMainChannel(guildId);
         return mainChannel;
+    },
+
+    async getCreatorCanParticipate(guildId) {
+        requireBotConfig();
+        requireGuildId(guildId, 'getting giveaway creator can participate setting');
+
+        const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, 'giveaway');
+
+        if (settings && settings.settings && settings.settings.giveaway_creator_can_participate !== undefined) {
+            return settings.settings.giveaway_creator_can_participate;
+        }
+
+        return false;
     }
 };
 

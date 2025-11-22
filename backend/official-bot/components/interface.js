@@ -6,7 +6,7 @@ import { handleCustomSupporterRoleButton, handleCustomSupporterRoleModal, handle
 import { handleFeedbackButton, handleFeedbackModal } from './interface/feedback.js';
 import { handleAFKButton, handleAFKModal, handleRemoveAFKButton } from './interface/afk.js';
 import { handleLevelingButton, handleLeaderboardButton, handleDmToggleButton } from './interface/leveling.js';
-import { handleGiveawayButton, handleGiveawayModal, handleGiveawayEnterButton, handleGiveawayRoleSelect, handleGiveawaySkipRolesContinue } from './interface/giveaway.js';
+import { handleGiveawayButton, handleGiveawayModal, handleGiveawayEnterButton, handleGiveawayRoleSelect, handleGiveawaySkipRolesContinue, handleGiveawayCancel, handleGiveawayFinish } from './interface/giveaway.js';
 
 async function handleMenuButton(interaction) {
     const member = interaction.member || await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
@@ -50,17 +50,17 @@ async function handleMenuButton(interaction) {
             .setStyle(ButtonStyle.Success));
     }
 
-    if (await hasPermission(member, 'feedback')) {
-        buttons.push(new ButtonBuilder()
-            .setCustomId('bot_feedback')
-            .setLabel('💬 Feedback')
-            .setStyle(ButtonStyle.Success));
-    }
-
     if (await hasPermission(member, 'giveaway')) {
         buttons.push(new ButtonBuilder()
             .setCustomId('bot_giveaway')
             .setLabel('🎉 Giveaway')
+            .setStyle(ButtonStyle.Success));
+    }
+
+    if (await hasPermission(member, 'feedback')) {
+        buttons.push(new ButtonBuilder()
+            .setCustomId('bot_feedback')
+            .setLabel('💬 Feedback')
             .setStyle(ButtonStyle.Success));
     }
 
@@ -114,11 +114,11 @@ export async function handleButtonInteraction(interaction, client) {
         case 'bot_leveling':
             await handleLevelingButton(interaction);
             break;
-        case 'bot_feedback':
-            await handleFeedbackButton(interaction);
-            break;
         case 'bot_giveaway':
             await handleGiveawayButton(interaction);
+            break;
+        case 'bot_feedback':
+            await handleFeedbackButton(interaction);
             break;
         case 'bot_afk':
             await handleAFKButton(interaction);
@@ -141,6 +141,10 @@ export async function handleButtonInteraction(interaction, client) {
                 await handleGiveawayEnterButton(interaction);
             } else if (customId === 'giveaway_continue_form') {
                 await handleGiveawaySkipRolesContinue(interaction);
+            } else if (customId.startsWith('giveaway_finish_')) {
+                await handleGiveawayFinish(interaction);
+            } else if (customId.startsWith('giveaway_cancel_')) {
+                await handleGiveawayCancel(interaction);
             } else {
                 await logger.log(`🔍 Unknown button interaction: ${customId}`);
                 await interaction.reply({

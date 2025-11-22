@@ -139,7 +139,7 @@ async function runMigration() {
 async function setupDatabase() {
     logger.log('🔍 Checking database tables...');
 
-        const tables = [
+    const tables = [
         { name: 'panel', required: true },
         { name: 'panel_logs', required: true },
         { name: 'bots', required: true },
@@ -241,6 +241,18 @@ async function setupDatabase() {
             logger.log('🔧 Adding dm_notifications_enabled column to server_member_levels table...');
             await query('ALTER TABLE server_member_levels ADD COLUMN dm_notifications_enabled BOOLEAN DEFAULT TRUE AFTER level');
             logger.log('✅ Added dm_notifications_enabled column');
+        }
+
+        const isWinnerCheck = await query(
+            `SELECT COLUMN_NAME FROM information_schema.COLUMNS 
+             WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'server_giveaway_entries' AND COLUMN_NAME = 'is_winner'`,
+            [connectionConfig.database]
+        );
+
+        if (!isWinnerCheck || isWinnerCheck.length === 0) {
+            logger.log('🔧 Adding is_winner column to server_giveaway_entries table...');
+            await query('ALTER TABLE server_giveaway_entries ADD COLUMN is_winner BOOLEAN DEFAULT FALSE');
+            logger.log('✅ Added is_winner column');
         }
     } catch (err) {
         logger.log(`⚠️  Error checking/adding columns: ${err.message}`);
@@ -1155,9 +1167,9 @@ export async function getServerMembersList(serverId) {
         ...member,
         roles: member.roles ? member.roles.split(',').map(role => {
             const [roleId, roleName, roleColor, position] = role.split(':');
-            return { 
-                id: roleId, 
-                name: roleName, 
+            return {
+                id: roleId,
+                name: roleName,
                 color: roleColor || null,
                 position: position ? parseInt(position, 10) : 0
             };
@@ -1849,25 +1861,25 @@ export async function createGiveaway(giveawayData) {
     const now = toMySQLDateTime();
     const endsAt = toMySQLDateTime(new Date(Date.now() + giveawayData.duration_minutes * 60 * 1000));
 
-            const result = await query(
-                `INSERT INTO server_giveaways (
+    const result = await query(
+        `INSERT INTO server_giveaways (
                     server_id, member_id, title, prize,
                     duration_minutes, allowed_roles, multiple_entries_allowed, winner_count,
                     status, ends_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [
-                    giveawayData.server_id,
-                    giveawayData.member_id,
-                    giveawayData.title,
-                    giveawayData.prize,
-                    giveawayData.duration_minutes,
-                    giveawayData.allowed_roles ? JSON.stringify(giveawayData.allowed_roles) : null,
-                    giveawayData.multiple_entries_allowed || false,
-                    giveawayData.winner_count || 1,
-                    'active',
-                    endsAt
-                ]
-            );
+        [
+            giveawayData.server_id,
+            giveawayData.member_id,
+            giveawayData.title,
+            giveawayData.prize,
+            giveawayData.duration_minutes,
+            giveawayData.allowed_roles ? JSON.stringify(giveawayData.allowed_roles) : null,
+            giveawayData.multiple_entries_allowed || false,
+            giveawayData.winner_count || 1,
+            'active',
+            endsAt
+        ]
+    );
 
     const insertedId = result.insertId;
     const giveaway = await query(
@@ -1937,6 +1949,26 @@ export async function getGiveawayById(giveawayId) {
     return result[0] || null;
 }
 
+export async function getActiveGiveawayByMember(serverId, memberId) {
+    await initializeDatabase();
+    const result = await query(
+        'SELECT * FROM server_giveaways WHERE server_id = ? AND member_id = ? AND status = ?',
+        [serverId, memberId, 'active']
+    );
+
+    if (result[0] && result[0].allowed_roles) {
+        try {
+            result[0].allowed_roles = typeof result[0].allowed_roles === 'string'
+                ? JSON.parse(result[0].allowed_roles)
+                : result[0].allowed_roles;
+        } catch (e) {
+            result[0].allowed_roles = [];
+        }
+    }
+
+    return result[0] || null;
+}
+
 export async function addGiveawayEntry(giveawayId, memberId, discordMemberId, increment = true) {
     await initializeDatabase();
     const now = toMySQLDateTime();
@@ -1978,31 +2010,53 @@ export async function getGiveawayEntries(giveawayId) {
 export async function getRandomGiveawayWinners(giveawayId, winnerCount) {
     await initializeDatabase();
     const entries = await getGiveawayEntries(giveawayId);
-    
+
     if (entries.length === 0) {
         return [];
     }
 
+    const crypto = await import('crypto');
+    const shuffledEntries = [...entries];
+
+    for (let shuffleRound = 0; shuffleRound < 10; shuffleRound++) {
+        for (let i = shuffledEntries.length - 1; i > 0; i--) {
+            const j = crypto.randomInt(0, i + 1);
+            [shuffledEntries[i], shuffledEntries[j]] = [shuffledEntries[j], shuffledEntries[i]];
+        }
+    }
+
     const weightedEntries = [];
-    for (const entry of entries) {
+    for (const entry of shuffledEntries) {
         for (let i = 0; i < entry.entry_count; i++) {
             weightedEntries.push(entry);
         }
     }
 
+    for (let round = 0; round < 10; round++) {
+        for (let i = weightedEntries.length - 1; i > 0; i--) {
+            const j = crypto.randomInt(0, i + 1);
+            [weightedEntries[i], weightedEntries[j]] = [weightedEntries[j], weightedEntries[i]];
+        }
+    }
+
     const winners = [];
     const usedMemberIds = new Set();
-    
-    while (winners.length < winnerCount && weightedEntries.length > 0) {
-        const randomIndex = Math.floor(Math.random() * weightedEntries.length);
-        const selected = weightedEntries[randomIndex];
-        
-        if (!usedMemberIds.has(selected.discord_member_id)) {
-            winners.push(selected);
-            usedMemberIds.add(selected.discord_member_id);
+    const availableEntries = [...weightedEntries];
+
+    while (winners.length < winnerCount && availableEntries.length > 0) {
+        const randomIndex = crypto.randomInt(0, availableEntries.length);
+        const selectedEntry = availableEntries[randomIndex];
+
+        if (!usedMemberIds.has(selectedEntry.discord_member_id)) {
+            winners.push(selectedEntry);
+            usedMemberIds.add(selectedEntry.discord_member_id);
         }
-        
-        weightedEntries.splice(randomIndex, 1);
+
+        for (let i = availableEntries.length - 1; i >= 0; i--) {
+            if (availableEntries[i].discord_member_id === selectedEntry.discord_member_id) {
+                availableEntries.splice(i, 1);
+            }
+        }
     }
 
     return winners;
@@ -2016,15 +2070,36 @@ export async function markGiveawayEnded(giveawayId) {
     );
 }
 
-export async function cleanupGiveawayEntries(giveawayId) {
+export async function markGiveawayEndedForce(giveawayId) {
     await initializeDatabase();
-    const result = await query(
-        'DELETE FROM server_giveaway_entries WHERE giveaway_id = ?',
-        [giveawayId]
+    await query(
+        'UPDATE server_giveaways SET status = ?, winners_announced = ? WHERE id = ?',
+        ['ended_force', true, giveawayId]
     );
-    return result?.affectedRows || 0;
 }
 
+export async function cancelGiveaway(giveawayId) {
+    await initializeDatabase();
+    await query(
+        'UPDATE server_giveaways SET status = ? WHERE id = ?',
+        ['cancelled', giveawayId]
+    );
+}
+
+export async function markGiveawayWinners(giveawayId, winnerDiscordIds) {
+    await initializeDatabase();
+    if (!winnerDiscordIds || winnerDiscordIds.length === 0) {
+        return;
+    }
+
+    const placeholders = winnerDiscordIds.map(() => '?').join(',');
+    await query(
+        `UPDATE server_giveaway_entries 
+         SET is_winner = TRUE 
+         WHERE giveaway_id = ? AND discord_member_id IN (${placeholders})`,
+        [giveawayId, ...winnerDiscordIds]
+    );
+}
 
 export default {
     getAllBots,
@@ -2080,9 +2155,12 @@ export default {
     updateGiveawayMessageId,
     getEndedGiveaways,
     getGiveawayById,
+    getActiveGiveawayByMember,
     addGiveawayEntry,
     getGiveawayEntries,
     getRandomGiveawayWinners,
     markGiveawayEnded,
-    cleanupGiveawayEntries
+    markGiveawayEndedForce,
+    cancelGiveaway,
+    markGiveawayWinners
 };

@@ -4,12 +4,11 @@ import logger from '../../../logger.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import db from '../../../../database/database.js';
 
-const pendingGiveawayRoles = new Map();
-
 export async function handleGiveawayButton(interaction) {
     try {
         const member = interaction.member;
         const guild = interaction.guild;
+        const user = interaction.user;
 
         if (!(await hasPermission(member, 'giveaway'))) {
             const errorMessage = await getPermissionDeniedMessage(interaction.guild, 'giveaway');
@@ -20,7 +19,65 @@ export async function handleGiveawayButton(interaction) {
             return;
         }
 
+        const server = await getServerForCurrentBot(guild.id);
         const embedConfig = await getEmbedConfig(guild.id);
+
+        let dbMember = await db.getMemberByDiscordId(server.id, user.id);
+        if (!dbMember) {
+            dbMember = await db.upsertMember(server.id, {
+                id: user.id,
+                username: user.username,
+                display_name: user.displayName || user.username,
+                avatar: user.avatar
+            });
+        }
+
+        if (!dbMember || !dbMember.id) {
+            await interaction.reply({
+                content: '❌ Failed to retrieve member information.',
+                flags: 64
+            });
+            return;
+        }
+
+        const activeGiveaway = await db.getActiveGiveawayByMember(server.id, dbMember.id);
+
+        if (activeGiveaway) {
+            const cancelButton = new ButtonBuilder()
+                .setCustomId(`giveaway_cancel_${activeGiveaway.id}`)
+                .setLabel('❌ Cancel Giveaway')
+                .setStyle(ButtonStyle.Danger);
+
+            const finishButton = new ButtonBuilder()
+                .setCustomId(`giveaway_finish_${activeGiveaway.id}`)
+                .setLabel('🏁 Finish Giveaway')
+                .setStyle(ButtonStyle.Success);
+
+            const buttonRow = new ActionRowBuilder().addComponents(cancelButton, finishButton);
+
+            const activeGiveawayEmbed = new EmbedBuilder()
+                .setColor(embedConfig.COLOR)
+                .setTitle('🎉 Active Giveaway Found')
+                .setDescription(`You already have an active giveaway:\n\n**${activeGiveaway.title}**\n**Prize:** ${activeGiveaway.prize}\n\nWhat would you like to do?`)
+                .addFields([
+                    {
+                        name: '⏰ Ends',
+                        value: `<t:${Math.floor(new Date(activeGiveaway.ends_at).getTime() / 1000)}:R>`,
+                        inline: true
+                    }
+                ])
+                .setTimestamp()
+                .setFooter({ text: embedConfig.FOOTER });
+
+            await interaction.reply({
+                embeds: [activeGiveawayEmbed],
+                components: [buttonRow],
+                flags: 64
+            });
+
+            await logger.log(`🎉 Active giveaway options shown to ${member.user.tag} (${member.user.id}) for giveaway ${activeGiveaway.id}`);
+            return;
+        }
 
         const roleSelect = new RoleSelectMenuBuilder()
             .setCustomId('giveaway_role_select')
@@ -52,7 +109,7 @@ export async function handleGiveawayButton(interaction) {
         await logger.log(`🎉 Giveaway role selector shown to ${member.user.tag} (${member.user.id})`);
 
     } catch (error) {
-        await logger.log(`❌ Error showing giveaway role selector: ${error.message}`);
+        await logger.log(`❌ Error showing giveaway interface: ${error.message}`);
         await interaction.reply({
             content: `❌ Failed to open giveaway form: ${error.message}`,
             flags: 64
@@ -67,9 +124,6 @@ export async function handleGiveawayRoleSelect(interaction) {
         }
 
         const selectedRoles = interaction.values;
-        const userId = interaction.user.id;
-
-        pendingGiveawayRoles.set(userId, selectedRoles.length > 0 ? selectedRoles : null);
 
         await logger.log(`🔍 Role selection: ${selectedRoles.length} roles selected for giveaway by ${interaction.user.tag}`);
 
@@ -151,9 +205,6 @@ export async function handleGiveawayRoleSelect(interaction) {
 
 export async function handleGiveawaySkipRolesContinue(interaction) {
     try {
-        const userId = interaction.user.id;
-        pendingGiveawayRoles.set(userId, null);
-
         const modal = new ModalBuilder()
             .setCustomId('giveaway_create_none')
             .setTitle('🎉 Create Giveaway');
@@ -272,7 +323,6 @@ export async function handleGiveawayModal(interaction) {
 
         const multipleEntriesAllowed = multipleEntriesStr === 'yes' || multipleEntriesStr === 'y' || multipleEntriesStr === 'true';
 
-        // Get roles from customId
         let allowedRoles = null;
         if (interaction.customId.startsWith('giveaway_create_')) {
             const customIdParts = interaction.customId.replace('giveaway_create_', '').split('_');
@@ -280,7 +330,7 @@ export async function handleGiveawayModal(interaction) {
                 allowedRoles = customIdParts.filter(id => id && id !== 'none' && id.length > 0);
             }
         }
-        // If customId is just 'giveaway_create', allowedRoles stays null (all roles allowed)
+
 
         let giveawayChannelId;
         try {
@@ -313,10 +363,9 @@ export async function handleGiveawayModal(interaction) {
         const server = await getServerForCurrentBot(guild.id);
         const embedConfig = await getEmbedConfig(guild.id);
 
-        // Get or create member in database
         let dbMember = await db.getMemberByDiscordId(server.id, user.id);
         if (!dbMember) {
-            // Create member if doesn't exist
+
             dbMember = await db.upsertMember(server.id, {
                 id: user.id,
                 username: user.username,
@@ -328,6 +377,14 @@ export async function handleGiveawayModal(interaction) {
         if (!dbMember || !dbMember.id) {
             await interaction.editReply({
                 content: '❌ Failed to create giveaway: Could not retrieve member information.'
+            });
+            return;
+        }
+
+        const activeGiveaway = await db.getActiveGiveawayByMember(server.id, dbMember.id);
+        if (activeGiveaway) {
+            await interaction.editReply({
+                content: '❌ You already have an active giveaway. Please cancel or finish it first.'
             });
             return;
         }
@@ -468,7 +525,7 @@ export async function handleGiveawayEnterButton(interaction) {
             return;
         }
 
-        // Check role restrictions (only if allowed_roles is not null and has values)
+
         if (giveaway.allowed_roles !== null && Array.isArray(giveaway.allowed_roles) && giveaway.allowed_roles.length > 0) {
             const memberRoles = member.roles.cache.map(role => role.id);
             const hasAllowedRole = giveaway.allowed_roles.some(roleId => memberRoles.includes(roleId));
@@ -494,12 +551,14 @@ export async function handleGiveawayEnterButton(interaction) {
             return;
         }
 
-        // Prevent creator from entering their own giveaway
         if (giveaway.member_id === dbMember.id) {
-            await interaction.editReply({
-                content: '❌ You cannot enter your own giveaway!'
-            });
-            return;
+            const creatorCanParticipate = await GIVEAWAY.getCreatorCanParticipate(guild.id);
+            if (!creatorCanParticipate) {
+                await interaction.editReply({
+                    content: '❌ You cannot enter your own giveaway!'
+                });
+                return;
+            }
         }
 
         const entries = await db.getGiveawayEntries(giveaway.id);
@@ -532,6 +591,308 @@ export async function handleGiveawayEnterButton(interaction) {
         await logger.log(`❌ Error processing giveaway entry: ${error.message}`);
         await interaction.editReply({
             content: `❌ **Failed to Enter Giveaway**\n\nError: ${error.message}`
+        }).catch(() => null);
+    }
+}
+
+export async function handleGiveawayCancel(interaction) {
+    try {
+        await interaction.deferReply({ flags: 64 });
+
+        const member = interaction.member;
+        const guild = interaction.guild;
+        const user = interaction.user;
+
+        if (!(await hasPermission(member, 'giveaway'))) {
+            const errorMessage = await getPermissionDeniedMessage(interaction.guild, 'giveaway');
+            await interaction.editReply({
+                content: errorMessage
+            }).catch(() => null);
+            return;
+        }
+
+        const giveawayId = parseInt(interaction.customId.replace('giveaway_cancel_', ''));
+        if (isNaN(giveawayId)) {
+            await interaction.editReply({
+                content: '❌ Invalid giveaway ID.'
+            });
+            return;
+        }
+
+        const server = await getServerForCurrentBot(guild.id);
+        const dbMember = await db.getMemberByDiscordId(server.id, user.id);
+        if (!dbMember) {
+            await interaction.editReply({
+                content: '❌ Member not found in database.'
+            });
+            return;
+        }
+
+        const giveaway = await db.getGiveawayById(giveawayId);
+        if (!giveaway) {
+            await interaction.editReply({
+                content: '❌ Giveaway not found.'
+            });
+            return;
+        }
+
+        if (giveaway.member_id !== dbMember.id) {
+            await interaction.editReply({
+                content: '❌ You can only cancel your own giveaways.'
+            });
+            return;
+        }
+
+        if (giveaway.status !== 'active') {
+            await interaction.editReply({
+                content: '❌ This giveaway is not active.'
+            });
+            return;
+        }
+
+        await db.cancelGiveaway(giveawayId);
+
+        let giveawayChannelId;
+        try {
+            giveawayChannelId = await GIVEAWAY.getChannel(guild.id);
+        } catch (err) {
+            await logger.log(`❌ Error getting giveaway channel: ${err.message}`);
+        }
+
+        const embedConfig = await getEmbedConfig(guild.id);
+
+        if (giveawayChannelId && giveaway.discord_message_id) {
+            const channel = guild.channels.cache.get(giveawayChannelId);
+            if (channel) {
+                try {
+                    const message = await channel.messages.fetch(giveaway.discord_message_id);
+                    await message.edit({ components: [] });
+
+                    const cancelEmbed = new EmbedBuilder()
+                        .setColor(embedConfig.COLOR)
+                        .setTitle('❌ Giveaway Cancelled')
+                        .setDescription(`**${giveaway.title}**\n\n**Prize:** ${giveaway.prize}\n\nThis giveaway has been cancelled by the host.`)
+                        .setTimestamp()
+                        .setFooter({ text: embedConfig.FOOTER });
+
+                    await channel.send({
+                        embeds: [cancelEmbed]
+                    });
+                } catch (err) {
+                    await logger.log(`❌ Error updating giveaway message: ${err.message}`);
+                }
+            }
+        }
+
+        const successEmbed = new EmbedBuilder()
+            .setColor(embedConfig.COLOR)
+            .setTitle('✅ Giveaway Cancelled')
+            .setDescription(`Your giveaway **"${giveaway.title}"** has been cancelled.`)
+            .setTimestamp()
+            .setFooter({ text: embedConfig.FOOTER });
+
+        await interaction.editReply({
+            embeds: [successEmbed]
+        }).catch(() => null);
+
+        await logger.log(`✅ Giveaway ${giveawayId} cancelled by ${user.tag} (${user.id})`);
+
+    } catch (error) {
+        await logger.log(`❌ Error cancelling giveaway: ${error.message}`);
+        await interaction.editReply({
+            content: `❌ Failed to cancel giveaway: ${error.message}`
+        }).catch(() => null);
+    }
+}
+
+export async function handleGiveawayFinish(interaction) {
+    try {
+        await interaction.deferReply({ flags: 64 });
+
+        const member = interaction.member;
+        const guild = interaction.guild;
+        const user = interaction.user;
+
+        if (!(await hasPermission(member, 'giveaway'))) {
+            const errorMessage = await getPermissionDeniedMessage(interaction.guild, 'giveaway');
+            await interaction.editReply({
+                content: errorMessage
+            }).catch(() => null);
+            return;
+        }
+
+        const giveawayId = parseInt(interaction.customId.replace('giveaway_finish_', ''));
+        if (isNaN(giveawayId)) {
+            await interaction.editReply({
+                content: '❌ Invalid giveaway ID.'
+            });
+            return;
+        }
+
+        const server = await getServerForCurrentBot(guild.id);
+        const dbMember = await db.getMemberByDiscordId(server.id, user.id);
+        if (!dbMember) {
+            await interaction.editReply({
+                content: '❌ Member not found in database.'
+            });
+            return;
+        }
+
+        const giveaway = await db.getGiveawayById(giveawayId);
+        if (!giveaway) {
+            await interaction.editReply({
+                content: '❌ Giveaway not found.'
+            });
+            return;
+        }
+
+        if (giveaway.member_id !== dbMember.id) {
+            await interaction.editReply({
+                content: '❌ You can only finish your own giveaways.'
+            });
+            return;
+        }
+
+        if (giveaway.status !== 'active') {
+            await interaction.editReply({
+                content: '❌ This giveaway is not active.'
+            });
+            return;
+        }
+
+        await db.markGiveawayEndedForce(giveawayId);
+
+        let giveawayChannelId;
+        try {
+            giveawayChannelId = await GIVEAWAY.getChannel(guild.id);
+        } catch (err) {
+            await logger.log(`❌ Error getting giveaway channel: ${err.message}`);
+            await interaction.editReply({
+                content: '❌ Failed to get giveaway channel.'
+            });
+            return;
+        }
+
+        if (!giveawayChannelId) {
+            await interaction.editReply({
+                content: '❌ Giveaway channel not configured.'
+            });
+            return;
+        }
+
+        const channel = guild.channels.cache.get(giveawayChannelId);
+        if (!channel) {
+            await interaction.editReply({
+                content: '❌ Giveaway channel not found.'
+            });
+            return;
+        }
+
+        const message = await channel.messages.fetch(giveaway.discord_message_id).catch(() => null);
+        if (message) {
+            await message.edit({ components: [] }).catch(() => null);
+        }
+
+        const entries = await db.getGiveawayEntries(giveaway.id);
+        const embedConfig = await getEmbedConfig(guild.id);
+
+        if (entries.length === 0) {
+            const noEntriesEmbed = new EmbedBuilder()
+                .setColor(embedConfig.COLOR)
+                .setTitle('🎉 Giveaway Ended')
+                .setDescription(`**${giveaway.title}**\n\n❌ No entries! The giveaway has ended with no participants.`)
+                .setTimestamp()
+                .setFooter({ text: embedConfig.FOOTER });
+
+            await channel.send({
+                embeds: [noEntriesEmbed]
+            }).catch(() => null);
+
+            const successEmbed = new EmbedBuilder()
+                .setColor(embedConfig.COLOR)
+                .setTitle('✅ Giveaway Finished')
+                .setDescription(`Your giveaway **"${giveaway.title}"** has been finished early.\n\nNo participants entered.`)
+                .setTimestamp()
+                .setFooter({ text: embedConfig.FOOTER });
+
+            await interaction.editReply({
+                embeds: [successEmbed]
+            }).catch(() => null);
+
+            await logger.log(`✅ Giveaway ${giveawayId} finished early by ${user.tag} (${user.id}) - No entries`);
+            return;
+        }
+
+        const winners = await db.getRandomGiveawayWinners(giveaway.id, giveaway.winner_count);
+
+        if (winners.length === 0) {
+            const noWinnersEmbed = new EmbedBuilder()
+                .setColor(embedConfig.COLOR)
+                .setTitle('🎉 Giveaway Ended')
+                .setDescription(`**${giveaway.title}**\n\n❌ Could not select winners.`)
+                .setTimestamp()
+                .setFooter({ text: embedConfig.FOOTER });
+
+            await channel.send({
+                embeds: [noWinnersEmbed]
+            }).catch(() => null);
+
+            const successEmbed = new EmbedBuilder()
+                .setColor(embedConfig.COLOR)
+                .setTitle('✅ Giveaway Finished')
+                .setDescription(`Your giveaway **"${giveaway.title}"** has been finished early.\n\nCould not select winners.`)
+                .setTimestamp()
+                .setFooter({ text: embedConfig.FOOTER });
+
+            await interaction.editReply({
+                embeds: [successEmbed]
+            }).catch(() => null);
+
+            await logger.log(`✅ Giveaway ${giveawayId} finished early by ${user.tag} (${user.id}) - No winners selected`);
+            return;
+        }
+
+        const winnerMentions = winners.map(w => `<@${w.discord_member_id}>`).join(', ');
+
+        const winnerDiscordIds = winners.map(w => w.discord_member_id);
+        await db.markGiveawayWinners(giveaway.id, winnerDiscordIds);
+
+        let description = `**${giveaway.title}**\n\n**Prize:** ${giveaway.prize}\n\n🎊 **Winner${winners.length > 1 ? 's' : ''}:** ${winnerMentions}\n\n`;
+
+        if (winners.length < giveaway.winner_count) {
+            description += `⚠️ *Only ${winners.length} winner${winners.length > 1 ? 's' : ''} selected (${giveaway.winner_count} requested) due to limited entries.*\n\n`;
+        }
+
+        description += `Congratulations! 🎉`;
+
+        const winnersEmbed = new EmbedBuilder()
+            .setColor(embedConfig.COLOR)
+            .setTitle('🎉 Giveaway Ended!')
+            .setDescription(description)
+            .setTimestamp()
+            .setFooter({ text: embedConfig.FOOTER });
+
+        await channel.send({
+            embeds: [winnersEmbed]
+        }).catch(() => null);
+
+        const successEmbed = new EmbedBuilder()
+            .setColor(embedConfig.COLOR)
+            .setTitle('✅ Giveaway Finished')
+            .setDescription(`Your giveaway **"${giveaway.title}"** has been finished early.\n\n**Winners:** ${winnerMentions}`)
+            .setTimestamp()
+            .setFooter({ text: embedConfig.FOOTER });
+
+        await interaction.editReply({
+            embeds: [successEmbed]
+        }).catch(() => null);
+
+        await logger.log(`✅ Giveaway ${giveawayId} finished early by ${user.tag} (${user.id}) - Winners: ${winners.map(w => w.discord_member_id).join(', ')}`);
+
+    } catch (error) {
+        await logger.log(`❌ Error finishing giveaway: ${error.message}`);
+        await interaction.editReply({
+            content: `❌ Failed to finish giveaway: ${error.message}`
         }).catch(() => null);
     }
 }
@@ -571,15 +932,17 @@ export function init(client) {
                     const message = await channel.messages.fetch(giveaway.discord_message_id).catch(() => null);
                     if (!message) continue;
 
+                    await db.markGiveawayEnded(giveaway.id);
+
                     const entries = await db.getGiveawayEntries(giveaway.id);
 
                     if (entries.length === 0) {
-                        // Remove enter button from original message
+
                         await message.edit({
                             components: []
                         });
 
-                        // Send new message for no entries
+
                         const embedConfig = await getEmbedConfig(guild.id);
                         const noEntriesEmbed = new EmbedBuilder()
                             .setColor(embedConfig.COLOR)
@@ -592,10 +955,6 @@ export function init(client) {
                             embeds: [noEntriesEmbed]
                         });
 
-                        await db.markGiveawayEnded(giveaway.id);
-
-                        // Cleanup entries (should be 0 but cleanup anyway)
-                        await db.cleanupGiveawayEntries(giveaway.id);
                         await logger.log(`✅ Giveaway ${giveaway.id} ended with no entries`);
                         continue;
                     }
@@ -603,12 +962,12 @@ export function init(client) {
                     const winners = await db.getRandomGiveawayWinners(giveaway.id, giveaway.winner_count);
 
                     if (winners.length === 0) {
-                        // Remove enter button from original message
+
                         await message.edit({
                             components: []
                         });
 
-                        // Send new message for no winners
+
                         const embedConfig = await getEmbedConfig(guild.id);
                         const noWinnersEmbed = new EmbedBuilder()
                             .setColor(embedConfig.COLOR)
@@ -621,16 +980,15 @@ export function init(client) {
                             embeds: [noWinnersEmbed]
                         });
 
-                        await db.markGiveawayEnded(giveaway.id);
-
-                        // Cleanup entries after giveaway ends
-                        const deletedEntries = await db.cleanupGiveawayEntries(giveaway.id);
-                        await logger.log(`✅ Giveaway ${giveaway.id} ended but no winners could be selected - Cleaned up ${deletedEntries} entries`);
+                        await logger.log(`✅ Giveaway ${giveaway.id} ended but no winners could be selected`);
                         continue;
                     }
 
                     const winnerMentions = winners.map(w => `<@${w.discord_member_id}>`).join(', ');
                     const embedConfig = await getEmbedConfig(guild.id);
+
+                    const winnerDiscordIds = winners.map(w => w.discord_member_id);
+                    await db.markGiveawayWinners(giveaway.id, winnerDiscordIds);
 
                     let description = `**${giveaway.title}**\n\n**Prize:** ${giveaway.prize}\n\n🎊 **Winner${winners.length > 1 ? 's' : ''}:** ${winnerMentions}\n\n`;
 
@@ -647,21 +1005,17 @@ export function init(client) {
                         .setTimestamp()
                         .setFooter({ text: embedConfig.FOOTER });
 
-                    // Remove enter button from original message (keep original embed unchanged)
+
                     await message.edit({
                         components: []
                     });
 
-                    // Send new message for winners announcement
+
                     await channel.send({
                         embeds: [winnersEmbed]
                     });
 
-                    await db.markGiveawayEnded(giveaway.id);
-
-                    // Cleanup entries after winners are announced
-                    const deletedEntries = await db.cleanupGiveawayEntries(giveaway.id);
-                    await logger.log(`✅ Giveaway ${giveaway.id} ended - Winners: ${winners.map(w => w.discord_member_id).join(', ')} - Cleaned up ${deletedEntries} entries`);
+                    await logger.log(`✅ Giveaway ${giveaway.id} ended - Winners: ${winners.map(w => w.discord_member_id).join(', ')}`);
 
                 } catch (err) {
                     await logger.log(`❌ Error ending giveaway ${giveaway.id}: ${err.message}`);

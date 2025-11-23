@@ -187,66 +187,6 @@ async function setupDatabase() {
         }
     }
 
-    try {
-        const columnsResult = await query(
-            `SELECT COLUMN_NAME FROM information_schema.COLUMNS 
-             WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'server_members' AND COLUMN_NAME IN ('is_booster', 'booster_since')`,
-            [connectionConfig.database]
-        );
-
-        const existingColumns = columnsResult.map(row => row.COLUMN_NAME);
-
-        if (!existingColumns.includes('is_booster')) {
-            logger.log('🔧 Adding is_booster column to server_members table...');
-            await query('ALTER TABLE server_members ADD COLUMN is_booster BOOLEAN DEFAULT FALSE');
-            logger.log('✅ Added is_booster column');
-        }
-
-        if (!existingColumns.includes('booster_since')) {
-            logger.log('🔧 Adding booster_since column to server_members table...');
-            await query('ALTER TABLE server_members ADD COLUMN booster_since TIMESTAMP NULL');
-            logger.log('✅ Added booster_since column');
-        }
-
-        const serverDisplayNameCheck = await query(
-            `SELECT COLUMN_NAME FROM information_schema.COLUMNS 
-             WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'server_members' AND COLUMN_NAME = 'server_display_name'`,
-            [connectionConfig.database]
-        );
-
-        if (!serverDisplayNameCheck || serverDisplayNameCheck.length === 0) {
-            logger.log('🔧 Adding server_display_name column to server_members table...');
-            await query('ALTER TABLE server_members ADD COLUMN server_display_name TEXT');
-            logger.log('✅ Added server_display_name column');
-        }
-
-        const dmPreferenceCheck = await query(
-            `SELECT COLUMN_NAME FROM information_schema.COLUMNS 
-             WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'server_member_levels' AND COLUMN_NAME = 'dm_notifications_enabled'`,
-            [connectionConfig.database]
-        );
-
-        if (!dmPreferenceCheck || dmPreferenceCheck.length === 0) {
-            logger.log('🔧 Adding dm_notifications_enabled column to server_member_levels table...');
-            await query('ALTER TABLE server_member_levels ADD COLUMN dm_notifications_enabled BOOLEAN DEFAULT TRUE AFTER level');
-            logger.log('✅ Added dm_notifications_enabled column');
-        }
-
-        const isWinnerCheck = await query(
-            `SELECT COLUMN_NAME FROM information_schema.COLUMNS 
-             WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'server_giveaway_entries' AND COLUMN_NAME = 'is_winner'`,
-            [connectionConfig.database]
-        );
-
-        if (!isWinnerCheck || isWinnerCheck.length === 0) {
-            logger.log('🔧 Adding is_winner column to server_giveaway_entries table...');
-            await query('ALTER TABLE server_giveaway_entries ADD COLUMN is_winner BOOLEAN DEFAULT FALSE');
-            logger.log('✅ Added is_winner column');
-        }
-    } catch (err) {
-        logger.log(`⚠️  Error checking/adding columns: ${err.message}`);
-    }
-
     logger.log('✅ All database tables verified');
     return true;
 }
@@ -985,6 +925,34 @@ export async function updateMemberLevelStats(memberId, updates = {}) {
     );
 
     return await getMemberLevel(memberId);
+}
+
+export async function setMemberLanguage(serverId, discordMemberId, language = 'en') {
+    await initializeDatabase();
+    if (!serverId || !discordMemberId || !language) {
+        throw new Error('serverId, discordMemberId, and language are required');
+    }
+
+    await query(
+        'UPDATE server_members SET language = ? WHERE server_id = ? AND discord_member_id = ?',
+        [language, serverId, discordMemberId]
+    );
+
+    return true;
+}
+
+export async function getMemberLanguage(serverId, discordMemberId) {
+    await initializeDatabase();
+    if (!serverId || !discordMemberId) {
+        return 'en';
+    }
+
+    const result = await query(
+        'SELECT language FROM server_members WHERE server_id = ? AND discord_member_id = ? LIMIT 1',
+        [serverId, discordMemberId]
+    );
+
+    return result[0]?.language || 'en';
 }
 
 export async function setMemberLevelDMPreference(memberId, enabled = true) {
@@ -2132,6 +2100,8 @@ export default {
     ensureMemberLevel,
     updateMemberLevelStats,
     setMemberLevelDMPreference,
+    setMemberLanguage,
+    getMemberLanguage,
     recalculateServerMemberRanks,
     getMemberLevelByDiscordId,
     getMembersWithInVoiceFlag,

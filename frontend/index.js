@@ -454,15 +454,6 @@ export async function init() {
         return res.status(401).json({ error: 'Authentication required' });
     }
 
-    app.get('/api/panel/status', async (req, res) => {
-        try {
-            const panel = await db.getPanel();
-            res.json({ panelExists: panel !== null });
-        } catch (error) {
-            res.json({ panelExists: false, error: error.message });
-        }
-    });
-
     app.post('/api/panel/register', async (req, res) => {
         try {
             const { password } = req.body;

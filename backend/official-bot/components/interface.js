@@ -8,23 +8,44 @@ import { handleFeedbackButton, handleFeedbackModal } from './interface/feedback.
 import { handleAFKButton, handleAFKModal, handleRemoveAFKButton } from './interface/afk.js';
 import { handleLevelingButton, handleLeaderboardButton, handleDmToggleButton } from './interface/leveling.js';
 import { handleGiveawayButton, handleGiveawayModal, handleGiveawayEnterButton, handleGiveawayRoleSelect, handleGiveawaySkipRolesContinue, handleGiveawayCancel, handleGiveawayFinish } from './interface/giveaway.js';
+import { handleSettingsButton, handleLanguageButton, handleLanguageSelect } from './interface/settings.js';
+import { translate } from '../../i18n.js';
+
+const ephemeralTimeouts = new Map();
 
 async function handleMenuButton(interaction) {
     const member = interaction.member || await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
     if (!member) {
-        await interaction.reply({
-            content: '❌ Failed to fetch member information.',
-            flags: 64
-        });
+        const errorMsg = await translate('common.errors.memberNotFound', interaction.guild.id, interaction.user.id);
+        if (interaction.replied || interaction.deferred) {
+            await interaction.editReply({
+                content: errorMsg,
+                embeds: [],
+                components: []
+            });
+        } else {
+            await interaction.reply({
+                content: errorMsg,
+                flags: 64
+            });
+        }
         return;
     }
 
     if (!(await hasPermission(member, 'leveling'))) {
         const errorMessage = await getPermissionDeniedMessage(interaction.guild, 'menu');
-        await interaction.reply({
-            content: errorMessage,
-            flags: 64
-        }).catch(() => null);
+        if (interaction.replied || interaction.deferred) {
+            await interaction.editReply({
+                content: errorMessage,
+                embeds: [],
+                components: []
+            });
+        } else {
+            await interaction.reply({
+                content: errorMessage,
+                flags: 64
+            }).catch(() => null);
+        }
         return;
     }
 
@@ -66,18 +87,30 @@ async function handleMenuButton(interaction) {
     }
 
     if (buttons.length === 0) {
-        await interaction.reply({
-            content: '❌ You don\'t have access to any features.',
-            flags: 64
-        });
+        const noAccessMsg = await translate('menu.noAccess', interaction.guild.id, interaction.user.id);
+        if (interaction.replied || interaction.deferred) {
+            await interaction.editReply({
+                content: noAccessMsg,
+                embeds: [],
+                components: []
+            });
+        } else {
+            await interaction.reply({
+                content: noAccessMsg,
+                flags: 64
+            });
+        }
         return;
     }
 
     const embedConfig = await getEmbedConfig(interaction.guild.id);
+    const menuTitle = await translate('menu.title', interaction.guild.id, interaction.user.id);
+    const menuDesc = await translate('menu.description', interaction.guild.id, interaction.user.id);
+
     const menuEmbed = new EmbedBuilder()
         .setColor(embedConfig.COLOR)
-        .setTitle("📋 GO BLOX Bot Menu")
-        .setDescription("Select a feature from the buttons below:")
+        .setTitle(menuTitle)
+        .setDescription(menuDesc)
         .setFooter({ text: embedConfig.FOOTER })
         .setTimestamp();
 
@@ -86,11 +119,36 @@ async function handleMenuButton(interaction) {
         rows.push(new ActionRowBuilder().addComponents(...buttons.slice(i, i + 5)));
     }
 
-    await interaction.reply({
-        embeds: [menuEmbed],
-        components: rows,
-        flags: 64
-    });
+    const settingsButton = new ButtonBuilder()
+        .setCustomId('bot_settings')
+        .setLabel(await translate('common.buttons.settings', interaction.guild.id, interaction.user.id))
+        .setStyle(ButtonStyle.Secondary);
+
+    rows.push(new ActionRowBuilder().addComponents(settingsButton));
+
+    const isFromEphemeral = interaction.message?.flags?.has(64) || interaction.replied || interaction.deferred;
+
+    if (isFromEphemeral) {
+        if (interaction.replied || interaction.deferred) {
+            await interaction.editReply({
+                embeds: [menuEmbed],
+                components: rows
+            });
+        } else {
+            await interaction.update({
+                embeds: [menuEmbed],
+                components: rows
+            });
+        }
+        scheduleEphemeralDismiss(interaction);
+    } else {
+        await interaction.reply({
+            embeds: [menuEmbed],
+            components: rows,
+            flags: 64
+        });
+        scheduleEphemeralDismiss(interaction);
+    }
 }
 
 export async function handleButtonInteraction(interaction, client) {
@@ -137,6 +195,12 @@ export async function handleButtonInteraction(interaction, client) {
         case 'leveling_dm_toggle':
             await handleDmToggleButton(interaction);
             break;
+        case 'bot_settings':
+            await handleSettingsButton(interaction);
+            break;
+        case 'settings_language':
+            await handleLanguageButton(interaction);
+            break;
         default:
             if (customId.startsWith('giveaway_enter_')) {
                 await handleGiveawayEnterButton(interaction);
@@ -148,10 +212,11 @@ export async function handleButtonInteraction(interaction, client) {
                 await handleGiveawayCancel(interaction);
             } else {
                 await logger.log(`🔍 Unknown button interaction: ${customId}`);
+                const errorMsg = await translate('common.errors.unknownButton', interaction.guild?.id, interaction.user?.id);
                 await interaction.reply({
-                    content: '❌ Unknown button interaction.',
+                    content: errorMsg,
                     flags: 64
-                });
+                }).catch(() => null);
             }
     }
 }
@@ -178,10 +243,11 @@ export async function createInterfaceEmbed(client, guildId) {
     return interfaceEmbed;
 }
 
-export function createInterfaceButtons() {
+export async function createInterfaceButtons(guildId = null, userId = null) {
+    const menuLabel = await translate('common.buttons.menu', guildId, userId);
     const menuButton = new ButtonBuilder()
         .setCustomId('bot_menu')
-        .setLabel('📋 Menu')
+        .setLabel(menuLabel)
         .setStyle(ButtonStyle.Primary);
 
     const buttonRow = new ActionRowBuilder()
@@ -193,7 +259,7 @@ export function createInterfaceButtons() {
 export async function sendInterfaceToChannel(targetChannel, interaction, client) {
     try {
         const interfaceEmbed = await createInterfaceEmbed(client, interaction.guild.id);
-        const buttonRow = createInterfaceButtons();
+        const buttonRow = await createInterfaceButtons(interaction.guild.id, interaction.user.id);
 
         await targetChannel.send({
             embeds: [interfaceEmbed],
@@ -228,7 +294,6 @@ function init(client) {
             try {
                 await getServerForCurrentBot(interaction.guild.id);
             } catch (error) {
-
                 await logger.log(`⚠️  Server ${interaction.guild.name} (${interaction.guild.id}) not found for this bot, ignoring interaction`);
                 return;
             }
@@ -239,8 +304,9 @@ function init(client) {
                 await logger.log(`❌ Button interaction error: ${error.message}`);
 
                 try {
+                    const errorMsg = await translate('common.errors.buttonError', interaction.guild?.id, interaction.user?.id);
                     await interaction.reply({
-                        content: `❌ **Button Error**: An error occurred while processing your button click.\n\nPlease try again or contact an administrator.`,
+                        content: errorMsg,
                         flags: 64
                     });
                 } catch (replyError) {
@@ -256,7 +322,6 @@ function init(client) {
             try {
                 await getServerForCurrentBot(interaction.guild.id);
             } catch (error) {
-
                 await logger.log(`⚠️  Server ${interaction.guild.name} (${interaction.guild.id}) not found for this bot, ignoring interaction`);
                 return;
             }
@@ -281,8 +346,9 @@ function init(client) {
                 await logger.log(`❌ Modal submission error: ${error.message}`);
 
                 try {
+                    const errorMsg = await translate('common.errors.modalError', interaction.guild?.id, interaction.user?.id);
                     await interaction.reply({
-                        content: `❌ **Modal Error**: An error occurred while processing your form submission.\n\nPlease try again or contact an administrator.`,
+                        content: errorMsg,
                         flags: 64
                     });
                 } catch (replyError) {
@@ -298,7 +364,6 @@ function init(client) {
             try {
                 await getServerForCurrentBot(interaction.guild.id);
             } catch (error) {
-
                 await logger.log(`⚠️  Server ${interaction.guild.name} (${interaction.guild.id}) not found for this bot, ignoring interaction`);
                 return;
             }
@@ -308,14 +373,13 @@ function init(client) {
                 const customId = interaction.customId;
                 const selectedChannels = interaction.values;
                 await logger.log(`📋 Channel selected: "${customId}" → [${selectedChannels.join(', ')}] by ${user.tag} (${user.id}) in ${interaction.guild?.name || 'DM'}`);
-
-                await logger.log(`⚠️ Unknown channel select: "${customId}" by ${user.tag} (${user.id})`);
             } catch (error) {
                 await logger.log(`❌ Channel selection error: ${error.message}`);
 
                 try {
+                    const errorMsg = await translate('common.errors.selectionError', interaction.guild?.id, interaction.user?.id);
                     await interaction.reply({
-                        content: `❌ **Selection Error**: An error occurred while processing your channel selection.\n\nPlease try again or contact an administrator.`,
+                        content: errorMsg,
                         flags: 64
                     });
                 } catch (replyError) {
@@ -331,7 +395,6 @@ function init(client) {
             try {
                 await getServerForCurrentBot(interaction.guild.id);
             } catch (error) {
-
                 await logger.log(`⚠️  Server ${interaction.guild.name} (${interaction.guild.id}) not found for this bot, ignoring interaction`);
                 return;
             }
@@ -352,17 +415,89 @@ function init(client) {
                 await logger.log(`❌ Role selection error stack: ${error.stack}`);
 
                 try {
+                    const errorMsg = await translate('common.errors.selectionError', interaction.guild?.id, interaction.user?.id);
                     await interaction.reply({
-                        content: `❌ **Selection Error**: An error occurred while processing your role selection.\n\nPlease try again or contact an administrator.`,
+                        content: errorMsg,
                         flags: 64
                     });
                 } catch (replyError) {
                     await logger.log(`❌ Failed to send role selection error response: ${replyError.message}`);
                 }
             }
+        } else if (interaction.isStringSelectMenu()) {
+
+            if (!interaction.guild) {
+                return;
+            }
+
+            try {
+                await getServerForCurrentBot(interaction.guild.id);
+            } catch (error) {
+                await logger.log(`⚠️  Server ${interaction.guild.name} (${interaction.guild.id}) not found for this bot, ignoring interaction`);
+                return;
+            }
+
+            try {
+                const user = interaction.user;
+                const customId = interaction.customId;
+                const selectedValues = interaction.values;
+                await logger.log(`📋 String select: "${customId}" → [${selectedValues.join(', ')}] by ${user.tag} (${user.id}) in ${interaction.guild?.name || 'DM'}`);
+
+                if (customId === 'settings_language_select') {
+                    await handleLanguageSelect(interaction);
+                } else {
+                    await logger.log(`⚠️ Unknown string select: "${customId}" by ${user.tag} (${user.id})`);
+                }
+            } catch (error) {
+                await logger.log(`❌ String selection error in interface.js: ${error.message}`);
+                await logger.log(`❌ String selection error stack: ${error.stack}`);
+
+                try {
+                    const errorMsg = await translate('common.errors.selectionError', interaction.guild?.id, interaction.user?.id);
+                    if (interaction.deferred || interaction.replied) {
+                        await interaction.editReply({
+                            content: errorMsg,
+                            components: [],
+                            embeds: []
+                        }).catch(() => null);
+                    } else {
+                        await interaction.reply({
+                            content: errorMsg,
+                            flags: 64
+                        }).catch(() => null);
+                    }
+                } catch (replyError) {
+                    await logger.log(`❌ Failed to send string selection error response: ${replyError.message}`);
+                }
+            }
         }
     });
     logger.log("🎮 Interface component initialized");
+}
+
+function scheduleEphemeralDismiss(interaction) {
+    const userId = interaction.user.id;
+    const existingTimeout = ephemeralTimeouts.get(userId);
+    if (existingTimeout) {
+        clearTimeout(existingTimeout);
+    }
+
+    const timeout = setTimeout(async () => {
+        try {
+            if (interaction.replied || interaction.deferred) {
+                await interaction.editReply({
+                    content: '',
+                    embeds: [],
+                    components: []
+                }).catch(() => null);
+            }
+        } catch (error) {
+            await logger.log(`❌ Failed to dismiss ephemeral message: ${error.message}`);
+        }
+        ephemeralTimeouts.delete(userId);
+    }, 60000);
+
+    ephemeralTimeouts.set(userId, timeout);
 }
 
 export default {

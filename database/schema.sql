@@ -105,6 +105,7 @@ CREATE TABLE IF NOT EXISTS server_members (
     member_since TIMESTAMP NULL,
     is_booster BOOLEAN DEFAULT FALSE,
     booster_since TIMESTAMP NULL,
+    language VARCHAR(10) DEFAULT 'en',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY unique_server_member (server_id, discord_member_id),
@@ -218,6 +219,7 @@ CREATE INDEX idx_server_roles_server_id ON server_roles(server_id);
 CREATE INDEX idx_server_roles_discord_id ON server_roles(discord_role_id);
 CREATE INDEX idx_server_members_server_id ON server_members(server_id);
 CREATE INDEX idx_server_members_discord_id ON server_members(discord_member_id);
+CREATE INDEX idx_server_members_language ON server_members(language);
 CREATE INDEX idx_server_member_levels_member_id ON server_member_levels(member_id);
 CREATE INDEX idx_server_member_levels_rank ON server_member_levels(rank);
 CREATE INDEX idx_server_member_roles_member_id ON server_member_roles(member_id);

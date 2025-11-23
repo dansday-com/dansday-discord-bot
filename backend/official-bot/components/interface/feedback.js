@@ -2,6 +2,7 @@ import { ModalBuilder, TextInputBuilder, ActionRowBuilder, TextInputStyle, Embed
 import { getEmbedConfig, PERMISSIONS, FEEDBACK } from '../../../config.js';
 import logger from '../../../logger.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
+import { translate } from '../../../i18n.js';
 
 export async function handleFeedbackButton(interaction) {
     try {
@@ -16,15 +17,18 @@ export async function handleFeedbackButton(interaction) {
             return;
         }
 
+        const modalTitle = await translate('feedback.modal.title', interaction.guild.id, interaction.user.id);
         const modal = new ModalBuilder()
             .setCustomId('feedback_submit')
-            .setTitle('💬 Submit Feedback');
+            .setTitle(modalTitle);
 
+        const feedbackLabel = await translate('feedback.modal.label', interaction.guild.id, interaction.user.id);
+        const feedbackPlaceholder = await translate('feedback.modal.placeholder', interaction.guild.id, interaction.user.id);
         const feedbackInput = new TextInputBuilder()
             .setCustomId('feedback_message')
-            .setLabel('Your Feedback')
+            .setLabel(feedbackLabel)
             .setStyle(TextInputStyle.Paragraph)
-            .setPlaceholder('Please share your feedback, suggestions, or concerns...')
+            .setPlaceholder(feedbackPlaceholder)
             .setRequired(true)
             .setMaxLength(2000);
 
@@ -36,8 +40,9 @@ export async function handleFeedbackButton(interaction) {
 
     } catch (error) {
         await logger.log(`❌ Error showing feedback modal: ${error.message}`);
+        const errorMsg = await translate('feedback.errors.failed', interaction.guild.id, interaction.user.id, { error: error.message });
         await interaction.reply({
-            content: `❌ Failed to open feedback form: ${error.message}`,
+            content: errorMsg,
             flags: 64
         });
     }
@@ -62,8 +67,9 @@ export async function handleFeedbackModal(interaction) {
         const feedbackMessage = interaction.fields.getTextInputValue('feedback_message').trim();
 
         if (!feedbackMessage || feedbackMessage.length === 0) {
+            const errorMsg = await translate('feedback.errors.invalid', interaction.guild.id, interaction.user.id);
             await interaction.editReply({
-                content: '❌ **Invalid Feedback**\n\nFeedback message cannot be empty.'
+                content: errorMsg
             });
             return;
         }
@@ -73,16 +79,18 @@ export async function handleFeedbackModal(interaction) {
             feedbackChannelId = await FEEDBACK.getChannel(guild.id);
         } catch (err) {
             await logger.log(`❌ Error getting feedback channel: ${err.message}`);
+            const errorMsg = await translate('feedback.errors.channelError', interaction.guild.id, interaction.user.id);
             await interaction.editReply({
-                content: '❌ Failed to submit feedback: Error retrieving feedback channel configuration.'
+                content: errorMsg
             });
             return;
         }
 
         if (!feedbackChannelId) {
             await logger.log(`❌ Feedback channel not configured for server ${guild.id}`);
+            const errorMsg = await translate('feedback.errors.channelNotConfigured', interaction.guild.id, interaction.user.id);
             await interaction.editReply({
-                content: '❌ Failed to submit feedback: Feedback channel not configured.'
+                content: errorMsg
             });
             return;
         }
@@ -90,27 +98,31 @@ export async function handleFeedbackModal(interaction) {
         const feedbackChannel = guild.channels.cache.get(feedbackChannelId);
         if (!feedbackChannel) {
             await logger.log(`❌ Feedback channel not found: ${feedbackChannelId}`);
+            const errorMsg = await translate('feedback.errors.channelNotFound', interaction.guild.id, interaction.user.id);
             await interaction.editReply({
-                content: '❌ Failed to submit feedback: Feedback channel not found.'
+                content: errorMsg
             });
             return;
         }
 
         const embedConfig = await getEmbedConfig(interaction.guild.id);
 
+        const feedbackEmbedTitle = await translate('feedback.submitted.embedTitle', interaction.guild.id, interaction.user.id);
+        const fromLabel = await translate('feedback.submitted.from', interaction.guild.id, interaction.user.id);
+        const submittedLabel = await translate('feedback.submitted.submitted', interaction.guild.id, interaction.user.id);
         const feedbackEmbed = new EmbedBuilder()
             .setColor(embedConfig.COLOR)
-            .setTitle('💬 Feedback Submission')
+            .setTitle(feedbackEmbedTitle)
             .setDescription(feedbackMessage.length > 4096 ? feedbackMessage.substring(0, 4093) + '...' : feedbackMessage)
             .setThumbnail(user.displayAvatarURL({ dynamic: true, size: 256 }))
             .addFields([
                 {
-                    name: '👤 From',
+                    name: fromLabel,
                     value: `${user.tag} (${user.id})`,
                     inline: true
                 },
                 {
-                    name: '🕐 Submitted',
+                    name: submittedLabel,
                     value: `<t:${Math.floor(Date.now() / 1000)}:R>`,
                     inline: true
                 }
@@ -136,10 +148,12 @@ export async function handleFeedbackModal(interaction) {
             embeds: [feedbackEmbed]
         });
 
+        const successTitle = await translate('feedback.submitted.title', interaction.guild.id, interaction.user.id);
+        const successDescription = await translate('feedback.submitted.description', interaction.guild.id, interaction.user.id);
         const successEmbed = new EmbedBuilder()
             .setColor(embedConfig.COLOR)
-            .setTitle('✅ Feedback Submitted!')
-            .setDescription('Thank you for your feedback! Your submission has been received.')
+            .setTitle(successTitle)
+            .setDescription(successDescription)
             .setTimestamp()
             .setFooter({ text: embedConfig.FOOTER });
 
@@ -152,8 +166,9 @@ export async function handleFeedbackModal(interaction) {
     } catch (error) {
         await logger.log(`❌ Error processing feedback: ${error.message}`);
         await logger.log(`❌ Stack: ${error.stack}`);
+        const errorMsg = await translate('feedback.errors.submitFailed', interaction.guild.id, interaction.user.id, { error: error.message });
         await interaction.editReply({
-            content: `❌ **Failed to Submit Feedback**\n\nError: ${error.message}\n\nPlease try again later.`
+            content: errorMsg
         });
     }
 }

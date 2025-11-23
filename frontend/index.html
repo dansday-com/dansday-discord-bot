@@ -794,23 +794,9 @@
             }, 5000);
         }
         async function checkPanelStatus() {
-            try {
-                const res = await fetch('/api/panel/status', {
-                    credentials: 'include'
-                });
-                const data = await res.json();
-                if (data.panelExists) {
-                    document.getElementById('authSubtitle').textContent = 'Login to your control panel';
-                    document.getElementById('buttonText').textContent = 'Login';
-                    document.getElementById('authButton').querySelector('i.fa-user-plus')?.classList.replace('fa-user-plus', 'fa-sign-in-alt');
-                } else {
-                    document.getElementById('authSubtitle').textContent = 'Create your control panel password';
-                    document.getElementById('buttonText').textContent = 'Register';
-                }
-            } catch (err) {
-                console.error('Error checking panel status:', err);
-                showMessage('Failed to check panel status', 'error');
-            }
+            document.getElementById('authSubtitle').textContent = 'Login to your control panel';
+            document.getElementById('buttonText').textContent = 'Login';
+            document.getElementById('authButton').querySelector('i.fa-user-plus')?.classList.replace('fa-user-plus', 'fa-sign-in-alt');
         }
         async function checkAuthStatus() {
             try {
@@ -845,15 +831,7 @@
             loadingIcon.classList.remove('hidden');
             buttonText.textContent = 'Processing...';
             try {
-                const statusRes = await fetch('/api/panel/status', {
-                    credentials: 'include'
-                });
-                const statusData = await statusRes.json();
-                let endpoint = '/api/panel/login';
-                if (!statusData.panelExists) {
-                    endpoint = '/api/panel/register';
-                }
-                const res = await fetch(endpoint, {
+                let res = await fetch('/api/panel/login', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -861,9 +839,22 @@
                     credentials: 'include',
                     body: JSON.stringify({ password })
                 });
-                const data = await res.json();
+                let data = await res.json();
+
+                if (!data.success && data.error && data.error.includes('Panel not registered')) {
+                    res = await fetch('/api/panel/register', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        credentials: 'include',
+                        body: JSON.stringify({ password })
+                    });
+                    data = await res.json();
+                }
+
                 if (data.success) {
-                    showMessage(data.message || (statusData.panelExists ? 'Login successful!' : 'Registration successful!'), 'success');
+                    showMessage(data.message || 'Authentication successful!', 'success');
                     document.getElementById('password').value = '';
                     setTimeout(async () => {
                         await checkAuthStatus();
@@ -872,22 +863,14 @@
                     showMessage(data.error || 'Authentication failed', 'error');
                     button.disabled = false;
                     loadingIcon.classList.add('hidden');
-                    buttonText.textContent = statusData.panelExists ? 'Login' : 'Register';
+                    buttonText.textContent = 'Login';
                 }
             } catch (err) {
                 console.error('Auth error:', err);
                 showMessage('Authentication failed. Please try again.', 'error');
                 button.disabled = false;
                 loadingIcon.classList.add('hidden');
-                try {
-                    const statusRes = await fetch('/api/panel/status', {
-                        credentials: 'include'
-                    });
-                    const statusData = await statusRes.json();
-                    buttonText.textContent = statusData.panelExists ? 'Login' : 'Register';
-                } catch (e) {
-                    buttonText.textContent = 'Login';
-                }
+                buttonText.textContent = 'Login';
             }
         });
         let allBots = [];

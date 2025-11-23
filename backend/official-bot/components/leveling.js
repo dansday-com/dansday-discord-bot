@@ -1,10 +1,15 @@
-import { getLevelingSettings, PERMISSIONS, getBotConfig } from "../../config.js";
+import { getLevelingSettings, PERMISSIONS, getBotConfig, getEmbedConfig } from "../../config.js";
 import db from "../../../database/database.js";
 import logger from "../../logger.js";
+import { EmbedBuilder } from "discord.js";
 
 const recentMessages = new Map();
 const voiceSessions = new Map();
 let clientInstance = null;
+
+export function getClientInstance() {
+    return clientInstance;
+}
 
 export async function getLevelRequirement(level, guildId) {
     if (!guildId) {
@@ -16,7 +21,11 @@ export async function getLevelRequirement(level, guildId) {
     const baseXP = settings.REQUIREMENTS.BASE_XP;
     const multiplier = settings.REQUIREMENTS.MULTIPLIER;
 
-    return baseXP * Math.pow(multiplier, level - 2);
+    if (multiplier === 1) {
+        return baseXP * (level - 1);
+    } else {
+        return baseXP * (Math.pow(multiplier, level - 1) - 1) / (multiplier - 1);
+    }
 }
 
 export async function calculateExperienceFromTotals({
@@ -214,22 +223,91 @@ export async function sendLevelChangeDM(guildId, discordMemberId, serverName, ne
             return false;
         }
 
-        const member = await guild.members.fetch(discordMemberId).catch(() => null);
+        const member = await guild.members.fetch(discordMemberId);
         if (!member || !member.user) {
             return false;
         }
 
-        const dmChannel = await member.user.createDM().catch(() => null);
-        if (!dmChannel) {
-            return false;
-        }
+        const dmChannel = await member.user.createDM();
 
-        const targetServerName = serverName || guild.name || "your server";
+        const targetServerName = serverName;
         await dmChannel.send(`🎉 **Congratulations!** You've reached **Level ${newLevel}** in **${targetServerName}**!\n\nKeep up the great work! 🚀`);
         await logger.log(`⭐ Sent level change DM (${contextLabel}) to ${discordMemberId} for level ${newLevel} in ${targetServerName}`);
         return true;
     } catch (error) {
         await logger.log(`⚠️ Failed to send level change DM (${contextLabel}) to ${discordMemberId}: ${error.message}`);
+        return false;
+    }
+}
+
+export async function sendLevelUpNotification(guildId, discordMemberId, serverName, newLevel, contextLabel = "level-change") {
+    if (!clientInstance || !guildId || !discordMemberId || !newLevel) {
+        return false;
+    }
+
+    try {
+        const guild = clientInstance.guilds.cache.get(guildId);
+        if (!guild) {
+            return false;
+        }
+
+        const member = await guild.members.fetch(discordMemberId);
+        if (!member || !member.user) {
+            return false;
+        }
+
+        const settings = await getLevelingSettings(guildId);
+        const levelUpChannelId = settings.LEVEL_UP_CHANNEL_ID;
+
+        if (!levelUpChannelId) {
+            return false;
+        }
+
+        const channel = await guild.channels.fetch(levelUpChannelId);
+        if (!channel) {
+            return false;
+        }
+
+        const botConfig = getBotConfig();
+        if (!botConfig || !botConfig.id) {
+            return false;
+        }
+        const server = await db.getServerByDiscordId(botConfig.id, guildId);
+        if (!server) {
+            return false;
+        }
+        const dbMember = await db.getMemberByDiscordId(server.id, discordMemberId);
+        if (!dbMember) {
+            return false;
+        }
+        const levelStats = await db.getMemberLevel(dbMember.id);
+        if (!levelStats) {
+            return false;
+        }
+
+        await db.recalculateServerMemberRanks(server.id);
+        const memberWithRank = await db.getMemberLevelByDiscordId(server.id, discordMemberId);
+        const rank = memberWithRank?.rank ?? null;
+
+        const embedConfig = await getEmbedConfig(guildId);
+
+        const embed = new EmbedBuilder()
+            .setColor(embedConfig.COLOR)
+            .setTitle(`🎉 Level Up!`)
+            .setDescription(`${member} has reached **Level ${newLevel}**!`)
+            .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
+            .addFields(
+                { name: '📊 Total XP', value: `${(levelStats.experience ?? 0).toLocaleString()}`, inline: true },
+                { name: '🏆 Rank', value: rank ? `#${rank}` : 'Unranked', inline: true }
+            )
+            .setFooter({ text: embedConfig.FOOTER || serverName })
+            .setTimestamp();
+
+        await channel.send({ embeds: [embed] });
+        await logger.log(`⭐ Sent level up notification (${contextLabel}) to channel ${levelUpChannelId} for ${discordMemberId} level ${newLevel} in ${serverName}`);
+        return true;
+    } catch (error) {
+        await logger.log(`⚠️ Failed to send level up notification (${contextLabel}) to ${discordMemberId}: ${error.message}`);
         return false;
     }
 }
@@ -287,6 +365,11 @@ async function handleLevelEvaluation(server, dbMember, currentStats, guildId, co
 
     if (expectedLevel > baselineLevel) {
         const memberName = dbMember.server_display_name || dbMember.display_name || dbMember.username || dbMember.discord_member_id || "Unknown member";
+
+        if (dbMember.discord_member_id) {
+            await sendLevelUpNotification(guildId, dbMember.discord_member_id, server.name, expectedLevel, `level-eval:${reason}`);
+        }
+
         if (!notificationsEnabled) {
             await logger.log(`🔕 Level up detected (${reason}) for ${memberName} but DM notifications are disabled`);
         } else if (dbMember.discord_member_id) {

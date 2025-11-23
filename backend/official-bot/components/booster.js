@@ -18,7 +18,13 @@ async function thankBooster(member, client) {
             return;
         }
 
-        const serverData = await db.getServerByDiscordId(botConfig.id, member.guild.id);
+        try {
+            await member.guild.fetch();
+        } catch (fetchError) {
+            await logger.log(`⚠️ Failed to fetch guild ${member.guild.id} before booster: ${fetchError.message}`);
+        }
+
+        const serverData = await db.upsertServer(botConfig.id, member.guild);
         if (!serverData) {
             await logger.log(`⚠️ Server not found in database for ${member.guild.id}, skipping booster message`);
             return;
@@ -46,6 +52,25 @@ async function thankBooster(member, client) {
         const thankMessage = randomMessage.replace("{user}", `<@${member.user.id}>`);
         const embedConfig = await getEmbedConfig(member.guild.id);
 
+
+        const guildBoostCount = member.guild?.premiumSubscriptionCount ?? (serverData?.total_boosters || 0);
+        let guildBoostLevel = 0;
+        if (member.guild?.premiumTier) {
+            const tierString = String(member.guild.premiumTier);
+            if (tierString.includes('TIER_')) {
+                const tierMatch = tierString.match(/TIER_(\d+)/);
+                if (tierMatch) {
+                    guildBoostLevel = parseInt(tierMatch[1], 10);
+                } else {
+                    guildBoostLevel = parseInt(tierString, 10) || 0;
+                }
+            } else {
+                guildBoostLevel = parseInt(tierString, 10) || 0;
+            }
+        } else {
+            guildBoostLevel = serverData?.boost_level || 0;
+        }
+
         for (const boosterChannelId of boosterChannelIds) {
             const boosterChannel = client.channels.cache.get(boosterChannelId);
             if (!boosterChannel) {
@@ -62,12 +87,12 @@ async function thankBooster(member, client) {
                     .addFields([
                         {
                             name: "🚀 Boost Level",
-                            value: `Level ${serverData.boost_level || 0}`,
+                            value: `Level ${guildBoostLevel}`,
                             inline: true
                         },
                         {
                             name: "✨ Total Boosts",
-                            value: `${serverData.total_boosters || 0}`,
+                            value: `${guildBoostCount}`,
                             inline: true
                         },
                         {
@@ -103,13 +128,13 @@ function init(client) {
             const isBoosting = newMember.premiumSince !== null;
 
             if (!wasBoosting && isBoosting) {
-                const serverData = await db.getServerByDiscordId(botConfig.id, newMember.guild.id);
+                const serverData = await db.upsertServer(botConfig.id, newMember.guild);
                 if (serverData) {
                     await db.upsertMember(serverData.id, newMember);
                 }
                 await thankBooster(newMember, client);
             } else if (wasBoosting && !isBoosting) {
-                const serverData = await db.getServerByDiscordId(botConfig.id, newMember.guild.id);
+                const serverData = await db.upsertServer(botConfig.id, newMember.guild);
                 if (serverData) {
                     await db.upsertMember(serverData.id, newMember);
                 }

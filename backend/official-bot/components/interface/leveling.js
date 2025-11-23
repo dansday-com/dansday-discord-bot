@@ -1,9 +1,9 @@
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 import { getEmbedConfig, getBotConfig } from "../../../config.js";
-import { hasPermission } from "../permissions.js";
+import { hasPermission, getPermissionDeniedMessage } from "../permissions.js";
 import db from "../../../../database/database.js";
 import logger from "../../../logger.js";
-import { getLevelRequirement, determineLevel, sendLevelChangeDM } from "../leveling.js";
+import { getLevelRequirement, determineLevel, sendLevelChangeDM, sendLevelUpNotification } from "../leveling.js";
 
 const PROGRESS_BAR_SLOTS = 10;
 
@@ -58,29 +58,35 @@ async function refreshMemberLevelData(serverId, discordMemberId) {
         updates.level = recalculatedLevel;
     }
 
-    if (Object.keys(updates).length > 0) {
-        const updatedStats = await db.updateMemberLevelStats(levelData.member_id, updates);
-        if (updatedStats) {
-            if (recalculatedLevel > previousLevel && levelData.discord_member_id && notificationsEnabled) {
-                await sendLevelChangeDM(guildId, levelData.discord_member_id, serverName, recalculatedLevel);
+        if (Object.keys(updates).length > 0) {
+            const updatedStats = await db.updateMemberLevelStats(levelData.member_id, updates);
+            if (updatedStats) {
+                if (recalculatedLevel > previousLevel && levelData.discord_member_id) {
+                    await sendLevelUpNotification(guildId, levelData.discord_member_id, serverName, recalculatedLevel);
+                    if (notificationsEnabled) {
+                        await sendLevelChangeDM(guildId, levelData.discord_member_id, serverName, recalculatedLevel);
+                    }
+                }
+                return {
+                    ...levelData,
+                    ...updatedStats,
+                    level: recalculatedLevel
+                };
+            }
+        }
+
+        if ((levelData.level ?? 1) !== recalculatedLevel) {
+            if (recalculatedLevel > previousLevel && levelData.discord_member_id) {
+                await sendLevelUpNotification(guildId, levelData.discord_member_id, serverName, recalculatedLevel);
+                if (notificationsEnabled) {
+                    await sendLevelChangeDM(guildId, levelData.discord_member_id, serverName, recalculatedLevel);
+                }
             }
             return {
                 ...levelData,
-                ...updatedStats,
                 level: recalculatedLevel
             };
         }
-    }
-
-    if ((levelData.level ?? 1) !== recalculatedLevel) {
-        if (recalculatedLevel > previousLevel && levelData.discord_member_id && notificationsEnabled) {
-            await sendLevelChangeDM(guildId, levelData.discord_member_id, serverName, recalculatedLevel);
-        }
-        return {
-            ...levelData,
-            level: recalculatedLevel
-        };
-    }
 
     return levelData;
 }
@@ -266,6 +272,11 @@ function createDmToggleRow(dmEnabled = true) {
 export async function handleLevelingButton(interaction) {
     try {
         if (!(await hasPermission(interaction.member, "leveling"))) {
+            const errorMessage = await getPermissionDeniedMessage(interaction.guild, 'leveling');
+            await interaction.reply({
+                content: errorMessage,
+                flags: 64
+            }).catch(() => null);
             return;
         }
 
@@ -324,6 +335,16 @@ export async function handleLevelingButton(interaction) {
 export async function handleLeaderboardButton(interaction) {
     try {
         if (!(await hasPermission(interaction.member, "leveling"))) {
+            const errorMessage = await getPermissionDeniedMessage(interaction.guild, 'leveling');
+            await interaction.update({
+                content: errorMessage,
+                components: [],
+                embeds: [],
+                flags: 64
+            }).catch(() => interaction.reply({
+                content: errorMessage,
+                flags: 64
+            }).catch(() => null));
             return;
         }
 
@@ -367,6 +388,16 @@ export async function handleLeaderboardButton(interaction) {
 export async function handleDmToggleButton(interaction) {
     try {
         if (!(await hasPermission(interaction.member, "leveling"))) {
+            const errorMessage = await getPermissionDeniedMessage(interaction.guild, 'leveling');
+            await interaction.update({
+                content: errorMessage,
+                components: [],
+                embeds: [],
+                flags: 64
+            }).catch(() => interaction.reply({
+                content: errorMessage,
+                flags: 64
+            }).catch(() => null));
             return;
         }
 

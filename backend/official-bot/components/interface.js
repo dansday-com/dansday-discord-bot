@@ -1,12 +1,12 @@
 import { getEmbedConfig, getServerForCurrentBot } from "../../config.js";
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
 import logger from "../../logger.js";
-import { hasPermission } from './permissions.js';
-import { handleSendMessageButton, handleSendMessageModal, handleChannelSelection, handleRoleSelection, handleCompleteSetup } from './interface/sendmessage.js';
+import { hasPermission, getPermissionDeniedMessage } from './permissions.js';
 import { handleCustomSupporterRoleButton, handleCustomSupporterRoleModal, handleEditCustomSupporterRole, handleDeleteCustomSupporterRole } from './interface/customsupporterrole.js';
 import { handleFeedbackButton, handleFeedbackModal } from './interface/feedback.js';
 import { handleAFKButton, handleAFKModal, handleRemoveAFKButton } from './interface/afk.js';
 import { handleLevelingButton, handleLeaderboardButton, handleDmToggleButton } from './interface/leveling.js';
+import { handleGiveawayButton, handleGiveawayModal, handleGiveawayEnterButton, handleGiveawayRoleSelect, handleGiveawaySkipRolesContinue, handleGiveawayCancel, handleGiveawayFinish } from './interface/giveaway.js';
 
 async function handleMenuButton(interaction) {
     const member = interaction.member || await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
@@ -18,19 +18,16 @@ async function handleMenuButton(interaction) {
         return;
     }
 
-    // Menu requires member+ permission
     if (!(await hasPermission(member, 'leveling'))) {
+        const errorMessage = await getPermissionDeniedMessage(interaction.guild, 'menu');
+        await interaction.reply({
+            content: errorMessage,
+            flags: 64
+        }).catch(() => null);
         return;
     }
 
     const buttons = [];
-
-    if (await hasPermission(member, 'send_message')) {
-        buttons.push(new ButtonBuilder()
-            .setCustomId('bot_send_message')
-            .setLabel('📤 Send Message')
-            .setStyle(ButtonStyle.Success));
-    }
 
     if (await hasPermission(member, 'custom_supporter_role')) {
         buttons.push(new ButtonBuilder()
@@ -50,6 +47,13 @@ async function handleMenuButton(interaction) {
         buttons.push(new ButtonBuilder()
             .setCustomId('bot_afk')
             .setLabel('⏸️ AFK')
+            .setStyle(ButtonStyle.Success));
+    }
+
+    if (await hasPermission(member, 'giveaway')) {
+        buttons.push(new ButtonBuilder()
+            .setCustomId('bot_giveaway')
+            .setLabel('🎉 Giveaway')
             .setStyle(ButtonStyle.Success));
     }
 
@@ -98,9 +102,6 @@ export async function handleButtonInteraction(interaction, client) {
         case 'bot_menu':
             await handleMenuButton(interaction);
             break;
-        case 'bot_send_message':
-            await handleSendMessageButton(interaction);
-            break;
         case 'bot_custom_supporter_role':
             await handleCustomSupporterRoleButton(interaction);
             break;
@@ -112,6 +113,9 @@ export async function handleButtonInteraction(interaction, client) {
             break;
         case 'bot_leveling':
             await handleLevelingButton(interaction);
+            break;
+        case 'bot_giveaway':
+            await handleGiveawayButton(interaction);
             break;
         case 'bot_feedback':
             await handleFeedbackButton(interaction);
@@ -133,9 +137,14 @@ export async function handleButtonInteraction(interaction, client) {
             await handleDmToggleButton(interaction);
             break;
         default:
-
-            if (customId.startsWith('send_message_complete_')) {
-                await handleCompleteSetup(interaction);
+            if (customId.startsWith('giveaway_enter_')) {
+                await handleGiveawayEnterButton(interaction);
+            } else if (customId === 'giveaway_continue_form') {
+                await handleGiveawaySkipRolesContinue(interaction);
+            } else if (customId.startsWith('giveaway_finish_')) {
+                await handleGiveawayFinish(interaction);
+            } else if (customId.startsWith('giveaway_cancel_')) {
+                await handleGiveawayCancel(interaction);
             } else {
                 await logger.log(`🔍 Unknown button interaction: ${customId}`);
                 await interaction.reply({
@@ -256,14 +265,14 @@ function init(client) {
                 const customId = interaction.customId;
                 await logger.log(`📝 Modal submitted: "${customId}" by ${user.tag} (${user.id}) in ${interaction.guild?.name || 'DM'}`);
 
-                if (interaction.customId.startsWith('send_message_modal_')) {
-                    await handleSendMessageModal(interaction);
-                } else if (interaction.customId === 'custom_supporter_role_create') {
+                if (interaction.customId === 'custom_supporter_role_create') {
                     await handleCustomSupporterRoleModal(interaction);
                 } else if (interaction.customId === 'feedback_submit') {
                     await handleFeedbackModal(interaction);
                 } else if (interaction.customId === 'afk_set') {
                     await handleAFKModal(interaction);
+                } else if (interaction.customId.startsWith('giveaway_create')) {
+                    await handleGiveawayModal(interaction);
                 } else {
                     await logger.log(`⚠️ Unknown modal: "${customId}" by ${user.tag} (${user.id})`);
                 }
@@ -299,11 +308,7 @@ function init(client) {
                 const selectedChannels = interaction.values;
                 await logger.log(`📋 Channel selected: "${customId}" → [${selectedChannels.join(', ')}] by ${user.tag} (${user.id}) in ${interaction.guild?.name || 'DM'}`);
 
-                if (interaction.customId === 'send_message_channel_select') {
-                    await handleChannelSelection(interaction);
-                } else {
-                    await logger.log(`⚠️ Unknown channel select: "${customId}" by ${user.tag} (${user.id})`);
-                }
+                await logger.log(`⚠️ Unknown channel select: "${customId}" by ${user.tag} (${user.id})`);
             } catch (error) {
                 await logger.log(`❌ Channel selection error: ${error.message}`);
 
@@ -336,8 +341,8 @@ function init(client) {
                 const selectedRoles = interaction.values;
                 await logger.log(`👥 Role selected: "${customId}" → [${selectedRoles.join(', ')}] by ${user.tag} (${user.id}) in ${interaction.guild?.name || 'DM'}`);
 
-                if (interaction.customId.startsWith('send_message_role_select_')) {
-                    await handleRoleSelection(interaction);
+                if (customId === 'giveaway_role_select') {
+                    await handleGiveawayRoleSelect(interaction);
                 } else {
                     await logger.log(`⚠️ Unknown role select: "${customId}" by ${user.tag} (${user.id})`);
                 }

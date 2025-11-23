@@ -223,7 +223,8 @@ export async function getLevelingSettings(guildId) {
         REQUIREMENTS: {
             BASE_XP: config.REQUIREMENTS.BASE_XP,
             MULTIPLIER: config.REQUIREMENTS.MULTIPLIER
-        }
+        },
+        LEVEL_UP_CHANNEL_ID: config.LEVEL_UP_CHANNEL_ID
     };
 }
 
@@ -268,26 +269,23 @@ export async function getEmbedConfig(guildId) {
     const settings = await getServerSettingsForComponent(guildId, 'main_config');
     const config = settings.settings;
 
-    if (!config.embed_color) {
-        throw new Error(`Embed color not configured for guild ${guildId}`);
+    if (!config.color) {
+        throw new Error(`Default color not configured for guild ${guildId}`);
     }
 
-    const hex = config.embed_color.replace('#', '');
+    const hex = config.color.replace('#', '');
     const color = parseInt(hex, 16);
 
-    if (!config.embed_footer) {
-        throw new Error(`Embed footer not configured for guild ${guildId}`);
+    if (!config.footer) {
+        throw new Error(`Default footer not configured for guild ${guildId}`);
     }
 
-    let footerText = config.embed_footer;
-    if (footerText) {
-        const now = new Date();
-        footerText = footerText
-            .replace(/{server}/g, officialBotServer?.name || 'Server')
-            .replace(/{year}/g, now.getFullYear().toString())
-            .replace(/{date}/g, now.toLocaleDateString())
-            .replace(/{time}/g, now.toLocaleTimeString());
-    }
+    const now = new Date();
+    let footerText = config.footer
+        .replace(/{server}/g, officialBotServer.name)
+        .replace(/{year}/g, now.getFullYear().toString())
+        .replace(/{date}/g, now.toLocaleDateString())
+        .replace(/{time}/g, now.toLocaleTimeString());
 
     return {
         COLOR: color,
@@ -396,6 +394,36 @@ export const FEEDBACK = {
         }
 
         return null;
+    }
+};
+
+export const GIVEAWAY = {
+
+    async getChannel(guildId) {
+        requireBotConfig();
+        requireGuildId(guildId, 'getting giveaway channel');
+
+        const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, 'giveaway');
+
+        if (settings && settings.settings && settings.settings.giveaway_channel) {
+            return settings.settings.giveaway_channel;
+        }
+
+        const mainChannel = await getMainChannel(guildId);
+        return mainChannel;
+    },
+
+    async getCreatorCanParticipate(guildId) {
+        requireBotConfig();
+        requireGuildId(guildId, 'getting giveaway creator can participate setting');
+
+        const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, 'giveaway');
+
+        if (settings && settings.settings && settings.settings.giveaway_creator_can_participate !== undefined) {
+            return settings.settings.giveaway_creator_can_participate;
+        }
+
+        return false;
     }
 };
 

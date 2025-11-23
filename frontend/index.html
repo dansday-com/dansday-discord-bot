@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" class="h-full">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,6 +15,7 @@
         }
     </style>
 </head>
+
 <body class="h-full flex items-center justify-center bg-gray-900 text-white">
     <!-- Message Alert -->
     <div id="messageAlert"
@@ -734,7 +736,8 @@
         class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-3 sm:p-4">
         <div class="bg-gray-800 rounded-2xl border border-gray-700 max-w-md w-full p-4 sm:p-6">
             <div class="text-center mb-4 sm:mb-6">
-                <div class="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 bg-red-600 rounded-full mb-3 sm:mb-4">
+                <div
+                    class="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 bg-red-600 rounded-full mb-3 sm:mb-4">
                     <i class="fas fa-exclamation-triangle text-xl sm:text-2xl text-white"></i>
                 </div>
                 <h3 class="text-lg sm:text-xl font-bold text-white mb-2" id="deleteModalTitle">Delete</h3>
@@ -1999,6 +2002,8 @@
         }
         document.getElementById('botDetailYear').textContent = new Date().getFullYear();
         let currentServerId = null;
+        let embedDefaultColor = '#FF0000';
+        let embedDefaultFooter = '';
         let currentBotIdForServer = null;
         const components = [
             { id: 'main_config', name: 'Main Config', icon: 'fa-cog' },
@@ -2007,6 +2012,7 @@
             { id: 'permissions', name: 'Permissions', icon: 'fa-shield-alt' },
             { id: 'custom_supporter_role', name: 'Custom Supporter Role', icon: 'fa-user-tag' },
             { id: 'feedback', name: 'Feedback', icon: 'fa-comment-dots' },
+            { id: 'giveaway', name: 'Giveaway', icon: 'fa-gift' },
             { id: 'forwarder', name: 'Forwarder', icon: 'fa-exchange-alt' },
             { id: 'leveling', name: 'Leveling', icon: 'fa-chart-line' }
         ];
@@ -2544,6 +2550,25 @@
             renderMemberViewNav();
             filterAndRenderMembers();
         }
+        async function viewServerEmbedBuilder(serverId, serverName) {
+            currentServerId = serverId;
+            currentBotIdForServer = currentBotId;
+            stopBotLogPolling();
+            document.getElementById('botDetailContainer').classList.add('hidden');
+            document.getElementById('serverConfigContainer').classList.remove('hidden');
+            document.getElementById('serverConfigTitle').textContent = `${serverName}`;
+            currentServerView = 'embed_builder';
+            renderServerViewNav('embed_builder');
+            const componentNavContainer = document.getElementById('componentNavContainer');
+            if (componentNavContainer) {
+                componentNavContainer.classList.add('hidden');
+            }
+            const memberViewNavContainer = document.getElementById('memberViewNavContainer');
+            if (memberViewNavContainer) {
+                memberViewNavContainer.classList.add('hidden');
+            }
+            await renderEmbedBuilder();
+        }
         function filterAndRenderMembers() {
             let filtered = [...allMembers];
             if (currentMemberView !== 'all' && memberPermissions) {
@@ -2621,6 +2646,42 @@
                         return (a.rank || 9999) - (b.rank || 9999);
                     case 'rank_low':
                         return (b.rank || 9999) - (a.rank || 9999);
+                    case 'voice_active_desc':
+                        return (b.voice_minutes_active || 0) - (a.voice_minutes_active || 0);
+                    case 'voice_active_asc':
+                        return (a.voice_minutes_active || 0) - (b.voice_minutes_active || 0);
+                    case 'voice_afk_desc':
+                        return (b.voice_minutes_afk || 0) - (a.voice_minutes_afk || 0);
+                    case 'voice_afk_asc':
+                        return (a.voice_minutes_afk || 0) - (b.voice_minutes_afk || 0);
+                    case 'account_created_asc':
+                        const createdA = a.profile_created_at ? new Date(a.profile_created_at).getTime() : 0;
+                        const createdB = b.profile_created_at ? new Date(b.profile_created_at).getTime() : 0;
+                        return createdA - createdB;
+                    case 'account_created_desc':
+                        const createdA2 = a.profile_created_at ? new Date(a.profile_created_at).getTime() : 0;
+                        const createdB2 = b.profile_created_at ? new Date(b.profile_created_at).getTime() : 0;
+                        return createdB2 - createdA2;
+                    case 'afk_first':
+                        const afkA = a.is_afk ? 1 : 0;
+                        const afkB = b.is_afk ? 1 : 0;
+                        return afkB - afkA;
+                    case 'afk_last':
+                        const afkA2 = a.is_afk ? 1 : 0;
+                        const afkB2 = b.is_afk ? 1 : 0;
+                        return afkA2 - afkB2;
+                    case 'chat_desc':
+                        return (b.chat_total || 0) - (a.chat_total || 0);
+                    case 'chat_asc':
+                        return (a.chat_total || 0) - (b.chat_total || 0);
+                    case 'member_since_asc':
+                        const memberSinceA = a.member_since ? new Date(a.member_since).getTime() : 0;
+                        const memberSinceB = b.member_since ? new Date(b.member_since).getTime() : 0;
+                        return memberSinceA - memberSinceB;
+                    case 'member_since_desc':
+                        const memberSinceA2 = a.member_since ? new Date(a.member_since).getTime() : 0;
+                        const memberSinceB2 = b.member_since ? new Date(b.member_since).getTime() : 0;
+                        return memberSinceB2 - memberSinceA2;
                     default:
                         return 0;
                 }
@@ -2667,6 +2728,18 @@
                                 <option value="xp_asc">XP (Low to High)</option>
                                 <option value="name_asc">Name (A-Z)</option>
                                 <option value="name_desc">Name (Z-A)</option>
+                                <option value="voice_active_desc">Voice Active (High to Low)</option>
+                                <option value="voice_active_asc">Voice Active (Low to High)</option>
+                                <option value="voice_afk_desc">Voice AFK (High to Low)</option>
+                                <option value="voice_afk_asc">Voice AFK (Low to High)</option>
+                                <option value="chat_desc">Chat Messages (High to Low)</option>
+                                <option value="chat_asc">Chat Messages (Low to High)</option>
+                                <option value="account_created_asc">Account Created (Oldest First)</option>
+                                <option value="account_created_desc">Account Created (Newest First)</option>
+                                <option value="member_since_asc">Member Since (Oldest First)</option>
+                                <option value="member_since_desc">Member Since (Newest First)</option>
+                                <option value="afk_first">AFK Status (AFK First)</option>
+                                <option value="afk_last">AFK Status (Non-AFK First)</option>
                             </select>
                         </div>
                     </div>
@@ -2754,6 +2827,7 @@
                 const voiceAfk = member.voice_minutes_afk || 0;
                 const rank = member.rank ? `#${member.rank}` : 'N/A';
                 const memberSince = formatDate(member.member_since);
+                const accountCreated = formatDate(member.profile_created_at);
                 const isAfk = member.is_afk || false;
                 const roles = member.roles || [];
                 return `
@@ -2830,6 +2904,15 @@
                                         <div class="min-w-0">
                                             <div class="text-[0.65rem] sm:text-xs text-gray-400 uppercase tracking-wide">Member Since</div>
                                             <div class="text-sm sm:text-base font-bold text-white">${memberSince}</div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2 bg-gray-800 rounded-lg p-2 sm:p-2.5 border border-gray-600">
+                                        <div class="w-9 h-9 sm:w-8 sm:h-8 rounded-lg bg-pink-600 flex items-center justify-center flex-shrink-0">
+                                            <i class="fas fa-user-plus text-white text-xs"></i>
+                                        </div>
+                                        <div class="min-w-0">
+                                            <div class="text-[0.65rem] sm:text-xs text-gray-400 uppercase tracking-wide">Account Created</div>
+                                            <div class="text-sm sm:text-base font-bold text-white">${accountCreated}</div>
                                         </div>
                                     </div>
                                 </div>
@@ -2926,6 +3009,14 @@
                 }">
                     <i class="fas fa-users"></i>
                     <span class="sm:inline">Members</span>
+                </button>
+                <button onclick="viewServerEmbedBuilder('${currentServerId}', '${serverName.replace(/'/g, "\\'")}')"
+                    class="px-3 sm:px-4 py-2 sm:py-3 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95 flex items-center gap-2 text-xs sm:text-sm font-medium ${activeView === 'embed_builder'
+                    ? 'bg-red-600 text-white'
+                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'
+                }">
+                    <i class="fas fa-code"></i>
+                    <span class="sm:inline">Embed Builder</span>
                 </button>
                 <button onclick="viewServerConfig('${currentServerId}', '${serverName.replace(/'/g, "\\'")}')"
                     class="px-3 sm:px-4 py-2 sm:py-3 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95 flex items-center gap-2 text-xs sm:text-sm font-medium ${activeView === 'configuration'
@@ -3136,6 +3227,21 @@
                         </div>
                     `;
                     return;
+                case 'giveaway':
+                    renderGiveaway(settings).then(html => {
+                        contentContainer.innerHTML = contentHTML + html;
+                        setTimeout(() => {
+                            updateGiveawayChannelDisplay();
+                        }, 100);
+                    });
+                    contentContainer.innerHTML = contentHTML + `
+                        <div class="bg-gray-700 rounded-lg p-4 sm:p-6">
+                            <div class="flex items-center justify-center py-8">
+                                <i class="fas fa-spinner fa-spin text-2xl text-gray-400"></i>
+                            </div>
+                        </div>
+                    `;
+                    return;
                 default:
                     contentHTML += `
                         <div class="bg-gray-700 rounded-lg p-4 sm:p-6">
@@ -3189,6 +3295,7 @@
                         <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
                             <i class="fas fa-rocket mr-2"></i>Channel for Production
                         </label>
+                        <p class="text-xs text-gray-400 mb-2">Channel where bot interface and production messages will be sent</p>
                         <button type="button" onclick="openChannelSelector('production_channel')"
                             class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 border border-gray-600 rounded-lg text-white text-left flex items-center justify-between hover:border-gray-500 transition-all text-sm sm:text-base">
                             <span id="production_channel_display" class="text-gray-300">${config.production_channel && channelNames[config.production_channel] ? `#${channelNames[config.production_channel]}` : config.production_channel ? `Channel ${config.production_channel}` : 'Select channel...'}</span>
@@ -3201,6 +3308,7 @@
                         <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
                             <i class="fas fa-flask mr-2"></i>Channel for Testing
                         </label>
+                        <p class="text-xs text-gray-400 mb-2">Optional channel for testing bot features before deploying to production</p>
                         <button type="button" onclick="openChannelSelector('testing_channel')"
                             class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 border border-gray-600 rounded-lg text-white text-left flex items-center justify-between hover:border-gray-500 transition-all text-sm sm:text-base">
                             <span id="testing_channel_display" class="text-gray-300">${config.testing_channel && channelNames[config.testing_channel] ? `#${channelNames[config.testing_channel]}` : config.testing_channel ? `Channel ${config.testing_channel}` : 'Select channel...'}</span>
@@ -3208,26 +3316,27 @@
                         </button>
                         <input type="hidden" id="testing_channel" name="testing_channel" value="${config.testing_channel || ''}">
                     </div>
-                    <!-- Default Embed Color -->
+                    <!-- Default Color -->
                     <div>
                         <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
-                            <i class="fas fa-palette mr-2"></i>Default Embed Color
+                            <i class="fas fa-palette mr-2"></i>Default Color
                         </label>
+                        <p class="text-xs text-gray-400 mb-2">Default color for bot messages and embeds. Use hex format (e.g., #FF0000 for red)</p>
                         <div class="flex items-center gap-3">
-                            <input type="color" id="embed_color" name="embed_color" value="${config.embed_color || '#FF0000'}"
+                            <input type="color" id="color" name="color" value="${config.color || ''}"
                                 class="w-16 h-10 sm:w-20 sm:h-12 rounded-lg cursor-pointer border border-gray-600 bg-gray-700">
-                            <input type="text" id="embed_color_text" name="embed_color_text" value="${config.embed_color || '#FF0000'}"
+                            <input type="text" id="color_text" name="color_text" value="${config.color || ''}"
                                 class="flex-1 px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all text-sm sm:text-base"
                                 placeholder="#FF5733" pattern="^#[0-9A-Fa-f]{6}$">
                         </div>
-                        <p class="mt-1.5 text-xs text-gray-500">Hex color format (e.g., #FF0000)</p>
                     </div>
-                    <!-- Default Embed Footer -->
+                    <!-- Default Footer -->
                     <div>
                         <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
-                            <i class="fas fa-align-left mr-2"></i>Default Embed Footer
+                            <i class="fas fa-align-left mr-2"></i>Default Footer
                         </label>
-                        <input type="text" id="embed_footer" name="embed_footer" value="${(config.embed_footer || '').replace(/"/g, '&quot;')}"
+                        <p class="text-xs text-gray-400 mb-2">Footer text displayed at the bottom of all bot messages and embeds. Use placeholders below for dynamic content</p>
+                        <input type="text" id="footer" name="footer" value="${config.footer ? config.footer.replace(/"/g, '&quot;') : ''}"
                             class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all text-sm sm:text-base"
                             placeholder="Enter footer text...">
                         <div class="mt-2 bg-blue-900 border border-blue-700 rounded-lg p-3">
@@ -3290,6 +3399,7 @@
                         <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
                             <i class="fas fa-hashtag mr-2"></i>Welcome Channels
                         </label>
+                        <p class="text-xs text-gray-400 mb-2">Channels where welcome messages will be sent when new members join. You can select multiple channels</p>
                         <button type="button" onclick="openChannelSelectorMultiselect('welcomer_channels')"
                             class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 border border-gray-600 rounded-lg text-white text-left flex items-center justify-between hover:border-gray-500 transition-all text-sm sm:text-base">
                             <span id="welcomer_channels_display" class="text-gray-300">
@@ -3323,6 +3433,7 @@
                                 <span class="sm:inline">Add Message</span>
                             </button>
                         </div>
+                        <p class="text-xs text-gray-400 mb-2">Messages sent randomly when new members join. Supports placeholders like {user}, {server}, etc.</p>
                         <div id="welcomer_messages_list" class="space-y-2">
                             ${config.messages && config.messages.length > 0
                     ? config.messages.map((msg, index) => `
@@ -3390,6 +3501,7 @@
                         <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
                             <i class="fas fa-hashtag mr-2"></i>Booster Channels
                         </label>
+                        <p class="text-xs text-gray-400 mb-2">Channels where booster messages will be sent when members boost the server. You can select multiple channels</p>
                         <button type="button" onclick="openChannelSelectorMultiselect('booster_channels')"
                             class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 border border-gray-600 rounded-lg text-white text-left flex items-center justify-between hover:border-gray-500 transition-all text-sm sm:text-base">
                             <span id="booster_channels_display" class="text-gray-300">
@@ -3423,6 +3535,7 @@
                                 <span class="sm:inline">Add Message</span>
                             </button>
                         </div>
+                        <p class="text-xs text-gray-400 mb-2">Messages sent randomly when members boost the server. Supports placeholders like {user}, {server}, etc.</p>
                         <div id="booster_messages_list" class="space-y-2">
                             ${config.messages && config.messages.length > 0
                     ? config.messages.map((msg, index) => `
@@ -3481,6 +3594,7 @@
                             <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
                                 <i class="fas fa-shield-alt text-red-500 mr-2"></i>Admin Roles
                             </label>
+                            <p class="text-xs text-gray-400 mb-2">Roles with full access to all bot features and settings</p>
                             <button type="button" onclick="openRoleSelector('admin_roles')"
                                 class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-lg text-left transition-colors flex items-center justify-between group">
                                 <div class="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
@@ -3503,6 +3617,7 @@
                             <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
                                 <i class="fas fa-user-tie text-red-500 mr-2"></i>Staff Roles
                             </label>
+                            <p class="text-xs text-gray-400 mb-2">Roles with access to most features except setup. Can use send message, custom supporter role, etc.</p>
                             <button type="button" onclick="openRoleSelector('staff_roles')"
                                 class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-lg text-left transition-colors flex items-center justify-between group">
                                 <div class="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
@@ -3525,6 +3640,7 @@
                             <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
                                 <i class="fas fa-heart text-red-500 mr-2"></i>Supporter Roles
                             </label>
+                            <p class="text-xs text-gray-400 mb-2">Roles with access to custom supporter role feature, leveling, feedback, and AFK</p>
                             <button type="button" onclick="openRoleSelector('supporter_roles')"
                                 class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-lg text-left transition-colors flex items-center justify-between group">
                                 <div class="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
@@ -3547,6 +3663,7 @@
                             <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
                                 <i class="fas fa-users text-red-500 mr-2"></i>Member Roles
                             </label>
+                            <p class="text-xs text-gray-400 mb-2">Basic member roles with access to leveling, feedback, and AFK features. Required for earning XP</p>
                             <button type="button" onclick="openRoleSelector('member_roles')"
                                 class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-lg text-left transition-colors flex items-center justify-between group">
                                 <div class="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
@@ -3597,6 +3714,7 @@
                             <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
                                 <i class="fas fa-arrow-up text-red-500 mr-2"></i>Role Start (Top/Highest Position)
                             </label>
+                            <p class="text-xs text-gray-400 mb-2">Highest role position where custom supporter roles will be created. Roles will be placed below this</p>
                             <button type="button" onclick="openRoleSelectorSingle('role_start')"
                                 class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-lg text-left transition-colors flex items-center justify-between group">
                                 <div class="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
@@ -3619,6 +3737,7 @@
                             <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
                                 <i class="fas fa-arrow-down text-red-500 mr-2"></i>Role End (Bottom/Lowest Position)
                             </label>
+                            <p class="text-xs text-gray-400 mb-2">Lowest role position where custom supporter roles will be created. Roles will be placed above this</p>
                             <button type="button" onclick="openRoleSelectorSingle('role_end')"
                                 class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-lg text-left transition-colors flex items-center justify-between group">
                                 <div class="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
@@ -3667,6 +3786,7 @@
                             <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
                                 <i class="fas fa-comment-dots text-red-500 mr-2"></i>Feedback Channel
                             </label>
+                            <p class="text-xs text-gray-400 mb-2">Channel where user feedback submissions will be sent. Staff roles will be mentioned automatically</p>
                             <button type="button" onclick="openChannelSelector('feedback_channel')"
                                 class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 border border-gray-600 rounded-lg text-white text-left flex items-center justify-between hover:border-gray-500 transition-all text-sm sm:text-base">
                                 <span id="feedback_channel_display" class="text-gray-300">${channelId && channelNames[channelId] ? `#${channelNames[channelId]}` : channelId ? `Channel ${channelId}` : 'Select channel...'}</span>
@@ -3691,6 +3811,77 @@
             if (!hiddenInput) return;
             const channelId = hiddenInput.value;
             const displayEl = document.getElementById('feedback_channel_display');
+            if (!displayEl) return;
+            if (!channelId) {
+                displayEl.textContent = 'Select channel...';
+                return;
+            }
+            const channelNames = await loadChannelNames([channelId]);
+            if (channelNames[channelId]) {
+                displayEl.textContent = `#${channelNames[channelId]}`;
+            } else {
+                displayEl.textContent = `Channel ${channelId}`;
+            }
+        }
+        async function renderGiveaway(settings) {
+            let config = {};
+            if (settings) {
+                if (settings.settings) {
+                    config = settings.settings;
+                } else if (typeof settings === 'object') {
+                    config = settings;
+                }
+            }
+            const channelId = config.giveaway_channel;
+            const channelIds = channelId ? [channelId] : [];
+            const channelNames = await loadChannelNames(channelIds);
+            const creatorCanParticipate = config.giveaway_creator_can_participate || false;
+            return `
+                    <form id="giveawayConfigForm" class="space-y-4 sm:space-y-6">
+                        <!-- Giveaway Channel -->
+                        <div>
+                            <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                                <i class="fas fa-gift text-red-500 mr-2"></i>Giveaway Channel
+                            </label>
+                            <p class="text-xs text-gray-400 mb-2">Channel where giveaways will be published and winners will be announced. If empty, will use main config default channel</p>
+                            <button type="button" onclick="openChannelSelector('giveaway_channel')"
+                                class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 border border-gray-600 rounded-lg text-white text-left flex items-center justify-between hover:border-gray-500 transition-all text-sm sm:text-base">
+                                <span id="giveaway_channel_display" class="text-gray-300">${channelId && channelNames[channelId] ? `#${channelNames[channelId]}` : channelId ? `Channel ${channelId}` : 'Select channel...'}</span>
+                                <i class="fas fa-chevron-down text-gray-400"></i>
+                            </button>
+                            <input type="hidden" id="giveaway_channel" name="giveaway_channel" value="${channelId || ''}">
+                        </div>
+                        <!-- Creator Can Participate -->
+                        <div>
+                            <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                                <i class="fas fa-user-check text-red-500 mr-2"></i>Creator Can Participate
+                            </label>
+                            <p class="text-xs text-gray-400 mb-2">Allow giveaway creators to enter their own giveaways</p>
+                            <div class="flex items-center gap-3">
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="giveaway_creator_can_participate" name="giveaway_creator_can_participate" ${creatorCanParticipate ? 'checked' : ''} class="sr-only peer">
+                                    <div class="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1.5px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
+                                    <span class="ml-3 text-sm text-gray-300" id="giveaway_creator_can_participate_label">${creatorCanParticipate ? 'Yes' : 'No'}</span>
+                                </label>
+                            </div>
+                        </div>
+                        <!-- Save Button -->
+                        <div class="pt-4 border-t border-gray-700">
+                            <button type="submit" id="saveGiveawayConfigBtn"
+                                class="w-full bg-red-600 hover:bg-red-700 text-white py-2.5 sm:py-3 rounded-lg transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 text-sm sm:text-base font-medium disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
+                                <i class="fas fa-spinner fa-spin hidden" id="saveGiveawayConfigLoading"></i>
+                                <i class="fas fa-save"></i>
+                                <span>Save Configuration</span>
+                            </button>
+                        </div>
+                    </form>
+                `;
+        }
+        async function updateGiveawayChannelDisplay() {
+            const hiddenInput = document.getElementById('giveaway_channel');
+            if (!hiddenInput) return;
+            const channelId = hiddenInput.value;
+            const displayEl = document.getElementById('giveaway_channel_display');
             if (!displayEl) return;
             if (!channelId) {
                 displayEl.textContent = 'Select channel...';
@@ -3745,6 +3936,7 @@
                             <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
                                 <i class="fas fa-tasks text-red-500 mr-2"></i>Forwarder Type
                             </label>
+                            <p class="text-xs text-gray-400 mb-2">Switch between testing and production forwarder configurations. Each type has its own list of forwarders</p>
                             <select id="forwarder_type" onchange="switchForwarderType()"
                                 class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all text-sm sm:text-base">
                                 <option value="testing">Testing</option>
@@ -3790,6 +3982,8 @@
                     config = settings;
                 }
             }
+            const channelIds = config.LEVEL_UP_CHANNEL_ID ? [config.LEVEL_UP_CHANNEL_ID] : [];
+            const channelNames = await loadChannelNames(channelIds);
             const messageXP = config.MESSAGE?.XP;
             const messageCooldown = config.MESSAGE?.COOLDOWN_SECONDS;
             const voiceXPPerMin = config.VOICE?.XP_PER_MINUTE;
@@ -3838,6 +4032,7 @@
                                 <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
                                     Base XP
                                 </label>
+                                <p class="text-xs text-gray-400 mb-2">XP required to reach level 2. Higher levels use exponential formula: Base XP × (Multiplier ^ (Level - 2))</p>
                                 <select id="base_xp" name="base_xp" class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm sm:text-base">
                                     ${baseXPOptions}
                                 </select>
@@ -3846,6 +4041,7 @@
                                 <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
                                     Multiplier
                                 </label>
+                                <p class="text-xs text-gray-400 mb-2">Exponential multiplier for level requirements. Higher values make leveling progressively harder</p>
                                 <select id="multiplier" name="multiplier" class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm sm:text-base">
                                     ${multiplierOptions}
                                 </select>
@@ -3862,6 +4058,7 @@
                                 <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
                                     XP Per Message
                                 </label>
+                                <p class="text-xs text-gray-400 mb-2">XP awarded for each eligible message (must pass cooldown and have member role)</p>
                                 <select id="message_xp" name="message_xp" class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm sm:text-base">
                                     ${xpOptions}
                                 </select>
@@ -3870,6 +4067,7 @@
                                 <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
                                     Cooldown (seconds)
                                 </label>
+                                <p class="text-xs text-gray-400 mb-2">Minimum time between messages to earn XP. Messages sent too quickly won't award XP</p>
                                 <select id="message_cooldown" name="message_cooldown" class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm sm:text-base">
                                     ${cooldownOptions}
                                 </select>
@@ -3884,16 +4082,18 @@
                         <div class="space-y-4">
                             <div>
                                 <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
-                                    XP Per Minute (Active)
+                                    Active Voice XP (per cooldown interval)
                                 </label>
+                                <p class="text-xs text-gray-400 mb-2">XP awarded per cooldown interval when actively in voice</p>
                                 <select id="voice_xp_per_minute" name="voice_xp_per_minute" class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm sm:text-base">
                                     ${voiceXPOptions}
                                 </select>
                             </div>
                             <div>
                                 <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
-                                    XP Per Minute (AFK)
+                                    AFK Voice XP (per cooldown interval)
                                 </label>
+                                <p class="text-xs text-gray-400 mb-2">XP awarded per cooldown interval when AFK in voice</p>
                                 <select id="voice_afk_xp_per_minute" name="voice_afk_xp_per_minute" class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm sm:text-base">
                                     ${voiceAfkXPOptions}
                                 </select>
@@ -3902,9 +4102,30 @@
                                 <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
                                     Cooldown (seconds)
                                 </label>
+                                <p class="text-xs text-gray-400 mb-2">How often voice XP is checked and awarded. XP amount above is given each interval</p>
                                 <select id="voice_cooldown" name="voice_cooldown" class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm sm:text-base">
                                     ${voiceCooldownOptions}
                                 </select>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Level Up Channel -->
+                    <div class="bg-gray-700 rounded-lg p-4 sm:p-6">
+                        <h3 class="text-base sm:text-lg font-semibold text-white mb-4">
+                            <i class="fas fa-hashtag mr-2"></i>Level Up Channel
+                        </h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                                    Level Up Notification Channel
+                                </label>
+                                <p class="text-xs text-gray-400 mb-2">Channel where level up images will be posted when members level up</p>
+                                <button type="button" onclick="openChannelSelector('leveling_channel')"
+                                    class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-800 border border-gray-600 rounded-lg text-white hover:bg-gray-750 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all text-sm sm:text-base flex items-center justify-between">
+                                    <span id="leveling_channel_display" class="text-gray-300">${config.LEVEL_UP_CHANNEL_ID && channelNames[config.LEVEL_UP_CHANNEL_ID] ? '#' + channelNames[config.LEVEL_UP_CHANNEL_ID] : config.LEVEL_UP_CHANNEL_ID ? 'Channel ' + config.LEVEL_UP_CHANNEL_ID : 'Select channel...'}</span>
+                                    <i class="fas fa-chevron-right text-gray-400"></i>
+                                </button>
+                                <input type="hidden" id="leveling_channel" name="leveling_channel" value="${config.LEVEL_UP_CHANNEL_ID ?? ''}">
                             </div>
                         </div>
                     </div>
@@ -4859,6 +5080,8 @@
             }
             if (currentChannelField === 'feedback_channel') {
                 await updateFeedbackChannelDisplay();
+            } else if (currentChannelField === 'giveaway_channel') {
+                await updateGiveawayChannelDisplay();
             } else if (currentChannelField === 'forwarder_target_channel') {
                 const targetDisplayEl = document.getElementById('forwarder_target_channel_display');
                 if (targetDisplayEl) {
@@ -4867,6 +5090,16 @@
                         targetDisplayEl.textContent = `#${channelNames[channelId]}`;
                     } else {
                         targetDisplayEl.textContent = channelName.startsWith('#') ? channelName : `#${channelName}`;
+                    }
+                }
+            } else if (currentChannelField === 'leveling_channel') {
+                const displayEl = document.getElementById('leveling_channel_display');
+                if (displayEl) {
+                    const channelNames = await loadChannelNames([channelId]);
+                    if (channelNames[channelId]) {
+                        displayEl.textContent = `#${channelNames[channelId]}`;
+                    } else {
+                        displayEl.textContent = channelName.startsWith('#') ? channelName : `#${channelName}`;
                     }
                 }
             }
@@ -4918,7 +5151,8 @@
                     'staff_roles': 'Select Staff Roles',
                     'supporter_roles': 'Select Supporter Roles',
                     'member_roles': 'Select Member Roles',
-                    'forwarder_role_pings': 'Select Role Pings'
+                    'forwarder_role_pings': 'Select Role Pings',
+                    'embed_roles': 'Select Roles to Mention'
                 };
                 document.getElementById('roleSelectorTitle').innerHTML = `<i class="fas fa-user-shield text-red-500"></i> ${titles[fieldId] || 'Select Roles'}`;
                 document.getElementById('roleSelectorConfirm').classList.remove('hidden');
@@ -4939,7 +5173,8 @@
                 }
                 const titles = {
                     'role_start': 'Select Role Start (Top/Highest Position)',
-                    'role_end': 'Select Role End (Bottom/Lowest Position)'
+                    'role_end': 'Select Role End (Bottom/Lowest Position)',
+                    'embed_roles': 'Select Roles to Mention'
                 };
                 document.getElementById('roleSelectorTitle').innerHTML = `<i class="fas fa-user-shield text-red-500"></i> ${titles[fieldId] || 'Select Role'}`;
                 document.getElementById('roleSelectorConfirm').classList.add('hidden');
@@ -5544,19 +5779,19 @@
             }
         }
         function setupColorPickerSync() {
-            const colorPicker = document.getElementById('embed_color');
-            const colorText = document.getElementById('embed_color_text');
+            const colorPicker = document.getElementById('color');
+            const colorText = document.getElementById('color_text');
             if (!colorPicker || !colorText) return;
             const newColorPicker = colorPicker.cloneNode(true);
             const newColorText = colorText.cloneNode(true);
             colorPicker.parentNode.replaceChild(newColorPicker, colorPicker);
             colorText.parentNode.replaceChild(newColorText, colorText);
-            document.getElementById('embed_color').addEventListener('input', function () {
-                document.getElementById('embed_color_text').value = this.value;
+            document.getElementById('color').addEventListener('input', function () {
+                document.getElementById('color_text').value = this.value;
             });
-            document.getElementById('embed_color_text').addEventListener('input', function () {
+            document.getElementById('color_text').addEventListener('input', function () {
                 if (/^#[0-9A-Fa-f]{6}$/.test(this.value)) {
-                    document.getElementById('embed_color').value = this.value;
+                    document.getElementById('color').value = this.value;
                 }
             });
         }
@@ -5566,8 +5801,8 @@
             const formData = {
                 testing_channel: document.getElementById('testing_channel').value || null,
                 production_channel: document.getElementById('production_channel').value || null,
-                embed_color: document.getElementById('embed_color').value,
-                embed_footer: document.getElementById('embed_footer').value || null
+                color: document.getElementById('color').value,
+                footer: document.getElementById('footer').value
             };
             const submitBtn = document.getElementById('saveMainConfigBtn');
             const loadingIcon = document.getElementById('saveMainConfigLoading');
@@ -5847,45 +6082,90 @@
             }
         });
         document.addEventListener('submit', async function (e) {
-            if (e.target.id !== 'feedbackConfigForm') return;
-            e.preventDefault();
-            const formData = {
-                feedback_channel: document.getElementById('feedback_channel').value || null
-            };
-            const submitBtn = document.getElementById('saveFeedbackConfigBtn');
-            const loadingIcon = document.getElementById('saveFeedbackConfigLoading');
-            submitBtn.disabled = true;
-            loadingIcon.classList.remove('hidden');
-            try {
-                const res = await fetch(`/api/servers/${currentServerId}/settings`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    credentials: 'include',
-                    body: JSON.stringify({
-                        component_name: 'feedback',
-                        settings: formData
-                    })
-                });
-                if (res.status === 401) {
-                    await checkAuthStatus();
-                    return;
+            if (e.target.id === 'feedbackConfigForm') {
+                e.preventDefault();
+                const formData = {
+                    feedback_channel: document.getElementById('feedback_channel').value || null
+                };
+                const submitBtn = document.getElementById('saveFeedbackConfigBtn');
+                const loadingIcon = document.getElementById('saveFeedbackConfigLoading');
+                submitBtn.disabled = true;
+                loadingIcon.classList.remove('hidden');
+                try {
+                    const res = await fetch(`/api/servers/${currentServerId}/settings`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        credentials: 'include',
+                        body: JSON.stringify({
+                            component_name: 'feedback',
+                            settings: formData
+                        })
+                    });
+                    if (res.status === 401) {
+                        await checkAuthStatus();
+                        return;
+                    }
+                    const data = await res.json();
+                    if (data.success) {
+                        showMessage('Feedback configuration saved successfully!', 'success');
+                        setTimeout(() => {
+                            loadComponent('feedback');
+                        }, 500);
+                    } else {
+                        showMessage(data.error || 'Failed to save configuration', 'error');
+                    }
+                } catch (err) {
+                    showMessage('Failed to save configuration. Please try again.', 'error');
+                } finally {
+                    submitBtn.disabled = false;
+                    loadingIcon.classList.add('hidden');
                 }
-                const data = await res.json();
-                if (data.success) {
-                    showMessage('Feedback configuration saved successfully!', 'success');
-                    setTimeout(() => {
-                        loadComponent('feedback');
-                    }, 500);
-                } else {
-                    showMessage(data.error || 'Failed to save configuration', 'error');
+                return;
+            }
+            if (e.target.id === 'giveawayConfigForm') {
+                e.preventDefault();
+                const formData = {
+                    giveaway_channel: document.getElementById('giveaway_channel').value || null,
+                    giveaway_creator_can_participate: document.getElementById('giveaway_creator_can_participate').checked || false
+                };
+                const submitBtn = document.getElementById('saveGiveawayConfigBtn');
+                const loadingIcon = document.getElementById('saveGiveawayConfigLoading');
+                submitBtn.disabled = true;
+                loadingIcon.classList.remove('hidden');
+                try {
+                    const res = await fetch(`/api/servers/${currentServerId}/settings`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        credentials: 'include',
+                        body: JSON.stringify({
+                            component_name: 'giveaway',
+                            settings: formData
+                        })
+                    });
+                    if (res.status === 401) {
+                        await checkAuthStatus();
+                        return;
+                    }
+                    const data = await res.json();
+                    if (data.success) {
+                        showMessage('Giveaway configuration saved successfully!', 'success');
+                        setTimeout(() => {
+                            loadComponent('giveaway');
+                        }, 500);
+                    } else {
+                        showMessage(data.error || 'Failed to save configuration', 'error');
+                    }
+                } catch (err) {
+                    showMessage('Failed to save configuration. Please try again.', 'error');
+                } finally {
+                    submitBtn.disabled = false;
+                    loadingIcon.classList.add('hidden');
                 }
-            } catch (err) {
-                showMessage('Failed to save configuration. Please try again.', 'error');
-            } finally {
-                submitBtn.disabled = false;
-                loadingIcon.classList.add('hidden');
+                return;
             }
         });
         document.addEventListener('submit', async function (e) {
@@ -5904,7 +6184,8 @@
                 REQUIREMENTS: {
                     BASE_XP: parseInt(document.getElementById('base_xp').value),
                     MULTIPLIER: parseFloat(document.getElementById('multiplier').value)
-                }
+                },
+                LEVEL_UP_CHANNEL_ID: document.getElementById('leveling_channel').value
             };
             const submitBtn = document.getElementById('saveLevelingConfigBtn');
             const loadingIcon = document.getElementById('saveLevelingConfigLoading');
@@ -5942,6 +6223,809 @@
                 loadingIcon.classList.add('hidden');
             }
         });
+        async function renderEmbedBuilder() {
+            const contentContainer = document.getElementById('componentContent');
+            if (!contentContainer) return;
+
+            try {
+                const configRes = await fetch(`/api/servers/${currentServerId}/settings?component=main_config`, {
+                    credentials: 'include'
+                });
+                const configData = configRes.ok ? await configRes.json() : null;
+                const embedConfig = configData?.settings || configData || {};
+                const defaultColor = embedConfig.color;
+                const defaultFooter = embedConfig.footer;
+                embedDefaultColor = defaultColor;
+                embedDefaultFooter = defaultFooter;
+
+                contentContainer.innerHTML = `
+                    <div class="mb-4 sm:mb-6">
+                        <h2 class="text-xl sm:text-2xl font-bold text-white mb-2 flex items-center gap-2">
+                            <i class="fas fa-code text-red-500"></i>
+                            Embed Builder
+                        </h2>
+                        <p class="text-gray-400 text-sm sm:text-base">
+                            Create and send custom embeds to channels.
+                        </p>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                        <!-- Embed Builder Form -->
+                        <div class="space-y-4 sm:space-y-6">
+                            <div class="bg-gray-700 rounded-lg p-4 sm:p-6">
+                                <h3 class="text-base sm:text-lg font-semibold text-white mb-4">
+                                    <i class="fas fa-code mr-2"></i>Embed Builder
+                                </h3>
+                                <form id="embedBuilderForm" class="space-y-4">
+                                    <!-- Title -->
+                                    <div>
+                                        <div class="flex items-center justify-between mb-2">
+                                            <label class="block text-xs sm:text-sm font-medium text-gray-300">
+                                                <i class="fas fa-heading mr-2"></i>Title <span class="text-red-400">*</span>
+                                            </label>
+                                            <span id="embed_title_counter" class="text-xs text-gray-400">0/256</span>
+                                        </div>
+                                        <p class="text-xs text-gray-400 mb-2">Embed title (required, max 256 characters)</p>
+                                        <input type="text" id="embed_title" name="embed_title" maxlength="256" required
+                                            class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm sm:text-base"
+                                            placeholder="Enter embed title...">
+                                    </div>
+                                    
+                                    <!-- Description -->
+                                    <div>
+                                        <div class="flex items-center justify-between mb-2">
+                                            <label class="block text-xs sm:text-sm font-medium text-gray-300">
+                                                <i class="fas fa-align-left mr-2"></i>Description
+                                            </label>
+                                            <span id="embed_description_counter" class="text-xs text-gray-400">0/4096</span>
+                                        </div>
+                                        <p class="text-xs text-gray-400 mb-2">Embed description (optional, max 4096 characters). Total embed size must not exceed 6000 characters</p>
+                                        <textarea id="embed_description" name="embed_description" rows="4" maxlength="4096"
+                                            class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm sm:text-base resize-none"
+                                            placeholder="Enter embed description..."></textarea>
+                                    </div>
+                                    
+                                    <!-- Image -->
+                                    <div>
+                                        <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                                            <i class="fas fa-image mr-2"></i>Image
+                                        </label>
+                                        <p class="text-xs text-gray-400 mb-2">Upload an image file or provide an image URL (optional)</p>
+                                        <div class="flex gap-2 mb-2">
+                                            <button type="button" id="embed_image_mode_url" onclick="switchImageMode('url')"
+                                                class="flex-1 px-3 py-2 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-lg text-white text-sm transition-colors">
+                                                URL
+                                            </button>
+                                            <button type="button" id="embed_image_mode_upload" onclick="switchImageMode('upload')"
+                                                class="flex-1 px-3 py-2 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-lg text-white text-sm transition-colors">
+                                                Upload
+                                            </button>
+                                        </div>
+                                        <div id="embed_image_url_container">
+                                            <input type="url" id="embed_image" name="embed_image"
+                                                class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm sm:text-base"
+                                                placeholder="https://example.com/image.png">
+                                        </div>
+                                        <div id="embed_image_upload_container" class="hidden">
+                                            <input type="file" id="embed_image_file" name="embed_image_file" accept="image/*"
+                                                class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-800 border border-gray-600 rounded-lg text-white text-sm sm:text-base file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-red-600 file:text-white hover:file:bg-red-700 file:cursor-pointer">
+                                            <div id="embed_image_preview" class="mt-2 hidden">
+                                                <img id="embed_image_preview_img" src="" alt="Preview" class="max-w-full rounded max-h-[200px] object-contain">
+                                            </div>
+                                        </div>
+                                        <input type="hidden" id="embed_uploaded_image_url" value="">
+                                    </div>
+                                    
+                                    <!-- Color -->
+                                    <div>
+                                        <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                                            <i class="fas fa-palette mr-2"></i>Color
+                                        </label>
+                                        <p class="text-xs text-gray-400 mb-2">Embed color (hex, decimal, or color name). Leave empty to use default</p>
+                                        <div class="flex items-center gap-3">
+                                            <input type="color" id="embed_color_picker" value="${defaultColor}"
+                                                class="w-16 h-10 sm:w-20 sm:h-12 rounded-lg cursor-pointer border border-gray-600 bg-gray-700">
+                                            <input type="text" id="embed_color" name="embed_color" value="${defaultColor}"
+                                                class="flex-1 px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm sm:text-base"
+                                                placeholder="#FF0000 or red or 16711680">
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Footer -->
+                                    <div>
+                                        <div class="flex items-center justify-between mb-2">
+                                            <label class="block text-xs sm:text-sm font-medium text-gray-300">
+                                                <i class="fas fa-align-left mr-2"></i>Footer
+                                            </label>
+                                            <span id="embed_footer_counter" class="text-xs text-gray-400">0/2048</span>
+                                        </div>
+                                        <p class="text-xs text-gray-400 mb-2">Embed footer text. Leave empty to use default footer (max 2048 characters). Total embed size must not exceed 6000 characters</p>
+                                        <input type="text" id="embed_footer" name="embed_footer" maxlength="2048"
+                                            class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm sm:text-base"
+                                            placeholder="Enter footer text...">
+                                    </div>
+                                    
+                                    <!-- Channel Selection -->
+                                    <div>
+                                        <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                                            <i class="fas fa-hashtag mr-2"></i>Channels <span class="text-red-400">*</span>
+                                        </label>
+                                        <p class="text-xs text-gray-400 mb-2">Select channels where the embed will be sent</p>
+                                        <button type="button" onclick="openChannelSelectorMultiselect('embed_channels')"
+                                            class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 border border-gray-600 rounded-lg text-white text-left flex items-center justify-between hover:border-gray-500 transition-all text-sm sm:text-base">
+                                            <span id="embed_channels_display" class="text-gray-300">Select channels...</span>
+                                            <i class="fas fa-chevron-down text-gray-400"></i>
+                                        </button>
+                                        <input type="hidden" id="embed_channels" name="embed_channels" value="">
+                                        <div id="embed_channels_selected" class="mt-2 flex flex-wrap gap-2"></div>
+                                    </div>
+                                    
+                                    <!-- Role Mention (Optional) -->
+                                    <div>
+                                        <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                                            <i class="fas fa-at mr-2"></i>Role Mentions (Optional)
+                                        </label>
+                                        <p class="text-xs text-gray-400 mb-2">Select roles to mention in the message</p>
+                                        <button type="button" onclick="openRoleSelector('embed_roles')"
+                                            class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-lg text-left transition-colors flex items-center justify-between group">
+                                            <div class="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                                                <i class="fas fa-user-shield text-gray-400 group-hover:text-white transition-colors flex-shrink-0"></i>
+                                                <span id="embed_roles_display" class="text-gray-300 text-sm sm:text-base">Select roles...</span>
+                                            </div>
+                                            <i class="fas fa-chevron-right text-gray-500 group-hover:text-white transition-colors text-xs"></i>
+                                        </button>
+                                        <input type="hidden" id="embed_roles" name="embed_roles" value="">
+                                        <div id="embed_roles_selected" class="mt-2 flex flex-wrap gap-2"></div>
+                                    </div>
+                                    
+                                    <!-- Total Size Counter -->
+                                    <div class="pt-4 border-t border-gray-600">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <span class="text-xs sm:text-sm font-medium text-gray-300">Total Embed Size</span>
+                                            <span id="embed_total_counter" class="text-xs text-gray-400">0/6000</span>
+                                        </div>
+                                        <p class="text-xs text-gray-400 mb-4">Discord limit: 6000 characters (title + description + footer combined)</p>
+                                    </div>
+                                    
+                                    <!-- Send Button -->
+                                    <div>
+                                        <button type="submit" id="sendEmbedBtn"
+                                            class="w-full bg-red-600 hover:bg-red-700 text-white py-2.5 sm:py-3 rounded-lg transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 text-sm sm:text-base font-medium disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
+                                            <i class="fas fa-spinner fa-spin hidden" id="sendEmbedLoading"></i>
+                                            <i class="fas fa-paper-plane"></i>
+                                            <span>Send Embed</span>
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                        
+                        <!-- Preview -->
+                        <div class="space-y-4 sm:space-y-6">
+                            <div class="bg-gray-700 rounded-lg p-4 sm:p-6">
+                                <h3 class="text-base sm:text-lg font-semibold text-white mb-4">
+                                    <i class="fas fa-eye mr-2"></i>Preview
+                                </h3>
+                                <div id="embedPreview" class="bg-gray-800 rounded-lg p-4 border border-gray-600 overflow-auto">
+                                    <p class="text-gray-400 text-sm">Preview will appear here as you type...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+
+                const originalConfirmMultiselectChannels = window.confirmMultiselectChannels;
+                window.confirmMultiselectChannels = async function () {
+                    if (currentChannelField === 'embed_channels') {
+                        document.getElementById('embed_channels').value = selectedChannels.join(',');
+                        const displayEl = document.getElementById('embed_channels_display');
+                        if (displayEl) {
+                            const count = selectedChannels.length;
+                            displayEl.textContent = count > 0
+                                ? `${count} channel${count !== 1 ? 's' : ''} selected`
+                                : 'Select channels...';
+                        }
+                        await updateEmbedChannelsDisplay();
+                        closeChannelSelector();
+                    } else if (originalConfirmMultiselectChannels) {
+                        await originalConfirmMultiselectChannels();
+                    }
+                };
+
+
+                const originalConfirmRoleSelection = window.confirmRoleSelection;
+                window.confirmRoleSelection = function () {
+                    if (currentRoleField === 'embed_roles') {
+                        document.getElementById('embed_roles').value = JSON.stringify(selectedRoles);
+                        const displayEl = document.getElementById('embed_roles_display');
+                        if (displayEl) {
+                            const count = selectedRoles.length;
+                            displayEl.textContent = count > 0
+                                ? `${count} role${count !== 1 ? 's' : ''} selected`
+                                : 'Select roles...';
+                        }
+                        updateEmbedRolesDisplay();
+                        closeRoleSelector();
+                    } else if (originalConfirmRoleSelection) {
+                        originalConfirmRoleSelection();
+                    }
+                };
+
+                async function updateEmbedChannelsDisplay() {
+                    const hiddenInput = document.getElementById('embed_channels');
+                    if (!hiddenInput) return;
+                    const channelIds = hiddenInput.value ? hiddenInput.value.split(',').filter(Boolean) : [];
+                    const displayEl = document.getElementById('embed_channels_selected');
+                    if (channelIds.length === 0) {
+                        if (displayEl) displayEl.innerHTML = '';
+                        return;
+                    }
+                    const channelNames = await loadChannelNames(channelIds);
+                    if (displayEl) {
+                        displayEl.innerHTML = channelIds.map(chId => `
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-red-600 text-white text-xs rounded-lg">
+                                ${channelNames[chId] ? `#${channelNames[chId]}` : `Channel ${chId}`}
+                                <button type="button" onclick="removeEmbedChannel('${chId}')" class="hover:text-red-200 transition-colors">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </span>
+                        `).join('');
+                    }
+                }
+
+                async function removeEmbedChannel(channelId) {
+                    const hiddenInput = document.getElementById('embed_channels');
+                    if (!hiddenInput) return;
+                    const channelIds = hiddenInput.value ? hiddenInput.value.split(',').filter(Boolean) : [];
+                    const filtered = channelIds.filter(id => id !== channelId);
+                    hiddenInput.value = filtered.join(',');
+                    const displayEl = document.getElementById('embed_channels_display');
+                    if (displayEl) {
+                        const count = filtered.length;
+                        displayEl.textContent = count > 0 ? `${count} channel${count !== 1 ? 's' : ''} selected` : 'Select channels...';
+                    }
+                    await updateEmbedChannelsDisplay();
+                }
+
+                function updateEmbedRolesDisplay() {
+                    const hiddenInput = document.getElementById('embed_roles');
+                    if (!hiddenInput) return;
+                    let roleIds = [];
+                    try {
+                        const value = hiddenInput.value.trim();
+                        if (value) {
+                            roleIds = JSON.parse(value);
+                        }
+                    } catch (err) {
+                        roleIds = [];
+                    }
+                    if (!Array.isArray(roleIds)) {
+                        roleIds = [];
+                    }
+                    const displayEl = document.getElementById('embed_roles_selected');
+                    if (displayEl) {
+                        if (roleIds.length === 0) {
+                            displayEl.innerHTML = '';
+                            return;
+                        }
+                        displayEl.innerHTML = roleIds.map(roleId => {
+                            const role = allRoles.find(r => String(r.discord_role_id) === String(roleId));
+                            if (!role) {
+                                return `
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-lg text-xs sm:text-sm text-white">
+                                        <span class="w-3 h-3 rounded-full bg-gray-500"></span>
+                                        ${escapeHtml(`Role ${roleId}`)}
+                                        <button type="button" onclick="removeEmbedRole('${roleId}')"
+                                            class="text-gray-400 hover:text-red-400 transition-colors">
+                                            <i class="fas fa-times text-xs"></i>
+                                        </button>
+                                    </span>
+                                `;
+                            }
+                            return `
+                                <span class="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-lg text-xs sm:text-sm text-white">
+                                    <span class="w-3 h-3 rounded-full" style="background-color: ${role.color || '#7289da'};"></span>
+                                    ${escapeHtml(role.name || 'Unknown Role')}
+                                    <button type="button" onclick="removeEmbedRole('${roleId}')"
+                                        class="text-gray-400 hover:text-red-400 transition-colors">
+                                        <i class="fas fa-times text-xs"></i>
+                                    </button>
+                                </span>
+                            `;
+                        }).filter(Boolean).join('');
+                    }
+                }
+
+                function removeEmbedRole(roleId) {
+                    const hiddenInput = document.getElementById('embed_roles');
+                    if (!hiddenInput) return;
+                    let roleIds = [];
+                    try {
+                        const value = hiddenInput.value.trim();
+                        if (value) {
+                            roleIds = JSON.parse(value);
+                        }
+                    } catch (err) {
+                        roleIds = [];
+                    }
+                    if (!Array.isArray(roleIds)) {
+                        roleIds = [];
+                    }
+                    const filtered = roleIds.filter(id => String(id) !== String(roleId));
+                    hiddenInput.value = JSON.stringify(filtered);
+                    const displayEl = document.getElementById('embed_roles_display');
+                    if (displayEl) {
+                        const count = filtered.length;
+                        displayEl.textContent = count > 0 ? `${count} role${count !== 1 ? 's' : ''} selected` : 'Select roles...';
+                    }
+                    updateEmbedRolesDisplay();
+                }
+
+                window.removeEmbedChannel = removeEmbedChannel;
+                window.removeEmbedRole = removeEmbedRole;
+
+
+                const colorPicker = document.getElementById('embed_color_picker');
+                const colorInput = document.getElementById('embed_color');
+                if (colorPicker && colorInput) {
+                    colorPicker.addEventListener('input', (e) => {
+                        colorInput.value = e.target.value;
+                        updateEmbedPreview();
+                    });
+                    colorInput.addEventListener('input', (e) => {
+                        if (e.target.value.match(/^#[0-9A-Fa-f]{6}$/)) {
+                            colorPicker.value = e.target.value;
+                        }
+                        updateEmbedPreview();
+                    });
+                }
+
+
+                function updateCharacterCounter(fieldId, counterId, maxLength) {
+                    const field = document.getElementById(fieldId);
+                    const counter = document.getElementById(counterId);
+                    if (field && counter) {
+                        const length = field.value.length;
+                        counter.textContent = `${length}/${maxLength}`;
+
+                        if (length >= maxLength) {
+                            counter.classList.add('text-red-400');
+                            counter.classList.remove('text-gray-400', 'text-yellow-400');
+                        } else if (length > maxLength * 0.9) {
+                            counter.classList.add('text-yellow-400');
+                            counter.classList.remove('text-gray-400', 'text-red-400');
+                        } else {
+                            counter.classList.remove('text-yellow-400', 'text-red-400');
+                            counter.classList.add('text-gray-400');
+                        }
+                    }
+                }
+
+
+                function updateTotalEmbedCounter() {
+                    const titleField = document.getElementById('embed_title');
+                    const descField = document.getElementById('embed_description');
+                    const footerField = document.getElementById('embed_footer');
+                    const totalCounter = document.getElementById('embed_total_counter');
+
+                    if (!totalCounter) return;
+
+                    const titleLength = titleField?.value.length || 0;
+                    const descLength = descField?.value.length || 0;
+                    const footerLength = footerField?.value.length || 0;
+                    const totalLength = titleLength + descLength + footerLength;
+                    const maxTotal = 6000;
+
+                    totalCounter.textContent = `${totalLength}/${maxTotal}`;
+
+
+                    if (totalLength >= maxTotal) {
+                        totalCounter.classList.add('text-red-400');
+                        totalCounter.classList.remove('text-gray-400', 'text-yellow-400');
+                    } else if (totalLength > maxTotal * 0.9) {
+                        totalCounter.classList.add('text-yellow-400');
+                        totalCounter.classList.remove('text-gray-400', 'text-red-400');
+                    } else {
+                        totalCounter.classList.remove('text-yellow-400', 'text-red-400');
+                        totalCounter.classList.add('text-gray-400');
+                    }
+                }
+
+
+                const titleField = document.getElementById('embed_title');
+                const descField = document.getElementById('embed_description');
+                const footerField = document.getElementById('footer');
+
+                if (titleField) {
+                    titleField.addEventListener('input', () => {
+                        updateCharacterCounter('embed_title', 'embed_title_counter', 256);
+                        updateTotalEmbedCounter();
+                        updateEmbedPreview();
+                    });
+                    updateCharacterCounter('embed_title', 'embed_title_counter', 256);
+                }
+
+                if (descField) {
+                    descField.addEventListener('input', () => {
+                        updateCharacterCounter('embed_description', 'embed_description_counter', 4096);
+                        updateTotalEmbedCounter();
+                        updateEmbedPreview();
+                    });
+                    updateCharacterCounter('embed_description', 'embed_description_counter', 4096);
+                }
+
+                if (footerField) {
+                    footerField.addEventListener('input', () => {
+                        updateCharacterCounter('embed_footer', 'embed_footer_counter', 2048);
+                        updateTotalEmbedCounter();
+                        updateEmbedPreview();
+                    });
+                    updateCharacterCounter('footer', 'footer_counter', 2048);
+                }
+
+
+                updateTotalEmbedCounter();
+
+
+                ['embed_image', 'embed_color'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        el.addEventListener('input', updateEmbedPreview);
+                    }
+                });
+
+
+                const imageFileInput = document.getElementById('embed_image_file');
+                if (imageFileInput) {
+                    imageFileInput.addEventListener('change', async (e) => {
+                        const file = e.target.files[0];
+                        if (!file) return;
+
+                        if (!file.type.startsWith('image/')) {
+                            showMessage('Please select an image file', 'error');
+                            e.target.value = '';
+                            return;
+                        }
+
+                        if (file.size > 10 * 1024 * 1024) {
+                            showMessage('Image file is too large. Maximum size is 10MB', 'error');
+                            e.target.value = '';
+                            return;
+                        }
+
+
+                        const reader = new FileReader();
+                        reader.onload = async (event) => {
+                            const base64Data = event.target.result;
+
+                            try {
+                                const uploadRes = await fetch(`/api/servers/${currentServerId}/upload-embed-image`, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json'
+                                    },
+                                    credentials: 'include',
+                                    body: JSON.stringify({ image: base64Data })
+                                });
+
+                                if (uploadRes.status === 401) {
+                                    await checkAuthStatus();
+                                    e.target.value = '';
+                                    return;
+                                }
+
+                                if (!uploadRes.ok) {
+                                    const errorData = await uploadRes.json().catch(() => ({ error: 'Upload failed' }));
+                                    showMessage(errorData.error || 'Failed to upload image', 'error');
+                                    e.target.value = '';
+                                    return;
+                                }
+
+                                const data = await uploadRes.json();
+                                if (data.success && data.url) {
+                                    document.getElementById('embed_uploaded_image_url').value = data.url;
+                                    document.getElementById('embed_image_preview_img').src = data.url;
+                                    document.getElementById('embed_image_preview').classList.remove('hidden');
+                                    updateEmbedPreview();
+                                } else {
+                                    showMessage(data.error || 'Failed to upload image', 'error');
+                                    e.target.value = '';
+                                }
+                            } catch (err) {
+                                console.error('Error uploading image:', err);
+                                showMessage('Failed to upload image. Please try again.', 'error');
+                                e.target.value = '';
+                            }
+                        };
+                        reader.onerror = () => {
+                            showMessage('Failed to read image file', 'error');
+                            e.target.value = '';
+                        };
+                        reader.readAsDataURL(file);
+                    });
+                }
+
+
+                switchImageMode('url');
+
+
+                const form = document.getElementById('embedBuilderForm');
+                if (form) {
+                    form.addEventListener('submit', handleEmbedSubmit);
+                }
+
+                updateEmbedPreview();
+            } catch (error) {
+                console.error('Error rendering embed builder:', error);
+                contentContainer.innerHTML = `
+                    <div class="bg-gray-700 rounded-lg p-4 sm:p-6">
+                        <p class="text-red-400 text-sm sm:text-base">Failed to load embed builder: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function switchImageMode(mode) {
+            const urlBtn = document.getElementById('embed_image_mode_url');
+            const uploadBtn = document.getElementById('embed_image_mode_upload');
+            const urlContainer = document.getElementById('embed_image_url_container');
+            const uploadContainer = document.getElementById('embed_image_upload_container');
+            const imageInput = document.getElementById('embed_image');
+            const fileInput = document.getElementById('embed_image_file');
+            const preview = document.getElementById('embed_image_preview');
+            const uploadedUrlInput = document.getElementById('embed_uploaded_image_url');
+
+            if (mode === 'url') {
+                urlBtn.classList.add('bg-red-600', 'border-red-500');
+                urlBtn.classList.remove('bg-gray-700', 'border-gray-600');
+                uploadBtn.classList.remove('bg-red-600', 'border-red-500');
+                uploadBtn.classList.add('bg-gray-700', 'border-gray-600');
+                urlContainer.classList.remove('hidden');
+                uploadContainer.classList.add('hidden');
+                if (preview) preview.classList.add('hidden');
+                if (fileInput) fileInput.value = '';
+                if (uploadedUrlInput) uploadedUrlInput.value = '';
+            } else {
+                uploadBtn.classList.add('bg-red-600', 'border-red-500');
+                uploadBtn.classList.remove('bg-gray-700', 'border-gray-600');
+                urlBtn.classList.remove('bg-red-600', 'border-red-500');
+                urlBtn.classList.add('bg-gray-700', 'border-gray-600');
+                urlContainer.classList.add('hidden');
+                uploadContainer.classList.remove('hidden');
+                if (imageInput) imageInput.value = '';
+            }
+            updateEmbedPreview();
+        }
+
+        window.switchImageMode = switchImageMode;
+
+        function updateEmbedPreview() {
+            const preview = document.getElementById('embedPreview');
+            if (!preview) return;
+
+            const title = document.getElementById('embed_title')?.value || '';
+            const description = document.getElementById('embed_description')?.value || '';
+            const imageUrlInput = document.getElementById('embed_image')?.value || '';
+            const uploadedImageUrl = document.getElementById('embed_uploaded_image_url')?.value || '';
+            const imageUrl = uploadedImageUrl || imageUrlInput;
+            const colorInput = document.getElementById('embed_color')?.value;
+            const footerInput = document.getElementById('embed_footer')?.value;
+
+
+            const defaultColor = embedDefaultColor;
+            let embedColor = defaultColor;
+
+            if (colorInput && colorInput.trim()) {
+                const trimmed = colorInput.trim();
+                if (trimmed.startsWith('#')) {
+                    if (/^#[0-9A-Fa-f]{6}$/.test(trimmed)) {
+                        embedColor = trimmed;
+                    }
+                } else if (/^[0-9A-Fa-f]{6}$/.test(trimmed)) {
+                    embedColor = '#' + trimmed;
+                } else {
+                    const colorNames = {
+                        'red': '#FF0000', 'green': '#00FF00', 'blue': '#0000FF',
+                        'yellow': '#FFFF00', 'orange': '#FFA500', 'purple': '#800080',
+                        'pink': '#FFC0CB', 'cyan': '#00FFFF', 'black': '#000000',
+                        'white': '#FFFFFF', 'gray': '#808080', 'grey': '#808080'
+                    };
+                    if (colorNames[trimmed.toLowerCase()]) {
+                        embedColor = colorNames[trimmed.toLowerCase()];
+                    }
+                }
+            }
+
+
+            const hasContent = title.trim() || description.trim() || imageUrl.trim() || (footerInput && footerInput.trim());
+
+            if (!hasContent) {
+                preview.innerHTML = '<p class="text-gray-400 text-sm">Preview will appear here as you type...</p>';
+                return;
+            }
+
+            const borderColor = embedColor;
+            const footerText = footerInput || embedDefaultFooter;
+
+
+            const displayTitle = title.length > 256 ? title.substring(0, 253) + '...' : title;
+            const displayDescription = description.length > 4096 ? description.substring(0, 4093) + '...' : description;
+            const displayFooter = footerText.length > 2048 ? footerText.substring(0, 2045) + '...' : footerText;
+
+            preview.innerHTML = `
+                <div class="border-l-4 rounded overflow-hidden bg-gray-800/30" style="border-color: ${borderColor};">
+                    <div class="p-3">
+                        ${displayTitle ? `<div class="font-semibold text-white mb-2 break-words">${escapeHtml(displayTitle)}</div>` : ''}
+                        ${displayDescription ? `<div class="text-gray-300 text-sm mb-2 whitespace-pre-wrap break-words overflow-y-auto">${escapeHtml(displayDescription)}</div>` : ''}
+                        ${imageUrl ? `<div class="mt-2 mb-2"><img src="${escapeHtml(imageUrl)}" alt="Embed image" class="max-w-full rounded max-h-[300px] object-contain" onerror="this.style.display='none'"></div>` : ''}
+                        ${displayFooter ? `<div class="text-gray-400 text-xs mt-2 pt-2 border-t border-gray-700 break-words">${escapeHtml(displayFooter)}</div>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        async function handleEmbedSubmit(e) {
+            e.preventDefault();
+            if (!currentServerId) return;
+
+            const submitBtn = document.getElementById('sendEmbedBtn');
+            const loadingIcon = document.getElementById('sendEmbedLoading');
+            submitBtn.disabled = true;
+            loadingIcon.classList.remove('hidden');
+
+            try {
+                const channelsInput = document.getElementById('embed_channels').value;
+                const channelIds = channelsInput ? channelsInput.split(',').filter(Boolean) : [];
+
+                if (channelIds.length === 0) {
+                    showMessage('Please select at least one channel', 'error');
+                    submitBtn.disabled = false;
+                    loadingIcon.classList.add('hidden');
+                    return;
+                }
+
+                const rolesInput = document.getElementById('embed_roles').value;
+                let roleIds = [];
+                if (rolesInput) {
+                    try {
+                        roleIds = JSON.parse(rolesInput);
+                        if (!Array.isArray(roleIds)) roleIds = [];
+                    } catch (err) {
+                        roleIds = [];
+                    }
+                }
+
+                const imageUrlInput = document.getElementById('embed_image').value || '';
+                const uploadedImageUrl = document.getElementById('embed_uploaded_image_url').value || '';
+                let imageUrl = uploadedImageUrl || imageUrlInput || null;
+                let uploadedImagePath = null;
+
+
+                if (uploadedImageUrl) {
+                    uploadedImagePath = uploadedImageUrl.replace(/^.*\/uploads\/embed-images/, '');
+                }
+
+
+                if (imageUrl && imageUrl.startsWith('data:')) {
+                    if (imageUrl.length > 1000000) {
+                        showMessage('Image data URL is too large. Please use a regular image URL instead.', 'error');
+                        submitBtn.disabled = false;
+                        loadingIcon.classList.add('hidden');
+                        return;
+                    }
+                }
+
+
+                const title = document.getElementById('embed_title').value;
+                const description = document.getElementById('embed_description').value || '';
+                const footer = document.getElementById('embed_footer').value;
+                const totalSize = title.length + description.length + footer.length;
+
+                if (totalSize > 6000) {
+                    showMessage(`Total embed size (${totalSize} characters) exceeds Discord's limit of 6000 characters. Please reduce the content.`, 'error');
+                    submitBtn.disabled = false;
+                    loadingIcon.classList.add('hidden');
+                    return;
+                }
+
+                const formData = {
+                    channel_ids: channelIds,
+                    role_ids: roleIds,
+                    title: title,
+                    description: description || null,
+                    image_url: imageUrl,
+                    uploaded_image_path: uploadedImagePath,
+                    color: document.getElementById('embed_color').value,
+                    footer: footer
+                };
+
+                const res = await fetch(`/api/servers/${currentServerId}/send-embed`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify(formData)
+                });
+
+                if (res.status === 401) {
+                    await checkAuthStatus();
+                    return;
+                }
+
+                if (res.status === 413) {
+                    showMessage('Image URL is too large. Please use a smaller image or a direct image link.', 'error');
+                    submitBtn.disabled = false;
+                    loadingIcon.classList.add('hidden');
+                    return;
+                }
+
+                let data;
+                try {
+                    data = await res.json();
+                } catch (parseErr) {
+                    const text = await res.text();
+                    console.error('Failed to parse response:', text);
+                    showMessage('Server returned an error. Please check the console for details.', 'error');
+                    submitBtn.disabled = false;
+                    loadingIcon.classList.add('hidden');
+                    return;
+                }
+
+                if (data.success) {
+                    showMessage(`Embed sent successfully to ${channelIds.length} channel(s)!`, 'success');
+
+                    document.getElementById('embedBuilderForm').reset();
+                    document.getElementById('embed_channels').value = '';
+                    document.getElementById('embed_roles').value = '';
+                    document.getElementById('embed_channels_display').textContent = 'Select channels...';
+                    document.getElementById('embed_roles_display').textContent = 'Select roles...';
+                    document.getElementById('embed_channels_selected').innerHTML = '';
+                    document.getElementById('embed_roles_selected').innerHTML = '';
+                    document.getElementById('embed_uploaded_image_url').value = '';
+                    const fileInput = document.getElementById('embed_image_file');
+                    if (fileInput) fileInput.value = '';
+                    const preview = document.getElementById('embed_image_preview');
+                    if (preview) preview.classList.add('hidden');
+
+                    const colorPicker = document.getElementById('embed_color_picker');
+                    const colorInput = document.getElementById('embed_color');
+                    if (colorPicker && colorInput && embedDefaultColor) {
+                        colorPicker.value = embedDefaultColor;
+                        colorInput.value = embedDefaultColor;
+                    }
+                    switchImageMode('url');
+                    updateEmbedPreview();
+                } else {
+                    showMessage(data.error || 'Failed to send embed', 'error');
+
+                    if (uploadedImagePath) {
+                        fetch(`/api/servers/${currentServerId}/delete-embed-image`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify({ path: uploadedImagePath })
+                        }).catch(() => { });
+                    }
+                }
+            } catch (err) {
+                console.error('Error sending embed:', err);
+                showMessage('Failed to send embed. Please try again.', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                loadingIcon.classList.add('hidden');
+            }
+        }
+
+        document.addEventListener('change', (e) => {
+            if (e.target.id === 'giveaway_creator_can_participate') {
+                const label = document.getElementById('giveaway_creator_can_participate_label');
+                if (label) {
+                    label.textContent = e.target.checked ? 'Yes' : 'No';
+                }
+            }
+        });
+
         document.getElementById('serverConfigYear').textContent = new Date().getFullYear();
         let botDetailRefreshInterval = null;
         function startBotDetailAutoRefresh() {
@@ -5964,4 +7048,5 @@
         });
     </script>
 </body>
+
 </html>

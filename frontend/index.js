@@ -3,7 +3,7 @@ import session from 'express-session';
 import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { readFileSync } from 'fs';
+import { readFileSync, writeFileSync, unlinkSync, existsSync, mkdirSync } from 'fs';
 import bcrypt from 'bcrypt';
 import { CONTROL_PANEL } from './config.js';
 import logger from '../backend/logger.js';
@@ -183,7 +183,7 @@ async function startBotById(botId, bot) {
                 for (const selfbot of connectedSelfbots) {
                     logger.log(`  - Selfbot ${selfbot.id} (${selfbot.name}) - connect_to: ${selfbot.connect_to}`);
                 }
-                const startPromises = connectedSelfbots.map(selfbot => 
+                const startPromises = connectedSelfbots.map(selfbot =>
                     startBotById(selfbot.id, selfbot).catch(err => {
                         logger.log(`⚠️  Failed to start connected selfbot ${selfbot.id}: ${err.message}`);
                         return { success: false, error: err.message };
@@ -196,7 +196,7 @@ async function startBotById(botId, bot) {
                 logger.log(`ℹ️  No selfbots found connected to official bot ${botId}`);
             }
         }
-        
+
         return { success: true, pid: botProcess.pid };
     } catch (error) {
         return { success: false, error: error.message };
@@ -289,7 +289,7 @@ async function stopBotById(botId) {
         });
     } catch (err) {
         logger.log(`⚠️  Failed to update bot status: ${err.message}`);
-}
+    }
 
     logger.log(`⏹️  Stopped bot ${botId}`);
 
@@ -299,7 +299,7 @@ async function stopBotById(botId) {
             const connectedSelfbots = await getConnectedSelfbots(botId);
             if (connectedSelfbots.length > 0) {
                 logger.log(`🔄 Stopping ${connectedSelfbots.length} connected selfbot(s)...`);
-                const stopPromises = connectedSelfbots.map(selfbot => 
+                const stopPromises = connectedSelfbots.map(selfbot =>
                     stopBotById(selfbot.id).catch(err => {
                         logger.log(`⚠️  Failed to stop connected selfbot ${selfbot.id}: ${err.message}`);
                         return { success: false, error: err.message };
@@ -313,7 +313,7 @@ async function stopBotById(botId) {
     } catch (err) {
         logger.log(`⚠️  Error handling connected bots: ${err.message}`);
     }
-    
+
     return { success: true };
 }
 
@@ -342,7 +342,7 @@ async function verifyBotStatuses() {
 
                         process.kill(bot.process_id, 0);
 
-                    try {
+                        try {
                             const cmdline = readFileSync(`/proc/${bot.process_id}/cmdline`, 'utf8').replace(/\0/g, ' ');
 
                             if (!cmdline.includes('officialbot.js') && !cmdline.includes('selfbot.js')) {
@@ -402,12 +402,12 @@ export async function init() {
     await verifyBotStatuses();
 
     app = express();
-    app.use(express.json());
+    app.use(express.json({ limit: '10mb' }));
 
     if (!process.env.SESSION_SECRET) {
         throw new Error('Missing SESSION_SECRET environment variable');
     }
-    
+
     app.use(session({
         secret: process.env.SESSION_SECRET,
         resave: false,
@@ -419,7 +419,22 @@ export async function init() {
         }
     }));
 
-    app.use(express.static(__dirname));
+
+
+
+
+    app.use((req, res, next) => {
+        const path = req.path.toLowerCase();
+
+        if (path.startsWith('/uploads/')) {
+            return next();
+        }
+
+        if (path.match(/\.(js|json|ts|mjs|map)$/)) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+        next();
+    });
 
     function getClientIp(req) {
         return req.headers['x-forwarded-for']?.split(',')[0] ||
@@ -599,7 +614,7 @@ export async function init() {
                         bot.status = 'stopped';
                         bot.process_id = null;
                         bot.uptime_started_at = null;
-    }
+                    }
                 }
 
                 const botData = {
@@ -653,11 +668,11 @@ export async function init() {
             res.json(botsWithDetails);
         } catch (error) {
             res.status(500).json({ error: error.message });
-                    }
+        }
     });
 
     app.get('/api/bots/:id', requireAuth, async (req, res) => {
-                    try {
+        try {
             const bot = await db.getBot(req.params.id);
             if (!bot) {
                 return res.status(404).json({ error: 'Bot not found' });
@@ -666,7 +681,7 @@ export async function init() {
             if ((bot.status === 'running' || bot.status === 'starting' || bot.status === 'stopping') && bot.process_id) {
                 try {
                     process.kill(bot.process_id, 0);
-                    } catch (e) {
+                } catch (e) {
 
                     await db.updateBot(bot.id, {
                         status: 'stopped',
@@ -775,7 +790,7 @@ export async function init() {
         } catch (error) {
             res.status(500).json({ error: error.message });
         }
-                    });
+    });
 
     app.put('/api/servers/:id/settings', requireAuth, async (req, res) => {
         try {
@@ -804,7 +819,7 @@ export async function init() {
             }
 
             res.json(channels);
-                } catch (error) {
+        } catch (error) {
             res.status(500).json({ error: error.message });
         }
     });
@@ -918,6 +933,286 @@ export async function init() {
         }
     });
 
+    app.post('/api/servers/:id/send-embed', requireAuth, async (req, res) => {
+        try {
+            const serverId = parseInt(req.params.id);
+            if (isNaN(serverId)) {
+                return res.status(400).json({ success: false, error: 'Invalid server ID' });
+            }
+
+            const { channel_ids, role_ids, title, description, image_url, uploaded_image_path, color, footer } = req.body;
+
+            if (!channel_ids || !Array.isArray(channel_ids) || channel_ids.length === 0 || !title) {
+                return res.status(400).json({ success: false, error: 'channel_ids (array) and title are required' });
+            }
+
+
+            const server = await db.getServer(serverId);
+            if (!server) {
+                return res.status(404).json({ success: false, error: 'Server not found' });
+            }
+
+
+            const bot = await db.getBot(server.bot_id);
+            if (!bot) {
+                return res.status(404).json({ success: false, error: 'Bot not found' });
+            }
+
+            if (bot.status !== 'running') {
+                return res.status(400).json({ success: false, error: 'Bot is not running' });
+            }
+
+            if (!bot.port || !bot.secret_key) {
+                return res.status(400).json({ success: false, error: 'Bot webhook not configured' });
+            }
+
+
+            let finalImageUrl = image_url;
+            if (finalImageUrl && finalImageUrl.startsWith('/uploads/')) {
+
+                const protocol = req.protocol || 'http';
+                const host = req.get('host') || `localhost:${CONTROL_PANEL.PORT}`;
+                finalImageUrl = `${protocol}://${host}${finalImageUrl}`;
+            }
+
+
+            const validChannelIds = (channel_ids || []).filter(id => id != null && id !== '' && id !== undefined);
+
+            if (validChannelIds.length === 0) {
+                return res.status(400).json({ success: false, error: 'At least one valid channel ID is required' });
+            }
+
+
+            const http = await import('http');
+            const payload = JSON.stringify({
+                type: 'send_embed',
+                guild_id: server.discord_server_id,
+                channel_ids: validChannelIds,
+                role_ids: role_ids || [],
+                title,
+                description: description || null,
+                image_url: finalImageUrl || null,
+                color: color || null,
+                footer: footer || null
+            });
+
+            const options = {
+                hostname: 'localhost',
+                port: bot.port,
+                path: '/',
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Content-Length': Buffer.byteLength(payload),
+                    'X-Secret-Key': bot.secret_key
+                }
+            };
+
+            const webhookReq = http.request(options, (webhookRes) => {
+                let data = '';
+                webhookRes.on('data', (chunk) => {
+                    data += chunk;
+                });
+                webhookRes.on('end', () => {
+                    try {
+                        const result = JSON.parse(data);
+                        if (webhookRes.statusCode === 200 && result.success) {
+
+                            if (uploaded_image_path) {
+                                try {
+                                    const filePath = join(projectRoot, 'frontend', 'uploads', 'embed-images', uploaded_image_path);
+                                    if (existsSync(filePath)) {
+                                        unlinkSync(filePath);
+                                    }
+                                } catch (cleanupErr) {
+                                    logger.log(`⚠️  Failed to cleanup uploaded image: ${cleanupErr.message}`);
+                                }
+                            }
+                            res.json({ success: true, message: 'Embed sent successfully' });
+                        } else {
+
+                            if (uploaded_image_path) {
+                                try {
+                                    const filePath = join(projectRoot, 'frontend', 'uploads', 'embed-images', uploaded_image_path);
+                                    if (existsSync(filePath)) {
+                                        unlinkSync(filePath);
+                                    }
+                                } catch (cleanupErr) {
+                                    logger.log(`⚠️  Failed to cleanup uploaded image: ${cleanupErr.message}`);
+                                }
+                            }
+                            res.status(webhookRes.statusCode || 500).json({
+                                success: false,
+                                error: result.error || 'Failed to send embed'
+                            });
+                        }
+                    } catch (parseErr) {
+
+                        if (uploaded_image_path) {
+                            try {
+                                const filePath = join(projectRoot, 'frontend', 'uploads', 'embed-images', uploaded_image_path);
+                                if (existsSync(filePath)) {
+                                    unlinkSync(filePath);
+                                }
+                            } catch (cleanupErr) {
+                                logger.log(`⚠️  Failed to cleanup uploaded image: ${cleanupErr.message}`);
+                            }
+                        }
+                        res.status(500).json({ success: false, error: 'Failed to parse bot response' });
+                    }
+                });
+            });
+
+            webhookReq.on('error', (err) => {
+                logger.log(`❌ Error calling bot webhook: ${err.message}`);
+                res.status(500).json({ success: false, error: 'Failed to communicate with bot' });
+            });
+
+            webhookReq.write(payload);
+            webhookReq.end();
+
+        } catch (error) {
+            logger.log(`❌ Error sending embed: ${error.message}`);
+
+            if (req.body.uploaded_image_path) {
+                try {
+                    const filePath = join(projectRoot, 'frontend', 'uploads', 'embed-images', req.body.uploaded_image_path);
+                    if (existsSync(filePath)) {
+                        unlinkSync(filePath);
+                    }
+                } catch (cleanupErr) {
+                    logger.log(`⚠️  Failed to cleanup uploaded image: ${cleanupErr.message}`);
+                }
+            }
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+
+    app.post('/api/servers/:id/upload-embed-image', requireAuth, async (req, res) => {
+        try {
+            const serverId = parseInt(req.params.id);
+            if (!serverId) {
+                return res.status(400).json({ success: false, error: 'Invalid server ID' });
+            }
+
+
+            if (!req.body || !req.body.image) {
+                return res.status(400).json({ success: false, error: 'No image file provided' });
+            }
+
+
+            let imageData;
+            let fileExtension = 'png';
+
+            if (req.body.image.startsWith('data:image/')) {
+                const matches = req.body.image.match(/^data:image\/(\w+);base64,(.+)$/);
+                if (!matches) {
+                    return res.status(400).json({ success: false, error: 'Invalid image data format' });
+                }
+                fileExtension = matches[1];
+                imageData = Buffer.from(matches[2], 'base64');
+            } else {
+                return res.status(400).json({ success: false, error: 'Invalid image format' });
+            }
+
+
+            if (imageData.length > 10 * 1024 * 1024) {
+                return res.status(400).json({ success: false, error: 'Image file is too large. Maximum size is 10MB' });
+            }
+
+
+            const uploadsDir = join(projectRoot, 'frontend', 'uploads', 'embed-images');
+            if (!existsSync(uploadsDir)) {
+                mkdirSync(uploadsDir, { recursive: true });
+            }
+
+
+            const filename = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
+            const filePath = join(uploadsDir, filename);
+
+
+            writeFileSync(filePath, imageData);
+
+
+            const imageUrl = `/uploads/embed-images/${filename}`;
+            res.json({ success: true, url: imageUrl, path: filename });
+        } catch (error) {
+            logger.log(`❌ Error uploading embed image: ${error.message}`);
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+
+    app.post('/api/servers/:id/delete-embed-image', requireAuth, async (req, res) => {
+        try {
+            const { path: filename } = req.body;
+            if (!filename) {
+                return res.status(400).json({ success: false, error: 'No filename provided' });
+            }
+
+            const filePath = join(projectRoot, 'frontend', 'uploads', 'embed-images', filename);
+
+            if (existsSync(filePath)) {
+                unlinkSync(filePath);
+                res.json({ success: true });
+            } else {
+                res.json({ success: true, message: 'File already deleted' });
+            }
+        } catch (error) {
+            logger.log(`❌ Error deleting embed image: ${error.message}`);
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+
+
+
+    app.get('/uploads/embed-images/:filename', (req, res) => {
+        try {
+            const filename = req.params.filename;
+
+
+            if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+                return res.status(400).json({ error: 'Invalid filename' });
+            }
+
+
+            const filenamePattern = /^\d+-[a-z0-9]+\.(jpg|jpeg|png|gif|webp|svg)$/i;
+            if (!filenamePattern.test(filename)) {
+                return res.status(400).json({ error: 'Invalid filename format' });
+            }
+
+            const filePath = join(projectRoot, 'frontend', 'uploads', 'embed-images', filename);
+
+
+            if (!existsSync(filePath)) {
+                return res.status(404).json({ error: 'File not found' });
+            }
+
+
+            const ext = filename.split('.').pop()?.toLowerCase();
+            const contentTypes = {
+                'jpg': 'image/jpeg',
+                'jpeg': 'image/jpeg',
+                'png': 'image/png',
+                'gif': 'image/gif',
+                'webp': 'image/webp',
+                'svg': 'image/svg+xml'
+            };
+            const contentType = contentTypes[ext] || 'application/octet-stream';
+
+
+            res.setHeader('Content-Type', contentType);
+            res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+            res.setHeader('X-Content-Type-Options', 'nosniff');
+            res.sendFile(filePath);
+        } catch (error) {
+            logger.log(`❌ Error serving uploaded image: ${error.message}`);
+            res.status(500).json({ error: 'Failed to serve file' });
+        }
+    });
+
     app.post('/api/bots', requireAuth, async (req, res) => {
         try {
             await initializeDatabase();
@@ -940,14 +1235,14 @@ export async function init() {
                     success: false,
                     error: 'Token and Bot Type are required'
                 });
-        }
+            }
 
             if (!['official', 'selfbot'].includes(bot_type)) {
                 return res.status(400).json({
                     success: false,
                     error: 'Bot type must be "official" or "selfbot"'
                 });
-    }
+            }
 
             if (bot_type === 'official' && !application_id) {
                 return res.status(400).json({
@@ -975,7 +1270,7 @@ export async function init() {
                     success: false,
                     error: 'Selfbot must connect to an official bot'
                 });
-    }
+            }
 
             if (bot_type === 'official') {
                 const portToUse = port || 7777;
@@ -1024,7 +1319,7 @@ export async function init() {
         } catch (error) {
             logger.log(`❌ Create bot error: ${error.message}`);
             res.status(500).json({ success: false, error: error.message });
-    }
+        }
     });
 
     app.put('/api/bots/:id/mode', requireAuth, async (req, res) => {
@@ -1042,8 +1337,8 @@ export async function init() {
                     success: false,
                     error: 'Mode can only be changed for official bots. Selfbots inherit mode from their connected bot.'
                 });
-    }
-    
+            }
+
             const { is_testing } = req.body;
 
             if (typeof is_testing !== 'boolean') {
@@ -1068,14 +1363,14 @@ export async function init() {
                 for (const selfbot of connectedSelfbots) {
                     await db.updateBot(selfbot.id, { is_testing });
                 }
-                
+
                 if (connectedSelfbots.length > 0) {
                     logger.log(`✅ Updated ${connectedSelfbots.length} selfbot(s) to match official bot's mode`);
                 }
             } catch (err) {
                 logger.log(`⚠️  Failed to update connected selfbots: ${err.message}`);
             }
-            
+
             res.json({ success: true });
         } catch (error) {
             logger.log(`❌ Update bot mode error: ${error.message}`);
@@ -1106,7 +1401,7 @@ export async function init() {
             }
 
             const result = await startBotById(bot_id, bot);
-        res.json(result);
+            res.json(result);
         } catch (error) {
             res.json({ success: false, error: error.message });
         }
@@ -1120,7 +1415,7 @@ export async function init() {
 
         try {
             const result = await stopBotById(bot_id);
-        res.json(result);
+            res.json(result);
         } catch (error) {
             res.json({ success: false, error: error.message });
         }
@@ -1139,7 +1434,7 @@ export async function init() {
             }
 
             const result = await restartBotById(bot_id, bot);
-        res.json(result);
+            res.json(result);
         } catch (error) {
             res.json({ success: false, error: error.message });
         }

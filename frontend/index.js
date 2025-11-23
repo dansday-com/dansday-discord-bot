@@ -944,6 +944,20 @@ export async function init() {
 
             const { channel_ids, role_ids, title, description, image_url, uploaded_image_path, color, footer } = req.body;
 
+            let imageBuffer = null;
+            let imageFilename = null;
+            if (uploaded_image_path) {
+                try {
+                    const filePath = join(projectRoot, 'frontend', 'uploads', 'embed-images', uploaded_image_path);
+                    if (existsSync(filePath)) {
+                        imageBuffer = readFileSync(filePath);
+                        imageFilename = uploaded_image_path.split('/').pop() || 'image.png';
+                    }
+                } catch (readErr) {
+                    logger.log(`⚠️  Failed to read uploaded image: ${readErr.message}`);
+                }
+            }
+
             if (!channel_ids || !Array.isArray(channel_ids) || channel_ids.length === 0 || !title) {
                 return res.status(400).json({ success: false, error: 'channel_ids (array) and title are required' });
             }
@@ -986,18 +1000,23 @@ export async function init() {
 
 
             const http = await import('http');
-            const payload = JSON.stringify({
+            const payload = {
                 type: 'send_embed',
                 guild_id: server.discord_server_id,
                 channel_ids: validChannelIds,
                 role_ids: role_ids || [],
                 title,
                 description: description || null,
-                image_url: finalImageUrl || null,
+                image_url: (imageBuffer ? null : finalImageUrl) || null,
                 color: color || null,
-                footer: footer || null
-            });
+                footer: footer || null,
+                image_attachment: imageBuffer ? {
+                    filename: imageFilename,
+                    data: imageBuffer.toString('base64')
+                } : null
+            };
 
+            const payloadString = JSON.stringify(payload);
             const options = {
                 hostname: 'localhost',
                 port: bot.port,
@@ -1005,7 +1024,7 @@ export async function init() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Content-Length': Buffer.byteLength(payload),
+                    'Content-Length': Buffer.byteLength(payloadString),
                     'X-Secret-Key': bot.secret_key
                 }
             };
@@ -1019,8 +1038,18 @@ export async function init() {
                     try {
                         const result = JSON.parse(data);
                         if (webhookRes.statusCode === 200 && result.success) {
-
-                            if (uploaded_image_path) {
+                            if (uploaded_image_path && !imageBuffer) {
+                                setTimeout(() => {
+                                    try {
+                                        const filePath = join(projectRoot, 'frontend', 'uploads', 'embed-images', uploaded_image_path);
+                                        if (existsSync(filePath)) {
+                                            unlinkSync(filePath);
+                                        }
+                                    } catch (cleanupErr) {
+                                        logger.log(`⚠️  Failed to cleanup uploaded image: ${cleanupErr.message}`);
+                                    }
+                                }, 30000);
+                            } else if (uploaded_image_path) {
                                 try {
                                     const filePath = join(projectRoot, 'frontend', 'uploads', 'embed-images', uploaded_image_path);
                                     if (existsSync(filePath)) {
@@ -1070,7 +1099,7 @@ export async function init() {
                 res.status(500).json({ success: false, error: 'Failed to communicate with bot' });
             });
 
-            webhookReq.write(payload);
+            webhookReq.write(payloadString);
             webhookReq.end();
 
         } catch (error) {
@@ -1112,7 +1141,14 @@ export async function init() {
                 if (!matches) {
                     return res.status(400).json({ success: false, error: 'Invalid image data format' });
                 }
-                fileExtension = matches[1];
+                fileExtension = matches[1].toLowerCase();
+                if (fileExtension === 'jpeg') {
+                    fileExtension = 'jpg';
+                }
+                const supportedFormats = ['jpg', 'png', 'gif', 'webp'];
+                if (!supportedFormats.includes(fileExtension)) {
+                    return res.status(400).json({ success: false, error: `Unsupported image format. Supported formats: ${supportedFormats.join(', ')}` });
+                }
                 imageData = Buffer.from(matches[2], 'base64');
             } else {
                 return res.status(400).json({ success: false, error: 'Invalid image format' });

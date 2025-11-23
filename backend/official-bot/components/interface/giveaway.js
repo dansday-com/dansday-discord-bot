@@ -3,7 +3,7 @@ import { getEmbedConfig, GIVEAWAY, getServerForCurrentBot } from '../../../confi
 import logger from '../../../logger.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import db from '../../../../database/database.js';
-import { getNowInTimezone } from '../../../utils.js';
+import { getNowInTimezone, parseMySQLDateTime } from '../../../utils.js';
 
 export async function handleGiveawayButton(interaction) {
     try {
@@ -63,7 +63,7 @@ export async function handleGiveawayButton(interaction) {
                 .addFields([
                     {
                         name: '⏰ Ends',
-                        value: `<t:${Math.floor(new Date(activeGiveaway.ends_at).getTime() / 1000)}:R>`,
+                        value: `<t:${Math.floor(parseMySQLDateTime(activeGiveaway.ends_at).getTime() / 1000)}:R>`,
                         inline: true
                     }
                 ])
@@ -390,7 +390,6 @@ export async function handleGiveawayModal(interaction) {
             return;
         }
 
-        // Use configured timezone for giveaway end time
         const nowInTimezone = getNowInTimezone();
         const endsAt = new Date(nowInTimezone.getTime() + duration * 60 * 1000);
         const endsAtTimestamp = Math.floor(endsAt.getTime() / 1000);
@@ -520,8 +519,7 @@ export async function handleGiveawayEnterButton(interaction) {
             return;
         }
 
-        // Use configured timezone for comparison
-        const endsAt = new Date(giveaway.ends_at);
+        const endsAt = parseMySQLDateTime(giveaway.ends_at);
         const nowInTimezone = getNowInTimezone();
         if (endsAt <= nowInTimezone) {
             await interaction.editReply({

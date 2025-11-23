@@ -183,7 +183,7 @@ CREATE TABLE IF NOT EXISTS server_giveaways (
     multiple_entries_allowed BOOLEAN DEFAULT FALSE,
     winner_count INT NOT NULL DEFAULT 1,
     status ENUM('active', 'ended', 'ended_force', 'cancelled') DEFAULT 'active',
-    ends_at TIMESTAMP NOT NULL,
+    ends_at DATETIME NOT NULL,
     winners_announced BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

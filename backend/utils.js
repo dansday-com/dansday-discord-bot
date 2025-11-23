@@ -131,7 +131,7 @@ function getTimeComponents(date = new Date(), timezone = TIMEZONE) {
     const parts = formatter.formatToParts(date);
     return {
         year: parseInt(parts.find(p => p.type === 'year').value),
-        month: parseInt(parts.find(p => p.type === 'month').value) - 1, // Month is 0-indexed
+        month: parseInt(parts.find(p => p.type === 'month').value) - 1,
         day: parseInt(parts.find(p => p.type === 'day').value),
         hour: parseInt(parts.find(p => p.type === 'hour').value),
         minute: parseInt(parts.find(p => p.type === 'minute').value),
@@ -165,6 +165,36 @@ export function getNowInTimezone() {
     const now = new Date();
     const components = getTimeComponents(now);
     const offset = getTimezoneOffset();
+    const offsetHours = Math.floor(offset);
+    const offsetMinutes = Math.floor((offset - offsetHours) * 60);
+    const offsetSign = offset >= 0 ? '+' : '-';
+    const offsetStr = `${offsetSign}${String(Math.abs(offsetHours)).padStart(2, '0')}:${String(Math.abs(offsetMinutes)).padStart(2, '0')}`;
+
+    const isoString = `${components.year}-${String(components.month + 1).padStart(2, '0')}-${String(components.day).padStart(2, '0')}T${String(components.hour).padStart(2, '0')}:${String(components.minute).padStart(2, '0')}:${String(components.second).padStart(2, '0')}${offsetStr}`;
+
+    return new Date(isoString);
+}
+
+export function parseMySQLDateTime(mysqlDateTimeString, timezone = TIMEZONE) {
+    if (!mysqlDateTimeString) return null;
+
+    const match = mysqlDateTimeString.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})/);
+    if (!match) {
+        return new Date(mysqlDateTimeString);
+    }
+
+    const [, year, month, day, hour, minute, second] = match;
+
+    const components = {
+        year: parseInt(year, 10),
+        month: parseInt(month, 10) - 1,
+        day: parseInt(day, 10),
+        hour: parseInt(hour, 10),
+        minute: parseInt(minute, 10),
+        second: parseInt(second, 10)
+    };
+
+    const offset = getTimezoneOffset(timezone);
     const offsetHours = Math.floor(offset);
     const offsetMinutes = Math.floor((offset - offsetHours) * 60);
     const offsetSign = offset >= 0 ? '+' : '-';

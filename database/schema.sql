@@ -195,12 +195,11 @@ CREATE TABLE IF NOT EXISTS server_giveaway_entries (
     id INT PRIMARY KEY AUTO_INCREMENT,
     giveaway_id INT NOT NULL,
     member_id INT NOT NULL,
-    discord_member_id VARCHAR(150) NOT NULL,
     entry_count INT DEFAULT 1,
     is_winner BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE KEY unique_giveaway_member (giveaway_id, discord_member_id),
+    UNIQUE KEY unique_giveaway_member (giveaway_id, member_id),
     FOREIGN KEY (giveaway_id) REFERENCES server_giveaways(id) ON DELETE CASCADE,
     FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE
 );

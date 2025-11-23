@@ -571,7 +571,7 @@ export async function handleGiveawayEnterButton(interaction) {
             return;
         }
 
-        await db.addGiveawayEntry(giveaway.id, dbMember.id, user.id, giveaway.multiple_entries_allowed);
+        await db.addGiveawayEntry(giveaway.id, dbMember.id, giveaway.multiple_entries_allowed);
 
         const embedConfig = await getEmbedConfig(guild.id);
         const successEmbed = new EmbedBuilder()
@@ -854,8 +854,8 @@ export async function handleGiveawayFinish(interaction) {
 
         const winnerMentions = winners.map(w => `<@${w.discord_member_id}>`).join(', ');
 
-        const winnerDiscordIds = winners.map(w => w.discord_member_id);
-        await db.markGiveawayWinners(giveaway.id, winnerDiscordIds);
+        const winnerMemberIds = winners.map(w => w.member_id);
+        await db.markGiveawayWinners(giveaway.id, winnerMemberIds);
 
         let description = `**${giveaway.title}**\n\n**Prize:** ${giveaway.prize}\n\n🎊 **Winner${winners.length > 1 ? 's' : ''}:** ${winnerMentions}\n\n`;
 
@@ -987,8 +987,8 @@ export function init(client) {
                     const winnerMentions = winners.map(w => `<@${w.discord_member_id}>`).join(', ');
                     const embedConfig = await getEmbedConfig(guild.id);
 
-                    const winnerDiscordIds = winners.map(w => w.discord_member_id);
-                    await db.markGiveawayWinners(giveaway.id, winnerDiscordIds);
+                    const winnerMemberIds = winners.map(w => w.member_id);
+                    await db.markGiveawayWinners(giveaway.id, winnerMemberIds);
 
                     let description = `**${giveaway.title}**\n\n**Prize:** ${giveaway.prize}\n\n🎊 **Winner${winners.length > 1 ? 's' : ''}:** ${winnerMentions}\n\n`;
 

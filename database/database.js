@@ -1969,31 +1969,31 @@ export async function getActiveGiveawayByMember(serverId, memberId) {
     return result[0] || null;
 }
 
-export async function addGiveawayEntry(giveawayId, memberId, discordMemberId, increment = true) {
+export async function addGiveawayEntry(giveawayId, memberId, increment = true) {
     await initializeDatabase();
     const now = toMySQLDateTime();
 
     if (increment) {
         await query(
-            `INSERT INTO server_giveaway_entries (giveaway_id, member_id, discord_member_id, entry_count, created_at, updated_at)
-             VALUES (?, ?, ?, 1, ?, ?)
+            `INSERT INTO server_giveaway_entries (giveaway_id, member_id, entry_count, created_at, updated_at)
+             VALUES (?, ?, 1, ?, ?)
              ON DUPLICATE KEY UPDATE
                  entry_count = entry_count + 1,
                  updated_at = ?`,
-            [giveawayId, memberId, discordMemberId, now, now, now]
+            [giveawayId, memberId, now, now, now]
         );
     } else {
         await query(
-            `INSERT INTO server_giveaway_entries (giveaway_id, member_id, discord_member_id, entry_count, created_at, updated_at)
-             VALUES (?, ?, ?, 1, ?, ?)
+            `INSERT INTO server_giveaway_entries (giveaway_id, member_id, entry_count, created_at, updated_at)
+             VALUES (?, ?, 1, ?, ?)
              ON DUPLICATE KEY UPDATE updated_at = ?`,
-            [giveawayId, memberId, discordMemberId, now, now, now]
+            [giveawayId, memberId, now, now, now]
         );
     }
 
     const entry = await query(
-        'SELECT * FROM server_giveaway_entries WHERE giveaway_id = ? AND discord_member_id = ?',
-        [giveawayId, discordMemberId]
+        'SELECT * FROM server_giveaway_entries WHERE giveaway_id = ? AND member_id = ?',
+        [giveawayId, memberId]
     );
 
     return entry[0] || null;
@@ -2002,7 +2002,11 @@ export async function addGiveawayEntry(giveawayId, memberId, discordMemberId, in
 export async function getGiveawayEntries(giveawayId) {
     await initializeDatabase();
     return await query(
-        'SELECT * FROM server_giveaway_entries WHERE giveaway_id = ? ORDER BY RAND()',
+        `SELECT ge.*, sm.discord_member_id 
+         FROM server_giveaway_entries ge
+         INNER JOIN server_members sm ON ge.member_id = sm.id
+         WHERE ge.giveaway_id = ? 
+         ORDER BY RAND()`,
         [giveawayId]
     );
 }
@@ -2047,13 +2051,13 @@ export async function getRandomGiveawayWinners(giveawayId, winnerCount) {
         const randomIndex = crypto.randomInt(0, availableEntries.length);
         const selectedEntry = availableEntries[randomIndex];
 
-        if (!usedMemberIds.has(selectedEntry.discord_member_id)) {
+        if (!usedMemberIds.has(selectedEntry.member_id)) {
             winners.push(selectedEntry);
-            usedMemberIds.add(selectedEntry.discord_member_id);
+            usedMemberIds.add(selectedEntry.member_id);
         }
 
         for (let i = availableEntries.length - 1; i >= 0; i--) {
-            if (availableEntries[i].discord_member_id === selectedEntry.discord_member_id) {
+            if (availableEntries[i].member_id === selectedEntry.member_id) {
                 availableEntries.splice(i, 1);
             }
         }
@@ -2086,18 +2090,18 @@ export async function cancelGiveaway(giveawayId) {
     );
 }
 
-export async function markGiveawayWinners(giveawayId, winnerDiscordIds) {
+export async function markGiveawayWinners(giveawayId, winnerMemberIds) {
     await initializeDatabase();
-    if (!winnerDiscordIds || winnerDiscordIds.length === 0) {
+    if (!winnerMemberIds || winnerMemberIds.length === 0) {
         return;
     }
-
-    const placeholders = winnerDiscordIds.map(() => '?').join(',');
+    
+    const placeholders = winnerMemberIds.map(() => '?').join(',');
     await query(
         `UPDATE server_giveaway_entries 
          SET is_winner = TRUE 
-         WHERE giveaway_id = ? AND discord_member_id IN (${placeholders})`,
-        [giveawayId, ...winnerDiscordIds]
+         WHERE giveaway_id = ? AND member_id IN (${placeholders})`,
+        [giveawayId, ...winnerMemberIds]
     );
 }
 

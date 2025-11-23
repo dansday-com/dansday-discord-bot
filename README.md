@@ -26,9 +26,11 @@ A comprehensive Discord bot management system with a web-based control panel. Fe
   - Manages custom supporter roles
   - AFK system with voice mute/deafen
   - Leveling system with XP tracking and leaderboards
+  - Giveaway system with role restrictions and multiple entries
   - Feedback submission system
   - Role-based permission system
   - Syncs server/channel/role data to database
+  - Timezone-aware operations (configurable via TIMEZONE environment variable)
 
 ### Control Panel (`frontend/`)
 - **Purpose**: Web-based management interface for all bots
@@ -39,10 +41,13 @@ A comprehensive Discord bot management system with a web-based control panel. Fe
   - Configure all bot settings via web interface
   - View bot status, uptime, and process information
   - Manage server configurations per bot
-  - Configure forwarder, welcomer, booster, permissions, and more
-  - View bot logs in real-time terminal interface
+  - Configure forwarder, welcomer, booster, permissions, giveaway, leveling, and more
+  - View bot logs in real-time terminal interface with auto-scroll
   - Server list pagination (10 servers per page)
-  - Enhanced member list with icons and mobile-responsive design
+  - Server overview dashboard with comprehensive statistics
+  - Enhanced member list with advanced filtering, sorting, and search
+  - Visual embed builder with live preview and image upload
+  - Mobile-responsive design throughout
 
 ## Project Structure
 
@@ -50,8 +55,8 @@ A comprehensive Discord bot management system with a web-based control panel. Fe
 GOBLOX/
 ├── main.js                    # Control panel server entry point
 ├── package.json               # Dependencies and scripts
-├── example.env               # Environment variables template
-├── .env                      # Your environment variables (create this)
+├── .env.dev                  # Development environment variables
+├── .env.production           # Production environment variables
 ├── Dockerfile                # Docker container configuration
 ├── docker-compose.yml        # Docker Compose configuration
 ├── frontend/
@@ -81,6 +86,7 @@ GOBLOX/
 │   │       └── interface/        # Interface button handlers
 │   │           ├── afk.js            # AFK button handler
 │   │           ├── feedback.js      # Feedback button handler
+│   │           ├── giveaway.js      # Giveaway button handler
 │   │           ├── sendmessage.js    # Send message button handler
 │   │           ├── help.js           # Help button handler
 │   │           ├── leveling.js        # Leveling button handler
@@ -115,6 +121,16 @@ GOBLOX/
   - Top 5 leaderboard with medal emotes (🥇🥈🥉)
   - Tie-breaking by who reached level first
 - **Feedback System**: Submit feedback to staff with automatic channel posting
+- **Giveaway System**: Create and manage giveaways with advanced features
+  - Create giveaways with custom title, prize, duration, and winner count
+  - Optional role restrictions (limit entries to specific roles)
+  - Multiple entries support (allow users to enter multiple times)
+  - Automatic winner selection with weighted random distribution
+  - Real-time entry tracking and countdown
+  - Finish, cancel, or force-end active giveaways
+  - Automatic winner announcement when giveaway ends
+  - Creator participation control (allow/disallow creator from entering)
+  - Timezone-aware scheduling (uses configured TIMEZONE)
 - **Permission System**: Role-based permissions (Admin, Staff, Supporter, Member)
 - **Testing/Production Modes**: Switch between test and production channels
 
@@ -142,14 +158,13 @@ GOBLOX/
 
 ### 1. Clone and Configure
 ```bash
-# Copy environment file
-cp .env.example .env
-
-# Edit .env and set your values:
+# Use .env.dev for development or .env.production for production
+# Edit the appropriate .env file and set your values:
 # - DB_ROOT_PASSWORD (for MariaDB)
 # - DB_NAME, DB_USER, DB_PASSWORD
 # - SESSION_SECRET (generate with: openssl rand -base64 32)
 # - CONTROL_PANEL_PORT (default: 8080)
+# - TIMEZONE (optional, defaults to Asia/Jakarta)
 ```
 
 ### 2. Start with Docker Compose
@@ -195,7 +210,7 @@ npm install
 ```
 
 ### 2. Configure Environment Variables
-Create a `.env` file in the root directory (copy from `.env.example`):
+Use `.env.dev` for development or `.env.production` for production. Configure the appropriate file:
 
 ```env
 # MySQL/MariaDB Configuration (Required)
@@ -213,8 +228,11 @@ DB_NAME=goblox_bot
 CONTROL_PANEL_PORT=8080
 SESSION_SECRET=your-random-secret-key
 
-# Bot Configuration (Set when starting bots via control panel)
-BOT_ID=1
+# Timezone Configuration (Optional)
+# Defaults to Asia/Jakarta if not set
+# Used for all date/time operations (giveaways, timestamps, etc.)
+# Examples: "Asia/Jakarta", "Asia/Singapore", "America/New_York", "Europe/London"
+TIMEZONE=Asia/Jakarta
 ```
 
 **For Remote Database (SSH Tunnel):**
@@ -270,6 +288,7 @@ This starts the control panel web server. Access it at `http://localhost:8080` (
      - Main channel (for moderation logs)
      - Logger channel
      - Feedback channel
+     - Giveaway channel
      - Custom role constraints
 
 5. **Start Bots**:
@@ -289,9 +308,56 @@ Access the control panel at `http://localhost:8080` (or your configured port).
 - **Start/Stop/Restart**: Control bots remotely
 - **Real-time Status**: Live updates every 2 seconds
 - **Bot Logs Terminal**: View real-time logs for each bot with auto-scroll and manual refresh
+  - Auto-refresh every 5 seconds
+  - Toggle auto-scroll on/off
+  - Manual refresh button
+  - Scroll position detection
+  - Terminal-style display with timestamps
 - **Server List**: Paginated server list (10 servers per page) with search and filter
-- **Member List**: Enhanced member view with icons, responsive design, and sorting (default: Rank High to Low)
-- **Server Overview**: Comprehensive server statistics including stage and voice channels, separated announcement channels
+- **Server Overview**: Comprehensive server statistics dashboard
+  - Member statistics (total, with levels, boosters, AFK, custom roles)
+  - Channel breakdown (text, voice, stage, announcement channels)
+  - Leveling statistics (total XP, average level, max level, chat activity)
+  - Voice activity metrics (total minutes, active minutes, AFK minutes, averages)
+  - Roles and structure (total roles, boost level, categories)
+  - Data sync timestamps (last updated for members, channels, roles, levels, etc.)
+  - Configured components list with last update times
+- **Server Members View**: Enhanced member list with advanced filtering and sorting
+  - Filter by role type: All, Members, Supporter, Staff, Admin
+  - Search by name or Discord ID
+  - Multiple sort options:
+    - Rank (High to Low / Low to High)
+    - Level (High to Low / Low to High)
+    - XP (High to Low / Low to High)
+    - Name (A-Z / Z-A)
+    - Voice Activity (Active / AFK minutes)
+    - Chat count
+    - Account created date
+    - Member since date
+    - AFK status (AFK first / last)
+  - Beautiful member cards with:
+    - Avatar display
+    - Display name, username, and server nickname
+    - Level, XP, and rank information
+    - Role badges with colors
+    - AFK status indicator
+    - Voice activity stats
+    - Chat count
+    - Account and member join dates
+    - Booster status
+  - Mobile-responsive design
+- **Embed Builder**: Visual embed creation tool with live preview
+  - Title (required, max 256 characters)
+  - Description (optional, max 4096 characters)
+  - Image support (URL or file upload)
+  - Color picker with hex/decimal/color name support
+  - Custom footer (optional, max 2048 characters)
+  - Multi-channel selection
+  - Optional role mentions
+  - Real-time character counter
+  - Live preview of embed
+  - Total embed size validation (6000 character limit)
+  - Image preview for uploaded files
 
 ### Discord Commands
 
@@ -374,6 +440,33 @@ The `/interface` command creates a visual interface with buttons. All button res
   - Staff role automatically mentioned in feedback channel
 - **Permission:** Member+
 
+#### 🎉 Giveaway Button
+- Create and manage server giveaways
+- **Create Features:**
+  - Custom title and prize description
+  - Duration in minutes (configurable)
+  - Winner count (1 or more winners)
+  - Optional role restrictions (limit to specific roles)
+  - Multiple entries toggle (allow users to enter multiple times)
+  - Automatic end time calculation based on configured timezone
+- **Management Features:**
+  - View active giveaway details
+  - Finish giveaway early (selects winners immediately)
+  - Cancel giveaway (no winners selected)
+  - Force-end giveaway (if automatic end fails)
+- **Entry Features:**
+  - Click "Enter Giveaway" button on giveaway message
+  - Automatic role verification (if restrictions set)
+  - Entry count tracking (for multiple entries)
+  - Real-time participant count display
+- **Winner Selection:**
+  - Weighted random selection (multiple entries = higher chance)
+  - Automatic announcement when giveaway ends
+  - Winner marking in database
+  - Configurable creator participation (can creator enter their own giveaway?)
+- **Permission:** Staff+ (configurable via permissions)
+- **Note:** Giveaway channel must be configured in control panel
+
 #### ❓ Help Button
 - Displays comprehensive help information for all interface features
 - **Permission:** Member+
@@ -418,7 +511,7 @@ Configuration is managed through:
 
 #### Permissions Configuration
 - Admin roles (full access)
-- Staff roles (all interfaces: Send Message, Custom Supporter Role, Leveling, AFK, Help, Feedback)
+- Staff roles (all interfaces: Send Message, Custom Supporter Role, Leveling, AFK, Help, Feedback, Giveaway)
 - Supporter roles (Custom Supporter Role, Help)
 - Member roles (Leveling, AFK, Help, Feedback)
 
@@ -437,6 +530,11 @@ Configuration is managed through:
 - Role Start (top/highest position - typically Supporter role)
 - Role End (bottom/lowest position - typically Staff role)
 - Custom roles are created between these constraints
+
+#### Giveaway Configuration
+- Giveaway channel ID (where giveaways are posted)
+- Creator can participate toggle (allow/disallow giveaway creator from entering)
+- Timezone-aware scheduling (uses TIMEZONE environment variable)
 
 #### Leveling Configuration
 - Message XP: +10 XP per eligible message (default)
@@ -486,6 +584,13 @@ Each feature is organized as a component for easy maintenance:
   - Level up DM notifications
   - Voice session resume after bot restarts
   - AFK status checking (AFK users earn reduced XP: 5 XP/min vs 30 XP/min)
+- **Giveaway Component**: Manages server giveaways with full lifecycle support
+  - Create giveaways with role restrictions and multiple entry support
+  - Automatic winner selection with weighted random distribution
+  - Real-time entry tracking and countdown display
+  - Automatic end detection and winner announcement
+  - Manual finish, cancel, and force-end operations
+  - Timezone-aware scheduling and end time calculation
 - **Sync Component**: Event-driven sync system - syncs on bot startup and when configs are accessed/updated (30-minute cooldown)
   - Syncs text, voice, stage, and announcement channels
   - Tracks role positions for accurate member ranking
@@ -518,6 +623,8 @@ The system uses MySQL/MariaDB with the following main tables:
 - **server_member_levels**: Leveling stats (XP, level, rank, chat count, voice minutes)
 - **server_member_roles**: Member role assignments
 - **server_members_afk**: AFK status and messages
+- **server_giveaways**: Giveaway information (title, prize, duration, status, etc.)
+- **server_giveaway_entries**: Giveaway entry tracking (member entries, entry counts, winner status)
 - **server_settings**: Component-specific settings per server (JSON)
 
 ## Troubleshooting
@@ -596,6 +703,13 @@ The system uses MySQL/MariaDB with the following main tables:
    - Check user has member role
    - Ensure leveling component is initialized
 
+4. **Giveaway not working**: 
+   - Verify giveaway channel is configured in control panel
+   - Check user has required permission role (Staff+ by default)
+   - Ensure giveaway component is initialized
+   - Verify timezone is configured correctly (TIMEZONE environment variable)
+   - Check giveaway message exists and hasn't been deleted
+
 ## Development
 
 ### Project Structure
@@ -620,7 +734,7 @@ Akbar Yudhanto
 
 ## Version
 
-7.6.0
+7.6.1
 
 ---
 

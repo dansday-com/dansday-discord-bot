@@ -43,17 +43,17 @@ async function handleMenuButton(interaction) {
             .setStyle(ButtonStyle.Success));
     }
 
-    if (await hasPermission(member, 'afk')) {
-        buttons.push(new ButtonBuilder()
-            .setCustomId('bot_afk')
-            .setLabel('⏸️ AFK')
-            .setStyle(ButtonStyle.Success));
-    }
-
     if (await hasPermission(member, 'giveaway')) {
         buttons.push(new ButtonBuilder()
             .setCustomId('bot_giveaway')
             .setLabel('🎉 Giveaway')
+            .setStyle(ButtonStyle.Success));
+    }
+
+    if (await hasPermission(member, 'afk')) {
+        buttons.push(new ButtonBuilder()
+            .setCustomId('bot_afk')
+            .setLabel('⏸️ AFK')
             .setStyle(ButtonStyle.Success));
     }
 

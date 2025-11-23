@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import dotenv from 'dotenv';
 import logger from '../backend/logger.js';
+import { toMySQLDateTime, getNowInTimezone } from '../backend/utils.js';
 
 dotenv.config();
 
@@ -70,18 +71,6 @@ function getPool() {
         });
     }
     return pool;
-}
-
-function toMySQLDateTime(date) {
-    if (!date) date = new Date();
-    if (typeof date === 'string') date = new Date(date);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    const seconds = String(date.getSeconds()).padStart(2, '0');
-    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
 
 async function query(sql, params = []) {
@@ -1858,8 +1847,10 @@ export async function serversNeedSync(botId) {
 
 export async function createGiveaway(giveawayData) {
     await initializeDatabase();
-    const now = toMySQLDateTime();
-    const endsAt = toMySQLDateTime(new Date(Date.now() + giveawayData.duration_minutes * 60 * 1000));
+
+    const nowInTimezone = getNowInTimezone();
+    const endsAtInTimezone = new Date(nowInTimezone.getTime() + giveawayData.duration_minutes * 60 * 1000);
+    const endsAt = toMySQLDateTime(endsAtInTimezone);
 
     const result = await query(
         `INSERT INTO server_giveaways (
@@ -1910,9 +1901,11 @@ export async function updateGiveawayMessageId(giveawayId, discordMessageId) {
 
 export async function getEndedGiveaways() {
     await initializeDatabase();
+
+    const nowInTimezone = toMySQLDateTime(getNowInTimezone());
     const result = await query(
-        'SELECT * FROM server_giveaways WHERE status = ? AND ends_at <= NOW() AND winners_announced = ?',
-        ['active', false]
+        'SELECT * FROM server_giveaways WHERE status = ? AND ends_at <= ? AND winners_announced = ?',
+        ['active', nowInTimezone, false]
     );
 
     return result.map(row => {
@@ -2095,7 +2088,7 @@ export async function markGiveawayWinners(giveawayId, winnerMemberIds) {
     if (!winnerMemberIds || winnerMemberIds.length === 0) {
         return;
     }
-    
+
     const placeholders = winnerMemberIds.map(() => '?').join(',');
     await query(
         `UPDATE server_giveaway_entries 

@@ -109,15 +109,6 @@ async function getServerSettingsForComponent(guildId, componentName) {
     return settings;
 }
 
-export const ENV = {
-    get PRODUCTION() {
-        if (!botConfig) {
-            throw new Error('Bot config not loaded. Call initializeConfig() first.');
-        }
-        return !botConfig.is_testing;
-    }
-};
-
 export function getBotToken(botType) {
     if (!botConfig) {
         throw new Error('Bot config not loaded. Call initializeConfig() first.');

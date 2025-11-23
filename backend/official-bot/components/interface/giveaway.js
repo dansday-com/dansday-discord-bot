@@ -3,6 +3,7 @@ import { getEmbedConfig, GIVEAWAY, getServerForCurrentBot } from '../../../confi
 import logger from '../../../logger.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import db from '../../../../database/database.js';
+import { getNowInTimezone } from '../../../utils.js';
 
 export async function handleGiveawayButton(interaction) {
     try {
@@ -389,7 +390,9 @@ export async function handleGiveawayModal(interaction) {
             return;
         }
 
-        const endsAt = new Date(Date.now() + duration * 60 * 1000);
+        // Use configured timezone for giveaway end time
+        const nowInTimezone = getNowInTimezone();
+        const endsAt = new Date(nowInTimezone.getTime() + duration * 60 * 1000);
         const endsAtTimestamp = Math.floor(endsAt.getTime() / 1000);
 
         const giveawayData = {
@@ -517,8 +520,10 @@ export async function handleGiveawayEnterButton(interaction) {
             return;
         }
 
+        // Use configured timezone for comparison
         const endsAt = new Date(giveaway.ends_at);
-        if (endsAt <= new Date()) {
+        const nowInTimezone = getNowInTimezone();
+        if (endsAt <= nowInTimezone) {
             await interaction.editReply({
                 content: '❌ This giveaway has already ended.'
             });
@@ -528,16 +533,16 @@ export async function handleGiveawayEnterButton(interaction) {
 
         if (giveaway.allowed_roles !== null && Array.isArray(giveaway.allowed_roles) && giveaway.allowed_roles.length > 0) {
             const memberRoles = member.roles.cache.map(role => role.id);
-            const hasAllowedRole = giveaway.allowed_roles.some(roleId => memberRoles.includes(roleId));
+            const hasAllRequiredRoles = giveaway.allowed_roles.every(roleId => memberRoles.includes(roleId));
 
-            if (!hasAllowedRole) {
+            if (!hasAllRequiredRoles) {
                 const roleMentions = giveaway.allowed_roles.map(roleId => {
                     const role = guild.roles.cache.get(roleId);
                     return role ? `<@&${roleId}>` : `Role ${roleId}`;
                 }).join(', ');
 
                 await interaction.editReply({
-                    content: `❌ **Role Restriction**\n\nThis giveaway is restricted to the following roles:\n${roleMentions}\n\nYou need at least one of these roles to enter.`
+                    content: `❌ **Role Restriction**\n\nThis giveaway is restricted to the following roles:\n${roleMentions}\n\nYou need all of these roles to enter.`
                 });
                 return;
             }

@@ -20,9 +20,7 @@ function replacePlaceholders(message, memberId, serverData, memberData, memberCo
         .replace(/{user}/g, `<@${memberId}>`)
         .replace(/{server}/g, serverData?.name || 'Unknown Server')
         .replace(/{memberCount}/g, (memberCount || 0).toString())
-        .replace(/{accountAge}/g, accountAgeText)
-        .replace(/{date}/g, now.toLocaleDateString())
-        .replace(/{time}/g, now.toLocaleTimeString());
+        .replace(/{accountAge}/g, accountAgeText);
 }
 
 async function welcomeUser(member, client) {

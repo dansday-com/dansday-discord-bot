@@ -586,14 +586,6 @@
                             <code class="bg-blue-800 px-1.5 py-0.5 rounded text-blue-200">{accountAge}</code>
                             <span>Account age</span>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <code class="bg-blue-800 px-1.5 py-0.5 rounded text-blue-200">{date}</code>
-                            <span>Current date</span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <code class="bg-blue-800 px-1.5 py-0.5 rounded text-blue-200">{time}</code>
-                            <span>Current time</span>
-                        </div>
                     </div>
                 </div>
                 <!-- Form Actions -->
@@ -2030,6 +2022,7 @@
         let currentServerId = null;
         let embedDefaultColor = '#FF0000';
         let embedDefaultFooter = '';
+        let currentServerName = '';
         let currentBotIdForServer = null;
         const components = [
             { id: 'main_config', name: 'Main Config', icon: 'fa-cog' },
@@ -3322,12 +3315,12 @@
             const channelNames = await loadChannelNames(channelIds);
             return `
                 <form id="mainConfigForm" class="space-y-4 sm:space-y-6">
-                    <!-- Channel for Production -->
+                    <!-- Default Channel for Production -->
                     <div>
                         <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
-                            <i class="fas fa-rocket mr-2"></i>Channel for Production
+                            <i class="fas fa-rocket mr-2"></i>Default Channel for Production
                         </label>
-                        <p class="text-xs text-gray-400 mb-2">Channel where bot interface and production messages will be sent</p>
+                        <p class="text-xs text-gray-400 mb-2">Default channel where bot interface and production messages will be sent</p>
                         <button type="button" onclick="openChannelSelector('production_channel')"
                             class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 border border-gray-600 rounded-lg text-white text-left flex items-center justify-between hover:border-gray-500 transition-all text-sm sm:text-base">
                             <span id="production_channel_display" class="text-gray-300">${config.production_channel && channelNames[config.production_channel] ? `#${channelNames[config.production_channel]}` : config.production_channel ? `Channel ${config.production_channel}` : 'Select channel...'}</span>
@@ -3335,12 +3328,12 @@
                         </button>
                         <input type="hidden" id="production_channel" name="production_channel" value="${config.production_channel || ''}">
                     </div>
-                    <!-- Channel for Testing -->
+                    <!-- Default Channel for Testing -->
                     <div>
                         <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
-                            <i class="fas fa-flask mr-2"></i>Channel for Testing
+                            <i class="fas fa-flask mr-2"></i>Default Channel for Testing
                         </label>
-                        <p class="text-xs text-gray-400 mb-2">Optional channel for testing bot features before deploying to production</p>
+                        <p class="text-xs text-gray-400 mb-2">Default channel for testing bot features before deploying to production</p>
                         <button type="button" onclick="openChannelSelector('testing_channel')"
                             class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 border border-gray-600 rounded-lg text-white text-left flex items-center justify-between hover:border-gray-500 transition-all text-sm sm:text-base">
                             <span id="testing_channel_display" class="text-gray-300">${config.testing_channel && channelNames[config.testing_channel] ? `#${channelNames[config.testing_channel]}` : config.testing_channel ? `Channel ${config.testing_channel}` : 'Select channel...'}</span>
@@ -3381,14 +3374,6 @@
                                 <div class="flex items-center gap-2">
                                     <code class="bg-blue-800 px-1.5 py-0.5 rounded text-blue-200">{year}</code>
                                     <span>Current year</span>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <code class="bg-blue-800 px-1.5 py-0.5 rounded text-blue-200">{date}</code>
-                                    <span>Current date</span>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <code class="bg-blue-800 px-1.5 py-0.5 rounded text-blue-200">{time}</code>
-                                    <span>Current time</span>
                                 </div>
                             </div>
                         </div>
@@ -3431,7 +3416,7 @@
                         <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
                             <i class="fas fa-hashtag mr-2"></i>Welcome Channels
                         </label>
-                        <p class="text-xs text-gray-400 mb-2">Channels where welcome messages will be sent when new members join. You can select multiple channels</p>
+                        <p class="text-xs text-gray-400 mb-2">Channels for welcome messages. Multiple channels allowed. Uses default channel if not set</p>
                         <button type="button" onclick="openChannelSelectorMultiselect('welcomer_channels')"
                             class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 border border-gray-600 rounded-lg text-white text-left flex items-center justify-between hover:border-gray-500 transition-all text-sm sm:text-base">
                             <span id="welcomer_channels_display" class="text-gray-300">
@@ -3533,7 +3518,7 @@
                         <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
                             <i class="fas fa-hashtag mr-2"></i>Booster Channels
                         </label>
-                        <p class="text-xs text-gray-400 mb-2">Channels where booster messages will be sent when members boost the server. You can select multiple channels</p>
+                        <p class="text-xs text-gray-400 mb-2">Channels for booster messages. Multiple channels allowed. Uses default channel if not set</p>
                         <button type="button" onclick="openChannelSelectorMultiselect('booster_channels')"
                             class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 border border-gray-600 rounded-lg text-white text-left flex items-center justify-between hover:border-gray-500 transition-all text-sm sm:text-base">
                             <span id="booster_channels_display" class="text-gray-300">
@@ -3811,9 +3796,9 @@
             await loadRolesForServer();
             const roleStartId = config.role_start || '';
             const roleEndId = config.role_end || '';
-            const storedCooldownHours = Number(config.cooldown_hours);
-            const cooldownDays = Number.isFinite(storedCooldownHours)
-                ? Math.min(30, Math.max(1, Math.round(storedCooldownHours / 24)))
+            const storedCooldownDays = Number(config.cooldown_days);
+            const cooldownDays = Number.isFinite(storedCooldownDays)
+                ? Math.min(30, Math.max(1, storedCooldownDays))
                 : null;
             const ratingChannelId = config.rating_channel_id || '';
             const reportChannelId = config.report_channel_id || '';
@@ -3825,10 +3810,9 @@
             const channelNames = await loadChannelNames(channelIds);
             let cooldownOptions = '';
             for (let i = 1; i <= 30; i++) {
-                const hoursValue = i * 24;
                 const label = `${i} ${i === 1 ? 'day' : 'days'}`;
                 const selected = i === cooldownDays ? 'selected' : '';
-                cooldownOptions += `<option value="${hoursValue}" ${selected}>${label}</option>`;
+                cooldownOptions += `<option value="${i}" ${selected}>${label}</option>`;
             }
             return `
                     <div class="space-y-6">
@@ -3896,31 +3880,31 @@
                                 ${cooldownOptions}
                             </select>
                         </div>
-                        <!-- Rating Update Channel -->
-                        <div>
-                            <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
-                                <i class="fas fa-bell text-red-500 mr-2"></i>Rating Update Channel
-                            </label>
-                            <p class="text-xs text-gray-400 mb-2">Channel where staff rating updates will be sent (optional)</p>
-                            <button type="button" onclick="openChannelSelector('staff_rating_notification_channel')"
-                                class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 border border-gray-600 rounded-lg text-white text-left flex items-center justify-between hover:border-gray-500 transition-all text-sm sm:text-base">
-                                <span id="staff_rating_notification_channel_display" class="text-gray-300">${ratingChannelId && channelNames[ratingChannelId] ? `#${channelNames[ratingChannelId]}` : ratingChannelId ? `Channel ${ratingChannelId}` : 'Select channel...'}</span>
-                                <i class="fas fa-chevron-down text-gray-400"></i>
-                            </button>
-                            <input type="hidden" id="staff_rating_notification_channel" name="rating_channel_id" value="${ratingChannelId}">
-                        </div>
                         <!-- Staff Report Channel -->
                         <div>
                             <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
                                 <i class="fas fa-flag text-red-500 mr-2"></i>Staff Report Channel
                             </label>
-                            <p class="text-xs text-gray-400 mb-2">Channel where detailed staff reports will be logged (optional)</p>
+                            <p class="text-xs text-gray-400 mb-2">Channel for detailed staff reports. Uses default channel if not set</p>
                             <button type="button" onclick="openChannelSelector('staff_rating_report_channel')"
                                 class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 border border-gray-600 rounded-lg text-white text-left flex items-center justify-between hover:border-gray-500 transition-all text-sm sm:text-base">
                                 <span id="staff_rating_report_channel_display" class="text-gray-300">${reportChannelId && channelNames[reportChannelId] ? `#${channelNames[reportChannelId]}` : reportChannelId ? `Channel ${reportChannelId}` : 'Select channel...'}</span>
                                 <i class="fas fa-chevron-down text-gray-400"></i>
                             </button>
                             <input type="hidden" id="staff_rating_report_channel" name="report_channel_id" value="${reportChannelId}">
+                        </div>
+                        <!-- Rating Update Channel -->
+                        <div>
+                            <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                                <i class="fas fa-bell text-red-500 mr-2"></i>Rating Update Channel
+                            </label>
+                            <p class="text-xs text-gray-400 mb-2">Channel for staff rating updates. Uses default channel if not set</p>
+                            <button type="button" onclick="openChannelSelector('staff_rating_notification_channel')"
+                                class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 border border-gray-600 rounded-lg text-white text-left flex items-center justify-between hover:border-gray-500 transition-all text-sm sm:text-base">
+                                <span id="staff_rating_notification_channel_display" class="text-gray-300">${ratingChannelId && channelNames[ratingChannelId] ? `#${channelNames[ratingChannelId]}` : ratingChannelId ? `Channel ${ratingChannelId}` : 'Select channel...'}</span>
+                                <i class="fas fa-chevron-down text-gray-400"></i>
+                            </button>
+                            <input type="hidden" id="staff_rating_notification_channel" name="rating_channel_id" value="${ratingChannelId}">
                         </div>
                         <!-- Save Button -->
                         <div class="pt-4 border-t border-gray-700">
@@ -3954,7 +3938,7 @@
                             <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
                                 <i class="fas fa-comment-dots text-red-500 mr-2"></i>Feedback Channel
                             </label>
-                            <p class="text-xs text-gray-400 mb-2">Channel where user feedback submissions will be sent. Staff roles will be mentioned automatically</p>
+                            <p class="text-xs text-gray-400 mb-2">Channel for user feedback. Staff roles mentioned automatically. Uses default channel if not set</p>
                             <button type="button" onclick="openChannelSelector('feedback_channel')"
                                 class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 border border-gray-600 rounded-lg text-white text-left flex items-center justify-between hover:border-gray-500 transition-all text-sm sm:text-base">
                                 <span id="feedback_channel_display" class="text-gray-300">${channelId && channelNames[channelId] ? `#${channelNames[channelId]}` : channelId ? `Channel ${channelId}` : 'Select channel...'}</span>
@@ -4011,7 +3995,7 @@
                             <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
                                 <i class="fas fa-gift text-red-500 mr-2"></i>Giveaway Channel
                             </label>
-                            <p class="text-xs text-gray-400 mb-2">Channel where giveaways will be published and winners will be announced. If empty, will use main config default channel</p>
+                            <p class="text-xs text-gray-400 mb-2">Channel for giveaways and winner announcements. Uses default channel if not set</p>
                             <button type="button" onclick="openChannelSelector('giveaway_channel')"
                                 class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 border border-gray-600 rounded-lg text-white text-left flex items-center justify-between hover:border-gray-500 transition-all text-sm sm:text-base">
                                 <span id="giveaway_channel_display" class="text-gray-300">${channelId && channelNames[channelId] ? `#${channelNames[channelId]}` : channelId ? `Channel ${channelId}` : 'Select channel...'}</span>
@@ -4191,118 +4175,93 @@
             return `
                 <form id="levelingConfigForm" class="space-y-4 sm:space-y-6">
                     <!-- Level Requirements -->
-                    <div class="bg-gray-700 rounded-lg p-4 sm:p-6">
-                        <h3 class="text-base sm:text-lg font-semibold text-white mb-4">
-                            <i class="fas fa-trophy mr-2"></i>Level Requirements
-                        </h3>
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
-                                    Base XP
-                                </label>
-                                <p class="text-xs text-gray-400 mb-2">XP required to reach level 2. Higher levels use exponential formula: Base XP × (Multiplier ^ (Level - 2))</p>
-                                <select id="base_xp" name="base_xp" class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm sm:text-base">
-                                    ${baseXPOptions}
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
-                                    Multiplier
-                                </label>
-                                <p class="text-xs text-gray-400 mb-2">Exponential multiplier for level requirements. Higher values make leveling progressively harder</p>
-                                <select id="multiplier" name="multiplier" class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm sm:text-base">
-                                    ${multiplierOptions}
-                                </select>
-                            </div>
-                        </div>
+                    <div>
+                        <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                            <i class="fas fa-trophy text-red-500 mr-2"></i>Base XP
+                        </label>
+                        <p class="text-xs text-gray-400 mb-2">XP required to reach level 2. Higher levels use exponential formula: Base XP × (Multiplier ^ (Level - 2))</p>
+                        <select id="base_xp" name="base_xp" class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm sm:text-base">
+                            ${baseXPOptions}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                            <i class="fas fa-chart-line text-red-500 mr-2"></i>Multiplier
+                        </label>
+                        <p class="text-xs text-gray-400 mb-2">Exponential multiplier for level requirements. Higher values make leveling progressively harder</p>
+                        <select id="multiplier" name="multiplier" class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm sm:text-base">
+                            ${multiplierOptions}
+                        </select>
                     </div>
                     <!-- Message XP -->
-                    <div class="bg-gray-700 rounded-lg p-4 sm:p-6">
-                        <h3 class="text-base sm:text-lg font-semibold text-white mb-4">
-                            <i class="fas fa-comment mr-2"></i>Message XP
-                        </h3>
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
-                                    XP Per Message
-                                </label>
-                                <p class="text-xs text-gray-400 mb-2">XP awarded for each eligible message (must pass cooldown and have member role)</p>
-                                <select id="message_xp" name="message_xp" class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm sm:text-base">
-                                    ${xpOptions}
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
-                                    Cooldown (seconds)
-                                </label>
-                                <p class="text-xs text-gray-400 mb-2">Minimum time between messages to earn XP. Messages sent too quickly won't award XP</p>
-                                <select id="message_cooldown" name="message_cooldown" class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm sm:text-base">
-                                    ${cooldownOptions}
-                                </select>
-                            </div>
-                        </div>
+                    <div>
+                        <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                            <i class="fas fa-comment text-red-500 mr-2"></i>XP Per Message
+                        </label>
+                        <p class="text-xs text-gray-400 mb-2">XP awarded for each eligible message (must pass cooldown and have member role)</p>
+                        <select id="message_xp" name="message_xp" class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm sm:text-base">
+                            ${xpOptions}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                            <i class="fas fa-clock text-red-500 mr-2"></i>Cooldown (seconds)
+                        </label>
+                        <p class="text-xs text-gray-400 mb-2">Minimum time between messages to earn XP. Messages sent too quickly won't award XP</p>
+                        <select id="message_cooldown" name="message_cooldown" class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm sm:text-base">
+                            ${cooldownOptions}
+                        </select>
                     </div>
                     <!-- Voice XP -->
-                    <div class="bg-gray-700 rounded-lg p-4 sm:p-6">
-                        <h3 class="text-base sm:text-lg font-semibold text-white mb-4">
-                            <i class="fas fa-microphone mr-2"></i>Voice XP
-                        </h3>
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
-                                    Active Voice XP (per cooldown interval)
-                                </label>
-                                <p class="text-xs text-gray-400 mb-2">XP awarded per cooldown interval when actively in voice</p>
-                                <select id="voice_xp_per_minute" name="voice_xp_per_minute" class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm sm:text-base">
-                                    ${voiceXPOptions}
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
-                                    AFK Voice XP (per cooldown interval)
-                                </label>
-                                <p class="text-xs text-gray-400 mb-2">XP awarded per cooldown interval when AFK in voice</p>
-                                <select id="voice_afk_xp_per_minute" name="voice_afk_xp_per_minute" class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm sm:text-base">
-                                    ${voiceAfkXPOptions}
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
-                                    Cooldown (seconds)
-                                </label>
-                                <p class="text-xs text-gray-400 mb-2">How often voice XP is checked and awarded. XP amount above is given each interval</p>
-                                <select id="voice_cooldown" name="voice_cooldown" class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm sm:text-base">
-                                    ${voiceCooldownOptions}
-                                </select>
-                            </div>
-                        </div>
+                    <div>
+                        <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                            <i class="fas fa-microphone text-red-500 mr-2"></i>Active Voice XP (per cooldown interval)
+                        </label>
+                        <p class="text-xs text-gray-400 mb-2">XP awarded per cooldown interval when actively in voice</p>
+                        <select id="voice_xp_per_minute" name="voice_xp_per_minute" class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm sm:text-base">
+                            ${voiceXPOptions}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                            <i class="fas fa-pause text-red-500 mr-2"></i>AFK Voice XP (per cooldown interval)
+                        </label>
+                        <p class="text-xs text-gray-400 mb-2">XP awarded per cooldown interval when AFK in voice</p>
+                        <select id="voice_afk_xp_per_minute" name="voice_afk_xp_per_minute" class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm sm:text-base">
+                            ${voiceAfkXPOptions}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                            <i class="fas fa-clock text-red-500 mr-2"></i>Voice Cooldown (seconds)
+                        </label>
+                        <p class="text-xs text-gray-400 mb-2">How often voice XP is checked and awarded. XP amount above is given each interval</p>
+                        <select id="voice_cooldown" name="voice_cooldown" class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm sm:text-base">
+                            ${voiceCooldownOptions}
+                        </select>
                     </div>
                     <!-- Level Up Channel -->
-                    <div class="bg-gray-700 rounded-lg p-4 sm:p-6">
-                        <h3 class="text-base sm:text-lg font-semibold text-white mb-4">
-                            <i class="fas fa-hashtag mr-2"></i>Level Up Channel
-                        </h3>
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
-                                    Level Up Notification Channel
-                                </label>
-                                <p class="text-xs text-gray-400 mb-2">Channel where level up images will be posted when members level up</p>
-                                <button type="button" onclick="openChannelSelector('leveling_channel')"
-                                    class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-800 border border-gray-600 rounded-lg text-white hover:bg-gray-750 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all text-sm sm:text-base flex items-center justify-between">
-                                    <span id="leveling_channel_display" class="text-gray-300">${config.LEVEL_UP_CHANNEL_ID && channelNames[config.LEVEL_UP_CHANNEL_ID] ? '#' + channelNames[config.LEVEL_UP_CHANNEL_ID] : config.LEVEL_UP_CHANNEL_ID ? 'Channel ' + config.LEVEL_UP_CHANNEL_ID : 'Select channel...'}</span>
-                                    <i class="fas fa-chevron-right text-gray-400"></i>
-                                </button>
-                                <input type="hidden" id="leveling_channel" name="leveling_channel" value="${config.LEVEL_UP_CHANNEL_ID ?? ''}">
-                            </div>
-                        </div>
+                    <div>
+                        <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                            <i class="fas fa-hashtag text-red-500 mr-2"></i>Level Up Notification Channel
+                        </label>
+                        <p class="text-xs text-gray-400 mb-2">Channel for level up notifications. Uses default channel if not set</p>
+                        <button type="button" onclick="openChannelSelector('leveling_channel')"
+                            class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 border border-gray-600 rounded-lg text-white text-left flex items-center justify-between hover:border-gray-500 transition-all text-sm sm:text-base">
+                            <span id="leveling_channel_display" class="text-gray-300">${config.LEVEL_UP_CHANNEL_ID && channelNames[config.LEVEL_UP_CHANNEL_ID] ? '#' + channelNames[config.LEVEL_UP_CHANNEL_ID] : config.LEVEL_UP_CHANNEL_ID ? 'Channel ' + config.LEVEL_UP_CHANNEL_ID : 'Select channel...'}</span>
+                            <i class="fas fa-chevron-down text-gray-400"></i>
+                        </button>
+                        <input type="hidden" id="leveling_channel" name="leveling_channel" value="${config.LEVEL_UP_CHANNEL_ID ?? ''}">
                     </div>
-                    <button type="submit" id="saveLevelingConfigBtn"
-                        class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 sm:py-3 px-4 rounded-lg transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm sm:text-base">
-                        <i class="fas fa-spinner fa-spin hidden" id="saveLevelingConfigLoading"></i>
-                        <i class="fas fa-save mr-2"></i>
-                        Save Configuration
-                    </button>
+                    <!-- Save Button -->
+                    <div class="pt-4 border-t border-gray-700">
+                        <button type="submit" id="saveLevelingConfigBtn"
+                            class="w-full bg-red-600 hover:bg-red-700 text-white py-2.5 sm:py-3 rounded-lg transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 text-sm sm:text-base font-medium disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
+                            <i class="fas fa-spinner fa-spin hidden" id="saveLevelingConfigLoading"></i>
+                            <i class="fas fa-save"></i>
+                            <span>Save Configuration</span>
+                        </button>
+                    </div>
                 </form>
             `;
         }
@@ -5603,14 +5562,6 @@
                         <code class="bg-blue-800 px-1.5 py-0.5 rounded text-blue-200">{accountAge}</code>
                         <span>Account age</span>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <code class="bg-blue-800 px-1.5 py-0.5 rounded text-blue-200">{date}</code>
-                        <span>Current date</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <code class="bg-blue-800 px-1.5 py-0.5 rounded text-blue-200">{time}</code>
-                        <span>Current time</span>
-                    </div>
                 `;
             }
             if (index !== null) {
@@ -6343,11 +6294,10 @@
                 const normalizedCooldownDays = Number.isFinite(selectedCooldownDays)
                     ? Math.min(30, Math.max(1, selectedCooldownDays))
                     : null;
-                const cooldownHoursValue = normalizedCooldownDays !== null ? normalizedCooldownDays * 24 : null;
                 const formData = {
                     role_start: document.getElementById('staff_rating_role_start').value || null,
                     role_end: document.getElementById('staff_rating_role_end').value || null,
-                    cooldown_hours: cooldownHoursValue,
+                    cooldown_days: normalizedCooldownDays,
                     rating_channel_id: ratingChannelValue,
                     report_channel_id: reportChannelValue
                 };
@@ -6363,7 +6313,7 @@
                         },
                         credentials: 'include',
                         body: JSON.stringify({
-                            component_name: 'staff_rating',
+                            component_name: 'staff_report_rating',
                             settings: formData
                         })
                     });
@@ -6449,6 +6399,12 @@
             if (!contentContainer) return;
 
             try {
+                const overviewRes = await fetch(`/api/servers/${currentServerId}/overview`, {
+                    credentials: 'include'
+                });
+                const overviewData = overviewRes.ok ? await overviewRes.json() : null;
+                currentServerName = overviewData?.name || 'Unknown Server';
+
                 const configRes = await fetch(`/api/servers/${currentServerId}/settings?component=main_config`, {
                     credentials: 'include'
                 });
@@ -7021,6 +6977,14 @@
 
         window.switchImageMode = switchImageMode;
 
+        function replaceFooterPlaceholders(text) {
+            if (!text) return text;
+            const now = new Date();
+            return text
+                .replace(/{server}/g, currentServerName || 'Unknown Server')
+                .replace(/{year}/g, now.getFullYear().toString());
+        }
+
         function updateEmbedPreview() {
             const preview = document.getElementById('embedPreview');
             if (!preview) return;
@@ -7059,7 +7023,7 @@
             }
 
 
-            const hasContent = title.trim() || description.trim() || imageUrl.trim() || (footerInput && footerInput.trim());
+            const hasContent = title.trim() || description.trim() || imageUrl.trim() || (footerInput && footerInput.trim()) || embedDefaultFooter;
 
             if (!hasContent) {
                 preview.innerHTML = '<p class="text-gray-400 text-sm">Preview will appear here as you type...</p>';
@@ -7068,11 +7032,12 @@
 
             const borderColor = embedColor;
             const footerText = footerInput || embedDefaultFooter;
+            const footerTextWithPlaceholders = replaceFooterPlaceholders(footerText);
 
 
             const displayTitle = title.length > 256 ? title.substring(0, 253) + '...' : title;
             const displayDescription = description.length > 4096 ? description.substring(0, 4093) + '...' : description;
-            const displayFooter = footerText.length > 2048 ? footerText.substring(0, 2045) + '...' : footerText;
+            const displayFooter = footerTextWithPlaceholders.length > 2048 ? footerTextWithPlaceholders.substring(0, 2045) + '...' : footerTextWithPlaceholders;
 
             preview.innerHTML = `
                 <div class="border-l-4 rounded overflow-hidden bg-gray-800/30" style="border-color: ${borderColor};">

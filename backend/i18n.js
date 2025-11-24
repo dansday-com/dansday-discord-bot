@@ -120,7 +120,3 @@ export async function translate(key, guildId, userId, params = {}) {
 export function getAvailableLanguages() {
     return Array.from(translations.keys());
 }
-
-export function isLanguageAvailable(lang) {
-    return translations.has(lang);
-}

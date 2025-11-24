@@ -6,7 +6,7 @@ import { translate } from '../../../i18n.js';
 import db from '../../../../database/database.js';
 import { updateStaffRatingRole } from '../staffrating.js';
 
-const VALID_CATEGORIES = ['helpful', 'unhelpful', 'abuse', 'slow_response', 'excellent', 'rude'];
+const VALID_CATEGORIES = ['excellent', 'helpful', 'slow_response', 'unhelpful', 'rude', 'abuse'];
 
 async function getCategoryLabel(guildId, userId, category) {
     const key = `staffReport.categories.${category}`;
@@ -288,25 +288,17 @@ export async function handleStaffReportUserSelect(interaction) {
 
         const lastReport = await db.getLastStaffRatingReport(server.id, reporterDbMember.id, staffDbMember.id);
         if (lastReport) {
-            const cooldownHours = await STAFF_RATING.getCooldownHours(interaction.guild.id);
+            const cooldownDays = await STAFF_RATING.getCooldownDays(interaction.guild.id);
             const lastRatedTime = new Date(lastReport.reported_at).getTime();
             const now = Date.now();
-            const hoursPassed = (now - lastRatedTime) / (1000 * 60 * 60);
+            const daysPassed = (now - lastRatedTime) / (1000 * 60 * 60 * 24);
 
-            if (Number.isFinite(cooldownHours) && cooldownHours > 0 && hoursPassed < cooldownHours) {
-                const hoursRemaining = Math.ceil(cooldownHours - hoursPassed);
+            if (Number.isFinite(cooldownDays) && cooldownDays > 0 && daysPassed < cooldownDays) {
+                const daysRemaining = Math.ceil(cooldownDays - daysPassed);
                 const lastRatedStr = `<t:${Math.floor(lastRatedTime / 1000)}:R>`;
                 
-                let timeRemaining;
-                let timeUnitKey;
-                if (hoursRemaining >= 24) {
-                    const daysRemaining = Math.ceil(hoursRemaining / 24);
-                    timeRemaining = daysRemaining;
-                    timeUnitKey = daysRemaining === 1 ? 'common.timeUnits.day' : 'common.timeUnits.days';
-                } else {
-                    timeRemaining = hoursRemaining;
-                    timeUnitKey = hoursRemaining === 1 ? 'common.timeUnits.hour' : 'common.timeUnits.hours';
-                }
+                const timeRemaining = daysRemaining;
+                const timeUnitKey = daysRemaining === 1 ? 'common.timeUnits.day' : 'common.timeUnits.days';
                 
                 const timeUnit = await translate(timeUnitKey, interaction.guild.id, interaction.user.id);
                 const errorMsg = await translate('staffReport.errors.onCooldown', interaction.guild.id, interaction.user.id, {

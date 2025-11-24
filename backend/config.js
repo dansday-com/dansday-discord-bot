@@ -201,6 +201,16 @@ export async function getLevelingSettings(guildId) {
     }
 
     const config = settings.settings;
+
+    let levelUpChannelId = config.LEVEL_UP_CHANNEL_ID;
+    if (!levelUpChannelId) {
+        try {
+            levelUpChannelId = await getMainChannel(guildId);
+        } catch (error) {
+            levelUpChannelId = null;
+        }
+    }
+
     return {
         MESSAGE: {
             XP: config.MESSAGE.XP,
@@ -215,7 +225,7 @@ export async function getLevelingSettings(guildId) {
             BASE_XP: config.REQUIREMENTS.BASE_XP,
             MULTIPLIER: config.REQUIREMENTS.MULTIPLIER
         },
-        LEVEL_UP_CHANNEL_ID: config.LEVEL_UP_CHANNEL_ID
+        LEVEL_UP_CHANNEL_ID: levelUpChannelId
     };
 }
 
@@ -274,9 +284,7 @@ export async function getEmbedConfig(guildId) {
     const now = new Date();
     let footerText = config.footer
         .replace(/{server}/g, officialBotServer.name)
-        .replace(/{year}/g, now.getFullYear().toString())
-        .replace(/{date}/g, now.toLocaleDateString())
-        .replace(/{time}/g, now.toLocaleTimeString());
+        .replace(/{year}/g, now.getFullYear().toString());
 
     return {
         COLOR: color,
@@ -384,7 +392,8 @@ export const FEEDBACK = {
             return settings.settings.feedback_channel;
         }
 
-        return null;
+        const mainChannel = await getMainChannel(guildId);
+        return mainChannel;
     }
 };
 
@@ -424,7 +433,7 @@ export const STAFF_RATING = {
         requireBotConfig();
         requireGuildId(guildId, 'getting staff rating config');
 
-        const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, 'staff_rating');
+        const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, 'staff_report_rating');
 
         if (settings && settings.settings) {
             return settings.settings;
@@ -436,9 +445,18 @@ export const STAFF_RATING = {
     async getRatingChannel(guildId) {
         requireBotConfig();
         requireGuildId(guildId, 'getting staff rating channel');
-        
+
         const config = await this.getConfig(guildId);
-        return config?.rating_channel_id || null;
+        if (config?.rating_channel_id) {
+            return config.rating_channel_id;
+        }
+
+        if (!config?.report_channel_id) {
+            const mainChannel = await getMainChannel(guildId);
+            return mainChannel;
+        }
+
+        return null;
     },
 
     async getReportChannel(guildId) {
@@ -446,7 +464,16 @@ export const STAFF_RATING = {
         requireGuildId(guildId, 'getting staff report channel');
 
         const config = await this.getConfig(guildId);
-        return config?.report_channel_id || null;
+        if (config?.report_channel_id) {
+            return config.report_channel_id;
+        }
+
+        if (!config?.rating_channel_id) {
+            const mainChannel = await getMainChannel(guildId);
+            return mainChannel;
+        }
+
+        return null;
     },
 
     async getRoleConstraints(guildId) {
@@ -468,13 +495,13 @@ export const STAFF_RATING = {
         };
     },
 
-    async getCooldownHours(guildId) {
+    async getCooldownDays(guildId) {
         requireBotConfig();
         requireGuildId(guildId, 'getting staff rating cooldown');
 
         const config = await this.getConfig(guildId);
-        const rawHours = Number(config?.cooldown_hours);
-        return Number.isFinite(rawHours) ? rawHours : null;
+        const rawDays = Number(config?.cooldown_days);
+        return Number.isFinite(rawDays) ? rawDays : null;
     }
 };
 
@@ -561,18 +588,11 @@ export const FORWARDER = {
         }
     },
 
-
-
-
     async getForwarderConfigBySourceChannel(sourceChannelId, sourceGuildId) {
         requireBotConfig();
         if (!sourceChannelId || !sourceGuildId) {
             throw new Error('Source channel ID and guild ID are required.');
         }
-
-
-
-
 
         const allGuilds = await db.getServersForBot(botConfig.id);
         const environment = botConfig.is_testing ? 'testing' : 'production';
@@ -608,7 +628,6 @@ export const FORWARDER = {
                     if (!foundChannel) {
                         continue;
                     }
-
 
                     const forwarderSelfbotIdNum = typeof forwarder.selfbot_id === 'string' ? parseInt(forwarder.selfbot_id) : forwarder.selfbot_id;
                     const forwarderSelfbot = connectedSelfbots.find(bot => {

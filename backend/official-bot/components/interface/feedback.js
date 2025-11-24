@@ -1,8 +1,9 @@
 import { ModalBuilder, TextInputBuilder, ActionRowBuilder, TextInputStyle, EmbedBuilder } from 'discord.js';
-import { getEmbedConfig, PERMISSIONS, FEEDBACK } from '../../../config.js';
+import { getEmbedConfig, PERMISSIONS, FEEDBACK, getBotConfig } from '../../../config.js';
 import logger from '../../../logger.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import { translate } from '../../../i18n.js';
+import db from '../../../database/database.js';
 
 export async function handleFeedbackButton(interaction) {
     try {
@@ -32,8 +33,20 @@ export async function handleFeedbackButton(interaction) {
             .setRequired(true)
             .setMaxLength(2000);
 
-        const feedbackRow = new ActionRowBuilder().addComponents(feedbackInput);
-        modal.addComponents(feedbackRow);
+        const anonymousLabel = await translate('feedback.modal.anonymousLabel', interaction.guild.id, interaction.user.id);
+        const anonymousPlaceholder = await translate('feedback.modal.anonymousPlaceholder', interaction.guild.id, interaction.user.id);
+        const anonymousInput = new TextInputBuilder()
+            .setCustomId('anonymous')
+            .setLabel(anonymousLabel)
+            .setStyle(TextInputStyle.Short)
+            .setPlaceholder(anonymousPlaceholder)
+            .setRequired(false)
+            .setMaxLength(3);
+
+        modal.addComponents(
+            new ActionRowBuilder().addComponents(feedbackInput),
+            new ActionRowBuilder().addComponents(anonymousInput)
+        );
 
         await interaction.showModal(modal);
         await logger.log(`💬 Feedback modal shown to ${member.user.tag} (${member.user.id})`);
@@ -74,6 +87,9 @@ export async function handleFeedbackModal(interaction) {
             return;
         }
 
+        const anonymousValue = interaction.fields.getTextInputValue('anonymous')?.trim().toLowerCase() || 'no';
+        const isAnonymous = anonymousValue === 'yes' || anonymousValue === 'ya';
+
         let feedbackChannelId;
         try {
             feedbackChannelId = await FEEDBACK.getChannel(guild.id);
@@ -105,6 +121,17 @@ export async function handleFeedbackModal(interaction) {
             return;
         }
 
+        const botConfig = getBotConfig();
+        const server = await db.getServerByDiscordId(botConfig.id, guild.id);
+        const dbMember = await db.upsertMember(server.id, member);
+
+        await db.createFeedback(
+            server.id,
+            dbMember.id,
+            feedbackMessage,
+            isAnonymous
+        );
+
         const embedConfig = await getEmbedConfig(interaction.guild.id);
 
         const feedbackEmbedTitle = '💬 Feedback Submission';
@@ -114,11 +141,11 @@ export async function handleFeedbackModal(interaction) {
             .setColor(embedConfig.COLOR)
             .setTitle(feedbackEmbedTitle)
             .setDescription(feedbackMessage.length > 4096 ? feedbackMessage.substring(0, 4093) + '...' : feedbackMessage)
-            .setThumbnail(user.displayAvatarURL({ dynamic: true, size: 256 }))
+            .setThumbnail(isAnonymous ? undefined : user.displayAvatarURL({ dynamic: true, size: 256 }))
             .addFields([
                 {
                     name: fromLabel,
-                    value: `${user.tag} (${user.id})`,
+                    value: isAnonymous ? 'Anonymous' : `${user.tag} (${user.id})`,
                     inline: true
                 },
                 {
@@ -149,7 +176,13 @@ export async function handleFeedbackModal(interaction) {
         });
 
         const successTitle = await translate('feedback.submitted.title', interaction.guild.id, interaction.user.id);
-        const successDescription = await translate('feedback.submitted.description', interaction.guild.id, interaction.user.id);
+        let successDescription = await translate('feedback.submitted.description', interaction.guild.id, interaction.user.id);
+        
+        if (isAnonymous) {
+            const anonymousText = await translate('feedback.submitted.anonymous', interaction.guild.id, interaction.user.id);
+            successDescription += anonymousText;
+        }
+
         const successEmbed = new EmbedBuilder()
             .setColor(embedConfig.COLOR)
             .setTitle(successTitle)

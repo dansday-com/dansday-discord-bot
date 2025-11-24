@@ -10,7 +10,7 @@ function stripAfkPrefix(name) {
     return name.replace(/^\s*(\[AFK\]\s*)+/gi, '').trim();
 }
 
-export async function getAFKStatus(userId, guildId) {
+async function getAFKStatus(userId, guildId) {
     try {
         const botConfig = getBotConfig();
         if (!botConfig || !botConfig.id) {
@@ -89,7 +89,7 @@ async function setAFK(member, message, shouldDeafen = true) {
     }
 }
 
-export async function removeAFK(member, reason = '') {
+async function removeAFK(member, reason = '') {
     try {
         const botConfig = getBotConfig();
         if (!botConfig || !botConfig.id) {

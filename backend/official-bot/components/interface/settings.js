@@ -8,20 +8,6 @@ import { translate, getAvailableLanguages, getUserLanguage } from "../../../i18n
 const languageNames = {
     'en': 'English',
     'id': 'Bahasa Indonesia',
-    'es': 'Español',
-    'fr': 'Français',
-    'de': 'Deutsch',
-    'pt': 'Português',
-    'ru': 'Русский',
-    'ja': '日本語',
-    'zh': '中文',
-    'ko': '한국어',
-    'ar': 'العربية',
-    'hi': 'हिन्दी',
-    'tr': 'Türkçe',
-    'pl': 'Polski',
-    'nl': 'Nederlands',
-    'it': 'Italiano'
 };
 
 export async function handleSettingsButton(interaction) {

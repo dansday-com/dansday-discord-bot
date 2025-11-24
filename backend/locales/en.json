@@ -205,11 +205,14 @@
       "title": "💬 Submit Feedback",
       "label": "Your Feedback",
       "placeholder": "Please share your feedback, suggestions, or concerns...",
-      "maxLength": 2000
+      "maxLength": 2000,
+      "anonymousLabel": "Submit Anonymously? (yes/no)",
+      "anonymousPlaceholder": "yes or no (default: no)"
     },
     "submitted": {
       "title": "✅ Feedback Submitted!",
-      "description": "Thank you for your feedback! Your submission has been received."
+      "description": "Thank you for your feedback! Your feedback has been submitted successfully.",
+      "anonymous": "\\n\\n🔒 Your feedback was submitted anonymously."
     },
     "errors": {
       "invalid": "❌ **Invalid Feedback**\\n\\nFeedback message cannot be empty.",
@@ -246,12 +249,12 @@
       "categoryPlaceholder": "helpful, unhelpful, abuse, slow_response, excellent, rude",
       "descriptionLabel": "Description",
       "descriptionPlaceholder": "Please describe your experience with this staff member...",
-      "anonymousLabel": "Report Anonymously? (yes/no)",
+      "anonymousLabel": "Submit Anonymously? (yes/no)",
       "anonymousPlaceholder": "yes or no (default: no)"
     },
     "submitted": {
       "title": "✅ Report Submitted",
-      "description": "Your report has been submitted successfully. Thank you for your feedback!",
+      "description": "Your report has been submitted successfully. Thank you for your report!",
       "anonymous": "\\n\\n🔒 Your report was submitted anonymously.",
       "roleUpdated": "\\n\\n⭐ **Staff Rating Updated**\\n{roleName}\\nRating: {rating}/5.00 ({totalReports} reports)"
     },

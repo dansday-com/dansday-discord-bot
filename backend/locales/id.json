@@ -205,11 +205,14 @@
       "title": "💬 Kirim Feedback",
       "label": "Feedback Kamu",
       "placeholder": "Silakan bagikan feedback, saran, atau kekhawatiran kamu...",
-      "maxLength": 2000
+      "maxLength": 2000,
+      "anonymousLabel": "Kirim Secara Anonim? (ya/tidak)",
+      "anonymousPlaceholder": "ya atau tidak (default: tidak)"
     },
     "submitted": {
       "title": "✅ Feedback Terkirim!",
-      "description": "Terima kasih atas feedback kamu! Pengiriman kamu telah diterima."
+      "description": "Terima kasih atas feedback kamu! Feedback kamu telah berhasil dikirim.",
+      "anonymous": "\\n\\n🔒 Feedback kamu dikirim secara anonim."
     },
     "errors": {
       "invalid": "❌ **Feedback Tidak Valid**\\n\\nPesan feedback tidak boleh kosong.",
@@ -246,12 +249,12 @@
       "categoryPlaceholder": "helpful, unhelpful, abuse, slow_response, excellent, rude",
       "descriptionLabel": "Deskripsi",
       "descriptionPlaceholder": "Jelaskan pengalaman kamu dengan staff ini...",
-      "anonymousLabel": "Laporan Anonim? (ya/tidak)",
+      "anonymousLabel": "Kirim Secara Anonim? (ya/tidak)",
       "anonymousPlaceholder": "ya atau tidak (default: tidak)"
     },
     "submitted": {
       "title": "✅ Laporan Terkirim",
-      "description": "Laporan kamu telah berhasil dikirim. Terima kasih atas feedback kamu!",
+      "description": "Laporan kamu telah berhasil dikirim. Terima kasih atas laporan kamu!",
       "anonymous": "\\n\\n🔒 Laporan kamu dikirim secara anonim.",
       "roleUpdated": "\\n\\n⭐ **Rating Staff Diperbarui**\\n{roleName}\\nRating: {rating}/5.00 ({totalReports} laporan)"
     },

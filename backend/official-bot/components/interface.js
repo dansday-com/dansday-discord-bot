@@ -411,37 +411,6 @@ function init(client) {
                 await logger.log(`❌ String select error: ${error.message}`);
             }
 
-        } else if (interaction.isChannelSelectMenu()) {
-
-            if (!interaction.guild) {
-                return;
-            }
-
-            try {
-                await getServerForCurrentBot(interaction.guild.id);
-            } catch (error) {
-                await logger.log(`⚠️  Server ${interaction.guild.name} (${interaction.guild.id}) not found for this bot, ignoring interaction`);
-                return;
-            }
-
-            try {
-                const user = interaction.user;
-                const customId = interaction.customId;
-                const selectedChannels = interaction.values;
-                await logger.log(`📋 Channel selected: "${customId}" → [${selectedChannels.join(', ')}] by ${user.tag} (${user.id}) in ${interaction.guild?.name || 'DM'}`);
-            } catch (error) {
-                await logger.log(`❌ Channel selection error: ${error.message}`);
-
-                try {
-                    const errorMsg = await translate('common.errors.selectionError', interaction.guild?.id, interaction.user?.id);
-                    await interaction.reply({
-                        content: errorMsg,
-                        flags: 64
-                    });
-                } catch (replyError) {
-                    await logger.log(`❌ Failed to send selection error response: ${replyError.message}`);
-                }
-            }
         } else if (interaction.isRoleSelectMenu()) {
 
             if (!interaction.guild) {
@@ -516,52 +485,6 @@ function init(client) {
                     }).catch(() => null);
                 } catch (replyError) {
                     await logger.log(`❌ Failed to send user selection error response: ${replyError.message}`);
-                }
-            }
-        } else if (interaction.isStringSelectMenu()) {
-
-            if (!interaction.guild) {
-                return;
-            }
-
-            try {
-                await getServerForCurrentBot(interaction.guild.id);
-            } catch (error) {
-                await logger.log(`⚠️  Server ${interaction.guild.name} (${interaction.guild.id}) not found for this bot, ignoring interaction`);
-                return;
-            }
-
-            try {
-                const user = interaction.user;
-                const customId = interaction.customId;
-                const selectedValues = interaction.values;
-                await logger.log(`📋 String select: "${customId}" → [${selectedValues.join(', ')}] by ${user.tag} (${user.id}) in ${interaction.guild?.name || 'DM'}`);
-
-                if (customId === 'settings_language_select') {
-                    await handleLanguageSelect(interaction);
-                } else {
-                    await logger.log(`⚠️ Unknown string select: "${customId}" by ${user.tag} (${user.id})`);
-                }
-            } catch (error) {
-                await logger.log(`❌ String selection error in interface.js: ${error.message}`);
-                await logger.log(`❌ String selection error stack: ${error.stack}`);
-
-                try {
-                    const errorMsg = await translate('common.errors.selectionError', interaction.guild?.id, interaction.user?.id);
-                    if (interaction.deferred || interaction.replied) {
-                        await interaction.editReply({
-                            content: errorMsg,
-                            components: [],
-                            embeds: []
-                        }).catch(() => null);
-                    } else {
-                        await interaction.reply({
-                            content: errorMsg,
-                            flags: 64
-                        }).catch(() => null);
-                    }
-                } catch (replyError) {
-                    await logger.log(`❌ Failed to send string selection error response: ${replyError.message}`);
                 }
             }
         }

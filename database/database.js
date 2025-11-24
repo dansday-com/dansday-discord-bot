@@ -147,6 +147,7 @@ async function setupDatabase() {
         { name: 'server_giveaway_entries', required: true },
         { name: 'server_staff_ratings', required: true },
         { name: 'server_staff_reports', required: true },
+        { name: 'server_feedback', required: true },
         { name: 'bot_logs', required: true }
     ];
 
@@ -1883,12 +1884,11 @@ export async function createGiveaway(giveawayData) {
 
     const result = await query(
         `INSERT INTO server_giveaways (
-                    server_id, member_id, title, prize,
+                    member_id, title, prize,
                     duration_minutes, allowed_roles, multiple_entries_allowed, winner_count,
                     status, ends_at, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
-            giveawayData.server_id,
             giveawayData.member_id,
             giveawayData.title,
             giveawayData.prize,
@@ -1994,7 +1994,9 @@ export async function getGiveawayById(giveawayId) {
 export async function getActiveGiveawayByMember(serverId, memberId) {
     await initializeDatabase();
     const result = await query(
-        'SELECT * FROM server_giveaways WHERE server_id = ? AND member_id = ? AND status = ?',
+        `SELECT g.* FROM server_giveaways g
+         INNER JOIN server_members sm ON g.member_id = sm.id
+         WHERE sm.server_id = ? AND g.member_id = ? AND g.status = ?`,
         [serverId, memberId, 'active']
     );
 
@@ -2156,7 +2158,9 @@ export async function markGiveawayWinners(giveawayId, winnerMemberIds) {
 export async function getStaffRating(serverId, staffMemberId) {
     await initializeDatabase();
     const result = await query(
-        'SELECT * FROM server_staff_ratings WHERE server_id = ? AND staff_member_id = ?',
+        `SELECT sr.* FROM server_staff_ratings sr
+         INNER JOIN server_members sm ON sr.staff_member_id = sm.id
+         WHERE sm.server_id = ? AND sr.staff_member_id = ?`,
         [serverId, staffMemberId]
     );
     return result[0] || null;
@@ -2171,15 +2175,15 @@ export async function upsertStaffRating(serverId, staffMemberId, ratingValue, to
         await query(
             `UPDATE server_staff_ratings
              SET current_rating = ?, total_reports = ?, rating_role_id = ?, updated_at = ?
-             WHERE server_id = ? AND staff_member_id = ?`,
-            [ratingValue, totalReports, nextRoleId, now, serverId, staffMemberId]
+             WHERE staff_member_id = ?`,
+            [ratingValue, totalReports, nextRoleId, now, staffMemberId]
         );
     } else {
         await query(
             `INSERT INTO server_staff_ratings
-             (server_id, staff_member_id, current_rating, total_reports, rating_role_id, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [serverId, staffMemberId, ratingValue, totalReports, ratingRoleId || null, now, now]
+             (staff_member_id, current_rating, total_reports, rating_role_id, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [staffMemberId, ratingValue, totalReports, ratingRoleId || null, now, now]
         );
     }
     return await getStaffRating(serverId, staffMemberId);
@@ -2190,9 +2194,9 @@ export async function createStaffRatingReport(serverId, reporterMemberId, report
     const now = toMySQLDateTime();
     const result = await query(
         `INSERT INTO server_staff_reports
-         (server_id, reporter_member_id, reported_staff_id, rating, category, description, is_anonymous, reported_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [serverId, reporterMemberId, reportedStaffId, rating, category, description, isAnonymous ? 1 : 0, now]
+         (reporter_member_id, reported_staff_id, rating, category, description, is_anonymous, reported_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [reporterMemberId, reportedStaffId, rating, category, description, isAnonymous ? 1 : 0, now]
     );
     return result.insertId;
 }
@@ -2200,10 +2204,10 @@ export async function createStaffRatingReport(serverId, reporterMemberId, report
 export async function getLastStaffRatingReport(serverId, reporterMemberId, reportedStaffId) {
     await initializeDatabase();
     const result = await query(
-        `SELECT *
-         FROM server_staff_reports
-         WHERE server_id = ? AND reporter_member_id = ? AND reported_staff_id = ?
-         ORDER BY reported_at DESC
+        `SELECT sr.* FROM server_staff_reports sr
+         INNER JOIN server_members sm ON sr.reporter_member_id = sm.id
+         WHERE sm.server_id = ? AND sr.reporter_member_id = ? AND sr.reported_staff_id = ?
+         ORDER BY sr.reported_at DESC
          LIMIT 1`,
         [serverId, reporterMemberId, reportedStaffId]
     );
@@ -2216,8 +2220,9 @@ export async function getStaffRatingAggregate(serverId, staffMemberId) {
         `SELECT
             COUNT(*) as total_reports,
             AVG(rating) as average_rating
-         FROM server_staff_reports
-         WHERE server_id = ? AND reported_staff_id = ?`,
+         FROM server_staff_reports sr
+         INNER JOIN server_members sm ON sr.reported_staff_id = sm.id
+         WHERE sm.server_id = ? AND sr.reported_staff_id = ?`,
         [serverId, staffMemberId]
     );
     const row = result[0] || { total_reports: 0, average_rating: 0 };
@@ -2225,6 +2230,53 @@ export async function getStaffRatingAggregate(serverId, staffMemberId) {
         total_reports: row.total_reports || 0,
         average_rating: row.average_rating || 0
     };
+}
+
+export async function createFeedback(serverId, memberId, description, isAnonymous) {
+    await initializeDatabase();
+    const now = toMySQLDateTime();
+    const result = await query(
+        `INSERT INTO server_feedback
+         (member_id, description, is_anonymous, submitted_at)
+         VALUES (?, ?, ?, ?)`,
+        [memberId, description, isAnonymous ? 1 : 0, now]
+    );
+    return result.insertId;
+}
+
+export async function getFeedback(serverId, feedbackId) {
+    await initializeDatabase();
+    const result = await query(
+        `SELECT f.* FROM server_feedback f
+         INNER JOIN server_members sm ON f.member_id = sm.id
+         WHERE sm.server_id = ? AND f.id = ?`,
+        [serverId, feedbackId]
+    );
+    return result[0] || null;
+}
+
+export async function getFeedbackByServer(serverId, limit = 100, offset = 0) {
+    await initializeDatabase();
+    const result = await query(
+        `SELECT f.* FROM server_feedback f
+         INNER JOIN server_members sm ON f.member_id = sm.id
+         WHERE sm.server_id = ?
+         ORDER BY f.submitted_at DESC
+         LIMIT ? OFFSET ?`,
+        [serverId, limit, offset]
+    );
+    return result;
+}
+
+export async function getFeedbackCount(serverId) {
+    await initializeDatabase();
+    const result = await query(
+        `SELECT COUNT(*) as count FROM server_feedback f
+         INNER JOIN server_members sm ON f.member_id = sm.id
+         WHERE sm.server_id = ?`,
+        [serverId]
+    );
+    return result[0]?.count || 0;
 }
 
 export async function markMemberRatingRole(serverId, staffMemberId, discordRoleId) {
@@ -2272,7 +2324,8 @@ export async function getAllStaffRatings(serverId) {
             ssr.created_at,
             ssr.updated_at
          FROM server_staff_ratings ssr
-         WHERE ssr.server_id = ? AND ssr.rating_role_id IS NOT NULL AND ssr.current_rating > 0
+         INNER JOIN server_members sm ON ssr.staff_member_id = sm.id
+         WHERE sm.server_id = ? AND ssr.rating_role_id IS NOT NULL AND ssr.current_rating > 0
          ORDER BY ssr.current_rating DESC, ssr.created_at ASC`,
         [serverId]
     );

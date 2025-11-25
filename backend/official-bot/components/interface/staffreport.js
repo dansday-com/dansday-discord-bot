@@ -5,6 +5,7 @@ import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import { translate } from '../../../i18n.js';
 import db from '../../../../database/database.js';
 import { updateStaffRatingRole } from '../staffrating.js';
+import { parseMySQLDateTime } from '../../../utils.js';
 
 const VALID_CATEGORIES = ['excellent', 'helpful', 'slow_response', 'unhelpful', 'rude', 'abuse'];
 
@@ -52,15 +53,10 @@ async function buildStaffReportComponents(guild, userId, staffUserId, selectedRa
         .setLabel(await translate('staffReport.buttons.changeStaff', guild.id, userId))
         .setStyle(ButtonStyle.Secondary);
 
-    const menuButton = new ButtonBuilder()
-        .setCustomId('bot_menu')
-        .setLabel('📋 Menu')
-        .setStyle(ButtonStyle.Secondary);
-
     return [
         new ActionRowBuilder().addComponents(categorySelect),
         new ActionRowBuilder().addComponents(ratingSelect),
-        new ActionRowBuilder().addComponents(continueButton, backButton, menuButton)
+        new ActionRowBuilder().addComponents(continueButton, backButton)
     ];
 }
 
@@ -207,11 +203,17 @@ export async function handleStaffReportButton(interaction) {
             .setPlaceholder(selectStaffPlaceholder)
             .addOptions(staffOptions);
 
+        const menuButton = new ButtonBuilder()
+            .setCustomId('bot_menu')
+            .setLabel('📋 Menu')
+            .setStyle(ButtonStyle.Secondary);
+
         const selectRow = new ActionRowBuilder().addComponents(staffSelect);
+        const buttonRow = new ActionRowBuilder().addComponents(menuButton);
 
         const embedConfig = await getEmbedConfig(interaction.guild.id);
         const title = await translate('staffReport.title', interaction.guild.id, interaction.user.id);
-        
+
         const embed = new EmbedBuilder()
             .setColor(embedConfig.COLOR)
             .setTitle(title)
@@ -221,7 +223,7 @@ export async function handleStaffReportButton(interaction) {
 
         await interaction.update({
             embeds: [embed],
-            components: [selectRow]
+            components: [selectRow, buttonRow]
         });
 
         await logger.log(`📋 Staff report user selection shown to ${member.user.tag} (${member.user.id})`);
@@ -289,17 +291,27 @@ export async function handleStaffReportUserSelect(interaction) {
         const lastReport = await db.getLastStaffRatingReport(server.id, reporterDbMember.id, staffDbMember.id);
         if (lastReport) {
             const cooldownDays = await STAFF_RATING.getCooldownDays(interaction.guild.id);
-            const lastRatedTime = new Date(lastReport.reported_at).getTime();
+            const lastRatedDate = parseMySQLDateTime(lastReport.reported_at);
+            if (!lastRatedDate) {
+                await logger.log(`⚠️ Could not parse reported_at for report ${lastReport.id}: ${lastReport.reported_at}`);
+                const errorMsg = await translate('staffReport.errors.submitFailed', interaction.guild.id, interaction.user.id, { error: 'Invalid timestamp data' });
+                await interaction.reply({
+                    content: errorMsg,
+                    flags: 64
+                });
+                return;
+            }
+            const lastRatedTime = lastRatedDate.getTime();
             const now = Date.now();
             const daysPassed = (now - lastRatedTime) / (1000 * 60 * 60 * 24);
 
             if (Number.isFinite(cooldownDays) && cooldownDays > 0 && daysPassed < cooldownDays) {
                 const daysRemaining = Math.ceil(cooldownDays - daysPassed);
                 const lastRatedStr = `<t:${Math.floor(lastRatedTime / 1000)}:R>`;
-                
+
                 const timeRemaining = daysRemaining;
                 const timeUnitKey = daysRemaining === 1 ? 'common.timeUnits.day' : 'common.timeUnits.days';
-                
+
                 const timeUnit = await translate(timeUnitKey, interaction.guild.id, interaction.user.id);
                 const errorMsg = await translate('staffReport.errors.onCooldown', interaction.guild.id, interaction.user.id, {
                     time: timeRemaining,
@@ -464,7 +476,7 @@ export async function handleStaffReportModal(interaction) {
 
         const botConfig = getBotConfig();
         const server = await db.getServerByDiscordId(botConfig.id, guild.id);
-        
+
         const reporterDbMember = await db.upsertMember(server.id, member);
         const staffMember = await guild.members.fetch(staffUserId).catch(() => null);
         if (!staffMember) {
@@ -474,8 +486,53 @@ export async function handleStaffReportModal(interaction) {
             });
             return;
         }
-        
+
+        const isStaff = await hasPermission(staffMember, 'send_message');
+        if (!isStaff) {
+            const errorMsg = await translate('staffReport.errors.notStaff', interaction.guild.id, interaction.user.id);
+            await interaction.editReply({
+                content: errorMsg
+            });
+            return;
+        }
+
         const staffDbMember = await db.upsertMember(server.id, staffMember);
+
+        const lastReport = await db.getLastStaffRatingReport(server.id, reporterDbMember.id, staffDbMember.id);
+        if (lastReport) {
+            const cooldownDays = await STAFF_RATING.getCooldownDays(interaction.guild.id);
+            const lastRatedDate = parseMySQLDateTime(lastReport.reported_at);
+            if (!lastRatedDate) {
+                await logger.log(`⚠️ Could not parse reported_at for report ${lastReport.id}: ${lastReport.reported_at}`);
+                const errorMsg = await translate('staffReport.errors.submitFailed', interaction.guild.id, interaction.user.id, { error: 'Invalid timestamp data' });
+                await interaction.editReply({
+                    content: errorMsg
+                });
+                return;
+            }
+            const lastRatedTime = lastRatedDate.getTime();
+            const now = Date.now();
+            const daysPassed = (now - lastRatedTime) / (1000 * 60 * 60 * 24);
+
+            if (Number.isFinite(cooldownDays) && cooldownDays > 0 && daysPassed < cooldownDays) {
+                const daysRemaining = Math.ceil(cooldownDays - daysPassed);
+                const lastRatedStr = `<t:${Math.floor(lastRatedTime / 1000)}:R>`;
+
+                const timeRemaining = daysRemaining;
+                const timeUnitKey = daysRemaining === 1 ? 'common.timeUnits.day' : 'common.timeUnits.days';
+
+                const timeUnit = await translate(timeUnitKey, interaction.guild.id, interaction.user.id);
+                const errorMsg = await translate('staffReport.errors.onCooldown', interaction.guild.id, interaction.user.id, {
+                    time: timeRemaining,
+                    unit: timeUnit,
+                    lastRated: lastRatedStr
+                });
+                await interaction.editReply({
+                    content: errorMsg
+                });
+                return;
+            }
+        }
 
         await db.createStaffRatingReport(
             server.id,
@@ -492,14 +549,13 @@ export async function handleStaffReportModal(interaction) {
 
         const roleUpdate = await updateStaffRatingRole(guild, server.id, staffDbMember.id, staffUserId, {
             rating: aggregate.average_rating || rating,
-            total_reports: aggregate.total_reports,
-            rating_role_id: ratingRecord?.rating_role_id || null
+            total_reports: aggregate.total_reports
         });
 
         const embedConfig = await getEmbedConfig(interaction.guild.id);
         const successTitle = await translate('staffReport.submitted.title', interaction.guild.id, interaction.user.id);
         let successDescription = await translate('staffReport.submitted.description', interaction.guild.id, interaction.user.id);
-        
+
         if (isAnonymous) {
             const anonymousText = await translate('staffReport.submitted.anonymous', interaction.guild.id, interaction.user.id);
             successDescription += anonymousText;
@@ -570,4 +626,3 @@ export async function handleStaffReportModal(interaction) {
         });
     }
 }
-

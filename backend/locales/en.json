@@ -163,17 +163,12 @@
       "title": "✅ Entered Giveaway!",
       "description": "You have successfully entered the giveaway! Good luck! 🍀"
     },
-    "cancelled": {
-      "title": "✅ Giveaway Cancelled",
-      "description": "Your giveaway **\"{title}\"** has been cancelled."
-    },
     "buttons": {
-      "finish": "🏁 Finish Giveaway",
-      "cancel": "❌ Cancel Giveaway"
+      "finish": "🏁 Finish Giveaway"
     },
     "errors": {
       "memberNotFound": "❌ Failed to retrieve member information.",
-      "activeExists": "❌ You already have an active giveaway. Please cancel or finish it first.",
+      "activeExists": "❌ You already have an active giveaway. Please finish it first.",
       "invalidTitle": "❌ **Invalid Giveaway**\\n\\nTitle cannot be empty.",
       "invalidPrize": "❌ **Invalid Giveaway**\\n\\nPrize cannot be empty.",
       "invalidDuration": "❌ **Invalid Giveaway**\\n\\nDuration must be a positive number (in minutes).",
@@ -190,8 +185,6 @@
       "memberNotFoundDB": "❌ Member not found in database. Please try again later.",
       "cannotEnterOwn": "❌ You cannot enter your own giveaway!",
       "alreadyEntered": "❌ You have already entered this giveaway!",
-      "cancelOwnOnly": "❌ You can only cancel your own giveaways.",
-      "cancelNotActive": "❌ This giveaway is not active.",
       "finishOwnOnly": "❌ You can only finish your own giveaways.",
       "finishNotActive": "❌ This giveaway is not active.",
       "finishChannelError": "❌ Failed to get giveaway channel.",

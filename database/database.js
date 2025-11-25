@@ -110,7 +110,7 @@ async function runMigration() {
         }
 
         logger.log('✅ Database schema created successfully!');
-        logger.log('📊 Tables created: panel, panel_logs, bots, servers, server_categories, server_channels, server_roles, server_members, server_member_levels, server_member_roles, server_members_afk, server_settings, server_giveaways, server_giveaway_entries, bot_logs');
+        logger.log('📊 Tables created: panel, panel_logs, bots, servers, server_categories, server_channels, server_roles, server_members, server_member_levels, server_member_roles, server_members_afk, server_settings, server_giveaways, server_giveaway_entries, server_staff_ratings, server_staff_reports, server_feedback, bot_logs');
         logger.log('📈 Indexes created: all indexes');
 
     } catch (error) {
@@ -1904,28 +1904,7 @@ export async function createGiveaway(giveawayData) {
     );
 
     const insertedId = result.insertId;
-    const giveaway = await query(
-        'SELECT * FROM server_giveaways WHERE id = ?',
-        [insertedId]
-    );
-
-    if (!giveaway[0]) return null;
-
-    if (giveaway[0].allowed_roles) {
-        try {
-            giveaway[0].allowed_roles = typeof giveaway[0].allowed_roles === 'string'
-                ? JSON.parse(giveaway[0].allowed_roles)
-                : giveaway[0].allowed_roles;
-        } catch (e) {
-            giveaway[0].allowed_roles = [];
-        }
-    }
-
-    if (giveaway[0].ends_at) {
-        giveaway[0].ends_at = parseMySQLDateTime(giveaway[0].ends_at);
-    }
-
-    return giveaway[0];
+    return await getGiveawayById(insertedId);
 }
 
 export async function updateGiveawayMessageId(giveawayId, discordMessageId) {
@@ -1940,7 +1919,10 @@ export async function getEndedGiveaways() {
     await initializeDatabase();
 
     const result = await query(
-        'SELECT * FROM server_giveaways WHERE status = ? AND winners_announced = ?',
+        `SELECT g.*, sm.server_id 
+         FROM server_giveaways g
+         INNER JOIN server_members sm ON g.member_id = sm.id
+         WHERE g.status = ? AND g.winners_announced = ?`,
         ['active', false]
     );
 
@@ -1968,7 +1950,10 @@ export async function getEndedGiveaways() {
 export async function getGiveawayById(giveawayId) {
     await initializeDatabase();
     const result = await query(
-        'SELECT * FROM server_giveaways WHERE id = ?',
+        `SELECT g.*, sm.server_id 
+         FROM server_giveaways g
+         INNER JOIN server_members sm ON g.member_id = sm.id
+         WHERE g.id = ?`,
         [giveawayId]
     );
 
@@ -2132,14 +2117,6 @@ export async function markGiveawayEndedForce(giveawayId) {
     );
 }
 
-export async function cancelGiveaway(giveawayId) {
-    await initializeDatabase();
-    await query(
-        'UPDATE server_giveaways SET status = ? WHERE id = ?',
-        ['cancelled', giveawayId]
-    );
-}
-
 export async function markGiveawayWinners(giveawayId, winnerMemberIds) {
     await initializeDatabase();
     if (!winnerMemberIds || winnerMemberIds.length === 0) {
@@ -2166,24 +2143,23 @@ export async function getStaffRating(serverId, staffMemberId) {
     return result[0] || null;
 }
 
-export async function upsertStaffRating(serverId, staffMemberId, ratingValue, totalReports, ratingRoleId = null) {
+export async function upsertStaffRating(serverId, staffMemberId, ratingValue, totalReports) {
     await initializeDatabase();
     const now = toMySQLDateTime();
     const existing = await getStaffRating(serverId, staffMemberId);
     if (existing) {
-        const nextRoleId = ratingRoleId !== null && ratingRoleId !== undefined ? ratingRoleId : existing.rating_role_id;
         await query(
             `UPDATE server_staff_ratings
-             SET current_rating = ?, total_reports = ?, rating_role_id = ?, updated_at = ?
+             SET current_rating = ?, total_reports = ?, updated_at = ?
              WHERE staff_member_id = ?`,
-            [ratingValue, totalReports, nextRoleId, now, staffMemberId]
+            [ratingValue, totalReports, now, staffMemberId]
         );
     } else {
         await query(
             `INSERT INTO server_staff_ratings
-             (staff_member_id, current_rating, total_reports, rating_role_id, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?)`,
-            [staffMemberId, ratingValue, totalReports, ratingRoleId || null, now, now]
+             (staff_member_id, current_rating, total_reports, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?)`,
+            [staffMemberId, ratingValue, totalReports, now, now]
         );
     }
     return await getStaffRating(serverId, staffMemberId);
@@ -2320,16 +2296,32 @@ export async function getAllStaffRatings(serverId) {
             ssr.staff_member_id,
             ssr.current_rating,
             ssr.total_reports,
-            ssr.rating_role_id,
+            sr.discord_role_id as rating_role_id,
             ssr.created_at,
             ssr.updated_at
          FROM server_staff_ratings ssr
          INNER JOIN server_members sm ON ssr.staff_member_id = sm.id
-         WHERE sm.server_id = ? AND ssr.rating_role_id IS NOT NULL AND ssr.current_rating > 0
+         INNER JOIN server_member_roles smr ON ssr.staff_member_id = smr.member_id AND smr.is_rating = TRUE
+         INNER JOIN server_roles sr ON smr.role_id = sr.id
+         WHERE sm.server_id = ? AND ssr.current_rating > 0
          ORDER BY ssr.current_rating DESC, ssr.created_at ASC`,
         [serverId]
     );
     return result || [];
+}
+
+export async function getStaffRatingRole(serverId, staffMemberId) {
+    await initializeDatabase();
+    const result = await query(
+        `SELECT sr.discord_role_id
+         FROM server_member_roles smr
+         INNER JOIN server_roles sr ON smr.role_id = sr.id
+         INNER JOIN server_members sm ON smr.member_id = sm.id
+         WHERE sm.server_id = ? AND smr.member_id = ? AND smr.is_rating = TRUE
+         LIMIT 1`,
+        [serverId, staffMemberId]
+    );
+    return result[0]?.discord_role_id || null;
 }
 
 export default {
@@ -2394,7 +2386,6 @@ export default {
     getRandomGiveawayWinners,
     markGiveawayEnded,
     markGiveawayEndedForce,
-    cancelGiveaway,
     markGiveawayWinners,
     getStaffRating,
     upsertStaffRating,
@@ -2403,5 +2394,10 @@ export default {
     getStaffRatingAggregate,
     markMemberRatingRole,
     clearMemberRatingRole,
-    getAllStaffRatings
+    getAllStaffRatings,
+    getStaffRatingRole,
+    createFeedback,
+    getFeedback,
+    getFeedbackByServer,
+    getFeedbackCount
 };

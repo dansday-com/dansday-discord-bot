@@ -408,16 +408,8 @@ export async function handleDeleteCustomSupporterRole(interaction) {
             .setTimestamp()
             .setFooter({ text: embedConfig.FOOTER });
 
-        const menuButton = new ButtonBuilder()
-            .setCustomId('bot_menu')
-            .setLabel('📋 Menu')
-            .setStyle(ButtonStyle.Secondary);
-
-        const buttonRow = new ActionRowBuilder().addComponents(menuButton);
-
         await interaction.editReply({
             embeds: [successEmbed],
-            components: [buttonRow]
         });
 
         await logger.log(`🗑️ Deleted custom supporter role "${roleName}" (${roleId}) for ${member.user.tag} (${member.user.id})`);

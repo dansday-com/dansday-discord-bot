@@ -94,13 +94,18 @@ async function startBotById(botId, bot) {
 
         botProcesses.set(botId, processInfo);
 
+        let stdoutBuffer = '';
+        let stderrBuffer = '';
+
         botProcess.stdout.on('data', (data) => {
             const output = data.toString();
+            stdoutBuffer += output;
             console.log(`[Bot ${botId}] ${output}`);
         });
 
         botProcess.stderr.on('data', (data) => {
             const output = data.toString();
+            stderrBuffer += output;
             console.error(`[Bot ${botId} Error] ${output}`);
         });
 
@@ -123,7 +128,17 @@ async function startBotById(botId, bot) {
                 logger.log(`⚠️  Failed to update bot status: ${err.message}`);
             }
 
-            logger.log(`Bot ${botId} exited with code ${code}${signal ? ` (signal: ${signal})` : ''}`);
+            if (code !== 0 && code !== null) {
+                logger.log(`❌ Bot ${botId} exited with code ${code}${signal ? ` (signal: ${signal})` : ''}`);
+                if (stderrBuffer.trim()) {
+                    logger.log(`❌ Bot ${botId} stderr output:\n${stderrBuffer.trim()}`);
+                }
+                if (stdoutBuffer.trim() && code === 1) {
+                    logger.log(`❌ Bot ${botId} stdout output:\n${stdoutBuffer.trim()}`);
+                }
+            } else {
+                logger.log(`Bot ${botId} exited with code ${code}${signal ? ` (signal: ${signal})` : ''}`);
+            }
         });
 
         botProcess.on('error', async (err) => {
@@ -141,14 +156,46 @@ async function startBotById(botId, bot) {
                     process_id: null,
                     uptime_started_at: null
                 });
-            } catch (updateErr) { }
+            } catch (updateErr) {
+                logger.log(`⚠️  Failed to update bot status after error: ${updateErr.message}`);
+            }
 
-            logger.log(`Failed to start bot ${botId}: ${err.message}`);
+            logger.log(`❌ Failed to start bot ${botId}: ${err.message}`);
+            logger.log(`❌ Error details: ${err.stack || err.toString()}`);
         });
 
         setTimeout(async () => {
+            if (botProcess.exitCode !== null) {
+                logger.log(`❌ Bot ${botId} process ${botProcess.pid} exited immediately (exit code: ${botProcess.exitCode})`);
+                if (stderrBuffer.trim()) {
+                    logger.log(`❌ Bot ${botId} immediate stderr:\n${stderrBuffer.trim()}`);
+                }
+                if (stdoutBuffer.trim()) {
+                    logger.log(`❌ Bot ${botId} immediate stdout:\n${stdoutBuffer.trim()}`);
+                }
+                try {
+                    await db.updateBot(botId, {
+                        status: 'stopped',
+                        process_id: null,
+                        uptime_started_at: null
+                    });
+                } catch (updateErr) {
+                    logger.log(`⚠️  Failed to update bot status after immediate exit: ${updateErr.message}`);
+                }
+                return;
+            }
+        }, 500);
 
+        setTimeout(async () => {
             try {
+                if (botProcess.exitCode !== null) {
+                    logger.log(`⚠️  Bot ${botId} process ${botProcess.pid} exited before status check (exit code: ${botProcess.exitCode})`);
+                    if (stderrBuffer.trim()) {
+                        logger.log(`❌ Bot ${botId} stderr output:\n${stderrBuffer.trim()}`);
+                    }
+                    return;
+                }
+
                 process.kill(botProcess.pid, 0);
 
                 try {
@@ -162,15 +209,27 @@ async function startBotById(botId, bot) {
                     logger.log(`⚠️  Failed to update bot status to running: ${err.message}`);
                 }
             } catch (e) {
-
-                logger.log(`⚠️  Bot process ${botProcess.pid} may have failed to start`);
+                if (e.code === 'ESRCH' || e.message.includes('ESRCH')) {
+                    logger.log(`❌ Bot ${botId} process ${botProcess.pid} failed to start (process not found)`);
+                    if (stderrBuffer.trim()) {
+                        logger.log(`❌ Bot ${botId} stderr output:\n${stderrBuffer.trim()}`);
+                    }
+                    if (stdoutBuffer.trim()) {
+                        logger.log(`❌ Bot ${botId} stdout output:\n${stdoutBuffer.trim()}`);
+                    }
+                } else {
+                    logger.log(`❌ Bot ${botId} process ${botProcess.pid} may have failed to start`);
+                    logger.log(`❌ Process check error: ${e.message}`);
+                }
                 try {
                     await db.updateBot(botId, {
                         status: 'stopped',
                         process_id: null,
                         uptime_started_at: null
                     });
-                } catch (updateErr) { }
+                } catch (updateErr) {
+                    logger.log(`⚠️  Failed to update bot status after failure check: ${updateErr.message}`);
+                }
             }
         }, 2000);
 

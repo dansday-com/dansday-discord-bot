@@ -46,23 +46,17 @@ export async function handleGiveawayButton(interaction) {
 
         if (activeGiveaway) {
             const finishLabel = await translate('giveaway.buttons.finish', interaction.guild.id, interaction.user.id);
-            const cancelLabel = await translate('giveaway.buttons.cancel', interaction.guild.id, interaction.user.id);
             const finishButton = new ButtonBuilder()
                 .setCustomId(`giveaway_finish_${activeGiveaway.id}`)
                 .setLabel(finishLabel)
                 .setStyle(ButtonStyle.Success);
-
-            const cancelButton = new ButtonBuilder()
-                .setCustomId(`giveaway_cancel_${activeGiveaway.id}`)
-                .setLabel(cancelLabel)
-                .setStyle(ButtonStyle.Danger);
 
             const backButton = new ButtonBuilder()
                 .setCustomId('bot_menu')
                 .setLabel('📋 Menu')
                 .setStyle(ButtonStyle.Secondary);
 
-            const buttonRow = new ActionRowBuilder().addComponents(finishButton, cancelButton, backButton);
+            const buttonRow = new ActionRowBuilder().addComponents(finishButton, backButton);
 
             const activeTitle = await translate('giveaway.active.title', interaction.guild.id, interaction.user.id);
             const activeDescription = await translate('giveaway.active.description', interaction.guild.id, interaction.user.id, { title: activeGiveaway.title, prize: activeGiveaway.prize });
@@ -685,123 +679,6 @@ export async function handleGiveawayEnterButton(interaction) {
     }
 }
 
-export async function handleGiveawayCancel(interaction) {
-    try {
-        await interaction.deferReply({ flags: 64 });
-
-        const member = interaction.member;
-        const guild = interaction.guild;
-        const user = interaction.user;
-
-        if (!(await hasPermission(member, 'giveaway'))) {
-            const errorMessage = await getPermissionDeniedMessage(interaction.guild, 'giveaway', interaction.user.id);
-            await interaction.editReply({
-                content: errorMessage
-            }).catch(() => null);
-            return;
-        }
-
-        const giveawayId = parseInt(interaction.customId.replace('giveaway_cancel_', ''));
-        if (isNaN(giveawayId)) {
-            const errorMsg = await translate('giveaway.errors.invalidId', interaction.guild.id, interaction.user.id);
-            await interaction.editReply({
-                content: errorMsg
-            });
-            return;
-        }
-
-        const server = await getServerForCurrentBot(guild.id);
-        const dbMember = await db.getMemberByDiscordId(server.id, user.id);
-        if (!dbMember) {
-            const errorMsg = await translate('giveaway.errors.memberNotFoundDB', interaction.guild.id, interaction.user.id);
-            await interaction.editReply({
-                content: errorMsg
-            });
-            return;
-        }
-
-        const giveaway = await db.getGiveawayById(giveawayId);
-        if (!giveaway) {
-            const errorMsg = await translate('giveaway.errors.notFound', interaction.guild.id, interaction.user.id);
-            await interaction.editReply({
-                content: errorMsg
-            });
-            return;
-        }
-
-        if (giveaway.member_id !== dbMember.id) {
-            const errorMsg = await translate('giveaway.errors.cancelOwnOnly', interaction.guild.id, interaction.user.id);
-            await interaction.editReply({
-                content: errorMsg
-            });
-            return;
-        }
-
-        if (giveaway.status !== 'active') {
-            const errorMsg = await translate('giveaway.errors.cancelNotActive', interaction.guild.id, interaction.user.id);
-            await interaction.editReply({
-                content: errorMsg
-            });
-            return;
-        }
-
-        await db.cancelGiveaway(giveawayId);
-
-        let giveawayChannelId;
-        try {
-            giveawayChannelId = await GIVEAWAY.getChannel(guild.id);
-        } catch (err) {
-            await logger.log(`❌ Error getting giveaway channel: ${err.message}`);
-        }
-
-        const embedConfig = await getEmbedConfig(guild.id);
-
-        if (giveawayChannelId && giveaway.discord_message_id) {
-            const channel = guild.channels.cache.get(giveawayChannelId);
-            if (channel) {
-                try {
-                    const message = await channel.messages.fetch(giveaway.discord_message_id);
-                    await message.edit({ components: [] });
-
-                    const cancelEmbed = new EmbedBuilder()
-                        .setColor(embedConfig.COLOR)
-                        .setTitle('❌ Giveaway Cancelled')
-                        .setDescription(`**${giveaway.title}**\n\n**Prize:** ${giveaway.prize}\n\nThis giveaway has been cancelled by the host.`)
-                        .setTimestamp()
-                        .setFooter({ text: embedConfig.FOOTER });
-
-                    await channel.send({
-                        embeds: [cancelEmbed]
-                    });
-                } catch (err) {
-                    await logger.log(`❌ Error updating giveaway message: ${err.message}`);
-                }
-            }
-        }
-
-        const cancelledTitle = await translate('giveaway.cancelled.title', interaction.guild.id, interaction.user.id);
-        const cancelledDescription = await translate('giveaway.cancelled.description', interaction.guild.id, interaction.user.id, { title: giveaway.title });
-        const successEmbed = new EmbedBuilder()
-            .setColor(embedConfig.COLOR)
-            .setTitle(cancelledTitle)
-            .setDescription(cancelledDescription)
-            .setTimestamp()
-            .setFooter({ text: embedConfig.FOOTER });
-
-        await interaction.editReply({
-            embeds: [successEmbed]
-        }).catch(() => null);
-
-        await logger.log(`✅ Giveaway ${giveawayId} cancelled by ${user.tag} (${user.id})`);
-
-    } catch (error) {
-        await logger.log(`❌ Error cancelling giveaway: ${error.message}`);
-        await interaction.editReply({
-            content: `❌ Failed to cancel giveaway: ${error.message}`
-        }).catch(() => null);
-    }
-}
-
 export async function handleGiveawayFinish(interaction) {
     try {
         await interaction.deferReply({ flags: 64 });
@@ -1002,133 +879,143 @@ export async function handleGiveawayFinish(interaction) {
     }
 }
 
-export function init(client) {
-    setInterval(async () => {
-        try {
-            const endedGiveaways = await db.getEndedGiveaways();
+async function processEndedGiveaways(client) {
+    try {
+        const endedGiveaways = await db.getEndedGiveaways();
 
-            for (const giveaway of endedGiveaways) {
+        for (const giveaway of endedGiveaways) {
+            try {
+                const server = await db.getServer(giveaway.server_id);
+                if (!server) continue;
+
+                const guild = client.guilds.cache.get(server.discord_server_id);
+                if (!guild) continue;
+
+                let giveawayChannelId;
                 try {
-                    const server = await db.getServer(giveaway.server_id);
-                    if (!server) continue;
+                    giveawayChannelId = await GIVEAWAY.getChannel(guild.id);
+                } catch (err) {
+                    await logger.log(`❌ Error getting giveaway channel for server ${server.id}: ${err.message}`);
+                    continue;
+                }
 
-                    const guild = client.guilds.cache.get(server.discord_server_id);
-                    if (!guild) continue;
+                if (!giveawayChannelId) {
+                    await logger.log(`⚠️ Giveaway channel not configured for server ${server.id}, skipping giveaway ${giveaway.id}`);
+                    continue;
+                }
 
-                    let giveawayChannelId;
-                    try {
-                        giveawayChannelId = await GIVEAWAY.getChannel(guild.id);
-                    } catch (err) {
-                        await logger.log(`❌ Error getting giveaway channel for server ${server.id}: ${err.message}`);
-                        continue;
-                    }
+                const channel = guild.channels.cache.get(giveawayChannelId);
+                if (!channel) {
+                    await logger.log(`⚠️ Giveaway channel ${giveawayChannelId} not found in guild ${guild.id}, skipping giveaway ${giveaway.id}`);
+                    continue;
+                }
 
-                    if (!giveawayChannelId) {
-                        await logger.log(`⚠️ Giveaway channel not configured for server ${server.id}, skipping giveaway ${giveaway.id}`);
-                        continue;
-                    }
+                const message = await channel.messages.fetch(giveaway.discord_message_id).catch(() => null);
+                if (!message) continue;
 
-                    const channel = guild.channels.cache.get(giveawayChannelId);
-                    if (!channel) {
-                        await logger.log(`⚠️ Giveaway channel ${giveawayChannelId} not found in guild ${guild.id}, skipping giveaway ${giveaway.id}`);
-                        continue;
-                    }
+                await db.markGiveawayEnded(giveaway.id);
 
-                    const message = await channel.messages.fetch(giveaway.discord_message_id).catch(() => null);
-                    if (!message) continue;
+                const entries = await db.getGiveawayEntries(giveaway.id);
 
-                    await db.markGiveawayEnded(giveaway.id);
-
-                    const entries = await db.getGiveawayEntries(giveaway.id);
-
-                    if (entries.length === 0) {
-
-                        await message.edit({
-                            components: []
-                        });
-
-
-                        const embedConfig = await getEmbedConfig(guild.id);
-                        const noEntriesEmbed = new EmbedBuilder()
-                            .setColor(embedConfig.COLOR)
-                            .setTitle('🎉 Giveaway Ended')
-                            .setDescription(`**${giveaway.title}**\n\n❌ No entries! The giveaway has ended with no participants.`)
-                            .setTimestamp()
-                            .setFooter({ text: embedConfig.FOOTER });
-
-                        await channel.send({
-                            embeds: [noEntriesEmbed]
-                        });
-
-                        await logger.log(`✅ Giveaway ${giveaway.id} ended with no entries`);
-                        continue;
-                    }
-
-                    const winners = await db.getRandomGiveawayWinners(giveaway.id, giveaway.winner_count);
-
-                    if (winners.length === 0) {
-
-                        await message.edit({
-                            components: []
-                        });
-
-
-                        const embedConfig = await getEmbedConfig(guild.id);
-                        const noWinnersEmbed = new EmbedBuilder()
-                            .setColor(embedConfig.COLOR)
-                            .setTitle('🎉 Giveaway Ended')
-                            .setDescription(`**${giveaway.title}**\n\n❌ Could not select winners.`)
-                            .setTimestamp()
-                            .setFooter({ text: embedConfig.FOOTER });
-
-                        await channel.send({
-                            embeds: [noWinnersEmbed]
-                        });
-
-                        await logger.log(`✅ Giveaway ${giveaway.id} ended but no winners could be selected`);
-                        continue;
-                    }
-
-                    const winnerMentions = winners.map(w => `<@${w.discord_member_id}>`).join(', ');
-                    const embedConfig = await getEmbedConfig(guild.id);
-
-                    const winnerMemberIds = winners.map(w => w.member_id);
-                    await db.markGiveawayWinners(giveaway.id, winnerMemberIds);
-
-                    let description = `**${giveaway.title}**\n\n**Prize:** ${giveaway.prize}\n\n🎊 **Winner${winners.length > 1 ? 's' : ''}:** ${winnerMentions}\n\n`;
-
-                    if (winners.length < giveaway.winner_count) {
-                        description += `⚠️ *Only ${winners.length} winner${winners.length > 1 ? 's' : ''} selected (${giveaway.winner_count} requested) due to limited entries.*\n\n`;
-                    }
-
-                    description += `Congratulations! 🎉`;
-
-                    const winnersEmbed = new EmbedBuilder()
-                        .setColor(embedConfig.COLOR)
-                        .setTitle('🎉 Giveaway Ended!')
-                        .setDescription(description)
-                        .setTimestamp()
-                        .setFooter({ text: embedConfig.FOOTER });
-
+                if (entries.length === 0) {
 
                     await message.edit({
                         components: []
                     });
 
 
+                    const embedConfig = await getEmbedConfig(guild.id);
+                    const noEntriesEmbed = new EmbedBuilder()
+                        .setColor(embedConfig.COLOR)
+                        .setTitle('🎉 Giveaway Ended')
+                        .setDescription(`**${giveaway.title}**\n\n❌ No entries! The giveaway has ended with no participants.`)
+                        .setTimestamp()
+                        .setFooter({ text: embedConfig.FOOTER });
+
                     await channel.send({
-                        embeds: [winnersEmbed]
+                        embeds: [noEntriesEmbed]
                     });
 
-                    await logger.log(`✅ Giveaway ${giveaway.id} ended - Winners: ${winners.map(w => w.discord_member_id).join(', ')}`);
-
-                } catch (err) {
-                    await logger.log(`❌ Error ending giveaway ${giveaway.id}: ${err.message}`);
+                    await logger.log(`✅ Giveaway ${giveaway.id} ended with no entries`);
+                    continue;
                 }
+
+                const winners = await db.getRandomGiveawayWinners(giveaway.id, giveaway.winner_count);
+
+                if (winners.length === 0) {
+
+                    await message.edit({
+                        components: []
+                    });
+
+
+                    const embedConfig = await getEmbedConfig(guild.id);
+                    const noWinnersEmbed = new EmbedBuilder()
+                        .setColor(embedConfig.COLOR)
+                        .setTitle('🎉 Giveaway Ended')
+                        .setDescription(`**${giveaway.title}**\n\n❌ Could not select winners.`)
+                        .setTimestamp()
+                        .setFooter({ text: embedConfig.FOOTER });
+
+                    await channel.send({
+                        embeds: [noWinnersEmbed]
+                    });
+
+                    await logger.log(`✅ Giveaway ${giveaway.id} ended but no winners could be selected`);
+                    continue;
+                }
+
+                const winnerMentions = winners.map(w => `<@${w.discord_member_id}>`).join(', ');
+                const embedConfig = await getEmbedConfig(guild.id);
+
+                const winnerMemberIds = winners.map(w => w.member_id);
+                await db.markGiveawayWinners(giveaway.id, winnerMemberIds);
+
+                let description = `**${giveaway.title}**\n\n**Prize:** ${giveaway.prize}\n\n🎊 **Winner${winners.length > 1 ? 's' : ''}:** ${winnerMentions}\n\n`;
+
+                if (winners.length < giveaway.winner_count) {
+                    description += `⚠️ *Only ${winners.length} winner${winners.length > 1 ? 's' : ''} selected (${giveaway.winner_count} requested) due to limited entries.*\n\n`;
+                }
+
+                description += `Congratulations! 🎉`;
+
+                const winnersEmbed = new EmbedBuilder()
+                    .setColor(embedConfig.COLOR)
+                    .setTitle('🎉 Giveaway Ended!')
+                    .setDescription(description)
+                    .setTimestamp()
+                    .setFooter({ text: embedConfig.FOOTER });
+
+
+                await message.edit({
+                    components: []
+                });
+
+
+                await channel.send({
+                    embeds: [winnersEmbed]
+                });
+
+                await logger.log(`✅ Giveaway ${giveaway.id} ended - Winners: ${winners.map(w => w.discord_member_id).join(', ')}`);
+
+            } catch (err) {
+                await logger.log(`❌ Error ending giveaway ${giveaway.id}: ${err.message}`);
             }
-        } catch (error) {
-            await logger.log(`❌ Error checking ended giveaways: ${error.message}`);
         }
+    } catch (error) {
+        await logger.log(`❌ Error checking ended giveaways: ${error.message}`);
+    }
+}
+
+export function init(client) {
+    processEndedGiveaways(client).then(() => {
+        logger.log("✅ Checked for ended giveaways on startup");
+    }).catch(err => {
+        logger.log(`❌ Error processing ended giveaways on startup: ${err.message}`);
+    });
+
+    setInterval(() => {
+        processEndedGiveaways(client);
     }, 60000);
 
     logger.log("🎉 Giveaway component initialized - Checking for ended giveaways every minute");

@@ -1,9 +1,9 @@
 import { ModalBuilder, TextInputBuilder, ActionRowBuilder, TextInputStyle, EmbedBuilder } from 'discord.js';
-import { getEmbedConfig, PERMISSIONS, FEEDBACK, getBotConfig } from '../../../config.js';
+import { getEmbedConfig, FEEDBACK, getBotConfig } from '../../../config.js';
 import logger from '../../../logger.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import { translate } from '../../../i18n.js';
-import db from '../../../database/database.js';
+import db from '../../../../database/database.js';
 
 export async function handleFeedbackButton(interaction) {
     try {
@@ -145,7 +145,7 @@ export async function handleFeedbackModal(interaction) {
             .addFields([
                 {
                     name: fromLabel,
-                    value: isAnonymous ? 'Anonymous' : `${user.tag} (${user.id})`,
+                    value: isAnonymous ? 'Anonymous' : `<@${user.id}>`,
                     inline: true
                 },
                 {
@@ -159,15 +159,12 @@ export async function handleFeedbackModal(interaction) {
 
         let staffMentions = '';
         try {
-            const permissions = await PERMISSIONS.getPermissions(guild.id);
-            const staffRoles = permissions.STAFF_ROLES || [];
-            
-            if (staffRoles.length > 0) {
-
-                staffMentions = staffRoles.map(roleId => `<@&${roleId}>`).join(' ');
+            const feedbackRoleId = await FEEDBACK.getRole(guild.id);
+            if (feedbackRoleId) {
+                staffMentions = `<@&${feedbackRoleId}>`;
             }
         } catch (err) {
-            await logger.log(`⚠️  Error getting staff roles for feedback: ${err.message}`);
+            await logger.log(`⚠️  Error getting feedback role: ${err.message}`);
         }
 
         await feedbackChannel.send({

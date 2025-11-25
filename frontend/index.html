@@ -3928,9 +3928,12 @@
                     config = settings;
                 }
             }
+            await loadRolesForServer();
             const channelId = config.feedback_channel;
             const channelIds = channelId ? [channelId] : [];
             const channelNames = await loadChannelNames(channelIds);
+            const feedbackRoleId = config.feedback_role || '';
+            const feedbackRole = feedbackRoleId ? allRoles.find(r => String(r.discord_role_id) === String(feedbackRoleId)) : null;
             return `
                     <form id="feedbackConfigForm" class="space-y-4 sm:space-y-6">
                         <!-- Feedback Channel -->
@@ -3938,13 +3941,36 @@
                             <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
                                 <i class="fas fa-comment-dots text-red-500 mr-2"></i>Feedback Channel
                             </label>
-                            <p class="text-xs text-gray-400 mb-2">Channel for user feedback. Staff roles mentioned automatically. Uses default channel if not set</p>
+                            <p class="text-xs text-gray-400 mb-2">Channel for user feedback. Uses default channel if not set</p>
                             <button type="button" onclick="openChannelSelector('feedback_channel')"
                                 class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 border border-gray-600 rounded-lg text-white text-left flex items-center justify-between hover:border-gray-500 transition-all text-sm sm:text-base">
                                 <span id="feedback_channel_display" class="text-gray-300">${channelId && channelNames[channelId] ? `#${channelNames[channelId]}` : channelId ? `Channel ${channelId}` : 'Select channel...'}</span>
                                 <i class="fas fa-chevron-down text-gray-400"></i>
                             </button>
                             <input type="hidden" id="feedback_channel" name="feedback_channel" value="${channelId || ''}">
+                        </div>
+                        <!-- Feedback Role -->
+                        <div>
+                            <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                                <i class="fas fa-user-shield text-red-500 mr-2"></i>Role to Mention
+                            </label>
+                            <p class="text-xs text-gray-400 mb-2">Role to mention when feedback is submitted. Optional</p>
+                            <button type="button" onclick="openRoleSelectorSingle('feedback_role')"
+                                class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-lg text-left transition-colors flex items-center justify-between group">
+                                <div class="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                                    <i class="fas fa-user-shield text-gray-400 group-hover:text-white transition-colors flex-shrink-0"></i>
+                                    <span id="feedback_role_display" class="text-gray-300 text-sm sm:text-base">
+                                        ${feedbackRole
+                    ? `<span class="inline-flex items-center gap-1.5">
+                                                <span class="w-3 h-3 rounded-full" style="background-color: ${feedbackRole.color || '#7289da'};"></span>
+                                                ${escapeHtml(feedbackRole.name || 'Unknown Role')}
+                                            </span>`
+                    : 'Select role...'}
+                                    </span>
+                                </div>
+                                <i class="fas fa-chevron-right text-gray-500 group-hover:text-white transition-colors text-xs"></i>
+                            </button>
+                            <input type="hidden" id="feedback_role" name="feedback_role" value="${feedbackRoleId}">
                         </div>
                         <!-- Save Button -->
                         <div class="pt-4 border-t border-gray-700">
@@ -5301,7 +5327,8 @@
                 const titles = {
                     'role_start': 'Select Role Start (Top/Highest Position)',
                     'role_end': 'Select Role End (Bottom/Lowest Position)',
-                    'embed_roles': 'Select Roles to Mention'
+                    'embed_roles': 'Select Roles to Mention',
+                    'feedback_role': 'Select Role to Mention for Feedback'
                 };
                 document.getElementById('roleSelectorTitle').innerHTML = `<i class="fas fa-user-shield text-red-500"></i> ${titles[fieldId] || 'Select Role'}`;
                 document.getElementById('roleSelectorConfirm').classList.add('hidden');
@@ -6204,7 +6231,8 @@
             if (e.target.id === 'feedbackConfigForm') {
                 e.preventDefault();
                 const formData = {
-                    feedback_channel: document.getElementById('feedback_channel').value || null
+                    feedback_channel: document.getElementById('feedback_channel').value || null,
+                    feedback_role: document.getElementById('feedback_role').value || null
                 };
                 const submitBtn = document.getElementById('saveFeedbackConfigBtn');
                 const loadingIcon = document.getElementById('saveFeedbackConfigLoading');

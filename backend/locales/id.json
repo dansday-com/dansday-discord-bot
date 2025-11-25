@@ -163,17 +163,12 @@
       "title": "✅ Berhasil Ikuti Giveaway!",
       "description": "Kamu telah berhasil mengikuti giveaway! Semoga beruntung! 🍀"
     },
-    "cancelled": {
-      "title": "✅ Giveaway Dibatalkan",
-      "description": "Giveaway kamu **\"{title}\"** telah dibatalkan."
-    },
     "buttons": {
-      "finish": "🏁 Selesaikan Giveaway",
-      "cancel": "❌ Batalkan Giveaway"
+      "finish": "🏁 Selesaikan Giveaway"
     },
     "errors": {
       "memberNotFound": "❌ Gagal mengambil informasi anggota.",
-      "activeExists": "❌ Kamu sudah memiliki giveaway aktif. Silakan batalkan atau selesaikan terlebih dahulu.",
+      "activeExists": "❌ Kamu sudah memiliki giveaway aktif. Silakan selesaikan terlebih dahulu.",
       "invalidTitle": "❌ **Giveaway Tidak Valid**\\n\\nJudul tidak boleh kosong.",
       "invalidPrize": "❌ **Giveaway Tidak Valid**\\n\\nHadiah tidak boleh kosong.",
       "invalidDuration": "❌ **Giveaway Tidak Valid**\\n\\nDurasi harus berupa angka positif (dalam menit).",
@@ -190,8 +185,6 @@
       "memberNotFoundDB": "❌ Anggota tidak ditemukan di database. Silakan coba lagi nanti.",
       "cannotEnterOwn": "❌ Kamu tidak dapat mengikuti giveaway kamu sendiri!",
       "alreadyEntered": "❌ Kamu sudah mengikuti giveaway ini!",
-      "cancelOwnOnly": "❌ Kamu hanya dapat membatalkan giveaway kamu sendiri.",
-      "cancelNotActive": "❌ Giveaway ini tidak aktif.",
       "finishOwnOnly": "❌ Kamu hanya dapat menyelesaikan giveaway kamu sendiri.",
       "finishNotActive": "❌ Giveaway ini tidak aktif.",
       "finishChannelError": "❌ Gagal mendapatkan saluran giveaway.",

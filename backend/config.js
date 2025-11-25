@@ -394,6 +394,19 @@ export const FEEDBACK = {
 
         const mainChannel = await getMainChannel(guildId);
         return mainChannel;
+    },
+
+    async getRole(guildId) {
+        requireBotConfig();
+        requireGuildId(guildId, 'getting feedback role');
+
+        const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, 'feedback');
+
+        if (settings && settings.settings && settings.settings.feedback_role) {
+            return settings.settings.feedback_role;
+        }
+
+        return null;
     }
 };
 

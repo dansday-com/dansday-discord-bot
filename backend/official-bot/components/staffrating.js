@@ -43,7 +43,8 @@ async function ensureRatingRole(guild, serverId, member, ratingValue, ratingReco
     const constraints = await STAFF_RATING.getRoleConstraints(guild.id);
     const endRole = constraints?.ROLE_END ? guild.roles.cache.get(constraints.ROLE_END) : null;
 
-    let role = ratingRecord?.rating_role_id ? guild.roles.cache.get(ratingRecord.rating_role_id) : null;
+    const ratingRoleId = await db.getStaffRatingRole(serverId, ratingRecord?.staff_member_id);
+    let role = ratingRoleId ? guild.roles.cache.get(ratingRoleId) : null;
     if (!role) {
         const creationData = {
             name: desiredName,
@@ -89,21 +90,22 @@ export async function updateStaffRatingRole(guild, serverId, staffMemberId, staf
             averageRating = aggregate.average_rating || 0;
         }
         if (!totalReports || totalReports <= 0) {
-            if (ratingRecord?.rating_role_id) {
-                const role = guild.roles.cache.get(ratingRecord.rating_role_id);
+            const ratingRoleId = await db.getStaffRatingRole(serverId, staffMemberId);
+            if (ratingRoleId) {
+                const role = guild.roles.cache.get(ratingRoleId);
                 if (role) {
                     await member.roles.remove(role.id).catch(() => null);
                 }
             }
-            await db.upsertStaffRating(serverId, staffMemberId, 0, 0, null);
+            await db.upsertStaffRating(serverId, staffMemberId, 0, 0);
             await db.clearMemberRatingRole(staffMemberId);
             return { updated: false, reason: 'no_reports' };
         }
         const rounded = Math.round((averageRating || 0) * 10) / 10;
         const clamped = Math.max(1, Math.min(5, rounded));
-        ratingRecord = await db.upsertStaffRating(serverId, staffMemberId, clamped, totalReports, ratingRecord?.rating_role_id || null);
+        ratingRecord = await db.upsertStaffRating(serverId, staffMemberId, clamped, totalReports);
         const role = await ensureRatingRole(guild, serverId, member, clamped, ratingRecord);
-        await db.upsertStaffRating(serverId, staffMemberId, clamped, totalReports, role.id);
+        await db.upsertStaffRating(serverId, staffMemberId, clamped, totalReports);
         await db.markMemberRatingRole(serverId, staffMemberId, role.id);
         if (!member.roles.cache.has(role.id)) {
             await member.roles.add(role.id, 'Staff rating updated');

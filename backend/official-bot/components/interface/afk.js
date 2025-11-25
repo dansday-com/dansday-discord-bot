@@ -194,7 +194,7 @@ export async function handleAFKButton(interaction) {
             const removeButton = new ButtonBuilder()
                 .setCustomId('afk_remove')
                 .setLabel(removeButtonLabel)
-                .setStyle(ButtonStyle.Primary);
+                .setStyle(ButtonStyle.Danger);
 
             const menuButton = new ButtonBuilder()
                 .setCustomId('bot_menu')

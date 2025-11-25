@@ -6,7 +6,7 @@ import { handleCustomSupporterRoleButton, handleCustomSupporterRoleModal, handle
 import { handleFeedbackButton, handleFeedbackModal } from './interface/feedback.js';
 import { handleAFKButton, handleAFKModal, handleRemoveAFKButton } from './interface/afk.js';
 import { handleLevelingButton, handleLeaderboardButton } from './interface/leveling.js';
-import { handleGiveawayButton, handleGiveawayModal, handleGiveawayEnterButton, handleGiveawayRoleSelect, handleGiveawaySkipRolesContinue, handleGiveawayCancel, handleGiveawayFinish } from './interface/giveaway.js';
+import { handleGiveawayButton, handleGiveawayModal, handleGiveawayEnterButton, handleGiveawayRoleSelect, handleGiveawaySkipRolesContinue, handleGiveawayFinish } from './interface/giveaway.js';
 import { handleSettingsButton, handleLanguageButton, handleLanguageSelect, handleDMToggleButton } from './interface/settings.js';
 import { handleStaffReportButton, handleStaffReportUserSelect, handleStaffReportModal, handleStaffReportRatingSelect, handleStaffReportCategorySelect, handleStaffReportContinue } from './interface/staffreport.js';
 import { translate } from '../../i18n.js';
@@ -228,8 +228,6 @@ export async function handleButtonInteraction(interaction, client) {
                 await handleGiveawaySkipRolesContinue(interaction);
             } else if (customId.startsWith('giveaway_finish_')) {
                 await handleGiveawayFinish(interaction);
-            } else if (customId.startsWith('giveaway_cancel_')) {
-                await handleGiveawayCancel(interaction);
             } else {
                 await logger.log(`🔍 Unknown button interaction: ${customId}`);
                 const errorMsg = await translate('common.errors.unknownButton', interaction.guild?.id, interaction.user?.id);

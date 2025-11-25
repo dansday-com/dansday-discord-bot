@@ -458,7 +458,7 @@ export const STAFF_RATING = {
     async getRatingChannel(guildId) {
         requireBotConfig();
         requireGuildId(guildId, 'getting staff rating channel');
-
+        
         const config = await this.getConfig(guildId);
         if (config?.rating_channel_id) {
             return config.rating_channel_id;

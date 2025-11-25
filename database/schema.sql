@@ -223,6 +223,7 @@ CREATE TABLE IF NOT EXISTS server_staff_reports (
     category VARCHAR(50) NOT NULL,
     description TEXT,
     is_anonymous BOOLEAN DEFAULT 0,
+    status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
     reported_at DATETIME NOT NULL,
     FOREIGN KEY (reporter_member_id) REFERENCES server_members(id) ON DELETE CASCADE,
     FOREIGN KEY (reported_staff_id) REFERENCES server_members(id) ON DELETE CASCADE
@@ -271,4 +272,5 @@ CREATE INDEX idx_server_giveaway_entries_member_id ON server_giveaway_entries(me
 CREATE INDEX idx_server_staff_ratings_member ON server_staff_ratings(staff_member_id);
 CREATE INDEX idx_server_staff_reports_staff ON server_staff_reports(reported_staff_id);
 CREATE INDEX idx_server_staff_reports_pair ON server_staff_reports(reporter_member_id, reported_staff_id);
+CREATE INDEX idx_server_staff_reports_status ON server_staff_reports(status);
 CREATE INDEX idx_server_feedback_member ON server_feedback(member_id);

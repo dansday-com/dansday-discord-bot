@@ -247,9 +247,13 @@
     },
     "submitted": {
       "title": "✅ Report Submitted",
-      "description": "Your report has been submitted successfully. Thank you for your report!",
+      "description": "Your report has been submitted successfully and is now waiting for admin approval. We'll notify you once it's been reviewed.",
       "anonymous": "\\n\\n🔒 Your report was submitted anonymously.",
       "roleUpdated": "\\n\\n⭐ **Staff Rating Updated**\\n{roleName}\\nRating: {rating}/5.00 ({totalReports} reports)"
+    },
+    "dm": {
+      "approved": "✅ Your staff report about {staff} in **{server}** was approved.\\n\\n**Rating:** {rating}/5\\n**Category:** {category}\\n**Feedback:** {description}\\n\\nThank you for helping us keep the team accountable.",
+      "rejected": "❌ Your staff report about {staff} in **{server}** was not approved.\\n\\nYou can reach out to the admin team if you have more context to share."
     },
     "categories": {
       "helpful": "👍 Helpful",

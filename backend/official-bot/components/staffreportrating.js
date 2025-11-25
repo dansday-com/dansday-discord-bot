@@ -75,7 +75,7 @@ async function ensureRatingRole(guild, serverId, member, ratingValue, ratingReco
     return role;
 }
 
-export async function updateStaffRatingRole(guild, serverId, staffMemberId, staffDiscordId, stats = null) {
+export async function updateStaffRatingRole(guild, serverId, staffMemberId, staffDiscordId, stats = null, options = {}) {
     try {
         const member = await guild.members.fetch(staffDiscordId).catch(() => null);
         if (!member) {
@@ -110,13 +110,15 @@ export async function updateStaffRatingRole(guild, serverId, staffMemberId, staf
         if (!member.roles.cache.has(role.id)) {
             await member.roles.add(role.id, 'Staff rating updated');
         }
-        const ratingChannelId = await STAFF_RATING.getRatingChannel(guild.id);
-        if (ratingChannelId) {
-            const channel = guild.channels.cache.get(ratingChannelId) || await guild.channels.fetch(ratingChannelId).catch(() => null);
-            if (channel && channel.isTextBased()) {
-                await channel.send({
-                    content: `⭐ **Staff Rating Updated**\n<@${staffDiscordId}> now has a **${clamped.toFixed(1)}/5.0** rating (${totalReports} reports)`
-                }).catch(() => null);
+        if (!options.skipChannelMessage) {
+            const ratingChannelId = await STAFF_RATING.getRatingChannel(guild.id);
+            if (ratingChannelId) {
+                const channel = guild.channels.cache.get(ratingChannelId) || await guild.channels.fetch(ratingChannelId).catch(() => null);
+                if (channel && channel.isTextBased()) {
+                    await channel.send({
+                        content: `⭐ **Staff Rating Updated**\n<@${staffDiscordId}> now has a **${clamped.toFixed(1)}/5.0** rating (${totalReports} reports)`
+                    }).catch(() => null);
+                }
             }
         }
         await member.send({

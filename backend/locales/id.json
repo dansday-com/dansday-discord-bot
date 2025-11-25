@@ -247,9 +247,13 @@
     },
     "submitted": {
       "title": "✅ Laporan Terkirim",
-      "description": "Laporan kamu telah berhasil dikirim. Terima kasih atas laporan kamu!",
+      "description": "Laporan kamu berhasil dikirim dan sedang menunggu persetujuan admin. Kami akan memberi tahu kamu setelah laporan diproses.",
       "anonymous": "\\n\\n🔒 Laporan kamu dikirim secara anonim.",
       "roleUpdated": "\\n\\n⭐ **Rating Staff Diperbarui**\\n{roleName}\\nRating: {rating}/5.00 ({totalReports} laporan)"
+    },
+    "dm": {
+      "approved": "✅ Laporan kamu tentang {staff} di **{server}** telah disetujui.\\n\\n**Rating:** {rating}/5\\n**Kategori:** {category}\\n**Feedback:** {description}\\n\\nTerima kasih sudah membantu menjaga kualitas tim.",
+      "rejected": "❌ Laporan kamu tentang {staff} di **{server}** tidak disetujui.\\n\\nSilakan hubungi tim admin jika ingin memberikan konteks tambahan."
     },
     "categories": {
       "helpful": "👍 Membantu",

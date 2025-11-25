@@ -8,7 +8,7 @@ import { handleAFKButton, handleAFKModal, handleRemoveAFKButton } from './interf
 import { handleLevelingButton, handleLeaderboardButton } from './interface/leveling.js';
 import { handleGiveawayButton, handleGiveawayModal, handleGiveawayEnterButton, handleGiveawayRoleSelect, handleGiveawaySkipRolesContinue, handleGiveawayFinish } from './interface/giveaway.js';
 import { handleSettingsButton, handleLanguageButton, handleLanguageSelect, handleDMToggleButton } from './interface/settings.js';
-import { handleStaffReportButton, handleStaffReportUserSelect, handleStaffReportModal, handleStaffReportRatingSelect, handleStaffReportCategorySelect, handleStaffReportContinue } from './interface/staffreport.js';
+import { handleStaffReportButton, handleStaffReportUserSelect, handleStaffReportModal, handleStaffReportRatingSelect, handleStaffReportCategorySelect, handleStaffReportContinue, handleStaffReportApprove, handleStaffReportReject } from './interface/staffreportrating.js';
 import { translate } from '../../i18n.js';
 
 async function handleMenuButton(interaction) {
@@ -222,6 +222,10 @@ export async function handleButtonInteraction(interaction, client) {
         default:
             if (customId.startsWith('staff_report_continue')) {
                 await handleStaffReportContinue(interaction);
+            } else if (customId.startsWith('staff_report_approve')) {
+                await handleStaffReportApprove(interaction);
+            } else if (customId.startsWith('staff_report_reject')) {
+                await handleStaffReportReject(interaction);
             } else if (customId.startsWith('giveaway_enter_')) {
                 await handleGiveawayEnterButton(interaction);
             } else if (customId === 'giveaway_continue_form') {

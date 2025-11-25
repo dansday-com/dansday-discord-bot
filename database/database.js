@@ -2170,8 +2170,8 @@ export async function createStaffRatingReport(serverId, reporterMemberId, report
     const now = toMySQLDateTime();
     const result = await query(
         `INSERT INTO server_staff_reports
-         (reporter_member_id, reported_staff_id, rating, category, description, is_anonymous, reported_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+         (reporter_member_id, reported_staff_id, rating, category, description, is_anonymous, status, reported_at)
+         VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)`,
         [reporterMemberId, reportedStaffId, rating, category, description, isAnonymous ? 1 : 0, now]
     );
     return result.insertId;
@@ -2198,7 +2198,7 @@ export async function getStaffRatingAggregate(serverId, staffMemberId) {
             AVG(rating) as average_rating
          FROM server_staff_reports sr
          INNER JOIN server_members sm ON sr.reported_staff_id = sm.id
-         WHERE sm.server_id = ? AND sr.reported_staff_id = ?`,
+         WHERE sm.server_id = ? AND sr.reported_staff_id = ? AND sr.status = 'approved'`,
         [serverId, staffMemberId]
     );
     const row = result[0] || { total_reports: 0, average_rating: 0 };
@@ -2206,6 +2206,33 @@ export async function getStaffRatingAggregate(serverId, staffMemberId) {
         total_reports: row.total_reports || 0,
         average_rating: row.average_rating || 0
     };
+}
+
+export async function getStaffReportById(serverId, reportId) {
+    await initializeDatabase();
+    const result = await query(
+        `SELECT 
+            sr.*,
+            reporter.discord_member_id AS reporter_discord_id,
+            staff.discord_member_id AS staff_discord_id
+         FROM server_staff_reports sr
+         INNER JOIN server_members reporter ON sr.reporter_member_id = reporter.id
+         INNER JOIN server_members staff ON sr.reported_staff_id = staff.id
+         WHERE reporter.server_id = ? AND sr.id = ?
+         LIMIT 1`,
+        [serverId, reportId]
+    );
+    return result[0] || null;
+}
+
+export async function updateStaffReportStatus(reportId, status) {
+    await initializeDatabase();
+    await query(
+        `UPDATE server_staff_reports
+         SET status = ?
+         WHERE id = ?`,
+        [status, reportId]
+    );
 }
 
 export async function createFeedback(serverId, memberId, description, isAnonymous) {
@@ -2392,6 +2419,8 @@ export default {
     createStaffRatingReport,
     getLastStaffRatingReport,
     getStaffRatingAggregate,
+    getStaffReportById,
+    updateStaffReportStatus,
     markMemberRatingRole,
     clearMemberRatingRole,
     getAllStaffRatings,

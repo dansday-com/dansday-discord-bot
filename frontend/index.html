@@ -915,47 +915,57 @@
         let currentAccountId = null;
         let inviteToken = null;
 
-        const urlParams = new URLSearchParams(window.location.search);
-        inviteToken = urlParams.get('token');
-
         async function checkPanelStatus() {
             try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const tokenFromUrl = urlParams.get('token');
+                if (tokenFromUrl && !inviteToken) {
+                    inviteToken = tokenFromUrl;
+                }
+
                 const authRes = await fetch('/api/panel/auth', { credentials: 'include' });
                 const authData = await authRes.json();
 
-                if (authData.can_register && !inviteToken) {
-                    switchToRegisterMode();
-                    document.getElementById('switchAuthMode').classList.add('hidden');
-                    return;
-                }
-            } catch (err) {
-                console.error('Error checking auth status:', err);
-            }
-
-            switchToLoginMode();
-
-            if (inviteToken) {
-                try {
-                    const res = await fetch(`/api/panel/invite-link/${inviteToken}`);
-                    const data = await res.json();
-                    if (data.success) {
-                        document.getElementById('authSubtitle').textContent = `Register as ${data.account_type}`;
-                        document.getElementById('buttonText').textContent = 'Register';
-                        switchToRegisterMode();
-                    } else {
-                        showMessage(data.error || 'Invalid invite link', 'error');
+                if (inviteToken) {
+                    try {
+                        const res = await fetch(`/api/panel/invite-link/${inviteToken}`);
+                        const data = await res.json();
+                        if (data.success) {
+                            document.getElementById('authSubtitle').textContent = `Register as ${data.account_type}`;
+                            document.getElementById('buttonText').textContent = 'Register';
+                            document.getElementById('switchAuthMode').classList.add('hidden');
+                            switchToRegisterMode();
+                            return;
+                        } else {
+                            showMessage(data.error || 'Invalid invite link', 'error');
+                            inviteToken = null;
+                            window.history.replaceState({}, document.title, window.location.pathname);
+                            switchToLoginMode();
+                            document.getElementById('switchAuthMode').classList.add('hidden');
+                            return;
+                        }
+                    } catch (err) {
+                        console.error('Error checking invite link:', err);
+                        showMessage('Invalid invite link', 'error');
                         inviteToken = null;
                         window.history.replaceState({}, document.title, window.location.pathname);
                         switchToLoginMode();
+                        document.getElementById('switchAuthMode').classList.add('hidden');
+                        return;
                     }
-                } catch (err) {
-                    console.error('Error checking invite link:', err);
-                    showMessage('Invalid invite link', 'error');
-                    inviteToken = null;
-                    window.history.replaceState({}, document.title, window.location.pathname);
-                    switchToLoginMode();
                 }
-            } else {
+
+                if (authData.can_register && !inviteToken) {
+                    switchToRegisterMode();
+                    document.getElementById('switchAuthMode').classList.remove('hidden');
+                    return;
+                }
+
+                switchToLoginMode();
+                document.getElementById('switchAuthMode').classList.add('hidden');
+            } catch (err) {
+                console.error('Error checking auth status:', err);
+                switchToLoginMode();
                 document.getElementById('switchAuthMode').classList.add('hidden');
             }
         }
@@ -1019,20 +1029,7 @@
             document.getElementById('otp_code').required = false;
             document.getElementById('otp_code').disabled = true;
 
-            fetch('/api/panel/auth', { credentials: 'include' })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.can_register || inviteToken) {
-                        document.getElementById('switchAuthMode').classList.remove('hidden');
-                        document.getElementById('switchAuthText').textContent = "Don't have an account?";
-                        document.getElementById('switchAuthLink').textContent = 'Register';
-                    } else {
-                        document.getElementById('switchAuthMode').classList.add('hidden');
-                    }
-                })
-                .catch(() => {
-                    document.getElementById('switchAuthMode').classList.add('hidden');
-                });
+            document.getElementById('switchAuthMode').classList.add('hidden');
 
             document.getElementById('authForm').reset();
         }
@@ -1138,7 +1135,9 @@
                     document.getElementById('addBotBtn').classList.add('hidden');
                     resetAuthButton();
                     document.getElementById('authForm').reset();
-                    switchToLoginMode();
+                    if (!inviteToken) {
+                        switchToLoginMode();
+                    }
                 }
             } catch (err) {
                 console.error('Error checking auth status:', err);
@@ -1186,13 +1185,16 @@
                     const data = await res.json();
 
                     if (data.success) {
-                        showMessage(data.message || 'Email verified successfully!', 'success');
+                        showMessage(data.message || 'Email verified successfully! Please login.', 'success');
                         button.disabled = false;
                         loadingIcon.classList.add('hidden');
                         buttonText.textContent = 'Verify';
                         document.getElementById('authForm').reset();
-                        setTimeout(async () => {
-                            await checkAuthStatus();
+                        currentAccountId = null;
+                        inviteToken = null;
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                        setTimeout(() => {
+                            switchToLoginMode();
                         }, 1000);
                     } else {
                         showMessage(data.error || 'OTP verification failed', 'error');
@@ -1256,6 +1258,7 @@
                         showMessage(data.message || 'Registration successful! Check your email for verification code.', 'success');
                         button.disabled = false;
                         loadingIcon.classList.add('hidden');
+                        buttonText.textContent = 'Register';
                         currentAccountId = data.account_id;
                         switchToOtpMode(data.account_id);
                         if (inviteToken) {
@@ -7845,8 +7848,13 @@
         }
         window.addEventListener('DOMContentLoaded', async () => {
             await loadTimezone();
-            await checkPanelStatus();
+            const urlParams = new URLSearchParams(window.location.search);
+            inviteToken = urlParams.get('token');
             await checkAuthStatus();
+            if (!document.getElementById('dashboardContainer').classList.contains('hidden')) {
+                return;
+            }
+            await checkPanelStatus();
         });
     </script>
 </body>

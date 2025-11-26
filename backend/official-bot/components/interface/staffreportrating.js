@@ -2,20 +2,12 @@ import { ModalBuilder, TextInputBuilder, ActionRowBuilder, TextInputStyle, Embed
 import { getEmbedConfig, STAFF_RATING, getBotConfig, PERMISSIONS } from '../../../config.js';
 import logger from '../../../logger.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
-import { translate } from '../../../i18n.js';
+import { translate, t } from '../../../i18n.js';
 import db from '../../../../database/database.js';
 import { updateStaffRatingRole } from '../staffreportrating.js';
 import { parseMySQLDateTime } from '../../../utils.js';
 
 const VALID_CATEGORIES = ['excellent', 'helpful', 'slow_response', 'unhelpful', 'rude', 'abuse'];
-const CATEGORY_LABELS_EN = {
-    helpful: '👍 Helpful',
-    unhelpful: '👎 Unhelpful',
-    abuse: '⚠️ Abuse of Power',
-    slow_response: '⏰ Slow Response',
-    excellent: '⭐ Excellent Service',
-    rude: '😠 Rude Behavior'
-};
 
 async function getCategoryLabel(guildId, userId, category) {
     const key = `staffReport.categories.${category}`;
@@ -23,7 +15,8 @@ async function getCategoryLabel(guildId, userId, category) {
 }
 
 function getCategoryLabelEnglish(category) {
-    return CATEGORY_LABELS_EN[category] ?? category;
+    const key = `staffReport.categories.${category}`;
+    return t(key, 'en') || category;
 }
 
 async function buildStaffReportComponents(guild, userId, staffUserId, selectedRating, selectedCategory) {
@@ -383,12 +376,11 @@ export async function handleStaffReportUserSelect(interaction) {
                 const daysRemaining = Math.ceil(cooldownDays - daysPassed);
                 const lastRatedStr = `<t:${Math.floor(lastRatedTime / 1000)}:R>`;
 
-                const timeRemaining = daysRemaining;
                 const timeUnitKey = daysRemaining === 1 ? 'common.timeUnits.day' : 'common.timeUnits.days';
 
                 const timeUnit = await translate(timeUnitKey, interaction.guild.id, interaction.user.id);
                 const errorMsg = await translate('staffReport.errors.onCooldown', interaction.guild.id, interaction.user.id, {
-                    time: timeRemaining,
+                    time: daysRemaining,
                     unit: timeUnit,
                     lastRated: lastRatedStr
                 });
@@ -592,12 +584,11 @@ export async function handleStaffReportModal(interaction) {
                 const daysRemaining = Math.ceil(cooldownDays - daysPassed);
                 const lastRatedStr = `<t:${Math.floor(lastRatedTime / 1000)}:R>`;
 
-                const timeRemaining = daysRemaining;
                 const timeUnitKey = daysRemaining === 1 ? 'common.timeUnits.day' : 'common.timeUnits.days';
 
                 const timeUnit = await translate(timeUnitKey, interaction.guild.id, interaction.user.id);
                 const errorMsg = await translate('staffReport.errors.onCooldown', interaction.guild.id, interaction.user.id, {
-                    time: timeRemaining,
+                    time: daysRemaining,
                     unit: timeUnit,
                     lastRated: lastRatedStr
                 });
@@ -639,7 +630,7 @@ export async function handleStaffReportModal(interaction) {
         });
 
         const reportChannelId = await STAFF_RATING.getReportChannel(guild.id);
-        const categoryLabel = await getCategoryLabel(interaction.guild.id, interaction.user.id, category);
+        const categoryLabel = getCategoryLabelEnglish(category);
         if (reportChannelId) {
             const reportChannel = guild.channels.cache.get(reportChannelId) || await guild.channels.fetch(reportChannelId).catch(() => null);
             if (reportChannel && reportChannel.isTextBased()) {
@@ -659,7 +650,7 @@ export async function handleStaffReportModal(interaction) {
                     reporterDisplay,
                     statusText: pendingStatus,
                     reportId,
-                    color: embedConfig.COLOR
+                    color: 0xff8200
                 });
 
                 const approveButton = new ButtonBuilder()
@@ -672,7 +663,11 @@ export async function handleStaffReportModal(interaction) {
                     .setLabel(rejectLabel)
                     .setStyle(ButtonStyle.Danger);
 
+                const pendingRoleId = await STAFF_RATING.getPendingRole(guild.id);
+                const content = pendingRoleId ? `<@&${pendingRoleId}>` : null;
+
                 await reportChannel.send({
+                    content,
                     embeds: [logEmbed],
                     components: [new ActionRowBuilder().addComponents(approveButton, rejectButton)]
         }).catch(() => null);
@@ -719,8 +714,8 @@ async function handleStaffReportDecision(interaction, decision) {
         const moderator = interaction.member || await guild.members.fetch(interaction.user.id).catch(() => null);
 
         if (!moderator || !(await hasPermission(moderator, 'setup'))) {
-            const errorMessage = await getPermissionDeniedMessage(guild, 'setup', interaction.user.id);
-            await interaction.editReply({ content: errorMessage }).catch(() => null);
+            const errorMsg = await translate('staffReport.errors.permissionDenied', guild.id, interaction.user.id);
+            await interaction.editReply({ content: errorMsg }).catch(() => null);
             return;
         }
 
@@ -759,14 +754,13 @@ async function handleStaffReportDecision(interaction, decision) {
         }
 
         const embedConfig = await getEmbedConfig(guild.id);
-        const categoryLabel = await getCategoryLabel(guild.id, interaction.user.id, report.category);
         const categoryLabelEnglish = getCategoryLabelEnglish(report.category);
         const reporterDisplay = report.is_anonymous ? 'Anonymous' : `<@${report.reporter_discord_id}>`;
 
-        let statusText = 'Pending admin approval';
-        let title = '🕒 Pending Staff Report';
-        let replyMessage = '';
-        let color = embedConfig.COLOR;
+        let statusText;
+        let title;
+        let replyMessage;
+        let color;
 
         if (decision === 'approve') {
             await db.updateStaffReportStatus(report.id, 'approved');
@@ -781,18 +775,20 @@ async function handleStaffReportDecision(interaction, decision) {
                     feedback: report.description
                 }
             });
-            await notifyReporterOfDecision(guild, report, 'staffReport.dm.approved', categoryLabel);
+            const categoryLabelForDM = await getCategoryLabel(guild.id, report.reporter_discord_id, report.category);
+            await notifyReporterOfDecision(guild, report, 'staffReport.dm.approved', categoryLabelForDM);
             statusText = `Approved by <@${interaction.user.id}>`;
             title = '✅ Staff Report Approved';
             replyMessage = `✅ Report #${report.id} approved.`;
             color = 0x22c55e;
         } else {
             await db.updateStaffReportStatus(report.id, 'rejected');
-            await notifyReporterOfDecision(guild, report, 'staffReport.dm.rejected', categoryLabel);
+            const categoryLabelForDM = await getCategoryLabel(guild.id, report.reporter_discord_id, report.category);
+            await notifyReporterOfDecision(guild, report, 'staffReport.dm.rejected', categoryLabelForDM);
             statusText = `Rejected by <@${interaction.user.id}>`;
             title = '❌ Staff Report Rejected';
             replyMessage = `❌ Report #${report.id} rejected.`;
-            color = 0xef4444;
+            color = embedConfig.COLOR;
         }
 
         const updatedEmbed = buildReportLogEmbed({
@@ -800,7 +796,7 @@ async function handleStaffReportDecision(interaction, decision) {
             title,
             staffUserId: report.staff_discord_id,
             rating: report.rating,
-            categoryLabel,
+            categoryLabel: categoryLabelEnglish,
             description: report.description,
             reporterDisplay,
             statusText,
@@ -815,11 +811,6 @@ async function handleStaffReportDecision(interaction, decision) {
             }).catch(() => null);
         }
 
-        if (!replyMessage) {
-            replyMessage = decision === 'approve'
-                ? `✅ Report #${report.id} approved.`
-                : `❌ Report #${report.id} rejected.`;
-        }
         await interaction.editReply({ content: replyMessage }).catch(() => null);
 
         await logger.log(`${decision === 'approve' ? '✅' : '⛔'} Staff report #${report.id} ${decision} by ${interaction.user.tag} (${interaction.user.id})`);

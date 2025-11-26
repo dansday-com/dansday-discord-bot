@@ -276,7 +276,8 @@
       "noStaffConfigured": "❌ Role staff belum dikonfigurasi untuk server ini. Silakan minta admin mengatur perizinan staff terlebih dahulu.",
       "noStaffAvailable": "❌ Tidak ada staff yang dapat ditemukan saat ini. Silakan coba lagi nanti atau hubungi admin server.",
       "missingRating": "❌ Silakan pilih rating terlebih dahulu.",
-      "missingCategory": "❌ Silakan pilih kategori terlebih dahulu."
+      "missingCategory": "❌ Silakan pilih kategori terlebih dahulu.",
+      "permissionDenied": "❌ **Izin Ditolak**\\n\\nKamu memerlukan izin admin untuk menyetujui atau menolak laporan staff."
     }
   },
   "customSupporterRole": {

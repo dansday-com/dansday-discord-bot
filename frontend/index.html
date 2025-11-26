@@ -3726,17 +3726,17 @@
             const roleEnd = roleEndId ? allRoles.find(r => String(r.discord_role_id) === String(roleEndId)) : null;
             return `
                     <form id="customSupporterRoleConfigForm" class="space-y-4 sm:space-y-6">
-                        <!-- Role Start (Top/Highest Position) -->
+                        <!-- Custom Supporter Role Start (Top/Highest Position) -->
                         <div>
                             <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
-                                <i class="fas fa-arrow-up text-red-500 mr-2"></i>Role Start (Top/Highest Position)
+                                <i class="fas fa-arrow-up text-red-500 mr-2"></i>Custom Supporter Role Start (Top/Highest Position)
                             </label>
                             <p class="text-xs text-gray-400 mb-2">Highest role position where custom supporter roles will be created. Roles will be placed below this</p>
-                            <button type="button" onclick="openRoleSelectorSingle('role_start')"
+                            <button type="button" onclick="openRoleSelectorSingle('custom_supporter_role_start')"
                                 class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-lg text-left transition-colors flex items-center justify-between group">
                                 <div class="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                                     <i class="fas fa-user-shield text-gray-400 group-hover:text-white transition-colors flex-shrink-0"></i>
-                                    <span id="role_start_display" class="text-gray-300 text-sm sm:text-base">
+                                    <span id="custom_supporter_role_start_display" class="text-gray-300 text-sm sm:text-base">
                                         ${roleStart
                     ? `<span class="inline-flex items-center gap-1.5">
                                                 <span class="w-3 h-3 rounded-full" style="background-color: ${roleStart.color || '#7289da'};"></span>
@@ -3747,19 +3747,19 @@
                                 </div>
                                 <i class="fas fa-chevron-right text-gray-500 group-hover:text-white transition-colors text-xs"></i>
                             </button>
-                            <input type="hidden" id="role_start" name="role_start" value="${roleStartId}">
+                            <input type="hidden" id="custom_supporter_role_start" name="role_start" value="${roleStartId}">
                         </div>
-                        <!-- Role End (Bottom/Lowest Position) -->
+                        <!-- Custom Supporter Role End (Bottom/Lowest Position) -->
                         <div>
                             <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
-                                <i class="fas fa-arrow-down text-red-500 mr-2"></i>Role End (Bottom/Lowest Position)
+                                <i class="fas fa-arrow-down text-red-500 mr-2"></i>Custom Supporter Role End (Bottom/Lowest Position)
                             </label>
                             <p class="text-xs text-gray-400 mb-2">Lowest role position where custom supporter roles will be created. Roles will be placed above this</p>
-                            <button type="button" onclick="openRoleSelectorSingle('role_end')"
+                            <button type="button" onclick="openRoleSelectorSingle('custom_supporter_role_end')"
                                 class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-lg text-left transition-colors flex items-center justify-between group">
                                 <div class="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                                     <i class="fas fa-user-shield text-gray-400 group-hover:text-white transition-colors flex-shrink-0"></i>
-                                    <span id="role_end_display" class="text-gray-300 text-sm sm:text-base">
+                                    <span id="custom_supporter_role_end_display" class="text-gray-300 text-sm sm:text-base">
                                         ${roleEnd
                     ? `<span class="inline-flex items-center gap-1.5">
                                                 <span class="w-3 h-3 rounded-full" style="background-color: ${roleEnd.color || '#7289da'};"></span>
@@ -3770,7 +3770,7 @@
                                 </div>
                                 <i class="fas fa-chevron-right text-gray-500 group-hover:text-white transition-colors text-xs"></i>
                             </button>
-                            <input type="hidden" id="role_end" name="role_end" value="${roleEndId}">
+                            <input type="hidden" id="custom_supporter_role_end" name="role_end" value="${roleEndId}">
                         </div>
                         <!-- Save Button -->
                         <div class="pt-4 border-t border-gray-700">
@@ -3802,8 +3802,10 @@
                 : null;
             const ratingChannelId = config.rating_channel_id || '';
             const reportChannelId = config.report_channel_id || '';
+            const pendingRoleId = config.pending_role || '';
             const roleStart = roleStartId ? allRoles.find(r => String(r.discord_role_id) === String(roleStartId)) : null;
             const roleEnd = roleEndId ? allRoles.find(r => String(r.discord_role_id) === String(roleEndId)) : null;
+            const pendingRole = pendingRoleId ? allRoles.find(r => String(r.discord_role_id) === String(pendingRoleId)) : null;
             const channelIds = [];
             if (ratingChannelId) channelIds.push(ratingChannelId);
             if (reportChannelId && !channelIds.includes(reportChannelId)) channelIds.push(reportChannelId);
@@ -3905,6 +3907,29 @@
                                 <i class="fas fa-chevron-down text-gray-400"></i>
                             </button>
                             <input type="hidden" id="staff_rating_notification_channel" name="rating_channel_id" value="${ratingChannelId}">
+                        </div>
+                        <!-- Pending Role -->
+                        <div>
+                            <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                                <i class="fas fa-user-shield text-red-500 mr-2"></i>Pending Report Role
+                            </label>
+                            <p class="text-xs text-gray-400 mb-2">Role to mention when a pending report is posted. Optional</p>
+                            <button type="button" onclick="openRoleSelectorSingle('staff_rating_pending_role')"
+                                class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-lg text-left transition-colors flex items-center justify-between group">
+                                <div class="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                                    <i class="fas fa-user-shield text-gray-400 group-hover:text-white transition-colors flex-shrink-0"></i>
+                                    <span id="staff_rating_pending_role_display" class="text-gray-300 text-sm sm:text-base">
+                                        ${pendingRole
+                    ? `<span class="inline-flex items-center gap-1.5">
+                                                <span class="w-3 h-3 rounded-full" style="background-color: ${pendingRole.color || '#7289da'};"></span>
+                                                ${escapeHtml(pendingRole.name || 'Unknown Role')}
+                                            </span>`
+                    : 'Select role...'}
+                                    </span>
+                                </div>
+                                <i class="fas fa-chevron-right text-gray-500 group-hover:text-white transition-colors text-xs"></i>
+                            </button>
+                            <input type="hidden" id="staff_rating_pending_role" name="pending_role" value="${pendingRoleId}">
                         </div>
                         <!-- Save Button -->
                         <div class="pt-4 border-t border-gray-700">
@@ -5325,8 +5350,11 @@
                     await loadRolesForServer();
                 }
                 const titles = {
-                    'role_start': 'Select Role Start (Top/Highest Position)',
-                    'role_end': 'Select Role End (Bottom/Lowest Position)',
+                    'custom_supporter_role_start': 'Select Custom Supporter Role Start (Top/Highest Position)',
+                    'custom_supporter_role_end': 'Select Custom Supporter Role End (Bottom/Lowest Position)',
+                    'staff_rating_role_start': 'Select Staff Rating Role Start (Top/Highest Position)',
+                    'staff_rating_role_end': 'Select Staff Rating Role End (Bottom/Lowest Position)',
+                    'staff_rating_pending_role': 'Select Pending Report Role',
                     'embed_roles': 'Select Roles to Mention',
                     'feedback_role': 'Select Role to Mention for Feedback'
                 };
@@ -6185,8 +6213,8 @@
         document.addEventListener('submit', async function (e) {
             if (e.target.id !== 'customSupporterRoleConfigForm') return;
             e.preventDefault();
-            const roleStartInput = document.getElementById('role_start');
-            const roleEndInput = document.getElementById('role_end');
+            const roleStartInput = document.getElementById('custom_supporter_role_start');
+            const roleEndInput = document.getElementById('custom_supporter_role_end');
             const formData = {
                 role_start: roleStartInput?.value || null,
                 role_end: roleEndInput?.value || null
@@ -6327,7 +6355,8 @@
                     role_end: document.getElementById('staff_rating_role_end').value || null,
                     cooldown_days: normalizedCooldownDays,
                     rating_channel_id: ratingChannelValue,
-                    report_channel_id: reportChannelValue
+                    report_channel_id: reportChannelValue,
+                    pending_role: document.getElementById('staff_rating_pending_role').value || null
                 };
                 const submitBtn = document.getElementById('saveStaffRatingConfigBtn');
                 const loadingIcon = document.getElementById('saveStaffRatingConfigLoading');

@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import dotenv from 'dotenv';
 import logger from '../backend/logger.js';
-import { toMySQLDateTime, parseMySQLDateTime } from '../backend/utils.js';
+import { toMySQLDateTime, parseMySQLDateTime, getNowInTimezone, addMinutesToNow } from '../backend/utils.js';
 
 dotenv.config();
 
@@ -110,7 +110,7 @@ async function runMigration() {
         }
 
         logger.log('✅ Database schema created successfully!');
-        logger.log('📊 Tables created: panel, panel_logs, bots, servers, server_categories, server_channels, server_roles, server_members, server_member_levels, server_member_roles, server_members_afk, server_settings, server_giveaways, server_giveaway_entries, server_staff_ratings, server_staff_reports, server_feedback, bot_logs');
+        logger.log('📊 Tables created: panel, panel_accounts, panel_invite_links, panel_logs, bots, servers, server_categories, server_channels, server_roles, server_members, server_member_levels, server_member_roles, server_members_afk, server_settings, server_giveaways, server_giveaway_entries, server_staff_ratings, server_staff_reports, server_feedback, bot_logs');
         logger.log('📈 Indexes created: all indexes');
 
     } catch (error) {
@@ -132,6 +132,8 @@ async function setupDatabase() {
 
     const tables = [
         { name: 'panel', required: true },
+        { name: 'panel_accounts', required: true },
+        { name: 'panel_invite_links', required: true },
         { name: 'panel_logs', required: true },
         { name: 'bots', required: true },
         { name: 'servers', required: true },
@@ -1550,7 +1552,7 @@ async function getPanel() {
     return result[0] || null;
 }
 
-async function createPanel(passwordHash) {
+async function createPanel() {
     const existing = await getPanel();
     if (existing) {
         throw new Error('Panel already exists');
@@ -1559,7 +1561,7 @@ async function createPanel(passwordHash) {
     const connection = await getPool().getConnection();
     try {
         const now = toMySQLDateTime();
-        const [result] = await connection.execute('INSERT INTO panel (password_hash, created_at, updated_at) VALUES (?, ?, ?)', [passwordHash, now, now]);
+        const [result] = await connection.execute('INSERT INTO panel (created_at, updated_at) VALUES (?, ?)', [now, now]);
         const panels = await query('SELECT * FROM panel WHERE id = ?', [result.insertId]);
         return panels[0];
     } finally {
@@ -1567,13 +1569,153 @@ async function createPanel(passwordHash) {
     }
 }
 
-async function updatePanelPassword(panelId, passwordHash) {
+async function getPanelAccountById(accountId) {
+    const result = await query('SELECT * FROM panel_accounts WHERE id = ? LIMIT 1', [accountId]);
+    return result[0] || null;
+}
+
+async function getPanelAccountByEmail(email) {
+    const result = await query('SELECT * FROM panel_accounts WHERE email = ? LIMIT 1', [email]);
+    return result[0] || null;
+}
+
+async function getPanelAccountByUsername(username) {
+    const result = await query('SELECT * FROM panel_accounts WHERE username = ? LIMIT 1', [username]);
+    return result[0] || null;
+}
+
+async function createPanelAccount(accountData) {
+    const connection = await getPool().getConnection();
+    try {
+        const now = toMySQLDateTime();
+        const [result] = await connection.execute(
+            `INSERT INTO panel_accounts (
+                username, email, password_hash, account_type, email_verified, otp_code, otp_expires_at, panel_id, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                accountData.username,
+                accountData.email,
+                accountData.password_hash,
+                accountData.account_type || 'admin',
+                accountData.email_verified || false,
+                accountData.otp_code || null,
+                accountData.otp_expires_at ? toMySQLDateTime(accountData.otp_expires_at) : null,
+                accountData.panel_id || null,
+                now,
+                now
+            ]
+        );
+        const accounts = await query('SELECT * FROM panel_accounts WHERE id = ?', [result.insertId]);
+        return accounts[0];
+    } finally {
+        connection.release();
+    }
+}
+
+async function updatePanelAccount(accountId, updateData) {
+    const fields = Object.keys(updateData).filter(key => updateData[key] !== undefined);
+    if (fields.length === 0) {
+        return await getPanelAccountById(accountId);
+    }
+
+    const setClause = fields.map(field => {
+        if (field === 'otp_expires_at' && updateData[field]) {
+            return `${field} = ?`;
+        }
+        return `${field} = ?`;
+    }).join(', ');
+
+    const values = fields.map(field => {
+        if (field === 'otp_expires_at' && updateData[field]) {
+            return toMySQLDateTime(updateData[field]);
+        }
+        return updateData[field];
+    });
+
     await query(
-        'UPDATE panel SET password_hash = ?, updated_at = ? WHERE id = ?',
-        [passwordHash, toMySQLDateTime(), panelId]
+        `UPDATE panel_accounts SET ${setClause}, updated_at = ? WHERE id = ?`,
+        [...values, toMySQLDateTime(), accountId]
     );
-    const panels = await query('SELECT * FROM panel WHERE id = ?', [panelId]);
-    return panels[0];
+
+    return await getPanelAccountById(accountId);
+}
+
+async function getAllPanelAccounts() {
+    return await query('SELECT id, username, email, account_type, email_verified, created_at, updated_at FROM panel_accounts ORDER BY created_at ASC');
+}
+
+async function createPanelInviteLink(linkData) {
+    const connection = await getPool().getConnection();
+    try {
+        const now = toMySQLDateTime();
+        const expiresAt = linkData.expires_at ? toMySQLDateTime(linkData.expires_at) : null;
+        const [result] = await connection.execute(
+            `INSERT INTO panel_invite_links (
+                token, account_type, created_by, expires_at, created_at
+            ) VALUES (?, ?, ?, ?, ?)`,
+            [
+                linkData.token,
+                linkData.account_type,
+                linkData.created_by,
+                expiresAt,
+                now
+            ]
+        );
+        const links = await query('SELECT * FROM panel_invite_links WHERE id = ?', [result.insertId]);
+        return links[0];
+    } finally {
+        connection.release();
+    }
+}
+
+async function getPanelInviteLinkByToken(token) {
+    const result = await query('SELECT * FROM panel_invite_links WHERE token = ? LIMIT 1', [token]);
+    return result[0] || null;
+}
+
+async function updatePanelInviteLink(linkId, updateData) {
+    const fields = Object.keys(updateData).filter(key => updateData[key] !== undefined);
+    if (fields.length === 0) {
+        return await getPanelInviteLinkByToken(linkId);
+    }
+
+    const setClause = fields.map(field => {
+        if (field === 'used_at' && updateData[field]) {
+            return `${field} = ?`;
+        }
+        return `${field} = ?`;
+    }).join(', ');
+
+    const values = fields.map(field => {
+        if (field === 'used_at' && updateData[field]) {
+            return toMySQLDateTime(updateData[field]);
+        }
+        return updateData[field];
+    });
+    values.push(linkId);
+
+    await query(
+        `UPDATE panel_invite_links SET ${setClause} WHERE id = ?`,
+        values
+    );
+
+    const links = await query('SELECT * FROM panel_invite_links WHERE id = ?', [linkId]);
+    return links[0];
+}
+
+async function getAllPanelInviteLinks() {
+    return await query(
+        `SELECT 
+            pil.*,
+            creator.username as creator_username,
+            creator.email as creator_email,
+            user.username as used_by_username,
+            user.email as used_by_email
+        FROM panel_invite_links pil
+        LEFT JOIN panel_accounts creator ON pil.created_by = creator.id
+        LEFT JOIN panel_accounts user ON pil.used_by = user.id
+        ORDER BY pil.created_at DESC`
+    );
 }
 
 async function createPanelLog(logData) {
@@ -1581,10 +1723,10 @@ async function createPanelLog(logData) {
     try {
         const [result] = await connection.execute(
             `INSERT INTO panel_logs (
-                panel_id, ip_address, user_agent, success, attempted_at
+                panel_account_id, ip_address, user_agent, success, attempted_at
             ) VALUES (?, ?, ?, ?, ?)`,
             [
-                logData.panel_id || null,
+                logData.panel_account_id || null,
                 logData.ip_address,
                 logData.user_agent || null,
                 logData.success || false,
@@ -1741,7 +1883,7 @@ export async function getBotLogs(botId, limit = 100, offset = 0) {
 export async function purgeOldBotLogs(retentionDays = BOT_LOG_RETENTION_DAYS) {
     await initializeDatabase();
     const days = Number.isFinite(retentionDays) && retentionDays > 0 ? retentionDays : BOT_LOG_RETENTION_DAYS;
-    const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const cutoff = getNowInTimezone().minus({ days }).toJSDate();
     const cutoffStr = toMySQLDateTime(cutoff);
 
     const result = await query(
@@ -1878,8 +2020,7 @@ export async function serversNeedSync(botId) {
 export async function createGiveaway(giveawayData) {
     await initializeDatabase();
 
-    const now = new Date();
-    const endsAt = toMySQLDateTime(new Date(now.getTime() + giveawayData.duration_minutes * 60 * 1000));
+    const endsAt = toMySQLDateTime(addMinutesToNow(giveawayData.duration_minutes));
     const createdAt = toMySQLDateTime();
 
     const result = await query(
@@ -1926,7 +2067,7 @@ export async function getEndedGiveaways() {
         ['active', false]
     );
 
-    const now = new Date();
+    const now = getNowInTimezone().toJSDate();
 
     const endedGiveaways = result.filter(row => {
         const endsAt = parseMySQLDateTime(row.ends_at);
@@ -2389,7 +2530,16 @@ export default {
     memberHasCustomSupporterRole,
     getPanel,
     createPanel,
-    updatePanelPassword,
+    getPanelAccountById,
+    getPanelAccountByEmail,
+    getPanelAccountByUsername,
+    createPanelAccount,
+    updatePanelAccount,
+    getAllPanelAccounts,
+    createPanelInviteLink,
+    getPanelInviteLinkByToken,
+    updatePanelInviteLink,
+    getAllPanelInviteLinks,
     createPanelLog,
     getPanelLogs,
     getServerSettings,

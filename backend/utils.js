@@ -120,3 +120,27 @@ export function parseMySQLDateTime(mysqlDateTimeString) {
     }
     return dt.toJSDate();
 }
+
+export function getNowInTimezone() {
+    return DateTime.now().setZone(TIMEZONE);
+}
+
+export function getDateTimeFromSQL(sqlString) {
+    return DateTime.fromSQL(String(sqlString), { zone: TIMEZONE });
+}
+
+export function getDateTimeFromJSDate(date) {
+    return DateTime.fromJSDate(date).setZone(TIMEZONE);
+}
+
+export function addMinutesToNow(minutes) {
+    return DateTime.now().setZone(TIMEZONE).plus({ minutes }).toJSDate();
+}
+
+export function addDaysToNow(days) {
+    return DateTime.now().setZone(TIMEZONE).plus({ days }).toJSDate();
+}
+
+export function getCurrentDateTime() {
+    return DateTime.now().setZone(TIMEZONE).toJSDate();
+}

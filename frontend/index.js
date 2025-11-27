@@ -464,6 +464,14 @@ export async function init() {
     app = express();
     app.use(express.json({ limit: '10mb' }));
 
+    app.use((req, res, next) => {
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('X-Frame-Options', 'DENY');
+        res.setHeader('X-XSS-Protection', '1; mode=block');
+        res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+        next();
+    });
+
     if (!process.env.SESSION_SECRET) {
         throw new Error('Missing SESSION_SECRET environment variable');
     }
@@ -475,9 +483,43 @@ export async function init() {
         cookie: {
             secure: false,
             httpOnly: true,
+            sameSite: 'strict',
             maxAge: 24 * 60 * 60 * 1000
         }
     }));
+
+    const rateLimitStore = new Map();
+    const RATE_LIMIT_WINDOW = 15 * 60 * 1000;
+    const MAX_LOGIN_ATTEMPTS = 5;
+    const MAX_REGISTER_ATTEMPTS = 3;
+
+    function checkRateLimit(ip, endpoint, maxAttempts) {
+        const key = `${ip}:${endpoint}`;
+        const now = Date.now();
+        const attempts = rateLimitStore.get(key) || { count: 0, resetTime: now + RATE_LIMIT_WINDOW };
+
+        if (now > attempts.resetTime) {
+            attempts.count = 0;
+            attempts.resetTime = now + RATE_LIMIT_WINDOW;
+        }
+
+        if (attempts.count >= maxAttempts) {
+            return { allowed: false, remaining: 0, resetTime: attempts.resetTime };
+        }
+
+        attempts.count++;
+        rateLimitStore.set(key, attempts);
+
+        if (Math.random() < 0.01) {
+            for (const [k, v] of rateLimitStore.entries()) {
+                if (now > v.resetTime) {
+                    rateLimitStore.delete(k);
+                }
+            }
+        }
+
+        return { allowed: true, remaining: maxAttempts - attempts.count, resetTime: attempts.resetTime };
+    }
 
     app.use((req, res, next) => {
         const path = req.path.toLowerCase();
@@ -503,10 +545,6 @@ export async function init() {
             'unknown';
     }
 
-    function getUserAgent(req) {
-        return req.headers['user-agent'] || 'unknown';
-    }
-
     async function getAccountForLogging(req) {
         if (req.session && req.session.authenticated && req.session.panel_account_id) {
             try {
@@ -527,6 +565,62 @@ export async function init() {
         } catch (err) {
             console.error('Failed to log panel activity:', err);
         }
+    }
+
+    let securityUtils = null;
+    async function getSecurityUtils() {
+        if (!securityUtils) {
+            securityUtils = await import('./backend/utils.js');
+        }
+        return securityUtils;
+    }
+
+    async function sanitizeAccountId(id) {
+        const utils = await getSecurityUtils();
+        return utils.sanitizeInteger(id, 1, null);
+    }
+
+    async function validateRegistrationInputs(username, email, password) {
+        const utils = await getSecurityUtils();
+        const errors = [];
+
+        const sanitizedUsername = utils.sanitizeUsername(username);
+        if (!sanitizedUsername || sanitizedUsername.length < 3) {
+            errors.push('Username must be at least 3 characters long');
+        } else if (!/^[a-zA-Z]+$/.test(sanitizedUsername)) {
+            errors.push('Username can only contain uppercase and lowercase letters');
+        } else {
+            const usernameValidation = utils.validateInputLength(sanitizedUsername, 'Username', 3, 50);
+            if (!usernameValidation.valid) {
+                errors.push(usernameValidation.error);
+            }
+        }
+
+        const sanitizedEmail = utils.sanitizeEmail(email);
+        if (!sanitizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sanitizedEmail)) {
+            errors.push('Valid email is required');
+        } else {
+            const emailValidation = utils.validateInputLength(sanitizedEmail, 'Email', 5, 255);
+            if (!emailValidation.valid) {
+                errors.push(emailValidation.error);
+            }
+        }
+
+        if (!password || typeof password !== 'string') {
+            errors.push('Password is required');
+        } else {
+            const passwordValidation = utils.validateInputLength(password, 'Password', 6, 128);
+            if (!passwordValidation.valid) {
+                errors.push(passwordValidation.error);
+            }
+        }
+
+        return {
+            valid: errors.length === 0,
+            errors,
+            sanitizedUsername: sanitizedUsername || '',
+            sanitizedEmail: sanitizedEmail || ''
+        };
     }
 
     async function requireAuth(req, res, next) {
@@ -557,37 +651,29 @@ export async function init() {
 
     app.post('/api/panel/register', async (req, res) => {
         try {
+            const clientIp = getClientIp(req);
+            const rateLimit = checkRateLimit(clientIp, 'register', MAX_REGISTER_ATTEMPTS);
+
+            if (!rateLimit.allowed) {
+                const resetTime = new Date(rateLimit.resetTime).toISOString();
+                return res.status(429).json({
+                    success: false,
+                    error: 'Too many registration attempts. Please try again later.',
+                    resetTime: resetTime
+                });
+            }
+
             const { username, email, password } = req.body;
+            const validation = await validateRegistrationInputs(username, email, password);
 
-            if (!username || username.length < 3) {
+            if (!validation.valid) {
                 return res.status(400).json({
                     success: false,
-                    error: 'Username must be at least 3 characters long'
+                    error: validation.errors[0]
                 });
             }
 
-            if (!/^[a-zA-Z]+$/.test(username)) {
-                return res.status(400).json({
-                    success: false,
-                    error: 'Username can only contain uppercase and lowercase letters'
-                });
-            }
-
-            if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                return res.status(400).json({
-                    success: false,
-                    error: 'Valid email is required'
-                });
-            }
-
-            if (!password || password.length < 6) {
-                return res.status(400).json({
-                    success: false,
-                    error: 'Password must be at least 6 characters long'
-                });
-            }
-
-            const existingUsername = await db.getPanelAccountByUsername(username);
+            const existingUsername = await db.getPanelAccountByUsername(validation.sanitizedUsername);
             if (existingUsername) {
                 return res.status(400).json({
                     success: false,
@@ -595,7 +681,7 @@ export async function init() {
                 });
             }
 
-            const existingAccount = await db.getPanelAccountByEmail(email);
+            const existingAccount = await db.getPanelAccountByEmail(validation.sanitizedEmail);
             if (existingAccount) {
                 return res.status(400).json({
                     success: false,
@@ -616,19 +702,20 @@ export async function init() {
             const otpExpiresAt = addMinutesToNow(10);
 
             const account = await db.createPanelAccount({
-                username,
-                email,
+                username: validation.sanitizedUsername,
+                email: validation.sanitizedEmail,
                 password_hash: passwordHash,
                 account_type: 'admin',
                 email_verified: false,
                 otp_code: otpCode,
                 otp_expires_at: otpExpiresAt,
-                panel_id: (await db.getPanel()).id
+                panel_id: (await db.getPanel()).id,
+                ip_address: clientIp
             });
 
             const { sendOTPEmail } = await import('../backend/email.js');
             try {
-                await sendOTPEmail(email, otpCode);
+                await sendOTPEmail(validation.sanitizedEmail, otpCode);
             } catch (emailError) {
                 logger.log(`❌ Failed to send OTP email: ${emailError.message}`);
                 logger.log(`❌ Email error details: ${emailError.stack || emailError.toString()}`);
@@ -649,14 +736,25 @@ export async function init() {
         try {
             const { account_id, otp_code } = req.body;
 
-            if (!account_id || !otp_code) {
+            const utils = await getSecurityUtils();
+            const sanitizedAccountId = await sanitizeAccountId(account_id);
+            const sanitizedOtpCode = utils.sanitizeString(otp_code, 6);
+
+            if (!sanitizedAccountId || !sanitizedOtpCode || sanitizedOtpCode.length !== 6) {
                 return res.status(400).json({
                     success: false,
-                    error: 'Account ID and OTP code are required'
+                    error: 'Account ID and valid OTP code are required'
                 });
             }
 
-            const account = await db.getPanelAccountById(account_id);
+            if (!/^\d{6}$/.test(sanitizedOtpCode)) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'OTP code must be 6 digits'
+                });
+            }
+
+            const account = await db.getPanelAccountById(sanitizedAccountId);
             if (!account) {
                 return res.status(404).json({
                     success: false,
@@ -671,7 +769,7 @@ export async function init() {
                 });
             }
 
-            if (!account.otp_code || account.otp_code !== otp_code) {
+            if (!account.otp_code || account.otp_code !== sanitizedOtpCode) {
                 await db.insertPanelLog(account.id, `Failed OTP verification for ${account.username} (IP: ${getClientIp(req)})`);
                 return res.status(401).json({
                     success: false,
@@ -732,15 +830,16 @@ export async function init() {
     app.post('/api/panel/resend-otp', async (req, res) => {
         try {
             const { account_id } = req.body;
+            const sanitizedAccountId = await sanitizeAccountId(account_id);
 
-            if (!account_id) {
+            if (!sanitizedAccountId) {
                 return res.status(400).json({
                     success: false,
-                    error: 'Account ID is required'
+                    error: 'Valid account ID is required'
                 });
             }
 
-            const account = await db.getPanelAccountById(account_id);
+            const account = await db.getPanelAccountById(sanitizedAccountId);
             if (!account) {
                 return res.status(404).json({
                     success: false,
@@ -784,6 +883,18 @@ export async function init() {
 
     app.post('/api/panel/login', async (req, res) => {
         try {
+            const clientIp = getClientIp(req);
+            const rateLimit = checkRateLimit(clientIp, 'login', MAX_LOGIN_ATTEMPTS);
+
+            if (!rateLimit.allowed) {
+                const resetTime = new Date(rateLimit.resetTime).toISOString();
+                return res.status(429).json({
+                    success: false,
+                    error: 'Too many login attempts. Please try again later.',
+                    resetTime: resetTime
+                });
+            }
+
             const { username_or_email, password } = req.body;
 
             if (!username_or_email || !password) {
@@ -793,13 +904,43 @@ export async function init() {
                 });
             }
 
-            let account = await db.getPanelAccountByEmail(username_or_email);
-            if (!account) {
-                account = await db.getPanelAccountByUsername(username_or_email);
+            const utils = await getSecurityUtils();
+            let sanitizedInput = utils.sanitizeString(username_or_email, 255);
+
+            let account = null;
+            if (sanitizedInput.includes('@')) {
+                const sanitizedEmail = utils.sanitizeEmail(sanitizedInput);
+                if (sanitizedEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sanitizedEmail)) {
+                    account = await db.getPanelAccountByEmail(sanitizedEmail);
+                }
             }
 
             if (!account) {
-                await db.insertPanelLog(null, `Failed login attempt: Account not found (IP: ${getClientIp(req)})`);
+                const sanitizedUsername = utils.sanitizeUsername(sanitizedInput);
+                if (sanitizedUsername && sanitizedUsername.length >= 3) {
+                    account = await db.getPanelAccountByUsername(sanitizedUsername);
+                }
+            }
+
+            if (typeof password !== 'string') {
+                await db.insertPanelLog(null, `Failed login attempt: Invalid password format (IP: ${clientIp})`);
+                return res.status(400).json({
+                    success: false,
+                    error: 'Invalid password format'
+                });
+            }
+
+            const passwordValidation = utils.validateInputLength(password, 'Password', 1, 128);
+            if (!passwordValidation.valid) {
+                await db.insertPanelLog(null, `Failed login attempt: Invalid password length (IP: ${clientIp})`);
+                return res.status(400).json({
+                    success: false,
+                    error: passwordValidation.error
+                });
+            }
+
+            if (!account) {
+                await db.insertPanelLog(null, `Failed login attempt: Account not found (IP: ${clientIp})`);
                 return res.status(401).json({
                     success: false,
                     error: 'Invalid credentials'
@@ -816,7 +957,7 @@ export async function init() {
             }
 
             if (account.is_frozen) {
-                await db.insertPanelLog(account.id, `Blocked login attempt: Account frozen for ${account.username} (IP: ${getClientIp(req)})`);
+                await db.insertPanelLog(account.id, `Blocked login attempt: Account frozen for ${account.username} (IP: ${clientIp})`);
                 return res.status(403).json({
                     success: false,
                     error: 'This account has been frozen. Please contact an administrator.'
@@ -824,7 +965,6 @@ export async function init() {
             }
 
             const isValid = await bcrypt.compare(password, account.password_hash);
-            const clientIp = getClientIp(req);
 
             if (!isValid) {
                 await db.insertPanelLog(account.id, `Failed login attempt for ${account.username} (IP: ${clientIp})`);
@@ -919,8 +1059,8 @@ export async function init() {
 
     app.put('/api/panel/accounts/:id/freeze', requireAdmin, async (req, res) => {
         try {
-            const accountId = parseInt(req.params.id, 10);
-            if (Number.isNaN(accountId)) {
+            const accountId = await sanitizeAccountId(req.params.id);
+            if (!accountId) {
                 return res.status(400).json({ success: false, error: 'Invalid account ID' });
             }
 
@@ -956,8 +1096,8 @@ export async function init() {
 
     app.put('/api/panel/accounts/:id/unfreeze', requireAdmin, async (req, res) => {
         try {
-            const accountId = parseInt(req.params.id, 10);
-            if (Number.isNaN(accountId)) {
+            const accountId = await sanitizeAccountId(req.params.id);
+            if (!accountId) {
                 return res.status(400).json({ success: false, error: 'Invalid account ID' });
             }
 
@@ -989,8 +1129,8 @@ export async function init() {
 
     app.put('/api/panel/accounts/:id/verify', requireAdmin, async (req, res) => {
         try {
-            const accountId = parseInt(req.params.id, 10);
-            if (Number.isNaN(accountId)) {
+            const accountId = await sanitizeAccountId(req.params.id);
+            if (!accountId) {
                 return res.status(400).json({ success: false, error: 'Invalid account ID' });
             }
 
@@ -1030,8 +1170,8 @@ export async function init() {
 
     app.delete('/api/panel/accounts/:id', requireAdmin, async (req, res) => {
         try {
-            const accountId = parseInt(req.params.id, 10);
-            if (Number.isNaN(accountId)) {
+            const accountId = await sanitizeAccountId(req.params.id);
+            if (!accountId) {
                 return res.status(400).json({ success: false, error: 'Invalid account ID' });
             }
 
@@ -1116,7 +1256,17 @@ export async function init() {
     app.get('/api/panel/invite-link/:token', async (req, res) => {
         try {
             const { token } = req.params;
-            const inviteLink = await db.getPanelInviteLinkByToken(token);
+            const utils = await getSecurityUtils();
+            const sanitizedToken = utils.sanitizeString(token, 255);
+
+            if (!sanitizedToken || sanitizedToken.length < 32) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Invalid token format'
+                });
+            }
+
+            const inviteLink = await db.getPanelInviteLinkByToken(sanitizedToken);
 
             if (!inviteLink) {
                 return res.status(404).json({
@@ -1153,43 +1303,32 @@ export async function init() {
     app.post('/api/panel/register-with-token', async (req, res) => {
         try {
             const { token, username, email, password } = req.body;
+            const utils = await getSecurityUtils();
 
-            if (!token || !username || !email || !password) {
+            if (!token || typeof token !== 'string') {
                 return res.status(400).json({
                     success: false,
-                    error: 'Token, username, email, and password are required'
+                    error: 'Token is required'
                 });
             }
 
-            if (username.length < 3) {
+            const sanitizedToken = utils.sanitizeString(token, 255);
+            if (!sanitizedToken || sanitizedToken.length < 32) {
                 return res.status(400).json({
                     success: false,
-                    error: 'Username must be at least 3 characters long'
+                    error: 'Invalid token format'
                 });
             }
 
-            if (!/^[a-zA-Z]+$/.test(username)) {
+            const validation = await validateRegistrationInputs(username, email, password);
+            if (!validation.valid) {
                 return res.status(400).json({
                     success: false,
-                    error: 'Username can only contain uppercase and lowercase letters'
+                    error: validation.errors[0]
                 });
             }
 
-            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                return res.status(400).json({
-                    success: false,
-                    error: 'Valid email is required'
-                });
-            }
-
-            if (password.length < 6) {
-                return res.status(400).json({
-                    success: false,
-                    error: 'Password must be at least 6 characters long'
-                });
-            }
-
-            const inviteLink = await db.getPanelInviteLinkByToken(token);
+            const inviteLink = await db.getPanelInviteLinkByToken(sanitizedToken);
             if (!inviteLink) {
                 return res.status(404).json({
                     success: false,
@@ -1215,7 +1354,7 @@ export async function init() {
                 }
             }
 
-            const existingUsername = await db.getPanelAccountByUsername(username);
+            const existingUsername = await db.getPanelAccountByUsername(validation.sanitizedUsername);
             if (existingUsername) {
                 return res.status(400).json({
                     success: false,
@@ -1223,7 +1362,7 @@ export async function init() {
                 });
             }
 
-            const existingAccount = await db.getPanelAccountByEmail(email);
+            const existingAccount = await db.getPanelAccountByEmail(validation.sanitizedEmail);
             if (existingAccount) {
                 return res.status(400).json({
                     success: false,
@@ -1236,6 +1375,7 @@ export async function init() {
                 await db.createPanel();
             }
 
+            const clientIp = getClientIp(req);
             const saltRounds = 12;
             const passwordHash = await bcrypt.hash(password, saltRounds);
 
@@ -1244,14 +1384,15 @@ export async function init() {
             const otpExpiresAt = addMinutesToNow(10);
 
             const account = await db.createPanelAccount({
-                username,
-                email,
+                username: validation.sanitizedUsername,
+                email: validation.sanitizedEmail,
                 password_hash: passwordHash,
                 account_type: inviteLink.account_type,
                 email_verified: false,
                 otp_code: otpCode,
                 otp_expires_at: otpExpiresAt,
-                panel_id: (await db.getPanel()).id
+                panel_id: (await db.getPanel()).id,
+                ip_address: clientIp
             });
 
             await db.updatePanelInviteLink(inviteLink.id, {
@@ -1261,7 +1402,7 @@ export async function init() {
 
             const { sendOTPEmail } = await import('../backend/email.js');
             try {
-                await sendOTPEmail(email, otpCode);
+                await sendOTPEmail(validation.sanitizedEmail, otpCode);
             } catch (emailError) {
                 logger.log(`❌ Failed to send OTP email: ${emailError.message}`);
                 logger.log(`❌ Email error details: ${emailError.stack || emailError.toString()}`);
@@ -1444,16 +1585,17 @@ export async function init() {
     });
 
     app.get('/api/bots/:id/logs', requireAdmin, async (req, res) => {
-        const botId = parseInt(req.params.id, 10);
-        if (Number.isNaN(botId)) {
+        const utils = await getSecurityUtils();
+        const botId = utils.sanitizeInteger(req.params.id, 1, null);
+        if (!botId) {
             return res.status(400).json({ error: 'Invalid bot ID' });
         }
 
-        const limitParam = parseInt(req.query.limit, 10);
-        const offsetParam = parseInt(req.query.offset, 10);
+        const limitParam = sanitizeInteger(req.query.limit, 1, 500);
+        const offsetParam = sanitizeInteger(req.query.offset, 0, null);
 
-        const limit = Number.isNaN(limitParam) ? 200 : Math.min(Math.max(limitParam, 1), 500);
-        const offset = Number.isNaN(offsetParam) || offsetParam < 0 ? 0 : offsetParam;
+        const limit = limitParam || 200;
+        const offset = offsetParam || 0;
 
         try {
             const bot = await db.getBot(botId);
@@ -1483,11 +1625,12 @@ export async function init() {
     });
 
     app.get('/api/panel/logs', requireAdmin, async (req, res) => {
-        const limitParam = parseInt(req.query.limit, 10);
-        const offsetParam = parseInt(req.query.offset, 10);
+        const utils = await getSecurityUtils();
+        const limitParam = utils.sanitizeInteger(req.query.limit, 1, 500);
+        const offsetParam = utils.sanitizeInteger(req.query.offset, 0, null);
 
-        const limit = Number.isNaN(limitParam) ? 200 : Math.min(Math.max(limitParam, 1), 500);
-        const offset = Number.isNaN(offsetParam) || offsetParam < 0 ? 0 : offsetParam;
+        const limit = limitParam || 200;
+        const offset = offsetParam || 0;
 
         try {
             const logs = await db.getPanelLogs(limit, offset);
@@ -1538,7 +1681,7 @@ export async function init() {
                 return res.status(400).json({ error: 'component_name is required' });
             }
             const result = await db.upsertServerSettings(req.params.id, component_name, settings);
-            
+
             const account = await getAccountForLogging(req);
             if (account) {
                 const server = await db.getServer(req.params.id);

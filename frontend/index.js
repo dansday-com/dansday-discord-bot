@@ -507,6 +507,28 @@ export async function init() {
         return req.headers['user-agent'] || 'unknown';
     }
 
+    async function getAccountForLogging(req) {
+        if (req.session && req.session.authenticated && req.session.panel_account_id) {
+            try {
+                const account = await db.getPanelAccountById(req.session.panel_account_id);
+                return account;
+            } catch (err) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    async function logPanelActivity(req, message) {
+        try {
+            const account = await getAccountForLogging(req);
+            const accountId = account ? account.id : null;
+            await db.insertPanelLog(accountId, message);
+        } catch (err) {
+            console.error('Failed to log panel activity:', err);
+        }
+    }
+
     async function requireAuth(req, res, next) {
         if (req.session && req.session.authenticated && req.session.panel_account_id) {
             return next();
@@ -518,8 +540,13 @@ export async function init() {
         if (req.session && req.session.authenticated && req.session.panel_account_id) {
             try {
                 const account = await db.getPanelAccountById(req.session.panel_account_id);
-                if (account && account.account_type === 'admin') {
-                    return next();
+                if (account) {
+                    if (account.is_frozen) {
+                        return res.status(403).json({ error: 'Your account has been frozen. Access denied.' });
+                    }
+                    if (account.account_type === 'admin') {
+                        return next();
+                    }
                 }
             } catch (error) {
                 logger.log(`❌ Error checking admin status: ${error.message}`);
@@ -645,12 +672,7 @@ export async function init() {
             }
 
             if (!account.otp_code || account.otp_code !== otp_code) {
-                await db.createPanelLog({
-                    panel_account_id: account.id,
-                    ip_address: getClientIp(req),
-                    user_agent: getUserAgent(req),
-                    success: false
-                });
+                await db.insertPanelLog(account.id, `Failed OTP verification for ${account.username} (IP: ${getClientIp(req)})`);
                 return res.status(401).json({
                     success: false,
                     error: 'Invalid OTP code'
@@ -668,10 +690,12 @@ export async function init() {
                 }
             }
 
+            const clientIp = getClientIp(req);
             await db.updatePanelAccount(account.id, {
                 email_verified: true,
                 otp_code: null,
-                otp_expires_at: null
+                otp_expires_at: null,
+                ip_address: clientIp
             });
 
             req.session.authenticated = true;
@@ -689,12 +713,7 @@ export async function init() {
                 });
             });
 
-            await db.createPanelLog({
-                panel_account_id: account.id,
-                ip_address: getClientIp(req),
-                user_agent: getUserAgent(req),
-                success: true
-            });
+            await db.insertPanelLog(account.id, `Email verified and logged in: ${account.username} (IP: ${clientIp})`);
 
             const { sendVerificationSuccessEmail } = await import('../backend/email.js');
             try {
@@ -780,12 +799,7 @@ export async function init() {
             }
 
             if (!account) {
-                await db.createPanelLog({
-                    panel_account_id: null,
-                    ip_address: getClientIp(req),
-                    user_agent: getUserAgent(req),
-                    success: false
-                });
+                await db.insertPanelLog(null, `Failed login attempt: Account not found (IP: ${getClientIp(req)})`);
                 return res.status(401).json({
                     success: false,
                     error: 'Invalid credentials'
@@ -801,21 +815,26 @@ export async function init() {
                 });
             }
 
-            const isValid = await bcrypt.compare(password, account.password_hash);
+            if (account.is_frozen) {
+                await db.insertPanelLog(account.id, `Blocked login attempt: Account frozen for ${account.username} (IP: ${getClientIp(req)})`);
+                return res.status(403).json({
+                    success: false,
+                    error: 'This account has been frozen. Please contact an administrator.'
+                });
+            }
 
-            await db.createPanelLog({
-                panel_account_id: account.id,
-                ip_address: getClientIp(req),
-                user_agent: getUserAgent(req),
-                success: isValid
-            });
+            const isValid = await bcrypt.compare(password, account.password_hash);
+            const clientIp = getClientIp(req);
 
             if (!isValid) {
+                await db.insertPanelLog(account.id, `Failed login attempt for ${account.username} (IP: ${clientIp})`);
                 return res.status(401).json({
                     success: false,
                     error: 'Invalid credentials'
                 });
             }
+
+            await db.updatePanelAccount(account.id, { ip_address: clientIp });
 
             req.session.authenticated = true;
             req.session.panel_account_id = account.id;
@@ -832,6 +851,8 @@ export async function init() {
                 });
             });
 
+            await db.insertPanelLog(account.id, `Successful login: ${account.username} (IP: ${clientIp})`);
+
             res.json({ success: true, message: 'Login successful', account_type: account.account_type });
         } catch (error) {
             logger.log(`❌ Panel login error: ${error.message}`);
@@ -839,10 +860,20 @@ export async function init() {
         }
     });
 
-    app.post('/api/panel/logout', (req, res) => {
-        req.session.destroy((err) => {
+    app.post('/api/panel/logout', async (req, res) => {
+        const accountId = req.session?.panel_account_id;
+        req.session.destroy(async (err) => {
             if (err) {
                 return res.status(500).json({ success: false, error: 'Failed to logout' });
+            }
+            if (accountId) {
+                try {
+                    const account = await db.getPanelAccountById(accountId);
+                    if (account) {
+                        await db.insertPanelLog(accountId, `Logged out: ${account.username} (IP: ${getClientIp(req)})`);
+                    }
+                } catch (logError) {
+                }
             }
             res.json({ success: true, message: 'Logged out successfully' });
         });
@@ -856,6 +887,7 @@ export async function init() {
                     return res.json({
                         authenticated: true,
                         account_type: account.account_type,
+                        account_id: account.id,
                         username: account.username,
                         email: account.email
                     });
@@ -885,6 +917,154 @@ export async function init() {
         }
     });
 
+    app.put('/api/panel/accounts/:id/freeze', requireAdmin, async (req, res) => {
+        try {
+            const accountId = parseInt(req.params.id, 10);
+            if (Number.isNaN(accountId)) {
+                return res.status(400).json({ success: false, error: 'Invalid account ID' });
+            }
+
+            const account = await db.getPanelAccountById(accountId);
+            if (!account) {
+                return res.status(404).json({ success: false, error: 'Account not found' });
+            }
+
+            if (accountId === req.session.panel_account_id) {
+                return res.status(400).json({ success: false, error: 'You cannot freeze your own account' });
+            }
+
+            await db.updatePanelAccount(accountId, { is_frozen: true });
+
+            const adminAccount = await getAccountForLogging(req);
+            if (adminAccount) {
+                await logPanelActivity(req, `${adminAccount.username} froze account: ${account.username} (ID: ${accountId})`);
+            }
+
+            const { sendAccountFrozenEmail } = await import('../backend/email.js');
+            try {
+                await sendAccountFrozenEmail(account.email, account.username);
+            } catch (emailError) {
+                logger.log(`⚠️  Failed to send account frozen email: ${emailError.message}`);
+            }
+
+            res.json({ success: true, message: 'Account frozen successfully' });
+        } catch (error) {
+            logger.log(`❌ Freeze account error: ${error.message}`);
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+    app.put('/api/panel/accounts/:id/unfreeze', requireAdmin, async (req, res) => {
+        try {
+            const accountId = parseInt(req.params.id, 10);
+            if (Number.isNaN(accountId)) {
+                return res.status(400).json({ success: false, error: 'Invalid account ID' });
+            }
+
+            const account = await db.getPanelAccountById(accountId);
+            if (!account) {
+                return res.status(404).json({ success: false, error: 'Account not found' });
+            }
+
+            await db.updatePanelAccount(accountId, { is_frozen: false });
+
+            const adminAccount = await getAccountForLogging(req);
+            if (adminAccount) {
+                await logPanelActivity(req, `${adminAccount.username} unfroze account: ${account.username} (ID: ${accountId})`);
+            }
+
+            const { sendAccountUnfrozenEmail } = await import('../backend/email.js');
+            try {
+                await sendAccountUnfrozenEmail(account.email, account.username);
+            } catch (emailError) {
+                logger.log(`⚠️  Failed to send account unfrozen email: ${emailError.message}`);
+            }
+
+            res.json({ success: true, message: 'Account unfrozen successfully' });
+        } catch (error) {
+            logger.log(`❌ Unfreeze account error: ${error.message}`);
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+    app.put('/api/panel/accounts/:id/verify', requireAdmin, async (req, res) => {
+        try {
+            const accountId = parseInt(req.params.id, 10);
+            if (Number.isNaN(accountId)) {
+                return res.status(400).json({ success: false, error: 'Invalid account ID' });
+            }
+
+            const account = await db.getPanelAccountById(accountId);
+            if (!account) {
+                return res.status(404).json({ success: false, error: 'Account not found' });
+            }
+
+            if (account.email_verified) {
+                return res.status(400).json({ success: false, error: 'Account is already verified' });
+            }
+
+            await db.updatePanelAccount(accountId, {
+                email_verified: true,
+                otp_code: null,
+                otp_expires_at: null
+            });
+
+            const adminAccount = await getAccountForLogging(req);
+            if (adminAccount) {
+                await logPanelActivity(req, `${adminAccount.username} manually verified account: ${account.username} (ID: ${accountId})`);
+            }
+
+            const { sendVerificationSuccessEmail } = await import('../backend/email.js');
+            try {
+                await sendVerificationSuccessEmail(account.email, account.username);
+            } catch (emailError) {
+                logger.log(`⚠️  Failed to send verification success email: ${emailError.message}`);
+            }
+
+            res.json({ success: true, message: 'Account verified successfully' });
+        } catch (error) {
+            logger.log(`❌ Verify account error: ${error.message}`);
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+    app.delete('/api/panel/accounts/:id', requireAdmin, async (req, res) => {
+        try {
+            const accountId = parseInt(req.params.id, 10);
+            if (Number.isNaN(accountId)) {
+                return res.status(400).json({ success: false, error: 'Invalid account ID' });
+            }
+
+            const account = await db.getPanelAccountById(accountId);
+            if (!account) {
+                return res.status(404).json({ success: false, error: 'Account not found' });
+            }
+
+            if (accountId === req.session.panel_account_id) {
+                return res.status(400).json({ success: false, error: 'You cannot delete your own account' });
+            }
+
+            const { sendAccountDeletedEmail } = await import('../backend/email.js');
+            try {
+                await sendAccountDeletedEmail(account.email, account.username);
+            } catch (emailError) {
+                logger.log(`⚠️  Failed to send account deleted email: ${emailError.message}`);
+            }
+
+            await query('DELETE FROM panel_accounts WHERE id = ?', [accountId]);
+
+            const adminAccount = await getAccountForLogging(req);
+            if (adminAccount) {
+                await logPanelActivity(req, `${adminAccount.username} deleted account: ${account.username} (ID: ${accountId})`);
+            }
+
+            res.json({ success: true, message: 'Account deleted successfully' });
+        } catch (error) {
+            logger.log(`❌ Delete account error: ${error.message}`);
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
     app.post('/api/panel/invite-links', requireAdmin, async (req, res) => {
         try {
             const { account_type } = req.body;
@@ -906,6 +1086,11 @@ export async function init() {
                 created_by: req.session.panel_account_id,
                 expires_at: expiresAt
             });
+
+            const account = await getAccountForLogging(req);
+            if (account) {
+                await logPanelActivity(req, `${account.username} generated invite link for ${account_type} account`);
+            }
 
             const protocol = req.protocol || 'http';
             const host = req.get('host') || `localhost:${CONTROL_PANEL.PORT}`;
@@ -1297,6 +1482,36 @@ export async function init() {
         }
     });
 
+    app.get('/api/panel/logs', requireAdmin, async (req, res) => {
+        const limitParam = parseInt(req.query.limit, 10);
+        const offsetParam = parseInt(req.query.offset, 10);
+
+        const limit = Number.isNaN(limitParam) ? 200 : Math.min(Math.max(limitParam, 1), 500);
+        const offset = Number.isNaN(offsetParam) || offsetParam < 0 ? 0 : offsetParam;
+
+        try {
+            const logs = await db.getPanelLogs(limit, offset);
+
+            res.json({
+                logs: logs.map(log => ({
+                    id: log.id,
+                    message: log.message,
+                    created_at: log.created_at,
+                    account_username: log.account_username || 'System',
+                    account_email: log.account_email || null
+                })),
+                pagination: {
+                    limit,
+                    offset,
+                    count: logs.length
+                }
+            });
+        } catch (error) {
+            logger.log(`❌ Error fetching panel logs: ${error.message}`);
+            res.status(500).json({ error: 'Failed to load panel logs' });
+        }
+    });
+
     app.get('/api/bots/:id/servers', requireAuth, async (req, res) => {
         try {
             const servers = await db.getServersForBot(req.params.id);
@@ -1323,6 +1538,13 @@ export async function init() {
                 return res.status(400).json({ error: 'component_name is required' });
             }
             const result = await db.upsertServerSettings(req.params.id, component_name, settings);
+            
+            const account = await getAccountForLogging(req);
+            if (account) {
+                const server = await db.getServer(req.params.id);
+                const serverName = server ? server.name : `Server ID: ${req.params.id}`;
+                await logPanelActivity(req, `${account.username} changed ${component_name} configuration on server "${serverName}" (Server ID: ${req.params.id})`);
+            }
             res.json({ success: true, data: result });
         } catch (error) {
             res.status(500).json({ error: error.message });
@@ -1573,7 +1795,7 @@ export async function init() {
                 webhookRes.on('data', (chunk) => {
                     data += chunk;
                 });
-                webhookRes.on('end', () => {
+                webhookRes.on('end', async () => {
                     try {
                         const result = JSON.parse(data);
                         if (webhookRes.statusCode === 200 && result.success) {
@@ -1581,6 +1803,10 @@ export async function init() {
                                 cleanupUploadedImage(30000);
                             } else {
                                 cleanupUploadedImage();
+                            }
+                            const account = await getAccountForLogging(req);
+                            if (account) {
+                                await logPanelActivity(req, `${account.username} used embed builder on server "${server.name || serverId}" (Server ID: ${serverId})`);
                             }
                             res.json({ success: true, message: 'Embed sent successfully' });
                         } else {
@@ -1846,6 +2072,10 @@ export async function init() {
                 panel_id: panel_id || null
             });
 
+            if (account) {
+                await logPanelActivity(req, `${account.username} added ${bot_type} bot: "${name || 'Bot'}" (ID: ${bot.id})`);
+            }
+
             res.json({ success: true, bot });
         } catch (error) {
             logger.log(`❌ Create bot error: ${error.message}`);
@@ -1902,6 +2132,12 @@ export async function init() {
                 logger.log(`⚠️  Failed to update connected selfbots: ${err.message}`);
             }
 
+            const account = await getAccountForLogging(req);
+            if (account) {
+                const mode = is_testing ? 'testing' : 'production';
+                await logPanelActivity(req, `${account.username} changed bot "${bot.name}" (ID: ${bot.id}) to ${mode} mode`);
+            }
+
             res.json({ success: true });
         } catch (error) {
             logger.log(`❌ Update bot mode error: ${error.message}`);
@@ -1911,6 +2147,13 @@ export async function init() {
 
     app.delete('/api/bots/:id', requireAdmin, async (req, res) => {
         try {
+            const bot = await db.getBot(req.params.id);
+            if (bot) {
+                const account = await getAccountForLogging(req);
+                if (account) {
+                    await logPanelActivity(req, `${account.username} removed bot "${bot.name}" (ID: ${bot.id}, Type: ${bot.bot_type})`);
+                }
+            }
             await db.deleteBot(req.params.id);
             res.json({ success: true });
         } catch (error) {
@@ -1932,6 +2175,12 @@ export async function init() {
             }
 
             const result = await startBotById(bot_id, bot);
+            if (result.success) {
+                const account = await getAccountForLogging(req);
+                if (account) {
+                    await logPanelActivity(req, `${account.username} started bot "${bot.name}" (ID: ${bot_id})`);
+                }
+            }
             res.json(result);
         } catch (error) {
             res.json({ success: false, error: error.message });
@@ -1945,7 +2194,14 @@ export async function init() {
         }
 
         try {
+            const bot = await db.getBot(bot_id);
             const result = await stopBotById(bot_id);
+            if (result.success && bot) {
+                const account = await getAccountForLogging(req);
+                if (account) {
+                    await logPanelActivity(req, `${account.username} stopped bot "${bot.name}" (ID: ${bot_id})`);
+                }
+            }
             res.json(result);
         } catch (error) {
             res.json({ success: false, error: error.message });
@@ -1965,6 +2221,12 @@ export async function init() {
             }
 
             const result = await restartBotById(bot_id, bot);
+            if (result.success) {
+                const account = await getAccountForLogging(req);
+                if (account) {
+                    await logPanelActivity(req, `${account.username} restarted bot "${bot.name}" (ID: ${bot_id})`);
+                }
+            }
             res.json(result);
         } catch (error) {
             res.json({ success: false, error: error.message });

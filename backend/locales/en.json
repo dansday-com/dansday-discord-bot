@@ -276,7 +276,8 @@
       "noStaffConfigured": "❌ Staff roles are not configured for this server. Please ask an admin to configure staff permissions first.",
       "noStaffAvailable": "❌ No staff members could be found right now. Please try again later or contact a server admin.",
       "missingRating": "❌ Please select a rating before continuing.",
-      "missingCategory": "❌ Please select a category before continuing."
+      "missingCategory": "❌ Please select a category before continuing.",
+      "permissionDenied": "❌ **Permission Denied**\\n\\nYou need admin permissions to approve or reject staff reports."
     }
   },
   "customSupporterRole": {

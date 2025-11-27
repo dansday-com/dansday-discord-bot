@@ -776,7 +776,7 @@ Akbar Yudhanto
 
 ## Version
 
-7.7.1
+7.7.2
 
 ---
 

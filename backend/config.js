@@ -515,6 +515,14 @@ export const STAFF_RATING = {
         const config = await this.getConfig(guildId);
         const rawDays = Number(config?.cooldown_days);
         return Number.isFinite(rawDays) ? rawDays : null;
+    },
+
+    async getPendingRole(guildId) {
+        requireBotConfig();
+        requireGuildId(guildId, 'getting staff rating pending role');
+
+        const config = await this.getConfig(guildId);
+        return config?.pending_role || null;
     }
 };
 

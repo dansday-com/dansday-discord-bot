@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dansthorized | Bot Control Panel</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico">
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome -->
@@ -40,13 +42,46 @@
             </div>
             <!-- Auth Form -->
             <form id="authForm" class="space-y-4 sm:space-y-6">
-                <div>
+                <!-- Register Fields (hidden initially) -->
+                <div id="registerFields" class="hidden space-y-4 sm:space-y-6">
+                    <div>
+                        <label for="username" class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                            <i class="fas fa-user mr-2"></i>Username
+                            <span class="text-red-500 ml-1">*</span>
+                        </label>
+                        <input type="text" id="username" name="username"
+                            class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all text-sm sm:text-base"
+                            placeholder="Enter your username" autocomplete="username">
+                    </div>
+                    <div>
+                        <label for="email" class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                            <i class="fas fa-envelope mr-2"></i>Email
+                            <span class="text-red-500 ml-1">*</span>
+                        </label>
+                        <input type="email" id="email" name="email"
+                            class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all text-sm sm:text-base"
+                            placeholder="Enter your email" autocomplete="email">
+                    </div>
+                </div>
+                <!-- Login Fields -->
+                <div id="loginFields">
+                    <div>
+                        <label for="username_or_email" class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                            <i class="fas fa-user mr-2"></i>Username or Email
+                            <span class="text-red-500 ml-1">*</span>
+                        </label>
+                        <input type="text" id="username_or_email" name="username_or_email"
+                            class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all text-sm sm:text-base"
+                            placeholder="Enter username or email" autocomplete="username">
+                    </div>
+                </div>
+                <div id="passwordField">
                     <label for="password" class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
                         <i class="fas fa-lock mr-2"></i>Password
                         <span class="text-red-500 ml-1">*</span>
                     </label>
                     <div class="relative">
-                        <input type="password" id="password" name="password" required
+                        <input type="password" id="password" name="password"
                             class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all text-sm sm:text-base"
                             placeholder="Enter your password" autocomplete="current-password">
                         <button type="button" id="togglePassword"
@@ -55,11 +90,31 @@
                         </button>
                     </div>
                 </div>
+                <!-- OTP Field (hidden initially) -->
+                <div id="otpField" class="hidden">
+                    <label for="otp_code" class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                        <i class="fas fa-key mr-2"></i>Verification Code
+                        <span class="text-red-500 ml-1">*</span>
+                    </label>
+                    <input type="text" id="otp_code" name="otp_code" maxlength="6" pattern="[0-9]{6}"
+                        class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all text-sm sm:text-base text-center text-2xl tracking-widest"
+                        placeholder="000000" autocomplete="one-time-code"
+                        oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                    <p class="mt-2 text-xs text-gray-400 text-center">
+                        <a href="#" id="resendOtpLink" class="text-red-500 hover:text-red-400">Resend code</a>
+                    </p>
+                </div>
                 <button type="submit" id="authButton"
                     class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 sm:py-3 px-4 rounded-lg transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm sm:text-base">
                     <i class="fas fa-spinner fa-spin hidden" id="loadingIcon"></i>
                     <span id="buttonText">Login</span>
                 </button>
+                <div id="switchAuthMode" class="text-center">
+                    <p class="text-xs sm:text-sm text-gray-400">
+                        <span id="switchAuthText">Don't have an account?</span>
+                        <a href="#" id="switchAuthLink" class="text-red-500 hover:text-red-400 ml-1">Register</a>
+                    </p>
+                </div>
             </form>
         </div>
         <!-- Footer -->
@@ -82,6 +137,11 @@
                         <h1 class="text-base sm:text-xl font-bold text-white truncate">Dansthorized</h1>
                     </div>
                     <div class="flex items-center gap-2 flex-shrink-0">
+                        <button id="accountManagementBtn" onclick="showAccountManagement()"
+                            class="hidden bg-blue-600 hover:bg-blue-700 text-white px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95 flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                            <i class="fas fa-users text-xs sm:text-sm"></i>
+                            <span class="sm:inline">Accounts</span>
+                        </button>
                         <button id="addBotBtn" onclick="showAddBotModal()"
                             class="bg-red-600 hover:bg-red-700 text-white px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95 flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
                             <i class="fas fa-plus text-xs sm:text-sm"></i>
@@ -192,7 +252,7 @@
                 </div>
             </div>
             <!-- Action Buttons -->
-            <div class="bg-gray-800 rounded-xl border border-gray-700 p-4 sm:p-6 mb-4 sm:mb-6">
+            <div id="botActionsContainer" class="bg-gray-800 rounded-xl border border-gray-700 p-4 sm:p-6 mb-4 sm:mb-6">
                 <h3 class="text-lg sm:text-xl font-semibold text-white mb-4 flex items-center gap-2">
                     <i class="fas fa-cogs text-red-500"></i>
                     Bot Actions
@@ -278,6 +338,71 @@
             <div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-3 sm:py-4">
                 <p class="text-center text-gray-500 text-xs sm:text-sm">
                     Copyright © <span id="botDetailYear"></span> <a href="https://dansday.com" target="_blank"
+                        class="text-red-500 hover:text-red-400 transition-colors">dansday.com</a>. All rights reserved.
+                </p>
+            </div>
+        </footer>
+    </div>
+    <!-- Account Management View (hidden initially) -->
+    <div id="accountManagementContainer" class="hidden w-full h-full min-h-screen overflow-x-hidden">
+        <!-- Header -->
+        <header class="bg-gray-800 border-b border-gray-700 sticky top-0 z-40">
+            <div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
+                <div class="flex items-center justify-between h-14 sm:h-16 py-2">
+                    <button onclick="showDashboard()"
+                        class="flex items-center gap-2 text-gray-400 hover:text-white transition-colors text-sm sm:text-base">
+                        <i class="fas fa-arrow-left"></i>
+                        <span class="sm:inline">Back to Dashboard</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+        <!-- Main Content -->
+        <main class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-8">
+            <div class="bg-gray-800 rounded-xl border border-gray-700 p-4 sm:p-6 mb-4 sm:mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+                        <i class="fas fa-users text-red-500"></i>Account Management
+                    </h2>
+                </div>
+                <div class="mb-4">
+                    <h3 class="text-lg font-semibold text-white mb-3">Generate Invite Link</h3>
+                    <div class="flex flex-col sm:flex-row gap-2 mb-4">
+                        <select id="inviteAccountType"
+                            class="flex-1 px-3 sm:px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-500 text-sm">
+                            <option value="admin">Admin</option>
+                            <option value="moderator">Moderator</option>
+                        </select>
+                        <button onclick="generateInviteLink()"
+                            class="bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-lg transition-all text-sm font-medium">
+                            <i class="fas fa-link mr-2"></i>Generate Link
+                        </button>
+                    </div>
+                    <div id="inviteLinkResult" class="hidden bg-gray-700 rounded-lg p-3 mb-4">
+                        <p class="text-sm text-gray-300 mb-2">Invite Link:</p>
+                        <div class="flex items-center gap-2">
+                            <input type="text" id="generatedInviteLink" readonly
+                                class="flex-1 px-3 py-2 bg-gray-800 border border-gray-600 rounded text-white text-sm" />
+                            <button onclick="copyInviteLink()"
+                                class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-white mb-3">All Accounts</h3>
+                    <div id="accountsList" class="space-y-2">
+                        <p class="text-gray-400 text-sm">Loading accounts...</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+        <!-- Footer -->
+        <footer class="bg-gray-800 border-t border-gray-700 mt-auto">
+            <div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-3 sm:py-4">
+                <p class="text-center text-gray-500 text-xs sm:text-sm">
+                    Copyright © <span id="accountManagementYear"></span> <a href="https://dansday.com" target="_blank"
                         class="text-red-500 hover:text-red-400 transition-colors">dansday.com</a>. All rights reserved.
                 </p>
             </div>
@@ -785,10 +910,204 @@
                 alert.classList.remove('flex');
             }, 5000);
         }
+        let isRegisterMode = false;
+        let isOtpMode = false;
+        let currentAccountId = null;
+        let inviteToken = null;
+
         async function checkPanelStatus() {
-            document.getElementById('authSubtitle').textContent = 'Login to your control panel';
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const tokenFromUrl = urlParams.get('token');
+                if (tokenFromUrl && !inviteToken) {
+                    inviteToken = tokenFromUrl;
+                }
+
+                const authRes = await fetch('/api/panel/auth', { credentials: 'include' });
+                const authData = await authRes.json();
+
+                if (inviteToken) {
+                    try {
+                        const res = await fetch(`/api/panel/invite-link/${inviteToken}`);
+                        const data = await res.json();
+                        if (data.success) {
+                            document.getElementById('authSubtitle').textContent = `Register as ${data.account_type}`;
+                            document.getElementById('buttonText').textContent = 'Register';
+                            document.getElementById('switchAuthMode').classList.add('hidden');
+                            switchToRegisterMode();
+                            return;
+                        } else {
+                            showMessage(data.error || 'Invalid invite link', 'error');
+                            inviteToken = null;
+                            window.history.replaceState({}, document.title, window.location.pathname);
+                            switchToLoginMode();
+                            document.getElementById('switchAuthMode').classList.add('hidden');
+                            return;
+                        }
+                    } catch (err) {
+                        console.error('Error checking invite link:', err);
+                        showMessage('Invalid invite link', 'error');
+                        inviteToken = null;
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                        switchToLoginMode();
+                        document.getElementById('switchAuthMode').classList.add('hidden');
+                        return;
+                    }
+                }
+
+                if (authData.can_register && !inviteToken) {
+                    switchToRegisterMode();
+                    document.getElementById('switchAuthMode').classList.remove('hidden');
+                    return;
+                }
+
+                switchToLoginMode();
+                document.getElementById('switchAuthMode').classList.add('hidden');
+            } catch (err) {
+                console.error('Error checking auth status:', err);
+                switchToLoginMode();
+                document.getElementById('switchAuthMode').classList.add('hidden');
+            }
+        }
+
+        function switchToRegisterMode() {
+            isRegisterMode = true;
+            document.getElementById('registerFields').classList.remove('hidden');
+            document.getElementById('loginFields').classList.add('hidden');
+            document.getElementById('passwordField').classList.remove('hidden');
+            document.getElementById('buttonText').textContent = 'Register';
+
+            document.getElementById('username').required = true;
+            document.getElementById('username').disabled = false;
+            document.getElementById('email').required = true;
+            document.getElementById('email').disabled = false;
+            document.getElementById('password').required = true;
+            document.getElementById('password').disabled = false;
+
+            document.getElementById('username_or_email').required = false;
+            document.getElementById('username_or_email').disabled = true;
+            document.getElementById('otp_code').required = false;
+            document.getElementById('otp_code').disabled = true;
+
+            if (inviteToken) {
+                document.getElementById('switchAuthMode').classList.add('hidden');
+                fetch(`/api/panel/invite-link/${inviteToken}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            document.getElementById('authSubtitle').textContent = `Register as ${data.account_type}`;
+                        }
+                    });
+            } else {
+                document.getElementById('switchAuthMode').classList.remove('hidden');
+                document.getElementById('switchAuthText').textContent = 'Already have an account?';
+                document.getElementById('switchAuthLink').textContent = 'Login';
+                document.getElementById('authSubtitle').textContent = 'Create admin account';
+            }
+        }
+
+        function switchToLoginMode() {
+            isRegisterMode = false;
+            isOtpMode = false;
+            currentAccountId = null;
+            document.getElementById('registerFields').classList.add('hidden');
+            document.getElementById('loginFields').classList.remove('hidden');
+            document.getElementById('passwordField').classList.remove('hidden');
+            document.getElementById('otpField').classList.add('hidden');
             document.getElementById('buttonText').textContent = 'Login';
-            document.getElementById('authButton').querySelector('i.fa-user-plus')?.classList.replace('fa-user-plus', 'fa-sign-in-alt');
+            document.getElementById('authSubtitle').textContent = 'Login to your control panel';
+
+            document.getElementById('username_or_email').required = true;
+            document.getElementById('username_or_email').disabled = false;
+            document.getElementById('password').required = true;
+            document.getElementById('password').disabled = false;
+
+            document.getElementById('username').required = false;
+            document.getElementById('username').disabled = true;
+            document.getElementById('email').required = false;
+            document.getElementById('email').disabled = true;
+            document.getElementById('otp_code').required = false;
+            document.getElementById('otp_code').disabled = true;
+
+            document.getElementById('switchAuthMode').classList.add('hidden');
+
+            document.getElementById('authForm').reset();
+        }
+
+        function switchToOtpMode(accountId) {
+            isOtpMode = true;
+            currentAccountId = accountId;
+            document.getElementById('registerFields').classList.add('hidden');
+            document.getElementById('loginFields').classList.add('hidden');
+            document.getElementById('passwordField').classList.add('hidden');
+            document.getElementById('otpField').classList.remove('hidden');
+            document.getElementById('buttonText').textContent = 'Verify';
+            document.getElementById('switchAuthMode').classList.add('hidden');
+            document.getElementById('authSubtitle').textContent = 'Verify your email';
+
+            document.getElementById('otp_code').required = true;
+            document.getElementById('otp_code').disabled = false;
+
+            document.getElementById('username_or_email').required = false;
+            document.getElementById('username_or_email').disabled = true;
+            document.getElementById('username').required = false;
+            document.getElementById('username').disabled = true;
+            document.getElementById('email').required = false;
+            document.getElementById('email').disabled = true;
+            document.getElementById('password').required = false;
+            document.getElementById('password').disabled = true;
+        }
+
+        document.getElementById('switchAuthLink').addEventListener('click', function (e) {
+            e.preventDefault();
+            if (isRegisterMode) {
+                switchToLoginMode();
+            } else {
+                fetch('/api/panel/auth', { credentials: 'include' })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.can_register || inviteToken) {
+                            switchToRegisterMode();
+                        } else {
+                            showMessage('Registration is only available via invite link from an admin', 'error');
+                        }
+                    })
+                    .catch(err => {
+                        showMessage('Registration is only available via invite link from an admin', 'error');
+                    });
+            }
+        });
+
+        document.getElementById('resendOtpLink').addEventListener('click', async function (e) {
+            e.preventDefault();
+            if (!currentAccountId) return;
+            try {
+                const res = await fetch('/api/panel/resend-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ account_id: currentAccountId })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showMessage('OTP code resent successfully', 'success');
+                } else {
+                    showMessage(data.error || 'Failed to resend OTP', 'error');
+                }
+            } catch (err) {
+                console.error('Resend OTP error:', err);
+                showMessage('Failed to resend OTP', 'error');
+            }
+        });
+
+        let currentAccountType = null;
+        function resetAuthButton() {
+            const button = document.getElementById('authButton');
+            const buttonText = document.getElementById('buttonText');
+            const loadingIcon = document.getElementById('loadingIcon');
+            button.disabled = false;
+            loadingIcon.classList.add('hidden');
+            buttonText.textContent = 'Login';
         }
         async function checkAuthStatus() {
             try {
@@ -797,74 +1116,281 @@
                 });
                 const data = await res.json();
                 if (data.authenticated) {
+                    currentAccountType = data.account_type;
                     document.getElementById('authContainer').classList.add('hidden');
                     document.getElementById('dashboardContainer').classList.remove('hidden');
+                    if (data.account_type === 'admin') {
+                        document.getElementById('accountManagementBtn').classList.remove('hidden');
+                        document.getElementById('addBotBtn').classList.remove('hidden');
+                    } else {
+                        document.getElementById('accountManagementBtn').classList.add('hidden');
+                        document.getElementById('addBotBtn').classList.add('hidden');
+                    }
                     loadBots();
                 } else {
+                    currentAccountType = null;
                     document.getElementById('authContainer').classList.remove('hidden');
                     document.getElementById('dashboardContainer').classList.add('hidden');
+                    document.getElementById('accountManagementBtn').classList.add('hidden');
+                    document.getElementById('addBotBtn').classList.add('hidden');
+                    resetAuthButton();
+                    document.getElementById('authForm').reset();
+                    if (!inviteToken) {
+                        switchToLoginMode();
+                    }
                 }
             } catch (err) {
                 console.error('Error checking auth status:', err);
                 showMessage('Failed to check authentication status', 'error');
             }
         }
+
         document.getElementById('authForm').addEventListener('submit', async function (e) {
             e.preventDefault();
-            const password = document.getElementById('password').value;
             const button = document.getElementById('authButton');
             const buttonText = document.getElementById('buttonText');
             const loadingIcon = document.getElementById('loadingIcon');
-            if (!password) {
-                showMessage('Password is required', 'error');
-                return;
-            }
+
             button.disabled = true;
             loadingIcon.classList.remove('hidden');
             buttonText.textContent = 'Processing...';
+
             try {
-                let res = await fetch('/api/panel/login', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    credentials: 'include',
-                    body: JSON.stringify({ password })
-                });
-                let data = await res.json();
+                if (isOtpMode) {
+                    const otpCode = document.getElementById('otp_code').value;
+                    if (!otpCode || otpCode.length !== 6) {
+                        showMessage('Please enter a valid 6-digit OTP code', 'error');
+                        button.disabled = false;
+                        loadingIcon.classList.add('hidden');
+                        buttonText.textContent = 'Verify';
+                        return;
+                    }
 
-                if (!data.success && data.error && data.error.includes('Panel not registered')) {
-                    res = await fetch('/api/panel/register', {
+                    const res = await fetch('/api/panel/verify-otp', {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
+                        headers: { 'Content-Type': 'application/json' },
                         credentials: 'include',
-                        body: JSON.stringify({ password })
+                        body: JSON.stringify({ account_id: currentAccountId, otp_code: otpCode })
                     });
-                    data = await res.json();
-                }
+                    
+                    if (!res.ok) {
+                        const errorData = await res.json().catch(() => ({ error: 'Failed to verify OTP' }));
+                        showMessage(errorData.error || 'OTP verification failed', 'error');
+                        button.disabled = false;
+                        loadingIcon.classList.add('hidden');
+                        buttonText.textContent = 'Verify';
+                        return;
+                    }
+                    
+                    const data = await res.json();
 
-                if (data.success) {
-                    showMessage(data.message || 'Authentication successful!', 'success');
-                    document.getElementById('password').value = '';
-                    setTimeout(async () => {
-                        await checkAuthStatus();
-                    }, 500);
+                    if (data.success) {
+                        showMessage(data.message || 'Email verified successfully! Please login.', 'success');
+                        button.disabled = false;
+                        loadingIcon.classList.add('hidden');
+                        buttonText.textContent = 'Verify';
+                        document.getElementById('authForm').reset();
+                        currentAccountId = null;
+                        inviteToken = null;
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                        setTimeout(() => {
+                            switchToLoginMode();
+                        }, 1000);
+                    } else {
+                        showMessage(data.error || 'OTP verification failed', 'error');
+                        button.disabled = false;
+                        loadingIcon.classList.add('hidden');
+                        buttonText.textContent = 'Verify';
+                    }
+                } else if (isRegisterMode) {
+                    const username = document.getElementById('username').value;
+                    const email = document.getElementById('email').value;
+                    const password = document.getElementById('password').value;
+
+                    if (!username || username.length < 3) {
+                        showMessage('Username must be at least 3 characters long', 'error');
+                        button.disabled = false;
+                        loadingIcon.classList.add('hidden');
+                        buttonText.textContent = 'Register';
+                        return;
+                    }
+
+                    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                        showMessage('Please enter a valid email address', 'error');
+                        button.disabled = false;
+                        loadingIcon.classList.add('hidden');
+                        buttonText.textContent = 'Register';
+                        return;
+                    }
+
+                    if (!password || password.length < 6) {
+                        showMessage('Password must be at least 6 characters long', 'error');
+                        button.disabled = false;
+                        loadingIcon.classList.add('hidden');
+                        buttonText.textContent = 'Register';
+                        return;
+                    }
+
+                    const endpoint = inviteToken ? '/api/panel/register-with-token' : '/api/panel/register';
+                    const body = inviteToken
+                        ? { token: inviteToken, username, email, password }
+                        : { username, email, password };
+
+                    const res = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify(body)
+                    });
+                    
+                    if (!res.ok) {
+                        const errorData = await res.json().catch(() => ({ error: 'Registration failed' }));
+                        showMessage(errorData.error || 'Registration failed', 'error');
+                        button.disabled = false;
+                        loadingIcon.classList.add('hidden');
+                        buttonText.textContent = 'Register';
+                        return;
+                    }
+                    
+                    const data = await res.json();
+
+                    if (data.success) {
+                        showMessage(data.message || 'Registration successful! Check your email for verification code.', 'success');
+                        button.disabled = false;
+                        loadingIcon.classList.add('hidden');
+                        buttonText.textContent = 'Register';
+                        currentAccountId = data.account_id;
+                        switchToOtpMode(data.account_id);
+                        if (inviteToken) {
+                            inviteToken = null;
+                            window.history.replaceState({}, document.title, window.location.pathname);
+                        }
+                    } else {
+                        showMessage(data.error || 'Registration failed', 'error');
+                        button.disabled = false;
+                        loadingIcon.classList.add('hidden');
+                        buttonText.textContent = 'Register';
+                    }
                 } else {
-                    showMessage(data.error || 'Authentication failed', 'error');
-                    button.disabled = false;
-                    loadingIcon.classList.add('hidden');
-                    buttonText.textContent = 'Login';
+                    const username_or_email = document.getElementById('username_or_email').value;
+                    const password = document.getElementById('password').value;
+
+                    if (!username_or_email || !password) {
+                        showMessage('Username/Email and password are required', 'error');
+                        button.disabled = false;
+                        loadingIcon.classList.add('hidden');
+                        buttonText.textContent = 'Login';
+                        return;
+                    }
+
+                    const res = await fetch('/api/panel/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ username_or_email, password })
+                    });
+                    const data = await res.json();
+
+                    if (data.success) {
+                        showMessage(data.message || 'Login successful!', 'success');
+                        document.getElementById('authForm').reset();
+                        setTimeout(async () => {
+                            await checkAuthStatus();
+                        }, 500);
+                    } else if (data.requires_verification) {
+                        showMessage(data.error || 'Email not verified', 'error');
+                        currentAccountId = data.account_id;
+                        switchToOtpMode(data.account_id);
+                    } else {
+                        showMessage(data.error || 'Login failed', 'error');
+                        button.disabled = false;
+                        loadingIcon.classList.add('hidden');
+                        buttonText.textContent = 'Login';
+                    }
                 }
             } catch (err) {
                 console.error('Auth error:', err);
                 showMessage('Authentication failed. Please try again.', 'error');
                 button.disabled = false;
                 loadingIcon.classList.add('hidden');
-                buttonText.textContent = 'Login';
+                buttonText.textContent = isOtpMode ? 'Verify' : (isRegisterMode ? 'Register' : 'Login');
             }
         });
+
+        async function showAccountManagement() {
+            document.getElementById('dashboardContainer').classList.add('hidden');
+            document.getElementById('accountManagementContainer').classList.remove('hidden');
+            document.getElementById('accountManagementYear').textContent = new Date().getFullYear();
+            await loadAccounts();
+        }
+
+        function hideAccountManagement() {
+            document.getElementById('accountManagementContainer').classList.add('hidden');
+            document.getElementById('dashboardContainer').classList.remove('hidden');
+        }
+
+        async function loadAccounts() {
+            try {
+                const res = await fetch('/api/panel/accounts', { credentials: 'include' });
+                if (res.status === 403) {
+                    showMessage('Admin access required', 'error');
+                    return;
+                }
+                const data = await res.json();
+                if (data.success) {
+                    const accountsList = document.getElementById('accountsList');
+                    if (data.accounts.length === 0) {
+                        accountsList.innerHTML = '<p class="text-gray-400 text-sm">No accounts found</p>';
+                    } else {
+                        accountsList.innerHTML = data.accounts.map(account => `
+                            <div class="bg-gray-700 rounded-lg p-3 flex items-center justify-between">
+                                <div>
+                                    <p class="text-white font-medium">${account.username}</p>
+                                    <p class="text-gray-400 text-xs">${account.email}</p>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="px-2 py-1 rounded text-xs font-medium ${account.account_type === 'admin' ? 'bg-red-600 text-white' : 'bg-blue-600 text-white'}">${account.account_type}</span>
+                                    ${account.email_verified ? '<span class="text-green-500 text-xs"><i class="fas fa-check-circle"></i> Verified</span>' : '<span class="text-yellow-500 text-xs"><i class="fas fa-clock"></i> Pending</span>'}
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+                }
+            } catch (err) {
+                console.error('Error loading accounts:', err);
+                showMessage('Failed to load accounts', 'error');
+            }
+        }
+
+        async function generateInviteLink() {
+            const accountType = document.getElementById('inviteAccountType').value;
+            try {
+                const res = await fetch('/api/panel/invite-links', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ account_type: accountType })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('generatedInviteLink').value = data.invite_link;
+                    document.getElementById('inviteLinkResult').classList.remove('hidden');
+                    showMessage('Invite link generated successfully', 'success');
+                } else {
+                    showMessage(data.error || 'Failed to generate invite link', 'error');
+                }
+            } catch (err) {
+                console.error('Error generating invite link:', err);
+                showMessage('Failed to generate invite link', 'error');
+            }
+        }
+
+        function copyInviteLink() {
+            const linkInput = document.getElementById('generatedInviteLink');
+            linkInput.select();
+            document.execCommand('copy');
+            showMessage('Invite link copied to clipboard', 'success');
+        }
         let allBots = [];
         let currentDeleteBotId = null;
         let currentDeleteAction = null;
@@ -951,10 +1477,10 @@
                                 </div>
                                 </div>
                             </div>
-                            <button onclick="event.stopPropagation(); showDeleteBotModal('${bot.id}', '${(bot.name || 'Unnamed Bot').replace(/'/g, "\\'")}')"
+                            ${currentAccountType === 'admin' ? `<button onclick="event.stopPropagation(); showDeleteBotModal('${bot.id}', '${(bot.name || 'Unnamed Bot').replace(/'/g, "\\'")}')"
                                 class="text-gray-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 p-1 flex-shrink-0">
                                 <i class="fas fa-trash text-sm sm:text-base"></i>
-                            </button>
+                            </button>` : ''}
                         </div>
                         <!-- Status -->
                         <div class="flex items-center gap-1.5 sm:gap-2 mb-3 flex-wrap">
@@ -1026,6 +1552,11 @@
                 });
                 if (res.status === 401) {
                     await checkAuthStatus();
+                    return;
+                }
+                if (res.status === 403) {
+                    showMessage('Admin access required to delete bots', 'error');
+                    closeDeleteModal();
                     return;
                 }
                 const data = await res.json();
@@ -1180,6 +1711,10 @@
                     await checkAuthStatus();
                     return;
                 }
+                if (res.status === 403) {
+                    showMessage('Admin access required to add bots', 'error');
+                    return;
+                }
                 const data = await res.json();
                 if (data.success) {
                     showMessage('Bot added successfully!', 'success');
@@ -1204,6 +1739,9 @@
                 });
                 const data = await res.json();
                 if (data.success) {
+                    resetAuthButton();
+                    document.getElementById('authForm').reset();
+                    switchToLoginMode();
                     showMessage('Logged out successfully', 'success');
                     setTimeout(() => {
                         checkAuthStatus();
@@ -1214,6 +1752,7 @@
             } catch (err) {
                 console.error('Logout error:', err);
                 showMessage('Failed to logout', 'error');
+                resetAuthButton();
             }
         }
         document.getElementById('sortFilter').addEventListener('change', applySortFilter);
@@ -1487,6 +2026,8 @@
         function showDashboard() {
             stopBotDetailAutoRefresh();
             document.getElementById('botDetailContainer').classList.add('hidden');
+            document.getElementById('serverConfigContainer').classList.add('hidden');
+            document.getElementById('accountManagementContainer').classList.add('hidden');
             document.getElementById('dashboardContainer').classList.remove('hidden');
             stopBotLogPolling();
             currentBotId = null;
@@ -1622,47 +2163,55 @@
                 }
             }
             statusContainer.innerHTML = statusHTML;
+            const botActionsContainer = document.getElementById('botActionsContainer');
+            if (currentAccountType === 'admin') {
+                botActionsContainer.classList.remove('hidden');
+            } else {
+                botActionsContainer.classList.add('hidden');
+            }
             const actionButtonsContainer = document.getElementById('botActionButtons');
             let actionHTML = '';
-            if (bot.status === 'running' || bot.status === 'starting') {
-                actionHTML += `
-                    <button onclick="handleBotAction('stop')"
-                        class="bg-red-600 hover:bg-red-700 text-white px-3 sm:px-4 lg:px-6 py-2 sm:py-3 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm lg:text-base font-medium">
-                        <i class="fas fa-stop text-sm sm:text-base"></i>
-                        <span class="sm:inline">Stop</span>
-                    </button>
-                `;
-                actionHTML += `
-                    <button onclick="handleBotAction('restart')"
-                        class="bg-yellow-600 hover:bg-yellow-700 text-white px-3 sm:px-4 lg:px-6 py-2 sm:py-3 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm lg:text-base font-medium">
-                        <i class="fas fa-redo text-sm sm:text-base"></i>
-                        <span class="sm:inline">Restart</span>
-                    </button>
-                `;
-            } else {
-                actionHTML += `
-                    <button onclick="handleBotAction('start')"
-                        class="bg-green-600 hover:bg-green-700 text-white px-3 sm:px-4 lg:px-6 py-2 sm:py-3 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm lg:text-base font-medium">
-                        <i class="fas fa-play text-sm sm:text-base"></i>
-                        <span class="sm:inline">Start</span>
-                    </button>
-                `;
-            }
-            if (isOfficial) {
-                const isProduction = !bot.is_testing;
-                actionHTML += `
-                    <label class="relative inline-flex items-center cursor-pointer bg-gray-700 hover:bg-gray-600 rounded-lg px-3 sm:px-4 lg:px-6 py-2 sm:py-3 transition-all duration-200 transform hover:scale-105 active:scale-95">
-                        <input type="checkbox" ${isProduction ? 'checked' : ''} onchange="handleChangeMode(event)" class="sr-only peer" id="modeToggle">
-                        <div class="flex items-center gap-2 sm:gap-2.5">
-                            <div class="relative w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-500 rounded-full peer transition-colors ${isProduction ? 'bg-green-600' : ''}">
-                                <div class="absolute top-0.5 left-0.5 bg-white rounded-full h-5 w-5 transition-transform ${isProduction ? 'translate-x-5' : ''}"></div>
+            if (currentAccountType === 'admin') {
+                if (bot.status === 'running' || bot.status === 'starting') {
+                    actionHTML += `
+                        <button onclick="handleBotAction('stop')"
+                            class="bg-red-600 hover:bg-red-700 text-white px-3 sm:px-4 lg:px-6 py-2 sm:py-3 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm lg:text-base font-medium">
+                            <i class="fas fa-stop text-sm sm:text-base"></i>
+                            <span class="sm:inline">Stop</span>
+                        </button>
+                    `;
+                    actionHTML += `
+                        <button onclick="handleBotAction('restart')"
+                            class="bg-yellow-600 hover:bg-yellow-700 text-white px-3 sm:px-4 lg:px-6 py-2 sm:py-3 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm lg:text-base font-medium">
+                            <i class="fas fa-redo text-sm sm:text-base"></i>
+                            <span class="sm:inline">Restart</span>
+                        </button>
+                    `;
+                } else {
+                    actionHTML += `
+                        <button onclick="handleBotAction('start')"
+                            class="bg-green-600 hover:bg-green-700 text-white px-3 sm:px-4 lg:px-6 py-2 sm:py-3 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm lg:text-base font-medium">
+                            <i class="fas fa-play text-sm sm:text-base"></i>
+                            <span class="sm:inline">Start</span>
+                        </button>
+                    `;
+                }
+                if (isOfficial) {
+                    const isProduction = !bot.is_testing;
+                    actionHTML += `
+                        <label class="relative inline-flex items-center cursor-pointer bg-gray-700 hover:bg-gray-600 rounded-lg px-3 sm:px-4 lg:px-6 py-2 sm:py-3 transition-all duration-200 transform hover:scale-105 active:scale-95">
+                            <input type="checkbox" ${isProduction ? 'checked' : ''} onchange="handleChangeMode(event)" class="sr-only peer" id="modeToggle">
+                            <div class="flex items-center gap-2 sm:gap-2.5">
+                                <div class="relative w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-500 rounded-full peer transition-colors ${isProduction ? 'bg-green-600' : ''}">
+                                    <div class="absolute top-0.5 left-0.5 bg-white rounded-full h-5 w-5 transition-transform ${isProduction ? 'translate-x-5' : ''}"></div>
+                                    </div>
+                                <span class="text-xs sm:text-sm lg:text-base font-medium text-white whitespace-nowrap">
+                                    <span class="sm:inline">${isProduction ? 'Production' : 'Testing'}</span>
+                                </span>
                                 </div>
-                            <span class="text-xs sm:text-sm lg:text-base font-medium text-white whitespace-nowrap">
-                                <span class="sm:inline">${isProduction ? 'Production' : 'Testing'}</span>
-                            </span>
-                            </div>
-                                </label>
-                `;
+                                    </label>
+                    `;
+                }
             }
             actionButtonsContainer.innerHTML = actionHTML;
             renderServerList(servers);
@@ -1956,6 +2505,10 @@
                     await checkAuthStatus();
                     return;
                 }
+                if (res.status === 403) {
+                    showMessage('Admin access required for this action', 'error');
+                    return;
+                }
                 const data = await res.json();
                 if (data.success) {
                     showMessage(`Bot ${action}ed successfully!`, 'success');
@@ -1985,6 +2538,11 @@
                 });
                 if (res.status === 401) {
                     await checkAuthStatus();
+                    return;
+                }
+                if (res.status === 403) {
+                    showMessage('Admin access required to change bot mode', 'error');
+                    event.target.checked = !event.target.checked;
                     return;
                 }
                 const data = await res.json();
@@ -2043,6 +2601,8 @@
             currentBotIdForServer = currentBotId;
             stopBotLogPolling();
             document.getElementById('botDetailContainer').classList.add('hidden');
+            document.getElementById('accountManagementContainer').classList.add('hidden');
+            document.getElementById('dashboardContainer').classList.add('hidden');
             document.getElementById('serverConfigContainer').classList.remove('hidden');
             document.getElementById('serverConfigTitle').textContent = `${serverName}`;
             currentServerView = 'overview';
@@ -2476,6 +3036,8 @@
             currentBotIdForServer = currentBotId;
             stopBotLogPolling();
             document.getElementById('botDetailContainer').classList.add('hidden');
+            document.getElementById('accountManagementContainer').classList.add('hidden');
+            document.getElementById('dashboardContainer').classList.add('hidden');
             document.getElementById('serverConfigContainer').classList.remove('hidden');
             document.getElementById('serverConfigTitle').textContent = `${serverName}`;
             currentServerView = 'members';
@@ -2575,6 +3137,8 @@
             currentBotIdForServer = currentBotId;
             stopBotLogPolling();
             document.getElementById('botDetailContainer').classList.add('hidden');
+            document.getElementById('accountManagementContainer').classList.add('hidden');
+            document.getElementById('dashboardContainer').classList.add('hidden');
             document.getElementById('serverConfigContainer').classList.remove('hidden');
             document.getElementById('serverConfigTitle').textContent = `${serverName}`;
             currentServerView = 'embed_builder';
@@ -2991,10 +3555,16 @@
             }
         }
         function viewServerConfig(serverId, serverName) {
+            if (currentAccountType !== 'admin') {
+                showMessage('Admin access required to view configuration', 'error');
+                return;
+            }
             currentServerId = serverId;
             currentBotIdForServer = currentBotId;
             stopBotLogPolling();
             document.getElementById('botDetailContainer').classList.add('hidden');
+            document.getElementById('accountManagementContainer').classList.add('hidden');
+            document.getElementById('dashboardContainer').classList.add('hidden');
             document.getElementById('serverConfigContainer').classList.remove('hidden');
             document.getElementById('serverConfigTitle').textContent = `${serverName}`;
             currentServerView = 'configuration';
@@ -3038,20 +3608,22 @@
                     <i class="fas fa-code"></i>
                     <span class="sm:inline">Embed Builder</span>
                 </button>
-                <button onclick="viewServerConfig('${currentServerId}', '${serverName.replace(/'/g, "\\'")}')"
+                ${currentAccountType === 'admin' ? `<button onclick="viewServerConfig('${currentServerId}', '${serverName.replace(/'/g, "\\'")}')"
                     class="px-3 sm:px-4 py-2 sm:py-3 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95 flex items-center gap-2 text-xs sm:text-sm font-medium ${activeView === 'configuration'
                     ? 'bg-red-600 text-white'
                     : 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white'
                 }">
                     <i class="fas fa-cog"></i>
                     <span class="sm:inline">Configuration</span>
-                </button>
+                </button>` : ''}
             `;
         }
         function showBotDetail() {
             stopBotDetailAutoRefresh();
             stopBotLogPolling();
             document.getElementById('serverConfigContainer').classList.add('hidden');
+            document.getElementById('accountManagementContainer').classList.add('hidden');
+            document.getElementById('dashboardContainer').classList.add('hidden');
             document.getElementById('botDetailContainer').classList.remove('hidden');
             currentServerId = null;
             currentComponent = 'main_config';
@@ -3726,17 +4298,17 @@
             const roleEnd = roleEndId ? allRoles.find(r => String(r.discord_role_id) === String(roleEndId)) : null;
             return `
                     <form id="customSupporterRoleConfigForm" class="space-y-4 sm:space-y-6">
-                        <!-- Role Start (Top/Highest Position) -->
+                        <!-- Custom Supporter Role Start (Top/Highest Position) -->
                         <div>
                             <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
-                                <i class="fas fa-arrow-up text-red-500 mr-2"></i>Role Start (Top/Highest Position)
+                                <i class="fas fa-arrow-up text-red-500 mr-2"></i>Custom Supporter Role Start (Top/Highest Position)
                             </label>
                             <p class="text-xs text-gray-400 mb-2">Highest role position where custom supporter roles will be created. Roles will be placed below this</p>
-                            <button type="button" onclick="openRoleSelectorSingle('role_start')"
+                            <button type="button" onclick="openRoleSelectorSingle('custom_supporter_role_start')"
                                 class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-lg text-left transition-colors flex items-center justify-between group">
                                 <div class="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                                     <i class="fas fa-user-shield text-gray-400 group-hover:text-white transition-colors flex-shrink-0"></i>
-                                    <span id="role_start_display" class="text-gray-300 text-sm sm:text-base">
+                                    <span id="custom_supporter_role_start_display" class="text-gray-300 text-sm sm:text-base">
                                         ${roleStart
                     ? `<span class="inline-flex items-center gap-1.5">
                                                 <span class="w-3 h-3 rounded-full" style="background-color: ${roleStart.color || '#7289da'};"></span>
@@ -3747,19 +4319,19 @@
                                 </div>
                                 <i class="fas fa-chevron-right text-gray-500 group-hover:text-white transition-colors text-xs"></i>
                             </button>
-                            <input type="hidden" id="role_start" name="role_start" value="${roleStartId}">
+                            <input type="hidden" id="custom_supporter_role_start" name="role_start" value="${roleStartId}">
                         </div>
-                        <!-- Role End (Bottom/Lowest Position) -->
+                        <!-- Custom Supporter Role End (Bottom/Lowest Position) -->
                         <div>
                             <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
-                                <i class="fas fa-arrow-down text-red-500 mr-2"></i>Role End (Bottom/Lowest Position)
+                                <i class="fas fa-arrow-down text-red-500 mr-2"></i>Custom Supporter Role End (Bottom/Lowest Position)
                             </label>
                             <p class="text-xs text-gray-400 mb-2">Lowest role position where custom supporter roles will be created. Roles will be placed above this</p>
-                            <button type="button" onclick="openRoleSelectorSingle('role_end')"
+                            <button type="button" onclick="openRoleSelectorSingle('custom_supporter_role_end')"
                                 class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-lg text-left transition-colors flex items-center justify-between group">
                                 <div class="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                                     <i class="fas fa-user-shield text-gray-400 group-hover:text-white transition-colors flex-shrink-0"></i>
-                                    <span id="role_end_display" class="text-gray-300 text-sm sm:text-base">
+                                    <span id="custom_supporter_role_end_display" class="text-gray-300 text-sm sm:text-base">
                                         ${roleEnd
                     ? `<span class="inline-flex items-center gap-1.5">
                                                 <span class="w-3 h-3 rounded-full" style="background-color: ${roleEnd.color || '#7289da'};"></span>
@@ -3770,7 +4342,7 @@
                                 </div>
                                 <i class="fas fa-chevron-right text-gray-500 group-hover:text-white transition-colors text-xs"></i>
                             </button>
-                            <input type="hidden" id="role_end" name="role_end" value="${roleEndId}">
+                            <input type="hidden" id="custom_supporter_role_end" name="role_end" value="${roleEndId}">
                         </div>
                         <!-- Save Button -->
                         <div class="pt-4 border-t border-gray-700">
@@ -3802,8 +4374,10 @@
                 : null;
             const ratingChannelId = config.rating_channel_id || '';
             const reportChannelId = config.report_channel_id || '';
+            const pendingRoleId = config.pending_role || '';
             const roleStart = roleStartId ? allRoles.find(r => String(r.discord_role_id) === String(roleStartId)) : null;
             const roleEnd = roleEndId ? allRoles.find(r => String(r.discord_role_id) === String(roleEndId)) : null;
+            const pendingRole = pendingRoleId ? allRoles.find(r => String(r.discord_role_id) === String(pendingRoleId)) : null;
             const channelIds = [];
             if (ratingChannelId) channelIds.push(ratingChannelId);
             if (reportChannelId && !channelIds.includes(reportChannelId)) channelIds.push(reportChannelId);
@@ -3905,6 +4479,29 @@
                                 <i class="fas fa-chevron-down text-gray-400"></i>
                             </button>
                             <input type="hidden" id="staff_rating_notification_channel" name="rating_channel_id" value="${ratingChannelId}">
+                        </div>
+                        <!-- Pending Role -->
+                        <div>
+                            <label class="block text-xs sm:text-sm font-medium text-gray-300 mb-2">
+                                <i class="fas fa-user-shield text-red-500 mr-2"></i>Pending Report Role
+                            </label>
+                            <p class="text-xs text-gray-400 mb-2">Role to mention when a pending report is posted. Optional</p>
+                            <button type="button" onclick="openRoleSelectorSingle('staff_rating_pending_role')"
+                                class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded-lg text-left transition-colors flex items-center justify-between group">
+                                <div class="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                                    <i class="fas fa-user-shield text-gray-400 group-hover:text-white transition-colors flex-shrink-0"></i>
+                                    <span id="staff_rating_pending_role_display" class="text-gray-300 text-sm sm:text-base">
+                                        ${pendingRole
+                    ? `<span class="inline-flex items-center gap-1.5">
+                                                <span class="w-3 h-3 rounded-full" style="background-color: ${pendingRole.color || '#7289da'};"></span>
+                                                ${escapeHtml(pendingRole.name || 'Unknown Role')}
+                                            </span>`
+                    : 'Select role...'}
+                                    </span>
+                                </div>
+                                <i class="fas fa-chevron-right text-gray-500 group-hover:text-white transition-colors text-xs"></i>
+                            </button>
+                            <input type="hidden" id="staff_rating_pending_role" name="pending_role" value="${pendingRoleId}">
                         </div>
                         <!-- Save Button -->
                         <div class="pt-4 border-t border-gray-700">
@@ -5325,8 +5922,11 @@
                     await loadRolesForServer();
                 }
                 const titles = {
-                    'role_start': 'Select Role Start (Top/Highest Position)',
-                    'role_end': 'Select Role End (Bottom/Lowest Position)',
+                    'custom_supporter_role_start': 'Select Custom Supporter Role Start (Top/Highest Position)',
+                    'custom_supporter_role_end': 'Select Custom Supporter Role End (Bottom/Lowest Position)',
+                    'staff_rating_role_start': 'Select Staff Rating Role Start (Top/Highest Position)',
+                    'staff_rating_role_end': 'Select Staff Rating Role End (Bottom/Lowest Position)',
+                    'staff_rating_pending_role': 'Select Pending Report Role',
                     'embed_roles': 'Select Roles to Mention',
                     'feedback_role': 'Select Role to Mention for Feedback'
                 };
@@ -6185,8 +6785,8 @@
         document.addEventListener('submit', async function (e) {
             if (e.target.id !== 'customSupporterRoleConfigForm') return;
             e.preventDefault();
-            const roleStartInput = document.getElementById('role_start');
-            const roleEndInput = document.getElementById('role_end');
+            const roleStartInput = document.getElementById('custom_supporter_role_start');
+            const roleEndInput = document.getElementById('custom_supporter_role_end');
             const formData = {
                 role_start: roleStartInput?.value || null,
                 role_end: roleEndInput?.value || null
@@ -6327,7 +6927,8 @@
                     role_end: document.getElementById('staff_rating_role_end').value || null,
                     cooldown_days: normalizedCooldownDays,
                     rating_channel_id: ratingChannelValue,
-                    report_channel_id: reportChannelValue
+                    report_channel_id: reportChannelValue,
+                    pending_role: document.getElementById('staff_rating_pending_role').value || null
                 };
                 const submitBtn = document.getElementById('saveStaffRatingConfigBtn');
                 const loadingIcon = document.getElementById('saveStaffRatingConfigLoading');
@@ -6618,7 +7219,6 @@
                     </div>
                 `;
 
-
                 const originalConfirmMultiselectChannels = window.confirmMultiselectChannels;
                 window.confirmMultiselectChannels = async function () {
                     if (currentChannelField === 'embed_channels') {
@@ -6769,7 +7369,6 @@
                 window.removeEmbedChannel = removeEmbedChannel;
                 window.removeEmbedRole = removeEmbedRole;
 
-
                 const colorPicker = document.getElementById('embed_color_picker');
                 const colorInput = document.getElementById('embed_color');
                 if (colorPicker && colorInput) {
@@ -6784,7 +7383,6 @@
                         updateEmbedPreview();
                     });
                 }
-
 
                 function updateCharacterCounter(fieldId, counterId, maxLength) {
                     const field = document.getElementById(fieldId);
@@ -6806,7 +7404,6 @@
                     }
                 }
 
-
                 function updateTotalEmbedCounter() {
                     const titleField = document.getElementById('embed_title');
                     const descField = document.getElementById('embed_description');
@@ -6823,7 +7420,6 @@
 
                     totalCounter.textContent = `${totalLength}/${maxTotal}`;
 
-
                     if (totalLength >= maxTotal) {
                         totalCounter.classList.add('text-red-400');
                         totalCounter.classList.remove('text-gray-400', 'text-yellow-400');
@@ -6835,7 +7431,6 @@
                         totalCounter.classList.add('text-gray-400');
                     }
                 }
-
 
                 const titleField = document.getElementById('embed_title');
                 const descField = document.getElementById('embed_description');
@@ -6868,9 +7463,7 @@
                     updateCharacterCounter('footer', 'footer_counter', 2048);
                 }
 
-
                 updateTotalEmbedCounter();
-
 
                 ['embed_image', 'embed_color'].forEach(id => {
                     const el = document.getElementById(id);
@@ -6878,7 +7471,6 @@
                         el.addEventListener('input', updateEmbedPreview);
                     }
                 });
-
 
                 const imageFileInput = document.getElementById('embed_image_file');
                 if (imageFileInput) {
@@ -6951,9 +7543,7 @@
                     });
                 }
 
-
                 switchImageMode('url');
-
 
                 const form = document.getElementById('embedBuilderForm');
                 if (form) {
@@ -7024,8 +7614,6 @@
             const imageUrl = uploadedImageUrl || imageUrlInput;
             const colorInput = document.getElementById('embed_color')?.value;
             const footerInput = document.getElementById('embed_footer')?.value;
-
-
             const defaultColor = embedDefaultColor;
             let embedColor = defaultColor;
 
@@ -7050,7 +7638,6 @@
                 }
             }
 
-
             const hasContent = title.trim() || description.trim() || imageUrl.trim() || (footerInput && footerInput.trim()) || embedDefaultFooter;
 
             if (!hasContent) {
@@ -7061,8 +7648,6 @@
             const borderColor = embedColor;
             const footerText = footerInput || embedDefaultFooter;
             const footerTextWithPlaceholders = replaceFooterPlaceholders(footerText);
-
-
             const displayTitle = title.length > 256 ? title.substring(0, 253) + '...' : title;
             const displayDescription = description.length > 4096 ? description.substring(0, 4093) + '...' : description;
             const displayFooter = footerTextWithPlaceholders.length > 2048 ? footerTextWithPlaceholders.substring(0, 2045) + '...' : footerTextWithPlaceholders;
@@ -7110,16 +7695,14 @@
                     }
                 }
 
-                const imageUrlInput = document.getElementById('embed_image').value || '';
-                const uploadedImageUrl = document.getElementById('embed_uploaded_image_url').value || '';
+                const imageUrlInput = (document.getElementById('embed_image').value || '').trim();
+                const uploadedImageUrl = (document.getElementById('embed_uploaded_image_url').value || '').trim();
                 let imageUrl = uploadedImageUrl || imageUrlInput || null;
                 let uploadedImagePath = null;
-
 
                 if (uploadedImageUrl) {
                     uploadedImagePath = uploadedImageUrl.replace(/^.*\/uploads\/embed-images/, '');
                 }
-
 
                 if (imageUrl && imageUrl.startsWith('data:')) {
                     if (imageUrl.length > 1000000) {
@@ -7130,6 +7713,12 @@
                     }
                 }
 
+                if (imageUrl && !imageUrl.startsWith('data:') && !imageUrl.startsWith('http://') && !imageUrl.startsWith('https://') && !imageUrl.startsWith('/uploads/')) {
+                    showMessage('Image URL must be a valid HTTP/HTTPS URL or uploaded image.', 'error');
+                    submitBtn.disabled = false;
+                    loadingIcon.classList.add('hidden');
+                    return;
+                }
 
                 const title = document.getElementById('embed_title').value;
                 const description = document.getElementById('embed_description').value || '';
@@ -7259,8 +7848,13 @@
         }
         window.addEventListener('DOMContentLoaded', async () => {
             await loadTimezone();
-            await checkPanelStatus();
+            const urlParams = new URLSearchParams(window.location.search);
+            inviteToken = urlParams.get('token');
             await checkAuthStatus();
+            if (!document.getElementById('dashboardContainer').classList.contains('hidden')) {
+                return;
+            }
+            await checkPanelStatus();
         });
     </script>
 </body>

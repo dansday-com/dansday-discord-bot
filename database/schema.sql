@@ -1,18 +1,45 @@
 CREATE TABLE IF NOT EXISTS panel (
     id INT PRIMARY KEY AUTO_INCREMENT,
-    password_hash TEXT NOT NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS panel_accounts (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(255) NOT NULL UNIQUE,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    account_type ENUM('admin', 'moderator') NOT NULL DEFAULT 'admin',
+    email_verified BOOLEAN DEFAULT FALSE,
+    otp_code VARCHAR(6) NULL,
+    otp_expires_at DATETIME NULL,
+    panel_id INT NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    FOREIGN KEY (panel_id) REFERENCES panel(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS panel_invite_links (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    token VARCHAR(255) NOT NULL UNIQUE,
+    account_type ENUM('admin', 'moderator') NOT NULL,
+    created_by INT NOT NULL,
+    used_by INT NULL,
+    expires_at DATETIME NULL,
+    created_at DATETIME NOT NULL,
+    used_at DATETIME NULL,
+    FOREIGN KEY (created_by) REFERENCES panel_accounts(id) ON DELETE CASCADE,
+    FOREIGN KEY (used_by) REFERENCES panel_accounts(id) ON DELETE SET NULL
+);
+
 CREATE TABLE IF NOT EXISTS panel_logs (
     id INT PRIMARY KEY AUTO_INCREMENT,
-    panel_id INT NULL,
+    panel_account_id INT NULL,
     ip_address TEXT NOT NULL,
     user_agent TEXT,
     success BOOLEAN DEFAULT FALSE,
     attempted_at DATETIME NOT NULL,
-    FOREIGN KEY (panel_id) REFERENCES panel(id) ON DELETE SET NULL
+    FOREIGN KEY (panel_account_id) REFERENCES panel_accounts(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS bots (
@@ -262,7 +289,13 @@ CREATE INDEX idx_server_settings_server_id ON server_settings(server_id);
 CREATE INDEX idx_server_settings_component ON server_settings(server_id, component_name);
 CREATE INDEX idx_bot_logs_bot_id ON bot_logs(bot_id);
 CREATE INDEX idx_bot_logs_created_at ON bot_logs(created_at);
-CREATE INDEX idx_panel_logs_panel_id ON panel_logs(panel_id);
+CREATE INDEX idx_panel_accounts_email ON panel_accounts(email);
+CREATE INDEX idx_panel_accounts_username ON panel_accounts(username);
+CREATE INDEX idx_panel_accounts_panel_id ON panel_accounts(panel_id);
+CREATE INDEX idx_panel_invite_links_token ON panel_invite_links(token);
+CREATE INDEX idx_panel_invite_links_created_by ON panel_invite_links(created_by);
+CREATE INDEX idx_panel_invite_links_used_by ON panel_invite_links(used_by);
+CREATE INDEX idx_panel_logs_panel_account_id ON panel_logs(panel_account_id);
 CREATE INDEX idx_panel_logs_attempted_at ON panel_logs(attempted_at);
 CREATE INDEX idx_server_giveaways_member_id ON server_giveaways(member_id);
 CREATE INDEX idx_server_giveaways_status ON server_giveaways(status);

@@ -8,7 +8,7 @@ import bcrypt from 'bcrypt';
 import { CONTROL_PANEL } from './config.js';
 import logger from '../backend/logger.js';
 import db, { initializeDatabase } from '../database/database.js';
-import { parseMySQLDateTime } from '../backend/utils.js';
+import { parseMySQLDateTime, toMySQLDateTime, getNowInTimezone, getDateTimeFromSQL, getDateTimeFromJSDate, addMinutesToNow, addDaysToNow, getCurrentDateTime } from '../backend/utils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -202,7 +202,7 @@ async function startBotById(botId, bot) {
                     await db.updateBot(botId, {
                         status: 'running',
                         process_id: botProcess.pid,
-                        uptime_started_at: new Date().toISOString()
+                        uptime_started_at: getCurrentDateTime()
                     });
                     logger.log(`✅ Updated bot ${botId} status to running (PID: ${botProcess.pid})`);
                 } catch (err) {
@@ -508,15 +508,43 @@ export async function init() {
     }
 
     async function requireAuth(req, res, next) {
-        if (req.session && req.session.authenticated) {
+        if (req.session && req.session.authenticated && req.session.panel_account_id) {
             return next();
         }
         return res.status(401).json({ error: 'Authentication required' });
     }
 
+    async function requireAdmin(req, res, next) {
+        if (req.session && req.session.authenticated && req.session.panel_account_id) {
+            try {
+                const account = await db.getPanelAccountById(req.session.panel_account_id);
+                if (account && account.account_type === 'admin') {
+                    return next();
+                }
+            } catch (error) {
+                logger.log(`❌ Error checking admin status: ${error.message}`);
+            }
+        }
+        return res.status(403).json({ error: 'Admin access required' });
+    }
+
     app.post('/api/panel/register', async (req, res) => {
         try {
-            const { password } = req.body;
+            const { username, email, password } = req.body;
+
+            if (!username || username.length < 3) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Username must be at least 3 characters long'
+                });
+            }
+
+            if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Valid email is required'
+                });
+            }
 
             if (!password || password.length < 6) {
                 return res.status(400).json({
@@ -525,21 +553,123 @@ export async function init() {
                 });
             }
 
-            const existing = await db.getPanel();
-            if (existing) {
+            const existingUsername = await db.getPanelAccountByUsername(username);
+            if (existingUsername) {
                 return res.status(400).json({
                     success: false,
-                    error: 'Panel already registered. Please login instead.'
+                    error: 'Username already taken. Please choose another.'
                 });
             }
 
-            const saltRounds = 10;
+            const existingAccount = await db.getPanelAccountByEmail(email);
+            if (existingAccount) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Email already registered. Please login instead.'
+                });
+            }
+
+            const panel = await db.getPanel();
+            if (!panel) {
+                await db.createPanel();
+            }
+
+            const saltRounds = 12;
             const passwordHash = await bcrypt.hash(password, saltRounds);
 
-            const panel = await db.createPanel(passwordHash);
+            const crypto = await import('crypto');
+            const otpCode = crypto.randomInt(100000, 999999).toString();
+            const otpExpiresAt = addMinutesToNow(10);
+
+            const account = await db.createPanelAccount({
+                username,
+                email,
+                password_hash: passwordHash,
+                account_type: 'admin',
+                email_verified: false,
+                otp_code: otpCode,
+                otp_expires_at: otpExpiresAt,
+                panel_id: (await db.getPanel()).id
+            });
+
+            const { sendOTPEmail } = await import('../backend/email.js');
+            try {
+                await sendOTPEmail(email, otpCode);
+            } catch (emailError) {
+                logger.log(`❌ Failed to send OTP email: ${emailError.message}`);
+                logger.log(`❌ Email error details: ${emailError.stack || emailError.toString()}`);
+                return res.status(500).json({
+                    success: false,
+                    error: `Failed to send verification email: ${emailError.message}. Please check your email configuration.`
+                });
+            }
+
+            res.json({ success: true, message: 'Registration successful. Please check your email for verification code.', account_id: account.id });
+        } catch (error) {
+            logger.log(`❌ Panel registration error: ${error.message}`);
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+    app.post('/api/panel/verify-otp', async (req, res) => {
+        try {
+            const { account_id, otp_code } = req.body;
+
+            if (!account_id || !otp_code) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Account ID and OTP code are required'
+                });
+            }
+
+            const account = await db.getPanelAccountById(account_id);
+            if (!account) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'Account not found'
+                });
+            }
+
+            if (account.email_verified) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Email already verified'
+                });
+            }
+
+            if (!account.otp_code || account.otp_code !== otp_code) {
+                await db.createPanelLog({
+                    panel_account_id: account.id,
+                    ip_address: getClientIp(req),
+                    user_agent: getUserAgent(req),
+                    success: false
+                });
+                return res.status(401).json({
+                    success: false,
+                    error: 'Invalid OTP code'
+                });
+            }
+
+            if (account.otp_expires_at) {
+                const expiresAt = getDateTimeFromSQL(account.otp_expires_at);
+                const now = getNowInTimezone();
+                if (expiresAt.isValid && expiresAt < now) {
+                    return res.status(401).json({
+                        success: false,
+                        error: 'OTP code has expired. Please request a new one.'
+                    });
+                }
+            }
+
+            await db.updatePanelAccount(account.id, {
+                email_verified: true,
+                otp_code: null,
+                otp_expires_at: null
+            });
 
             req.session.authenticated = true;
-            req.session.panel_id = panel.id;
+            req.session.panel_account_id = account.id;
+            req.session.account_type = account.account_type;
 
             await new Promise((resolve, reject) => {
                 req.session.save((err) => {
@@ -553,49 +683,121 @@ export async function init() {
             });
 
             await db.createPanelLog({
-                panel_id: panel.id,
+                panel_account_id: account.id,
                 ip_address: getClientIp(req),
                 user_agent: getUserAgent(req),
                 success: true
             });
 
-            res.json({ success: true, message: 'Panel registered successfully' });
+            const { sendVerificationSuccessEmail } = await import('../backend/email.js');
+            try {
+                await sendVerificationSuccessEmail(account.email, account.username);
+            } catch (emailError) {
+                logger.log(`⚠️  Failed to send verification success email: ${emailError.message}`);
+            }
+
+            res.json({ success: true, message: 'Email verified successfully', account_type: account.account_type });
         } catch (error) {
-            logger.log(`❌ Panel registration error: ${error.message}`);
+            logger.log(`❌ OTP verification error: ${error.message}`);
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+    app.post('/api/panel/resend-otp', async (req, res) => {
+        try {
+            const { account_id } = req.body;
+
+            if (!account_id) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Account ID is required'
+                });
+            }
+
+            const account = await db.getPanelAccountById(account_id);
+            if (!account) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'Account not found'
+                });
+            }
+
+            if (account.email_verified) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Email already verified'
+                });
+            }
+
+            const crypto = await import('crypto');
+            const otpCode = crypto.randomInt(100000, 999999).toString();
+            const otpExpiresAt = addMinutesToNow(10);
+
+            await db.updatePanelAccount(account.id, {
+                otp_code: otpCode,
+                otp_expires_at: otpExpiresAt
+            });
+
+            const { sendOTPEmail } = await import('../backend/email.js');
+            try {
+                await sendOTPEmail(account.email, otpCode);
+            } catch (emailError) {
+                logger.log(`❌ Failed to send OTP email: ${emailError.message}`);
+                return res.status(500).json({
+                    success: false,
+                    error: 'Failed to send verification email. Please try again.'
+                });
+            }
+
+            res.json({ success: true, message: 'OTP code resent successfully' });
+        } catch (error) {
+            logger.log(`❌ Resend OTP error: ${error.message}`);
             res.status(500).json({ success: false, error: error.message });
         }
     });
 
     app.post('/api/panel/login', async (req, res) => {
         try {
-            const { password } = req.body;
+            const { username_or_email, password } = req.body;
 
-            if (!password) {
+            if (!username_or_email || !password) {
                 return res.status(400).json({
                     success: false,
-                    error: 'Password is required'
+                    error: 'Username/Email and password are required'
                 });
             }
 
-            const panel = await db.getPanel();
-            if (!panel) {
+            let account = await db.getPanelAccountByEmail(username_or_email);
+            if (!account) {
+                account = await db.getPanelAccountByUsername(username_or_email);
+            }
 
+            if (!account) {
                 await db.createPanelLog({
-                    panel_id: null,
+                    panel_account_id: null,
                     ip_address: getClientIp(req),
                     user_agent: getUserAgent(req),
                     success: false
                 });
                 return res.status(401).json({
                     success: false,
-                    error: 'Panel not registered. Please register first.'
+                    error: 'Invalid credentials'
                 });
             }
 
-            const isValid = await bcrypt.compare(password, panel.password_hash);
+            if (!account.email_verified) {
+                return res.status(401).json({
+                    success: false,
+                    error: 'Email not verified. Please verify your email first.',
+                    requires_verification: true,
+                    account_id: account.id
+                });
+            }
+
+            const isValid = await bcrypt.compare(password, account.password_hash);
 
             await db.createPanelLog({
-                panel_id: panel.id,
+                panel_account_id: account.id,
                 ip_address: getClientIp(req),
                 user_agent: getUserAgent(req),
                 success: isValid
@@ -604,12 +806,13 @@ export async function init() {
             if (!isValid) {
                 return res.status(401).json({
                     success: false,
-                    error: 'Invalid password'
+                    error: 'Invalid credentials'
                 });
             }
 
             req.session.authenticated = true;
-            req.session.panel_id = panel.id;
+            req.session.panel_account_id = account.id;
+            req.session.account_type = account.account_type;
 
             await new Promise((resolve, reject) => {
                 req.session.save((err) => {
@@ -622,7 +825,7 @@ export async function init() {
                 });
             });
 
-            res.json({ success: true, message: 'Login successful' });
+            res.json({ success: true, message: 'Login successful', account_type: account.account_type });
         } catch (error) {
             logger.log(`❌ Panel login error: ${error.message}`);
             res.status(500).json({ success: false, error: error.message });
@@ -638,10 +841,242 @@ export async function init() {
         });
     });
 
-    app.get('/api/panel/auth', (req, res) => {
-        res.json({
-            authenticated: req.session && req.session.authenticated || false
-        });
+    app.get('/api/panel/auth', async (req, res) => {
+        try {
+            if (req.session && req.session.authenticated && req.session.panel_account_id) {
+                const account = await db.getPanelAccountById(req.session.panel_account_id);
+                if (account) {
+                    return res.json({
+                        authenticated: true,
+                        account_type: account.account_type,
+                        username: account.username,
+                        email: account.email
+                    });
+                }
+            }
+
+            const accounts = await db.getAllPanelAccounts();
+            const hasAccounts = accounts && accounts.length > 0;
+
+            res.json({
+                authenticated: false,
+                can_register: !hasAccounts
+            });
+        } catch (error) {
+            logger.log(`❌ Auth check error: ${error.message}`);
+            res.json({ authenticated: false, can_register: false });
+        }
+    });
+
+    app.get('/api/panel/accounts', requireAdmin, async (req, res) => {
+        try {
+            const accounts = await db.getAllPanelAccounts();
+            res.json({ success: true, accounts });
+        } catch (error) {
+            logger.log(`❌ Get accounts error: ${error.message}`);
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+    app.post('/api/panel/invite-links', requireAdmin, async (req, res) => {
+        try {
+            const { account_type } = req.body;
+
+            if (!account_type || !['admin', 'moderator'].includes(account_type)) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Valid account type (admin or moderator) is required'
+                });
+            }
+
+            const crypto = await import('crypto');
+            const token = crypto.randomBytes(32).toString('hex');
+            const expiresAt = addDaysToNow(1);
+
+            const inviteLink = await db.createPanelInviteLink({
+                token,
+                account_type,
+                created_by: req.session.panel_account_id,
+                expires_at: expiresAt
+            });
+
+            const protocol = req.protocol || 'http';
+            const host = req.get('host') || `localhost:${CONTROL_PANEL.PORT}`;
+            const fullUrl = `${protocol}://${host}/register?token=${token}`;
+
+            res.json({ success: true, invite_link: fullUrl, token, expires_at: expiresAt });
+        } catch (error) {
+            logger.log(`❌ Create invite link error: ${error.message}`);
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+    app.get('/api/panel/invite-links', requireAdmin, async (req, res) => {
+        try {
+            const links = await db.getAllPanelInviteLinks();
+            res.json({ success: true, links });
+        } catch (error) {
+            logger.log(`❌ Get invite links error: ${error.message}`);
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+    app.get('/api/panel/invite-link/:token', async (req, res) => {
+        try {
+            const { token } = req.params;
+            const inviteLink = await db.getPanelInviteLinkByToken(token);
+
+            if (!inviteLink) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'Invite link not found'
+                });
+            }
+
+            if (inviteLink.used_by || inviteLink.used_at) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Invite link has already been used'
+                });
+            }
+
+            if (inviteLink.expires_at) {
+                const expiresAt = getDateTimeFromSQL(inviteLink.expires_at);
+                const now = getNowInTimezone();
+                if (expiresAt.isValid && expiresAt < now) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Invite link has expired'
+                    });
+                }
+            }
+
+            res.json({ success: true, account_type: inviteLink.account_type });
+        } catch (error) {
+            logger.log(`❌ Get invite link error: ${error.message}`);
+            res.status(500).json({ success: false, error: error.message });
+        }
+    });
+
+    app.post('/api/panel/register-with-token', async (req, res) => {
+        try {
+            const { token, username, email, password } = req.body;
+
+            if (!token || !username || !email || !password) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Token, username, email, and password are required'
+                });
+            }
+
+            if (username.length < 3) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Username must be at least 3 characters long'
+                });
+            }
+
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Valid email is required'
+                });
+            }
+
+            if (password.length < 6) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Password must be at least 6 characters long'
+                });
+            }
+
+            const inviteLink = await db.getPanelInviteLinkByToken(token);
+            if (!inviteLink) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'Invalid invite link'
+                });
+            }
+
+            if (inviteLink.used_by || inviteLink.used_at) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Invite link has already been used'
+                });
+            }
+
+            if (inviteLink.expires_at) {
+                const expiresAt = getDateTimeFromSQL(inviteLink.expires_at);
+                const now = getNowInTimezone();
+                if (expiresAt.isValid && expiresAt < now) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Invite link has expired'
+                    });
+                }
+            }
+
+            const existingUsername = await db.getPanelAccountByUsername(username);
+            if (existingUsername) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Username already taken'
+                });
+            }
+
+            const existingAccount = await db.getPanelAccountByEmail(email);
+            if (existingAccount) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Email already registered'
+                });
+            }
+
+            const panel = await db.getPanel();
+            if (!panel) {
+                await db.createPanel();
+            }
+
+            const saltRounds = 12;
+            const passwordHash = await bcrypt.hash(password, saltRounds);
+
+            const crypto = await import('crypto');
+            const otpCode = crypto.randomInt(100000, 999999).toString();
+            const otpExpiresAt = addMinutesToNow(10);
+
+            const account = await db.createPanelAccount({
+                username,
+                email,
+                password_hash: passwordHash,
+                account_type: inviteLink.account_type,
+                email_verified: false,
+                otp_code: otpCode,
+                otp_expires_at: otpExpiresAt,
+                panel_id: (await db.getPanel()).id
+            });
+
+            await db.updatePanelInviteLink(inviteLink.id, {
+                used_by: account.id,
+                used_at: getCurrentDateTime()
+            });
+
+            const { sendOTPEmail } = await import('../backend/email.js');
+            try {
+                await sendOTPEmail(email, otpCode);
+            } catch (emailError) {
+                logger.log(`❌ Failed to send OTP email: ${emailError.message}`);
+                logger.log(`❌ Email error details: ${emailError.stack || emailError.toString()}`);
+                return res.status(500).json({
+                    success: false,
+                    error: `Failed to send verification email: ${emailError.message}. Please check your email configuration.`
+                });
+            }
+
+            res.json({ success: true, message: 'Registration successful. Please check your email for verification code.', account_id: account.id });
+        } catch (error) {
+            logger.log(`❌ Register with token error: ${error.message}`);
+            res.status(500).json({ success: false, error: error.message });
+        }
     });
 
     app.get('/api/config/timezone', (req, res) => {
@@ -713,13 +1148,17 @@ export async function init() {
                 if (botData.status === 'running' && botData.uptime_started_at) {
                     let startTime;
                     if (botData.uptime_started_at instanceof Date) {
-                        startTime = botData.uptime_started_at;
+                        startTime = getDateTimeFromJSDate(botData.uptime_started_at);
                     } else {
-                        startTime = parseMySQLDateTime(botData.uptime_started_at);
+                        const parsed = parseMySQLDateTime(botData.uptime_started_at);
+                        startTime = parsed ? getDateTimeFromJSDate(parsed) : null;
                     }
-                    const now = new Date();
-                    const uptimeMs = now - startTime;
-                    botData.uptime_ms = uptimeMs;
+                    if (startTime && startTime.isValid) {
+                        const now = getNowInTimezone();
+                        botData.uptime_ms = now.diff(startTime, 'milliseconds').milliseconds;
+                    } else {
+                        botData.uptime_ms = 0;
+                    }
                 } else {
                     botData.uptime_ms = 0;
                 }
@@ -784,24 +1223,17 @@ export async function init() {
             if (botData.status === 'running' && botData.uptime_started_at) {
                 let startTime;
                 if (botData.uptime_started_at instanceof Date) {
-                    startTime = botData.uptime_started_at;
+                    startTime = getDateTimeFromJSDate(botData.uptime_started_at);
                 } else {
-                    const dateStr = String(botData.uptime_started_at);
-                    const [datePart, timePart] = dateStr.split(' ');
-                    const [year, month, day] = datePart.split('-');
-                    const [hours, minutes, seconds] = timePart.split(':');
-                    const date = new Date();
-                    date.setFullYear(parseInt(year), parseInt(month) - 1, parseInt(day));
-                    date.setHours(parseInt(hours), parseInt(minutes), parseInt(seconds || 0), 0);
-                    const TIMEZONE = process.env.TIMEZONE;
-                    const utcDate = new Date(date.toLocaleString('en-US', { timeZone: 'UTC' }));
-                    const tzDate = new Date(date.toLocaleString('en-US', { timeZone: TIMEZONE }));
-                    const offset = (tzDate.getTime() - utcDate.getTime()) / 60000;
-                    startTime = new Date(date.getTime() - offset * 60000);
+                    const parsed = parseMySQLDateTime(botData.uptime_started_at);
+                    startTime = parsed ? getDateTimeFromJSDate(parsed) : null;
                 }
-                const now = new Date();
-                const uptimeMs = now - startTime;
-                botData.uptime_ms = uptimeMs;
+                if (startTime && startTime.isValid) {
+                    const now = getNowInTimezone();
+                    botData.uptime_ms = now.diff(startTime, 'milliseconds').milliseconds;
+                } else {
+                    botData.uptime_ms = 0;
+                }
             } else {
                 botData.uptime_ms = 0;
             }
@@ -870,7 +1302,7 @@ export async function init() {
         }
     });
 
-    app.put('/api/servers/:id/settings', requireAuth, async (req, res) => {
+    app.put('/api/servers/:id/settings', requireAdmin, async (req, res) => {
         try {
             const { component_name, settings } = req.body;
             if (!component_name) {
@@ -1056,12 +1488,15 @@ export async function init() {
                 return res.status(400).json({ success: false, error: 'Bot webhook not configured' });
             }
 
-            let finalImageUrl = image_url;
-            if (finalImageUrl && finalImageUrl.startsWith('/uploads/')) {
-
-                const protocol = req.protocol || 'http';
-                const host = req.get('host') || `localhost:${CONTROL_PANEL.PORT}`;
-                finalImageUrl = `${protocol}://${host}${finalImageUrl}`;
+            let finalImageUrl = image_url ? image_url.trim() : null;
+            if (finalImageUrl) {
+                if (finalImageUrl.startsWith('/uploads/')) {
+                    const protocol = req.protocol || 'http';
+                    const host = req.get('host') || `localhost:${CONTROL_PANEL.PORT}`;
+                    finalImageUrl = `${protocol}://${host}${finalImageUrl}`;
+                } else if (!finalImageUrl.startsWith('http://') && !finalImageUrl.startsWith('https://') && !finalImageUrl.startsWith('data:')) {
+                    finalImageUrl = null;
+                }
             }
 
             const validChannelIds = (channel_ids || []).filter(id => id != null && id !== '' && id !== undefined);
@@ -1288,7 +1723,7 @@ export async function init() {
         }
     });
 
-    app.post('/api/bots', requireAuth, async (req, res) => {
+    app.post('/api/bots', requireAdmin, async (req, res) => {
         try {
             await initializeDatabase();
 
@@ -1303,7 +1738,14 @@ export async function init() {
                 connect_to
             } = req.body;
 
-            const panel_id = req.session.panel_id;
+            const account = await db.getPanelAccountById(req.session.panel_account_id);
+            if (!account) {
+                return res.status(401).json({
+                    success: false,
+                    error: 'Account not found'
+                });
+            }
+            const panel_id = account.panel_id;
 
             if (!token || !bot_type) {
                 return res.status(400).json({
@@ -1397,7 +1839,7 @@ export async function init() {
         }
     });
 
-    app.put('/api/bots/:id/mode', requireAuth, async (req, res) => {
+    app.put('/api/bots/:id/mode', requireAdmin, async (req, res) => {
         try {
             const bot = await db.getBot(req.params.id);
             if (!bot) {
@@ -1453,7 +1895,7 @@ export async function init() {
         }
     });
 
-    app.delete('/api/bots/:id', requireAuth, async (req, res) => {
+    app.delete('/api/bots/:id', requireAdmin, async (req, res) => {
         try {
             await db.deleteBot(req.params.id);
             res.json({ success: true });
@@ -1463,7 +1905,7 @@ export async function init() {
         }
     });
 
-    app.post('/api/start', requireAuth, async (req, res) => {
+    app.post('/api/start', requireAdmin, async (req, res) => {
         const { bot_id } = req.body;
         if (!bot_id) {
             return res.json({ success: false, error: 'bot_id is required' });
@@ -1482,7 +1924,7 @@ export async function init() {
         }
     });
 
-    app.post('/api/stop', requireAuth, async (req, res) => {
+    app.post('/api/stop', requireAdmin, async (req, res) => {
         const { bot_id } = req.body;
         if (!bot_id) {
             return res.json({ success: false, error: 'bot_id is required' });
@@ -1496,7 +1938,7 @@ export async function init() {
         }
     });
 
-    app.post('/api/restart', requireAuth, async (req, res) => {
+    app.post('/api/restart', requireAdmin, async (req, res) => {
         const { bot_id } = req.body;
         if (!bot_id) {
             return res.json({ success: false, error: 'bot_id is required' });
@@ -1516,6 +1958,10 @@ export async function init() {
     });
 
     app.get('/', (req, res) => {
+        res.sendFile(join(__dirname, 'index.html'));
+    });
+
+    app.get('/register', (req, res) => {
         res.sendFile(join(__dirname, 'index.html'));
     });
 

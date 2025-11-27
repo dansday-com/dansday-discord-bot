@@ -1,6 +1,6 @@
 {
   "name": "go-blox-bot-system",
-  "version": "7.7.1",
+  "version": "7.7.2",
   "description": "GO BLOX Bot System - Self-bot and Official Bot",
   "main": "main.js",
   "type": "module",
@@ -26,6 +26,7 @@
     "express": "^5.1.0",
     "express-session": "^1.18.2",
     "luxon": "^3.7.2",
-    "mysql2": "^3.15.3"
+    "mysql2": "^3.15.3",
+    "nodemailer": "^6.9.15"
   }
 }

@@ -8,7 +8,7 @@ import bcrypt from 'bcrypt';
 import { CONTROL_PANEL } from './config.js';
 import logger from '../backend/logger.js';
 import db, { initializeDatabase } from '../database/database.js';
-import { parseMySQLDateTime, toMySQLDateTime, getNowInTimezone, getDateTimeFromSQL, getDateTimeFromJSDate, addMinutesToNow, addDaysToNow, getCurrentDateTime } from '../backend/utils.js';
+import { parseMySQLDateTime, getNowInTimezone, getDateTimeFromSQL, getDateTimeFromJSDate, addMinutesToNow, addDaysToNow, getCurrentDateTime } from '../backend/utils.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

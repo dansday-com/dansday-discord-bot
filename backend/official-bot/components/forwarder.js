@@ -290,6 +290,7 @@ export async function processMessageFromSelfBot(messageData, client) {
         for (const emojiId of createdEmojiIds) {
             try {
                 await targetGuild.emojis.delete(emojiId);
+                targetGuild.emojis.cache.delete(emojiId);
             } catch (err) {
                 await logger.log(`⚠️ Forwarder: could not remove temporary emoji ${emojiId}: ${err.message}`);
             }

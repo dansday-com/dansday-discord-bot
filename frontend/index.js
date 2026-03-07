@@ -2411,6 +2411,17 @@ export async function init() {
 }
 
 export function stop() {
+    for (const [botId, info] of botProcesses.entries()) {
+        try {
+            if (info.process && !info.process.killed && info.process.exitCode === null) {
+                info.process.kill('SIGTERM');
+                logger.log(`🛑 Stopping bot ${botId} (PID ${info.pid}) for app shutdown`);
+            }
+        } catch (e) {
+            try { process.kill(info.pid, 'SIGKILL'); } catch (_) { }
+        }
+        botProcesses.delete(botId);
+    }
     if (server) {
         server.close();
         server = null;

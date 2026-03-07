@@ -1,45 +1,41 @@
 import { FORWARDER, getEmbedConfig } from "../../config.js";
 import logger from "../../logger.js";
-import { writeFile, unlink } from "fs/promises";
-import { join } from "path";
-import { tmpdir } from "os";
 
-const CUSTOM_EMOJI_STATIC = /<:([^:]+):(\d+)>/g;
-const CUSTOM_EMOJI_ANIMATED = /<a:([^:]+):(\d+)>/g;
-
-/** Extract unique custom emoji refs from text: { name, id, animated } */
+/** Extract unique custom emoji refs from text: { name, id, animated }. */
 function extractCustomEmojis(text) {
-    if (!text) return [];
+    const str = text != null ? String(text) : '';
+    if (!str) return [];
     const seen = new Set();
     const out = [];
-    for (const g of [CUSTOM_EMOJI_STATIC, CUSTOM_EMOJI_ANIMATED]) {
-        g.lastIndex = 0;
+    const patternSpecs = [
+        ['<:([^:]+):(\\d+)>', false],
+        ['<a:([^:]+):(\\d+)>', true]
+    ];
+    for (const [pattern, animated] of patternSpecs) {
+        const regex = new RegExp(pattern, 'g');
         let m;
-        while ((m = g.exec(text)) !== null) {
+        while ((m = regex.exec(str)) !== null) {
             const name = m[1];
             const id = m[2];
-            if (!name || !id || seen.has(id)) continue;
-            const trimmedName = String(name).trim();
-            if (!trimmedName) continue;
+            if (typeof name !== 'string' || typeof id !== 'string') continue;
+            const trimmedName = name.trim();
+            if (!trimmedName || seen.has(id)) continue;
             seen.add(id);
-            out.push({ name: trimmedName, id, animated: g === CUSTOM_EMOJI_ANIMATED });
+            out.push({ name: trimmedName, id, animated });
         }
     }
     return out;
 }
 
 /**
- * Download emoji image from CDN to a temp file. Returns path or null.
+ * Download emoji image from CDN. Returns Buffer or null.
  */
-async function downloadEmojiToTemp(emojiId, ext, log) {
+async function downloadEmojiBuffer(emojiId, ext, log) {
     const cdnUrl = `https://cdn.discordapp.com/emojis/${emojiId}.${ext}`;
-    const filePath = join(tmpdir(), `forwarder-emoji-${emojiId}-${Date.now()}.${ext}`);
     try {
         const res = await fetch(cdnUrl);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const buf = Buffer.from(await res.arrayBuffer());
-        await writeFile(filePath, buf);
-        return filePath;
+        return Buffer.from(await res.arrayBuffer());
     } catch (err) {
         if (log) await log(`⚠️ Forwarder: could not download emoji ${emojiId}: ${err.message}`);
         return null;
@@ -47,39 +43,40 @@ async function downloadEmojiToTemp(emojiId, ext, log) {
 }
 
 /**
- * Ensure each emoji exists on the target guild (by name). If not, download to temp file, upload to guild, then we clean up temp files and emojis after send.
- * Returns { sourceToTarget: Map, createdIds: string[], tempFiles: string[] }.
+ * Ensure each emoji exists on the target guild (by name). If not, download from CDN and create from buffer; we delete created emojis after send.
+ * Returns { sourceToTarget: Map, createdIds: string[] }.
  * Bot needs Manage Guild Expressions on the target server.
  */
 async function ensureEmojisOnGuild(guild, emojiRefs, log) {
     const sourceToTarget = new Map();
     const createdIds = [];
-    const tempFiles = [];
-    if (!emojiRefs.length) return { sourceToTarget, createdIds, tempFiles };
+    if (!emojiRefs.length) return { sourceToTarget, createdIds };
 
+    await guild.emojis.fetch();
     const existing = guild.emojis.cache;
     for (const ref of emojiRefs) {
-        const name = ref.name != null ? String(ref.name).trim() : '';
+        let name = ref.name != null ? String(ref.name).trim() : '';
+        if (!name && ref.id) name = String(ref.id);
         if (!name) continue;
+        const refId = ref.id != null ? String(ref.id) : '';
+        if (!refId) continue;
         const existingEmoji = existing.find(e => e.name === name);
         if (existingEmoji) {
-            sourceToTarget.set(ref.id, existingEmoji.id);
+            sourceToTarget.set(refId, existingEmoji.id);
             continue;
         }
         const ext = ref.animated ? 'gif' : 'png';
-        const filePath = await downloadEmojiToTemp(ref.id, ext, log);
-        if (!filePath) continue;
-        tempFiles.push(filePath);
+        const buffer = await downloadEmojiBuffer(refId, ext, log);
+        if (!buffer) continue;
         try {
-            const created = await guild.emojis.create({ attachment: filePath, name });
-            sourceToTarget.set(ref.id, created.id);
+            const created = await guild.emojis.create({ attachment: buffer, name });
+            sourceToTarget.set(refId, created.id);
             createdIds.push(created.id);
-            if (log) await log(`📥 Forwarder: added emoji :${name}: to this server (from temp file)`);
         } catch (err) {
             if (log) await log(`⚠️ Forwarder: could not add emoji :${name}: (${err.message})`);
         }
     }
-    return { sourceToTarget, createdIds, tempFiles };
+    return { sourceToTarget, createdIds };
 }
 
 /** Replace custom emoji IDs in text so they point to target server emojis. */
@@ -190,8 +187,9 @@ export async function processMessageFromSelfBot(messageData, client) {
                 }
             }
         }
-        const emojiRefs = [...new Map(allTexts.flatMap(t => extractCustomEmojis(t).map(e => [e.id, e])).values())];
-        const { sourceToTarget: sourceIdToTargetId, createdIds: createdEmojiIds, tempFiles: emojiTempFiles } = await ensureEmojisOnGuild(targetGuild, emojiRefs, logger.log.bind(logger));
+        const pairs = allTexts.flatMap(t => extractCustomEmojis(t).map(e => [e.id, e])).filter(([id, r]) => id && r && typeof r.name === 'string' && r.name.length > 0);
+        const emojiRefs = [...new Map(pairs).values()];
+        const { sourceToTarget: sourceIdToTargetId, createdIds: createdEmojiIds } = await ensureEmojisOnGuild(targetGuild, emojiRefs, logger.log.bind(logger));
 
         const applyEmojiReplace = (text) => replaceEmojiIdsInText(text, sourceIdToTargetId);
 
@@ -294,13 +292,6 @@ export async function processMessageFromSelfBot(messageData, client) {
                 await targetGuild.emojis.delete(emojiId);
             } catch (err) {
                 await logger.log(`⚠️ Forwarder: could not remove temporary emoji ${emojiId}: ${err.message}`);
-            }
-        }
-        for (const filePath of emojiTempFiles) {
-            try {
-                await unlink(filePath);
-            } catch (err) {
-                await logger.log(`⚠️ Forwarder: could not remove temp file ${filePath}: ${err.message}`);
             }
         }
 

@@ -11,6 +11,16 @@ function cleanMessageContent(text) {
     return cleaned;
 }
 
+/** Remove Discord user/role mention tags so embed text is clean. Keeps message.content mentions for notifications. */
+function stripMentionsFromText(text) {
+    if (!text) return text;
+    let stripped = text
+        .replace(/<@!?\d+>/g, '')   // user mentions <@123> or <@!123>
+        .replace(/<@&\d+>/g, '');   // role mentions <@&123>
+    stripped = stripped.replace(/\s+/g, ' ').trim();
+    return stripped;
+}
+
 export async function processMessageFromSelfBot(messageData, client) {
 
     const sourceChannelId = messageData.channel?.id;
@@ -89,7 +99,10 @@ export async function processMessageFromSelfBot(messageData, client) {
             }
         };
 
-        const cleanContent = cleanMessageContent(messageData.content);
+        let cleanContent = cleanMessageContent(messageData.content);
+        if (onlyForwardWhenMentionsMember && cleanContent) {
+            cleanContent = stripMentionsFromText(cleanContent);
+        }
         if (cleanContent && cleanContent.trim()) {
             messageEmbed.description = cleanContent;
         }
@@ -114,24 +127,30 @@ export async function processMessageFromSelfBot(messageData, client) {
         embeds.push(messageEmbed);
 
         if (messageData.embeds && messageData.embeds.length > 0) {
+            const cleanForEmbed = (t) => {
+                if (!t) return t;
+                let out = cleanMessageContent(t);
+                if (onlyForwardWhenMentionsMember && out) out = stripMentionsFromText(out);
+                return out;
+            };
 
             messageData.embeds.forEach(embed => {
 
                 const originalEmbed = { ...embed };
 
                 if (originalEmbed.description) {
-                    originalEmbed.description = cleanMessageContent(originalEmbed.description);
+                    originalEmbed.description = cleanForEmbed(originalEmbed.description);
                 }
 
                 if (originalEmbed.title) {
-                    originalEmbed.title = cleanMessageContent(originalEmbed.title);
+                    originalEmbed.title = cleanForEmbed(originalEmbed.title);
                 }
 
                 if (originalEmbed.fields && originalEmbed.fields.length > 0) {
                     originalEmbed.fields = originalEmbed.fields.map(field => ({
                         ...field,
-                        name: cleanMessageContent(field.name),
-                        value: cleanMessageContent(field.value)
+                        name: cleanForEmbed(field.name),
+                        value: cleanForEmbed(field.value)
                     }));
                 }
 

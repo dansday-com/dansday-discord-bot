@@ -49,7 +49,6 @@ jobs:
       - name: Trigger deploy
         id: trigger
         env:
-          TAG: ${{ github.event.release.tag_name }}
           DEPLOY_URL: ${{ secrets.DEPLOY_WEBHOOK_URL }}
           TOKEN: ${{ secrets.DEPLOY_TOKEN }}
         run: |
@@ -57,11 +56,8 @@ jobs:
             echo "Missing DEPLOY_WEBHOOK_URL or DEPLOY_TOKEN"
             exit 1
           fi
-          # API allows uuid OR tag, not both. Use base URL + tag only.
-          base="${DEPLOY_URL%%\?*}"
-          url="${base}?tag=${TAG}&force=false"
-          echo "Triggering deploy for tag: $TAG"
-          resp=$(curl -s -w "\n%{http_code}" -X GET "$url" -H "Authorization: Bearer $TOKEN")
+          echo "Triggering deploy (release ${{ github.event.release.tag_name }})"
+          resp=$(curl -s -w "\n%{http_code}" -X GET "$DEPLOY_URL" -H "Authorization: Bearer $TOKEN")
           code=$(echo "$resp" | tail -n1)
           body=$(echo "$resp" | sed '$d')
           echo "Response ($code): $body"

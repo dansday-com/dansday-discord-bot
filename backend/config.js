@@ -614,23 +614,23 @@ export const FORWARDER = {
     async shouldForwardChannel(channelId, guildId) {
         requireBotConfig();
         if (!channelId || !guildId) {
-            return { shouldForward: false, onlyForwardWhenMentionsMember: false };
+            return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false };
         }
 
         if (botConfig.bot_type !== 'selfbot' || !botConfig.connect_to) {
-            return { shouldForward: false, onlyForwardWhenMentionsMember: false };
+            return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false };
         }
 
         try {
 
             const selfbotServer = await db.getServerByDiscordId(botConfig.id, guildId);
             if (!selfbotServer) {
-                return { shouldForward: false, onlyForwardWhenMentionsMember: false };
+                return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false };
             }
 
             const officialBot = await db.getBot(botConfig.connect_to);
             if (!officialBot) {
-                return { shouldForward: false, onlyForwardWhenMentionsMember: false };
+                return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false };
             }
 
             const officialServers = await db.getServersForBot(officialBot.id);
@@ -657,7 +657,7 @@ export const FORWARDER = {
                             if (foundChannel) {
                                 return {
                                     shouldForward: true,
-                                    onlyForwardWhenMentionsMember: forwarder.only_forward_when_mentions_member === true,
+                                    onlyForwardWhenMentionsSelfBot: forwarder.only_forward_when_mentions_member === true,
                                     target_guild_id: officialServer.discord_server_id
                                 };
                             }
@@ -669,10 +669,10 @@ export const FORWARDER = {
                 }
             }
 
-            return { shouldForward: false, onlyForwardWhenMentionsMember: false };
+            return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false };
         } catch (err) {
 
-            return { shouldForward: false, onlyForwardWhenMentionsMember: false };
+            return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false };
         }
     },
 

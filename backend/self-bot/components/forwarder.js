@@ -41,6 +41,7 @@ async function processMessage(message) {
             avatar: message.author.avatar,
             bot: message.author.bot
         },
+        selfbot_user_id: message.client.user?.id,
         channel: {
             id: message.channel.id,
             name: message.channel.name
@@ -84,22 +85,11 @@ function init(client) {
                 return;
             }
 
-            if (result.onlyForwardWhenMentionsMember && result.target_guild_id) {
-                const mainGuild = message.client.guilds.cache.get(result.target_guild_id);
-                if (mainGuild?.members) {
-                    const mentionedUsers = message.mentions?.users;
-                    if (!mentionedUsers || mentionedUsers.size === 0) {
-                        return;
-                    }
-                    const checkMember = (userId) =>
-                        Promise.resolve(mainGuild.members.cache.get(userId)).then(cached =>
-                            cached ?? mainGuild.members.fetch(userId).catch(() => null)
-                        );
-                    const members = await Promise.all([...mentionedUsers.keys()].map(checkMember));
-                    const hasMentionedMainMember = members.some(m => m !== null);
-                    if (!hasMentionedMainMember) {
-                        return;
-                    }
+            if (result.onlyForwardWhenMentionsSelfBot) {
+                const selfBotId = message.client.user?.id;
+                const mentionedUsers = message.mentions?.users;
+                if (!mentionedUsers || mentionedUsers.size === 0 || !mentionedUsers.has(selfBotId)) {
+                    return;
                 }
             }
 

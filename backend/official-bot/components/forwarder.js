@@ -184,7 +184,7 @@ export async function processMessageFromSelfBot(messageData, client) {
     const targetChannelId = forwarderConfig.target_channel_id;
     const targetGuildId = forwarderConfig.target_guild_id;
     const roles = forwarderConfig.roles;
-    const onlyForwardWhenMentionsMember = forwarderConfig.only_forward_when_mentions_member === true;
+    const onlyForwardWhenMentionsSelfBot = forwarderConfig.only_forward_when_mentions_member === true;
 
     const targetChannel = client.channels.cache.get(targetChannelId);
 
@@ -193,23 +193,10 @@ export async function processMessageFromSelfBot(messageData, client) {
         return;
     }
 
-    let mentionedMainMembers = [];
-    if (onlyForwardWhenMentionsMember) {
+    if (onlyForwardWhenMentionsSelfBot) {
+        const selfBotId = messageData.selfbot_user_id;
         const mentionedUserIds = messageData.mentioned_user_ids || [];
-        if (mentionedUserIds.length === 0) {
-            return;
-        }
-        const mainGuild = targetChannel.guild;
-        if (!mainGuild?.members) {
-            return;
-        }
-        const checkMember = (userId) =>
-            Promise.resolve(mainGuild.members.cache.get(userId)).then(cached =>
-                cached ?? mainGuild.members.fetch(userId).catch(() => null)
-            );
-        const resolved = await Promise.all(mentionedUserIds.map(checkMember));
-        mentionedMainMembers = resolved.filter(m => m !== null);
-        if (mentionedMainMembers.length === 0) {
+        if (!selfBotId || !mentionedUserIds.includes(selfBotId)) {
             return;
         }
     }
@@ -253,7 +240,7 @@ export async function processMessageFromSelfBot(messageData, client) {
 
         let cleanContent = applyEmojiReplace(messageData.content || '');
         cleanContent = cleanMessageContent(cleanContent);
-        if (onlyForwardWhenMentionsMember && cleanContent) {
+        if (onlyForwardWhenMentionsSelfBot && cleanContent) {
             cleanContent = stripMentionsFromText(cleanContent);
         }
         if (cleanContent && cleanContent.trim()) {
@@ -284,7 +271,7 @@ export async function processMessageFromSelfBot(messageData, client) {
                 if (!t) return t;
                 let out = applyEmojiReplace(t);
                 out = cleanMessageContent(out);
-                if (onlyForwardWhenMentionsMember && out) out = stripMentionsFromText(out);
+                if (onlyForwardWhenMentionsSelfBot && out) out = stripMentionsFromText(out);
                 return out;
             };
 
@@ -319,9 +306,6 @@ export async function processMessageFromSelfBot(messageData, client) {
         }
         if (roles && Array.isArray(roles) && roles.length > 0) {
             contentParts.push(roles.map(role => `<@&${role.role_id}>`).join(' '));
-        }
-        if (mentionedMainMembers.length > 0) {
-            contentParts.push(mentionedMainMembers.map(m => `<@${m.id}>`).join(' '));
         }
         const messageOptions = {
             embeds: embeds

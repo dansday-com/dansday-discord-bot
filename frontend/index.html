@@ -792,9 +792,9 @@
                     </div>
                     <input type="hidden" id="forwarder_role_pings" name="forwarder_role_pings" value="[]">
                 </div>
-                <!-- Only forward when message mentions a source server member -->
+                <!-- Only forward when message mentions the selfbot -->
                 <div>
-                    <p class="text-xs text-gray-400 mb-2">Only forward when message mentions a member of the source server</p>
+                    <p class="text-xs text-gray-400 mb-2">Only forward when message mentions the selfbot</p>
                     <div class="flex items-center gap-3">
                         <label class="relative inline-flex items-center cursor-pointer">
                             <input type="checkbox" id="forwarder_only_when_mentions_member" name="forwarder_only_when_mentions_member" class="sr-only peer">
@@ -5087,7 +5087,7 @@
                     </div>
                                     ` : ''}
                                     ${forwarder.tag ? `<div>Tag: ${escapeHtml(forwarder.tag)}</div>` : ''}
-                                    ${forwarder.only_forward_when_mentions_member ? `<div class="text-amber-400 text-xs"><i class="fas fa-at mr-1"></i>Only when message mentions a source server member</div>` : ''}
+                                    ${forwarder.only_forward_when_mentions_member ? `<div class="text-amber-400 text-xs"><i class="fas fa-at mr-1"></i>Only when message mentions the selfbot</div>` : ''}
                                 </div>
                             </div>
                             <div class="flex items-center gap-2 flex-shrink-0">

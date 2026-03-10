@@ -17,7 +17,7 @@ services:
       MAIL_USERNAME: ${MAIL_USERNAME}
       MAIL_PASSWORD: ${MAIL_PASSWORD}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT}
-      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-dansday-discord-bot}
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME}
     expose:
       - "80"
     volumes:

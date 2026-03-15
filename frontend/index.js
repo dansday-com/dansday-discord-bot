@@ -395,58 +395,36 @@ async function restartBotById(botId, bot) {
 async function verifyBotStatuses() {
     try {
         const bots = await db.getAllBots();
-        logger.log(`🔍 Verifying status of ${bots.length} bot(s)...`);
 
         for (const bot of bots) {
             if (bot.status === 'running' || bot.status === 'starting' || bot.status === 'stopping') {
-                if (bot.process_id) {
-                    try {
+                if (!bot.process_id) {
+                    await db.updateBot(bot.id, { status: 'stopped', process_id: null, uptime_started_at: null });
+                    continue;
+                }
 
-                        process.kill(bot.process_id, 0);
+                try {
+                    process.kill(bot.process_id, 0);
 
-                        try {
-                            const cmdline = readFileSync(`/proc/${bot.process_id}/cmdline`, 'utf8').replace(/\0/g, ' ');
+                    const cmdline = readFileSync(`/proc/${bot.process_id}/cmdline`, 'utf8').replace(/\0/g, ' ');
+                    const isOurBot = cmdline.includes('officialbot.js') || cmdline.includes('selfbot.js');
 
-                            if (!cmdline.includes('officialbot.js') && !cmdline.includes('selfbot.js')) {
-
-                                logger.log(`⚠️  Bot ${bot.id} (${bot.name}) has PID ${bot.process_id} but it's not a bot process`);
-                                await db.updateBot(bot.id, {
-                                    status: 'stopped',
-                                    process_id: null,
-                                    uptime_started_at: null
-                                });
-                            }
-                        } catch (cmdlineErr) {
-
-                            logger.log(`⚠️  Bot ${bot.id} (${bot.name}) process ${bot.process_id} appears to be dead`);
-                            await db.updateBot(bot.id, {
-                                status: 'stopped',
-                                process_id: null,
-                                uptime_started_at: null
-                            });
-                        }
-                    } catch (e) {
-
-                        logger.log(`⚠️  Bot ${bot.id} (${bot.name}) process ${bot.process_id} no longer exists, marking as stopped`);
-                        await db.updateBot(bot.id, {
-                            status: 'stopped',
-                            process_id: null,
-                            uptime_started_at: null
+                    if (isOurBot) {
+                        botProcesses.set(bot.id, {
+                            process: null,
+                            pid: bot.process_id,
+                            startTime: null,
+                            status: 'running'
                         });
+                        logger.log(`♻️  Re-adopted bot ${bot.id} (${bot.name}) PID ${bot.process_id}`);
+                    } else {
+                        await db.updateBot(bot.id, { status: 'stopped', process_id: null, uptime_started_at: null });
                     }
-                } else {
-
-                    logger.log(`⚠️  Bot ${bot.id} (${bot.name}) has status "${bot.status}" but no process_id, marking as stopped`);
-                    await db.updateBot(bot.id, {
-                        status: 'stopped',
-                        process_id: null,
-                        uptime_started_at: null
-                    });
+                } catch (e) {
+                    await db.updateBot(bot.id, { status: 'stopped', process_id: null, uptime_started_at: null });
                 }
             }
         }
-
-        logger.log(`✅ Finished verifying bot statuses`);
     } catch (error) {
         logger.log(`⚠️  Error verifying bot statuses: ${error.message}`);
     }

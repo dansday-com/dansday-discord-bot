@@ -533,6 +533,10 @@ export async function init() {
 
     app.use(express.static(__dirname));
 
+    app.get('/health', (req, res) => {
+        res.status(200).json({ status: 'ok' });
+    });
+
     function getClientIp(req) {
         return req.headers['x-forwarded-for']?.split(',')[0] ||
             req.headers['x-real-ip'] ||

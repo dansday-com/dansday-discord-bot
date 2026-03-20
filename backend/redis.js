@@ -8,15 +8,7 @@ let client = null;
 function normalizeRedisUrl(url) {
     if (!url || url.trim() === '') return url;
     try {
-        const u = new URL(url);
-        if (u.password) return url;
-        if (u.username && !u.username.includes(':')) {
-            const pass = encodeURIComponent(u.username);
-            const host = u.hostname || u.host;
-            const port = u.port || '6379';
-            const db = (u.pathname || '/0').replace(/^\//, '') || '0';
-            return `redis://:${pass}@${host}:${port}/${db}`;
-        }
+        new URL(url);
         return url;
     } catch (_) {
         return url;

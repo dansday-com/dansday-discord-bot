@@ -12,11 +12,11 @@ COPY . .
 
 RUN sh -c 'unset NODE_OPTIONS; npx @tailwindcss/cli -i frontend/input.css -o frontend/index.css --minify'
 
-RUN npm prune --omit=dev
+RUN sh -c 'unset NODE_OPTIONS; npm prune --omit=dev'
 
 EXPOSE 80
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-    CMD wget -qO- http://localhost:80/health || exit 1
+    CMD wget -qO /dev/null http://localhost:80/health || exit 1
 
 CMD ["node", "index.js"]

@@ -5,7 +5,8 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "build:css": "tailwindcss -i frontend/input.css -o frontend/index.css --minify"
   },
   "keywords": [
     "discord",
@@ -38,5 +39,9 @@
     "mysql2": "^3.19.0",
     "nodemailer": "^8.0.1",
     "redis": "^5.11.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.2.2",
+    "tailwindcss": "^4.2.2"
   }
 }

@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+@theme {
+    --color-ash-50: #F2F2F2;
+    --color-ash-100: #E3E3E3;
+    --color-ash-200: #C6C6C6;
+    --color-ash-300: #ABABAB;
+    --color-ash-400: #919191;
+    --color-ash-500: #777777;
+    --color-ash-600: #5E5E5E;
+    --color-ash-700: #414141;
+    --color-ash-800: #222222;
+    --color-ash-900: #1C1C1C;
+    --color-ash-950: #191919;
+}

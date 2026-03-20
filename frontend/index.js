@@ -445,6 +445,7 @@ export async function init() {
     if (redisClient) logger.log('✅ Redis connected (sessions + rate limit)');
 
     app = express();
+    app.set('trust proxy', 1);
     app.use(express.json({ limit: '10mb' }));
 
     app.use((req, res, next) => {
@@ -474,9 +475,9 @@ export async function init() {
         resave: false,
         saveUninitialized: false,
         cookie: {
-            secure: false,
+            secure: true,
             httpOnly: true,
-            sameSite: 'strict',
+            sameSite: 'lax',
             maxAge: 24 * 60 * 60 * 1000
         }
     }));

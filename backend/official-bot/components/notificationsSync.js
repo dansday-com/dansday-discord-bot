@@ -85,24 +85,27 @@ export async function syncNotificationRoles(guild, serverId) {
             let roleId = roleByChannel[channel.id];
             let role = roleId ? guild.roles.cache.get(roleId) : null;
 
+            const expectedRoleName = `🔔 [${channel.id}] ${channel.name}`;
+
             if (role) {
-                if (role.name !== channel.name) await role.setName(channel.name).catch(() => null);
+                if (role.name !== expectedRoleName) await role.setName(expectedRoleName).catch(() => null);
                 continue;
             }
 
             const existingBetween = guild.roles.cache.find(
-                r => r.name === channel.name && isBetweenMarkers(r, startRole, endRole) && r.id !== guild.id
+                r => r.name.includes(`[${channel.id}]`) && isBetweenMarkers(r, startRole, endRole) && r.id !== guild.id
             );
             if (existingBetween) {
                 roleId = existingBetween.id;
                 role = existingBetween;
+                if (role.name !== expectedRoleName) await role.setName(expectedRoleName).catch(() => null);
                 await db.upsertNotificationRole(serverId, channel.id, roleId);
                 roleByChannel[channel.id] = roleId;
                 continue;
             }
 
             const creationData = {
-                name: channel.name,
+                name: expectedRoleName,
                 reason: 'Notification role (channel-based)',
                 mentionable: false
             };
@@ -119,6 +122,8 @@ export async function syncNotificationRoles(guild, serverId) {
                 });
                 await db.upsertNotificationRole(serverId, channel.id, role.id);
                 roleByChannel[channel.id] = role.id;
+
+                await new Promise(resolve => setTimeout(resolve, 10000));
             } catch (err) {
                 logger.log(`⚠️ Notifications: could not create role for #${channel.name}: ${err.message}`);
             }
@@ -127,17 +132,20 @@ export async function syncNotificationRoles(guild, serverId) {
         await updateAllNotificationRolePositions(guild, startRole, endRole, channelList, roleByChannel);
 
         const ourRoleIds = new Set(Object.values(roleByChannel));
-        const channelNames = new Set(channelList.map(c => c.name));
+        const expectedRoleNames = new Set(channelList.map(c => `🔔 [${c.id}] ${c.name}`));
 
         const allRoles = guild.roles.cache.filter(r => r.id !== guild.id);
         for (const role of allRoles.values()) {
-            if (!channelNames.has(role.name) || ourRoleIds.has(role.id)) continue;
+            if (expectedRoleNames.has(role.name) || ourRoleIds.has(role.id)) continue;
             if (role.id === config.role_start || role.id === config.role_end) continue;
             if (!isBetweenMarkers(role, startRole, endRole)) continue;
-            try {
-                await role.delete('Notification orphan cleanup');
-            } catch (err) {
-                logger.log(`⚠️ Notifications: could not delete ${role.name}: ${err.message}`);
+
+            if (role.name.startsWith('🔔') && role.name.includes('[') && role.name.includes(']')) {
+                try {
+                    await role.delete('Notification orphan cleanup');
+                } catch (err) {
+                    logger.log(`⚠️ Notifications: could not delete ${role.name}: ${err.message}`);
+                }
             }
         }
     } catch (error) {

@@ -60,7 +60,7 @@ let pool = null;
 
 function getPool() {
     if (!pool) {
-        const tz = process.env.TIMEZONE || 'Asia/Jakarta';
+        const tz = process.env.TIMEZONE;
         const tzOffset = tz === 'Asia/Jakarta' ? '+07:00' : (tz === 'UTC' ? 'Z' : 'Z');
         pool = mysql.createPool({
             ...connectionConfig,

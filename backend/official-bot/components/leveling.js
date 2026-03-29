@@ -2,7 +2,7 @@ import { getLevelingSettings, PERMISSIONS, getBotConfig, getEmbedConfig, NOTIFIC
 import db from "../../../database/database.js";
 import logger from "../../logger.js";
 import { EmbedBuilder } from "discord.js";
-import { parseMySQLDateTime } from "../../utils.js";
+import { parseMySQLDateTime, getNowInTimezone } from "../../utils.js";
 
 const recentMessages = new Map();
 const voiceSessions = new Map();
@@ -455,6 +455,26 @@ async function handleLevelEvaluation(server, dbMember, currentStats, guildId, co
     return finalStats;
 }
 
+async function sendXPLogToChannel(guild, dbMember, xpGained, totalXP, xpType) {
+    try {
+        const settings = await getLevelingSettings(guild.id);
+        if (!settings.PROGRESS_CHANNEL_ID) return;
+
+        const channel = await guild.channels.fetch(settings.PROGRESS_CHANNEL_ID).catch(() => null);
+        if (!channel) return;
+
+        const timestamp = getNowInTimezone().toFormat('HH:mm:ss - dd MM yyyy');
+        const memberName = dbMember.server_display_name || dbMember.display_name || dbMember.username || 'Unknown';
+
+        const icon = xpType.includes('Chat') ? '💬' : '🎤';
+        const logMessage = `${icon} ${xpType} XP: **${memberName}** gained **+${xpGained} XP** | Total: **${totalXP} XP** | ${timestamp}`;
+        
+        await channel.send(logMessage);
+    } catch (error) {
+        logger.log(`⚠️ Failed to send XP log to channel: ${error.message}`);
+    }
+}
+
 async function handleMessageCreate(message) {
     try {
         if (!message?.guild || message.author?.bot) return;
@@ -494,6 +514,8 @@ async function handleMessageCreate(message) {
         const currentLevel = await determineLevel(stats.experience || 0, guildId);
         await logger.log(`💬 Chat XP: ${memberName} (${message.author.id}) gained +${xpGained} XP from chat | Total: ${stats.experience || 0} XP | Level: ${currentLevel}`);
 
+        await sendXPLogToChannel(message.guild, dbMember, xpGained, stats.experience || 0, 'Chat');
+
         await handleLevelEvaluation(server, dbMember, stats, message.guild.id, {
             previousLevel: previousStats?.level ?? null,
             previousExperience: previousStats?.experience ?? null,
@@ -525,6 +547,8 @@ async function awardVoiceXP(server, dbMember, guildMember, minutes, isAFK, guild
     const currentLevel = await determineLevel(stats.experience || 0, guildId);
     const xpType = isAFK ? "AFK Voice" : "Voice";
     await logger.log(`🎤 ${xpType} XP: ${memberName} (${guildMember.id}) gained +${xpGained} XP${minutes > 1 ? ` from ${minutes} minute(s) [resume catch-up]` : ''} | Total: ${stats.experience || 0} XP | Level: ${currentLevel}`);
+
+    await sendXPLogToChannel(serverInfo.guildId ? server : { id: guildId, name: server.name }, dbMember, xpGained, stats.experience || 0, xpType);
 
     return await handleLevelEvaluation(server, dbMember, stats, guildId, {
         previousLevel: oldStats?.level ?? null,

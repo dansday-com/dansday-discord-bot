@@ -59,12 +59,15 @@ export async function handleNotificationsButton(interaction) {
             .map(r => r.id);
 
         const roleIdToCategory = new Map(rolesWithCategory.map(r => [r.discord_role_id, r.category_name || '']));
-        const options = notificationRoles.slice(0, 25).map(role => ({
-            label: role.name.slice(0, 100),
-            value: role.id,
-            description: (roleIdToCategory.get(role.id) || '').slice(0, 100),
-            default: memberCurrentNotificationRoleIds.includes(role.id)
-        }));
+        const options = notificationRoles.slice(0, 25).map(role => {
+            const label = role.name.replace(/\[\d+\]\s*/, '');
+            return {
+                label: label.slice(0, 100),
+                value: role.id,
+                description: (roleIdToCategory.get(role.id) || '').slice(0, 100),
+                default: memberCurrentNotificationRoleIds.includes(role.id)
+            };
+        });
 
         const selectMenu = new StringSelectMenuBuilder()
             .setCustomId('notifications_select')

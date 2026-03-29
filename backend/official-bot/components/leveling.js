@@ -548,7 +548,10 @@ async function awardVoiceXP(server, dbMember, guildMember, minutes, isAFK, guild
     const xpType = isAFK ? "AFK Voice" : "Voice";
     await logger.log(`🎤 ${xpType} XP: ${memberName} (${guildMember.id}) gained +${xpGained} XP${minutes > 1 ? ` from ${minutes} minute(s) [resume catch-up]` : ''} | Total: ${stats.experience || 0} XP | Level: ${currentLevel}`);
 
-    await sendXPLogToChannel(serverInfo.guildId ? server : { id: guildId, name: server.name }, dbMember, xpGained, stats.experience || 0, xpType);
+    const discordGuild = clientInstance?.guilds.cache.get(guildId);
+    if (discordGuild) {
+        await sendXPLogToChannel(discordGuild, dbMember, xpGained, stats.experience || 0, xpType);
+    }
 
     return await handleLevelEvaluation(server, dbMember, stats, guildId, {
         previousLevel: oldStats?.level ?? null,

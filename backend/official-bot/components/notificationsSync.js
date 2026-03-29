@@ -123,7 +123,7 @@ export async function syncNotificationRoles(guild, serverId) {
                 await db.upsertNotificationRole(serverId, channel.id, role.id);
                 roleByChannel[channel.id] = role.id;
 
-                await new Promise(resolve => setTimeout(resolve, 10000));
+                await new Promise(resolve => setTimeout(resolve, 6000));
             } catch (err) {
                 logger.log(`⚠️ Notifications: could not create role for #${channel.name}: ${err.message}`);
             }

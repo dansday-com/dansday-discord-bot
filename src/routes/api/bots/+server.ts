@@ -129,7 +129,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			application_id,
 			bot_type,
 			bot_icon: bot_icon || null,
-			port: bot_type === 'official' ? (port || 7777) : null,
+			port: bot_type === 'official' ? port || 7777 : null,
 			is_testing,
 			secret_key: secret_key || null,
 			connect_to: connect_to || null,

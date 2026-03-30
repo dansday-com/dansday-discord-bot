@@ -25,10 +25,7 @@ export const GET: RequestHandler = async ({ locals, params, url }) => {
 
 		if (search) {
 			const searchLower = search.toLowerCase();
-			channels = channels.filter((ch: any) =>
-				ch.name?.toLowerCase().includes(searchLower) ||
-				ch.discord_channel_id?.includes(searchLower)
-			);
+			channels = channels.filter((ch: any) => ch.name?.toLowerCase().includes(searchLower) || ch.discord_channel_id?.includes(searchLower));
 		}
 
 		return json(channels);

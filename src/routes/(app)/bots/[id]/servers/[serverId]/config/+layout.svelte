@@ -31,19 +31,17 @@
 	<title>Configuration | Dansday</title>
 </svelte:head>
 
-<div class="flex flex-col lg:flex-row gap-4">
+<div class="flex flex-col gap-4 lg:flex-row">
 	<!-- Sidebar -->
-	<nav class="lg:w-56 flex-shrink-0">
-		<div class="bg-ash-800 border border-ash-700 rounded-xl p-2 flex flex-row lg:flex-col gap-1 overflow-x-auto lg:overflow-x-visible">
+	<nav class="flex-shrink-0 lg:w-56">
+		<div class="bg-ash-800 border-ash-700 flex flex-row gap-1 overflow-x-auto rounded-xl border p-2 lg:flex-col lg:overflow-x-visible">
 			{#each tabs as tab}
 				<a
 					href={base + tab.href}
-					class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all whitespace-nowrap flex-shrink-0
-						{isActive(tab.href)
-							? 'bg-ash-600 text-ash-100 font-medium'
-							: 'text-ash-400 hover:text-ash-200 hover:bg-ash-700'}"
+					class="flex flex-shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm whitespace-nowrap transition-all
+						{isActive(tab.href) ? 'bg-ash-600 text-ash-100 font-medium' : 'text-ash-400 hover:text-ash-200 hover:bg-ash-700'}"
 				>
-					<i class="fas {tab.icon} text-xs w-4 text-center"></i>
+					<i class="fas {tab.icon} w-4 text-center text-xs"></i>
 					{tab.label}
 				</a>
 			{/each}
@@ -51,7 +49,7 @@
 	</nav>
 
 	<!-- Content -->
-	<div class="flex-1 min-w-0">
+	<div class="min-w-0 flex-1">
 		{@render children()}
 	</div>
 </div>

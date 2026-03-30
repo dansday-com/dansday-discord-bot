@@ -6,12 +6,7 @@ import { addMinutesToNow } from '$lib/server/utils.js';
 import { sendOTPEmail } from '$lib/server/email.js';
 import bcrypt from 'bcrypt';
 import { randomInt } from 'crypto';
-import {
-	sanitizeString,
-	sanitizeUsername,
-	sanitizeEmail,
-	validateInputLength
-} from '$lib/server/utils.js';
+import { sanitizeString, sanitizeUsername, sanitizeEmail, validateInputLength } from '$lib/server/utils.js';
 
 const MAX_REGISTER_ATTEMPTS = 3;
 
@@ -52,7 +47,10 @@ export const POST: RequestHandler = async ({ request }) => {
 		const rateLimit = await checkRateLimit(ip, 'register', MAX_REGISTER_ATTEMPTS);
 
 		if (!rateLimit.allowed) {
-			return json({ success: false, error: 'Too many registration attempts. Please try again later.', resetTime: new Date(rateLimit.resetTime).toISOString() }, { status: 429 });
+			return json(
+				{ success: false, error: 'Too many registration attempts. Please try again later.', resetTime: new Date(rateLimit.resetTime).toISOString() },
+				{ status: 429 }
+			);
 		}
 
 		const { username, email, password } = await request.json();
@@ -97,7 +95,10 @@ export const POST: RequestHandler = async ({ request }) => {
 		try {
 			await sendOTPEmail(validation.sanitizedEmail, otpCode);
 		} catch (emailError: any) {
-			return json({ success: false, error: `Failed to send verification email: ${emailError.message}. Please check your email configuration.` }, { status: 500 });
+			return json(
+				{ success: false, error: `Failed to send verification email: ${emailError.message}. Please check your email configuration.` },
+				{ status: 500 }
+			);
 		}
 
 		return json({ success: true, message: 'Registration successful. Please check your email for verification code.', account_id: account.id });

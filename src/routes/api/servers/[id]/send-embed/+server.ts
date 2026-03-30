@@ -104,7 +104,9 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 
 			const req = httpRequest(options, (res) => {
 				let data = '';
-				res.on('data', (chunk) => { data += chunk; });
+				res.on('data', (chunk) => {
+					data += chunk;
+				});
 				res.on('end', () => {
 					try {
 						resolve({ status: res.statusCode ?? 500, body: JSON.parse(data) });
@@ -131,7 +133,9 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		}
 	} catch (error: any) {
 		if (uploaded_image_path) {
-			try { unlinkSync(join(uploadsDir, uploaded_image_path)); } catch {}
+			try {
+				unlinkSync(join(uploadsDir, uploaded_image_path));
+			} catch {}
 		}
 		logger.log(`❌ Error sending embed: ${error.message}`);
 		return json({ success: false, error: error.message }, { status: 500 });

@@ -85,24 +85,22 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	const headers = event.request.headers;
 	const ua = headers.get('user-agent') ?? '';
-	const ip =
-		headers.get('cf-connecting-ip') ||
-		headers.get('x-real-ip') ||
-		headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-		event.getClientAddress();
+	const ip = headers.get('cf-connecting-ip') || headers.get('x-real-ip') || headers.get('x-forwarded-for')?.split(',')[0]?.trim() || event.getClientAddress();
 
-	console.info(JSON.stringify({
-		level: 'info',
-		message: '[request]',
-		ip,
-		device: detectDevice(ua),
-		browser: detectBrowser(ua),
-		os: detectOs(ua),
-		method: event.request.method,
-		path: event.url.pathname,
-		status: response.status,
-		duration_ms: Date.now() - start
-	}));
+	console.info(
+		JSON.stringify({
+			level: 'info',
+			message: '[request]',
+			ip,
+			device: detectDevice(ua),
+			browser: detectBrowser(ua),
+			os: detectOs(ua),
+			method: event.request.method,
+			path: event.url.pathname,
+			status: response.status,
+			duration_ms: Date.now() - start
+		})
+	);
 
 	const contentType = response.headers.get('content-type') ?? '';
 	if (contentType.includes('text/html') || contentType.includes('application/json')) {

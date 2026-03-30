@@ -6,14 +6,14 @@ Discord bot management system with a web control panel: self-bot monitoring, off
 
 You only need this on your machine:
 
-| Need | Why |
-|------|-----|
-| **Git** | To clone the repo |
-| **Docker** | To run the app |
-| **Docker Compose** | To start the service (included with Docker Desktop) |
-| **Make** | To run `make up` / `make down` (built-in on macOS/Linux; on Windows use [Docker Desktop](https://www.docker.com/products/docker-desktop/) and WSL2 or Git Bash) |
-| **MySQL** | Database; app connects via env vars |
-| **Redis** (optional) | Sessions / rate limit; set `REDIS_*` or `REDIS_URL` to use |
+| Need                 | Why                                                                                                                                                             |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Git**              | To clone the repo                                                                                                                                               |
+| **Docker**           | To run the app                                                                                                                                                  |
+| **Docker Compose**   | To start the service (included with Docker Desktop)                                                                                                             |
+| **Make**             | To run `make up` / `make down` (built-in on macOS/Linux; on Windows use [Docker Desktop](https://www.docker.com/products/docker-desktop/) and WSL2 or Git Bash) |
+| **MySQL**            | Database; app connects via env vars                                                                                                                             |
+| **Redis** (optional) | Sessions / rate limit; set `REDIS_*` or `REDIS_URL` to use                                                                                                      |
 
 You do **not** need Node.js or npm installed — everything runs inside Docker.
 
@@ -25,7 +25,7 @@ When running locally with `make up`, the control panel is at **http://localhost*
 
 The main **docker-compose.yaml** publishes the app as **`0:80`** (random host port), so multiple stacks (e.g. production and preview) never conflict on a fixed port. Your host or proxy can route by domain to the app on the internal network.
 
-- **Hosted / PaaS**: Use **docker-compose.yaml** only (no override). Set required env vars in your platform (DB_*, SESSION_SECRET, etc.). The app listens on container port 80; set `PORT` if your platform expects it.
+- **Hosted / PaaS**: Use **docker-compose.yaml** only (no override). Set required env vars in your platform (DB\_\*, SESSION_SECRET, etc.). The app listens on container port 80; set `PORT` if your platform expects it.
 - **Local / clone repo**: `make up` merges **docker-compose.override.yml**, which binds **80:80**, so the panel is at http://localhost.
 
 ---

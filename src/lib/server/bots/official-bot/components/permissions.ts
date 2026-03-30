@@ -87,9 +87,7 @@ export async function getRequiredRolesForAction(guild: any, action: string) {
 
 export async function getPermissionDeniedMessage(guild: any, action: string, userId: string | null = null) {
 	const requiredRoles = await getRequiredRolesForAction(guild, action);
-	const roleList = requiredRoles.length > 0
-		? requiredRoles.map(role => `**${role}**`).join(', ')
-		: 'the required role';
+	const roleList = requiredRoles.length > 0 ? requiredRoles.map((role) => `**${role}**`).join(', ') : 'the required role';
 
 	const actionNames: Record<string, string> = {
 		send_message: 'Send Message',

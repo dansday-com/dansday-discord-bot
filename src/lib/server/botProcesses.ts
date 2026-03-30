@@ -194,7 +194,9 @@ export async function stopBotById(botId: number): Promise<{ success: boolean; er
 			try {
 				process.kill(botInfo.pid, 'SIGINT');
 				setTimeout(() => {
-					try { if (botInfo.pid) process.kill(botInfo.pid, 'SIGKILL'); } catch {}
+					try {
+						if (botInfo.pid) process.kill(botInfo.pid, 'SIGKILL');
+					} catch {}
 				}, 2000);
 				botProcesses.delete(botId);
 				try {
@@ -215,12 +217,16 @@ export async function stopBotById(botId: number): Promise<{ success: boolean; er
 	}
 
 	if (botInfo.process && !(botInfo.process as any).killed && (botInfo.process as any).exitCode === null) {
-		try { botInfo.process.kill('SIGINT'); } catch {}
+		try {
+			botInfo.process.kill('SIGINT');
+		} catch {}
 	}
 
 	setTimeout(() => {
 		if (botInfo.process && !(botInfo.process as any).killed && (botInfo.process as any).exitCode === null) {
-			try { botInfo.process.kill('SIGKILL'); } catch {}
+			try {
+				botInfo.process.kill('SIGKILL');
+			} catch {}
 		}
 	}, 2000);
 
@@ -259,7 +265,7 @@ export async function restartBotById(botId: number, bot: any): Promise<{ success
 	if (!stopResult.success && stopResult.error !== 'Bot is not running') {
 		return { success: false, error: `Failed to stop: ${stopResult.error}` };
 	}
-	await new Promise(resolve => setTimeout(resolve, 2000));
+	await new Promise((resolve) => setTimeout(resolve, 2000));
 	return startBotById(botId, bot);
 }
 

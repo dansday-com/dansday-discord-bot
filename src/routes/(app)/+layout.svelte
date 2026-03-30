@@ -11,21 +11,21 @@
 	}
 </script>
 
-<div class="min-h-screen flex flex-col bg-ash-950 text-ash-100">
-	<header class="bg-ash-800 border-b border-ash-700 sticky top-0 z-40 flex-shrink-0">
-		<div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
-			<div class="flex items-center justify-between h-14 sm:h-16 py-2">
-				<a href="/" class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-					<div class="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 bg-ash-400 rounded-full flex-shrink-0">
+<div class="bg-ash-950 text-ash-100 flex min-h-screen flex-col">
+	<header class="bg-ash-800 border-ash-700 sticky top-0 z-40 flex-shrink-0 border-b">
+		<div class="mx-auto max-w-7xl px-3 sm:px-4 lg:px-8">
+			<div class="flex h-14 items-center justify-between py-2 sm:h-16">
+				<a href="/" class="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+					<div class="bg-ash-400 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full sm:h-10 sm:w-10">
 						<i class="fas fa-bolt text-ash-100 text-sm sm:text-base"></i>
 					</div>
-					<h1 class="text-base sm:text-xl font-bold text-ash-100 truncate">Dansday Discord Bot Panel</h1>
+					<h1 class="text-ash-100 truncate text-base font-bold sm:text-xl">Dansday Discord Bot Panel</h1>
 				</a>
-				<div class="flex items-center gap-2 flex-shrink-0">
+				<div class="flex flex-shrink-0 items-center gap-2">
 					{#if data.user.account_type === 'admin'}
 						<a
 							href="/accounts"
-							class="bg-ash-600 hover:bg-ash-700 text-ash-100 px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
+							class="bg-ash-600 hover:bg-ash-700 text-ash-100 flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs transition-all duration-200 hover:scale-105 active:scale-95 sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
 						>
 							<i class="fas fa-users text-xs sm:text-sm"></i>
 							<span class="sm:inline">Accounts</span>
@@ -33,7 +33,7 @@
 					{/if}
 					<button
 						onclick={handleLogout}
-						class="bg-ash-700 hover:bg-ash-600 text-ash-100 px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
+						class="bg-ash-700 hover:bg-ash-600 text-ash-100 flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs transition-all duration-200 hover:scale-105 active:scale-95 sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
 					>
 						<i class="fas fa-sign-out-alt text-xs sm:text-sm"></i>
 						<span class="hidden sm:inline">Logout</span>
@@ -47,9 +47,9 @@
 		{@render children()}
 	</main>
 
-	<footer class="bg-ash-800 border-t border-ash-700 flex-shrink-0">
-		<div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-3 sm:py-4">
-			<p class="text-center text-ash-500 text-xs sm:text-sm">
+	<footer class="bg-ash-800 border-ash-700 flex-shrink-0 border-t">
+		<div class="mx-auto max-w-7xl px-3 py-3 sm:px-4 sm:py-4 lg:px-8">
+			<p class="text-ash-500 text-center text-xs sm:text-sm">
 				Copyright &copy; {new Date().getFullYear()}
 				<a href="https://dansday.com" target="_blank" class="text-ash-200 hover:text-ash-300 transition-colors">dansday.com</a>. All rights reserved.
 			</p>

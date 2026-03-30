@@ -16,11 +16,17 @@
 	};
 </script>
 
-<div class="fixed top-3 sm:top-4 left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:right-4 z-50 flex flex-col gap-2 w-[calc(100%-1.5rem)] sm:w-auto sm:max-w-sm pointer-events-none">
+<div
+	class="pointer-events-none fixed top-3 left-1/2 z-50 flex w-[calc(100%-1.5rem)] -translate-x-1/2 flex-col gap-2 sm:top-4 sm:right-4 sm:left-auto sm:w-auto sm:max-w-sm sm:translate-x-0"
+>
 	{#each toasts as toast (toast.id)}
-		<div class="flex items-center gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 rounded-lg shadow-lg backdrop-blur-sm border text-sm sm:text-base {styles[toast.type]} pointer-events-auto">
-			<i class="fas {icons[toast.type]} text-lg sm:text-xl flex-shrink-0"></i>
-			<span class="break-words text-ash-100">{toast.message}</span>
+		<div
+			class="flex items-center gap-2 rounded-lg border px-4 py-3 text-sm shadow-lg backdrop-blur-sm sm:gap-3 sm:px-6 sm:py-4 sm:text-base {styles[
+				toast.type
+			]} pointer-events-auto"
+		>
+			<i class="fas {icons[toast.type]} flex-shrink-0 text-lg sm:text-xl"></i>
+			<span class="text-ash-100 break-words">{toast.message}</span>
 		</div>
 	{/each}
 </div>

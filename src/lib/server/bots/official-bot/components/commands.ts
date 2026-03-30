@@ -45,7 +45,9 @@ function init(client: any) {
 				const options = interaction.options?.data || [];
 				const optionsStr = options.map((opt: any) => `${opt.name}:${opt.value}`).join(', ') || 'none';
 
-				await logger.log(`⌨️  Command triggered: /${commandName} ${optionsStr ? `(${optionsStr})` : ''} by ${user.tag} (${user.id}) in ${interaction.guild?.name || 'DM'}`);
+				await logger.log(
+					`⌨️  Command triggered: /${commandName} ${optionsStr ? `(${optionsStr})` : ''} by ${user.tag} (${user.id}) in ${interaction.guild?.name || 'DM'}`
+				);
 
 				const result = await executeSlashCommand(interaction, client);
 

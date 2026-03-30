@@ -22,8 +22,5 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		} catch {}
 	}
 
-	return json(
-		{ success: true, message: 'Logged out successfully' },
-		{ headers: { 'Set-Cookie': clearSessionCookie() } }
-	);
+	return json({ success: true, message: 'Logged out successfully' }, { headers: { 'Set-Cookie': clearSessionCookie() } });
 };

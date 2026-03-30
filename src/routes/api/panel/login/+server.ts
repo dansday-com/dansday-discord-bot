@@ -15,7 +15,10 @@ export const POST: RequestHandler = async ({ request }) => {
 		const rateLimit = await checkRateLimit(ip, 'login', MAX_LOGIN_ATTEMPTS);
 
 		if (!rateLimit.allowed) {
-			return json({ success: false, error: 'Too many login attempts. Please try again later.', resetTime: new Date(rateLimit.resetTime).toISOString() }, { status: 429 });
+			return json(
+				{ success: false, error: 'Too many login attempts. Please try again later.', resetTime: new Date(rateLimit.resetTime).toISOString() },
+				{ status: 429 }
+			);
 		}
 
 		const body = await request.json();
@@ -57,7 +60,10 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		if (!account.email_verified) {
-			return json({ success: false, error: 'Email not verified. Please verify your email first.', requires_verification: true, account_id: account.id }, { status: 401 });
+			return json(
+				{ success: false, error: 'Email not verified. Please verify your email first.', requires_verification: true, account_id: account.id },
+				{ status: 401 }
+			);
 		}
 
 		if (account.is_frozen) {

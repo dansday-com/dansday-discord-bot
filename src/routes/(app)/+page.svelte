@@ -10,11 +10,13 @@
 
 	const officialBots = $derived(data.bots.filter((b: { bot_type: string }) => b.bot_type === 'official'));
 
-	const sortedBots = $derived([...data.bots].sort((a: { name: string; created_at: string }, b: { name: string; created_at: string }) => {
-		if (sortBy === 'name') return (a.name ?? '').localeCompare(b.name ?? '');
-		if (sortBy === 'newest') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-		return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-	}));
+	const sortedBots = $derived(
+		[...data.bots].sort((a: { name: string; created_at: string }, b: { name: string; created_at: string }) => {
+			if (sortBy === 'name') return (a.name ?? '').localeCompare(b.name ?? '');
+			if (sortBy === 'newest') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+			return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+		})
+	);
 
 	function statusColor(status: string) {
 		if (status === 'running') return 'bg-green-500';
@@ -39,32 +41,27 @@
 	<title>Dashboard | Dansday</title>
 </svelte:head>
 
-<AddBotModal
-	open={showAddBot}
-	{officialBots}
-	onclose={() => (showAddBot = false)}
-	onadded={() => invalidateAll()}
-/>
+<AddBotModal open={showAddBot} {officialBots} onclose={() => (showAddBot = false)} onadded={() => invalidateAll()} />
 
-<div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-8">
+<div class="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6 lg:px-8 lg:py-8">
 	<!-- Header row -->
-	<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
+	<div class="mb-4 flex flex-col gap-4 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
 		<div class="min-w-0">
-			<h2 class="text-xl sm:text-2xl font-bold text-ash-100 mb-1">
-				<i class="fas fa-robot mr-2 text-ash-200"></i>Bots List
+			<h2 class="text-ash-100 mb-1 text-xl font-bold sm:text-2xl">
+				<i class="fas fa-robot text-ash-200 mr-2"></i>Bots List
 			</h2>
 			<p class="text-ash-400 text-xs sm:text-sm">
 				{data.bots.length === 0 ? 'No bots yet' : `${data.bots.length} bot${data.bots.length === 1 ? '' : 's'}`}
 			</p>
 		</div>
 		<div class="flex items-center gap-2 sm:gap-3">
-			<label class="text-xs sm:text-sm text-ash-400 flex items-center gap-1 sm:gap-2 whitespace-nowrap">
+			<label class="text-ash-400 flex items-center gap-1 text-xs whitespace-nowrap sm:gap-2 sm:text-sm">
 				<i class="fas fa-filter"></i>
 				<span class="sm:inline">Sort by:</span>
 			</label>
 			<select
 				bind:value={sortBy}
-				class="bg-ash-800 border border-ash-600 text-ash-100 rounded-lg px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-ash-500 transition-all"
+				class="bg-ash-800 border-ash-600 text-ash-100 focus:ring-ash-500 rounded-lg border px-2 py-1.5 text-xs transition-all focus:ring-2 focus:outline-none sm:px-4 sm:py-2 sm:text-sm"
 			>
 				<option value="oldest">Oldest First</option>
 				<option value="newest">Newest First</option>
@@ -73,7 +70,7 @@
 			{#if data.user.account_type === 'admin'}
 				<button
 					onclick={() => (showAddBot = true)}
-					class="bg-ash-400 hover:bg-ash-500 text-ash-100 px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
+					class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs transition-all duration-200 hover:scale-105 active:scale-95 sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
 				>
 					<i class="fas fa-plus text-xs sm:text-sm"></i>
 					<span class="sm:inline">Add Bot</span>
@@ -84,56 +81,56 @@
 
 	<!-- Bot grid -->
 	{#if sortedBots.length === 0}
-		<div class="text-center py-8 sm:py-12">
-			<div class="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-ash-800 rounded-full mb-4">
-				<i class="fas fa-robot text-3xl sm:text-4xl text-ash-600"></i>
+		<div class="py-8 text-center sm:py-12">
+			<div class="bg-ash-800 mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full sm:h-20 sm:w-20">
+				<i class="fas fa-robot text-ash-600 text-3xl sm:text-4xl"></i>
 			</div>
-			<h3 class="text-lg sm:text-xl font-semibold text-ash-100 mb-2">No bots yet</h3>
-			<p class="text-ash-400 text-sm sm:text-base mb-4 sm:mb-6">Get started by adding your first bot</p>
+			<h3 class="text-ash-100 mb-2 text-lg font-semibold sm:text-xl">No bots yet</h3>
+			<p class="text-ash-400 mb-4 text-sm sm:mb-6 sm:text-base">Get started by adding your first bot</p>
 			{#if data.user.account_type === 'admin'}
 				<button
 					onclick={() => (showAddBot = true)}
-					class="bg-ash-400 hover:bg-ash-500 text-ash-100 px-4 sm:px-6 py-2 sm:py-3 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 inline-flex items-center gap-2 text-sm sm:text-base"
+					class="bg-ash-400 hover:bg-ash-500 text-ash-100 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm transition-all duration-200 hover:scale-105 active:scale-95 sm:px-6 sm:py-3 sm:text-base"
 				>
 					<i class="fas fa-plus"></i>Add Your First Bot
 				</button>
 			{/if}
 		</div>
 	{:else}
-		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+		<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
 			{#each sortedBots as bot (bot.id)}
 				<a
 					href="/bots/{bot.id}"
-					class="bg-ash-800 rounded-xl border border-ash-700 p-4 hover:border-ash-500 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 flex flex-col gap-3"
+					class="bg-ash-800 border-ash-700 hover:border-ash-500 flex flex-col gap-3 rounded-xl border p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
 				>
 					<!-- Bot icon + name -->
 					<div class="flex items-center gap-3">
-						<div class="w-12 h-12 rounded-full bg-ash-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+						<div class="bg-ash-600 flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-full">
 							{#if bot.bot_icon}
-								<img src={bot.bot_icon} alt={bot.name} class="w-full h-full object-cover" />
+								<img src={bot.bot_icon} alt={bot.name} class="h-full w-full object-cover" />
 							{:else}
 								<i class="fas fa-robot text-ash-300 text-lg"></i>
 							{/if}
 						</div>
 						<div class="min-w-0">
-							<p class="font-semibold text-ash-100 truncate text-sm sm:text-base">{bot.name || `Bot #${bot.id}`}</p>
-							<span class="text-xs text-ash-400 capitalize">{bot.bot_type}</span>
+							<p class="text-ash-100 truncate text-sm font-semibold sm:text-base">{bot.name || `Bot #${bot.id}`}</p>
+							<span class="text-ash-400 text-xs capitalize">{bot.bot_type}</span>
 						</div>
 					</div>
 
 					<!-- Status -->
 					<div class="flex items-center justify-between">
 						<div class="flex items-center gap-2">
-							<span class="w-2 h-2 rounded-full {statusColor(bot.status)}"></span>
-							<span class="text-xs text-ash-300 capitalize">{bot.status}</span>
+							<span class="h-2 w-2 rounded-full {statusColor(bot.status)}"></span>
+							<span class="text-ash-300 text-xs capitalize">{bot.status}</span>
 						</div>
 						{#if bot.status === 'running' && bot.uptime_ms}
-							<span class="text-xs text-ash-500">{formatUptime(bot.uptime_ms)}</span>
+							<span class="text-ash-500 text-xs">{formatUptime(bot.uptime_ms)}</span>
 						{/if}
 					</div>
 
 					{#if bot.bot_type === 'selfbot' && bot.connected_bot_name}
-						<p class="text-xs text-ash-500 truncate">
+						<p class="text-ash-500 truncate text-xs">
 							<i class="fas fa-link mr-1"></i>{bot.connected_bot_name}
 						</p>
 					{/if}

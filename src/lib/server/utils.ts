@@ -39,20 +39,20 @@ export function separateChannelsAndCategories(guildChannels: Map<string, any>) {
 		return false;
 	};
 
-	const allChannels = channelsArray.filter(ch => {
+	const allChannels = channelsArray.filter((ch) => {
 		const isThreadMethod = ch.isThread ? ch.isThread() : false;
 		const isThreadByType = isThreadType(ch.type);
 		return !isThreadMethod && !isThreadByType;
 	});
 
-	const categories = allChannels.filter(ch => isCategoryType(ch.type));
-	const channels = allChannels.filter(ch => isTextOrNewsType(ch.type) || isVoiceType(ch.type) || isStageType(ch.type));
+	const categories = allChannels.filter((ch) => isCategoryType(ch.type));
+	const channels = allChannels.filter((ch) => isTextOrNewsType(ch.type) || isVoiceType(ch.type) || isStageType(ch.type));
 
 	return { categories, channels };
 }
 
 export function mapCategoriesForSync(categories: any[]) {
-	return categories.map(cat => ({
+	return categories.map((cat) => ({
 		id: cat.id,
 		name: cat.name,
 		position: cat.position !== undefined ? cat.position : null
@@ -67,7 +67,7 @@ export function mapChannelsForSync(channels: any[]) {
 		13: 'GUILD_STAGE_VOICE'
 	};
 
-	return channels.map(ch => {
+	return channels.map((ch) => {
 		let typeValue = ch.type;
 		if (typeof ch.type === 'number') {
 			typeValue = typeMap[ch.type] || String(ch.type);
@@ -85,8 +85,7 @@ export function mapChannelsForSync(channels: any[]) {
 }
 
 export function formatTimestamp(timestamp = Date.now(), includeSeconds = false) {
-	return DateTime.fromMillis(timestamp, { zone: TIMEZONE })
-		.toFormat(includeSeconds ? 'dd/MM/yyyy HH:mm:ss' : 'dd/MM/yyyy HH:mm');
+	return DateTime.fromMillis(timestamp, { zone: TIMEZONE }).toFormat(includeSeconds ? 'dd/MM/yyyy HH:mm:ss' : 'dd/MM/yyyy HH:mm');
 }
 
 export function toMySQLDateTime(date?: string | Date) {
@@ -144,7 +143,10 @@ export function sanitizeString(input: unknown, maxLength = 255) {
 
 export function sanitizeUsername(username: unknown) {
 	if (typeof username !== 'string') return '';
-	return username.trim().replace(/[^a-zA-Z]/g, '').substring(0, 50);
+	return username
+		.trim()
+		.replace(/[^a-zA-Z]/g, '')
+		.substring(0, 50);
 }
 
 export function sanitizeEmail(email: unknown) {

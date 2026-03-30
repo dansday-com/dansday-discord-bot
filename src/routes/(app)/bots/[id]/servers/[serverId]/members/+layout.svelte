@@ -26,11 +26,11 @@
 </svelte:head>
 
 <!-- Sub-tab nav -->
-<div class="flex gap-1 bg-ash-800 border border-ash-700 rounded-xl p-1 mb-4 overflow-x-auto">
+<div class="bg-ash-800 border-ash-700 mb-4 flex gap-1 overflow-x-auto rounded-xl border p-1">
 	{#each tabs as tab}
 		<a
 			href={base + tab.href}
-			class="px-3 py-1.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap flex-shrink-0
+			class="flex-shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-all
 				{isActive(tab.href) ? 'bg-ash-600 text-ash-100' : 'text-ash-400 hover:text-ash-200 hover:bg-ash-700'}"
 		>
 			{tab.label}

@@ -13,23 +13,23 @@
 		onchange(next);
 	}
 
-	function add() { onchange([...values, '']); }
-	function remove(i: number) { onchange(values.filter((_, idx) => idx !== i)); }
+	function add() {
+		onchange([...values, '']);
+	}
+	function remove(i: number) {
+		onchange(values.filter((_, idx) => idx !== i));
+	}
 </script>
 
 <div>
-	<div class="flex items-center justify-between mb-2">
-		<label class="text-xs font-medium text-ash-300">{label}</label>
-		<button
-			type="button"
-			onclick={add}
-			class="text-xs px-2 py-1 rounded bg-ash-700 hover:bg-ash-600 text-ash-200 transition-colors flex items-center gap-1"
-		>
+	<div class="mb-2 flex items-center justify-between">
+		<label class="text-ash-300 text-xs font-medium">{label}</label>
+		<button type="button" onclick={add} class="bg-ash-700 hover:bg-ash-600 text-ash-200 flex items-center gap-1 rounded px-2 py-1 text-xs transition-colors">
 			<i class="fas fa-plus text-xs"></i>Add
 		</button>
 	</div>
 	{#if values.length === 0}
-		<p class="text-xs text-ash-500 italic">No messages yet. Click Add to create one.</p>
+		<p class="text-ash-500 text-xs italic">No messages yet. Click Add to create one.</p>
 	{:else}
 		<div class="space-y-2">
 			{#each values as msg, i}
@@ -39,12 +39,12 @@
 						oninput={(e) => update(i, (e.target as HTMLTextAreaElement).value)}
 						rows={2}
 						{placeholder}
-						class="flex-1 px-3 py-2 bg-ash-700 border border-ash-600 rounded-lg text-ash-100 placeholder-ash-500 text-sm focus:outline-none focus:ring-2 focus:ring-ash-500 resize-none"
+						class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 flex-1 resize-none rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
 					></textarea>
 					<button
 						type="button"
 						onclick={() => remove(i)}
-						class="px-2 py-1 rounded bg-red-900 hover:bg-red-800 text-red-300 text-xs self-start mt-1 transition-colors"
+						class="mt-1 self-start rounded bg-red-900 px-2 py-1 text-xs text-red-300 transition-colors hover:bg-red-800"
 					>
 						<i class="fas fa-trash"></i>
 					</button>

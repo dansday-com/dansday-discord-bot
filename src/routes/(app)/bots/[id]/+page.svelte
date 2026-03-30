@@ -9,9 +9,7 @@
 	let page = $state(1);
 
 	const totalPages = $derived(Math.ceil(data.servers.length / SERVERS_PER_PAGE));
-	const pagedServers = $derived(
-		data.servers.slice((page - 1) * SERVERS_PER_PAGE, page * SERVERS_PER_PAGE)
-	);
+	const pagedServers = $derived(data.servers.slice((page - 1) * SERVERS_PER_PAGE, page * SERVERS_PER_PAGE));
 
 	function statusColor(status: string) {
 		if (status === 'running') return 'bg-green-500';
@@ -93,34 +91,34 @@
 	<title>{data.bot.name || `Bot #${data.bot.id}`} | Dansday</title>
 </svelte:head>
 
-<div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-8">
+<div class="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6 lg:px-8 lg:py-8">
 	<!-- Back -->
-	<a href="/" class="inline-flex items-center gap-2 text-ash-400 hover:text-ash-100 transition-colors text-sm mb-6">
+	<a href="/" class="text-ash-400 hover:text-ash-100 mb-6 inline-flex items-center gap-2 text-sm transition-colors">
 		<i class="fas fa-arrow-left"></i>Back to Dashboard
 	</a>
 
 	<!-- Bot Header -->
-	<div class="bg-ash-800 rounded-xl border border-ash-700 p-4 sm:p-6 mb-4 sm:mb-6">
-		<div class="flex flex-col sm:flex-row sm:items-start gap-4">
+	<div class="bg-ash-800 border-ash-700 mb-4 rounded-xl border p-4 sm:mb-6 sm:p-6">
+		<div class="flex flex-col gap-4 sm:flex-row sm:items-start">
 			<!-- Icon + Name -->
-			<div class="flex items-center gap-4 flex-1 min-w-0">
-				<div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-ash-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+			<div class="flex min-w-0 flex-1 items-center gap-4">
+				<div class="bg-ash-600 flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-full sm:h-20 sm:w-20">
 					{#if data.bot.bot_icon}
-						<img src={data.bot.bot_icon} alt={data.bot.name} class="w-full h-full object-cover" />
+						<img src={data.bot.bot_icon} alt={data.bot.name} class="h-full w-full object-cover" />
 					{:else}
 						<i class="fas fa-robot text-ash-300 text-2xl sm:text-3xl"></i>
 					{/if}
 				</div>
 				<div class="min-w-0">
-					<h2 class="text-xl sm:text-2xl font-bold text-ash-100 truncate">
+					<h2 class="text-ash-100 truncate text-xl font-bold sm:text-2xl">
 						{data.bot.name || `Bot #${data.bot.id}`}
 					</h2>
-					<div class="flex items-center gap-2 mt-1 flex-wrap">
-						<span class="text-xs px-2 py-0.5 rounded-full bg-ash-700 text-ash-300 capitalize">
+					<div class="mt-1 flex flex-wrap items-center gap-2">
+						<span class="bg-ash-700 text-ash-300 rounded-full px-2 py-0.5 text-xs capitalize">
 							{data.bot.bot_type}
 						</span>
 						{#if data.bot.bot_type === 'official'}
-							<span class="text-xs px-2 py-0.5 rounded-full {data.bot.is_testing ? 'bg-yellow-900 text-yellow-300' : 'bg-ash-600 text-ash-200'}">
+							<span class="rounded-full px-2 py-0.5 text-xs {data.bot.is_testing ? 'bg-yellow-900 text-yellow-300' : 'bg-ash-600 text-ash-200'}">
 								{data.bot.is_testing ? 'Testing' : 'Production'}
 							</span>
 						{/if}
@@ -130,11 +128,11 @@
 
 			<!-- Admin Actions -->
 			{#if isAdmin}
-				<div class="flex items-center gap-2 flex-wrap flex-shrink-0">
+				<div class="flex flex-shrink-0 flex-wrap items-center gap-2">
 					{#if canStart}
 						<button
 							onclick={() => botAction('start')}
-							class="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-green-800 hover:bg-green-700 text-green-200 text-sm transition-colors"
+							class="flex items-center gap-1.5 rounded-lg bg-green-800 px-3 py-2 text-sm text-green-200 transition-colors hover:bg-green-700"
 						>
 							<i class="fas fa-play text-xs"></i>Start
 						</button>
@@ -142,13 +140,13 @@
 					{#if canStop}
 						<button
 							onclick={() => botAction('stop')}
-							class="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-ash-700 hover:bg-ash-600 text-ash-200 text-sm transition-colors"
+							class="bg-ash-700 hover:bg-ash-600 text-ash-200 flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition-colors"
 						>
 							<i class="fas fa-stop text-xs"></i>Stop
 						</button>
 						<button
 							onclick={() => botAction('restart')}
-							class="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-yellow-900 hover:bg-yellow-800 text-yellow-200 text-sm transition-colors"
+							class="flex items-center gap-1.5 rounded-lg bg-yellow-900 px-3 py-2 text-sm text-yellow-200 transition-colors hover:bg-yellow-800"
 						>
 							<i class="fas fa-rotate-right text-xs"></i>Restart
 						</button>
@@ -156,16 +154,13 @@
 					{#if data.bot.bot_type === 'official'}
 						<button
 							onclick={toggleMode}
-							class="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-ash-700 hover:bg-ash-600 text-ash-200 text-sm transition-colors"
+							class="bg-ash-700 hover:bg-ash-600 text-ash-200 flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition-colors"
 						>
 							<i class="fas fa-toggle-{data.bot.is_testing ? 'on' : 'off'} text-xs"></i>
 							{data.bot.is_testing ? 'Testing' : 'Production'}
 						</button>
 					{/if}
-					<button
-						onclick={deleteBot}
-						class="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-900 hover:bg-red-800 text-red-300 text-sm transition-colors"
-					>
+					<button onclick={deleteBot} class="flex items-center gap-1.5 rounded-lg bg-red-900 px-3 py-2 text-sm text-red-300 transition-colors hover:bg-red-800">
 						<i class="fas fa-trash text-xs"></i>Delete
 					</button>
 				</div>
@@ -173,12 +168,12 @@
 		</div>
 
 		<!-- Status Info Grid -->
-		<div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
+		<div class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
 			<!-- Status -->
 			<div class="bg-ash-700 rounded-lg p-3">
-				<p class="text-xs text-ash-400 mb-1">Status</p>
+				<p class="text-ash-400 mb-1 text-xs">Status</p>
 				<div class="flex items-center gap-2">
-					<span class="w-2 h-2 rounded-full {statusColor(data.bot.status)}"></span>
+					<span class="h-2 w-2 rounded-full {statusColor(data.bot.status)}"></span>
 					<span class="text-sm font-medium capitalize {statusTextColor(data.bot.status)}">{data.bot.status}</span>
 				</div>
 			</div>
@@ -186,79 +181,76 @@
 			<!-- Uptime (running only) -->
 			{#if isRunning && data.bot.uptime_ms}
 				<div class="bg-ash-700 rounded-lg p-3">
-					<p class="text-xs text-ash-400 mb-1">Uptime</p>
-					<p class="text-sm font-medium text-ash-100">{formatUptime(data.bot.uptime_ms)}</p>
+					<p class="text-ash-400 mb-1 text-xs">Uptime</p>
+					<p class="text-ash-100 text-sm font-medium">{formatUptime(data.bot.uptime_ms)}</p>
 				</div>
 			{/if}
 
 			<!-- PID (official + running) -->
 			{#if data.bot.bot_type === 'official' && data.bot.process_id}
 				<div class="bg-ash-700 rounded-lg p-3">
-					<p class="text-xs text-ash-400 mb-1">Process ID</p>
-					<p class="text-sm font-medium text-ash-100">{data.bot.process_id}</p>
+					<p class="text-ash-400 mb-1 text-xs">Process ID</p>
+					<p class="text-ash-100 text-sm font-medium">{data.bot.process_id}</p>
 				</div>
 			{/if}
 
 			<!-- Port (official) -->
 			{#if data.bot.bot_type === 'official' && data.bot.port}
 				<div class="bg-ash-700 rounded-lg p-3">
-					<p class="text-xs text-ash-400 mb-1">Port</p>
-					<p class="text-sm font-medium text-ash-100">{data.bot.port}</p>
+					<p class="text-ash-400 mb-1 text-xs">Port</p>
+					<p class="text-ash-100 text-sm font-medium">{data.bot.port}</p>
 				</div>
 			{/if}
 
 			<!-- Connected To (selfbot) -->
 			{#if data.bot.bot_type === 'selfbot' && data.bot.connected_bot_name}
 				<div class="bg-ash-700 rounded-lg p-3">
-					<p class="text-xs text-ash-400 mb-1">Connected To</p>
-					<p class="text-sm font-medium text-ash-100 truncate">{data.bot.connected_bot_name}</p>
+					<p class="text-ash-400 mb-1 text-xs">Connected To</p>
+					<p class="text-ash-100 truncate text-sm font-medium">{data.bot.connected_bot_name}</p>
 				</div>
 			{/if}
 
 			<!-- Servers count -->
 			<div class="bg-ash-700 rounded-lg p-3">
-				<p class="text-xs text-ash-400 mb-1">Servers</p>
-				<p class="text-sm font-medium text-ash-100">{data.servers.length}</p>
+				<p class="text-ash-400 mb-1 text-xs">Servers</p>
+				<p class="text-ash-100 text-sm font-medium">{data.servers.length}</p>
 			</div>
 		</div>
 	</div>
 
 	<!-- Server List -->
-	<div class="bg-ash-800 rounded-xl border border-ash-700 p-4 sm:p-6">
-		<div class="flex items-center justify-between mb-4">
-			<h3 class="text-lg font-semibold text-ash-100">
-				<i class="fas fa-server mr-2 text-ash-300"></i>Servers
+	<div class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-6">
+		<div class="mb-4 flex items-center justify-between">
+			<h3 class="text-ash-100 text-lg font-semibold">
+				<i class="fas fa-server text-ash-300 mr-2"></i>Servers
 			</h3>
 			{#if data.servers.length > 0}
-				<p class="text-xs text-ash-500">
+				<p class="text-ash-500 text-xs">
 					{Math.min((page - 1) * SERVERS_PER_PAGE + 1, data.servers.length)}–{Math.min(page * SERVERS_PER_PAGE, data.servers.length)} of {data.servers.length}
 				</p>
 			{/if}
 		</div>
 
 		{#if data.servers.length === 0}
-			<div class="text-center py-8">
-				<i class="fas fa-server text-3xl text-ash-600 mb-3"></i>
+			<div class="py-8 text-center">
+				<i class="fas fa-server text-ash-600 mb-3 text-3xl"></i>
 				<p class="text-ash-400 text-sm">No servers yet</p>
 			</div>
 		{:else}
-			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+			<div class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
 				{#each pagedServers as server (server.id)}
 					{#if data.bot.bot_type === 'official'}
-						<a
-							href="/bots/{data.bot.id}/servers/{server.id}"
-							class="bg-ash-700 rounded-lg p-3 hover:bg-ash-600 transition-colors flex items-center gap-3"
-						>
-							<div class="w-10 h-10 rounded-full bg-ash-500 flex items-center justify-center overflow-hidden flex-shrink-0">
+						<a href="/bots/{data.bot.id}/servers/{server.id}" class="bg-ash-700 hover:bg-ash-600 flex items-center gap-3 rounded-lg p-3 transition-colors">
+							<div class="bg-ash-500 flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-full">
 								{#if server.server_icon}
-									<img src={server.server_icon} alt={server.name} class="w-full h-full object-cover" />
+									<img src={server.server_icon} alt={server.name} class="h-full w-full object-cover" />
 								{:else}
 									<i class="fas fa-server text-ash-300 text-sm"></i>
 								{/if}
 							</div>
 							<div class="min-w-0 flex-1">
-								<p class="text-sm font-medium text-ash-100 truncate">{server.name}</p>
-								<div class="flex items-center gap-3 mt-0.5 text-xs text-ash-400">
+								<p class="text-ash-100 truncate text-sm font-medium">{server.name}</p>
+								<div class="text-ash-400 mt-0.5 flex items-center gap-3 text-xs">
 									<span><i class="fas fa-users mr-1"></i>{server.total_members ?? 0}</span>
 									{#if server.boost_level > 0}
 										<span><i class="fas fa-gem mr-1 text-purple-400"></i>{server.boost_level}</span>
@@ -266,20 +258,20 @@
 									<span><i class="fas fa-hashtag mr-1"></i>{server.total_channels ?? 0}</span>
 								</div>
 							</div>
-							<i class="fas fa-chevron-right text-ash-500 text-xs flex-shrink-0"></i>
+							<i class="fas fa-chevron-right text-ash-500 flex-shrink-0 text-xs"></i>
 						</a>
 					{:else}
-						<div class="bg-ash-700 rounded-lg p-3 flex items-center gap-3 opacity-75">
-							<div class="w-10 h-10 rounded-full bg-ash-500 flex items-center justify-center overflow-hidden flex-shrink-0">
+						<div class="bg-ash-700 flex items-center gap-3 rounded-lg p-3 opacity-75">
+							<div class="bg-ash-500 flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-full">
 								{#if server.server_icon}
-									<img src={server.server_icon} alt={server.name} class="w-full h-full object-cover" />
+									<img src={server.server_icon} alt={server.name} class="h-full w-full object-cover" />
 								{:else}
 									<i class="fas fa-server text-ash-300 text-sm"></i>
 								{/if}
 							</div>
 							<div class="min-w-0 flex-1">
-								<p class="text-sm font-medium text-ash-100 truncate">{server.name}</p>
-								<div class="flex items-center gap-3 mt-0.5 text-xs text-ash-400">
+								<p class="text-ash-100 truncate text-sm font-medium">{server.name}</p>
+								<div class="text-ash-400 mt-0.5 flex items-center gap-3 text-xs">
 									<span><i class="fas fa-users mr-1"></i>{server.total_members ?? 0}</span>
 									{#if server.boost_level > 0}
 										<span><i class="fas fa-gem mr-1 text-purple-400"></i>{server.boost_level}</span>
@@ -298,15 +290,15 @@
 					<button
 						onclick={() => (page = Math.max(1, page - 1))}
 						disabled={page === 1}
-						class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-ash-700 hover:bg-ash-600 text-ash-200 text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+						class="bg-ash-700 hover:bg-ash-600 text-ash-200 flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40"
 					>
 						<i class="fas fa-chevron-left text-xs"></i>Previous
 					</button>
-					<span class="text-sm text-ash-400">Page {page} of {totalPages}</span>
+					<span class="text-ash-400 text-sm">Page {page} of {totalPages}</span>
 					<button
 						onclick={() => (page = Math.min(totalPages, page + 1))}
 						disabled={page === totalPages}
-						class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-ash-700 hover:bg-ash-600 text-ash-200 text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+						class="bg-ash-700 hover:bg-ash-600 text-ash-200 flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40"
 					>
 						Next<i class="fas fa-chevron-right text-xs"></i>
 					</button>

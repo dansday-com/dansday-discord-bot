@@ -104,9 +104,18 @@
 	}
 
 	async function sendEmbed() {
-		if (!title.trim()) { showToast('Title is required', 'error'); return; }
-		if (selectedChannels.length === 0) { showToast('Select at least one channel', 'error'); return; }
-		if (totalChars > MAX_TOTAL) { showToast('Total character limit exceeded', 'error'); return; }
+		if (!title.trim()) {
+			showToast('Title is required', 'error');
+			return;
+		}
+		if (selectedChannels.length === 0) {
+			showToast('Select at least one channel', 'error');
+			return;
+		}
+		if (totalChars > MAX_TOTAL) {
+			showToast('Total character limit exceeded', 'error');
+			return;
+		}
 
 		sending = true;
 		try {
@@ -144,18 +153,18 @@
 	<title>Embed Builder | Dansday</title>
 </svelte:head>
 
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
 	<!-- Form -->
 	<div class="space-y-4">
-		<div class="bg-ash-800 rounded-xl border border-ash-700 p-4 sm:p-5">
-			<h3 class="text-sm font-semibold text-ash-300 mb-4 flex items-center gap-2">
+		<div class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-5">
+			<h3 class="text-ash-300 mb-4 flex items-center gap-2 text-sm font-semibold">
 				<i class="fas fa-pen text-ash-400"></i>Embed Content
 			</h3>
 
 			<!-- Title -->
 			<div class="mb-4">
-				<div class="flex justify-between mb-1">
-					<label class="text-xs font-medium text-ash-300">Title <span class="text-ash-200">*</span></label>
+				<div class="mb-1 flex justify-between">
+					<label class="text-ash-300 text-xs font-medium">Title <span class="text-ash-200">*</span></label>
 					<span class="text-xs {charWarning(title.length, MAX_TITLE)}">{title.length}/{MAX_TITLE}</span>
 				</div>
 				<input
@@ -163,14 +172,14 @@
 					bind:value={title}
 					maxlength={MAX_TITLE}
 					placeholder="Embed title..."
-					class="w-full px-3 py-2 bg-ash-700 border border-ash-600 rounded-lg text-ash-100 placeholder-ash-500 text-sm focus:outline-none focus:ring-2 focus:ring-ash-500"
+					class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
 				/>
 			</div>
 
 			<!-- Description -->
 			<div class="mb-4">
-				<div class="flex justify-between mb-1">
-					<label class="text-xs font-medium text-ash-300">Description</label>
+				<div class="mb-1 flex justify-between">
+					<label class="text-ash-300 text-xs font-medium">Description</label>
 					<span class="text-xs {charWarning(description.length, MAX_DESC)}">{description.length}/{MAX_DESC}</span>
 				</div>
 				<textarea
@@ -178,14 +187,14 @@
 					maxlength={MAX_DESC}
 					rows={4}
 					placeholder="Embed description..."
-					class="w-full px-3 py-2 bg-ash-700 border border-ash-600 rounded-lg text-ash-100 placeholder-ash-500 text-sm focus:outline-none focus:ring-2 focus:ring-ash-500 resize-none"
+					class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full resize-none rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
 				></textarea>
 			</div>
 
 			<!-- Footer -->
 			<div class="mb-4">
-				<div class="flex justify-between mb-1">
-					<label class="text-xs font-medium text-ash-300">Footer</label>
+				<div class="mb-1 flex justify-between">
+					<label class="text-ash-300 text-xs font-medium">Footer</label>
 					<span class="text-xs {charWarning(footer.length, MAX_FOOTER)}">{footer.length}/{MAX_FOOTER}</span>
 				</div>
 				<input
@@ -193,58 +202,66 @@
 					bind:value={footer}
 					maxlength={MAX_FOOTER}
 					placeholder="Footer text..."
-					class="w-full px-3 py-2 bg-ash-700 border border-ash-600 rounded-lg text-ash-100 placeholder-ash-500 text-sm focus:outline-none focus:ring-2 focus:ring-ash-500"
+					class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
 				/>
 			</div>
 
 			<!-- Color -->
 			<div class="mb-4">
-				<label class="text-xs font-medium text-ash-300 block mb-1">Color</label>
+				<label class="text-ash-300 mb-1 block text-xs font-medium">Color</label>
 				<div class="flex items-center gap-2">
 					<input
 						type="color"
 						value={color}
 						oninput={(e) => syncColor((e.target as HTMLInputElement).value)}
-						class="w-10 h-9 rounded cursor-pointer bg-ash-700 border border-ash-600"
+						class="bg-ash-700 border-ash-600 h-9 w-10 cursor-pointer rounded border"
 					/>
 					<input
 						type="text"
 						value={colorHex}
 						oninput={(e) => syncColorHex((e.target as HTMLInputElement).value)}
 						placeholder="#5865F2"
-						class="flex-1 px-3 py-2 bg-ash-700 border border-ash-600 rounded-lg text-ash-100 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ash-500"
+						class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 flex-1 rounded-lg border px-3 py-2 font-mono text-sm focus:ring-2 focus:outline-none"
 					/>
 				</div>
 			</div>
 
 			<!-- Image -->
 			<div class="mb-4">
-				<label class="text-xs font-medium text-ash-300 block mb-2">Image</label>
-				<div class="flex gap-2 mb-2">
+				<label class="text-ash-300 mb-2 block text-xs font-medium">Image</label>
+				<div class="mb-2 flex gap-2">
 					<button
 						onclick={() => (imageMode = 'url')}
-						class="flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors
-							{imageMode === 'url' ? 'bg-ash-500 text-ash-100' : 'bg-ash-700 text-ash-400 hover:text-ash-200'}"
-					>URL</button>
+						class="flex-1 rounded-lg py-1.5 text-xs font-medium transition-colors
+							{imageMode === 'url' ? 'bg-ash-500 text-ash-100' : 'bg-ash-700 text-ash-400 hover:text-ash-200'}">URL</button
+					>
 					<button
 						onclick={() => (imageMode = 'upload')}
-						class="flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors
-							{imageMode === 'upload' ? 'bg-ash-500 text-ash-100' : 'bg-ash-700 text-ash-400 hover:text-ash-200'}"
-					>Upload</button>
+						class="flex-1 rounded-lg py-1.5 text-xs font-medium transition-colors
+							{imageMode === 'upload' ? 'bg-ash-500 text-ash-100' : 'bg-ash-700 text-ash-400 hover:text-ash-200'}">Upload</button
+					>
 				</div>
 				{#if imageMode === 'url'}
 					<input
 						type="url"
 						bind:value={imageUrl}
 						placeholder="https://..."
-						class="w-full px-3 py-2 bg-ash-700 border border-ash-600 rounded-lg text-ash-100 placeholder-ash-500 text-sm focus:outline-none focus:ring-2 focus:ring-ash-500"
+						class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
 					/>
 				{:else}
-					<input type="file" accept="image/*" onchange={handleImageUpload} class="w-full text-sm text-ash-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:bg-ash-600 file:text-ash-100 hover:file:bg-ash-500" />
+					<input
+						type="file"
+						accept="image/*"
+						onchange={handleImageUpload}
+						class="text-ash-300 file:bg-ash-600 file:text-ash-100 hover:file:bg-ash-500 w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:px-3 file:py-1.5 file:text-xs"
+					/>
 					{#if imagePreview}
-						<div class="mt-2 relative inline-block">
+						<div class="relative mt-2 inline-block">
 							<img src={imagePreview} alt="Preview" class="h-20 rounded-lg object-cover" />
-							<button onclick={deleteUploadedImage} class="absolute -top-1 -right-1 w-5 h-5 bg-red-900 rounded-full flex items-center justify-center text-red-300 text-xs hover:bg-red-800">
+							<button
+								onclick={deleteUploadedImage}
+								class="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-900 text-xs text-red-300 hover:bg-red-800"
+							>
 								<i class="fas fa-times"></i>
 							</button>
 						</div>
@@ -257,39 +274,39 @@
 		</div>
 
 		<!-- Channels & Roles -->
-		<div class="bg-ash-800 rounded-xl border border-ash-700 p-4 sm:p-5">
-			<h3 class="text-sm font-semibold text-ash-300 mb-4 flex items-center gap-2">
+		<div class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-5">
+			<h3 class="text-ash-300 mb-4 flex items-center gap-2 text-sm font-semibold">
 				<i class="fas fa-paper-plane text-ash-400"></i>Send To
 			</h3>
 
 			<!-- Channels -->
 			<div class="mb-4">
-				<label class="text-xs font-medium text-ash-300 block mb-2">Channels <span class="text-ash-200">*</span></label>
+				<label class="text-ash-300 mb-2 block text-xs font-medium">Channels <span class="text-ash-200">*</span></label>
 				<button
 					onclick={() => (showChannelPicker = !showChannelPicker)}
-					class="w-full px-3 py-2 bg-ash-700 border border-ash-600 rounded-lg text-left text-sm text-ash-300 hover:border-ash-500 transition-colors"
+					class="bg-ash-700 border-ash-600 text-ash-300 hover:border-ash-500 w-full rounded-lg border px-3 py-2 text-left text-sm transition-colors"
 				>
 					{selectedChannels.length === 0 ? 'Select channels...' : `${selectedChannels.length} channel${selectedChannels.length !== 1 ? 's' : ''} selected`}
 					<i class="fas fa-chevron-{showChannelPicker ? 'up' : 'down'} float-right mt-0.5 text-xs"></i>
 				</button>
 				{#if showChannelPicker}
-					<div class="mt-1 bg-ash-700 border border-ash-600 rounded-lg overflow-hidden max-h-48 overflow-y-auto">
+					<div class="bg-ash-700 border-ash-600 mt-1 max-h-48 overflow-hidden overflow-y-auto rounded-lg border">
 						{#each data.channels as ch}
 							<button
 								onclick={() => toggleChannel(ch.id)}
-								class="w-full px-3 py-2 text-left text-sm hover:bg-ash-600 flex items-center gap-2 transition-colors
+								class="hover:bg-ash-600 flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors
 									{selectedChannels.includes(ch.id) ? 'text-ash-100' : 'text-ash-300'}"
 							>
-								<i class="fas {selectedChannels.includes(ch.id) ? 'fa-check-square text-ash-200' : 'fa-square text-ash-600'} text-xs w-3"></i>
+								<i class="fas {selectedChannels.includes(ch.id) ? 'fa-check-square text-ash-200' : 'fa-square text-ash-600'} w-3 text-xs"></i>
 								<span class="text-ash-500">#</span>{ch.name}
 							</button>
 						{/each}
 					</div>
 				{/if}
 				{#if selectedChannels.length > 0}
-					<div class="flex flex-wrap gap-1 mt-2">
+					<div class="mt-2 flex flex-wrap gap-1">
 						{#each selectedChannels as id}
-							<span class="text-xs bg-ash-700 text-ash-200 px-2 py-0.5 rounded flex items-center gap-1">
+							<span class="bg-ash-700 text-ash-200 flex items-center gap-1 rounded px-2 py-0.5 text-xs">
 								<span class="text-ash-500">#</span>{channelName(id)}
 								<button onclick={() => toggleChannel(id)} class="text-ash-500 hover:text-ash-300 ml-0.5"><i class="fas fa-times text-xs"></i></button>
 							</span>
@@ -301,24 +318,24 @@
 			<!-- Role Mentions -->
 			{#if (data.roles as unknown[]).length > 0}
 				<div class="mb-4">
-					<label class="text-xs font-medium text-ash-300 block mb-2">Role Mentions</label>
+					<label class="text-ash-300 mb-2 block text-xs font-medium">Role Mentions</label>
 					<button
 						onclick={() => (showRolePicker = !showRolePicker)}
-						class="w-full px-3 py-2 bg-ash-700 border border-ash-600 rounded-lg text-left text-sm text-ash-300 hover:border-ash-500 transition-colors"
+						class="bg-ash-700 border-ash-600 text-ash-300 hover:border-ash-500 w-full rounded-lg border px-3 py-2 text-left text-sm transition-colors"
 					>
 						{selectedRoles.length === 0 ? 'Select roles to mention...' : `${selectedRoles.length} role${selectedRoles.length !== 1 ? 's' : ''} selected`}
 						<i class="fas fa-chevron-{showRolePicker ? 'up' : 'down'} float-right mt-0.5 text-xs"></i>
 					</button>
 					{#if showRolePicker}
-						<div class="mt-1 bg-ash-700 border border-ash-600 rounded-lg overflow-hidden max-h-48 overflow-y-auto">
-							{#each (data.roles as { id: string; name: string; color: string }[]) as role}
+						<div class="bg-ash-700 border-ash-600 mt-1 max-h-48 overflow-hidden overflow-y-auto rounded-lg border">
+							{#each data.roles as { id: string; name: string; color: string }[] as role}
 								<button
 									onclick={() => toggleRole(role.id)}
-									class="w-full px-3 py-2 text-left text-sm hover:bg-ash-600 flex items-center gap-2 transition-colors"
+									class="hover:bg-ash-600 flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors"
 								>
-									<i class="fas {selectedRoles.includes(role.id) ? 'fa-check-square text-ash-200' : 'fa-square text-ash-600'} text-xs w-3"></i>
-									<span class="w-2 h-2 rounded-full flex-shrink-0" style="background:{role.color && role.color !== '#000000' ? role.color : '#6b7280'}"></span>
-									<span class="{selectedRoles.includes(role.id) ? 'text-ash-100' : 'text-ash-300'}">{role.name}</span>
+									<i class="fas {selectedRoles.includes(role.id) ? 'fa-check-square text-ash-200' : 'fa-square text-ash-600'} w-3 text-xs"></i>
+									<span class="h-2 w-2 flex-shrink-0 rounded-full" style="background:{role.color && role.color !== '#000000' ? role.color : '#6b7280'}"></span>
+									<span class={selectedRoles.includes(role.id) ? 'text-ash-100' : 'text-ash-300'}>{role.name}</span>
 								</button>
 							{/each}
 						</div>
@@ -329,7 +346,7 @@
 			<button
 				onclick={sendEmbed}
 				disabled={sending}
-				class="w-full py-2.5 bg-ash-500 hover:bg-ash-400 text-ash-100 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+				class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:cursor-not-allowed disabled:opacity-50"
 			>
 				{#if sending}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas fa-paper-plane"></i>{/if}
 				{sending ? 'Sending...' : 'Send Embed'}
@@ -338,24 +355,21 @@
 	</div>
 
 	<!-- Preview -->
-	<div class="bg-ash-800 rounded-xl border border-ash-700 p-4 sm:p-5 lg:sticky lg:top-4 self-start">
-		<h3 class="text-sm font-semibold text-ash-300 mb-4 flex items-center gap-2">
+	<div class="bg-ash-800 border-ash-700 self-start rounded-xl border p-4 sm:p-5 lg:sticky lg:top-4">
+		<h3 class="text-ash-300 mb-4 flex items-center gap-2 text-sm font-semibold">
 			<i class="fas fa-eye text-ash-400"></i>Preview
 		</h3>
 
 		<!-- Discord-style embed preview -->
-		<div class="bg-[#313338] rounded-lg p-3">
-			<div
-				class="rounded-r-lg border-l-4 pl-3 py-2 bg-[#2b2d31]"
-				style="border-color: {color}"
-			>
+		<div class="rounded-lg bg-[#313338] p-3">
+			<div class="rounded-r-lg border-l-4 bg-[#2b2d31] py-2 pl-3" style="border-color: {color}">
 				{#if title}
-					<p class="text-white font-semibold text-sm mb-1">{title}</p>
+					<p class="mb-1 text-sm font-semibold text-white">{title}</p>
 				{:else}
-					<p class="text-[#6b7280] text-sm italic mb-1">No title yet...</p>
+					<p class="mb-1 text-sm text-[#6b7280] italic">No title yet...</p>
 				{/if}
 				{#if description}
-					<p class="text-[#dbdee1] text-xs whitespace-pre-wrap leading-relaxed">{description}</p>
+					<p class="text-xs leading-relaxed whitespace-pre-wrap text-[#dbdee1]">{description}</p>
 				{/if}
 				{#if imageMode === 'url' && imageUrl}
 					<img src={imageUrl} alt="Embed" class="mt-2 max-w-full rounded" />
@@ -363,19 +377,25 @@
 					<img src={imagePreview} alt="Embed" class="mt-2 max-w-full rounded" />
 				{/if}
 				{#if footer}
-					<p class="text-[#949ba4] text-xs mt-2 pt-2 border-t border-[#3d4045]">{footer}</p>
+					<p class="mt-2 border-t border-[#3d4045] pt-2 text-xs text-[#949ba4]">{footer}</p>
 				{/if}
 			</div>
 			{#if selectedRoles.length > 0}
-				<p class="text-xs text-[#949ba4] mt-2">
-					{selectedRoles.map(roleName).map((n) => `@${n}`).join(' ')}
+				<p class="mt-2 text-xs text-[#949ba4]">
+					{selectedRoles
+						.map(roleName)
+						.map((n) => `@${n}`)
+						.join(' ')}
 				</p>
 			{/if}
 		</div>
 
 		{#if selectedChannels.length > 0}
-			<div class="mt-3 text-xs text-ash-500">
-				Sending to: {selectedChannels.map(channelName).map((n) => `#${n}`).join(', ')}
+			<div class="text-ash-500 mt-3 text-xs">
+				Sending to: {selectedChannels
+					.map(channelName)
+					.map((n) => `#${n}`)
+					.join(', ')}
 			</div>
 		{/if}
 	</div>

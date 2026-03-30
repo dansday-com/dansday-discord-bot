@@ -59,7 +59,7 @@ let pool: any = null;
 function getPool() {
 	if (!pool) {
 		const tz = process.env.TIMEZONE;
-		const tzOffset = tz === 'Asia/Jakarta' ? '+07:00' : (tz === 'UTC' ? 'Z' : 'Z');
+		const tzOffset = tz === 'Asia/Jakarta' ? '+07:00' : tz === 'UTC' ? 'Z' : 'Z';
 		pool = mysql.createPool({
 			...connectionConfig,
 			waitForConnections: true,
@@ -107,9 +107,10 @@ async function runMigration() {
 		}
 
 		logger.log('✅ Database schema created successfully!');
-		logger.log('📊 Tables created: panel, panel_accounts, panel_invite_links, bots, servers, server_categories, server_channels, server_roles, server_members, server_member_levels, server_member_roles, server_members_afk, server_settings, server_giveaways, server_giveaway_entries, server_staff_ratings, server_staff_reports, server_feedback');
+		logger.log(
+			'📊 Tables created: panel, panel_accounts, panel_invite_links, bots, servers, server_categories, server_channels, server_roles, server_members, server_member_levels, server_member_roles, server_members_afk, server_settings, server_giveaways, server_giveaway_entries, server_staff_ratings, server_staff_reports, server_feedback'
+		);
 		logger.log('📈 Indexes created: all indexes');
-
 	} catch (error: any) {
 		logger.log(`❌ Migration failed: ${error.message}`);
 		if (error.code === 'ER_ACCESS_DENIED_ERROR') {
@@ -213,13 +214,11 @@ async function retryOnConnectionError(fn: () => Promise<any>, maxRetries = 3, de
 		try {
 			return await fn();
 		} catch (error: any) {
-			const isConnectionError = error.code === 'ECONNREFUSED' ||
-				error.code === 'ETIMEDOUT' ||
-				error.code === 'PROTOCOL_CONNECTION_LOST';
+			const isConnectionError = error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT' || error.code === 'PROTOCOL_CONNECTION_LOST';
 
 			if (isConnectionError && attempt < maxRetries) {
 				console.log(`⚠️  Connection error (attempt ${attempt}/${maxRetries}). Retrying in ${delayMs / 1000}s...`);
-				await new Promise(resolve => setTimeout(resolve, delayMs));
+				await new Promise((resolve) => setTimeout(resolve, delayMs));
 				continue;
 			}
 			throw error;
@@ -270,7 +269,7 @@ export async function createBot(botData: any) {
 					botData.application_id || null,
 					botData.bot_type,
 					botData.bot_icon || null,
-					botData.port !== undefined ? botData.port : (botData.bot_type === 'official' ? 7777 : null),
+					botData.port !== undefined ? botData.port : botData.bot_type === 'official' ? 7777 : null,
 					botData.secret_key || null,
 					botData.connect_to || null,
 					botData.panel_id || null,
@@ -308,19 +307,16 @@ export async function updateBot(botId: number, botData: any) {
 			updateData.process_id = null;
 		}
 
-		const fields = Object.keys(updateData).filter(key => updateData[key] !== undefined);
+		const fields = Object.keys(updateData).filter((key) => updateData[key] !== undefined);
 		if (fields.length === 0) {
 			return await getBot(botId);
 		}
 
-		const setClause = fields.map(field => `${field} = ?`).join(', ');
-		const values = fields.map(field => updateData[field]);
+		const setClause = fields.map((field) => `${field} = ?`).join(', ');
+		const values = fields.map((field) => updateData[field]);
 		values.push(botId);
 
-		await query(
-			`UPDATE bots SET ${setClause} WHERE id = ?`,
-			values
-		);
+		await query(`UPDATE bots SET ${setClause} WHERE id = ?`, values);
 
 		return await getBot(botId);
 	} catch (error) {
@@ -352,10 +348,7 @@ export async function getServersForBot(botId: number) {
 
 export async function getServerByDiscordId(botId: number, discordServerId: string) {
 	await initializeDatabase();
-	const result = await query(
-		'SELECT * FROM servers WHERE bot_id = ? AND discord_server_id = ? LIMIT 1',
-		[botId, discordServerId]
-	);
+	const result = await query('SELECT * FROM servers WHERE bot_id = ? AND discord_server_id = ? LIMIT 1', [botId, discordServerId]);
 	return result[0] || null;
 }
 
@@ -372,10 +365,7 @@ export async function getOfficialBotServerIdForServer(serverId: any) {
 }
 
 async function getServerIdsInSameGuild(serverId: any) {
-	const rows = await query(
-		'SELECT id FROM servers WHERE discord_server_id = (SELECT discord_server_id FROM servers WHERE id = ? LIMIT 1)',
-		[serverId]
-	);
+	const rows = await query('SELECT id FROM servers WHERE discord_server_id = (SELECT discord_server_id FROM servers WHERE id = ? LIMIT 1)', [serverId]);
 	return (rows || []).map((r: any) => r.id);
 }
 
@@ -423,16 +413,10 @@ export async function upsertNotificationRole(serverId: any, discordChannelId: st
 	await initializeDatabase();
 	const serverIds = await getServerIdsInSameGuild(serverId);
 	for (const sid of serverIds) {
-		const roleRow = await query(
-			'SELECT id FROM server_roles WHERE server_id = ? AND discord_role_id = ? LIMIT 1',
-			[sid, discordRoleId]
-		);
+		const roleRow = await query('SELECT id FROM server_roles WHERE server_id = ? AND discord_role_id = ? LIMIT 1', [sid, discordRoleId]);
 		const roleId = roleRow[0]?.id;
 		if (!roleId) continue;
-		await query(
-			'UPDATE server_channels SET notification_role_id = ? WHERE server_id = ? AND discord_channel_id = ?',
-			[roleId, sid, discordChannelId]
-		);
+		await query('UPDATE server_channels SET notification_role_id = ? WHERE server_id = ? AND discord_channel_id = ?', [roleId, sid, discordChannelId]);
 	}
 }
 
@@ -441,18 +425,15 @@ export async function deleteNotificationRole(serverId: any, discordChannelId: st
 	const serverIds = await getServerIdsInSameGuild(serverId);
 	if (serverIds.length === 0) return;
 	const placeholders = serverIds.map(() => '?').join(', ');
-	await query(
-		`UPDATE server_channels SET notification_role_id = NULL WHERE server_id IN (${placeholders}) AND discord_channel_id = ?`,
-		[...serverIds, discordChannelId]
-	);
+	await query(`UPDATE server_channels SET notification_role_id = NULL WHERE server_id IN (${placeholders}) AND discord_channel_id = ?`, [
+		...serverIds,
+		discordChannelId
+	]);
 }
 
 export async function getNotificationRoleDbIds(serverId: any) {
 	await initializeDatabase();
-	const result = await query(
-		'SELECT DISTINCT notification_role_id FROM server_channels WHERE server_id = ? AND notification_role_id IS NOT NULL',
-		[serverId]
-	);
+	const result = await query('SELECT DISTINCT notification_role_id FROM server_channels WHERE server_id = ? AND notification_role_id IS NOT NULL', [serverId]);
 	return new Set((result || []).map((r: any) => r.notification_role_id));
 }
 
@@ -490,16 +471,20 @@ export async function upsertServer(botId: number, guild: any) {
 				server_icon = VALUES(server_icon),
 				updated_at = VALUES(updated_at)`,
 			[
-				botId, guild.id, guild.name, guild.memberCount || 0,
-				guild.channels?.cache?.size || 0, guild.premiumSubscriptionCount || 0,
-				boostLevel, iconUrl, now, now
+				botId,
+				guild.id,
+				guild.name,
+				guild.memberCount || 0,
+				guild.channels?.cache?.size || 0,
+				guild.premiumSubscriptionCount || 0,
+				boostLevel,
+				iconUrl,
+				now,
+				now
 			]
 		);
 
-		const servers = await query(
-			'SELECT * FROM servers WHERE bot_id = ? AND discord_server_id = ?',
-			[botId, guild.id]
-		);
+		const servers = await query('SELECT * FROM servers WHERE bot_id = ? AND discord_server_id = ?', [botId, guild.id]);
 		return servers[0];
 	} catch (error) {
 		console.error('Error upserting server:', error);
@@ -518,17 +503,10 @@ export async function upsertCategory(serverId: any, categoryData: any) {
 				name = VALUES(name),
 				position = VALUES(position),
 				updated_at = VALUES(updated_at)`,
-			[
-				serverId, categoryData.id, categoryData.name,
-				categoryData.position !== undefined ? categoryData.position : null,
-				now, now
-			]
+			[serverId, categoryData.id, categoryData.name, categoryData.position !== undefined ? categoryData.position : null, now, now]
 		);
 
-		const categories = await query(
-			'SELECT * FROM server_categories WHERE server_id = ? AND discord_category_id = ?',
-			[serverId, categoryData.id]
-		);
+		const categories = await query('SELECT * FROM server_categories WHERE server_id = ? AND discord_category_id = ?', [serverId, categoryData.id]);
 		return categories[0];
 	} catch (error) {
 		console.error('Error upserting category:', error);
@@ -542,7 +520,7 @@ export async function syncCategories(serverId: any, categories: any[]) {
 			return new Map();
 		}
 
-		const operations = categories.map(category =>
+		const operations = categories.map((category) =>
 			upsertCategory(serverId, {
 				id: category.id,
 				name: category.name,
@@ -556,31 +534,23 @@ export async function syncCategories(serverId: any, categories: any[]) {
 		const allResults = await Promise.all(operations);
 
 		const categoryMap = new Map();
-		allResults.forEach(cat => {
+		allResults.forEach((cat) => {
 			if (cat) {
 				categoryMap.set(cat.discord_category_id, cat.id);
 			}
 		});
 
-		const discordCategoryIds = new Set(categories.map(cat => cat.id));
+		const discordCategoryIds = new Set(categories.map((cat) => cat.id));
 
-		const dbCategories = await query(
-			'SELECT id, discord_category_id FROM server_categories WHERE server_id = ?',
-			[serverId]
-		);
+		const dbCategories = await query('SELECT id, discord_category_id FROM server_categories WHERE server_id = ?', [serverId]);
 
 		if (dbCategories && dbCategories.length > 0) {
-			const categoriesToDelete = dbCategories.filter((dbCat: any) =>
-				!discordCategoryIds.has(dbCat.discord_category_id)
-			);
+			const categoriesToDelete = dbCategories.filter((dbCat: any) => !discordCategoryIds.has(dbCat.discord_category_id));
 
 			if (categoriesToDelete.length > 0) {
 				const idsToDelete = categoriesToDelete.map((cat: any) => cat.id);
 				const placeholders = idsToDelete.map(() => '?').join(',');
-				await query(
-					`DELETE FROM server_categories WHERE server_id = ? AND id IN (${placeholders})`,
-					[serverId, ...idsToDelete]
-				);
+				await query(`DELETE FROM server_categories WHERE server_id = ? AND id IN (${placeholders})`, [serverId, ...idsToDelete]);
 				console.log(`🧹 Removed ${idsToDelete.length} deleted category(ies) from database`);
 			}
 		}
@@ -610,17 +580,10 @@ export async function upsertChannel(serverId: any, channelData: any, categoryMap
 				category_id = VALUES(category_id),
 				position = VALUES(position),
 				updated_at = VALUES(updated_at)`,
-			[
-				serverId, channelData.id, channelData.name, channelData.type,
-				categoryId, channelData.position !== undefined ? channelData.position : null,
-				now, now
-			]
+			[serverId, channelData.id, channelData.name, channelData.type, categoryId, channelData.position !== undefined ? channelData.position : null, now, now]
 		);
 
-		const channels = await query(
-			'SELECT * FROM server_channels WHERE server_id = ? AND discord_channel_id = ?',
-			[serverId, channelData.id]
-		);
+		const channels = await query('SELECT * FROM server_channels WHERE server_id = ? AND discord_channel_id = ?', [serverId, channelData.id]);
 		return channels[0];
 	} catch (error) {
 		console.error('Error upserting channel:', error);
@@ -630,35 +593,33 @@ export async function upsertChannel(serverId: any, channelData: any, categoryMap
 
 export async function syncChannels(serverId: any, channels: any[], categoryMap: Map<any, any> | null = null) {
 	try {
-		const validChannels = channels.filter(ch => ch.type !== 4);
+		const validChannels = channels.filter((ch) => ch.type !== 4);
 
 		try {
-			const existingCategoryChannels = await query(
-				'SELECT id, discord_channel_id FROM server_channels WHERE server_id = ? AND type = ?',
-				[serverId, '4']
-			);
+			const existingCategoryChannels = await query('SELECT id, discord_channel_id FROM server_channels WHERE server_id = ? AND type = ?', [serverId, '4']);
 
 			if (existingCategoryChannels && existingCategoryChannels.length > 0) {
 				const categoryIds = existingCategoryChannels.map((ch: any) => ch.id);
 				const placeholders = categoryIds.map(() => '?').join(',');
-				await query(
-					`DELETE FROM server_channels WHERE server_id = ? AND id IN (${placeholders})`,
-					[serverId, ...categoryIds]
-				);
+				await query(`DELETE FROM server_channels WHERE server_id = ? AND id IN (${placeholders})`, [serverId, ...categoryIds]);
 				console.log(`🧹 Removed ${categoryIds.length} category(ies) from server_channels table`);
 			}
 		} catch (cleanupError: any) {
 			console.error('Error cleaning up categories from server_channels table:', cleanupError.message);
 		}
 
-		const operations = validChannels.map(channel =>
-			upsertChannel(serverId, {
-				id: channel.id,
-				name: channel.name,
-				type: channel.type,
-				parent_id: channel.parent_id || null,
-				position: channel.position
-			}, categoryMap).catch((err: any) => {
+		const operations = validChannels.map((channel) =>
+			upsertChannel(
+				serverId,
+				{
+					id: channel.id,
+					name: channel.name,
+					type: channel.type,
+					parent_id: channel.parent_id || null,
+					position: channel.position
+				},
+				categoryMap
+			).catch((err: any) => {
 				console.error(`Error upserting channel ${channel.id}:`, err.message);
 				return null;
 			})
@@ -666,25 +627,17 @@ export async function syncChannels(serverId: any, channels: any[], categoryMap: 
 
 		await Promise.all(operations);
 
-		const discordChannelIds = new Set(validChannels.map(ch => ch.id));
+		const discordChannelIds = new Set(validChannels.map((ch) => ch.id));
 
-		const dbChannels = await query(
-			'SELECT id, discord_channel_id FROM server_channels WHERE server_id = ?',
-			[serverId]
-		);
+		const dbChannels = await query('SELECT id, discord_channel_id FROM server_channels WHERE server_id = ?', [serverId]);
 
 		if (dbChannels && dbChannels.length > 0) {
-			const channelsToDelete = dbChannels.filter((dbCh: any) =>
-				!discordChannelIds.has(dbCh.discord_channel_id)
-			);
+			const channelsToDelete = dbChannels.filter((dbCh: any) => !discordChannelIds.has(dbCh.discord_channel_id));
 
 			if (channelsToDelete.length > 0) {
 				const idsToDelete = channelsToDelete.map((ch: any) => ch.id);
 				const placeholders = idsToDelete.map(() => '?').join(',');
-				await query(
-					`DELETE FROM server_channels WHERE server_id = ? AND id IN (${placeholders})`,
-					[serverId, ...idsToDelete]
-				);
+				await query(`DELETE FROM server_channels WHERE server_id = ? AND id IN (${placeholders})`, [serverId, ...idsToDelete]);
 				console.log(`🧹 Removed ${idsToDelete.length} deleted channel(s) from database`);
 			}
 		}
@@ -697,10 +650,7 @@ export async function syncChannels(serverId: any, channels: any[], categoryMap: 
 }
 
 export async function getRoles(serverId: any) {
-	const result = await query(
-		'SELECT * FROM server_roles WHERE server_id = ? ORDER BY position DESC',
-		[serverId]
-	);
+	const result = await query('SELECT * FROM server_roles WHERE server_id = ? ORDER BY position DESC', [serverId]);
 	return result;
 }
 
@@ -717,17 +667,10 @@ export async function upsertRole(serverId: any, roleData: any) {
 				color = VALUES(color),
 				permissions = VALUES(permissions),
 				updated_at = VALUES(updated_at)`,
-			[
-				serverId, roleData.id, roleData.name, roleData.position,
-				roleData.hexColor, roleData.permissions?.bitfield?.toString() || null,
-				now, now
-			]
+			[serverId, roleData.id, roleData.name, roleData.position, roleData.hexColor, roleData.permissions?.bitfield?.toString() || null, now, now]
 		);
 
-		const roles = await query(
-			'SELECT * FROM server_roles WHERE server_id = ? AND discord_role_id = ?',
-			[serverId, roleData.id]
-		);
+		const roles = await query('SELECT * FROM server_roles WHERE server_id = ? AND discord_role_id = ?', [serverId, roleData.id]);
 		return roles[0];
 	} catch (error) {
 		console.error('Error upserting role:', error);
@@ -741,7 +684,7 @@ export async function syncRoles(serverId: any, roles: any[]) {
 			return true;
 		}
 
-		const operations = roles.map(role =>
+		const operations = roles.map((role) =>
 			upsertRole(serverId, {
 				id: role.id,
 				name: role.name,
@@ -756,25 +699,17 @@ export async function syncRoles(serverId: any, roles: any[]) {
 
 		await Promise.all(operations);
 
-		const discordRoleIds = new Set(roles.map(role => role.id));
+		const discordRoleIds = new Set(roles.map((role) => role.id));
 
-		const dbRoles = await query(
-			'SELECT id, discord_role_id FROM server_roles WHERE server_id = ?',
-			[serverId]
-		);
+		const dbRoles = await query('SELECT id, discord_role_id FROM server_roles WHERE server_id = ?', [serverId]);
 
 		if (dbRoles && dbRoles.length > 0) {
-			const rolesToDelete = dbRoles.filter((dbRole: any) =>
-				!discordRoleIds.has(dbRole.discord_role_id)
-			);
+			const rolesToDelete = dbRoles.filter((dbRole: any) => !discordRoleIds.has(dbRole.discord_role_id));
 
 			if (rolesToDelete.length > 0) {
 				const idsToDelete = rolesToDelete.map((role: any) => role.id);
 				const placeholders = idsToDelete.map(() => '?').join(',');
-				await query(
-					`DELETE FROM server_roles WHERE server_id = ? AND id IN (${placeholders})`,
-					[serverId, ...idsToDelete]
-				);
+				await query(`DELETE FROM server_roles WHERE server_id = ? AND id IN (${placeholders})`, [serverId, ...idsToDelete]);
 				console.log(`🧹 Removed ${idsToDelete.length} deleted role(s) from database`);
 			}
 		}
@@ -814,15 +749,22 @@ export async function upsertMember(serverId: any, memberData: any) {
 				booster_since = VALUES(booster_since),
 				updated_at = VALUES(updated_at)`,
 			[
-				serverId, user?.id || memberData.id, username, displayName, serverDisplayName,
-				avatarUrl, profileCreatedAt, memberSince, isBooster, boosterSince, now, now
+				serverId,
+				user?.id || memberData.id,
+				username,
+				displayName,
+				serverDisplayName,
+				avatarUrl,
+				profileCreatedAt,
+				memberSince,
+				isBooster,
+				boosterSince,
+				now,
+				now
 			]
 		);
 
-		const members = await query(
-			'SELECT * FROM server_members WHERE server_id = ? AND discord_member_id = ?',
-			[serverId, user?.id || memberData.id]
-		);
+		const members = await query('SELECT * FROM server_members WHERE server_id = ? AND discord_member_id = ?', [serverId, user?.id || memberData.id]);
 		return members[0];
 	} catch (error) {
 		console.error('Error upserting member:', error);
@@ -832,10 +774,7 @@ export async function upsertMember(serverId: any, memberData: any) {
 
 export async function getMemberByDiscordId(serverId: any, discordMemberId: string) {
 	await initializeDatabase();
-	const result = await query(
-		'SELECT * FROM server_members WHERE server_id = ? AND discord_member_id = ? LIMIT 1',
-		[serverId, discordMemberId]
-	);
+	const result = await query('SELECT * FROM server_members WHERE server_id = ? AND discord_member_id = ? LIMIT 1', [serverId, discordMemberId]);
 	if (!result[0]) return null;
 
 	const member = result[0];
@@ -865,10 +804,10 @@ export async function syncMemberRoles(memberId: any, discordRoleIds: string[], s
 		}
 
 		const placeholders = discordRoleIds.map(() => '?').join(',');
-		const roleMapResult = await query(
-			`SELECT id, discord_role_id FROM server_roles WHERE server_id = ? AND discord_role_id IN (${placeholders})`,
-			[serverId, ...discordRoleIds]
-		);
+		const roleMapResult = await query(`SELECT id, discord_role_id FROM server_roles WHERE server_id = ? AND discord_role_id IN (${placeholders})`, [
+			serverId,
+			...discordRoleIds
+		]);
 
 		const roleMap = new Map();
 		for (const role of roleMapResult) {
@@ -892,7 +831,7 @@ export async function syncMemberRoles(memberId: any, discordRoleIds: string[], s
 		);
 		const existingRoleIds = new Set(existingRoles.map((r: any) => r.role_id));
 
-		const rolesToAdd = roleIdsToAdd.filter(roleId => !existingRoleIds.has(roleId));
+		const rolesToAdd = roleIdsToAdd.filter((roleId) => !existingRoleIds.has(roleId));
 		const rolesToRemove = Array.from(existingRoleIds).filter((roleId: any) => !roleIdsToAdd.includes(roleId));
 
 		if (rolesToAdd.length > 0) {
@@ -900,10 +839,7 @@ export async function syncMemberRoles(memberId: any, discordRoleIds: string[], s
 			const notificationRoleIds = await getNotificationRoleDbIds(serverId);
 			const placeholders = rolesToAdd.map(() => '(?, ?, ?, ?, ?)').join(', ');
 			const values = rolesToAdd.flatMap((roleId: any) => [memberId, roleId, false, notificationRoleIds.has(roleId), now]);
-			await query(
-				`INSERT INTO server_member_roles (member_id, role_id, is_custom, is_notification, created_at) VALUES ${placeholders}`,
-				values
-			);
+			await query(`INSERT INTO server_member_roles (member_id, role_id, is_custom, is_notification, created_at) VALUES ${placeholders}`, values);
 		}
 
 		if (rolesToRemove.length > 0) {
@@ -928,10 +864,7 @@ export async function memberHasAnyRole(discordMemberId: string, discordRoleIds: 
 		if (!discordRoleIds || discordRoleIds.length === 0) return false;
 		if (!discordMemberId || !serverId) return false;
 
-		const memberResult = await query(
-			'SELECT id FROM server_members WHERE server_id = ? AND discord_member_id = ?',
-			[serverId, discordMemberId]
-		);
+		const memberResult = await query('SELECT id FROM server_members WHERE server_id = ? AND discord_member_id = ?', [serverId, discordMemberId]);
 
 		if (!memberResult || memberResult.length === 0) {
 			return false;
@@ -958,10 +891,7 @@ export async function memberHasAnyRole(discordMemberId: string, discordRoleIds: 
 
 export async function getMemberLevel(memberId: any) {
 	await initializeDatabase();
-	const result = await query(
-		'SELECT * FROM server_member_levels WHERE member_id = ? LIMIT 1',
-		[memberId]
-	);
+	const result = await query('SELECT * FROM server_member_levels WHERE member_id = ? LIMIT 1', [memberId]);
 	if (!result[0]) return null;
 
 	const levelData = result[0];
@@ -1073,10 +1003,7 @@ export async function setMemberLanguage(serverId: any, discordMemberId: string, 
 		throw new Error('serverId, discordMemberId, and language are required');
 	}
 
-	await query(
-		'UPDATE server_members SET language = ? WHERE server_id = ? AND discord_member_id = ?',
-		[language, serverId, discordMemberId]
-	);
+	await query('UPDATE server_members SET language = ? WHERE server_id = ? AND discord_member_id = ?', [language, serverId, discordMemberId]);
 
 	return true;
 }
@@ -1087,10 +1014,7 @@ export async function getMemberLanguage(serverId: any, discordMemberId: string) 
 		return 'en';
 	}
 
-	const result = await query(
-		'SELECT language FROM server_members WHERE server_id = ? AND discord_member_id = ? LIMIT 1',
-		[serverId, discordMemberId]
-	);
+	const result = await query('SELECT language FROM server_members WHERE server_id = ? AND discord_member_id = ? LIMIT 1', [serverId, discordMemberId]);
 
 	return result[0]?.language || 'en';
 }
@@ -1262,15 +1186,20 @@ export async function getServerMembersList(serverId: any) {
 
 	return result.map((member: any) => ({
 		...member,
-		roles: member.roles ? member.roles.split(',').map((role: string) => {
-			const [roleId, roleName, roleColor, position] = role.split(':');
-			return {
-				id: roleId,
-				name: roleName,
-				color: roleColor || null,
-				position: position ? parseInt(position, 10) : 0
-			};
-		}).sort((a: any, b: any) => (b.position || 0) - (a.position || 0)) : [],
+		roles: member.roles
+			? member.roles
+					.split(',')
+					.map((role: string) => {
+						const [roleId, roleName, roleColor, position] = role.split(':');
+						return {
+							id: roleId,
+							name: roleName,
+							color: roleColor || null,
+							position: position ? parseInt(position, 10) : 0
+						};
+					})
+					.sort((a: any, b: any) => (b.position || 0) - (a.position || 0))
+			: [],
 		is_afk: !!member.afk_message
 	}));
 }
@@ -1323,16 +1252,28 @@ export async function getServerOverview(serverId: any) {
 		query(`SELECT COUNT(*) AS total, SUM(CASE WHEN is_booster = 1 THEN 1 ELSE 0 END) AS unique_boosters FROM server_members WHERE server_id = ?`, [serverId]),
 		query(`SELECT COUNT(*) AS leveled FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ?`, [serverId]),
 		query(`SELECT COUNT(*) AS afk FROM server_members_afk sma INNER JOIN server_members sm ON sm.id = sma.member_id WHERE sm.server_id = ?`, [serverId]),
-		query(`SELECT COUNT(*) AS total, SUM(CASE WHEN LOWER(COALESCE(type, '')) IN ('guild_text', 'text') THEN 1 ELSE 0 END) AS text_count, SUM(CASE WHEN LOWER(COALESCE(type, '')) IN ('guild_news', 'news', 'guild_announcement', 'announcement') THEN 1 ELSE 0 END) AS announcement_count, SUM(CASE WHEN LOWER(COALESCE(type, '')) IN ('guild_voice', 'voice') THEN 1 ELSE 0 END) AS voice_count, SUM(CASE WHEN LOWER(COALESCE(type, '')) IN ('guild_stage_voice', 'stage', 'stage_voice') THEN 1 ELSE 0 END) AS stage_count FROM server_channels WHERE server_id = ?`, [serverId]),
+		query(
+			`SELECT COUNT(*) AS total, SUM(CASE WHEN LOWER(COALESCE(type, '')) IN ('guild_text', 'text') THEN 1 ELSE 0 END) AS text_count, SUM(CASE WHEN LOWER(COALESCE(type, '')) IN ('guild_news', 'news', 'guild_announcement', 'announcement') THEN 1 ELSE 0 END) AS announcement_count, SUM(CASE WHEN LOWER(COALESCE(type, '')) IN ('guild_voice', 'voice') THEN 1 ELSE 0 END) AS voice_count, SUM(CASE WHEN LOWER(COALESCE(type, '')) IN ('guild_stage_voice', 'stage', 'stage_voice') THEN 1 ELSE 0 END) AS stage_count FROM server_channels WHERE server_id = ?`,
+			[serverId]
+		),
 		query(`SELECT COUNT(*) AS count FROM server_categories WHERE server_id = ?`, [serverId]),
 		query(`SELECT COUNT(*) AS count FROM server_roles WHERE server_id = ?`, [serverId]),
-		query(`SELECT COALESCE(SUM(experience), 0) AS total_experience, COALESCE(AVG(level), 0) AS avg_level, COALESCE(MAX(level), 0) AS max_level, COALESCE(SUM(chat_total), 0) AS total_chat, COALESCE(SUM(voice_minutes_total), 0) AS total_voice_minutes, COALESCE(SUM(voice_minutes_active), 0) AS total_voice_active, COALESCE(SUM(voice_minutes_afk), 0) AS total_voice_afk FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ?`, [serverId]),
-		query(`SELECT COUNT(DISTINCT smr.member_id) AS members_with_custom_roles FROM server_member_roles smr INNER JOIN server_members sm ON sm.id = smr.member_id WHERE sm.server_id = ? AND smr.is_custom = 1`, [serverId]),
+		query(
+			`SELECT COALESCE(SUM(experience), 0) AS total_experience, COALESCE(AVG(level), 0) AS avg_level, COALESCE(MAX(level), 0) AS max_level, COALESCE(SUM(chat_total), 0) AS total_chat, COALESCE(SUM(voice_minutes_total), 0) AS total_voice_minutes, COALESCE(SUM(voice_minutes_active), 0) AS total_voice_active, COALESCE(SUM(voice_minutes_afk), 0) AS total_voice_afk FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ?`,
+			[serverId]
+		),
+		query(
+			`SELECT COUNT(DISTINCT smr.member_id) AS members_with_custom_roles FROM server_member_roles smr INNER JOIN server_members sm ON sm.id = smr.member_id WHERE sm.server_id = ? AND smr.is_custom = 1`,
+			[serverId]
+		),
 		query(`SELECT MAX(updated_at) AS last_updated FROM server_members WHERE server_id = ?`, [serverId]),
 		query(`SELECT MAX(updated_at) AS last_updated FROM server_channels WHERE server_id = ?`, [serverId]),
 		query(`SELECT MAX(updated_at) AS last_updated FROM server_categories WHERE server_id = ?`, [serverId]),
 		query(`SELECT MAX(updated_at) AS last_updated FROM server_roles WHERE server_id = ?`, [serverId]),
-		query(`SELECT MAX(sml.updated_at) AS last_updated FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ?`, [serverId]),
+		query(
+			`SELECT MAX(sml.updated_at) AS last_updated FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ?`,
+			[serverId]
+		),
 		query(`SELECT component_name, updated_at FROM server_settings WHERE server_id = ? ORDER BY component_name ASC`, [serverId])
 	]);
 
@@ -1386,27 +1327,15 @@ export async function getServerOverview(serverId: any) {
 export async function updateCustomRoleFlags(serverId: any, roleStartId: string, roleEndId: string) {
 	try {
 		if (!roleStartId || !roleEndId) {
-			await query(
-				'UPDATE server_member_roles SET is_custom = FALSE WHERE role_id IN (SELECT id FROM server_roles WHERE server_id = ?)',
-				[serverId]
-			);
+			await query('UPDATE server_member_roles SET is_custom = FALSE WHERE role_id IN (SELECT id FROM server_roles WHERE server_id = ?)', [serverId]);
 			return true;
 		}
 
-		const startRole = await query(
-			'SELECT id, position FROM server_roles WHERE server_id = ? AND discord_role_id = ?',
-			[serverId, roleStartId]
-		);
-		const endRole = await query(
-			'SELECT id, position FROM server_roles WHERE server_id = ? AND discord_role_id = ?',
-			[serverId, roleEndId]
-		);
+		const startRole = await query('SELECT id, position FROM server_roles WHERE server_id = ? AND discord_role_id = ?', [serverId, roleStartId]);
+		const endRole = await query('SELECT id, position FROM server_roles WHERE server_id = ? AND discord_role_id = ?', [serverId, roleEndId]);
 
 		if (!startRole || startRole.length === 0 || !endRole || endRole.length === 0) {
-			await query(
-				'UPDATE server_member_roles SET is_custom = FALSE WHERE role_id IN (SELECT id FROM server_roles WHERE server_id = ?)',
-				[serverId]
-			);
+			await query('UPDATE server_member_roles SET is_custom = FALSE WHERE role_id IN (SELECT id FROM server_roles WHERE server_id = ?)', [serverId]);
 			return true;
 		}
 
@@ -1440,10 +1369,7 @@ export async function memberHasCustomSupporterRole(discordMemberId: string, serv
 	try {
 		if (!discordMemberId || !serverId) return { has: false, role: null };
 
-		const memberResult = await query(
-			'SELECT id FROM server_members WHERE server_id = ? AND discord_member_id = ?',
-			[serverId, discordMemberId]
-		);
+		const memberResult = await query('SELECT id FROM server_members WHERE server_id = ? AND discord_member_id = ?', [serverId, discordMemberId]);
 
 		if (!memberResult || memberResult.length === 0) {
 			return { has: false, role: null };
@@ -1476,17 +1402,11 @@ export async function memberHasCustomSupporterRole(discordMemberId: string, serv
 export async function syncMembers(serverId: any, members: any[]) {
 	try {
 		if (!members || members.length === 0) {
-			const dbMembers = await query(
-				'SELECT id, discord_member_id FROM server_members WHERE server_id = ?',
-				[serverId]
-			);
+			const dbMembers = await query('SELECT id, discord_member_id FROM server_members WHERE server_id = ?', [serverId]);
 			if (dbMembers && dbMembers.length > 0) {
 				const idsToDelete = dbMembers.map((m: any) => m.id);
 				const placeholders = idsToDelete.map(() => '?').join(',');
-				await query(
-					`DELETE FROM server_members WHERE server_id = ? AND id IN (${placeholders})`,
-					[serverId, ...idsToDelete]
-				);
+				await query(`DELETE FROM server_members WHERE server_id = ? AND id IN (${placeholders})`, [serverId, ...idsToDelete]);
 				console.log(`🧹 Removed ${idsToDelete.length} deleted member(s) from database`);
 			}
 			return true;
@@ -1509,28 +1429,22 @@ export async function syncMembers(serverId: any, members: any[]) {
 
 		await Promise.all(operations);
 
-		const discordMemberIds = new Set(members.map(member => {
-			const user = member.user || member;
-			return user?.id || member.id;
-		}));
-
-		const dbMembers = await query(
-			'SELECT id, discord_member_id FROM server_members WHERE server_id = ?',
-			[serverId]
+		const discordMemberIds = new Set(
+			members.map((member) => {
+				const user = member.user || member;
+				return user?.id || member.id;
+			})
 		);
 
+		const dbMembers = await query('SELECT id, discord_member_id FROM server_members WHERE server_id = ?', [serverId]);
+
 		if (dbMembers && dbMembers.length > 0) {
-			const membersToDelete = dbMembers.filter((dbMember: any) =>
-				!discordMemberIds.has(dbMember.discord_member_id)
-			);
+			const membersToDelete = dbMembers.filter((dbMember: any) => !discordMemberIds.has(dbMember.discord_member_id));
 
 			if (membersToDelete.length > 0) {
 				const idsToDelete = membersToDelete.map((member: any) => member.id);
 				const placeholders = idsToDelete.map(() => '?').join(',');
-				await query(
-					`DELETE FROM server_members WHERE server_id = ? AND id IN (${placeholders})`,
-					[serverId, ...idsToDelete]
-				);
+				await query(`DELETE FROM server_members WHERE server_id = ? AND id IN (${placeholders})`, [serverId, ...idsToDelete]);
 				console.log(`🧹 Removed ${idsToDelete.length} deleted member(s) from database`);
 			}
 		}
@@ -1609,24 +1523,21 @@ async function createPanelAccount(accountData: any) {
 }
 
 async function updatePanelAccount(accountId: any, updateData: any) {
-	const fields = Object.keys(updateData).filter(key => updateData[key] !== undefined);
+	const fields = Object.keys(updateData).filter((key) => updateData[key] !== undefined);
 	if (fields.length === 0) {
 		return await getPanelAccountById(accountId);
 	}
 
-	const setClause = fields.map(field => `${field} = ?`).join(', ');
+	const setClause = fields.map((field) => `${field} = ?`).join(', ');
 
-	const values = fields.map(field => {
+	const values = fields.map((field) => {
 		if (field === 'otp_expires_at' && updateData[field]) {
 			return toMySQLDateTime(updateData[field]);
 		}
 		return updateData[field];
 	});
 
-	await query(
-		`UPDATE panel_accounts SET ${setClause}, updated_at = ? WHERE id = ?`,
-		[...values, toMySQLDateTime(), accountId]
-	);
+	await query(`UPDATE panel_accounts SET ${setClause}, updated_at = ? WHERE id = ?`, [...values, toMySQLDateTime(), accountId]);
 
 	return await getPanelAccountById(accountId);
 }
@@ -1648,13 +1559,7 @@ async function createPanelInviteLink(linkData: any) {
 			`INSERT INTO panel_invite_links (
 				token, account_type, created_by, expires_at, created_at
 			) VALUES (?, ?, ?, ?, ?)`,
-			[
-				linkData.token,
-				linkData.account_type,
-				linkData.created_by,
-				expiresAt,
-				now
-			]
+			[linkData.token, linkData.account_type, linkData.created_by, expiresAt, now]
 		);
 		const links = await query('SELECT * FROM panel_invite_links WHERE id = ?', [(result as any).insertId]);
 		return links[0];
@@ -1669,14 +1574,14 @@ async function getPanelInviteLinkByToken(token: string) {
 }
 
 async function updatePanelInviteLink(linkId: any, updateData: any) {
-	const fields = Object.keys(updateData).filter(key => updateData[key] !== undefined);
+	const fields = Object.keys(updateData).filter((key) => updateData[key] !== undefined);
 	if (fields.length === 0) {
 		return await getPanelInviteLinkByToken(linkId);
 	}
 
-	const setClause = fields.map(field => `${field} = ?`).join(', ');
+	const setClause = fields.map((field) => `${field} = ?`).join(', ');
 
-	const values = fields.map(field => {
+	const values = fields.map((field) => {
 		if (field === 'used_at' && updateData[field]) {
 			return toMySQLDateTime(updateData[field]);
 		}
@@ -1684,10 +1589,7 @@ async function updatePanelInviteLink(linkId: any, updateData: any) {
 	});
 	values.push(linkId);
 
-	await query(
-		`UPDATE panel_invite_links SET ${setClause} WHERE id = ?`,
-		values
-	);
+	await query(`UPDATE panel_invite_links SET ${setClause} WHERE id = ?`, values);
 
 	const links = await query('SELECT * FROM panel_invite_links WHERE id = ?', [linkId]);
 	return links[0];
@@ -1713,31 +1615,21 @@ async function getServerSettings(serverId: any, componentName: string | null = n
 
 	let result: any[];
 	if (componentName) {
-		result = await query(
-			'SELECT * FROM server_settings WHERE server_id = ? AND component_name = ? LIMIT 1',
-			[serverId, componentName]
-		);
+		result = await query('SELECT * FROM server_settings WHERE server_id = ? AND component_name = ? LIMIT 1', [serverId, componentName]);
 		if (result[0] && result[0].settings) {
 			try {
-				result[0].settings = typeof result[0].settings === 'string'
-					? JSON.parse(result[0].settings)
-					: result[0].settings;
+				result[0].settings = typeof result[0].settings === 'string' ? JSON.parse(result[0].settings) : result[0].settings;
 			} catch (e) {
 				console.error('Error parsing settings JSON:', e);
 				result[0].settings = {};
 			}
 		}
 	} else {
-		result = await query(
-			'SELECT * FROM server_settings WHERE server_id = ?',
-			[serverId]
-		);
-		result = result.map(row => {
+		result = await query('SELECT * FROM server_settings WHERE server_id = ?', [serverId]);
+		result = result.map((row) => {
 			if (row.settings) {
 				try {
-					row.settings = typeof row.settings === 'string'
-						? JSON.parse(row.settings)
-						: row.settings;
+					row.settings = typeof row.settings === 'string' ? JSON.parse(row.settings) : row.settings;
 				} catch (e) {
 					console.error('Error parsing settings JSON:', e);
 					row.settings = {};
@@ -1747,7 +1639,7 @@ async function getServerSettings(serverId: any, componentName: string | null = n
 		});
 	}
 
-	return componentName ? (result[0] || null) : result;
+	return componentName ? result[0] || null : result;
 }
 
 async function upsertServerSettings(serverId: any, componentName: string, settings: any) {
@@ -1764,10 +1656,7 @@ async function upsertServerSettings(serverId: any, componentName: string, settin
 			[serverId, componentName, JSON.stringify(settings), now, now]
 		);
 
-		const resultSettings = await query(
-			'SELECT * FROM server_settings WHERE server_id = ? AND component_name = ?',
-			[serverId, componentName]
-		);
+		const resultSettings = await query('SELECT * FROM server_settings WHERE server_id = ? AND component_name = ?', [serverId, componentName]);
 		return resultSettings[0];
 	} catch (error) {
 		console.error('Error upserting server settings:', error);
@@ -1777,19 +1666,13 @@ async function upsertServerSettings(serverId: any, componentName: string, settin
 
 async function getChannelsForServer(serverId: any) {
 	await initializeDatabase();
-	const result = await query(
-		'SELECT * FROM server_channels WHERE server_id = ? ORDER BY position ASC, name ASC',
-		[serverId]
-	);
+	const result = await query('SELECT * FROM server_channels WHERE server_id = ? ORDER BY position ASC, name ASC', [serverId]);
 	return result;
 }
 
 async function getCategoriesForServer(serverId: any) {
 	await initializeDatabase();
-	const result = await query(
-		'SELECT * FROM server_categories WHERE server_id = ? ORDER BY position ASC',
-		[serverId]
-	);
+	const result = await query('SELECT * FROM server_categories WHERE server_id = ? ORDER BY position ASC', [serverId]);
 	return result;
 }
 
@@ -1827,10 +1710,7 @@ export async function getAFKStatus(serverId: any, discordMemberId: string) {
 export async function setAFKStatus(serverId: any, discordMemberId: string, afkData: any) {
 	await initializeDatabase();
 	try {
-		const memberResult = await query(
-			'SELECT id FROM server_members WHERE server_id = ? AND discord_member_id = ?',
-			[serverId, discordMemberId]
-		);
+		const memberResult = await query('SELECT id FROM server_members WHERE server_id = ? AND discord_member_id = ?', [serverId, discordMemberId]);
 
 		if (!memberResult || memberResult.length === 0) {
 			return null;
@@ -1846,12 +1726,7 @@ export async function setAFKStatus(serverId: any, discordMemberId: string, afkDa
 			ON DUPLICATE KEY UPDATE
 				message = VALUES(message),
 				updated_at = VALUES(updated_at)`,
-			[
-				memberId,
-				afkData.message || 'Away',
-				now,
-				now
-			]
+			[memberId, afkData.message || 'Away', now, now]
 		);
 
 		return await getAFKStatus(serverId, discordMemberId);
@@ -1937,10 +1812,7 @@ export async function createGiveaway(giveawayData: any) {
 
 export async function updateGiveawayMessageId(giveawayId: any, discordMessageId: string) {
 	await initializeDatabase();
-	await query(
-		'UPDATE server_giveaways SET discord_message_id = ? WHERE id = ?',
-		[discordMessageId, giveawayId]
-	);
+	await query('UPDATE server_giveaways SET discord_message_id = ? WHERE id = ?', [discordMessageId, giveawayId]);
 }
 
 export async function getEndedGiveaways() {
@@ -1964,9 +1836,7 @@ export async function getEndedGiveaways() {
 	return endedGiveaways.map((row: any) => {
 		if (row.allowed_roles) {
 			try {
-				row.allowed_roles = typeof row.allowed_roles === 'string'
-					? JSON.parse(row.allowed_roles)
-					: row.allowed_roles;
+				row.allowed_roles = typeof row.allowed_roles === 'string' ? JSON.parse(row.allowed_roles) : row.allowed_roles;
 			} catch (e) {
 				row.allowed_roles = [];
 			}
@@ -1989,9 +1859,7 @@ export async function getGiveawayById(giveawayId: any) {
 
 	if (result[0].allowed_roles) {
 		try {
-			result[0].allowed_roles = typeof result[0].allowed_roles === 'string'
-				? JSON.parse(result[0].allowed_roles)
-				: result[0].allowed_roles;
+			result[0].allowed_roles = typeof result[0].allowed_roles === 'string' ? JSON.parse(result[0].allowed_roles) : result[0].allowed_roles;
 		} catch (e) {
 			result[0].allowed_roles = [];
 		}
@@ -2017,9 +1885,7 @@ export async function getActiveGiveawayByMember(serverId: any, memberId: any) {
 
 	if (result[0].allowed_roles) {
 		try {
-			result[0].allowed_roles = typeof result[0].allowed_roles === 'string'
-				? JSON.parse(result[0].allowed_roles)
-				: result[0].allowed_roles;
+			result[0].allowed_roles = typeof result[0].allowed_roles === 'string' ? JSON.parse(result[0].allowed_roles) : result[0].allowed_roles;
 		} catch (e) {
 			result[0].allowed_roles = [];
 		}
@@ -2054,10 +1920,7 @@ export async function addGiveawayEntry(giveawayId: any, memberId: any, increment
 		);
 	}
 
-	const entry = await query(
-		'SELECT * FROM server_giveaway_entries WHERE giveaway_id = ? AND member_id = ?',
-		[giveawayId, memberId]
-	);
+	const entry = await query('SELECT * FROM server_giveaway_entries WHERE giveaway_id = ? AND member_id = ?', [giveawayId, memberId]);
 
 	return entry[0] || null;
 }
@@ -2131,18 +1994,12 @@ export async function getRandomGiveawayWinners(giveawayId: any, winnerCount: num
 
 export async function markGiveawayEnded(giveawayId: any) {
 	await initializeDatabase();
-	await query(
-		'UPDATE server_giveaways SET status = ?, winners_announced = ? WHERE id = ?',
-		['ended', true, giveawayId]
-	);
+	await query('UPDATE server_giveaways SET status = ?, winners_announced = ? WHERE id = ?', ['ended', true, giveawayId]);
 }
 
 export async function markGiveawayEndedForce(giveawayId: any) {
 	await initializeDatabase();
-	await query(
-		'UPDATE server_giveaways SET status = ?, winners_announced = ? WHERE id = ?',
-		['ended_force', true, giveawayId]
-	);
+	await query('UPDATE server_giveaways SET status = ?, winners_announced = ? WHERE id = ?', ['ended_force', true, giveawayId]);
 }
 
 export async function markGiveawayWinners(giveawayId: any, winnerMemberIds: any[]) {
@@ -2193,7 +2050,15 @@ export async function upsertStaffRating(serverId: any, staffMemberId: any, ratin
 	return await getStaffRating(serverId, staffMemberId);
 }
 
-export async function createStaffRatingReport(serverId: any, reporterMemberId: any, reportedStaffId: any, rating: number, category: string, description: string, isAnonymous: boolean) {
+export async function createStaffRatingReport(
+	serverId: any,
+	reporterMemberId: any,
+	reportedStaffId: any,
+	rating: number,
+	category: string,
+	description: string,
+	isAnonymous: boolean
+) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	const result = await query(
@@ -2255,10 +2120,7 @@ export async function getStaffReportById(serverId: any, reportId: any) {
 
 export async function updateStaffReportStatus(reportId: any, status: string) {
 	await initializeDatabase();
-	await query(
-		`UPDATE server_staff_reports SET status = ? WHERE id = ?`,
-		[status, reportId]
-	);
+	await query(`UPDATE server_staff_reports SET status = ? WHERE id = ?`, [status, reportId]);
 }
 
 export async function createFeedback(serverId: any, memberId: any, description: string, isAnonymous: boolean) {
@@ -2315,14 +2177,8 @@ export async function markMemberRatingRole(serverId: any, staffMemberId: any, di
 	if (!discordRoleId) {
 		return;
 	}
-	await query(
-		'UPDATE server_member_roles SET is_rating = FALSE WHERE member_id = ?',
-		[staffMemberId]
-	);
-	const roles = await query(
-		'SELECT id FROM server_roles WHERE server_id = ? AND discord_role_id = ? LIMIT 1',
-		[serverId, discordRoleId]
-	);
+	await query('UPDATE server_member_roles SET is_rating = FALSE WHERE member_id = ?', [staffMemberId]);
+	const roles = await query('SELECT id FROM server_roles WHERE server_id = ? AND discord_role_id = ? LIMIT 1', [serverId, discordRoleId]);
 	if (!roles[0]) {
 		return;
 	}
@@ -2337,10 +2193,7 @@ export async function markMemberRatingRole(serverId: any, staffMemberId: any, di
 
 export async function clearMemberRatingRole(staffMemberId: any) {
 	await initializeDatabase();
-	await query(
-		'UPDATE server_member_roles SET is_rating = FALSE WHERE member_id = ?',
-		[staffMemberId]
-	);
+	await query('UPDATE server_member_roles SET is_rating = FALSE WHERE member_id = ?', [staffMemberId]);
 }
 
 export async function getAllStaffRatings(serverId: any) {

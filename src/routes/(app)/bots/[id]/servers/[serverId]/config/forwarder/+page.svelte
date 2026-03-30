@@ -48,24 +48,31 @@
 				body: JSON.stringify({ component: 'forwarder', production: productionForwarders, testing: testingForwarders })
 			});
 			const d = await res.json();
-			if (d.success) { showToast('Saved', 'success'); invalidateAll(); }
-			else showToast(d.error || 'Failed to save', 'error');
-		} finally { saving = false; }
+			if (d.success) {
+				showToast('Saved', 'success');
+				invalidateAll();
+			} else showToast(d.error || 'Failed to save', 'error');
+		} finally {
+			saving = false;
+		}
 	}
 </script>
 
-<div class="bg-ash-800 border border-ash-700 rounded-xl p-4 sm:p-6 space-y-5">
-	<h3 class="text-base font-semibold text-ash-100 flex items-center gap-2">
+<div class="bg-ash-800 border-ash-700 space-y-5 rounded-xl border p-4 sm:p-6">
+	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
 		<i class="fas fa-forward text-ash-300"></i>Forwarder
 	</h3>
-	<p class="text-xs text-ash-400">Automatically forward messages from one channel to another.</p>
+	<p class="text-ash-400 text-xs">Automatically forward messages from one channel to another.</p>
 
 	<!-- Mode toggle -->
-	<div class="flex gap-1 bg-ash-900 rounded-lg p-1 w-fit">
+	<div class="bg-ash-900 flex w-fit gap-1 rounded-lg p-1">
 		{#each ['production', 'testing'] as m}
-			<button type="button" onclick={() => (mode = m as typeof mode)}
-				class="px-3 py-1.5 rounded-md text-xs font-medium transition-colors
-					{mode === m ? 'bg-ash-600 text-ash-100' : 'text-ash-400 hover:text-ash-200'}">
+			<button
+				type="button"
+				onclick={() => (mode = m as typeof mode)}
+				class="rounded-md px-3 py-1.5 text-xs font-medium transition-colors
+					{mode === m ? 'bg-ash-600 text-ash-100' : 'text-ash-400 hover:text-ash-200'}"
+			>
 				{m.charAt(0).toUpperCase() + m.slice(1)}
 			</button>
 		{/each}
@@ -74,35 +81,48 @@
 	<!-- Forwarder list -->
 	<div class="space-y-3">
 		{#each activeForwarders as fw, i}
-			<div class="bg-ash-700 rounded-lg p-3 space-y-2">
-				<div class="flex items-center justify-between mb-1">
-					<span class="text-xs text-ash-400">Forwarder #{i + 1}</span>
-					<button type="button" onclick={() => removeForwarder(i)}
-						class="text-xs px-2 py-1 rounded bg-red-900 hover:bg-red-800 text-red-300 transition-colors">
+			<div class="bg-ash-700 space-y-2 rounded-lg p-3">
+				<div class="mb-1 flex items-center justify-between">
+					<span class="text-ash-400 text-xs">Forwarder #{i + 1}</span>
+					<button type="button" onclick={() => removeForwarder(i)} class="rounded bg-red-900 px-2 py-1 text-xs text-red-300 transition-colors hover:bg-red-800">
 						<i class="fas fa-trash"></i>
 					</button>
 				</div>
 				<div>
-					<label class="text-xs text-ash-400 block mb-1">Source</label>
-					<ChannelPicker channels={data.channels} value={fw.source_channel}
-						onchange={(id) => updateForwarder(i, 'source_channel', id)} placeholder="Source channel..." />
+					<label class="text-ash-400 mb-1 block text-xs">Source</label>
+					<ChannelPicker
+						channels={data.channels}
+						value={fw.source_channel}
+						onchange={(id) => updateForwarder(i, 'source_channel', id)}
+						placeholder="Source channel..."
+					/>
 				</div>
 				<div>
-					<label class="text-xs text-ash-400 block mb-1">Destination</label>
-					<ChannelPicker channels={data.channels} value={fw.destination_channel}
-						onchange={(id) => updateForwarder(i, 'destination_channel', id)} placeholder="Destination channel..." />
+					<label class="text-ash-400 mb-1 block text-xs">Destination</label>
+					<ChannelPicker
+						channels={data.channels}
+						value={fw.destination_channel}
+						onchange={(id) => updateForwarder(i, 'destination_channel', id)}
+						placeholder="Destination channel..."
+					/>
 				</div>
 			</div>
 		{/each}
 	</div>
 
-	<button type="button" onclick={addForwarder}
-		class="w-full py-2 border border-dashed border-ash-600 rounded-lg text-sm text-ash-400 hover:text-ash-200 hover:border-ash-400 transition-colors flex items-center justify-center gap-2">
+	<button
+		type="button"
+		onclick={addForwarder}
+		class="border-ash-600 text-ash-400 hover:text-ash-200 hover:border-ash-400 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed py-2 text-sm transition-colors"
+	>
 		<i class="fas fa-plus text-xs"></i>Add Forwarder
 	</button>
 
-	<button onclick={save} disabled={saving}
-		class="w-full py-2.5 bg-ash-500 hover:bg-ash-400 text-ash-100 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50">
+	<button
+		onclick={save}
+		disabled={saving}
+		class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:opacity-50"
+	>
 		{#if saving}<i class="fas fa-spinner fa-spin"></i>{/if}
 		{saving ? 'Saving...' : 'Save Configuration'}
 	</button>

@@ -62,50 +62,42 @@
 	<title>Account Management | Dansday</title>
 </svelte:head>
 
-<div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-8">
+<div class="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6 lg:px-8 lg:py-8">
 	<!-- Back -->
-	<a href="/" class="inline-flex items-center gap-2 text-ash-400 hover:text-ash-100 transition-colors text-sm mb-6">
+	<a href="/" class="text-ash-400 hover:text-ash-100 mb-6 inline-flex items-center gap-2 text-sm transition-colors">
 		<i class="fas fa-arrow-left"></i>Back to Dashboard
 	</a>
 
-	<div class="bg-ash-800 rounded-xl border border-ash-700 p-4 sm:p-6 mb-4 sm:mb-6">
-		<h2 class="text-xl sm:text-2xl font-bold text-ash-100 flex items-center gap-2 mb-6">
+	<div class="bg-ash-800 border-ash-700 mb-4 rounded-xl border p-4 sm:mb-6 sm:p-6">
+		<h2 class="text-ash-100 mb-6 flex items-center gap-2 text-xl font-bold sm:text-2xl">
 			<i class="fas fa-users text-ash-200"></i>Account Management
 		</h2>
 
 		<!-- Generate Invite -->
 		<div class="mb-8">
-			<h3 class="text-lg font-semibold text-ash-100 mb-3">Generate Invite Link</h3>
-			<div class="flex flex-col sm:flex-row gap-2 mb-4">
+			<h3 class="text-ash-100 mb-3 text-lg font-semibold">Generate Invite Link</h3>
+			<div class="mb-4 flex flex-col gap-2 sm:flex-row">
 				<select
 					bind:value={inviteType}
-					class="flex-1 px-3 sm:px-4 py-2.5 bg-ash-700 border border-ash-600 rounded-lg text-ash-100 focus:outline-none focus:ring-2 focus:ring-ash-500 text-sm"
+					class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 flex-1 rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none sm:px-4"
 				>
 					<option value="admin">Admin</option>
 					<option value="moderator">Moderator</option>
 				</select>
-				<button
-					onclick={generateInvite}
-					class="bg-ash-400 hover:bg-ash-500 text-ash-100 px-4 py-2.5 rounded-lg transition-all text-sm font-medium"
-				>
+				<button onclick={generateInvite} class="bg-ash-400 hover:bg-ash-500 text-ash-100 rounded-lg px-4 py-2.5 text-sm font-medium transition-all">
 					<i class="fas fa-link mr-2"></i>Generate Link
 				</button>
 			</div>
 
 			{#if generatedLink}
-				<div class="bg-ash-700 rounded-lg p-3 mb-4">
-					<p class="text-sm text-ash-300 mb-2">Invite Link:</p>
+				<div class="bg-ash-700 mb-4 rounded-lg p-3">
+					<p class="text-ash-300 mb-2 text-sm">Invite Link:</p>
 					<div class="flex items-center gap-2">
-						<input
-							type="text"
-							readonly
-							value={generatedLink}
-							class="flex-1 px-3 py-2 bg-ash-800 border border-ash-600 rounded text-ash-100 text-sm"
-						/>
+						<input type="text" readonly value={generatedLink} class="bg-ash-800 border-ash-600 text-ash-100 flex-1 rounded border px-3 py-2 text-sm" />
 						<button
 							onclick={copyLink}
 							aria-label="Copy invite link"
-							class="bg-ash-600 hover:bg-ash-500 text-ash-100 px-3 py-2 rounded text-sm transition-colors"
+							class="bg-ash-600 hover:bg-ash-500 text-ash-100 rounded px-3 py-2 text-sm transition-colors"
 						>
 							<i class="fas {copyIcon}"></i>
 						</button>
@@ -116,24 +108,24 @@
 
 		<!-- Accounts list -->
 		<div>
-			<h3 class="text-lg font-semibold text-ash-100 mb-3">All Accounts</h3>
+			<h3 class="text-ash-100 mb-3 text-lg font-semibold">All Accounts</h3>
 			{#if data.accounts.length === 0}
 				<p class="text-ash-400 text-sm">No accounts found.</p>
 			{:else}
 				<div class="space-y-2">
 					{#each data.accounts as account (account.id)}
-						<div class="flex items-center justify-between gap-3 bg-ash-700 rounded-lg px-4 py-3">
-							<div class="flex items-center gap-3 min-w-0">
-								<div class="w-8 h-8 rounded-full bg-ash-500 flex items-center justify-center flex-shrink-0">
+						<div class="bg-ash-700 flex items-center justify-between gap-3 rounded-lg px-4 py-3">
+							<div class="flex min-w-0 items-center gap-3">
+								<div class="bg-ash-500 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full">
 									<i class="fas fa-user text-ash-200 text-xs"></i>
 								</div>
 								<div class="min-w-0">
-									<p class="text-sm font-medium text-ash-100 truncate">{account.username}</p>
-									<p class="text-xs text-ash-400 truncate">{account.email}</p>
+									<p class="text-ash-100 truncate text-sm font-medium">{account.username}</p>
+									<p class="text-ash-400 truncate text-xs">{account.email}</p>
 								</div>
 							</div>
-							<div class="flex items-center gap-2 flex-shrink-0">
-								<span class="text-xs px-2 py-0.5 rounded-full capitalize {badgeClass(account)}">
+							<div class="flex flex-shrink-0 items-center gap-2">
+								<span class="rounded-full px-2 py-0.5 text-xs capitalize {badgeClass(account)}">
 									{badgeLabel(account)}
 								</span>
 								<!-- Only show actions for other accounts -->
@@ -143,7 +135,7 @@
 											<button
 												onclick={() => action('PUT', `/api/panel/accounts/${account.id}/verify`, 'Account verified')}
 												title="Verify account"
-												class="text-xs px-2 py-1 rounded bg-ash-600 hover:bg-ash-500 text-ash-200 transition-colors"
+												class="bg-ash-600 hover:bg-ash-500 text-ash-200 rounded px-2 py-1 text-xs transition-colors"
 											>
 												<i class="fas fa-check"></i>
 											</button>
@@ -152,7 +144,7 @@
 											<button
 												onclick={() => action('PUT', `/api/panel/accounts/${account.id}/unfreeze`, 'Account unfrozen')}
 												title="Unfreeze account"
-												class="text-xs px-2 py-1 rounded bg-ash-600 hover:bg-ash-500 text-ash-200 transition-colors"
+												class="bg-ash-600 hover:bg-ash-500 text-ash-200 rounded px-2 py-1 text-xs transition-colors"
 											>
 												<i class="fas fa-unlock"></i>
 											</button>
@@ -160,7 +152,7 @@
 											<button
 												onclick={() => action('PUT', `/api/panel/accounts/${account.id}/freeze`, 'Account frozen')}
 												title="Freeze account"
-												class="text-xs px-2 py-1 rounded bg-ash-600 hover:bg-ash-500 text-ash-200 transition-colors"
+												class="bg-ash-600 hover:bg-ash-500 text-ash-200 rounded px-2 py-1 text-xs transition-colors"
 											>
 												<i class="fas fa-lock"></i>
 											</button>
@@ -168,7 +160,7 @@
 										<button
 											onclick={() => action('DELETE', `/api/panel/accounts/${account.id}`, 'Account deleted')}
 											title="Delete account"
-											class="text-xs px-2 py-1 rounded bg-red-900 hover:bg-red-800 text-red-300 transition-colors"
+											class="rounded bg-red-900 px-2 py-1 text-xs text-red-300 transition-colors hover:bg-red-800"
 										>
 											<i class="fas fa-trash"></i>
 										</button>

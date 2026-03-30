@@ -19,39 +19,34 @@
 	}
 </script>
 
-<div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-8">
+<div class="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6 lg:px-8 lg:py-8">
 	<!-- Back -->
-	<a
-		href="/bots/{data.botId}"
-		class="inline-flex items-center gap-2 text-ash-400 hover:text-ash-100 transition-colors text-sm mb-5"
-	>
+	<a href="/bots/{data.botId}" class="text-ash-400 hover:text-ash-100 mb-5 inline-flex items-center gap-2 text-sm transition-colors">
 		<i class="fas fa-arrow-left"></i>Back to Bot
 	</a>
 
 	<!-- Server Header -->
-	<div class="flex items-center gap-4 mb-5">
-		<div class="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-ash-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+	<div class="mb-5 flex items-center gap-4">
+		<div class="bg-ash-600 flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-full sm:h-14 sm:w-14">
 			{#if data.overview.server_icon}
-				<img src={data.overview.server_icon} alt={data.overview.name} class="w-full h-full object-cover" />
+				<img src={data.overview.server_icon} alt={data.overview.name} class="h-full w-full object-cover" />
 			{:else}
 				<i class="fas fa-server text-ash-300 text-lg"></i>
 			{/if}
 		</div>
 		<div class="min-w-0">
-			<h2 class="text-xl sm:text-2xl font-bold text-ash-100 truncate">{data.overview.name}</h2>
-			<p class="text-xs text-ash-500 font-mono mt-0.5">{data.overview.discord_server_id}</p>
+			<h2 class="text-ash-100 truncate text-xl font-bold sm:text-2xl">{data.overview.name}</h2>
+			<p class="text-ash-500 mt-0.5 font-mono text-xs">{data.overview.discord_server_id}</p>
 		</div>
 	</div>
 
 	<!-- Tab Nav -->
-	<div class="flex gap-1 bg-ash-800 border border-ash-700 rounded-xl p-1 mb-5 overflow-x-auto">
+	<div class="bg-ash-800 border-ash-700 mb-5 flex gap-1 overflow-x-auto rounded-xl border p-1">
 		{#each tabs as tab}
 			<a
 				href={tab.href}
-				class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap flex-shrink-0
-					{isActive(tab.href)
-						? 'bg-ash-600 text-ash-100'
-						: 'text-ash-400 hover:text-ash-200 hover:bg-ash-700'}"
+				class="flex flex-shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-all sm:px-4
+					{isActive(tab.href) ? 'bg-ash-600 text-ash-100' : 'text-ash-400 hover:text-ash-200 hover:bg-ash-700'}"
 			>
 				<i class="fas {tab.icon} text-xs"></i>
 				<span>{tab.label}</span>

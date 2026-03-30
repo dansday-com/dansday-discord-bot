@@ -1,5 +1,8 @@
 <script lang="ts">
-	interface Channel { id: string; name: string; }
+	interface Channel {
+		id: string;
+		name: string;
+	}
 	interface Props {
 		channels: Channel[];
 		value: string;
@@ -15,27 +18,33 @@
 	<button
 		type="button"
 		onclick={() => (open = !open)}
-		class="w-full px-3 py-2 bg-ash-700 border border-ash-600 rounded-lg text-left text-sm hover:border-ash-500 transition-colors flex items-center justify-between"
+		class="bg-ash-700 border-ash-600 hover:border-ash-500 flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition-colors"
 	>
-		<span class="{selected ? 'text-ash-100' : 'text-ash-500'}">
+		<span class={selected ? 'text-ash-100' : 'text-ash-500'}>
 			{selected ? `#${selected.name}` : placeholder}
 		</span>
 		<i class="fas fa-chevron-{open ? 'up' : 'down'} text-ash-500 text-xs"></i>
 	</button>
 	{#if open}
-		<div class="absolute z-10 mt-1 w-full bg-ash-700 border border-ash-600 rounded-lg overflow-hidden max-h-48 overflow-y-auto shadow-lg">
+		<div class="bg-ash-700 border-ash-600 absolute z-10 mt-1 max-h-48 w-full overflow-hidden overflow-y-auto rounded-lg border shadow-lg">
 			<button
 				type="button"
-				onclick={() => { onchange(''); open = false; }}
-				class="w-full px-3 py-2 text-left text-sm text-ash-500 hover:bg-ash-600 transition-colors"
+				onclick={() => {
+					onchange('');
+					open = false;
+				}}
+				class="text-ash-500 hover:bg-ash-600 w-full px-3 py-2 text-left text-sm transition-colors"
 			>
 				— None —
 			</button>
 			{#each channels as ch}
 				<button
 					type="button"
-					onclick={() => { onchange(ch.id); open = false; }}
-					class="w-full px-3 py-2 text-left text-sm hover:bg-ash-600 transition-colors flex items-center gap-2
+					onclick={() => {
+						onchange(ch.id);
+						open = false;
+					}}
+					class="hover:bg-ash-600 flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors
 						{value === ch.id ? 'text-ash-100 bg-ash-600' : 'text-ash-300'}"
 				>
 					<span class="text-ash-500">#</span>{ch.name}

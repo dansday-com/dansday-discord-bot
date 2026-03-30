@@ -3,11 +3,7 @@ import { getRedisClient } from './redis.js';
 const RATE_LIMIT_WINDOW = 15 * 60 * 1000; // 15 minutes
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 
-export async function checkRateLimit(
-	ip: string,
-	endpoint: string,
-	maxAttempts: number
-): Promise<{ allowed: boolean; remaining: number; resetTime: number }> {
+export async function checkRateLimit(ip: string, endpoint: string, maxAttempts: number): Promise<{ allowed: boolean; remaining: number; resetTime: number }> {
 	const redisClient = await getRedisClient();
 
 	if (redisClient) {
@@ -48,9 +44,6 @@ export async function checkRateLimit(
 
 export function getClientIp(request: Request): string {
 	return (
-		request.headers.get('cf-connecting-ip') ||
-		request.headers.get('x-real-ip') ||
-		request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-		'unknown'
+		request.headers.get('cf-connecting-ip') || request.headers.get('x-real-ip') || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
 	);
 }

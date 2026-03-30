@@ -28,46 +28,64 @@
 				})
 			});
 			const d = await res.json();
-			if (d.success) { showToast('Saved', 'success'); invalidateAll(); }
-			else showToast(d.error || 'Failed to save', 'error');
-		} finally { saving = false; }
+			if (d.success) {
+				showToast('Saved', 'success');
+				invalidateAll();
+			} else showToast(d.error || 'Failed to save', 'error');
+		} finally {
+			saving = false;
+		}
 	}
 </script>
 
-<div class="bg-ash-800 border border-ash-700 rounded-xl p-4 sm:p-6 space-y-5">
-	<h3 class="text-base font-semibold text-ash-100 flex items-center gap-2">
+<div class="bg-ash-800 border-ash-700 space-y-5 rounded-xl border p-4 sm:p-6">
+	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
 		<i class="fas fa-gear text-ash-300"></i>Main Config
 	</h3>
 
 	<div>
-		<label class="text-xs font-medium text-ash-300 block mb-1.5">Production Channel</label>
+		<label class="text-ash-300 mb-1.5 block text-xs font-medium">Production Channel</label>
 		<ChannelPicker channels={data.channels} value={productionChannel} onchange={(id) => (productionChannel = id)} />
 	</div>
 
 	<div>
-		<label class="text-xs font-medium text-ash-300 block mb-1.5">Testing Channel</label>
+		<label class="text-ash-300 mb-1.5 block text-xs font-medium">Testing Channel</label>
 		<ChannelPicker channels={data.channels} value={testingChannel} onchange={(id) => (testingChannel = id)} />
 	</div>
 
 	<div>
-		<label class="text-xs font-medium text-ash-300 block mb-1.5">Default Color</label>
+		<label class="text-ash-300 mb-1.5 block text-xs font-medium">Default Color</label>
 		<div class="flex items-center gap-2">
-			<input type="color" bind:value={defaultColor}
+			<input
+				type="color"
+				bind:value={defaultColor}
 				oninput={(e) => (defaultColor = (e.target as HTMLInputElement).value)}
-				class="w-10 h-9 rounded cursor-pointer bg-ash-700 border border-ash-600" />
-			<input type="text" bind:value={defaultColor} placeholder="#5865F2"
-				class="flex-1 px-3 py-2 bg-ash-700 border border-ash-600 rounded-lg text-ash-100 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ash-500" />
+				class="bg-ash-700 border-ash-600 h-9 w-10 cursor-pointer rounded border"
+			/>
+			<input
+				type="text"
+				bind:value={defaultColor}
+				placeholder="#5865F2"
+				class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 flex-1 rounded-lg border px-3 py-2 font-mono text-sm focus:ring-2 focus:outline-none"
+			/>
 		</div>
 	</div>
 
 	<div>
-		<label class="text-xs font-medium text-ash-300 block mb-1.5">Default Footer</label>
-		<input type="text" bind:value={defaultFooter} placeholder="Footer text..."
-			class="w-full px-3 py-2 bg-ash-700 border border-ash-600 rounded-lg text-ash-100 placeholder-ash-500 text-sm focus:outline-none focus:ring-2 focus:ring-ash-500" />
+		<label class="text-ash-300 mb-1.5 block text-xs font-medium">Default Footer</label>
+		<input
+			type="text"
+			bind:value={defaultFooter}
+			placeholder="Footer text..."
+			class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
+		/>
 	</div>
 
-	<button onclick={save} disabled={saving}
-		class="w-full py-2.5 bg-ash-500 hover:bg-ash-400 text-ash-100 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50">
+	<button
+		onclick={save}
+		disabled={saving}
+		class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:opacity-50"
+	>
 		{#if saving}<i class="fas fa-spinner fa-spin"></i>{/if}
 		{saving ? 'Saving...' : 'Save Configuration'}
 	</button>

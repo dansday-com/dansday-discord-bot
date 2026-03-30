@@ -148,9 +148,7 @@ export async function getMainChannel(guildId: string) {
 	requireGuildId(guildId, 'getting main channel');
 
 	const settings = await getServerSettingsForComponent(guildId, 'main_config');
-	const channelId = botConfig!.is_testing
-		? settings.settings.testing_channel
-		: settings.settings.production_channel;
+	const channelId = botConfig!.is_testing ? settings.settings.testing_channel : settings.settings.production_channel;
 
 	if (!channelId) {
 		throw new Error(`Channel not configured for ${botConfig!.is_testing ? 'testing' : 'production'} mode in guild ${guildId}`);
@@ -269,9 +267,7 @@ export async function getEmbedConfig(guildId: string) {
 	}
 
 	const now = new Date();
-	const footerText = config.footer
-		.replace(/{server}/g, officialBotServer.name)
-		.replace(/{year}/g, now.getFullYear().toString());
+	const footerText = config.footer.replace(/{server}/g, officialBotServer.name).replace(/{year}/g, now.getFullYear().toString());
 
 	return { COLOR: color, FOOTER: footerText };
 }
@@ -378,7 +374,7 @@ export const NOTIFICATIONS = {
 	async getNotificationRoleIdForChannel(guildId: string, channelId: string) {
 		const server = await getOfficialBotServer(guildId).catch(() => null);
 		if (!server || !channelId) return null;
-		return await db.getNotificationRoleByChannel(server.id, channelId) || null;
+		return (await db.getNotificationRoleByChannel(server.id, channelId)) || null;
 	}
 };
 
@@ -506,9 +502,7 @@ export const FORWARDER = {
 						if (String(forwarder.selfbot_id) !== String(botConfig!.id)) continue;
 						if (String(forwarder.server_id) !== String(selfbotServer.id)) continue;
 						if (forwarder.source_channels && Array.isArray(forwarder.source_channels)) {
-							const foundChannel = forwarder.source_channels.find(
-								(ch: any) => String(ch?.channel_id || '') === String(channelId)
-							);
+							const foundChannel = forwarder.source_channels.find((ch: any) => String(ch?.channel_id || '') === String(channelId));
 							if (foundChannel) {
 								return {
 									shouldForward: true,
@@ -554,9 +548,7 @@ export const FORWARDER = {
 				for (const forwarder of envForwarders) {
 					if (!forwarder.source_channels || !Array.isArray(forwarder.source_channels)) continue;
 
-					const foundChannel = forwarder.source_channels.find(
-						(ch: any) => String(ch?.channel_id || '') === String(sourceChannelId)
-					);
+					const foundChannel = forwarder.source_channels.find((ch: any) => String(ch?.channel_id || '') === String(sourceChannelId));
 					if (!foundChannel) continue;
 
 					const forwarderSelfbotIdNum = typeof forwarder.selfbot_id === 'string' ? parseInt(forwarder.selfbot_id) : forwarder.selfbot_id;

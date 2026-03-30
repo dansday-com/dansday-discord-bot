@@ -1,4 +1,5 @@
 .env
 package-lock.json
 /node_modules
-frontend/index.css
+.svelte-kit
+/build

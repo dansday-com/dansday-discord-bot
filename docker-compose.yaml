@@ -19,6 +19,8 @@ services:
       OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME}
       HOST: 0.0.0.0
       PORT: 3000
+    labels:
+      - 'traefik.http.services.app-yo04gwgkg84sw8gkgg004w48.loadbalancer.server.port=3000'
     expose:
       - '3000'
     healthcheck:

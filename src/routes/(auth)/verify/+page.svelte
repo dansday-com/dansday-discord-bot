@@ -31,8 +31,8 @@
 
 			const d = await res.json();
 			if (d.success) {
-				showToast(d.message || 'Email verified! Please login.', 'success');
-				setTimeout(() => goto('/login'), 1000);
+				showToast(d.message || 'Email verified successfully!', 'success');
+				setTimeout(() => goto('/'), 1000);
 			} else {
 				showToast(d.error || 'OTP verification failed', 'error');
 			}

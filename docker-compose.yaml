@@ -17,14 +17,10 @@ services:
       MAIL_PASSWORD: ${MAIL_PASSWORD}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT}
       OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME}
-      HOST: 0.0.0.0
-      PORT: 3000
-    labels:
-      - 'traefik.http.services.app-yo04gwgkg84sw8gkgg004w48.loadbalancer.server.port=3000'
     expose:
-      - '3000'
+      - '80'
     healthcheck:
-      test: ['CMD-SHELL', 'curl -f http://localhost:3000 || exit 1']
+      test: ['CMD-SHELL', 'curl -f http://localhost:80 || exit 1']
       interval: 30s
       timeout: 5s
       start_period: 30s

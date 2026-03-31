@@ -8,7 +8,9 @@ import { getCurrentDateTime, parseMySQLDateTime, getNowInTimezone, getDateTimeFr
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const projectRoot = join(__dirname, '..', '..', '..', '..');
+const _root3 = join(__dirname, '..', '..', '..');
+const _root4 = join(__dirname, '..', '..', '..', '..');
+const projectRoot = existsSync(join(_root3, 'src', 'lib', 'server', 'bots')) ? _root3 : _root4;
 
 function resolveNodeBin(): string {
 	if (existsSync(process.execPath)) return process.execPath;

@@ -54,7 +54,9 @@
 	async function toggleMode() {
 		const res = await fetch(`/api/bots/${data.bot.id}/mode`, {
 			method: 'PUT',
-			credentials: 'include'
+			credentials: 'include',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ is_testing: !data.bot.is_testing })
 		});
 		const d = await res.json();
 		if (d.success) {

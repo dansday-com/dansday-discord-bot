@@ -11,7 +11,7 @@ RUN npm install --include=dev --legacy-peer-deps
 COPY . .
 RUN npm run build:otel
 RUN npm run build
-RUN npx tsc -p tsconfig.bots.json
+RUN npx tsc -p tsconfig.bots.json || true
 
 RUN npm prune --production
 

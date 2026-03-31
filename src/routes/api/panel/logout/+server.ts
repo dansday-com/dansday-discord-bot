@@ -19,7 +19,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			if (account) {
 				logger.log(`Logged out: ${account.username} (IP: ${getClientIp(request)})`);
 			}
-		} catch {}
+		} catch (_) {}
 	}
 
 	return json({ success: true, message: 'Logged out successfully' }, { headers: { 'Set-Cookie': clearSessionCookie() } });

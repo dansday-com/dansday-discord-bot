@@ -43,7 +43,6 @@ export const PUT: RequestHandler = async ({ locals, params, request }) => {
 
 		const result = await db.upsertServerSettings(targetServerId, component_name, settings);
 
-		// Trigger notification sync webhook for notification changes
 		if (component_name === 'notifications') {
 			try {
 				const server = await db.getServer(targetServerId);
@@ -69,7 +68,7 @@ export const PUT: RequestHandler = async ({ locals, params, request }) => {
 						req.end();
 					});
 				}
-			} catch {}
+			} catch (_) {}
 		}
 
 		const server = await db.getServer(params.id);

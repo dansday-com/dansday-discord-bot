@@ -21,7 +21,7 @@ function loadTranslations() {
 				const content = readFileSync(filePath, 'utf-8');
 				translations.set(lang, JSON.parse(content));
 			}
-		} catch {}
+		} catch (_) {}
 	}
 
 	if (!translations.has(defaultLang)) {
@@ -30,7 +30,7 @@ function loadTranslations() {
 			try {
 				const content = readFileSync(enPath, 'utf-8');
 				translations.set(defaultLang, JSON.parse(content));
-			} catch {}
+			} catch (_) {}
 		}
 	}
 }
@@ -51,7 +51,7 @@ export async function getUserLanguage(guildId: string, userId: string): Promise<
 		}
 
 		return defaultLang;
-	} catch {
+	} catch (_) {
 		return defaultLang;
 	}
 }

@@ -28,7 +28,7 @@ export const DELETE: RequestHandler = async ({ locals, params }) => {
 
 		try {
 			await sendAccountDeletedEmail(account.email, account.username);
-		} catch {}
+		} catch (_) {}
 
 		await db.deletePanelAccount(accountId);
 		logger.log(`${locals.user.username} deleted account: ${account.username} (ID: ${accountId})`);

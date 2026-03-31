@@ -23,7 +23,6 @@ export const PUT: RequestHandler = async ({ locals, params, request }) => {
 
 		await db.updateBot(params.id, { is_testing });
 
-		// Update connected selfbots
 		try {
 			const allBots = await db.getAllBots();
 			const officialBotIdNum = Number(params.id);
@@ -35,7 +34,7 @@ export const PUT: RequestHandler = async ({ locals, params, request }) => {
 			for (const selfbot of connectedSelfbots) {
 				await db.updateBot(selfbot.id, { is_testing });
 			}
-		} catch {}
+		} catch (_) {}
 
 		const mode = is_testing ? 'testing' : 'production';
 		logger.log(`${locals.user.username} changed bot "${bot.name}" (ID: ${bot.id}) to ${mode} mode`);

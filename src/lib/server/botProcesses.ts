@@ -1,7 +1,7 @@
-import { spawn } from 'child_process';
+import { spawn, spawnSync } from 'child_process';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import db from './db.js';
 import logger from './logger.js';
 import { getCurrentDateTime, parseMySQLDateTime, getNowInTimezone, getDateTimeFromJSDate } from './utils.js';
@@ -9,6 +9,14 @@ import { getCurrentDateTime, parseMySQLDateTime, getNowInTimezone, getDateTimeFr
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const projectRoot = join(__dirname, '..', '..', '..', '..');
+
+function resolveNodeBin(): string {
+	if (existsSync(process.execPath)) return process.execPath;
+	const result = spawnSync('which', ['node'], { encoding: 'utf8' });
+	const found = result.stdout?.trim();
+	if (found && existsSync(found)) return found;
+	return 'node';
+}
 
 export interface BotProcessInfo {
 	process: ReturnType<typeof spawn> | null;
@@ -27,7 +35,7 @@ async function getConnectedSelfbots(officialBotId: number) {
 			if (!b.connect_to) return false;
 			return Number(b.connect_to) === officialBotId;
 		});
-	} catch {
+	} catch (_) {
 		return [];
 	}
 }
@@ -48,7 +56,7 @@ export async function startBotById(botId: number, bot: any): Promise<{ success: 
 		try {
 			process.kill(existing.pid, 0);
 			return { success: false, error: 'Bot process is already running' };
-		} catch {}
+		} catch (_) {}
 	}
 
 	try {
@@ -67,7 +75,7 @@ export async function startBotById(botId: number, bot: any): Promise<{ success: 
 
 		const scriptPath = join(botPath, botScript);
 
-		const botProcess = spawn(process.execPath, [scriptPath], {
+		const botProcess = spawn(resolveNodeBin(), [scriptPath], {
 			cwd: botPath,
 			stdio: ['ignore', 'pipe', 'pipe'],
 			shell: false,
@@ -113,7 +121,7 @@ export async function startBotById(botId: number, bot: any): Promise<{ success: 
 			}
 			try {
 				await db.updateBot(botId, { status: 'stopped', process_id: null, uptime_started_at: null });
-			} catch {}
+			} catch (_) {}
 			if (code !== 0 && code !== null) {
 				logger.log(`❌ Bot ${botId} exited with code ${code}${signal ? ` (signal: ${signal})` : ''}`);
 			}
@@ -129,7 +137,7 @@ export async function startBotById(botId: number, bot: any): Promise<{ success: 
 			}
 			try {
 				await db.updateBot(botId, { status: 'stopped', process_id: null, uptime_started_at: null });
-			} catch {}
+			} catch (_) {}
 			logger.log(`❌ Failed to start bot ${botId}: ${err.message}`);
 		});
 
@@ -137,7 +145,7 @@ export async function startBotById(botId: number, bot: any): Promise<{ success: 
 			if ((botProcess as any).exitCode !== null) {
 				try {
 					await db.updateBot(botId, { status: 'stopped', process_id: null, uptime_started_at: null });
-				} catch {}
+				} catch (_) {}
 				return;
 			}
 		}, 500);
@@ -153,11 +161,11 @@ export async function startBotById(botId: number, bot: any): Promise<{ success: 
 						uptime_started_at: getCurrentDateTime()
 					});
 					logger.log(`✅ Updated bot ${botId} status to running (PID: ${botProcess.pid})`);
-				} catch {}
+				} catch (_) {}
 			} catch (e: any) {
 				try {
 					await db.updateBot(botId, { status: 'stopped', process_id: null, uptime_started_at: null });
-				} catch {}
+				} catch (_) {}
 			}
 		}, 2000);
 
@@ -185,7 +193,7 @@ export async function startBotById(botId: number, bot: any): Promise<{ success: 
 export async function stopBotById(botId: number): Promise<{ success: boolean; error?: string; message?: string }> {
 	try {
 		await db.updateBot(botId, { status: 'stopping' });
-	} catch {}
+	} catch (_) {}
 
 	const botInfo = botProcesses.get(botId);
 
@@ -196,37 +204,37 @@ export async function stopBotById(botId: number): Promise<{ success: boolean; er
 				setTimeout(() => {
 					try {
 						if (botInfo.pid) process.kill(botInfo.pid, 'SIGKILL');
-					} catch {}
+					} catch (_) {}
 				}, 2000);
 				botProcesses.delete(botId);
 				try {
 					await db.updateBot(botId, { status: 'stopped', process_id: null, uptime_started_at: null });
-				} catch {}
+				} catch (_) {}
 				return { success: true, message: 'Stopped bot process' };
-			} catch {
+			} catch (_) {
 				try {
 					await db.updateBot(botId, { status: 'stopped', process_id: null, uptime_started_at: null });
-				} catch {}
+				} catch (_) {}
 				return { success: false, error: 'Bot is not running' };
 			}
 		}
 		try {
 			await db.updateBot(botId, { status: 'stopped', process_id: null, uptime_started_at: null });
-		} catch {}
+		} catch (_) {}
 		return { success: false, error: 'Bot is not running' };
 	}
 
 	if (botInfo.process && !(botInfo.process as any).killed && (botInfo.process as any).exitCode === null) {
 		try {
 			botInfo.process.kill('SIGINT');
-		} catch {}
+		} catch (_) {}
 	}
 
 	setTimeout(() => {
 		if (botInfo.process && !(botInfo.process as any).killed && (botInfo.process as any).exitCode === null) {
 			try {
 				botInfo.process.kill('SIGKILL');
-			} catch {}
+			} catch (_) {}
 		}
 	}, 2000);
 
@@ -237,7 +245,7 @@ export async function stopBotById(botId: number): Promise<{ success: boolean; er
 
 	try {
 		await db.updateBot(botId, { status: 'stopped', process_id: null, uptime_started_at: null });
-	} catch {}
+	} catch (_) {}
 
 	logger.log(`⏹️  Stopped bot ${botId}`);
 
@@ -255,7 +263,7 @@ export async function stopBotById(botId: number): Promise<{ success: boolean; er
 				);
 			}
 		}
-	} catch {}
+	} catch (_) {}
 
 	return { success: true };
 }
@@ -288,7 +296,7 @@ export async function verifyBotStatuses() {
 					} else {
 						await db.updateBot(bot.id, { status: 'stopped', process_id: null, uptime_started_at: null });
 					}
-				} catch {
+				} catch (_) {
 					await db.updateBot(bot.id, { status: 'stopped', process_id: null, uptime_started_at: null });
 				}
 			}
@@ -312,6 +320,6 @@ export function getBotUptimeMs(bot: any): number {
 			const now = getNowInTimezone();
 			return now.diff(startTime, 'milliseconds').milliseconds;
 		}
-	} catch {}
+	} catch (_) {}
 	return 0;
 }

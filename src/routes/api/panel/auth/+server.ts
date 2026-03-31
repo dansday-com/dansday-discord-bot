@@ -15,11 +15,10 @@ export const GET: RequestHandler = async ({ locals }) => {
 		});
 	}
 
-	// Not authenticated — check if panel exists (determines can_register)
 	try {
 		const panel = await db.getPanel();
 		return json({ authenticated: false, can_register: !panel });
-	} catch {
+	} catch (_) {
 		return json({ authenticated: false, can_register: false });
 	}
 };

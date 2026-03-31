@@ -4,7 +4,7 @@ import { translate } from '../../../i18n.js';
 async function getGuildPermissions(guildId: string) {
 	try {
 		return await PERMISSIONS.getPermissions(guildId);
-	} catch {
+	} catch (_) {
 		return { ADMIN_ROLES: [], STAFF_ROLES: [], SUPPORTER_ROLES: [], MEMBER_ROLES: [] };
 	}
 }
@@ -80,7 +80,7 @@ export async function getRequiredRolesForAction(guild: any, action: string) {
 			return roleNames.length > 0 ? roleNames : ['Member, Supporter, Staff, or Admin'];
 		}
 		return ['Unknown'];
-	} catch {
+	} catch (_) {
 		return ['Unknown'];
 	}
 }

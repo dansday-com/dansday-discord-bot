@@ -68,7 +68,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		try {
 			await sendVerificationSuccessEmail(account.email, account.username);
-		} catch {}
+		} catch (_) {}
 
 		return json(
 			{ success: true, message: 'Email verified successfully', account_type: account.account_type },

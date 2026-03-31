@@ -69,7 +69,7 @@ export const POST: RequestHandler = async ({ request }) => {
 				await db.updatePanelAccount(existingUsername.id, { otp_code: otpCode, otp_expires_at: otpExpiresAt });
 				try {
 					await sendOTPEmail(existingUsername.email, otpCode);
-				} catch {}
+				} catch (_) {}
 				const verifyToken = await createVerifyToken(existingUsername.id);
 				return json({ success: true, message: 'Account already exists. A new verification code has been sent to your email.', verify_token: verifyToken });
 			}
@@ -84,7 +84,7 @@ export const POST: RequestHandler = async ({ request }) => {
 				await db.updatePanelAccount(existingAccount.id, { otp_code: otpCode, otp_expires_at: otpExpiresAt });
 				try {
 					await sendOTPEmail(existingAccount.email, otpCode);
-				} catch {}
+				} catch (_) {}
 				const verifyToken = await createVerifyToken(existingAccount.id);
 				return json({ success: true, message: 'Account already exists. A new verification code has been sent to your email.', verify_token: verifyToken });
 			}

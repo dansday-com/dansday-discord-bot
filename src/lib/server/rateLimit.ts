@@ -32,7 +32,6 @@ export async function checkRateLimit(ip: string, endpoint: string, maxAttempts: 
 	attempts.count++;
 	rateLimitStore.set(key, attempts);
 
-	// Periodic cleanup
 	if (Math.random() < 0.01) {
 		for (const [k, v] of rateLimitStore.entries()) {
 			if (now > v.resetTime) rateLimitStore.delete(k);

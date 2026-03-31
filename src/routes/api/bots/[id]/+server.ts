@@ -11,7 +11,7 @@ async function getEnrichedBot(id: any) {
 	if ((bot.status === 'running' || bot.status === 'starting' || bot.status === 'stopping') && bot.process_id) {
 		try {
 			process.kill(bot.process_id, 0);
-		} catch {
+		} catch (_) {
 			await db.updateBot(bot.id, { status: 'stopped', process_id: null, uptime_started_at: null });
 			Object.assign(bot, await db.getBot(id));
 		}
@@ -34,7 +34,7 @@ async function getEnrichedBot(id: any) {
 						}
 					}
 				}
-			} catch {}
+			} catch (_) {}
 		}
 	}
 

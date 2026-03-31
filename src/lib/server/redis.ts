@@ -7,7 +7,7 @@ function normalizeRedisUrl(url: string) {
 	try {
 		new URL(url);
 		return url;
-	} catch {
+	} catch (_) {
 		return url;
 	}
 }

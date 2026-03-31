@@ -36,7 +36,7 @@
 			} else {
 				showToast(d.error || 'OTP verification failed', 'error');
 			}
-		} catch {
+		} catch (_) {
 			showToast('Verification failed. Please try again.', 'error');
 		} finally {
 			loading = false;
@@ -53,7 +53,7 @@
 			});
 			const d = await res.json().catch(() => ({}));
 			showToast(d.message || d.error || 'Code resent', d.success ? 'success' : 'error');
-		} catch {
+		} catch (_) {
 			showToast('Failed to resend code', 'error');
 		}
 	}

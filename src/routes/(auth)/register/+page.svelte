@@ -55,7 +55,7 @@
 			} else {
 				showToast(d.error || 'Registration failed', 'error');
 			}
-		} catch {
+		} catch (_) {
 			showToast('Registration failed. Please try again.', 'error');
 		} finally {
 			loading = false;

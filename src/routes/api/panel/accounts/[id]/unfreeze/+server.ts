@@ -26,7 +26,7 @@ export const PUT: RequestHandler = async ({ locals, params }) => {
 
 		try {
 			await sendAccountUnfrozenEmail(account.email, account.username);
-		} catch {}
+		} catch (_) {}
 
 		return json({ success: true, message: 'Account unfrozen successfully' });
 	} catch (error: any) {

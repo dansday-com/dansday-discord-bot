@@ -30,7 +30,7 @@ export const PUT: RequestHandler = async ({ locals, params }) => {
 
 		try {
 			await sendVerificationSuccessEmail(account.email, account.username);
-		} catch {}
+		} catch (_) {}
 
 		return json({ success: true, message: 'Account verified successfully' });
 	} catch (error: any) {

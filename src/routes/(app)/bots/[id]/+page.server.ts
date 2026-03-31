@@ -12,7 +12,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	if ((rawBot.status === 'running' || rawBot.status === 'starting' || rawBot.status === 'stopping') && rawBot.process_id) {
 		try {
 			process.kill(rawBot.process_id, 0);
-		} catch {
+		} catch (_) {
 			await db.updateBot(rawBot.id, { status: 'stopped', process_id: null, uptime_started_at: null });
 			Object.assign(rawBot, await db.getBot(params.id));
 		}
@@ -30,7 +30,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 					bot.connected_bot_name = connectedBot.name?.trim() || null;
 					if (rawBot.bot_type === 'selfbot') bot.is_testing = connectedBot.is_testing || false;
 				}
-			} catch {}
+			} catch (_) {}
 		}
 	}
 

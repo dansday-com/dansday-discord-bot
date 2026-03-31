@@ -10,7 +10,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		links: any[] = [];
 	try {
 		[accounts, links] = await Promise.all([db.getAllPanelAccounts(), db.getAllPanelInviteLinks()]);
-	} catch {}
+	} catch (_) {}
 
 	return { accounts, links, user: locals.user };
 };

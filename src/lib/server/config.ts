@@ -186,7 +186,7 @@ export const PERMISSIONS = {
 			const user = member.user || member;
 			const discordMemberId = user?.id || member.id;
 			return await db.memberHasAnyRole(discordMemberId, roleIds, server.id);
-		} catch {
+		} catch (_) {
 			return false;
 		}
 	}
@@ -206,7 +206,7 @@ export async function getLevelingSettings(guildId: string) {
 	if (!progressChannelId) {
 		try {
 			progressChannelId = await getMainChannel(guildId);
-		} catch {
+		} catch (_) {
 			progressChannelId = null;
 		}
 	}
@@ -512,12 +512,12 @@ export const FORWARDER = {
 							}
 						}
 					}
-				} catch {
+				} catch (_) {
 					continue;
 				}
 			}
 			return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false };
-		} catch {
+		} catch (_) {
 			return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false };
 		}
 	},
@@ -569,7 +569,7 @@ export const FORWARDER = {
 						only_forward_when_mentions_member: forwarder.only_forward_when_mentions_member === true
 					};
 				}
-			} catch {
+			} catch (_) {
 				continue;
 			}
 		}

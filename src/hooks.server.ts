@@ -45,7 +45,6 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const sessionId = getSessionIdFromCookie(cookieHeader);
 	event.locals.sessionId = sessionId;
 
-	// Resolve session → user
 	event.locals.user = { authenticated: false, can_register: false };
 
 	if (sessionId) {
@@ -63,18 +62,17 @@ export const handle: Handle = async ({ event, resolve }) => {
 					};
 				}
 			} else if (!session) {
-				// Session expired or gone — check if anyone can still register
 				const panel = await db.getPanel();
 				event.locals.user = { authenticated: false, can_register: !panel };
 			}
-		} catch {
+		} catch (_) {
 			event.locals.user = { authenticated: false, can_register: false };
 		}
 	} else {
 		try {
 			const panel = await db.getPanel();
 			event.locals.user = { authenticated: false, can_register: !panel };
-		} catch {
+		} catch (_) {
 			event.locals.user = { authenticated: false, can_register: false };
 		}
 	}

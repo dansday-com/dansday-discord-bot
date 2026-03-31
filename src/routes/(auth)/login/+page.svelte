@@ -34,7 +34,7 @@
 			} else {
 				showToast(data.error || 'Login failed', 'error');
 			}
-		} catch {
+		} catch (_) {
 			showToast('Login failed. Please try again.', 'error');
 		} finally {
 			loading = false;

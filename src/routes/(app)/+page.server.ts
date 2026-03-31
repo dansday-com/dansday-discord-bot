@@ -11,7 +11,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 				if ((bot.status === 'running' || bot.status === 'starting' || bot.status === 'stopping') && bot.process_id) {
 					try {
 						process.kill(bot.process_id, 0);
-					} catch {
+					} catch (_) {
 						await db.updateBot(bot.id, { status: 'stopped', process_id: null, uptime_started_at: null });
 						bot.status = 'stopped';
 						bot.process_id = null;
@@ -46,7 +46,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 									botData.is_testing = connectedBot.is_testing || false;
 								}
 							}
-						} catch {}
+						} catch (_) {}
 					}
 				}
 
@@ -54,7 +54,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 				return botData;
 			})
 		);
-	} catch {}
+	} catch (_) {}
 
 	return { bots, user: locals.user };
 };

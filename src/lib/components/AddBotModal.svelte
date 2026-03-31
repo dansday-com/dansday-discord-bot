@@ -89,7 +89,7 @@
 			} else {
 				showToast(data.error || 'Failed to add bot', 'error');
 			}
-		} catch {
+		} catch (_) {
 			showToast('Failed to add bot. Please try again.', 'error');
 		} finally {
 			loading = false;

@@ -113,7 +113,7 @@ async function resolveServerAndMember(guild, memberLike) {
 				try {
 					guildMember = await guild.members.fetch({ user: candidateId, cache: true });
 					break;
-				} catch {
+				} catch (_) {
 					guildMember = null;
 				}
 			}
@@ -124,7 +124,7 @@ async function resolveServerAndMember(guild, memberLike) {
 				try {
 					guildMember = await guild.members.fetch(candidateId);
 					break;
-				} catch {
+				} catch (_) {
 					guildMember = null;
 				}
 			}
@@ -358,7 +358,7 @@ async function deriveBaselineLevel({ previousLevel, previousExperience, storedLe
 	if (typeof previousExperience === 'number' && !Number.isNaN(previousExperience)) {
 		try {
 			return await determineLevel(previousExperience, guildId);
-		} catch {}
+		} catch (_) {}
 	}
 
 	if (typeof storedLevel === 'number' && !Number.isNaN(storedLevel)) {

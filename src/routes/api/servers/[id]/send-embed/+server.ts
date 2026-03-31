@@ -57,7 +57,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 					imageBuffer = readFileSync(filePath);
 					imageFilename = uploaded_image_path.split('/').pop() || 'image.png';
 				}
-			} catch {}
+			} catch (_) {}
 		}
 
 		let finalImageUrl = image_url ? String(image_url).trim() : null;
@@ -71,7 +71,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 				try {
 					const fp = join(uploadsDir, uploaded_image_path!);
 					if (existsSync(fp)) unlinkSync(fp);
-				} catch {}
+				} catch (_) {}
 			};
 			delay > 0 ? setTimeout(fn, delay) : fn();
 		};
@@ -110,7 +110,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 				res.on('end', () => {
 					try {
 						resolve({ status: res.statusCode ?? 500, body: JSON.parse(data) });
-					} catch {
+					} catch (_) {
 						resolve({ status: 500, body: { error: 'Failed to parse bot response' } });
 					}
 				});
@@ -135,7 +135,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		if (uploaded_image_path) {
 			try {
 				unlinkSync(join(uploadsDir, uploaded_image_path));
-			} catch {}
+			} catch (_) {}
 		}
 		logger.log(`❌ Error sending embed: ${error.message}`);
 		return json({ success: false, error: error.message }, { status: 500 });

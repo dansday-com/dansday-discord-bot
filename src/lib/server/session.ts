@@ -21,7 +21,7 @@ async function getRedis() {
 		await client.connect();
 		redisClient = client;
 		return client;
-	} catch {
+	} catch (_) {
 		return null;
 	}
 }
@@ -37,7 +37,7 @@ export async function getSession(sessionId: string): Promise<SessionData | null>
 		const raw = await redis.get(sessionKey(sessionId));
 		if (!raw) return null;
 		return JSON.parse(raw) as SessionData;
-	} catch {
+	} catch (_) {
 		return null;
 	}
 }
@@ -67,9 +67,7 @@ export async function destroySessionsForAccount(accountId: number): Promise<void
 				await redis.del(key);
 			}
 		}
-	} catch {
-		// best-effort
-	}
+	} catch (_) {}
 }
 
 export function newSessionId(): string {

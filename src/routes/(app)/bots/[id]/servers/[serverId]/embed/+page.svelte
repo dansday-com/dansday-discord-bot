@@ -124,8 +124,8 @@
 				description,
 				footer,
 				color,
-				channels: selectedChannels,
-				role_mentions: selectedRoles
+				channel_ids: selectedChannels,
+				role_ids: selectedRoles
 			};
 
 			if (imageMode === 'url' && imageUrl) body.image_url = imageUrl;

@@ -44,7 +44,7 @@
 		<ChannelPicker channels={data.channels} value={channel} onchange={(id) => (channel = id)} />
 	</div>
 
-	<MessageList label="Boost Messages" values={messages} placeholder="Thank you {user} for boosting {server}!" onchange={(v) => (messages = v)} />
+	<MessageList label="Boost Messages" values={messages} placeholder="Thank you {'{user}'} for boosting {'{server}'}!" onchange={(v) => (messages = v)} />
 
 	<button
 		onclick={save}

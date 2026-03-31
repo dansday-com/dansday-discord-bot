@@ -44,7 +44,7 @@
 		<ChannelPicker channels={data.channels} value={channel} onchange={(id) => (channel = id)} />
 	</div>
 
-	<MessageList label="Welcome Messages" values={messages} placeholder="Welcome {user} to {server}!" onchange={(v) => (messages = v)} />
+	<MessageList label="Welcome Messages" values={messages} placeholder="Welcome {'{user}'} to {'{server}'}!" onchange={(v) => (messages = v)} />
 
 	<button
 		onclick={save}

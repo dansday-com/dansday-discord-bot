@@ -65,7 +65,7 @@
 	<MessageList
 		label="Level Up Messages"
 		values={levelUpMessages}
-		placeholder="Congrats {user}, you reached level {level}!"
+		placeholder="Congrats {'{user}'}, you reached level {'{level}'}!"
 		onchange={(v) => (levelUpMessages = v)}
 	/>
 

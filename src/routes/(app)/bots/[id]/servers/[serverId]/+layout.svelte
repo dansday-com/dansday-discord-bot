@@ -26,17 +26,30 @@
 	</a>
 
 	<!-- Server Header -->
-	<div class="mb-5 flex items-center gap-4">
-		<div class="bg-ash-600 flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-full sm:h-14 sm:w-14">
-			{#if data.overview.server_icon}
-				<img src={data.overview.server_icon} alt={data.overview.name} class="h-full w-full object-cover" />
-			{:else}
-				<i class="fas fa-server text-ash-300 text-lg"></i>
-			{/if}
-		</div>
-		<div class="min-w-0">
-			<h2 class="text-ash-100 truncate text-xl font-bold sm:text-2xl">{data.overview.name}</h2>
-			<p class="text-ash-500 mt-0.5 font-mono text-xs">{data.overview.discord_server_id}</p>
+	<div class="bg-ash-700 border-ash-600 mb-5 rounded-xl border p-4 sm:p-6">
+		<div class="flex flex-col gap-4 sm:flex-row sm:gap-6">
+			<div class="bg-ash-600 flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full sm:h-24 sm:w-24">
+				{#if data.overview.server_icon}
+					<img src={data.overview.server_icon} alt={data.overview.name} class="h-full w-full object-cover" />
+				{:else}
+					<i class="fas fa-server text-ash-100 text-2xl"></i>
+				{/if}
+			</div>
+			<div class="min-w-0 flex-1">
+				<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+					<h2 class="text-ash-100 truncate text-xl font-bold sm:text-2xl">{data.overview.name || 'Unnamed Server'}</h2>
+					<div class="flex flex-wrap gap-2 text-xs sm:text-sm">
+						<span class="bg-ash-800 border-ash-600 text-ash-300 flex items-center gap-1.5 rounded-lg border px-2 py-1">
+							<i class="fas fa-id-card text-ash-400"></i>{data.overview.discord_server_id}
+						</span>
+						{#if (data.overview.boost_level ?? 0) > 0}
+							<span class="bg-ash-800 border-ash-600 text-ash-300 flex items-center gap-1.5 rounded-lg border px-2 py-1">
+								<i class="fas fa-gem text-purple-400"></i>Level {data.overview.boost_level}
+							</span>
+						{/if}
+					</div>
+				</div>
+			</div>
 		</div>
 	</div>
 

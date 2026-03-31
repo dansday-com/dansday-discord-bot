@@ -154,13 +154,14 @@
 						</button>
 					{/if}
 					{#if data.bot.bot_type === 'official'}
-						<button
-							onclick={toggleMode}
-							class="bg-ash-700 hover:bg-ash-600 text-ash-200 flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition-colors"
-						>
-							<i class="fas fa-toggle-{data.bot.is_testing ? 'on' : 'off'} text-xs"></i>
-							{data.bot.is_testing ? 'Testing' : 'Production'}
-						</button>
+						<label class="bg-ash-700 hover:bg-ash-600 flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 transition-all">
+							<div class="relative h-6 w-11">
+								<input type="checkbox" class="sr-only" checked={!data.bot.is_testing} onchange={toggleMode} />
+								<div class="h-6 w-11 rounded-full transition-colors {data.bot.is_testing ? 'bg-ash-500' : 'bg-green-600'}"></div>
+								<div class="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform {data.bot.is_testing ? 'left-0.5' : 'left-5.5'}"></div>
+							</div>
+							<span class="text-ash-100 text-xs font-medium sm:text-sm">{data.bot.is_testing ? 'Testing' : 'Production'}</span>
+						</label>
 					{/if}
 					<button onclick={deleteBot} class="flex items-center gap-1.5 rounded-lg bg-red-900 px-3 py-2 text-sm text-red-300 transition-colors hover:bg-red-800">
 						<i class="fas fa-trash text-xs"></i>Delete
@@ -226,11 +227,9 @@
 			<h3 class="text-ash-100 text-lg font-semibold">
 				<i class="fas fa-server text-ash-300 mr-2"></i>Servers
 			</h3>
-			{#if data.servers.length > 0}
-				<p class="text-ash-500 text-xs">
-					{Math.min((page - 1) * SERVERS_PER_PAGE + 1, data.servers.length)}–{Math.min(page * SERVERS_PER_PAGE, data.servers.length)} of {data.servers.length}
-				</p>
-			{/if}
+			<span class="text-ash-400 text-xs sm:text-sm">
+				{data.servers.length} server{data.servers.length !== 1 ? 's' : ''}
+			</span>
 		</div>
 
 		{#if data.servers.length === 0}
@@ -242,43 +241,73 @@
 			<div class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
 				{#each pagedServers as server (server.id)}
 					{#if data.bot.bot_type === 'official'}
-						<a href="/bots/{data.bot.id}/servers/{server.id}" class="bg-ash-700 hover:bg-ash-600 flex items-center gap-3 rounded-lg p-3 transition-colors">
-							<div class="bg-ash-500 flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-full">
-								{#if server.server_icon}
-									<img src={server.server_icon} alt={server.name} class="h-full w-full object-cover" />
-								{:else}
-									<i class="fas fa-server text-ash-300 text-sm"></i>
-								{/if}
-							</div>
-							<div class="min-w-0 flex-1">
-								<p class="text-ash-100 truncate text-sm font-medium">{server.name}</p>
-								<div class="text-ash-400 mt-0.5 flex items-center gap-3 text-xs">
-									<span><i class="fas fa-users mr-1"></i>{server.total_members ?? 0}</span>
-									{#if server.boost_level > 0}
-										<span><i class="fas fa-gem mr-1 text-purple-400"></i>{server.boost_level}</span>
+						<a
+							href="/bots/{data.bot.id}/servers/{server.id}"
+							class="bg-ash-700 border-ash-600 hover:border-ash-500 block rounded-lg border p-4 transition-all duration-200"
+						>
+							<div class="mb-3 flex items-center gap-3">
+								<div class="bg-ash-600 flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-full">
+									{#if server.server_icon}
+										<img src={server.server_icon} alt={server.name} class="h-full w-full object-cover" />
+									{:else}
+										<i class="fas fa-server text-ash-100 text-lg"></i>
 									{/if}
-									<span><i class="fas fa-hashtag mr-1"></i>{server.total_channels ?? 0}</span>
+								</div>
+								<div class="min-w-0 flex-1">
+									<h4 class="text-ash-100 truncate text-sm font-semibold sm:text-base" title={server.name}>{server.name || 'Unnamed Server'}</h4>
+								</div>
+								<i class="fas fa-cog text-ash-400 hover:text-ash-100 transition-colors"></i>
+							</div>
+							<div class="space-y-2 text-xs sm:text-sm">
+								<div class="flex items-center justify-between">
+									<span class="text-ash-400 flex items-center gap-1.5"><i class="fas fa-users w-4"></i>Members</span>
+									<span class="text-ash-100 font-medium">{(server.total_members ?? 0).toLocaleString()}</span>
+								</div>
+								<div class="flex items-center justify-between">
+									<span class="text-ash-400 flex items-center gap-1.5"><i class="fas fa-star w-4"></i>Boost Level</span>
+									<span class="text-ash-100 font-medium">{server.boost_level ?? 0}</span>
+								</div>
+								<div class="flex items-center justify-between">
+									<span class="text-ash-400 flex items-center gap-1.5"><i class="fas fa-gift w-4"></i>Total Boosters</span>
+									<span class="text-ash-100 font-medium">{(server.total_boosters ?? 0).toLocaleString()}</span>
+								</div>
+								<div class="flex items-center justify-between">
+									<span class="text-ash-400 flex items-center gap-1.5"><i class="fas fa-hashtag w-4"></i>Channels</span>
+									<span class="text-ash-100 font-medium">{(server.total_channels ?? 0).toLocaleString()}</span>
 								</div>
 							</div>
-							<i class="fas fa-chevron-right text-ash-500 flex-shrink-0 text-xs"></i>
 						</a>
 					{:else}
-						<div class="bg-ash-700 flex items-center gap-3 rounded-lg p-3 opacity-75">
-							<div class="bg-ash-500 flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-full">
-								{#if server.server_icon}
-									<img src={server.server_icon} alt={server.name} class="h-full w-full object-cover" />
-								{:else}
-									<i class="fas fa-server text-ash-300 text-sm"></i>
-								{/if}
-							</div>
-							<div class="min-w-0 flex-1">
-								<p class="text-ash-100 truncate text-sm font-medium">{server.name}</p>
-								<div class="text-ash-400 mt-0.5 flex items-center gap-3 text-xs">
-									<span><i class="fas fa-users mr-1"></i>{server.total_members ?? 0}</span>
-									{#if server.boost_level > 0}
-										<span><i class="fas fa-gem mr-1 text-purple-400"></i>{server.boost_level}</span>
+						<div class="bg-ash-700 border-ash-600 rounded-lg border p-4 opacity-75">
+							<div class="mb-3 flex items-center gap-3">
+								<div class="bg-ash-600 flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-full">
+									{#if server.server_icon}
+										<img src={server.server_icon} alt={server.name} class="h-full w-full object-cover" />
+									{:else}
+										<i class="fas fa-server text-ash-100 text-lg"></i>
 									{/if}
-									<span><i class="fas fa-hashtag mr-1"></i>{server.total_channels ?? 0}</span>
+								</div>
+								<div class="min-w-0 flex-1">
+									<h4 class="text-ash-100 truncate text-sm font-semibold sm:text-base" title={server.name}>{server.name || 'Unnamed Server'}</h4>
+								</div>
+								<i class="fas fa-info-circle text-ash-500"></i>
+							</div>
+							<div class="space-y-2 text-xs sm:text-sm">
+								<div class="flex items-center justify-between">
+									<span class="text-ash-400 flex items-center gap-1.5"><i class="fas fa-users w-4"></i>Members</span>
+									<span class="text-ash-100 font-medium">{(server.total_members ?? 0).toLocaleString()}</span>
+								</div>
+								<div class="flex items-center justify-between">
+									<span class="text-ash-400 flex items-center gap-1.5"><i class="fas fa-star w-4"></i>Boost Level</span>
+									<span class="text-ash-100 font-medium">{server.boost_level ?? 0}</span>
+								</div>
+								<div class="flex items-center justify-between">
+									<span class="text-ash-400 flex items-center gap-1.5"><i class="fas fa-gift w-4"></i>Total Boosters</span>
+									<span class="text-ash-100 font-medium">{(server.total_boosters ?? 0).toLocaleString()}</span>
+								</div>
+								<div class="flex items-center justify-between">
+									<span class="text-ash-400 flex items-center gap-1.5"><i class="fas fa-hashtag w-4"></i>Channels</span>
+									<span class="text-ash-100 font-medium">{(server.total_channels ?? 0).toLocaleString()}</span>
 								</div>
 							</div>
 						</div>

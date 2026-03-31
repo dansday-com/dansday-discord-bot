@@ -10,7 +10,8 @@ export const load: PageServerLoad = async ({ locals, request }) => {
 	const cookie = request.headers.get('cookie') ?? '';
 	const headers = { cookie };
 
-	let accounts = [], links = [];
+	let accounts = [],
+		links = [];
 	try {
 		const [accountsRes, linksRes] = await Promise.all([
 			fetch(`${BACKEND_URL}/api/panel/accounts`, { headers }),

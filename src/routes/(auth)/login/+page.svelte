@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { showToast } from '$lib/stores/toast.svelte';
+	import type { PageProps } from './$types';
 
+	let { data }: PageProps = $props();
 	let loading = $state(false);
 	let showPassword = $state(false);
 	let usernameOrEmail = $state('');
@@ -107,11 +109,13 @@
 			{loading ? 'Processing...' : 'Login'}
 		</button>
 
-		<div class="text-center">
-			<p class="text-ash-400 text-xs sm:text-sm">
-				Don't have an account?
-				<a href="/register" class="text-ash-200 hover:text-ash-300 ml-1">Register</a>
-			</p>
-		</div>
+		{#if data.canRegister}
+			<div class="text-center">
+				<p class="text-ash-400 text-xs sm:text-sm">
+					Don't have an account?
+					<a href="/register" class="text-ash-200 hover:text-ash-300 ml-1">Register</a>
+				</p>
+			</div>
+		{/if}
 	</form>
 </div>

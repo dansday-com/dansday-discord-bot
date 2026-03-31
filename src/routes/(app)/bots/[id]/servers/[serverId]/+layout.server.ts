@@ -7,12 +7,15 @@ export const load: LayoutServerLoad = async ({ locals, request, params }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
 
 	const cookie = request.headers.get('cookie') ?? '';
-	const res = await fetch(`${BACKEND_URL}/api/servers/${params.serverId}/overview`, {
-		headers: { cookie }
-	});
+	let res: Response;
+	try {
+		res = await fetch(`${BACKEND_URL}/api/servers/${params.serverId}/overview`, { headers: { cookie } });
+	} catch {
+		error(503, 'Backend unavailable');
+	}
 
 	if (res.status === 404) error(404, 'Server not found');
-	if (!res.ok) error(500, 'Failed to load server');
+	if (!res.ok) error(res.status, 'Failed to load server');
 
 	const overview = await res.json();
 

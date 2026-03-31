@@ -7,10 +7,12 @@ export const load: PageServerLoad = async ({ locals, request, params }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
 
 	const cookie = request.headers.get('cookie') ?? '';
-	const res = await fetch(`${BACKEND_URL}/api/servers/${params.serverId}/settings?component=welcomer`, {
-		headers: { cookie }
-	});
-
-	const settings = res.ok ? await res.json() : {};
+	let settings = {};
+	try {
+		const res = await fetch(`${BACKEND_URL}/api/servers/${params.serverId}/settings?component=welcomer`, {
+			headers: { cookie }
+		});
+		if (res.ok) settings = await res.json();
+	} catch {}
 	return { settings };
 };

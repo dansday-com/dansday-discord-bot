@@ -10,13 +10,15 @@ export const load: PageServerLoad = async ({ locals, request }) => {
 	const cookie = request.headers.get('cookie') ?? '';
 	const headers = { cookie };
 
-	const [accountsRes, linksRes] = await Promise.all([
-		fetch(`${BACKEND_URL}/api/panel/accounts`, { headers }),
-		fetch(`${BACKEND_URL}/api/panel/invite-links`, { headers })
-	]);
-
-	const { accounts } = accountsRes.ok ? await accountsRes.json() : { accounts: [] };
-	const { links } = linksRes.ok ? await linksRes.json() : { links: [] };
+	let accounts = [], links = [];
+	try {
+		const [accountsRes, linksRes] = await Promise.all([
+			fetch(`${BACKEND_URL}/api/panel/accounts`, { headers }),
+			fetch(`${BACKEND_URL}/api/panel/invite-links`, { headers })
+		]);
+		if (accountsRes.ok) ({ accounts } = await accountsRes.json());
+		if (linksRes.ok) ({ links } = await linksRes.json());
+	} catch {}
 
 	return { accounts, links, user: locals.user };
 };

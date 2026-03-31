@@ -65,11 +65,15 @@ export async function startBotById(botId: number, bot: any): Promise<{ success: 
 		let botPath: string;
 		let botScript: string;
 
+		const botsRoot = existsSync(join(projectRoot, 'build-bots', 'bots'))
+			? join(projectRoot, 'build-bots', 'bots')
+			: join(projectRoot, 'src', 'lib', 'server', 'bots');
+
 		if (bot.bot_type === 'official') {
-			botPath = join(projectRoot, 'src', 'lib', 'server', 'bots', 'official-bot');
+			botPath = join(botsRoot, 'official-bot');
 			botScript = 'officialbot.js';
 		} else if (bot.bot_type === 'selfbot') {
-			botPath = join(projectRoot, 'src', 'lib', 'server', 'bots', 'self-bot');
+			botPath = join(botsRoot, 'self-bot');
 			botScript = 'selfbot.js';
 		} else {
 			return { success: false, error: `Unknown bot type: ${bot.bot_type}` };
@@ -77,7 +81,6 @@ export async function startBotById(botId: number, bot: any): Promise<{ success: 
 
 		const scriptPath = join(botPath, botScript);
 		const nodeBin = resolveNodeBin();
-		logger.log(`Starting bot ${botId}: node=${nodeBin} script=${scriptPath} exists=${existsSync(scriptPath)}`);
 
 		const botProcess = spawn(nodeBin, [scriptPath], {
 			cwd: botPath,

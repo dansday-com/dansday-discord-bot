@@ -9,7 +9,9 @@ COPY package.json ./
 RUN npm install --include=dev --legacy-peer-deps
 
 COPY . .
+RUN npm run build:otel
 RUN npm run build
+RUN npx tsc -p tsconfig.bots.json
 
 RUN npm prune --production
 
@@ -24,7 +26,7 @@ COPY --from=builder /app/build ./build
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/otel ./otel
-COPY --from=builder /app/src/lib/server/bots ./src/lib/server/bots
+COPY --from=builder /app/build-bots ./build-bots
 COPY --from=builder /app/src/lib/server/locales ./src/lib/server/locales
 COPY --from=builder /app/src/lib/server/schema.sql ./src/lib/server/schema.sql
 

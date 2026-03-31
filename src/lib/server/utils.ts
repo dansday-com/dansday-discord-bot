@@ -1,10 +1,6 @@
 import { DateTime } from 'luxon';
 
-const TIMEZONE = process.env.TIMEZONE;
-
-if (!TIMEZONE) {
-	throw new Error('TIMEZONE environment variable is required');
-}
+const TIMEZONE = process.env.TIMEZONE || 'UTC';
 
 export function separateChannelsAndCategories(guildChannels: Map<string, any>) {
 	const channelsArray = Array.from(guildChannels.values());

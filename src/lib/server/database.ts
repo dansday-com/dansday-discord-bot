@@ -50,18 +50,25 @@ function getConnectionConfig() {
 	};
 }
 
-export const connectionConfig = getConnectionConfig();
+let connectionConfig: ReturnType<typeof getConnectionConfig> | null = null;
 
-console.log(`🔌 Database connection: mysql://${connectionConfig.user}@${connectionConfig.host}:${connectionConfig.port}/${connectionConfig.database}`);
+function resolveConnectionConfig() {
+	if (!connectionConfig) {
+		connectionConfig = getConnectionConfig();
+		console.log(`🔌 Database connection: mysql://${connectionConfig.user}@${connectionConfig.host}:${connectionConfig.port}/${connectionConfig.database}`);
+	}
+	return connectionConfig;
+}
 
 let pool: any = null;
 
 function getPool() {
+	const cfg = resolveConnectionConfig();
 	if (!pool) {
 		const tz = process.env.TIMEZONE;
 		const tzOffset = tz === 'Asia/Jakarta' ? '+07:00' : tz === 'UTC' ? 'Z' : 'Z';
 		pool = mysql.createPool({
-			...connectionConfig,
+			...cfg,
 			waitForConnections: true,
 			connectionLimit: 10,
 			queueLimit: 0,
@@ -83,7 +90,7 @@ async function query(sql: string, params: any[] = []) {
 }
 
 async function runMigration() {
-	const connection = await mysql.createConnection(connectionConfig);
+	const connection = await mysql.createConnection(resolveConnectionConfig());
 
 	try {
 		logger.log('🔌 Connecting to database...');
@@ -156,7 +163,7 @@ async function setupDatabase() {
 			const result = await query(
 				`SELECT COUNT(*) as count FROM information_schema.tables
 				 WHERE table_schema = ? AND table_name = ?`,
-				[connectionConfig.database, table.name]
+				[resolveConnectionConfig().database, table.name]
 			);
 
 			const exists = result[0]?.count > 0;
@@ -2051,7 +2058,7 @@ export async function upsertStaffRating(serverId: any, staffMemberId: any, ratin
 }
 
 export async function createStaffRatingReport(
-	serverId: any,
+	_serverId: any,
 	reporterMemberId: any,
 	reportedStaffId: any,
 	rating: number,
@@ -2123,7 +2130,7 @@ export async function updateStaffReportStatus(reportId: any, status: string) {
 	await query(`UPDATE server_staff_reports SET status = ? WHERE id = ?`, [status, reportId]);
 }
 
-export async function createFeedback(serverId: any, memberId: any, description: string, isAnonymous: boolean) {
+export async function createFeedback(_serverId: any, memberId: any, description: string, isAnonymous: boolean) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	const result = await query(

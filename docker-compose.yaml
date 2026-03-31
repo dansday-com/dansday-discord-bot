@@ -18,11 +18,11 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT}
       OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME}
       HOST: 0.0.0.0
-      PORT: 3333
+      PORT: 3000
     expose:
-      - '3333'
+      - '3000'
     healthcheck:
-      test: ['CMD-SHELL', 'curl -f http://localhost:3333 || exit 1']
+      test: ['CMD-SHELL', 'curl -f http://localhost:3000 || exit 1']
       interval: 30s
       timeout: 5s
       start_period: 30s

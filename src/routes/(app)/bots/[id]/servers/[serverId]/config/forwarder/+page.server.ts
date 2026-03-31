@@ -1,18 +1,9 @@
 import { redirect } from '@sveltejs/kit';
-import type { PageServerLoad } from './';
+import type { PageServerLoad } from './$types';
+import db from '$lib/server/db.js';
 
-const BACKEND_URL = process.env.BACKEND_URL ?? 'http://localhost:3000';
-
-export const load: PageServerLoad = async ({ locals, request, params }) => {
+export const load: PageServerLoad = async ({ locals, params }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
-
-	const cookie = request.headers.get('cookie') ?? '';
-	let settings = {};
-	try {
-		const res = await fetch(`${BACKEND_URL}/api/servers/${params.serverId}/settings?component=forwarder`, {
-			headers: { cookie }
-		});
-		if (res.ok) settings = await res.json();
-	} catch {}
-	return { settings };
+	const settings = await db.getServerSettings(params.serverId, 'forwarder').catch(() => ({}));
+	return { settings: settings ?? {} };
 };

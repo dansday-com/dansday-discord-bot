@@ -1,24 +1,42 @@
 import { redirect, error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import db from '$lib/server/db.js';
+import { getBotUptimeMs } from '$lib/server/botProcesses.js';
 
-const BACKEND_URL = process.env.BACKEND_URL ?? 'http://localhost:3000';
-
-export const load: PageServerLoad = async ({ locals, request, params }) => {
+export const load: PageServerLoad = async ({ locals, params }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
 
-	const cookie = request.headers.get('cookie') ?? '';
-	const headers = { cookie };
+	const rawBot = await db.getBot(params.id);
+	if (!rawBot) error(404, 'Bot not found');
 
-	const [botRes, serversRes] = await Promise.all([
-		fetch(`${BACKEND_URL}/api/bots/${params.id}`, { headers }),
-		fetch(`${BACKEND_URL}/api/bots/${params.id}/servers`, { headers })
-	]);
+	if ((rawBot.status === 'running' || rawBot.status === 'starting' || rawBot.status === 'stopping') && rawBot.process_id) {
+		try {
+			process.kill(rawBot.process_id, 0);
+		} catch {
+			await db.updateBot(rawBot.id, { status: 'stopped', process_id: null, uptime_started_at: null });
+			Object.assign(rawBot, await db.getBot(params.id));
+		}
+	}
 
-	if (botRes.status === 404) error(404, 'Bot not found');
-	if (!botRes.ok) error(500, 'Failed to load bot');
+	const { token, ...bot } = rawBot;
+	bot.is_testing = rawBot.is_testing || false;
 
-	const bot = await botRes.json();
-	const servers = serversRes.ok ? await serversRes.json() : [];
+	if (rawBot.connect_to) {
+		const connectToId = Number(rawBot.connect_to);
+		if (connectToId && !Number.isNaN(connectToId)) {
+			try {
+				const connectedBot = await db.getBot(connectToId);
+				if (connectedBot) {
+					bot.connected_bot_name = connectedBot.name?.trim() || null;
+					if (rawBot.bot_type === 'selfbot') bot.is_testing = connectedBot.is_testing || false;
+				}
+			} catch {}
+		}
+	}
+
+	bot.uptime_ms = getBotUptimeMs(bot);
+
+	const servers = await db.getServersForBot(Number(params.id));
 
 	return { bot, servers, user: locals.user };
 };

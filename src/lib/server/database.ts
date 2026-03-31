@@ -2,11 +2,8 @@ import mysql from 'mysql2/promise';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import dotenv from 'dotenv';
 import logger from './logger.js';
 import { toMySQLDateTime, parseMySQLDateTime, getNowInTimezone, addMinutesToNow } from './utils.js';
-
-dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

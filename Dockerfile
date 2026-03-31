@@ -28,8 +28,10 @@ COPY --from=builder /app/src/lib/server/bots ./src/lib/server/bots
 COPY --from=builder /app/src/lib/server/locales ./src/lib/server/locales
 COPY --from=builder /app/src/lib/server/schema.sql ./src/lib/server/schema.sql
 
-EXPOSE 80
+EXPOSE 3000
 
+ENV HOST=0.0.0.0
+ENV PORT=3000
 ENV NODE_ENV=production
 
 CMD ["node", "--import", "./otel/console-instrumentation.js", "build/index.js"]

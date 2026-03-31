@@ -10,7 +10,13 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const _root3 = join(__dirname, '..', '..', '..');
 const _root4 = join(__dirname, '..', '..', '..', '..');
-const projectRoot = existsSync(join(_root3, 'src', 'lib', 'server', 'bots')) ? _root3 : _root4;
+function findProjectRoot(): string {
+	for (const r of [_root3, _root4]) {
+		if (existsSync(join(r, 'build-bots', 'bots')) || existsSync(join(r, 'src', 'lib', 'server', 'bots'))) return r;
+	}
+	return _root4;
+}
+const projectRoot = findProjectRoot();
 
 function resolveNodeBin(): string {
 	if (existsSync(process.execPath)) return process.execPath;

@@ -93,3 +93,37 @@ export function makeSessionCookie(sessionId: string): string {
 export function clearSessionCookie(): string {
 	return `${COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
 }
+
+const VERIFY_TOKEN_TTL = 60 * 15; // 15 minutes
+
+function verifyTokenKey(token: string) {
+	return `dansday:verify:${token}`;
+}
+
+export async function createVerifyToken(accountId: number): Promise<string | null> {
+	const redis = await getRedis();
+	if (!redis) return null;
+	const token = randomBytes(32).toString('hex');
+	await redis.setEx(verifyTokenKey(token), VERIFY_TOKEN_TTL, String(accountId));
+	return token;
+}
+
+export async function consumeVerifyToken(token: string): Promise<number | null> {
+	const redis = await getRedis();
+	if (!redis) return null;
+	const key = verifyTokenKey(token);
+	const raw = await redis.get(key);
+	if (!raw) return null;
+	await redis.del(key);
+	const id = parseInt(raw, 10);
+	return isNaN(id) ? null : id;
+}
+
+export async function peekVerifyToken(token: string): Promise<number | null> {
+	const redis = await getRedis();
+	if (!redis) return null;
+	const raw = await redis.get(verifyTokenKey(token));
+	if (!raw) return null;
+	const id = parseInt(raw, 10);
+	return isNaN(id) ? null : id;
+}

@@ -20,7 +20,7 @@
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
-				body: JSON.stringify({ account_id: data.accountId, otp_code: otpCode })
+				body: JSON.stringify({ verify_token: data.verifyToken, otp_code: otpCode })
 			});
 
 			if (!res.ok) {
@@ -49,7 +49,7 @@
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
-				body: JSON.stringify({ account_id: data.accountId })
+				body: JSON.stringify({ verify_token: data.verifyToken })
 			});
 			const d = await res.json().catch(() => ({}));
 			showToast(d.message || d.error || 'Code resent', d.success ? 'success' : 'error');

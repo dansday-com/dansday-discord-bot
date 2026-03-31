@@ -1,20 +1,25 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/server/db.js';
-import { newSessionId, setSession, makeSessionCookie } from '$lib/server/session.js';
+import { newSessionId, setSession, makeSessionCookie, peekVerifyToken, consumeVerifyToken } from '$lib/server/session.js';
 import { getClientIp } from '$lib/server/rateLimit.js';
-import { sanitizeString, sanitizeInteger, getNowInTimezone, getDateTimeFromSQL } from '$lib/server/utils.js';
+import { sanitizeString, getNowInTimezone, getDateTimeFromSQL } from '$lib/server/utils.js';
 import { sendVerificationSuccessEmail } from '$lib/server/email.js';
 import logger from '$lib/server/logger.js';
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const body = await request.json();
-		const sanitizedAccountId = sanitizeInteger(body.account_id, 1, null);
+		const verifyToken = typeof body.verify_token === 'string' ? body.verify_token.trim() : null;
 		const sanitizedOtpCode = sanitizeString(body.otp_code, 6);
 
-		if (!sanitizedAccountId || !sanitizedOtpCode || sanitizedOtpCode.length !== 6) {
-			return json({ success: false, error: 'Account ID and valid OTP code are required' }, { status: 400 });
+		if (!verifyToken || !sanitizedOtpCode || sanitizedOtpCode.length !== 6) {
+			return json({ success: false, error: 'Verification token and valid OTP code are required' }, { status: 400 });
+		}
+
+		const sanitizedAccountId = await peekVerifyToken(verifyToken);
+		if (!sanitizedAccountId) {
+			return json({ success: false, error: 'Invalid or expired verification link. Please log in again.' }, { status: 401 });
 		}
 
 		if (!/^\d{6}$/.test(sanitizedOtpCode)) {
@@ -44,6 +49,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		const ip = getClientIp(request);
+		await consumeVerifyToken(verifyToken);
 		await db.updatePanelAccount(account.id, {
 			email_verified: true,
 			otp_code: null,

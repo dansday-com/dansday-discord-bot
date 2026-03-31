@@ -1,7 +1,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/server/db.js';
-import { sanitizeInteger, addMinutesToNow } from '$lib/server/utils.js';
+import { peekVerifyToken } from '$lib/server/session.js';
+import { addMinutesToNow } from '$lib/server/utils.js';
 import { sendOTPEmail } from '$lib/server/email.js';
 import logger from '$lib/server/logger.js';
 import { randomInt } from 'crypto';
@@ -9,13 +10,18 @@ import { randomInt } from 'crypto';
 export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const body = await request.json();
-		const sanitizedAccountId = sanitizeInteger(body.account_id, 1, null);
+		const verifyToken = typeof body.verify_token === 'string' ? body.verify_token.trim() : null;
 
-		if (!sanitizedAccountId) {
-			return json({ success: false, error: 'Valid account ID is required' }, { status: 400 });
+		if (!verifyToken) {
+			return json({ success: false, error: 'Valid verification token is required' }, { status: 400 });
 		}
 
-		const account = await db.getPanelAccountById(sanitizedAccountId);
+		const accountId = await peekVerifyToken(verifyToken);
+		if (!accountId) {
+			return json({ success: false, error: 'Invalid or expired verification link. Please log in again.' }, { status: 401 });
+		}
+
+		const account = await db.getPanelAccountById(accountId);
 		if (!account) {
 			return json({ success: false, error: 'Account not found' }, { status: 404 });
 		}

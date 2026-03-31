@@ -4,6 +4,7 @@ import db from '$lib/server/db.js';
 import { checkRateLimit, getClientIp } from '$lib/server/rateLimit.js';
 import { addMinutesToNow } from '$lib/server/utils.js';
 import { sendOTPEmail } from '$lib/server/email.js';
+import { createVerifyToken } from '$lib/server/session.js';
 import bcrypt from 'bcrypt';
 import { randomInt } from 'crypto';
 import { sanitizeString, sanitizeUsername, sanitizeEmail, validateInputLength } from '$lib/server/utils.js';
@@ -62,12 +63,32 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		const existingUsername = await db.getPanelAccountByUsername(validation.sanitizedUsername);
 		if (existingUsername) {
+			if (!existingUsername.email_verified) {
+				const otpCode = randomInt(100000, 999999).toString();
+				const otpExpiresAt = addMinutesToNow(10);
+				await db.updatePanelAccount(existingUsername.id, { otp_code: otpCode, otp_expires_at: otpExpiresAt });
+				try {
+					await sendOTPEmail(existingUsername.email, otpCode);
+				} catch {}
+				const verifyToken = await createVerifyToken(existingUsername.id);
+				return json({ success: true, message: 'Account already exists. A new verification code has been sent to your email.', verify_token: verifyToken });
+			}
 			return json({ success: false, error: 'Username already taken. Please choose another.' }, { status: 400 });
 		}
 
 		const existingAccount = await db.getPanelAccountByEmail(validation.sanitizedEmail);
 		if (existingAccount) {
-			return json({ success: false, error: 'Email already registered. Please login instead.' }, { status: 400 });
+			if (!existingAccount.email_verified) {
+				const otpCode = randomInt(100000, 999999).toString();
+				const otpExpiresAt = addMinutesToNow(10);
+				await db.updatePanelAccount(existingAccount.id, { otp_code: otpCode, otp_expires_at: otpExpiresAt });
+				try {
+					await sendOTPEmail(existingAccount.email, otpCode);
+				} catch {}
+				const verifyToken = await createVerifyToken(existingAccount.id);
+				return json({ success: true, message: 'Account already exists. A new verification code has been sent to your email.', verify_token: verifyToken });
+			}
+			return json({ success: false, error: 'Email already registered. Please login instead.', redirect_to: '/login' }, { status: 400 });
 		}
 
 		let panel = await db.getPanel();
@@ -101,7 +122,8 @@ export const POST: RequestHandler = async ({ request }) => {
 			);
 		}
 
-		return json({ success: true, message: 'Registration successful. Please check your email for verification code.', account_id: account.id });
+		const verifyToken = await createVerifyToken(account.id);
+		return json({ success: true, message: 'Registration successful. Please check your email for verification code.', verify_token: verifyToken });
 	} catch (error: any) {
 		return json({ success: false, error: error.message }, { status: 500 });
 	}

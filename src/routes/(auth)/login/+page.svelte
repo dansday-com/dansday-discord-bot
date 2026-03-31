@@ -27,7 +27,7 @@
 				showToast(data.message || 'Login successful!', 'success');
 				setTimeout(() => goto('/'), 500);
 			} else if (data.requires_verification) {
-				goto(`/verify?account_id=${data.account_id}`);
+				goto(`/verify?token=${data.verify_token}`);
 			} else {
 				showToast(data.error || 'Login failed', 'error');
 			}

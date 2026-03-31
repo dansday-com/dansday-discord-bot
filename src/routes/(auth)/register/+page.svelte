@@ -44,13 +44,14 @@
 			if (!res.ok) {
 				const err = await res.json().catch(() => ({ error: 'Registration failed' }));
 				showToast(err.error || 'Registration failed', 'error');
+				if (err.redirect_to) setTimeout(() => goto(err.redirect_to), 1500);
 				return;
 			}
 
 			const d = await res.json();
 			if (d.success) {
 				showToast(d.message || 'Registration successful! Check your email for the verification code.', 'success');
-				goto(`/verify?account_id=${d.account_id}`);
+				goto(`/verify?token=${d.verify_token}`);
 			} else {
 				showToast(d.error || 'Registration failed', 'error');
 			}

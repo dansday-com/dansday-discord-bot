@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/server/db.js';
-import { newSessionId, setSession, makeSessionCookie } from '$lib/server/session.js';
+import { newSessionId, setSession, makeSessionCookie, createVerifyToken } from '$lib/server/session.js';
 import { checkRateLimit, getClientIp } from '$lib/server/rateLimit.js';
 import { sanitizeString, sanitizeEmail, sanitizeUsername, validateInputLength } from '$lib/server/utils.js';
 import logger from '$lib/server/logger.js';
@@ -60,8 +60,9 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		if (!account.email_verified) {
+			const verifyToken = await createVerifyToken(account.id);
 			return json(
-				{ success: false, error: 'Email not verified. Please verify your email first.', requires_verification: true, account_id: account.id },
+				{ success: false, error: 'Email not verified. Please verify your email first.', requires_verification: true, verify_token: verifyToken },
 				{ status: 401 }
 			);
 		}

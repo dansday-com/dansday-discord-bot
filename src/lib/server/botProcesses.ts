@@ -74,8 +74,10 @@ export async function startBotById(botId: number, bot: any): Promise<{ success: 
 		}
 
 		const scriptPath = join(botPath, botScript);
+		const nodeBin = resolveNodeBin();
+		logger.log(`Starting bot ${botId}: node=${nodeBin} script=${scriptPath} exists=${existsSync(scriptPath)}`);
 
-		const botProcess = spawn(resolveNodeBin(), [scriptPath], {
+		const botProcess = spawn(nodeBin, [scriptPath], {
 			cwd: botPath,
 			stdio: ['ignore', 'pipe', 'pipe'],
 			shell: false,

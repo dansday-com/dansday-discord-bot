@@ -30,8 +30,6 @@ COPY --from=builder /app/src/lib/server/schema.sql ./src/lib/server/schema.sql
 
 EXPOSE 3333
 
-ENV HOST=0.0.0.0
-ENV PORT=3333
 ENV NODE_ENV=production
 
 CMD ["node", "--import", "./otel/console-instrumentation.js", "build/index.js"]

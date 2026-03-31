@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount, onDestroy } from 'svelte';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { showToast } from '$lib/stores/toast.svelte';
 	import type { PageProps } from './$types';
@@ -10,6 +11,53 @@
 
 	const totalPages = $derived(Math.ceil(data.servers.length / SERVERS_PER_PAGE));
 	const pagedServers = $derived(data.servers.slice((page - 1) * SERVERS_PER_PAGE, page * SERVERS_PER_PAGE));
+
+	let _liveBotOverride: typeof data.bot | null = $state(null);
+	const liveBot = $derived(_liveBotOverride ?? data.bot);
+	let uptimeBase = $state(0);
+	let uptimeTick = $state(0);
+	let tickInterval: ReturnType<typeof setInterval> | null = null;
+	let es: EventSource | null = null;
+
+	const displayUptime = $derived(liveBot.status === 'running' ? uptimeBase + uptimeTick : 0);
+
+	function startTick() {
+		if (tickInterval) return;
+		const base = Date.now();
+		tickInterval = setInterval(() => { uptimeTick = Date.now() - base; }, 1000);
+	}
+
+	function stopTick() {
+		if (tickInterval) { clearInterval(tickInterval); tickInterval = null; }
+		uptimeTick = 0;
+	}
+
+	onMount(() => {
+		_liveBotOverride = { ...data.bot };
+		if (data.bot.status === 'running') {
+			uptimeBase = data.bot.uptime_ms ?? 0;
+			startTick();
+		}
+
+		es = new EventSource(`/api/bots/${data.bot.id}/stream`);
+		es.onmessage = (e) => {
+			const d = JSON.parse(e.data);
+			_liveBotOverride = { ...liveBot, status: d.status, process_id: d.process_id ?? liveBot.process_id };
+			if (d.status === 'running') {
+				uptimeBase = d.uptime_ms ?? 0;
+				uptimeTick = 0;
+				startTick();
+			} else {
+				uptimeBase = 0;
+				stopTick();
+			}
+		};
+	});
+
+	onDestroy(() => {
+		es?.close();
+		stopTick();
+	});
 
 	function statusColor(status: string) {
 		if (status === 'running') return 'bg-green-500';
@@ -24,7 +72,7 @@
 	}
 
 	function formatUptime(ms: number): string {
-		if (!ms) return '';
+		if (!ms) return '—';
 		const s = Math.floor(ms / 1000);
 		const m = Math.floor(s / 60);
 		const h = Math.floor(m / 60);
@@ -82,8 +130,8 @@
 		}
 	}
 
-	const isRunning = $derived(data.bot.status === 'running');
-	const isBusy = $derived(data.bot.status === 'starting' || data.bot.status === 'stopping');
+	const isRunning = $derived(liveBot.status === 'running');
+	const isBusy = $derived(liveBot.status === 'starting' || liveBot.status === 'stopping');
 	const canStart = $derived(!isRunning && !isBusy);
 	const canStop = $derived(isRunning || isBusy);
 	const isAdmin = $derived(data.user.account_type === 'admin');
@@ -176,24 +224,22 @@
 			<div class="bg-ash-700 rounded-lg p-3">
 				<p class="text-ash-400 mb-1 text-xs">Status</p>
 				<div class="flex items-center gap-2">
-					<span class="h-2 w-2 rounded-full {statusColor(data.bot.status)}"></span>
-					<span class="text-sm font-medium capitalize {statusTextColor(data.bot.status)}">{data.bot.status}</span>
+					<span class="h-2 w-2 rounded-full {statusColor(liveBot.status)}"></span>
+					<span class="text-sm font-medium capitalize {statusTextColor(liveBot.status)}">{liveBot.status}</span>
 				</div>
 			</div>
 
-			<!-- Uptime (running only) -->
-			{#if isRunning && data.bot.uptime_ms}
-				<div class="bg-ash-700 rounded-lg p-3">
-					<p class="text-ash-400 mb-1 text-xs">Uptime</p>
-					<p class="text-ash-100 text-sm font-medium">{formatUptime(data.bot.uptime_ms)}</p>
-				</div>
-			{/if}
+			<!-- Uptime (always shown when running, live) -->
+			<div class="bg-ash-700 rounded-lg p-3">
+				<p class="text-ash-400 mb-1 text-xs">Uptime</p>
+				<p class="text-sm font-medium {isRunning ? 'text-ash-100' : 'text-ash-500'}">{isRunning ? formatUptime(displayUptime) : '—'}</p>
+			</div>
 
 			<!-- PID (official + running) -->
-			{#if data.bot.bot_type === 'official' && data.bot.process_id}
+			{#if data.bot.bot_type === 'official' && liveBot.process_id}
 				<div class="bg-ash-700 rounded-lg p-3">
 					<p class="text-ash-400 mb-1 text-xs">Process ID</p>
-					<p class="text-ash-100 text-sm font-medium">{data.bot.process_id}</p>
+					<p class="text-ash-100 text-sm font-medium">{liveBot.process_id}</p>
 				</div>
 			{/if}
 

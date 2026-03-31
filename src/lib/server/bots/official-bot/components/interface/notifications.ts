@@ -1,8 +1,8 @@
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } from 'discord.js';
-import { getEmbedConfig, NOTIFICATIONS } from '../../../config.js';
+import { getEmbedConfig, NOTIFICATIONS } from '../../../../config.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
-import logger from '../../../logger.js';
-import { translate } from '../../../i18n.js';
+import logger from '../../../../logger.js';
+import { translate } from '../../../../i18n.js';
 
 export async function handleNotificationsButton(interaction) {
 	try {

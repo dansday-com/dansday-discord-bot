@@ -1,5 +1,5 @@
-import { FORWARDER, COMMUNICATION } from '../../config.js';
-import logger from '../../logger.js';
+import { FORWARDER, COMMUNICATION } from '../../../config.js';
+import logger from '../../../logger.js';
 
 async function sendToOfficialBot(messageData: any) {
 	try {

@@ -1,9 +1,9 @@
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } from 'discord.js';
-import { getEmbedConfig, getBotConfig } from '../../../config.js';
+import { getEmbedConfig, getBotConfig } from '../../../../config.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
-import db from '../../../db.js';
-import logger from '../../../logger.js';
-import { translate, getAvailableLanguages, getUserLanguage } from '../../../i18n.js';
+import db from '../../../../db.js';
+import logger from '../../../../logger.js';
+import { translate, getAvailableLanguages, getUserLanguage } from '../../../../i18n.js';
 
 const languageNames = {
 	en: 'English',

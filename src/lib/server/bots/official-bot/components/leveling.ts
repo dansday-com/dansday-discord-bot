@@ -1,8 +1,8 @@
-import { getLevelingSettings, PERMISSIONS, getBotConfig, getEmbedConfig, NOTIFICATIONS } from '../../config.js';
-import db from '../../db.js';
-import logger from '../../logger.js';
+import { getLevelingSettings, PERMISSIONS, getBotConfig, getEmbedConfig, NOTIFICATIONS } from '../../../config.js';
+import db from '../../../db.js';
+import logger from '../../../logger.js';
 import { EmbedBuilder } from 'discord.js';
-import { parseMySQLDateTime, getNowInTimezone } from '../../utils.js';
+import { parseMySQLDateTime, getNowInTimezone } from '../../../utils.js';
 
 const recentMessages = new Map();
 const voiceSessions = new Map();

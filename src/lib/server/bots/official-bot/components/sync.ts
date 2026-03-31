@@ -1,6 +1,6 @@
-import db from '../../db.js';
-import logger from '../../logger.js';
-import { separateChannelsAndCategories, mapCategoriesForSync, mapChannelsForSync } from '../../utils.js';
+import db from '../../../db.js';
+import logger from '../../../logger.js';
+import { separateChannelsAndCategories, mapCategoriesForSync, mapChannelsForSync } from '../../../utils.js';
 import { syncNotificationRoles } from './notificationsSync.js';
 
 let client = null;

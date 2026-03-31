@@ -1,8 +1,8 @@
-import { WELCOMER, getEmbedConfig, getBotConfig } from '../../config.js';
+import { WELCOMER, getEmbedConfig, getBotConfig } from '../../../config.js';
 import { EmbedBuilder } from 'discord.js';
-import logger from '../../logger.js';
-import db from '../../db.js';
-import { parseMySQLDateTime } from '../../utils.js';
+import logger from '../../../logger.js';
+import db from '../../../db.js';
+import { parseMySQLDateTime } from '../../../utils.js';
 function replacePlaceholders(message, memberId, serverData, memberData, memberCount) {
 	const now = new Date();
 	let profileCreatedAt = null;

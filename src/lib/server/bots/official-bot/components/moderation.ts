@@ -1,8 +1,8 @@
 import { EmbedBuilder } from 'discord.js';
-import { getMainChannel, getEmbedConfig, getBotConfig } from '../../config.js';
-import logger from '../../logger.js';
-import db from '../../db.js';
-import { parseMySQLDateTime } from '../../utils.js';
+import { getMainChannel, getEmbedConfig, getBotConfig } from '../../../config.js';
+import logger from '../../../logger.js';
+import db from '../../../db.js';
+import { parseMySQLDateTime } from '../../../utils.js';
 
 async function sendModerationLog(client, embedData, guildId = null) {
 	const mainChannel = await getMainChannel(guildId);

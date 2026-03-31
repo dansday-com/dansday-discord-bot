@@ -1,8 +1,8 @@
-import { COMMUNICATION, NOTIFICATIONS } from '../../config.js';
+import { COMMUNICATION, NOTIFICATIONS } from '../../../config.js';
 import { EmbedBuilder } from 'discord.js';
-import { getEmbedConfig } from '../../config.js';
-import logger from '../../logger.js';
-import db from '../../db.js';
+import { getEmbedConfig } from '../../../config.js';
+import logger from '../../../logger.js';
+import db from '../../../db.js';
 import { syncNotificationRoles } from './notificationsSync.js';
 
 let webhookServer = null;

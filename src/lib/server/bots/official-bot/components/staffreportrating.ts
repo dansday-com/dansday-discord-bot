@@ -1,7 +1,7 @@
 import { EmbedBuilder } from 'discord.js';
-import { STAFF_RATING, NOTIFICATIONS, getEmbedConfig } from '../../config.js';
-import logger from '../../logger.js';
-import db from '../../db.js';
+import { STAFF_RATING, NOTIFICATIONS, getEmbedConfig } from '../../../config.js';
+import logger from '../../../logger.js';
+import db from '../../../db.js';
 
 function getRatingColor(rating) {
 	const clamped = Math.max(1.0, Math.min(5.0, rating));

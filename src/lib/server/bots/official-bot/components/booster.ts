@@ -1,8 +1,8 @@
-import { BOOSTER, getEmbedConfig, getBotConfig } from '../../config.js';
+import { BOOSTER, getEmbedConfig, getBotConfig } from '../../../config.js';
 import { EmbedBuilder } from 'discord.js';
-import logger from '../../logger.js';
-import db from '../../db.js';
-import { parseMySQLDateTime } from '../../utils.js';
+import logger from '../../../logger.js';
+import db from '../../../db.js';
+import { parseMySQLDateTime } from '../../../utils.js';
 
 async function thankBooster(member, client) {
 	try {

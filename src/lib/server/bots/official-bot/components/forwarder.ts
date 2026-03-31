@@ -1,5 +1,5 @@
-import { FORWARDER, NOTIFICATIONS, getEmbedConfig } from '../../config.js';
-import logger from '../../logger.js';
+import { FORWARDER, NOTIFICATIONS, getEmbedConfig } from '../../../config.js';
+import logger from '../../../logger.js';
 
 /** Extract unique custom emoji refs from text: { name, id, animated }. */
 function extractCustomEmojis(text) {

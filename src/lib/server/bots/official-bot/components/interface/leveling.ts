@@ -1,10 +1,10 @@
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
-import { getEmbedConfig, getBotConfig } from '../../../config.js';
+import { getEmbedConfig, getBotConfig } from '../../../../config.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
-import db from '../../../db.js';
-import logger from '../../../logger.js';
+import db from '../../../../db.js';
+import logger from '../../../../logger.js';
 import { getLevelRequirement, determineLevel, sendLevelChangeDM, sendLevelProgressNotification } from '../leveling.js';
-import { translate } from '../../../i18n.js';
+import { translate } from '../../../../i18n.js';
 
 const PROGRESS_BAR_SLOTS = 10;
 

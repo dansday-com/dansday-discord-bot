@@ -1,6 +1,6 @@
-import { getEmbedConfig, getServerForCurrentBot } from '../../config.js';
+import { getEmbedConfig, getServerForCurrentBot } from '../../../config.js';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
-import logger from '../../logger.js';
+import logger from '../../../logger.js';
 import { hasPermission, getPermissionDeniedMessage } from './permissions.js';
 import {
 	handleCustomSupporterRoleButton,
@@ -31,7 +31,7 @@ import {
 	handleStaffReportReject
 } from './interface/staffreportrating.js';
 import { handleNotificationsButton, handleNotificationsSelect } from './interface/notifications.js';
-import { translate } from '../../i18n.js';
+import { translate } from '../../../i18n.js';
 
 async function handleMenuButton(interaction) {
 	const member = interaction.member || (await interaction.guild.members.fetch(interaction.user.id).catch(() => null));

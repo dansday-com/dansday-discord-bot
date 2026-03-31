@@ -1,9 +1,9 @@
 import { ModalBuilder, TextInputBuilder, ActionRowBuilder, TextInputStyle, EmbedBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
-import { getEmbedConfig, CUSTOM_SUPPORTER_ROLE, getBotConfig } from '../../../config.js';
-import logger from '../../../logger.js';
+import { getEmbedConfig, CUSTOM_SUPPORTER_ROLE, getBotConfig } from '../../../../config.js';
+import logger from '../../../../logger.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
-import db from '../../../db.js';
-import { translate } from '../../../i18n.js';
+import db from '../../../../db.js';
+import { translate } from '../../../../i18n.js';
 
 const supporterRoles = new Map();
 

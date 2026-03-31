@@ -1,9 +1,9 @@
 import { ModalBuilder, TextInputBuilder, ActionRowBuilder, TextInputStyle, EmbedBuilder } from 'discord.js';
-import { getEmbedConfig, FEEDBACK, getBotConfig } from '../../../config.js';
-import logger from '../../../logger.js';
+import { getEmbedConfig, FEEDBACK, getBotConfig } from '../../../../config.js';
+import logger from '../../../../logger.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
-import { translate } from '../../../i18n.js';
-import db from '../../../db.js';
+import { translate } from '../../../../i18n.js';
+import db from '../../../../db.js';
 
 export async function handleFeedbackButton(interaction) {
 	try {

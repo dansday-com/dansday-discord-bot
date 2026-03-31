@@ -8,13 +8,13 @@ import {
 	ButtonBuilder,
 	ButtonStyle
 } from 'discord.js';
-import { getEmbedConfig, STAFF_RATING, getBotConfig, PERMISSIONS } from '../../../config.js';
-import logger from '../../../logger.js';
+import { getEmbedConfig, STAFF_RATING, getBotConfig, PERMISSIONS } from '../../../../config.js';
+import logger from '../../../../logger.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
-import { translate, t } from '../../../i18n.js';
-import db from '../../../db.js';
+import { translate, t } from '../../../../i18n.js';
+import db from '../../../../db.js';
 import { updateStaffRatingRole } from '../staffreportrating.js';
-import { parseMySQLDateTime } from '../../../utils.js';
+import { parseMySQLDateTime } from '../../../../utils.js';
 
 const VALID_CATEGORIES = ['excellent', 'helpful', 'slow_response', 'unhelpful', 'rude', 'abuse'];
 

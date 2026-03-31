@@ -1,6 +1,6 @@
 import { Client } from 'discord.js-selfbot-v13';
-import { getBotToken, initializeConfig } from '../config.js';
-import logger from '../logger.js';
+import { getBotToken, initializeConfig } from '../../config.js';
+import logger from '../../logger.js';
 import forwarder from './components/forwarder.js';
 import sync from './components/sync.js';
 

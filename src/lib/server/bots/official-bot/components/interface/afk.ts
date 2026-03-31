@@ -1,9 +1,9 @@
 import { ModalBuilder, TextInputBuilder, ActionRowBuilder, TextInputStyle, EmbedBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
-import { getEmbedConfig, getBotConfig } from '../../../config.js';
-import logger from '../../../logger.js';
+import { getEmbedConfig, getBotConfig } from '../../../../config.js';
+import logger from '../../../../logger.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
-import db from '../../../db.js';
-import { translate } from '../../../i18n.js';
+import db from '../../../../db.js';
+import { translate } from '../../../../i18n.js';
 
 function stripAfkPrefix(name) {
 	if (!name || typeof name !== 'string') return '';

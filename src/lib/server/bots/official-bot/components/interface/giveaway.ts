@@ -1,9 +1,9 @@
 import { ModalBuilder, TextInputBuilder, ActionRowBuilder, TextInputStyle, EmbedBuilder, ButtonBuilder, ButtonStyle, RoleSelectMenuBuilder } from 'discord.js';
-import { getEmbedConfig, GIVEAWAY, NOTIFICATIONS, getServerForCurrentBot } from '../../../config.js';
-import logger from '../../../logger.js';
+import { getEmbedConfig, GIVEAWAY, NOTIFICATIONS, getServerForCurrentBot } from '../../../../config.js';
+import logger from '../../../../logger.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
-import db from '../../../db.js';
-import { translate } from '../../../i18n.js';
+import db from '../../../../db.js';
+import { translate } from '../../../../i18n.js';
 
 export async function handleGiveawayButton(interaction) {
 	try {

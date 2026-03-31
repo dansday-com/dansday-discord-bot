@@ -94,7 +94,7 @@ async function runMigration() {
 		await connection.connect();
 		logger.log('✅ Connected to database');
 
-		const schemaPath = join(__dirname, 'schema.sql');
+		const schemaPath = join(process.cwd(), 'src/lib/server/schema.sql');
 		const schemaSQL = readFileSync(schemaPath, 'utf-8');
 
 		logger.log('📦 Executing schema...');

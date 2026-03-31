@@ -6,7 +6,7 @@ WORKDIR /app
 ENV NODE_OPTIONS=""
 
 COPY package.json ./
-RUN npm install --include=dev
+RUN npm install --include=dev --legacy-peer-deps
 
 COPY . .
 RUN npm run build

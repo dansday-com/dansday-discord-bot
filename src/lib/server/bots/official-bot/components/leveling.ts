@@ -2,7 +2,7 @@ import { getLevelingSettings, PERMISSIONS, getBotConfig, getEmbedConfig, NOTIFIC
 import db from '../../../db.js';
 import logger from '../../../logger.js';
 import { EmbedBuilder } from 'discord.js';
-import { parseMySQLDateTime, getNowInTimezone } from '../../../utils.js';
+import { parseMySQLDateTime } from '../../../utils.js';
 
 const recentMessages = new Map();
 const voiceSessions = new Map();
@@ -317,7 +317,6 @@ export async function sendLevelProgressNotification({
 			.setTimestamp();
 
 		if (eventType === 'rank') {
-			const snapshotLevel = normalizeLevelValue(memberWithRank.level ?? levelStats.level ?? newLevel ?? 1);
 			const medal = getRankMedal(currentRank);
 			const titlePrefix = medal ? `${medal} ` : '';
 			embed
@@ -444,7 +443,7 @@ async function handleLevelEvaluation(server, dbMember, currentStats, guildId, co
 	return finalStats;
 }
 
-async function sendXPLogToChannel(guild, dbMember, xpGained, totalXP, xpType) {
+async function sendXPLogToChannel(guild, dbMember, xpGained, xpType) {
 	try {
 		const settings = await getLevelingSettings(guild.id);
 		if (!settings.PROGRESS_CHANNEL_ID) return;
@@ -452,11 +451,8 @@ async function sendXPLogToChannel(guild, dbMember, xpGained, totalXP, xpType) {
 		const channel = await guild.channels.fetch(settings.PROGRESS_CHANNEL_ID).catch(() => null);
 		if (!channel) return;
 
-		const timestamp = getNowInTimezone().toFormat('HH:mm:ss - dd MM yyyy');
 		const memberName = dbMember.server_display_name || dbMember.display_name || dbMember.username || 'Unknown';
-
-		const icon = xpType.includes('Chat') ? '💬' : '🎤';
-		const logMessage = `${icon} ${xpType} XP: **${memberName}** gained **+${xpGained} XP** | Total: **${totalXP} XP** | ${timestamp}`;
+		const logMessage = `${xpType} XP: ${memberName} gained +${xpGained} XP`;
 
 		await channel.send(logMessage);
 	} catch (error) {
@@ -499,13 +495,7 @@ async function handleMessageCreate(message) {
 			chatRewardedAt: message.createdAt ? new Date(message.createdAt) : new Date()
 		});
 
-		const memberName = dbMember.server_display_name || dbMember.display_name || dbMember.username || message.author.username;
-		const currentLevel = await determineLevel(stats.experience || 0, guildId);
-		await logger.log(
-			`💬 Chat XP: ${memberName} (${message.author.id}) gained +${xpGained} XP from chat | Total: ${stats.experience || 0} XP | Level: ${currentLevel}`
-		);
-
-		await sendXPLogToChannel(message.guild, dbMember, xpGained, stats.experience || 0, 'Chat');
+		await sendXPLogToChannel(message.guild, dbMember, xpGained, 'Chat');
 
 		await handleLevelEvaluation(server, dbMember, stats, message.guild.id, {
 			previousLevel: previousStats?.level ?? null,
@@ -534,16 +524,11 @@ async function awardVoiceXP(server, dbMember, guildMember, minutes, isAFK, guild
 	}
 
 	const stats = await db.updateMemberLevelStats(dbMember.id, updates);
-	const memberName = dbMember.server_display_name || dbMember.display_name || dbMember.username || guildMember.displayName || guildMember.user.username;
-	const currentLevel = await determineLevel(stats.experience || 0, guildId);
 	const xpType = isAFK ? 'AFK Voice' : 'Voice';
-	await logger.log(
-		`🎤 ${xpType} XP: ${memberName} (${guildMember.id}) gained +${xpGained} XP${minutes > 1 ? ` from ${minutes} minute(s) [resume catch-up]` : ''} | Total: ${stats.experience || 0} XP | Level: ${currentLevel}`
-	);
 
 	const discordGuild = clientInstance?.guilds.cache.get(guildId);
 	if (discordGuild) {
-		await sendXPLogToChannel(discordGuild, dbMember, xpGained, stats.experience || 0, xpType);
+		await sendXPLogToChannel(discordGuild, dbMember, xpGained, xpType);
 	}
 
 	return await handleLevelEvaluation(server, dbMember, stats, guildId, {

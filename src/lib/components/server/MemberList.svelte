@@ -192,7 +192,7 @@
 							src={avatarSrc(member)}
 							alt={displayName(member)}
 							class="border-ash-600 h-20 w-20 rounded-full border-2 object-cover"
-							onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'"
+							onerror={(e) => ((e.currentTarget as HTMLImageElement).src = 'https://cdn.discordapp.com/embed/avatars/0.png')}
 						/>
 						{#if member.is_afk}
 							<div class="border-ash-700 absolute -right-1 -bottom-1 flex h-5 w-5 items-center justify-center rounded-full border-2 bg-yellow-500">

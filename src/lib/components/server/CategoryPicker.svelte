@@ -89,7 +89,7 @@
 				<h3 class="text-ash-100 flex items-center gap-2 text-lg font-bold sm:text-xl">
 					<i class="fas fa-folder text-ash-200"></i>Select Categories
 				</h3>
-				<button type="button" onclick={close} class="text-ash-400 hover:text-ash-100 p-1 transition-colors">
+				<button type="button" onclick={close} aria-label="Close" class="text-ash-400 hover:text-ash-100 p-1 transition-colors">
 					<i class="fas fa-times text-lg"></i>
 				</button>
 			</div>

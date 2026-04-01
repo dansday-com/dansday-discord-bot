@@ -86,7 +86,7 @@
 					<i class="fas fa-comment-dots text-ash-300"></i>
 					{editIndex !== null ? 'Edit Message' : 'Add Message'}
 				</h3>
-				<button onclick={() => (modalOpen = false)} class="text-ash-400 hover:text-ash-100 transition-colors">
+				<button onclick={() => (modalOpen = false)} aria-label="Close" class="text-ash-400 hover:text-ash-100 transition-colors">
 					<i class="fas fa-times text-lg"></i>
 				</button>
 			</div>

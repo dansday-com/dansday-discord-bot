@@ -72,13 +72,27 @@
 	</div>
 
 	<div>
-		<label class="text-ash-300 mb-1.5 block text-xs font-medium">Default Footer</label>
+		<label class="text-ash-300 mb-1.5 block text-xs font-medium"><i class="fas fa-align-left mr-1.5"></i>Default Footer</label>
+		<p class="text-ash-500 mb-2 text-xs">Footer text displayed at the bottom of all bot messages and embeds.</p>
 		<input
 			type="text"
 			bind:value={defaultFooter}
-			placeholder="Footer text..."
+			placeholder="Enter footer text..."
 			class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
 		/>
+		<div class="bg-ash-900 border-ash-600 mt-2 rounded-lg border p-3">
+			<p class="text-ash-200 mb-2 text-xs font-medium">Available placeholders:</p>
+			<div class="grid grid-cols-2 gap-2 text-xs">
+				<div class="text-ash-300 flex items-center gap-2">
+					<code class="bg-ash-800 text-ash-200 rounded px-1.5 py-0.5">{'{server}'}</code>
+					<span>Server name</span>
+				</div>
+				<div class="text-ash-300 flex items-center gap-2">
+					<code class="bg-ash-800 text-ash-200 rounded px-1.5 py-0.5">{'{year}'}</code>
+					<span>Current year</span>
+				</div>
+			</div>
+		</div>
 	</div>
 
 	<button

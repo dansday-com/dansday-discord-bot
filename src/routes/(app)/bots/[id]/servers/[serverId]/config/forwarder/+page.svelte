@@ -2,11 +2,20 @@
 	import { invalidateAll } from '$app/navigation';
 	import { showToast } from '$lib/stores/toast.svelte';
 	import ChannelPicker from '$lib/components/server/ChannelPicker.svelte';
+	import RolePicker from '$lib/components/server/RolePicker.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 
-	type Forwarder = { id?: number; source_channel: string; destination_channel: string };
+	type Forwarder = {
+		selfbot_id: number | '';
+		server_id: number | '';
+		source_channels: string[];
+		target_channel_id: string;
+		role_pings: string[];
+		only_forward_when_mentions_member: boolean;
+		tag: string;
+	};
 
 	let saving = $state(false);
 	let mode = $state<'production' | 'testing'>(data.settings?.mode ?? 'production');
@@ -15,27 +24,131 @@
 
 	const activeForwarders = $derived(mode === 'production' ? productionForwarders : testingForwarders);
 
-	function addForwarder() {
-		const entry: Forwarder = { source_channel: '', destination_channel: '' };
-		if (mode === 'production') productionForwarders = [...productionForwarders, entry];
-		else testingForwarders = [...testingForwarders, entry];
+	let modalOpen = $state(false);
+	let editIndex = $state<number | null>(null);
+	let draft = $state<Forwarder>(emptyForwarder());
+
+	let selfbots = $state<any[]>([]);
+	let selfbotServers = $state<any[]>([]);
+	let selfbotChannels = $state<any[]>([]);
+	let loadingServers = $state(false);
+	let loadingChannels = $state(false);
+
+	function emptyForwarder(): Forwarder {
+		return { selfbot_id: '', server_id: '', source_channels: [], target_channel_id: '', role_pings: [], only_forward_when_mentions_member: false, tag: '' };
+	}
+
+	async function openAdd() {
+		draft = emptyForwarder();
+		editIndex = null;
+		selfbots = [];
+		selfbotServers = [];
+		selfbotChannels = [];
+		await loadSelfbots();
+		modalOpen = true;
+	}
+
+	async function openEdit(i: number) {
+		const fw = activeForwarders[i];
+		draft = { ...fw, source_channels: [...(fw.source_channels ?? [])], role_pings: [...(fw.role_pings ?? [])] };
+		editIndex = i;
+		selfbots = [];
+		selfbotServers = [];
+		selfbotChannels = [];
+		await loadSelfbots();
+		if (draft.selfbot_id) await loadServers(draft.selfbot_id);
+		if (draft.selfbot_id && draft.server_id) await loadChannels(draft.selfbot_id, draft.server_id);
+		modalOpen = true;
+	}
+
+	async function loadSelfbots() {
+		try {
+			const res = await fetch(`/api/bots/${data.botId}/selfbots`, { credentials: 'include' });
+			if (res.ok) selfbots = await res.json();
+		} catch (_) {}
+	}
+
+	async function loadServers(selfbotId: number | '') {
+		if (!selfbotId) {
+			selfbotServers = [];
+			selfbotChannels = [];
+			return;
+		}
+		loadingServers = true;
+		try {
+			const res = await fetch(`/api/bots/${selfbotId}/servers`, { credentials: 'include' });
+			if (res.ok) selfbotServers = await res.json();
+		} catch (_) {}
+		loadingServers = false;
+	}
+
+	async function loadChannels(selfbotId: number | '', serverId: number | '') {
+		if (!selfbotId || !serverId) {
+			selfbotChannels = [];
+			return;
+		}
+		loadingChannels = true;
+		try {
+			const server = selfbotServers.find((s: any) => s.id == serverId);
+			const discordServerId = server?.discord_server_id ?? '';
+			const res = await fetch(`/api/bots/${selfbotId}/servers/${serverId}/channels?discordServerId=${discordServerId}`, { credentials: 'include' });
+			if (res.ok) selfbotChannels = await res.json();
+		} catch (_) {}
+		loadingChannels = false;
+	}
+
+	async function onSelfbotChange(e: Event) {
+		const val = (e.target as HTMLSelectElement).value;
+		draft = { ...draft, selfbot_id: val ? Number(val) : '', server_id: '', source_channels: [] };
+		selfbotServers = [];
+		selfbotChannels = [];
+		if (val) await loadServers(Number(val));
+	}
+
+	async function onServerChange(e: Event) {
+		const val = (e.target as HTMLSelectElement).value;
+		draft = { ...draft, server_id: val ? Number(val) : '', source_channels: [] };
+		selfbotChannels = [];
+		if (val) await loadChannels(draft.selfbot_id, Number(val));
+	}
+
+	function toggleSourceChannel(id: string) {
+		if (draft.source_channels.includes(id)) {
+			draft = { ...draft, source_channels: draft.source_channels.filter((c) => c !== id) };
+		} else {
+			draft = { ...draft, source_channels: [...draft.source_channels, id] };
+		}
+	}
+
+	function channelName(id: string, list: any[]) {
+		return list.find((c: any) => c.discord_channel_id === id)?.name ?? id;
+	}
+
+	function saveModal() {
+		const entry = { ...draft };
+		if (mode === 'production') {
+			if (editIndex !== null) {
+				const next = [...productionForwarders];
+				next[editIndex] = entry;
+				productionForwarders = next;
+			} else {
+				productionForwarders = [...productionForwarders, entry];
+			}
+		} else {
+			if (editIndex !== null) {
+				const next = [...testingForwarders];
+				next[editIndex] = entry;
+				testingForwarders = next;
+			} else {
+				testingForwarders = [...testingForwarders, entry];
+			}
+		}
+		modalOpen = false;
 	}
 
 	function removeForwarder(i: number) {
 		if (mode === 'production') productionForwarders = productionForwarders.filter((_, idx) => idx !== i);
 		else testingForwarders = testingForwarders.filter((_, idx) => idx !== i);
-	}
-
-	function updateForwarder(i: number, field: keyof Forwarder, val: string) {
-		if (mode === 'production') {
-			const next = [...productionForwarders];
-			next[i] = { ...next[i], [field]: val };
-			productionForwarders = next;
-		} else {
-			const next = [...testingForwarders];
-			next[i] = { ...next[i], [field]: val };
-			testingForwarders = next;
-		}
 	}
 
 	async function save() {
@@ -56,13 +169,17 @@
 			saving = false;
 		}
 	}
+
+	function selfbotName(id: number | '') {
+		return selfbots.find((b: any) => b.id == id)?.name ?? `Selfbot ${id}`;
+	}
 </script>
 
 <div class="bg-ash-800 border-ash-700 space-y-5 rounded-xl border p-4 sm:p-6">
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
 		<i class="fas fa-forward text-ash-300"></i>Forwarder
 	</h3>
-	<p class="text-ash-400 text-xs">Automatically forward messages from one channel to another.</p>
+	<p class="text-ash-400 text-xs">Forward messages from a selfbot's channel to a channel in this server.</p>
 
 	<!-- Mode toggle -->
 	<div class="bg-ash-900 flex w-fit gap-1 rounded-lg p-1">
@@ -70,8 +187,7 @@
 			<button
 				type="button"
 				onclick={() => (mode = m as typeof mode)}
-				class="rounded-md px-3 py-1.5 text-xs font-medium transition-colors
-					{mode === m ? 'bg-ash-600 text-ash-100' : 'text-ash-400 hover:text-ash-200'}"
+				class="rounded-md px-3 py-1.5 text-xs font-medium transition-colors {mode === m ? 'bg-ash-600 text-ash-100' : 'text-ash-400 hover:text-ash-200'}"
 			>
 				{m.charAt(0).toUpperCase() + m.slice(1)}
 			</button>
@@ -80,41 +196,66 @@
 
 	<!-- Forwarder list -->
 	<div class="space-y-3">
-		{#each activeForwarders as fw, i}
-			<div class="bg-ash-700 space-y-2 rounded-lg p-3">
-				<div class="mb-1 flex items-center justify-between">
-					<span class="text-ash-400 text-xs">Forwarder #{i + 1}</span>
-					<button type="button" onclick={() => removeForwarder(i)} class="rounded bg-red-900 px-2 py-1 text-xs text-red-300 transition-colors hover:bg-red-800">
-						<i class="fas fa-trash"></i>
-					</button>
-				</div>
-				<div>
-					<label class="text-ash-400 mb-1 block text-xs">Source</label>
-					<ChannelPicker
-						channels={data.channels}
-						categories={data.categories}
-						value={fw.source_channel}
-						onchange={(id) => updateForwarder(i, 'source_channel', id)}
-						placeholder="Source channel..."
-					/>
-				</div>
-				<div>
-					<label class="text-ash-400 mb-1 block text-xs">Destination</label>
-					<ChannelPicker
-						channels={data.channels}
-						categories={data.categories}
-						value={fw.destination_channel}
-						onchange={(id) => updateForwarder(i, 'destination_channel', id)}
-						placeholder="Destination channel..."
-					/>
-				</div>
+		{#if activeForwarders.length === 0}
+			<div class="bg-ash-700 rounded-lg p-4 text-center">
+				<i class="fas fa-inbox text-ash-500 mb-2 text-2xl"></i>
+				<p class="text-ash-400 text-xs">No forwarders for {mode}. Click Add Forwarder to create one.</p>
 			</div>
-		{/each}
+		{:else}
+			{#each activeForwarders as fw, i}
+				<div class="bg-ash-700 border-ash-600 rounded-lg border p-3">
+					<div class="flex items-start justify-between gap-3">
+						<div class="min-w-0 flex-1 space-y-1 text-xs">
+							{#if fw.selfbot_id}
+								<div class="text-ash-100 flex items-center gap-1.5 font-medium">
+									<i class="fas fa-robot text-ash-400"></i>Selfbot #{fw.selfbot_id}
+								</div>
+							{/if}
+							{#if fw.source_channels?.length}
+								<div class="text-ash-400">
+									<span class="text-ash-300 font-medium">From:</span>
+									{fw.source_channels.length} channel{fw.source_channels.length !== 1 ? 's' : ''}
+								</div>
+							{/if}
+							{#if fw.target_channel_id}
+								<div class="text-ash-400">
+									<span class="text-ash-300 font-medium">To:</span> #{channelName(fw.target_channel_id, data.channels)}
+								</div>
+							{/if}
+							{#if fw.tag}
+								<div class="text-ash-400"><span class="text-ash-300 font-medium">Tag:</span> {fw.tag}</div>
+							{/if}
+							{#if fw.only_forward_when_mentions_member}
+								<div class="text-amber-400"><i class="fas fa-at mr-1"></i>Only when mentions selfbot</div>
+							{/if}
+						</div>
+						<div class="flex shrink-0 items-center gap-1.5">
+							<button
+								type="button"
+								onclick={() => openEdit(i)}
+								class="bg-ash-600 hover:bg-ash-500 rounded-lg p-1.5 text-xs text-white transition-colors"
+								aria-label="Edit"
+							>
+								<i class="fas fa-edit"></i>
+							</button>
+							<button
+								type="button"
+								onclick={() => removeForwarder(i)}
+								class="rounded-lg bg-red-900 p-1.5 text-xs text-red-300 transition-colors hover:bg-red-800"
+								aria-label="Delete"
+							>
+								<i class="fas fa-trash"></i>
+							</button>
+						</div>
+					</div>
+				</div>
+			{/each}
+		{/if}
 	</div>
 
 	<button
 		type="button"
-		onclick={addForwarder}
+		onclick={openAdd}
 		class="border-ash-600 text-ash-400 hover:text-ash-200 hover:border-ash-400 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed py-2 text-sm transition-colors"
 	>
 		<i class="fas fa-plus text-xs"></i>Add Forwarder
@@ -129,3 +270,160 @@
 		{saving ? 'Saving...' : 'Save Configuration'}
 	</button>
 </div>
+
+<!-- Add/Edit Modal -->
+{#if modalOpen}
+	<div class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4">
+		<div class="bg-ash-800 border-ash-700 my-4 flex max-h-[90vh] w-full max-w-2xl flex-col rounded-2xl border p-5">
+			<div class="mb-5 flex items-center justify-between">
+				<h3 class="text-ash-100 flex items-center gap-2 font-bold">
+					<i class="fas fa-exchange-alt text-ash-300"></i>
+					{editIndex !== null ? 'Edit' : 'Add'} Forwarder
+				</h3>
+				<button onclick={() => (modalOpen = false)} class="text-ash-400 hover:text-ash-100 transition-colors" aria-label="Close">
+					<i class="fas fa-times text-lg"></i>
+				</button>
+			</div>
+
+			<div class="flex-1 space-y-4 overflow-y-auto">
+				<!-- Selfbot -->
+				<div>
+					<label for="fw-selfbot" class="text-ash-300 mb-1.5 block text-xs font-medium"><i class="fas fa-robot mr-1.5"></i>Selfbot</label>
+					<select
+						id="fw-selfbot"
+						value={draft.selfbot_id}
+						onchange={onSelfbotChange}
+						class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none"
+					>
+						<option value="">Select selfbot...</option>
+						{#each selfbots as bot}
+							<option value={bot.id}>{bot.name || `Selfbot ${bot.id}`}</option>
+						{/each}
+					</select>
+				</div>
+
+				<!-- Server -->
+				<div>
+					<label for="fw-server" class="text-ash-300 mb-1.5 block text-xs font-medium"><i class="fas fa-server mr-1.5"></i>Server (where selfbot is)</label>
+					<select
+						id="fw-server"
+						value={draft.server_id}
+						onchange={onServerChange}
+						disabled={!draft.selfbot_id || loadingServers}
+						class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none disabled:opacity-50"
+					>
+						<option value="">{loadingServers ? 'Loading...' : 'Select server...'}</option>
+						{#each selfbotServers as server}
+							<option value={server.id}>{server.name || `Server ${server.id}`}</option>
+						{/each}
+					</select>
+				</div>
+
+				<!-- Source Channels (multi-select from selfbot server) -->
+				<div>
+					<p class="text-ash-300 mb-1.5 block text-xs font-medium"><i class="fas fa-hashtag mr-1.5"></i>From Channels</p>
+					{#if loadingChannels}
+						<p class="text-ash-500 text-xs"><i class="fas fa-spinner fa-spin mr-1"></i>Loading channels...</p>
+					{:else if !draft.server_id}
+						<p class="text-ash-500 text-xs italic">Select a server first.</p>
+					{:else if selfbotChannels.length === 0}
+						<p class="text-ash-500 text-xs italic">No channels found.</p>
+					{:else}
+						<div class="bg-ash-700 border-ash-600 max-h-40 overflow-y-auto rounded-lg border">
+							{#each selfbotChannels as ch}
+								<label class="hover:bg-ash-600 flex cursor-pointer items-center gap-2 px-3 py-2 text-sm">
+									<input
+										type="checkbox"
+										checked={draft.source_channels.includes(ch.discord_channel_id)}
+										onchange={() => toggleSourceChannel(ch.discord_channel_id)}
+										class="rounded"
+									/>
+									<span class="text-ash-100">#{ch.name}</span>
+								</label>
+							{/each}
+						</div>
+						{#if draft.source_channels.length > 0}
+							<div class="mt-2 flex flex-wrap gap-1.5">
+								{#each draft.source_channels as id}
+									<span class="bg-ash-600 text-ash-100 flex items-center gap-1 rounded-lg px-2 py-0.5 text-xs">
+										#{channelName(id, selfbotChannels)}
+										<button type="button" onclick={() => toggleSourceChannel(id)} class="transition-colors hover:text-red-300" aria-label="Remove">
+											<i class="fas fa-times text-xs"></i>
+										</button>
+									</span>
+								{/each}
+							</div>
+						{/if}
+					{/if}
+				</div>
+
+				<!-- Target Channel (from current server) -->
+				<div>
+					<p class="text-ash-300 mb-1.5 block text-xs font-medium"><i class="fas fa-bullseye mr-1.5"></i>Target Channel</p>
+					<ChannelPicker
+						channels={data.channels}
+						categories={data.categories}
+						value={draft.target_channel_id}
+						placeholder="Select target channel..."
+						onchange={(id) => (draft = { ...draft, target_channel_id: id })}
+					/>
+				</div>
+
+				<!-- Role Pings -->
+				<div>
+					<p class="text-ash-300 mb-1.5 block text-xs font-medium"><i class="fas fa-user-shield mr-1.5"></i>Role Pings</p>
+					<RolePicker
+						roles={data.roles}
+						value={draft.role_pings}
+						placeholder="Select roles to ping..."
+						onchange={(v) => (draft = { ...draft, role_pings: v as string[] })}
+					/>
+				</div>
+
+				<!-- Only forward when mentions selfbot -->
+				<div>
+					<p class="text-ash-400 mb-2 text-xs">Only forward when message mentions the selfbot</p>
+					<label class="flex cursor-pointer items-center gap-3">
+						<div class="relative">
+							<input type="checkbox" bind:checked={draft.only_forward_when_mentions_member} class="peer sr-only" />
+							<div class="bg-ash-600 peer-checked:bg-ash-400 h-6 w-11 rounded-full transition-colors"></div>
+							<div class="absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5"></div>
+						</div>
+						<span class="text-ash-300 text-sm">{draft.only_forward_when_mentions_member ? 'Yes' : 'No'}</span>
+					</label>
+				</div>
+
+				<!-- Tag -->
+				<div>
+					<label for="fw-tag" class="text-ash-300 mb-1.5 block text-xs font-medium">
+						<i class="fas fa-tag mr-1.5"></i>Tag <span class="text-ash-500">(optional)</span>
+					</label>
+					<input
+						id="fw-tag"
+						type="text"
+						bind:value={draft.tag}
+						placeholder="Enter tag..."
+						class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none"
+					/>
+				</div>
+			</div>
+
+			<div class="border-ash-700 mt-4 flex gap-2 border-t pt-4">
+				<button
+					type="button"
+					onclick={() => (modalOpen = false)}
+					class="bg-ash-700 hover:bg-ash-600 text-ash-100 flex-1 rounded-lg py-2.5 text-sm font-medium transition-colors"
+				>
+					Cancel
+				</button>
+				<button
+					type="button"
+					onclick={saveModal}
+					class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-colors"
+				>
+					<i class="fas fa-check"></i>{editIndex !== null ? 'Save Changes' : 'Add Forwarder'}
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}

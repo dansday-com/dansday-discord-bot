@@ -9,7 +9,6 @@
 	let showAddBot = $state(false);
 	let sortBy = $state('oldest');
 
-	// Live state per bot: { status, uptime_ms (base at last event), tick (ms elapsed since) }
 	type LiveBot = { status: string; uptimeBase: number; uptimeTick: number };
 	let liveMap = $state<Record<number, LiveBot>>({});
 	let tickInterval: ReturnType<typeof setInterval> | null = null;
@@ -26,14 +25,12 @@
 	);
 
 	onMount(() => {
-		// Seed liveMap from SSR data
 		const initial: Record<number, LiveBot> = {};
 		for (const bot of data.bots) {
 			initial[bot.id] = { status: bot.status, uptimeBase: bot.uptime_ms ?? 0, uptimeTick: 0 };
 		}
 		liveMap = initial;
 
-		// Open one SSE stream per bot
 		for (const bot of data.bots) {
 			const es = new EventSource(`/api/bots/${bot.id}/stream`);
 			es.onmessage = (e) => {
@@ -46,15 +43,12 @@
 			streams.push(es);
 		}
 
-		// Single shared tick — increments all running bots
 		const base = Date.now();
 		tickInterval = setInterval(() => {
 			const elapsed = Date.now() - base;
 			const next: Record<number, LiveBot> = {};
 			for (const [id, live] of Object.entries(liveMap)) {
-				next[Number(id)] = live.status === 'running'
-					? { ...live, uptimeTick: elapsed }
-					: live;
+				next[Number(id)] = live.status === 'running' ? { ...live, uptimeTick: elapsed } : live;
 			}
 			liveMap = next;
 		}, 1000);

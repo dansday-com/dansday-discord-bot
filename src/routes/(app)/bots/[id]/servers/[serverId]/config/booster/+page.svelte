@@ -72,7 +72,16 @@
 		{/if}
 	</div>
 
-	<MessageList label="Boost Messages" values={messages} placeholder="Thank you {'{user}'} for boosting {'{server}'}!" onchange={(v) => (messages = v)} />
+	<MessageList
+		label="Boost Messages"
+		values={messages}
+		placeholder="Thank you {'{user}'} for boosting {'{server}'}!"
+		placeholders={[
+			{ code: 'user', desc: 'Mentions the booster' },
+			{ code: 'server', desc: 'Server name' }
+		]}
+		onchange={(v) => (messages = v)}
+	/>
 
 	<button
 		onclick={save}

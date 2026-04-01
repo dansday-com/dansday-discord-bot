@@ -29,7 +29,6 @@
 		return !hex || hex === '#000000' ? '#6b7280' : hex;
 	}
 
-	// Normalised current value as array
 	const currentIds = $derived(single ? (value ? [value as string] : []) : (value as string[]));
 
 	function openModal() {
@@ -40,7 +39,6 @@
 
 	function toggle(id: string) {
 		if (single) {
-			// In single mode, clicking the already-selected just picks it again; clicking another replaces
 			if (pending[0] === id) {
 				pending = [];
 			} else {

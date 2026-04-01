@@ -8,26 +8,22 @@
 
 	let saving = $state(false);
 
-	// Requirements
 	let baseXP = $state<number>(data.settings?.REQUIREMENTS?.BASE_XP ?? 100);
 	let multiplier = $state<number>(data.settings?.REQUIREMENTS?.MULTIPLIER ?? 1.5);
 
-	// Message XP
 	let messageXP = $state<number>(data.settings?.MESSAGE?.XP ?? 15);
 	let messageCooldown = $state<number>(data.settings?.MESSAGE?.COOLDOWN_SECONDS ?? 60);
 
-	// Voice XP
 	let voiceXPPerMinute = $state<number>(data.settings?.VOICE?.XP_PER_MINUTE ?? 10);
 	let voiceAfkXPPerMinute = $state<number>(data.settings?.VOICE?.AFK_XP_PER_MINUTE ?? 5);
 	let voiceCooldown = $state<number>(data.settings?.VOICE?.COOLDOWN_SECONDS ?? 60);
 
-	// Progress channel
 	let progressChannel = $state<string>(data.settings?.PROGRESS_CHANNEL_ID ?? '');
 
-	const xpOptions = Array.from({ length: 20 }, (_, i) => (i + 1) * 5); // 5–100
-	const cooldownOptions = Array.from({ length: 13 }, (_, i) => i * 15); // 0–180
-	const baseXPOptions = Array.from({ length: 20 }, (_, i) => (i + 1) * 50); // 50–1000
-	const multiplierOptions = Array.from({ length: 11 }, (_, i) => parseFloat((1.0 + i * 0.1).toFixed(1))); // 1.0–2.0
+	const xpOptions = Array.from({ length: 20 }, (_, i) => (i + 1) * 5);
+	const cooldownOptions = Array.from({ length: 13 }, (_, i) => i * 15);
+	const baseXPOptions = Array.from({ length: 20 }, (_, i) => (i + 1) * 50);
+	const multiplierOptions = Array.from({ length: 11 }, (_, i) => parseFloat((1.0 + i * 0.1).toFixed(1)));
 
 	async function save() {
 		saving = true;

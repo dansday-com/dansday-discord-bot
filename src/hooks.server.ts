@@ -1,4 +1,3 @@
-// Must be first — instruments console.* for OpenTelemetry
 import '../console-instrumentation.js';
 import type { Handle } from '@sveltejs/kit';
 import { getSession, getSessionIdFromCookie } from '$lib/server/session';

@@ -47,7 +47,7 @@
 
 <div class="bg-ash-800 border-ash-700 space-y-5 rounded-xl border p-4 sm:p-6">
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
-		<i class="fas fa-hand-wave text-ash-300"></i>Welcomer
+		<i class="fas fa-hand text-ash-300"></i>Welcomer
 	</h3>
 	<p class="text-ash-400 text-xs">
 		Sent when a new member joins. Supports <code class="text-ash-200">{'{user}'}</code>, <code class="text-ash-200">{'{server}'}</code> placeholders.
@@ -72,7 +72,18 @@
 		{/if}
 	</div>
 
-	<MessageList label="Welcome Messages" values={messages} placeholder="Welcome {'{user}'} to {'{server}'}!" onchange={(v) => (messages = v)} />
+	<MessageList
+		label="Welcome Messages"
+		values={messages}
+		placeholder="Welcome {'{user}'} to {'{server}'}!"
+		placeholders={[
+			{ code: 'user', desc: 'Mentions the new member' },
+			{ code: 'server', desc: 'Server name' },
+			{ code: 'memberCount', desc: 'Total member count' },
+			{ code: 'accountAge', desc: 'Account age' }
+		]}
+		onchange={(v) => (messages = v)}
+	/>
 
 	<button
 		onclick={save}

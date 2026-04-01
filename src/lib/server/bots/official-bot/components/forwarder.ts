@@ -153,9 +153,7 @@ function cleanMessageContent(text) {
 /** Remove Discord user/role mention tags so embed text is clean. Keeps message.content mentions for notifications. Preserves newlines so format is not broken. */
 function stripMentionsFromText(text) {
 	if (!text) return text;
-	let stripped = text
-		.replace(/<@!?\d+>/g, '') // user mentions <@123> or <@!123>
-		.replace(/<@&\d+>/g, ''); // role mentions <@&123>
+	let stripped = text.replace(/<@!?\d+>/g, '').replace(/<@&\d+>/g, '');
 	stripped = stripped
 		.split('\n')
 		.map((line) => line.replace(/\s+/g, ' ').trim())

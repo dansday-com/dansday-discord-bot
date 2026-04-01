@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount, onDestroy } from 'svelte';
 	import { invalidateAll } from '$app/navigation';
 	import AddBotModal from '$lib/components/AddBotModal.svelte';
 	import type { PageProps } from './$types';
@@ -7,6 +8,12 @@
 
 	let showAddBot = $state(false);
 	let sortBy = $state('oldest');
+
+	// Live state per bot: { status, uptime_ms (base at last event), tick (ms elapsed since) }
+	type LiveBot = { status: string; uptimeBase: number; uptimeTick: number };
+	let liveMap = $state<Record<number, LiveBot>>({});
+	let tickInterval: ReturnType<typeof setInterval> | null = null;
+	let streams: EventSource[] = [];
 
 	const officialBots = $derived(data.bots.filter((b: { bot_type: string }) => b.bot_type === 'official'));
 
@@ -17,6 +24,56 @@
 			return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
 		})
 	);
+
+	onMount(() => {
+		// Seed liveMap from SSR data
+		const initial: Record<number, LiveBot> = {};
+		for (const bot of data.bots) {
+			initial[bot.id] = { status: bot.status, uptimeBase: bot.uptime_ms ?? 0, uptimeTick: 0 };
+		}
+		liveMap = initial;
+
+		// Open one SSE stream per bot
+		for (const bot of data.bots) {
+			const es = new EventSource(`/api/bots/${bot.id}/stream`);
+			es.onmessage = (e) => {
+				const d = JSON.parse(e.data);
+				liveMap = {
+					...liveMap,
+					[bot.id]: { status: d.status, uptimeBase: d.uptime_ms ?? 0, uptimeTick: 0 }
+				};
+			};
+			streams.push(es);
+		}
+
+		// Single shared tick — increments all running bots
+		const base = Date.now();
+		tickInterval = setInterval(() => {
+			const elapsed = Date.now() - base;
+			const next: Record<number, LiveBot> = {};
+			for (const [id, live] of Object.entries(liveMap)) {
+				next[Number(id)] = live.status === 'running'
+					? { ...live, uptimeTick: elapsed }
+					: live;
+			}
+			liveMap = next;
+		}, 1000);
+	});
+
+	onDestroy(() => {
+		streams.forEach((es) => es.close());
+		if (tickInterval) clearInterval(tickInterval);
+	});
+
+	function getLiveStatus(botId: number, fallback: string) {
+		return liveMap[botId]?.status ?? fallback;
+	}
+
+	function getLiveUptime(botId: number, fallback: number) {
+		const live = liveMap[botId];
+		if (!live) return fallback;
+		return live.status === 'running' ? live.uptimeBase + live.uptimeTick : 0;
+	}
 
 	function statusColor(status: string) {
 		if (status === 'running') return 'bg-green-500';
@@ -121,11 +178,14 @@
 					<!-- Status -->
 					<div class="flex items-center justify-between">
 						<div class="flex items-center gap-2">
-							<span class="h-2 w-2 rounded-full {statusColor(bot.status)}"></span>
-							<span class="text-ash-300 text-xs capitalize">{bot.status}</span>
+							<span class="h-2 w-2 rounded-full {statusColor(getLiveStatus(bot.id, bot.status))}"></span>
+							<span class="text-ash-300 text-xs capitalize">{getLiveStatus(bot.id, bot.status)}</span>
 						</div>
-						{#if bot.status === 'running' && bot.uptime_ms}
-							<span class="text-ash-500 text-xs">{formatUptime(bot.uptime_ms)}</span>
+						{#if getLiveStatus(bot.id, bot.status) === 'running'}
+							{@const uptime = getLiveUptime(bot.id, bot.uptime_ms ?? 0)}
+							{#if uptime}
+								<span class="text-ash-500 text-xs">{formatUptime(uptime)}</span>
+							{/if}
 						{/if}
 					</div>
 

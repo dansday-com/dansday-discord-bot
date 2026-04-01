@@ -5,5 +5,5 @@ import db from '$lib/server/db.js';
 export const load: PageServerLoad = async ({ locals, params }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
 	const settings = await db.getServerSettings(params.serverId, 'booster').catch(() => ({}));
-	return { settings: settings ?? {} };
+	return { settings: settings?.settings ?? {} };
 };

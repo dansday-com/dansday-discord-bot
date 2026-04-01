@@ -263,12 +263,6 @@
 					<p class="text-ash-100 truncate text-sm font-medium">{data.bot.connected_bot_name}</p>
 				</div>
 			{/if}
-
-			<!-- Servers count -->
-			<div class="bg-ash-700 rounded-lg p-3">
-				<p class="text-ash-400 mb-1 text-xs">Servers</p>
-				<p class="text-ash-100 text-sm font-medium">{data.servers.length}</p>
-			</div>
 		</div>
 	</div>
 

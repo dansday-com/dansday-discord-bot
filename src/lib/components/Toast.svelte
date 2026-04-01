@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { getToasts } from '$lib/stores/toast.svelte';
 
-	const toasts = $derived(getToasts());
+	const toasts = getToasts();
 
 	const icons: Record<string, string> = {
 		success: 'fa-circle-check',

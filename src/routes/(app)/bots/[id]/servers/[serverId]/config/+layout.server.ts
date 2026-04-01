@@ -6,7 +6,11 @@ export const load: LayoutServerLoad = async ({ locals, params }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
 	if (locals.user.account_type !== 'admin') error(403, 'Admins only');
 
-	const [channels, roles] = await Promise.all([db.getChannelsForServer(params.serverId), db.getRoles(params.serverId)]);
+	const [channels, roles, categories] = await Promise.all([
+		db.getChannelsForServer(params.serverId),
+		db.getRoles(params.serverId),
+		db.getCategoriesForServer(params.serverId)
+	]);
 
-	return { channels: channels ?? [], roles: roles ?? [] };
+	return { channels: channels ?? [], roles: roles ?? [], categories: categories ?? [] };
 };

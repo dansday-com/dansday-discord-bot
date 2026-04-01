@@ -9,8 +9,8 @@
 	let saving = $state(false);
 	let productionChannel = $state(data.settings?.production_channel ?? '');
 	let testingChannel = $state(data.settings?.testing_channel ?? '');
-	let defaultColor = $state(data.settings?.default_color ?? '#5865F2');
-	let defaultFooter = $state(data.settings?.default_footer ?? '');
+	let defaultColor = $state(data.settings?.color ?? '#5865F2');
+	let defaultFooter = $state(data.settings?.footer ?? '');
 
 	async function save() {
 		saving = true;
@@ -23,8 +23,8 @@
 					component: 'main_config',
 					production_channel: productionChannel,
 					testing_channel: testingChannel,
-					default_color: defaultColor,
-					default_footer: defaultFooter
+					color: defaultColor,
+					footer: defaultFooter
 				})
 			});
 			const d = await res.json();
@@ -45,12 +45,12 @@
 
 	<div>
 		<label class="text-ash-300 mb-1.5 block text-xs font-medium">Production Channel</label>
-		<ChannelPicker channels={data.channels} value={productionChannel} onchange={(id) => (productionChannel = id)} />
+		<ChannelPicker channels={data.channels} categories={data.categories} value={productionChannel} onchange={(id) => (productionChannel = id)} />
 	</div>
 
 	<div>
 		<label class="text-ash-300 mb-1.5 block text-xs font-medium">Testing Channel</label>
-		<ChannelPicker channels={data.channels} value={testingChannel} onchange={(id) => (testingChannel = id)} />
+		<ChannelPicker channels={data.channels} categories={data.categories} value={testingChannel} onchange={(id) => (testingChannel = id)} />
 	</div>
 
 	<div>

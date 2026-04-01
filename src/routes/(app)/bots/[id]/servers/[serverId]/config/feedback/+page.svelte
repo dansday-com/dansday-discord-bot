@@ -2,13 +2,14 @@
 	import { invalidateAll } from '$app/navigation';
 	import { showToast } from '$lib/stores/toast.svelte';
 	import ChannelPicker from '$lib/components/server/ChannelPicker.svelte';
+	import RolePicker from '$lib/components/server/RolePicker.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 
 	let saving = $state(false);
-	let channel = $state(data.settings?.channel ?? '');
-	let enabled = $state(data.settings?.enabled ?? false);
+	let feedbackChannel = $state<string>(data.settings?.feedback_channel ?? '');
+	let feedbackRole = $state<string>(data.settings?.feedback_role ?? '');
 
 	async function save() {
 		saving = true;
@@ -17,7 +18,7 @@
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
-				body: JSON.stringify({ component: 'feedback', channel, enabled })
+				body: JSON.stringify({ component: 'feedback', feedback_channel: feedbackChannel, feedback_role: feedbackRole })
 			});
 			const d = await res.json();
 			if (d.success) {
@@ -35,16 +36,18 @@
 		<i class="fas fa-comment-dots text-ash-300"></i>Feedback
 	</h3>
 
-	<div class="flex items-center justify-between">
-		<label class="text-ash-300 text-xs font-medium">Enable Feedback</label>
-		<button type="button" onclick={() => (enabled = !enabled)} class="h-6 w-10 rounded-full transition-colors {enabled ? 'bg-ash-400' : 'bg-ash-700'} relative">
-			<span class="absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-all {enabled ? 'left-5' : 'left-1'}"></span>
-		</button>
+	<div>
+		<label class="text-ash-300 mb-1.5 block text-xs font-medium">Feedback Channel</label>
+		<p class="text-ash-500 mb-2 text-xs">Channel for user feedback. Uses default channel if not set.</p>
+		<ChannelPicker channels={data.channels} categories={data.categories} value={feedbackChannel} onchange={(id) => (feedbackChannel = id)} />
 	</div>
 
 	<div>
-		<label class="text-ash-300 mb-1.5 block text-xs font-medium">Feedback Channel</label>
-		<ChannelPicker channels={data.channels} value={channel} onchange={(id) => (channel = id)} />
+		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
+			<i class="fas fa-at mr-1"></i>Feedback Role (Optional)
+		</label>
+		<p class="text-ash-500 mb-2 text-xs">Role to mention when feedback is submitted. Optional.</p>
+		<RolePicker roles={data.roles} value={feedbackRole} single placeholder="None" onchange={(v) => (feedbackRole = v as string)} />
 	</div>
 
 	<button

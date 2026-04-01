@@ -8,8 +8,22 @@
 	let { data }: PageProps = $props();
 
 	let saving = $state(false);
-	let channel = $state(data.settings?.channel ?? '');
+	let channels = $state<string[]>(data.settings?.channels ?? []);
 	let messages = $state<string[]>(data.settings?.messages ?? []);
+
+	function channelById(id: string) {
+		return data.channels.find((c: any) => c.id === id);
+	}
+
+	function removeChannel(id: string) {
+		channels = channels.filter((c) => c !== id);
+	}
+
+	function addChannel(id: string) {
+		if (id && !channels.includes(id)) {
+			channels = [...channels, id];
+		}
+	}
 
 	async function save() {
 		saving = true;
@@ -18,7 +32,7 @@
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
-				body: JSON.stringify({ component: 'booster', channel, messages })
+				body: JSON.stringify({ component: 'booster', channels, messages })
 			});
 			const d = await res.json();
 			if (d.success) {
@@ -40,8 +54,22 @@
 	</p>
 
 	<div>
-		<label class="text-ash-300 mb-1.5 block text-xs font-medium">Boost Channel</label>
-		<ChannelPicker channels={data.channels} value={channel} onchange={(id) => (channel = id)} />
+		<label class="text-ash-300 mb-1.5 block text-xs font-medium">Boost Channels</label>
+		<p class="text-ash-500 mb-2 text-xs">Channels for boost messages. Multiple channels allowed. Uses default channel if not set.</p>
+		<ChannelPicker channels={data.channels} categories={data.categories} value={channels[0] ?? ''} onchange={(id) => addChannel(id)} />
+		{#if channels.length > 0}
+			<div class="mt-2 flex flex-wrap gap-1.5">
+				{#each channels as id}
+					{@const ch = channelById(id)}
+					<span class="bg-ash-600 text-ash-100 flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs">
+						#{ch ? ch.name : id}
+						<button type="button" onclick={() => removeChannel(id)} class="hover:text-ash-300 ml-0.5 transition-colors">
+							<i class="fas fa-times text-xs"></i>
+						</button>
+					</span>
+				{/each}
+			</div>
+		{/if}
 	</div>
 
 	<MessageList label="Boost Messages" values={messages} placeholder="Thank you {'{user}'} for boosting {'{server}'}!" onchange={(v) => (messages = v)} />

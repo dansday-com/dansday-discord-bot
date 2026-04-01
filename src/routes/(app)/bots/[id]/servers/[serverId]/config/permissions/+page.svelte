@@ -44,7 +44,7 @@
 	</h3>
 	<p class="text-ash-400 text-xs">Define role hierarchies used for member filtering and access control.</p>
 
-	{#each [{ label: 'Admin Roles', value: adminRoles, onchange: (v: string[]) => (adminRoles = v) }, { label: 'Staff Roles', value: staffRoles, onchange: (v: string[]) => (staffRoles = v) }, { label: 'Supporter Roles', value: supporterRoles, onchange: (v: string[]) => (supporterRoles = v) }, { label: 'Member Roles', value: memberRoles, onchange: (v: string[]) => (memberRoles = v) }] as group}
+	{#each [{ label: 'Admin Roles', value: adminRoles, onchange: (v: string | string[]) => (adminRoles = v as string[]) }, { label: 'Staff Roles', value: staffRoles, onchange: (v: string | string[]) => (staffRoles = v as string[]) }, { label: 'Supporter Roles', value: supporterRoles, onchange: (v: string | string[]) => (supporterRoles = v as string[]) }, { label: 'Member Roles', value: memberRoles, onchange: (v: string | string[]) => (memberRoles = v as string[]) }] as group}
 		<div>
 			<label class="text-ash-300 mb-1.5 block text-xs font-medium">{group.label}</label>
 			<RolePicker roles={data.roles} value={group.value} onchange={group.onchange} />

@@ -24,11 +24,16 @@
 	function startTick() {
 		if (tickInterval) return;
 		const base = Date.now();
-		tickInterval = setInterval(() => { uptimeTick = Date.now() - base; }, 1000);
+		tickInterval = setInterval(() => {
+			uptimeTick = Date.now() - base;
+		}, 1000);
 	}
 
 	function stopTick() {
-		if (tickInterval) { clearInterval(tickInterval); tickInterval = null; }
+		if (tickInterval) {
+			clearInterval(tickInterval);
+			tickInterval = null;
+		}
 		uptimeTick = 0;
 	}
 

@@ -1,63 +1,114 @@
 <script lang="ts">
 	interface Role {
-		id: string;
+		discord_role_id: string;
 		name: string;
 		color: string;
+		position: number | null;
 	}
+
 	interface Props {
 		roles: Role[];
-		value: string[];
+		/** Array of discord_role_ids for multiselect, or single string for single mode */
+		value: string | string[];
 		placeholder?: string;
-		onchange: (ids: string[]) => void;
+		/** Set to true for single-role selection (e.g. role_start / role_end) */
+		single?: boolean;
+		onchange: (value: string | string[]) => void;
 	}
-	let { roles, value, placeholder = 'Select roles...', onchange }: Props = $props();
+
+	let { roles, value, placeholder = 'Select roles...', single = false, onchange }: Props = $props();
+
 	let open = $state(false);
 	let search = $state('');
 	let pending = $state<string[]>([]);
 
-	const filtered = $derived(search.trim() ? roles.filter((r) => r.name.toLowerCase().includes(search.toLowerCase())) : roles);
+	const sortedRoles = $derived([...roles].sort((a, b) => (b.position ?? 0) - (a.position ?? 0)));
+	const filtered = $derived(search.trim() ? sortedRoles.filter((r) => r.name?.toLowerCase().includes(search.toLowerCase())) : sortedRoles);
 
 	function roleColor(hex: string) {
 		return !hex || hex === '#000000' ? '#6b7280' : hex;
 	}
 
+	// Normalised current value as array
+	const currentIds = $derived(single ? (value ? [value as string] : []) : (value as string[]));
+
 	function openModal() {
-		pending = [...value];
+		pending = [...currentIds];
 		open = true;
 		search = '';
 	}
 
 	function toggle(id: string) {
-		if (pending.includes(id)) pending = pending.filter((r) => r !== id);
-		else pending = [...pending, id];
+		if (single) {
+			// In single mode, clicking the already-selected just picks it again; clicking another replaces
+			if (pending[0] === id) {
+				pending = [];
+			} else {
+				pending = [id];
+			}
+		} else {
+			if (pending.includes(id)) pending = pending.filter((r) => r !== id);
+			else pending = [...pending, id];
+		}
 	}
 
 	function confirm() {
-		onchange(pending);
+		if (single) {
+			onchange(pending[0] ?? '');
+		} else {
+			onchange([...pending]);
+		}
 		open = false;
 		search = '';
 	}
 
 	function remove(id: string) {
-		onchange(value.filter((r) => r !== id));
+		if (single) {
+			onchange('');
+		} else {
+			onchange((value as string[]).filter((r) => r !== id));
+		}
+	}
+
+	function close() {
+		open = false;
+		search = '';
+	}
+
+	function roleById(id: string) {
+		return roles.find((r) => r.discord_role_id === id);
 	}
 </script>
 
+<!-- Trigger button -->
 <button
 	type="button"
 	onclick={openModal}
 	class="bg-ash-700 border-ash-600 hover:border-ash-500 flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-left text-sm transition-colors"
 >
-	<span class={value.length ? 'text-ash-100' : 'text-ash-300'}>
-		{value.length ? `${value.length} role${value.length !== 1 ? 's' : ''} selected` : placeholder}
-	</span>
+	{#if single}
+		{@const r = value ? roleById(value as string) : null}
+		{#if r}
+			<span class="text-ash-100 flex items-center gap-2">
+				<span class="h-3 w-3 shrink-0 rounded-full" style="background:{roleColor(r.color)}"></span>
+				{r.name}
+			</span>
+		{:else}
+			<span class="text-ash-300">{placeholder}</span>
+		{/if}
+	{:else}
+		<span class={(value as string[]).length ? 'text-ash-100' : 'text-ash-300'}>
+			{(value as string[]).length ? `${(value as string[]).length} role${(value as string[]).length !== 1 ? 's' : ''} selected` : placeholder}
+		</span>
+	{/if}
 	<i class="fas fa-chevron-down text-ash-400 text-xs"></i>
 </button>
 
-{#if value.length > 0}
+<!-- Selected tags (multiselect only) -->
+{#if !single && (value as string[]).length > 0}
 	<div class="mt-2 flex flex-wrap gap-1">
-		{#each value as id}
-			{@const role = roles.find((r) => r.id === id)}
+		{#each value as string[] as id}
+			{@const role = roleById(id)}
 			{#if role}
 				<span
 					class="flex items-center gap-1 rounded border px-2 py-0.5 text-xs"
@@ -74,63 +125,67 @@
 {/if}
 
 {#if open}
-	<div
-		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 sm:p-4"
-		onclick={() => {
-			open = false;
-			search = '';
-		}}
-	>
+	<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+	<div class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-3 sm:p-4" onclick={close}>
 		<div
-			class="bg-ash-800 border-ash-700 flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl border p-4 shadow-2xl sm:p-6"
+			class="bg-ash-800 border-ash-700 my-4 flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl border p-4 shadow-2xl sm:p-6"
 			onclick={(e) => e.stopPropagation()}
 		>
+			<!-- Header -->
 			<div class="mb-4 flex items-center justify-between sm:mb-6">
 				<h3 class="text-ash-100 flex items-center gap-2 text-lg font-bold sm:text-xl">
-					<i class="fas fa-user-shield text-ash-200"></i>Select Roles
+					<i class="fas fa-user-shield text-ash-200"></i>
+					{single ? 'Select Role' : 'Select Roles'}
 				</h3>
-				<button
-					type="button"
-					onclick={() => {
-						open = false;
-						search = '';
-					}}
-					class="text-ash-400 hover:text-ash-100 p-1 transition-colors"
-				>
+				<button type="button" onclick={close} class="text-ash-400 hover:text-ash-100 p-1 transition-colors">
 					<i class="fas fa-times text-lg"></i>
 				</button>
 			</div>
+			<!-- Search -->
 			<div class="relative mb-4">
 				<input
 					type="text"
 					bind:value={search}
 					placeholder="Search roles..."
-					class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-4 py-2.5 pr-10 text-sm focus:ring-2 focus:outline-none sm:py-3 sm:text-base"
+					class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-4 py-2.5 pr-10 text-sm transition-all focus:ring-2 focus:outline-none sm:py-3 sm:text-base"
 				/>
 				<i class="fas fa-search text-ash-400 absolute top-1/2 right-3 -translate-y-1/2"></i>
 			</div>
+			<!-- Role list -->
 			<div class="min-h-0 flex-1 space-y-1 overflow-y-auto">
-				{#each filtered as role}
-					<button
-						type="button"
-						onclick={() => toggle(role.id)}
-						class="hover:bg-ash-700 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors
-							{pending.includes(role.id) ? 'bg-ash-700' : ''}"
-					>
-						<i class="fas {pending.includes(role.id) ? 'fa-check-square text-ash-200' : 'fa-square text-ash-500'} w-3 text-xs"></i>
-						<span class="h-2 w-2 shrink-0 rounded-full" style="background:{roleColor(role.color)}"></span>
-						<span class={pending.includes(role.id) ? 'text-ash-100' : 'text-ash-300'}>{role.name}</span>
-					</button>
-				{/each}
 				{#if filtered.length === 0}
-					<p class="text-ash-500 py-4 text-center text-sm">No roles found</p>
+					<div class="text-ash-400 py-8 text-center text-sm">
+						<i class="fas fa-inbox mb-2 text-3xl"></i>
+						<p>No roles found</p>
+					</div>
+				{:else}
+					{#each filtered as role}
+						{@const isSelected = pending.includes(role.discord_role_id)}
+						<button
+							type="button"
+							onclick={() => toggle(role.discord_role_id)}
+							class="flex w-full items-center justify-between rounded-lg px-4 py-2.5 text-left text-sm transition-colors
+								{isSelected ? 'bg-ash-900 border-ash-500 border' : 'bg-ash-700 hover:bg-ash-600'}"
+						>
+							<div class="flex min-w-0 flex-1 items-center gap-3">
+								<span class="h-4 w-4 shrink-0 rounded-full" style="background:{roleColor(role.color)}"></span>
+								<p class="{isSelected ? 'text-ash-100' : 'text-ash-300'} truncate text-sm font-medium">{role.name}</p>
+							</div>
+							{#if isSelected}
+								<i class="fas fa-check text-ash-200 text-sm"></i>
+							{:else}
+								<i class="fas fa-check text-sm text-transparent"></i>
+							{/if}
+						</button>
+					{/each}
 				{/if}
 			</div>
+			<!-- Confirm -->
 			<div class="border-ash-700 mt-4 border-t pt-4">
 				<button
 					type="button"
 					onclick={confirm}
-					class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all sm:py-3 sm:text-base"
+					class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all sm:py-3 sm:text-base"
 				>
 					<i class="fas fa-check"></i>Confirm Selection
 				</button>

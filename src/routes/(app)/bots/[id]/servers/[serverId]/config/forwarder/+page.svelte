@@ -92,6 +92,7 @@
 					<label class="text-ash-400 mb-1 block text-xs">Source</label>
 					<ChannelPicker
 						channels={data.channels}
+						categories={data.categories}
 						value={fw.source_channel}
 						onchange={(id) => updateForwarder(i, 'source_channel', id)}
 						placeholder="Source channel..."
@@ -101,6 +102,7 @@
 					<label class="text-ash-400 mb-1 block text-xs">Destination</label>
 					<ChannelPicker
 						channels={data.channels}
+						categories={data.categories}
 						value={fw.destination_channel}
 						onchange={(id) => updateForwarder(i, 'destination_channel', id)}
 						placeholder="Destination channel..."

@@ -7,7 +7,8 @@
 	let { data }: PageProps = $props();
 
 	let saving = $state(false);
-	let roles = $state<string[]>(data.settings?.roles ?? []);
+	let roleStart = $state<string>(data.settings?.role_start ?? '');
+	let roleEnd = $state<string>(data.settings?.role_end ?? '');
 
 	async function save() {
 		saving = true;
@@ -16,7 +17,7 @@
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
-				body: JSON.stringify({ component: 'custom_supporter_role', roles })
+				body: JSON.stringify({ component: 'custom_supporter_role', role_start: roleStart, role_end: roleEnd })
 			});
 			const d = await res.json();
 			if (d.success) {
@@ -33,11 +34,22 @@
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
 		<i class="fas fa-star text-ash-300"></i>Custom Supporter Role
 	</h3>
-	<p class="text-ash-400 text-xs">Roles that grant custom supporter designation in this server.</p>
+	<p class="text-ash-400 text-xs">Define the role range where custom supporter roles will be created.</p>
 
 	<div>
-		<label class="text-ash-300 mb-1.5 block text-xs font-medium">Supporter Roles</label>
-		<RolePicker roles={data.roles} value={roles} onchange={(v) => (roles = v)} />
+		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
+			<i class="fas fa-arrow-up mr-1"></i>Role Start (Top / Highest Position)
+		</label>
+		<p class="text-ash-500 mb-2 text-xs">Highest role position where custom supporter roles will be created. Roles will be placed below this.</p>
+		<RolePicker roles={data.roles} value={roleStart} single placeholder="Select role..." onchange={(v) => (roleStart = v as string)} />
+	</div>
+
+	<div>
+		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
+			<i class="fas fa-arrow-down mr-1"></i>Role End (Bottom / Lowest Position)
+		</label>
+		<p class="text-ash-500 mb-2 text-xs">Lowest role position where custom supporter roles will be created. Roles will be placed above this.</p>
+		<RolePicker roles={data.roles} value={roleEnd} single placeholder="Select role..." onchange={(v) => (roleEnd = v as string)} />
 	</div>
 
 	<button

@@ -1,17 +1,16 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
 	import { showToast } from '$lib/stores/toast.svelte';
-	import ChannelPicker from '$lib/components/server/ChannelPicker.svelte';
+	import RolePicker from '$lib/components/server/RolePicker.svelte';
+	import CategoryPicker from '$lib/components/server/CategoryPicker.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 
 	let saving = $state(false);
-	let channel = $state(data.settings?.channel ?? '');
-	let notifyJoin = $state(data.settings?.notify_join ?? false);
-	let notifyLeave = $state(data.settings?.notify_leave ?? false);
-	let notifyBan = $state(data.settings?.notify_ban ?? false);
-	let notifyBoost = $state(data.settings?.notify_boost ?? false);
+	let roleStart = $state<string>(data.settings?.role_start ?? '');
+	let roleEnd = $state<string>(data.settings?.role_end ?? '');
+	let categoryIds = $state<string[]>(data.settings?.category_ids ?? []);
 
 	async function save() {
 		saving = true;
@@ -22,11 +21,9 @@
 				credentials: 'include',
 				body: JSON.stringify({
 					component: 'notifications',
-					channel,
-					notify_join: notifyJoin,
-					notify_leave: notifyLeave,
-					notify_ban: notifyBan,
-					notify_boost: notifyBoost
+					role_start: roleStart,
+					role_end: roleEnd,
+					category_ids: categoryIds
 				})
 			});
 			const d = await res.json();
@@ -38,34 +35,36 @@
 			saving = false;
 		}
 	}
-
-	const toggles = [
-		{ label: 'Member Join', get: () => notifyJoin, set: (v: boolean) => (notifyJoin = v) },
-		{ label: 'Member Leave', get: () => notifyLeave, set: (v: boolean) => (notifyLeave = v) },
-		{ label: 'Member Ban', get: () => notifyBan, set: (v: boolean) => (notifyBan = v) },
-		{ label: 'Server Boost', get: () => notifyBoost, set: (v: boolean) => (notifyBoost = v) }
-	];
 </script>
 
 <div class="bg-ash-800 border-ash-700 space-y-5 rounded-xl border p-4 sm:p-6">
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
 		<i class="fas fa-bell text-ash-300"></i>Notifications
 	</h3>
+	<p class="text-ash-400 text-xs">Create roles from channels in selected categories. Members can choose which notification roles to get from the menu.</p>
 
 	<div>
-		<label class="text-ash-300 mb-1.5 block text-xs font-medium">Notification Channel</label>
-		<ChannelPicker channels={data.channels} value={channel} onchange={(id) => (channel = id)} />
+		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
+			<i class="fas fa-arrow-up mr-1"></i>Notification Role Start (Top / Highest Position)
+		</label>
+		<p class="text-ash-500 mb-2 text-xs">Highest role position where notification roles will be created. Roles will be placed below this.</p>
+		<RolePicker roles={data.roles} value={roleStart} single placeholder="Select role..." onchange={(v) => (roleStart = v as string)} />
 	</div>
 
-	<div class="space-y-3">
-		{#each toggles as t}
-			<div class="flex items-center justify-between">
-				<label class="text-ash-300 text-xs font-medium">{t.label}</label>
-				<button type="button" onclick={() => t.set(!t.get())} class="h-6 w-10 rounded-full transition-colors {t.get() ? 'bg-ash-400' : 'bg-ash-700'} relative">
-					<span class="absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-all {t.get() ? 'left-5' : 'left-1'}"></span>
-				</button>
-			</div>
-		{/each}
+	<div>
+		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
+			<i class="fas fa-arrow-down mr-1"></i>Notification Role End (Bottom / Lowest Position)
+		</label>
+		<p class="text-ash-500 mb-2 text-xs">Lowest role position where notification roles will be created. Roles will be placed above this.</p>
+		<RolePicker roles={data.roles} value={roleEnd} single placeholder="Select role..." onchange={(v) => (roleEnd = v as string)} />
+	</div>
+
+	<div>
+		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
+			<i class="fas fa-folder mr-1"></i>Categories
+		</label>
+		<p class="text-ash-500 mb-2 text-xs">Channels inside these categories will get a notification role (one role per channel). Multiple categories allowed.</p>
+		<CategoryPicker categories={data.categories} value={categoryIds} onchange={(v) => (categoryIds = v)} />
 	</div>
 
 	<button

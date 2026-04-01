@@ -11,8 +11,19 @@ const translations = new Map<string, Record<string, any>>();
 const defaultLang = 'en';
 
 function loadTranslations() {
-	const localesDir = join(__dirname, 'locales');
 	const languages = ['en', 'id'];
+
+	const possiblePaths = ['/app/src/lib/server/locales', join(__dirname, 'locales'), join(process.cwd(), 'src', 'lib', 'server', 'locales')];
+
+	let localesDir = '';
+	for (const p of possiblePaths) {
+		if (existsSync(p) && existsSync(join(p, 'en.json'))) {
+			localesDir = p;
+			break;
+		}
+	}
+
+	if (!localesDir) return;
 
 	for (const lang of languages) {
 		try {
@@ -22,16 +33,6 @@ function loadTranslations() {
 				translations.set(lang, JSON.parse(content));
 			}
 		} catch (_) {}
-	}
-
-	if (!translations.has(defaultLang)) {
-		const enPath = join(localesDir, `${defaultLang}.json`);
-		if (existsSync(enPath)) {
-			try {
-				const content = readFileSync(enPath, 'utf-8');
-				translations.set(defaultLang, JSON.parse(content));
-			} catch (_) {}
-		}
 	}
 }
 

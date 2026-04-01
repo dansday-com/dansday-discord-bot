@@ -2,7 +2,16 @@
 	"menu": {
 		"title": "📋 Menu Bot Dansday",
 		"description": "Pilih fitur dari tombol di bawah:",
-		"noAccess": "❌ Kamu tidak memiliki akses ke fitur apa pun."
+		"noAccess": "❌ Kamu tidak memiliki akses ke fitur apa pun.",
+		"button": "📋 Menu"
+	},
+	"interface": {
+		"panel": {
+			"title": "Panel Bot Dansday",
+			"description": "Klik **Menu** untuk mengakses fitur bot berdasarkan izin peran kamu.",
+			"sent": "✅ Antarmuka bot dikirim ke {channel}!",
+			"error": "❌ Gagal mengirim antarmuka: {error}"
+		}
 	},
 	"common": {
 		"errors": {

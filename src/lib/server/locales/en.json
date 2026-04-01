@@ -2,7 +2,16 @@
 	"menu": {
 		"title": "📋 Dansday Bot Menu",
 		"description": "Select a feature from the buttons below:",
-		"noAccess": "❌ You don't have access to any features."
+		"noAccess": "❌ You don't have access to any features.",
+		"button": "📋 Menu"
+	},
+	"interface": {
+		"panel": {
+			"title": "Dansday Bot Panel",
+			"description": "Click **Menu** to access bot features based on your role permissions.",
+			"sent": "✅ Bot interface sent to {channel}!",
+			"error": "❌ Failed to send interface: {error}"
+		}
 	},
 	"common": {
 		"errors": {

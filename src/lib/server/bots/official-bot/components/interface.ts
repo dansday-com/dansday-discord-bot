@@ -74,23 +74,48 @@ async function handleMenuButton(interaction) {
 	const buttons = [];
 
 	if (await hasPermission(member, 'custom_supporter_role')) {
-		buttons.push(new ButtonBuilder().setCustomId('bot_custom_supporter_role').setLabel('💎 Custom Supporter Role').setStyle(ButtonStyle.Success));
+		buttons.push(
+			new ButtonBuilder()
+				.setCustomId('bot_custom_supporter_role')
+				.setLabel(await translate('customSupporterRole.existing.title', interaction.guild.id, interaction.user.id))
+				.setStyle(ButtonStyle.Success)
+		);
 	}
 
 	if (await hasPermission(member, 'leveling')) {
-		buttons.push(new ButtonBuilder().setCustomId('bot_leveling').setLabel('📈 Leveling').setStyle(ButtonStyle.Success));
+		buttons.push(
+			new ButtonBuilder()
+				.setCustomId('bot_leveling')
+				.setLabel(await translate('leveling.profile.title', interaction.guild.id, interaction.user.id))
+				.setStyle(ButtonStyle.Success)
+		);
 	}
 
 	if (await hasPermission(member, 'giveaway')) {
-		buttons.push(new ButtonBuilder().setCustomId('bot_giveaway').setLabel('🎉 Giveaway').setStyle(ButtonStyle.Success));
+		buttons.push(
+			new ButtonBuilder()
+				.setCustomId('bot_giveaway')
+				.setLabel(await translate('giveaway.create.title', interaction.guild.id, interaction.user.id))
+				.setStyle(ButtonStyle.Success)
+		);
 	}
 
 	if (await hasPermission(member, 'afk')) {
-		buttons.push(new ButtonBuilder().setCustomId('bot_afk').setLabel('⏸️ AFK').setStyle(ButtonStyle.Success));
+		buttons.push(
+			new ButtonBuilder()
+				.setCustomId('bot_afk')
+				.setLabel(await translate('afk.title', interaction.guild.id, interaction.user.id))
+				.setStyle(ButtonStyle.Success)
+		);
 	}
 
 	if (await hasPermission(member, 'feedback')) {
-		buttons.push(new ButtonBuilder().setCustomId('bot_feedback').setLabel('💬 Feedback').setStyle(ButtonStyle.Success));
+		buttons.push(
+			new ButtonBuilder()
+				.setCustomId('bot_feedback')
+				.setLabel(await translate('feedback.modal.title', interaction.guild.id, interaction.user.id))
+				.setStyle(ButtonStyle.Success)
+		);
 	}
 
 	if (await hasPermission(member, 'staff_report')) {
@@ -268,16 +293,19 @@ export async function handleButtonInteraction(interaction, client) {
 	}
 }
 
-export async function createInterfaceEmbed(client, guildId) {
+export async function createInterfaceEmbed(client, guildId, userId = null) {
 	if (!guildId) {
 		throw new Error('Guild ID is required to create interface embed');
 	}
 
 	const embedConfig = await getEmbedConfig(guildId);
+	const title = await translate('interface.panel.title', guildId, userId);
+	const description = await translate('interface.panel.description', guildId, userId);
+
 	const interfaceEmbed = {
 		color: embedConfig.COLOR,
-		title: 'Dansday Bot Panel',
-		description: 'Click **Menu** to access bot features based on your role permissions.',
+		title,
+		description,
 		thumbnail: {
 			url: client.user.displayAvatarURL()
 		},
@@ -291,7 +319,7 @@ export async function createInterfaceEmbed(client, guildId) {
 }
 
 export async function createInterfaceButtons(guildId = null, userId = null) {
-	const menuLabel = '📋 Menu';
+	const menuLabel = await translate('menu.button', guildId, userId);
 	const menuButton = new ButtonBuilder().setCustomId('bot_menu').setLabel(menuLabel).setStyle(ButtonStyle.Primary);
 
 	const buttonRow = new ActionRowBuilder().addComponents(menuButton);
@@ -301,7 +329,7 @@ export async function createInterfaceButtons(guildId = null, userId = null) {
 
 export async function sendInterfaceToChannel(targetChannel, interaction, client) {
 	try {
-		const interfaceEmbed = await createInterfaceEmbed(client, interaction.guild.id);
+		const interfaceEmbed = await createInterfaceEmbed(client, interaction.guild.id, interaction.user.id);
 		const buttonRow = await createInterfaceButtons(interaction.guild.id, interaction.user.id);
 
 		await targetChannel.send({
@@ -309,19 +337,34 @@ export async function sendInterfaceToChannel(targetChannel, interaction, client)
 			components: Array.isArray(buttonRow) ? buttonRow : [buttonRow]
 		});
 
+		const successMsg = await translate('interface.panel.sent', interaction.guild.id, interaction.user.id, {
+			channel: targetChannel.toString()
+		});
+
 		await interaction.reply({
-			content: `✅ Bot interface sent to ${targetChannel}!`,
+			content: successMsg,
 			flags: 64
 		});
 
 		await logger.log(`🎮 Bot interface sent to ${targetChannel.name} by ${interaction.user.tag} (${interaction.user.id})`);
 	} catch (error) {
+		const errorMsg = await translate('interface.panel.error', interaction.guild.id, interaction.user.id, {
+			error: error.message
+		});
+
 		await interaction.reply({
-			content: `❌ Failed to send interface: ${error.message}`,
+			content: errorMsg,
 			flags: 64
 		});
 		await logger.log(`❌ Interface send failed: ${error.message}`);
 	}
+}
+
+async function createMenuRow(guildId = null, userId = null) {
+	const menuLabel = await translate('menu.button', guildId, userId);
+	const menuButton = new ButtonBuilder().setCustomId('bot_menu').setLabel(menuLabel).setStyle(ButtonStyle.Secondary);
+
+	return new ActionRowBuilder().addComponents(menuButton);
 }
 
 function init(client) {

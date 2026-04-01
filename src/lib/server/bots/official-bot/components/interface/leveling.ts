@@ -305,8 +305,9 @@ async function createLeaderboardButtons(selectedType = 'xp', guildId = null, use
 	return new ActionRowBuilder().addComponents(...buttons);
 }
 
-async function createMenuRow() {
-	const menuButton = new ButtonBuilder().setCustomId('bot_menu').setLabel('📋 Menu').setStyle(ButtonStyle.Secondary);
+async function createMenuRow(guildId = null, userId = null) {
+	const menuLabel = await translate('menu.button', guildId, userId);
+	const menuButton = new ButtonBuilder().setCustomId('bot_menu').setLabel(menuLabel).setStyle(ButtonStyle.Secondary);
 
 	return new ActionRowBuilder().addComponents(menuButton);
 }
@@ -363,7 +364,7 @@ export async function handleLevelingButton(interaction) {
 		const sortType = 'xp';
 		const { profileEmbed, leaderboardEmbed } = await buildLevelingEmbeds(server, memberLevelData, sortType, interaction.guild.id, interaction.user.id);
 		const buttons = await createLeaderboardButtons(sortType, interaction.guild.id, interaction.user.id);
-		const menuRow = await createMenuRow();
+		const menuRow = await createMenuRow(interaction.guild.id, interaction.user.id);
 
 		await interaction.update({
 			embeds: [profileEmbed, leaderboardEmbed],
@@ -429,7 +430,7 @@ export async function handleLeaderboardButton(interaction) {
 		const memberLevelData = await db.getMemberLevelByDiscordId(server.id, interaction.user.id);
 		const { profileEmbed, leaderboardEmbed } = await buildLevelingEmbeds(server, memberLevelData, sortType, interaction.guild.id, interaction.user.id);
 		const buttons = await createLeaderboardButtons(sortType, interaction.guild.id, interaction.user.id);
-		const menuRow = await createMenuRow();
+		const menuRow = await createMenuRow(interaction.guild.id, interaction.user.id);
 
 		await interaction.update({
 			embeds: [profileEmbed, leaderboardEmbed],

@@ -879,6 +879,9 @@
 		min-width: 0;
 		flex: 1;
 	}
+	@media (min-width: 640px) {
+		.lb-nav-brand { gap: 12px; }
+	}
 	.lb-nav-brand span {
 		white-space: nowrap;
 		overflow: hidden;

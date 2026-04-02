@@ -92,18 +92,50 @@ CREATE TABLE IF NOT EXISTS server_selfbot_assignments (
     FOREIGN KEY (selfbot_id) REFERENCES bots(id) ON DELETE CASCADE
 );
 
--- 8. Add new indexes (IF NOT EXISTS via conditional)
-CREATE INDEX IF NOT EXISTS idx_accounts_email ON accounts(email);
-CREATE INDEX IF NOT EXISTS idx_accounts_username ON accounts(username);
-CREATE INDEX IF NOT EXISTS idx_accounts_panel_id ON accounts(panel_id);
-CREATE INDEX IF NOT EXISTS idx_account_invites_token ON account_invites(token);
-CREATE INDEX IF NOT EXISTS idx_account_invites_created_by ON account_invites(created_by);
-CREATE INDEX IF NOT EXISTS idx_account_invites_used_by ON account_invites(used_by);
-CREATE INDEX IF NOT EXISTS idx_account_invites_server_id ON account_invites(server_id);
-CREATE INDEX IF NOT EXISTS idx_account_server_access_account_id ON account_server_access(account_id);
-CREATE INDEX IF NOT EXISTS idx_account_server_access_server_id ON account_server_access(server_id);
-CREATE INDEX IF NOT EXISTS idx_server_selfbot_assignments_server_id ON server_selfbot_assignments(server_id);
-CREATE INDEX IF NOT EXISTS idx_server_selfbot_assignments_selfbot_id ON server_selfbot_assignments(selfbot_id);
+-- 8. Add new indexes (conditional — MySQL does not support CREATE INDEX IF NOT EXISTS)
+SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='accounts' AND index_name='idx_accounts_email');
+SET @s = IF(@i=0,'CREATE INDEX idx_accounts_email ON accounts(email)','SELECT 1');
+PREPARE si FROM @s; EXECUTE si; DEALLOCATE PREPARE si;
+
+SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='accounts' AND index_name='idx_accounts_username');
+SET @s = IF(@i=0,'CREATE INDEX idx_accounts_username ON accounts(username)','SELECT 1');
+PREPARE si FROM @s; EXECUTE si; DEALLOCATE PREPARE si;
+
+SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='accounts' AND index_name='idx_accounts_panel_id');
+SET @s = IF(@i=0,'CREATE INDEX idx_accounts_panel_id ON accounts(panel_id)','SELECT 1');
+PREPARE si FROM @s; EXECUTE si; DEALLOCATE PREPARE si;
+
+SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='account_invites' AND index_name='idx_account_invites_token');
+SET @s = IF(@i=0,'CREATE INDEX idx_account_invites_token ON account_invites(token)','SELECT 1');
+PREPARE si FROM @s; EXECUTE si; DEALLOCATE PREPARE si;
+
+SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='account_invites' AND index_name='idx_account_invites_created_by');
+SET @s = IF(@i=0,'CREATE INDEX idx_account_invites_created_by ON account_invites(created_by)','SELECT 1');
+PREPARE si FROM @s; EXECUTE si; DEALLOCATE PREPARE si;
+
+SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='account_invites' AND index_name='idx_account_invites_used_by');
+SET @s = IF(@i=0,'CREATE INDEX idx_account_invites_used_by ON account_invites(used_by)','SELECT 1');
+PREPARE si FROM @s; EXECUTE si; DEALLOCATE PREPARE si;
+
+SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='account_invites' AND index_name='idx_account_invites_server_id');
+SET @s = IF(@i=0,'CREATE INDEX idx_account_invites_server_id ON account_invites(server_id)','SELECT 1');
+PREPARE si FROM @s; EXECUTE si; DEALLOCATE PREPARE si;
+
+SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='account_server_access' AND index_name='idx_account_server_access_account_id');
+SET @s = IF(@i=0,'CREATE INDEX idx_account_server_access_account_id ON account_server_access(account_id)','SELECT 1');
+PREPARE si FROM @s; EXECUTE si; DEALLOCATE PREPARE si;
+
+SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='account_server_access' AND index_name='idx_account_server_access_server_id');
+SET @s = IF(@i=0,'CREATE INDEX idx_account_server_access_server_id ON account_server_access(server_id)','SELECT 1');
+PREPARE si FROM @s; EXECUTE si; DEALLOCATE PREPARE si;
+
+SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_selfbot_assignments' AND index_name='idx_server_selfbot_assignments_server_id');
+SET @s = IF(@i=0,'CREATE INDEX idx_server_selfbot_assignments_server_id ON server_selfbot_assignments(server_id)','SELECT 1');
+PREPARE si FROM @s; EXECUTE si; DEALLOCATE PREPARE si;
+
+SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_selfbot_assignments' AND index_name='idx_server_selfbot_assignments_selfbot_id');
+SET @s = IF(@i=0,'CREATE INDEX idx_server_selfbot_assignments_selfbot_id ON server_selfbot_assignments(selfbot_id)','SELECT 1');
+PREPARE si FROM @s; EXECUTE si; DEALLOCATE PREPARE si;
 
 -- 9. Drop connect_to column from bots (selfbot→official pairing now via server_selfbot_assignments)
 -- Must drop the FK constraint first, then the column.

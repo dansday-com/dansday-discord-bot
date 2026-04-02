@@ -99,8 +99,8 @@ CREATE TABLE IF NOT EXISTS server_account_invites (
 CREATE TABLE IF NOT EXISTS server_bots (
     id INT PRIMARY KEY AUTO_INCREMENT,
     server_id INT NOT NULL,
-    name TEXT NOT NULL DEFAULT 'Selfbot',
-    token TEXT NOT NULL DEFAULT '',
+    name TEXT NULL,
+    token TEXT NULL,
     status ENUM('running','stopped','starting','stopping') DEFAULT 'stopped',
     process_id INT NULL,
     is_testing BOOLEAN DEFAULT FALSE,

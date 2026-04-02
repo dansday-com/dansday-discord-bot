@@ -1,6 +1,6 @@
 ALTER TABLE server_bots
-    ADD COLUMN name TEXT NOT NULL DEFAULT 'Selfbot',
-    ADD COLUMN token TEXT NOT NULL DEFAULT '',
+    ADD COLUMN name TEXT NULL,
+    ADD COLUMN token TEXT NULL,
     ADD COLUMN status ENUM('running','stopped','starting','stopping') DEFAULT 'stopped',
     ADD COLUMN process_id INT NULL,
     ADD COLUMN is_testing BOOLEAN DEFAULT FALSE,

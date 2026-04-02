@@ -161,7 +161,7 @@
 			<div class="lb-nav-brand">
 				<div class="lb-nav-icon">
 					<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-						<path d="M13 10V3L4 14H11V21L20 10H13Z" fill="white"/>
+						<path d="M13 10V3L4 14H11V21L20 10H13Z" fill="white" />
 					</svg>
 				</div>
 				<span>Dansday Discord Bot Panel</span>
@@ -177,166 +177,170 @@
 
 	<main class="lb-main">
 		<div class="lb-inner">
-		<!-- Server header -->
-		<header class="lb-header">
-			<div class="lb-server-icon">
-				{#if data.server.server_icon}
-					<img src={data.server.server_icon} alt={data.server.name} />
-				{:else}
-					<span class="lb-icon-placeholder">🏆</span>
-				{/if}
-			</div>
-			<div class="lb-header-text">
-				<h1>{data.server.name || data.server.slug}</h1>
-				<p>Leaderboard <span class="lb-metric-pill">{metricLabel(metric)}</span></p>
-			</div>
-		</header>
-
-		<!-- Metric tabs -->
-		<div class="lb-tabs">
-			{#each ['xp', 'chat', 'voice_total', 'voice_active', 'voice_afk'] as const as m}
-				<button class="lb-tab {metric === m ? 'lb-tab--active' : ''}" onclick={() => setMetric(m)}>
-					{#if m === 'xp'}
-						<svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
-							><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="currentColor" /></svg
-						>
-						XP
-					{:else if m === 'chat'}
-						<svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
-							><path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z" fill="currentColor" /></svg
-						>
-						Chat
-					{:else if m === 'voice_total'}
-						<svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
-							><path
-								d="M12 1C10.3 1 9 2.3 9 4V12C9 13.7 10.3 15 12 15S15 13.7 15 12V4C15 2.3 13.7 1 12 1ZM19 12C19 15.5 16.2 18.4 12.7 18.9V21H11.3V18.9C7.8 18.4 5 15.5 5 12H7C7 14.8 9.2 17 12 17S17 14.8 17 12H19Z"
-								fill="currentColor"
-							/></svg
-						>
-						Voice
-					{:else if m === 'voice_active'}
-						<svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
-							><circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.2" /><path
-								d="M12 6C10.3 6 9 7.3 9 9V13C9 14.7 10.3 16 12 16S15 14.7 15 13V9C15 7.3 13.7 6 12 6Z"
-								fill="currentColor"
-							/></svg
-						>
-						Active
+			<!-- Server header -->
+			<header class="lb-header">
+				<div class="lb-server-icon">
+					{#if data.server.server_icon}
+						<img src={data.server.server_icon} alt={data.server.name} />
 					{:else}
-						<svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
-							><path
-								d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"
-								fill="currentColor"
-							/></svg
-						>
-						AFK
+						<span class="lb-icon-placeholder">🏆</span>
 					{/if}
-				</button>
-			{/each}
-		</div>
+				</div>
+				<div class="lb-header-text">
+					<h1>{data.server.name || data.server.slug}</h1>
+					<p>Leaderboard <span class="lb-metric-pill">{metricLabel(metric)}</span></p>
+				</div>
+			</header>
 
-		<!-- Podium -->
-		{#if top3.length > 0}
-			<section class="lb-podium-section">
-				<div class="lb-podium-stage">
-					{#each podiumOrder as { r, rank }}
-						<div class="lb-podium-col lb-podium-col--{rank}" class:lb-mounted={mounted}>
-							<!-- Crown for #1 -->
-							{#if rank === 1}
-								<div class="lb-crown">
-									<svg viewBox="0 0 48 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-										<path d="M4 28L10 10L18 20L24 4L30 20L38 10L44 28H4Z" fill="#FFD700" stroke="#FFA500" stroke-width="1.5" stroke-linejoin="round" />
-										<circle cx="4" cy="28" r="3" fill="#FFD700" />
-										<circle cx="44" cy="28" r="3" fill="#FFD700" />
-										<circle cx="24" cy="4" r="3" fill="#FFD700" />
-										<rect x="2" y="28" width="44" height="4" rx="2" fill="#FFA500" />
-									</svg>
-								</div>
-							{/if}
+			<!-- Metric tabs -->
+			<div class="lb-tabs">
+				{#each ['xp', 'chat', 'voice_total', 'voice_active', 'voice_afk'] as const as m}
+					<button class="lb-tab {metric === m ? 'lb-tab--active' : ''}" onclick={() => setMetric(m)}>
+						{#if m === 'xp'}
+							<svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+								><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="currentColor" /></svg
+							>
+							XP
+						{:else if m === 'chat'}
+							<svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+								><path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z" fill="currentColor" /></svg
+							>
+							Chat
+						{:else if m === 'voice_total'}
+							<svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+								><path
+									d="M12 1C10.3 1 9 2.3 9 4V12C9 13.7 10.3 15 12 15S15 13.7 15 12V4C15 2.3 13.7 1 12 1ZM19 12C19 15.5 16.2 18.4 12.7 18.9V21H11.3V18.9C7.8 18.4 5 15.5 5 12H7C7 14.8 9.2 17 12 17S17 14.8 17 12H19Z"
+									fill="currentColor"
+								/></svg
+							>
+							Voice
+						{:else if m === 'voice_active'}
+							<svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+								><circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.2" /><path
+									d="M12 6C10.3 6 9 7.3 9 9V13C9 14.7 10.3 16 12 16S15 14.7 15 13V9C15 7.3 13.7 6 12 6Z"
+									fill="currentColor"
+								/></svg
+							>
+							Active
+						{:else}
+							<svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+								><path
+									d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"
+									fill="currentColor"
+								/></svg
+							>
+							AFK
+						{/if}
+					</button>
+				{/each}
+			</div>
 
-							<!-- Avatar -->
-							<div class="lb-avatar-wrap lb-avatar-wrap--{rank}">
-								<div class="lb-avatar-ring" style="--ring-color: {rankColors[rank]}; --ring-glow: {rankGlow[rank]};">
-									<div class="lb-avatar-img">
-										{#if r.avatar}
-											<img src={r.avatar} alt={displayName(r)} />
-										{:else}
-											<div class="lb-avatar-fallback">{displayName(r).charAt(0).toUpperCase()}</div>
-										{/if}
+			<!-- Podium -->
+			{#if top3.length > 0}
+				<section class="lb-podium-section">
+					<div class="lb-podium-stage">
+						{#each podiumOrder as { r, rank }}
+							<div class="lb-podium-col lb-podium-col--{rank}" class:lb-mounted={mounted}>
+								<!-- Crown for #1 -->
+								{#if rank === 1}
+									<div class="lb-crown">
+										<svg viewBox="0 0 48 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+											<path d="M4 28L10 10L18 20L24 4L30 20L38 10L44 28H4Z" fill="#FFD700" stroke="#FFA500" stroke-width="1.5" stroke-linejoin="round" />
+											<circle cx="4" cy="28" r="3" fill="#FFD700" />
+											<circle cx="44" cy="28" r="3" fill="#FFD700" />
+											<circle cx="24" cy="4" r="3" fill="#FFD700" />
+											<rect x="2" y="28" width="44" height="4" rx="2" fill="#FFA500" />
+										</svg>
+									</div>
+								{/if}
+
+								<!-- Avatar -->
+								<div class="lb-avatar-wrap lb-avatar-wrap--{rank}">
+									<div class="lb-avatar-ring" style="--ring-color: {rankColors[rank]}; --ring-glow: {rankGlow[rank]};">
+										<div class="lb-avatar-img">
+											{#if r.avatar}
+												<img src={r.avatar} alt={displayName(r)} />
+											{:else}
+												<div class="lb-avatar-fallback">{displayName(r).charAt(0).toUpperCase()}</div>
+											{/if}
+										</div>
+									</div>
+									<div class="lb-rank-badge" style="background: {rankGradients[rank]}; color: #111;">
+										{rank}
 									</div>
 								</div>
-								<div class="lb-rank-badge" style="background: {rankGradients[rank]}; color: #111;">
-									{rank}
+
+								<!-- Name & score -->
+								<div class="lb-podium-info">
+									<div class="lb-podium-name" title={displayName(r)}>{displayName(r)}</div>
+									<div class="lb-podium-score" style="color: {rankColors[rank]};">
+										{metricValueAnimated(r, metric)}
+										<span class="lb-podium-unit">{metricUnit(metric)}</span>
+									</div>
+									{#if metric === 'xp'}
+										<div class="lb-podium-level">Lvl {r.level ?? 1}</div>
+									{/if}
+								</div>
+
+								<!-- Podium block -->
+								<div class="lb-podium-block" style="height: {podiumHeights[rank]}; background: {rankGradients[rank]};">
+									<span class="lb-podium-block-num">#{rank}</span>
 								</div>
 							</div>
+						{/each}
+					</div>
+				</section>
+			{/if}
 
-							<!-- Name & score -->
-							<div class="lb-podium-info">
-								<div class="lb-podium-name" title={displayName(r)}>{displayName(r)}</div>
-								<div class="lb-podium-score" style="color: {rankColors[rank]};">
+			<!-- Rest of rankings -->
+			{#if rest.length > 0}
+				<section class="lb-list-section">
+					<div class="lb-list-header">
+						<span>Rankings</span>
+						<span class="lb-list-count">{rows.length.toLocaleString()} members</span>
+					</div>
+					<div class="lb-list">
+						{#each rest as r, i (r.discord_member_id)}
+							<div class="lb-list-row" class:lb-mounted={mounted} style="animation-delay: {i * 40}ms">
+								<div class="lb-list-rank">#{i + 4}</div>
+								<div class="lb-list-avatar">
+									{#if r.avatar}
+										<img src={r.avatar} alt={displayName(r)} />
+									{:else}
+										<div class="lb-list-avatar-fallback">{displayName(r).charAt(0).toUpperCase()}</div>
+									{/if}
+								</div>
+								<div class="lb-list-info">
+									<div class="lb-list-name" title={displayName(r)}>{displayName(r)}</div>
+									{#if metric === 'xp'}
+										<div class="lb-list-sub">Level {r.level ?? 1}</div>
+									{/if}
+									<div class="lb-list-bar-track">
+										<div class="lb-list-bar-fill" style="width: {Math.max(3, Math.round((metricValueNumber(r, metric) / maxValue) * 100))}%"></div>
+									</div>
+								</div>
+								<div class="lb-list-score">
 									{metricValueAnimated(r, metric)}
-									<span class="lb-podium-unit">{metricUnit(metric)}</span>
-								</div>
-								{#if metric === 'xp'}
-									<div class="lb-podium-level">Lvl {r.level ?? 1}</div>
-								{/if}
-							</div>
-
-							<!-- Podium block -->
-							<div class="lb-podium-block" style="height: {podiumHeights[rank]}; background: {rankGradients[rank]};">
-								<span class="lb-podium-block-num">#{rank}</span>
-							</div>
-						</div>
-					{/each}
-				</div>
-			</section>
-		{/if}
-
-		<!-- Rest of rankings -->
-		{#if rest.length > 0}
-			<section class="lb-list-section">
-				<div class="lb-list-header">
-					<span>Rankings</span>
-					<span class="lb-list-count">{rows.length.toLocaleString()} members</span>
-				</div>
-				<div class="lb-list">
-					{#each rest as r, i (r.discord_member_id)}
-						<div class="lb-list-row" class:lb-mounted={mounted} style="animation-delay: {i * 40}ms">
-							<div class="lb-list-rank">#{i + 4}</div>
-							<div class="lb-list-avatar">
-								{#if r.avatar}
-									<img src={r.avatar} alt={displayName(r)} />
-								{:else}
-									<div class="lb-list-avatar-fallback">{displayName(r).charAt(0).toUpperCase()}</div>
-								{/if}
-							</div>
-							<div class="lb-list-info">
-								<div class="lb-list-name" title={displayName(r)}>{displayName(r)}</div>
-								{#if metric === 'xp'}
-									<div class="lb-list-sub">Level {r.level ?? 1}</div>
-								{/if}
-								<div class="lb-list-bar-track">
-									<div class="lb-list-bar-fill" style="width: {Math.max(3, Math.round((metricValueNumber(r, metric) / maxValue) * 100))}%"></div>
+									<span class="lb-list-unit">{metricUnit(metric)}</span>
 								</div>
 							</div>
-							<div class="lb-list-score">
-								{metricValueAnimated(r, metric)}
-								<span class="lb-list-unit">{metricUnit(metric)}</span>
-							</div>
-						</div>
-					{/each}
-				</div>
-			</section>
-		{/if}
+						{/each}
+					</div>
+				</section>
+			{/if}
 
-		{#if rows.length === 0}
-			<div class="lb-empty">
-				<svg width="48" height="48" viewBox="0 0 24 24" fill="none"
-					><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="currentColor" opacity="0.2" /></svg
-				>
-				<p>No data yet</p>
-			</div>
-		{/if}
+			{#if rows.length === 0}
+				<div class="lb-empty">
+					<svg width="48" height="48" viewBox="0 0 24 24" fill="none"
+						><path
+							d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"
+							fill="currentColor"
+							opacity="0.2"
+						/></svg
+					>
+					<p>No data yet</p>
+				</div>
+			{/if}
 		</div>
 	</main>
 
@@ -413,9 +417,19 @@
 	.lb-inner {
 		position: relative;
 		z-index: 1;
-		max-width: 480px;
+		max-width: 1280px;
 		margin: 0 auto;
 		padding: 20px 16px 48px;
+	}
+	@media (min-width: 640px) {
+		.lb-inner {
+			padding: 28px 24px 56px;
+		}
+	}
+	@media (min-width: 1024px) {
+		.lb-inner {
+			padding: 32px 32px 64px;
+		}
 	}
 
 	/* ── Header ─────────────────────────────────────────── */
@@ -877,10 +891,15 @@
 		justify-content: space-between;
 	}
 	@media (min-width: 640px) {
-		.lb-nav-inner { height: 64px; padding: 0 16px; }
+		.lb-nav-inner {
+			height: 64px;
+			padding: 0 16px;
+		}
 	}
 	@media (min-width: 1024px) {
-		.lb-nav-inner { padding: 0 32px; }
+		.lb-nav-inner {
+			padding: 0 32px;
+		}
 	}
 	.lb-nav-brand {
 		display: flex;
@@ -900,18 +919,26 @@
 		font-size: 15px;
 	}
 	@media (min-width: 640px) {
-		.lb-nav-brand span { font-size: 20px; }
+		.lb-nav-brand span {
+			font-size: 20px;
+		}
 	}
 	.lb-nav-icon {
-		width: 32px; height: 32px;
+		width: 32px;
+		height: 32px;
 		border-radius: 50%;
 		background: rgba(124, 58, 237, 0.5);
-		display: flex; align-items: center; justify-content: center;
+		display: flex;
+		align-items: center;
+		justify-content: center;
 		flex-shrink: 0;
 		box-shadow: 0 0 12px rgba(124, 58, 237, 0.4);
 	}
 	@media (min-width: 640px) {
-		.lb-nav-icon { width: 40px; height: 40px; }
+		.lb-nav-icon {
+			width: 40px;
+			height: 40px;
+		}
 	}
 	.lb-nav-right {
 		display: flex;
@@ -932,7 +959,10 @@
 		border-radius: 8px;
 	}
 	@media (min-width: 640px) {
-		.lb-nav-live { padding: 8px 16px; font-size: 13px; }
+		.lb-nav-live {
+			padding: 8px 16px;
+			font-size: 13px;
+		}
 	}
 	.lb-nav-live-dot {
 		width: 6px;
@@ -943,8 +973,15 @@
 		animation: live-pulse 1.8s ease-in-out infinite;
 	}
 	@keyframes live-pulse {
-		0%, 100% { opacity: 1; transform: scale(1); }
-		50% { opacity: 0.4; transform: scale(0.7); }
+		0%,
+		100% {
+			opacity: 1;
+			transform: scale(1);
+		}
+		50% {
+			opacity: 0.4;
+			transform: scale(0.7);
+		}
 	}
 
 	/* ── Footer ──────────────────────────────────────────── */
@@ -962,10 +999,14 @@
 		text-align: center;
 	}
 	@media (min-width: 640px) {
-		.lb-footer-inner { padding: 16px 16px; }
+		.lb-footer-inner {
+			padding: 16px 16px;
+		}
 	}
 	@media (min-width: 1024px) {
-		.lb-footer-inner { padding: 16px 32px; }
+		.lb-footer-inner {
+			padding: 16px 32px;
+		}
 	}
 	.lb-footer-copy {
 		font-size: 12px;
@@ -973,12 +1014,16 @@
 		margin: 0;
 	}
 	@media (min-width: 640px) {
-		.lb-footer-copy { font-size: 14px; }
+		.lb-footer-copy {
+			font-size: 14px;
+		}
 	}
 	.lb-footer-copy a {
 		color: rgba(255, 255, 255, 0.55);
 		text-decoration: none;
 		transition: color 0.2s;
 	}
-	.lb-footer-copy a:hover { color: rgba(255, 255, 255, 0.8); }
+	.lb-footer-copy a:hover {
+		color: rgba(255, 255, 255, 0.8);
+	}
 </style>

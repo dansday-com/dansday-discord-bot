@@ -2,6 +2,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { showToast } from '$lib/frontend/toast.svelte';
+	import ConfirmModal from '$lib/frontend/components/ConfirmModal.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -135,18 +136,26 @@
 		}
 	}
 
+	let showDeleteConfirm = $state(false);
+	let deleting = $state(false);
+
 	async function deleteBot() {
-		if (!confirm(`Delete "${data.bot.name || `Bot #${data.bot.id}`}"? This cannot be undone.`)) return;
-		const res = await fetch(`/api/bots/${data.bot.id}`, {
-			method: 'DELETE',
-			credentials: 'include'
-		});
-		const d = await res.json();
-		if (d.success) {
-			showToast('Bot deleted', 'success');
-			goto('/');
-		} else {
-			showToast(d.error || 'Failed to delete bot', 'error');
+		deleting = true;
+		try {
+			const res = await fetch(`/api/bots/${data.bot.id}`, {
+				method: 'DELETE',
+				credentials: 'include'
+			});
+			const d = await res.json();
+			if (d.success) {
+				showToast('Bot deleted', 'success');
+				goto('/');
+			} else {
+				showToast(d.error || 'Failed to delete bot', 'error');
+			}
+		} finally {
+			deleting = false;
+			showDeleteConfirm = false;
 		}
 	}
 
@@ -230,7 +239,7 @@
 						<span class="text-ash-100 text-xs font-medium sm:text-sm">{data.bot.is_testing ? 'Testing' : 'Production'}</span>
 					</label>
 					<button
-						onclick={deleteBot}
+						onclick={() => (showDeleteConfirm = true)}
 						class="text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg bg-red-700 px-3 text-xs font-medium transition-all hover:scale-105 hover:bg-red-800 active:scale-95 sm:h-10 sm:px-4 sm:text-sm"
 					>
 						<i class="fas fa-trash text-sm sm:text-base"></i>
@@ -400,3 +409,14 @@
 		{/if}
 	</div>
 </div>
+
+<ConfirmModal
+	open={showDeleteConfirm}
+	title="Delete Bot"
+	message="Delete &quot;{data.bot.name || `Bot #${data.bot.id}`}&quot;? This cannot be undone."
+	confirmLabel="Delete"
+	dangerous
+	loading={deleting}
+	onconfirm={deleteBot}
+	oncancel={() => (showDeleteConfirm = false)}
+/>

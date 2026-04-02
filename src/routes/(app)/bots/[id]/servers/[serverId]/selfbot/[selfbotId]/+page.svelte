@@ -2,6 +2,7 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import { onDestroy, onMount } from 'svelte';
 	import { showToast } from '$lib/frontend/toast.svelte';
+	import ConfirmModal from '$lib/frontend/components/ConfirmModal.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -83,20 +84,28 @@
 		}
 	}
 
+	let showDeleteConfirm = $state(false);
+	let deleting = $state(false);
+
 	async function deleteSelfbot() {
-		if (!confirm(`Delete "${data.bot.name || `Selfbot #${data.bot.id}`}"? This cannot be undone.`)) return;
-		const res = await fetch(`/api/servers/${data.serverId}/selfbot`, {
-			method: 'DELETE',
-			headers: { 'Content-Type': 'application/json' },
-			credentials: 'include',
-			body: JSON.stringify({ selfbot_id: data.bot.id })
-		});
-		const d = await res.json();
-		if (d.success) {
-			showToast('Selfbot deleted', 'success');
-			goto(`/bots/${data.botId}/servers/${data.serverId}/selfbot`);
-		} else {
-			showToast(d.error || 'Failed to delete', 'error');
+		deleting = true;
+		try {
+			const res = await fetch(`/api/servers/${data.serverId}/selfbot`, {
+				method: 'DELETE',
+				headers: { 'Content-Type': 'application/json' },
+				credentials: 'include',
+				body: JSON.stringify({ selfbot_id: data.bot.id })
+			});
+			const d = await res.json();
+			if (d.success) {
+				showToast('Selfbot deleted', 'success');
+				goto(`/bots/${data.botId}/servers/${data.serverId}/selfbot`);
+			} else {
+				showToast(d.error || 'Failed to delete', 'error');
+			}
+		} finally {
+			deleting = false;
+			showDeleteConfirm = false;
 		}
 	}
 
@@ -164,7 +173,7 @@
 						</button>
 					{/if}
 					<button
-						onclick={deleteSelfbot}
+						onclick={() => (showDeleteConfirm = true)}
 						class="text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg bg-red-700 px-3 text-xs font-medium transition-all hover:scale-105 hover:bg-red-800 active:scale-95 sm:px-4 sm:text-sm"
 					>
 						<i class="fas fa-trash"></i>
@@ -175,3 +184,14 @@
 		</div>
 	</div>
 </div>
+
+<ConfirmModal
+	open={showDeleteConfirm}
+	title="Delete Selfbot"
+	message="Delete &quot;{data.bot.name || `Selfbot #${data.bot.id}`}&quot;? This cannot be undone."
+	confirmLabel="Delete"
+	dangerous
+	loading={deleting}
+	onconfirm={deleteSelfbot}
+	oncancel={() => (showDeleteConfirm = false)}
+/>

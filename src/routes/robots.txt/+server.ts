@@ -1,10 +1,13 @@
+import { env } from '$env/dynamic/private';
 import type { RequestHandler } from '@sveltejs/kit';
 
 export const GET: RequestHandler = async () => {
+	const base = env.BASE_URL;
 	const body = `User-agent: *
 Allow: /
 
-Sitemap: /sitemap.xml
+Host: ${base}
+Sitemap: ${base}/sitemap.xml
 `;
 
 	return new Response(body, {

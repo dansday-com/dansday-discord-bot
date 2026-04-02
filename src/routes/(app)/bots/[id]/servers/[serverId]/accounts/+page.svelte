@@ -3,6 +3,7 @@
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import type { PageProps } from './$types';
 	import MemberPicker from '$lib/frontend/components/MemberPicker.svelte';
+	import ConfirmModal from '$lib/frontend/components/ConfirmModal.svelte';
 
 	let { data }: PageProps = $props();
 
@@ -71,33 +72,48 @@
 		setTimeout(() => (copyIcon = 'fa-copy'), 2000);
 	}
 
-	async function deleteAccount(accountId: number) {
-		const res = await fetch(`/api/servers/${data.serverId}/accounts/${accountId}`, {
-			method: 'DELETE',
-			credentials: 'include'
-		});
-		const d = await res.json();
-		if (d.success) {
-			showToast('Account removed', 'success');
-			invalidateAll();
-		} else {
-			showToast(d.error || 'Failed to remove account', 'error');
-		}
+	type PendingAction = { accountId: number; type: 'delete' | 'freeze' | 'unfreeze'; label: string };
+	let pending = $state<PendingAction | null>(null);
+	let confirming = $state(false);
+
+	function confirmDelete(accountId: number, name: string) {
+		pending = { accountId, type: 'delete', label: name };
 	}
 
-	async function toggleFreeze(accountId: number, currentlyFrozen: boolean) {
-		const res = await fetch(`/api/servers/${data.serverId}/accounts/${accountId}`, {
-			method: 'PATCH',
-			headers: { 'Content-Type': 'application/json' },
-			credentials: 'include',
-			body: JSON.stringify({ is_frozen: !currentlyFrozen })
-		});
-		const d = await res.json();
-		if (d.success) {
-			showToast(currentlyFrozen ? 'Account unfrozen' : 'Account frozen', 'success');
-			invalidateAll();
-		} else {
-			showToast(d.error || 'Failed to update account', 'error');
+	function confirmFreeze(accountId: number, currentlyFrozen: boolean, name: string) {
+		pending = { accountId, type: currentlyFrozen ? 'unfreeze' : 'freeze', label: name };
+	}
+
+	async function executeConfirmed() {
+		if (!pending) return;
+		confirming = true;
+		try {
+			if (pending.type === 'delete') {
+				const res = await fetch(`/api/servers/${data.serverId}/accounts/${pending.accountId}`, {
+					method: 'DELETE',
+					credentials: 'include'
+				});
+				const d = await res.json();
+				if (d.success) {
+					showToast('Account removed', 'success');
+					invalidateAll();
+				} else showToast(d.error || 'Failed to remove account', 'error');
+			} else {
+				const res = await fetch(`/api/servers/${data.serverId}/accounts/${pending.accountId}`, {
+					method: 'PATCH',
+					headers: { 'Content-Type': 'application/json' },
+					credentials: 'include',
+					body: JSON.stringify({ is_frozen: pending.type === 'freeze' })
+				});
+				const d = await res.json();
+				if (d.success) {
+					showToast(pending.type === 'freeze' ? 'Account frozen' : 'Account unfrozen', 'success');
+					invalidateAll();
+				} else showToast(d.error || 'Failed to update account', 'error');
+			}
+		} finally {
+			confirming = false;
+			pending = null;
 		}
 	}
 
@@ -229,7 +245,7 @@
 								{/if}
 								{#if account.id !== data.user.account_id && (isSuperadmin || (isOwner && account.account_type !== 'owner'))}
 									<button
-										onclick={() => toggleFreeze(account.id, account.is_frozen)}
+										onclick={() => confirmFreeze(account.id, account.is_frozen, account.username)}
 										title={account.is_frozen ? 'Unfreeze account' : 'Freeze account'}
 										class="rounded px-2 py-1 text-xs transition-colors {account.is_frozen
 											? 'bg-yellow-900 text-yellow-300 hover:bg-yellow-800'
@@ -238,7 +254,7 @@
 										<i class="fas {account.is_frozen ? 'fa-unlock' : 'fa-lock'}"></i>
 									</button>
 									<button
-										onclick={() => deleteAccount(account.id)}
+										onclick={() => confirmDelete(account.id, account.username)}
 										title="Remove account"
 										class="rounded bg-red-900 px-2 py-1 text-xs text-red-300 transition-colors hover:bg-red-800"
 									>
@@ -274,3 +290,18 @@
 		</div>
 	</div>
 </div>
+
+<ConfirmModal
+	open={pending !== null}
+	title={pending?.type === 'delete' ? 'Remove Account' : pending?.type === 'freeze' ? 'Freeze Account' : 'Unfreeze Account'}
+	message={pending?.type === 'delete'
+		? `Remove "${pending.label}"? They will lose access immediately.`
+		: pending?.type === 'freeze'
+			? `Freeze "${pending?.label}"? They won't be able to log in until unfrozen.`
+			: `Unfreeze "${pending?.label}"? They will regain access immediately.`}
+	confirmLabel={pending?.type === 'delete' ? 'Remove' : pending?.type === 'freeze' ? 'Freeze' : 'Unfreeze'}
+	dangerous={pending?.type === 'delete'}
+	loading={confirming}
+	onconfirm={executeConfirmed}
+	oncancel={() => (pending = null)}
+/>

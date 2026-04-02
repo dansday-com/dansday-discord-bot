@@ -63,3 +63,6 @@ WHERE a.account_type IN ('owner', 'moderator');
 DELETE FROM accounts WHERE account_type IN ('owner', 'moderator');
 
 ALTER TABLE accounts MODIFY COLUMN account_type ENUM('superadmin') NOT NULL DEFAULT 'superadmin';
+
+DROP TABLE IF EXISTS account_invites;
+DROP TABLE IF EXISTS account_server_access;

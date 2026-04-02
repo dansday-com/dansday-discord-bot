@@ -150,7 +150,7 @@ async function runMigrations() {
 
 	logger.log(`🔍 Found ${files.length} migration(s), checking status...`);
 
-	const connection = await mysql.createConnection(resolveConnectionConfig());
+	const connection = await mysql.createConnection({ ...resolveConnectionConfig(), multipleStatements: true });
 	try {
 		await connection.connect();
 
@@ -170,14 +170,7 @@ async function runMigrations() {
 
 			logger.log(`🔧 Running migration: ${file}`);
 			const sql = readFileSync(join(migrationsDir, file), 'utf-8');
-			const statements = sql
-				.split(';')
-				.map((s) => s.trim())
-				.filter((s) => s.length > 0 && !s.startsWith('--'));
-
-			for (const statement of statements) {
-				await connection.query(statement);
-			}
+			await connection.query(sql);
 
 			await connection.execute('INSERT INTO migrations (name, ran_at) VALUES (?, NOW())', [file]);
 			logger.log(`✅ Migration complete: ${file}`);

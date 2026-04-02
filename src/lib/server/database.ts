@@ -446,7 +446,92 @@ export async function upsertServer(botId: number, guild: any) {
 			updated_at = VALUES(updated_at)
 	`);
 
-	return getServerByDiscordId(botId, guild.id);
+	const server = await getServerByDiscordId(botId, guild.id);
+	if (server) {
+		await ensureLeaderboardSettingsHaveSlug(server.id, guild.name || 'server');
+	}
+	return server;
+}
+
+function slugify(input: string) {
+	const s = String(input || '')
+		.toLowerCase()
+		.normalize('NFKD')
+		.replace(/[\u0300-\u036f]/g, '')
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '')
+		.replace(/-+/g, '-');
+	return s || 'server';
+}
+
+async function generateUniqueLeaderboardSlug(baseName: string) {
+	await initializeDatabase();
+	const base = slugify(baseName);
+	const rows = await db.execute(sql`
+		SELECT JSON_UNQUOTE(JSON_EXTRACT(settings, '$.slug')) AS slug
+		FROM server_settings
+		WHERE component_name = 'leaderboard'
+		  AND JSON_EXTRACT(settings, '$.slug') IS NOT NULL
+		  AND (
+				JSON_UNQUOTE(JSON_EXTRACT(settings, '$.slug')) = ${base}
+				OR JSON_UNQUOTE(JSON_EXTRACT(settings, '$.slug')) LIKE ${base + '-%'}
+		  )
+	`);
+	const existing = new Set<string>(((rows[0] as unknown as any[]) || []).map((r: any) => String(r.slug || '')).filter(Boolean));
+	if (!existing.has(base)) return base;
+	for (let i = 2; i < 10_000; i++) {
+		const candidate = `${base}-${i}`;
+		if (!existing.has(candidate)) return candidate;
+	}
+	return `${base}-${Date.now()}`;
+}
+
+async function ensureLeaderboardSettingsHaveSlug(serverId: number, serverName: string) {
+	const row = await getServerSettings(serverId, 'leaderboard');
+	const settings = (row as any)?.settings && typeof (row as any).settings === 'object' ? (row as any).settings : {};
+	if (settings?.slug) return true;
+	const slug = await generateUniqueLeaderboardSlug(serverName);
+	const next = { enabled: true, public: true, ...settings, slug };
+	await upsertServerSettings(serverId, 'leaderboard', next);
+	return true;
+}
+
+export async function getServerByLeaderboardSlug(slug: string) {
+	await initializeDatabase();
+	const s = (slug || '').trim();
+	if (!s) return null;
+	const rows = await db.execute(sql`
+		SELECT sv.*
+		FROM servers sv
+		INNER JOIN server_settings ss
+			ON ss.server_id = sv.id AND ss.component_name = 'leaderboard'
+		WHERE JSON_UNQUOTE(JSON_EXTRACT(ss.settings, '$.slug')) = ${s}
+		LIMIT 1
+	`);
+	return ((rows[0] as unknown as any[]) || [])[0] || null;
+}
+
+export async function listPublicLeaderboardSlugs() {
+	await initializeDatabase();
+	const rows = await db.execute(sql`
+		SELECT
+			sv.updated_at,
+			JSON_UNQUOTE(JSON_EXTRACT(ss.settings, '$.slug')) AS slug,
+			COALESCE(JSON_EXTRACT(ss.settings, '$.enabled'), TRUE) AS enabled,
+			COALESCE(JSON_EXTRACT(ss.settings, '$.public'), TRUE) AS is_public
+		FROM servers sv
+		INNER JOIN server_settings ss
+			ON ss.server_id = sv.id AND ss.component_name = 'leaderboard'
+		WHERE JSON_EXTRACT(ss.settings, '$.slug') IS NOT NULL
+	`);
+	const list = (rows[0] as unknown as any[]) || [];
+	return list
+		.filter((r: any) => {
+			const enabled = r.enabled === true || r.enabled === 1 || r.enabled === 'true';
+			const isPublic = r.is_public === true || r.is_public === 1 || r.is_public === 'true';
+			return enabled && isPublic && r.slug;
+		})
+		.map((r: any) => ({ slug: String(r.slug), updated_at: r.updated_at }));
 }
 
 // ---------------------------------------------------------------------------
@@ -952,10 +1037,14 @@ export async function getMembersWithInVoiceFlag(serverId: any) {
 		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), eq(schema.serverMemberLevels.is_in_voice, true)));
 }
 
-export async function getServerLeaderboard(serverId: any, limit = 3, sortType = 'xp') {
+export async function getServerLeaderboard(serverId: any, limit = 3, sortType = 'xp', range: any = 'all') {
 	await initializeDatabase();
 	if (!serverId) throw new Error('serverId is required');
 	const safeLimit = Math.max(1, Math.min(50, limit));
+
+	const r = String(range || 'all');
+	const rangeDays = r === '1d' ? 1 : r === '7d' ? 7 : r === '30d' ? 30 : 0;
+	const since = rangeDays > 0 ? new Date(Date.now() - rangeDays * 24 * 60 * 60 * 1000) : null;
 
 	const orderMap: Record<string, any> = {
 		voice_total: [desc(schema.serverMemberLevels.voice_minutes_total), asc(schema.serverMemberLevels.updated_at), asc(schema.serverMemberLevels.created_at)],
@@ -965,6 +1054,14 @@ export async function getServerLeaderboard(serverId: any, limit = 3, sortType = 
 		xp: [desc(schema.serverMemberLevels.experience), asc(schema.serverMemberLevels.updated_at), asc(schema.serverMemberLevels.created_at)]
 	};
 	const orderBy = orderMap[sortType] || orderMap.xp;
+
+	const whereRange = !since
+		? undefined
+		: sortType === 'chat'
+			? and(isNotNull(schema.serverMemberLevels.chat_rewarded_at), sql`${schema.serverMemberLevels.chat_rewarded_at} >= ${toMySQLDateTime(since)}`)
+			: sortType.startsWith('voice_')
+				? and(isNotNull(schema.serverMemberLevels.voice_rewarded_at), sql`${schema.serverMemberLevels.voice_rewarded_at} >= ${toMySQLDateTime(since)}`)
+				: sql`${schema.serverMemberLevels.updated_at} >= ${toMySQLDateTime(since)}`;
 
 	return db
 		.select({
@@ -983,7 +1080,7 @@ export async function getServerLeaderboard(serverId: any, limit = 3, sortType = 
 		})
 		.from(schema.serverMemberLevels)
 		.innerJoin(schema.serverMembers, eq(schema.serverMembers.id, schema.serverMemberLevels.member_id))
-		.where(eq(schema.serverMembers.server_id, Number(serverId)))
+		.where(whereRange ? and(eq(schema.serverMembers.server_id, Number(serverId)), whereRange as any) : eq(schema.serverMembers.server_id, Number(serverId)))
 		.orderBy(...orderBy)
 		.limit(safeLimit);
 }
@@ -2198,6 +2295,8 @@ export default {
 	upsertNotificationRole,
 	deleteNotificationRole,
 	upsertServer,
+	getServerByLeaderboardSlug,
+	listPublicLeaderboardSlugs,
 	upsertCategory,
 	syncCategories,
 	upsertChannel,
@@ -2225,6 +2324,8 @@ export default {
 	getServerOverview,
 	updateCustomRoleFlags,
 	memberHasCustomSupporterRole,
+	getServerSettings,
+	upsertServerSettings,
 	getPanel,
 	createPanel,
 	getAccountById,
@@ -2262,8 +2363,6 @@ export default {
 	removeServerBot,
 	getOfficialBotForSelfbot,
 	getSelfbotsForOfficialBot,
-	getServerSettings,
-	upsertServerSettings,
 	getChannelsForServer,
 	getCategoriesForServer,
 	serversNeedSync,

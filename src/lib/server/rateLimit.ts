@@ -1,6 +1,6 @@
 import { getRedisClient } from './redis.js';
 
-const RATE_LIMIT_WINDOW = 15 * 60 * 1000; // 15 minutes
+const RATE_LIMIT_WINDOW = 15 * 60 * 1000;
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 
 export async function checkRateLimit(ip: string, endpoint: string, maxAttempts: number): Promise<{ allowed: boolean; remaining: number; resetTime: number }> {

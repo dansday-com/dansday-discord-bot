@@ -147,6 +147,14 @@ async function runMigrations() {
 	try {
 		await connection.connect();
 
+		await connection.query(
+			`CREATE TABLE IF NOT EXISTS migrations (
+				id INT PRIMARY KEY AUTO_INCREMENT,
+				name VARCHAR(255) NOT NULL UNIQUE,
+				ran_at DATETIME NOT NULL
+			)`
+		);
+
 		for (const file of files) {
 			const [rows] = await connection.execute('SELECT id FROM migrations WHERE name = ? LIMIT 1', [file]);
 			if ((rows as any[]).length > 0) {
@@ -168,33 +176,33 @@ async function runMigrations() {
 			await connection.execute('INSERT INTO migrations (name, ran_at) VALUES (?, NOW())', [file]);
 			logger.log(`✅ Migration complete: ${file}`);
 		}
+	} catch (err: any) {
+		logger.log(`❌ Migration runner failed: ${err.message}`);
+		throw err;
 	} finally {
 		await connection.end();
 	}
 }
 
 async function tableExists(name: string) {
-	const result = await query(
-		`SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = ? AND table_name = ?`,
-		[resolveConnectionConfig().database, name]
-	);
+	const result = await query(`SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = ? AND table_name = ?`, [
+		resolveConnectionConfig().database,
+		name
+	]);
 	return result[0]?.count > 0;
 }
 
 async function setupDatabase() {
 	logger.log('🔍 Checking database...');
 
-	// Detect if this is a fresh DB (none of the core tables exist)
 	const hasBots = await tableExists('bots');
 	const hasPanel = await tableExists('panel');
 
 	if (!hasBots && !hasPanel) {
-		// Completely fresh database — run schema to create all tables
 		logger.log('🆕 Fresh database detected, running schema...');
 		try {
 			await runMigration();
 			logger.log('✅ Schema applied');
-			// Mark all existing migration files as already done so they don't re-run
 			await markAllMigrationsAsDone();
 		} catch (err: any) {
 			logger.log(`❌ Schema failed: ${err.message}`);
@@ -203,7 +211,6 @@ async function setupDatabase() {
 		return true;
 	}
 
-	// Existing database — run any pending migrations only
 	logger.log('✅ Existing database detected, checking migrations...');
 	await runMigrations();
 	return true;
@@ -213,7 +220,9 @@ async function markAllMigrationsAsDone() {
 	const migrationsDir = join(process.cwd(), 'src/lib/server/migrations');
 	let files: string[];
 	try {
-		files = readdirSync(migrationsDir).filter((f) => f.endsWith('.sql')).sort();
+		files = readdirSync(migrationsDir)
+			.filter((f) => f.endsWith('.sql'))
+			.sort();
 	} catch (_) {
 		return;
 	}

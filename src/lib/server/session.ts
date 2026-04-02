@@ -7,7 +7,7 @@ export type SessionData = {
 	account_type?: string;
 };
 
-const SESSION_TTL = 60 * 60 * 24; // 24 hours in seconds
+const SESSION_TTL = 60 * 60 * 24;
 const COOKIE_NAME = 'sid';
 
 let redisClient: ReturnType<typeof createClient> | null = null;
@@ -92,7 +92,7 @@ export function clearSessionCookie(): string {
 	return `${COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
 }
 
-const VERIFY_TOKEN_TTL = 60 * 15; // 15 minutes
+const VERIFY_TOKEN_TTL = 60 * 15;
 
 function verifyTokenKey(token: string) {
 	return `dansday:verify:${token}`;

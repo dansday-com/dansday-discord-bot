@@ -84,7 +84,6 @@ export const POST: RequestHandler = async ({ request }) => {
 			}
 		}
 
-		// owner/moderator invites must have a server attached
 		if ((inviteLink.account_type === 'owner' || inviteLink.account_type === 'moderator') && !inviteLink.server_id) {
 			return json({ success: false, error: 'Invite link is missing server assignment' }, { status: 400 });
 		}
@@ -122,7 +121,6 @@ export const POST: RequestHandler = async ({ request }) => {
 			ip_address: ip
 		});
 
-		// For owner/moderator, create the server access record immediately
 		if ((inviteLink.account_type === 'owner' || inviteLink.account_type === 'moderator') && inviteLink.server_id) {
 			await db.createAccountServerAccess({
 				account_id: account.id,

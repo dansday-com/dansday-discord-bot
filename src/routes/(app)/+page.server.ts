@@ -4,7 +4,6 @@ import db from '$lib/server/db.js';
 import { getBotUptimeMs } from '$lib/server/botProcesses.js';
 
 export const load: PageServerLoad = async ({ locals }) => {
-	// Redirect owner/moderator to their server page directly
 	if (locals.user.authenticated && (locals.user.account_type === 'owner' || locals.user.account_type === 'moderator')) {
 		const servers = locals.user.accessible_servers ?? [];
 		if (servers.length === 1) {
@@ -15,7 +14,6 @@ export const load: PageServerLoad = async ({ locals }) => {
 				}
 			} catch (_) {}
 		}
-		// Multiple servers: fall through and let the page show a picker (bots list will be empty for them)
 	}
 
 	let bots: any[] = [];

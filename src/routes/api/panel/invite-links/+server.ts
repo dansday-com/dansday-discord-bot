@@ -25,8 +25,6 @@ export const POST: RequestHandler = async ({ locals, request, url }) => {
 
 	const user = locals.user;
 
-	// Only superadmin can create superadmin or owner invites
-	// Owner can create moderator invites for their own servers
 	if (user.account_type !== 'superadmin' && user.account_type !== 'owner') {
 		return json({ success: false, error: 'Access denied' }, { status: 403 });
 	}
@@ -41,12 +39,10 @@ export const POST: RequestHandler = async ({ locals, request, url }) => {
 			return json({ success: false, error: `Valid account type required: ${validTypes.join(', ')}` }, { status: 400 });
 		}
 
-		// owner and moderator invites require a server_id
 		if ((account_type === 'owner' || account_type === 'moderator') && !server_id) {
 			return json({ success: false, error: 'server_id is required for owner and moderator invites' }, { status: 400 });
 		}
 
-		// Owners can only invite to their own accessible servers
 		if (user.account_type === 'owner' && server_id) {
 			const sanitizedServerId = sanitizeInteger(server_id, 1, null);
 			const hasAccess = user.accessible_servers?.find((s) => s.server_id === sanitizedServerId && s.role === 'owner');

@@ -21,7 +21,6 @@ CREATE TABLE IF NOT EXISTS accounts (
     otp_expires_at DATETIME NULL,
     panel_id INT NULL,
     ip_address TEXT NULL,
-    is_frozen BOOLEAN DEFAULT FALSE,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
     FOREIGN KEY (panel_id) REFERENCES panel(id) ON DELETE SET NULL
@@ -71,6 +70,7 @@ CREATE TABLE IF NOT EXISTS server_accounts (
     email_verified BOOLEAN DEFAULT FALSE,
     otp_code VARCHAR(6) NULL,
     otp_expires_at DATETIME NULL,
+    ip_address TEXT NULL,
     is_frozen BOOLEAN DEFAULT FALSE,
     invited_by INT NULL,
     created_at DATETIME NOT NULL,

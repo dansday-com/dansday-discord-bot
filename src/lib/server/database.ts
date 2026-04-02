@@ -1586,7 +1586,7 @@ async function deleteAccount(accountId: any) {
 }
 
 async function getAllAccounts() {
-	return await query('SELECT id, username, email, account_type, email_verified, is_frozen, created_at, updated_at FROM accounts ORDER BY created_at ASC');
+	return await query('SELECT id, username, email, account_type, email_verified, created_at, updated_at FROM accounts ORDER BY created_at ASC');
 }
 
 async function createInviteLink(linkData: any) {
@@ -1684,17 +1684,6 @@ async function deleteAccountServerAccess(accountId: number, serverId: number) {
 	await query('DELETE FROM account_server_access WHERE account_id = ? AND server_id = ?', [accountId, serverId]);
 }
 
-async function getServerAccounts(serverId: number) {
-	return await query(
-		`SELECT a.id, a.username, a.email, a.account_type, a.is_frozen, a.created_at, asa.role, asa.invited_by
-		 FROM accounts a
-		 JOIN account_server_access asa ON asa.account_id = a.id
-		 WHERE asa.server_id = ?
-		 ORDER BY asa.role ASC, a.created_at ASC`,
-		[serverId]
-	);
-}
-
 async function getServerAccountById(id: number) {
 	const result = await query('SELECT * FROM server_accounts WHERE id = ? LIMIT 1', [id]);
 	return result[0] || null;
@@ -1724,13 +1713,14 @@ async function createServerAccount(data: {
 	email_verified?: boolean;
 	otp_code?: string | null;
 	otp_expires_at?: string | null;
+	ip_address?: string | null;
 	is_frozen?: boolean;
 	invited_by?: number | null;
 }) {
 	const now = toMySQLDateTime();
 	const result = await query(
-		`INSERT INTO server_accounts (server_id, username, email, password_hash, account_type, email_verified, otp_code, otp_expires_at, is_frozen, invited_by, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO server_accounts (server_id, username, email, password_hash, account_type, email_verified, otp_code, otp_expires_at, ip_address, is_frozen, invited_by, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		[
 			data.server_id,
 			data.username,
@@ -1740,6 +1730,7 @@ async function createServerAccount(data: {
 			data.email_verified ?? false,
 			data.otp_code ?? null,
 			data.otp_expires_at ?? null,
+			data.ip_address ?? null,
 			data.is_frozen ?? false,
 			data.invited_by ?? null,
 			now,
@@ -1759,6 +1750,7 @@ async function updateServerAccount(
 		email_verified: boolean;
 		otp_code: string | null;
 		otp_expires_at: string | null;
+		ip_address: string | null;
 		is_frozen: boolean;
 		invited_by: number | null;
 	}>
@@ -2558,7 +2550,6 @@ export default {
 	getAccountServerAccess,
 	createAccountServerAccess,
 	deleteAccountServerAccess,
-	getServerAccounts,
 	getServerAccountById,
 	getServerAccountByEmail,
 	getServerAccountByUsername,

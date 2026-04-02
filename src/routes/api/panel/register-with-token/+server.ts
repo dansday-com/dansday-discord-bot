@@ -14,6 +14,7 @@ import {
 } from '$lib/server/utils.js';
 import { sendOTPEmail } from '$lib/server/email.js';
 import { createVerifyToken } from '$lib/server/session.js';
+import { getClientIp } from '$lib/server/rateLimit.js';
 import logger from '$lib/server/logger.js';
 import bcrypt from 'bcrypt';
 import { randomInt } from 'crypto';
@@ -51,6 +52,7 @@ async function validateRegistrationInputs(username: string, email: string, passw
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
+		const ip = getClientIp(request);
 		const body = await request.json();
 		const { token, username, email, password } = body;
 
@@ -102,7 +104,8 @@ export const POST: RequestHandler = async ({ request }) => {
 			account_type: inviteLink.account_type,
 			email_verified: false,
 			otp_code: otpCode,
-			otp_expires_at: otpExpiresAt
+			otp_expires_at: otpExpiresAt,
+			ip_address: ip
 		});
 
 		await db.updateServerAccountInvite(inviteLink.id, { used_by: account.id, used_at: toMySQLDateTime(getCurrentDateTime()) ?? undefined });

@@ -82,7 +82,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			);
 		}
 
-		if (account.is_frozen) {
+		if (accountSource === 'server_accounts' && account.is_frozen) {
 			logger.log(`Blocked login attempt: Account frozen for ${account.username} (IP: ${ip})`);
 			return json({ success: false, error: 'This account has been frozen. Please contact an administrator.' }, { status: 403 });
 		}
@@ -95,6 +95,8 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		if (accountSource === 'accounts') {
 			await db.updateAccount(account.id, { ip_address: ip });
+		} else {
+			await db.updateServerAccount(account.id, { ip_address: ip });
 		}
 
 		const sessionId = newSessionId();

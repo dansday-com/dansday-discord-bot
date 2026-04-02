@@ -54,7 +54,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		await consumeVerifyToken(verifyToken);
 
 		if (accountSource === 'server_accounts') {
-			await db.updateServerAccount(account.id, { email_verified: true, otp_code: null, otp_expires_at: null });
+			await db.updateServerAccount(account.id, { email_verified: true, otp_code: null, otp_expires_at: null, ip_address: ip });
 		} else {
 			await db.updateAccount(account.id, { email_verified: true, otp_code: null, otp_expires_at: null, ip_address: ip });
 		}

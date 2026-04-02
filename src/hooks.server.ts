@@ -67,7 +67,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 					}
 				} else {
 					const account = await db.getAccountById(session.account_id);
-					if (account && !account.is_frozen) {
+					if (account) {
 						event.locals.user = {
 							authenticated: true,
 							account_id: account.id,

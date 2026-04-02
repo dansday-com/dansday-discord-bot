@@ -49,6 +49,22 @@
 		}
 	}
 
+	async function toggleFreeze(accountId: number, currentlyFrozen: boolean) {
+		const res = await fetch(`/api/servers/${data.serverId}/accounts/${accountId}`, {
+			method: 'PATCH',
+			headers: { 'Content-Type': 'application/json' },
+			credentials: 'include',
+			body: JSON.stringify({ is_frozen: !currentlyFrozen })
+		});
+		const d = await res.json();
+		if (d.success) {
+			showToast(currentlyFrozen ? 'Account unfrozen' : 'Account frozen', 'success');
+			invalidateAll();
+		} else {
+			showToast(d.error || 'Failed to update account', 'error');
+		}
+	}
+
 	function typeBadgeClass(type: string) {
 		if (type === 'owner') return 'bg-blue-900 text-blue-300';
 		return 'bg-ash-700 text-ash-300';
@@ -117,7 +133,7 @@
 			{:else}
 				<div class="space-y-2">
 					{#each data.accounts as account (account.id)}
-						<div class="bg-ash-700 flex items-center justify-between gap-3 rounded-lg px-4 py-3">
+						<div class="bg-ash-700 flex items-center justify-between gap-3 rounded-lg px-4 py-3 {account.is_frozen ? 'opacity-60' : ''}">
 							<div class="flex min-w-0 items-center gap-3">
 								<div class="bg-ash-500 flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
 									<i class="fas fa-user text-ash-200 text-xs"></i>
@@ -125,13 +141,28 @@
 								<div class="min-w-0">
 									<p class="text-ash-100 truncate text-sm font-medium">{account.username}</p>
 									<p class="text-ash-400 truncate text-xs">{account.email}</p>
+									{#if account.ip_address}
+										<p class="text-ash-500 truncate text-xs"><i class="fas fa-network-wired mr-1"></i>{account.ip_address}</p>
+									{/if}
 								</div>
 							</div>
 							<div class="flex shrink-0 items-center gap-2">
 								<span class="rounded-full px-2 py-0.5 text-xs capitalize {typeBadgeClass(account.account_type)}">
 									{account.account_type}
 								</span>
+								{#if account.is_frozen}
+									<span class="rounded-full bg-red-900 px-2 py-0.5 text-xs text-red-300">Frozen</span>
+								{/if}
 								{#if account.id !== data.user.account_id}
+									<button
+										onclick={() => toggleFreeze(account.id, account.is_frozen)}
+										title={account.is_frozen ? 'Unfreeze account' : 'Freeze account'}
+										class="rounded px-2 py-1 text-xs transition-colors {account.is_frozen
+											? 'bg-yellow-900 text-yellow-300 hover:bg-yellow-800'
+											: 'bg-ash-600 text-ash-300 hover:bg-ash-500'}"
+									>
+										<i class="fas {account.is_frozen ? 'fa-unlock' : 'fa-lock'}"></i>
+									</button>
 									<button
 										onclick={() => deleteAccount(account.id)}
 										title="Remove account"

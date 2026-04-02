@@ -55,9 +55,31 @@ SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=
 SET @s = IF(@i>0,'DROP INDEX idx_bots_type ON bots','SELECT 1');
 PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
 
--- server_accounts: drop bot_id FK (by dynamic name), then index, then column
-SET @fkname = (SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE table_schema=DATABASE() AND table_name='server_accounts' AND column_name='bot_id' AND REFERENCED_TABLE_NAME IS NOT NULL LIMIT 1);
-SET @s = IF(@fkname IS NOT NULL, CONCAT('ALTER TABLE server_accounts DROP FOREIGN KEY ', @fkname), 'SELECT 1');
+-- server_accounts: drop FK(s) that may depend on idx_server_accounts_bot_server, then index, then column
+-- MySQL refuses to drop an index while it is still required by a foreign key constraint.
+SET @fkname_bot = (
+  SELECT CONSTRAINT_NAME
+  FROM information_schema.KEY_COLUMN_USAGE
+  WHERE table_schema=DATABASE()
+    AND table_name='server_accounts'
+    AND column_name='bot_id'
+    AND REFERENCED_TABLE_NAME IS NOT NULL
+  LIMIT 1
+);
+SET @fkname_server = (
+  SELECT CONSTRAINT_NAME
+  FROM information_schema.KEY_COLUMN_USAGE
+  WHERE table_schema=DATABASE()
+    AND table_name='server_accounts'
+    AND column_name='server_id'
+    AND REFERENCED_TABLE_NAME IS NOT NULL
+  LIMIT 1
+);
+
+SET @s = IF(@fkname_bot IS NOT NULL, CONCAT('ALTER TABLE server_accounts DROP FOREIGN KEY `', @fkname_bot, '`'), 'SELECT 1');
+PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
+
+SET @s = IF(@fkname_server IS NOT NULL, CONCAT('ALTER TABLE server_accounts DROP FOREIGN KEY `', @fkname_server, '`'), 'SELECT 1');
 PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
 
 SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_accounts' AND index_name='idx_server_accounts_bot_server');
@@ -76,6 +98,23 @@ SET @col = (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=D
 SET @s = IF(@col>0,'ALTER TABLE server_accounts DROP COLUMN bot_id','SELECT 1');
 PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
 
+-- Ensure server_accounts(server_id) is indexed and FK exists after dropping bot_id
+SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_accounts' AND index_name='idx_server_accounts_server_id');
+SET @s = IF(@i=0,'CREATE INDEX idx_server_accounts_server_id ON server_accounts(server_id)','SELECT 1');
+PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
+
+SET @fkname = (
+  SELECT CONSTRAINT_NAME
+  FROM information_schema.KEY_COLUMN_USAGE
+  WHERE table_schema=DATABASE()
+    AND table_name='server_accounts'
+    AND column_name='server_id'
+    AND REFERENCED_TABLE_NAME='servers'
+  LIMIT 1
+);
+SET @s = IF(@fkname IS NULL,'ALTER TABLE server_accounts ADD FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE','SELECT 1');
+PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
+
 SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_accounts' AND index_name='unique_email_server');
 SET @s = IF(@i=0,'ALTER TABLE server_accounts ADD UNIQUE KEY unique_email_server (email, server_id)','SELECT 1');
 PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
@@ -89,9 +128,29 @@ SET @col = (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=D
 SET @s = IF(@col=0,'ALTER TABLE server_accounts ADD COLUMN ip_address TEXT NULL','SELECT 1');
 PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
 
--- server_account_invites: drop bot_id FK, then index, then column
-SET @fkname = (SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE table_schema=DATABASE() AND table_name='server_account_invites' AND column_name='bot_id' AND REFERENCED_TABLE_NAME IS NOT NULL LIMIT 1);
-SET @s = IF(@fkname IS NOT NULL, CONCAT('ALTER TABLE server_account_invites DROP FOREIGN KEY ', @fkname), 'SELECT 1');
+-- server_account_invites: drop FK(s) that may depend on idx_server_account_invites_bot_server, then index, then column
+SET @fkname_bot = (
+  SELECT CONSTRAINT_NAME
+  FROM information_schema.KEY_COLUMN_USAGE
+  WHERE table_schema=DATABASE()
+    AND table_name='server_account_invites'
+    AND column_name='bot_id'
+    AND REFERENCED_TABLE_NAME IS NOT NULL
+  LIMIT 1
+);
+SET @fkname_server = (
+  SELECT CONSTRAINT_NAME
+  FROM information_schema.KEY_COLUMN_USAGE
+  WHERE table_schema=DATABASE()
+    AND table_name='server_account_invites'
+    AND column_name='server_id'
+    AND REFERENCED_TABLE_NAME IS NOT NULL
+  LIMIT 1
+);
+SET @s = IF(@fkname_bot IS NOT NULL, CONCAT('ALTER TABLE server_account_invites DROP FOREIGN KEY `', @fkname_bot, '`'), 'SELECT 1');
+PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
+
+SET @s = IF(@fkname_server IS NOT NULL, CONCAT('ALTER TABLE server_account_invites DROP FOREIGN KEY `', @fkname_server, '`'), 'SELECT 1');
 PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
 
 SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_account_invites' AND index_name='idx_server_account_invites_bot_server');
@@ -100,6 +159,23 @@ PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
 
 SET @col = (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='server_account_invites' AND column_name='bot_id');
 SET @s = IF(@col>0,'ALTER TABLE server_account_invites DROP COLUMN bot_id','SELECT 1');
+PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
+
+-- Ensure server_account_invites(server_id) is indexed and FK exists after dropping bot_id
+SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_account_invites' AND index_name='idx_server_account_invites_server_id');
+SET @s = IF(@i=0,'CREATE INDEX idx_server_account_invites_server_id ON server_account_invites(server_id)','SELECT 1');
+PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
+
+SET @fkname = (
+  SELECT CONSTRAINT_NAME
+  FROM information_schema.KEY_COLUMN_USAGE
+  WHERE table_schema=DATABASE()
+    AND table_name='server_account_invites'
+    AND column_name='server_id'
+    AND REFERENCED_TABLE_NAME='servers'
+  LIMIT 1
+);
+SET @s = IF(@fkname IS NULL,'ALTER TABLE server_account_invites ADD FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE','SELECT 1');
 PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
 
 -- Drop is_frozen from accounts (superadmin only, cannot be frozen)

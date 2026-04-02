@@ -65,7 +65,7 @@
 	}
 
 	function channelName(id: string) {
-		return data.channels.find((c: { id: string; name: string }) => c.id === id)?.name ?? id;
+		return data.channels.find((c: { discord_channel_id: string; name: string }) => c.discord_channel_id === id)?.name ?? id;
 	}
 
 	function roleName(id: string) {
@@ -293,11 +293,11 @@
 					<div class="bg-ash-700 border-ash-600 mt-1 max-h-48 overflow-hidden overflow-y-auto rounded-lg border">
 						{#each data.channels as ch}
 							<button
-								onclick={() => toggleChannel(ch.id)}
+								onclick={() => toggleChannel(ch.discord_channel_id)}
 								class="hover:bg-ash-600 flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors
-									{selectedChannels.includes(ch.id) ? 'text-ash-100' : 'text-ash-300'}"
+									{selectedChannels.includes(ch.discord_channel_id) ? 'text-ash-100' : 'text-ash-300'}"
 							>
-								<i class="fas {selectedChannels.includes(ch.id) ? 'fa-check-square text-ash-200' : 'fa-square text-ash-600'} w-3 text-xs"></i>
+								<i class="fas {selectedChannels.includes(ch.discord_channel_id) ? 'fa-check-square text-ash-200' : 'fa-square text-ash-600'} w-3 text-xs"></i>
 								<span class="text-ash-500">#</span>{ch.name}
 							</button>
 						{/each}

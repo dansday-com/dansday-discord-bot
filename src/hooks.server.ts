@@ -100,13 +100,16 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	const headers = event.request.headers;
 	const ua = headers.get('user-agent') ?? '';
-	const ip = headers.get('cf-connecting-ip') || headers.get('x-real-ip') || headers.get('x-forwarded-for')?.split(',')[0]?.trim() || event.getClientAddress();
+	const rawIp =
+		headers.get('cf-connecting-ip') || headers.get('x-real-ip') || headers.get('x-forwarded-for')?.split(',')[0]?.trim() || event.getClientAddress();
+	const isSuperadmin = event.locals.user.authenticated && event.locals.user.account_source === 'accounts';
+	const ip = isSuperadmin ? rawIp : undefined;
 
 	console.info(
 		JSON.stringify({
 			level: 'info',
 			message: '[request]',
-			ip,
+			...(ip !== undefined ? { ip } : {}),
 			device: detectDevice(ua),
 			browser: detectBrowser(ua),
 			os: detectOs(ua),

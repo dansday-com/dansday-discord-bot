@@ -12,7 +12,7 @@
 	let messages = $state<string[]>(data.settings?.messages ?? []);
 
 	function channelById(id: string) {
-		return data.channels.find((c: any) => c.id === id);
+		return data.channels.find((c: any) => c.discord_channel_id === id);
 	}
 
 	function removeChannel(id: string) {

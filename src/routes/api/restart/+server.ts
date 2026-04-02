@@ -11,7 +11,10 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 	if (!bot_id) return json({ success: false, error: 'bot_id is required' });
 
 	try {
-		if (locals.user.account_type === 'owner') {
+		if (locals.user.account_source === 'server_accounts') {
+			if (locals.user.account_type !== 'owner') {
+				return json({ success: false, error: 'Access denied' }, { status: 403 });
+			}
 			const selfbot = await db.getServerBotById(Number(bot_id));
 			if (!selfbot || selfbot.server_id !== locals.user.server_id) {
 				return json({ success: false, error: 'Access denied' }, { status: 403 });
@@ -21,7 +24,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			return json(result);
 		}
 
-		if (locals.user.account_type !== 'superadmin') {
+		if (locals.user.account_source !== 'accounts') {
 			return json({ success: false, error: 'Access denied' }, { status: 403 });
 		}
 

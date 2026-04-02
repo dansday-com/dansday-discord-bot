@@ -2,14 +2,22 @@
 	import { invalidateAll } from '$app/navigation';
 	import { showToast } from '$lib/stores/toast.svelte';
 	import type { PageProps } from './$types';
+	import MemberPicker from '$lib/components/server/MemberPicker.svelte';
 
 	let { data }: PageProps = $props();
 
-	let inviteType = $state<'owner' | 'moderator'>(data.user.account_type === 'superadmin' ? 'owner' : 'moderator');
+	let inviteType = $state<'owner' | 'moderator'>(data.user.authenticated && data.user.account_source === 'accounts' ? 'owner' : 'moderator');
 	let generatedLink = $state<string | null>(null);
 	let copyIcon = $state('fa-copy');
 
-	const validTypes = $derived(data.user.account_type === 'superadmin' ? ['owner', 'moderator'] : ['moderator']);
+	const validTypes = $derived(data.user.authenticated && data.user.account_source === 'accounts' ? ['owner', 'moderator'] : ['moderator']);
+	const canInvite = $derived(
+		data.user.authenticated &&
+			(data.user.account_source === 'accounts' || (data.user.account_source === 'server_accounts' && data.user.account_type === 'owner'))
+	);
+
+	let selectedDiscordMemberId = $state('');
+	let dmSending = $state(false);
 
 	async function generateInvite() {
 		const res = await fetch(`/api/servers/${data.serverId}/accounts`, {
@@ -25,6 +33,34 @@
 			invalidateAll();
 		} else {
 			showToast(d.error || 'Failed to generate link', 'error');
+		}
+	}
+
+	async function sendInviteDm() {
+		if (!selectedDiscordMemberId) {
+			showToast('Select a member first', 'error');
+			return;
+		}
+		dmSending = true;
+		try {
+			const res = await fetch(`/api/servers/${data.serverId}/accounts/invite-dm`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				credentials: 'include',
+				body: JSON.stringify({ account_type: inviteType, discord_member_id: selectedDiscordMemberId })
+			});
+			const d = await res.json();
+			if (d.success) {
+				showToast('Invite sent via DM', 'success');
+				selectedDiscordMemberId = '';
+				invalidateAll();
+			} else {
+				showToast(d.error || 'Failed to send DM invite', 'error');
+			}
+		} catch {
+			showToast('Failed to send DM invite', 'error');
+		} finally {
+			dmSending = false;
 		}
 	}
 
@@ -63,6 +99,18 @@
 		} else {
 			showToast(d.error || 'Failed to update account', 'error');
 		}
+	}
+
+	const isSuperadmin = $derived(data.user.authenticated && data.user.account_source === 'accounts');
+	const isOwner = $derived(data.user.authenticated && data.user.account_source === 'server_accounts' && data.user.account_type === 'owner');
+
+	function maskEmail(email: string) {
+		const at = email.indexOf('@');
+		if (at <= 0) return email.slice(0, 3) + '***';
+		const local = email.slice(0, at);
+		const domain = email.slice(at + 1);
+		const prefix = local.slice(0, 3);
+		return `${prefix}***@${domain}`;
 	}
 
 	function typeBadgeClass(type: string) {
@@ -109,6 +157,30 @@
 				</button>
 			</div>
 
+			<div class="bg-ash-700 rounded-lg p-3">
+				<p class="text-ash-300 mb-2 text-sm">Send invite via DM</p>
+				<div class="flex flex-col gap-2 sm:flex-row">
+					<MemberPicker
+						serverId={data.serverId}
+						value={selectedDiscordMemberId}
+						disabled={!canInvite}
+						placeholder={canInvite ? 'Select member...' : 'Invites are owner/superadmin only'}
+						onchange={(id) => (selectedDiscordMemberId = id)}
+					/>
+
+					<button
+						type="button"
+						disabled={!canInvite || dmSending || !selectedDiscordMemberId}
+						onclick={sendInviteDm}
+						class="bg-ash-600 hover:bg-ash-500 text-ash-100 rounded-lg px-4 py-2.5 text-sm font-medium transition-all disabled:cursor-not-allowed disabled:opacity-50"
+					>
+						{#if dmSending}<i class="fas fa-spinner fa-spin mr-2"></i>{/if}
+						<i class="fas fa-paper-plane mr-2"></i>Send DM
+					</button>
+				</div>
+				<p class="text-ash-400 mt-2 text-xs">If the user has DMs closed or blocked the bot, sending may fail.</p>
+			</div>
+
 			{#if generatedLink}
 				<div class="bg-ash-700 rounded-lg p-3">
 					<p class="text-ash-300 mb-2 text-sm">Invite Link:</p>
@@ -140,8 +212,8 @@
 								</div>
 								<div class="min-w-0">
 									<p class="text-ash-100 truncate text-sm font-medium">{account.username}</p>
-									<p class="text-ash-400 truncate text-xs">{account.email}</p>
-									{#if account.ip_address}
+									<p class="text-ash-400 truncate text-xs">{isSuperadmin ? account.email : maskEmail(account.email)}</p>
+									{#if account.ip_address && isSuperadmin}
 										<p class="text-ash-500 truncate text-xs"><i class="fas fa-network-wired mr-1"></i>{account.ip_address}</p>
 									{/if}
 								</div>
@@ -153,7 +225,7 @@
 								{#if account.is_frozen}
 									<span class="rounded-full bg-red-900 px-2 py-0.5 text-xs text-red-300">Frozen</span>
 								{/if}
-								{#if account.id !== data.user.account_id}
+								{#if account.id !== data.user.account_id && (isSuperadmin || isOwner)}
 									<button
 										onclick={() => toggleFreeze(account.id, account.is_frozen)}
 										title={account.is_frozen ? 'Unfreeze account' : 'Freeze account'}

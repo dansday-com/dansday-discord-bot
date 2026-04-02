@@ -6,7 +6,7 @@ import { getBotUptimeMs } from '$lib/server/botProcesses.js';
 export const load: PageServerLoad = async ({ locals, params }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
 
-	if (locals.user.account_type === 'owner' || locals.user.account_type === 'moderator') {
+	if (locals.user.account_source === 'server_accounts') {
 		redirect(302, `/bots/${locals.user.bot_id}/servers/${locals.user.server_id}`);
 	}
 

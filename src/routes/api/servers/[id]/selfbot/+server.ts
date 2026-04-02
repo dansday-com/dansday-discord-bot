@@ -5,8 +5,8 @@ import logger from '$lib/server/logger.js';
 
 function canManage(locals: App.Locals, serverId: number): boolean {
 	if (!locals.user.authenticated) return false;
-	if (locals.user.account_type === 'superadmin') return true;
-	if (locals.user.account_type === 'owner') return locals.user.server_id === serverId;
+	if (locals.user.account_source === 'accounts') return true;
+	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'owner') return locals.user.server_id === serverId;
 	return false;
 }
 

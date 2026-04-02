@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { COMMUNICATION, NOTIFICATIONS } from '../../../config.js';
 import { EmbedBuilder } from 'discord.js';
 import { getEmbedConfig } from '../../../config.js';
@@ -243,6 +244,39 @@ async function handleWebhookRequest(req, res) {
 						await logger.log(`❌ Failed to send embed: ${embedErr.message}`);
 						res.writeHead(500, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify({ error: 'Failed to send embed', details: embedErr.message }));
+					}
+				} else if (payload.type === 'send_dm') {
+					try {
+						const guildId = payload.guild_id;
+						const userId = payload.user_id;
+						const content = payload.content;
+
+						if (!guildId || !userId || !content) {
+							res.writeHead(400, { 'Content-Type': 'application/json' });
+							res.end(JSON.stringify({ error: 'Missing guild_id, user_id, or content' }));
+							return;
+						}
+
+						let guild = client.guilds.cache.get(guildId);
+						if (!guild) guild = await client.guilds.fetch(guildId).catch(() => null);
+						if (!guild) throw new Error('Guild not found');
+
+						if (currentBotId) {
+							const server = await db.getServerByDiscordId(currentBotId, guildId);
+							if (!server) throw new Error('Guild not found');
+						}
+
+						const user = await client.users.fetch(String(userId)).catch(() => null);
+						if (!user) throw new Error('User not found');
+
+						await user.send({ content: String(content) });
+						await logger.log(`📩 DM sent via webhook to ${user.tag} (${user.id}) for guild ${guildId}`);
+						res.writeHead(200, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify({ success: true }));
+					} catch (dmErr) {
+						await logger.log(`❌ Failed to send DM via webhook: ${dmErr.message}`);
+						res.writeHead(500, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify({ error: 'Failed to send DM', details: dmErr.message }));
 					}
 				} else if (payload.type === 'sync_notification_roles') {
 					try {

@@ -7,7 +7,7 @@ export const load: LayoutServerLoad = async ({ locals, params }) => {
 
 	const serverId = Number(params.serverId);
 
-	if (locals.user.account_type === 'owner' || locals.user.account_type === 'moderator') {
+	if (locals.user.account_source === 'server_accounts') {
 		if (locals.user.bot_id !== Number(params.id) || locals.user.server_id !== serverId) {
 			error(403, 'Access denied');
 		}

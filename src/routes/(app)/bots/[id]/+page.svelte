@@ -139,7 +139,7 @@
 	const isBusy = $derived(liveBot.status === 'starting' || liveBot.status === 'stopping');
 	const canStart = $derived(!isRunning && !isBusy);
 	const canStop = $derived(isRunning || isBusy);
-	const isAdmin = $derived(data.user.account_type === 'superadmin');
+	const isAdmin = $derived(data.user.authenticated && data.user.account_source === 'accounts');
 </script>
 
 <svelte:head>

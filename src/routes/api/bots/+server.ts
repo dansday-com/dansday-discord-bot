@@ -51,7 +51,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 };
 
 export const POST: RequestHandler = async ({ locals, request }) => {
-	if (!locals.user.authenticated || locals.user.account_type !== 'superadmin') {
+	if (!locals.user.authenticated || locals.user.account_source !== 'accounts') {
 		return json({ success: false, error: 'Admin access required' }, { status: 403 });
 	}
 

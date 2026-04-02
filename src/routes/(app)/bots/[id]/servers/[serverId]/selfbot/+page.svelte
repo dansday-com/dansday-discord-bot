@@ -7,7 +7,7 @@
 
 	let { data }: PageProps = $props();
 
-	const canEdit = $derived(data.user.account_type === 'superadmin' || data.user.account_type === 'owner');
+	const canEdit = $derived(data.user.authenticated && (data.user.account_source === 'accounts' || data.user.account_type === 'owner'));
 
 	let showAdd = $state(false);
 

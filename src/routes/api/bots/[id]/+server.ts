@@ -38,7 +38,7 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 };
 
 export const DELETE: RequestHandler = async ({ locals, params }) => {
-	if (!locals.user.authenticated || locals.user.account_type !== 'superadmin') {
+	if (!locals.user.authenticated || locals.user.account_source !== 'accounts') {
 		return json({ success: false, error: 'Admin access required' }, { status: 403 });
 	}
 

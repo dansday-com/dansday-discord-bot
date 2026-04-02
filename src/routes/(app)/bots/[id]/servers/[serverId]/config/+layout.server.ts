@@ -6,7 +6,7 @@ export const load: LayoutServerLoad = async ({ locals, params }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
 
 	const serverId = Number(params.serverId);
-	if (locals.user.account_type !== 'superadmin') {
+	if (locals.user.account_source !== 'accounts') {
 		if (locals.user.bot_id !== Number(params.id) || locals.user.server_id !== serverId) {
 			error(403, 'Access denied');
 		}

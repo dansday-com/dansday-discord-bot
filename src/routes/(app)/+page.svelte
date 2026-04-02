@@ -116,7 +116,7 @@
 				<option value="newest">Newest First</option>
 				<option value="name">Name (A-Z)</option>
 			</select>
-			{#if data.user.account_type === 'superadmin'}
+			{#if data.user.authenticated && data.user.account_source === 'accounts'}
 				<button
 					onclick={() => (showAddBot = true)}
 					class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs transition-all duration-200 hover:scale-105 active:scale-95 sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
@@ -136,7 +136,7 @@
 			</div>
 			<h3 class="text-ash-100 mb-2 text-lg font-semibold sm:text-xl">No bots yet</h3>
 			<p class="text-ash-400 mb-4 text-sm sm:mb-6 sm:text-base">Get started by adding your first bot</p>
-			{#if data.user.account_type === 'superadmin'}
+			{#if data.user.authenticated && data.user.account_source === 'accounts'}
 				<button
 					onclick={() => (showAddBot = true)}
 					class="bg-ash-400 hover:bg-ash-500 text-ash-100 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm transition-all duration-200 hover:scale-105 active:scale-95 sm:px-6 sm:py-3 sm:text-base"

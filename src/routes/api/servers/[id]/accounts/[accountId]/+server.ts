@@ -5,13 +5,16 @@ import logger from '$lib/server/logger.js';
 
 function canManageAccounts(locals: App.Locals, serverId: number): boolean {
 	if (!locals.user.authenticated) return false;
-	if (locals.user.account_type === 'superadmin') return true;
-	if (locals.user.account_type === 'owner') return locals.user.server_id === serverId;
+	if (locals.user.account_source === 'accounts') return true;
+	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'owner') return locals.user.server_id === serverId;
 	return false;
 }
 
 export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 	const serverId = Number(params.id);
+	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'moderator') {
+		return json({ success: false, error: 'Access denied' }, { status: 403 });
+	}
 	if (!canManageAccounts(locals, serverId)) {
 		return json({ success: false, error: 'Access denied' }, { status: 403 });
 	}
@@ -40,6 +43,9 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 
 export const DELETE: RequestHandler = async ({ locals, params }) => {
 	const serverId = Number(params.id);
+	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'moderator') {
+		return json({ success: false, error: 'Access denied' }, { status: 403 });
+	}
 	if (!canManageAccounts(locals, serverId)) {
 		return json({ success: false, error: 'Access denied' }, { status: 403 });
 	}

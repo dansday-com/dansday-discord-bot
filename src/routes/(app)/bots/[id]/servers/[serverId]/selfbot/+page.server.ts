@@ -7,8 +7,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 
 	const serverId = Number(params.serverId);
 
-	if (locals.user.account_type === 'owner' && locals.user.server_id !== serverId) error(403, 'Access denied');
-	if (locals.user.account_type === 'moderator' && locals.user.server_id !== serverId) error(403, 'Access denied');
+	if (locals.user.account_source === 'server_accounts' && locals.user.server_id !== serverId) error(403, 'Access denied');
 
 	const selfbots = await db.getServerBots(serverId);
 

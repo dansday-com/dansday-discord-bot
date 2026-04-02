@@ -11,7 +11,9 @@
 		{ label: 'Members', icon: 'fa-users', href: `${base}/members` },
 		{ label: 'Embed Builder', icon: 'fa-envelope-open-text', href: `${base}/embed` },
 		{ label: 'Configuration', icon: 'fa-sliders', href: `${base}/config` },
-		...(data.user.account_type !== 'moderator' ? [{ label: 'Accounts', icon: 'fa-user-shield', href: `${base}/accounts` }] : []),
+		...(data.user.authenticated && (data.user.account_source === 'accounts' || data.user.account_type === 'owner')
+			? [{ label: 'Accounts', icon: 'fa-user-shield', href: `${base}/accounts` }]
+			: []),
 		{ label: 'Selfbot', icon: 'fa-robot', href: `${base}/selfbot` }
 	]);
 
@@ -23,7 +25,7 @@
 
 <div class="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6 lg:px-8 lg:py-8">
 	<!-- Back -->
-	{#if data.user.account_type !== 'owner' && data.user.account_type !== 'moderator'}
+	{#if !data.user.authenticated || data.user.account_source !== 'server_accounts'}
 		<a href="/bots/{data.botId}" class="text-ash-400 hover:text-ash-100 mb-5 inline-flex items-center gap-2 text-sm transition-colors">
 			<i class="fas fa-arrow-left"></i>Back to Bot
 		</a>

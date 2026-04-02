@@ -26,7 +26,7 @@ export const GET: RequestHandler = async ({ locals, params, url }) => {
 
 function canEditServer(locals: App.Locals, serverId: string): boolean {
 	if (!locals.user.authenticated) return false;
-	if (locals.user.account_type === 'superadmin') return true;
+	if (locals.user.account_source === 'accounts') return true;
 	return locals.user.server_id === Number(serverId);
 }
 

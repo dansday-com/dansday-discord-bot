@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { showToast } from '$lib/stores/toast.svelte';
+	import ChannelPicker from '$lib/components/server/ChannelPicker.svelte';
+	import RolePicker from '$lib/components/server/RolePicker.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -20,8 +22,6 @@
 	let imagePreview = $state('');
 	let selectedChannels = $state<string[]>([]);
 	let selectedRoles = $state<string[]>([]);
-	let showChannelPicker = $state(false);
-	let showRolePicker = $state(false);
 	let sending = $state(false);
 
 	const totalChars = $derived(title.length + description.length + footer.length);
@@ -48,28 +48,12 @@
 		if (/^#[0-9A-Fa-f]{6}$/.test(val)) color = val;
 	}
 
-	function toggleChannel(id: string) {
-		if (selectedChannels.includes(id)) {
-			selectedChannels = selectedChannels.filter((c) => c !== id);
-		} else {
-			selectedChannels = [...selectedChannels, id];
-		}
-	}
-
-	function toggleRole(id: string) {
-		if (selectedRoles.includes(id)) {
-			selectedRoles = selectedRoles.filter((r) => r !== id);
-		} else {
-			selectedRoles = [...selectedRoles, id];
-		}
-	}
-
 	function channelName(id: string) {
 		return data.channels.find((c: { discord_channel_id: string; name: string }) => c.discord_channel_id === id)?.name ?? id;
 	}
 
 	function roleName(id: string) {
-		return (data.roles as { id: string; name: string }[]).find((r) => r.id === id)?.name ?? id;
+		return (data.roles as { discord_role_id: string; name: string }[]).find((r) => r.discord_role_id === id)?.name ?? id;
 	}
 
 	async function handleImageUpload(e: Event) {
@@ -282,64 +266,21 @@
 			<!-- Channels -->
 			<div class="mb-4">
 				<label class="text-ash-300 mb-2 block text-xs font-medium">Channels <span class="text-ash-200">*</span></label>
-				<button
-					onclick={() => (showChannelPicker = !showChannelPicker)}
-					class="bg-ash-700 border-ash-600 text-ash-300 hover:border-ash-500 w-full rounded-lg border px-3 py-2 text-left text-sm transition-colors"
-				>
-					{selectedChannels.length === 0 ? 'Select channels...' : `${selectedChannels.length} channel${selectedChannels.length !== 1 ? 's' : ''} selected`}
-					<i class="fas fa-chevron-{showChannelPicker ? 'up' : 'down'} float-right mt-0.5 text-xs"></i>
-				</button>
-				{#if showChannelPicker}
-					<div class="bg-ash-700 border-ash-600 mt-1 max-h-48 overflow-hidden overflow-y-auto rounded-lg border">
-						{#each data.channels as ch}
-							<button
-								onclick={() => toggleChannel(ch.discord_channel_id)}
-								class="hover:bg-ash-600 flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors
-									{selectedChannels.includes(ch.discord_channel_id) ? 'text-ash-100' : 'text-ash-300'}"
-							>
-								<i class="fas {selectedChannels.includes(ch.discord_channel_id) ? 'fa-check-square text-ash-200' : 'fa-square text-ash-600'} w-3 text-xs"></i>
-								<span class="text-ash-500">#</span>{ch.name}
-							</button>
-						{/each}
-					</div>
-				{/if}
-				{#if selectedChannels.length > 0}
-					<div class="mt-2 flex flex-wrap gap-1">
-						{#each selectedChannels as id}
-							<span class="bg-ash-700 text-ash-200 flex items-center gap-1 rounded px-2 py-0.5 text-xs">
-								<span class="text-ash-500">#</span>{channelName(id)}
-								<button onclick={() => toggleChannel(id)} class="text-ash-500 hover:text-ash-300 ml-0.5"><i class="fas fa-times text-xs"></i></button>
-							</span>
-						{/each}
-					</div>
-				{/if}
+				<ChannelPicker
+					channels={data.channels}
+					categories={data.categories}
+					value={selectedChannels}
+					multi={true}
+					placeholder="Select channels..."
+					onchange={(v) => (selectedChannels = v as string[])}
+				/>
 			</div>
 
 			<!-- Role Mentions -->
 			{#if (data.roles as unknown[]).length > 0}
 				<div class="mb-4">
 					<label class="text-ash-300 mb-2 block text-xs font-medium">Role Mentions</label>
-					<button
-						onclick={() => (showRolePicker = !showRolePicker)}
-						class="bg-ash-700 border-ash-600 text-ash-300 hover:border-ash-500 w-full rounded-lg border px-3 py-2 text-left text-sm transition-colors"
-					>
-						{selectedRoles.length === 0 ? 'Select roles to mention...' : `${selectedRoles.length} role${selectedRoles.length !== 1 ? 's' : ''} selected`}
-						<i class="fas fa-chevron-{showRolePicker ? 'up' : 'down'} float-right mt-0.5 text-xs"></i>
-					</button>
-					{#if showRolePicker}
-						<div class="bg-ash-700 border-ash-600 mt-1 max-h-48 overflow-hidden overflow-y-auto rounded-lg border">
-							{#each data.roles as { id: string; name: string; color: string }[] as role}
-								<button
-									onclick={() => toggleRole(role.id)}
-									class="hover:bg-ash-600 flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors"
-								>
-									<i class="fas {selectedRoles.includes(role.id) ? 'fa-check-square text-ash-200' : 'fa-square text-ash-600'} w-3 text-xs"></i>
-									<span class="h-2 w-2 flex-shrink-0 rounded-full" style="background:{role.color && role.color !== '#000000' ? role.color : '#6b7280'}"></span>
-									<span class={selectedRoles.includes(role.id) ? 'text-ash-100' : 'text-ash-300'}>{role.name}</span>
-								</button>
-							{/each}
-						</div>
-					{/if}
+					<RolePicker roles={data.roles} value={selectedRoles} placeholder="Select roles to mention..." onchange={(v) => (selectedRoles = v as string[])} />
 				</div>
 			{/if}
 

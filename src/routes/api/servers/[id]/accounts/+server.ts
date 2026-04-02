@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/server/db.js';
-import { addDaysToNow, toMySQLDateTime } from '$lib/server/utils.js';
+import { addMinutesToNow, toMySQLDateTime } from '$lib/server/utils.js';
 import logger from '$lib/server/logger.js';
 import { randomBytes } from 'crypto';
 
@@ -15,9 +15,11 @@ function maskEmail(email: string) {
 }
 
 function canManageAccounts(locals: App.Locals, serverId: number): boolean {
-	if (!locals.user.authenticated) return false;
-	if (locals.user.account_source === 'accounts') return true;
-	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'owner') return locals.user.server_id === serverId;
+	const user = locals.user;
+	if (!user.authenticated) return false;
+	if (user.account_source === 'accounts') return true;
+	// Server accounts (owner/moderator) can view the accounts panel for their server
+	if (user.account_source === 'server_accounts') return user.server_id === serverId;
 	return false;
 }
 
@@ -28,7 +30,7 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 	}
 
 	const [rawAccounts, invites] = await Promise.all([db.getServerAccountsByServer(serverId), db.getServerAccountInvitesByServer(serverId)]);
-	const isSuperadmin = locals.user.account_source === 'accounts';
+	const isSuperadmin = locals.user.authenticated && locals.user.account_source === 'accounts';
 	const accounts = isSuperadmin
 		? rawAccounts
 		: rawAccounts.map((a: any) => ({
@@ -42,7 +44,7 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 
 export const POST: RequestHandler = async ({ locals, params, request, url }) => {
 	const serverId = Number(params.id);
-	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'moderator') {
+	if (locals.user.authenticated && locals.user.account_source === 'server_accounts' && locals.user.account_type === 'moderator') {
 		return json({ success: false, error: 'Access denied' }, { status: 403 });
 	}
 	if (!canManageAccounts(locals, serverId)) {
@@ -60,7 +62,7 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 	}
 
 	const token = randomBytes(32).toString('hex');
-	const expiresAt = toMySQLDateTime(addDaysToNow(1));
+	const expiresAt = toMySQLDateTime(addMinutesToNow(10));
 
 	await db.createServerAccountInvite({
 		token,

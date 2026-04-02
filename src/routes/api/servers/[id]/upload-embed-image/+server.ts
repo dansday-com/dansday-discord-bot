@@ -17,29 +17,61 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 	}
 
 	try {
-		const body = await request.json();
-		if (!body?.image) {
+		const supportedFormats = ['jpg', 'png', 'gif', 'webp'];
+
+		// Primary: multipart/form-data upload (used by the embed builder)
+		const contentType = request.headers.get('content-type') || '';
+		let fileExtension = '';
+		let imageData: Buffer | null = null;
+
+		if (contentType.includes('multipart/form-data')) {
+			const form = await request.formData();
+			const file = form.get('image');
+
+			if (!(file instanceof File)) {
+				return json({ success: false, error: 'No image file provided' }, { status: 400 });
+			}
+
+			const mime = (file.type || '').toLowerCase();
+			if (!mime.startsWith('image/')) {
+				return json({ success: false, error: 'Invalid image format' }, { status: 400 });
+			}
+
+			fileExtension = mime.replace('image/', '').toLowerCase();
+			if (fileExtension === 'jpeg') fileExtension = 'jpg';
+			if (!supportedFormats.includes(fileExtension)) {
+				return json({ success: false, error: `Unsupported image format. Supported formats: ${supportedFormats.join(', ')}` }, { status: 400 });
+			}
+
+			const ab = await file.arrayBuffer();
+			imageData = Buffer.from(ab);
+		} else {
+			// Backwards compatibility: JSON body containing base64 data URL
+			const body = await request.json();
+			if (!body?.image) {
+				return json({ success: false, error: 'No image file provided' }, { status: 400 });
+			}
+			if (!body.image.startsWith('data:image/')) {
+				return json({ success: false, error: 'Invalid image format' }, { status: 400 });
+			}
+			const matches = body.image.match(/^data:image\/(\w+);base64,(.+)$/);
+			if (!matches) {
+				return json({ success: false, error: 'Invalid image data format' }, { status: 400 });
+			}
+
+			fileExtension = String(matches[1]).toLowerCase();
+			if (fileExtension === 'jpeg') fileExtension = 'jpg';
+			if (!supportedFormats.includes(fileExtension)) {
+				return json({ success: false, error: `Unsupported image format. Supported formats: ${supportedFormats.join(', ')}` }, { status: 400 });
+			}
+
+			imageData = Buffer.from(matches[2], 'base64');
+		}
+
+		if (!imageData) {
 			return json({ success: false, error: 'No image file provided' }, { status: 400 });
 		}
 
-		if (!body.image.startsWith('data:image/')) {
-			return json({ success: false, error: 'Invalid image format' }, { status: 400 });
-		}
-
-		const matches = body.image.match(/^data:image\/(\w+);base64,(.+)$/);
-		if (!matches) {
-			return json({ success: false, error: 'Invalid image data format' }, { status: 400 });
-		}
-
-		let fileExtension = matches[1].toLowerCase();
-		if (fileExtension === 'jpeg') fileExtension = 'jpg';
-
-		const supportedFormats = ['jpg', 'png', 'gif', 'webp'];
-		if (!supportedFormats.includes(fileExtension)) {
-			return json({ success: false, error: `Unsupported image format. Supported formats: ${supportedFormats.join(', ')}` }, { status: 400 });
-		}
-
-		const imageData = Buffer.from(matches[2], 'base64');
 		if (imageData.length > 10 * 1024 * 1024) {
 			return json({ success: false, error: 'Image file is too large. Maximum size is 10MB' }, { status: 400 });
 		}

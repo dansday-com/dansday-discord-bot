@@ -27,18 +27,40 @@ const APP_NAME = 'Dansday Discord Bot Panel';
 
 const baseStyles = `
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #d1d5db; background-color: #0f0f13; }
-    .email-wrapper { max-width: 600px; margin: 0 auto; background-color: #1a1a24; border: 1px solid #2e2e3e; border-radius: 12px; overflow: hidden; }
-    .header { background-color: #12121a; padding: 32px 30px; text-align: center; border-bottom: 1px solid #2e2e3e; }
-    .header-icon { display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; background-color: #2e2e3e; border-radius: 50%; margin-bottom: 16px; font-size: 20px; }
-    .header h1 { font-size: 22px; font-weight: 700; color: #f1f1f5; margin-bottom: 6px; }
-    .header .app-name { font-size: 13px; color: #6b6b80; font-weight: 400; }
+    :root {
+        --bg: #f6f7fb;
+        --wrapper-bg: #ffffff;
+        --surface: #f1f3f8;
+        --border: #e5e7ef;
+        --text: #111827;
+        --muted: #4b5563;
+        --subtle: #6b7280;
+        --link: #4f46e5;
+    }
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --bg: #0f0f13;
+            --wrapper-bg: #1a1a24;
+            --surface: #12121a;
+            --border: #2e2e3e;
+            --text: #f1f1f5;
+            --muted: #b0b0c0;
+            --subtle: #6b6b80;
+            --link: #a5b4fc;
+        }
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: var(--text); background-color: var(--bg); }
+    .email-wrapper { max-width: 600px; margin: 0 auto; background-color: var(--wrapper-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+    .header { background-color: var(--surface); padding: 32px 30px; text-align: center; border-bottom: 1px solid var(--border); }
+    .header-icon { display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; background-color: var(--border); border-radius: 50%; margin: 0 auto 16px; font-size: 20px; line-height: 1; }
+    .header h1 { font-size: 22px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+    .header .app-name { font-size: 13px; color: var(--subtle); font-weight: 400; }
     .content { padding: 36px 30px; }
-    .content p { font-size: 15px; color: #b0b0c0; margin-bottom: 14px; }
-    .content p:first-child { font-size: 17px; color: #d1d5db; font-weight: 500; margin-bottom: 18px; }
-    .footer { text-align: center; padding: 24px 30px; background-color: #12121a; border-top: 1px solid #2e2e3e; }
-    .footer p { font-size: 12px; color: #4b4b60; margin: 3px 0; }
-    .footer a { color: #8080a0; text-decoration: none; }
+    .content p { font-size: 15px; color: var(--muted); margin-bottom: 14px; }
+    .content p:first-child { font-size: 17px; color: var(--text); font-weight: 500; margin-bottom: 18px; }
+    .footer { text-align: center; padding: 24px 30px; background-color: var(--surface); border-top: 1px solid var(--border); }
+    .footer p { font-size: 12px; color: var(--subtle); margin: 3px 0; }
+    .footer a { color: var(--link); text-decoration: none; }
 `;
 
 function emailLayout(icon: string, title: string, accentColor: string, bodyContent: string, year: number) {
@@ -51,19 +73,19 @@ function emailLayout(icon: string, title: string, accentColor: string, bodyConte
             <title>${title}</title>
             <style>
                 ${baseStyles}
-                .highlight-box { background-color: #12121a; border: 1px solid ${accentColor}40; border-left: 3px solid ${accentColor}; padding: 20px 24px; margin: 24px 0; border-radius: 8px; }
-                .highlight-box p { margin: 0; font-size: 14px; color: #b0b0c0; line-height: 1.6; }
-                .status-box { background-color: #12121a; border: 1px solid ${accentColor}40; padding: 28px 24px; margin: 28px 0; border-radius: 10px; text-align: center; }
+                .highlight-box { background-color: var(--surface); border: 1px solid ${accentColor}40; border-left: 3px solid ${accentColor}; padding: 20px 24px; margin: 24px 0; border-radius: 8px; }
+                .highlight-box p { margin: 0; font-size: 14px; color: var(--muted); line-height: 1.6; }
+                .status-box { background-color: var(--surface); border: 1px solid ${accentColor}40; padding: 28px 24px; margin: 28px 0; border-radius: 10px; text-align: center; }
                 .status-box .icon { font-size: 40px; margin-bottom: 12px; }
                 .status-box p { margin: 0; font-size: 16px; color: ${accentColor}; font-weight: 600; }
                 .otp-container { margin: 28px 0; text-align: center; }
                 .otp-label { font-size: 12px; color: #6b6b80; margin-bottom: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 1.5px; }
-                .otp-code { background-color: #12121a; color: ${accentColor}; font-size: 38px; font-weight: 700; padding: 22px 36px; border-radius: 10px; letter-spacing: 14px; display: inline-block; border: 1px solid ${accentColor}40; font-family: 'Courier New', monospace; }
-                .expiry-notice { background-color: #12121a; border: 1px solid #f59e0b40; border-left: 3px solid #f59e0b; padding: 14px 18px; margin: 20px 0; border-radius: 8px; }
+                .otp-code { background-color: var(--surface); color: ${accentColor}; font-size: 38px; font-weight: 700; padding: 22px 36px; border-radius: 10px; letter-spacing: 14px; display: inline-block; border: 1px solid ${accentColor}40; font-family: 'Courier New', monospace; }
+                .expiry-notice { background-color: var(--surface); border: 1px solid #f59e0b40; border-left: 3px solid #f59e0b; padding: 14px 18px; margin: 20px 0; border-radius: 8px; }
                 .expiry-notice p { margin: 0; font-size: 13px; color: #a07820; }
             </style>
         </head>
-        <body style="background-color: #0f0f13; padding: 24px 16px;">
+        <body style="background-color: var(--bg); padding: 24px 16px;">
             <div class="email-wrapper">
                 <div class="header">
                     <div class="header-icon">${icon}</div>

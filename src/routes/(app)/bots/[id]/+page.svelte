@@ -182,30 +182,30 @@
 					{#if canStart}
 						<button
 							onclick={() => botAction('start')}
-							class="text-ash-100 flex items-center justify-center gap-1.5 rounded-lg bg-green-600 px-3 py-2 text-xs font-medium transition-all hover:scale-105 hover:bg-green-700 active:scale-95 sm:px-4 sm:text-sm"
+							class="text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg bg-green-600 px-3 text-xs font-medium transition-all hover:scale-105 hover:bg-green-700 active:scale-95 sm:h-10 sm:px-4 sm:text-sm"
 						>
 							<i class="fas fa-play text-sm sm:text-base"></i>
-							<span class="sm:inline">Start</span>
+							<span class="hidden sm:inline">Start</span>
 						</button>
 					{/if}
 					{#if canStop}
 						<button
 							onclick={() => botAction('stop')}
-							class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-all hover:scale-105 active:scale-95 sm:px-4 sm:text-sm"
+							class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-all hover:scale-105 active:scale-95 sm:h-10 sm:px-4 sm:text-sm"
 						>
 							<i class="fas fa-stop text-sm sm:text-base"></i>
-							<span class="sm:inline">Stop</span>
+							<span class="hidden sm:inline">Stop</span>
 						</button>
 						<button
 							onclick={() => botAction('restart')}
-							class="text-ash-100 flex items-center justify-center gap-1.5 rounded-lg bg-yellow-600 px-3 py-2 text-xs font-medium transition-all hover:scale-105 hover:bg-yellow-700 active:scale-95 sm:px-4 sm:text-sm"
+							class="text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg bg-yellow-600 px-3 text-xs font-medium transition-all hover:scale-105 hover:bg-yellow-700 active:scale-95 sm:h-10 sm:px-4 sm:text-sm"
 						>
 							<i class="fas fa-redo text-sm sm:text-base"></i>
-							<span class="sm:inline">Restart</span>
+							<span class="hidden sm:inline">Restart</span>
 						</button>
 					{/if}
 					<label
-						class="bg-ash-700 hover:bg-ash-600 flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 transition-all hover:scale-105 active:scale-95 sm:px-4"
+						class="bg-ash-700 hover:bg-ash-600 flex h-10 cursor-pointer items-center gap-2 rounded-lg px-3 transition-all hover:scale-105 active:scale-95 sm:h-10 sm:px-4"
 					>
 						<div class="relative h-6 w-11">
 							<input type="checkbox" class="sr-only" checked={!data.bot.is_testing} onchange={toggleMode} />
@@ -216,10 +216,10 @@
 					</label>
 					<button
 						onclick={deleteBot}
-						class="text-ash-100 flex items-center justify-center gap-1.5 rounded-lg bg-red-700 px-3 py-2 text-xs font-medium transition-all hover:scale-105 hover:bg-red-800 active:scale-95 sm:px-4 sm:text-sm"
+						class="text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg bg-red-700 px-3 text-xs font-medium transition-all hover:scale-105 hover:bg-red-800 active:scale-95 sm:h-10 sm:px-4 sm:text-sm"
 					>
 						<i class="fas fa-trash text-sm sm:text-base"></i>
-						<span class="sm:inline">Delete</span>
+						<span class="hidden sm:inline">Delete</span>
 					</button>
 				</div>
 			{/if}

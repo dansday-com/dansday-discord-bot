@@ -17,17 +17,22 @@
 	interface Props {
 		channels: Channel[];
 		categories?: Category[];
-		value: string;
+		/** Array of discord_channel_ids for multiselect, or single string for single mode */
+		value: string | string[];
 		placeholder?: string;
-		onchange: (id: string) => void;
+		/** Set to true for multi-channel selection */
+		multi?: boolean;
+		onchange: (value: string | string[]) => void;
 	}
 
-	let { channels, categories = [], value, placeholder = 'Select channel...', onchange }: Props = $props();
+	let { channels, categories = [], value, placeholder = 'Select channel...', multi = false, onchange }: Props = $props();
 
 	let open = $state(false);
 	let search = $state('');
+	let pending = $state<string[]>([]);
 
-	const selected = $derived(channels.find((c) => c.discord_channel_id === value));
+	const currentIds = $derived(multi ? (value as string[]) : value ? [value as string] : []);
+	const selected = $derived(!multi ? channels.find((c) => c.discord_channel_id === (value as string)) : null);
 
 	function channelType(type: string | number): string {
 		if (type === 'GUILD_TEXT' || type === '0' || type === 0) return 'Text';
@@ -64,28 +69,73 @@
 		return { sortedCats, byCategory, uncategorized, catMap };
 	});
 
-	function pick(id: string) {
-		onchange(id);
+	function openModal() {
+		pending = [...currentIds];
+		open = true;
+		search = '';
+	}
+
+	function toggle(id: string) {
+		if (pending.includes(id)) pending = pending.filter((c) => c !== id);
+		else pending = [...pending, id];
+	}
+
+	function confirm() {
+		if (!multi) {
+			onchange(pending[0] ?? '');
+		} else {
+			onchange([...pending]);
+		}
 		open = false;
 		search = '';
+	}
+
+	function remove(id: string) {
+		onchange((value as string[]).filter((c) => c !== id));
 	}
 
 	function close() {
 		open = false;
 		search = '';
 	}
+
+	function channelById(id: string) {
+		return channels.find((c) => c.discord_channel_id === id);
+	}
 </script>
 
 <button
 	type="button"
-	onclick={() => (open = true)}
+	onclick={openModal}
 	class="bg-ash-700 border-ash-600 hover:border-ash-500 flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-left text-sm transition-colors"
 >
-	<span class={selected ? 'text-ash-100' : 'text-ash-300'}>
-		{selected ? `#${selected.name}` : placeholder}
-	</span>
+	{#if multi}
+		<span class={(value as string[]).length ? 'text-ash-100' : 'text-ash-300'}>
+			{(value as string[]).length ? `${(value as string[]).length} channel${(value as string[]).length !== 1 ? 's' : ''} selected` : placeholder}
+		</span>
+	{:else}
+		<span class={selected ? 'text-ash-100' : 'text-ash-300'}>
+			{selected ? `#${selected.name}` : placeholder}
+		</span>
+	{/if}
 	<i class="fas fa-chevron-down text-ash-400 text-xs"></i>
 </button>
+
+{#if multi && (value as string[]).length > 0}
+	<div class="mt-2 flex flex-wrap gap-1">
+		{#each value as string[] as id}
+			{@const ch = channelById(id)}
+			{#if ch}
+				<span class="bg-ash-700 text-ash-200 flex items-center gap-1 rounded px-2 py-0.5 text-xs">
+					<span class="text-ash-500">#</span>{ch.name}
+					<button type="button" onclick={() => remove(id)} class="text-ash-500 hover:text-ash-300 ml-0.5">
+						<i class="fas fa-times text-xs"></i>
+					</button>
+				</span>
+			{/if}
+		{/each}
+	</div>
+{/if}
 
 {#if open}
 	<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
@@ -97,7 +147,8 @@
 			<!-- Header -->
 			<div class="mb-4 flex items-center justify-between sm:mb-6">
 				<h3 class="text-ash-100 flex items-center gap-2 text-lg font-bold sm:text-xl">
-					<i class="fas fa-hashtag text-ash-200"></i>Select Channel
+					<i class="fas fa-hashtag text-ash-200"></i>
+					{multi ? 'Select Channels' : 'Select Channel'}
 				</h3>
 				<button type="button" onclick={close} aria-label="Close" class="text-ash-400 hover:text-ash-100 p-1 transition-colors">
 					<i class="fas fa-times text-lg"></i>
@@ -121,14 +172,21 @@
 						<p>No channels found</p>
 					</div>
 				{:else}
-					<!-- None option -->
-					<button
-						type="button"
-						onclick={() => pick('')}
-						class="text-ash-400 hover:bg-ash-700 w-full rounded-lg px-4 py-2.5 text-left text-sm transition-colors {value === '' ? 'bg-ash-700' : ''}"
-					>
-						— None —
-					</button>
+					{#if !multi}
+						<!-- None option -->
+						<button
+							type="button"
+							onclick={() => {
+								pending = [];
+								confirm();
+							}}
+							class="text-ash-400 hover:bg-ash-700 w-full rounded-lg px-4 py-2.5 text-left text-sm transition-colors {(value as string) === ''
+								? 'bg-ash-700'
+								: ''}"
+						>
+							— None —
+						</button>
+					{/if}
 
 					<!-- Categorised channels -->
 					{#each grouped.sortedCats as cat}
@@ -143,9 +201,17 @@
 									{#each catChannels as ch}
 										<button
 											type="button"
-											onclick={() => pick(ch.discord_channel_id)}
+											onclick={() => {
+												if (multi) toggle(ch.discord_channel_id);
+												else {
+													pending = [ch.discord_channel_id];
+													confirm();
+												}
+											}}
 											class="flex w-full items-center justify-between rounded-lg px-4 py-2.5 text-left text-sm transition-colors
-												{value === ch.discord_channel_id ? 'bg-ash-900 border-ash-500 border' : 'bg-ash-700 hover:bg-ash-600'}"
+												{(multi ? pending.includes(ch.discord_channel_id) : (value as string) === ch.discord_channel_id)
+												? 'bg-ash-900 border-ash-500 border'
+												: 'bg-ash-700 hover:bg-ash-600'}"
 										>
 											<div class="flex min-w-0 flex-1 items-center gap-3">
 												<i class="fas fa-hashtag text-ash-400 flex-shrink-0 text-sm"></i>
@@ -154,7 +220,7 @@
 													<p class="text-ash-400 text-xs">{channelType(ch.type)}</p>
 												</div>
 											</div>
-											{#if value === ch.discord_channel_id}
+											{#if multi ? pending.includes(ch.discord_channel_id) : (value as string) === ch.discord_channel_id}
 												<i class="fas fa-check text-ash-200 text-sm"></i>
 											{:else}
 												<i class="fas fa-chevron-right text-ash-500 text-xs"></i>
@@ -180,9 +246,17 @@
 								{#each grouped.uncategorized as ch}
 									<button
 										type="button"
-										onclick={() => pick(ch.discord_channel_id)}
+										onclick={() => {
+											if (multi) toggle(ch.discord_channel_id);
+											else {
+												pending = [ch.discord_channel_id];
+												confirm();
+											}
+										}}
 										class="flex w-full items-center justify-between rounded-lg px-4 py-2.5 text-left text-sm transition-colors
-											{value === ch.discord_channel_id ? 'bg-ash-900 border-ash-500 border' : 'bg-ash-700 hover:bg-ash-600'}"
+											{(multi ? pending.includes(ch.discord_channel_id) : (value as string) === ch.discord_channel_id)
+											? 'bg-ash-900 border-ash-500 border'
+											: 'bg-ash-700 hover:bg-ash-600'}"
 									>
 										<div class="flex min-w-0 flex-1 items-center gap-3">
 											<i class="fas fa-hashtag text-ash-400 flex-shrink-0 text-sm"></i>
@@ -191,7 +265,7 @@
 												<p class="text-ash-400 text-xs">{channelType(ch.type)}</p>
 											</div>
 										</div>
-										{#if value === ch.discord_channel_id}
+										{#if multi ? pending.includes(ch.discord_channel_id) : (value as string) === ch.discord_channel_id}
 											<i class="fas fa-check text-ash-200 text-sm"></i>
 										{:else}
 											<i class="fas fa-chevron-right text-ash-500 text-xs"></i>
@@ -207,6 +281,18 @@
 					{/if}
 				{/if}
 			</div>
+			{#if multi}
+				<!-- Confirm -->
+				<div class="border-ash-700 mt-4 border-t pt-4">
+					<button
+						type="button"
+						onclick={confirm}
+						class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all sm:py-3 sm:text-base"
+					>
+						<i class="fas fa-check"></i>Confirm Selection
+					</button>
+				</div>
+			{/if}
 		</div>
 	</div>
 {/if}

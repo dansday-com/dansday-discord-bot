@@ -10,8 +10,10 @@
 		{ label: 'Overview', icon: 'fa-chart-pie', href: base },
 		{ label: 'Members', icon: 'fa-users', href: `${base}/members` },
 		{ label: 'Embed Builder', icon: 'fa-envelope-open-text', href: `${base}/embed` },
-		{ label: 'Configuration', icon: 'fa-sliders', href: `${base}/config` },
 		...(data.user.authenticated && (data.user.account_source === 'accounts' || data.user.account_type === 'owner')
+			? [{ label: 'Configuration', icon: 'fa-sliders', href: `${base}/config` }]
+			: []),
+		...(data.user.authenticated && (data.user.account_source === 'accounts' || data.user.account_source === 'server_accounts')
 			? [{ label: 'Accounts', icon: 'fa-user-shield', href: `${base}/accounts` }]
 			: []),
 		{ label: 'Selfbot', icon: 'fa-robot', href: `${base}/selfbot` }

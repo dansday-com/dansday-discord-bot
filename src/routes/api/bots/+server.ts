@@ -93,7 +93,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			port: port || 7777,
 			is_testing: false,
 			secret_key: secret_key || null,
-			panel_id: account.panel_id || null
+			account_id: account.id
 		});
 
 		logger.log(`${locals.user.username} added official bot: "${name || 'Bot'}" (ID: ${bot.id})`);

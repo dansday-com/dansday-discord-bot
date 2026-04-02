@@ -251,7 +251,7 @@ export async function createBot(botData: any) {
 		bot_icon: botData.bot_icon || null,
 		port: botData.port !== undefined ? botData.port : 7777,
 		secret_key: botData.secret_key || null,
-		panel_id: botData.panel_id || null,
+		account_id: botData.account_id || null,
 		created_at: now as any,
 		updated_at: now as any
 	});
@@ -1470,7 +1470,7 @@ async function createServerAccountInvite(data: {
 	server_id: number;
 	account_type: 'owner' | 'moderator';
 	created_by: number;
-	expires_at: string;
+	expires_at: string | Date;
 }) {
 	const now = toMySQLDateTime();
 	await db.insert(schema.serverAccountInvites).values({

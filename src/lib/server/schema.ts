@@ -39,7 +39,7 @@ export const bots = mysqlTable('bots', {
 	bot_icon: text('bot_icon'),
 	port: int('port'),
 	secret_key: text('secret_key'),
-	panel_id: int('panel_id').references(() => panel.id, { onDelete: 'set null' }),
+	account_id: int('account_id').references(() => accounts.id, { onDelete: 'set null' }),
 	is_testing: boolean('is_testing').default(false),
 	status: mysqlEnum('status', ['running', 'stopped', 'starting', 'stopping']).default('stopped'),
 	process_id: int('process_id'),

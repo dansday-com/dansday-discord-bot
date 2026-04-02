@@ -119,14 +119,16 @@
 	}
 
 	function inviteStatusClass(invite: any) {
+		const expiresAt = invite.expires_at ? new Date(String(invite.expires_at).replace(' ', 'T')) : null;
 		if (invite.used_by) return 'bg-green-900 text-green-300';
-		if (invite.expires_at && new Date(invite.expires_at) < new Date()) return 'bg-red-900 text-red-300';
+		if (expiresAt && !Number.isNaN(expiresAt.getTime()) && expiresAt < new Date()) return 'bg-red-900 text-red-300';
 		return 'bg-yellow-900 text-yellow-300';
 	}
 
 	function inviteStatusLabel(invite: any) {
+		const expiresAt = invite.expires_at ? new Date(String(invite.expires_at).replace(' ', 'T')) : null;
 		if (invite.used_by) return 'Used';
-		if (invite.expires_at && new Date(invite.expires_at) < new Date()) return 'Expired';
+		if (expiresAt && !Number.isNaN(expiresAt.getTime()) && expiresAt < new Date()) return 'Expired';
 		return 'Pending';
 	}
 </script>
@@ -225,7 +227,7 @@
 								{#if account.is_frozen}
 									<span class="rounded-full bg-red-900 px-2 py-0.5 text-xs text-red-300">Frozen</span>
 								{/if}
-								{#if account.id !== data.user.account_id && (isSuperadmin || isOwner)}
+								{#if account.id !== data.user.account_id && (isSuperadmin || (isOwner && account.account_type !== 'owner'))}
 									<button
 										onclick={() => toggleFreeze(account.id, account.is_frozen)}
 										title={account.is_frozen ? 'Unfreeze account' : 'Freeze account'}

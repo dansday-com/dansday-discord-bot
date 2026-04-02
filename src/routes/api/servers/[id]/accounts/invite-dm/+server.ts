@@ -3,7 +3,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/server/db.js';
 import logger from '$lib/server/logger.js';
 import { randomBytes } from 'crypto';
-import { addDaysToNow, toMySQLDateTime } from '$lib/server/utils.js';
+import { addMinutesToNow, toMySQLDateTime } from '$lib/server/utils.js';
 import { request as httpRequest } from 'http';
 
 function canManageAccounts(locals: App.Locals, serverId: number): boolean {
@@ -53,7 +53,7 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 	if (!bot.port || !bot.secret_key) return json({ success: false, error: 'Bot webhook not configured' }, { status: 400 });
 
 	const token = randomBytes(32).toString('hex');
-	const expiresAt = toMySQLDateTime(addDaysToNow(1));
+	const expiresAt = toMySQLDateTime(addMinutesToNow(10));
 
 	await db.createServerAccountInvite({
 		token,

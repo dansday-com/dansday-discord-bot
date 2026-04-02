@@ -34,14 +34,14 @@ CREATE TABLE IF NOT EXISTS bots (
     bot_icon TEXT,
     port INT,
     secret_key TEXT,
-    panel_id INT NULL,
+    account_id INT NULL,
     is_testing BOOLEAN DEFAULT FALSE,
     status ENUM('running', 'stopped', 'starting', 'stopping') DEFAULT 'stopped',
     process_id INT,
     uptime_started_at DATETIME NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
-    FOREIGN KEY (panel_id) REFERENCES panel(id) ON DELETE SET NULL
+    FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS servers (
@@ -291,7 +291,7 @@ CREATE TABLE IF NOT EXISTS server_feedback (
     FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_bots_panel_id ON bots(panel_id);
+CREATE INDEX IF NOT EXISTS idx_bots_account_id ON bots(account_id);
 CREATE INDEX IF NOT EXISTS idx_servers_bot_id ON servers(bot_id);
 CREATE INDEX IF NOT EXISTS idx_servers_discord_id ON servers(discord_server_id);
 CREATE INDEX IF NOT EXISTS idx_server_categories_server_id ON server_categories(server_id);

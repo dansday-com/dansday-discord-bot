@@ -10,6 +10,8 @@
 	let inviteType = $state<'owner' | 'moderator'>(data.user.authenticated && data.user.account_source === 'accounts' ? 'owner' : 'moderator');
 	let generatedLink = $state<string | null>(null);
 	let copyIcon = $state('fa-copy');
+	let selectedDiscordMemberId = $state('');
+	let inviting = $state(false);
 
 	const validTypes = $derived(data.user.authenticated && data.user.account_source === 'accounts' ? ['owner', 'moderator'] : ['moderator']);
 	const canInvite = $derived(
@@ -17,32 +19,12 @@
 			(data.user.account_source === 'accounts' || (data.user.account_source === 'server_accounts' && data.user.account_type === 'owner'))
 	);
 
-	let selectedDiscordMemberId = $state('');
-	let dmSending = $state(false);
-
-	async function generateInvite() {
-		const res = await fetch(`/api/servers/${data.serverId}/accounts`, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			credentials: 'include',
-			body: JSON.stringify({ account_type: inviteType })
-		});
-		const d = await res.json();
-		if (d.success) {
-			generatedLink = d.invite_link;
-			showToast('Invite link generated', 'success');
-			invalidateAll();
-		} else {
-			showToast(d.error || 'Failed to generate link', 'error');
-		}
-	}
-
-	async function sendInviteDm() {
+	async function sendInvite() {
 		if (!selectedDiscordMemberId) {
 			showToast('Select a member first', 'error');
 			return;
 		}
-		dmSending = true;
+		inviting = true;
 		try {
 			const res = await fetch(`/api/servers/${data.serverId}/accounts/invite-dm`, {
 				method: 'POST',
@@ -52,16 +34,17 @@
 			});
 			const d = await res.json();
 			if (d.success) {
+				generatedLink = d.invite_link ?? null;
 				showToast('Invite sent via DM', 'success');
 				selectedDiscordMemberId = '';
 				invalidateAll();
 			} else {
-				showToast(d.error || 'Failed to send DM invite', 'error');
+				showToast(d.error || 'Failed to send invite', 'error');
 			}
 		} catch {
-			showToast('Failed to send DM invite', 'error');
+			showToast('Failed to send invite', 'error');
 		} finally {
-			dmSending = false;
+			inviting = false;
 		}
 	}
 
@@ -160,47 +143,37 @@
 		</h2>
 
 		<div class="mb-8">
-			<h3 class="text-ash-100 mb-3 text-lg font-semibold">Generate Invite Link</h3>
-			<div class="mb-4 flex flex-col gap-2 sm:flex-row">
+			<h3 class="text-ash-100 mb-3 text-lg font-semibold">Send Invite</h3>
+			<div class="flex flex-col gap-2 sm:flex-row">
 				<select
 					bind:value={inviteType}
-					class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 flex-1 rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none sm:px-4"
+					class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none sm:w-36"
 				>
 					{#each validTypes as type}
 						<option value={type}>{type}</option>
 					{/each}
 				</select>
-				<button onclick={generateInvite} class="bg-ash-400 hover:bg-ash-500 text-ash-100 rounded-lg px-4 py-2.5 text-sm font-medium transition-all">
-					<i class="fas fa-link mr-2"></i>Generate Link
+				<MemberPicker
+					serverId={data.serverId}
+					value={selectedDiscordMemberId}
+					disabled={!canInvite}
+					placeholder={canInvite ? 'Select member...' : 'Owner/superadmin only'}
+					onchange={(id) => (selectedDiscordMemberId = id)}
+				/>
+				<button
+					type="button"
+					disabled={!canInvite || inviting || !selectedDiscordMemberId}
+					onclick={sendInvite}
+					class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex shrink-0 items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all disabled:cursor-not-allowed disabled:opacity-50"
+				>
+					{#if inviting}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas fa-paper-plane"></i>{/if}
+					Send DM
 				</button>
 			</div>
-
-			<div class="bg-ash-700 rounded-lg p-3">
-				<p class="text-ash-300 mb-2 text-sm">Send invite via DM</p>
-				<div class="flex flex-col gap-2 sm:flex-row">
-					<MemberPicker
-						serverId={data.serverId}
-						value={selectedDiscordMemberId}
-						disabled={!canInvite}
-						placeholder={canInvite ? 'Select member...' : 'Invites are owner/superadmin only'}
-						onchange={(id) => (selectedDiscordMemberId = id)}
-					/>
-
-					<button
-						type="button"
-						disabled={!canInvite || dmSending || !selectedDiscordMemberId}
-						onclick={sendInviteDm}
-						class="bg-ash-600 hover:bg-ash-500 text-ash-100 rounded-lg px-4 py-2.5 text-sm font-medium transition-all disabled:cursor-not-allowed disabled:opacity-50"
-					>
-						{#if dmSending}<i class="fas fa-spinner fa-spin mr-2"></i>{/if}
-						<i class="fas fa-paper-plane mr-2"></i>Send DM
-					</button>
-				</div>
-				<p class="text-ash-400 mt-2 text-xs">If the user has DMs closed or blocked the bot, sending may fail.</p>
-			</div>
+			<p class="text-ash-500 mt-2 text-xs">DM will be sent with the invite link. If DMs are closed, sending may fail.</p>
 
 			{#if generatedLink}
-				<div class="bg-ash-700 rounded-lg p-3">
+				<div class="bg-ash-700 mt-3 rounded-lg p-3">
 					<p class="text-ash-300 mb-2 text-sm">Invite Link:</p>
 					<div class="flex items-center gap-2">
 						<input type="text" readonly value={generatedLink} class="bg-ash-800 border-ash-600 text-ash-100 flex-1 rounded border px-3 py-2 text-sm" />

@@ -23,9 +23,11 @@
 
 <div class="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6 lg:px-8 lg:py-8">
 	<!-- Back -->
-	<a href="/bots/{data.botId}" class="text-ash-400 hover:text-ash-100 mb-5 inline-flex items-center gap-2 text-sm transition-colors">
-		<i class="fas fa-arrow-left"></i>Back to Bot
-	</a>
+	{#if data.user.account_type !== 'owner' && data.user.account_type !== 'moderator'}
+		<a href="/bots/{data.botId}" class="text-ash-400 hover:text-ash-100 mb-5 inline-flex items-center gap-2 text-sm transition-colors">
+			<i class="fas fa-arrow-left"></i>Back to Bot
+		</a>
+	{/if}
 
 	<!-- Server Header -->
 	<div class="bg-ash-700 border-ash-600 mb-5 rounded-xl border p-4 sm:p-6">

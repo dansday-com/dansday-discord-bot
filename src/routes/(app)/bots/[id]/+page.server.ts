@@ -6,6 +6,10 @@ import { getBotUptimeMs } from '$lib/server/botProcesses.js';
 export const load: PageServerLoad = async ({ locals, params }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
 
+	if (locals.user.account_type === 'owner' || locals.user.account_type === 'moderator') {
+		redirect(302, `/bots/${locals.user.bot_id}/servers/${locals.user.server_id}`);
+	}
+
 	const rawBot = await db.getBot(params.id);
 	if (!rawBot) error(404, 'Bot not found');
 

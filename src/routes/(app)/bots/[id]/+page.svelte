@@ -88,6 +88,21 @@
 		return `${s}s`;
 	}
 
+	function fmtDate(val: any): string {
+		if (!val) return '—';
+		const d = new Date(String(val).replace(' ', 'T'));
+		if (Number.isNaN(d.getTime())) return '—';
+		return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+	}
+
+	function discordServerLink(discordServerId: string) {
+		return `https://discord.com/channels/${discordServerId}`;
+	}
+
+	function inviteLink(code: string) {
+		return `https://discord.gg/${code}`;
+	}
+
 	async function botAction(action: 'start' | 'stop' | 'restart') {
 		const res = await fetch(`/api/${action}`, {
 			method: 'POST',
@@ -313,6 +328,47 @@
 								<span class="text-ash-400 flex items-center gap-1.5"><i class="fas fa-hashtag w-4"></i>Channels</span>
 								<span class="text-ash-100 font-medium">{(server.total_channels ?? 0).toLocaleString()}</span>
 							</div>
+							<div class="flex items-center justify-between">
+								<span class="text-ash-400 flex items-center gap-1.5"><i class="fas fa-calendar w-4"></i>Created</span>
+								<span class="text-ash-100 font-medium">{fmtDate((server as any).discord_created_at)}</span>
+							</div>
+						</div>
+
+						<!-- Links -->
+						<div class="mt-3 flex flex-wrap gap-2">
+							<a
+								href={discordServerLink((server as any).discord_server_id)}
+								target="_blank"
+								rel="noreferrer"
+								onclick={(e) => e.stopPropagation()}
+								class="bg-ash-800 hover:bg-ash-600 text-ash-200 inline-flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs transition-colors"
+								title="Open server in Discord"
+							>
+								<i class="fab fa-discord"></i><span>Discord</span>
+							</a>
+							{#if (server as any).vanity_url_code}
+								<a
+									href={inviteLink((server as any).vanity_url_code)}
+									target="_blank"
+									rel="noreferrer"
+									onclick={(e) => e.stopPropagation()}
+									class="bg-ash-800 hover:bg-ash-600 text-ash-200 inline-flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs transition-colors"
+									title="Open server invite"
+								>
+									<i class="fas fa-link"></i><span>Invite</span>
+								</a>
+							{:else if (server as any).invite_code}
+								<a
+									href={inviteLink((server as any).invite_code)}
+									target="_blank"
+									rel="noreferrer"
+									onclick={(e) => e.stopPropagation()}
+									class="bg-ash-800 hover:bg-ash-600 text-ash-200 inline-flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs transition-colors"
+									title="Open server invite"
+								>
+									<i class="fas fa-link"></i><span>Invite</span>
+								</a>
+							{/if}
 						</div>
 					</a>
 				{/each}

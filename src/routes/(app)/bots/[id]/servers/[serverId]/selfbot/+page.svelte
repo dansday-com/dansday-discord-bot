@@ -24,12 +24,6 @@
 		return 'bg-ash-500';
 	}
 
-	function statusTextColor(status: string) {
-		if (status === 'running') return 'text-green-400';
-		if (status === 'starting' || status === 'stopping') return 'text-yellow-400';
-		return 'text-ash-400';
-	}
-
 	function formatUptime(ms: number): string {
 		if (!ms) return '—';
 		const s = Math.floor(ms / 1000);
@@ -152,63 +146,36 @@
 	{:else}
 		{#each data.selfbots as bot (bot.id)}
 			{@const live = liveData[bot.id] ?? { status: bot.status, process_id: null, uptime_ms: 0 }}
-			{@const isRunning = live.status === 'running'}
-			{@const isBusy = live.status === 'starting' || live.status === 'stopping'}
-			{@const canStart = !isRunning && !isBusy}
-			{@const canStop = isRunning || isBusy}
 
-			<div class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-6">
-				<div class="flex flex-col gap-4 sm:flex-row sm:items-center">
-					<div class="flex min-w-0 flex-1 items-center gap-4">
-						<div class="bg-ash-600 flex h-14 w-14 shrink-0 items-center justify-center rounded-full">
-							<i class="fas fa-robot text-ash-300 text-xl"></i>
-						</div>
-						<div class="min-w-0">
-							<h3 class="text-ash-100 truncate text-lg font-bold">{bot.name}</h3>
-							<div class="mt-1 flex items-center gap-2">
-								<span class="h-2 w-2 rounded-full {statusColor(live.status)}"></span>
-								<span class="text-sm capitalize {statusTextColor(live.status)}">{live.status}</span>
-								{#if isRunning}
-									<span class="text-ash-400 text-xs">{formatUptime(getDisplayUptime(bot.id))}</span>
-								{/if}
-							</div>
-						</div>
+			<a
+				href={`/bots/${data.botId}/servers/${data.serverId}/selfbot/${bot.id}`}
+				class="bg-ash-800 border-ash-700 hover:border-ash-500 flex flex-col gap-3 rounded-xl border p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg sm:p-6"
+			>
+				<!-- Bot icon + name -->
+				<div class="flex items-center gap-3">
+					<div class="bg-ash-600 flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-full">
+						<i class="fas fa-robot text-ash-300 text-lg"></i>
 					</div>
+					<div class="min-w-0">
+						<p class="text-ash-100 truncate text-sm font-semibold sm:text-base">{bot.name || `Selfbot #${bot.id}`}</p>
+						<span class="text-ash-400 text-xs">Selfbot</span>
+					</div>
+				</div>
 
-					{#if canEdit}
-						<div class="flex shrink-0 flex-wrap items-center gap-2">
-							{#if canStart}
-								<button
-									onclick={() => botAction(bot.id, 'start')}
-									class="flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-2 text-xs font-medium text-white transition-all hover:scale-105 hover:bg-green-700 active:scale-95"
-								>
-									<i class="fas fa-play"></i>Start
-								</button>
-							{/if}
-							{#if canStop}
-								<button
-									onclick={() => botAction(bot.id, 'stop')}
-									class="bg-ash-400 hover:bg-ash-500 flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium text-white transition-all hover:scale-105 active:scale-95"
-								>
-									<i class="fas fa-stop"></i>Stop
-								</button>
-								<button
-									onclick={() => botAction(bot.id, 'restart')}
-									class="flex items-center gap-1.5 rounded-lg bg-yellow-600 px-3 py-2 text-xs font-medium text-white transition-all hover:scale-105 hover:bg-yellow-700 active:scale-95"
-								>
-									<i class="fas fa-redo"></i>Restart
-								</button>
-							{/if}
-							<button
-								onclick={() => deleteBot(bot.id, bot.name)}
-								class="flex items-center gap-1.5 rounded-lg bg-red-700 px-3 py-2 text-xs font-medium text-white transition-all hover:scale-105 hover:bg-red-800 active:scale-95"
-							>
-								<i class="fas fa-trash"></i>Delete
-							</button>
-						</div>
+				<!-- Status -->
+				<div class="flex items-center justify-between">
+					<div class="flex items-center gap-2">
+						<span class="h-2 w-2 rounded-full {statusColor(live.status)}"></span>
+						<span class="text-ash-300 text-xs capitalize">{live.status}</span>
+					</div>
+					{#if live.status === 'running'}
+						{@const uptime = getDisplayUptime(bot.id)}
+						{#if uptime}
+							<span class="text-ash-500 text-xs">{formatUptime(uptime)}</span>
+						{/if}
 					{/if}
 				</div>
-			</div>
+			</a>
 		{/each}
 	{/if}
 </div>

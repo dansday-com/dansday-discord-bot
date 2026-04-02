@@ -54,6 +54,9 @@ CREATE TABLE IF NOT EXISTS servers (
     total_boosters INT DEFAULT 0,
     boost_level INT DEFAULT 0,
     server_icon TEXT,
+    discord_created_at DATETIME NULL,
+    vanity_url_code VARCHAR(255) NULL,
+    invite_code VARCHAR(255) NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
     UNIQUE KEY unique_bot_server (bot_id, discord_server_id),
@@ -294,6 +297,8 @@ CREATE TABLE IF NOT EXISTS server_feedback (
 CREATE INDEX IF NOT EXISTS idx_bots_account_id ON bots(account_id);
 CREATE INDEX IF NOT EXISTS idx_servers_bot_id ON servers(bot_id);
 CREATE INDEX IF NOT EXISTS idx_servers_discord_id ON servers(discord_server_id);
+CREATE INDEX IF NOT EXISTS idx_servers_discord_created_at ON servers(discord_created_at);
+CREATE INDEX IF NOT EXISTS idx_servers_invite_code ON servers(invite_code);
 CREATE INDEX IF NOT EXISTS idx_server_categories_server_id ON server_categories(server_id);
 CREATE INDEX IF NOT EXISTS idx_server_categories_discord_id ON server_categories(discord_category_id);
 CREATE INDEX IF NOT EXISTS idx_server_channels_server_id ON server_channels(server_id);

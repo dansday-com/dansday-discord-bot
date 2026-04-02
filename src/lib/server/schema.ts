@@ -62,13 +62,18 @@ export const servers = mysqlTable(
 		total_boosters: int('total_boosters').default(0),
 		boost_level: int('boost_level').default(0),
 		server_icon: text('server_icon'),
+		discord_created_at: datetime('discord_created_at'),
+		vanity_url_code: varchar('vanity_url_code', { length: 255 }),
+		invite_code: varchar('invite_code', { length: 255 }),
 		created_at: datetime('created_at').notNull(),
 		updated_at: datetime('updated_at').notNull()
 	},
 	(t) => [
 		uniqueIndex('unique_bot_server').on(t.bot_id, t.discord_server_id),
 		index('idx_servers_bot_id').on(t.bot_id),
-		index('idx_servers_discord_id').on(t.discord_server_id)
+		index('idx_servers_discord_id').on(t.discord_server_id),
+		index('idx_servers_discord_created_at').on(t.discord_created_at),
+		index('idx_servers_invite_code').on(t.invite_code)
 	]
 );
 

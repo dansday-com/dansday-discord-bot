@@ -410,6 +410,16 @@ export async function getNotificationRoleDbIds(serverId: any) {
 
 export async function upsertServer(botId: number, guild: any) {
 	const iconUrl = guild.iconURL ? guild.iconURL({ dynamic: true }) : null;
+	const discordCreatedAt = guild.createdAt ? toMySQLDateTime(guild.createdAt) : null;
+	const vanityCode = guild.vanityURLCode ? String(guild.vanityURLCode) : null;
+	let inviteCode: string | null = null;
+	try {
+		const invites = await guild?.invites?.fetch?.();
+		const first = invites && typeof invites.values === 'function' ? invites.values().next()?.value : null;
+		if (first?.code) inviteCode = String(first.code);
+	} catch (_) {
+		// Missing permissions or invites not accessible
+	}
 
 	let boostLevel = 0;
 	if (guild.premiumTier) {
@@ -424,12 +434,16 @@ export async function upsertServer(botId: number, guild: any) {
 
 	const now = toMySQLDateTime();
 	await db.execute(sql`
-		INSERT INTO servers (bot_id, discord_server_id, name, total_members, total_channels, total_boosters, boost_level, server_icon, created_at, updated_at)
-		VALUES (${botId}, ${guild.id}, ${guild.name}, ${guild.memberCount || 0}, ${guild.channels?.cache?.size || 0}, ${guild.premiumSubscriptionCount || 0}, ${boostLevel}, ${iconUrl}, ${now}, ${now})
+		INSERT INTO servers (bot_id, discord_server_id, name, total_members, total_channels, total_boosters, boost_level, server_icon, discord_created_at, vanity_url_code, invite_code, created_at, updated_at)
+		VALUES (${botId}, ${guild.id}, ${guild.name}, ${guild.memberCount || 0}, ${guild.channels?.cache?.size || 0}, ${guild.premiumSubscriptionCount || 0}, ${boostLevel}, ${iconUrl}, ${discordCreatedAt}, ${vanityCode}, ${inviteCode}, ${now}, ${now})
 		ON DUPLICATE KEY UPDATE
 			name = VALUES(name), total_members = VALUES(total_members), total_channels = VALUES(total_channels),
 			total_boosters = VALUES(total_boosters), boost_level = VALUES(boost_level),
-			server_icon = VALUES(server_icon), updated_at = VALUES(updated_at)
+			server_icon = VALUES(server_icon),
+			discord_created_at = COALESCE(servers.discord_created_at, VALUES(discord_created_at)),
+			vanity_url_code = VALUES(vanity_url_code),
+			invite_code = COALESCE(VALUES(invite_code), servers.invite_code),
+			updated_at = VALUES(updated_at)
 	`);
 
 	return getServerByDiscordId(botId, guild.id);

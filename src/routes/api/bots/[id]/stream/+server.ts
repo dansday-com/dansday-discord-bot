@@ -20,11 +20,21 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 
 			db.getBot(botId)
 				.then((bot) => {
-					if (!bot) return;
-					send({
-						status: bot.status,
-						process_id: bot.process_id ?? null,
-						uptime_ms: getBotUptimeMs(bot)
+					if (bot) {
+						send({
+							status: bot.status,
+							process_id: bot.process_id ?? null,
+							uptime_ms: getBotUptimeMs(bot)
+						});
+						return;
+					}
+					return db.getServerBotById(botId).then((sb) => {
+						if (!sb) return;
+						send({
+							status: sb.status,
+							process_id: sb.process_id ?? null,
+							uptime_ms: getBotUptimeMs(sb)
+						});
 					});
 				})
 				.catch((_) => {});

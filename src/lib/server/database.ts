@@ -1,5 +1,5 @@
 import mysql from 'mysql2/promise';
-import { readFileSync, readdirSync } from 'fs';
+import { readFileSync, readdirSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import logger from './logger.js';
@@ -132,16 +132,23 @@ async function runMigration() {
 async function runMigrations() {
 	const migrationsDir = join(process.cwd(), 'src/lib/server/migrations');
 
-	let files: string[];
+	let files: string[] = [];
 	try {
-		files = readdirSync(migrationsDir)
-			.filter((f) => f.endsWith('.sql'))
-			.sort();
-	} catch (_) {
+		if (existsSync(migrationsDir)) {
+			files = readdirSync(migrationsDir)
+				.filter((f) => f.endsWith('.sql'))
+				.sort();
+		}
+	} catch (err: any) {
+		logger.log(`ℹ️  Error reading migrations directory: ${err.message}`);
+	}
+
+	if (files.length === 0) {
+		logger.log('ℹ️  No migration files found to process');
 		return;
 	}
 
-	if (files.length === 0) return;
+	logger.log(`🔍 Found ${files.length} migration(s), checking status...`);
 
 	const connection = await mysql.createConnection(resolveConnectionConfig());
 	try {
@@ -158,7 +165,6 @@ async function runMigrations() {
 		for (const file of files) {
 			const [rows] = await connection.execute('SELECT id FROM migrations WHERE name = ? LIMIT 1', [file]);
 			if ((rows as any[]).length > 0) {
-				logger.log(`⏭️  Migration already ran: ${file}`);
 				continue;
 			}
 
@@ -180,7 +186,10 @@ async function runMigrations() {
 		logger.log(`❌ Migration runner failed: ${err.message}`);
 		throw err;
 	} finally {
-		await connection.end();
+		try {
+			await connection.end();
+		} catch (e) {
+		}
 	}
 }
 
@@ -232,18 +241,26 @@ async function markAllMigrationsAsDone() {
 }
 
 let dbInitialized = false;
+let initializationPromise: Promise<void> | null = null;
 
 export async function initializeDatabase() {
 	if (dbInitialized) return;
+	if (initializationPromise) return initializationPromise;
 
-	try {
-		await setupDatabase();
-		dbInitialized = true;
-	} catch (error: any) {
-		logger.log(`⚠️  Database initialization: ${error.message}`);
-		logger.log(`💡 Set DATABASE_URL or DB_* environment variables to enable automatic table creation`);
-		logger.log(`📄 Or run the SQL schema from src/lib/server/schema.sql in your MySQL client`);
-	}
+	initializationPromise = (async () => {
+		try {
+			await setupDatabase();
+			dbInitialized = true;
+		} catch (error: any) {
+			logger.log(`⚠️  Database initialization: ${error.message}`);
+			logger.log(`💡 Set DATABASE_URL or DB_* environment variables to enable automatic table creation`);
+			logger.log(`📄 Or run the SQL schema from src/lib/server/schema.sql in your MySQL client`);
+		} finally {
+			initializationPromise = null;
+		}
+	})();
+
+	return initializationPromise;
 }
 
 async function retryOnConnectionError(fn: () => Promise<any>, maxRetries = 3, delayMs = 2000) {

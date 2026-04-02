@@ -6,18 +6,15 @@
 -- Run this ONCE against an existing database before deploying the new code.
 -- Safe to run multiple times (uses IF EXISTS / IF NOT EXISTS guards).
 
--- 1. Rename tables (only if old names exist)
+-- 1. Rename panel_accounts → accounts (only if old name exists, new name doesn't)
 SET @panel_accounts_exists = (
     SELECT COUNT(*) FROM information_schema.tables
     WHERE table_schema = DATABASE() AND table_name = 'panel_accounts'
 );
-
 SET @accounts_exists = (
     SELECT COUNT(*) FROM information_schema.tables
     WHERE table_schema = DATABASE() AND table_name = 'accounts'
 );
-
--- Rename panel_accounts → accounts (only if panel_accounts exists and accounts doesn't)
 SET @sql = IF(@panel_accounts_exists > 0 AND @accounts_exists = 0,
     'RENAME TABLE panel_accounts TO accounts',
     'SELECT 1'
@@ -26,7 +23,7 @@ PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
--- Rename panel_invite_links → account_invites
+-- Rename panel_invite_links → account_invites (only if old name exists, new name doesn't)
 SET @invite_old_exists = (
     SELECT COUNT(*) FROM information_schema.tables
     WHERE table_schema = DATABASE() AND table_name = 'panel_invite_links'
@@ -35,7 +32,6 @@ SET @invite_new_exists = (
     SELECT COUNT(*) FROM information_schema.tables
     WHERE table_schema = DATABASE() AND table_name = 'account_invites'
 );
-
 SET @sql2 = IF(@invite_old_exists > 0 AND @invite_new_exists = 0,
     'RENAME TABLE panel_invite_links TO account_invites',
     'SELECT 1'

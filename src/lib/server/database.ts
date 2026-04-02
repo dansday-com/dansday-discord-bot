@@ -173,77 +173,53 @@ async function runMigrations() {
 	}
 }
 
+async function tableExists(name: string) {
+	const result = await query(
+		`SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = ? AND table_name = ?`,
+		[resolveConnectionConfig().database, name]
+	);
+	return result[0]?.count > 0;
+}
+
 async function setupDatabase() {
-	logger.log('🔍 Checking database tables...');
+	logger.log('🔍 Checking database...');
 
-	const tables = [
-		{ name: 'migrations', required: true },
-		{ name: 'panel', required: true },
-		{ name: 'accounts', required: true },
-		{ name: 'account_invites', required: true },
-		{ name: 'account_server_access', required: true },
-		{ name: 'server_selfbot_assignments', required: true },
-		{ name: 'bots', required: true },
-		{ name: 'servers', required: true },
-		{ name: 'server_categories', required: true },
-		{ name: 'server_channels', required: true },
-		{ name: 'server_roles', required: true },
-		{ name: 'server_members', required: true },
-		{ name: 'server_member_levels', required: true },
-		{ name: 'server_member_roles', required: true },
-		{ name: 'server_members_afk', required: true },
-		{ name: 'server_settings', required: true },
-		{ name: 'server_giveaways', required: true },
-		{ name: 'server_giveaway_entries', required: true },
-		{ name: 'server_staff_ratings', required: true },
-		{ name: 'server_staff_reports', required: true },
-		{ name: 'server_feedback', required: true }
-	];
+	// Detect if this is a fresh DB (none of the core tables exist)
+	const hasBots = await tableExists('bots');
+	const hasPanel = await tableExists('panel');
 
-	const missingTables: string[] = [];
-
-	for (const table of tables) {
+	if (!hasBots && !hasPanel) {
+		// Completely fresh database — run schema to create all tables
+		logger.log('🆕 Fresh database detected, running schema...');
 		try {
-			const result = await query(
-				`SELECT COUNT(*) as count FROM information_schema.tables
-				 WHERE table_schema = ? AND table_name = ?`,
-				[resolveConnectionConfig().database, table.name]
-			);
-
-			const exists = result[0]?.count > 0;
-
-			if (!exists) {
-				missingTables.push(table.name);
-				logger.log(`❌ Table '${table.name}' does not exist`);
-			} else {
-				logger.log(`✅ Table '${table.name}' exists`);
-			}
-		} catch (err: any) {
-			logger.log(`⚠️  Error checking table '${table.name}': ${err.message}`);
-			if (table.required) {
-				missingTables.push(table.name);
-			}
-		}
-	}
-
-	if (missingTables.length > 0) {
-		logger.log(`❌ Missing tables: ${missingTables.join(', ')}`);
-
-		try {
-			logger.log('🔧 Attempting automatic table creation...');
 			await runMigration();
-			logger.log('✅ Tables created automatically');
-			return true;
-		} catch (migrateError: any) {
-			logger.log(`⚠️  Automatic migration failed: ${migrateError.message}`);
-			logger.log('📄 Please run the SQL schema manually in your MySQL client');
-			throw new Error(`Missing tables: ${missingTables.join(', ')}`);
+			logger.log('✅ Schema applied');
+			// Mark all existing migration files as already done so they don't re-run
+			await markAllMigrationsAsDone();
+		} catch (err: any) {
+			logger.log(`❌ Schema failed: ${err.message}`);
+			throw err;
 		}
+		return true;
 	}
 
-	logger.log('✅ All database tables verified');
+	// Existing database — run any pending migrations only
+	logger.log('✅ Existing database detected, checking migrations...');
 	await runMigrations();
 	return true;
+}
+
+async function markAllMigrationsAsDone() {
+	const migrationsDir = join(process.cwd(), 'src/lib/server/migrations');
+	let files: string[];
+	try {
+		files = readdirSync(migrationsDir).filter((f) => f.endsWith('.sql')).sort();
+	} catch (_) {
+		return;
+	}
+	for (const file of files) {
+		await query('INSERT IGNORE INTO migrations (name, ran_at) VALUES (?, NOW())', [file]);
+	}
 }
 
 let dbInitialized = false;

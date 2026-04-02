@@ -1,13 +1,19 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import db from '$lib/server/db.js';
-import { checkRateLimit, getClientIp } from '$lib/server/rateLimit.js';
-import { addMinutesToNow } from '$lib/server/utils.js';
-import { sendOTPEmail } from '$lib/server/email.js';
-import { createVerifyToken } from '$lib/server/session.js';
+import db from '$lib/database.js';
+import {
+	checkRateLimit,
+	getClientIp,
+	addMinutesToNow,
+	sanitizeString,
+	sanitizeUsername,
+	sanitizeEmail,
+	validateInputLength,
+	createVerifyToken
+} from '$lib/utils/index.js';
+import { sendOTPEmail } from '$lib/frontend/email.js';
 import bcrypt from 'bcrypt';
 import { randomInt } from 'crypto';
-import { sanitizeString, sanitizeUsername, sanitizeEmail, validateInputLength } from '$lib/server/utils.js';
 
 const MAX_REGISTER_ATTEMPTS = 3;
 

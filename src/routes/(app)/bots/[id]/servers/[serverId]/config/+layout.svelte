@@ -8,6 +8,7 @@
 
 	const tabs = [
 		{ label: 'Main Config', icon: 'fa-gear', href: '' },
+		{ label: 'Leaderboards', icon: 'fa-trophy', href: '/leaderboards' },
 		{ label: 'Welcomer', icon: 'fa-hand', href: '/welcomer' },
 		{ label: 'Booster', icon: 'fa-gem', href: '/booster' },
 		{ label: 'Permissions', icon: 'fa-shield-halved', href: '/permissions' },

@@ -1,8 +1,8 @@
 import '../console-instrumentation.js';
 import type { Handle } from '@sveltejs/kit';
-import { getSession, getSessionIdFromCookie } from '$lib/server/session';
-import db from '$lib/server/db';
-import { verifyBotStatuses } from '$lib/server/botProcesses';
+import { getSession, getSessionIdFromCookie } from '$lib/utils/index.js';
+import db from '$lib/database.js';
+import { verifyBotStatuses } from '$lib/botProcesses.js';
 
 export const init = async () => {
 	await verifyBotStatuses();

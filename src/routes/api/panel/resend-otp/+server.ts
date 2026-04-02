@@ -1,10 +1,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import db from '$lib/server/db.js';
-import { peekVerifyToken } from '$lib/server/session.js';
-import { addMinutesToNow, toMySQLDateTime } from '$lib/server/utils.js';
-import { sendOTPEmail } from '$lib/server/email.js';
-import logger from '$lib/server/logger.js';
+import db from '$lib/database.js';
+import { peekVerifyToken, addMinutesToNow, toMySQLDateTime, logger } from '$lib/utils/index.js';
+import { sendOTPEmail } from '$lib/frontend/email.js';
 import { randomInt } from 'crypto';
 
 export const POST: RequestHandler = async ({ request }) => {

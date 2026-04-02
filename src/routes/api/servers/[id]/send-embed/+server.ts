@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import db from '$lib/server/db.js';
-import logger from '$lib/server/logger.js';
+import db from '$lib/database.js';
+import { logger } from '$lib/utils/index.js';
 import { existsSync, readFileSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { request as httpRequest } from 'http';

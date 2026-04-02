@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import db from '$lib/server/db.js';
-import { sanitizeString, getNowInTimezone, getDateTimeFromSQL } from '$lib/server/utils.js';
+import db from '$lib/database.js';
+import { sanitizeString, getNowInTimezone, getDateTimeFromSQL } from '$lib/utils/index.js';
 
 export const GET: RequestHandler = async ({ params }) => {
 	try {

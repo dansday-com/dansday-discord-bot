@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { invalidateAll } from '$app/navigation';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import AddSelfbotModal from '$lib/components/AddSelfbotModal.svelte';
+	import { showToast } from '$lib/frontend/toast.svelte';
+	import AddSelfbotModal from '$lib/frontend/components/AddSelfbotModal.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();

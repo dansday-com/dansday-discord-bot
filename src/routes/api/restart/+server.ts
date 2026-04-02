@@ -1,8 +1,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import db from '$lib/server/db.js';
-import { restartBotById } from '$lib/server/botProcesses.js';
-import logger from '$lib/server/logger.js';
+import db from '$lib/database.js';
+import { restartBotById } from '$lib/botProcesses.js';
+import { logger } from '$lib/utils/index.js';
 
 export const POST: RequestHandler = async ({ locals, request }) => {
 	if (!locals.user.authenticated) return json({ success: false, error: 'Authentication required' }, { status: 401 });

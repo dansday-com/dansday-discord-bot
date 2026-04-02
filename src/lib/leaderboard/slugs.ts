@@ -1,0 +1,38 @@
+/**
+ * Backend for the **public** leaderboard website URL (`src/routes/[serverSlug]/leaderboard`).
+ * Not the Svelte page itself — this resolves slugs and lists URLs using the DB.
+ */
+import db from '$lib/database.js';
+import { computeIndexedSlugForItemId, listIndexedSlugsForItems, resolveIndexedSlugToItem } from '$lib/utils/index.js';
+
+export type LeaderboardServerRow = {
+	id: number;
+	name: string | null;
+	updated_at: any;
+	server_icon?: string | null;
+};
+
+function serverSlugKey(s: LeaderboardServerRow) {
+	return s.name || 'server';
+}
+
+/** Resolve public leaderboard path segment → guild row (feature enabled only). Slug helpers: `$lib/utils/index.js`. */
+export async function resolveLeaderboardServerBySlug(requestedSlug: string): Promise<{ server: LeaderboardServerRow; computedSlug: string } | null> {
+	const servers: LeaderboardServerRow[] = await (db as any).listEnabledLeaderboardServers();
+	if (!Array.isArray(servers) || servers.length === 0) return null;
+	const resolved = resolveIndexedSlugToItem(requestedSlug, servers, serverSlugKey);
+	if (!resolved) return null;
+	return { server: resolved.item, computedSlug: resolved.computedSlug };
+}
+
+export async function listEnabledLeaderboardSlugs(): Promise<{ slug: string; updated_at: any }[]> {
+	const servers: LeaderboardServerRow[] = await (db as any).listEnabledLeaderboardServers();
+	if (!Array.isArray(servers) || servers.length === 0) return [];
+	return listIndexedSlugsForItems(servers, serverSlugKey);
+}
+
+export async function computeLeaderboardSlugForServerId(serverId: number): Promise<string | null> {
+	const servers: LeaderboardServerRow[] = await (db as any).listEnabledLeaderboardServers();
+	if (!Array.isArray(servers) || servers.length === 0) return null;
+	return computeIndexedSlugForItemId(serverId, servers, serverSlugKey);
+}

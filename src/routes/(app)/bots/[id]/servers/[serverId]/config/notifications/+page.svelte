@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import RolePicker from '$lib/components/server/RolePicker.svelte';
-	import CategoryPicker from '$lib/components/server/CategoryPicker.svelte';
+	import { showToast } from '$lib/frontend/toast.svelte';
+	import RolePicker from '$lib/frontend/components/RolePicker.svelte';
+	import CategoryPicker from '$lib/frontend/components/CategoryPicker.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();

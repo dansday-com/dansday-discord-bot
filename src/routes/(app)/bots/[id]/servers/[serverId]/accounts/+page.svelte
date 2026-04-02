@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
-	import { showToast } from '$lib/stores/toast.svelte';
+	import { showToast } from '$lib/frontend/toast.svelte';
 	import type { PageProps } from './$types';
-	import MemberPicker from '$lib/components/server/MemberPicker.svelte';
+	import MemberPicker from '$lib/frontend/components/MemberPicker.svelte';
 
 	let { data }: PageProps = $props();
 

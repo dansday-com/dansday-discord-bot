@@ -1,8 +1,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import db from '$lib/server/db.js';
-import logger from '$lib/server/logger.js';
-import { sendAccountDeletedEmail, sendAccountFrozenEmail, sendAccountUnfrozenEmail } from '$lib/server/email.js';
+import db from '$lib/database.js';
+import { logger } from '$lib/utils/index.js';
+import { sendAccountDeletedEmail, sendAccountFrozenEmail, sendAccountUnfrozenEmail } from '$lib/frontend/email.js';
 
 function canManageAccounts(locals: App.Locals, serverId: number): boolean {
 	if (!locals.user.authenticated) return false;

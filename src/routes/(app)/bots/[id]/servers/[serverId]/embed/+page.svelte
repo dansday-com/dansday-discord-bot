@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { showToast } from '$lib/stores/toast.svelte';
-	import ChannelPicker from '$lib/components/server/ChannelPicker.svelte';
-	import RolePicker from '$lib/components/server/RolePicker.svelte';
+	import { showToast } from '$lib/frontend/toast.svelte';
+	import ChannelPicker from '$lib/frontend/components/ChannelPicker.svelte';
+	import RolePicker from '$lib/frontend/components/RolePicker.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();

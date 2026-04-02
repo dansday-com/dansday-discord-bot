@@ -1,8 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import db from '$lib/server/db.js';
-import { addMinutesToNow, toMySQLDateTime } from '$lib/server/utils.js';
-import logger from '$lib/server/logger.js';
+import db from '$lib/database.js';
+import { addMinutesToNow, toMySQLDateTime, logger } from '$lib/utils/index.js';
 import { randomBytes } from 'crypto';
 
 function maskEmail(email: string) {

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { invalidateAll } from '$app/navigation';
-	import AddBotModal from '$lib/components/AddBotModal.svelte';
+	import AddBotModal from '$lib/frontend/components/AddBotModal.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();

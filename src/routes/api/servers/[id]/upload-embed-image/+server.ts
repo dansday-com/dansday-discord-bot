@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
-import logger from '$lib/server/logger.js';
+import { logger } from '$lib/utils/index.js';
 
 const uploadsDir = join(process.cwd(), 'data', 'embed-images');
 

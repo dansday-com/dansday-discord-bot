@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import db from '$lib/server/db.js';
+import db from '$lib/database.js';
 import {
 	sanitizeString,
 	sanitizeUsername,
@@ -10,12 +10,12 @@ import {
 	getNowInTimezone,
 	getDateTimeFromSQL,
 	getCurrentDateTime,
-	toMySQLDateTime
-} from '$lib/server/utils.js';
-import { sendOTPEmail } from '$lib/server/email.js';
-import { createVerifyToken } from '$lib/server/session.js';
-import { getClientIp } from '$lib/server/rateLimit.js';
-import logger from '$lib/server/logger.js';
+	toMySQLDateTime,
+	getClientIp,
+	createVerifyToken,
+	logger
+} from '$lib/utils/index.js';
+import { sendOTPEmail } from '$lib/frontend/email.js';
 import bcrypt from 'bcrypt';
 import { randomInt } from 'crypto';
 

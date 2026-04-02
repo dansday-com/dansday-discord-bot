@@ -1,9 +1,10 @@
-import { redirect, error } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import db from '$lib/server/db.js';
-import { getBotUptimeMs } from '$lib/server/botProcesses.js';
+import db from '$lib/database.js';
+import { getBotUptimeMs } from '$lib/botProcesses.js';
+import { webRouteUp } from '$lib/frontend/redirect.js';
 
-export const load: PageServerLoad = async ({ locals, params }) => {
+export const load: PageServerLoad = async ({ locals, params, url }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
 
 	if (locals.user.account_source === 'server_accounts') {
@@ -11,7 +12,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	}
 
 	const rawBot = await db.getBot(params.id);
-	if (!rawBot) error(404, 'Bot not found');
+	if (!rawBot) redirect(302, webRouteUp(url.pathname));
 
 	if ((rawBot.status === 'running' || rawBot.status === 'starting' || rawBot.status === 'stopping') && rawBot.process_id) {
 		try {

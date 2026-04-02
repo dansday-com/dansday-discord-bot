@@ -1,6 +1,6 @@
-import { redirect, error } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
-import db from '$lib/server/db.js';
+import db from '$lib/database.js';
 
 export const load: LayoutServerLoad = async ({ locals, params }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
@@ -10,7 +10,5 @@ export const load: LayoutServerLoad = async ({ locals, params }) => {
 		db.getServerSettings(params.serverId, 'permissions').catch(() => null)
 	]);
 
-	if (!members) error(500, 'Failed to load members');
-
-	return { members, permissions: permissions ?? null };
+	return { members: members ?? [], permissions: permissions ?? null };
 };

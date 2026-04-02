@@ -1,8 +1,13 @@
 import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
-import db from '$lib/server/db.js';
-import type { LeaderboardMetric, LeaderboardRange } from '$lib/server/leaderboardCache.js';
-import { getCachedLeaderboard, setCachedLeaderboard } from '$lib/server/leaderboardCache.js';
+import db from '$lib/database.js';
+import {
+	type LeaderboardMetric,
+	type LeaderboardRange,
+	getCachedLeaderboard,
+	resolveLeaderboardServerBySlug,
+	setCachedLeaderboard
+} from '$lib/leaderboard/index.js';
 
 function parseMetric(m: string | null): LeaderboardMetric {
 	const v = (m || 'xp').toLowerCase();
@@ -23,17 +28,16 @@ function parseRange(r: string | null): LeaderboardRange {
 
 export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
 	const slug = String(params.serverSlug || '').trim();
-	const server = await db.getServerByLeaderboardSlug(slug);
-	if (!server) throw error(404, 'Not found');
+	const resolved = await resolveLeaderboardServerBySlug(slug);
+	if (!resolved) throw error(404, 'Not found');
+	const server = resolved.server;
 
-	// Visibility is controlled via server_settings (component: leaderboard), defaults to public+enabled
 	const settingsRow = await db.getServerSettings(server.id, 'leaderboard');
 	const settings = (settingsRow as any)?.settings || {};
 	const enabled = settings.enabled ?? true;
-	const isPublic = settings.public ?? true;
-	if (!enabled || !isPublic) throw error(404, 'Not found');
+	if (!enabled) throw error(404, 'Not found');
 
-	const serverSlug = String(settings.slug || slug);
+	const serverSlug = resolved.computedSlug;
 
 	const metric = parseMetric(url.searchParams.get('metric'));
 	const range = parseRange(url.searchParams.get('range'));

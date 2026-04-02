@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { goto, invalidateAll } from '$app/navigation';
-	import { showToast } from '$lib/stores/toast.svelte';
+	import { showToast } from '$lib/frontend/toast.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();

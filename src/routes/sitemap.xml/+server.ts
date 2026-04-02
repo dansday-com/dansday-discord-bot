@@ -1,5 +1,5 @@
 import type { RequestHandler } from '@sveltejs/kit';
-import db from '$lib/server/db.js';
+import { listEnabledLeaderboardSlugs } from '$lib/leaderboard/index.js';
 
 function escapeXml(s: string) {
 	return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
@@ -7,7 +7,7 @@ function escapeXml(s: string) {
 
 export const GET: RequestHandler = async ({ url, request, setHeaders }) => {
 	const base = url.origin;
-	const servers = await db.listPublicLeaderboardSlugs();
+	const servers = await listEnabledLeaderboardSlugs();
 
 	const lastmod = (d: any) => {
 		try {

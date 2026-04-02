@@ -1,9 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import { destroySession, clearSessionCookie } from '$lib/server/session.js';
-import logger from '$lib/server/logger.js';
-import db from '$lib/server/db.js';
-import { getClientIp } from '$lib/server/rateLimit.js';
+import db from '$lib/database.js';
+import { destroySession, clearSessionCookie, logger, getClientIp } from '$lib/utils/index.js';
 
 export const POST: RequestHandler = async ({ locals, request }) => {
 	const sessionId = locals.sessionId;

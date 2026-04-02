@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import ChannelPicker from '$lib/components/server/ChannelPicker.svelte';
-	import MessageList from '$lib/components/server/MessageList.svelte';
+	import { showToast } from '$lib/frontend/toast.svelte';
+	import ChannelPicker from '$lib/frontend/components/ChannelPicker.svelte';
+	import MessageList from '$lib/frontend/components/MessageList.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();

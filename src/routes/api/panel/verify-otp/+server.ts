@@ -1,11 +1,20 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import db from '$lib/server/db.js';
-import { newSessionId, setSession, makeSessionCookie, peekVerifyToken, consumeVerifyToken } from '$lib/server/session.js';
-import { getClientIp } from '$lib/server/rateLimit.js';
-import { sanitizeString, getNowInTimezone, getDateTimeFromSQL, toMySQLDateTime } from '$lib/server/utils.js';
-import { sendVerificationSuccessEmail } from '$lib/server/email.js';
-import logger from '$lib/server/logger.js';
+import db from '$lib/database.js';
+import {
+	newSessionId,
+	setSession,
+	makeSessionCookie,
+	peekVerifyToken,
+	consumeVerifyToken,
+	getClientIp,
+	sanitizeString,
+	getNowInTimezone,
+	getDateTimeFromSQL,
+	toMySQLDateTime,
+	logger
+} from '$lib/utils/index.js';
+import { sendVerificationSuccessEmail } from '$lib/frontend/email.js';
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {

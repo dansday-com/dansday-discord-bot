@@ -1,0 +1,2416 @@
+import { readFileSync, readdirSync, existsSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import mysql from 'mysql2/promise';
+import { eq, and, or, inArray, sql, desc, asc, isNull, isNotNull, count, avg, max, sum, like } from 'drizzle-orm';
+import { db } from './drizzle.js';
+import * as schema from './schema.js';
+import { logger, toMySQLDateTime, parseMySQLDateTime, getNowInTimezone, addMinutesToNow } from './utils/index.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// ---------------------------------------------------------------------------
+// Connection config (reused for raw migration queries)
+// ---------------------------------------------------------------------------
+
+function getConnectionConfig() {
+	const databaseUrl = process.env.DATABASE_URL;
+	if (databaseUrl) {
+		const url = new URL(databaseUrl);
+		return {
+			host: url.hostname,
+			port: parseInt(url.port),
+			user: url.username,
+			password: url.password,
+			database: url.pathname.slice(1)
+		};
+	}
+	if (!process.env.DB_HOST) throw new Error('Missing DB_HOST environment variable');
+	if (!process.env.DB_PORT) throw new Error('Missing DB_PORT environment variable');
+	if (!process.env.DB_USER) throw new Error('Missing DB_USER environment variable');
+	if (!process.env.DB_PASSWORD) throw new Error('Missing DB_PASSWORD environment variable');
+	if (!process.env.DB_NAME) throw new Error('Missing DB_NAME environment variable');
+	return {
+		host: process.env.DB_HOST,
+		port: parseInt(process.env.DB_PORT),
+		user: process.env.DB_USER,
+		password: process.env.DB_PASSWORD,
+		database: process.env.DB_NAME
+	};
+}
+
+// ---------------------------------------------------------------------------
+// Migration helpers (kept as raw SQL — schema/migration management)
+// ---------------------------------------------------------------------------
+
+async function tableExists(name: string) {
+	const cfg = getConnectionConfig();
+	const conn = await mysql.createConnection(cfg);
+	try {
+		const [rows] = await conn.execute('SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = ? AND table_name = ?', [
+			cfg.database,
+			name
+		]);
+		return (rows as any[])[0]?.count > 0;
+	} finally {
+		await conn.end();
+	}
+}
+
+async function runMigration() {
+	const connection = await mysql.createConnection(getConnectionConfig());
+	try {
+		logger.log('🔌 Connecting to database...');
+		await connection.connect();
+		logger.log('✅ Connected to database');
+
+		const schemaPath = join(process.cwd(), 'src/lib/schema.sql');
+		const schemaSQL = readFileSync(schemaPath, 'utf-8');
+
+		logger.log('📦 Executing schema...');
+		const statements = schemaSQL
+			.split(';')
+			.map((s: string) => s.trim())
+			.filter((s: string) => s.length > 0 && !s.startsWith('--'));
+
+		for (const statement of statements) {
+			if (statement.length > 0) await connection.query(statement);
+		}
+
+		logger.log('✅ Database schema created successfully!');
+	} catch (error: any) {
+		logger.log(`❌ Migration failed: ${error.message}`);
+		throw error;
+	} finally {
+		await connection.end();
+		logger.log('🔌 Database connection closed');
+	}
+}
+
+async function runMigrations() {
+	const migrationsDir = join(process.cwd(), 'src/lib/migrations');
+	let files: string[] = [];
+	try {
+		if (existsSync(migrationsDir)) {
+			files = readdirSync(migrationsDir)
+				.filter((f) => f.endsWith('.sql'))
+				.sort();
+		}
+	} catch (err: any) {
+		logger.log(`ℹ️  Error reading migrations directory: ${err.message}`);
+	}
+
+	if (files.length === 0) {
+		logger.log('ℹ️  No migration files found to process');
+		return;
+	}
+
+	logger.log(`🔍 Found ${files.length} migration(s), checking status...`);
+
+	const connection = await mysql.createConnection({ ...getConnectionConfig(), multipleStatements: true });
+	try {
+		await connection.connect();
+		await connection.query(
+			`CREATE TABLE IF NOT EXISTS migrations (
+				id INT PRIMARY KEY AUTO_INCREMENT,
+				name VARCHAR(255) NOT NULL UNIQUE,
+				ran_at DATETIME NOT NULL
+			)`
+		);
+
+		for (const file of files) {
+			const [rows] = await connection.execute('SELECT id FROM migrations WHERE name = ? LIMIT 1', [file]);
+			if ((rows as any[]).length > 0) continue;
+
+			logger.log(`🔧 Running migration: ${file}`);
+			const migSql = readFileSync(join(migrationsDir, file), 'utf-8');
+			await connection.query(migSql);
+			await connection.execute('INSERT INTO migrations (name, ran_at) VALUES (?, NOW())', [file]);
+			logger.log(`✅ Migration complete: ${file}`);
+		}
+	} catch (err: any) {
+		logger.log(`❌ Migration runner failed: ${err.message}`);
+		throw err;
+	} finally {
+		try {
+			await connection.end();
+		} catch (_) {}
+	}
+}
+
+async function markAllMigrationsAsDone() {
+	const migrationsDir = join(process.cwd(), 'src/lib/migrations');
+	let files: string[];
+	try {
+		files = readdirSync(migrationsDir)
+			.filter((f) => f.endsWith('.sql'))
+			.sort();
+	} catch (_) {
+		return;
+	}
+
+	for (const file of files) {
+		await db.execute(sql`INSERT IGNORE INTO migrations (name, ran_at) VALUES (${file}, NOW())`);
+	}
+}
+
+async function setupDatabase() {
+	logger.log('🔍 Checking database...');
+	const hasBots = await tableExists('bots');
+	const hasPanel = await tableExists('panel');
+
+	if (!hasBots && !hasPanel) {
+		logger.log('🆕 Fresh database detected, running schema...');
+		await runMigration();
+		logger.log('✅ Schema applied');
+		await markAllMigrationsAsDone();
+		return true;
+	}
+
+	logger.log('✅ Existing database detected, checking migrations...');
+	await runMigrations();
+	return true;
+}
+
+let dbInitialized = false;
+let initializationPromise: Promise<void> | null = null;
+
+export async function initializeDatabase() {
+	if (dbInitialized) return;
+	if (initializationPromise) return initializationPromise;
+
+	initializationPromise = (async () => {
+		try {
+			await setupDatabase();
+			dbInitialized = true;
+		} catch (error: any) {
+			logger.log(`⚠️  Database initialization: ${error.message}`);
+		} finally {
+			initializationPromise = null;
+		}
+	})();
+
+	return initializationPromise;
+}
+
+async function retryOnConnectionError<T>(fn: () => Promise<T>, maxRetries = 3, delayMs = 2000): Promise<T> {
+	for (let attempt = 1; attempt <= maxRetries; attempt++) {
+		try {
+			return await fn();
+		} catch (error: any) {
+			const isConnectionError = error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT' || error.code === 'PROTOCOL_CONNECTION_LOST';
+			if (isConnectionError && attempt < maxRetries) {
+				console.log(`⚠️  Connection error (attempt ${attempt}/${maxRetries}). Retrying in ${delayMs / 1000}s...`);
+				await new Promise((resolve) => setTimeout(resolve, delayMs));
+				continue;
+			}
+			throw error;
+		}
+	}
+	throw new Error('Max retries exceeded');
+}
+
+// ---------------------------------------------------------------------------
+// Bots
+// ---------------------------------------------------------------------------
+
+export async function getAllBots() {
+	await initializeDatabase();
+	return retryOnConnectionError(() => db.select().from(schema.bots).orderBy(asc(schema.bots.created_at)));
+}
+
+export async function getBot(botId: number | string) {
+	await initializeDatabase();
+	return retryOnConnectionError(async () => {
+		const rows = await db
+			.select()
+			.from(schema.bots)
+			.where(eq(schema.bots.id, Number(botId)))
+			.limit(1);
+		if (!rows[0]) return null;
+		const bot = { ...rows[0] };
+		if (bot.uptime_started_at) {
+			bot.uptime_started_at = parseMySQLDateTime(bot.uptime_started_at as any) as any;
+		}
+		return bot;
+	});
+}
+
+export async function createBot(botData: any) {
+	await initializeDatabase();
+	const bots = await getAllBots();
+	const botNumber = bots.length + 1;
+	const now = toMySQLDateTime();
+
+	const result = await db.insert(schema.bots).values({
+		name: botData.name || `Bot#${botNumber}`,
+		token: botData.token,
+		application_id: botData.application_id || null,
+		bot_icon: botData.bot_icon || null,
+		port: botData.port !== undefined ? botData.port : 7777,
+		secret_key: botData.secret_key || null,
+		account_id: botData.account_id || null,
+		created_at: now as any,
+		updated_at: now as any
+	});
+
+	const rows = await db
+		.select()
+		.from(schema.bots)
+		.where(eq(schema.bots.id, (result[0] as any).insertId))
+		.limit(1);
+	return rows[0];
+}
+
+export async function updateBot(botId: number, botData: any) {
+	const updateData: any = { ...botData, updated_at: toMySQLDateTime() };
+
+	if (botData.status === 'running' && !botData.uptime_started_at) {
+		updateData.uptime_started_at = toMySQLDateTime();
+	} else if (botData.uptime_started_at) {
+		updateData.uptime_started_at = toMySQLDateTime(botData.uptime_started_at);
+	}
+
+	if (botData.status === 'stopped') {
+		updateData.uptime_started_at = null;
+		updateData.process_id = null;
+	}
+
+	await db.update(schema.bots).set(updateData).where(eq(schema.bots.id, botId));
+	return getBot(botId);
+}
+
+export async function deleteBot(botId: number) {
+	await db.delete(schema.bots).where(eq(schema.bots.id, botId));
+	return true;
+}
+
+// ---------------------------------------------------------------------------
+// Servers
+// ---------------------------------------------------------------------------
+
+export async function getServer(serverId: any) {
+	await initializeDatabase();
+	const rows = await db
+		.select()
+		.from(schema.servers)
+		.where(eq(schema.servers.id, Number(serverId)))
+		.limit(1);
+	return rows[0] || null;
+}
+
+export async function getServersForBot(botId: number) {
+	return db.select().from(schema.servers).where(eq(schema.servers.bot_id, botId)).orderBy(asc(schema.servers.name));
+}
+
+export async function getServerByDiscordId(botId: number, discordServerId: string) {
+	await initializeDatabase();
+	const rows = await db
+		.select()
+		.from(schema.servers)
+		.where(and(eq(schema.servers.bot_id, botId), eq(schema.servers.discord_server_id, discordServerId)))
+		.limit(1);
+	return rows[0] || null;
+}
+
+export async function getOfficialBotServerIdForServer(serverId: any) {
+	const server = await getServer(serverId);
+	if (!server) return null;
+	const officialServer = await getServerByDiscordId(server.bot_id, server.discord_server_id);
+	return officialServer?.id ?? null;
+}
+
+async function getServerIdsInSameGuild(serverId: any) {
+	const sub = db
+		.select({ discord_server_id: schema.servers.discord_server_id })
+		.from(schema.servers)
+		.where(eq(schema.servers.id, Number(serverId)))
+		.limit(1);
+	const rows = await db
+		.select({ id: schema.servers.id })
+		.from(schema.servers)
+		.where(eq(schema.servers.discord_server_id, sql`(${sub})`));
+	return rows.map((r) => r.id);
+}
+
+export async function getNotificationRolesForServer(serverId: any) {
+	await initializeDatabase();
+	return db
+		.select({ discord_channel_id: schema.serverChannels.discord_channel_id, discord_role_id: schema.serverRoles.discord_role_id })
+		.from(schema.serverChannels)
+		.innerJoin(schema.serverRoles, eq(schema.serverRoles.id, schema.serverChannels.notification_role_id!))
+		.where(and(eq(schema.serverChannels.server_id, Number(serverId)), isNotNull(schema.serverChannels.notification_role_id)));
+}
+
+export async function getNotificationRolesWithCategory(serverId: any) {
+	await initializeDatabase();
+	const rows = await db.execute(sql`
+		SELECT r.discord_role_id, COALESCE(cat.name, c.name) AS category_name,
+		       COALESCE(cat.position, 9999) AS category_position,
+		       COALESCE(c.position, 0) AS channel_position,
+		       c.name AS channel_name
+		FROM server_channels c
+		INNER JOIN server_roles r ON r.id = c.notification_role_id
+		LEFT JOIN server_categories cat ON cat.id = c.category_id
+		WHERE c.server_id = ${Number(serverId)} AND c.notification_role_id IS NOT NULL
+		ORDER BY category_position ASC, channel_position ASC, channel_name ASC
+	`);
+	return (rows[0] as unknown as any[]) || [];
+}
+
+export async function getNotificationRoleByChannel(serverId: any, discordChannelId: string) {
+	await initializeDatabase();
+	const rows = await db
+		.select({ discord_role_id: schema.serverRoles.discord_role_id })
+		.from(schema.serverChannels)
+		.innerJoin(schema.serverRoles, eq(schema.serverRoles.id, schema.serverChannels.notification_role_id!))
+		.where(and(eq(schema.serverChannels.server_id, Number(serverId)), eq(schema.serverChannels.discord_channel_id, discordChannelId)))
+		.limit(1);
+	return rows[0]?.discord_role_id || null;
+}
+
+export async function upsertNotificationRole(serverId: any, discordChannelId: string, discordRoleId: string) {
+	await initializeDatabase();
+	const serverIds = await getServerIdsInSameGuild(serverId);
+	for (const sid of serverIds) {
+		const roleRows = await db
+			.select({ id: schema.serverRoles.id })
+			.from(schema.serverRoles)
+			.where(and(eq(schema.serverRoles.server_id, sid), eq(schema.serverRoles.discord_role_id, discordRoleId)))
+			.limit(1);
+		const roleId = roleRows[0]?.id;
+		if (!roleId) continue;
+		await db
+			.update(schema.serverChannels)
+			.set({ notification_role_id: roleId })
+			.where(and(eq(schema.serverChannels.server_id, sid), eq(schema.serverChannels.discord_channel_id, discordChannelId)));
+	}
+}
+
+export async function deleteNotificationRole(serverId: any, discordChannelId: string) {
+	await initializeDatabase();
+	const serverIds = await getServerIdsInSameGuild(serverId);
+	if (serverIds.length === 0) return;
+	await db
+		.update(schema.serverChannels)
+		.set({ notification_role_id: null })
+		.where(and(inArray(schema.serverChannels.server_id, serverIds), eq(schema.serverChannels.discord_channel_id, discordChannelId)));
+}
+
+export async function getNotificationRoleDbIds(serverId: any) {
+	await initializeDatabase();
+	const rows = await db
+		.selectDistinct({ notification_role_id: schema.serverChannels.notification_role_id })
+		.from(schema.serverChannels)
+		.where(and(eq(schema.serverChannels.server_id, Number(serverId)), isNotNull(schema.serverChannels.notification_role_id)));
+	return new Set(rows.map((r) => r.notification_role_id).filter(Boolean));
+}
+
+export async function upsertServer(botId: number, guild: any) {
+	const iconUrl = guild.iconURL ? guild.iconURL({ dynamic: true }) : null;
+	const discordCreatedAt = guild.createdAt ? toMySQLDateTime(guild.createdAt) : null;
+	const vanityCode = guild.vanityURLCode ? String(guild.vanityURLCode) : null;
+	let inviteCode: string | null = null;
+	try {
+		const invites = await guild?.invites?.fetch?.();
+		const first = invites && typeof invites.values === 'function' ? invites.values().next()?.value : null;
+		if (first?.code) inviteCode = String(first.code);
+	} catch (_) {
+		// Missing permissions or invites not accessible
+	}
+
+	let boostLevel = 0;
+	if (guild.premiumTier) {
+		const tierString = String(guild.premiumTier);
+		if (tierString.includes('TIER_')) {
+			const match = tierString.match(/TIER_(\d+)/);
+			boostLevel = match ? parseInt(match[1], 10) : 0;
+		} else {
+			boostLevel = parseInt(tierString, 10) || 0;
+		}
+	}
+
+	const now = toMySQLDateTime();
+	await db.execute(sql`
+		INSERT INTO servers (bot_id, discord_server_id, name, total_members, total_channels, total_boosters, boost_level, server_icon, discord_created_at, vanity_url_code, invite_code, created_at, updated_at)
+		VALUES (${botId}, ${guild.id}, ${guild.name}, ${guild.memberCount || 0}, ${guild.channels?.cache?.size || 0}, ${guild.premiumSubscriptionCount || 0}, ${boostLevel}, ${iconUrl}, ${discordCreatedAt}, ${vanityCode}, ${inviteCode}, ${now}, ${now})
+		ON DUPLICATE KEY UPDATE
+			name = VALUES(name), total_members = VALUES(total_members), total_channels = VALUES(total_channels),
+			total_boosters = VALUES(total_boosters), boost_level = VALUES(boost_level),
+			server_icon = VALUES(server_icon),
+			discord_created_at = COALESCE(servers.discord_created_at, VALUES(discord_created_at)),
+			vanity_url_code = VALUES(vanity_url_code),
+			invite_code = COALESCE(VALUES(invite_code), servers.invite_code),
+			updated_at = VALUES(updated_at)
+	`);
+
+	const server = await getServerByDiscordId(botId, guild.id);
+	if (server) {
+		await ensureLeaderboardSettingsHaveSlug(server.id, guild.name || 'server');
+	}
+	return server;
+}
+
+function slugify(input: string) {
+	const s = String(input || '')
+		.toLowerCase()
+		.normalize('NFKD')
+		.replace(/[\u0300-\u036f]/g, '')
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '')
+		.replace(/-+/g, '-');
+	return s || 'server';
+}
+
+async function generateUniqueLeaderboardSlug(baseName: string) {
+	await initializeDatabase();
+	const base = slugify(baseName);
+	const rows = await db.execute(sql`
+		SELECT JSON_UNQUOTE(JSON_EXTRACT(settings, '$.slug')) AS slug
+		FROM server_settings
+		WHERE component_name = 'leaderboard'
+		  AND JSON_EXTRACT(settings, '$.slug') IS NOT NULL
+		  AND (
+				JSON_UNQUOTE(JSON_EXTRACT(settings, '$.slug')) = ${base}
+				OR JSON_UNQUOTE(JSON_EXTRACT(settings, '$.slug')) LIKE ${base + '-%'}
+		  )
+	`);
+	const existing = new Set<string>(((rows[0] as unknown as any[]) || []).map((r: any) => String(r.slug || '')).filter(Boolean));
+	if (!existing.has(base)) return base;
+	for (let i = 2; i < 10_000; i++) {
+		const candidate = `${base}-${i}`;
+		if (!existing.has(candidate)) return candidate;
+	}
+	return `${base}-${Date.now()}`;
+}
+
+async function ensureLeaderboardSettingsHaveSlug(serverId: number, serverName: string) {
+	const row = await getServerSettings(serverId, 'leaderboard');
+	const settings = (row as any)?.settings && typeof (row as any).settings === 'object' ? (row as any).settings : {};
+	if (settings?.slug) return true;
+	const slug = await generateUniqueLeaderboardSlug(serverName);
+	const next = { enabled: true, public: true, ...settings, slug };
+	await upsertServerSettings(serverId, 'leaderboard', next);
+	return true;
+}
+
+export async function getServerByLeaderboardSlug(slug: string) {
+	await initializeDatabase();
+	const s = (slug || '').trim();
+	if (!s) return null;
+	const rows = await db.execute(sql`
+		SELECT sv.*
+		FROM servers sv
+		INNER JOIN server_settings ss
+			ON ss.server_id = sv.id AND ss.component_name = 'leaderboard'
+		WHERE JSON_UNQUOTE(JSON_EXTRACT(ss.settings, '$.slug')) = ${s}
+		LIMIT 1
+	`);
+	return ((rows[0] as unknown as any[]) || [])[0] || null;
+}
+
+export async function listPublicLeaderboardSlugs() {
+	await initializeDatabase();
+	const rows = await db.execute(sql`
+		SELECT
+			sv.updated_at,
+			JSON_UNQUOTE(JSON_EXTRACT(ss.settings, '$.slug')) AS slug,
+			COALESCE(JSON_EXTRACT(ss.settings, '$.enabled'), TRUE) AS enabled,
+			COALESCE(JSON_EXTRACT(ss.settings, '$.public'), TRUE) AS is_public
+		FROM servers sv
+		INNER JOIN server_settings ss
+			ON ss.server_id = sv.id AND ss.component_name = 'leaderboard'
+		WHERE JSON_EXTRACT(ss.settings, '$.slug') IS NOT NULL
+	`);
+	const list = (rows[0] as unknown as any[]) || [];
+	return list
+		.filter((r: any) => {
+			const enabled = r.enabled === true || r.enabled === 1 || r.enabled === 'true';
+			const isPublic = r.is_public === true || r.is_public === 1 || r.is_public === 'true';
+			return enabled && isPublic && r.slug;
+		})
+		.map((r: any) => ({ slug: String(r.slug), updated_at: r.updated_at }));
+}
+
+export async function listEnabledLeaderboardServers() {
+	await initializeDatabase();
+	const rows = await db.execute(sql`
+		SELECT
+			sv.id,
+			sv.name,
+			sv.updated_at,
+			sv.server_icon,
+			COALESCE(JSON_EXTRACT(ss.settings, '$.enabled'), TRUE) AS enabled
+		FROM servers sv
+		LEFT JOIN server_settings ss
+			ON ss.server_id = sv.id AND ss.component_name = 'leaderboard'
+	`);
+	const list = (rows[0] as unknown as any[]) || [];
+	return list
+		.filter((r: any) => r && (r.enabled === true || r.enabled === 1 || r.enabled === 'true'))
+		.map((r: any) => ({ id: Number(r.id), name: r.name ?? null, updated_at: r.updated_at, server_icon: r.server_icon ?? null }));
+}
+
+// ---------------------------------------------------------------------------
+// Categories
+// ---------------------------------------------------------------------------
+
+export async function upsertCategory(serverId: any, categoryData: any) {
+	const now = toMySQLDateTime();
+	await db.execute(sql`
+		INSERT INTO server_categories (server_id, discord_category_id, name, position, created_at, updated_at)
+		VALUES (${Number(serverId)}, ${categoryData.id}, ${categoryData.name}, ${categoryData.position ?? null}, ${now}, ${now})
+		ON DUPLICATE KEY UPDATE name = VALUES(name), position = VALUES(position), updated_at = VALUES(updated_at)
+	`);
+	const rows = await db
+		.select()
+		.from(schema.serverCategories)
+		.where(and(eq(schema.serverCategories.server_id, Number(serverId)), eq(schema.serverCategories.discord_category_id, categoryData.id)))
+		.limit(1);
+	return rows[0];
+}
+
+export async function syncCategories(serverId: any, categories: any[]) {
+	if (!categories || categories.length === 0) return new Map();
+
+	const results = await Promise.all(
+		categories.map((cat) => upsertCategory(serverId, { id: cat.id, name: cat.name, position: cat.position }).catch(() => null))
+	);
+
+	const categoryMap = new Map();
+	results.forEach((cat) => {
+		if (cat) categoryMap.set(cat.discord_category_id, cat.id);
+	});
+
+	const discordIds = new Set(categories.map((c) => c.id));
+	const dbCategories = await db
+		.select({ id: schema.serverCategories.id, discord_category_id: schema.serverCategories.discord_category_id })
+		.from(schema.serverCategories)
+		.where(eq(schema.serverCategories.server_id, Number(serverId)));
+
+	const toDelete = dbCategories.filter((c) => !discordIds.has(c.discord_category_id)).map((c) => c.id);
+	if (toDelete.length > 0) {
+		await db.delete(schema.serverCategories).where(and(eq(schema.serverCategories.server_id, Number(serverId)), inArray(schema.serverCategories.id, toDelete)));
+	}
+
+	return categoryMap;
+}
+
+// ---------------------------------------------------------------------------
+// Channels
+// ---------------------------------------------------------------------------
+
+export async function upsertChannel(serverId: any, channelData: any, categoryMap: Map<any, any> | null = null) {
+	const categoryId = channelData.parent_id && categoryMap ? categoryMap.get(channelData.parent_id) || null : null;
+	const now = toMySQLDateTime();
+	await db.execute(sql`
+		INSERT INTO server_channels (server_id, discord_channel_id, name, type, category_id, position, created_at, updated_at)
+		VALUES (${Number(serverId)}, ${channelData.id}, ${channelData.name}, ${channelData.type}, ${categoryId}, ${channelData.position ?? null}, ${now}, ${now})
+		ON DUPLICATE KEY UPDATE name = VALUES(name), type = VALUES(type), category_id = VALUES(category_id), position = VALUES(position), updated_at = VALUES(updated_at)
+	`);
+	const rows = await db
+		.select()
+		.from(schema.serverChannels)
+		.where(and(eq(schema.serverChannels.server_id, Number(serverId)), eq(schema.serverChannels.discord_channel_id, channelData.id)))
+		.limit(1);
+	return rows[0];
+}
+
+export async function syncChannels(serverId: any, channels: any[], categoryMap: Map<any, any> | null = null) {
+	const validChannels = channels.filter((ch) => ch.type !== 4);
+
+	// Clean up any category-type rows that snuck into server_channels
+	const catRows = await db
+		.select({ id: schema.serverChannels.id })
+		.from(schema.serverChannels)
+		.where(and(eq(schema.serverChannels.server_id, Number(serverId)), eq(schema.serverChannels.type, '4')));
+	if (catRows.length > 0) {
+		await db.delete(schema.serverChannels).where(
+			inArray(
+				schema.serverChannels.id,
+				catRows.map((r) => r.id)
+			)
+		);
+	}
+
+	await Promise.all(
+		validChannels.map((ch) =>
+			upsertChannel(serverId, { id: ch.id, name: ch.name, type: ch.type, parent_id: ch.parent_id || null, position: ch.position }, categoryMap).catch(
+				() => null
+			)
+		)
+	);
+
+	const discordIds = new Set(validChannels.map((ch) => ch.id));
+	const dbChannels = await db
+		.select({ id: schema.serverChannels.id, discord_channel_id: schema.serverChannels.discord_channel_id })
+		.from(schema.serverChannels)
+		.where(eq(schema.serverChannels.server_id, Number(serverId)));
+
+	const toDelete = dbChannels.filter((ch) => !discordIds.has(ch.discord_channel_id)).map((ch) => ch.id);
+	if (toDelete.length > 0) {
+		await db.delete(schema.serverChannels).where(and(eq(schema.serverChannels.server_id, Number(serverId)), inArray(schema.serverChannels.id, toDelete)));
+	}
+
+	return true;
+}
+
+// ---------------------------------------------------------------------------
+// Roles
+// ---------------------------------------------------------------------------
+
+export async function getRoles(serverId: any) {
+	return db
+		.select()
+		.from(schema.serverRoles)
+		.where(eq(schema.serverRoles.server_id, Number(serverId)))
+		.orderBy(desc(schema.serverRoles.position));
+}
+
+export async function upsertRole(serverId: any, roleData: any) {
+	const now = toMySQLDateTime();
+	await db.execute(sql`
+		INSERT INTO server_roles (server_id, discord_role_id, name, position, color, permissions, created_at, updated_at)
+		VALUES (${Number(serverId)}, ${roleData.id}, ${roleData.name}, ${roleData.position}, ${roleData.hexColor}, ${roleData.permissions?.bitfield?.toString() || null}, ${now}, ${now})
+		ON DUPLICATE KEY UPDATE name = VALUES(name), position = VALUES(position), color = VALUES(color), permissions = VALUES(permissions), updated_at = VALUES(updated_at)
+	`);
+	const rows = await db
+		.select()
+		.from(schema.serverRoles)
+		.where(and(eq(schema.serverRoles.server_id, Number(serverId)), eq(schema.serverRoles.discord_role_id, roleData.id)))
+		.limit(1);
+	return rows[0];
+}
+
+export async function syncRoles(serverId: any, roles: any[]) {
+	if (!roles || roles.length === 0) return true;
+
+	await Promise.all(
+		roles.map((role) =>
+			upsertRole(serverId, { id: role.id, name: role.name, position: role.position, hexColor: role.hexColor, permissions: role.permissions }).catch(() => null)
+		)
+	);
+
+	const discordIds = new Set(roles.map((r) => r.id));
+	const dbRoles = await db
+		.select({ id: schema.serverRoles.id, discord_role_id: schema.serverRoles.discord_role_id })
+		.from(schema.serverRoles)
+		.where(eq(schema.serverRoles.server_id, Number(serverId)));
+
+	const toDelete = dbRoles.filter((r) => !discordIds.has(r.discord_role_id)).map((r) => r.id);
+	if (toDelete.length > 0) {
+		await db.delete(schema.serverRoles).where(and(eq(schema.serverRoles.server_id, Number(serverId)), inArray(schema.serverRoles.id, toDelete)));
+	}
+
+	return true;
+}
+
+// ---------------------------------------------------------------------------
+// Members
+// ---------------------------------------------------------------------------
+
+export async function upsertMember(serverId: any, memberData: any) {
+	const user = memberData.user || memberData;
+	const avatarUrl = user?.displayAvatarURL ? user.displayAvatarURL({ dynamic: true }) : null;
+	const now = toMySQLDateTime();
+
+	await db.execute(sql`
+		INSERT INTO server_members (server_id, discord_member_id, username, display_name, server_display_name, avatar,
+			profile_created_at, member_since, is_booster, booster_since, created_at, updated_at)
+		VALUES (
+			${Number(serverId)}, ${user?.id || memberData.id},
+			${user?.username || null}, ${user?.globalName || user?.displayName || null},
+			${memberData.nickname || null}, ${avatarUrl},
+			${user?.createdAt ? toMySQLDateTime(user.createdAt) : null},
+			${memberData.joinedAt ? toMySQLDateTime(memberData.joinedAt) : null},
+			${memberData.premiumSince != null ? 1 : 0},
+			${memberData.premiumSince ? toMySQLDateTime(memberData.premiumSince) : null},
+			${now}, ${now}
+		)
+		ON DUPLICATE KEY UPDATE
+			username = VALUES(username), display_name = VALUES(display_name),
+			server_display_name = VALUES(server_display_name), avatar = VALUES(avatar),
+			profile_created_at = VALUES(profile_created_at), member_since = VALUES(member_since),
+			is_booster = VALUES(is_booster), booster_since = VALUES(booster_since),
+			updated_at = VALUES(updated_at)
+	`);
+
+	const rows = await db
+		.select()
+		.from(schema.serverMembers)
+		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), eq(schema.serverMembers.discord_member_id, user?.id || memberData.id)))
+		.limit(1);
+	return rows[0];
+}
+
+export async function getMemberByDiscordId(serverId: any, discordMemberId: string) {
+	await initializeDatabase();
+	const rows = await db
+		.select()
+		.from(schema.serverMembers)
+		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), eq(schema.serverMembers.discord_member_id, discordMemberId)))
+		.limit(1);
+	if (!rows[0]) return null;
+	const member = { ...rows[0] };
+	if (member.profile_created_at) member.profile_created_at = parseMySQLDateTime(member.profile_created_at as any) as any;
+	if (member.member_since) member.member_since = parseMySQLDateTime(member.member_since as any) as any;
+	if (member.booster_since) member.booster_since = parseMySQLDateTime(member.booster_since as any) as any;
+	return member;
+}
+
+export async function searchServerMembers(serverId: any, queryText: string | null, limit = 15) {
+	await initializeDatabase();
+	const q = (queryText || '').trim();
+	const safeLimit = Math.max(1, Math.min(50, Number(limit) || 15));
+	const likeValue = `%${q.replace(/[%_]/g, '\\$&')}%`;
+
+	if (!q) {
+		return db
+			.select({
+				id: schema.serverMembers.id,
+				discord_member_id: schema.serverMembers.discord_member_id,
+				username: schema.serverMembers.username,
+				display_name: schema.serverMembers.display_name,
+				server_display_name: schema.serverMembers.server_display_name,
+				avatar: schema.serverMembers.avatar
+			})
+			.from(schema.serverMembers)
+			.where(eq(schema.serverMembers.server_id, Number(serverId)))
+			.orderBy(schema.serverMembers.updated_at)
+			.limit(safeLimit);
+	}
+
+	return db
+		.select({
+			id: schema.serverMembers.id,
+			discord_member_id: schema.serverMembers.discord_member_id,
+			username: schema.serverMembers.username,
+			display_name: schema.serverMembers.display_name,
+			server_display_name: schema.serverMembers.server_display_name,
+			avatar: schema.serverMembers.avatar
+		})
+		.from(schema.serverMembers)
+		.where(
+			and(
+				eq(schema.serverMembers.server_id, Number(serverId)),
+				or(
+					like(schema.serverMembers.discord_member_id, likeValue),
+					like(schema.serverMembers.username, likeValue),
+					like(schema.serverMembers.display_name, likeValue),
+					like(schema.serverMembers.server_display_name, likeValue)
+				)
+			)
+		)
+		.orderBy(schema.serverMembers.updated_at)
+		.limit(safeLimit);
+}
+
+export async function syncMemberRoles(memberId: any, discordRoleIds: string[], serverId: any) {
+	if (!discordRoleIds || discordRoleIds.length === 0) {
+		await db.execute(sql`
+			DELETE smr FROM server_member_roles smr
+			INNER JOIN server_members sm ON smr.member_id = sm.id
+			WHERE smr.member_id = ${Number(memberId)} AND sm.server_id = ${Number(serverId)}
+		`);
+		return true;
+	}
+
+	const roleMapRows = await db
+		.select({ id: schema.serverRoles.id, discord_role_id: schema.serverRoles.discord_role_id })
+		.from(schema.serverRoles)
+		.where(and(eq(schema.serverRoles.server_id, Number(serverId)), inArray(schema.serverRoles.discord_role_id, discordRoleIds)));
+
+	const roleMap = new Map(roleMapRows.map((r) => [r.discord_role_id, r.id]));
+	const roleIdsToAdd = discordRoleIds.map((id) => roleMap.get(id)).filter(Boolean) as number[];
+
+	const existingRows = await db
+		.select({ role_id: schema.serverMemberRoles.role_id })
+		.from(schema.serverMemberRoles)
+		.innerJoin(schema.serverMembers, eq(schema.serverMemberRoles.member_id, schema.serverMembers.id))
+		.where(and(eq(schema.serverMemberRoles.member_id, Number(memberId)), eq(schema.serverMembers.server_id, Number(serverId))));
+	const existingRoleIds = new Set(existingRows.map((r) => r.role_id));
+
+	const toAdd = roleIdsToAdd.filter((id) => !existingRoleIds.has(id));
+	const toRemove = Array.from(existingRoleIds).filter((id: any) => !roleIdsToAdd.includes(id)) as number[];
+
+	if (toAdd.length > 0) {
+		const now = toMySQLDateTime();
+		const notificationRoleIds = await getNotificationRoleDbIds(serverId);
+		const values = toAdd.map((roleId) => ({
+			member_id: Number(memberId),
+			role_id: roleId,
+			is_custom: false,
+			is_notification: notificationRoleIds.has(roleId),
+			created_at: now as any
+		}));
+		await db.insert(schema.serverMemberRoles).values(values);
+	}
+
+	if (toRemove.length > 0) {
+		await db.execute(sql`
+			DELETE smr FROM server_member_roles smr
+			INNER JOIN server_members sm ON smr.member_id = sm.id
+			WHERE smr.member_id = ${Number(memberId)} AND sm.server_id = ${Number(serverId)}
+			AND smr.role_id IN (${sql.join(
+				toRemove.map((id) => sql`${id}`),
+				sql`, `
+			)})
+		`);
+	}
+
+	return true;
+}
+
+export async function memberHasAnyRole(discordMemberId: string, discordRoleIds: string[], serverId: any) {
+	if (!discordRoleIds?.length || !discordMemberId || !serverId) return false;
+
+	const memberRows = await db
+		.select({ id: schema.serverMembers.id })
+		.from(schema.serverMembers)
+		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), eq(schema.serverMembers.discord_member_id, discordMemberId)))
+		.limit(1);
+	if (!memberRows[0]) return false;
+
+	const rows = await db
+		.select({ id: schema.serverRoles.id })
+		.from(schema.serverRoles)
+		.innerJoin(schema.serverMemberRoles, eq(schema.serverRoles.id, schema.serverMemberRoles.role_id))
+		.where(and(eq(schema.serverMemberRoles.member_id, memberRows[0].id), inArray(schema.serverRoles.discord_role_id, discordRoleIds)));
+
+	return rows.length > 0;
+}
+
+export async function syncMembers(serverId: any, members: any[]) {
+	if (!members || members.length === 0) {
+		const dbMembers = await db
+			.select({ id: schema.serverMembers.id })
+			.from(schema.serverMembers)
+			.where(eq(schema.serverMembers.server_id, Number(serverId)));
+		if (dbMembers.length > 0) {
+			await db.delete(schema.serverMembers).where(
+				inArray(
+					schema.serverMembers.id,
+					dbMembers.map((m) => m.id)
+				)
+			);
+		}
+		return true;
+	}
+
+	await Promise.all(
+		members.map(async (member) => {
+			const dbMember = await upsertMember(serverId, member).catch(() => null);
+			if (dbMember) {
+				const memberRoles = member.roles ? Array.from(member.roles.cache.keys()).filter((id: any) => id !== member.guild?.id) : [];
+				await syncMemberRoles(dbMember.id, memberRoles as string[], serverId);
+			}
+		})
+	);
+
+	const discordIds = new Set(members.map((m) => (m.user || m)?.id || m.id));
+	const dbMembers = await db
+		.select({ id: schema.serverMembers.id, discord_member_id: schema.serverMembers.discord_member_id })
+		.from(schema.serverMembers)
+		.where(eq(schema.serverMembers.server_id, Number(serverId)));
+
+	const toDelete = dbMembers.filter((m) => !discordIds.has(m.discord_member_id)).map((m) => m.id);
+	if (toDelete.length > 0) {
+		await db.delete(schema.serverMembers).where(and(eq(schema.serverMembers.server_id, Number(serverId)), inArray(schema.serverMembers.id, toDelete)));
+	}
+
+	return true;
+}
+
+// ---------------------------------------------------------------------------
+// Member Levels
+// ---------------------------------------------------------------------------
+
+export async function getMemberLevel(memberId: any) {
+	await initializeDatabase();
+	const rows = await db
+		.select()
+		.from(schema.serverMemberLevels)
+		.where(eq(schema.serverMemberLevels.member_id, Number(memberId)))
+		.limit(1);
+	if (!rows[0]) return null;
+	const data = { ...rows[0] };
+	if (data.voice_rewarded_at) data.voice_rewarded_at = parseMySQLDateTime(data.voice_rewarded_at as any) as any;
+	if (data.chat_rewarded_at) data.chat_rewarded_at = parseMySQLDateTime(data.chat_rewarded_at as any) as any;
+	return data;
+}
+
+export async function ensureMemberLevel(memberId: any) {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	await db
+		.insert(schema.serverMemberLevels)
+		.values({ member_id: Number(memberId), created_at: now as any, updated_at: now as any })
+		.onDuplicateKeyUpdate({ set: { member_id: Number(memberId) } });
+	return getMemberLevel(memberId);
+}
+
+export async function updateMemberLevelStats(memberId: any, updates: any = {}) {
+	await initializeDatabase();
+	if (!memberId) throw new Error('memberId is required');
+
+	const clauses: any[] = [];
+
+	if (typeof updates.chatIncrement === 'number' && updates.chatIncrement !== 0) clauses.push(sql`chat_total = chat_total + ${updates.chatIncrement}`);
+	if (typeof updates.voiceMinutesActiveIncrement === 'number' && updates.voiceMinutesActiveIncrement !== 0)
+		clauses.push(sql`voice_minutes_active = voice_minutes_active + ${updates.voiceMinutesActiveIncrement}`);
+	if (typeof updates.voiceMinutesAfkIncrement === 'number' && updates.voiceMinutesAfkIncrement !== 0)
+		clauses.push(sql`voice_minutes_afk = voice_minutes_afk + ${updates.voiceMinutesAfkIncrement}`);
+	if (updates.voiceMinutesActiveIncrement !== undefined || updates.voiceMinutesAfkIncrement !== undefined)
+		clauses.push(sql`voice_minutes_total = voice_minutes_active + voice_minutes_afk`);
+	if (typeof updates.experienceIncrement === 'number' && updates.experienceIncrement !== 0)
+		clauses.push(sql`experience = experience + ${updates.experienceIncrement}`);
+	if (updates.level !== undefined && updates.level !== null) clauses.push(sql`level = ${updates.level}`);
+	if (updates.rank !== undefined) clauses.push(sql`rank = ${updates.rank}`);
+	if (typeof updates.isInVoice === 'boolean') clauses.push(sql`is_in_voice = ${updates.isInVoice ? 1 : 0}`);
+	if (updates.chatRewardedAt) clauses.push(sql`chat_rewarded_at = ${toMySQLDateTime(updates.chatRewardedAt)}`);
+	if (updates.voiceRewardedAt !== undefined) {
+		if (updates.voiceRewardedAt === null) clauses.push(sql`voice_rewarded_at = NULL`);
+		else clauses.push(sql`voice_rewarded_at = ${toMySQLDateTime(updates.voiceRewardedAt)}`);
+	}
+
+	if (clauses.length === 0) return getMemberLevel(memberId);
+
+	clauses.push(sql`updated_at = ${toMySQLDateTime()}`);
+
+	await db.execute(sql`UPDATE server_member_levels SET ${sql.join(clauses, sql`, `)} WHERE member_id = ${Number(memberId)}`);
+	return getMemberLevel(memberId);
+}
+
+export async function setMemberLanguage(serverId: any, discordMemberId: string, language = 'en') {
+	await initializeDatabase();
+	await db
+		.update(schema.serverMembers)
+		.set({ language })
+		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), eq(schema.serverMembers.discord_member_id, discordMemberId)));
+	return true;
+}
+
+export async function getMemberLanguage(serverId: any, discordMemberId: string) {
+	await initializeDatabase();
+	if (!serverId || !discordMemberId) return 'en';
+	const rows = await db
+		.select({ language: schema.serverMembers.language })
+		.from(schema.serverMembers)
+		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), eq(schema.serverMembers.discord_member_id, discordMemberId)))
+		.limit(1);
+	return rows[0]?.language || 'en';
+}
+
+export async function setMemberLevelDMPreference(memberId: any, enabled = true) {
+	await initializeDatabase();
+	if (!memberId) throw new Error('memberId is required');
+	await db
+		.update(schema.serverMemberLevels)
+		.set({ dm_notifications_enabled: enabled, updated_at: toMySQLDateTime() as any })
+		.where(eq(schema.serverMemberLevels.member_id, Number(memberId)));
+	return getMemberLevel(memberId);
+}
+
+export async function recalculateServerMemberRanks(serverId: any) {
+	await initializeDatabase();
+	if (!serverId) throw new Error('serverId is required');
+	await db.execute(sql`SET @rank := 0`);
+	await db.execute(sql`
+		UPDATE server_member_levels sml
+		INNER JOIN (
+			SELECT ranked.id, (@rank := @rank + 1) AS computed_rank
+			FROM (
+				SELECT sml_inner.id
+				FROM server_member_levels sml_inner
+				INNER JOIN server_members sm_inner ON sml_inner.member_id = sm_inner.id
+				WHERE sm_inner.server_id = ${Number(serverId)}
+				ORDER BY sml_inner.experience DESC, sml_inner.level DESC, sml_inner.created_at ASC
+			) AS ranked
+		) AS ranks ON ranks.id = sml.id
+		SET sml.rank = ranks.computed_rank
+	`);
+	return true;
+}
+
+export async function getMemberLevelByDiscordId(serverId: any, discordMemberId: string) {
+	await initializeDatabase();
+	const rows = await db.execute(sql`
+		SELECT sml.*, sm.username, sm.display_name, sm.server_display_name, sm.discord_member_id
+		FROM server_member_levels sml
+		INNER JOIN server_members sm ON sml.member_id = sm.id
+		WHERE sm.server_id = ${Number(serverId)} AND sm.discord_member_id = ${discordMemberId}
+		LIMIT 1
+	`);
+	return (rows[0] as unknown as any[])[0] || null;
+}
+
+export async function getMembersWithInVoiceFlag(serverId: any) {
+	await initializeDatabase();
+	if (!serverId) throw new Error('serverId is required');
+	return db
+		.select({ member_id: schema.serverMemberLevels.member_id, discord_member_id: schema.serverMembers.discord_member_id })
+		.from(schema.serverMemberLevels)
+		.innerJoin(schema.serverMembers, eq(schema.serverMembers.id, schema.serverMemberLevels.member_id))
+		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), eq(schema.serverMemberLevels.is_in_voice, true)));
+}
+
+export async function getServerLeaderboard(serverId: any, limit = 3, sortType = 'xp', range: any = 'all') {
+	await initializeDatabase();
+	if (!serverId) throw new Error('serverId is required');
+	const safeLimit = Math.max(1, Math.min(50, limit));
+
+	const r = String(range || 'all');
+	const rangeDays = r === '1d' ? 1 : r === '7d' ? 7 : r === '30d' ? 30 : 0;
+	const since = rangeDays > 0 ? new Date(Date.now() - rangeDays * 24 * 60 * 60 * 1000) : null;
+
+	const orderMap: Record<string, any> = {
+		voice_total: [desc(schema.serverMemberLevels.voice_minutes_total), asc(schema.serverMemberLevels.updated_at), asc(schema.serverMemberLevels.created_at)],
+		voice_active: [desc(schema.serverMemberLevels.voice_minutes_active), asc(schema.serverMemberLevels.updated_at), asc(schema.serverMemberLevels.created_at)],
+		voice_afk: [desc(schema.serverMemberLevels.voice_minutes_afk), asc(schema.serverMemberLevels.updated_at), asc(schema.serverMemberLevels.created_at)],
+		chat: [desc(schema.serverMemberLevels.chat_total), asc(schema.serverMemberLevels.updated_at), asc(schema.serverMemberLevels.created_at)],
+		xp: [desc(schema.serverMemberLevels.experience), asc(schema.serverMemberLevels.updated_at), asc(schema.serverMemberLevels.created_at)]
+	};
+	const orderBy = orderMap[sortType] || orderMap.xp;
+
+	const whereRange = !since
+		? undefined
+		: sortType === 'chat'
+			? and(isNotNull(schema.serverMemberLevels.chat_rewarded_at), sql`${schema.serverMemberLevels.chat_rewarded_at} >= ${toMySQLDateTime(since)}`)
+			: sortType.startsWith('voice_')
+				? and(isNotNull(schema.serverMemberLevels.voice_rewarded_at), sql`${schema.serverMemberLevels.voice_rewarded_at} >= ${toMySQLDateTime(since)}`)
+				: sql`${schema.serverMemberLevels.updated_at} >= ${toMySQLDateTime(since)}`;
+
+	return db
+		.select({
+			discord_member_id: schema.serverMembers.discord_member_id,
+			username: schema.serverMembers.username,
+			display_name: schema.serverMembers.display_name,
+			server_display_name: schema.serverMembers.server_display_name,
+			avatar: schema.serverMembers.avatar,
+			experience: schema.serverMemberLevels.experience,
+			level: schema.serverMemberLevels.level,
+			chat_total: schema.serverMemberLevels.chat_total,
+			voice_minutes_total: schema.serverMemberLevels.voice_minutes_total,
+			voice_minutes_active: schema.serverMemberLevels.voice_minutes_active,
+			voice_minutes_afk: schema.serverMemberLevels.voice_minutes_afk,
+			rank: schema.serverMemberLevels.rank
+		})
+		.from(schema.serverMemberLevels)
+		.innerJoin(schema.serverMembers, eq(schema.serverMembers.id, schema.serverMemberLevels.member_id))
+		.where(whereRange ? and(eq(schema.serverMembers.server_id, Number(serverId)), whereRange as any) : eq(schema.serverMembers.server_id, Number(serverId)))
+		.orderBy(...orderBy)
+		.limit(safeLimit);
+}
+
+export async function getServerMembersList(serverId: any) {
+	await initializeDatabase();
+	if (serverId === undefined || serverId === null || serverId === '') return [];
+
+	const rows = await db.execute(sql`
+		SELECT
+			sm.id, sm.discord_member_id, sm.username, sm.display_name, sm.server_display_name,
+			sm.avatar, sm.profile_created_at, sm.member_since, sm.is_booster, sm.booster_since,
+			sml.level, sml.experience, sml.chat_total, sml.voice_minutes_active, sml.voice_minutes_afk, sml.rank,
+			sma.message as afk_message, sma.created_at as afk_since,
+			GROUP_CONCAT(
+				DISTINCT CONCAT(sr.discord_role_id, ':', sr.name, ':', sr.color, ':', sr.position)
+				ORDER BY sr.position DESC SEPARATOR ','
+			) as roles
+		FROM server_members sm
+		LEFT JOIN server_member_levels sml ON sm.id = sml.member_id
+		LEFT JOIN server_members_afk sma ON sm.id = sma.member_id
+		LEFT JOIN server_member_roles smr ON sm.id = smr.member_id
+		LEFT JOIN server_roles sr ON smr.role_id = sr.id
+		WHERE sm.server_id = ${Number(serverId)}
+		GROUP BY sm.id, sm.discord_member_id, sm.username, sm.display_name, sm.server_display_name,
+		         sm.avatar, sm.profile_created_at, sm.member_since, sm.is_booster, sm.booster_since,
+		         sml.level, sml.experience, sml.chat_total, sml.voice_minutes_active,
+		         sml.voice_minutes_afk, sml.rank, sma.message, sma.created_at
+		ORDER BY sml.experience DESC, sml.level DESC, sm.created_at ASC
+	`);
+
+	return (rows[0] as unknown as any[]).map((member: any) => ({
+		...member,
+		roles: member.roles
+			? member.roles
+					.split(',')
+					.map((role: string) => {
+						const [roleId, roleName, roleColor, position] = role.split(':');
+						return { id: roleId, name: roleName, color: roleColor || null, position: position ? parseInt(position, 10) : 0 };
+					})
+					.sort((a: any, b: any) => (b.position || 0) - (a.position || 0))
+			: [],
+		is_afk: !!member.afk_message
+	}));
+}
+
+export async function getServerOverview(serverId: any) {
+	await initializeDatabase();
+	if (serverId === undefined || serverId === null || serverId === '') return null;
+
+	const id = Number(serverId);
+	if (!Number.isFinite(id) || id <= 0) return null;
+
+	const serverRows = await db.select().from(schema.servers).where(eq(schema.servers.id, id)).limit(1);
+	const serverRow = serverRows[0];
+	if (!serverRow) return null;
+
+	const [
+		memberCounts,
+		leveledCount,
+		afkCount,
+		channelCounts,
+		categoriesCount,
+		rolesCount,
+		levelingStats,
+		customRolesCount,
+		memberSyncTimes,
+		channelSyncTimes,
+		categorySyncTimes,
+		roleSyncTimes,
+		levelSyncTimes,
+		settingsRows
+	] = await Promise.all([
+		db.execute(
+			sql`SELECT COUNT(*) AS total, SUM(CASE WHEN is_booster = 1 THEN 1 ELSE 0 END) AS unique_boosters FROM server_members WHERE server_id = ${Number(serverId)}`
+		),
+		db.execute(
+			sql`SELECT COUNT(*) AS leveled FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ${Number(serverId)}`
+		),
+		db.execute(
+			sql`SELECT COUNT(*) AS afk FROM server_members_afk sma INNER JOIN server_members sm ON sm.id = sma.member_id WHERE sm.server_id = ${Number(serverId)}`
+		),
+		db.execute(
+			sql`SELECT COUNT(*) AS total, SUM(CASE WHEN LOWER(COALESCE(type,'')) IN ('guild_text','text') THEN 1 ELSE 0 END) AS text_count, SUM(CASE WHEN LOWER(COALESCE(type,'')) IN ('guild_news','news','guild_announcement','announcement') THEN 1 ELSE 0 END) AS announcement_count, SUM(CASE WHEN LOWER(COALESCE(type,'')) IN ('guild_voice','voice') THEN 1 ELSE 0 END) AS voice_count, SUM(CASE WHEN LOWER(COALESCE(type,'')) IN ('guild_stage_voice','stage','stage_voice') THEN 1 ELSE 0 END) AS stage_count FROM server_channels WHERE server_id = ${Number(serverId)}`
+		),
+		db.execute(sql`SELECT COUNT(*) AS count FROM server_categories WHERE server_id = ${Number(serverId)}`),
+		db.execute(sql`SELECT COUNT(*) AS count FROM server_roles WHERE server_id = ${Number(serverId)}`),
+		db.execute(
+			sql`SELECT COALESCE(SUM(experience),0) AS total_experience, COALESCE(AVG(level),0) AS avg_level, COALESCE(MAX(level),0) AS max_level, COALESCE(SUM(chat_total),0) AS total_chat, COALESCE(SUM(voice_minutes_total),0) AS total_voice_minutes, COALESCE(SUM(voice_minutes_active),0) AS total_voice_active, COALESCE(SUM(voice_minutes_afk),0) AS total_voice_afk FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ${Number(serverId)}`
+		),
+		db.execute(
+			sql`SELECT COUNT(DISTINCT smr.member_id) AS members_with_custom_roles FROM server_member_roles smr INNER JOIN server_members sm ON sm.id = smr.member_id WHERE sm.server_id = ${Number(serverId)} AND smr.is_custom = 1`
+		),
+		db.execute(sql`SELECT MAX(updated_at) AS last_updated FROM server_members WHERE server_id = ${Number(serverId)}`),
+		db.execute(sql`SELECT MAX(updated_at) AS last_updated FROM server_channels WHERE server_id = ${Number(serverId)}`),
+		db.execute(sql`SELECT MAX(updated_at) AS last_updated FROM server_categories WHERE server_id = ${Number(serverId)}`),
+		db.execute(sql`SELECT MAX(updated_at) AS last_updated FROM server_roles WHERE server_id = ${Number(serverId)}`),
+		db.execute(
+			sql`SELECT MAX(sml.updated_at) AS last_updated FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ${Number(serverId)}`
+		),
+		db
+			.select({ component_name: schema.serverSettings.component_name, updated_at: schema.serverSettings.updated_at })
+			.from(schema.serverSettings)
+			.where(eq(schema.serverSettings.server_id, Number(serverId)))
+			.orderBy(asc(schema.serverSettings.component_name))
+	]);
+
+	const r = (raw: any, idx = 0) => (raw[0] as unknown as any[])[idx] || {};
+
+	const settingsLastUpdated = settingsRows.reduce((latest: any, row: any) => {
+		if (!row.updated_at) return latest;
+		if (!latest) return row.updated_at;
+		const rowDate = parseMySQLDateTime(row.updated_at);
+		const latestDate = parseMySQLDateTime(latest);
+		return rowDate && latestDate && rowDate > latestDate ? row.updated_at : latest;
+	}, null);
+
+	return {
+		...serverRow,
+		stats: {
+			members_total: r(memberCounts).total || 0,
+			members_boosters: serverRow.total_boosters || 0,
+			members_unique_boosters: r(memberCounts).unique_boosters || 0,
+			members_with_levels: r(leveledCount).leveled || 0,
+			members_afk: r(afkCount).afk || 0,
+			members_with_custom_roles: r(customRolesCount).members_with_custom_roles || 0,
+			channels_total: r(channelCounts).total || 0,
+			channels_text: r(channelCounts).text_count || 0,
+			channels_announcement: r(channelCounts).announcement_count || 0,
+			channels_voice: r(channelCounts).voice_count || 0,
+			channels_stage: r(channelCounts).stage_count || 0,
+			categories_total: r(categoriesCount).count || 0,
+			roles_total: r(rolesCount).count || 0,
+			leveling_total_experience: Math.round(r(levelingStats).total_experience || 0),
+			leveling_avg_level: Math.round((r(levelingStats).avg_level || 0) * 100) / 100,
+			leveling_max_level: r(levelingStats).max_level || 0,
+			leveling_total_chat: r(levelingStats).total_chat || 0,
+			leveling_total_voice_minutes: r(levelingStats).total_voice_minutes || 0,
+			leveling_total_voice_active: r(levelingStats).total_voice_active || 0,
+			leveling_total_voice_afk: r(levelingStats).total_voice_afk || 0
+		},
+		sync: {
+			members_last_updated: r(memberSyncTimes).last_updated || null,
+			channels_last_updated: r(channelSyncTimes).last_updated || null,
+			categories_last_updated: r(categorySyncTimes).last_updated || null,
+			roles_last_updated: r(roleSyncTimes).last_updated || null,
+			levels_last_updated: r(levelSyncTimes).last_updated || null,
+			settings_last_updated: settingsLastUpdated
+		},
+		settings: settingsRows.map((row) => ({ component_name: row.component_name, updated_at: row.updated_at }))
+	};
+}
+
+export async function updateCustomRoleFlags(serverId: any, roleStartId: string, roleEndId: string) {
+	if (!roleStartId || !roleEndId) {
+		await db.execute(
+			sql`UPDATE server_member_roles SET is_custom = FALSE WHERE role_id IN (SELECT id FROM server_roles WHERE server_id = ${Number(serverId)})`
+		);
+		return true;
+	}
+
+	const startRows = await db
+		.select({ position: schema.serverRoles.position })
+		.from(schema.serverRoles)
+		.where(and(eq(schema.serverRoles.server_id, Number(serverId)), eq(schema.serverRoles.discord_role_id, roleStartId)))
+		.limit(1);
+	const endRows = await db
+		.select({ position: schema.serverRoles.position })
+		.from(schema.serverRoles)
+		.where(and(eq(schema.serverRoles.server_id, Number(serverId)), eq(schema.serverRoles.discord_role_id, roleEndId)))
+		.limit(1);
+
+	if (!startRows[0] || !endRows[0]) {
+		await db.execute(
+			sql`UPDATE server_member_roles SET is_custom = FALSE WHERE role_id IN (SELECT id FROM server_roles WHERE server_id = ${Number(serverId)})`
+		);
+		return true;
+	}
+
+	const startPosition = startRows[0].position!;
+	const endPosition = endRows[0].position!;
+
+	await db.execute(sql`
+		UPDATE server_member_roles smr
+		INNER JOIN server_roles sr ON smr.role_id = sr.id
+		SET smr.is_custom = TRUE
+		WHERE sr.server_id = ${Number(serverId)} AND sr.position < ${startPosition} AND sr.position > ${endPosition} AND sr.discord_role_id != ${roleStartId}
+	`);
+	await db.execute(sql`
+		UPDATE server_member_roles smr
+		INNER JOIN server_roles sr ON smr.role_id = sr.id
+		SET smr.is_custom = FALSE
+		WHERE sr.server_id = ${Number(serverId)} AND (sr.position >= ${startPosition} OR sr.position <= ${endPosition} OR sr.discord_role_id = ${roleStartId})
+	`);
+
+	return true;
+}
+
+export async function memberHasCustomSupporterRole(discordMemberId: string, serverId: any) {
+	if (!discordMemberId || !serverId) return { has: false, role: null };
+
+	const memberRows = await db
+		.select({ id: schema.serverMembers.id })
+		.from(schema.serverMembers)
+		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), eq(schema.serverMembers.discord_member_id, discordMemberId)))
+		.limit(1);
+	if (!memberRows[0]) return { has: false, role: null };
+
+	const roleRows = await db
+		.select({
+			id: schema.serverRoles.id,
+			discord_role_id: schema.serverRoles.discord_role_id,
+			name: schema.serverRoles.name,
+			position: schema.serverRoles.position,
+			color: schema.serverRoles.color
+		})
+		.from(schema.serverRoles)
+		.innerJoin(schema.serverMemberRoles, eq(schema.serverRoles.id, schema.serverMemberRoles.role_id))
+		.where(and(eq(schema.serverMemberRoles.member_id, memberRows[0].id), eq(schema.serverMemberRoles.is_custom, true)))
+		.orderBy(desc(schema.serverRoles.position))
+		.limit(1);
+
+	if (roleRows[0]) return { has: true, role: roleRows[0] };
+	return { has: false, role: null };
+}
+
+// ---------------------------------------------------------------------------
+// Panel & Accounts
+// ---------------------------------------------------------------------------
+
+async function getPanel() {
+	const rows = await db.select().from(schema.panel).limit(1);
+	return rows[0] || null;
+}
+
+async function createPanel() {
+	const existing = await getPanel();
+	if (existing) throw new Error('Panel already exists');
+	const now = toMySQLDateTime();
+	const result = await db.insert(schema.panel).values({ created_at: now as any, updated_at: now as any });
+	const rows = await db
+		.select()
+		.from(schema.panel)
+		.where(eq(schema.panel.id, (result[0] as any).insertId))
+		.limit(1);
+	return rows[0];
+}
+
+async function getAccountById(accountId: any) {
+	const rows = await db
+		.select()
+		.from(schema.accounts)
+		.where(eq(schema.accounts.id, Number(accountId)))
+		.limit(1);
+	return rows[0] || null;
+}
+
+async function getAccountByEmail(email: string) {
+	const rows = await db.select().from(schema.accounts).where(eq(schema.accounts.email, email)).limit(1);
+	return rows[0] || null;
+}
+
+async function getAccountByUsername(username: string) {
+	const rows = await db.select().from(schema.accounts).where(eq(schema.accounts.username, username)).limit(1);
+	return rows[0] || null;
+}
+
+async function createAccount(accountData: any) {
+	const now = toMySQLDateTime();
+	const result = await db.insert(schema.accounts).values({
+		username: accountData.username,
+		email: accountData.email,
+		password_hash: accountData.password_hash,
+		account_type: accountData.account_type || 'superadmin',
+		email_verified: accountData.email_verified || false,
+		otp_code: accountData.otp_code || null,
+		otp_expires_at: accountData.otp_expires_at ? (toMySQLDateTime(accountData.otp_expires_at) as any) : null,
+		panel_id: accountData.panel_id || null,
+		ip_address: accountData.ip_address || null,
+		created_at: now as any,
+		updated_at: now as any
+	});
+	return getAccountById((result[0] as any).insertId);
+}
+
+async function updateAccount(accountId: any, updateData: any) {
+	const data: any = { ...updateData, updated_at: toMySQLDateTime() };
+	if (data.otp_expires_at) data.otp_expires_at = toMySQLDateTime(data.otp_expires_at);
+	await db
+		.update(schema.accounts)
+		.set(data)
+		.where(eq(schema.accounts.id, Number(accountId)));
+	return getAccountById(accountId);
+}
+
+async function deleteAccount(accountId: any) {
+	await db.delete(schema.accounts).where(eq(schema.accounts.id, Number(accountId)));
+}
+
+async function getAllAccounts() {
+	return db
+		.select({
+			id: schema.accounts.id,
+			username: schema.accounts.username,
+			email: schema.accounts.email,
+			account_type: schema.accounts.account_type,
+			email_verified: schema.accounts.email_verified,
+			created_at: schema.accounts.created_at,
+			updated_at: schema.accounts.updated_at
+		})
+		.from(schema.accounts)
+		.orderBy(asc(schema.accounts.created_at));
+}
+
+async function createInviteLink(linkData: any) {
+	const now = toMySQLDateTime();
+	const result = await db.insert(schema.accountInvites).values({
+		token: linkData.token,
+		account_type: linkData.account_type,
+		server_id: linkData.server_id || null,
+		created_by: linkData.created_by,
+		expires_at: linkData.expires_at ? (toMySQLDateTime(linkData.expires_at) as any) : null,
+		created_at: now as any
+	});
+	const rows = await db
+		.select()
+		.from(schema.accountInvites)
+		.where(eq(schema.accountInvites.id, (result[0] as any).insertId))
+		.limit(1);
+	return rows[0];
+}
+
+async function getInviteLinkByToken(token: string) {
+	const rows = await db.select().from(schema.accountInvites).where(eq(schema.accountInvites.token, token)).limit(1);
+	return rows[0] || null;
+}
+
+async function updateInviteLink(linkId: any, updateData: any) {
+	const data: any = { ...updateData };
+	if (data.used_at) data.used_at = toMySQLDateTime(data.used_at);
+	await db
+		.update(schema.accountInvites)
+		.set(data)
+		.where(eq(schema.accountInvites.id, Number(linkId)));
+	const rows = await db
+		.select()
+		.from(schema.accountInvites)
+		.where(eq(schema.accountInvites.id, Number(linkId)))
+		.limit(1);
+	return rows[0];
+}
+
+async function getAllInviteLinks() {
+	return db
+		.select({
+			invite: schema.accountInvites,
+			server_name: schema.servers.name,
+			creator_username: schema.accounts.username,
+			creator_email: schema.accounts.email
+		})
+		.from(schema.accountInvites)
+		.leftJoin(schema.servers, eq(schema.accountInvites.server_id, schema.servers.id))
+		.leftJoin(schema.accounts, eq(schema.accountInvites.created_by, schema.accounts.id))
+		.orderBy(desc(schema.accountInvites.created_at))
+		.then((rows) => rows.map((r) => ({ ...r.invite, server_name: r.server_name, creator_username: r.creator_username, creator_email: r.creator_email })));
+}
+
+async function getServerInviteLinks(serverId: number) {
+	return db
+		.select({
+			invite: schema.accountInvites,
+			creator_username: schema.accounts.username
+		})
+		.from(schema.accountInvites)
+		.leftJoin(schema.accounts, eq(schema.accountInvites.created_by, schema.accounts.id))
+		.where(eq(schema.accountInvites.server_id, serverId))
+		.orderBy(desc(schema.accountInvites.created_at))
+		.then((rows) => rows.map((r) => ({ ...r.invite, creator_username: r.creator_username })));
+}
+
+async function getAccountServerAccess(accountId: number) {
+	return db
+		.select({ server_id: schema.accountServerAccess.server_id, role: schema.accountServerAccess.role })
+		.from(schema.accountServerAccess)
+		.where(eq(schema.accountServerAccess.account_id, accountId));
+}
+
+async function createAccountServerAccess(data: { account_id: number; server_id: number; role: 'owner' | 'moderator'; invited_by?: number | null }) {
+	const now = toMySQLDateTime();
+	await db
+		.insert(schema.accountServerAccess)
+		.values({ account_id: data.account_id, server_id: data.server_id, role: data.role, invited_by: data.invited_by || null, created_at: now as any })
+		.onDuplicateKeyUpdate({ set: { role: data.role } });
+}
+
+async function deleteAccountServerAccess(accountId: number, serverId: number) {
+	await db
+		.delete(schema.accountServerAccess)
+		.where(and(eq(schema.accountServerAccess.account_id, accountId), eq(schema.accountServerAccess.server_id, serverId)));
+}
+
+// ---------------------------------------------------------------------------
+// Server Accounts
+// ---------------------------------------------------------------------------
+
+async function getServerAccountById(id: number) {
+	const rows = await db.select().from(schema.serverAccounts).where(eq(schema.serverAccounts.id, id)).limit(1);
+	return rows[0] || null;
+}
+
+async function getServerAccountByEmail(email: string) {
+	const rows = await db.select().from(schema.serverAccounts).where(eq(schema.serverAccounts.email, email)).limit(1);
+	return rows[0] || null;
+}
+
+async function getServerAccountByUsername(username: string) {
+	const rows = await db.select().from(schema.serverAccounts).where(eq(schema.serverAccounts.username, username)).limit(1);
+	return rows[0] || null;
+}
+
+async function getServerAccountByEmailServer(email: string, serverId: number) {
+	const rows = await db
+		.select()
+		.from(schema.serverAccounts)
+		.where(and(eq(schema.serverAccounts.email, email), eq(schema.serverAccounts.server_id, serverId)))
+		.limit(1);
+	return rows[0] || null;
+}
+
+async function createServerAccount(data: {
+	server_id: number;
+	username: string;
+	email: string;
+	password_hash: string;
+	account_type: 'owner' | 'moderator';
+	email_verified?: boolean;
+	otp_code?: string | null;
+	otp_expires_at?: string | null;
+	ip_address?: string | null;
+	is_frozen?: boolean;
+	invited_by?: number | null;
+}) {
+	const now = toMySQLDateTime();
+	const result = await db.insert(schema.serverAccounts).values({
+		server_id: data.server_id,
+		username: data.username,
+		email: data.email,
+		password_hash: data.password_hash,
+		account_type: data.account_type,
+		email_verified: data.email_verified ?? false,
+		otp_code: data.otp_code ?? null,
+		otp_expires_at: data.otp_expires_at ?? (null as any),
+		ip_address: data.ip_address ?? null,
+		is_frozen: data.is_frozen ?? false,
+		invited_by: data.invited_by ?? null,
+		created_at: now as any,
+		updated_at: now as any
+	});
+	return getServerAccountById((result[0] as any).insertId);
+}
+
+async function updateServerAccount(
+	id: number,
+	data: Partial<{
+		username: string;
+		email: string;
+		password_hash: string;
+		account_type: 'owner' | 'moderator';
+		email_verified: boolean;
+		otp_code: string | null;
+		otp_expires_at: string | null;
+		ip_address: string | null;
+		is_frozen: boolean;
+		invited_by: number | null;
+	}>
+) {
+	await db
+		.update(schema.serverAccounts)
+		.set({ ...(data as any), updated_at: toMySQLDateTime() as any })
+		.where(eq(schema.serverAccounts.id, id));
+}
+
+async function deleteServerAccount(id: number) {
+	await db.delete(schema.serverAccounts).where(eq(schema.serverAccounts.id, id));
+}
+
+async function getServerAccountsByServer(serverId: number) {
+	return db
+		.select()
+		.from(schema.serverAccounts)
+		.where(eq(schema.serverAccounts.server_id, serverId))
+		.orderBy(asc(schema.serverAccounts.account_type), asc(schema.serverAccounts.created_at));
+}
+
+async function createServerAccountInvite(data: {
+	token: string;
+	server_id: number;
+	account_type: 'owner' | 'moderator';
+	created_by: number;
+	expires_at: string | Date;
+}) {
+	const now = toMySQLDateTime();
+	await db.insert(schema.serverAccountInvites).values({
+		token: data.token,
+		server_id: data.server_id,
+		account_type: data.account_type,
+		created_by: data.created_by,
+		expires_at: data.expires_at as any,
+		created_at: now as any
+	});
+}
+
+async function getServerAccountInviteByToken(token: string) {
+	const rows = await db.select().from(schema.serverAccountInvites).where(eq(schema.serverAccountInvites.token, token)).limit(1);
+	return rows[0] || null;
+}
+
+async function updateServerAccountInvite(id: number, data: Partial<{ used_by: number; used_at: string }>) {
+	await db
+		.update(schema.serverAccountInvites)
+		.set(data as any)
+		.where(eq(schema.serverAccountInvites.id, id));
+}
+
+async function getServerAccountInvitesByServer(serverId: number) {
+	return db
+		.select({
+			invite: schema.serverAccountInvites,
+			creator_username: schema.accounts.username,
+			used_by_username: schema.serverAccounts.username
+		})
+		.from(schema.serverAccountInvites)
+		.leftJoin(schema.accounts, eq(schema.serverAccountInvites.created_by, schema.accounts.id))
+		.leftJoin(schema.serverAccounts, eq(schema.serverAccountInvites.used_by, schema.serverAccounts.id))
+		.where(eq(schema.serverAccountInvites.server_id, serverId))
+		.orderBy(desc(schema.serverAccountInvites.created_at))
+		.then((rows) => rows.map((r) => ({ ...r.invite, creator_username: r.creator_username, used_by_username: r.used_by_username })));
+}
+
+// ---------------------------------------------------------------------------
+// Server Bots (selfbots)
+// ---------------------------------------------------------------------------
+
+async function getAllServerBots() {
+	return db.select().from(schema.serverBots);
+}
+
+async function getServerBots(serverId: number) {
+	return db.select().from(schema.serverBots).where(eq(schema.serverBots.server_id, serverId));
+}
+
+async function addServerBot(data: { server_id: number; name: string; token: string; is_testing: boolean }) {
+	const now = toMySQLDateTime();
+	const result = await db.insert(schema.serverBots).values({
+		server_id: data.server_id,
+		name: data.name,
+		token: data.token,
+		is_testing: data.is_testing,
+		status: 'stopped',
+		created_at: now as any,
+		updated_at: now as any
+	});
+	return (result[0] as any).insertId;
+}
+
+async function updateServerBot(
+	id: number,
+	data: Partial<{ name: string; token: string; status: string; process_id: number | null; is_testing: boolean; uptime_started_at: string | null }>
+) {
+	await db
+		.update(schema.serverBots)
+		.set({ ...data, updated_at: toMySQLDateTime() as any } as any)
+		.where(eq(schema.serverBots.id, id));
+}
+
+async function removeServerBot(id: number) {
+	await db.delete(schema.serverBots).where(eq(schema.serverBots.id, id));
+}
+
+async function getServerBotById(id: number) {
+	const rows = await db.select().from(schema.serverBots).where(eq(schema.serverBots.id, id)).limit(1);
+	return rows[0] || null;
+}
+
+async function getOfficialBotForSelfbot(selfbotId: number) {
+	const rows = await db
+		.select({ bot: schema.bots })
+		.from(schema.serverBots)
+		.innerJoin(schema.servers, eq(schema.servers.id, schema.serverBots.server_id))
+		.innerJoin(schema.bots, eq(schema.bots.id, schema.servers.bot_id))
+		.where(eq(schema.serverBots.id, selfbotId))
+		.limit(1);
+	return rows[0]?.bot || null;
+}
+
+async function getSelfbotsForOfficialBot(officialBotId: number) {
+	return db
+		.select({ selfbot: schema.serverBots })
+		.from(schema.serverBots)
+		.innerJoin(schema.servers, eq(schema.servers.id, schema.serverBots.server_id))
+		.where(eq(schema.servers.bot_id, officialBotId))
+		.then((rows) => rows.map((r) => r.selfbot));
+}
+
+// ---------------------------------------------------------------------------
+// Server Settings
+// ---------------------------------------------------------------------------
+
+async function getServerSettings(serverId: any, componentName: string | null = null) {
+	await initializeDatabase();
+	if (componentName) {
+		const rows = await db
+			.select()
+			.from(schema.serverSettings)
+			.where(and(eq(schema.serverSettings.server_id, Number(serverId)), eq(schema.serverSettings.component_name, componentName)))
+			.limit(1);
+		if (!rows[0]) return null;
+		const row = { ...rows[0] };
+		if (row.settings && typeof row.settings === 'string') {
+			try {
+				row.settings = JSON.parse(row.settings);
+			} catch {
+				row.settings = {};
+			}
+		}
+		return row;
+	}
+
+	const rows = await db
+		.select()
+		.from(schema.serverSettings)
+		.where(eq(schema.serverSettings.server_id, Number(serverId)));
+	return rows.map((row) => {
+		const r = { ...row };
+		if (r.settings && typeof r.settings === 'string') {
+			try {
+				r.settings = JSON.parse(r.settings as any);
+			} catch {
+				r.settings = {};
+			}
+		}
+		return r;
+	});
+}
+
+async function upsertServerSettings(serverId: any, componentName: string, settings: any) {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	await db
+		.insert(schema.serverSettings)
+		.values({ server_id: Number(serverId), component_name: componentName, settings, created_at: now as any, updated_at: now as any })
+		.onDuplicateKeyUpdate({ set: { settings, updated_at: now as any } });
+	const rows = await db
+		.select()
+		.from(schema.serverSettings)
+		.where(and(eq(schema.serverSettings.server_id, Number(serverId)), eq(schema.serverSettings.component_name, componentName)))
+		.limit(1);
+	return rows[0];
+}
+
+async function getChannelsForServer(serverId: any) {
+	await initializeDatabase();
+	return db
+		.select()
+		.from(schema.serverChannels)
+		.where(eq(schema.serverChannels.server_id, Number(serverId)))
+		.orderBy(asc(schema.serverChannels.position), asc(schema.serverChannels.name));
+}
+
+async function getCategoriesForServer(serverId: any) {
+	await initializeDatabase();
+	return db
+		.select()
+		.from(schema.serverCategories)
+		.where(eq(schema.serverCategories.server_id, Number(serverId)))
+		.orderBy(asc(schema.serverCategories.position));
+}
+
+// ---------------------------------------------------------------------------
+// AFK
+// ---------------------------------------------------------------------------
+
+export async function getAFKStatus(serverId: any, discordMemberId: string) {
+	await initializeDatabase();
+	const rows = await db
+		.select({
+			message: schema.serverMembersAfk.message,
+			created_at: schema.serverMembersAfk.created_at,
+			server_display_name: schema.serverMembers.server_display_name
+		})
+		.from(schema.serverMembersAfk)
+		.innerJoin(schema.serverMembers, eq(schema.serverMembersAfk.member_id, schema.serverMembers.id))
+		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), eq(schema.serverMembers.discord_member_id, discordMemberId)))
+		.limit(1);
+	const afkData = rows[0];
+	if (!afkData) return null;
+
+	let timestamp: number;
+	if (afkData.created_at instanceof Date) {
+		timestamp = (afkData.created_at as Date).getTime();
+	} else {
+		const parsed = parseMySQLDateTime(afkData.created_at as any);
+		timestamp = parsed ? parsed.getTime() : Date.now();
+	}
+	return { message: afkData.message || 'Away', timestamp, serverDisplayName: afkData.server_display_name };
+}
+
+export async function setAFKStatus(serverId: any, discordMemberId: string, afkData: any) {
+	await initializeDatabase();
+	const memberRows = await db
+		.select({ id: schema.serverMembers.id })
+		.from(schema.serverMembers)
+		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), eq(schema.serverMembers.discord_member_id, discordMemberId)))
+		.limit(1);
+	if (!memberRows[0]) return null;
+
+	const now = toMySQLDateTime();
+	await db
+		.insert(schema.serverMembersAfk)
+		.values({ member_id: memberRows[0].id, message: afkData.message || 'Away', created_at: now as any, updated_at: now as any })
+		.onDuplicateKeyUpdate({ set: { message: afkData.message || 'Away', updated_at: now as any } });
+	return getAFKStatus(serverId, discordMemberId);
+}
+
+export async function removeAFKStatus(serverId: any, discordMemberId: string) {
+	await initializeDatabase();
+	await db.execute(sql`
+		DELETE sma FROM server_members_afk sma
+		INNER JOIN server_members sm ON sma.member_id = sm.id
+		WHERE sm.server_id = ${Number(serverId)} AND sm.discord_member_id = ${discordMemberId}
+	`);
+	return true;
+}
+
+// ---------------------------------------------------------------------------
+// Misc
+// ---------------------------------------------------------------------------
+
+export async function serversNeedSync(botId: number) {
+	await initializeDatabase();
+	const servers = await getServersForBot(botId);
+	if (!servers || servers.length === 0) return true;
+
+	for (const server of servers) {
+		const [cats, chans, roles, members] = await Promise.all([
+			db.select({ count: count() }).from(schema.serverCategories).where(eq(schema.serverCategories.server_id, server.id)),
+			db.select({ count: count() }).from(schema.serverChannels).where(eq(schema.serverChannels.server_id, server.id)),
+			db.select({ count: count() }).from(schema.serverRoles).where(eq(schema.serverRoles.server_id, server.id)),
+			db.select({ count: count() }).from(schema.serverMembers).where(eq(schema.serverMembers.server_id, server.id))
+		]);
+		if (!cats[0].count || !chans[0].count || !roles[0].count || !members[0].count) return true;
+	}
+	return false;
+}
+
+// ---------------------------------------------------------------------------
+// Giveaways
+// ---------------------------------------------------------------------------
+
+export async function createGiveaway(giveawayData: any) {
+	await initializeDatabase();
+	const endsAt = toMySQLDateTime(addMinutesToNow(giveawayData.duration_minutes));
+	const createdAt = toMySQLDateTime();
+
+	const result = await db.insert(schema.serverGiveaways).values({
+		member_id: giveawayData.member_id,
+		title: giveawayData.title,
+		prize: giveawayData.prize,
+		duration_minutes: giveawayData.duration_minutes,
+		allowed_roles: giveawayData.allowed_roles ? JSON.stringify(giveawayData.allowed_roles) : null,
+		multiple_entries_allowed: giveawayData.multiple_entries_allowed || false,
+		winner_count: giveawayData.winner_count || 1,
+		status: 'active',
+		ends_at: endsAt as any,
+		created_at: createdAt as any,
+		updated_at: createdAt as any
+	});
+	return getGiveawayById((result[0] as any).insertId);
+}
+
+export async function updateGiveawayMessageId(giveawayId: any, discordMessageId: string) {
+	await initializeDatabase();
+	await db
+		.update(schema.serverGiveaways)
+		.set({ discord_message_id: discordMessageId })
+		.where(eq(schema.serverGiveaways.id, Number(giveawayId)));
+}
+
+export async function getEndedGiveaways() {
+	await initializeDatabase();
+	const rows = await db
+		.select({ giveaway: schema.serverGiveaways, server_id: schema.serverMembers.server_id })
+		.from(schema.serverGiveaways)
+		.innerJoin(schema.serverMembers, eq(schema.serverGiveaways.member_id, schema.serverMembers.id))
+		.where(and(eq(schema.serverGiveaways.status, 'active'), eq(schema.serverGiveaways.winners_announced, false)));
+	const now = getNowInTimezone().toJSDate();
+	return rows
+		.filter((r) => {
+			const endsAt = parseMySQLDateTime(r.giveaway.ends_at as any);
+			return endsAt && endsAt <= now;
+		})
+		.map((r) => {
+			const g = { ...r.giveaway, server_id: r.server_id } as any;
+			if (g.allowed_roles) {
+				try {
+					g.allowed_roles = typeof g.allowed_roles === 'string' ? JSON.parse(g.allowed_roles) : g.allowed_roles;
+				} catch {
+					g.allowed_roles = [];
+				}
+			}
+			return g;
+		});
+}
+
+export async function getGiveawayById(giveawayId: any) {
+	await initializeDatabase();
+	const rows = await db
+		.select({ giveaway: schema.serverGiveaways, server_id: schema.serverMembers.server_id })
+		.from(schema.serverGiveaways)
+		.innerJoin(schema.serverMembers, eq(schema.serverGiveaways.member_id, schema.serverMembers.id))
+		.where(eq(schema.serverGiveaways.id, Number(giveawayId)))
+		.limit(1);
+	if (!rows[0]) return null;
+	const g = { ...rows[0].giveaway, server_id: rows[0].server_id } as any;
+	if (g.allowed_roles) {
+		try {
+			g.allowed_roles = typeof g.allowed_roles === 'string' ? JSON.parse(g.allowed_roles) : g.allowed_roles;
+		} catch {
+			g.allowed_roles = [];
+		}
+	}
+	if (g.ends_at) g.ends_at = parseMySQLDateTime(g.ends_at);
+	return g;
+}
+
+export async function getActiveGiveawayByMember(serverId: any, memberId: any) {
+	await initializeDatabase();
+	const rows = await db
+		.select({ giveaway: schema.serverGiveaways })
+		.from(schema.serverGiveaways)
+		.innerJoin(schema.serverMembers, eq(schema.serverGiveaways.member_id, schema.serverMembers.id))
+		.where(
+			and(
+				eq(schema.serverMembers.server_id, Number(serverId)),
+				eq(schema.serverGiveaways.member_id, Number(memberId)),
+				eq(schema.serverGiveaways.status, 'active')
+			)
+		)
+		.limit(1);
+	if (!rows[0]) return null;
+	const g = { ...rows[0].giveaway } as any;
+	if (g.allowed_roles) {
+		try {
+			g.allowed_roles = typeof g.allowed_roles === 'string' ? JSON.parse(g.allowed_roles) : g.allowed_roles;
+		} catch {
+			g.allowed_roles = [];
+		}
+	}
+	if (g.ends_at) g.ends_at = parseMySQLDateTime(g.ends_at);
+	return g;
+}
+
+export async function addGiveawayEntry(giveawayId: any, memberId: any, increment = true) {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	if (increment) {
+		await db.execute(sql`
+			INSERT INTO server_giveaway_entries (giveaway_id, member_id, entry_count, created_at, updated_at)
+			VALUES (${Number(giveawayId)}, ${Number(memberId)}, 1, ${now}, ${now})
+			ON DUPLICATE KEY UPDATE entry_count = entry_count + 1, updated_at = ${now}
+		`);
+	} else {
+		await db.execute(sql`
+			INSERT INTO server_giveaway_entries (giveaway_id, member_id, entry_count, created_at, updated_at)
+			VALUES (${Number(giveawayId)}, ${Number(memberId)}, 1, ${now}, ${now})
+			ON DUPLICATE KEY UPDATE updated_at = ${now}
+		`);
+	}
+	const rows = await db
+		.select()
+		.from(schema.serverGiveawayEntries)
+		.where(and(eq(schema.serverGiveawayEntries.giveaway_id, Number(giveawayId)), eq(schema.serverGiveawayEntries.member_id, Number(memberId))))
+		.limit(1);
+	return rows[0] || null;
+}
+
+export async function getGiveawayEntries(giveawayId: any) {
+	await initializeDatabase();
+	return db
+		.select({ entry: schema.serverGiveawayEntries, discord_member_id: schema.serverMembers.discord_member_id })
+		.from(schema.serverGiveawayEntries)
+		.innerJoin(schema.serverMembers, eq(schema.serverGiveawayEntries.member_id, schema.serverMembers.id))
+		.where(eq(schema.serverGiveawayEntries.giveaway_id, Number(giveawayId)))
+		.orderBy(sql`RAND()`)
+		.then((rows) => rows.map((r) => ({ ...r.entry, discord_member_id: r.discord_member_id })));
+}
+
+export async function getRandomGiveawayWinners(giveawayId: any, winnerCount: number) {
+	await initializeDatabase();
+	const entries = await getGiveawayEntries(giveawayId);
+	if (entries.length === 0) return [];
+
+	const crypto = await import('crypto');
+	const shuffledEntries = [...entries];
+	for (let round = 0; round < 10; round++) {
+		for (let i = shuffledEntries.length - 1; i > 0; i--) {
+			const j = crypto.randomInt(0, i + 1);
+			[shuffledEntries[i], shuffledEntries[j]] = [shuffledEntries[j], shuffledEntries[i]];
+		}
+	}
+
+	const weighted: any[] = [];
+	for (const entry of shuffledEntries) {
+		for (let i = 0; i < (entry.entry_count ?? 1); i++) weighted.push(entry);
+	}
+	for (let round = 0; round < 10; round++) {
+		for (let i = weighted.length - 1; i > 0; i--) {
+			const j = crypto.randomInt(0, i + 1);
+			[weighted[i], weighted[j]] = [weighted[j], weighted[i]];
+		}
+	}
+
+	const winners: any[] = [];
+	const used = new Set();
+	const available = [...weighted];
+	while (winners.length < winnerCount && available.length > 0) {
+		const idx = crypto.randomInt(0, available.length);
+		const selected = available[idx];
+		if (!used.has(selected.member_id)) {
+			winners.push(selected);
+			used.add(selected.member_id);
+		}
+		for (let i = available.length - 1; i >= 0; i--) {
+			if (available[i].member_id === selected.member_id) available.splice(i, 1);
+		}
+	}
+	return winners;
+}
+
+export async function markGiveawayEnded(giveawayId: any) {
+	await initializeDatabase();
+	await db
+		.update(schema.serverGiveaways)
+		.set({ status: 'ended', winners_announced: true })
+		.where(eq(schema.serverGiveaways.id, Number(giveawayId)));
+}
+
+export async function markGiveawayEndedForce(giveawayId: any) {
+	await initializeDatabase();
+	await db
+		.update(schema.serverGiveaways)
+		.set({ status: 'ended_force', winners_announced: true })
+		.where(eq(schema.serverGiveaways.id, Number(giveawayId)));
+}
+
+export async function markGiveawayWinners(giveawayId: any, winnerMemberIds: any[]) {
+	await initializeDatabase();
+	if (!winnerMemberIds?.length) return;
+	await db
+		.update(schema.serverGiveawayEntries)
+		.set({ is_winner: true })
+		.where(and(eq(schema.serverGiveawayEntries.giveaway_id, Number(giveawayId)), inArray(schema.serverGiveawayEntries.member_id, winnerMemberIds)));
+}
+
+// ---------------------------------------------------------------------------
+// Staff Ratings
+// ---------------------------------------------------------------------------
+
+export async function getStaffRating(serverId: any, staffMemberId: any) {
+	await initializeDatabase();
+	const rows = await db
+		.select()
+		.from(schema.serverStaffRatings)
+		.innerJoin(schema.serverMembers, eq(schema.serverStaffRatings.staff_member_id, schema.serverMembers.id))
+		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), eq(schema.serverStaffRatings.staff_member_id, Number(staffMemberId))))
+		.limit(1);
+	return rows[0]?.server_staff_ratings || null;
+}
+
+export async function upsertStaffRating(serverId: any, staffMemberId: any, ratingValue: number, totalReports: number) {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	const existing = await getStaffRating(serverId, staffMemberId);
+	if (existing) {
+		await db
+			.update(schema.serverStaffRatings)
+			.set({ current_rating: String(ratingValue), total_reports: totalReports, updated_at: now as any })
+			.where(eq(schema.serverStaffRatings.staff_member_id, Number(staffMemberId)));
+	} else {
+		await db.insert(schema.serverStaffRatings).values({
+			staff_member_id: Number(staffMemberId),
+			current_rating: String(ratingValue),
+			total_reports: totalReports,
+			created_at: now as any,
+			updated_at: now as any
+		});
+	}
+	return getStaffRating(serverId, staffMemberId);
+}
+
+export async function createStaffRatingReport(
+	_serverId: any,
+	reporterMemberId: any,
+	reportedStaffId: any,
+	rating: number,
+	category: string,
+	description: string,
+	isAnonymous: boolean
+) {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	const result = await db.insert(schema.serverStaffReports).values({
+		reporter_member_id: Number(reporterMemberId),
+		reported_staff_id: Number(reportedStaffId),
+		rating,
+		category,
+		description,
+		is_anonymous: isAnonymous,
+		status: 'pending',
+		reported_at: now as any
+	});
+	return (result[0] as any).insertId;
+}
+
+export async function getLastStaffRatingReport(serverId: any, reporterMemberId: any, reportedStaffId: any) {
+	await initializeDatabase();
+	const rows = await db
+		.select({ report: schema.serverStaffReports })
+		.from(schema.serverStaffReports)
+		.innerJoin(schema.serverMembers, eq(schema.serverStaffReports.reporter_member_id, schema.serverMembers.id))
+		.where(
+			and(
+				eq(schema.serverMembers.server_id, Number(serverId)),
+				eq(schema.serverStaffReports.reporter_member_id, Number(reporterMemberId)),
+				eq(schema.serverStaffReports.reported_staff_id, Number(reportedStaffId))
+			)
+		)
+		.orderBy(desc(schema.serverStaffReports.reported_at))
+		.limit(1);
+	return rows[0]?.report || null;
+}
+
+export async function getStaffRatingAggregate(serverId: any, staffMemberId: any) {
+	await initializeDatabase();
+	const rows = await db
+		.select({ total_reports: count(), average_rating: avg(schema.serverStaffReports.rating) })
+		.from(schema.serverStaffReports)
+		.innerJoin(schema.serverMembers, eq(schema.serverStaffReports.reported_staff_id, schema.serverMembers.id))
+		.where(
+			and(
+				eq(schema.serverMembers.server_id, Number(serverId)),
+				eq(schema.serverStaffReports.reported_staff_id, Number(staffMemberId)),
+				eq(schema.serverStaffReports.status, 'approved')
+			)
+		);
+	return { total_reports: rows[0]?.total_reports || 0, average_rating: rows[0]?.average_rating || 0 };
+}
+
+export async function getStaffReportById(serverId: any, reportId: any) {
+	await initializeDatabase();
+	const rows = await db.execute(sql`
+		SELECT sr.*, reporter.discord_member_id AS reporter_discord_id, staff.discord_member_id AS staff_discord_id
+		FROM server_staff_reports sr
+		INNER JOIN server_members reporter ON sr.reporter_member_id = reporter.id
+		INNER JOIN server_members staff ON sr.reported_staff_id = staff.id
+		WHERE reporter.server_id = ${Number(serverId)} AND sr.id = ${Number(reportId)}
+		LIMIT 1
+	`);
+	return (rows[0] as unknown as any[])[0] || null;
+}
+
+export async function updateStaffReportStatus(reportId: any, status: string) {
+	await initializeDatabase();
+	await db
+		.update(schema.serverStaffReports)
+		.set({ status: status as any })
+		.where(eq(schema.serverStaffReports.id, Number(reportId)));
+}
+
+export async function createFeedback(_serverId: any, memberId: any, description: string, isAnonymous: boolean) {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	const result = await db.insert(schema.serverFeedback).values({
+		member_id: Number(memberId),
+		description,
+		is_anonymous: isAnonymous,
+		submitted_at: now as any
+	});
+	return (result[0] as any).insertId;
+}
+
+export async function getFeedback(serverId: any, feedbackId: any) {
+	await initializeDatabase();
+	const rows = await db
+		.select({ feedback: schema.serverFeedback })
+		.from(schema.serverFeedback)
+		.innerJoin(schema.serverMembers, eq(schema.serverFeedback.member_id, schema.serverMembers.id))
+		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), eq(schema.serverFeedback.id, Number(feedbackId))))
+		.limit(1);
+	return rows[0]?.feedback || null;
+}
+
+export async function getFeedbackByServer(serverId: any, limit = 100, offset = 0) {
+	await initializeDatabase();
+	const lim = Math.min(500, Math.max(1, parseInt(String(limit), 10) || 100));
+	const off = Math.max(0, parseInt(String(offset), 10) || 0);
+	return db
+		.select({ feedback: schema.serverFeedback })
+		.from(schema.serverFeedback)
+		.innerJoin(schema.serverMembers, eq(schema.serverFeedback.member_id, schema.serverMembers.id))
+		.where(eq(schema.serverMembers.server_id, Number(serverId)))
+		.orderBy(desc(schema.serverFeedback.submitted_at))
+		.limit(lim)
+		.offset(off)
+		.then((rows) => rows.map((r) => r.feedback));
+}
+
+export async function getFeedbackCount(serverId: any) {
+	await initializeDatabase();
+	const rows = await db
+		.select({ count: count() })
+		.from(schema.serverFeedback)
+		.innerJoin(schema.serverMembers, eq(schema.serverFeedback.member_id, schema.serverMembers.id))
+		.where(eq(schema.serverMembers.server_id, Number(serverId)));
+	return rows[0]?.count || 0;
+}
+
+export async function markMemberRatingRole(serverId: any, staffMemberId: any, discordRoleId: string) {
+	await initializeDatabase();
+	if (!discordRoleId) return;
+	await db
+		.update(schema.serverMemberRoles)
+		.set({ is_rating: false })
+		.where(eq(schema.serverMemberRoles.member_id, Number(staffMemberId)));
+	const roleRows = await db
+		.select({ id: schema.serverRoles.id })
+		.from(schema.serverRoles)
+		.where(and(eq(schema.serverRoles.server_id, Number(serverId)), eq(schema.serverRoles.discord_role_id, discordRoleId)))
+		.limit(1);
+	if (!roleRows[0]) return;
+	const now = toMySQLDateTime();
+	await db
+		.insert(schema.serverMemberRoles)
+		.values({ member_id: Number(staffMemberId), role_id: roleRows[0].id, is_custom: false, is_rating: true, created_at: now as any })
+		.onDuplicateKeyUpdate({ set: { is_rating: true } });
+}
+
+export async function clearMemberRatingRole(staffMemberId: any) {
+	await initializeDatabase();
+	await db
+		.update(schema.serverMemberRoles)
+		.set({ is_rating: false })
+		.where(eq(schema.serverMemberRoles.member_id, Number(staffMemberId)));
+}
+
+export async function getAllStaffRatings(serverId: any) {
+	await initializeDatabase();
+	return db
+		.select({
+			id: schema.serverStaffRatings.id,
+			staff_member_id: schema.serverStaffRatings.staff_member_id,
+			current_rating: schema.serverStaffRatings.current_rating,
+			total_reports: schema.serverStaffRatings.total_reports,
+			rating_role_id: schema.serverRoles.discord_role_id,
+			created_at: schema.serverStaffRatings.created_at,
+			updated_at: schema.serverStaffRatings.updated_at
+		})
+		.from(schema.serverStaffRatings)
+		.innerJoin(schema.serverMembers, eq(schema.serverStaffRatings.staff_member_id, schema.serverMembers.id))
+		.innerJoin(
+			schema.serverMemberRoles,
+			and(eq(schema.serverStaffRatings.staff_member_id, schema.serverMemberRoles.member_id), eq(schema.serverMemberRoles.is_rating, true))
+		)
+		.innerJoin(schema.serverRoles, eq(schema.serverMemberRoles.role_id, schema.serverRoles.id))
+		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), sql`${schema.serverStaffRatings.current_rating} > 0`))
+		.orderBy(desc(schema.serverStaffRatings.current_rating), asc(schema.serverStaffRatings.created_at));
+}
+
+export async function getStaffRatingRole(serverId: any, staffMemberId: any) {
+	await initializeDatabase();
+	const rows = await db
+		.select({ discord_role_id: schema.serverRoles.discord_role_id })
+		.from(schema.serverMemberRoles)
+		.innerJoin(schema.serverRoles, eq(schema.serverMemberRoles.role_id, schema.serverRoles.id))
+		.innerJoin(schema.serverMembers, eq(schema.serverMemberRoles.member_id, schema.serverMembers.id))
+		.where(
+			and(
+				eq(schema.serverMembers.server_id, Number(serverId)),
+				eq(schema.serverMemberRoles.member_id, Number(staffMemberId)),
+				eq(schema.serverMemberRoles.is_rating, true)
+			)
+		)
+		.limit(1);
+	return rows[0]?.discord_role_id || null;
+}
+
+export default {
+	getAllBots,
+	getBot,
+	createBot,
+	updateBot,
+	deleteBot,
+	getServer,
+	getServersForBot,
+	getServerByDiscordId,
+	getOfficialBotServerIdForServer,
+	getNotificationRolesForServer,
+	getNotificationRolesWithCategory,
+	getNotificationRoleByChannel,
+	getNotificationRoleDbIds,
+	upsertNotificationRole,
+	deleteNotificationRole,
+	upsertServer,
+	getServerByLeaderboardSlug,
+	listPublicLeaderboardSlugs,
+	listEnabledLeaderboardServers,
+	upsertCategory,
+	syncCategories,
+	upsertChannel,
+	syncChannels,
+	getRoles,
+	upsertRole,
+	syncRoles,
+	upsertMember,
+	getMemberByDiscordId,
+	searchServerMembers,
+	syncMembers,
+	syncMemberRoles,
+	memberHasAnyRole,
+	getMemberLevel,
+	ensureMemberLevel,
+	updateMemberLevelStats,
+	setMemberLevelDMPreference,
+	setMemberLanguage,
+	getMemberLanguage,
+	recalculateServerMemberRanks,
+	getMemberLevelByDiscordId,
+	getMembersWithInVoiceFlag,
+	getServerLeaderboard,
+	getServerMembersList,
+	getServerOverview,
+	updateCustomRoleFlags,
+	memberHasCustomSupporterRole,
+	getServerSettings,
+	upsertServerSettings,
+	getPanel,
+	createPanel,
+	getAccountById,
+	getAccountByEmail,
+	getAccountByUsername,
+	createAccount,
+	updateAccount,
+	deleteAccount,
+	getAllAccounts,
+	createInviteLink,
+	getInviteLinkByToken,
+	updateInviteLink,
+	getAllInviteLinks,
+	getServerInviteLinks,
+	getAccountServerAccess,
+	createAccountServerAccess,
+	deleteAccountServerAccess,
+	getServerAccountById,
+	getServerAccountByEmail,
+	getServerAccountByUsername,
+	getServerAccountByEmailServer,
+	createServerAccount,
+	updateServerAccount,
+	deleteServerAccount,
+	getServerAccountsByServer,
+	createServerAccountInvite,
+	getServerAccountInviteByToken,
+	updateServerAccountInvite,
+	getServerAccountInvitesByServer,
+	getAllServerBots,
+	getServerBots,
+	getServerBotById,
+	addServerBot,
+	updateServerBot,
+	removeServerBot,
+	getOfficialBotForSelfbot,
+	getSelfbotsForOfficialBot,
+	getChannelsForServer,
+	getCategoriesForServer,
+	serversNeedSync,
+	getAFKStatus,
+	setAFKStatus,
+	removeAFKStatus,
+	createGiveaway,
+	updateGiveawayMessageId,
+	getEndedGiveaways,
+	getGiveawayById,
+	getActiveGiveawayByMember,
+	addGiveawayEntry,
+	getGiveawayEntries,
+	getRandomGiveawayWinners,
+	markGiveawayEnded,
+	markGiveawayEndedForce,
+	markGiveawayWinners,
+	getStaffRating,
+	upsertStaffRating,
+	createStaffRatingReport,
+	getLastStaffRatingReport,
+	getStaffRatingAggregate,
+	getStaffReportById,
+	updateStaffReportStatus,
+	markMemberRatingRole,
+	clearMemberRatingRole,
+	getAllStaffRatings,
+	getStaffRatingRole,
+	createFeedback,
+	getFeedback,
+	getFeedbackByServer,
+	getFeedbackCount
+};

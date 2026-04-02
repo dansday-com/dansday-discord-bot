@@ -1,6 +1,6 @@
 import type { RequestHandler } from '@sveltejs/kit';
-import { subscribeBotStatus, getBotUptimeMs } from '$lib/server/botProcesses.js';
-import db from '$lib/server/db.js';
+import { subscribeBotStatus, getBotUptimeMs } from '$lib/botProcesses.js';
+import db from '$lib/database.js';
 
 export const GET: RequestHandler = async ({ locals, params }) => {
 	if (!locals.user.authenticated) {

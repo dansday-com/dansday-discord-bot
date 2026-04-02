@@ -1,6 +1,6 @@
-import { error, redirect } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import db from '$lib/server/db.js';
+import db from '$lib/database.js';
 
 function maskEmail(email: string) {
 	const at = email.indexOf('@');
@@ -16,7 +16,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	const serverId = Number(params.serverId);
 
 	if (locals.user.account_source === 'server_accounts' && locals.user.server_id !== serverId) {
-		error(403, 'Access denied');
+		redirect(302, `/bots/${locals.user.bot_id}/servers/${locals.user.server_id}/accounts`);
 	}
 
 	const [rawAccounts, invites] = await Promise.all([db.getServerAccountsByServer(serverId), db.getServerAccountInvitesByServer(serverId)]);

@@ -1,7 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import db from '$lib/server/db.js';
-import { getBotUptimeMs } from '$lib/server/botProcesses.js';
+import db from '$lib/database.js';
+import { getBotUptimeMs } from '$lib/botProcesses.js';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	if (locals.user.authenticated && locals.user.account_source === 'server_accounts') {

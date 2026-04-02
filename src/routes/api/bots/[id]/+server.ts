@@ -1,8 +1,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import db from '$lib/server/db.js';
-import { getBotUptimeMs } from '$lib/server/botProcesses.js';
-import logger from '$lib/server/logger.js';
+import db from '$lib/database.js';
+import { getBotUptimeMs } from '$lib/botProcesses.js';
+import { logger } from '$lib/utils/index.js';
 
 async function getEnrichedBot(id: any) {
 	const bot = await db.getBot(id);

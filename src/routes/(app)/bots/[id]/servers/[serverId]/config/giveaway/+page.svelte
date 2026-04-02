@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
-	import { showToast } from '$lib/stores/toast.svelte';
-	import ChannelPicker from '$lib/components/server/ChannelPicker.svelte';
+	import { showToast } from '$lib/frontend/toast.svelte';
+	import ChannelPicker from '$lib/frontend/components/ChannelPicker.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();

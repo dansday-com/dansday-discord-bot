@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { showToast } from '$lib/stores/toast.svelte';
+	import { showToast } from '$lib/frontend/toast.svelte';
 	import type { LayoutProps } from './$types';
 
 	let { data, children }: LayoutProps = $props();

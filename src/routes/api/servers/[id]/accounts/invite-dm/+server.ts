@@ -1,9 +1,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import db from '$lib/server/db.js';
-import logger from '$lib/server/logger.js';
+import db from '$lib/database.js';
 import { randomBytes } from 'crypto';
-import { addMinutesToNow, toMySQLDateTime } from '$lib/server/utils.js';
+import { logger, addMinutesToNow, toMySQLDateTime } from '$lib/utils/index.js';
 import { request as httpRequest } from 'http';
 
 function canManageAccounts(locals: App.Locals, serverId: number): boolean {

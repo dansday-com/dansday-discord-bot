@@ -1,10 +1,19 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import db from '$lib/server/db.js';
-import { newSessionId, setSession, makeSessionCookie, createVerifyToken } from '$lib/server/session.js';
-import { checkRateLimit, getClientIp } from '$lib/server/rateLimit.js';
-import { sanitizeString, sanitizeEmail, sanitizeUsername, validateInputLength } from '$lib/server/utils.js';
-import logger from '$lib/server/logger.js';
+import db from '$lib/database.js';
+import {
+	newSessionId,
+	setSession,
+	makeSessionCookie,
+	createVerifyToken,
+	checkRateLimit,
+	getClientIp,
+	sanitizeString,
+	sanitizeEmail,
+	sanitizeUsername,
+	validateInputLength,
+	logger
+} from '$lib/utils/index.js';
 import bcrypt from 'bcrypt';
 
 const MAX_LOGIN_ATTEMPTS = 5;

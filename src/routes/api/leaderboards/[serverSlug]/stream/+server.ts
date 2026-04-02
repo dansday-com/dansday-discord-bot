@@ -1,7 +1,6 @@
 import type { RequestHandler } from '@sveltejs/kit';
-import db from '$lib/server/db.js';
-import { subscribeLeaderboard } from '$lib/server/leaderboardStream.js';
-import type { LeaderboardMetric, LeaderboardRange } from '$lib/server/leaderboardCache.js';
+import db from '$lib/database.js';
+import { type LeaderboardMetric, type LeaderboardRange, resolveLeaderboardServerBySlug, subscribeLeaderboard } from '$lib/leaderboard/index.js';
 
 function parseMetric(m: string | null): LeaderboardMetric {
 	const v = (m || 'xp').toLowerCase();
@@ -22,8 +21,9 @@ function parseRange(r: string | null): LeaderboardRange {
 
 export const GET: RequestHandler = async ({ params, url }) => {
 	const serverSlug = String(params.serverSlug || '').trim();
-	const server = await db.getServerByLeaderboardSlug(serverSlug);
-	if (!server) return new Response('Not found', { status: 404 });
+	const resolved = await resolveLeaderboardServerBySlug(serverSlug);
+	if (!resolved) return new Response('Not found', { status: 404 });
+	const server = resolved.server;
 
 	// Visibility is controlled via server_settings (component: leaderboard), defaults to public+enabled
 	const settingsRow = await db.getServerSettings(server.id, 'leaderboard');

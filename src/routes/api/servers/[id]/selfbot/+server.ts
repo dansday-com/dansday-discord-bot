@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import db from '$lib/server/db.js';
-import logger from '$lib/server/logger.js';
+import db from '$lib/database.js';
+import { logger } from '$lib/utils/index.js';
 
 function canManage(locals: App.Locals, serverId: number): boolean {
 	if (!locals.user.authenticated) return false;

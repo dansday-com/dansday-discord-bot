@@ -2,8 +2,12 @@
 	import { page } from '$app/state';
 	import type { LayoutProps } from './$types';
 
-	function discordServerLink(id: string) { return `https://discord.com/channels/${id}`; }
-	function inviteLink(code: string) { return `https://discord.gg/${code}`; }
+	function discordServerLink(id: string) {
+		return `https://discord.com/channels/${id}`;
+	}
+	function inviteLink(code: string) {
+		return `https://discord.gg/${code}`;
+	}
 
 	let { data, children }: LayoutProps = $props();
 

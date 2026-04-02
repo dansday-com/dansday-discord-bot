@@ -160,9 +160,7 @@
 		<div class="lb-nav-inner">
 			<div class="lb-nav-brand">
 				<div class="lb-nav-icon">
-					<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-						<path d="M13 10V3L4 14H11V21L20 10H13Z" fill="white" />
-					</svg>
+					<i class="fas fa-bolt"></i>
 				</div>
 				<span>Dansday Discord Bot Panel</span>
 			</div>
@@ -197,39 +195,15 @@
 				{#each ['xp', 'chat', 'voice_total', 'voice_active', 'voice_afk'] as const as m}
 					<button class="lb-tab {metric === m ? 'lb-tab--active' : ''}" onclick={() => setMetric(m)}>
 						{#if m === 'xp'}
-							<svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
-								><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="currentColor" /></svg
-							>
-							XP
+							<i class="fas fa-star"></i> XP
 						{:else if m === 'chat'}
-							<svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
-								><path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z" fill="currentColor" /></svg
-							>
-							Chat
+							<i class="fas fa-message"></i> Chat
 						{:else if m === 'voice_total'}
-							<svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
-								><path
-									d="M12 1C10.3 1 9 2.3 9 4V12C9 13.7 10.3 15 12 15S15 13.7 15 12V4C15 2.3 13.7 1 12 1ZM19 12C19 15.5 16.2 18.4 12.7 18.9V21H11.3V18.9C7.8 18.4 5 15.5 5 12H7C7 14.8 9.2 17 12 17S17 14.8 17 12H19Z"
-									fill="currentColor"
-								/></svg
-							>
-							Voice
+							<i class="fas fa-microphone"></i> Voice
 						{:else if m === 'voice_active'}
-							<svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
-								><circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.2" /><path
-									d="M12 6C10.3 6 9 7.3 9 9V13C9 14.7 10.3 16 12 16S15 14.7 15 13V9C15 7.3 13.7 6 12 6Z"
-									fill="currentColor"
-								/></svg
-							>
-							Active
+							<i class="fas fa-microphone-lines"></i> Active
 						{:else}
-							<svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
-								><path
-									d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"
-									fill="currentColor"
-								/></svg
-							>
-							AFK
+							<i class="fas fa-moon"></i> AFK
 						{/if}
 					</button>
 				{/each}
@@ -331,13 +305,7 @@
 
 			{#if rows.length === 0}
 				<div class="lb-empty">
-					<svg width="48" height="48" viewBox="0 0 24 24" fill="none"
-						><path
-							d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"
-							fill="currentColor"
-							opacity="0.2"
-						/></svg
-					>
+					<i class="fas fa-trophy" style="font-size: 48px; opacity: 0.2;"></i>
 					<p>No data yet</p>
 				</div>
 			{/if}
@@ -905,10 +873,9 @@
 		display: flex;
 		align-items: center;
 		gap: 8px;
-		font-size: 16px;
-		font-weight: 800;
+		font-size: 1rem;
+		font-weight: 700;
 		color: #fff;
-		letter-spacing: -0.3px;
 		min-width: 0;
 		flex: 1;
 	}
@@ -916,11 +883,11 @@
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
-		font-size: 15px;
+		font-size: 1rem;
 	}
 	@media (min-width: 640px) {
 		.lb-nav-brand span {
-			font-size: 20px;
+			font-size: 1.25rem;
 		}
 	}
 	.lb-nav-icon {
@@ -932,12 +899,15 @@
 		align-items: center;
 		justify-content: center;
 		flex-shrink: 0;
+		font-size: 0.875rem;
+		color: #fff;
 		box-shadow: 0 0 12px rgba(124, 58, 237, 0.4);
 	}
 	@media (min-width: 640px) {
 		.lb-nav-icon {
 			width: 40px;
 			height: 40px;
+			font-size: 1rem;
 		}
 	}
 	.lb-nav-right {
@@ -1009,13 +979,13 @@
 		}
 	}
 	.lb-footer-copy {
-		font-size: 12px;
+		font-size: 0.75rem;
 		color: rgba(255, 255, 255, 0.25);
 		margin: 0;
 	}
 	@media (min-width: 640px) {
 		.lb-footer-copy {
-			font-size: 14px;
+			font-size: 0.875rem;
 		}
 	}
 	.lb-footer-copy a {

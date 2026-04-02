@@ -16,4 +16,3 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 
 	return { bot, serverId, botId: params.id, user: locals.user };
 };
-

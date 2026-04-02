@@ -336,38 +336,41 @@
 
 						<!-- Links -->
 						<div class="mt-3 flex flex-wrap gap-2">
-							<a
-								href={discordServerLink((server as any).discord_server_id)}
-								target="_blank"
-								rel="noreferrer"
-								onclick={(e) => e.stopPropagation()}
+							<button
+								type="button"
+								onclick={(e) => {
+									e.stopPropagation();
+									window.open(discordServerLink((server as any).discord_server_id), '_blank', 'noreferrer');
+								}}
 								class="bg-ash-800 hover:bg-ash-600 text-ash-200 inline-flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs transition-colors"
 								title="Open server in Discord"
 							>
 								<i class="fab fa-discord"></i><span>Discord</span>
-							</a>
+							</button>
 							{#if (server as any).vanity_url_code}
-								<a
-									href={inviteLink((server as any).vanity_url_code)}
-									target="_blank"
-									rel="noreferrer"
-									onclick={(e) => e.stopPropagation()}
+								<button
+									type="button"
+									onclick={(e) => {
+										e.stopPropagation();
+										window.open(inviteLink((server as any).vanity_url_code), '_blank', 'noreferrer');
+									}}
 									class="bg-ash-800 hover:bg-ash-600 text-ash-200 inline-flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs transition-colors"
 									title="Open server invite"
 								>
 									<i class="fas fa-link"></i><span>Invite</span>
-								</a>
+								</button>
 							{:else if (server as any).invite_code}
-								<a
-									href={inviteLink((server as any).invite_code)}
-									target="_blank"
-									rel="noreferrer"
-									onclick={(e) => e.stopPropagation()}
+								<button
+									type="button"
+									onclick={(e) => {
+										e.stopPropagation();
+										window.open(inviteLink((server as any).invite_code), '_blank', 'noreferrer');
+									}}
 									class="bg-ash-800 hover:bg-ash-600 text-ash-200 inline-flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs transition-colors"
 									title="Open server invite"
 								>
 									<i class="fas fa-link"></i><span>Invite</span>
-								</a>
+								</button>
 							{/if}
 						</div>
 					</a>

@@ -111,7 +111,10 @@
 </svelte:head>
 
 <div class="space-y-4">
-	<a href={`/bots/${data.botId}/servers/${data.serverId}/selfbot`} class="text-ash-400 hover:text-ash-100 inline-flex items-center gap-2 text-sm transition-colors">
+	<a
+		href={`/bots/${data.botId}/servers/${data.serverId}/selfbot`}
+		class="text-ash-400 hover:text-ash-100 inline-flex items-center gap-2 text-sm transition-colors"
+	>
 		<i class="fas fa-arrow-left"></i>Back to Selfbots
 	</a>
 
@@ -172,4 +175,3 @@
 		</div>
 	</div>
 </div>
-

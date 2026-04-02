@@ -8,18 +8,12 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 	}
 
 	try {
-		const officialBot = await db.getBot(params.id);
+		const officialBot = await db.getBot(Number(params.id));
 		if (!officialBot || officialBot.bot_type !== 'official') {
 			return json({ error: 'Bot not found or is not an official bot' }, { status: 400 });
 		}
 
-		const allBots = await db.getAllBots();
-		const officialBotIdNum = Number(params.id);
-		const selfbots = allBots.filter((bot: any) => {
-			if (bot.bot_type !== 'selfbot') return false;
-			return Number(bot.connect_to) === officialBotIdNum;
-		});
-
+		const selfbots = await db.getSelfbotsForOfficialBot(Number(params.id));
 		return json(selfbots);
 	} catch (error: any) {
 		return json({ error: error.message }, { status: 500 });

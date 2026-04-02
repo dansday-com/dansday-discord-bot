@@ -7,8 +7,9 @@ export const load: LayoutServerLoad = async ({ locals, params }) => {
 
 	const serverId = Number(params.serverId);
 	if (locals.user.account_type !== 'superadmin') {
-		const hasAccess = locals.user.accessible_servers?.find((s) => s.server_id === serverId);
-		if (!hasAccess) error(403, 'Access denied');
+		if (locals.user.bot_id !== Number(params.id) || locals.user.server_id !== serverId) {
+			error(403, 'Access denied');
+		}
 	}
 
 	const [channels, roles, categories] = await Promise.all([

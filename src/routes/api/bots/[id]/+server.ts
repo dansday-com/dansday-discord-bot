@@ -19,25 +19,6 @@ async function getEnrichedBot(id: any) {
 
 	const { token, ...botData } = bot;
 	botData.is_testing = bot.is_testing || false;
-
-	if (bot.connect_to) {
-		const connectToId = Number(bot.connect_to);
-		if (connectToId && !Number.isNaN(connectToId)) {
-			try {
-				const connectedBot = await db.getBot(connectToId);
-				if (connectedBot) {
-					botData.connected_bot_name = connectedBot.name?.trim() || null;
-					if (bot.bot_type === 'selfbot') {
-						botData.is_testing = connectedBot.is_testing || false;
-						if (bot.is_testing !== connectedBot.is_testing) {
-							await db.updateBot(bot.id, { is_testing: connectedBot.is_testing || false });
-						}
-					}
-				}
-			} catch (_) {}
-		}
-	}
-
 	botData.uptime_ms = getBotUptimeMs(botData);
 	return botData;
 }

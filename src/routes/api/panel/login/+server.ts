@@ -30,11 +30,16 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		let sanitizedInput = sanitizeString(username_or_email, 255);
 		let account: any = null;
+		let accountSource: 'accounts' | 'server_accounts' = 'accounts';
 
 		if (sanitizedInput.includes('@')) {
 			const sanitizedEmail = sanitizeEmail(sanitizedInput);
 			if (sanitizedEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sanitizedEmail)) {
 				account = await db.getAccountByEmail(sanitizedEmail);
+				if (!account) {
+					account = await db.getServerAccountByEmail(sanitizedEmail);
+					if (account) accountSource = 'server_accounts';
+				}
 			}
 		}
 
@@ -42,6 +47,10 @@ export const POST: RequestHandler = async ({ request }) => {
 			const sanitizedUsername = sanitizeUsername(sanitizedInput);
 			if (sanitizedUsername && sanitizedUsername.length >= 3) {
 				account = await db.getAccountByUsername(sanitizedUsername);
+				if (!account) {
+					account = await db.getServerAccountByUsername(sanitizedUsername);
+					if (account) accountSource = 'server_accounts';
+				}
 			}
 		}
 
@@ -62,7 +71,13 @@ export const POST: RequestHandler = async ({ request }) => {
 		if (!account.email_verified) {
 			const verifyToken = await createVerifyToken(account.id);
 			return json(
-				{ success: false, error: 'Email not verified. Please verify your email first.', requires_verification: true, verify_token: verifyToken },
+				{
+					success: false,
+					error: 'Email not verified. Please verify your email first.',
+					requires_verification: true,
+					verify_token: verifyToken,
+					account_source: accountSource
+				},
 				{ status: 401 }
 			);
 		}
@@ -78,19 +93,22 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ success: false, error: 'Invalid credentials' }, { status: 401 });
 		}
 
-		await db.updateAccount(account.id, { ip_address: ip });
+		if (accountSource === 'accounts') {
+			await db.updateAccount(account.id, { ip_address: ip });
+		}
 
 		const sessionId = newSessionId();
 		await setSession(sessionId, {
 			authenticated: true,
 			account_id: account.id,
-			account_type: account.account_type
+			account_type: account.account_type,
+			account_source: accountSource
 		});
 
 		logger.log(`Successful login: ${account.username} (IP: ${ip})`);
 
 		return json(
-			{ success: true, message: 'Login successful', account_type: account.account_type },
+			{ success: true, message: 'Login successful', account_type: account.account_type, account_source: accountSource },
 			{ headers: { 'Set-Cookie': makeSessionCookie(sessionId) } }
 		);
 	} catch (error: any) {

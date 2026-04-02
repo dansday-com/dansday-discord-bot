@@ -41,27 +41,6 @@
 </svelte:head>
 
 <div class="space-y-4 sm:space-y-6">
-	<!-- Server Header -->
-	<div class="bg-ash-700 border-ash-600 rounded-xl border p-4 sm:p-6">
-		<div class="flex flex-col gap-4 sm:flex-row sm:gap-6">
-			<div class="bg-ash-600 flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full sm:h-24 sm:w-24">
-				{#if o.server_icon}
-					<img src={o.server_icon} alt={o.name} class="h-full w-full object-cover" />
-				{:else}
-					<i class="fas fa-server text-ash-100 text-2xl"></i>
-				{/if}
-			</div>
-			<div class="min-w-0 flex-1">
-				<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-					<h2 class="text-ash-100 truncate text-xl font-bold sm:text-2xl">{o.name || 'Unnamed Server'}</h2>
-					<span class="bg-ash-800 border-ash-600 text-ash-300 flex w-fit items-center gap-2 rounded-lg border px-2.5 py-1 text-xs sm:text-sm">
-						<i class="fas fa-id-badge text-ash-400"></i>{o.discord_server_id || 'Unknown ID'}
-					</span>
-				</div>
-			</div>
-		</div>
-	</div>
-
 	<!-- Stat cards grid -->
 	<div class="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2 xl:grid-cols-3">
 		<!-- Members -->

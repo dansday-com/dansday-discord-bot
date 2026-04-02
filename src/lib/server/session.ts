@@ -5,6 +5,7 @@ export type SessionData = {
 	authenticated: boolean;
 	account_id?: number;
 	account_type?: string;
+	account_source?: 'accounts' | 'server_accounts';
 };
 
 const SESSION_TTL = 60 * 60 * 24;

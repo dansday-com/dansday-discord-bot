@@ -3,7 +3,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/server/db.js';
 import { newSessionId, setSession, makeSessionCookie, peekVerifyToken, consumeVerifyToken } from '$lib/server/session.js';
 import { getClientIp } from '$lib/server/rateLimit.js';
-import { sanitizeString, getNowInTimezone, getDateTimeFromSQL } from '$lib/server/utils.js';
+import { sanitizeString, getNowInTimezone, getDateTimeFromSQL, toMySQLDateTime } from '$lib/server/utils.js';
 import { sendVerificationSuccessEmail } from '$lib/server/email.js';
 import logger from '$lib/server/logger.js';
 
@@ -12,6 +12,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		const body = await request.json();
 		const verifyToken = typeof body.verify_token === 'string' ? body.verify_token.trim() : null;
 		const sanitizedOtpCode = sanitizeString(body.otp_code, 6);
+		const accountSource: 'accounts' | 'server_accounts' = body.account_source === 'server_accounts' ? 'server_accounts' : 'accounts';
 
 		if (!verifyToken || !sanitizedOtpCode || sanitizedOtpCode.length !== 6) {
 			return json({ success: false, error: 'Verification token and valid OTP code are required' }, { status: 400 });
@@ -26,7 +27,8 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ success: false, error: 'OTP code must be 6 digits' }, { status: 400 });
 		}
 
-		const account = await db.getAccountById(sanitizedAccountId);
+		const account = accountSource === 'server_accounts' ? await db.getServerAccountById(sanitizedAccountId) : await db.getAccountById(sanitizedAccountId);
+
 		if (!account) {
 			return json({ success: false, error: 'Account not found' }, { status: 404 });
 		}
@@ -50,18 +52,19 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		const ip = getClientIp(request);
 		await consumeVerifyToken(verifyToken);
-		await db.updateAccount(account.id, {
-			email_verified: true,
-			otp_code: null,
-			otp_expires_at: null,
-			ip_address: ip
-		});
+
+		if (accountSource === 'server_accounts') {
+			await db.updateServerAccount(account.id, { email_verified: true, otp_code: null, otp_expires_at: null });
+		} else {
+			await db.updateAccount(account.id, { email_verified: true, otp_code: null, otp_expires_at: null, ip_address: ip });
+		}
 
 		const sessionId = newSessionId();
 		await setSession(sessionId, {
 			authenticated: true,
 			account_id: account.id,
-			account_type: account.account_type
+			account_type: account.account_type,
+			account_source: accountSource
 		});
 
 		logger.log(`Email verified and logged in: ${account.username} (IP: ${ip})`);
@@ -71,7 +74,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		} catch (_) {}
 
 		return json(
-			{ success: true, message: 'Email verified successfully', account_type: account.account_type },
+			{ success: true, message: 'Email verified successfully', account_type: account.account_type, account_source: accountSource },
 			{ headers: { 'Set-Cookie': makeSessionCookie(sessionId) } }
 		);
 	} catch (error: any) {

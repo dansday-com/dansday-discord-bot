@@ -9,10 +9,11 @@ import {
 	addMinutesToNow,
 	getNowInTimezone,
 	getDateTimeFromSQL,
-	getCurrentDateTime
+	getCurrentDateTime,
+	toMySQLDateTime
 } from '$lib/server/utils.js';
 import { sendOTPEmail } from '$lib/server/email.js';
-import { getClientIp } from '$lib/server/rateLimit.js';
+import { createVerifyToken } from '$lib/server/session.js';
 import logger from '$lib/server/logger.js';
 import bcrypt from 'bcrypt';
 import { randomInt } from 'crypto';
@@ -67,7 +68,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ success: false, error: validation.errors[0] }, { status: 400 });
 		}
 
-		const inviteLink = await db.getInviteLinkByToken(sanitizedToken);
+		const inviteLink = await db.getServerAccountInviteByToken(sanitizedToken);
 		if (!inviteLink) {
 			return json({ success: false, error: 'Invalid invite link' }, { status: 404 });
 		}
@@ -84,53 +85,28 @@ export const POST: RequestHandler = async ({ request }) => {
 			}
 		}
 
-		if ((inviteLink.account_type === 'owner' || inviteLink.account_type === 'moderator') && !inviteLink.server_id) {
-			return json({ success: false, error: 'Invite link is missing server assignment' }, { status: 400 });
+		const existingInScope = await db.getServerAccountByEmailBotServer(validation.sanitizedEmail, inviteLink.bot_id, inviteLink.server_id);
+		if (existingInScope) {
+			return json({ success: false, error: 'Email already registered for this server' }, { status: 400 });
 		}
 
-		const existingUsername = await db.getAccountByUsername(validation.sanitizedUsername);
-		if (existingUsername) {
-			return json({ success: false, error: 'Username already taken' }, { status: 400 });
-		}
-
-		const existingEmail = await db.getAccountByEmail(validation.sanitizedEmail);
-		if (existingEmail) {
-			return json({ success: false, error: 'Email already registered' }, { status: 400 });
-		}
-
-		let panel = await db.getPanel();
-		if (!panel) {
-			await db.createPanel();
-			panel = await db.getPanel();
-		}
-
-		const ip = getClientIp(request);
 		const passwordHash = await bcrypt.hash(password, 12);
 		const otpCode = randomInt(100000, 999999).toString();
-		const otpExpiresAt = addMinutesToNow(10);
+		const otpExpiresAt = toMySQLDateTime(addMinutesToNow(10));
 
-		const account = await db.createAccount({
+		const account = await db.createServerAccount({
+			bot_id: inviteLink.bot_id,
+			server_id: inviteLink.server_id,
 			username: validation.sanitizedUsername,
 			email: validation.sanitizedEmail,
 			password_hash: passwordHash,
 			account_type: inviteLink.account_type,
 			email_verified: false,
 			otp_code: otpCode,
-			otp_expires_at: otpExpiresAt,
-			panel_id: panel.id,
-			ip_address: ip
+			otp_expires_at: otpExpiresAt
 		});
 
-		if ((inviteLink.account_type === 'owner' || inviteLink.account_type === 'moderator') && inviteLink.server_id) {
-			await db.createAccountServerAccess({
-				account_id: account.id,
-				server_id: inviteLink.server_id,
-				role: inviteLink.account_type as 'owner' | 'moderator',
-				invited_by: inviteLink.created_by
-			});
-		}
-
-		await db.updateInviteLink(inviteLink.id, { used_by: account.id, used_at: getCurrentDateTime() });
+		await db.updateServerAccountInvite(inviteLink.id, { used_by: account.id, used_at: toMySQLDateTime(getCurrentDateTime()) ?? undefined });
 
 		try {
 			await sendOTPEmail(validation.sanitizedEmail, otpCode);
@@ -139,7 +115,13 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ success: false, error: `Failed to send verification email: ${emailError.message}.` }, { status: 500 });
 		}
 
-		return json({ success: true, message: 'Registration successful. Please check your email for verification code.', account_id: account.id });
+		const verifyToken = await createVerifyToken(account.id);
+		return json({
+			success: true,
+			message: 'Registration successful. Please check your email for verification code.',
+			verify_token: verifyToken,
+			account_source: 'server_accounts'
+		});
 	} catch (error: any) {
 		return json({ success: false, error: error.message }, { status: 500 });
 	}

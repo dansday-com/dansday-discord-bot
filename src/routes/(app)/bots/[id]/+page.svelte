@@ -157,7 +157,7 @@
 		<div class="flex flex-col gap-4 sm:flex-row sm:items-start">
 			<!-- Icon + Name -->
 			<div class="flex min-w-0 flex-1 items-center gap-4">
-				<div class="bg-ash-600 flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-full sm:h-20 sm:w-20">
+				<div class="bg-ash-600 flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full sm:h-20 sm:w-20">
 					{#if data.bot.bot_icon}
 						<img src={data.bot.bot_icon} alt={data.bot.name} class="h-full w-full object-cover" />
 					{:else}
@@ -183,7 +183,7 @@
 
 			<!-- Admin Actions -->
 			{#if isAdmin}
-				<div class="flex flex-shrink-0 flex-wrap items-center gap-2">
+				<div class="flex shrink-0 flex-wrap items-center gap-2">
 					{#if canStart}
 						<button
 							onclick={() => botAction('start')}
@@ -264,14 +264,6 @@
 					<p class="text-ash-100 text-sm font-medium">{data.bot.port}</p>
 				</div>
 			{/if}
-
-			<!-- Connected To (selfbot) -->
-			{#if data.bot.bot_type === 'selfbot' && data.bot.connected_bot_name}
-				<div class="bg-ash-700 rounded-lg p-3">
-					<p class="text-ash-400 mb-1 text-xs">Connected To</p>
-					<p class="text-ash-100 truncate text-sm font-medium">{data.bot.connected_bot_name}</p>
-				</div>
-			{/if}
 		</div>
 	</div>
 
@@ -300,7 +292,7 @@
 							class="bg-ash-700 border-ash-600 hover:border-ash-500 block rounded-lg border p-4 transition-all duration-200"
 						>
 							<div class="mb-3 flex items-center gap-3">
-								<div class="bg-ash-600 flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-full">
+								<div class="bg-ash-600 flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full">
 									{#if server.server_icon}
 										<img src={server.server_icon} alt={server.name} class="h-full w-full object-cover" />
 									{:else}
@@ -334,7 +326,7 @@
 					{:else}
 						<div class="bg-ash-700 border-ash-600 rounded-lg border p-4 opacity-75">
 							<div class="mb-3 flex items-center gap-3">
-								<div class="bg-ash-600 flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-full">
+								<div class="bg-ash-600 flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full">
 									{#if server.server_icon}
 										<img src={server.server_icon} alt={server.name} class="h-full w-full object-cover" />
 									{:else}

@@ -5,15 +5,7 @@ import { getBotUptimeMs } from '$lib/server/botProcesses.js';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	if (locals.user.authenticated && (locals.user.account_type === 'owner' || locals.user.account_type === 'moderator')) {
-		const servers = locals.user.accessible_servers ?? [];
-		if (servers.length === 1) {
-			try {
-				const server = await db.getServer(servers[0].server_id);
-				if (server) {
-					redirect(302, `/bots/${server.bot_id}/servers/${server.id}/config`);
-				}
-			} catch (_) {}
-		}
+		redirect(302, `/bots/${locals.user.bot_id}/servers/${locals.user.server_id}`);
 	}
 
 	let bots: any[] = [];

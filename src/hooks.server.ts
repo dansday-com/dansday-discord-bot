@@ -50,19 +50,32 @@ export const handle: Handle = async ({ event, resolve }) => {
 		try {
 			const session = await getSession(sessionId);
 			if (session?.authenticated && session.account_id) {
-				const account = await db.getAccountById(session.account_id);
-				if (account && !account.is_frozen) {
-					const user: App.Locals['user'] = {
-						authenticated: true,
-						account_id: account.id,
-						username: account.username,
-						email: account.email,
-						account_type: account.account_type
-					};
-					if (account.account_type === 'owner' || account.account_type === 'moderator') {
-						(user as any).accessible_servers = await db.getAccountServerAccess(account.id);
+				if (session.account_source === 'server_accounts') {
+					const account = await db.getServerAccountById(session.account_id);
+					if (account && !account.is_frozen) {
+						event.locals.user = {
+							authenticated: true,
+							account_id: account.id,
+							username: account.username,
+							email: account.email,
+							account_type: account.account_type,
+							account_source: 'server_accounts',
+							bot_id: account.bot_id,
+							server_id: account.server_id
+						};
 					}
-					event.locals.user = user;
+				} else {
+					const account = await db.getAccountById(session.account_id);
+					if (account && !account.is_frozen) {
+						event.locals.user = {
+							authenticated: true,
+							account_id: account.id,
+							username: account.username,
+							email: account.email,
+							account_type: account.account_type,
+							account_source: 'accounts'
+						};
+					}
 				}
 			} else if (!session) {
 				const panel = await db.getPanel();

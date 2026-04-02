@@ -24,14 +24,8 @@ export const PUT: RequestHandler = async ({ locals, params, request }) => {
 		await db.updateBot(params.id, { is_testing });
 
 		try {
-			const allBots = await db.getAllBots();
-			const officialBotIdNum = Number(params.id);
-			const connectedSelfbots = allBots.filter((b: any) => {
-				if (b.bot_type !== 'selfbot') return false;
-				return Number(b.connect_to) === officialBotIdNum;
-			});
-
-			for (const selfbot of connectedSelfbots) {
+			const selfbots = await db.getSelfbotsForOfficialBot(Number(params.id));
+			for (const selfbot of selfbots) {
 				await db.updateBot(selfbot.id, { is_testing });
 			}
 		} catch (_) {}

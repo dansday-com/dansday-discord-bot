@@ -51,7 +51,8 @@
 			const d = await res.json();
 			if (d.success) {
 				showToast(d.message || 'Registration successful! Check your email for the verification code.', 'success');
-				goto(`/verify?token=${d.verify_token}`);
+				const source = d.account_source === 'server_accounts' ? '&source=server_accounts' : '';
+				goto(`/verify?token=${d.verify_token}${source}`);
 			} else {
 				showToast(d.error || 'Registration failed', 'error');
 			}

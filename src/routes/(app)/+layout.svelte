@@ -22,15 +22,6 @@
 					<h1 class="text-ash-100 truncate text-base font-bold sm:text-xl">Dansday Discord Bot Panel</h1>
 				</a>
 				<div class="flex flex-shrink-0 items-center gap-2">
-					{#if data.user.account_type === 'superadmin'}
-						<a
-							href="/accounts"
-							class="bg-ash-600 hover:bg-ash-700 text-ash-100 flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs transition-all duration-200 hover:scale-105 active:scale-95 sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
-						>
-							<i class="fas fa-users text-xs sm:text-sm"></i>
-							<span class="sm:inline">Accounts</span>
-						</a>
-					{/if}
 					<button
 						onclick={handleLogout}
 						class="bg-ash-700 hover:bg-ash-600 text-ash-100 flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs transition-all duration-200 hover:scale-105 active:scale-95 sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"

@@ -7,5 +7,7 @@ export const load: PageServerLoad = ({ locals, url }) => {
 	const token = url.searchParams.get('token');
 	if (!token) redirect(302, '/login');
 
-	return { verifyToken: token };
+	const accountSource = url.searchParams.get('source') === 'server_accounts' ? 'server_accounts' : 'accounts';
+
+	return { verifyToken: token, accountSource };
 };

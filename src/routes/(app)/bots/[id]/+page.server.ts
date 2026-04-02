@@ -20,20 +20,6 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 
 	const { token, ...bot } = rawBot;
 	bot.is_testing = rawBot.is_testing || false;
-
-	if (rawBot.connect_to) {
-		const connectToId = Number(rawBot.connect_to);
-		if (connectToId && !Number.isNaN(connectToId)) {
-			try {
-				const connectedBot = await db.getBot(connectToId);
-				if (connectedBot) {
-					bot.connected_bot_name = connectedBot.name?.trim() || null;
-					if (rawBot.bot_type === 'selfbot') bot.is_testing = connectedBot.is_testing || false;
-				}
-			} catch (_) {}
-		}
-	}
-
 	bot.uptime_ms = getBotUptimeMs(bot);
 
 	const servers = await db.getServersForBot(Number(params.id));

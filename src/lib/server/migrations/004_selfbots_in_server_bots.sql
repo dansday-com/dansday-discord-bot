@@ -33,8 +33,8 @@ SET @s = IF(@col>0,'UPDATE server_bots sb JOIN bots b ON b.id = sb.selfbot_id SE
 PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
 
 -- Drop selfbot_id FK and column
-SET @fk = (SELECT COUNT(*) FROM information_schema.table_constraints WHERE table_schema=DATABASE() AND table_name='server_bots' AND constraint_name='server_bots_ibfk_2');
-SET @s = IF(@fk>0,'ALTER TABLE server_bots DROP FOREIGN KEY server_bots_ibfk_2','SELECT 1');
+SET @fkname = (SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE table_schema=DATABASE() AND table_name='server_bots' AND column_name='selfbot_id' AND REFERENCED_TABLE_NAME IS NOT NULL LIMIT 1);
+SET @s = IF(@fkname IS NOT NULL, CONCAT('ALTER TABLE server_bots DROP FOREIGN KEY ', @fkname), 'SELECT 1');
 PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
 
 SET @col = (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='server_bots' AND column_name='selfbot_id');
@@ -55,9 +55,9 @@ SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=
 SET @s = IF(@i>0,'DROP INDEX idx_bots_type ON bots','SELECT 1');
 PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
 
--- server_accounts: drop bot_id FK, then index, then column
-SET @fk = (SELECT COUNT(*) FROM information_schema.table_constraints WHERE table_schema=DATABASE() AND table_name='server_accounts' AND constraint_name='server_accounts_ibfk_1');
-SET @s = IF(@fk>0,'ALTER TABLE server_accounts DROP FOREIGN KEY server_accounts_ibfk_1','SELECT 1');
+-- server_accounts: drop bot_id FK (by dynamic name), then index, then column
+SET @fkname = (SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE table_schema=DATABASE() AND table_name='server_accounts' AND column_name='bot_id' AND REFERENCED_TABLE_NAME IS NOT NULL LIMIT 1);
+SET @s = IF(@fkname IS NOT NULL, CONCAT('ALTER TABLE server_accounts DROP FOREIGN KEY ', @fkname), 'SELECT 1');
 PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
 
 SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_accounts' AND index_name='idx_server_accounts_bot_server');
@@ -90,8 +90,8 @@ SET @s = IF(@col=0,'ALTER TABLE server_accounts ADD COLUMN ip_address TEXT NULL'
 PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
 
 -- server_account_invites: drop bot_id FK, then index, then column
-SET @fk = (SELECT COUNT(*) FROM information_schema.table_constraints WHERE table_schema=DATABASE() AND table_name='server_account_invites' AND constraint_name='server_account_invites_ibfk_1');
-SET @s = IF(@fk>0,'ALTER TABLE server_account_invites DROP FOREIGN KEY server_account_invites_ibfk_1','SELECT 1');
+SET @fkname = (SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE table_schema=DATABASE() AND table_name='server_account_invites' AND column_name='bot_id' AND REFERENCED_TABLE_NAME IS NOT NULL LIMIT 1);
+SET @s = IF(@fkname IS NOT NULL, CONCAT('ALTER TABLE server_account_invites DROP FOREIGN KEY ', @fkname), 'SELECT 1');
 PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
 
 SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_account_invites' AND index_name='idx_server_account_invites_bot_server');

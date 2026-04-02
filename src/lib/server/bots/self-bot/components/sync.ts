@@ -4,7 +4,6 @@ import { separateChannelsAndCategories, mapCategoriesForSync, mapChannelsForSync
 
 let client: any = null;
 let botId: any = null;
-let connectedOfficialBotId: any = null;
 
 async function findBotById(id: any) {
 	try {
@@ -98,18 +97,14 @@ async function init(discordClient: any, botIdFromEnv: any) {
 		botId = botIdFromEnv;
 		const bot = await findBotById(botId);
 		if (bot) {
-			if (bot.bot_type === 'selfbot' && bot.connect_to) {
-				connectedOfficialBotId = bot.connect_to;
-			}
-
 			logger.log(`✅ Found selfbot in database: ${bot.name} (${bot.bot_type})`);
 
-			if (bot.bot_type === 'selfbot' && bot.connect_to) {
-				const officialBot = await findBotById(connectedOfficialBotId);
+			if (bot.bot_type === 'selfbot') {
+				const officialBot = await db.getOfficialBotForSelfbot(bot.id);
 				if (officialBot) {
 					logger.log(`🔗 Selfbot connected to official bot: ${officialBot.name}`);
 				} else {
-					logger.log(`⚠️  Connected official bot not found: ${connectedOfficialBotId}`);
+					logger.log(`⚠️  No official bot found for selfbot via server assignments`);
 				}
 			}
 

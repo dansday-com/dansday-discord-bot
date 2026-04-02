@@ -15,7 +15,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 
 	if (user.authenticated) {
 		try {
-			const account = await db.getPanelAccountById(user.account_id);
+			const account = await db.getAccountById(user.account_id);
 			if (account) {
 				logger.log(`Logged out: ${account.username} (IP: ${getClientIp(request)})`);
 			}

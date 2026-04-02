@@ -1,5 +1,5 @@
 import mysql from 'mysql2/promise';
-import { readFileSync } from 'fs';
+import { readFileSync, readdirSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import logger from './logger.js';
@@ -112,7 +112,7 @@ async function runMigration() {
 
 		logger.log('✅ Database schema created successfully!');
 		logger.log(
-			'📊 Tables created: panel, panel_accounts, panel_invite_links, bots, servers, server_categories, server_channels, server_roles, server_members, server_member_levels, server_member_roles, server_members_afk, server_settings, server_giveaways, server_giveaway_entries, server_staff_ratings, server_staff_reports, server_feedback'
+			'📊 Tables created: panel, accounts, account_invites, account_server_access, server_selfbot_assignments, bots, servers, server_categories, server_channels, server_roles, server_members, server_member_levels, server_member_roles, server_members_afk, server_settings, server_giveaways, server_giveaway_entries, server_staff_ratings, server_staff_reports, server_feedback'
 		);
 		logger.log('📈 Indexes created: all indexes');
 	} catch (error: any) {
@@ -129,13 +129,60 @@ async function runMigration() {
 	}
 }
 
+async function runMigrations() {
+	const migrationsDir = join(process.cwd(), 'src/lib/server/migrations');
+
+	let files: string[];
+	try {
+		files = readdirSync(migrationsDir)
+			.filter((f) => f.endsWith('.sql'))
+			.sort();
+	} catch (_) {
+		return;
+	}
+
+	if (files.length === 0) return;
+
+	const connection = await mysql.createConnection(resolveConnectionConfig());
+	try {
+		await connection.connect();
+
+		for (const file of files) {
+			const [rows] = await connection.execute('SELECT id FROM migrations WHERE name = ? LIMIT 1', [file]);
+			if ((rows as any[]).length > 0) {
+				logger.log(`⏭️  Migration already ran: ${file}`);
+				continue;
+			}
+
+			logger.log(`🔧 Running migration: ${file}`);
+			const sql = readFileSync(join(migrationsDir, file), 'utf-8');
+			const statements = sql
+				.split(';')
+				.map((s) => s.trim())
+				.filter((s) => s.length > 0 && !s.startsWith('--'));
+
+			for (const statement of statements) {
+				await connection.query(statement);
+			}
+
+			await connection.execute('INSERT INTO migrations (name, ran_at) VALUES (?, NOW())', [file]);
+			logger.log(`✅ Migration complete: ${file}`);
+		}
+	} finally {
+		await connection.end();
+	}
+}
+
 async function setupDatabase() {
 	logger.log('🔍 Checking database tables...');
 
 	const tables = [
+		{ name: 'migrations', required: true },
 		{ name: 'panel', required: true },
-		{ name: 'panel_accounts', required: true },
-		{ name: 'panel_invite_links', required: true },
+		{ name: 'accounts', required: true },
+		{ name: 'account_invites', required: true },
+		{ name: 'account_server_access', required: true },
+		{ name: 'server_selfbot_assignments', required: true },
 		{ name: 'bots', required: true },
 		{ name: 'servers', required: true },
 		{ name: 'server_categories', required: true },
@@ -195,6 +242,7 @@ async function setupDatabase() {
 	}
 
 	logger.log('✅ All database tables verified');
+	await runMigrations();
 	return true;
 }
 
@@ -265,8 +313,8 @@ export async function createBot(botData: any) {
 			const now = toMySQLDateTime();
 			const [result] = await connection.execute(
 				`INSERT INTO bots (
-					name, token, application_id, bot_type, bot_icon, port, secret_key, connect_to, panel_id, created_at, updated_at
-				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+					name, token, application_id, bot_type, bot_icon, port, secret_key, panel_id, created_at, updated_at
+				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 				[
 					botData.name || `Bot#${botNumber}`,
 					botData.token,
@@ -275,7 +323,6 @@ export async function createBot(botData: any) {
 					botData.bot_icon || null,
 					botData.port !== undefined ? botData.port : botData.bot_type === 'official' ? 7777 : null,
 					botData.secret_key || null,
-					botData.connect_to || null,
 					botData.panel_id || null,
 					now,
 					now
@@ -1482,34 +1529,34 @@ async function createPanel() {
 	}
 }
 
-async function getPanelAccountById(accountId: any) {
-	const result = await query('SELECT * FROM panel_accounts WHERE id = ? LIMIT 1', [accountId]);
+async function getAccountById(accountId: any) {
+	const result = await query('SELECT * FROM accounts WHERE id = ? LIMIT 1', [accountId]);
 	return result[0] || null;
 }
 
-async function getPanelAccountByEmail(email: string) {
-	const result = await query('SELECT * FROM panel_accounts WHERE email = ? LIMIT 1', [email]);
+async function getAccountByEmail(email: string) {
+	const result = await query('SELECT * FROM accounts WHERE email = ? LIMIT 1', [email]);
 	return result[0] || null;
 }
 
-async function getPanelAccountByUsername(username: string) {
-	const result = await query('SELECT * FROM panel_accounts WHERE username = ? LIMIT 1', [username]);
+async function getAccountByUsername(username: string) {
+	const result = await query('SELECT * FROM accounts WHERE username = ? LIMIT 1', [username]);
 	return result[0] || null;
 }
 
-async function createPanelAccount(accountData: any) {
+async function createAccount(accountData: any) {
 	const connection = await getPool().getConnection();
 	try {
 		const now = toMySQLDateTime();
 		const [result] = await connection.execute(
-			`INSERT INTO panel_accounts (
+			`INSERT INTO accounts (
 				username, email, password_hash, account_type, email_verified, otp_code, otp_expires_at, panel_id, ip_address, created_at, updated_at
 			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			[
 				accountData.username,
 				accountData.email,
 				accountData.password_hash,
-				accountData.account_type || 'admin',
+				accountData.account_type || 'superadmin',
 				accountData.email_verified || false,
 				accountData.otp_code || null,
 				accountData.otp_expires_at ? toMySQLDateTime(accountData.otp_expires_at) : null,
@@ -1519,17 +1566,17 @@ async function createPanelAccount(accountData: any) {
 				now
 			]
 		);
-		const accounts = await query('SELECT * FROM panel_accounts WHERE id = ?', [(result as any).insertId]);
+		const accounts = await query('SELECT * FROM accounts WHERE id = ?', [(result as any).insertId]);
 		return accounts[0];
 	} finally {
 		connection.release();
 	}
 }
 
-async function updatePanelAccount(accountId: any, updateData: any) {
+async function updateAccount(accountId: any, updateData: any) {
 	const fields = Object.keys(updateData).filter((key) => updateData[key] !== undefined);
 	if (fields.length === 0) {
-		return await getPanelAccountById(accountId);
+		return await getAccountById(accountId);
 	}
 
 	const setClause = fields.map((field) => `${field} = ?`).join(', ');
@@ -1541,46 +1588,46 @@ async function updatePanelAccount(accountId: any, updateData: any) {
 		return updateData[field];
 	});
 
-	await query(`UPDATE panel_accounts SET ${setClause}, updated_at = ? WHERE id = ?`, [...values, toMySQLDateTime(), accountId]);
+	await query(`UPDATE accounts SET ${setClause}, updated_at = ? WHERE id = ?`, [...values, toMySQLDateTime(), accountId]);
 
-	return await getPanelAccountById(accountId);
+	return await getAccountById(accountId);
 }
 
-async function deletePanelAccount(accountId: any) {
-	await query('DELETE FROM panel_accounts WHERE id = ?', [accountId]);
+async function deleteAccount(accountId: any) {
+	await query('DELETE FROM accounts WHERE id = ?', [accountId]);
 }
 
-async function getAllPanelAccounts() {
-	return await query('SELECT id, username, email, account_type, email_verified, is_frozen, created_at, updated_at FROM panel_accounts ORDER BY created_at ASC');
+async function getAllAccounts() {
+	return await query('SELECT id, username, email, account_type, email_verified, is_frozen, created_at, updated_at FROM accounts ORDER BY created_at ASC');
 }
 
-async function createPanelInviteLink(linkData: any) {
+async function createInviteLink(linkData: any) {
 	const connection = await getPool().getConnection();
 	try {
 		const now = toMySQLDateTime();
 		const expiresAt = linkData.expires_at ? toMySQLDateTime(linkData.expires_at) : null;
 		const [result] = await connection.execute(
-			`INSERT INTO panel_invite_links (
-				token, account_type, created_by, expires_at, created_at
-			) VALUES (?, ?, ?, ?, ?)`,
-			[linkData.token, linkData.account_type, linkData.created_by, expiresAt, now]
+			`INSERT INTO account_invites (
+				token, account_type, server_id, created_by, expires_at, created_at
+			) VALUES (?, ?, ?, ?, ?, ?)`,
+			[linkData.token, linkData.account_type, linkData.server_id || null, linkData.created_by, expiresAt, now]
 		);
-		const links = await query('SELECT * FROM panel_invite_links WHERE id = ?', [(result as any).insertId]);
+		const links = await query('SELECT * FROM account_invites WHERE id = ?', [(result as any).insertId]);
 		return links[0];
 	} finally {
 		connection.release();
 	}
 }
 
-async function getPanelInviteLinkByToken(token: string) {
-	const result = await query('SELECT * FROM panel_invite_links WHERE token = ? LIMIT 1', [token]);
+async function getInviteLinkByToken(token: string) {
+	const result = await query('SELECT * FROM account_invites WHERE token = ? LIMIT 1', [token]);
 	return result[0] || null;
 }
 
-async function updatePanelInviteLink(linkId: any, updateData: any) {
+async function updateInviteLink(linkId: any, updateData: any) {
 	const fields = Object.keys(updateData).filter((key) => updateData[key] !== undefined);
 	if (fields.length === 0) {
-		return await getPanelInviteLinkByToken(linkId);
+		return await getInviteLinkByToken(linkId);
 	}
 
 	const setClause = fields.map((field) => `${field} = ?`).join(', ');
@@ -1593,25 +1640,104 @@ async function updatePanelInviteLink(linkId: any, updateData: any) {
 	});
 	values.push(linkId);
 
-	await query(`UPDATE panel_invite_links SET ${setClause} WHERE id = ?`, values);
+	await query(`UPDATE account_invites SET ${setClause} WHERE id = ?`, values);
 
-	const links = await query('SELECT * FROM panel_invite_links WHERE id = ?', [linkId]);
+	const links = await query('SELECT * FROM account_invites WHERE id = ?', [linkId]);
 	return links[0];
 }
 
-async function getAllPanelInviteLinks() {
+async function getAllInviteLinks() {
 	return await query(
 		`SELECT
-			pil.*,
+			ai.*,
+			s.name as server_name,
 			creator.username as creator_username,
 			creator.email as creator_email,
-			user.username as used_by_username,
-			user.email as used_by_email
-		FROM panel_invite_links pil
-		LEFT JOIN panel_accounts creator ON pil.created_by = creator.id
-		LEFT JOIN panel_accounts user ON pil.used_by = user.id
-		ORDER BY pil.created_at DESC`
+			used.username as used_by_username,
+			used.email as used_by_email
+		FROM account_invites ai
+		LEFT JOIN servers s ON ai.server_id = s.id
+		LEFT JOIN accounts creator ON ai.created_by = creator.id
+		LEFT JOIN accounts used ON ai.used_by = used.id
+		ORDER BY ai.created_at DESC`
 	);
+}
+
+async function getAccountServerAccess(accountId: number) {
+	return await query('SELECT server_id, role FROM account_server_access WHERE account_id = ?', [accountId]);
+}
+
+async function createAccountServerAccess(data: { account_id: number; server_id: number; role: 'owner' | 'moderator'; invited_by?: number | null }) {
+	const now = toMySQLDateTime();
+	await query(
+		`INSERT INTO account_server_access (account_id, server_id, role, invited_by, created_at)
+		 VALUES (?, ?, ?, ?, ?)
+		 ON DUPLICATE KEY UPDATE role = VALUES(role)`,
+		[data.account_id, data.server_id, data.role, data.invited_by || null, now]
+	);
+}
+
+async function deleteAccountServerAccess(accountId: number, serverId: number) {
+	await query('DELETE FROM account_server_access WHERE account_id = ? AND server_id = ?', [accountId, serverId]);
+}
+
+async function getServerAccounts(serverId: number) {
+	return await query(
+		`SELECT a.id, a.username, a.email, a.account_type, a.is_frozen, a.created_at, asa.role, asa.invited_by
+		 FROM accounts a
+		 JOIN account_server_access asa ON asa.account_id = a.id
+		 WHERE asa.server_id = ?
+		 ORDER BY asa.role ASC, a.created_at ASC`,
+		[serverId]
+	);
+}
+
+async function getServerSelfbotAssignment(serverId: number) {
+	const result = await query(
+		`SELECT ssa.*, b.name as selfbot_name, b.status as selfbot_status
+		 FROM server_selfbot_assignments ssa
+		 JOIN bots b ON b.id = ssa.selfbot_id
+		 WHERE ssa.server_id = ? LIMIT 1`,
+		[serverId]
+	);
+	return result[0] || null;
+}
+
+async function upsertServerSelfbotAssignment(serverId: number, selfbotId: number) {
+	const now = toMySQLDateTime();
+	await query(
+		`INSERT INTO server_selfbot_assignments (server_id, selfbot_id, created_at, updated_at)
+		 VALUES (?, ?, ?, ?)
+		 ON DUPLICATE KEY UPDATE selfbot_id = VALUES(selfbot_id), updated_at = VALUES(updated_at)`,
+		[serverId, selfbotId, now, now]
+	);
+}
+
+async function deleteServerSelfbotAssignment(serverId: number) {
+	await query('DELETE FROM server_selfbot_assignments WHERE server_id = ?', [serverId]);
+}
+
+async function getOfficialBotForSelfbot(selfbotId: number) {
+	const result = await query(
+		`SELECT b.* FROM server_selfbot_assignments ssa
+		 JOIN servers s ON s.id = ssa.server_id
+		 JOIN bots b ON b.id = s.bot_id
+		 WHERE ssa.selfbot_id = ? AND b.bot_type = 'official' LIMIT 1`,
+		[selfbotId]
+	);
+	return result[0] || null;
+}
+
+async function getSelfbotsForOfficialBot(officialBotId: number) {
+	const result = await query(
+		`SELECT DISTINCT b.*
+		 FROM server_selfbot_assignments ssa
+		 JOIN servers s ON s.id = ssa.server_id
+		 JOIN bots b ON b.id = ssa.selfbot_id
+		 WHERE s.bot_id = ?`,
+		[officialBotId]
+	);
+	return result;
 }
 
 async function getServerSettings(serverId: any, componentName: string | null = null) {
@@ -2281,17 +2407,26 @@ export default {
 	memberHasCustomSupporterRole,
 	getPanel,
 	createPanel,
-	getPanelAccountById,
-	getPanelAccountByEmail,
-	getPanelAccountByUsername,
-	createPanelAccount,
-	updatePanelAccount,
-	deletePanelAccount,
-	getAllPanelAccounts,
-	createPanelInviteLink,
-	getPanelInviteLinkByToken,
-	updatePanelInviteLink,
-	getAllPanelInviteLinks,
+	getAccountById,
+	getAccountByEmail,
+	getAccountByUsername,
+	createAccount,
+	updateAccount,
+	deleteAccount,
+	getAllAccounts,
+	createInviteLink,
+	getInviteLinkByToken,
+	updateInviteLink,
+	getAllInviteLinks,
+	getAccountServerAccess,
+	createAccountServerAccess,
+	deleteAccountServerAccess,
+	getServerAccounts,
+	getServerSelfbotAssignment,
+	upsertServerSelfbotAssignment,
+	deleteServerSelfbotAssignment,
+	getOfficialBotForSelfbot,
+	getSelfbotsForOfficialBot,
 	getServerSettings,
 	upsertServerSettings,
 	getChannelsForServer,

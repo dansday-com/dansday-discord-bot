@@ -7,7 +7,7 @@ import { sendAccountDeletedEmail } from '$lib/server/email.js';
 import logger from '$lib/server/logger.js';
 
 export const DELETE: RequestHandler = async ({ locals, params }) => {
-	if (!locals.user.authenticated || locals.user.account_type !== 'admin') {
+	if (!locals.user.authenticated || locals.user.account_type !== 'superadmin') {
 		return json({ success: false, error: 'Admin access required' }, { status: 403 });
 	}
 
@@ -17,7 +17,7 @@ export const DELETE: RequestHandler = async ({ locals, params }) => {
 			return json({ success: false, error: 'Invalid account ID' }, { status: 400 });
 		}
 
-		const account = await db.getPanelAccountById(accountId);
+		const account = await db.getAccountById(accountId);
 		if (!account) {
 			return json({ success: false, error: 'Account not found' }, { status: 404 });
 		}
@@ -30,7 +30,7 @@ export const DELETE: RequestHandler = async ({ locals, params }) => {
 			await sendAccountDeletedEmail(account.email, account.username);
 		} catch (_) {}
 
-		await db.deletePanelAccount(accountId);
+		await db.deleteAccount(accountId);
 		logger.log(`${locals.user.username} deleted account: ${account.username} (ID: ${accountId})`);
 
 		return json({ success: true, message: 'Account deleted successfully' });

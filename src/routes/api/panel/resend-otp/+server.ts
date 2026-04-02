@@ -21,7 +21,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ success: false, error: 'Invalid or expired verification link. Please log in again.' }, { status: 401 });
 		}
 
-		const account = await db.getPanelAccountById(accountId);
+		const account = await db.getAccountById(accountId);
 		if (!account) {
 			return json({ success: false, error: 'Account not found' }, { status: 404 });
 		}
@@ -33,7 +33,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		const otpCode = randomInt(100000, 999999).toString();
 		const otpExpiresAt = addMinutesToNow(10);
 
-		await db.updatePanelAccount(account.id, { otp_code: otpCode, otp_expires_at: otpExpiresAt });
+		await db.updateAccount(account.id, { otp_code: otpCode, otp_expires_at: otpExpiresAt });
 
 		try {
 			await sendOTPEmail(account.email, otpCode);

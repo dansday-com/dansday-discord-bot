@@ -8,7 +8,6 @@ interface BotConfig {
 	port: number;
 	secret_key: string;
 	is_testing: boolean;
-	connect_to: number | null;
 }
 
 let botConfig: BotConfig | null = null;
@@ -30,14 +29,12 @@ async function loadBotConfig() {
 	let secret_key = bot.secret_key;
 	let is_testing = bot.is_testing || false;
 
-	if (bot.bot_type === 'selfbot' && bot.connect_to) {
-		const connectedBot = await db.getBot(bot.connect_to);
-		if (connectedBot) {
-			port = connectedBot.port;
-			secret_key = connectedBot.secret_key;
-			is_testing = connectedBot.is_testing || false;
-		} else {
-			throw new Error(`Connected bot not found for selfbot ${botId}. Connected bot ID: ${bot.connect_to}`);
+	if (bot.bot_type === 'selfbot') {
+		const officialBot = await db.getOfficialBotForSelfbot(bot.id);
+		if (officialBot) {
+			port = officialBot.port;
+			secret_key = officialBot.secret_key;
+			is_testing = officialBot.is_testing || false;
 		}
 	}
 
@@ -48,8 +45,7 @@ async function loadBotConfig() {
 		bot_type: bot.bot_type,
 		port,
 		secret_key,
-		is_testing,
-		connect_to: bot.connect_to
+		is_testing
 	};
 
 	return botConfig;
@@ -75,10 +71,11 @@ function requireGuildId(guildId: any, action = 'operation') {
 	}
 }
 
-function getOfficialBotId() {
+async function getOfficialBotId() {
 	requireBotConfig();
-	if (botConfig!.bot_type === 'selfbot' && botConfig!.connect_to) {
-		return botConfig!.connect_to;
+	if (botConfig!.bot_type === 'selfbot') {
+		const officialBot = await db.getOfficialBotForSelfbot(botConfig!.id);
+		if (officialBot) return officialBot.id as number;
 	}
 	return botConfig!.id;
 }
@@ -99,7 +96,7 @@ async function getOfficialBotServer(guildId: string) {
 	requireBotConfig();
 	requireGuildId(guildId, 'getting server');
 
-	const officialBotId = getOfficialBotId();
+	const officialBotId = await getOfficialBotId();
 	const officialBotServer = await db.getServerByDiscordId(officialBotId, guildId);
 
 	if (!officialBotServer) {
@@ -468,7 +465,7 @@ export const FORWARDER = {
 	async getConfig(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting forwarder config');
-		const botIdToUse = getOfficialBotId();
+		const botIdToUse = await getOfficialBotId();
 		const server = await db.getServerByDiscordId(botIdToUse, guildId);
 		if (!server) return { production: [], testing: [] };
 		const settings = await db.getServerSettings(server.id, 'forwarder');
@@ -479,7 +476,7 @@ export const FORWARDER = {
 	async shouldForwardChannel(channelId: string, guildId: string) {
 		requireBotConfig();
 		if (!channelId || !guildId) return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false };
-		if (botConfig!.bot_type !== 'selfbot' || !botConfig!.connect_to) {
+		if (botConfig!.bot_type !== 'selfbot') {
 			return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false };
 		}
 
@@ -487,7 +484,7 @@ export const FORWARDER = {
 			const selfbotServer = await db.getServerByDiscordId(botConfig!.id, guildId);
 			if (!selfbotServer) return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false };
 
-			const officialBot = await db.getBot(botConfig!.connect_to);
+			const officialBot = await db.getOfficialBotForSelfbot(botConfig!.id);
 			if (!officialBot) return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false };
 
 			const officialServers = await db.getServersForBot(officialBot.id);
@@ -531,14 +528,7 @@ export const FORWARDER = {
 		const allGuilds = await db.getServersForBot(botConfig!.id);
 		const environment = botConfig!.is_testing ? 'testing' : 'production';
 
-		const allBots = await db.getAllBots();
-		const botConfigIdNum = typeof botConfig!.id === 'string' ? parseInt(botConfig!.id) : botConfig!.id;
-		const connectedSelfbots = allBots.filter((bot: any) => {
-			if (bot.bot_type !== 'selfbot') return false;
-			if (!bot.connect_to) return false;
-			const connectToNum = typeof bot.connect_to === 'string' ? parseInt(bot.connect_to) : bot.connect_to;
-			return connectToNum === botConfigIdNum;
-		});
+		const connectedSelfbots = await db.getSelfbotsForOfficialBot(botConfig!.id);
 
 		for (const officialServer of allGuilds) {
 			try {

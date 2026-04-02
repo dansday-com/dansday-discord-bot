@@ -34,14 +34,14 @@ export const POST: RequestHandler = async ({ request }) => {
 		if (sanitizedInput.includes('@')) {
 			const sanitizedEmail = sanitizeEmail(sanitizedInput);
 			if (sanitizedEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sanitizedEmail)) {
-				account = await db.getPanelAccountByEmail(sanitizedEmail);
+				account = await db.getAccountByEmail(sanitizedEmail);
 			}
 		}
 
 		if (!account) {
 			const sanitizedUsername = sanitizeUsername(sanitizedInput);
 			if (sanitizedUsername && sanitizedUsername.length >= 3) {
-				account = await db.getPanelAccountByUsername(sanitizedUsername);
+				account = await db.getAccountByUsername(sanitizedUsername);
 			}
 		}
 
@@ -78,12 +78,12 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ success: false, error: 'Invalid credentials' }, { status: 401 });
 		}
 
-		await db.updatePanelAccount(account.id, { ip_address: ip });
+		await db.updateAccount(account.id, { ip_address: ip });
 
 		const sessionId = newSessionId();
 		await setSession(sessionId, {
 			authenticated: true,
-			panel_account_id: account.id,
+			account_id: account.id,
 			account_type: account.account_type
 		});
 

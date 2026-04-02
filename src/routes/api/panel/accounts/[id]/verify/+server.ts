@@ -6,7 +6,7 @@ import { sendVerificationSuccessEmail } from '$lib/server/email.js';
 import logger from '$lib/server/logger.js';
 
 export const PUT: RequestHandler = async ({ locals, params }) => {
-	if (!locals.user.authenticated || locals.user.account_type !== 'admin') {
+	if (!locals.user.authenticated || locals.user.account_type !== 'superadmin') {
 		return json({ success: false, error: 'Admin access required' }, { status: 403 });
 	}
 
@@ -16,7 +16,7 @@ export const PUT: RequestHandler = async ({ locals, params }) => {
 			return json({ success: false, error: 'Invalid account ID' }, { status: 400 });
 		}
 
-		const account = await db.getPanelAccountById(accountId);
+		const account = await db.getAccountById(accountId);
 		if (!account) {
 			return json({ success: false, error: 'Account not found' }, { status: 404 });
 		}
@@ -25,7 +25,7 @@ export const PUT: RequestHandler = async ({ locals, params }) => {
 			return json({ success: false, error: 'Account is already verified' }, { status: 400 });
 		}
 
-		await db.updatePanelAccount(accountId, { email_verified: true, otp_code: null, otp_expires_at: null });
+		await db.updateAccount(accountId, { email_verified: true, otp_code: null, otp_expires_at: null });
 		logger.log(`${locals.user.username} manually verified account: ${account.username} (ID: ${accountId})`);
 
 		try {

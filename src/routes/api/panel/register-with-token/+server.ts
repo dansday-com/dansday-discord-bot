@@ -67,7 +67,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ success: false, error: validation.errors[0] }, { status: 400 });
 		}
 
-		const inviteLink = await db.getPanelInviteLinkByToken(sanitizedToken);
+		const inviteLink = await db.getInviteLinkByToken(sanitizedToken);
 		if (!inviteLink) {
 			return json({ success: false, error: 'Invalid invite link' }, { status: 404 });
 		}
@@ -84,12 +84,17 @@ export const POST: RequestHandler = async ({ request }) => {
 			}
 		}
 
-		const existingUsername = await db.getPanelAccountByUsername(validation.sanitizedUsername);
+		// owner/moderator invites must have a server attached
+		if ((inviteLink.account_type === 'owner' || inviteLink.account_type === 'moderator') && !inviteLink.server_id) {
+			return json({ success: false, error: 'Invite link is missing server assignment' }, { status: 400 });
+		}
+
+		const existingUsername = await db.getAccountByUsername(validation.sanitizedUsername);
 		if (existingUsername) {
 			return json({ success: false, error: 'Username already taken' }, { status: 400 });
 		}
 
-		const existingEmail = await db.getPanelAccountByEmail(validation.sanitizedEmail);
+		const existingEmail = await db.getAccountByEmail(validation.sanitizedEmail);
 		if (existingEmail) {
 			return json({ success: false, error: 'Email already registered' }, { status: 400 });
 		}
@@ -105,7 +110,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		const otpCode = randomInt(100000, 999999).toString();
 		const otpExpiresAt = addMinutesToNow(10);
 
-		const account = await db.createPanelAccount({
+		const account = await db.createAccount({
 			username: validation.sanitizedUsername,
 			email: validation.sanitizedEmail,
 			password_hash: passwordHash,
@@ -117,7 +122,17 @@ export const POST: RequestHandler = async ({ request }) => {
 			ip_address: ip
 		});
 
-		await db.updatePanelInviteLink(inviteLink.id, { used_by: account.id, used_at: getCurrentDateTime() });
+		// For owner/moderator, create the server access record immediately
+		if ((inviteLink.account_type === 'owner' || inviteLink.account_type === 'moderator') && inviteLink.server_id) {
+			await db.createAccountServerAccess({
+				account_id: account.id,
+				server_id: inviteLink.server_id,
+				role: inviteLink.account_type as 'owner' | 'moderator',
+				invited_by: inviteLink.created_by
+			});
+		}
+
+		await db.updateInviteLink(inviteLink.id, { used_by: account.id, used_at: getCurrentDateTime() });
 
 		try {
 			await sendOTPEmail(validation.sanitizedEmail, otpCode);

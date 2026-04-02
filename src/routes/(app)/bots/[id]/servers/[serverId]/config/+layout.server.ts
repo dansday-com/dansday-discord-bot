@@ -4,7 +4,12 @@ import db from '$lib/server/db.js';
 
 export const load: LayoutServerLoad = async ({ locals, params }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
-	if (locals.user.account_type !== 'admin') error(403, 'Admins only');
+
+	const serverId = Number(params.serverId);
+	if (locals.user.account_type !== 'superadmin') {
+		const hasAccess = locals.user.accessible_servers?.find((s) => s.server_id === serverId);
+		if (!hasAccess) error(403, 'Access denied');
+	}
 
 	const [channels, roles, categories] = await Promise.all([
 		db.getChannelsForServer(params.serverId),

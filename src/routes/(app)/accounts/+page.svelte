@@ -47,7 +47,7 @@
 	function badgeClass(account: { account_type: string; is_frozen: boolean; email_verified: boolean }) {
 		if (account.is_frozen) return 'bg-red-900 text-red-300';
 		if (!account.email_verified) return 'bg-yellow-900 text-yellow-300';
-		if (account.account_type === 'admin') return 'bg-ash-600 text-ash-200';
+		if (account.account_type === 'superadmin') return 'bg-ash-600 text-ash-200';
 		return 'bg-ash-700 text-ash-300';
 	}
 

@@ -1,8 +1,23 @@
+import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import db from '$lib/server/db.js';
 import { getBotUptimeMs } from '$lib/server/botProcesses.js';
 
 export const load: PageServerLoad = async ({ locals }) => {
+	// Redirect owner/moderator to their server page directly
+	if (locals.user.authenticated && (locals.user.account_type === 'owner' || locals.user.account_type === 'moderator')) {
+		const servers = locals.user.accessible_servers ?? [];
+		if (servers.length === 1) {
+			try {
+				const server = await db.getServer(servers[0].server_id);
+				if (server) {
+					redirect(302, `/bots/${server.bot_id}/servers/${server.id}/config`);
+				}
+			} catch (_) {}
+		}
+		// Multiple servers: fall through and let the page show a picker (bots list will be empty for them)
+	}
+
 	let bots: any[] = [];
 	try {
 		const rawBots = await db.getAllBots();
@@ -26,7 +41,6 @@ export const load: PageServerLoad = async ({ locals }) => {
 					bot_icon: bot.bot_icon,
 					port: bot.port,
 					application_id: bot.application_id,
-					connect_to: bot.connect_to,
 					status: bot.status || 'stopped',
 					process_id: bot.process_id || null,
 					uptime_started_at: bot.uptime_started_at || null,
@@ -34,21 +48,6 @@ export const load: PageServerLoad = async ({ locals }) => {
 					updated_at: bot.updated_at,
 					is_testing: bot.is_testing || false
 				};
-
-				if (bot.connect_to) {
-					const connectToId = Number(bot.connect_to);
-					if (connectToId && !Number.isNaN(connectToId)) {
-						try {
-							const connectedBot = await db.getBot(connectToId);
-							if (connectedBot) {
-								botData.connected_bot_name = connectedBot.name?.trim() || null;
-								if (bot.bot_type === 'selfbot') {
-									botData.is_testing = connectedBot.is_testing || false;
-								}
-							}
-						} catch (_) {}
-					}
-				}
 
 				botData.uptime_ms = getBotUptimeMs(botData);
 				return botData;

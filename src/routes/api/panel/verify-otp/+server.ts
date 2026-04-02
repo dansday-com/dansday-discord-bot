@@ -26,7 +26,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ success: false, error: 'OTP code must be 6 digits' }, { status: 400 });
 		}
 
-		const account = await db.getPanelAccountById(sanitizedAccountId);
+		const account = await db.getAccountById(sanitizedAccountId);
 		if (!account) {
 			return json({ success: false, error: 'Account not found' }, { status: 404 });
 		}
@@ -50,7 +50,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		const ip = getClientIp(request);
 		await consumeVerifyToken(verifyToken);
-		await db.updatePanelAccount(account.id, {
+		await db.updateAccount(account.id, {
 			email_verified: true,
 			otp_code: null,
 			otp_expires_at: null,
@@ -60,7 +60,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		const sessionId = newSessionId();
 		await setSession(sessionId, {
 			authenticated: true,
-			panel_account_id: account.id,
+			account_id: account.id,
 			account_type: account.account_type
 		});
 

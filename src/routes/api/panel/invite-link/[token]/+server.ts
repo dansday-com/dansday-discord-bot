@@ -10,7 +10,7 @@ export const GET: RequestHandler = async ({ params }) => {
 			return json({ success: false, error: 'Invalid token format' }, { status: 400 });
 		}
 
-		const inviteLink = await db.getPanelInviteLinkByToken(sanitizedToken);
+		const inviteLink = await db.getInviteLinkByToken(sanitizedToken);
 		if (!inviteLink) {
 			return json({ success: false, error: 'Invite link not found' }, { status: 404 });
 		}

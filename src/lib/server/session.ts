@@ -3,7 +3,7 @@ import { randomBytes } from 'crypto';
 
 export type SessionData = {
 	authenticated: boolean;
-	panel_account_id?: number;
+	account_id?: number;
 	account_type?: string;
 };
 
@@ -63,7 +63,7 @@ export async function destroySessionsForAccount(accountId: number): Promise<void
 			const raw = await redis.get(key);
 			if (!raw) continue;
 			const data = JSON.parse(raw) as SessionData;
-			if (data.panel_account_id === accountId) {
+			if (data.account_id === accountId) {
 				await redis.del(key);
 			}
 		}

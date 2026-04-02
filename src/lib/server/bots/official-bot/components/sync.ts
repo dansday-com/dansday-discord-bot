@@ -165,14 +165,8 @@ async function init(discordClient, botToken) {
 				await syncAllGuilds();
 				logger.log('✅ Initial sync complete');
 
-				const allBots = await db.getAllBots();
 				const botIdNum = typeof botId === 'string' ? parseInt(botId) : botId;
-				const connectedSelfbots = allBots.filter((b) => {
-					if (b.bot_type !== 'selfbot') return false;
-					if (!b.connect_to) return false;
-					const connectToNum = typeof b.connect_to === 'string' ? parseInt(b.connect_to) : b.connect_to;
-					return connectToNum === botIdNum;
-				});
+				const connectedSelfbots = await db.getSelfbotsForOfficialBot(botIdNum);
 
 				if (connectedSelfbots.length > 0) {
 					logger.log(`⏳ Waiting for ${connectedSelfbots.length} connected selfbot(s) to finish syncing...`);

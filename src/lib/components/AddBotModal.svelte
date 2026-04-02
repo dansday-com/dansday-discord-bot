@@ -3,32 +3,27 @@
 
 	interface Props {
 		open: boolean;
-		officialBots: { id: number; name: string }[];
 		onclose: () => void;
 		onadded: () => void;
 	}
 
-	let { open, officialBots, onclose, onadded }: Props = $props();
+	let { open, onclose, onadded }: Props = $props();
 
 	let loading = $state(false);
-	let botType = $state('');
 	let botToken = $state('');
 	let showToken = $state(false);
 	let applicationId = $state('');
 	let port = $state('');
 	let secretKey = $state('');
 	let showSecret = $state(false);
-	let connectTo = $state('');
 
 	function reset() {
-		botType = '';
 		botToken = '';
 		showToken = false;
 		applicationId = '';
 		port = '';
 		secretKey = '';
 		showSecret = false;
-		connectTo = '';
 	}
 
 	function close() {
@@ -37,42 +32,32 @@
 	}
 
 	async function handleSubmit() {
-		if (!botType) {
-			showToast('Please select a bot type', 'error');
-			return;
-		}
 		if (!botToken) {
 			showToast('Bot token is required', 'error');
 			return;
 		}
-		if (botType === 'official') {
-			if (!applicationId) {
-				showToast('Application ID is required', 'error');
-				return;
-			}
-			if (!port) {
-				showToast('Port is required', 'error');
-				return;
-			}
-			if (!secretKey) {
-				showToast('Secret key is required', 'error');
-				return;
-			}
+		if (!applicationId) {
+			showToast('Application ID is required', 'error');
+			return;
 		}
-		if (botType === 'selfbot' && !connectTo) {
-			showToast('Please select an official bot to connect to', 'error');
+		if (!port) {
+			showToast('Port is required', 'error');
+			return;
+		}
+		if (!secretKey) {
+			showToast('Secret key is required', 'error');
 			return;
 		}
 
 		loading = true;
 		try {
-			const body: Record<string, unknown> = { bot_type: botType, token: botToken };
-			if (botType === 'official') {
-				body.application_id = applicationId;
-				body.port = Number(port);
-				body.secret_key = secretKey;
-			}
-			if (botType === 'selfbot') body.connect_to = Number(connectTo);
+			const body: Record<string, unknown> = {
+				bot_type: 'official',
+				token: botToken,
+				application_id: applicationId,
+				port: Number(port),
+				secret_key: secretKey
+			};
 
 			const res = await fetch('/api/bots', {
 				method: 'POST',
@@ -123,22 +108,6 @@
 				}}
 				class="space-y-4 sm:space-y-5"
 			>
-				<!-- Bot Type -->
-				<div>
-					<label for="botType" class="text-ash-300 mb-2 block text-xs font-medium sm:text-sm">
-						<i class="fas fa-tag mr-2"></i>Bot Type <span class="text-ash-200">*</span>
-					</label>
-					<select
-						id="botType"
-						bind:value={botType}
-						class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none sm:px-4 sm:py-3 sm:text-base"
-					>
-						<option value="">Select bot type...</option>
-						<option value="official">Official Bot</option>
-						<option value="selfbot">Selfbot</option>
-					</select>
-				</div>
-
 				<!-- Token -->
 				<div>
 					<label for="botToken" class="text-ash-300 mb-2 block text-xs font-medium sm:text-sm">
@@ -164,74 +133,53 @@
 				</div>
 
 				<!-- Official Bot Fields -->
-				{#if botType === 'official'}
-					<div>
-						<label for="appId" class="text-ash-300 mb-2 block text-xs font-medium sm:text-sm">
-							<i class="fas fa-id-card mr-2"></i>Application ID <span class="text-ash-200">*</span>
-						</label>
+				<div>
+					<label for="appId" class="text-ash-300 mb-2 block text-xs font-medium sm:text-sm">
+						<i class="fas fa-id-card mr-2"></i>Application ID <span class="text-ash-200">*</span>
+					</label>
+					<input
+						id="appId"
+						type="text"
+						bind:value={applicationId}
+						placeholder="Enter application ID"
+						class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none sm:px-4 sm:py-3 sm:text-base"
+					/>
+				</div>
+				<div>
+					<label for="botPort" class="text-ash-300 mb-2 block text-xs font-medium sm:text-sm">
+						<i class="fas fa-network-wired mr-2"></i>Port <span class="text-ash-200">*</span>
+					</label>
+					<input
+						id="botPort"
+						type="number"
+						bind:value={port}
+						placeholder="e.g. 7777"
+						class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none sm:px-4 sm:py-3 sm:text-base"
+					/>
+				</div>
+				<div>
+					<label for="secretKey" class="text-ash-300 mb-2 block text-xs font-medium sm:text-sm">
+						<i class="fas fa-shield-alt mr-2"></i>Secret Key <span class="text-ash-200">*</span>
+					</label>
+					<div class="relative">
 						<input
-							id="appId"
-							type="text"
-							bind:value={applicationId}
-							placeholder="Enter application ID"
-							class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none sm:px-4 sm:py-3 sm:text-base"
+							id="secretKey"
+							type={showSecret ? 'text' : 'password'}
+							bind:value={secretKey}
+							placeholder="Enter secret key"
+							class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 pr-10 text-sm focus:ring-2 focus:outline-none sm:px-4 sm:py-3 sm:text-base"
 						/>
-					</div>
-					<div>
-						<label for="botPort" class="text-ash-300 mb-2 block text-xs font-medium sm:text-sm">
-							<i class="fas fa-network-wired mr-2"></i>Port <span class="text-ash-200">*</span>
-						</label>
-						<input
-							id="botPort"
-							type="number"
-							bind:value={port}
-							placeholder="e.g. 7777"
-							class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none sm:px-4 sm:py-3 sm:text-base"
-						/>
-					</div>
-					<div>
-						<label for="secretKey" class="text-ash-300 mb-2 block text-xs font-medium sm:text-sm">
-							<i class="fas fa-shield-alt mr-2"></i>Secret Key <span class="text-ash-200">*</span>
-						</label>
-						<div class="relative">
-							<input
-								id="secretKey"
-								type={showSecret ? 'text' : 'password'}
-								bind:value={secretKey}
-								placeholder="Enter secret key"
-								class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 pr-10 text-sm focus:ring-2 focus:outline-none sm:px-4 sm:py-3 sm:text-base"
-							/>
-							<button
-								type="button"
-								aria-label={showSecret ? 'Hide key' : 'Show key'}
-								onclick={() => (showSecret = !showSecret)}
-								class="text-ash-400 hover:text-ash-300 absolute top-1/2 right-3 -translate-y-1/2"
-							>
-								<i class="fas {showSecret ? 'fa-eye-slash' : 'fa-eye'} text-sm sm:text-base"></i>
-							</button>
-						</div>
-						<p class="text-ash-500 mt-1.5 text-xs">Used to authenticate incoming webhooks to this bot</p>
-					</div>
-				{/if}
-
-				<!-- Selfbot Fields -->
-				{#if botType === 'selfbot'}
-					<div>
-						<label for="connectTo" class="text-ash-300 mb-2 block text-xs font-medium sm:text-sm">
-							<i class="fas fa-link mr-2"></i>Connect To (Official Bot) <span class="text-ash-200">*</span>
-						</label>
-						<select
-							id="connectTo"
-							bind:value={connectTo}
-							class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none sm:px-4 sm:py-3 sm:text-base"
+						<button
+							type="button"
+							aria-label={showSecret ? 'Hide key' : 'Show key'}
+							onclick={() => (showSecret = !showSecret)}
+							class="text-ash-400 hover:text-ash-300 absolute top-1/2 right-3 -translate-y-1/2"
 						>
-							<option value="">Select official bot...</option>
-							{#each officialBots as bot}
-								<option value={bot.id}>{bot.name || `Bot #${bot.id}`}</option>
-							{/each}
-						</select>
+							<i class="fas {showSecret ? 'fa-eye-slash' : 'fa-eye'} text-sm sm:text-base"></i>
+						</button>
 					</div>
-				{/if}
+					<p class="text-ash-500 mt-1.5 text-xs">Used to authenticate incoming webhooks to this bot</p>
+				</div>
 
 				<!-- Info -->
 				<div class="bg-ash-900 border-ash-600 rounded-lg border p-3 sm:p-4">

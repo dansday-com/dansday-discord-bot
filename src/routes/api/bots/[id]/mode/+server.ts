@@ -4,7 +4,7 @@ import db from '$lib/server/db.js';
 import logger from '$lib/server/logger.js';
 
 export const PUT: RequestHandler = async ({ locals, params, request }) => {
-	if (!locals.user.authenticated || locals.user.account_type !== 'admin') {
+	if (!locals.user.authenticated || locals.user.account_type !== 'superadmin') {
 		return json({ success: false, error: 'Admin access required' }, { status: 403 });
 	}
 

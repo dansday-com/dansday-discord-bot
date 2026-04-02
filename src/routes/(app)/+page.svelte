@@ -14,8 +14,6 @@
 	let tickInterval: ReturnType<typeof setInterval> | null = null;
 	let streams: EventSource[] = [];
 
-	const officialBots = $derived(data.bots.filter((b: { bot_type: string }) => b.bot_type === 'official'));
-
 	const sortedBots = $derived(
 		[...data.bots].sort((a: { name: string; created_at: string }, b: { name: string; created_at: string }) => {
 			if (sortBy === 'name') return (a.name ?? '').localeCompare(b.name ?? '');
@@ -92,7 +90,7 @@
 	<title>Dashboard | Dansday</title>
 </svelte:head>
 
-<AddBotModal open={showAddBot} {officialBots} onclose={() => (showAddBot = false)} onadded={() => invalidateAll()} />
+<AddBotModal open={showAddBot} onclose={() => (showAddBot = false)} onadded={() => invalidateAll()} />
 
 <div class="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6 lg:px-8 lg:py-8">
 	<!-- Header row -->
@@ -118,7 +116,7 @@
 				<option value="newest">Newest First</option>
 				<option value="name">Name (A-Z)</option>
 			</select>
-			{#if data.user.account_type === 'admin'}
+			{#if data.user.account_type === 'superadmin'}
 				<button
 					onclick={() => (showAddBot = true)}
 					class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs transition-all duration-200 hover:scale-105 active:scale-95 sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
@@ -138,7 +136,7 @@
 			</div>
 			<h3 class="text-ash-100 mb-2 text-lg font-semibold sm:text-xl">No bots yet</h3>
 			<p class="text-ash-400 mb-4 text-sm sm:mb-6 sm:text-base">Get started by adding your first bot</p>
-			{#if data.user.account_type === 'admin'}
+			{#if data.user.account_type === 'superadmin'}
 				<button
 					onclick={() => (showAddBot = true)}
 					class="bg-ash-400 hover:bg-ash-500 text-ash-100 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm transition-all duration-200 hover:scale-105 active:scale-95 sm:px-6 sm:py-3 sm:text-base"
@@ -182,12 +180,6 @@
 							{/if}
 						{/if}
 					</div>
-
-					{#if bot.bot_type === 'selfbot' && bot.connected_bot_name}
-						<p class="text-ash-500 truncate text-xs">
-							<i class="fas fa-link mr-1"></i>{bot.connected_bot_name}
-						</p>
-					{/if}
 				</a>
 			{/each}
 		</div>

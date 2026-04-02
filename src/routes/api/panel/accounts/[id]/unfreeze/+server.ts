@@ -6,7 +6,7 @@ import { sendAccountUnfrozenEmail } from '$lib/server/email.js';
 import logger from '$lib/server/logger.js';
 
 export const PUT: RequestHandler = async ({ locals, params }) => {
-	if (!locals.user.authenticated || locals.user.account_type !== 'admin') {
+	if (!locals.user.authenticated || locals.user.account_type !== 'superadmin') {
 		return json({ success: false, error: 'Admin access required' }, { status: 403 });
 	}
 
@@ -16,12 +16,12 @@ export const PUT: RequestHandler = async ({ locals, params }) => {
 			return json({ success: false, error: 'Invalid account ID' }, { status: 400 });
 		}
 
-		const account = await db.getPanelAccountById(accountId);
+		const account = await db.getAccountById(accountId);
 		if (!account) {
 			return json({ success: false, error: 'Account not found' }, { status: 404 });
 		}
 
-		await db.updatePanelAccount(accountId, { is_frozen: false });
+		await db.updateAccount(accountId, { is_frozen: false });
 		logger.log(`${locals.user.username} unfroze account: ${account.username} (ID: ${accountId})`);
 
 		try {

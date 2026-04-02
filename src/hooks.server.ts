@@ -49,16 +49,20 @@ export const handle: Handle = async ({ event, resolve }) => {
 	if (sessionId) {
 		try {
 			const session = await getSession(sessionId);
-			if (session?.authenticated && session.panel_account_id) {
-				const account = await db.getPanelAccountById(session.panel_account_id);
+			if (session?.authenticated && session.account_id) {
+				const account = await db.getAccountById(session.account_id);
 				if (account && !account.is_frozen) {
-					event.locals.user = {
+					const user: App.Locals['user'] = {
 						authenticated: true,
 						account_id: account.id,
 						username: account.username,
 						email: account.email,
 						account_type: account.account_type
 					};
+					if (account.account_type === 'owner' || account.account_type === 'moderator') {
+						(user as any).accessible_servers = await db.getAccountServerAccess(account.id);
+					}
+					event.locals.user = user;
 				}
 			} else if (!session) {
 				const panel = await db.getPanel();

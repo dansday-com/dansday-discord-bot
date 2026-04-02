@@ -5,7 +5,7 @@ import { restartBotById } from '$lib/server/botProcesses.js';
 import logger from '$lib/server/logger.js';
 
 export const POST: RequestHandler = async ({ locals, request }) => {
-	if (!locals.user.authenticated || locals.user.account_type !== 'admin') {
+	if (!locals.user.authenticated || locals.user.account_type !== 'superadmin') {
 		return json({ success: false, error: 'Admin access required' }, { status: 403 });
 	}
 

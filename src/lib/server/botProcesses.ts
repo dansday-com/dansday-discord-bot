@@ -53,12 +53,7 @@ function emitBotStatus(botId: number, status: string, process_id: number | null,
 
 async function getConnectedSelfbots(officialBotId: number) {
 	try {
-		const allBots = await db.getAllBots();
-		return allBots.filter((b: any) => {
-			if (b.bot_type !== 'selfbot') return false;
-			if (!b.connect_to) return false;
-			return Number(b.connect_to) === officialBotId;
-		});
+		return await db.getSelfbotsForOfficialBot(officialBotId);
 	} catch (_) {
 		return [];
 	}

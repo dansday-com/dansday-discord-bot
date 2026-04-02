@@ -32,7 +32,6 @@ export const GET: RequestHandler = async ({ locals }) => {
 					bot_icon: bot.bot_icon,
 					port: bot.port,
 					application_id: bot.application_id,
-					connect_to: bot.connect_to,
 					status: bot.status || 'stopped',
 					process_id: bot.process_id || null,
 					uptime_started_at: bot.uptime_started_at || null,
@@ -40,24 +39,6 @@ export const GET: RequestHandler = async ({ locals }) => {
 					updated_at: bot.updated_at,
 					is_testing: bot.is_testing || false
 				};
-
-				if (bot.connect_to) {
-					const connectToId = Number(bot.connect_to);
-					if (connectToId && !Number.isNaN(connectToId)) {
-						try {
-							const connectedBot = await db.getBot(connectToId);
-							if (connectedBot) {
-								botData.connected_bot_name = connectedBot.name?.trim() || null;
-								if (bot.bot_type === 'selfbot') {
-									botData.is_testing = connectedBot.is_testing || false;
-									if (bot.is_testing !== connectedBot.is_testing) {
-										await db.updateBot(bot.id, { is_testing: connectedBot.is_testing || false });
-									}
-								}
-							}
-						} catch (_) {}
-					}
-				}
 
 				botData.uptime_ms = getBotUptimeMs(botData);
 				return botData;
@@ -71,72 +52,53 @@ export const GET: RequestHandler = async ({ locals }) => {
 };
 
 export const POST: RequestHandler = async ({ locals, request }) => {
-	if (!locals.user.authenticated || locals.user.account_type !== 'admin') {
+	if (!locals.user.authenticated || locals.user.account_type !== 'superadmin') {
 		return json({ success: false, error: 'Admin access required' }, { status: 403 });
 	}
 
 	try {
-		const { name, token, application_id, bot_type, bot_icon, port, secret_key, connect_to } = await request.json();
+		const { name, token, application_id, bot_icon, port, secret_key } = await request.json();
 
-		const account = await db.getPanelAccountById(locals.user.account_id);
+		const account = await db.getAccountById(locals.user.account_id);
 		if (!account) {
 			return json({ success: false, error: 'Account not found' }, { status: 401 });
 		}
 
-		if (!token || !bot_type) {
-			return json({ success: false, error: 'Token and Bot Type are required' }, { status: 400 });
+		if (!token) {
+			return json({ success: false, error: 'Token is required' }, { status: 400 });
 		}
 
-		if (!['official', 'selfbot'].includes(bot_type)) {
-			return json({ success: false, error: 'Bot type must be "official" or "selfbot"' }, { status: 400 });
+		if (!application_id) {
+			return json({ success: false, error: 'Application ID is required' }, { status: 400 });
 		}
 
-		if (bot_type === 'official' && !application_id) {
-			return json({ success: false, error: 'Application ID is required for official bots' }, { status: 400 });
+		if (!port) {
+			return json({ success: false, error: 'Port is required' }, { status: 400 });
 		}
 
-		if (bot_type === 'official' && !port) {
-			return json({ success: false, error: 'Port is required for official bots' }, { status: 400 });
+		if (!secret_key) {
+			return json({ success: false, error: 'Secret Key is required' }, { status: 400 });
 		}
 
-		if (bot_type === 'official' && !secret_key) {
-			return json({ success: false, error: 'Secret Key is required for official bots' }, { status: 400 });
-		}
-
-		if (bot_type === 'selfbot' && !connect_to) {
-			return json({ success: false, error: 'Selfbot must connect to an official bot' }, { status: 400 });
-		}
-
-		if (bot_type === 'official') {
-			const existingBots = await db.getAllBots();
-			const portInUse = existingBots.some((b: any) => b.port === port && b.bot_type === 'official');
-			if (portInUse) {
-				return json({ success: false, error: `Port ${port} is already in use by another official bot` }, { status: 400 });
-			}
-		}
-
-		let is_testing = false;
-		if (bot_type === 'selfbot' && connect_to) {
-			try {
-				const connectedBot = await db.getBot(connect_to);
-				if (connectedBot) is_testing = connectedBot.is_testing || false;
-			} catch (_) {}
+		const existingBots = await db.getAllBots();
+		const portInUse = existingBots.some((b: any) => b.port === port && b.bot_type === 'official');
+		if (portInUse) {
+			return json({ success: false, error: `Port ${port} is already in use by another official bot` }, { status: 400 });
 		}
 
 		const bot = await db.createBot({
 			name: name || 'Bot',
 			token,
 			application_id,
-			bot_type,
+			bot_type: 'official',
 			bot_icon: bot_icon || null,
-			port: bot_type === 'official' ? port || 7777 : null,
-			is_testing,
+			port: port || 7777,
+			is_testing: false,
 			secret_key: secret_key || null,
-			connect_to: connect_to || null,
 			panel_id: account.panel_id || null
 		});
 
-		logger.log(`${locals.user.username} added ${bot_type} bot: "${name || 'Bot'}" (ID: ${bot.id})`);
+		logger.log(`${locals.user.username} added official bot: "${name || 'Bot'}" (ID: ${bot.id})`);
 
 		return json({ success: true, bot });
 	} catch (error: any) {

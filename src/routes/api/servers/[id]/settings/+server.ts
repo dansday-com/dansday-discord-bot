@@ -24,9 +24,15 @@ export const GET: RequestHandler = async ({ locals, params, url }) => {
 	}
 };
 
+function canEditServer(locals: App.Locals, serverId: string): boolean {
+	if (!locals.user.authenticated) return false;
+	if (locals.user.account_type === 'superadmin') return true;
+	return !!locals.user.accessible_servers?.find((s) => s.server_id === Number(serverId));
+}
+
 export const POST: RequestHandler = async ({ locals, params, request }) => {
-	if (!locals.user.authenticated || locals.user.account_type !== 'admin') {
-		return json({ error: 'Admin access required' }, { status: 403 });
+	if (!canEditServer(locals, params.id)) {
+		return json({ error: 'Access denied' }, { status: 403 });
 	}
 
 	try {
@@ -83,8 +89,8 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 };
 
 export const PUT: RequestHandler = async ({ locals, params, request }) => {
-	if (!locals.user.authenticated || locals.user.account_type !== 'admin') {
-		return json({ error: 'Admin access required' }, { status: 403 });
+	if (!canEditServer(locals, params.id)) {
+		return json({ error: 'Access denied' }, { status: 403 });
 	}
 
 	try {

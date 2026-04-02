@@ -61,12 +61,12 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ success: false, error: validation.errors[0] }, { status: 400 });
 		}
 
-		const existingUsername = await db.getPanelAccountByUsername(validation.sanitizedUsername);
+		const existingUsername = await db.getAccountByUsername(validation.sanitizedUsername);
 		if (existingUsername) {
 			if (!existingUsername.email_verified) {
 				const otpCode = randomInt(100000, 999999).toString();
 				const otpExpiresAt = addMinutesToNow(10);
-				await db.updatePanelAccount(existingUsername.id, { otp_code: otpCode, otp_expires_at: otpExpiresAt });
+				await db.updateAccount(existingUsername.id, { otp_code: otpCode, otp_expires_at: otpExpiresAt });
 				try {
 					await sendOTPEmail(existingUsername.email, otpCode);
 				} catch (_) {}
@@ -76,12 +76,12 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ success: false, error: 'Username already taken. Please choose another.' }, { status: 400 });
 		}
 
-		const existingAccount = await db.getPanelAccountByEmail(validation.sanitizedEmail);
+		const existingAccount = await db.getAccountByEmail(validation.sanitizedEmail);
 		if (existingAccount) {
 			if (!existingAccount.email_verified) {
 				const otpCode = randomInt(100000, 999999).toString();
 				const otpExpiresAt = addMinutesToNow(10);
-				await db.updatePanelAccount(existingAccount.id, { otp_code: otpCode, otp_expires_at: otpExpiresAt });
+				await db.updateAccount(existingAccount.id, { otp_code: otpCode, otp_expires_at: otpExpiresAt });
 				try {
 					await sendOTPEmail(existingAccount.email, otpCode);
 				} catch (_) {}
@@ -101,11 +101,11 @@ export const POST: RequestHandler = async ({ request }) => {
 		const otpCode = randomInt(100000, 999999).toString();
 		const otpExpiresAt = addMinutesToNow(10);
 
-		const account = await db.createPanelAccount({
+		const account = await db.createAccount({
 			username: validation.sanitizedUsername,
 			email: validation.sanitizedEmail,
 			password_hash: passwordHash,
-			account_type: 'admin',
+			account_type: 'superadmin',
 			email_verified: false,
 			otp_code: otpCode,
 			otp_expires_at: otpExpiresAt,

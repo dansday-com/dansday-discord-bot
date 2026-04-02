@@ -169,14 +169,9 @@
 						{data.bot.name || `Bot #${data.bot.id}`}
 					</h2>
 					<div class="mt-1 flex flex-wrap items-center gap-2">
-						<span class="bg-ash-700 text-ash-300 rounded-full px-2 py-0.5 text-xs capitalize">
-							{data.bot.bot_type}
+						<span class="rounded-full px-2 py-0.5 text-xs {data.bot.is_testing ? 'bg-yellow-900 text-yellow-300' : 'bg-ash-600 text-ash-200'}">
+							{data.bot.is_testing ? 'Testing' : 'Production'}
 						</span>
-						{#if data.bot.bot_type === 'official'}
-							<span class="rounded-full px-2 py-0.5 text-xs {data.bot.is_testing ? 'bg-yellow-900 text-yellow-300' : 'bg-ash-600 text-ash-200'}">
-								{data.bot.is_testing ? 'Testing' : 'Production'}
-							</span>
-						{/if}
 					</div>
 				</div>
 			</div>
@@ -209,18 +204,16 @@
 							<span class="sm:inline">Restart</span>
 						</button>
 					{/if}
-					{#if data.bot.bot_type === 'official'}
-						<label
-							class="bg-ash-700 hover:bg-ash-600 flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 transition-all hover:scale-105 active:scale-95 sm:px-4"
-						>
-							<div class="relative h-6 w-11">
-								<input type="checkbox" class="sr-only" checked={!data.bot.is_testing} onchange={toggleMode} />
-								<div class="h-6 w-11 rounded-full transition-colors {data.bot.is_testing ? 'bg-ash-500' : 'bg-green-600'}"></div>
-								<div class="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform {data.bot.is_testing ? 'left-0.5' : 'left-5.5'}"></div>
-							</div>
-							<span class="text-ash-100 text-xs font-medium sm:text-sm">{data.bot.is_testing ? 'Testing' : 'Production'}</span>
-						</label>
-					{/if}
+					<label
+						class="bg-ash-700 hover:bg-ash-600 flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 transition-all hover:scale-105 active:scale-95 sm:px-4"
+					>
+						<div class="relative h-6 w-11">
+							<input type="checkbox" class="sr-only" checked={!data.bot.is_testing} onchange={toggleMode} />
+							<div class="h-6 w-11 rounded-full transition-colors {data.bot.is_testing ? 'bg-ash-500' : 'bg-green-600'}"></div>
+							<div class="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform {data.bot.is_testing ? 'left-0.5' : 'left-5.5'}"></div>
+						</div>
+						<span class="text-ash-100 text-xs font-medium sm:text-sm">{data.bot.is_testing ? 'Testing' : 'Production'}</span>
+					</label>
 					<button
 						onclick={deleteBot}
 						class="text-ash-100 flex items-center justify-center gap-1.5 rounded-lg bg-red-700 px-3 py-2 text-xs font-medium transition-all hover:scale-105 hover:bg-red-800 active:scale-95 sm:px-4 sm:text-sm"
@@ -250,7 +243,7 @@
 			</div>
 
 			<!-- PID (official + running) -->
-			{#if data.bot.bot_type === 'official' && liveBot.process_id}
+			{#if liveBot.process_id}
 				<div class="bg-ash-700 rounded-lg p-3">
 					<p class="text-ash-400 mb-1 text-xs">Process ID</p>
 					<p class="text-ash-100 text-sm font-medium">{liveBot.process_id}</p>
@@ -258,7 +251,7 @@
 			{/if}
 
 			<!-- Port (official) -->
-			{#if data.bot.bot_type === 'official' && data.bot.port}
+			{#if data.bot.port}
 				<div class="bg-ash-700 rounded-lg p-3">
 					<p class="text-ash-400 mb-1 text-xs">Port</p>
 					<p class="text-ash-100 text-sm font-medium">{data.bot.port}</p>
@@ -286,78 +279,42 @@
 		{:else}
 			<div class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
 				{#each pagedServers as server (server.id)}
-					{#if data.bot.bot_type === 'official'}
-						<a
-							href="/bots/{data.bot.id}/servers/{server.id}"
-							class="bg-ash-700 border-ash-600 hover:border-ash-500 block rounded-lg border p-4 transition-all duration-200"
-						>
-							<div class="mb-3 flex items-center gap-3">
-								<div class="bg-ash-600 flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full">
-									{#if server.server_icon}
-										<img src={server.server_icon} alt={server.name} class="h-full w-full object-cover" />
-									{:else}
-										<i class="fas fa-server text-ash-100 text-lg"></i>
-									{/if}
-								</div>
-								<div class="min-w-0 flex-1">
-									<h4 class="text-ash-100 truncate text-sm font-semibold sm:text-base" title={server.name}>{server.name || 'Unnamed Server'}</h4>
-								</div>
-								<i class="fas fa-cog text-ash-400 hover:text-ash-100 transition-colors"></i>
+					<a
+						href="/bots/{data.bot.id}/servers/{server.id}"
+						class="bg-ash-700 border-ash-600 hover:border-ash-500 block rounded-lg border p-4 transition-all duration-200"
+					>
+						<div class="mb-3 flex items-center gap-3">
+							<div class="bg-ash-600 flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full">
+								{#if server.server_icon}
+									<img src={server.server_icon} alt={server.name} class="h-full w-full object-cover" />
+								{:else}
+									<i class="fas fa-server text-ash-100 text-lg"></i>
+								{/if}
 							</div>
-							<div class="space-y-2 text-xs sm:text-sm">
-								<div class="flex items-center justify-between">
-									<span class="text-ash-400 flex items-center gap-1.5"><i class="fas fa-users w-4"></i>Members</span>
-									<span class="text-ash-100 font-medium">{(server.total_members ?? 0).toLocaleString()}</span>
-								</div>
-								<div class="flex items-center justify-between">
-									<span class="text-ash-400 flex items-center gap-1.5"><i class="fas fa-star w-4"></i>Boost Level</span>
-									<span class="text-ash-100 font-medium">{server.boost_level ?? 0}</span>
-								</div>
-								<div class="flex items-center justify-between">
-									<span class="text-ash-400 flex items-center gap-1.5"><i class="fas fa-gift w-4"></i>Total Boosters</span>
-									<span class="text-ash-100 font-medium">{(server.total_boosters ?? 0).toLocaleString()}</span>
-								</div>
-								<div class="flex items-center justify-between">
-									<span class="text-ash-400 flex items-center gap-1.5"><i class="fas fa-hashtag w-4"></i>Channels</span>
-									<span class="text-ash-100 font-medium">{(server.total_channels ?? 0).toLocaleString()}</span>
-								</div>
+							<div class="min-w-0 flex-1">
+								<h4 class="text-ash-100 truncate text-sm font-semibold sm:text-base" title={server.name}>{server.name || 'Unnamed Server'}</h4>
 							</div>
-						</a>
-					{:else}
-						<div class="bg-ash-700 border-ash-600 rounded-lg border p-4 opacity-75">
-							<div class="mb-3 flex items-center gap-3">
-								<div class="bg-ash-600 flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full">
-									{#if server.server_icon}
-										<img src={server.server_icon} alt={server.name} class="h-full w-full object-cover" />
-									{:else}
-										<i class="fas fa-server text-ash-100 text-lg"></i>
-									{/if}
-								</div>
-								<div class="min-w-0 flex-1">
-									<h4 class="text-ash-100 truncate text-sm font-semibold sm:text-base" title={server.name}>{server.name || 'Unnamed Server'}</h4>
-								</div>
-								<i class="fas fa-info-circle text-ash-500"></i>
+							<i class="fas fa-cog text-ash-400 hover:text-ash-100 transition-colors"></i>
+						</div>
+						<div class="space-y-2 text-xs sm:text-sm">
+							<div class="flex items-center justify-between">
+								<span class="text-ash-400 flex items-center gap-1.5"><i class="fas fa-users w-4"></i>Members</span>
+								<span class="text-ash-100 font-medium">{(server.total_members ?? 0).toLocaleString()}</span>
 							</div>
-							<div class="space-y-2 text-xs sm:text-sm">
-								<div class="flex items-center justify-between">
-									<span class="text-ash-400 flex items-center gap-1.5"><i class="fas fa-users w-4"></i>Members</span>
-									<span class="text-ash-100 font-medium">{(server.total_members ?? 0).toLocaleString()}</span>
-								</div>
-								<div class="flex items-center justify-between">
-									<span class="text-ash-400 flex items-center gap-1.5"><i class="fas fa-star w-4"></i>Boost Level</span>
-									<span class="text-ash-100 font-medium">{server.boost_level ?? 0}</span>
-								</div>
-								<div class="flex items-center justify-between">
-									<span class="text-ash-400 flex items-center gap-1.5"><i class="fas fa-gift w-4"></i>Total Boosters</span>
-									<span class="text-ash-100 font-medium">{(server.total_boosters ?? 0).toLocaleString()}</span>
-								</div>
-								<div class="flex items-center justify-between">
-									<span class="text-ash-400 flex items-center gap-1.5"><i class="fas fa-hashtag w-4"></i>Channels</span>
-									<span class="text-ash-100 font-medium">{(server.total_channels ?? 0).toLocaleString()}</span>
-								</div>
+							<div class="flex items-center justify-between">
+								<span class="text-ash-400 flex items-center gap-1.5"><i class="fas fa-star w-4"></i>Boost Level</span>
+								<span class="text-ash-100 font-medium">{server.boost_level ?? 0}</span>
+							</div>
+							<div class="flex items-center justify-between">
+								<span class="text-ash-400 flex items-center gap-1.5"><i class="fas fa-gift w-4"></i>Total Boosters</span>
+								<span class="text-ash-100 font-medium">{(server.total_boosters ?? 0).toLocaleString()}</span>
+							</div>
+							<div class="flex items-center justify-between">
+								<span class="text-ash-400 flex items-center gap-1.5"><i class="fas fa-hashtag w-4"></i>Channels</span>
+								<span class="text-ash-100 font-medium">{(server.total_channels ?? 0).toLocaleString()}</span>
 							</div>
 						</div>
-					{/if}
+					</a>
 				{/each}
 			</div>
 

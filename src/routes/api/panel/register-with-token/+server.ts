@@ -85,7 +85,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			}
 		}
 
-		const existingInScope = await db.getServerAccountByEmailBotServer(validation.sanitizedEmail, inviteLink.bot_id, inviteLink.server_id);
+		const existingInScope = await db.getServerAccountByEmailServer(validation.sanitizedEmail, inviteLink.server_id);
 		if (existingInScope) {
 			return json({ success: false, error: 'Email already registered for this server' }, { status: 400 });
 		}
@@ -95,7 +95,6 @@ export const POST: RequestHandler = async ({ request }) => {
 		const otpExpiresAt = toMySQLDateTime(addMinutesToNow(10));
 
 		const account = await db.createServerAccount({
-			bot_id: inviteLink.bot_id,
 			server_id: inviteLink.server_id,
 			username: validation.sanitizedUsername,
 			email: validation.sanitizedEmail,

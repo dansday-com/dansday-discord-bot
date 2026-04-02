@@ -12,23 +12,12 @@ export const PUT: RequestHandler = async ({ locals, params, request }) => {
 		const bot = await db.getBot(params.id);
 		if (!bot) return json({ success: false, error: 'Bot not found' }, { status: 404 });
 
-		if (bot.bot_type !== 'official') {
-			return json({ success: false, error: 'Mode can only be changed for official bots. Selfbots inherit mode from their connected bot.' }, { status: 400 });
-		}
-
 		const { is_testing } = await request.json();
 		if (typeof is_testing !== 'boolean') {
 			return json({ success: false, error: 'is_testing must be a boolean value' }, { status: 400 });
 		}
 
 		await db.updateBot(params.id, { is_testing });
-
-		try {
-			const selfbots = await db.getSelfbotsForOfficialBot(Number(params.id));
-			for (const selfbot of selfbots) {
-				await db.updateBot(selfbot.id, { is_testing });
-			}
-		} catch (_) {}
 
 		const mode = is_testing ? 'testing' : 'production';
 		logger.log(`${locals.user.username} changed bot "${bot.name}" (ID: ${bot.id}) to ${mode} mode`);

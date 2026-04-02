@@ -76,8 +76,8 @@
 
 	onMount(() => {
 		for (const bot of data.selfbots) {
-			liveData[bot.selfbot_id] = { status: bot.selfbot_status, process_id: null, uptime_ms: 0 };
-			subscribeBot(bot.selfbot_id);
+			liveData[bot.id] = { status: bot.status, process_id: null, uptime_ms: 0 };
+			subscribeBot(bot.id);
 		}
 	});
 
@@ -150,8 +150,8 @@
 			<p class="text-ash-400 text-sm">No selfbots yet.</p>
 		</div>
 	{:else}
-		{#each data.selfbots as bot (bot.selfbot_id)}
-			{@const live = liveData[bot.selfbot_id] ?? { status: bot.selfbot_status, process_id: null, uptime_ms: 0 }}
+		{#each data.selfbots as bot (bot.id)}
+			{@const live = liveData[bot.id] ?? { status: bot.status, process_id: null, uptime_ms: 0 }}
 			{@const isRunning = live.status === 'running'}
 			{@const isBusy = live.status === 'starting' || live.status === 'stopping'}
 			{@const canStart = !isRunning && !isBusy}
@@ -164,12 +164,12 @@
 							<i class="fas fa-robot text-ash-300 text-xl"></i>
 						</div>
 						<div class="min-w-0">
-							<h3 class="text-ash-100 truncate text-lg font-bold">{bot.selfbot_name}</h3>
+							<h3 class="text-ash-100 truncate text-lg font-bold">{bot.name}</h3>
 							<div class="mt-1 flex items-center gap-2">
 								<span class="h-2 w-2 rounded-full {statusColor(live.status)}"></span>
 								<span class="text-sm capitalize {statusTextColor(live.status)}">{live.status}</span>
 								{#if isRunning}
-									<span class="text-ash-400 text-xs">{formatUptime(getDisplayUptime(bot.selfbot_id))}</span>
+									<span class="text-ash-400 text-xs">{formatUptime(getDisplayUptime(bot.id))}</span>
 								{/if}
 							</div>
 						</div>
@@ -179,7 +179,7 @@
 						<div class="flex shrink-0 flex-wrap items-center gap-2">
 							{#if canStart}
 								<button
-									onclick={() => botAction(bot.selfbot_id, 'start')}
+									onclick={() => botAction(bot.id, 'start')}
 									class="flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-2 text-xs font-medium text-white transition-all hover:scale-105 hover:bg-green-700 active:scale-95"
 								>
 									<i class="fas fa-play"></i>Start
@@ -187,20 +187,20 @@
 							{/if}
 							{#if canStop}
 								<button
-									onclick={() => botAction(bot.selfbot_id, 'stop')}
+									onclick={() => botAction(bot.id, 'stop')}
 									class="bg-ash-400 hover:bg-ash-500 flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium text-white transition-all hover:scale-105 active:scale-95"
 								>
 									<i class="fas fa-stop"></i>Stop
 								</button>
 								<button
-									onclick={() => botAction(bot.selfbot_id, 'restart')}
+									onclick={() => botAction(bot.id, 'restart')}
 									class="flex items-center gap-1.5 rounded-lg bg-yellow-600 px-3 py-2 text-xs font-medium text-white transition-all hover:scale-105 hover:bg-yellow-700 active:scale-95"
 								>
 									<i class="fas fa-redo"></i>Restart
 								</button>
 							{/if}
 							<button
-								onclick={() => deleteBot(bot.selfbot_id, bot.selfbot_name)}
+								onclick={() => deleteBot(bot.id, bot.name)}
 								class="flex items-center gap-1.5 rounded-lg bg-red-700 px-3 py-2 text-xs font-medium text-white transition-all hover:scale-105 hover:bg-red-800 active:scale-95"
 							>
 								<i class="fas fa-trash"></i>Delete

@@ -9,8 +9,8 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 
 	try {
 		const officialBot = await db.getBot(Number(params.id));
-		if (!officialBot || officialBot.bot_type !== 'official') {
-			return json({ error: 'Bot not found or is not an official bot' }, { status: 400 });
+		if (!officialBot) {
+			return json({ error: 'Bot not found' }, { status: 400 });
 		}
 
 		const selfbots = await db.getSelfbotsForOfficialBot(Number(params.id));

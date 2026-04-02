@@ -27,7 +27,6 @@ export const load: PageServerLoad = async ({ locals }) => {
 				const botData: any = {
 					id: bot.id,
 					name: bot.name,
-					bot_type: bot.bot_type,
 					bot_icon: bot.bot_icon,
 					port: bot.port,
 					application_id: bot.application_id,

@@ -32,17 +32,16 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 	const officialBot = await db.getBot(server.bot_id);
 	if (!officialBot) return json({ success: false, error: 'Official bot not found' }, { status: 404 });
 
-	const selfbot = await db.createBot({
+	const id = await db.addServerBot({
+		server_id: serverId,
 		name: 'Selfbot',
 		token,
-		bot_type: 'selfbot',
-		secret_key: officialBot.secret_key,
 		is_testing: officialBot.is_testing
 	});
-	await db.addServerBot(serverId, selfbot.id);
-	if (locals.user.authenticated) logger.log(`${locals.user.username} created selfbot (ID: ${selfbot.id}) for server ${serverId}`);
 
-	return json({ success: true, selfbot });
+	if (locals.user.authenticated) logger.log(`${locals.user.username} created selfbot (ID: ${id}) for server ${serverId}`);
+
+	return json({ success: true, id });
 };
 
 export const DELETE: RequestHandler = async ({ locals, params, request }) => {
@@ -53,13 +52,12 @@ export const DELETE: RequestHandler = async ({ locals, params, request }) => {
 	const selfbotId = Number(body.selfbot_id);
 	if (!selfbotId) return json({ success: false, error: 'selfbot_id required' }, { status: 400 });
 
-	const selfbot = await db.getBot(selfbotId);
-	if (!selfbot || selfbot.bot_type !== 'selfbot') {
+	const selfbot = await db.getServerBotById(selfbotId);
+	if (!selfbot || selfbot.server_id !== serverId) {
 		return json({ success: false, error: 'Selfbot not found' }, { status: 404 });
 	}
 
-	await db.removeServerBot(serverId, selfbotId);
-	await db.deleteBot(selfbotId);
+	await db.removeServerBot(selfbotId);
 	if (locals.user.authenticated) logger.log(`${locals.user.username} deleted selfbot "${selfbot.name}" (ID: ${selfbotId}) from server ${serverId}`);
 
 	return json({ success: true });

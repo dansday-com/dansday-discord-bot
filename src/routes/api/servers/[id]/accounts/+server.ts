@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/server/db.js';
-import { addDaysToNow, sanitizeInteger, toMySQLDateTime } from '$lib/server/utils.js';
+import { addDaysToNow, toMySQLDateTime } from '$lib/server/utils.js';
 import logger from '$lib/server/logger.js';
 import { randomBytes } from 'crypto';
 
@@ -18,13 +18,7 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 		return json({ success: false, error: 'Access denied' }, { status: 403 });
 	}
 
-	const server = await db.getServer(params.id);
-	if (!server) return json({ success: false, error: 'Server not found' }, { status: 404 });
-
-	const [accounts, invites] = await Promise.all([
-		db.getServerAccountsByBotServer(server.bot_id, serverId),
-		db.getServerAccountInvitesByBotServer(server.bot_id, serverId)
-	]);
+	const [accounts, invites] = await Promise.all([db.getServerAccountsByServer(serverId), db.getServerAccountInvitesByServer(serverId)]);
 
 	return json({ success: true, accounts, invites });
 };
@@ -35,8 +29,7 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 		return json({ success: false, error: 'Access denied' }, { status: 403 });
 	}
 
-	const server = await db.getServer(params.id);
-	if (!server) return json({ success: false, error: 'Server not found' }, { status: 404 });
+	if (!locals.user.authenticated) return json({ success: false, error: 'Access denied' }, { status: 403 });
 
 	const body = await request.json();
 	const { account_type } = body;
@@ -51,7 +44,6 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 
 	await db.createServerAccountInvite({
 		token,
-		bot_id: server.bot_id,
 		server_id: serverId,
 		account_type,
 		created_by: locals.user.account_id,

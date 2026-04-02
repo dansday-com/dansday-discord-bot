@@ -3,10 +3,10 @@ import db from './db.js';
 interface BotConfig {
 	id: number;
 	token: string;
-	application_id: string;
-	bot_type: string;
-	port: number;
-	secret_key: string;
+	application_id: string | null;
+	isSelfbot: boolean;
+	port: number | null;
+	secret_key: string | null;
 	is_testing: boolean;
 }
 
@@ -19,33 +19,36 @@ async function loadBotConfig() {
 		throw new Error('BOT_ID not set in environment. Bot cannot start without database configuration.');
 	}
 
-	const bot = await db.getBot(botId);
+	const numericId = Number(botId);
+	const selfbot = await db.getServerBotById(numericId);
 
-	if (!bot) {
-		throw new Error(`Bot not found in database with ID: ${botId}`);
+	if (selfbot) {
+		const officialBot = await db.getOfficialBotForSelfbot(selfbot.id);
+		botConfig = {
+			id: selfbot.id,
+			token: selfbot.token,
+			application_id: null,
+			isSelfbot: true,
+			port: officialBot?.port ?? null,
+			secret_key: officialBot?.secret_key ?? null,
+			is_testing: officialBot?.is_testing || selfbot.is_testing || false
+		};
+		return botConfig;
 	}
 
-	let port = bot.port;
-	let secret_key = bot.secret_key;
-	let is_testing = bot.is_testing || false;
-
-	if (bot.bot_type === 'selfbot') {
-		const officialBot = await db.getOfficialBotForSelfbot(bot.id);
-		if (officialBot) {
-			port = officialBot.port;
-			secret_key = officialBot.secret_key;
-			is_testing = officialBot.is_testing || false;
-		}
+	const bot = await db.getBot(numericId);
+	if (!bot) {
+		throw new Error(`Bot not found in database with ID: ${botId}`);
 	}
 
 	botConfig = {
 		id: bot.id,
 		token: bot.token,
 		application_id: bot.application_id,
-		bot_type: bot.bot_type,
-		port,
-		secret_key,
-		is_testing
+		isSelfbot: false,
+		port: bot.port,
+		secret_key: bot.secret_key,
+		is_testing: bot.is_testing || false
 	};
 
 	return botConfig;
@@ -73,7 +76,7 @@ function requireGuildId(guildId: any, action = 'operation') {
 
 async function getOfficialBotId() {
 	requireBotConfig();
-	if (botConfig!.bot_type === 'selfbot') {
+	if (botConfig!.isSelfbot) {
 		const officialBot = await db.getOfficialBotForSelfbot(botConfig!.id);
 		if (officialBot) return officialBot.id as number;
 	}
@@ -121,8 +124,8 @@ export function getBotToken(botType: string) {
 	if (!botConfig) {
 		throw new Error('Bot config not loaded. Call initializeConfig() first.');
 	}
-	if (botConfig.bot_type !== botType) {
-		throw new Error(`Bot type mismatch. Expected ${botType}, got ${botConfig.bot_type}`);
+	if (botConfig.isSelfbot !== (botType === 'selfbot')) {
+		throw new Error(`Bot type mismatch. Expected ${botType}, got ${botConfig.isSelfbot ? 'selfbot' : 'official'}`);
 	}
 	if (!botConfig.token) {
 		throw new Error('Bot token not found in database configuration.');
@@ -476,7 +479,7 @@ export const FORWARDER = {
 	async shouldForwardChannel(channelId: string, guildId: string) {
 		requireBotConfig();
 		if (!channelId || !guildId) return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false };
-		if (botConfig!.bot_type !== 'selfbot') {
+		if (!botConfig!.isSelfbot) {
 			return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false };
 		}
 

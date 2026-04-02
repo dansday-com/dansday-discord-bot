@@ -45,7 +45,7 @@ export const DELETE: RequestHandler = async ({ locals, params }) => {
 	try {
 		const bot = await db.getBot(params.id);
 		if (bot) {
-			logger.log(`${locals.user.username} removed bot "${bot.name}" (ID: ${bot.id}, Type: ${bot.bot_type})`);
+			logger.log(`${locals.user.username} removed bot "${bot.name}" (ID: ${bot.id})`);
 		}
 		await db.deleteBot(params.id);
 		return json({ success: true });

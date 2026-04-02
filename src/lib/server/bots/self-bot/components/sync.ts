@@ -4,10 +4,11 @@ import { separateChannelsAndCategories, mapCategoriesForSync, mapChannelsForSync
 
 let client: any = null;
 let botId: any = null;
+let officialBotId: any = null;
 
 async function findBotById(id: any) {
 	try {
-		return await db.getBot(id);
+		return await db.getServerBotById(Number(id));
 	} catch (error: any) {
 		logger.log(`❌ Error finding bot: ${error.message}`);
 		return null;
@@ -16,13 +17,13 @@ async function findBotById(id: any) {
 
 async function syncGuildData(guild: any) {
 	try {
-		if (!botId) {
-			logger.log(`⚠️  Bot ID not set, skipping sync for guild: ${guild.name}`);
+		if (!officialBotId) {
+			logger.log(`⚠️  Official bot ID not set, skipping sync for guild: ${guild.name}`);
 			return;
 		}
 
 		await guild.fetch();
-		const serverData = await db.upsertServer(botId, guild);
+		const serverData = await db.upsertServer(officialBotId, guild);
 
 		if (!serverData) {
 			logger.log(`⚠️  Failed to sync server info for ${guild.name}`);
@@ -57,8 +58,8 @@ async function syncGuildData(guild: any) {
 
 async function syncAllGuilds() {
 	try {
-		if (!client || !botId) {
-			logger.log(`⚠️  Client or bot ID not set, skipping sync`);
+		if (!client || !officialBotId) {
+			logger.log(`⚠️  Client or official bot ID not set, skipping sync`);
 			return;
 		}
 
@@ -81,10 +82,9 @@ async function updateBotInfo() {
 	if (!botId || !client || !client.user) return;
 
 	try {
-		const avatarUrl = client.user.displayAvatarURL({ dynamic: true, size: 256 });
 		const displayName = client.user.globalName || client.user.displayName || client.user.username;
-		await db.updateBot(botId, { name: displayName, bot_icon: avatarUrl || null });
-		logger.log(`✅ Updated selfbot name and icon from Discord: ${displayName}`);
+		await db.updateServerBot(Number(botId), { name: displayName });
+		logger.log(`✅ Updated selfbot name from Discord: ${displayName}`);
 	} catch (error: any) {
 		logger.log(`⚠️  Failed to update bot info: ${error.message}`);
 	}
@@ -97,17 +97,14 @@ async function init(discordClient: any, botIdFromEnv: any) {
 		botId = botIdFromEnv;
 		const bot = await findBotById(botId);
 		if (bot) {
-			logger.log(`✅ Found selfbot in database: ${bot.name} (${bot.bot_type})`);
-
-			if (bot.bot_type === 'selfbot') {
-				const officialBot = await db.getOfficialBotForSelfbot(bot.id);
-				if (officialBot) {
-					logger.log(`🔗 Selfbot connected to official bot: ${officialBot.name}`);
-				} else {
-					logger.log(`⚠️  No official bot found for selfbot via server assignments`);
-				}
+			logger.log(`✅ Found selfbot in database: ${bot.name} (ID: ${bot.id})`);
+			const officialBot = await db.getOfficialBotForSelfbot(bot.id);
+			if (officialBot) {
+				officialBotId = officialBot.id;
+				logger.log(`🔗 Selfbot connected to official bot: ${officialBot.name}`);
+			} else {
+				logger.log(`⚠️  No official bot found for selfbot via server assignments`);
 			}
-
 			if (client.user) await updateBotInfo();
 		} else {
 			logger.log(`❌ Selfbot not found in database with ID: ${botId}`);
@@ -117,8 +114,8 @@ async function init(discordClient: any, botIdFromEnv: any) {
 	}
 
 	setTimeout(async () => {
-		if (botId) {
-			const needsSync = await db.serversNeedSync(botId);
+		if (officialBotId) {
+			const needsSync = await db.serversNeedSync(officialBotId);
 			if (needsSync) {
 				logger.log('🔄 Starting initial guild data sync (servers need data sync)...');
 				await syncAllGuilds();
@@ -135,11 +132,11 @@ async function init(discordClient: any, botIdFromEnv: any) {
 	});
 
 	client.on('guildUpdate', async (_oldGuild: any, newGuild: any) => {
-		if (botId) await syncGuildData(newGuild);
+		if (officialBotId) await syncGuildData(newGuild);
 	});
 
 	client.on('channelCreate', async (channel: any) => {
-		if (channel.guild && botId) {
+		if (channel.guild && officialBotId) {
 			const channelType = channel.type === 4 ? 'Category' : channel.type === 0 ? 'Text Channel' : channel.type === 5 ? 'News Channel' : 'Channel';
 			await logger.log(`📁 ${channelType} created: **${channel.name || 'Unknown'}** (${channel.id})`);
 			await syncGuildData(channel.guild);
@@ -147,7 +144,7 @@ async function init(discordClient: any, botIdFromEnv: any) {
 	});
 
 	client.on('channelUpdate', async (oldChannel: any, newChannel: any) => {
-		if (newChannel.guild && botId) {
+		if (newChannel.guild && officialBotId) {
 			const channelType = newChannel.type === 4 ? 'Category' : newChannel.type === 0 ? 'Text Channel' : newChannel.type === 5 ? 'News Channel' : 'Channel';
 			const oldName = oldChannel.name || 'Unknown';
 			const newName = newChannel.name || 'Unknown';
@@ -161,7 +158,7 @@ async function init(discordClient: any, botIdFromEnv: any) {
 	});
 
 	client.on('channelDelete', async (channel: any) => {
-		if (channel.guild && botId) {
+		if (channel.guild && officialBotId) {
 			const channelType = channel.type === 4 ? 'Category' : channel.type === 0 ? 'Text Channel' : channel.type === 5 ? 'News Channel' : 'Channel';
 			await logger.log(`🗑️ ${channelType} deleted: **${channel.name || 'Unknown'}** (${channel.id})`);
 			await syncGuildData(channel.guild);

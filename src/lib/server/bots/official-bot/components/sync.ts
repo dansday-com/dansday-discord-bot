@@ -5,7 +5,6 @@ import { syncNotificationRoles } from './notificationsSync.js';
 
 let client = null;
 let botId = null;
-let botType = null;
 
 async function findBotByToken(token) {
 	try {
@@ -85,9 +84,7 @@ async function syncGuildData(guild) {
 		} catch (error) {}
 
 		try {
-			if (botType === 'official') {
-				await syncNotificationRoles(guild, serverId);
-			}
+			await syncNotificationRoles(guild, serverId);
 		} catch (error) {
 			logger.log(`❌ Notifications sync failed for ${guild.name}: ${error.message}`);
 		}
@@ -149,8 +146,7 @@ async function init(discordClient, botToken) {
 	}
 
 	botId = bot.id;
-	botType = bot.bot_type || null;
-	logger.log(`✅ Found bot in database: ${bot.name} (${bot.bot_type})`);
+	logger.log(`✅ Found bot in database: ${bot.name} (official)`);
 
 	if (client.user) {
 		await updateBotInfo();
@@ -198,27 +194,25 @@ async function init(discordClient, botToken) {
 				} catch (error) {}
 
 				try {
-					if (botType === 'official') {
-						const guilds = client.guilds.cache;
-						for (const [, guild] of guilds) {
-							try {
-								const serverData = await db.getServerByDiscordId(botId, guild.id);
-								if (!serverData) continue;
-								const row = await db.getServerSettings(serverData.id, 'notifications');
-								const config = row?.settings || null;
-								if (!config || !config.role_start || !config.role_end) continue;
-								const categoryIds = Array.isArray(config.category_ids) ? config.category_ids : [];
-								if (categoryIds.length === 0) continue;
-								await guild.fetch();
-								await guild.channels.fetch();
-								await guild.roles.fetch();
-								await syncNotificationRoles(guild, serverData.id);
-							} catch (err) {
-								logger.log(`⚠️ Notifications startup sync for ${guild.name}: ${err.message}`);
-							}
+					const guilds = client.guilds.cache;
+					for (const [, guild] of guilds) {
+						try {
+							const serverData = await db.getServerByDiscordId(botId, guild.id);
+							if (!serverData) continue;
+							const row = await db.getServerSettings(serverData.id, 'notifications');
+							const config = row?.settings || null;
+							if (!config || !config.role_start || !config.role_end) continue;
+							const categoryIds = Array.isArray(config.category_ids) ? config.category_ids : [];
+							if (categoryIds.length === 0) continue;
+							await guild.fetch();
+							await guild.channels.fetch();
+							await guild.roles.fetch();
+							await syncNotificationRoles(guild, serverData.id);
+						} catch (err) {
+							logger.log(`⚠️ Notifications startup sync for ${guild.name}: ${err.message}`);
 						}
-						logger.log('✅ Notification roles sync (startup) completed');
 					}
+					logger.log('✅ Notification roles sync (startup) completed');
 				} catch (error) {
 					logger.log(`⚠️ Notification roles startup sync failed: ${error.message}`);
 				}

@@ -307,15 +307,14 @@ export async function createBot(botData: any) {
 			const now = toMySQLDateTime();
 			const [result] = await connection.execute(
 				`INSERT INTO bots (
-					name, token, application_id, bot_type, bot_icon, port, secret_key, panel_id, created_at, updated_at
-				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+					name, token, application_id, bot_icon, port, secret_key, panel_id, created_at, updated_at
+				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 				[
 					botData.name || `Bot#${botNumber}`,
 					botData.token,
 					botData.application_id || null,
-					botData.bot_type,
 					botData.bot_icon || null,
-					botData.port !== undefined ? botData.port : botData.bot_type === 'official' ? 7777 : null,
+					botData.port !== undefined ? botData.port : 7777,
 					botData.secret_key || null,
 					botData.panel_id || null,
 					now,
@@ -1711,13 +1710,12 @@ async function getServerAccountByUsername(username: string) {
 	return result[0] || null;
 }
 
-async function getServerAccountByEmailBotServer(email: string, botId: number, serverId: number) {
-	const result = await query('SELECT * FROM server_accounts WHERE email = ? AND bot_id = ? AND server_id = ? LIMIT 1', [email, botId, serverId]);
+async function getServerAccountByEmailServer(email: string, serverId: number) {
+	const result = await query('SELECT * FROM server_accounts WHERE email = ? AND server_id = ? LIMIT 1', [email, serverId]);
 	return result[0] || null;
 }
 
 async function createServerAccount(data: {
-	bot_id: number;
 	server_id: number;
 	username: string;
 	email: string;
@@ -1731,10 +1729,9 @@ async function createServerAccount(data: {
 }) {
 	const now = toMySQLDateTime();
 	const result = await query(
-		`INSERT INTO server_accounts (bot_id, server_id, username, email, password_hash, account_type, email_verified, otp_code, otp_expires_at, is_frozen, invited_by, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO server_accounts (server_id, username, email, password_hash, account_type, email_verified, otp_code, otp_expires_at, is_frozen, invited_by, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		[
-			data.bot_id,
 			data.server_id,
 			data.username,
 			data.email,
@@ -1778,13 +1775,12 @@ async function deleteServerAccount(id: number) {
 	await query('DELETE FROM server_accounts WHERE id = ?', [id]);
 }
 
-async function getServerAccountsByBotServer(botId: number, serverId: number) {
-	return await query(`SELECT * FROM server_accounts WHERE bot_id = ? AND server_id = ? ORDER BY account_type ASC, created_at ASC`, [botId, serverId]);
+async function getServerAccountsByServer(serverId: number) {
+	return await query(`SELECT * FROM server_accounts WHERE server_id = ? ORDER BY account_type ASC, created_at ASC`, [serverId]);
 }
 
 async function createServerAccountInvite(data: {
 	token: string;
-	bot_id: number;
 	server_id: number;
 	account_type: 'owner' | 'moderator';
 	created_by: number;
@@ -1792,9 +1788,9 @@ async function createServerAccountInvite(data: {
 }) {
 	const now = toMySQLDateTime();
 	await query(
-		`INSERT INTO server_account_invites (token, bot_id, server_id, account_type, created_by, expires_at, created_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		[data.token, data.bot_id, data.server_id, data.account_type, data.created_by, data.expires_at, now]
+		`INSERT INTO server_account_invites (token, server_id, account_type, created_by, expires_at, created_at)
+		 VALUES (?, ?, ?, ?, ?, ?)`,
+		[data.token, data.server_id, data.account_type, data.created_by, data.expires_at, now]
 	);
 }
 
@@ -1810,35 +1806,54 @@ async function updateServerAccountInvite(id: number, data: Partial<{ used_by: nu
 	await query(`UPDATE server_account_invites SET ${fields} WHERE id = ?`, [...Object.values(data), id]);
 }
 
-async function getServerAccountInvitesByBotServer(botId: number, serverId: number) {
+async function getServerAccountInvitesByServer(serverId: number) {
 	return await query(
 		`SELECT sai.*, creator.username as creator_username, sa.username as used_by_username
 		 FROM server_account_invites sai
 		 LEFT JOIN accounts creator ON sai.created_by = creator.id
 		 LEFT JOIN server_accounts sa ON sai.used_by = sa.id
-		 WHERE sai.bot_id = ? AND sai.server_id = ?
+		 WHERE sai.server_id = ?
 		 ORDER BY sai.created_at DESC`,
-		[botId, serverId]
-	);
-}
-
-async function getServerBots(serverId: number) {
-	return await query(
-		`SELECT sb.*, b.name as selfbot_name, b.status as selfbot_status, b.is_testing
-		 FROM server_bots sb
-		 JOIN bots b ON b.id = sb.selfbot_id
-		 WHERE sb.server_id = ?`,
 		[serverId]
 	);
 }
 
-async function addServerBot(serverId: number, selfbotId: number) {
-	const now = toMySQLDateTime();
-	await query(`INSERT IGNORE INTO server_bots (server_id, selfbot_id, created_at) VALUES (?, ?, ?)`, [serverId, selfbotId, now]);
+async function getAllServerBots() {
+	return await query(`SELECT * FROM server_bots`, []);
 }
 
-async function removeServerBot(serverId: number, selfbotId: number) {
-	await query('DELETE FROM server_bots WHERE server_id = ? AND selfbot_id = ?', [serverId, selfbotId]);
+async function getServerBots(serverId: number) {
+	return await query(`SELECT * FROM server_bots WHERE server_id = ?`, [serverId]);
+}
+
+async function addServerBot(data: { server_id: number; name: string; token: string; is_testing: boolean }) {
+	const now = toMySQLDateTime();
+	const result = await query(
+		`INSERT INTO server_bots (server_id, name, token, is_testing, status, created_at, updated_at) VALUES (?, ?, ?, ?, 'stopped', ?, ?)`,
+		[data.server_id, data.name, data.token, data.is_testing, now, now]
+	);
+	return (result as any).insertId;
+}
+
+async function updateServerBot(
+	id: number,
+	data: Partial<{ name: string; token: string; status: string; process_id: number | null; is_testing: boolean; uptime_started_at: string | null }>
+) {
+	const now = toMySQLDateTime();
+	const fields = Object.keys(data)
+		.map((k) => `${k} = ?`)
+		.join(', ');
+	const values = [...Object.values(data), now, id];
+	await query(`UPDATE server_bots SET ${fields}, updated_at = ? WHERE id = ?`, values);
+}
+
+async function removeServerBot(id: number) {
+	await query('DELETE FROM server_bots WHERE id = ?', [id]);
+}
+
+async function getServerBotById(id: number) {
+	const result = await query('SELECT * FROM server_bots WHERE id = ? LIMIT 1', [id]);
+	return result[0] || null;
 }
 
 async function getOfficialBotForSelfbot(selfbotId: number) {
@@ -1846,7 +1861,7 @@ async function getOfficialBotForSelfbot(selfbotId: number) {
 		`SELECT b.* FROM server_bots sb
 		 JOIN servers s ON s.id = sb.server_id
 		 JOIN bots b ON b.id = s.bot_id
-		 WHERE sb.selfbot_id = ? AND b.bot_type = 'official' LIMIT 1`,
+		 WHERE sb.id = ? LIMIT 1`,
 		[selfbotId]
 	);
 	return result[0] || null;
@@ -1854,10 +1869,8 @@ async function getOfficialBotForSelfbot(selfbotId: number) {
 
 async function getSelfbotsForOfficialBot(officialBotId: number) {
 	return await query(
-		`SELECT DISTINCT b.*
-		 FROM server_bots sb
+		`SELECT sb.* FROM server_bots sb
 		 JOIN servers s ON s.id = sb.server_id
-		 JOIN bots b ON b.id = sb.selfbot_id
 		 WHERE s.bot_id = ?`,
 		[officialBotId]
 	);
@@ -2549,17 +2562,20 @@ export default {
 	getServerAccountById,
 	getServerAccountByEmail,
 	getServerAccountByUsername,
-	getServerAccountByEmailBotServer,
+	getServerAccountByEmailServer,
 	createServerAccount,
 	updateServerAccount,
 	deleteServerAccount,
-	getServerAccountsByBotServer,
+	getServerAccountsByServer,
 	createServerAccountInvite,
 	getServerAccountInviteByToken,
 	updateServerAccountInvite,
-	getServerAccountInvitesByBotServer,
+	getServerAccountInvitesByServer,
+	getAllServerBots,
 	getServerBots,
+	getServerBotById,
 	addServerBot,
+	updateServerBot,
 	removeServerBot,
 	getOfficialBotForSelfbot,
 	getSelfbotsForOfficialBot,

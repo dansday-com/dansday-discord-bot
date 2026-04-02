@@ -163,7 +163,7 @@
 						</div>
 						<div class="min-w-0">
 							<p class="text-ash-100 truncate text-sm font-semibold sm:text-base">{bot.name || `Bot #${bot.id}`}</p>
-							<span class="text-ash-400 text-xs capitalize">{bot.bot_type}</span>
+							<span class="text-ash-400 text-xs">Official</span>
 						</div>
 					</div>
 

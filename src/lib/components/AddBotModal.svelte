@@ -52,7 +52,6 @@
 		loading = true;
 		try {
 			const body: Record<string, unknown> = {
-				bot_type: 'official',
 				token: botToken,
 				application_id: applicationId,
 				port: Number(port),

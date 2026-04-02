@@ -28,7 +28,6 @@ export const GET: RequestHandler = async ({ locals }) => {
 				const botData: any = {
 					id: bot.id,
 					name: bot.name,
-					bot_type: bot.bot_type,
 					bot_icon: bot.bot_icon,
 					port: bot.port,
 					application_id: bot.application_id,
@@ -81,7 +80,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		}
 
 		const existingBots = await db.getAllBots();
-		const portInUse = existingBots.some((b: any) => b.port === port && b.bot_type === 'official');
+		const portInUse = existingBots.some((b: any) => b.port === port);
 		if (portInUse) {
 			return json({ success: false, error: `Port ${port} is already in use by another official bot` }, { status: 400 });
 		}
@@ -90,7 +89,6 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			name: name || 'Bot',
 			token,
 			application_id,
-			bot_type: 'official',
 			bot_icon: bot_icon || null,
 			port: port || 7777,
 			is_testing: false,

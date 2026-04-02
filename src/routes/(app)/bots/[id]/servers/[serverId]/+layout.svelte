@@ -2,6 +2,9 @@
 	import { page } from '$app/state';
 	import type { LayoutProps } from './$types';
 
+	function discordServerLink(id: string) { return `https://discord.com/channels/${id}`; }
+	function inviteLink(code: string) { return `https://discord.gg/${code}`; }
+
 	let { data, children }: LayoutProps = $props();
 
 	const base = $derived(`/bots/${data.botId}/servers/${data.serverId}`);
@@ -54,6 +57,33 @@
 							<span class="bg-ash-800 border-ash-600 text-ash-300 flex items-center gap-1.5 rounded-lg border px-2 py-1">
 								<i class="fas fa-gem text-purple-400"></i>Level {data.overview.boost_level}
 							</span>
+						{/if}
+						<a
+							href={discordServerLink((data.overview as any).discord_server_id)}
+							target="_blank"
+							rel="noreferrer"
+							class="bg-ash-800 border-ash-600 text-ash-300 hover:text-ash-100 hover:bg-ash-700 flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs transition-colors"
+						>
+							<i class="fab fa-discord"></i>Discord
+						</a>
+						{#if (data.overview as any).vanity_url_code}
+							<a
+								href={inviteLink((data.overview as any).vanity_url_code)}
+								target="_blank"
+								rel="noreferrer"
+								class="bg-ash-800 border-ash-600 text-ash-300 hover:text-ash-100 hover:bg-ash-700 flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs transition-colors"
+							>
+								<i class="fas fa-link"></i>Invite
+							</a>
+						{:else if (data.overview as any).invite_code}
+							<a
+								href={inviteLink((data.overview as any).invite_code)}
+								target="_blank"
+								rel="noreferrer"
+								class="bg-ash-800 border-ash-600 text-ash-300 hover:text-ash-100 hover:bg-ash-700 flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs transition-colors"
+							>
+								<i class="fas fa-link"></i>Invite
+							</a>
 						{/if}
 					</div>
 				</div>

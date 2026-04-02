@@ -84,16 +84,16 @@ export function formatTimestamp(timestamp = Date.now(), includeSeconds = false) 
 	return DateTime.fromMillis(timestamp, { zone: TIMEZONE }).toFormat(includeSeconds ? 'dd/MM/yyyy HH:mm:ss' : 'dd/MM/yyyy HH:mm');
 }
 
-export function toMySQLDateTime(date?: string | Date) {
+export function toMySQLDateTime(date?: string | Date): Date | null {
 	if (!date) {
-		return DateTime.now().setZone(TIMEZONE).toFormat('yyyy-MM-dd HH:mm:ss');
+		return DateTime.now().setZone(TIMEZONE).toJSDate();
 	}
 	if (typeof date === 'string') {
 		const dt = DateTime.fromISO(date);
 		if (!dt.isValid) return null;
-		return dt.setZone(TIMEZONE).toFormat('yyyy-MM-dd HH:mm:ss');
+		return dt.setZone(TIMEZONE).toJSDate();
 	}
-	return DateTime.fromJSDate(date).setZone(TIMEZONE).toFormat('yyyy-MM-dd HH:mm:ss');
+	return DateTime.fromJSDate(date).setZone(TIMEZONE).toJSDate();
 }
 
 export function parseMySQLDateTime(mysqlDateTimeString: any): Date | null {

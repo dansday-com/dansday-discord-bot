@@ -40,15 +40,19 @@ PREPARE stmt2 FROM @sql2;
 EXECUTE stmt2;
 DEALLOCATE PREPARE stmt2;
 
--- 2. Migrate existing 'admin' values → 'superadmin' BEFORE altering the enum
+-- 2. Expand enum to include both old and new values (keeps existing 'admin' rows valid)
+ALTER TABLE accounts
+    MODIFY COLUMN account_type ENUM('admin', 'superadmin', 'owner', 'moderator') NOT NULL DEFAULT 'superadmin';
+ALTER TABLE account_invites
+    MODIFY COLUMN account_type ENUM('admin', 'superadmin', 'owner', 'moderator') NOT NULL;
+
+-- 3. Migrate existing 'admin' values → 'superadmin'
 UPDATE accounts SET account_type = 'superadmin' WHERE account_type = 'admin';
 UPDATE account_invites SET account_type = 'superadmin' WHERE account_type = 'admin';
 
--- 3. Expand account_type enum on accounts table (safe now — no 'admin' values remain)
+-- 4. Remove 'admin' from enum now that no rows use it
 ALTER TABLE accounts
     MODIFY COLUMN account_type ENUM('superadmin', 'owner', 'moderator') NOT NULL DEFAULT 'superadmin';
-
--- 4. Expand account_type enum on account_invites table
 ALTER TABLE account_invites
     MODIFY COLUMN account_type ENUM('superadmin', 'owner', 'moderator') NOT NULL;
 

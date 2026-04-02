@@ -40,7 +40,7 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
 	const serverSlug = resolved.computedSlug;
 
 	const metric = parseMetric(url.searchParams.get('metric'));
-	const range = parseRange(url.searchParams.get('range'));
+	const range = 'all' as const;
 	const limit = 50;
 
 	const cached = await getCachedLeaderboard(server.id, metric, range, limit);
@@ -62,7 +62,6 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
 			server_icon: server.server_icon
 		},
 		metric,
-		range,
 		limit,
 		rows
 	};

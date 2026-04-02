@@ -155,8 +155,29 @@
 	<div class="blob blob-2"></div>
 	<div class="blob blob-3"></div>
 
-	<div class="lb-inner">
-		<!-- Header -->
+	<!-- Nav -->
+	<nav class="lb-nav">
+		<div class="lb-nav-inner">
+			<div class="lb-nav-brand">
+				<div class="lb-nav-icon">
+					<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+						<path d="M13 10V3L4 14H11V21L20 10H13Z" fill="white"/>
+					</svg>
+				</div>
+				<span>Dansday Discord Bot Panel</span>
+			</div>
+			<div class="lb-nav-right">
+				<span class="lb-nav-live">
+					<span class="lb-nav-live-dot"></span>
+					Live
+				</span>
+			</div>
+		</div>
+	</nav>
+
+	<main class="lb-main">
+		<div class="lb-inner">
+		<!-- Server header -->
 		<header class="lb-header">
 			<div class="lb-server-icon">
 				{#if data.server.server_icon}
@@ -316,7 +337,18 @@
 				<p>No data yet</p>
 			</div>
 		{/if}
-	</div>
+		</div>
+	</main>
+
+	<!-- Footer -->
+	<footer class="lb-footer">
+		<div class="lb-footer-inner">
+			<p class="lb-footer-copy">
+				Copyright &copy; {new Date().getFullYear()}
+				<a href="https://dansday.com" target="_blank">dansday.com</a>. All rights reserved.
+			</p>
+		</div>
+	</footer>
 </div>
 
 <style>
@@ -327,6 +359,12 @@
 		position: relative;
 		overflow: hidden;
 		font-family: -apple-system, 'Inter', 'Segoe UI', sans-serif;
+		display: flex;
+		flex-direction: column;
+	}
+	.lb-main {
+		flex: 1;
+		overflow-y: auto;
 	}
 
 	.blob {
@@ -817,4 +855,130 @@
 		font-size: 14px;
 		font-weight: 600;
 	}
+
+	/* ── Nav ─────────────────────────────────────────────── */
+	.lb-nav {
+		position: sticky;
+		top: 0;
+		z-index: 100;
+		flex-shrink: 0;
+		background: rgba(13, 13, 20, 0.85);
+		backdrop-filter: blur(18px);
+		-webkit-backdrop-filter: blur(18px);
+		border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+	}
+	.lb-nav-inner {
+		max-width: 1280px;
+		margin: 0 auto;
+		padding: 0 12px;
+		height: 56px;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+	}
+	@media (min-width: 640px) {
+		.lb-nav-inner { height: 64px; padding: 0 16px; }
+	}
+	@media (min-width: 1024px) {
+		.lb-nav-inner { padding: 0 32px; }
+	}
+	.lb-nav-brand {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		font-size: 16px;
+		font-weight: 800;
+		color: #fff;
+		letter-spacing: -0.3px;
+		min-width: 0;
+		flex: 1;
+	}
+	.lb-nav-brand span {
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		font-size: 15px;
+	}
+	@media (min-width: 640px) {
+		.lb-nav-brand span { font-size: 20px; }
+	}
+	.lb-nav-icon {
+		width: 32px; height: 32px;
+		border-radius: 50%;
+		background: rgba(124, 58, 237, 0.5);
+		display: flex; align-items: center; justify-content: center;
+		flex-shrink: 0;
+		box-shadow: 0 0 12px rgba(124, 58, 237, 0.4);
+	}
+	@media (min-width: 640px) {
+		.lb-nav-icon { width: 40px; height: 40px; }
+	}
+	.lb-nav-right {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		flex-shrink: 0;
+	}
+	.lb-nav-live {
+		display: flex;
+		align-items: center;
+		gap: 5px;
+		font-size: 11px;
+		font-weight: 700;
+		color: #4ade80;
+		background: rgba(74, 222, 128, 0.1);
+		border: 1px solid rgba(74, 222, 128, 0.25);
+		padding: 6px 10px;
+		border-radius: 8px;
+	}
+	@media (min-width: 640px) {
+		.lb-nav-live { padding: 8px 16px; font-size: 13px; }
+	}
+	.lb-nav-live-dot {
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background: #4ade80;
+		box-shadow: 0 0 6px #4ade80;
+		animation: live-pulse 1.8s ease-in-out infinite;
+	}
+	@keyframes live-pulse {
+		0%, 100% { opacity: 1; transform: scale(1); }
+		50% { opacity: 0.4; transform: scale(0.7); }
+	}
+
+	/* ── Footer ──────────────────────────────────────────── */
+	.lb-footer {
+		position: relative;
+		z-index: 1;
+		flex-shrink: 0;
+		border-top: 1px solid rgba(255, 255, 255, 0.06);
+		background: rgba(255, 255, 255, 0.02);
+	}
+	.lb-footer-inner {
+		max-width: 1280px;
+		margin: 0 auto;
+		padding: 12px 12px;
+		text-align: center;
+	}
+	@media (min-width: 640px) {
+		.lb-footer-inner { padding: 16px 16px; }
+	}
+	@media (min-width: 1024px) {
+		.lb-footer-inner { padding: 16px 32px; }
+	}
+	.lb-footer-copy {
+		font-size: 12px;
+		color: rgba(255, 255, 255, 0.25);
+		margin: 0;
+	}
+	@media (min-width: 640px) {
+		.lb-footer-copy { font-size: 14px; }
+	}
+	.lb-footer-copy a {
+		color: rgba(255, 255, 255, 0.55);
+		text-decoration: none;
+		transition: color 0.2s;
+	}
+	.lb-footer-copy a:hover { color: rgba(255, 255, 255, 0.8); }
 </style>

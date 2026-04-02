@@ -12,6 +12,16 @@ interface BotConfig {
 
 let botConfig: BotConfig | null = null;
 
+/** `bots.id` and `server_bots.id` are separate sequences — the same number can exist in both tables. */
+function inferBotRuntimeKind(): 'official' | 'selfbot' | null {
+	const e = process.env.BOT_KIND;
+	if (e === 'official' || e === 'selfbot') return e;
+	const script = process.argv[1] || '';
+	if (/officialbot\.(js|mjs|cjs|ts)$/i.test(script)) return 'official';
+	if (/selfbot\.(js|mjs|cjs|ts)$/i.test(script)) return 'selfbot';
+	return null;
+}
+
 async function loadBotConfig() {
 	const botId = process.env.BOT_ID;
 
@@ -20,13 +30,50 @@ async function loadBotConfig() {
 	}
 
 	const numericId = Number(botId);
-	const selfbot = await db.getServerBotById(numericId);
+	const kind = inferBotRuntimeKind();
 
+	if (kind === 'official') {
+		const bot = await db.getBot(numericId);
+		if (!bot) {
+			throw new Error(`Bot not found in database with ID: ${botId}`);
+		}
+		botConfig = {
+			id: bot.id,
+			token: bot.token,
+			application_id: bot.application_id,
+			isSelfbot: false,
+			port: bot.port,
+			secret_key: bot.secret_key,
+			is_testing: bot.is_testing || false
+		};
+		return botConfig;
+	}
+
+	if (kind === 'selfbot') {
+		const selfbot = await db.getServerBotById(numericId);
+		if (!selfbot) {
+			throw new Error(`Selfbot not found in database with ID: ${botId}`);
+		}
+		const officialBot = await db.getOfficialBotForSelfbot(selfbot.id);
+		botConfig = {
+			id: selfbot.id,
+			token: selfbot.token ?? '',
+			application_id: null,
+			isSelfbot: true,
+			port: officialBot?.port ?? null,
+			secret_key: officialBot?.secret_key ?? null,
+			is_testing: officialBot?.is_testing || selfbot.is_testing || false
+		};
+		return botConfig;
+	}
+
+	// Legacy: no BOT_KIND / argv hint (e.g. unusual runners) — prefer selfbot row if present, else official.
+	const selfbot = await db.getServerBotById(numericId);
 	if (selfbot) {
 		const officialBot = await db.getOfficialBotForSelfbot(selfbot.id);
 		botConfig = {
 			id: selfbot.id,
-			token: selfbot.token,
+			token: selfbot.token ?? '',
 			application_id: null,
 			isSelfbot: true,
 			port: officialBot?.port ?? null,

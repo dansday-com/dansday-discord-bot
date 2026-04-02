@@ -9,7 +9,7 @@
 	let saving = $state(false);
 	let enabled = $state(Boolean(data.enabled));
 
-	const previewUrl = $derived(enabled && data.previewPath ? `${page.url.origin}${data.previewPath}` : '');
+	const publicUrl = $derived(enabled && data.leaderboardPath ? `${page.url.origin}${data.leaderboardPath}` : '');
 
 	async function save() {
 		saving = true;
@@ -54,10 +54,10 @@
 
 	{#if enabled}
 		<div>
-			<label class="text-ash-300 mb-1.5 block text-xs font-medium">Preview URL</label>
+			<label class="text-ash-300 mb-1.5 block text-xs font-medium">Public URL</label>
 			<div class="bg-ash-900 border-ash-600 flex items-center gap-2 rounded-lg border px-3 py-2">
-				<input type="text" readonly value={previewUrl} class="text-ash-100 w-full bg-transparent font-mono text-xs focus:outline-none" />
-				<a class="text-ash-200 hover:text-ash-100 text-xs font-medium underline" href={data.previewPath || '#'} target="_blank" rel="noreferrer"> Open </a>
+				<input type="text" readonly value={publicUrl} class="text-ash-100 w-full bg-transparent font-mono text-xs focus:outline-none" />
+				<a class="text-ash-200 hover:text-ash-100 text-xs font-medium underline" href={data.leaderboardPath || '#'} target="_blank" rel="noreferrer"> Open </a>
 			</div>
 			<p class="text-ash-500 mt-2 text-xs">
 				The URL is generated from the server name (no slug is saved in the database). If another server has the same name, we add

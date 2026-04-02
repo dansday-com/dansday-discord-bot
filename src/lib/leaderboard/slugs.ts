@@ -36,3 +36,11 @@ export async function computeLeaderboardSlugForServerId(serverId: number): Promi
 	if (!Array.isArray(servers) || servers.length === 0) return null;
 	return computeIndexedSlugForItemId(serverId, servers, serverSlugKey);
 }
+
+/** Same indexing as the live public URL, but includes this server when leaderboard is currently disabled (settings UI before save). */
+export async function computeLeaderboardSlugForServerConfig(serverId: number, serverNameFallback: string | null): Promise<string | null> {
+	const servers: LeaderboardServerRow[] = await (db as any).listEnabledLeaderboardServers();
+	const id = Number(serverId);
+	const merged: LeaderboardServerRow[] = servers.some((s) => Number(s.id) === id) ? servers : [...servers, { id, name: serverNameFallback, updated_at: null }];
+	return computeIndexedSlugForItemId(id, merged, serverSlugKey);
+}

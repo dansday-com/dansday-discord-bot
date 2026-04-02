@@ -81,6 +81,23 @@ async function getConnectedSelfbots(officialBotId: number) {
 	}
 }
 
+/** Start linked selfbots in the background so official bot success is not blocked or undone by selfbot/token failures. */
+function startConnectedSelfbotsInBackground(selfbots: any[], officialBotId: number): void {
+	if (selfbots.length === 0) return;
+	logger.log(`🔗 Scheduling ${selfbots.length} connected selfbot(s) for official bot ${officialBotId} (independent of official process)`);
+	Promise.allSettled(selfbots.map((sb: any) => startBotById(sb.id, sb))).then((results) => {
+		for (let i = 0; i < results.length; i++) {
+			const sb = selfbots[i];
+			const r = results[i];
+			if (r.status === 'rejected') {
+				logger.log(`⚠️  Selfbot ${sb.id} (${sb.name ?? 'unnamed'}) start failed: ${String(r.reason)}`);
+			} else if (!r.value.success) {
+				logger.log(`⚠️  Selfbot ${sb.id} (${sb.name ?? 'unnamed'}) did not start: ${r.value.error ?? 'unknown error'}`);
+			}
+		}
+	});
+}
+
 export async function startBotById(botId: number, bot: any): Promise<{ success: boolean; error?: string; pid?: number }> {
 	try {
 		await updateBotStatus(bot, { status: 'starting' });
@@ -122,7 +139,8 @@ export async function startBotById(botId: number, bot: any): Promise<{ success: 
 			env: {
 				...process.env,
 				BOT_TOKEN: bot.token,
-				BOT_ID: String(botId)
+				BOT_ID: String(botId),
+				BOT_KIND: selfbot ? 'selfbot' : 'official'
 			}
 		});
 
@@ -208,20 +226,18 @@ export async function startBotById(botId: number, bot: any): Promise<{ success: 
 
 		logger.log(`✅ Started bot ${botId} (${selfbot ? 'selfbot' : 'official'}) with PID ${botProcess.pid}`);
 
+		let connectedSelfbotsScheduled = 0;
 		if (!selfbot) {
-			const selfbots = await getConnectedSelfbots(botId);
-			if (selfbots.length > 0) {
-				await Promise.all(
-					selfbots.map((sb: any) =>
-						startBotById(sb.id, sb).catch((err: Error) => {
-							logger.log(`⚠️  Failed to start connected selfbot ${sb.id}: ${err.message}`);
-						})
-					)
-				);
-			}
+			const linked = await getConnectedSelfbots(botId);
+			connectedSelfbotsScheduled = linked.length;
+			startConnectedSelfbotsInBackground(linked, botId);
 		}
 
-		return { success: true, pid: botProcess.pid };
+		return {
+			success: true,
+			pid: botProcess.pid,
+			...(!selfbot && connectedSelfbotsScheduled > 0 ? { connected_selfbots_scheduled: connectedSelfbotsScheduled } : {})
+		};
 	} catch (error: any) {
 		return { success: false, error: error.message };
 	}

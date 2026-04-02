@@ -1,7 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import db from '$lib/database.js';
-import { computeLeaderboardSlugForServerId } from '$lib/leaderboard/index.js';
+import { computeLeaderboardSlugForServerConfig } from '$lib/leaderboard/index.js';
 
 export const load: PageServerLoad = async ({ locals, params, parent }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
@@ -13,12 +13,12 @@ export const load: PageServerLoad = async ({ locals, params, parent }) => {
 	const settings = (settingsRow as any)?.settings || {};
 	const enabled = settings.enabled ?? true;
 
-	const slug = enabled ? await computeLeaderboardSlugForServerId(Number(params.serverId)) : null;
+	const slug = await computeLeaderboardSlugForServerConfig(Number(params.serverId), overview?.name ?? null);
 
 	return {
 		settings,
 		enabled,
 		serverName: overview?.name || 'server',
-		previewPath: slug ? `/${encodeURIComponent(String(slug))}/leaderboard` : null
+		leaderboardPath: slug ? `/${encodeURIComponent(String(slug))}/leaderboard` : null
 	};
 };

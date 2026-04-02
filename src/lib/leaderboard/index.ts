@@ -7,4 +7,10 @@ export {
 	setCachedLeaderboard
 } from './cache.js';
 export { subscribeLeaderboard } from './stream.js';
-export { computeLeaderboardSlugForServerId, listEnabledLeaderboardSlugs, resolveLeaderboardServerBySlug, type LeaderboardServerRow } from './slugs.js';
+export {
+	computeLeaderboardSlugForServerConfig,
+	computeLeaderboardSlugForServerId,
+	listEnabledLeaderboardSlugs,
+	resolveLeaderboardServerBySlug,
+	type LeaderboardServerRow
+} from './slugs.js';

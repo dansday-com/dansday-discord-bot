@@ -10,12 +10,31 @@ const defaultLang = 'en';
 const _i18nDir = dirname(fileURLToPath(import.meta.url));
 const _localesDir = join(_i18nDir, 'locales');
 
+function resolveLocalesDir(): string | null {
+	if (existsSync(join(_localesDir, 'en.json'))) return _localesDir;
+
+	// Bot `cwd` is often `.../official-bot`, not repo root — walk up from this file to find `src/lib/.../locales`.
+	let dir = _i18nDir;
+	for (let i = 0; i < 24; i++) {
+		const candidate = join(dir, 'src/lib/backend/bots/official-bot/locales');
+		if (existsSync(join(candidate, 'en.json'))) return candidate;
+		const parent = dirname(dir);
+		if (parent === dir) break;
+		dir = parent;
+	}
+
+	const fromCwd = join(process.cwd(), 'src/lib/backend/bots/official-bot/locales');
+	if (existsSync(join(fromCwd, 'en.json'))) return fromCwd;
+	const cwdLocales = join(process.cwd(), 'locales');
+	if (existsSync(join(cwdLocales, 'en.json'))) return cwdLocales;
+	return null;
+}
+
 function loadTranslations() {
 	const languages = ['en', 'id'];
 
-	let localesDir = _localesDir;
-	if (!existsSync(join(localesDir, 'en.json'))) localesDir = join(process.cwd(), 'locales');
-	if (!existsSync(join(localesDir, 'en.json'))) return;
+	const localesDir = resolveLocalesDir();
+	if (!localesDir) return;
 
 	for (const lang of languages) {
 		try {

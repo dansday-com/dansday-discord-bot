@@ -1,7 +1,6 @@
-// @ts-nocheck
 import { COMMUNICATION, NOTIFICATIONS, getEmbedConfig } from '../../../config.js';
 import { EmbedBuilder } from 'discord.js';
-import logger from '../../../logger.js';
+import { logger } from '../../../../utils/index.js';
 import db from '../../../../database.js';
 import { syncNotificationRoles } from './notificationsSync.js';
 

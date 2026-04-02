@@ -7,13 +7,24 @@ import { logger, getCurrentDateTime, parseMySQLDateTime, getNowInTimezone, getDa
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const _root3 = join(__dirname, '..', '..');
-const _root4 = join(__dirname, '..', '..', '..');
+
+function isProjectRoot(dir: string): boolean {
+	return existsSync(join(dir, 'bots', 'backend', 'bots')) || existsSync(join(dir, 'bots', 'bots')) || existsSync(join(dir, 'src', 'lib', 'backend', 'bots'));
+}
+
+/** Repo / image root: `process.cwd()` when running `node build/index.js` from `/app`, else walk up from bundled chunk (e.g. `build/server/chunks`). */
 function findProjectRoot(): string {
-	for (const r of [_root3, _root4]) {
-		if (existsSync(join(r, 'bots', 'bots')) || existsSync(join(r, 'src', 'lib', 'backend', 'bots'))) return r;
+	if (isProjectRoot(process.cwd())) return process.cwd();
+
+	let dir = __dirname;
+	for (let i = 0; i < 24; i++) {
+		if (isProjectRoot(dir)) return dir;
+		const parent = dirname(dir);
+		if (parent === dir) break;
+		dir = parent;
 	}
-	return _root4;
+
+	return process.cwd();
 }
 const projectRoot = findProjectRoot();
 
@@ -91,7 +102,11 @@ export async function startBotById(botId: number, bot: any): Promise<{ success: 
 	}
 
 	try {
-		const botsRoot = existsSync(join(projectRoot, 'bots', 'bots')) ? join(projectRoot, 'bots', 'bots') : join(projectRoot, 'src', 'lib', 'backend', 'bots');
+		const botsRoot = existsSync(join(projectRoot, 'bots', 'backend', 'bots'))
+			? join(projectRoot, 'bots', 'backend', 'bots')
+			: existsSync(join(projectRoot, 'bots', 'bots'))
+				? join(projectRoot, 'bots', 'bots')
+				: join(projectRoot, 'src', 'lib', 'backend', 'bots');
 
 		const selfbot = isSelfbot(bot);
 		const botPath = join(botsRoot, selfbot ? 'self-bot' : 'official-bot');

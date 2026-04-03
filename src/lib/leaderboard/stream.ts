@@ -17,11 +17,28 @@ function makeKeyV2(serverId: number, metric: LeaderboardMetric, range: Leaderboa
 	return `${serverId}:${metric}:${range}:${limit}`;
 }
 
+/** Align with Redis leaderboard cache TTL (~20s) so tab switches usually skip DB. */
+const CACHE_FRESH_MS = 20_000;
+
 async function buildSnapshot(serverId: number, metric: LeaderboardMetric, range: LeaderboardRange, limit: number): Promise<LeaderboardSnapshot> {
 	const rows = await db.getServerLeaderboard(serverId, limit, metric, range);
 	const snap: LeaderboardSnapshot = { metric, range, limit, updated_at: Date.now(), rows };
 	setCachedLeaderboard(serverId, metric, range, limit, snap).catch(() => {});
 	return snap;
+}
+
+/** Redis-first when fresh; avoids DB on tab switches and SSE subscribe. */
+export async function resolveLeaderboardSnapshot(
+	serverId: number,
+	metric: LeaderboardMetric,
+	range: LeaderboardRange,
+	limit: number
+): Promise<LeaderboardSnapshot> {
+	const cached = await getCachedLeaderboard(serverId, metric, range, limit);
+	if (cached && Date.now() - cached.updated_at < CACHE_FRESH_MS) {
+		return cached;
+	}
+	return buildSnapshot(serverId, metric, range, limit);
 }
 
 export function subscribeLeaderboard(serverId: number, metric: LeaderboardMetric, range: LeaderboardRange, limit: number, fn: Listener): () => void {
@@ -32,6 +49,11 @@ export function subscribeLeaderboard(serverId: number, metric: LeaderboardMetric
 		streams.set(k, state);
 	}
 	state.listeners.add(fn);
+	if (state.lastJson) {
+		try {
+			fn(JSON.parse(state.lastJson) as LeaderboardSnapshot);
+		} catch (_) {}
+	}
 
 	if (!state.timer) {
 		const pollMs = 10_000;
@@ -39,8 +61,7 @@ export function subscribeLeaderboard(serverId: number, metric: LeaderboardMetric
 			const current = streams.get(k);
 			if (!current || current.listeners.size === 0) return;
 			try {
-				const cached = await getCachedLeaderboard(serverId, metric, range, limit);
-				const snap = cached && Date.now() - cached.updated_at < 15_000 ? cached : await buildSnapshot(serverId, metric, range, limit);
+				const snap = await resolveLeaderboardSnapshot(serverId, metric, range, limit);
 				const json = JSON.stringify(snap);
 				if (json === current.lastJson) return;
 				current.lastJson = json;
@@ -52,7 +73,7 @@ export function subscribeLeaderboard(serverId: number, metric: LeaderboardMetric
 			const current = streams.get(k);
 			if (!current || current.listeners.size === 0) return;
 			try {
-				const snap = await buildSnapshot(serverId, metric, range, limit);
+				const snap = await resolveLeaderboardSnapshot(serverId, metric, range, limit);
 				current.lastJson = JSON.stringify(snap);
 				for (const l of current.listeners) l(snap);
 			} catch (_) {}

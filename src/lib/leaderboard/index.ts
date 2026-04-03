@@ -6,7 +6,7 @@ export {
 	getCachedLeaderboard,
 	setCachedLeaderboard
 } from './cache.js';
-export { subscribeLeaderboard } from './stream.js';
+export { resolveLeaderboardSnapshot, subscribeLeaderboard } from './stream.js';
 export {
 	computeLeaderboardSlugForServerConfig,
 	computeLeaderboardSlugForServerId,

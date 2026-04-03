@@ -6,9 +6,11 @@
 
 	type Metric = typeof data.metric;
 
+	const METRICS: Metric[] = ['xp', 'chat', 'voice_total', 'voice_active', 'voice_afk'];
+	const tabPrefetch = new Map<Metric, any[]>();
+
 	let metric = $state<Metric>(data.metric);
 	let rows = $state(data.rows);
-	let streamLoading = $state(false);
 	let es: EventSource | null = null;
 
 	const top3 = $derived(rows.slice(0, 3));
@@ -75,29 +77,41 @@
 		raf = requestAnimationFrame(tick);
 	}
 
-	function connect(opts: { clearRows?: boolean } = {}) {
+	function snapshotUrl(m: Metric) {
+		return `/api/leaderboards/${data.server.slug}/snapshot?metric=${m}&range=all&limit=${data.limit}`;
+	}
+
+	function connect() {
 		es?.close();
-		if (opts.clearRows) {
-			rows = [];
-			streamLoading = true;
-		}
-		es = new EventSource(`/api/leaderboards/${data.server.slug}/stream?metric=${metric}&range=all&limit=${data.limit}`);
-		es.onmessage = (e) => {
+		const myEs = new EventSource(`/api/leaderboards/${data.server.slug}/stream?metric=${metric}&range=all&limit=${data.limit}`);
+		es = myEs;
+		myEs.onmessage = (e) => {
+			if (es !== myEs) return;
 			try {
 				const snap = JSON.parse(e.data);
 				if (snap?.rows) {
 					rows = snap.rows;
-					streamLoading = false;
+					tabPrefetch.set(metric, snap.rows);
 					animateToCurrentValues(false);
 				}
 			} catch (_) {}
 		};
-		es.onerror = () => {
-			if (streamLoading) streamLoading = false;
+		myEs.onerror = () => {
+			if (es !== myEs) return;
 		};
 	}
 
 	onMount(() => {
+		tabPrefetch.set(data.metric, data.rows);
+		for (const m of METRICS) {
+			if (m === data.metric) continue;
+			fetch(snapshotUrl(m))
+				.then((r) => (r.ok ? r.json() : null))
+				.then((snap) => {
+					if (snap?.rows && Array.isArray(snap.rows)) tabPrefetch.set(m, snap.rows);
+				})
+				.catch(() => {});
+		}
 		connect();
 		animateToCurrentValues(true);
 		mounted = true;
@@ -108,10 +122,26 @@
 		if (raf) cancelAnimationFrame(raf);
 	});
 
-	function setMetric(m: Metric) {
+	async function setMetric(m: Metric) {
+		if (m === metric) return;
 		metric = m;
-		// Without clearing, we keep the previous metric's sort order but new column values — wrong #1 until SSE.
-		connect({ clearRows: true });
+		const hit = tabPrefetch.get(m);
+		if (hit && hit.length > 0) {
+			rows = hit;
+			animateToCurrentValues(false);
+		}
+		connect();
+		try {
+			const res = await fetch(snapshotUrl(m));
+			if (res.ok) {
+				const snap = await res.json();
+				if (Array.isArray(snap?.rows)) {
+					tabPrefetch.set(m, snap.rows);
+					rows = snap.rows;
+					animateToCurrentValues(false);
+				}
+			}
+		} catch (_) {}
 	}
 
 	const podiumOrder = $derived(
@@ -200,7 +230,7 @@
 
 			<!-- Metric tabs -->
 			<div class="lb-tabs">
-				{#each ['xp', 'chat', 'voice_total', 'voice_active', 'voice_afk'] as const as m}
+				{#each METRICS as m}
 					<button class="lb-tab {metric === m ? 'lb-tab--active' : ''}" onclick={() => setMetric(m)}>
 						{#if m === 'xp'}
 							<i class="fas fa-star"></i> XP
@@ -311,12 +341,7 @@
 				</section>
 			{/if}
 
-			{#if streamLoading}
-				<div class="lb-empty">
-					<i class="fas fa-circle-notch fa-spin" style="font-size: 40px; opacity: 0.45;"></i>
-					<p>Loading rankings…</p>
-				</div>
-			{:else if rows.length === 0}
+			{#if rows.length === 0}
 				<div class="lb-empty">
 					<i class="fas fa-trophy" style="font-size: 48px; opacity: 0.2;"></i>
 					<p>No data yet</p>

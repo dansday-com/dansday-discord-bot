@@ -1,7 +1,6 @@
 import { FORWARDER, NOTIFICATIONS, getEmbedConfig } from '../../../config.js';
 import { logger } from '../../../../utils/index.js';
 
-/** Extract unique custom emoji refs from text: { name, id, animated }. */
 function extractCustomEmojis(text) {
 	const str = text != null ? String(text) : '';
 	if (!str) return [];
@@ -27,9 +26,6 @@ function extractCustomEmojis(text) {
 	return out;
 }
 
-/**
- * Download emoji image from CDN. Returns Buffer or null.
- */
 async function downloadEmojiBuffer(emojiId, ext, log) {
 	const cdnUrl = `https://cdn.discordapp.com/emojis/${emojiId}.${ext}`;
 	try {
@@ -53,7 +49,6 @@ function isAppEmojiLimitError(err) {
 	return msg.includes('maximum number of emojis') || msg.includes('emojis reached') || msg.includes('2000');
 }
 
-/** Discord app emoji names: ≥2 chars, alphanumeric + underscores only. */
 function sanitizeAppEmojiName(name) {
 	const s = String(name)
 		.trim()
@@ -67,10 +62,6 @@ function sanitizeAppEmojiName(name) {
 	);
 }
 
-/**
- * Ensure each emoji exists on the application (by name). Reuse if same name; only create when missing. Up to 2,000 app emojis; no per-server limit.
- * Returns { sourceToTarget: Map }. Bot token must have application emoji scope.
- */
 async function ensureEmojisOnApplication(client, emojiRefs, log) {
 	const sourceToTarget = new Map();
 	if (!emojiRefs.length) return { sourceToTarget };
@@ -129,7 +120,6 @@ async function ensureEmojisOnApplication(client, emojiRefs, log) {
 	return { sourceToTarget };
 }
 
-/** Replace custom emoji IDs in text so they point to target server or application emojis. */
 function replaceEmojiIdsInText(text, sourceIdToTargetId) {
 	if (!text || sourceIdToTargetId.size === 0) return text;
 	return text
@@ -150,7 +140,6 @@ function cleanMessageContent(text) {
 	return cleaned;
 }
 
-/** Remove Discord user/role mention tags so embed text is clean. Keeps message.content mentions for notifications. Preserves newlines so format is not broken. */
 function stripMentionsFromText(text) {
 	if (!text) return text;
 	let stripped = text.replace(/<@!?\d+>/g, '').replace(/<@&\d+>/g, '');

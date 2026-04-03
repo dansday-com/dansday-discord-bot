@@ -33,14 +33,14 @@
 </script>
 
 <div class="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6 lg:px-8 lg:py-8">
-	<!-- Back -->
+	
 	{#if !data.user.authenticated || data.user.account_source !== 'server_accounts'}
 		<a href="/bots/{data.botId}" class="text-ash-400 hover:text-ash-100 mb-5 inline-flex items-center gap-2 text-sm transition-colors">
 			<i class="fas fa-arrow-left"></i>Back to Bot
 		</a>
 	{/if}
 
-	<!-- Server Header -->
+	
 	<div class="bg-ash-700 border-ash-600 mb-5 rounded-xl border p-4 sm:p-6">
 		<div class="flex flex-col gap-4 sm:flex-row sm:gap-6">
 			<div class="bg-ash-600 flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full sm:h-24 sm:w-24">
@@ -95,7 +95,7 @@
 		</div>
 	</div>
 
-	<!-- Tab Nav -->
+	
 	<div class="bg-ash-800 border-ash-700 mb-5 flex gap-1 overflow-x-auto rounded-xl border p-1">
 		{#each tabs as tab}
 			<a
@@ -109,6 +109,6 @@
 		{/each}
 	</div>
 
-	<!-- Page Content -->
+	
 	{@render children()}
 </div>

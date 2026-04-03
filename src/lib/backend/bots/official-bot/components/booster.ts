@@ -1,7 +1,7 @@
 import { BOOSTER, getEmbedConfig, getBotConfig } from '../../../config.js';
 import { EmbedBuilder } from 'discord.js';
 import db from '../../../../database.js';
-import { logger, parseMySQLDateTime } from '../../../../utils/index.js';
+import { logger, parseMySQLDateTimeUtc } from '../../../../utils/index.js';
 
 async function thankBooster(member, client) {
 	try {
@@ -102,7 +102,7 @@ async function thankBooster(member, client) {
 								if (memberData.booster_since instanceof Date) {
 									boosterSinceDate = memberData.booster_since;
 								} else {
-									boosterSinceDate = parseMySQLDateTime(memberData.booster_since);
+									boosterSinceDate = parseMySQLDateTimeUtc(memberData.booster_since);
 								}
 								return boosterSinceDate ? `<t:${Math.floor(boosterSinceDate.getTime() / 1000)}:R>` : 'Just now';
 							})(),

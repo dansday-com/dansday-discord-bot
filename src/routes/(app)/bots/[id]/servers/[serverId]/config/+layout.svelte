@@ -33,7 +33,7 @@
 </svelte:head>
 
 <div class="flex flex-col gap-4 lg:flex-row">
-	<!-- Sidebar -->
+	
 	<nav class="flex-shrink-0 lg:w-56">
 		<div class="bg-ash-800 border-ash-700 flex flex-row gap-1 overflow-x-auto rounded-xl border p-2 lg:flex-col lg:overflow-x-visible">
 			{#each tabs as tab}
@@ -49,7 +49,7 @@
 		</div>
 	</nav>
 
-	<!-- Content -->
+	
 	<div class="min-w-0 flex-1">
 		{@render children()}
 	</div>

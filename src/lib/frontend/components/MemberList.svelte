@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { dbDateTimeToMs, formatDbDateTime } from '$lib/utils/datetime.js';
+
 	export type Member = {
 		discord_member_id: string;
 		username: string;
@@ -80,13 +82,13 @@
 				case 'name_desc':
 					return (b.username ?? '').localeCompare(a.username ?? '');
 				case 'member_since_asc':
-					return new Date(a.member_since).getTime() - new Date(b.member_since).getTime();
+					return dbDateTimeToMs(a.member_since) - dbDateTimeToMs(b.member_since);
 				case 'member_since_desc':
-					return new Date(b.member_since).getTime() - new Date(a.member_since).getTime();
+					return dbDateTimeToMs(b.member_since) - dbDateTimeToMs(a.member_since);
 				case 'account_created_asc':
-					return new Date(a.profile_created_at).getTime() - new Date(b.profile_created_at).getTime();
+					return dbDateTimeToMs(a.profile_created_at) - dbDateTimeToMs(b.profile_created_at);
 				case 'account_created_desc':
-					return new Date(b.profile_created_at).getTime() - new Date(a.profile_created_at).getTime();
+					return dbDateTimeToMs(b.profile_created_at) - dbDateTimeToMs(a.profile_created_at);
 				case 'afk_first':
 					return (b.is_afk ? 1 : 0) - (a.is_afk ? 1 : 0);
 				case 'afk_last':
@@ -106,7 +108,8 @@
 
 	function fmtDate(val: string): string {
 		if (!val) return 'N/A';
-		return new Date(val).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+		const s = formatDbDateTime(val, false);
+		return s === '—' ? 'N/A' : s;
 	}
 
 	function fmtNum(n: number): string {
@@ -134,7 +137,7 @@
 	}
 </script>
 
-<!-- Controls -->
+
 <div class="mb-4 flex flex-col gap-3 sm:flex-row">
 	<div class="relative flex-1">
 		<i class="fas fa-search text-ash-500 absolute top-1/2 left-3 -translate-y-1/2 text-sm"></i>
@@ -173,12 +176,12 @@
 	</select>
 </div>
 
-<!-- Count -->
+
 <p class="text-ash-500 mb-3 text-xs">
 	{sorted.length} member{sorted.length !== 1 ? 's' : ''}{search ? ` matching "${search}"` : ''}
 </p>
 
-<!-- Member List -->
+
 {#if paged.length === 0}
 	<div class="text-ash-400 py-10 text-center text-sm">No members found</div>
 {:else}
@@ -186,7 +189,7 @@
 		{#each paged as member (member.discord_member_id)}
 			<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-4 shadow-lg transition-all sm:p-5">
 				<div class="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
-					<!-- Avatar -->
+					
 					<div class="relative shrink-0">
 						<img
 							src={avatarSrc(member)}
@@ -201,9 +204,9 @@
 						{/if}
 					</div>
 
-					<!-- Info -->
+					
 					<div class="w-full min-w-0 flex-1 text-center sm:text-left">
-						<!-- Name row -->
+						
 						<div class="mb-3 flex flex-col items-center gap-2 sm:flex-row sm:items-center">
 							<h4 class="text-ash-100 w-full truncate text-base font-bold sm:w-auto sm:text-lg">
 								{displayName(member)}
@@ -218,7 +221,7 @@
 							{/if}
 						</div>
 
-						<!-- Stat grid -->
+						
 						<div class="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-4">
 							<div class="bg-ash-800 border-ash-600 flex items-center gap-2 rounded-lg border p-2">
 								<div class="bg-ash-600 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
@@ -294,7 +297,7 @@
 							</div>
 						</div>
 
-						<!-- Roles -->
+						
 						{#if member.roles?.length > 0}
 							<div class="border-ash-600 mt-2 border-t pt-2">
 								<div class="mb-1.5 flex items-center gap-1.5">
@@ -321,7 +324,7 @@
 		{/each}
 	</div>
 
-	<!-- Pagination -->
+	
 	{#if totalPages > 1}
 		<div class="flex items-center justify-between">
 			<button

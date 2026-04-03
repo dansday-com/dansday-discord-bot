@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
-import { sanitizeString, getNowInTimezone, getDateTimeFromSQL } from '$lib/utils/index.js';
+import { sanitizeString, isUtcSqlExpired } from '$lib/utils/index.js';
 
 export const GET: RequestHandler = async ({ params }) => {
 	try {
@@ -19,12 +19,8 @@ export const GET: RequestHandler = async ({ params }) => {
 			return json({ success: false, error: 'Invite link has already been used' }, { status: 400 });
 		}
 
-		if (inviteLink.expires_at) {
-			const expiresAt = getDateTimeFromSQL(inviteLink.expires_at);
-			const now = getNowInTimezone();
-			if (expiresAt?.isValid && expiresAt < now) {
-				return json({ success: false, error: 'Invite link has expired' }, { status: 400 });
-			}
+		if (inviteLink.expires_at && isUtcSqlExpired(inviteLink.expires_at)) {
+			return json({ success: false, error: 'Invite link has expired' }, { status: 400 });
 		}
 
 		return json({ success: true, account_type: inviteLink.account_type });

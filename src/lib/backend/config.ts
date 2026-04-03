@@ -13,7 +13,6 @@ interface BotConfig {
 
 let botConfig: BotConfig | null = null;
 
-/** `bots.id` and `server_bots.id` are separate sequences — the same number can exist in both tables. */
 function inferBotRuntimeKind(): 'official' | 'selfbot' | null {
 	const e = process.env.BOT_KIND;
 	if (e === 'official' || e === 'selfbot') return e;

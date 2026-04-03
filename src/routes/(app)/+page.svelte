@@ -2,6 +2,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { invalidateAll } from '$app/navigation';
 	import AddBotModal from '$lib/frontend/components/AddBotModal.svelte';
+	import { dbDateTimeToMs } from '$lib/utils/datetime.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -17,8 +18,8 @@
 	const sortedBots = $derived(
 		[...data.bots].sort((a: { name: string; created_at: string }, b: { name: string; created_at: string }) => {
 			if (sortBy === 'name') return (a.name ?? '').localeCompare(b.name ?? '');
-			if (sortBy === 'newest') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-			return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+			if (sortBy === 'newest') return dbDateTimeToMs(b.created_at) - dbDateTimeToMs(a.created_at);
+			return dbDateTimeToMs(a.created_at) - dbDateTimeToMs(b.created_at);
 		})
 	);
 
@@ -93,7 +94,7 @@
 <AddBotModal open={showAddBot} onclose={() => (showAddBot = false)} onadded={() => invalidateAll()} />
 
 <div class="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6 lg:px-8 lg:py-8">
-	<!-- Header row -->
+	
 	<div class="mb-4 flex flex-col gap-4 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
 		<div class="min-w-0">
 			<h2 class="text-ash-100 mb-1 text-xl font-bold sm:text-2xl">
@@ -128,7 +129,7 @@
 		</div>
 	</div>
 
-	<!-- Bot grid -->
+	
 	{#if sortedBots.length === 0}
 		<div class="py-8 text-center sm:py-12">
 			<div class="bg-ash-800 mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full sm:h-20 sm:w-20">
@@ -152,7 +153,7 @@
 					href="/bots/{bot.id}"
 					class="bg-ash-800 border-ash-700 hover:border-ash-500 flex flex-col gap-3 rounded-xl border p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
 				>
-					<!-- Bot icon + name -->
+					
 					<div class="flex items-center gap-3">
 						<div class="bg-ash-600 flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-full">
 							{#if bot.bot_icon}
@@ -167,7 +168,7 @@
 						</div>
 					</div>
 
-					<!-- Status -->
+					
 					<div class="flex items-center justify-between">
 						<div class="flex items-center gap-2">
 							<span class="h-2 w-2 rounded-full {statusColor(getLiveStatus(bot.id, bot.status))}"></span>

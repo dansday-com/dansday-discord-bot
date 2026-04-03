@@ -13,7 +13,7 @@ import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import { translate, t } from '../../i18n.js';
 import db from '../../../../../database.js';
 import { updateStaffRatingRole } from '../staffreportrating.js';
-import { logger, parseMySQLDateTime } from '../../../../../utils/index.js';
+import { logger, parseMySQLDateTimeUtc } from '../../../../../utils/index.js';
 
 const VALID_CATEGORIES = ['excellent', 'helpful', 'slow_response', 'unhelpful', 'rude', 'abuse'];
 
@@ -354,7 +354,7 @@ export async function handleStaffReportUserSelect(interaction) {
 		const lastReport = await db.getLastStaffRatingReport(server.id, reporterDbMember.id, staffDbMember.id);
 		if (lastReport) {
 			const cooldownDays = await STAFF_RATING.getCooldownDays(interaction.guild.id);
-			const lastRatedDate = parseMySQLDateTime(lastReport.reported_at);
+			const lastRatedDate = parseMySQLDateTimeUtc(lastReport.reported_at);
 			if (!lastRatedDate) {
 				await logger.log(`⚠️ Could not parse reported_at for report ${lastReport.id}: ${lastReport.reported_at}`);
 				const errorMsg = await translate('staffReport.errors.submitFailed', interaction.guild.id, interaction.user.id, { error: 'Invalid timestamp data' });
@@ -567,7 +567,7 @@ export async function handleStaffReportModal(interaction) {
 		const lastReport = await db.getLastStaffRatingReport(server.id, reporterDbMember.id, staffDbMember.id);
 		if (lastReport) {
 			const cooldownDays = await STAFF_RATING.getCooldownDays(interaction.guild.id);
-			const lastRatedDate = parseMySQLDateTime(lastReport.reported_at);
+			const lastRatedDate = parseMySQLDateTimeUtc(lastReport.reported_at);
 			if (!lastRatedDate) {
 				await logger.log(`⚠️ Could not parse reported_at for report ${lastReport.id}: ${lastReport.reported_at}`);
 				const errorMsg = await translate('staffReport.errors.submitFailed', interaction.guild.id, interaction.user.id, { error: 'Invalid timestamp data' });

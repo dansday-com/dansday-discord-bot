@@ -1,4 +1,3 @@
-/** Stored forwarder config: single list (legacy used `production` / `testing` / `mode`). */
 export function normalizeForwarderSettings(raw: unknown): { forwarders: unknown[] } {
 	if (!raw || typeof raw !== 'object') return { forwarders: [] };
 	const s = raw as Record<string, unknown>;

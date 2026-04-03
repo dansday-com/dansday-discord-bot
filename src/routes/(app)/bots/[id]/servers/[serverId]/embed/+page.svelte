@@ -138,14 +138,12 @@
 </svelte:head>
 
 <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-	<!-- Form -->
 	<div class="space-y-4">
 		<div class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-5">
 			<h3 class="text-ash-300 mb-4 flex items-center gap-2 text-sm font-semibold">
 				<i class="fas fa-pen text-ash-400"></i>Embed Content
 			</h3>
 
-			<!-- Title -->
 			<div class="mb-4">
 				<div class="mb-1 flex justify-between">
 					<label class="text-ash-300 text-xs font-medium">Title <span class="text-ash-200">*</span></label>
@@ -160,7 +158,6 @@
 				/>
 			</div>
 
-			<!-- Description -->
 			<div class="mb-4">
 				<div class="mb-1 flex justify-between">
 					<label class="text-ash-300 text-xs font-medium">Description</label>
@@ -175,7 +172,6 @@
 				></textarea>
 			</div>
 
-			<!-- Footer -->
 			<div class="mb-4">
 				<div class="mb-1 flex justify-between">
 					<label class="text-ash-300 text-xs font-medium">Footer</label>
@@ -190,7 +186,6 @@
 				/>
 			</div>
 
-			<!-- Color -->
 			<div class="mb-4">
 				<label class="text-ash-300 mb-1 block text-xs font-medium">Color</label>
 				<div class="flex items-center gap-2">
@@ -210,7 +205,6 @@
 				</div>
 			</div>
 
-			<!-- Image -->
 			<div class="mb-4">
 				<label class="text-ash-300 mb-2 block text-xs font-medium">Image</label>
 				<div class="mb-2 flex gap-2">
@@ -253,17 +247,14 @@
 				{/if}
 			</div>
 
-			<!-- Total chars -->
 			<p class="text-xs {totalWarning()} text-right">{totalChars}/{MAX_TOTAL} total</p>
 		</div>
 
-		<!-- Channels & Roles -->
 		<div class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-5">
 			<h3 class="text-ash-300 mb-4 flex items-center gap-2 text-sm font-semibold">
 				<i class="fas fa-paper-plane text-ash-400"></i>Send To
 			</h3>
 
-			<!-- Channels -->
 			<div class="mb-4">
 				<label class="text-ash-300 mb-2 block text-xs font-medium">Channels <span class="text-ash-200">*</span></label>
 				<ChannelPicker
@@ -276,7 +267,6 @@
 				/>
 			</div>
 
-			<!-- Role Mentions -->
 			{#if (data.roles as unknown[]).length > 0}
 				<div class="mb-4">
 					<label class="text-ash-300 mb-2 block text-xs font-medium">Role Mentions</label>
@@ -295,13 +285,11 @@
 		</div>
 	</div>
 
-	<!-- Preview -->
 	<div class="bg-ash-800 border-ash-700 self-start rounded-xl border p-4 sm:p-5 lg:sticky lg:top-4">
 		<h3 class="text-ash-300 mb-4 flex items-center gap-2 text-sm font-semibold">
 			<i class="fas fa-eye text-ash-400"></i>Preview
 		</h3>
 
-		<!-- Discord-style embed preview -->
 		<div class="rounded-lg bg-[#313338] p-3">
 			<div class="rounded-r-lg border-l-4 bg-[#2b2d31] py-2 pl-3" style="border-color: {color}">
 				{#if title}

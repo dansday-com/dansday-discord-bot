@@ -9,8 +9,7 @@ import {
 	consumeVerifyToken,
 	getClientIp,
 	sanitizeString,
-	getNowInTimezone,
-	getDateTimeFromSQL,
+	isUtcSqlExpired,
 	toMySQLDateTime,
 	logger
 } from '$lib/utils/index.js';
@@ -51,12 +50,8 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ success: false, error: 'Invalid OTP code' }, { status: 401 });
 		}
 
-		if (account.otp_expires_at) {
-			const expiresAt = getDateTimeFromSQL(account.otp_expires_at);
-			const now = getNowInTimezone();
-			if (expiresAt?.isValid && expiresAt < now) {
-				return json({ success: false, error: 'OTP code has expired. Please request a new one.' }, { status: 401 });
-			}
+		if (account.otp_expires_at && isUtcSqlExpired(account.otp_expires_at)) {
+			return json({ success: false, error: 'OTP code has expired. Please request a new one.' }, { status: 401 });
 		}
 
 		const ip = getClientIp(request);

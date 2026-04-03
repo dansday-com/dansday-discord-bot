@@ -7,8 +7,7 @@ import {
 	sanitizeEmail,
 	validateInputLength,
 	addMinutesToNow,
-	getNowInTimezone,
-	getDateTimeFromSQL,
+	isUtcSqlExpired,
 	getCurrentDateTime,
 	toMySQLDateTime,
 	getClientIp,
@@ -79,12 +78,8 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ success: false, error: 'Invite link has already been used' }, { status: 400 });
 		}
 
-		if (inviteLink.expires_at) {
-			const expiresAt = getDateTimeFromSQL(inviteLink.expires_at);
-			const now = getNowInTimezone();
-			if (expiresAt?.isValid && expiresAt < now) {
-				return json({ success: false, error: 'Invite link has expired' }, { status: 400 });
-			}
+		if (inviteLink.expires_at && isUtcSqlExpired(inviteLink.expires_at)) {
+			return json({ success: false, error: 'Invite link has expired' }, { status: 400 });
 		}
 
 		const existingInScope = await db.getServerAccountByEmailServer(validation.sanitizedEmail, inviteLink.server_id);

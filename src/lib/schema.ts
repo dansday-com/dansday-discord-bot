@@ -51,9 +51,7 @@ export const servers = mysqlTable(
 	'servers',
 	{
 		id: int('id').primaryKey().autoincrement(),
-		/** `bots.id` for official-synced rows; NULL on selfbot mirror rows (parent bot via `server_bots.server_id` → home server). */
 		official_bot_id: int('official_bot_id').references(() => bots.id, { onDelete: 'cascade' }),
-		/** Selfbot mirror row for this Discord guild; NULL on official-only rows. */
 		selfbot_id: int('selfbot_id').references(() => serverBots.id, { onDelete: 'cascade' }),
 		discord_server_id: varchar('discord_server_id', { length: 150 }).notNull(),
 		name: text('name'),

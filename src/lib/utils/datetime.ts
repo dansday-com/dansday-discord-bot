@@ -1,52 +1,85 @@
 import { DateTime } from 'luxon';
 
-const TIMEZONE = process.env.TIMEZONE || 'UTC';
+const STORAGE_ZONE = 'utc';
 
 export function formatTimestamp(timestamp = Date.now(), includeSeconds = false) {
-	return DateTime.fromMillis(timestamp, { zone: TIMEZONE }).toFormat(includeSeconds ? 'dd/MM/yyyy HH:mm:ss' : 'dd/MM/yyyy HH:mm');
+	return DateTime.fromMillis(timestamp, { zone: STORAGE_ZONE }).toFormat(includeSeconds ? 'dd/MM/yyyy HH:mm:ss' : 'dd/MM/yyyy HH:mm');
 }
 
 export function toMySQLDateTime(date?: string | Date): Date | null {
 	if (!date) {
-		return DateTime.now().setZone(TIMEZONE).toJSDate();
+		return DateTime.utc().toJSDate();
 	}
 	if (typeof date === 'string') {
 		const dt = DateTime.fromISO(date);
 		if (!dt.isValid) return null;
-		return dt.setZone(TIMEZONE).toJSDate();
+		return dt.toUTC().toJSDate();
 	}
-	return DateTime.fromJSDate(date).setZone(TIMEZONE).toJSDate();
+	return DateTime.fromJSDate(date).toUTC().toJSDate();
 }
 
-export function parseMySQLDateTime(mysqlDateTimeString: any): Date | null {
-	if (!mysqlDateTimeString) return null;
-	if (mysqlDateTimeString instanceof Date) return mysqlDateTimeString;
-	const dateStr = String(mysqlDateTimeString);
-	const dt = DateTime.fromSQL(dateStr, { zone: TIMEZONE });
-	if (!dt.isValid) return null;
-	return dt.toJSDate();
+export function getDateTimeFromSqlUtc(value: string | Date | null | undefined): DateTime {
+	if (value == null || value === '') {
+		return DateTime.fromMillis(NaN);
+	}
+	if (value instanceof Date) {
+		if (Number.isNaN(value.getTime())) return DateTime.fromMillis(NaN);
+		return DateTime.fromJSDate(value, { zone: 'utc' });
+	}
+	const dt = DateTime.fromSQL(String(value), { zone: 'utc' });
+	return dt;
+}
+
+export function parseMySQLDateTimeUtc(mysqlDateTimeString: unknown): Date | null {
+	const dt = getDateTimeFromSqlUtc(mysqlDateTimeString as string | Date);
+	return dt.isValid ? dt.toJSDate() : null;
+}
+
+export function parseMySQLDateTime(mysqlDateTimeString: unknown): Date | null {
+	return parseMySQLDateTimeUtc(mysqlDateTimeString);
+}
+
+export function dbDateTimeToMs(value: unknown): number {
+	const d = parseMySQLDateTimeUtc(value);
+	return d != null && !Number.isNaN(d.getTime()) ? d.getTime() : 0;
+}
+
+export function formatDbDateTime(value: unknown, includeSeconds = false): string {
+	const d = parseMySQLDateTimeUtc(value);
+	if (!d) return '—';
+	return formatTimestamp(d.getTime(), includeSeconds);
+}
+
+export function isUtcSqlExpired(value: string | Date | null | undefined): boolean {
+	const dt = getDateTimeFromSqlUtc(value);
+	if (!dt.isValid) return false;
+	return dt < DateTime.utc();
+}
+
+export function getNowUtc() {
+	return DateTime.utc();
 }
 
 export function getNowInTimezone() {
-	return DateTime.now().setZone(TIMEZONE);
+	return getNowUtc();
 }
 
 export function getDateTimeFromSQL(sqlString: string) {
-	return DateTime.fromSQL(String(sqlString), { zone: TIMEZONE });
+	return DateTime.fromSQL(String(sqlString), { zone: STORAGE_ZONE });
 }
 
 export function getDateTimeFromJSDate(date: Date) {
-	return DateTime.fromJSDate(date).setZone(TIMEZONE);
+	return DateTime.fromJSDate(date).toUTC();
 }
 
 export function addMinutesToNow(minutes: number) {
-	return DateTime.now().setZone(TIMEZONE).plus({ minutes }).toJSDate();
+	return DateTime.utc().plus({ minutes }).toJSDate();
 }
 
 export function addDaysToNow(days: number) {
-	return DateTime.now().setZone(TIMEZONE).plus({ days }).toJSDate();
+	return DateTime.utc().plus({ days }).toJSDate();
 }
 
 export function getCurrentDateTime() {
-	return DateTime.now().setZone(TIMEZONE).toJSDate();
+	return DateTime.utc().toJSDate();
 }

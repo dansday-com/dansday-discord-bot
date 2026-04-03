@@ -2,17 +2,13 @@ import { readFileSync, readdirSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import mysql from 'mysql2/promise';
-import { eq, and, or, inArray, sql, desc, asc, isNull, isNotNull, count, avg, max, sum, like } from 'drizzle-orm';
+import { eq, and, or, inArray, sql, desc, asc, isNull, isNotNull, count, avg, like } from 'drizzle-orm';
 import { db } from './drizzle.js';
 import * as schema from './schema.js';
-import { logger, toMySQLDateTime, parseMySQLDateTime, getNowInTimezone, addMinutesToNow } from './utils/index.js';
+import { logger, toMySQLDateTime, parseMySQLDateTimeUtc, getNowUtc, addMinutesToNow } from './utils/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
-// ---------------------------------------------------------------------------
-// Connection config (reused for raw migration queries)
-// ---------------------------------------------------------------------------
 
 function getConnectionConfig() {
 	const databaseUrl = process.env.DATABASE_URL;
@@ -39,10 +35,6 @@ function getConnectionConfig() {
 		database: process.env.DB_NAME
 	};
 }
-
-// ---------------------------------------------------------------------------
-// Migration helpers (kept as raw SQL — schema/migration management)
-// ---------------------------------------------------------------------------
 
 async function tableExists(name: string) {
 	const cfg = getConnectionConfig();
@@ -211,10 +203,6 @@ async function retryOnConnectionError<T>(fn: () => Promise<T>, maxRetries = 3, d
 	throw new Error('Max retries exceeded');
 }
 
-// ---------------------------------------------------------------------------
-// Bots
-// ---------------------------------------------------------------------------
-
 export async function getAllBots() {
 	await initializeDatabase();
 	return retryOnConnectionError(() => db.select().from(schema.bots).orderBy(asc(schema.bots.created_at)));
@@ -231,7 +219,7 @@ export async function getBot(botId: number | string) {
 		if (!rows[0]) return null;
 		const bot = { ...rows[0] };
 		if (bot.uptime_started_at) {
-			bot.uptime_started_at = parseMySQLDateTime(bot.uptime_started_at as any) as any;
+			bot.uptime_started_at = parseMySQLDateTimeUtc(bot.uptime_started_at as any) as any;
 		}
 		return bot;
 	});
@@ -286,10 +274,6 @@ export async function deleteBot(botId: number) {
 	return true;
 }
 
-// ---------------------------------------------------------------------------
-// Servers
-// ---------------------------------------------------------------------------
-
 export async function getServer(serverId: any) {
 	await initializeDatabase();
 	const rows = await db
@@ -300,7 +284,6 @@ export async function getServer(serverId: any) {
 	return rows[0] || null;
 }
 
-/** Official bot dashboard: guilds synced by the application bot only (not selfbot mirror rows). */
 export async function getServersForBot(officialBotId: number) {
 	return db
 		.select()
@@ -309,7 +292,6 @@ export async function getServersForBot(officialBotId: number) {
 		.orderBy(asc(schema.servers.name));
 }
 
-/** All `servers` rows synced for a given selfbot (`server_bots.id`). */
 export async function getServersForSelfbot(selfbotId: number) {
 	return db.select().from(schema.servers).where(eq(schema.servers.selfbot_id, selfbotId)).orderBy(asc(schema.servers.name));
 }
@@ -334,7 +316,6 @@ export async function getSelfbotServerByDiscordId(selfbotId: number, discordServ
 	return rows[0] || null;
 }
 
-/** @param forSelfbot — when true, `botId` is `server_bots.id`; otherwise `bots.id` (official). */
 export async function getServerByDiscordId(botId: number, discordServerId: string, opts?: { forSelfbot?: boolean }) {
 	if (opts?.forSelfbot) return getSelfbotServerByDiscordId(botId, discordServerId);
 	return getOfficialServerByDiscordId(botId, discordServerId);
@@ -518,7 +499,6 @@ export async function upsertSelfbotServer(selfbotId: number, guild: any) {
 	return getSelfbotServerByDiscordId(selfbotId, guild.id);
 }
 
-/** @deprecated Prefer upsertOfficialServer / upsertSelfbotServer */
 export async function upsertServer(botId: number, guild: any) {
 	return upsertOfficialServer(botId, guild);
 }
@@ -626,10 +606,6 @@ export async function listEnabledLeaderboardServers() {
 		.map((r: any) => ({ id: Number(r.id), name: r.name ?? null, updated_at: r.updated_at, server_icon: r.server_icon ?? null }));
 }
 
-// ---------------------------------------------------------------------------
-// Categories
-// ---------------------------------------------------------------------------
-
 export async function upsertCategory(serverId: any, categoryData: any) {
 	const now = toMySQLDateTime();
 	await db.execute(sql`
@@ -671,10 +647,6 @@ export async function syncCategories(serverId: any, categories: any[]) {
 	return categoryMap;
 }
 
-// ---------------------------------------------------------------------------
-// Channels
-// ---------------------------------------------------------------------------
-
 export async function upsertChannel(serverId: any, channelData: any, categoryMap: Map<any, any> | null = null) {
 	const categoryId = channelData.parent_id && categoryMap ? categoryMap.get(channelData.parent_id) || null : null;
 	const now = toMySQLDateTime();
@@ -694,7 +666,6 @@ export async function upsertChannel(serverId: any, channelData: any, categoryMap
 export async function syncChannels(serverId: any, channels: any[], categoryMap: Map<any, any> | null = null) {
 	const validChannels = channels.filter((ch) => ch.type !== 4);
 
-	// Clean up any category-type rows that snuck into server_channels
 	const catRows = await db
 		.select({ id: schema.serverChannels.id })
 		.from(schema.serverChannels)
@@ -729,10 +700,6 @@ export async function syncChannels(serverId: any, channels: any[], categoryMap: 
 
 	return true;
 }
-
-// ---------------------------------------------------------------------------
-// Roles
-// ---------------------------------------------------------------------------
 
 export async function getRoles(serverId: any) {
 	return db
@@ -780,10 +747,6 @@ export async function syncRoles(serverId: any, roles: any[]) {
 	return true;
 }
 
-// ---------------------------------------------------------------------------
-// Members
-// ---------------------------------------------------------------------------
-
 export async function upsertMember(serverId: any, memberData: any) {
 	const user = memberData.user || memberData;
 	const avatarUrl = user?.displayAvatarURL ? user.displayAvatarURL({ dynamic: true }) : null;
@@ -827,9 +790,9 @@ export async function getMemberByDiscordId(serverId: any, discordMemberId: strin
 		.limit(1);
 	if (!rows[0]) return null;
 	const member = { ...rows[0] };
-	if (member.profile_created_at) member.profile_created_at = parseMySQLDateTime(member.profile_created_at as any) as any;
-	if (member.member_since) member.member_since = parseMySQLDateTime(member.member_since as any) as any;
-	if (member.booster_since) member.booster_since = parseMySQLDateTime(member.booster_since as any) as any;
+	if (member.profile_created_at) member.profile_created_at = parseMySQLDateTimeUtc(member.profile_created_at as any) as any;
+	if (member.member_since) member.member_since = parseMySQLDateTimeUtc(member.member_since as any) as any;
+	if (member.booster_since) member.booster_since = parseMySQLDateTimeUtc(member.booster_since as any) as any;
 	return member;
 }
 
@@ -996,10 +959,6 @@ export async function syncMembers(serverId: any, members: any[]) {
 	return true;
 }
 
-// ---------------------------------------------------------------------------
-// Member Levels
-// ---------------------------------------------------------------------------
-
 export async function getMemberLevel(memberId: any) {
 	await initializeDatabase();
 	const rows = await db
@@ -1009,8 +968,8 @@ export async function getMemberLevel(memberId: any) {
 		.limit(1);
 	if (!rows[0]) return null;
 	const data = { ...rows[0] };
-	if (data.voice_rewarded_at) data.voice_rewarded_at = parseMySQLDateTime(data.voice_rewarded_at as any) as any;
-	if (data.chat_rewarded_at) data.chat_rewarded_at = parseMySQLDateTime(data.chat_rewarded_at as any) as any;
+	if (data.voice_rewarded_at) data.voice_rewarded_at = parseMySQLDateTimeUtc(data.voice_rewarded_at as any) as any;
+	if (data.chat_rewarded_at) data.chat_rewarded_at = parseMySQLDateTimeUtc(data.chat_rewarded_at as any) as any;
 	return data;
 }
 
@@ -1285,8 +1244,8 @@ export async function getServerOverview(serverId: any) {
 	const settingsLastUpdated = settingsRows.reduce((latest: any, row: any) => {
 		if (!row.updated_at) return latest;
 		if (!latest) return row.updated_at;
-		const rowDate = parseMySQLDateTime(row.updated_at);
-		const latestDate = parseMySQLDateTime(latest);
+		const rowDate = parseMySQLDateTimeUtc(row.updated_at);
+		const latestDate = parseMySQLDateTimeUtc(latest);
 		return rowDate && latestDate && rowDate > latestDate ? row.updated_at : latest;
 	}, null);
 
@@ -1401,10 +1360,6 @@ export async function memberHasCustomSupporterRole(discordMemberId: string, serv
 	if (roleRows[0]) return { has: true, role: roleRows[0] };
 	return { has: false, role: null };
 }
-
-// ---------------------------------------------------------------------------
-// Panel & Accounts
-// ---------------------------------------------------------------------------
 
 async function getPanel() {
 	const rows = await db.select().from(schema.panel).limit(1);
@@ -1577,10 +1532,6 @@ async function deleteAccountServerAccess(accountId: number, serverId: number) {
 		.where(and(eq(schema.accountServerAccess.account_id, accountId), eq(schema.accountServerAccess.server_id, serverId)));
 }
 
-// ---------------------------------------------------------------------------
-// Server Accounts
-// ---------------------------------------------------------------------------
-
 async function getServerAccountById(id: number) {
 	const rows = await db.select().from(schema.serverAccounts).where(eq(schema.serverAccounts.id, id)).limit(1);
 	return rows[0] || null;
@@ -1670,21 +1621,24 @@ async function getServerAccountsByServer(serverId: number) {
 		.orderBy(asc(schema.serverAccounts.account_type), asc(schema.serverAccounts.created_at));
 }
 
+const SERVER_ACCOUNT_INVITE_TTL_MINUTES = 10;
+
 async function createServerAccountInvite(data: {
 	token: string;
 	server_id: number;
 	account_type: 'owner' | 'moderator';
 	created_by: number;
-	expires_at: string | Date;
 }) {
-	const now = toMySQLDateTime();
+	const now = getNowUtc();
+	const createdAt = now.toJSDate();
+	const expiresAt = now.plus({ minutes: SERVER_ACCOUNT_INVITE_TTL_MINUTES }).toJSDate();
 	await db.insert(schema.serverAccountInvites).values({
 		token: data.token,
 		server_id: data.server_id,
 		account_type: data.account_type,
 		created_by: data.created_by,
-		expires_at: data.expires_at as any,
-		created_at: now as any
+		expires_at: expiresAt as any,
+		created_at: createdAt as any
 	});
 }
 
@@ -1693,7 +1647,16 @@ async function getServerAccountInviteByToken(token: string) {
 	return rows[0] || null;
 }
 
-async function updateServerAccountInvite(id: number, data: Partial<{ used_by: number; used_at: string }>) {
+async function getServerAccountInviteByIdForServer(inviteId: number, serverId: number) {
+	const rows = await db
+		.select()
+		.from(schema.serverAccountInvites)
+		.where(and(eq(schema.serverAccountInvites.id, inviteId), eq(schema.serverAccountInvites.server_id, serverId)))
+		.limit(1);
+	return rows[0] || null;
+}
+
+async function updateServerAccountInvite(id: number, data: Partial<{ used_by: number; used_at: string | Date; expires_at: Date | string }>) {
 	await db
 		.update(schema.serverAccountInvites)
 		.set(data as any)
@@ -1714,10 +1677,6 @@ async function getServerAccountInvitesByServer(serverId: number) {
 		.orderBy(desc(schema.serverAccountInvites.created_at))
 		.then((rows) => rows.map((r) => ({ ...r.invite, creator_username: r.creator_username, used_by_username: r.used_by_username })));
 }
-
-// ---------------------------------------------------------------------------
-// Server Bots (selfbots)
-// ---------------------------------------------------------------------------
 
 async function getAllServerBots() {
 	return db.select().from(schema.serverBots);
@@ -1777,7 +1736,6 @@ async function getOfficialBotForSelfbot(selfbotId: number) {
 	return rows[0]?.bot || null;
 }
 
-/** Panel `bots.id` for this server row: set on official rows; derived from home server for selfbot mirrors. */
 export async function resolveOfficialBotIdForServer(server: typeof schema.servers.$inferSelect | null) {
 	if (!server) return null;
 	if (server.official_bot_id != null) return server.official_bot_id;
@@ -1794,10 +1752,6 @@ async function getSelfbotsForOfficialBot(officialBotId: number) {
 		.where(and(eq(schema.servers.official_bot_id, officialBotId), isNull(schema.servers.selfbot_id)))
 		.then((rows) => rows.map((r) => r.selfbot));
 }
-
-// ---------------------------------------------------------------------------
-// Server Settings
-// ---------------------------------------------------------------------------
 
 async function getServerSettings(serverId: any, componentName: string | null = null) {
 	await initializeDatabase();
@@ -1869,10 +1823,6 @@ async function getCategoriesForServer(serverId: any) {
 		.orderBy(asc(schema.serverCategories.position));
 }
 
-// ---------------------------------------------------------------------------
-// AFK
-// ---------------------------------------------------------------------------
-
 export async function getAFKStatus(serverId: any, discordMemberId: string) {
 	await initializeDatabase();
 	const rows = await db
@@ -1892,7 +1842,7 @@ export async function getAFKStatus(serverId: any, discordMemberId: string) {
 	if (afkData.created_at instanceof Date) {
 		timestamp = (afkData.created_at as Date).getTime();
 	} else {
-		const parsed = parseMySQLDateTime(afkData.created_at as any);
+		const parsed = parseMySQLDateTimeUtc(afkData.created_at as any);
 		timestamp = parsed ? parsed.getTime() : Date.now();
 	}
 	return { message: afkData.message || 'Away', timestamp, serverDisplayName: afkData.server_display_name };
@@ -1925,10 +1875,6 @@ export async function removeAFKStatus(serverId: any, discordMemberId: string) {
 	return true;
 }
 
-// ---------------------------------------------------------------------------
-// Misc
-// ---------------------------------------------------------------------------
-
 export async function serversNeedSync(botId: number) {
 	await initializeDatabase();
 	const servers = await getServersForBot(botId);
@@ -1946,14 +1892,11 @@ export async function serversNeedSync(botId: number) {
 	return false;
 }
 
-// ---------------------------------------------------------------------------
-// Giveaways
-// ---------------------------------------------------------------------------
-
 export async function createGiveaway(giveawayData: any) {
 	await initializeDatabase();
-	const endsAt = toMySQLDateTime(addMinutesToNow(giveawayData.duration_minutes));
-	const createdAt = toMySQLDateTime();
+	const createdAt = new Date();
+	const durationMin = Number(giveawayData.duration_minutes);
+	const endsAt = new Date(createdAt.getTime() + (Number.isFinite(durationMin) ? durationMin : 0) * 60_000);
 
 	const result = await db.insert(schema.serverGiveaways).values({
 		member_id: giveawayData.member_id,
@@ -1986,11 +1929,11 @@ export async function getEndedGiveaways() {
 		.from(schema.serverGiveaways)
 		.innerJoin(schema.serverMembers, eq(schema.serverGiveaways.member_id, schema.serverMembers.id))
 		.where(and(eq(schema.serverGiveaways.status, 'active'), eq(schema.serverGiveaways.winners_announced, false)));
-	const now = getNowInTimezone().toJSDate();
+	const now = new Date();
 	return rows
 		.filter((r) => {
-			const endsAt = parseMySQLDateTime(r.giveaway.ends_at as any);
-			return endsAt && endsAt <= now;
+			const endsAt = parseMySQLDateTimeUtc(r.giveaway.ends_at as any);
+			return endsAt != null && endsAt.getTime() <= now.getTime();
 		})
 		.map((r) => {
 			const g = { ...r.giveaway, server_id: r.server_id } as any;
@@ -2022,7 +1965,7 @@ export async function getGiveawayById(giveawayId: any) {
 			g.allowed_roles = [];
 		}
 	}
-	if (g.ends_at) g.ends_at = parseMySQLDateTime(g.ends_at);
+	if (g.ends_at) g.ends_at = parseMySQLDateTimeUtc(g.ends_at) ?? g.ends_at;
 	return g;
 }
 
@@ -2049,7 +1992,7 @@ export async function getActiveGiveawayByMember(serverId: any, memberId: any) {
 			g.allowed_roles = [];
 		}
 	}
-	if (g.ends_at) g.ends_at = parseMySQLDateTime(g.ends_at);
+	if (g.ends_at) g.ends_at = parseMySQLDateTimeUtc(g.ends_at) ?? g.ends_at;
 	return g;
 }
 
@@ -2154,10 +2097,6 @@ export async function markGiveawayWinners(giveawayId: any, winnerMemberIds: any[
 		.set({ is_winner: true })
 		.where(and(eq(schema.serverGiveawayEntries.giveaway_id, Number(giveawayId)), inArray(schema.serverGiveawayEntries.member_id, winnerMemberIds)));
 }
-
-// ---------------------------------------------------------------------------
-// Staff Ratings
-// ---------------------------------------------------------------------------
 
 export async function getStaffRating(serverId: any, staffMemberId: any) {
 	await initializeDatabase();
@@ -2468,6 +2407,7 @@ export default {
 	getServerAccountsByServer,
 	createServerAccountInvite,
 	getServerAccountInviteByToken,
+	getServerAccountInviteByIdForServer,
 	updateServerAccountInvite,
 	getServerAccountInvitesByServer,
 	getAllServerBots,

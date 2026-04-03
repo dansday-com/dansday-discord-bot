@@ -188,12 +188,10 @@
 </svelte:head>
 
 <div class="lb-root">
-	<!-- Ambient background blobs -->
 	<div class="blob blob-1"></div>
 	<div class="blob blob-2"></div>
 	<div class="blob blob-3"></div>
 
-	<!-- Nav -->
 	<nav class="lb-nav">
 		<div class="lb-nav-inner">
 			<div class="lb-nav-brand">
@@ -213,7 +211,6 @@
 
 	<main class="lb-main">
 		<div class="lb-inner">
-			<!-- Server header -->
 			<header class="lb-header">
 				<div class="lb-server-icon">
 					{#if data.server.server_icon}
@@ -228,7 +225,6 @@
 				</div>
 			</header>
 
-			<!-- Metric tabs -->
 			<div class="lb-tabs">
 				{#each METRICS as m}
 					<button class="lb-tab {metric === m ? 'lb-tab--active' : ''}" onclick={() => setMetric(m)}>
@@ -247,13 +243,11 @@
 				{/each}
 			</div>
 
-			<!-- Podium -->
 			{#if top3.length > 0}
 				<section class="lb-podium-section">
 					<div class="lb-podium-stage">
 						{#each podiumOrder as { r, rank }}
 							<div class="lb-podium-col lb-podium-col--{rank}" class:lb-mounted={mounted}>
-								<!-- Crown for #1 -->
 								{#if rank === 1}
 									<div class="lb-crown">
 										<svg viewBox="0 0 48 32" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -266,7 +260,6 @@
 									</div>
 								{/if}
 
-								<!-- Avatar -->
 								<div class="lb-avatar-wrap lb-avatar-wrap--{rank}">
 									<div class="lb-avatar-ring" style="--ring-color: {rankColors[rank]}; --ring-glow: {rankGlow[rank]};">
 										<div class="lb-avatar-img">
@@ -282,7 +275,6 @@
 									</div>
 								</div>
 
-								<!-- Name & score -->
 								<div class="lb-podium-info">
 									<div class="lb-podium-name" title={displayName(r)}>{displayName(r)}</div>
 									<div class="lb-podium-score" style="color: {rankColors[rank]};">
@@ -294,7 +286,6 @@
 									{/if}
 								</div>
 
-								<!-- Podium block -->
 								<div class="lb-podium-block" style="height: {podiumHeights[rank]}; background: {rankGradients[rank]};">
 									<span class="lb-podium-block-num">#{rank}</span>
 								</div>
@@ -304,7 +295,6 @@
 				</section>
 			{/if}
 
-			<!-- Rest of rankings -->
 			{#if rest.length > 0}
 				<section class="lb-list-section">
 					<div class="lb-list-header">
@@ -350,7 +340,6 @@
 		</div>
 	</main>
 
-	<!-- Footer -->
 	<footer class="lb-footer">
 		<div class="lb-footer-inner">
 			<p class="lb-footer-copy">
@@ -362,7 +351,6 @@
 </div>
 
 <style>
-	/* ── Root & background ─────────────────────────────── */
 	.lb-root {
 		min-height: 100dvh;
 		background: #0d0d14;
@@ -438,7 +426,6 @@
 		}
 	}
 
-	/* ── Header ─────────────────────────────────────────── */
 	.lb-header {
 		display: flex;
 		align-items: center;
@@ -492,7 +479,6 @@
 		font-weight: 600;
 	}
 
-	/* ── Tabs ────────────────────────────────────────────── */
 	.lb-tabs {
 		display: flex;
 		gap: 6px;
@@ -532,7 +518,6 @@
 		transform: scale(1.02);
 	}
 
-	/* ── Podium section ──────────────────────────────────── */
 	.lb-podium-section {
 		margin-bottom: 28px;
 	}
@@ -571,7 +556,6 @@
 		transition-delay: 0.3s;
 	}
 
-	/* Crown */
 	.lb-crown {
 		width: 44px;
 		margin-bottom: -6px;
@@ -590,7 +574,6 @@
 		}
 	}
 
-	/* Avatar ring */
 	.lb-avatar-wrap {
 		position: relative;
 		margin-bottom: 10px;
@@ -670,7 +653,6 @@
 		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 	}
 
-	/* Podium info */
 	.lb-podium-info {
 		text-align: center;
 		margin-bottom: 8px;
@@ -710,7 +692,6 @@
 		margin-top: 2px;
 	}
 
-	/* Podium block */
 	.lb-podium-block {
 		width: 100%;
 		border-radius: 10px 10px 0 0;
@@ -735,7 +716,6 @@
 		z-index: 1;
 	}
 
-	/* ── List section ────────────────────────────────────── */
 	.lb-list-section {
 		background: rgba(255, 255, 255, 0.03);
 		border: 1px solid rgba(255, 255, 255, 0.07);
@@ -861,7 +841,6 @@
 		margin-left: 2px;
 	}
 
-	/* ── Empty state ─────────────────────────────────────── */
 	.lb-empty {
 		text-align: center;
 		padding: 60px 20px;
@@ -876,7 +855,6 @@
 		font-weight: 600;
 	}
 
-	/* ── Nav ─────────────────────────────────────────────── */
 	.lb-nav {
 		position: sticky;
 		top: 0;
@@ -997,7 +975,6 @@
 		}
 	}
 
-	/* ── Footer ──────────────────────────────────────────── */
 	.lb-footer {
 		position: relative;
 		z-index: 1;

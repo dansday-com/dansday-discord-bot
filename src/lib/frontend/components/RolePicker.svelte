@@ -8,10 +8,8 @@
 
 	interface Props {
 		roles: Role[];
-		/** Array of discord_role_ids for multiselect, or single string for single mode */
 		value: string | string[];
 		placeholder?: string;
-		/** Set to true for single-role selection (e.g. role_start / role_end) */
 		single?: boolean;
 		onchange: (value: string | string[]) => void;
 	}
@@ -78,7 +76,6 @@
 	}
 </script>
 
-<!-- Trigger button -->
 <button
 	type="button"
 	onclick={openModal}
@@ -102,7 +99,6 @@
 	<i class="fas fa-chevron-down text-ash-400 text-xs"></i>
 </button>
 
-<!-- Selected tags (multiselect only) -->
 {#if !single && (value as string[]).length > 0}
 	<div class="mt-2 flex flex-wrap gap-1">
 		{#each value as string[] as id}
@@ -123,13 +119,11 @@
 {/if}
 
 {#if open}
-	<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
 	<div class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-3 sm:p-4" onclick={close}>
 		<div
 			class="bg-ash-800 border-ash-700 my-4 flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl border p-4 shadow-2xl sm:p-6"
 			onclick={(e) => e.stopPropagation()}
 		>
-			<!-- Header -->
 			<div class="mb-4 flex items-center justify-between sm:mb-6">
 				<h3 class="text-ash-100 flex items-center gap-2 text-lg font-bold sm:text-xl">
 					<i class="fas fa-user-shield text-ash-200"></i>
@@ -139,7 +133,6 @@
 					<i class="fas fa-times text-lg"></i>
 				</button>
 			</div>
-			<!-- Search -->
 			<div class="relative mb-4">
 				<input
 					type="text"
@@ -149,7 +142,6 @@
 				/>
 				<i class="fas fa-search text-ash-400 absolute top-1/2 right-3 -translate-y-1/2"></i>
 			</div>
-			<!-- Role list -->
 			<div class="min-h-0 flex-1 space-y-1 overflow-y-auto">
 				{#if filtered.length === 0}
 					<div class="text-ash-400 py-8 text-center text-sm">
@@ -178,7 +170,7 @@
 					{/each}
 				{/if}
 			</div>
-			<!-- Confirm -->
+			
 			<div class="border-ash-700 mt-4 border-t pt-4">
 				<button
 					type="button"

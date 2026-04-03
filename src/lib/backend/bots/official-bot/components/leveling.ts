@@ -1,7 +1,7 @@
 import { getLevelingSettings, PERMISSIONS, getBotConfig, getEmbedConfig, NOTIFICATIONS } from '../../../config.js';
 import db from '../../../../database.js';
 import { EmbedBuilder } from 'discord.js';
-import { logger, parseMySQLDateTime } from '../../../../utils/index.js';
+import { logger, parseMySQLDateTimeUtc } from '../../../../utils/index.js';
 
 const recentMessages = new Map();
 const voiceSessions = new Map();
@@ -556,7 +556,7 @@ async function startVoiceSession(state, resumed = false) {
 			if (levelData.voice_rewarded_at instanceof Date) {
 				lastRewardedAtMs = levelData.voice_rewarded_at.getTime();
 			} else {
-				const parsedDate = parseMySQLDateTime(levelData.voice_rewarded_at);
+				const parsedDate = parseMySQLDateTimeUtc(levelData.voice_rewarded_at);
 				lastRewardedAtMs = parsedDate ? parsedDate.getTime() : null;
 			}
 		}

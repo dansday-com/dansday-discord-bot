@@ -1,7 +1,3 @@
-/**
- * Backend for the **public** leaderboard website URL (`src/routes/[serverSlug]/leaderboard`).
- * Not the Svelte page itself — this resolves slugs and lists URLs using the DB.
- */
 import db from '../database.js';
 import { computeIndexedSlugForItemId, listIndexedSlugsForItems, resolveIndexedSlugToItem } from '../utils/index.js';
 
@@ -16,7 +12,6 @@ function serverSlugKey(s: LeaderboardServerRow) {
 	return s.name || 'server';
 }
 
-/** Resolve public leaderboard path segment → guild row (feature enabled only). Slug helpers: `$lib/utils/index.js`. */
 export async function resolveLeaderboardServerBySlug(requestedSlug: string): Promise<{ server: LeaderboardServerRow; computedSlug: string } | null> {
 	const servers: LeaderboardServerRow[] = await (db as any).listEnabledLeaderboardServers();
 	if (!Array.isArray(servers) || servers.length === 0) return null;
@@ -37,7 +32,6 @@ export async function computeLeaderboardSlugForServerId(serverId: number): Promi
 	return computeIndexedSlugForItemId(serverId, servers, serverSlugKey);
 }
 
-/** Same indexing as the live public URL, but includes this server when leaderboard is currently disabled (settings UI before save). */
 export async function computeLeaderboardSlugForServerConfig(serverId: number, serverNameFallback: string | null): Promise<string | null> {
 	const servers: LeaderboardServerRow[] = await (db as any).listEnabledLeaderboardServers();
 	const id = Number(serverId);

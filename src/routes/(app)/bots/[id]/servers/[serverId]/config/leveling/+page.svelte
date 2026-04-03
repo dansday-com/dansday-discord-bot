@@ -56,7 +56,7 @@
 		<i class="fas fa-chart-line text-ash-300"></i>Leveling
 	</h3>
 
-	<!-- Level Requirements -->
+	
 	<div>
 		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
 			<i class="fas fa-trophy mr-1"></i>Base XP
@@ -87,7 +87,7 @@
 		</select>
 	</div>
 
-	<!-- Message XP -->
+	
 	<div>
 		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
 			<i class="fas fa-comment mr-1"></i>XP Per Message
@@ -118,7 +118,7 @@
 		</select>
 	</div>
 
-	<!-- Voice XP -->
+	
 	<div>
 		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
 			<i class="fas fa-microphone mr-1"></i>Active Voice XP (per cooldown interval)
@@ -164,7 +164,7 @@
 		</select>
 	</div>
 
-	<!-- Progress Channel -->
+	
 	<div>
 		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
 			<i class="fas fa-hashtag mr-1"></i>Level Progress Notification Channel

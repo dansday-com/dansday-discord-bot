@@ -1,6 +1,7 @@
 import { env } from '$env/dynamic/private';
 import type { RequestHandler } from '@sveltejs/kit';
 import { listEnabledLeaderboardSlugs } from '$lib/leaderboard/index.js';
+import { parseMySQLDateTimeUtc } from '$lib/utils/datetime.js';
 
 function escapeXml(s: string) {
 	return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
@@ -13,8 +14,8 @@ export const GET: RequestHandler = async ({ setHeaders }) => {
 
 	const lastmod = (d: any) => {
 		try {
-			const dt = d instanceof Date ? d : new Date(String(d).replace(' ', 'T'));
-			if (Number.isNaN(dt.getTime())) return null;
+			const dt = d instanceof Date ? d : parseMySQLDateTimeUtc(d);
+			if (!dt || Number.isNaN(dt.getTime())) return null;
 			return dt.toISOString();
 		} catch (_) {
 			return null;

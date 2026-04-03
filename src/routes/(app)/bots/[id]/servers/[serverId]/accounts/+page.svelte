@@ -4,6 +4,7 @@
 	import type { PageProps } from './$types';
 	import MemberPicker from '$lib/frontend/components/MemberPicker.svelte';
 	import ConfirmModal from '$lib/frontend/components/ConfirmModal.svelte';
+	import { formatTimestamp, parseMySQLDateTimeUtc } from '$lib/utils/datetime.js';
 
 	let { data }: PageProps = $props();
 
@@ -55,23 +56,39 @@
 		setTimeout(() => (copyIcon = 'fa-copy'), 2000);
 	}
 
-	type PendingAction = { accountId: number; type: 'delete' | 'freeze' | 'unfreeze'; label: string };
+	type PendingAction =
+		| { kind: 'account'; accountId: number; type: 'delete' | 'freeze' | 'unfreeze'; label: string }
+		| { kind: 'invite'; inviteId: number; label: string };
 	let pending = $state<PendingAction | null>(null);
 	let confirming = $state(false);
 
 	function confirmDelete(accountId: number, name: string) {
-		pending = { accountId, type: 'delete', label: name };
+		pending = { kind: 'account', accountId, type: 'delete', label: name };
 	}
 
 	function confirmFreeze(accountId: number, currentlyFrozen: boolean, name: string) {
-		pending = { accountId, type: currentlyFrozen ? 'unfreeze' : 'freeze', label: name };
+		pending = { kind: 'account', accountId, type: currentlyFrozen ? 'unfreeze' : 'freeze', label: name };
+	}
+
+	function confirmExpireInvite(inviteId: number, label: string) {
+		pending = { kind: 'invite', inviteId, label };
 	}
 
 	async function executeConfirmed() {
 		if (!pending) return;
 		confirming = true;
 		try {
-			if (pending.type === 'delete') {
+			if (pending.kind === 'invite') {
+				const res = await fetch(`/api/servers/${data.serverId}/accounts/invites/${pending.inviteId}/expire`, {
+					method: 'POST',
+					credentials: 'include'
+				});
+				const d = await res.json();
+				if (d.success) {
+					showToast('Invite link expired', 'success');
+					invalidateAll();
+				} else showToast(d.error || 'Failed to expire invite', 'error');
+			} else if (pending.type === 'delete') {
 				const res = await fetch(`/api/servers/${data.serverId}/accounts/${pending.accountId}`, {
 					method: 'DELETE',
 					credentials: 'include'
@@ -117,18 +134,35 @@
 		return 'bg-ash-700 text-ash-300';
 	}
 
+	function inviteExpiresAtMs(invite: any): number | null {
+		const d = invite.expires_at ? parseMySQLDateTimeUtc(invite.expires_at) : null;
+		return d && !Number.isNaN(d.getTime()) ? d.getTime() : null;
+	}
+
 	function inviteStatusClass(invite: any) {
-		const expiresAt = invite.expires_at ? new Date(String(invite.expires_at).replace(' ', 'T')) : null;
+		const endMs = inviteExpiresAtMs(invite);
 		if (invite.used_by) return 'bg-green-900 text-green-300';
-		if (expiresAt && !Number.isNaN(expiresAt.getTime()) && expiresAt < new Date()) return 'bg-red-900 text-red-300';
+		if (endMs != null && endMs < Date.now()) return 'bg-red-900 text-red-300';
 		return 'bg-yellow-900 text-yellow-300';
 	}
 
 	function inviteStatusLabel(invite: any) {
-		const expiresAt = invite.expires_at ? new Date(String(invite.expires_at).replace(' ', 'T')) : null;
+		const endMs = inviteExpiresAtMs(invite);
 		if (invite.used_by) return 'Used';
-		if (expiresAt && !Number.isNaN(expiresAt.getTime()) && expiresAt < new Date()) return 'Expired';
+		if (endMs != null && endMs < Date.now()) return 'Expired';
 		return 'Pending';
+	}
+
+	function inviteExpiryDisplay(invite: any): string {
+		if (!invite.expires_at) return 'No expiry set';
+		const d = parseMySQLDateTimeUtc(invite.expires_at);
+		if (!d) return '—';
+		return formatTimestamp(d.getTime(), true);
+	}
+
+	function isInviteExpired(invite: any): boolean {
+		const endMs = inviteExpiresAtMs(invite);
+		return endMs != null && endMs < Date.now();
 	}
 </script>
 
@@ -248,14 +282,36 @@
 			{:else}
 				<div class="space-y-2">
 					{#each data.invites as invite (invite.id)}
-						<div class="bg-ash-700 flex items-center justify-between gap-3 rounded-lg px-4 py-3">
-							<div class="min-w-0">
+						<div class="bg-ash-700 flex flex-col gap-2 rounded-lg px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+							<div class="min-w-0 flex-1">
 								<p class="text-ash-100 text-sm font-medium capitalize">{invite.account_type} invite</p>
 								<p class="text-ash-400 text-xs">By {invite.creator_username ?? 'unknown'}</p>
+								<p class="text-ash-300 mt-1 text-xs">
+									<i class="fas fa-clock mr-1 opacity-70"></i>
+									{#if invite.used_by}
+										Used — expiry was {inviteExpiryDisplay(invite)}
+									{:else if isInviteExpired(invite)}
+										Expired at {inviteExpiryDisplay(invite)}
+									{:else}
+										Expires {inviteExpiryDisplay(invite)}
+									{/if}
+								</p>
 							</div>
-							<span class="shrink-0 rounded-full px-2 py-0.5 text-xs {inviteStatusClass(invite)}">
-								{inviteStatusLabel(invite)}
-							</span>
+							<div class="flex shrink-0 items-center gap-2">
+								<span class="rounded-full px-2 py-0.5 text-xs {inviteStatusClass(invite)}">
+									{inviteStatusLabel(invite)}
+								</span>
+								{#if canInvite && !invite.used_by && !isInviteExpired(invite)}
+									<button
+										type="button"
+										title="Expire this link (it cannot be used to register)"
+										onclick={() => confirmExpireInvite(invite.id, `${invite.account_type} invite`)}
+										class="bg-ash-600 hover:bg-ash-500 text-ash-100 rounded px-2 py-1 text-xs transition-colors"
+									>
+										<i class="fas fa-ban mr-1"></i>Expire
+									</button>
+								{/if}
+							</div>
 						</div>
 					{/each}
 				</div>
@@ -266,14 +322,22 @@
 
 <ConfirmModal
 	open={pending !== null}
-	title={pending?.type === 'delete' ? 'Remove Account' : pending?.type === 'freeze' ? 'Freeze Account' : 'Unfreeze Account'}
-	message={pending?.type === 'delete'
-		? `Remove "${pending.label}"? They will lose access immediately.`
-		: pending?.type === 'freeze'
-			? `Freeze "${pending?.label}"? They won't be able to log in until unfrozen.`
-			: `Unfreeze "${pending?.label}"? They will regain access immediately.`}
-	confirmLabel={pending?.type === 'delete' ? 'Remove' : pending?.type === 'freeze' ? 'Freeze' : 'Unfreeze'}
-	dangerous={pending?.type === 'delete'}
+	title={pending?.kind === 'invite'
+		? 'Expire invite link'
+		: pending?.type === 'delete'
+			? 'Remove Account'
+			: pending?.type === 'freeze'
+				? 'Freeze Account'
+				: 'Unfreeze Account'}
+	message={pending?.kind === 'invite'
+		? `Expire ${pending.label}? The link will stop working; the row stays in the list for reference.`
+		: pending?.type === 'delete'
+			? `Remove "${pending.label}"? They will lose access immediately.`
+			: pending?.type === 'freeze'
+				? `Freeze "${pending?.label}"? They won't be able to log in until unfrozen.`
+				: `Unfreeze "${pending?.label}"? They will regain access immediately.`}
+	confirmLabel={pending?.kind === 'invite' ? 'Expire link' : pending?.type === 'delete' ? 'Remove' : pending?.type === 'freeze' ? 'Freeze' : 'Unfreeze'}
+	dangerous={pending?.kind === 'invite' ? false : pending?.type === 'delete'}
 	loading={confirming}
 	onconfirm={executeConfirmed}
 	oncancel={() => (pending = null)}

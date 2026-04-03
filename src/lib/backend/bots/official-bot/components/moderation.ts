@@ -1,7 +1,7 @@
 import { EmbedBuilder } from 'discord.js';
 import { getMainChannel, getEmbedConfig, getBotConfig } from '../../../config.js';
 import db from '../../../../database.js';
-import { logger, parseMySQLDateTime } from '../../../../utils/index.js';
+import { logger, parseMySQLDateTimeUtc } from '../../../../utils/index.js';
 
 async function sendModerationLog(client, embedData, guildId = null) {
 	const mainChannel = await getMainChannel(guildId);
@@ -177,7 +177,7 @@ function init(client) {
 				if (memberData.member_since instanceof Date) {
 					memberSince = memberData.member_since;
 				} else {
-					memberSince = parseMySQLDateTime(memberData.member_since);
+					memberSince = parseMySQLDateTimeUtc(memberData.member_since);
 				}
 			}
 			const memberSinceTimestamp = memberSince ? Math.floor(memberSince.getTime() / 1000) : null;

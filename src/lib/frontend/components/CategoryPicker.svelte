@@ -78,13 +78,13 @@
 {/if}
 
 {#if open}
-	<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+	
 	<div class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-3 sm:p-4" onclick={close}>
 		<div
 			class="bg-ash-800 border-ash-700 my-4 flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl border p-4 shadow-2xl sm:p-6"
 			onclick={(e) => e.stopPropagation()}
 		>
-			<!-- Header -->
+			
 			<div class="mb-4 flex items-center justify-between sm:mb-6">
 				<h3 class="text-ash-100 flex items-center gap-2 text-lg font-bold sm:text-xl">
 					<i class="fas fa-folder text-ash-200"></i>Select Categories
@@ -93,7 +93,7 @@
 					<i class="fas fa-times text-lg"></i>
 				</button>
 			</div>
-			<!-- Search -->
+			
 			<div class="relative mb-4">
 				<input
 					type="text"
@@ -103,7 +103,7 @@
 				/>
 				<i class="fas fa-search text-ash-400 absolute top-1/2 right-3 -translate-y-1/2"></i>
 			</div>
-			<!-- Category list -->
+			
 			<div class="min-h-0 flex-1 space-y-1 overflow-y-auto">
 				{#if filtered.length === 0}
 					<div class="text-ash-400 py-8 text-center text-sm">
@@ -132,7 +132,7 @@
 					{/each}
 				{/if}
 			</div>
-			<!-- Confirm -->
+			
 			<div class="border-ash-700 mt-4 border-t pt-4">
 				<button
 					type="button"

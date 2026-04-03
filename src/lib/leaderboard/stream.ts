@@ -17,7 +17,6 @@ function makeKeyV2(serverId: number, metric: LeaderboardMetric, range: Leaderboa
 	return `${serverId}:${metric}:${range}:${limit}`;
 }
 
-/** Align with Redis leaderboard cache TTL (~20s) so tab switches usually skip DB. */
 const CACHE_FRESH_MS = 20_000;
 
 async function buildSnapshot(serverId: number, metric: LeaderboardMetric, range: LeaderboardRange, limit: number): Promise<LeaderboardSnapshot> {
@@ -27,7 +26,6 @@ async function buildSnapshot(serverId: number, metric: LeaderboardMetric, range:
 	return snap;
 }
 
-/** Redis-first when fresh; avoids DB on tab switches and SSE subscribe. */
 export async function resolveLeaderboardSnapshot(
 	serverId: number,
 	metric: LeaderboardMetric,

@@ -3,7 +3,7 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { readFileSync, existsSync } from 'fs';
 import db from './database.js';
-import { logger, getCurrentDateTime, parseMySQLDateTime, getNowInTimezone, getDateTimeFromJSDate } from './utils/index.js';
+import { logger, getCurrentDateTime, parseMySQLDateTimeUtc, getNowUtc, getDateTimeFromJSDate } from './utils/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -12,7 +12,6 @@ function isProjectRoot(dir: string): boolean {
 	return existsSync(join(dir, 'bots', 'backend', 'bots')) || existsSync(join(dir, 'bots', 'bots')) || existsSync(join(dir, 'src', 'lib', 'backend', 'bots'));
 }
 
-/** Repo / image root: `process.cwd()` when running `node build/index.js` from `/app`, else walk up from bundled chunk (e.g. `build/server/chunks`). */
 function findProjectRoot(): string {
 	if (isProjectRoot(process.cwd())) return process.cwd();
 
@@ -81,7 +80,6 @@ async function getConnectedSelfbots(officialBotId: number) {
 	}
 }
 
-/** Start linked selfbots in the background so official bot success is not blocked or undone by selfbot/token failures. */
 function startConnectedSelfbotsInBackground(selfbots: any[], officialBotId: number): void {
 	if (selfbots.length === 0) return;
 	logger.log(`🔗 Scheduling ${selfbots.length} connected selfbot(s) for official bot ${officialBotId} (independent of official process)`);
@@ -410,11 +408,11 @@ export function getBotUptimeMs(bot: any): number {
 		if (bot.uptime_started_at instanceof Date) {
 			startTime = getDateTimeFromJSDate(bot.uptime_started_at);
 		} else {
-			const parsed = parseMySQLDateTime(bot.uptime_started_at);
+			const parsed = parseMySQLDateTimeUtc(bot.uptime_started_at);
 			startTime = parsed ? getDateTimeFromJSDate(parsed) : null;
 		}
 		if (startTime && startTime.isValid) {
-			const now = getNowInTimezone();
+			const now = getNowUtc();
 			return now.diff(startTime, 'milliseconds').milliseconds;
 		}
 	} catch (_) {}

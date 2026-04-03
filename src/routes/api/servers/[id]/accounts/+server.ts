@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
-import { addMinutesToNow, toMySQLDateTime, logger } from '$lib/utils/index.js';
+import { logger } from '$lib/utils/index.js';
 import { randomBytes } from 'crypto';
 
 function maskEmail(email: string) {
@@ -60,14 +60,12 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 	}
 
 	const token = randomBytes(32).toString('hex');
-	const expiresAt = toMySQLDateTime(addMinutesToNow(10));
 
 	await db.createServerAccountInvite({
 		token,
 		server_id: serverId,
 		account_type,
-		created_by: locals.user.account_id,
-		expires_at: expiresAt ?? ''
+		created_by: locals.user.account_id
 	});
 
 	logger.log(`${locals.user.username} generated server invite for ${account_type} (server ${serverId})`);

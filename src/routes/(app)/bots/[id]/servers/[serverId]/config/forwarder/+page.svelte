@@ -154,7 +154,7 @@
 	</h3>
 	<p class="text-ash-400 text-xs">Forward messages from a selfbot's channel to a channel in this server.</p>
 
-	<!-- Forwarder list -->
+	
 	<div class="space-y-3">
 		{#if forwarders.length === 0}
 			<div class="bg-ash-700 rounded-lg p-4 text-center">
@@ -231,7 +231,7 @@
 	</button>
 </div>
 
-<!-- Add/Edit Modal -->
+
 {#if modalOpen}
 	<div class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4">
 		<div class="bg-ash-800 border-ash-700 my-4 flex max-h-[90vh] w-full max-w-2xl flex-col rounded-2xl border p-5">
@@ -246,7 +246,7 @@
 			</div>
 
 			<div class="flex-1 space-y-4 overflow-y-auto">
-				<!-- Selfbot -->
+				
 				<div>
 					<label for="fw-selfbot" class="text-ash-300 mb-1.5 block text-xs font-medium"><i class="fas fa-robot mr-1.5"></i>Selfbot</label>
 					<select
@@ -262,7 +262,7 @@
 					</select>
 				</div>
 
-				<!-- Server -->
+				
 				<div>
 					<label for="fw-server" class="text-ash-300 mb-1.5 block text-xs font-medium"><i class="fas fa-server mr-1.5"></i>Server (where selfbot is)</label>
 					<select
@@ -279,7 +279,7 @@
 					</select>
 				</div>
 
-				<!-- Source Channels (multi-select from selfbot server) -->
+				
 				<div>
 					<p class="text-ash-300 mb-1.5 block text-xs font-medium"><i class="fas fa-hashtag mr-1.5"></i>From Channels</p>
 					{#if loadingChannels}
@@ -298,7 +298,7 @@
 					{/if}
 				</div>
 
-				<!-- Target Channel (from current server) -->
+				
 				<div>
 					<p class="text-ash-300 mb-1.5 block text-xs font-medium"><i class="fas fa-bullseye mr-1.5"></i>Target Channel</p>
 					<ChannelPicker
@@ -310,7 +310,7 @@
 					/>
 				</div>
 
-				<!-- Role Pings -->
+				
 				<div>
 					<p class="text-ash-300 mb-1.5 block text-xs font-medium"><i class="fas fa-user-shield mr-1.5"></i>Role Pings</p>
 					<RolePicker
@@ -321,7 +321,7 @@
 					/>
 				</div>
 
-				<!-- Only forward when mentions selfbot -->
+				
 				<div>
 					<p class="text-ash-400 mb-2 text-xs">Only forward when message mentions the selfbot</p>
 					<label class="flex cursor-pointer items-center gap-3">
@@ -334,7 +334,7 @@
 					</label>
 				</div>
 
-				<!-- Tag -->
+				
 				<div>
 					<label for="fw-tag" class="text-ash-300 mb-1.5 block text-xs font-medium">
 						<i class="fas fa-tag mr-1.5"></i>Tag <span class="text-ash-500">(optional)</span>

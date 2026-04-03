@@ -82,7 +82,7 @@
 </script>
 
 {#if open}
-	<!-- Backdrop -->
+	
 	<div
 		class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-3 sm:p-4"
 		role="dialog"
@@ -90,7 +90,7 @@
 		aria-label="Add New Bot"
 	>
 		<div class="bg-ash-800 border-ash-700 my-4 w-full max-w-lg rounded-2xl border p-4 sm:p-6">
-			<!-- Header -->
+			
 			<div class="mb-4 flex items-center justify-between sm:mb-6">
 				<h3 class="text-ash-100 flex items-center gap-2 text-lg font-bold sm:text-xl">
 					<i class="fas fa-plus-circle text-ash-200"></i>Add New Bot
@@ -107,7 +107,7 @@
 				}}
 				class="space-y-4 sm:space-y-5"
 			>
-				<!-- Token -->
+				
 				<div>
 					<label for="botToken" class="text-ash-300 mb-2 block text-xs font-medium sm:text-sm">
 						<i class="fas fa-key mr-2"></i>Bot Token <span class="text-ash-200">*</span>
@@ -131,7 +131,7 @@
 					</div>
 				</div>
 
-				<!-- Official Bot Fields -->
+				
 				<div>
 					<label for="appId" class="text-ash-300 mb-2 block text-xs font-medium sm:text-sm">
 						<i class="fas fa-id-card mr-2"></i>Application ID <span class="text-ash-200">*</span>
@@ -180,7 +180,7 @@
 					<p class="text-ash-500 mt-1.5 text-xs">Used to authenticate incoming webhooks to this bot</p>
 				</div>
 
-				<!-- Info -->
+				
 				<div class="bg-ash-900 border-ash-600 rounded-lg border p-3 sm:p-4">
 					<div class="flex items-start gap-2 sm:gap-3">
 						<i class="fas fa-info-circle text-ash-300 mt-0.5 flex-shrink-0 text-sm"></i>
@@ -188,7 +188,7 @@
 					</div>
 				</div>
 
-				<!-- Actions -->
+				
 				<div class="flex gap-2 pt-2 sm:gap-3">
 					<button
 						type="button"

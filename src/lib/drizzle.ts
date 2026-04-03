@@ -31,8 +31,7 @@ function getConnectionConfig() {
 	};
 }
 
-const tz = process.env.TIMEZONE;
-const tzOffset = tz === 'Asia/Jakarta' ? '+07:00' : 'Z';
+const tzOffset = 'Z';
 
 let _db: ReturnType<typeof drizzle> | null = null;
 

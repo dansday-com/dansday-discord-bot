@@ -1,4 +1,3 @@
-/** `main_config.settings` — only `main_channel` (Discord channel id string). */
 export function mainChannelId(raw: unknown): string {
 	if (!raw || typeof raw !== 'object') return '';
 	const v = (raw as Record<string, unknown>).main_channel;

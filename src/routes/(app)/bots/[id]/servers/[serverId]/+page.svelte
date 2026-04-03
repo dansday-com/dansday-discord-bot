@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { formatDbDateTime } from '$lib/utils/datetime.js';
 	import type { LayoutProps } from './$types';
 
 	let { data }: LayoutProps = $props();
@@ -19,8 +20,7 @@
 	}
 
 	function fmtDate(val: string | null | undefined): string {
-		if (!val) return '—';
-		return new Date(val).toLocaleString();
+		return formatDbDateTime(val, true);
 	}
 
 	const membersWithoutLevels = $derived(Math.max(0, (s.members_total ?? 0) - (s.members_with_levels ?? 0)));
@@ -41,9 +41,9 @@
 </svelte:head>
 
 <div class="space-y-4 sm:space-y-6">
-	<!-- Stat cards grid -->
+	
 	<div class="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2 xl:grid-cols-3">
-		<!-- Members -->
+		
 		<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-5 shadow-lg transition-all sm:p-6">
 			<div class="mb-4 flex items-center gap-3">
 				<div class="bg-ash-400/20 flex h-10 w-10 items-center justify-center rounded-lg">
@@ -63,7 +63,7 @@
 			</div>
 		</div>
 
-		<!-- Channels -->
+		
 		<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-5 shadow-lg transition-all sm:p-6">
 			<div class="mb-4 flex items-center gap-3">
 				<div class="bg-ash-500/20 flex h-10 w-10 items-center justify-center rounded-lg">
@@ -83,7 +83,7 @@
 			</div>
 		</div>
 
-		<!-- Leveling -->
+		
 		<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-5 shadow-lg transition-all sm:p-6">
 			<div class="mb-4 flex items-center gap-3">
 				<div class="bg-ash-500/20 flex h-10 w-10 items-center justify-center rounded-lg">
@@ -103,7 +103,7 @@
 			</div>
 		</div>
 
-		<!-- Roles & Structure -->
+		
 		<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-5 shadow-lg transition-all sm:p-6">
 			<div class="mb-4 flex items-center gap-3">
 				<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-green-500/20">
@@ -123,7 +123,7 @@
 			</div>
 		</div>
 
-		<!-- Voice Activity -->
+		
 		<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-5 shadow-lg transition-all sm:p-6">
 			<div class="mb-4 flex items-center gap-3">
 				<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-yellow-500/20">
@@ -143,7 +143,7 @@
 			</div>
 		</div>
 
-		<!-- Data Sync -->
+		
 		<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-5 shadow-lg transition-all sm:p-6">
 			<div class="mb-4 flex items-center gap-3">
 				<div class="bg-ash-500/20 flex h-10 w-10 items-center justify-center rounded-lg">
@@ -164,7 +164,7 @@
 		</div>
 	</div>
 
-	<!-- Configured Components -->
+	
 	<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-4 shadow-lg transition-all sm:p-6">
 		<h3 class="text-ash-100 flex items-center gap-2 text-sm font-semibold sm:text-base">
 			<i class="fas fa-sliders-h text-ash-200"></i>Configured Components

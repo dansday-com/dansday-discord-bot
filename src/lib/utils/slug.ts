@@ -1,5 +1,3 @@
-/** URL slug helpers. DB-backed leaderboard URLs: `$lib/leaderboard/slugs.ts`. */
-
 export function slugifyDisplayName(input: string, emptyFallback = 'item'): string {
 	const s = String(input ?? '')
 		.toLowerCase()

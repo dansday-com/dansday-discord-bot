@@ -13,7 +13,6 @@
 	const totalPages = $derived(Math.ceil(data.servers.length / SERVERS_PER_PAGE));
 	const pagedServers = $derived(data.servers.slice((page - 1) * SERVERS_PER_PAGE, page * SERVERS_PER_PAGE));
 
-	/** Panel admins or Discord server owners only — moderators are view-only (API enforces the same). */
 	const canControlSelfbot = $derived(
 		data.user.authenticated &&
 			(data.user.account_source === 'accounts' || (data.user.account_source === 'server_accounts' && data.user.account_type === 'owner'))
@@ -160,7 +159,6 @@
 		<i class="fas fa-arrow-left"></i>Back to Selfbots
 	</a>
 
-	<!-- Header (aligned with official bot page) -->
 	<div class="bg-ash-800 border-ash-700 mb-4 rounded-xl border p-4 sm:mb-6 sm:p-6">
 		<div class="flex flex-col gap-4 sm:flex-row sm:items-start">
 			<div class="flex min-w-0 flex-1 items-center gap-4">
@@ -241,7 +239,7 @@
 		</div>
 	</div>
 
-	<!-- Server list (same layout as official bot detail; cards are not links for selfbots) -->
+	
 	<div class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-6">
 		<div class="mb-4 flex items-center justify-between">
 			<h3 class="text-ash-100 text-lg font-semibold">

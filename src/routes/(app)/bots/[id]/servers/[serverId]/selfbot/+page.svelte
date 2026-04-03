@@ -154,7 +154,7 @@
 				href={`/bots/${data.botId}/servers/${data.serverId}/selfbot/${bot.id}`}
 				class="bg-ash-800 border-ash-700 hover:border-ash-500 flex flex-col gap-3 rounded-xl border p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg sm:p-6"
 			>
-				<!-- Bot icon + name -->
+				
 				<div class="flex items-center gap-3">
 					<div class="bg-ash-600 flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-full">
 						{#if bot.bot_icon}
@@ -169,7 +169,7 @@
 					</div>
 				</div>
 
-				<!-- Status -->
+				
 				<div class="flex items-center justify-between">
 					<div class="flex items-center gap-2">
 						<span class="h-2 w-2 rounded-full {statusColor(live.status)}"></span>

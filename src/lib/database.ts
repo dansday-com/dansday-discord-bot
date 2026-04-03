@@ -2358,6 +2358,94 @@ export async function getApprovedContentCreators(serverId: any) {
 	return (rows[0] as unknown as any[]) || [];
 }
 
+export async function createContentCreatorStream(contentCreatorApplicationId: number, roomId: string | null) {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	const result = await db.insert(schema.serverContentCreatorsStream).values({
+		content_creator_id: Number(contentCreatorApplicationId),
+		room_id: roomId || null,
+		status: 'active' as any,
+		started_at: now as any,
+		updated_at: now as any
+	});
+	return Number((result[0] as any).insertId);
+}
+
+export async function endContentCreatorStream(streamId: number, status: 'ended' | 'error', errorMessage: string | null = null) {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	await db
+		.update(schema.serverContentCreatorsStream)
+		.set({
+			status: status as any,
+			ended_at: now as any,
+			updated_at: now as any,
+			error_message: errorMessage
+		})
+		.where(eq(schema.serverContentCreatorsStream.id, Number(streamId)));
+}
+
+export async function incrementContentCreatorStreamCounters(
+	streamId: number,
+	delta: { chat?: number; like?: number; gift?: number; follow?: number; share?: number }
+) {
+	await initializeDatabase();
+	const chat = Math.max(0, Math.floor(Number(delta.chat) || 0));
+	const like = Math.max(0, Math.floor(Number(delta.like) || 0));
+	const gift = Math.max(0, Math.floor(Number(delta.gift) || 0));
+	const follow = Math.max(0, Math.floor(Number(delta.follow) || 0));
+	const share = Math.max(0, Math.floor(Number(delta.share) || 0));
+	if (!chat && !like && !gift && !follow && !share) return;
+	const now = toMySQLDateTime();
+	await db.execute(sql`
+		UPDATE server_content_creators_stream
+		SET
+			total_chat_messages = total_chat_messages + ${chat},
+			total_likes = total_likes + ${like},
+			total_gifts = total_gifts + ${gift},
+			total_follows = total_follows + ${follow},
+			total_shares = total_shares + ${share},
+			updated_at = ${now}
+		WHERE id = ${Number(streamId)}
+	`);
+}
+
+export async function updateContentCreatorStreamPeakViewers(streamId: number, candidate: number) {
+	await initializeDatabase();
+	const n = Math.floor(Number(candidate));
+	if (!Number.isFinite(n) || n < 0) return;
+	const now = toMySQLDateTime();
+	await db.execute(sql`
+		UPDATE server_content_creators_stream
+		SET
+			peak_viewers = GREATEST(COALESCE(peak_viewers, 0), ${n}),
+			updated_at = ${now}
+		WHERE id = ${Number(streamId)}
+	`);
+}
+
+export async function insertContentCreatorStreamLog(streamId: number, eventType: string, payload: unknown) {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	let jsonPayload: Record<string, unknown> | null = null;
+	try {
+		const s = JSON.stringify(payload, (_k, v) => (typeof v === 'bigint' ? v.toString() : v));
+		if (s.length > 60000) {
+			jsonPayload = { _truncated: true, length: s.length, preview: s.slice(0, 8000) };
+		} else {
+			jsonPayload = JSON.parse(s) as Record<string, unknown>;
+		}
+	} catch {
+		jsonPayload = { _raw: String(payload).slice(0, 8000) };
+	}
+	await db.insert(schema.serverContentCreatorsStreamLog).values({
+		stream_id: Number(streamId),
+		event_type: String(eventType).slice(0, 64),
+		occurred_at: now as any,
+		payload: jsonPayload as any
+	});
+}
+
 export async function createFeedback(_serverId: any, memberId: any, description: string, isAnonymous: boolean) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
@@ -2636,6 +2724,11 @@ export default {
 	getContentCreatorApplicationById,
 	updateContentCreatorApplicationStatus,
 	getApprovedContentCreators,
+	createContentCreatorStream,
+	endContentCreatorStream,
+	incrementContentCreatorStreamCounters,
+	updateContentCreatorStreamPeakViewers,
+	insertContentCreatorStreamLog,
 	markMemberRatingRole,
 	clearMemberRatingRole,
 	markMemberContentCreatorRole,

@@ -1,4 +1,4 @@
-import { mysqlTable, int, varchar, text, boolean, datetime, mysqlEnum, json, decimal, tinyint, uniqueIndex, index } from 'drizzle-orm/mysql-core';
+import { mysqlTable, int, varchar, text, boolean, datetime, mysqlEnum, json, decimal, tinyint, uniqueIndex, index, bigint } from 'drizzle-orm/mysql-core';
 
 export const migrations = mysqlTable('migrations', {
 	id: int('id').primaryKey().autoincrement(),
@@ -446,6 +446,46 @@ export const serverContentCreators = mysqlTable(
 		index('idx_server_content_creator_status').on(t.status),
 		index('idx_server_content_creator_submitted_at').on(t.submitted_at)
 	]
+);
+
+export const serverContentCreatorsStream = mysqlTable(
+	'server_content_creators_stream',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		content_creator_id: int('content_creator_id')
+			.notNull()
+			.references(() => serverContentCreators.id, { onDelete: 'cascade' }),
+		room_id: varchar('room_id', { length: 64 }),
+		status: mysqlEnum('status', ['active', 'ended', 'error']).notNull().default('active'),
+		started_at: datetime('started_at').notNull(),
+		ended_at: datetime('ended_at'),
+		peak_viewers: int('peak_viewers'),
+		total_likes: int('total_likes').notNull().default(0),
+		total_chat_messages: int('total_chat_messages').notNull().default(0),
+		total_gifts: int('total_gifts').notNull().default(0),
+		total_follows: int('total_follows').notNull().default(0),
+		total_shares: int('total_shares').notNull().default(0),
+		unique_chatters: int('unique_chatters'),
+		discord_channel_id: varchar('discord_channel_id', { length: 32 }),
+		discord_thread_id: varchar('discord_thread_id', { length: 32 }),
+		error_message: text('error_message'),
+		updated_at: datetime('updated_at')
+	},
+	(t) => [index('idx_cc_stream_creator_started').on(t.content_creator_id, t.started_at), index('idx_cc_stream_status').on(t.status)]
+);
+
+export const serverContentCreatorsStreamLog = mysqlTable(
+	'server_content_creators_stream_log',
+	{
+		id: bigint('id', { mode: 'number' }).primaryKey().autoincrement(),
+		stream_id: int('stream_id')
+			.notNull()
+			.references(() => serverContentCreatorsStream.id, { onDelete: 'cascade' }),
+		event_type: varchar('event_type', { length: 64 }).notNull(),
+		occurred_at: datetime('occurred_at').notNull(),
+		payload: json('payload')
+	},
+	(t) => [index('idx_cc_stream_log_stream_time').on(t.stream_id, t.occurred_at), index('idx_cc_stream_log_event').on(t.stream_id, t.event_type)]
 );
 
 export const accountInvites = mysqlTable('account_invites', {

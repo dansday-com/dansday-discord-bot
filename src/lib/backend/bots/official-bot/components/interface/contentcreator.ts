@@ -16,10 +16,19 @@ import { logger, parseMySQLDateTimeUtc } from '../../../../../utils/index.js';
 
 const liveWatchers = new Map<string, any>();
 const liveStatus = new Map<string, boolean>();
+type LiveSessionMeta = {
+	streamId: number;
+	contentCreatorId: number;
+	tiktokUsername: string;
+	discordMemberId: string;
+};
+const liveSessionMeta = new Map<string, LiveSessionMeta>();
+const liveDigest = new Map<string, { chat: number; like: number; gift: number; follow: number; share: number }>();
 let watchInterval: NodeJS.Timeout | null = null;
+let digestInterval: NodeJS.Timeout | null = null;
 let syncLiveWatchersInFlight = false;
-let connectionCtor: any = null;
-let ctorLoadAttempted = false;
+let tiktokModule: { Ctor: any; WebcastEvent: Record<string, string>; ControlEvent: Record<string, string> } | null = null;
+let tiktokLoadFailed = false;
 
 function normalizeTikTokUsername(raw: string) {
 	return raw.trim().replace(/^@+/, '').toLowerCase();
@@ -181,20 +190,101 @@ async function showContentCreatorApplyModal(interaction: any) {
 	await interaction.showModal(modal);
 }
 
-async function ensureTikTokCtor() {
-	if (connectionCtor || ctorLoadAttempted) return connectionCtor;
-	ctorLoadAttempted = true;
+async function loadTikTokModule() {
+	if (tiktokModule || tiktokLoadFailed) return tiktokModule;
 	try {
-		const lib = await import('tiktok-live-connector');
-		connectionCtor = lib?.WebcastPushConnection || lib?.default?.WebcastPushConnection || null;
+		const lib: any = await import('tiktok-live-connector');
+		const Ctor = lib?.WebcastPushConnection || lib?.default?.WebcastPushConnection || null;
+		if (!Ctor) {
+			tiktokLoadFailed = true;
+			return null;
+		}
+		tiktokModule = {
+			Ctor,
+			WebcastEvent: lib.WebcastEvent || {},
+			ControlEvent: lib.ControlEvent || {}
+		};
 	} catch (error: any) {
+		tiktokLoadFailed = true;
 		await logger.log(`⚠️ TikTok connector unavailable: ${error.message}`);
-		connectionCtor = null;
+		return null;
 	}
-	return connectionCtor;
+	return tiktokModule;
 }
 
-async function broadcastLiveStart(guild: any, discordMemberId: string, tiktokUsername: string) {
+function liveKey(guildId: string, discordMemberId: string) {
+	return `${guildId}:${discordMemberId}`;
+}
+
+function noteLiveDigest(key: string, field: 'chat' | 'like' | 'gift' | 'follow' | 'share', amount = 1) {
+	if (!liveSessionMeta.has(key)) return;
+	const cur = liveDigest.get(key) || { chat: 0, like: 0, gift: 0, follow: 0, share: 0 };
+	cur[field] += amount;
+	liveDigest.set(key, cur);
+}
+
+function guessViewerCount(data: any): number | null {
+	const candidates = [data?.viewerCount, data?.userCount, data?.totalUser, data?.total, data?.memberCount, data?.data?.viewerCount];
+	for (const c of candidates) {
+		const n = Number(c);
+		if (Number.isFinite(n) && n >= 0) return Math.floor(n);
+	}
+	return null;
+}
+
+async function flushLiveDigest(client: any, key: string) {
+	const meta = liveSessionMeta.get(key);
+	if (!meta) {
+		liveDigest.delete(key);
+		return;
+	}
+	const d = liveDigest.get(key);
+	if (!d || (d.chat === 0 && d.like === 0 && d.gift === 0 && d.follow === 0 && d.share === 0)) return;
+
+	liveDigest.set(key, { chat: 0, like: 0, gift: 0, follow: 0, share: 0 });
+
+	const guildId = key.split(':')[0];
+	const guild = client.guilds.cache.get(guildId) || (await client.guilds.fetch(guildId).catch(() => null));
+	if (!guild) return;
+	const targetChannelId = await CONTENT_CREATOR.getTargetChannel(guild.id).catch(() => null);
+	if (!targetChannelId) return;
+	const channel = guild.channels.cache.get(targetChannelId) || (await guild.channels.fetch(targetChannelId).catch(() => null));
+	if (!channel || !channel.isTextBased()) return;
+
+	const parts = [`📊 **Live** · <@${meta.discordMemberId}> · @${meta.tiktokUsername} · #${meta.streamId}`];
+	if (d.chat) parts.push(`💬 +${d.chat}`);
+	if (d.like) parts.push(`❤️ +${d.like}`);
+	if (d.gift) parts.push(`🎁 +${d.gift}`);
+	if (d.follow) parts.push(`➕ +${d.follow}`);
+	if (d.share) parts.push(`🔁 +${d.share}`);
+	await channel.send({ content: parts.join(' · ').slice(0, 2000) }).catch(() => null);
+}
+
+async function finalizeLiveStream(client: any, key: string, status: 'ended' | 'error', errorMessage: string | null = null) {
+	const meta = liveSessionMeta.get(key);
+	if (!meta) {
+		liveDigest.delete(key);
+		return;
+	}
+	await flushLiveDigest(client, key);
+	liveSessionMeta.delete(key);
+	liveStatus.set(key, false);
+	liveDigest.delete(key);
+	const guildId = key.split(':')[0];
+	try {
+		await db.endContentCreatorStream(meta.streamId, status, errorMessage);
+		await db.insertContentCreatorStreamLog(meta.streamId, status === 'ended' ? 'stream_end' : 'stream_error', {
+			status,
+			errorMessage: errorMessage || undefined
+		});
+	} catch (e: any) {
+		await logger.log(`❌ finalizeLiveStream DB: ${e.message}`);
+	}
+	const guild = client.guilds.cache.get(guildId) || (await client.guilds.fetch(guildId).catch(() => null));
+	if (guild) await broadcastLiveEnd(guild, meta.discordMemberId, meta.tiktokUsername, meta.streamId, status);
+}
+
+async function broadcastLiveStart(guild: any, discordMemberId: string, tiktokUsername: string, streamId: number) {
 	const targetChannelId = await CONTENT_CREATOR.getTargetChannel(guild.id).catch(() => null);
 	if (!targetChannelId) return;
 	const channel = guild.channels.cache.get(targetChannelId) || (await guild.channels.fetch(targetChannelId).catch(() => null));
@@ -208,18 +298,87 @@ async function broadcastLiveStart(guild: any, discordMemberId: string, tiktokUse
 		.setTitle(t('contentCreator.channelEmbed.liveTitle', 'en'))
 		.setDescription(t('contentCreator.channelEmbed.liveDescription', 'en', { mention }))
 		.setTimestamp();
-	if (embedConfig?.FOOTER) embed.setFooter({ text: embedConfig.FOOTER });
+	const streamFooter = `Stream #${streamId}`;
+	if (embedConfig?.FOOTER) embed.setFooter({ text: `${embedConfig.FOOTER} · ${streamFooter}`.slice(0, 2048) });
+	else embed.setFooter({ text: streamFooter });
 	const watchButton = new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(liveUrl).setLabel(t('contentCreator.channelEmbed.liveWatchButton', 'en'));
 	const row = new ActionRowBuilder<ButtonBuilder>().addComponents(watchButton);
 	await channel.send({ embeds: [embed], components: [row] }).catch(() => null);
+}
+
+async function broadcastLiveEnd(guild: any, discordMemberId: string, tiktokUsername: string, streamId: number, status: 'ended' | 'error') {
+	const targetChannelId = await CONTENT_CREATOR.getTargetChannel(guild.id).catch(() => null);
+	if (!targetChannelId) return;
+	const channel = guild.channels.cache.get(targetChannelId) || (await guild.channels.fetch(targetChannelId).catch(() => null));
+	if (!channel || !channel.isTextBased()) return;
+	const embedConfig = await getEmbedConfig(guild.id).catch(() => null);
+	const mention = `<@${discordMemberId}>`;
+	const title = status === 'ended' ? '⚫ Live ended' : '⚠️ Live connection error';
+	const embed = new EmbedBuilder()
+		.setColor(status === 'ended' ? 0x64748b : 0xef4444)
+		.setTitle(title)
+		.setDescription(`${mention} · @${tiktokUsername}\nStream session **#${streamId}**`)
+		.setTimestamp();
+	if (embedConfig?.FOOTER) embed.setFooter({ text: embedConfig.FOOTER });
+	await channel.send({ embeds: [embed] }).catch(() => null);
+}
+
+async function handleStreamTikTokEvent(key: string, eventType: string, data: any) {
+	const meta = liveSessionMeta.get(key);
+	if (!meta) return;
+	try {
+		await db.insertContentCreatorStreamLog(meta.streamId, eventType, data);
+	} catch (e: any) {
+		await logger.log(`⚠️ stream log: ${e.message}`);
+	}
+	try {
+		if (eventType === 'chat') {
+			await db.incrementContentCreatorStreamCounters(meta.streamId, { chat: 1 });
+			noteLiveDigest(key, 'chat');
+		} else if (eventType === 'like') {
+			const inc = Math.max(1, Math.floor(Number(data?.likeCount) || Number(data?.count) || 1));
+			await db.incrementContentCreatorStreamCounters(meta.streamId, { like: inc });
+			noteLiveDigest(key, 'like', inc);
+		} else if (eventType === 'gift') {
+			const inc = Math.max(1, Math.floor(Number(data?.repeatCount) || Number(data?.comboCount) || 1));
+			await db.incrementContentCreatorStreamCounters(meta.streamId, { gift: inc });
+			noteLiveDigest(key, 'gift', inc);
+		} else if (eventType === 'follow') {
+			await db.incrementContentCreatorStreamCounters(meta.streamId, { follow: 1 });
+			noteLiveDigest(key, 'follow');
+		} else if (eventType === 'share') {
+			await db.incrementContentCreatorStreamCounters(meta.streamId, { share: 1 });
+			noteLiveDigest(key, 'share');
+		}
+	} catch (e: any) {
+		await logger.log(`⚠️ stream counters: ${e.message}`);
+	}
+	if (eventType === 'roomUser') {
+		const pv = guessViewerCount(data);
+		if (pv != null) await db.updateContentCreatorStreamPeakViewers(meta.streamId, pv).catch(() => null);
+	}
 }
 
 async function syncLiveWatchers(client: any) {
 	if (syncLiveWatchersInFlight) return;
 	syncLiveWatchersInFlight = true;
 	try {
-		const Ctor = await ensureTikTokCtor();
-		if (!Ctor) return;
+		const mod = await loadTikTokModule();
+		if (!mod) return;
+		const { Ctor, WebcastEvent: WE, ControlEvent: CE } = mod;
+		const chatEv = WE.CHAT || 'chat';
+		const likeEv = WE.LIKE || 'like';
+		const giftEv = WE.GIFT || 'gift';
+		const followEv = WE.FOLLOW || 'follow';
+		const shareEv = WE.SHARE || 'share';
+		const roomUserEv = WE.ROOM_USER || 'roomUser';
+		const memberEv = WE.MEMBER || 'member';
+		const socialEv = WE.SOCIAL || 'social';
+		const questionEv = WE.QUESTION_NEW || 'questionNew';
+		const introEv = WE.LIVE_INTRO || 'liveIntro';
+		const streamEndEv = WE.STREAM_END || 'streamEnd';
+		const connectedEv = CE.CONNECTED || 'connected';
+		const disconnectedEv = CE.DISCONNECTED || 'disconnected';
 
 		for (const guild of client.guilds.cache.values()) {
 			const botConfig = getBotConfig();
@@ -232,31 +391,76 @@ async function syncLiveWatchers(client: any) {
 			for (const creator of creators) {
 				const username = normalizeTikTokUsername(creator.tiktok_username || '');
 				if (!username || !creator.discord_member_id) continue;
-				const key = `${guild.id}:${creator.discord_member_id}`;
+				const key = liveKey(guild.id, String(creator.discord_member_id));
 				activeKeys.add(key);
 				if (liveWatchers.has(key)) continue;
 
 				try {
-					const conn = new Ctor(username, { processInitialData: false, enableWebsocketUpgrade: true });
-					conn.on('streamStart', async () => {
-						if (liveStatus.get(key)) return;
-						liveStatus.set(key, true);
-						await broadcastLiveStart(guild, creator.discord_member_id, username);
+					const conn = new Ctor(username, { processInitialData: false });
+
+					conn.on(connectedEv, async (state: any) => {
+						if (liveSessionMeta.has(key)) return;
+						try {
+							const roomId = state?.roomId != null ? String(state.roomId) : null;
+							const streamId = await db.createContentCreatorStream(Number(creator.id), roomId);
+							await db.insertContentCreatorStreamLog(streamId, 'connected', {
+								roomId: state?.roomId,
+								isConnected: state?.isConnected
+							});
+							liveSessionMeta.set(key, {
+								streamId,
+								contentCreatorId: Number(creator.id),
+								tiktokUsername: username,
+								discordMemberId: String(creator.discord_member_id)
+							});
+							liveDigest.set(key, { chat: 0, like: 0, gift: 0, follow: 0, share: 0 });
+							liveStatus.set(key, true);
+							await broadcastLiveStart(guild, String(creator.discord_member_id), username, streamId);
+						} catch (e: any) {
+							await logger.log(`❌ TikTok CONNECTED: ${e.message}`);
+						}
 					});
-					conn.on('streamEnd', () => liveStatus.set(key, false));
-					conn.on('disconnected', () => liveStatus.set(key, false));
-					await conn.connect().catch(() => null);
-					liveWatchers.set(key, conn);
+
+					conn.on(streamEndEv, async () => {
+						await finalizeLiveStream(client, key, 'ended');
+					});
+
+					conn.on(disconnectedEv, async () => {
+						liveWatchers.delete(key);
+						await finalizeLiveStream(client, key, 'ended');
+					});
+
+					conn.on(chatEv, (data: any) => void handleStreamTikTokEvent(key, 'chat', data));
+					conn.on(likeEv, (data: any) => void handleStreamTikTokEvent(key, 'like', data));
+					conn.on(giftEv, (data: any) => void handleStreamTikTokEvent(key, 'gift', data));
+					conn.on(followEv, (data: any) => void handleStreamTikTokEvent(key, 'follow', data));
+					conn.on(shareEv, (data: any) => void handleStreamTikTokEvent(key, 'share', data));
+					conn.on(roomUserEv, (data: any) => void handleStreamTikTokEvent(key, 'roomUser', data));
+					conn.on(memberEv, (data: any) => void handleStreamTikTokEvent(key, 'member', data));
+					conn.on(socialEv, (data: any) => void handleStreamTikTokEvent(key, 'social', data));
+					conn.on(questionEv, (data: any) => void handleStreamTikTokEvent(key, 'questionNew', data));
+					conn.on(introEv, (data: any) => void handleStreamTikTokEvent(key, 'liveIntro', data));
+
+					try {
+						await conn.connect();
+						liveWatchers.set(key, conn);
+					} catch {
+						try {
+							await conn.disconnect?.();
+						} catch (_) {}
+					}
 				} catch (_) {}
 			}
 
 			for (const [key, conn] of liveWatchers.entries()) {
 				if (!key.startsWith(`${guild.id}:`) || activeKeys.has(key)) continue;
+				if (liveSessionMeta.has(key)) await finalizeLiveStream(client, key, 'ended');
 				try {
 					await conn.disconnect?.();
 				} catch (_) {}
 				liveWatchers.delete(key);
 				liveStatus.delete(key);
+				liveDigest.delete(key);
 			}
 		}
 	} finally {
@@ -847,8 +1051,14 @@ export async function handleContentCreatorReject(interaction: any) {
 
 export function init(client: any) {
 	if (watchInterval) clearInterval(watchInterval);
+	if (digestInterval) clearInterval(digestInterval);
 	watchInterval = setInterval(() => {
 		syncLiveWatchers(client).catch(() => null);
+	}, LIVE_WATCHER_RESYNC_MS);
+	digestInterval = setInterval(() => {
+		for (const k of [...liveSessionMeta.keys()]) {
+			flushLiveDigest(client, k).catch(() => null);
+		}
 	}, LIVE_WATCHER_RESYNC_MS);
 	syncLiveWatchers(client).catch(() => null);
 }

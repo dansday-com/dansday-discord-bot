@@ -5,7 +5,7 @@ async function getGuildPermissions(guildId: string) {
 	try {
 		return await PERMISSIONS.getPermissions(guildId);
 	} catch (_) {
-		return { ADMIN_ROLES: [], STAFF_ROLES: [], SUPPORTER_ROLES: [], MEMBER_ROLES: [] };
+		return { ADMIN_ROLES: [], STAFF_ROLES: [], SUPPORTER_ROLES: [], MEMBER_ROLES: [], CONTENT_CREATOR_ROLES: [] };
 	}
 }
 
@@ -29,16 +29,23 @@ async function isSupporter(member: any) {
 	return await PERMISSIONS.hasAnyRole(member, perms.SUPPORTER_ROLES);
 }
 
+async function isContentCreator(member: any) {
+	const perms = await getGuildPermissions(member.guild.id);
+	return await PERMISSIONS.hasAnyRole(member, perms.CONTENT_CREATOR_ROLES);
+}
+
 export async function hasPermission(member: any, action: string) {
 	const isAdminMember = await isAdmin(member);
 	const isStaffMember = await isStaff(member);
 	const isSupporterMember = await isSupporter(member);
 	const isMemberRole = await isMember(member);
+	const isContentCreatorRole = await isContentCreator(member);
 
 	if (isAdminMember) return true;
 	if (isStaffMember) return action !== 'setup';
 	if (action === 'send_message') return isStaffMember || isAdminMember;
 	if (action === 'custom_supporter_role') return isSupporterMember || isStaffMember || isAdminMember;
+	if (action === 'content_creator') return isMemberRole || isSupporterMember || isStaffMember || isAdminMember || isContentCreatorRole;
 	if (['feedback', 'afk', 'leveling', 'giveaway', 'settings', 'staff_report', 'notifications'].includes(action)) {
 		return isMemberRole || isSupporterMember || isStaffMember || isAdminMember;
 	}
@@ -72,12 +79,13 @@ export async function getRequiredRolesForAction(guild: any, action: string) {
 			addRoles(perms.ADMIN_ROLES);
 			return roleNames.length > 0 ? roleNames : ['Supporter, Staff, or Admin'];
 		}
-		if (['feedback', 'afk', 'leveling', 'giveaway', 'settings', 'staff_report', 'notifications', 'menu'].includes(action)) {
+		if (['feedback', 'afk', 'leveling', 'giveaway', 'settings', 'staff_report', 'notifications', 'menu', 'content_creator'].includes(action)) {
 			addRoles(perms.MEMBER_ROLES);
+			addRoles(perms.CONTENT_CREATOR_ROLES);
 			addRoles(perms.SUPPORTER_ROLES);
 			addRoles(perms.STAFF_ROLES);
 			addRoles(perms.ADMIN_ROLES);
-			return roleNames.length > 0 ? roleNames : ['Member, Supporter, Staff, or Admin'];
+			return roleNames.length > 0 ? roleNames : ['Member, Content Creator, Supporter, Staff, or Admin'];
 		}
 		return ['Unknown'];
 	} catch (_) {
@@ -98,6 +106,7 @@ export async function getPermissionDeniedMessage(guild: any, action: string, use
 		giveaway: 'Giveaway',
 		settings: 'Settings',
 		staff_report: 'Staff Report',
+		content_creator: 'Content Creator',
 		notifications: 'Notifications',
 		menu: 'Menu',
 		setup: 'Setup'

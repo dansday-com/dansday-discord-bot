@@ -423,6 +423,21 @@ export async function getNotificationRoleDbIds(serverId: any) {
 	return new Set(rows.map((r) => r.notification_role_id).filter(Boolean));
 }
 
+export async function getContentCreatorRoleDbIds(serverId: any) {
+	await initializeDatabase();
+	const permissionsSettings = await getServerSettings(serverId, 'permissions').catch(() => null);
+	const contentCreatorSettings = await getServerSettings(serverId, 'content_creator').catch(() => null);
+	const roleIds = new Set<string>(
+		[...((permissionsSettings as any)?.settings?.content_creator_roles || []), (contentCreatorSettings as any)?.settings?.content_creator_role].filter(Boolean)
+	);
+	if (roleIds.size === 0) return new Set<number>();
+	const rows = await db
+		.select({ id: schema.serverRoles.id })
+		.from(schema.serverRoles)
+		.where(and(eq(schema.serverRoles.server_id, Number(serverId)), inArray(schema.serverRoles.discord_role_id, Array.from(roleIds))));
+	return new Set(rows.map((r) => r.id).filter(Boolean));
+}
+
 async function collectGuildSnapshotForUpsert(guild: any) {
 	const iconUrl = guild.iconURL ? guild.iconURL({ dynamic: true }) : null;
 	const discordCreatedAt = guild.createdAt ? toMySQLDateTime(guild.createdAt) : null;
@@ -874,11 +889,13 @@ export async function syncMemberRoles(memberId: any, discordRoleIds: string[], s
 	if (toAdd.length > 0) {
 		const now = toMySQLDateTime();
 		const notificationRoleIds = await getNotificationRoleDbIds(serverId);
+		const contentCreatorRoleIds = await getContentCreatorRoleDbIds(serverId);
 		const values = toAdd.map((roleId) => ({
 			member_id: Number(memberId),
 			role_id: roleId,
 			is_custom: false,
 			is_notification: notificationRoleIds.has(roleId),
+			is_content_creator: contentCreatorRoleIds.has(roleId),
 			created_at: now as any
 		}));
 		await db.insert(schema.serverMemberRoles).values(values);
@@ -2186,22 +2203,98 @@ export async function getStaffRatingAggregate(serverId: any, staffMemberId: any)
 export async function getStaffReportById(serverId: any, reportId: any) {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
-		SELECT sr.*, reporter.discord_member_id AS reporter_discord_id, staff.discord_member_id AS staff_discord_id
+		SELECT sr.*, reporter.discord_member_id AS reporter_discord_id, staff.discord_member_id AS staff_discord_id, reviewer.discord_member_id AS reviewer_discord_id
 		FROM server_staff_reports sr
 		INNER JOIN server_members reporter ON sr.reporter_member_id = reporter.id
 		INNER JOIN server_members staff ON sr.reported_staff_id = staff.id
+		LEFT JOIN server_members reviewer ON sr.reviewed_by_member_id = reviewer.id
 		WHERE reporter.server_id = ${Number(serverId)} AND sr.id = ${Number(reportId)}
 		LIMIT 1
 	`);
 	return (rows[0] as unknown as any[])[0] || null;
 }
 
-export async function updateStaffReportStatus(reportId: any, status: string) {
+export async function updateStaffReportStatus(reportId: any, status: string, reviewedByMemberId?: any) {
 	await initializeDatabase();
+	const now = toMySQLDateTime();
 	await db
 		.update(schema.serverStaffReports)
-		.set({ status: status as any })
+		.set({
+			status: status as any,
+			reviewed_by_member_id: reviewedByMemberId ? Number(reviewedByMemberId) : null,
+			reviewed_at: now as any
+		})
 		.where(eq(schema.serverStaffReports.id, Number(reportId)));
+}
+
+export async function createContentCreatorApplication(_serverId: any, memberId: any, tiktokUsername: string, reason: string) {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	const result = await db.insert(schema.serverContentCreators).values({
+		member_id: Number(memberId),
+		tiktok_username: tiktokUsername,
+		reason,
+		status: 'pending',
+		submitted_at: now as any
+	});
+	return (result[0] as any).insertId;
+}
+
+export async function getLastContentCreatorApplication(serverId: any, memberId: any) {
+	await initializeDatabase();
+	const rows = await db
+		.select({ application: schema.serverContentCreators })
+		.from(schema.serverContentCreators)
+		.innerJoin(schema.serverMembers, eq(schema.serverContentCreators.member_id, schema.serverMembers.id))
+		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), eq(schema.serverContentCreators.member_id, Number(memberId))))
+		.orderBy(desc(schema.serverContentCreators.submitted_at))
+		.limit(1);
+	return rows[0]?.application || null;
+}
+
+export async function getContentCreatorApplicationById(serverId: any, applicationId: any) {
+	await initializeDatabase();
+	const rows = await db.execute(sql`
+		SELECT cca.*, applicant.discord_member_id AS applicant_discord_id, reviewer.discord_member_id AS reviewer_discord_id
+		FROM server_content_creators cca
+		INNER JOIN server_members applicant ON cca.member_id = applicant.id
+		LEFT JOIN server_members reviewer ON cca.reviewed_by_member_id = reviewer.id
+		WHERE applicant.server_id = ${Number(serverId)} AND cca.id = ${Number(applicationId)}
+		LIMIT 1
+	`);
+	return (rows[0] as unknown as any[])[0] || null;
+}
+
+export async function updateContentCreatorApplicationStatus(applicationId: any, status: 'pending' | 'approved' | 'rejected', reviewedByMemberId?: any) {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	await db
+		.update(schema.serverContentCreators)
+		.set({
+			status: status as any,
+			reviewed_by_member_id: reviewedByMemberId ? Number(reviewedByMemberId) : null,
+			reviewed_at: now as any
+		})
+		.where(eq(schema.serverContentCreators.id, Number(applicationId)));
+}
+
+export async function getApprovedContentCreators(serverId: any) {
+	await initializeDatabase();
+	const rows = await db.execute(sql`
+		SELECT cca.id, cca.member_id, cca.tiktok_username, cca.reviewed_at, sm.discord_member_id
+		FROM server_content_creators cca
+		INNER JOIN server_members sm ON cca.member_id = sm.id
+		WHERE sm.server_id = ${Number(serverId)}
+		  AND cca.status = 'approved'
+		  AND cca.id IN (
+			SELECT MAX(i.id)
+			FROM server_content_creators i
+			WHERE i.member_id = cca.member_id
+			GROUP BY i.member_id
+		  )
+		ORDER BY cca.reviewed_at DESC, cca.id DESC
+	`);
+	return (rows[0] as unknown as any[]) || [];
 }
 
 export async function createFeedback(_serverId: any, memberId: any, description: string, isAnonymous: boolean) {
@@ -2280,6 +2373,28 @@ export async function clearMemberRatingRole(staffMemberId: any) {
 		.where(eq(schema.serverMemberRoles.member_id, Number(staffMemberId)));
 }
 
+export async function markMemberContentCreatorRole(serverId: any, memberId: any, discordRoleId: string) {
+	await initializeDatabase();
+	if (!discordRoleId) return;
+	const roleRows = await db
+		.select({ id: schema.serverRoles.id })
+		.from(schema.serverRoles)
+		.where(and(eq(schema.serverRoles.server_id, Number(serverId)), eq(schema.serverRoles.discord_role_id, discordRoleId)))
+		.limit(1);
+	if (!roleRows[0]) return;
+	const now = toMySQLDateTime();
+	await db
+		.insert(schema.serverMemberRoles)
+		.values({
+			member_id: Number(memberId),
+			role_id: roleRows[0].id,
+			is_custom: false,
+			is_content_creator: true,
+			created_at: now as any
+		})
+		.onDuplicateKeyUpdate({ set: { is_content_creator: true } });
+}
+
 export async function getAllStaffRatings(serverId: any) {
 	await initializeDatabase();
 	return db
@@ -2338,6 +2453,7 @@ export default {
 	getNotificationRolesWithCategory,
 	getNotificationRoleByChannel,
 	getNotificationRoleDbIds,
+	getContentCreatorRoleDbIds,
 	upsertNotificationRole,
 	deleteNotificationRole,
 	upsertServer,
@@ -2438,8 +2554,14 @@ export default {
 	getStaffRatingAggregate,
 	getStaffReportById,
 	updateStaffReportStatus,
+	createContentCreatorApplication,
+	getLastContentCreatorApplication,
+	getContentCreatorApplicationById,
+	updateContentCreatorApplicationStatus,
+	getApprovedContentCreators,
 	markMemberRatingRole,
 	clearMemberRatingRole,
+	markMemberContentCreatorRole,
 	getAllStaffRatings,
 	getStaffRatingRole,
 	createFeedback,

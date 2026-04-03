@@ -14,6 +14,7 @@ import giveaway from './components/interface/giveaway.js';
 import staffReportRating from './components/staffreportrating.js';
 import sync from './components/sync.js';
 import leveling from './components/leveling.js';
+import contentCreator from './components/interface/contentcreator.js';
 
 let BOT_TOKEN: string | undefined;
 (async () => {
@@ -59,6 +60,7 @@ client.on('clientReady', async () => {
 	giveaway.init(client);
 	staffReportRating.init(client);
 	leveling.init(client);
+	contentCreator.init(client);
 
 	await sync.init(client, BOT_TOKEN);
 	webhook.startWebhookServer(client, sync.getBotId());

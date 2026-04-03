@@ -749,6 +749,8 @@ async function handleStaffReportDecision(interaction, decision) {
 			return;
 		}
 
+		const moderatorDbMember = await db.upsertMember(server.id, moderator);
+
 		if (report.status !== 'pending') {
 			await interaction.editReply({ content: '⚠️ This report has already been processed.' }).catch(() => null);
 			if (interaction.message) {
@@ -767,7 +769,7 @@ async function handleStaffReportDecision(interaction, decision) {
 		let color;
 
 		if (decision === 'approve') {
-			await db.updateStaffReportStatus(report.id, 'approved');
+			await db.updateStaffReportStatus(report.id, 'approved', moderatorDbMember.id);
 			const aggregate = await db.getStaffRatingAggregate(server.id, report.reported_staff_id);
 			await db.upsertStaffRating(server.id, report.reported_staff_id, aggregate.average_rating || report.rating, aggregate.total_reports);
 			await updateStaffRatingRole(
@@ -793,7 +795,7 @@ async function handleStaffReportDecision(interaction, decision) {
 			replyMessage = `✅ Report #${report.id} approved.`;
 			color = 0x22c55e;
 		} else {
-			await db.updateStaffReportStatus(report.id, 'rejected');
+			await db.updateStaffReportStatus(report.id, 'rejected', moderatorDbMember.id);
 			const categoryLabelForDM = await getCategoryLabel(guild.id, report.reporter_discord_id, report.category);
 			await notifyReporterOfDecision(guild, report, 'staffReport.dm.rejected', categoryLabelForDM);
 			statusText = `Rejected by <@${interaction.user.id}>`;

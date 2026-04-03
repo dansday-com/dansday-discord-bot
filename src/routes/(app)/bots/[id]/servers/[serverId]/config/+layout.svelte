@@ -14,6 +14,7 @@
 		{ label: 'Permissions', icon: 'fa-shield-halved', iconClass: 'text-blue-400', href: '/permissions' },
 		{ label: 'Custom Supporter Role', icon: 'fa-star', iconClass: 'text-yellow-400', href: '/custom-supporter-role' },
 		{ label: 'Staff Report & Rating', icon: 'fa-clipboard-check', iconClass: 'text-orange-400', href: '/staff-report' },
+		{ label: 'Content Creator', icon: 'fa-video', iconClass: 'text-pink-400', href: '/content-creator' },
 		{ label: 'Notifications', icon: 'fa-bell', iconClass: 'text-rose-400', href: '/notifications' },
 		{ label: 'Feedback', icon: 'fa-comment-dots', iconClass: 'text-cyan-400', href: '/feedback' },
 		{ label: 'Giveaway', icon: 'fa-gift', iconClass: 'text-pink-400', href: '/giveaway' },

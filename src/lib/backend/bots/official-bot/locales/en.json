@@ -289,6 +289,30 @@
 			"permissionDenied": "❌ **Permission Denied**\\n\\nYou need admin permissions to approve or reject staff reports."
 		}
 	},
+	"contentCreator": {
+		"button": "🎬 Content Creator",
+		"modal": {
+			"title": "Apply as Content Creator",
+			"usernameLabel": "TikTok Username",
+			"usernamePlaceholder": "example: dansday",
+			"reasonLabel": "Why do you want to become a content creator?",
+			"reasonPlaceholder": "Tell us briefly why you should be accepted..."
+		},
+		"submitted": "✅ Your content creator application for **{username}** was submitted and is waiting for staff approval.",
+		"dm": {
+			"approved": "✅ Your content creator application in **{server}** was approved.\\n\\nTikTok: **{username}**\\nYour Content Creator role has been assigned.",
+			"rejected": "❌ Your content creator application in **{server}** was not approved this time.\\n\\nTikTok: **{username}**\\nYou can apply again later."
+		},
+		"errors": {
+			"notConfigured": "❌ Content creator admission is not configured for this server.",
+			"invalidUsername": "❌ TikTok username is invalid. Use letters, numbers, dots, and underscores only.",
+			"reasonRequired": "❌ Please provide your reason for becoming a content creator.",
+			"pendingExists": "❌ You already have a pending content creator application.",
+			"cooldown": "❌ You must wait **{days} day(s)** before submitting another content creator application.",
+			"submitFailed": "❌ Failed to submit content creator application: {error}",
+			"permissionDenied": "❌ You need admin permissions to approve or reject content creator applications."
+		}
+	},
 	"notifications": {
 		"button": "🔔 Notifications",
 		"title": "🔔 Notification Preferences",

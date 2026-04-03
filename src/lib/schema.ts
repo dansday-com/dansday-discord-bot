@@ -275,6 +275,7 @@ export const serverMemberRoles = mysqlTable(
 		is_custom: boolean('is_custom').default(false),
 		is_rating: boolean('is_rating').default(false),
 		is_notification: boolean('is_notification').default(false),
+		is_content_creator: boolean('is_content_creator').default(false),
 		created_at: datetime('created_at').notNull()
 	},
 	(t) => [
@@ -398,12 +399,15 @@ export const serverStaffReports = mysqlTable(
 		description: text('description'),
 		is_anonymous: boolean('is_anonymous').default(false),
 		status: mysqlEnum('status', ['pending', 'approved', 'rejected']).default('pending'),
+		reviewed_by_member_id: int('reviewed_by_member_id').references(() => serverMembers.id, { onDelete: 'set null' }),
+		reviewed_at: datetime('reviewed_at'),
 		reported_at: datetime('reported_at').notNull()
 	},
 	(t) => [
 		index('idx_server_staff_reports_staff').on(t.reported_staff_id),
 		index('idx_server_staff_reports_pair').on(t.reporter_member_id, t.reported_staff_id),
-		index('idx_server_staff_reports_status').on(t.status)
+		index('idx_server_staff_reports_status').on(t.status),
+		index('idx_server_staff_reports_reviewer').on(t.reviewed_by_member_id)
 	]
 );
 
@@ -419,6 +423,27 @@ export const serverFeedback = mysqlTable(
 		submitted_at: datetime('submitted_at').notNull()
 	},
 	(t) => [index('idx_server_feedback_member').on(t.member_id)]
+);
+
+export const serverContentCreators = mysqlTable(
+	'server_content_creators',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		member_id: int('member_id')
+			.notNull()
+			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		tiktok_username: varchar('tiktok_username', { length: 100 }).notNull(),
+		reason: text('reason').notNull(),
+		status: mysqlEnum('status', ['pending', 'approved', 'rejected']).default('pending'),
+		reviewed_by_member_id: int('reviewed_by_member_id').references(() => serverMembers.id, { onDelete: 'set null' }),
+		reviewed_at: datetime('reviewed_at'),
+		submitted_at: datetime('submitted_at').notNull()
+	},
+	(t) => [
+		index('idx_server_content_creator_member').on(t.member_id),
+		index('idx_server_content_creator_status').on(t.status),
+		index('idx_server_content_creator_submitted_at').on(t.submitted_at)
+	]
 );
 
 export const accountInvites = mysqlTable('account_invites', {

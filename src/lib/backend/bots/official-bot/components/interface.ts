@@ -1,4 +1,4 @@
-import { getEmbedConfig, getServerForCurrentBot } from '../../../config.js';
+import { CONTENT_CREATOR, getEmbedConfig, getServerForCurrentBot } from '../../../config.js';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
 import { logger } from '../../../../utils/index.js';
 import { hasPermission, getPermissionDeniedMessage } from './permissions.js';
@@ -31,6 +31,7 @@ import {
 	handleStaffReportReject
 } from './interface/staffreportrating.js';
 import { handleNotificationsButton, handleNotificationsSelect } from './interface/notifications.js';
+import { handleContentCreatorButton, handleContentCreatorModal, handleContentCreatorApprove, handleContentCreatorReject } from './interface/contentcreator.js';
 import { translate } from '../i18n.js';
 
 async function handleMenuButton(interaction) {
@@ -123,6 +124,17 @@ async function handleMenuButton(interaction) {
 			new ButtonBuilder()
 				.setCustomId('bot_staff_report')
 				.setLabel(await translate('staffReport.button', interaction.guild.id, interaction.user.id))
+				.setStyle(ButtonStyle.Success)
+		);
+	}
+
+	const contentCreatorRoleId = await CONTENT_CREATOR.getContentCreatorRole(interaction.guild.id).catch(() => null);
+	const alreadyContentCreator = contentCreatorRoleId ? member.roles?.cache?.has(contentCreatorRoleId) : false;
+	if ((await hasPermission(member, 'content_creator')) && !alreadyContentCreator) {
+		buttons.push(
+			new ButtonBuilder()
+				.setCustomId('bot_content_creator')
+				.setLabel(await translate('contentCreator.button', interaction.guild.id, interaction.user.id))
 				.setStyle(ButtonStyle.Success)
 		);
 	}
@@ -242,6 +254,9 @@ export async function handleButtonInteraction(interaction, client) {
 		case 'bot_notifications':
 			await handleNotificationsButton(interaction);
 			break;
+		case 'bot_content_creator':
+			await handleContentCreatorButton(interaction);
+			break;
 		case 'bot_afk':
 			await handleAFKButton(interaction);
 			break;
@@ -274,6 +289,10 @@ export async function handleButtonInteraction(interaction, client) {
 				await handleStaffReportApprove(interaction);
 			} else if (customId.startsWith('staff_report_reject')) {
 				await handleStaffReportReject(interaction);
+			} else if (customId.startsWith('content_creator_approve')) {
+				await handleContentCreatorApprove(interaction);
+			} else if (customId.startsWith('content_creator_reject')) {
+				await handleContentCreatorReject(interaction);
 			} else if (customId.startsWith('giveaway_enter_')) {
 				await handleGiveawayEnterButton(interaction);
 			} else if (customId === 'giveaway_continue_form') {
@@ -421,6 +440,8 @@ function init(client) {
 					await handleAFKModal(interaction);
 				} else if (interaction.customId.startsWith('staff_report_submit')) {
 					await handleStaffReportModal(interaction);
+				} else if (interaction.customId === 'content_creator_apply') {
+					await handleContentCreatorModal(interaction);
 				} else if (interaction.customId.startsWith('giveaway_create')) {
 					await handleGiveawayModal(interaction);
 				} else {

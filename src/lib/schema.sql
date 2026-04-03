@@ -204,6 +204,7 @@ CREATE TABLE IF NOT EXISTS server_member_roles (
     is_custom BOOLEAN DEFAULT FALSE,
     is_rating BOOLEAN DEFAULT FALSE,
     is_notification BOOLEAN DEFAULT FALSE,
+    is_content_creator BOOLEAN DEFAULT FALSE,
     created_at DATETIME NOT NULL,
     UNIQUE KEY unique_member_role (member_id, role_id),
     FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE,
@@ -282,9 +283,12 @@ CREATE TABLE IF NOT EXISTS server_staff_reports (
     description TEXT,
     is_anonymous BOOLEAN DEFAULT 0,
     status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+    reviewed_by_member_id INT NULL,
+    reviewed_at DATETIME NULL,
     reported_at DATETIME NOT NULL,
     FOREIGN KEY (reporter_member_id) REFERENCES server_members(id) ON DELETE CASCADE,
-    FOREIGN KEY (reported_staff_id) REFERENCES server_members(id) ON DELETE CASCADE
+    FOREIGN KEY (reported_staff_id) REFERENCES server_members(id) ON DELETE CASCADE,
+    FOREIGN KEY (reviewed_by_member_id) REFERENCES server_members(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS server_feedback (
@@ -294,6 +298,19 @@ CREATE TABLE IF NOT EXISTS server_feedback (
     is_anonymous BOOLEAN DEFAULT 0,
     submitted_at DATETIME NOT NULL,
     FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS server_content_creators (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    member_id INT NOT NULL,
+    tiktok_username VARCHAR(100) NOT NULL,
+    reason TEXT NOT NULL,
+    status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+    reviewed_by_member_id INT NULL,
+    reviewed_at DATETIME NULL,
+    submitted_at DATETIME NOT NULL,
+    FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE,
+    FOREIGN KEY (reviewed_by_member_id) REFERENCES server_members(id) ON DELETE SET NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_bots_account_id ON bots(account_id);
@@ -337,4 +354,8 @@ CREATE INDEX IF NOT EXISTS idx_server_staff_ratings_member ON server_staff_ratin
 CREATE INDEX IF NOT EXISTS idx_server_staff_reports_staff ON server_staff_reports(reported_staff_id);
 CREATE INDEX IF NOT EXISTS idx_server_staff_reports_pair ON server_staff_reports(reporter_member_id, reported_staff_id);
 CREATE INDEX IF NOT EXISTS idx_server_staff_reports_status ON server_staff_reports(status);
+CREATE INDEX IF NOT EXISTS idx_server_staff_reports_reviewer ON server_staff_reports(reviewed_by_member_id);
 CREATE INDEX IF NOT EXISTS idx_server_feedback_member ON server_feedback(member_id);
+CREATE INDEX IF NOT EXISTS idx_server_content_creator_member ON server_content_creators(member_id);
+CREATE INDEX IF NOT EXISTS idx_server_content_creator_status ON server_content_creators(status);
+CREATE INDEX IF NOT EXISTS idx_server_content_creator_submitted_at ON server_content_creators(submitted_at);

@@ -289,6 +289,30 @@
 			"permissionDenied": "❌ **Izin Ditolak**\\n\\nKamu memerlukan izin admin untuk menyetujui atau menolak laporan staff."
 		}
 	},
+	"contentCreator": {
+		"button": "🎬 Content Creator",
+		"modal": {
+			"title": "Daftar Sebagai Content Creator",
+			"usernameLabel": "Username TikTok",
+			"usernamePlaceholder": "contoh: dansday",
+			"reasonLabel": "Kenapa kamu ingin menjadi content creator?",
+			"reasonPlaceholder": "Jelaskan singkat kenapa kamu layak diterima..."
+		},
+		"submitted": "✅ Pengajuan content creator kamu untuk **{username}** sudah dikirim dan menunggu persetujuan staff.",
+		"dm": {
+			"approved": "✅ Pengajuan content creator kamu di **{server}** disetujui.\\n\\nTikTok: **{username}**\\nRole Content Creator sudah diberikan.",
+			"rejected": "❌ Pengajuan content creator kamu di **{server}** belum disetujui kali ini.\\n\\nTikTok: **{username}**\\nKamu bisa daftar lagi nanti."
+		},
+		"errors": {
+			"notConfigured": "❌ Sistem pengajuan content creator belum dikonfigurasi untuk server ini.",
+			"invalidUsername": "❌ Username TikTok tidak valid. Gunakan huruf, angka, titik, dan garis bawah saja.",
+			"reasonRequired": "❌ Tolong isi alasan kenapa kamu ingin menjadi content creator.",
+			"pendingExists": "❌ Kamu masih punya pengajuan content creator yang pending.",
+			"cooldown": "❌ Kamu harus menunggu **{days} hari** sebelum mengirim pengajuan content creator lagi.",
+			"submitFailed": "❌ Gagal mengirim pengajuan content creator: {error}",
+			"permissionDenied": "❌ Kamu butuh izin admin untuk menyetujui atau menolak pengajuan content creator."
+		}
+	},
 	"notifications": {
 		"button": "🔔 Notifikasi",
 		"title": "🔔 Preferensi Notifikasi",

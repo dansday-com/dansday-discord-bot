@@ -216,7 +216,8 @@ export const PERMISSIONS = {
 			ADMIN_ROLES: settings.settings.admin_roles || [],
 			STAFF_ROLES: settings.settings.staff_roles || [],
 			SUPPORTER_ROLES: settings.settings.supporter_roles || [],
-			MEMBER_ROLES: settings.settings.member_roles || []
+			MEMBER_ROLES: settings.settings.member_roles || [],
+			CONTENT_CREATOR_ROLES: settings.settings.content_creator_roles || []
 		};
 	},
 
@@ -502,6 +503,42 @@ export const STAFF_RATING = {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting staff rating pending role');
 		const config = await STAFF_RATING.getConfig(guildId);
+		return config?.pending_role || null;
+	}
+};
+
+export const CONTENT_CREATOR = {
+	async getConfig(guildId: string) {
+		requireBotConfig();
+		requireGuildId(guildId, 'getting content creator config');
+		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, 'content_creator');
+		return settings?.settings || null;
+	},
+
+	async getAdmissionChannel(guildId: string) {
+		const config = await CONTENT_CREATOR.getConfig(guildId);
+		return config?.admission_channel_id || null;
+	},
+
+	async getTargetChannel(guildId: string) {
+		const config = await CONTENT_CREATOR.getConfig(guildId);
+		if (config?.target_channel_id) return config.target_channel_id;
+		return await getMainChannel(guildId);
+	},
+
+	async getContentCreatorRole(guildId: string) {
+		const config = await CONTENT_CREATOR.getConfig(guildId);
+		return config?.content_creator_role || null;
+	},
+
+	async getCooldownDays(guildId: string) {
+		const config = await CONTENT_CREATOR.getConfig(guildId);
+		const rawDays = Number(config?.cooldown_days);
+		return Number.isFinite(rawDays) ? rawDays : null;
+	},
+
+	async getPendingRole(guildId: string) {
+		const config = await CONTENT_CREATOR.getConfig(guildId);
 		return config?.pending_role || null;
 	}
 };

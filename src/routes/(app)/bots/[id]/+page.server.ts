@@ -24,7 +24,6 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 	}
 
 	const { token, ...bot } = rawBot;
-	bot.is_testing = rawBot.is_testing || false;
 	bot.uptime_ms = getBotUptimeMs(bot);
 
 	const servers = await db.getServersForBot(Number(params.id));

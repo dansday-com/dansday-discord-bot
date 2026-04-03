@@ -7,8 +7,7 @@
 	let { data }: PageProps = $props();
 
 	let saving = $state(false);
-	let productionChannel = $state(data.settings?.production_channel ?? '');
-	let testingChannel = $state(data.settings?.testing_channel ?? '');
+	let mainChannel = $state(data.settings?.production_channel || data.settings?.testing_channel || '');
 	let defaultColor = $state(data.settings?.color ?? '#5865F2');
 	let defaultFooter = $state(data.settings?.footer ?? '');
 
@@ -21,8 +20,7 @@
 				credentials: 'include',
 				body: JSON.stringify({
 					component: 'main_config',
-					production_channel: productionChannel,
-					testing_channel: testingChannel,
+					production_channel: mainChannel,
 					color: defaultColor,
 					footer: defaultFooter
 				})
@@ -44,13 +42,8 @@
 	</h3>
 
 	<div>
-		<label class="text-ash-300 mb-1.5 block text-xs font-medium">Production Channel</label>
-		<ChannelPicker channels={data.channels} categories={data.categories} value={productionChannel} onchange={(id) => (productionChannel = id)} />
-	</div>
-
-	<div>
-		<label class="text-ash-300 mb-1.5 block text-xs font-medium">Testing Channel</label>
-		<ChannelPicker channels={data.channels} categories={data.categories} value={testingChannel} onchange={(id) => (testingChannel = id)} />
+		<label class="text-ash-300 mb-1.5 block text-xs font-medium">Main channel</label>
+		<ChannelPicker channels={data.channels} categories={data.categories} value={mainChannel} onchange={(id) => (mainChannel = id)} />
 	</div>
 
 	<div>

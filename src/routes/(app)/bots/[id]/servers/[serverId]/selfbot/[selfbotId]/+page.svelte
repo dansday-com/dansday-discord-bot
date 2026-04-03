@@ -117,22 +117,6 @@
 		}
 	}
 
-	async function toggleMode() {
-		const res = await fetch(`/api/servers/${data.serverId}/selfbot/${data.bot.id}/mode`, {
-			method: 'PUT',
-			credentials: 'include',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ is_testing: !data.bot.is_testing })
-		});
-		const d = await res.json();
-		if (d.success) {
-			showToast(`Switched to ${data.bot.is_testing ? 'production' : 'testing'} mode`, 'success');
-			invalidateAll();
-		} else {
-			showToast(d.error || 'Failed to switch mode', 'error');
-		}
-	}
-
 	let showDeleteConfirm = $state(false);
 	let deleting = $state(false);
 
@@ -191,11 +175,6 @@
 					<h2 class="text-ash-100 truncate text-xl font-bold sm:text-2xl">
 						{data.bot.name || `Selfbot #${data.bot.id}`}
 					</h2>
-					<div class="mt-1 flex flex-wrap items-center gap-2">
-						<span class="rounded-full px-2 py-0.5 text-xs {data.bot.is_testing ? 'bg-yellow-900 text-yellow-300' : 'bg-ash-600 text-ash-200'}">
-							{data.bot.is_testing ? 'Testing' : 'Production'}
-						</span>
-					</div>
 				</div>
 			</div>
 
@@ -226,16 +205,6 @@
 							<span class="hidden sm:inline">Restart</span>
 						</button>
 					{/if}
-					<label
-						class="bg-ash-700 hover:bg-ash-600 flex h-10 cursor-pointer items-center gap-2 rounded-lg px-3 transition-all hover:scale-105 active:scale-95 sm:h-10 sm:px-4"
-					>
-						<div class="relative h-6 w-11">
-							<input type="checkbox" class="sr-only" checked={!data.bot.is_testing} onchange={toggleMode} />
-							<div class="h-6 w-11 rounded-full transition-colors {data.bot.is_testing ? 'bg-ash-500' : 'bg-green-600'}"></div>
-							<div class="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform {data.bot.is_testing ? 'left-0.5' : 'left-5.5'}"></div>
-						</div>
-						<span class="text-ash-100 text-xs font-medium sm:text-sm">{data.bot.is_testing ? 'Testing' : 'Production'}</span>
-					</label>
 					<button
 						onclick={() => (showDeleteConfirm = true)}
 						class="text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg bg-red-700 px-3 text-xs font-medium transition-all hover:scale-105 hover:bg-red-800 active:scale-95 sm:h-10 sm:px-4 sm:text-sm"

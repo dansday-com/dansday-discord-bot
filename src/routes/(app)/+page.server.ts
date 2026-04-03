@@ -34,8 +34,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 					process_id: bot.process_id || null,
 					uptime_started_at: bot.uptime_started_at || null,
 					created_at: bot.created_at,
-					updated_at: bot.updated_at,
-					is_testing: bot.is_testing || false
+					updated_at: bot.updated_at
 				};
 
 				botData.uptime_ms = getBotUptimeMs(botData);

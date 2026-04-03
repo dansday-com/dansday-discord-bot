@@ -18,7 +18,6 @@ async function getEnrichedBot(id: any) {
 	}
 
 	const { token, ...botData } = bot;
-	botData.is_testing = bot.is_testing || false;
 	botData.uptime_ms = getBotUptimeMs(botData);
 	return botData;
 }

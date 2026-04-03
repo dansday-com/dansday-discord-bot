@@ -1727,13 +1727,12 @@ async function getServerBots(serverId: number) {
 	return db.select().from(schema.serverBots).where(eq(schema.serverBots.server_id, serverId));
 }
 
-async function addServerBot(data: { server_id: number; name: string; token: string; is_testing: boolean }) {
+async function addServerBot(data: { server_id: number; name: string; token: string }) {
 	const now = toMySQLDateTime();
 	const result = await db.insert(schema.serverBots).values({
 		server_id: data.server_id,
 		name: data.name,
 		token: data.token,
-		is_testing: data.is_testing,
 		status: 'stopped',
 		created_at: now as any,
 		updated_at: now as any
@@ -1749,7 +1748,6 @@ async function updateServerBot(
 		bot_icon: string | null;
 		status: string;
 		process_id: number | null;
-		is_testing: boolean;
 		uptime_started_at: string | null;
 	}>
 ) {

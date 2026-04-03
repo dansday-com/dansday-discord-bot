@@ -154,9 +154,6 @@ async function init(discordClient, botToken) {
 	setTimeout(async () => {
 		if (!botId) return;
 
-		// Always run a full guild sync on startup. The old `serversNeedSync` gate skipped this after
-		// the first successful sync, so restarts never refreshed channels/members/roles and selfbots
-		// could not backfill guilds that only existed on the selfbot account.
 		logger.log('🔄 Official bot startup guild sync...');
 		await syncAllGuilds();
 		logger.log('✅ Official bot startup guild sync complete');

@@ -40,7 +40,6 @@ export const bots = mysqlTable('bots', {
 	port: int('port'),
 	secret_key: text('secret_key'),
 	account_id: int('account_id').references(() => accounts.id, { onDelete: 'set null' }),
-	is_testing: boolean('is_testing').default(false),
 	status: mysqlEnum('status', ['running', 'stopped', 'starting', 'stopping']).default('stopped'),
 	process_id: int('process_id'),
 	uptime_started_at: datetime('uptime_started_at'),
@@ -139,7 +138,6 @@ export const serverBots = mysqlTable(
 		bot_icon: text('bot_icon'),
 		status: mysqlEnum('status', ['running', 'stopped', 'starting', 'stopping']).default('stopped'),
 		process_id: int('process_id'),
-		is_testing: boolean('is_testing').default(false),
 		uptime_started_at: datetime('uptime_started_at'),
 		created_at: datetime('created_at').notNull(),
 		updated_at: datetime('updated_at')

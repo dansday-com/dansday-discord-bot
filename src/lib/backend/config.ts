@@ -1,4 +1,5 @@
 import db from '../database.js';
+import { normalizeForwarderSettings } from '../forwarder-settings.js';
 
 interface BotConfig {
 	id: number;
@@ -7,7 +8,6 @@ interface BotConfig {
 	isSelfbot: boolean;
 	port: number | null;
 	secret_key: string | null;
-	is_testing: boolean;
 }
 
 let botConfig: BotConfig | null = null;
@@ -43,8 +43,7 @@ async function loadBotConfig() {
 			application_id: bot.application_id,
 			isSelfbot: false,
 			port: bot.port,
-			secret_key: bot.secret_key,
-			is_testing: bot.is_testing || false
+			secret_key: bot.secret_key
 		};
 		return botConfig;
 	}
@@ -61,8 +60,7 @@ async function loadBotConfig() {
 			application_id: null,
 			isSelfbot: true,
 			port: officialBot?.port ?? null,
-			secret_key: officialBot?.secret_key ?? null,
-			is_testing: officialBot?.is_testing || selfbot.is_testing || false
+			secret_key: officialBot?.secret_key ?? null
 		};
 		return botConfig;
 	}
@@ -76,8 +74,7 @@ async function loadBotConfig() {
 			application_id: null,
 			isSelfbot: true,
 			port: officialBot?.port ?? null,
-			secret_key: officialBot?.secret_key ?? null,
-			is_testing: officialBot?.is_testing || selfbot.is_testing || false
+			secret_key: officialBot?.secret_key ?? null
 		};
 		return botConfig;
 	}
@@ -93,8 +90,7 @@ async function loadBotConfig() {
 		application_id: bot.application_id,
 		isSelfbot: false,
 		port: bot.port,
-		secret_key: bot.secret_key,
-		is_testing: bot.is_testing || false
+		secret_key: bot.secret_key
 	};
 
 	return botConfig;
@@ -194,10 +190,11 @@ export async function getMainChannel(guildId: string) {
 	requireGuildId(guildId, 'getting main channel');
 
 	const settings = await getServerSettingsForComponent(guildId, 'main_config');
-	const channelId = botConfig!.is_testing ? settings.settings.testing_channel : settings.settings.production_channel;
+	const s = settings.settings as { production_channel?: string; testing_channel?: string };
+	const channelId = s.production_channel || s.testing_channel;
 
 	if (!channelId) {
-		throw new Error(`Channel not configured for ${botConfig!.is_testing ? 'testing' : 'production'} mode in guild ${guildId}`);
+		throw new Error(`Main channel not configured for guild ${guildId}`);
 	}
 
 	return channelId;
@@ -516,10 +513,10 @@ export const FORWARDER = {
 		requireGuildId(guildId, 'getting forwarder config');
 		const botIdToUse = await getOfficialBotId();
 		const server = await db.getServerByDiscordId(botIdToUse, guildId);
-		if (!server) return { production: [], testing: [] };
+		if (!server) return { forwarders: [] };
 		const settings = await db.getServerSettings(server.id, 'forwarder');
-		if (!settings || !settings.settings) return { production: [], testing: [] };
-		return settings.settings;
+		if (!settings || !settings.settings) return { forwarders: [] };
+		return normalizeForwarderSettings(settings.settings);
 	},
 
 	async shouldForwardChannel(channelId: string, guildId: string) {
@@ -537,14 +534,13 @@ export const FORWARDER = {
 			if (!officialBot) return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false };
 
 			const officialServers = await db.getServersForBot(officialBot.id);
-			const environment = botConfig!.is_testing ? 'testing' : 'production';
 
 			for (const officialServer of officialServers) {
 				try {
 					const forwarders = await FORWARDER.getConfig(officialServer.discord_server_id);
-					const envForwarders = forwarders[environment] || [];
+					const list = (forwarders.forwarders || []) as any[];
 
-					for (const forwarder of envForwarders) {
+					for (const forwarder of list) {
 						if (String(forwarder.selfbot_id) !== String(botConfig!.id)) continue;
 						if (String(forwarder.server_id) !== String(selfbotServer.id)) continue;
 						if (forwarder.source_channels && Array.isArray(forwarder.source_channels)) {
@@ -575,16 +571,15 @@ export const FORWARDER = {
 		}
 
 		const allGuilds = await db.getServersForBot(botConfig!.id);
-		const environment = botConfig!.is_testing ? 'testing' : 'production';
 
 		const connectedSelfbots = await db.getSelfbotsForOfficialBot(botConfig!.id);
 
 		for (const officialServer of allGuilds) {
 			try {
 				const forwarders = await FORWARDER.getConfig(officialServer.discord_server_id);
-				const envForwarders = forwarders[environment] || [];
+				const list = (forwarders.forwarders || []) as any[];
 
-				for (const forwarder of envForwarders) {
+				for (const forwarder of list) {
 					if (!forwarder.source_channels || !Array.isArray(forwarder.source_channels)) continue;
 
 					const foundChannel = forwarder.source_channels.find((ch: any) => String(ch?.channel_id || '') === String(sourceChannelId));

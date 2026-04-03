@@ -21,7 +21,6 @@ async function syncGuildData(guild: any) {
 		}
 
 		await guild.fetch();
-		// Mirror rows: servers.selfbot_id set, official_bot_id NULL; home bot via server_bots.server_id.
 		const serverData = await db.upsertSelfbotServer(Number(botId), guild);
 
 		if (!serverData) {
@@ -117,8 +116,6 @@ async function init(discordClient: any, botIdFromEnv: any) {
 
 	setTimeout(async () => {
 		if (!botId) return;
-		// Always sync on startup: `serversNeedSync` only looks at DB rows already present, so guilds
-		// the selfbot is in but not yet stored (or channel rows never written) were skipped forever.
 		logger.log('🔄 Selfbot startup sync (all visible guilds)...');
 		await syncAllGuilds();
 		logger.log('✅ Selfbot startup sync complete');

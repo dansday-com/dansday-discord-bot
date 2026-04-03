@@ -36,8 +36,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 	const id = await db.addServerBot({
 		server_id: serverId,
 		name: 'Selfbot',
-		token,
-		is_testing: officialBot.is_testing
+		token
 	});
 
 	if (locals.user.authenticated) logger.log(`${locals.user.username} created selfbot (ID: ${id}) for server ${serverId}`);

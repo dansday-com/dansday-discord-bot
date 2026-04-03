@@ -1,9 +1,10 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import db from '$lib/database.js';
+import { normalizeForwarderSettings } from '$lib/forwarder-settings.js';
 
 export const load: PageServerLoad = async ({ locals, params }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
-	const settings = await db.getServerSettings(params.serverId, 'forwarder').catch(() => ({}));
-	return { settings: settings?.settings ?? {} };
+	const row = await db.getServerSettings(params.serverId, 'forwarder').catch(() => null);
+	return { settings: normalizeForwarderSettings(row?.settings ?? {}) };
 };

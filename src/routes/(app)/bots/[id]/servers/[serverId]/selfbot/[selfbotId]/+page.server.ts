@@ -38,7 +38,6 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 	return {
 		bot: {
 			...botPublic,
-			is_testing: Boolean(bot.is_testing),
 			uptime_ms: getBotUptimeMs(bot)
 		},
 		servers,

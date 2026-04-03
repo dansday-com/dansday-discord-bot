@@ -1,5 +1,6 @@
 import db from '../database.js';
 import { normalizeForwarderSettings } from '../forwarder-settings.js';
+import { resolveEmbedFooterPlaceholders } from '../utils/embedFooter.js';
 import { mainChannelId } from '../utils/mainConfigSettings.js';
 
 interface BotConfig {
@@ -308,8 +309,7 @@ export async function getEmbedConfig(guildId: string) {
 		throw new Error(`Default footer not configured for guild ${guildId}`);
 	}
 
-	const now = new Date();
-	const footerText = config.footer.replace(/{server}/g, officialBotServer.name).replace(/{year}/g, now.getFullYear().toString());
+	const footerText = resolveEmbedFooterPlaceholders(config.footer, officialBotServer.name);
 
 	return { COLOR: color, FOOTER: footerText };
 }

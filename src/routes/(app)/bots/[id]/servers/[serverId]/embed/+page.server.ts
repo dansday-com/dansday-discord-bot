@@ -14,6 +14,13 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	]);
 
 	const mainConfig = normalizeMainConfigForPanel(mainConfigRow?.settings ?? {});
+	const serverRow = await db.getServer(params.serverId).catch(() => null);
 
-	return { channels: channels ?? [], categories: categories ?? [], mainConfig, roles: roles ?? [] };
+	return {
+		channels: channels ?? [],
+		categories: categories ?? [],
+		mainConfig,
+		roles: roles ?? [],
+		serverName: serverRow?.name ?? 'Server'
+	};
 };

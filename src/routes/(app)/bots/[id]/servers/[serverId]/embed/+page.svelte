@@ -2,6 +2,7 @@
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import ChannelPicker from '$lib/frontend/components/ChannelPicker.svelte';
 	import RolePicker from '$lib/frontend/components/RolePicker.svelte';
+	import { resolveEmbedFooterPlaceholders } from '$lib/utils/embedFooter.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -23,6 +24,8 @@
 	let selectedChannels = $state<string[]>([]);
 	let selectedRoles = $state<string[]>([]);
 	let sending = $state(false);
+
+	const footerPreview = $derived(resolveEmbedFooterPlaceholders(footer, data.serverName ?? 'Server'));
 
 	const totalChars = $derived(title.length + description.length + footer.length);
 
@@ -306,7 +309,7 @@
 					<img src={imagePreview} alt="Embed" class="mt-2 max-w-full rounded" />
 				{/if}
 				{#if footer}
-					<p class="mt-2 border-t border-[#3d4045] pt-2 text-xs text-[#949ba4]">{footer}</p>
+					<p class="mt-2 border-t border-[#3d4045] pt-2 text-xs text-[#949ba4]">{footerPreview}</p>
 				{/if}
 			</div>
 			{#if selectedRoles.length > 0}

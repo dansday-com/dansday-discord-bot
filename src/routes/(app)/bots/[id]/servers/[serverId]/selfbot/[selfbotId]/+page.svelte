@@ -271,7 +271,6 @@
 									{server.name || 'Unnamed Server'}
 								</h4>
 							</div>
-							<i class="fas fa-cog text-ash-400"></i>
 						</div>
 						<div class="space-y-2 text-xs sm:text-sm">
 							<div class="flex items-center justify-between">

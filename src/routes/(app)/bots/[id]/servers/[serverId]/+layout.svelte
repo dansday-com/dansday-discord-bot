@@ -40,7 +40,7 @@
 	{/if}
 
 	<div class="bg-ash-700 border-ash-600 mb-5 rounded-xl border p-4 sm:p-6">
-		<div class="flex flex-col gap-4 sm:flex-row sm:gap-6">
+		<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
 			<div class="bg-ash-600 flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full sm:h-24 sm:w-24">
 				{#if data.overview.server_icon}
 					<img src={data.overview.server_icon} alt={data.overview.name} class="h-full w-full object-cover" />

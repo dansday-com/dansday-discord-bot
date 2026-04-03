@@ -22,10 +22,13 @@
 
 	interface Props {
 		members: Member[];
+		/** When set (including `[]`), only members with any of these Discord role IDs are shown. Omit for “all members”. */
 		filterRoleIds?: string[];
+		/** Shown when `filterRoleIds` is set but empty (no roles configured in Permissions). */
+		permissionsHref?: string;
 	}
 
-	let { members, filterRoleIds = [] }: Props = $props();
+	let { members, filterRoleIds, permissionsHref }: Props = $props();
 
 	const MEMBERS_PER_PAGE = 20;
 
@@ -33,10 +36,13 @@
 	let sortBy = $state('rank_asc');
 	let page = $state(1);
 
-	function hasRole(member: Member, roleIds: string[]): boolean {
-		if (!roleIds.length) return true;
+	function matchesRoleFilter(member: Member, roleIds: string[] | undefined): boolean {
+		if (roleIds === undefined) return true;
+		if (!roleIds.length) return false;
 		return member.roles?.some((r) => roleIds.includes(r.id)) ?? false;
 	}
+
+	const roleFilterUnset = $derived(filterRoleIds !== undefined && filterRoleIds.length === 0);
 
 	const filtered = $derived(
 		members.filter((m) => {
@@ -47,7 +53,7 @@
 				m.display_name?.toLowerCase().includes(q) ||
 				m.server_display_name?.toLowerCase().includes(q) ||
 				m.discord_member_id?.includes(q);
-			return matchSearch && hasRole(m, filterRoleIds);
+			return matchSearch && matchesRoleFilter(m, filterRoleIds);
 		})
 	);
 
@@ -174,7 +180,17 @@
 	{sorted.length} member{sorted.length !== 1 ? 's' : ''}{search ? ` matching "${search}"` : ''}
 </p>
 
-{#if paged.length === 0}
+{#if roleFilterUnset}
+	<div class="text-ash-400 border-ash-600 bg-ash-800/60 mb-4 rounded-lg border px-4 py-3 text-sm">
+		<p class="text-ash-300 mb-1">No roles are set for this category in Permissions yet.</p>
+		<p class="text-ash-500 text-xs">Choose Discord roles under Configuration → Permissions so this list can filter members.</p>
+		{#if permissionsHref}
+			<a href={permissionsHref} class="text-ash-300 hover:text-ash-100 mt-2 inline-flex items-center gap-1.5 text-xs font-medium underline">
+				<i class="fas fa-shield-halved"></i>Open Permissions
+			</a>
+		{/if}
+	</div>
+{:else if paged.length === 0}
 	<div class="text-ash-400 py-10 text-center text-sm">No members found</div>
 {:else}
 	<div class="mb-4 space-y-3">

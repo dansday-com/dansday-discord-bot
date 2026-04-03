@@ -1,4 +1,5 @@
 import { COMMUNICATION, NOTIFICATIONS, getEmbedConfig } from '../../../config.js';
+import { resolveEmbedFooterPlaceholders } from '../../../../utils/embedFooter.js';
 import { EmbedBuilder } from 'discord.js';
 import { logger } from '../../../../utils/index.js';
 import db from '../../../../database.js';
@@ -66,9 +67,10 @@ async function handleSendEmbed(payload) {
 		if (!guild) {
 			throw new Error('Guild not found');
 		}
+		let serverRow = null;
 		if (currentBotId) {
-			const server = await db.getServerByDiscordId(currentBotId, guild_id);
-			if (!server) {
+			serverRow = await db.getServerByDiscordId(currentBotId, guild_id);
+			if (!serverRow) {
 				throw new Error('Guild not found');
 			}
 		}
@@ -85,7 +87,10 @@ async function handleSendEmbed(payload) {
 			}
 		}
 
-		const footerText = footer && footer.trim() ? footer.trim() : embedConfig.FOOTER;
+		const serverNameForFooter = serverRow?.name || guild.name;
+
+		const rawFooter = footer && footer.trim() ? footer.trim() : embedConfig.FOOTER;
+		const footerText = resolveEmbedFooterPlaceholders(rawFooter, serverNameForFooter);
 
 		const embed = new EmbedBuilder().setColor(embedColor).setFooter({ text: footerText }).setTimestamp();
 

@@ -42,13 +42,10 @@
 	}
 
 	$effect(() => {
-		// Needed so the list view can show selfbot names.
 		if (selfbots.length === 0) loadSelfbots();
 	});
 
 	$effect(() => {
-		// Needed so the list view can show source channel names for existing forwarders.
-		// We lazy-load and cache selfbot channel lists per (selfbot_id, server_id).
 		if (!hydratedListNames) hydrateForwarderSourceChannelNames();
 	});
 
@@ -89,7 +86,6 @@
 			return;
 		}
 
-		// Don’t refetch if names are already present for all.
 		if (needs.every((fw) => Array.isArray(fw.source_channel_names) && fw.source_channel_names.length === fw.source_channels.length)) {
 			hydratedListNames = true;
 			return;
@@ -221,7 +217,6 @@
 
 	function saveModal() {
 		const entry: Forwarder = { ...draft };
-		// Persist friendly names so list view can render without extra API calls.
 		entry.selfbot_name = selfbotNameById(entry.selfbot_id) || entry.selfbot_name;
 		if (selfbotChannels?.length && entry.source_channels?.length) {
 			entry.source_channel_names = entry.source_channels.map((id) => channelName(id, selfbotChannels));

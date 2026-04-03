@@ -341,7 +341,6 @@ export async function createInterfaceEmbed(client, guildId, userId = null) {
 	}
 
 	const embedConfig = await getEmbedConfig(guildId);
-	// Channel-visible panel: always English from en.json (same as staff/CC log embeds).
 	const title = t('interface.panel.title', 'en');
 	const description = t('interface.panel.description', 'en');
 

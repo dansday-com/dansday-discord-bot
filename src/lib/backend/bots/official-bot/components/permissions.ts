@@ -40,14 +40,15 @@ export async function hasPermission(member: any, action: string) {
 	const isSupporterMember = await isSupporter(member);
 	const isMemberRole = await isMember(member);
 	const isContentCreatorRole = await isContentCreator(member);
+	const isEffectiveSupporter = isSupporterMember || isContentCreatorRole;
 
 	if (isAdminMember) return true;
 	if (isStaffMember) return action !== 'setup';
-	if (action === 'send_message') return isStaffMember || isAdminMember;
-	if (action === 'custom_supporter_role') return isSupporterMember || isStaffMember || isAdminMember;
-	if (action === 'content_creator') return isMemberRole || isSupporterMember || isStaffMember || isAdminMember || isContentCreatorRole;
+	if (action === 'staff_only') return isStaffMember || isAdminMember;
+	if (action === 'custom_supporter_role') return isEffectiveSupporter || isStaffMember || isAdminMember;
+	if (action === 'content_creator') return isMemberRole || isEffectiveSupporter || isStaffMember || isAdminMember;
 	if (['feedback', 'afk', 'leveling', 'giveaway', 'settings', 'staff_report', 'notifications'].includes(action)) {
-		return isMemberRole || isSupporterMember || isStaffMember || isAdminMember;
+		return isMemberRole || isEffectiveSupporter || isStaffMember || isAdminMember;
 	}
 	return false;
 }
@@ -68,16 +69,17 @@ export async function getRequiredRolesForAction(guild: any, action: string) {
 			addRoles(perms.ADMIN_ROLES);
 			return roleNames.length > 0 ? roleNames : ['Admin'];
 		}
-		if (action === 'send_message') {
+		if (action === 'staff_only') {
 			addRoles(perms.STAFF_ROLES);
 			addRoles(perms.ADMIN_ROLES);
 			return roleNames.length > 0 ? roleNames : ['Staff or Admin'];
 		}
 		if (action === 'custom_supporter_role') {
+			addRoles(perms.CONTENT_CREATOR_ROLES);
 			addRoles(perms.SUPPORTER_ROLES);
 			addRoles(perms.STAFF_ROLES);
 			addRoles(perms.ADMIN_ROLES);
-			return roleNames.length > 0 ? roleNames : ['Supporter, Staff, or Admin'];
+			return roleNames.length > 0 ? roleNames : ['Content Creator, Supporter, Staff, or Admin'];
 		}
 		if (['feedback', 'afk', 'leveling', 'giveaway', 'settings', 'staff_report', 'notifications', 'menu', 'content_creator'].includes(action)) {
 			addRoles(perms.MEMBER_ROLES);
@@ -98,7 +100,7 @@ export async function getPermissionDeniedMessage(guild: any, action: string, use
 	const roleList = requiredRoles.length > 0 ? requiredRoles.map((role) => `**${role}**`).join(', ') : 'the required role';
 
 	const actionNames: Record<string, string> = {
-		send_message: 'Send Message',
+		staff_only: 'Staff Only',
 		custom_supporter_role: 'Custom Supporter Role',
 		feedback: 'Feedback',
 		afk: 'AFK',

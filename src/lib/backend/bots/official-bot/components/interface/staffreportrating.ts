@@ -336,7 +336,7 @@ export async function handleStaffReportUserSelect(interaction) {
 			return;
 		}
 
-		const isStaff = await hasPermission(selectedMember, 'send_message');
+		const isStaff = await hasPermission(selectedMember, 'staff_only');
 		if (!isStaff) {
 			const errorMsg = await translate('staffReport.errors.notStaff', interaction.guild.id, interaction.user.id);
 			await interaction.reply({
@@ -553,7 +553,7 @@ export async function handleStaffReportModal(interaction) {
 			return;
 		}
 
-		const isStaff = await hasPermission(staffMember, 'send_message');
+		const isStaff = await hasPermission(staffMember, 'staff_only');
 		if (!isStaff) {
 			const errorMsg = await translate('staffReport.errors.notStaff', interaction.guild.id, interaction.user.id);
 			await interaction.editReply({

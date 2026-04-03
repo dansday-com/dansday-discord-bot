@@ -527,8 +527,12 @@ export const CONTENT_CREATOR = {
 	},
 
 	async getContentCreatorRole(guildId: string) {
-		const config = await CONTENT_CREATOR.getConfig(guildId);
-		return config?.content_creator_role || null;
+		try {
+			const perms = await PERMISSIONS.getPermissions(guildId);
+			return perms?.CONTENT_CREATOR_ROLES?.[0] || null;
+		} catch (_) {
+			return null;
+		}
 	},
 
 	async getCooldownDays(guildId: string) {

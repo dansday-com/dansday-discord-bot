@@ -8,7 +8,6 @@
 	let { data }: PageProps = $props();
 
 	let saving = $state(false);
-	let contentCreatorRole = $state<string>(data.settings?.content_creator_role ?? '');
 	let admissionChannel = $state<string>(data.settings?.admission_channel_id ?? '');
 	let targetChannel = $state<string>(data.settings?.target_channel_id ?? '');
 	let cooldownDays = $state<number>(data.settings?.cooldown_days ?? 1);
@@ -23,7 +22,6 @@
 				credentials: 'include',
 				body: JSON.stringify({
 					component: 'content_creator',
-					content_creator_role: contentCreatorRole,
 					admission_channel_id: admissionChannel,
 					target_channel_id: targetChannel,
 					cooldown_days: cooldownDays,
@@ -44,11 +42,9 @@
 <div class="bg-ash-800 border-ash-700 space-y-5 rounded-xl border p-4 sm:p-6">
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold"><i class="fas fa-video text-pink-400"></i>Content Creator</h3>
 	<p class="text-ash-400 text-xs">Configure content creator admission and TikTok live broadcast behavior.</p>
-
-	<div>
-		<label class="text-ash-300 mb-1.5 block text-xs font-medium"><i class="fas fa-user-check mr-1 text-pink-400"></i>Content Creator Role</label>
-		<p class="text-ash-500 mb-2 text-xs">Role assigned when an application is approved.</p>
-		<RolePicker roles={data.roles} value={contentCreatorRole} single placeholder="Select role..." onchange={(v) => (contentCreatorRole = v as string)} />
+	<div class="text-ash-400 border-ash-600 bg-ash-800/60 rounded-lg border px-4 py-3 text-sm">
+		<p class="text-ash-300 mb-1">Content creator roles are managed in <strong>Configuration → Permissions</strong>.</p>
+		<p class="text-ash-500 text-xs">The first role in “Content Creator Roles” will be assigned when an application is approved.</p>
 	</div>
 
 	<div>

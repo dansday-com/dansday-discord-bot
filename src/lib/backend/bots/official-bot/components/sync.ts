@@ -41,7 +41,7 @@ async function syncGuildData(guild) {
 		await guild.channels.fetch();
 		await guild.roles.fetch();
 
-		const serverData = await db.upsertServer(botId, guild);
+		const serverData = await db.upsertOfficialServer(botId, guild);
 
 		if (!serverData) {
 			logger.log(`⚠️  Failed to sync server info for ${guild.name}`);

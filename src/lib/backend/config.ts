@@ -133,7 +133,7 @@ export async function getServerForCurrentBot(guildId: string) {
 	requireBotConfig();
 	requireGuildId(guildId, 'getting server');
 
-	const server = await db.getServerByDiscordId(botConfig!.id, guildId);
+	const server = await db.getServerByDiscordId(botConfig!.id, guildId, { forSelfbot: botConfig!.isSelfbot });
 	if (!server) {
 		throw new Error(`Server not found for guild ${guildId}`);
 	}
@@ -207,7 +207,7 @@ export const PERMISSIONS = {
 	async getPermissions(guildId: string) {
 		requireGuildId(guildId, 'permissions');
 		requireBotConfig();
-		const server = await db.getServerByDiscordId(botConfig!.id, guildId);
+		const server = await db.getServerByDiscordId(botConfig!.id, guildId, { forSelfbot: botConfig!.isSelfbot });
 		if (!server) {
 			throw new Error(`Server not found for guild ${guildId}`);
 		}
@@ -227,7 +227,7 @@ export const PERMISSIONS = {
 		if (!roleIds || roleIds.length === 0) return false;
 		try {
 			requireBotConfig();
-			const server = await db.getServerByDiscordId(botConfig!.id, member.guild.id);
+			const server = await db.getServerByDiscordId(botConfig!.id, member.guild.id, { forSelfbot: botConfig!.isSelfbot });
 			if (!server) return false;
 			const user = member.user || member;
 			const discordMemberId = user?.id || member.id;
@@ -530,7 +530,7 @@ export const FORWARDER = {
 		}
 
 		try {
-			const selfbotServer = await db.getServerByDiscordId(botConfig!.id, guildId);
+			const selfbotServer = await db.getServerByDiscordId(botConfig!.id, guildId, { forSelfbot: true });
 			if (!selfbotServer) return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false };
 
 			const officialBot = await db.getOfficialBotForSelfbot(botConfig!.id);
@@ -597,7 +597,7 @@ export const FORWARDER = {
 					});
 					if (!forwarderSelfbot) continue;
 
-					const selfbotServer = await db.getServerByDiscordId(forwarderSelfbot.id, sourceGuildId);
+					const selfbotServer = await db.getServerByDiscordId(forwarderSelfbot.id, sourceGuildId, { forSelfbot: true });
 					if (!selfbotServer) continue;
 					if (String(selfbotServer.id) !== String(forwarder.server_id)) continue;
 

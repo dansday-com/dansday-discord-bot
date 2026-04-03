@@ -53,7 +53,8 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		if (component === 'notifications') {
 			try {
 				const server = await db.getServer(targetServerId);
-				const bot = server ? await db.getBot(server.bot_id) : null;
+				const officialBotId = server ? await db.resolveOfficialBotIdForServer(server) : null;
+				const bot = officialBotId ? await db.getBot(officialBotId) : null;
 				if (server && bot && server.discord_server_id) {
 					const { request: httpRequest } = await import('http');
 					const payload = JSON.stringify({ type: 'sync_notification_roles', guild_id: server.discord_server_id });
@@ -110,7 +111,8 @@ export const PUT: RequestHandler = async ({ locals, params, request }) => {
 		if (component_name === 'notifications') {
 			try {
 				const server = await db.getServer(targetServerId);
-				const bot = server ? await db.getBot(server.bot_id) : null;
+				const officialBotId = server ? await db.resolveOfficialBotIdForServer(server) : null;
+				const bot = officialBotId ? await db.getBot(officialBotId) : null;
 				if (server && bot && server.discord_server_id) {
 					const { request: httpRequest } = await import('http');
 					const payload = JSON.stringify({ type: 'sync_notification_roles', guild_id: server.discord_server_id });

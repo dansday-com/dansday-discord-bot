@@ -3,7 +3,6 @@ import { logger, separateChannelsAndCategories, mapCategoriesForSync, mapChannel
 
 let client: any = null;
 let botId: any = null;
-let officialBotId: any = null;
 
 async function findBotById(id: any) {
 	try {
@@ -16,13 +15,14 @@ async function findBotById(id: any) {
 
 async function syncGuildData(guild: any) {
 	try {
-		if (!officialBotId) {
-			logger.log(`⚠️  Official bot ID not set, skipping sync for guild: ${guild.name}`);
+		if (!botId) {
+			logger.log(`⚠️  Selfbot ID not set, skipping sync for guild: ${guild.name}`);
 			return;
 		}
 
 		await guild.fetch();
-		const serverData = await db.upsertServer(officialBotId, guild);
+		// Mirror rows: servers.selfbot_id set, official_bot_id NULL; home bot via server_bots.server_id.
+		const serverData = await db.upsertSelfbotServer(Number(botId), guild);
 
 		if (!serverData) {
 			logger.log(`⚠️  Failed to sync server info for ${guild.name}`);
@@ -57,8 +57,8 @@ async function syncGuildData(guild: any) {
 
 async function syncAllGuilds() {
 	try {
-		if (!client || !officialBotId) {
-			logger.log(`⚠️  Client or official bot ID not set, skipping sync`);
+		if (!client || !botId) {
+			logger.log(`⚠️  Client or selfbot ID not set, skipping sync`);
 			return;
 		}
 
@@ -99,10 +99,9 @@ async function init(discordClient: any, botIdFromEnv: any) {
 			logger.log(`✅ Found selfbot in database: ${bot.name} (ID: ${bot.id})`);
 			const officialBot = await db.getOfficialBotForSelfbot(bot.id);
 			if (officialBot) {
-				officialBotId = officialBot.id;
-				logger.log(`🔗 Selfbot connected to official bot: ${officialBot.name}`);
+				logger.log(`🔗 Selfbot linked to official bot: ${officialBot.name} (servers stored under selfbot id ${bot.id})`);
 			} else {
-				logger.log(`⚠️  No official bot found for selfbot via server assignments`);
+				logger.log(`⚠️  No official bot linked; selfbot will still sync its own server rows`);
 			}
 			if (client.user) await updateBotInfo();
 		} else {
@@ -113,7 +112,7 @@ async function init(discordClient: any, botIdFromEnv: any) {
 	}
 
 	setTimeout(async () => {
-		if (!officialBotId) return;
+		if (!botId) return;
 		// Always sync on startup: `serversNeedSync` only looks at DB rows already present, so guilds
 		// the selfbot is in but not yet stored (or channel rows never written) were skipped forever.
 		logger.log('🔄 Selfbot startup sync (all visible guilds)...');
@@ -127,11 +126,11 @@ async function init(discordClient: any, botIdFromEnv: any) {
 	});
 
 	client.on('guildUpdate', async (_oldGuild: any, newGuild: any) => {
-		if (officialBotId) await syncGuildData(newGuild);
+		if (botId) await syncGuildData(newGuild);
 	});
 
 	client.on('channelCreate', async (channel: any) => {
-		if (channel.guild && officialBotId) {
+		if (channel.guild && botId) {
 			const channelType = channel.type === 4 ? 'Category' : channel.type === 0 ? 'Text Channel' : channel.type === 5 ? 'News Channel' : 'Channel';
 			await logger.log(`📁 ${channelType} created: **${channel.name || 'Unknown'}** (${channel.id})`);
 			await syncGuildData(channel.guild);
@@ -139,7 +138,7 @@ async function init(discordClient: any, botIdFromEnv: any) {
 	});
 
 	client.on('channelUpdate', async (oldChannel: any, newChannel: any) => {
-		if (newChannel.guild && officialBotId) {
+		if (newChannel.guild && botId) {
 			const channelType = newChannel.type === 4 ? 'Category' : newChannel.type === 0 ? 'Text Channel' : newChannel.type === 5 ? 'News Channel' : 'Channel';
 			const oldName = oldChannel.name || 'Unknown';
 			const newName = newChannel.name || 'Unknown';
@@ -153,7 +152,7 @@ async function init(discordClient: any, botIdFromEnv: any) {
 	});
 
 	client.on('channelDelete', async (channel: any) => {
-		if (channel.guild && officialBotId) {
+		if (channel.guild && botId) {
 			const channelType = channel.type === 4 ? 'Category' : channel.type === 0 ? 'Text Channel' : channel.type === 5 ? 'News Channel' : 'Channel';
 			await logger.log(`🗑️ ${channelType} deleted: **${channel.name || 'Unknown'}** (${channel.id})`);
 			await syncGuildData(channel.guild);

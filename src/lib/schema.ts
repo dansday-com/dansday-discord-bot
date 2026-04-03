@@ -52,9 +52,10 @@ export const servers = mysqlTable(
 	'servers',
 	{
 		id: int('id').primaryKey().autoincrement(),
-		bot_id: int('bot_id')
-			.notNull()
-			.references(() => bots.id, { onDelete: 'cascade' }),
+		/** `bots.id` for official-synced rows; NULL on selfbot mirror rows (parent bot via `server_bots.server_id` → home server). */
+		official_bot_id: int('official_bot_id').references(() => bots.id, { onDelete: 'cascade' }),
+		/** Selfbot mirror row for this Discord guild; NULL on official-only rows. */
+		selfbot_id: int('selfbot_id').references(() => serverBots.id, { onDelete: 'cascade' }),
 		discord_server_id: varchar('discord_server_id', { length: 150 }).notNull(),
 		name: text('name'),
 		total_members: int('total_members').default(0),
@@ -69,8 +70,9 @@ export const servers = mysqlTable(
 		updated_at: datetime('updated_at').notNull()
 	},
 	(t) => [
-		uniqueIndex('unique_bot_server').on(t.bot_id, t.discord_server_id),
-		index('idx_servers_bot_id').on(t.bot_id),
+		index('idx_servers_official_list').on(t.official_bot_id),
+		index('idx_servers_official_discord').on(t.official_bot_id, t.discord_server_id),
+		index('idx_servers_selfbot_discord').on(t.selfbot_id, t.discord_server_id),
 		index('idx_servers_discord_id').on(t.discord_server_id),
 		index('idx_servers_discord_created_at').on(t.discord_created_at),
 		index('idx_servers_invite_code').on(t.invite_code)

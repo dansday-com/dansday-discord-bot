@@ -45,7 +45,8 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 	const member = await db.getMemberByDiscordId(serverId, discord_member_id);
 	if (!member) return json({ success: false, error: 'Member not found (sync may be required)' }, { status: 404 });
 
-	const bot = await db.getBot(server.bot_id);
+	const officialBotId = await db.resolveOfficialBotIdForServer(server);
+	const bot = officialBotId ? await db.getBot(officialBotId) : null;
 	if (!bot) return json({ success: false, error: 'Bot not found' }, { status: 404 });
 	if (bot.status !== 'running') return json({ success: false, error: 'Bot is not running' }, { status: 400 });
 	if (!bot.port || !bot.secret_key) return json({ success: false, error: 'Bot webhook not configured' }, { status: 400 });

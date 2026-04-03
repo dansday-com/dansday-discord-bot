@@ -12,7 +12,7 @@ export const GET: RequestHandler = async ({ locals, params, url }) => {
 		const search = url.searchParams.get('search');
 		const discordServerId = url.searchParams.get('discordServerId');
 
-		const server = await db.getServerByDiscordId(selfbotId, discordServerId);
+		const server = await db.getServerByDiscordId(Number(selfbotId), String(discordServerId), { forSelfbot: true });
 		if (!server) {
 			return json({ error: 'Server not found' }, { status: 404 });
 		}

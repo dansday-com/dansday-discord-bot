@@ -54,6 +54,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 					const account = await db.getServerAccountById(session.account_id);
 					if (account && !account.is_frozen) {
 						const server = await db.getServer(account.server_id);
+						const panelBotId = await db.resolveOfficialBotIdForServer(server);
 						event.locals.user = {
 							authenticated: true,
 							account_id: account.id,
@@ -61,7 +62,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 							email: account.email,
 							account_type: account.account_type,
 							account_source: 'server_accounts',
-							bot_id: server?.bot_id ?? 0,
+							bot_id: panelBotId ?? 0,
 							server_id: account.server_id
 						};
 					}

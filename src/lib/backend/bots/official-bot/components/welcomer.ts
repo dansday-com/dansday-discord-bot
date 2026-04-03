@@ -43,7 +43,7 @@ async function welcomeUser(member, client) {
 			await logger.log(`⚠️ Failed to fetch guild ${member.guild.id} before welcome: ${fetchError.message}`);
 		}
 
-		const serverData = await db.upsertServer(botConfig.id, member.guild);
+		const serverData = await db.upsertOfficialServer(botConfig.id, member.guild);
 		if (!serverData) {
 			await logger.log(`⚠️ Server not found in database for ${member.guild.id}, skipping welcome message`);
 			return;

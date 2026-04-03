@@ -29,7 +29,8 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 	const server = await db.getServer(serverId);
 	if (!server) return json({ success: false, error: 'Server not found' }, { status: 404 });
 
-	const officialBot = await db.getBot(server.bot_id);
+	const officialBotId = await db.resolveOfficialBotIdForServer(server);
+	const officialBot = officialBotId ? await db.getBot(officialBotId) : null;
 	if (!officialBot) return json({ success: false, error: 'Official bot not found' }, { status: 404 });
 
 	const id = await db.addServerBot({

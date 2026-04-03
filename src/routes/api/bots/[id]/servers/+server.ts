@@ -8,8 +8,16 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 	}
 
 	try {
-		const servers = await db.getServersForBot(params.id);
-		return json(servers);
+		const id = Number(params.id);
+		const official = await db.getBot(id);
+		if (official) {
+			return json(await db.getServersForBot(id));
+		}
+		const selfbot = await db.getServerBotById(id);
+		if (selfbot) {
+			return json(await db.getServersForSelfbot(id));
+		}
+		return json({ error: 'Bot not found' }, { status: 404 });
 	} catch (error: any) {
 		return json({ error: error.message }, { status: 500 });
 	}

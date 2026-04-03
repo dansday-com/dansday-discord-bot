@@ -24,7 +24,7 @@ async function thankBooster(member, client) {
 			await logger.log(`⚠️ Failed to fetch guild ${member.guild.id} before booster: ${fetchError.message}`);
 		}
 
-		const serverData = await db.upsertServer(botConfig.id, member.guild);
+		const serverData = await db.upsertOfficialServer(botConfig.id, member.guild);
 		if (!serverData) {
 			await logger.log(`⚠️ Server not found in database for ${member.guild.id}, skipping booster message`);
 			return;
@@ -136,13 +136,13 @@ function init(client) {
 			const isBoosting = newMember.premiumSince !== null;
 
 			if (!wasBoosting && isBoosting) {
-				const serverData = await db.upsertServer(botConfig.id, newMember.guild);
+				const serverData = await db.upsertOfficialServer(botConfig.id, newMember.guild);
 				if (serverData) {
 					await db.upsertMember(serverData.id, newMember);
 				}
 				await thankBooster(newMember, client);
 			} else if (wasBoosting && !isBoosting) {
-				const serverData = await db.upsertServer(botConfig.id, newMember.guild);
+				const serverData = await db.upsertOfficialServer(botConfig.id, newMember.guild);
 				if (serverData) {
 					await db.upsertMember(serverData.id, newMember);
 				}

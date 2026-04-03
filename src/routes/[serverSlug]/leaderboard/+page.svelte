@@ -8,6 +8,7 @@
 
 	let metric = $state<Metric>(data.metric);
 	let rows = $state(data.rows);
+	let streamLoading = $state(false);
 	let es: EventSource | null = null;
 
 	const top3 = $derived(rows.slice(0, 3));
@@ -74,17 +75,25 @@
 		raf = requestAnimationFrame(tick);
 	}
 
-	function connect() {
+	function connect(opts: { clearRows?: boolean } = {}) {
 		es?.close();
+		if (opts.clearRows) {
+			rows = [];
+			streamLoading = true;
+		}
 		es = new EventSource(`/api/leaderboards/${data.server.slug}/stream?metric=${metric}&range=all&limit=${data.limit}`);
 		es.onmessage = (e) => {
 			try {
 				const snap = JSON.parse(e.data);
 				if (snap?.rows) {
 					rows = snap.rows;
+					streamLoading = false;
 					animateToCurrentValues(false);
 				}
 			} catch (_) {}
+		};
+		es.onerror = () => {
+			if (streamLoading) streamLoading = false;
 		};
 	}
 
@@ -101,8 +110,8 @@
 
 	function setMetric(m: Metric) {
 		metric = m;
-		connect();
-		animateToCurrentValues(true);
+		// Without clearing, we keep the previous metric's sort order but new column values — wrong #1 until SSE.
+		connect({ clearRows: true });
 	}
 
 	const podiumOrder = $derived(
@@ -302,7 +311,12 @@
 				</section>
 			{/if}
 
-			{#if rows.length === 0}
+			{#if streamLoading}
+				<div class="lb-empty">
+					<i class="fas fa-circle-notch fa-spin" style="font-size: 40px; opacity: 0.45;"></i>
+					<p>Loading rankings…</p>
+				</div>
+			{:else if rows.length === 0}
 				<div class="lb-empty">
 					<i class="fas fa-trophy" style="font-size: 48px; opacity: 0.2;"></i>
 					<p>No data yet</p>

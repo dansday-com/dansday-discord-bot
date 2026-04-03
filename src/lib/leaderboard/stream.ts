@@ -52,8 +52,7 @@ export function subscribeLeaderboard(serverId: number, metric: LeaderboardMetric
 			const current = streams.get(k);
 			if (!current || current.listeners.size === 0) return;
 			try {
-				const cached = await getCachedLeaderboard(serverId, metric, range, limit);
-				const snap = cached && Date.now() - cached.updated_at < 60_000 ? cached : await buildSnapshot(serverId, metric, range, limit);
+				const snap = await buildSnapshot(serverId, metric, range, limit);
 				current.lastJson = JSON.stringify(snap);
 				for (const l of current.listeners) l(snap);
 			} catch (_) {}

@@ -584,7 +584,9 @@ export const FORWARDER = {
 						if (String(forwarder.selfbot_id) !== String(botConfig!.id)) continue;
 						if (String(forwarder.server_id) !== String(selfbotServer.id)) continue;
 						if (forwarder.source_channels && Array.isArray(forwarder.source_channels)) {
-							const foundChannel = forwarder.source_channels.find((ch: any) => String(ch?.channel_id || '') === String(channelId));
+							const foundChannel = forwarder.source_channels.find((ch: any) =>
+								typeof ch === 'string' ? String(ch) === String(channelId) : String(ch?.channel_id || '') === String(channelId)
+							);
 							if (foundChannel) {
 								return {
 									shouldForward: true,
@@ -622,7 +624,9 @@ export const FORWARDER = {
 				for (const forwarder of list) {
 					if (!forwarder.source_channels || !Array.isArray(forwarder.source_channels)) continue;
 
-					const foundChannel = forwarder.source_channels.find((ch: any) => String(ch?.channel_id || '') === String(sourceChannelId));
+					const foundChannel = forwarder.source_channels.find((ch: any) =>
+						typeof ch === 'string' ? String(ch) === String(sourceChannelId) : String(ch?.channel_id || '') === String(sourceChannelId)
+					);
 					if (!foundChannel) continue;
 
 					const forwarderSelfbotIdNum = typeof forwarder.selfbot_id === 'string' ? parseInt(forwarder.selfbot_id) : forwarder.selfbot_id;
@@ -638,7 +642,7 @@ export const FORWARDER = {
 
 					return {
 						target_channel_id: forwarder.target_channel_id,
-						roles: forwarder.roles,
+						role_pings: forwarder.role_pings || forwarder.roles || [],
 						target_guild_id: officialServer.discord_server_id,
 						only_forward_when_mentions_member: forwarder.only_forward_when_mentions_member === true
 					};

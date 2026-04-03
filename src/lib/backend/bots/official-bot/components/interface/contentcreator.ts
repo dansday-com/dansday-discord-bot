@@ -104,7 +104,8 @@ export async function handleContentCreatorButton(interaction: any) {
 		}
 
 		const config = await CONTENT_CREATOR.getConfig(interaction.guild.id);
-		if (!config?.admission_channel_id || !config?.content_creator_role) {
+		const creatorRoleId = await CONTENT_CREATOR.getContentCreatorRole(interaction.guild.id).catch(() => null);
+		if (!config?.admission_channel_id || !creatorRoleId) {
 			await interaction.reply({ content: await translate('contentCreator.errors.notConfigured', interaction.guild.id, interaction.user.id), flags: 64 });
 			return;
 		}

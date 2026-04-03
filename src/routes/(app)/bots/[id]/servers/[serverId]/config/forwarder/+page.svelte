@@ -32,6 +32,10 @@
 	let selfbotCategories = $state<any[]>([]);
 	let loadingServers = $state(false);
 	let loadingChannels = $state(false);
+	let hydratedListNames = $state(false);
+
+	const serverCacheBySelfbotId = new Map<string, any[]>();
+	const channelsCacheBySelfbotAndServer = new Map<string, { channels: any[]; categories: any[] }>();
 
 	function emptyForwarder(): Forwarder {
 		return { selfbot_id: '', server_id: '', source_channels: [], target_channel_id: '', role_pings: [], only_forward_when_mentions_member: false, tag: '' };
@@ -41,6 +45,77 @@
 		// Needed so the list view can show selfbot names.
 		if (selfbots.length === 0) loadSelfbots();
 	});
+
+	$effect(() => {
+		// Needed so the list view can show source channel names for existing forwarders.
+		// We lazy-load and cache selfbot channel lists per (selfbot_id, server_id).
+		if (!hydratedListNames) hydrateForwarderSourceChannelNames();
+	});
+
+	async function fetchSelfbotServers(selfbotId: number): Promise<any[]> {
+		const key = String(selfbotId);
+		if (serverCacheBySelfbotId.has(key)) return serverCacheBySelfbotId.get(key) || [];
+		try {
+			const res = await fetch(`/api/bots/${selfbotId}/servers`, { credentials: 'include' });
+			if (!res.ok) return [];
+			const list = await res.json();
+			serverCacheBySelfbotId.set(key, Array.isArray(list) ? list : []);
+			return serverCacheBySelfbotId.get(key) || [];
+		} catch (_) {
+			return [];
+		}
+	}
+
+	async function fetchSelfbotChannels(selfbotId: number, serverId: number, discordServerId: string): Promise<{ channels: any[]; categories: any[] }> {
+		const key = `${selfbotId}:${serverId}:${discordServerId || ''}`;
+		if (channelsCacheBySelfbotAndServer.has(key)) return channelsCacheBySelfbotAndServer.get(key) || { channels: [], categories: [] };
+		try {
+			const res = await fetch(`/api/bots/${selfbotId}/servers/${serverId}/channels?discordServerId=${discordServerId}`, { credentials: 'include' });
+			if (!res.ok) return { channels: [], categories: [] };
+			const d = await res.json();
+			const value = { channels: d?.channels ?? [], categories: d?.categories ?? [] };
+			channelsCacheBySelfbotAndServer.set(key, value);
+			return value;
+		} catch (_) {
+			return { channels: [], categories: [] };
+		}
+	}
+
+	async function hydrateForwarderSourceChannelNames() {
+		if (hydratedListNames) return;
+		const needs = (forwarders || []).filter((fw) => fw?.selfbot_id && fw?.server_id && Array.isArray(fw?.source_channels) && fw.source_channels.length > 0);
+		if (needs.length === 0) {
+			hydratedListNames = true;
+			return;
+		}
+
+		// Don’t refetch if names are already present for all.
+		if (needs.every((fw) => Array.isArray(fw.source_channel_names) && fw.source_channel_names.length === fw.source_channels.length)) {
+			hydratedListNames = true;
+			return;
+		}
+
+		try {
+			const updated = [...forwarders];
+			for (let i = 0; i < updated.length; i++) {
+				const fw = updated[i];
+				if (!fw?.selfbot_id || !fw?.server_id || !Array.isArray(fw?.source_channels) || fw.source_channels.length === 0) continue;
+				if (Array.isArray(fw.source_channel_names) && fw.source_channel_names.length === fw.source_channels.length) continue;
+
+				const servers = await fetchSelfbotServers(Number(fw.selfbot_id));
+				const srv = servers.find((s: any) => String(s?.id) === String(fw.server_id));
+				const discordServerId = srv?.discord_server_id ?? '';
+				const { channels } = await fetchSelfbotChannels(Number(fw.selfbot_id), Number(fw.server_id), String(discordServerId));
+				if (!Array.isArray(channels) || channels.length === 0) continue;
+
+				const names = fw.source_channels.map((id) => channelName(id, channels));
+				updated[i] = { ...fw, source_channel_names: names };
+			}
+			forwarders = updated;
+		} finally {
+			hydratedListNames = true;
+		}
+	}
 
 	async function openAdd() {
 		draft = emptyForwarder();

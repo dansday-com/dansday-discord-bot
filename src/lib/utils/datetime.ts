@@ -35,10 +35,6 @@ export function parseMySQLDateTimeUtc(mysqlDateTimeString: unknown): Date | null
 	return dt.isValid ? dt.toJSDate() : null;
 }
 
-export function parseMySQLDateTime(mysqlDateTimeString: unknown): Date | null {
-	return parseMySQLDateTimeUtc(mysqlDateTimeString);
-}
-
 export function dbDateTimeToMs(value: unknown): number {
 	const d = parseMySQLDateTimeUtc(value);
 	return d != null && !Number.isNaN(d.getTime()) ? d.getTime() : 0;
@@ -58,14 +54,6 @@ export function isUtcSqlExpired(value: string | Date | null | undefined): boolea
 
 export function getNowUtc() {
 	return DateTime.utc();
-}
-
-export function getNowInTimezone() {
-	return getNowUtc();
-}
-
-export function getDateTimeFromSQL(sqlString: string) {
-	return DateTime.fromSQL(String(sqlString), { zone: STORAGE_ZONE });
 }
 
 export function getDateTimeFromJSDate(date: Date) {

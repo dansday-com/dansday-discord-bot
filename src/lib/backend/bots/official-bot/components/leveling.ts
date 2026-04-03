@@ -442,6 +442,12 @@ async function handleLevelEvaluation(server, dbMember, currentStats, guildId, co
 	return finalStats;
 }
 
+const XP_LOG_EMOJI = {
+	Chat: '💬',
+	Voice: '🎤',
+	'AFK Voice': '🔇'
+};
+
 async function sendXPLogToChannel(guild, dbMember, xpGained, xpType) {
 	try {
 		const settings = await getLevelingSettings(guild.id);
@@ -451,7 +457,8 @@ async function sendXPLogToChannel(guild, dbMember, xpGained, xpType) {
 		if (!channel) return;
 
 		const memberName = dbMember.server_display_name || dbMember.display_name || dbMember.username || 'Unknown';
-		const logMessage = `${xpType} XP: ${memberName} gained +${xpGained} XP`;
+		const emoji = XP_LOG_EMOJI[xpType] ?? '⭐';
+		const logMessage = `${emoji} ${xpType} XP: ${memberName} gained +${xpGained} XP`;
 
 		await channel.send(logMessage);
 	} catch (error) {

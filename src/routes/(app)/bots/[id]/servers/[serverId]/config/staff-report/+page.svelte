@@ -45,13 +45,13 @@
 
 <div class="bg-ash-800 border-ash-700 space-y-5 rounded-xl border p-4 sm:p-6">
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
-		<i class="fas fa-clipboard-check text-ash-300"></i>Staff Report & Rating
+		<i class="fas fa-clipboard-check text-orange-400"></i>Staff Report & Rating
 	</h3>
 	<p class="text-ash-400 text-xs">Configure how staff reporting and rating roles behave across your server.</p>
 
 	<div>
 		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
-			<i class="fas fa-arrow-up mr-1"></i>Role Start (Top / Highest Position)
+			<i class="fas fa-arrow-up mr-1 text-orange-400"></i>Role Start (Top / Highest Position)
 		</label>
 		<p class="text-ash-500 mb-2 text-xs">Highest role position where staff rating roles will be created. Roles will be placed below this.</p>
 		<RolePicker roles={data.roles} value={roleStart} single placeholder="Select role..." onchange={(v) => (roleStart = v as string)} />
@@ -59,7 +59,7 @@
 
 	<div>
 		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
-			<i class="fas fa-arrow-down mr-1"></i>Role End (Bottom / Lowest Position)
+			<i class="fas fa-arrow-down mr-1 text-orange-400"></i>Role End (Bottom / Lowest Position)
 		</label>
 		<p class="text-ash-500 mb-2 text-xs">Lowest role position where staff rating roles will be created. Roles will be placed above this.</p>
 		<RolePicker roles={data.roles} value={roleEnd} single placeholder="Select role..." onchange={(v) => (roleEnd = v as string)} />
@@ -67,7 +67,7 @@
 
 	<div>
 		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
-			<i class="fas fa-clock mr-1"></i>Rating Cooldown (Days)
+			<i class="fas fa-clock mr-1 text-orange-400"></i>Rating Cooldown (Days)
 		</label>
 		<p class="text-ash-500 mb-2 text-xs">Days a member must wait before rating the same staff member again (1–30 days).</p>
 		<select
@@ -82,7 +82,7 @@
 
 	<div>
 		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
-			<i class="fas fa-flag mr-1"></i>Staff Report Channel
+			<i class="fas fa-flag mr-1 text-orange-400"></i>Staff Report Channel
 		</label>
 		<p class="text-ash-500 mb-2 text-xs">Channel for detailed staff reports. Uses default channel if not set.</p>
 		<ChannelPicker channels={data.channels} categories={data.categories} value={reportChannel} onchange={(id) => (reportChannel = id)} />
@@ -90,7 +90,7 @@
 
 	<div>
 		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
-			<i class="fas fa-bell mr-1"></i>Rating Update Channel
+			<i class="fas fa-bell mr-1 text-orange-400"></i>Rating Update Channel
 		</label>
 		<p class="text-ash-500 mb-2 text-xs">Channel for staff rating updates. Uses default channel if not set.</p>
 		<ChannelPicker channels={data.channels} categories={data.categories} value={ratingChannel} onchange={(id) => (ratingChannel = id)} />
@@ -98,7 +98,7 @@
 
 	<div>
 		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
-			<i class="fas fa-user-shield mr-1"></i>Pending Report Role
+			<i class="fas fa-user-shield mr-1 text-orange-400"></i>Pending Report Role
 		</label>
 		<p class="text-ash-500 mb-2 text-xs">Role to mention when a pending report is posted. Optional.</p>
 		<RolePicker roles={data.roles} value={pendingRole} single placeholder="None" onchange={(v) => (pendingRole = v as string)} />

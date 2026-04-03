@@ -38,16 +38,19 @@
 
 <div class="bg-ash-800 border-ash-700 space-y-5 rounded-xl border p-4 sm:p-6">
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
-		<i class="fas fa-gear text-ash-300"></i>Main Config
+		<i class="fas fa-gear text-emerald-400"></i>Main Config
 	</h3>
+	<p class="text-ash-400 text-xs">Set the default channel and embed style used across the bot.</p>
 
 	<div>
 		<label class="text-ash-300 mb-1.5 block text-xs font-medium">Main channel</label>
+		<p class="text-ash-500 mb-2 text-xs">Default channel used when a feature doesn’t have a channel set.</p>
 		<ChannelPicker channels={data.channels} categories={data.categories} value={mainChannel} onchange={(id) => (mainChannel = id)} />
 	</div>
 
 	<div>
 		<label class="text-ash-300 mb-1.5 block text-xs font-medium">Default Color</label>
+		<p class="text-ash-500 mb-2 text-xs">Embed accent color used by default (hex).</p>
 		<div class="flex items-center gap-2">
 			<input
 				type="color"
@@ -65,8 +68,8 @@
 	</div>
 
 	<div>
-		<label class="text-ash-300 mb-1.5 block text-xs font-medium"><i class="fas fa-align-left mr-1.5"></i>Default Footer</label>
-		<p class="text-ash-500 mb-2 text-xs">Footer text displayed at the bottom of all bot messages and embeds.</p>
+		<label class="text-ash-300 mb-1.5 block text-xs font-medium"><i class="fas fa-align-left mr-1.5 text-emerald-400"></i>Default Footer</label>
+		<p class="text-ash-500 mb-2 text-xs">Footer text shown on most bot embeds.</p>
 		<input
 			type="text"
 			bind:value={defaultFooter}

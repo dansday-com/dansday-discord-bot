@@ -33,8 +33,9 @@
 
 <div class="bg-ash-800 border-ash-700 space-y-5 rounded-xl border p-4 sm:p-6">
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
-		<i class="fas fa-comment-dots text-ash-300"></i>Feedback
+		<i class="fas fa-comment-dots text-cyan-400"></i>Feedback
 	</h3>
+	<p class="text-ash-400 text-xs">Send feedback submissions to a channel and optionally ping a role.</p>
 
 	<div>
 		<label class="text-ash-300 mb-1.5 block text-xs font-medium">Feedback Channel</label>
@@ -44,7 +45,7 @@
 
 	<div>
 		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
-			<i class="fas fa-at mr-1"></i>Feedback Role (Optional)
+			<i class="fas fa-at mr-1 text-cyan-400"></i>Feedback Role (Optional)
 		</label>
 		<p class="text-ash-500 mb-2 text-xs">Role to mention when feedback is submitted. Optional.</p>
 		<RolePicker roles={data.roles} value={feedbackRole} single placeholder="None" onchange={(v) => (feedbackRole = v as string)} />

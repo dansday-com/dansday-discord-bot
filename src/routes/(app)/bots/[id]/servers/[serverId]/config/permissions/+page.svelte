@@ -40,13 +40,14 @@
 
 <div class="bg-ash-800 border-ash-700 space-y-5 rounded-xl border p-4 sm:p-6">
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
-		<i class="fas fa-shield-halved text-ash-300"></i>Permissions
+		<i class="fas fa-shield-halved text-blue-400"></i>Permissions
 	</h3>
-	<p class="text-ash-400 text-xs">Define role hierarchies used for member filtering and access control.</p>
+	<p class="text-ash-400 text-xs">Define role groups used for access control and member filtering.</p>
 
-	{#each [{ label: 'Admin Roles', value: adminRoles, onchange: (v: string | string[]) => (adminRoles = v as string[]) }, { label: 'Staff Roles', value: staffRoles, onchange: (v: string | string[]) => (staffRoles = v as string[]) }, { label: 'Supporter Roles', value: supporterRoles, onchange: (v: string | string[]) => (supporterRoles = v as string[]) }, { label: 'Member Roles', value: memberRoles, onchange: (v: string | string[]) => (memberRoles = v as string[]) }] as group}
+	{#each [{ label: 'Admin Roles', help: 'Full access to all bot features and configuration.', value: adminRoles, onchange: (v: string | string[]) => (adminRoles = v as string[]) }, { label: 'Staff Roles', help: 'Used for staff features and staff-related filtering (if enabled).', value: staffRoles, onchange: (v: string | string[]) => (staffRoles = v as string[]) }, { label: 'Supporter Roles', help: 'Marks members as supporters (for supporter-only features).', value: supporterRoles, onchange: (v: string | string[]) => (supporterRoles = v as string[]) }, { label: 'Member Roles', help: 'Only members with these roles are eligible for leveling XP.', value: memberRoles, onchange: (v: string | string[]) => (memberRoles = v as string[]) }] as group}
 		<div>
 			<label class="text-ash-300 mb-1.5 block text-xs font-medium">{group.label}</label>
+			<p class="text-ash-500 mb-2 text-xs">{group.help}</p>
 			<RolePicker roles={data.roles} value={group.value} onchange={group.onchange} />
 		</div>
 	{/each}

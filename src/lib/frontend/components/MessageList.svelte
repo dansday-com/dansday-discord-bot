@@ -43,19 +43,19 @@
 
 <div>
 	<div class="mb-2 flex items-center justify-between">
-		<label class="text-ash-300 text-xs font-medium"><i class="fas fa-comment-dots mr-1.5"></i>{label}</label>
+		<label class="text-ash-300 text-xs font-medium"><i class="fas fa-comment-dots mr-1.5 text-cyan-300"></i>{label}</label>
 		<button
 			type="button"
 			onclick={openAdd}
 			class="bg-ash-600 hover:bg-ash-500 text-ash-100 flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs transition-colors"
 		>
-			<i class="fas fa-plus text-xs"></i>Add Message
+			<i class="fas fa-plus text-xs text-cyan-300"></i>Add Message
 		</button>
 	</div>
 
 	{#if values.length === 0}
 		<div class="bg-ash-700 rounded-lg p-4 text-center">
-			<i class="fas fa-inbox text-ash-500 mb-2 text-2xl"></i>
+			<i class="fas fa-inbox mb-2 text-2xl text-cyan-300/80"></i>
 			<p class="text-ash-400 text-xs">No messages configured. Click Add Message to create one.</p>
 		</div>
 	{:else}
@@ -82,7 +82,7 @@
 		<div class="bg-ash-800 border-ash-700 flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl border p-5">
 			<div class="mb-4 flex items-center justify-between">
 				<h3 class="text-ash-100 flex items-center gap-2 font-bold">
-					<i class="fas fa-comment-dots text-ash-300"></i>
+					<i class="fas fa-comment-dots text-cyan-300"></i>
 					{editIndex !== null ? 'Edit Message' : 'Add Message'}
 				</h3>
 				<button onclick={() => (modalOpen = false)} aria-label="Close" class="text-ash-400 hover:text-ash-100 transition-colors">
@@ -128,7 +128,7 @@
 					disabled={!draftText.trim()}
 					class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-colors disabled:opacity-50"
 				>
-					<i class="fas fa-check"></i>Save Message
+					<i class="fas fa-check text-emerald-300"></i>Save Message
 				</button>
 			</div>
 		</div>

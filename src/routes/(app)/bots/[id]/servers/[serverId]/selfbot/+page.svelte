@@ -129,21 +129,21 @@
 <div class="space-y-4">
 	<div class="flex items-center justify-between">
 		<h2 class="text-ash-100 flex items-center gap-2 text-xl font-bold">
-			<i class="fas fa-robot text-ash-200"></i>Selfbots
+			<i class="fas fa-robot text-violet-400"></i>Selfbots
 		</h2>
 		{#if canControlSelfbot}
 			<button
 				onclick={() => (showAdd = true)}
 				class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-all hover:scale-105 active:scale-95"
 			>
-				<i class="fas fa-plus text-xs"></i>Add Selfbot
+				<i class="fas fa-plus text-xs text-violet-300"></i>Add Selfbot
 			</button>
 		{/if}
 	</div>
 
 	{#if data.selfbots.length === 0}
 		<div class="bg-ash-800 border-ash-700 rounded-xl border p-8 text-center">
-			<i class="fas fa-robot text-ash-600 mb-3 text-3xl"></i>
+			<i class="fas fa-robot mb-3 text-3xl text-violet-300"></i>
 			<p class="text-ash-400 text-sm">No selfbots yet.</p>
 		</div>
 	{:else}
@@ -159,7 +159,7 @@
 						{#if bot.bot_icon}
 							<img src={bot.bot_icon} alt="" class="h-full w-full object-cover" />
 						{:else}
-							<i class="fas fa-robot text-ash-300 text-lg"></i>
+							<i class="fas fa-robot text-lg text-violet-300"></i>
 						{/if}
 					</div>
 					<div class="min-w-0">

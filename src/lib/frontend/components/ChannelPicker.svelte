@@ -116,7 +116,7 @@
 			{selected ? `#${selected.name}` : placeholder}
 		</span>
 	{/if}
-	<i class="fas fa-chevron-down text-ash-400 text-xs"></i>
+	<i class="fas fa-chevron-down text-xs text-violet-300"></i>
 </button>
 
 {#if multi && (value as string[]).length > 0}
@@ -143,7 +143,7 @@
 		>
 			<div class="mb-4 flex items-center justify-between sm:mb-6">
 				<h3 class="text-ash-100 flex items-center gap-2 text-lg font-bold sm:text-xl">
-					<i class="fas fa-hashtag text-ash-200"></i>
+					<i class="fas fa-hashtag text-violet-400"></i>
 					{multi ? 'Select Channels' : 'Select Channel'}
 				</h3>
 				<button type="button" onclick={close} aria-label="Close" class="text-ash-400 hover:text-ash-100 p-1 transition-colors">
@@ -158,13 +158,13 @@
 					placeholder="Search channels..."
 					class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-4 py-2.5 pr-10 text-sm transition-all focus:ring-2 focus:outline-none sm:py-3 sm:text-base"
 				/>
-				<i class="fas fa-search text-ash-400 absolute top-1/2 right-3 -translate-y-1/2"></i>
+				<i class="fas fa-search absolute top-1/2 right-3 -translate-y-1/2 text-cyan-300"></i>
 			</div>
 
 			<div class="min-h-0 flex-1 space-y-2 overflow-y-auto">
 				{#if channels.length === 0}
 					<div class="text-ash-400 py-8 text-center text-sm">
-						<i class="fas fa-inbox mb-2 text-3xl"></i>
+						<i class="fas fa-inbox mb-2 text-3xl text-violet-300/80"></i>
 						<p>No channels found</p>
 					</div>
 				{:else}
@@ -188,7 +188,7 @@
 						{#if catChannels.length > 0}
 							<div class="mb-3">
 								<div class="mb-2 flex items-center gap-2 px-2">
-									<i class="fas fa-folder text-ash-500 text-xs"></i>
+									<i class="fas fa-folder text-xs text-amber-300"></i>
 									<span class="text-ash-400 text-xs font-semibold tracking-wider uppercase">{cat.name ?? 'Unnamed Category'}</span>
 								</div>
 								<div class="space-y-1">
@@ -208,16 +208,16 @@
 												: 'bg-ash-700 hover:bg-ash-600'}"
 										>
 											<div class="flex min-w-0 flex-1 items-center gap-3">
-												<i class="fas fa-hashtag text-ash-400 flex-shrink-0 text-sm"></i>
+												<i class="fas fa-hashtag flex-shrink-0 text-sm text-violet-300"></i>
 												<div class="min-w-0 flex-1">
 													<p class="text-ash-100 truncate text-sm font-medium">{ch.name}</p>
 													<p class="text-ash-400 text-xs">{channelType(ch.type)}</p>
 												</div>
 											</div>
 											{#if multi ? pending.includes(ch.discord_channel_id) : (value as string) === ch.discord_channel_id}
-												<i class="fas fa-check text-ash-200 text-sm"></i>
+												<i class="fas fa-check text-sm text-emerald-300"></i>
 											{:else}
-												<i class="fas fa-chevron-right text-ash-500 text-xs"></i>
+												<i class="fas fa-chevron-right text-xs text-violet-300/80"></i>
 											{/if}
 										</button>
 									{/each}
@@ -232,7 +232,7 @@
 						{/if}
 						<div class="mb-3">
 							<div class="mb-2 flex items-center gap-2 px-2">
-								<i class="fas fa-hashtag text-ash-500 text-xs"></i>
+								<i class="fas fa-hashtag text-xs text-violet-300"></i>
 								<span class="text-ash-400 text-xs font-semibold tracking-wider uppercase">No Category</span>
 							</div>
 							<div class="space-y-1">
@@ -252,16 +252,16 @@
 											: 'bg-ash-700 hover:bg-ash-600'}"
 									>
 										<div class="flex min-w-0 flex-1 items-center gap-3">
-											<i class="fas fa-hashtag text-ash-400 flex-shrink-0 text-sm"></i>
+											<i class="fas fa-hashtag flex-shrink-0 text-sm text-violet-300"></i>
 											<div class="min-w-0 flex-1">
 												<p class="text-ash-100 truncate text-sm font-medium">{ch.name}</p>
 												<p class="text-ash-400 text-xs">{channelType(ch.type)}</p>
 											</div>
 										</div>
 										{#if multi ? pending.includes(ch.discord_channel_id) : (value as string) === ch.discord_channel_id}
-											<i class="fas fa-check text-ash-200 text-sm"></i>
+											<i class="fas fa-check text-sm text-emerald-300"></i>
 										{:else}
-											<i class="fas fa-chevron-right text-ash-500 text-xs"></i>
+											<i class="fas fa-chevron-right text-xs text-violet-300/80"></i>
 										{/if}
 									</button>
 								{/each}
@@ -281,7 +281,7 @@
 						onclick={confirm}
 						class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all sm:py-3 sm:text-base"
 					>
-						<i class="fas fa-check"></i>Confirm Selection
+						<i class="fas fa-check text-emerald-300"></i>Confirm Selection
 					</button>
 				</div>
 			{/if}

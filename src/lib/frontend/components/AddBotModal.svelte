@@ -91,7 +91,7 @@
 		<div class="bg-ash-800 border-ash-700 my-4 w-full max-w-lg rounded-2xl border p-4 sm:p-6">
 			<div class="mb-4 flex items-center justify-between sm:mb-6">
 				<h3 class="text-ash-100 flex items-center gap-2 text-lg font-bold sm:text-xl">
-					<i class="fas fa-plus-circle text-ash-200"></i>Add New Bot
+					<i class="fas fa-plus-circle text-violet-400"></i>Add New Bot
 				</h3>
 				<button onclick={close} aria-label="Close modal" class="text-ash-400 hover:text-ash-100 p-1 transition-colors">
 					<i class="fas fa-times text-lg"></i>
@@ -107,7 +107,7 @@
 			>
 				<div>
 					<label for="botToken" class="text-ash-300 mb-2 block text-xs font-medium sm:text-sm">
-						<i class="fas fa-key mr-2"></i>Bot Token <span class="text-ash-200">*</span>
+						<i class="fas fa-key mr-2 text-amber-300"></i>Bot Token <span class="text-ash-200">*</span>
 					</label>
 					<div class="relative">
 						<input
@@ -130,7 +130,7 @@
 
 				<div>
 					<label for="appId" class="text-ash-300 mb-2 block text-xs font-medium sm:text-sm">
-						<i class="fas fa-id-card mr-2"></i>Application ID <span class="text-ash-200">*</span>
+						<i class="fas fa-id-card mr-2 text-cyan-300"></i>Application ID <span class="text-ash-200">*</span>
 					</label>
 					<input
 						id="appId"
@@ -142,7 +142,7 @@
 				</div>
 				<div>
 					<label for="botPort" class="text-ash-300 mb-2 block text-xs font-medium sm:text-sm">
-						<i class="fas fa-network-wired mr-2"></i>Port <span class="text-ash-200">*</span>
+						<i class="fas fa-network-wired mr-2 text-indigo-300"></i>Port <span class="text-ash-200">*</span>
 					</label>
 					<input
 						id="botPort"
@@ -154,7 +154,7 @@
 				</div>
 				<div>
 					<label for="secretKey" class="text-ash-300 mb-2 block text-xs font-medium sm:text-sm">
-						<i class="fas fa-shield-alt mr-2"></i>Secret Key <span class="text-ash-200">*</span>
+						<i class="fas fa-shield-alt mr-2 text-emerald-300"></i>Secret Key <span class="text-ash-200">*</span>
 					</label>
 					<div class="relative">
 						<input
@@ -178,7 +178,7 @@
 
 				<div class="bg-ash-900 border-ash-600 rounded-lg border p-3 sm:p-4">
 					<div class="flex items-start gap-2 sm:gap-3">
-						<i class="fas fa-info-circle text-ash-300 mt-0.5 flex-shrink-0 text-sm"></i>
+						<i class="fas fa-info-circle mt-0.5 flex-shrink-0 text-sm text-sky-300"></i>
 						<p class="text-ash-200 text-xs sm:text-sm">Bot name and icon will be automatically synced from Discord when the bot is running.</p>
 					</div>
 				</div>
@@ -196,7 +196,7 @@
 						disabled={loading}
 						class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:transform-none disabled:cursor-not-allowed disabled:opacity-50 sm:py-3 sm:text-base"
 					>
-						{#if loading}<i class="fas fa-spinner fa-spin"></i>{/if}
+						{#if loading}<i class="fas fa-spinner fa-spin text-violet-200"></i>{/if}
 						{loading ? 'Adding...' : 'Add Bot'}
 					</button>
 				</div>

@@ -43,7 +43,7 @@
 					{#if dangerous}
 						<i class="fas fa-triangle-exclamation text-red-400"></i>
 					{:else}
-						<i class="fas fa-circle-question text-ash-300"></i>
+						<i class="fas fa-circle-question text-cyan-300"></i>
 					{/if}
 					{title}
 				</h3>

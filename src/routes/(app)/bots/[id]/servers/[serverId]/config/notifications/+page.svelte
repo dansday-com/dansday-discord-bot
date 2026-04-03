@@ -39,13 +39,13 @@
 
 <div class="bg-ash-800 border-ash-700 space-y-5 rounded-xl border p-4 sm:p-6">
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
-		<i class="fas fa-bell text-ash-300"></i>Notifications
+		<i class="fas fa-bell text-rose-400"></i>Notifications
 	</h3>
 	<p class="text-ash-400 text-xs">Create roles from channels in selected categories. Members can choose which notification roles to get from the menu.</p>
 
 	<div>
 		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
-			<i class="fas fa-arrow-up mr-1"></i>Notification Role Start (Top / Highest Position)
+			<i class="fas fa-arrow-up mr-1 text-rose-400"></i>Notification Role Start (Top / Highest Position)
 		</label>
 		<p class="text-ash-500 mb-2 text-xs">Highest role position where notification roles will be created. Roles will be placed below this.</p>
 		<RolePicker roles={data.roles} value={roleStart} single placeholder="Select role..." onchange={(v) => (roleStart = v as string)} />
@@ -53,7 +53,7 @@
 
 	<div>
 		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
-			<i class="fas fa-arrow-down mr-1"></i>Notification Role End (Bottom / Lowest Position)
+			<i class="fas fa-arrow-down mr-1 text-rose-400"></i>Notification Role End (Bottom / Lowest Position)
 		</label>
 		<p class="text-ash-500 mb-2 text-xs">Lowest role position where notification roles will be created. Roles will be placed above this.</p>
 		<RolePicker roles={data.roles} value={roleEnd} single placeholder="Select role..." onchange={(v) => (roleEnd = v as string)} />
@@ -61,7 +61,7 @@
 
 	<div>
 		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
-			<i class="fas fa-folder mr-1"></i>Categories
+			<i class="fas fa-folder mr-1 text-rose-400"></i>Categories
 		</label>
 		<p class="text-ash-500 mb-2 text-xs">Channels inside these categories will get a notification role (one role per channel). Multiple categories allowed.</p>
 		<CategoryPicker categories={data.categories} value={categoryIds} onchange={(v) => (categoryIds = v)} />

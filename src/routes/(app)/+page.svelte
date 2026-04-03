@@ -97,7 +97,7 @@
 	<div class="mb-4 flex flex-col gap-4 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
 		<div class="min-w-0">
 			<h2 class="text-ash-100 mb-1 text-xl font-bold sm:text-2xl">
-				<i class="fas fa-robot text-ash-200 mr-2"></i>Bots List
+				<i class="fas fa-robot mr-2 text-violet-400"></i>Bots List
 			</h2>
 			<p class="text-ash-400 text-xs sm:text-sm">
 				{data.bots.length === 0 ? 'No bots yet' : `${data.bots.length} bot${data.bots.length === 1 ? '' : 's'}`}
@@ -105,7 +105,7 @@
 		</div>
 		<div class="flex items-center gap-2 sm:gap-3">
 			<label class="text-ash-400 flex items-center gap-1 text-xs whitespace-nowrap sm:gap-2 sm:text-sm">
-				<i class="fas fa-filter"></i>
+				<i class="fas fa-filter text-cyan-300"></i>
 				<span class="sm:inline">Sort by:</span>
 			</label>
 			<select
@@ -121,7 +121,7 @@
 					onclick={() => (showAddBot = true)}
 					class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs transition-all duration-200 hover:scale-105 active:scale-95 sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
 				>
-					<i class="fas fa-plus text-xs sm:text-sm"></i>
+					<i class="fas fa-plus text-xs text-violet-300 sm:text-sm"></i>
 					<span class="sm:inline">Add Bot</span>
 				</button>
 			{/if}
@@ -131,7 +131,7 @@
 	{#if sortedBots.length === 0}
 		<div class="py-8 text-center sm:py-12">
 			<div class="bg-ash-800 mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full sm:h-20 sm:w-20">
-				<i class="fas fa-robot text-ash-600 text-3xl sm:text-4xl"></i>
+				<i class="fas fa-robot text-3xl text-violet-300 sm:text-4xl"></i>
 			</div>
 			<h3 class="text-ash-100 mb-2 text-lg font-semibold sm:text-xl">No bots yet</h3>
 			<p class="text-ash-400 mb-4 text-sm sm:mb-6 sm:text-base">Get started by adding your first bot</p>
@@ -140,7 +140,7 @@
 					onclick={() => (showAddBot = true)}
 					class="bg-ash-400 hover:bg-ash-500 text-ash-100 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm transition-all duration-200 hover:scale-105 active:scale-95 sm:px-6 sm:py-3 sm:text-base"
 				>
-					<i class="fas fa-plus"></i>Add Your First Bot
+					<i class="fas fa-plus text-violet-300"></i>Add Your First Bot
 				</button>
 			{/if}
 		</div>
@@ -156,7 +156,7 @@
 							{#if bot.bot_icon}
 								<img src={bot.bot_icon} alt={bot.name} class="h-full w-full object-cover" />
 							{:else}
-								<i class="fas fa-robot text-ash-300 text-lg"></i>
+								<i class="fas fa-robot text-lg text-violet-300"></i>
 							{/if}
 						</div>
 						<div class="min-w-0">

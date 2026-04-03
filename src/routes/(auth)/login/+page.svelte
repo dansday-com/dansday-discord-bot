@@ -50,7 +50,7 @@
 <div class="bg-ash-800 border-ash-700 rounded-2xl border p-6 shadow-2xl sm:p-8">
 	<div class="mb-6 text-center sm:mb-8">
 		<div class="bg-ash-400 mb-3 inline-flex h-14 w-14 items-center justify-center rounded-full sm:mb-4 sm:h-16 sm:w-16">
-			<i class="fas fa-bolt text-ash-100 text-xl sm:text-2xl"></i>
+			<i class="fas fa-bolt text-xl text-amber-300 sm:text-2xl"></i>
 		</div>
 		<h1 class="text-ash-100 mb-2 text-2xl font-bold sm:text-3xl">Dansday</h1>
 		<p class="text-ash-400 text-xs sm:text-sm">Discord Bot Panel</p>
@@ -65,7 +65,7 @@
 	>
 		<div>
 			<label for="username_or_email" class="text-ash-300 mb-2 block text-xs font-medium sm:text-sm">
-				<i class="fas fa-user mr-2"></i>Username or Email <span class="text-ash-200">*</span>
+				<i class="fas fa-user mr-2 text-cyan-300"></i>Username or Email <span class="text-ash-200">*</span>
 			</label>
 			<input
 				id="username_or_email"
@@ -79,7 +79,7 @@
 
 		<div>
 			<label for="password" class="text-ash-300 mb-2 block text-xs font-medium sm:text-sm">
-				<i class="fas fa-lock mr-2"></i>Password <span class="text-ash-200">*</span>
+				<i class="fas fa-lock mr-2 text-rose-300"></i>Password <span class="text-ash-200">*</span>
 			</label>
 			<div class="relative">
 				<input
@@ -106,7 +106,7 @@
 			disabled={loading}
 			class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:transform-none disabled:cursor-not-allowed disabled:opacity-50 sm:py-3 sm:text-base"
 		>
-			{#if loading}<i class="fas fa-spinner fa-spin"></i>{/if}
+			{#if loading}<i class="fas fa-spinner fa-spin text-amber-200"></i>{/if}
 			{loading ? 'Processing...' : 'Login'}
 		</button>
 

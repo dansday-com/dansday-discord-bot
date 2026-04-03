@@ -140,7 +140,7 @@
 
 <div class="mb-4 flex flex-col gap-3 sm:flex-row">
 	<div class="relative flex-1">
-		<i class="fas fa-search text-ash-500 absolute top-1/2 left-3 -translate-y-1/2 text-sm"></i>
+		<i class="fas fa-search absolute top-1/2 left-3 -translate-y-1/2 text-sm text-cyan-300"></i>
 		<input
 			type="text"
 			placeholder="Search members by name or ID..."
@@ -186,7 +186,7 @@
 		<p class="text-ash-500 text-xs">Choose Discord roles under Configuration → Permissions so this list can filter members.</p>
 		{#if permissionsHref}
 			<a href={permissionsHref} class="text-ash-300 hover:text-ash-100 mt-2 inline-flex items-center gap-1.5 text-xs font-medium underline">
-				<i class="fas fa-shield-halved"></i>Open Permissions
+				<i class="fas fa-shield-halved text-blue-300"></i>Open Permissions
 			</a>
 		{/if}
 	</div>
@@ -228,8 +228,8 @@
 
 						<div class="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-4">
 							<div class="bg-ash-800 border-ash-600 flex items-center gap-2 rounded-lg border p-2">
-								<div class="bg-ash-600 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
-									<i class="fas fa-medal text-ash-100 text-xs"></i>
+								<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/20">
+									<i class="fas fa-medal text-xs text-sky-400"></i>
 								</div>
 								<div class="min-w-0">
 									<div class="text-ash-400 text-[0.6rem] tracking-wide uppercase">Rank</div>
@@ -237,8 +237,8 @@
 								</div>
 							</div>
 							<div class="bg-ash-800 border-ash-600 flex items-center gap-2 rounded-lg border p-2">
-								<div class="bg-ash-400 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
-									<i class="fas fa-trophy text-ash-100 text-xs"></i>
+								<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/20">
+									<i class="fas fa-trophy text-xs text-amber-400"></i>
 								</div>
 								<div class="min-w-0">
 									<div class="text-ash-400 text-[0.6rem] tracking-wide uppercase">Level</div>
@@ -246,8 +246,8 @@
 								</div>
 							</div>
 							<div class="bg-ash-800 border-ash-600 flex items-center gap-2 rounded-lg border p-2">
-								<div class="bg-ash-600 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
-									<i class="fas fa-star text-ash-100 text-xs"></i>
+								<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/20">
+									<i class="fas fa-star text-xs text-violet-400"></i>
 								</div>
 								<div class="min-w-0">
 									<div class="text-ash-400 text-[0.6rem] tracking-wide uppercase">XP</div>
@@ -255,8 +255,8 @@
 								</div>
 							</div>
 							<div class="bg-ash-800 border-ash-600 flex items-center gap-2 rounded-lg border p-2">
-								<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-600">
-									<i class="fas fa-comment text-ash-100 text-xs"></i>
+								<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/20">
+									<i class="fas fa-comment text-xs text-emerald-400"></i>
 								</div>
 								<div class="min-w-0">
 									<div class="text-ash-400 text-[0.6rem] tracking-wide uppercase">Chat</div>
@@ -264,8 +264,8 @@
 								</div>
 							</div>
 							<div class="bg-ash-800 border-ash-600 flex items-center gap-2 rounded-lg border p-2">
-								<div class="bg-ash-600 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
-									<i class="fas fa-microphone text-ash-100 text-xs"></i>
+								<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-cyan-500/20">
+									<i class="fas fa-microphone text-xs text-cyan-400"></i>
 								</div>
 								<div class="min-w-0">
 									<div class="text-ash-400 text-[0.6rem] tracking-wide uppercase">Voice Active</div>
@@ -273,8 +273,8 @@
 								</div>
 							</div>
 							<div class="bg-ash-800 border-ash-600 flex items-center gap-2 rounded-lg border p-2">
-								<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-orange-600">
-									<i class="fas fa-moon text-ash-100 text-xs"></i>
+								<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-orange-500/20">
+									<i class="fas fa-moon text-xs text-orange-400"></i>
 								</div>
 								<div class="min-w-0">
 									<div class="text-ash-400 text-[0.6rem] tracking-wide uppercase">Voice AFK</div>
@@ -282,8 +282,8 @@
 								</div>
 							</div>
 							<div class="bg-ash-800 border-ash-600 flex items-center gap-2 rounded-lg border p-2">
-								<div class="bg-ash-600 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
-									<i class="fas fa-calendar-alt text-ash-100 text-xs"></i>
+								<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-500/20">
+									<i class="fas fa-calendar-alt text-xs text-indigo-400"></i>
 								</div>
 								<div class="min-w-0">
 									<div class="text-ash-400 text-[0.6rem] tracking-wide uppercase">Member Since</div>
@@ -293,8 +293,8 @@
 								</div>
 							</div>
 							<div class="bg-ash-800 border-ash-600 flex items-center gap-2 rounded-lg border p-2">
-								<div class="bg-ash-600 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
-									<i class="fas fa-user-plus text-ash-100 text-xs"></i>
+								<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-500/20">
+									<i class="fas fa-user-plus text-xs text-rose-400"></i>
 								</div>
 								<div class="min-w-0">
 									<div class="text-ash-400 text-[0.6rem] tracking-wide uppercase">Account Created</div>
@@ -308,7 +308,7 @@
 						{#if member.roles?.length > 0}
 							<div class="border-ash-600 mt-2 border-t pt-2">
 								<div class="mb-1.5 flex items-center gap-1.5">
-									<i class="fas fa-user-tag text-ash-400 text-xs"></i>
+									<i class="fas fa-user-tag text-xs text-green-300"></i>
 									<span class="text-ash-400 text-xs tracking-wide uppercase">Roles</span>
 								</div>
 								<div class="flex flex-wrap gap-1.5">
@@ -338,7 +338,7 @@
 				disabled={page === 1}
 				class="bg-ash-800 border-ash-700 hover:bg-ash-700 text-ash-200 flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40"
 			>
-				<i class="fas fa-chevron-left text-xs"></i>Previous
+				<i class="fas fa-chevron-left text-xs text-violet-300"></i>Previous
 			</button>
 			<span class="text-ash-400 text-sm">Page {page} of {totalPages}</span>
 			<button
@@ -346,7 +346,7 @@
 				disabled={page === totalPages}
 				class="bg-ash-800 border-ash-700 hover:bg-ash-700 text-ash-200 flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40"
 			>
-				Next<i class="fas fa-chevron-right text-xs"></i>
+				Next<i class="fas fa-chevron-right text-xs text-violet-300"></i>
 			</button>
 		</div>
 	{/if}

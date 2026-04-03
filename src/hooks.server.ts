@@ -99,6 +99,19 @@ export const handle: Handle = async ({ event, resolve }) => {
 		preload: ({ type }) => type === 'js' || type === 'css' || type === 'font'
 	});
 
+	if (event.url.pathname !== '/' && !event.url.pathname.startsWith('/api/')) {
+		const contentType = response.headers.get('content-type') ?? '';
+		const accept = event.request.headers.get('accept') ?? '';
+		const wantsHtml = accept.includes('text/html') || contentType.includes('text/html');
+
+		if (wantsHtml && (response.status === 404 || response.status === 500)) {
+			return new Response(null, {
+				status: 302,
+				headers: { Location: '/' }
+			});
+		}
+	}
+
 	const headers = event.request.headers;
 	const ua = headers.get('user-agent') ?? '';
 	const rawIp =

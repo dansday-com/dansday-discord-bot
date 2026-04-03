@@ -167,7 +167,7 @@
 <div class="space-y-6">
 	<div class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-6">
 		<h2 class="text-ash-100 mb-6 flex items-center gap-2 text-xl font-bold">
-			<i class="fas fa-user-shield text-ash-200"></i>Server Accounts
+			<i class="fas fa-user-shield text-amber-400"></i>Server Accounts
 		</h2>
 
 		<div class="mb-8">
@@ -194,7 +194,7 @@
 					onclick={sendInvite}
 					class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex shrink-0 items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all disabled:cursor-not-allowed disabled:opacity-50"
 				>
-					{#if inviting}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas fa-paper-plane"></i>{/if}
+					{#if inviting}<i class="fas fa-spinner fa-spin text-amber-300"></i>{:else}<i class="fas fa-paper-plane text-amber-300"></i>{/if}
 					Send DM
 				</button>
 			</div>
@@ -226,14 +226,14 @@
 					{#each data.accounts as account (account.id)}
 						<div class="bg-ash-700 flex items-center justify-between gap-3 rounded-lg px-4 py-3 {account.is_frozen ? 'opacity-60' : ''}">
 							<div class="flex min-w-0 items-center gap-3">
-								<div class="bg-ash-500 flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
-									<i class="fas fa-user text-ash-200 text-xs"></i>
+								<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-500/20">
+									<i class="fas fa-user text-xs text-amber-400"></i>
 								</div>
 								<div class="min-w-0">
 									<p class="text-ash-100 truncate text-sm font-medium">{account.username}</p>
 									<p class="text-ash-400 truncate text-xs">{isSuperadmin ? account.email : maskEmail(account.email)}</p>
 									{#if account.ip_address && isSuperadmin}
-										<p class="text-ash-500 truncate text-xs"><i class="fas fa-network-wired mr-1"></i>{account.ip_address}</p>
+										<p class="text-ash-500 truncate text-xs"><i class="fas fa-network-wired mr-1 text-cyan-400/80"></i>{account.ip_address}</p>
 									{/if}
 								</div>
 							</div>
@@ -252,14 +252,14 @@
 											? 'bg-yellow-900 text-yellow-300 hover:bg-yellow-800'
 											: 'bg-ash-600 text-ash-300 hover:bg-ash-500'}"
 									>
-										<i class="fas {account.is_frozen ? 'fa-unlock' : 'fa-lock'}"></i>
+										<i class="fas {account.is_frozen ? 'fa-unlock text-yellow-300' : 'fa-lock text-ash-300'}"></i>
 									</button>
 									<button
 										onclick={() => confirmDelete(account.id, account.username)}
 										title="Remove account"
 										class="rounded bg-red-900 px-2 py-1 text-xs text-red-300 transition-colors hover:bg-red-800"
 									>
-										<i class="fas fa-trash"></i>
+										<i class="fas fa-trash text-red-300"></i>
 									</button>
 								{/if}
 							</div>
@@ -281,7 +281,7 @@
 								<p class="text-ash-100 text-sm font-medium capitalize">{invite.account_type} invite</p>
 								<p class="text-ash-400 text-xs">By {invite.creator_username ?? 'unknown'}</p>
 								<p class="text-ash-300 mt-1 text-xs">
-									<i class="fas fa-clock mr-1 opacity-70"></i>
+									<i class="fas fa-clock mr-1 text-amber-400/80"></i>
 									{#if invite.used_by}
 										Used — expiry was {#if invite.expires_at}<LocalTime value={invite.expires_at} includeSeconds class="inline" />{:else}no expiry{/if}
 									{:else if isInviteExpired(invite)}
@@ -302,7 +302,7 @@
 										onclick={() => confirmExpireInvite(invite.id, `${invite.account_type} invite`)}
 										class="bg-ash-600 hover:bg-ash-500 text-ash-100 rounded px-2 py-1 text-xs transition-colors"
 									>
-										<i class="fas fa-ban mr-1"></i>Expire
+										<i class="fas fa-ban mr-1 text-amber-300"></i>Expire
 									</button>
 								{/if}
 							</div>

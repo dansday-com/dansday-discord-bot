@@ -36,8 +36,9 @@
 
 <div class="bg-ash-800 border-ash-700 space-y-5 rounded-xl border p-4 sm:p-6">
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
-		<i class="fas fa-trophy text-ash-300"></i>Leaderboards
+		<i class="fas fa-trophy text-amber-400"></i>Leaderboards
 	</h3>
+	<p class="text-ash-400 text-xs">Enable or disable the public leaderboard page for this server.</p>
 
 	<div class="flex items-center justify-between gap-4">
 		<div>
@@ -60,7 +61,7 @@
 				<a class="text-ash-200 hover:text-ash-100 text-xs font-medium underline" href={data.leaderboardPath || '#'} target="_blank" rel="noreferrer"> Open </a>
 			</div>
 			<p class="text-ash-500 mt-2 text-xs">
-				The URL is generated from the server name (no slug is saved in the database). If another server has the same name, we add
+				Generated from the server name. If there’s a duplicate, we append
 				<code class="bg-ash-800 text-ash-200 rounded px-1.5 py-0.5">_1</code>,
 				<code class="bg-ash-800 text-ash-200 rounded px-1.5 py-0.5">_2</code>, etc.
 			</p>

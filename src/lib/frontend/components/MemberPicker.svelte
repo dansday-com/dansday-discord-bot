@@ -76,7 +76,7 @@
 	<span class={value ? 'text-ash-100' : 'text-ash-300'}>
 		{value ? selectedLabel : placeholder}
 	</span>
-	<i class="fas fa-chevron-down text-ash-400 text-xs"></i>
+	<i class="fas fa-chevron-down text-xs text-blue-300"></i>
 </button>
 
 {#if open}
@@ -87,7 +87,7 @@
 		>
 			<div class="mb-4 flex items-center justify-between sm:mb-6">
 				<h3 class="text-ash-100 flex items-center gap-2 text-lg font-bold sm:text-xl">
-					<i class="fas fa-users text-ash-200"></i>Select Member
+					<i class="fas fa-users text-blue-400"></i>Select Member
 				</h3>
 				<button type="button" onclick={close} aria-label="Close" class="text-ash-400 hover:text-ash-100 p-1 transition-colors">
 					<i class="fas fa-times text-lg"></i>
@@ -103,9 +103,9 @@
 					class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-4 py-2.5 pr-10 text-sm transition-all focus:ring-2 focus:outline-none sm:py-3 sm:text-base"
 				/>
 				{#if loading}
-					<i class="fas fa-spinner fa-spin text-ash-400 absolute top-1/2 right-3 -translate-y-1/2"></i>
+					<i class="fas fa-spinner fa-spin absolute top-1/2 right-3 -translate-y-1/2 text-blue-300"></i>
 				{:else}
-					<i class="fas fa-search text-ash-400 absolute top-1/2 right-3 -translate-y-1/2"></i>
+					<i class="fas fa-search absolute top-1/2 right-3 -translate-y-1/2 text-cyan-300"></i>
 				{/if}
 			</div>
 
@@ -140,9 +140,9 @@
 								</div>
 							</div>
 							{#if value === m.discord_member_id}
-								<i class="fas fa-check text-ash-200 text-sm"></i>
+								<i class="fas fa-check text-sm text-emerald-300"></i>
 							{:else}
-								<i class="fas fa-chevron-right text-ash-500 text-xs"></i>
+								<i class="fas fa-chevron-right text-xs text-blue-300/80"></i>
 							{/if}
 						</button>
 					{/each}

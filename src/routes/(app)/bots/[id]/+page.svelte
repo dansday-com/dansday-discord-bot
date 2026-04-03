@@ -260,11 +260,12 @@
 				</div>
 			</div>
 
-			<!-- Uptime (always shown when running, live) -->
-			<div class="bg-ash-700 rounded-lg p-3">
-				<p class="text-ash-400 mb-1 text-xs">Uptime</p>
-				<p class="text-sm font-medium {isRunning ? 'text-ash-100' : 'text-ash-500'}">{isRunning ? formatUptime(displayUptime) : '—'}</p>
-			</div>
+			{#if isRunning}
+				<div class="bg-ash-700 rounded-lg p-3">
+					<p class="text-ash-400 mb-1 text-xs">Uptime</p>
+					<p class="text-ash-100 text-sm font-medium">{formatUptime(displayUptime)}</p>
+				</div>
+			{/if}
 
 			<!-- PID (official + running) -->
 			{#if liveBot.process_id}

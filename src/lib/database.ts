@@ -1743,7 +1743,15 @@ async function addServerBot(data: { server_id: number; name: string; token: stri
 
 async function updateServerBot(
 	id: number,
-	data: Partial<{ name: string; token: string; status: string; process_id: number | null; is_testing: boolean; uptime_started_at: string | null }>
+	data: Partial<{
+		name: string;
+		token: string;
+		bot_icon: string | null;
+		status: string;
+		process_id: number | null;
+		is_testing: boolean;
+		uptime_started_at: string | null;
+	}>
 ) {
 	await db
 		.update(schema.serverBots)

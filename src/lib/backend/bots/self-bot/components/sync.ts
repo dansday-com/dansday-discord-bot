@@ -82,8 +82,12 @@ async function updateBotInfo() {
 
 	try {
 		const displayName = client.user.globalName || client.user.displayName || client.user.username;
-		await db.updateServerBot(Number(botId), { name: displayName });
-		logger.log(`✅ Updated selfbot name from Discord: ${displayName}`);
+		let botIcon: string | null = null;
+		try {
+			botIcon = typeof client.user.displayAvatarURL === 'function' ? String(client.user.displayAvatarURL({ size: 128 })) : null;
+		} catch (_) {}
+		await db.updateServerBot(Number(botId), { name: displayName, bot_icon: botIcon });
+		logger.log(`✅ Updated selfbot profile from Discord: ${displayName}`);
 	} catch (error: any) {
 		logger.log(`⚠️  Failed to update bot info: ${error.message}`);
 	}

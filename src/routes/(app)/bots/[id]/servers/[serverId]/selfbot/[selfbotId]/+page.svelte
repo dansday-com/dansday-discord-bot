@@ -7,13 +7,27 @@
 
 	let { data }: PageProps = $props();
 
-	const canEdit = $derived(data.user.authenticated && (data.user.account_source === 'accounts' || data.user.account_type === 'owner'));
+	const SERVERS_PER_PAGE = 9;
+	let page = $state(1);
 
-	let liveStatus = $state<string>(data.bot.status ?? 'stopped');
-	let uptimeBase = $state<number>(0);
-	let uptimeTick = $state<number>(0);
+	const totalPages = $derived(Math.ceil(data.servers.length / SERVERS_PER_PAGE));
+	const pagedServers = $derived(data.servers.slice((page - 1) * SERVERS_PER_PAGE, page * SERVERS_PER_PAGE));
+
+	/** Panel admins or Discord server owners only — moderators are view-only (API enforces the same). */
+	const canControlSelfbot = $derived(
+		data.user.authenticated &&
+			(data.user.account_source === 'accounts' || (data.user.account_source === 'server_accounts' && data.user.account_type === 'owner'))
+	);
+
+	let liveOverride: { status: string; process_id: number | null } | null = $state(null);
+	const liveBot = $derived(liveOverride ?? { status: data.bot.status, process_id: data.bot.process_id ?? null });
+
+	let uptimeBase = $state(0);
+	let uptimeTick = $state(0);
 	let tickInterval: ReturnType<typeof setInterval> | null = null;
 	let es: EventSource | null = null;
+
+	const displayUptime = $derived(liveBot.status === 'running' ? uptimeBase + uptimeTick : 0);
 
 	function startTick() {
 		if (tickInterval) return;
@@ -31,12 +45,16 @@
 		uptimeTick = 0;
 	}
 
-	const displayUptime = $derived(liveStatus === 'running' ? uptimeBase + uptimeTick : 0);
-
 	function statusColor(status: string) {
 		if (status === 'running') return 'bg-green-500';
 		if (status === 'starting' || status === 'stopping') return 'bg-yellow-500';
 		return 'bg-ash-500';
+	}
+
+	function statusTextColor(status: string) {
+		if (status === 'running') return 'text-green-400';
+		if (status === 'starting' || status === 'stopping') return 'text-yellow-400';
+		return 'text-ash-400';
 	}
 
 	function formatUptime(ms: number): string {
@@ -52,15 +70,30 @@
 	}
 
 	onMount(() => {
-		es = new EventSource(`/api/bots/${data.bot.id}/stream`);
-		es.onmessage = (e) => {
+		liveOverride = { status: data.bot.status, process_id: data.bot.process_id ?? null };
+		if (data.bot.status === 'running') {
+			uptimeBase = data.bot.uptime_ms ?? 0;
+			startTick();
+		}
+
+		const myEs = new EventSource(`/api/bots/${data.bot.id}/stream`);
+		es = myEs;
+		myEs.onmessage = (e) => {
+			if (es !== myEs) return;
 			const d = JSON.parse(e.data);
-			liveStatus = d.status ?? liveStatus;
-			uptimeBase = d.uptime_ms ?? 0;
-			if (liveStatus === 'running') startTick();
-			else stopTick();
+			liveOverride = {
+				status: d.status ?? 'stopped',
+				process_id: d.process_id ?? null
+			};
+			if (d.status === 'running') {
+				uptimeBase = d.uptime_ms ?? 0;
+				uptimeTick = 0;
+				startTick();
+			} else {
+				uptimeBase = 0;
+				stopTick();
+			}
 		};
-		if (liveStatus === 'running') startTick();
 	});
 
 	onDestroy(() => {
@@ -81,6 +114,22 @@
 			invalidateAll();
 		} else {
 			showToast(d.error || `Failed to ${action}`, 'error');
+		}
+	}
+
+	async function toggleMode() {
+		const res = await fetch(`/api/servers/${data.serverId}/selfbot/${data.bot.id}/mode`, {
+			method: 'PUT',
+			credentials: 'include',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ is_testing: !data.bot.is_testing })
+		});
+		const d = await res.json();
+		if (d.success) {
+			showToast(`Switched to ${data.bot.is_testing ? 'production' : 'testing'} mode`, 'success');
+			invalidateAll();
+		} else {
+			showToast(d.error || 'Failed to switch mode', 'error');
 		}
 	}
 
@@ -109,8 +158,8 @@
 		}
 	}
 
-	const isRunning = $derived(liveStatus === 'running');
-	const isBusy = $derived(liveStatus === 'starting' || liveStatus === 'stopping');
+	const isRunning = $derived(liveBot.status === 'running');
+	const isBusy = $derived(liveBot.status === 'starting' || liveBot.status === 'stopping');
 	const canStart = $derived(!isRunning && !isBusy);
 	const canStop = $derived(isRunning || isBusy);
 </script>
@@ -122,66 +171,184 @@
 <div class="space-y-4">
 	<a
 		href={`/bots/${data.botId}/servers/${data.serverId}/selfbot`}
-		class="text-ash-400 hover:text-ash-100 inline-flex items-center gap-2 text-sm transition-colors"
+		class="text-ash-400 hover:text-ash-100 mb-6 inline-flex items-center gap-2 text-sm transition-colors"
 	>
 		<i class="fas fa-arrow-left"></i>Back to Selfbots
 	</a>
 
-	<div class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-6">
-		<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-			<div class="flex min-w-0 items-center gap-4">
-				<div class="bg-ash-600 flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full">
-					<i class="fas fa-robot text-ash-300 text-2xl"></i>
+	<!-- Header (aligned with official bot page) -->
+	<div class="bg-ash-800 border-ash-700 mb-4 rounded-xl border p-4 sm:mb-6 sm:p-6">
+		<div class="flex flex-col gap-4 sm:flex-row sm:items-start">
+			<div class="flex min-w-0 flex-1 items-center gap-4">
+				<div class="bg-ash-600 flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full sm:h-20 sm:w-20">
+					{#if data.bot.bot_icon}
+						<img src={data.bot.bot_icon} alt={data.bot.name || 'Selfbot'} class="h-full w-full object-cover" />
+					{:else}
+						<i class="fas fa-robot text-ash-300 text-2xl sm:text-3xl"></i>
+					{/if}
 				</div>
 				<div class="min-w-0">
-					<h2 class="text-ash-100 truncate text-xl font-bold sm:text-2xl">{data.bot.name || `Selfbot #${data.bot.id}`}</h2>
+					<h2 class="text-ash-100 truncate text-xl font-bold sm:text-2xl">
+						{data.bot.name || `Selfbot #${data.bot.id}`}
+					</h2>
 					<div class="mt-1 flex flex-wrap items-center gap-2">
-						<span class="h-2 w-2 rounded-full {statusColor(liveStatus)}"></span>
-						<span class="text-ash-300 text-xs capitalize">{liveStatus}</span>
-						{#if liveStatus === 'running'}
-							<span class="text-ash-500 text-xs">{formatUptime(displayUptime)}</span>
-						{/if}
+						<span class="rounded-full px-2 py-0.5 text-xs {data.bot.is_testing ? 'bg-yellow-900 text-yellow-300' : 'bg-ash-600 text-ash-200'}">
+							{data.bot.is_testing ? 'Testing' : 'Production'}
+						</span>
 					</div>
 				</div>
 			</div>
 
-			{#if canEdit}
+			{#if canControlSelfbot}
 				<div class="flex shrink-0 flex-wrap items-center gap-2">
 					{#if canStart}
 						<button
 							onclick={() => botAction('start')}
-							class="text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg bg-green-600 px-3 text-xs font-medium transition-all hover:scale-105 hover:bg-green-700 active:scale-95 sm:px-4 sm:text-sm"
+							class="text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg bg-green-600 px-3 text-xs font-medium transition-all hover:scale-105 hover:bg-green-700 active:scale-95 sm:h-10 sm:px-4 sm:text-sm"
 						>
-							<i class="fas fa-play"></i>
+							<i class="fas fa-play text-sm sm:text-base"></i>
 							<span class="hidden sm:inline">Start</span>
 						</button>
 					{/if}
 					{#if canStop}
 						<button
 							onclick={() => botAction('stop')}
-							class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-all hover:scale-105 active:scale-95 sm:px-4 sm:text-sm"
+							class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-all hover:scale-105 active:scale-95 sm:h-10 sm:px-4 sm:text-sm"
 						>
-							<i class="fas fa-stop"></i>
+							<i class="fas fa-stop text-sm sm:text-base"></i>
 							<span class="hidden sm:inline">Stop</span>
 						</button>
 						<button
 							onclick={() => botAction('restart')}
-							class="text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg bg-yellow-600 px-3 text-xs font-medium transition-all hover:scale-105 hover:bg-yellow-700 active:scale-95 sm:px-4 sm:text-sm"
+							class="text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg bg-yellow-600 px-3 text-xs font-medium transition-all hover:scale-105 hover:bg-yellow-700 active:scale-95 sm:h-10 sm:px-4 sm:text-sm"
 						>
-							<i class="fas fa-redo"></i>
+							<i class="fas fa-redo text-sm sm:text-base"></i>
 							<span class="hidden sm:inline">Restart</span>
 						</button>
 					{/if}
+					<label
+						class="bg-ash-700 hover:bg-ash-600 flex h-10 cursor-pointer items-center gap-2 rounded-lg px-3 transition-all hover:scale-105 active:scale-95 sm:h-10 sm:px-4"
+					>
+						<div class="relative h-6 w-11">
+							<input type="checkbox" class="sr-only" checked={!data.bot.is_testing} onchange={toggleMode} />
+							<div class="h-6 w-11 rounded-full transition-colors {data.bot.is_testing ? 'bg-ash-500' : 'bg-green-600'}"></div>
+							<div class="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform {data.bot.is_testing ? 'left-0.5' : 'left-5.5'}"></div>
+						</div>
+						<span class="text-ash-100 text-xs font-medium sm:text-sm">{data.bot.is_testing ? 'Testing' : 'Production'}</span>
+					</label>
 					<button
 						onclick={() => (showDeleteConfirm = true)}
-						class="text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg bg-red-700 px-3 text-xs font-medium transition-all hover:scale-105 hover:bg-red-800 active:scale-95 sm:px-4 sm:text-sm"
+						class="text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg bg-red-700 px-3 text-xs font-medium transition-all hover:scale-105 hover:bg-red-800 active:scale-95 sm:h-10 sm:px-4 sm:text-sm"
 					>
-						<i class="fas fa-trash"></i>
+						<i class="fas fa-trash text-sm sm:text-base"></i>
 						<span class="hidden sm:inline">Delete</span>
 					</button>
 				</div>
 			{/if}
 		</div>
+
+		<div class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+			<div class="bg-ash-700 rounded-lg p-3">
+				<p class="text-ash-400 mb-1 text-xs">Status</p>
+				<div class="flex items-center gap-2">
+					<span class="h-2 w-2 rounded-full {statusColor(liveBot.status)}"></span>
+					<span class="text-sm font-medium capitalize {statusTextColor(liveBot.status)}">{liveBot.status}</span>
+				</div>
+			</div>
+
+			{#if isRunning}
+				<div class="bg-ash-700 rounded-lg p-3">
+					<p class="text-ash-400 mb-1 text-xs">Uptime</p>
+					<p class="text-ash-100 text-sm font-medium">{formatUptime(displayUptime)}</p>
+				</div>
+			{/if}
+
+			{#if liveBot.process_id}
+				<div class="bg-ash-700 rounded-lg p-3">
+					<p class="text-ash-400 mb-1 text-xs">Process ID</p>
+					<p class="text-ash-100 text-sm font-medium">{liveBot.process_id}</p>
+				</div>
+			{/if}
+		</div>
+	</div>
+
+	<!-- Server list (same layout as official bot detail; cards are not links for selfbots) -->
+	<div class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-6">
+		<div class="mb-4 flex items-center justify-between">
+			<h3 class="text-ash-100 text-lg font-semibold">
+				<i class="fas fa-server text-ash-300 mr-2"></i>Servers
+			</h3>
+			<span class="text-ash-400 text-xs sm:text-sm">
+				{data.servers.length} server{data.servers.length !== 1 ? 's' : ''}
+			</span>
+		</div>
+
+		{#if data.servers.length === 0}
+			<div class="py-8 text-center">
+				<i class="fas fa-server text-ash-600 mb-3 text-3xl"></i>
+				<p class="text-ash-400 text-sm">No servers yet</p>
+			</div>
+		{:else}
+			<div class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+				{#each pagedServers as server (server.id)}
+					<div class="bg-ash-700 border-ash-600 cursor-default rounded-lg border p-4" role="presentation">
+						<div class="mb-3 flex items-center gap-3">
+							<div class="bg-ash-600 flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full">
+								{#if server.server_icon}
+									<img src={server.server_icon} alt={server.name || ''} class="h-full w-full object-cover" />
+								{:else}
+									<i class="fas fa-server text-ash-100 text-lg"></i>
+								{/if}
+							</div>
+							<div class="min-w-0 flex-1">
+								<h4 class="text-ash-100 truncate text-sm font-semibold sm:text-base" title={server.name || ''}>
+									{server.name || 'Unnamed Server'}
+								</h4>
+							</div>
+							<i class="fas fa-cog text-ash-400"></i>
+						</div>
+						<div class="space-y-2 text-xs sm:text-sm">
+							<div class="flex items-center justify-between">
+								<span class="text-ash-400 flex items-center gap-1.5"><i class="fas fa-users w-4"></i>Members</span>
+								<span class="text-ash-100 font-medium">{(server.total_members ?? 0).toLocaleString()}</span>
+							</div>
+							<div class="flex items-center justify-between">
+								<span class="text-ash-400 flex items-center gap-1.5"><i class="fas fa-star w-4"></i>Boost Level</span>
+								<span class="text-ash-100 font-medium">{server.boost_level ?? 0}</span>
+							</div>
+							<div class="flex items-center justify-between">
+								<span class="text-ash-400 flex items-center gap-1.5"><i class="fas fa-gift w-4"></i>Total Boosters</span>
+								<span class="text-ash-100 font-medium">{(server.total_boosters ?? 0).toLocaleString()}</span>
+							</div>
+							<div class="flex items-center justify-between">
+								<span class="text-ash-400 flex items-center gap-1.5"><i class="fas fa-hashtag w-4"></i>Channels</span>
+								<span class="text-ash-100 font-medium">{(server.total_channels ?? 0).toLocaleString()}</span>
+							</div>
+						</div>
+					</div>
+				{/each}
+			</div>
+
+			{#if totalPages > 1}
+				<div class="flex items-center justify-between">
+					<button
+						onclick={() => (page = Math.max(1, page - 1))}
+						disabled={page === 1}
+						class="bg-ash-700 hover:bg-ash-600 text-ash-200 flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+					>
+						<i class="fas fa-chevron-left text-xs"></i>Previous
+					</button>
+					<span class="text-ash-400 text-sm">Page {page} of {totalPages}</span>
+					<button
+						onclick={() => (page = Math.min(totalPages, page + 1))}
+						disabled={page === totalPages}
+						class="bg-ash-700 hover:bg-ash-600 text-ash-200 flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+					>
+						Next<i class="fas fa-chevron-right text-xs"></i>
+					</button>
+				</div>
+			{/if}
+		{/if}
 	</div>
 </div>
 

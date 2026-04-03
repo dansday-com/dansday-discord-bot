@@ -7,7 +7,10 @@
 
 	let { data }: PageProps = $props();
 
-	const canEdit = $derived(data.user.authenticated && (data.user.account_source === 'accounts' || data.user.account_type === 'owner'));
+	const canControlSelfbot = $derived(
+		data.user.authenticated &&
+			(data.user.account_source === 'accounts' || (data.user.account_source === 'server_accounts' && data.user.account_type === 'owner'))
+	);
 
 	let showAdd = $state(false);
 
@@ -128,7 +131,7 @@
 		<h2 class="text-ash-100 flex items-center gap-2 text-xl font-bold">
 			<i class="fas fa-robot text-ash-200"></i>Selfbots
 		</h2>
-		{#if canEdit}
+		{#if canControlSelfbot}
 			<button
 				onclick={() => (showAdd = true)}
 				class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-all hover:scale-105 active:scale-95"
@@ -154,7 +157,11 @@
 				<!-- Bot icon + name -->
 				<div class="flex items-center gap-3">
 					<div class="bg-ash-600 flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-full">
-						<i class="fas fa-robot text-ash-300 text-lg"></i>
+						{#if bot.bot_icon}
+							<img src={bot.bot_icon} alt="" class="h-full w-full object-cover" />
+						{:else}
+							<i class="fas fa-robot text-ash-300 text-lg"></i>
+						{/if}
 					</div>
 					<div class="min-w-0">
 						<p class="text-ash-100 truncate text-sm font-semibold sm:text-base">{bot.name || `Selfbot #${bot.id}`}</p>

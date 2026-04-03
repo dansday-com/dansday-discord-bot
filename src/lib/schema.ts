@@ -136,6 +136,7 @@ export const serverBots = mysqlTable(
 			.references(() => servers.id, { onDelete: 'cascade' }),
 		name: text('name'),
 		token: text('token'),
+		bot_icon: text('bot_icon'),
 		status: mysqlEnum('status', ['running', 'stopped', 'starting', 'stopping']).default('stopped'),
 		process_id: int('process_id'),
 		is_testing: boolean('is_testing').default(false),

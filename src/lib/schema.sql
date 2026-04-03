@@ -105,6 +105,7 @@ CREATE TABLE IF NOT EXISTS server_bots (
     server_id INT NOT NULL,
     name TEXT NULL,
     token TEXT NULL,
+    bot_icon TEXT NULL,
     status ENUM('running','stopped','starting','stopping') DEFAULT 'stopped',
     process_id INT NULL,
     is_testing BOOLEAN DEFAULT FALSE,

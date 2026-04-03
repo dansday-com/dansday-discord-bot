@@ -244,7 +244,7 @@
 								{#if account.is_frozen}
 									<span class="rounded-full bg-red-900 px-2 py-0.5 text-xs text-red-300">Frozen</span>
 								{/if}
-								{#if account.id !== data.user.account_id && (isSuperadmin || (isOwner && account.account_type !== 'owner'))}
+								{#if isSuperadmin || (isOwner && account.account_type === 'moderator' && account.id !== data.user.account_id)}
 									<button
 										onclick={() => confirmFreeze(account.id, account.is_frozen, account.username)}
 										title={account.is_frozen ? 'Unfreeze account' : 'Freeze account'}

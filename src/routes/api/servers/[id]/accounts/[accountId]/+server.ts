@@ -15,6 +15,24 @@ function isSuperadmin(locals: App.Locals) {
 	return locals.user.authenticated && locals.user.account_source === 'accounts';
 }
 
+/** Panel login only: cannot freeze/delete your own server_accounts row. */
+function isTargetSelfServerAccount(locals: App.Locals, targetServerAccountId: number): boolean {
+	return locals.user.authenticated && locals.user.account_source === 'server_accounts' && locals.user.account_id === targetServerAccountId;
+}
+
+/**
+ * Waterfall: superadmin may manage owner + moderator; owner may manage moderator only (not other owners); moderator cannot manage.
+ */
+function canActorModifyTargetServerAccount(locals: App.Locals, target: { account_type: 'owner' | 'moderator' | string }): boolean {
+	if (!locals.user.authenticated) return false;
+	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'moderator') return false;
+	if (isSuperadmin(locals)) return true;
+	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'owner') {
+		return target.account_type === 'moderator';
+	}
+	return false;
+}
+
 export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 	const serverId = Number(params.id);
 	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'moderator') {
@@ -30,11 +48,11 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 		return json({ success: false, error: 'Account not found' }, { status: 404 });
 	}
 
-	if (account.id === locals.user.account_id) {
+	if (isTargetSelfServerAccount(locals, account.id)) {
 		return json({ success: false, error: 'Cannot modify your own account' }, { status: 400 });
 	}
 
-	if (account.account_type === 'owner' && !isSuperadmin(locals)) {
+	if (!canActorModifyTargetServerAccount(locals, account)) {
 		return json({ success: false, error: 'Access denied' }, { status: 403 });
 	}
 
@@ -75,11 +93,11 @@ export const DELETE: RequestHandler = async ({ locals, params }) => {
 		return json({ success: false, error: 'Account not found' }, { status: 404 });
 	}
 
-	if (account.id === locals.user.account_id) {
+	if (isTargetSelfServerAccount(locals, account.id)) {
 		return json({ success: false, error: 'Cannot delete your own account' }, { status: 400 });
 	}
 
-	if (account.account_type === 'owner' && !isSuperadmin(locals)) {
+	if (!canActorModifyTargetServerAccount(locals, account)) {
 		return json({ success: false, error: 'Access denied' }, { status: 403 });
 	}
 

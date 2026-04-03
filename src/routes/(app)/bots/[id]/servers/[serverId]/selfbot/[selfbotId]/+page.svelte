@@ -274,19 +274,19 @@
 						</div>
 						<div class="space-y-2 text-xs sm:text-sm">
 							<div class="flex items-center justify-between">
-								<span class="text-ash-400 flex items-center gap-1.5"><i class="fas fa-users w-4"></i>Members</span>
+								<span class="text-ash-400 flex items-center gap-1.5"><i class="fas fa-users w-4 text-blue-400"></i>Members</span>
 								<span class="text-ash-100 font-medium">{(server.total_members ?? 0).toLocaleString()}</span>
 							</div>
 							<div class="flex items-center justify-between">
-								<span class="text-ash-400 flex items-center gap-1.5"><i class="fas fa-star w-4"></i>Boost Level</span>
+								<span class="text-ash-400 flex items-center gap-1.5"><i class="fas fa-star w-4 text-amber-400"></i>Boost Level</span>
 								<span class="text-ash-100 font-medium">{server.boost_level ?? 0}</span>
 							</div>
 							<div class="flex items-center justify-between">
-								<span class="text-ash-400 flex items-center gap-1.5"><i class="fas fa-gift w-4"></i>Total Boosters</span>
+								<span class="text-ash-400 flex items-center gap-1.5"><i class="fas fa-gift w-4 text-emerald-400"></i>Total Boosters</span>
 								<span class="text-ash-100 font-medium">{(server.total_boosters ?? 0).toLocaleString()}</span>
 							</div>
 							<div class="flex items-center justify-between">
-								<span class="text-ash-400 flex items-center gap-1.5"><i class="fas fa-hashtag w-4"></i>Channels</span>
+								<span class="text-ash-400 flex items-center gap-1.5"><i class="fas fa-hashtag w-4 text-violet-400"></i>Channels</span>
 								<span class="text-ash-100 font-medium">{(server.total_channels ?? 0).toLocaleString()}</span>
 							</div>
 						</div>
@@ -301,7 +301,7 @@
 						disabled={page === 1}
 						class="bg-ash-700 hover:bg-ash-600 text-ash-200 flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40"
 					>
-						<i class="fas fa-chevron-left text-xs"></i>Previous
+						<i class="fas fa-chevron-left text-xs text-violet-300"></i>Previous
 					</button>
 					<span class="text-ash-400 text-sm">Page {page} of {totalPages}</span>
 					<button
@@ -309,7 +309,7 @@
 						disabled={page === totalPages}
 						class="bg-ash-700 hover:bg-ash-600 text-ash-200 flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40"
 					>
-						Next<i class="fas fa-chevron-right text-xs"></i>
+						Next<i class="fas fa-chevron-right text-xs text-violet-300"></i>
 					</button>
 				</div>
 			{/if}

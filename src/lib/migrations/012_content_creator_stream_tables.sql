@@ -30,7 +30,19 @@ CREATE TABLE IF NOT EXISTS server_content_creators_stream_log (
     FOREIGN KEY (stream_id) REFERENCES server_content_creators_stream(id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_cc_stream_creator_started ON server_content_creators_stream(content_creator_id, started_at);
-CREATE INDEX IF NOT EXISTS idx_cc_stream_status ON server_content_creators_stream(status);
-CREATE INDEX IF NOT EXISTS idx_cc_stream_log_stream_time ON server_content_creators_stream_log(stream_id, occurred_at);
-CREATE INDEX IF NOT EXISTS idx_cc_stream_log_event ON server_content_creators_stream_log(stream_id, event_type);
+-- Indexes (conditional — older MySQL/MariaDB do not support CREATE INDEX IF NOT EXISTS)
+SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_content_creators_stream' AND index_name='idx_cc_stream_creator_started');
+SET @s = IF(@i=0,'CREATE INDEX idx_cc_stream_creator_started ON server_content_creators_stream(content_creator_id, started_at)','SELECT 1');
+PREPARE si FROM @s; EXECUTE si; DEALLOCATE PREPARE si;
+
+SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_content_creators_stream' AND index_name='idx_cc_stream_status');
+SET @s = IF(@i=0,'CREATE INDEX idx_cc_stream_status ON server_content_creators_stream(status)','SELECT 1');
+PREPARE si FROM @s; EXECUTE si; DEALLOCATE PREPARE si;
+
+SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_content_creators_stream_log' AND index_name='idx_cc_stream_log_stream_time');
+SET @s = IF(@i=0,'CREATE INDEX idx_cc_stream_log_stream_time ON server_content_creators_stream_log(stream_id, occurred_at)','SELECT 1');
+PREPARE si FROM @s; EXECUTE si; DEALLOCATE PREPARE si;
+
+SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_content_creators_stream_log' AND index_name='idx_cc_stream_log_event');
+SET @s = IF(@i=0,'CREATE INDEX idx_cc_stream_log_event ON server_content_creators_stream_log(stream_id, event_type)','SELECT 1');
+PREPARE si FROM @s; EXECUTE si; DEALLOCATE PREPARE si;

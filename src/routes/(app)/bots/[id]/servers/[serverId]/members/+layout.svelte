@@ -25,7 +25,6 @@
 	<title>Members | Dansday</title>
 </svelte:head>
 
-
 <div class="bg-ash-800 border-ash-700 mb-4 flex gap-1 overflow-x-auto rounded-xl border p-1">
 	{#each tabs as tab}
 		<a

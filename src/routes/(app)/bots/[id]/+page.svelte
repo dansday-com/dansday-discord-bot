@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { formatDbDateTime } from '$lib/utils/datetime.js';
 	import { onMount, onDestroy } from 'svelte';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { showToast } from '$lib/frontend/toast.svelte';
@@ -90,10 +89,6 @@
 		return `${s}s`;
 	}
 
-	function fmtDate(val: any): string {
-		return formatDbDateTime(val, false);
-	}
-
 	function discordServerLink(discordServerId: string) {
 		return `https://discord.com/channels/${discordServerId}`;
 	}
@@ -153,15 +148,12 @@
 </svelte:head>
 
 <div class="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6 lg:px-8 lg:py-8">
-	
 	<a href="/" class="text-ash-400 hover:text-ash-100 mb-6 inline-flex items-center gap-2 text-sm transition-colors">
 		<i class="fas fa-arrow-left"></i>Back to Dashboard
 	</a>
 
-	
 	<div class="bg-ash-800 border-ash-700 mb-4 rounded-xl border p-4 sm:mb-6 sm:p-6">
 		<div class="flex flex-col gap-4 sm:flex-row sm:items-start">
-			
 			<div class="flex min-w-0 flex-1 items-center gap-4">
 				<div class="bg-ash-600 flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full sm:h-20 sm:w-20">
 					{#if data.bot.bot_icon}
@@ -177,7 +169,6 @@
 				</div>
 			</div>
 
-			
 			{#if isAdmin}
 				<div class="flex shrink-0 flex-wrap items-center gap-2">
 					{#if canStart}
@@ -216,9 +207,7 @@
 			{/if}
 		</div>
 
-		
 		<div class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-			
 			<div class="bg-ash-700 rounded-lg p-3">
 				<p class="text-ash-400 mb-1 text-xs">Status</p>
 				<div class="flex items-center gap-2">
@@ -234,7 +223,6 @@
 				</div>
 			{/if}
 
-			
 			{#if liveBot.process_id}
 				<div class="bg-ash-700 rounded-lg p-3">
 					<p class="text-ash-400 mb-1 text-xs">Process ID</p>
@@ -242,7 +230,6 @@
 				</div>
 			{/if}
 
-			
 			{#if data.bot.port}
 				<div class="bg-ash-700 rounded-lg p-3">
 					<p class="text-ash-400 mb-1 text-xs">Port</p>
@@ -252,7 +239,6 @@
 		</div>
 	</div>
 
-	
 	<div class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-6">
 		<div class="mb-4 flex items-center justify-between">
 			<h3 class="text-ash-100 text-lg font-semibold">
@@ -310,7 +296,6 @@
 				{/each}
 			</div>
 
-			
 			{#if totalPages > 1}
 				<div class="flex items-center justify-between">
 					<button

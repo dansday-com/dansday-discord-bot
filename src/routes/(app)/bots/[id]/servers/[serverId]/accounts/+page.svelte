@@ -4,7 +4,8 @@
 	import type { PageProps } from './$types';
 	import MemberPicker from '$lib/frontend/components/MemberPicker.svelte';
 	import ConfirmModal from '$lib/frontend/components/ConfirmModal.svelte';
-	import { formatTimestamp, parseMySQLDateTimeUtc } from '$lib/utils/datetime.js';
+	import { parseMySQLDateTimeUtc } from '$lib/utils/datetime.js';
+	import LocalTime from '$lib/frontend/components/LocalTime.svelte';
 
 	let { data }: PageProps = $props();
 
@@ -153,13 +154,6 @@
 		return 'Pending';
 	}
 
-	function inviteExpiryDisplay(invite: any): string {
-		if (!invite.expires_at) return 'No expiry set';
-		const d = parseMySQLDateTimeUtc(invite.expires_at);
-		if (!d) return '—';
-		return formatTimestamp(d.getTime(), true);
-	}
-
 	function isInviteExpired(invite: any): boolean {
 		const endMs = inviteExpiresAtMs(invite);
 		return endMs != null && endMs < Date.now();
@@ -289,11 +283,11 @@
 								<p class="text-ash-300 mt-1 text-xs">
 									<i class="fas fa-clock mr-1 opacity-70"></i>
 									{#if invite.used_by}
-										Used — expiry was {inviteExpiryDisplay(invite)}
+										Used — expiry was {#if invite.expires_at}<LocalTime value={invite.expires_at} includeSeconds class="inline" />{:else}no expiry{/if}
 									{:else if isInviteExpired(invite)}
-										Expired at {inviteExpiryDisplay(invite)}
+										Expired at {#if invite.expires_at}<LocalTime value={invite.expires_at} includeSeconds class="inline" />{:else}—{/if}
 									{:else}
-										Expires {inviteExpiryDisplay(invite)}
+										Expires {#if invite.expires_at}<LocalTime value={invite.expires_at} includeSeconds class="inline" />{:else}no expiry set{/if}
 									{/if}
 								</p>
 							</div>

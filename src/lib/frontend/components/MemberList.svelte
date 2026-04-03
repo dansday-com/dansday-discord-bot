@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { dbDateTimeToMs, formatDbDateTime } from '$lib/utils/datetime.js';
+	import { dbDateTimeToMs } from '$lib/utils/datetime.js';
+	import LocalTime from '$lib/frontend/components/LocalTime.svelte';
 
 	export type Member = {
 		discord_member_id: string;
@@ -106,12 +107,6 @@
 		page = 1;
 	}
 
-	function fmtDate(val: string): string {
-		if (!val) return 'N/A';
-		const s = formatDbDateTime(val, false);
-		return s === '—' ? 'N/A' : s;
-	}
-
 	function fmtNum(n: number): string {
 		if (n == null) return '0';
 		return n.toLocaleString();
@@ -136,7 +131,6 @@
 		return m.avatar ?? `https://cdn.discordapp.com/embed/avatars/${Number(m.discord_member_id) % 5 || 0}.png`;
 	}
 </script>
-
 
 <div class="mb-4 flex flex-col gap-3 sm:flex-row">
 	<div class="relative flex-1">
@@ -176,11 +170,9 @@
 	</select>
 </div>
 
-
 <p class="text-ash-500 mb-3 text-xs">
 	{sorted.length} member{sorted.length !== 1 ? 's' : ''}{search ? ` matching "${search}"` : ''}
 </p>
-
 
 {#if paged.length === 0}
 	<div class="text-ash-400 py-10 text-center text-sm">No members found</div>
@@ -189,7 +181,6 @@
 		{#each paged as member (member.discord_member_id)}
 			<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-4 shadow-lg transition-all sm:p-5">
 				<div class="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
-					
 					<div class="relative shrink-0">
 						<img
 							src={avatarSrc(member)}
@@ -204,9 +195,7 @@
 						{/if}
 					</div>
 
-					
 					<div class="w-full min-w-0 flex-1 text-center sm:text-left">
-						
 						<div class="mb-3 flex flex-col items-center gap-2 sm:flex-row sm:items-center">
 							<h4 class="text-ash-100 w-full truncate text-base font-bold sm:w-auto sm:text-lg">
 								{displayName(member)}
@@ -221,7 +210,6 @@
 							{/if}
 						</div>
 
-						
 						<div class="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-4">
 							<div class="bg-ash-800 border-ash-600 flex items-center gap-2 rounded-lg border p-2">
 								<div class="bg-ash-600 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
@@ -283,7 +271,9 @@
 								</div>
 								<div class="min-w-0">
 									<div class="text-ash-400 text-[0.6rem] tracking-wide uppercase">Member Since</div>
-									<div class="text-ash-100 text-sm font-bold">{fmtDate(member.member_since)}</div>
+									<div class="text-ash-100 text-sm font-bold">
+										<LocalTime value={member.member_since} fallback="N/A" />
+									</div>
 								</div>
 							</div>
 							<div class="bg-ash-800 border-ash-600 flex items-center gap-2 rounded-lg border p-2">
@@ -292,12 +282,13 @@
 								</div>
 								<div class="min-w-0">
 									<div class="text-ash-400 text-[0.6rem] tracking-wide uppercase">Account Created</div>
-									<div class="text-ash-100 text-sm font-bold">{fmtDate(member.profile_created_at)}</div>
+									<div class="text-ash-100 text-sm font-bold">
+										<LocalTime value={member.profile_created_at} fallback="N/A" />
+									</div>
 								</div>
 							</div>
 						</div>
 
-						
 						{#if member.roles?.length > 0}
 							<div class="border-ash-600 mt-2 border-t pt-2">
 								<div class="mb-1.5 flex items-center gap-1.5">
@@ -324,7 +315,6 @@
 		{/each}
 	</div>
 
-	
 	{#if totalPages > 1}
 		<div class="flex items-center justify-between">
 			<button

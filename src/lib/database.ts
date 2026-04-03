@@ -118,7 +118,7 @@ async function runMigrations() {
 			logger.log(`🔧 Running migration: ${file}`);
 			const migSql = readFileSync(join(migrationsDir, file), 'utf-8');
 			await connection.query(migSql);
-			await connection.execute('INSERT INTO migrations (name, ran_at) VALUES (?, NOW())', [file]);
+			await connection.execute('INSERT INTO migrations (name, ran_at) VALUES (?, UTC_TIMESTAMP())', [file]);
 			logger.log(`✅ Migration complete: ${file}`);
 		}
 	} catch (err: any) {
@@ -143,7 +143,7 @@ async function markAllMigrationsAsDone() {
 	}
 
 	for (const file of files) {
-		await db.execute(sql`INSERT IGNORE INTO migrations (name, ran_at) VALUES (${file}, NOW())`);
+		await db.execute(sql`INSERT IGNORE INTO migrations (name, ran_at) VALUES (${file}, UTC_TIMESTAMP())`);
 	}
 }
 
@@ -1623,12 +1623,7 @@ async function getServerAccountsByServer(serverId: number) {
 
 const SERVER_ACCOUNT_INVITE_TTL_MINUTES = 10;
 
-async function createServerAccountInvite(data: {
-	token: string;
-	server_id: number;
-	account_type: 'owner' | 'moderator';
-	created_by: number;
-}) {
+async function createServerAccountInvite(data: { token: string; server_id: number; account_type: 'owner' | 'moderator'; created_by: number }) {
 	const now = getNowUtc();
 	const createdAt = now.toJSDate();
 	const expiresAt = now.plus({ minutes: SERVER_ACCOUNT_INVITE_TTL_MINUTES }).toJSDate();

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { formatDbDateTime } from '$lib/utils/datetime.js';
+	import LocalTime from '$lib/frontend/components/LocalTime.svelte';
 	import type { LayoutProps } from './$types';
 
 	let { data }: LayoutProps = $props();
@@ -17,10 +17,6 @@
 	function fmtDec(val: number | null | undefined): string {
 		if (val == null) return '0';
 		return Number(val).toFixed(2);
-	}
-
-	function fmtDate(val: string | null | undefined): string {
-		return formatDbDateTime(val, true);
 	}
 
 	const membersWithoutLevels = $derived(Math.max(0, (s.members_total ?? 0) - (s.members_with_levels ?? 0)));
@@ -41,9 +37,7 @@
 </svelte:head>
 
 <div class="space-y-4 sm:space-y-6">
-	
 	<div class="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2 xl:grid-cols-3">
-		
 		<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-5 shadow-lg transition-all sm:p-6">
 			<div class="mb-4 flex items-center gap-3">
 				<div class="bg-ash-400/20 flex h-10 w-10 items-center justify-center rounded-lg">
@@ -63,7 +57,6 @@
 			</div>
 		</div>
 
-		
 		<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-5 shadow-lg transition-all sm:p-6">
 			<div class="mb-4 flex items-center gap-3">
 				<div class="bg-ash-500/20 flex h-10 w-10 items-center justify-center rounded-lg">
@@ -83,7 +76,6 @@
 			</div>
 		</div>
 
-		
 		<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-5 shadow-lg transition-all sm:p-6">
 			<div class="mb-4 flex items-center gap-3">
 				<div class="bg-ash-500/20 flex h-10 w-10 items-center justify-center rounded-lg">
@@ -103,7 +95,6 @@
 			</div>
 		</div>
 
-		
 		<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-5 shadow-lg transition-all sm:p-6">
 			<div class="mb-4 flex items-center gap-3">
 				<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-green-500/20">
@@ -123,7 +114,6 @@
 			</div>
 		</div>
 
-		
 		<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-5 shadow-lg transition-all sm:p-6">
 			<div class="mb-4 flex items-center gap-3">
 				<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-yellow-500/20">
@@ -143,7 +133,6 @@
 			</div>
 		</div>
 
-		
 		<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-5 shadow-lg transition-all sm:p-6">
 			<div class="mb-4 flex items-center gap-3">
 				<div class="bg-ash-500/20 flex h-10 w-10 items-center justify-center rounded-lg">
@@ -152,19 +141,18 @@
 				<h3 class="text-ash-100 text-base font-bold">Data Sync</h3>
 			</div>
 			<div class="space-y-2">
-				{#each [{ icon: 'fa-server', label: 'Server', value: fmtDate(o.updated_at) }, { icon: 'fa-users', label: 'Members', value: fmtDate(sync.members_last_updated) }, { icon: 'fa-star', label: 'Levels', value: fmtDate(sync.levels_last_updated) }, { icon: 'fa-hashtag', label: 'Channels', value: fmtDate(sync.channels_last_updated) }, { icon: 'fa-folder', label: 'Categories', value: fmtDate(sync.categories_last_updated) }, { icon: 'fa-shield-alt', label: 'Roles', value: fmtDate(sync.roles_last_updated) }] as row}
+				{#each [{ icon: 'fa-server', label: 'Server', at: o.updated_at }, { icon: 'fa-users', label: 'Members', at: sync.members_last_updated }, { icon: 'fa-star', label: 'Levels', at: sync.levels_last_updated }, { icon: 'fa-hashtag', label: 'Channels', at: sync.channels_last_updated }, { icon: 'fa-folder', label: 'Categories', at: sync.categories_last_updated }, { icon: 'fa-shield-alt', label: 'Roles', at: sync.roles_last_updated }] as row}
 					<div class="bg-ash-800/50 flex items-center justify-between rounded-lg p-2">
 						<span class="text-ash-300 flex items-center gap-2 text-sm">
 							<i class="fas {row.icon} text-ash-400 text-xs"></i>{row.label}
 						</span>
-						<span class="text-ash-100 truncate text-right text-xs font-bold sm:text-sm">{row.value}</span>
+						<LocalTime value={row.at} includeSeconds class="text-ash-100 truncate text-right text-xs font-bold sm:text-sm" />
 					</div>
 				{/each}
 			</div>
 		</div>
 	</div>
 
-	
 	<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-4 shadow-lg transition-all sm:p-6">
 		<h3 class="text-ash-100 flex items-center gap-2 text-sm font-semibold sm:text-base">
 			<i class="fas fa-sliders-h text-ash-200"></i>Configured Components
@@ -178,7 +166,9 @@
 					<span class="bg-ash-800 border-ash-600 text-ash-200 flex items-center gap-2 rounded-lg border px-2.5 py-1 text-xs sm:text-sm">
 						<i class="fas fa-cog text-ash-400"></i>
 						<span class="font-medium">{cfg.component_name}</span>
-						<span class="text-ash-500 text-[0.65rem] sm:text-xs">Updated {fmtDate(cfg.updated_at)}</span>
+						<span class="text-ash-500 text-[0.65rem] sm:text-xs">
+							Updated <LocalTime value={cfg.updated_at} includeSeconds class="inline" />
+						</span>
 					</span>
 				{/each}
 			</div>

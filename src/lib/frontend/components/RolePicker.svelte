@@ -170,7 +170,7 @@
 					{/each}
 				{/if}
 			</div>
-			
+
 			<div class="border-ash-700 mt-4 border-t pt-4">
 				<button
 					type="button"

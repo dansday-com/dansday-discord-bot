@@ -239,7 +239,6 @@
 		</div>
 	</div>
 
-	
 	<div class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-6">
 		<div class="mb-4 flex items-center justify-between">
 			<h3 class="text-ash-100 text-lg font-semibold">

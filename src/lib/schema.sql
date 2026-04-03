@@ -285,6 +285,7 @@ CREATE TABLE IF NOT EXISTS server_staff_reports (
     status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
     reviewed_by_member_id INT NULL,
     reviewed_at DATETIME NULL,
+    review_reason TEXT NULL,
     reported_at DATETIME NOT NULL,
     FOREIGN KEY (reporter_member_id) REFERENCES server_members(id) ON DELETE CASCADE,
     FOREIGN KEY (reported_staff_id) REFERENCES server_members(id) ON DELETE CASCADE,
@@ -308,6 +309,7 @@ CREATE TABLE IF NOT EXISTS server_content_creators (
     status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
     reviewed_by_member_id INT NULL,
     reviewed_at DATETIME NULL,
+    review_reason TEXT NULL,
     submitted_at DATETIME NOT NULL,
     FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE,
     FOREIGN KEY (reviewed_by_member_id) REFERENCES server_members(id) ON DELETE SET NULL

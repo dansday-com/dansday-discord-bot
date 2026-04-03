@@ -28,7 +28,8 @@ import {
 	handleStaffReportCategorySelect,
 	handleStaffReportContinue,
 	handleStaffReportApprove,
-	handleStaffReportReject
+	handleStaffReportReject,
+	handleStaffReportDecisionModal
 } from './interface/staffreportrating.js';
 import { handleNotificationsButton, handleNotificationsSelect } from './interface/notifications.js';
 import {
@@ -39,9 +40,10 @@ import {
 	handleContentCreatorDismissNo,
 	handleContentCreatorModal,
 	handleContentCreatorApprove,
-	handleContentCreatorReject
+	handleContentCreatorReject,
+	handleContentCreatorDecisionModal
 } from './interface/contentcreator.js';
-import { translate } from '../i18n.js';
+import { translate, t } from '../i18n.js';
 
 async function handleMenuButton(interaction) {
 	const member = interaction.member || (await interaction.guild.members.fetch(interaction.user.id).catch(() => null));
@@ -339,8 +341,9 @@ export async function createInterfaceEmbed(client, guildId, userId = null) {
 	}
 
 	const embedConfig = await getEmbedConfig(guildId);
-	const title = await translate('interface.panel.title', guildId, userId);
-	const description = await translate('interface.panel.description', guildId, userId);
+	// Channel-visible panel: always English from en.json (same as staff/CC log embeds).
+	const title = t('interface.panel.title', 'en');
+	const description = t('interface.panel.description', 'en');
 
 	const interfaceEmbed = {
 		color: embedConfig.COLOR,
@@ -359,7 +362,7 @@ export async function createInterfaceEmbed(client, guildId, userId = null) {
 }
 
 export async function createInterfaceButtons(guildId = null, userId = null) {
-	const menuLabel = await translate('menu.button', guildId, userId);
+	const menuLabel = t('menu.button', 'en');
 	const menuButton = new ButtonBuilder().setCustomId('bot_menu').setLabel(menuLabel).setStyle(ButtonStyle.Primary);
 
 	const buttonRow = new ActionRowBuilder().addComponents(menuButton);
@@ -463,6 +466,10 @@ function init(client) {
 					await handleStaffReportModal(interaction);
 				} else if (interaction.customId === 'content_creator_apply') {
 					await handleContentCreatorModal(interaction);
+				} else if (interaction.customId.startsWith('sr_rev|')) {
+					await handleStaffReportDecisionModal(interaction);
+				} else if (interaction.customId.startsWith('cc_rev|')) {
+					await handleContentCreatorDecisionModal(interaction);
 				} else if (interaction.customId.startsWith('giveaway_create')) {
 					await handleGiveawayModal(interaction);
 				} else {

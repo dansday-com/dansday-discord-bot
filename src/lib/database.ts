@@ -2,7 +2,7 @@ import { readFileSync, readdirSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import mysql from 'mysql2/promise';
-import { eq, and, or, inArray, sql, desc, asc, isNull, isNotNull, count, avg, like } from 'drizzle-orm';
+import { eq, and, or, inArray, sql, desc, asc, isNull, isNotNull, count, avg, like, ne } from 'drizzle-orm';
 import { db } from './drizzle.js';
 import * as schema from './schema.js';
 import { logger, toMySQLDateTime, parseMySQLDateTimeUtc, getNowUtc, addMinutesToNow } from './utils/index.js';
@@ -2214,16 +2214,20 @@ export async function getStaffReportById(serverId: any, reportId: any) {
 	return (rows[0] as unknown as any[])[0] || null;
 }
 
-export async function updateStaffReportStatus(reportId: any, status: string, reviewedByMemberId?: any) {
+export async function updateStaffReportStatus(reportId: any, status: string, reviewedByMemberId?: any, reviewReason?: string | null) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
+	const payload: Record<string, unknown> = {
+		status: status as any,
+		reviewed_by_member_id: reviewedByMemberId ? Number(reviewedByMemberId) : null,
+		reviewed_at: now as any
+	};
+	if (reviewReason !== undefined) {
+		payload.review_reason = reviewReason;
+	}
 	await db
 		.update(schema.serverStaffReports)
-		.set({
-			status: status as any,
-			reviewed_by_member_id: reviewedByMemberId ? Number(reviewedByMemberId) : null,
-			reviewed_at: now as any
-		})
+		.set(payload as any)
 		.where(eq(schema.serverStaffReports.id, Number(reportId)));
 }
 
@@ -2252,6 +2256,54 @@ export async function getLastContentCreatorApplication(serverId: any, memberId: 
 	return rows[0]?.application || null;
 }
 
+/**
+ * Another Discord user anywhere in the DB already uses this TikTok (pending row, or latest application per member is approved).
+ * Not scoped by server or bot — one handle is unique across the whole table.
+ */
+export async function getContentCreatorTiktokConflict(normalizedUsername: string, excludeDiscordMemberId: string) {
+	await initializeDatabase();
+	const u = String(normalizedUsername || '')
+		.trim()
+		.toLowerCase()
+		.replace(/^@+/, '');
+	const ex = String(excludeDiscordMemberId || '').trim();
+	if (!u || !ex) return null;
+
+	const tiktokMatch = sql`LOWER(TRIM(REPLACE(${schema.serverContentCreators.tiktok_username}, '@', ''))) = ${u}`;
+
+	const pendRows = await db
+		.select({ discord_id: schema.serverMembers.discord_member_id })
+		.from(schema.serverContentCreators)
+		.innerJoin(schema.serverMembers, eq(schema.serverContentCreators.member_id, schema.serverMembers.id))
+		.where(and(tiktokMatch, ne(schema.serverMembers.discord_member_id, ex), eq(schema.serverContentCreators.status, 'pending' as any)))
+		.limit(1);
+
+	const pend = pendRows[0];
+	if (pend?.discord_id != null) {
+		return { kind: 'pending' as const, discordId: String(pend.discord_id) };
+	}
+
+	const apprRows = await db.execute(sql`
+		SELECT sm.discord_member_id AS discord_id
+		FROM server_content_creators cca
+		INNER JOIN server_members sm ON cca.member_id = sm.id
+		INNER JOIN (
+			SELECT member_id, MAX(id) AS max_id
+			FROM server_content_creators
+			GROUP BY member_id
+		) latest ON cca.id = latest.max_id
+		WHERE cca.status = 'approved'
+			AND LOWER(TRIM(REPLACE(cca.tiktok_username, '@', ''))) = ${u}
+			AND sm.discord_member_id <> ${ex}
+		LIMIT 1
+	`);
+	const appr = (apprRows[0] as unknown as { discord_id: string }[])[0];
+	if (appr?.discord_id != null) {
+		return { kind: 'approved' as const, discordId: String(appr.discord_id) };
+	}
+	return null;
+}
+
 export async function getContentCreatorApplicationById(serverId: any, applicationId: any) {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
@@ -2265,16 +2317,25 @@ export async function getContentCreatorApplicationById(serverId: any, applicatio
 	return (rows[0] as unknown as any[])[0] || null;
 }
 
-export async function updateContentCreatorApplicationStatus(applicationId: any, status: 'pending' | 'approved' | 'rejected', reviewedByMemberId?: any) {
+export async function updateContentCreatorApplicationStatus(
+	applicationId: any,
+	status: 'pending' | 'approved' | 'rejected',
+	reviewedByMemberId?: any,
+	reviewReason?: string | null
+) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
+	const payload: Record<string, unknown> = {
+		status: status as any,
+		reviewed_by_member_id: reviewedByMemberId ? Number(reviewedByMemberId) : null,
+		reviewed_at: now as any
+	};
+	if (reviewReason !== undefined) {
+		payload.review_reason = reviewReason;
+	}
 	await db
 		.update(schema.serverContentCreators)
-		.set({
-			status: status as any,
-			reviewed_by_member_id: reviewedByMemberId ? Number(reviewedByMemberId) : null,
-			reviewed_at: now as any
-		})
+		.set(payload as any)
 		.where(eq(schema.serverContentCreators.id, Number(applicationId)));
 }
 
@@ -2571,6 +2632,7 @@ export default {
 	updateStaffReportStatus,
 	createContentCreatorApplication,
 	getLastContentCreatorApplication,
+	getContentCreatorTiktokConflict,
 	getContentCreatorApplicationById,
 	updateContentCreatorApplicationStatus,
 	getApprovedContentCreators,

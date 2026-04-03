@@ -2,13 +2,10 @@
 	"menu": {
 		"title": "📋 Menu Bot Dansday",
 		"description": "Pilih fitur dari tombol di bawah:",
-		"noAccess": "❌ Kamu tidak memiliki akses ke fitur apa pun.",
-		"button": "📋 Menu"
+		"noAccess": "❌ Kamu tidak memiliki akses ke fitur apa pun."
 	},
 	"interface": {
 		"panel": {
-			"title": "Panel Bot Dansday",
-			"description": "Klik **Menu** untuk mengakses fitur bot berdasarkan izin peran kamu.",
 			"sent": "✅ Antarmuka bot dikirim ke {channel}!",
 			"error": "❌ Gagal mengirim antarmuka: {error}"
 		}
@@ -243,6 +240,12 @@
 			"continue": "Lanjut",
 			"changeStaff": "Ganti Staff"
 		},
+		"reviewModal": {
+			"titleApprove": "Setujui laporan staff",
+			"titleReject": "Tolak laporan staff",
+			"reasonLabel": "Alasan (wajib)",
+			"reasonPlaceholder": "Jelaskan keputusanmu ke pelapor…"
+		},
 		"modal": {
 			"title": "Laporkan Staff",
 			"ratingLabel": "Rating (1-5 bintang)",
@@ -261,8 +264,8 @@
 			"roleUpdated": "\\n\\n⭐ **Rating Staff Diperbarui**\\n{roleName}\\nRating: {rating}/5.00 ({totalReports} laporan)"
 		},
 		"dm": {
-			"approved": "✅ Laporan kamu tentang {staff} di **{server}** telah disetujui.\\n\\n**Rating:** {rating}/5\\n**Kategori:** {category}\\n**Feedback:** {description}\\n\\nTerima kasih sudah membantu menjaga kualitas tim.",
-			"rejected": "❌ Laporan kamu tentang {staff} di **{server}** tidak disetujui.\\n\\nSilakan hubungi tim admin jika ingin memberikan konteks tambahan."
+			"approved": "✅ Laporan kamu tentang {staff} di **{server}** telah disetujui.\\n\\n**Rating:** {rating}/5\\n**Kategori:** {category}\\n**Feedback:** {description}\\n\\n**Catatan staff:** {reason}\\n\\nTerima kasih sudah membantu menjaga kualitas tim.",
+			"rejected": "❌ Laporan kamu tentang {staff} di **{server}** tidak disetujui.\\n\\n**Alasan:** {reason}\\n\\nSilakan hubungi tim admin jika ingin memberikan konteks tambahan."
 		},
 		"categories": {
 			"helpful": "👍 Membantu",
@@ -286,7 +289,8 @@
 			"noStaffAvailable": "❌ Tidak ada staff yang dapat ditemukan saat ini. Silakan coba lagi nanti atau hubungi admin server.",
 			"missingRating": "❌ Silakan pilih rating terlebih dahulu.",
 			"missingCategory": "❌ Silakan pilih kategori terlebih dahulu.",
-			"permissionDenied": "❌ **Izin Ditolak**\\n\\nKamu memerlukan izin admin untuk menyetujui atau menolak laporan staff."
+			"permissionDenied": "❌ **Izin Ditolak**\\n\\nKamu memerlukan izin admin untuk menyetujui atau menolak laporan staff.",
+			"reviewReasonRequired": "❌ Harap isi alasan untuk keputusanmu."
 		}
 	},
 	"contentCreator": {
@@ -305,6 +309,12 @@
 			"no": "Tidak, batal",
 			"removed": "✅ Role Content Creator kamu telah dihapus."
 		},
+		"reviewModal": {
+			"titleApprove": "Setujui pengajuan",
+			"titleReject": "Tolak pengajuan",
+			"reasonLabel": "Alasan (wajib)",
+			"reasonPlaceholder": "Jelaskan keputusanmu ke pemohon…"
+		},
 		"modal": {
 			"title": "Daftar Sebagai Content Creator",
 			"usernameLabel": "Username TikTok",
@@ -315,8 +325,9 @@
 		"submitted": "✅ Pengajuan content creator kamu untuk **{username}** sudah dikirim dan menunggu persetujuan staff.",
 		"dm": {
 			"approved": "✅ Pengajuan content creator kamu di **{server}** disetujui.\\n\\nTikTok: **{username}**\\nRole Content Creator sudah diberikan.",
-			"rejected": "❌ Pengajuan content creator kamu di **{server}** belum disetujui kali ini.\\n\\nTikTok: **{username}**\\nKamu bisa daftar lagi nanti."
+			"rejected": "❌ Pengajuan content creator kamu di **{server}** belum disetujui kali ini.\\n\\nTikTok: **{username}**\\n\\n**Alasan:** {reason}\\n\\nKamu bisa mengajukan lagi setelah masa cooldown (jika server memakai cooldown)."
 		},
+		"autoRejectApplicantReason": "Duplikasi atau penyamaran: username TikTok ini sudah terhubung ke akun Discord lain.",
 		"errors": {
 			"notConfigured": "❌ Sistem pengajuan content creator belum dikonfigurasi untuk server ini.",
 			"alreadyCreator": "✅ Kamu sudah memiliki role Content Creator di server ini.",
@@ -325,7 +336,8 @@
 			"pendingExists": "❌ Kamu masih punya pengajuan content creator yang pending.",
 			"cooldown": "❌ Kamu harus menunggu **{days} hari** sebelum mengirim pengajuan content creator lagi.",
 			"submitFailed": "❌ Gagal mengirim pengajuan content creator: {error}",
-			"permissionDenied": "❌ Kamu butuh izin admin untuk menyetujui atau menolak pengajuan content creator."
+			"permissionDenied": "❌ Kamu butuh izin admin untuk menyetujui atau menolak pengajuan content creator.",
+			"reviewReasonRequired": "❌ Harap isi alasan untuk keputusanmu."
 		}
 	},
 	"notifications": {

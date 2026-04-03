@@ -243,6 +243,34 @@
 			"continue": "Continue",
 			"changeStaff": "Change Staff"
 		},
+		"reviewModal": {
+			"titleApprove": "Approve staff report",
+			"titleReject": "Reject staff report",
+			"reasonLabel": "Reason (required)",
+			"reasonPlaceholder": "Explain your decision to the reporter…"
+		},
+		"embed": {
+			"staffDecision": "Staff decision",
+			"reviewedBy": "Reviewed by",
+			"statusApproved": "Approved",
+			"statusRejected": "Rejected"
+		},
+		"channelEmbed": {
+			"fieldStaffMember": "Staff Member",
+			"fieldRating": "Rating",
+			"fieldCategory": "Category",
+			"fieldReporter": "Reporter",
+			"fieldStatus": "Status",
+			"fieldDescription": "Description",
+			"anonymousReporter": "Anonymous",
+			"pendingTitle": "🕒 Pending Staff Report",
+			"pendingStatus": "Pending admin approval",
+			"approveButton": "Approve Report",
+			"rejectButton": "Reject Report",
+			"titleApproved": "✅ Staff Report Approved",
+			"titleRejected": "❌ Staff Report Rejected",
+			"footerReportSuffix": "• Report ID: #{reportId}"
+		},
 		"modal": {
 			"title": "Report Staff Member",
 			"ratingLabel": "Rating (1-5 stars)",
@@ -261,8 +289,8 @@
 			"roleUpdated": "\\n\\n⭐ **Staff Rating Updated**\\n{roleName}\\nRating: {rating}/5.00 ({totalReports} reports)"
 		},
 		"dm": {
-			"approved": "✅ Your staff report about {staff} in **{server}** was approved.\\n\\n**Rating:** {rating}/5\\n**Category:** {category}\\n**Feedback:** {description}\\n\\nThank you for helping us keep the team accountable.",
-			"rejected": "❌ Your staff report about {staff} in **{server}** was not approved.\\n\\nYou can reach out to the admin team if you have more context to share."
+			"approved": "✅ Your staff report about {staff} in **{server}** was approved.\\n\\n**Rating:** {rating}/5\\n**Category:** {category}\\n**Feedback:** {description}\\n\\n**Staff note:** {reason}\\n\\nThank you for helping us keep the team accountable.",
+			"rejected": "❌ Your staff report about {staff} in **{server}** was not approved.\\n\\n**Reason:** {reason}\\n\\nYou can reach out to the admin team if you have more context to share."
 		},
 		"categories": {
 			"helpful": "👍 Helpful",
@@ -286,7 +314,8 @@
 			"noStaffAvailable": "❌ No staff members could be found right now. Please try again later or contact a server admin.",
 			"missingRating": "❌ Please select a rating before continuing.",
 			"missingCategory": "❌ Please select a category before continuing.",
-			"permissionDenied": "❌ **Permission Denied**\\n\\nYou need admin permissions to approve or reject staff reports."
+			"permissionDenied": "❌ **Permission Denied**\\n\\nYou need admin permissions to approve or reject staff reports.",
+			"reviewReasonRequired": "❌ Please enter a reason for your decision."
 		}
 	},
 	"contentCreator": {
@@ -305,6 +334,43 @@
 			"no": "No, cancel",
 			"removed": "✅ Your Content Creator role was removed."
 		},
+		"reviewModal": {
+			"titleApprove": "Approve application",
+			"titleReject": "Reject application",
+			"reasonLabel": "Reason (required)",
+			"reasonPlaceholder": "Explain your decision to the applicant…"
+		},
+		"embed": {
+			"staffDecision": "Staff decision",
+			"reviewedBy": "Reviewed by",
+			"reviewedBySystem": "Automatic (duplicate TikTok)",
+			"statusApproved": "Approved",
+			"statusRejected": "Rejected"
+		},
+		"channelEmbed": {
+			"pendingTitle": "🕒 Content Creator Application Pending",
+			"pendingDescription": "{user} requested Content Creator access.",
+			"pendingStatus": "Pending admin approval",
+			"fieldTiktok": "TikTok Username",
+			"fieldStatus": "Status",
+			"fieldApplicantReason": "Reason",
+			"buttonApprove": "Approve",
+			"buttonReject": "Reject",
+			"titleApproved": "✅ Content Creator Application Approved",
+			"titleRejected": "❌ Content Creator Application Rejected",
+			"descriptionReviewed": "{mention} • TikTok: @{tiktok}",
+			"footerAppSuffix": "• Application ID: #{appId}",
+			"liveTitle": "🔴 Content Creator is LIVE",
+			"liveDescription": "{mention} is now live on TikTok!",
+			"liveWatchButton": "Watch LIVE on TikTok",
+			"autoRejectTitle": "⛔ Content Creator Application Auto-Rejected",
+			"autoRejectDescription": "{mention} • TikTok: @{tiktok}",
+			"autoRejectStatus": "Auto-rejected (duplicate / impersonation)",
+			"autoRejectReviewReason": "Duplicate or impersonation: this TikTok username is already linked to another Discord account.",
+			"fieldConflictingMember": "TikTok already linked to",
+			"autoRejectConflictPending": "That account has a **pending** application for this TikTok handle.",
+			"autoRejectConflictApproved": "That account is an **approved** content creator using this TikTok handle."
+		},
 		"modal": {
 			"title": "Apply as Content Creator",
 			"usernameLabel": "TikTok Username",
@@ -315,8 +381,9 @@
 		"submitted": "✅ Your content creator application for **{username}** was submitted and is waiting for staff approval.",
 		"dm": {
 			"approved": "✅ Your content creator application in **{server}** was approved.\\n\\nTikTok: **{username}**\\nYour Content Creator role has been assigned.",
-			"rejected": "❌ Your content creator application in **{server}** was not approved this time.\\n\\nTikTok: **{username}**\\nYou can apply again later."
+			"rejected": "❌ Your content creator application in **{server}** was not approved this time.\\n\\nTikTok: **{username}**\\n\\n**Reason:** {reason}\\n\\nYou can apply again after the cooldown period (if your server uses one)."
 		},
+		"autoRejectApplicantReason": "Duplicate or impersonation: this TikTok username is already linked to another Discord account.",
 		"errors": {
 			"notConfigured": "❌ Content creator admission is not configured for this server.",
 			"alreadyCreator": "✅ You already have the Content Creator role on this server.",
@@ -325,7 +392,8 @@
 			"pendingExists": "❌ You already have a pending content creator application.",
 			"cooldown": "❌ You must wait **{days} day(s)** before submitting another content creator application.",
 			"submitFailed": "❌ Failed to submit content creator application: {error}",
-			"permissionDenied": "❌ You need admin permissions to approve or reject content creator applications."
+			"permissionDenied": "❌ You need admin permissions to approve or reject content creator applications.",
+			"reviewReasonRequired": "❌ Please enter a reason for your decision."
 		}
 	},
 	"notifications": {

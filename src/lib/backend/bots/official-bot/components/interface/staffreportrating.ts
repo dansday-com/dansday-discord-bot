@@ -182,43 +182,90 @@ function truncateDescription(text) {
 	return text;
 }
 
-function buildReportLogEmbed({ embedConfig, title, staffUserId, rating, categoryLabel, description, reporterDisplay, statusText, reportId, color }) {
+function buildReportLogEmbed({
+	embedConfig,
+	title,
+	staffUserId,
+	rating,
+	categoryLabel,
+	description,
+	reporterDisplay,
+	statusText,
+	reportId,
+	color,
+	staffReviewReason = undefined,
+	staffReviewFieldLabel = undefined,
+	reviewedByUserId = undefined,
+	reviewedByFieldLabel = undefined
+}: {
+	embedConfig: { COLOR: number; FOOTER: string };
+	title: string;
+	staffUserId: string;
+	rating: number;
+	categoryLabel: string;
+	description: string | null | undefined;
+	reporterDisplay: string;
+	statusText: string;
+	reportId: number;
+	color?: number;
+	staffReviewReason?: string;
+	staffReviewFieldLabel?: string;
+	reviewedByUserId?: string;
+	reviewedByFieldLabel?: string;
+}) {
+	const fields = [
+		{
+			name: t('staffReport.channelEmbed.fieldStaffMember', 'en'),
+			value: `<@${staffUserId}>`,
+			inline: true
+		},
+		{
+			name: t('staffReport.channelEmbed.fieldRating', 'en'),
+			value: `${rating}/5`,
+			inline: true
+		},
+		{
+			name: t('staffReport.channelEmbed.fieldCategory', 'en'),
+			value: categoryLabel,
+			inline: true
+		},
+		{
+			name: t('staffReport.channelEmbed.fieldReporter', 'en'),
+			value: reporterDisplay,
+			inline: true
+		},
+		{
+			name: t('staffReport.channelEmbed.fieldStatus', 'en'),
+			value: statusText,
+			inline: true
+		}
+	];
+	if (reviewedByUserId) {
+		fields.push({
+			name: reviewedByFieldLabel || t('staffReport.embed.reviewedBy', 'en'),
+			value: `<@${reviewedByUserId}>`,
+			inline: true
+		});
+	}
+	fields.push({
+		name: t('staffReport.channelEmbed.fieldDescription', 'en'),
+		value: truncateDescription(description),
+		inline: false
+	});
+	if (staffReviewReason) {
+		fields.push({
+			name: staffReviewFieldLabel || t('staffReport.embed.staffDecision', 'en'),
+			value: truncateDescription(staffReviewReason),
+			inline: false
+		});
+	}
 	const embed = new EmbedBuilder()
 		.setColor(color ?? embedConfig.COLOR)
 		.setTitle(title)
-		.addFields(
-			{
-				name: 'Staff Member',
-				value: `<@${staffUserId}>`,
-				inline: true
-			},
-			{
-				name: 'Rating',
-				value: `${rating}/5`,
-				inline: true
-			},
-			{
-				name: 'Category',
-				value: categoryLabel,
-				inline: true
-			},
-			{
-				name: 'Reporter',
-				value: reporterDisplay,
-				inline: true
-			},
-			{
-				name: 'Status',
-				value: statusText,
-				inline: true
-			},
-			{
-				name: 'Description',
-				value: truncateDescription(description),
-				inline: false
-			}
-		)
-		.setFooter({ text: `${embedConfig.FOOTER} • Report ID: #${reportId}` })
+		.addFields(fields)
+		.setFooter({
+			text: `${embedConfig.FOOTER} ${t('staffReport.channelEmbed.footerReportSuffix', 'en', { reportId })}`
+		})
 		.setTimestamp();
 	return embed;
 }
@@ -626,11 +673,11 @@ export async function handleStaffReportModal(interaction) {
 		if (reportChannelId) {
 			const reportChannel = guild.channels.cache.get(reportChannelId) || (await guild.channels.fetch(reportChannelId).catch(() => null));
 			if (reportChannel && reportChannel.isTextBased()) {
-				const reporterDisplay = isAnonymous ? 'Anonymous' : `<@${interaction.user.id}>`;
-				const pendingTitle = '🕒 Pending Staff Report';
-				const pendingStatus = 'Pending admin approval';
-				const approveLabel = 'Approve Report';
-				const rejectLabel = 'Reject Report';
+				const reporterDisplay = isAnonymous ? t('staffReport.channelEmbed.anonymousReporter', 'en') : `<@${interaction.user.id}>`;
+				const pendingTitle = t('staffReport.channelEmbed.pendingTitle', 'en');
+				const pendingStatus = t('staffReport.channelEmbed.pendingStatus', 'en');
+				const approveLabel = t('staffReport.channelEmbed.approveButton', 'en');
+				const rejectLabel = t('staffReport.channelEmbed.rejectButton', 'en');
 
 				const logEmbed = buildReportLogEmbed({
 					embedConfig,
@@ -675,7 +722,7 @@ export async function handleStaffReportModal(interaction) {
 	}
 }
 
-async function notifyReporterOfDecision(guild, report, translationKey, categoryLabel) {
+async function notifyReporterOfDecision(guild, report, translationKey, categoryLabel, reviewReason) {
 	if (!report?.reporter_discord_id) {
 		await logger.log(`⚠️ Cannot send DM notification: reporter_discord_id is missing`);
 		return;
@@ -692,7 +739,8 @@ async function notifyReporterOfDecision(guild, report, translationKey, categoryL
 		rating: report.rating,
 		category: categoryLabel,
 		description: truncateDescription(report.description),
-		server: guild.name
+		server: guild.name,
+		reason: truncateDescription(reviewReason || '')
 	});
 	try {
 		await reporterUser.send({
@@ -704,20 +752,33 @@ async function notifyReporterOfDecision(guild, report, translationKey, categoryL
 	}
 }
 
-async function handleStaffReportDecision(interaction, decision) {
+const REVIEW_DECISION_REASON_INPUT = 'review_decision_reason';
+
+export async function handleStaffReportDecisionModal(interaction) {
 	try {
 		await interaction.deferReply({ flags: 64 });
 
 		const guild = interaction.guild;
-		const moderator = interaction.member || (await guild.members.fetch(interaction.user.id).catch(() => null));
-
-		if (!moderator || !(await hasPermission(moderator, 'setup'))) {
-			const errorMsg = await translate('staffReport.errors.permissionDenied', guild.id, interaction.user.id);
-			await interaction.editReply({ content: errorMsg }).catch(() => null);
+		const parts = interaction.customId.split('|');
+		if (parts.length !== 5 || parts[0] !== 'sr_rev') {
+			await interaction
+				.editReply({
+					content: await translate('staffReport.errors.submitFailed', guild.id, interaction.user.id, { error: 'Invalid form' })
+				})
+				.catch(() => null);
 			return;
 		}
 
-		const [, reportIdStr] = interaction.customId.split('|');
+		const [, decisionRaw, reportIdStr, channelId, messageId] = parts;
+		if (decisionRaw !== 'approve' && decisionRaw !== 'reject') {
+			await interaction
+				.editReply({
+					content: await translate('staffReport.errors.submitFailed', guild.id, interaction.user.id, { error: 'Invalid decision' })
+				})
+				.catch(() => null);
+			return;
+		}
+
 		const reportId = parseInt(reportIdStr, 10);
 		if (!Number.isFinite(reportId)) {
 			await interaction
@@ -725,6 +786,24 @@ async function handleStaffReportDecision(interaction, decision) {
 					content: await translate('staffReport.errors.submitFailed', guild.id, interaction.user.id, { error: 'Invalid report ID' })
 				})
 				.catch(() => null);
+			return;
+		}
+
+		const reviewReason = interaction.fields.getTextInputValue(REVIEW_DECISION_REASON_INPUT)?.trim();
+		if (!reviewReason) {
+			await interaction
+				.editReply({
+					content: await translate('staffReport.errors.reviewReasonRequired', guild.id, interaction.user.id)
+				})
+				.catch(() => null);
+			return;
+		}
+
+		const moderator = interaction.member || (await guild.members.fetch(interaction.user.id).catch(() => null));
+
+		if (!moderator || !(await hasPermission(moderator, 'setup'))) {
+			const errorMsg = await translate('staffReport.errors.permissionDenied', guild.id, interaction.user.id);
+			await interaction.editReply({ content: errorMsg }).catch(() => null);
 			return;
 		}
 
@@ -751,25 +830,37 @@ async function handleStaffReportDecision(interaction, decision) {
 
 		const moderatorDbMember = await db.upsertMember(server.id, moderator);
 
+		let sourceMessage = null;
+		try {
+			const ch = await guild.channels.fetch(channelId);
+			if (ch && ch.isTextBased()) {
+				sourceMessage = await ch.messages.fetch(messageId).catch(() => null);
+			}
+		} catch (fetchErr) {
+			await logger.log(`⚠️ Could not fetch staff report log message: ${fetchErr.message}`);
+		}
+
 		if (report.status !== 'pending') {
 			await interaction.editReply({ content: '⚠️ This report has already been processed.' }).catch(() => null);
-			if (interaction.message) {
-				await interaction.message.edit({ components: [] }).catch(() => null);
+			if (sourceMessage) {
+				await sourceMessage.edit({ components: [] }).catch(() => null);
 			}
 			return;
 		}
 
 		const embedConfig = await getEmbedConfig(guild.id);
 		const categoryLabelEnglish = getCategoryLabelEnglish(report.category);
-		const reporterDisplay = report.is_anonymous ? 'Anonymous' : `<@${report.reporter_discord_id}>`;
+		const reporterDisplay = report.is_anonymous ? t('staffReport.channelEmbed.anonymousReporter', 'en') : `<@${report.reporter_discord_id}>`;
+		const staffDecisionLabel = t('staffReport.embed.staffDecision', 'en');
+		const reviewedByLabel = t('staffReport.embed.reviewedBy', 'en');
 
 		let statusText;
 		let title;
 		let replyMessage;
 		let color;
 
-		if (decision === 'approve') {
-			await db.updateStaffReportStatus(report.id, 'approved', moderatorDbMember.id);
+		if (decisionRaw === 'approve') {
+			await db.updateStaffReportStatus(report.id, 'approved', moderatorDbMember.id, reviewReason);
 			const aggregate = await db.getStaffRatingAggregate(server.id, report.reported_staff_id);
 			await db.upsertStaffRating(server.id, report.reported_staff_id, aggregate.average_rating || report.rating, aggregate.total_reports);
 			await updateStaffRatingRole(
@@ -789,17 +880,17 @@ async function handleStaffReportDecision(interaction, decision) {
 				}
 			);
 			const categoryLabelForDM = await getCategoryLabel(guild.id, report.reporter_discord_id, report.category);
-			await notifyReporterOfDecision(guild, report, 'staffReport.dm.approved', categoryLabelForDM);
-			statusText = `Approved by <@${interaction.user.id}>`;
-			title = '✅ Staff Report Approved';
+			await notifyReporterOfDecision(guild, report, 'staffReport.dm.approved', categoryLabelForDM, reviewReason);
+			statusText = t('staffReport.embed.statusApproved', 'en');
+			title = t('staffReport.channelEmbed.titleApproved', 'en');
 			replyMessage = `✅ Report #${report.id} approved.`;
 			color = 0x22c55e;
 		} else {
-			await db.updateStaffReportStatus(report.id, 'rejected', moderatorDbMember.id);
+			await db.updateStaffReportStatus(report.id, 'rejected', moderatorDbMember.id, reviewReason);
 			const categoryLabelForDM = await getCategoryLabel(guild.id, report.reporter_discord_id, report.category);
-			await notifyReporterOfDecision(guild, report, 'staffReport.dm.rejected', categoryLabelForDM);
-			statusText = `Rejected by <@${interaction.user.id}>`;
-			title = '❌ Staff Report Rejected';
+			await notifyReporterOfDecision(guild, report, 'staffReport.dm.rejected', categoryLabelForDM, reviewReason);
+			statusText = t('staffReport.embed.statusRejected', 'en');
+			title = t('staffReport.channelEmbed.titleRejected', 'en');
 			replyMessage = `❌ Report #${report.id} rejected.`;
 			color = embedConfig.COLOR;
 		}
@@ -814,11 +905,15 @@ async function handleStaffReportDecision(interaction, decision) {
 			reporterDisplay,
 			statusText,
 			reportId: report.id,
-			color
+			color,
+			staffReviewReason: reviewReason,
+			staffReviewFieldLabel: staffDecisionLabel,
+			reviewedByUserId: interaction.user.id,
+			reviewedByFieldLabel: reviewedByLabel
 		});
 
-		if (interaction.message) {
-			await interaction.message
+		if (sourceMessage) {
+			await sourceMessage
 				.edit({
 					embeds: [updatedEmbed],
 					components: []
@@ -828,9 +923,11 @@ async function handleStaffReportDecision(interaction, decision) {
 
 		await interaction.editReply({ content: replyMessage }).catch(() => null);
 
-		await logger.log(`${decision === 'approve' ? '✅' : '⛔'} Staff report #${report.id} ${decision} by ${interaction.user.tag} (${interaction.user.id})`);
+		await logger.log(
+			`${decisionRaw === 'approve' ? '✅' : '⛔'} Staff report #${report.id} ${decisionRaw} by ${interaction.user.tag} (${interaction.user.id})`
+		);
 	} catch (error) {
-		await logger.log(`❌ Error handling staff report decision: ${error.message}`);
+		await logger.log(`❌ Error handling staff report decision modal: ${error.message}`);
 		await interaction
 			.editReply({
 				content: await translate('staffReport.errors.submitFailed', interaction.guild.id, interaction.user.id, { error: error.message })
@@ -839,10 +936,48 @@ async function handleStaffReportDecision(interaction, decision) {
 	}
 }
 
+async function showStaffReportReviewModal(interaction, decision) {
+	const guild = interaction.guild;
+	const [, reportIdStr] = interaction.customId.split('|');
+	const messageId = interaction.message?.id;
+	const channelId = interaction.channelId;
+	if (!reportIdStr || !messageId || !channelId) {
+		await interaction
+			.reply({
+				content: await translate('staffReport.errors.submitFailed', guild.id, interaction.user.id, { error: 'Invalid interaction' }),
+				flags: 64
+			})
+			.catch(() => null);
+		return;
+	}
+	const titleKey = decision === 'approve' ? 'staffReport.reviewModal.titleApprove' : 'staffReport.reviewModal.titleReject';
+	const modal = new ModalBuilder()
+		.setCustomId(`sr_rev|${decision}|${reportIdStr}|${channelId}|${messageId}`)
+		.setTitle(await translate(titleKey, guild.id, interaction.user.id));
+	const input = new TextInputBuilder()
+		.setCustomId(REVIEW_DECISION_REASON_INPUT)
+		.setLabel(await translate('staffReport.reviewModal.reasonLabel', guild.id, interaction.user.id))
+		.setStyle(TextInputStyle.Paragraph)
+		.setPlaceholder(await translate('staffReport.reviewModal.reasonPlaceholder', guild.id, interaction.user.id))
+		.setRequired(true)
+		.setMinLength(2)
+		.setMaxLength(1000);
+	modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(input));
+	await interaction.showModal(modal);
+}
+
 export async function handleStaffReportApprove(interaction) {
-	await handleStaffReportDecision(interaction, 'approve');
+	try {
+		await showStaffReportReviewModal(interaction, 'approve');
+	} catch (error) {
+		await logger.log(`❌ Error opening staff report approve modal: ${error.message}`);
+	}
 }
 
 export async function handleStaffReportReject(interaction) {
-	await handleStaffReportDecision(interaction, 'reject');
+	try {
+		await showStaffReportReviewModal(interaction, 'reject');
+	} catch (error) {
+		await logger.log(`❌ Error opening staff report reject modal: ${error.message}`);
+	}
 }

@@ -401,6 +401,7 @@ export const serverStaffReports = mysqlTable(
 		status: mysqlEnum('status', ['pending', 'approved', 'rejected']).default('pending'),
 		reviewed_by_member_id: int('reviewed_by_member_id').references(() => serverMembers.id, { onDelete: 'set null' }),
 		reviewed_at: datetime('reviewed_at'),
+		review_reason: text('review_reason'),
 		reported_at: datetime('reported_at').notNull()
 	},
 	(t) => [
@@ -437,6 +438,7 @@ export const serverContentCreators = mysqlTable(
 		status: mysqlEnum('status', ['pending', 'approved', 'rejected']).default('pending'),
 		reviewed_by_member_id: int('reviewed_by_member_id').references(() => serverMembers.id, { onDelete: 'set null' }),
 		reviewed_at: datetime('reviewed_at'),
+		review_reason: text('review_reason'),
 		submitted_at: datetime('submitted_at').notNull()
 	},
 	(t) => [

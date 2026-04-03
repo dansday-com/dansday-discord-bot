@@ -10,7 +10,7 @@ import {
 } from 'discord.js';
 import { CONTENT_CREATOR, getBotConfig, getEmbedConfig } from '../../../../config.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
-import { translate } from '../../i18n.js';
+import { translate, t } from '../../i18n.js';
 import db from '../../../../../database.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../../utils/index.js';
 
@@ -28,6 +28,101 @@ function truncateReason(text: string) {
 	if (!text) return '—';
 	if (text.length > 1024) return `${text.slice(0, 1021)}...`;
 	return text;
+}
+
+const DUPLICATE_CONTENT_CREATOR_AUTO_REJECT_MS = 500;
+
+async function runDuplicateContentCreatorAutoReject(opts: {
+	client: any;
+	botId: number | string;
+	guildId: string;
+	channelId: string | null;
+	messageId: string | null;
+	serverId: number;
+	appId: number;
+	applicantDiscordId: string;
+	username: string;
+	conflict: { kind: 'pending' | 'approved'; discordId: string };
+}) {
+	try {
+		const { client, botId, guildId, channelId, messageId, serverId, appId, applicantDiscordId, username, conflict } = opts;
+		const guild = await client.guilds.fetch(guildId).catch(() => null);
+		if (!guild) return;
+		const server = await db.getServerByDiscordId(Number(botId), guildId).catch(() => null);
+		if (!server || Number(server.id) !== Number(serverId)) return;
+
+		const app = await db.getContentCreatorApplicationById(server.id, appId);
+		if (!app || app.status !== 'pending') return;
+
+		const systemReason = t('contentCreator.channelEmbed.autoRejectReviewReason', 'en');
+		const conflictNote =
+			conflict.kind === 'pending'
+				? t('contentCreator.channelEmbed.autoRejectConflictPending', 'en')
+				: t('contentCreator.channelEmbed.autoRejectConflictApproved', 'en');
+		const reviewReasonFull = `${systemReason}\n\n${conflictNote} <@${conflict.discordId}>`;
+
+		await db.updateContentCreatorApplicationStatus(app.id, 'rejected', undefined, reviewReasonFull);
+
+		const embedConfig = await getEmbedConfig(guild.id).catch(() => null);
+		const applicantUser = await client.users.fetch(applicantDiscordId).catch(() => null);
+		if (applicantUser) {
+			const applicantReasonDm = await translate('contentCreator.autoRejectApplicantReason', guild.id, applicantUser.id);
+			await applicantUser
+				.send({
+					content: await translate('contentCreator.dm.rejected', guild.id, applicantUser.id, {
+						server: guild.name,
+						username: `@${username}`,
+						reason: truncateReason(applicantReasonDm)
+					})
+				})
+				.catch(() => null);
+		}
+
+		if (channelId && messageId) {
+			const ch = await guild.channels.fetch(channelId).catch(() => null);
+			if (ch?.isTextBased()) {
+				const sourceMessage = await ch.messages.fetch(messageId).catch(() => null);
+				if (sourceMessage) {
+					const staffDecisionLabel = t('contentCreator.embed.staffDecision', 'en');
+					const reviewedByLabel = t('contentCreator.embed.reviewedBy', 'en');
+					const statusLabel = t('contentCreator.embed.statusRejected', 'en');
+					const reviewedBySystem = t('contentCreator.embed.reviewedBySystem', 'en');
+					const updatedEmbed = new EmbedBuilder()
+						.setColor(0xef4444)
+						.setTitle(t('contentCreator.channelEmbed.titleRejected', 'en'))
+						.setDescription(
+							t('contentCreator.channelEmbed.descriptionReviewed', 'en', {
+								mention: `<@${app.applicant_discord_id}>`,
+								tiktok: app.tiktok_username
+							})
+						)
+						.addFields(
+							{ name: t('contentCreator.channelEmbed.fieldStatus', 'en'), value: statusLabel, inline: true },
+							{ name: reviewedByLabel, value: reviewedBySystem, inline: true },
+							{
+								name: t('contentCreator.channelEmbed.fieldApplicantReason', 'en'),
+								value: truncateReason(app.reason),
+								inline: false
+							},
+							{ name: staffDecisionLabel, value: truncateReason(reviewReasonFull), inline: false }
+						)
+						.setTimestamp();
+					if (embedConfig?.FOOTER) {
+						updatedEmbed.setFooter({
+							text: `${embedConfig.FOOTER} ${t('contentCreator.channelEmbed.footerAppSuffix', 'en', { appId: app.id })}`
+						});
+					}
+					await sourceMessage.edit({ embeds: [updatedEmbed], components: [] }).catch(() => null);
+				}
+			}
+		}
+
+		await logger.log(
+			`⛔ Content creator duplicate auto-reject: @${username} applicant ${applicantDiscordId} vs ${conflict.discordId} (${conflict.kind}) guild ${guildId} app #${appId}`
+		);
+	} catch (e: any) {
+		await logger.log(`❌ Content creator duplicate auto-reject failed: ${e.message}`);
+	}
 }
 
 function isLive(guildId: string, discordMemberId: string) {
@@ -102,13 +197,17 @@ async function broadcastLiveStart(guild: any, discordMemberId: string, tiktokUse
 	if (!channel || !channel.isTextBased()) return;
 
 	const embedConfig = await getEmbedConfig(guild.id).catch(() => null);
+	const mention = `<@${discordMemberId}>`;
+	const liveUrl = `https://www.tiktok.com/@${encodeURIComponent(tiktokUsername)}/live`;
 	const embed = new EmbedBuilder()
 		.setColor(embedConfig?.COLOR ?? 0xec4899)
-		.setTitle('🔴 Content Creator is LIVE')
-		.setDescription(`<@${discordMemberId}> is now live on TikTok!\nhttps://www.tiktok.com/@${tiktokUsername}/live`)
+		.setTitle(t('contentCreator.channelEmbed.liveTitle', 'en'))
+		.setDescription(t('contentCreator.channelEmbed.liveDescription', 'en', { mention }))
 		.setTimestamp();
 	if (embedConfig?.FOOTER) embed.setFooter({ text: embedConfig.FOOTER });
-	await channel.send({ embeds: [embed] }).catch(() => null);
+	const watchButton = new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(liveUrl).setLabel(t('contentCreator.channelEmbed.liveWatchButton', 'en'));
+	const row = new ActionRowBuilder<ButtonBuilder>().addComponents(watchButton);
+	await channel.send({ embeds: [embed], components: [row] }).catch(() => null);
 }
 
 async function syncLiveWatchers(client: any) {
@@ -457,32 +556,71 @@ export async function handleContentCreatorModal(interaction: any) {
 			}
 		}
 
+		const conflict = await db.getContentCreatorTiktokConflict(username, interaction.user.id);
+
 		const appId = await db.createContentCreatorApplication(server.id, applicant.id, username, reason);
 		const admissionChannelId = await CONTENT_CREATOR.getAdmissionChannel(guild.id);
 		const admissionChannel = guild.channels.cache.get(admissionChannelId) || (await guild.channels.fetch(admissionChannelId).catch(() => null));
+		let postedChannelId: string | null = null;
+		let postedMessageId: string | null = null;
 		if (admissionChannel && admissionChannel.isTextBased()) {
 			const embedConfig = await getEmbedConfig(guild.id).catch(() => null);
 			const embed = new EmbedBuilder()
 				.setColor(0xf59e0b)
-				.setTitle('🕒 Content Creator Application Pending')
-				.setDescription(`<@${interaction.user.id}> requested Content Creator access.`)
+				.setTitle(t('contentCreator.channelEmbed.pendingTitle', 'en'))
+				.setDescription(t('contentCreator.channelEmbed.pendingDescription', 'en', { user: `<@${interaction.user.id}>` }))
 				.addFields(
-					{ name: 'TikTok Username', value: `@${username}`, inline: true },
-					{ name: 'Status', value: 'Pending admin approval', inline: true },
-					{ name: 'Reason', value: truncateReason(reason), inline: false }
+					{ name: t('contentCreator.channelEmbed.fieldTiktok', 'en'), value: `@${username}`, inline: true },
+					{ name: t('contentCreator.channelEmbed.fieldStatus', 'en'), value: t('contentCreator.channelEmbed.pendingStatus', 'en'), inline: true },
+					{
+						name: t('contentCreator.channelEmbed.fieldApplicantReason', 'en'),
+						value: truncateReason(reason),
+						inline: false
+					}
 				)
 				.setTimestamp();
-			if (embedConfig?.FOOTER) embed.setFooter({ text: `${embedConfig.FOOTER} • Application ID: #${appId}` });
-			const approveButton = new ButtonBuilder().setCustomId(`content_creator_approve|${appId}`).setLabel('Approve').setStyle(ButtonStyle.Success);
-			const rejectButton = new ButtonBuilder().setCustomId(`content_creator_reject|${appId}`).setLabel('Reject').setStyle(ButtonStyle.Danger);
+			if (embedConfig?.FOOTER) {
+				embed.setFooter({
+					text: `${embedConfig.FOOTER} ${t('contentCreator.channelEmbed.footerAppSuffix', 'en', { appId })}`
+				});
+			}
+			const approveButton = new ButtonBuilder()
+				.setCustomId(`content_creator_approve|${appId}`)
+				.setLabel(t('contentCreator.channelEmbed.buttonApprove', 'en'))
+				.setStyle(ButtonStyle.Success);
+			const rejectButton = new ButtonBuilder()
+				.setCustomId(`content_creator_reject|${appId}`)
+				.setLabel(t('contentCreator.channelEmbed.buttonReject', 'en'))
+				.setStyle(ButtonStyle.Danger);
 			const pendingRole = await CONTENT_CREATOR.getPendingRole(guild.id);
-			await admissionChannel
+			const sent = await admissionChannel
 				.send({
 					content: pendingRole ? `<@&${pendingRole}>` : undefined,
 					embeds: [embed],
 					components: [new ActionRowBuilder().addComponents(approveButton, rejectButton)]
 				})
 				.catch(() => null);
+			if (sent) {
+				postedChannelId = sent.channelId;
+				postedMessageId = sent.id;
+			}
+		}
+
+		if (conflict) {
+			setTimeout(() => {
+				void runDuplicateContentCreatorAutoReject({
+					client: guild.client,
+					botId,
+					guildId: guild.id,
+					channelId: postedChannelId,
+					messageId: postedMessageId,
+					serverId: server.id,
+					appId,
+					applicantDiscordId: interaction.user.id,
+					username,
+					conflict
+				});
+			}, DUPLICATE_CONTENT_CREATOR_AUTO_REJECT_MS);
 		}
 
 		await interaction.editReply({ content: await translate('contentCreator.submitted', guild.id, interaction.user.id, { username: `@${username}` }) });
@@ -494,20 +632,39 @@ export async function handleContentCreatorModal(interaction: any) {
 	}
 }
 
-async function handleContentCreatorDecision(interaction: any, decision: 'approve' | 'reject') {
+const REVIEW_DECISION_REASON_INPUT = 'review_decision_reason';
+
+export async function handleContentCreatorDecisionModal(interaction: any) {
 	await interaction.deferReply({ flags: 64 });
 	try {
 		const guild = interaction.guild;
-		const moderator = interaction.member || (await guild.members.fetch(interaction.user.id).catch(() => null));
-		if (!moderator || !(await hasPermission(moderator, 'setup'))) {
-			await interaction.editReply({ content: await translate('contentCreator.errors.permissionDenied', guild.id, interaction.user.id) });
+		const parts = interaction.customId.split('|');
+		if (parts.length !== 5 || parts[0] !== 'cc_rev') {
+			await interaction.editReply({ content: await translate('contentCreator.errors.submitFailed', guild.id, interaction.user.id, { error: 'Invalid form' }) });
+			return;
+		}
+		const [, decisionRaw, appIdStr, channelId, messageId] = parts;
+		if (decisionRaw !== 'approve' && decisionRaw !== 'reject') {
+			await interaction.editReply({
+				content: await translate('contentCreator.errors.submitFailed', guild.id, interaction.user.id, { error: 'Invalid decision' })
+			});
+			return;
+		}
+		const appId = Number(appIdStr);
+		if (!Number.isFinite(appId)) {
+			await interaction.editReply({ content: '❌ Invalid application ID.' });
 			return;
 		}
 
-		const [, appIdRaw] = interaction.customId.split('|');
-		const appId = Number(appIdRaw);
-		if (!Number.isFinite(appId)) {
-			await interaction.editReply({ content: '❌ Invalid application ID.' });
+		const reviewReason = interaction.fields.getTextInputValue(REVIEW_DECISION_REASON_INPUT)?.trim();
+		if (!reviewReason) {
+			await interaction.editReply({ content: await translate('contentCreator.errors.reviewReasonRequired', guild.id, interaction.user.id) });
+			return;
+		}
+
+		const moderator = interaction.member || (await guild.members.fetch(interaction.user.id).catch(() => null));
+		if (!moderator || !(await hasPermission(moderator, 'setup'))) {
+			await interaction.editReply({ content: await translate('contentCreator.errors.permissionDenied', guild.id, interaction.user.id) });
 			return;
 		}
 
@@ -518,22 +675,41 @@ async function handleContentCreatorDecision(interaction: any, decision: 'approve
 		}
 		const botId = botConfig.id;
 		const server = await db.getServerByDiscordId(botId, guild.id);
+		if (!server) {
+			await interaction.editReply({ content: await translate('contentCreator.errors.notConfigured', guild.id, interaction.user.id) }).catch(() => null);
+			return;
+		}
 		const app = await db.getContentCreatorApplicationById(server.id, appId);
 		if (!app) {
 			await interaction.editReply({ content: '❌ Application not found.' });
 			return;
 		}
+
+		let sourceMessage: any = null;
+		try {
+			const ch = await guild.channels.fetch(channelId);
+			if (ch && ch.isTextBased()) {
+				sourceMessage = await ch.messages.fetch(messageId).catch(() => null);
+			}
+		} catch (fetchErr: any) {
+			await logger.log(`⚠️ Could not fetch content creator application message: ${fetchErr.message}`);
+		}
+
 		if (app.status !== 'pending') {
 			await interaction.editReply({ content: '⚠️ This application was already processed.' });
-			if (interaction.message) await interaction.message.edit({ components: [] }).catch(() => null);
+			if (sourceMessage) await sourceMessage.edit({ components: [] }).catch(() => null);
 			return;
 		}
 
 		const reviewer = await db.upsertMember(server.id, moderator);
-		await db.updateContentCreatorApplicationStatus(app.id, decision === 'approve' ? 'approved' : 'rejected', reviewer.id);
+		const decision = decisionRaw === 'approve' ? 'approve' : 'reject';
+		await db.updateContentCreatorApplicationStatus(app.id, decision === 'approve' ? 'approved' : 'rejected', reviewer.id, reviewReason);
 
 		const embedConfig = await getEmbedConfig(guild.id).catch(() => null);
 		const applicantUser = await guild.client.users.fetch(app.applicant_discord_id).catch(() => null);
+		const staffDecisionLabel = t('contentCreator.embed.staffDecision', 'en');
+		const reviewedByLabel = t('contentCreator.embed.reviewedBy', 'en');
+		const statusLabel = decision === 'approve' ? t('contentCreator.embed.statusApproved', 'en') : t('contentCreator.embed.statusRejected', 'en');
 
 		if (decision === 'approve') {
 			const creatorRoleId = await CONTENT_CREATOR.getContentCreatorRole(guild.id);
@@ -546,7 +722,8 @@ async function handleContentCreatorDecision(interaction: any, decision: 'approve
 				?.send({
 					content: await translate('contentCreator.dm.approved', guild.id, applicantUser.id, {
 						server: guild.name,
-						username: `@${app.tiktok_username}`
+						username: `@${app.tiktok_username}`,
+						reason: truncateReason(reviewReason)
 					})
 				})
 				.catch(() => null);
@@ -556,40 +733,94 @@ async function handleContentCreatorDecision(interaction: any, decision: 'approve
 				?.send({
 					content: await translate('contentCreator.dm.rejected', guild.id, applicantUser.id, {
 						server: guild.name,
-						username: `@${app.tiktok_username}`
+						username: `@${app.tiktok_username}`,
+						reason: truncateReason(reviewReason)
 					})
 				})
 				.catch(() => null);
 			await interaction.editReply({ content: `❌ Application #${app.id} rejected.` });
 		}
 
-		if (interaction.message) {
+		if (sourceMessage) {
 			const updatedEmbed = new EmbedBuilder()
 				.setColor(decision === 'approve' ? 0x22c55e : 0xef4444)
-				.setTitle(decision === 'approve' ? '✅ Content Creator Application Approved' : '❌ Content Creator Application Rejected')
-				.setDescription(`<@${app.applicant_discord_id}> • TikTok: @${app.tiktok_username}`)
+				.setTitle(decision === 'approve' ? t('contentCreator.channelEmbed.titleApproved', 'en') : t('contentCreator.channelEmbed.titleRejected', 'en'))
+				.setDescription(
+					t('contentCreator.channelEmbed.descriptionReviewed', 'en', {
+						mention: `<@${app.applicant_discord_id}>`,
+						tiktok: app.tiktok_username
+					})
+				)
 				.addFields(
-					{ name: 'Status', value: `${decision === 'approve' ? 'Approved' : 'Rejected'} by <@${interaction.user.id}>` },
-					{ name: 'Reason', value: truncateReason(app.reason), inline: false }
+					{ name: t('contentCreator.channelEmbed.fieldStatus', 'en'), value: statusLabel, inline: true },
+					{ name: reviewedByLabel, value: `<@${interaction.user.id}>`, inline: true },
+					{
+						name: t('contentCreator.channelEmbed.fieldApplicantReason', 'en'),
+						value: truncateReason(app.reason),
+						inline: false
+					},
+					{ name: staffDecisionLabel, value: truncateReason(reviewReason), inline: false }
 				)
 				.setTimestamp();
-			if (embedConfig?.FOOTER) updatedEmbed.setFooter({ text: `${embedConfig.FOOTER} • Application ID: #${app.id}` });
-			await interaction.message.edit({ embeds: [updatedEmbed], components: [] }).catch(() => null);
+			if (embedConfig?.FOOTER) {
+				updatedEmbed.setFooter({
+					text: `${embedConfig.FOOTER} ${t('contentCreator.channelEmbed.footerAppSuffix', 'en', { appId: app.id })}`
+				});
+			}
+			await sourceMessage.edit({ embeds: [updatedEmbed], components: [] }).catch(() => null);
 		}
 	} catch (error: any) {
-		await logger.log(`❌ Error handling content creator decision: ${error.message}`);
+		await logger.log(`❌ Error handling content creator decision modal: ${error.message}`);
 		await interaction.editReply({
 			content: await translate('contentCreator.errors.submitFailed', interaction.guild.id, interaction.user.id, { error: error.message })
 		});
 	}
 }
 
+async function showContentCreatorReviewModal(interaction: any, decision: 'approve' | 'reject') {
+	const guild = interaction.guild;
+	const [, appIdStr] = interaction.customId.split('|');
+	const messageId = interaction.message?.id;
+	const channelId = interaction.channelId;
+	if (!appIdStr || !messageId || !channelId) {
+		await interaction
+			.reply({
+				content: await translate('contentCreator.errors.submitFailed', guild.id, interaction.user.id, { error: 'Invalid interaction' }),
+				flags: 64
+			})
+			.catch(() => null);
+		return;
+	}
+	const titleKey = decision === 'approve' ? 'contentCreator.reviewModal.titleApprove' : 'contentCreator.reviewModal.titleReject';
+	const modal = new ModalBuilder()
+		.setCustomId(`cc_rev|${decision}|${appIdStr}|${channelId}|${messageId}`)
+		.setTitle(await translate(titleKey, guild.id, interaction.user.id));
+	const input = new TextInputBuilder()
+		.setCustomId(REVIEW_DECISION_REASON_INPUT)
+		.setLabel(await translate('contentCreator.reviewModal.reasonLabel', guild.id, interaction.user.id))
+		.setStyle(TextInputStyle.Paragraph)
+		.setPlaceholder(await translate('contentCreator.reviewModal.reasonPlaceholder', guild.id, interaction.user.id))
+		.setRequired(true)
+		.setMinLength(2)
+		.setMaxLength(1000);
+	modal.addComponents(new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(input));
+	await interaction.showModal(modal);
+}
+
 export async function handleContentCreatorApprove(interaction: any) {
-	await handleContentCreatorDecision(interaction, 'approve');
+	try {
+		await showContentCreatorReviewModal(interaction, 'approve');
+	} catch (error: any) {
+		await logger.log(`❌ Error opening content creator approve modal: ${error.message}`);
+	}
 }
 
 export async function handleContentCreatorReject(interaction: any) {
-	await handleContentCreatorDecision(interaction, 'reject');
+	try {
+		await showContentCreatorReviewModal(interaction, 'reject');
+	} catch (error: any) {
+		await logger.log(`❌ Error opening content creator reject modal: ${error.message}`);
+	}
 }
 
 export function init(client: any) {

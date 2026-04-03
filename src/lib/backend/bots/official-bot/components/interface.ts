@@ -34,6 +34,9 @@ import { handleNotificationsButton, handleNotificationsSelect } from './interfac
 import {
 	handleContentCreatorButton,
 	handleContentCreatorApplyButton,
+	handleContentCreatorDismissRequest,
+	handleContentCreatorDismissYes,
+	handleContentCreatorDismissNo,
 	handleContentCreatorModal,
 	handleContentCreatorApprove,
 	handleContentCreatorReject
@@ -265,6 +268,15 @@ export async function handleButtonInteraction(interaction, client) {
 			break;
 		case 'content_creator_apply_open':
 			await handleContentCreatorApplyButton(interaction);
+			break;
+		case 'content_creator_dismiss_request':
+			await handleContentCreatorDismissRequest(interaction);
+			break;
+		case 'content_creator_dismiss_yes':
+			await handleContentCreatorDismissYes(interaction);
+			break;
+		case 'content_creator_dismiss_no':
+			await handleContentCreatorDismissNo(interaction);
 			break;
 		case 'bot_afk':
 			await handleAFKButton(interaction);

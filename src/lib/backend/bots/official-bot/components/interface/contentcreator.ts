@@ -155,6 +155,88 @@ async function syncLiveWatchers(client: any) {
 	}
 }
 
+type ContentCreatorListOptions = { bannerNote?: string };
+
+async function buildContentCreatorListView(guild: any, actingMember: any, localeUserId: string, options: ContentCreatorListOptions = {}) {
+	const embedConfig = await getEmbedConfig(guild.id).catch(() => null);
+	const creatorRoleId = await CONTENT_CREATOR.getContentCreatorRole(guild.id).catch(() => null);
+	const alreadyCreator = creatorRoleId ? actingMember?.roles?.cache?.has(creatorRoleId) : false;
+
+	const botConfig = getBotConfig();
+	if (!botConfig) {
+		return { error: 'notConfigured' as const };
+	}
+
+	const server = await db.getServerByDiscordId(botConfig.id, guild.id).catch(() => null);
+	if (!server) {
+		return { error: 'notConfigured' as const };
+	}
+
+	const dbMember = await db.upsertMember(server.id, actingMember).catch(() => null);
+	const lastApplication = dbMember ? await db.getLastContentCreatorApplication(server.id, dbMember.id).catch(() => null) : null;
+
+	const creators = await db.getApprovedContentCreators(server.id).catch(() => []);
+
+	const title = await translate('contentCreator.list.title', guild.id, localeUserId);
+	const desc = await translate('contentCreator.list.description', guild.id, localeUserId);
+
+	const lines: string[] = [];
+	for (const c of creators) {
+		const discordId = String(c.discord_member_id || '');
+		const username = normalizeTikTokUsername(String(c.tiktok_username || ''));
+		if (!discordId || !username) continue;
+		if (creatorRoleId) {
+			const listedMember = await guild.members.fetch(discordId).catch(() => null);
+			if (listedMember && !listedMember.roles.cache.has(creatorRoleId)) continue;
+		}
+		const live = isLive(guild.id, discordId);
+		lines.push(`${live ? '🔴' : '⚫'} <@${discordId}> — **@${username}**\nhttps://www.tiktok.com/@${username}`);
+	}
+
+	const creatorListText = lines.length > 0 ? lines.slice(0, 10).join('\n\n') : await translate('contentCreator.list.none', guild.id, localeUserId);
+
+	let body = `${desc}\n\n${creatorListText}`;
+	if (options.bannerNote) {
+		body = `${options.bannerNote}\n\n${body}`;
+	}
+
+	const embed = new EmbedBuilder()
+		.setColor(embedConfig?.COLOR ?? 0xec4899)
+		.setTitle(title)
+		.setDescription(body)
+		.setTimestamp();
+	if (embedConfig?.FOOTER) embed.setFooter({ text: embedConfig.FOOTER });
+
+	const row = new ActionRowBuilder<ButtonBuilder>();
+	row.addComponents(
+		new ButtonBuilder()
+			.setCustomId('bot_menu')
+			.setLabel(await translate('menu.button', guild.id, localeUserId))
+			.setStyle(ButtonStyle.Secondary)
+	);
+
+	const canApply = !alreadyCreator && lastApplication?.status !== 'pending';
+	if (canApply) {
+		row.addComponents(
+			new ButtonBuilder()
+				.setCustomId('content_creator_apply_open')
+				.setLabel(await translate('contentCreator.list.applyButton', guild.id, localeUserId))
+				.setStyle(ButtonStyle.Success)
+		);
+	}
+
+	if (alreadyCreator && creatorRoleId) {
+		row.addComponents(
+			new ButtonBuilder()
+				.setCustomId('content_creator_dismiss_request')
+				.setLabel(await translate('contentCreator.dismiss.button', guild.id, localeUserId))
+				.setStyle(ButtonStyle.Danger)
+		);
+	}
+
+	return { embed, components: [row] };
+}
+
 export async function handleContentCreatorButton(interaction: any) {
 	try {
 		const guild = interaction.guild;
@@ -166,73 +248,145 @@ export async function handleContentCreatorButton(interaction: any) {
 			return;
 		}
 
-		const embedConfig = await getEmbedConfig(guild.id).catch(() => null);
-		const creatorRoleId = await CONTENT_CREATOR.getContentCreatorRole(guild.id).catch(() => null);
-		const alreadyCreator = creatorRoleId ? member?.roles?.cache?.has(creatorRoleId) : false;
-
-		const botConfig = getBotConfig();
-		if (!botConfig) {
+		const built = await buildContentCreatorListView(guild, member, interaction.user.id);
+		if ('error' in built) {
 			await interaction.reply({ content: await translate('contentCreator.errors.notConfigured', guild.id, interaction.user.id), flags: 64 }).catch(() => null);
 			return;
 		}
 
+		if (interaction.replied || interaction.deferred) {
+			await interaction.editReply({ embeds: [built.embed], components: built.components }).catch(() => null);
+		} else {
+			await interaction.reply({ embeds: [built.embed], components: built.components, flags: 64 }).catch(() => null);
+		}
+	} catch (error: any) {
+		await logger.log(`❌ Error opening content creator view: ${error.message}`);
+	}
+}
+
+export async function handleContentCreatorDismissRequest(interaction: any) {
+	try {
+		const guild = interaction.guild;
+		const member = interaction.member || (await guild.members.fetch(interaction.user.id).catch(() => null));
+		if (!(await hasPermission(member, 'content_creator'))) {
+			const errorMessage = await getPermissionDeniedMessage(guild, 'content_creator', interaction.user.id);
+			await interaction.reply({ content: errorMessage, flags: 64 }).catch(() => null);
+			return;
+		}
+		const creatorRoleId = await CONTENT_CREATOR.getContentCreatorRole(guild.id).catch(() => null);
+		if (!creatorRoleId || !member?.roles?.cache?.has(creatorRoleId)) {
+			const built = await buildContentCreatorListView(guild, member, interaction.user.id);
+			if ('error' in built) {
+				await interaction
+					.reply({ content: await translate('contentCreator.errors.notConfigured', guild.id, interaction.user.id), flags: 64 })
+					.catch(() => null);
+				return;
+			}
+			await interaction.update({ embeds: [built.embed], components: built.components }).catch(() => null);
+			return;
+		}
+
+		const embedConfig = await getEmbedConfig(guild.id).catch(() => null);
+		const confirmEmbed = new EmbedBuilder()
+			.setColor(embedConfig?.COLOR ?? 0xec4899)
+			.setTitle(await translate('contentCreator.dismiss.confirmTitle', guild.id, interaction.user.id))
+			.setDescription(await translate('contentCreator.dismiss.confirmDescription', guild.id, interaction.user.id))
+			.setTimestamp();
+		if (embedConfig?.FOOTER) confirmEmbed.setFooter({ text: embedConfig.FOOTER });
+
+		const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+			new ButtonBuilder()
+				.setCustomId('content_creator_dismiss_yes')
+				.setLabel(await translate('contentCreator.dismiss.yes', guild.id, interaction.user.id))
+				.setStyle(ButtonStyle.Danger),
+			new ButtonBuilder()
+				.setCustomId('content_creator_dismiss_no')
+				.setLabel(await translate('contentCreator.dismiss.no', guild.id, interaction.user.id))
+				.setStyle(ButtonStyle.Secondary)
+		);
+
+		await interaction.update({ embeds: [confirmEmbed], components: [row] }).catch(() => null);
+	} catch (error: any) {
+		await logger.log(`❌ Content creator dismiss request error: ${error.message}`);
+	}
+}
+
+export async function handleContentCreatorDismissNo(interaction: any) {
+	try {
+		const guild = interaction.guild;
+		const member = interaction.member || (await guild.members.fetch(interaction.user.id).catch(() => null));
+		if (!(await hasPermission(member, 'content_creator'))) {
+			const errorMessage = await getPermissionDeniedMessage(guild, 'content_creator', interaction.user.id);
+			await interaction.reply({ content: errorMessage, flags: 64 }).catch(() => null);
+			return;
+		}
+		const built = await buildContentCreatorListView(guild, member, interaction.user.id);
+		if ('error' in built) {
+			await interaction
+				.update({ content: await translate('contentCreator.errors.notConfigured', guild.id, interaction.user.id), embeds: [], components: [] })
+				.catch(() => null);
+			return;
+		}
+		await interaction.update({ embeds: [built.embed], components: built.components }).catch(() => null);
+	} catch (error: any) {
+		await logger.log(`❌ Content creator dismiss cancel error: ${error.message}`);
+	}
+}
+
+export async function handleContentCreatorDismissYes(interaction: any) {
+	try {
+		const guild = interaction.guild;
+		const member = interaction.member || (await guild.members.fetch(interaction.user.id).catch(() => null));
+		if (!(await hasPermission(member, 'content_creator'))) {
+			const errorMessage = await getPermissionDeniedMessage(guild, 'content_creator', interaction.user.id);
+			await interaction.reply({ content: errorMessage, flags: 64 }).catch(() => null);
+			return;
+		}
+
+		const creatorRoleId = await CONTENT_CREATOR.getContentCreatorRole(guild.id).catch(() => null);
+		if (!creatorRoleId || !member?.roles?.cache?.has(creatorRoleId)) {
+			const built = await buildContentCreatorListView(guild, member, interaction.user.id);
+			if ('error' in built) {
+				await interaction
+					.update({ content: await translate('contentCreator.errors.notConfigured', guild.id, interaction.user.id), embeds: [], components: [] })
+					.catch(() => null);
+				return;
+			}
+			await interaction.update({ embeds: [built.embed], components: built.components }).catch(() => null);
+			return;
+		}
+
+		const botConfig = getBotConfig();
+		if (!botConfig) {
+			await interaction
+				.update({ content: await translate('contentCreator.errors.notConfigured', guild.id, interaction.user.id), embeds: [], components: [] })
+				.catch(() => null);
+			return;
+		}
 		const server = await db.getServerByDiscordId(botConfig.id, guild.id).catch(() => null);
 		if (!server) {
-			await interaction.reply({ content: await translate('contentCreator.errors.notConfigured', guild.id, interaction.user.id), flags: 64 }).catch(() => null);
+			await interaction
+				.update({ content: await translate('contentCreator.errors.notConfigured', guild.id, interaction.user.id), embeds: [], components: [] })
+				.catch(() => null);
 			return;
 		}
 
 		const dbMember = await db.upsertMember(server.id, member).catch(() => null);
-		const lastApplication = dbMember ? await db.getLastContentCreatorApplication(server.id, dbMember.id).catch(() => null) : null;
-
-		const creators = await db.getApprovedContentCreators(server.id).catch(() => []);
-
-		const title = await translate('contentCreator.list.title', guild.id, interaction.user.id);
-		const desc = await translate('contentCreator.list.description', guild.id, interaction.user.id);
-
-		const lines: string[] = [];
-		for (const c of creators) {
-			const discordId = String(c.discord_member_id || '');
-			const username = normalizeTikTokUsername(String(c.tiktok_username || ''));
-			if (!discordId || !username) continue;
-			const live = isLive(guild.id, discordId);
-			lines.push(`${live ? '🔴' : '⚫'} <@${discordId}> — **@${username}**\nhttps://www.tiktok.com/@${username}`);
+		await member.roles.remove(creatorRoleId, 'Content creator dismissed by user').catch(() => null);
+		if (dbMember) {
+			await db.clearMemberContentCreatorRole(server.id, dbMember.id, creatorRoleId).catch(() => null);
 		}
 
-		const creatorListText = lines.length > 0 ? lines.slice(0, 10).join('\n\n') : await translate('contentCreator.list.none', guild.id, interaction.user.id);
-
-		const embed = new EmbedBuilder()
-			.setColor(embedConfig?.COLOR ?? 0xec4899)
-			.setTitle(title)
-			.setDescription(`${desc}\n\n${creatorListText}`)
-			.setTimestamp();
-		if (embedConfig?.FOOTER) embed.setFooter({ text: embedConfig.FOOTER });
-
-		const row = new ActionRowBuilder<ButtonBuilder>();
-		row.addComponents(
-			new ButtonBuilder()
-				.setCustomId('bot_menu')
-				.setLabel(await translate('menu.button', guild.id, interaction.user.id))
-				.setStyle(ButtonStyle.Secondary)
-		);
-
-		const canApply = !alreadyCreator && lastApplication?.status !== 'pending' && lastApplication?.status !== 'approved';
-		if (canApply) {
-			row.addComponents(
-				new ButtonBuilder()
-					.setCustomId('content_creator_apply_open')
-					.setLabel(await translate('contentCreator.list.applyButton', guild.id, interaction.user.id))
-					.setStyle(ButtonStyle.Success)
-			);
+		const refreshedMember = await guild.members.fetch(interaction.user.id).catch(() => member);
+		const bannerNote = await translate('contentCreator.dismiss.removed', guild.id, interaction.user.id);
+		const built = await buildContentCreatorListView(guild, refreshedMember, interaction.user.id, { bannerNote });
+		if ('error' in built) {
+			await interaction.update({ content: bannerNote, embeds: [], components: [] }).catch(() => null);
+			return;
 		}
-
-		if (interaction.replied || interaction.deferred) {
-			await interaction.editReply({ embeds: [embed], components: [row] }).catch(() => null);
-		} else {
-			await interaction.reply({ embeds: [embed], components: [row], flags: 64 }).catch(() => null);
-		}
+		await interaction.update({ embeds: [built.embed], components: built.components }).catch(() => null);
 	} catch (error: any) {
-		await logger.log(`❌ Error opening content creator view: ${error.message}`);
+		await logger.log(`❌ Content creator dismiss confirm error: ${error.message}`);
 	}
 }
 
@@ -284,10 +438,6 @@ export async function handleContentCreatorModal(interaction: any) {
 		const applicant = await db.upsertMember(server.id, member);
 
 		const lastApplication = await db.getLastContentCreatorApplication(server.id, applicant.id);
-		if (lastApplication?.status === 'approved') {
-			await interaction.editReply({ content: await translate('contentCreator.errors.alreadyCreator', guild.id, interaction.user.id) }).catch(() => null);
-			return;
-		}
 		if (lastApplication?.status === 'pending') {
 			await interaction.editReply({ content: await translate('contentCreator.errors.pendingExists', guild.id, interaction.user.id) });
 			return;

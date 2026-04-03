@@ -297,6 +297,14 @@
 			"none": "Belum ada content creator yang disetujui.",
 			"applyButton": "Daftar"
 		},
+		"dismiss": {
+			"button": "Keluar dari Content Creator",
+			"confirmTitle": "⚠️ Hapus role Content Creator?",
+			"confirmDescription": "Kamu akan kehilangan role Content Creator di server ini. Kamu bisa mendaftar lagi nanti jika staff mengizinkan.\n\n**Yakin?**",
+			"yes": "Ya, hapus role",
+			"no": "Tidak, batal",
+			"removed": "✅ Role Content Creator kamu telah dihapus."
+		},
 		"modal": {
 			"title": "Daftar Sebagai Content Creator",
 			"usernameLabel": "Username TikTok",

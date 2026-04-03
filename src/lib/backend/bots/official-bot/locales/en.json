@@ -297,6 +297,14 @@
 			"none": "No approved content creators yet.",
 			"applyButton": "Apply"
 		},
+		"dismiss": {
+			"button": "Leave Content Creator",
+			"confirmTitle": "⚠️ Remove Content Creator role?",
+			"confirmDescription": "You will lose the Content Creator role on this server. You can apply again later if staff allow it.\n\n**Are you sure?**",
+			"yes": "Yes, remove role",
+			"no": "No, cancel",
+			"removed": "✅ Your Content Creator role was removed."
+		},
 		"modal": {
 			"title": "Apply as Content Creator",
 			"usernameLabel": "TikTok Username",

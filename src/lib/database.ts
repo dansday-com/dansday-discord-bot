@@ -2395,6 +2395,21 @@ export async function markMemberContentCreatorRole(serverId: any, memberId: any,
 		.onDuplicateKeyUpdate({ set: { is_content_creator: true } });
 }
 
+export async function clearMemberContentCreatorRole(serverId: any, memberId: any, discordRoleId: string) {
+	await initializeDatabase();
+	if (!discordRoleId) return;
+	const roleRows = await db
+		.select({ id: schema.serverRoles.id })
+		.from(schema.serverRoles)
+		.where(and(eq(schema.serverRoles.server_id, Number(serverId)), eq(schema.serverRoles.discord_role_id, discordRoleId)))
+		.limit(1);
+	if (!roleRows[0]) return;
+	await db
+		.update(schema.serverMemberRoles)
+		.set({ is_content_creator: false })
+		.where(and(eq(schema.serverMemberRoles.member_id, Number(memberId)), eq(schema.serverMemberRoles.role_id, roleRows[0].id)));
+}
+
 export async function getAllStaffRatings(serverId: any) {
 	await initializeDatabase();
 	return db
@@ -2562,6 +2577,7 @@ export default {
 	markMemberRatingRole,
 	clearMemberRatingRole,
 	markMemberContentCreatorRole,
+	clearMemberContentCreatorRole,
 	getAllStaffRatings,
 	getStaffRatingRole,
 	createFeedback,

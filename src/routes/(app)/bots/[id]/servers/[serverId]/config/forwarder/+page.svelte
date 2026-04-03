@@ -9,8 +9,10 @@
 
 	type Forwarder = {
 		selfbot_id: number | '';
+		selfbot_name?: string;
 		server_id: number | '';
 		source_channels: string[];
+		source_channel_names?: string[];
 		target_channel_id: string;
 		role_pings: string[];
 		only_forward_when_mentions_member: boolean;
@@ -34,6 +36,11 @@
 	function emptyForwarder(): Forwarder {
 		return { selfbot_id: '', server_id: '', source_channels: [], target_channel_id: '', role_pings: [], only_forward_when_mentions_member: false, tag: '' };
 	}
+
+	$effect(() => {
+		// Needed so the list view can show selfbot names.
+		if (selfbots.length === 0) loadSelfbots();
+	});
 
 	async function openAdd() {
 		draft = emptyForwarder();
@@ -121,8 +128,29 @@
 		return list.find((c: any) => c.discord_channel_id === id)?.name ?? id;
 	}
 
+	function selfbotNameById(id: number | '') {
+		if (!id) return '';
+		const sb = selfbots.find((b: any) => String(b?.id) === String(id));
+		return (sb?.name || sb?.username || sb?.userTag || sb?.tag || '') as string;
+	}
+
+	function formatChannelList(names: string[], max = 3) {
+		const clean = (names || []).map((n) => String(n || '').trim()).filter(Boolean);
+		if (clean.length === 0) return '';
+		if (clean.length <= max) return clean.map((n) => `#${n}`).join(', ');
+		return `${clean
+			.slice(0, max)
+			.map((n) => `#${n}`)
+			.join(', ')} +${clean.length - max}`;
+	}
+
 	function saveModal() {
-		const entry = { ...draft };
+		const entry: Forwarder = { ...draft };
+		// Persist friendly names so list view can render without extra API calls.
+		entry.selfbot_name = selfbotNameById(entry.selfbot_id) || entry.selfbot_name;
+		if (selfbotChannels?.length && entry.source_channels?.length) {
+			entry.source_channel_names = entry.source_channels.map((id) => channelName(id, selfbotChannels));
+		}
 		if (editIndex !== null) {
 			const next = [...forwarders];
 			next[editIndex] = entry;
@@ -176,13 +204,18 @@
 						<div class="min-w-0 flex-1 space-y-1 text-xs">
 							{#if fw.selfbot_id}
 								<div class="text-ash-100 flex items-center gap-1.5 font-medium">
-									<i class="fas fa-robot text-violet-400"></i>Selfbot #{fw.selfbot_id}
+									<i class="fas fa-robot text-violet-400"></i>{fw.selfbot_name || selfbotNameById(fw.selfbot_id) || `Selfbot #${fw.selfbot_id}`}
 								</div>
 							{/if}
 							{#if fw.source_channels?.length}
 								<div class="text-ash-400">
 									<span class="text-ash-300 font-medium">From:</span>
-									{fw.source_channels.length} channel{fw.source_channels.length !== 1 ? 's' : ''}
+									{#if fw.source_channel_names?.length}
+										{formatChannelList(fw.source_channel_names)}
+									{:else}
+										{formatChannelList(fw.source_channels.map((id) => channelName(id, selfbotChannels))) ||
+											`${fw.source_channels.length} channel${fw.source_channels.length !== 1 ? 's' : ''}`}
+									{/if}
 								</div>
 							{/if}
 							{#if fw.target_channel_id}

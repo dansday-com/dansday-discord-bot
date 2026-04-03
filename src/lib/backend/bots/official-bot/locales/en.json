@@ -305,6 +305,7 @@
 		},
 		"errors": {
 			"notConfigured": "❌ Content creator admission is not configured for this server.",
+			"alreadyCreator": "✅ You already have the Content Creator role on this server.",
 			"invalidUsername": "❌ TikTok username is invalid. Use letters, numbers, dots, and underscores only.",
 			"reasonRequired": "❌ Please provide your reason for becoming a content creator.",
 			"pendingExists": "❌ You already have a pending content creator application.",

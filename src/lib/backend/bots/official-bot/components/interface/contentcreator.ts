@@ -1,4 +1,13 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } from 'discord.js';
+import {
+	ActionRowBuilder,
+	ButtonBuilder,
+	ButtonStyle,
+	EmbedBuilder,
+	ModalBuilder,
+	type ModalActionRowComponentBuilder,
+	TextInputBuilder,
+	TextInputStyle
+} from 'discord.js';
 import { CONTENT_CREATOR, getBotConfig, getEmbedConfig } from '../../../../config.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import { translate } from '../../i18n.js';
@@ -96,7 +105,7 @@ async function syncLiveWatchers(client: any) {
 
 export async function handleContentCreatorButton(interaction: any) {
 	try {
-		const member = interaction.member;
+		const member = interaction.member || (await interaction.guild.members.fetch(interaction.user.id).catch(() => null));
 		if (!(await hasPermission(member, 'content_creator'))) {
 			const errorMessage = await getPermissionDeniedMessage(interaction.guild, 'content_creator', interaction.user.id);
 			await interaction.reply({ content: errorMessage, flags: 64 }).catch(() => null);
@@ -107,6 +116,13 @@ export async function handleContentCreatorButton(interaction: any) {
 		const creatorRoleId = await CONTENT_CREATOR.getContentCreatorRole(interaction.guild.id).catch(() => null);
 		if (!config?.admission_channel_id || !creatorRoleId) {
 			await interaction.reply({ content: await translate('contentCreator.errors.notConfigured', interaction.guild.id, interaction.user.id), flags: 64 });
+			return;
+		}
+
+		if (member?.roles?.cache?.has(creatorRoleId)) {
+			await interaction
+				.reply({ content: await translate('contentCreator.errors.alreadyCreator', interaction.guild.id, interaction.user.id), flags: 64 })
+				.catch(() => null);
 			return;
 		}
 
@@ -127,7 +143,10 @@ export async function handleContentCreatorButton(interaction: any) {
 			.setPlaceholder(await translate('contentCreator.modal.reasonPlaceholder', interaction.guild.id, interaction.user.id))
 			.setRequired(true)
 			.setMaxLength(500);
-		modal.addComponents(new ActionRowBuilder().addComponents(usernameInput), new ActionRowBuilder().addComponents(reasonInput));
+		modal.addComponents(
+			new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(usernameInput),
+			new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(reasonInput)
+		);
 		await interaction.showModal(modal);
 	} catch (error: any) {
 		await logger.log(`❌ Error opening content creator modal: ${error.message}`);
@@ -138,11 +157,17 @@ export async function handleContentCreatorModal(interaction: any) {
 	await interaction.deferReply({ flags: 64 });
 	try {
 		const guild = interaction.guild;
-		const member = interaction.member;
+		const member = interaction.member || (await guild.members.fetch(interaction.user.id).catch(() => null));
 
 		if (!(await hasPermission(member, 'content_creator'))) {
 			const errorMessage = await getPermissionDeniedMessage(interaction.guild, 'content_creator', interaction.user.id);
 			await interaction.editReply({ content: errorMessage }).catch(() => null);
+			return;
+		}
+
+		const creatorRoleId = await CONTENT_CREATOR.getContentCreatorRole(guild.id).catch(() => null);
+		if (creatorRoleId && member?.roles?.cache?.has(creatorRoleId)) {
+			await interaction.editReply({ content: await translate('contentCreator.errors.alreadyCreator', guild.id, interaction.user.id) }).catch(() => null);
 			return;
 		}
 
@@ -159,10 +184,19 @@ export async function handleContentCreatorModal(interaction: any) {
 		}
 
 		const botConfig = getBotConfig();
-		const server = await db.getServerByDiscordId(botConfig.id, guild.id);
+		if (!botConfig) {
+			await interaction.editReply({ content: await translate('contentCreator.errors.notConfigured', guild.id, interaction.user.id) }).catch(() => null);
+			return;
+		}
+		const botId = botConfig.id;
+		const server = await db.getServerByDiscordId(botId, guild.id);
 		const applicant = await db.upsertMember(server.id, member);
 
 		const lastApplication = await db.getLastContentCreatorApplication(server.id, applicant.id);
+		if (lastApplication?.status === 'approved') {
+			await interaction.editReply({ content: await translate('contentCreator.errors.alreadyCreator', guild.id, interaction.user.id) }).catch(() => null);
+			return;
+		}
 		if (lastApplication?.status === 'pending') {
 			await interaction.editReply({ content: await translate('contentCreator.errors.pendingExists', guild.id, interaction.user.id) });
 			return;
@@ -237,7 +271,12 @@ async function handleContentCreatorDecision(interaction: any, decision: 'approve
 		}
 
 		const botConfig = getBotConfig();
-		const server = await db.getServerByDiscordId(botConfig.id, guild.id);
+		if (!botConfig) {
+			await interaction.editReply({ content: await translate('contentCreator.errors.notConfigured', guild.id, interaction.user.id) }).catch(() => null);
+			return;
+		}
+		const botId = botConfig.id;
+		const server = await db.getServerByDiscordId(botId, guild.id);
 		const app = await db.getContentCreatorApplicationById(server.id, appId);
 		if (!app) {
 			await interaction.editReply({ content: '❌ Application not found.' });

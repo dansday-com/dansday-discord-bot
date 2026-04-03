@@ -609,9 +609,9 @@ export async function listEnabledLeaderboardServers() {
 			sv.name,
 			sv.updated_at,
 			sv.server_icon,
-			COALESCE(JSON_EXTRACT(ss.settings, '$.enabled'), TRUE) AS enabled
+			COALESCE(JSON_EXTRACT(ss.settings, '$.enabled'), FALSE) AS enabled
 		FROM servers sv
-		LEFT JOIN server_settings ss
+		INNER JOIN server_settings ss
 			ON ss.server_id = sv.id AND ss.component_name = 'leaderboard'
 		WHERE sv.selfbot_id IS NULL
 	`);

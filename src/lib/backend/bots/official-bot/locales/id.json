@@ -305,6 +305,7 @@
 		},
 		"errors": {
 			"notConfigured": "❌ Sistem pengajuan content creator belum dikonfigurasi untuk server ini.",
+			"alreadyCreator": "✅ Kamu sudah memiliki role Content Creator di server ini.",
 			"invalidUsername": "❌ Username TikTok tidak valid. Gunakan huruf, angka, titik, dan garis bawah saja.",
 			"reasonRequired": "❌ Tolong isi alasan kenapa kamu ingin menjadi content creator.",
 			"pendingExists": "❌ Kamu masih punya pengajuan content creator yang pending.",

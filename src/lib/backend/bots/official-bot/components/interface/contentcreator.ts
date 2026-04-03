@@ -17,6 +17,7 @@ import { logger, parseMySQLDateTimeUtc } from '../../../../../utils/index.js';
 const liveWatchers = new Map<string, any>();
 const liveStatus = new Map<string, boolean>();
 let watchInterval: NodeJS.Timeout | null = null;
+let syncLiveWatchersInFlight = false;
 let connectionCtor: any = null;
 let ctorLoadAttempted = false;
 
@@ -31,6 +32,9 @@ function truncateReason(text: string) {
 }
 
 const DUPLICATE_CONTENT_CREATOR_AUTO_REJECT_MS = 500;
+
+/** How often to reconcile TikTok Live connections (new approvals, role removals). Stream start/end is still real time per connection; approve/dismiss also sync immediately. */
+const LIVE_WATCHER_RESYNC_MS = 5_000;
 
 async function runDuplicateContentCreatorAutoReject(opts: {
 	client: any;
@@ -211,46 +215,52 @@ async function broadcastLiveStart(guild: any, discordMemberId: string, tiktokUse
 }
 
 async function syncLiveWatchers(client: any) {
-	const Ctor = await ensureTikTokCtor();
-	if (!Ctor) return;
+	if (syncLiveWatchersInFlight) return;
+	syncLiveWatchersInFlight = true;
+	try {
+		const Ctor = await ensureTikTokCtor();
+		if (!Ctor) return;
 
-	for (const guild of client.guilds.cache.values()) {
-		const botConfig = getBotConfig();
-		if (!botConfig) continue;
-		const server = await db.getServerByDiscordId(botConfig.id, guild.id).catch(() => null);
-		if (!server) continue;
-		const creators = await db.getApprovedContentCreators(server.id).catch(() => []);
-		const activeKeys = new Set<string>();
+		for (const guild of client.guilds.cache.values()) {
+			const botConfig = getBotConfig();
+			if (!botConfig) continue;
+			const server = await db.getServerByDiscordId(botConfig.id, guild.id).catch(() => null);
+			if (!server) continue;
+			const creators = await db.getApprovedContentCreators(server.id).catch(() => []);
+			const activeKeys = new Set<string>();
 
-		for (const creator of creators) {
-			const username = normalizeTikTokUsername(creator.tiktok_username || '');
-			if (!username || !creator.discord_member_id) continue;
-			const key = `${guild.id}:${creator.discord_member_id}`;
-			activeKeys.add(key);
-			if (liveWatchers.has(key)) continue;
+			for (const creator of creators) {
+				const username = normalizeTikTokUsername(creator.tiktok_username || '');
+				if (!username || !creator.discord_member_id) continue;
+				const key = `${guild.id}:${creator.discord_member_id}`;
+				activeKeys.add(key);
+				if (liveWatchers.has(key)) continue;
 
-			try {
-				const conn = new Ctor(username, { processInitialData: false, enableWebsocketUpgrade: true });
-				conn.on('streamStart', async () => {
-					if (liveStatus.get(key)) return;
-					liveStatus.set(key, true);
-					await broadcastLiveStart(guild, creator.discord_member_id, username);
-				});
-				conn.on('streamEnd', () => liveStatus.set(key, false));
-				conn.on('disconnected', () => liveStatus.set(key, false));
-				await conn.connect().catch(() => null);
-				liveWatchers.set(key, conn);
-			} catch (_) {}
+				try {
+					const conn = new Ctor(username, { processInitialData: false, enableWebsocketUpgrade: true });
+					conn.on('streamStart', async () => {
+						if (liveStatus.get(key)) return;
+						liveStatus.set(key, true);
+						await broadcastLiveStart(guild, creator.discord_member_id, username);
+					});
+					conn.on('streamEnd', () => liveStatus.set(key, false));
+					conn.on('disconnected', () => liveStatus.set(key, false));
+					await conn.connect().catch(() => null);
+					liveWatchers.set(key, conn);
+				} catch (_) {}
+			}
+
+			for (const [key, conn] of liveWatchers.entries()) {
+				if (!key.startsWith(`${guild.id}:`) || activeKeys.has(key)) continue;
+				try {
+					await conn.disconnect?.();
+				} catch (_) {}
+				liveWatchers.delete(key);
+				liveStatus.delete(key);
+			}
 		}
-
-		for (const [key, conn] of liveWatchers.entries()) {
-			if (!key.startsWith(`${guild.id}:`) || activeKeys.has(key)) continue;
-			try {
-				await conn.disconnect?.();
-			} catch (_) {}
-			liveWatchers.delete(key);
-			liveStatus.delete(key);
-		}
+	} finally {
+		syncLiveWatchersInFlight = false;
 	}
 }
 
@@ -279,7 +289,8 @@ async function buildContentCreatorListView(guild: any, actingMember: any, locale
 	const title = await translate('contentCreator.list.title', guild.id, localeUserId);
 	const desc = await translate('contentCreator.list.description', guild.id, localeUserId);
 
-	const lines: string[] = [];
+	type ListRow = { live: boolean; username: string; line: string };
+	const rows: ListRow[] = [];
 	for (const c of creators) {
 		const discordId = String(c.discord_member_id || '');
 		const username = normalizeTikTokUsername(String(c.tiktok_username || ''));
@@ -289,10 +300,19 @@ async function buildContentCreatorListView(guild: any, actingMember: any, locale
 			if (listedMember && !listedMember.roles.cache.has(creatorRoleId)) continue;
 		}
 		const live = isLive(guild.id, discordId);
-		lines.push(`${live ? '🔴' : '⚫'} <@${discordId}> — **@${username}**\nhttps://www.tiktok.com/@${username}`);
+		rows.push({
+			live,
+			username,
+			line: `${live ? '🔴' : '⚫'} <@${discordId}> — **@${username}**\nhttps://www.tiktok.com/@${username}`
+		});
 	}
+	rows.sort((a, b) => {
+		if (a.live !== b.live) return a.live ? -1 : 1;
+		return a.username.localeCompare(b.username, undefined, { sensitivity: 'base' });
+	});
+	const lines = rows.slice(0, 10).map((r) => r.line);
 
-	const creatorListText = lines.length > 0 ? lines.slice(0, 10).join('\n\n') : await translate('contentCreator.list.none', guild.id, localeUserId);
+	const creatorListText = lines.length > 0 ? lines.join('\n\n') : await translate('contentCreator.list.none', guild.id, localeUserId);
 
 	let body = `${desc}\n\n${creatorListText}`;
 	if (options.bannerNote) {
@@ -475,6 +495,7 @@ export async function handleContentCreatorDismissYes(interaction: any) {
 		if (dbMember) {
 			await db.clearMemberContentCreatorRole(server.id, dbMember.id, creatorRoleId).catch(() => null);
 		}
+		void syncLiveWatchers(guild.client).catch(() => null);
 
 		const refreshedMember = await guild.members.fetch(interaction.user.id).catch(() => member);
 		const bannerNote = await translate('contentCreator.dismiss.removed', guild.id, interaction.user.id);
@@ -718,6 +739,7 @@ export async function handleContentCreatorDecisionModal(interaction: any) {
 				await applicantMember.roles.add(creatorRoleId, 'Content creator application approved').catch(() => null);
 				await db.markMemberContentCreatorRole(server.id, app.member_id, creatorRoleId).catch(() => null);
 			}
+			void syncLiveWatchers(guild.client).catch(() => null);
 			await applicantUser
 				?.send({
 					content: await translate('contentCreator.dm.approved', guild.id, applicantUser.id, {
@@ -827,7 +849,7 @@ export function init(client: any) {
 	if (watchInterval) clearInterval(watchInterval);
 	watchInterval = setInterval(() => {
 		syncLiveWatchers(client).catch(() => null);
-	}, 120_000);
+	}, LIVE_WATCHER_RESYNC_MS);
 	syncLiveWatchers(client).catch(() => null);
 }
 

@@ -6,7 +6,6 @@ import { logger } from '../../../../../utils/index.js';
 import { getLevelRequirement, determineLevel, sendLevelChangeDM, sendLevelProgressNotification } from '../leveling.js';
 import { translate } from '../../i18n.js';
 import { computeLeaderboardSlugForServerId } from '../../../../../leaderboard/slugs.js';
-import { env } from '$env/dynamic/private';
 
 const PROGRESS_BAR_SLOTS = 10;
 
@@ -316,8 +315,8 @@ async function createMenuRow(guildId = null, userId = null, serverId = null) {
 	if (serverId) {
 		try {
 			const slug = await computeLeaderboardSlugForServerId(serverId);
-			if (slug) {
-				const origin = env.BASE_URL;
+			const origin = process.env.BASE_URL?.replace(/\/$/, '');
+			if (slug && origin) {
 				const webButton = new ButtonBuilder()
 					.setLabel('🌐 Web Leaderboard')
 					.setURL(`${origin}/${encodeURIComponent(slug)}/leaderboard`)

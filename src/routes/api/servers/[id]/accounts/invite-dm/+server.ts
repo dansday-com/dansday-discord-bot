@@ -19,7 +19,6 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 		return json({ success: false, error: 'Authentication required' }, { status: 401 });
 	}
 
-	// Moderators must never be able to invite via DM
 	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'moderator') {
 		return json({ success: false, error: 'Access denied' }, { status: 403 });
 	}

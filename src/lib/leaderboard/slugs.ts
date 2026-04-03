@@ -2,8 +2,8 @@
  * Backend for the **public** leaderboard website URL (`src/routes/[serverSlug]/leaderboard`).
  * Not the Svelte page itself — this resolves slugs and lists URLs using the DB.
  */
-import db from '$lib/database.js';
-import { computeIndexedSlugForItemId, listIndexedSlugsForItems, resolveIndexedSlugToItem } from '$lib/utils/index.js';
+import db from '../database.js';
+import { computeIndexedSlugForItemId, listIndexedSlugsForItems, resolveIndexedSlugToItem } from '../utils/index.js';
 
 export type LeaderboardServerRow = {
 	id: number;

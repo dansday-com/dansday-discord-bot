@@ -34,7 +34,6 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 		return json({ success: false, error: 'Cannot modify your own account' }, { status: 400 });
 	}
 
-	// Only superadmin can freeze/unfreeze an owner account
 	if (account.account_type === 'owner' && !isSuperadmin(locals)) {
 		return json({ success: false, error: 'Access denied' }, { status: 403 });
 	}
@@ -55,7 +54,6 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 			await sendAccountUnfrozenEmail(account.email, account.username);
 		}
 	} catch (err: any) {
-		// Do not fail the request if email sending fails
 		logger.log(`⚠️ Failed to send ${is_frozen ? 'frozen' : 'unfrozen'} email to ${account.email}: ${err?.message ?? String(err)}`);
 	}
 
@@ -81,7 +79,6 @@ export const DELETE: RequestHandler = async ({ locals, params }) => {
 		return json({ success: false, error: 'Cannot delete your own account' }, { status: 400 });
 	}
 
-	// Only superadmin can delete an owner account
 	if (account.account_type === 'owner' && !isSuperadmin(locals)) {
 		return json({ success: false, error: 'Access denied' }, { status: 403 });
 	}
@@ -92,7 +89,6 @@ export const DELETE: RequestHandler = async ({ locals, params }) => {
 	try {
 		await sendAccountDeletedEmail(account.email, account.username);
 	} catch (err: any) {
-		// Do not fail the request if email sending fails
 		logger.log(`⚠️ Failed to send deleted email to ${account.email}: ${err?.message ?? String(err)}`);
 	}
 

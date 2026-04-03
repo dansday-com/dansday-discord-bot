@@ -17,7 +17,6 @@ function canManageAccounts(locals: App.Locals, serverId: number): boolean {
 	const user = locals.user;
 	if (!user.authenticated) return false;
 	if (user.account_source === 'accounts') return true;
-	// Server accounts (owner/moderator) can view the accounts panel for their server
 	if (user.account_source === 'server_accounts') return user.server_id === serverId;
 	return false;
 }

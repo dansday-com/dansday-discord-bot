@@ -19,7 +19,6 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 	try {
 		const supportedFormats = ['jpg', 'png', 'gif', 'webp'];
 
-		// Primary: multipart/form-data upload (used by the embed builder)
 		const contentType = request.headers.get('content-type') || '';
 		let fileExtension = '';
 		let imageData: Buffer | null = null;
@@ -46,7 +45,6 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			const ab = await file.arrayBuffer();
 			imageData = Buffer.from(ab);
 		} else {
-			// Backwards compatibility: JSON body containing base64 data URL
 			const body = await request.json();
 			if (!body?.image) {
 				return json({ success: false, error: 'No image file provided' }, { status: 400 });

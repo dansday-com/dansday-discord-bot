@@ -13,7 +13,6 @@ const _localesDir = join(_i18nDir, 'locales');
 function resolveLocalesDir(): string | null {
 	if (existsSync(join(_localesDir, 'en.json'))) return _localesDir;
 
-	// Bot `cwd` is often `.../official-bot`, not repo root — walk up from this file to find `src/lib/.../locales`.
 	let dir = _i18nDir;
 	for (let i = 0; i < 24; i++) {
 		const candidate = join(dir, 'src/lib/backend/bots/official-bot/locales');

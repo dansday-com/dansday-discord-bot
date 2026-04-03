@@ -25,7 +25,6 @@ export const GET: RequestHandler = async ({ params, url }) => {
 	if (!resolved) return new Response('Not found', { status: 404 });
 	const server = resolved.server;
 
-	// Visibility is controlled via server_settings (component: leaderboard), defaults to public+enabled
 	const settingsRow = await db.getServerSettings(server.id, 'leaderboard');
 	const settings = (settingsRow as any)?.settings || {};
 	const enabled = settings.enabled ?? true;

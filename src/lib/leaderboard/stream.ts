@@ -3,7 +3,7 @@ import { type LeaderboardMetric, type LeaderboardRange, type LeaderboardSnapshot
 
 type Listener = (snap: LeaderboardSnapshot) => void;
 
-type StreamKey = string; // `${serverId}:${metric}:${range}:${limit}`
+type StreamKey = string;
 
 type StreamState = {
 	listeners: Set<Listener>;
@@ -48,7 +48,6 @@ export function subscribeLeaderboard(serverId: number, metric: LeaderboardMetric
 			} catch (_) {}
 		}, pollMs);
 
-		// Kick immediately (don’t wait first interval)
 		(async () => {
 			const current = streams.get(k);
 			if (!current || current.listeners.size === 0) return;

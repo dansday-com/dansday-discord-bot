@@ -105,7 +105,6 @@
 		animateToCurrentValues(true);
 	}
 
-	// Podium order: 2nd, 1st, 3rd
 	const podiumOrder = $derived(
 		top3.length >= 3
 			? [

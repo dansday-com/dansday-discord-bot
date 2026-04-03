@@ -67,7 +67,6 @@ async function loadBotConfig() {
 		return botConfig;
 	}
 
-	// Legacy: no BOT_KIND / argv hint (e.g. unusual runners) — prefer selfbot row if present, else official.
 	const selfbot = await db.getServerBotById(numericId);
 	if (selfbot) {
 		const officialBot = await db.getOfficialBotForSelfbot(selfbot.id);

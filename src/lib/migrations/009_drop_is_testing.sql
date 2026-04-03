@@ -11,16 +11,20 @@ PREPARE st FROM @s;
 EXECUTE st;
 DEALLOCATE PREPARE st;
 
--- main_config: one channel — prefer production_channel, else legacy testing_channel; drop testing_channel key.
+-- main_config: store only `main_channel` (one-time merge from old keys if present).
 UPDATE server_settings
 SET settings = JSON_REMOVE(
-	JSON_SET(
-		settings,
-		'$.production_channel',
-		COALESCE(
-			NULLIF(JSON_UNQUOTE(JSON_EXTRACT(settings, '$.production_channel')), ''),
-			NULLIF(JSON_UNQUOTE(JSON_EXTRACT(settings, '$.testing_channel')), '')
-		)
+	JSON_REMOVE(
+		JSON_SET(
+			settings,
+			'$.main_channel',
+			COALESCE(
+				NULLIF(JSON_UNQUOTE(JSON_EXTRACT(settings, '$.main_channel')), ''),
+				NULLIF(JSON_UNQUOTE(JSON_EXTRACT(settings, '$.production_channel')), ''),
+				NULLIF(JSON_UNQUOTE(JSON_EXTRACT(settings, '$.testing_channel')), '')
+			)
+		),
+		'$.production_channel'
 	),
 	'$.testing_channel'
 )

@@ -7,7 +7,7 @@
 	let { data }: PageProps = $props();
 
 	let saving = $state(false);
-	let mainChannel = $state(data.settings?.production_channel || data.settings?.testing_channel || '');
+	let mainChannel = $state(data.settings?.main_channel ?? '');
 	let defaultColor = $state(data.settings?.color ?? '#5865F2');
 	let defaultFooter = $state(data.settings?.footer ?? '');
 
@@ -20,7 +20,7 @@
 				credentials: 'include',
 				body: JSON.stringify({
 					component: 'main_config',
-					production_channel: mainChannel,
+					main_channel: mainChannel,
 					color: defaultColor,
 					footer: defaultFooter
 				})

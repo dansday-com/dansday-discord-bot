@@ -146,7 +146,6 @@
 			saving = false;
 		}
 	}
-
 </script>
 
 <div class="bg-ash-800 border-ash-700 space-y-5 rounded-xl border p-4 sm:p-6">

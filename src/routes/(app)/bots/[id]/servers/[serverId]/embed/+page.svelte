@@ -13,9 +13,9 @@
 
 	let title = $state('');
 	let description = $state('');
-	let footer = $state(data.mainConfig?.default_footer ?? '');
-	let color = $state(data.mainConfig?.default_color ?? '#5865F2');
-	let colorHex = $state(data.mainConfig?.default_color ?? '#5865F2');
+	let footer = $state(data.mainConfig?.footer ?? '');
+	let color = $state(data.mainConfig?.color ?? '#5865F2');
+	let colorHex = $state(data.mainConfig?.color ?? '#5865F2');
 	let imageMode = $state<'url' | 'upload'>('url');
 	let imageUrl = $state('');
 	let uploadedImageUrl = $state('');

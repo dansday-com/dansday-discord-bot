@@ -1,3 +1,4 @@
+export * from './mainConfigSettings.js';
 export * from './datetime.js';
 export * from './sanitize.js';
 export * from './discordChannels.js';

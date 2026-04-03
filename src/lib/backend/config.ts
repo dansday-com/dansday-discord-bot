@@ -1,5 +1,6 @@
 import db from '../database.js';
 import { normalizeForwarderSettings } from '../forwarder-settings.js';
+import { mainChannelId } from '../utils/mainConfigSettings.js';
 
 interface BotConfig {
 	id: number;
@@ -190,8 +191,7 @@ export async function getMainChannel(guildId: string) {
 	requireGuildId(guildId, 'getting main channel');
 
 	const settings = await getServerSettingsForComponent(guildId, 'main_config');
-	const s = settings.settings as { production_channel?: string; testing_channel?: string };
-	const channelId = s.production_channel || s.testing_channel;
+	const channelId = mainChannelId(settings.settings);
 
 	if (!channelId) {
 		throw new Error(`Main channel not configured for guild ${guildId}`);

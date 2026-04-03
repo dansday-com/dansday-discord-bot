@@ -28,7 +28,9 @@ export const GET: RequestHandler = async ({ locals, params, url }) => {
 			channels = channels.filter((ch: any) => ch.name?.toLowerCase().includes(searchLower) || ch.discord_channel_id?.includes(searchLower));
 		}
 
-		return json(channels);
+		const categories = await db.getCategoriesForServer(Number(serverId));
+
+		return json({ channels, categories });
 	} catch (error: any) {
 		return json({ error: error.message }, { status: 500 });
 	}

@@ -27,6 +27,7 @@
 	let selfbots = $state<any[]>([]);
 	let selfbotServers = $state<any[]>([]);
 	let selfbotChannels = $state<any[]>([]);
+	let selfbotCategories = $state<any[]>([]);
 	let loadingServers = $state(false);
 	let loadingChannels = $state(false);
 
@@ -68,6 +69,7 @@
 		if (!selfbotId) {
 			selfbotServers = [];
 			selfbotChannels = [];
+			selfbotCategories = [];
 			return;
 		}
 		loadingServers = true;
@@ -81,6 +83,7 @@
 	async function loadChannels(selfbotId: number | '', serverId: number | '') {
 		if (!selfbotId || !serverId) {
 			selfbotChannels = [];
+			selfbotCategories = [];
 			return;
 		}
 		loadingChannels = true;
@@ -88,7 +91,11 @@
 			const server = selfbotServers.find((s: any) => s.id == serverId);
 			const discordServerId = server?.discord_server_id ?? '';
 			const res = await fetch(`/api/bots/${selfbotId}/servers/${serverId}/channels?discordServerId=${discordServerId}`, { credentials: 'include' });
-			if (res.ok) selfbotChannels = await res.json();
+			if (res.ok) {
+				const d = await res.json();
+				selfbotChannels = d?.channels ?? [];
+				selfbotCategories = d?.categories ?? [];
+			}
 		} catch (_) {}
 		loadingChannels = false;
 	}
@@ -98,6 +105,7 @@
 		draft = { ...draft, selfbot_id: val ? Number(val) : '', server_id: '', source_channels: [] };
 		selfbotServers = [];
 		selfbotChannels = [];
+		selfbotCategories = [];
 		if (val) await loadServers(Number(val));
 	}
 
@@ -105,6 +113,7 @@
 		const val = (e.target as HTMLSelectElement).value;
 		draft = { ...draft, server_id: val ? Number(val) : '', source_channels: [] };
 		selfbotChannels = [];
+		selfbotCategories = [];
 		if (val) await loadChannels(draft.selfbot_id, Number(val));
 	}
 
@@ -289,7 +298,7 @@
 					{:else}
 						<ChannelPicker
 							channels={selfbotChannels}
-							categories={[]}
+							categories={selfbotCategories}
 							multi
 							value={draft.source_channels}
 							placeholder="Select source channels..."

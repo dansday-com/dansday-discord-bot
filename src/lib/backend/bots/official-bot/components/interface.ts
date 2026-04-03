@@ -31,7 +31,13 @@ import {
 	handleStaffReportReject
 } from './interface/staffreportrating.js';
 import { handleNotificationsButton, handleNotificationsSelect } from './interface/notifications.js';
-import { handleContentCreatorButton, handleContentCreatorModal, handleContentCreatorApprove, handleContentCreatorReject } from './interface/contentcreator.js';
+import {
+	handleContentCreatorButton,
+	handleContentCreatorApplyButton,
+	handleContentCreatorModal,
+	handleContentCreatorApprove,
+	handleContentCreatorReject
+} from './interface/contentcreator.js';
 import { translate } from '../i18n.js';
 
 async function handleMenuButton(interaction) {
@@ -130,7 +136,7 @@ async function handleMenuButton(interaction) {
 
 	const contentCreatorRoleId = await CONTENT_CREATOR.getContentCreatorRole(interaction.guild.id).catch(() => null);
 	const alreadyContentCreator = contentCreatorRoleId ? member.roles?.cache?.has(contentCreatorRoleId) : false;
-	if ((await hasPermission(member, 'content_creator')) && !alreadyContentCreator) {
+	if (await hasPermission(member, 'content_creator')) {
 		buttons.push(
 			new ButtonBuilder()
 				.setCustomId('bot_content_creator')
@@ -256,6 +262,9 @@ export async function handleButtonInteraction(interaction, client) {
 			break;
 		case 'bot_content_creator':
 			await handleContentCreatorButton(interaction);
+			break;
+		case 'content_creator_apply_open':
+			await handleContentCreatorApplyButton(interaction);
 			break;
 		case 'bot_afk':
 			await handleAFKButton(interaction);

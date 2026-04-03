@@ -291,6 +291,12 @@
 	},
 	"contentCreator": {
 		"button": "🎬 Content Creator",
+		"list": {
+			"title": "🎬 Content Creator",
+			"description": "Content creator yang sudah disetujui di server ini:",
+			"none": "Belum ada content creator yang disetujui.",
+			"applyButton": "Daftar"
+		},
 		"modal": {
 			"title": "Daftar Sebagai Content Creator",
 			"usernameLabel": "Username TikTok",

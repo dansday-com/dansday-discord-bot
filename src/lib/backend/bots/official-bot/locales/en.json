@@ -291,6 +291,12 @@
 	},
 	"contentCreator": {
 		"button": "🎬 Content Creator",
+		"list": {
+			"title": "🎬 Content Creators",
+			"description": "Approved content creators for this server:",
+			"none": "No approved content creators yet.",
+			"applyButton": "Apply"
+		},
 		"modal": {
 			"title": "Apply as Content Creator",
 			"usernameLabel": "TikTok Username",

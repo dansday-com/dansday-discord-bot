@@ -30,6 +30,58 @@ function truncateReason(text: string) {
 	return text;
 }
 
+function isLive(guildId: string, discordMemberId: string) {
+	return liveStatus.get(`${guildId}:${discordMemberId}`) === true;
+}
+
+async function showContentCreatorApplyModal(interaction: any) {
+	const member = interaction.member || (await interaction.guild.members.fetch(interaction.user.id).catch(() => null));
+	if (!(await hasPermission(member, 'content_creator'))) {
+		const errorMessage = await getPermissionDeniedMessage(interaction.guild, 'content_creator', interaction.user.id);
+		await interaction.reply({ content: errorMessage, flags: 64 }).catch(() => null);
+		return;
+	}
+
+	const config = await CONTENT_CREATOR.getConfig(interaction.guild.id);
+	const creatorRoleId = await CONTENT_CREATOR.getContentCreatorRole(interaction.guild.id).catch(() => null);
+	if (!config?.admission_channel_id || !creatorRoleId) {
+		await interaction
+			.reply({ content: await translate('contentCreator.errors.notConfigured', interaction.guild.id, interaction.user.id), flags: 64 })
+			.catch(() => null);
+		return;
+	}
+
+	if (member?.roles?.cache?.has(creatorRoleId)) {
+		await interaction
+			.reply({ content: await translate('contentCreator.errors.alreadyCreator', interaction.guild.id, interaction.user.id), flags: 64 })
+			.catch(() => null);
+		return;
+	}
+
+	const modal = new ModalBuilder()
+		.setCustomId('content_creator_apply')
+		.setTitle(await translate('contentCreator.modal.title', interaction.guild.id, interaction.user.id));
+	const usernameInput = new TextInputBuilder()
+		.setCustomId('tiktok_username')
+		.setLabel(await translate('contentCreator.modal.usernameLabel', interaction.guild.id, interaction.user.id))
+		.setStyle(TextInputStyle.Short)
+		.setPlaceholder(await translate('contentCreator.modal.usernamePlaceholder', interaction.guild.id, interaction.user.id))
+		.setRequired(true)
+		.setMaxLength(100);
+	const reasonInput = new TextInputBuilder()
+		.setCustomId('reason')
+		.setLabel(await translate('contentCreator.modal.reasonLabel', interaction.guild.id, interaction.user.id))
+		.setStyle(TextInputStyle.Paragraph)
+		.setPlaceholder(await translate('contentCreator.modal.reasonPlaceholder', interaction.guild.id, interaction.user.id))
+		.setRequired(true)
+		.setMaxLength(500);
+	modal.addComponents(
+		new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(usernameInput),
+		new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(reasonInput)
+	);
+	await interaction.showModal(modal);
+}
+
 async function ensureTikTokCtor() {
 	if (connectionCtor || ctorLoadAttempted) return connectionCtor;
 	ctorLoadAttempted = true;
@@ -105,51 +157,90 @@ async function syncLiveWatchers(client: any) {
 
 export async function handleContentCreatorButton(interaction: any) {
 	try {
-		const member = interaction.member || (await interaction.guild.members.fetch(interaction.user.id).catch(() => null));
+		const guild = interaction.guild;
+		const member = interaction.member || (await guild.members.fetch(interaction.user.id).catch(() => null));
+
 		if (!(await hasPermission(member, 'content_creator'))) {
-			const errorMessage = await getPermissionDeniedMessage(interaction.guild, 'content_creator', interaction.user.id);
+			const errorMessage = await getPermissionDeniedMessage(guild, 'content_creator', interaction.user.id);
 			await interaction.reply({ content: errorMessage, flags: 64 }).catch(() => null);
 			return;
 		}
 
-		const config = await CONTENT_CREATOR.getConfig(interaction.guild.id);
-		const creatorRoleId = await CONTENT_CREATOR.getContentCreatorRole(interaction.guild.id).catch(() => null);
-		if (!config?.admission_channel_id || !creatorRoleId) {
-			await interaction.reply({ content: await translate('contentCreator.errors.notConfigured', interaction.guild.id, interaction.user.id), flags: 64 });
+		const embedConfig = await getEmbedConfig(guild.id).catch(() => null);
+		const creatorRoleId = await CONTENT_CREATOR.getContentCreatorRole(guild.id).catch(() => null);
+		const alreadyCreator = creatorRoleId ? member?.roles?.cache?.has(creatorRoleId) : false;
+
+		const botConfig = getBotConfig();
+		if (!botConfig) {
+			await interaction.reply({ content: await translate('contentCreator.errors.notConfigured', guild.id, interaction.user.id), flags: 64 }).catch(() => null);
 			return;
 		}
 
-		if (member?.roles?.cache?.has(creatorRoleId)) {
-			await interaction
-				.reply({ content: await translate('contentCreator.errors.alreadyCreator', interaction.guild.id, interaction.user.id), flags: 64 })
-				.catch(() => null);
+		const server = await db.getServerByDiscordId(botConfig.id, guild.id).catch(() => null);
+		if (!server) {
+			await interaction.reply({ content: await translate('contentCreator.errors.notConfigured', guild.id, interaction.user.id), flags: 64 }).catch(() => null);
 			return;
 		}
 
-		const modal = new ModalBuilder()
-			.setCustomId('content_creator_apply')
-			.setTitle(await translate('contentCreator.modal.title', interaction.guild.id, interaction.user.id));
-		const usernameInput = new TextInputBuilder()
-			.setCustomId('tiktok_username')
-			.setLabel(await translate('contentCreator.modal.usernameLabel', interaction.guild.id, interaction.user.id))
-			.setStyle(TextInputStyle.Short)
-			.setPlaceholder(await translate('contentCreator.modal.usernamePlaceholder', interaction.guild.id, interaction.user.id))
-			.setRequired(true)
-			.setMaxLength(100);
-		const reasonInput = new TextInputBuilder()
-			.setCustomId('reason')
-			.setLabel(await translate('contentCreator.modal.reasonLabel', interaction.guild.id, interaction.user.id))
-			.setStyle(TextInputStyle.Paragraph)
-			.setPlaceholder(await translate('contentCreator.modal.reasonPlaceholder', interaction.guild.id, interaction.user.id))
-			.setRequired(true)
-			.setMaxLength(500);
-		modal.addComponents(
-			new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(usernameInput),
-			new ActionRowBuilder<ModalActionRowComponentBuilder>().addComponents(reasonInput)
+		const dbMember = await db.upsertMember(server.id, member).catch(() => null);
+		const lastApplication = dbMember ? await db.getLastContentCreatorApplication(server.id, dbMember.id).catch(() => null) : null;
+
+		const creators = await db.getApprovedContentCreators(server.id).catch(() => []);
+
+		const title = await translate('contentCreator.list.title', guild.id, interaction.user.id);
+		const desc = await translate('contentCreator.list.description', guild.id, interaction.user.id);
+
+		const lines: string[] = [];
+		for (const c of creators) {
+			const discordId = String(c.discord_member_id || '');
+			const username = normalizeTikTokUsername(String(c.tiktok_username || ''));
+			if (!discordId || !username) continue;
+			const live = isLive(guild.id, discordId);
+			lines.push(`${live ? '🔴' : '⚫'} <@${discordId}> — **@${username}**\nhttps://www.tiktok.com/@${username}`);
+		}
+
+		const creatorListText = lines.length > 0 ? lines.slice(0, 10).join('\n\n') : await translate('contentCreator.list.none', guild.id, interaction.user.id);
+
+		const embed = new EmbedBuilder()
+			.setColor(embedConfig?.COLOR ?? 0xec4899)
+			.setTitle(title)
+			.setDescription(`${desc}\n\n${creatorListText}`)
+			.setTimestamp();
+		if (embedConfig?.FOOTER) embed.setFooter({ text: embedConfig.FOOTER });
+
+		const row = new ActionRowBuilder<ButtonBuilder>();
+		row.addComponents(
+			new ButtonBuilder()
+				.setCustomId('bot_menu')
+				.setLabel(await translate('menu.button', guild.id, interaction.user.id))
+				.setStyle(ButtonStyle.Secondary)
 		);
-		await interaction.showModal(modal);
+
+		const canApply = !alreadyCreator && lastApplication?.status !== 'pending' && lastApplication?.status !== 'approved';
+		if (canApply) {
+			row.addComponents(
+				new ButtonBuilder()
+					.setCustomId('content_creator_apply_open')
+					.setLabel(await translate('contentCreator.list.applyButton', guild.id, interaction.user.id))
+					.setStyle(ButtonStyle.Success)
+			);
+		}
+
+		if (interaction.replied || interaction.deferred) {
+			await interaction.editReply({ embeds: [embed], components: [row] }).catch(() => null);
+		} else {
+			await interaction.reply({ embeds: [embed], components: [row], flags: 64 }).catch(() => null);
+		}
 	} catch (error: any) {
-		await logger.log(`❌ Error opening content creator modal: ${error.message}`);
+		await logger.log(`❌ Error opening content creator view: ${error.message}`);
+	}
+}
+
+export async function handleContentCreatorApplyButton(interaction: any) {
+	try {
+		await showContentCreatorApplyModal(interaction);
+	} catch (error: any) {
+		await logger.log(`❌ Error opening content creator apply modal: ${error.message}`);
 	}
 }
 

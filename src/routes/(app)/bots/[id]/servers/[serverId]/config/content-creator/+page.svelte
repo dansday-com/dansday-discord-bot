@@ -42,10 +42,6 @@
 <div class="bg-ash-800 border-ash-700 space-y-5 rounded-xl border p-4 sm:p-6">
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold"><i class="fas fa-video text-pink-400"></i>Content Creator</h3>
 	<p class="text-ash-400 text-xs">Configure content creator admission and TikTok live broadcast behavior.</p>
-	<div class="text-ash-400 border-ash-600 bg-ash-800/60 rounded-lg border px-4 py-3 text-sm">
-		<p class="text-ash-300 mb-1">Content creator roles are managed in <strong>Configuration → Permissions</strong>.</p>
-		<p class="text-ash-500 text-xs">The first role in “Content Creator Roles” will be assigned when an application is approved.</p>
-	</div>
 
 	<div>
 		<label class="text-ash-300 mb-1.5 block text-xs font-medium"><i class="fas fa-inbox mr-1 text-pink-400"></i>Admission Channel</label>

@@ -47,21 +47,21 @@
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
 		<i class="fas fa-clipboard-check text-orange-400"></i>Staff Report & Rating
 	</h3>
-	<p class="text-ash-400 text-xs">Configure how staff reporting and rating roles behave across your server.</p>
+	<p class="text-ash-400 text-xs">Configure staff report channels, rating cooldown, and automatic rating-role placement.</p>
 
 	<div>
 		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
-			<i class="fas fa-arrow-up mr-1 text-orange-400"></i>Role Start (Top / Highest Position)
+			<i class="fas fa-arrow-up mr-1 text-orange-400"></i>Role Start (Top)
 		</label>
-		<p class="text-ash-500 mb-2 text-xs">Highest role position where staff rating roles will be created. Roles will be placed below this.</p>
+		<p class="text-ash-500 mb-2 text-xs">The highest boundary role. Rating roles will be created/updated <strong>below</strong> this.</p>
 		<RolePicker roles={data.roles} value={roleStart} single placeholder="Select role..." onchange={(v) => (roleStart = v as string)} />
 	</div>
 
 	<div>
 		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
-			<i class="fas fa-arrow-down mr-1 text-orange-400"></i>Role End (Bottom / Lowest Position)
+			<i class="fas fa-arrow-down mr-1 text-orange-400"></i>Role End (Bottom)
 		</label>
-		<p class="text-ash-500 mb-2 text-xs">Lowest role position where staff rating roles will be created. Roles will be placed above this.</p>
+		<p class="text-ash-500 mb-2 text-xs">The lowest boundary role. Rating roles will be created/updated <strong>above</strong> this.</p>
 		<RolePicker roles={data.roles} value={roleEnd} single placeholder="Select role..." onchange={(v) => (roleEnd = v as string)} />
 	</div>
 
@@ -84,7 +84,7 @@
 		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
 			<i class="fas fa-flag mr-1 text-orange-400"></i>Staff Report Channel
 		</label>
-		<p class="text-ash-500 mb-2 text-xs">Channel for detailed staff reports. Uses default channel if not set.</p>
+		<p class="text-ash-500 mb-2 text-xs">Where staff reports are posted for review. Falls back to the main/default channel if empty.</p>
 		<ChannelPicker channels={data.channels} categories={data.categories} value={reportChannel} onchange={(id) => (reportChannel = id)} />
 	</div>
 
@@ -92,7 +92,7 @@
 		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
 			<i class="fas fa-bell mr-1 text-orange-400"></i>Rating Update Channel
 		</label>
-		<p class="text-ash-500 mb-2 text-xs">Channel for staff rating updates. Uses default channel if not set.</p>
+		<p class="text-ash-500 mb-2 text-xs">Where rating updates/announcements are sent. Falls back to the main/default channel if empty.</p>
 		<ChannelPicker channels={data.channels} categories={data.categories} value={ratingChannel} onchange={(id) => (ratingChannel = id)} />
 	</div>
 

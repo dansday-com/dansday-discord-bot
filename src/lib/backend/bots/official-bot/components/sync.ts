@@ -152,73 +152,24 @@ async function init(discordClient, botToken) {
 	}
 
 	setTimeout(async () => {
-		if (botId) {
-			const needsSync = await db.serversNeedSync(botId);
+		if (!botId) return;
 
-			if (needsSync) {
-				logger.log('🔄 Starting initial guild data sync (servers need data sync)...');
-				await syncAllGuilds();
-				logger.log('✅ Initial sync complete');
+		// Always run a full guild sync on startup. The old `serversNeedSync` gate skipped this after
+		// the first successful sync, so restarts never refreshed channels/members/roles and selfbots
+		// could not backfill guilds that only existed on the selfbot account.
+		logger.log('🔄 Official bot startup guild sync...');
+		await syncAllGuilds();
+		logger.log('✅ Official bot startup guild sync complete');
 
-				const botIdNum = typeof botId === 'string' ? parseInt(botId) : botId;
-				const connectedSelfbots = await db.getSelfbotsForOfficialBot(botIdNum);
-
-				if (connectedSelfbots.length > 0) {
-					logger.log(`⏳ Waiting for ${connectedSelfbots.length} connected selfbot(s) to finish syncing...`);
-
-					await new Promise((resolve) => setTimeout(resolve, 10000));
-					logger.log('✅ Connected selfbots should be synced now');
-				}
-			} else {
-				logger.log('⏭️  Skipping initial sync (servers have data). Sync will run on Discord events only.');
-
-				try {
-					const { CUSTOM_SUPPORTER_ROLE } = await import('../../config.js');
-					const guilds = client.guilds.cache;
-
-					for (const [, guild] of guilds) {
-						try {
-							const serverData = await db.getServerByDiscordId(botId, guild.id);
-							if (serverData) {
-								const constraints = await CUSTOM_SUPPORTER_ROLE.getRoleConstraints(guild.id);
-								if (constraints.ROLE_START && constraints.ROLE_END) {
-									await db.updateCustomRoleFlags(serverData.id, constraints.ROLE_START, constraints.ROLE_END);
-								} else {
-									await db.updateCustomRoleFlags(serverData.id, null, null);
-								}
-							}
-						} catch (error) {}
-					}
-					logger.log('✅ Recalculated custom supporter role flags for all servers');
-				} catch (error) {}
-
-				try {
-					const guilds = client.guilds.cache;
-					for (const [, guild] of guilds) {
-						try {
-							const serverData = await db.getServerByDiscordId(botId, guild.id);
-							if (!serverData) continue;
-							const row = await db.getServerSettings(serverData.id, 'notifications');
-							const config = row?.settings || null;
-							if (!config || !config.role_start || !config.role_end) continue;
-							const categoryIds = Array.isArray(config.category_ids) ? config.category_ids : [];
-							if (categoryIds.length === 0) continue;
-							await guild.fetch();
-							await guild.channels.fetch();
-							await guild.roles.fetch();
-							await syncNotificationRoles(guild, serverData.id);
-						} catch (err) {
-							logger.log(`⚠️ Notifications startup sync for ${guild.name}: ${err.message}`);
-						}
-					}
-					logger.log('✅ Notification roles sync (startup) completed');
-				} catch (error) {
-					logger.log(`⚠️ Notification roles startup sync failed: ${error.message}`);
-				}
-
-				logger.log('ℹ️  Note: Booster status (is_booster, booster_since) will be updated automatically when member events occur');
-			}
+		const botIdNum = typeof botId === 'string' ? parseInt(botId) : botId;
+		const connectedSelfbots = await db.getSelfbotsForOfficialBot(botIdNum);
+		if (connectedSelfbots.length > 0) {
+			logger.log(`⏳ Waiting for ${connectedSelfbots.length} connected selfbot(s) to finish syncing...`);
+			await new Promise((resolve) => setTimeout(resolve, 10000));
+			logger.log('✅ Connected selfbots should be synced now');
 		}
+
+		logger.log('ℹ️  Note: Booster status (is_booster, booster_since) will be updated automatically when member events occur');
 	}, 2000);
 
 	client.on('guildCreate', async (guild) => {

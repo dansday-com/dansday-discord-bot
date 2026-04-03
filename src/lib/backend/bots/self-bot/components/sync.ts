@@ -113,16 +113,12 @@ async function init(discordClient: any, botIdFromEnv: any) {
 	}
 
 	setTimeout(async () => {
-		if (officialBotId) {
-			const needsSync = await db.serversNeedSync(officialBotId);
-			if (needsSync) {
-				logger.log('🔄 Starting initial guild data sync (servers need data sync)...');
-				await syncAllGuilds();
-				logger.log('✅ Initial sync complete');
-			} else {
-				logger.log('⏭️  Skipping initial sync (servers have data). Sync will run on Discord events only.');
-			}
-		}
+		if (!officialBotId) return;
+		// Always sync on startup: `serversNeedSync` only looks at DB rows already present, so guilds
+		// the selfbot is in but not yet stored (or channel rows never written) were skipped forever.
+		logger.log('🔄 Selfbot startup sync (all visible guilds)...');
+		await syncAllGuilds();
+		logger.log('✅ Selfbot startup sync complete');
 	}, 2000);
 
 	client.on('guildCreate', async (guild: any) => {

@@ -318,3 +318,7 @@ export function init(client: any) {
 	}, 120_000);
 	syncLiveWatchers(client).catch(() => null);
 }
+
+export default {
+	init
+};

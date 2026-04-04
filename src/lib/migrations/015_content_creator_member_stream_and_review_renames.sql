@@ -197,6 +197,7 @@ SET @s = IF(@mssr_exists > 0 AND @fk_mssr_role_after IS NULL,
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- Tie live stream rows to server_members (not application/review rows)
+SET @has_cc_stream = (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='server_content_creators_stream');
 SET @cc_id_col = (
   SELECT COUNT(*) FROM information_schema.COLUMNS
   WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'server_content_creators_stream' AND COLUMN_NAME = 'content_creator_id'
@@ -206,17 +207,20 @@ SET @mem_id_col = (
   WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'server_content_creators_stream' AND COLUMN_NAME = 'member_id'
 );
 
-SET @s = IF(@cc_id_col > 0 AND @mem_id_col = 0,
+SET @s = IF(@has_cc_stream > 0 AND @cc_id_col > 0 AND @mem_id_col = 0,
   'ALTER TABLE server_content_creators_stream ADD COLUMN member_id INT NULL',
   'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
-UPDATE server_content_creators_stream s
-INNER JOIN server_content_creators c ON s.content_creator_id = c.id
-SET s.member_id = c.member_id
-WHERE @cc_id_col > 0;
+SET @s = IF(@has_cc_stream > 0 AND @cc_id_col > 0,
+  'UPDATE server_content_creators_stream s INNER JOIN server_content_creators c ON s.content_creator_id = c.id SET s.member_id = c.member_id',
+  'SELECT 1');
+PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
-DELETE FROM server_content_creators_stream WHERE member_id IS NULL AND @cc_id_col > 0;
+SET @s = IF(@has_cc_stream > 0 AND @cc_id_col > 0,
+  'DELETE FROM server_content_creators_stream WHERE member_id IS NULL',
+  'SELECT 1');
+PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @fk := (
   SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
@@ -226,17 +230,17 @@ SET @fk := (
     AND REFERENCED_TABLE_NAME IS NOT NULL
   LIMIT 1
 );
-SET @s = IF(@fk IS NOT NULL, CONCAT('ALTER TABLE server_content_creators_stream DROP FOREIGN KEY `', @fk, '`'), 'SELECT 1');
+SET @s = IF(@has_cc_stream > 0 AND @fk IS NOT NULL, CONCAT('ALTER TABLE server_content_creators_stream DROP FOREIGN KEY `', @fk, '`'), 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_content_creators_stream' AND index_name='idx_cc_stream_creator_started');
-SET @s = IF(@i>0,'DROP INDEX idx_cc_stream_creator_started ON server_content_creators_stream','SELECT 1');
+SET @s = IF(@has_cc_stream > 0 AND @i>0,'DROP INDEX idx_cc_stream_creator_started ON server_content_creators_stream','SELECT 1');
 PREPARE si FROM @s; EXECUTE si; DEALLOCATE PREPARE si;
 
-SET @s = IF(@cc_id_col > 0, 'ALTER TABLE server_content_creators_stream DROP COLUMN content_creator_id', 'SELECT 1');
+SET @s = IF(@has_cc_stream > 0 AND @cc_id_col > 0, 'ALTER TABLE server_content_creators_stream DROP COLUMN content_creator_id', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
-SET @s = IF(@mem_id_col = 0 OR @cc_id_col > 0,
+SET @s = IF(@has_cc_stream > 0 AND (@mem_id_col = 0 OR @cc_id_col > 0),
   'ALTER TABLE server_content_creators_stream MODIFY COLUMN member_id INT NOT NULL',
   'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
@@ -249,13 +253,13 @@ SET @fk_mem := (
     AND CONSTRAINT_NAME = 'fk_cc_stream_member'
   LIMIT 1
 );
-SET @s = IF(@fk_mem IS NULL,
+SET @s = IF(@has_cc_stream > 0 AND @fk_mem IS NULL,
   'ALTER TABLE server_content_creators_stream ADD CONSTRAINT fk_cc_stream_member FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE',
   'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_content_creators_stream' AND index_name='idx_cc_streams_member_started');
-SET @s = IF(@i=0,'CREATE INDEX idx_cc_streams_member_started ON server_content_creators_stream(member_id, started_at)','SELECT 1');
+SET @s = IF(@has_cc_stream > 0 AND @i=0,'CREATE INDEX idx_cc_streams_member_started ON server_content_creators_stream(member_id, started_at)','SELECT 1');
 PREPARE si FROM @s; EXECUTE si; DEALLOCATE PREPARE si;
 
 -- Rename content creator application/review queue
@@ -286,13 +290,53 @@ PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @msrr_exists = (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='server_member_staff_rating_reviews');
 SET @ix_srr_old_st = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_member_staff_rating_reviews' AND index_name='idx_server_staff_rating_reviews_staff');
+SET @ix_srr_old_p = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_member_staff_rating_reviews' AND index_name='idx_server_staff_rating_reviews_pair');
+SET @ix_srr_old_rev = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_member_staff_rating_reviews' AND index_name='idx_server_staff_rating_reviews_reviewer');
+SET @msrr_fk_reset = (@msrr_exists > 0 AND (@ix_srr_old_st > 0 OR @ix_srr_old_p > 0 OR @ix_srr_old_rev > 0));
+
+SET @fk_msrr_rep := (
+  SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'server_member_staff_rating_reviews'
+    AND COLUMN_NAME = 'reporter_member_id'
+    AND REFERENCED_TABLE_NAME IS NOT NULL
+  LIMIT 1
+);
+SET @s = IF(@msrr_fk_reset > 0 AND @fk_msrr_rep IS NOT NULL,
+  CONCAT('ALTER TABLE server_member_staff_rating_reviews DROP FOREIGN KEY `', @fk_msrr_rep, '`'),
+  'SELECT 1');
+PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @fk_msrr_rst := (
+  SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'server_member_staff_rating_reviews'
+    AND COLUMN_NAME = 'reported_staff_id'
+    AND REFERENCED_TABLE_NAME IS NOT NULL
+  LIMIT 1
+);
+SET @s = IF(@msrr_fk_reset > 0 AND @fk_msrr_rst IS NOT NULL,
+  CONCAT('ALTER TABLE server_member_staff_rating_reviews DROP FOREIGN KEY `', @fk_msrr_rst, '`'),
+  'SELECT 1');
+PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @fk_msrr_rvw := (
+  SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'server_member_staff_rating_reviews'
+    AND COLUMN_NAME = 'reviewed_by_member_id'
+    AND REFERENCED_TABLE_NAME IS NOT NULL
+  LIMIT 1
+);
+SET @s = IF(@msrr_fk_reset > 0 AND @fk_msrr_rvw IS NOT NULL,
+  CONCAT('ALTER TABLE server_member_staff_rating_reviews DROP FOREIGN KEY `', @fk_msrr_rvw, '`'),
+  'SELECT 1');
+PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
 SET @s = IF(@msrr_exists > 0 AND @ix_srr_old_st > 0, 'ALTER TABLE server_member_staff_rating_reviews DROP INDEX idx_server_staff_rating_reviews_staff', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 SET @ix_srr_new_st = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_member_staff_rating_reviews' AND index_name='idx_server_member_staff_rating_reviews_staff');
 SET @s = IF(@msrr_exists > 0 AND @ix_srr_new_st = 0, 'CREATE INDEX idx_server_member_staff_rating_reviews_staff ON server_member_staff_rating_reviews(reported_staff_id)', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
-SET @ix_srr_old_p = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_member_staff_rating_reviews' AND index_name='idx_server_staff_rating_reviews_pair');
 SET @s = IF(@msrr_exists > 0 AND @ix_srr_old_p > 0, 'ALTER TABLE server_member_staff_rating_reviews DROP INDEX idx_server_staff_rating_reviews_pair', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 SET @ix_srr_new_p = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_member_staff_rating_reviews' AND index_name='idx_server_member_staff_rating_reviews_pair');
@@ -306,11 +350,47 @@ SET @ix_srr_new_stat = (SELECT COUNT(*) FROM information_schema.statistics WHERE
 SET @s = IF(@msrr_exists > 0 AND @ix_srr_new_stat = 0, 'CREATE INDEX idx_server_member_staff_rating_reviews_status ON server_member_staff_rating_reviews(status)', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
-SET @ix_srr_old_rev = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_member_staff_rating_reviews' AND index_name='idx_server_staff_rating_reviews_reviewer');
 SET @s = IF(@msrr_exists > 0 AND @ix_srr_old_rev > 0, 'ALTER TABLE server_member_staff_rating_reviews DROP INDEX idx_server_staff_rating_reviews_reviewer', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 SET @ix_srr_new_rev = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_member_staff_rating_reviews' AND index_name='idx_server_member_staff_rating_reviews_reviewer');
 SET @s = IF(@msrr_exists > 0 AND @ix_srr_new_rev = 0, 'CREATE INDEX idx_server_member_staff_rating_reviews_reviewer ON server_member_staff_rating_reviews(reviewed_by_member_id)', 'SELECT 1');
+PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @fk_msrr_rep_a := (
+  SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'server_member_staff_rating_reviews'
+    AND COLUMN_NAME = 'reporter_member_id'
+    AND REFERENCED_TABLE_NAME IS NOT NULL
+  LIMIT 1
+);
+SET @s = IF(@msrr_exists > 0 AND @fk_msrr_rep_a IS NULL,
+  'ALTER TABLE server_member_staff_rating_reviews ADD CONSTRAINT fk_smrr_reporter_member FOREIGN KEY (reporter_member_id) REFERENCES server_members(id) ON DELETE CASCADE',
+  'SELECT 1');
+PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @fk_msrr_rst_a := (
+  SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'server_member_staff_rating_reviews'
+    AND COLUMN_NAME = 'reported_staff_id'
+    AND REFERENCED_TABLE_NAME IS NOT NULL
+  LIMIT 1
+);
+SET @s = IF(@msrr_exists > 0 AND @fk_msrr_rst_a IS NULL,
+  'ALTER TABLE server_member_staff_rating_reviews ADD CONSTRAINT fk_smrr_reported_staff FOREIGN KEY (reported_staff_id) REFERENCES server_members(id) ON DELETE CASCADE',
+  'SELECT 1');
+PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+SET @fk_msrr_rvw_a := (
+  SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'server_member_staff_rating_reviews'
+    AND COLUMN_NAME = 'reviewed_by_member_id'
+    AND REFERENCED_TABLE_NAME IS NOT NULL
+  LIMIT 1
+);
+SET @s = IF(@msrr_exists > 0 AND @fk_msrr_rvw_a IS NULL,
+  'ALTER TABLE server_member_staff_rating_reviews ADD CONSTRAINT fk_smrr_reviewer_member FOREIGN KEY (reviewed_by_member_id) REFERENCES server_members(id) ON DELETE SET NULL',
+  'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- Stream tables: final names (atomic rename when both legacy tables exist)
@@ -381,57 +461,147 @@ SET @o3 = (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DAT
 SET @n3 = (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='server_member_content_creator_reviews');
 SET @s = IF(@o3 > 0 AND @n3 = 0, 'RENAME TABLE server_member_content_creator_review TO server_member_content_creator_reviews', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @mccr_exists = (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='server_member_content_creator_reviews');
+SET @ix_ccr_old_mem = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_member_content_creator_reviews' AND index_name='idx_server_content_creator_member');
+SET @fk_mccr_mem := (
+  SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'server_member_content_creator_reviews'
+    AND COLUMN_NAME = 'member_id'
+    AND REFERENCED_TABLE_NAME IS NOT NULL
+  LIMIT 1
+);
+SET @s = IF(@mccr_exists > 0 AND @ix_ccr_old_mem > 0 AND @fk_mccr_mem IS NOT NULL,
+  CONCAT('ALTER TABLE server_member_content_creator_reviews DROP FOREIGN KEY `', @fk_mccr_mem, '`'),
+  'SELECT 1');
+PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
 SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_member_content_creator_reviews' AND index_name='idx_server_content_creator_member');
-SET @s = IF(@i > 0, 'ALTER TABLE server_member_content_creator_reviews DROP INDEX idx_server_content_creator_member', 'SELECT 1');
+SET @s = IF(@mccr_exists > 0 AND @i > 0, 'ALTER TABLE server_member_content_creator_reviews DROP INDEX idx_server_content_creator_member', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_member_content_creator_reviews' AND index_name='idx_server_content_creator_status');
-SET @s = IF(@i > 0, 'ALTER TABLE server_member_content_creator_reviews DROP INDEX idx_server_content_creator_status', 'SELECT 1');
+SET @s = IF(@mccr_exists > 0 AND @i > 0, 'ALTER TABLE server_member_content_creator_reviews DROP INDEX idx_server_content_creator_status', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_member_content_creator_reviews' AND index_name='idx_server_content_creator_submitted_at');
-SET @s = IF(@i > 0, 'ALTER TABLE server_member_content_creator_reviews DROP INDEX idx_server_content_creator_submitted_at', 'SELECT 1');
+SET @s = IF(@mccr_exists > 0 AND @i > 0, 'ALTER TABLE server_member_content_creator_reviews DROP INDEX idx_server_content_creator_submitted_at', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_member_content_creator_reviews' AND index_name='idx_server_member_content_creator_reviews_member');
-SET @s = IF(@i = 0, 'CREATE INDEX idx_server_member_content_creator_reviews_member ON server_member_content_creator_reviews(member_id)', 'SELECT 1');
+SET @s = IF(@mccr_exists > 0 AND @i = 0, 'CREATE INDEX idx_server_member_content_creator_reviews_member ON server_member_content_creator_reviews(member_id)', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_member_content_creator_reviews' AND index_name='idx_server_member_content_creator_reviews_status');
-SET @s = IF(@i = 0, 'CREATE INDEX idx_server_member_content_creator_reviews_status ON server_member_content_creator_reviews(status)', 'SELECT 1');
+SET @s = IF(@mccr_exists > 0 AND @i = 0, 'CREATE INDEX idx_server_member_content_creator_reviews_status ON server_member_content_creator_reviews(status)', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_member_content_creator_reviews' AND index_name='idx_server_member_content_creator_reviews_submitted_at');
-SET @s = IF(@i = 0, 'CREATE INDEX idx_server_member_content_creator_reviews_submitted_at ON server_member_content_creator_reviews(submitted_at)', 'SELECT 1');
+SET @s = IF(@mccr_exists > 0 AND @i = 0, 'CREATE INDEX idx_server_member_content_creator_reviews_submitted_at ON server_member_content_creator_reviews(submitted_at)', 'SELECT 1');
+PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @fk_mccr_mem_a := (
+  SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'server_member_content_creator_reviews'
+    AND COLUMN_NAME = 'member_id'
+    AND REFERENCED_TABLE_NAME IS NOT NULL
+  LIMIT 1
+);
+SET @s = IF(@mccr_exists > 0 AND @fk_mccr_mem_a IS NULL,
+  'ALTER TABLE server_member_content_creator_reviews ADD CONSTRAINT fk_smccr_member FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE',
+  'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @o4 = (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='server_member_content_creator_stream');
 SET @n4 = (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='server_member_content_creator_streams');
 SET @s = IF(@o4 > 0 AND @n4 = 0, 'RENAME TABLE server_member_content_creator_stream TO server_member_content_creator_streams', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @mccs_exists = (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='server_member_content_creator_streams');
+SET @ix_mccs_old_ms = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_member_content_creator_streams' AND index_name='idx_cc_stream_member_started');
+SET @fk_mccs_mem := (
+  SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'server_member_content_creator_streams'
+    AND COLUMN_NAME = 'member_id'
+    AND REFERENCED_TABLE_NAME IS NOT NULL
+  LIMIT 1
+);
+SET @s = IF(@mccs_exists > 0 AND @ix_mccs_old_ms > 0 AND @fk_mccs_mem IS NOT NULL,
+  CONCAT('ALTER TABLE server_member_content_creator_streams DROP FOREIGN KEY `', @fk_mccs_mem, '`'),
+  'SELECT 1');
+PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
 SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_member_content_creator_streams' AND index_name='idx_cc_stream_member_started');
-SET @s = IF(@i > 0, 'ALTER TABLE server_member_content_creator_streams DROP INDEX idx_cc_stream_member_started', 'SELECT 1');
+SET @s = IF(@mccs_exists > 0 AND @i > 0, 'ALTER TABLE server_member_content_creator_streams DROP INDEX idx_cc_stream_member_started', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_member_content_creator_streams' AND index_name='idx_cc_streams_member_started');
-SET @s = IF(@i = 0, 'CREATE INDEX idx_cc_streams_member_started ON server_member_content_creator_streams(member_id, started_at)', 'SELECT 1');
+SET @s = IF(@mccs_exists > 0 AND @i = 0, 'CREATE INDEX idx_cc_streams_member_started ON server_member_content_creator_streams(member_id, started_at)', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @fk_mccs_mem_a := (
+  SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'server_member_content_creator_streams'
+    AND COLUMN_NAME = 'member_id'
+    AND REFERENCED_TABLE_NAME IS NOT NULL
+  LIMIT 1
+);
+SET @s = IF(@mccs_exists > 0 AND @fk_mccs_mem_a IS NULL,
+  'ALTER TABLE server_member_content_creator_streams ADD CONSTRAINT fk_mccs_member FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE',
+  'SELECT 1');
+PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
 SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_member_content_creator_streams' AND index_name='idx_cc_stream_status');
-SET @s = IF(@i > 0, 'ALTER TABLE server_member_content_creator_streams DROP INDEX idx_cc_stream_status', 'SELECT 1');
+SET @s = IF(@mccs_exists > 0 AND @i > 0, 'ALTER TABLE server_member_content_creator_streams DROP INDEX idx_cc_stream_status', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_member_content_creator_streams' AND index_name='idx_cc_streams_status');
-SET @s = IF(@i = 0, 'CREATE INDEX idx_cc_streams_status ON server_member_content_creator_streams(status)', 'SELECT 1');
+SET @s = IF(@mccs_exists > 0 AND @i = 0, 'CREATE INDEX idx_cc_streams_status ON server_member_content_creator_streams(status)', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @o5 = (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='server_member_content_creator_stream_log');
 SET @n5 = (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='server_member_content_creator_stream_logs');
 SET @s = IF(@o5 > 0 AND @n5 = 0, 'RENAME TABLE server_member_content_creator_stream_log TO server_member_content_creator_stream_logs', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @mccsl_exists = (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='server_member_content_creator_stream_logs');
+SET @ix_mccsl_st = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_member_content_creator_stream_logs' AND index_name='idx_cc_stream_log_stream_time');
+SET @ix_mccsl_ev = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_member_content_creator_stream_logs' AND index_name='idx_cc_stream_log_event');
+SET @mccsl_fk_reset = (@mccsl_exists > 0 AND (@ix_mccsl_st > 0 OR @ix_mccsl_ev > 0));
+SET @fk_mccsl_stream := (
+  SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'server_member_content_creator_stream_logs'
+    AND COLUMN_NAME = 'stream_id'
+    AND REFERENCED_TABLE_NAME IS NOT NULL
+  LIMIT 1
+);
+SET @s = IF(@mccsl_fk_reset > 0 AND @fk_mccsl_stream IS NOT NULL,
+  CONCAT('ALTER TABLE server_member_content_creator_stream_logs DROP FOREIGN KEY `', @fk_mccsl_stream, '`'),
+  'SELECT 1');
+PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
 SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_member_content_creator_stream_logs' AND index_name='idx_cc_stream_log_stream_time');
-SET @s = IF(@i > 0, 'ALTER TABLE server_member_content_creator_stream_logs DROP INDEX idx_cc_stream_log_stream_time', 'SELECT 1');
+SET @s = IF(@mccsl_exists > 0 AND @i > 0, 'ALTER TABLE server_member_content_creator_stream_logs DROP INDEX idx_cc_stream_log_stream_time', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_member_content_creator_stream_logs' AND index_name='idx_cc_stream_log_event');
-SET @s = IF(@i > 0, 'ALTER TABLE server_member_content_creator_stream_logs DROP INDEX idx_cc_stream_log_event', 'SELECT 1');
+SET @s = IF(@mccsl_exists > 0 AND @i > 0, 'ALTER TABLE server_member_content_creator_stream_logs DROP INDEX idx_cc_stream_log_event', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_member_content_creator_stream_logs' AND index_name='idx_cc_stream_logs_stream_time');
-SET @s = IF(@i = 0, 'CREATE INDEX idx_cc_stream_logs_stream_time ON server_member_content_creator_stream_logs(stream_id, occurred_at)', 'SELECT 1');
+SET @s = IF(@mccsl_exists > 0 AND @i = 0, 'CREATE INDEX idx_cc_stream_logs_stream_time ON server_member_content_creator_stream_logs(stream_id, occurred_at)', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_member_content_creator_stream_logs' AND index_name='idx_cc_stream_logs_event');
-SET @s = IF(@i = 0, 'CREATE INDEX idx_cc_stream_logs_event ON server_member_content_creator_stream_logs(stream_id, event_type)', 'SELECT 1');
+SET @s = IF(@mccsl_exists > 0 AND @i = 0, 'CREATE INDEX idx_cc_stream_logs_event ON server_member_content_creator_stream_logs(stream_id, event_type)', 'SELECT 1');
+PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @fk_mccsl_stream_a := (
+  SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'server_member_content_creator_stream_logs'
+    AND COLUMN_NAME = 'stream_id'
+    AND REFERENCED_TABLE_NAME IS NOT NULL
+  LIMIT 1
+);
+SET @s = IF(@mccsl_exists > 0 AND @fk_mccsl_stream_a IS NULL,
+  'ALTER TABLE server_member_content_creator_stream_logs ADD CONSTRAINT fk_mccsl_stream FOREIGN KEY (stream_id) REFERENCES server_member_content_creator_streams(id) ON DELETE CASCADE',
+  'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- server_member_roles -> server_member_notifications (channel notification roles only; full role list no longer stored)

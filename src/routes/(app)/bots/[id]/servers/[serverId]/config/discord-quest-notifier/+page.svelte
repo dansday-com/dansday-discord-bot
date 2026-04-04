@@ -2,7 +2,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import ChannelPicker from '$lib/frontend/components/ChannelPicker.svelte';
-	import { isValidQuestHttpProxyUrl } from '$lib/discord-quest-api.js';
+	import { isValidQuestHttpProxyUrl } from '$lib/utils/questHttpProxyUrl.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();

@@ -102,9 +102,12 @@ export const handle: Handle = async ({ event, resolve }) => {
 	if (event.url.pathname !== '/' && !event.url.pathname.startsWith('/api/')) {
 		const contentType = response.headers.get('content-type') ?? '';
 		const accept = event.request.headers.get('accept') ?? '';
-		const wantsHtml = accept.includes('text/html') || contentType.includes('text/html');
+		const secDest = event.request.headers.get('sec-fetch-dest');
+		const secMode = event.request.headers.get('sec-fetch-mode');
+		const looksLikePageNavigation = secDest === 'document' || (secMode === 'navigate' && event.request.method === 'GET');
+		const wantsHtml = looksLikePageNavigation || accept.includes('text/html') || contentType.includes('text/html');
 
-		if (wantsHtml && (response.status === 404 || response.status === 500)) {
+		if (wantsHtml && response.status === 404) {
 			return new Response(null, {
 				status: 302,
 				headers: { Location: '/' }

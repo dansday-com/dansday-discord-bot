@@ -12,17 +12,6 @@ const CLIENT_USER_AGENT =
 const questProxyAgentCache = new Map<string, ProxyAgent>();
 const QUEST_PROXY_AGENT_CACHE_MAX = 32;
 
-export function isValidQuestHttpProxyUrl(raw: string): boolean {
-	const s = raw.trim();
-	if (!s) return true;
-	try {
-		const u = new URL(s);
-		return u.protocol === 'http:' || u.protocol === 'https:';
-	} catch {
-		return false;
-	}
-}
-
 function getQuestProxyAgent(proxyUrl: string): ProxyAgent {
 	let ag = questProxyAgentCache.get(proxyUrl);
 	if (!ag) {

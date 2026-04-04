@@ -406,7 +406,6 @@ export const CUSTOM_SUPPORTER_ROLE = {
 		return CUSTOM_SUPPORTER_ROLE.getStoredRoleConstraints(guildId);
 	},
 
-	/** Role span from settings only (ignores module toggle). Used for sync DB flags and periodic cleanup while the module is off. */
 	async getStoredRoleConstraints(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting stored custom role constraints');
@@ -504,7 +503,6 @@ export const GIVEAWAY = {
 		return GIVEAWAY.getStoredGiveawayChannelId(guildId);
 	},
 
-	/** Configured giveaway channel from settings + main fallback, without checking the module (for finalizing ended giveaways). */
 	async getChannelForFinalizingEndedGiveaway(guildId: string): Promise<string | null> {
 		requireBotConfig();
 		requireGuildId(guildId, 'finalizing ended giveaway');

@@ -910,8 +910,7 @@ async function processEndedGiveaways(client) {
 
 				let channel: any = null;
 				if (giveawayChannelId) {
-					channel =
-						guild.channels.cache.get(giveawayChannelId) || (await guild.channels.fetch(giveawayChannelId).catch(() => null));
+					channel = guild.channels.cache.get(giveawayChannelId) || (await guild.channels.fetch(giveawayChannelId).catch(() => null));
 				}
 
 				let message: any = null;
@@ -942,9 +941,7 @@ async function processEndedGiveaways(client) {
 							})
 							.catch(() => null);
 					} else {
-						await logger.log(
-							`⚠️ Giveaway ${giveaway.id} ended with no entries (no Discord channel/message — DB finalized only)`
-						);
+						await logger.log(`⚠️ Giveaway ${giveaway.id} ended with no entries (no Discord channel/message — DB finalized only)`);
 					}
 
 					await db.markGiveawayEnded(giveaway.id);
@@ -975,9 +972,7 @@ async function processEndedGiveaways(client) {
 							})
 							.catch(() => null);
 					} else {
-						await logger.log(
-							`⚠️ Giveaway ${giveaway.id} ended with no winners selectable (no Discord channel/message — DB finalized only)`
-						);
+						await logger.log(`⚠️ Giveaway ${giveaway.id} ended with no winners selectable (no Discord channel/message — DB finalized only)`);
 					}
 
 					await db.markGiveawayEnded(giveaway.id);
@@ -1018,9 +1013,7 @@ async function processEndedGiveaways(client) {
 						})
 						.catch(() => null);
 				} else {
-					await logger.log(
-						`⚠️ Giveaway ${giveaway.id} winners recorded in DB but no channel to announce (guild ${guild.id})`
-					);
+					await logger.log(`⚠️ Giveaway ${giveaway.id} winners recorded in DB but no channel to announce (guild ${guild.id})`);
 				}
 
 				await db.markGiveawayEnded(giveaway.id);

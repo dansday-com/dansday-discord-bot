@@ -8,13 +8,7 @@ import {
 	TextInputBuilder,
 	TextInputStyle
 } from 'discord.js';
-import {
-	CONTENT_CREATOR,
-	getBotConfig,
-	getEmbedConfig,
-	isComponentFeatureEnabled,
-	serverSettingsComponent
-} from '../../../../config.js';
+import { CONTENT_CREATOR, getBotConfig, getEmbedConfig, isComponentFeatureEnabled, serverSettingsComponent } from '../../../../config.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import { translate, t } from '../../i18n.js';
 import db from '../../../../../database.js';
@@ -507,7 +501,6 @@ async function syncLiveWatchers(client: any) {
 	}
 }
 
-/** Panel toggle: stop TikTok connections immediately, or attach watchers without waiting for the next interval. */
 export async function syncContentCreatorRuntime(client: any, guildDiscordId: string, enabled: boolean) {
 	if (!client || !guildDiscordId) return;
 	if (!enabled) {

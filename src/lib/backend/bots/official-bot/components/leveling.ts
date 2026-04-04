@@ -44,6 +44,13 @@ function isVoiceStateAFK(voiceState) {
 	return !!(voiceState?.selfMute || voiceState?.selfDeaf);
 }
 
+function resolveGuildVoiceState(guild, discordUserId) {
+	if (!guild || !discordUserId) return null;
+	const fromVs = guild.voiceStates?.cache?.get(discordUserId);
+	if (fromVs) return fromVs;
+	return guild.members.cache.get(discordUserId)?.voice ?? null;
+}
+
 async function getExperienceForVoiceMinutes(minutes, isAFK = false, guildId) {
 	if (!guildId) {
 		throw new Error('guildId is required for voice XP');
@@ -51,8 +58,8 @@ async function getExperienceForVoiceMinutes(minutes, isAFK = false, guildId) {
 	if (!minutes || minutes <= 0) return 0;
 
 	const settings = await getLevelingSettings(guildId);
-	const afkXPPerMin = settings.VOICE.AFK_XP_PER_MINUTE;
-	const voiceXPPerMin = settings.VOICE.XP_PER_MINUTE;
+	const afkXPPerMin = Math.max(0, Number(settings.VOICE.AFK_XP_PER_MINUTE) || 0);
+	const voiceXPPerMin = Math.max(0, Number(settings.VOICE.XP_PER_MINUTE) || 0);
 
 	if (isAFK) {
 		return afkXPPerMin * minutes;
@@ -559,7 +566,10 @@ async function startVoiceSession(state, resumed = false) {
 		if (!state?.channelId || !state.guild) return;
 		if (!(await isComponentFeatureEnabled(state.guild.id, serverSettingsComponent.leveling))) return;
 
-		const { server, dbMember, guildMember } = await resolveServerAndMember(state.guild, state.member);
+		const memberLike = state.member ?? (state.id ? { id: state.id } : null);
+		if (!memberLike) return;
+
+		const { server, dbMember, guildMember } = await resolveServerAndMember(state.guild, memberLike);
 		if (!server || !dbMember || !guildMember) return;
 
 		const eligible = await isMemberEligible(state.guild.id, guildMember);
@@ -599,23 +609,21 @@ async function startVoiceSession(state, resumed = false) {
 
 		let finalLastRewardedAt = lastRewardedAtMs || now;
 
+		const voiceAfkForXp = isVoiceStateAFK(state);
+
 		if (resumed && wasMarkedInVoice && lastRewardedAtMs !== null) {
 			const minutesSinceReward = Math.max(0, Math.floor((now - lastRewardedAtMs) / 60000));
 			if (minutesSinceReward > 0) {
-				const afkStatus = await db.getAFKStatus(server.id, dbMember.discord_member_id);
-				const isMutedOrDeafened = isVoiceStateAFK(state);
-				await awardVoiceXP(server, dbMember, guildMember, minutesSinceReward, !!afkStatus || isMutedOrDeafened, guildId, 'voice-resume-catchup', levelData);
+				await awardVoiceXP(server, dbMember, guildMember, minutesSinceReward, voiceAfkForXp, guildId, 'voice-resume-catchup', levelData);
 				finalLastRewardedAt = now;
 			}
 		} else if (lastRewardedAtMs !== null && now - lastRewardedAtMs >= voiceCooldownMs) {
-			const afkStatus = await db.getAFKStatus(server.id, dbMember.discord_member_id);
-			const isMutedOrDeafened = isVoiceStateAFK(state);
 			await awardVoiceXP(
 				server,
 				dbMember,
 				guildMember,
 				1,
-				!!afkStatus || isMutedOrDeafened,
+				voiceAfkForXp,
 				guildId,
 				resumed && wasMarkedInVoice ? 'voice-resume-interval' : 'voice-start-interval',
 				levelData
@@ -712,11 +720,10 @@ async function handleVoiceTick(sessionKey) {
 		if (now - lastRewardedAt < voiceCooldownMs) return;
 
 		const guild = clientInstance?.guilds.cache.get(session.guildId);
-		const voiceState = guild?.members.cache.get(session.discordMemberId)?.voice;
-		const isMutedOrDeafened = isVoiceStateAFK(voiceState);
+		const voiceState = resolveGuildVoiceState(guild, session.discordMemberId);
+		const voiceAfkForXp = isVoiceStateAFK(voiceState);
 
 		const levelSnapshot = await db.getMemberLevel(dbMember.id);
-		const afkStatus = await db.getAFKStatus(server.id, session.discordMemberId);
 		const serverInfo = { id: session.serverId, name: session.serverName };
 		const guildMember = {
 			id: session.discordMemberId,
@@ -724,7 +731,7 @@ async function handleVoiceTick(sessionKey) {
 			user: { username: dbMember.username }
 		};
 
-		await awardVoiceXP(serverInfo, dbMember, guildMember, 1, !!afkStatus || isMutedOrDeafened, guildId, 'voice-tick', levelSnapshot);
+		await awardVoiceXP(serverInfo, dbMember, guildMember, 1, voiceAfkForXp, guildId, 'voice-tick', levelSnapshot);
 		session.lastRewardedAt = now;
 	} catch (error) {
 		await logger.log(`❌ Leveling voice tick error: ${error.message}`);
@@ -809,13 +816,12 @@ export async function resumeLevelingVoiceForGuild(client, guild) {
 		const activeVoiceMemberIds = new Set();
 
 		for (const [, voiceState] of guild.voiceStates.cache) {
-			if (voiceState.channelId && voiceState.member) {
-				activeVoiceMemberIds.add(voiceState.member.id);
-				try {
-					await startVoiceSession(voiceState, true);
-				} catch (err) {
-					await logger.log(`❌ Leveling: failed to resume voice session for ${voiceState.id}: ${err.message}`);
-				}
+			if (!voiceState.channelId || !voiceState.id) continue;
+			activeVoiceMemberIds.add(voiceState.id);
+			try {
+				await startVoiceSession(voiceState, true);
+			} catch (err) {
+				await logger.log(`❌ Leveling: failed to resume voice session for ${voiceState.id}: ${err.message}`);
 			}
 		}
 
@@ -856,7 +862,6 @@ export async function stopLevelingVoiceSessionsForGuild(guildDiscordId) {
 	await logger.log(`🔇 Leveling: Stopped voice XP timers for guild ${guildDiscordId}`);
 }
 
-/** Call when the leveling module is toggled from the panel so voice XP starts/stops without a bot restart. */
 export async function syncLevelingRuntime(client, guildDiscordId, enabled) {
 	if (!client || !guildDiscordId) return;
 	if (enabled) {
@@ -912,9 +917,12 @@ function init(client) {
 				await endVoiceSession(oldState);
 				await startVoiceSession(newState, false);
 			} else if (oldChannel && newChannel && oldChannel === newChannel && oldMuteDeaf !== newMuteDeaf) {
-				const sessionKey = `${newState.guild.id}:${newState.member.id}`;
-				const session = voiceSessions.get(sessionKey);
-				if (session) {
+				const uid = newState.member?.id ?? newState.id;
+				if (uid) {
+					const sessionKey = `${newState.guild.id}:${uid}`;
+					const session = voiceSessions.get(sessionKey);
+					if (session) {
+					}
 				}
 			}
 		} catch (error) {

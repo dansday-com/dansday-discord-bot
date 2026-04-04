@@ -164,10 +164,36 @@ SET @s = IF(@mssr_exists > 0 AND @ix_ssr_new_m = 0, 'CREATE INDEX idx_server_mem
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @ix_ssr_old_r = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_member_staff_ratings' AND index_name='idx_server_staff_ratings_role');
+SET @fk_mssr_role := (
+  SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'server_member_staff_ratings'
+    AND COLUMN_NAME = 'role_id'
+    AND REFERENCED_TABLE_NAME IS NOT NULL
+  LIMIT 1
+);
+SET @s = IF(@mssr_exists > 0 AND @ix_ssr_old_r > 0 AND @fk_mssr_role IS NOT NULL,
+  CONCAT('ALTER TABLE server_member_staff_ratings DROP FOREIGN KEY `', @fk_mssr_role, '`'),
+  'SELECT 1');
+PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
 SET @s = IF(@mssr_exists > 0 AND @ix_ssr_old_r > 0, 'ALTER TABLE server_member_staff_ratings DROP INDEX idx_server_staff_ratings_role', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 SET @ix_ssr_new_r = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_member_staff_ratings' AND index_name='idx_server_member_staff_ratings_role');
 SET @s = IF(@mssr_exists > 0 AND @ix_ssr_new_r = 0, 'CREATE INDEX idx_server_member_staff_ratings_role ON server_member_staff_ratings(role_id)', 'SELECT 1');
+PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @fk_mssr_role_after := (
+  SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'server_member_staff_ratings'
+    AND COLUMN_NAME = 'role_id'
+    AND REFERENCED_TABLE_NAME IS NOT NULL
+  LIMIT 1
+);
+SET @s = IF(@mssr_exists > 0 AND @fk_mssr_role_after IS NULL,
+  'ALTER TABLE server_member_staff_ratings ADD CONSTRAINT fk_server_staff_ratings_role FOREIGN KEY (role_id) REFERENCES server_roles(id) ON DELETE SET NULL',
+  'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- Tie live stream rows to server_members (not application/review rows)

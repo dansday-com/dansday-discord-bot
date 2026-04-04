@@ -69,9 +69,6 @@ async function syncGuildData(guild) {
 			}))
 		);
 
-		const members = Array.from(guild.members.cache.values()).filter((member) => !member.user.bot);
-		await db.syncMembers(serverId, members);
-
 		try {
 			const { CUSTOM_SUPPORTER_ROLE } = await import('../../config.js');
 			const constraints = await CUSTOM_SUPPORTER_ROLE.getRoleConstraints(guild.id);
@@ -81,6 +78,9 @@ async function syncGuildData(guild) {
 				await db.updateCustomRoleFlags(serverId, null, null);
 			}
 		} catch (error) {}
+
+		const members = Array.from(guild.members.cache.values()).filter((member) => !member.user.bot);
+		await db.syncMembers(serverId, members);
 
 		try {
 			await syncNotificationRoles(guild, serverId);

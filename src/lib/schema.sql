@@ -177,6 +177,12 @@ CREATE TABLE IF NOT EXISTS server_members (
     FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS server_member_content_creators (
+    member_id INT NOT NULL PRIMARY KEY,
+    created_at DATETIME NOT NULL,
+    FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS server_member_levels (
     id INT PRIMARY KEY AUTO_INCREMENT,
     member_id INT NOT NULL,
@@ -197,27 +203,31 @@ CREATE TABLE IF NOT EXISTS server_member_levels (
     FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS server_member_roles (
-    id INT PRIMARY KEY AUTO_INCREMENT,
+CREATE TABLE IF NOT EXISTS server_member_notifications (
     member_id INT NOT NULL,
     role_id INT NOT NULL,
-    is_custom BOOLEAN DEFAULT FALSE,
-    is_rating BOOLEAN DEFAULT FALSE,
-    is_notification BOOLEAN DEFAULT FALSE,
-    is_content_creator BOOLEAN DEFAULT FALSE,
     created_at DATETIME NOT NULL,
-    UNIQUE KEY unique_member_role (member_id, role_id),
+    PRIMARY KEY (member_id, role_id),
     FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE,
     FOREIGN KEY (role_id) REFERENCES server_roles(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS server_members_afk (
+CREATE TABLE IF NOT EXISTS server_member_custom_supporter_roles (
+    member_id INT NOT NULL,
+    role_id INT NOT NULL,
+    created_at DATETIME NOT NULL,
+    PRIMARY KEY (member_id, role_id),
+    FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE,
+    FOREIGN KEY (role_id) REFERENCES server_roles(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS server_member_afks (
     id INT PRIMARY KEY AUTO_INCREMENT,
     member_id INT NOT NULL,
     message TEXT,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
-    UNIQUE KEY unique_member_afk (member_id),
+    UNIQUE KEY unique_member_afks (member_id),
     FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE
 );
 
@@ -288,18 +298,20 @@ CREATE TABLE IF NOT EXISTS server_giveaway_entries (
     FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS server_staff_ratings (
+CREATE TABLE IF NOT EXISTS server_member_staff_ratings (
     id INT PRIMARY KEY AUTO_INCREMENT,
-    staff_member_id INT NOT NULL,
+    member_id INT NOT NULL,
+    role_id INT NULL,
     current_rating DECIMAL(3,2) DEFAULT 0,
     total_reports INT DEFAULT 0,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
-    UNIQUE KEY unique_staff_rating (staff_member_id),
-    FOREIGN KEY (staff_member_id) REFERENCES server_members(id) ON DELETE CASCADE
+    UNIQUE KEY unique_member_staff_rating (member_id),
+    FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE,
+    FOREIGN KEY (role_id) REFERENCES server_roles(id) ON DELETE SET NULL
 );
 
-CREATE TABLE IF NOT EXISTS server_staff_reports (
+CREATE TABLE IF NOT EXISTS server_member_staff_rating_reviews (
     id INT PRIMARY KEY AUTO_INCREMENT,
     reporter_member_id INT NOT NULL,
     reported_staff_id INT NOT NULL,
@@ -326,7 +338,7 @@ CREATE TABLE IF NOT EXISTS server_feedback (
     FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS server_content_creators (
+CREATE TABLE IF NOT EXISTS server_member_content_creator_reviews (
     id INT PRIMARY KEY AUTO_INCREMENT,
     member_id INT NOT NULL,
     tiktok_username VARCHAR(100) NOT NULL,
@@ -340,9 +352,9 @@ CREATE TABLE IF NOT EXISTS server_content_creators (
     FOREIGN KEY (reviewed_by_member_id) REFERENCES server_members(id) ON DELETE SET NULL
 );
 
-CREATE TABLE IF NOT EXISTS server_content_creators_stream (
+CREATE TABLE IF NOT EXISTS server_member_content_creator_streams (
     id INT PRIMARY KEY AUTO_INCREMENT,
-    content_creator_id INT NOT NULL,
+    member_id INT NOT NULL,
     room_id VARCHAR(64) NULL,
     status ENUM('active', 'ended', 'error') NOT NULL DEFAULT 'active',
     started_at DATETIME NOT NULL,
@@ -358,16 +370,16 @@ CREATE TABLE IF NOT EXISTS server_content_creators_stream (
     discord_thread_id VARCHAR(32) NULL,
     error_message TEXT NULL,
     updated_at DATETIME NULL,
-    FOREIGN KEY (content_creator_id) REFERENCES server_content_creators(id) ON DELETE CASCADE
+    FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS server_content_creators_stream_log (
+CREATE TABLE IF NOT EXISTS server_member_content_creator_stream_logs (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     stream_id INT NOT NULL,
     event_type VARCHAR(64) NOT NULL,
     occurred_at DATETIME NOT NULL,
     payload JSON NULL,
-    FOREIGN KEY (stream_id) REFERENCES server_content_creators_stream(id) ON DELETE CASCADE
+    FOREIGN KEY (stream_id) REFERENCES server_member_content_creator_streams(id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_bots_account_id ON bots(account_id);
@@ -387,11 +399,12 @@ CREATE INDEX IF NOT EXISTS idx_server_roles_discord_id ON server_roles(discord_r
 CREATE INDEX IF NOT EXISTS idx_server_members_server_id ON server_members(server_id);
 CREATE INDEX IF NOT EXISTS idx_server_members_discord_id ON server_members(discord_member_id);
 CREATE INDEX IF NOT EXISTS idx_server_members_language ON server_members(language);
+CREATE INDEX IF NOT EXISTS idx_server_member_content_creators_created ON server_member_content_creators(created_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_levels_member_id ON server_member_levels(member_id);
 CREATE INDEX IF NOT EXISTS idx_server_member_levels_rank ON server_member_levels(`rank`);
-CREATE INDEX IF NOT EXISTS idx_server_member_roles_member_id ON server_member_roles(member_id);
-CREATE INDEX IF NOT EXISTS idx_server_member_roles_role_id ON server_member_roles(role_id);
-CREATE INDEX IF NOT EXISTS idx_server_members_afk_member_id ON server_members_afk(member_id);
+CREATE INDEX IF NOT EXISTS idx_server_member_notifications_role ON server_member_notifications(role_id);
+CREATE INDEX IF NOT EXISTS idx_server_member_custom_supporter_roles_role ON server_member_custom_supporter_roles(role_id);
+CREATE INDEX IF NOT EXISTS idx_server_member_afks_member_id ON server_member_afks(member_id);
 CREATE INDEX IF NOT EXISTS idx_server_settings_server_id ON server_settings(server_id);
 CREATE INDEX IF NOT EXISTS idx_server_settings_component ON server_settings(server_id, component_name);
 CREATE INDEX IF NOT EXISTS idx_accounts_email ON accounts(email);
@@ -407,16 +420,17 @@ CREATE INDEX IF NOT EXISTS idx_server_giveaways_status ON server_giveaways(statu
 CREATE INDEX IF NOT EXISTS idx_server_giveaways_ends_at ON server_giveaways(ends_at);
 CREATE INDEX IF NOT EXISTS idx_server_giveaway_entries_giveaway_id ON server_giveaway_entries(giveaway_id);
 CREATE INDEX IF NOT EXISTS idx_server_giveaway_entries_member_id ON server_giveaway_entries(member_id);
-CREATE INDEX IF NOT EXISTS idx_server_staff_ratings_member ON server_staff_ratings(staff_member_id);
-CREATE INDEX IF NOT EXISTS idx_server_staff_reports_staff ON server_staff_reports(reported_staff_id);
-CREATE INDEX IF NOT EXISTS idx_server_staff_reports_pair ON server_staff_reports(reporter_member_id, reported_staff_id);
-CREATE INDEX IF NOT EXISTS idx_server_staff_reports_status ON server_staff_reports(status);
-CREATE INDEX IF NOT EXISTS idx_server_staff_reports_reviewer ON server_staff_reports(reviewed_by_member_id);
+CREATE INDEX IF NOT EXISTS idx_server_member_staff_ratings_member ON server_member_staff_ratings(member_id);
+CREATE INDEX IF NOT EXISTS idx_server_member_staff_ratings_role ON server_member_staff_ratings(role_id);
+CREATE INDEX IF NOT EXISTS idx_server_member_staff_rating_reviews_staff ON server_member_staff_rating_reviews(reported_staff_id);
+CREATE INDEX IF NOT EXISTS idx_server_member_staff_rating_reviews_pair ON server_member_staff_rating_reviews(reporter_member_id, reported_staff_id);
+CREATE INDEX IF NOT EXISTS idx_server_member_staff_rating_reviews_status ON server_member_staff_rating_reviews(status);
+CREATE INDEX IF NOT EXISTS idx_server_member_staff_rating_reviews_reviewer ON server_member_staff_rating_reviews(reviewed_by_member_id);
 CREATE INDEX IF NOT EXISTS idx_server_feedback_member ON server_feedback(member_id);
-CREATE INDEX IF NOT EXISTS idx_server_content_creator_member ON server_content_creators(member_id);
-CREATE INDEX IF NOT EXISTS idx_server_content_creator_status ON server_content_creators(status);
-CREATE INDEX IF NOT EXISTS idx_server_content_creator_submitted_at ON server_content_creators(submitted_at);
-CREATE INDEX IF NOT EXISTS idx_cc_stream_creator_started ON server_content_creators_stream(content_creator_id, started_at);
-CREATE INDEX IF NOT EXISTS idx_cc_stream_status ON server_content_creators_stream(status);
-CREATE INDEX IF NOT EXISTS idx_cc_stream_log_stream_time ON server_content_creators_stream_log(stream_id, occurred_at);
-CREATE INDEX IF NOT EXISTS idx_cc_stream_log_event ON server_content_creators_stream_log(stream_id, event_type);
+CREATE INDEX IF NOT EXISTS idx_server_member_content_creator_reviews_member ON server_member_content_creator_reviews(member_id);
+CREATE INDEX IF NOT EXISTS idx_server_member_content_creator_reviews_status ON server_member_content_creator_reviews(status);
+CREATE INDEX IF NOT EXISTS idx_server_member_content_creator_reviews_submitted_at ON server_member_content_creator_reviews(submitted_at);
+CREATE INDEX IF NOT EXISTS idx_cc_streams_member_started ON server_member_content_creator_streams(member_id, started_at);
+CREATE INDEX IF NOT EXISTS idx_cc_streams_status ON server_member_content_creator_streams(status);
+CREATE INDEX IF NOT EXISTS idx_cc_stream_logs_stream_time ON server_member_content_creator_stream_logs(stream_id, occurred_at);
+CREATE INDEX IF NOT EXISTS idx_cc_stream_logs_event ON server_member_content_creator_stream_logs(stream_id, event_type);

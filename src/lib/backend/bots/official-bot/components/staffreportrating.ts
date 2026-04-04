@@ -85,7 +85,7 @@ async function ensureRatingRole(guild, serverId, member, ratingValue, ratingReco
 	const constraints = await STAFF_RATING.getRoleConstraints(guild.id);
 	const endRole = constraints?.ROLE_END ? guild.roles.cache.get(constraints.ROLE_END) : null;
 
-	const ratingRoleId = await db.getStaffRatingRole(serverId, ratingRecord?.staff_member_id);
+	const ratingRoleId = await db.getStaffRatingRole(serverId, ratingRecord?.member_id);
 	let role = ratingRoleId ? guild.roles.cache.get(ratingRoleId) : null;
 	if (!role) {
 		const creationData = {

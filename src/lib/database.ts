@@ -859,81 +859,113 @@ export async function searchServerMembers(serverId: any, queryText: string | nul
 		.limit(safeLimit);
 }
 
-export async function syncMemberRoles(memberId: any, discordRoleIds: string[], serverId: any) {
-	if (!discordRoleIds || discordRoleIds.length === 0) {
+async function refreshMemberIsContentCreator(memberId: number, serverId: number, discordRoleIds: string[]) {
+	await initializeDatabase();
+	const ccRoleDbIds = await getContentCreatorRoleDbIds(serverId);
+	let has = false;
+	if (ccRoleDbIds.size > 0 && discordRoleIds.length > 0) {
+		const rows = await db
+			.select({ id: schema.serverRoles.id })
+			.from(schema.serverRoles)
+			.where(and(eq(schema.serverRoles.server_id, Number(serverId)), inArray(schema.serverRoles.discord_role_id, discordRoleIds)));
+		has = rows.some((r) => ccRoleDbIds.has(r.id));
+	}
+	if (has) {
+		const now = toMySQLDateTime();
 		await db.execute(sql`
-			DELETE smr FROM server_member_roles smr
-			INNER JOIN server_members sm ON smr.member_id = sm.id
-			WHERE smr.member_id = ${Number(memberId)} AND sm.server_id = ${Number(serverId)}
+			INSERT INTO server_member_content_creators (member_id, created_at) VALUES (${memberId}, ${now})
+			ON DUPLICATE KEY UPDATE member_id = member_id
 		`);
+	} else {
+		await db.delete(schema.serverMemberContentCreators).where(eq(schema.serverMemberContentCreators.member_id, memberId));
+	}
+}
+
+async function syncMemberCustomSupporterRoles(memberId: number, discordRoleIds: string[], serverId: number) {
+	await initializeDatabase();
+	await db.delete(schema.serverMemberCustomSupporterRoles).where(eq(schema.serverMemberCustomSupporterRoles.member_id, memberId));
+
+	const customSettings = await getServerSettings(serverId, 'custom_supporter_role').catch(() => null);
+	const roleStartDiscord = (customSettings as any)?.settings?.role_start as string | null | undefined;
+	const roleEndDiscord = (customSettings as any)?.settings?.role_end as string | null | undefined;
+	if (!roleStartDiscord || !roleEndDiscord || discordRoleIds.length === 0) return;
+
+	const startRows = await db
+		.select({ position: schema.serverRoles.position })
+		.from(schema.serverRoles)
+		.where(and(eq(schema.serverRoles.server_id, Number(serverId)), eq(schema.serverRoles.discord_role_id, roleStartDiscord)))
+		.limit(1);
+	const endRows = await db
+		.select({ position: schema.serverRoles.position })
+		.from(schema.serverRoles)
+		.where(and(eq(schema.serverRoles.server_id, Number(serverId)), eq(schema.serverRoles.discord_role_id, roleEndDiscord)))
+		.limit(1);
+	if (!startRows[0]?.position || !endRows[0]?.position) return;
+
+	const startPosition = startRows[0].position!;
+	const endPosition = endRows[0].position!;
+
+	const roleRows = await db
+		.select({
+			id: schema.serverRoles.id,
+			discord_role_id: schema.serverRoles.discord_role_id,
+			position: schema.serverRoles.position
+		})
+		.from(schema.serverRoles)
+		.where(and(eq(schema.serverRoles.server_id, Number(serverId)), inArray(schema.serverRoles.discord_role_id, discordRoleIds)));
+
+	const now = toMySQLDateTime();
+	const toInsert = roleRows
+		.filter((r) => r.discord_role_id !== roleStartDiscord && r.position != null && r.position < startPosition && r.position > endPosition)
+		.map((r) => ({ member_id: memberId, role_id: r.id, created_at: now as any }));
+
+	if (toInsert.length > 0) {
+		await db.insert(schema.serverMemberCustomSupporterRoles).values(toInsert);
+	}
+}
+
+export async function syncMemberRoles(memberId: any, discordRoleIds: string[], serverId: any) {
+	const sid = Number(serverId);
+	const mid = Number(memberId);
+	const roleList = Array.isArray(discordRoleIds) ? discordRoleIds.filter(Boolean) : [];
+
+	if (roleList.length === 0) {
+		await db.delete(schema.serverMemberNotifications).where(eq(schema.serverMemberNotifications.member_id, mid));
+		await db.delete(schema.serverMemberCustomSupporterRoles).where(eq(schema.serverMemberCustomSupporterRoles.member_id, mid));
+		await refreshMemberIsContentCreator(mid, sid, []);
 		return true;
 	}
 
 	const roleMapRows = await db
 		.select({ id: schema.serverRoles.id, discord_role_id: schema.serverRoles.discord_role_id })
 		.from(schema.serverRoles)
-		.where(and(eq(schema.serverRoles.server_id, Number(serverId)), inArray(schema.serverRoles.discord_role_id, discordRoleIds)));
+		.where(and(eq(schema.serverRoles.server_id, sid), inArray(schema.serverRoles.discord_role_id, roleList)));
 
-	const roleMap = new Map(roleMapRows.map((r) => [r.discord_role_id, r.id]));
-	const roleIdsToAdd = discordRoleIds.map((id) => roleMap.get(id)).filter(Boolean) as number[];
+	const roleIdsOnMember = roleMapRows.map((r) => r.id);
+	const notificationRoleDbIds = await getNotificationRoleDbIds(serverId);
+	const notificationRoleIdsForMember = roleIdsOnMember.filter((id) => notificationRoleDbIds.has(id));
 
-	const existingRows = await db
-		.select({ role_id: schema.serverMemberRoles.role_id })
-		.from(schema.serverMemberRoles)
-		.innerJoin(schema.serverMembers, eq(schema.serverMemberRoles.member_id, schema.serverMembers.id))
-		.where(and(eq(schema.serverMemberRoles.member_id, Number(memberId)), eq(schema.serverMembers.server_id, Number(serverId))));
-	const existingRoleIds = new Set(existingRows.map((r) => r.role_id));
+	await db.delete(schema.serverMemberNotifications).where(eq(schema.serverMemberNotifications.member_id, mid));
 
-	const toAdd = roleIdsToAdd.filter((id) => !existingRoleIds.has(id));
-	const toRemove = Array.from(existingRoleIds).filter((id: any) => !roleIdsToAdd.includes(id)) as number[];
-
-	if (toAdd.length > 0) {
+	if (notificationRoleIdsForMember.length > 0) {
 		const now = toMySQLDateTime();
-		const notificationRoleIds = await getNotificationRoleDbIds(serverId);
-		const contentCreatorRoleIds = await getContentCreatorRoleDbIds(serverId);
-		const values = toAdd.map((roleId) => ({
-			member_id: Number(memberId),
-			role_id: roleId,
-			is_custom: false,
-			is_notification: notificationRoleIds.has(roleId),
-			is_content_creator: contentCreatorRoleIds.has(roleId),
-			created_at: now as any
-		}));
-		await db.insert(schema.serverMemberRoles).values(values);
+		await db.insert(schema.serverMemberNotifications).values(
+			notificationRoleIdsForMember.map((role_id) => ({
+				member_id: mid,
+				role_id,
+				created_at: now as any
+			}))
+		);
 	}
 
-	if (toRemove.length > 0) {
-		await db.execute(sql`
-			DELETE smr FROM server_member_roles smr
-			INNER JOIN server_members sm ON smr.member_id = sm.id
-			WHERE smr.member_id = ${Number(memberId)} AND sm.server_id = ${Number(serverId)}
-			AND smr.role_id IN (${sql.join(
-				toRemove.map((id) => sql`${id}`),
-				sql`, `
-			)})
-		`);
-	}
-
+	await syncMemberCustomSupporterRoles(mid, roleList, sid);
+	await refreshMemberIsContentCreator(mid, sid, roleList);
 	return true;
 }
 
-export async function memberHasAnyRole(discordMemberId: string, discordRoleIds: string[], serverId: any) {
-	if (!discordRoleIds?.length || !discordMemberId || !serverId) return false;
-
-	const memberRows = await db
-		.select({ id: schema.serverMembers.id })
-		.from(schema.serverMembers)
-		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), eq(schema.serverMembers.discord_member_id, discordMemberId)))
-		.limit(1);
-	if (!memberRows[0]) return false;
-
-	const rows = await db
-		.select({ id: schema.serverRoles.id })
-		.from(schema.serverRoles)
-		.innerJoin(schema.serverMemberRoles, eq(schema.serverRoles.id, schema.serverMemberRoles.role_id))
-		.where(and(eq(schema.serverMemberRoles.member_id, memberRows[0].id), inArray(schema.serverRoles.discord_role_id, discordRoleIds)));
-
-	return rows.length > 0;
+/** @deprecated Member roles are no longer cached in the database; use GuildMember#roles in the bot. */
+export async function memberHasAnyRole(_discordMemberId: string, _discordRoleIds: string[], _serverId: any) {
+	return false;
 }
 
 export async function syncMembers(serverId: any, members: any[]) {
@@ -1170,9 +1202,9 @@ export async function getServerMembersList(serverId: any) {
 			) as roles
 		FROM server_members sm
 		LEFT JOIN server_member_levels sml ON sm.id = sml.member_id
-		LEFT JOIN server_members_afk sma ON sm.id = sma.member_id
-		LEFT JOIN server_member_roles smr ON sm.id = smr.member_id
-		LEFT JOIN server_roles sr ON smr.role_id = sr.id
+		LEFT JOIN server_member_afks sma ON sm.id = sma.member_id
+		LEFT JOIN server_member_notifications smn ON sm.id = smn.member_id
+		LEFT JOIN server_roles sr ON smn.role_id = sr.id
 		WHERE sm.server_id = ${Number(serverId)}
 		GROUP BY sm.id, sm.discord_member_id, sm.username, sm.display_name, sm.server_display_name,
 		         sm.avatar, sm.profile_created_at, sm.member_since, sm.is_booster, sm.booster_since,
@@ -1230,7 +1262,7 @@ export async function getServerOverview(serverId: any) {
 			sql`SELECT COUNT(*) AS leveled FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ${Number(serverId)}`
 		),
 		db.execute(
-			sql`SELECT COUNT(*) AS afk FROM server_members_afk sma INNER JOIN server_members sm ON sm.id = sma.member_id WHERE sm.server_id = ${Number(serverId)}`
+			sql`SELECT COUNT(*) AS afk FROM server_member_afks sma INNER JOIN server_members sm ON sm.id = sma.member_id WHERE sm.server_id = ${Number(serverId)}`
 		),
 		db.execute(
 			sql`SELECT COUNT(*) AS total, SUM(CASE WHEN LOWER(COALESCE(type,'')) IN ('guild_text','text') THEN 1 ELSE 0 END) AS text_count, SUM(CASE WHEN LOWER(COALESCE(type,'')) IN ('guild_news','news','guild_announcement','announcement') THEN 1 ELSE 0 END) AS announcement_count, SUM(CASE WHEN LOWER(COALESCE(type,'')) IN ('guild_voice','voice') THEN 1 ELSE 0 END) AS voice_count, SUM(CASE WHEN LOWER(COALESCE(type,'')) IN ('guild_stage_voice','stage','stage_voice') THEN 1 ELSE 0 END) AS stage_count FROM server_channels WHERE server_id = ${Number(serverId)}`
@@ -1241,7 +1273,7 @@ export async function getServerOverview(serverId: any) {
 			sql`SELECT COALESCE(SUM(experience),0) AS total_experience, COALESCE(AVG(level),0) AS avg_level, COALESCE(MAX(level),0) AS max_level, COALESCE(SUM(chat_total),0) AS total_chat, COALESCE(SUM(voice_minutes_total),0) AS total_voice_minutes, COALESCE(SUM(voice_minutes_active),0) AS total_voice_active, COALESCE(SUM(voice_minutes_afk),0) AS total_voice_afk FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ${Number(serverId)}`
 		),
 		db.execute(
-			sql`SELECT COUNT(DISTINCT smr.member_id) AS members_with_custom_roles FROM server_member_roles smr INNER JOIN server_members sm ON sm.id = smr.member_id WHERE sm.server_id = ${Number(serverId)} AND smr.is_custom = 1`
+			sql`SELECT COUNT(DISTINCT smcsr.member_id) AS members_with_custom_roles FROM server_member_custom_supporter_roles smcsr INNER JOIN server_members sm ON sm.id = smcsr.member_id WHERE sm.server_id = ${Number(serverId)}`
 		),
 		db.execute(sql`SELECT MAX(updated_at) AS last_updated FROM server_members WHERE server_id = ${Number(serverId)}`),
 		db.execute(sql`SELECT MAX(updated_at) AS last_updated FROM server_channels WHERE server_id = ${Number(serverId)}`),
@@ -1277,7 +1309,7 @@ export async function getServerOverview(serverId: any) {
 			members_boosters: serverRow.total_boosters || 0,
 			members_unique_boosters: r(memberCounts).unique_boosters || 0,
 			members_with_levels: r(leveledCount).leveled || 0,
-			members_afk: r(afkCount).afk || 0,
+			member_afk: r(afkCount).afk || 0,
 			members_with_custom_roles: r(customRolesCount).members_with_custom_roles || 0,
 			channels_total: r(channelCounts).total || 0,
 			channels_text: r(channelCounts).text_count || 0,
@@ -1307,10 +1339,13 @@ export async function getServerOverview(serverId: any) {
 }
 
 export async function updateCustomRoleFlags(serverId: any, roleStartId: string, roleEndId: string) {
+	await initializeDatabase();
 	if (!roleStartId || !roleEndId) {
-		await db.execute(
-			sql`UPDATE server_member_roles SET is_custom = FALSE WHERE role_id IN (SELECT id FROM server_roles WHERE server_id = ${Number(serverId)})`
-		);
+		await db.execute(sql`
+			DELETE smcsr FROM server_member_custom_supporter_roles smcsr
+			INNER JOIN server_roles sr ON smcsr.role_id = sr.id
+			WHERE sr.server_id = ${Number(serverId)}
+		`);
 		return true;
 	}
 
@@ -1326,9 +1361,6 @@ export async function updateCustomRoleFlags(serverId: any, roleStartId: string, 
 		.limit(1);
 
 	if (!startRows[0] || !endRows[0]) {
-		await db.execute(
-			sql`UPDATE server_member_roles SET is_custom = FALSE WHERE role_id IN (SELECT id FROM server_roles WHERE server_id = ${Number(serverId)})`
-		);
 		return true;
 	}
 
@@ -1336,16 +1368,14 @@ export async function updateCustomRoleFlags(serverId: any, roleStartId: string, 
 	const endPosition = endRows[0].position!;
 
 	await db.execute(sql`
-		UPDATE server_member_roles smr
-		INNER JOIN server_roles sr ON smr.role_id = sr.id
-		SET smr.is_custom = TRUE
-		WHERE sr.server_id = ${Number(serverId)} AND sr.position < ${startPosition} AND sr.position > ${endPosition} AND sr.discord_role_id != ${roleStartId}
-	`);
-	await db.execute(sql`
-		UPDATE server_member_roles smr
-		INNER JOIN server_roles sr ON smr.role_id = sr.id
-		SET smr.is_custom = FALSE
-		WHERE sr.server_id = ${Number(serverId)} AND (sr.position >= ${startPosition} OR sr.position <= ${endPosition} OR sr.discord_role_id = ${roleStartId})
+		DELETE smcsr FROM server_member_custom_supporter_roles smcsr
+		INNER JOIN server_roles sr ON smcsr.role_id = sr.id
+		WHERE sr.server_id = ${Number(serverId)}
+			AND NOT (
+				sr.position < ${startPosition}
+				AND sr.position > ${endPosition}
+				AND sr.discord_role_id != ${roleStartId}
+			)
 	`);
 
 	return true;
@@ -1370,8 +1400,8 @@ export async function memberHasCustomSupporterRole(discordMemberId: string, serv
 			color: schema.serverRoles.color
 		})
 		.from(schema.serverRoles)
-		.innerJoin(schema.serverMemberRoles, eq(schema.serverRoles.id, schema.serverMemberRoles.role_id))
-		.where(and(eq(schema.serverMemberRoles.member_id, memberRows[0].id), eq(schema.serverMemberRoles.is_custom, true)))
+		.innerJoin(schema.serverMemberCustomSupporterRoles, eq(schema.serverRoles.id, schema.serverMemberCustomSupporterRoles.role_id))
+		.where(and(eq(schema.serverMemberCustomSupporterRoles.member_id, memberRows[0].id), eq(schema.serverRoles.server_id, Number(serverId))))
 		.orderBy(desc(schema.serverRoles.position))
 		.limit(1);
 
@@ -1930,12 +1960,12 @@ export async function getAFKStatus(serverId: any, discordMemberId: string) {
 	await initializeDatabase();
 	const rows = await db
 		.select({
-			message: schema.serverMembersAfk.message,
-			created_at: schema.serverMembersAfk.created_at,
+			message: schema.serverMemberAfks.message,
+			created_at: schema.serverMemberAfks.created_at,
 			server_display_name: schema.serverMembers.server_display_name
 		})
-		.from(schema.serverMembersAfk)
-		.innerJoin(schema.serverMembers, eq(schema.serverMembersAfk.member_id, schema.serverMembers.id))
+		.from(schema.serverMemberAfks)
+		.innerJoin(schema.serverMembers, eq(schema.serverMemberAfks.member_id, schema.serverMembers.id))
 		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), eq(schema.serverMembers.discord_member_id, discordMemberId)))
 		.limit(1);
 	const afkData = rows[0];
@@ -1962,7 +1992,7 @@ export async function setAFKStatus(serverId: any, discordMemberId: string, afkDa
 
 	const now = toMySQLDateTime();
 	await db
-		.insert(schema.serverMembersAfk)
+		.insert(schema.serverMemberAfks)
 		.values({ member_id: memberRows[0].id, message: afkData.message || 'Away', created_at: now as any, updated_at: now as any })
 		.onDuplicateKeyUpdate({ set: { message: afkData.message || 'Away', updated_at: now as any } });
 	return getAFKStatus(serverId, discordMemberId);
@@ -1971,7 +2001,7 @@ export async function setAFKStatus(serverId: any, discordMemberId: string, afkDa
 export async function removeAFKStatus(serverId: any, discordMemberId: string) {
 	await initializeDatabase();
 	await db.execute(sql`
-		DELETE sma FROM server_members_afk sma
+		DELETE sma FROM server_member_afks sma
 		INNER JOIN server_members sm ON sma.member_id = sm.id
 		WHERE sm.server_id = ${Number(serverId)} AND sm.discord_member_id = ${discordMemberId}
 	`);
@@ -2205,11 +2235,11 @@ export async function getStaffRating(serverId: any, staffMemberId: any) {
 	await initializeDatabase();
 	const rows = await db
 		.select()
-		.from(schema.serverStaffRatings)
-		.innerJoin(schema.serverMembers, eq(schema.serverStaffRatings.staff_member_id, schema.serverMembers.id))
-		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), eq(schema.serverStaffRatings.staff_member_id, Number(staffMemberId))))
+		.from(schema.serverMemberStaffRatings)
+		.innerJoin(schema.serverMembers, eq(schema.serverMemberStaffRatings.member_id, schema.serverMembers.id))
+		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), eq(schema.serverMemberStaffRatings.member_id, Number(staffMemberId))))
 		.limit(1);
-	return rows[0]?.server_staff_ratings || null;
+	return rows[0]?.server_member_staff_ratings || null;
 }
 
 export async function upsertStaffRating(serverId: any, staffMemberId: any, ratingValue: number, totalReports: number) {
@@ -2218,12 +2248,13 @@ export async function upsertStaffRating(serverId: any, staffMemberId: any, ratin
 	const existing = await getStaffRating(serverId, staffMemberId);
 	if (existing) {
 		await db
-			.update(schema.serverStaffRatings)
+			.update(schema.serverMemberStaffRatings)
 			.set({ current_rating: String(ratingValue), total_reports: totalReports, updated_at: now as any })
-			.where(eq(schema.serverStaffRatings.staff_member_id, Number(staffMemberId)));
+			.where(eq(schema.serverMemberStaffRatings.member_id, Number(staffMemberId)));
 	} else {
-		await db.insert(schema.serverStaffRatings).values({
-			staff_member_id: Number(staffMemberId),
+		await db.insert(schema.serverMemberStaffRatings).values({
+			member_id: Number(staffMemberId),
+			role_id: null,
 			current_rating: String(ratingValue),
 			total_reports: totalReports,
 			created_at: now as any,
@@ -2244,7 +2275,7 @@ export async function createStaffRatingReport(
 ) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
-	const result = await db.insert(schema.serverStaffReports).values({
+	const result = await db.insert(schema.serverMemberStaffRatingReviews).values({
 		reporter_member_id: Number(reporterMemberId),
 		reported_staff_id: Number(reportedStaffId),
 		rating,
@@ -2260,17 +2291,17 @@ export async function createStaffRatingReport(
 export async function getLastStaffRatingReport(serverId: any, reporterMemberId: any, reportedStaffId: any) {
 	await initializeDatabase();
 	const rows = await db
-		.select({ report: schema.serverStaffReports })
-		.from(schema.serverStaffReports)
-		.innerJoin(schema.serverMembers, eq(schema.serverStaffReports.reporter_member_id, schema.serverMembers.id))
+		.select({ report: schema.serverMemberStaffRatingReviews })
+		.from(schema.serverMemberStaffRatingReviews)
+		.innerJoin(schema.serverMembers, eq(schema.serverMemberStaffRatingReviews.reporter_member_id, schema.serverMembers.id))
 		.where(
 			and(
 				eq(schema.serverMembers.server_id, Number(serverId)),
-				eq(schema.serverStaffReports.reporter_member_id, Number(reporterMemberId)),
-				eq(schema.serverStaffReports.reported_staff_id, Number(reportedStaffId))
+				eq(schema.serverMemberStaffRatingReviews.reporter_member_id, Number(reporterMemberId)),
+				eq(schema.serverMemberStaffRatingReviews.reported_staff_id, Number(reportedStaffId))
 			)
 		)
-		.orderBy(desc(schema.serverStaffReports.reported_at))
+		.orderBy(desc(schema.serverMemberStaffRatingReviews.reported_at))
 		.limit(1);
 	return rows[0]?.report || null;
 }
@@ -2278,14 +2309,14 @@ export async function getLastStaffRatingReport(serverId: any, reporterMemberId: 
 export async function getStaffRatingAggregate(serverId: any, staffMemberId: any) {
 	await initializeDatabase();
 	const rows = await db
-		.select({ total_reports: count(), average_rating: avg(schema.serverStaffReports.rating) })
-		.from(schema.serverStaffReports)
-		.innerJoin(schema.serverMembers, eq(schema.serverStaffReports.reported_staff_id, schema.serverMembers.id))
+		.select({ total_reports: count(), average_rating: avg(schema.serverMemberStaffRatingReviews.rating) })
+		.from(schema.serverMemberStaffRatingReviews)
+		.innerJoin(schema.serverMembers, eq(schema.serverMemberStaffRatingReviews.reported_staff_id, schema.serverMembers.id))
 		.where(
 			and(
 				eq(schema.serverMembers.server_id, Number(serverId)),
-				eq(schema.serverStaffReports.reported_staff_id, Number(staffMemberId)),
-				eq(schema.serverStaffReports.status, 'approved')
+				eq(schema.serverMemberStaffRatingReviews.reported_staff_id, Number(staffMemberId)),
+				eq(schema.serverMemberStaffRatingReviews.status, 'approved')
 			)
 		);
 	return { total_reports: rows[0]?.total_reports || 0, average_rating: rows[0]?.average_rating || 0 };
@@ -2295,7 +2326,7 @@ export async function getStaffReportById(serverId: any, reportId: any) {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
 		SELECT sr.*, reporter.discord_member_id AS reporter_discord_id, staff.discord_member_id AS staff_discord_id, reviewer.discord_member_id AS reviewer_discord_id
-		FROM server_staff_reports sr
+		FROM server_member_staff_rating_reviews sr
 		INNER JOIN server_members reporter ON sr.reporter_member_id = reporter.id
 		INNER JOIN server_members staff ON sr.reported_staff_id = staff.id
 		LEFT JOIN server_members reviewer ON sr.reviewed_by_member_id = reviewer.id
@@ -2317,15 +2348,15 @@ export async function updateStaffReportStatus(reportId: any, status: string, rev
 		payload.review_reason = reviewReason;
 	}
 	await db
-		.update(schema.serverStaffReports)
+		.update(schema.serverMemberStaffRatingReviews)
 		.set(payload as any)
-		.where(eq(schema.serverStaffReports.id, Number(reportId)));
+		.where(eq(schema.serverMemberStaffRatingReviews.id, Number(reportId)));
 }
 
 export async function createContentCreatorApplication(_serverId: any, memberId: any, tiktokUsername: string, reason: string) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
-	const result = await db.insert(schema.serverContentCreators).values({
+	const result = await db.insert(schema.serverMemberContentCreatorReviews).values({
 		member_id: Number(memberId),
 		tiktok_username: tiktokUsername,
 		reason,
@@ -2338,11 +2369,11 @@ export async function createContentCreatorApplication(_serverId: any, memberId: 
 export async function getLastContentCreatorApplication(serverId: any, memberId: any) {
 	await initializeDatabase();
 	const rows = await db
-		.select({ application: schema.serverContentCreators })
-		.from(schema.serverContentCreators)
-		.innerJoin(schema.serverMembers, eq(schema.serverContentCreators.member_id, schema.serverMembers.id))
-		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), eq(schema.serverContentCreators.member_id, Number(memberId))))
-		.orderBy(desc(schema.serverContentCreators.submitted_at))
+		.select({ application: schema.serverMemberContentCreatorReviews })
+		.from(schema.serverMemberContentCreatorReviews)
+		.innerJoin(schema.serverMembers, eq(schema.serverMemberContentCreatorReviews.member_id, schema.serverMembers.id))
+		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), eq(schema.serverMemberContentCreatorReviews.member_id, Number(memberId))))
+		.orderBy(desc(schema.serverMemberContentCreatorReviews.submitted_at))
 		.limit(1);
 	return rows[0]?.application || null;
 }
@@ -2356,13 +2387,13 @@ export async function getContentCreatorTiktokConflict(normalizedUsername: string
 	const ex = String(excludeDiscordMemberId || '').trim();
 	if (!u || !ex) return null;
 
-	const tiktokMatch = sql`LOWER(TRIM(REPLACE(${schema.serverContentCreators.tiktok_username}, '@', ''))) = ${u}`;
+	const tiktokMatch = sql`LOWER(TRIM(REPLACE(${schema.serverMemberContentCreatorReviews.tiktok_username}, '@', ''))) = ${u}`;
 
 	const pendRows = await db
 		.select({ discord_id: schema.serverMembers.discord_member_id })
-		.from(schema.serverContentCreators)
-		.innerJoin(schema.serverMembers, eq(schema.serverContentCreators.member_id, schema.serverMembers.id))
-		.where(and(tiktokMatch, ne(schema.serverMembers.discord_member_id, ex), eq(schema.serverContentCreators.status, 'pending' as any)))
+		.from(schema.serverMemberContentCreatorReviews)
+		.innerJoin(schema.serverMembers, eq(schema.serverMemberContentCreatorReviews.member_id, schema.serverMembers.id))
+		.where(and(tiktokMatch, ne(schema.serverMembers.discord_member_id, ex), eq(schema.serverMemberContentCreatorReviews.status, 'pending' as any)))
 		.limit(1);
 
 	const pend = pendRows[0];
@@ -2372,11 +2403,11 @@ export async function getContentCreatorTiktokConflict(normalizedUsername: string
 
 	const apprRows = await db.execute(sql`
 		SELECT sm.discord_member_id AS discord_id
-		FROM server_content_creators cca
+		FROM server_member_content_creator_reviews cca
 		INNER JOIN server_members sm ON cca.member_id = sm.id
 		INNER JOIN (
 			SELECT member_id, MAX(id) AS max_id
-			FROM server_content_creators
+			FROM server_member_content_creator_reviews
 			GROUP BY member_id
 		) latest ON cca.id = latest.max_id
 		WHERE cca.status = 'approved'
@@ -2395,7 +2426,7 @@ export async function getContentCreatorApplicationById(serverId: any, applicatio
 	await initializeDatabase();
 	const rows = await db.execute(sql`
 		SELECT cca.*, applicant.discord_member_id AS applicant_discord_id, reviewer.discord_member_id AS reviewer_discord_id
-		FROM server_content_creators cca
+		FROM server_member_content_creator_reviews cca
 		INNER JOIN server_members applicant ON cca.member_id = applicant.id
 		LEFT JOIN server_members reviewer ON cca.reviewed_by_member_id = reviewer.id
 		WHERE applicant.server_id = ${Number(serverId)} AND cca.id = ${Number(applicationId)}
@@ -2421,22 +2452,23 @@ export async function updateContentCreatorApplicationStatus(
 		payload.review_reason = reviewReason;
 	}
 	await db
-		.update(schema.serverContentCreators)
+		.update(schema.serverMemberContentCreatorReviews)
 		.set(payload as any)
-		.where(eq(schema.serverContentCreators.id, Number(applicationId)));
+		.where(eq(schema.serverMemberContentCreatorReviews.id, Number(applicationId)));
 }
 
 export async function getApprovedContentCreators(serverId: any) {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
 		SELECT cca.id, cca.member_id, cca.tiktok_username, cca.reviewed_at, sm.discord_member_id
-		FROM server_content_creators cca
+		FROM server_member_content_creator_reviews cca
 		INNER JOIN server_members sm ON cca.member_id = sm.id
+		INNER JOIN server_member_content_creators smcc ON smcc.member_id = sm.id
 		WHERE sm.server_id = ${Number(serverId)}
 		  AND cca.status = 'approved'
 		  AND cca.id IN (
 			SELECT MAX(i.id)
-			FROM server_content_creators i
+			FROM server_member_content_creator_reviews i
 			WHERE i.member_id = cca.member_id
 			GROUP BY i.member_id
 		  )
@@ -2445,11 +2477,11 @@ export async function getApprovedContentCreators(serverId: any) {
 	return (rows[0] as unknown as any[]) || [];
 }
 
-export async function createContentCreatorStream(contentCreatorApplicationId: number, roomId: string | null) {
+export async function createContentCreatorStream(memberId: number, roomId: string | null) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
-	const result = await db.insert(schema.serverContentCreatorsStream).values({
-		content_creator_id: Number(contentCreatorApplicationId),
+	const result = await db.insert(schema.serverMemberContentCreatorStreams).values({
+		member_id: Number(memberId),
 		room_id: roomId || null,
 		status: 'active' as any,
 		started_at: now as any,
@@ -2462,14 +2494,14 @@ export async function endContentCreatorStream(streamId: number, status: 'ended' 
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	await db
-		.update(schema.serverContentCreatorsStream)
+		.update(schema.serverMemberContentCreatorStreams)
 		.set({
 			status: status as any,
 			ended_at: now as any,
 			updated_at: now as any,
 			error_message: errorMessage
 		})
-		.where(eq(schema.serverContentCreatorsStream.id, Number(streamId)));
+		.where(eq(schema.serverMemberContentCreatorStreams.id, Number(streamId)));
 }
 
 export async function incrementContentCreatorStreamCounters(
@@ -2485,7 +2517,7 @@ export async function incrementContentCreatorStreamCounters(
 	if (!chat && !like && !gift && !follow && !share) return;
 	const now = toMySQLDateTime();
 	await db.execute(sql`
-		UPDATE server_content_creators_stream
+		UPDATE server_member_content_creator_streams
 		SET
 			total_chat_messages = total_chat_messages + ${chat},
 			total_likes = total_likes + ${like},
@@ -2503,7 +2535,7 @@ export async function updateContentCreatorStreamPeakViewers(streamId: number, ca
 	if (!Number.isFinite(n) || n < 0) return;
 	const now = toMySQLDateTime();
 	await db.execute(sql`
-		UPDATE server_content_creators_stream
+		UPDATE server_member_content_creator_streams
 		SET
 			peak_viewers = GREATEST(COALESCE(peak_viewers, 0), ${n}),
 			updated_at = ${now}
@@ -2525,7 +2557,7 @@ export async function insertContentCreatorStreamLog(streamId: number, eventType:
 	} catch {
 		jsonPayload = { _raw: String(payload).slice(0, 8000) };
 	}
-	await db.insert(schema.serverContentCreatorsStreamLog).values({
+	await db.insert(schema.serverMemberContentCreatorStreamLogs).values({
 		stream_id: Number(streamId),
 		event_type: String(eventType).slice(0, 64),
 		occurred_at: now as any,
@@ -2584,10 +2616,6 @@ export async function getFeedbackCount(serverId: any) {
 export async function markMemberRatingRole(serverId: any, staffMemberId: any, discordRoleId: string) {
 	await initializeDatabase();
 	if (!discordRoleId) return;
-	await db
-		.update(schema.serverMemberRoles)
-		.set({ is_rating: false })
-		.where(eq(schema.serverMemberRoles.member_id, Number(staffMemberId)));
 	const roleRows = await db
 		.select({ id: schema.serverRoles.id })
 		.from(schema.serverRoles)
@@ -2595,92 +2623,88 @@ export async function markMemberRatingRole(serverId: any, staffMemberId: any, di
 		.limit(1);
 	if (!roleRows[0]) return;
 	const now = toMySQLDateTime();
-	await db
-		.insert(schema.serverMemberRoles)
-		.values({ member_id: Number(staffMemberId), role_id: roleRows[0].id, is_custom: false, is_rating: true, created_at: now as any })
-		.onDuplicateKeyUpdate({ set: { is_rating: true } });
+
+	const existing = await getStaffRating(serverId, staffMemberId);
+	if (existing) {
+		await db
+			.update(schema.serverMemberStaffRatings)
+			.set({ role_id: roleRows[0].id, updated_at: now as any })
+			.where(eq(schema.serverMemberStaffRatings.member_id, Number(staffMemberId)));
+	} else {
+		await db.insert(schema.serverMemberStaffRatings).values({
+			member_id: Number(staffMemberId),
+			role_id: roleRows[0].id,
+			current_rating: '0',
+			total_reports: 0,
+			created_at: now as any,
+			updated_at: now as any
+		});
+	}
 }
 
 export async function clearMemberRatingRole(staffMemberId: any) {
 	await initializeDatabase();
 	await db
-		.update(schema.serverMemberRoles)
-		.set({ is_rating: false })
-		.where(eq(schema.serverMemberRoles.member_id, Number(staffMemberId)));
+		.update(schema.serverMemberStaffRatings)
+		.set({ role_id: null })
+		.where(eq(schema.serverMemberStaffRatings.member_id, Number(staffMemberId)));
 }
 
-export async function markMemberContentCreatorRole(serverId: any, memberId: any, discordRoleId: string) {
+export async function markMemberContentCreatorRole(serverId: any, memberId: any, memberDiscordRoleIds: string[]) {
 	await initializeDatabase();
-	if (!discordRoleId) return;
-	const roleRows = await db
-		.select({ id: schema.serverRoles.id })
-		.from(schema.serverRoles)
-		.where(and(eq(schema.serverRoles.server_id, Number(serverId)), eq(schema.serverRoles.discord_role_id, discordRoleId)))
-		.limit(1);
-	if (!roleRows[0]) return;
-	const now = toMySQLDateTime();
-	await db
-		.insert(schema.serverMemberRoles)
-		.values({
-			member_id: Number(memberId),
-			role_id: roleRows[0].id,
-			is_custom: false,
-			is_content_creator: true,
-			created_at: now as any
-		})
-		.onDuplicateKeyUpdate({ set: { is_content_creator: true } });
+	const ids = Array.isArray(memberDiscordRoleIds) ? memberDiscordRoleIds.filter(Boolean) : [];
+	const mid = Number(memberId);
+	const sid = Number(serverId);
+	await syncMemberCustomSupporterRoles(mid, ids, sid);
+	await refreshMemberIsContentCreator(mid, sid, ids);
 }
 
-export async function clearMemberContentCreatorRole(serverId: any, memberId: any, discordRoleId: string) {
+export async function clearMemberContentCreatorRole(serverId: any, memberId: any, memberDiscordRoleIds: string[]) {
 	await initializeDatabase();
-	if (!discordRoleId) return;
-	const roleRows = await db
-		.select({ id: schema.serverRoles.id })
-		.from(schema.serverRoles)
-		.where(and(eq(schema.serverRoles.server_id, Number(serverId)), eq(schema.serverRoles.discord_role_id, discordRoleId)))
-		.limit(1);
-	if (!roleRows[0]) return;
-	await db
-		.update(schema.serverMemberRoles)
-		.set({ is_content_creator: false })
-		.where(and(eq(schema.serverMemberRoles.member_id, Number(memberId)), eq(schema.serverMemberRoles.role_id, roleRows[0].id)));
+	const ids = Array.isArray(memberDiscordRoleIds) ? memberDiscordRoleIds.filter(Boolean) : [];
+	const mid = Number(memberId);
+	const sid = Number(serverId);
+	await syncMemberCustomSupporterRoles(mid, ids, sid);
+	await refreshMemberIsContentCreator(mid, sid, ids);
 }
 
 export async function getAllStaffRatings(serverId: any) {
 	await initializeDatabase();
 	return db
 		.select({
-			id: schema.serverStaffRatings.id,
-			staff_member_id: schema.serverStaffRatings.staff_member_id,
-			current_rating: schema.serverStaffRatings.current_rating,
-			total_reports: schema.serverStaffRatings.total_reports,
+			id: schema.serverMemberStaffRatings.id,
+			member_id: schema.serverMemberStaffRatings.member_id,
+			current_rating: schema.serverMemberStaffRatings.current_rating,
+			total_reports: schema.serverMemberStaffRatings.total_reports,
 			rating_role_id: schema.serverRoles.discord_role_id,
-			created_at: schema.serverStaffRatings.created_at,
-			updated_at: schema.serverStaffRatings.updated_at
+			created_at: schema.serverMemberStaffRatings.created_at,
+			updated_at: schema.serverMemberStaffRatings.updated_at
 		})
-		.from(schema.serverStaffRatings)
-		.innerJoin(schema.serverMembers, eq(schema.serverStaffRatings.staff_member_id, schema.serverMembers.id))
-		.innerJoin(
-			schema.serverMemberRoles,
-			and(eq(schema.serverStaffRatings.staff_member_id, schema.serverMemberRoles.member_id), eq(schema.serverMemberRoles.is_rating, true))
+		.from(schema.serverMemberStaffRatings)
+		.innerJoin(schema.serverMembers, eq(schema.serverMemberStaffRatings.member_id, schema.serverMembers.id))
+		.innerJoin(schema.serverRoles, eq(schema.serverMemberStaffRatings.role_id, schema.serverRoles.id))
+		.where(
+			and(
+				eq(schema.serverMembers.server_id, Number(serverId)),
+				isNotNull(schema.serverMemberStaffRatings.role_id),
+				sql`${schema.serverMemberStaffRatings.current_rating} > 0`
+			)
 		)
-		.innerJoin(schema.serverRoles, eq(schema.serverMemberRoles.role_id, schema.serverRoles.id))
-		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), sql`${schema.serverStaffRatings.current_rating} > 0`))
-		.orderBy(desc(schema.serverStaffRatings.current_rating), asc(schema.serverStaffRatings.created_at));
+		.orderBy(desc(schema.serverMemberStaffRatings.current_rating), asc(schema.serverMemberStaffRatings.created_at));
 }
 
 export async function getStaffRatingRole(serverId: any, staffMemberId: any) {
 	await initializeDatabase();
 	const rows = await db
 		.select({ discord_role_id: schema.serverRoles.discord_role_id })
-		.from(schema.serverMemberRoles)
-		.innerJoin(schema.serverRoles, eq(schema.serverMemberRoles.role_id, schema.serverRoles.id))
-		.innerJoin(schema.serverMembers, eq(schema.serverMemberRoles.member_id, schema.serverMembers.id))
+		.from(schema.serverMemberStaffRatings)
+		.innerJoin(schema.serverRoles, eq(schema.serverMemberStaffRatings.role_id, schema.serverRoles.id))
+		.innerJoin(schema.serverMembers, eq(schema.serverMemberStaffRatings.member_id, schema.serverMembers.id))
 		.where(
 			and(
 				eq(schema.serverMembers.server_id, Number(serverId)),
-				eq(schema.serverMemberRoles.member_id, Number(staffMemberId)),
-				eq(schema.serverMemberRoles.is_rating, true)
+				eq(schema.serverMemberStaffRatings.member_id, Number(staffMemberId)),
+				isNotNull(schema.serverMemberStaffRatings.role_id)
 			)
 		)
 		.limit(1);

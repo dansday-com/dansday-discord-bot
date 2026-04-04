@@ -18,7 +18,7 @@ const liveWatchers = new Map<string, any>();
 const liveStatus = new Map<string, boolean>();
 type LiveSessionMeta = {
 	streamId: number;
-	contentCreatorId: number;
+	memberId: number;
 	tiktokUsername: string;
 	discordMemberId: string;
 };
@@ -401,14 +401,14 @@ async function syncLiveWatchers(client: any) {
 						if (liveSessionMeta.has(key)) return;
 						try {
 							const roomId = state?.roomId != null ? String(state.roomId) : null;
-							const streamId = await db.createContentCreatorStream(Number(creator.id), roomId);
+							const streamId = await db.createContentCreatorStream(Number(creator.member_id), roomId);
 							await db.insertContentCreatorStreamLog(streamId, 'connected', {
 								roomId: state?.roomId,
 								isConnected: state?.isConnected
 							});
 							liveSessionMeta.set(key, {
 								streamId,
-								contentCreatorId: Number(creator.id),
+								memberId: Number(creator.member_id),
 								tiktokUsername: username,
 								discordMemberId: String(creator.discord_member_id)
 							});
@@ -498,10 +498,6 @@ async function buildContentCreatorListView(guild: any, actingMember: any, locale
 		const discordId = String(c.discord_member_id || '');
 		const username = normalizeTikTokUsername(String(c.tiktok_username || ''));
 		if (!discordId || !username) continue;
-		if (creatorRoleId) {
-			const listedMember = await guild.members.fetch(discordId).catch(() => null);
-			if (listedMember && !listedMember.roles.cache.has(creatorRoleId)) continue;
-		}
 		const live = isLive(guild.id, discordId);
 		rows.push({
 			live,
@@ -696,7 +692,8 @@ export async function handleContentCreatorDismissYes(interaction: any) {
 		const dbMember = await db.upsertMember(server.id, member).catch(() => null);
 		await member.roles.remove(creatorRoleId, 'Content creator dismissed by user').catch(() => null);
 		if (dbMember) {
-			await db.clearMemberContentCreatorRole(server.id, dbMember.id, creatorRoleId).catch(() => null);
+			const roleIdsAfter = Array.from(member.roles.cache.keys()).filter((id: string) => id !== guild.id);
+			await db.clearMemberContentCreatorRole(server.id, dbMember.id, roleIdsAfter).catch(() => null);
 		}
 		void syncLiveWatchers(guild.client).catch(() => null);
 
@@ -940,7 +937,8 @@ export async function handleContentCreatorDecisionModal(interaction: any) {
 			const applicantMember = await guild.members.fetch(app.applicant_discord_id).catch(() => null);
 			if (creatorRoleId && applicantMember) {
 				await applicantMember.roles.add(creatorRoleId, 'Content creator application approved').catch(() => null);
-				await db.markMemberContentCreatorRole(server.id, app.member_id, creatorRoleId).catch(() => null);
+				const roleIds = Array.from(applicantMember.roles.cache.keys()).filter((id: string) => id !== guild.id);
+				await db.markMemberContentCreatorRole(server.id, app.member_id, roleIds).catch(() => null);
 			}
 			void syncLiveWatchers(guild.client).catch(() => null);
 			await applicantUser

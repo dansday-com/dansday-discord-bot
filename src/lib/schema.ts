@@ -1,4 +1,19 @@
-import { mysqlTable, int, varchar, text, boolean, datetime, mysqlEnum, json, decimal, tinyint, uniqueIndex, index, bigint } from 'drizzle-orm/mysql-core';
+import {
+	mysqlTable,
+	int,
+	varchar,
+	text,
+	boolean,
+	datetime,
+	mysqlEnum,
+	json,
+	decimal,
+	tinyint,
+	uniqueIndex,
+	index,
+	bigint,
+	primaryKey
+} from 'drizzle-orm/mysql-core';
 
 export const migrations = mysqlTable('migrations', {
 	id: int('id').primaryKey().autoincrement(),
@@ -237,6 +252,17 @@ export const serverMembers = mysqlTable(
 	]
 );
 
+export const serverMemberContentCreators = mysqlTable(
+	'server_member_content_creators',
+	{
+		member_id: int('member_id')
+			.primaryKey()
+			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		created_at: datetime('created_at').notNull()
+	},
+	(t) => [index('idx_server_member_content_creators_created').on(t.created_at)]
+);
+
 export const serverMemberLevels = mysqlTable(
 	'server_member_levels',
 	{
@@ -262,31 +288,36 @@ export const serverMemberLevels = mysqlTable(
 	(t) => [index('idx_server_member_levels_member_id').on(t.member_id), index('idx_server_member_levels_rank').on(t.rank)]
 );
 
-export const serverMemberRoles = mysqlTable(
-	'server_member_roles',
+export const serverMemberNotifications = mysqlTable(
+	'server_member_notifications',
 	{
-		id: int('id').primaryKey().autoincrement(),
 		member_id: int('member_id')
 			.notNull()
 			.references(() => serverMembers.id, { onDelete: 'cascade' }),
 		role_id: int('role_id')
 			.notNull()
 			.references(() => serverRoles.id, { onDelete: 'cascade' }),
-		is_custom: boolean('is_custom').default(false),
-		is_rating: boolean('is_rating').default(false),
-		is_notification: boolean('is_notification').default(false),
-		is_content_creator: boolean('is_content_creator').default(false),
 		created_at: datetime('created_at').notNull()
 	},
-	(t) => [
-		uniqueIndex('unique_member_role').on(t.member_id, t.role_id),
-		index('idx_server_member_roles_member_id').on(t.member_id),
-		index('idx_server_member_roles_role_id').on(t.role_id)
-	]
+	(t) => [primaryKey({ columns: [t.member_id, t.role_id] }), index('idx_server_member_notifications_role').on(t.role_id)]
 );
 
-export const serverMembersAfk = mysqlTable(
-	'server_members_afk',
+export const serverMemberCustomSupporterRoles = mysqlTable(
+	'server_member_custom_supporter_roles',
+	{
+		member_id: int('member_id')
+			.notNull()
+			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		role_id: int('role_id')
+			.notNull()
+			.references(() => serverRoles.id, { onDelete: 'cascade' }),
+		created_at: datetime('created_at').notNull()
+	},
+	(t) => [primaryKey({ columns: [t.member_id, t.role_id] }), index('idx_server_member_custom_supporter_roles_role').on(t.role_id)]
+);
+
+export const serverMemberAfks = mysqlTable(
+	'server_member_afks',
 	{
 		id: int('id').primaryKey().autoincrement(),
 		member_id: int('member_id')
@@ -297,7 +328,7 @@ export const serverMembersAfk = mysqlTable(
 		created_at: datetime('created_at').notNull(),
 		updated_at: datetime('updated_at').notNull()
 	},
-	(t) => [index('idx_server_members_afk_member_id').on(t.member_id)]
+	(t) => [index('idx_server_member_afks_member_id').on(t.member_id)]
 );
 
 export const serverSettings = mysqlTable(
@@ -396,24 +427,25 @@ export const serverGiveawayEntries = mysqlTable(
 	]
 );
 
-export const serverStaffRatings = mysqlTable(
-	'server_staff_ratings',
+export const serverMemberStaffRatings = mysqlTable(
+	'server_member_staff_ratings',
 	{
 		id: int('id').primaryKey().autoincrement(),
-		staff_member_id: int('staff_member_id')
+		member_id: int('member_id')
 			.notNull()
 			.unique()
 			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		role_id: int('role_id').references(() => serverRoles.id, { onDelete: 'set null' }),
 		current_rating: decimal('current_rating', { precision: 3, scale: 2 }).default('0'),
 		total_reports: int('total_reports').default(0),
 		created_at: datetime('created_at').notNull(),
 		updated_at: datetime('updated_at').notNull()
 	},
-	(t) => [index('idx_server_staff_ratings_member').on(t.staff_member_id)]
+	(t) => [index('idx_server_member_staff_ratings_member').on(t.member_id), index('idx_server_member_staff_ratings_role').on(t.role_id)]
 );
 
-export const serverStaffReports = mysqlTable(
-	'server_staff_reports',
+export const serverMemberStaffRatingReviews = mysqlTable(
+	'server_member_staff_rating_reviews',
 	{
 		id: int('id').primaryKey().autoincrement(),
 		reporter_member_id: int('reporter_member_id')
@@ -433,10 +465,10 @@ export const serverStaffReports = mysqlTable(
 		reported_at: datetime('reported_at').notNull()
 	},
 	(t) => [
-		index('idx_server_staff_reports_staff').on(t.reported_staff_id),
-		index('idx_server_staff_reports_pair').on(t.reporter_member_id, t.reported_staff_id),
-		index('idx_server_staff_reports_status').on(t.status),
-		index('idx_server_staff_reports_reviewer').on(t.reviewed_by_member_id)
+		index('idx_server_member_staff_rating_reviews_staff').on(t.reported_staff_id),
+		index('idx_server_member_staff_rating_reviews_pair').on(t.reporter_member_id, t.reported_staff_id),
+		index('idx_server_member_staff_rating_reviews_status').on(t.status),
+		index('idx_server_member_staff_rating_reviews_reviewer').on(t.reviewed_by_member_id)
 	]
 );
 
@@ -454,8 +486,8 @@ export const serverFeedback = mysqlTable(
 	(t) => [index('idx_server_feedback_member').on(t.member_id)]
 );
 
-export const serverContentCreators = mysqlTable(
-	'server_content_creators',
+export const serverMemberContentCreatorReviews = mysqlTable(
+	'server_member_content_creator_reviews',
 	{
 		id: int('id').primaryKey().autoincrement(),
 		member_id: int('member_id')
@@ -470,19 +502,19 @@ export const serverContentCreators = mysqlTable(
 		submitted_at: datetime('submitted_at').notNull()
 	},
 	(t) => [
-		index('idx_server_content_creator_member').on(t.member_id),
-		index('idx_server_content_creator_status').on(t.status),
-		index('idx_server_content_creator_submitted_at').on(t.submitted_at)
+		index('idx_server_member_content_creator_reviews_member').on(t.member_id),
+		index('idx_server_member_content_creator_reviews_status').on(t.status),
+		index('idx_server_member_content_creator_reviews_submitted_at').on(t.submitted_at)
 	]
 );
 
-export const serverContentCreatorsStream = mysqlTable(
-	'server_content_creators_stream',
+export const serverMemberContentCreatorStreams = mysqlTable(
+	'server_member_content_creator_streams',
 	{
 		id: int('id').primaryKey().autoincrement(),
-		content_creator_id: int('content_creator_id')
+		member_id: int('member_id')
 			.notNull()
-			.references(() => serverContentCreators.id, { onDelete: 'cascade' }),
+			.references(() => serverMembers.id, { onDelete: 'cascade' }),
 		room_id: varchar('room_id', { length: 64 }),
 		status: mysqlEnum('status', ['active', 'ended', 'error']).notNull().default('active'),
 		started_at: datetime('started_at').notNull(),
@@ -499,21 +531,21 @@ export const serverContentCreatorsStream = mysqlTable(
 		error_message: text('error_message'),
 		updated_at: datetime('updated_at')
 	},
-	(t) => [index('idx_cc_stream_creator_started').on(t.content_creator_id, t.started_at), index('idx_cc_stream_status').on(t.status)]
+	(t) => [index('idx_cc_streams_member_started').on(t.member_id, t.started_at), index('idx_cc_streams_status').on(t.status)]
 );
 
-export const serverContentCreatorsStreamLog = mysqlTable(
-	'server_content_creators_stream_log',
+export const serverMemberContentCreatorStreamLogs = mysqlTable(
+	'server_member_content_creator_stream_logs',
 	{
 		id: bigint('id', { mode: 'number' }).primaryKey().autoincrement(),
 		stream_id: int('stream_id')
 			.notNull()
-			.references(() => serverContentCreatorsStream.id, { onDelete: 'cascade' }),
+			.references(() => serverMemberContentCreatorStreams.id, { onDelete: 'cascade' }),
 		event_type: varchar('event_type', { length: 64 }).notNull(),
 		occurred_at: datetime('occurred_at').notNull(),
 		payload: json('payload')
 	},
-	(t) => [index('idx_cc_stream_log_stream_time').on(t.stream_id, t.occurred_at), index('idx_cc_stream_log_event').on(t.stream_id, t.event_type)]
+	(t) => [index('idx_cc_stream_logs_stream_time').on(t.stream_id, t.occurred_at), index('idx_cc_stream_logs_event').on(t.stream_id, t.event_type)]
 );
 
 export const accountInvites = mysqlTable('account_invites', {

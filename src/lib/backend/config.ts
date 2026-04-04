@@ -224,12 +224,11 @@ export const PERMISSIONS = {
 	async hasAnyRole(member: any, roleIds: string[]) {
 		if (!roleIds || roleIds.length === 0) return false;
 		try {
-			requireBotConfig();
-			const server = await db.getServerByDiscordId(botConfig!.id, member.guild.id, { forSelfbot: botConfig!.isSelfbot });
-			if (!server) return false;
-			const user = member.user || member;
-			const discordMemberId = user?.id || member.id;
-			return await db.memberHasAnyRole(discordMemberId, roleIds, server.id);
+			const cache = member?.roles?.cache;
+			if (cache && typeof cache.has === 'function') {
+				return roleIds.some((id) => cache.has(id));
+			}
+			return false;
 		} catch (_) {
 			return false;
 		}

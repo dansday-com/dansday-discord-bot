@@ -81,10 +81,19 @@ export const POST: RequestHandler = async ({ locals, params }) => {
 		quest_id: latest.id,
 		quest_name: latest.questName,
 		game_title: latest.gameTitle,
+		game_subtitle: latest.gameSubtitle,
 		description: latest.description,
 		quest_url: latest.questUrl,
 		quest_task_type: latest.taskTypeKey,
 		quest_task_label: latest.taskTypeLabel,
+		orb_hint: latest.orbHint,
+		rewards_line: latest.rewardsLine,
+		task_detail_line: latest.taskDetailLine,
+		publisher: latest.publisher,
+		starts_at: latest.startsAt,
+		expires_at: latest.expiresAt,
+		thumbnail_url: latest.thumbnailUrl ?? undefined,
+		banner_url: latest.bannerUrl ?? undefined,
 		test: true
 	});
 

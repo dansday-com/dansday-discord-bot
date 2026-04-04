@@ -9,6 +9,13 @@ let tickTimeoutRef: ReturnType<typeof setTimeout> | null = null;
 const POLL_MS = 60_000;
 const POLL_JITTER_MS = 15_000;
 
+function discordTs(iso: string | undefined | null, style: 'f' | 'F' | 'R'): string {
+	if (!iso) return '—';
+	const t = Date.parse(iso);
+	if (!Number.isFinite(t)) return '—';
+	return `<t:${Math.floor(t / 1000)}:${style}>`;
+}
+
 export async function sendQuestNotificationMessage(client: Client, guildId: string, channelId: string, quest: QuestOrbSummary, opts?: { test?: boolean }) {
 	const guild = await client.guilds.fetch(guildId).catch(() => null);
 	if (!guild) throw new Error('Guild not found');
@@ -16,15 +23,49 @@ export async function sendQuestNotificationMessage(client: Client, guildId: stri
 	if (!channel || !channel.isTextBased()) throw new Error('Channel not found or not text-based');
 
 	const embedConfig = await getEmbedConfig(guildId);
+	const rewardsCore = quest.rewardsLine || (quest.orbHint ? `• ${quest.orbHint}` : '• Orb reward');
+	const rewardsBlock = `${rewardsCore.slice(0, 1008)} 🔮`.slice(0, 1024);
+	const taskBlock = `• ${(quest.taskDetailLine || quest.taskTypeLabel).slice(0, 1006)} ▶️`.slice(0, 1024);
+	const expiresBlock =
+		quest.expiresAt && Number.isFinite(Date.parse(quest.expiresAt)) ? `${discordTs(quest.expiresAt, 'R')} · ${discordTs(quest.expiresAt, 'F')}` : '—';
+
 	const embed = new EmbedBuilder()
 		.setColor(embedConfig.COLOR)
-		.setTitle(quest.questName)
-		.setDescription(`**Type:** ${quest.taskTypeLabel}\n**${quest.gameTitle}**\n${quest.description}${opts?.test ? '\n\n*(test — notifier is working)*' : ''}`)
+		.setTitle(`🔮 ${quest.questName}`.slice(0, 256))
 		.setURL(quest.questUrl)
-		.setFooter({ text: embedConfig.FOOTER })
-		.setTimestamp();
+		.addFields(
+			{ name: 'Rewards', value: rewardsBlock, inline: false },
+			{ name: 'Tasks', value: taskBlock, inline: false },
+			{
+				name: '🎮 Game',
+				value: (quest.gameSubtitle || quest.gameTitle || '—').slice(0, 1024),
+				inline: true
+			},
+			{
+				name: '🏢 Publisher',
+				value: (quest.publisher || '—').slice(0, 1024),
+				inline: true
+			},
+			{ name: '⏳ Expires', value: expiresBlock.slice(0, 1024), inline: true },
+			{ name: '📜 Quest', value: quest.questName.slice(0, 1024), inline: true }
+		);
 
-	const row = new ActionRowBuilder<ButtonBuilder>().addComponents(new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(quest.questUrl).setLabel('Open quest'));
+	if (quest.thumbnailUrl) embed.setThumbnail(quest.thumbnailUrl);
+	if (quest.bannerUrl) embed.setImage(quest.bannerUrl);
+
+	const footerParts = [quest.publisher, embedConfig.FOOTER].filter((x) => typeof x === 'string' && x.trim().length > 0) as string[];
+	embed.setFooter({ text: footerParts.join(' · ').slice(0, 2048) });
+
+	const startMs = quest.startsAt && Number.isFinite(Date.parse(quest.startsAt)) ? Date.parse(quest.startsAt) : Date.now();
+	embed.setTimestamp(startMs);
+
+	if (opts?.test) {
+		embed.setDescription('_Test notification — notifier is working._');
+	}
+
+	const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+		new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(quest.questUrl).setLabel('Open in Discord').setEmoji('🖥️')
+	);
 
 	await channel.send({ embeds: [embed], components: [row] });
 }
@@ -52,14 +93,7 @@ async function runTick(client: Client, officialBotId: number) {
 			const known = new Set(await db.listServerDiscordOrbQuestIds(server.id));
 
 			if (known.size === 0) {
-				await db.baselineServerDiscordOrbEntries(
-					server.id,
-					orbQuests.map((q) => ({
-						discord_quest_id: q.id,
-						quest_task_type: q.taskTypeKey,
-						quest_task_label: q.taskTypeLabel
-					}))
-				);
+				await db.baselineServerDiscordOrbEntries(server.id, orbQuests);
 				continue;
 			}
 
@@ -67,7 +101,7 @@ async function runTick(client: Client, officialBotId: number) {
 			for (const q of newOnes) {
 				try {
 					await sendQuestNotificationMessage(client, server.discord_server_id, channelId, q);
-					await db.insertServerDiscordOrbNotified(server.id, q.id, q.taskTypeKey, q.taskTypeLabel);
+					await db.insertServerDiscordOrbNotified(server.id, q);
 					await logger.log(`🔮 Quest notifier: posted orb quest "${q.questName}" → channel ${channelId} (${server.name})`);
 				} catch (sendErr: any) {
 					await logger.log(`❌ Quest notifier: failed to post quest ${q.id} for server ${server.id}: ${sendErr?.message || sendErr}`);

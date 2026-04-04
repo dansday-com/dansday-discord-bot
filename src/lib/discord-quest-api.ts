@@ -1,7 +1,6 @@
 import axios from 'axios';
 import { ProxyAgent } from 'proxy-agent';
 
-/** Match discord-quests-bot / Discord client: user-quest list is requested against v9. */
 const QUESTS_ME_URL = 'https://discord.com/api/v9/quests/@me';
 
 const CLIENT_USER_AGENT =
@@ -129,12 +128,24 @@ export type QuestOrbSummary = {
 	id: string;
 	questName: string;
 	gameTitle: string;
+	/** Legacy single-line body; still sent for older clients. */
 	description: string;
 	questUrl: string;
 	startsAt: string;
+	expiresAt: string;
 	orbHint: string;
 	taskTypeKey: string;
 	taskTypeLabel: string;
+	/** Publisher / studio from quest messages. */
+	publisher: string;
+	/** Longer game or promo line when present. */
+	gameSubtitle: string;
+	/** Human task line, e.g. watch duration. */
+	taskDetailLine: string;
+	/** Bullet line for rewards section. */
+	rewardsLine: string;
+	thumbnailUrl: string | null;
+	bannerUrl: string | null;
 };
 
 function taskConfigV2Tasks(cfg: Record<string, unknown>): Record<string, unknown> | null {
@@ -166,6 +177,170 @@ function labelForTaskKey(key: string): string {
 		.split('_')
 		.map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
 		.join(' ');
+}
+
+function asStr(v: unknown): string {
+	return typeof v === 'string' ? v.trim() : '';
+}
+
+function asNum(v: unknown): number | null {
+	if (typeof v === 'number' && Number.isFinite(v)) return v;
+	if (typeof v === 'string' && v.trim() !== '' && Number.isFinite(Number(v))) return Number(v);
+	return null;
+}
+
+const HTTPS_IMAGE_RE = /^https?:\/\/[^\s]+\.(?:png|jpe?g|webp|gif)(?:\?[^\s]*)?$/i;
+
+function collectHttpsImageUrls(obj: unknown, depth: number, out: Set<string>): void {
+	if (depth > 7 || obj == null) return;
+	if (typeof obj === 'string') {
+		const s = obj.trim();
+		if (HTTPS_IMAGE_RE.test(s)) out.add(s);
+		return;
+	}
+	if (typeof obj !== 'object') return;
+	if (Array.isArray(obj)) {
+		for (const x of obj) collectHttpsImageUrls(x, depth + 1, out);
+		return;
+	}
+	for (const v of Object.values(obj as Record<string, unknown>)) collectHttpsImageUrls(v, depth + 1, out);
+}
+
+function discordAppIconUrl(applicationId: string, iconHash: string): string | null {
+	if (!applicationId || !iconHash) return null;
+	const h = iconHash.trim();
+	if (!h || h.startsWith('http')) return h.startsWith('http') ? h : null;
+	const ext = h.startsWith('a_') ? 'gif' : 'png';
+	return `https://cdn.discordapp.com/app-icons/${applicationId}/${h}.${ext}?size=256`;
+}
+
+/** Application cover / splash style asset (hash). */
+function discordAppCoverUrl(applicationId: string, hash: string): string | null {
+	if (!applicationId || !hash) return null;
+	const h = hash.trim();
+	if (!h || h.startsWith('http')) return h.startsWith('http') ? h : null;
+	const ext = h.startsWith('a_') ? 'gif' : 'png';
+	return `https://cdn.discordapp.com/app-assets/${applicationId}/${h}.${ext}?size=600`;
+}
+
+function mediaFromApplication(cfg: Record<string, unknown>): { thumb: string | null; banner: string | null } {
+	const app = cfg.application as Record<string, unknown> | undefined;
+	const appId = asStr(app?.id) || asStr(cfg.application_id);
+	if (!appId || !app) return { thumb: null, banner: null };
+	let thumb: string | null = null;
+	let banner: string | null = null;
+	const icon = asStr(app.icon);
+	if (icon) thumb = discordAppIconUrl(appId, icon);
+	const cover = app.cover_image;
+	if (typeof cover === 'string' && cover) banner = discordAppCoverUrl(appId, cover);
+	else if (cover && typeof cover === 'object') {
+		const u = asStr((cover as Record<string, unknown>).url);
+		const h = asStr((cover as Record<string, unknown>).hash);
+		banner = u || (h ? discordAppCoverUrl(appId, h) : null);
+	}
+	const splash = asStr(app.splash);
+	if (!banner && splash) {
+		const ext = splash.startsWith('a_') ? 'gif' : 'jpg';
+		banner = `https://cdn.discordapp.com/splashes/${appId}/${splash}.${ext}?size=512`;
+	}
+	return { thumb, banner };
+}
+
+function resolveQuestBannerAndThumb(questId: string, cfg: Record<string, unknown>): { thumb: string | null; banner: string | null } {
+	void questId;
+	const fromApp = mediaFromApplication(cfg);
+	const m = cfg.messages as Record<string, unknown> | undefined;
+	const explicitThumb = asStr(m?.character_artwork) || asStr(m?.game_icon) || asStr(m?.publisher_icon) || asStr(m?.quest_bar_artwork);
+	const explicitBanner = asStr(m?.game_artwork) || asStr(m?.quest_artwork) || asStr(m?.hero_artwork) || asStr(m?.banner_artwork);
+
+	const urlSet = new Set<string>();
+	collectHttpsImageUrls(cfg, 0, urlSet);
+	const list = [...urlSet];
+
+	const rankBanner = (u: string) => {
+		let s = 0;
+		if (/banner|hero|splash|artwork|cover|wide|game_art|quest_art/i.test(u)) s += 100;
+		return s + Math.min(u.length, 200) / 1000;
+	};
+	const rankThumb = (u: string) => {
+		let s = 0;
+		if (/icon|logo|thumb|avatar|orb|character|bar/i.test(u)) s += 100;
+		return s;
+	};
+
+	let bannerPick = explicitBanner || fromApp.banner || null;
+	if (!bannerPick && list.length) {
+		bannerPick = [...list].sort((a, b) => rankBanner(b) - rankBanner(a))[0] ?? null;
+	}
+
+	let thumbPick = explicitThumb || fromApp.thumb || null;
+	if (!thumbPick && list.length) {
+		const candidates = list.filter((u) => u !== bannerPick);
+		thumbPick = candidates.sort((a, b) => rankThumb(b) - rankThumb(a))[0] ?? null;
+	}
+
+	if (thumbPick && bannerPick && thumbPick === bannerPick) {
+		const alt = list.find((u) => u !== bannerPick);
+		thumbPick = alt || fromApp.thumb;
+	}
+
+	if (!bannerPick && thumbPick) {
+		bannerPick = thumbPick;
+		thumbPick = fromApp.thumb && fromApp.thumb !== bannerPick ? fromApp.thumb : null;
+	}
+
+	return { thumb: thumbPick, banner: bannerPick };
+}
+
+function primaryTaskObject(cfg: Record<string, unknown>): { key: string; obj: Record<string, unknown> } | null {
+	const tasks = taskConfigV2Tasks(cfg);
+	if (!tasks) return null;
+	const key = primaryTaskKeyFromConfig(cfg);
+	if (!key) return null;
+	const obj = tasks[key];
+	if (!obj || typeof obj !== 'object') return null;
+	return { key, obj: obj as Record<string, unknown> };
+}
+
+function taskTargetFromTaskObj(taskKey: string, taskObj: Record<string, unknown>): { target: number | null; unit: string } {
+	const sec = asNum(taskObj.target_seconds) ?? asNum(taskObj.duration_seconds) ?? asNum(taskObj.seconds_to_watch) ?? asNum(taskObj.watch_time_seconds);
+	if (sec != null) return { target: sec, unit: 'seconds' };
+	const min = asNum(taskObj.target_minutes) ?? asNum(taskObj.duration_minutes) ?? asNum(taskObj.minutes);
+	if (min != null) return { target: min * 60, unit: 'seconds' };
+	const generic = asNum(taskObj.target) ?? asNum(taskObj.goal) ?? asNum(taskObj.max);
+	if (generic != null) {
+		const unitRaw = asStr(taskObj.target_unit).toLowerCase();
+		if (unitRaw.includes('minute')) return { target: generic * 60, unit: 'seconds' };
+		if (unitRaw.includes('hour')) return { target: generic * 3600, unit: 'seconds' };
+		if (unitRaw.includes('second')) return { target: generic, unit: 'seconds' };
+		return { target: generic, unit: taskKey.includes('VIDEO') || taskKey.includes('WATCH') ? 'seconds' : 'steps' };
+	}
+	return { target: null, unit: 'seconds' };
+}
+
+function buildTaskDetailLine(taskKey: string, taskLabel: string, taskObj: Record<string, unknown>): string {
+	const messages = taskObj.messages as Record<string, unknown> | undefined;
+	const custom = asStr(messages?.title) || asStr(messages?.body) || asStr(messages?.description) || asStr(messages?.subtitle) || asStr(messages?.cta);
+	if (custom && custom.length <= 200) return custom;
+
+	const { target, unit } = taskTargetFromTaskObj(taskKey, taskObj);
+	if (target != null && unit === 'seconds') {
+		if (taskKey.includes('VIDEO') || taskKey.includes('WATCH')) {
+			const wholeMin = Math.round(target / 60);
+			if (wholeMin >= 1 && Math.abs(target - wholeMin * 60) <= 5) {
+				return `${taskLabel} for ${wholeMin} minute${wholeMin === 1 ? '' : 's'}`;
+			}
+			return `${taskLabel} for ${target} seconds`;
+		}
+		return `${taskLabel} · ${target} seconds`;
+	}
+	if (target != null) return `${taskLabel} · target ${target}`;
+	return taskLabel;
+}
+
+function rewardsDisplayLine(orbHint: string): string {
+	if (!orbHint) return 'Orb reward';
+	return `• ${orbHint}`;
 }
 
 function rewardLooksLikeOrb(r: Record<string, unknown> | null | undefined): boolean {
@@ -227,20 +402,39 @@ function toQuestOrbSummary(quest: Record<string, unknown>): QuestOrbSummary {
 	const messages = (cfg.messages ?? {}) as Record<string, unknown>;
 	const questName = typeof messages.quest_name === 'string' ? messages.quest_name : 'Discord Quest';
 	const gameTitle = typeof messages.game_title === 'string' ? messages.game_title : 'Quest';
+	const gameSubtitle = asStr(messages.game_name) || asStr(messages.promo_title) || asStr(messages.subtitle) || asStr(messages.secondary_title);
 	const startsAt = typeof cfg.starts_at === 'string' ? cfg.starts_at : '';
+	const expiresAt = typeof cfg.expires_at === 'string' ? cfg.expires_at : '';
 	const orbHint = orbHintFromQuest(quest);
 	const taskTypeKey = primaryTaskKeyFromConfig(cfg);
 	const taskTypeLabel = labelForTaskKey(taskTypeKey);
+	const publisher = asStr(messages.publisher_name) || asStr(messages.publisher) || asStr(messages.brand_name);
+
+	const pt = primaryTaskObject(cfg);
+	const taskObj = pt?.obj ?? {};
+	const taskDetailLine = pt ? buildTaskDetailLine(pt.key, taskTypeLabel, taskObj) : taskTypeLabel;
+
+	const { thumb, banner } = resolveQuestBannerAndThumb(id, cfg);
+	const rewardsLine = rewardsDisplayLine(orbHint);
+	const desc = orbHint ? `**Reward:** ${orbHint}` : 'A quest with Orbs is available in the Discord client.';
+
 	return {
 		id,
 		questName,
 		gameTitle,
-		description: orbHint ? `**Reward:** ${orbHint}` : 'A quest with Orbs is available in the Discord client.',
+		description: desc,
 		questUrl: `https://discord.com/quests/${id}`,
 		startsAt,
+		expiresAt,
 		orbHint,
 		taskTypeKey,
-		taskTypeLabel
+		taskTypeLabel,
+		publisher,
+		gameSubtitle,
+		taskDetailLine,
+		rewardsLine,
+		thumbnailUrl: thumb,
+		bannerUrl: banner
 	};
 }
 

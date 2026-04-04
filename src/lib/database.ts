@@ -6,6 +6,7 @@ import { eq, and, or, inArray, sql, desc, asc, isNull, isNotNull, count, avg, li
 import { db } from './drizzle.js';
 import * as schema from './schema.js';
 import { logger, toMySQLDateTime, parseMySQLDateTimeUtc, getNowUtc, addMinutesToNow } from './utils/index.js';
+import type { QuestOrbSummary } from './discord-quest-api.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -1834,52 +1835,74 @@ async function listServerDiscordOrbQuestIds(serverId: number): Promise<string[]>
 	return rows.map((r) => r.discord_quest_id);
 }
 
-export type ServerDiscordOrbEntry = {
-	discord_quest_id: string;
-	quest_task_type: string;
-	quest_task_label: string;
-};
+function questIsoToDbDate(iso: string | undefined | null): Date | null {
+	if (iso == null || typeof iso !== 'string' || !iso.trim()) return null;
+	return toMySQLDateTime(iso.trim());
+}
 
-async function insertServerDiscordOrbNotified(serverId: number, discordQuestId: string, questTaskType: string, questTaskLabel: string): Promise<void> {
+function orbSnapshotFromQuest(q: QuestOrbSummary) {
+	return {
+		quest_name: q.questName?.trim() || null,
+		game_title: q.gameTitle?.trim() || null,
+		game_subtitle: q.gameSubtitle?.trim() || null,
+		publisher: q.publisher?.trim() || null,
+		quest_url: q.questUrl?.trim() || null,
+		quest_description: q.description?.trim() || null,
+		orb_hint: q.orbHint?.trim() || null,
+		rewards_line: q.rewardsLine?.trim() || null,
+		task_detail_line: q.taskDetailLine?.trim() || null,
+		thumbnail_url: q.thumbnailUrl?.trim() || null,
+		banner_url: q.bannerUrl?.trim() || null,
+		starts_at: questIsoToDbDate(q.startsAt),
+		expires_at: questIsoToDbDate(q.expiresAt)
+	};
+}
+
+async function insertServerDiscordOrbNotified(serverId: number, quest: QuestOrbSummary): Promise<void> {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
+	const snap = orbSnapshotFromQuest(quest);
+	const dupSet = {
+		quest_task_type: quest.taskTypeKey || '',
+		quest_task_label: quest.taskTypeLabel || '',
+		notified_at: now as any,
+		...snap
+	};
 	await db
 		.insert(schema.serverDiscordOrb)
 		.values({
 			server_id: serverId,
-			discord_quest_id: discordQuestId,
-			quest_task_type: questTaskType || '',
-			quest_task_label: questTaskLabel || '',
-			notified_at: now as any
+			discord_quest_id: quest.id,
+			quest_task_type: quest.taskTypeKey || '',
+			quest_task_label: quest.taskTypeLabel || '',
+			notified_at: now as any,
+			...snap
 		})
-		.onDuplicateKeyUpdate({
-			set: {
-				quest_task_type: questTaskType || '',
-				quest_task_label: questTaskLabel || '',
-				notified_at: now as any
-			}
-		});
+		.onDuplicateKeyUpdate({ set: dupSet as any });
 }
 
-async function baselineServerDiscordOrbEntries(serverId: number, entries: ServerDiscordOrbEntry[]): Promise<void> {
+async function baselineServerDiscordOrbEntries(serverId: number, quests: QuestOrbSummary[]): Promise<void> {
 	await initializeDatabase();
-	if (entries.length === 0) return;
+	if (quests.length === 0) return;
 	const now = toMySQLDateTime();
-	for (const e of entries) {
+	for (const q of quests) {
+		const snap = orbSnapshotFromQuest(q);
 		await db
 			.insert(schema.serverDiscordOrb)
 			.values({
 				server_id: serverId,
-				discord_quest_id: e.discord_quest_id,
-				quest_task_type: e.quest_task_type || '',
-				quest_task_label: e.quest_task_label || '',
-				notified_at: now as any
+				discord_quest_id: q.id,
+				quest_task_type: q.taskTypeKey || '',
+				quest_task_label: q.taskTypeLabel || '',
+				notified_at: now as any,
+				...snap
 			})
 			.onDuplicateKeyUpdate({
 				set: {
-					quest_task_type: e.quest_task_type || '',
-					quest_task_label: e.quest_task_label || '',
-					notified_at: now as any
+					quest_task_type: q.taskTypeKey || '',
+					quest_task_label: q.taskTypeLabel || '',
+					notified_at: now as any,
+					...snap
 				}
 			});
 	}

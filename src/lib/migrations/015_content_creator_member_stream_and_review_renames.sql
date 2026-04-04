@@ -56,19 +56,22 @@ PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 SET @s = IF(@smr_icustom > 0, 'ALTER TABLE server_member_roles DROP COLUMN is_custom', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
--- server_staff_ratings (legacy name): staff_member_id -> member_id, add role_id; drop server_member_roles.is_rating; table renamed to server_member_staff_ratings below
+-- server_staff_ratings (legacy): staff_member_id -> member_id, add role_id; drop server_member_roles.is_rating; rename to server_member_staff_ratings.
+-- Skip entirely if legacy table never existed (e.g. DB already on new names or staff feature unused).
+SET @has_legacy_ssr = (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='server_staff_ratings');
+
 SET @ssr_role_col = (
   SELECT COUNT(*) FROM information_schema.COLUMNS
   WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'server_staff_ratings' AND COLUMN_NAME = 'role_id'
 );
-SET @s = IF(@ssr_role_col = 0, 'ALTER TABLE server_staff_ratings ADD COLUMN role_id INT NULL', 'SELECT 1');
+SET @s = IF(@has_legacy_ssr > 0 AND @ssr_role_col = 0, 'ALTER TABLE server_staff_ratings ADD COLUMN role_id INT NULL', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @smr_ir_col = (
   SELECT COUNT(*) FROM information_schema.COLUMNS
   WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'server_member_roles' AND COLUMN_NAME = 'is_rating'
 );
-SET @s = IF(@smr_ir_col > 0,
+SET @s = IF(@has_legacy_ssr > 0 AND @smr_ir_col > 0,
   'UPDATE server_staff_ratings ssr INNER JOIN (SELECT smr.member_id, MIN(smr.id) AS pick FROM server_member_roles smr WHERE smr.is_rating = TRUE GROUP BY smr.member_id) t ON t.member_id = ssr.staff_member_id INNER JOIN server_member_roles smr ON smr.id = t.pick SET ssr.role_id = smr.role_id',
   'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
@@ -85,14 +88,14 @@ SET @fk_ssr := (
     AND REFERENCED_TABLE_NAME IS NOT NULL
   LIMIT 1
 );
-SET @s = IF(@fk_ssr IS NOT NULL, CONCAT('ALTER TABLE server_staff_ratings DROP FOREIGN KEY `', @fk_ssr, '`'), 'SELECT 1');
+SET @s = IF(@has_legacy_ssr > 0 AND @fk_ssr IS NOT NULL, CONCAT('ALTER TABLE server_staff_ratings DROP FOREIGN KEY `', @fk_ssr, '`'), 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @uq_ssr = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_staff_ratings' AND index_name='unique_staff_rating');
-SET @s = IF(@uq_ssr>0,'ALTER TABLE server_staff_ratings DROP INDEX unique_staff_rating','SELECT 1');
+SET @s = IF(@has_legacy_ssr > 0 AND @uq_ssr>0,'ALTER TABLE server_staff_ratings DROP INDEX unique_staff_rating','SELECT 1');
 PREPARE si FROM @s; EXECUTE si; DEALLOCATE PREPARE si;
 
-SET @s = IF(@ssr_staff_col > 0, 'ALTER TABLE server_staff_ratings CHANGE COLUMN staff_member_id member_id INT NOT NULL', 'SELECT 1');
+SET @s = IF(@has_legacy_ssr > 0 AND @ssr_staff_col > 0, 'ALTER TABLE server_staff_ratings CHANGE COLUMN staff_member_id member_id INT NOT NULL', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @fk_ssr_m := (
@@ -103,21 +106,21 @@ SET @fk_ssr_m := (
     AND CONSTRAINT_NAME = 'fk_server_staff_ratings_member'
   LIMIT 1
 );
-SET @s = IF(@fk_ssr_m IS NULL,
+SET @s = IF(@has_legacy_ssr > 0 AND @fk_ssr_m IS NULL,
   'ALTER TABLE server_staff_ratings ADD CONSTRAINT fk_server_staff_ratings_member FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE',
   'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @uq_ssr2 = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_staff_ratings' AND index_name='unique_staff_rating');
-SET @s = IF(@uq_ssr2=0,'ALTER TABLE server_staff_ratings ADD UNIQUE KEY unique_staff_rating (member_id)','SELECT 1');
+SET @s = IF(@has_legacy_ssr > 0 AND @uq_ssr2=0,'ALTER TABLE server_staff_ratings ADD UNIQUE KEY unique_staff_rating (member_id)','SELECT 1');
 PREPARE si FROM @s; EXECUTE si; DEALLOCATE PREPARE si;
 
 SET @ix_ssr_m1 = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_staff_ratings' AND index_name='idx_server_staff_ratings_member');
-SET @s = IF(@ix_ssr_m1>0,'ALTER TABLE server_staff_ratings DROP INDEX idx_server_staff_ratings_member','SELECT 1');
+SET @s = IF(@has_legacy_ssr > 0 AND @ix_ssr_m1>0,'ALTER TABLE server_staff_ratings DROP INDEX idx_server_staff_ratings_member','SELECT 1');
 PREPARE si FROM @s; EXECUTE si; DEALLOCATE PREPARE si;
 
 SET @ix_ssr_m2 = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_staff_ratings' AND index_name='idx_server_staff_ratings_member');
-SET @s = IF(@ix_ssr_m2=0,'CREATE INDEX idx_server_staff_ratings_member ON server_staff_ratings(member_id)','SELECT 1');
+SET @s = IF(@has_legacy_ssr > 0 AND @ix_ssr_m2=0,'CREATE INDEX idx_server_staff_ratings_member ON server_staff_ratings(member_id)','SELECT 1');
 PREPARE si FROM @s; EXECUTE si; DEALLOCATE PREPARE si;
 
 SET @fk_ssr_r := (
@@ -128,16 +131,17 @@ SET @fk_ssr_r := (
     AND CONSTRAINT_NAME = 'fk_server_staff_ratings_role'
   LIMIT 1
 );
-SET @s = IF(@fk_ssr_r IS NULL,
+SET @s = IF(@has_legacy_ssr > 0 AND @fk_ssr_r IS NULL,
   'ALTER TABLE server_staff_ratings ADD CONSTRAINT fk_server_staff_ratings_role FOREIGN KEY (role_id) REFERENCES server_roles(id) ON DELETE SET NULL',
   'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @i = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_staff_ratings' AND index_name='idx_server_staff_ratings_role');
-SET @s = IF(@i=0,'CREATE INDEX idx_server_staff_ratings_role ON server_staff_ratings(role_id)','SELECT 1');
+SET @s = IF(@has_legacy_ssr > 0 AND @i=0,'CREATE INDEX idx_server_staff_ratings_role ON server_staff_ratings(role_id)','SELECT 1');
 PREPARE si FROM @s; EXECUTE si; DEALLOCATE PREPARE si;
 
-SET @s = IF(@smr_ir_col > 0, 'ALTER TABLE server_member_roles DROP COLUMN is_rating', 'SELECT 1');
+SET @has_smr = (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='server_member_roles');
+SET @s = IF(@has_smr > 0 AND @smr_ir_col > 0, 'ALTER TABLE server_member_roles DROP COLUMN is_rating', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @old_ssr_tab = (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='server_staff_ratings');
@@ -145,18 +149,25 @@ SET @new_ssr_tab = (SELECT COUNT(*) FROM information_schema.tables WHERE table_s
 SET @s = IF(@old_ssr_tab > 0 AND @new_ssr_tab = 0, 'RENAME TABLE server_staff_ratings TO server_member_staff_ratings', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
+SET @new_ssr_tab = (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='server_member_staff_ratings');
+SET @s = IF(@old_ssr_tab = 0 AND @new_ssr_tab = 0,
+  'CREATE TABLE server_member_staff_ratings ( id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, member_id INT NOT NULL, role_id INT NULL, current_rating DECIMAL(3,2) DEFAULT 0, total_reports INT DEFAULT 0, created_at DATETIME NOT NULL, updated_at DATETIME NOT NULL, UNIQUE KEY unique_member_staff_rating (member_id), FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE, FOREIGN KEY (role_id) REFERENCES server_roles(id) ON DELETE SET NULL )',
+  'SELECT 1');
+PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @mssr_exists = (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='server_member_staff_ratings');
 SET @ix_ssr_old_m = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_member_staff_ratings' AND index_name='idx_server_staff_ratings_member');
-SET @s = IF(@ix_ssr_old_m > 0, 'ALTER TABLE server_member_staff_ratings DROP INDEX idx_server_staff_ratings_member', 'SELECT 1');
+SET @s = IF(@mssr_exists > 0 AND @ix_ssr_old_m > 0, 'ALTER TABLE server_member_staff_ratings DROP INDEX idx_server_staff_ratings_member', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 SET @ix_ssr_new_m = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_member_staff_ratings' AND index_name='idx_server_member_staff_ratings_member');
-SET @s = IF(@ix_ssr_new_m = 0, 'CREATE INDEX idx_server_member_staff_ratings_member ON server_member_staff_ratings(member_id)', 'SELECT 1');
+SET @s = IF(@mssr_exists > 0 AND @ix_ssr_new_m = 0, 'CREATE INDEX idx_server_member_staff_ratings_member ON server_member_staff_ratings(member_id)', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @ix_ssr_old_r = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_member_staff_ratings' AND index_name='idx_server_staff_ratings_role');
-SET @s = IF(@ix_ssr_old_r > 0, 'ALTER TABLE server_member_staff_ratings DROP INDEX idx_server_staff_ratings_role', 'SELECT 1');
+SET @s = IF(@mssr_exists > 0 AND @ix_ssr_old_r > 0, 'ALTER TABLE server_member_staff_ratings DROP INDEX idx_server_staff_ratings_role', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 SET @ix_ssr_new_r = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_member_staff_ratings' AND index_name='idx_server_member_staff_ratings_role');
-SET @s = IF(@ix_ssr_new_r = 0, 'CREATE INDEX idx_server_member_staff_ratings_role ON server_member_staff_ratings(role_id)', 'SELECT 1');
+SET @s = IF(@mssr_exists > 0 AND @ix_ssr_new_r = 0, 'CREATE INDEX idx_server_member_staff_ratings_role ON server_member_staff_ratings(role_id)', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- Tie live stream rows to server_members (not application/review rows)
@@ -241,32 +252,39 @@ PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 SET @s = IF(@mid_srr > 0 AND @new_srr = 0, 'RENAME TABLE server_staff_rating_reviews TO server_member_staff_rating_reviews', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
+SET @msrr_exists = (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='server_member_staff_rating_reviews');
+SET @s = IF(@msrr_exists = 0,
+  'CREATE TABLE server_member_staff_rating_reviews ( id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, reporter_member_id INT NOT NULL, reported_staff_id INT NOT NULL, rating TINYINT NOT NULL CHECK(rating >= 1 AND rating <= 5), category VARCHAR(50) NOT NULL, description TEXT, is_anonymous BOOLEAN DEFAULT 0, status ENUM(''pending'', ''approved'', ''rejected'') DEFAULT ''pending'', reviewed_by_member_id INT NULL, reviewed_at DATETIME NULL, review_reason TEXT NULL, reported_at DATETIME NOT NULL, FOREIGN KEY (reporter_member_id) REFERENCES server_members(id) ON DELETE CASCADE, FOREIGN KEY (reported_staff_id) REFERENCES server_members(id) ON DELETE CASCADE, FOREIGN KEY (reviewed_by_member_id) REFERENCES server_members(id) ON DELETE SET NULL )',
+  'SELECT 1');
+PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+
+SET @msrr_exists = (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='server_member_staff_rating_reviews');
 SET @ix_srr_old_st = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_member_staff_rating_reviews' AND index_name='idx_server_staff_rating_reviews_staff');
-SET @s = IF(@ix_srr_old_st > 0, 'ALTER TABLE server_member_staff_rating_reviews DROP INDEX idx_server_staff_rating_reviews_staff', 'SELECT 1');
+SET @s = IF(@msrr_exists > 0 AND @ix_srr_old_st > 0, 'ALTER TABLE server_member_staff_rating_reviews DROP INDEX idx_server_staff_rating_reviews_staff', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 SET @ix_srr_new_st = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_member_staff_rating_reviews' AND index_name='idx_server_member_staff_rating_reviews_staff');
-SET @s = IF(@ix_srr_new_st = 0, 'CREATE INDEX idx_server_member_staff_rating_reviews_staff ON server_member_staff_rating_reviews(reported_staff_id)', 'SELECT 1');
+SET @s = IF(@msrr_exists > 0 AND @ix_srr_new_st = 0, 'CREATE INDEX idx_server_member_staff_rating_reviews_staff ON server_member_staff_rating_reviews(reported_staff_id)', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @ix_srr_old_p = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_member_staff_rating_reviews' AND index_name='idx_server_staff_rating_reviews_pair');
-SET @s = IF(@ix_srr_old_p > 0, 'ALTER TABLE server_member_staff_rating_reviews DROP INDEX idx_server_staff_rating_reviews_pair', 'SELECT 1');
+SET @s = IF(@msrr_exists > 0 AND @ix_srr_old_p > 0, 'ALTER TABLE server_member_staff_rating_reviews DROP INDEX idx_server_staff_rating_reviews_pair', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 SET @ix_srr_new_p = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_member_staff_rating_reviews' AND index_name='idx_server_member_staff_rating_reviews_pair');
-SET @s = IF(@ix_srr_new_p = 0, 'CREATE INDEX idx_server_member_staff_rating_reviews_pair ON server_member_staff_rating_reviews(reporter_member_id, reported_staff_id)', 'SELECT 1');
+SET @s = IF(@msrr_exists > 0 AND @ix_srr_new_p = 0, 'CREATE INDEX idx_server_member_staff_rating_reviews_pair ON server_member_staff_rating_reviews(reporter_member_id, reported_staff_id)', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @ix_srr_old_stat = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_member_staff_rating_reviews' AND index_name='idx_server_staff_rating_reviews_status');
-SET @s = IF(@ix_srr_old_stat > 0, 'ALTER TABLE server_member_staff_rating_reviews DROP INDEX idx_server_staff_rating_reviews_status', 'SELECT 1');
+SET @s = IF(@msrr_exists > 0 AND @ix_srr_old_stat > 0, 'ALTER TABLE server_member_staff_rating_reviews DROP INDEX idx_server_staff_rating_reviews_status', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 SET @ix_srr_new_stat = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_member_staff_rating_reviews' AND index_name='idx_server_member_staff_rating_reviews_status');
-SET @s = IF(@ix_srr_new_stat = 0, 'CREATE INDEX idx_server_member_staff_rating_reviews_status ON server_member_staff_rating_reviews(status)', 'SELECT 1');
+SET @s = IF(@msrr_exists > 0 AND @ix_srr_new_stat = 0, 'CREATE INDEX idx_server_member_staff_rating_reviews_status ON server_member_staff_rating_reviews(status)', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @ix_srr_old_rev = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_member_staff_rating_reviews' AND index_name='idx_server_staff_rating_reviews_reviewer');
-SET @s = IF(@ix_srr_old_rev > 0, 'ALTER TABLE server_member_staff_rating_reviews DROP INDEX idx_server_staff_rating_reviews_reviewer', 'SELECT 1');
+SET @s = IF(@msrr_exists > 0 AND @ix_srr_old_rev > 0, 'ALTER TABLE server_member_staff_rating_reviews DROP INDEX idx_server_staff_rating_reviews_reviewer', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 SET @ix_srr_new_rev = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='server_member_staff_rating_reviews' AND index_name='idx_server_member_staff_rating_reviews_reviewer');
-SET @s = IF(@ix_srr_new_rev = 0, 'CREATE INDEX idx_server_member_staff_rating_reviews_reviewer ON server_member_staff_rating_reviews(reviewed_by_member_id)', 'SELECT 1');
+SET @s = IF(@msrr_exists > 0 AND @ix_srr_new_rev = 0, 'CREATE INDEX idx_server_member_staff_rating_reviews_reviewer ON server_member_staff_rating_reviews(reviewed_by_member_id)', 'SELECT 1');
 PREPARE stmt FROM @s; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- Stream tables: final names (atomic rename when both legacy tables exist)

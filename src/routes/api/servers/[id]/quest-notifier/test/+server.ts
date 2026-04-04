@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import { request as httpRequest } from 'http';
 import db from '$lib/database.js';
-import { extractOrbQuests, fetchQuestsMe } from '$lib/discord-quest-api.js';
+import { extractOrbQuests, fetchQuestsMe, questPayloadOrbDiagnostics } from '$lib/discord-quest-api.js';
 
 function canEditServer(locals: App.Locals, serverId: string): boolean {
 	if (!locals.user.authenticated) return false;
@@ -55,9 +55,16 @@ export const POST: RequestHandler = async ({ locals, params }) => {
 
 	const orbQuests = extractOrbQuests(payload);
 	if (orbQuests.length === 0) {
+		const d = questPayloadOrbDiagnostics(payload);
+		const detail =
+			d.questCount === 0
+				? 'Discord returned no quests in the payload (empty list or unexpected shape).'
+				: d.afterPreviewExpired === 0
+					? `Discord returned ${d.questCount} quest(s); all are preview or expired.`
+					: `Discord returned ${d.questCount} quest(s), ${d.afterPreviewExpired} active — none have orb-style rewards in the data we recognize.`;
 		return json({
 			success: false,
-			error: 'No orb quests found for this account right now (or API response changed).'
+			error: `No orb quests to test with. ${detail}`
 		});
 	}
 

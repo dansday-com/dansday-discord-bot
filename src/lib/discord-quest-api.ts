@@ -1,13 +1,11 @@
 import axios from 'axios';
-import { RouteBases } from 'discord-api-types/rest/v10';
 import { ProxyAgent } from 'proxy-agent';
 
-const QUESTS_ME_PATH = '/quests/@me';
-
-const QUESTS_ME_URL = `${RouteBases.api}${QUESTS_ME_PATH}`;
+/** Match discord-quests-bot / Discord client: user-quest list is requested against v9. */
+const QUESTS_ME_URL = 'https://discord.com/api/v9/quests/@me';
 
 const CLIENT_USER_AGENT =
-	'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) discord/1.0.0 Chrome/120.0.0.0 Electron/28.0.0 Safari/537.36';
+	'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) discord/1.0.9044 Chrome/120.0.6099.291 Electron/28.2.10 Safari/537.36';
 
 const questProxyAgentCache = new Map<string, ProxyAgent>();
 const QUEST_PROXY_AGENT_CACHE_MAX = 32;
@@ -64,14 +62,14 @@ function encodeSuperProperties(): string {
 		system_locale: 'en',
 		has_client_mods: false,
 		browser_user_agent: CLIENT_USER_AGENT,
-		browser_version: '120.0.0.0',
+		browser_version: '142.0.0.0',
 		os_version: '10',
 		referrer: '',
 		referring_domain: '',
 		referrer_current: 'https://discord.com/',
 		referring_domain_current: 'discord.com',
 		release_channel: 'stable',
-		client_build_number: 300000,
+		client_build_number: 971383,
 		client_event_source: null as null
 	};
 	return Buffer.from(JSON.stringify(payload)).toString('base64');
@@ -82,14 +80,18 @@ function discordQuestRequestHeaders(userToken: string): Record<string, string> {
 	return {
 		Authorization: t,
 		Accept: '*/*',
-		'Accept-Language': 'en-US,en;q=0.9',
+		'Accept-Language': 'en,en-US;q=0.9',
 		'Content-Type': 'application/json',
 		'User-Agent': CLIENT_USER_AGENT,
 		Origin: 'https://discord.com',
-		Referer: 'https://discord.com/channels/@me',
-		'Sec-CH-UA': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+		Referer: 'https://discord.com/quest-home',
+		Priority: 'u=1, i',
+		'Sec-CH-UA': '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"',
 		'Sec-CH-UA-Mobile': '?0',
 		'Sec-CH-UA-Platform': '"Windows"',
+		'Sec-Fetch-Dest': 'empty',
+		'Sec-Fetch-Mode': 'cors',
+		'Sec-Fetch-Site': 'same-origin',
 		'X-Debug-Options': 'bugReporterEnabled',
 		'X-Discord-Locale': 'en-US',
 		'X-Discord-Timezone': 'Asia/Singapore',
@@ -169,16 +171,32 @@ function labelForTaskKey(key: string): string {
 function rewardLooksLikeOrb(r: Record<string, unknown> | null | undefined): boolean {
 	if (!r || typeof r !== 'object') return false;
 	if (typeof r.orb_quantity === 'number' && r.orb_quantity > 0) return true;
+	const typeStr =
+		typeof r.type === 'string' ? r.type : typeof r.reward_type === 'string' ? r.reward_type : typeof r.rewardType === 'string' ? r.rewardType : '';
+	if (typeStr && /orb/i.test(typeStr)) return true;
 	const messages = r.messages as Record<string, unknown> | undefined;
 	const name = typeof messages?.name === 'string' ? messages.name : '';
 	if (/orb/i.test(name)) return true;
+	const sku = typeof r.sku_id === 'string' ? r.sku_id : typeof r.sku === 'string' ? r.sku : '';
+	if (sku && /orb/i.test(sku)) return true;
 	return false;
 }
 
+function rewardListFromQuest(quest: Record<string, unknown>): unknown[] {
+	const cfg = quest.config as Record<string, unknown> | undefined;
+	const fromConfig = cfg?.rewards_config as Record<string, unknown> | undefined;
+	const a = fromConfig?.rewards;
+	if (Array.isArray(a)) return a;
+	const top = quest.rewards_config as Record<string, unknown> | undefined;
+	const b = top?.rewards;
+	if (Array.isArray(b)) return b;
+	const direct = cfg?.rewards;
+	if (Array.isArray(direct)) return direct;
+	return [];
+}
+
 function questHasOrbReward(quest: Record<string, unknown>): boolean {
-	const rewards = (quest.config as Record<string, unknown> | undefined)?.rewards_config as Record<string, unknown> | undefined;
-	const list = rewards?.rewards;
-	if (!Array.isArray(list)) return false;
+	const list = rewardListFromQuest(quest);
 	return list.some((x) => rewardLooksLikeOrb(x as Record<string, unknown>));
 }
 
@@ -190,8 +208,8 @@ function questExpired(quest: Record<string, unknown>): boolean {
 }
 
 function orbHintFromQuest(quest: Record<string, unknown>): string {
-	const rewards = ((quest.config as Record<string, unknown>)?.rewards_config as Record<string, unknown>)?.rewards as unknown[] | undefined;
-	if (!Array.isArray(rewards)) return '';
+	const rewards = rewardListFromQuest(quest);
+	if (rewards.length === 0) return '';
 	const parts: string[] = [];
 	for (const r of rewards) {
 		if (!rewardLooksLikeOrb(r as Record<string, unknown>)) continue;
@@ -241,6 +259,32 @@ export function extractOrbQuests(payload: unknown): QuestOrbSummary[] {
 	}
 	out.sort((a, b) => (b.startsAt || '').localeCompare(a.startsAt || ''));
 	return out;
+}
+
+/** For diagnostics when orb filter returns empty but the API responded. */
+export function questPayloadOrbDiagnostics(payload: unknown): {
+	questCount: number;
+	afterPreviewExpired: number;
+	orbRewardCount: number;
+} {
+	if (!payload || typeof payload !== 'object') {
+		return { questCount: 0, afterPreviewExpired: 0, orbRewardCount: 0 };
+	}
+	const quests = (payload as Record<string, unknown>).quests;
+	if (!Array.isArray(quests)) {
+		return { questCount: 0, afterPreviewExpired: 0, orbRewardCount: 0 };
+	}
+	let afterPreviewExpired = 0;
+	let orbRewardCount = 0;
+	for (const q of quests) {
+		if (!q || typeof q !== 'object') continue;
+		const rec = q as Record<string, unknown>;
+		if (rec.preview === true) continue;
+		if (questExpired(rec)) continue;
+		afterPreviewExpired += 1;
+		if (questHasOrbReward(rec)) orbRewardCount += 1;
+	}
+	return { questCount: quests.length, afterPreviewExpired, orbRewardCount };
 }
 
 export async function fetchQuestsMe(userToken: string, opts?: { httpProxyUrl?: string | null }): Promise<unknown> {

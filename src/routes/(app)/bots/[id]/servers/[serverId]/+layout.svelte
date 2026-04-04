@@ -15,15 +15,15 @@
 
 	const tabs = $derived([
 		{ label: 'Overview', icon: 'fa-chart-pie', iconClass: 'text-sky-400', href: base },
-		{ label: 'Members', icon: 'fa-users', iconClass: 'text-blue-400', href: `${base}/members` },
-		{ label: 'Embed Builder', icon: 'fa-envelope-open-text', iconClass: 'text-fuchsia-400', href: `${base}/embed` },
+		{ label: 'Selfbot', icon: 'fa-robot', iconClass: 'text-violet-400', href: `${base}/selfbot` },
 		...(data.user.authenticated && (data.user.account_source === 'accounts' || data.user.account_type === 'owner')
 			? [{ label: 'Configuration', icon: 'fa-sliders', iconClass: 'text-emerald-400', href: `${base}/config` }]
 			: []),
 		...(data.user.authenticated && (data.user.account_source === 'accounts' || data.user.account_source === 'server_accounts')
 			? [{ label: 'Accounts', icon: 'fa-user-shield', iconClass: 'text-amber-400', href: `${base}/accounts` }]
 			: []),
-		{ label: 'Selfbot', icon: 'fa-robot', iconClass: 'text-violet-400', href: `${base}/selfbot` }
+		{ label: 'Embed Builder', icon: 'fa-envelope-open-text', iconClass: 'text-fuchsia-400', href: `${base}/embed` },
+		{ label: 'Members', icon: 'fa-users', iconClass: 'text-blue-400', href: `${base}/members` }
 	]);
 
 	function isActive(href: string) {

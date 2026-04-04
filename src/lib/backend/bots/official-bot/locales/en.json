@@ -225,11 +225,11 @@
 			"submitFailed": "❌ **Failed to Submit Feedback**\\n\\nError: {error}\\n\\nPlease try again later."
 		}
 	},
-	"staffReport": {
+	"staffRating": {
 		"title": "📋 Report Staff Member",
 		"selectStaff": "Select Staff Member",
 		"selectStaffPlaceholder": "Choose a staff member to report...",
-		"button": "🛡️ Staff Report",
+		"button": "🛡️ Staff Rating",
 		"selectRatingPrompt": "Select a rating",
 		"selectCategoryPrompt": "Select a category",
 		"status": {

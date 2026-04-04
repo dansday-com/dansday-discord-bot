@@ -11,7 +11,7 @@
 	let roleStart = $state<string>(data.settings?.role_start ?? '');
 	let roleEnd = $state<string>(data.settings?.role_end ?? '');
 	let cooldownDays = $state<number>(data.settings?.cooldown_days ?? 1);
-	let reportChannel = $state<string>(data.settings?.report_channel_id ?? '');
+	let reviewChannel = $state<string>(data.settings?.review_channel_id ?? '');
 	let ratingChannel = $state<string>(data.settings?.rating_channel_id ?? '');
 	let pendingRole = $state<string>(data.settings?.pending_role ?? '');
 
@@ -23,11 +23,11 @@
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
 				body: JSON.stringify({
-					component: 'staff_report_rating',
+					component: 'staff_rating',
 					role_start: roleStart,
 					role_end: roleEnd,
 					cooldown_days: cooldownDays,
-					report_channel_id: reportChannel,
+					review_channel_id: reviewChannel,
 					rating_channel_id: ratingChannel,
 					pending_role: pendingRole
 				})
@@ -45,9 +45,9 @@
 
 <div class="bg-ash-800 border-ash-700 space-y-5 rounded-xl border p-4 sm:p-6">
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
-		<i class="fas fa-clipboard-check text-orange-400"></i>Staff Report & Rating
+		<i class="fas fa-clipboard-check text-orange-400"></i>Staff Rating
 	</h3>
-	<p class="text-ash-400 text-xs">Configure staff report channels, rating cooldown, and automatic rating-role placement.</p>
+	<p class="text-ash-400 text-xs">Review queue, rating announcements, cooldown, and rating-role placement.</p>
 
 	<div>
 		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
@@ -82,10 +82,10 @@
 
 	<div>
 		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
-			<i class="fas fa-flag mr-1 text-orange-400"></i>Staff Report Channel
+			<i class="fas fa-flag mr-1 text-orange-400"></i>Review channel
 		</label>
-		<p class="text-ash-500 mb-2 text-xs">Where staff reports are posted for review. Falls back to the main/default channel if empty.</p>
-		<ChannelPicker channels={data.channels} categories={data.categories} value={reportChannel} onchange={(id) => (reportChannel = id)} />
+		<p class="text-ash-500 mb-2 text-xs">Where submissions go for staff review. Uses the default channel if empty.</p>
+		<ChannelPicker channels={data.channels} categories={data.categories} value={reviewChannel} onchange={(id) => (reviewChannel = id)} />
 	</div>
 
 	<div>
@@ -98,9 +98,9 @@
 
 	<div>
 		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
-			<i class="fas fa-user-shield mr-1 text-orange-400"></i>Pending Report Role
+			<i class="fas fa-user-shield mr-1 text-orange-400"></i>Pending review role
 		</label>
-		<p class="text-ash-500 mb-2 text-xs">Role to mention when a pending report is posted. Optional.</p>
+		<p class="text-ash-500 mb-2 text-xs">Role to mention on pending submissions. Optional.</p>
 		<RolePicker roles={data.roles} value={pendingRole} single placeholder="None" onchange={(v) => (pendingRole = v as string)} />
 	</div>
 

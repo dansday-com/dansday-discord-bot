@@ -21,16 +21,16 @@ import {
 } from './interface/giveaway.js';
 import { handleSettingsButton, handleLanguageButton, handleLanguageSelect, handleDMToggleButton } from './interface/settings.js';
 import {
-	handleStaffReportButton,
-	handleStaffReportUserSelect,
-	handleStaffReportModal,
-	handleStaffReportRatingSelect,
-	handleStaffReportCategorySelect,
-	handleStaffReportContinue,
-	handleStaffReportApprove,
-	handleStaffReportReject,
-	handleStaffReportDecisionModal
-} from './interface/staffreportrating.js';
+	handleStaffRatingButton,
+	handleStaffRatingUserSelect,
+	handleStaffRatingModal,
+	handleStaffRatingScoreSelect,
+	handleStaffRatingCategorySelect,
+	handleStaffRatingContinue,
+	handleStaffRatingApprove,
+	handleStaffRatingReject,
+	handleStaffRatingDecisionModal
+} from './interface/staffrating.js';
 import { handleNotificationsButton, handleNotificationsSelect } from './interface/notifications.js';
 import {
 	handleContentCreatorButton,
@@ -130,11 +130,11 @@ async function handleMenuButton(interaction) {
 		);
 	}
 
-	if (await hasPermission(member, 'staff_report')) {
+	if (await hasPermission(member, 'staff_rating')) {
 		buttons.push(
 			new ButtonBuilder()
-				.setCustomId('bot_staff_report')
-				.setLabel(await translate('staffReport.button', interaction.guild.id, interaction.user.id))
+				.setCustomId('bot_staff_rating')
+				.setLabel(await translate('staffRating.button', interaction.guild.id, interaction.user.id))
 				.setStyle(ButtonStyle.Success)
 		);
 	}
@@ -260,7 +260,8 @@ export async function handleButtonInteraction(interaction, client) {
 			await handleFeedbackButton(interaction);
 			break;
 		case 'bot_staff_report':
-			await handleStaffReportButton(interaction);
+		case 'bot_staff_rating':
+			await handleStaffRatingButton(interaction);
 			break;
 		case 'bot_notifications':
 			await handleNotificationsButton(interaction);
@@ -303,15 +304,16 @@ export async function handleButtonInteraction(interaction, client) {
 			await handleLanguageButton(interaction);
 			break;
 		case 'staff_report_back_to_staff':
-			await handleStaffReportButton(interaction);
+		case 'staff_rating_back_to_staff':
+			await handleStaffRatingButton(interaction);
 			break;
 		default:
-			if (customId.startsWith('staff_report_continue')) {
-				await handleStaffReportContinue(interaction);
-			} else if (customId.startsWith('staff_report_approve')) {
-				await handleStaffReportApprove(interaction);
-			} else if (customId.startsWith('staff_report_reject')) {
-				await handleStaffReportReject(interaction);
+			if (customId.startsWith('staff_rating_continue') || customId.startsWith('staff_report_continue')) {
+				await handleStaffRatingContinue(interaction);
+			} else if (customId.startsWith('staff_rating_approve') || customId.startsWith('staff_report_approve')) {
+				await handleStaffRatingApprove(interaction);
+			} else if (customId.startsWith('staff_rating_reject') || customId.startsWith('staff_report_reject')) {
+				await handleStaffRatingReject(interaction);
 			} else if (customId.startsWith('content_creator_approve')) {
 				await handleContentCreatorApprove(interaction);
 			} else if (customId.startsWith('content_creator_reject')) {
@@ -461,12 +463,12 @@ function init(client) {
 					await handleFeedbackModal(interaction);
 				} else if (interaction.customId === 'afk_set') {
 					await handleAFKModal(interaction);
-				} else if (interaction.customId.startsWith('staff_report_submit')) {
-					await handleStaffReportModal(interaction);
+				} else if (interaction.customId.startsWith('staff_rating_submit') || interaction.customId.startsWith('staff_report_submit')) {
+					await handleStaffRatingModal(interaction);
 				} else if (interaction.customId === 'content_creator_apply') {
 					await handleContentCreatorModal(interaction);
 				} else if (interaction.customId.startsWith('sr_rev|')) {
-					await handleStaffReportDecisionModal(interaction);
+					await handleStaffRatingDecisionModal(interaction);
 				} else if (interaction.customId.startsWith('cc_rev|')) {
 					await handleContentCreatorDecisionModal(interaction);
 				} else if (interaction.customId.startsWith('giveaway_create')) {
@@ -505,12 +507,12 @@ function init(client) {
 				const selectedValues = interaction.values;
 				await logger.log(`📋 String select: "${customId}" → [${selectedValues.join(', ')}] by ${user.tag} (${user.id}) in ${interaction.guild?.name || 'DM'}`);
 
-				if (customId === 'staff_report_select_user') {
-					await handleStaffReportUserSelect(interaction);
-				} else if (customId.startsWith('staff_report_rating')) {
-					await handleStaffReportRatingSelect(interaction);
-				} else if (customId.startsWith('staff_report_category')) {
-					await handleStaffReportCategorySelect(interaction);
+				if (customId === 'staff_rating_select_user' || customId === 'staff_report_select_user') {
+					await handleStaffRatingUserSelect(interaction);
+				} else if (customId.startsWith('staff_rating_score') || customId.startsWith('staff_report_rating')) {
+					await handleStaffRatingScoreSelect(interaction);
+				} else if (customId.startsWith('staff_rating_category') || customId.startsWith('staff_report_category')) {
+					await handleStaffRatingCategorySelect(interaction);
 				} else if (customId === 'settings_language_select') {
 					await handleLanguageSelect(interaction);
 				} else if (customId === 'notifications_select') {
@@ -576,8 +578,8 @@ function init(client) {
 				const selectedUsers = interaction.values;
 				await logger.log(`👤 User selected: "${customId}" → [${selectedUsers.join(', ')}] by ${user.tag} (${user.id}) in ${interaction.guild?.name || 'DM'}`);
 
-				if (customId === 'staff_report_select_user') {
-					await handleStaffReportUserSelect(interaction);
+				if (customId === 'staff_rating_select_user' || customId === 'staff_report_select_user') {
+					await handleStaffRatingUserSelect(interaction);
 				} else {
 					await logger.log(`⚠️ Unknown user select: "${customId}" by ${user.tag} (${user.id})`);
 				}

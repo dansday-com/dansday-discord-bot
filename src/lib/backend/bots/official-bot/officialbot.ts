@@ -11,7 +11,7 @@ import interfaceComponent from './components/interface.js';
 import customSupporterRole from './components/interface/customsupporterrole.js';
 import afk from './components/interface/afk.js';
 import giveaway from './components/interface/giveaway.js';
-import staffReportRating from './components/staffreportrating.js';
+import staffRating from './components/staffrating.js';
 import sync from './components/sync.js';
 import leveling from './components/leveling.js';
 import contentCreator from './components/interface/contentcreator.js';
@@ -59,7 +59,7 @@ client.on('clientReady', async () => {
 	customSupporterRole.init(client);
 	afk.init(client);
 	giveaway.init(client);
-	staffReportRating.init(client);
+	staffRating.init(client);
 	leveling.init(client);
 	contentCreator.init(client);
 

@@ -47,7 +47,7 @@ export async function hasPermission(member: any, action: string) {
 	if (action === 'staff_only') return isStaffMember || isAdminMember;
 	if (action === 'custom_supporter_role') return isEffectiveSupporter || isStaffMember || isAdminMember;
 	if (action === 'content_creator') return isMemberRole || isEffectiveSupporter || isStaffMember || isAdminMember;
-	if (['feedback', 'afk', 'leveling', 'giveaway', 'settings', 'staff_report', 'notifications'].includes(action)) {
+	if (['feedback', 'afk', 'leveling', 'giveaway', 'settings', 'staff_rating', 'notifications'].includes(action)) {
 		return isMemberRole || isEffectiveSupporter || isStaffMember || isAdminMember;
 	}
 	return false;
@@ -81,7 +81,7 @@ export async function getRequiredRolesForAction(guild: any, action: string) {
 			addRoles(perms.ADMIN_ROLES);
 			return roleNames.length > 0 ? roleNames : ['Content Creator, Supporter, Staff, or Admin'];
 		}
-		if (['feedback', 'afk', 'leveling', 'giveaway', 'settings', 'staff_report', 'notifications', 'menu', 'content_creator'].includes(action)) {
+		if (['feedback', 'afk', 'leveling', 'giveaway', 'settings', 'staff_rating', 'notifications', 'menu', 'content_creator'].includes(action)) {
 			addRoles(perms.MEMBER_ROLES);
 			addRoles(perms.CONTENT_CREATOR_ROLES);
 			addRoles(perms.SUPPORTER_ROLES);
@@ -107,7 +107,7 @@ export async function getPermissionDeniedMessage(guild: any, action: string, use
 		leveling: 'Leveling',
 		giveaway: 'Giveaway',
 		settings: 'Settings',
-		staff_report: 'Staff Report',
+		staff_rating: 'Staff rating',
 		content_creator: 'Content Creator',
 		notifications: 'Notifications',
 		menu: 'Menu',

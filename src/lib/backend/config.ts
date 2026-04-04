@@ -458,8 +458,10 @@ export const STAFF_RATING = {
 	async getConfig(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting staff rating config');
-		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, 'staff_report_rating');
-		return settings?.settings || null;
+		const serverId = (await getOfficialBotServer(guildId)).id;
+		let row = await db.getServerSettings(serverId, 'staff_rating');
+		if (!row) row = await db.getServerSettings(serverId, 'staff_report_rating');
+		return row?.settings || null;
 	},
 
 	async getRatingChannel(guildId: string) {
@@ -467,15 +469,17 @@ export const STAFF_RATING = {
 		requireGuildId(guildId, 'getting staff rating channel');
 		const config = await STAFF_RATING.getConfig(guildId);
 		if (config?.rating_channel_id) return config.rating_channel_id;
-		if (!config?.report_channel_id) return await getMainChannel(guildId);
+		const reviewId = config?.review_channel_id || config?.report_channel_id;
+		if (!reviewId) return await getMainChannel(guildId);
 		return null;
 	},
 
-	async getReportChannel(guildId: string) {
+	async getReviewChannel(guildId: string) {
 		requireBotConfig();
-		requireGuildId(guildId, 'getting staff report channel');
+		requireGuildId(guildId, 'getting staff rating review channel');
 		const config = await STAFF_RATING.getConfig(guildId);
-		if (config?.report_channel_id) return config.report_channel_id;
+		const reviewId = config?.review_channel_id || config?.report_channel_id;
+		if (reviewId) return reviewId;
 		if (!config?.rating_channel_id) return await getMainChannel(guildId);
 		return null;
 	},

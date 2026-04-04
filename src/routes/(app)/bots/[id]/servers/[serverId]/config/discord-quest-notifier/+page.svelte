@@ -67,7 +67,7 @@
 		<i class="fas fa-gem text-sky-400"></i>Discord Quest notifier
 	</h3>
 	<p class="text-ash-400 text-xs">
-		Orb quest alerts from this server’s selfbot; not the same as <strong class="text-ash-200">Channel notifications</strong>.
+		Orb quest alerts from this server’s selfbot; not the same as <strong class="text-ash-200">Channel notification</strong>.
 	</p>
 
 	<div class="flex items-center justify-between gap-4">

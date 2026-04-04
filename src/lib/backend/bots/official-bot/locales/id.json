@@ -222,7 +222,7 @@
 			"submitFailed": "❌ **Gagal Mengirim Feedback**\\n\\nError: {error}\\n\\nSilakan coba lagi nanti."
 		}
 	},
-	"staffReport": {
+	"staffRating": {
 		"title": "📋 Laporkan Staff",
 		"selectStaff": "Pilih Staff",
 		"selectStaffPlaceholder": "Pilih staff yang ingin dilaporkan...",

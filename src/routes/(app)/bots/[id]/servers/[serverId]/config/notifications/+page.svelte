@@ -39,15 +39,9 @@
 
 <div class="bg-ash-800 border-ash-700 space-y-5 rounded-xl border p-4 sm:p-6">
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
-		<i class="fas fa-bell text-rose-400"></i>Channel notification roles
+		<i class="fas fa-bell text-rose-400"></i>Channel notification
 	</h3>
-	<p class="text-ash-400 text-xs">
-		<strong class="text-ash-200">Server channel pings:</strong> create roles from channels in selected categories so members can opt in to pings per channel from
-		the bot menu. This is separate from Discord’s in-app Quests or Orbs.
-	</p>
-	<p class="text-ash-500 text-xs">
-		For <strong class="text-ash-300">Discord Quest / Orb</strong> alerts, use <strong class="text-ash-300">Discord Quests</strong> in the sidebar.
-	</p>
+	<p class="text-ash-400 text-xs">Per-channel ping roles from selected categories (bot menu). Not Discord Quest / Orb alerts.</p>
 
 	<div>
 		<label class="text-ash-300 mb-1.5 block text-xs font-medium">

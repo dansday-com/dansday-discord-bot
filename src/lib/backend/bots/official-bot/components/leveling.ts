@@ -688,6 +688,13 @@ async function handleVoiceTick(sessionKey) {
 	if (!session) return;
 
 	try {
+		if (!(await isComponentFeatureEnabled(session.guildId, serverSettingsComponent.leveling))) {
+			if (session.interval) clearInterval(session.interval);
+			voiceSessions.delete(sessionKey);
+			await db.updateMemberLevelStats(session.memberId, { isInVoice: false });
+			return;
+		}
+
 		const botConfig = getBotConfig();
 		if (!botConfig?.id) return;
 
@@ -794,39 +801,82 @@ async function recalculateAllMemberLevels(client) {
 	}
 }
 
+export async function resumeLevelingVoiceForGuild(client, guild) {
+	try {
+		const botConfig = getBotConfig();
+		if (!botConfig?.id || !guild) return;
+
+		const activeVoiceMemberIds = new Set();
+
+		for (const [, voiceState] of guild.voiceStates.cache) {
+			if (voiceState.channelId && voiceState.member) {
+				activeVoiceMemberIds.add(voiceState.member.id);
+				try {
+					await startVoiceSession(voiceState, true);
+				} catch (err) {
+					await logger.log(`❌ Leveling: failed to resume voice session for ${voiceState.id}: ${err.message}`);
+				}
+			}
+		}
+
+		const server = await db.getServerByDiscordId(botConfig.id, guild.id);
+		if (server) {
+			const membersWithFlag = await db.getMembersWithInVoiceFlag(server.id);
+			const staleMemberIds = membersWithFlag.filter((m) => !activeVoiceMemberIds.has(m.discord_member_id)).map((m) => m.member_id);
+
+			if (staleMemberIds.length > 0) {
+				for (const memberId of staleMemberIds) {
+					await db.updateMemberLevelStats(memberId, { isInVoice: false });
+				}
+				await logger.log(`🧹 Leveling: Cleaned up ${staleMemberIds.length} stale is_in_voice flag(s) for guild ${guild.name}`);
+			}
+		}
+	} catch (error) {
+		await logger.log(`❌ Leveling resume guild error (${guild?.id}): ${error.message}`);
+	}
+}
+
+export async function stopLevelingVoiceSessionsForGuild(guildDiscordId) {
+	if (!guildDiscordId) return;
+	const prefix = `${guildDiscordId}:`;
+	for (const [sessionKey, session] of [...voiceSessions.entries()]) {
+		if (!sessionKey.startsWith(prefix)) continue;
+		if (session?.interval) clearInterval(session.interval);
+		voiceSessions.delete(sessionKey);
+
+		const botConfig = getBotConfig();
+		if (!botConfig?.id) continue;
+		const server = await db.getServerByDiscordId(botConfig.id, guildDiscordId);
+		if (!server) continue;
+		const dbMember = await db.getMemberByDiscordId(server.id, session.discordMemberId);
+		if (dbMember) {
+			await db.updateMemberLevelStats(dbMember.id, { isInVoice: false });
+		}
+	}
+	await logger.log(`🔇 Leveling: Stopped voice XP timers for guild ${guildDiscordId}`);
+}
+
+/** Call when the leveling module is toggled from the panel so voice XP starts/stops without a bot restart. */
+export async function syncLevelingRuntime(client, guildDiscordId, enabled) {
+	if (!client || !guildDiscordId) return;
+	if (enabled) {
+		let guild = client.guilds.cache.get(guildDiscordId);
+		if (!guild) {
+			guild = await client.guilds.fetch(guildDiscordId).catch(() => null);
+		}
+		if (guild) await resumeLevelingVoiceForGuild(client, guild);
+	} else {
+		await stopLevelingVoiceSessionsForGuild(guildDiscordId);
+	}
+}
+
 async function resumeVoiceSessions(client) {
 	try {
 		const botConfig = getBotConfig();
 		if (!botConfig?.id) return;
 
 		for (const guild of client.guilds.cache.values()) {
-			let resumedCount = 0;
-			const activeVoiceMemberIds = new Set();
-
-			for (const [, voiceState] of guild.voiceStates.cache) {
-				if (voiceState.channelId && voiceState.member) {
-					activeVoiceMemberIds.add(voiceState.member.id);
-					try {
-						await startVoiceSession(voiceState, true);
-						resumedCount++;
-					} catch (err) {
-						await logger.log(`❌ Leveling: failed to resume voice session for ${voiceState.id}: ${err.message}`);
-					}
-				}
-			}
-
-			const server = await db.getServerByDiscordId(botConfig.id, guild.id);
-			if (server) {
-				const membersWithFlag = await db.getMembersWithInVoiceFlag(server.id);
-				const staleMemberIds = membersWithFlag.filter((m) => !activeVoiceMemberIds.has(m.discord_member_id)).map((m) => m.member_id);
-
-				if (staleMemberIds.length > 0) {
-					for (const memberId of staleMemberIds) {
-						await db.updateMemberLevelStats(memberId, { isInVoice: false });
-					}
-					await logger.log(`🧹 Leveling: Cleaned up ${staleMemberIds.length} stale is_in_voice flag(s) for guild ${guild.name}`);
-				}
-			}
+			await resumeLevelingVoiceForGuild(client, guild);
 		}
 	} catch (error) {
 		await logger.log(`❌ Leveling resume error: ${error.message}`);

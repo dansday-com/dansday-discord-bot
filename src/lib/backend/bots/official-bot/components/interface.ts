@@ -1,4 +1,4 @@
-import { AFK_CONFIG, CONTENT_CREATOR, getEmbedConfig, getServerForCurrentBot, isComponentFeatureEnabled, serverSettingsComponent } from '../../../config.js';
+import { AFK_CONFIG, getEmbedConfig, getServerForCurrentBot, isComponentFeatureEnabled, serverSettingsComponent } from '../../../config.js';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
 import { logger } from '../../../../utils/index.js';
 import { hasPermission, getPermissionDeniedMessage } from './permissions.js';
@@ -43,12 +43,13 @@ import {
 	handleContentCreatorReject,
 	handleContentCreatorDecisionModal
 } from './interface/contentcreator.js';
-import { translate, t } from '../i18n.js';
+import { translate } from '../i18n.js';
 
 async function replyIfFeatureDisabled(interaction: any, component: string): Promise<boolean> {
 	if (!interaction.guild) return false;
 	if (await isComponentFeatureEnabled(interaction.guild.id, component)) return false;
-	await interaction.reply({ content: 'This feature is disabled for this server.', flags: 64 }).catch(() => null);
+	const msg = await translate('common.errors.featureDisabled', interaction.guild.id, interaction.user.id);
+	await interaction.reply({ content: msg, flags: 64 }).catch(() => null);
 	return true;
 }
 
@@ -149,9 +150,10 @@ async function handleMenuButton(interaction) {
 		);
 	}
 
-	const contentCreatorRoleId = await CONTENT_CREATOR.getContentCreatorRole(interaction.guild.id).catch(() => null);
-	const alreadyContentCreator = contentCreatorRoleId ? member.roles?.cache?.has(contentCreatorRoleId) : false;
-	if (await hasPermission(member, 'content_creator')) {
+	if (
+		(await hasPermission(member, 'content_creator')) &&
+		(await isComponentFeatureEnabled(interaction.guild.id, serverSettingsComponent.content_creator))
+	) {
 		buttons.push(
 			new ButtonBuilder()
 				.setCustomId('bot_content_creator')
@@ -376,8 +378,9 @@ export async function createInterfaceEmbed(client, guildId, userId = null) {
 	}
 
 	const embedConfig = await getEmbedConfig(guildId);
-	const title = t('interface.panel.title', 'en');
-	const description = t('interface.panel.description', 'en');
+	const langUserId = userId || '0';
+	const title = await translate('interface.panel.title', guildId, langUserId);
+	const description = await translate('interface.panel.description', guildId, langUserId);
 
 	const interfaceEmbed = {
 		color: embedConfig.COLOR,
@@ -395,8 +398,8 @@ export async function createInterfaceEmbed(client, guildId, userId = null) {
 	return interfaceEmbed;
 }
 
-export async function createInterfaceButtons(guildId = null, userId = null) {
-	const menuLabel = t('menu.button', 'en');
+export async function createInterfaceButtons(guildId: string | null = null, userId: string | null = null) {
+	const menuLabel = await translate('menu.button', guildId || '', userId || '0');
 	const menuButton = new ButtonBuilder().setCustomId('bot_menu').setLabel(menuLabel).setStyle(ButtonStyle.Primary);
 
 	const buttonRow = new ActionRowBuilder().addComponents(menuButton);

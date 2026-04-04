@@ -6,12 +6,15 @@
 	},
 	"interface": {
 		"panel": {
+			"title": "Panel Bot Dansday",
+			"description": "Klik **Menu** untuk mengakses fitur bot sesuai izin role kamu.",
 			"sent": "✅ Antarmuka bot dikirim ke {channel}!",
 			"error": "❌ Gagal mengirim antarmuka: {error}"
 		}
 	},
 	"common": {
 		"errors": {
+			"featureDisabled": "❌ Fitur ini dimatikan untuk server ini. Admin dapat mengaktifkannya di panel konfigurasi bot.",
 			"memberNotFound": "❌ Gagal mengambil informasi anggota.",
 			"unknownButton": "❌ Interaksi tombol tidak dikenal.",
 			"buttonError": "❌ **Error Tombol**: Terjadi kesalahan saat memproses klik tombol kamu.\\n\\nSilakan coba lagi atau hubungi administrator.",

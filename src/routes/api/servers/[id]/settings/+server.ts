@@ -31,8 +31,35 @@ function canEditServer(locals: App.Locals, serverId: string): boolean {
 	return locals.user.server_id === Number(serverId);
 }
 
+async function postOfficialBotWebhook(bot: { port: number | null; secret_key: string | null } | null | undefined, payload: Record<string, unknown>): Promise<void> {
+	if (!bot?.port || !bot.secret_key) return;
+	const { request } = await import('http');
+	const body = JSON.stringify(payload);
+	const options = {
+		hostname: 'localhost',
+		port: bot.port,
+		path: '/',
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+			'Content-Length': Buffer.byteLength(body),
+			'X-Secret-Key': bot.secret_key
+		}
+	};
+	await new Promise<void>((resolve) => {
+		const req = request(options, () => resolve());
+		req.on('error', () => resolve());
+		req.write(body);
+		req.end();
+	});
+}
+
 export const POST: RequestHandler = async ({ locals, params, request }) => {
-	if (!canEditServer(locals, params.id)) {
+	const panelServerId = params.id;
+	if (!panelServerId) {
+		return json({ error: 'Server id required' }, { status: 400 });
+	}
+	if (!canEditServer(locals, panelServerId)) {
 		return json({ error: 'Access denied' }, { status: 403 });
 	}
 
@@ -43,46 +70,43 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			return json({ error: 'component is required' }, { status: 400 });
 		}
 
-		let targetServerId = params.id;
+		let targetServerId = panelServerId;
 		if (component === SERVER_SETTINGS.component.notifications) {
-			const officialServerId = await db.getOfficialBotServerIdForServer(params.id);
+			const officialServerId = await db.getOfficialBotServerIdForServer(panelServerId);
 			if (officialServerId) targetServerId = officialServerId;
 		}
 
 		const result = await db.upsertServerSettings(targetServerId, component, settings);
 
+		const panelServer = await db.getServer(panelServerId);
+		const officialBotId = panelServer ? await db.resolveOfficialBotIdForServer(panelServer) : null;
+		const bot = officialBotId ? await db.getBot(officialBotId) : null;
+
 		if (component === SERVER_SETTINGS.component.notifications) {
 			try {
-				const server = await db.getServer(targetServerId);
-				const officialBotId = server ? await db.resolveOfficialBotIdForServer(server) : null;
-				const bot = officialBotId ? await db.getBot(officialBotId) : null;
-				if (server && bot && server.discord_server_id) {
-					const { request: httpRequest } = await import('http');
-					const payload = JSON.stringify({ type: 'sync_notification_roles', guild_id: server.discord_server_id });
-					const options = {
-						hostname: 'localhost',
-						port: bot.port,
-						path: '/',
-						method: 'POST',
-						headers: {
-							'Content-Type': 'application/json',
-							'Content-Length': Buffer.byteLength(payload),
-							'X-Secret-Key': bot.secret_key
-						}
-					};
-					await new Promise<void>((resolve) => {
-						const req = httpRequest(options, () => resolve());
-						req.on('error', () => resolve());
-						req.write(payload);
-						req.end();
-					});
+				const notifServer = await db.getServer(targetServerId);
+				if (notifServer?.discord_server_id && bot) {
+					await postOfficialBotWebhook(bot, { type: 'sync_notification_roles', guild_id: notifServer.discord_server_id });
 				}
 			} catch (_) {}
 		}
 
-		const server = await db.getServer(params.id);
-		const serverName = server ? server.name : `Server ID: ${params.id}`;
-		logger.log(`${locals.user.username} changed ${component} configuration on server "${serverName}"`);
+		const featureSwitchIds = SERVER_SETTINGS.withFeatureSwitch as readonly string[];
+		if (panelServer?.discord_server_id && bot && featureSwitchIds.includes(component) && component !== SERVER_SETTINGS.component.notifications) {
+			const enabled = (settings as { enabled?: boolean }).enabled !== false;
+			try {
+				await postOfficialBotWebhook(bot, {
+					type: 'sync_component_runtime',
+					guild_id: panelServer.discord_server_id,
+					component,
+					enabled
+				});
+			} catch (_) {}
+		}
+
+		const serverName = panelServer ? panelServer.name : `Server ID: ${panelServerId}`;
+		const actor = locals.user.authenticated && 'username' in locals.user ? locals.user.username : 'unknown';
+		logger.log(`${actor} changed ${component} configuration on server "${serverName}"`);
 
 		return json({ success: true, data: result });
 	} catch (error: any) {

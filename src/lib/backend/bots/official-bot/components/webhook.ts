@@ -346,6 +346,28 @@ async function handleWebhookRequest(req, res) {
 						res.writeHead(500, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify({ error: 'Failed to send DM', details: dmErr.message }));
 					}
+				} else if (payload.type === 'sync_component_runtime') {
+					try {
+						const guildId = payload.guild_id;
+						const component = payload.component;
+						const enabled = payload.enabled !== false;
+						if (!guildId || !component) {
+							res.writeHead(400, { 'Content-Type': 'application/json' });
+							res.end(JSON.stringify({ error: 'Missing guild_id or component' }));
+							return;
+						}
+						if (component === serverSettingsComponent.leveling) {
+							const { syncLevelingRuntime } = await import('./leveling.js');
+							await syncLevelingRuntime(client, guildId, enabled);
+							await logger.log(`📥 sync_component_runtime: leveling ${enabled ? 'on' : 'off'} for guild ${guildId}`);
+						}
+						res.writeHead(200, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify({ success: true }));
+					} catch (runtimeErr) {
+						await logger.log(`❌ sync_component_runtime failed: ${runtimeErr.message}`);
+						res.writeHead(500, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify({ error: 'sync_component_runtime failed', details: runtimeErr.message }));
+					}
 				} else if (payload.type === 'sync_notification_roles') {
 					try {
 						const guildId = payload.guild_id;

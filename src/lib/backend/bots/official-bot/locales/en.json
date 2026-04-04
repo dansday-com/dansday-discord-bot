@@ -15,6 +15,7 @@
 	},
 	"common": {
 		"errors": {
+			"featureDisabled": "❌ This feature is turned off for this server. An administrator can enable it in the bot configuration panel.",
 			"memberNotFound": "❌ Failed to fetch member information.",
 			"unknownButton": "❌ Unknown button interaction.",
 			"buttonError": "❌ **Button Error**: An error occurred while processing your button click.\\n\\nPlease try again or contact an administrator.",

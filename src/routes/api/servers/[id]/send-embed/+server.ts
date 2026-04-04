@@ -5,6 +5,8 @@ import { logger } from '$lib/utils/index.js';
 import { existsSync, readFileSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { request as httpRequest } from 'http';
+import { SERVER_SETTINGS } from '$lib/serverSettingsComponents.js';
+import { mainAppearanceBlockingMessage, messageFromBotWebhookPayload } from '$lib/utils/configPrerequisiteErrors.js';
 
 const uploadsDir = join(process.cwd(), 'data', 'embed-images');
 
@@ -47,6 +49,12 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 
 		if (!bot.port || !bot.secret_key) {
 			return json({ success: false, error: 'Bot webhook not configured' }, { status: 400 });
+		}
+
+		const mainRow = await db.getServerSettings(serverId, SERVER_SETTINGS.component.main).catch(() => null);
+		const appearanceBlock = mainAppearanceBlockingMessage(mainRow?.settings ?? undefined);
+		if (appearanceBlock) {
+			return json({ success: false, error: appearanceBlock }, { status: 400 });
 		}
 
 		let imageBuffer: Buffer | null = null;
@@ -130,7 +138,8 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			return json({ success: true, message: 'Embed sent successfully' });
 		} else {
 			cleanup();
-			return json({ success: false, error: result.body.error || 'Failed to send embed' }, { status: result.status });
+			const msg = messageFromBotWebhookPayload(result.body);
+			return json({ success: false, error: msg }, { status: result.status });
 		}
 	} catch (error: any) {
 		if (uploaded_image_path) {

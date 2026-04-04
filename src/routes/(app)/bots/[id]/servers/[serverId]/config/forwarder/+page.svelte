@@ -245,7 +245,11 @@
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
-				body: JSON.stringify({ component: SERVER_SETTINGS.component.forwarder, forwarders })
+				body: JSON.stringify({
+					component: SERVER_SETTINGS.component.forwarder,
+					enabled: featureEnabled,
+					forwarders
+				})
 			});
 			const d = await res.json();
 			if (d.success) {

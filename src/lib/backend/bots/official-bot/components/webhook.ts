@@ -1,4 +1,4 @@
-import { COMMUNICATION, NOTIFICATIONS, getEmbedConfig } from '../../../config.js';
+import { COMMUNICATION, NOTIFICATIONS, getEmbedConfig, isComponentFeatureEnabled, serverSettingsComponent } from '../../../config.js';
 import { resolveEmbedFooterPlaceholders } from '../../../../utils/embedFooter.js';
 import { EmbedBuilder } from 'discord.js';
 import { logger } from '../../../../utils/index.js';
@@ -260,6 +260,11 @@ async function handleWebhookRequest(req, res) {
 						if (!guildId || !channelId || !questName || !questUrl) {
 							res.writeHead(400, { 'Content-Type': 'application/json' });
 							res.end(JSON.stringify({ error: 'Missing guild_id, channel_id, quest_name, or quest_url' }));
+							return;
+						}
+						if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.discord_quest_notifier))) {
+							res.writeHead(403, { 'Content-Type': 'application/json' });
+							res.end(JSON.stringify({ error: 'Quest notifier module is disabled for this server.' }));
 							return;
 						}
 						const { sendQuestNotificationMessage } = await import('./questNotifier.js');

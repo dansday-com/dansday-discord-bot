@@ -50,14 +50,20 @@
 				method: 'POST',
 				credentials: 'include'
 			});
-			const d = await res.json();
+			let d: { success?: boolean; error?: string; quest?: { name?: string } } = {};
+			try {
+				d = await res.json();
+			} catch {
+				showToast('Could not read the server response. Try again.', 'error');
+				return;
+			}
 			if (d.success) {
 				showToast(`Test sent: ${d.quest?.name || 'quest'}`, 'success');
 			} else {
 				showToast(d.error || 'Test failed', 'error');
 			}
 		} catch {
-			showToast('Test request failed', 'error');
+			showToast('Network error — could not reach the server.', 'error');
 		} finally {
 			testing = false;
 		}
@@ -114,7 +120,7 @@
 
 	<button
 		onclick={testNotifier}
-		disabled={testing || !channelId}
+		disabled={testing || !channelId || !featureEnabled}
 		class="border-ash-600 text-ash-100 hover:bg-ash-700 flex w-full items-center justify-center gap-2 rounded-lg border py-2.5 text-sm font-medium transition-all disabled:opacity-50"
 	>
 		{#if testing}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas fa-vial text-sky-400"></i>{/if}

@@ -124,7 +124,13 @@
 				credentials: 'include',
 				body: JSON.stringify(body)
 			});
-			const d = await res.json();
+			let d: { success?: boolean; error?: string } = {};
+			try {
+				d = await res.json();
+			} catch {
+				showToast('Could not read the server response. Try again.', 'error');
+				return;
+			}
 			if (d.success) {
 				showToast('Embed sent!', 'success');
 			} else {

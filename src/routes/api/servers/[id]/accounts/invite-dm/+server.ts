@@ -4,6 +4,7 @@ import db from '$lib/database.js';
 import { randomBytes } from 'crypto';
 import { logger } from '$lib/utils/index.js';
 import { request as httpRequest } from 'http';
+import { messageFromBotWebhookPayload } from '$lib/utils/configPrerequisiteErrors.js';
 
 function canManageAccounts(locals: App.Locals, serverId: number): boolean {
 	if (!locals.user.authenticated) return false;
@@ -109,5 +110,6 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 		return json({ success: true, invite_link: inviteUrl, token });
 	}
 
-	return json({ success: false, error: result.body.error || 'Failed to send DM', details: result.body.details }, { status: result.status });
+	const errMsg = messageFromBotWebhookPayload(result.body);
+	return json({ success: false, error: errMsg }, { status: result.status });
 };

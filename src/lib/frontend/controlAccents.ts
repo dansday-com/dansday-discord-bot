@@ -7,7 +7,9 @@ export const CHANNEL_PICKER_ACCENT = {
 	modalTitleIcon: 'fas fa-hashtag text-violet-400',
 	searchIcon: 'fas fa-search text-violet-300',
 	emptyStateIcon: 'mb-2 text-3xl text-violet-300/80',
-	listChevron: 'text-violet-300/80'
+	listChevron: 'text-violet-300/80',
+	labelIcon: 'fas fa-hashtag mr-1 text-violet-400',
+	labelText: 'text-violet-100'
 } as const;
 
 export const CATEGORY_PICKER_ACCENT = {

@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { NUMERIC_SELECT_ACCENT } from '$lib/frontend/controlAccents.js';
+
 	type Props = {
 		label: string;
 		description?: string;

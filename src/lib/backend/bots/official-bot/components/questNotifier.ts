@@ -7,7 +7,6 @@ import { extractOrbQuests, fetchQuestsMe, type QuestOrbSummary } from '../../../
 let tickTimeoutRef: ReturnType<typeof setTimeout> | null = null;
 
 const POLL_MS = 60_000;
-/** Extra 0–15s after each run so hosts don’t hit Discord on a fixed wall-clock beat (similar intent to spreading traffic with proxies in [7xrrr/discord-quests-bot](https://github.com/7xrrr/discord-quests-bot)). */
 const POLL_JITTER_MS = 15_000;
 
 export async function sendQuestNotificationMessage(client: Client, guildId: string, channelId: string, quest: QuestOrbSummary, opts?: { test?: boolean }) {

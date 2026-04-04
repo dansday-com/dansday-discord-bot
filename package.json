@@ -18,6 +18,7 @@
 		"@opentelemetry/resources": "^2.6.1",
 		"@opentelemetry/sdk-logs": "^0.214.0",
 		"@opentelemetry/semantic-conventions": "^1.40.0",
+		"axios": "^1.14.0",
 		"bcrypt": "^6.0.0",
 		"discord-api-types": "^0.38.44",
 		"discord.js": "^14.26.0",
@@ -27,9 +28,9 @@
 		"luxon": "^3.7.2",
 		"mysql2": "^3.20.0",
 		"nodemailer": "^8.0.4",
+		"proxy-agent": "^8.0.0",
 		"redis": "^5.11.0",
-		"tiktok-live-connector": "^2.1.1-beta1",
-		"undici": "^8.0.1"
+		"tiktok-live-connector": "^2.1.1-beta1"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-node": "^5.5.4",

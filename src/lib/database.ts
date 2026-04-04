@@ -1840,7 +1840,6 @@ export type ServerDiscordOrbEntry = {
 	quest_task_label: string;
 };
 
-/** Record that this quest was announced (or baselined). Idempotent per (server, quest). */
 async function insertServerDiscordOrbNotified(serverId: number, discordQuestId: string, questTaskType: string, questTaskLabel: string): Promise<void> {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
@@ -1862,7 +1861,6 @@ async function insertServerDiscordOrbNotified(serverId: number, discordQuestId: 
 		});
 }
 
-/** Seed current API quests without having posted — first run / empty table. Survives bot restarts. */
 async function baselineServerDiscordOrbEntries(serverId: number, entries: ServerDiscordOrbEntry[]): Promise<void> {
 	await initializeDatabase();
 	if (entries.length === 0) return;
@@ -2326,10 +2324,6 @@ export async function getLastContentCreatorApplication(serverId: any, memberId: 
 	return rows[0]?.application || null;
 }
 
-/**
- * Another Discord user anywhere in the DB already uses this TikTok (pending row, or latest application per member is approved).
- * Not scoped by server or bot — one handle is unique across the whole table.
- */
 export async function getContentCreatorTiktokConflict(normalizedUsername: string, excludeDiscordMemberId: string) {
 	await initializeDatabase();
 	const u = String(normalizedUsername || '')

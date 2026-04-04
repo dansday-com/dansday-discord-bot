@@ -42,7 +42,6 @@ function truncateReason(text: string) {
 
 const DUPLICATE_CONTENT_CREATOR_AUTO_REJECT_MS = 500;
 
-/** How often to reconcile TikTok Live connections (new approvals, role removals). Stream start/end is still real time per connection; approve/dismiss also sync immediately. */
 const LIVE_WATCHER_RESYNC_MS = 5_000;
 
 async function runDuplicateContentCreatorAutoReject(opts: {

@@ -3,7 +3,6 @@
 	import { formatDbDateTime, formatDbDateTimeLocal, dbUtcValueToIso } from '$lib/utils/datetime.js';
 
 	interface Props {
-		/** UTC instant from DB: SQL datetime string, `Date`, or epoch ms. */
 		value: unknown;
 		includeSeconds?: boolean;
 		fallback?: string;

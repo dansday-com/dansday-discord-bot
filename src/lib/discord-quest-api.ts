@@ -1,5 +1,6 @@
+import axios from 'axios';
 import { RouteBases } from 'discord-api-types/rest/v10';
-import { fetch as undiciFetch, ProxyAgent } from 'undici';
+import { ProxyAgent } from 'proxy-agent';
 
 const QUESTS_ME_PATH = '/quests/@me';
 
@@ -8,7 +9,6 @@ const QUESTS_ME_URL = `${RouteBases.api}${QUESTS_ME_PATH}`;
 const CLIENT_USER_AGENT =
 	'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) discord/1.0.0 Chrome/120.0.0.0 Electron/28.0.0 Safari/537.36';
 
-/** ProxyAgent per URL; bounded cache for per-server `discord_quest_notifier.http_proxy_url` values. */
 const questProxyAgentCache = new Map<string, ProxyAgent>();
 const QUEST_PROXY_AGENT_CACHE_MAX = 32;
 
@@ -23,23 +23,38 @@ export function isValidQuestHttpProxyUrl(raw: string): boolean {
 	}
 }
 
-function getQuestApiDispatcherForUrl(proxyUrl: string | undefined): ProxyAgent | undefined {
-	if (!proxyUrl) return undefined;
-	let agent = questProxyAgentCache.get(proxyUrl);
-	if (!agent) {
-		agent = new ProxyAgent(proxyUrl);
-		questProxyAgentCache.set(proxyUrl, agent);
+function getQuestProxyAgent(proxyUrl: string): ProxyAgent {
+	let ag = questProxyAgentCache.get(proxyUrl);
+	if (!ag) {
+		ag = new ProxyAgent({
+			getProxyForUrl: () => proxyUrl
+		});
+		questProxyAgentCache.set(proxyUrl, ag);
 		while (questProxyAgentCache.size > QUEST_PROXY_AGENT_CACHE_MAX) {
 			const first = questProxyAgentCache.keys().next().value as string | undefined;
 			if (first === undefined) break;
+			questProxyAgentCache.get(first)?.destroy();
 			questProxyAgentCache.delete(first);
 		}
 	}
-	return agent;
+	return ag;
 }
 
-function retryAfterMs(headers: { get(name: string): string | null }): number {
-	const ra = headers.get('retry-after');
+function retryAfterHeaderValue(headers: unknown): string | undefined {
+	if (!headers || typeof headers !== 'object') return undefined;
+	const h = headers as Record<string, unknown> & { get?: (name: string) => string | undefined };
+	if (typeof h.get === 'function') {
+		const v = h.get('retry-after');
+		if (typeof v === 'string') return v;
+	}
+	const raw = h['retry-after'] ?? h['Retry-After'];
+	if (typeof raw === 'string') return raw;
+	if (Array.isArray(raw) && typeof raw[0] === 'string') return raw[0];
+	return undefined;
+}
+
+function retryAfterMs(headers: unknown): number {
+	const ra = retryAfterHeaderValue(headers);
 	if (!ra) return 2000;
 	const sec = Number(ra);
 	if (Number.isFinite(sec)) return Math.min(120_000, Math.max(1000, sec * 1000));
@@ -73,7 +88,7 @@ function encodeSuperProperties(): string {
 	return Buffer.from(JSON.stringify(payload)).toString('base64');
 }
 
-export function discordQuestRequestHeaders(userToken: string): Record<string, string> {
+function discordQuestRequestHeaders(userToken: string): Record<string, string> {
 	const t = userToken.trim();
 	return {
 		Authorization: t,
@@ -93,7 +108,6 @@ export function discordQuestRequestHeaders(userToken: string): Record<string, st
 	};
 }
 
-/** Primary task keys from Discord `task_config_v2.tasks` (same families as [7xrrr/discord-quests-bot](https://github.com/7xrrr/discord-quests-bot) quest modules). */
 const TASK_KEY_PRIORITY = [
 	'WATCH_VIDEO',
 	'WATCH_VIDEO_ON_MOBILE',
@@ -128,9 +142,7 @@ export type QuestOrbSummary = {
 	questUrl: string;
 	startsAt: string;
 	orbHint: string;
-	/** Raw API task key, e.g. `WATCH_VIDEO`. */
 	taskTypeKey: string;
-	/** Human label for embeds. */
 	taskTypeLabel: string;
 };
 
@@ -245,36 +257,39 @@ export function extractOrbQuests(payload: unknown): QuestOrbSummary[] {
 export async function fetchQuestsMe(userToken: string, opts?: { httpProxyUrl?: string | null }): Promise<unknown> {
 	const headers = discordQuestRequestHeaders(userToken);
 	const proxyUrl = opts?.httpProxyUrl?.trim() || undefined;
-	const dispatcher = getQuestApiDispatcherForUrl(proxyUrl);
+	const agent = proxyUrl ? getQuestProxyAgent(proxyUrl) : undefined;
 	const maxAttempts = 3;
 
 	for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-		const res = await undiciFetch(QUESTS_ME_URL, {
+		const res = await axios.get<unknown>(QUESTS_ME_URL, {
 			headers,
-			...(dispatcher ? { dispatcher } : {})
+			...(agent ? { httpAgent: agent, httpsAgent: agent } : {}),
+			validateStatus: () => true
 		});
 
 		if (res.status === 429 && attempt < maxAttempts) {
-			await res.arrayBuffer().catch(() => undefined);
 			await sleep(retryAfterMs(res.headers));
 			continue;
 		}
 
-		const text = await res.text();
-		if (!res.ok) {
+		if (res.status !== 200) {
 			let err = `Discord API ${res.status}`;
-			try {
-				const j = JSON.parse(text) as Record<string, unknown>;
-				if (typeof j.message === 'string') err += `: ${j.message}`;
-			} catch {
-				if (text) err += `: ${text.slice(0, 200)}`;
+			const data = res.data;
+			if (data && typeof data === 'object' && typeof (data as Record<string, unknown>).message === 'string') {
+				err += `: ${(data as Record<string, unknown>).message}`;
+			} else if (typeof data === 'string' && data) {
+				err += `: ${data.slice(0, 200)}`;
 			}
 			throw new Error(err);
 		}
-		try {
-			return JSON.parse(text) as unknown;
-		} catch {
-			throw new Error('Invalid JSON from Discord quests endpoint');
+
+		if (typeof res.data === 'string') {
+			try {
+				return JSON.parse(res.data) as unknown;
+			} catch {
+				throw new Error('Invalid JSON from Discord quests endpoint');
+			}
 		}
+		return res.data;
 	}
 }

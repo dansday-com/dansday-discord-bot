@@ -46,17 +46,12 @@ export function formatDbDateTime(value: unknown, includeSeconds = false): string
 	return formatTimestamp(d.getTime(), includeSeconds);
 }
 
-/** ISO 8601 instant (UTC) for `<time datetime>`; null if value is missing or invalid. */
 export function dbUtcValueToIso(value: unknown): string | null {
 	const d = parseMySQLDateTimeUtc(value);
 	if (!d || Number.isNaN(d.getTime())) return null;
 	return d.toISOString();
 }
 
-/**
- * Format a DB UTC datetime for the **runtime** local timezone (browser or server).
- * Prefer using only in the browser (e.g. after mount) so “local” is the user’s zone.
- */
 export function formatDbDateTimeLocal(value: unknown, includeSeconds = false): string {
 	const d = parseMySQLDateTimeUtc(value);
 	if (!d) return '—';

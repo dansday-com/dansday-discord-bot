@@ -319,7 +319,6 @@ export const serverSettings = mysqlTable(
 	]
 );
 
-/** Discord Quest orb notifier: which quest IDs were already announced (or baselined) per panel server. */
 export const serverDiscordOrb = mysqlTable(
 	'server_discord_orb',
 	{

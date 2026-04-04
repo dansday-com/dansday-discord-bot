@@ -15,14 +15,10 @@ function isSuperadmin(locals: App.Locals) {
 	return locals.user.authenticated && locals.user.account_source === 'accounts';
 }
 
-/** Panel login only: cannot freeze/delete your own server_accounts row. */
 function isTargetSelfServerAccount(locals: App.Locals, targetServerAccountId: number): boolean {
 	return locals.user.authenticated && locals.user.account_source === 'server_accounts' && locals.user.account_id === targetServerAccountId;
 }
 
-/**
- * Waterfall: superadmin may manage owner + moderator; owner may manage moderator only (not other owners); moderator cannot manage.
- */
 function canActorModifyTargetServerAccount(locals: App.Locals, target: { account_type: 'owner' | 'moderator' | string }): boolean {
 	if (!locals.user.authenticated) return false;
 	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'moderator') return false;

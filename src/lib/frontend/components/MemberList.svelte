@@ -22,9 +22,7 @@
 
 	interface Props {
 		members: Member[];
-		/** When set (including `[]`), only members with any of these Discord role IDs are shown. Omit for “all members”. */
 		filterRoleIds?: string[];
-		/** Shown when `filterRoleIds` is set but empty (no roles configured in Permissions). */
 		permissionsHref?: string;
 	}
 

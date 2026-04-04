@@ -906,8 +906,6 @@ function init(client) {
 		try {
 			const oldChannel = oldState?.channelId;
 			const newChannel = newState?.channelId;
-			const oldMuteDeaf = !!(oldState?.selfMute || oldState?.selfDeaf);
-			const newMuteDeaf = !!(newState?.selfMute || newState?.selfDeaf);
 
 			if (!oldChannel && newChannel) {
 				await startVoiceSession(newState, false);
@@ -916,21 +914,11 @@ function init(client) {
 			} else if (oldChannel && newChannel && oldChannel !== newChannel) {
 				await endVoiceSession(oldState);
 				await startVoiceSession(newState, false);
-			} else if (oldChannel && newChannel && oldChannel === newChannel && oldMuteDeaf !== newMuteDeaf) {
-				const uid = newState.member?.id ?? newState.id;
-				if (uid) {
-					const sessionKey = `${newState.guild.id}:${uid}`;
-					const session = voiceSessions.get(sessionKey);
-					if (session) {
-					}
-				}
 			}
 		} catch (error) {
 			await logger.log(`❌ Leveling voice state update error: ${error.message}`);
 		}
 	});
-
-	logger.log('📈 Leveling component initialized');
 }
 
 export default { init };

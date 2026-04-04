@@ -164,8 +164,6 @@ function init(client) {
 			await logger.log(`❌ Error handling booster update: ${err.message}`);
 		}
 	});
-
-	logger.log('💎 Booster component initialized');
 }
 
 export default { init };

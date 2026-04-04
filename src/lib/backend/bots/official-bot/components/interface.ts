@@ -643,7 +643,6 @@ function init(client) {
 			}
 		}
 	});
-	logger.log('🎮 Interface component initialized');
 }
 
 export default {

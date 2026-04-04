@@ -979,8 +979,6 @@ export function init(client) {
 		},
 		6 * 60 * 60 * 1000
 	);
-
-	logger.log('💎 Custom supporter role component initialized - Scanning, validation, and cleanup active');
 }
 
 export default { init };

@@ -1028,19 +1028,13 @@ async function processEndedGiveaways(client) {
 }
 
 export function init(client) {
-	processEndedGiveaways(client)
-		.then(() => {
-			logger.log('✅ Checked for ended giveaways on startup');
-		})
-		.catch((err) => {
-			logger.log(`❌ Error processing ended giveaways on startup: ${err.message}`);
-		});
+	processEndedGiveaways(client).catch((err) => {
+		logger.log(`❌ Error processing ended giveaways on startup: ${err.message}`);
+	});
 
 	setInterval(() => {
 		processEndedGiveaways(client);
 	}, 60000);
-
-	logger.log('🎉 Giveaway component initialized - Checking for ended giveaways every minute');
 }
 
 export default { init };

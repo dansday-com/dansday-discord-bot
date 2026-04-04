@@ -539,8 +539,6 @@ export function init(client) {
 			await logger.log(`❌ Error checking AFK in voiceStateUpdate: ${err.message}`);
 		}
 	});
-
-	logger.log('⏸️ AFK component initialized - Auto-removal active');
 }
 
 export default { init };

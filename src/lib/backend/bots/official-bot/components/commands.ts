@@ -83,8 +83,6 @@ function init(client: any) {
 			}
 		}
 	});
-
-	logger.log('🎮 Slash command system initialized');
 }
 
 export default { init, deployCommands };

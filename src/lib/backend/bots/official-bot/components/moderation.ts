@@ -226,8 +226,6 @@ function init(client) {
 			await logger.log(`❌ Error handling member remove: ${err.message}`);
 		}
 	});
-
-	logger.log('🛡️ Moderation component initialized - Tracking bans and kicks');
 }
 
 export default { init };

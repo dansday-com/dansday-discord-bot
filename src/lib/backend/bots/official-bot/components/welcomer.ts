@@ -142,8 +142,6 @@ function init(client) {
 		}
 		await welcomeUser(member, client);
 	});
-
-	logger.log('👋 Welcomer component initialized');
 }
 
 export default { init };

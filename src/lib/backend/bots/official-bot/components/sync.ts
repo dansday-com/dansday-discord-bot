@@ -286,8 +286,6 @@ async function init(discordClient, botToken) {
 			await syncGuildData(newGuild);
 		}
 	});
-
-	logger.log('🔄 Sync component initialized');
 }
 
 export function getBotId() {

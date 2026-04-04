@@ -186,8 +186,4 @@ export async function updateStaffRatingRole(guild, serverId, staffMemberId, staf
 	}
 }
 
-export function init() {
-	logger.log('🌟 Staff rating component ready');
-}
-
-export default { init, updateStaffRatingRole };
+export default { updateStaffRatingRole };

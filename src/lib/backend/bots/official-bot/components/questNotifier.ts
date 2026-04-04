@@ -136,9 +136,6 @@ export function initQuestNotifier(client: Client, officialBotId: number | null) 
 	}
 	runTick(client, officialBotId).catch((err) => logger.log(`❌ Quest notifier tick error: ${err?.message || err}`));
 	scheduleNextQuestNotifierTick(client, officialBotId);
-	logger.log(
-		`🔮 Quest notifier: sequential polls ~${POLL_MS / 1000}s + up to ${POLL_JITTER_MS / 1000}s jitter; optional per-server HTTP proxy in Discord Quest notifier settings`
-	);
 }
 
 export function stopQuestNotifier() {

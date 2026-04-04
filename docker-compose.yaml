@@ -3,14 +3,12 @@ services:
     build: .
     restart: unless-stopped
     environment:
-      TZ: ${TIMEZONE}
       DB_HOST: ${DB_HOST}
       DB_PORT: ${DB_PORT:-3306}
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       DB_NAME: ${DB_NAME}
       REDIS_URL: ${REDIS_URL}
-      TIMEZONE: ${TIMEZONE:-Asia/Jakarta}
       MAIL_HOST: ${MAIL_HOST}
       MAIL_PORT: ${MAIL_PORT:-587}
       MAIL_USERNAME: ${MAIL_USERNAME}

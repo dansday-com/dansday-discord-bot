@@ -1,0 +1,736 @@
+import db from '../database.js';
+import { SERVER_SETTINGS, type ServerSettingsComponentName } from '../serverSettingsComponents.js';
+
+const serverSettingsComponent = SERVER_SETTINGS.component;
+import { normalizeForwarderSettings } from '../forwarder-settings.js';
+import { resolveEmbedFooterPlaceholders } from '../utils/embedFooter.js';
+import { mainChannelId } from '../utils/mainConfigSettings.js';
+
+interface BotConfig {
+	id: number;
+	token: string;
+	application_id: string | null;
+	isSelfbot: boolean;
+	port: number | null;
+	secret_key: string | null;
+}
+
+let botConfig: BotConfig | null = null;
+
+function inferBotRuntimeKind(): 'official' | 'selfbot' | null {
+	const e = process.env.BOT_KIND;
+	if (e === 'official' || e === 'selfbot') return e;
+	const script = process.argv[1] || '';
+	if (/officialbot\.(js|mjs|cjs|ts)$/i.test(script)) return 'official';
+	if (/selfbot\.(js|mjs|cjs|ts)$/i.test(script)) return 'selfbot';
+	return null;
+}
+
+async function loadBotConfig() {
+	const botId = process.env.BOT_ID;
+
+	if (!botId) {
+		throw new Error('BOT_ID not set in environment. Bot cannot start without database configuration.');
+	}
+
+	const numericId = Number(botId);
+	const kind = inferBotRuntimeKind();
+
+	if (kind === 'official') {
+		const bot = await db.getBot(numericId);
+		if (!bot) {
+			throw new Error(`Bot not found in database with ID: ${botId}`);
+		}
+		botConfig = {
+			id: bot.id,
+			token: bot.token,
+			application_id: bot.application_id,
+			isSelfbot: false,
+			port: bot.port,
+			secret_key: bot.secret_key
+		};
+		return botConfig;
+	}
+
+	if (kind === 'selfbot') {
+		const selfbot = await db.getServerBotById(numericId);
+		if (!selfbot) {
+			throw new Error(`Selfbot not found in database with ID: ${botId}`);
+		}
+		const officialBot = await db.getOfficialBotForSelfbot(selfbot.id);
+		botConfig = {
+			id: selfbot.id,
+			token: selfbot.token ?? '',
+			application_id: null,
+			isSelfbot: true,
+			port: officialBot?.port ?? null,
+			secret_key: officialBot?.secret_key ?? null
+		};
+		return botConfig;
+	}
+
+	const selfbot = await db.getServerBotById(numericId);
+	if (selfbot) {
+		const officialBot = await db.getOfficialBotForSelfbot(selfbot.id);
+		botConfig = {
+			id: selfbot.id,
+			token: selfbot.token ?? '',
+			application_id: null,
+			isSelfbot: true,
+			port: officialBot?.port ?? null,
+			secret_key: officialBot?.secret_key ?? null
+		};
+		return botConfig;
+	}
+
+	const bot = await db.getBot(numericId);
+	if (!bot) {
+		throw new Error(`Bot not found in database with ID: ${botId}`);
+	}
+
+	botConfig = {
+		id: bot.id,
+		token: bot.token,
+		application_id: bot.application_id,
+		isSelfbot: false,
+		port: bot.port,
+		secret_key: bot.secret_key
+	};
+
+	return botConfig;
+}
+
+export async function initializeConfig() {
+	await loadBotConfig();
+}
+
+export function getBotConfig() {
+	return botConfig;
+}
+
+function requireBotConfig() {
+	if (!botConfig) {
+		throw new Error('Bot config not loaded. Call initializeConfig() first.');
+	}
+}
+
+function requireGuildId(guildId: any, action = 'operation') {
+	if (!guildId) {
+		throw new Error(`Guild ID is required for ${action}.`);
+	}
+}
+
+async function getOfficialBotId() {
+	requireBotConfig();
+	if (botConfig!.isSelfbot) {
+		const officialBot = await db.getOfficialBotForSelfbot(botConfig!.id);
+		if (officialBot) return officialBot.id as number;
+	}
+	return botConfig!.id;
+}
+
+export async function getServerForCurrentBot(guildId: string) {
+	requireBotConfig();
+	requireGuildId(guildId, 'getting server');
+
+	const server = await db.getServerByDiscordId(botConfig!.id, guildId, { forSelfbot: botConfig!.isSelfbot });
+	if (!server) {
+		throw new Error(`Server not found for guild ${guildId}`);
+	}
+
+	return server;
+}
+
+async function getOfficialBotServer(guildId: string) {
+	requireBotConfig();
+	requireGuildId(guildId, 'getting server');
+
+	const officialBotId = await getOfficialBotId();
+	const officialBotServer = await db.getServerByDiscordId(officialBotId, guildId);
+
+	if (!officialBotServer) {
+		throw new Error(`Server not found for guild ${guildId} in official bot ${officialBotId}`);
+	}
+
+	return officialBotServer;
+}
+
+export async function resolveServerIdForGuildSetting(guildDiscordId: string, component: string): Promise<number | null> {
+	try {
+		const official = await getOfficialBotServer(guildDiscordId);
+		if (component === serverSettingsComponent.notifications) {
+			const mapped = await db.getOfficialBotServerIdForServer(official.id);
+			return mapped ?? official.id;
+		}
+		if (component === serverSettingsComponent.forwarder) {
+			const botIdToUse = await getOfficialBotId();
+			const s = await db.getServerByDiscordId(botIdToUse, guildDiscordId);
+			return s?.id ?? official.id;
+		}
+		return official.id;
+	} catch {
+		return null;
+	}
+}
+
+export async function isComponentFeatureEnabled(guildDiscordId: string, component: string): Promise<boolean> {
+	if (!guildDiscordId) return true;
+	try {
+		requireBotConfig();
+		const serverId = await resolveServerIdForGuildSetting(guildDiscordId, component);
+		if (serverId == null) return true;
+		const row = await db.getServerSettings(serverId, component);
+		if (!row?.settings || typeof row.settings !== 'object') return true;
+		return (row.settings as Record<string, unknown>).enabled !== false;
+	} catch {
+		return true;
+	}
+}
+
+async function getServerSettingsForComponent(guildId: string, componentName: string) {
+	const officialBotServer = await getOfficialBotServer(guildId);
+	const settings = await db.getServerSettings(officialBotServer.id, componentName);
+
+	if (!settings || !settings.settings) {
+		throw new Error(`Server settings not found for guild ${guildId} (component: ${componentName})`);
+	}
+
+	return settings;
+}
+
+export function getBotToken(botType: string) {
+	if (!botConfig) {
+		throw new Error('Bot config not loaded. Call initializeConfig() first.');
+	}
+	if (botConfig.isSelfbot !== (botType === 'selfbot')) {
+		throw new Error(`Bot type mismatch. Expected ${botType}, got ${botConfig.isSelfbot ? 'selfbot' : 'official'}`);
+	}
+	if (!botConfig.token) {
+		throw new Error('Bot token not found in database configuration.');
+	}
+	return botConfig.token;
+}
+
+export function getApplicationId() {
+	if (!botConfig) {
+		throw new Error('Bot config not loaded. Call initializeConfig() first.');
+	}
+	if (!botConfig.application_id) {
+		throw new Error('Application ID not found in database configuration.');
+	}
+	return botConfig.application_id;
+}
+
+export async function getMainChannel(guildId: string) {
+	requireBotConfig();
+	requireGuildId(guildId, 'getting main channel');
+
+	const settings = await getServerSettingsForComponent(guildId, serverSettingsComponent.main);
+	const channelId = mainChannelId(settings.settings);
+
+	if (!channelId) {
+		throw new Error(`Main channel not configured for guild ${guildId}`);
+	}
+
+	return channelId;
+}
+
+export const PERMISSIONS = {
+	async getPermissions(guildId: string) {
+		requireGuildId(guildId, 'permissions');
+		requireBotConfig();
+		const server = await db.getServerByDiscordId(botConfig!.id, guildId, { forSelfbot: botConfig!.isSelfbot });
+		if (!server) {
+			throw new Error(`Server not found for guild ${guildId}`);
+		}
+		const settings = await db.getServerSettings(server.id, serverSettingsComponent.permissions);
+		if (!settings || !settings.settings) {
+			throw new Error(`Permissions not configured for guild ${guildId}`);
+		}
+		return {
+			ADMIN_ROLES: settings.settings.admin_roles || [],
+			STAFF_ROLES: settings.settings.staff_roles || [],
+			SUPPORTER_ROLES: settings.settings.supporter_roles || [],
+			MEMBER_ROLES: settings.settings.member_roles || [],
+			CONTENT_CREATOR_ROLES: settings.settings.content_creator_roles || []
+		};
+	},
+
+	async hasAnyRole(member: any, roleIds: string[]) {
+		if (!roleIds || roleIds.length === 0) return false;
+		try {
+			const cache = member?.roles?.cache;
+			if (cache && typeof cache.has === 'function') {
+				return roleIds.some((id) => cache.has(id));
+			}
+			return false;
+		} catch (_) {
+			return false;
+		}
+	}
+};
+
+export async function getLevelingSettings(guildId: string) {
+	const officialBotServer = await getOfficialBotServer(guildId);
+	const settings = await db.getServerSettings(officialBotServer.id, serverSettingsComponent.leveling);
+
+	if (!settings || !settings.settings) {
+		throw new Error(`Leveling settings not configured for guild ${guildId}. Please configure in the panel.`);
+	}
+
+	const config = settings.settings;
+
+	let progressChannelId = config.PROGRESS_CHANNEL_ID;
+	if (!progressChannelId) {
+		try {
+			progressChannelId = await getMainChannel(guildId);
+		} catch (_) {
+			progressChannelId = null;
+		}
+	}
+
+	return {
+		MESSAGE: {
+			XP: config.MESSAGE.XP,
+			COOLDOWN_SECONDS: config.MESSAGE.COOLDOWN_SECONDS
+		},
+		VOICE: {
+			XP_PER_MINUTE: config.VOICE.XP_PER_MINUTE,
+			AFK_XP_PER_MINUTE: config.VOICE.AFK_XP_PER_MINUTE,
+			COOLDOWN_SECONDS: config.VOICE.COOLDOWN_SECONDS
+		},
+		REQUIREMENTS: {
+			BASE_XP: config.REQUIREMENTS.BASE_XP,
+			MULTIPLIER: config.REQUIREMENTS.MULTIPLIER
+		},
+		PROGRESS_CHANNEL_ID: progressChannelId
+	};
+}
+
+export const COMMUNICATION = {
+	get WEBHOOK_URL() {
+		if (!botConfig) throw new Error('Bot config not loaded. Call initializeConfig() first.');
+		if (!botConfig.port) throw new Error('Port not found in database configuration.');
+		return `http://localhost:${botConfig.port}`;
+	},
+	get SECRET_KEY() {
+		if (!botConfig) throw new Error('Bot config not loaded. Call initializeConfig() first.');
+		if (!botConfig.secret_key) throw new Error('Secret key not found in database configuration.');
+		return botConfig.secret_key;
+	},
+	get PORT() {
+		if (!botConfig) throw new Error('Bot config not loaded. Call initializeConfig() first.');
+		if (!botConfig.port) throw new Error('Port not found in database configuration.');
+		return botConfig.port;
+	}
+};
+
+export async function getEmbedConfig(guildId: string) {
+	requireBotConfig();
+	requireGuildId(guildId, 'getting embed config');
+
+	const officialBotServer = await getOfficialBotServer(guildId);
+	const settings = await getServerSettingsForComponent(guildId, serverSettingsComponent.main);
+	const config = settings.settings;
+
+	if (!config.color) {
+		throw new Error(`Default color not configured for guild ${guildId}`);
+	}
+
+	const hex = config.color.replace('#', '');
+	const color = parseInt(hex, 16);
+
+	if (!config.footer) {
+		throw new Error(`Default footer not configured for guild ${guildId}`);
+	}
+
+	const footerText = resolveEmbedFooterPlaceholders(config.footer, officialBotServer.name);
+
+	return { COLOR: color, FOOTER: footerText };
+}
+
+export const WELCOMER = {
+	async getChannels(guildId: string) {
+		requireBotConfig();
+		requireGuildId(guildId, 'getting welcomer channels');
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.welcomer))) return [];
+		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.welcomer);
+		if (settings?.settings?.channels?.length > 0) return settings.settings.channels;
+		const mainChannel = await getMainChannel(guildId);
+		return mainChannel ? [mainChannel] : [];
+	},
+
+	async getMessages(guildId: string) {
+		requireBotConfig();
+		requireGuildId(guildId, 'getting welcomer messages');
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.welcomer))) return [];
+		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.welcomer);
+		if (settings?.settings?.messages?.length > 0) return settings.settings.messages;
+		return [];
+	}
+};
+
+export const BOOSTER = {
+	async getChannels(guildId: string) {
+		requireBotConfig();
+		requireGuildId(guildId, 'getting booster channels');
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.booster))) return [];
+		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.booster);
+		if (settings?.settings?.channels?.length > 0) return settings.settings.channels;
+		const mainChannel = await getMainChannel(guildId);
+		return mainChannel ? [mainChannel] : [];
+	},
+
+	async getChannel(guildId: string) {
+		const channels = await BOOSTER.getChannels(guildId);
+		return channels.length > 0 ? channels[0] : await getMainChannel(guildId);
+	},
+
+	async getMessages(guildId: string) {
+		requireBotConfig();
+		requireGuildId(guildId, 'getting booster messages');
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.booster))) return [];
+		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.booster);
+		if (settings?.settings?.messages?.length > 0) return settings.settings.messages;
+		return [];
+	}
+};
+
+export const CUSTOM_SUPPORTER_ROLE = {
+	async getRoleConstraints(guildId: string) {
+		requireBotConfig();
+		requireGuildId(guildId, 'getting custom role constraints');
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.custom_supporter_role))) {
+			return { ROLE_START: null, ROLE_END: null };
+		}
+		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.custom_supporter_role);
+		if (settings?.settings) {
+			return {
+				ROLE_START: settings.settings.role_start || null,
+				ROLE_END: settings.settings.role_end || null
+			};
+		}
+		return { ROLE_START: null, ROLE_END: null };
+	}
+};
+
+export const NOTIFICATIONS = {
+	async getConfig(guildId: string) {
+		requireBotConfig();
+		requireGuildId(guildId, 'getting notifications config');
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.notifications))) return null;
+		const sid = await resolveServerIdForGuildSetting(guildId, serverSettingsComponent.notifications);
+		if (sid == null) return null;
+		const settings = await db.getServerSettings(sid, serverSettingsComponent.notifications);
+		return settings?.settings || null;
+	},
+
+	async getConfigByServerId(serverId: number) {
+		const settings = await db.getServerSettings(serverId, serverSettingsComponent.notifications);
+		return settings?.settings || null;
+	},
+
+	async getRoleConstraints(guildId: string) {
+		requireBotConfig();
+		requireGuildId(guildId, 'getting notifications role constraints');
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.notifications))) {
+			return { ROLE_START: null, ROLE_END: null };
+		}
+		const sid = (await resolveServerIdForGuildSetting(guildId, serverSettingsComponent.notifications)) ?? (await getOfficialBotServer(guildId)).id;
+		const settings = await db.getServerSettings(sid, serverSettingsComponent.notifications);
+		if (settings?.settings) {
+			return {
+				ROLE_START: settings.settings.role_start || null,
+				ROLE_END: settings.settings.role_end || null
+			};
+		}
+		return { ROLE_START: null, ROLE_END: null };
+	},
+
+	async getNotificationRoleIds(guildId: string) {
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.notifications))) return [];
+		const server = await getOfficialBotServer(guildId).catch(() => null);
+		if (!server) return [];
+		const rows = await db.getNotificationRolesForServer(server.id);
+		return (rows || []).map((r: any) => r.discord_role_id).filter(Boolean);
+	},
+
+	async getNotificationRolesWithCategory(guildId: string) {
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.notifications))) return [];
+		const server = await getOfficialBotServer(guildId).catch(() => null);
+		if (!server) return [];
+		return await db.getNotificationRolesWithCategory(server.id);
+	},
+
+	async getNotificationRoleIdForChannel(guildId: string, channelId: string) {
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.notifications))) return null;
+		const server = await getOfficialBotServer(guildId).catch(() => null);
+		if (!server || !channelId) return null;
+		return (await db.getNotificationRoleByChannel(server.id, channelId)) || null;
+	}
+};
+
+export const FEEDBACK = {
+	async getChannel(guildId: string) {
+		requireBotConfig();
+		requireGuildId(guildId, 'getting feedback channel');
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.feedback))) return null;
+		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.feedback);
+		if (settings?.settings?.feedback_channel) return settings.settings.feedback_channel;
+		return await getMainChannel(guildId);
+	},
+
+	async getRole(guildId: string) {
+		requireBotConfig();
+		requireGuildId(guildId, 'getting feedback role');
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.feedback))) return null;
+		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.feedback);
+		return settings?.settings?.feedback_role || null;
+	}
+};
+
+export const GIVEAWAY = {
+	async getChannel(guildId: string) {
+		requireBotConfig();
+		requireGuildId(guildId, 'getting giveaway channel');
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.giveaway))) return null;
+		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.giveaway);
+		if (settings?.settings?.giveaway_channel) return settings.settings.giveaway_channel;
+		return await getMainChannel(guildId);
+	},
+
+	async getCreatorCanParticipate(guildId: string) {
+		requireBotConfig();
+		requireGuildId(guildId, 'getting giveaway creator can participate setting');
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.giveaway))) return false;
+		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.giveaway);
+		return settings?.settings?.giveaway_creator_can_participate ?? false;
+	}
+};
+
+export const MODERATION_CONFIG = {
+	async isEnabled(guildId: string): Promise<boolean> {
+		requireBotConfig();
+		requireGuildId(guildId, 'checking moderation logs enabled');
+		return isComponentFeatureEnabled(guildId, serverSettingsComponent.moderation);
+	}
+};
+
+export const AFK_CONFIG = {
+	async isEnabled(guildId: string): Promise<boolean> {
+		requireBotConfig();
+		requireGuildId(guildId, 'checking AFK enabled');
+		return isComponentFeatureEnabled(guildId, serverSettingsComponent.afk);
+	}
+};
+
+export const STAFF_RATING = {
+	async getConfig(guildId: string) {
+		requireBotConfig();
+		requireGuildId(guildId, 'getting staff rating config');
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.staff_rating))) return null;
+		const serverId = (await getOfficialBotServer(guildId)).id;
+		const row = await db.getServerSettings(serverId, serverSettingsComponent.staff_rating);
+		return row?.settings || null;
+	},
+
+	async getRatingChannel(guildId: string) {
+		requireBotConfig();
+		requireGuildId(guildId, 'getting staff rating channel');
+		const config = await STAFF_RATING.getConfig(guildId);
+		if (config?.rating_channel_id) return config.rating_channel_id;
+		const reviewId = config?.review_channel_id || config?.report_channel_id;
+		if (!reviewId) return await getMainChannel(guildId);
+		return null;
+	},
+
+	async getReviewChannel(guildId: string) {
+		requireBotConfig();
+		requireGuildId(guildId, 'getting staff rating review channel');
+		const config = await STAFF_RATING.getConfig(guildId);
+		const reviewId = config?.review_channel_id || config?.report_channel_id;
+		if (reviewId) return reviewId;
+		if (!config?.rating_channel_id) return await getMainChannel(guildId);
+		return null;
+	},
+
+	async getRoleConstraints(guildId: string) {
+		requireBotConfig();
+		requireGuildId(guildId, 'getting staff rating role constraints');
+		const config = await STAFF_RATING.getConfig(guildId);
+		if (config?.role_start && config?.role_end) {
+			return { ROLE_START: config.role_start, ROLE_END: config.role_end };
+		}
+		return { ROLE_START: null, ROLE_END: null };
+	},
+
+	async getCooldownDays(guildId: string) {
+		requireBotConfig();
+		requireGuildId(guildId, 'getting staff rating cooldown');
+		const config = await STAFF_RATING.getConfig(guildId);
+		const rawDays = Number(config?.cooldown_days);
+		return Number.isFinite(rawDays) ? rawDays : null;
+	},
+
+	async getPendingRole(guildId: string) {
+		requireBotConfig();
+		requireGuildId(guildId, 'getting staff rating pending role');
+		const config = await STAFF_RATING.getConfig(guildId);
+		return config?.pending_role || null;
+	}
+};
+
+export const CONTENT_CREATOR = {
+	async getConfig(guildId: string) {
+		requireBotConfig();
+		requireGuildId(guildId, 'getting content creator config');
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.content_creator))) return null;
+		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.content_creator);
+		return settings?.settings || null;
+	},
+
+	async getAdmissionChannel(guildId: string) {
+		const config = await CONTENT_CREATOR.getConfig(guildId);
+		return config?.admission_channel_id || null;
+	},
+
+	async getTargetChannel(guildId: string) {
+		const config = await CONTENT_CREATOR.getConfig(guildId);
+		if (config?.target_channel_id) return config.target_channel_id;
+		return await getMainChannel(guildId);
+	},
+
+	async getContentCreatorRole(guildId: string) {
+		try {
+			const perms = await PERMISSIONS.getPermissions(guildId);
+			return perms?.CONTENT_CREATOR_ROLES?.[0] || null;
+		} catch (_) {
+			return null;
+		}
+	},
+
+	async getCooldownDays(guildId: string) {
+		const config = await CONTENT_CREATOR.getConfig(guildId);
+		const rawDays = Number(config?.cooldown_days);
+		return Number.isFinite(rawDays) ? rawDays : null;
+	},
+
+	async getPendingRole(guildId: string) {
+		const config = await CONTENT_CREATOR.getConfig(guildId);
+		return config?.pending_role || null;
+	}
+};
+
+export const FORWARDER = {
+	async getConfig(guildId: string) {
+		requireBotConfig();
+		requireGuildId(guildId, 'getting forwarder config');
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.forwarder))) return { forwarders: [] };
+		const botIdToUse = await getOfficialBotId();
+		const server = await db.getServerByDiscordId(botIdToUse, guildId);
+		if (!server) return { forwarders: [] };
+		const settings = await db.getServerSettings(server.id, serverSettingsComponent.forwarder);
+		if (!settings || !settings.settings) return { forwarders: [] };
+		return normalizeForwarderSettings(settings.settings);
+	},
+
+	async shouldForwardChannel(channelId: string, guildId: string) {
+		requireBotConfig();
+		if (!channelId || !guildId) return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false };
+		if (!botConfig!.isSelfbot) {
+			return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false };
+		}
+
+		try {
+			const selfbotServer = await db.getServerByDiscordId(botConfig!.id, guildId, { forSelfbot: true });
+			if (!selfbotServer) return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false };
+
+			const officialBot = await db.getOfficialBotForSelfbot(botConfig!.id);
+			if (!officialBot) return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false };
+
+			const officialServers = await db.getServersForBot(officialBot.id);
+
+			for (const officialServer of officialServers) {
+				try {
+					const forwarders = await FORWARDER.getConfig(officialServer.discord_server_id);
+					const list = (forwarders.forwarders || []) as any[];
+
+					for (const forwarder of list) {
+						if (String(forwarder.selfbot_id) !== String(botConfig!.id)) continue;
+						if (String(forwarder.server_id) !== String(selfbotServer.id)) continue;
+						if (forwarder.source_channels && Array.isArray(forwarder.source_channels)) {
+							const foundChannel = forwarder.source_channels.find((ch: any) =>
+								typeof ch === 'string' ? String(ch) === String(channelId) : String(ch?.channel_id || '') === String(channelId)
+							);
+							if (foundChannel) {
+								return {
+									shouldForward: true,
+									onlyForwardWhenMentionsSelfBot: forwarder.only_forward_when_mentions_member === true,
+									target_guild_id: officialServer.discord_server_id
+								};
+							}
+						}
+					}
+				} catch (_) {
+					continue;
+				}
+			}
+			return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false };
+		} catch (_) {
+			return { shouldForward: false, onlyForwardWhenMentionsSelfBot: false };
+		}
+	},
+
+	async getForwarderConfigBySourceChannel(sourceChannelId: string, sourceGuildId: string) {
+		requireBotConfig();
+		if (!sourceChannelId || !sourceGuildId) {
+			throw new Error('Source channel ID and guild ID are required.');
+		}
+
+		const allGuilds = await db.getServersForBot(botConfig!.id);
+
+		const connectedSelfbots = await db.getSelfbotsForOfficialBot(botConfig!.id);
+
+		for (const officialServer of allGuilds) {
+			try {
+				const forwarders = await FORWARDER.getConfig(officialServer.discord_server_id);
+				const list = (forwarders.forwarders || []) as any[];
+
+				for (const forwarder of list) {
+					if (!forwarder.source_channels || !Array.isArray(forwarder.source_channels)) continue;
+
+					const foundChannel = forwarder.source_channels.find((ch: any) =>
+						typeof ch === 'string' ? String(ch) === String(sourceChannelId) : String(ch?.channel_id || '') === String(sourceChannelId)
+					);
+					if (!foundChannel) continue;
+
+					const forwarderSelfbotIdNum = typeof forwarder.selfbot_id === 'string' ? parseInt(forwarder.selfbot_id) : forwarder.selfbot_id;
+					const forwarderSelfbot = connectedSelfbots.find((bot: any) => {
+						const botIdNum = typeof bot.id === 'string' ? parseInt(bot.id) : bot.id;
+						return botIdNum === forwarderSelfbotIdNum;
+					});
+					if (!forwarderSelfbot) continue;
+
+					const selfbotServer = await db.getServerByDiscordId(forwarderSelfbot.id, sourceGuildId, { forSelfbot: true });
+					if (!selfbotServer) continue;
+					if (String(selfbotServer.id) !== String(forwarder.server_id)) continue;
+
+					return {
+						target_channel_id: forwarder.target_channel_id,
+						role_pings: forwarder.role_pings || forwarder.roles || [],
+						target_guild_id: officialServer.discord_server_id,
+						only_forward_when_mentions_member: forwarder.only_forward_when_mentions_member === true
+					};
+				}
+			} catch (_) {
+				continue;
+			}
+		}
+
+		return null;
+	}
+};
+
+export { SERVER_SETTINGS, type ServerSettingsComponentName };
+export { serverSettingsComponent };
+export const SERVER_SETTINGS_COMPONENTS_WITH_FEATURE_SWITCH = SERVER_SETTINGS.withFeatureSwitch;

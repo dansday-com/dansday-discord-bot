@@ -1,22 +1,35 @@
-FROM node:22-alpine
+# ── Stage 1: Build ──────────────────────────────────────────────
+FROM node:25.8.1-alpine AS builder
 
 WORKDIR /app
 
-RUN apk add --no-cache tzdata
+ENV NODE_OPTIONS=""
 
 COPY package.json ./
-
-RUN sh -c 'unset NODE_OPTIONS; npm install --include=dev'
+RUN npm install --include=dev --legacy-peer-deps
 
 COPY . .
 
-RUN sh -c 'unset NODE_OPTIONS; npx @tailwindcss/cli -i frontend/input.css -o frontend/index.css --minify'
+RUN npm run build:otel
+RUN npm run build
 
-RUN sh -c 'unset NODE_OPTIONS; npm prune --omit=dev'
+RUN npx tsc -p tsconfig.bots.json || true
+
+RUN npm prune --production
+
+# ── Stage 2: Runtime ─────────────────────────────────────────────
+FROM node:25.8.1-alpine AS runner
+
+WORKDIR /app
+
+RUN apk add --no-cache curl
+
+COPY --from=builder /app .
 
 EXPOSE 80
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-    CMD node -e "const http = require('http'); http.get('http://localhost:80/health', r => { process.exit(r.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));"
+ENV HOST=0.0.0.0
+ENV PORT=80
+ENV NODE_ENV=production
 
-CMD ["node", "index.js"]
+CMD ["node", "--import", "./otel/console-instrumentation.js", "build/index.js"]

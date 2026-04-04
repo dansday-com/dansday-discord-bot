@@ -1,0 +1,45 @@
+@import 'tailwindcss';
+
+@theme {
+	--color-ash-50: #f2f3f5;
+	--color-ash-100: #dbdee1;
+	--color-ash-200: #b5bac1;
+	--color-ash-300: #80848e;
+	--color-ash-400: #6d6f78;
+	--color-ash-500: #4e505a;
+	--color-ash-600: #404249;
+	--color-ash-700: #383a40;
+	--color-ash-800: #2b2d31;
+	--color-ash-900: #313338;
+	--color-ash-950: #1e1f22;
+}
+
+@layer base {
+	* {
+		@apply border-ash-700;
+	}
+
+	button:not(:disabled),
+	[role='button']:not(:disabled) {
+		cursor: pointer;
+	}
+
+	html,
+	body {
+		scrollbar-width: none;
+		-ms-overflow-style: none;
+	}
+
+	html::-webkit-scrollbar,
+	body::-webkit-scrollbar,
+	*::-webkit-scrollbar {
+		display: none;
+		width: 0;
+		height: 0;
+	}
+
+	::selection {
+		color: #ffffffb3;
+		background: #4444444d;
+	}
+}

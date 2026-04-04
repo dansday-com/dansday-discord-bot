@@ -1,0 +1,110 @@
+import { json } from '@sveltejs/kit';
+import type { RequestHandler } from '@sveltejs/kit';
+import db from '$lib/database.js';
+import { logger } from '$lib/utils/index.js';
+import { sendAccountDeletedEmail, sendAccountFrozenEmail, sendAccountUnfrozenEmail } from '$lib/frontend/email.js';
+
+function canManageAccounts(locals: App.Locals, serverId: number): boolean {
+	if (!locals.user.authenticated) return false;
+	if (locals.user.account_source === 'accounts') return true;
+	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'owner') return locals.user.server_id === serverId;
+	return false;
+}
+
+function isSuperadmin(locals: App.Locals) {
+	return locals.user.authenticated && locals.user.account_source === 'accounts';
+}
+
+function isTargetSelfServerAccount(locals: App.Locals, targetServerAccountId: number): boolean {
+	return locals.user.authenticated && locals.user.account_source === 'server_accounts' && locals.user.account_id === targetServerAccountId;
+}
+
+function canActorModifyTargetServerAccount(locals: App.Locals, target: { account_type: 'owner' | 'moderator' | string }): boolean {
+	if (!locals.user.authenticated) return false;
+	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'moderator') return false;
+	if (isSuperadmin(locals)) return true;
+	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'owner') {
+		return target.account_type === 'moderator';
+	}
+	return false;
+}
+
+export const PATCH: RequestHandler = async ({ locals, params, request }) => {
+	const serverId = Number(params.id);
+	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'moderator') {
+		return json({ success: false, error: 'Access denied' }, { status: 403 });
+	}
+	if (!canManageAccounts(locals, serverId)) {
+		return json({ success: false, error: 'Access denied' }, { status: 403 });
+	}
+
+	const accountId = Number(params.accountId);
+	const account = await db.getServerAccountById(accountId);
+	if (!account || account.server_id !== serverId) {
+		return json({ success: false, error: 'Account not found' }, { status: 404 });
+	}
+
+	if (isTargetSelfServerAccount(locals, account.id)) {
+		return json({ success: false, error: 'Cannot modify your own account' }, { status: 400 });
+	}
+
+	if (!canActorModifyTargetServerAccount(locals, account)) {
+		return json({ success: false, error: 'Access denied' }, { status: 403 });
+	}
+
+	const { is_frozen } = await request.json();
+	if (typeof is_frozen !== 'boolean') {
+		return json({ success: false, error: 'is_frozen must be a boolean' }, { status: 400 });
+	}
+
+	await db.updateServerAccount(accountId, { is_frozen });
+	const action = is_frozen ? 'froze' : 'unfroze';
+	logger.log(`${locals.user.username} ${action} server account ${account.username} (server ${serverId})`);
+
+	try {
+		if (is_frozen) {
+			await sendAccountFrozenEmail(account.email, account.username);
+		} else {
+			await sendAccountUnfrozenEmail(account.email, account.username);
+		}
+	} catch (err: any) {
+		logger.log(`⚠️ Failed to send ${is_frozen ? 'frozen' : 'unfrozen'} email to ${account.email}: ${err?.message ?? String(err)}`);
+	}
+
+	return json({ success: true });
+};
+
+export const DELETE: RequestHandler = async ({ locals, params }) => {
+	const serverId = Number(params.id);
+	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'moderator') {
+		return json({ success: false, error: 'Access denied' }, { status: 403 });
+	}
+	if (!canManageAccounts(locals, serverId)) {
+		return json({ success: false, error: 'Access denied' }, { status: 403 });
+	}
+
+	const accountId = Number(params.accountId);
+	const account = await db.getServerAccountById(accountId);
+	if (!account || account.server_id !== serverId) {
+		return json({ success: false, error: 'Account not found' }, { status: 404 });
+	}
+
+	if (isTargetSelfServerAccount(locals, account.id)) {
+		return json({ success: false, error: 'Cannot delete your own account' }, { status: 400 });
+	}
+
+	if (!canActorModifyTargetServerAccount(locals, account)) {
+		return json({ success: false, error: 'Access denied' }, { status: 403 });
+	}
+
+	await db.deleteServerAccount(accountId);
+	logger.log(`${locals.user.username} deleted server account ${account.username} (server ${serverId})`);
+
+	try {
+		await sendAccountDeletedEmail(account.email, account.username);
+	} catch (err: any) {
+		logger.log(`⚠️ Failed to send deleted email to ${account.email}: ${err?.message ?? String(err)}`);
+	}
+
+	return json({ success: true });
+};

@@ -37,13 +37,13 @@
 	<p class="text-ash-400 text-xs">Ban and kick log embeds posted to your main/default channel.</p>
 
 	<ConfigToggleRow
-		label="Moderation logs"
-		description="When off, the bot does not post ban or kick logs."
+		label="Moderation module"
+		description="When off, moderation is disabled for this server, including ban and kick log embeds to your main channel."
 		bind:enabled={featureEnabled}
-		ariaLabel="Toggle moderation logs"
+		ariaLabel="Toggle moderation module"
 	/>
 	{#if !featureEnabled}
-		<p class="text-xs text-amber-200/90">Module is off. Save to apply, or turn it on to re-enable moderation logs.</p>
+		<p class="text-xs text-amber-200/90">Module is off. Save configuration to apply. Turn the module on to re-enable moderation and logs.</p>
 	{/if}
 	<button
 		onclick={save}

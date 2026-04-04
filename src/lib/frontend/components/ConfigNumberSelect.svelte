@@ -9,6 +9,8 @@
 		formatOption?: (v: number) => string;
 		id?: string;
 		disabled?: boolean;
+		/** Override trailing chevron classes (default matches ChannelPicker). */
+		chevronIconClass?: string;
 	};
 
 	let {
@@ -19,15 +21,19 @@
 		value = $bindable(0),
 		formatOption = (v: number) => String(v),
 		id,
-		disabled = false
+		disabled = false,
+		chevronIconClass
 	}: Props = $props();
 
+	/** Default matches ChannelPicker (`text-violet-300`) so the row reads like other config pickers. */
+	const chevronClass = $derived(chevronIconClass ?? 'fas fa-chevron-down text-xs text-violet-300');
+
 	const selectClass =
-		'bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50';
+		'bg-ash-700 border-ash-600 hover:border-ash-500 text-ash-100 focus:ring-ash-500 w-full cursor-pointer appearance-none rounded-lg border py-2.5 pr-10 pl-3 text-sm transition-colors focus:ring-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50';
 </script>
 
 <div>
-	<label for={id} class="text-ash-300 mb-1.5 block text-xs font-medium">
+	<label for={id} class="{NUMERIC_SELECT_ACCENT.label} mb-1.5 block text-xs font-medium">
 		{#if labelIconClass}
 			<i class={labelIconClass}></i>
 		{/if}
@@ -36,9 +42,12 @@
 	{#if description}
 		<p class="text-ash-500 mb-2 text-xs">{description}</p>
 	{/if}
-	<select {id} bind:value {disabled} class={selectClass}>
-		{#each values as val (val)}
-			<option value={val}>{formatOption(val)}</option>
-		{/each}
-	</select>
+	<div class="relative">
+		<select {id} bind:value {disabled} class={selectClass}>
+			{#each values as val (val)}
+				<option value={val}>{formatOption(val)}</option>
+			{/each}
+		</select>
+		<i class="{chevronClass} pointer-events-none absolute top-1/2 right-3 -translate-y-1/2" aria-hidden="true"></i>
+	</div>
 </div>

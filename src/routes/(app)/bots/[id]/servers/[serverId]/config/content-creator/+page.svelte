@@ -56,7 +56,7 @@
 		ariaLabel="Toggle content creator module"
 	/>
 	{#if !featureEnabled}
-		<p class="text-xs text-amber-200/90">Module is off. Enable it above to use the settings below.</p>
+		<p class="text-xs text-amber-200/90">Module is off. Save configuration to apply. Turn the module on to edit the options below.</p>
 	{/if}
 	<div class="space-y-5 transition-opacity" class:pointer-events-none={!featureEnabled} class:opacity-50={!featureEnabled}>
 		<div>
@@ -74,7 +74,7 @@
 		<ConfigNumberSelect
 			label="Admission Cooldown (Days)"
 			description="How long members must wait before reapplying after a submission."
-			labelIconClass="fas fa-clock mr-1 text-pink-400"
+			labelIconClass="fas fa-clock mr-1 text-cyan-400"
 			values={selectValuesDays1To30}
 			bind:value={cooldownDays}
 			formatOption={formatDayCount}
@@ -85,14 +85,14 @@
 			<p class="text-ash-500 mb-2 text-xs">Optional role to mention when a new application arrives.</p>
 			<RolePicker roles={data.roles} value={pendingRole} single placeholder="None" onchange={(v) => (pendingRole = v as string)} />
 		</div>
-
-		<button
-			onclick={save}
-			disabled={saving}
-			class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:opacity-50"
-		>
-			{#if saving}<i class="fas fa-spinner fa-spin"></i>{/if}
-			{saving ? 'Saving...' : 'Save Configuration'}
-		</button>
 	</div>
+
+	<button
+		onclick={save}
+		disabled={saving}
+		class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:opacity-50"
+	>
+		{#if saving}<i class="fas fa-spinner fa-spin"></i>{/if}
+		{saving ? 'Saving...' : 'Save Configuration'}
+	</button>
 </div>

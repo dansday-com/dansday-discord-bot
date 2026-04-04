@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { ROLE_PICKER_ACCENT } from '$lib/frontend/controlAccents.js';
+
 	interface Role {
 		discord_role_id: string;
 		name: string;
@@ -96,7 +98,7 @@
 			{(value as string[]).length ? `${(value as string[]).length} role${(value as string[]).length !== 1 ? 's' : ''} selected` : placeholder}
 		</span>
 	{/if}
-	<i class="fas fa-chevron-down text-xs text-blue-300"></i>
+	<i class={ROLE_PICKER_ACCENT.chevron}></i>
 </button>
 
 {#if !single && (value as string[]).length > 0}
@@ -140,12 +142,12 @@
 					placeholder="Search roles..."
 					class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-4 py-2.5 pr-10 text-sm transition-all focus:ring-2 focus:outline-none sm:py-3 sm:text-base"
 				/>
-				<i class="fas fa-search absolute top-1/2 right-3 -translate-y-1/2 text-cyan-300"></i>
+				<i class="{ROLE_PICKER_ACCENT.searchIcon} absolute top-1/2 right-3 -translate-y-1/2"></i>
 			</div>
 			<div class="min-h-0 flex-1 space-y-1 overflow-y-auto">
 				{#if filtered.length === 0}
 					<div class="text-ash-400 py-8 text-center text-sm">
-						<i class="fas fa-inbox mb-2 text-3xl text-blue-300/80"></i>
+						<i class="fas fa-inbox {ROLE_PICKER_ACCENT.emptyStateIcon}"></i>
 						<p>No roles found</p>
 					</div>
 				{:else}

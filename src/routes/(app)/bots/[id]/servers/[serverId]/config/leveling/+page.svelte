@@ -5,6 +5,7 @@
 	import ConfigNumberSelect from '$lib/frontend/components/ConfigNumberSelect.svelte';
 	import ChannelPicker from '$lib/frontend/components/ChannelPicker.svelte';
 	import ConfigToggleRow from '$lib/frontend/components/ConfigToggleRow.svelte';
+	import { CHANNEL_PICKER_ACCENT } from '$lib/frontend/controlAccents.js';
 	import { formatMultiplier, formatSeconds } from '$lib/frontend/numericSelectFormatters.js';
 	import type { PageProps } from './$types';
 
@@ -70,13 +71,13 @@
 		ariaLabel="Toggle leveling module"
 	/>
 	{#if !featureEnabled}
-		<p class="text-xs text-amber-200/90">Module is off. Enable it above to use the settings below.</p>
+		<p class="text-xs text-amber-200/90">Module is off. Save configuration to apply. Turn the module on to edit the options below.</p>
 	{/if}
 	<div class="space-y-5 transition-opacity" class:pointer-events-none={!featureEnabled} class:opacity-50={!featureEnabled}>
 		<ConfigNumberSelect
 			label="Base XP"
 			description="XP needed to reach level 2. Higher levels scale with Base XP and Multiplier."
-			labelIconClass="fas fa-trophy mr-1 text-lime-400"
+			labelIconClass="fas fa-trophy mr-1 text-cyan-400"
 			values={baseXPValues}
 			bind:value={baseXP}
 		/>
@@ -84,7 +85,7 @@
 		<ConfigNumberSelect
 			label="Multiplier"
 			description="Exponential multiplier for level requirements. Higher values make leveling progressively harder."
-			labelIconClass="fas fa-chart-line mr-1 text-lime-400"
+			labelIconClass="fas fa-chart-line mr-1 text-cyan-400"
 			values={multiplierValues}
 			bind:value={multiplier}
 			formatOption={formatMultiplier}
@@ -93,7 +94,7 @@
 		<ConfigNumberSelect
 			label="XP Per Message"
 			description="XP awarded for each eligible message (must pass cooldown and have member role)."
-			labelIconClass="fas fa-comment mr-1 text-lime-400"
+			labelIconClass="fas fa-comment mr-1 text-cyan-400"
 			values={xpValues}
 			bind:value={messageXP}
 		/>
@@ -101,7 +102,7 @@
 		<ConfigNumberSelect
 			label="Message Cooldown (seconds)"
 			description="Minimum time between messages to earn XP. Messages sent too quickly won't award XP."
-			labelIconClass="fas fa-clock mr-1 text-lime-400"
+			labelIconClass="fas fa-clock mr-1 text-cyan-400"
 			values={cooldownValues}
 			bind:value={messageCooldown}
 			formatOption={formatSeconds}
@@ -110,7 +111,7 @@
 		<ConfigNumberSelect
 			label="Active Voice XP (per cooldown interval)"
 			description="XP granted each interval while active in voice."
-			labelIconClass="fas fa-microphone mr-1 text-lime-400"
+			labelIconClass="fas fa-microphone mr-1 text-cyan-400"
 			values={xpValues}
 			bind:value={voiceXPPerMinute}
 		/>
@@ -118,7 +119,7 @@
 		<ConfigNumberSelect
 			label="AFK Voice XP (per cooldown interval)"
 			description="XP granted each interval while AFK in voice."
-			labelIconClass="fas fa-pause mr-1 text-lime-400"
+			labelIconClass="fas fa-pause mr-1 text-cyan-400"
 			values={xpValues}
 			bind:value={voiceAfkXPPerMinute}
 		/>
@@ -126,27 +127,27 @@
 		<ConfigNumberSelect
 			label="Voice Cooldown (seconds)"
 			description="How often voice XP is awarded (the XP above is granted each interval)."
-			labelIconClass="fas fa-clock mr-1 text-lime-400"
+			labelIconClass="fas fa-clock mr-1 text-cyan-400"
 			values={cooldownValues}
 			bind:value={voiceCooldown}
 			formatOption={formatSeconds}
 		/>
 
 		<div>
-			<label class="text-ash-300 mb-1.5 block text-xs font-medium">
-				<i class="fas fa-hashtag mr-1 text-lime-400"></i>Level Progress Notification Channel
+			<label class="{CHANNEL_PICKER_ACCENT.labelText} mb-1.5 block text-xs font-medium">
+				<i class={CHANNEL_PICKER_ACCENT.labelIcon}></i>Level Progress Notification Channel
 			</label>
 			<p class="text-ash-500 mb-2 text-xs">Channel for level and rank notifications. Uses default channel if not set.</p>
 			<ChannelPicker channels={data.channels} categories={data.categories} value={progressChannel} onchange={(id) => (progressChannel = id)} />
 		</div>
-
-		<button
-			onclick={save}
-			disabled={saving}
-			class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:opacity-50"
-		>
-			{#if saving}<i class="fas fa-spinner fa-spin"></i>{/if}
-			{saving ? 'Saving...' : 'Save Configuration'}
-		</button>
 	</div>
+
+	<button
+		onclick={save}
+		disabled={saving}
+		class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:opacity-50"
+	>
+		{#if saving}<i class="fas fa-spinner fa-spin"></i>{/if}
+		{saving ? 'Saving...' : 'Save Configuration'}
+	</button>
 </div>

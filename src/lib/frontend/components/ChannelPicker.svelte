@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { CHANNEL_PICKER_ACCENT } from '$lib/frontend/controlAccents.js';
+
 	interface Channel {
 		discord_channel_id: string;
 		name: string;
@@ -116,7 +118,7 @@
 			{selected ? `#${selected.name}` : placeholder}
 		</span>
 	{/if}
-	<i class="fas fa-chevron-down text-xs text-violet-300"></i>
+	<i class={CHANNEL_PICKER_ACCENT.chevron}></i>
 </button>
 
 {#if multi && (value as string[]).length > 0}
@@ -158,13 +160,13 @@
 					placeholder="Search channels..."
 					class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-4 py-2.5 pr-10 text-sm transition-all focus:ring-2 focus:outline-none sm:py-3 sm:text-base"
 				/>
-				<i class="fas fa-search absolute top-1/2 right-3 -translate-y-1/2 text-cyan-300"></i>
+				<i class="{CHANNEL_PICKER_ACCENT.searchIcon} absolute top-1/2 right-3 -translate-y-1/2"></i>
 			</div>
 
 			<div class="min-h-0 flex-1 space-y-2 overflow-y-auto">
 				{#if channels.length === 0}
 					<div class="text-ash-400 py-8 text-center text-sm">
-						<i class="fas fa-inbox mb-2 text-3xl text-violet-300/80"></i>
+						<i class="fas fa-inbox {CHANNEL_PICKER_ACCENT.emptyStateIcon}"></i>
 						<p>No channels found</p>
 					</div>
 				{:else}
@@ -217,7 +219,7 @@
 											{#if multi ? pending.includes(ch.discord_channel_id) : (value as string) === ch.discord_channel_id}
 												<i class="fas fa-check text-sm text-emerald-300"></i>
 											{:else}
-												<i class="fas fa-chevron-right text-xs text-violet-300/80"></i>
+												<i class="fas fa-chevron-right text-xs {CHANNEL_PICKER_ACCENT.listChevron}"></i>
 											{/if}
 										</button>
 									{/each}
@@ -261,7 +263,7 @@
 										{#if multi ? pending.includes(ch.discord_channel_id) : (value as string) === ch.discord_channel_id}
 											<i class="fas fa-check text-sm text-emerald-300"></i>
 										{:else}
-											<i class="fas fa-chevron-right text-xs text-violet-300/80"></i>
+											<i class="fas fa-chevron-right text-xs {CHANNEL_PICKER_ACCENT.listChevron}"></i>
 										{/if}
 									</button>
 								{/each}

@@ -51,7 +51,7 @@
 		ariaLabel="Toggle custom supporter role module"
 	/>
 	{#if !featureEnabled}
-		<p class="text-xs text-amber-200/90">Module is off. Enable it above to use the settings below.</p>
+		<p class="text-xs text-amber-200/90">Module is off. Save configuration to apply. Turn the module on to edit the options below.</p>
 	{/if}
 	<div class="space-y-5 transition-opacity" class:pointer-events-none={!featureEnabled} class:opacity-50={!featureEnabled}>
 		<div>
@@ -69,14 +69,14 @@
 			<p class="text-ash-500 mb-2 text-xs">Lowest role position where custom supporter roles will be created. Roles will be placed above this.</p>
 			<RolePicker roles={data.roles} value={roleEnd} single placeholder="Select role..." onchange={(v) => (roleEnd = v as string)} />
 		</div>
-
-		<button
-			onclick={save}
-			disabled={saving}
-			class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:opacity-50"
-		>
-			{#if saving}<i class="fas fa-spinner fa-spin"></i>{/if}
-			{saving ? 'Saving...' : 'Save Configuration'}
-		</button>
 	</div>
+
+	<button
+		onclick={save}
+		disabled={saving}
+		class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:opacity-50"
+	>
+		{#if saving}<i class="fas fa-spinner fa-spin"></i>{/if}
+		{saving ? 'Saving...' : 'Save Configuration'}
+	</button>
 </div>

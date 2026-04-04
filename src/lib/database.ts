@@ -475,6 +475,8 @@ async function collectGuildSnapshotForUpsert(guild: any) {
 }
 
 export async function upsertOfficialServer(officialBotId: number, guild: any) {
+	const existing = await getOfficialServerByDiscordId(officialBotId, guild.id);
+	const isNewServer = existing == null;
 	const v = await collectGuildSnapshotForUpsert(guild);
 	const now = toMySQLDateTime();
 	await db.execute(sql`
@@ -492,11 +494,15 @@ export async function upsertOfficialServer(officialBotId: number, guild: any) {
 
 	const server = await getOfficialServerByDiscordId(officialBotId, guild.id);
 	if (server) {
+		if (isNewServer) {
+			await seedNewServerFeatureSettingsDisabled(server.id);
+		}
 		await ensureLeaderboardSettingsHaveSlug(server.id, guild.name || 'server');
 	}
 	return server;
 }
 
+/** Guild mirror for a user selfbot — not the panel “server” row; `server_settings` for modules live on the official-bot row only. */
 export async function upsertSelfbotServer(selfbotId: number, guild: any) {
 	const v = await collectGuildSnapshotForUpsert(guild);
 	const now = toMySQLDateTime();
@@ -558,9 +564,16 @@ async function ensureLeaderboardSettingsHaveSlug(serverId: number, serverName: s
 	const settings = (row as any)?.settings && typeof (row as any).settings === 'object' ? (row as any).settings : {};
 	if (settings?.slug) return true;
 	const slug = await generateUniqueLeaderboardSlug(serverName);
-	const next = { enabled: true, ...settings, slug };
+	const next: Record<string, unknown> = { ...settings, slug };
+	if (!('enabled' in next)) next.enabled = true;
 	await upsertServerSettings(serverId, SERVER_SETTINGS.component.leaderboard, next);
 	return true;
+}
+
+async function seedNewServerFeatureSettingsDisabled(serverId: number) {
+	for (const component of SERVER_SETTINGS.withFeatureSwitch) {
+		await upsertServerSettings(serverId, component, { enabled: false });
+	}
 }
 
 export async function getServerByLeaderboardSlug(slug: string) {

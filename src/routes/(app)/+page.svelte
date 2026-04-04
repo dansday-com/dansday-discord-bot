@@ -115,6 +115,7 @@
 			<LabeledSelect
 				id="dashboard-bots-sort"
 				label="Sort by:"
+				labelTone="cyan"
 				labelIconClass="fas fa-filter text-cyan-300"
 				appearance="dashboard"
 				options={botSortOptions}

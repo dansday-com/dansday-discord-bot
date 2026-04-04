@@ -79,7 +79,7 @@
 		ariaLabel="Toggle quest notifier module"
 	/>
 	{#if !featureEnabled}
-		<p class="text-xs text-amber-200/90">Module is off. Enable it above to use the settings below.</p>
+		<p class="text-xs text-amber-200/90">Module is off. Save configuration to apply. Turn the module on to edit channel and proxy below.</p>
 	{/if}
 	<div class="space-y-5 transition-opacity" class:pointer-events-none={!featureEnabled} class:opacity-50={!featureEnabled}>
 		<div>
@@ -110,23 +110,23 @@
 				class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none"
 			/>
 		</div>
-
-		<button
-			onclick={testNotifier}
-			disabled={testing || !channelId}
-			class="border-ash-600 text-ash-100 hover:bg-ash-700 flex w-full items-center justify-center gap-2 rounded-lg border py-2.5 text-sm font-medium transition-all disabled:opacity-50"
-		>
-			{#if testing}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas fa-vial text-sky-400"></i>{/if}
-			{testing ? 'Testing…' : 'Test — latest orb quest'}
-		</button>
-
-		<button
-			onclick={save}
-			disabled={saving}
-			class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:opacity-50"
-		>
-			{#if saving}<i class="fas fa-spinner fa-spin"></i>{/if}
-			{saving ? 'Saving...' : 'Save Configuration'}
-		</button>
 	</div>
+
+	<button
+		onclick={testNotifier}
+		disabled={testing || !channelId}
+		class="border-ash-600 text-ash-100 hover:bg-ash-700 flex w-full items-center justify-center gap-2 rounded-lg border py-2.5 text-sm font-medium transition-all disabled:opacity-50"
+	>
+		{#if testing}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas fa-vial text-sky-400"></i>{/if}
+		{testing ? 'Testing…' : 'Test — latest orb quest'}
+	</button>
+
+	<button
+		onclick={save}
+		disabled={saving}
+		class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:opacity-50"
+	>
+		{#if saving}<i class="fas fa-spinner fa-spin"></i>{/if}
+		{saving ? 'Saving...' : 'Save Configuration'}
+	</button>
 </div>

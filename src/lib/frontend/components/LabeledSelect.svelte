@@ -1,7 +1,10 @@
 <script lang="ts">
+	import { LABELED_SELECT_ACCENT } from '$lib/frontend/controlAccents.js';
 	import type { LabeledSelectOption } from './labeledSelect.js';
 
 	type Appearance = 'dashboard' | 'members-toolbar' | 'form-inline';
+
+	type LabelTone = 'neutral' | 'cyan';
 
 	type Props = {
 		options: LabeledSelectOption[];
@@ -9,6 +12,8 @@
 		/** If set, shows “Sort by:”-style label + icon beside the select */
 		label?: string;
 		labelIconClass?: string;
+		/** When `label` is set, tints label text to match `labelIconClass` (e.g. cyan filter icon). */
+		labelTone?: LabelTone;
 		appearance?: Appearance;
 		/** Extra classes on &lt;select&gt; */
 		selectClass?: string;
@@ -23,12 +28,15 @@
 		value = $bindable(''),
 		label = '',
 		labelIconClass,
+		labelTone = 'neutral',
 		appearance = 'members-toolbar',
 		selectClass = '',
 		id,
 		disabled = false,
 		ariaLabel
 	}: Props = $props();
+
+	const labelTextClass = $derived(labelTone === 'cyan' ? LABELED_SELECT_ACCENT.label : 'text-ash-400');
 
 	const appearanceSelectClass: Record<Appearance, string> = {
 		dashboard:
@@ -44,7 +52,7 @@
 
 {#if label}
 	<div class="flex min-w-0 items-center gap-2 sm:gap-3">
-		<label for={id} class="text-ash-400 flex shrink-0 items-center gap-1 text-xs whitespace-nowrap sm:gap-2 sm:text-sm">
+		<label for={id} class="{labelTextClass} flex shrink-0 items-center gap-1 text-xs whitespace-nowrap sm:gap-2 sm:text-sm">
 			{#if labelIconClass}
 				<i class={labelIconClass}></i>
 			{/if}

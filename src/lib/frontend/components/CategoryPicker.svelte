@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { CATEGORY_PICKER_ACCENT } from '$lib/frontend/controlAccents.js';
+
 	interface Category {
 		id: number;
 		discord_category_id: string;
@@ -59,7 +61,7 @@
 	<span class={value.length ? 'text-ash-100' : 'text-ash-300'}>
 		{value.length ? `${value.length} categor${value.length !== 1 ? 'ies' : 'y'} selected` : 'Select categories...'}
 	</span>
-	<i class="fas fa-chevron-down text-xs text-amber-300"></i>
+	<i class={CATEGORY_PICKER_ACCENT.chevron}></i>
 </button>
 
 {#if value.length > 0}
@@ -99,13 +101,13 @@
 					placeholder="Search categories..."
 					class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-4 py-2.5 pr-10 text-sm transition-all focus:ring-2 focus:outline-none sm:py-3 sm:text-base"
 				/>
-				<i class="fas fa-search absolute top-1/2 right-3 -translate-y-1/2 text-cyan-300"></i>
+				<i class="{CATEGORY_PICKER_ACCENT.searchIcon} absolute top-1/2 right-3 -translate-y-1/2"></i>
 			</div>
 
 			<div class="min-h-0 flex-1 space-y-1 overflow-y-auto">
 				{#if filtered.length === 0}
 					<div class="text-ash-400 py-8 text-center text-sm">
-						<i class="fas fa-inbox mb-2 text-3xl text-amber-300/80"></i>
+						<i class="fas fa-inbox {CATEGORY_PICKER_ACCENT.emptyStateIcon}"></i>
 						<p>No categories found</p>
 					</div>
 				{:else}

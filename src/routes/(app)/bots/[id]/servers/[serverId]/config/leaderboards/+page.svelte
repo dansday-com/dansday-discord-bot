@@ -45,14 +45,14 @@
 	<p class="text-ash-400 text-xs">Enable or disable the public leaderboard page and related Discord controls for this server.</p>
 
 	<ConfigToggleRow
-		label="Leaderboard feature"
+		label="Leaderboard module"
 		description="When off, the public leaderboard URL and in-Discord leaderboard controls are disabled."
 		bind:enabled
-		ariaLabel="Toggle leaderboard feature"
+		ariaLabel="Toggle leaderboard module"
 	/>
 
 	{#if !enabled}
-		<p class="text-xs text-amber-200/90">Feature is off. Turn it on above to edit options and see the public URL.</p>
+		<p class="text-xs text-amber-200/90">Module is off. Save configuration to apply. Turn the module on to see the public URL and options.</p>
 	{/if}
 
 	<div class="space-y-5 transition-opacity" class:pointer-events-none={!enabled} class:opacity-50={!enabled}>
@@ -72,14 +72,14 @@
 				</p>
 			</div>
 		{/if}
-
-		<button
-			onclick={save}
-			disabled={saving}
-			class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:opacity-50"
-		>
-			{#if saving}<i class="fas fa-spinner fa-spin"></i>{/if}
-			{saving ? 'Saving...' : 'Save Configuration'}
-		</button>
 	</div>
+
+	<button
+		onclick={save}
+		disabled={saving}
+		class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:opacity-50"
+	>
+		{#if saving}<i class="fas fa-spinner fa-spin"></i>{/if}
+		{saving ? 'Saving...' : 'Save Configuration'}
+	</button>
 </div>

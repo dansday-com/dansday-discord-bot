@@ -2,6 +2,8 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { invalidateAll } from '$app/navigation';
 	import AddBotModal from '$lib/frontend/components/AddBotModal.svelte';
+	import LabeledSelect from '$lib/frontend/components/LabeledSelect.svelte';
+	import type { LabeledSelectOption } from '$lib/frontend/components/labeledSelect.js';
 	import { dbDateTimeToMs } from '$lib/utils/datetime.js';
 	import type { PageProps } from './$types';
 
@@ -9,6 +11,12 @@
 
 	let showAddBot = $state(false);
 	let sortBy = $state('oldest');
+
+	const botSortOptions: LabeledSelectOption[] = [
+		{ value: 'oldest', label: 'Oldest First' },
+		{ value: 'newest', label: 'Newest First' },
+		{ value: 'name', label: 'Name (A-Z)' }
+	];
 
 	type LiveBot = { status: string; uptimeBase: number; uptimeTick: number };
 	let liveMap = $state<Record<number, LiveBot>>({});
@@ -104,18 +112,14 @@
 			</p>
 		</div>
 		<div class="flex items-center gap-2 sm:gap-3">
-			<label class="text-ash-400 flex items-center gap-1 text-xs whitespace-nowrap sm:gap-2 sm:text-sm">
-				<i class="fas fa-filter text-cyan-300"></i>
-				<span class="sm:inline">Sort by:</span>
-			</label>
-			<select
+			<LabeledSelect
+				id="dashboard-bots-sort"
+				label="Sort by:"
+				labelIconClass="fas fa-filter text-cyan-300"
+				appearance="dashboard"
+				options={botSortOptions}
 				bind:value={sortBy}
-				class="bg-ash-800 border-ash-600 text-ash-100 focus:ring-ash-500 rounded-lg border px-2 py-1.5 text-xs transition-all focus:ring-2 focus:outline-none sm:px-4 sm:py-2 sm:text-sm"
-			>
-				<option value="oldest">Oldest First</option>
-				<option value="newest">Newest First</option>
-				<option value="name">Name (A-Z)</option>
-			</select>
+			/>
 			{#if data.user.authenticated && data.user.account_source === 'accounts'}
 				<button
 					onclick={() => (showAddBot = true)}

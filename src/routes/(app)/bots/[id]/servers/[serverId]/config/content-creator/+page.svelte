@@ -1,7 +1,10 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
+	import { serverSettingsComponent } from '$lib/serverSettingsComponents.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
+	import ConfigNumberSelect from '$lib/frontend/components/ConfigNumberSelect.svelte';
 	import ChannelPicker from '$lib/frontend/components/ChannelPicker.svelte';
+	import { formatDayCount, selectValuesDays1To30 } from '$lib/frontend/numericSelectFormatters.js';
 	import RolePicker from '$lib/frontend/components/RolePicker.svelte';
 	import type { PageProps } from './$types';
 
@@ -21,7 +24,7 @@
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
 				body: JSON.stringify({
-					component: 'content_creator',
+					component: serverSettingsComponent.content_creator,
 					admission_channel_id: admissionChannel,
 					target_channel_id: targetChannel,
 					cooldown_days: cooldownDays,
@@ -55,18 +58,14 @@
 		<ChannelPicker channels={data.channels} categories={data.categories} value={targetChannel} onchange={(id) => (targetChannel = id)} />
 	</div>
 
-	<div>
-		<label class="text-ash-300 mb-1.5 block text-xs font-medium"><i class="fas fa-clock mr-1 text-pink-400"></i>Admission Cooldown (Days)</label>
-		<p class="text-ash-500 mb-2 text-xs">How long members must wait before reapplying after a submission.</p>
-		<select
-			bind:value={cooldownDays}
-			class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none"
-		>
-			{#each Array.from({ length: 30 }, (_, i) => i + 1) as day}
-				<option value={day}>{day} {day === 1 ? 'day' : 'days'}</option>
-			{/each}
-		</select>
-	</div>
+	<ConfigNumberSelect
+		label="Admission Cooldown (Days)"
+		description="How long members must wait before reapplying after a submission."
+		labelIconClass="fas fa-clock mr-1 text-pink-400"
+		values={selectValuesDays1To30}
+		bind:value={cooldownDays}
+		formatOption={formatDayCount}
+	/>
 
 	<div>
 		<label class="text-ash-300 mb-1.5 block text-xs font-medium"><i class="fas fa-user-shield mr-1 text-pink-400"></i>Pending Admission Role</label>

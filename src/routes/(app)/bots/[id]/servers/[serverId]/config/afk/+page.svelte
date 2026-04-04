@@ -1,15 +1,13 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
 	import { showToast } from '$lib/frontend/toast.svelte';
-	import ChannelPicker from '$lib/frontend/components/ChannelPicker.svelte';
 	import ConfigToggleRow from '$lib/frontend/components/ConfigToggleRow.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 
 	let saving = $state(false);
-	let giveawayChannel = $state<string>(data.settings?.giveaway_channel ?? '');
-	let creatorCanParticipate = $state<boolean>(data.settings?.giveaway_creator_can_participate ?? false);
+	let enabled = $state(data.settings?.enabled !== false);
 
 	async function save() {
 		saving = true;
@@ -18,11 +16,7 @@
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
-				body: JSON.stringify({
-					component: serverSettingsComponent.giveaway,
-					giveaway_channel: giveawayChannel,
-					giveaway_creator_can_participate: creatorCanParticipate
-				})
+				body: JSON.stringify({ component: serverSettingsComponent.afk, enabled })
 			});
 			const d = await res.json();
 			if (d.success) {
@@ -37,21 +31,15 @@
 
 <div class="bg-ash-800 border-ash-700 space-y-5 rounded-xl border p-4 sm:p-6">
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
-		<i class="fas fa-gift text-pink-400"></i>Giveaway
+		<i class="fas fa-moon text-indigo-400"></i>AFK
 	</h3>
-	<p class="text-ash-400 text-xs">Choose where giveaways are posted and how entries work.</p>
-
-	<div>
-		<label class="text-ash-300 mb-1.5 block text-xs font-medium">Giveaway Channel</label>
-		<p class="text-ash-500 mb-2 text-xs">Channel for giveaways and winner announcements. Uses default channel if not set.</p>
-		<ChannelPicker channels={data.channels} categories={data.categories} value={giveawayChannel} onchange={(id) => (giveawayChannel = id)} />
-	</div>
+	<p class="text-ash-400 text-xs">Menu button, nicknames, mention notices, and voice auto-clear.</p>
 
 	<ConfigToggleRow
-		label="Creator can participate"
-		description="Allow giveaway creators to enter their own giveaways."
-		bind:enabled={creatorCanParticipate}
-		ariaLabel="Allow giveaway creator to participate"
+		label="AFK feature"
+		description="When off, the AFK button is hidden and all AFK behavior is disabled server-side."
+		bind:enabled
+		ariaLabel="Toggle AFK feature"
 	/>
 
 	<button

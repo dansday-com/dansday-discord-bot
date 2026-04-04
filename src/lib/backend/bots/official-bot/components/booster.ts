@@ -3,6 +3,14 @@ import { EmbedBuilder } from 'discord.js';
 import db from '../../../../database.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../utils/index.js';
 
+function replaceBoosterPlaceholders(message, memberId, serverName, boostLevel, totalBoosts) {
+	return message
+		.replace(/\{user\}/g, `<@${memberId}>`)
+		.replace(/\{server\}/g, serverName || 'Unknown Server')
+		.replace(/\{boostLevel\}/g, String(boostLevel))
+		.replace(/\{totalBoosts\}/g, String(totalBoosts));
+}
+
 async function thankBooster(member, client) {
 	try {
 		const botConfig = getBotConfig();
@@ -48,10 +56,6 @@ async function thankBooster(member, client) {
 			return;
 		}
 
-		const randomMessage = messages[Math.floor(Math.random() * messages.length)];
-		const thankMessage = randomMessage.replace('{user}', `<@${member.user.id}>`);
-		const embedConfig = await getEmbedConfig(member.guild.id);
-
 		const guildBoostCount = member.guild?.premiumSubscriptionCount ?? (serverData?.total_boosters || 0);
 		let guildBoostLevel = 0;
 		if (member.guild?.premiumTier) {
@@ -69,6 +73,11 @@ async function thankBooster(member, client) {
 		} else {
 			guildBoostLevel = serverData?.boost_level || 0;
 		}
+
+		const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+		const serverName = member.guild?.name || serverData?.name || 'Unknown Server';
+		const thankMessage = replaceBoosterPlaceholders(randomMessage, member.user.id, serverName, guildBoostLevel, guildBoostCount);
+		const embedConfig = await getEmbedConfig(member.guild.id);
 
 		for (const boosterChannelId of boosterChannelIds) {
 			const boosterChannel = client.channels.cache.get(boosterChannelId);

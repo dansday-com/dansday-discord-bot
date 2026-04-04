@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
+	import { serverSettingsComponent } from '$lib/serverSettingsComponents.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import RolePicker from '$lib/frontend/components/RolePicker.svelte';
 	import type { PageProps } from './$types';
@@ -17,7 +18,7 @@
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
-				body: JSON.stringify({ component: 'custom_supporter_role', role_start: roleStart, role_end: roleEnd })
+				body: JSON.stringify({ component: serverSettingsComponent.custom_supporter_role, role_start: roleStart, role_end: roleEnd })
 			});
 			const d = await res.json();
 			if (d.success) {

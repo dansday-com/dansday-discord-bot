@@ -1,5 +1,6 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
+import { serverSettingsComponent } from '$lib/serverSettingsComponents.js';
 import { type LeaderboardMetric, type LeaderboardRange, resolveLeaderboardServerBySlug, subscribeLeaderboard } from '$lib/leaderboard/index.js';
 
 function parseMetric(m: string | null): LeaderboardMetric {
@@ -25,7 +26,7 @@ export const GET: RequestHandler = async ({ params, url }) => {
 	if (!resolved) return new Response('Not found', { status: 404 });
 	const server = resolved.server;
 
-	const settingsRow = await db.getServerSettings(server.id, 'leaderboard');
+	const settingsRow = await db.getServerSettings(server.id, serverSettingsComponent.leaderboard);
 	const settings = (settingsRow as any)?.settings || {};
 	const enabled = settings.enabled ?? true;
 	const isPublic = settings.public ?? true;

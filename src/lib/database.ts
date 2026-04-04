@@ -5,6 +5,7 @@ import mysql from 'mysql2/promise';
 import { eq, and, or, inArray, sql, desc, asc, isNull, isNotNull, count, avg, like, ne } from 'drizzle-orm';
 import { db } from './drizzle.js';
 import * as schema from './schema.js';
+import { serverSettingsComponent } from './serverSettingsComponents.js';
 import { logger, toMySQLDateTime, parseMySQLDateTimeUtc, getNowUtc, addMinutesToNow } from './utils/index.js';
 import type { QuestOrbSummary } from './discord-quest-api.js';
 
@@ -426,8 +427,8 @@ export async function getNotificationRoleDbIds(serverId: any) {
 
 export async function getContentCreatorRoleDbIds(serverId: any) {
 	await initializeDatabase();
-	const permissionsSettings = await getServerSettings(serverId, 'permissions').catch(() => null);
-	const contentCreatorSettings = await getServerSettings(serverId, 'content_creator').catch(() => null);
+	const permissionsSettings = await getServerSettings(serverId, serverSettingsComponent.permissions).catch(() => null);
+	const contentCreatorSettings = await getServerSettings(serverId, serverSettingsComponent.content_creator).catch(() => null);
 	const roleIds = new Set<string>(
 		[...((permissionsSettings as any)?.settings?.content_creator_roles || []), (contentCreatorSettings as any)?.settings?.content_creator_role].filter(Boolean)
 	);
@@ -536,7 +537,7 @@ async function generateUniqueLeaderboardSlug(baseName: string) {
 	const rows = await db.execute(sql`
 		SELECT JSON_UNQUOTE(JSON_EXTRACT(settings, '$.slug')) AS slug
 		FROM server_settings
-		WHERE component_name = 'leaderboard'
+		WHERE component_name = ${serverSettingsComponent.leaderboard}
 		  AND JSON_EXTRACT(settings, '$.slug') IS NOT NULL
 		  AND (
 				JSON_UNQUOTE(JSON_EXTRACT(settings, '$.slug')) = ${base}
@@ -553,12 +554,12 @@ async function generateUniqueLeaderboardSlug(baseName: string) {
 }
 
 async function ensureLeaderboardSettingsHaveSlug(serverId: number, serverName: string) {
-	const row = await getServerSettings(serverId, 'leaderboard');
+	const row = await getServerSettings(serverId, serverSettingsComponent.leaderboard);
 	const settings = (row as any)?.settings && typeof (row as any).settings === 'object' ? (row as any).settings : {};
 	if (settings?.slug) return true;
 	const slug = await generateUniqueLeaderboardSlug(serverName);
 	const next = { enabled: true, public: true, ...settings, slug };
-	await upsertServerSettings(serverId, 'leaderboard', next);
+	await upsertServerSettings(serverId, serverSettingsComponent.leaderboard, next);
 	return true;
 }
 
@@ -885,7 +886,7 @@ async function syncMemberCustomSupporterRoles(memberId: number, discordRoleIds: 
 	await initializeDatabase();
 	await db.delete(schema.serverMemberCustomSupporterRoles).where(eq(schema.serverMemberCustomSupporterRoles.member_id, memberId));
 
-	const customSettings = await getServerSettings(serverId, 'custom_supporter_role').catch(() => null);
+	const customSettings = await getServerSettings(serverId, serverSettingsComponent.custom_supporter_role).catch(() => null);
 	const roleStartDiscord = (customSettings as any)?.settings?.role_start as string | null | undefined;
 	const roleEndDiscord = (customSettings as any)?.settings?.role_end as string | null | undefined;
 	if (!roleStartDiscord || !roleEndDiscord || discordRoleIds.length === 0) return;

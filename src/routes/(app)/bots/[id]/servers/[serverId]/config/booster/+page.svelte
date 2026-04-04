@@ -32,7 +32,7 @@
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
-				body: JSON.stringify({ component: 'booster', channels, messages })
+				body: JSON.stringify({ component: serverSettingsComponent.booster, channels, messages })
 			});
 			const d = await res.json();
 			if (d.success) {
@@ -73,10 +73,12 @@
 	<MessageList
 		label="Boost Messages"
 		values={messages}
-		placeholder="Thank you {'{user}'} for boosting {'{server}'}!"
+		placeholder="Thanks {'{user}'}! We're now Level {'{boostLevel}'} with {'{totalBoosts}'} boosts on {'{server}'}."
 		placeholders={[
 			{ code: 'user', desc: 'Mentions the booster' },
-			{ code: 'server', desc: 'Server name' }
+			{ code: 'server', desc: 'Server name' },
+			{ code: 'boostLevel', desc: 'Current boost tier level' },
+			{ code: 'totalBoosts', desc: 'Total server boosts' }
 		]}
 		onchange={(v) => (messages = v)}
 	/>

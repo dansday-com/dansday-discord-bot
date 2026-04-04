@@ -1,5 +1,5 @@
 import { ModalBuilder, TextInputBuilder, ActionRowBuilder, TextInputStyle, EmbedBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
-import { getEmbedConfig, getBotConfig } from '../../../../config.js';
+import { getEmbedConfig, getBotConfig, AFK_CONFIG } from '../../../../config.js';
 import { logger } from '../../../../../utils/index.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import db from '../../../../../database.js';
@@ -184,6 +184,12 @@ export async function handleAFKButton(interaction) {
 			return;
 		}
 
+		if (!(await AFK_CONFIG.isEnabled(interaction.guild.id))) {
+			const errorMsg = await translate('afk.errors.disabledOnServer', interaction.guild.id, interaction.user.id);
+			await interaction.reply({ content: errorMsg, flags: 64 }).catch(() => null);
+			return;
+		}
+
 		const afkData = await getAFKStatus(member.id, member.guild.id);
 
 		if (afkData) {
@@ -287,6 +293,12 @@ export async function handleAFKModal(interaction) {
 					content: errorMessage
 				})
 				.catch(() => null);
+			return;
+		}
+
+		if (!(await AFK_CONFIG.isEnabled(interaction.guild.id))) {
+			const errorMsg = await translate('afk.errors.disabledOnServer', interaction.guild.id, interaction.user.id);
+			await interaction.editReply({ content: errorMsg }).catch(() => null);
 			return;
 		}
 
@@ -405,6 +417,10 @@ export function init(client) {
 		}
 
 		try {
+			if (!(await AFK_CONFIG.isEnabled(message.guild.id))) {
+				return;
+			}
+
 			const member = message.member;
 			if (!member) {
 				return;
@@ -503,6 +519,10 @@ export function init(client) {
 		}
 
 		try {
+			if (!(await AFK_CONFIG.isEnabled(newState.guild.id))) {
+				return;
+			}
+
 			const wasSelfMuted = oldState.mute && !oldState.serverMute;
 			const isSelfUnmuted = !newState.mute && !newState.serverMute;
 

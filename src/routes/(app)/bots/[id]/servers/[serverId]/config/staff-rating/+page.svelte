@@ -1,8 +1,11 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
+	import { serverSettingsComponent } from '$lib/serverSettingsComponents.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
+	import ConfigNumberSelect from '$lib/frontend/components/ConfigNumberSelect.svelte';
 	import ChannelPicker from '$lib/frontend/components/ChannelPicker.svelte';
 	import RolePicker from '$lib/frontend/components/RolePicker.svelte';
+	import { formatDayCount, selectValuesDays1To30 } from '$lib/frontend/numericSelectFormatters.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -23,7 +26,7 @@
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
 				body: JSON.stringify({
-					component: 'staff_rating',
+					component: serverSettingsComponent.staff_rating,
 					role_start: roleStart,
 					role_end: roleEnd,
 					cooldown_days: cooldownDays,
@@ -65,20 +68,14 @@
 		<RolePicker roles={data.roles} value={roleEnd} single placeholder="Select role..." onchange={(v) => (roleEnd = v as string)} />
 	</div>
 
-	<div>
-		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
-			<i class="fas fa-clock mr-1 text-orange-400"></i>Rating Cooldown (Days)
-		</label>
-		<p class="text-ash-500 mb-2 text-xs">Days a member must wait before rating the same staff member again (1–30 days).</p>
-		<select
-			bind:value={cooldownDays}
-			class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none"
-		>
-			{#each Array.from({ length: 30 }, (_, i) => i + 1) as day}
-				<option value={day}>{day} {day === 1 ? 'day' : 'days'}</option>
-			{/each}
-		</select>
-	</div>
+	<ConfigNumberSelect
+		label="Rating Cooldown (Days)"
+		description="Days a member must wait before rating the same staff member again (1–30 days)."
+		labelIconClass="fas fa-clock mr-1 text-orange-400"
+		values={selectValuesDays1To30}
+		bind:value={cooldownDays}
+		formatOption={formatDayCount}
+	/>
 
 	<div>
 		<label class="text-ash-300 mb-1.5 block text-xs font-medium">

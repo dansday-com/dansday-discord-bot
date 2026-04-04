@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { dbDateTimeToMs } from '$lib/utils/datetime.js';
 	import LocalTime from '$lib/frontend/components/LocalTime.svelte';
+	import LabeledSelect from '$lib/frontend/components/LabeledSelect.svelte';
+	import type { LabeledSelectOption } from '$lib/frontend/components/labeledSelect.js';
 
 	export type Member = {
 		discord_member_id: string;
@@ -27,6 +29,29 @@
 	}
 
 	let { members, filterRoleIds, permissionsHref }: Props = $props();
+
+	const MEMBER_SORT_OPTIONS: LabeledSelectOption[] = [
+		{ value: 'rank_asc', label: 'Rank (Low → High)' },
+		{ value: 'rank_desc', label: 'Rank (High → Low)' },
+		{ value: 'level_desc', label: 'Level (High → Low)' },
+		{ value: 'level_asc', label: 'Level (Low → High)' },
+		{ value: 'xp_desc', label: 'XP (High → Low)' },
+		{ value: 'xp_asc', label: 'XP (Low → High)' },
+		{ value: 'chat_desc', label: 'Chat Messages (High → Low)' },
+		{ value: 'chat_asc', label: 'Chat Messages (Low → High)' },
+		{ value: 'voice_active_desc', label: 'Voice Active (High → Low)' },
+		{ value: 'voice_active_asc', label: 'Voice Active (Low → High)' },
+		{ value: 'voice_afk_desc', label: 'Voice AFK (High → Low)' },
+		{ value: 'voice_afk_asc', label: 'Voice AFK (Low → High)' },
+		{ value: 'name_asc', label: 'Name (A-Z)' },
+		{ value: 'name_desc', label: 'Name (Z-A)' },
+		{ value: 'member_since_asc', label: 'Member Since (Oldest First)' },
+		{ value: 'member_since_desc', label: 'Member Since (Newest First)' },
+		{ value: 'account_created_asc', label: 'Account Created (Oldest First)' },
+		{ value: 'account_created_desc', label: 'Account Created (Newest First)' },
+		{ value: 'afk_first', label: 'AFK Status (AFK First)' },
+		{ value: 'afk_last', label: 'AFK Status (Non-AFK First)' }
+	];
 
 	const MEMBERS_PER_PAGE = 20;
 
@@ -147,31 +172,7 @@
 			class="bg-ash-800 border-ash-700 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border py-2.5 pr-4 pl-9 text-sm focus:ring-2 focus:outline-none"
 		/>
 	</div>
-	<select
-		bind:value={sortBy}
-		class="bg-ash-800 border-ash-700 text-ash-100 focus:ring-ash-500 rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
-	>
-		<option value="rank_asc">Rank (Low → High)</option>
-		<option value="rank_desc">Rank (High → Low)</option>
-		<option value="level_desc">Level (High → Low)</option>
-		<option value="level_asc">Level (Low → High)</option>
-		<option value="xp_desc">XP (High → Low)</option>
-		<option value="xp_asc">XP (Low → High)</option>
-		<option value="chat_desc">Chat Messages (High → Low)</option>
-		<option value="chat_asc">Chat Messages (Low → High)</option>
-		<option value="voice_active_desc">Voice Active (High → Low)</option>
-		<option value="voice_active_asc">Voice Active (Low → High)</option>
-		<option value="voice_afk_desc">Voice AFK (High → Low)</option>
-		<option value="voice_afk_asc">Voice AFK (Low → High)</option>
-		<option value="name_asc">Name (A-Z)</option>
-		<option value="name_desc">Name (Z-A)</option>
-		<option value="member_since_asc">Member Since (Oldest First)</option>
-		<option value="member_since_desc">Member Since (Newest First)</option>
-		<option value="account_created_asc">Account Created (Oldest First)</option>
-		<option value="account_created_desc">Account Created (Newest First)</option>
-		<option value="afk_first">AFK Status (AFK First)</option>
-		<option value="afk_last">AFK Status (Non-AFK First)</option>
-	</select>
+	<LabeledSelect appearance="members-toolbar" options={MEMBER_SORT_OPTIONS} bind:value={sortBy} ariaLabel="Sort members" />
 </div>
 
 <p class="text-ash-500 mb-3 text-xs">

@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import { request as httpRequest } from 'http';
 import db from '$lib/database.js';
+import { serverSettingsComponent } from '$lib/serverSettingsComponents.js';
 import { extractOrbQuests, fetchQuestsMe, questPayloadOrbDiagnostics } from '$lib/discord-quest-api.js';
 
 function canEditServer(locals: App.Locals, serverId: string): boolean {
@@ -20,7 +21,7 @@ export const POST: RequestHandler = async ({ locals, params }) => {
 		return json({ success: false, error: 'Server not found' }, { status: 404 });
 	}
 
-	const row = await db.getServerSettings(params.id, 'discord_quest_notifier').catch(() => null);
+	const row = await db.getServerSettings(params.id, serverSettingsComponent.discord_quest_notifier).catch(() => null);
 	const raw = row?.settings;
 	const s = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
 	const channelId = typeof s.channel_id === 'string' ? s.channel_id : '';

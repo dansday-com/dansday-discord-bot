@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
+	import { serverSettingsComponent } from '$lib/serverSettingsComponents.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import ChannelPicker from '$lib/frontend/components/ChannelPicker.svelte';
 	import MessageList from '$lib/frontend/components/MessageList.svelte';
@@ -32,7 +33,7 @@
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
-				body: JSON.stringify({ component: 'welcomer', channels, messages })
+				body: JSON.stringify({ component: serverSettingsComponent.welcomer, channels, messages })
 			});
 			const d = await res.json();
 			if (d.success) {

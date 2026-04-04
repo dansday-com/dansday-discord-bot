@@ -126,6 +126,7 @@
 			"remove": "🔄 Hapus AFK"
 		},
 		"errors": {
+			"disabledOnServer": "❌ AFK dimatikan untuk server ini. Admin dapat mengaktifkannya di panel konfigurasi bot.",
 			"notAFK": "❌ Kamu saat ini tidak sedang AFK.",
 			"failed": "❌ Gagal membuka formulir AFK: {error}",
 			"setFailed": "❌ **Gagal Mengatur AFK**\\n\\nError: {error}\\n\\nSilakan coba lagi nanti.",

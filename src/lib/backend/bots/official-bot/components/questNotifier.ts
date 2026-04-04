@@ -1,5 +1,6 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, Client, EmbedBuilder } from 'discord.js';
 import db from '../../../../database.js';
+import { serverSettingsComponent } from '../../../../serverSettingsComponents.js';
 import { getEmbedConfig } from '../../../config.js';
 import { logger } from '../../../../utils/index.js';
 import { extractOrbQuests, fetchQuestsMe, type QuestOrbSummary } from '../../../../discord-quest-api.js';
@@ -74,7 +75,7 @@ async function runTick(client: Client, officialBotId: number) {
 	const servers = await db.getServersForBot(officialBotId);
 
 	for (const server of servers) {
-		const row = await db.getServerSettings(server.id, 'discord_quest_notifier').catch(() => null);
+		const row = await db.getServerSettings(server.id, serverSettingsComponent.discord_quest_notifier).catch(() => null);
 		const s = row?.settings && typeof row.settings === 'object' ? (row.settings as Record<string, unknown>) : {};
 		const enabled = s.enabled === true;
 		const channelId = typeof s.channel_id === 'string' ? s.channel_id : '';

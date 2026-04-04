@@ -129,6 +129,7 @@
 			"remove": "🔄 Remove AFK"
 		},
 		"errors": {
+			"disabledOnServer": "❌ AFK is turned off for this server. An administrator can enable it in the bot configuration panel.",
 			"notAFK": "❌ You are not currently AFK.",
 			"failed": "❌ Failed to open AFK form: {error}",
 			"setFailed": "❌ **Failed to Set AFK**\\n\\nError: {error}\\n\\nPlease try again later.",

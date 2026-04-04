@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
+	import { serverSettingsComponent } from '$lib/serverSettingsComponents.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import RolePicker from '$lib/frontend/components/RolePicker.svelte';
 	import CategoryPicker from '$lib/frontend/components/CategoryPicker.svelte';
@@ -20,7 +21,7 @@
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
 				body: JSON.stringify({
-					component: 'notifications',
+					component: serverSettingsComponent.notifications,
 					role_start: roleStart,
 					role_end: roleEnd,
 					category_ids: categoryIds

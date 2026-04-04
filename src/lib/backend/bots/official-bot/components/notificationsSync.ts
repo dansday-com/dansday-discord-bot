@@ -1,4 +1,5 @@
 import db from '../../../../database.js';
+import { serverSettingsComponent } from '../../../../serverSettingsComponents.js';
 import { logger } from '../../../../utils/index.js';
 
 const GUILD_TEXT = 0;
@@ -31,7 +32,7 @@ export async function syncNotificationRoles(guild: any, serverId: any) {
 	if (guildId && guildSyncLock.has(guildId)) return;
 	if (guildId) guildSyncLock.add(guildId);
 	try {
-		const row = await db.getServerSettings(serverId, 'notifications');
+		const row = await db.getServerSettings(serverId, serverSettingsComponent.notifications);
 		const config = row?.settings || null;
 		if (!config || !config.role_start || !config.role_end) {
 			if (config && (config.role_start || config.role_end || (config.category_ids && config.category_ids.length > 0))) {

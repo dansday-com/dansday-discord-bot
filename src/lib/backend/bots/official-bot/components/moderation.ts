@@ -1,5 +1,5 @@
 import { EmbedBuilder } from 'discord.js';
-import { getMainChannel, getEmbedConfig, getBotConfig } from '../../../config.js';
+import { getMainChannel, getEmbedConfig, getBotConfig, MODERATION_CONFIG } from '../../../config.js';
 import db from '../../../../database.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../utils/index.js';
 
@@ -59,6 +59,10 @@ function init(client) {
 			const { guild, user } = ban;
 			const botConfig = getBotConfig();
 			if (!botConfig || !botConfig.id) {
+				return;
+			}
+
+			if (!(await MODERATION_CONFIG.isEnabled(guild.id))) {
 				return;
 			}
 
@@ -129,6 +133,10 @@ function init(client) {
 		try {
 			const botConfig = getBotConfig();
 			if (!botConfig || !botConfig.id) {
+				return;
+			}
+
+			if (!(await MODERATION_CONFIG.isEnabled(member.guild.id))) {
 				return;
 			}
 

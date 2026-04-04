@@ -1,4 +1,5 @@
 import db from '../database.js';
+import { serverSettingsComponent } from '../serverSettingsComponents.js';
 import { normalizeForwarderSettings } from '../forwarder-settings.js';
 import { resolveEmbedFooterPlaceholders } from '../utils/embedFooter.js';
 import { mainChannelId } from '../utils/mainConfigSettings.js';
@@ -190,7 +191,7 @@ export async function getMainChannel(guildId: string) {
 	requireBotConfig();
 	requireGuildId(guildId, 'getting main channel');
 
-	const settings = await getServerSettingsForComponent(guildId, 'main_config');
+	const settings = await getServerSettingsForComponent(guildId, serverSettingsComponent.main);
 	const channelId = mainChannelId(settings.settings);
 
 	if (!channelId) {
@@ -208,7 +209,7 @@ export const PERMISSIONS = {
 		if (!server) {
 			throw new Error(`Server not found for guild ${guildId}`);
 		}
-		const settings = await db.getServerSettings(server.id, 'permissions');
+		const settings = await db.getServerSettings(server.id, serverSettingsComponent.permissions);
 		if (!settings || !settings.settings) {
 			throw new Error(`Permissions not configured for guild ${guildId}`);
 		}
@@ -237,7 +238,7 @@ export const PERMISSIONS = {
 
 export async function getLevelingSettings(guildId: string) {
 	const officialBotServer = await getOfficialBotServer(guildId);
-	const settings = await db.getServerSettings(officialBotServer.id, 'leveling');
+	const settings = await db.getServerSettings(officialBotServer.id, serverSettingsComponent.leveling);
 
 	if (!settings || !settings.settings) {
 		throw new Error(`Leveling settings not configured for guild ${guildId}. Please configure in the panel.`);
@@ -295,7 +296,7 @@ export async function getEmbedConfig(guildId: string) {
 	requireGuildId(guildId, 'getting embed config');
 
 	const officialBotServer = await getOfficialBotServer(guildId);
-	const settings = await getServerSettingsForComponent(guildId, 'main_config');
+	const settings = await getServerSettingsForComponent(guildId, serverSettingsComponent.main);
 	const config = settings.settings;
 
 	if (!config.color) {
@@ -318,7 +319,7 @@ export const WELCOMER = {
 	async getChannels(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting welcomer channels');
-		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, 'welcomer');
+		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.welcomer);
 		if (settings?.settings?.channels?.length > 0) return settings.settings.channels;
 		const mainChannel = await getMainChannel(guildId);
 		return mainChannel ? [mainChannel] : [];
@@ -327,7 +328,7 @@ export const WELCOMER = {
 	async getMessages(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting welcomer messages');
-		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, 'welcomer');
+		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.welcomer);
 		if (settings?.settings?.messages?.length > 0) return settings.settings.messages;
 		return [];
 	}
@@ -337,7 +338,7 @@ export const BOOSTER = {
 	async getChannels(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting booster channels');
-		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, 'booster');
+		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.booster);
 		if (settings?.settings?.channels?.length > 0) return settings.settings.channels;
 		const mainChannel = await getMainChannel(guildId);
 		return mainChannel ? [mainChannel] : [];
@@ -351,7 +352,7 @@ export const BOOSTER = {
 	async getMessages(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting booster messages');
-		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, 'booster');
+		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.booster);
 		if (settings?.settings?.messages?.length > 0) return settings.settings.messages;
 		return [];
 	}
@@ -361,7 +362,7 @@ export const CUSTOM_SUPPORTER_ROLE = {
 	async getRoleConstraints(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting custom role constraints');
-		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, 'custom_supporter_role');
+		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.custom_supporter_role);
 		if (settings?.settings) {
 			return {
 				ROLE_START: settings.settings.role_start || null,
@@ -378,19 +379,19 @@ export const NOTIFICATIONS = {
 		requireGuildId(guildId, 'getting notifications config');
 		const server = await getOfficialBotServer(guildId).catch(() => null);
 		if (!server) return null;
-		const settings = await db.getServerSettings(server.id, 'notifications');
+		const settings = await db.getServerSettings(server.id, serverSettingsComponent.notifications);
 		return settings?.settings || null;
 	},
 
 	async getConfigByServerId(serverId: number) {
-		const settings = await db.getServerSettings(serverId, 'notifications');
+		const settings = await db.getServerSettings(serverId, serverSettingsComponent.notifications);
 		return settings?.settings || null;
 	},
 
 	async getRoleConstraints(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting notifications role constraints');
-		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, 'notifications');
+		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.notifications);
 		if (settings?.settings) {
 			return {
 				ROLE_START: settings.settings.role_start || null,
@@ -424,7 +425,7 @@ export const FEEDBACK = {
 	async getChannel(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting feedback channel');
-		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, 'feedback');
+		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.feedback);
 		if (settings?.settings?.feedback_channel) return settings.settings.feedback_channel;
 		return await getMainChannel(guildId);
 	},
@@ -432,7 +433,7 @@ export const FEEDBACK = {
 	async getRole(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting feedback role');
-		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, 'feedback');
+		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.feedback);
 		return settings?.settings?.feedback_role || null;
 	}
 };
@@ -441,7 +442,7 @@ export const GIVEAWAY = {
 	async getChannel(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting giveaway channel');
-		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, 'giveaway');
+		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.giveaway);
 		if (settings?.settings?.giveaway_channel) return settings.settings.giveaway_channel;
 		return await getMainChannel(guildId);
 	},
@@ -449,8 +450,38 @@ export const GIVEAWAY = {
 	async getCreatorCanParticipate(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting giveaway creator can participate setting');
-		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, 'giveaway');
+		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.giveaway);
 		return settings?.settings?.giveaway_creator_can_participate ?? false;
+	}
+};
+
+/** Ban/kick log embeds to the main channel (moderation.ts). */
+export const MODERATION_CONFIG = {
+	async isEnabled(guildId: string): Promise<boolean> {
+		requireBotConfig();
+		requireGuildId(guildId, 'checking moderation logs enabled');
+		try {
+			const row = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.moderation);
+			if (row?.settings?.enabled === false) return false;
+			return true;
+		} catch {
+			return true;
+		}
+	}
+};
+
+/** AFK menu, nicknames, mentions, and voice hooks (interface/afk.ts). */
+export const AFK_CONFIG = {
+	async isEnabled(guildId: string): Promise<boolean> {
+		requireBotConfig();
+		requireGuildId(guildId, 'checking AFK enabled');
+		try {
+			const row = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.afk);
+			if (row?.settings?.enabled === false) return false;
+			return true;
+		} catch {
+			return true;
+		}
 	}
 };
 
@@ -459,8 +490,7 @@ export const STAFF_RATING = {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting staff rating config');
 		const serverId = (await getOfficialBotServer(guildId)).id;
-		let row = await db.getServerSettings(serverId, 'staff_rating');
-		if (!row) row = await db.getServerSettings(serverId, 'staff_report_rating');
+		const row = await db.getServerSettings(serverId, serverSettingsComponent.staff_rating);
 		return row?.settings || null;
 	},
 
@@ -514,7 +544,7 @@ export const CONTENT_CREATOR = {
 	async getConfig(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting content creator config');
-		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, 'content_creator');
+		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.content_creator);
 		return settings?.settings || null;
 	},
 
@@ -557,7 +587,7 @@ export const FORWARDER = {
 		const botIdToUse = await getOfficialBotId();
 		const server = await db.getServerByDiscordId(botIdToUse, guildId);
 		if (!server) return { forwarders: [] };
-		const settings = await db.getServerSettings(server.id, 'forwarder');
+		const settings = await db.getServerSettings(server.id, serverSettingsComponent.forwarder);
 		if (!settings || !settings.settings) return { forwarders: [] };
 		return normalizeForwarderSettings(settings.settings);
 	},

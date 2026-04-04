@@ -1,10 +1,11 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import db from '$lib/database.js';
+import { serverSettingsComponent } from '$lib/serverSettingsComponents.js';
 import { normalizeMainConfigForPanel } from '$lib/utils/mainConfigSettings.js';
 
 export const load: PageServerLoad = async ({ locals, params }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
-	const row = await db.getServerSettings(params.serverId, 'main_config').catch(() => null);
+	const row = await db.getServerSettings(params.serverId, serverSettingsComponent.main).catch(() => null);
 	return { settings: normalizeMainConfigForPanel(row?.settings ?? {}) };
 };

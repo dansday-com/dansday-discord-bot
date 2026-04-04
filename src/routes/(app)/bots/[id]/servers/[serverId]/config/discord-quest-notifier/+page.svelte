@@ -2,6 +2,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import ChannelPicker from '$lib/frontend/components/ChannelPicker.svelte';
+	import ConfigToggleRow from '$lib/frontend/components/ConfigToggleRow.svelte';
 	import { isValidQuestHttpProxyUrl } from '$lib/utils/questHttpProxyUrl.js';
 	import type { PageProps } from './$types';
 
@@ -25,7 +26,7 @@
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
 				body: JSON.stringify({
-					component: 'discord_quest_notifier',
+					component: serverSettingsComponent.discord_quest_notifier,
 					enabled,
 					channel_id: channelId,
 					http_proxy_url: httpProxyUrl.trim() || ''
@@ -70,21 +71,7 @@
 		Orb quest alerts from this server’s selfbot; not the same as <strong class="text-ash-200">Channel notification</strong>.
 	</p>
 
-	<div class="flex items-center justify-between gap-4">
-		<div class="min-w-0">
-			<label class="text-ash-300 text-xs font-medium">Enable notifier</label>
-			<p class="text-ash-500 mt-0.5 text-xs">Requires a running selfbot (Selfbots).</p>
-		</div>
-		<button
-			type="button"
-			onclick={() => (enabled = !enabled)}
-			class="relative h-6 w-10 flex-shrink-0 rounded-full transition-colors {enabled ? 'bg-ash-400' : 'bg-ash-700'}"
-			aria-pressed={enabled}
-			aria-label="Enable quest notifier"
-		>
-			<span class="absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-all {enabled ? 'left-5' : 'left-1'}"></span>
-		</button>
-	</div>
+	<ConfigToggleRow label="Enable notifier" description="Requires a running selfbot (Selfbots)." bind:enabled ariaLabel="Enable quest notifier" />
 
 	<div>
 		<label class="text-ash-300 mb-1.5 block text-xs font-medium">

@@ -2,7 +2,9 @@
 	import { invalidateAll } from '$app/navigation';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import type { PageProps } from './$types';
+	import LabeledSelect from '$lib/frontend/components/LabeledSelect.svelte';
 	import MemberPicker from '$lib/frontend/components/MemberPicker.svelte';
+	import type { LabeledSelectOption } from '$lib/frontend/components/labeledSelect.js';
 	import ConfirmModal from '$lib/frontend/components/ConfirmModal.svelte';
 	import { parseMySQLDateTimeUtc } from '$lib/utils/datetime.js';
 	import LocalTime from '$lib/frontend/components/LocalTime.svelte';
@@ -16,6 +18,7 @@
 	let inviting = $state(false);
 
 	const validTypes = $derived(data.user.authenticated && data.user.account_source === 'accounts' ? ['owner', 'moderator'] : ['moderator']);
+	const inviteTypeOptions = $derived<LabeledSelectOption[]>(validTypes.map((t) => ({ value: t, label: t.charAt(0).toUpperCase() + t.slice(1) })));
 	const canInvite = $derived(
 		data.user.authenticated &&
 			(data.user.account_source === 'accounts' || (data.user.account_source === 'server_accounts' && data.user.account_type === 'owner'))
@@ -173,14 +176,7 @@
 		<div class="mb-8">
 			<h3 class="text-ash-100 mb-3 text-lg font-semibold">Send Invite</h3>
 			<div class="flex flex-col gap-2 sm:flex-row">
-				<select
-					bind:value={inviteType}
-					class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none sm:w-36"
-				>
-					{#each validTypes as type}
-						<option value={type}>{type}</option>
-					{/each}
-				</select>
+				<LabeledSelect appearance="form-inline" options={inviteTypeOptions} bind:value={inviteType} ariaLabel="Invite account type" />
 				<MemberPicker
 					serverId={data.serverId}
 					value={selectedDiscordMemberId}

@@ -1,6 +1,7 @@
 import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
 import db from '$lib/database.js';
+import { serverSettingsComponent } from '$lib/serverSettingsComponents.js';
 import {
 	type LeaderboardMetric,
 	type LeaderboardRange,
@@ -32,7 +33,7 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
 	if (!resolved) throw error(404, 'Not found');
 	const server = resolved.server;
 
-	const settingsRow = await db.getServerSettings(server.id, 'leaderboard');
+	const settingsRow = await db.getServerSettings(server.id, serverSettingsComponent.leaderboard);
 	const settings = (settingsRow as any)?.settings || {};
 	const enabled = settings.enabled ?? true;
 	if (!enabled) throw error(404, 'Not found');

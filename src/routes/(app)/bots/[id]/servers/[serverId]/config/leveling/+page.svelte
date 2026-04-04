@@ -1,7 +1,10 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
+	import { serverSettingsComponent } from '$lib/serverSettingsComponents.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
+	import ConfigNumberSelect from '$lib/frontend/components/ConfigNumberSelect.svelte';
 	import ChannelPicker from '$lib/frontend/components/ChannelPicker.svelte';
+	import { formatMultiplier, formatSeconds } from '$lib/frontend/numericSelectFormatters.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -20,10 +23,10 @@
 
 	let progressChannel = $state<string>(data.settings?.PROGRESS_CHANNEL_ID ?? '');
 
-	const xpOptions = Array.from({ length: 20 }, (_, i) => (i + 1) * 5);
-	const cooldownOptions = Array.from({ length: 13 }, (_, i) => i * 15);
-	const baseXPOptions = Array.from({ length: 20 }, (_, i) => (i + 1) * 50);
-	const multiplierOptions = Array.from({ length: 11 }, (_, i) => parseFloat((1.0 + i * 0.1).toFixed(1)));
+	const xpValues = Array.from({ length: 20 }, (_, i) => (i + 1) * 5);
+	const cooldownValues = Array.from({ length: 13 }, (_, i) => i * 15);
+	const baseXPValues = Array.from({ length: 20 }, (_, i) => (i + 1) * 50);
+	const multiplierValues = Array.from({ length: 11 }, (_, i) => parseFloat((1.0 + i * 0.1).toFixed(1)));
 
 	async function save() {
 		saving = true;
@@ -33,7 +36,7 @@
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
 				body: JSON.stringify({
-					component: 'leveling',
+					component: serverSettingsComponent.leveling,
 					PROGRESS_CHANNEL_ID: progressChannel,
 					REQUIREMENTS: { BASE_XP: baseXP, MULTIPLIER: multiplier },
 					MESSAGE: { XP: messageXP, COOLDOWN_SECONDS: messageCooldown },
@@ -57,110 +60,64 @@
 	</h3>
 	<p class="text-ash-400 text-xs">Control XP gain, cooldowns, and where progress notifications are posted.</p>
 
-	<div>
-		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
-			<i class="fas fa-trophy mr-1 text-lime-400"></i>Base XP
-		</label>
-		<p class="text-ash-500 mb-2 text-xs">XP needed to reach level 2. Higher levels scale with Base XP and Multiplier.</p>
-		<select
-			bind:value={baseXP}
-			class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none"
-		>
-			{#each baseXPOptions as val}
-				<option value={val}>{val}</option>
-			{/each}
-		</select>
-	</div>
+	<ConfigNumberSelect
+		label="Base XP"
+		description="XP needed to reach level 2. Higher levels scale with Base XP and Multiplier."
+		labelIconClass="fas fa-trophy mr-1 text-lime-400"
+		values={baseXPValues}
+		bind:value={baseXP}
+	/>
 
-	<div>
-		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
-			<i class="fas fa-chart-line mr-1 text-lime-400"></i>Multiplier
-		</label>
-		<p class="text-ash-500 mb-2 text-xs">Exponential multiplier for level requirements. Higher values make leveling progressively harder.</p>
-		<select
-			bind:value={multiplier}
-			class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none"
-		>
-			{#each multiplierOptions as val}
-				<option value={val}>{val}x</option>
-			{/each}
-		</select>
-	</div>
+	<ConfigNumberSelect
+		label="Multiplier"
+		description="Exponential multiplier for level requirements. Higher values make leveling progressively harder."
+		labelIconClass="fas fa-chart-line mr-1 text-lime-400"
+		values={multiplierValues}
+		bind:value={multiplier}
+		formatOption={formatMultiplier}
+	/>
 
-	<div>
-		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
-			<i class="fas fa-comment mr-1 text-lime-400"></i>XP Per Message
-		</label>
-		<p class="text-ash-500 mb-2 text-xs">XP awarded for each eligible message (must pass cooldown and have member role).</p>
-		<select
-			bind:value={messageXP}
-			class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none"
-		>
-			{#each xpOptions as val}
-				<option value={val}>{val}</option>
-			{/each}
-		</select>
-	</div>
+	<ConfigNumberSelect
+		label="XP Per Message"
+		description="XP awarded for each eligible message (must pass cooldown and have member role)."
+		labelIconClass="fas fa-comment mr-1 text-lime-400"
+		values={xpValues}
+		bind:value={messageXP}
+	/>
 
-	<div>
-		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
-			<i class="fas fa-clock mr-1 text-lime-400"></i>Message Cooldown (seconds)
-		</label>
-		<p class="text-ash-500 mb-2 text-xs">Minimum time between messages to earn XP. Messages sent too quickly won't award XP.</p>
-		<select
-			bind:value={messageCooldown}
-			class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none"
-		>
-			{#each cooldownOptions as val}
-				<option value={val}>{val}s</option>
-			{/each}
-		</select>
-	</div>
+	<ConfigNumberSelect
+		label="Message Cooldown (seconds)"
+		description="Minimum time between messages to earn XP. Messages sent too quickly won't award XP."
+		labelIconClass="fas fa-clock mr-1 text-lime-400"
+		values={cooldownValues}
+		bind:value={messageCooldown}
+		formatOption={formatSeconds}
+	/>
 
-	<div>
-		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
-			<i class="fas fa-microphone mr-1 text-lime-400"></i>Active Voice XP (per cooldown interval)
-		</label>
-		<p class="text-ash-500 mb-2 text-xs">XP granted each interval while active in voice.</p>
-		<select
-			bind:value={voiceXPPerMinute}
-			class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none"
-		>
-			{#each xpOptions as val}
-				<option value={val}>{val}</option>
-			{/each}
-		</select>
-	</div>
+	<ConfigNumberSelect
+		label="Active Voice XP (per cooldown interval)"
+		description="XP granted each interval while active in voice."
+		labelIconClass="fas fa-microphone mr-1 text-lime-400"
+		values={xpValues}
+		bind:value={voiceXPPerMinute}
+	/>
 
-	<div>
-		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
-			<i class="fas fa-pause mr-1 text-lime-400"></i>AFK Voice XP (per cooldown interval)
-		</label>
-		<p class="text-ash-500 mb-2 text-xs">XP granted each interval while AFK in voice.</p>
-		<select
-			bind:value={voiceAfkXPPerMinute}
-			class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none"
-		>
-			{#each xpOptions as val}
-				<option value={val}>{val}</option>
-			{/each}
-		</select>
-	</div>
+	<ConfigNumberSelect
+		label="AFK Voice XP (per cooldown interval)"
+		description="XP granted each interval while AFK in voice."
+		labelIconClass="fas fa-pause mr-1 text-lime-400"
+		values={xpValues}
+		bind:value={voiceAfkXPPerMinute}
+	/>
 
-	<div>
-		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
-			<i class="fas fa-clock mr-1 text-lime-400"></i>Voice Cooldown (seconds)
-		</label>
-		<p class="text-ash-500 mb-2 text-xs">How often voice XP is awarded (the XP above is granted each interval).</p>
-		<select
-			bind:value={voiceCooldown}
-			class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none"
-		>
-			{#each cooldownOptions as val}
-				<option value={val}>{val}s</option>
-			{/each}
-		</select>
-	</div>
+	<ConfigNumberSelect
+		label="Voice Cooldown (seconds)"
+		description="How often voice XP is awarded (the XP above is granted each interval)."
+		labelIconClass="fas fa-clock mr-1 text-lime-400"
+		values={cooldownValues}
+		bind:value={voiceCooldown}
+		formatOption={formatSeconds}
+	/>
 
 	<div>
 		<label class="text-ash-300 mb-1.5 block text-xs font-medium">

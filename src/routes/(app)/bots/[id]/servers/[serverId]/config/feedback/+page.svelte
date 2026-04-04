@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
+	import { serverSettingsComponent } from '$lib/serverSettingsComponents.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import ChannelPicker from '$lib/frontend/components/ChannelPicker.svelte';
 	import RolePicker from '$lib/frontend/components/RolePicker.svelte';
@@ -18,7 +19,7 @@
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
-				body: JSON.stringify({ component: 'feedback', feedback_channel: feedbackChannel, feedback_role: feedbackRole })
+				body: JSON.stringify({ component: serverSettingsComponent.feedback, feedback_channel: feedbackChannel, feedback_role: feedbackRole })
 			});
 			const d = await res.json();
 			if (d.success) {

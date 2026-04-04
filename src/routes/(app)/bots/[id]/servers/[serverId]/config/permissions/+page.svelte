@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
+	import { serverSettingsComponent } from '$lib/serverSettingsComponents.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import RolePicker from '$lib/frontend/components/RolePicker.svelte';
 	import type { PageProps } from './$types';
@@ -21,7 +22,7 @@
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
 				body: JSON.stringify({
-					component: 'permissions',
+					component: serverSettingsComponent.permissions,
 					admin_roles: adminRoles,
 					staff_roles: staffRoles,
 					supporter_roles: supporterRoles,

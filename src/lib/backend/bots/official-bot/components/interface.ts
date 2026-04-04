@@ -1,4 +1,4 @@
-import { CONTENT_CREATOR, getEmbedConfig, getServerForCurrentBot } from '../../../config.js';
+import { AFK_CONFIG, CONTENT_CREATOR, getEmbedConfig, getServerForCurrentBot } from '../../../config.js';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
 import { logger } from '../../../../utils/index.js';
 import { hasPermission, getPermissionDeniedMessage } from './permissions.js';
@@ -112,7 +112,7 @@ async function handleMenuButton(interaction) {
 		);
 	}
 
-	if (await hasPermission(member, 'afk')) {
+	if ((await hasPermission(member, 'afk')) && (await AFK_CONFIG.isEnabled(interaction.guild.id))) {
 		buttons.push(
 			new ButtonBuilder()
 				.setCustomId('bot_afk')

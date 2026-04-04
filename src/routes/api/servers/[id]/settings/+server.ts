@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
+import { serverSettingsComponent } from '$lib/serverSettingsComponents.js';
 import { logger } from '$lib/utils/index.js';
 
 export const GET: RequestHandler = async ({ locals, params, url }) => {
@@ -12,7 +13,7 @@ export const GET: RequestHandler = async ({ locals, params, url }) => {
 		const component = url.searchParams.get('component');
 		let serverId = params.id;
 
-		if (component === 'notifications') {
+		if (component === serverSettingsComponent.notifications) {
 			const officialServerId = await db.getOfficialBotServerIdForServer(params.id);
 			if (officialServerId) serverId = officialServerId;
 		}
@@ -43,14 +44,14 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		}
 
 		let targetServerId = params.id;
-		if (component === 'notifications') {
+		if (component === serverSettingsComponent.notifications) {
 			const officialServerId = await db.getOfficialBotServerIdForServer(params.id);
 			if (officialServerId) targetServerId = officialServerId;
 		}
 
 		const result = await db.upsertServerSettings(targetServerId, component, settings);
 
-		if (component === 'notifications') {
+		if (component === serverSettingsComponent.notifications) {
 			try {
 				const server = await db.getServer(targetServerId);
 				const officialBotId = server ? await db.resolveOfficialBotIdForServer(server) : null;

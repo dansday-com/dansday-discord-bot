@@ -7,7 +7,7 @@
 	const base = $derived(`/bots/${data.botId}/servers/${data.serverId}/config`);
 
 	const tabs = [
-		{ label: 'Main Config', icon: 'fa-gear', iconClass: 'text-emerald-400', href: '' },
+		{ label: 'Main', icon: 'fa-gear', iconClass: 'text-emerald-400', href: '' },
 		{ label: 'Permissions', icon: 'fa-shield-halved', iconClass: 'text-blue-400', href: '/permissions' },
 		{ label: 'Welcomer', icon: 'fa-hand', iconClass: 'text-sky-400', href: '/welcomer' },
 		{ label: 'Booster', icon: 'fa-gem', iconClass: 'text-purple-400', href: '/booster' },
@@ -17,7 +17,9 @@
 		{ label: 'Leaderboard', icon: 'fa-trophy', iconClass: 'text-amber-400', href: '/leaderboards' },
 		{ label: 'Custom Supporter Role', icon: 'fa-star', iconClass: 'text-yellow-400', href: '/custom-supporter-role' },
 		{ label: 'Giveaway', icon: 'fa-gift', iconClass: 'text-pink-400', href: '/giveaway' },
+		{ label: 'AFK', icon: 'fa-moon', iconClass: 'text-indigo-400', href: '/afk' },
 		{ label: 'Feedback', icon: 'fa-comment-dots', iconClass: 'text-cyan-400', href: '/feedback' },
+		{ label: 'Moderation', icon: 'fa-gavel', iconClass: 'text-red-400', href: '/moderation' },
 		{ label: 'Staff Rating', icon: 'fa-clipboard-check', iconClass: 'text-orange-400', href: '/staff-rating' },
 		{ label: 'Content Creator', icon: 'fa-video', iconClass: 'text-pink-400', href: '/content-creator' },
 		{

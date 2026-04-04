@@ -1765,10 +1765,9 @@ async function getSelfbotsForOfficialBot(officialBotId: number) {
 		.then((rows) => rows.map((r) => r.selfbot));
 }
 
-/** Lowest `id` among selfbots linked to this official bot with `status === 'running'` and a token. */
-async function getFirstRunningSelfbotForOfficialBot(officialBotId: number) {
+async function getFirstRunningSelfbotForServer(serverId: number) {
 	await initializeDatabase();
-	const selfbots = await getSelfbotsForOfficialBot(officialBotId);
+	const selfbots = await getServerBots(serverId);
 	const running = selfbots.filter((s) => s.status === 'running' && typeof s.token === 'string' && s.token.trim() !== '');
 	running.sort((a, b) => a.id - b.id);
 	return running[0] ?? null;
@@ -2768,7 +2767,7 @@ export default {
 	getOfficialBotForSelfbot,
 	resolveOfficialBotIdForServer,
 	getSelfbotsForOfficialBot,
-	getFirstRunningSelfbotForOfficialBot,
+	getFirstRunningSelfbotForServer,
 	getChannelsForServer,
 	getCategoriesForServer,
 	serversNeedSync,

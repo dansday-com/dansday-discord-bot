@@ -10,7 +10,8 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	return {
 		settings: {
 			enabled: s.enabled === true,
-			channel_id: typeof s.channel_id === 'string' ? s.channel_id : ''
+			channel_id: typeof s.channel_id === 'string' ? s.channel_id : '',
+			http_proxy_url: typeof s.http_proxy_url === 'string' ? s.http_proxy_url : ''
 		}
 	};
 };

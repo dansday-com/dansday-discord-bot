@@ -1,4 +1,5 @@
 import { RouteBases } from 'discord-api-types/rest/v10';
+import { fetch as undiciFetch, ProxyAgent } from 'undici';
 
 const QUESTS_ME_PATH = '/quests/@me';
 
@@ -6,6 +7,50 @@ const QUESTS_ME_URL = `${RouteBases.api}${QUESTS_ME_PATH}`;
 
 const CLIENT_USER_AGENT =
 	'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) discord/1.0.0 Chrome/120.0.0.0 Electron/28.0.0 Safari/537.36';
+
+/** ProxyAgent per URL; bounded cache for per-server `discord_quest_notifier.http_proxy_url` values. */
+const questProxyAgentCache = new Map<string, ProxyAgent>();
+const QUEST_PROXY_AGENT_CACHE_MAX = 32;
+
+export function isValidQuestHttpProxyUrl(raw: string): boolean {
+	const s = raw.trim();
+	if (!s) return true;
+	try {
+		const u = new URL(s);
+		return u.protocol === 'http:' || u.protocol === 'https:';
+	} catch {
+		return false;
+	}
+}
+
+function getQuestApiDispatcherForUrl(proxyUrl: string | undefined): ProxyAgent | undefined {
+	if (!proxyUrl) return undefined;
+	let agent = questProxyAgentCache.get(proxyUrl);
+	if (!agent) {
+		agent = new ProxyAgent(proxyUrl);
+		questProxyAgentCache.set(proxyUrl, agent);
+		while (questProxyAgentCache.size > QUEST_PROXY_AGENT_CACHE_MAX) {
+			const first = questProxyAgentCache.keys().next().value as string | undefined;
+			if (first === undefined) break;
+			questProxyAgentCache.delete(first);
+		}
+	}
+	return agent;
+}
+
+function retryAfterMs(headers: { get(name: string): string | null }): number {
+	const ra = headers.get('retry-after');
+	if (!ra) return 2000;
+	const sec = Number(ra);
+	if (Number.isFinite(sec)) return Math.min(120_000, Math.max(1000, sec * 1000));
+	const d = Date.parse(ra);
+	if (Number.isFinite(d)) return Math.min(120_000, Math.max(1000, d - Date.now()));
+	return 2000;
+}
+
+function sleep(ms: number): Promise<void> {
+	return new Promise((r) => setTimeout(r, ms));
+}
 
 function encodeSuperProperties(): string {
 	const payload = {
@@ -37,8 +82,13 @@ export function discordQuestRequestHeaders(userToken: string): Record<string, st
 		'Content-Type': 'application/json',
 		'User-Agent': CLIENT_USER_AGENT,
 		Origin: 'https://discord.com',
-		Referer: 'https://discord.com/quest-home',
+		Referer: 'https://discord.com/channels/@me',
+		'Sec-CH-UA': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+		'Sec-CH-UA-Mobile': '?0',
+		'Sec-CH-UA-Platform': '"Windows"',
+		'X-Debug-Options': 'bugReporterEnabled',
 		'X-Discord-Locale': 'en-US',
+		'X-Discord-Timezone': 'Asia/Singapore',
 		'X-Super-Properties': encodeSuperProperties()
 	};
 }
@@ -152,7 +202,7 @@ function orbHintFromQuest(quest: Record<string, unknown>): string {
 	return parts.length ? [...new Set(parts)].join(' · ') : 'Orb reward';
 }
 
-export function toQuestOrbSummary(quest: Record<string, unknown>): QuestOrbSummary {
+function toQuestOrbSummary(quest: Record<string, unknown>): QuestOrbSummary {
 	const id = String(quest.id ?? '');
 	const cfg = (quest.config ?? {}) as Record<string, unknown>;
 	const messages = (cfg.messages ?? {}) as Record<string, unknown>;
@@ -192,24 +242,39 @@ export function extractOrbQuests(payload: unknown): QuestOrbSummary[] {
 	return out;
 }
 
-export async function fetchQuestsMe(userToken: string): Promise<unknown> {
-	const res = await fetch(QUESTS_ME_URL, {
-		headers: discordQuestRequestHeaders(userToken)
-	});
-	const text = await res.text();
-	if (!res.ok) {
-		let err = `Discord API ${res.status}`;
-		try {
-			const j = JSON.parse(text) as Record<string, unknown>;
-			if (typeof j.message === 'string') err += `: ${j.message}`;
-		} catch {
-			if (text) err += `: ${text.slice(0, 200)}`;
+export async function fetchQuestsMe(userToken: string, opts?: { httpProxyUrl?: string | null }): Promise<unknown> {
+	const headers = discordQuestRequestHeaders(userToken);
+	const proxyUrl = opts?.httpProxyUrl?.trim() || undefined;
+	const dispatcher = getQuestApiDispatcherForUrl(proxyUrl);
+	const maxAttempts = 3;
+
+	for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+		const res = await undiciFetch(QUESTS_ME_URL, {
+			headers,
+			...(dispatcher ? { dispatcher } : {})
+		});
+
+		if (res.status === 429 && attempt < maxAttempts) {
+			await res.arrayBuffer().catch(() => undefined);
+			await sleep(retryAfterMs(res.headers));
+			continue;
 		}
-		throw new Error(err);
-	}
-	try {
-		return JSON.parse(text) as unknown;
-	} catch {
-		throw new Error('Invalid JSON from Discord quests endpoint');
+
+		const text = await res.text();
+		if (!res.ok) {
+			let err = `Discord API ${res.status}`;
+			try {
+				const j = JSON.parse(text) as Record<string, unknown>;
+				if (typeof j.message === 'string') err += `: ${j.message}`;
+			} catch {
+				if (text) err += `: ${text.slice(0, 200)}`;
+			}
+			throw new Error(err);
+		}
+		try {
+			return JSON.parse(text) as unknown;
+		} catch {
+			throw new Error('Invalid JSON from Discord quests endpoint');
+		}
 	}
 }

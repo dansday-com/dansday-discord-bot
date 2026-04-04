@@ -33,20 +33,22 @@ export const POST: RequestHandler = async ({ locals, params }) => {
 		return json({ success: false, error: 'Could not resolve official bot for this server.' }, { status: 500 });
 	}
 
-	const selfbot = await db.getFirstRunningSelfbotForOfficialBot(officialBotId);
+	const selfbot = await db.getFirstRunningSelfbotForServer(Number(params.id));
 	if (!selfbot?.token) {
 		return json(
 			{
 				success: false,
-				error: 'No running selfbot for this bot. Start at least one selfbot linked to this official bot.'
+				error: 'No running selfbot for this server. Add and start a selfbot under Selfbots for this guild.'
 			},
 			{ status: 400 }
 		);
 	}
 
+	const httpProxyUrl = typeof s.http_proxy_url === 'string' ? s.http_proxy_url : '';
+
 	let payload: unknown;
 	try {
-		payload = await fetchQuestsMe(selfbot.token);
+		payload = await fetchQuestsMe(selfbot.token, { httpProxyUrl });
 	} catch (e: any) {
 		return json({ success: false, error: e?.message || 'Failed to fetch quests from Discord.' }, { status: 502 });
 	}

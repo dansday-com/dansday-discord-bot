@@ -4,9 +4,11 @@ import { getEmbedConfig } from '../../../config.js';
 import { logger } from '../../../../utils/index.js';
 import { extractOrbQuests, fetchQuestsMe, type QuestOrbSummary } from '../../../../discord-quest-api.js';
 
-let intervalRef: ReturnType<typeof setInterval> | null = null;
+let tickTimeoutRef: ReturnType<typeof setTimeout> | null = null;
 
 const POLL_MS = 60_000;
+/** Extra 0–15s after each run so hosts don’t hit Discord on a fixed wall-clock beat (similar intent to spreading traffic with proxies in [7xrrr/discord-quests-bot](https://github.com/7xrrr/discord-quests-bot)). */
+const POLL_JITTER_MS = 15_000;
 
 export async function sendQuestNotificationMessage(client: Client, guildId: string, channelId: string, quest: QuestOrbSummary, opts?: { test?: boolean }) {
 	const guild = await client.guilds.fetch(guildId).catch(() => null);
@@ -38,11 +40,13 @@ async function runTick(client: Client, officialBotId: number) {
 		const channelId = typeof s.channel_id === 'string' ? s.channel_id : '';
 		if (!enabled || !channelId) continue;
 
-		const selfbot = await db.getFirstRunningSelfbotForOfficialBot(officialBotId);
+		const selfbot = await db.getFirstRunningSelfbotForServer(server.id);
 		if (!selfbot?.token) continue;
 
+		const httpProxyUrl = typeof s.http_proxy_url === 'string' ? s.http_proxy_url : '';
+
 		try {
-			const payload = await fetchQuestsMe(selfbot.token);
+			const payload = await fetchQuestsMe(selfbot.token, { httpProxyUrl });
 			const orbQuests = extractOrbQuests(payload);
 			if (orbQuests.length === 0) continue;
 
@@ -76,27 +80,35 @@ async function runTick(client: Client, officialBotId: number) {
 	}
 }
 
+function scheduleNextQuestNotifierTick(client: Client, officialBotId: number) {
+	const delay = POLL_MS + Math.floor(Math.random() * POLL_JITTER_MS);
+	tickTimeoutRef = setTimeout(() => {
+		runTick(client, officialBotId)
+			.catch((err) => logger.log(`❌ Quest notifier tick error: ${err?.message || err}`))
+			.finally(() => scheduleNextQuestNotifierTick(client, officialBotId));
+	}, delay);
+}
+
 export function initQuestNotifier(client: Client, officialBotId: number | null) {
-	if (intervalRef) {
-		clearInterval(intervalRef);
-		intervalRef = null;
+	if (tickTimeoutRef) {
+		clearTimeout(tickTimeoutRef);
+		tickTimeoutRef = null;
 	}
 	if (!officialBotId) {
 		logger.log('Quest notifier: no official bot id, skipping');
 		return;
 	}
-	const tick = () => {
-		runTick(client, officialBotId).catch((err) => logger.log(`❌ Quest notifier tick error: ${err?.message || err}`));
-	};
-	tick();
-	intervalRef = setInterval(tick, POLL_MS);
-	logger.log('🔮 Quest notifier: polling every 60s');
+	runTick(client, officialBotId).catch((err) => logger.log(`❌ Quest notifier tick error: ${err?.message || err}`));
+	scheduleNextQuestNotifierTick(client, officialBotId);
+	logger.log(
+		`🔮 Quest notifier: sequential polls ~${POLL_MS / 1000}s + up to ${POLL_JITTER_MS / 1000}s jitter; optional per-server HTTP proxy in Discord Quest notifier settings`
+	);
 }
 
 export function stopQuestNotifier() {
-	if (intervalRef) {
-		clearInterval(intervalRef);
-		intervalRef = null;
+	if (tickTimeoutRef) {
+		clearTimeout(tickTimeoutRef);
+		tickTimeoutRef = null;
 	}
 }
 

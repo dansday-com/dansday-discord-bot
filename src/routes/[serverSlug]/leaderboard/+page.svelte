@@ -1,6 +1,50 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
+	import type { Action } from 'svelte/action';
 	import type { PageProps } from './$types';
+
+	/** Horizontal ticker when the name is wider than its column (store-sign style). */
+	const overflowMarquee: Action<HTMLElement, string> = (node) => {
+		const track = node.querySelector('.lb-marquee-track');
+		const firstSeg = node.querySelector('.lb-marquee-seg');
+		if (!(track instanceof HTMLElement) || !(firstSeg instanceof HTMLElement)) {
+			return {};
+		}
+
+		const measure = () => {
+			const rootW = node.clientWidth;
+			const singleW = firstSeg.scrollWidth;
+			const reduceMotion = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+			const overflow = !reduceMotion && singleW > rootW + 1;
+			node.classList.toggle('lb-marquee--active', overflow);
+			if (overflow) {
+				const halfW = track.scrollWidth / 2;
+				const pxPerSec = 32;
+				const dur = Math.min(Math.max(halfW / pxPerSec, 6), 28);
+				node.style.setProperty('--lb-marquee-duration', `${dur}s`);
+			} else {
+				node.style.removeProperty('--lb-marquee-duration');
+			}
+		};
+
+		const schedule = () => {
+			requestAnimationFrame(() => requestAnimationFrame(measure));
+		};
+
+		const ro = new ResizeObserver(schedule);
+		ro.observe(node);
+		ro.observe(track);
+		schedule();
+
+		return {
+			update() {
+				schedule();
+			},
+			destroy() {
+				ro.disconnect();
+			}
+		};
+	};
 
 	let { data }: PageProps = $props();
 
@@ -43,8 +87,6 @@
 
 	function metricValueAnimated(r: any, m: string) {
 		const n = anim[r.discord_member_id] ?? metricValueNumber(r, m);
-		if (m === 'chat') return Math.round(n).toLocaleString();
-		if (m.startsWith('voice_')) return `${Math.round(n).toLocaleString()}m`;
 		return Math.round(n).toLocaleString();
 	}
 
@@ -247,6 +289,7 @@
 				<section class="lb-podium-section">
 					<div class="lb-podium-stage">
 						{#each podiumOrder as { r, rank }}
+							{@const podiumName = displayName(r)}
 							<div class="lb-podium-col lb-podium-col--{rank}" class:lb-mounted={mounted}>
 								{#if rank === 1}
 									<div class="lb-crown">
@@ -276,7 +319,16 @@
 								</div>
 
 								<div class="lb-podium-info">
-									<div class="lb-podium-name" title={displayName(r)}>{displayName(r)}</div>
+									<div class="lb-podium-name lb-marquee-root" use:overflowMarquee={podiumName} title={podiumName}>
+										<div class="lb-marquee-track">
+											<span class="lb-marquee-seg">
+												<span class="lb-marquee-txt">{podiumName}</span><span class="lb-marquee-sep" aria-hidden="true"> · </span>
+											</span>
+											<span class="lb-marquee-seg" aria-hidden="true">
+												<span class="lb-marquee-txt">{podiumName}</span><span class="lb-marquee-sep"> · </span>
+											</span>
+										</div>
+									</div>
 									<div class="lb-podium-score" style="color: {rankColors[rank]};">
 										{metricValueAnimated(r, metric)}
 										<span class="lb-podium-unit">{metricUnit(metric)}</span>
@@ -303,6 +355,7 @@
 					</div>
 					<div class="lb-list">
 						{#each rest as r, i (r.discord_member_id)}
+							{@const listName = displayName(r)}
 							<div class="lb-list-row" class:lb-mounted={mounted} style="animation-delay: {i * 40}ms">
 								<div class="lb-list-rank">#{i + 4}</div>
 								<div class="lb-list-avatar">
@@ -313,7 +366,16 @@
 									{/if}
 								</div>
 								<div class="lb-list-info">
-									<div class="lb-list-name" title={displayName(r)}>{displayName(r)}</div>
+									<div class="lb-list-name lb-marquee-root" use:overflowMarquee={listName} title={listName}>
+										<div class="lb-marquee-track">
+											<span class="lb-marquee-seg">
+												<span class="lb-marquee-txt">{listName}</span><span class="lb-marquee-sep" aria-hidden="true"> · </span>
+											</span>
+											<span class="lb-marquee-seg" aria-hidden="true">
+												<span class="lb-marquee-txt">{listName}</span><span class="lb-marquee-sep"> · </span>
+											</span>
+										</div>
+									</div>
 									{#if metric === 'xp'}
 										<div class="lb-list-sub">Level {r.level ?? 1}</div>
 									{/if}
@@ -531,7 +593,8 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		flex: 1;
+		flex: 1 1 0;
+		min-width: 0;
 		position: relative;
 		opacity: 0;
 		transform: translateY(24px);
@@ -658,18 +721,89 @@
 		margin-bottom: 8px;
 		padding: 0 4px;
 		width: 100%;
+		min-width: 0;
+		overflow: hidden;
 	}
+	.lb-marquee-root {
+		overflow: hidden;
+		min-width: 0;
+		max-width: 100%;
+		width: 100%;
+	}
+	.lb-marquee-track {
+		display: inline-flex;
+		flex-direction: row;
+		flex-wrap: nowrap;
+		width: max-content;
+		will-change: transform;
+	}
+	.lb-marquee-seg {
+		display: inline-flex;
+		flex-shrink: 0;
+		align-items: baseline;
+	}
+	.lb-marquee-txt {
+		white-space: nowrap;
+	}
+	.lb-marquee-sep {
+		flex-shrink: 0;
+		padding: 0 0.3em;
+		opacity: 0.4;
+	}
+	.lb-marquee-root.lb-marquee--active .lb-marquee-track {
+		animation: lb-marquee-scroll var(--lb-marquee-duration, 14s) linear infinite;
+	}
+	.lb-marquee-root.lb-marquee--active:hover .lb-marquee-track {
+		animation-play-state: paused;
+	}
+	@keyframes lb-marquee-scroll {
+		from {
+			transform: translateX(0);
+		}
+		to {
+			transform: translateX(-50%);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.lb-marquee-root.lb-marquee--active .lb-marquee-track {
+			animation: none;
+		}
+		.lb-marquee-root .lb-marquee-track {
+			transform: none;
+		}
+	}
+
 	.lb-podium-name {
 		font-size: 12px;
 		font-weight: 700;
 		color: #fff;
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		max-width: 100%;
 		margin-bottom: 3px;
 	}
+	.lb-marquee-root:not(.lb-marquee--active) .lb-marquee-track {
+		max-width: 100%;
+	}
+	.lb-marquee-root:not(.lb-marquee--active) .lb-marquee-seg:first-child {
+		min-width: 0;
+		max-width: 100%;
+	}
+	.lb-marquee-root:not(.lb-marquee--active) .lb-marquee-txt {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		min-width: 0;
+	}
+	.lb-podium-name:not(.lb-marquee--active) .lb-marquee-seg[aria-hidden='true'] {
+		display: none;
+	}
+	.lb-podium-name:not(.lb-marquee--active) .lb-marquee-sep {
+		display: none;
+	}
 	.lb-podium-score {
+		display: flex;
+		flex-wrap: nowrap;
+		align-items: baseline;
+		justify-content: center;
+		gap: 3px;
+		white-space: nowrap;
 		font-size: 18px;
 		font-weight: 900;
 		line-height: 1;
@@ -803,10 +937,13 @@
 		font-size: 13px;
 		font-weight: 600;
 		color: #fff;
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
 		margin-bottom: 1px;
+	}
+	.lb-list-name:not(.lb-marquee--active) .lb-marquee-seg[aria-hidden='true'] {
+		display: none;
+	}
+	.lb-list-name:not(.lb-marquee--active) .lb-marquee-sep {
+		display: none;
 	}
 	.lb-list-sub {
 		font-size: 10px;

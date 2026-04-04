@@ -502,7 +502,6 @@ export async function upsertOfficialServer(officialBotId: number, guild: any) {
 	return server;
 }
 
-/** Guild mirror for a user selfbot — not the panel “server” row; `server_settings` for modules live on the official-bot row only. */
 export async function upsertSelfbotServer(selfbotId: number, guild: any) {
 	const v = await collectGuildSnapshotForUpsert(guild);
 	const now = toMySQLDateTime();
@@ -993,7 +992,6 @@ export async function syncMemberRoles(memberId: any, discordRoleIds: string[], s
 	return true;
 }
 
-/** @deprecated Member roles are no longer cached in the database; use GuildMember#roles in the bot. */
 export async function memberHasAnyRole(_discordMemberId: string, _discordRoleIds: string[], _serverId: any) {
 	return false;
 }

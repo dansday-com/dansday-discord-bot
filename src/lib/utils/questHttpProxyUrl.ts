@@ -1,4 +1,3 @@
-/** Pure URL check — safe for client + server (no axios / proxy-agent). */
 export function isValidQuestHttpProxyUrl(raw: string): boolean {
 	const s = raw.trim();
 	if (!s) return true;

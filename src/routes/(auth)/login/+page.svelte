@@ -44,7 +44,7 @@
 </script>
 
 <svelte:head>
-	<title>Login | Dansday</title>
+	<title>Login | Dansday Discord Bot</title>
 </svelte:head>
 
 <div class="bg-ash-800 border-ash-700 rounded-2xl border p-6 shadow-2xl sm:p-8">

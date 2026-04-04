@@ -14,7 +14,7 @@
 	let inviteType = $state<'owner' | 'moderator'>(data.user.authenticated && data.user.account_source === 'accounts' ? 'owner' : 'moderator');
 	let generatedLink = $state<string | null>(null);
 	let copyIcon = $state('fa-copy');
-	let selectedDiscordMemberId = $state('');
+	let selectedDiscordMemberIds = $state<string[]>([]);
 	let inviting = $state(false);
 
 	const validTypes = $derived(data.user.authenticated && data.user.account_source === 'accounts' ? ['owner', 'moderator'] : ['moderator']);
@@ -25,8 +25,8 @@
 	);
 
 	async function sendInvite() {
-		if (!selectedDiscordMemberId) {
-			showToast('Select a member first', 'error');
+		if (selectedDiscordMemberIds.length === 0) {
+			showToast('Select at least one member', 'error');
 			return;
 		}
 		inviting = true;
@@ -35,13 +35,20 @@
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
-				body: JSON.stringify({ account_type: inviteType, discord_member_id: selectedDiscordMemberId })
+				body: JSON.stringify({ account_type: inviteType, discord_member_ids: selectedDiscordMemberIds })
 			});
 			const d = await res.json();
 			if (d.success) {
 				generatedLink = d.invite_link ?? null;
-				showToast('Invite sent via DM', 'success');
-				selectedDiscordMemberId = '';
+				const n = typeof d.sent_count === 'number' ? d.sent_count : selectedDiscordMemberIds.length;
+				const failed = Array.isArray(d.failed) ? d.failed : [];
+				if (failed.length > 0) {
+					const hint = String(failed[0]?.error ?? 'unknown error');
+					showToast(`Sent ${n} invite(s); ${failed.length} failed. Example: ${hint}`, 'info');
+				} else {
+					showToast(n > 1 ? `Sent ${n} invites via DM` : 'Invite sent via DM', 'success');
+				}
+				selectedDiscordMemberIds = [];
 				invalidateAll();
 			} else {
 				showToast(d.error || 'Failed to send invite', 'error');
@@ -164,7 +171,7 @@
 </script>
 
 <svelte:head>
-	<title>Server Accounts | Dansday</title>
+	<title>Server Accounts | Dansday Discord Bot</title>
 </svelte:head>
 
 <div class="space-y-6">
@@ -179,14 +186,15 @@
 				<LabeledSelect appearance="form-inline" options={inviteTypeOptions} bind:value={inviteType} ariaLabel="Invite account type" />
 				<MemberPicker
 					serverId={data.serverId}
-					value={selectedDiscordMemberId}
+					single={false}
+					value={selectedDiscordMemberIds}
 					disabled={!canInvite}
-					placeholder={canInvite ? 'Select member...' : 'Owner/superadmin only'}
-					onchange={(id) => (selectedDiscordMemberId = id)}
+					placeholder={canInvite ? 'Select members...' : 'Owner/superadmin only'}
+					onchange={(ids) => (selectedDiscordMemberIds = ids as string[])}
 				/>
 				<button
 					type="button"
-					disabled={!canInvite || inviting || !selectedDiscordMemberId}
+					disabled={!canInvite || inviting || selectedDiscordMemberIds.length === 0}
 					onclick={sendInvite}
 					class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex shrink-0 items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all disabled:cursor-not-allowed disabled:opacity-50"
 				>

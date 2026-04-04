@@ -33,7 +33,7 @@
 </script>
 
 <svelte:head>
-	<title>{o.name} — Overview | Dansday</title>
+	<title>{o.name} — Overview | Dansday Discord Bot</title>
 </svelte:head>
 
 <div class="space-y-4 sm:space-y-6">

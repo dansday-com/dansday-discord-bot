@@ -9,17 +9,13 @@
 	type Props = {
 		options: LabeledSelectOption[];
 		value?: string;
-		/** If set, shows “Sort by:”-style label + icon beside the select */
 		label?: string;
 		labelIconClass?: string;
-		/** When `label` is set, tints label text to match `labelIconClass` (e.g. cyan filter icon). */
 		labelTone?: LabelTone;
 		appearance?: Appearance;
-		/** Extra classes on &lt;select&gt; */
 		selectClass?: string;
 		id?: string;
 		disabled?: boolean;
-		/** Use when there is no visible label (e.g. member list) */
 		ariaLabel?: string;
 	};
 
@@ -38,16 +34,24 @@
 
 	const labelTextClass = $derived(labelTone === 'cyan' ? LABELED_SELECT_ACCENT.label : 'text-ash-400');
 
-	const appearanceSelectClass: Record<Appearance, string> = {
+	const rowClass: Record<Appearance, string> = {
 		dashboard:
-			'bg-ash-800 border-ash-600 text-ash-100 focus:ring-ash-500 rounded-lg border px-2 py-1.5 text-xs transition-all focus:ring-2 focus:outline-none sm:px-4 sm:py-2 sm:text-sm min-w-0',
+			'bg-ash-800 border-ash-600 hover:border-ash-500 flex min-w-0 flex-1 items-center justify-between gap-2 rounded-lg border px-2 py-1.5 transition-colors sm:px-4 sm:py-2',
 		'members-toolbar':
-			'bg-ash-800 border-ash-700 text-ash-100 focus:ring-ash-500 rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none min-w-0 sm:min-w-[12rem]',
+			'bg-ash-800 border-ash-700 hover:border-ash-600 flex min-w-0 items-center justify-between gap-2 rounded-lg border px-3 py-2 transition-colors sm:min-w-[12rem]',
 		'form-inline':
-			'bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none sm:w-36'
+			'bg-ash-700 border-ash-600 hover:border-ash-500 flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2.5 transition-colors sm:w-36'
 	};
 
-	const mergedSelectClass = $derived(`${appearanceSelectClass[appearance]} ${selectClass}`.trim());
+	const selectTextClass: Record<Appearance, string> = {
+		dashboard: 'text-xs sm:text-sm',
+		'members-toolbar': 'text-sm',
+		'form-inline': 'text-sm'
+	};
+
+	const selectInner =
+		'min-w-0 flex-1 cursor-pointer appearance-none bg-transparent text-ash-100 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50';
+	const mergedSelect = $derived(`${selectInner} ${selectTextClass[appearance]} ${selectClass}`.trim());
 </script>
 
 {#if label}
@@ -58,16 +62,22 @@
 			{/if}
 			<span class="sm:inline">{label}</span>
 		</label>
-		<select {id} bind:value {disabled} class={mergedSelectClass}>
+		<div class="{rowClass[appearance]} {disabled ? 'opacity-50' : ''}">
+			<select {id} bind:value {disabled} class={mergedSelect}>
+				{#each options as opt (opt.value)}
+					<option value={opt.value}>{opt.label}</option>
+				{/each}
+			</select>
+			<i class={LABELED_SELECT_ACCENT.chevron}></i>
+		</div>
+	</div>
+{:else}
+	<div class="w-full shrink-0 sm:w-auto {rowClass[appearance]} {disabled ? 'opacity-50' : ''}">
+		<select {id} bind:value {disabled} class={mergedSelect} aria-label={ariaLabel}>
 			{#each options as opt (opt.value)}
 				<option value={opt.value}>{opt.label}</option>
 			{/each}
 		</select>
+		<i class={LABELED_SELECT_ACCENT.chevron}></i>
 	</div>
-{:else}
-	<select {id} bind:value {disabled} class={mergedSelectClass} aria-label={ariaLabel}>
-		{#each options as opt (opt.value)}
-			<option value={opt.value}>{opt.label}</option>
-		{/each}
-	</select>
 {/if}

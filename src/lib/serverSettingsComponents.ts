@@ -1,7 +1,3 @@
-/**
- * Single registry for server settings: DB `component_name`, panel nav, labels, and feature toggles.
- * Add or change a module in one row; everything else is on `SERVER_SETTINGS`.
- */
 const REGISTRY = [
 	{ id: 'main', label: 'Main', featureSwitch: false, hrefSuffix: '', icon: 'fa-gear', iconClass: 'text-emerald-400' },
 	{
@@ -152,7 +148,6 @@ function featureLabel(componentId: string): string {
 	return REGISTRY.find((e) => e.id === componentId)?.label ?? componentId;
 }
 
-/** One object: component keys, feature-switch list, config nav, labels. */
 export const SERVER_SETTINGS = {
 	component,
 	withFeatureSwitch,

@@ -1,10 +1,5 @@
-/** Panel navigation hint — keep in sync with config sidebar labels. */
 const MAIN = 'Configuration → Main';
 
-/**
- * Returns human-readable issues when Main “bot appearance” is incomplete.
- * Used before bot calls that always run {@link getEmbedConfig} (embed color + footer).
- */
 export function collectMainAppearanceIssues(mainSettingsRaw: unknown): string[] {
 	const issues: string[] = [];
 	if (!mainSettingsRaw || typeof mainSettingsRaw !== 'object') {
@@ -24,7 +19,6 @@ export function collectMainAppearanceIssues(mainSettingsRaw: unknown): string[] 
 	return issues;
 }
 
-/** First missing appearance requirement, or a combined line if several. */
 export function mainAppearanceBlockingMessage(mainSettingsRaw: unknown): string | null {
 	const issues = collectMainAppearanceIssues(mainSettingsRaw);
 	if (issues.length === 0) return null;
@@ -32,9 +26,6 @@ export function mainAppearanceBlockingMessage(mainSettingsRaw: unknown): string 
 	return `Complete bot appearance under ${MAIN}: set default embed color and footer.`;
 }
 
-/**
- * Map raw errors from the bot / backend into short panel guidance.
- */
 export function humanizeConfigPrerequisiteMessage(source: string | undefined | null): string {
 	if (source == null || source === '') return '';
 	const t = source.trim();
@@ -65,9 +56,6 @@ export function humanizeConfigPrerequisiteMessage(source: string | undefined | n
 	return '';
 }
 
-/**
- * Prefer humanized `details` / `error` from bot webhook JSON bodies.
- */
 export function messageFromBotWebhookPayload(body: unknown): string {
 	if (!body || typeof body !== 'object') {
 		return 'Request failed. Check that the bot is running and try again.';

@@ -148,7 +148,7 @@
 </script>
 
 <svelte:head>
-	<title>{data.bot.name || `Selfbot #${data.bot.id}`} | Dansday</title>
+	<title>{data.bot.name || `Selfbot #${data.bot.id}`} | Dansday Discord Bot</title>
 </svelte:head>
 
 <div class="space-y-4">

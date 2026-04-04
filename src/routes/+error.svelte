@@ -11,7 +11,7 @@
 </script>
 
 <svelte:head>
-	<title>{title} | Dansday</title>
+	<title>{title} | Dansday Discord Bot</title>
 </svelte:head>
 
 <div class="bg-ash-950 text-ash-100 flex min-h-screen flex-col items-center justify-center px-4 py-16">

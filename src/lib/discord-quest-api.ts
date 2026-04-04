@@ -128,7 +128,6 @@ export type QuestOrbSummary = {
 	id: string;
 	questName: string;
 	gameTitle: string;
-	/** Legacy single-line body; still sent for older clients. */
 	description: string;
 	questUrl: string;
 	startsAt: string;
@@ -136,13 +135,9 @@ export type QuestOrbSummary = {
 	orbHint: string;
 	taskTypeKey: string;
 	taskTypeLabel: string;
-	/** Publisher / studio from quest messages. */
 	publisher: string;
-	/** Longer game or promo line when present. */
 	gameSubtitle: string;
-	/** Human task line, e.g. watch duration. */
 	taskDetailLine: string;
-	/** Bullet line for rewards section. */
 	rewardsLine: string;
 	thumbnailUrl: string | null;
 	bannerUrl: string | null;
@@ -214,7 +209,6 @@ function discordAppIconUrl(applicationId: string, iconHash: string): string | nu
 	return `https://cdn.discordapp.com/app-icons/${applicationId}/${h}.${ext}?size=256`;
 }
 
-/** Application cover / splash style asset (hash). */
 function discordAppCoverUrl(applicationId: string, hash: string): string | null {
 	if (!applicationId || !hash) return null;
 	const h = hash.trim();
@@ -455,7 +449,6 @@ export function extractOrbQuests(payload: unknown): QuestOrbSummary[] {
 	return out;
 }
 
-/** For diagnostics when orb filter returns empty but the API responded. */
 export function questPayloadOrbDiagnostics(payload: unknown): {
 	questCount: number;
 	afterPreviewExpired: number;

@@ -155,7 +155,6 @@ async function getOfficialBotServer(guildId: string) {
 	return officialBotServer;
 }
 
-/** DB `servers.id` for `server_settings` rows (handles notifications on official server row, forwarder on linked server). */
 export async function resolveServerIdForGuildSetting(guildDiscordId: string, component: string): Promise<number | null> {
 	try {
 		const official = await getOfficialBotServer(guildDiscordId);
@@ -174,7 +173,6 @@ export async function resolveServerIdForGuildSetting(guildDiscordId: string, com
 	}
 }
 
-/** `settings.enabled === false` turns the feature off bot-wide (default on if unset or no row). */
 export async function isComponentFeatureEnabled(guildDiscordId: string, component: string): Promise<boolean> {
 	if (!guildDiscordId) return true;
 	try {
@@ -510,7 +508,6 @@ export const GIVEAWAY = {
 	}
 };
 
-/** Ban/kick log embeds to the main channel (moderation.ts). */
 export const MODERATION_CONFIG = {
 	async isEnabled(guildId: string): Promise<boolean> {
 		requireBotConfig();
@@ -519,7 +516,6 @@ export const MODERATION_CONFIG = {
 	}
 };
 
-/** AFK menu, nicknames, mentions, and voice hooks (interface/afk.ts). */
 export const AFK_CONFIG = {
 	async isEnabled(guildId: string): Promise<boolean> {
 		requireBotConfig();
@@ -735,7 +731,6 @@ export const FORWARDER = {
 	}
 };
 
-/** Bots should import from this module, not from `serverSettingsComponents` directly. */
 export { SERVER_SETTINGS, type ServerSettingsComponentName };
 export { serverSettingsComponent };
 export const SERVER_SETTINGS_COMPONENTS_WITH_FEATURE_SWITCH = SERVER_SETTINGS.withFeatureSwitch;

@@ -17,26 +17,25 @@
 </script>
 
 <svelte:head>
-	<title>Configuration | Dansday</title>
+	<title>Configuration | Dansday Discord Bot</title>
 </svelte:head>
 
 <div class="flex flex-col gap-4 lg:flex-row">
-	<nav class="flex-shrink-0 lg:w-56">
+	<nav class="flex-shrink-0 lg:w-60 xl:w-64">
 		<div class="bg-ash-800 border-ash-700 flex flex-row gap-1 overflow-x-auto rounded-xl border p-2 lg:flex-col lg:overflow-x-visible">
 			{#each tabs as tab}
 				{@const active = isActive(tab.href)}
+				{@const featureOff = tab.featureComponent && data.featureEnabledByComponent?.[tab.featureComponent] === false}
 				<a
 					href={base + tab.href}
-					class="flex flex-shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm whitespace-nowrap transition-all
+					title={tab.label}
+					aria-label={featureOff ? `${tab.label} (module off)` : tab.label}
+					class="flex flex-shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm transition-all lg:w-full lg:min-w-0
 						{active ? 'bg-ash-600 text-ash-100 font-medium' : 'text-ash-400 hover:text-ash-200 hover:bg-ash-700'}"
 				>
-					<i class="fas {tab.icon} {tab.iconClass} {active ? '' : 'opacity-75'} w-4 text-center text-xs"></i>
-					<span class="flex min-w-0 flex-1 items-center gap-1.5">
-						{tab.label}
-						{#if tab.featureComponent && data.featureEnabledByComponent?.[tab.featureComponent] === false}
-							<span class="text-ash-500 shrink-0 text-[0.65rem] font-normal tracking-wide uppercase">Off</span>
-						{/if}
-					</span>
+					<i class="fas {tab.icon} w-4 shrink-0 text-center text-xs transition-colors {featureOff ? (active ? 'text-ash-400' : 'text-ash-500') : tab.iconClass}"
+					></i>
+					<span class="min-w-0 flex-1 whitespace-nowrap lg:truncate">{tab.label}</span>
 				</a>
 			{/each}
 		</div>

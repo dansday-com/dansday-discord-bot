@@ -1,7 +1,3 @@
-/**
- * One accent family per control type so channel / category / role / member / numeric
- * stay visually distinct (chevron, modal chrome, built-in labels).
- */
 export const CHANNEL_PICKER_ACCENT = {
 	chevron: 'fas fa-chevron-down text-xs text-violet-300',
 	modalTitleIcon: 'fas fa-hashtag text-violet-400',
@@ -30,7 +26,6 @@ export const ROLE_PICKER_ACCENT = {
 	labelText: 'text-blue-100'
 } as const;
 
-/** Sky — separate from {@link ROLE_PICKER_ACCENT} (blue). */
 export const MEMBER_PICKER_ACCENT = {
 	chevron: 'fas fa-chevron-down text-xs text-sky-300',
 	modalTitleIcon: 'fas fa-users text-sky-400',
@@ -42,11 +37,10 @@ export const MEMBER_PICKER_ACCENT = {
 } as const;
 
 export const NUMERIC_SELECT_ACCENT = {
-	chevron: 'fas fa-chevron-down text-xs text-cyan-300',
-	label: 'text-cyan-100'
+	chevron: 'fas fa-chevron-down text-xs text-cyan-300'
 } as const;
 
-/** Inline labeled &lt;select&gt; (e.g. dashboard sort) — cyan, distinct from numeric field rows. */
 export const LABELED_SELECT_ACCENT = {
-	label: 'text-cyan-200'
+	label: 'text-cyan-200',
+	chevron: 'fas fa-chevron-down text-xs text-emerald-300'
 } as const;

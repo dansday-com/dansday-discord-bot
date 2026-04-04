@@ -6,8 +6,7 @@
 </script>
 
 <svelte:head>
-	<title>Dansday | Discord Bot Panel</title>
-	<link rel="icon" type="image/x-icon" href="/favicon.ico" />
+	<title>Dansday Discord Bot</title>
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
 </svelte:head>
 

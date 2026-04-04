@@ -84,7 +84,7 @@
 		<ConfigNumberSelect
 			label="Rating Cooldown (Days)"
 			description="Days a member must wait before rating the same staff member again (1–30 days)."
-			labelIconClass="fas fa-clock mr-1 text-cyan-400"
+			labelIconClass="fas fa-clock mr-1 text-orange-400"
 			values={selectValuesDays1To30}
 			bind:value={cooldownDays}
 			formatOption={formatDayCount}

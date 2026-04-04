@@ -143,7 +143,7 @@
 </script>
 
 <svelte:head>
-	<title>Embed Builder | Dansday</title>
+	<title>Embed Builder | Dansday Discord Bot</title>
 </svelte:head>
 
 <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">

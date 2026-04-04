@@ -67,55 +67,51 @@
 		<i class="fas fa-gem text-sky-400"></i>Discord Quest notifier
 	</h3>
 	<p class="text-ash-400 text-xs">
-		<strong class="text-ash-200">Discord client Quests only:</strong> posts when a Quest with <strong class="text-ash-200">Orb</strong> rewards appears for your
-		watcher account. Unrelated to <strong class="text-ash-200">Channel notifications</strong> in the sidebar (opt-in roles per server channel).
-	</p>
-	<p class="text-ash-400 text-xs">
-		The official bot sends the embed (with an <strong class="text-ash-200">Open quest</strong> link). Polls about every
-		<strong class="text-ash-200">minute</strong> with small random spacing between runs.
-	</p>
-	<p class="text-ash-500 text-xs">
-		Optional HTTP(S) proxy below applies only to <code class="text-ash-300">/quests/@me</code> for this server. Leave empty to call Discord directly from the host.
-		Does not change Discord ToS risk.
-	</p>
-	<p class="rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-400/90">
-		<i class="fas fa-robot mr-1.5 text-violet-400"></i>Uses a <strong class="text-ash-200">running selfbot on this server</strong> (lowest id if several).
-		Add/start selfbots under <strong class="text-ash-200">Selfbots</strong>.
+		Orb quest alerts from this server’s selfbot; not the same as <strong class="text-ash-200">Channel notifications</strong>.
 	</p>
 
-	<div>
-		<label for="questHttpProxy" class="text-ash-300 mb-1.5 block text-xs font-medium">
-			<i class="fas fa-network-wired mr-1.5 text-sky-400"></i>HTTP(S) proxy for quest API <span class="text-ash-500">(optional)</span>
-		</label>
-		<p class="text-ash-500 mb-2 text-xs">
-			Example: <code class="text-ash-400">http://user:pass@host:8080</code>. Leave blank for no proxy.
-		</p>
-		<input
-			id="questHttpProxy"
-			type="text"
-			autocomplete="off"
-			bind:value={httpProxyUrl}
-			placeholder="https://proxy.example:3128"
-			class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none"
-		/>
+	<div class="flex items-center justify-between gap-4">
+		<div class="min-w-0">
+			<label class="text-ash-300 text-xs font-medium">Enable notifier</label>
+			<p class="text-ash-500 mt-0.5 text-xs">Requires a running selfbot (Selfbots).</p>
+		</div>
+		<button
+			type="button"
+			onclick={() => (enabled = !enabled)}
+			class="relative h-6 w-10 flex-shrink-0 rounded-full transition-colors {enabled ? 'bg-ash-400' : 'bg-ash-700'}"
+			aria-pressed={enabled}
+			aria-label="Enable quest notifier"
+		>
+			<span class="absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-all {enabled ? 'left-5' : 'left-1'}"></span>
+		</button>
 	</div>
-
-	<label class="text-ash-200 flex cursor-pointer items-center gap-2 text-sm">
-		<input type="checkbox" bind:checked={enabled} class="accent-sky-500" />
-		Enable quest notifier
-	</label>
 
 	<div>
 		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
 			<i class="fas fa-hashtag mr-1.5 text-sky-400"></i>Notification channel
 		</label>
-		<p class="text-ash-500 mb-2 text-xs">Single channel in this server where the official bot posts.</p>
+		<p class="text-ash-500 mb-2 text-xs">Where the official bot posts quest embeds.</p>
 		<ChannelPicker
 			channels={data.channels}
 			categories={data.categories}
 			value={channelId}
 			placeholder="Select channel…"
 			onchange={(v) => (channelId = typeof v === 'string' ? v : '')}
+		/>
+	</div>
+
+	<div>
+		<label for="questHttpProxy" class="text-ash-300 mb-1.5 block text-xs font-medium">
+			<i class="fas fa-network-wired mr-1.5 text-sky-400"></i>HTTP(S) proxy <span class="text-ash-500">(optional)</span>
+		</label>
+		<p class="text-ash-500 mb-2 text-xs">For <code class="text-ash-400">/quests/@me</code> only. Leave empty for direct connection.</p>
+		<input
+			id="questHttpProxy"
+			type="text"
+			autocomplete="off"
+			bind:value={httpProxyUrl}
+			placeholder="http://user:pass@host:8080"
+			class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none"
 		/>
 	</div>
 
@@ -127,7 +123,6 @@
 		{#if testing}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas fa-vial text-sky-400"></i>{/if}
 		{testing ? 'Testing…' : 'Test — latest orb quest'}
 	</button>
-	<p class="text-ash-500 text-xs">Sends one test message using this server’s running selfbot and proxy settings above.</p>
 
 	<button
 		onclick={save}
@@ -135,6 +130,6 @@
 		class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:opacity-50"
 	>
 		{#if saving}<i class="fas fa-spinner fa-spin"></i>{/if}
-		{saving ? 'Saving…' : 'Save configuration'}
+		{saving ? 'Saving...' : 'Save Configuration'}
 	</button>
 </div>

@@ -901,51 +901,53 @@ async function processEndedGiveaways(client) {
 				const guild = client.guilds.cache.get(server.discord_server_id);
 				if (!guild) continue;
 
-				let giveawayChannelId;
+				let giveawayChannelId: string | null = null;
 				try {
-					giveawayChannelId = await GIVEAWAY.getChannel(guild.id);
-				} catch (err) {
-					await logger.log(`❌ Error getting giveaway channel for server ${server.id}: ${err.message}`);
-					continue;
+					giveawayChannelId = await GIVEAWAY.getChannelForFinalizingEndedGiveaway(guild.id);
+				} catch (err: any) {
+					await logger.log(`❌ Error resolving giveaway channel for server ${server.id}: ${err?.message || err}`);
 				}
 
-				if (!giveawayChannelId) {
-					await logger.log(`⚠️ Giveaway channel not configured for server ${server.id}, skipping giveaway ${giveaway.id}`);
-					continue;
+				let channel: any = null;
+				if (giveawayChannelId) {
+					channel =
+						guild.channels.cache.get(giveawayChannelId) || (await guild.channels.fetch(giveawayChannelId).catch(() => null));
 				}
 
-				const channel = guild.channels.cache.get(giveawayChannelId);
-				if (!channel) {
-					await logger.log(`⚠️ Giveaway channel ${giveawayChannelId} not found in guild ${guild.id}, skipping giveaway ${giveaway.id}`);
-					continue;
+				let message: any = null;
+				if (channel && giveaway.discord_message_id) {
+					message = await channel.messages.fetch(giveaway.discord_message_id).catch(() => null);
 				}
-
-				const message = await channel.messages.fetch(giveaway.discord_message_id).catch(() => null);
-				if (!message) continue;
-
-				await db.markGiveawayEnded(giveaway.id);
 
 				const entries = await db.getGiveawayEntries(giveaway.id);
 
 				if (entries.length === 0) {
-					await message.edit({
-						components: []
-					});
+					if (message) {
+						await message.edit({ components: [] }).catch(() => null);
+					}
+					if (channel) {
+						const embedConfig = await getEmbedConfig(guild.id);
+						const noEntriesEmbed = new EmbedBuilder()
+							.setColor(embedConfig.COLOR)
+							.setTitle('🎉 Giveaway Ended')
+							.setDescription(`**${giveaway.title}**\n\n❌ No entries! The giveaway has ended with no participants.`)
+							.setTimestamp()
+							.setFooter({ text: embedConfig.FOOTER });
 
-					const embedConfig = await getEmbedConfig(guild.id);
-					const noEntriesEmbed = new EmbedBuilder()
-						.setColor(embedConfig.COLOR)
-						.setTitle('🎉 Giveaway Ended')
-						.setDescription(`**${giveaway.title}**\n\n❌ No entries! The giveaway has ended with no participants.`)
-						.setTimestamp()
-						.setFooter({ text: embedConfig.FOOTER });
+						const noEntriesMention = await NOTIFICATIONS.getNotificationRoleIdForChannel(guild.id, channel.id).catch(() => null);
+						await channel
+							.send({
+								content: noEntriesMention ? `<@&${noEntriesMention}>` : undefined,
+								embeds: [noEntriesEmbed]
+							})
+							.catch(() => null);
+					} else {
+						await logger.log(
+							`⚠️ Giveaway ${giveaway.id} ended with no entries (no Discord channel/message — DB finalized only)`
+						);
+					}
 
-					const noEntriesMention = await NOTIFICATIONS.getNotificationRoleIdForChannel(guild.id, channel.id).catch(() => null);
-					await channel.send({
-						content: noEntriesMention ? `<@&${noEntriesMention}>` : undefined,
-						embeds: [noEntriesEmbed]
-					});
-
+					await db.markGiveawayEnded(giveaway.id);
 					await logger.log(`✅ Giveaway ${giveaway.id} ended with no entries`);
 					continue;
 				}
@@ -953,24 +955,32 @@ async function processEndedGiveaways(client) {
 				const winners = await db.getRandomGiveawayWinners(giveaway.id, giveaway.winner_count);
 
 				if (winners.length === 0) {
-					await message.edit({
-						components: []
-					});
+					if (message) {
+						await message.edit({ components: [] }).catch(() => null);
+					}
+					if (channel) {
+						const embedConfig = await getEmbedConfig(guild.id);
+						const noWinnersEmbed = new EmbedBuilder()
+							.setColor(embedConfig.COLOR)
+							.setTitle('🎉 Giveaway Ended')
+							.setDescription(`**${giveaway.title}**\n\n❌ Could not select winners.`)
+							.setTimestamp()
+							.setFooter({ text: embedConfig.FOOTER });
 
-					const embedConfig = await getEmbedConfig(guild.id);
-					const noWinnersEmbed = new EmbedBuilder()
-						.setColor(embedConfig.COLOR)
-						.setTitle('🎉 Giveaway Ended')
-						.setDescription(`**${giveaway.title}**\n\n❌ Could not select winners.`)
-						.setTimestamp()
-						.setFooter({ text: embedConfig.FOOTER });
+						const noWinnersMention = await NOTIFICATIONS.getNotificationRoleIdForChannel(guild.id, channel.id).catch(() => null);
+						await channel
+							.send({
+								content: noWinnersMention ? `<@&${noWinnersMention}>` : undefined,
+								embeds: [noWinnersEmbed]
+							})
+							.catch(() => null);
+					} else {
+						await logger.log(
+							`⚠️ Giveaway ${giveaway.id} ended with no winners selectable (no Discord channel/message — DB finalized only)`
+						);
+					}
 
-					const noWinnersMention = await NOTIFICATIONS.getNotificationRoleIdForChannel(guild.id, channel.id).catch(() => null);
-					await channel.send({
-						content: noWinnersMention ? `<@&${noWinnersMention}>` : undefined,
-						embeds: [noWinnersEmbed]
-					});
-
+					await db.markGiveawayEnded(giveaway.id);
 					await logger.log(`✅ Giveaway ${giveaway.id} ended but no winners could be selected`);
 					continue;
 				}
@@ -996,23 +1006,31 @@ async function processEndedGiveaways(client) {
 					.setTimestamp()
 					.setFooter({ text: embedConfig.FOOTER });
 
-				await message.edit({
-					components: []
-				});
+				if (message) {
+					await message.edit({ components: [] }).catch(() => null);
+				}
+				if (channel) {
+					const winnersMention = await NOTIFICATIONS.getNotificationRoleIdForChannel(guild.id, channel.id).catch(() => null);
+					await channel
+						.send({
+							content: winnersMention ? `<@&${winnersMention}>` : undefined,
+							embeds: [winnersEmbed]
+						})
+						.catch(() => null);
+				} else {
+					await logger.log(
+						`⚠️ Giveaway ${giveaway.id} winners recorded in DB but no channel to announce (guild ${guild.id})`
+					);
+				}
 
-				const winnersMention = await NOTIFICATIONS.getNotificationRoleIdForChannel(guild.id, channel.id).catch(() => null);
-				await channel.send({
-					content: winnersMention ? `<@&${winnersMention}>` : undefined,
-					embeds: [winnersEmbed]
-				});
-
+				await db.markGiveawayEnded(giveaway.id);
 				await logger.log(`✅ Giveaway ${giveaway.id} ended - Winners: ${winners.map((w) => w.discord_member_id).join(', ')}`);
-			} catch (err) {
-				await logger.log(`❌ Error ending giveaway ${giveaway.id}: ${err.message}`);
+			} catch (err: any) {
+				await logger.log(`❌ Error ending giveaway ${giveaway.id}: ${err?.message || err}`);
 			}
 		}
-	} catch (error) {
-		await logger.log(`❌ Error checking ended giveaways: ${error.message}`);
+	} catch (error: any) {
+		await logger.log(`❌ Error checking ended giveaways: ${error?.message || error}`);
 	}
 }
 

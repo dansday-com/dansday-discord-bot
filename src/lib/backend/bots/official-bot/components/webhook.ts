@@ -360,6 +360,10 @@ async function handleWebhookRequest(req, res) {
 							const { syncLevelingRuntime } = await import('./leveling.js');
 							await syncLevelingRuntime(client, guildId, enabled);
 							await logger.log(`📥 sync_component_runtime: leveling ${enabled ? 'on' : 'off'} for guild ${guildId}`);
+						} else if (component === serverSettingsComponent.content_creator) {
+							const { syncContentCreatorRuntime } = await import('./interface/contentcreator.js');
+							await syncContentCreatorRuntime(client, guildId, enabled);
+							await logger.log(`📥 sync_component_runtime: content_creator ${enabled ? 'on' : 'off'} for guild ${guildId}`);
 						}
 						res.writeHead(200, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify({ success: true }));

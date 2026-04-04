@@ -71,7 +71,7 @@ async function syncGuildData(guild) {
 
 		try {
 			const { CUSTOM_SUPPORTER_ROLE } = await import('../../config.js');
-			const constraints = await CUSTOM_SUPPORTER_ROLE.getRoleConstraints(guild.id);
+			const constraints = await CUSTOM_SUPPORTER_ROLE.getStoredRoleConstraints(guild.id);
 			if (constraints.ROLE_START && constraints.ROLE_END) {
 				await db.updateCustomRoleFlags(serverId, constraints.ROLE_START, constraints.ROLE_END);
 			} else {

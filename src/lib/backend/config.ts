@@ -403,6 +403,13 @@ export const CUSTOM_SUPPORTER_ROLE = {
 		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.custom_supporter_role))) {
 			return { ROLE_START: null, ROLE_END: null };
 		}
+		return CUSTOM_SUPPORTER_ROLE.getStoredRoleConstraints(guildId);
+	},
+
+	/** Role span from settings only (ignores module toggle). Used for sync DB flags and periodic cleanup while the module is off. */
+	async getStoredRoleConstraints(guildId: string) {
+		requireBotConfig();
+		requireGuildId(guildId, 'getting stored custom role constraints');
 		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.custom_supporter_role);
 		if (settings?.settings) {
 			return {
@@ -494,9 +501,28 @@ export const GIVEAWAY = {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting giveaway channel');
 		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.giveaway))) return null;
+		return GIVEAWAY.getStoredGiveawayChannelId(guildId);
+	},
+
+	/** Configured giveaway channel from settings + main fallback, without checking the module (for finalizing ended giveaways). */
+	async getChannelForFinalizingEndedGiveaway(guildId: string): Promise<string | null> {
+		requireBotConfig();
+		requireGuildId(guildId, 'finalizing ended giveaway');
+		try {
+			return await GIVEAWAY.getStoredGiveawayChannelId(guildId);
+		} catch {
+			return null;
+		}
+	},
+
+	async getStoredGiveawayChannelId(guildId: string): Promise<string | null> {
 		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.giveaway);
 		if (settings?.settings?.giveaway_channel) return settings.settings.giveaway_channel;
-		return await getMainChannel(guildId);
+		try {
+			return await getMainChannel(guildId);
+		} catch {
+			return null;
+		}
 	},
 
 	async getCreatorCanParticipate(guildId: string) {

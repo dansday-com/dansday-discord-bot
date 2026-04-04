@@ -150,10 +150,7 @@ async function handleMenuButton(interaction) {
 		);
 	}
 
-	if (
-		(await hasPermission(member, 'content_creator')) &&
-		(await isComponentFeatureEnabled(interaction.guild.id, serverSettingsComponent.content_creator))
-	) {
+	if ((await hasPermission(member, 'content_creator')) && (await isComponentFeatureEnabled(interaction.guild.id, serverSettingsComponent.content_creator))) {
 		buttons.push(
 			new ButtonBuilder()
 				.setCustomId('bot_content_creator')

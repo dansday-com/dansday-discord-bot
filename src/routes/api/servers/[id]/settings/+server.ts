@@ -31,7 +31,10 @@ function canEditServer(locals: App.Locals, serverId: string): boolean {
 	return locals.user.server_id === Number(serverId);
 }
 
-async function postOfficialBotWebhook(bot: { port: number | null; secret_key: string | null } | null | undefined, payload: Record<string, unknown>): Promise<void> {
+async function postOfficialBotWebhook(
+	bot: { port: number | null; secret_key: string | null } | null | undefined,
+	payload: Record<string, unknown>
+): Promise<void> {
 	if (!bot?.port || !bot.secret_key) return;
 	const { request } = await import('http');
 	const body = JSON.stringify(payload);

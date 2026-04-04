@@ -786,7 +786,7 @@ async function cleanupCustomRoles(client) {
 
 		for (const guild of client.guilds.cache.values()) {
 			try {
-				const constraints = await CUSTOM_SUPPORTER_ROLE.getRoleConstraints(guild.id);
+				const constraints = await CUSTOM_SUPPORTER_ROLE.getStoredRoleConstraints(guild.id);
 
 				if (!constraints.ROLE_START || !constraints.ROLE_END) {
 					continue;
@@ -881,7 +881,7 @@ async function scanAndValidateCustomRoles(client) {
 			try {
 				let constraints;
 				try {
-					constraints = await CUSTOM_SUPPORTER_ROLE.getRoleConstraints(guild.id);
+					constraints = await CUSTOM_SUPPORTER_ROLE.getStoredRoleConstraints(guild.id);
 				} catch (error) {
 					if (error.message && error.message.includes('Server not found')) {
 						continue;

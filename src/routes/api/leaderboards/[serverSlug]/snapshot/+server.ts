@@ -1,8 +1,7 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
-import { serverSettingsComponent } from '$lib/serverSettingsComponents.js';
+import { SERVER_SETTINGS } from '$lib/serverSettingsComponents.js';
 import { type LeaderboardMetric, type LeaderboardRange, resolveLeaderboardServerBySlug, resolveLeaderboardSnapshot } from '$lib/leaderboard/index.js';
-
 function parseMetric(m: string | null): LeaderboardMetric {
 	const v = (m || 'xp').toLowerCase();
 	if (v === 'chat') return 'chat';
@@ -26,11 +25,9 @@ export const GET: RequestHandler = async ({ params, url }) => {
 	if (!resolved) return new Response(JSON.stringify({ error: 'Not found' }), { status: 404, headers: { 'Content-Type': 'application/json' } });
 	const server = resolved.server;
 
-	const settingsRow = await db.getServerSettings(server.id, serverSettingsComponent.leaderboard);
+	const settingsRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.leaderboard);
 	const settings = (settingsRow as any)?.settings || {};
-	const enabled = settings.enabled ?? true;
-	const isPublic = settings.public ?? true;
-	if (!enabled || !isPublic) {
+	if (settings.enabled === false) {
 		return new Response(JSON.stringify({ error: 'Not found' }), { status: 404, headers: { 'Content-Type': 'application/json' } });
 	}
 

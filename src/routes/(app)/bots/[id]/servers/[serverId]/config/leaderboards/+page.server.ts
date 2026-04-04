@@ -1,7 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import db from '$lib/database.js';
-import { serverSettingsComponent } from '$lib/serverSettingsComponents.js';
+import { SERVER_SETTINGS } from '$lib/serverSettingsComponents.js';
 import { computeLeaderboardSlugForServerConfig } from '$lib/leaderboard/index.js';
 
 export const load: PageServerLoad = async ({ locals, params, parent }) => {
@@ -10,9 +10,9 @@ export const load: PageServerLoad = async ({ locals, params, parent }) => {
 	const parentData = await parent();
 	const overview: any = (parentData as any).overview;
 
-	const settingsRow = await db.getServerSettings(params.serverId, serverSettingsComponent.leaderboard).catch(() => null);
+	const settingsRow = await db.getServerSettings(params.serverId, SERVER_SETTINGS.component.leaderboard).catch(() => null);
 	const settings = (settingsRow as any)?.settings || {};
-	const enabled = settings.enabled ?? true;
+	const enabled = settings.enabled !== false;
 
 	const slug = await computeLeaderboardSlugForServerConfig(Number(params.serverId), overview?.name ?? null);
 

@@ -1,13 +1,15 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
-	import { serverSettingsComponent } from '$lib/serverSettingsComponents.js';
+	import { SERVER_SETTINGS } from '$lib/serverSettingsComponents.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import RolePicker from '$lib/frontend/components/RolePicker.svelte';
+	import ConfigToggleRow from '$lib/frontend/components/ConfigToggleRow.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 
 	let saving = $state(false);
+	let featureEnabled = $state(data.settings?.enabled !== false);
 	let roleStart = $state<string>(data.settings?.role_start ?? '');
 	let roleEnd = $state<string>(data.settings?.role_end ?? '');
 
@@ -18,7 +20,12 @@
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
-				body: JSON.stringify({ component: serverSettingsComponent.custom_supporter_role, role_start: roleStart, role_end: roleEnd })
+				body: JSON.stringify({
+					component: SERVER_SETTINGS.component.custom_supporter_role,
+					role_start: roleStart,
+					role_end: roleEnd,
+					enabled: featureEnabled
+				})
 			});
 			const d = await res.json();
 			if (d.success) {
@@ -37,28 +44,39 @@
 	</h3>
 	<p class="text-ash-400 text-xs">Define the role range where custom supporter roles will be created.</p>
 
-	<div>
-		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
-			<i class="fas fa-arrow-up mr-1 text-yellow-400"></i>Role Start (Top / Highest Position)
-		</label>
-		<p class="text-ash-500 mb-2 text-xs">Highest role position where custom supporter roles will be created. Roles will be placed below this.</p>
-		<RolePicker roles={data.roles} value={roleStart} single placeholder="Select role..." onchange={(v) => (roleStart = v as string)} />
-	</div>
+	<ConfigToggleRow
+		label="Custom supporter role module"
+		description="When off, custom supporter role creation from the bot is disabled."
+		bind:enabled={featureEnabled}
+		ariaLabel="Toggle custom supporter role module"
+	/>
+	{#if !featureEnabled}
+		<p class="text-xs text-amber-200/90">Module is off. Enable it above to use the settings below.</p>
+	{/if}
+	<div class="space-y-5 transition-opacity" class:pointer-events-none={!featureEnabled} class:opacity-50={!featureEnabled}>
+		<div>
+			<label class="text-ash-300 mb-1.5 block text-xs font-medium">
+				<i class="fas fa-arrow-up mr-1 text-yellow-400"></i>Role Start (Top / Highest Position)
+			</label>
+			<p class="text-ash-500 mb-2 text-xs">Highest role position where custom supporter roles will be created. Roles will be placed below this.</p>
+			<RolePicker roles={data.roles} value={roleStart} single placeholder="Select role..." onchange={(v) => (roleStart = v as string)} />
+		</div>
 
-	<div>
-		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
-			<i class="fas fa-arrow-down mr-1 text-yellow-400"></i>Role End (Bottom / Lowest Position)
-		</label>
-		<p class="text-ash-500 mb-2 text-xs">Lowest role position where custom supporter roles will be created. Roles will be placed above this.</p>
-		<RolePicker roles={data.roles} value={roleEnd} single placeholder="Select role..." onchange={(v) => (roleEnd = v as string)} />
-	</div>
+		<div>
+			<label class="text-ash-300 mb-1.5 block text-xs font-medium">
+				<i class="fas fa-arrow-down mr-1 text-yellow-400"></i>Role End (Bottom / Lowest Position)
+			</label>
+			<p class="text-ash-500 mb-2 text-xs">Lowest role position where custom supporter roles will be created. Roles will be placed above this.</p>
+			<RolePicker roles={data.roles} value={roleEnd} single placeholder="Select role..." onchange={(v) => (roleEnd = v as string)} />
+		</div>
 
-	<button
-		onclick={save}
-		disabled={saving}
-		class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:opacity-50"
-	>
-		{#if saving}<i class="fas fa-spinner fa-spin"></i>{/if}
-		{saving ? 'Saving...' : 'Save Configuration'}
-	</button>
+		<button
+			onclick={save}
+			disabled={saving}
+			class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:opacity-50"
+		>
+			{#if saving}<i class="fas fa-spinner fa-spin"></i>{/if}
+			{saving ? 'Saving...' : 'Save Configuration'}
+		</button>
+	</div>
 </div>

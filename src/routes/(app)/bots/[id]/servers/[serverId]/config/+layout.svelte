@@ -1,34 +1,13 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import type { LayoutProps } from './$types';
+	import { SERVER_SETTINGS } from '$lib/serverSettingsComponents.js';
 
 	let { data, children }: LayoutProps = $props();
 
 	const base = $derived(`/bots/${data.botId}/servers/${data.serverId}/config`);
 
-	const tabs = [
-		{ label: 'Main', icon: 'fa-gear', iconClass: 'text-emerald-400', href: '' },
-		{ label: 'Permissions', icon: 'fa-shield-halved', iconClass: 'text-blue-400', href: '/permissions' },
-		{ label: 'Welcomer', icon: 'fa-hand', iconClass: 'text-sky-400', href: '/welcomer' },
-		{ label: 'Booster', icon: 'fa-gem', iconClass: 'text-purple-400', href: '/booster' },
-		{ label: 'Channel notification', icon: 'fa-bell', iconClass: 'text-rose-400', href: '/notifications' },
-		{ label: 'Forwarder', icon: 'fa-forward', iconClass: 'text-violet-400', href: '/forwarder' },
-		{ label: 'Leveling', icon: 'fa-chart-line', iconClass: 'text-lime-400', href: '/leveling' },
-		{ label: 'Leaderboard', icon: 'fa-trophy', iconClass: 'text-amber-400', href: '/leaderboards' },
-		{ label: 'Custom Supporter Role', icon: 'fa-star', iconClass: 'text-yellow-400', href: '/custom-supporter-role' },
-		{ label: 'Giveaway', icon: 'fa-gift', iconClass: 'text-pink-400', href: '/giveaway' },
-		{ label: 'AFK', icon: 'fa-moon', iconClass: 'text-indigo-400', href: '/afk' },
-		{ label: 'Feedback', icon: 'fa-comment-dots', iconClass: 'text-cyan-400', href: '/feedback' },
-		{ label: 'Moderation', icon: 'fa-gavel', iconClass: 'text-red-400', href: '/moderation' },
-		{ label: 'Staff Rating', icon: 'fa-clipboard-check', iconClass: 'text-orange-400', href: '/staff-rating' },
-		{ label: 'Content Creator', icon: 'fa-video', iconClass: 'text-pink-400', href: '/content-creator' },
-		{
-			label: 'Discord Quest',
-			icon: 'fa-gem',
-			iconClass: 'text-sky-400',
-			href: '/discord-quest-notifier'
-		}
-	];
+	const tabs = SERVER_SETTINGS.configNavTabs;
 
 	function isActive(suffix: string) {
 		const full = base + suffix;
@@ -52,7 +31,12 @@
 						{active ? 'bg-ash-600 text-ash-100 font-medium' : 'text-ash-400 hover:text-ash-200 hover:bg-ash-700'}"
 				>
 					<i class="fas {tab.icon} {tab.iconClass} {active ? '' : 'opacity-75'} w-4 text-center text-xs"></i>
-					{tab.label}
+					<span class="flex min-w-0 flex-1 items-center gap-1.5">
+						{tab.label}
+						{#if tab.featureComponent && data.featureEnabledByComponent?.[tab.featureComponent] === false}
+							<span class="text-ash-500 shrink-0 text-[0.65rem] font-normal tracking-wide uppercase">Off</span>
+						{/if}
+					</span>
 				</a>
 			{/each}
 		</div>

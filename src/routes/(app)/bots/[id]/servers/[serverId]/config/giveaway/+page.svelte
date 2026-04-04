@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
+	import { SERVER_SETTINGS } from '$lib/serverSettingsComponents.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import ChannelPicker from '$lib/frontend/components/ChannelPicker.svelte';
 	import ConfigToggleRow from '$lib/frontend/components/ConfigToggleRow.svelte';
@@ -8,6 +9,7 @@
 	let { data }: PageProps = $props();
 
 	let saving = $state(false);
+	let featureEnabled = $state(data.settings?.enabled !== false);
 	let giveawayChannel = $state<string>(data.settings?.giveaway_channel ?? '');
 	let creatorCanParticipate = $state<boolean>(data.settings?.giveaway_creator_can_participate ?? false);
 
@@ -19,9 +21,10 @@
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
 				body: JSON.stringify({
-					component: serverSettingsComponent.giveaway,
+					component: SERVER_SETTINGS.component.giveaway,
 					giveaway_channel: giveawayChannel,
-					giveaway_creator_can_participate: creatorCanParticipate
+					giveaway_creator_can_participate: creatorCanParticipate,
+					enabled: featureEnabled
 				})
 			});
 			const d = await res.json();
@@ -41,25 +44,36 @@
 	</h3>
 	<p class="text-ash-400 text-xs">Choose where giveaways are posted and how entries work.</p>
 
-	<div>
-		<label class="text-ash-300 mb-1.5 block text-xs font-medium">Giveaway Channel</label>
-		<p class="text-ash-500 mb-2 text-xs">Channel for giveaways and winner announcements. Uses default channel if not set.</p>
-		<ChannelPicker channels={data.channels} categories={data.categories} value={giveawayChannel} onchange={(id) => (giveawayChannel = id)} />
-	</div>
-
 	<ConfigToggleRow
-		label="Creator can participate"
-		description="Allow giveaway creators to enter their own giveaways."
-		bind:enabled={creatorCanParticipate}
-		ariaLabel="Allow giveaway creator to participate"
+		label="Giveaway module"
+		description="When off, giveaways and related Discord UI are disabled."
+		bind:enabled={featureEnabled}
+		ariaLabel="Toggle giveaway module"
 	/>
+	{#if !featureEnabled}
+		<p class="text-xs text-amber-200/90">Module is off. Enable it above to use the settings below.</p>
+	{/if}
+	<div class="space-y-5 transition-opacity" class:pointer-events-none={!featureEnabled} class:opacity-50={!featureEnabled}>
+		<div>
+			<label class="text-ash-300 mb-1.5 block text-xs font-medium">Giveaway Channel</label>
+			<p class="text-ash-500 mb-2 text-xs">Channel for giveaways and winner announcements. Uses default channel if not set.</p>
+			<ChannelPicker channels={data.channels} categories={data.categories} value={giveawayChannel} onchange={(id) => (giveawayChannel = id)} />
+		</div>
 
-	<button
-		onclick={save}
-		disabled={saving}
-		class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:opacity-50"
-	>
-		{#if saving}<i class="fas fa-spinner fa-spin"></i>{/if}
-		{saving ? 'Saving...' : 'Save Configuration'}
-	</button>
+		<ConfigToggleRow
+			label="Creator can participate"
+			description="Allow giveaway creators to enter their own giveaways."
+			bind:enabled={creatorCanParticipate}
+			ariaLabel="Allow giveaway creator to participate"
+		/>
+
+		<button
+			onclick={save}
+			disabled={saving}
+			class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:opacity-50"
+		>
+			{#if saving}<i class="fas fa-spinner fa-spin"></i>{/if}
+			{saving ? 'Saving...' : 'Save Configuration'}
+		</button>
+	</div>
 </div>

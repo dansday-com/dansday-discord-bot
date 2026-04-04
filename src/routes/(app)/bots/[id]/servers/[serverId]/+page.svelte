@@ -7,7 +7,7 @@
 	const o = $derived(data.overview);
 	const s = $derived(o.stats ?? {});
 	const sync = $derived(o.sync ?? {});
-	const settings = $derived(Array.isArray(o.settings) ? o.settings : []);
+	const enabledFeatures = $derived(Array.isArray(o.enabledFeatures) ? o.enabledFeatures : []);
 
 	function fmt(val: number | null | undefined): string {
 		if (val == null) return '0';
@@ -155,20 +155,24 @@
 
 	<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-4 shadow-lg transition-all sm:p-6">
 		<h3 class="text-ash-100 flex items-center gap-2 text-sm font-semibold sm:text-base">
-			<i class="fas fa-sliders-h text-emerald-400"></i>Configured Components
+			<i class="fas fa-toggle-on text-emerald-400"></i>Enabled features
 		</h3>
 		<p class="text-ash-300 mt-2 text-sm">
-			{settings.length ? `${settings.length} component${settings.length !== 1 ? 's' : ''} configured.` : 'No components configured yet.'}
+			{enabledFeatures.length
+				? `${enabledFeatures.length} optional feature${enabledFeatures.length === 1 ? '' : 's'} ${enabledFeatures.length === 1 ? 'is' : 'are'} on. Main and Permissions are always required.`
+				: 'No optional features are enabled. Main and Permissions are always on.'}
 		</p>
-		{#if settings.length > 0}
+		{#if enabledFeatures.length > 0}
 			<div class="mt-3 flex flex-wrap gap-2">
-				{#each settings as cfg}
+				{#each enabledFeatures as cfg}
 					<span class="bg-ash-800 border-ash-600 text-ash-200 flex items-center gap-2 rounded-lg border px-2.5 py-1 text-xs sm:text-sm">
-						<i class="fas fa-cog text-emerald-400/90"></i>
-						<span class="font-medium">{cfg.component_name}</span>
-						<span class="text-ash-500 text-[0.65rem] sm:text-xs">
-							Updated <LocalTime value={cfg.updated_at} includeSeconds class="inline" />
-						</span>
+						<i class="fas fa-check-circle text-emerald-400/90"></i>
+						<span class="font-medium">{cfg.label}</span>
+						{#if cfg.updated_at}
+							<span class="text-ash-500 text-[0.65rem] sm:text-xs">
+								Updated <LocalTime value={cfg.updated_at} includeSeconds class="inline" />
+							</span>
+						{/if}
 					</span>
 				{/each}
 			</div>

@@ -1,4 +1,12 @@
-import { getLevelingSettings, PERMISSIONS, getBotConfig, getEmbedConfig, NOTIFICATIONS } from '../../../config.js';
+import {
+	getLevelingSettings,
+	PERMISSIONS,
+	getBotConfig,
+	getEmbedConfig,
+	NOTIFICATIONS,
+	isComponentFeatureEnabled,
+	serverSettingsComponent
+} from '../../../config.js';
 import db from '../../../../database.js';
 import { EmbedBuilder } from 'discord.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../utils/index.js';
@@ -469,6 +477,7 @@ async function sendXPLogToChannel(guild, dbMember, xpGained, xpType) {
 async function handleMessageCreate(message) {
 	try {
 		if (!message?.guild || message.author?.bot) return;
+		if (!(await isComponentFeatureEnabled(message.guild.id, serverSettingsComponent.leveling))) return;
 
 		const now = Date.now();
 		const cooldownKey = `${message.guild.id}:${message.author.id}`;
@@ -548,6 +557,7 @@ async function awardVoiceXP(server, dbMember, guildMember, minutes, isAFK, guild
 async function startVoiceSession(state, resumed = false) {
 	try {
 		if (!state?.channelId || !state.guild) return;
+		if (!(await isComponentFeatureEnabled(state.guild.id, serverSettingsComponent.leveling))) return;
 
 		const { server, dbMember, guildMember } = await resolveServerAndMember(state.guild, state.member);
 		if (!server || !dbMember || !guildMember) return;

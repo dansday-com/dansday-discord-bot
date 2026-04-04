@@ -1,4 +1,4 @@
-import { WELCOMER, getEmbedConfig, getBotConfig } from '../../../config.js';
+import { WELCOMER, getEmbedConfig, getBotConfig, isComponentFeatureEnabled, serverSettingsComponent } from '../../../config.js';
 import { EmbedBuilder } from 'discord.js';
 import db from '../../../../database.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../utils/index.js';
@@ -27,6 +27,10 @@ async function welcomeUser(member, client) {
 		const botConfig = getBotConfig();
 		if (!botConfig || !botConfig.id) {
 			await logger.log(`⚠️ Bot config not available, skipping welcome message`);
+			return;
+		}
+
+		if (!(await isComponentFeatureEnabled(member.guild.id, serverSettingsComponent.welcomer))) {
 			return;
 		}
 

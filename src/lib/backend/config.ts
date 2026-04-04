@@ -1,5 +1,7 @@
 import db from '../database.js';
-import { serverSettingsComponent } from '../serverSettingsComponents.js';
+import { SERVER_SETTINGS, type ServerSettingsComponentName } from '../serverSettingsComponents.js';
+
+const serverSettingsComponent = SERVER_SETTINGS.component;
 import { normalizeForwarderSettings } from '../forwarder-settings.js';
 import { resolveEmbedFooterPlaceholders } from '../utils/embedFooter.js';
 import { mainChannelId } from '../utils/mainConfigSettings.js';
@@ -151,6 +153,40 @@ async function getOfficialBotServer(guildId: string) {
 	}
 
 	return officialBotServer;
+}
+
+/** DB `servers.id` for `server_settings` rows (handles notifications on official server row, forwarder on linked server). */
+export async function resolveServerIdForGuildSetting(guildDiscordId: string, component: string): Promise<number | null> {
+	try {
+		const official = await getOfficialBotServer(guildDiscordId);
+		if (component === serverSettingsComponent.notifications) {
+			const mapped = await db.getOfficialBotServerIdForServer(official.id);
+			return mapped ?? official.id;
+		}
+		if (component === serverSettingsComponent.forwarder) {
+			const botIdToUse = await getOfficialBotId();
+			const s = await db.getServerByDiscordId(botIdToUse, guildDiscordId);
+			return s?.id ?? official.id;
+		}
+		return official.id;
+	} catch {
+		return null;
+	}
+}
+
+/** `settings.enabled === false` turns the feature off bot-wide (default on if unset or no row). */
+export async function isComponentFeatureEnabled(guildDiscordId: string, component: string): Promise<boolean> {
+	if (!guildDiscordId) return true;
+	try {
+		requireBotConfig();
+		const serverId = await resolveServerIdForGuildSetting(guildDiscordId, component);
+		if (serverId == null) return true;
+		const row = await db.getServerSettings(serverId, component);
+		if (!row?.settings || typeof row.settings !== 'object') return true;
+		return (row.settings as Record<string, unknown>).enabled !== false;
+	} catch {
+		return true;
+	}
 }
 
 async function getServerSettingsForComponent(guildId: string, componentName: string) {
@@ -319,6 +355,7 @@ export const WELCOMER = {
 	async getChannels(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting welcomer channels');
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.welcomer))) return [];
 		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.welcomer);
 		if (settings?.settings?.channels?.length > 0) return settings.settings.channels;
 		const mainChannel = await getMainChannel(guildId);
@@ -328,6 +365,7 @@ export const WELCOMER = {
 	async getMessages(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting welcomer messages');
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.welcomer))) return [];
 		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.welcomer);
 		if (settings?.settings?.messages?.length > 0) return settings.settings.messages;
 		return [];
@@ -338,6 +376,7 @@ export const BOOSTER = {
 	async getChannels(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting booster channels');
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.booster))) return [];
 		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.booster);
 		if (settings?.settings?.channels?.length > 0) return settings.settings.channels;
 		const mainChannel = await getMainChannel(guildId);
@@ -352,6 +391,7 @@ export const BOOSTER = {
 	async getMessages(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting booster messages');
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.booster))) return [];
 		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.booster);
 		if (settings?.settings?.messages?.length > 0) return settings.settings.messages;
 		return [];
@@ -362,6 +402,9 @@ export const CUSTOM_SUPPORTER_ROLE = {
 	async getRoleConstraints(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting custom role constraints');
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.custom_supporter_role))) {
+			return { ROLE_START: null, ROLE_END: null };
+		}
 		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.custom_supporter_role);
 		if (settings?.settings) {
 			return {
@@ -377,9 +420,10 @@ export const NOTIFICATIONS = {
 	async getConfig(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting notifications config');
-		const server = await getOfficialBotServer(guildId).catch(() => null);
-		if (!server) return null;
-		const settings = await db.getServerSettings(server.id, serverSettingsComponent.notifications);
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.notifications))) return null;
+		const sid = await resolveServerIdForGuildSetting(guildId, serverSettingsComponent.notifications);
+		if (sid == null) return null;
+		const settings = await db.getServerSettings(sid, serverSettingsComponent.notifications);
 		return settings?.settings || null;
 	},
 
@@ -391,7 +435,11 @@ export const NOTIFICATIONS = {
 	async getRoleConstraints(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting notifications role constraints');
-		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.notifications);
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.notifications))) {
+			return { ROLE_START: null, ROLE_END: null };
+		}
+		const sid = (await resolveServerIdForGuildSetting(guildId, serverSettingsComponent.notifications)) ?? (await getOfficialBotServer(guildId)).id;
+		const settings = await db.getServerSettings(sid, serverSettingsComponent.notifications);
 		if (settings?.settings) {
 			return {
 				ROLE_START: settings.settings.role_start || null,
@@ -402,6 +450,7 @@ export const NOTIFICATIONS = {
 	},
 
 	async getNotificationRoleIds(guildId: string) {
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.notifications))) return [];
 		const server = await getOfficialBotServer(guildId).catch(() => null);
 		if (!server) return [];
 		const rows = await db.getNotificationRolesForServer(server.id);
@@ -409,12 +458,14 @@ export const NOTIFICATIONS = {
 	},
 
 	async getNotificationRolesWithCategory(guildId: string) {
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.notifications))) return [];
 		const server = await getOfficialBotServer(guildId).catch(() => null);
 		if (!server) return [];
 		return await db.getNotificationRolesWithCategory(server.id);
 	},
 
 	async getNotificationRoleIdForChannel(guildId: string, channelId: string) {
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.notifications))) return null;
 		const server = await getOfficialBotServer(guildId).catch(() => null);
 		if (!server || !channelId) return null;
 		return (await db.getNotificationRoleByChannel(server.id, channelId)) || null;
@@ -425,6 +476,7 @@ export const FEEDBACK = {
 	async getChannel(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting feedback channel');
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.feedback))) return null;
 		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.feedback);
 		if (settings?.settings?.feedback_channel) return settings.settings.feedback_channel;
 		return await getMainChannel(guildId);
@@ -433,6 +485,7 @@ export const FEEDBACK = {
 	async getRole(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting feedback role');
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.feedback))) return null;
 		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.feedback);
 		return settings?.settings?.feedback_role || null;
 	}
@@ -442,6 +495,7 @@ export const GIVEAWAY = {
 	async getChannel(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting giveaway channel');
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.giveaway))) return null;
 		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.giveaway);
 		if (settings?.settings?.giveaway_channel) return settings.settings.giveaway_channel;
 		return await getMainChannel(guildId);
@@ -450,6 +504,7 @@ export const GIVEAWAY = {
 	async getCreatorCanParticipate(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting giveaway creator can participate setting');
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.giveaway))) return false;
 		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.giveaway);
 		return settings?.settings?.giveaway_creator_can_participate ?? false;
 	}
@@ -460,13 +515,7 @@ export const MODERATION_CONFIG = {
 	async isEnabled(guildId: string): Promise<boolean> {
 		requireBotConfig();
 		requireGuildId(guildId, 'checking moderation logs enabled');
-		try {
-			const row = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.moderation);
-			if (row?.settings?.enabled === false) return false;
-			return true;
-		} catch {
-			return true;
-		}
+		return isComponentFeatureEnabled(guildId, serverSettingsComponent.moderation);
 	}
 };
 
@@ -475,13 +524,7 @@ export const AFK_CONFIG = {
 	async isEnabled(guildId: string): Promise<boolean> {
 		requireBotConfig();
 		requireGuildId(guildId, 'checking AFK enabled');
-		try {
-			const row = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.afk);
-			if (row?.settings?.enabled === false) return false;
-			return true;
-		} catch {
-			return true;
-		}
+		return isComponentFeatureEnabled(guildId, serverSettingsComponent.afk);
 	}
 };
 
@@ -489,6 +532,7 @@ export const STAFF_RATING = {
 	async getConfig(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting staff rating config');
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.staff_rating))) return null;
 		const serverId = (await getOfficialBotServer(guildId)).id;
 		const row = await db.getServerSettings(serverId, serverSettingsComponent.staff_rating);
 		return row?.settings || null;
@@ -544,6 +588,7 @@ export const CONTENT_CREATOR = {
 	async getConfig(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting content creator config');
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.content_creator))) return null;
 		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.content_creator);
 		return settings?.settings || null;
 	},
@@ -584,6 +629,7 @@ export const FORWARDER = {
 	async getConfig(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting forwarder config');
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.forwarder))) return { forwarders: [] };
 		const botIdToUse = await getOfficialBotId();
 		const server = await db.getServerByDiscordId(botIdToUse, guildId);
 		if (!server) return { forwarders: [] };
@@ -688,3 +734,8 @@ export const FORWARDER = {
 		return null;
 	}
 };
+
+/** Bots should import from this module, not from `serverSettingsComponents` directly. */
+export { SERVER_SETTINGS, type ServerSettingsComponentName };
+export { serverSettingsComponent };
+export const SERVER_SETTINGS_COMPONENTS_WITH_FEATURE_SWITCH = SERVER_SETTINGS.withFeatureSwitch;

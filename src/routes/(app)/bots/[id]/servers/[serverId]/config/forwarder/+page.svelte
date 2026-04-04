@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
+	import { SERVER_SETTINGS } from '$lib/serverSettingsComponents.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import ChannelPicker from '$lib/frontend/components/ChannelPicker.svelte';
 	import RolePicker from '$lib/frontend/components/RolePicker.svelte';
+	import ConfigToggleRow from '$lib/frontend/components/ConfigToggleRow.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -20,6 +22,7 @@
 	};
 
 	let saving = $state(false);
+	let featureEnabled = $state(data.settings?.enabled !== false);
 	let forwarders = $state<Forwarder[]>((data.settings?.forwarders ?? []) as Forwarder[]);
 
 	let modalOpen = $state(false);
@@ -242,7 +245,7 @@
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
-				body: JSON.stringify({ component: serverSettingsComponent.forwarder, forwarders })
+				body: JSON.stringify({ component: SERVER_SETTINGS.component.forwarder, forwarders })
 			});
 			const d = await res.json();
 			if (d.success) {
@@ -261,85 +264,96 @@
 	</h3>
 	<p class="text-ash-400 text-xs">Forward messages from a selfbot's channel to a channel in this server.</p>
 
-	<div class="space-y-3">
-		{#if forwarders.length === 0}
-			<div class="bg-ash-700 rounded-lg p-4 text-center">
-				<i class="fas fa-inbox mb-2 text-2xl text-violet-400/80"></i>
-				<p class="text-ash-400 text-xs">No forwarders yet. Click Add Forwarder to create one.</p>
-			</div>
-		{:else}
-			{#each forwarders as fw, i}
-				<div class="bg-ash-700 border-ash-600 rounded-lg border p-3">
-					<div class="flex items-start justify-between gap-3">
-						<div class="min-w-0 flex-1 space-y-1 text-xs">
-							{#if fw.selfbot_id}
-								<div class="text-ash-100 flex items-center gap-1.5 font-medium">
-									<i class="fas fa-robot text-violet-400"></i>{fw.selfbot_name || selfbotNameById(fw.selfbot_id) || `Selfbot #${fw.selfbot_id}`}
-								</div>
-							{/if}
-							{#if fw.source_channels?.length}
-								<div class="text-ash-400">
-									<span class="text-ash-300 font-medium">From:</span>
-									{#if fw.source_channel_names?.length}
-										{formatChannelList(fw.source_channel_names)}
-									{:else}
-										{formatChannelList(fw.source_channels.map((id) => channelName(id, selfbotChannels))) ||
-											`${fw.source_channels.length} channel${fw.source_channels.length !== 1 ? 's' : ''}`}
-									{/if}
-								</div>
-							{/if}
-							{#if fw.target_channel_id}
-								<div class="text-ash-400">
-									<span class="text-ash-300 font-medium">To:</span> #{channelName(fw.target_channel_id, data.channels)}
-								</div>
-							{/if}
-							{#if fw.tag}
-								<div class="text-ash-400"><span class="text-ash-300 font-medium">Tag:</span> {fw.tag}</div>
-							{/if}
-							{#if fw.only_forward_when_mentions_member}
-								<div class="text-amber-400"><i class="fas fa-at mr-1"></i>Only when mentions selfbot</div>
-							{/if}
-						</div>
-						<div class="flex shrink-0 items-center gap-1.5">
-							<button
-								type="button"
-								onclick={() => openEdit(i)}
-								class="bg-ash-600 hover:bg-ash-500 rounded-lg p-1.5 text-xs text-white transition-colors"
-								aria-label="Edit"
-							>
-								<i class="fas fa-edit"></i>
-							</button>
-							<button
-								type="button"
-								onclick={() => removeForwarder(i)}
-								class="rounded-lg bg-red-900 p-1.5 text-xs text-red-300 transition-colors hover:bg-red-800"
-								aria-label="Delete"
-							>
-								<i class="fas fa-trash"></i>
-							</button>
+	<ConfigToggleRow
+		label="Forwarder module"
+		description="When off, message forwarding from selfbots is disabled."
+		bind:enabled={featureEnabled}
+		ariaLabel="Toggle forwarder module"
+	/>
+	{#if !featureEnabled}
+		<p class="text-xs text-amber-200/90">Module is off. Enable it above to use the settings below.</p>
+	{/if}
+	<div class="space-y-5 transition-opacity" class:pointer-events-none={!featureEnabled} class:opacity-50={!featureEnabled}>
+		<div class="space-y-3">
+			{#if forwarders.length === 0}
+				<div class="bg-ash-700 rounded-lg p-4 text-center">
+					<i class="fas fa-inbox mb-2 text-2xl text-violet-400/80"></i>
+					<p class="text-ash-400 text-xs">No forwarders yet. Click Add Forwarder to create one.</p>
+				</div>
+			{:else}
+				{#each forwarders as fw, i}
+					<div class="bg-ash-700 border-ash-600 rounded-lg border p-3">
+						<div class="flex items-start justify-between gap-3">
+							<div class="min-w-0 flex-1 space-y-1 text-xs">
+								{#if fw.selfbot_id}
+									<div class="text-ash-100 flex items-center gap-1.5 font-medium">
+										<i class="fas fa-robot text-violet-400"></i>{fw.selfbot_name || selfbotNameById(fw.selfbot_id) || `Selfbot #${fw.selfbot_id}`}
+									</div>
+								{/if}
+								{#if fw.source_channels?.length}
+									<div class="text-ash-400">
+										<span class="text-ash-300 font-medium">From:</span>
+										{#if fw.source_channel_names?.length}
+											{formatChannelList(fw.source_channel_names)}
+										{:else}
+											{formatChannelList(fw.source_channels.map((id) => channelName(id, selfbotChannels))) ||
+												`${fw.source_channels.length} channel${fw.source_channels.length !== 1 ? 's' : ''}`}
+										{/if}
+									</div>
+								{/if}
+								{#if fw.target_channel_id}
+									<div class="text-ash-400">
+										<span class="text-ash-300 font-medium">To:</span> #{channelName(fw.target_channel_id, data.channels)}
+									</div>
+								{/if}
+								{#if fw.tag}
+									<div class="text-ash-400"><span class="text-ash-300 font-medium">Tag:</span> {fw.tag}</div>
+								{/if}
+								{#if fw.only_forward_when_mentions_member}
+									<div class="text-amber-400"><i class="fas fa-at mr-1"></i>Only when mentions selfbot</div>
+								{/if}
+							</div>
+							<div class="flex shrink-0 items-center gap-1.5">
+								<button
+									type="button"
+									onclick={() => openEdit(i)}
+									class="bg-ash-600 hover:bg-ash-500 rounded-lg p-1.5 text-xs text-white transition-colors"
+									aria-label="Edit"
+								>
+									<i class="fas fa-edit"></i>
+								</button>
+								<button
+									type="button"
+									onclick={() => removeForwarder(i)}
+									class="rounded-lg bg-red-900 p-1.5 text-xs text-red-300 transition-colors hover:bg-red-800"
+									aria-label="Delete"
+								>
+									<i class="fas fa-trash"></i>
+								</button>
+							</div>
 						</div>
 					</div>
-				</div>
-			{/each}
-		{/if}
+				{/each}
+			{/if}
+		</div>
+
+		<button
+			type="button"
+			onclick={openAdd}
+			class="border-ash-600 text-ash-400 hover:text-ash-200 hover:border-ash-400 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed py-2 text-sm transition-colors"
+		>
+			<i class="fas fa-plus text-xs"></i>Add Forwarder
+		</button>
+
+		<button
+			onclick={save}
+			disabled={saving}
+			class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:opacity-50"
+		>
+			{#if saving}<i class="fas fa-spinner fa-spin"></i>{/if}
+			{saving ? 'Saving...' : 'Save Configuration'}
+		</button>
 	</div>
-
-	<button
-		type="button"
-		onclick={openAdd}
-		class="border-ash-600 text-ash-400 hover:text-ash-200 hover:border-ash-400 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed py-2 text-sm transition-colors"
-	>
-		<i class="fas fa-plus text-xs"></i>Add Forwarder
-	</button>
-
-	<button
-		onclick={save}
-		disabled={saving}
-		class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:opacity-50"
-	>
-		{#if saving}<i class="fas fa-spinner fa-spin"></i>{/if}
-		{saving ? 'Saving...' : 'Save Configuration'}
-	</button>
 </div>
 
 {#if modalOpen}

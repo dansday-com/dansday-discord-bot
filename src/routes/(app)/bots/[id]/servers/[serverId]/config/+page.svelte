@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
+	import { SERVER_SETTINGS } from '$lib/serverSettingsComponents.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import ChannelPicker from '$lib/frontend/components/ChannelPicker.svelte';
 	import type { PageProps } from './$types';
@@ -19,7 +20,7 @@
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
 				body: JSON.stringify({
-					component: serverSettingsComponent.main,
+					component: SERVER_SETTINGS.component.main,
 					main_channel: mainChannel,
 					color: defaultColor,
 					footer: defaultFooter

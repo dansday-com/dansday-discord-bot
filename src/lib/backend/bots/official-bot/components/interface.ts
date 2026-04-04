@@ -1,4 +1,4 @@
-import { AFK_CONFIG, CONTENT_CREATOR, getEmbedConfig, getServerForCurrentBot } from '../../../config.js';
+import { AFK_CONFIG, CONTENT_CREATOR, getEmbedConfig, getServerForCurrentBot, isComponentFeatureEnabled, serverSettingsComponent } from '../../../config.js';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
 import { logger } from '../../../../utils/index.js';
 import { hasPermission, getPermissionDeniedMessage } from './permissions.js';
@@ -45,6 +45,13 @@ import {
 } from './interface/contentcreator.js';
 import { translate, t } from '../i18n.js';
 
+async function replyIfFeatureDisabled(interaction: any, component: string): Promise<boolean> {
+	if (!interaction.guild) return false;
+	if (await isComponentFeatureEnabled(interaction.guild.id, component)) return false;
+	await interaction.reply({ content: 'This feature is disabled for this server.', flags: 64 }).catch(() => null);
+	return true;
+}
+
 async function handleMenuButton(interaction) {
 	const member = interaction.member || (await interaction.guild.members.fetch(interaction.user.id).catch(() => null));
 	if (!member) {
@@ -85,7 +92,10 @@ async function handleMenuButton(interaction) {
 
 	const buttons = [];
 
-	if (await hasPermission(member, 'custom_supporter_role')) {
+	if (
+		(await hasPermission(member, 'custom_supporter_role')) &&
+		(await isComponentFeatureEnabled(interaction.guild.id, serverSettingsComponent.custom_supporter_role))
+	) {
 		buttons.push(
 			new ButtonBuilder()
 				.setCustomId('bot_custom_supporter_role')
@@ -94,7 +104,7 @@ async function handleMenuButton(interaction) {
 		);
 	}
 
-	if (await hasPermission(member, 'leveling')) {
+	if ((await hasPermission(member, 'leveling')) && (await isComponentFeatureEnabled(interaction.guild.id, serverSettingsComponent.leveling))) {
 		buttons.push(
 			new ButtonBuilder()
 				.setCustomId('bot_leveling')
@@ -103,7 +113,7 @@ async function handleMenuButton(interaction) {
 		);
 	}
 
-	if (await hasPermission(member, 'giveaway')) {
+	if ((await hasPermission(member, 'giveaway')) && (await isComponentFeatureEnabled(interaction.guild.id, serverSettingsComponent.giveaway))) {
 		buttons.push(
 			new ButtonBuilder()
 				.setCustomId('bot_giveaway')
@@ -121,7 +131,7 @@ async function handleMenuButton(interaction) {
 		);
 	}
 
-	if (await hasPermission(member, 'feedback')) {
+	if ((await hasPermission(member, 'feedback')) && (await isComponentFeatureEnabled(interaction.guild.id, serverSettingsComponent.feedback))) {
 		buttons.push(
 			new ButtonBuilder()
 				.setCustomId('bot_feedback')
@@ -130,7 +140,7 @@ async function handleMenuButton(interaction) {
 		);
 	}
 
-	if (await hasPermission(member, 'staff_rating')) {
+	if ((await hasPermission(member, 'staff_rating')) && (await isComponentFeatureEnabled(interaction.guild.id, serverSettingsComponent.staff_rating))) {
 		buttons.push(
 			new ButtonBuilder()
 				.setCustomId('bot_staff_rating')
@@ -150,7 +160,7 @@ async function handleMenuButton(interaction) {
 		);
 	}
 
-	if (await hasPermission(member, 'notifications')) {
+	if ((await hasPermission(member, 'notifications')) && (await isComponentFeatureEnabled(interaction.guild.id, serverSettingsComponent.notifications))) {
 		buttons.push(
 			new ButtonBuilder()
 				.setCustomId('bot_notifications')
@@ -242,43 +252,56 @@ export async function handleButtonInteraction(interaction, client) {
 			await handleMenuButton(interaction);
 			break;
 		case 'bot_custom_supporter_role':
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.custom_supporter_role)) break;
 			await handleCustomSupporterRoleButton(interaction);
 			break;
 		case 'custom_supporter_role_edit':
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.custom_supporter_role)) break;
 			await handleEditCustomSupporterRole(interaction);
 			break;
 		case 'custom_supporter_role_delete':
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.custom_supporter_role)) break;
 			await handleDeleteCustomSupporterRole(interaction);
 			break;
 		case 'bot_leveling':
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.leveling)) break;
 			await handleLevelingButton(interaction);
 			break;
 		case 'bot_giveaway':
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.giveaway)) break;
 			await handleGiveawayButton(interaction);
 			break;
 		case 'bot_feedback':
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.feedback)) break;
 			await handleFeedbackButton(interaction);
 			break;
 		case 'bot_staff_report':
 		case 'bot_staff_rating':
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.staff_rating)) break;
 			await handleStaffRatingButton(interaction);
 			break;
 		case 'bot_notifications':
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.notifications)) break;
 			await handleNotificationsButton(interaction);
 			break;
 		case 'bot_content_creator':
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.content_creator)) break;
 			await handleContentCreatorButton(interaction);
 			break;
 		case 'content_creator_apply_open':
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.content_creator)) break;
 			await handleContentCreatorApplyButton(interaction);
 			break;
 		case 'content_creator_dismiss_request':
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.content_creator)) break;
 			await handleContentCreatorDismissRequest(interaction);
 			break;
 		case 'content_creator_dismiss_yes':
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.content_creator)) break;
 			await handleContentCreatorDismissYes(interaction);
 			break;
 		case 'content_creator_dismiss_no':
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.content_creator)) break;
 			await handleContentCreatorDismissNo(interaction);
 			break;
 		case 'bot_afk':
@@ -292,6 +315,7 @@ export async function handleButtonInteraction(interaction, client) {
 		case 'leaderboard_voice_active':
 		case 'leaderboard_voice_afk':
 		case 'leaderboard_chat':
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.leaderboard)) break;
 			await handleLeaderboardButton(interaction);
 			break;
 		case 'settings_dm_toggle':
@@ -305,24 +329,33 @@ export async function handleButtonInteraction(interaction, client) {
 			break;
 		case 'staff_report_back_to_staff':
 		case 'staff_rating_back_to_staff':
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.staff_rating)) break;
 			await handleStaffRatingButton(interaction);
 			break;
 		default:
 			if (customId.startsWith('staff_rating_continue') || customId.startsWith('staff_report_continue')) {
+				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.staff_rating)) break;
 				await handleStaffRatingContinue(interaction);
 			} else if (customId.startsWith('staff_rating_approve') || customId.startsWith('staff_report_approve')) {
+				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.staff_rating)) break;
 				await handleStaffRatingApprove(interaction);
 			} else if (customId.startsWith('staff_rating_reject') || customId.startsWith('staff_report_reject')) {
+				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.staff_rating)) break;
 				await handleStaffRatingReject(interaction);
 			} else if (customId.startsWith('content_creator_approve')) {
+				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.content_creator)) break;
 				await handleContentCreatorApprove(interaction);
 			} else if (customId.startsWith('content_creator_reject')) {
+				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.content_creator)) break;
 				await handleContentCreatorReject(interaction);
 			} else if (customId.startsWith('giveaway_enter_')) {
+				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.giveaway)) break;
 				await handleGiveawayEnterButton(interaction);
 			} else if (customId === 'giveaway_continue_form') {
+				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.giveaway)) break;
 				await handleGiveawaySkipRolesContinue(interaction);
 			} else if (customId.startsWith('giveaway_finish_')) {
+				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.giveaway)) break;
 				await handleGiveawayFinish(interaction);
 			} else {
 				await logger.log(`🔍 Unknown button interaction: ${customId}`);
@@ -458,20 +491,28 @@ function init(client) {
 				await logger.log(`📝 Modal submitted: "${customId}" by ${user.tag} (${user.id}) in ${interaction.guild?.name || 'DM'}`);
 
 				if (interaction.customId === 'custom_supporter_role_create') {
+					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.custom_supporter_role)) return;
 					await handleCustomSupporterRoleModal(interaction);
 				} else if (interaction.customId === 'feedback_submit') {
+					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.feedback)) return;
 					await handleFeedbackModal(interaction);
 				} else if (interaction.customId === 'afk_set') {
+					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.afk)) return;
 					await handleAFKModal(interaction);
 				} else if (interaction.customId.startsWith('staff_rating_submit') || interaction.customId.startsWith('staff_report_submit')) {
+					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.staff_rating)) return;
 					await handleStaffRatingModal(interaction);
 				} else if (interaction.customId === 'content_creator_apply') {
+					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.content_creator)) return;
 					await handleContentCreatorModal(interaction);
 				} else if (interaction.customId.startsWith('sr_rev|')) {
+					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.staff_rating)) return;
 					await handleStaffRatingDecisionModal(interaction);
 				} else if (interaction.customId.startsWith('cc_rev|')) {
+					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.content_creator)) return;
 					await handleContentCreatorDecisionModal(interaction);
 				} else if (interaction.customId.startsWith('giveaway_create')) {
+					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.giveaway)) return;
 					await handleGiveawayModal(interaction);
 				} else {
 					await logger.log(`⚠️ Unknown modal: "${customId}" by ${user.tag} (${user.id})`);
@@ -542,6 +583,7 @@ function init(client) {
 				await logger.log(`👥 Role selected: "${customId}" → [${selectedRoles.join(', ')}] by ${user.tag} (${user.id}) in ${interaction.guild?.name || 'DM'}`);
 
 				if (customId === 'giveaway_role_select') {
+					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.giveaway)) return;
 					await handleGiveawayRoleSelect(interaction);
 				} else {
 					await logger.log(`⚠️ Unknown role select: "${customId}" by ${user.tag} (${user.id})`);

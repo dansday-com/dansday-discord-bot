@@ -1,14 +1,16 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
-	import { serverSettingsComponent } from '$lib/serverSettingsComponents.js';
+	import { SERVER_SETTINGS } from '$lib/serverSettingsComponents.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import ChannelPicker from '$lib/frontend/components/ChannelPicker.svelte';
 	import RolePicker from '$lib/frontend/components/RolePicker.svelte';
+	import ConfigToggleRow from '$lib/frontend/components/ConfigToggleRow.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 
 	let saving = $state(false);
+	let featureEnabled = $state(data.settings?.enabled !== false);
 	let feedbackChannel = $state<string>(data.settings?.feedback_channel ?? '');
 	let feedbackRole = $state<string>(data.settings?.feedback_role ?? '');
 
@@ -19,7 +21,12 @@
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
-				body: JSON.stringify({ component: serverSettingsComponent.feedback, feedback_channel: feedbackChannel, feedback_role: feedbackRole })
+				body: JSON.stringify({
+					component: SERVER_SETTINGS.component.feedback,
+					feedback_channel: feedbackChannel,
+					feedback_role: feedbackRole,
+					enabled: featureEnabled
+				})
 			});
 			const d = await res.json();
 			if (d.success) {
@@ -38,26 +45,37 @@
 	</h3>
 	<p class="text-ash-400 text-xs">Send feedback submissions to a channel and optionally ping a role.</p>
 
-	<div>
-		<label class="text-ash-300 mb-1.5 block text-xs font-medium">Feedback Channel</label>
-		<p class="text-ash-500 mb-2 text-xs">Channel for user feedback. Uses default channel if not set.</p>
-		<ChannelPicker channels={data.channels} categories={data.categories} value={feedbackChannel} onchange={(id) => (feedbackChannel = id)} />
-	</div>
+	<ConfigToggleRow
+		label="Feedback module"
+		description="When off, feedback submissions and related Discord UI are disabled."
+		bind:enabled={featureEnabled}
+		ariaLabel="Toggle feedback module"
+	/>
+	{#if !featureEnabled}
+		<p class="text-xs text-amber-200/90">Module is off. Enable it above to use the settings below.</p>
+	{/if}
+	<div class="space-y-5 transition-opacity" class:pointer-events-none={!featureEnabled} class:opacity-50={!featureEnabled}>
+		<div>
+			<label class="text-ash-300 mb-1.5 block text-xs font-medium">Feedback Channel</label>
+			<p class="text-ash-500 mb-2 text-xs">Channel for user feedback. Uses default channel if not set.</p>
+			<ChannelPicker channels={data.channels} categories={data.categories} value={feedbackChannel} onchange={(id) => (feedbackChannel = id)} />
+		</div>
 
-	<div>
-		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
-			<i class="fas fa-at mr-1 text-cyan-400"></i>Feedback Role (Optional)
-		</label>
-		<p class="text-ash-500 mb-2 text-xs">Role to mention when feedback is submitted. Optional.</p>
-		<RolePicker roles={data.roles} value={feedbackRole} single placeholder="None" onchange={(v) => (feedbackRole = v as string)} />
-	</div>
+		<div>
+			<label class="text-ash-300 mb-1.5 block text-xs font-medium">
+				<i class="fas fa-at mr-1 text-cyan-400"></i>Feedback Role (Optional)
+			</label>
+			<p class="text-ash-500 mb-2 text-xs">Role to mention when feedback is submitted. Optional.</p>
+			<RolePicker roles={data.roles} value={feedbackRole} single placeholder="None" onchange={(v) => (feedbackRole = v as string)} />
+		</div>
 
-	<button
-		onclick={save}
-		disabled={saving}
-		class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:opacity-50"
-	>
-		{#if saving}<i class="fas fa-spinner fa-spin"></i>{/if}
-		{saving ? 'Saving...' : 'Save Configuration'}
-	</button>
+		<button
+			onclick={save}
+			disabled={saving}
+			class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:opacity-50"
+		>
+			{#if saving}<i class="fas fa-spinner fa-spin"></i>{/if}
+			{saving ? 'Saving...' : 'Save Configuration'}
+		</button>
+	</div>
 </div>

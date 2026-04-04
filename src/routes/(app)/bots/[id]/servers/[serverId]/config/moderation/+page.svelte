@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
+	import { SERVER_SETTINGS } from '$lib/serverSettingsComponents.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import ConfigToggleRow from '$lib/frontend/components/ConfigToggleRow.svelte';
 	import type { PageProps } from './$types';
@@ -7,7 +8,7 @@
 	let { data }: PageProps = $props();
 
 	let saving = $state(false);
-	let enabled = $state(data.settings?.enabled !== false);
+	let featureEnabled = $state(data.settings?.enabled !== false);
 
 	async function save() {
 		saving = true;
@@ -16,7 +17,7 @@
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
-				body: JSON.stringify({ component: serverSettingsComponent.moderation, enabled })
+				body: JSON.stringify({ component: SERVER_SETTINGS.component.moderation, enabled: featureEnabled })
 			});
 			const d = await res.json();
 			if (d.success) {
@@ -35,8 +36,15 @@
 	</h3>
 	<p class="text-ash-400 text-xs">Ban and kick log embeds posted to your main/default channel.</p>
 
-	<ConfigToggleRow label="Moderation logs" description="When off, the bot does not post ban or kick logs." bind:enabled ariaLabel="Toggle moderation logs" />
-
+	<ConfigToggleRow
+		label="Moderation logs"
+		description="When off, the bot does not post ban or kick logs."
+		bind:enabled={featureEnabled}
+		ariaLabel="Toggle moderation logs"
+	/>
+	{#if !featureEnabled}
+		<p class="text-xs text-amber-200/90">Module is off. Save to apply, or turn it on to re-enable moderation logs.</p>
+	{/if}
 	<button
 		onclick={save}
 		disabled={saving}

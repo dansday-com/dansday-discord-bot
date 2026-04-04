@@ -5,7 +5,7 @@ import mysql from 'mysql2/promise';
 import { eq, and, or, inArray, sql, desc, asc, isNull, isNotNull, count, avg, like, ne } from 'drizzle-orm';
 import { db } from './drizzle.js';
 import * as schema from './schema.js';
-import { serverSettingsComponent } from './serverSettingsComponents.js';
+import { SERVER_SETTINGS } from './serverSettingsComponents.js';
 import { logger, toMySQLDateTime, parseMySQLDateTimeUtc, getNowUtc, addMinutesToNow } from './utils/index.js';
 import type { QuestOrbSummary } from './discord-quest-api.js';
 
@@ -427,8 +427,8 @@ export async function getNotificationRoleDbIds(serverId: any) {
 
 export async function getContentCreatorRoleDbIds(serverId: any) {
 	await initializeDatabase();
-	const permissionsSettings = await getServerSettings(serverId, serverSettingsComponent.permissions).catch(() => null);
-	const contentCreatorSettings = await getServerSettings(serverId, serverSettingsComponent.content_creator).catch(() => null);
+	const permissionsSettings = await getServerSettings(serverId, SERVER_SETTINGS.component.permissions).catch(() => null);
+	const contentCreatorSettings = await getServerSettings(serverId, SERVER_SETTINGS.component.content_creator).catch(() => null);
 	const roleIds = new Set<string>(
 		[...((permissionsSettings as any)?.settings?.content_creator_roles || []), (contentCreatorSettings as any)?.settings?.content_creator_role].filter(Boolean)
 	);
@@ -537,7 +537,7 @@ async function generateUniqueLeaderboardSlug(baseName: string) {
 	const rows = await db.execute(sql`
 		SELECT JSON_UNQUOTE(JSON_EXTRACT(settings, '$.slug')) AS slug
 		FROM server_settings
-		WHERE component_name = ${serverSettingsComponent.leaderboard}
+		WHERE component_name = ${SERVER_SETTINGS.component.leaderboard}
 		  AND JSON_EXTRACT(settings, '$.slug') IS NOT NULL
 		  AND (
 				JSON_UNQUOTE(JSON_EXTRACT(settings, '$.slug')) = ${base}
@@ -554,12 +554,12 @@ async function generateUniqueLeaderboardSlug(baseName: string) {
 }
 
 async function ensureLeaderboardSettingsHaveSlug(serverId: number, serverName: string) {
-	const row = await getServerSettings(serverId, serverSettingsComponent.leaderboard);
+	const row = await getServerSettings(serverId, SERVER_SETTINGS.component.leaderboard);
 	const settings = (row as any)?.settings && typeof (row as any).settings === 'object' ? (row as any).settings : {};
 	if (settings?.slug) return true;
 	const slug = await generateUniqueLeaderboardSlug(serverName);
-	const next = { enabled: true, public: true, ...settings, slug };
-	await upsertServerSettings(serverId, serverSettingsComponent.leaderboard, next);
+	const next = { enabled: true, ...settings, slug };
+	await upsertServerSettings(serverId, SERVER_SETTINGS.component.leaderboard, next);
 	return true;
 }
 
@@ -579,14 +579,23 @@ export async function getServerByLeaderboardSlug(slug: string) {
 	return ((rows[0] as unknown as any[]) || [])[0] || null;
 }
 
+function parseLeaderboardSettingsColumn(raw: unknown): Record<string, unknown> {
+	if (raw && typeof raw === 'object') return raw as Record<string, unknown>;
+	if (typeof raw === 'string') {
+		try {
+			const v = JSON.parse(raw);
+			return v && typeof v === 'object' ? (v as Record<string, unknown>) : {};
+		} catch {
+			return {};
+		}
+	}
+	return {};
+}
+
 export async function listPublicLeaderboardSlugs() {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
-		SELECT
-			sv.updated_at,
-			JSON_UNQUOTE(JSON_EXTRACT(ss.settings, '$.slug')) AS slug,
-			COALESCE(JSON_EXTRACT(ss.settings, '$.enabled'), TRUE) AS enabled,
-			COALESCE(JSON_EXTRACT(ss.settings, '$.public'), TRUE) AS is_public
+		SELECT sv.updated_at, ss.settings AS settings
 		FROM servers sv
 		INNER JOIN server_settings ss
 			ON ss.server_id = sv.id AND ss.component_name = 'leaderboard'
@@ -596,11 +605,14 @@ export async function listPublicLeaderboardSlugs() {
 	const list = (rows[0] as unknown as any[]) || [];
 	return list
 		.filter((r: any) => {
-			const enabled = r.enabled === true || r.enabled === 1 || r.enabled === 'true';
-			const isPublic = r.is_public === true || r.is_public === 1 || r.is_public === 'true';
-			return enabled && isPublic && r.slug;
+			const s = parseLeaderboardSettingsColumn(r?.settings);
+			const slug = typeof s.slug === 'string' ? s.slug.trim() : '';
+			return Boolean(slug) && leaderboardModuleEnabledFromSettings(s) && leaderboardPublicPageEnabledFromSettings(s);
 		})
-		.map((r: any) => ({ slug: String(r.slug), updated_at: r.updated_at }));
+		.map((r: any) => {
+			const s = parseLeaderboardSettingsColumn(r?.settings);
+			return { slug: String(s.slug || '').trim(), updated_at: r.updated_at };
+		});
 }
 
 export async function listEnabledLeaderboardServers() {
@@ -611,7 +623,7 @@ export async function listEnabledLeaderboardServers() {
 			sv.name,
 			sv.updated_at,
 			sv.server_icon,
-			COALESCE(JSON_EXTRACT(ss.settings, '$.enabled'), FALSE) AS enabled
+			ss.settings AS settings
 		FROM servers sv
 		INNER JOIN server_settings ss
 			ON ss.server_id = sv.id AND ss.component_name = 'leaderboard'
@@ -619,7 +631,11 @@ export async function listEnabledLeaderboardServers() {
 	`);
 	const list = (rows[0] as unknown as any[]) || [];
 	return list
-		.filter((r: any) => r && (r.enabled === true || r.enabled === 1 || r.enabled === 'true'))
+		.filter((r: any) => {
+			if (!r) return false;
+			const s = parseLeaderboardSettingsColumn(r.settings);
+			return s.enabled !== false;
+		})
 		.map((r: any) => ({ id: Number(r.id), name: r.name ?? null, updated_at: r.updated_at, server_icon: r.server_icon ?? null }));
 }
 
@@ -886,7 +902,7 @@ async function syncMemberCustomSupporterRoles(memberId: number, discordRoleIds: 
 	await initializeDatabase();
 	await db.delete(schema.serverMemberCustomSupporterRoles).where(eq(schema.serverMemberCustomSupporterRoles.member_id, memberId));
 
-	const customSettings = await getServerSettings(serverId, serverSettingsComponent.custom_supporter_role).catch(() => null);
+	const customSettings = await getServerSettings(serverId, SERVER_SETTINGS.component.custom_supporter_role).catch(() => null);
 	const roleStartDiscord = (customSettings as any)?.settings?.role_start as string | null | undefined;
 	const roleEndDiscord = (customSettings as any)?.settings?.role_end as string | null | undefined;
 	if (!roleStartDiscord || !roleEndDiscord || discordRoleIds.length === 0) return;
@@ -1302,6 +1318,29 @@ export async function getServerOverview(serverId: any) {
 
 	const panelBotId = await resolveOfficialBotIdForServer(serverRow);
 
+	const enabledFeatures: { component_name: string; label: string; updated_at: unknown }[] = [];
+	for (const component of SERVER_SETTINGS.withFeatureSwitch) {
+		let sid = id;
+		if (component === SERVER_SETTINGS.component.notifications) {
+			const alt = await getOfficialBotServerIdForServer(id);
+			if (alt != null) sid = Number(alt);
+		} else if (component === SERVER_SETTINGS.component.forwarder && serverRow.discord_server_id && panelBotId != null) {
+			const officialServer = await getServerByDiscordId(Number(panelBotId), serverRow.discord_server_id);
+			if (officialServer?.id != null) sid = Number(officialServer.id);
+		}
+		const row = await getServerSettings(sid, component).catch(() => null);
+		const st = row?.settings;
+		const featureOn = !st || typeof st !== 'object' || (st as Record<string, unknown>).enabled !== false;
+		if (featureOn) {
+			enabledFeatures.push({
+				component_name: component,
+				label: SERVER_SETTINGS.featureLabel(component),
+				updated_at: row?.updated_at ?? null
+			});
+		}
+	}
+	enabledFeatures.sort((a, b) => a.label.localeCompare(b.label));
+
 	return {
 		...serverRow,
 		bot_id: panelBotId,
@@ -1335,7 +1374,7 @@ export async function getServerOverview(serverId: any) {
 			levels_last_updated: r(levelSyncTimes).last_updated || null,
 			settings_last_updated: settingsLastUpdated
 		},
-		settings: settingsRows.map((row) => ({ component_name: row.component_name, updated_at: row.updated_at }))
+		enabledFeatures
 	};
 }
 

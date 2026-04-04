@@ -1,4 +1,4 @@
-import { BOOSTER, getEmbedConfig, getBotConfig } from '../../../config.js';
+import { BOOSTER, getEmbedConfig, getBotConfig, isComponentFeatureEnabled, serverSettingsComponent } from '../../../config.js';
 import { EmbedBuilder } from 'discord.js';
 import db from '../../../../database.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../utils/index.js';
@@ -16,6 +16,10 @@ async function thankBooster(member, client) {
 		const botConfig = getBotConfig();
 		if (!botConfig || !botConfig.id) {
 			await logger.log(`⚠️ Bot config not available, skipping booster message`);
+			return;
+		}
+
+		if (!(await isComponentFeatureEnabled(member.guild.id, serverSettingsComponent.booster))) {
 			return;
 		}
 

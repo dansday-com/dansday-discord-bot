@@ -15,6 +15,7 @@ import staffReportRating from './components/staffreportrating.js';
 import sync from './components/sync.js';
 import leveling from './components/leveling.js';
 import contentCreator from './components/interface/contentcreator.js';
+import questNotifier from './components/questNotifier.js';
 
 let BOT_TOKEN: string | undefined;
 (async () => {
@@ -63,11 +64,14 @@ client.on('clientReady', async () => {
 	contentCreator.init(client);
 
 	await sync.init(client, BOT_TOKEN);
-	webhook.startWebhookServer(client, sync.getBotId());
+	const officialBotId = sync.getBotId();
+	questNotifier.initQuestNotifier(client, officialBotId);
+	webhook.startWebhookServer(client, officialBotId);
 });
 
 function shutdown() {
 	logger.warn('Shutting down official bot');
+	questNotifier.stopQuestNotifier();
 	webhook.stopWebhookServer();
 	client.destroy();
 	process.exit(0);

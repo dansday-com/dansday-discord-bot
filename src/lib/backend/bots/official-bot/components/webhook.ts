@@ -248,6 +248,49 @@ async function handleWebhookRequest(req, res) {
 						res.writeHead(500, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify({ error: 'Failed to send embed', details: embedErr.message }));
 					}
+				} else if (payload.type === 'send_quest_notification') {
+					try {
+						const guildId = payload.guild_id;
+						const channelId = payload.channel_id;
+						const questName = payload.quest_name;
+						const gameTitle = payload.game_title;
+						const description = payload.description;
+						const questUrl = payload.quest_url;
+						const isTest = payload.test === true;
+						if (!guildId || !channelId || !questName || !questUrl) {
+							res.writeHead(400, { 'Content-Type': 'application/json' });
+							res.end(JSON.stringify({ error: 'Missing guild_id, channel_id, quest_name, or quest_url' }));
+							return;
+						}
+						const { sendQuestNotificationMessage } = await import('./questNotifier.js');
+						const taskLabel =
+							typeof payload.quest_task_label === 'string' && payload.quest_task_label.trim() ? String(payload.quest_task_label).trim() : 'Quest';
+						const taskKey = typeof payload.quest_task_type === 'string' ? String(payload.quest_task_type) : '';
+						await sendQuestNotificationMessage(
+							client,
+							guildId,
+							channelId,
+							{
+								id: String(payload.quest_id || ''),
+								questName: String(questName),
+								gameTitle: typeof gameTitle === 'string' ? gameTitle : 'Quest',
+								description: typeof description === 'string' ? description : '',
+								questUrl: String(questUrl),
+								startsAt: '',
+								orbHint: '',
+								taskTypeKey: taskKey,
+								taskTypeLabel: taskLabel
+							},
+							{ test: isTest }
+						);
+						await logger.log(`📥 Quest notification sent → #${channelId} (guild ${guildId})`);
+						res.writeHead(200, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify({ success: true }));
+					} catch (qnErr) {
+						await logger.log(`❌ send_quest_notification failed: ${qnErr.message}`);
+						res.writeHead(500, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify({ error: 'Failed to send quest notification', details: qnErr.message }));
+					}
 				} else if (payload.type === 'send_dm') {
 					try {
 						const guildId = payload.guild_id;

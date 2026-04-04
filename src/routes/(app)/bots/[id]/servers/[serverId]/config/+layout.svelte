@@ -15,10 +15,16 @@
 		{ label: 'Custom Supporter Role', icon: 'fa-star', iconClass: 'text-yellow-400', href: '/custom-supporter-role' },
 		{ label: 'Staff Report & Rating', icon: 'fa-clipboard-check', iconClass: 'text-orange-400', href: '/staff-report' },
 		{ label: 'Content Creator', icon: 'fa-video', iconClass: 'text-pink-400', href: '/content-creator' },
-		{ label: 'Notifications', icon: 'fa-bell', iconClass: 'text-rose-400', href: '/notifications' },
+		{ label: 'Channel notifications', icon: 'fa-bell', iconClass: 'text-rose-400', href: '/notifications' },
 		{ label: 'Feedback', icon: 'fa-comment-dots', iconClass: 'text-cyan-400', href: '/feedback' },
 		{ label: 'Giveaway', icon: 'fa-gift', iconClass: 'text-pink-400', href: '/giveaway' },
 		{ label: 'Forwarder', icon: 'fa-forward', iconClass: 'text-violet-400', href: '/forwarder' },
+		{
+			label: 'Discord Quests',
+			icon: 'fa-gem',
+			iconClass: 'text-sky-400',
+			href: '/discord-quest-notifier'
+		},
 		{ label: 'Leveling', icon: 'fa-chart-line', iconClass: 'text-lime-400', href: '/leveling' }
 	];
 

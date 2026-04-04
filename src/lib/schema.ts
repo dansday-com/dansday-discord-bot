@@ -319,6 +319,22 @@ export const serverSettings = mysqlTable(
 	]
 );
 
+/** Discord Quest orb notifier: which quest IDs were already announced (or baselined) per panel server. */
+export const serverDiscordOrb = mysqlTable(
+	'server_discord_orb',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		server_id: int('server_id')
+			.notNull()
+			.references(() => servers.id, { onDelete: 'cascade' }),
+		discord_quest_id: varchar('discord_quest_id', { length: 64 }).notNull(),
+		quest_task_type: varchar('quest_task_type', { length: 64 }).notNull().default(''),
+		quest_task_label: varchar('quest_task_label', { length: 128 }).notNull().default(''),
+		notified_at: datetime('notified_at').notNull()
+	},
+	(t) => [uniqueIndex('unique_server_discord_orb_quest').on(t.server_id, t.discord_quest_id), index('idx_server_discord_orb_server_id').on(t.server_id)]
+);
+
 export const serverGiveaways = mysqlTable(
 	'server_giveaways',
 	{

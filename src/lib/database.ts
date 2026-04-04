@@ -1765,6 +1765,15 @@ async function getSelfbotsForOfficialBot(officialBotId: number) {
 		.then((rows) => rows.map((r) => r.selfbot));
 }
 
+/** Lowest `id` among selfbots linked to this official bot with `status === 'running'` and a token. */
+async function getFirstRunningSelfbotForOfficialBot(officialBotId: number) {
+	await initializeDatabase();
+	const selfbots = await getSelfbotsForOfficialBot(officialBotId);
+	const running = selfbots.filter((s) => s.status === 'running' && typeof s.token === 'string' && s.token.trim() !== '');
+	running.sort((a, b) => a.id - b.id);
+	return running[0] ?? null;
+}
+
 async function getServerSettings(serverId: any, componentName: string | null = null) {
 	await initializeDatabase();
 	if (componentName) {
@@ -1815,6 +1824,68 @@ async function upsertServerSettings(serverId: any, componentName: string, settin
 		.where(and(eq(schema.serverSettings.server_id, Number(serverId)), eq(schema.serverSettings.component_name, componentName)))
 		.limit(1);
 	return rows[0];
+}
+
+async function listServerDiscordOrbQuestIds(serverId: number): Promise<string[]> {
+	await initializeDatabase();
+	const rows = await db
+		.select({ discord_quest_id: schema.serverDiscordOrb.discord_quest_id })
+		.from(schema.serverDiscordOrb)
+		.where(eq(schema.serverDiscordOrb.server_id, serverId));
+	return rows.map((r) => r.discord_quest_id);
+}
+
+export type ServerDiscordOrbEntry = {
+	discord_quest_id: string;
+	quest_task_type: string;
+	quest_task_label: string;
+};
+
+/** Record that this quest was announced (or baselined). Idempotent per (server, quest). */
+async function insertServerDiscordOrbNotified(serverId: number, discordQuestId: string, questTaskType: string, questTaskLabel: string): Promise<void> {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	await db
+		.insert(schema.serverDiscordOrb)
+		.values({
+			server_id: serverId,
+			discord_quest_id: discordQuestId,
+			quest_task_type: questTaskType || '',
+			quest_task_label: questTaskLabel || '',
+			notified_at: now as any
+		})
+		.onDuplicateKeyUpdate({
+			set: {
+				quest_task_type: questTaskType || '',
+				quest_task_label: questTaskLabel || '',
+				notified_at: now as any
+			}
+		});
+}
+
+/** Seed current API quests without having posted — first run / empty table. Survives bot restarts. */
+async function baselineServerDiscordOrbEntries(serverId: number, entries: ServerDiscordOrbEntry[]): Promise<void> {
+	await initializeDatabase();
+	if (entries.length === 0) return;
+	const now = toMySQLDateTime();
+	for (const e of entries) {
+		await db
+			.insert(schema.serverDiscordOrb)
+			.values({
+				server_id: serverId,
+				discord_quest_id: e.discord_quest_id,
+				quest_task_type: e.quest_task_type || '',
+				quest_task_label: e.quest_task_label || '',
+				notified_at: now as any
+			})
+			.onDuplicateKeyUpdate({
+				set: {
+					quest_task_type: e.quest_task_type || '',
+					quest_task_label: e.quest_task_label || '',
+					notified_at: now as any
+				}
+			});
+	}
 }
 
 async function getChannelsForServer(serverId: any) {
@@ -2655,6 +2726,9 @@ export default {
 	memberHasCustomSupporterRole,
 	getServerSettings,
 	upsertServerSettings,
+	listServerDiscordOrbQuestIds,
+	insertServerDiscordOrbNotified,
+	baselineServerDiscordOrbEntries,
 	getPanel,
 	createPanel,
 	getAccountById,
@@ -2694,6 +2768,7 @@ export default {
 	getOfficialBotForSelfbot,
 	resolveOfficialBotIdForServer,
 	getSelfbotsForOfficialBot,
+	getFirstRunningSelfbotForOfficialBot,
 	getChannelsForServer,
 	getCategoriesForServer,
 	serversNeedSync,

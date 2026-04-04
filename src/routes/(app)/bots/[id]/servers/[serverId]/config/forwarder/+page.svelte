@@ -314,7 +314,9 @@
 									<div class="text-ash-400"><span class="text-ash-300 font-medium">Tag:</span> {fw.tag}</div>
 								{/if}
 								{#if fw.only_forward_when_mentions_member}
-									<div class="text-amber-400"><i class="fas fa-at mr-1"></i>Only when mentions selfbot</div>
+									<div class="text-ash-400 text-xs">
+										<i class="fas fa-at mr-1 text-violet-400"></i>Only when mentions selfbot
+									</div>
 								{/if}
 							</div>
 							<div class="flex shrink-0 items-center gap-1.5">

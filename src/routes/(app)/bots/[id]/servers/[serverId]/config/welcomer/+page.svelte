@@ -65,7 +65,9 @@
 	{/if}
 	<div class="space-y-5 transition-opacity" class:pointer-events-none={!featureEnabled} class:opacity-50={!featureEnabled}>
 		<div>
-			<label class="text-ash-300 mb-1.5 block text-xs font-medium">Welcome Channels</label>
+			<label class="text-ash-300 mb-1.5 block text-xs font-medium">
+				<i class="fas fa-hashtag mr-1 text-sky-400"></i>Welcome Channels
+			</label>
 			<p class="text-ash-500 mb-2 text-xs">Channels for welcome messages. Multiple channels allowed. Uses default channel if not set.</p>
 			<ChannelPicker channels={data.channels} categories={data.categories} value={channels[0] ?? ''} onchange={(id) => addChannel(id)} />
 			{#if channels.length > 0}
@@ -85,6 +87,8 @@
 
 		<MessageList
 			label="Welcome Messages"
+			iconAccent="text-sky-400"
+			iconAccentMuted="text-sky-400/80"
 			values={messages}
 			placeholder="Welcome {'{user}'} to {'{server}'}!"
 			placeholders={[

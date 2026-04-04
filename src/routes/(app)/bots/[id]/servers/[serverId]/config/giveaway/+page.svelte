@@ -55,7 +55,9 @@
 	{/if}
 	<div class="space-y-5 transition-opacity" class:pointer-events-none={!featureEnabled} class:opacity-50={!featureEnabled}>
 		<div>
-			<label class="text-ash-300 mb-1.5 block text-xs font-medium">Giveaway Channel</label>
+			<label class="text-ash-300 mb-1.5 block text-xs font-medium">
+				<i class="fas fa-hashtag mr-1 text-pink-400"></i>Giveaway Channel
+			</label>
 			<p class="text-ash-500 mb-2 text-xs">Channel for giveaways and winner announcements. Uses default channel if not set.</p>
 			<ChannelPicker channels={data.channels} categories={data.categories} value={giveawayChannel} onchange={(id) => (giveawayChannel = id)} />
 		</div>

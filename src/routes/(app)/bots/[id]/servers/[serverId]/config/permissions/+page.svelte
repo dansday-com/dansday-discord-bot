@@ -47,9 +47,11 @@
 	</h3>
 	<p class="text-ash-400 text-xs">Define role groups used for access control and member filtering.</p>
 
-	{#each [{ label: 'Admin Roles', help: 'Full access to all bot features and configuration.', value: adminRoles, onchange: (v: string | string[]) => (adminRoles = v as string[]) }, { label: 'Staff Roles', help: 'Used for staff features and staff-related filtering (if enabled).', value: staffRoles, onchange: (v: string | string[]) => (staffRoles = v as string[]) }, { label: 'Content Creator Roles', help: 'Roles considered content creators in permissions and member filtering.', value: contentCreatorRoles, onchange: (v: string | string[]) => (contentCreatorRoles = v as string[]) }, { label: 'Supporter Roles', help: 'Marks members as supporters (for supporter-only features).', value: supporterRoles, onchange: (v: string | string[]) => (supporterRoles = v as string[]) }, { label: 'Member Roles', help: 'Only members with these roles are eligible for leveling XP.', value: memberRoles, onchange: (v: string | string[]) => (memberRoles = v as string[]) }] as group}
+	{#each [{ label: 'Admin Roles', icon: 'fa-shield-halved', help: 'Full access to all bot features and configuration.', value: adminRoles, onchange: (v: string | string[]) => (adminRoles = v as string[]) }, { label: 'Staff Roles', icon: 'fa-user-tie', help: 'Used for staff features and staff-related filtering (if enabled).', value: staffRoles, onchange: (v: string | string[]) => (staffRoles = v as string[]) }, { label: 'Content Creator Roles', icon: 'fa-video', help: 'Roles considered content creators in permissions and member filtering.', value: contentCreatorRoles, onchange: (v: string | string[]) => (contentCreatorRoles = v as string[]) }, { label: 'Supporter Roles', icon: 'fa-star', help: 'Marks members as supporters (for supporter-only features).', value: supporterRoles, onchange: (v: string | string[]) => (supporterRoles = v as string[]) }, { label: 'Member Roles', icon: 'fa-users', help: 'Only members with these roles are eligible for leveling XP.', value: memberRoles, onchange: (v: string | string[]) => (memberRoles = v as string[]) }] as group}
 		<div>
-			<label class="text-ash-300 mb-1.5 block text-xs font-medium">{group.label}</label>
+			<label class="text-ash-300 mb-1.5 block text-xs font-medium">
+				<i class="fas {group.icon} mr-1 text-blue-400"></i>{group.label}
+			</label>
 			<p class="text-ash-500 mb-2 text-xs">{group.help}</p>
 			<RolePicker roles={data.roles} value={group.value} onchange={group.onchange} />
 		</div>

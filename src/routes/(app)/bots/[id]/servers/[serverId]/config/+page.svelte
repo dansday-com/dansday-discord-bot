@@ -44,13 +44,17 @@
 	<p class="text-ash-400 text-xs">Set the default channel and embed style used across the bot.</p>
 
 	<div>
-		<label class="text-ash-300 mb-1.5 block text-xs font-medium">Main channel</label>
+		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
+			<i class="fas fa-hashtag mr-1 text-emerald-400"></i>Main channel
+		</label>
 		<p class="text-ash-500 mb-2 text-xs">Default channel used when a feature doesn’t have a channel set.</p>
 		<ChannelPicker channels={data.channels} categories={data.categories} value={mainChannel} onchange={(id) => (mainChannel = id)} />
 	</div>
 
 	<div>
-		<label class="text-ash-300 mb-1.5 block text-xs font-medium">Default Color</label>
+		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
+			<i class="fas fa-palette mr-1.5 text-emerald-400"></i>Default Color
+		</label>
 		<p class="text-ash-500 mb-2 text-xs">Embed accent color used by default (hex).</p>
 		<div class="flex items-center gap-2">
 			<input

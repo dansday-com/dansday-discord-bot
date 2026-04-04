@@ -74,7 +74,7 @@
 		<ConfigNumberSelect
 			label="Admission Cooldown (Days)"
 			description="How long members must wait before reapplying after a submission."
-			labelIconClass="fas fa-clock mr-1 text-cyan-400"
+			labelIconClass="fas fa-clock mr-1 text-pink-400"
 			values={selectValuesDays1To30}
 			bind:value={cooldownDays}
 			formatOption={formatDayCount}

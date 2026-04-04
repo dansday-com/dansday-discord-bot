@@ -1,7 +1,7 @@
 {
-	"name": "dansday-bot-system",
+	"name": "dansday-discord-bot",
 	"private": true,
-	"version": "7.11.0",
+	"version": "8.0.0",
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",

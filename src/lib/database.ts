@@ -151,7 +151,7 @@ async function markAllMigrationsAsDone() {
 async function setupDatabase() {
 	logger.log('🔍 Checking database...');
 	const hasBots = await tableExists('bots');
-	const hasPanel = await tableExists('panel');
+	const hasPanel = await tableExists('panels');
 
 	if (!hasBots && !hasPanel) {
 		logger.log('🆕 Fresh database detected, running schema...');

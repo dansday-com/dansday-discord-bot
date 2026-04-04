@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS migrations (
     ran_at DATETIME NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS panel (
+CREATE TABLE IF NOT EXISTS panels (
     id INT PRIMARY KEY AUTO_INCREMENT,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL
@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS accounts (
     ip_address TEXT NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
-    FOREIGN KEY (panel_id) REFERENCES panel(id) ON DELETE SET NULL
+    FOREIGN KEY (panel_id) REFERENCES panels(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS bots (
@@ -178,8 +178,10 @@ CREATE TABLE IF NOT EXISTS server_members (
 );
 
 CREATE TABLE IF NOT EXISTS server_member_content_creators (
-    member_id INT NOT NULL PRIMARY KEY,
+    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    member_id INT NOT NULL,
     created_at DATETIME NOT NULL,
+    UNIQUE KEY unique_member_content_creator (member_id),
     FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE
 );
 
@@ -204,19 +206,21 @@ CREATE TABLE IF NOT EXISTS server_member_levels (
 );
 
 CREATE TABLE IF NOT EXISTS server_member_notifications (
+    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     member_id INT NOT NULL,
     role_id INT NOT NULL,
     created_at DATETIME NOT NULL,
-    PRIMARY KEY (member_id, role_id),
+    UNIQUE KEY unique_member_notification_role (member_id, role_id),
     FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE,
     FOREIGN KEY (role_id) REFERENCES server_roles(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS server_member_custom_supporter_roles (
+    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     member_id INT NOT NULL,
     role_id INT NOT NULL,
     created_at DATETIME NOT NULL,
-    PRIMARY KEY (member_id, role_id),
+    UNIQUE KEY unique_member_custom_supporter_role (member_id, role_id),
     FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE,
     FOREIGN KEY (role_id) REFERENCES server_roles(id) ON DELETE CASCADE
 );
@@ -242,7 +246,7 @@ CREATE TABLE IF NOT EXISTS server_settings (
     FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS server_discord_orb (
+CREATE TABLE IF NOT EXISTS server_discord_orbs (
     id INT PRIMARY KEY AUTO_INCREMENT,
     server_id INT NOT NULL,
     discord_quest_id VARCHAR(64) NOT NULL,
@@ -262,8 +266,8 @@ CREATE TABLE IF NOT EXISTS server_discord_orb (
     starts_at DATETIME NULL,
     expires_at DATETIME NULL,
     notified_at DATETIME NOT NULL,
-    UNIQUE KEY unique_server_discord_orb_quest (server_id, discord_quest_id),
-    INDEX idx_server_discord_orb_server_id (server_id),
+    UNIQUE KEY unique_server_discord_orbs_quest (server_id, discord_quest_id),
+    INDEX idx_server_discord_orbs_server_id (server_id),
     FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE
 );
 
@@ -426,7 +430,7 @@ CREATE INDEX IF NOT EXISTS idx_server_member_staff_rating_reviews_staff ON serve
 CREATE INDEX IF NOT EXISTS idx_server_member_staff_rating_reviews_pair ON server_member_staff_rating_reviews(reporter_member_id, reported_staff_id);
 CREATE INDEX IF NOT EXISTS idx_server_member_staff_rating_reviews_status ON server_member_staff_rating_reviews(status);
 CREATE INDEX IF NOT EXISTS idx_server_member_staff_rating_reviews_reviewer ON server_member_staff_rating_reviews(reviewed_by_member_id);
-CREATE INDEX IF NOT EXISTS idx_server_feedback_member ON server_feedback(member_id);
+CREATE INDEX IF NOT EXISTS idx_server_feedbacks_member ON server_feedbacks(member_id);
 CREATE INDEX IF NOT EXISTS idx_server_member_content_creator_reviews_member ON server_member_content_creator_reviews(member_id);
 CREATE INDEX IF NOT EXISTS idx_server_member_content_creator_reviews_status ON server_member_content_creator_reviews(status);
 CREATE INDEX IF NOT EXISTS idx_server_member_content_creator_reviews_submitted_at ON server_member_content_creator_reviews(submitted_at);

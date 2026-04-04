@@ -66,11 +66,15 @@
 	<ConfigToggleRow
 		label="Leveling module"
 		description="When off, XP, voice time, and leveling Discord UI are disabled."
+		labelIconClass="fas fa-chart-line text-lime-400"
 		bind:enabled={featureEnabled}
 		ariaLabel="Toggle leveling module"
 	/>
 	{#if !featureEnabled}
-		<p class="text-xs text-amber-200/90">Module is off. Save configuration to apply. Turn the module on to edit the options below.</p>
+		<p class="flex items-start gap-2 text-xs text-amber-200/90">
+			<i class="fas fa-power-off mt-0.5 shrink-0 text-amber-400/90" aria-hidden="true"></i>
+			<span>Module is off. Save configuration to apply. Turn the module on to edit the options below.</span>
+		</p>
 	{/if}
 	<div class="space-y-5 transition-opacity" class:pointer-events-none={!featureEnabled} class:opacity-50={!featureEnabled}>
 		<ConfigNumberSelect

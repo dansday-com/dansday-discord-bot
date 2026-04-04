@@ -39,11 +39,15 @@
 	<ConfigToggleRow
 		label="Moderation module"
 		description="When off, moderation is disabled for this server, including ban and kick log embeds to your main channel."
+		labelIconClass="fas fa-gavel text-red-400"
 		bind:enabled={featureEnabled}
 		ariaLabel="Toggle moderation module"
 	/>
 	{#if !featureEnabled}
-		<p class="text-xs text-amber-200/90">Module is off. Save configuration to apply. Turn the module on to re-enable moderation and logs.</p>
+		<p class="flex items-start gap-2 text-xs text-amber-200/90">
+			<i class="fas fa-power-off mt-0.5 shrink-0 text-amber-400/90" aria-hidden="true"></i>
+			<span>Module is off. Save configuration to apply. Turn the module on to re-enable moderation and logs.</span>
+		</p>
 	{/if}
 	<button
 		onclick={save}

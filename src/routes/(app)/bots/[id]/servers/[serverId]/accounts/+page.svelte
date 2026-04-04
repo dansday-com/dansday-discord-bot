@@ -187,6 +187,7 @@
 				<MemberPicker
 					serverId={data.serverId}
 					single={false}
+					showMultiChips={false}
 					value={selectedDiscordMemberIds}
 					disabled={!canInvite}
 					placeholder={canInvite ? 'Select members...' : 'Owner/superadmin only'}

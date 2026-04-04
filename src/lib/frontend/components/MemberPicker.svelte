@@ -14,12 +14,14 @@
 		serverId: number;
 		value: string | string[];
 		single?: boolean;
+		/** When multi-select, show removable name chips under the trigger (default true). Set false for large lists / tight layouts. */
+		showMultiChips?: boolean;
 		disabled?: boolean;
 		placeholder?: string;
 		onchange: (value: string | string[]) => void;
 	}
 
-	let { serverId, value, single = true, disabled = false, placeholder = 'Select member...', onchange }: Props = $props();
+	let { serverId, value, single = true, showMultiChips = true, disabled = false, placeholder = 'Select member...', onchange }: Props = $props();
 
 	let open = $state(false);
 	let search = $state('');
@@ -112,6 +114,11 @@
 		results = [];
 	}
 
+	function clearMultiSelection() {
+		onchange([]);
+		labelById = {};
+	}
+
 	function removeChip(id: string) {
 		if (single) {
 			onchange('');
@@ -147,17 +154,31 @@
 	<i class={MEMBER_PICKER_ACCENT.chevron}></i>
 </button>
 
-{#if !single && (value as string[]).length > 0}
-	<div class="mt-2 flex flex-wrap gap-1">
-		{#each value as string[] as id (id)}
-			<span class="border-ash-600 bg-ash-800 text-ash-200 flex items-center gap-1 rounded border px-2 py-0.5 text-xs">
-				{labelById[id] ?? id}
-				<button type="button" onclick={() => removeChip(id)} class="text-ash-400 hover:text-ash-100 ml-0.5" aria-label="Remove">
-					<i class="fas fa-times text-xs"></i>
-				</button>
-			</span>
-		{/each}
+{#if !single && showMultiChips && (value as string[]).length > 0}
+	<div class="mt-2 max-h-32 overflow-y-auto rounded-md">
+		<div class="flex flex-wrap gap-1">
+			{#each value as string[] as id (id)}
+				<span class="border-ash-600 bg-ash-800 text-ash-200 flex max-w-full min-w-0 items-center gap-1 rounded border px-2 py-0.5 text-xs">
+					<span class="truncate">{labelById[id] ?? id}</span>
+					<button
+						type="button"
+						{disabled}
+						onclick={() => removeChip(id)}
+						class="text-ash-400 hover:text-ash-100 ml-0.5 shrink-0 disabled:opacity-40"
+						aria-label="Remove"
+					>
+						<i class="fas fa-times text-xs"></i>
+					</button>
+				</span>
+			{/each}
+		</div>
 	</div>
+{/if}
+
+{#if !single && !showMultiChips && (value as string[]).length > 0 && !disabled}
+	<button type="button" onclick={clearMultiSelection} class="text-ash-500 hover:text-ash-300 decoration-ash-600 mt-1.5 text-xs underline underline-offset-2">
+		Clear selection
+	</button>
 {/if}
 
 {#if open}

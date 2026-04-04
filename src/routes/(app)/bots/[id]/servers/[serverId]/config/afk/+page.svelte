@@ -39,11 +39,15 @@
 	<ConfigToggleRow
 		label="AFK module"
 		description="When off, the AFK button is hidden and all AFK behavior is disabled server-side."
+		labelIconClass="fas fa-moon text-indigo-400"
 		bind:enabled={featureEnabled}
 		ariaLabel="Toggle AFK module"
 	/>
 	{#if !featureEnabled}
-		<p class="text-xs text-amber-200/90">Module is off. Save to apply, or turn it on to re-enable AFK.</p>
+		<p class="flex items-start gap-2 text-xs text-amber-200/90">
+			<i class="fas fa-power-off mt-0.5 shrink-0 text-amber-400/90" aria-hidden="true"></i>
+			<span>Module is off. Save to apply, or turn it on to re-enable AFK.</span>
+		</p>
 	{/if}
 	<button
 		onclick={save}

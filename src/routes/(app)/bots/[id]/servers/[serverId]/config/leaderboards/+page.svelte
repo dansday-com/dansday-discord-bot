@@ -47,18 +47,24 @@
 	<ConfigToggleRow
 		label="Leaderboard module"
 		description="When off, the public leaderboard URL and in-Discord leaderboard controls are disabled."
+		labelIconClass="fas fa-trophy text-amber-400"
 		bind:enabled
 		ariaLabel="Toggle leaderboard module"
 	/>
 
 	{#if !enabled}
-		<p class="text-xs text-amber-200/90">Module is off. Save configuration to apply. Turn the module on to see the public URL and options.</p>
+		<p class="flex items-start gap-2 text-xs text-amber-200/90">
+			<i class="fas fa-power-off mt-0.5 shrink-0 text-amber-400/90" aria-hidden="true"></i>
+			<span>Module is off. Save configuration to apply. Turn the module on to see the public URL and options.</span>
+		</p>
 	{/if}
 
 	<div class="space-y-5 transition-opacity" class:pointer-events-none={!enabled} class:opacity-50={!enabled}>
 		{#if enabled && data.leaderboardPath}
 			<div>
-				<label class="text-ash-300 mb-1.5 block text-xs font-medium">Public URL</label>
+				<label class="text-ash-300 mb-1.5 block text-xs font-medium">
+					<i class="fas fa-link mr-1 text-amber-400"></i>Public URL
+				</label>
 				<div class="bg-ash-900 border-ash-600 flex items-center gap-2 rounded-lg border px-3 py-2">
 					<input type="text" readonly value={publicUrl} class="text-ash-100 w-full bg-transparent font-mono text-xs focus:outline-none" />
 					<a class="text-ash-200 hover:text-ash-100 text-xs font-medium underline" href={data.leaderboardPath || '#'} target="_blank" rel="noreferrer">

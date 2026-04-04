@@ -58,11 +58,15 @@
 	<ConfigToggleRow
 		label="Staff rating module"
 		description="When off, staff rating flows and related Discord UI are disabled."
+		labelIconClass="fas fa-clipboard-check text-orange-400"
 		bind:enabled={featureEnabled}
 		ariaLabel="Toggle staff rating module"
 	/>
 	{#if !featureEnabled}
-		<p class="text-xs text-amber-200/90">Module is off. Save configuration to apply. Turn the module on to edit the options below.</p>
+		<p class="flex items-start gap-2 text-xs text-amber-200/90">
+			<i class="fas fa-power-off mt-0.5 shrink-0 text-amber-400/90" aria-hidden="true"></i>
+			<span>Module is off. Save configuration to apply. Turn the module on to edit the options below.</span>
+		</p>
 	{/if}
 	<div class="space-y-5 transition-opacity" class:pointer-events-none={!featureEnabled} class:opacity-50={!featureEnabled}>
 		<div>

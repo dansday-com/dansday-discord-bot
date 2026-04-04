@@ -81,11 +81,15 @@
 	<ConfigToggleRow
 		label="Quest notifier module"
 		description="When off, orb quest polling and posts are disabled. Requires a running selfbot when enabled."
+		labelIconClass="fas fa-gem text-sky-400"
 		bind:enabled={featureEnabled}
 		ariaLabel="Toggle quest notifier module"
 	/>
 	{#if !featureEnabled}
-		<p class="text-xs text-amber-200/90">Module is off. Save configuration to apply. Turn the module on to edit channel and proxy below.</p>
+		<p class="flex items-start gap-2 text-xs text-amber-200/90">
+			<i class="fas fa-power-off mt-0.5 shrink-0 text-amber-400/90" aria-hidden="true"></i>
+			<span>Module is off. Save configuration to apply. Turn the module on to edit channel and proxy below.</span>
+		</p>
 	{/if}
 	<div class="space-y-5 transition-opacity" class:pointer-events-none={!featureEnabled} class:opacity-50={!featureEnabled}>
 		<div>

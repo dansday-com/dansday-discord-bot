@@ -271,11 +271,15 @@
 	<ConfigToggleRow
 		label="Forwarder module"
 		description="When off, message forwarding from selfbots is disabled."
+		labelIconClass="fas fa-forward text-violet-400"
 		bind:enabled={featureEnabled}
 		ariaLabel="Toggle forwarder module"
 	/>
 	{#if !featureEnabled}
-		<p class="text-xs text-amber-200/90">Module is off. Save configuration to apply. Turn the module on to edit forwarders below.</p>
+		<p class="flex items-start gap-2 text-xs text-amber-200/90">
+			<i class="fas fa-power-off mt-0.5 shrink-0 text-amber-400/90" aria-hidden="true"></i>
+			<span>Module is off. Save configuration to apply. Turn the module on to edit forwarders below.</span>
+		</p>
 	{/if}
 	<div class="space-y-5 transition-opacity" class:pointer-events-none={!featureEnabled} class:opacity-50={!featureEnabled}>
 		<div class="space-y-3">
@@ -454,6 +458,9 @@
 				</div>
 
 				<div>
+					<p class="text-ash-300 mb-1.5 text-xs font-medium">
+						<i class="fas fa-at mr-1.5 text-violet-400"></i>Mention filter
+					</p>
 					<p class="text-ash-500 mb-2 text-xs">Only forward messages that mention the selfbot.</p>
 					<label class="flex cursor-pointer items-center gap-3">
 						<div class="relative">

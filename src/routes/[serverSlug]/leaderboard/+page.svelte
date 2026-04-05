@@ -12,6 +12,7 @@
 	let metric = $state<Metric>(data.metric);
 	let rows = $state(data.rows);
 	let es: EventSource | null = null;
+	let streamConnected = $state(false);
 
 	const top3 = $derived(rows.slice(0, 3));
 	const rest = $derived(rows.slice(3));
@@ -96,6 +97,7 @@
 		};
 		myEs.onerror = () => {
 			if (es !== myEs) return;
+			streamConnected = false;
 		};
 	}
 
@@ -189,6 +191,12 @@
 	<p>
 		Leaderboard
 		<span class="lb-metric-pill">{metricLabel(metric)}</span>
+		{#if streamConnected}
+			<span class="lb-metric-pill lb-metric-pill--live">
+				<span class="lb-live-dot"></span>
+				Live
+			</span>
+		{/if}
 	</p>
 </div>
 

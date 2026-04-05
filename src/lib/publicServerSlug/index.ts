@@ -1,7 +1,6 @@
 import db from '../database.js';
 import { computeIndexedSlugForItemId, listIndexedSlugsForItems, resolveIndexedSlugToItem } from '../utils/index.js';
 
-/** Server row used for public URL slug indexing (shared by /{slug}, panel, bot links). */
 export type PublicSlugServerRow = {
 	id: number;
 	name: string | null;

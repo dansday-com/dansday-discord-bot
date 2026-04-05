@@ -3,14 +3,15 @@ import {
 	PERMISSIONS,
 	getBotConfig,
 	getEmbedConfig,
+	getServerForCurrentBot,
 	NOTIFICATIONS,
 	isComponentFeatureEnabled,
 	serverSettingsComponent,
 	computePublicServerSlugForServerId,
-	actionRowWebLeaderboardLink
+	publicWebLeaderboardUrl
 } from '../../../config.js';
 import db from '../../../../database.js';
-import { ActionRowBuilder, EmbedBuilder } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../utils/index.js';
 
 const recentMessages = new Map();
@@ -104,13 +105,10 @@ async function resolveServerAndMember(guild, memberLike) {
 	}
 
 	try {
-		const botConfig = getBotConfig();
-		if (!botConfig || !botConfig.id) {
-			return { server: null, dbMember: null, guildMember: null };
-		}
-
-		const server = await db.getServerByDiscordId(botConfig.id, guild.id);
-		if (!server) {
+		let server;
+		try {
+			server = await getServerForCurrentBot(guild.id);
+		} catch {
 			return { server: null, dbMember: null, guildMember: null };
 		}
 
@@ -154,7 +152,8 @@ async function resolveServerAndMember(guild, memberLike) {
 
 		return { server, dbMember, guildMember };
 	} catch (error) {
-		await logger.log(`❌ Leveling resolve failure for guild ${guild?.id}: ${error.message}`);
+		const msg = error instanceof Error ? error.message : String(error);
+		await logger.log(`❌ Leveling resolve failure for guild ${guild?.id}: ${msg}`);
 		return { server: null, dbMember: null, guildMember: null };
 	}
 }
@@ -164,7 +163,7 @@ async function getMemberRoleIds(guildId) {
 		const permissions = await PERMISSIONS.getPermissions(guildId);
 		const roles = permissions?.MEMBER_ROLES || [];
 		return roles;
-	} catch (error) {
+	} catch {
 		return [];
 	}
 }
@@ -181,7 +180,7 @@ async function isMemberEligible(guildId, guildMember) {
 
 	try {
 		return await PERMISSIONS.hasAnyRole(guildMember, memberRoles);
-	} catch (error) {
+	} catch {
 		return false;
 	}
 }
@@ -245,35 +244,35 @@ export async function sendLevelChangeDM(guildId, discordMemberId, serverName, ne
 
 		const dmChannel = await member.user.createDM();
 
-		const targetServerName = serverName;
 		const embedConfig = await getEmbedConfig(guildId);
 		const dmEmbed = new EmbedBuilder()
 			.setColor(embedConfig.COLOR)
 			.setTitle('🎉 Congratulations!')
-			.setDescription(`You've reached **Level ${newLevel}** in **${targetServerName}**!\n\nKeep up the great work! 🚀`)
+			.setDescription(`You've reached **Level ${newLevel}** in **${serverName}**!\n\nKeep up the great work! 🚀`)
 			.setFooter({ text: embedConfig.FOOTER })
 			.setTimestamp();
 
-		const dmComponents: ActionRowBuilder[] = [];
+		let dmLeaderboardUrl: string | null = null;
 		if (await isComponentFeatureEnabled(guildId, serverSettingsComponent.public_statistics)) {
-			const botCfg = getBotConfig();
-			if (botCfg?.id) {
-				const srv = await db.getServerByDiscordId(botCfg.id, guildId);
-				if (srv) {
-					const slug = await computePublicServerSlugForServerId(Number(srv.id));
-					if (slug) {
-						const row = actionRowWebLeaderboardLink(slug, '🌐 Web Leaderboard');
-						if (row) dmComponents.push(row);
-					}
-				}
-			}
+			try {
+				const srv = await getServerForCurrentBot(guildId);
+				const slug = await computePublicServerSlugForServerId(Number(srv.id));
+				if (slug) dmLeaderboardUrl = publicWebLeaderboardUrl(slug);
+			} catch (_) {}
 		}
+		if (dmLeaderboardUrl) dmEmbed.setURL(dmLeaderboardUrl);
+
+		const dmRow = dmLeaderboardUrl
+			? new ActionRowBuilder<ButtonBuilder>().addComponents(
+					new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(dmLeaderboardUrl).setLabel('Web leaderboard').setEmoji('🌐')
+				)
+			: null;
 
 		await dmChannel.send({
 			embeds: [dmEmbed],
-			components: dmComponents.length > 0 ? dmComponents : undefined
+			components: dmRow ? [dmRow] : undefined
 		});
-		await logger.log(`⭐ Sent level change DM (${contextLabel}) to ${discordMemberId} for level ${newLevel} in ${targetServerName}`);
+		await logger.log(`⭐ Sent level change DM (${contextLabel}) to ${discordMemberId} for level ${newLevel} in ${serverName}`);
 		return true;
 	} catch (error) {
 		await logger.log(`⚠️ Failed to send level change DM (${contextLabel}) to ${discordMemberId}: ${error.message}`);
@@ -314,16 +313,14 @@ export async function sendLevelProgressNotification({
 		}
 
 		const channel = await guild.channels.fetch(progressChannelId);
-		if (!channel) {
+		if (!channel || !channel.isTextBased()) {
 			return false;
 		}
 
-		const botConfig = getBotConfig();
-		if (!botConfig || !botConfig.id) {
-			return false;
-		}
-		const server = await db.getServerByDiscordId(botConfig.id, guildId);
-		if (!server) {
+		let server;
+		try {
+			server = await getServerForCurrentBot(guildId);
+		} catch {
 			return false;
 		}
 		const dbMember = await db.getMemberByDiscordId(server.id, discordMemberId);
@@ -349,6 +346,12 @@ export async function sendLevelProgressNotification({
 
 		if (eventType === 'rank' && (!previousRankValue || !currentRank || currentRank >= previousRankValue)) {
 			return false;
+		}
+
+		let leaderboardUrl: string | null = null;
+		if (await isComponentFeatureEnabled(guildId, serverSettingsComponent.public_statistics)) {
+			const slug = await computePublicServerSlugForServerId(Number(server.id));
+			if (slug) leaderboardUrl = publicWebLeaderboardUrl(slug);
 		}
 
 		const embedConfig = await getEmbedConfig(guildId);
@@ -379,22 +382,21 @@ export async function sendLevelProgressNotification({
 				);
 		}
 
+		if (leaderboardUrl) embed.setURL(leaderboardUrl);
+
 		const notificationRoleId = await NOTIFICATIONS.getNotificationRoleIdForChannel(guildId, progressChannelId).catch(() => null);
 		const content = notificationRoleId ? `<@&${notificationRoleId}>` : undefined;
 
-		const progressComponents: ActionRowBuilder[] = [];
-		if (await isComponentFeatureEnabled(guildId, serverSettingsComponent.public_statistics)) {
-			const slug = await computePublicServerSlugForServerId(Number(server.id));
-			if (slug) {
-				const row = actionRowWebLeaderboardLink(slug, '🌐 Web Leaderboard');
-				if (row) progressComponents.push(row);
-			}
-		}
+		const progressRow = leaderboardUrl
+			? new ActionRowBuilder<ButtonBuilder>().addComponents(
+					new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(leaderboardUrl).setLabel('Web leaderboard').setEmoji('🌐')
+				)
+			: null;
 
 		await channel.send({
 			content,
 			embeds: [embed],
-			components: progressComponents.length > 0 ? progressComponents : undefined
+			components: progressRow ? [progressRow] : undefined
 		});
 		const typeLabel = eventType === 'rank' ? 'rank' : 'level';
 		await logger.log(`⭐ Sent ${typeLabel} notification (${contextLabel}) to channel ${progressChannelId} for ${discordMemberId} in ${serverName}`);
@@ -519,7 +521,8 @@ async function sendXPLogToChannel(guild, dbMember, xpGained, xpType) {
 
 		await channel.send(logMessage);
 	} catch (error) {
-		logger.log(`⚠️ Failed to send XP log to channel: ${error.message}`);
+		const msg = error instanceof Error ? error.message : String(error);
+		await logger.log(`⚠️ Failed to send XP log to channel: ${msg}`);
 	}
 }
 
@@ -573,7 +576,7 @@ async function handleMessageCreate(message) {
 	}
 }
 
-async function awardVoiceXP(server, dbMember, guildMember, minutes, isAFK, guildId, reason, previousStats = null) {
+async function awardVoiceXP(server, dbMember, minutes, isAFK, guildId, reason, previousStats = null) {
 	const oldStats = previousStats || (await db.getMemberLevel(dbMember.id));
 	const xpGained = await getExperienceForVoiceMinutes(minutes, isAFK, guildId);
 	const updates = {
@@ -656,14 +659,13 @@ async function startVoiceSession(state, resumed = false) {
 		if (resumed && wasMarkedInVoice && lastRewardedAtMs !== null) {
 			const minutesSinceReward = Math.max(0, Math.floor((now - lastRewardedAtMs) / 60000));
 			if (minutesSinceReward > 0) {
-				await awardVoiceXP(server, dbMember, guildMember, minutesSinceReward, voiceAfkForXp, guildId, 'voice-resume-catchup', levelData);
+				await awardVoiceXP(server, dbMember, minutesSinceReward, voiceAfkForXp, guildId, 'voice-resume-catchup', levelData);
 				finalLastRewardedAt = now;
 			}
 		} else if (lastRewardedAtMs !== null && now - lastRewardedAtMs >= voiceCooldownMs) {
 			await awardVoiceXP(
 				server,
 				dbMember,
-				guildMember,
 				1,
 				voiceAfkForXp,
 				guildId,
@@ -711,13 +713,10 @@ async function endVoiceSession(state) {
 
 		voiceSessions.delete(sessionKey);
 
-		const botConfig = getBotConfig();
-		if (!botConfig || !botConfig.id) {
-			return;
-		}
-
-		const server = await db.getServerByDiscordId(botConfig.id, guild.id);
-		if (!server) {
+		let server;
+		try {
+			server = await getServerForCurrentBot(guild.id);
+		} catch {
 			return;
 		}
 
@@ -745,11 +744,12 @@ async function handleVoiceTick(sessionKey) {
 			return;
 		}
 
-		const botConfig = getBotConfig();
-		if (!botConfig?.id) return;
-
-		const server = await db.getServerByDiscordId(botConfig.id, session.guildId);
-		if (!server) return;
+		let server;
+		try {
+			server = await getServerForCurrentBot(session.guildId);
+		} catch {
+			return;
+		}
 
 		const dbMember = await db.getMemberByDiscordId(server.id, session.discordMemberId);
 		if (!dbMember) return;
@@ -767,13 +767,8 @@ async function handleVoiceTick(sessionKey) {
 
 		const levelSnapshot = await db.getMemberLevel(dbMember.id);
 		const serverInfo = { id: session.serverId, name: session.serverName };
-		const guildMember = {
-			id: session.discordMemberId,
-			displayName: dbMember.server_display_name || dbMember.display_name || dbMember.username,
-			user: { username: dbMember.username }
-		};
 
-		await awardVoiceXP(serverInfo, dbMember, guildMember, 1, voiceAfkForXp, guildId, 'voice-tick', levelSnapshot);
+		await awardVoiceXP(serverInfo, dbMember, 1, voiceAfkForXp, guildId, 'voice-tick', levelSnapshot);
 		session.lastRewardedAt = now;
 	} catch (error) {
 		await logger.log(`❌ Leveling voice tick error: ${error.message}`);
@@ -867,7 +862,12 @@ export async function resumeLevelingVoiceForGuild(client, guild) {
 			}
 		}
 
-		const server = await db.getServerByDiscordId(botConfig.id, guild.id);
+		let server;
+		try {
+			server = await getServerForCurrentBot(guild.id);
+		} catch {
+			server = null;
+		}
 		if (server) {
 			const membersWithFlag = await db.getMembersWithInVoiceFlag(server.id);
 			const staleMemberIds = membersWithFlag.filter((m) => !activeVoiceMemberIds.has(m.discord_member_id)).map((m) => m.member_id);
@@ -887,14 +887,17 @@ export async function resumeLevelingVoiceForGuild(client, guild) {
 export async function stopLevelingVoiceSessionsForGuild(guildDiscordId) {
 	if (!guildDiscordId) return;
 	const prefix = `${guildDiscordId}:`;
+	let server;
+	try {
+		server = await getServerForCurrentBot(guildDiscordId);
+	} catch {
+		server = null;
+	}
 	for (const [sessionKey, session] of [...voiceSessions.entries()]) {
 		if (!sessionKey.startsWith(prefix)) continue;
 		if (session?.interval) clearInterval(session.interval);
 		voiceSessions.delete(sessionKey);
 
-		const botConfig = getBotConfig();
-		if (!botConfig?.id) continue;
-		const server = await db.getServerByDiscordId(botConfig.id, guildDiscordId);
 		if (!server) continue;
 		const dbMember = await db.getMemberByDiscordId(server.id, session.discordMemberId);
 		if (dbMember) {

@@ -760,4 +760,3 @@ export { serverSettingsComponent };
 export const SERVER_SETTINGS_COMPONENTS_WITH_FEATURE_SWITCH = SERVER_SETTINGS.withFeatureSwitch;
 export { computePublicServerSlugForServerId } from '../publicServerSlug/index.js';
 export { publicSiteOrigin, publicServerOverviewUrl, publicWebLeaderboardUrl, PUBLIC_WEB_LEADERBOARD_PATH } from '../publicSiteUrls.js';
-export { actionRowWebLeaderboardLink, actionRowWebStatisticsLink } from './discordPublicSiteLinks.js';

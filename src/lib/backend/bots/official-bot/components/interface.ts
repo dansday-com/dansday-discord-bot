@@ -1,6 +1,5 @@
 import {
 	AFK_CONFIG,
-	actionRowWebStatisticsLink,
 	computePublicServerSlugForServerId,
 	getEmbedConfig,
 	getServerForCurrentBot,
@@ -226,13 +225,19 @@ async function handleMenuButton(interaction) {
 		}
 	}
 
-	if (rows.length < 5 && (await isComponentFeatureEnabled(interaction.guild.id, serverSettingsComponent.public_statistics))) {
+	if (await isComponentFeatureEnabled(interaction.guild.id, serverSettingsComponent.public_statistics)) {
 		try {
 			const server = await getServerForCurrentBot(interaction.guild.id);
 			const slug = await computePublicServerSlugForServerId(Number(server.id));
-			if (slug) {
-				const linkRow = actionRowWebStatisticsLink(slug, '🌐 Web statistics');
-				if (linkRow) rows.push(linkRow);
+			const url = slug ? publicServerOverviewUrl(slug) : null;
+			if (url) {
+				const webBtn = new ButtonBuilder().setLabel('🌐 Web statistics').setURL(url).setStyle(ButtonStyle.Link);
+				const settingsRow = rows[rows.length - 1];
+				if (settingsRow.components.length < 5) {
+					settingsRow.addComponents(webBtn);
+				} else if (rows.length < 5) {
+					rows.push(new ActionRowBuilder().addComponents(webBtn));
+				}
 			}
 		} catch (_) {}
 	}
@@ -419,20 +424,7 @@ export async function createInterfaceButtons(guildId: string | null = null, user
 	const menuLabel = await translate('menu.button', guildId || '', userId || '0');
 	const menuButton = new ButtonBuilder().setCustomId('bot_menu').setLabel(menuLabel).setStyle(ButtonStyle.Primary);
 
-	const buttonRow = new ActionRowBuilder().addComponents(menuButton);
-
-	if (guildId && (await isComponentFeatureEnabled(guildId, serverSettingsComponent.public_statistics))) {
-		try {
-			const server = await getServerForCurrentBot(guildId);
-			const slug = await computePublicServerSlugForServerId(Number(server.id));
-			const url = slug ? publicServerOverviewUrl(slug) : null;
-			if (url) {
-				buttonRow.addComponents(new ButtonBuilder().setLabel('🌐 Web statistics').setURL(url).setStyle(ButtonStyle.Link));
-			}
-		} catch (_) {}
-	}
-
-	return [buttonRow];
+	return [new ActionRowBuilder().addComponents(menuButton)];
 }
 
 export async function sendInterfaceToChannel(targetChannel, interaction, client) {

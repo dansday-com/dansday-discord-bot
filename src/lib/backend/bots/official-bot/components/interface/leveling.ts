@@ -2,6 +2,7 @@ import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'disc
 import {
 	getEmbedConfig,
 	getBotConfig,
+	getServerForCurrentBot,
 	isComponentFeatureEnabled,
 	serverSettingsComponent,
 	computePublicServerSlugForServerId,
@@ -113,11 +114,14 @@ async function refreshMemberLevelData(serverId, discordMemberId) {
 }
 
 async function getServerForInteraction(interaction) {
-	const botConfig = getBotConfig();
-	if (!botConfig || !botConfig.id) {
+	if (!interaction.guild?.id) {
 		return null;
 	}
-	return await db.getServerByDiscordId(botConfig.id, interaction.guild.id);
+	try {
+		return await getServerForCurrentBot(interaction.guild.id);
+	} catch {
+		return null;
+	}
 }
 
 async function buildLevelingEmbeds(server, memberLevelData, sortType = 'xp', guildId = null, userId = null) {

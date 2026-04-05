@@ -1,7 +1,8 @@
 import axios from 'axios';
 import { ProxyAgent } from 'proxy-agent';
 
-const QUESTS_ME_URL = 'https://discord.com/api/v9/quests/@me';
+const DISCORD_API_V9 = 'https://discord.com/api/v9';
+const QUESTS_ME_URL = `${DISCORD_API_V9}/quests/@me`;
 
 const CLIENT_USER_AGENT =
 	'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) discord/1.0.9044 Chrome/120.0.6099.291 Electron/28.2.10 Safari/537.36';
@@ -531,21 +532,54 @@ export function questPayloadOrbDiagnostics(payload: unknown): {
 	return { questCount: quests.length, afterPreviewExpired, orbRewardCount };
 }
 
-export async function fetchQuestsMe(userToken: string, opts?: { httpProxyUrl?: string | null }): Promise<unknown> {
+async function questApiRequest(
+	userToken: string,
+	method: 'GET' | 'POST',
+	path: string,
+	body?: unknown,
+	opts?: { httpProxyUrl?: string | null }
+): Promise<{ status: number; data: unknown }> {
 	const headers = discordQuestRequestHeaders(userToken);
 	const proxyUrl = opts?.httpProxyUrl?.trim() || undefined;
 	const agent = proxyUrl ? getQuestProxyAgent(proxyUrl) : undefined;
+	const url = path.startsWith('http') ? path : `${DISCORD_API_V9}${path.startsWith('/') ? path : `/${path}`}`;
 	const maxAttempts = 3;
 
 	for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-		const res = await axios.get<unknown>(QUESTS_ME_URL, {
+		const res = await axios({
+			method,
+			url,
 			headers,
+			data: body === undefined ? undefined : body,
 			...(agent ? { httpAgent: agent, httpsAgent: agent } : {}),
 			validateStatus: () => true
 		});
 
 		if (res.status === 429 && attempt < maxAttempts) {
 			await sleep(retryAfterMs(res.headers));
+			continue;
+		}
+
+		let data: unknown = res.data;
+		if (typeof data === 'string') {
+			try {
+				data = JSON.parse(data) as unknown;
+			} catch {
+				/* keep raw string */
+			}
+		}
+		return { status: res.status, data };
+	}
+	return { status: 599, data: null };
+}
+
+export async function fetchQuestsMe(userToken: string, opts?: { httpProxyUrl?: string | null }): Promise<unknown> {
+	const maxAttempts = 3;
+	for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+		const res = await questApiRequest(userToken, 'GET', '/quests/@me', undefined, opts);
+
+		if (res.status === 429 && attempt < maxAttempts) {
+			await sleep(2000);
 			continue;
 		}
 
@@ -560,13 +594,234 @@ export async function fetchQuestsMe(userToken: string, opts?: { httpProxyUrl?: s
 			throw new Error(err);
 		}
 
-		if (typeof res.data === 'string') {
-			try {
-				return JSON.parse(res.data) as unknown;
-			} catch {
-				throw new Error('Invalid JSON from Discord quests endpoint');
-			}
-		}
 		return res.data;
+	}
+	throw new Error('Discord quests request failed');
+}
+
+function findQuestByIdInPayload(payload: unknown, questId: string): Record<string, unknown> | null {
+	if (!payload || typeof payload !== 'object') return null;
+	const quests = (payload as Record<string, unknown>).quests;
+	if (!Array.isArray(quests)) return null;
+	for (const q of quests) {
+		if (q && typeof q === 'object' && String((q as Record<string, unknown>).id) === String(questId)) {
+			return q as Record<string, unknown>;
+		}
+	}
+	return null;
+}
+
+function getQuestUserStatus(quest: Record<string, unknown>): Record<string, unknown> | null {
+	const a = quest.user_status;
+	const b = quest.userStatus;
+	const v = (typeof a === 'object' && a) || (typeof b === 'object' && b);
+	return v ? (v as Record<string, unknown>) : null;
+}
+
+function readProgressSeconds(quest: Record<string, unknown>, taskKey: string): number {
+	const us = getQuestUserStatus(quest);
+	if (!us) return 0;
+	const p = us.progress as Record<string, unknown> | undefined;
+	if (!p || typeof p !== 'object') return 0;
+	const t = p[taskKey] as Record<string, unknown> | undefined;
+	if (t && typeof t.value === 'number') return t.value;
+	return 0;
+}
+
+function userQuestCompleted(quest: Record<string, unknown>): boolean {
+	const us = getQuestUserStatus(quest);
+	if (!us) return false;
+	if (us.completed_at != null || us.completedAt != null) return true;
+	return false;
+}
+
+function enrolledAtMsFromQuest(quest: Record<string, unknown>): number {
+	const us = getQuestUserStatus(quest);
+	if (!us) return Date.now();
+	const e = us.enrolled_at ?? us.enrolledAt;
+	if (typeof e === 'string') {
+		const t = Date.parse(e);
+		if (Number.isFinite(t)) return t;
+	}
+	return Date.now();
+}
+
+export type OrbQuestAutomationResult = {
+	ok: boolean;
+	questName: string;
+	orbLine: string;
+	questUrl: string;
+	title: string;
+	description: string;
+};
+
+/**
+ * Enroll + drive video watch progress via Discord's user API (caller must not persist token).
+ * Non-video tasks: enroll only; user finishes in Discord desktop / VC.
+ */
+export async function runOrbQuestUserAutomation(
+	userToken: string,
+	questId: string,
+	opts?: { httpProxyUrl?: string | null }
+): Promise<OrbQuestAutomationResult> {
+	const qUrl = `https://discord.com/quests/${questId}`;
+	let token = userToken.trim();
+	const wipe = () => {
+		token = '';
+	};
+
+	try {
+		let payload = await fetchQuestsMe(token, opts);
+		let quest = findQuestByIdInPayload(payload, questId);
+		if (!quest) {
+			return {
+				ok: false,
+				questName: 'Unknown quest',
+				orbLine: '',
+				questUrl: qUrl,
+				title: 'Orb enroll',
+				description: 'This quest was not returned for that account. Open **Quests** in Discord, accept it if needed, and ensure the token matches that user.'
+			};
+		}
+
+		const cfg = (quest.config ?? {}) as Record<string, unknown>;
+		const messages = (cfg.messages ?? {}) as Record<string, unknown>;
+		const questName = typeof messages.quest_name === 'string' ? messages.quest_name : `Quest ${questId}`;
+		const orbLine = orbHintFromQuest(quest);
+
+		if (questExpired(quest)) {
+			return {
+				ok: false,
+				questName,
+				orbLine,
+				questUrl: qUrl,
+				title: 'Orb enroll',
+				description: 'That quest has expired.'
+			};
+		}
+
+		if (userQuestCompleted(quest)) {
+			return {
+				ok: true,
+				questName,
+				orbLine,
+				questUrl: qUrl,
+				title: '✅ Quest already complete',
+				description: `**Reward:** ${orbLine || 'Orb reward'}\nClaim it in the Discord client under **Quests** if you have not yet.`
+			};
+		}
+
+		const enrollRes = await questApiRequest(token, 'POST', `/quests/${questId}/enroll`, { location: 11, is_targeted: false, metadata_raw: null }, opts);
+		const enrollOk = enrollRes.status >= 200 && enrollRes.status < 300;
+		const enrollMsg =
+			enrollRes.data && typeof enrollRes.data === 'object' && typeof (enrollRes.data as Record<string, unknown>).message === 'string'
+				? String((enrollRes.data as Record<string, unknown>).message).toLowerCase()
+				: '';
+		const enrollBodyStr = JSON.stringify(enrollRes.data ?? '').toLowerCase();
+		if (!enrollOk && enrollRes.status !== 400 && enrollRes.status !== 409 && !enrollMsg.includes('already') && !enrollBodyStr.includes('already')) {
+			return {
+				ok: false,
+				questName,
+				orbLine,
+				questUrl: qUrl,
+				title: 'Orb enroll failed',
+				description: `Discord returned HTTP ${enrollRes.status} when enrolling. You may need to accept the quest in the client first, or your token may be invalid.`
+			};
+		}
+
+		payload = await fetchQuestsMe(token, opts);
+		quest = findQuestByIdInPayload(payload, questId) ?? quest;
+
+		if (userQuestCompleted(quest)) {
+			return {
+				ok: true,
+				questName,
+				orbLine,
+				questUrl: qUrl,
+				title: '✅ Quest complete',
+				description: `**Reward:** ${orbLine || 'Orb reward'}\nOpen [Quests](${qUrl}) in Discord to claim if prompted.`
+			};
+		}
+
+		const cfgLive = (quest.config ?? {}) as Record<string, unknown>;
+		const pt = primaryTaskObject(cfgLive);
+		const taskKey = pt?.key ?? primaryTaskKeyFromConfig(cfgLive);
+		const isVideo = taskKey === 'WATCH_VIDEO' || taskKey === 'WATCH_VIDEO_ON_MOBILE';
+
+		if (!isVideo || !pt) {
+			return {
+				ok: true,
+				questName,
+				orbLine,
+				questUrl: qUrl,
+				title: '⚠️ Enrolled only',
+				description: `Enrolled in **${questName}**. This quest type (**${labelForTaskKey(taskKey)}**) cannot be finished from this bot — use the **Discord desktop app** (voice/stream/game) or complete it manually.\n\n**Reward:** ${orbLine || 'Orb reward'}`
+			};
+		}
+
+		const { target, unit } = taskTargetFromTaskObj(pt.key, pt.obj);
+		const targetSec = unit === 'seconds' && target != null && target > 0 ? target : null;
+		if (targetSec == null) {
+			return {
+				ok: false,
+				questName,
+				orbLine,
+				questUrl: qUrl,
+				title: 'Orb enroll',
+				description: 'Could not read the video duration for this quest.'
+			};
+		}
+
+		const enrolledAt = enrolledAtMsFromQuest(quest);
+		let secondsDone = readProgressSeconds(quest, pt.key);
+		const maxFuture = 10;
+		const speed = 7;
+		let lastError = '';
+
+		for (let i = 0; i < 600 && secondsDone < targetSec; i++) {
+			const maxAllowed = Math.floor((Date.now() - enrolledAt) / 1000) + maxFuture;
+			if (maxAllowed - secondsDone >= speed) {
+				const timestamp = Math.min(targetSec, secondsDone + speed + Math.random() * 0.5);
+				const vp = await questApiRequest(token, 'POST', `/quests/${questId}/video-progress`, { timestamp }, opts);
+				const body = vp.data && typeof vp.data === 'object' ? (vp.data as Record<string, unknown>) : null;
+				if (body?.completed_at != null || body?.completedAt != null) {
+					secondsDone = targetSec;
+					break;
+				}
+				if (vp.status >= 400) {
+					lastError = `HTTP ${vp.status}`;
+					const m = body?.message;
+					if (typeof m === 'string') lastError += `: ${m}`;
+				} else {
+					secondsDone = timestamp;
+				}
+			}
+			await sleep(1000);
+		}
+
+		payload = await fetchQuestsMe(token, opts);
+		quest = findQuestByIdInPayload(payload, questId) ?? quest;
+
+		if (userQuestCompleted(quest) || readProgressSeconds(quest, pt.key) >= targetSec - 0.5) {
+			return {
+				ok: true,
+				questName,
+				orbLine,
+				questUrl: qUrl,
+				title: '✅ Video quest finished',
+				description: `**${questName}**\n**Reward:** ${orbLine || 'Orb reward'}\nClaim in **Discord → Quests** if the client still shows a claim button.`
+			};
+		}
+
+		return {
+			ok: false,
+			questName,
+			orbLine,
+			questUrl: qUrl,
+			title: 'Orb enroll — incomplete',
+			description: `Progress did not reach the target in time${lastError ? ` (${lastError})` : ''}. Finish watching in the Discord client or try again.`
+		};
+	} finally {
+		wipe();
 	}
 }

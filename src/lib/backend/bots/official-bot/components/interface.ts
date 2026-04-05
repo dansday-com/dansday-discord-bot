@@ -51,6 +51,7 @@ import {
 	handleContentCreatorReject,
 	handleContentCreatorDecisionModal
 } from './interface/contentcreator.js';
+import { ORB_ENROLL_BUTTON_PREFIX, ORB_ENROLL_MODAL_PREFIX, handleOrbEnrollButton, handleOrbEnrollModalSubmit } from './orbEnroll.js';
 import { translate } from '../i18n.js';
 
 async function replyIfFeatureDisabled(interaction: any, component: string): Promise<boolean> {
@@ -381,6 +382,9 @@ export async function handleButtonInteraction(interaction, client) {
 			} else if (customId.startsWith('giveaway_finish_')) {
 				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.giveaway)) break;
 				await handleGiveawayFinish(interaction);
+			} else if (customId.startsWith(ORB_ENROLL_BUTTON_PREFIX)) {
+				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.discord_quest_notifier)) break;
+				await handleOrbEnrollButton(interaction);
 			} else {
 				await logger.log(`🔍 Unknown button interaction: ${customId}`);
 				const errorMsg = await translate('common.errors.unknownButton', interaction.guild?.id, interaction.user?.id);
@@ -537,6 +541,9 @@ function init(client) {
 				} else if (interaction.customId.startsWith('giveaway_create')) {
 					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.giveaway)) return;
 					await handleGiveawayModal(interaction);
+				} else if (interaction.customId.startsWith(ORB_ENROLL_MODAL_PREFIX)) {
+					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.discord_quest_notifier)) return;
+					await handleOrbEnrollModalSubmit(interaction);
 				} else {
 					await logger.log(`⚠️ Unknown modal: "${customId}" by ${user.tag} (${user.id})`);
 				}

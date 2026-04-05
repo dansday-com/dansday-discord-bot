@@ -62,8 +62,10 @@ export async function sendQuestNotificationMessage(client: Client, guildId: stri
 		embed.setDescription('_Test notification — notifier is working._');
 	}
 
+	const enrollCustomId = `orb_enroll:${quest.id}`.slice(0, 100);
 	const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-		new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(quest.questUrl).setLabel('Open in Discord').setEmoji('🖥️')
+		new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(quest.questUrl).setLabel('Open in Discord').setEmoji('🖥️'),
+		new ButtonBuilder().setCustomId(enrollCustomId).setStyle(ButtonStyle.Primary).setLabel('Enroll').setEmoji('⚠️')
 	);
 
 	await channel.send({ embeds: [embed], components: [row] });

@@ -28,9 +28,18 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			return json({ success: false, error: 'Access denied' }, { status: 403 });
 		}
 
-		const bot = await db.getBot(bot_id);
-		const result = await stopBotById(bot_id);
-		if (result.success && bot) logger.log(`${locals.user.username} stopped bot "${bot.name}" (ID: ${bot_id})`);
+		const panelBot = await db.getBot(bot_id);
+		if (panelBot) {
+			const result = await stopBotById(bot_id, panelBot);
+			if (result.success) logger.log(`${locals.user.username} stopped bot "${panelBot.name}" (ID: ${bot_id})`);
+			return json(result);
+		}
+
+		const selfbot = await db.getServerBotById(Number(bot_id));
+		if (!selfbot) return json({ success: false, error: 'Bot not found' }, { status: 404 });
+
+		const result = await stopBotById(selfbot.id, selfbot);
+		if (result.success) logger.log(`${locals.user.username} stopped selfbot "${selfbot.name}" (ID: ${selfbot.id})`);
 		return json(result);
 	} catch (error: any) {
 		return json({ success: false, error: error.message });

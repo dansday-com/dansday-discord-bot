@@ -289,6 +289,9 @@ export async function getLevelingSettings(guildId: string) {
 		}
 	}
 
+	const videoCfg = (config as { VIDEO?: { XP_PER_MINUTE?: number } }).VIDEO;
+	const streamCfg = (config as { STREAMING?: { XP_PER_MINUTE?: number } }).STREAMING;
+
 	return {
 		MESSAGE: {
 			XP: config.MESSAGE.XP,
@@ -298,6 +301,12 @@ export async function getLevelingSettings(guildId: string) {
 			XP_PER_MINUTE: config.VOICE.XP_PER_MINUTE,
 			AFK_XP_PER_MINUTE: config.VOICE.AFK_XP_PER_MINUTE,
 			COOLDOWN_SECONDS: config.VOICE.COOLDOWN_SECONDS
+		},
+		VIDEO: {
+			XP_PER_MINUTE: Math.max(0, Number(videoCfg?.XP_PER_MINUTE ?? 0))
+		},
+		STREAMING: {
+			XP_PER_MINUTE: Math.max(0, Number(streamCfg?.XP_PER_MINUTE ?? 0))
 		},
 		REQUIREMENTS: {
 			BASE_XP: config.REQUIREMENTS.BASE_XP,

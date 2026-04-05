@@ -155,6 +155,8 @@ async function buildLevelingEmbeds(server, memberLevelData, sortType = 'xp', gui
 	const voiceMinutesLabel = await translate('leveling.profile.voiceMinutes', actualGuildId, actualUserId);
 	const voiceActiveLabel = await translate('leveling.profile.voiceActive', actualGuildId, actualUserId);
 	const voiceAfkLabel = await translate('leveling.profile.voiceAfk', actualGuildId, actualUserId);
+	const voiceVideoLabel = await translate('leveling.profile.voiceVideo', actualGuildId, actualUserId);
+	const voiceStreamingLabel = await translate('leveling.profile.voiceStreaming', actualGuildId, actualUserId);
 	const rankLabel = await translate('leveling.profile.rank', actualGuildId, actualUserId);
 	const unrankedText = await translate('leveling.profile.unranked', actualGuildId, actualUserId);
 	const minLabel = await translate('leveling.profile.minutes', actualGuildId, actualUserId);
@@ -167,9 +169,13 @@ async function buildLevelingEmbeds(server, memberLevelData, sortType = 'xp', gui
 	const voiceTotal = memberLevelData?.voice_minutes_total ?? 0;
 	const voiceActive = memberLevelData?.voice_minutes_active ?? 0;
 	const voiceAfk = memberLevelData?.voice_minutes_afk ?? 0;
+	const voiceVideo = memberLevelData?.voice_minutes_video ?? 0;
+	const voiceStreaming = memberLevelData?.voice_minutes_streaming ?? 0;
 	profileLines.push(`• **${voiceMinutesLabel}:** ${formatNumber(voiceTotal)} ${minLabel}`);
 	profileLines.push(`• ├ ${voiceActiveLabel}: ${formatNumber(voiceActive)} ${minLabel}`);
-	profileLines.push(`• └ ${voiceAfkLabel}: ${formatNumber(voiceAfk)} ${minLabel}`);
+	profileLines.push(`• ├ ${voiceAfkLabel}: ${formatNumber(voiceAfk)} ${minLabel}`);
+	profileLines.push(`• ├ ${voiceVideoLabel}: ${formatNumber(voiceVideo)} ${minLabel}`);
+	profileLines.push(`• └ ${voiceStreamingLabel}: ${formatNumber(voiceStreaming)} ${minLabel}`);
 	profileLines.push(`• **${rankLabel}:** ${memberLevelData?.rank ? `#${memberLevelData.rank}` : unrankedText}`);
 
 	const profileTitle = await translate('leveling.profile.title', actualGuildId, actualUserId);

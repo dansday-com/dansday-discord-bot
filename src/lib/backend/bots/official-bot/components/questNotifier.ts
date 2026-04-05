@@ -93,18 +93,19 @@ async function runTick(client: Client, officialBotId: number) {
 			const orbQuests = extractOrbQuests(payload);
 			if (orbQuests.length === 0) continue;
 
-			const known = new Set(await db.listServerDiscordOrbQuestIds(server.id));
+			await db.syncServerDiscordOrbQuestsFromApi(server.id, orbQuests);
+			const unpostedIds = new Set(
+				await db.listServerDiscordOrbUnpostedQuestIds(
+					server.id,
+					orbQuests.map((q) => q.id)
+				)
+			);
 
-			if (known.size === 0) {
-				await db.baselineServerDiscordOrbEntries(server.id, orbQuests);
-				continue;
-			}
-
-			const newOnes = orbQuests.filter((q) => !known.has(q.id));
-			for (const q of newOnes) {
+			for (const q of orbQuests) {
+				if (!unpostedIds.has(q.id)) continue;
 				try {
 					await sendQuestNotificationMessage(client, server.discord_server_id, channelId, q);
-					await db.insertServerDiscordOrbNotified(server.id, q);
+					await db.markServerDiscordOrbMessagePosted(server.id, q.id);
 					await logger.log(`🔮 Quest notifier: posted orb quest "${q.questName}" → channel ${channelId} (${server.name})`);
 				} catch (sendErr: any) {
 					await logger.log(`❌ Quest notifier: failed to post quest ${q.id} for server ${server.id}: ${sendErr?.message || sendErr}`);

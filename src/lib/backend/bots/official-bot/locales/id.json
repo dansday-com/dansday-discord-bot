@@ -63,6 +63,8 @@
 			"voiceMinutes": "Menit Suara (Total)",
 			"voiceActive": "Aktif",
 			"voiceAfk": "AFK",
+			"voiceVideo": "Kamera menyala (tick suara)",
+			"voiceStreaming": "Siaran langsung / streaming (tick suara)",
 			"rank": "Peringkat",
 			"unranked": "Tidak Berperingkat",
 			"unknown": "Tidak Diketahui",

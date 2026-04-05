@@ -1090,6 +1090,10 @@ export async function updateMemberLevelStats(memberId: any, updates: any = {}) {
 		clauses.push(sql`voice_minutes_active = voice_minutes_active + ${updates.voiceMinutesActiveIncrement}`);
 	if (typeof updates.voiceMinutesAfkIncrement === 'number' && updates.voiceMinutesAfkIncrement !== 0)
 		clauses.push(sql`voice_minutes_afk = voice_minutes_afk + ${updates.voiceMinutesAfkIncrement}`);
+	if (typeof updates.voiceMinutesVideoIncrement === 'number' && updates.voiceMinutesVideoIncrement !== 0)
+		clauses.push(sql`voice_minutes_video = voice_minutes_video + ${updates.voiceMinutesVideoIncrement}`);
+	if (typeof updates.voiceMinutesStreamingIncrement === 'number' && updates.voiceMinutesStreamingIncrement !== 0)
+		clauses.push(sql`voice_minutes_streaming = voice_minutes_streaming + ${updates.voiceMinutesStreamingIncrement}`);
 	if (updates.voiceMinutesActiveIncrement !== undefined || updates.voiceMinutesAfkIncrement !== undefined)
 		clauses.push(sql`voice_minutes_total = voice_minutes_active + voice_minutes_afk`);
 	if (typeof updates.experienceIncrement === 'number' && updates.experienceIncrement !== 0)
@@ -1240,7 +1244,8 @@ export async function getServerMembersList(serverId: any) {
 		SELECT
 			sm.id, sm.discord_member_id, sm.username, sm.display_name, sm.server_display_name,
 			sm.avatar, sm.profile_created_at, sm.member_since, sm.is_booster, sm.booster_since,
-			sml.level, sml.experience, sml.chat_total, sml.voice_minutes_total, sml.voice_minutes_active, sml.voice_minutes_afk, sml.rank,
+			sml.level, sml.experience, sml.chat_total, sml.voice_minutes_total, sml.voice_minutes_active, sml.voice_minutes_afk,
+			sml.voice_minutes_video, sml.voice_minutes_streaming, sml.rank,
 			sma.message as afk_message, sma.created_at as afk_since,
 			GROUP_CONCAT(
 				DISTINCT CONCAT(sr.discord_role_id, ':', sr.name, ':', sr.color, ':', sr.position)
@@ -1255,7 +1260,7 @@ export async function getServerMembersList(serverId: any) {
 		GROUP BY sm.id, sm.discord_member_id, sm.username, sm.display_name, sm.server_display_name,
 		         sm.avatar, sm.profile_created_at, sm.member_since, sm.is_booster, sm.booster_since,
 		         sml.level, sml.experience, sml.chat_total, sml.voice_minutes_total, sml.voice_minutes_active,
-		         sml.voice_minutes_afk, sml.rank, sma.message, sma.created_at
+		         sml.voice_minutes_afk, sml.voice_minutes_video, sml.voice_minutes_streaming, sml.rank, sma.message, sma.created_at
 		ORDER BY sml.experience DESC, sml.level DESC, sm.created_at ASC
 	`);
 
@@ -1959,15 +1964,6 @@ async function upsertServerSettings(serverId: any, componentName: string, settin
 	return rows[0];
 }
 
-async function listServerDiscordOrbQuestIds(serverId: number): Promise<string[]> {
-	await initializeDatabase();
-	const rows = await db
-		.select({ discord_quest_id: schema.serverDiscordOrb.discord_quest_id })
-		.from(schema.serverDiscordOrb)
-		.where(eq(schema.serverDiscordOrb.server_id, serverId));
-	return rows.map((r) => r.discord_quest_id);
-}
-
 function questIsoToDbDate(iso: string | undefined | null): Date | null {
 	if (iso == null || typeof iso !== 'string' || !iso.trim()) return null;
 	return toMySQLDateTime(iso.trim());
@@ -1991,35 +1987,18 @@ function orbSnapshotFromQuest(q: QuestOrbSummary) {
 	};
 }
 
-async function insertServerDiscordOrbNotified(serverId: number, quest: QuestOrbSummary): Promise<void> {
-	await initializeDatabase();
-	const now = toMySQLDateTime();
-	const snap = orbSnapshotFromQuest(quest);
-	const dupSet = {
-		quest_task_type: quest.taskTypeKey || '',
-		quest_task_label: quest.taskTypeLabel || '',
-		notified_at: now as any,
-		...snap
-	};
-	await db
-		.insert(schema.serverDiscordOrb)
-		.values({
-			server_id: serverId,
-			discord_quest_id: quest.id,
-			quest_task_type: quest.taskTypeKey || '',
-			quest_task_label: quest.taskTypeLabel || '',
-			notified_at: now as any,
-			...snap
-		})
-		.onDuplicateKeyUpdate({ set: dupSet as any });
-}
-
-async function baselineServerDiscordOrbEntries(serverId: number, quests: QuestOrbSummary[]): Promise<void> {
+async function syncServerDiscordOrbQuestsFromApi(serverId: number, quests: QuestOrbSummary[]): Promise<void> {
 	await initializeDatabase();
 	if (quests.length === 0) return;
 	const now = toMySQLDateTime();
 	for (const q of quests) {
 		const snap = orbSnapshotFromQuest(q);
+		const onUpdate = {
+			quest_task_type: q.taskTypeKey || '',
+			quest_task_label: q.taskTypeLabel || '',
+			notified_at: now as any,
+			...snap
+		};
 		await db
 			.insert(schema.serverDiscordOrb)
 			.values({
@@ -2028,17 +2007,36 @@ async function baselineServerDiscordOrbEntries(serverId: number, quests: QuestOr
 				quest_task_type: q.taskTypeKey || '',
 				quest_task_label: q.taskTypeLabel || '',
 				notified_at: now as any,
+				orb_message_posted_at: null,
 				...snap
 			})
-			.onDuplicateKeyUpdate({
-				set: {
-					quest_task_type: q.taskTypeKey || '',
-					quest_task_label: q.taskTypeLabel || '',
-					notified_at: now as any,
-					...snap
-				}
-			});
+			.onDuplicateKeyUpdate({ set: onUpdate as any });
 	}
+}
+
+async function listServerDiscordOrbUnpostedQuestIds(serverId: number, activeQuestIds: string[]): Promise<string[]> {
+	if (activeQuestIds.length === 0) return [];
+	await initializeDatabase();
+	const rows = await db
+		.select({ discord_quest_id: schema.serverDiscordOrb.discord_quest_id })
+		.from(schema.serverDiscordOrb)
+		.where(
+			and(
+				eq(schema.serverDiscordOrb.server_id, serverId),
+				inArray(schema.serverDiscordOrb.discord_quest_id, activeQuestIds),
+				isNull(schema.serverDiscordOrb.orb_message_posted_at)
+			)
+		);
+	return rows.map((r) => r.discord_quest_id);
+}
+
+async function markServerDiscordOrbMessagePosted(serverId: number, questId: string): Promise<void> {
+	await initializeDatabase();
+	const posted = toMySQLDateTime();
+	await db
+		.update(schema.serverDiscordOrb)
+		.set({ orb_message_posted_at: posted as any })
+		.where(and(eq(schema.serverDiscordOrb.server_id, serverId), eq(schema.serverDiscordOrb.discord_quest_id, questId)));
 }
 
 async function getChannelsForServer(serverId: any) {
@@ -2869,9 +2867,9 @@ export default {
 	memberHasCustomSupporterRole,
 	getServerSettings,
 	upsertServerSettings,
-	listServerDiscordOrbQuestIds,
-	insertServerDiscordOrbNotified,
-	baselineServerDiscordOrbEntries,
+	syncServerDiscordOrbQuestsFromApi,
+	listServerDiscordOrbUnpostedQuestIds,
+	markServerDiscordOrbMessagePosted,
 	getPanel,
 	createPanel,
 	getAccountById,

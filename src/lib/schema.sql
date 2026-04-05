@@ -192,6 +192,8 @@ CREATE TABLE IF NOT EXISTS server_member_levels (
     voice_minutes_total INT DEFAULT 0,
     voice_minutes_active INT DEFAULT 0,
     voice_minutes_afk INT DEFAULT 0,
+    voice_minutes_video INT NOT NULL DEFAULT 0,
+    voice_minutes_streaming INT NOT NULL DEFAULT 0,
     experience INT DEFAULT 0,
     level INT DEFAULT 1,
     dm_notifications_enabled BOOLEAN DEFAULT TRUE,
@@ -276,6 +278,7 @@ CREATE TABLE IF NOT EXISTS server_discord_orbs (
     starts_at DATETIME NULL,
     expires_at DATETIME NULL,
     notified_at DATETIME NOT NULL,
+    orb_message_posted_at DATETIME NULL,
     UNIQUE KEY unique_server_discord_orbs_quest (server_id, discord_quest_id),
     INDEX idx_server_discord_orbs_server_id (server_id),
     FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE

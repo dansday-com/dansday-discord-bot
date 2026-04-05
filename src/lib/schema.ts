@@ -261,6 +261,8 @@ export const serverMemberLevels = mysqlTable(
 		voice_minutes_total: int('voice_minutes_total').default(0),
 		voice_minutes_active: int('voice_minutes_active').default(0),
 		voice_minutes_afk: int('voice_minutes_afk').default(0),
+		voice_minutes_video: int('voice_minutes_video').default(0),
+		voice_minutes_streaming: int('voice_minutes_streaming').default(0),
 		experience: int('experience').default(0),
 		level: int('level').default(1),
 		dm_notifications_enabled: boolean('dm_notifications_enabled').default(true),
@@ -376,7 +378,8 @@ export const serverDiscordOrb = mysqlTable(
 		banner_url: varchar('banner_url', { length: 2048 }),
 		starts_at: datetime('starts_at'),
 		expires_at: datetime('expires_at'),
-		notified_at: datetime('notified_at').notNull()
+		notified_at: datetime('notified_at').notNull(),
+		orb_message_posted_at: datetime('orb_message_posted_at')
 	},
 	(t) => [uniqueIndex('unique_server_discord_orbs_quest').on(t.server_id, t.discord_quest_id), index('idx_server_discord_orbs_server_id').on(t.server_id)]
 );

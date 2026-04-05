@@ -58,7 +58,7 @@
 
 	function subscribeBot(id: number) {
 		if (streams[id]) return;
-		const es = new EventSource(`/api/bots/${id}/stream`);
+		const es = new EventSource(`/api/bots/${id}/stream?kind=selfbot`);
 		es.onmessage = (e) => {
 			const d = JSON.parse(e.data);
 			liveData[id] = { status: d.status, process_id: d.process_id ?? null, uptime_ms: d.uptime_ms ?? 0 };

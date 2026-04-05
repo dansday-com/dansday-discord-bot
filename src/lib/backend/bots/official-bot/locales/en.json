@@ -64,6 +64,8 @@
 			"voiceMinutes": "Voice Minutes (Total)",
 			"voiceActive": "Active",
 			"voiceAfk": "AFK",
+			"voiceVideo": "Camera on (voice ticks)",
+			"voiceStreaming": "Go Live / streaming (voice ticks)",
 			"rank": "Rank",
 			"unranked": "Unranked",
 			"unknown": "Unknown",

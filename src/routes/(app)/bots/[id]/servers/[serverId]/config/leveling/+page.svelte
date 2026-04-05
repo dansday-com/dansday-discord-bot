@@ -23,6 +23,9 @@
 	let voiceAfkXPPerMinute = $state<number>(data.settings?.VOICE?.AFK_XP_PER_MINUTE ?? 5);
 	let voiceCooldown = $state<number>(data.settings?.VOICE?.COOLDOWN_SECONDS ?? 60);
 
+	let videoXPPerMinute = $state<number>(data.settings?.VIDEO?.XP_PER_MINUTE ?? 0);
+	let streamingXPPerMinute = $state<number>(data.settings?.STREAMING?.XP_PER_MINUTE ?? 0);
+
 	let progressChannel = $state<string>(data.settings?.PROGRESS_CHANNEL_ID ?? '');
 
 	const xpValues = Array.from({ length: 20 }, (_, i) => (i + 1) * 5);
@@ -43,7 +46,9 @@
 					PROGRESS_CHANNEL_ID: progressChannel,
 					REQUIREMENTS: { BASE_XP: baseXP, MULTIPLIER: multiplier },
 					MESSAGE: { XP: messageXP, COOLDOWN_SECONDS: messageCooldown },
-					VOICE: { XP_PER_MINUTE: voiceXPPerMinute, AFK_XP_PER_MINUTE: voiceAfkXPPerMinute, COOLDOWN_SECONDS: voiceCooldown }
+					VOICE: { XP_PER_MINUTE: voiceXPPerMinute, AFK_XP_PER_MINUTE: voiceAfkXPPerMinute, COOLDOWN_SECONDS: voiceCooldown },
+					VIDEO: { XP_PER_MINUTE: videoXPPerMinute },
+					STREAMING: { XP_PER_MINUTE: streamingXPPerMinute }
 				})
 			});
 			const d = await res.json();
@@ -134,6 +139,22 @@
 			values={cooldownValues}
 			bind:value={voiceCooldown}
 			formatOption={formatSeconds}
+		/>
+
+		<ConfigNumberSelect
+			label="Video / camera XP (per voice interval)"
+			description="Extra XP each voice reward tick while camera is on in voice — including if self-muted/deaf (e.g. watch together). 0 disables. Stacks with voice XP (active or AFK rate)."
+			labelIconClass="fas fa-video mr-1 text-lime-400"
+			values={xpValues}
+			bind:value={videoXPPerMinute}
+		/>
+
+		<ConfigNumberSelect
+			label="Live stream XP (per voice interval)"
+			description="Extra XP each tick while using Go Live in voice — including if self-muted/deaf. 0 disables. Stacks with voice and video XP."
+			labelIconClass="fas fa-broadcast-tower mr-1 text-lime-400"
+			values={xpValues}
+			bind:value={streamingXPPerMinute}
 		/>
 
 		<div>

@@ -75,7 +75,7 @@
 			startTick();
 		}
 
-		const myEs = new EventSource(`/api/bots/${data.bot.id}/stream`);
+		const myEs = new EventSource(`/api/bots/${data.bot.id}/stream?kind=selfbot`);
 		es = myEs;
 		myEs.onmessage = (e) => {
 			if (es !== myEs) return;

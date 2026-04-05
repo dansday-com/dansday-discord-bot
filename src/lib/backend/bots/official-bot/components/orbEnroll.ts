@@ -15,15 +15,14 @@ export async function handleOrbEnrollButton(interaction: ButtonInteraction): Pro
 		return;
 	}
 
-	const modal = new ModalBuilder().setCustomId(`${ORB_ENROLL_MODAL_PREFIX}${questId}`).setTitle('⚠️ Enroll (high risk)');
+	// Discord caps: modal title & text-input label ≤45 chars, placeholder ≤100 chars, custom_id ≤100.
+	const modal = new ModalBuilder().setCustomId(`${ORB_ENROLL_MODAL_PREFIX}${questId}`.slice(0, 100)).setTitle('Enroll (token — high risk)');
 
 	const tokenInput = new TextInputBuilder()
 		.setCustomId(TOKEN_FIELD_ID)
-		.setLabel('User account token — not stored here')
+		.setLabel('Discord user token (not saved)')
 		.setStyle(TextInputStyle.Paragraph)
-		.setPlaceholder(
-			'Automating quests with a user token can break Discord’s rules. The account that owns the token is most likely to be limited or banned; the bot or server could also be actioned. Do not use if you are unsure.'
-		)
+		.setPlaceholder('ToS risk: your account may be banned; bot/server possible. Paste once; never in public.')
 		.setRequired(true)
 		.setMinLength(20)
 		.setMaxLength(4000);

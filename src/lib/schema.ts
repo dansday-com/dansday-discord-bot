@@ -267,9 +267,13 @@ export const serverMemberLevels = mysqlTable(
 		level: int('level').default(1),
 		dm_notifications_enabled: boolean('dm_notifications_enabled').default(true),
 		is_in_voice: boolean('is_in_voice').default(false),
+		is_in_video: boolean('is_in_video').default(false),
+		is_in_stream: boolean('is_in_stream').default(false),
 		rank: int('rank'),
 		chat_rewarded_at: datetime('chat_rewarded_at'),
 		voice_rewarded_at: datetime('voice_rewarded_at'),
+		video_rewarded_at: datetime('video_rewarded_at'),
+		stream_rewarded_at: datetime('stream_rewarded_at'),
 		created_at: datetime('created_at').notNull(),
 		updated_at: datetime('updated_at').notNull()
 	},

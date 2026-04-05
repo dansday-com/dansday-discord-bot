@@ -1065,6 +1065,8 @@ export async function getMemberLevel(memberId: any) {
 	if (!rows[0]) return null;
 	const data = { ...rows[0] };
 	if (data.voice_rewarded_at) data.voice_rewarded_at = parseMySQLDateTimeUtc(data.voice_rewarded_at as any) as any;
+	if (data.video_rewarded_at) data.video_rewarded_at = parseMySQLDateTimeUtc(data.video_rewarded_at as any) as any;
+	if (data.stream_rewarded_at) data.stream_rewarded_at = parseMySQLDateTimeUtc(data.stream_rewarded_at as any) as any;
 	if (data.chat_rewarded_at) data.chat_rewarded_at = parseMySQLDateTimeUtc(data.chat_rewarded_at as any) as any;
 	return data;
 }
@@ -1101,10 +1103,20 @@ export async function updateMemberLevelStats(memberId: any, updates: any = {}) {
 	if (updates.level !== undefined && updates.level !== null) clauses.push(sql`level = ${updates.level}`);
 	if (updates.rank !== undefined) clauses.push(sql`rank = ${updates.rank}`);
 	if (typeof updates.isInVoice === 'boolean') clauses.push(sql`is_in_voice = ${updates.isInVoice ? 1 : 0}`);
+	if (typeof updates.isInVideo === 'boolean') clauses.push(sql`is_in_video = ${updates.isInVideo ? 1 : 0}`);
+	if (typeof updates.isInStream === 'boolean') clauses.push(sql`is_in_stream = ${updates.isInStream ? 1 : 0}`);
 	if (updates.chatRewardedAt) clauses.push(sql`chat_rewarded_at = ${toMySQLDateTime(updates.chatRewardedAt)}`);
 	if (updates.voiceRewardedAt !== undefined) {
 		if (updates.voiceRewardedAt === null) clauses.push(sql`voice_rewarded_at = NULL`);
 		else clauses.push(sql`voice_rewarded_at = ${toMySQLDateTime(updates.voiceRewardedAt)}`);
+	}
+	if (updates.videoRewardedAt !== undefined) {
+		if (updates.videoRewardedAt === null) clauses.push(sql`video_rewarded_at = NULL`);
+		else clauses.push(sql`video_rewarded_at = ${toMySQLDateTime(updates.videoRewardedAt)}`);
+	}
+	if (updates.streamRewardedAt !== undefined) {
+		if (updates.streamRewardedAt === null) clauses.push(sql`stream_rewarded_at = NULL`);
+		else clauses.push(sql`stream_rewarded_at = ${toMySQLDateTime(updates.streamRewardedAt)}`);
 	}
 
 	if (clauses.length === 0) return getMemberLevel(memberId);

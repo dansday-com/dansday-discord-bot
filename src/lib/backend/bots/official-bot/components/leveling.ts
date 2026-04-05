@@ -54,6 +54,13 @@ function resolveGuildVoiceState(guild, discordUserId) {
 	return guild.members.cache.get(discordUserId)?.voice ?? null;
 }
 
+function parseLevelRewardedAtMs(value) {
+	if (value == null) return null;
+	if (value instanceof Date) return value.getTime();
+	const parsed = parseMySQLDateTimeUtc(value);
+	return parsed ? parsed.getTime() : null;
+}
+
 async function getExperienceForVoiceMinutes(minutes, isAFK = false, guildId) {
 	if (!guildId) {
 		throw new Error('guildId is required for voice XP');
@@ -592,40 +599,35 @@ async function handleMessageCreate(message) {
 	}
 }
 
-async function awardVoiceXP(server, dbMember, minutes, isAFK, guildId, reason, previousStats = null, voiceState = null) {
+/**
+ * @param buckets {{ isAFK: boolean, voiceMinutes: number, videoMinutes: number, streamMinutes: number }}
+ * @param mediaFlags {{ selfVideo: boolean, streaming: boolean }} sync is_in_video / is_in_stream; timestamps advance only for minutes > 0
+ */
+async function awardVoiceXP(server, dbMember, guildId, reason, previousStats, buckets, mediaFlags) {
+	const { isAFK, voiceMinutes, videoMinutes, streamMinutes } = buckets;
+	const vm = Math.max(0, Math.floor(Number(voiceMinutes) || 0));
+	const vid = Math.max(0, Math.floor(Number(videoMinutes) || 0));
+	const strm = Math.max(0, Math.floor(Number(streamMinutes) || 0));
+	if (vm <= 0 && vid <= 0 && strm <= 0) return null;
+
 	const oldStats = previousStats || (await db.getMemberLevel(dbMember.id));
-	const baseXp = await getExperienceForVoiceMinutes(minutes, isAFK, guildId);
-	const applyMediaBonuses = reason !== 'voice-resume-catchup';
-	let videoXp = 0;
-	let streamXp = 0;
-	if (applyMediaBonuses && voiceState) {
-		if (voiceState.selfVideo) {
-			videoXp = await getVideoXpForVoiceTick(minutes, guildId);
-		}
-		if (voiceState.streaming) {
-			streamXp = await getStreamingXpForVoiceTick(minutes, guildId);
-		}
-	}
+	const baseXp = await getExperienceForVoiceMinutes(vm, isAFK, guildId);
+	const videoXp = await getVideoXpForVoiceTick(vid, guildId);
+	const streamXp = await getStreamingXpForVoiceTick(strm, guildId);
 	const xpGained = baseXp + videoXp + streamXp;
 
-	const updates = {
+	const stats = await db.updateMemberLevelStats(dbMember.id, {
 		experienceIncrement: xpGained,
-		voiceRewardedAt: new Date(),
-		isInVoice: true
-	};
-	if (isAFK) {
-		updates.voiceMinutesAfkIncrement = minutes;
-	} else {
-		updates.voiceMinutesActiveIncrement = minutes;
-	}
-	if (applyMediaBonuses && voiceState?.selfVideo) {
-		updates.voiceMinutesVideoIncrement = minutes;
-	}
-	if (applyMediaBonuses && voiceState?.streaming) {
-		updates.voiceMinutesStreamingIncrement = minutes;
-	}
-
-	const stats = await db.updateMemberLevelStats(dbMember.id, updates);
+		isInVoice: true,
+		isInVideo: !!mediaFlags?.selfVideo,
+		isInStream: !!mediaFlags?.streaming,
+		...(vm > 0 ? { voiceRewardedAt: new Date() } : {}),
+		...(vid > 0 ? { videoRewardedAt: new Date() } : {}),
+		...(strm > 0 ? { streamRewardedAt: new Date() } : {}),
+		...(isAFK ? { voiceMinutesAfkIncrement: vm } : { voiceMinutesActiveIncrement: vm }),
+		...(vid > 0 ? { voiceMinutesVideoIncrement: vid } : {}),
+		...(strm > 0 ? { voiceMinutesStreamingIncrement: strm } : {})
+	});
 
 	const discordGuild = clientInstance?.guilds.cache.get(guildId);
 	if (discordGuild) {
@@ -648,6 +650,47 @@ async function awardVoiceXP(server, dbMember, minutes, isAFK, guildId, reason, p
 	});
 }
 
+async function syncVoiceMediaBaselines(dbMemberId, mediaFlags, lastVideoMs, lastStreamMs) {
+	await db.updateMemberLevelStats(dbMemberId, {
+		isInVoice: true,
+		isInVideo: !!mediaFlags.selfVideo,
+		isInStream: !!mediaFlags.streaming,
+		...(!mediaFlags.selfVideo ? { videoRewardedAt: new Date() } : {}),
+		...(!mediaFlags.streaming ? { streamRewardedAt: new Date() } : {}),
+		...(mediaFlags.selfVideo && lastVideoMs === null ? { videoRewardedAt: new Date() } : {}),
+		...(mediaFlags.streaming && lastStreamMs === null ? { streamRewardedAt: new Date() } : {})
+	});
+}
+
+/** Camera / Go Live toggles without leaving the channel — reset only the affected media clock. */
+async function handleVoiceMediaOnlyUpdate(oldState, newState) {
+	try {
+		const guild = newState.guild;
+		if (!guild?.id) return;
+		if (!(await isComponentFeatureEnabled(guild.id, serverSettingsComponent.leveling))) return;
+
+		const memberLike = newState.member ?? (newState.id ? { id: newState.id } : null);
+		if (!memberLike) return;
+
+		const { server, dbMember, guildMember } = await resolveServerAndMember(guild, memberLike);
+		if (!server || !dbMember || !guildMember) return;
+
+		const eligible = await isMemberEligible(guild.id, guildMember);
+		if (!eligible) return;
+
+		const selfVideo = !!newState.selfVideo;
+		const streaming = !!newState.streaming;
+		await db.updateMemberLevelStats(dbMember.id, {
+			isInVideo: selfVideo,
+			isInStream: streaming,
+			...(oldState.selfVideo !== newState.selfVideo ? { videoRewardedAt: new Date() } : {}),
+			...(oldState.streaming !== newState.streaming ? { streamRewardedAt: new Date() } : {})
+		});
+	} catch (error) {
+		await logger.log(`❌ Leveling voice media update error: ${error.message}`);
+	}
+}
+
 async function startVoiceSession(state, resumed = false) {
 	try {
 		if (!state?.channelId || !state.guild) return;
@@ -665,15 +708,12 @@ async function startVoiceSession(state, resumed = false) {
 		await db.ensureMemberLevel(dbMember.id);
 		const levelData = await db.getMemberLevel(dbMember.id);
 		const wasMarkedInVoice = !!levelData?.is_in_voice;
-		let lastRewardedAtMs = null;
-		if (levelData?.voice_rewarded_at) {
-			if (levelData.voice_rewarded_at instanceof Date) {
-				lastRewardedAtMs = levelData.voice_rewarded_at.getTime();
-			} else {
-				const parsedDate = parseMySQLDateTimeUtc(levelData.voice_rewarded_at);
-				lastRewardedAtMs = parsedDate ? parsedDate.getTime() : null;
-			}
-		}
+		const dbInVideo = !!levelData?.is_in_video;
+		const dbInStream = !!levelData?.is_in_stream;
+
+		const lastVoiceMs = parseLevelRewardedAtMs(levelData?.voice_rewarded_at);
+		const lastVideoMs = parseLevelRewardedAtMs(levelData?.video_rewarded_at);
+		const lastStreamMs = parseLevelRewardedAtMs(levelData?.stream_rewarded_at);
 
 		const sessionKey = `${state.guild.id}:${guildMember.id}`;
 		const existingSession = voiceSessions.get(sessionKey);
@@ -684,39 +724,67 @@ async function startVoiceSession(state, resumed = false) {
 		const now = Date.now();
 		const guildId = state.guild.id;
 		const voiceCooldownMs = await getVoiceCooldownMs(guildId);
+		const voiceAfkForXp = isVoiceStateAFK(state);
+		const mediaFlags = { selfVideo: !!state.selfVideo, streaming: !!state.streaming };
 
-		if (lastRewardedAtMs === null) {
+		let finalLastRewardedAt = lastVoiceMs || now;
+
+		if (lastVoiceMs === null) {
 			await db.updateMemberLevelStats(dbMember.id, {
 				isInVoice: true,
-				voiceRewardedAt: new Date()
+				voiceRewardedAt: new Date(),
+				isInVideo: mediaFlags.selfVideo,
+				isInStream: mediaFlags.streaming,
+				videoRewardedAt: new Date(),
+				streamRewardedAt: new Date()
 			});
+			finalLastRewardedAt = now;
 		} else {
 			await db.updateMemberLevelStats(dbMember.id, { isInVoice: true });
 		}
 
-		let finalLastRewardedAt = lastRewardedAtMs || now;
-
-		const voiceAfkForXp = isVoiceStateAFK(state);
-
-		if (resumed && wasMarkedInVoice && lastRewardedAtMs !== null) {
-			const minutesSinceReward = Math.max(0, Math.floor((now - lastRewardedAtMs) / 60000));
-			if (minutesSinceReward > 0) {
-				await awardVoiceXP(server, dbMember, minutesSinceReward, voiceAfkForXp, guildId, 'voice-resume-catchup', levelData, state);
+		if (resumed && wasMarkedInVoice && lastVoiceMs !== null) {
+			const mVoice = Math.max(0, Math.floor((now - lastVoiceMs) / 60000));
+			const rawVideo = state.selfVideo && dbInVideo && lastVideoMs !== null ? Math.max(0, Math.floor((now - lastVideoMs) / 60000)) : 0;
+			const rawStream = state.streaming && dbInStream && lastStreamMs !== null ? Math.max(0, Math.floor((now - lastStreamMs) / 60000)) : 0;
+			const mVideo = mVoice > 0 ? Math.min(mVoice, rawVideo) : 0;
+			const mStream = mVoice > 0 ? Math.min(mVoice, rawStream) : 0;
+			if (mVoice > 0 || mVideo > 0 || mStream > 0) {
+				await awardVoiceXP(
+					server,
+					dbMember,
+					guildId,
+					'voice-resume-catchup',
+					levelData,
+					{
+						isAFK: voiceAfkForXp,
+						voiceMinutes: mVoice,
+						videoMinutes: mVideo,
+						streamMinutes: mStream
+					},
+					mediaFlags
+				);
 				finalLastRewardedAt = now;
 			}
-		} else if (lastRewardedAtMs !== null && now - lastRewardedAtMs >= voiceCooldownMs) {
+		} else if (lastVoiceMs !== null && now - lastVoiceMs >= voiceCooldownMs) {
 			await awardVoiceXP(
 				server,
 				dbMember,
-				1,
-				voiceAfkForXp,
 				guildId,
 				resumed && wasMarkedInVoice ? 'voice-resume-interval' : 'voice-start-interval',
 				levelData,
-				state
+				{
+					isAFK: voiceAfkForXp,
+					voiceMinutes: 1,
+					videoMinutes: state.selfVideo ? 1 : 0,
+					streamMinutes: state.streaming ? 1 : 0
+				},
+				mediaFlags
 			);
 			finalLastRewardedAt = now;
 		}
+
+		await syncVoiceMediaBaselines(dbMember.id, mediaFlags, lastVideoMs, lastStreamMs);
 
 		const tickInterval = Math.min(Math.max(voiceCooldownMs || 1000, 1000), 5000);
 		const interval = setInterval(async () => {
@@ -811,7 +879,21 @@ async function handleVoiceTick(sessionKey) {
 		const levelSnapshot = await db.getMemberLevel(dbMember.id);
 		const serverInfo = { id: session.serverId, name: session.serverName };
 
-		await awardVoiceXP(serverInfo, dbMember, 1, voiceAfkForXp, guildId, 'voice-tick', levelSnapshot, voiceState);
+		const mf = { selfVideo: !!voiceState?.selfVideo, streaming: !!voiceState?.streaming };
+		await awardVoiceXP(
+			serverInfo,
+			dbMember,
+			guildId,
+			'voice-tick',
+			levelSnapshot,
+			{
+				isAFK: voiceAfkForXp,
+				voiceMinutes: 1,
+				videoMinutes: mf.selfVideo ? 1 : 0,
+				streamMinutes: mf.streaming ? 1 : 0
+			},
+			mf
+		);
 		session.lastRewardedAt = now;
 	} catch (error) {
 		await logger.log(`❌ Leveling voice tick error: ${error.message}`);
@@ -917,7 +999,7 @@ export async function resumeLevelingVoiceForGuild(client, guild) {
 
 			if (staleMemberIds.length > 0) {
 				for (const memberId of staleMemberIds) {
-					await db.updateMemberLevelStats(memberId, { isInVoice: false });
+					await db.updateMemberLevelStats(memberId, { isInVoice: false, isInVideo: false, isInStream: false });
 				}
 				await logger.log(`🧹 Leveling: Cleaned up ${staleMemberIds.length} stale is_in_voice flag(s) for guild ${guild.name}`);
 			}
@@ -944,7 +1026,7 @@ export async function stopLevelingVoiceSessionsForGuild(guildDiscordId) {
 		if (!server) continue;
 		const dbMember = await db.getMemberByDiscordId(server.id, session.discordMemberId);
 		if (dbMember) {
-			await db.updateMemberLevelStats(dbMember.id, { isInVoice: false });
+			await db.updateMemberLevelStats(dbMember.id, { isInVoice: false, isInVideo: false, isInStream: false });
 		}
 	}
 	await logger.log(`🔇 Leveling: Stopped voice XP timers for guild ${guildDiscordId}`);
@@ -1002,6 +1084,10 @@ function init(client) {
 			} else if (oldChannel && newChannel && oldChannel !== newChannel) {
 				await endVoiceSession(oldState);
 				await startVoiceSession(newState, false);
+			} else if (oldChannel && newChannel && oldChannel === newChannel) {
+				if (oldState.selfVideo !== newState.selfVideo || oldState.streaming !== newState.streaming) {
+					await handleVoiceMediaOnlyUpdate(oldState, newState);
+				}
 			}
 		} catch (error) {
 			await logger.log(`❌ Leveling voice state update error: ${error.message}`);

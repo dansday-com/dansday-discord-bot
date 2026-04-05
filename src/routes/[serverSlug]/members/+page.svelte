@@ -8,6 +8,80 @@
 
 	let { data }: PageProps = $props();
 
+	type RoleRgb = { r: number; g: number; b: number };
+
+	function parseRoleColorRaw(raw: string | null | undefined): RoleRgb | null {
+		if (raw == null) return null;
+		const s = String(raw).trim();
+		if (s === '' || s.toLowerCase() === 'null' || s === 'undefined' || s === '0') return null;
+		if (s.startsWith('#')) {
+			let h = s.slice(1);
+			if (h.length === 3)
+				h = h
+					.split('')
+					.map((c) => c + c)
+					.join('');
+			if (h.length === 6 && /^[0-9a-fA-F]+$/.test(h)) {
+				return {
+					r: parseInt(h.slice(0, 2), 16),
+					g: parseInt(h.slice(2, 4), 16),
+					b: parseInt(h.slice(4, 6), 16)
+				};
+			}
+			return null;
+		}
+		if (/^[0-9A-Fa-f]{6}$/.test(s)) {
+			return {
+				r: parseInt(s.slice(0, 2), 16),
+				g: parseInt(s.slice(2, 4), 16),
+				b: parseInt(s.slice(4, 6), 16)
+			};
+		}
+		const n = Number.parseInt(s, 10);
+		if (Number.isFinite(n) && n >= 0 && n <= 0xffffff) {
+			return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+		}
+		return null;
+	}
+
+	function rgbToHex({ r, g, b }: RoleRgb): string {
+		return `#${[r, g, b].map((x) => Math.max(0, Math.min(255, x)).toString(16).padStart(2, '0')).join('')}`;
+	}
+
+	function roleColorLuminance({ r, g, b }: RoleRgb): number {
+		const lin = (c: number) => {
+			c /= 255;
+			return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+		};
+		return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+	}
+
+	function rolePillCssVars(color: string | null | undefined): Record<string, string> {
+		const fb = {
+			fg: '#1a343f',
+			bg: 'rgba(36, 95, 115, 0.1)',
+			bd: 'rgba(36, 95, 115, 0.38)',
+			dot: '#245f73'
+		};
+		const rgb = parseRoleColorRaw(color);
+		if (!rgb) {
+			return { '--role-fg': fb.fg, '--role-bg': fb.bg, '--role-bd': fb.bd, '--role-dot': fb.dot };
+		}
+		const L = roleColorLuminance(rgb);
+		const hex = rgbToHex(rgb);
+		const nearWhite = L >= 0.78 || (rgb.r >= 248 && rgb.g >= 248 && rgb.b >= 248);
+		if (nearWhite) {
+			return { '--role-fg': fb.fg, '--role-bg': fb.bg, '--role-bd': fb.bd, '--role-dot': fb.dot };
+		}
+		const softText = L > 0.52;
+		return {
+			'--role-fg': softText ? '#1a343f' : hex,
+			'--role-bg': `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.13)`,
+			'--role-bd': `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.45)`,
+			'--role-dot': hex
+		};
+	}
+
 	let liveMembers = $state([...(data.members ?? [])]);
 	let es: EventSource | null = null;
 	let mounted = $state(false);
@@ -18,7 +92,7 @@
 
 	const members = $derived(liveMembers);
 
-	const directoryStrip = $derived.by(() => {
+	const summary = $derived.by(() => {
 		const list = members;
 		const n = list.length;
 		const afkNow = list.filter((m) => m.is_afk).length;
@@ -73,7 +147,6 @@
 		{ value: 'afk_last', label: 'Non-AFK First' }
 	];
 
-	/** Show everyone on one page until this many; paginate only above. */
 	const PER_PAGE = 100;
 
 	let search = $state('');
@@ -142,8 +215,6 @@
 		})
 	);
 
-	const maxXpInView = $derived(Math.max(1, ...sorted.map((m) => Number(m.experience ?? 0))));
-
 	const totalPages = $derived(Math.max(1, Math.ceil(sorted.length / PER_PAGE)));
 
 	$effect(() => {
@@ -166,16 +237,6 @@
 		return Number(n).toLocaleString();
 	}
 
-	function roleColor(hex: string | null | undefined): string {
-		const h = hex ?? '';
-		if (!h || h === '#000000' || h === '0' || h === 'null') return 'var(--chili-hot)';
-		if (h.startsWith('#')) return h;
-		if (/^[0-9A-Fa-f]{6}$/.test(h)) return `#${h}`;
-		const num = parseInt(h, 10);
-		if (!isNaN(num) && num !== 0) return `#${num.toString(16).padStart(6, '0')}`;
-		return 'var(--chili-hot)';
-	}
-
 	function displayName(m: (typeof members)[number]): string {
 		if (m.server_display_name?.trim()) return m.server_display_name;
 		if (m.display_name?.trim()) return m.display_name;
@@ -194,23 +255,10 @@
 		return m.avatar ?? `https://cdn.discordapp.com/embed/avatars/${Number(m.discord_member_id) % 5 || 0}.png`;
 	}
 
-	function xpBarPercent(m: (typeof members)[number]): number {
-		const xp = Number(m.experience ?? 0);
-		return Math.min(100, Math.max(4, (xp / maxXpInView) * 100));
-	}
-
-	function voiceMixPercents(m: (typeof members)[number]): { activePct: number; afkPct: number; empty: boolean } {
-		const a = Math.max(0, Number(m.voice_minutes_active) || 0);
-		const k = Math.max(0, Number(m.voice_minutes_afk) || 0);
-		const t = a + k;
-		if (t <= 0) return { activePct: 0, afkPct: 0, empty: true };
-		return { activePct: (a / t) * 100, afkPct: (k / t) * 100, empty: false };
-	}
-
-	function podiumModifier(rank: number | null | undefined): string {
-		if (rank === 1) return 'lb-members-card--podium-1';
-		if (rank === 2) return 'lb-members-card--podium-2';
-		if (rank === 3) return 'lb-members-card--podium-3';
+	function rowAccent(rank: number | null | undefined): string {
+		if (rank === 1) return 'pubm-row--g1';
+		if (rank === 2) return 'pubm-row--g2';
+		if (rank === 3) return 'pubm-row--g3';
 		return '';
 	}
 </script>
@@ -223,193 +271,611 @@
 	<meta property="og:description" content="Explore members, ranks, XP, and voice activity for this community." />
 </svelte:head>
 
-<div class="lb-members-page-head">
-	<p class="lb-leaderboard-subhead lb-members-subhead">Members</p>
-</div>
+<div class="pubm">
+	<p class="pubm-kicker">Members</p>
 
-<section class="lb-overview-strip lb-members-overview-strip" aria-label="Members overview">
-	<div class="lb-overview-strip-item">
-		<div class="lb-overview-strip-icon"><i class="fas fa-star"></i></div>
-		<div class="lb-overview-strip-text">
-			<span class="lb-overview-strip-value">{fmtNum(directoryStrip.xpPool)}</span>
-			<span class="lb-overview-strip-label">Total XP</span>
-		</div>
+	<div class="pubm-chips" aria-label="Members overview">
+		<div class="pubm-chip"><span class="pubm-chip-v">{fmtNum(summary.xpPool)}</span><span class="pubm-chip-l">Total XP</span></div>
+		<div class="pubm-chip"><span class="pubm-chip-v">{summary.n ? fmtNum(summary.avgLevel) : '0'}</span><span class="pubm-chip-l">Avg level</span></div>
+		<div class="pubm-chip"><span class="pubm-chip-v">{fmtNum(summary.maxLevel)}</span><span class="pubm-chip-l">Peak level</span></div>
+		<div class="pubm-chip"><span class="pubm-chip-v">{fmtNum(summary.voiceSum)}</span><span class="pubm-chip-l">Voice min</span></div>
+		<div class="pubm-chip"><span class="pubm-chip-v">{fmtNum(summary.afkNow)}</span><span class="pubm-chip-l">AFK now</span></div>
 	</div>
-	<div class="lb-overview-strip-item">
-		<div class="lb-overview-strip-icon"><i class="fas fa-chart-line"></i></div>
-		<div class="lb-overview-strip-text">
-			<span class="lb-overview-strip-value">{directoryStrip.n ? fmtNum(directoryStrip.avgLevel) : '0'}</span>
-			<span class="lb-overview-strip-label">Avg level</span>
-		</div>
-	</div>
-	<div class="lb-overview-strip-item">
-		<div class="lb-overview-strip-icon"><i class="fas fa-crown"></i></div>
-		<div class="lb-overview-strip-text">
-			<span class="lb-overview-strip-value">{fmtNum(directoryStrip.maxLevel)}</span>
-			<span class="lb-overview-strip-label">Peak level</span>
-		</div>
-	</div>
-	<div class="lb-overview-strip-item">
-		<div class="lb-overview-strip-icon"><i class="fas fa-microphone"></i></div>
-		<div class="lb-overview-strip-text">
-			<span class="lb-overview-strip-value">{fmtNum(directoryStrip.voiceSum)}</span>
-			<span class="lb-overview-strip-label">Voice min</span>
-		</div>
-	</div>
-	<div class="lb-overview-strip-item">
-		<div class="lb-overview-strip-icon"><i class="fas fa-moon"></i></div>
-		<div class="lb-overview-strip-text">
-			<span class="lb-overview-strip-value">{fmtNum(directoryStrip.afkNow)}</span>
-			<span class="lb-overview-strip-label">AFK now</span>
-		</div>
-	</div>
-</section>
 
-<div class="lb-members-controls-card">
-	<div class="lb-members-toolbar lb-members-toolbar--compact">
-		<div class="lb-members-search-wrap">
-			<i class="fas fa-search lb-members-search-icon"></i>
+	<div class="pubm-bar">
+		<div class="pubm-search">
+			<i class="fas fa-search pubm-search-ic" aria-hidden="true"></i>
 			<input
-				type="text"
-				class="lb-members-search-input"
-				placeholder="Search name or ID…"
+				type="search"
+				class="pubm-search-inp"
+				placeholder="Search name or ID"
 				aria-label="Search members by name or Discord ID"
 				bind:value={search}
 				oninput={onSearchInput}
+				autocomplete="off"
 			/>
 		</div>
-		<div class="lb-members-sort-wrap lb-members-sort-wrap--compact">
-			<label class="lb-members-sort-label visually-hidden" for="lb-members-sort">Sort list</label>
-			<select id="lb-members-sort" class="lb-members-sort" bind:value={sortBy} onchange={onSortChange} aria-label="Sort members">
+		<div class="pubm-sort">
+			<label class="pubm-sr" for="pubm-sort">Sort list</label>
+			<select id="pubm-sort" class="pubm-select" bind:value={sortBy} onchange={onSortChange} aria-label="Sort members">
 				{#each SORT_OPTIONS as opt}
 					<option value={opt.value}>{opt.label}</option>
 				{/each}
 			</select>
 		</div>
-		<p class="lb-members-count lb-members-count--toolbar">
-			<span class="lb-members-count-num">{sorted.length}</span><span class="lb-members-count-noun">{sorted.length === 1 ? ' member' : ' members'}</span
-			>{#if search}<span class="lb-members-count-query"> · “{search}”</span>{/if}{#if sorted.length > PER_PAGE}<span class="lb-members-count-page">
+		<p class="pubm-count">
+			<span>{sorted.length}</span>
+			{sorted.length === 1 ? 'member' : 'members'}{#if search}<span class="pubm-count-q"> · “{search}”</span>{/if}{#if sorted.length > PER_PAGE}<span
+					class="pubm-count-q"
+				>
 					· p.{listPage}/{totalPages}</span
 				>{/if}
 		</p>
 	</div>
-</div>
 
-{#if paged.length === 0}
-	<div class="lb-members-empty lb-empty">
-		<i class="fas fa-users" style="font-size: 48px; opacity: 0.2;"></i>
-		<p>No members found</p>
-	</div>
-{:else}
-	<div class="lb-members-list lb-members-list--v2">
-		{#each paged as member, i (member.discord_member_id)}
-			{@const vm = voiceMixPercents(member)}
-			<article
-				class="lb-members-card lb-members-card--v2 lb-members-card--compact {podiumModifier(member.rank)}"
-				class:lb-members-card--mounted={mounted}
-				style="--lb-members-enter-delay: {i * 28}ms"
-			>
-				<div class="lb-members-card-inner lb-members-card-inner--compact">
-					<div class="lb-members-card-aside lb-members-card-aside--compact">
-						<div class="lb-members-avatar-wrap lb-members-avatar-wrap--compact">
-							<div class="lb-members-avatar-ring lb-members-avatar-ring--compact">
-								<img
-									src={avatarSrc(member)}
-									alt={listDisplayName(member)}
-									class="lb-members-avatar lb-members-avatar--compact"
-									onerror={(e) => ((e.currentTarget as HTMLImageElement).src = 'https://cdn.discordapp.com/embed/avatars/0.png')}
-								/>
+	{#if paged.length === 0}
+		<div class="pubm-empty">
+			<i class="fas fa-users" aria-hidden="true"></i>
+			<p>No members found</p>
+		</div>
+	{:else}
+		<div class="pubm-sheet">
+			<div class="pubm-sheet-hd">
+				<span class="pubm-hd-r">#</span>
+				<span class="pubm-hd-m">Member</span>
+				<span class="pubm-hd-x">XP</span>
+			</div>
+			<ul class="pubm-list">
+				{#each paged as member, i (member.discord_member_id)}
+					<li class="pubm-row {rowAccent(member.rank)}" class:pubm-row--in={mounted} style="--pubm-dly:{i * 22}ms">
+						<span class="pubm-rank" title="Leaderboard rank">{member.rank != null ? member.rank : '—'}</span>
+						<img
+							class="pubm-av"
+							src={avatarSrc(member)}
+							alt=""
+							width="40"
+							height="40"
+							onerror={(e) => ((e.currentTarget as HTMLImageElement).src = 'https://cdn.discordapp.com/embed/avatars/0.png')}
+						/>
+						<div class="pubm-body">
+							<div class="pubm-name-row">
+								<span class="pubm-name">{listDisplayName(member)}</span>
+								{#if member.is_afk}<span class="pubm-afk"><i class="fas fa-moon" aria-hidden="true"></i> AFK</span>{/if}
 							</div>
-							<span class="lb-members-rank-overlay" title="Leaderboard rank">{member.rank != null ? `#${member.rank}` : '—'}</span>
-						</div>
-					</div>
-
-					<div class="lb-members-body lb-members-body--compact">
-						<div class="lb-members-title-row lb-members-title-row--compact">
-							<div class="lb-members-name-block">
-								<h2 class="lb-members-name lb-members-name--compact">{listDisplayName(member)}</h2>
-								<p class="lb-members-tagline lb-members-tagline--compact">
-									<span>Lv.{member.level ?? 0}</span>
-									<span class="lb-members-tagline-dot" aria-hidden="true">·</span>
-									<span>{fmtNum(member.experience ?? 0)} XP</span>
-								</p>
-							</div>
-							{#if member.is_afk}
-								<span class="lb-members-afk lb-members-afk--compact"><i class="fas fa-moon"></i> AFK</span>
-							{/if}
-						</div>
-
-						<div class="lb-members-bars-compact">
-							<div class="lb-members-xp-block lb-members-xp-block--compact">
-								<div class="lb-members-xp-head lb-members-xp-head--compact">
-									<span>XP vs list</span>
-									<span class="lb-members-xp-meta">{fmtNum(member.experience ?? 0)} / {fmtNum(maxXpInView)}</span>
-								</div>
-								<div class="lb-members-xp-track lb-members-xp-track--compact">
-									<div class="lb-members-xp-fill" style="width: {xpBarPercent(member)}%"></div>
-								</div>
-							</div>
-							{#if !vm.empty}
-								<div class="lb-members-voice-block lb-members-voice-block--compact">
-									<div class="lb-members-voice-stack lb-members-voice-stack--compact" title="Active vs AFK voice minutes">
-										<div class="lb-members-voice-stack-active" style="width: {vm.activePct}%"></div>
-										<div class="lb-members-voice-stack-afk" style="width: {vm.afkPct}%"></div>
-									</div>
-								</div>
-							{/if}
-						</div>
-
-						<div class="lb-members-inline-stats" aria-label="Activity summary">
-							<span class="lb-members-inline-stat" title="Messages"><i class="fas fa-comment"></i>{fmtNum(member.chat_total ?? 0)}</span>
-							<span class="lb-members-inline-stat" title="Voice active minutes"
-								><i class="fas fa-microphone-lines"></i>{fmtNum(member.voice_minutes_active ?? 0)}m</span
-							>
-							<span class="lb-members-inline-stat" title="Voice AFK minutes"><i class="fas fa-moon"></i>{fmtNum(member.voice_minutes_afk ?? 0)}m</span>
-						</div>
-
-						<div class="lb-members-dates lb-members-dates--compact">
-							<span class="lb-members-date-inline"
-								><span class="lb-members-date-k">Joined</span>
-								<LocalTime value={member.member_since} fallback="N/A" class="lb-members-time" /></span
-							>
-							<span class="lb-members-date-inline"
-								><span class="lb-members-date-k">Account</span>
-								<LocalTime value={member.profile_created_at} fallback="N/A" class="lb-members-time" /></span
-							>
-						</div>
-
-						{#if member.roles?.length > 0}
-							<div class="lb-members-roles lb-members-roles--compact">
-								<div class="lb-members-roles-head">
-									<i class="fas fa-user-tag"></i>
-									<span>Roles</span>
-								</div>
-								<div class="lb-members-role-list">
+							<p class="pubm-stats">
+								<span>Lv.{member.level ?? 0}</span>
+								<span class="pubm-dot">·</span>
+								<span title="Experience points">{fmtNum(member.experience ?? 0)} XP</span>
+								<span class="pubm-dot">·</span>
+								<span title="Messages">{fmtNum(member.chat_total ?? 0)} msgs</span>
+								<span class="pubm-dot">·</span>
+								<span title="Voice minutes">{fmtNum(member.voice_minutes_active ?? 0)}m act / {fmtNum(member.voice_minutes_afk ?? 0)}m AFK</span>
+							</p>
+							<p class="pubm-dates">
+								<span><span class="pubm-dk">Joined</span> <LocalTime value={member.member_since} fallback="N/A" /></span>
+								<span class="pubm-dot">·</span>
+								<span><span class="pubm-dk">Account</span> <LocalTime value={member.profile_created_at} fallback="N/A" /></span>
+							</p>
+							{#if member.roles?.length > 0}
+								<div class="pubm-roles">
 									{#each member.roles as role}
-										{@const c = roleColor(role.color)}
-										<span class="lb-members-role-pill" style="--role:{c}">
-											<i class="fas fa-circle"></i>
+										<span class="pubm-role" style={rolePillCssVars(role.color)}>
+											<i class="fas fa-circle" aria-hidden="true"></i>
 											{role.name || 'Role'}
 										</span>
 									{/each}
 								</div>
-							</div>
-						{/if}
-					</div>
-				</div>
-			</article>
-		{/each}
-	</div>
-
-	{#if sorted.length > PER_PAGE}
-		<div class="lb-members-pagination">
-			<button type="button" class="lb-members-page-btn" disabled={listPage === 1} onclick={() => (listPage = Math.max(1, listPage - 1))}>
-				<i class="fas fa-chevron-left"></i> Previous
-			</button>
-			<span class="lb-members-page-meta">Page {listPage} of {totalPages}</span>
-			<button type="button" class="lb-members-page-btn" disabled={listPage === totalPages} onclick={() => (listPage = Math.min(totalPages, listPage + 1))}>
-				Next <i class="fas fa-chevron-right"></i>
-			</button>
+							{/if}
+						</div>
+						<span class="pubm-xp" title="Experience points">{fmtNum(member.experience ?? 0)}</span>
+					</li>
+				{/each}
+			</ul>
 		</div>
+
+		{#if sorted.length > PER_PAGE}
+			<div class="pubm-pager">
+				<button type="button" class="pubm-btn" disabled={listPage === 1} onclick={() => (listPage = Math.max(1, listPage - 1))}>
+					<i class="fas fa-chevron-left" aria-hidden="true"></i> Prev
+				</button>
+				<span class="pubm-pg-meta">Page {listPage} / {totalPages}</span>
+				<button type="button" class="pubm-btn" disabled={listPage === totalPages} onclick={() => (listPage = Math.min(totalPages, listPage + 1))}>
+					Next <i class="fas fa-chevron-right" aria-hidden="true"></i>
+				</button>
+			</div>
+		{/if}
 	{/if}
-{/if}
+</div>
+
+<style>
+	.pubm {
+		--pubm-text: var(--lb-text, #1a343f);
+		--pubm-muted: var(--lb-text-muted, rgba(26, 52, 63, 0.58));
+		--pubm-soft: rgba(26, 52, 63, 0.48);
+		--pubm-br: var(--lb-border, rgba(187, 189, 188, 0.55));
+		--pubm-br-l: var(--lb-border-light, rgba(187, 189, 188, 0.38));
+		--pubm-sh: var(--lb-shadow, rgba(26, 52, 63, 0.07));
+		--pubm-teal: var(--chili-hot, #245f73);
+		--pubm-brick: var(--chili-brick, #733e24);
+	}
+
+	.pubm-sr {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
+	}
+
+	.pubm-kicker {
+		margin: 0 0 8px;
+		font-size: 12px;
+		font-weight: 600;
+		color: var(--pubm-muted);
+		letter-spacing: 0.02em;
+	}
+
+	.pubm-chips {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+		margin-bottom: 10px;
+	}
+
+	.pubm-chip {
+		display: flex;
+		flex-direction: column;
+		gap: 1px;
+		padding: 6px 10px;
+		border-radius: 10px;
+		background: rgba(255, 255, 255, 0.88);
+		border: 1px solid var(--pubm-br);
+		box-shadow: 0 1px 6px var(--pubm-sh);
+		min-width: 0;
+	}
+
+	.pubm-chip-v {
+		font-size: clamp(13px, 3.8vw, 15px);
+		font-weight: 700;
+		font-variant-numeric: tabular-nums;
+		color: var(--pubm-text);
+		line-height: 1.15;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		max-width: 28vw;
+	}
+
+	@media (min-width: 480px) {
+		.pubm-chip-v {
+			max-width: none;
+		}
+	}
+
+	.pubm-chip-l {
+		font-size: 9px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.07em;
+		color: var(--pubm-soft);
+	}
+
+	.pubm-bar {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: 8px;
+		align-items: stretch;
+		padding: 8px;
+		margin-bottom: 10px;
+		border-radius: 10px;
+		background: rgba(255, 255, 255, 0.88);
+		border: 1px solid var(--pubm-br);
+		box-shadow: 0 1px 6px var(--pubm-sh);
+	}
+
+	@media (min-width: 720px) {
+		.pubm-bar {
+			grid-template-columns: 1fr minmax(160px, 220px) auto;
+			align-items: center;
+		}
+	}
+
+	.pubm-search {
+		position: relative;
+		min-width: 0;
+	}
+
+	.pubm-search-ic {
+		position: absolute;
+		left: 10px;
+		top: 50%;
+		transform: translateY(-50%);
+		font-size: 12px;
+		color: var(--pubm-soft);
+		pointer-events: none;
+	}
+
+	.pubm-search-inp {
+		width: 100%;
+		box-sizing: border-box;
+		padding: 8px 10px 8px 32px;
+		border-radius: 8px;
+		border: 1px solid var(--pubm-br);
+		background: rgba(255, 255, 255, 0.95);
+		font-size: 16px;
+		color: var(--pubm-text);
+		min-height: 42px;
+	}
+
+	@media (min-width: 720px) {
+		.pubm-search-inp {
+			font-size: 13px;
+			min-height: 0;
+		}
+	}
+
+	.pubm-search-inp::placeholder {
+		color: var(--pubm-soft);
+	}
+
+	.pubm-search-inp:focus {
+		outline: none;
+		border-color: rgba(36, 95, 115, 0.45);
+		box-shadow: 0 0 0 2px rgba(36, 95, 115, 0.12);
+	}
+
+	.pubm-select {
+		width: 100%;
+		box-sizing: border-box;
+		padding: 8px 10px;
+		border-radius: 8px;
+		border: 1px solid var(--pubm-br);
+		background: rgba(255, 255, 255, 0.95);
+		font-size: 14px;
+		font-weight: 600;
+		color: var(--pubm-text);
+		min-height: 42px;
+		cursor: pointer;
+	}
+
+	@media (min-width: 720px) {
+		.pubm-select {
+			font-size: 12px;
+			min-height: 0;
+		}
+	}
+
+	.pubm-count {
+		margin: 0;
+		font-size: 11px;
+		font-weight: 600;
+		color: rgba(26, 52, 63, 0.72);
+		line-height: 1.35;
+	}
+
+	@media (min-width: 720px) {
+		.pubm-count {
+			text-align: right;
+			font-size: 12px;
+			justify-self: end;
+		}
+	}
+
+	.pubm-count span:first-child {
+		font-weight: 700;
+		color: var(--pubm-text);
+	}
+
+	.pubm-count-q {
+		font-weight: 600;
+		color: var(--pubm-soft);
+	}
+
+	.pubm-empty {
+		text-align: center;
+		padding: 40px 16px;
+		color: var(--pubm-muted);
+	}
+
+	.pubm-empty i {
+		font-size: 40px;
+		opacity: 0.18;
+		display: block;
+		margin-bottom: 10px;
+	}
+
+	.pubm-empty p {
+		margin: 0;
+		font-size: 14px;
+		font-weight: 600;
+	}
+
+	.pubm-sheet {
+		border-radius: 14px;
+		overflow: hidden;
+		border: 1px solid var(--pubm-br);
+		background: rgba(255, 255, 255, 0.9);
+		box-shadow: 0 2px 14px var(--pubm-sh);
+	}
+
+	.pubm-sheet-hd {
+		display: none;
+		grid-template-columns: 36px 44px 1fr 88px;
+		gap: 10px;
+		align-items: center;
+		padding: 8px 12px;
+		font-size: 10px;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.08em;
+		color: var(--pubm-soft);
+		border-bottom: 1px solid var(--pubm-br-l);
+		background: rgba(242, 240, 239, 0.65);
+	}
+
+	@media (min-width: 640px) {
+		.pubm-sheet-hd {
+			display: grid;
+		}
+	}
+
+	.pubm-hd-x {
+		text-align: right;
+	}
+
+	.pubm-list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+
+	.pubm-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: flex-start;
+		gap: 8px 10px;
+		padding: 12px 12px;
+		border-bottom: 1px solid var(--pubm-br-l);
+		opacity: 0;
+		transform: translateY(8px);
+	}
+
+	.pubm-row--in {
+		animation: pubm-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+		animation-delay: var(--pubm-dly, 0ms);
+	}
+
+	@keyframes pubm-in {
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	@media (min-width: 640px) {
+		.pubm-row {
+			display: grid;
+			grid-template-columns: 36px 44px 1fr 88px;
+			align-items: center;
+			gap: 10px;
+		}
+	}
+
+	.pubm-row:last-child {
+		border-bottom: none;
+	}
+
+	.pubm-row:hover {
+		background: rgba(36, 95, 115, 0.05);
+	}
+
+	.pubm-row--g1 {
+		box-shadow: inset 3px 0 0 #e6b800;
+	}
+	.pubm-row--g2 {
+		box-shadow: inset 3px 0 0 #9ca3af;
+	}
+	.pubm-row--g3 {
+		box-shadow: inset 3px 0 0 #c97a3d;
+	}
+
+	.pubm-rank {
+		flex: 0 0 28px;
+		width: 28px;
+		font-size: 12px;
+		font-weight: 800;
+		font-variant-numeric: tabular-nums;
+		color: var(--pubm-soft);
+		text-align: center;
+		line-height: 40px;
+	}
+
+	@media (min-width: 640px) {
+		.pubm-rank {
+			flex: none;
+			width: auto;
+			line-height: 1.2;
+		}
+	}
+
+	.pubm-av {
+		flex-shrink: 0;
+		width: 40px;
+		height: 40px;
+		border-radius: 50%;
+		object-fit: cover;
+		border: 1px solid var(--pubm-br);
+		display: block;
+	}
+
+	.pubm-body {
+		flex: 1 1 180px;
+		min-width: 0;
+	}
+
+	@media (min-width: 640px) {
+		.pubm-body {
+			flex: none;
+		}
+	}
+
+	.pubm-name-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 6px 10px;
+		margin-bottom: 4px;
+	}
+
+	.pubm-name {
+		font-size: 15px;
+		font-weight: 800;
+		color: var(--pubm-text);
+		letter-spacing: -0.02em;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		max-width: 100%;
+	}
+
+	.pubm-afk {
+		font-size: 10px;
+		font-weight: 700;
+		padding: 2px 8px;
+		border-radius: 99px;
+		background: rgba(115, 62, 36, 0.12);
+		color: var(--pubm-brick);
+		border: 1px solid rgba(115, 62, 36, 0.22);
+		flex-shrink: 0;
+	}
+
+	.pubm-stats,
+	.pubm-dates {
+		margin: 0 0 4px;
+		font-size: 11px;
+		font-weight: 600;
+		color: rgba(26, 52, 63, 0.72);
+		line-height: 1.45;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 2px 4px;
+		align-items: baseline;
+	}
+
+	.pubm-dates {
+		margin-bottom: 0;
+		font-size: 10px;
+		color: var(--pubm-soft);
+	}
+
+	.pubm-dot {
+		color: rgba(26, 52, 63, 0.35);
+		user-select: none;
+	}
+
+	.pubm-dk {
+		font-weight: 700;
+		text-transform: uppercase;
+		font-size: 9px;
+		letter-spacing: 0.05em;
+		color: rgba(26, 52, 63, 0.42);
+		margin-right: 2px;
+	}
+
+	.pubm-xp {
+		display: none;
+		font-size: 14px;
+		font-weight: 800;
+		font-variant-numeric: tabular-nums;
+		color: var(--pubm-text);
+		text-align: right;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	@media (min-width: 640px) {
+		.pubm-xp {
+			display: block;
+		}
+	}
+
+	.pubm-roles {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 5px;
+		margin-top: 8px;
+	}
+
+	.pubm-role {
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+		padding: 2px 8px;
+		border-radius: 8px;
+		font-size: 10px;
+		font-weight: 600;
+		line-height: 1.25;
+		max-width: 100%;
+		border: 1px solid var(--role-bd, rgba(36, 95, 115, 0.38));
+		background: var(--role-bg, rgba(36, 95, 115, 0.1));
+		color: var(--role-fg, #1a343f);
+	}
+
+	.pubm-role i {
+		font-size: 5px;
+		opacity: 0.95;
+		color: var(--role-dot, var(--role-fg, #245f73));
+	}
+
+	.pubm-pager {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 10px;
+		margin-top: 12px;
+	}
+
+	.pubm-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		padding: 8px 12px;
+		border-radius: 10px;
+		border: 1px solid var(--pubm-br);
+		background: rgba(255, 255, 255, 0.9);
+		font-size: 13px;
+		font-weight: 600;
+		color: var(--pubm-text);
+		cursor: pointer;
+		box-shadow: 0 1px 6px var(--pubm-sh);
+	}
+
+	.pubm-btn:hover:not(:disabled) {
+		border-color: rgba(36, 95, 115, 0.3);
+		background: #fff;
+	}
+
+	.pubm-btn:disabled {
+		opacity: 0.4;
+		cursor: not-allowed;
+	}
+
+	.pubm-pg-meta {
+		font-size: 12px;
+		font-weight: 600;
+		color: var(--pubm-muted);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.pubm-row--in {
+			animation: none;
+			opacity: 1;
+			transform: none;
+		}
+	}
+</style>

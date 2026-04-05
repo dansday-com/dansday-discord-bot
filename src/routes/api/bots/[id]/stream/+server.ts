@@ -1,6 +1,7 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import { subscribeBotStatus, getBotUptimeMs, type BotProcessKind } from '$lib/botProcesses.js';
 import db from '$lib/database.js';
+import { canViewSelfbots } from '$lib/serverPanelAccess.js';
 
 export const GET: RequestHandler = async ({ locals, params, url }) => {
 	if (!locals.user.authenticated) {
@@ -9,6 +10,12 @@ export const GET: RequestHandler = async ({ locals, params, url }) => {
 
 	const botId = Number(params.id);
 	const streamKind: BotProcessKind = url.searchParams.get('kind') === 'selfbot' ? 'selfbot' : 'official';
+
+	if (streamKind === 'selfbot') {
+		const sb = await db.getServerBotById(botId);
+		if (!sb) return new Response('Not found', { status: 404 });
+		if (!canViewSelfbots(locals, sb.server_id)) return new Response('Forbidden', { status: 403 });
+	}
 
 	let cleanup: (() => void) | null = null;
 

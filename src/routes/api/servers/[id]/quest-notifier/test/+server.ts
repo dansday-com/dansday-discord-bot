@@ -4,13 +4,8 @@ import { request as httpRequest } from 'http';
 import db from '$lib/database.js';
 import { SERVER_SETTINGS } from '$lib/serverSettingsComponents.js';
 import { extractOrbQuests, fetchQuestsMe, questPayloadOrbDiagnostics } from '$lib/discord-quest-api.js';
+import { canEditServerSettings } from '$lib/serverPanelAccess.js';
 import { mainAppearanceBlockingMessage, messageFromBotWebhookPayload } from '$lib/utils/configPrerequisiteErrors.js';
-
-function canEditServer(locals: App.Locals, serverId: string): boolean {
-	if (!locals.user.authenticated) return false;
-	if (locals.user.account_source === 'accounts') return true;
-	return locals.user.server_id === Number(serverId);
-}
 
 export const POST: RequestHandler = async ({ locals, params }) => {
 	const serverIdParam = params.id;
@@ -18,7 +13,7 @@ export const POST: RequestHandler = async ({ locals, params }) => {
 		return json({ success: false, error: 'Server id required' }, { status: 400 });
 	}
 
-	if (!canEditServer(locals, serverIdParam)) {
+	if (!canEditServerSettings(locals, serverIdParam)) {
 		return json({ success: false, error: 'Access denied' }, { status: 403 });
 	}
 

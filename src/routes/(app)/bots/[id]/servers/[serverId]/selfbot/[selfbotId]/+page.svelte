@@ -159,6 +159,13 @@
 		<i class="fas fa-arrow-left text-violet-300"></i>Back to Selfbots
 	</a>
 
+	{#if data.selfbotViewOnly}
+		<div class="mb-4 flex items-start gap-2 rounded-lg border border-amber-800/60 bg-amber-950/40 px-3 py-2.5 text-sm text-amber-100/95" role="status">
+			<i class="fas fa-eye mt-0.5 shrink-0 text-amber-400" aria-hidden="true"></i>
+			<span><strong class="text-amber-50">View only.</strong> Status and uptime update live; start, stop, restart, and delete are owner-only.</span>
+		</div>
+	{/if}
+
 	<div class="bg-ash-800 border-ash-700 mb-4 rounded-xl border p-4 sm:mb-6 sm:p-6">
 		<div class="flex flex-col gap-4 sm:flex-row sm:items-start">
 			<div class="flex min-w-0 flex-1 items-center gap-4">

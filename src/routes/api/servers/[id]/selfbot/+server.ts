@@ -1,18 +1,12 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
+import { canManageSelfbots, canViewSelfbots } from '$lib/serverPanelAccess.js';
 import { logger } from '$lib/utils/index.js';
-
-function canManage(locals: App.Locals, serverId: number): boolean {
-	if (!locals.user.authenticated) return false;
-	if (locals.user.account_source === 'accounts') return true;
-	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'owner') return locals.user.server_id === serverId;
-	return false;
-}
 
 export const GET: RequestHandler = async ({ locals, params }) => {
 	const serverId = Number(params.id);
-	if (!canManage(locals, serverId)) return json({ success: false, error: 'Access denied' }, { status: 403 });
+	if (!canViewSelfbots(locals, serverId)) return json({ success: false, error: 'Access denied' }, { status: 403 });
 
 	const selfbots = await db.getServerBots(serverId);
 	return json({ success: true, selfbots });
@@ -20,7 +14,7 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 
 export const POST: RequestHandler = async ({ locals, params, request }) => {
 	const serverId = Number(params.id);
-	if (!canManage(locals, serverId)) return json({ success: false, error: 'Access denied' }, { status: 403 });
+	if (!canManageSelfbots(locals, serverId)) return json({ success: false, error: 'Access denied' }, { status: 403 });
 
 	const body = await request.json();
 	const { token } = body;
@@ -46,7 +40,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 
 export const DELETE: RequestHandler = async ({ locals, params, request }) => {
 	const serverId = Number(params.id);
-	if (!canManage(locals, serverId)) return json({ success: false, error: 'Access denied' }, { status: 403 });
+	if (!canManageSelfbots(locals, serverId)) return json({ success: false, error: 'Access denied' }, { status: 403 });
 
 	const body = await request.json();
 	const selfbotId = Number(body.selfbot_id);

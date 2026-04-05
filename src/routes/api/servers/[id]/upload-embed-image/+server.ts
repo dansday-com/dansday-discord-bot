@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
+import { canUseEmbedBuilder } from '$lib/serverPanelAccess.js';
 import { logger } from '$lib/utils/index.js';
 
 const uploadsDir = join(process.cwd(), 'data', 'embed-images');
@@ -14,6 +15,10 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 	const serverId = parseInt(params.id ?? '');
 	if (!serverId) {
 		return json({ success: false, error: 'Invalid server ID' }, { status: 400 });
+	}
+
+	if (!canUseEmbedBuilder(locals, serverId)) {
+		return json({ success: false, error: 'Access denied' }, { status: 403 });
 	}
 
 	try {

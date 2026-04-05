@@ -4,6 +4,7 @@ import type { PageServerLoad } from './$types';
 import db from '$lib/database.js';
 import { getBotUptimeMs } from '$lib/botProcesses.js';
 import { webRouteUp } from '$lib/frontend/redirect.js';
+import { isGuildModeratorUser } from '$lib/serverPanelAccess.js';
 
 export const load: PageServerLoad = async ({ locals, params, url }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
@@ -43,6 +44,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 		servers,
 		serverId,
 		botId: params.id,
-		user: locals.user
+		user: locals.user,
+		selfbotViewOnly: isGuildModeratorUser(locals.user)
 	};
 };

@@ -1,17 +1,14 @@
 import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 import db from '$lib/database.js';
-import { exitConfigToGuildOverview } from '$lib/frontend/redirect.js';
+import { isServerConfigReadOnly } from '$lib/serverPanelAccess.js';
 import { SERVER_SETTINGS } from '$lib/serverSettingsComponents.js';
 
-export const load: LayoutServerLoad = async ({ locals, params, url }) => {
+export const load: LayoutServerLoad = async ({ locals, params }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
 
 	const serverId = Number(params.serverId);
 
-	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'moderator') {
-		redirect(302, exitConfigToGuildOverview(url.pathname));
-	}
 	if (locals.user.account_source !== 'accounts') {
 		if (locals.user.bot_id !== Number(params.id) || locals.user.server_id !== serverId) {
 			redirect(302, `/bots/${locals.user.bot_id}/servers/${locals.user.server_id}`);
@@ -49,6 +46,7 @@ export const load: LayoutServerLoad = async ({ locals, params, url }) => {
 		channels: channels ?? [],
 		roles: roles ?? [],
 		categories: categories ?? [],
-		featureEnabledByComponent: Object.fromEntries(featureEnabledEntries) as Record<string, boolean>
+		featureEnabledByComponent: Object.fromEntries(featureEnabledEntries) as Record<string, boolean>,
+		configReadOnly: isServerConfigReadOnly(locals)
 	};
 };

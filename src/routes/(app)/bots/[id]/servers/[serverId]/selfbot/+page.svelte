@@ -58,7 +58,7 @@
 
 	function subscribeBot(id: number) {
 		if (streams[id]) return;
-		const es = new EventSource(`/api/bots/${id}/stream`);
+		const es = new EventSource(`/api/bots/${id}/stream?kind=selfbot`);
 		es.onmessage = (e) => {
 			const d = JSON.parse(e.data);
 			liveData[id] = { status: d.status, process_id: d.process_id ?? null, uptime_ms: d.uptime_ms ?? 0 };
@@ -127,6 +127,12 @@
 <AddSelfbotModal open={showAdd} serverId={data.serverId} onclose={() => (showAdd = false)} onadded={() => invalidateAll()} />
 
 <div class="space-y-4">
+	{#if data.selfbotViewOnly}
+		<div class="flex items-start gap-2 rounded-lg border border-amber-800/60 bg-amber-950/40 px-3 py-2.5 text-sm text-amber-100/95" role="status">
+			<i class="fas fa-eye mt-0.5 shrink-0 text-amber-400" aria-hidden="true"></i>
+			<span><strong class="text-amber-50">View only.</strong> You can see selfbot status; start, stop, restart, add, and delete are owner-only.</span>
+		</div>
+	{/if}
 	<div class="flex items-center justify-between">
 		<h2 class="text-ash-100 flex items-center gap-2 text-xl font-bold">
 			<i class="fas fa-robot text-violet-400"></i>Selfbots

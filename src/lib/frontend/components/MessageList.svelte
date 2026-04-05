@@ -4,7 +4,6 @@
 		values: string[];
 		placeholder?: string;
 		placeholders?: { code: string; desc: string }[];
-		/** Tailwind text-* class for list header / modal icons (match parent config page accent). */
 		iconAccent?: string;
 		iconAccentMuted?: string;
 		onchange: (values: string[]) => void;

@@ -49,14 +49,6 @@ const REGISTRY = [
 		iconClass: 'text-lime-400'
 	},
 	{
-		id: 'leaderboard',
-		label: 'Leaderboard',
-		featureSwitch: true,
-		hrefSuffix: '/leaderboards',
-		icon: 'fa-trophy',
-		iconClass: 'text-amber-400'
-	},
-	{
 		id: 'custom_supporter_role',
 		label: 'Custom Supporter Role',
 		featureSwitch: true,
@@ -119,6 +111,14 @@ const REGISTRY = [
 		hrefSuffix: '/discord-quest-notifier',
 		icon: 'fa-gem',
 		iconClass: 'text-sky-400'
+	},
+	{
+		id: 'public_statistics',
+		label: 'Public statistics',
+		featureSwitch: true,
+		hrefSuffix: '/public-statistics',
+		icon: 'fa-chart-pie',
+		iconClass: 'text-amber-400'
 	}
 ] as const;
 

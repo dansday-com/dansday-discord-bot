@@ -261,13 +261,19 @@ export const serverMemberLevels = mysqlTable(
 		voice_minutes_total: int('voice_minutes_total').default(0),
 		voice_minutes_active: int('voice_minutes_active').default(0),
 		voice_minutes_afk: int('voice_minutes_afk').default(0),
+		voice_minutes_video: int('voice_minutes_video').default(0),
+		voice_minutes_streaming: int('voice_minutes_streaming').default(0),
 		experience: int('experience').default(0),
 		level: int('level').default(1),
 		dm_notifications_enabled: boolean('dm_notifications_enabled').default(true),
 		is_in_voice: boolean('is_in_voice').default(false),
+		is_in_video: boolean('is_in_video').default(false),
+		is_in_stream: boolean('is_in_stream').default(false),
 		rank: int('rank'),
 		chat_rewarded_at: datetime('chat_rewarded_at'),
 		voice_rewarded_at: datetime('voice_rewarded_at'),
+		video_rewarded_at: datetime('video_rewarded_at'),
+		stream_rewarded_at: datetime('stream_rewarded_at'),
 		created_at: datetime('created_at').notNull(),
 		updated_at: datetime('updated_at').notNull()
 	},
@@ -287,6 +293,20 @@ export const serverMemberNotifications = mysqlTable(
 		created_at: datetime('created_at').notNull()
 	},
 	(t) => [uniqueIndex('unique_member_notification_role').on(t.member_id, t.role_id), index('idx_server_member_notifications_role').on(t.role_id)]
+);
+
+export const serverMemberRoles = mysqlTable(
+	'server_member_roles',
+	{
+		member_id: int('member_id')
+			.notNull()
+			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		role_id: int('role_id')
+			.notNull()
+			.references(() => serverRoles.id, { onDelete: 'cascade' }),
+		created_at: datetime('created_at').notNull()
+	},
+	(t) => [uniqueIndex('unique_server_member_role').on(t.member_id, t.role_id), index('idx_server_member_roles_member').on(t.member_id)]
 );
 
 export const serverMemberCustomSupporterRoles = mysqlTable(
@@ -361,7 +381,8 @@ export const serverDiscordOrb = mysqlTable(
 		banner_url: varchar('banner_url', { length: 2048 }),
 		starts_at: datetime('starts_at'),
 		expires_at: datetime('expires_at'),
-		notified_at: datetime('notified_at').notNull()
+		notified_at: datetime('notified_at').notNull(),
+		orb_message_posted_at: datetime('orb_message_posted_at')
 	},
 	(t) => [uniqueIndex('unique_server_discord_orbs_quest').on(t.server_id, t.discord_quest_id), index('idx_server_discord_orbs_server_id').on(t.server_id)]
 );

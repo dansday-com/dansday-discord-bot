@@ -156,6 +156,14 @@
 		return m.username ?? 'Unknown';
 	}
 
+	function listDisplayName(m: Member): string {
+		return (
+			displayName(m)
+				.replace(/^\s*(\[AFK\]\s*)+/gi, '')
+				.trim() || displayName(m)
+		);
+	}
+
 	function avatarSrc(m: Member): string {
 		return m.avatar ?? `https://cdn.discordapp.com/embed/avatars/${Number(m.discord_member_id) % 5 || 0}.png`;
 	}
@@ -199,24 +207,16 @@
 					<div class="relative shrink-0">
 						<img
 							src={avatarSrc(member)}
-							alt={displayName(member)}
+							alt={listDisplayName(member)}
 							class="border-ash-600 h-20 w-20 rounded-full border-2 object-cover"
 							onerror={(e) => ((e.currentTarget as HTMLImageElement).src = 'https://cdn.discordapp.com/embed/avatars/0.png')}
 						/>
-						{#if member.is_afk}
-							<div class="border-ash-700 absolute -right-1 -bottom-1 flex h-5 w-5 items-center justify-center rounded-full border-2 bg-yellow-500">
-								<i class="fas fa-moon text-ash-950 text-xs"></i>
-							</div>
-						{/if}
 					</div>
 
 					<div class="w-full min-w-0 flex-1 text-center sm:text-left">
 						<div class="mb-3 flex flex-col items-center gap-2 sm:flex-row sm:items-center">
 							<h4 class="text-ash-100 w-full truncate text-base font-bold sm:w-auto sm:text-lg">
-								{displayName(member)}
-								{#if member.is_afk}
-									<span class="ml-1 text-xs text-yellow-400">(AFK)</span>
-								{/if}
+								{listDisplayName(member)}
 							</h4>
 							{#if member.is_afk}
 								<span class="flex items-center gap-1 self-center rounded-full bg-yellow-900 px-2 py-1 text-xs font-medium text-yellow-200">

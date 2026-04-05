@@ -1,6 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import db from '$lib/database.js';
+import { isGuildModeratorUser } from '$lib/serverPanelAccess.js';
 
 export const load: PageServerLoad = async ({ locals, params }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
@@ -13,5 +14,11 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 
 	const selfbots = await db.getServerBots(serverId);
 
-	return { selfbots, serverId, botId: params.id, user: locals.user };
+	return {
+		selfbots,
+		serverId,
+		botId: params.id,
+		user: locals.user,
+		selfbotViewOnly: isGuildModeratorUser(locals.user)
+	};
 };

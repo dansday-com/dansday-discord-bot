@@ -42,6 +42,16 @@
 	</nav>
 
 	<div class="min-w-0 flex-1">
-		{@render children()}
+		{#if data.configReadOnly}
+			<div class="mb-4 flex items-start gap-2 rounded-lg border border-amber-800/60 bg-amber-950/40 px-3 py-2.5 text-sm text-amber-100/95" role="status">
+				<i class="fas fa-eye mt-0.5 shrink-0 text-amber-400" aria-hidden="true"></i>
+				<span
+					><strong class="text-amber-50">View only.</strong> Moderators can open configuration but cannot save changes — same as module status visibility.</span
+				>
+			</div>
+		{/if}
+		<div class="min-w-0" inert={data.configReadOnly}>
+			{@render children()}
+		</div>
 	</div>
 </div>

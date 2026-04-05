@@ -492,13 +492,21 @@ export function init(client) {
 							setTimeout(() => afkNotice.delete().catch(() => {}), 10000);
 
 							try {
+								const dmTitle = await translate('afk.messages.dmEmbedTitle', member.guild.id, mentionedMember.id, {});
 								const dmMessageText = await translate('afk.messages.dmMentioned', member.guild.id, mentionedMember.id, {
 									sender: senderDisplayName,
 									server: message.guild.name,
 									channel: message.channel.name,
 									message: message.content.substring(0, 200) + (message.content.length > 200 ? '...' : '')
 								});
-								await mentionedMember.send(dmMessageText);
+								const embedConfig = await getEmbedConfig(member.guild.id);
+								const embed = new EmbedBuilder()
+									.setColor(embedConfig.COLOR)
+									.setTitle(dmTitle)
+									.setDescription(dmMessageText)
+									.setTimestamp()
+									.setFooter({ text: embedConfig.FOOTER });
+								await mentionedMember.send({ embeds: [embed] });
 							} catch (dmErr) {
 								await logger.log(`⚠️ Could not DM ${mentionedMember.id} about mention: ${dmErr.message}`);
 							}

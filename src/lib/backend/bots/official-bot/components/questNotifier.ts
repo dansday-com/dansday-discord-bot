@@ -9,14 +9,20 @@ let tickTimeoutRef: ReturnType<typeof setTimeout> | null = null;
 const POLL_MS = 60_000;
 const POLL_JITTER_MS = 15_000;
 
-function discordTs(iso: string | undefined | null, style: 'f' | 'F' | 'R'): string {
+function discordTs(iso: string | undefined | null, style: 'R'): string {
 	if (!iso) return '—';
 	const t = Date.parse(iso);
 	if (!Number.isFinite(t)) return '—';
 	return `<t:${Math.floor(t / 1000)}:${style}>`;
 }
 
-export async function sendQuestNotificationMessage(client: Client, guildId: string, channelId: string, quest: QuestOrbSummary, opts?: { test?: boolean }) {
+export async function sendQuestNotificationMessage(
+	client: Client,
+	guildId: string,
+	channelId: string,
+	quest: QuestOrbSummary,
+	opts?: { test?: boolean; autoQuestEnabled?: boolean }
+) {
 	const guild = await client.guilds.fetch(guildId).catch(() => null);
 	if (!guild) throw new Error('Guild not found');
 	const channel = await guild.channels.fetch(channelId).catch(() => null);
@@ -26,32 +32,31 @@ export async function sendQuestNotificationMessage(client: Client, guildId: stri
 	const rewardsCore = quest.rewardsLine || (quest.orbHint ? `• ${quest.orbHint}` : '• Orb reward');
 	const rewardsBlock = `${rewardsCore.slice(0, 1008)} 🔮`.slice(0, 1024);
 	const taskBlock = `• ${(quest.taskDetailLine || quest.taskTypeLabel).slice(0, 1006)} ▶️`.slice(0, 1024);
-	const expiresBlock =
-		quest.expiresAt && Number.isFinite(Date.parse(quest.expiresAt)) ? `${discordTs(quest.expiresAt, 'R')} · ${discordTs(quest.expiresAt, 'F')}` : '—';
+	const expiresBlock = quest.expiresAt && Number.isFinite(Date.parse(quest.expiresAt)) ? discordTs(quest.expiresAt, 'R') : '—';
 
-	const embed = new EmbedBuilder()
-		.setColor(embedConfig.COLOR)
-		.setTitle(`🔮 ${quest.questName}`.slice(0, 256))
-		.setURL(quest.questUrl)
-		.addFields(
-			{ name: 'Rewards', value: rewardsBlock, inline: false },
-			{ name: 'Tasks', value: taskBlock, inline: false },
-			{
-				name: '🎮 Game',
-				value: (quest.gameSubtitle || quest.gameTitle || '—').slice(0, 1024),
-				inline: true
-			},
-			{
-				name: '🏢 Publisher',
-				value: (quest.publisher || '—').slice(0, 1024),
-				inline: true
-			},
-			{ name: '⏳ Expires', value: expiresBlock.slice(0, 1024), inline: true },
-			{ name: '📜 Quest', value: quest.questName.slice(0, 1024), inline: true }
-		);
+	const fields: { name: string; value: string; inline?: boolean }[] = [
+		{ name: 'Rewards', value: rewardsBlock, inline: false },
+		{ name: 'Tasks', value: taskBlock, inline: false },
+		{
+			name: '🎮 Game',
+			value: (quest.gameSubtitle || quest.gameTitle || '—').slice(0, 1024),
+			inline: true
+		}
+	];
+	const pub = typeof quest.publisher === 'string' ? quest.publisher.trim() : '';
+	if (pub) fields.push({ name: '🏢 Publisher', value: pub.slice(0, 1024), inline: true });
 
-	if (quest.thumbnailUrl) embed.setThumbnail(quest.thumbnailUrl);
-	if (quest.bannerUrl) embed.setImage(quest.bannerUrl);
+	fields.push(
+		{ name: '⏳ Expires', value: expiresBlock.slice(0, 1024), inline: true },
+		{ name: '📜 Quest', value: quest.questName.slice(0, 1024), inline: true }
+	);
+
+	const embed = new EmbedBuilder().setColor(embedConfig.COLOR).setTitle(`🔮 ${quest.questName}`.slice(0, 256)).addFields(fields);
+
+	const thumb = quest.thumbnailUrl?.trim();
+	const banner = quest.bannerUrl?.trim();
+	if (thumb?.startsWith('http')) embed.setThumbnail(thumb);
+	if (banner?.startsWith('http')) embed.setImage(banner);
 
 	const footerParts = [quest.publisher, embedConfig.FOOTER].filter((x) => typeof x === 'string' && x.trim().length > 0) as string[];
 	embed.setFooter({ text: footerParts.join(' · ').slice(0, 2048) });
@@ -63,9 +68,14 @@ export async function sendQuestNotificationMessage(client: Client, guildId: stri
 		embed.setDescription('_Test notification — notifier is working._');
 	}
 
-	const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-		new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(quest.questUrl).setLabel('Open in Discord').setEmoji('🖥️')
-	);
+	const buttons = [new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(quest.questUrl).setLabel('Open in Discord').setEmoji('🖥️')];
+
+	if (opts?.autoQuestEnabled !== false) {
+		const enrollCustomId = `orb_enroll:${quest.id}`.slice(0, 100);
+		buttons.push(new ButtonBuilder().setCustomId(enrollCustomId).setStyle(ButtonStyle.Primary).setLabel('Enroll').setEmoji('⚠️'));
+	}
+
+	const row = new ActionRowBuilder<ButtonBuilder>().addComponents(...buttons);
 
 	await channel.send({ embeds: [embed], components: [row] });
 }
@@ -79,7 +89,8 @@ async function runTick(client: Client, officialBotId: number) {
 		if (!(await isComponentFeatureEnabled(discordGuildId, serverSettingsComponent.discord_quest_notifier))) continue;
 
 		const row = await db.getServerSettings(server.id, serverSettingsComponent.discord_quest_notifier).catch(() => null);
-		const s = row?.settings && typeof row.settings === 'object' ? (row.settings as Record<string, unknown>) : {};
+		const rawSettings = row && !Array.isArray(row) ? row.settings : null;
+		const s = rawSettings && typeof rawSettings === 'object' ? (rawSettings as Record<string, unknown>) : {};
 		const channelId = typeof s.channel_id === 'string' ? s.channel_id : '';
 		if (!channelId) continue;
 
@@ -87,24 +98,26 @@ async function runTick(client: Client, officialBotId: number) {
 		if (!selfbot?.token) continue;
 
 		const httpProxyUrl = typeof s.http_proxy_url === 'string' ? s.http_proxy_url : '';
+		const autoQuestEnabled = s.auto_quest !== false;
 
 		try {
 			const payload = await fetchQuestsMe(selfbot.token, { httpProxyUrl });
 			const orbQuests = extractOrbQuests(payload);
 			if (orbQuests.length === 0) continue;
 
-			const known = new Set(await db.listServerDiscordOrbQuestIds(server.id));
+			await db.syncServerDiscordOrbQuestsFromApi(server.id, orbQuests);
+			const unpostedIds = new Set(
+				await db.listServerDiscordOrbUnpostedQuestIds(
+					server.id,
+					orbQuests.map((q) => q.id)
+				)
+			);
 
-			if (known.size === 0) {
-				await db.baselineServerDiscordOrbEntries(server.id, orbQuests);
-				continue;
-			}
-
-			const newOnes = orbQuests.filter((q) => !known.has(q.id));
-			for (const q of newOnes) {
+			for (const q of orbQuests) {
+				if (!unpostedIds.has(q.id)) continue;
 				try {
-					await sendQuestNotificationMessage(client, server.discord_server_id, channelId, q);
-					await db.insertServerDiscordOrbNotified(server.id, q);
+					await sendQuestNotificationMessage(client, server.discord_server_id, channelId, q, { autoQuestEnabled });
+					await db.markServerDiscordOrbMessagePosted(server.id, q.id);
 					await logger.log(`🔮 Quest notifier: posted orb quest "${q.questName}" → channel ${channelId} (${server.name})`);
 				} catch (sendErr: any) {
 					await logger.log(`❌ Quest notifier: failed to post quest ${q.id} for server ${server.id}: ${sendErr?.message || sendErr}`);

@@ -192,13 +192,19 @@ CREATE TABLE IF NOT EXISTS server_member_levels (
     voice_minutes_total INT DEFAULT 0,
     voice_minutes_active INT DEFAULT 0,
     voice_minutes_afk INT DEFAULT 0,
+    voice_minutes_video INT NOT NULL DEFAULT 0,
+    voice_minutes_streaming INT NOT NULL DEFAULT 0,
     experience INT DEFAULT 0,
     level INT DEFAULT 1,
     dm_notifications_enabled BOOLEAN DEFAULT TRUE,
     is_in_voice BOOLEAN DEFAULT FALSE,
+    is_in_video BOOLEAN NOT NULL DEFAULT FALSE,
+    is_in_stream BOOLEAN NOT NULL DEFAULT FALSE,
     `rank` INT DEFAULT NULL,
     chat_rewarded_at DATETIME NULL,
     voice_rewarded_at DATETIME NULL,
+    video_rewarded_at DATETIME NULL,
+    stream_rewarded_at DATETIME NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
     UNIQUE KEY unique_member_level (member_id),
@@ -211,6 +217,16 @@ CREATE TABLE IF NOT EXISTS server_member_notifications (
     role_id INT NOT NULL,
     created_at DATETIME NOT NULL,
     UNIQUE KEY unique_member_notification_role (member_id, role_id),
+    FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE,
+    FOREIGN KEY (role_id) REFERENCES server_roles(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS server_member_roles (
+    member_id INT NOT NULL,
+    role_id INT NOT NULL,
+    created_at DATETIME NOT NULL,
+    UNIQUE KEY unique_server_member_role (member_id, role_id),
+    INDEX idx_server_member_roles_member (member_id),
     FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE,
     FOREIGN KEY (role_id) REFERENCES server_roles(id) ON DELETE CASCADE
 );
@@ -266,6 +282,7 @@ CREATE TABLE IF NOT EXISTS server_discord_orbs (
     starts_at DATETIME NULL,
     expires_at DATETIME NULL,
     notified_at DATETIME NOT NULL,
+    orb_message_posted_at DATETIME NULL,
     UNIQUE KEY unique_server_discord_orbs_quest (server_id, discord_quest_id),
     INDEX idx_server_discord_orbs_server_id (server_id),
     FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE

@@ -742,10 +742,12 @@ async function notifyReporterOfDecision(guild, report, translationKey, categoryL
 		server: guild.name,
 		reason: truncateDescription(reviewReason || '')
 	});
+	const titleKey = translationKey.includes('rejected') ? 'staffRating.dm.embedTitleRejected' : 'staffRating.dm.embedTitleApproved';
+	const title = await translate(titleKey, guild.id, reporterUser.id, {});
 	try {
-		await reporterUser.send({
-			content
-		});
+		const embedConfig = await getEmbedConfig(guild.id);
+		const embed = new EmbedBuilder().setColor(embedConfig.COLOR).setTitle(title).setDescription(content).setTimestamp().setFooter({ text: embedConfig.FOOTER });
+		await reporterUser.send({ embeds: [embed] });
 		await logger.log(`✅ Sent DM notification (${translationKey}) to reporter ${report.reporter_discord_id} for report #${report.id}`);
 	} catch (error) {
 		await logger.log(`⚠️ Failed to send DM notification (${translationKey}) to reporter ${report.reporter_discord_id}: ${error.message}`);

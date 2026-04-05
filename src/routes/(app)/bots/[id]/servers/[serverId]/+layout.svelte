@@ -16,7 +16,7 @@
 	const tabs = $derived([
 		{ label: 'Overview', icon: 'fa-chart-pie', iconClass: 'text-sky-400', href: base },
 		{ label: 'Selfbot', icon: 'fa-robot', iconClass: 'text-violet-400', href: `${base}/selfbot` },
-		...(data.user.authenticated && (data.user.account_source === 'accounts' || data.user.account_type === 'owner')
+		...(data.user.authenticated && (data.user.account_source === 'accounts' || data.user.account_source === 'server_accounts')
 			? [{ label: 'Configuration', icon: 'fa-sliders', iconClass: 'text-emerald-400', href: `${base}/config` }]
 			: []),
 		...(data.user.authenticated && (data.user.account_source === 'accounts' || data.user.account_source === 'server_accounts')

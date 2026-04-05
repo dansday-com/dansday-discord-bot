@@ -14,7 +14,6 @@
 		serverId: number;
 		value: string | string[];
 		single?: boolean;
-		/** When multi-select, show removable name chips under the trigger (default true). Set false for large lists / tight layouts. */
 		showMultiChips?: boolean;
 		disabled?: boolean;
 		placeholder?: string;
@@ -114,11 +113,6 @@
 		results = [];
 	}
 
-	function clearMultiSelection() {
-		onchange([]);
-		labelById = {};
-	}
-
 	function removeChip(id: string) {
 		if (single) {
 			onchange('');
@@ -173,12 +167,6 @@
 			{/each}
 		</div>
 	</div>
-{/if}
-
-{#if !single && !showMultiChips && (value as string[]).length > 0 && !disabled}
-	<button type="button" onclick={clearMultiSelection} class="text-ash-500 hover:text-ash-300 decoration-ash-600 mt-1.5 text-xs underline underline-offset-2">
-		Clear selection
-	</button>
 {/if}
 
 {#if open}

@@ -6,6 +6,7 @@ import { existsSync, readFileSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { request as httpRequest } from 'http';
 import { SERVER_SETTINGS } from '$lib/serverSettingsComponents.js';
+import { canUseEmbedBuilder } from '$lib/serverPanelAccess.js';
 import { mainAppearanceBlockingMessage, messageFromBotWebhookPayload } from '$lib/utils/configPrerequisiteErrors.js';
 
 const uploadsDir = join(process.cwd(), 'data', 'embed-images');
@@ -18,6 +19,10 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 	const serverId = parseInt(params.id ?? '');
 	if (isNaN(serverId)) {
 		return json({ success: false, error: 'Invalid server ID' }, { status: 400 });
+	}
+
+	if (!canUseEmbedBuilder(locals, serverId)) {
+		return json({ success: false, error: 'Access denied' }, { status: 403 });
 	}
 
 	let uploaded_image_path: string | null = null;

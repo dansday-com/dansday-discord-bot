@@ -1,4 +1,12 @@
-import { AFK_CONFIG, getEmbedConfig, getServerForCurrentBot, isComponentFeatureEnabled, serverSettingsComponent } from '../../../config.js';
+import {
+	AFK_CONFIG,
+	computePublicServerSlugForServerId,
+	getEmbedConfig,
+	getServerForCurrentBot,
+	isComponentFeatureEnabled,
+	publicServerUrl,
+	serverSettingsComponent
+} from '../../../config.js';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
 import { logger } from '../../../../utils/index.js';
 import { hasPermission, getPermissionDeniedMessage } from './permissions.js';
@@ -43,6 +51,7 @@ import {
 	handleContentCreatorReject,
 	handleContentCreatorDecisionModal
 } from './interface/contentcreator.js';
+import { ORB_ENROLL_BUTTON_PREFIX, ORB_ENROLL_MODAL_PREFIX, handleOrbEnrollButton, handleOrbEnrollModalSubmit } from './orbEnroll.js';
 import { translate } from '../i18n.js';
 
 async function replyIfFeatureDisabled(interaction: any, component: string): Promise<boolean> {
@@ -217,6 +226,23 @@ async function handleMenuButton(interaction) {
 		}
 	}
 
+	if (await isComponentFeatureEnabled(interaction.guild.id, serverSettingsComponent.public_statistics)) {
+		try {
+			const server = await getServerForCurrentBot(interaction.guild.id);
+			const slug = await computePublicServerSlugForServerId(Number(server.id));
+			const url = slug ? publicServerUrl(slug) : null;
+			if (url) {
+				const webBtn = new ButtonBuilder().setLabel('🌐 Web statistics').setURL(url).setStyle(ButtonStyle.Link);
+				const settingsRow = rows[rows.length - 1];
+				if (settingsRow.components.length < 5) {
+					settingsRow.addComponents(webBtn);
+				} else if (rows.length < 5) {
+					rows.push(new ActionRowBuilder().addComponents(webBtn));
+				}
+			}
+		} catch (_) {}
+	}
+
 	const isFromEphemeral = interaction.message?.flags?.has(64) || interaction.replied || interaction.deferred;
 
 	if (isFromEphemeral) {
@@ -314,7 +340,7 @@ export async function handleButtonInteraction(interaction, client) {
 		case 'leaderboard_voice_active':
 		case 'leaderboard_voice_afk':
 		case 'leaderboard_chat':
-			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.leaderboard)) break;
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.public_statistics)) break;
 			await handleLeaderboardButton(interaction);
 			break;
 		case 'settings_dm_toggle':
@@ -356,6 +382,9 @@ export async function handleButtonInteraction(interaction, client) {
 			} else if (customId.startsWith('giveaway_finish_')) {
 				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.giveaway)) break;
 				await handleGiveawayFinish(interaction);
+			} else if (customId.startsWith(ORB_ENROLL_BUTTON_PREFIX)) {
+				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.discord_quest_notifier)) break;
+				await handleOrbEnrollButton(interaction);
 			} else {
 				await logger.log(`🔍 Unknown button interaction: ${customId}`);
 				const errorMsg = await translate('common.errors.unknownButton', interaction.guild?.id, interaction.user?.id);
@@ -399,9 +428,7 @@ export async function createInterfaceButtons(guildId: string | null = null, user
 	const menuLabel = await translate('menu.button', guildId || '', userId || '0');
 	const menuButton = new ButtonBuilder().setCustomId('bot_menu').setLabel(menuLabel).setStyle(ButtonStyle.Primary);
 
-	const buttonRow = new ActionRowBuilder().addComponents(menuButton);
-
-	return [buttonRow];
+	return [new ActionRowBuilder().addComponents(menuButton)];
 }
 
 export async function sendInterfaceToChannel(targetChannel, interaction, client) {
@@ -514,6 +541,9 @@ function init(client) {
 				} else if (interaction.customId.startsWith('giveaway_create')) {
 					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.giveaway)) return;
 					await handleGiveawayModal(interaction);
+				} else if (interaction.customId.startsWith(ORB_ENROLL_MODAL_PREFIX)) {
+					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.discord_quest_notifier)) return;
+					await handleOrbEnrollModalSubmit(interaction);
 				} else {
 					await logger.log(`⚠️ Unknown modal: "${customId}" by ${user.tag} (${user.id})`);
 				}

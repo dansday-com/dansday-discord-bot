@@ -1,12 +1,18 @@
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
-import { getEmbedConfig, getBotConfig, isComponentFeatureEnabled, serverSettingsComponent } from '../../../../config.js';
+import {
+	getEmbedConfig,
+	getBotConfig,
+	getServerForCurrentBot,
+	isComponentFeatureEnabled,
+	serverSettingsComponent,
+	computePublicServerSlugForServerId,
+	publicServerUrl
+} from '../../../../config.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import db from '../../../../../database.js';
 import { logger } from '../../../../../utils/index.js';
 import { getLevelRequirement, determineLevel, sendLevelChangeDM, sendLevelProgressNotification } from '../leveling.js';
 import { translate } from '../../i18n.js';
-import { computeLeaderboardSlugForServerId } from '../../../../../leaderboard/slugs.js';
-
 const PROGRESS_BAR_SLOTS = 10;
 
 function buildProgressBar(ratio) {
@@ -108,11 +114,14 @@ async function refreshMemberLevelData(serverId, discordMemberId) {
 }
 
 async function getServerForInteraction(interaction) {
-	const botConfig = getBotConfig();
-	if (!botConfig || !botConfig.id) {
+	if (!interaction.guild?.id) {
 		return null;
 	}
-	return await db.getServerByDiscordId(botConfig.id, interaction.guild.id);
+	try {
+		return await getServerForCurrentBot(interaction.guild.id);
+	} catch {
+		return null;
+	}
 }
 
 async function buildLevelingEmbeds(server, memberLevelData, sortType = 'xp', guildId = null, userId = null) {
@@ -146,6 +155,8 @@ async function buildLevelingEmbeds(server, memberLevelData, sortType = 'xp', gui
 	const voiceMinutesLabel = await translate('leveling.profile.voiceMinutes', actualGuildId, actualUserId);
 	const voiceActiveLabel = await translate('leveling.profile.voiceActive', actualGuildId, actualUserId);
 	const voiceAfkLabel = await translate('leveling.profile.voiceAfk', actualGuildId, actualUserId);
+	const voiceVideoLabel = await translate('leveling.profile.voiceVideo', actualGuildId, actualUserId);
+	const voiceStreamingLabel = await translate('leveling.profile.voiceStreaming', actualGuildId, actualUserId);
 	const rankLabel = await translate('leveling.profile.rank', actualGuildId, actualUserId);
 	const unrankedText = await translate('leveling.profile.unranked', actualGuildId, actualUserId);
 	const minLabel = await translate('leveling.profile.minutes', actualGuildId, actualUserId);
@@ -158,9 +169,13 @@ async function buildLevelingEmbeds(server, memberLevelData, sortType = 'xp', gui
 	const voiceTotal = memberLevelData?.voice_minutes_total ?? 0;
 	const voiceActive = memberLevelData?.voice_minutes_active ?? 0;
 	const voiceAfk = memberLevelData?.voice_minutes_afk ?? 0;
+	const voiceVideo = memberLevelData?.voice_minutes_video ?? 0;
+	const voiceStreaming = memberLevelData?.voice_minutes_streaming ?? 0;
 	profileLines.push(`• **${voiceMinutesLabel}:** ${formatNumber(voiceTotal)} ${minLabel}`);
 	profileLines.push(`• ├ ${voiceActiveLabel}: ${formatNumber(voiceActive)} ${minLabel}`);
-	profileLines.push(`• └ ${voiceAfkLabel}: ${formatNumber(voiceAfk)} ${minLabel}`);
+	profileLines.push(`• ├ ${voiceAfkLabel}: ${formatNumber(voiceAfk)} ${minLabel}`);
+	profileLines.push(`• ├ ${voiceVideoLabel}: ${formatNumber(voiceVideo)} ${minLabel}`);
+	profileLines.push(`• └ ${voiceStreamingLabel}: ${formatNumber(voiceStreaming)} ${minLabel}`);
 	profileLines.push(`• **${rankLabel}:** ${memberLevelData?.rank ? `#${memberLevelData.rank}` : unrankedText}`);
 
 	const profileTitle = await translate('leveling.profile.title', actualGuildId, actualUserId);
@@ -274,7 +289,7 @@ async function buildLevelingEmbeds(server, memberLevelData, sortType = 'xp', gui
 }
 
 async function createLeaderboardButtons(selectedType = 'xp', guildId = null, userId = null) {
-	if (guildId && !(await isComponentFeatureEnabled(guildId, serverSettingsComponent.leaderboard))) {
+	if (guildId && !(await isComponentFeatureEnabled(guildId, serverSettingsComponent.public_statistics))) {
 		return null;
 	}
 	const topXpLabel = await translate('leveling.buttons.topXp', guildId, userId);
@@ -315,16 +330,12 @@ async function createMenuRow(guildId = null, userId = null, serverId = null) {
 
 	const buttons: any[] = [menuButton];
 
-	if (serverId) {
+	if (serverId && guildId && (await isComponentFeatureEnabled(guildId, serverSettingsComponent.public_statistics))) {
 		try {
-			const slug = await computeLeaderboardSlugForServerId(serverId);
-			const origin = process.env.BASE_URL?.replace(/\/$/, '');
-			if (slug && origin) {
-				const webButton = new ButtonBuilder()
-					.setLabel('🌐 Web Leaderboard')
-					.setURL(`${origin}/${encodeURIComponent(slug)}/leaderboard`)
-					.setStyle(ButtonStyle.Link);
-				buttons.push(webButton);
+			const slug = await computePublicServerSlugForServerId(serverId);
+			const url = slug ? publicServerUrl(slug, 'leaderboard') : null;
+			if (url) {
+				buttons.push(new ButtonBuilder().setLabel('🌐 Web Leaderboard').setURL(url).setStyle(ButtonStyle.Link));
 			}
 		} catch (_) {}
 	}

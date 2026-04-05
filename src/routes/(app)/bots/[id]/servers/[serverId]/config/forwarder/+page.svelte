@@ -281,6 +281,18 @@
 			<span>Module is off. Save configuration to apply. Turn the module on to edit forwarders below.</span>
 		</p>
 	{/if}
+	{#if featureEnabled && !data.hasRunningSelfbot}
+		<p class="flex items-start gap-2 rounded-lg border border-red-800/30 bg-red-900/20 p-3 text-xs text-red-200/90">
+			<i class="fas fa-exclamation-triangle mt-0.5 shrink-0 text-red-400" aria-hidden="true"></i>
+			<span>
+				{#if !data.hasSelfbots}
+					<strong>No selfbot configured.</strong> Add a selfbot under the Selfbots section for this server to use this feature.
+				{:else}
+					<strong>No running selfbot.</strong> Start a selfbot under the Selfbots section for this server to use this feature.
+				{/if}
+			</span>
+		</p>
+	{/if}
 	<div class="space-y-5 transition-opacity" class:pointer-events-none={!featureEnabled} class:opacity-50={!featureEnabled}>
 		<div class="space-y-3">
 			{#if forwarders.length === 0}

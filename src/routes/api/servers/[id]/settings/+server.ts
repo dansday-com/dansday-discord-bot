@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
+import { canEditServerSettings } from '$lib/serverPanelAccess.js';
 import { SERVER_SETTINGS } from '$lib/serverSettingsComponents.js';
 import { logger } from '$lib/utils/index.js';
 
@@ -24,12 +25,6 @@ export const GET: RequestHandler = async ({ locals, params, url }) => {
 		return json({ error: error.message }, { status: 500 });
 	}
 };
-
-function canEditServer(locals: App.Locals, serverId: string): boolean {
-	if (!locals.user.authenticated) return false;
-	if (locals.user.account_source === 'accounts') return true;
-	return locals.user.server_id === Number(serverId);
-}
 
 async function postOfficialBotWebhook(
 	bot: { port: number | null; secret_key: string | null } | null | undefined,
@@ -62,7 +57,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 	if (!panelServerId) {
 		return json({ error: 'Server id required' }, { status: 400 });
 	}
-	if (!canEditServer(locals, panelServerId)) {
+	if (!canEditServerSettings(locals, panelServerId)) {
 		return json({ error: 'Access denied' }, { status: 403 });
 	}
 

@@ -42,20 +42,36 @@ export interface BotProcessInfo {
 	status: string;
 }
 
-export const botProcesses = new Map<number, BotProcessInfo>();
+export type BotProcessKind = 'official' | 'selfbot';
+
+export function botProcessMapKey(kind: BotProcessKind, id: number): string {
+	return `${kind}:${id}`;
+}
+
+function processKeyForBot(bot: any): string {
+	return botProcessMapKey(isSelfbot(bot) ? 'selfbot' : 'official', bot.id);
+}
+
+function processKeyForStop(botId: number, bot?: any): string {
+	if (bot) return processKeyForBot(bot);
+	return botProcessMapKey('official', botId);
+}
+
+export const botProcesses = new Map<string, BotProcessInfo>();
 
 export type BotStatusEvent = { status: string; process_id: number | null; uptime_started_at: number | null };
 type StatusListener = (e: BotStatusEvent) => void;
-const statusListeners = new Map<number, Set<StatusListener>>();
+const statusListeners = new Map<string, Set<StatusListener>>();
 
-export function subscribeBotStatus(botId: number, fn: StatusListener): () => void {
-	if (!statusListeners.has(botId)) statusListeners.set(botId, new Set());
-	statusListeners.get(botId)!.add(fn);
-	return () => statusListeners.get(botId)?.delete(fn);
+export function subscribeBotStatus(kind: BotProcessKind, botNumericId: number, fn: StatusListener): () => void {
+	const mapKey = botProcessMapKey(kind, botNumericId);
+	if (!statusListeners.has(mapKey)) statusListeners.set(mapKey, new Set());
+	statusListeners.get(mapKey)!.add(fn);
+	return () => statusListeners.get(mapKey)?.delete(fn);
 }
 
-function emitBotStatus(botId: number, status: string, process_id: number | null, uptime_started_at: number | null) {
-	const listeners = statusListeners.get(botId);
+function emitBotStatus(mapKey: string, status: string, process_id: number | null, uptime_started_at: number | null) {
+	const listeners = statusListeners.get(mapKey);
 	if (!listeners || listeners.size === 0) return;
 	for (const fn of listeners) fn({ status, process_id, uptime_started_at });
 }
@@ -80,12 +96,18 @@ async function getConnectedSelfbots(officialBotId: number) {
 	}
 }
 
+function selfbotShouldAutoStartWithOfficial(sb: { status?: string | null }): boolean {
+	const st = (sb.status || '').toLowerCase();
+	return st === 'running' || st === 'starting';
+}
+
 function startConnectedSelfbotsInBackground(selfbots: any[], officialBotId: number): void {
-	if (selfbots.length === 0) return;
-	logger.log(`🔗 Scheduling ${selfbots.length} connected selfbot(s) for official bot ${officialBotId} (independent of official process)`);
-	Promise.allSettled(selfbots.map((sb: any) => startBotById(sb.id, sb))).then((results) => {
+	const eligible = (selfbots || []).filter((sb: any) => selfbotShouldAutoStartWithOfficial(sb) && typeof sb.token === 'string' && sb.token.trim() !== '');
+	if (eligible.length === 0) return;
+	logger.log(`🔗 Scheduling ${eligible.length} connected selfbot(s) for official bot ${officialBotId} (independent of official process)`);
+	Promise.allSettled(eligible.map((sb: any) => startBotById(sb.id, sb))).then((results) => {
 		for (let i = 0; i < results.length; i++) {
-			const sb = selfbots[i];
+			const sb = eligible[i];
 			const r = results[i];
 			if (r.status === 'rejected') {
 				logger.log(`⚠️  Selfbot ${sb.id} (${sb.name ?? 'unnamed'}) start failed: ${String(r.reason)}`);
@@ -97,14 +119,16 @@ function startConnectedSelfbotsInBackground(selfbots: any[], officialBotId: numb
 }
 
 export async function startBotById(botId: number, bot: any): Promise<{ success: boolean; error?: string; pid?: number }> {
+	const mapKey = processKeyForBot(bot);
+
 	try {
 		await updateBotStatus(bot, { status: 'starting' });
-		emitBotStatus(botId, 'starting', null, null);
+		emitBotStatus(mapKey, 'starting', null, null);
 	} catch (err: any) {
 		logger.log(`⚠️  Failed to update bot status: ${err.message}`);
 	}
 
-	const existing = botProcesses.get(botId);
+	const existing = botProcesses.get(mapKey);
 	if (existing && existing.process && !existing.process.killed && (existing.process as any).exitCode === null) {
 		return { success: false, error: 'Bot is already running' };
 	}
@@ -149,18 +173,18 @@ export async function startBotById(botId: number, bot: any): Promise<{ success: 
 			status: 'running'
 		};
 
-		botProcesses.set(botId, processInfo);
+		botProcesses.set(mapKey, processInfo);
 
 		botProcess.stdout?.on('data', (data: Buffer) => {
-			console.log(`[Bot ${botId}] ${data.toString()}`);
+			console.log(`[Bot ${mapKey}] ${data.toString()}`);
 		});
 
 		botProcess.stderr?.on('data', (data: Buffer) => {
-			console.error(`[Bot ${botId} Error] ${data.toString()}`);
+			console.error(`[Bot ${mapKey} Error] ${data.toString()}`);
 		});
 
 		botProcess.on('exit', async (code: number | null, signal: string | null) => {
-			const info = botProcesses.get(botId);
+			const info = botProcesses.get(mapKey);
 			if (info) {
 				info.status = 'stopped';
 				info.pid = null;
@@ -170,14 +194,14 @@ export async function startBotById(botId: number, bot: any): Promise<{ success: 
 			try {
 				await updateBotStatus(bot, { status: 'stopped', process_id: null, uptime_started_at: null });
 			} catch (_) {}
-			emitBotStatus(botId, 'stopped', null, null);
+			emitBotStatus(mapKey, 'stopped', null, null);
 			if (code !== 0 && code !== null) {
-				logger.log(`❌ Bot ${botId} exited with code ${code}${signal ? ` (signal: ${signal})` : ''}`);
+				logger.log(`❌ Bot ${mapKey} exited with code ${code}${signal ? ` (signal: ${signal})` : ''}`);
 			}
 		});
 
 		botProcess.on('error', async (err: Error) => {
-			const info = botProcesses.get(botId);
+			const info = botProcesses.get(mapKey);
 			if (info) {
 				info.status = 'stopped';
 				info.pid = null;
@@ -187,8 +211,8 @@ export async function startBotById(botId: number, bot: any): Promise<{ success: 
 			try {
 				await updateBotStatus(bot, { status: 'stopped', process_id: null, uptime_started_at: null });
 			} catch (_) {}
-			emitBotStatus(botId, 'stopped', null, null);
-			logger.log(`❌ Failed to start bot ${botId}: ${err.message}`);
+			emitBotStatus(mapKey, 'stopped', null, null);
+			logger.log(`❌ Failed to start bot ${mapKey}: ${err.message}`);
 		});
 
 		setTimeout(async () => {
@@ -196,7 +220,7 @@ export async function startBotById(botId: number, bot: any): Promise<{ success: 
 				try {
 					await updateBotStatus(bot, { status: 'stopped', process_id: null, uptime_started_at: null });
 				} catch (_) {}
-				emitBotStatus(botId, 'stopped', null, null);
+				emitBotStatus(mapKey, 'stopped', null, null);
 			}
 		}, 500);
 
@@ -211,18 +235,18 @@ export async function startBotById(botId: number, bot: any): Promise<{ success: 
 						process_id: botProcess.pid,
 						uptime_started_at: getCurrentDateTime()
 					});
-					emitBotStatus(botId, 'running', botProcess.pid ?? null, startedAt);
-					logger.log(`✅ Updated bot ${botId} status to running (PID: ${botProcess.pid})`);
+					emitBotStatus(mapKey, 'running', botProcess.pid ?? null, startedAt);
+					logger.log(`✅ Updated bot ${mapKey} status to running (PID: ${botProcess.pid})`);
 				} catch (_) {}
 			} catch (e: any) {
 				try {
 					await updateBotStatus(bot, { status: 'stopped', process_id: null, uptime_started_at: null });
 				} catch (_) {}
-				emitBotStatus(botId, 'stopped', null, null);
+				emitBotStatus(mapKey, 'stopped', null, null);
 			}
 		}, 2000);
 
-		logger.log(`✅ Started bot ${botId} (${selfbot ? 'selfbot' : 'official'}) with PID ${botProcess.pid}`);
+		logger.log(`✅ Started bot ${mapKey} with PID ${botProcess.pid}`);
 
 		let connectedSelfbotsScheduled = 0;
 		if (!selfbot) {
@@ -241,20 +265,32 @@ export async function startBotById(botId: number, bot: any): Promise<{ success: 
 	}
 }
 
-export async function stopBotById(botId: number, bot?: any): Promise<{ success: boolean; error?: string; message?: string }> {
+/** When official bot stops, linked selfbots use fleet_pause: process killed but DB stays "running" so they auto-start again with the official bot. User-initiated selfbot stop uses default (stopped). */
+export type StopBotOptions = { linkedSelfbotStopMode?: 'fleet_pause' };
+
+function dbStateAfterProcessStop(bot: any | undefined, opts?: StopBotOptions): { status: string; process_id: null; uptime_started_at: null } {
+	if (bot && isSelfbot(bot) && opts?.linkedSelfbotStopMode === 'fleet_pause') {
+		return { status: 'running', process_id: null, uptime_started_at: null };
+	}
+	return { status: 'stopped', process_id: null, uptime_started_at: null };
+}
+
+export async function stopBotById(botId: number, bot?: any, opts?: StopBotOptions): Promise<{ success: boolean; error?: string; message?: string }> {
+	const mapKey = processKeyForStop(botId, bot);
+
 	if (bot) {
 		try {
 			await updateBotStatus(bot, { status: 'stopping' });
-			emitBotStatus(botId, 'stopping', null, null);
+			emitBotStatus(mapKey, 'stopping', null, null);
 		} catch (_) {}
 	} else {
 		try {
 			await db.updateBot(botId, { status: 'stopping' });
-			emitBotStatus(botId, 'stopping', null, null);
+			emitBotStatus(mapKey, 'stopping', null, null);
 		} catch (_) {}
 	}
 
-	const botInfo = botProcesses.get(botId);
+	const botInfo = botProcesses.get(mapKey);
 
 	if (!botInfo || !botInfo.process) {
 		if (botInfo && botInfo.pid) {
@@ -265,10 +301,10 @@ export async function stopBotById(botId: number, bot?: any): Promise<{ success: 
 						if (botInfo.pid) process.kill(botInfo.pid, 'SIGKILL');
 					} catch (_) {}
 				}, 2000);
-				botProcesses.delete(botId);
+				botProcesses.delete(mapKey);
 				try {
 					if (bot) {
-						await updateBotStatus(bot, { status: 'stopped', process_id: null, uptime_started_at: null });
+						await updateBotStatus(bot, dbStateAfterProcessStop(bot, opts));
 					} else {
 						await db.updateBot(botId, { status: 'stopped', process_id: null, uptime_started_at: null });
 					}
@@ -277,7 +313,7 @@ export async function stopBotById(botId: number, bot?: any): Promise<{ success: 
 			} catch (_) {
 				try {
 					if (bot) {
-						await updateBotStatus(bot, { status: 'stopped', process_id: null, uptime_started_at: null });
+						await updateBotStatus(bot, dbStateAfterProcessStop(bot, opts));
 					} else {
 						await db.updateBot(botId, { status: 'stopped', process_id: null, uptime_started_at: null });
 					}
@@ -287,7 +323,7 @@ export async function stopBotById(botId: number, bot?: any): Promise<{ success: 
 		}
 		try {
 			if (bot) {
-				await updateBotStatus(bot, { status: 'stopped', process_id: null, uptime_started_at: null });
+				await updateBotStatus(bot, dbStateAfterProcessStop(bot, opts));
 			} else {
 				await db.updateBot(botId, { status: 'stopped', process_id: null, uptime_started_at: null });
 			}
@@ -316,14 +352,14 @@ export async function stopBotById(botId: number, bot?: any): Promise<{ success: 
 
 	try {
 		if (bot) {
-			await updateBotStatus(bot, { status: 'stopped', process_id: null, uptime_started_at: null });
+			await updateBotStatus(bot, dbStateAfterProcessStop(bot, opts));
 		} else {
 			await db.updateBot(botId, { status: 'stopped', process_id: null, uptime_started_at: null });
 		}
-		emitBotStatus(botId, 'stopped', null, null);
+		emitBotStatus(mapKey, 'stopped', null, null);
 	} catch (_) {}
 
-	logger.log(`⏹️  Stopped bot ${botId}`);
+	logger.log(`⏹️  Stopped bot ${mapKey}`);
 
 	if (!bot || !isSelfbot(bot)) {
 		try {
@@ -331,7 +367,7 @@ export async function stopBotById(botId: number, bot?: any): Promise<{ success: 
 			if (selfbots.length > 0) {
 				await Promise.all(
 					selfbots.map((sb: any) =>
-						stopBotById(sb.id, sb).catch((err: Error) => {
+						stopBotById(sb.id, sb, { linkedSelfbotStopMode: 'fleet_pause' }).catch((err: Error) => {
 							logger.log(`⚠️  Failed to stop connected selfbot ${sb.id}: ${err.message}`);
 						})
 					)
@@ -343,8 +379,8 @@ export async function stopBotById(botId: number, bot?: any): Promise<{ success: 
 	return { success: true };
 }
 
-export async function restartBotById(botId: number, bot: any): Promise<{ success: boolean; error?: string; pid?: number }> {
-	const stopResult = await stopBotById(botId, bot);
+export async function restartBotById(botId: number, bot: any, opts?: StopBotOptions): Promise<{ success: boolean; error?: string; pid?: number }> {
+	const stopResult = await stopBotById(botId, bot, opts);
 	if (!stopResult.success && stopResult.error !== 'Bot is not running') {
 		return { success: false, error: `Failed to stop: ${stopResult.error}` };
 	}
@@ -365,7 +401,7 @@ export async function verifyBotStatuses() {
 					process.kill(bot.process_id, 0);
 					const cmdline = readFileSync(`/proc/${bot.process_id}/cmdline`, 'utf8').replace(/\0/g, ' ');
 					if (cmdline.includes('officialbot.js')) {
-						botProcesses.set(bot.id, { process: null, pid: bot.process_id, startTime: null, status: 'running' });
+						botProcesses.set(botProcessMapKey('official', bot.id), { process: null, pid: bot.process_id, startTime: null, status: 'running' });
 						logger.log(`♻️  Re-adopted official bot ${bot.id} (${bot.name}) PID ${bot.process_id}`);
 					} else {
 						await db.updateBot(bot.id, { status: 'stopped', process_id: null, uptime_started_at: null });
@@ -379,20 +415,31 @@ export async function verifyBotStatuses() {
 		for (const sb of selfbots) {
 			if (sb.status === 'running' || sb.status === 'starting' || sb.status === 'stopping') {
 				if (!sb.process_id) {
-					await db.updateServerBot(sb.id, { status: 'stopped', process_id: null, uptime_started_at: null });
+					if (sb.status === 'stopping') {
+						await db.updateServerBot(sb.id, { status: 'stopped', process_id: null, uptime_started_at: null });
+					}
+					/* running/starting with no PID: fleet pause or host restart — keep row so official bot can start them again */
 					continue;
 				}
 				try {
 					process.kill(sb.process_id, 0);
 					const cmdline = readFileSync(`/proc/${sb.process_id}/cmdline`, 'utf8').replace(/\0/g, ' ');
 					if (cmdline.includes('selfbot.js')) {
-						botProcesses.set(sb.id, { process: null, pid: sb.process_id, startTime: null, status: 'running' });
+						botProcesses.set(botProcessMapKey('selfbot', sb.id), { process: null, pid: sb.process_id, startTime: null, status: 'running' });
 						logger.log(`♻️  Re-adopted selfbot ${sb.id} (${sb.name}) PID ${sb.process_id}`);
 					} else {
-						await db.updateServerBot(sb.id, { status: 'stopped', process_id: null, uptime_started_at: null });
+						await db.updateServerBot(sb.id, {
+							status: sb.status === 'stopping' ? 'stopped' : 'running',
+							process_id: null,
+							uptime_started_at: null
+						});
 					}
 				} catch (_) {
-					await db.updateServerBot(sb.id, { status: 'stopped', process_id: null, uptime_started_at: null });
+					await db.updateServerBot(sb.id, {
+						status: sb.status === 'stopping' ? 'stopped' : 'running',
+						process_id: null,
+						uptime_started_at: null
+					});
 				}
 			}
 		}

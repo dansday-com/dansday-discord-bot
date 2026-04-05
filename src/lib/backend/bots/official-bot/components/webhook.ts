@@ -257,6 +257,7 @@ async function handleWebhookRequest(req, res) {
 						const description = payload.description;
 						const questUrl = payload.quest_url;
 						const isTest = payload.test === true;
+						const autoQuestEnabled = payload.auto_quest_enabled !== false;
 						if (!guildId || !channelId || !questName || !questUrl) {
 							res.writeHead(400, { 'Content-Type': 'application/json' });
 							res.end(JSON.stringify({ error: 'Missing guild_id, channel_id, quest_name, or quest_url' }));
@@ -303,7 +304,7 @@ async function handleWebhookRequest(req, res) {
 								thumbnailUrl: thumb,
 								bannerUrl: banner
 							},
-							{ test: isTest }
+							{ test: isTest, autoQuestEnabled }
 						);
 						await logger.log(`📥 Quest notification sent → #${channelId} (guild ${guildId})`);
 						res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -318,10 +319,17 @@ async function handleWebhookRequest(req, res) {
 						const guildId = payload.guild_id;
 						const userId = payload.user_id;
 						const content = payload.content;
+						const embedDescription =
+							typeof payload.embed_description === 'string' && payload.embed_description.trim()
+								? payload.embed_description.trim()
+								: typeof content === 'string'
+									? content.trim()
+									: '';
+						const embedTitle = typeof payload.embed_title === 'string' && payload.embed_title.trim() ? payload.embed_title.trim() : '';
 
-						if (!guildId || !userId || !content) {
+						if (!guildId || !userId || !embedDescription) {
 							res.writeHead(400, { 'Content-Type': 'application/json' });
-							res.end(JSON.stringify({ error: 'Missing guild_id, user_id, or content' }));
+							res.end(JSON.stringify({ error: 'Missing guild_id, user_id, or content/embed_description' }));
 							return;
 						}
 
@@ -337,7 +345,14 @@ async function handleWebhookRequest(req, res) {
 						const user = await client.users.fetch(String(userId)).catch(() => null);
 						if (!user) throw new Error('User not found');
 
-						await user.send({ content: String(content) });
+						const embedConfig = await getEmbedConfig(guildId);
+						const embed = new EmbedBuilder()
+							.setColor(embedConfig.COLOR)
+							.setTitle((embedTitle || guild.name).trim())
+							.setDescription(embedDescription.trim())
+							.setTimestamp()
+							.setFooter({ text: embedConfig.FOOTER });
+						await user.send({ embeds: [embed] });
 						await logger.log(`📩 DM sent via webhook to ${user.tag} (${user.id}) for guild ${guildId}`);
 						res.writeHead(200, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify({ success: true }));

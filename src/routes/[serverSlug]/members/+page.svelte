@@ -10,7 +10,6 @@
 
 	let liveMembers = $state([...(data.members ?? [])]);
 	let es: EventSource | null = null;
-	let streamConnected = $state(false);
 	let mounted = $state(false);
 
 	$effect(() => {
@@ -38,15 +37,10 @@
 		source.onmessage = (e) => {
 			try {
 				const payload = JSON.parse(e.data) as PublicMembersStreamPayload;
-				if (payload?.members && Array.isArray(payload.members)) {
-					liveMembers = payload.members;
-					streamConnected = true;
-				}
+				if (payload?.members && Array.isArray(payload.members)) liveMembers = payload.members;
 			} catch (_) {}
 		};
-		source.onerror = () => {
-			streamConnected = false;
-		};
+		source.onerror = () => {};
 		requestAnimationFrame(() => {
 			mounted = true;
 		});
@@ -79,7 +73,8 @@
 		{ value: 'afk_last', label: 'Non-AFK First' }
 	];
 
-	const PER_PAGE = 20;
+	/** Show everyone on one page until this many; paginate only above. */
+	const PER_PAGE = 100;
 
 	let search = $state('');
 	let sortBy = $state('name_asc');
@@ -149,7 +144,13 @@
 
 	const maxXpInView = $derived(Math.max(1, ...sorted.map((m) => Number(m.experience ?? 0))));
 
-	const totalPages = $derived(Math.ceil(sorted.length / PER_PAGE));
+	const totalPages = $derived(Math.max(1, Math.ceil(sorted.length / PER_PAGE)));
+
+	$effect(() => {
+		const tp = Math.max(1, Math.ceil(sorted.length / PER_PAGE));
+		if (listPage > tp) listPage = tp;
+	});
+
 	const paged = $derived(sorted.slice((listPage - 1) * PER_PAGE, listPage * PER_PAGE));
 
 	function onSearchInput() {
@@ -216,33 +217,17 @@
 
 <svelte:head>
 	<title>{data.server.name || data.server.slug} Members | Dansday Discord Bot</title>
-	<meta name="description" content="Live member directory and leveling stats for {data.server.name || data.server.slug}." />
+	<meta name="description" content="Members, ranks, XP, and voice stats for {data.server.name || data.server.slug}." />
 	<meta name="theme-color" content="#245f73" />
 	<meta property="og:title" content="{data.server.name || data.server.slug} Members | Dansday Discord Bot" />
 	<meta property="og:description" content="Explore members, ranks, XP, and voice activity for this community." />
 </svelte:head>
 
 <div class="lb-members-page-head">
-	<p class="lb-leaderboard-subhead lb-members-subhead">
-		<span>Member directory</span>
-		<span class="lb-metric-pill">All members</span>
-		{#if streamConnected}
-			<span class="lb-metric-pill lb-metric-pill--live">
-				<span class="lb-live-dot"></span>
-				Live
-			</span>
-		{/if}
-	</p>
+	<p class="lb-leaderboard-subhead lb-members-subhead">Members</p>
 </div>
 
-<section class="lb-overview-strip lb-members-overview-strip" aria-label="Directory summary">
-	<div class="lb-overview-strip-item">
-		<div class="lb-overview-strip-icon"><i class="fas fa-users"></i></div>
-		<div class="lb-overview-strip-text">
-			<span class="lb-overview-strip-value">{fmtNum(directoryStrip.n)}</span>
-			<span class="lb-overview-strip-label">In directory</span>
-		</div>
-	</div>
+<section class="lb-overview-strip lb-members-overview-strip" aria-label="Members overview">
 	<div class="lb-overview-strip-item">
 		<div class="lb-overview-strip-icon"><i class="fas fa-star"></i></div>
 		<div class="lb-overview-strip-text">
@@ -281,32 +266,33 @@
 </section>
 
 <div class="lb-members-controls-card">
-	<div class="lb-members-controls-head">
-		<div>
-			<span class="lb-members-controls-title"><i class="fas fa-filter"></i> Find and sort</span>
-			<p class="lb-members-controls-hint">Same live data as the leaderboard — pick a metric and browse everyone.</p>
-		</div>
-	</div>
-	<div class="lb-members-toolbar">
+	<div class="lb-members-toolbar lb-members-toolbar--compact">
 		<div class="lb-members-search-wrap">
 			<i class="fas fa-search lb-members-search-icon"></i>
-			<input type="text" class="lb-members-search-input" placeholder="Search by name or ID…" bind:value={search} oninput={onSearchInput} />
+			<input
+				type="text"
+				class="lb-members-search-input"
+				placeholder="Search name or ID…"
+				aria-label="Search members by name or Discord ID"
+				bind:value={search}
+				oninput={onSearchInput}
+			/>
 		</div>
-		<div class="lb-members-sort-wrap">
-			<label class="lb-members-sort-label" for="lb-members-sort">Sort</label>
-			<select id="lb-members-sort" class="lb-members-sort" bind:value={sortBy} onchange={onSortChange}>
+		<div class="lb-members-sort-wrap lb-members-sort-wrap--compact">
+			<label class="lb-members-sort-label visually-hidden" for="lb-members-sort">Sort list</label>
+			<select id="lb-members-sort" class="lb-members-sort" bind:value={sortBy} onchange={onSortChange} aria-label="Sort members">
 				{#each SORT_OPTIONS as opt}
 					<option value={opt.value}>{opt.label}</option>
 				{/each}
 			</select>
 		</div>
+		<p class="lb-members-count lb-members-count--toolbar">
+			<span class="lb-members-count-num">{sorted.length}</span><span class="lb-members-count-noun">{sorted.length === 1 ? ' member' : ' members'}</span
+			>{#if search}<span class="lb-members-count-query"> · “{search}”</span>{/if}{#if sorted.length > PER_PAGE}<span class="lb-members-count-page">
+					· p.{listPage}/{totalPages}</span
+				>{/if}
+		</p>
 	</div>
-	<p class="lb-members-count lb-members-count--in-card">
-		{sorted.length} member{sorted.length !== 1 ? 's' : ''}{search ? ` matching “${search}”` : ''}
-		{#if totalPages > 1}
-			<span class="lb-members-count-page"> · Page {listPage} / {totalPages}</span>
-		{/if}
-	</p>
 </div>
 
 {#if paged.length === 0}
@@ -319,110 +305,81 @@
 		{#each paged as member, i (member.discord_member_id)}
 			{@const vm = voiceMixPercents(member)}
 			<article
-				class="lb-members-card lb-members-card--v2 {podiumModifier(member.rank)}"
+				class="lb-members-card lb-members-card--v2 lb-members-card--compact {podiumModifier(member.rank)}"
 				class:lb-members-card--mounted={mounted}
-				style="--lb-members-enter-delay: {i * 42}ms"
+				style="--lb-members-enter-delay: {i * 28}ms"
 			>
-				<div class="lb-members-card-glow" aria-hidden="true"></div>
-				<div class="lb-members-card-inner lb-members-card-inner--v2">
-					<div class="lb-members-card-aside">
-						<div class="lb-members-rank-plate" title="Leaderboard rank">
-							<span class="lb-members-rank-plate-label">Rank</span>
-							<span class="lb-members-rank-plate-value">{member.rank != null ? `#${member.rank}` : '—'}</span>
-						</div>
-						<div class="lb-members-avatar-wrap lb-members-avatar-wrap--v2">
-							<div class="lb-members-avatar-ring">
+				<div class="lb-members-card-inner lb-members-card-inner--compact">
+					<div class="lb-members-card-aside lb-members-card-aside--compact">
+						<div class="lb-members-avatar-wrap lb-members-avatar-wrap--compact">
+							<div class="lb-members-avatar-ring lb-members-avatar-ring--compact">
 								<img
 									src={avatarSrc(member)}
 									alt={listDisplayName(member)}
-									class="lb-members-avatar lb-members-avatar--v2"
+									class="lb-members-avatar lb-members-avatar--compact"
 									onerror={(e) => ((e.currentTarget as HTMLImageElement).src = 'https://cdn.discordapp.com/embed/avatars/0.png')}
 								/>
 							</div>
+							<span class="lb-members-rank-overlay" title="Leaderboard rank">{member.rank != null ? `#${member.rank}` : '—'}</span>
 						</div>
 					</div>
 
-					<div class="lb-members-body lb-members-body--v2">
-						<div class="lb-members-title-row lb-members-title-row--v2">
+					<div class="lb-members-body lb-members-body--compact">
+						<div class="lb-members-title-row lb-members-title-row--compact">
 							<div class="lb-members-name-block">
-								<h2 class="lb-members-name">{listDisplayName(member)}</h2>
-								<p class="lb-members-tagline">
-									<span class="lb-members-tagline-level"><i class="fas fa-trophy"></i> Level {member.level ?? 0}</span>
+								<h2 class="lb-members-name lb-members-name--compact">{listDisplayName(member)}</h2>
+								<p class="lb-members-tagline lb-members-tagline--compact">
+									<span>Lv.{member.level ?? 0}</span>
 									<span class="lb-members-tagline-dot" aria-hidden="true">·</span>
-									<span class="lb-members-tagline-xp"><i class="fas fa-bolt"></i> {fmtNum(member.experience ?? 0)} XP</span>
+									<span>{fmtNum(member.experience ?? 0)} XP</span>
 								</p>
 							</div>
 							{#if member.is_afk}
-								<span class="lb-members-afk"><i class="fas fa-moon"></i> AFK</span>
+								<span class="lb-members-afk lb-members-afk--compact"><i class="fas fa-moon"></i> AFK</span>
 							{/if}
 						</div>
 
-						<div class="lb-members-xp-block">
-							<div class="lb-members-xp-head">
-								<span>Share of top XP (this list)</span>
-								<span class="lb-members-xp-meta">{fmtNum(member.experience ?? 0)} / {fmtNum(maxXpInView)}</span>
+						<div class="lb-members-bars-compact">
+							<div class="lb-members-xp-block lb-members-xp-block--compact">
+								<div class="lb-members-xp-head lb-members-xp-head--compact">
+									<span>XP vs list</span>
+									<span class="lb-members-xp-meta">{fmtNum(member.experience ?? 0)} / {fmtNum(maxXpInView)}</span>
+								</div>
+								<div class="lb-members-xp-track lb-members-xp-track--compact">
+									<div class="lb-members-xp-fill" style="width: {xpBarPercent(member)}%"></div>
+								</div>
 							</div>
-							<div class="lb-members-xp-track">
-								<div class="lb-members-xp-fill" style="width: {xpBarPercent(member)}%"></div>
-							</div>
-						</div>
-
-						<div class="lb-members-voice-block">
-							<div class="lb-members-voice-head">
-								<span>Voice mix</span>
-								<span class="lb-members-voice-meta">{fmtNum(member.voice_minutes_active ?? 0)}m active · {fmtNum(member.voice_minutes_afk ?? 0)}m AFK</span>
-							</div>
-							{#if vm.empty}
-								<div class="lb-members-voice-empty">No voice time yet</div>
-							{:else}
-								<div class="lb-members-voice-stack" title="Active vs AFK voice minutes">
-									<div class="lb-members-voice-stack-active" style="width: {vm.activePct}%"></div>
-									<div class="lb-members-voice-stack-afk" style="width: {vm.afkPct}%"></div>
+							{#if !vm.empty}
+								<div class="lb-members-voice-block lb-members-voice-block--compact">
+									<div class="lb-members-voice-stack lb-members-voice-stack--compact" title="Active vs AFK voice minutes">
+										<div class="lb-members-voice-stack-active" style="width: {vm.activePct}%"></div>
+										<div class="lb-members-voice-stack-afk" style="width: {vm.afkPct}%"></div>
+									</div>
 								</div>
 							{/if}
 						</div>
 
-						<div class="lb-members-tiles">
-							<div class="lb-members-tile">
-								<i class="fas fa-comment"></i>
-								<span class="lb-members-tile-value">{fmtNum(member.chat_total ?? 0)}</span>
-								<span class="lb-members-tile-label">Messages</span>
-							</div>
-							<div class="lb-members-tile">
-								<i class="fas fa-microphone-lines"></i>
-								<span class="lb-members-tile-value">{fmtNum(member.voice_minutes_active ?? 0)}m</span>
-								<span class="lb-members-tile-label">Voice active</span>
-							</div>
-							<div class="lb-members-tile">
-								<i class="fas fa-moon"></i>
-								<span class="lb-members-tile-value">{fmtNum(member.voice_minutes_afk ?? 0)}m</span>
-								<span class="lb-members-tile-label">Voice AFK</span>
-							</div>
+						<div class="lb-members-inline-stats" aria-label="Activity summary">
+							<span class="lb-members-inline-stat" title="Messages"><i class="fas fa-comment"></i>{fmtNum(member.chat_total ?? 0)}</span>
+							<span class="lb-members-inline-stat" title="Voice active minutes"
+								><i class="fas fa-microphone-lines"></i>{fmtNum(member.voice_minutes_active ?? 0)}m</span
+							>
+							<span class="lb-members-inline-stat" title="Voice AFK minutes"><i class="fas fa-moon"></i>{fmtNum(member.voice_minutes_afk ?? 0)}m</span>
 						</div>
 
-						<div class="lb-members-dates">
-							<div class="lb-members-date">
-								<i class="fas fa-calendar-alt"></i>
-								<div>
-									<span class="lb-members-date-label">Member since</span>
-									<span class="lb-members-date-value">
-										<LocalTime value={member.member_since} fallback="N/A" class="lb-members-time" />
-									</span>
-								</div>
-							</div>
-							<div class="lb-members-date">
-								<i class="fas fa-user-plus"></i>
-								<div>
-									<span class="lb-members-date-label">Account created</span>
-									<span class="lb-members-date-value">
-										<LocalTime value={member.profile_created_at} fallback="N/A" class="lb-members-time" />
-									</span>
-								</div>
-							</div>
+						<div class="lb-members-dates lb-members-dates--compact">
+							<span class="lb-members-date-inline"
+								><span class="lb-members-date-k">Joined</span>
+								<LocalTime value={member.member_since} fallback="N/A" class="lb-members-time" /></span
+							>
+							<span class="lb-members-date-inline"
+								><span class="lb-members-date-k">Account</span>
+								<LocalTime value={member.profile_created_at} fallback="N/A" class="lb-members-time" /></span
+							>
 						</div>
 
 						{#if member.roles?.length > 0}
-							<div class="lb-members-roles">
+							<div class="lb-members-roles lb-members-roles--compact">
 								<div class="lb-members-roles-head">
 									<i class="fas fa-user-tag"></i>
 									<span>Roles</span>
@@ -444,7 +401,7 @@
 		{/each}
 	</div>
 
-	{#if totalPages > 1}
+	{#if sorted.length > PER_PAGE}
 		<div class="lb-members-pagination">
 			<button type="button" class="lb-members-page-btn" disabled={listPage === 1} onclick={() => (listPage = Math.max(1, listPage - 1))}>
 				<i class="fas fa-chevron-left"></i> Previous

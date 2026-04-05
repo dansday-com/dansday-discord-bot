@@ -14,7 +14,6 @@
 		serverId: number;
 		value: string | string[];
 		single?: boolean;
-		/** When multi-select, show removable name chips under the trigger (default true). Set false for large lists / tight layouts. */
 		showMultiChips?: boolean;
 		disabled?: boolean;
 		placeholder?: string;

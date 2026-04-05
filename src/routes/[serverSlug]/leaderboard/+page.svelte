@@ -621,12 +621,15 @@
 	.lb-podium-col .lb-avatar-img {
 		position: relative;
 		isolation: isolate;
+		clip-path: circle(50% at 50% 50%);
+		-webkit-clip-path: circle(50% at 50% 50%);
+		-webkit-transform: translateZ(0);
+		transform: translateZ(0);
 	}
 	.lb-podium-col .lb-avatar-img::after {
 		content: '';
 		position: absolute;
 		inset: -60%;
-		border-radius: 50%;
 		pointer-events: none;
 		background: linear-gradient(
 			125deg,
@@ -649,10 +652,10 @@
 	}
 	@keyframes lb-avatar-shimmer {
 		0% {
-			transform: translate(-35%, -35%);
+			transform: translate3d(-35%, -35%, 0);
 		}
 		100% {
-			transform: translate(35%, 35%);
+			transform: translate3d(35%, 35%, 0);
 		}
 	}
 	@media (prefers-reduced-motion: reduce) {

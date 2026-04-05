@@ -2,7 +2,6 @@
 	type Props = {
 		label: string;
 		description?: string;
-		/** e.g. `fas fa-bell text-rose-400` — icon before the label (module accent). */
 		labelIconClass?: string;
 		enabled?: boolean;
 		ariaLabel?: string;

@@ -12,7 +12,6 @@
 	let enabled = $state(data.enabled);
 
 	const publicStatsUrl = $derived(enabled && data.publicStatsPath ? `${page.url.origin}${data.publicStatsPath}` : '');
-	const leaderboardUrl = $derived(enabled && data.leaderboardPath ? `${page.url.origin}${data.leaderboardPath}` : '');
 
 	async function save() {
 		saving = true;
@@ -67,7 +66,7 @@
 		{#if enabled && data.publicStatsPath}
 			<div>
 				<label class="text-ash-300 mb-1.5 block text-xs font-medium">
-					<i class="fas fa-link mr-1 text-amber-400"></i>Public URL (server statistics)
+					<i class="fas fa-link mr-1 text-amber-400"></i>Public URL
 				</label>
 				<div class="bg-ash-900 border-ash-600 flex items-center gap-2 rounded-lg border px-3 py-2">
 					<input type="text" readonly value={publicStatsUrl} class="text-ash-100 w-full bg-transparent font-mono text-xs focus:outline-none" />
@@ -76,21 +75,6 @@
 					</a>
 				</div>
 			</div>
-		{/if}
-		{#if enabled && data.leaderboardPath}
-			<div>
-				<label class="text-ash-300 mb-1.5 block text-xs font-medium">
-					<i class="fas fa-trophy mr-1 text-amber-400"></i>Leaderboard URL
-				</label>
-				<div class="bg-ash-900 border-ash-600 flex items-center gap-2 rounded-lg border px-3 py-2">
-					<input type="text" readonly value={leaderboardUrl} class="text-ash-100 w-full bg-transparent font-mono text-xs focus:outline-none" />
-					<a class="text-ash-200 hover:text-ash-100 text-xs font-medium underline" href={data.leaderboardPath || '#'} target="_blank" rel="noreferrer">
-						Open
-					</a>
-				</div>
-			</div>
-		{/if}
-		{#if enabled && (data.publicStatsPath || data.leaderboardPath)}
 			<p class="text-ash-500 text-xs">
 				Generated from the server name. If there’s a duplicate, we append
 				<code class="bg-ash-800 text-ash-200 rounded px-1.5 py-0.5">_1</code>,

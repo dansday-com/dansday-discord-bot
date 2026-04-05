@@ -21,7 +21,6 @@ export const load: PageServerLoad = async ({ locals, params, parent }) => {
 		settings,
 		enabled,
 		serverName: overview?.name || 'server',
-		publicStatsPath: slug ? `/${enc}` : null,
-		leaderboardPath: slug ? `/${enc}/leaderboard` : null
+		publicStatsPath: slug ? `/${enc}` : null
 	};
 };

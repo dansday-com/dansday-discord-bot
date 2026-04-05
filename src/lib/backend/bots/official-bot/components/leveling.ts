@@ -270,8 +270,10 @@ export async function sendLevelChangeDM(guildId, discordMemberId, serverName, ne
 			.setColor(embedConfig.COLOR)
 			.setTitle('🎉 Congratulations!')
 			.setDescription(`You've reached **Level ${newLevel}** in **${serverName}**!\n\nKeep up the great work! 🚀`)
-			.setFooter({ text: embedConfig.FOOTER })
 			.setTimestamp();
+		if (embedConfig.FOOTER && String(embedConfig.FOOTER).trim()) {
+			dmEmbed.setFooter({ text: String(embedConfig.FOOTER).trim() });
+		}
 
 		let dmLeaderboardUrl: string | null = null;
 		if (await isComponentFeatureEnabled(guildId, serverSettingsComponent.public_statistics)) {
@@ -281,7 +283,6 @@ export async function sendLevelChangeDM(guildId, discordMemberId, serverName, ne
 				if (slug) dmLeaderboardUrl = publicServerUrl(slug, 'leaderboard');
 			} catch (_) {}
 		}
-		if (dmLeaderboardUrl) dmEmbed.setURL(dmLeaderboardUrl);
 
 		const dmRow = dmLeaderboardUrl
 			? new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -290,7 +291,7 @@ export async function sendLevelChangeDM(guildId, discordMemberId, serverName, ne
 			: null;
 
 		await dmChannel.send({
-			embeds: [dmEmbed],
+			embeds: [embed],
 			components: dmRow ? [dmRow] : undefined
 		});
 		await logger.log(`⭐ Sent level change DM (${contextLabel}) to ${discordMemberId} for level ${newLevel} in ${serverName}`);
@@ -402,8 +403,6 @@ export async function sendLevelProgressNotification({
 					{ name: '🏆 Rank', value: currentRank ? `#${currentRank}` : 'Unranked', inline: true }
 				);
 		}
-
-		if (leaderboardUrl) embed.setURL(leaderboardUrl);
 
 		const notificationRoleId = await NOTIFICATIONS.getNotificationRoleIdForChannel(guildId, progressChannelId).catch(() => null);
 		const content = notificationRoleId ? `<@&${notificationRoleId}>` : undefined;

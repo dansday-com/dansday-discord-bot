@@ -1000,26 +1000,40 @@ export async function handleContentCreatorDecisionModal(interaction: any) {
 				await db.markMemberContentCreatorRole(server.id, app.member_id, roleIds).catch(() => null);
 			}
 			void syncLiveWatchers(guild.client).catch(() => null);
-			await applicantUser
-				?.send({
-					content: await translate('contentCreator.dm.approved', guild.id, applicantUser.id, {
-						server: guild.name,
-						username: `@${app.tiktok_username}`,
-						reason: truncateReason(reviewReason)
-					})
-				})
-				.catch(() => null);
+			if (applicantUser) {
+				const dmBody = await translate('contentCreator.dm.approved', guild.id, applicantUser.id, {
+					server: guild.name,
+					username: `@${app.tiktok_username}`,
+					reason: truncateReason(reviewReason)
+				});
+				const dmTitle = await translate('contentCreator.dm.embedTitleApproved', guild.id, applicantUser.id, {});
+				const embedConfig = await getEmbedConfig(guild.id);
+				const embed = new EmbedBuilder()
+					.setColor(embedConfig.COLOR)
+					.setTitle(dmTitle)
+					.setDescription(dmBody)
+					.setTimestamp()
+					.setFooter({ text: embedConfig.FOOTER });
+				await applicantUser.send({ embeds: [embed] }).catch(() => null);
+			}
 			await interaction.editReply({ content: `✅ Application #${app.id} approved.` });
 		} else {
-			await applicantUser
-				?.send({
-					content: await translate('contentCreator.dm.rejected', guild.id, applicantUser.id, {
-						server: guild.name,
-						username: `@${app.tiktok_username}`,
-						reason: truncateReason(reviewReason)
-					})
-				})
-				.catch(() => null);
+			if (applicantUser) {
+				const dmBody = await translate('contentCreator.dm.rejected', guild.id, applicantUser.id, {
+					server: guild.name,
+					username: `@${app.tiktok_username}`,
+					reason: truncateReason(reviewReason)
+				});
+				const dmTitle = await translate('contentCreator.dm.embedTitleRejected', guild.id, applicantUser.id, {});
+				const embedConfig = await getEmbedConfig(guild.id);
+				const embed = new EmbedBuilder()
+					.setColor(embedConfig.COLOR)
+					.setTitle(dmTitle)
+					.setDescription(dmBody)
+					.setTimestamp()
+					.setFooter({ text: embedConfig.FOOTER });
+				await applicantUser.send({ embeds: [embed] }).catch(() => null);
+			}
 			await interaction.editReply({ content: `❌ Application #${app.id} rejected.` });
 		}
 

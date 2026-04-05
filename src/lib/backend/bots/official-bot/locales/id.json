@@ -139,7 +139,8 @@
 		},
 		"messages": {
 			"welcomeBack": "✅ Selamat datang kembali, {member}! Status AFK kamu telah dihapus.",
-			"dmMentioned": "📬 Kamu disebutkan oleh {sender} di **{server}** (#{channel})\\n\\n**Pesan:** {message}"
+			"dmEmbedTitle": "📬 Kamu disebutkan",
+			"dmMentioned": "{sender} menyebutmu di **{server}** · #{channel}\\n\\n**Pesan:** {message}"
 		}
 	},
 	"giveaway": {
@@ -270,8 +271,10 @@
 			"roleUpdated": "\\n\\n⭐ **Rating Staff Diperbarui**\\n{roleName}\\nRating: {rating}/5.00 ({totalReports} laporan)"
 		},
 		"dm": {
-			"approved": "✅ Laporan kamu tentang {staff} di **{server}** telah disetujui.\\n\\n**Rating:** {rating}/5\\n**Kategori:** {category}\\n**Feedback:** {description}\\n\\n**Catatan staff:** {reason}\\n\\nTerima kasih sudah membantu menjaga kualitas tim.",
-			"rejected": "❌ Laporan kamu tentang {staff} di **{server}** tidak disetujui.\\n\\n**Alasan:** {reason}\\n\\nSilakan hubungi tim admin jika ingin memberikan konteks tambahan."
+			"approved": "Laporan kamu tentang {staff} di **{server}** telah disetujui.\\n\\n**Rating:** {rating}/5\\n**Kategori:** {category}\\n**Feedback:** {description}\\n\\n**Catatan staff:** {reason}\\n\\nTerima kasih sudah membantu menjaga kualitas tim.",
+			"rejected": "Laporan kamu tentang {staff} di **{server}** tidak disetujui.\\n\\n**Alasan:** {reason}\\n\\nSilakan hubungi tim admin jika ingin memberikan konteks tambahan.",
+			"embedTitleApproved": "✅ Laporan disetujui",
+			"embedTitleRejected": "❌ Laporan tidak disetujui"
 		},
 		"categories": {
 			"helpful": "👍 Membantu",
@@ -330,8 +333,10 @@
 		},
 		"submitted": "✅ Pengajuan content creator kamu untuk **{username}** sudah dikirim dan menunggu persetujuan staff.",
 		"dm": {
-			"approved": "✅ Pengajuan content creator kamu di **{server}** disetujui.\\n\\nTikTok: **{username}**\\nRole Content Creator sudah diberikan.",
-			"rejected": "❌ Pengajuan content creator kamu di **{server}** belum disetujui kali ini.\\n\\nTikTok: **{username}**\\n\\n**Alasan:** {reason}\\n\\nKamu bisa mengajukan lagi setelah masa cooldown (jika server memakai cooldown)."
+			"approved": "Pengajuan kamu di **{server}** disetujui.\\n\\nTikTok: **{username}**\\nRole Content Creator sudah diberikan.",
+			"rejected": "Pengajuan kamu di **{server}** belum disetujui kali ini.\\n\\nTikTok: **{username}**\\n\\n**Alasan:** {reason}\\n\\nKamu bisa mengajukan lagi setelah masa cooldown (jika server memakai cooldown).",
+			"embedTitleApproved": "✅ Content creator disetujui",
+			"embedTitleRejected": "❌ Content creator tidak disetujui"
 		},
 		"autoRejectApplicantReason": "Duplikasi atau penyamaran: username TikTok ini sudah terhubung ke akun Discord lain.",
 		"errors": {

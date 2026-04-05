@@ -140,7 +140,8 @@
 		},
 		"messages": {
 			"welcomeBack": "✅ Welcome back, {member}! Your AFK status has been removed.",
-			"dmMentioned": "📬 You were mentioned by {sender} in **{server}** (#{channel})\\n\\n**Message:** {message}"
+			"dmEmbedTitle": "📬 You were mentioned",
+			"dmMentioned": "{sender} mentioned you in **{server}** · #{channel}\\n\\n**Message:** {message}"
 		}
 	},
 	"giveaway": {
@@ -293,8 +294,10 @@
 			"roleUpdated": "\\n\\n⭐ **Staff Rating Updated**\\n{roleName}\\nRating: {rating}/5.00 ({totalReports} reports)"
 		},
 		"dm": {
-			"approved": "✅ Your staff report about {staff} in **{server}** was approved.\\n\\n**Rating:** {rating}/5\\n**Category:** {category}\\n**Feedback:** {description}\\n\\n**Staff note:** {reason}\\n\\nThank you for helping us keep the team accountable.",
-			"rejected": "❌ Your staff report about {staff} in **{server}** was not approved.\\n\\n**Reason:** {reason}\\n\\nYou can reach out to the admin team if you have more context to share."
+			"approved": "Your report about {staff} in **{server}** was approved.\\n\\n**Rating:** {rating}/5\\n**Category:** {category}\\n**Feedback:** {description}\\n\\n**Staff note:** {reason}\\n\\nThank you for helping us keep the team accountable.",
+			"rejected": "Your report about {staff} in **{server}** was not approved.\\n\\n**Reason:** {reason}\\n\\nYou can reach out to the admin team if you have more context to share.",
+			"embedTitleApproved": "✅ Report approved",
+			"embedTitleRejected": "❌ Report not approved"
 		},
 		"categories": {
 			"helpful": "👍 Helpful",
@@ -384,8 +387,10 @@
 		},
 		"submitted": "✅ Your content creator application for **{username}** was submitted and is waiting for staff approval.",
 		"dm": {
-			"approved": "✅ Your content creator application in **{server}** was approved.\\n\\nTikTok: **{username}**\\nYour Content Creator role has been assigned.",
-			"rejected": "❌ Your content creator application in **{server}** was not approved this time.\\n\\nTikTok: **{username}**\\n\\n**Reason:** {reason}\\n\\nYou can apply again after the cooldown period (if your server uses one)."
+			"approved": "Your application in **{server}** was approved.\\n\\nTikTok: **{username}**\\nYour Content Creator role has been assigned.",
+			"rejected": "Your application in **{server}** was not approved this time.\\n\\nTikTok: **{username}**\\n\\n**Reason:** {reason}\\n\\nYou can apply again after the cooldown period (if your server uses one).",
+			"embedTitleApproved": "✅ Content creator approved",
+			"embedTitleRejected": "❌ Content creator not approved"
 		},
 		"autoRejectApplicantReason": "Duplicate or impersonation: this TikTok username is already linked to another Discord account.",
 		"errors": {

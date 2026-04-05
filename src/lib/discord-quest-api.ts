@@ -185,12 +185,13 @@ function asNum(v: unknown): number | null {
 }
 
 const HTTPS_IMAGE_RE = /^https?:\/\/[^\s]+\.(?:png|jpe?g|webp|gif)(?:\?[^\s]*)?$/i;
+const DISCORD_CDN_RE = /^https:\/\/(?:cdn\.discordapp\.com|media\.discordapp\.net)\/\S+$/i;
 
 function collectHttpsImageUrls(obj: unknown, depth: number, out: Set<string>): void {
 	if (depth > 7 || obj == null) return;
 	if (typeof obj === 'string') {
 		const s = obj.trim();
-		if (HTTPS_IMAGE_RE.test(s)) out.add(s);
+		if (HTTPS_IMAGE_RE.test(s) || DISCORD_CDN_RE.test(s)) out.add(s);
 		return;
 	}
 	if (typeof obj !== 'object') return;
@@ -217,22 +218,45 @@ function discordAppCoverUrl(applicationId: string, hash: string): string | null 
 	return `https://cdn.discordapp.com/app-assets/${applicationId}/${h}.${ext}?size=600`;
 }
 
+/** Discord often omits nested `application` but still sends `application_id` + icon hashes. */
+function resolveApplicationId(cfg: Record<string, unknown>): string {
+	const raw = cfg.application;
+	if (typeof raw === 'string' && raw.trim()) return raw.trim();
+	if (raw && typeof raw === 'object') {
+		const id = asStr((raw as Record<string, unknown>).id);
+		if (id) return id;
+	}
+	return asStr(cfg.application_id) || asStr(cfg.target_application_id);
+}
+
+function readApplicationIconHash(app: Record<string, unknown> | null, cfg: Record<string, unknown>): string {
+	if (app) {
+		const h = asStr(app.icon) || asStr(app.icon_hash);
+		if (h) return h;
+	}
+	return asStr(cfg.application_icon) || asStr(cfg.icon);
+}
+
 function mediaFromApplication(cfg: Record<string, unknown>): { thumb: string | null; banner: string | null } {
-	const app = cfg.application as Record<string, unknown> | undefined;
-	const appId = asStr(app?.id) || asStr(cfg.application_id);
-	if (!appId || !app) return { thumb: null, banner: null };
+	const appId = resolveApplicationId(cfg);
+	if (!appId) return { thumb: null, banner: null };
+
+	const app = cfg.application;
+	const appObj = app && typeof app === 'object' ? (app as Record<string, unknown>) : null;
+
 	let thumb: string | null = null;
+	const iconHash = readApplicationIconHash(appObj, cfg);
+	if (iconHash) thumb = discordAppIconUrl(appId, iconHash);
+
 	let banner: string | null = null;
-	const icon = asStr(app.icon);
-	if (icon) thumb = discordAppIconUrl(appId, icon);
-	const cover = app.cover_image;
+	const cover = (appObj?.cover_image ?? cfg.cover_image) as unknown;
 	if (typeof cover === 'string' && cover) banner = discordAppCoverUrl(appId, cover);
 	else if (cover && typeof cover === 'object') {
 		const u = asStr((cover as Record<string, unknown>).url);
 		const h = asStr((cover as Record<string, unknown>).hash);
 		banner = u || (h ? discordAppCoverUrl(appId, h) : null);
 	}
-	const splash = asStr(app.splash);
+	const splash = appObj ? asStr(appObj.splash) : asStr(cfg.splash);
 	if (!banner && splash) {
 		const ext = splash.startsWith('a_') ? 'gif' : 'jpg';
 		banner = `https://cdn.discordapp.com/splashes/${appId}/${splash}.${ext}?size=512`;
@@ -240,12 +264,38 @@ function mediaFromApplication(cfg: Record<string, unknown>): { thumb: string | n
 	return { thumb, banner };
 }
 
+/** `messages.*` fields are sometimes full URLs, sometimes raw CDN hashes. */
+function messageMediaUrl(applicationId: string, raw: string, kind: 'thumb' | 'banner'): string | null {
+	const s = raw.trim();
+	if (!s) return null;
+	if (s.startsWith('http://') || s.startsWith('https://')) return s;
+	if (!applicationId || /\s/.test(s)) return null;
+	if (kind === 'banner') {
+		const cover = discordAppCoverUrl(applicationId, s);
+		if (cover) return cover;
+		return discordAppIconUrl(applicationId, s);
+	}
+	const icon = discordAppIconUrl(applicationId, s);
+	if (icon) return icon;
+	return discordAppCoverUrl(applicationId, s);
+}
+
 function resolveQuestBannerAndThumb(questId: string, cfg: Record<string, unknown>): { thumb: string | null; banner: string | null } {
 	void questId;
 	const fromApp = mediaFromApplication(cfg);
+	const appId = resolveApplicationId(cfg);
 	const m = cfg.messages as Record<string, unknown> | undefined;
-	const explicitThumb = asStr(m?.character_artwork) || asStr(m?.game_icon) || asStr(m?.publisher_icon) || asStr(m?.quest_bar_artwork);
-	const explicitBanner = asStr(m?.game_artwork) || asStr(m?.quest_artwork) || asStr(m?.hero_artwork) || asStr(m?.banner_artwork);
+	const tryMsg = (kind: 'thumb' | 'banner', ...keys: string[]) => {
+		for (const k of keys) {
+			const raw = asStr(m?.[k]);
+			if (!raw) continue;
+			const u = messageMediaUrl(appId, raw, kind);
+			if (u) return u;
+		}
+		return '';
+	};
+	const explicitThumb = tryMsg('thumb', 'character_artwork', 'game_icon', 'publisher_icon', 'quest_bar_artwork', 'application_icon') || '';
+	const explicitBanner = tryMsg('banner', 'game_artwork', 'quest_artwork', 'hero_artwork', 'banner_artwork', 'quest_banner', 'splash_artwork') || '';
 
 	const urlSet = new Set<string>();
 	collectHttpsImageUrls(cfg, 0, urlSet);
@@ -402,7 +452,14 @@ function toQuestOrbSummary(quest: Record<string, unknown>): QuestOrbSummary {
 	const orbHint = orbHintFromQuest(quest);
 	const taskTypeKey = primaryTaskKeyFromConfig(cfg);
 	const taskTypeLabel = labelForTaskKey(taskTypeKey);
-	const publisher = asStr(messages.publisher_name) || asStr(messages.publisher) || asStr(messages.brand_name);
+	const publisher =
+		asStr(messages.publisher_name) ||
+		asStr(messages.publisher) ||
+		asStr(messages.brand_name) ||
+		asStr(messages.developer_name) ||
+		asStr(messages.studio_name) ||
+		asStr(messages.company_name) ||
+		asStr(messages.vendor_name);
 
 	const pt = primaryTaskObject(cfg);
 	const taskObj = pt?.obj ?? {};

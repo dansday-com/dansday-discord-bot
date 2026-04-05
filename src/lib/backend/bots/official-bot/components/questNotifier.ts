@@ -9,7 +9,7 @@ let tickTimeoutRef: ReturnType<typeof setTimeout> | null = null;
 const POLL_MS = 60_000;
 const POLL_JITTER_MS = 15_000;
 
-function discordTs(iso: string | undefined | null, style: 'f' | 'F' | 'R'): string {
+function discordTs(iso: string | undefined | null, style: 'R'): string {
 	if (!iso) return '—';
 	const t = Date.parse(iso);
 	if (!Number.isFinite(t)) return '—';
@@ -26,32 +26,31 @@ export async function sendQuestNotificationMessage(client: Client, guildId: stri
 	const rewardsCore = quest.rewardsLine || (quest.orbHint ? `• ${quest.orbHint}` : '• Orb reward');
 	const rewardsBlock = `${rewardsCore.slice(0, 1008)} 🔮`.slice(0, 1024);
 	const taskBlock = `• ${(quest.taskDetailLine || quest.taskTypeLabel).slice(0, 1006)} ▶️`.slice(0, 1024);
-	const expiresBlock =
-		quest.expiresAt && Number.isFinite(Date.parse(quest.expiresAt)) ? `${discordTs(quest.expiresAt, 'R')} · ${discordTs(quest.expiresAt, 'F')}` : '—';
+	const expiresBlock = quest.expiresAt && Number.isFinite(Date.parse(quest.expiresAt)) ? discordTs(quest.expiresAt, 'R') : '—';
 
-	const embed = new EmbedBuilder()
-		.setColor(embedConfig.COLOR)
-		.setTitle(`🔮 ${quest.questName}`.slice(0, 256))
-		.setURL(quest.questUrl)
-		.addFields(
-			{ name: 'Rewards', value: rewardsBlock, inline: false },
-			{ name: 'Tasks', value: taskBlock, inline: false },
-			{
-				name: '🎮 Game',
-				value: (quest.gameSubtitle || quest.gameTitle || '—').slice(0, 1024),
-				inline: true
-			},
-			{
-				name: '🏢 Publisher',
-				value: (quest.publisher || '—').slice(0, 1024),
-				inline: true
-			},
-			{ name: '⏳ Expires', value: expiresBlock.slice(0, 1024), inline: true },
-			{ name: '📜 Quest', value: quest.questName.slice(0, 1024), inline: true }
-		);
+	const fields: { name: string; value: string; inline?: boolean }[] = [
+		{ name: 'Rewards', value: rewardsBlock, inline: false },
+		{ name: 'Tasks', value: taskBlock, inline: false },
+		{
+			name: '🎮 Game',
+			value: (quest.gameSubtitle || quest.gameTitle || '—').slice(0, 1024),
+			inline: true
+		}
+	];
+	const pub = typeof quest.publisher === 'string' ? quest.publisher.trim() : '';
+	if (pub) fields.push({ name: '🏢 Publisher', value: pub.slice(0, 1024), inline: true });
 
-	if (quest.thumbnailUrl) embed.setThumbnail(quest.thumbnailUrl);
-	if (quest.bannerUrl) embed.setImage(quest.bannerUrl);
+	fields.push(
+		{ name: '⏳ Expires', value: expiresBlock.slice(0, 1024), inline: true },
+		{ name: '📜 Quest', value: quest.questName.slice(0, 1024), inline: true }
+	);
+
+	const embed = new EmbedBuilder().setColor(embedConfig.COLOR).setTitle(`🔮 ${quest.questName}`.slice(0, 256)).setURL(quest.questUrl).addFields(fields);
+
+	const thumb = quest.thumbnailUrl?.trim();
+	const banner = quest.bannerUrl?.trim();
+	if (thumb?.startsWith('http')) embed.setThumbnail(thumb);
+	if (banner?.startsWith('http')) embed.setImage(banner);
 
 	const footerParts = [quest.publisher, embedConfig.FOOTER].filter((x) => typeof x === 'string' && x.trim().length > 0) as string[];
 	embed.setFooter({ text: footerParts.join(' · ').slice(0, 2048) });

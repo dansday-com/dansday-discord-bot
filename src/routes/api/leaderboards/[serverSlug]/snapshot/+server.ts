@@ -1,7 +1,8 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { SERVER_SETTINGS } from '$lib/serverSettingsComponents.js';
-import { type LeaderboardMetric, type LeaderboardRange, resolveLeaderboardServerBySlug, resolveLeaderboardSnapshot } from '$lib/leaderboard/index.js';
+import { type LeaderboardMetric, type LeaderboardRange, resolveLeaderboardSnapshot } from '$lib/leaderboard/index.js';
+import { resolvePublicServerBySlug } from '$lib/publicServerSlug/index.js';
 function parseMetric(m: string | null): LeaderboardMetric {
 	const v = (m || 'xp').toLowerCase();
 	if (v === 'chat') return 'chat';
@@ -21,11 +22,11 @@ function parseRange(r: string | null): LeaderboardRange {
 
 export const GET: RequestHandler = async ({ params, url }) => {
 	const serverSlug = String(params.serverSlug || '').trim();
-	const resolved = await resolveLeaderboardServerBySlug(serverSlug);
+	const resolved = await resolvePublicServerBySlug(serverSlug);
 	if (!resolved) return new Response(JSON.stringify({ error: 'Not found' }), { status: 404, headers: { 'Content-Type': 'application/json' } });
 	const server = resolved.server;
 
-	const settingsRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.leaderboard);
+	const settingsRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.public_statistics);
 	const settings = (settingsRow as any)?.settings || {};
 	if (settings.enabled === false) {
 		return new Response(JSON.stringify({ error: 'Not found' }), { status: 404, headers: { 'Content-Type': 'application/json' } });

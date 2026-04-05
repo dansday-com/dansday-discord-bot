@@ -2,13 +2,8 @@ import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { SERVER_SETTINGS } from '$lib/serverSettingsComponents.js';
-import {
-	type LeaderboardMetric,
-	type LeaderboardRange,
-	getCachedLeaderboard,
-	resolveLeaderboardServerBySlug,
-	setCachedLeaderboard
-} from '$lib/leaderboard/index.js';
+import { type LeaderboardMetric, getCachedLeaderboard, setCachedLeaderboard } from '$lib/leaderboard/index.js';
+
 function parseMetric(m: string | null): LeaderboardMetric {
 	const v = (m || 'xp').toLowerCase();
 	if (v === 'chat') return 'chat';
@@ -18,25 +13,12 @@ function parseMetric(m: string | null): LeaderboardMetric {
 	return 'xp';
 }
 
-function parseRange(r: string | null): LeaderboardRange {
-	const v = (r || 'all').toLowerCase();
-	if (v === '1d') return '1d';
-	if (v === '7d') return '7d';
-	if (v === '30d') return '30d';
-	return 'all';
-}
+export const load: PageServerLoad = async ({ parent, url, setHeaders }) => {
+	const { server } = await parent();
 
-export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
-	const slug = String(params.serverSlug || '').trim();
-	const resolved = await resolveLeaderboardServerBySlug(slug);
-	if (!resolved) throw error(404, 'Not found');
-	const server = resolved.server;
-
-	const settingsRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.leaderboard);
+	const settingsRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.public_statistics);
 	const settings = (settingsRow as any)?.settings || {};
 	if (settings.enabled === false) throw error(404, 'Not found');
-
-	const serverSlug = resolved.computedSlug;
 
 	const metric = parseMetric(url.searchParams.get('metric'));
 	const range = 'all' as const;
@@ -54,12 +36,6 @@ export const load: PageServerLoad = async ({ params, url, setHeaders }) => {
 	});
 
 	return {
-		server: {
-			id: server.id,
-			name: server.name,
-			slug: serverSlug,
-			server_icon: server.server_icon
-		},
 		metric,
 		limit,
 		rows

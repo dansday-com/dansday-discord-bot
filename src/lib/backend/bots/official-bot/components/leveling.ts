@@ -5,10 +5,12 @@ import {
 	getEmbedConfig,
 	NOTIFICATIONS,
 	isComponentFeatureEnabled,
-	serverSettingsComponent
+	serverSettingsComponent,
+	computePublicServerSlugForServerId,
+	actionRowWebLeaderboardLink
 } from '../../../config.js';
 import db from '../../../../database.js';
-import { EmbedBuilder } from 'discord.js';
+import { ActionRowBuilder, EmbedBuilder } from 'discord.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../utils/index.js';
 
 const recentMessages = new Map();
@@ -244,7 +246,33 @@ export async function sendLevelChangeDM(guildId, discordMemberId, serverName, ne
 		const dmChannel = await member.user.createDM();
 
 		const targetServerName = serverName;
-		await dmChannel.send(`🎉 **Congratulations!** You've reached **Level ${newLevel}** in **${targetServerName}**!\n\nKeep up the great work! 🚀`);
+		const embedConfig = await getEmbedConfig(guildId);
+		const dmEmbed = new EmbedBuilder()
+			.setColor(embedConfig.COLOR)
+			.setTitle('🎉 Congratulations!')
+			.setDescription(`You've reached **Level ${newLevel}** in **${targetServerName}**!\n\nKeep up the great work! 🚀`)
+			.setFooter({ text: embedConfig.FOOTER })
+			.setTimestamp();
+
+		const dmComponents: ActionRowBuilder[] = [];
+		if (await isComponentFeatureEnabled(guildId, serverSettingsComponent.public_statistics)) {
+			const botCfg = getBotConfig();
+			if (botCfg?.id) {
+				const srv = await db.getServerByDiscordId(botCfg.id, guildId);
+				if (srv) {
+					const slug = await computePublicServerSlugForServerId(Number(srv.id));
+					if (slug) {
+						const row = actionRowWebLeaderboardLink(slug, '🌐 Web Leaderboard');
+						if (row) dmComponents.push(row);
+					}
+				}
+			}
+		}
+
+		await dmChannel.send({
+			embeds: [dmEmbed],
+			components: dmComponents.length > 0 ? dmComponents : undefined
+		});
 		await logger.log(`⭐ Sent level change DM (${contextLabel}) to ${discordMemberId} for level ${newLevel} in ${targetServerName}`);
 		return true;
 	} catch (error) {
@@ -353,7 +381,21 @@ export async function sendLevelProgressNotification({
 
 		const notificationRoleId = await NOTIFICATIONS.getNotificationRoleIdForChannel(guildId, progressChannelId).catch(() => null);
 		const content = notificationRoleId ? `<@&${notificationRoleId}>` : undefined;
-		await channel.send({ content, embeds: [embed] });
+
+		const progressComponents: ActionRowBuilder[] = [];
+		if (await isComponentFeatureEnabled(guildId, serverSettingsComponent.public_statistics)) {
+			const slug = await computePublicServerSlugForServerId(Number(server.id));
+			if (slug) {
+				const row = actionRowWebLeaderboardLink(slug, '🌐 Web Leaderboard');
+				if (row) progressComponents.push(row);
+			}
+		}
+
+		await channel.send({
+			content,
+			embeds: [embed],
+			components: progressComponents.length > 0 ? progressComponents : undefined
+		});
 		const typeLabel = eventType === 'rank' ? 'rank' : 'level';
 		await logger.log(`⭐ Sent ${typeLabel} notification (${contextLabel}) to channel ${progressChannelId} for ${discordMemberId} in ${serverName}`);
 		return true;

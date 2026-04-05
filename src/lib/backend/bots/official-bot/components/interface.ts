@@ -1,4 +1,13 @@
-import { AFK_CONFIG, getEmbedConfig, getServerForCurrentBot, isComponentFeatureEnabled, serverSettingsComponent } from '../../../config.js';
+import {
+	AFK_CONFIG,
+	actionRowWebStatisticsLink,
+	computePublicServerSlugForServerId,
+	getEmbedConfig,
+	getServerForCurrentBot,
+	isComponentFeatureEnabled,
+	publicServerOverviewUrl,
+	serverSettingsComponent
+} from '../../../config.js';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
 import { logger } from '../../../../utils/index.js';
 import { hasPermission, getPermissionDeniedMessage } from './permissions.js';
@@ -217,6 +226,17 @@ async function handleMenuButton(interaction) {
 		}
 	}
 
+	if (rows.length < 5 && (await isComponentFeatureEnabled(interaction.guild.id, serverSettingsComponent.public_statistics))) {
+		try {
+			const server = await getServerForCurrentBot(interaction.guild.id);
+			const slug = await computePublicServerSlugForServerId(Number(server.id));
+			if (slug) {
+				const linkRow = actionRowWebStatisticsLink(slug, '🌐 Web statistics');
+				if (linkRow) rows.push(linkRow);
+			}
+		} catch (_) {}
+	}
+
 	const isFromEphemeral = interaction.message?.flags?.has(64) || interaction.replied || interaction.deferred;
 
 	if (isFromEphemeral) {
@@ -314,7 +334,7 @@ export async function handleButtonInteraction(interaction, client) {
 		case 'leaderboard_voice_active':
 		case 'leaderboard_voice_afk':
 		case 'leaderboard_chat':
-			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.leaderboard)) break;
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.public_statistics)) break;
 			await handleLeaderboardButton(interaction);
 			break;
 		case 'settings_dm_toggle':
@@ -400,6 +420,17 @@ export async function createInterfaceButtons(guildId: string | null = null, user
 	const menuButton = new ButtonBuilder().setCustomId('bot_menu').setLabel(menuLabel).setStyle(ButtonStyle.Primary);
 
 	const buttonRow = new ActionRowBuilder().addComponents(menuButton);
+
+	if (guildId && (await isComponentFeatureEnabled(guildId, serverSettingsComponent.public_statistics))) {
+		try {
+			const server = await getServerForCurrentBot(guildId);
+			const slug = await computePublicServerSlugForServerId(Number(server.id));
+			const url = slug ? publicServerOverviewUrl(slug) : null;
+			if (url) {
+				buttonRow.addComponents(new ButtonBuilder().setLabel('🌐 Web statistics').setURL(url).setStyle(ButtonStyle.Link));
+			}
+		} catch (_) {}
+	}
 
 	return [buttonRow];
 }

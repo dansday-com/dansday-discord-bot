@@ -1,12 +1,17 @@
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
-import { getEmbedConfig, getBotConfig, isComponentFeatureEnabled, serverSettingsComponent } from '../../../../config.js';
+import {
+	getEmbedConfig,
+	getBotConfig,
+	isComponentFeatureEnabled,
+	serverSettingsComponent,
+	computePublicServerSlugForServerId,
+	publicWebLeaderboardUrl
+} from '../../../../config.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import db from '../../../../../database.js';
 import { logger } from '../../../../../utils/index.js';
 import { getLevelRequirement, determineLevel, sendLevelChangeDM, sendLevelProgressNotification } from '../leveling.js';
 import { translate } from '../../i18n.js';
-import { computeLeaderboardSlugForServerId } from '../../../../../leaderboard/slugs.js';
-
 const PROGRESS_BAR_SLOTS = 10;
 
 function buildProgressBar(ratio) {
@@ -274,7 +279,7 @@ async function buildLevelingEmbeds(server, memberLevelData, sortType = 'xp', gui
 }
 
 async function createLeaderboardButtons(selectedType = 'xp', guildId = null, userId = null) {
-	if (guildId && !(await isComponentFeatureEnabled(guildId, serverSettingsComponent.leaderboard))) {
+	if (guildId && !(await isComponentFeatureEnabled(guildId, serverSettingsComponent.public_statistics))) {
 		return null;
 	}
 	const topXpLabel = await translate('leveling.buttons.topXp', guildId, userId);
@@ -315,16 +320,12 @@ async function createMenuRow(guildId = null, userId = null, serverId = null) {
 
 	const buttons: any[] = [menuButton];
 
-	if (serverId) {
+	if (serverId && guildId && (await isComponentFeatureEnabled(guildId, serverSettingsComponent.public_statistics))) {
 		try {
-			const slug = await computeLeaderboardSlugForServerId(serverId);
-			const origin = process.env.BASE_URL?.replace(/\/$/, '');
-			if (slug && origin) {
-				const webButton = new ButtonBuilder()
-					.setLabel('🌐 Web Leaderboard')
-					.setURL(`${origin}/${encodeURIComponent(slug)}/leaderboard`)
-					.setStyle(ButtonStyle.Link);
-				buttons.push(webButton);
+			const slug = await computePublicServerSlugForServerId(serverId);
+			const url = slug ? publicWebLeaderboardUrl(slug) : null;
+			if (url) {
+				buttons.push(new ButtonBuilder().setLabel('🌐 Web Leaderboard').setURL(url).setStyle(ButtonStyle.Link));
 			}
 		} catch (_) {}
 	}

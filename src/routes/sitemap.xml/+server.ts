@@ -1,6 +1,7 @@
 import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
-import { listEnabledLeaderboardSlugs } from '$lib/leaderboard/index.js';
+import { listPublicServerSlugs } from '$lib/publicServerSlug/index.js';
+import { PUBLIC_WEB_LEADERBOARD_PATH } from '$lib/publicSiteUrls.js';
 import { parseMySQLDateTimeUtc } from '$lib/utils/datetime.js';
 
 function escapeXml(unsafe: string): string {
@@ -23,7 +24,7 @@ export const GET: RequestHandler = async () => {
 		return new Response('BASE_URL environment variable is not set', { status: 503 });
 	}
 
-	const servers = await listEnabledLeaderboardSlugs();
+	const servers = await listPublicServerSlugs();
 
 	const toLastmod = (d: unknown) => {
 		try {
@@ -35,15 +36,19 @@ export const GET: RequestHandler = async () => {
 		}
 	};
 
-	const leaderboardUrlData = servers
+	const publicPageRows = servers
 		.filter((s: { slug?: string }) => s.slug)
-		.map((s: { slug: string; updated_at?: unknown }) => {
-			const loc = `${baseUrl}/${encodeURIComponent(String(s.slug))}/leaderboard`;
+		.flatMap((s: { slug: string; updated_at?: unknown }) => {
+			const enc = encodeURIComponent(String(s.slug));
 			const lastmod = toLastmod(s.updated_at);
-			return { loc, lastmod, changefreq: 'weekly' as const, priority: 0.8 };
+			const base = { lastmod, changefreq: 'weekly' as const, priority: 0.8 as const };
+			return [
+				{ loc: `${baseUrl}/${enc}`, ...base },
+				{ loc: `${baseUrl}/${enc}/${PUBLIC_WEB_LEADERBOARD_PATH}`, ...base }
+			];
 		});
 
-	const allUrlData = [{ loc: `${baseUrl}/`, changefreq: 'daily' as const, priority: 1.0, lastmod: new Date().toISOString() }, ...leaderboardUrlData];
+	const allUrlData = [{ loc: `${baseUrl}/`, changefreq: 'daily' as const, priority: 1.0, lastmod: new Date().toISOString() }, ...publicPageRows];
 
 	const urlElements = allUrlData
 		.map(({ loc, lastmod, changefreq, priority }) => {

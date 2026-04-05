@@ -542,7 +542,7 @@ async function generateUniqueLeaderboardSlug(baseName: string) {
 	const rows = await db.execute(sql`
 		SELECT JSON_UNQUOTE(JSON_EXTRACT(settings, '$.slug')) AS slug
 		FROM server_settings
-		WHERE component_name = ${SERVER_SETTINGS.component.leaderboard}
+		WHERE component_name = ${SERVER_SETTINGS.component.public_statistics}
 		  AND JSON_EXTRACT(settings, '$.slug') IS NOT NULL
 		  AND (
 				JSON_UNQUOTE(JSON_EXTRACT(settings, '$.slug')) = ${base}
@@ -559,13 +559,13 @@ async function generateUniqueLeaderboardSlug(baseName: string) {
 }
 
 async function ensureLeaderboardSettingsHaveSlug(serverId: number, serverName: string) {
-	const row = await getServerSettings(serverId, SERVER_SETTINGS.component.leaderboard);
+	const row = await getServerSettings(serverId, SERVER_SETTINGS.component.public_statistics);
 	const settings = (row as any)?.settings && typeof (row as any).settings === 'object' ? (row as any).settings : {};
 	if (settings?.slug) return true;
 	const slug = await generateUniqueLeaderboardSlug(serverName);
 	const next: Record<string, unknown> = { ...settings, slug };
 	if (!('enabled' in next)) next.enabled = true;
-	await upsertServerSettings(serverId, SERVER_SETTINGS.component.leaderboard, next);
+	await upsertServerSettings(serverId, SERVER_SETTINGS.component.public_statistics, next);
 	return true;
 }
 
@@ -583,7 +583,7 @@ export async function getServerByLeaderboardSlug(slug: string) {
 		SELECT sv.*
 		FROM servers sv
 		INNER JOIN server_settings ss
-			ON ss.server_id = sv.id AND ss.component_name = 'leaderboard'
+			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.public_statistics}
 		WHERE JSON_UNQUOTE(JSON_EXTRACT(ss.settings, '$.slug')) = ${s}
 		  AND sv.selfbot_id IS NULL
 		LIMIT 1
@@ -604,13 +604,17 @@ function parseLeaderboardSettingsColumn(raw: unknown): Record<string, unknown> {
 	return {};
 }
 
+function leaderboardModuleEnabledFromSettings(s: Record<string, unknown>): boolean {
+	return s.enabled !== false;
+}
+
 export async function listPublicLeaderboardSlugs() {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
 		SELECT sv.updated_at, ss.settings AS settings
 		FROM servers sv
 		INNER JOIN server_settings ss
-			ON ss.server_id = sv.id AND ss.component_name = 'leaderboard'
+			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.public_statistics}
 		WHERE JSON_EXTRACT(ss.settings, '$.slug') IS NOT NULL
 		  AND sv.selfbot_id IS NULL
 	`);
@@ -619,7 +623,7 @@ export async function listPublicLeaderboardSlugs() {
 		.filter((r: any) => {
 			const s = parseLeaderboardSettingsColumn(r?.settings);
 			const slug = typeof s.slug === 'string' ? s.slug.trim() : '';
-			return Boolean(slug) && leaderboardModuleEnabledFromSettings(s) && leaderboardPublicPageEnabledFromSettings(s);
+			return Boolean(slug) && leaderboardModuleEnabledFromSettings(s);
 		})
 		.map((r: any) => {
 			const s = parseLeaderboardSettingsColumn(r?.settings);
@@ -638,7 +642,7 @@ export async function listEnabledLeaderboardServers() {
 			ss.settings AS settings
 		FROM servers sv
 		INNER JOIN server_settings ss
-			ON ss.server_id = sv.id AND ss.component_name = 'leaderboard'
+			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.public_statistics}
 		WHERE sv.selfbot_id IS NULL
 	`);
 	const list = (rows[0] as unknown as any[]) || [];
@@ -1256,7 +1260,7 @@ export async function getServerMembersList(serverId: any) {
 	}));
 }
 
-export async function getServerOverview(serverId: any) {
+export async function getServerOverview(serverId: any, opts?: { forPublicPage?: boolean }) {
 	await initializeDatabase();
 	if (serverId === undefined || serverId === null || serverId === '') return null;
 
@@ -1267,22 +1271,9 @@ export async function getServerOverview(serverId: any) {
 	const serverRow = serverRows[0];
 	if (!serverRow) return null;
 
-	const [
-		memberCounts,
-		leveledCount,
-		afkCount,
-		channelCounts,
-		categoriesCount,
-		rolesCount,
-		levelingStats,
-		customRolesCount,
-		memberSyncTimes,
-		channelSyncTimes,
-		categorySyncTimes,
-		roleSyncTimes,
-		levelSyncTimes,
-		settingsRows
-	] = await Promise.all([
+	const forPublic = opts?.forPublicPage === true;
+
+	const statsPromises = [
 		db.execute(
 			sql`SELECT COUNT(*) AS total, SUM(CASE WHEN is_booster = 1 THEN 1 ELSE 0 END) AS unique_boosters FROM server_members WHERE server_id = ${Number(serverId)}`
 		),
@@ -1302,22 +1293,90 @@ export async function getServerOverview(serverId: any) {
 		),
 		db.execute(
 			sql`SELECT COUNT(DISTINCT smcsr.member_id) AS members_with_custom_roles FROM server_member_custom_supporter_roles smcsr INNER JOIN server_members sm ON sm.id = smcsr.member_id WHERE sm.server_id = ${Number(serverId)}`
-		),
-		db.execute(sql`SELECT MAX(updated_at) AS last_updated FROM server_members WHERE server_id = ${Number(serverId)}`),
-		db.execute(sql`SELECT MAX(updated_at) AS last_updated FROM server_channels WHERE server_id = ${Number(serverId)}`),
-		db.execute(sql`SELECT MAX(updated_at) AS last_updated FROM server_categories WHERE server_id = ${Number(serverId)}`),
-		db.execute(sql`SELECT MAX(updated_at) AS last_updated FROM server_roles WHERE server_id = ${Number(serverId)}`),
-		db.execute(
-			sql`SELECT MAX(sml.updated_at) AS last_updated FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ${Number(serverId)}`
-		),
-		db
-			.select({ component_name: schema.serverSettings.component_name, updated_at: schema.serverSettings.updated_at })
-			.from(schema.serverSettings)
-			.where(eq(schema.serverSettings.server_id, Number(serverId)))
-			.orderBy(asc(schema.serverSettings.component_name))
-	]);
+		)
+	];
+
+	let memberCounts: any;
+	let leveledCount: any;
+	let afkCount: any;
+	let channelCounts: any;
+	let categoriesCount: any;
+	let rolesCount: any;
+	let levelingStats: any;
+	let customRolesCount: any;
+	let memberSyncTimes: any;
+	let channelSyncTimes: any;
+	let categorySyncTimes: any;
+	let roleSyncTimes: any;
+	let levelSyncTimes: any;
+	let settingsRows: any;
+
+	if (forPublic) {
+		[memberCounts, leveledCount, afkCount, channelCounts, categoriesCount, rolesCount, levelingStats, customRolesCount] = await Promise.all(statsPromises);
+	} else {
+		[
+			memberCounts,
+			leveledCount,
+			afkCount,
+			channelCounts,
+			categoriesCount,
+			rolesCount,
+			levelingStats,
+			customRolesCount,
+			memberSyncTimes,
+			channelSyncTimes,
+			categorySyncTimes,
+			roleSyncTimes,
+			levelSyncTimes,
+			settingsRows
+		] = await Promise.all([
+			...statsPromises,
+			db.execute(sql`SELECT MAX(updated_at) AS last_updated FROM server_members WHERE server_id = ${Number(serverId)}`),
+			db.execute(sql`SELECT MAX(updated_at) AS last_updated FROM server_channels WHERE server_id = ${Number(serverId)}`),
+			db.execute(sql`SELECT MAX(updated_at) AS last_updated FROM server_categories WHERE server_id = ${Number(serverId)}`),
+			db.execute(sql`SELECT MAX(updated_at) AS last_updated FROM server_roles WHERE server_id = ${Number(serverId)}`),
+			db.execute(
+				sql`SELECT MAX(sml.updated_at) AS last_updated FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ${Number(serverId)}`
+			),
+			db
+				.select({ component_name: schema.serverSettings.component_name, updated_at: schema.serverSettings.updated_at })
+				.from(schema.serverSettings)
+				.where(eq(schema.serverSettings.server_id, Number(serverId)))
+				.orderBy(asc(schema.serverSettings.component_name))
+		]);
+	}
 
 	const r = (raw: any, idx = 0) => (raw[0] as unknown as any[])[idx] || {};
+
+	const stats = {
+		members_total: r(memberCounts).total || 0,
+		members_boosters: serverRow.total_boosters || 0,
+		members_unique_boosters: r(memberCounts).unique_boosters || 0,
+		members_with_levels: r(leveledCount).leveled || 0,
+		member_afk: r(afkCount).afk || 0,
+		members_with_custom_roles: r(customRolesCount).members_with_custom_roles || 0,
+		channels_total: r(channelCounts).total || 0,
+		channels_text: r(channelCounts).text_count || 0,
+		channels_announcement: r(channelCounts).announcement_count || 0,
+		channels_voice: r(channelCounts).voice_count || 0,
+		channels_stage: r(channelCounts).stage_count || 0,
+		categories_total: r(categoriesCount).count || 0,
+		roles_total: r(rolesCount).count || 0,
+		leveling_total_experience: Math.round(r(levelingStats).total_experience || 0),
+		leveling_avg_level: Math.round((r(levelingStats).avg_level || 0) * 100) / 100,
+		leveling_max_level: r(levelingStats).max_level || 0,
+		leveling_total_chat: r(levelingStats).total_chat || 0,
+		leveling_total_voice_minutes: r(levelingStats).total_voice_minutes || 0,
+		leveling_total_voice_active: r(levelingStats).total_voice_active || 0,
+		leveling_total_voice_afk: r(levelingStats).total_voice_afk || 0
+	};
+
+	if (forPublic) {
+		return {
+			...serverRow,
+			stats
+		};
+	}
 
 	const settingsLastUpdated = settingsRows.reduce((latest: any, row: any) => {
 		if (!row.updated_at) return latest;
@@ -1355,28 +1414,7 @@ export async function getServerOverview(serverId: any) {
 	return {
 		...serverRow,
 		bot_id: panelBotId,
-		stats: {
-			members_total: r(memberCounts).total || 0,
-			members_boosters: serverRow.total_boosters || 0,
-			members_unique_boosters: r(memberCounts).unique_boosters || 0,
-			members_with_levels: r(leveledCount).leveled || 0,
-			member_afk: r(afkCount).afk || 0,
-			members_with_custom_roles: r(customRolesCount).members_with_custom_roles || 0,
-			channels_total: r(channelCounts).total || 0,
-			channels_text: r(channelCounts).text_count || 0,
-			channels_announcement: r(channelCounts).announcement_count || 0,
-			channels_voice: r(channelCounts).voice_count || 0,
-			channels_stage: r(channelCounts).stage_count || 0,
-			categories_total: r(categoriesCount).count || 0,
-			roles_total: r(rolesCount).count || 0,
-			leveling_total_experience: Math.round(r(levelingStats).total_experience || 0),
-			leveling_avg_level: Math.round((r(levelingStats).avg_level || 0) * 100) / 100,
-			leveling_max_level: r(levelingStats).max_level || 0,
-			leveling_total_chat: r(levelingStats).total_chat || 0,
-			leveling_total_voice_minutes: r(levelingStats).total_voice_minutes || 0,
-			leveling_total_voice_active: r(levelingStats).total_voice_active || 0,
-			leveling_total_voice_afk: r(levelingStats).total_voice_afk || 0
-		},
+		stats,
 		sync: {
 			members_last_updated: r(memberSyncTimes).last_updated || null,
 			channels_last_updated: r(channelSyncTimes).last_updated || null,

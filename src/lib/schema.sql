@@ -215,6 +215,16 @@ CREATE TABLE IF NOT EXISTS server_member_notifications (
     FOREIGN KEY (role_id) REFERENCES server_roles(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS server_member_roles (
+    member_id INT NOT NULL,
+    role_id INT NOT NULL,
+    created_at DATETIME NOT NULL,
+    UNIQUE KEY unique_server_member_role (member_id, role_id),
+    INDEX idx_server_member_roles_member (member_id),
+    FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE,
+    FOREIGN KEY (role_id) REFERENCES server_roles(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS server_member_custom_supporter_roles (
     id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     member_id INT NOT NULL,

@@ -289,6 +289,21 @@ export const serverMemberNotifications = mysqlTable(
 	(t) => [uniqueIndex('unique_member_notification_role').on(t.member_id, t.role_id), index('idx_server_member_notifications_role').on(t.role_id)]
 );
 
+/** Current Discord roles for each member (full list; populated in syncMemberRoles). */
+export const serverMemberRoles = mysqlTable(
+	'server_member_roles',
+	{
+		member_id: int('member_id')
+			.notNull()
+			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		role_id: int('role_id')
+			.notNull()
+			.references(() => serverRoles.id, { onDelete: 'cascade' }),
+		created_at: datetime('created_at').notNull()
+	},
+	(t) => [uniqueIndex('unique_server_member_role').on(t.member_id, t.role_id), index('idx_server_member_roles_member').on(t.member_id)]
+);
+
 export const serverMemberCustomSupporterRoles = mysqlTable(
 	'server_member_custom_supporter_roles',
 	{

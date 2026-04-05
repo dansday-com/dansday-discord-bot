@@ -1,9 +1,8 @@
+export { type LeaderboardMetric, type LeaderboardRow, type LeaderboardSnapshot, getCachedLeaderboard, setCachedLeaderboard } from './cache.js';
 export {
-	type LeaderboardMetric,
-	type LeaderboardRange,
-	type LeaderboardRow,
-	type LeaderboardSnapshot,
-	getCachedLeaderboard,
-	setCachedLeaderboard
-} from './cache.js';
-export { resolveLeaderboardSnapshot, subscribeLeaderboard } from './stream.js';
+	buildLeaderboardRowsFromMembersList,
+	type MembersListEntry,
+	type ResolveLeaderboardSnapshotOpts,
+	resolveLeaderboardSnapshot,
+	subscribeLeaderboard
+} from './stream.js';

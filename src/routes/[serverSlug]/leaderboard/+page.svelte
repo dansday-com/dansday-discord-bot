@@ -77,12 +77,12 @@
 	}
 
 	function snapshotUrl(m: Metric) {
-		return `/api/leaderboards/${data.server.slug}/snapshot?metric=${m}&range=all&limit=${data.limit}`;
+		return `/api/leaderboards/${data.server.slug}/snapshot?metric=${m}&limit=${data.limit}`;
 	}
 
 	function connect() {
 		es?.close();
-		const myEs = new EventSource(`/api/leaderboards/${data.server.slug}/stream?metric=${metric}&range=all&limit=${data.limit}`);
+		const myEs = new EventSource(`/api/leaderboards/${data.server.slug}/stream?metric=${metric}&limit=${data.limit}`);
 		es = myEs;
 		myEs.onmessage = (e) => {
 			if (es !== myEs) return;
@@ -256,7 +256,7 @@
 							{metricValueAnimated(r, metric)}
 							<span class="lb-podium-unit">{metricUnit(metric)}</span>
 						</div>
-						<div class="lb-podium-level">Level {r.level ?? 1}</div>
+						<div class="lb-podium-level">Level {r.level ?? 0}</div>
 					</div>
 
 					<div class="lb-podium-block" style="height: {podiumHeights[rank]}; background: {rankGradients[rank]};">
@@ -287,7 +287,7 @@
 					</div>
 					<div class="lb-list-info">
 						<div class="lb-list-name" title={displayName(r)}>{displayName(r)}</div>
-						<div class="lb-list-sub">Level {r.level ?? 1}</div>
+						<div class="lb-list-sub">Level {r.level ?? 0}</div>
 						<div class="lb-list-bar-track">
 							<div class="lb-list-bar-fill" style="width: {Math.max(3, Math.round((metricValueNumber(r, metric) / maxValue) * 100))}%"></div>
 						</div>

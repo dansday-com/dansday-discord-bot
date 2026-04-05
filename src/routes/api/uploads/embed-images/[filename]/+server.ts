@@ -37,7 +37,6 @@ export const GET: RequestHandler = ({ params }) => {
 	return new Response(data, {
 		headers: {
 			'Content-Type': contentType,
-			'Cache-Control': 'no-store, no-cache, must-revalidate, private',
 			'X-Content-Type-Options': 'nosniff'
 		}
 	});

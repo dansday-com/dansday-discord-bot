@@ -1,7 +1,7 @@
 import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
 import { listPublicServerSlugs } from '$lib/publicServerSlug/index.js';
-import { PUBLIC_WEB_LEADERBOARD_PATH } from '$lib/publicSiteUrls.js';
+import { PUBLIC_WEB_LEADERBOARD_PATH, PUBLIC_WEB_MEMBERS_PATH } from '$lib/publicSiteUrls.js';
 import { parseMySQLDateTimeUtc } from '$lib/utils/datetime.js';
 
 function escapeXml(unsafe: string): string {
@@ -44,7 +44,8 @@ export const GET: RequestHandler = async () => {
 			const base = { lastmod, changefreq: 'weekly' as const, priority: 0.8 as const };
 			return [
 				{ loc: `${baseUrl}/${enc}`, ...base },
-				{ loc: `${baseUrl}/${enc}/${PUBLIC_WEB_LEADERBOARD_PATH}`, ...base }
+				{ loc: `${baseUrl}/${enc}/${PUBLIC_WEB_LEADERBOARD_PATH}`, ...base },
+				{ loc: `${baseUrl}/${enc}/${PUBLIC_WEB_MEMBERS_PATH}`, ...base }
 			];
 		});
 
@@ -69,8 +70,7 @@ export const GET: RequestHandler = async () => {
 		</urlset>`.trim(),
 		{
 			headers: {
-				'Content-Type': 'application/xml',
-				'Cache-Control': 'max-age=3600'
+				'Content-Type': 'application/xml'
 			}
 		}
 	);

@@ -963,6 +963,7 @@ export async function syncMemberRoles(memberId: any, discordRoleIds: string[], s
 	const roleList = Array.isArray(discordRoleIds) ? discordRoleIds.filter(Boolean) : [];
 
 	if (roleList.length === 0) {
+		await db.delete(schema.serverMemberRoles).where(eq(schema.serverMemberRoles.member_id, mid));
 		await db.delete(schema.serverMemberNotifications).where(eq(schema.serverMemberNotifications.member_id, mid));
 		await db.delete(schema.serverMemberCustomSupporterRoles).where(eq(schema.serverMemberCustomSupporterRoles.member_id, mid));
 		await refreshMemberIsContentCreator(mid, sid, []);
@@ -975,6 +976,19 @@ export async function syncMemberRoles(memberId: any, discordRoleIds: string[], s
 		.where(and(eq(schema.serverRoles.server_id, sid), inArray(schema.serverRoles.discord_role_id, roleList)));
 
 	const roleIdsOnMember = roleMapRows.map((r) => r.id);
+
+	await db.delete(schema.serverMemberRoles).where(eq(schema.serverMemberRoles.member_id, mid));
+	if (roleIdsOnMember.length > 0) {
+		const smrNow = toMySQLDateTime();
+		await db.insert(schema.serverMemberRoles).values(
+			roleIdsOnMember.map((role_id) => ({
+				member_id: mid,
+				role_id,
+				created_at: smrNow as any
+			}))
+		);
+	}
+
 	const notificationRoleDbIds = await getNotificationRoleDbIds(serverId);
 	const notificationRoleIdsForMember = roleIdsOnMember.filter((id) => notificationRoleDbIds.has(id));
 
@@ -1226,7 +1240,7 @@ export async function getServerMembersList(serverId: any) {
 		SELECT
 			sm.id, sm.discord_member_id, sm.username, sm.display_name, sm.server_display_name,
 			sm.avatar, sm.profile_created_at, sm.member_since, sm.is_booster, sm.booster_since,
-			sml.level, sml.experience, sml.chat_total, sml.voice_minutes_active, sml.voice_minutes_afk, sml.rank,
+			sml.level, sml.experience, sml.chat_total, sml.voice_minutes_total, sml.voice_minutes_active, sml.voice_minutes_afk, sml.rank,
 			sma.message as afk_message, sma.created_at as afk_since,
 			GROUP_CONCAT(
 				DISTINCT CONCAT(sr.discord_role_id, ':', sr.name, ':', sr.color, ':', sr.position)
@@ -1235,12 +1249,12 @@ export async function getServerMembersList(serverId: any) {
 		FROM server_members sm
 		LEFT JOIN server_member_levels sml ON sm.id = sml.member_id
 		LEFT JOIN server_member_afks sma ON sm.id = sma.member_id
-		LEFT JOIN server_member_notifications smn ON sm.id = smn.member_id
-		LEFT JOIN server_roles sr ON smn.role_id = sr.id
+		LEFT JOIN server_member_roles smr ON sm.id = smr.member_id
+		LEFT JOIN server_roles sr ON smr.role_id = sr.id
 		WHERE sm.server_id = ${Number(serverId)}
 		GROUP BY sm.id, sm.discord_member_id, sm.username, sm.display_name, sm.server_display_name,
 		         sm.avatar, sm.profile_created_at, sm.member_since, sm.is_booster, sm.booster_since,
-		         sml.level, sml.experience, sml.chat_total, sml.voice_minutes_active,
+		         sml.level, sml.experience, sml.chat_total, sml.voice_minutes_total, sml.voice_minutes_active,
 		         sml.voice_minutes_afk, sml.rank, sma.message, sma.created_at
 		ORDER BY sml.experience DESC, sml.level DESC, sm.created_at ASC
 	`);

@@ -2,7 +2,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import { SERVER_SETTINGS } from '$lib/serverSettingsComponents.js';
 import { resolvePublicServerBySlug } from '$lib/publicServerSlug/index.js';
 import db from '$lib/database.js';
-import { subscribePublicServerStatistics } from '$lib/publicStatistics/index.js';
+import { subscribePublicMembersList } from '$lib/publicMembers/index.js';
 
 export const GET: RequestHandler = async ({ params }) => {
 	const serverSlug = String(params.serverSlug || '').trim();
@@ -25,7 +25,7 @@ export const GET: RequestHandler = async ({ params }) => {
 				} catch (_) {}
 			};
 
-			const unsub = subscribePublicServerStatistics(serverId, (payload) => send(payload));
+			const unsub = subscribePublicMembersList(serverId, (payload) => send(payload));
 
 			const heartbeat = setInterval(() => {
 				try {

@@ -1,2 +1,2 @@
 export type { PublicPageStats } from './shape.js';
-export { resolvePublicStatisticsSnapshot, subscribePublicServerStatistics } from './stream.js';
+export { type ResolvePublicStatisticsOpts, resolvePublicStatisticsSnapshot, subscribePublicServerStatistics } from './stream.js';

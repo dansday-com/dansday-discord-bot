@@ -7,7 +7,11 @@
 
 	const basePath = $derived(`/${encodeURIComponent(data.server.slug)}`);
 	const leaderboardPath = $derived(`${basePath}/leaderboard`);
-	const isLeaderboard = $derived(page.url.pathname.replace(/\/$/, '').endsWith('/leaderboard'));
+	const membersPath = $derived(`${basePath}/members`);
+	const pathNorm = $derived(page.url.pathname.replace(/\/$/, ''));
+	const isLeaderboard = $derived(pathNorm.endsWith('/leaderboard'));
+	const isMembers = $derived(pathNorm.endsWith('/members'));
+	const isOverview = $derived(!isLeaderboard && !isMembers);
 </script>
 
 <div class="lb-root">
@@ -49,13 +53,17 @@
 			</header>
 
 			<div class="lb-section-tabs">
-				<a href={basePath} class="lb-section-tab" class:lb-section-tab--active={!isLeaderboard} data-sveltekit-preload-data="hover">
+				<a href={basePath} class="lb-section-tab" class:lb-section-tab--active={isOverview} data-sveltekit-preload-data="hover">
 					<i class="fas fa-chart-pie"></i>
 					Server statistics
 				</a>
 				<a href={leaderboardPath} class="lb-section-tab" class:lb-section-tab--active={isLeaderboard} data-sveltekit-preload-data="hover">
 					<i class="fas fa-trophy"></i>
 					Leaderboard
+				</a>
+				<a href={membersPath} class="lb-section-tab" class:lb-section-tab--active={isMembers} data-sveltekit-preload-data="hover">
+					<i class="fas fa-users"></i>
+					Members
 				</a>
 			</div>
 

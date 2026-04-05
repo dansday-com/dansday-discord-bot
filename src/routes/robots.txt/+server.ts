@@ -14,8 +14,7 @@ Host: ${baseUrl}
 Sitemap: ${baseUrl}/sitemap.xml`,
 		{
 			headers: {
-				'Content-Type': 'text/plain',
-				'Cache-Control': 'max-age=3600'
+				'Content-Type': 'text/plain'
 			}
 		}
 	);

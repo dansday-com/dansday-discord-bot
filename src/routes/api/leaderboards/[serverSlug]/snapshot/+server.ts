@@ -1,7 +1,7 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { SERVER_SETTINGS } from '$lib/serverSettingsComponents.js';
-import { type LeaderboardMetric, type LeaderboardRange, resolveLeaderboardSnapshot } from '$lib/leaderboard/index.js';
+import { type LeaderboardMetric, resolveLeaderboardSnapshot } from '$lib/leaderboard/index.js';
 import { resolvePublicServerBySlug } from '$lib/publicServerSlug/index.js';
 function parseMetric(m: string | null): LeaderboardMetric {
 	const v = (m || 'xp').toLowerCase();
@@ -10,14 +10,6 @@ function parseMetric(m: string | null): LeaderboardMetric {
 	if (v === 'voice_active') return 'voice_active';
 	if (v === 'voice_afk') return 'voice_afk';
 	return 'xp';
-}
-
-function parseRange(r: string | null): LeaderboardRange {
-	const v = (r || 'all').toLowerCase();
-	if (v === '1d') return '1d';
-	if (v === '7d') return '7d';
-	if (v === '30d') return '30d';
-	return 'all';
 }
 
 export const GET: RequestHandler = async ({ params, url }) => {
@@ -33,15 +25,13 @@ export const GET: RequestHandler = async ({ params, url }) => {
 	}
 
 	const metric = parseMetric(url.searchParams.get('metric'));
-	const range = parseRange(url.searchParams.get('range'));
 	const limit = Math.max(3, Math.min(100, Number(url.searchParams.get('limit') || 50)));
 
-	const snap = await resolveLeaderboardSnapshot(server.id, metric, range, limit);
+	const snap = await resolveLeaderboardSnapshot(server.id, metric, limit);
 
 	return new Response(JSON.stringify(snap), {
 		headers: {
-			'Content-Type': 'application/json',
-			'Cache-Control': 'private, max-age=5'
+			'Content-Type': 'application/json'
 		}
 	});
 };

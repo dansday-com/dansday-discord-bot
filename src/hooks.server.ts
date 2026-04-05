@@ -137,10 +137,5 @@ export const handle: Handle = async ({ event, resolve }) => {
 		})
 	);
 
-	const contentType = response.headers.get('content-type') ?? '';
-	if (contentType.includes('text/html') || contentType.includes('application/json')) {
-		response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
-	}
-
 	return response;
 };

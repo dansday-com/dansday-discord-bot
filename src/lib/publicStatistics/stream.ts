@@ -23,10 +23,15 @@ async function buildSnapshotFromDb(serverId: number): Promise<PublicStatisticsSn
 	return snap;
 }
 
-export async function resolvePublicStatisticsSnapshot(serverId: number): Promise<PublicStatisticsSnapshot | null> {
-	const cached = await getCachedPublicStatistics(serverId);
-	if (cached && Date.now() - cached.updated_at < CACHE_FRESH_MS) {
-		return cached;
+export type ResolvePublicStatisticsOpts = { bypassCache?: boolean };
+
+/** `bypassCache: true` skips Redis freshness — use for SSE ticks. */
+export async function resolvePublicStatisticsSnapshot(serverId: number, opts?: ResolvePublicStatisticsOpts): Promise<PublicStatisticsSnapshot | null> {
+	if (!opts?.bypassCache) {
+		const cached = await getCachedPublicStatistics(serverId);
+		if (cached && Date.now() - cached.updated_at < CACHE_FRESH_MS) {
+			return cached;
+		}
 	}
 	return buildSnapshotFromDb(serverId);
 }
@@ -50,7 +55,7 @@ export function subscribePublicServerStatistics(serverId: number, fn: Listener):
 			const current = streams.get(serverId);
 			if (!current || current.listeners.size === 0) return;
 			try {
-				const payload = await resolvePublicStatisticsSnapshot(serverId);
+				const payload = await resolvePublicStatisticsSnapshot(serverId, { bypassCache: true });
 				if (!payload) return;
 				const json = JSON.stringify(payload);
 				if (json === current.lastJson) return;
@@ -63,7 +68,7 @@ export function subscribePublicServerStatistics(serverId: number, fn: Listener):
 			const current = streams.get(serverId);
 			if (!current || current.listeners.size === 0) return;
 			try {
-				const payload = await resolvePublicStatisticsSnapshot(serverId);
+				const payload = await resolvePublicStatisticsSnapshot(serverId, { bypassCache: true });
 				if (!payload) return;
 				current.lastJson = JSON.stringify(payload);
 				for (const l of current.listeners) l(payload);

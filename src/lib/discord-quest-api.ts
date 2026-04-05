@@ -1165,7 +1165,7 @@ export async function runOrbQuestUserAutomation(
 				orbLine,
 				questUrl: qUrl,
 				title: '✅ Video quest finished',
-				description: `**${questName}**\n**Reward:** ${orbLine || 'Orb reward'}\nClaim in **Discord → Quests** if prompted.`
+				description: `**${questName}**\n**Reward:** ${orbLine || 'Orb reward'}\nClaim in **Discord → Quests**`
 			};
 		}
 

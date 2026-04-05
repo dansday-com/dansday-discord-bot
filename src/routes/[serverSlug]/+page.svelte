@@ -147,7 +147,7 @@
 </svelte:head>
 
 <div class="lb-leaderboard-subhead lb-stats-overview-subhead">
-	<p>Server overview</p>
+	<p>Server statistics</p>
 </div>
 
 <section class="lb-overview-strip" aria-label="Key metrics">

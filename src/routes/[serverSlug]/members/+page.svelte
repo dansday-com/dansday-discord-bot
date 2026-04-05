@@ -90,18 +90,6 @@
 
 	const members = $derived(liveMembers);
 
-	const summary = $derived.by(() => {
-		const list = members;
-		const n = list.length;
-		const afkNow = list.filter((m) => m.is_afk).length;
-		const levels = list.map((m) => Number(m.level) || 0);
-		const avgLevel = n ? Math.round(levels.reduce((a, b) => a + b, 0) / n) : 0;
-		const maxLevel = n ? Math.max(...levels) : 0;
-		const voiceSum = list.reduce((a, m) => a + Number(m.voice_minutes_active ?? 0) + Number(m.voice_minutes_afk ?? 0), 0);
-		const xpPool = list.reduce((a, m) => a + Number(m.experience ?? 0), 0);
-		return { n, afkNow, avgLevel, maxLevel, voiceSum, xpPool };
-	});
-
 	function fmtNum(n: number): string {
 		if (n == null) return '0';
 		return Number(n).toLocaleString();
@@ -146,15 +134,6 @@
 	);
 
 	const sorted = $derived([...filtered].sort((a, b) => (a.username ?? '').localeCompare(b.username ?? '', undefined, { sensitivity: 'base' })));
-
-	const stripMetrics = $derived([
-		{ icon: 'fa-users', label: 'Members', value: fmtNum(summary.n) },
-		{ icon: 'fa-star', label: 'Total XP', value: fmtNum(summary.xpPool) },
-		{ icon: 'fa-chart-line', label: 'Avg level', value: summary.n ? fmtNum(summary.avgLevel) : '0' },
-		{ icon: 'fa-trophy', label: 'Peak level', value: fmtNum(summary.maxLevel) },
-		{ icon: 'fa-microphone', label: 'Voice min', value: fmtNum(summary.voiceSum) },
-		{ icon: 'fa-moon', label: 'AFK now', value: fmtNum(summary.afkNow) }
-	]);
 
 	const totalPages = $derived(Math.max(1, Math.ceil(sorted.length / PER_PAGE)));
 
@@ -205,22 +184,7 @@
 
 <div class="pubm">
 	<div class="lb-leaderboard-subhead lb-stats-overview-subhead">
-		<p>Member roster</p>
-	</div>
-
-	<div class="lb-stats-grid pubm-stats-grid" aria-label="Roster summary">
-		{#each stripMetrics as chip, i (chip.label)}
-			{@const chiliSlot = (i % 5) + 1}
-			<article class="lb-stat-card lb-overview-card pubm-summary-card" class:pubm-card--in={mounted} style="--pubm-card-dly:{i * 70}ms">
-				<div class="lb-stat-card-head">
-					<div class="lb-stat-card-icon lb-chili-stat-{chiliSlot}">
-						<i class="fas {chip.icon}"></i>
-					</div>
-					<h2 class="lb-stat-card-title">{chip.label}</h2>
-				</div>
-				<p class="pubm-summary-display">{chip.value}</p>
-			</article>
-		{/each}
+		<p>Members</p>
 	</div>
 
 	<div class="pubm-search-bar">
@@ -283,7 +247,7 @@
 							<p class="pubm-dates">
 								<span><span class="pubm-dk">Joined</span> <LocalTime value={member.member_since} fallback="N/A" /></span>
 								<span class="pubm-dot">·</span>
-								<span><span class="pubm-dk">Account</span> <LocalTime value={member.profile_created_at} fallback="N/A" /></span>
+								<span><span class="pubm-dk">Discord since</span> <LocalTime value={member.profile_created_at} fallback="N/A" /></span>
 							</p>
 						</div>
 					</div>

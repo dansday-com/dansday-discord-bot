@@ -187,7 +187,7 @@
 	<meta property="og:description" content="See who's on top in {data.server.name || data.server.slug}." />
 </svelte:head>
 
-<div class="lb-leaderboard-subhead">
+<div class="lb-leaderboard-subhead lb-stats-overview-subhead">
 	<p>
 		Leaderboard
 		<span class="lb-metric-pill">{metricLabel(metric)}</span>

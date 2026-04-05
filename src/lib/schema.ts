@@ -291,7 +291,6 @@ export const serverMemberNotifications = mysqlTable(
 	(t) => [uniqueIndex('unique_member_notification_role').on(t.member_id, t.role_id), index('idx_server_member_notifications_role').on(t.role_id)]
 );
 
-/** Current Discord roles for each member (full list; populated in syncMemberRoles). */
 export const serverMemberRoles = mysqlTable(
 	'server_member_roles',
 	{

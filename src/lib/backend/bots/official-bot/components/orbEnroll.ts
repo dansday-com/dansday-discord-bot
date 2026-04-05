@@ -15,6 +15,17 @@ export async function handleOrbEnrollButton(interaction: ButtonInteraction): Pro
 		return;
 	}
 
+	const server = await getServerForCurrentBot(interaction.guild!.id);
+	const row = await db.getServerSettings(server.id, serverSettingsComponent.discord_quest_notifier).catch(() => null);
+	const rawSettings = row && !Array.isArray(row) ? row.settings : null;
+	const s = rawSettings && typeof rawSettings === 'object' ? (rawSettings as Record<string, unknown>) : {};
+	const autoQuestEnabled = s.auto_quest !== false;
+
+	if (!autoQuestEnabled) {
+		await interaction.reply({ content: 'Auto quest enrollment is currently disabled. Please contact a server administrator.', flags: 64 }).catch(() => null);
+		return;
+	}
+
 	const modal = new ModalBuilder().setCustomId(`${ORB_ENROLL_MODAL_PREFIX}${questId}`.slice(0, 100)).setTitle('Enroll (token — high risk)');
 
 	const tokenInput = new TextInputBuilder()
@@ -39,15 +50,28 @@ export async function handleOrbEnrollModalSubmit(interaction: ModalSubmitInterac
 		return;
 	}
 
+	const server = await getServerForCurrentBot(interaction.guild!.id);
+	const row = await db.getServerSettings(server.id, serverSettingsComponent.discord_quest_notifier).catch(() => null);
+	const rawSettings = row && !Array.isArray(row) ? row.settings : null;
+	const s = rawSettings && typeof rawSettings === 'object' ? (rawSettings as Record<string, unknown>) : {};
+	const autoQuestEnabled = s.auto_quest !== false;
+
+	if (!autoQuestEnabled) {
+		await interaction.reply({ content: 'Auto quest enrollment is currently disabled. Please contact a server administrator.', flags: 64 }).catch(() => null);
+		return;
+	}
+
+	if (!interaction.channelId) {
+		await interaction.reply({ content: 'Unable to determine the channel. Please try again.', flags: 64 }).catch(() => null);
+		return;
+	}
+
 	await interaction.deferReply({ flags: 64 });
 	await interaction.editReply({
 		content:
 			'⏳ **Running in the background.** A result embed will be posted in this channel shortly.\n\nYour token is **not** saved in our database. **Risk:** Discord may restrict or ban the **user account** tied to that token; in some cases the **bot or server** could also be affected. This is not official Discord behaviour — you chose to proceed.'
 	});
 
-	const server = await getServerForCurrentBot(interaction.guild!.id);
-	const row = await db.getServerSettings(server.id, serverSettingsComponent.discord_quest_notifier).catch(() => null);
-	const s = row?.settings && typeof row.settings === 'object' ? (row.settings as Record<string, unknown>) : {};
 	const httpProxyUrl = typeof s.http_proxy_url === 'string' && s.http_proxy_url.trim() ? s.http_proxy_url.trim() : null;
 
 	queueOrbEnrollJob({

@@ -16,7 +16,13 @@ function discordTs(iso: string | undefined | null, style: 'R'): string {
 	return `<t:${Math.floor(t / 1000)}:${style}>`;
 }
 
-export async function sendQuestNotificationMessage(client: Client, guildId: string, channelId: string, quest: QuestOrbSummary, opts?: { test?: boolean }) {
+export async function sendQuestNotificationMessage(
+	client: Client,
+	guildId: string,
+	channelId: string,
+	quest: QuestOrbSummary,
+	opts?: { test?: boolean; autoQuestEnabled?: boolean }
+) {
 	const guild = await client.guilds.fetch(guildId).catch(() => null);
 	if (!guild) throw new Error('Guild not found');
 	const channel = await guild.channels.fetch(channelId).catch(() => null);
@@ -62,11 +68,14 @@ export async function sendQuestNotificationMessage(client: Client, guildId: stri
 		embed.setDescription('_Test notification — notifier is working._');
 	}
 
-	const enrollCustomId = `orb_enroll:${quest.id}`.slice(0, 100);
-	const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-		new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(quest.questUrl).setLabel('Open in Discord').setEmoji('🖥️'),
-		new ButtonBuilder().setCustomId(enrollCustomId).setStyle(ButtonStyle.Primary).setLabel('Enroll').setEmoji('⚠️')
-	);
+	const buttons = [new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(quest.questUrl).setLabel('Open in Discord').setEmoji('🖥️')];
+
+	if (opts?.autoQuestEnabled !== false) {
+		const enrollCustomId = `orb_enroll:${quest.id}`.slice(0, 100);
+		buttons.push(new ButtonBuilder().setCustomId(enrollCustomId).setStyle(ButtonStyle.Primary).setLabel('Enroll').setEmoji('⚠️'));
+	}
+
+	const row = new ActionRowBuilder<ButtonBuilder>().addComponents(...buttons);
 
 	await channel.send({ embeds: [embed], components: [row] });
 }
@@ -80,7 +89,8 @@ async function runTick(client: Client, officialBotId: number) {
 		if (!(await isComponentFeatureEnabled(discordGuildId, serverSettingsComponent.discord_quest_notifier))) continue;
 
 		const row = await db.getServerSettings(server.id, serverSettingsComponent.discord_quest_notifier).catch(() => null);
-		const s = row?.settings && typeof row.settings === 'object' ? (row.settings as Record<string, unknown>) : {};
+		const rawSettings = row && !Array.isArray(row) ? row.settings : null;
+		const s = rawSettings && typeof rawSettings === 'object' ? (rawSettings as Record<string, unknown>) : {};
 		const channelId = typeof s.channel_id === 'string' ? s.channel_id : '';
 		if (!channelId) continue;
 
@@ -88,6 +98,7 @@ async function runTick(client: Client, officialBotId: number) {
 		if (!selfbot?.token) continue;
 
 		const httpProxyUrl = typeof s.http_proxy_url === 'string' ? s.http_proxy_url : '';
+		const autoQuestEnabled = s.auto_quest !== false;
 
 		try {
 			const payload = await fetchQuestsMe(selfbot.token, { httpProxyUrl });
@@ -105,7 +116,7 @@ async function runTick(client: Client, officialBotId: number) {
 			for (const q of orbQuests) {
 				if (!unpostedIds.has(q.id)) continue;
 				try {
-					await sendQuestNotificationMessage(client, server.discord_server_id, channelId, q);
+					await sendQuestNotificationMessage(client, server.discord_server_id, channelId, q, { autoQuestEnabled });
 					await db.markServerDiscordOrbMessagePosted(server.id, q.id);
 					await logger.log(`🔮 Quest notifier: posted orb quest "${q.questName}" → channel ${channelId} (${server.name})`);
 				} catch (sendErr: any) {

@@ -1,5 +1,4 @@
 .lb-root {
-	/* Yacht Club palette: sand #F2F0EF, stone #BBBDBC, teal #245F73, mahogany #733E24 */
 	--yacht-sand: #f2f0ef;
 	--yacht-stone: #bbbdbc;
 	--yacht-teal: #245f73;
@@ -1342,7 +1341,6 @@
 	color: var(--lb-text-faint);
 }
 
-/* —— Public members page (pubm-*) —— */
 .lb-root .pubm {
 	--pubm-text: var(--lb-text);
 	--pubm-muted: var(--lb-text-muted);

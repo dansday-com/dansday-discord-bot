@@ -1,7 +1,6 @@
 import db from '../database.js';
 import { type LeaderboardMetric, type LeaderboardRow, type LeaderboardSnapshot, getCachedLeaderboard, setCachedLeaderboard } from './cache.js';
 
-/** Same shape as rows from `getServerMembersList` (Members → All). */
 export type MembersListEntry = {
 	discord_member_id: string;
 	username: string | null;
@@ -32,7 +31,6 @@ function memberSortValue(m: MembersListEntry, metric: LeaderboardMetric): number
 	}
 }
 
-/** Sort all server members by the active metric; cap at `limit`. Missing level stats → 0. */
 export function buildLeaderboardRowsFromMembersList(members: MembersListEntry[], metric: LeaderboardMetric, limit: number): LeaderboardRow[] {
 	const safe = Math.max(1, Math.min(100, limit));
 	const sorted = [...members].sort((a, b) => {
@@ -85,7 +83,6 @@ async function buildSnapshot(serverId: number, metric: LeaderboardMetric, limit:
 
 export type ResolveLeaderboardSnapshotOpts = { bypassCache?: boolean };
 
-/** `bypassCache: true` skips Redis freshness (DB read every call) — use for SSE ticks so the stream is not stuck on a 20s cache window. */
 export async function resolveLeaderboardSnapshot(
 	serverId: number,
 	metric: LeaderboardMetric,

@@ -25,7 +25,6 @@ async function buildSnapshotFromDb(serverId: number): Promise<PublicStatisticsSn
 
 export type ResolvePublicStatisticsOpts = { bypassCache?: boolean };
 
-/** `bypassCache: true` skips Redis freshness — use for SSE ticks. */
 export async function resolvePublicStatisticsSnapshot(serverId: number, opts?: ResolvePublicStatisticsOpts): Promise<PublicStatisticsSnapshot | null> {
 	if (!opts?.bypassCache) {
 		const cached = await getCachedPublicStatistics(serverId);

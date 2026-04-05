@@ -22,7 +22,6 @@ async function fetchMembers(serverId: number): Promise<PublicMembersStreamPayloa
 	return { members: members ?? [], updated_at: Date.now() };
 }
 
-/** Coalesced polling: one DB read per interval per server while listeners exist (public members page live updates). */
 export function subscribePublicMembersList(serverId: number, fn: Listener): () => void {
 	let state = streams.get(serverId);
 	if (!state) {

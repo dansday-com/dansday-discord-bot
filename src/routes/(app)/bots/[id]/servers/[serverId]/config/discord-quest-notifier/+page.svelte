@@ -14,6 +14,7 @@
 	let featureEnabled = $state(data.settings.enabled !== false);
 	let channelId = $state(data.settings.channel_id || '');
 	let httpProxyUrl = $state(data.settings.http_proxy_url || '');
+	let autoQuest = $state(data.settings.auto_quest !== false);
 
 	async function save() {
 		if (!isValidQuestHttpProxyUrl(httpProxyUrl)) {
@@ -30,7 +31,8 @@
 					component: SERVER_SETTINGS.component.discord_quest_notifier,
 					enabled: featureEnabled,
 					channel_id: channelId,
-					http_proxy_url: httpProxyUrl.trim() || ''
+					http_proxy_url: httpProxyUrl.trim() || '',
+					auto_quest: autoQuest
 				})
 			});
 			const d = await res.json();
@@ -91,6 +93,18 @@
 			<span>Module is off. Save configuration to apply. Turn the module on to edit channel and proxy below.</span>
 		</p>
 	{/if}
+	{#if featureEnabled && !data.hasRunningSelfbot}
+		<p class="flex items-start gap-2 rounded-lg border border-red-800/30 bg-red-900/20 p-3 text-xs text-red-200/90">
+			<i class="fas fa-exclamation-triangle mt-0.5 shrink-0 text-red-400" aria-hidden="true"></i>
+			<span>
+				{#if !data.hasSelfbots}
+					<strong>No selfbot configured.</strong> Add a selfbot under the Selfbots section for this server to use this feature.
+				{:else}
+					<strong>No running selfbot.</strong> Start a selfbot under the Selfbots section for this server to use this feature.
+				{/if}
+			</span>
+		</p>
+	{/if}
 	<div class="space-y-5 transition-opacity" class:pointer-events-none={!featureEnabled} class:opacity-50={!featureEnabled}>
 		<div>
 			<label class="text-ash-300 mb-1.5 block text-xs font-medium">
@@ -120,6 +134,14 @@
 				class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none"
 			/>
 		</div>
+
+		<ConfigToggleRow
+			label="Auto quest enrollment"
+			description="When on, quest notifications include an 'Enroll' button for quick enrollment with user token."
+			labelIconClass="fas fa-bolt text-sky-400"
+			bind:enabled={autoQuest}
+			ariaLabel="Toggle auto quest enrollment"
+		/>
 	</div>
 
 	<button

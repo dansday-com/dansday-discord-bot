@@ -257,6 +257,7 @@ async function handleWebhookRequest(req, res) {
 						const description = payload.description;
 						const questUrl = payload.quest_url;
 						const isTest = payload.test === true;
+						const autoQuestEnabled = payload.auto_quest_enabled !== false;
 						if (!guildId || !channelId || !questName || !questUrl) {
 							res.writeHead(400, { 'Content-Type': 'application/json' });
 							res.end(JSON.stringify({ error: 'Missing guild_id, channel_id, quest_name, or quest_url' }));
@@ -303,7 +304,7 @@ async function handleWebhookRequest(req, res) {
 								thumbnailUrl: thumb,
 								bannerUrl: banner
 							},
-							{ test: isTest }
+							{ test: isTest, autoQuestEnabled }
 						);
 						await logger.log(`📥 Quest notification sent → #${channelId} (guild ${guildId})`);
 						res.writeHead(200, { 'Content-Type': 'application/json' });

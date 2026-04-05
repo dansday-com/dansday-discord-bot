@@ -69,6 +69,7 @@ export const POST: RequestHandler = async ({ locals, params }) => {
 	}
 
 	const httpProxyUrl = typeof s.http_proxy_url === 'string' ? s.http_proxy_url : '';
+	const autoQuestEnabled = s.auto_quest !== false;
 
 	let payload: unknown;
 	try {
@@ -121,7 +122,8 @@ export const POST: RequestHandler = async ({ locals, params }) => {
 		expires_at: latest.expiresAt,
 		thumbnail_url: latest.thumbnailUrl ?? undefined,
 		banner_url: latest.bannerUrl ?? undefined,
-		test: true
+		test: true,
+		auto_quest_enabled: autoQuestEnabled
 	});
 
 	const webhookResult = await new Promise<{ status: number; body: unknown }>((resolve) => {

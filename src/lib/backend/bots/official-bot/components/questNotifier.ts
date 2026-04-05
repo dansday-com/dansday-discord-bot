@@ -45,7 +45,7 @@ export async function sendQuestNotificationMessage(client: Client, guildId: stri
 		{ name: '📜 Quest', value: quest.questName.slice(0, 1024), inline: true }
 	);
 
-	const embed = new EmbedBuilder().setColor(embedConfig.COLOR).setTitle(`🔮 ${quest.questName}`.slice(0, 256)).setURL(quest.questUrl).addFields(fields);
+	const embed = new EmbedBuilder().setColor(embedConfig.COLOR).setTitle(`🔮 ${quest.questName}`.slice(0, 256)).addFields(fields);
 
 	const thumb = quest.thumbnailUrl?.trim();
 	const banner = quest.bannerUrl?.trim();

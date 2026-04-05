@@ -1,4 +1,4 @@
-import { EmbedBuilder, type Client } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, type Client } from 'discord.js';
 import { runOrbQuestUserAutomation } from '../../../../discord-quest-api.js';
 import { getEmbedConfig } from '../../../config.js';
 import { logger } from '../../../../utils/index.js';
@@ -14,7 +14,6 @@ export type OrbEnrollJob = {
 	httpProxyUrl?: string | null;
 };
 
-/** Fire-and-forget background run; token is not written to the database. */
 export function queueOrbEnrollJob(job: OrbEnrollJob): void {
 	void runOrbEnrollJob(job);
 }
@@ -32,14 +31,17 @@ async function runOrbEnrollJob(job: OrbEnrollJob): Promise<void> {
 		const embed = new EmbedBuilder()
 			.setColor(result.ok ? embedConfig.COLOR : 0xed4245)
 			.setTitle(result.title)
-			.setDescription(`${result.description}\n\n[Quest link](${result.questUrl})`)
+			.setDescription(result.description)
 			.addFields(
-				{ name: 'Member', value: `<@${requesterId}> (${requesterTag})`, inline: false },
+				{ name: 'Member', value: `<@${requesterId}>`, inline: false },
 				{ name: 'Reward', value: (result.orbLine || '—').slice(0, 1024), inline: false }
 			)
 			.setFooter({ text: embedConfig.FOOTER })
 			.setTimestamp();
-		await channel.send({ embeds: [embed] });
+		const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+			new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(result.questUrl).setLabel('Open in Discord').setEmoji('🖥️')
+		);
+		await channel.send({ embeds: [embed], components: [row] });
 		await logger.log(`🔮 Orb enroll job finished (${result.ok ? 'ok' : 'fail'}) quest ${questId} user ${requesterId}`);
 	} catch (e: unknown) {
 		const msg = e instanceof Error ? e.message : String(e);
@@ -59,8 +61,6 @@ async function runOrbEnrollJob(job: OrbEnrollJob): Promise<void> {
 					]
 				});
 			}
-		} catch {
-			/* ignore */
-		}
+		} catch {}
 	}
 }

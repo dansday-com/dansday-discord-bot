@@ -219,7 +219,6 @@ function discordAppCoverUrl(applicationId: string, hash: string): string | null 
 	return `https://cdn.discordapp.com/app-assets/${applicationId}/${h}.${ext}?size=600`;
 }
 
-/** Discord often omits nested `application` but still sends `application_id` + icon hashes. */
 function resolveApplicationId(cfg: Record<string, unknown>): string {
 	const raw = cfg.application;
 	if (typeof raw === 'string' && raw.trim()) return raw.trim();
@@ -265,7 +264,6 @@ function mediaFromApplication(cfg: Record<string, unknown>): { thumb: string | n
 	return { thumb, banner };
 }
 
-/** `messages.*` fields are sometimes full URLs, sometimes raw CDN hashes. */
 function messageMediaUrl(applicationId: string, raw: string, kind: 'thumb' | 'banner'): string | null {
 	const s = raw.trim();
 	if (!s) return null;
@@ -534,7 +532,7 @@ export function questPayloadOrbDiagnostics(payload: unknown): {
 
 async function questApiRequest(
 	userToken: string,
-	method: 'GET' | 'POST',
+	method: 'GET' | 'POST' | 'DELETE',
 	path: string,
 	body?: unknown,
 	opts?: { httpProxyUrl?: string | null }
@@ -564,9 +562,7 @@ async function questApiRequest(
 		if (typeof data === 'string') {
 			try {
 				data = JSON.parse(data) as unknown;
-			} catch {
-				/* keep raw string */
-			}
+			} catch {}
 		}
 		return { status: res.status, data };
 	}
@@ -628,6 +624,218 @@ function readProgressSeconds(quest: Record<string, unknown>, taskKey: string): n
 	return 0;
 }
 
+function extractProgressFromHeartbeatPayload(data: unknown, taskKey: string): { value: number; completed: boolean } {
+	if (!data || typeof data !== 'object') return { value: 0, completed: false };
+	const d = data as Record<string, unknown>;
+	const p = d.progress;
+	if (p && typeof p === 'object') {
+		const t = (p as Record<string, unknown>)[taskKey];
+		if (t && typeof t === 'object') {
+			const tr = t as Record<string, unknown>;
+			const value = typeof tr.value === 'number' ? tr.value : 0;
+			const completed = tr.completed_at != null || tr.completedAt != null;
+			return { value, completed };
+		}
+	}
+	return { value: 0, completed: false };
+}
+
+function heartbeatResponseOk(data: unknown): boolean {
+	if (!data || typeof data !== 'object') return false;
+	return (data as Record<string, unknown>).user_id != null;
+}
+
+function heartbeatDurationTargetSec(taskKey: string, taskObj: Record<string, unknown>): number | null {
+	const explicit = asNum(taskObj.target_seconds) ?? asNum(taskObj.duration_seconds) ?? asNum(taskObj.seconds_to_watch) ?? asNum(taskObj.watch_time_seconds);
+	if (explicit != null && explicit > 0) return explicit;
+	const min = asNum(taskObj.target_minutes) ?? asNum(taskObj.duration_minutes) ?? asNum(taskObj.minutes);
+	if (min != null && min > 0) return min * 60;
+	const generic = asNum(taskObj.target) ?? asNum(taskObj.goal) ?? asNum(taskObj.max);
+	if (generic == null || generic <= 0) return null;
+	const unitRaw = asStr(taskObj.target_unit).toLowerCase();
+	if (unitRaw.includes('minute')) return generic * 60;
+	if (unitRaw.includes('hour')) return generic * 3600;
+	if (unitRaw.includes('second')) return generic;
+	const durationish =
+		taskKey === 'WATCH_VIDEO' ||
+		taskKey === 'WATCH_VIDEO_ON_MOBILE' ||
+		taskKey.startsWith('PLAY_ON_') ||
+		taskKey.startsWith('STREAM_') ||
+		taskKey === 'PLAY_ACTIVITY';
+	if (durationish) return generic;
+	return null;
+}
+
+function achievementProgressTarget(taskObj: Record<string, unknown>): number | null {
+	const t = asNum(taskObj.target) ?? asNum(taskObj.goal);
+	return t != null && t > 0 ? t : null;
+}
+
+function discordUserIdFromToken(userToken: string): string | null {
+	const parts = userToken.trim().split('.');
+	if (parts.length < 2) return null;
+	try {
+		let b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+		const pad = (4 - (b64.length % 4)) % 4;
+		b64 += '='.repeat(pad);
+		const payload = JSON.parse(Buffer.from(b64, 'base64').toString('utf8')) as Record<string, unknown>;
+		const id = payload.id ?? payload.user_id;
+		return typeof id === 'string' ? id : null;
+	} catch {
+		return null;
+	}
+}
+
+async function discordUserIdFromUserToken(userToken: string, opts?: { httpProxyUrl?: string | null }): Promise<string | null> {
+	const fromJwt = discordUserIdFromToken(userToken);
+	if (fromJwt) return fromJwt;
+	const res = await questApiRequest(userToken, 'GET', '/users/@me', undefined, opts);
+	if (res.status !== 200 || !res.data || typeof res.data !== 'object') return null;
+	const id = (res.data as Record<string, unknown>).id;
+	return typeof id === 'string' ? id : null;
+}
+
+async function runQuestHeartbeatUntilDone(
+	userToken: string,
+	questId: string,
+	taskKey: string,
+	opts: { httpProxyUrl?: string | null } | undefined,
+	config: {
+		knownTargetSec: number | null;
+		intervalMs: number;
+		makeBody: (terminal: boolean) => Record<string, unknown>;
+	}
+): Promise<{ sawTaskComplete: boolean; reachedTarget: boolean; lastError: string }> {
+	const { knownTargetSec, intervalMs, makeBody } = config;
+	const secPerTick = Math.max(1, intervalMs / 1000);
+	const maxIters = knownTargetSec != null ? Math.min(800, Math.max(50, Math.ceil(knownTargetSec / secPerTick) * 2 + 45)) : 500;
+	let lastError = '';
+	let sawTaskComplete = false;
+	let reachedTarget = false;
+
+	for (let i = 0; i < maxIters; i++) {
+		const hb = await questApiRequest(userToken, 'POST', `/quests/${questId}/heartbeat`, makeBody(false), opts);
+		const body = hb.data && typeof hb.data === 'object' ? (hb.data as Record<string, unknown>) : null;
+
+		if (!heartbeatResponseOk(hb.data)) {
+			lastError = body?.message && typeof body.message === 'string' ? body.message : `HTTP ${hb.status}`;
+			break;
+		}
+
+		const slice = extractProgressFromHeartbeatPayload(hb.data, taskKey);
+		if (slice.completed) {
+			sawTaskComplete = true;
+			break;
+		}
+		if (knownTargetSec != null && slice.value >= knownTargetSec - 0.5) {
+			reachedTarget = true;
+			break;
+		}
+
+		await sleep(intervalMs);
+	}
+
+	if (sawTaskComplete || reachedTarget) {
+		await questApiRequest(userToken, 'POST', `/quests/${questId}/heartbeat`, makeBody(true), opts);
+	}
+
+	return { sawTaskComplete, reachedTarget, lastError };
+}
+
+async function completeAchievementViaDiscordSays(
+	userToken: string,
+	applicationId: string,
+	questTarget: number,
+	opts?: { httpProxyUrl?: string | null }
+): Promise<{ ok: boolean; error: string }> {
+	const proxyUrl = opts?.httpProxyUrl?.trim();
+	const agent = proxyUrl ? getQuestProxyAgent(proxyUrl) : undefined;
+	const baseHeaders = {
+		'User-Agent': CLIENT_USER_AGENT,
+		'Content-Type': 'application/json'
+	};
+
+	const authQuery = new URLSearchParams({
+		response_type: 'code',
+		client_id: applicationId,
+		scope: 'identify applications.commands applications.entitlements',
+		state: ''
+	});
+	const authRes = await questApiRequest(
+		userToken,
+		'POST',
+		`/oauth2/authorize?${authQuery.toString()}`,
+		{
+			permissions: '0',
+			authorize: true,
+			integration_type: 1,
+			location_context: {
+				guild_id: '10000',
+				channel_id: '10000',
+				channel_type: 10000
+			}
+		},
+		opts
+	);
+	const authBody = authRes.data && typeof authRes.data === 'object' ? (authRes.data as Record<string, unknown>) : null;
+	const location = typeof authBody?.location === 'string' ? authBody.location : '';
+	let authCode: string | null = null;
+	if (location) {
+		try {
+			authCode = new URL(location).searchParams.get('code');
+		} catch {}
+	}
+	if (!authCode) {
+		return { ok: false, error: 'OAuth authorize did not return a code (achievement quests need a supported Discord Says app).' };
+	}
+
+	const saysUrl = `https://${applicationId}.discordsays.com/.proxy/acf/authorize`;
+	const saysAuth = await axios({
+		method: 'POST',
+		url: saysUrl,
+		data: { code: authCode },
+		headers: baseHeaders,
+		...(agent ? { httpAgent: agent, httpsAgent: agent } : {}),
+		validateStatus: () => true
+	});
+	let saysToken: string | null = null;
+	if (saysAuth.status >= 200 && saysAuth.status < 300 && saysAuth.data && typeof saysAuth.data === 'object') {
+		const t = (saysAuth.data as Record<string, unknown>).token;
+		if (typeof t === 'string') saysToken = t;
+	}
+	if (!saysToken) {
+		return { ok: false, error: `Discord Says authorize failed (HTTP ${saysAuth.status}).` };
+	}
+
+	const progressUrl = `https://${applicationId}.discordsays.com/.proxy/acf/quest/progress`;
+	const prog = await axios({
+		method: 'POST',
+		url: progressUrl,
+		data: { progress: questTarget },
+		headers: { ...baseHeaders, 'x-auth-token': saysToken },
+		...(agent ? { httpAgent: agent, httpsAgent: agent } : {}),
+		validateStatus: () => true
+	});
+	if (prog.status < 200 || prog.status >= 300) {
+		return { ok: false, error: `Discord Says progress failed (HTTP ${prog.status}).` };
+	}
+
+	const tokensRes = await questApiRequest(userToken, 'GET', '/oauth2/tokens', undefined, opts);
+	if (tokensRes.status === 200 && Array.isArray(tokensRes.data)) {
+		const tokenInfo = (tokensRes.data as Record<string, unknown>[]).find((t) => {
+			if (!t || typeof t !== 'object') return false;
+			const app = t.application as Record<string, unknown> | undefined;
+			return app != null && String(app.id) === String(applicationId);
+		});
+		const tid = tokenInfo && typeof tokenInfo.id === 'string' ? tokenInfo.id : null;
+		if (tid) {
+			await questApiRequest(userToken, 'DELETE', `/oauth2/tokens/${tid}`, undefined, opts);
+		}
+	}
+
+	return { ok: true, error: '' };
+}
+
 function userQuestCompleted(quest: Record<string, unknown>): boolean {
 	const us = getQuestUserStatus(quest);
 	if (!us) return false;
@@ -655,10 +863,6 @@ export type OrbQuestAutomationResult = {
 	description: string;
 };
 
-/**
- * Enroll + drive video watch progress via Discord's user API (caller must not persist token).
- * Non-video tasks: enroll only; user finishes in Discord desktop / VC.
- */
 export async function runOrbQuestUserAutomation(
 	userToken: string,
 	questId: string,
@@ -739,23 +943,175 @@ export async function runOrbQuestUserAutomation(
 				orbLine,
 				questUrl: qUrl,
 				title: '✅ Quest complete',
-				description: `**Reward:** ${orbLine || 'Orb reward'}\nOpen [Quests](${qUrl}) in Discord to claim if prompted.`
+				description: `**Reward:** ${orbLine || 'Orb reward'}\nOpen **Discord → Quests** in the client to claim if prompted.`
 			};
 		}
 
 		const cfgLive = (quest.config ?? {}) as Record<string, unknown>;
 		const pt = primaryTaskObject(cfgLive);
 		const taskKey = pt?.key ?? primaryTaskKeyFromConfig(cfgLive);
-		const isVideo = taskKey === 'WATCH_VIDEO' || taskKey === 'WATCH_VIDEO_ON_MOBILE';
 
-		if (!isVideo || !pt) {
+		if (!pt) {
 			return {
 				ok: true,
 				questName,
 				orbLine,
 				questUrl: qUrl,
 				title: '⚠️ Enrolled only',
-				description: `Enrolled in **${questName}**. This quest type (**${labelForTaskKey(taskKey)}**) cannot be finished from this bot — use the **Discord desktop app** (voice/stream/game) or complete it manually.\n\n**Reward:** ${orbLine || 'Orb reward'}`
+				description: `Enrolled in **${questName}**. No runnable task was detected in the quest config — finish in the **Discord** client if needed.\n\n**Reward:** ${orbLine || 'Orb reward'}`
+			};
+		}
+
+		const isVideo = taskKey === 'WATCH_VIDEO' || taskKey === 'WATCH_VIDEO_ON_MOBILE';
+		const isAchievement = taskKey === 'ACHIEVEMENT_IN_ACTIVITY' || taskKey === 'ACHIEVEMENT_IN_GAME';
+		const isPlayActivity = taskKey === 'PLAY_ACTIVITY';
+		const isPlatformHeartbeat =
+			taskKey === 'PLAY_ON_DESKTOP' ||
+			taskKey === 'PLAY_ON_DESKTOP_V2' ||
+			taskKey === 'PLAY_ON_XBOX' ||
+			taskKey === 'PLAY_ON_PLAYSTATION' ||
+			taskKey === 'STREAM_ON_DESKTOP';
+
+		if (isAchievement) {
+			const applicationId = resolveApplicationId(cfgLive);
+			const questTarget = achievementProgressTarget(pt.obj);
+			if (!applicationId || questTarget == null) {
+				return {
+					ok: false,
+					questName,
+					orbLine,
+					questUrl: qUrl,
+					title: 'Achievement quest',
+					description: `Missing application id or achievement target in the quest config. Finish **${labelForTaskKey(taskKey)}** in the Discord client.\n\n**Reward:** ${orbLine || 'Orb reward'}`
+				};
+			}
+			const ach = await completeAchievementViaDiscordSays(token, applicationId, questTarget, opts);
+			payload = await fetchQuestsMe(token, opts);
+			quest = findQuestByIdInPayload(payload, questId) ?? quest;
+			if (ach.ok || userQuestCompleted(quest)) {
+				return {
+					ok: true,
+					questName,
+					orbLine,
+					questUrl: qUrl,
+					title: '✅ Achievement quest finished',
+					description: `**${questName}**\n**Reward:** ${orbLine || 'Orb reward'}\nClaim in **Discord → Quests** if prompted.`
+				};
+			}
+			return {
+				ok: false,
+				questName,
+				orbLine,
+				questUrl: qUrl,
+				title: 'Achievement quest — incomplete',
+				description: `${ach.error}\n\n**Reward:** ${orbLine || 'Orb reward'}`
+			};
+		}
+
+		if (isPlayActivity) {
+			const userId = await discordUserIdFromUserToken(token, opts);
+			if (!userId) {
+				return {
+					ok: false,
+					questName,
+					orbLine,
+					questUrl: qUrl,
+					title: 'Activity quest',
+					description: `Could not resolve your user id from the token. Use a normal **user** token (not a bot token).\n\n**Reward:** ${orbLine || 'Orb reward'}`
+				};
+			}
+			const knownTargetSec = heartbeatDurationTargetSec(taskKey, pt.obj);
+			const streamKey = `call:${userId}:1`;
+			const hb = await runQuestHeartbeatUntilDone(token, questId, taskKey, opts, {
+				knownTargetSec,
+				intervalMs: 20_000,
+				makeBody: (terminal) => ({ stream_key: streamKey, terminal })
+			});
+			payload = await fetchQuestsMe(token, opts);
+			quest = findQuestByIdInPayload(payload, questId) ?? quest;
+			const finalProgress = readProgressSeconds(quest, taskKey);
+			const done = hb.sawTaskComplete || userQuestCompleted(quest) || (knownTargetSec != null && finalProgress >= knownTargetSec - 0.5);
+			if (done) {
+				return {
+					ok: true,
+					questName,
+					orbLine,
+					questUrl: qUrl,
+					title: '✅ Activity quest finished',
+					description: `**${questName}**\n**Reward:** ${orbLine || 'Orb reward'}\nClaim in **Discord → Quests** if prompted.`
+				};
+			}
+			return {
+				ok: false,
+				questName,
+				orbLine,
+				questUrl: qUrl,
+				title: 'Activity quest — incomplete',
+				description: `Progress did not finish in time${hb.lastError ? ` (${hb.lastError})` : ''}.\n\n**Reward:** ${orbLine || 'Orb reward'}`
+			};
+		}
+
+		if (isPlatformHeartbeat) {
+			const knownTargetSec = heartbeatDurationTargetSec(taskKey, pt.obj);
+			const applicationId = resolveApplicationId(cfgLive);
+			let hb: { sawTaskComplete: boolean; reachedTarget: boolean; lastError: string };
+
+			if (applicationId) {
+				hb = await runQuestHeartbeatUntilDone(token, questId, taskKey, opts, {
+					knownTargetSec,
+					intervalMs: 20_000,
+					makeBody: (terminal) => ({ application_id: applicationId, terminal })
+				});
+			} else if (taskKey === 'PLAY_ON_DESKTOP' || taskKey === 'PLAY_ON_DESKTOP_V2' || taskKey === 'STREAM_ON_DESKTOP') {
+				const streamKey = `call:${questId}:1`;
+				hb = await runQuestHeartbeatUntilDone(token, questId, taskKey, opts, {
+					knownTargetSec,
+					intervalMs: 30_000,
+					makeBody: (terminal) => ({ stream_key: streamKey, terminal })
+				});
+			} else {
+				return {
+					ok: true,
+					questName,
+					orbLine,
+					questUrl: qUrl,
+					title: '⚠️ Enrolled only',
+					description: `Enrolled in **${questName}**. **${labelForTaskKey(taskKey)}** needs an **application id** in the quest config for API heartbeats — finish in the Discord client (desktop / console).\n\n**Reward:** ${orbLine || 'Orb reward'}`
+				};
+			}
+
+			payload = await fetchQuestsMe(token, opts);
+			quest = findQuestByIdInPayload(payload, questId) ?? quest;
+			const finalProgress = readProgressSeconds(quest, taskKey);
+			const done = hb.sawTaskComplete || userQuestCompleted(quest) || (knownTargetSec != null && finalProgress >= knownTargetSec - 0.5);
+			if (done) {
+				return {
+					ok: true,
+					questName,
+					orbLine,
+					questUrl: qUrl,
+					title: '✅ Quest finished',
+					description: `**${questName}** (${labelForTaskKey(taskKey)})\n**Reward:** ${orbLine || 'Orb reward'}\nClaim in **Discord → Quests** if prompted.`
+				};
+			}
+			return {
+				ok: false,
+				questName,
+				orbLine,
+				questUrl: qUrl,
+				title: 'Quest — incomplete',
+				description: `Progress did not finish in time${hb.lastError ? ` (${hb.lastError})` : ''}. For **stream** or **console** quests, keep the real client active or retry later.\n\n**Reward:** ${orbLine || 'Orb reward'}`
+			};
+		}
+
+		if (!isVideo) {
+			return {
+				ok: true,
+				questName,
+				orbLine,
+				questUrl: qUrl,
+				title: '⚠️ Enrolled only',
+				description: `Enrolled in **${questName}**. Unsupported task type (**${labelForTaskKey(taskKey)}**) — complete it in the Discord client.\n\n**Reward:** ${orbLine || 'Orb reward'}`
 			};
 		}
 
@@ -809,7 +1165,7 @@ export async function runOrbQuestUserAutomation(
 				orbLine,
 				questUrl: qUrl,
 				title: '✅ Video quest finished',
-				description: `**${questName}**\n**Reward:** ${orbLine || 'Orb reward'}\nClaim in **Discord → Quests** if the client still shows a claim button.`
+				description: `**${questName}**\n**Reward:** ${orbLine || 'Orb reward'}\nClaim in **Discord → Quests** if prompted.`
 			};
 		}
 

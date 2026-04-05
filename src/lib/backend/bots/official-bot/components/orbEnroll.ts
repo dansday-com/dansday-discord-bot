@@ -15,7 +15,6 @@ export async function handleOrbEnrollButton(interaction: ButtonInteraction): Pro
 		return;
 	}
 
-	// Discord caps: modal title & text-input label ≤45 chars, placeholder ≤100 chars, custom_id ≤100.
 	const modal = new ModalBuilder().setCustomId(`${ORB_ENROLL_MODAL_PREFIX}${questId}`.slice(0, 100)).setTitle('Enroll (token — high risk)');
 
 	const tokenInput = new TextInputBuilder()

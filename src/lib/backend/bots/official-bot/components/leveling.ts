@@ -8,7 +8,7 @@ import {
 	isComponentFeatureEnabled,
 	serverSettingsComponent,
 	computePublicServerSlugForServerId,
-	publicWebLeaderboardUrl
+	publicServerUrl
 } from '../../../config.js';
 import db from '../../../../database.js';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
@@ -271,7 +271,7 @@ export async function sendLevelChangeDM(guildId, discordMemberId, serverName, ne
 			try {
 				const srv = await getServerForCurrentBot(guildId);
 				const slug = await computePublicServerSlugForServerId(Number(srv.id));
-				if (slug) dmLeaderboardUrl = publicWebLeaderboardUrl(slug);
+				if (slug) dmLeaderboardUrl = publicServerUrl(slug, 'leaderboard');
 			} catch (_) {}
 		}
 		if (dmLeaderboardUrl) dmEmbed.setURL(dmLeaderboardUrl);
@@ -365,7 +365,7 @@ export async function sendLevelProgressNotification({
 		let leaderboardUrl: string | null = null;
 		if (await isComponentFeatureEnabled(guildId, serverSettingsComponent.public_statistics)) {
 			const slug = await computePublicServerSlugForServerId(Number(server.id));
-			if (slug) leaderboardUrl = publicWebLeaderboardUrl(slug);
+			if (slug) leaderboardUrl = publicServerUrl(slug, 'leaderboard');
 		}
 
 		const embedConfig = await getEmbedConfig(guildId);

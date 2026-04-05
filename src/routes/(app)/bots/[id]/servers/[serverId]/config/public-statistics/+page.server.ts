@@ -3,6 +3,7 @@ import type { PageServerLoad } from './$types';
 import db from '$lib/database.js';
 import { SERVER_SETTINGS } from '$lib/serverSettingsComponents.js';
 import { computePublicServerSlugForServerConfig } from '$lib/publicServerSlug/index.js';
+import { publicServerPath } from '$lib/publicSiteUrls.js';
 
 export const load: PageServerLoad = async ({ locals, params, parent }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
@@ -15,12 +16,11 @@ export const load: PageServerLoad = async ({ locals, params, parent }) => {
 	const enabled = settings.enabled !== false;
 
 	const slug = await computePublicServerSlugForServerConfig(Number(params.serverId), overview?.name ?? null);
-	const enc = slug ? encodeURIComponent(String(slug)) : '';
 
 	return {
 		settings,
 		enabled,
 		serverName: overview?.name || 'server',
-		publicStatsPath: slug ? `/${enc}` : null
+		publicStatsPath: slug ? publicServerPath(String(slug)) : null
 	};
 };

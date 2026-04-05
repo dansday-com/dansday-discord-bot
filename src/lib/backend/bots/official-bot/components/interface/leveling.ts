@@ -6,7 +6,7 @@ import {
 	isComponentFeatureEnabled,
 	serverSettingsComponent,
 	computePublicServerSlugForServerId,
-	publicWebLeaderboardUrl
+	publicServerUrl
 } from '../../../../config.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import db from '../../../../../database.js';
@@ -333,7 +333,7 @@ async function createMenuRow(guildId = null, userId = null, serverId = null) {
 	if (serverId && guildId && (await isComponentFeatureEnabled(guildId, serverSettingsComponent.public_statistics))) {
 		try {
 			const slug = await computePublicServerSlugForServerId(serverId);
-			const url = slug ? publicWebLeaderboardUrl(slug) : null;
+			const url = slug ? publicServerUrl(slug, 'leaderboard') : null;
 			if (url) {
 				buttons.push(new ButtonBuilder().setLabel('🌐 Web Leaderboard').setURL(url).setStyle(ButtonStyle.Link));
 			}

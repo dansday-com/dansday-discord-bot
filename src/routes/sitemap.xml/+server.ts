@@ -1,7 +1,6 @@
 import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
 import { listPublicServerSlugs } from '$lib/publicServerSlug/index.js';
-import { PUBLIC_WEB_LEADERBOARD_PATH, PUBLIC_WEB_MEMBERS_PATH } from '$lib/publicSiteUrls.js';
 import { parseMySQLDateTimeUtc } from '$lib/utils/datetime.js';
 
 function escapeXml(unsafe: string): string {
@@ -42,10 +41,11 @@ export const GET: RequestHandler = async () => {
 			const enc = encodeURIComponent(String(s.slug));
 			const lastmod = toLastmod(s.updated_at);
 			const base = { lastmod, changefreq: 'weekly' as const, priority: 0.8 as const };
+			const root = `${baseUrl.replace(/\/$/, '')}/server`;
 			return [
-				{ loc: `${baseUrl}/${enc}`, ...base },
-				{ loc: `${baseUrl}/${enc}/${PUBLIC_WEB_LEADERBOARD_PATH}`, ...base },
-				{ loc: `${baseUrl}/${enc}/${PUBLIC_WEB_MEMBERS_PATH}`, ...base }
+				{ loc: `${root}/${enc}`, ...base },
+				{ loc: `${root}/${enc}/leaderboard`, ...base },
+				{ loc: `${root}/${enc}/members`, ...base }
 			];
 		});
 

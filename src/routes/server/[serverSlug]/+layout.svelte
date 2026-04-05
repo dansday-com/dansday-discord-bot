@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { publicServerPath } from '$lib/publicSiteUrls.js';
 	import type { LayoutProps } from './$types';
 	import './public-page.css';
 
 	let { data, children }: LayoutProps = $props();
 
-	const basePath = $derived(`/${encodeURIComponent(data.server.slug)}`);
+	const basePath = $derived(publicServerPath(data.server.slug));
 	const leaderboardPath = $derived(`${basePath}/leaderboard`);
 	const membersPath = $derived(`${basePath}/members`);
 	const pathNorm = $derived(page.url.pathname.replace(/\/$/, ''));

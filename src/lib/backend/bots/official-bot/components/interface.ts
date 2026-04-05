@@ -4,7 +4,7 @@ import {
 	getEmbedConfig,
 	getServerForCurrentBot,
 	isComponentFeatureEnabled,
-	publicServerOverviewUrl,
+	publicServerUrl,
 	serverSettingsComponent
 } from '../../../config.js';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
@@ -229,7 +229,7 @@ async function handleMenuButton(interaction) {
 		try {
 			const server = await getServerForCurrentBot(interaction.guild.id);
 			const slug = await computePublicServerSlugForServerId(Number(server.id));
-			const url = slug ? publicServerOverviewUrl(slug) : null;
+			const url = slug ? publicServerUrl(slug) : null;
 			if (url) {
 				const webBtn = new ButtonBuilder().setLabel('🌐 Web statistics').setURL(url).setStyle(ButtonStyle.Link);
 				const settingsRow = rows[rows.length - 1];

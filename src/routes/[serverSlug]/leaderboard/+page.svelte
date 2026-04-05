@@ -279,9 +279,7 @@
 										{metricValueAnimated(r, metric)}
 										<span class="lb-podium-unit">{metricUnit(metric)}</span>
 									</div>
-									{#if metric === 'xp'}
-										<div class="lb-podium-level">Lvl {r.level ?? 1}</div>
-									{/if}
+									<div class="lb-podium-level">Level {r.level ?? 1}</div>
 								</div>
 
 								<div class="lb-podium-block" style="height: {podiumHeights[rank]}; background: {rankGradients[rank]};">
@@ -312,9 +310,7 @@
 								</div>
 								<div class="lb-list-info">
 									<div class="lb-list-name" title={displayName(r)}>{displayName(r)}</div>
-									{#if metric === 'xp'}
-										<div class="lb-list-sub">Level {r.level ?? 1}</div>
-									{/if}
+									<div class="lb-list-sub">Level {r.level ?? 1}</div>
 									<div class="lb-list-bar-track">
 										<div class="lb-list-bar-fill" style="width: {Math.max(3, Math.round((metricValueNumber(r, metric) / maxValue) * 100))}%"></div>
 									</div>

@@ -174,10 +174,10 @@ DEALLOCATE PREPARE stmt_drop_idx_official_discord;
 -- Ensure we drop ANY remaining index (including functional) referencing official_bot_id
 -- before dropping the column.
 SET @sql_drop_any_official_indexes := (
-	SELECT NULLIF(
-		GROUP_CONCAT(DISTINCT CONCAT('DROP INDEX `', INDEX_NAME, '` ON servers') SEPARATOR '; '),
-		''
-	)
+	SELECT NULLIF(CONCAT(
+		'ALTER TABLE servers ',
+		GROUP_CONCAT(DISTINCT CONCAT('DROP INDEX `', INDEX_NAME, '`') SEPARATOR ', ')
+	), 'ALTER TABLE servers ')
 	FROM INFORMATION_SCHEMA.STATISTICS
 	WHERE TABLE_SCHEMA = DATABASE()
 	  AND TABLE_NAME = 'servers'

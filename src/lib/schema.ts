@@ -8,6 +8,7 @@ export const migrations = mysqlTable('migrations', {
 
 export const panel = mysqlTable('panels', {
 	id: int('id').primaryKey().autoincrement(),
+	slug: varchar('slug', { length: 64 }).notNull().default('default'),
 	created_at: datetime('created_at').notNull(),
 	updated_at: datetime('updated_at').notNull()
 });

@@ -9,6 +9,24 @@
 	let usernameOrEmail = $state('');
 	let password = $state('');
 
+	async function handleDemoLogin() {
+		loading = true;
+		try {
+			const res = await fetch('/api/panel/demo-login', { method: 'POST', credentials: 'include' });
+			const data = await res.json();
+			if (data.success) {
+				showToast('Logged in to demo', 'success');
+				setTimeout(() => goto('/'), 300);
+			} else {
+				showToast(data.error || 'Demo login failed', 'error');
+			}
+		} catch (_) {
+			showToast('Demo login failed. Please try again.', 'error');
+		} finally {
+			loading = false;
+		}
+	}
+
 	async function handleSubmit() {
 		if (!usernameOrEmail || !password) {
 			showToast('Username/Email and password are required', 'error');
@@ -109,6 +127,17 @@
 			{#if loading}<i class="fas fa-spinner fa-spin text-amber-200"></i>{/if}
 			{loading ? 'Processing...' : 'Login'}
 		</button>
+
+		<button
+			type="button"
+			disabled={loading}
+			onclick={handleDemoLogin}
+			class="bg-ash-700 border-ash-600 text-ash-100 hover:bg-ash-650 flex w-full items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-semibold transition-all duration-200 hover:scale-[1.01] active:scale-[0.98] disabled:transform-none disabled:cursor-not-allowed disabled:opacity-50 sm:py-3 sm:text-base"
+		>
+			<i class="fas fa-flask text-cyan-300"></i>
+			Login for demo
+		</button>
+		<p class="text-ash-500 -mt-2 text-center text-[11px] sm:text-xs">No username/password needed.</p>
 
 		{#if data.canRegister}
 			<div class="text-center">

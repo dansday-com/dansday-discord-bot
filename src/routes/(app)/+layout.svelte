@@ -5,6 +5,10 @@
 
 	let { data, children }: LayoutProps = $props();
 
+	const isDemo = $derived(
+		data?.user?.authenticated === true && typeof data?.user?.username === 'string' && data.user.username.toLowerCase().startsWith('demo')
+	);
+
 	async function handleLogout() {
 		await fetch('/api/panel/logout', { method: 'POST', credentials: 'include' });
 		goto('/login');
@@ -20,6 +24,13 @@
 						<i class="fas fa-bolt text-ash-100 text-sm sm:text-base"></i>
 					</div>
 					<h1 class="text-ash-100 truncate text-base font-bold sm:text-xl">Dansday Discord Bot Panel</h1>
+					{#if isDemo}
+						<span
+							class="hidden rounded-full border border-cyan-300/30 bg-cyan-400/15 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-cyan-200 sm:inline"
+						>
+							DEMO
+						</span>
+					{/if}
 				</a>
 				<div class="flex flex-shrink-0 items-center gap-2">
 					<button

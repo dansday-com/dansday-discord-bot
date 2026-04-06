@@ -6,8 +6,10 @@ CREATE TABLE IF NOT EXISTS migrations (
 
 CREATE TABLE IF NOT EXISTS panels (
     id INT PRIMARY KEY AUTO_INCREMENT,
+    slug VARCHAR(64) NOT NULL DEFAULT 'default',
     created_at DATETIME NOT NULL,
-    updated_at DATETIME NOT NULL
+    updated_at DATETIME NOT NULL,
+    UNIQUE KEY uq_panels_slug (slug)
 );
 
 CREATE TABLE IF NOT EXISTS accounts (

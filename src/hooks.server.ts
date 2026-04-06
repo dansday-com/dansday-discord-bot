@@ -80,7 +80,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 					}
 				}
 			} else if (!session) {
-				const panel = await db.getPanel();
+				const panel = await db.getPanel('default');
 				event.locals.user = { authenticated: false, can_register: !panel };
 			}
 		} catch (_) {
@@ -88,7 +88,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 		}
 	} else {
 		try {
-			const panel = await db.getPanel();
+			const panel = await db.getPanel('default');
 			event.locals.user = { authenticated: false, can_register: !panel };
 		} catch (_) {
 			event.locals.user = { authenticated: false, can_register: false };

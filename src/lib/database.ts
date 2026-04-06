@@ -1529,22 +1529,26 @@ export async function memberHasCustomSupporterRole(discordMemberId: string, serv
 	return { has: false, role: null };
 }
 
-async function getPanel() {
-	const rows = await db.select().from(schema.panel).limit(1);
+async function getPanel(slug: string = 'default') {
+	const s = String(slug || 'default').trim() || 'default';
+	const rows = await db.select().from(schema.panel).where(eq(schema.panel.slug, s)).limit(1);
 	return rows[0] || null;
 }
 
-async function createPanel() {
-	const existing = await getPanel();
-	if (existing) throw new Error('Panel already exists');
+async function createPanel(slug: string = 'default') {
+	const s = String(slug || 'default').trim() || 'default';
 	const now = toMySQLDateTime();
-	const result = await db.insert(schema.panel).values({ created_at: now as any, updated_at: now as any });
-	const rows = await db
-		.select()
-		.from(schema.panel)
-		.where(eq(schema.panel.id, (result[0] as any).insertId))
-		.limit(1);
-	return rows[0];
+	const result = await db
+		.insert(schema.panel)
+		.values({ slug: s, created_at: now as any, updated_at: now as any })
+		.onDuplicateKeyUpdate({ set: { updated_at: now as any } });
+
+	const insertedId = (result?.[0] as any)?.insertId;
+	if (insertedId) {
+		const rows = await db.select().from(schema.panel).where(eq(schema.panel.id, insertedId)).limit(1);
+		return rows[0] || null;
+	}
+	return getPanel(s);
 }
 
 async function getAccountById(accountId: any) {

@@ -15,7 +15,7 @@ import {
 	logger
 } from '$lib/utils/index.js';
 import { sendOTPEmail } from '$lib/frontend/email.js';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { randomInt } from 'crypto';
 
 async function validateRegistrationInputs(username: string, email: string, password: string) {

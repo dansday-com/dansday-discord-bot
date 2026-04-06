@@ -16,7 +16,10 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 	let bots: any[] = [];
 	try {
-		const rawBots = await db.getAllBots();
+		const rawBots =
+			locals.user.authenticated && locals.user.account_source === 'accounts'
+				? await db.getAllBots(locals.user.panel_id)
+				: await db.getAllBots();
 		bots = await Promise.all(
 			rawBots.map(async (bot: any) => {
 				if ((bot.status === 'running' || bot.status === 'starting' || bot.status === 'stopping') && bot.process_id) {

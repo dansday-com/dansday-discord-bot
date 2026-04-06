@@ -21,11 +21,11 @@ CREATE TABLE IF NOT EXISTS accounts (
     email_verified BOOLEAN DEFAULT FALSE,
     otp_code VARCHAR(6) NULL,
     otp_expires_at DATETIME NULL,
-    panel_id INT NULL,
+    panel_id INT NOT NULL,
     ip_address TEXT NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
-    FOREIGN KEY (panel_id) REFERENCES panels(id) ON DELETE SET NULL
+    FOREIGN KEY (panel_id) REFERENCES panels(id) ON DELETE RESTRICT
 );
 
 CREATE TABLE IF NOT EXISTS bots (
@@ -36,13 +36,13 @@ CREATE TABLE IF NOT EXISTS bots (
     bot_icon TEXT,
     port INT,
     secret_key TEXT,
-    account_id INT NULL,
+    account_id INT NOT NULL,
     status ENUM('running', 'stopped', 'starting', 'stopping') DEFAULT 'stopped',
     process_id INT,
     uptime_started_at DATETIME NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
-    FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL
+    FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS servers (

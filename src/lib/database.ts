@@ -205,8 +205,19 @@ async function retryOnConnectionError<T>(fn: () => Promise<T>, maxRetries = 3, d
 	throw new Error('Max retries exceeded');
 }
 
-export async function getAllBots() {
+export async function getAllBots(panelId?: number | null) {
 	await initializeDatabase();
+	if (panelId != null) {
+		return retryOnConnectionError(() =>
+			db
+				.select({ bot: schema.bots })
+				.from(schema.bots)
+				.innerJoin(schema.accounts, eq(schema.accounts.id, schema.bots.account_id))
+				.where(eq(schema.accounts.panel_id, Number(panelId)))
+				.orderBy(asc(schema.bots.created_at))
+				.then((rows) => rows.map((r) => r.bot))
+		);
+	}
 	return retryOnConnectionError(() => db.select().from(schema.bots).orderBy(asc(schema.bots.created_at)));
 }
 
@@ -229,7 +240,10 @@ export async function getBot(botId: number | string) {
 
 export async function createBot(botData: any) {
 	await initializeDatabase();
-	const bots = await getAllBots();
+	const panelId =
+		botData.panel_id ??
+		(botData.account_id ? (await getAccountById(botData.account_id))?.panel_id ?? null : null);
+	const bots = await getAllBots(panelId);
 	const botNumber = bots.length + 1;
 	const now = toMySQLDateTime();
 
@@ -240,7 +254,7 @@ export async function createBot(botData: any) {
 		bot_icon: botData.bot_icon || null,
 		port: botData.port !== undefined ? botData.port : 7777,
 		secret_key: botData.secret_key || null,
-		account_id: botData.account_id || null,
+		account_id: botData.account_id,
 		created_at: now as any,
 		updated_at: now as any
 	});

@@ -24,7 +24,9 @@ export const accounts = mysqlTable(
 		email_verified: boolean('email_verified').default(false),
 		otp_code: varchar('otp_code', { length: 6 }),
 		otp_expires_at: datetime('otp_expires_at'),
-		panel_id: int('panel_id').references(() => panel.id, { onDelete: 'set null' }),
+		panel_id: int('panel_id')
+			.notNull()
+			.references(() => panel.id, { onDelete: 'restrict' }),
 		ip_address: text('ip_address'),
 		created_at: datetime('created_at').notNull(),
 		updated_at: datetime('updated_at').notNull()
@@ -40,7 +42,9 @@ export const bots = mysqlTable('bots', {
 	bot_icon: text('bot_icon'),
 	port: int('port'),
 	secret_key: text('secret_key'),
-	account_id: int('account_id').references(() => accounts.id, { onDelete: 'set null' }),
+	account_id: int('account_id')
+		.notNull()
+		.references(() => accounts.id, { onDelete: 'cascade' }),
 	status: mysqlEnum('status', ['running', 'stopped', 'starting', 'stopping']).default('stopped'),
 	process_id: int('process_id'),
 	uptime_started_at: datetime('uptime_started_at'),

@@ -78,6 +78,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 							email: account.email,
 							account_type: account.account_type,
 							account_source: 'accounts',
+							panel_id: account.panel_id,
 							is_demo: session.is_demo === true,
 							session_expires_at: session.expires_at
 						};

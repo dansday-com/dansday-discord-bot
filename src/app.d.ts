@@ -9,6 +9,7 @@ declare global {
 						email: string;
 						account_type: 'superadmin';
 						account_source: 'accounts';
+						panel_id: number;
 						is_demo?: boolean;
 						session_expires_at?: number;
 				  }

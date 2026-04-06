@@ -92,7 +92,6 @@ export const serverAccounts = mysqlTable(
 		otp_expires_at: datetime('otp_expires_at'),
 		ip_address: text('ip_address'),
 		is_frozen: boolean('is_frozen').default(false),
-		invited_by: int('invited_by'),
 		created_at: datetime('created_at').notNull(),
 		updated_at: datetime('updated_at').notNull()
 	},
@@ -113,9 +112,8 @@ export const serverAccountInvites = mysqlTable(
 			.notNull()
 			.references(() => servers.id, { onDelete: 'cascade' }),
 		account_type: mysqlEnum('account_type', ['owner', 'moderator']).notNull(),
-		created_by: int('created_by')
-			.notNull()
-			.references(() => accounts.id, { onDelete: 'cascade' }),
+		created_by: int('created_by').references(() => serverAccounts.id, { onDelete: 'set null' }),
+		created_by_admin: int('created_by_admin').references(() => accounts.id, { onDelete: 'set null' }),
 		used_by: int('used_by').references(() => serverAccounts.id, { onDelete: 'set null' }),
 		expires_at: datetime('expires_at'),
 		created_at: datetime('created_at').notNull(),
@@ -580,6 +578,5 @@ export const accountServerAccess = mysqlTable('account_server_access', {
 		.notNull()
 		.references(() => servers.id, { onDelete: 'cascade' }),
 	role: mysqlEnum('role', ['owner', 'moderator']).notNull(),
-	invited_by: int('invited_by'),
 	created_at: datetime('created_at').notNull()
 });

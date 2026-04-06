@@ -1,6 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import db from '$lib/database.js';
+import db, { getOfficialBotIdForServer } from '$lib/database.js';
 
 function maskEmail(email: string) {
 	const at = email.indexOf('@');
@@ -16,7 +16,13 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	const serverId = Number(params.serverId);
 
 	if (locals.user.account_source === 'server_accounts' && locals.user.server_id !== serverId) {
-		redirect(302, `/bots/${locals.user.bot_id}/servers/${locals.user.server_id}/accounts`);
+		const ob = await getOfficialBotIdForServer(locals.user.server_id);
+		const fallback = locals.user.bot_id > 0 ? locals.user.bot_id : null;
+		const targetBot = ob ?? fallback;
+		if (targetBot != null) {
+			redirect(302, `/bots/${targetBot}/servers/${locals.user.server_id}/accounts`);
+		}
+		redirect(302, '/');
 	}
 
 	const [rawAccounts, invites] = await Promise.all([db.getServerAccountsByServer(serverId), db.getServerAccountInvitesByServer(serverId)]);

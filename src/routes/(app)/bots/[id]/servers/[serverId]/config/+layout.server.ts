@@ -1,6 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
-import db from '$lib/database.js';
+import db, { getOfficialBotIdForServer } from '$lib/database.js';
 import { isServerConfigReadOnly } from '$lib/serverPanelAccess.js';
 import { SERVER_SETTINGS } from '$lib/serverSettingsComponents.js';
 
@@ -10,8 +10,18 @@ export const load: LayoutServerLoad = async ({ locals, params }) => {
 	const serverId = Number(params.serverId);
 
 	if (locals.user.account_source !== 'accounts') {
-		if (locals.user.bot_id !== Number(params.id) || locals.user.server_id !== serverId) {
-			redirect(302, `/bots/${locals.user.bot_id}/servers/${locals.user.server_id}`);
+		if (locals.user.server_id !== serverId) {
+			const ob = await getOfficialBotIdForServer(locals.user.server_id);
+			const fallback = locals.user.bot_id > 0 ? locals.user.bot_id : null;
+			const targetBot = ob ?? fallback;
+			if (targetBot != null) {
+				redirect(302, `/bots/${targetBot}/servers/${locals.user.server_id}`);
+			}
+			redirect(302, '/');
+		}
+		const canonical = await getOfficialBotIdForServer(serverId);
+		if (canonical != null && Number(params.id) !== canonical) {
+			redirect(302, `/bots/${canonical}/servers/${serverId}`);
 		}
 	}
 

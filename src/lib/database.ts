@@ -1686,11 +1686,11 @@ async function getAccountServerAccess(accountId: number) {
 		.where(eq(schema.accountServerAccess.account_id, accountId));
 }
 
-async function createAccountServerAccess(data: { account_id: number; server_id: number; role: 'owner' | 'moderator'; invited_by?: number | null }) {
+async function createAccountServerAccess(data: { account_id: number; server_id: number; role: 'owner' | 'moderator' }) {
 	const now = toMySQLDateTime();
 	await db
 		.insert(schema.accountServerAccess)
-		.values({ account_id: data.account_id, server_id: data.server_id, role: data.role, invited_by: data.invited_by || null, created_at: now as any })
+		.values({ account_id: data.account_id, server_id: data.server_id, role: data.role, created_at: now as any })
 		.onDuplicateKeyUpdate({ set: { role: data.role } });
 }
 
@@ -1735,7 +1735,6 @@ async function createServerAccount(data: {
 	otp_expires_at?: string | null;
 	ip_address?: string | null;
 	is_frozen?: boolean;
-	invited_by?: number | null;
 }) {
 	const now = toMySQLDateTime();
 	const result = await db.insert(schema.serverAccounts).values({
@@ -1749,7 +1748,6 @@ async function createServerAccount(data: {
 		otp_expires_at: data.otp_expires_at ?? (null as any),
 		ip_address: data.ip_address ?? null,
 		is_frozen: data.is_frozen ?? false,
-		invited_by: data.invited_by ?? null,
 		created_at: now as any,
 		updated_at: now as any
 	});
@@ -1768,7 +1766,6 @@ async function updateServerAccount(
 		otp_expires_at: string | null;
 		ip_address: string | null;
 		is_frozen: boolean;
-		invited_by: number | null;
 	}>
 ) {
 	await db
@@ -1791,7 +1788,13 @@ async function getServerAccountsByServer(serverId: number) {
 
 const SERVER_ACCOUNT_INVITE_TTL_MINUTES = 10;
 
-async function createServerAccountInvite(data: { token: string; server_id: number; account_type: 'owner' | 'moderator'; created_by: number }) {
+async function createServerAccountInvite(data: {
+	token: string;
+	server_id: number;
+	account_type: 'owner' | 'moderator';
+	created_by: number | null;
+	created_by_admin: number | null;
+}) {
 	const now = getNowUtc();
 	const createdAt = now.toJSDate();
 	const expiresAt = now.plus({ minutes: SERVER_ACCOUNT_INVITE_TTL_MINUTES }).toJSDate();
@@ -1800,6 +1803,7 @@ async function createServerAccountInvite(data: { token: string; server_id: numbe
 		server_id: data.server_id,
 		account_type: data.account_type,
 		created_by: data.created_by,
+		created_by_admin: data.created_by_admin,
 		expires_at: expiresAt as any,
 		created_at: createdAt as any
 	});
@@ -1830,15 +1834,21 @@ async function getServerAccountInvitesByServer(serverId: number) {
 	return db
 		.select({
 			invite: schema.serverAccountInvites,
-			creator_username: schema.accounts.username,
-			used_by_username: schema.serverAccounts.username
+			creator_username: schema.serverAccounts.username,
+			creator_admin_username: schema.accounts.username
 		})
 		.from(schema.serverAccountInvites)
-		.leftJoin(schema.accounts, eq(schema.serverAccountInvites.created_by, schema.accounts.id))
-		.leftJoin(schema.serverAccounts, eq(schema.serverAccountInvites.used_by, schema.serverAccounts.id))
+		.leftJoin(schema.serverAccounts, eq(schema.serverAccountInvites.created_by, schema.serverAccounts.id))
+		.leftJoin(schema.accounts, eq(schema.serverAccountInvites.created_by_admin, schema.accounts.id))
 		.where(eq(schema.serverAccountInvites.server_id, serverId))
 		.orderBy(desc(schema.serverAccountInvites.created_at))
-		.then((rows) => rows.map((r) => ({ ...r.invite, creator_username: r.creator_username, used_by_username: r.used_by_username })));
+		.then((rows) =>
+			rows.map((r) => ({
+				...r.invite,
+				creator_username: r.creator_username,
+				creator_admin_username: r.creator_admin_username
+			}))
+		);
 }
 
 async function getAllServerBots() {
@@ -1905,6 +1915,11 @@ export async function resolveOfficialBotIdForServer(server: typeof schema.server
 	if (server.selfbot_id == null) return null;
 	const ob = await getOfficialBotForSelfbot(server.selfbot_id);
 	return ob?.id ?? null;
+}
+
+export async function getOfficialBotIdForServer(serverId: number): Promise<number | null> {
+	const server = await getServer(serverId);
+	return resolveOfficialBotIdForServer(server);
 }
 
 async function getSelfbotsForOfficialBot(officialBotId: number) {
@@ -2920,6 +2935,7 @@ export default {
 	removeServerBot,
 	getOfficialBotForSelfbot,
 	resolveOfficialBotIdForServer,
+	getOfficialBotIdForServer,
 	getSelfbotsForOfficialBot,
 	getFirstRunningSelfbotForServer,
 	getChannelsForServer,

@@ -1,6 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import db from '$lib/database.js';
+import db, { getOfficialBotIdForServer } from '$lib/database.js';
 import { getBotUptimeMs } from '$lib/botProcesses.js';
 import { webRouteUp } from '$lib/frontend/redirect.js';
 
@@ -8,7 +8,13 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
 
 	if (locals.user.account_source === 'server_accounts') {
-		redirect(302, `/bots/${locals.user.bot_id}/servers/${locals.user.server_id}`);
+		const ob = await getOfficialBotIdForServer(locals.user.server_id);
+		const fallback = locals.user.bot_id > 0 ? locals.user.bot_id : null;
+		const targetBot = ob ?? fallback;
+		if (targetBot != null) {
+			redirect(302, `/bots/${targetBot}/servers/${locals.user.server_id}`);
+		}
+		redirect(302, '/');
 	}
 
 	const rawBot = await db.getBot(params.id);

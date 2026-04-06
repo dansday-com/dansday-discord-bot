@@ -289,7 +289,7 @@ async function buildLevelingEmbeds(server, memberLevelData, sortType = 'xp', gui
 }
 
 async function createLeaderboardButtons(selectedType = 'xp', guildId = null, userId = null) {
-	if (guildId && !(await isComponentFeatureEnabled(guildId, serverSettingsComponent.public_statistics))) {
+	if (guildId && !(await isComponentFeatureEnabled(guildId, serverSettingsComponent.leveling))) {
 		return null;
 	}
 	const topXpLabel = await translate('leveling.buttons.topXp', guildId, userId);
@@ -396,10 +396,11 @@ export async function handleLevelingButton(interaction) {
 		const { profileEmbed, leaderboardEmbed } = await buildLevelingEmbeds(server, memberLevelData, sortType, interaction.guild.id, interaction.user.id);
 		const buttons = await createLeaderboardButtons(sortType, interaction.guild.id, interaction.user.id);
 		const menuRow = await createMenuRow(interaction.guild.id, interaction.user.id, server.id);
+		const components = [buttons, menuRow].filter(Boolean);
 
 		await interaction.update({
 			embeds: [profileEmbed, leaderboardEmbed],
-			components: [buttons, menuRow]
+			components
 		});
 	} catch (error) {
 		await logger.log(`❌ Leveling interface error: ${error.message}`);
@@ -462,7 +463,7 @@ export async function handleLeaderboardButton(interaction) {
 		const { profileEmbed, leaderboardEmbed } = await buildLevelingEmbeds(server, memberLevelData, sortType, interaction.guild.id, interaction.user.id);
 		const buttons = await createLeaderboardButtons(sortType, interaction.guild.id, interaction.user.id);
 		const menuRow = await createMenuRow(interaction.guild.id, interaction.user.id, server.id);
-		const components = buttons ? [buttons, menuRow] : [menuRow];
+		const components = [buttons, menuRow].filter(Boolean);
 
 		await interaction.update({
 			embeds: [profileEmbed, leaderboardEmbed],

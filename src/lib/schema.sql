@@ -75,13 +75,11 @@ CREATE TABLE IF NOT EXISTS server_accounts (
     otp_expires_at DATETIME NULL,
     ip_address TEXT NULL,
     is_frozen BOOLEAN DEFAULT FALSE,
-    invited_by INT NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
     UNIQUE KEY unique_email_server (email, server_id),
     UNIQUE KEY unique_username_server (username, server_id),
-    FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE,
-    FOREIGN KEY (invited_by) REFERENCES server_accounts(id) ON DELETE SET NULL
+    FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS server_account_invites (
@@ -89,13 +87,15 @@ CREATE TABLE IF NOT EXISTS server_account_invites (
     token VARCHAR(255) NOT NULL UNIQUE,
     server_id INT NOT NULL,
     account_type ENUM('owner', 'moderator') NOT NULL,
-    created_by INT NOT NULL,
+    created_by INT NULL,
+    created_by_admin INT NULL,
     used_by INT NULL,
     expires_at DATETIME NULL,
     created_at DATETIME NOT NULL,
     used_at DATETIME NULL,
     FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE,
-    FOREIGN KEY (created_by) REFERENCES accounts(id) ON DELETE CASCADE,
+    FOREIGN KEY (created_by) REFERENCES server_accounts(id) ON DELETE SET NULL,
+    FOREIGN KEY (created_by_admin) REFERENCES accounts(id) ON DELETE SET NULL,
     FOREIGN KEY (used_by) REFERENCES server_accounts(id) ON DELETE SET NULL
 );
 

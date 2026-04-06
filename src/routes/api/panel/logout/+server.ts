@@ -21,7 +21,6 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		} catch (_) {}
 	}
 
-	// If this was a demo session, remove seeded demo data on logout.
 	if (user.authenticated && user.is_demo === true) {
 		try {
 			await cleanupDemoData();

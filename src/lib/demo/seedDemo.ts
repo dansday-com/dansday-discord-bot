@@ -50,7 +50,6 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 	const nowDb = (toMySQLDateTime(now) || new Date()) as any;
 	const nowSql = nowDb;
 
-	// 1) Ensure panels exist: `default` (prod) and `demo` (isolated demo).
 	await db
 		.insert(schema.panel)
 		.values({ slug: 'default', created_at: nowDb, updated_at: nowDb })
@@ -68,7 +67,6 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 		.then((r: any[]) => r[0] ?? null);
 	if (!demoPanel?.id) throw new Error('Failed to ensure demo panel');
 
-	// 2) Ensure demo superadmin exists (accounts table) in the demo panel.
 	const pwHash = await bcrypt.hash(`demo-${now.getUTCFullYear()}`, 10);
 	await db
 		.insert(schema.accounts)
@@ -95,7 +93,6 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 		.then((r: any[]) => r[0] ?? null);
 	if (!demoAdmin?.id) throw new Error('Failed to ensure demo superadmin');
 
-	// 3) Ensure demo bot exists (bots table) and is owned by demo superadmin.
 	await db
 		.insert(schema.bots)
 		.values({
@@ -129,7 +126,6 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 
 	if (!botRow?.id) throw new Error('Failed to ensure demo bot');
 
-	// Common data used for member generation.
 	const base = Date.now();
 	const firstNames = [
 		'Aurora',
@@ -156,7 +152,6 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 	const lastNames = ['Fox', 'Stone', 'River', 'Hart', 'Blaze', 'Storm', 'Woods', 'Reed', 'Knight', 'Ray'];
 
 	function rngFor(serverIndex: number) {
-		// deterministic-ish per server per run
 		return (n: number) => (serverIndex * 9301 + n * 49297 + 233280) % 1_000_000;
 	}
 
@@ -168,11 +163,11 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 
 		await db.execute(sql`
 			INSERT INTO servers
-				(official_bot_id, selfbot_id, discord_server_id, name, total_members, total_channels, total_boosters, boost_level, server_icon, discord_created_at, vanity_url_code, invite_code, created_at, updated_at)
+				(bot_id, discord_server_id, name, total_members, total_channels, total_boosters, boost_level, server_icon, discord_created_at, vanity_url_code, invite_code, created_at, updated_at)
 			VALUES
-				(${botRow.id}, NULL, ${discordServerId}, ${serverName}, 0, 0, 0, 0, NULL, NULL, NULL, NULL, ${nowSql}, ${nowSql})
+				(${botRow.id}, ${discordServerId}, ${serverName}, 0, 0, 0, 0, NULL, NULL, NULL, NULL, ${nowSql}, ${nowSql})
 			ON DUPLICATE KEY UPDATE
-				official_bot_id = VALUES(official_bot_id),
+				bot_id = VALUES(bot_id),
 				name = VALUES(name),
 				updated_at = VALUES(updated_at)
 		`);
@@ -180,13 +175,12 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 		const serverRow = await db
 			.select()
 			.from(schema.servers)
-			.where(sql`${schema.servers.discord_server_id} = ${discordServerId} AND ${schema.servers.selfbot_id} IS NULL`)
+			.where(sql`${schema.servers.discord_server_id} = ${discordServerId}`)
 			.limit(1)
 			.then((r: any[]) => r[0] ?? null);
 		if (!serverRow?.id) throw new Error(`Failed to ensure demo server ${s}`);
 		serverIds.push(serverRow.id);
 
-		// Public stats slug: demo-1, demo-2, etc.
 		const slug = slugifySimple(`${DEMO.publicSlugPrefix}-${s}`);
 		await db
 			.insert(schema.serverSettings)
@@ -204,7 +198,6 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 				}
 			});
 
-		// Seed categories/roles/channels for each server.
 		await db
 			.insert(schema.serverCategories)
 			.values([
@@ -330,8 +323,7 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 			])
 			.onDuplicateKeyUpdate({ set: { updated_at: nowDb } });
 
-		// Seed 5 selfbots per server for realism.
-		const selfbotCount = 1 + (rngFor(s)(serverRow.id) % 5); // 1..5
+		const selfbotCount = 1 + (rngFor(s)(serverRow.id) % 5);
 		await db
 			.insert(schema.serverBots)
 			.values(
@@ -340,7 +332,7 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 					name: `Demo Selfbot #${i + 1}`,
 					token: 'DEMO_TOKEN_DO_NOT_USE',
 					bot_icon: null,
-					status: 'stopped',
+					status: 'stopped' as const,
 					process_id: null,
 					uptime_started_at: null,
 					created_at: nowDb,
@@ -349,7 +341,6 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 			)
 			.onDuplicateKeyUpdate({ set: { updated_at: nowDb } });
 
-		// Seed server accounts: 1 owner + 1..10 moderators.
 		const ownerUser = `demo_owner_${s}`;
 		const ownerEmail = `demo_owner_${s}@dansday.local`;
 		const ownerPw = await bcrypt.hash('demo', 10);
@@ -371,7 +362,7 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 			})
 			.onDuplicateKeyUpdate({ set: { updated_at: nowDb } });
 
-		const moderatorCount = 1 + (rngFor(s)(serverRow.id + 77) % 10); // 1..10
+		const moderatorCount = 1 + (rngFor(s)(serverRow.id + 77) % 10);
 		for (let m = 1; m <= moderatorCount; m++) {
 			const u = `demo_mod_${s}_${m}`;
 			const e = `demo_mod_${s}_${m}@dansday.local`;
@@ -505,7 +496,6 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 			}
 		}
 
-		// Update server totals (best-effort).
 		await db.execute(sql`
 		UPDATE servers
 		SET
@@ -522,7 +512,5 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 
 export async function cleanupDemoData(): Promise<void> {
 	await initializeDatabase();
-	// With FK CASCADE: panels -> accounts -> bots -> servers -> server_*
-	// deleting the demo panel removes the entire demo tree.
 	await db.delete(schema.panel).where(sql`${schema.panel.slug} = 'demo'`);
 }

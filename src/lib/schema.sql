@@ -47,8 +47,7 @@ CREATE TABLE IF NOT EXISTS bots (
 
 CREATE TABLE IF NOT EXISTS servers (
     id INT PRIMARY KEY AUTO_INCREMENT,
-    official_bot_id INT NULL,
-    selfbot_id INT NULL,
+    bot_id INT NULL,
     discord_server_id VARCHAR(150) NOT NULL,
     name TEXT,
     total_members INT DEFAULT 0,
@@ -61,8 +60,9 @@ CREATE TABLE IF NOT EXISTS servers (
     invite_code VARCHAR(255) NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
-    UNIQUE KEY uq_servers_scope (discord_server_id, (IFNULL(selfbot_id, 0)), (IFNULL(official_bot_id, 0))),
-    FOREIGN KEY (official_bot_id) REFERENCES bots(id) ON DELETE CASCADE
+    UNIQUE KEY uq_servers_bot_discord (bot_id, discord_server_id),
+    INDEX idx_servers_bot_id (bot_id),
+    FOREIGN KEY (bot_id) REFERENCES bots(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS server_accounts (
@@ -115,7 +115,6 @@ CREATE TABLE IF NOT EXISTS server_bots (
     FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE
 );
 
-ALTER TABLE servers ADD CONSTRAINT fk_servers_selfbot FOREIGN KEY (selfbot_id) REFERENCES server_bots(id) ON DELETE CASCADE;
 
 CREATE TABLE IF NOT EXISTS server_categories (
     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -158,6 +157,56 @@ CREATE TABLE IF NOT EXISTS server_channels (
     FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE,
     FOREIGN KEY (category_id) REFERENCES server_categories(id) ON DELETE SET NULL,
     FOREIGN KEY (notification_role_id) REFERENCES server_roles(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS server_bot_servers (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    server_bot_id INT NOT NULL,
+    discord_server_id VARCHAR(150) NOT NULL,
+    name TEXT,
+    total_members INT DEFAULT 0,
+    total_channels INT DEFAULT 0,
+    server_icon TEXT,
+    discord_created_at DATETIME NULL,
+    vanity_url_code VARCHAR(255) NULL,
+    invite_code VARCHAR(255) NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    UNIQUE KEY uq_server_bot_server (server_bot_id, discord_server_id),
+    INDEX idx_server_bot_servers_bot_id (server_bot_id),
+    INDEX idx_server_bot_servers_discord_id (discord_server_id),
+    FOREIGN KEY (server_bot_id) REFERENCES server_bots(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS server_bot_server_categories (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    server_bot_server_id INT NOT NULL,
+    discord_category_id VARCHAR(150) NOT NULL,
+    name TEXT,
+    position INT,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    UNIQUE KEY uq_server_bot_category (server_bot_server_id, discord_category_id),
+    INDEX idx_server_bot_server_categories_server_id (server_bot_server_id),
+    INDEX idx_server_bot_server_categories_discord_id (discord_category_id),
+    FOREIGN KEY (server_bot_server_id) REFERENCES server_bot_servers(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS server_bot_server_channels (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    server_bot_server_id INT NOT NULL,
+    discord_channel_id VARCHAR(150) NOT NULL,
+    name TEXT,
+    type TEXT,
+    discord_parent_category_id VARCHAR(150) NULL,
+    position INT,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    UNIQUE KEY uq_server_bot_channel (server_bot_server_id, discord_channel_id),
+    INDEX idx_server_bot_server_channels_server_id (server_bot_server_id),
+    INDEX idx_server_bot_server_channels_discord_id (discord_channel_id),
+    INDEX idx_server_bot_server_channels_parent_discord (discord_parent_category_id),
+    FOREIGN KEY (server_bot_server_id) REFERENCES server_bot_servers(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS server_members (
@@ -406,9 +455,6 @@ CREATE TABLE IF NOT EXISTS server_member_content_creator_stream_logs (
 );
 
 CREATE INDEX IF NOT EXISTS idx_bots_account_id ON bots(account_id);
-CREATE INDEX IF NOT EXISTS idx_servers_official_list ON servers(official_bot_id);
-CREATE INDEX IF NOT EXISTS idx_servers_official_discord ON servers(official_bot_id, discord_server_id);
-CREATE INDEX IF NOT EXISTS idx_servers_selfbot_discord ON servers(selfbot_id, discord_server_id);
 CREATE INDEX IF NOT EXISTS idx_servers_discord_id ON servers(discord_server_id);
 CREATE INDEX IF NOT EXISTS idx_servers_discord_created_at ON servers(discord_created_at);
 CREATE INDEX IF NOT EXISTS idx_servers_invite_code ON servers(invite_code);

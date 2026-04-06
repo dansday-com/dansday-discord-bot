@@ -265,7 +265,6 @@ export async function startBotById(botId: number, bot: any): Promise<{ success: 
 	}
 }
 
-/** When official bot stops, linked selfbots use fleet_pause: process killed but DB stays "running" so they auto-start again with the official bot. User-initiated selfbot stop uses default (stopped). */
 export type StopBotOptions = { linkedSelfbotStopMode?: 'fleet_pause' };
 
 function dbStateAfterProcessStop(bot: any | undefined, opts?: StopBotOptions): { status: string; process_id: null; uptime_started_at: null } {
@@ -418,7 +417,6 @@ export async function verifyBotStatuses() {
 					if (sb.status === 'stopping') {
 						await db.updateServerBot(sb.id, { status: 'stopped', process_id: null, uptime_started_at: null });
 					}
-					/* running/starting with no PID: fleet pause or host restart — keep row so official bot can start them again */
 					continue;
 				}
 				try {

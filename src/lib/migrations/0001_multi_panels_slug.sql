@@ -1,5 +1,3 @@
--- Add stable panel identifier so multiple panels can coexist.
-
 ALTER TABLE panels
 	ADD COLUMN slug VARCHAR(64) NULL AFTER id;
 

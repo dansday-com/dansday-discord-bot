@@ -56,8 +56,7 @@ export const servers = mysqlTable(
 	'servers',
 	{
 		id: int('id').primaryKey().autoincrement(),
-		official_bot_id: int('official_bot_id').references(() => bots.id, { onDelete: 'cascade' }),
-		selfbot_id: int('selfbot_id').references(() => serverBots.id, { onDelete: 'cascade' }),
+		bot_id: int('bot_id').references(() => bots.id, { onDelete: 'cascade' }),
 		discord_server_id: varchar('discord_server_id', { length: 150 }).notNull(),
 		name: text('name'),
 		total_members: int('total_members').default(0),
@@ -72,9 +71,7 @@ export const servers = mysqlTable(
 		updated_at: datetime('updated_at').notNull()
 	},
 	(t) => [
-		index('idx_servers_official_list').on(t.official_bot_id),
-		index('idx_servers_official_discord').on(t.official_bot_id, t.discord_server_id),
-		index('idx_servers_selfbot_discord').on(t.selfbot_id, t.discord_server_id),
+		index('idx_servers_bot_id').on(t.bot_id),
 		index('idx_servers_discord_id').on(t.discord_server_id),
 		index('idx_servers_discord_created_at').on(t.discord_created_at),
 		index('idx_servers_invite_code').on(t.invite_code)
@@ -209,6 +206,74 @@ export const serverChannels = mysqlTable(
 		index('idx_server_channels_server_id').on(t.server_id),
 		index('idx_server_channels_discord_id').on(t.discord_channel_id),
 		index('idx_server_channels_category_id').on(t.category_id)
+	]
+);
+
+export const serverBotServers = mysqlTable(
+	'server_bot_servers',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		server_bot_id: int('server_bot_id')
+			.notNull()
+			.references(() => serverBots.id, { onDelete: 'cascade' }),
+		discord_server_id: varchar('discord_server_id', { length: 150 }).notNull(),
+		name: text('name'),
+		total_members: int('total_members').default(0),
+		total_channels: int('total_channels').default(0),
+		server_icon: text('server_icon'),
+		discord_created_at: datetime('discord_created_at'),
+		vanity_url_code: varchar('vanity_url_code', { length: 255 }),
+		invite_code: varchar('invite_code', { length: 255 }),
+		created_at: datetime('created_at').notNull(),
+		updated_at: datetime('updated_at').notNull()
+	},
+	(t) => [
+		uniqueIndex('uq_server_bot_server').on(t.server_bot_id, t.discord_server_id),
+		index('idx_server_bot_servers_bot_id').on(t.server_bot_id),
+		index('idx_server_bot_servers_discord_id').on(t.discord_server_id)
+	]
+);
+
+export const serverBotServerCategories = mysqlTable(
+	'server_bot_server_categories',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		server_bot_server_id: int('server_bot_server_id')
+			.notNull()
+			.references(() => serverBotServers.id, { onDelete: 'cascade' }),
+		discord_category_id: varchar('discord_category_id', { length: 150 }).notNull(),
+		name: text('name'),
+		position: int('position'),
+		created_at: datetime('created_at').notNull(),
+		updated_at: datetime('updated_at').notNull()
+	},
+	(t) => [
+		uniqueIndex('uq_server_bot_category').on(t.server_bot_server_id, t.discord_category_id),
+		index('idx_server_bot_server_categories_server_id').on(t.server_bot_server_id),
+		index('idx_server_bot_server_categories_discord_id').on(t.discord_category_id)
+	]
+);
+
+export const serverBotServerChannels = mysqlTable(
+	'server_bot_server_channels',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		server_bot_server_id: int('server_bot_server_id')
+			.notNull()
+			.references(() => serverBotServers.id, { onDelete: 'cascade' }),
+		discord_channel_id: varchar('discord_channel_id', { length: 150 }).notNull(),
+		name: text('name'),
+		type: text('type'),
+		discord_parent_category_id: varchar('discord_parent_category_id', { length: 150 }),
+		position: int('position'),
+		created_at: datetime('created_at').notNull(),
+		updated_at: datetime('updated_at').notNull()
+	},
+	(t) => [
+		uniqueIndex('uq_server_bot_channel').on(t.server_bot_server_id, t.discord_channel_id),
+		index('idx_server_bot_server_channels_server_id').on(t.server_bot_server_id),
+		index('idx_server_bot_server_channels_discord_id').on(t.discord_channel_id),
+		index('idx_server_bot_server_channels_parent_discord').on(t.discord_parent_category_id)
 	]
 );
 

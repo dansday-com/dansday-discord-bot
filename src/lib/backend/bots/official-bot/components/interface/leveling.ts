@@ -330,7 +330,6 @@ async function createMenuRow(guildId = null, userId = null, serverId = null) {
 
 	const buttons: any[] = [menuButton];
 
-	// Only show web leaderboard if both leveling AND public_statistics are enabled
 	const levelingEnabled = !guildId || (await isComponentFeatureEnabled(guildId, serverSettingsComponent.leveling));
 	const publicStatsEnabled = !guildId || (await isComponentFeatureEnabled(guildId, serverSettingsComponent.public_statistics));
 
@@ -339,7 +338,8 @@ async function createMenuRow(guildId = null, userId = null, serverId = null) {
 			const slug = await computePublicServerSlugForServerId(serverId);
 			const url = slug ? publicServerUrl(slug, 'leaderboard') : null;
 			if (url) {
-				buttons.push(new ButtonBuilder().setLabel('🌐 Leaderboard').setURL(url).setStyle(ButtonStyle.Link));
+				const webLeaderboardLabel = await translate('leveling.buttons.webLeaderboard', guildId, userId);
+				buttons.push(new ButtonBuilder().setLabel(webLeaderboardLabel).setURL(url).setStyle(ButtonStyle.Link));
 			}
 		} catch (_) {}
 	}

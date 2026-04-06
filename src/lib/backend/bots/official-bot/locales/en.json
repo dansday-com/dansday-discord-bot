@@ -3,7 +3,10 @@
 		"title": "📋 Dansday Bot Menu",
 		"description": "Select a feature from the buttons below:",
 		"noAccess": "❌ You don't have access to any features.",
-		"button": "📋 Menu"
+		"button": "📋 Menu",
+		"web": {
+			"statistics": "🌐 Statistics"
+		}
 	},
 	"interface": {
 		"panel": {
@@ -90,7 +93,8 @@
 			"voiceTotal": "🎤 Voice Total",
 			"voiceActive": "🎤 Voice Active",
 			"voiceAfk": "🔇 Voice AFK",
-			"chat": "💬 Chat"
+			"chat": "💬 Chat",
+			"webLeaderboard": "🌐 Leaderboard"
 		},
 		"errors": {
 			"notRegistered": "⚠️ This server is not registered with the bot. Please run a sync first.",

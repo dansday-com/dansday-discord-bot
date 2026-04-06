@@ -232,7 +232,8 @@ async function handleMenuButton(interaction) {
 			const slug = await computePublicServerSlugForServerId(Number(server.id));
 			const url = slug ? publicServerUrl(slug) : null;
 			if (url) {
-				const webBtn = new ButtonBuilder().setLabel('🌐 Statistics').setURL(url).setStyle(ButtonStyle.Link);
+				const webLabel = await translate('menu.web.statistics', interaction.guild.id, interaction.user.id);
+				const webBtn = new ButtonBuilder().setLabel(webLabel).setURL(url).setStyle(ButtonStyle.Link);
 				const settingsRow = rows[rows.length - 1];
 				if (settingsRow.components.length < 5) {
 					settingsRow.addComponents(webBtn);

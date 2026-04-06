@@ -2,7 +2,11 @@
 	"menu": {
 		"title": "📋 Menu Bot Dansday",
 		"description": "Pilih fitur dari tombol di bawah:",
-		"noAccess": "❌ Kamu tidak memiliki akses ke fitur apa pun."
+		"noAccess": "❌ Kamu tidak memiliki akses ke fitur apa pun.",
+		"button": "📋 Menu",
+		"web": {
+			"statistics": "🌐 Statistik"
+		}
 	},
 	"interface": {
 		"panel": {
@@ -89,7 +93,8 @@
 			"voiceTotal": "🎤 Total Suara",
 			"voiceActive": "🎤 Suara Aktif",
 			"voiceAfk": "🔇 Suara AFK",
-			"chat": "💬 Chat"
+			"chat": "💬 Chat",
+			"webLeaderboard": "🌐 Papan Peringkat"
 		},
 		"errors": {
 			"notRegistered": "⚠️ Server ini tidak terdaftar dengan bot. Silakan jalankan sync terlebih dahulu.",

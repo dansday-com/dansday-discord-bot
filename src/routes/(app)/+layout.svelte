@@ -1,18 +1,51 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { onDestroy, onMount } from 'svelte';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import type { LayoutProps } from './$types';
 
 	let { data, children }: LayoutProps = $props();
 
-	const isDemo = $derived(
-		data?.user?.authenticated === true && typeof data?.user?.username === 'string' && data.user.username.toLowerCase().startsWith('demo')
-	);
+	const isDemo = $derived(data?.user?.authenticated === true && data?.user?.is_demo === true);
+	const demoExpiresAt = $derived(isDemo ? (data.user as any).session_expires_at : undefined);
+	let demoRemainingMs = $state<number | null>(null);
+	let demoTimer: number | null = null;
+
+	function fmtCountdown(ms: number): string {
+		const t = Math.max(0, Math.floor(ms / 1000));
+		const m = Math.floor(t / 60);
+		const s = t % 60;
+		return `${m}:${String(s).padStart(2, '0')}`;
+	}
 
 	async function handleLogout() {
 		await fetch('/api/panel/logout', { method: 'POST', credentials: 'include' });
 		goto('/login');
 	}
+
+	onMount(() => {
+		if (!isDemo || typeof demoExpiresAt !== 'number') return;
+		const tick = async () => {
+			const left = demoExpiresAt - Date.now();
+			demoRemainingMs = left;
+			if (left <= 0) {
+				if (demoTimer) window.clearInterval(demoTimer);
+				demoTimer = null;
+				try {
+					await fetch('/api/panel/logout', { method: 'POST', credentials: 'include' });
+				} catch (_) {}
+				showToast('Demo session expired', 'error');
+				goto('/login');
+			}
+		};
+		tick();
+		demoTimer = window.setInterval(tick, 1000);
+	});
+
+	onDestroy(() => {
+		if (demoTimer) window.clearInterval(demoTimer);
+		demoTimer = null;
+	});
 </script>
 
 <div class="bg-ash-950 text-ash-100 flex min-h-screen flex-col">
@@ -33,6 +66,12 @@
 					{/if}
 				</a>
 				<div class="flex flex-shrink-0 items-center gap-2">
+					{#if isDemo && typeof demoRemainingMs === 'number'}
+						<span class="text-ash-300 hidden text-xs sm:inline">
+							<span class="text-ash-500">Demo ends in</span>
+							<span class="font-semibold text-cyan-200 tabular-nums">{fmtCountdown(demoRemainingMs)}</span>
+						</span>
+					{/if}
 					<button
 						onclick={handleLogout}
 						class="bg-ash-700 hover:bg-ash-600 text-ash-100 flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs transition-all duration-200 hover:scale-105 active:scale-95 sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"

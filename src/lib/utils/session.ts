@@ -6,6 +6,8 @@ export type SessionData = {
 	account_id?: number;
 	account_type?: string;
 	account_source?: 'accounts' | 'server_accounts';
+	is_demo?: boolean;
+	expires_at?: number;
 };
 
 const SESSION_TTL = 60 * 60 * 24;
@@ -43,10 +45,12 @@ export async function getSession(sessionId: string): Promise<SessionData | null>
 	}
 }
 
-export async function setSession(sessionId: string, data: SessionData): Promise<void> {
+export async function setSession(sessionId: string, data: SessionData, ttlSeconds: number = SESSION_TTL): Promise<void> {
 	const redis = await getRedis();
 	if (!redis) return;
-	await redis.setEx(sessionKey(sessionId), SESSION_TTL, JSON.stringify(data));
+	const ttl = Math.max(5, Math.floor(ttlSeconds));
+	const expires_at = Date.now() + ttl * 1000;
+	await redis.setEx(sessionKey(sessionId), ttl, JSON.stringify({ ...data, expires_at }));
 }
 
 export async function destroySession(sessionId: string): Promise<void> {

@@ -23,8 +23,13 @@ const DEMO = {
 	}
 } as const;
 
-function toMySqlDateTime(d: Date) {
-	return d.toISOString().slice(0, 19).replace('T', ' ');
+function toMySqlDateTime(d: unknown) {
+	const date = d instanceof Date ? d : new Date(d as any);
+	if (!Number.isFinite(date.getTime())) {
+		const fallback = new Date();
+		return fallback.toISOString().slice(0, 19).replace('T', ' ');
+	}
+	return date.toISOString().slice(0, 19).replace('T', ' ');
 }
 
 function slugifySimple(s: string) {

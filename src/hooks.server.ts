@@ -63,7 +63,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 							account_type: account.account_type,
 							account_source: 'server_accounts',
 							bot_id: panelBotId ?? 0,
-							server_id: account.server_id
+							server_id: account.server_id,
+							is_demo: session.is_demo === true,
+							session_expires_at: session.expires_at
 						};
 					}
 				} else {
@@ -75,7 +77,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 							username: account.username,
 							email: account.email,
 							account_type: account.account_type,
-							account_source: 'accounts'
+							account_source: 'accounts',
+							is_demo: session.is_demo === true,
+							session_expires_at: session.expires_at
 						};
 					}
 				}

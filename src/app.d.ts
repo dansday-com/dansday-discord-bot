@@ -9,6 +9,8 @@ declare global {
 						email: string;
 						account_type: 'superadmin';
 						account_source: 'accounts';
+						is_demo?: boolean;
+						session_expires_at?: number;
 				  }
 				| {
 						authenticated: true;
@@ -19,6 +21,8 @@ declare global {
 						account_source: 'server_accounts';
 						bot_id: number;
 						server_id: number;
+						is_demo?: boolean;
+						session_expires_at?: number;
 				  }
 				| { authenticated: false; can_register: boolean };
 			sessionId: string | null;

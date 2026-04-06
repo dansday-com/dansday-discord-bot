@@ -4,6 +4,7 @@ import { ensureDemoReady } from '$lib/demo/seedDemo.js';
 import { getClientIp, checkRateLimit, logger, makeSessionCookie, newSessionId, setSession } from '$lib/utils/index.js';
 
 const MAX_DEMO_LOGIN_ATTEMPTS = 25;
+const DEMO_SESSION_TTL_SECONDS = 60 * 10;
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
@@ -16,12 +17,17 @@ export const POST: RequestHandler = async ({ request }) => {
 		const seeded = await ensureDemoReady();
 
 		const sessionId = newSessionId();
-		await setSession(sessionId, {
-			authenticated: true,
-			account_id: seeded.superadmin_account_id,
-			account_type: 'superadmin',
-			account_source: 'accounts'
-		});
+		await setSession(
+			sessionId,
+			{
+				authenticated: true,
+				account_id: seeded.superadmin_account_id,
+				account_type: 'superadmin',
+				account_source: 'accounts',
+				is_demo: true
+			},
+			DEMO_SESSION_TTL_SECONDS
+		);
 
 		logger.log(`Demo login (IP: ${ip}) -> superadmin_account_id=${seeded.superadmin_account_id}`);
 

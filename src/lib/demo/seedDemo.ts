@@ -522,29 +522,7 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 
 export async function cleanupDemoData(): Promise<void> {
 	await initializeDatabase();
-	const demoAdmin = await db
-		.select()
-		.from(schema.accounts)
-		.where(sql`${schema.accounts.username} = ${DEMO.demoSuperadmin.username}`)
-		.limit(1)
-		.then((r: any[]) => r[0] ?? null);
-	if (!demoAdmin?.id) return;
-
-	// Find demo bot + servers tied to demo bot.
-	const botRow = await db
-		.select()
-		.from(schema.bots)
-		.where(sql`${schema.bots.application_id} = ${DEMO.demoBot.application_id}`)
-		.limit(1)
-		.then((r: any[]) => r[0] ?? null);
-
-	if (botRow?.id) {
-		// Delete seeded servers (cascades to members/channels/roles/settings/accounts/selfbots/etc).
-		await db.delete(schema.servers).where(sql`${schema.servers.official_bot_id} = ${botRow.id} AND ${schema.servers.discord_server_id} LIKE 'demo_server_%'`);
-		// Delete the demo bot itself.
-		await db.delete(schema.bots).where(sql`${schema.bots.id} = ${botRow.id}`);
-	}
-
-	// Delete demo superadmin account (bots already deleted; safe).
-	await db.delete(schema.accounts).where(sql`${schema.accounts.id} = ${demoAdmin.id}`);
+	// With FK CASCADE: panels -> accounts -> bots -> servers -> server_*
+	// deleting the demo panel removes the entire demo tree.
+	await db.delete(schema.panel).where(sql`${schema.panel.slug} = 'demo'`);
 }

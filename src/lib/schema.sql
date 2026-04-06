@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS accounts (
     ip_address TEXT NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
-    FOREIGN KEY (panel_id) REFERENCES panels(id) ON DELETE RESTRICT
+    FOREIGN KEY (panel_id) REFERENCES panels(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS bots (

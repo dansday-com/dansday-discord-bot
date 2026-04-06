@@ -26,7 +26,7 @@ export const accounts = mysqlTable(
 		otp_expires_at: datetime('otp_expires_at'),
 		panel_id: int('panel_id')
 			.notNull()
-			.references(() => panel.id, { onDelete: 'restrict' }),
+			.references(() => panel.id, { onDelete: 'cascade' }),
 		ip_address: text('ip_address'),
 		created_at: datetime('created_at').notNull(),
 		updated_at: datetime('updated_at').notNull()

@@ -44,7 +44,7 @@ SET @fk_accounts_panel_after := (
 );
 SET @sql_add_fk_accounts_panel := IF(
 	@fk_accounts_panel_after IS NULL,
-	'ALTER TABLE accounts ADD CONSTRAINT fk_accounts_panel_id FOREIGN KEY (panel_id) REFERENCES panels(id) ON DELETE RESTRICT',
+	'ALTER TABLE accounts ADD CONSTRAINT fk_accounts_panel_id FOREIGN KEY (panel_id) REFERENCES panels(id) ON DELETE CASCADE',
 	'SELECT 1'
 );
 PREPARE stmt_add_fk_accounts_panel FROM @sql_add_fk_accounts_panel;

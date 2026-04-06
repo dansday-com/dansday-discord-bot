@@ -292,16 +292,16 @@ async function createLeaderboardButtons(selectedType = 'xp', guildId = null, use
 	if (guildId && !(await isComponentFeatureEnabled(guildId, serverSettingsComponent.leveling))) {
 		return null;
 	}
-	const topXpLabel = await translate('leveling.buttons.topXp', guildId, userId);
+	const xpLabel = await translate('leveling.buttons.xp', guildId, userId);
 	const voiceTotalLabel = await translate('leveling.buttons.voiceTotal', guildId, userId);
 	const voiceActiveLabel = await translate('leveling.buttons.voiceActive', guildId, userId);
 	const voiceAfkLabel = await translate('leveling.buttons.voiceAfk', guildId, userId);
-	const topChatLabel = await translate('leveling.buttons.topChat', guildId, userId);
+	const chatLabel = await translate('leveling.buttons.chat', guildId, userId);
 
 	const buttons = [
 		new ButtonBuilder()
 			.setCustomId('leaderboard_xp')
-			.setLabel(topXpLabel)
+			.setLabel(xpLabel)
 			.setStyle(selectedType === 'xp' ? ButtonStyle.Primary : ButtonStyle.Secondary),
 		new ButtonBuilder()
 			.setCustomId('leaderboard_voice_total')
@@ -317,7 +317,7 @@ async function createLeaderboardButtons(selectedType = 'xp', guildId = null, use
 			.setStyle(selectedType === 'voice_afk' ? ButtonStyle.Primary : ButtonStyle.Secondary),
 		new ButtonBuilder()
 			.setCustomId('leaderboard_chat')
-			.setLabel(topChatLabel)
+			.setLabel(chatLabel)
 			.setStyle(selectedType === 'chat' ? ButtonStyle.Primary : ButtonStyle.Secondary)
 	];
 
@@ -335,7 +335,7 @@ async function createMenuRow(guildId = null, userId = null, serverId = null) {
 			const slug = await computePublicServerSlugForServerId(serverId);
 			const url = slug ? publicServerUrl(slug, 'leaderboard') : null;
 			if (url) {
-				buttons.push(new ButtonBuilder().setLabel('🌐 Web Leaderboard').setURL(url).setStyle(ButtonStyle.Link));
+				buttons.push(new ButtonBuilder().setLabel('🌐 Leaderboard').setURL(url).setStyle(ButtonStyle.Link));
 			}
 		} catch (_) {}
 	}

@@ -170,6 +170,28 @@ PREPARE stmt_drop_idx_official_discord FROM @sql_drop_idx_official_discord;
 EXECUTE stmt_drop_idx_official_discord;
 DEALLOCATE PREPARE stmt_drop_idx_official_discord;
 
+-- MySQL 8 functional indexes (expression indexes) can still depend on official_bot_id.
+-- Ensure we drop ANY remaining index (including functional) referencing official_bot_id
+-- before dropping the column.
+SET @sql_drop_any_official_indexes := (
+	SELECT NULLIF(
+		GROUP_CONCAT(DISTINCT CONCAT('DROP INDEX `', INDEX_NAME, '` ON servers') SEPARATOR '; '),
+		''
+	)
+	FROM INFORMATION_SCHEMA.STATISTICS
+	WHERE TABLE_SCHEMA = DATABASE()
+	  AND TABLE_NAME = 'servers'
+	  AND INDEX_NAME <> 'PRIMARY'
+	  AND (
+		COLUMN_NAME = 'official_bot_id'
+		OR (EXPRESSION IS NOT NULL AND EXPRESSION LIKE '%official_bot_id%')
+	  )
+);
+SET @sql_drop_any_official_indexes := IF(@sql_drop_any_official_indexes IS NULL, 'SELECT 1', @sql_drop_any_official_indexes);
+PREPARE stmt_drop_any_official_indexes FROM @sql_drop_any_official_indexes;
+EXECUTE stmt_drop_any_official_indexes;
+DEALLOCATE PREPARE stmt_drop_any_official_indexes;
+
 SET @has_official_col := (
 	SELECT COUNT(*)
 	FROM INFORMATION_SCHEMA.COLUMNS

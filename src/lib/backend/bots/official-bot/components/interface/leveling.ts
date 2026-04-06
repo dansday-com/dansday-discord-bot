@@ -330,7 +330,11 @@ async function createMenuRow(guildId = null, userId = null, serverId = null) {
 
 	const buttons: any[] = [menuButton];
 
-	if (serverId && guildId && (await isComponentFeatureEnabled(guildId, serverSettingsComponent.public_statistics))) {
+	// Only show web leaderboard if both leveling AND public_statistics are enabled
+	const levelingEnabled = !guildId || (await isComponentFeatureEnabled(guildId, serverSettingsComponent.leveling));
+	const publicStatsEnabled = !guildId || (await isComponentFeatureEnabled(guildId, serverSettingsComponent.public_statistics));
+
+	if (serverId && guildId && levelingEnabled && publicStatsEnabled) {
 		try {
 			const slug = await computePublicServerSlugForServerId(serverId);
 			const url = slug ? publicServerUrl(slug, 'leaderboard') : null;

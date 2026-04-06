@@ -50,23 +50,25 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 	const nowDb = (toMySQLDateTime(now) || new Date()) as any;
 	const nowSql = nowDb;
 
-	// 1) Ensure a panel exists (panel isolation boundary).
-	const panelRow = await db
-		.select()
-		.from(schema.panel)
-		.limit(1)
-		.then((r: any[]) => r[0] ?? null);
-	if (!panelRow?.id) {
-		await db.insert(schema.panel).values({ slug: 'default', created_at: nowDb, updated_at: nowDb });
-	}
-	const panel = await db
-		.select()
-		.from(schema.panel)
-		.limit(1)
-		.then((r: any[]) => r[0] ?? null);
-	if (!panel?.id) throw new Error('Failed to ensure panel');
+	// 1) Ensure panels exist: `default` (prod) and `demo` (isolated demo).
+	await db
+		.insert(schema.panel)
+		.values({ slug: 'default', created_at: nowDb, updated_at: nowDb })
+		.onDuplicateKeyUpdate({ set: { updated_at: nowDb } });
+	await db
+		.insert(schema.panel)
+		.values({ slug: 'demo', created_at: nowDb, updated_at: nowDb })
+		.onDuplicateKeyUpdate({ set: { updated_at: nowDb } });
 
-	// 2) Ensure demo superadmin exists (accounts table).
+	const demoPanel = await db
+		.select()
+		.from(schema.panel)
+		.where(sql`${schema.panel.slug} = 'demo'`)
+		.limit(1)
+		.then((r: any[]) => r[0] ?? null);
+	if (!demoPanel?.id) throw new Error('Failed to ensure demo panel');
+
+	// 2) Ensure demo superadmin exists (accounts table) in the demo panel.
 	const pwHash = await bcrypt.hash(`demo-${now.getUTCFullYear()}`, 10);
 	await db
 		.insert(schema.accounts)
@@ -78,12 +80,12 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 			email_verified: true,
 			otp_code: null,
 			otp_expires_at: null,
-			panel_id: panel.id,
+			panel_id: demoPanel.id,
 			ip_address: null,
 			created_at: nowDb,
 			updated_at: nowDb
 		})
-		.onDuplicateKeyUpdate({ set: { email_verified: true as any, panel_id: panel.id as any, updated_at: nowDb } });
+		.onDuplicateKeyUpdate({ set: { email_verified: true as any, panel_id: demoPanel.id as any, updated_at: nowDb } });
 
 	const demoAdmin = await db
 		.select()

@@ -196,8 +196,9 @@
 	mask-image: linear-gradient(to right, transparent, #000 12px, #000 calc(100% - 12px), transparent);
 }
 .lb-overview-strip-item {
-	flex: 1 1 0;
+	flex: 0 0 auto;
 	min-width: 132px;
+	max-width: 100%;
 	display: flex;
 	align-items: center;
 	gap: 12px;
@@ -234,12 +235,15 @@
 	min-width: 0;
 }
 .lb-overview-strip-value {
+	min-width: 0;
 	font-size: 17px;
 	font-weight: 800;
 	color: var(--lb-text);
 	letter-spacing: -0.03em;
 	font-variant-numeric: tabular-nums;
 	line-height: 1.1;
+	overflow-wrap: break-word;
+	word-break: break-word;
 }
 .lb-overview-strip-label {
 	font-size: 10px;

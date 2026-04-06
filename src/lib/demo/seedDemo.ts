@@ -4,6 +4,7 @@ import { db } from '../drizzle.js';
 import * as schema from '../schema.js';
 import { SERVER_SETTINGS } from '../serverSettingsComponents.js';
 import { initializeDatabase } from '../database.js';
+import { toMySQLDateTime } from '../utils/datetime.js';
 
 const DEMO = {
 	serverCount: 10,
@@ -22,15 +23,6 @@ const DEMO = {
 		email: 'demoadmin@dansday.local'
 	}
 } as const;
-
-function toMySqlDateTime(d: unknown) {
-	const date = d instanceof Date ? d : new Date(d as any);
-	if (!Number.isFinite(date.getTime())) {
-		const fallback = new Date();
-		return fallback.toISOString().slice(0, 19).replace('T', ' ');
-	}
-	return date.toISOString().slice(0, 19).replace('T', ' ');
-}
 
 function slugifySimple(s: string) {
 	return (
@@ -55,7 +47,8 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 	await initializeDatabase();
 
 	const now = new Date();
-	const nowSql = toMySqlDateTime(now);
+	const nowDb = (toMySQLDateTime(now) || new Date()) as any;
+	const nowSql = nowDb;
 
 	// 1) Ensure demo bot exists (bots table).
 	await db
@@ -71,13 +64,13 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 			status: 'stopped',
 			process_id: null,
 			uptime_started_at: null,
-			created_at: nowSql as any,
-			updated_at: nowSql as any
+			created_at: nowDb,
+			updated_at: nowDb
 		})
 		.onDuplicateKeyUpdate({
 			set: {
 				name: DEMO.demoBot.name as any,
-				updated_at: nowSql as any
+				updated_at: nowDb
 			}
 		});
 
@@ -97,7 +90,7 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 		.limit(1)
 		.then((r: any[]) => r[0] ?? null);
 	if (!panelRow?.id) {
-		await db.insert(schema.panel).values({ created_at: nowSql as any, updated_at: nowSql as any });
+		await db.insert(schema.panel).values({ slug: 'default', created_at: nowDb, updated_at: nowDb });
 	}
 	const panel = await db
 		.select()
@@ -120,10 +113,10 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 			otp_expires_at: null,
 			panel_id: panel.id,
 			ip_address: null,
-			created_at: nowSql as any,
-			updated_at: nowSql as any
+			created_at: nowDb,
+			updated_at: nowDb
 		})
-		.onDuplicateKeyUpdate({ set: { email_verified: true as any, panel_id: panel.id as any, updated_at: nowSql as any } });
+		.onDuplicateKeyUpdate({ set: { email_verified: true as any, panel_id: panel.id as any, updated_at: nowDb } });
 
 	const demoAdmin = await db
 		.select()
@@ -198,13 +191,13 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 				server_id: serverRow.id,
 				component_name: SERVER_SETTINGS.component.public_statistics,
 				settings: { enabled: true, slug },
-				created_at: nowSql as any,
-				updated_at: nowSql as any
+				created_at: nowDb,
+				updated_at: nowDb
 			})
 			.onDuplicateKeyUpdate({
 				set: {
 					settings: sql`JSON_SET(COALESCE(${schema.serverSettings.settings}, JSON_OBJECT()), '$.enabled', true, '$.slug', ${slug})`,
-					updated_at: nowSql as any
+					updated_at: nowDb
 				}
 			});
 
@@ -217,20 +210,20 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 					discord_category_id: `demo${s}_cat_info`,
 					name: 'Information',
 					position: 3,
-					created_at: nowSql as any,
-					updated_at: nowSql as any
+					created_at: nowDb,
+					updated_at: nowDb
 				},
 				{
 					server_id: serverRow.id,
 					discord_category_id: `demo${s}_cat_chat`,
 					name: 'Community',
 					position: 2,
-					created_at: nowSql as any,
-					updated_at: nowSql as any
+					created_at: nowDb,
+					updated_at: nowDb
 				},
-				{ server_id: serverRow.id, discord_category_id: `demo${s}_cat_voice`, name: 'Voice', position: 1, created_at: nowSql as any, updated_at: nowSql as any }
+				{ server_id: serverRow.id, discord_category_id: `demo${s}_cat_voice`, name: 'Voice', position: 1, created_at: nowDb, updated_at: nowDb }
 			])
-			.onDuplicateKeyUpdate({ set: { updated_at: nowSql as any } });
+			.onDuplicateKeyUpdate({ set: { updated_at: nowDb } });
 
 		await db
 			.insert(schema.serverRoles)
@@ -242,8 +235,8 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 					position: 4,
 					color: '#ff4d4d',
 					permissions: '0',
-					created_at: nowSql as any,
-					updated_at: nowSql as any
+					created_at: nowDb,
+					updated_at: nowDb
 				},
 				{
 					server_id: serverRow.id,
@@ -252,8 +245,8 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 					position: 3,
 					color: '#4d7cff',
 					permissions: '0',
-					created_at: nowSql as any,
-					updated_at: nowSql as any
+					created_at: nowDb,
+					updated_at: nowDb
 				},
 				{
 					server_id: serverRow.id,
@@ -262,8 +255,8 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 					position: 2,
 					color: '#f5b942',
 					permissions: '0',
-					created_at: nowSql as any,
-					updated_at: nowSql as any
+					created_at: nowDb,
+					updated_at: nowDb
 				},
 				{
 					server_id: serverRow.id,
@@ -272,11 +265,11 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 					position: 1,
 					color: '#7b7b7b',
 					permissions: '0',
-					created_at: nowSql as any,
-					updated_at: nowSql as any
+					created_at: nowDb,
+					updated_at: nowDb
 				}
 			])
-			.onDuplicateKeyUpdate({ set: { updated_at: nowSql as any } });
+			.onDuplicateKeyUpdate({ set: { updated_at: nowDb } });
 
 		const categories = await db
 			.select()
@@ -295,8 +288,8 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 					category_id: catId(`demo${s}_cat_info`),
 					position: 3,
 					notification_role_id: null,
-					created_at: nowSql as any,
-					updated_at: nowSql as any
+					created_at: nowDb,
+					updated_at: nowDb
 				},
 				{
 					server_id: serverRow.id,
@@ -306,8 +299,8 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 					category_id: catId(`demo${s}_cat_info`),
 					position: 2,
 					notification_role_id: null,
-					created_at: nowSql as any,
-					updated_at: nowSql as any
+					created_at: nowDb,
+					updated_at: nowDb
 				},
 				{
 					server_id: serverRow.id,
@@ -317,8 +310,8 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 					category_id: catId(`demo${s}_cat_chat`),
 					position: 1,
 					notification_role_id: null,
-					created_at: nowSql as any,
-					updated_at: nowSql as any
+					created_at: nowDb,
+					updated_at: nowDb
 				},
 				{
 					server_id: serverRow.id,
@@ -328,11 +321,11 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 					category_id: catId(`demo${s}_cat_voice`),
 					position: 1,
 					notification_role_id: null,
-					created_at: nowSql as any,
-					updated_at: nowSql as any
+					created_at: nowDb,
+					updated_at: nowDb
 				}
 			])
-			.onDuplicateKeyUpdate({ set: { updated_at: nowSql as any } });
+			.onDuplicateKeyUpdate({ set: { updated_at: nowDb } });
 
 		// Seed 5 selfbots per server for realism.
 		await db
@@ -346,11 +339,11 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 					status: 'stopped',
 					process_id: null,
 					uptime_started_at: null,
-					created_at: nowSql as any,
-					updated_at: nowSql as any
+					created_at: nowDb,
+					updated_at: nowDb
 				}))
 			)
-			.onDuplicateKeyUpdate({ set: { updated_at: nowSql as any } });
+			.onDuplicateKeyUpdate({ set: { updated_at: nowDb } });
 
 		const seededCount = DEMO.membersPerServerMin + (rngFor(s)(serverRow.id) % (DEMO.membersPerServerMax - DEMO.membersPerServerMin + 1));
 
@@ -370,13 +363,13 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 				display_name: `Demo ${username}`,
 				server_display_name: n % 5 === 0 ? `[AFK] ${firstNames[(i + 3) % firstNames.length]}-${n}` : `${firstNames[(i + 3) % firstNames.length]}-${n}`,
 				avatar: null,
-				profile_created_at: toMySqlDateTime(new Date(base - n * 86400000)) as any,
-				member_since: toMySqlDateTime(new Date(base - n * 43200000)) as any,
+				profile_created_at: toMySQLDateTime(new Date(base - n * 86400000)) as any,
+				member_since: toMySQLDateTime(new Date(base - n * 43200000)) as any,
 				is_booster: n % 9 === 0,
-				booster_since: n % 9 === 0 ? (toMySqlDateTime(new Date(base - n * 22200000)) as any) : (null as any),
+				booster_since: n % 9 === 0 ? (toMySQLDateTime(new Date(base - n * 22200000)) as any) : (null as any),
 				language: 'en',
-				created_at: nowSql as any,
-				updated_at: nowSql as any,
+				created_at: nowDb,
+				updated_at: nowDb,
 				level: {
 					chat_total: Math.max(0, 22_000 - i * 83 + (i % 7) * 41),
 					voice_minutes_total: Math.max(0, 48_000 - i * 177 + (i % 11) * 97),
@@ -395,10 +388,10 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 					voice_rewarded_at: null,
 					video_rewarded_at: null,
 					stream_rewarded_at: null,
-					created_at: nowSql as any,
-					updated_at: nowSql as any
+					created_at: nowDb,
+					updated_at: nowDb
 				},
-				afk: hasAfkRow ? { message: 'Stepped out for a bit', created_at: nowSql as any, updated_at: nowSql as any } : null
+				afk: hasAfkRow ? { message: 'Stepped out for a bit', created_at: nowDb, updated_at: nowDb } : null
 			};
 		});
 
@@ -417,8 +410,8 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 					is_booster: m.is_booster,
 					booster_since: m.booster_since as any,
 					language: m.language,
-					created_at: nowSql as any,
-					updated_at: nowSql as any
+					created_at: nowDb,
+					updated_at: nowDb
 				})
 				.onDuplicateKeyUpdate({
 					set: {
@@ -426,7 +419,7 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 						display_name: m.display_name as any,
 						server_display_name: m.server_display_name as any,
 						is_booster: (m.is_booster ?? false) as any,
-						updated_at: nowSql as any
+						updated_at: nowDb
 					}
 				});
 
@@ -450,15 +443,15 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 						voice_minutes_afk: m.level.voice_minutes_afk as any,
 						experience: m.level.experience as any,
 						level: m.level.level as any,
-						updated_at: nowSql as any
+						updated_at: nowDb
 					}
 				});
 
 			if (m.afk) {
 				await db
 					.insert(schema.serverMemberAfks)
-					.values({ member_id: memberRow.id as any, message: m.afk.message, created_at: nowSql as any, updated_at: nowSql as any })
-					.onDuplicateKeyUpdate({ set: { message: m.afk.message as any, updated_at: nowSql as any } });
+					.values({ member_id: memberRow.id as any, message: m.afk.message, created_at: nowDb, updated_at: nowDb })
+					.onDuplicateKeyUpdate({ set: { message: m.afk.message as any, updated_at: nowDb } });
 			}
 		}
 
@@ -469,7 +462,7 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 			total_members = (SELECT COUNT(*) FROM server_members WHERE server_id = ${serverRow.id}),
 			total_channels = (SELECT COUNT(*) FROM server_channels WHERE server_id = ${serverRow.id}),
 			total_boosters = (SELECT COUNT(*) FROM server_members WHERE server_id = ${serverRow.id} AND is_booster = 1),
-			updated_at = ${nowSql}
+			updated_at = ${nowDb}
 		WHERE id = ${serverRow.id}
 	`);
 	}

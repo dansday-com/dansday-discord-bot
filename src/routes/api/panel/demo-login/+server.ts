@@ -33,7 +33,10 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		return json({ success: true, message: 'Demo login successful' }, { headers: { 'Set-Cookie': makeSessionCookie(sessionId) } });
 	} catch (error: any) {
-		logger.log(`❌ Demo login error: ${error.message}`);
+		logger.log(`❌ Demo login error: ${error?.message || String(error)}`);
+		try {
+			console.error(error);
+		} catch (_) {}
 		return json({ success: false, error: error.message }, { status: 500 });
 	}
 };

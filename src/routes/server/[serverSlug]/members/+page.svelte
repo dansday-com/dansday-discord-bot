@@ -133,7 +133,7 @@
 		})
 	);
 
-	const sorted = $derived([...filtered].sort((a, b) => (a.username ?? '').localeCompare(b.username ?? '', undefined, { sensitivity: 'base' })));
+	const sorted = $derived([...filtered].sort((a, b) => listDisplayName(a).localeCompare(listDisplayName(b), undefined, { sensitivity: 'base' })));
 
 	const totalPages = $derived(Math.max(1, Math.ceil(sorted.length / PER_PAGE)));
 

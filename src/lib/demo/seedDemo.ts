@@ -7,9 +7,9 @@ import { initializeDatabase } from '../database.js';
 import { toMySQLDateTime } from '../utils/datetime.js';
 
 const DEMO = {
-	serverCount: 10,
-	membersPerServerMin: 100,
-	membersPerServerMax: 200,
+	serverCount: 2,
+	membersPerServerMin: 50,
+	membersPerServerMax: 100,
 	publicSlugPrefix: 'demo',
 	demoBot: {
 		name: 'Demo Bot',
@@ -50,40 +50,7 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 	const nowDb = (toMySQLDateTime(now) || new Date()) as any;
 	const nowSql = nowDb;
 
-	// 1) Ensure demo bot exists (bots table).
-	await db
-		.insert(schema.bots)
-		.values({
-			name: DEMO.demoBot.name,
-			token: DEMO.demoBot.token,
-			application_id: DEMO.demoBot.application_id,
-			bot_icon: null,
-			port: DEMO.demoBot.port,
-			secret_key: DEMO.demoBot.secret_key,
-			account_id: null,
-			status: 'stopped',
-			process_id: null,
-			uptime_started_at: null,
-			created_at: nowDb,
-			updated_at: nowDb
-		})
-		.onDuplicateKeyUpdate({
-			set: {
-				name: DEMO.demoBot.name as any,
-				updated_at: nowDb
-			}
-		});
-
-	const botRow = await db
-		.select()
-		.from(schema.bots)
-		.where(sql`${schema.bots.application_id} = ${DEMO.demoBot.application_id}`)
-		.limit(1)
-		.then((r: any[]) => r[0] ?? null);
-
-	if (!botRow?.id) throw new Error('Failed to ensure demo bot');
-
-	// 2) Ensure a panel exists (panel is singleton in this schema).
+	// 1) Ensure a panel exists (panel isolation boundary).
 	const panelRow = await db
 		.select()
 		.from(schema.panel)
@@ -99,7 +66,7 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 		.then((r: any[]) => r[0] ?? null);
 	if (!panel?.id) throw new Error('Failed to ensure panel');
 
-	// 3) Ensure demo superadmin exists (accounts table).
+	// 2) Ensure demo superadmin exists (accounts table).
 	const pwHash = await bcrypt.hash(`demo-${now.getUTCFullYear()}`, 10);
 	await db
 		.insert(schema.accounts)
@@ -125,6 +92,40 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 		.limit(1)
 		.then((r: any[]) => r[0] ?? null);
 	if (!demoAdmin?.id) throw new Error('Failed to ensure demo superadmin');
+
+	// 3) Ensure demo bot exists (bots table) and is owned by demo superadmin.
+	await db
+		.insert(schema.bots)
+		.values({
+			name: DEMO.demoBot.name,
+			token: DEMO.demoBot.token,
+			application_id: DEMO.demoBot.application_id,
+			bot_icon: null,
+			port: DEMO.demoBot.port,
+			secret_key: DEMO.demoBot.secret_key,
+			account_id: demoAdmin.id,
+			status: 'stopped',
+			process_id: null,
+			uptime_started_at: null,
+			created_at: nowDb,
+			updated_at: nowDb
+		})
+		.onDuplicateKeyUpdate({
+			set: {
+				name: DEMO.demoBot.name as any,
+				account_id: demoAdmin.id as any,
+				updated_at: nowDb
+			}
+		});
+
+	const botRow = await db
+		.select()
+		.from(schema.bots)
+		.where(sql`${schema.bots.application_id} = ${DEMO.demoBot.application_id}`)
+		.limit(1)
+		.then((r: any[]) => r[0] ?? null);
+
+	if (!botRow?.id) throw new Error('Failed to ensure demo bot');
 
 	// Common data used for member generation.
 	const base = Date.now();
@@ -328,10 +329,11 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 			.onDuplicateKeyUpdate({ set: { updated_at: nowDb } });
 
 		// Seed 5 selfbots per server for realism.
+		const selfbotCount = 1 + (rngFor(s)(serverRow.id) % 5); // 1..5
 		await db
 			.insert(schema.serverBots)
 			.values(
-				Array.from({ length: 5 }).map((_, i) => ({
+				Array.from({ length: selfbotCount }).map((_, i) => ({
 					server_id: serverRow.id,
 					name: `Demo Selfbot #${i + 1}`,
 					token: 'DEMO_TOKEN_DO_NOT_USE',
@@ -344,6 +346,52 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 				}))
 			)
 			.onDuplicateKeyUpdate({ set: { updated_at: nowDb } });
+
+		// Seed server accounts: 1 owner + 1..10 moderators.
+		const ownerUser = `demo_owner_${s}`;
+		const ownerEmail = `demo_owner_${s}@dansday.local`;
+		const ownerPw = await bcrypt.hash('demo', 10);
+		await db
+			.insert(schema.serverAccounts)
+			.values({
+				server_id: serverRow.id,
+				username: ownerUser,
+				email: ownerEmail,
+				password_hash: ownerPw,
+				account_type: 'owner',
+				email_verified: true,
+				otp_code: null,
+				otp_expires_at: null,
+				ip_address: null,
+				is_frozen: false,
+				created_at: nowDb,
+				updated_at: nowDb
+			})
+			.onDuplicateKeyUpdate({ set: { updated_at: nowDb } });
+
+		const moderatorCount = 1 + (rngFor(s)(serverRow.id + 77) % 10); // 1..10
+		for (let m = 1; m <= moderatorCount; m++) {
+			const u = `demo_mod_${s}_${m}`;
+			const e = `demo_mod_${s}_${m}@dansday.local`;
+			const pw = await bcrypt.hash('demo', 10);
+			await db
+				.insert(schema.serverAccounts)
+				.values({
+					server_id: serverRow.id,
+					username: u,
+					email: e,
+					password_hash: pw,
+					account_type: 'moderator',
+					email_verified: true,
+					otp_code: null,
+					otp_expires_at: null,
+					ip_address: null,
+					is_frozen: false,
+					created_at: nowDb,
+					updated_at: nowDb
+				})
+				.onDuplicateKeyUpdate({ set: { updated_at: nowDb } });
+		}
 
 		const seededCount = DEMO.membersPerServerMin + (rngFor(s)(serverRow.id) % (DEMO.membersPerServerMax - DEMO.membersPerServerMin + 1));
 
@@ -468,4 +516,33 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 	}
 
 	return { bot_id: botRow.id, superadmin_account_id: demoAdmin.id, server_ids: serverIds };
+}
+
+export async function cleanupDemoData(): Promise<void> {
+	await initializeDatabase();
+	const demoAdmin = await db
+		.select()
+		.from(schema.accounts)
+		.where(sql`${schema.accounts.username} = ${DEMO.demoSuperadmin.username}`)
+		.limit(1)
+		.then((r: any[]) => r[0] ?? null);
+	if (!demoAdmin?.id) return;
+
+	// Find demo bot + servers tied to demo bot.
+	const botRow = await db
+		.select()
+		.from(schema.bots)
+		.where(sql`${schema.bots.application_id} = ${DEMO.demoBot.application_id}`)
+		.limit(1)
+		.then((r: any[]) => r[0] ?? null);
+
+	if (botRow?.id) {
+		// Delete seeded servers (cascades to members/channels/roles/settings/accounts/selfbots/etc).
+		await db.delete(schema.servers).where(sql`${schema.servers.official_bot_id} = ${botRow.id} AND ${schema.servers.discord_server_id} LIKE 'demo_server_%'`);
+		// Delete the demo bot itself.
+		await db.delete(schema.bots).where(sql`${schema.bots.id} = ${botRow.id}`);
+	}
+
+	// Delete demo superadmin account (bots already deleted; safe).
+	await db.delete(schema.accounts).where(sql`${schema.accounts.id} = ${demoAdmin.id}`);
 }

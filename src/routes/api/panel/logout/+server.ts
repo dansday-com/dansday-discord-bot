@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { destroySession, clearSessionCookie, logger, getClientIp } from '$lib/utils/index.js';
+import { cleanupDemoData } from '$lib/demo/seedDemo.js';
 
 export const POST: RequestHandler = async ({ locals, request }) => {
 	const sessionId = locals.sessionId;
@@ -17,6 +18,13 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			if (account) {
 				logger.log(`Logged out: ${account.username} (IP: ${getClientIp(request)})`);
 			}
+		} catch (_) {}
+	}
+
+	// If this was a demo session, remove seeded demo data on logout.
+	if (user.authenticated && user.is_demo === true) {
+		try {
+			await cleanupDemoData();
 		} catch (_) {}
 	}
 

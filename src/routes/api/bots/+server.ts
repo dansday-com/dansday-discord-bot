@@ -10,10 +10,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 	}
 
 	try {
-		const bots =
-			locals.user.account_source === 'accounts'
-				? await db.getAllBots(locals.user.panel_id)
-				: await db.getAllBots();
+		const bots = locals.user.account_source === 'accounts' ? await db.getAllBots(locals.user.panel_id) : await db.getAllBots();
 
 		const botsWithDetails = await Promise.all(
 			bots.map(async (bot: any) => {

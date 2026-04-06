@@ -240,9 +240,7 @@ export async function getBot(botId: number | string) {
 
 export async function createBot(botData: any) {
 	await initializeDatabase();
-	const panelId =
-		botData.panel_id ??
-		(botData.account_id ? (await getAccountById(botData.account_id))?.panel_id ?? null : null);
+	const panelId = botData.panel_id ?? (botData.account_id ? ((await getAccountById(botData.account_id))?.panel_id ?? null) : null);
 	const bots = await getAllBots(panelId);
 	const botNumber = bots.length + 1;
 	const now = toMySQLDateTime();

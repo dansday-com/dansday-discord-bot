@@ -165,7 +165,7 @@
 			{loading ? 'Processing...' : 'Login'}
 		</button>
 
-		<div class="my-1 flex items-center gap-3 py-1">
+		<div class="flex items-center gap-3">
 			<div class="bg-ash-700/70 h-px flex-1"></div>
 			<div class="text-ash-500 text-[11px] font-semibold tracking-widest">OR</div>
 			<div class="bg-ash-700/70 h-px flex-1"></div>

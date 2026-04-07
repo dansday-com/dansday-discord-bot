@@ -10,19 +10,21 @@
 	let password = $state('');
 
 	let showCaptchaModal = $state(false);
-	let captchaChallenge = $state('');
 	let captchaInput = $state('');
 	let captchaToken = $state('');
+	let captchaSvg = $state('');
 	let captchaLoading = $state(false);
 
 	async function openDemoCaptcha() {
 		captchaInput = '';
+		captchaToken = '';
+		captchaSvg = '';
 		captchaLoading = true;
 		try {
 			const res = await fetch('/api/panel/demo-login', { method: 'GET', credentials: 'include' });
 			const data = await res.json();
-			captchaChallenge = data.challenge ?? '';
 			captchaToken = data.token ?? '';
+			captchaSvg = data.image_svg ?? '';
 			showCaptchaModal = true;
 		} catch (_) {
 			showToast('Failed to load captcha. Please try again.', 'error');
@@ -39,7 +41,7 @@
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
-				body: JSON.stringify({ captcha_input: captchaInput, captcha_challenge: captchaChallenge, captcha_token: captchaToken })
+				body: JSON.stringify({ captcha_input: captchaInput, captcha_token: captchaToken })
 			});
 			const data = await res.json();
 			if (data.success) {
@@ -53,8 +55,8 @@
 		} finally {
 			loading = false;
 			captchaInput = '';
-			captchaChallenge = '';
 			captchaToken = '';
+			captchaSvg = '';
 		}
 	}
 
@@ -214,13 +216,10 @@
 
 			<p class="text-ash-400 mb-4 text-sm">Type the characters shown below exactly as displayed.</p>
 
-			<div class="bg-ash-900 border-ash-600 mb-4 flex items-center justify-center rounded-lg border py-4">
-				<span
-					class="font-mono text-3xl font-bold tracking-[0.3em] text-amber-300 select-none"
-					style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8), -1px 0px 1px rgba(255,255,255,0.1);"
-				>
-					{captchaChallenge}
-				</span>
+			<div class="bg-ash-900 border-ash-600 mb-4 overflow-hidden rounded-lg border p-2">
+				<div class="select-none" aria-hidden="true">
+					{@html captchaSvg}
+				</div>
 			</div>
 
 			<input

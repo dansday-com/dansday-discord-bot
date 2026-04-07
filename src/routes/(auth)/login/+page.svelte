@@ -12,6 +12,7 @@
 	let showCaptchaModal = $state(false);
 	let captchaChallenge = $state('');
 	let captchaInput = $state('');
+	let captchaToken = $state('');
 	let captchaLoading = $state(false);
 
 	async function openDemoCaptcha() {
@@ -21,6 +22,7 @@
 			const res = await fetch('/api/panel/demo-login', { method: 'GET', credentials: 'include' });
 			const data = await res.json();
 			captchaChallenge = data.challenge ?? '';
+			captchaToken = data.token ?? '';
 			showCaptchaModal = true;
 		} catch (_) {
 			showToast('Failed to load captcha. Please try again.', 'error');
@@ -30,14 +32,6 @@
 	}
 
 	async function handleDemoLogin() {
-		if (captchaInput !== captchaChallenge) {
-			showToast('Incorrect captcha. Please try again.', 'error');
-			captchaInput = '';
-			captchaChallenge = '';
-			showCaptchaModal = false;
-			return;
-		}
-
 		loading = true;
 		showCaptchaModal = false;
 		try {
@@ -45,7 +39,7 @@
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
-				body: JSON.stringify({ captcha_input: captchaInput, captcha_challenge: captchaChallenge })
+				body: JSON.stringify({ captcha_input: captchaInput, captcha_challenge: captchaChallenge, captcha_token: captchaToken })
 			});
 			const data = await res.json();
 			if (data.success) {
@@ -60,6 +54,7 @@
 			loading = false;
 			captchaInput = '';
 			captchaChallenge = '';
+			captchaToken = '';
 		}
 	}
 

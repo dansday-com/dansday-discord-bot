@@ -15,6 +15,10 @@
 	let captchaSvg = $state('');
 	let captchaLoading = $state(false);
 
+	async function refreshDemoCaptcha() {
+		await openDemoCaptcha();
+	}
+
 	async function openDemoCaptcha() {
 		captchaInput = '';
 		captchaToken = '';
@@ -190,7 +194,7 @@
 {#if showCaptchaModal}
 	<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
 	<div
-		class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
 		onclick={(e) => {
 			if (e.target === e.currentTarget) {
 				showCaptchaModal = false;
@@ -201,24 +205,35 @@
 		<div class="bg-ash-800 border-ash-700 w-full max-w-sm rounded-2xl border p-6 shadow-2xl">
 			<div class="mb-4 flex items-center justify-between">
 				<h2 class="text-ash-100 text-lg font-bold">Verify you're human</h2>
-				<button
-					type="button"
-					onclick={() => {
-						showCaptchaModal = false;
-						captchaInput = '';
-					}}
-					class="text-ash-400 hover:text-ash-200 transition-colors"
-					aria-label="Close"
-				>
-					<i class="fas fa-times"></i>
-				</button>
+				<div class="flex items-center gap-2">
+					<button
+						type="button"
+						onclick={refreshDemoCaptcha}
+						class="text-ash-400 hover:text-ash-200 rounded-lg px-2 py-1 transition-colors"
+						aria-label="Refresh captcha"
+						title="Refresh"
+					>
+						<i class="fas fa-rotate-right"></i>
+					</button>
+					<button
+						type="button"
+						onclick={() => {
+							showCaptchaModal = false;
+							captchaInput = '';
+						}}
+						class="text-ash-400 hover:text-ash-200 rounded-lg px-2 py-1 transition-colors"
+						aria-label="Close"
+					>
+						<i class="fas fa-times"></i>
+					</button>
+				</div>
 			</div>
 
 			<p class="text-ash-400 mb-4 text-sm">Type the characters shown below exactly as displayed.</p>
 
-			<div class="bg-ash-900 border-ash-600 mb-4 overflow-hidden rounded-lg border p-2">
-				<div class="select-none" aria-hidden="true">
-					{@html captchaSvg}
+			<div class="bg-ash-950 border-ash-700/80 ring-ash-600/60 mb-4 overflow-hidden rounded-xl border p-3 shadow-inner ring-1 ring-inset">
+				<div class="flex items-center justify-center select-none" aria-hidden="true">
+					<div class="w-full max-w-[360px] [&>svg]:block [&>svg]:h-auto [&>svg]:w-full">{@html captchaSvg}</div>
 				</div>
 			</div>
 
@@ -227,7 +242,11 @@
 				bind:value={captchaInput}
 				placeholder="Enter characters above"
 				maxlength="6"
-				class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 mb-4 w-full rounded-lg border px-4 py-3 text-center font-mono text-lg tracking-widest transition-all focus:border-transparent focus:ring-2 focus:outline-none"
+				autocapitalize="none"
+				autocomplete="off"
+				autocorrect="off"
+				spellcheck="false"
+				class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 mb-4 w-full rounded-xl border px-4 py-3 text-center font-mono text-lg tracking-[0.35em] uppercase transition-all focus:border-cyan-300/40 focus:ring-4 focus:ring-cyan-400/40 focus:outline-none"
 				onkeydown={(e) => {
 					if (e.key === 'Enter') handleDemoLogin();
 				}}
@@ -240,7 +259,7 @@
 						showCaptchaModal = false;
 						captchaInput = '';
 					}}
-					class="bg-ash-700 border-ash-600 text-ash-300 hover:bg-ash-600 flex-1 rounded-lg border px-4 py-2.5 text-sm font-semibold transition-all"
+					class="bg-ash-700 border-ash-600 text-ash-200 hover:bg-ash-600 flex-1 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all"
 				>
 					Cancel
 				</button>
@@ -248,7 +267,7 @@
 					type="button"
 					disabled={captchaInput.length !== 6}
 					onclick={handleDemoLogin}
-					class="flex-1 rounded-lg bg-cyan-600 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-50"
+					class="flex-1 rounded-xl bg-cyan-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-cyan-900/30 transition-all hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					Continue
 				</button>

@@ -1647,6 +1647,25 @@ async function getAccountByEmail(email: string) {
 	return rows[0] || null;
 }
 
+async function getAccountByNormalizedEmail(email: string) {
+	const atIndex = email.lastIndexOf('@');
+	if (atIndex === -1) return null;
+	const domain = email.substring(atIndex + 1);
+	if (domain !== 'gmail.com' && domain !== 'googlemail.com') {
+		return getAccountByEmail(email);
+	}
+	const normalizedLocal = email.substring(0, atIndex).replace(/\./g, '');
+	const rows = await db
+		.select()
+		.from(schema.accounts)
+		.where(
+			sql`SUBSTRING_INDEX(${schema.accounts.email}, '@', -1) IN ('gmail.com', 'googlemail.com')
+			    AND REPLACE(SUBSTRING_INDEX(${schema.accounts.email}, '@', 1), '.', '') = ${normalizedLocal}`
+		)
+		.limit(1);
+	return rows[0] || null;
+}
+
 async function getAccountByUsername(username: string) {
 	const rows = await db.select().from(schema.accounts).where(eq(schema.accounts.username, username)).limit(1);
 	return rows[0] || null;
@@ -1806,6 +1825,28 @@ async function getServerAccountByEmailServer(email: string, serverId: number) {
 		.select()
 		.from(schema.serverAccounts)
 		.where(and(eq(schema.serverAccounts.email, email), eq(schema.serverAccounts.server_id, serverId)))
+		.limit(1);
+	return rows[0] || null;
+}
+
+async function getServerAccountByNormalizedEmailServer(email: string, serverId: number) {
+	const atIndex = email.lastIndexOf('@');
+	if (atIndex === -1) return null;
+	const domain = email.substring(atIndex + 1);
+	if (domain !== 'gmail.com' && domain !== 'googlemail.com') {
+		return getServerAccountByEmailServer(email, serverId);
+	}
+	const normalizedLocal = email.substring(0, atIndex).replace(/\./g, '');
+	const rows = await db
+		.select()
+		.from(schema.serverAccounts)
+		.where(
+			and(
+				eq(schema.serverAccounts.server_id, serverId),
+				sql`SUBSTRING_INDEX(${schema.serverAccounts.email}, '@', -1) IN ('gmail.com', 'googlemail.com')
+				    AND REPLACE(SUBSTRING_INDEX(${schema.serverAccounts.email}, '@', 1), '.', '') = ${normalizedLocal}`
+			)
+		)
 		.limit(1);
 	return rows[0] || null;
 }
@@ -2990,6 +3031,7 @@ export default {
 	createPanel,
 	getAccountById,
 	getAccountByEmail,
+	getAccountByNormalizedEmail,
 	getAccountByUsername,
 	createAccount,
 	updateAccount,
@@ -3007,6 +3049,7 @@ export default {
 	getServerAccountByEmail,
 	getServerAccountByUsername,
 	getServerAccountByEmailServer,
+	getServerAccountByNormalizedEmailServer,
 	createServerAccount,
 	updateServerAccount,
 	deleteServerAccount,

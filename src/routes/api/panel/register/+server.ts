@@ -82,7 +82,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ success: false, error: 'Username already taken. Please choose another.' }, { status: 400 });
 		}
 
-		const existingAccount = await db.getAccountByEmail(validation.sanitizedEmail);
+		const existingAccount = await db.getAccountByNormalizedEmail(validation.sanitizedEmail);
 		if (existingAccount) {
 			if (!existingAccount.email_verified) {
 				const otpCode = randomInt(100000, 999999).toString();

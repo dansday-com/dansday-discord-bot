@@ -101,8 +101,20 @@ function selfbotShouldAutoStartWithOfficial(sb: { status?: string | null }): boo
 	return st === 'running' || st === 'starting';
 }
 
+function isSelfbotProcessAlive(sb: any): boolean {
+	const mapKey = botProcessMapKey('selfbot', sb.id);
+	const info = botProcesses.get(mapKey);
+	if (info?.process && !info.process.killed && (info.process as any).exitCode === null) return true;
+	if (info?.pid) {
+		try { process.kill(info.pid, 0); return true; } catch (_) {}
+	}
+	return false;
+}
+
 function startConnectedSelfbotsInBackground(selfbots: any[], officialBotId: number): void {
-	const eligible = (selfbots || []).filter((sb: any) => selfbotShouldAutoStartWithOfficial(sb) && typeof sb.token === 'string' && sb.token.trim() !== '');
+	const eligible = (selfbots || []).filter(
+		(sb: any) => selfbotShouldAutoStartWithOfficial(sb) && typeof sb.token === 'string' && sb.token.trim() !== '' && !isSelfbotProcessAlive(sb)
+	);
 	if (eligible.length === 0) return;
 	logger.log(`🔗 Scheduling ${eligible.length} connected selfbot(s) for official bot ${officialBotId} (independent of official process)`);
 	Promise.allSettled(eligible.map((sb: any) => startBotById(sb.id, sb))).then((results) => {
@@ -265,16 +277,7 @@ export async function startBotById(botId: number, bot: any): Promise<{ success: 
 	}
 }
 
-export type StopBotOptions = { linkedSelfbotStopMode?: 'fleet_pause' };
-
-function dbStateAfterProcessStop(bot: any | undefined, opts?: StopBotOptions): { status: string; process_id: null; uptime_started_at: null } {
-	if (bot && isSelfbot(bot) && opts?.linkedSelfbotStopMode === 'fleet_pause') {
-		return { status: 'running', process_id: null, uptime_started_at: null };
-	}
-	return { status: 'stopped', process_id: null, uptime_started_at: null };
-}
-
-export async function stopBotById(botId: number, bot?: any, opts?: StopBotOptions): Promise<{ success: boolean; error?: string; message?: string }> {
+export async function stopBotById(botId: number, bot?: any): Promise<{ success: boolean; error?: string; message?: string }> {
 	const mapKey = processKeyForStop(botId, bot);
 
 	if (bot) {
@@ -303,7 +306,7 @@ export async function stopBotById(botId: number, bot?: any, opts?: StopBotOption
 				botProcesses.delete(mapKey);
 				try {
 					if (bot) {
-						await updateBotStatus(bot, dbStateAfterProcessStop(bot, opts));
+						await updateBotStatus(bot, { status: 'stopped', process_id: null, uptime_started_at: null });
 					} else {
 						await db.updateBot(botId, { status: 'stopped', process_id: null, uptime_started_at: null });
 					}
@@ -312,7 +315,7 @@ export async function stopBotById(botId: number, bot?: any, opts?: StopBotOption
 			} catch (_) {
 				try {
 					if (bot) {
-						await updateBotStatus(bot, dbStateAfterProcessStop(bot, opts));
+						await updateBotStatus(bot, { status: 'stopped', process_id: null, uptime_started_at: null });
 					} else {
 						await db.updateBot(botId, { status: 'stopped', process_id: null, uptime_started_at: null });
 					}
@@ -322,7 +325,7 @@ export async function stopBotById(botId: number, bot?: any, opts?: StopBotOption
 		}
 		try {
 			if (bot) {
-				await updateBotStatus(bot, dbStateAfterProcessStop(bot, opts));
+				await updateBotStatus(bot, { status: 'stopped', process_id: null, uptime_started_at: null });
 			} else {
 				await db.updateBot(botId, { status: 'stopped', process_id: null, uptime_started_at: null });
 			}
@@ -351,7 +354,7 @@ export async function stopBotById(botId: number, bot?: any, opts?: StopBotOption
 
 	try {
 		if (bot) {
-			await updateBotStatus(bot, dbStateAfterProcessStop(bot, opts));
+			await updateBotStatus(bot, { status: 'stopped', process_id: null, uptime_started_at: null });
 		} else {
 			await db.updateBot(botId, { status: 'stopped', process_id: null, uptime_started_at: null });
 		}
@@ -360,26 +363,14 @@ export async function stopBotById(botId: number, bot?: any, opts?: StopBotOption
 
 	logger.log(`⏹️  Stopped bot ${mapKey}`);
 
-	if (!bot || !isSelfbot(bot)) {
-		try {
-			const selfbots = await getConnectedSelfbots(botId);
-			if (selfbots.length > 0) {
-				await Promise.all(
-					selfbots.map((sb: any) =>
-						stopBotById(sb.id, sb, { linkedSelfbotStopMode: 'fleet_pause' }).catch((err: Error) => {
-							logger.log(`⚠️  Failed to stop connected selfbot ${sb.id}: ${err.message}`);
-						})
-					)
-				);
-			}
-		} catch (_) {}
-	}
+	// When the official bot is intentionally stopped, selfbot processes are left running independently.
+	// They do not depend on the official bot process and should continue unaffected.
 
 	return { success: true };
 }
 
-export async function restartBotById(botId: number, bot: any, opts?: StopBotOptions): Promise<{ success: boolean; error?: string; pid?: number }> {
-	const stopResult = await stopBotById(botId, bot, opts);
+export async function restartBotById(botId: number, bot: any): Promise<{ success: boolean; error?: string; pid?: number }> {
+	const stopResult = await stopBotById(botId, bot);
 	if (!stopResult.success && stopResult.error !== 'Bot is not running') {
 		return { success: false, error: `Failed to stop: ${stopResult.error}` };
 	}

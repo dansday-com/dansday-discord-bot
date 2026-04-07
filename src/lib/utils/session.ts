@@ -14,9 +14,15 @@ export type SessionData = {
 const SESSION_TTL = 60 * 60 * 24;
 const COOKIE_NAME = 'sid';
 
+export const DEMO_EXPIRE_REDIS_PREFIX = 'dansday:demo-expire:';
+
+export function demoExpireRedisKey(panelSlug: string): string {
+	return `${DEMO_EXPIRE_REDIS_PREFIX}${panelSlug}`;
+}
+
 let redisClient: ReturnType<typeof createClient> | null = null;
 
-async function getRedis() {
+export async function getRedis() {
 	if (redisClient) return redisClient;
 	const url = process.env.REDIS_URL;
 	if (!url) return null;
@@ -52,12 +58,43 @@ export async function setSession(sessionId: string, data: SessionData, ttlSecond
 	const ttl = Math.max(5, Math.floor(ttlSeconds));
 	const expires_at = Date.now() + ttl * 1000;
 	await redis.setEx(sessionKey(sessionId), ttl, JSON.stringify({ ...data, expires_at }));
+	if (data.is_demo === true && data.demo_panel_slug) {
+		await redis.setEx(demoExpireRedisKey(data.demo_panel_slug), ttl, '1');
+	}
 }
 
 export async function destroySession(sessionId: string): Promise<void> {
 	const redis = await getRedis();
 	if (!redis) return;
-	await redis.del(sessionKey(sessionId));
+	const sidKey = sessionKey(sessionId);
+	try {
+		const raw = await redis.get(sidKey);
+		if (raw) {
+			const data = JSON.parse(raw) as SessionData;
+			if (data.is_demo === true && data.demo_panel_slug) {
+				await redis.del(demoExpireRedisKey(data.demo_panel_slug));
+			}
+		}
+	} catch (_) {}
+	await redis.del(sidKey);
+}
+
+export async function deleteSessionsWithDemoPanelSlug(panelSlug: string): Promise<void> {
+	const redis = await getRedis();
+	if (!redis) return;
+	try {
+		const keys = await redis.keys('dansday:sess:*');
+		for (const key of keys) {
+			const raw = await redis.get(key);
+			if (!raw) continue;
+			try {
+				const data = JSON.parse(raw) as SessionData;
+				if (data.is_demo === true && data.demo_panel_slug === panelSlug) {
+					await redis.del(key);
+				}
+			} catch (_) {}
+		}
+	} catch (_) {}
 }
 
 export async function destroySessionsForAccount(accountId: number): Promise<void> {

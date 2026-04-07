@@ -52,7 +52,6 @@ const baseStyles = `
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: var(--text); background-color: var(--bg); }
     .email-wrapper { max-width: 600px; margin: 0 auto; background-color: var(--wrapper-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
     .header { background-color: var(--surface); padding: 32px 30px; text-align: center; border-bottom: 1px solid var(--border); }
-    .header-icon { display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; background-color: var(--border); border-radius: 50%; margin: 0 auto 16px; font-size: 20px; line-height: 1; }
     .header h1 { font-size: 22px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
     .header .app-name { font-size: 13px; color: var(--subtle); font-weight: 400; }
     .content { padding: 36px 30px; }
@@ -63,7 +62,7 @@ const baseStyles = `
     .footer a { color: var(--link); text-decoration: none; }
 `;
 
-function emailLayout(icon: string, title: string, accentColor: string, bodyContent: string, year: number) {
+function emailLayout(title: string, accentColor: string, bodyContent: string, year: number) {
 	return `
         <!DOCTYPE html>
         <html lang="en">
@@ -88,7 +87,6 @@ function emailLayout(icon: string, title: string, accentColor: string, bodyConte
         <body style="background-color: var(--bg); padding: 24px 16px;">
             <div class="email-wrapper">
                 <div class="header">
-                    <div class="header-icon">${icon}</div>
                     <h1>${title}</h1>
                     <div class="app-name">${APP_NAME}</div>
                 </div>
@@ -129,7 +127,7 @@ export async function sendOTPEmail(email: string, otpCode: string) {
 		from: `"${APP_NAME}" <${process.env.MAIL_USERNAME}>`,
 		to: email,
 		subject,
-		html: emailLayout('🔐', subject, '#818cf8', body, year)
+		html: emailLayout(subject, '#818cf8', body, year)
 	};
 
 	try {
@@ -161,7 +159,7 @@ export async function sendVerificationSuccessEmail(email: string, username: stri
 		from: `"${APP_NAME}" <${process.env.MAIL_USERNAME}>`,
 		to: email,
 		subject,
-		html: emailLayout('✅', subject, '#34d399', body, year)
+		html: emailLayout(subject, '#34d399', body, year)
 	};
 
 	try {
@@ -193,7 +191,7 @@ export async function sendAccountFrozenEmail(email: string, username: string) {
 		from: `"${APP_NAME}" <${process.env.MAIL_USERNAME}>`,
 		to: email,
 		subject,
-		html: emailLayout('🔒', subject, '#f59e0b', body, year)
+		html: emailLayout(subject, '#f59e0b', body, year)
 	};
 
 	try {
@@ -225,7 +223,7 @@ export async function sendAccountUnfrozenEmail(email: string, username: string) 
 		from: `"${APP_NAME}" <${process.env.MAIL_USERNAME}>`,
 		to: email,
 		subject,
-		html: emailLayout('✅', subject, '#34d399', body, year)
+		html: emailLayout(subject, '#34d399', body, year)
 	};
 
 	try {
@@ -257,7 +255,7 @@ export async function sendAccountDeletedEmail(email: string, username: string) {
 		from: `"${APP_NAME}" <${process.env.MAIL_USERNAME}>`,
 		to: email,
 		subject,
-		html: emailLayout('🗑️', subject, '#f87171', body, year)
+		html: emailLayout(subject, '#f87171', body, year)
 	};
 
 	try {

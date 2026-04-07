@@ -550,7 +550,7 @@ export const serverMemberStaffRatingReviews = mysqlTable(
 );
 
 export const serverFeedback = mysqlTable(
-	'server_feedbacks',
+	'server_member_feedbacks',
 	{
 		id: int('id').primaryKey().autoincrement(),
 		member_id: int('member_id')
@@ -560,7 +560,7 @@ export const serverFeedback = mysqlTable(
 		is_anonymous: boolean('is_anonymous').default(false),
 		submitted_at: datetime('submitted_at').notNull()
 	},
-	(t) => [index('idx_server_feedbacks_member').on(t.member_id)]
+	(t) => [index('idx_server_member_feedbacks_member').on(t.member_id)]
 );
 
 export const serverMemberContentCreatorReviews = mysqlTable(

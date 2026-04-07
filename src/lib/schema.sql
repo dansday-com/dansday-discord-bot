@@ -401,7 +401,7 @@ CREATE TABLE IF NOT EXISTS server_member_staff_rating_reviews (
     FOREIGN KEY (reviewed_by_member_id) REFERENCES server_members(id) ON DELETE SET NULL
 );
 
-CREATE TABLE IF NOT EXISTS server_feedbacks (
+CREATE TABLE IF NOT EXISTS server_member_feedbacks (
     id INT PRIMARY KEY AUTO_INCREMENT,
     member_id INT NOT NULL,
     description TEXT NOT NULL,
@@ -495,7 +495,7 @@ CREATE INDEX IF NOT EXISTS idx_server_member_staff_rating_reviews_staff ON serve
 CREATE INDEX IF NOT EXISTS idx_server_member_staff_rating_reviews_pair ON server_member_staff_rating_reviews(reporter_member_id, reported_staff_id);
 CREATE INDEX IF NOT EXISTS idx_server_member_staff_rating_reviews_status ON server_member_staff_rating_reviews(status);
 CREATE INDEX IF NOT EXISTS idx_server_member_staff_rating_reviews_reviewer ON server_member_staff_rating_reviews(reviewed_by_member_id);
-CREATE INDEX IF NOT EXISTS idx_server_feedbacks_member ON server_feedbacks(member_id);
+CREATE INDEX IF NOT EXISTS idx_server_member_feedbacks_member ON server_member_feedbacks(member_id);
 CREATE INDEX IF NOT EXISTS idx_server_member_content_creator_reviews_member ON server_member_content_creator_reviews(member_id);
 CREATE INDEX IF NOT EXISTS idx_server_member_content_creator_reviews_status ON server_member_content_creator_reviews(status);
 CREATE INDEX IF NOT EXISTS idx_server_member_content_creator_reviews_submitted_at ON server_member_content_creator_reviews(submitted_at);

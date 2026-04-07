@@ -14,7 +14,7 @@ import {
 	validateInputLength,
 	logger
 } from '$lib/utils/index.js';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 const MAX_LOGIN_ATTEMPTS = 5;
 

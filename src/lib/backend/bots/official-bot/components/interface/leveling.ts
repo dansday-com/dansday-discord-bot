@@ -289,19 +289,19 @@ async function buildLevelingEmbeds(server, memberLevelData, sortType = 'xp', gui
 }
 
 async function createLeaderboardButtons(selectedType = 'xp', guildId = null, userId = null) {
-	if (guildId && !(await isComponentFeatureEnabled(guildId, serverSettingsComponent.public_statistics))) {
+	if (guildId && !(await isComponentFeatureEnabled(guildId, serverSettingsComponent.leveling))) {
 		return null;
 	}
-	const topXpLabel = await translate('leveling.buttons.topXp', guildId, userId);
+	const xpLabel = await translate('leveling.buttons.xp', guildId, userId);
 	const voiceTotalLabel = await translate('leveling.buttons.voiceTotal', guildId, userId);
 	const voiceActiveLabel = await translate('leveling.buttons.voiceActive', guildId, userId);
 	const voiceAfkLabel = await translate('leveling.buttons.voiceAfk', guildId, userId);
-	const topChatLabel = await translate('leveling.buttons.topChat', guildId, userId);
+	const chatLabel = await translate('leveling.buttons.chat', guildId, userId);
 
 	const buttons = [
 		new ButtonBuilder()
 			.setCustomId('leaderboard_xp')
-			.setLabel(topXpLabel)
+			.setLabel(xpLabel)
 			.setStyle(selectedType === 'xp' ? ButtonStyle.Primary : ButtonStyle.Secondary),
 		new ButtonBuilder()
 			.setCustomId('leaderboard_voice_total')
@@ -317,7 +317,7 @@ async function createLeaderboardButtons(selectedType = 'xp', guildId = null, use
 			.setStyle(selectedType === 'voice_afk' ? ButtonStyle.Primary : ButtonStyle.Secondary),
 		new ButtonBuilder()
 			.setCustomId('leaderboard_chat')
-			.setLabel(topChatLabel)
+			.setLabel(chatLabel)
 			.setStyle(selectedType === 'chat' ? ButtonStyle.Primary : ButtonStyle.Secondary)
 	];
 
@@ -330,12 +330,16 @@ async function createMenuRow(guildId = null, userId = null, serverId = null) {
 
 	const buttons: any[] = [menuButton];
 
-	if (serverId && guildId && (await isComponentFeatureEnabled(guildId, serverSettingsComponent.public_statistics))) {
+	const levelingEnabled = !guildId || (await isComponentFeatureEnabled(guildId, serverSettingsComponent.leveling));
+	const publicStatsEnabled = !guildId || (await isComponentFeatureEnabled(guildId, serverSettingsComponent.public_statistics));
+
+	if (serverId && guildId && levelingEnabled && publicStatsEnabled) {
 		try {
 			const slug = await computePublicServerSlugForServerId(serverId);
 			const url = slug ? publicServerUrl(slug, 'leaderboard') : null;
 			if (url) {
-				buttons.push(new ButtonBuilder().setLabel('🌐 Web Leaderboard').setURL(url).setStyle(ButtonStyle.Link));
+				const webLeaderboardLabel = await translate('leveling.buttons.webLeaderboard', guildId, userId);
+				buttons.push(new ButtonBuilder().setLabel(webLeaderboardLabel).setURL(url).setStyle(ButtonStyle.Link));
 			}
 		} catch (_) {}
 	}
@@ -396,10 +400,11 @@ export async function handleLevelingButton(interaction) {
 		const { profileEmbed, leaderboardEmbed } = await buildLevelingEmbeds(server, memberLevelData, sortType, interaction.guild.id, interaction.user.id);
 		const buttons = await createLeaderboardButtons(sortType, interaction.guild.id, interaction.user.id);
 		const menuRow = await createMenuRow(interaction.guild.id, interaction.user.id, server.id);
+		const components = [buttons, menuRow].filter(Boolean);
 
 		await interaction.update({
 			embeds: [profileEmbed, leaderboardEmbed],
-			components: [buttons, menuRow]
+			components
 		});
 	} catch (error) {
 		await logger.log(`❌ Leveling interface error: ${error.message}`);
@@ -462,7 +467,7 @@ export async function handleLeaderboardButton(interaction) {
 		const { profileEmbed, leaderboardEmbed } = await buildLevelingEmbeds(server, memberLevelData, sortType, interaction.guild.id, interaction.user.id);
 		const buttons = await createLeaderboardButtons(sortType, interaction.guild.id, interaction.user.id);
 		const menuRow = await createMenuRow(interaction.guild.id, interaction.user.id, server.id);
-		const components = buttons ? [buttons, menuRow] : [menuRow];
+		const components = [buttons, menuRow].filter(Boolean);
 
 		await interaction.update({
 			embeds: [profileEmbed, leaderboardEmbed],

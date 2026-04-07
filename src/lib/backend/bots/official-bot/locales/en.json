@@ -3,7 +3,10 @@
 		"title": "📋 Dansday Bot Menu",
 		"description": "Select a feature from the buttons below:",
 		"noAccess": "❌ You don't have access to any features.",
-		"button": "📋 Menu"
+		"button": "📋 Menu",
+		"web": {
+			"statistics": "🌐 Statistics"
+		}
 	},
 	"interface": {
 		"panel": {
@@ -54,18 +57,18 @@
 	},
 	"leveling": {
 		"profile": {
-			"title": "📈 Your Leveling Stats",
+			"title": "📈 Leveling",
 			"description": "Stats for **{member}**",
 			"yourProgress": "Your Progress",
 			"level": "Level",
 			"experience": "Experience",
 			"progress": "Progress",
-			"chatTotal": "Chat Total",
-			"voiceMinutes": "Voice Minutes (Total)",
-			"voiceActive": "Active",
-			"voiceAfk": "AFK",
-			"voiceVideo": "Camera on (voice ticks)",
-			"voiceStreaming": "Go Live / streaming (voice ticks)",
+			"chatTotal": "💬 Chat Total",
+			"voiceMinutes": "🎤 Voice Minutes (Total)",
+			"voiceActive": "🎤 Active",
+			"voiceAfk": "🔇 AFK",
+			"voiceVideo": "📹 Video",
+			"voiceStreaming": "📡 Streaming",
 			"rank": "Rank",
 			"unranked": "Unranked",
 			"unknown": "Unknown",
@@ -73,11 +76,11 @@
 			"minutes": "minutes"
 		},
 		"leaderboard": {
-			"topXp": "⭐ Top XP (Top 3)",
-			"topChat": "💬 Top Chat (Top 3)",
-			"topVoiceTotal": "🎤 Top Voice (Total • Top 3)",
-			"topVoiceActive": "🎤 Top Voice (Active • Top 3)",
-			"topVoiceAfk": "🎤 Top Voice (AFK • Top 3)",
+			"topXp": "⭐ XP (Top 3)",
+			"topChat": "💬 Chat (Top 3)",
+			"topVoiceTotal": "🎤 Voice (Total • Top 3)",
+			"topVoiceActive": "🎤 Voice (Active • Top 3)",
+			"topVoiceAfk": "🔇 Voice (AFK • Top 3)",
 			"noData": "No leveling data available yet.",
 			"member": "Member {position}",
 			"minTotal": "min total",
@@ -86,11 +89,12 @@
 			"messages": "messages"
 		},
 		"buttons": {
-			"topXp": "⭐ Top XP",
+			"xp": "⭐ XP",
 			"voiceTotal": "🎤 Voice Total",
 			"voiceActive": "🎤 Voice Active",
-			"voiceAfk": "🎤 Voice AFK",
-			"topChat": "💬 Top Chat"
+			"voiceAfk": "🔇 Voice AFK",
+			"chat": "💬 Chat",
+			"webLeaderboard": "🌐 Leaderboard"
 		},
 		"errors": {
 			"notRegistered": "⚠️ This server is not registered with the bot. Please run a sync first.",

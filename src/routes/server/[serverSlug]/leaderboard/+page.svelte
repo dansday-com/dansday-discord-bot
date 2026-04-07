@@ -22,8 +22,14 @@
 	let raf: number | null = null;
 	let mounted = $state(false);
 
+	function cleanName(s: string): string {
+		return s.replace(/^\s*(\[AFK\]\s*)+/gi, '').trim();
+	}
+
 	function displayName(r: any) {
-		return r.server_display_name || r.display_name || r.username || r.discord_member_id;
+		const raw = String(r.server_display_name || r.display_name || r.username || r.discord_member_id || '');
+		const cleaned = cleanName(raw);
+		return cleaned || raw || 'Unknown';
 	}
 
 	function metricLabel(m: string) {

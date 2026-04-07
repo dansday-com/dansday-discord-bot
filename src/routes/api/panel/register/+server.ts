@@ -12,7 +12,7 @@ import {
 	createVerifyToken
 } from '$lib/utils/index.js';
 import { sendOTPEmail } from '$lib/frontend/email.js';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { randomInt } from 'crypto';
 
 const MAX_REGISTER_ATTEMPTS = 3;
@@ -82,7 +82,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ success: false, error: 'Username already taken. Please choose another.' }, { status: 400 });
 		}
 
-		const existingAccount = await db.getAccountByEmail(validation.sanitizedEmail);
+		const existingAccount = await db.getAccountByNormalizedEmail(validation.sanitizedEmail);
 		if (existingAccount) {
 			if (!existingAccount.email_verified) {
 				const otpCode = randomInt(100000, 999999).toString();
@@ -97,10 +97,10 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ success: false, error: 'Email already registered. Please login instead.', redirect_to: '/login' }, { status: 400 });
 		}
 
-		let panel = await db.getPanel();
+		let panel = await db.getPanel('default');
 		if (!panel) {
-			await db.createPanel();
-			panel = await db.getPanel();
+			await db.createPanel('default');
+			panel = await db.getPanel('default');
 		}
 
 		const passwordHash = await bcrypt.hash(password, 12);

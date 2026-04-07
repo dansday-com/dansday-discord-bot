@@ -598,10 +598,6 @@ async function handleMessageCreate(message) {
 	}
 }
 
-/**
- * @param buckets {{ isAFK: boolean, voiceMinutes: number, videoMinutes: number, streamMinutes: number }}
- * @param mediaFlags {{ selfVideo: boolean, streaming: boolean }} sync is_in_video / is_in_stream; timestamps advance only for minutes > 0
- */
 async function awardVoiceXP(server, dbMember, guildId, reason, previousStats, buckets, mediaFlags) {
 	const { isAFK, voiceMinutes, videoMinutes, streamMinutes } = buckets;
 	const vm = Math.max(0, Math.floor(Number(voiceMinutes) || 0));
@@ -661,7 +657,6 @@ async function syncVoiceMediaBaselines(dbMemberId, mediaFlags, lastVideoMs, last
 	});
 }
 
-/** Camera / Go Live toggles without leaving the channel — reset only the affected media clock. */
 async function handleVoiceMediaOnlyUpdate(oldState, newState) {
 	try {
 		const guild = newState.guild;

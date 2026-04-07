@@ -10,7 +10,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 	}
 
 	try {
-		const bots = await db.getAllBots();
+		const bots = locals.user.account_source === 'accounts' ? await db.getAllBots(locals.user.panel_id) : await db.getAllBots();
 
 		const botsWithDetails = await Promise.all(
 			bots.map(async (bot: any) => {
@@ -91,7 +91,8 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			bot_icon: bot_icon || null,
 			port: port || 7777,
 			secret_key: secret_key || null,
-			account_id: account.id
+			account_id: account.id,
+			panel_id: account.panel_id
 		});
 
 		logger.log(`${locals.user.username} added official bot: "${name || 'Bot'}" (ID: ${bot.id})`);

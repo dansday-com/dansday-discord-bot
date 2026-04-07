@@ -21,14 +21,14 @@ export const GET: RequestHandler = async ({ locals, params, url }) => {
 			return json({ error: 'Server not found' }, { status: 404 });
 		}
 
-		let channels = await db.getChannelsForServer(Number(serverId));
+		let channels = await db.getServerBotChannelsForServer(Number(serverId));
 
 		if (search) {
 			const searchLower = search.toLowerCase();
 			channels = channels.filter((ch: any) => ch.name?.toLowerCase().includes(searchLower) || ch.discord_channel_id?.includes(searchLower));
 		}
 
-		const categories = await db.getCategoriesForServer(Number(serverId));
+		const categories = await db.getServerBotCategoriesForServer(Number(serverId));
 
 		return json({ channels, categories });
 	} catch (error: any) {

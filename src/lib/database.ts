@@ -205,8 +205,19 @@ async function retryOnConnectionError<T>(fn: () => Promise<T>, maxRetries = 3, d
 	throw new Error('Max retries exceeded');
 }
 
-export async function getAllBots() {
+export async function getAllBots(panelId?: number | null) {
 	await initializeDatabase();
+	if (panelId != null) {
+		return retryOnConnectionError(() =>
+			db
+				.select({ bot: schema.bots })
+				.from(schema.bots)
+				.innerJoin(schema.accounts, eq(schema.accounts.id, schema.bots.account_id))
+				.where(eq(schema.accounts.panel_id, Number(panelId)))
+				.orderBy(asc(schema.bots.created_at))
+				.then((rows) => rows.map((r) => r.bot))
+		);
+	}
 	return retryOnConnectionError(() => db.select().from(schema.bots).orderBy(asc(schema.bots.created_at)));
 }
 
@@ -229,7 +240,8 @@ export async function getBot(botId: number | string) {
 
 export async function createBot(botData: any) {
 	await initializeDatabase();
-	const bots = await getAllBots();
+	const panelId = botData.panel_id ?? (botData.account_id ? ((await getAccountById(botData.account_id))?.panel_id ?? null) : null);
+	const bots = await getAllBots(panelId);
 	const botNumber = bots.length + 1;
 	const now = toMySQLDateTime();
 
@@ -240,7 +252,7 @@ export async function createBot(botData: any) {
 		bot_icon: botData.bot_icon || null,
 		port: botData.port !== undefined ? botData.port : 7777,
 		secret_key: botData.secret_key || null,
-		account_id: botData.account_id || null,
+		account_id: botData.account_id,
 		created_at: now as any,
 		updated_at: now as any
 	});
@@ -287,15 +299,12 @@ export async function getServer(serverId: any) {
 }
 
 export async function getServersForBot(officialBotId: number) {
-	return db
-		.select()
-		.from(schema.servers)
-		.where(and(eq(schema.servers.official_bot_id, officialBotId), isNull(schema.servers.selfbot_id)))
-		.orderBy(asc(schema.servers.name));
+	return db.select().from(schema.servers).where(eq(schema.servers.bot_id, officialBotId)).orderBy(asc(schema.servers.name));
 }
 
 export async function getServersForSelfbot(selfbotId: number) {
-	return db.select().from(schema.servers).where(eq(schema.servers.selfbot_id, selfbotId)).orderBy(asc(schema.servers.name));
+	await initializeDatabase();
+	return db.select().from(schema.serverBotServers).where(eq(schema.serverBotServers.server_bot_id, selfbotId)).orderBy(asc(schema.serverBotServers.name));
 }
 
 export async function getOfficialServerByDiscordId(officialBotId: number, discordServerId: string) {
@@ -303,7 +312,7 @@ export async function getOfficialServerByDiscordId(officialBotId: number, discor
 	const rows = await db
 		.select()
 		.from(schema.servers)
-		.where(and(eq(schema.servers.official_bot_id, officialBotId), isNull(schema.servers.selfbot_id), eq(schema.servers.discord_server_id, discordServerId)))
+		.where(and(eq(schema.servers.bot_id, officialBotId), eq(schema.servers.discord_server_id, discordServerId)))
 		.limit(1);
 	return rows[0] || null;
 }
@@ -312,8 +321,8 @@ export async function getSelfbotServerByDiscordId(selfbotId: number, discordServ
 	await initializeDatabase();
 	const rows = await db
 		.select()
-		.from(schema.servers)
-		.where(and(eq(schema.servers.selfbot_id, selfbotId), eq(schema.servers.discord_server_id, discordServerId)))
+		.from(schema.serverBotServers)
+		.where(and(eq(schema.serverBotServers.server_bot_id, selfbotId), eq(schema.serverBotServers.discord_server_id, discordServerId)))
 		.limit(1);
 	return rows[0] || null;
 }
@@ -326,17 +335,7 @@ export async function getServerByDiscordId(botId: number, discordServerId: strin
 export async function getOfficialBotServerIdForServer(serverId: any) {
 	const server = await getServer(serverId);
 	if (!server) return null;
-	if (server.selfbot_id == null) return server.id;
-	const officialBotId = await resolveOfficialBotIdForServer(server);
-	if (officialBotId == null) return null;
-	const rows = await db
-		.select()
-		.from(schema.servers)
-		.where(
-			and(eq(schema.servers.official_bot_id, officialBotId), isNull(schema.servers.selfbot_id), eq(schema.servers.discord_server_id, server.discord_server_id))
-		)
-		.limit(1);
-	return rows[0]?.id ?? null;
+	return server.id;
 }
 
 async function getServerIdsInSameGuild(serverId: any) {
@@ -480,8 +479,8 @@ export async function upsertOfficialServer(officialBotId: number, guild: any) {
 	const v = await collectGuildSnapshotForUpsert(guild);
 	const now = toMySQLDateTime();
 	await db.execute(sql`
-		INSERT INTO servers (official_bot_id, selfbot_id, discord_server_id, name, total_members, total_channels, total_boosters, boost_level, server_icon, discord_created_at, vanity_url_code, invite_code, created_at, updated_at)
-		VALUES (${officialBotId}, NULL, ${guild.id}, ${v.name}, ${v.memberCount}, ${v.channelCount}, ${v.boosters}, ${v.boostLevel}, ${v.iconUrl}, ${v.discordCreatedAt}, ${v.vanityCode}, ${v.inviteCode}, ${now}, ${now})
+		INSERT INTO servers (bot_id, discord_server_id, name, total_members, total_channels, total_boosters, boost_level, server_icon, discord_created_at, vanity_url_code, invite_code, created_at, updated_at)
+		VALUES (${officialBotId}, ${guild.id}, ${v.name}, ${v.memberCount}, ${v.channelCount}, ${v.boosters}, ${v.boostLevel}, ${v.iconUrl}, ${v.discordCreatedAt}, ${v.vanityCode}, ${v.inviteCode}, ${now}, ${now})
 		ON DUPLICATE KEY UPDATE
 			name = VALUES(name), total_members = VALUES(total_members), total_channels = VALUES(total_channels),
 			total_boosters = VALUES(total_boosters), boost_level = VALUES(boost_level),
@@ -489,6 +488,7 @@ export async function upsertOfficialServer(officialBotId: number, guild: any) {
 			discord_created_at = COALESCE(servers.discord_created_at, VALUES(discord_created_at)),
 			vanity_url_code = VALUES(vanity_url_code),
 			invite_code = COALESCE(VALUES(invite_code), servers.invite_code),
+			bot_id = VALUES(bot_id),
 			updated_at = VALUES(updated_at)
 	`);
 
@@ -503,22 +503,107 @@ export async function upsertOfficialServer(officialBotId: number, guild: any) {
 }
 
 export async function upsertSelfbotServer(selfbotId: number, guild: any) {
+	return upsertServerBotServer(selfbotId, guild);
+}
+
+export async function upsertServerBotServer(serverBotId: number, guild: any) {
+	await initializeDatabase();
 	const v = await collectGuildSnapshotForUpsert(guild);
 	const now = toMySQLDateTime();
 	await db.execute(sql`
-		INSERT INTO servers (official_bot_id, selfbot_id, discord_server_id, name, total_members, total_channels, total_boosters, boost_level, server_icon, discord_created_at, vanity_url_code, invite_code, created_at, updated_at)
-		VALUES (NULL, ${selfbotId}, ${guild.id}, ${v.name}, ${v.memberCount}, ${v.channelCount}, ${v.boosters}, ${v.boostLevel}, ${v.iconUrl}, ${v.discordCreatedAt}, ${v.vanityCode}, ${v.inviteCode}, ${now}, ${now})
+		INSERT INTO server_bot_servers (server_bot_id, discord_server_id, name, total_members, total_channels, server_icon, discord_created_at, vanity_url_code, invite_code, created_at, updated_at)
+		VALUES (${serverBotId}, ${guild.id}, ${v.name}, ${v.memberCount}, ${v.channelCount}, ${v.iconUrl}, ${v.discordCreatedAt}, ${v.vanityCode}, ${v.inviteCode}, ${now}, ${now})
 		ON DUPLICATE KEY UPDATE
-			name = VALUES(name), total_members = VALUES(total_members), total_channels = VALUES(total_channels),
-			total_boosters = VALUES(total_boosters), boost_level = VALUES(boost_level),
+			name = VALUES(name),
+			total_members = VALUES(total_members),
+			total_channels = VALUES(total_channels),
 			server_icon = VALUES(server_icon),
-			discord_created_at = COALESCE(servers.discord_created_at, VALUES(discord_created_at)),
+			discord_created_at = COALESCE(server_bot_servers.discord_created_at, VALUES(discord_created_at)),
 			vanity_url_code = VALUES(vanity_url_code),
-			invite_code = COALESCE(VALUES(invite_code), servers.invite_code),
+			invite_code = COALESCE(VALUES(invite_code), server_bot_servers.invite_code),
 			updated_at = VALUES(updated_at)
 	`);
+	const rows = await db
+		.select()
+		.from(schema.serverBotServers)
+		.where(and(eq(schema.serverBotServers.server_bot_id, Number(serverBotId)), eq(schema.serverBotServers.discord_server_id, String(guild.id))))
+		.limit(1);
+	return rows[0] || null;
+}
 
-	return getSelfbotServerByDiscordId(selfbotId, guild.id);
+export async function syncServerBotCategories(serverBotServerId: number, categories: any[]) {
+	await initializeDatabase();
+	if (!categories || categories.length === 0) return true;
+	const now = toMySQLDateTime();
+	await Promise.all(
+		categories.map((cat) =>
+			db
+				.insert(schema.serverBotServerCategories)
+				.values({
+					server_bot_server_id: Number(serverBotServerId),
+					discord_category_id: String(cat.id),
+					name: cat.name ?? null,
+					position: cat.position ?? null,
+					created_at: now as any,
+					updated_at: now as any
+				})
+				.onDuplicateKeyUpdate({ set: { name: cat.name ?? null, position: cat.position ?? null, updated_at: now as any } })
+				.catch(() => null)
+		)
+	);
+	return true;
+}
+
+export async function syncServerBotChannels(serverBotServerId: number, channels: any[]) {
+	await initializeDatabase();
+	if (!channels || channels.length === 0) return true;
+	const now = toMySQLDateTime();
+	const valid = channels.filter((ch) => ch.type !== 4);
+	await Promise.all(
+		valid.map((ch) =>
+			db
+				.insert(schema.serverBotServerChannels)
+				.values({
+					server_bot_server_id: Number(serverBotServerId),
+					discord_channel_id: String(ch.id),
+					name: ch.name ?? null,
+					type: ch.type ?? null,
+					discord_parent_category_id: ch.parent_id ? String(ch.parent_id) : null,
+					position: ch.position ?? null,
+					created_at: now as any,
+					updated_at: now as any
+				})
+				.onDuplicateKeyUpdate({
+					set: {
+						name: ch.name ?? null,
+						type: ch.type ?? null,
+						discord_parent_category_id: ch.parent_id ? String(ch.parent_id) : null,
+						position: ch.position ?? null,
+						updated_at: now as any
+					}
+				})
+				.catch(() => null)
+		)
+	);
+	return true;
+}
+
+export async function getServerBotCategoriesForServer(serverBotServerId: number) {
+	await initializeDatabase();
+	return db
+		.select()
+		.from(schema.serverBotServerCategories)
+		.where(eq(schema.serverBotServerCategories.server_bot_server_id, serverBotServerId))
+		.orderBy(asc(schema.serverBotServerCategories.position), asc(schema.serverBotServerCategories.name));
+}
+
+export async function getServerBotChannelsForServer(serverBotServerId: number) {
+	await initializeDatabase();
+	return db
+		.select()
+		.from(schema.serverBotServerChannels)
+		.where(eq(schema.serverBotServerChannels.server_bot_server_id, serverBotServerId))
+		.orderBy(asc(schema.serverBotServerChannels.position), asc(schema.serverBotServerChannels.name));
 }
 
 export async function upsertServer(botId: number, guild: any) {
@@ -585,7 +670,6 @@ export async function getServerByLeaderboardSlug(slug: string) {
 		INNER JOIN server_settings ss
 			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.public_statistics}
 		WHERE JSON_UNQUOTE(JSON_EXTRACT(ss.settings, '$.slug')) = ${s}
-		  AND sv.selfbot_id IS NULL
 		LIMIT 1
 	`);
 	return ((rows[0] as unknown as any[]) || [])[0] || null;
@@ -616,7 +700,6 @@ export async function listPublicLeaderboardSlugs() {
 		INNER JOIN server_settings ss
 			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.public_statistics}
 		WHERE JSON_EXTRACT(ss.settings, '$.slug') IS NOT NULL
-		  AND sv.selfbot_id IS NULL
 	`);
 	const list = (rows[0] as unknown as any[]) || [];
 	return list
@@ -643,7 +726,6 @@ export async function listEnabledLeaderboardServers() {
 		FROM servers sv
 		INNER JOIN server_settings ss
 			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.public_statistics}
-		WHERE sv.selfbot_id IS NULL
 	`);
 	const list = (rows[0] as unknown as any[]) || [];
 	return list
@@ -1529,22 +1611,26 @@ export async function memberHasCustomSupporterRole(discordMemberId: string, serv
 	return { has: false, role: null };
 }
 
-async function getPanel() {
-	const rows = await db.select().from(schema.panel).limit(1);
+async function getPanel(slug: string = 'default') {
+	const s = String(slug || 'default').trim() || 'default';
+	const rows = await db.select().from(schema.panel).where(eq(schema.panel.slug, s)).limit(1);
 	return rows[0] || null;
 }
 
-async function createPanel() {
-	const existing = await getPanel();
-	if (existing) throw new Error('Panel already exists');
+async function createPanel(slug: string = 'default') {
+	const s = String(slug || 'default').trim() || 'default';
 	const now = toMySQLDateTime();
-	const result = await db.insert(schema.panel).values({ created_at: now as any, updated_at: now as any });
-	const rows = await db
-		.select()
-		.from(schema.panel)
-		.where(eq(schema.panel.id, (result[0] as any).insertId))
-		.limit(1);
-	return rows[0];
+	const result = await db
+		.insert(schema.panel)
+		.values({ slug: s, created_at: now as any, updated_at: now as any })
+		.onDuplicateKeyUpdate({ set: { updated_at: now as any } });
+
+	const insertedId = (result?.[0] as any)?.insertId;
+	if (insertedId) {
+		const rows = await db.select().from(schema.panel).where(eq(schema.panel.id, insertedId)).limit(1);
+		return rows[0] || null;
+	}
+	return getPanel(s);
 }
 
 async function getAccountById(accountId: any) {
@@ -1558,6 +1644,25 @@ async function getAccountById(accountId: any) {
 
 async function getAccountByEmail(email: string) {
 	const rows = await db.select().from(schema.accounts).where(eq(schema.accounts.email, email)).limit(1);
+	return rows[0] || null;
+}
+
+async function getAccountByNormalizedEmail(email: string) {
+	const atIndex = email.lastIndexOf('@');
+	if (atIndex === -1) return null;
+	const domain = email.substring(atIndex + 1);
+	if (domain !== 'gmail.com' && domain !== 'googlemail.com') {
+		return getAccountByEmail(email);
+	}
+	const normalizedLocal = email.substring(0, atIndex).replace(/\./g, '');
+	const rows = await db
+		.select()
+		.from(schema.accounts)
+		.where(
+			sql`SUBSTRING_INDEX(${schema.accounts.email}, '@', -1) IN ('gmail.com', 'googlemail.com')
+			    AND REPLACE(SUBSTRING_INDEX(${schema.accounts.email}, '@', 1), '.', '') = ${normalizedLocal}`
+		)
+		.limit(1);
 	return rows[0] || null;
 }
 
@@ -1720,6 +1825,28 @@ async function getServerAccountByEmailServer(email: string, serverId: number) {
 		.select()
 		.from(schema.serverAccounts)
 		.where(and(eq(schema.serverAccounts.email, email), eq(schema.serverAccounts.server_id, serverId)))
+		.limit(1);
+	return rows[0] || null;
+}
+
+async function getServerAccountByNormalizedEmailServer(email: string, serverId: number) {
+	const atIndex = email.lastIndexOf('@');
+	if (atIndex === -1) return null;
+	const domain = email.substring(atIndex + 1);
+	if (domain !== 'gmail.com' && domain !== 'googlemail.com') {
+		return getServerAccountByEmailServer(email, serverId);
+	}
+	const normalizedLocal = email.substring(0, atIndex).replace(/\./g, '');
+	const rows = await db
+		.select()
+		.from(schema.serverAccounts)
+		.where(
+			and(
+				eq(schema.serverAccounts.server_id, serverId),
+				sql`SUBSTRING_INDEX(${schema.serverAccounts.email}, '@', -1) IN ('gmail.com', 'googlemail.com')
+				    AND REPLACE(SUBSTRING_INDEX(${schema.serverAccounts.email}, '@', 1), '.', '') = ${normalizedLocal}`
+			)
+		)
 		.limit(1);
 	return rows[0] || null;
 }
@@ -1903,18 +2030,16 @@ async function getOfficialBotForSelfbot(selfbotId: number) {
 		.select({ bot: schema.bots })
 		.from(schema.serverBots)
 		.innerJoin(schema.servers, eq(schema.servers.id, schema.serverBots.server_id))
-		.innerJoin(schema.bots, eq(schema.bots.id, schema.servers.official_bot_id))
-		.where(and(eq(schema.serverBots.id, selfbotId), isNull(schema.servers.selfbot_id), isNotNull(schema.servers.official_bot_id)))
+		.innerJoin(schema.bots, eq(schema.bots.id, schema.servers.bot_id))
+		.where(and(eq(schema.serverBots.id, selfbotId), isNotNull(schema.servers.bot_id)))
 		.limit(1);
 	return rows[0]?.bot || null;
 }
 
 export async function resolveOfficialBotIdForServer(server: typeof schema.servers.$inferSelect | null) {
 	if (!server) return null;
-	if (server.official_bot_id != null) return server.official_bot_id;
-	if (server.selfbot_id == null) return null;
-	const ob = await getOfficialBotForSelfbot(server.selfbot_id);
-	return ob?.id ?? null;
+	if ((server as any).bot_id != null) return (server as any).bot_id;
+	return null;
 }
 
 export async function getOfficialBotIdForServer(serverId: number): Promise<number | null> {
@@ -1927,7 +2052,7 @@ async function getSelfbotsForOfficialBot(officialBotId: number) {
 		.select({ selfbot: schema.serverBots })
 		.from(schema.serverBots)
 		.innerJoin(schema.servers, eq(schema.servers.id, schema.serverBots.server_id))
-		.where(and(eq(schema.servers.official_bot_id, officialBotId), isNull(schema.servers.selfbot_id)))
+		.where(eq(schema.servers.bot_id, officialBotId))
 		.then((rows) => rows.map((r) => r.selfbot));
 }
 
@@ -2862,6 +2987,11 @@ export default {
 	upsertServer,
 	upsertOfficialServer,
 	upsertSelfbotServer,
+	upsertServerBotServer,
+	syncServerBotCategories,
+	syncServerBotChannels,
+	getServerBotCategoriesForServer,
+	getServerBotChannelsForServer,
 	getServerByLeaderboardSlug,
 	listPublicLeaderboardSlugs,
 	listEnabledLeaderboardServers,
@@ -2901,6 +3031,7 @@ export default {
 	createPanel,
 	getAccountById,
 	getAccountByEmail,
+	getAccountByNormalizedEmail,
 	getAccountByUsername,
 	createAccount,
 	updateAccount,
@@ -2918,6 +3049,7 @@ export default {
 	getServerAccountByEmail,
 	getServerAccountByUsername,
 	getServerAccountByEmailServer,
+	getServerAccountByNormalizedEmailServer,
 	createServerAccount,
 	updateServerAccount,
 	deleteServerAccount,

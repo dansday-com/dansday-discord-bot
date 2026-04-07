@@ -15,7 +15,7 @@ import {
 	logger
 } from '$lib/utils/index.js';
 import { sendOTPEmail } from '$lib/frontend/email.js';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { randomInt } from 'crypto';
 
 async function validateRegistrationInputs(username: string, email: string, password: string) {
@@ -82,7 +82,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ success: false, error: 'Invite link has expired' }, { status: 400 });
 		}
 
-		const existingInScope = await db.getServerAccountByEmailServer(validation.sanitizedEmail, inviteLink.server_id);
+		const existingInScope = await db.getServerAccountByNormalizedEmailServer(validation.sanitizedEmail, inviteLink.server_id);
 		if (existingInScope) {
 			return json({ success: false, error: 'Email already registered for this server' }, { status: 400 });
 		}

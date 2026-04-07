@@ -3,9 +3,11 @@ import type { Handle } from '@sveltejs/kit';
 import { getSession, getSessionIdFromCookie } from '$lib/utils/index.js';
 import db from '$lib/database.js';
 import { verifyBotStatuses } from '$lib/botProcesses.js';
+import { startDemoSessionExpiryListener } from '$lib/demo/demoSessionExpiry.js';
 
 export const init = async () => {
 	await verifyBotStatuses();
+	await startDemoSessionExpiryListener();
 };
 
 function detectDevice(ua: string): string {
@@ -63,7 +65,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 							account_type: account.account_type,
 							account_source: 'server_accounts',
 							bot_id: panelBotId ?? 0,
-							server_id: account.server_id
+							server_id: account.server_id,
+							is_demo: session.is_demo === true,
+							session_expires_at: session.expires_at
 						};
 					}
 				} else {
@@ -75,12 +79,15 @@ export const handle: Handle = async ({ event, resolve }) => {
 							username: account.username,
 							email: account.email,
 							account_type: account.account_type,
-							account_source: 'accounts'
+							account_source: 'accounts',
+							panel_id: account.panel_id,
+							is_demo: session.is_demo === true,
+							session_expires_at: session.expires_at
 						};
 					}
 				}
 			} else if (!session) {
-				const panel = await db.getPanel();
+				const panel = await db.getPanel('default');
 				event.locals.user = { authenticated: false, can_register: !panel };
 			}
 		} catch (_) {
@@ -88,7 +95,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 		}
 	} else {
 		try {
-			const panel = await db.getPanel();
+			const panel = await db.getPanel('default');
 			event.locals.user = { authenticated: false, can_register: !panel };
 		} catch (_) {
 			event.locals.user = { authenticated: false, can_register: false };

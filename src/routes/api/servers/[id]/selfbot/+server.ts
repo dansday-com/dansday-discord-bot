@@ -27,11 +27,17 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 	const officialBot = officialBotId ? await db.getBot(officialBotId) : null;
 	if (!officialBot) return json({ success: false, error: 'Official bot not found' }, { status: 404 });
 
-	const id = await db.addServerBot({
-		server_id: serverId,
-		name: 'Selfbot',
-		token
-	});
+	let id: number;
+	try {
+		id = await db.addServerBot({
+			server_id: serverId,
+			name: 'Selfbot',
+			token
+		});
+	} catch (err: any) {
+		logger.error(`Failed to add selfbot for server ${serverId}: ${err?.message ?? err}`);
+		return json({ success: false, error: 'Failed to add selfbot' }, { status: 500 });
+	}
 
 	if (locals.user.authenticated) logger.log(`${locals.user.username} created selfbot (ID: ${id}) for server ${serverId}`);
 

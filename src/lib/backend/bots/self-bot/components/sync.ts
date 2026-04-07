@@ -21,14 +21,11 @@ async function syncGuildData(guild: any) {
 		}
 
 		await guild.fetch();
-		const serverData = await db.upsertSelfbotServer(Number(botId), guild);
-
-		if (!serverData) {
+		const botServerRow = await (db as any).upsertServerBotServer(Number(botId), guild).catch(() => null);
+		if (!botServerRow) {
 			logger.log(`⚠️  Failed to sync server info for ${guild.name}`);
 			return;
 		}
-
-		const serverId = serverData.id;
 
 		try {
 			try {
@@ -39,8 +36,8 @@ async function syncGuildData(guild: any) {
 
 			if (guild.channels.cache.size > 0) {
 				const { categories, channels } = separateChannelsAndCategories(guild.channels.cache);
-				const categoryMap = await db.syncCategories(serverId, mapCategoriesForSync(categories));
-				await db.syncChannels(serverId, mapChannelsForSync(channels), categoryMap);
+				await (db as any).syncServerBotCategories(botServerRow.id, mapCategoriesForSync(categories)).catch(() => null);
+				await (db as any).syncServerBotChannels(botServerRow.id, mapChannelsForSync(channels)).catch(() => null);
 				logger.log(`✅ Synced server: ${guild.name} (${guild.memberCount} members, ${categories.length} categories, ${channels.length} channels)`);
 			} else {
 				logger.log(`✅ Synced server info: ${guild.name} (${guild.memberCount} members)`);

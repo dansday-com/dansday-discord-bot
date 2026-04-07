@@ -41,7 +41,7 @@ cd Dansday-Discord-Bot
 
 **Step 2 – Configure environment**
 
-Copy `.env.example` to `.env` and set your values. Required: `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `SESSION_SECRET`. Optional: `REDIS_URL`, `MAIL_*`.
+Copy `.env.example` to `.env` and set your values. Required: `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `SESSION_SECRET`, `CAPTCHA_SECRET`. Optional: `REDIS_URL`, `MAIL_*`.
 
 **Step 3 – Database**
 

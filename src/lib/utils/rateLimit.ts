@@ -1,28 +1,33 @@
 import { getRedisClient } from '../redis.js';
 
-const RATE_LIMIT_WINDOW = 15 * 60 * 1000;
+const RATE_LIMIT_WINDOW = 30 * 60 * 1000;
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 
-export async function checkRateLimit(ip: string, endpoint: string, maxAttempts: number): Promise<{ allowed: boolean; remaining: number; resetTime: number }> {
+export async function checkRateLimit(
+	ip: string,
+	endpoint: string,
+	maxAttempts: number,
+	windowMs: number = RATE_LIMIT_WINDOW
+): Promise<{ allowed: boolean; remaining: number; resetTime: number }> {
 	const redisClient = await getRedisClient();
 
 	if (redisClient) {
 		const key = `dansday:ratelimit:${ip}:${endpoint}`;
 		const count = await redisClient.incr(key);
-		if (count === 1) await redisClient.pExpire(key, RATE_LIMIT_WINDOW);
+		if (count === 1) await redisClient.pExpire(key, windowMs);
 		const ttl = await redisClient.pTTL(key);
-		const resetTime = Date.now() + (ttl > 0 ? ttl : RATE_LIMIT_WINDOW);
+		const resetTime = Date.now() + (ttl > 0 ? ttl : windowMs);
 		if (count > maxAttempts) return { allowed: false, remaining: 0, resetTime };
 		return { allowed: true, remaining: maxAttempts - count, resetTime };
 	}
 
 	const key = `${ip}:${endpoint}`;
 	const now = Date.now();
-	const attempts = rateLimitStore.get(key) || { count: 0, resetTime: now + RATE_LIMIT_WINDOW };
+	const attempts = rateLimitStore.get(key) || { count: 0, resetTime: now + windowMs };
 
 	if (now > attempts.resetTime) {
 		attempts.count = 0;
-		attempts.resetTime = now + RATE_LIMIT_WINDOW;
+		attempts.resetTime = now + windowMs;
 	}
 
 	if (attempts.count >= maxAttempts) {

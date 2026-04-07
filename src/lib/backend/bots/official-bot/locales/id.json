@@ -2,7 +2,11 @@
 	"menu": {
 		"title": "📋 Menu Bot Dansday",
 		"description": "Pilih fitur dari tombol di bawah:",
-		"noAccess": "❌ Kamu tidak memiliki akses ke fitur apa pun."
+		"noAccess": "❌ Kamu tidak memiliki akses ke fitur apa pun.",
+		"button": "📋 Menu",
+		"web": {
+			"statistics": "🌐 Statistik"
+		}
 	},
 	"interface": {
 		"panel": {
@@ -53,18 +57,18 @@
 	},
 	"leveling": {
 		"profile": {
-			"title": "📈 Statistik Leveling Kamu",
+			"title": "📈 Leveling",
 			"description": "Statistik untuk **{member}**",
 			"yourProgress": "Kemajuan Kamu",
 			"level": "Level",
 			"experience": "Pengalaman",
 			"progress": "Kemajuan",
-			"chatTotal": "Total Chat",
-			"voiceMinutes": "Menit Suara (Total)",
-			"voiceActive": "Aktif",
-			"voiceAfk": "AFK",
-			"voiceVideo": "Kamera menyala (tick suara)",
-			"voiceStreaming": "Siaran langsung / streaming (tick suara)",
+			"chatTotal": "💬 Total Chat",
+			"voiceMinutes": "🎤 Menit Suara (Total)",
+			"voiceActive": "🎤 Aktif",
+			"voiceAfk": "🔇 AFK",
+			"voiceVideo": "📹 Video",
+			"voiceStreaming": "📡 Streaming",
 			"rank": "Peringkat",
 			"unranked": "Tidak Berperingkat",
 			"unknown": "Tidak Diketahui",
@@ -72,11 +76,11 @@
 			"minutes": "menit"
 		},
 		"leaderboard": {
-			"topXp": "⭐ XP Teratas (Top 3)",
-			"topChat": "💬 Chat Teratas (Top 3)",
-			"topVoiceTotal": "🎤 Suara Teratas (Total • Top 3)",
-			"topVoiceActive": "🎤 Suara Teratas (Aktif • Top 3)",
-			"topVoiceAfk": "🎤 Suara Teratas (AFK • Top 3)",
+			"topXp": "⭐ XP (Top 3)",
+			"topChat": "💬 Chat (Top 3)",
+			"topVoiceTotal": "🎤 Suara (Total • Top 3)",
+			"topVoiceActive": "🎤 Suara (Aktif • Top 3)",
+			"topVoiceAfk": "🔇 Suara (AFK • Top 3)",
 			"noData": "Belum ada data leveling tersedia.",
 			"member": "Anggota {position}",
 			"minTotal": "menit total",
@@ -85,11 +89,12 @@
 			"messages": "pesan"
 		},
 		"buttons": {
-			"topXp": "⭐ XP Teratas",
+			"xp": "⭐ XP",
 			"voiceTotal": "🎤 Total Suara",
 			"voiceActive": "🎤 Suara Aktif",
-			"voiceAfk": "🎤 Suara AFK",
-			"topChat": "💬 Chat Teratas"
+			"voiceAfk": "🔇 Suara AFK",
+			"chat": "💬 Chat",
+			"webLeaderboard": "🌐 Papan Peringkat"
 		},
 		"errors": {
 			"notRegistered": "⚠️ Server ini tidak terdaftar dengan bot. Silakan jalankan sync terlebih dahulu.",

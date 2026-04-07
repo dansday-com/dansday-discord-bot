@@ -173,9 +173,9 @@ async function buildLevelingEmbeds(server, memberLevelData, sortType = 'xp', gui
 	const voiceStreaming = memberLevelData?.voice_minutes_streaming ?? 0;
 	profileLines.push(`• **${voiceMinutesLabel}:** ${formatNumber(voiceTotal)} ${minLabel}`);
 	profileLines.push(`• ├ ${voiceActiveLabel}: ${formatNumber(voiceActive)} ${minLabel}`);
-	profileLines.push(`• ├ ${voiceAfkLabel}: ${formatNumber(voiceAfk)} ${minLabel}`);
-	profileLines.push(`• ├ ${voiceVideoLabel}: ${formatNumber(voiceVideo)} ${minLabel}`);
-	profileLines.push(`• └ ${voiceStreamingLabel}: ${formatNumber(voiceStreaming)} ${minLabel}`);
+	profileLines.push(`• └ ${voiceAfkLabel}: ${formatNumber(voiceAfk)} ${minLabel}`);
+	profileLines.push(`• **${voiceVideoLabel}:** ${formatNumber(voiceVideo)} ${minLabel}`);
+	profileLines.push(`• **${voiceStreamingLabel}:** ${formatNumber(voiceStreaming)} ${minLabel}`);
 	profileLines.push(`• **${rankLabel}:** ${memberLevelData?.rank ? `#${memberLevelData.rank}` : unrankedText}`);
 
 	const profileTitle = await translate('leveling.profile.title', actualGuildId, actualUserId);

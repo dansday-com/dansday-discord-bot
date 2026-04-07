@@ -59,6 +59,13 @@
 		return 'xp';
 	}
 
+	function barWidthPct(r: any, m: string) {
+		const v = metricValueNumber(r, m);
+		if (v <= 0) return 0;
+		const pct = Math.round((v / maxValue) * 100);
+		return Math.max(1, pct);
+	}
+
 	function animateToCurrentValues(fromZero = false) {
 		if (raf) cancelAnimationFrame(raf);
 		const duration = 1100;
@@ -295,7 +302,7 @@
 						<div class="lb-list-name" title={displayName(r)}>{displayName(r)}</div>
 						<div class="lb-list-sub">Level {r.level ?? 0}</div>
 						<div class="lb-list-bar-track">
-							<div class="lb-list-bar-fill" style="width: {Math.max(3, Math.round((metricValueNumber(r, metric) / maxValue) * 100))}%"></div>
+							<div class="lb-list-bar-fill" style="width: {barWidthPct(r, metric)}%"></div>
 						</div>
 					</div>
 					<div class="lb-list-score">

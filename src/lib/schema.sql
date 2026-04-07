@@ -401,7 +401,7 @@ CREATE TABLE IF NOT EXISTS server_member_staff_rating_reviews (
     FOREIGN KEY (reviewed_by_member_id) REFERENCES server_members(id) ON DELETE SET NULL
 );
 
-CREATE TABLE IF NOT EXISTS server_feedback (
+CREATE TABLE IF NOT EXISTS server_feedbacks (
     id INT PRIMARY KEY AUTO_INCREMENT,
     member_id INT NOT NULL,
     description TEXT NOT NULL,

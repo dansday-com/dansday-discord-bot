@@ -106,7 +106,10 @@ function isSelfbotProcessAlive(sb: any): boolean {
 	const info = botProcesses.get(mapKey);
 	if (info?.process && !info.process.killed && (info.process as any).exitCode === null) return true;
 	if (info?.pid) {
-		try { process.kill(info.pid, 0); return true; } catch (_) {}
+		try {
+			process.kill(info.pid, 0);
+			return true;
+		} catch (_) {}
 	}
 	return false;
 }

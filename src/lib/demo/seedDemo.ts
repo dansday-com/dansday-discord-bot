@@ -41,9 +41,10 @@ type EnsureDemoResult = {
 	bot_id: number;
 	superadmin_account_id: number;
 	server_ids: number[];
+	panel_slug: string;
 };
 
-export async function ensureDemoReady(): Promise<EnsureDemoResult> {
+export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoResult> {
 	await initializeDatabase();
 
 	const now = new Date();
@@ -56,23 +57,25 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 		.onDuplicateKeyUpdate({ set: { updated_at: nowDb } });
 	await db
 		.insert(schema.panel)
-		.values({ slug: 'demo', created_at: nowDb, updated_at: nowDb })
+		.values({ slug: sessionSlug, created_at: nowDb, updated_at: nowDb })
 		.onDuplicateKeyUpdate({ set: { updated_at: nowDb } });
 
 	const demoPanel = await db
 		.select()
 		.from(schema.panel)
-		.where(sql`${schema.panel.slug} = 'demo'`)
+		.where(sql`${schema.panel.slug} = ${sessionSlug}`)
 		.limit(1)
 		.then((r: any[]) => r[0] ?? null);
 	if (!demoPanel?.id) throw new Error('Failed to ensure demo panel');
 
+	const sessionUsername = `demo_${sessionSlug}`;
+	const sessionEmail = `demo_${sessionSlug}@dansday.local`;
 	const pwHash = await bcrypt.hash(`demo-${now.getUTCFullYear()}`, 10);
 	await db
 		.insert(schema.accounts)
 		.values({
-			username: DEMO.demoSuperadmin.username,
-			email: DEMO.demoSuperadmin.email,
+			username: sessionUsername,
+			email: sessionEmail,
 			password_hash: pwHash,
 			account_type: 'superadmin',
 			email_verified: true,
@@ -88,7 +91,7 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 	const demoAdmin = await db
 		.select()
 		.from(schema.accounts)
-		.where(sql`${schema.accounts.username} = ${DEMO.demoSuperadmin.username}`)
+		.where(sql`${schema.accounts.username} = ${sessionUsername}`)
 		.limit(1)
 		.then((r: any[]) => r[0] ?? null);
 	if (!demoAdmin?.id) throw new Error('Failed to ensure demo superadmin');
@@ -98,7 +101,7 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 		.values({
 			name: DEMO.demoBot.name,
 			token: DEMO.demoBot.token,
-			application_id: DEMO.demoBot.application_id,
+			application_id: `demo_app_${sessionSlug}`,
 			bot_icon: null,
 			port: DEMO.demoBot.port,
 			secret_key: DEMO.demoBot.secret_key,
@@ -120,7 +123,7 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 	const botRow = await db
 		.select()
 		.from(schema.bots)
-		.where(sql`${schema.bots.application_id} = ${DEMO.demoBot.application_id}`)
+		.where(sql`${schema.bots.application_id} = ${'demo_app_' + sessionSlug}`)
 		.limit(1)
 		.then((r: any[]) => r[0] ?? null);
 
@@ -128,28 +131,28 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 
 	const base = Date.now();
 	const firstNames = [
-		'Aurora',
-		'Kai',
-		'Luna',
-		'Nova',
-		'Axel',
-		'Mika',
-		'Sora',
-		'Jade',
-		'Rin',
-		'Zara',
-		'Theo',
-		'Iris',
-		'Milo',
-		'Niko',
-		'Ruby',
-		'Skye',
-		'Vale',
-		'Ember',
-		'Rowan',
-		'Wren'
+		'Budi',
+		'Siti',
+		'Andi',
+		'Dewi',
+		'Rizky',
+		'Nurul',
+		'Fajar',
+		'Intan',
+		'Dimas',
+		'Ayu',
+		'Hafiz',
+		'Nadia',
+		'Reza',
+		'Fitri',
+		'Arif',
+		'Danto',
+		'Yusuf',
+		'Lestari',
+		'Bagas',
+		'Amira'
 	];
-	const lastNames = ['Fox', 'Stone', 'River', 'Hart', 'Blaze', 'Storm', 'Woods', 'Reed', 'Knight', 'Ray'];
+	const lastNames = ['Santoso', 'Wijaya', 'Kusuma', 'Pratama', 'Hidayat', 'Rahman', 'Abdullah', 'Ismail', 'Hasan', 'Aziz'];
 
 	function rngFor(serverIndex: number) {
 		return (n: number) => (serverIndex * 9301 + n * 49297 + 233280) % 1_000_000;
@@ -158,7 +161,7 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 	const serverIds: number[] = [];
 
 	for (let s = 1; s <= DEMO.serverCount; s++) {
-		const discordServerId = `demo_server_${String(s).padStart(4, '0')}`;
+		const discordServerId = `${sessionSlug}_server_${String(s).padStart(4, '0')}`;
 		const serverName = `Dansday Demo Server ${s}`;
 
 		await db.execute(sql`
@@ -181,7 +184,7 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 		if (!serverRow?.id) throw new Error(`Failed to ensure demo server ${s}`);
 		serverIds.push(serverRow.id);
 
-		const slug = slugifySimple(`${DEMO.publicSlugPrefix}-${s}`);
+		const slug = slugifySimple(`${sessionSlug}-${s}`);
 		await db
 			.insert(schema.serverSettings)
 			.values({
@@ -198,12 +201,13 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 				}
 			});
 
+		const pfx = `${sessionSlug}${s}`;
 		await db
 			.insert(schema.serverCategories)
 			.values([
 				{
 					server_id: serverRow.id,
-					discord_category_id: `demo${s}_cat_info`,
+					discord_category_id: `${pfx}_cat_info`,
 					name: 'Information',
 					position: 3,
 					created_at: nowDb,
@@ -211,13 +215,13 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 				},
 				{
 					server_id: serverRow.id,
-					discord_category_id: `demo${s}_cat_chat`,
+					discord_category_id: `${pfx}_cat_chat`,
 					name: 'Community',
 					position: 2,
 					created_at: nowDb,
 					updated_at: nowDb
 				},
-				{ server_id: serverRow.id, discord_category_id: `demo${s}_cat_voice`, name: 'Voice', position: 1, created_at: nowDb, updated_at: nowDb }
+				{ server_id: serverRow.id, discord_category_id: `${pfx}_cat_voice`, name: 'Voice', position: 1, created_at: nowDb, updated_at: nowDb }
 			])
 			.onDuplicateKeyUpdate({ set: { updated_at: nowDb } });
 
@@ -226,7 +230,7 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 			.values([
 				{
 					server_id: serverRow.id,
-					discord_role_id: `demo${s}_role_admin`,
+					discord_role_id: `${pfx}_role_admin`,
 					name: 'Admin',
 					position: 4,
 					color: '#ff4d4d',
@@ -236,7 +240,7 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 				},
 				{
 					server_id: serverRow.id,
-					discord_role_id: `demo${s}_role_mod`,
+					discord_role_id: `${pfx}_role_mod`,
 					name: 'Moderator',
 					position: 3,
 					color: '#4d7cff',
@@ -246,7 +250,7 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 				},
 				{
 					server_id: serverRow.id,
-					discord_role_id: `demo${s}_role_vip`,
+					discord_role_id: `${pfx}_role_vip`,
 					name: 'VIP',
 					position: 2,
 					color: '#f5b942',
@@ -256,7 +260,7 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 				},
 				{
 					server_id: serverRow.id,
-					discord_role_id: `demo${s}_role_member`,
+					discord_role_id: `${pfx}_role_member`,
 					name: 'Member',
 					position: 1,
 					color: '#7b7b7b',
@@ -278,10 +282,10 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 			.values([
 				{
 					server_id: serverRow.id,
-					discord_channel_id: `demo${s}_ch_rules`,
+					discord_channel_id: `${pfx}_ch_rules`,
 					name: 'rules',
 					type: 'guild_text',
-					category_id: catId(`demo${s}_cat_info`),
+					category_id: catId(`${pfx}_cat_info`),
 					position: 3,
 					notification_role_id: null,
 					created_at: nowDb,
@@ -289,10 +293,10 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 				},
 				{
 					server_id: serverRow.id,
-					discord_channel_id: `demo${s}_ch_ann`,
+					discord_channel_id: `${pfx}_ch_ann`,
 					name: 'announcements',
 					type: 'guild_announcement',
-					category_id: catId(`demo${s}_cat_info`),
+					category_id: catId(`${pfx}_cat_info`),
 					position: 2,
 					notification_role_id: null,
 					created_at: nowDb,
@@ -300,10 +304,10 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 				},
 				{
 					server_id: serverRow.id,
-					discord_channel_id: `demo${s}_ch_general`,
+					discord_channel_id: `${pfx}_ch_general`,
 					name: 'general',
 					type: 'guild_text',
-					category_id: catId(`demo${s}_cat_chat`),
+					category_id: catId(`${pfx}_cat_chat`),
 					position: 1,
 					notification_role_id: null,
 					created_at: nowDb,
@@ -311,10 +315,10 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 				},
 				{
 					server_id: serverRow.id,
-					discord_channel_id: `demo${s}_vc_lounge`,
+					discord_channel_id: `${pfx}_vc_lounge`,
 					name: 'Lounge',
 					type: 'guild_voice',
-					category_id: catId(`demo${s}_cat_voice`),
+					category_id: catId(`${pfx}_cat_voice`),
 					position: 1,
 					notification_role_id: null,
 					created_at: nowDb,
@@ -341,8 +345,8 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 			)
 			.onDuplicateKeyUpdate({ set: { updated_at: nowDb } });
 
-		const ownerUser = `demo_owner_${s}`;
-		const ownerEmail = `demo_owner_${s}@dansday.local`;
+		const ownerUser = `${sessionSlug}_owner_${s}`;
+		const ownerEmail = `${sessionSlug}_owner_${s}@dansday.local`;
 		const ownerPw = await bcrypt.hash('demo', 10);
 		await db
 			.insert(schema.serverAccounts)
@@ -364,8 +368,8 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 
 		const moderatorCount = 1 + (rngFor(s)(serverRow.id + 77) % 10);
 		for (let m = 1; m <= moderatorCount; m++) {
-			const u = `demo_mod_${s}_${m}`;
-			const e = `demo_mod_${s}_${m}@dansday.local`;
+			const u = `${sessionSlug}_mod_${s}_${m}`;
+			const e = `${sessionSlug}_mod_${s}_${m}@dansday.local`;
 			const pw = await bcrypt.hash('demo', 10);
 			await db
 				.insert(schema.serverAccounts)
@@ -390,7 +394,7 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 
 		const membersToSeed = Array.from({ length: seededCount }).map((_, i) => {
 			const n = i + 1;
-			const id = `demo${s}_user_${String(n).padStart(4, '0')}`;
+			const id = `${sessionSlug}${s}_user_${String(n).padStart(4, '0')}`;
 			const baseName = `${firstNames[i % firstNames.length]}${lastNames[Math.floor(i / firstNames.length) % lastNames.length]}${s}${n}`;
 			const withAfkPrefix = n % 17 === 0 || n === 7;
 			const username = withAfkPrefix ? `[AFK] ${baseName}` : baseName;
@@ -507,10 +511,10 @@ export async function ensureDemoReady(): Promise<EnsureDemoResult> {
 	`);
 	}
 
-	return { bot_id: botRow.id, superadmin_account_id: demoAdmin.id, server_ids: serverIds };
+	return { bot_id: botRow.id, superadmin_account_id: demoAdmin.id, server_ids: serverIds, panel_slug: sessionSlug };
 }
 
-export async function cleanupDemoData(): Promise<void> {
+export async function cleanupDemoSession(sessionSlug: string): Promise<void> {
 	await initializeDatabase();
-	await db.delete(schema.panel).where(sql`${schema.panel.slug} = 'demo'`);
+	await db.delete(schema.panel).where(sql`${schema.panel.slug} = ${sessionSlug}`);
 }

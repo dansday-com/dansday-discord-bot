@@ -7,6 +7,7 @@ export type SessionData = {
 	account_type?: string;
 	account_source?: 'accounts' | 'server_accounts';
 	is_demo?: boolean;
+	demo_panel_slug?: string;
 	expires_at?: number;
 };
 

@@ -165,6 +165,12 @@
 			{loading ? 'Processing...' : 'Login'}
 		</button>
 
+		<div class="my-1 flex items-center gap-3 py-1">
+			<div class="bg-ash-700/70 h-px flex-1"></div>
+			<div class="text-ash-500 text-[11px] font-semibold tracking-widest">OR</div>
+			<div class="bg-ash-700/70 h-px flex-1"></div>
+		</div>
+
 		<button
 			type="button"
 			disabled={loading || captchaLoading}
@@ -178,7 +184,6 @@
 			{/if}
 			Login for demo
 		</button>
-		<p class="text-ash-500 -mt-2 text-center text-[11px] sm:text-xs">No username/password needed. Session lasts 5 minutes.</p>
 
 		{#if data.canRegister}
 			<div class="text-center">

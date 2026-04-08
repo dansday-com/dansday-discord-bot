@@ -313,30 +313,36 @@ CREATE TABLE IF NOT EXISTS server_settings (
     FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS server_discord_orbs (
+CREATE TABLE IF NOT EXISTS bot_discord_orbs (
     id INT PRIMARY KEY AUTO_INCREMENT,
-    server_id INT NOT NULL,
-    discord_quest_id VARCHAR(64) NOT NULL,
+    bot_id INT NOT NULL,
+    quest_id VARCHAR(64) NOT NULL,
     quest_task_type VARCHAR(64) NOT NULL DEFAULT '',
     quest_task_label VARCHAR(128) NOT NULL DEFAULT '',
     quest_name TEXT NULL,
     game_title TEXT NULL,
-    game_subtitle TEXT NULL,
-    publisher VARCHAR(255) NULL,
     quest_url VARCHAR(512) NULL,
     quest_description TEXT NULL,
     orb_hint TEXT NULL,
     rewards_line TEXT NULL,
     task_detail_line TEXT NULL,
-    thumbnail_url VARCHAR(2048) NULL,
-    banner_url VARCHAR(2048) NULL,
     starts_at DATETIME NULL,
     expires_at DATETIME NULL,
     notified_at DATETIME NOT NULL,
-    orb_message_posted_at DATETIME NULL,
-    UNIQUE KEY unique_server_discord_orbs_quest (server_id, discord_quest_id),
+    UNIQUE KEY unique_bot_discord_orbs_quest (quest_id),
+    INDEX idx_bot_discord_orbs_bot_id (bot_id),
+    FOREIGN KEY (bot_id) REFERENCES bots(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS server_discord_orbs (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    server_id INT NOT NULL,
+    quest_id INT NOT NULL,
+    message_posted_at DATETIME NULL,
+    UNIQUE KEY unique_server_discord_orbs (server_id, quest_id),
     INDEX idx_server_discord_orbs_server_id (server_id),
-    FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE
+    FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE,
+    FOREIGN KEY (quest_id) REFERENCES bot_discord_orbs(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS server_giveaways (

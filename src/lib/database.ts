@@ -2125,44 +2125,51 @@ function orbSnapshotFromQuest(q: QuestOrbSummary) {
 	return {
 		quest_name: q.questName?.trim() || null,
 		game_title: q.gameTitle?.trim() || null,
-		game_subtitle: q.gameSubtitle?.trim() || null,
-		publisher: q.publisher?.trim() || null,
 		quest_url: q.questUrl?.trim() || null,
 		quest_description: q.description?.trim() || null,
 		orb_hint: q.orbHint?.trim() || null,
 		rewards_line: q.rewardsLine?.trim() || null,
 		task_detail_line: q.taskDetailLine?.trim() || null,
-		thumbnail_url: q.thumbnailUrl?.trim() || null,
-		banner_url: q.bannerUrl?.trim() || null,
 		starts_at: questIsoToDbDate(q.startsAt),
 		expires_at: questIsoToDbDate(q.expiresAt)
 	};
 }
 
-async function syncServerDiscordOrbQuestsFromApi(serverId: number, quests: QuestOrbSummary[]): Promise<void> {
+async function syncServerDiscordOrbQuestsFromApi(botId: number, serverId: number, quests: QuestOrbSummary[]): Promise<void> {
 	await initializeDatabase();
 	if (quests.length === 0) return;
 	const now = toMySQLDateTime();
 	for (const q of quests) {
 		const snap = orbSnapshotFromQuest(q);
-		const onUpdate = {
-			quest_task_type: q.taskTypeKey || '',
-			quest_task_label: q.taskTypeLabel || '',
-			notified_at: now as any,
-			...snap
-		};
 		await db
-			.insert(schema.serverDiscordOrb)
+			.insert(schema.botDiscordOrb)
 			.values({
-				server_id: serverId,
-				discord_quest_id: q.id,
+				bot_id: botId,
+				quest_id: q.id,
 				quest_task_type: q.taskTypeKey || '',
 				quest_task_label: q.taskTypeLabel || '',
 				notified_at: now as any,
-				orb_message_posted_at: null,
 				...snap
 			})
-			.onDuplicateKeyUpdate({ set: onUpdate as any });
+			.onDuplicateKeyUpdate({
+				set: {
+					bot_id: botId,
+					quest_task_type: q.taskTypeKey || '',
+					quest_task_label: q.taskTypeLabel || '',
+					notified_at: now as any,
+					...snap
+				} as any
+			});
+		const [orb] = await db
+			.select({ id: schema.botDiscordOrb.id })
+			.from(schema.botDiscordOrb)
+			.where(eq(schema.botDiscordOrb.quest_id, q.id))
+			.limit(1);
+		if (!orb) continue;
+		await db
+			.insert(schema.serverDiscordOrb)
+			.values({ server_id: serverId, quest_id: orb.id, message_posted_at: null })
+			.onDuplicateKeyUpdate({ set: { server_id: serverId } as any });
 	}
 }
 
@@ -2170,25 +2177,32 @@ async function listServerDiscordOrbUnpostedQuestIds(serverId: number, activeQues
 	if (activeQuestIds.length === 0) return [];
 	await initializeDatabase();
 	const rows = await db
-		.select({ discord_quest_id: schema.serverDiscordOrb.discord_quest_id })
+		.select({ quest_id: schema.botDiscordOrb.quest_id })
 		.from(schema.serverDiscordOrb)
+		.innerJoin(schema.botDiscordOrb, eq(schema.serverDiscordOrb.quest_id, schema.botDiscordOrb.id))
 		.where(
 			and(
 				eq(schema.serverDiscordOrb.server_id, serverId),
-				inArray(schema.serverDiscordOrb.discord_quest_id, activeQuestIds),
-				isNull(schema.serverDiscordOrb.orb_message_posted_at)
+				inArray(schema.botDiscordOrb.quest_id, activeQuestIds),
+				isNull(schema.serverDiscordOrb.message_posted_at)
 			)
 		);
-	return rows.map((r) => r.discord_quest_id);
+	return rows.map((r) => r.quest_id);
 }
 
 async function markServerDiscordOrbMessagePosted(serverId: number, questId: string): Promise<void> {
 	await initializeDatabase();
 	const posted = toMySQLDateTime();
+	const [orb] = await db
+		.select({ id: schema.botDiscordOrb.id })
+		.from(schema.botDiscordOrb)
+		.where(eq(schema.botDiscordOrb.quest_id, questId))
+		.limit(1);
+	if (!orb) return;
 	await db
 		.update(schema.serverDiscordOrb)
-		.set({ orb_message_posted_at: posted as any })
-		.where(and(eq(schema.serverDiscordOrb.server_id, serverId), eq(schema.serverDiscordOrb.discord_quest_id, questId)));
+		.set({ message_posted_at: posted as any })
+		.where(and(eq(schema.serverDiscordOrb.server_id, serverId), eq(schema.serverDiscordOrb.quest_id, orb.id)));
 }
 
 async function getChannelsForServer(serverId: any) {

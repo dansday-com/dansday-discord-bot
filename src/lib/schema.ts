@@ -426,6 +426,30 @@ export const serverSettings = mysqlTable(
 	]
 );
 
+export const botDiscordOrb = mysqlTable(
+	'bot_discord_orbs',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		bot_id: int('bot_id')
+			.notNull()
+			.references(() => bots.id, { onDelete: 'cascade' }),
+		quest_id: varchar('quest_id', { length: 64 }).notNull(),
+		quest_task_type: varchar('quest_task_type', { length: 64 }).notNull().default(''),
+		quest_task_label: varchar('quest_task_label', { length: 128 }).notNull().default(''),
+		quest_name: text('quest_name'),
+		game_title: text('game_title'),
+		quest_url: varchar('quest_url', { length: 512 }),
+		quest_description: text('quest_description'),
+		orb_hint: text('orb_hint'),
+		rewards_line: text('rewards_line'),
+		task_detail_line: text('task_detail_line'),
+		starts_at: datetime('starts_at'),
+		expires_at: datetime('expires_at'),
+		notified_at: datetime('notified_at').notNull()
+	},
+	(t) => [uniqueIndex('unique_bot_discord_orbs_quest').on(t.quest_id), index('idx_bot_discord_orbs_bot_id').on(t.bot_id)]
+);
+
 export const serverDiscordOrb = mysqlTable(
 	'server_discord_orbs',
 	{
@@ -433,26 +457,12 @@ export const serverDiscordOrb = mysqlTable(
 		server_id: int('server_id')
 			.notNull()
 			.references(() => servers.id, { onDelete: 'cascade' }),
-		discord_quest_id: varchar('discord_quest_id', { length: 64 }).notNull(),
-		quest_task_type: varchar('quest_task_type', { length: 64 }).notNull().default(''),
-		quest_task_label: varchar('quest_task_label', { length: 128 }).notNull().default(''),
-		quest_name: text('quest_name'),
-		game_title: text('game_title'),
-		game_subtitle: text('game_subtitle'),
-		publisher: varchar('publisher', { length: 255 }),
-		quest_url: varchar('quest_url', { length: 512 }),
-		quest_description: text('quest_description'),
-		orb_hint: text('orb_hint'),
-		rewards_line: text('rewards_line'),
-		task_detail_line: text('task_detail_line'),
-		thumbnail_url: varchar('thumbnail_url', { length: 2048 }),
-		banner_url: varchar('banner_url', { length: 2048 }),
-		starts_at: datetime('starts_at'),
-		expires_at: datetime('expires_at'),
-		notified_at: datetime('notified_at').notNull(),
-		orb_message_posted_at: datetime('orb_message_posted_at')
+		quest_id: int('quest_id')
+			.notNull()
+			.references(() => botDiscordOrb.id, { onDelete: 'cascade' }),
+		message_posted_at: datetime('message_posted_at')
 	},
-	(t) => [uniqueIndex('unique_server_discord_orbs_quest').on(t.server_id, t.discord_quest_id), index('idx_server_discord_orbs_server_id').on(t.server_id)]
+	(t) => [uniqueIndex('unique_server_discord_orbs').on(t.server_id, t.quest_id), index('idx_server_discord_orbs_server_id').on(t.server_id)]
 );
 
 export const serverGiveaways = mysqlTable(

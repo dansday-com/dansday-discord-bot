@@ -22,39 +22,22 @@ CREATE TABLE IF NOT EXISTS bot_discord_orbs (
     FOREIGN KEY (bot_id) REFERENCES bots(id) ON DELETE CASCADE
 );
 
--- 2. Migrate existing rows into the catalog (bot_id=0 placeholder, repopulated on next sync)
-INSERT IGNORE INTO bot_discord_orbs (
-    bot_id,
-    quest_id,
-    quest_task_type,
-    quest_task_label,
-    quest_name,
-    game_title,
-    quest_url,
-    quest_description,
-    orb_hint,
-    rewards_line,
-    task_detail_line,
-    starts_at,
-    expires_at,
-    notified_at
-)
-SELECT
-    0,
-    discord_quest_id,
-    quest_task_type,
-    quest_task_label,
-    quest_name,
-    game_title,
-    quest_url,
-    quest_description,
-    orb_hint,
-    rewards_line,
-    task_detail_line,
-    starts_at,
-    expires_at,
-    notified_at
-FROM server_discord_orbs;
+-- 2. Migrate existing rows into the catalog only if old schema is still in place
+SET @old_col_exists := (
+    SELECT COUNT(*)
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'server_discord_orbs'
+      AND COLUMN_NAME = 'discord_quest_id'
+);
+SET @sql_migrate := IF(
+    @old_col_exists > 0,
+    'INSERT IGNORE INTO bot_discord_orbs (bot_id, quest_id, quest_task_type, quest_task_label, quest_name, game_title, quest_url, quest_description, orb_hint, rewards_line, task_detail_line, starts_at, expires_at, notified_at) SELECT 0, discord_quest_id, quest_task_type, quest_task_label, quest_name, game_title, quest_url, quest_description, orb_hint, rewards_line, task_detail_line, starts_at, expires_at, notified_at FROM server_discord_orbs',
+    'SELECT 1'
+);
+PREPARE stmt_migrate FROM @sql_migrate;
+EXECUTE stmt_migrate;
+DEALLOCATE PREPARE stmt_migrate;
 
 -- 3. Drop FK on server_discord_orbs.server_id before dropping the table
 SET @fk_sdo_server := (

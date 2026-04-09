@@ -14,6 +14,11 @@ export type RobloxCatalogItem = {
 	thumbnailUrl?: string | null;
 };
 
+const ROBLOX_HEADERS = {
+	'User-Agent': 'dansday-discord-bot/roblox-catalog-notifier',
+	...(process.env.ROBLOX_SECURITY_COOKIE ? { Cookie: `.ROBLOSECURITY=${process.env.ROBLOX_SECURITY_COOKIE}` } : {})
+};
+
 async function fetchCatalogPages(extraParams: Record<string, any>): Promise<RobloxCatalogItem[]> {
 	const all: RobloxCatalogItem[] = [];
 	let cursor: string | undefined = undefined;
@@ -25,7 +30,7 @@ async function fetchCatalogPages(extraParams: Record<string, any>): Promise<Robl
 
 		const res = await axios.get('https://catalog.roblox.com/v2/search/items/details', {
 			params,
-			headers: { 'User-Agent': 'dansday-discord-bot/roblox-catalog-notifier' },
+			headers: ROBLOX_HEADERS,
 			timeout: 15_000
 		});
 
@@ -64,7 +69,7 @@ async function fetchThumbnailUrls(items: RobloxCatalogItem[]): Promise<Map<numbe
 
 	const res = await axios.get('https://thumbnails.roblox.com/v1/assets', {
 		params: { assetIds: ids.join(','), size: '420x420', format: 'Png', isCircular: 'false' },
-		headers: { 'User-Agent': 'dansday-discord-bot/roblox-catalog-notifier' },
+		headers: ROBLOX_HEADERS,
 		timeout: 15_000
 	});
 

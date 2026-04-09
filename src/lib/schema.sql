@@ -313,7 +313,7 @@ CREATE TABLE IF NOT EXISTS server_settings (
     FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS bot_discord_orbs (
+CREATE TABLE IF NOT EXISTS bot_discord_quests (
     id INT PRIMARY KEY AUTO_INCREMENT,
     bot_id INT NOT NULL,
     quest_id VARCHAR(64) NOT NULL,
@@ -329,20 +329,32 @@ CREATE TABLE IF NOT EXISTS bot_discord_orbs (
     starts_at DATETIME NULL,
     expires_at DATETIME NULL,
     notified_at DATETIME NOT NULL,
-    UNIQUE KEY unique_bot_discord_orbs_quest (quest_id),
-    INDEX idx_bot_discord_orbs_bot_id (bot_id),
+    UNIQUE KEY unique_bot_discord_quests_quest (quest_id),
+    INDEX idx_bot_discord_quests_bot_id (bot_id),
     FOREIGN KEY (bot_id) REFERENCES bots(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS server_discord_orbs (
+CREATE TABLE IF NOT EXISTS server_discord_quests (
     id INT PRIMARY KEY AUTO_INCREMENT,
     server_id INT NOT NULL,
     quest_id INT NOT NULL,
     message_posted_at DATETIME NULL,
-    UNIQUE KEY unique_server_discord_orbs (server_id, quest_id),
-    INDEX idx_server_discord_orbs_server_id (server_id),
+    UNIQUE KEY unique_server_discord_quests (server_id, quest_id),
+    INDEX idx_server_discord_quests_server_id (server_id),
     FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE,
-    FOREIGN KEY (quest_id) REFERENCES bot_discord_orbs(id) ON DELETE CASCADE
+    FOREIGN KEY (quest_id) REFERENCES bot_discord_quests(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS server_member_discord_quests (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    member_id INT NOT NULL,
+    quest_id INT NOT NULL,
+    orb_claimed BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at DATETIME NOT NULL,
+    UNIQUE KEY unique_server_member_discord_quests (member_id, quest_id),
+    INDEX idx_server_member_discord_quests_member (member_id),
+    FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE,
+    FOREIGN KEY (quest_id) REFERENCES server_discord_quests(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS server_giveaways (

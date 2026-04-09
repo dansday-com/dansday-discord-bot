@@ -2142,7 +2142,7 @@ async function syncServerDiscordOrbQuestsFromApi(botId: number, serverId: number
 	for (const q of quests) {
 		const snap = orbSnapshotFromQuest(q);
 		await db
-			.insert(schema.botDiscordOrb)
+			.insert(schema.botDiscordQuest)
 			.values({
 				bot_id: botId,
 				quest_id: q.id,
@@ -2160,14 +2160,10 @@ async function syncServerDiscordOrbQuestsFromApi(botId: number, serverId: number
 					...snap
 				} as any
 			});
-		const [orb] = await db
-			.select({ id: schema.botDiscordOrb.id })
-			.from(schema.botDiscordOrb)
-			.where(eq(schema.botDiscordOrb.quest_id, q.id))
-			.limit(1);
+		const [orb] = await db.select({ id: schema.botDiscordQuest.id }).from(schema.botDiscordQuest).where(eq(schema.botDiscordQuest.quest_id, q.id)).limit(1);
 		if (!orb) continue;
 		await db
-			.insert(schema.serverDiscordOrb)
+			.insert(schema.serverDiscordQuest)
 			.values({ server_id: serverId, quest_id: orb.id, message_posted_at: null })
 			.onDuplicateKeyUpdate({ set: { server_id: serverId } as any });
 	}
@@ -2177,14 +2173,14 @@ async function listServerDiscordOrbUnpostedQuestIds(serverId: number, activeQues
 	if (activeQuestIds.length === 0) return [];
 	await initializeDatabase();
 	const rows = await db
-		.select({ quest_id: schema.botDiscordOrb.quest_id })
-		.from(schema.serverDiscordOrb)
-		.innerJoin(schema.botDiscordOrb, eq(schema.serverDiscordOrb.quest_id, schema.botDiscordOrb.id))
+		.select({ quest_id: schema.botDiscordQuest.quest_id })
+		.from(schema.serverDiscordQuest)
+		.innerJoin(schema.botDiscordQuest, eq(schema.serverDiscordQuest.quest_id, schema.botDiscordQuest.id))
 		.where(
 			and(
-				eq(schema.serverDiscordOrb.server_id, serverId),
-				inArray(schema.botDiscordOrb.quest_id, activeQuestIds),
-				isNull(schema.serverDiscordOrb.message_posted_at)
+				eq(schema.serverDiscordQuest.server_id, serverId),
+				inArray(schema.botDiscordQuest.quest_id, activeQuestIds),
+				isNull(schema.serverDiscordQuest.message_posted_at)
 			)
 		);
 	return rows.map((r) => r.quest_id);
@@ -2193,16 +2189,67 @@ async function listServerDiscordOrbUnpostedQuestIds(serverId: number, activeQues
 async function markServerDiscordOrbMessagePosted(serverId: number, questId: string): Promise<void> {
 	await initializeDatabase();
 	const posted = toMySQLDateTime();
-	const [orb] = await db
-		.select({ id: schema.botDiscordOrb.id })
-		.from(schema.botDiscordOrb)
-		.where(eq(schema.botDiscordOrb.quest_id, questId))
-		.limit(1);
+	const [orb] = await db.select({ id: schema.botDiscordQuest.id }).from(schema.botDiscordQuest).where(eq(schema.botDiscordQuest.quest_id, questId)).limit(1);
 	if (!orb) return;
 	await db
-		.update(schema.serverDiscordOrb)
+		.update(schema.serverDiscordQuest)
 		.set({ message_posted_at: posted as any })
-		.where(and(eq(schema.serverDiscordOrb.server_id, serverId), eq(schema.serverDiscordOrb.quest_id, orb.id)));
+		.where(and(eq(schema.serverDiscordQuest.server_id, serverId), eq(schema.serverDiscordQuest.quest_id, orb.id)));
+}
+
+async function getBotDiscordQuestByQuestId(questId: string) {
+	await initializeDatabase();
+	const [row] = await db.select().from(schema.botDiscordQuest).where(eq(schema.botDiscordQuest.quest_id, questId)).limit(1);
+	return row ?? null;
+}
+
+async function hasServerMemberClaimedDiscordQuest(serverId: number, memberId: number, questId: string): Promise<boolean> {
+	await initializeDatabase();
+	const [botQuest] = await db
+		.select({ id: schema.botDiscordQuest.id })
+		.from(schema.botDiscordQuest)
+		.where(eq(schema.botDiscordQuest.quest_id, questId))
+		.limit(1);
+	if (!botQuest) return false;
+	const [serverQuest] = await db
+		.select({ id: schema.serverDiscordQuest.id })
+		.from(schema.serverDiscordQuest)
+		.where(and(eq(schema.serverDiscordQuest.server_id, serverId), eq(schema.serverDiscordQuest.quest_id, botQuest.id)))
+		.limit(1);
+	if (!serverQuest) return false;
+	const [row] = await db
+		.select({ id: schema.serverMemberDiscordQuest.id })
+		.from(schema.serverMemberDiscordQuest)
+		.where(
+			and(
+				eq(schema.serverMemberDiscordQuest.member_id, memberId),
+				eq(schema.serverMemberDiscordQuest.quest_id, serverQuest.id),
+				eq(schema.serverMemberDiscordQuest.orb_claimed, true)
+			)
+		)
+		.limit(1);
+	return !!row;
+}
+
+async function markServerMemberDiscordQuestClaimed(serverId: number, memberId: number, questId: string): Promise<void> {
+	await initializeDatabase();
+	const [botQuest] = await db
+		.select({ id: schema.botDiscordQuest.id })
+		.from(schema.botDiscordQuest)
+		.where(eq(schema.botDiscordQuest.quest_id, questId))
+		.limit(1);
+	if (!botQuest) return;
+	const [serverQuest] = await db
+		.select({ id: schema.serverDiscordQuest.id })
+		.from(schema.serverDiscordQuest)
+		.where(and(eq(schema.serverDiscordQuest.server_id, serverId), eq(schema.serverDiscordQuest.quest_id, botQuest.id)))
+		.limit(1);
+	if (!serverQuest) return;
+	const now = toMySQLDateTime();
+	await db
+		.insert(schema.serverMemberDiscordQuest)
+		.values({ member_id: memberId, quest_id: serverQuest.id, orb_claimed: true, created_at: now as any })
+		.onDuplicateKeyUpdate({ set: { orb_claimed: true } as any });
 }
 
 async function getChannelsForServer(serverId: any) {
@@ -3041,6 +3088,9 @@ export default {
 	syncServerDiscordOrbQuestsFromApi,
 	listServerDiscordOrbUnpostedQuestIds,
 	markServerDiscordOrbMessagePosted,
+	getBotDiscordQuestByQuestId,
+	hasServerMemberClaimedDiscordQuest,
+	markServerMemberDiscordQuestClaimed,
 	getPanel,
 	createPanel,
 	getAccountById,

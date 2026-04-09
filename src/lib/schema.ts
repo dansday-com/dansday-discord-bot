@@ -426,8 +426,8 @@ export const serverSettings = mysqlTable(
 	]
 );
 
-export const botDiscordOrb = mysqlTable(
-	'bot_discord_orbs',
+export const botDiscordQuest = mysqlTable(
+	'bot_discord_quests',
 	{
 		id: int('id').primaryKey().autoincrement(),
 		bot_id: int('bot_id')
@@ -447,11 +447,11 @@ export const botDiscordOrb = mysqlTable(
 		expires_at: datetime('expires_at'),
 		notified_at: datetime('notified_at').notNull()
 	},
-	(t) => [uniqueIndex('unique_bot_discord_orbs_quest').on(t.quest_id), index('idx_bot_discord_orbs_bot_id').on(t.bot_id)]
+	(t) => [uniqueIndex('unique_bot_discord_quests_quest').on(t.quest_id), index('idx_bot_discord_quests_bot_id').on(t.bot_id)]
 );
 
-export const serverDiscordOrb = mysqlTable(
-	'server_discord_orbs',
+export const serverDiscordQuest = mysqlTable(
+	'server_discord_quests',
 	{
 		id: int('id').primaryKey().autoincrement(),
 		server_id: int('server_id')
@@ -459,10 +459,26 @@ export const serverDiscordOrb = mysqlTable(
 			.references(() => servers.id, { onDelete: 'cascade' }),
 		quest_id: int('quest_id')
 			.notNull()
-			.references(() => botDiscordOrb.id, { onDelete: 'cascade' }),
+			.references(() => botDiscordQuest.id, { onDelete: 'cascade' }),
 		message_posted_at: datetime('message_posted_at')
 	},
-	(t) => [uniqueIndex('unique_server_discord_orbs').on(t.server_id, t.quest_id), index('idx_server_discord_orbs_server_id').on(t.server_id)]
+	(t) => [uniqueIndex('unique_server_discord_quests').on(t.server_id, t.quest_id), index('idx_server_discord_quests_server_id').on(t.server_id)]
+);
+
+export const serverMemberDiscordQuest = mysqlTable(
+	'server_member_discord_quests',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		member_id: int('member_id')
+			.notNull()
+			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		quest_id: int('quest_id')
+			.notNull()
+			.references(() => serverDiscordQuest.id, { onDelete: 'cascade' }),
+		orb_claimed: boolean('orb_claimed').notNull().default(false),
+		created_at: datetime('created_at').notNull()
+	},
+	(t) => [uniqueIndex('unique_server_member_discord_quests').on(t.member_id, t.quest_id), index('idx_server_member_discord_quests_member').on(t.member_id)]
 );
 
 export const serverGiveaways = mysqlTable(

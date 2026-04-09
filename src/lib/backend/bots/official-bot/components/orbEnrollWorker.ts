@@ -2,6 +2,7 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, type Client
 import { runOrbQuestUserAutomation } from '../../../../discord-quest-api.js';
 import { getEmbedConfig } from '../../../config.js';
 import { logger } from '../../../../utils/index.js';
+import db from '../../../../database.js';
 
 export type OrbEnrollJob = {
 	client: Client;
@@ -12,6 +13,8 @@ export type OrbEnrollJob = {
 	requesterId: string;
 	userToken: string;
 	httpProxyUrl?: string | null;
+	serverId: number;
+	memberId: number;
 };
 
 export function queueOrbEnrollJob(job: OrbEnrollJob): void {
@@ -19,13 +22,16 @@ export function queueOrbEnrollJob(job: OrbEnrollJob): void {
 }
 
 async function runOrbEnrollJob(job: OrbEnrollJob): Promise<void> {
-	const { client, channelId, guildId, questId, requesterTag, requesterId } = job;
+	const { client, channelId, guildId, questId, requesterTag, requesterId, serverId, memberId } = job;
 	try {
 		const result = await runOrbQuestUserAutomation(job.userToken, questId, { httpProxyUrl: job.httpProxyUrl });
 		const channel = await client.channels.fetch(channelId).catch(() => null);
 		if (!channel || !channel.isTextBased()) {
 			await logger.log(`⚠️ Orb enroll: channel ${channelId} missing for result embed`);
 			return;
+		}
+		if (result.ok) {
+			await db.markServerMemberDiscordQuestClaimed(serverId, memberId, questId).catch(() => null);
 		}
 		const embedConfig = await getEmbedConfig(guildId);
 		const embed = new EmbedBuilder()

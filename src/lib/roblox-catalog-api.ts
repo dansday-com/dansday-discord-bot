@@ -19,6 +19,22 @@ const ROBLOX_HEADERS = {
 	...(process.env.ROBLOX_SECURITY_COOKIE ? { Cookie: `.ROBLOSECURITY=${process.env.ROBLOX_SECURITY_COOKIE}` } : {})
 };
 
+async function fetchWithRetry(url: string, params: Record<string, any>): Promise<any> {
+	for (let attempt = 0; attempt < 3; attempt++) {
+		try {
+			const res = await axios.get(url, { params, headers: ROBLOX_HEADERS, timeout: 15_000 });
+			return res.data;
+		} catch (err: any) {
+			const status = err?.response?.status;
+			if ((status === 503 || status === 429) && attempt < 2) {
+				await new Promise((r) => setTimeout(r, 10_000 * (attempt + 1)));
+				continue;
+			}
+			throw err;
+		}
+	}
+}
+
 async function fetchCatalogPages(extraParams: Record<string, any>): Promise<RobloxCatalogItem[]> {
 	const all: RobloxCatalogItem[] = [];
 	let cursor: string | undefined = undefined;
@@ -28,14 +44,10 @@ async function fetchCatalogPages(extraParams: Record<string, any>): Promise<Robl
 		const params: Record<string, any> = { Limit: 120, SortType: 3, ...extraParams };
 		if (cursor) params.Cursor = cursor;
 
-		const res = await axios.get('https://catalog.roblox.com/v2/search/items/details', {
-			params,
-			headers: ROBLOX_HEADERS,
-			timeout: 15_000
-		});
+		const data = await fetchWithRetry('https://catalog.roblox.com/v2/search/items/details', params);
 
-		const data = Array.isArray(res.data?.data) ? res.data.data : [];
-		for (const x of data) {
+		const rows = Array.isArray(data?.data) ? data.data : [];
+		for (const x of rows) {
 			if (!Number.isFinite(Number(x?.id))) continue;
 			all.push({
 				id: Number(x.id),
@@ -52,7 +64,7 @@ async function fetchCatalogPages(extraParams: Record<string, any>): Promise<Robl
 			});
 		}
 
-		const nextCursor = typeof res.data?.nextPageCursor === 'string' ? res.data.nextPageCursor : null;
+		const nextCursor = typeof data?.nextPageCursor === 'string' ? data.nextPageCursor : null;
 		if (!nextCursor) break;
 		cursor = nextCursor;
 		if (!first) await new Promise((r) => setTimeout(r, 5_000));

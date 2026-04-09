@@ -34,6 +34,14 @@ function toSnapshot(x: RobloxCatalogItem) {
 	};
 }
 
+function utcDay(utcStr: string): string {
+	return new Date(utcStr).toISOString().slice(0, 10);
+}
+
+function todayUtc(): string {
+	return new Date().toISOString().slice(0, 10);
+}
+
 async function getActiveServers(client: Client, officialBotId: number): Promise<ServerTarget[]> {
 	const servers = await db.getServersForBot(officialBotId);
 	const targets: ServerTarget[] = [];
@@ -115,37 +123,40 @@ async function initialSeed(client: Client, officialBotId: number, targets: Serve
 		fetchCatalogFirstPage({ SalesTypeFilter: 2, SortType: 3 })
 	]);
 
-	function filterNewest(items: RobloxCatalogItem[]): RobloxCatalogItem[] {
-		const withDate = items.filter((x) => x.itemCreatedUtc);
-		if (withDate.length === 0) return [];
-		const newestDate = withDate.sort((a, b) => new Date(b.itemCreatedUtc!).getTime() - new Date(a.itemCreatedUtc!).getTime())[0].itemCreatedUtc!;
-		const newestDay = new Date(newestDate).toUTCString().slice(0, 16);
-		return withDate.filter((x) => new Date(x.itemCreatedUtc!).toUTCString().slice(0, 16) === newestDay);
+	// Combine both sources, deduplicate by id
+	const seenIds = new Set<number>();
+	const all: RobloxCatalogItem[] = [];
+	for (const item of [...robloxItems, ...limitedItems]) {
+		if (seenIds.has(item.id)) continue;
+		seenIds.add(item.id);
+		all.push(item);
 	}
 
-	const seen = new Set<number>();
-	for (const item of [...robloxItems, ...limitedItems]) seen.add(item.id);
+	// Find newest UTC date across all combined items
+	const withDate = all.filter((x) => x.itemCreatedUtc);
+	const newestTs = withDate.reduce((max, x) => Math.max(max, new Date(x.itemCreatedUtc!).getTime()), 0);
+	const newestDay = new Date(newestTs).toISOString().slice(0, 10);
 
-	const merged: RobloxCatalogItem[] = [];
-	for (const item of [...filterNewest(robloxItems), ...filterNewest(limitedItems)]) {
-		if (merged.find((x) => x.id === item.id)) continue;
-		merged.push(item);
-	}
+	// Sort ALL by itemCreatedUtc ascending
+	all.sort((a, b) => {
+		const at = a.itemCreatedUtc ? new Date(a.itemCreatedUtc).getTime() : 0;
+		const bt = b.itemCreatedUtc ? new Date(b.itemCreatedUtc).getTime() : 0;
+		return at - bt;
+	});
 
-	merged.sort((a, b) => new Date(a.itemCreatedUtc!).getTime() - new Date(b.itemCreatedUtc!).getTime());
+	// Items to post = only those from the newest date, sorted oldest → newest
+	const toPost = all
+		.filter((x) => x.itemCreatedUtc && utcDay(x.itemCreatedUtc) === newestDay)
+		.sort((a, b) => new Date(a.itemCreatedUtc!).getTime() - new Date(b.itemCreatedUtc!).getTime());
 
-	await logger.log(`🛍️ Roblox catalog: initial seed found ${merged.length} items within today/yesterday`);
+	await logger.log(`🛍️ Roblox catalog: seed found ${all.length} total, posting ${toPost.length} from ${newestDay}`);
 
 	for (const target of targets) {
-		await db.syncServerRobloxItemsFromApi(officialBotId, target.serverId, merged.map(toSnapshot));
-		const unposted = new Set(
-			await db.listServerRobloxUnpostedAssetIds(
-				target.serverId,
-				merged.map((x) => x.id)
-			)
-		);
+		await db.syncServerRobloxItemsFromApi(officialBotId, target.serverId, all.map(toSnapshot));
 
-		for (const item of merged) {
+		const unposted = new Set(await db.listServerRobloxUnpostedAssetIds(target.serverId, toPost.map((x) => x.id)));
+
+		for (const item of toPost) {
 			if (!unposted.has(item.id)) continue;
 			try {
 				await sendItemEmbed(target, item, true);
@@ -157,7 +168,7 @@ async function initialSeed(client: Client, officialBotId: number, targets: Serve
 		}
 	}
 
-	backgroundSync(officialBotId, targets, seen).catch((err) => logger.log(`⚠️ Roblox catalog: background sync error: ${err?.message || err}`));
+	backgroundSync(officialBotId, targets, seenIds).catch((err) => logger.log(`⚠️ Roblox catalog: background sync error: ${err?.message || err}`));
 }
 
 async function backgroundSync(officialBotId: number, targets: ServerTarget[], seen: Set<number>) {
@@ -169,16 +180,6 @@ async function backgroundSync(officialBotId: number, targets: ServerTarget[], se
 		if (newItems.length === 0) return;
 		for (const target of targets) {
 			await db.syncServerRobloxItemsFromApi(officialBotId, target.serverId, newItems.map(toSnapshot));
-			const unposted = new Set(
-				await db.listServerRobloxUnpostedAssetIds(
-					target.serverId,
-					newItems.map((x) => x.id)
-				)
-			);
-			for (const item of newItems) {
-				if (!unposted.has(item.id)) continue;
-				await db.markServerRobloxItemMessagePosted(target.serverId, item.id);
-			}
 		}
 		await logger.log(`🔄 Roblox catalog: background synced ${newItems.length} items (total seen: ${seen.size})`);
 	};
@@ -197,12 +198,19 @@ async function processPage(officialBotId: number, targets: ServerTarget[], items
 	await logger.log(`🔄 Roblox catalog: syncing page with ${newItems.length} items (total seen: ${seen.size})`);
 
 	const snapshots = newItems.map(toSnapshot);
+	const today = todayUtc();
 
 	for (const target of targets) {
+		// Sync ALL new items to DB
 		await db.syncServerRobloxItemsFromApi(officialBotId, target.serverId, snapshots);
 
-		const assetIds = newItems.map((x) => x.id);
-		const unposted = new Set(await db.listServerRobloxUnpostedAssetIds(target.serverId, assetIds));
+		// Only check unposted for items created today
+		const todayItems = newItems.filter((x) => x.itemCreatedUtc && utcDay(x.itemCreatedUtc) === today);
+		const unposted = todayItems.length > 0
+			? new Set(await db.listServerRobloxUnpostedAssetIds(target.serverId, todayItems.map((x) => x.id)))
+			: new Set<number>();
+
+		// Change tracking on ALL items
 		const changes = await db.detectAndUpdateServerRobloxItemChanges(target.serverId, snapshots);
 
 		for (const item of newItems) {
@@ -250,7 +258,6 @@ async function runTick(client: Client, officialBotId: number) {
 			return;
 		}
 
-		// Normal tick: stream both sources, sync+post per page
 		const seen = new Set<number>();
 
 		await streamCatalogPages({ CreatorType: 1, CreatorTargetId: 1, SortType: 2 }, async (items) => {

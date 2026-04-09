@@ -2309,14 +2309,25 @@ async function markServerRobloxItemMessagePosted(serverId: number, assetId: numb
 	await initializeDatabase();
 	const posted = toMySQLDateTime();
 	const [item] = await db
-		.select({ id: schema.botRobloxItems.id, price: schema.botRobloxItems.price, lowest_price: schema.botRobloxItems.lowest_price, lowest_resale_price: schema.botRobloxItems.lowest_resale_price, total_quantity: schema.botRobloxItems.total_quantity })
+		.select({
+			id: schema.botRobloxItems.id,
+			price: schema.botRobloxItems.price,
+			lowest_price: schema.botRobloxItems.lowest_price,
+			lowest_resale_price: schema.botRobloxItems.lowest_resale_price,
+			total_quantity: schema.botRobloxItems.total_quantity
+		})
 		.from(schema.botRobloxItems)
 		.where(eq(schema.botRobloxItems.asset_id, Number(assetId)))
 		.limit(1);
 	if (!item) return;
 	await db
 		.update(schema.botRobloxItems)
-		.set({ last_price: item.price ?? null, last_lowest_price: item.lowest_price ?? null, last_lowest_resale_price: item.lowest_resale_price ?? null, last_total_quantity: item.total_quantity ?? null } as any)
+		.set({
+			last_price: item.price ?? null,
+			last_lowest_price: item.lowest_price ?? null,
+			last_lowest_resale_price: item.lowest_resale_price ?? null,
+			last_total_quantity: item.total_quantity ?? null
+		} as any)
 		.where(eq(schema.botRobloxItems.id, item.id));
 	await db
 		.update(schema.serverRobloxItems)
@@ -2373,7 +2384,12 @@ async function detectAndUpdateServerRobloxItemChanges(serverId: number, items: R
 		if (row.last_lowest_price !== null && it.lowestPrice !== null && it.lowestPrice !== undefined && row.last_lowest_price !== it.lowestPrice) {
 			changes.push({ assetId, field: 'lowest_price', oldValue: row.last_lowest_price, newValue: it.lowestPrice });
 		}
-		if (row.last_lowest_resale_price !== null && it.lowestResalePrice !== null && it.lowestResalePrice !== undefined && row.last_lowest_resale_price !== it.lowestResalePrice) {
+		if (
+			row.last_lowest_resale_price !== null &&
+			it.lowestResalePrice !== null &&
+			it.lowestResalePrice !== undefined &&
+			row.last_lowest_resale_price !== it.lowestResalePrice
+		) {
 			changes.push({ assetId, field: 'lowest_resale_price', oldValue: row.last_lowest_resale_price, newValue: it.lowestResalePrice });
 		}
 		if (row.last_total_quantity !== null && it.totalQuantity !== null && it.totalQuantity !== undefined && row.last_total_quantity !== it.totalQuantity) {

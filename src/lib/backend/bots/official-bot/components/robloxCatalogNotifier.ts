@@ -152,7 +152,12 @@ async function initialSeed(client: Client, officialBotId: number, targets: Serve
 	for (const target of targets) {
 		await db.syncServerRobloxItemsFromApi(officialBotId, target.serverId, all.map(toSnapshot));
 
-		const unposted = new Set(await db.listServerRobloxUnpostedAssetIds(target.serverId, toPost.map((x) => x.id)));
+		const unposted = new Set(
+			await db.listServerRobloxUnpostedAssetIds(
+				target.serverId,
+				toPost.map((x) => x.id)
+			)
+		);
 
 		for (const item of toPost) {
 			if (!unposted.has(item.id)) continue;
@@ -209,9 +214,15 @@ async function processPage(officialBotId: number, targets: ServerTarget[], items
 		await db.syncServerRobloxItemsFromApi(officialBotId, target.serverId, snapshots);
 
 		const todayItems = newItems.filter((x) => x.itemCreatedUtc && utcDay(x.itemCreatedUtc) === today);
-		const unposted = todayItems.length > 0
-			? new Set(await db.listServerRobloxUnpostedAssetIds(target.serverId, todayItems.map((x) => x.id)))
-			: new Set<number>();
+		const unposted =
+			todayItems.length > 0
+				? new Set(
+						await db.listServerRobloxUnpostedAssetIds(
+							target.serverId,
+							todayItems.map((x) => x.id)
+						)
+					)
+				: new Set<number>();
 
 		const changes = await db.detectAndUpdateServerRobloxItemChanges(target.serverId, snapshots);
 
@@ -225,7 +236,14 @@ async function processPage(officialBotId: number, targets: ServerTarget[], items
 				if (!isNew && itemChanges.length > 0) {
 					changeLines = itemChanges
 						.map((c) => {
-							const label = c.field === 'total_quantity' ? 'Stock' : c.field === 'lowest_price' ? 'Lowest Price' : c.field === 'lowest_resale_price' ? 'Lowest Resale' : 'Price';
+							const label =
+								c.field === 'total_quantity'
+									? 'Stock'
+									: c.field === 'lowest_price'
+										? 'Lowest Price'
+										: c.field === 'lowest_resale_price'
+											? 'Lowest Resale'
+											: 'Price';
 							const isPrice = c.field !== 'total_quantity';
 							const fmt = (v: number | null) => (isPrice ? (v === 0 ? 'FREE' : `${v} Robux`) : String(v ?? '—'));
 							return `**${label}**: ${fmt(c.oldValue)} → ${fmt(c.newValue)}`;

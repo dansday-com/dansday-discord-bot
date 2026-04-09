@@ -82,7 +82,7 @@ export async function streamCatalogPages(extraParams: Record<string, any>, onPag
 				name: typeof x.name === 'string' ? x.name : undefined,
 				description: typeof x.description === 'string' ? x.description : undefined,
 				creatorName: typeof x.creatorName === 'string' ? x.creatorName : undefined,
-			creatorHasVerifiedBadge: x.creatorHasVerifiedBadge === true,
+				creatorHasVerifiedBadge: x.creatorHasVerifiedBadge === true,
 				price: Number.isFinite(Number(x?.price)) ? Number(x.price) : undefined,
 				lowestPrice: Number.isFinite(Number(x?.lowestPrice)) ? Number(x.lowestPrice) : undefined,
 				lowestResalePrice: Number.isFinite(Number(x?.lowestResalePrice)) ? Number(x.lowestResalePrice) : undefined,

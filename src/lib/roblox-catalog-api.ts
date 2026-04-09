@@ -37,6 +37,31 @@ async function fetchWithRetry(url: string, params: Record<string, any>): Promise
 	}
 }
 
+export async function fetchCatalogFirstPage(extraParams: Record<string, any>): Promise<RobloxCatalogItem[]> {
+	const data = await fetchWithRetry('https://catalog.roblox.com/v2/search/items/details', { Limit: 120, ...extraParams });
+	const rows = Array.isArray(data?.data) ? data.data : [];
+	const items: RobloxCatalogItem[] = rows
+		.filter((x: any) => Number.isFinite(Number(x?.id)))
+		.map((x: any) => ({
+			id: Number(x.id),
+			assetType: Number.isFinite(Number(x?.assetType)) ? Number(x.assetType) : undefined,
+			name: typeof x.name === 'string' ? x.name : undefined,
+			description: typeof x.description === 'string' ? x.description : undefined,
+			creatorName: typeof x.creatorName === 'string' ? x.creatorName : undefined,
+			price: Number.isFinite(Number(x?.price)) ? Number(x.price) : undefined,
+			lowestPrice: Number.isFinite(Number(x?.lowestPrice)) ? Number(x.lowestPrice) : undefined,
+			lowestResalePrice: Number.isFinite(Number(x?.lowestResalePrice)) ? Number(x.lowestResalePrice) : undefined,
+			totalQuantity: Number.isFinite(Number(x?.totalQuantity)) ? Number(x.totalQuantity) : undefined,
+			itemCreatedUtc: typeof x.itemCreatedUtc === 'string' ? x.itemCreatedUtc : undefined,
+			thumbnailUrl: null
+		}));
+	if (items.length > 0) {
+		const thumbMap = await fetchThumbnailUrls(items);
+		for (const item of items) item.thumbnailUrl = thumbMap.get(item.id) ?? null;
+	}
+	return items;
+}
+
 export async function streamCatalogPages(extraParams: Record<string, any>, onPage: (items: RobloxCatalogItem[]) => Promise<void>): Promise<void> {
 	let cursor: string | undefined = undefined;
 
@@ -71,7 +96,7 @@ export async function streamCatalogPages(extraParams: Record<string, any>, onPag
 
 		cursor = typeof data?.nextPageCursor === 'string' ? data.nextPageCursor : null;
 		if (!cursor) break;
-		await new Promise((r) => setTimeout(r, 30_000));
+		await new Promise((r) => setTimeout(r, 10_000));
 	}
 }
 
@@ -83,7 +108,10 @@ async function fetchThumbnailUrls(items: RobloxCatalogItem[]): Promise<Map<numbe
 	for (let i = 0; i < ids.length; i += 100) {
 		const chunk = ids.slice(i, i + 100);
 		const data = await fetchWithRetry('https://thumbnails.roblox.com/v1/assets', {
-			assetIds: chunk.join(','), size: '420x420', format: 'Png', isCircular: 'false'
+			assetIds: chunk.join(','),
+			size: '420x420',
+			format: 'Png',
+			isCircular: 'false'
 		});
 		for (const r of Array.isArray(data?.data) ? data.data : []) {
 			const id = Number(r?.targetId);

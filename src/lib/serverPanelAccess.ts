@@ -154,15 +154,7 @@ const ROUTE_GUARDS: RouteGuard[] = [
 	}
 ];
 
-const PUBLIC_PREFIXES = [
-	'/api/leaderboards/',
-	'/api/uploads/',
-	'/api/panel/',
-	'/api/start',
-	'/api/stop',
-	'/api/restart',
-	'/api/bots/+server.ts'
-];
+const PUBLIC_PREFIXES = ['/api/leaderboards/', '/api/uploads/', '/api/panel/', '/api/start', '/api/stop', '/api/restart', '/api/bots/+server.ts'];
 
 const PUBLIC_EXACT = new Set([
 	'/api/panel/login',

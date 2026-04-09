@@ -364,7 +364,7 @@ export async function stopBotById(botId: number, bot?: any): Promise<{ success: 
 		emitBotStatus(mapKey, 'stopped', null, null);
 	} catch (_) {}
 
-	logger.log(`⏹️  Stopped bot ${mapKey}`)
+	logger.log(`⏹️  Stopped bot ${mapKey}`);
 
 	return { success: true };
 }

@@ -2331,6 +2331,12 @@ type RobloxItemChange = {
 	newValue: number | null;
 };
 
+async function isBotRobloxItemsEmpty(botId: number): Promise<boolean> {
+	await initializeDatabase();
+	const [row] = await db.select({ id: schema.botRobloxItems.id }).from(schema.botRobloxItems).where(eq(schema.botRobloxItems.bot_id, botId)).limit(1);
+	return !row;
+}
+
 async function detectAndUpdateServerRobloxItemChanges(serverId: number, items: RobloxCatalogItemSnapshot[]): Promise<Map<number, RobloxItemChange[]>> {
 	await initializeDatabase();
 	const result = new Map<number, RobloxItemChange[]>();
@@ -3274,6 +3280,7 @@ export default {
 	listServerDiscordOrbUnpostedQuestIds,
 	markServerDiscordOrbMessagePosted,
 	syncServerRobloxItemsFromApi,
+	isBotRobloxItemsEmpty,
 	listServerRobloxUnpostedAssetIds,
 	markServerRobloxItemMessagePosted,
 	detectAndUpdateServerRobloxItemChanges,

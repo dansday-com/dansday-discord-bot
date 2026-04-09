@@ -2,7 +2,7 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle, Client, EmbedBuilder } fr
 import db from '../../../../database.js';
 import { getEmbedConfig, getMainChannel, isComponentFeatureEnabled, serverSettingsComponent } from '../../../config.js';
 import { logger } from '../../../../utils/index.js';
-import { assetTypeCategory, RobloxCatalogItem, robloxCatalogItemUrl, streamCatalogPages } from '../../../../roblox-catalog-api.js';
+import { assetTypeCategory, fetchCatalogFirstPage, RobloxCatalogItem, robloxCatalogItemUrl, streamCatalogPages } from '../../../../roblox-catalog-api.js';
 
 let tickTimeoutRef: ReturnType<typeof setTimeout> | null = null;
 let tickRunning = false;
@@ -14,9 +14,25 @@ type ServerTarget = {
 	guildId: string;
 	channelId: string;
 	embedConfig: Awaited<ReturnType<typeof getEmbedConfig>>;
-	guild: Awaited<ReturnType<Client['guilds']['fetch']>>;
 	channel: any;
 };
+
+function toSnapshot(x: RobloxCatalogItem) {
+	return {
+		assetId: x.id,
+		assetType: x.assetType ?? null,
+		name: x.name ?? null,
+		description: x.description ?? null,
+		creatorName: x.creatorName ?? null,
+		price: x.price ?? null,
+		lowestPrice: x.lowestPrice ?? null,
+		lowestResalePrice: x.lowestResalePrice ?? null,
+		totalQuantity: x.totalQuantity ?? null,
+		thumbnailUrl: x.thumbnailUrl ?? null,
+		itemUrl: robloxCatalogItemUrl(x.id),
+		itemCreatedUtc: x.itemCreatedUtc ?? null
+	};
+}
 
 async function getActiveServers(client: Client, officialBotId: number): Promise<ServerTarget[]> {
 	const servers = await db.getServersForBot(officialBotId);
@@ -46,39 +62,150 @@ async function getActiveServers(client: Client, officialBotId: number): Promise<
 		if (!channel || !channel.isTextBased()) continue;
 
 		const embedConfig = await getEmbedConfig(guildId);
-		targets.push({ serverId: server.id, guildId, channelId, embedConfig, guild, channel });
+		targets.push({ serverId: server.id, guildId, channelId, embedConfig, channel });
 	}
 
 	return targets;
 }
 
-async function processPage(client: Client, officialBotId: number, targets: ServerTarget[], items: RobloxCatalogItem[], seen: Set<number>) {
+async function sendItemEmbed(target: ServerTarget, item: RobloxCatalogItem, isNew: boolean, changeLines?: string) {
+	const url = robloxCatalogItemUrl(item.id);
+	const price = typeof item.price === 'number' ? (item.price === 0 ? 'FREE' : `${item.price} Robux`) : '—';
+	const lowestPrice = typeof item.lowestPrice === 'number' ? `${item.lowestPrice} Robux` : '—';
+	const lowestResale = typeof item.lowestResalePrice === 'number' ? `${item.lowestResalePrice} Robux` : '—';
+	const quantity = typeof item.totalQuantity === 'number' ? String(item.totalQuantity) : '—';
+	const category = assetTypeCategory(item.assetType) ?? '—';
+	const createdAt = item.itemCreatedUtc ? `<t:${Math.floor(new Date(item.itemCreatedUtc).getTime() / 1000)}:D>` : '—';
+
+	const title = isNew ? (item.name || `Item #${item.id}`).slice(0, 256) : `[Updated] ${item.name || `Item #${item.id}`}`.slice(0, 256);
+
+	const embed = new EmbedBuilder()
+		.setColor(target.embedConfig.COLOR)
+		.setTitle(title)
+		.addFields(
+			{ name: 'Category', value: category, inline: true },
+			{ name: 'Price', value: price, inline: true },
+			{ name: 'Creator', value: (item.creatorName || '—').slice(0, 1024), inline: true },
+			{ name: 'Lowest Price', value: lowestPrice, inline: true },
+			{ name: 'Lowest Resale', value: lowestResale, inline: true },
+			{ name: 'Total Quantity', value: quantity, inline: true },
+			{ name: 'Created', value: createdAt, inline: true }
+		)
+		.setFooter({ text: target.embedConfig.FOOTER });
+
+	if (changeLines) {
+		embed.setDescription(changeLines.slice(0, 4096));
+	} else if (item.description?.trim()) {
+		embed.setDescription(item.description.trim().slice(0, 4096));
+	}
+	if (item.thumbnailUrl?.startsWith('http')) embed.setThumbnail(item.thumbnailUrl);
+
+	const btnRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+		new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(url).setLabel('Open on Roblox').setEmoji('🛍️')
+	);
+
+	await target.channel.send({ embeds: [embed], components: [btnRow] });
+}
+
+async function initialSeed(client: Client, officialBotId: number, targets: ServerTarget[]) {
+	await logger.log('🛍️ Roblox catalog: DB empty, performing initial seed...');
+
+	// Fetch first 120 from both sources
+	const [robloxItems, limitedItems] = await Promise.all([
+		fetchCatalogFirstPage({ CreatorType: 1, CreatorTargetId: 1, SortType: 3 }),
+		fetchCatalogFirstPage({ SalesTypeFilter: 2, SortType: 3 })
+	]);
+
+	// Merge and deduplicate
+	const seen = new Set<number>();
+	const all: RobloxCatalogItem[] = [];
+	for (const item of [...robloxItems, ...limitedItems]) {
+		if (seen.has(item.id)) continue;
+		seen.add(item.id);
+		all.push(item);
+	}
+
+	// Filter by today, fallback to most recent available date
+	const today = new Date().toDateString();
+	let merged = all.filter((x) => x.itemCreatedUtc && new Date(x.itemCreatedUtc).toDateString() === today);
+	if (merged.length === 0) {
+		const newestDate = all
+			.filter((x) => x.itemCreatedUtc)
+			.sort((a, b) => new Date(b.itemCreatedUtc!).getTime() - new Date(a.itemCreatedUtc!).getTime())[0]?.itemCreatedUtc;
+		if (newestDate) merged = all.filter((x) => x.itemCreatedUtc && new Date(x.itemCreatedUtc).toDateString() === new Date(newestDate).toDateString());
+	}
+	merged.sort((a, b) => new Date(a.itemCreatedUtc ?? 0).getTime() - new Date(b.itemCreatedUtc ?? 0).getTime());
+
+	await logger.log(`🛍️ Roblox catalog: initial seed found ${merged.length} items within today/yesterday`);
+
+	for (const target of targets) {
+		await db.syncServerRobloxItemsFromApi(officialBotId, target.serverId, merged.map(toSnapshot));
+		const unposted = new Set(
+			await db.listServerRobloxUnpostedAssetIds(
+				target.serverId,
+				merged.map((x) => x.id)
+			)
+		);
+
+		for (const item of merged) {
+			if (!unposted.has(item.id)) continue;
+			try {
+				await sendItemEmbed(target, item, true);
+				await db.markServerRobloxItemMessagePosted(target.serverId, item.id);
+				await logger.log(`🛍️ Roblox catalog: seeded item ${item.id} → ${target.channelId}`);
+			} catch (err: any) {
+				await logger.log(`❌ Roblox catalog: failed to seed item ${item.id}: ${err?.message || err}`);
+			}
+		}
+	}
+
+	// Background: paginate the rest to fill DB (no posting)
+	backgroundSync(officialBotId, targets, seen).catch((err) => logger.log(`⚠️ Roblox catalog: background sync error: ${err?.message || err}`));
+}
+
+async function backgroundSync(officialBotId: number, targets: ServerTarget[], seen: Set<number>) {
+	await logger.log('🛍️ Roblox catalog: starting background sync...');
+
+	const syncPage = async (items: RobloxCatalogItem[]) => {
+		const newItems = items.filter((x) => !seen.has(x.id));
+		for (const x of newItems) seen.add(x.id);
+		if (newItems.length === 0) return;
+		for (const target of targets) {
+			await db.syncServerRobloxItemsFromApi(officialBotId, target.serverId, newItems.map(toSnapshot));
+			const unposted = new Set(
+				await db.listServerRobloxUnpostedAssetIds(
+					target.serverId,
+					newItems.map((x) => x.id)
+				)
+			);
+			for (const item of newItems) {
+				if (!unposted.has(item.id)) continue;
+				await db.markServerRobloxItemMessagePosted(target.serverId, item.id);
+			}
+		}
+		await logger.log(`🔄 Roblox catalog: background synced ${newItems.length} items (total seen: ${seen.size})`);
+	};
+
+	await streamCatalogPages({ CreatorType: 1, CreatorTargetId: 1, SortType: 3 }, syncPage);
+	await new Promise((r) => setTimeout(r, 10_000));
+	await streamCatalogPages({ SalesTypeFilter: 2, SortType: 3 }, syncPage);
+
+	await logger.log('🛍️ Roblox catalog: background sync complete');
+}
+
+async function processPage(officialBotId: number, targets: ServerTarget[], items: RobloxCatalogItem[], seen: Set<number>) {
 	const newItems = items.filter((x) => !seen.has(x.id));
 	for (const x of newItems) seen.add(x.id);
 	if (newItems.length === 0) return;
+	await logger.log(`🔄 Roblox catalog: syncing page with ${newItems.length} items (total seen: ${seen.size})`);
 
-	const snapshots = newItems.map((x) => ({
-		assetId: x.id,
-		assetType: x.assetType ?? null,
-		name: x.name ?? null,
-		description: x.description ?? null,
-		creatorName: x.creatorName ?? null,
-		price: x.price ?? null,
-		lowestPrice: x.lowestPrice ?? null,
-		lowestResalePrice: x.lowestResalePrice ?? null,
-		totalQuantity: x.totalQuantity ?? null,
-		thumbnailUrl: x.thumbnailUrl ?? null,
-		itemUrl: robloxCatalogItemUrl(x.id),
-		itemCreatedUtc: x.itemCreatedUtc ?? null
-	}));
+	const snapshots = newItems.map(toSnapshot);
 
 	for (const target of targets) {
 		await db.syncServerRobloxItemsFromApi(officialBotId, target.serverId, snapshots);
 
 		const assetIds = newItems.map((x) => x.id);
 		const unposted = new Set(await db.listServerRobloxUnpostedAssetIds(target.serverId, assetIds));
-		if (unposted.size === 0) continue;
-
 		const changes = await db.detectAndUpdateServerRobloxItemChanges(target.serverId, snapshots);
 
 		for (const item of newItems) {
@@ -87,57 +214,24 @@ async function processPage(client: Client, officialBotId: number, targets: Serve
 			if (!isNew && itemChanges.length === 0) continue;
 
 			try {
-				const url = robloxCatalogItemUrl(item.id);
-				const price = typeof item.price === 'number' ? (item.price === 0 ? 'FREE' : `${item.price} Robux`) : '—';
-				const lowestPrice = typeof item.lowestPrice === 'number' ? `${item.lowestPrice} Robux` : '—';
-				const lowestResale = typeof item.lowestResalePrice === 'number' ? `${item.lowestResalePrice} Robux` : '—';
-				const quantity = typeof item.totalQuantity === 'number' ? String(item.totalQuantity) : '—';
-				const category = assetTypeCategory(item.assetType) ?? '—';
-				const createdAt = item.itemCreatedUtc ? `<t:${Math.floor(new Date(item.itemCreatedUtc).getTime() / 1000)}:D>` : '—';
-
-				const title = isNew ? (item.name || `Item #${item.id}`).slice(0, 256) : `[Updated] ${item.name || `Item #${item.id}`}`.slice(0, 256);
-
-				const embed = new EmbedBuilder()
-					.setColor(target.embedConfig.COLOR)
-					.setTitle(title)
-					.addFields(
-						{ name: 'Category', value: category, inline: true },
-						{ name: 'Price', value: price, inline: true },
-						{ name: 'Creator', value: (item.creatorName || '—').slice(0, 1024), inline: true },
-						{ name: 'Lowest Price', value: lowestPrice, inline: true },
-						{ name: 'Lowest Resale', value: lowestResale, inline: true },
-						{ name: 'Total Quantity', value: quantity, inline: true },
-						{ name: 'Created', value: createdAt, inline: true }
-					)
-					.setFooter({ text: target.embedConfig.FOOTER });
-
+				let changeLines: string | undefined;
 				if (!isNew && itemChanges.length > 0) {
-					const changeLines = itemChanges
+					changeLines = itemChanges
 						.map((c) => {
 							const label = c.field === 'total_quantity' ? 'Stock' : 'Price';
 							const fmt = (v: number | null) => (c.field === 'price' ? (v === 0 ? 'FREE' : `${v} Robux`) : String(v ?? '—'));
 							return `**${label}**: ${fmt(c.oldValue)} → ${fmt(c.newValue)}`;
 						})
 						.join('\n');
-					embed.setDescription(changeLines.slice(0, 4096));
-				} else if (item.description?.trim()) {
-					embed.setDescription(item.description.trim().slice(0, 4096));
 				}
 
-				if (item.thumbnailUrl?.startsWith('http')) embed.setThumbnail(item.thumbnailUrl);
+				await sendItemEmbed(target, item, isNew, changeLines);
 
-				const btnRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-					new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(url).setLabel('Open on Roblox').setEmoji('🛍️')
-				);
-
-				await target.channel.send({ embeds: [embed], components: [btnRow] });
 				if (isNew) {
 					await db.markServerRobloxItemMessagePosted(target.serverId, item.id);
-					await logger.log(`🛍️ Roblox catalog: posted item ${item.id} → ${target.channelId} (server ${target.serverId})`);
+					await logger.log(`🛍️ Roblox catalog: posted item ${item.id} → ${target.channelId}`);
 				} else {
-					await logger.log(
-						`🔄 Roblox catalog: updated item ${item.id} → ${target.channelId} (server ${target.serverId}): ${itemChanges.map((c) => c.field).join(', ')}`
-					);
+					await logger.log(`🔄 Roblox catalog: updated item ${item.id} → ${target.channelId}: ${itemChanges.map((c) => c.field).join(', ')}`);
 				}
 			} catch (err: any) {
 				await logger.log(`❌ Roblox catalog: failed to post item ${item.id} for server ${target.serverId}: ${err?.message || err}`);
@@ -153,16 +247,23 @@ async function runTick(client: Client, officialBotId: number) {
 		const targets = await getActiveServers(client, officialBotId);
 		if (targets.length === 0) return;
 
+		const isEmpty = await db.isBotRobloxItemsEmpty(officialBotId);
+		if (isEmpty) {
+			await initialSeed(client, officialBotId, targets);
+			return;
+		}
+
+		// Normal tick: stream both sources, sync+post per page
 		const seen = new Set<number>();
 
 		await streamCatalogPages({ CreatorType: 1, CreatorTargetId: 1, SortType: 2 }, async (items) => {
-			await processPage(client, officialBotId, targets, items, seen);
+			await processPage(officialBotId, targets, items, seen);
 		});
 
-		await new Promise((r) => setTimeout(r, 30_000));
+		await new Promise((r) => setTimeout(r, 10_000));
 
 		await streamCatalogPages({ SalesTypeFilter: 2, SortType: 2 }, async (items) => {
-			await processPage(client, officialBotId, targets, items, seen);
+			await processPage(officialBotId, targets, items, seen);
 		});
 	} finally {
 		tickRunning = false;

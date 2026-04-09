@@ -4,6 +4,7 @@ import { getEmbedConfig, getMainChannel, isComponentFeatureEnabled, serverSettin
 import { logger } from '../../../../utils/index.js';
 import {
 	fetchRobloxCatalogSearchDetails,
+	fetchRobloxThumbnailUrls,
 	inferIsFreeFromSearch,
 	inferIsLimitedFromSearch,
 	isRobloxOfficialCreator,
@@ -35,6 +36,7 @@ type RobloxItemSnapshot = {
 	isLimited?: boolean;
 	isOfficial?: boolean;
 	itemUrl?: string | null;
+	thumbnailUrl?: string | null;
 };
 
 async function sendRobloxCatalogNotificationMessage(client: Client, guildId: string, channelId: string, it: RobloxItemSnapshot) {
@@ -76,6 +78,8 @@ async function sendRobloxCatalogNotificationMessage(client: Client, guildId: str
 	const desc = (it.description || '').trim();
 	if (desc) embed.setDescription(desc.slice(0, 4096));
 	embed.setFooter({ text: embedConfig.FOOTER });
+	const thumb = it.thumbnailUrl?.trim();
+	if (thumb?.startsWith('http')) embed.setThumbnail(thumb);
 
 	const url = it.itemUrl?.trim() || robloxCatalogItemUrl(it.assetId);
 	const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -151,11 +155,17 @@ async function runTick(client: Client, officialBotId: number) {
 						isFree,
 						isLimited,
 						isOfficial,
-						itemUrl: robloxCatalogItemUrl(assetId)
+						itemUrl: robloxCatalogItemUrl(assetId),
+						thumbnailUrl: null
 					});
 				}
 
 				if (pageSnapshots.length > 0) {
+					const thumbMap = await fetchRobloxThumbnailUrls(pageSnapshots.map((x) => ({ id: x.assetId, itemType: x.itemType || 'Asset' })));
+					for (const it of pageSnapshots) {
+						const url = thumbMap.get(it.assetId) || null;
+						it.thumbnailUrl = url;
+					}
 					await db.syncServerRobloxItemsFromApi(officialBotId, server.id, pageSnapshots);
 
 					const notifyAssetIds = pageSnapshots.filter((x) => x.isFree || x.isLimited || x.isOfficial).map((x) => x.assetId);

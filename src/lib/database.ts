@@ -2227,6 +2227,7 @@ type RobloxCatalogItemSnapshot = {
 	lowestResalePrice?: number | null;
 	totalQuantity?: number | null;
 	collectibleItemId?: string | null;
+	thumbnailUrl?: string | null;
 	itemCreatedUtc?: string | null;
 	isFree?: boolean;
 	isLimited?: boolean;
@@ -2261,6 +2262,7 @@ async function syncServerRobloxItemsFromApi(botId: number, serverId: number, ite
 				lowest_resale_price: it.lowestResalePrice == null ? null : Number(it.lowestResalePrice),
 				total_quantity: it.totalQuantity == null ? null : Number(it.totalQuantity),
 				collectible_item_id: it.collectibleItemId ?? null,
+				thumbnail_url: it.thumbnailUrl ?? null,
 				item_created_at: itemCreatedAt as any,
 				is_free: it.isFree === true,
 				is_limited: it.isLimited === true,
@@ -2283,6 +2285,7 @@ async function syncServerRobloxItemsFromApi(botId: number, serverId: number, ite
 					lowest_resale_price: it.lowestResalePrice == null ? null : Number(it.lowestResalePrice),
 					total_quantity: it.totalQuantity == null ? null : Number(it.totalQuantity),
 					collectible_item_id: it.collectibleItemId ?? null,
+					thumbnail_url: it.thumbnailUrl ?? null,
 					item_created_at: itemCreatedAt as any,
 					is_free: it.isFree === true,
 					is_limited: it.isLimited === true,

@@ -25,6 +25,10 @@ type RobloxCatalogDetailsResponse = {
 	data?: any[];
 };
 
+type RobloxThumbV1Response = {
+	data?: { targetId?: number; imageUrl?: string | null; state?: string | null }[];
+};
+
 export function robloxCatalogItemUrl(assetId: number): string {
 	return `https://www.roblox.com/catalog/${assetId}`;
 }
@@ -83,6 +87,49 @@ export function robloxAssetTypeLabel(assetType: number | null | undefined): stri
 		88: 'Face Makeup'
 	};
 	return m[id] || null;
+}
+
+function chunk<T>(arr: T[], size: number): T[][] {
+	const out: T[][] = [];
+	for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+	return out;
+}
+
+export async function fetchRobloxThumbnailUrls(items: { id: number; itemType?: string | null }[]): Promise<Map<number, string>> {
+	const assets = items.filter((x) => Number.isFinite(Number(x.id)) && String(x.itemType || 'Asset') === 'Asset').map((x) => Number(x.id));
+	const bundles = items.filter((x) => Number.isFinite(Number(x.id)) && String(x.itemType || '') === 'Bundle').map((x) => Number(x.id));
+
+	const out = new Map<number, string>();
+
+	for (const ids of chunk(assets, 100)) {
+		const res = await axios.get<RobloxThumbV1Response>('https://thumbnails.roblox.com/v1/assets', {
+			params: { assetIds: ids.join(','), size: '420x420', format: 'Png', isCircular: 'false' },
+			headers: { 'User-Agent': 'dansday-discord-bot/roblox-catalog-notifier' },
+			timeout: 15_000
+		});
+		const rows = Array.isArray(res.data?.data) ? res.data!.data! : [];
+		for (const r of rows) {
+			const id = Number(r?.targetId);
+			const url = typeof r?.imageUrl === 'string' ? r.imageUrl.trim() : '';
+			if (Number.isFinite(id) && url.startsWith('http')) out.set(id, url);
+		}
+	}
+
+	for (const ids of chunk(bundles, 100)) {
+		const res = await axios.get<RobloxThumbV1Response>('https://thumbnails.roblox.com/v1/bundles', {
+			params: { bundleIds: ids.join(','), size: '420x420', format: 'Png', isCircular: 'false' },
+			headers: { 'User-Agent': 'dansday-discord-bot/roblox-catalog-notifier' },
+			timeout: 15_000
+		});
+		const rows = Array.isArray(res.data?.data) ? res.data!.data! : [];
+		for (const r of rows) {
+			const id = Number(r?.targetId);
+			const url = typeof r?.imageUrl === 'string' ? r.imageUrl.trim() : '';
+			if (Number.isFinite(id) && url.startsWith('http')) out.set(id, url);
+		}
+	}
+
+	return out;
 }
 
 export async function fetchRobloxCatalogSearchDetails(opts?: {

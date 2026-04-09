@@ -504,6 +504,7 @@ export const botRobloxItems = mysqlTable(
 		lowest_resale_price: int('lowest_resale_price'),
 		total_quantity: int('total_quantity'),
 		collectible_item_id: varchar('collectible_item_id', { length: 64 }),
+		thumbnail_url: varchar('thumbnail_url', { length: 512 }),
 		item_created_at: datetime('item_created_at'),
 		is_free: boolean('is_free').notNull().default(false),
 		is_limited: boolean('is_limited').notNull().default(false),

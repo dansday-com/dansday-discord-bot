@@ -15,6 +15,7 @@ import sync from './components/sync.js';
 import leveling from './components/leveling.js';
 import contentCreator from './components/interface/contentcreator.js';
 import questNotifier from './components/questNotifier.js';
+import robloxCatalogNotifier from './components/robloxCatalogNotifier.js';
 
 let BOT_TOKEN: string | undefined;
 (async () => {
@@ -64,12 +65,14 @@ client.on('clientReady', async () => {
 	await sync.init(client, BOT_TOKEN);
 	const officialBotId = sync.getBotId();
 	questNotifier.initQuestNotifier(client, officialBotId);
+	robloxCatalogNotifier.initRobloxCatalogNotifier(client, officialBotId);
 	webhook.startWebhookServer(client, officialBotId);
 });
 
 function shutdown() {
 	logger.warn('Shutting down official bot');
 	questNotifier.stopQuestNotifier();
+	robloxCatalogNotifier.stopRobloxCatalogNotifier();
 	webhook.stopWebhookServer();
 	client.destroy();
 	process.exit(0);

@@ -78,7 +78,9 @@ async function fetchThumbnailUrls(items: RobloxCatalogItem[]): Promise<Map<numbe
 }
 
 export async function fetchAllCatalogItems(): Promise<RobloxCatalogItem[]> {
-	const [robloxItems, limitedItems] = await Promise.all([fetchCatalogPages({ CreatorTargetId: 1, CreatorType: 1 }), fetchCatalogPages({ SalesTypeFilter: 2 })]);
+	const robloxItems = await fetchCatalogPages({ CreatorType: 1, CreatorTargetId: 1 });
+	await new Promise((r) => setTimeout(r, 5_000));
+	const limitedItems = await fetchCatalogPages({ SalesTypeFilter: 2 });
 
 	const seen = new Set<number>();
 	const merged: RobloxCatalogItem[] = [];

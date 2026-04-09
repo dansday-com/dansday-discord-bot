@@ -41,7 +41,7 @@ type EnsureDemoResult = {
 	bot_id: number;
 	superadmin_account_id: number;
 	server_ids: number[];
-	panel_slug: string;
+	panel_id: number;
 };
 
 export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoResult> {
@@ -51,23 +51,7 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 	const nowDb = (toMySQLDateTime(now) || new Date()) as any;
 	const nowSql = nowDb;
 
-	await db
-		.insert(schema.panel)
-		.values({ slug: 'default', created_at: nowDb, updated_at: nowDb })
-		.onDuplicateKeyUpdate({ set: { updated_at: nowDb } });
-	await db
-		.insert(schema.panel)
-		.values({ slug: sessionSlug, created_at: nowDb, updated_at: nowDb })
-		.onDuplicateKeyUpdate({ set: { updated_at: nowDb } });
-
-	const demoPanel = await db
-		.select()
-		.from(schema.panel)
-		.where(sql`${schema.panel.slug} = ${sessionSlug}`)
-		.limit(1)
-		.then((r: any[]) => r[0] ?? null);
-	if (!demoPanel?.id) throw new Error('Failed to ensure demo panel');
-
+	// account -> panel -> bots (waterfall order)
 	const sessionUsername = `demo_${sessionSlug}`;
 	const sessionEmail = `demo_${sessionSlug}@dansday.local`;
 	const pwHash = await bcrypt.hash(`demo-${now.getUTCFullYear()}`, 10);
@@ -81,12 +65,11 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 			email_verified: true,
 			otp_code: null,
 			otp_expires_at: null,
-			panel_id: demoPanel.id,
 			ip_address: null,
 			created_at: nowDb,
 			updated_at: nowDb
 		})
-		.onDuplicateKeyUpdate({ set: { email_verified: true as any, panel_id: demoPanel.id as any, updated_at: nowDb } });
+		.onDuplicateKeyUpdate({ set: { email_verified: true as any, updated_at: nowDb } });
 
 	const demoAdmin = await db
 		.select()
@@ -95,6 +78,19 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 		.limit(1)
 		.then((r: any[]) => r[0] ?? null);
 	if (!demoAdmin?.id) throw new Error('Failed to ensure demo superadmin');
+
+	await db
+		.insert(schema.panel)
+		.values({ account_id: demoAdmin.id, created_at: nowDb, updated_at: nowDb })
+		.onDuplicateKeyUpdate({ set: { updated_at: nowDb } });
+
+	const demoPanel = await db
+		.select()
+		.from(schema.panel)
+		.where(sql`${schema.panel.account_id} = ${demoAdmin.id}`)
+		.limit(1)
+		.then((r: any[]) => r[0] ?? null);
+	if (!demoPanel?.id) throw new Error('Failed to ensure demo panel');
 
 	await db
 		.insert(schema.bots)
@@ -511,10 +507,11 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 	`);
 	}
 
-	return { bot_id: botRow.id, superadmin_account_id: demoAdmin.id, server_ids: serverIds, panel_slug: sessionSlug };
+	return { bot_id: botRow.id, superadmin_account_id: demoAdmin.id, server_ids: serverIds, panel_id: demoPanel.id };
 }
 
 export async function cleanupDemoSession(sessionSlug: string): Promise<void> {
 	await initializeDatabase();
-	await db.delete(schema.panel).where(sql`${schema.panel.slug} = ${sessionSlug}`);
+	const sessionUsername = `demo_${sessionSlug}`;
+	await db.delete(schema.accounts).where(sql`${schema.accounts.username} = ${sessionUsername}`);
 }

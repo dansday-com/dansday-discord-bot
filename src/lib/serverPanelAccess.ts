@@ -1,13 +1,8 @@
 import db from '$lib/database.js';
 
-// Account is the top-level owner: account -> panel -> bots -> servers.
-// When multi-panel per account is introduced, these checks will need to verify
-// the account owns the panel, not just match panel_id directly.
-// For now: 1 account = 1 panel, so panel_id match == account-level ownership.
-
 function getAccountPanelId(locals: App.Locals): number | null {
 	if (!locals.user.authenticated) return null;
-	if (locals.user.account_source === 'accounts') return locals.user.panel_id;
+	if (locals.user.account_source === 'accounts') return locals.user.panel_id ?? null;
 	return null;
 }
 

@@ -4,14 +4,6 @@ CREATE TABLE IF NOT EXISTS migrations (
     ran_at DATETIME NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS panels (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    slug VARCHAR(64) NOT NULL DEFAULT 'default',
-    created_at DATETIME NOT NULL,
-    updated_at DATETIME NOT NULL,
-    UNIQUE KEY uq_panels_slug (slug)
-);
-
 CREATE TABLE IF NOT EXISTS accounts (
     id INT PRIMARY KEY AUTO_INCREMENT,
     username VARCHAR(255) NOT NULL UNIQUE,
@@ -21,11 +13,18 @@ CREATE TABLE IF NOT EXISTS accounts (
     email_verified BOOLEAN DEFAULT FALSE,
     otp_code VARCHAR(6) NULL,
     otp_expires_at DATETIME NULL,
-    panel_id INT NOT NULL,
     ip_address TEXT NULL,
     created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS panels (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    account_id INT NOT NULL,
+    created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
-    FOREIGN KEY (panel_id) REFERENCES panels(id) ON DELETE CASCADE
+    UNIQUE KEY uq_panels_account_id (account_id),
+    FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS bots (
@@ -496,7 +495,6 @@ CREATE INDEX IF NOT EXISTS idx_server_settings_server_id ON server_settings(serv
 CREATE INDEX IF NOT EXISTS idx_server_settings_component ON server_settings(server_id, component_name);
 CREATE INDEX IF NOT EXISTS idx_accounts_email ON accounts(email);
 CREATE INDEX IF NOT EXISTS idx_accounts_username ON accounts(username);
-CREATE INDEX IF NOT EXISTS idx_accounts_panel_id ON accounts(panel_id);
 CREATE INDEX IF NOT EXISTS idx_server_accounts_server_id ON server_accounts(server_id);
 CREATE INDEX IF NOT EXISTS idx_server_accounts_email ON server_accounts(email);
 CREATE INDEX IF NOT EXISTS idx_server_account_invites_token ON server_account_invites(token);

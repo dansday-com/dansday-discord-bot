@@ -73,6 +73,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 				} else {
 					const account = await db.getAccountById(session.account_id);
 					if (account) {
+						const accountPanel = await db.getPanel(account.id);
 						event.locals.user = {
 							authenticated: true,
 							account_id: account.id,
@@ -80,14 +81,14 @@ export const handle: Handle = async ({ event, resolve }) => {
 							email: account.email,
 							account_type: account.account_type,
 							account_source: 'accounts',
-							panel_id: account.panel_id,
+							panel_id: accountPanel?.id ?? null,
 							is_demo: session.is_demo === true,
 							session_expires_at: session.expires_at
 						};
 					}
 				}
 			} else if (!session) {
-				const panel = await db.getPanel('default');
+				const panel = await db.hasAnyPanel();
 				event.locals.user = { authenticated: false, can_register: !panel };
 			}
 		} catch (_) {
@@ -95,7 +96,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 		}
 	} else {
 		try {
-			const panel = await db.getPanel('default');
+			const panel = await db.hasAnyPanel();
 			event.locals.user = { authenticated: false, can_register: !panel };
 		} catch (_) {
 			event.locals.user = { authenticated: false, can_register: false };

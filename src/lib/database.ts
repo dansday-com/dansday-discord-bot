@@ -1625,18 +1625,16 @@ export async function memberHasCustomSupporterRole(discordMemberId: string, serv
 	return { has: false, role: null };
 }
 
-async function getPanel(slug: string = 'default') {
-	const s = String(slug || 'default').trim() || 'default';
-	const rows = await db.select().from(schema.panel).where(eq(schema.panel.slug, s)).limit(1);
+async function getPanel(accountId: number) {
+	const rows = await db.select().from(schema.panel).where(eq(schema.panel.account_id, accountId)).limit(1);
 	return rows[0] || null;
 }
 
-async function createPanel(slug: string = 'default') {
-	const s = String(slug || 'default').trim() || 'default';
+async function createPanel(accountId: number) {
 	const now = toMySQLDateTime();
 	const result = await db
 		.insert(schema.panel)
-		.values({ slug: s, created_at: now as any, updated_at: now as any })
+		.values({ account_id: accountId, created_at: now as any, updated_at: now as any })
 		.onDuplicateKeyUpdate({ set: { updated_at: now as any } });
 
 	const insertedId = (result?.[0] as any)?.insertId;
@@ -1644,7 +1642,12 @@ async function createPanel(slug: string = 'default') {
 		const rows = await db.select().from(schema.panel).where(eq(schema.panel.id, insertedId)).limit(1);
 		return rows[0] || null;
 	}
-	return getPanel(s);
+	return getPanel(accountId);
+}
+
+async function hasAnyPanel() {
+	const rows = await db.select({ id: schema.panel.id }).from(schema.panel).limit(1);
+	return rows.length > 0;
 }
 
 async function getAccountById(accountId: any) {
@@ -1695,7 +1698,6 @@ async function createAccount(accountData: any) {
 		email_verified: accountData.email_verified || false,
 		otp_code: accountData.otp_code || null,
 		otp_expires_at: accountData.otp_expires_at ? (toMySQLDateTime(accountData.otp_expires_at) as any) : null,
-		panel_id: accountData.panel_id || null,
 		ip_address: accountData.ip_address || null,
 		created_at: now as any,
 		updated_at: now as any
@@ -3109,6 +3111,7 @@ export default {
 	markServerMemberDiscordQuestClaimed,
 	getPanel,
 	createPanel,
+	hasAnyPanel,
 	getAccountById,
 	getAccountByEmail,
 	getAccountByNormalizedEmail,

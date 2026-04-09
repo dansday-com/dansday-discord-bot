@@ -16,8 +16,8 @@ export const GET: RequestHandler = async ({ locals }) => {
 	}
 
 	try {
-		const panel = await db.getPanel('default');
-		return json({ authenticated: false, can_register: !panel });
+		const hasPanel = await db.hasAnyPanel();
+		return json({ authenticated: false, can_register: !hasPanel });
 	} catch (_) {
 		return json({ authenticated: false, can_register: false });
 	}

@@ -97,12 +97,6 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ success: false, error: 'Email already registered. Please login instead.', redirect_to: '/login' }, { status: 400 });
 		}
 
-		let panel = await db.getPanel('default');
-		if (!panel) {
-			await db.createPanel('default');
-			panel = await db.getPanel('default');
-		}
-
 		const passwordHash = await bcrypt.hash(password, 12);
 		const otpCode = randomInt(100000, 999999).toString();
 		const otpExpiresAt = addMinutesToNow(10);
@@ -115,9 +109,10 @@ export const POST: RequestHandler = async ({ request }) => {
 			email_verified: false,
 			otp_code: otpCode,
 			otp_expires_at: otpExpiresAt,
-			panel_id: panel.id,
 			ip_address: ip
 		});
+
+		await db.createPanel(account.id);
 
 		try {
 			await sendOTPEmail(validation.sanitizedEmail, otpCode);

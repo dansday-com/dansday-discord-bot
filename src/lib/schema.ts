@@ -6,13 +6,6 @@ export const migrations = mysqlTable('migrations', {
 	ran_at: datetime('ran_at').notNull()
 });
 
-export const panel = mysqlTable('panels', {
-	id: int('id').primaryKey().autoincrement(),
-	slug: varchar('slug', { length: 64 }).notNull().default('default'),
-	created_at: datetime('created_at').notNull(),
-	updated_at: datetime('updated_at').notNull()
-});
-
 export const accounts = mysqlTable(
 	'accounts',
 	{
@@ -24,14 +17,24 @@ export const accounts = mysqlTable(
 		email_verified: boolean('email_verified').default(false),
 		otp_code: varchar('otp_code', { length: 6 }),
 		otp_expires_at: datetime('otp_expires_at'),
-		panel_id: int('panel_id')
-			.notNull()
-			.references(() => panel.id, { onDelete: 'cascade' }),
 		ip_address: text('ip_address'),
 		created_at: datetime('created_at').notNull(),
 		updated_at: datetime('updated_at').notNull()
 	},
-	(t) => [index('idx_accounts_email').on(t.email), index('idx_accounts_username').on(t.username), index('idx_accounts_panel_id').on(t.panel_id)]
+	(t) => [index('idx_accounts_email').on(t.email), index('idx_accounts_username').on(t.username)]
+);
+
+export const panel = mysqlTable(
+	'panels',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		account_id: int('account_id')
+			.notNull()
+			.references(() => accounts.id, { onDelete: 'cascade' }),
+		created_at: datetime('created_at').notNull(),
+		updated_at: datetime('updated_at').notNull()
+	},
+	(t) => [uniqueIndex('uq_panels_account_id').on(t.account_id)]
 );
 
 export const bots = mysqlTable('bots', {

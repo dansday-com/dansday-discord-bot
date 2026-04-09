@@ -35,9 +35,9 @@ export async function handleOrbEnrollButton(interaction: ButtonInteraction): Pro
 		return;
 	}
 
-	const member = await db.getMemberByDiscordId(server.id, interaction.user.id).catch(() => null);
-	if (member) {
-		const alreadyClaimed = await db.hasServerMemberClaimedDiscordQuest(server.id, member.id, questId).catch(() => false);
+	const dbMember = await db.getMemberByDiscordId(server.id, interaction.user.id).catch(() => null);
+	if (dbMember) {
+		const alreadyClaimed = await db.hasServerMemberClaimedDiscordQuest(server.id, dbMember.id, questId).catch(() => false);
 		if (alreadyClaimed) {
 			const embedConfig = await getEmbedConfig(interaction.guild!.id);
 			const botDiscordQuest = await db.getBotDiscordQuestByQuestId(questId).catch(() => null);

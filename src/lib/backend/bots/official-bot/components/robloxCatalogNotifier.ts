@@ -87,8 +87,10 @@ async function sendItemEmbed(target: ServerTarget, item: RobloxCatalogItem, isNe
 
 	const title = isNew ? (item.name || `Item #${item.id}`).slice(0, 256) : `[Updated] ${item.name || `Item #${item.id}`}`.slice(0, 256);
 
+	const color = changeLines ? 0xffc107 : item.creatorHasVerifiedBadge ? 0x57f287 : target.embedConfig.COLOR;
+
 	const embed = new EmbedBuilder()
-		.setColor(target.embedConfig.COLOR)
+		.setColor(color)
 		.setTitle(title)
 		.addFields(
 			{ name: 'Category', value: category, inline: true },

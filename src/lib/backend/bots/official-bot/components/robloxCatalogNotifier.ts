@@ -115,22 +115,24 @@ async function initialSeed(client: Client, officialBotId: number, targets: Serve
 		fetchCatalogFirstPage({ SalesTypeFilter: 2, SortType: 3 })
 	]);
 
-	const seen = new Set<number>();
-	const all: RobloxCatalogItem[] = [];
-	for (const item of [...robloxItems, ...limitedItems]) {
-		if (seen.has(item.id)) continue;
-		seen.add(item.id);
-		all.push(item);
+	function filterNewest(items: RobloxCatalogItem[]): RobloxCatalogItem[] {
+		const withDate = items.filter((x) => x.itemCreatedUtc);
+		if (withDate.length === 0) return [];
+		const newestDate = withDate.sort((a, b) => new Date(b.itemCreatedUtc!).getTime() - new Date(a.itemCreatedUtc!).getTime())[0].itemCreatedUtc!;
+		const newestDay = new Date(newestDate).toUTCString().slice(0, 16);
+		return withDate.filter((x) => new Date(x.itemCreatedUtc!).toUTCString().slice(0, 16) === newestDay);
 	}
 
-	const today = new Date().toDateString();
-	let merged = all.filter((x) => x.itemCreatedUtc && new Date(x.itemCreatedUtc).toDateString() === today);
-	if (merged.length === 0) {
-		const newestDate = all
-			.filter((x) => x.itemCreatedUtc)
-			.sort((a, b) => new Date(b.itemCreatedUtc!).getTime() - new Date(a.itemCreatedUtc!).getTime())[0]?.itemCreatedUtc;
-		if (newestDate) merged = all.filter((x) => x.itemCreatedUtc && new Date(x.itemCreatedUtc).toDateString() === new Date(newestDate).toDateString());
+	const seen = new Set<number>();
+	for (const item of [...robloxItems, ...limitedItems]) seen.add(item.id);
+
+	const merged: RobloxCatalogItem[] = [];
+	for (const item of [...filterNewest(robloxItems), ...filterNewest(limitedItems)]) {
+		if (merged.find((x) => x.id === item.id)) continue;
+		merged.push(item);
 	}
+
+	merged.sort((a, b) => new Date(a.itemCreatedUtc!).getTime() - new Date(b.itemCreatedUtc!).getTime());
 
 	await logger.log(`🛍️ Roblox catalog: initial seed found ${merged.length} items within today/yesterday`);
 

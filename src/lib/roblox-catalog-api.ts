@@ -37,21 +37,19 @@ async function fetchWithRetry(url: string, params: Record<string, any>): Promise
 	}
 }
 
-async function fetchCatalogPages(extraParams: Record<string, any>): Promise<RobloxCatalogItem[]> {
-	const all: RobloxCatalogItem[] = [];
+export async function streamCatalogPages(extraParams: Record<string, any>, onPage: (items: RobloxCatalogItem[]) => Promise<void>): Promise<void> {
 	let cursor: string | undefined = undefined;
-	let first = true;
 
 	while (true) {
 		const params: Record<string, any> = { Limit: 120, SortType: 3, ...extraParams };
 		if (cursor) params.Cursor = cursor;
 
 		const data = await fetchWithRetry('https://catalog.roblox.com/v2/search/items/details', params);
-
 		const rows = Array.isArray(data?.data) ? data.data : [];
-		for (const x of rows) {
-			if (!Number.isFinite(Number(x?.id))) continue;
-			all.push({
+
+		const items: RobloxCatalogItem[] = rows
+			.filter((x: any) => Number.isFinite(Number(x?.id)))
+			.map((x: any) => ({
 				id: Number(x.id),
 				assetType: Number.isFinite(Number(x?.assetType)) ? Number(x.assetType) : undefined,
 				name: typeof x.name === 'string' ? x.name : undefined,
@@ -63,17 +61,18 @@ async function fetchCatalogPages(extraParams: Record<string, any>): Promise<Robl
 				totalQuantity: Number.isFinite(Number(x?.totalQuantity)) ? Number(x.totalQuantity) : undefined,
 				itemCreatedUtc: typeof x.itemCreatedUtc === 'string' ? x.itemCreatedUtc : undefined,
 				thumbnailUrl: null
-			});
+			}));
+
+		if (items.length > 0) {
+			const thumbMap = await fetchThumbnailUrls(items);
+			for (const item of items) item.thumbnailUrl = thumbMap.get(item.id) ?? null;
+			await onPage(items);
 		}
 
-		const nextCursor = typeof data?.nextPageCursor === 'string' ? data.nextPageCursor : null;
-		if (!nextCursor) break;
-		cursor = nextCursor;
-		await new Promise((r) => setTimeout(r, 10_000));
-		first = false;
+		cursor = typeof data?.nextPageCursor === 'string' ? data.nextPageCursor : null;
+		if (!cursor) break;
+		await new Promise((r) => setTimeout(r, 30_000));
 	}
-
-	return all;
 }
 
 async function fetchThumbnailUrls(items: RobloxCatalogItem[]): Promise<Map<number, string>> {
@@ -94,29 +93,6 @@ async function fetchThumbnailUrls(items: RobloxCatalogItem[]): Promise<Map<numbe
 	}
 
 	return out;
-}
-
-export async function fetchAllCatalogItems(): Promise<RobloxCatalogItem[]> {
-	const robloxItems = await fetchCatalogPages({ CreatorType: 1, CreatorTargetId: 1 });
-	await new Promise((r) => setTimeout(r, 5_000));
-	const limitedItems = await fetchCatalogPages({ SalesTypeFilter: 2 });
-
-	const seen = new Set<number>();
-	const merged: RobloxCatalogItem[] = [];
-	for (const item of [...robloxItems, ...limitedItems]) {
-		if (seen.has(item.id)) continue;
-		seen.add(item.id);
-		merged.push(item);
-	}
-
-	if (merged.length > 0) {
-		const thumbMap = await fetchThumbnailUrls(merged);
-		for (const item of merged) {
-			item.thumbnailUrl = thumbMap.get(item.id) ?? null;
-		}
-	}
-
-	return merged;
 }
 
 export function robloxCatalogItemUrl(id: number): string {

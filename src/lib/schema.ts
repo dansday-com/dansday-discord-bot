@@ -504,6 +504,8 @@ export const botRobloxItems = mysqlTable(
 		item_url: varchar('item_url', { length: 512 }),
 		item_created_at: datetime('item_created_at'),
 		last_price: int('last_price'),
+		last_lowest_price: int('last_lowest_price'),
+		last_lowest_resale_price: int('last_lowest_resale_price'),
 		last_total_quantity: int('last_total_quantity'),
 		notified_at: datetime('notified_at').notNull()
 	},

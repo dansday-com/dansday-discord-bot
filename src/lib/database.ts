@@ -2309,14 +2309,14 @@ async function markServerRobloxItemMessagePosted(serverId: number, assetId: numb
 	await initializeDatabase();
 	const posted = toMySQLDateTime();
 	const [item] = await db
-		.select({ id: schema.botRobloxItems.id, price: schema.botRobloxItems.price, total_quantity: schema.botRobloxItems.total_quantity })
+		.select({ id: schema.botRobloxItems.id, price: schema.botRobloxItems.price, lowest_price: schema.botRobloxItems.lowest_price, lowest_resale_price: schema.botRobloxItems.lowest_resale_price, total_quantity: schema.botRobloxItems.total_quantity })
 		.from(schema.botRobloxItems)
 		.where(eq(schema.botRobloxItems.asset_id, Number(assetId)))
 		.limit(1);
 	if (!item) return;
 	await db
 		.update(schema.botRobloxItems)
-		.set({ last_price: item.price ?? null, last_total_quantity: item.total_quantity ?? null } as any)
+		.set({ last_price: item.price ?? null, last_lowest_price: item.lowest_price ?? null, last_lowest_resale_price: item.lowest_resale_price ?? null, last_total_quantity: item.total_quantity ?? null } as any)
 		.where(eq(schema.botRobloxItems.id, item.id));
 	await db
 		.update(schema.serverRobloxItems)
@@ -2326,7 +2326,7 @@ async function markServerRobloxItemMessagePosted(serverId: number, assetId: numb
 
 type RobloxItemChange = {
 	assetId: number;
-	field: 'price' | 'total_quantity';
+	field: 'price' | 'lowest_price' | 'lowest_resale_price' | 'total_quantity';
 	oldValue: number | null;
 	newValue: number | null;
 };
@@ -2349,6 +2349,8 @@ async function detectAndUpdateServerRobloxItemChanges(serverId: number, items: R
 			asset_id: schema.botRobloxItems.asset_id,
 			bot_item_id: schema.botRobloxItems.id,
 			last_price: schema.botRobloxItems.last_price,
+			last_lowest_price: schema.botRobloxItems.last_lowest_price,
+			last_lowest_resale_price: schema.botRobloxItems.last_lowest_resale_price,
 			last_total_quantity: schema.botRobloxItems.last_total_quantity,
 			message_posted_at: schema.serverRobloxItems.message_posted_at
 		})
@@ -2368,6 +2370,12 @@ async function detectAndUpdateServerRobloxItemChanges(serverId: number, items: R
 		if (row.last_price !== null && it.price !== null && it.price !== undefined && row.last_price !== it.price) {
 			changes.push({ assetId, field: 'price', oldValue: row.last_price, newValue: it.price });
 		}
+		if (row.last_lowest_price !== null && it.lowestPrice !== null && it.lowestPrice !== undefined && row.last_lowest_price !== it.lowestPrice) {
+			changes.push({ assetId, field: 'lowest_price', oldValue: row.last_lowest_price, newValue: it.lowestPrice });
+		}
+		if (row.last_lowest_resale_price !== null && it.lowestResalePrice !== null && it.lowestResalePrice !== undefined && row.last_lowest_resale_price !== it.lowestResalePrice) {
+			changes.push({ assetId, field: 'lowest_resale_price', oldValue: row.last_lowest_resale_price, newValue: it.lowestResalePrice });
+		}
 		if (row.last_total_quantity !== null && it.totalQuantity !== null && it.totalQuantity !== undefined && row.last_total_quantity !== it.totalQuantity) {
 			changes.push({ assetId, field: 'total_quantity', oldValue: row.last_total_quantity, newValue: it.totalQuantity });
 		}
@@ -2376,7 +2384,12 @@ async function detectAndUpdateServerRobloxItemChanges(serverId: number, items: R
 
 		await db
 			.update(schema.botRobloxItems)
-			.set({ last_price: it.price ?? null, last_total_quantity: it.totalQuantity ?? null } as any)
+			.set({
+				last_price: it.price ?? null,
+				last_lowest_price: it.lowestPrice ?? null,
+				last_lowest_resale_price: it.lowestResalePrice ?? null,
+				last_total_quantity: it.totalQuantity ?? null
+			} as any)
 			.where(eq(schema.botRobloxItems.id, row.bot_item_id));
 	}
 

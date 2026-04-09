@@ -93,7 +93,7 @@ async function sendItemEmbed(target: ServerTarget, item: RobloxCatalogItem, isNe
 		.addFields(
 			{ name: 'Category', value: category, inline: true },
 			{ name: 'Price', value: price, inline: true },
-			{ name: 'Creator', value: (item.creatorName || '—').slice(0, 1024), inline: true },
+			{ name: 'Creator', value: (item.creatorHasVerifiedBadge ? `✅ ${item.creatorName}` : item.creatorName || '—').slice(0, 1024), inline: true },
 			{ name: 'Lowest Price', value: lowestPrice, inline: true },
 			{ name: 'Lowest Resale', value: lowestResale, inline: true },
 			{ name: 'Total Quantity', value: quantity, inline: true },
@@ -187,11 +187,18 @@ async function backgroundSync(officialBotId: number, targets: ServerTarget[], se
 	await logger.log('🛍️ Roblox catalog: background sync complete');
 }
 
-async function processPage(officialBotId: number, targets: ServerTarget[], items: RobloxCatalogItem[], seen: Set<number>) {
+let processPageCount: Record<string, number> = {};
+
+async function processPage(officialBotId: number, targets: ServerTarget[], items: RobloxCatalogItem[], seen: Set<number>, source: string) {
 	const newItems = items.filter((x) => !seen.has(x.id));
 	for (const x of newItems) seen.add(x.id);
-	if (newItems.length === 0) return;
-	await logger.log(`🔄 Roblox catalog: syncing page with ${newItems.length} items (total seen: ${seen.size})`);
+	processPageCount[source] = (processPageCount[source] ?? 0) + 1;
+	const pageNum = processPageCount[source];
+	if (newItems.length === 0) {
+		await logger.log(`🔄 Roblox catalog [${source}] page ${pageNum}: 0 new items (skipped)`);
+		return;
+	}
+	await logger.log(`🔄 Roblox catalog [${source}] page ${pageNum}: ${newItems.length} new items (total seen: ${seen.size})`);
 
 	const snapshots = newItems.map(toSnapshot);
 	const today = todayUtc();
@@ -216,8 +223,9 @@ async function processPage(officialBotId: number, targets: ServerTarget[], items
 				if (!isNew && itemChanges.length > 0) {
 					changeLines = itemChanges
 						.map((c) => {
-							const label = c.field === 'total_quantity' ? 'Stock' : 'Price';
-							const fmt = (v: number | null) => (c.field === 'price' ? (v === 0 ? 'FREE' : `${v} Robux`) : String(v ?? '—'));
+							const label = c.field === 'total_quantity' ? 'Stock' : c.field === 'lowest_price' ? 'Lowest Price' : c.field === 'lowest_resale_price' ? 'Lowest Resale' : 'Price';
+							const isPrice = c.field !== 'total_quantity';
+							const fmt = (v: number | null) => (isPrice ? (v === 0 ? 'FREE' : `${v} Robux`) : String(v ?? '—'));
 							return `**${label}**: ${fmt(c.oldValue)} → ${fmt(c.newValue)}`;
 						})
 						.join('\n');
@@ -252,15 +260,16 @@ async function runTick(client: Client, officialBotId: number) {
 		}
 
 		const seen = new Set<number>();
+		processPageCount = {};
 
 		await streamCatalogPages({ CreatorType: 1, CreatorTargetId: 1, SortType: 3 }, async (items) => {
-			await processPage(officialBotId, targets, items, seen);
+			await processPage(officialBotId, targets, items, seen, 'roblox-official');
 		});
 
 		await new Promise((r) => setTimeout(r, 10_000));
 
 		await streamCatalogPages({ SalesTypeFilter: 2, SortType: 3 }, async (items) => {
-			await processPage(officialBotId, targets, items, seen);
+			await processPage(officialBotId, targets, items, seen, 'limiteds');
 		});
 	} finally {
 		tickRunning = false;

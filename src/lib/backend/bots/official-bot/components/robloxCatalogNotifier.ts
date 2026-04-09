@@ -2,7 +2,7 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle, Client, EmbedBuilder } fr
 import db from '../../../../database.js';
 import { getEmbedConfig, getMainChannel, isComponentFeatureEnabled, serverSettingsComponent } from '../../../config.js';
 import { logger } from '../../../../utils/index.js';
-import { assetTypeCategory, fetchAllCatalogVerifiedCreators, robloxCatalogItemUrl } from '../../../../roblox-catalog-api.js';
+import { assetTypeCategory, fetchAllCatalogItems, robloxCatalogItemUrl } from '../../../../roblox-catalog-api.js';
 
 let tickTimeoutRef: ReturnType<typeof setTimeout> | null = null;
 
@@ -11,7 +11,7 @@ const POLL_MS = 60_000;
 async function runTick(client: Client, officialBotId: number) {
 	const servers = await db.getServersForBot(officialBotId);
 
-	const items = await fetchAllCatalogVerifiedCreators();
+	const items = await fetchAllCatalogItems();
 	if (items.length === 0) return;
 
 	const snapshots = items.map((x) => ({

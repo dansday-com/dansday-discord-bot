@@ -14,40 +14,50 @@ export type RobloxCatalogItem = {
 	thumbnailUrl?: string | null;
 };
 
-export async function fetchCatalogPage(cursor?: string): Promise<{ items: RobloxCatalogItem[]; nextCursor: string | null }> {
-	const params: Record<string, any> = { Limit: 120, SortType: 3 };
-	if (cursor) params.Cursor = cursor;
+async function fetchCatalogPages(extraParams: Record<string, any>): Promise<RobloxCatalogItem[]> {
+	const all: RobloxCatalogItem[] = [];
+	let cursor: string | undefined = undefined;
+	let first = true;
 
-	const res = await axios.get('https://catalog.roblox.com/v2/search/items/details', {
-		params,
-		headers: { 'User-Agent': 'dansday-discord-bot/roblox-catalog-notifier' },
-		timeout: 15_000
-	});
+	while (true) {
+		const params: Record<string, any> = { Limit: 120, SortType: 3, ...extraParams };
+		if (cursor) params.Cursor = cursor;
 
-	const data = Array.isArray(res.data?.data) ? res.data.data : [];
-	const items: RobloxCatalogItem[] = data
-		.filter((x: any) => Number.isFinite(Number(x?.id)))
-		.map((x: any) => ({
-			id: Number(x.id),
-			assetType: Number.isFinite(Number(x?.assetType)) ? Number(x.assetType) : undefined,
-			name: typeof x.name === 'string' ? x.name : undefined,
-			description: typeof x.description === 'string' ? x.description : undefined,
-			creatorName: typeof x.creatorName === 'string' ? x.creatorName : undefined,
-			price: Number.isFinite(Number(x?.price)) ? Number(x.price) : undefined,
-			lowestPrice: Number.isFinite(Number(x?.lowestPrice)) ? Number(x.lowestPrice) : undefined,
-			lowestResalePrice: Number.isFinite(Number(x?.lowestResalePrice)) ? Number(x.lowestResalePrice) : undefined,
-			totalQuantity: Number.isFinite(Number(x?.totalQuantity)) ? Number(x.totalQuantity) : undefined,
-			itemCreatedUtc: typeof x.itemCreatedUtc === 'string' ? x.itemCreatedUtc : undefined,
-			thumbnailUrl: null
-		}));
+		const res = await axios.get('https://catalog.roblox.com/v2/search/items/details', {
+			params,
+			headers: { 'User-Agent': 'dansday-discord-bot/roblox-catalog-notifier' },
+			timeout: 15_000
+		});
 
-	return {
-		items,
-		nextCursor: typeof res.data?.nextPageCursor === 'string' ? res.data.nextPageCursor : null
-	};
+		const data = Array.isArray(res.data?.data) ? res.data.data : [];
+		for (const x of data) {
+			if (!Number.isFinite(Number(x?.id))) continue;
+			all.push({
+				id: Number(x.id),
+				assetType: Number.isFinite(Number(x?.assetType)) ? Number(x.assetType) : undefined,
+				name: typeof x.name === 'string' ? x.name : undefined,
+				description: typeof x.description === 'string' ? x.description : undefined,
+				creatorName: typeof x.creatorName === 'string' ? x.creatorName : undefined,
+				price: Number.isFinite(Number(x?.price)) ? Number(x.price) : undefined,
+				lowestPrice: Number.isFinite(Number(x?.lowestPrice)) ? Number(x.lowestPrice) : undefined,
+				lowestResalePrice: Number.isFinite(Number(x?.lowestResalePrice)) ? Number(x.lowestResalePrice) : undefined,
+				totalQuantity: Number.isFinite(Number(x?.totalQuantity)) ? Number(x.totalQuantity) : undefined,
+				itemCreatedUtc: typeof x.itemCreatedUtc === 'string' ? x.itemCreatedUtc : undefined,
+				thumbnailUrl: null
+			});
+		}
+
+		const nextCursor = typeof res.data?.nextPageCursor === 'string' ? res.data.nextPageCursor : null;
+		if (!nextCursor) break;
+		cursor = nextCursor;
+		if (!first) await new Promise((r) => setTimeout(r, 5_000));
+		first = false;
+	}
+
+	return all;
 }
 
-export async function fetchThumbnailUrls(items: RobloxCatalogItem[]): Promise<Map<number, string>> {
+async function fetchThumbnailUrls(items: RobloxCatalogItem[]): Promise<Map<number, string>> {
 	const out = new Map<number, string>();
 	const ids = items.map((x) => x.id);
 	if (ids.length === 0) return out;
@@ -67,34 +77,25 @@ export async function fetchThumbnailUrls(items: RobloxCatalogItem[]): Promise<Ma
 	return out;
 }
 
-export async function fetchAllCatalogVerifiedCreators(): Promise<RobloxCatalogItem[]> {
-	const all: RobloxCatalogItem[] = [];
-	let cursor: string | undefined = undefined;
-	let first = true;
+export async function fetchAllCatalogItems(): Promise<RobloxCatalogItem[]> {
+	const [robloxItems, limitedItems] = await Promise.all([fetchCatalogPages({ CreatorTargetId: 1, CreatorType: 1 }), fetchCatalogPages({ SalesTypeFilter: 2 })]);
 
-	while (true) {
-		const { items, nextCursor } = await fetchCatalogPage(cursor);
-		const verified = items.filter((x) => {
-			const isRoblox = x.creatorName?.trim().toLowerCase() === 'roblox';
-			const isLimitedWithStock = typeof x.totalQuantity === 'number' && x.totalQuantity > 0;
-			return isRoblox || isLimitedWithStock;
-		});
-
-		if (verified.length > 0) {
-			const thumbMap = await fetchThumbnailUrls(verified);
-			for (const item of verified) {
-				item.thumbnailUrl = thumbMap.get(item.id) ?? null;
-			}
-			all.push(...verified);
-		}
-
-		if (!nextCursor) break;
-		cursor = nextCursor;
-		if (!first) await new Promise((r) => setTimeout(r, 5_000));
-		first = false;
+	const seen = new Set<number>();
+	const merged: RobloxCatalogItem[] = [];
+	for (const item of [...robloxItems, ...limitedItems]) {
+		if (seen.has(item.id)) continue;
+		seen.add(item.id);
+		merged.push(item);
 	}
 
-	return all;
+	if (merged.length > 0) {
+		const thumbMap = await fetchThumbnailUrls(merged);
+		for (const item of merged) {
+			item.thumbnailUrl = thumbMap.get(item.id) ?? null;
+		}
+	}
+
+	return merged;
 }
 
 export function robloxCatalogItemUrl(id: number): string {

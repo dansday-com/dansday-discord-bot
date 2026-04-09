@@ -10,7 +10,7 @@
 	let { data }: PageProps = $props();
 
 	let saving = $state(false);
-	let featureEnabled = $state(data.settings?.enabled !== false);
+	let featureEnabled = $state(data.settings?.enabled === true);
 	let feedbackChannel = $state<string>(data.settings?.feedback_channel ?? '');
 	let feedbackRole = $state<string>(data.settings?.feedback_role ?? '');
 

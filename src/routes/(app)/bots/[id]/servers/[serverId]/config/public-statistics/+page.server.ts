@@ -13,7 +13,7 @@ export const load: PageServerLoad = async ({ locals, params, parent }) => {
 
 	const settingsRow = await db.getServerSettings(params.serverId, SERVER_SETTINGS.component.public_statistics).catch(() => null);
 	const settings = (settingsRow as any)?.settings || {};
-	const enabled = settings.enabled !== false;
+	const enabled = settings.enabled === true;
 
 	const slug = await computePublicServerSlugForServerConfig(Number(params.serverId), overview?.name ?? null);
 

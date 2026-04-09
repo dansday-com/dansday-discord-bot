@@ -22,7 +22,7 @@
 	};
 
 	let saving = $state(false);
-	let featureEnabled = $state(data.settings?.enabled !== false);
+	let featureEnabled = $state(data.settings?.enabled === true);
 	let forwarders = $state<Forwarder[]>((data.settings?.forwarders ?? []) as Forwarder[]);
 
 	let modalOpen = $state(false);

@@ -9,7 +9,7 @@
 	let { data }: PageProps = $props();
 
 	let saving = $state(false);
-	let featureEnabled = $state(data.settings?.enabled !== false);
+	let featureEnabled = $state(data.settings?.enabled === true);
 	let roleStart = $state<string>(data.settings?.role_start ?? '');
 	let roleEnd = $state<string>(data.settings?.role_end ?? '');
 

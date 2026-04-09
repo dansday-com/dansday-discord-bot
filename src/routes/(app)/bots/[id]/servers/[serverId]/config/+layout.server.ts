@@ -43,10 +43,10 @@ export const load: LayoutServerLoad = async ({ locals, params }) => {
 		SERVER_SETTINGS.withFeatureSwitch.map(async (c) => {
 			const sid = await settingsRowServerId(params.serverId, c);
 			const row = await db.getServerSettings(sid, c).catch(() => null);
-			const raw = row?.settings;
-			let on = true;
+			const raw = row && !Array.isArray(row) ? row.settings : null;
+			let on = false;
 			if (raw && typeof raw === 'object') {
-				on = (raw as Record<string, unknown>).enabled !== false;
+				on = (raw as Record<string, unknown>).enabled === true;
 			}
 			return [c, on] as const;
 		})

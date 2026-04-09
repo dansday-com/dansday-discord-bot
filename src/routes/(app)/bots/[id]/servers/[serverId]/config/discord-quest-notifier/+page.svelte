@@ -11,7 +11,7 @@
 
 	let saving = $state(false);
 	let testing = $state(false);
-	let featureEnabled = $state(data.settings.enabled !== false);
+	let featureEnabled = $state(data.settings.enabled === true);
 	let channelId = $state(data.settings.channel_id || '');
 	let httpProxyUrl = $state(data.settings.http_proxy_url || '');
 	let autoQuest = $state(data.settings.auto_quest !== false);

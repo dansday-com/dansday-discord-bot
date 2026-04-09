@@ -6,6 +6,6 @@ import { SERVER_SETTINGS } from '$lib/serverSettingsComponents.js';
 export const load: PageServerLoad = async ({ locals, params }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
 	const row = await db.getServerSettings(params.serverId, SERVER_SETTINGS.component.afk).catch(() => null);
-	const settings = row?.settings ?? {};
-	return { settings: { enabled: settings.enabled !== false } };
+	const settings = (row && !Array.isArray(row) ? row.settings : null) ?? {};
+	return { settings: { enabled: (settings as any).enabled === true } };
 };

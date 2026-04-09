@@ -10,7 +10,7 @@ export const load = async ({ locals, params }: { locals: any; params: any }) => 
 
 	return {
 		settings: {
-			enabled: s.enabled !== false,
+			enabled: s.enabled === true,
 			channel_id: typeof s.channel_id === 'string' ? s.channel_id : ''
 		}
 	};

@@ -7,6 +7,7 @@ import {
 	inferIsFreeFromSearch,
 	inferIsLimitedFromSearch,
 	isRobloxOfficialCreator,
+	robloxAssetTypeLabel,
 	robloxCatalogItemUrl
 } from '../../../../roblox-catalog-api.js';
 
@@ -55,9 +56,11 @@ async function sendRobloxCatalogNotificationMessage(client: Client, guildId: str
 	const price = typeof it.price === 'number' ? (it.price === 0 ? 'FREE' : `${it.price} Robux`) : it.isFree ? 'FREE' : '—';
 
 	const creator = (it.creatorName || '—').slice(0, 1024);
+	const kind = typeof it.itemType === 'string' && it.itemType ? it.itemType : 'Item';
+	const assetLabel = robloxAssetTypeLabel(it.assetType);
 	const meta = [
-		typeof it.assetType === 'number' ? `AssetType: ${it.assetType}` : null,
-		typeof it.itemType === 'string' && it.itemType ? `Type: ${it.itemType}` : null,
+		`Kind: ${kind}`,
+		assetLabel ? `Category: ${assetLabel}` : typeof it.assetType === 'number' ? `Category: AssetType ${it.assetType}` : null,
 		flags.length ? flags.join(' · ') : null
 	]
 		.filter(Boolean)
@@ -124,7 +127,8 @@ async function runTick(client: Client, officialBotId: number) {
 					const isFree = inferIsFreeFromSearch(x);
 					const isLimited = inferIsLimitedFromSearch(x);
 					const isOfficial = isRobloxOfficialCreator(x.creatorName, x.creatorTargetId);
-					if (!isFree && !isLimited && !isOfficial) continue;
+					const isVerifiedCreator = x.creatorHasVerifiedBadge === true;
+					if (!isVerifiedCreator && !isOfficial) continue;
 
 					if (seenRelevantAssetIds.has(assetId)) continue;
 					seenRelevantAssetIds.add(assetId);
@@ -154,10 +158,11 @@ async function runTick(client: Client, officialBotId: number) {
 				if (pageSnapshots.length > 0) {
 					await db.syncServerRobloxItemsFromApi(officialBotId, server.id, pageSnapshots);
 
-					const assetIds = pageSnapshots.map((x) => x.assetId);
-					const unposted = new Set(await db.listServerRobloxUnpostedAssetIds(server.id, assetIds));
+					const notifyAssetIds = pageSnapshots.filter((x) => x.isFree || x.isLimited || x.isOfficial).map((x) => x.assetId);
+					const unposted = new Set(await db.listServerRobloxUnpostedAssetIds(server.id, notifyAssetIds));
 					if (unposted.size > 0) {
 						for (const it of pageSnapshots) {
+							if (!it.isFree && !it.isLimited && !it.isOfficial) continue;
 							if (!unposted.has(it.assetId)) continue;
 							try {
 								await sendRobloxCatalogNotificationMessage(client, guildId, channelId, it);

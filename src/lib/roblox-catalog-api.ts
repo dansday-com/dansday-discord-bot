@@ -9,11 +9,13 @@ export type RobloxCatalogSearchItem = {
 	creatorType?: string;
 	creatorTargetId?: number;
 	creatorName?: string;
+	creatorHasVerifiedBadge?: boolean;
 	price?: number;
 	lowestPrice?: number;
 	lowestResalePrice?: number;
 	totalQuantity?: number;
 	collectibleItemId?: string | null;
+	hasResellers?: boolean;
 	itemCreatedUtc?: string | null;
 };
 
@@ -33,14 +35,54 @@ export function isRobloxOfficialCreator(creatorName?: string | null, creatorTarg
 }
 
 export function inferIsLimitedFromSearch(it: Partial<RobloxCatalogSearchItem>): boolean {
-	if (typeof it.collectibleItemId === 'string' && it.collectibleItemId.trim()) return true;
-	if (typeof it.totalQuantity === 'number' && it.totalQuantity > 0) return true;
+	if (it.hasResellers === true) return true;
 	if (typeof it.lowestResalePrice === 'number' && it.lowestResalePrice > 0) return true;
+	if (typeof it.totalQuantity === 'number' && it.totalQuantity > 0 && typeof it.price === 'number' && it.price > 0) return true;
 	return false;
 }
 
 export function inferIsFreeFromSearch(it: Partial<RobloxCatalogSearchItem>): boolean {
 	return typeof it.price === 'number' && it.price === 0;
+}
+
+export function robloxAssetTypeLabel(assetType: number | null | undefined): string | null {
+	const id = typeof assetType === 'number' && Number.isFinite(assetType) ? assetType : null;
+	if (id == null) return null;
+	const m: Record<number, string> = {
+		8: 'Hat',
+		11: 'Shirt',
+		12: 'Pants',
+		17: 'Head',
+		18: 'Face',
+		27: 'Torso',
+		28: 'Right Arm',
+		29: 'Left Arm',
+		30: 'Left Leg',
+		31: 'Right Leg',
+		41: 'Hair',
+		42: 'Face Accessory',
+		43: 'Neck Accessory',
+		44: 'Shoulder Accessory',
+		45: 'Front Accessory',
+		46: 'Back Accessory',
+		47: 'Waist Accessory',
+		48: 'Animation (Climb)',
+		50: 'Animation (Fall)',
+		51: 'Animation (Idle)',
+		52: 'Animation (Jump)',
+		53: 'Animation (Run)',
+		54: 'Animation (Swim)',
+		55: 'Animation (Walk)',
+		61: 'Emote',
+		65: 'T-Shirt',
+		66: 'Shirt',
+		67: 'Pants',
+		76: 'Eyebrows',
+		78: 'Face Mood',
+		79: 'Head',
+		88: 'Face Makeup'
+	};
+	return m[id] || null;
 }
 
 export async function fetchRobloxCatalogSearchDetails(opts?: {
@@ -77,11 +119,13 @@ export async function fetchRobloxCatalogSearchDetails(opts?: {
 				creatorType: typeof x?.creatorType === 'string' ? x.creatorType : undefined,
 				creatorTargetId: Number.isFinite(Number(x?.creatorTargetId)) ? Number(x.creatorTargetId) : undefined,
 				creatorName: typeof x?.creatorName === 'string' ? x.creatorName : undefined,
+				creatorHasVerifiedBadge: x?.creatorHasVerifiedBadge === true,
 				price: Number.isFinite(Number(x?.price)) ? Number(x.price) : undefined,
 				lowestPrice: Number.isFinite(Number(x?.lowestPrice)) ? Number(x.lowestPrice) : undefined,
 				lowestResalePrice: Number.isFinite(Number(x?.lowestResalePrice)) ? Number(x.lowestResalePrice) : undefined,
 				totalQuantity: Number.isFinite(Number(x?.totalQuantity)) ? Number(x.totalQuantity) : undefined,
 				collectibleItemId: typeof x?.collectibleItemId === 'string' ? x.collectibleItemId : null,
+				hasResellers: x?.hasResellers === true,
 				itemCreatedUtc: typeof x?.itemCreatedUtc === 'string' ? x.itemCreatedUtc : null
 			};
 		})

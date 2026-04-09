@@ -26,6 +26,8 @@ async function fetchWithRetry(url: string, params: Record<string, any>): Promise
 			return res.data;
 		} catch (err: any) {
 			const status = err?.response?.status;
+			const fullUrl = `${url}?${new URLSearchParams(params).toString()}`;
+			console.error(`[roblox-api] attempt ${attempt + 1} failed: ${status} — ${fullUrl}`);
 			if ((status === 503 || status === 429) && attempt < 2) {
 				await new Promise((r) => setTimeout(r, 10_000 * (attempt + 1)));
 				continue;

@@ -2215,24 +2215,17 @@ async function markServerDiscordOrbMessagePosted(serverId: number, questId: stri
 
 type RobloxCatalogItemSnapshot = {
 	assetId: number;
-	itemType?: string;
 	assetType?: number | null;
 	name?: string | null;
 	description?: string | null;
-	creatorType?: string | null;
-	creatorTargetId?: number | null;
 	creatorName?: string | null;
 	price?: number | null;
 	lowestPrice?: number | null;
 	lowestResalePrice?: number | null;
 	totalQuantity?: number | null;
-	collectibleItemId?: string | null;
 	thumbnailUrl?: string | null;
-	itemCreatedUtc?: string | null;
-	isFree?: boolean;
-	isLimited?: boolean;
-	isOfficial?: boolean;
 	itemUrl?: string | null;
+	itemCreatedUtc?: string | null;
 };
 
 async function syncServerRobloxItemsFromApi(botId: number, serverId: number, items: RobloxCatalogItemSnapshot[]): Promise<void> {
@@ -2250,47 +2243,33 @@ async function syncServerRobloxItemsFromApi(botId: number, serverId: number, ite
 			.values({
 				bot_id: botId,
 				asset_id: Number(it.assetId),
-				item_type: String(it.itemType || 'Asset'),
 				asset_type: it.assetType == null ? null : Number(it.assetType),
 				name: it.name ?? null,
 				description: it.description ?? null,
-				creator_type: String(it.creatorType || ''),
-				creator_target_id: it.creatorTargetId == null ? null : Number(it.creatorTargetId),
 				creator_name: it.creatorName ?? null,
 				price: it.price == null ? null : Number(it.price),
 				lowest_price: it.lowestPrice == null ? null : Number(it.lowestPrice),
 				lowest_resale_price: it.lowestResalePrice == null ? null : Number(it.lowestResalePrice),
 				total_quantity: it.totalQuantity == null ? null : Number(it.totalQuantity),
-				collectible_item_id: it.collectibleItemId ?? null,
 				thumbnail_url: it.thumbnailUrl ?? null,
-				item_created_at: itemCreatedAt as any,
-				is_free: it.isFree === true,
-				is_limited: it.isLimited === true,
-				is_official: it.isOfficial === true,
 				item_url: it.itemUrl ?? null,
+				item_created_at: itemCreatedAt as any,
 				notified_at: now as any
 			})
 			.onDuplicateKeyUpdate({
 				set: {
 					bot_id: botId,
-					item_type: String(it.itemType || 'Asset'),
 					asset_type: it.assetType == null ? null : Number(it.assetType),
 					name: it.name ?? null,
 					description: it.description ?? null,
-					creator_type: String(it.creatorType || ''),
-					creator_target_id: it.creatorTargetId == null ? null : Number(it.creatorTargetId),
 					creator_name: it.creatorName ?? null,
 					price: it.price == null ? null : Number(it.price),
 					lowest_price: it.lowestPrice == null ? null : Number(it.lowestPrice),
 					lowest_resale_price: it.lowestResalePrice == null ? null : Number(it.lowestResalePrice),
 					total_quantity: it.totalQuantity == null ? null : Number(it.totalQuantity),
-					collectible_item_id: it.collectibleItemId ?? null,
 					thumbnail_url: it.thumbnailUrl ?? null,
-					item_created_at: itemCreatedAt as any,
-					is_free: it.isFree === true,
-					is_limited: it.isLimited === true,
-					is_official: it.isOfficial === true,
 					item_url: it.itemUrl ?? null,
+					item_created_at: itemCreatedAt as any,
 					notified_at: now as any
 				} as any
 			});

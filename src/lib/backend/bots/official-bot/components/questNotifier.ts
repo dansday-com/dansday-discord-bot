@@ -105,7 +105,7 @@ async function runTick(client: Client, officialBotId: number) {
 			const orbQuests = extractOrbQuests(payload);
 			if (orbQuests.length === 0) continue;
 
-			await db.syncServerDiscordOrbQuestsFromApi(server.id, orbQuests);
+			await db.syncServerDiscordOrbQuestsFromApi(officialBotId, server.id, orbQuests);
 			const unpostedIds = new Set(
 				await db.listServerDiscordOrbUnpostedQuestIds(
 					server.id,

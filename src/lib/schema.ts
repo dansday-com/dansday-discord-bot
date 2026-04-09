@@ -6,13 +6,6 @@ export const migrations = mysqlTable('migrations', {
 	ran_at: datetime('ran_at').notNull()
 });
 
-export const panel = mysqlTable('panels', {
-	id: int('id').primaryKey().autoincrement(),
-	slug: varchar('slug', { length: 64 }).notNull().default('default'),
-	created_at: datetime('created_at').notNull(),
-	updated_at: datetime('updated_at').notNull()
-});
-
 export const accounts = mysqlTable(
 	'accounts',
 	{
@@ -24,14 +17,24 @@ export const accounts = mysqlTable(
 		email_verified: boolean('email_verified').default(false),
 		otp_code: varchar('otp_code', { length: 6 }),
 		otp_expires_at: datetime('otp_expires_at'),
-		panel_id: int('panel_id')
-			.notNull()
-			.references(() => panel.id, { onDelete: 'cascade' }),
 		ip_address: text('ip_address'),
 		created_at: datetime('created_at').notNull(),
 		updated_at: datetime('updated_at').notNull()
 	},
-	(t) => [index('idx_accounts_email').on(t.email), index('idx_accounts_username').on(t.username), index('idx_accounts_panel_id').on(t.panel_id)]
+	(t) => [index('idx_accounts_email').on(t.email), index('idx_accounts_username').on(t.username)]
+);
+
+export const panel = mysqlTable(
+	'panels',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		account_id: int('account_id')
+			.notNull()
+			.references(() => accounts.id, { onDelete: 'cascade' }),
+		created_at: datetime('created_at').notNull(),
+		updated_at: datetime('updated_at').notNull()
+	},
+	(t) => [uniqueIndex('uq_panels_account_id').on(t.account_id)]
 );
 
 export const bots = mysqlTable('bots', {
@@ -42,9 +45,9 @@ export const bots = mysqlTable('bots', {
 	bot_icon: text('bot_icon'),
 	port: int('port'),
 	secret_key: text('secret_key'),
-	account_id: int('account_id')
+	panel_id: int('panel_id')
 		.notNull()
-		.references(() => accounts.id, { onDelete: 'cascade' }),
+		.references(() => panel.id, { onDelete: 'cascade' }),
 	status: mysqlEnum('status', ['running', 'stopped', 'starting', 'stopping']).default('stopped'),
 	process_id: int('process_id'),
 	uptime_started_at: datetime('uptime_started_at'),
@@ -426,37 +429,63 @@ export const serverSettings = mysqlTable(
 	]
 );
 
-export const serverDiscordOrb = mysqlTable(
-	'server_discord_orbs',
+export const botDiscordQuest = mysqlTable(
+	'bot_discord_quests',
 	{
 		id: int('id').primaryKey().autoincrement(),
-		server_id: int('server_id')
+		bot_id: int('bot_id')
 			.notNull()
-			.references(() => servers.id, { onDelete: 'cascade' }),
-		discord_quest_id: varchar('discord_quest_id', { length: 64 }).notNull(),
+			.references(() => bots.id, { onDelete: 'cascade' }),
+		quest_id: varchar('quest_id', { length: 64 }).notNull(),
 		quest_task_type: varchar('quest_task_type', { length: 64 }).notNull().default(''),
 		quest_task_label: varchar('quest_task_label', { length: 128 }).notNull().default(''),
 		quest_name: text('quest_name'),
 		game_title: text('game_title'),
-		game_subtitle: text('game_subtitle'),
-		publisher: varchar('publisher', { length: 255 }),
 		quest_url: varchar('quest_url', { length: 512 }),
 		quest_description: text('quest_description'),
 		orb_hint: text('orb_hint'),
 		rewards_line: text('rewards_line'),
 		task_detail_line: text('task_detail_line'),
-		thumbnail_url: varchar('thumbnail_url', { length: 2048 }),
-		banner_url: varchar('banner_url', { length: 2048 }),
 		starts_at: datetime('starts_at'),
 		expires_at: datetime('expires_at'),
-		notified_at: datetime('notified_at').notNull(),
-		orb_message_posted_at: datetime('orb_message_posted_at')
+		notified_at: datetime('notified_at').notNull()
 	},
-	(t) => [uniqueIndex('unique_server_discord_orbs_quest').on(t.server_id, t.discord_quest_id), index('idx_server_discord_orbs_server_id').on(t.server_id)]
+	(t) => [uniqueIndex('unique_bot_discord_quests_quest').on(t.quest_id), index('idx_bot_discord_quests_bot_id').on(t.bot_id)]
 );
 
-export const serverGiveaways = mysqlTable(
-	'server_giveaways',
+export const serverDiscordQuest = mysqlTable(
+	'server_discord_quests',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		server_id: int('server_id')
+			.notNull()
+			.references(() => servers.id, { onDelete: 'cascade' }),
+		quest_id: int('quest_id')
+			.notNull()
+			.references(() => botDiscordQuest.id, { onDelete: 'cascade' }),
+		message_posted_at: datetime('message_posted_at')
+	},
+	(t) => [uniqueIndex('unique_server_discord_quests').on(t.server_id, t.quest_id), index('idx_server_discord_quests_server_id').on(t.server_id)]
+);
+
+export const serverMemberDiscordQuest = mysqlTable(
+	'server_member_discord_quests',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		member_id: int('member_id')
+			.notNull()
+			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		quest_id: int('quest_id')
+			.notNull()
+			.references(() => serverDiscordQuest.id, { onDelete: 'cascade' }),
+		orb_claimed: boolean('orb_claimed').notNull().default(false),
+		created_at: datetime('created_at').notNull()
+	},
+	(t) => [uniqueIndex('unique_server_member_discord_quests').on(t.member_id, t.quest_id), index('idx_server_member_discord_quests_member').on(t.member_id)]
+);
+
+export const serverMemberGiveaways = mysqlTable(
+	'server_member_giveaways',
 	{
 		id: int('id').primaryKey().autoincrement(),
 		discord_message_id: varchar('discord_message_id', { length: 150 }),
@@ -476,19 +505,19 @@ export const serverGiveaways = mysqlTable(
 		updated_at: datetime('updated_at').notNull()
 	},
 	(t) => [
-		index('idx_server_giveaways_member_id').on(t.member_id),
-		index('idx_server_giveaways_status').on(t.status),
-		index('idx_server_giveaways_ends_at').on(t.ends_at)
+		index('idx_server_member_giveaways_member_id').on(t.member_id),
+		index('idx_server_member_giveaways_status').on(t.status),
+		index('idx_server_member_giveaways_ends_at').on(t.ends_at)
 	]
 );
 
-export const serverGiveawayEntries = mysqlTable(
-	'server_giveaway_entries',
+export const serverMemberGiveawayEntries = mysqlTable(
+	'server_member_giveaway_entries',
 	{
 		id: int('id').primaryKey().autoincrement(),
 		giveaway_id: int('giveaway_id')
 			.notNull()
-			.references(() => serverGiveaways.id, { onDelete: 'cascade' }),
+			.references(() => serverMemberGiveaways.id, { onDelete: 'cascade' }),
 		member_id: int('member_id')
 			.notNull()
 			.references(() => serverMembers.id, { onDelete: 'cascade' }),
@@ -499,8 +528,8 @@ export const serverGiveawayEntries = mysqlTable(
 	},
 	(t) => [
 		uniqueIndex('unique_giveaway_member').on(t.giveaway_id, t.member_id),
-		index('idx_server_giveaway_entries_giveaway_id').on(t.giveaway_id),
-		index('idx_server_giveaway_entries_member_id').on(t.member_id)
+		index('idx_server_member_giveaway_entries_giveaway_id').on(t.giveaway_id),
+		index('idx_server_member_giveaway_entries_member_id').on(t.member_id)
 	]
 );
 

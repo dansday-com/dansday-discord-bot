@@ -2,18 +2,14 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 
-export const GET: RequestHandler = async ({ locals, params }) => {
-	if (!locals.user.authenticated) {
-		return json({ error: 'Authentication required' }, { status: 401 });
-	}
-
+export const GET: RequestHandler = async ({ params }) => {
 	try {
-		const officialBot = await db.getBot(Number(params.id));
+		const botId = Number(params.id);
+		const officialBot = await db.getBot(botId);
 		if (!officialBot) {
 			return json({ error: 'Bot not found' }, { status: 400 });
 		}
-
-		const selfbots = await db.getSelfbotsForOfficialBot(Number(params.id));
+		const selfbots = await db.getSelfbotsForOfficialBot(botId);
 		return json(selfbots);
 	} catch (error: any) {
 		return json({ error: error.message }, { status: 500 });

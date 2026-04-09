@@ -210,12 +210,10 @@ export async function getAllBots(panelId?: number | null) {
 	if (panelId != null) {
 		return retryOnConnectionError(() =>
 			db
-				.select({ bot: schema.bots })
+				.select()
 				.from(schema.bots)
-				.innerJoin(schema.accounts, eq(schema.accounts.id, schema.bots.account_id))
-				.where(eq(schema.accounts.panel_id, Number(panelId)))
+				.where(eq(schema.bots.panel_id, Number(panelId)))
 				.orderBy(asc(schema.bots.created_at))
-				.then((rows) => rows.map((r) => r.bot))
 		);
 	}
 	return retryOnConnectionError(() => db.select().from(schema.bots).orderBy(asc(schema.bots.created_at)));
@@ -240,8 +238,7 @@ export async function getBot(botId: number | string) {
 
 export async function createBot(botData: any) {
 	await initializeDatabase();
-	const panelId = botData.panel_id ?? (botData.account_id ? ((await getAccountById(botData.account_id))?.panel_id ?? null) : null);
-	const bots = await getAllBots(panelId);
+	const bots = await getAllBots(botData.panel_id);
 	const botNumber = bots.length + 1;
 	const now = toMySQLDateTime();
 
@@ -252,7 +249,7 @@ export async function createBot(botData: any) {
 		bot_icon: botData.bot_icon || null,
 		port: botData.port !== undefined ? botData.port : 7777,
 		secret_key: botData.secret_key || null,
-		account_id: botData.account_id,
+		panel_id: botData.panel_id,
 		created_at: now as any,
 		updated_at: now as any
 	});
@@ -286,6 +283,23 @@ export async function updateBot(botId: number, botData: any) {
 export async function deleteBot(botId: number) {
 	await db.delete(schema.bots).where(eq(schema.bots.id, botId));
 	return true;
+}
+
+export async function getBotPanelId(botId: number): Promise<number | null> {
+	await initializeDatabase();
+	const rows = await db.select({ panel_id: schema.bots.panel_id }).from(schema.bots).where(eq(schema.bots.id, botId)).limit(1);
+	return rows[0]?.panel_id ?? null;
+}
+
+export async function getServerPanelId(serverId: number): Promise<number | null> {
+	await initializeDatabase();
+	const rows = await db
+		.select({ panel_id: schema.bots.panel_id })
+		.from(schema.servers)
+		.innerJoin(schema.bots, eq(schema.bots.id, schema.servers.bot_id))
+		.where(eq(schema.servers.id, serverId))
+		.limit(1);
+	return rows[0]?.panel_id ?? null;
 }
 
 export async function getServer(serverId: any) {
@@ -1611,18 +1625,16 @@ export async function memberHasCustomSupporterRole(discordMemberId: string, serv
 	return { has: false, role: null };
 }
 
-async function getPanel(slug: string = 'default') {
-	const s = String(slug || 'default').trim() || 'default';
-	const rows = await db.select().from(schema.panel).where(eq(schema.panel.slug, s)).limit(1);
+async function getPanel(accountId: number) {
+	const rows = await db.select().from(schema.panel).where(eq(schema.panel.account_id, accountId)).limit(1);
 	return rows[0] || null;
 }
 
-async function createPanel(slug: string = 'default') {
-	const s = String(slug || 'default').trim() || 'default';
+async function createPanel(accountId: number) {
 	const now = toMySQLDateTime();
 	const result = await db
 		.insert(schema.panel)
-		.values({ slug: s, created_at: now as any, updated_at: now as any })
+		.values({ account_id: accountId, created_at: now as any, updated_at: now as any })
 		.onDuplicateKeyUpdate({ set: { updated_at: now as any } });
 
 	const insertedId = (result?.[0] as any)?.insertId;
@@ -1630,7 +1642,12 @@ async function createPanel(slug: string = 'default') {
 		const rows = await db.select().from(schema.panel).where(eq(schema.panel.id, insertedId)).limit(1);
 		return rows[0] || null;
 	}
-	return getPanel(s);
+	return getPanel(accountId);
+}
+
+async function hasAnyPanel() {
+	const rows = await db.select({ id: schema.panel.id }).from(schema.panel).limit(1);
+	return rows.length > 0;
 }
 
 async function getAccountById(accountId: any) {
@@ -1681,7 +1698,6 @@ async function createAccount(accountData: any) {
 		email_verified: accountData.email_verified || false,
 		otp_code: accountData.otp_code || null,
 		otp_expires_at: accountData.otp_expires_at ? (toMySQLDateTime(accountData.otp_expires_at) as any) : null,
-		panel_id: accountData.panel_id || null,
 		ip_address: accountData.ip_address || null,
 		created_at: now as any,
 		updated_at: now as any
@@ -2125,44 +2141,47 @@ function orbSnapshotFromQuest(q: QuestOrbSummary) {
 	return {
 		quest_name: q.questName?.trim() || null,
 		game_title: q.gameTitle?.trim() || null,
-		game_subtitle: q.gameSubtitle?.trim() || null,
-		publisher: q.publisher?.trim() || null,
 		quest_url: q.questUrl?.trim() || null,
 		quest_description: q.description?.trim() || null,
 		orb_hint: q.orbHint?.trim() || null,
 		rewards_line: q.rewardsLine?.trim() || null,
 		task_detail_line: q.taskDetailLine?.trim() || null,
-		thumbnail_url: q.thumbnailUrl?.trim() || null,
-		banner_url: q.bannerUrl?.trim() || null,
 		starts_at: questIsoToDbDate(q.startsAt),
 		expires_at: questIsoToDbDate(q.expiresAt)
 	};
 }
 
-async function syncServerDiscordOrbQuestsFromApi(serverId: number, quests: QuestOrbSummary[]): Promise<void> {
+async function syncServerDiscordOrbQuestsFromApi(botId: number, serverId: number, quests: QuestOrbSummary[]): Promise<void> {
 	await initializeDatabase();
 	if (quests.length === 0) return;
 	const now = toMySQLDateTime();
 	for (const q of quests) {
 		const snap = orbSnapshotFromQuest(q);
-		const onUpdate = {
-			quest_task_type: q.taskTypeKey || '',
-			quest_task_label: q.taskTypeLabel || '',
-			notified_at: now as any,
-			...snap
-		};
 		await db
-			.insert(schema.serverDiscordOrb)
+			.insert(schema.botDiscordQuest)
 			.values({
-				server_id: serverId,
-				discord_quest_id: q.id,
+				bot_id: botId,
+				quest_id: q.id,
 				quest_task_type: q.taskTypeKey || '',
 				quest_task_label: q.taskTypeLabel || '',
 				notified_at: now as any,
-				orb_message_posted_at: null,
 				...snap
 			})
-			.onDuplicateKeyUpdate({ set: onUpdate as any });
+			.onDuplicateKeyUpdate({
+				set: {
+					bot_id: botId,
+					quest_task_type: q.taskTypeKey || '',
+					quest_task_label: q.taskTypeLabel || '',
+					notified_at: now as any,
+					...snap
+				} as any
+			});
+		const [orb] = await db.select({ id: schema.botDiscordQuest.id }).from(schema.botDiscordQuest).where(eq(schema.botDiscordQuest.quest_id, q.id)).limit(1);
+		if (!orb) continue;
+		await db
+			.insert(schema.serverDiscordQuest)
+			.values({ server_id: serverId, quest_id: orb.id, message_posted_at: null })
+			.onDuplicateKeyUpdate({ set: { server_id: serverId } as any });
 	}
 }
 
@@ -2170,25 +2189,83 @@ async function listServerDiscordOrbUnpostedQuestIds(serverId: number, activeQues
 	if (activeQuestIds.length === 0) return [];
 	await initializeDatabase();
 	const rows = await db
-		.select({ discord_quest_id: schema.serverDiscordOrb.discord_quest_id })
-		.from(schema.serverDiscordOrb)
+		.select({ quest_id: schema.botDiscordQuest.quest_id })
+		.from(schema.serverDiscordQuest)
+		.innerJoin(schema.botDiscordQuest, eq(schema.serverDiscordQuest.quest_id, schema.botDiscordQuest.id))
 		.where(
 			and(
-				eq(schema.serverDiscordOrb.server_id, serverId),
-				inArray(schema.serverDiscordOrb.discord_quest_id, activeQuestIds),
-				isNull(schema.serverDiscordOrb.orb_message_posted_at)
+				eq(schema.serverDiscordQuest.server_id, serverId),
+				inArray(schema.botDiscordQuest.quest_id, activeQuestIds),
+				isNull(schema.serverDiscordQuest.message_posted_at)
 			)
 		);
-	return rows.map((r) => r.discord_quest_id);
+	return rows.map((r) => r.quest_id);
 }
 
 async function markServerDiscordOrbMessagePosted(serverId: number, questId: string): Promise<void> {
 	await initializeDatabase();
 	const posted = toMySQLDateTime();
+	const [orb] = await db.select({ id: schema.botDiscordQuest.id }).from(schema.botDiscordQuest).where(eq(schema.botDiscordQuest.quest_id, questId)).limit(1);
+	if (!orb) return;
 	await db
-		.update(schema.serverDiscordOrb)
-		.set({ orb_message_posted_at: posted as any })
-		.where(and(eq(schema.serverDiscordOrb.server_id, serverId), eq(schema.serverDiscordOrb.discord_quest_id, questId)));
+		.update(schema.serverDiscordQuest)
+		.set({ message_posted_at: posted as any })
+		.where(and(eq(schema.serverDiscordQuest.server_id, serverId), eq(schema.serverDiscordQuest.quest_id, orb.id)));
+}
+
+async function getBotDiscordQuestByQuestId(questId: string) {
+	await initializeDatabase();
+	const [row] = await db.select().from(schema.botDiscordQuest).where(eq(schema.botDiscordQuest.quest_id, questId)).limit(1);
+	return row ?? null;
+}
+
+async function hasServerMemberClaimedDiscordQuest(serverId: number, memberId: number, questId: string): Promise<boolean> {
+	await initializeDatabase();
+	const [botQuest] = await db
+		.select({ id: schema.botDiscordQuest.id })
+		.from(schema.botDiscordQuest)
+		.where(eq(schema.botDiscordQuest.quest_id, questId))
+		.limit(1);
+	if (!botQuest) return false;
+	const [serverQuest] = await db
+		.select({ id: schema.serverDiscordQuest.id })
+		.from(schema.serverDiscordQuest)
+		.where(and(eq(schema.serverDiscordQuest.server_id, serverId), eq(schema.serverDiscordQuest.quest_id, botQuest.id)))
+		.limit(1);
+	if (!serverQuest) return false;
+	const [row] = await db
+		.select({ id: schema.serverMemberDiscordQuest.id })
+		.from(schema.serverMemberDiscordQuest)
+		.where(
+			and(
+				eq(schema.serverMemberDiscordQuest.member_id, memberId),
+				eq(schema.serverMemberDiscordQuest.quest_id, serverQuest.id),
+				eq(schema.serverMemberDiscordQuest.orb_claimed, true)
+			)
+		)
+		.limit(1);
+	return !!row;
+}
+
+async function markServerMemberDiscordQuestClaimed(serverId: number, memberId: number, questId: string): Promise<void> {
+	await initializeDatabase();
+	const [botQuest] = await db
+		.select({ id: schema.botDiscordQuest.id })
+		.from(schema.botDiscordQuest)
+		.where(eq(schema.botDiscordQuest.quest_id, questId))
+		.limit(1);
+	if (!botQuest) return;
+	const [serverQuest] = await db
+		.select({ id: schema.serverDiscordQuest.id })
+		.from(schema.serverDiscordQuest)
+		.where(and(eq(schema.serverDiscordQuest.server_id, serverId), eq(schema.serverDiscordQuest.quest_id, botQuest.id)))
+		.limit(1);
+	if (!serverQuest) return;
+	const now = toMySQLDateTime();
+	await db
+		.insert(schema.serverMemberDiscordQuest)
+		.values({ member_id: memberId, quest_id: serverQuest.id, orb_claimed: true, created_at: now as any })
+		.onDuplicateKeyUpdate({ set: { orb_claimed: true } as any });
 }
 
 async function getChannelsForServer(serverId: any) {
@@ -2284,7 +2361,7 @@ export async function createGiveaway(giveawayData: any) {
 	const durationMin = Number(giveawayData.duration_minutes);
 	const endsAt = new Date(createdAt.getTime() + (Number.isFinite(durationMin) ? durationMin : 0) * 60_000);
 
-	const result = await db.insert(schema.serverGiveaways).values({
+	const result = await db.insert(schema.serverMemberGiveaways).values({
 		member_id: giveawayData.member_id,
 		title: giveawayData.title,
 		prize: giveawayData.prize,
@@ -2303,18 +2380,18 @@ export async function createGiveaway(giveawayData: any) {
 export async function updateGiveawayMessageId(giveawayId: any, discordMessageId: string) {
 	await initializeDatabase();
 	await db
-		.update(schema.serverGiveaways)
+		.update(schema.serverMemberGiveaways)
 		.set({ discord_message_id: discordMessageId })
-		.where(eq(schema.serverGiveaways.id, Number(giveawayId)));
+		.where(eq(schema.serverMemberGiveaways.id, Number(giveawayId)));
 }
 
 export async function getEndedGiveaways() {
 	await initializeDatabase();
 	const rows = await db
-		.select({ giveaway: schema.serverGiveaways, server_id: schema.serverMembers.server_id })
-		.from(schema.serverGiveaways)
-		.innerJoin(schema.serverMembers, eq(schema.serverGiveaways.member_id, schema.serverMembers.id))
-		.where(and(eq(schema.serverGiveaways.status, 'active'), eq(schema.serverGiveaways.winners_announced, false)));
+		.select({ giveaway: schema.serverMemberGiveaways, server_id: schema.serverMembers.server_id })
+		.from(schema.serverMemberGiveaways)
+		.innerJoin(schema.serverMembers, eq(schema.serverMemberGiveaways.member_id, schema.serverMembers.id))
+		.where(and(eq(schema.serverMemberGiveaways.status, 'active'), eq(schema.serverMemberGiveaways.winners_announced, false)));
 	const now = new Date();
 	return rows
 		.filter((r) => {
@@ -2337,10 +2414,10 @@ export async function getEndedGiveaways() {
 export async function getGiveawayById(giveawayId: any) {
 	await initializeDatabase();
 	const rows = await db
-		.select({ giveaway: schema.serverGiveaways, server_id: schema.serverMembers.server_id })
-		.from(schema.serverGiveaways)
-		.innerJoin(schema.serverMembers, eq(schema.serverGiveaways.member_id, schema.serverMembers.id))
-		.where(eq(schema.serverGiveaways.id, Number(giveawayId)))
+		.select({ giveaway: schema.serverMemberGiveaways, server_id: schema.serverMembers.server_id })
+		.from(schema.serverMemberGiveaways)
+		.innerJoin(schema.serverMembers, eq(schema.serverMemberGiveaways.member_id, schema.serverMembers.id))
+		.where(eq(schema.serverMemberGiveaways.id, Number(giveawayId)))
 		.limit(1);
 	if (!rows[0]) return null;
 	const g = { ...rows[0].giveaway, server_id: rows[0].server_id } as any;
@@ -2358,14 +2435,14 @@ export async function getGiveawayById(giveawayId: any) {
 export async function getActiveGiveawayByMember(serverId: any, memberId: any) {
 	await initializeDatabase();
 	const rows = await db
-		.select({ giveaway: schema.serverGiveaways })
-		.from(schema.serverGiveaways)
-		.innerJoin(schema.serverMembers, eq(schema.serverGiveaways.member_id, schema.serverMembers.id))
+		.select({ giveaway: schema.serverMemberGiveaways })
+		.from(schema.serverMemberGiveaways)
+		.innerJoin(schema.serverMembers, eq(schema.serverMemberGiveaways.member_id, schema.serverMembers.id))
 		.where(
 			and(
 				eq(schema.serverMembers.server_id, Number(serverId)),
-				eq(schema.serverGiveaways.member_id, Number(memberId)),
-				eq(schema.serverGiveaways.status, 'active')
+				eq(schema.serverMemberGiveaways.member_id, Number(memberId)),
+				eq(schema.serverMemberGiveaways.status, 'active')
 			)
 		)
 		.limit(1);
@@ -2387,21 +2464,21 @@ export async function addGiveawayEntry(giveawayId: any, memberId: any, increment
 	const now = toMySQLDateTime();
 	if (increment) {
 		await db.execute(sql`
-			INSERT INTO server_giveaway_entries (giveaway_id, member_id, entry_count, created_at, updated_at)
+			INSERT INTO server_member_giveaway_entries (giveaway_id, member_id, entry_count, created_at, updated_at)
 			VALUES (${Number(giveawayId)}, ${Number(memberId)}, 1, ${now}, ${now})
 			ON DUPLICATE KEY UPDATE entry_count = entry_count + 1, updated_at = ${now}
 		`);
 	} else {
 		await db.execute(sql`
-			INSERT INTO server_giveaway_entries (giveaway_id, member_id, entry_count, created_at, updated_at)
+			INSERT INTO server_member_giveaway_entries (giveaway_id, member_id, entry_count, created_at, updated_at)
 			VALUES (${Number(giveawayId)}, ${Number(memberId)}, 1, ${now}, ${now})
 			ON DUPLICATE KEY UPDATE updated_at = ${now}
 		`);
 	}
 	const rows = await db
 		.select()
-		.from(schema.serverGiveawayEntries)
-		.where(and(eq(schema.serverGiveawayEntries.giveaway_id, Number(giveawayId)), eq(schema.serverGiveawayEntries.member_id, Number(memberId))))
+		.from(schema.serverMemberGiveawayEntries)
+		.where(and(eq(schema.serverMemberGiveawayEntries.giveaway_id, Number(giveawayId)), eq(schema.serverMemberGiveawayEntries.member_id, Number(memberId))))
 		.limit(1);
 	return rows[0] || null;
 }
@@ -2409,10 +2486,10 @@ export async function addGiveawayEntry(giveawayId: any, memberId: any, increment
 export async function getGiveawayEntries(giveawayId: any) {
 	await initializeDatabase();
 	return db
-		.select({ entry: schema.serverGiveawayEntries, discord_member_id: schema.serverMembers.discord_member_id })
-		.from(schema.serverGiveawayEntries)
-		.innerJoin(schema.serverMembers, eq(schema.serverGiveawayEntries.member_id, schema.serverMembers.id))
-		.where(eq(schema.serverGiveawayEntries.giveaway_id, Number(giveawayId)))
+		.select({ entry: schema.serverMemberGiveawayEntries, discord_member_id: schema.serverMembers.discord_member_id })
+		.from(schema.serverMemberGiveawayEntries)
+		.innerJoin(schema.serverMembers, eq(schema.serverMemberGiveawayEntries.member_id, schema.serverMembers.id))
+		.where(eq(schema.serverMemberGiveawayEntries.giveaway_id, Number(giveawayId)))
 		.orderBy(sql`RAND()`)
 		.then((rows) => rows.map((r) => ({ ...r.entry, discord_member_id: r.discord_member_id })));
 }
@@ -2462,26 +2539,26 @@ export async function getRandomGiveawayWinners(giveawayId: any, winnerCount: num
 export async function markGiveawayEnded(giveawayId: any) {
 	await initializeDatabase();
 	await db
-		.update(schema.serverGiveaways)
+		.update(schema.serverMemberGiveaways)
 		.set({ status: 'ended', winners_announced: true })
-		.where(eq(schema.serverGiveaways.id, Number(giveawayId)));
+		.where(eq(schema.serverMemberGiveaways.id, Number(giveawayId)));
 }
 
 export async function markGiveawayEndedForce(giveawayId: any) {
 	await initializeDatabase();
 	await db
-		.update(schema.serverGiveaways)
+		.update(schema.serverMemberGiveaways)
 		.set({ status: 'ended_force', winners_announced: true })
-		.where(eq(schema.serverGiveaways.id, Number(giveawayId)));
+		.where(eq(schema.serverMemberGiveaways.id, Number(giveawayId)));
 }
 
 export async function markGiveawayWinners(giveawayId: any, winnerMemberIds: any[]) {
 	await initializeDatabase();
 	if (!winnerMemberIds?.length) return;
 	await db
-		.update(schema.serverGiveawayEntries)
+		.update(schema.serverMemberGiveawayEntries)
 		.set({ is_winner: true })
-		.where(and(eq(schema.serverGiveawayEntries.giveaway_id, Number(giveawayId)), inArray(schema.serverGiveawayEntries.member_id, winnerMemberIds)));
+		.where(and(eq(schema.serverMemberGiveawayEntries.giveaway_id, Number(giveawayId)), inArray(schema.serverMemberGiveawayEntries.member_id, winnerMemberIds)));
 }
 
 export async function getStaffRating(serverId: any, staffMemberId: any) {
@@ -2967,6 +3044,8 @@ export async function getStaffRatingRole(serverId: any, staffMemberId: any) {
 export default {
 	getAllBots,
 	getBot,
+	getBotPanelId,
+	getServerPanelId,
 	createBot,
 	updateBot,
 	deleteBot,
@@ -3027,8 +3106,12 @@ export default {
 	syncServerDiscordOrbQuestsFromApi,
 	listServerDiscordOrbUnpostedQuestIds,
 	markServerDiscordOrbMessagePosted,
+	getBotDiscordQuestByQuestId,
+	hasServerMemberClaimedDiscordQuest,
+	markServerMemberDiscordQuestClaimed,
 	getPanel,
 	createPanel,
+	hasAnyPanel,
 	getAccountById,
 	getAccountByEmail,
 	getAccountByNormalizedEmail,

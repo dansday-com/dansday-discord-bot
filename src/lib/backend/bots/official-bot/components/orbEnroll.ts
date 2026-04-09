@@ -1,7 +1,8 @@
-import { ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, type ModalActionRowComponentBuilder } from 'discord.js';
+import { ActionRowBuilder, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, type ModalActionRowComponentBuilder } from 'discord.js';
 import type { ButtonInteraction, ModalSubmitInteraction } from 'discord.js';
 import db from '../../../../database.js';
-import { getServerForCurrentBot, serverSettingsComponent } from '../../../config.js';
+import { getEmbedConfig, getServerForCurrentBot, serverSettingsComponent } from '../../../config.js';
+import { translate } from '../i18n.js';
 import { queueOrbEnrollJob } from './orbEnrollWorker.js';
 
 export const ORB_ENROLL_BUTTON_PREFIX = 'orb_enroll:';
@@ -24,6 +25,24 @@ export async function handleOrbEnrollButton(interaction: ButtonInteraction): Pro
 	if (!autoQuestEnabled) {
 		await interaction.reply({ content: 'Auto quest enrollment is currently disabled. Please contact a server administrator.', flags: 64 }).catch(() => null);
 		return;
+	}
+
+	const member = await db.getMemberByDiscordId(server.id, interaction.user.id).catch(() => null);
+	if (member) {
+		const alreadyClaimed = await db.hasServerMemberClaimedDiscordQuest(server.id, member.id, questId).catch(() => false);
+		if (alreadyClaimed) {
+			const embedConfig = await getEmbedConfig(interaction.guild!.id);
+			const botDiscordQuest = await db.getBotDiscordQuestByQuestId(questId).catch(() => null);
+			const questName = botDiscordQuest?.quest_name || questId;
+			const embed = new EmbedBuilder()
+				.setColor(embedConfig.COLOR)
+				.setTitle(`🔮 ${await translate('orbEnroll.alreadyClaimed', interaction.guild!.id, interaction.user.id)}`)
+				.setDescription(await translate('orbEnroll.alreadyClaimedDescription', interaction.guild!.id, interaction.user.id, { questName }))
+				.setFooter({ text: embedConfig.FOOTER })
+				.setTimestamp();
+			await interaction.reply({ embeds: [embed], flags: 64 }).catch(() => null);
+			return;
+		}
 	}
 
 	const modal = new ModalBuilder().setCustomId(`${ORB_ENROLL_MODAL_PREFIX}${questId}`.slice(0, 100)).setTitle('Enroll (token — high risk)');
@@ -67,12 +86,18 @@ export async function handleOrbEnrollModalSubmit(interaction: ModalSubmitInterac
 	}
 
 	await interaction.deferReply({ flags: 64 });
-	await interaction.editReply({
-		content:
-			'⏳ **Running in the background.** A result embed will be posted in this channel shortly.\n\nYour token is **not** saved in our database. **Risk:** Discord may restrict or ban the **user account** tied to that token; in some cases the **bot or server** could also be affected. This is not official Discord behaviour — you chose to proceed.'
-	});
+	const embedConfig = await getEmbedConfig(interaction.guild!.id);
+	const pendingEmbed = new EmbedBuilder()
+		.setColor(embedConfig.COLOR)
+		.setTitle(await translate('orbEnroll.pendingTitle', interaction.guild!.id, interaction.user.id))
+		.setDescription(await translate('orbEnroll.pendingDescription', interaction.guild!.id, interaction.user.id))
+		.setFooter({ text: embedConfig.FOOTER })
+		.setTimestamp();
+	await interaction.editReply({ embeds: [pendingEmbed] });
 
 	const httpProxyUrl = typeof s.http_proxy_url === 'string' && s.http_proxy_url.trim() ? s.http_proxy_url.trim() : null;
+
+	const member = await db.getMemberByDiscordId(server.id, interaction.user.id).catch(() => null);
 
 	queueOrbEnrollJob({
 		client: interaction.client,
@@ -82,6 +107,8 @@ export async function handleOrbEnrollModalSubmit(interaction: ModalSubmitInterac
 		requesterTag: interaction.user.tag,
 		requesterId: interaction.user.id,
 		userToken: token,
-		httpProxyUrl
+		httpProxyUrl,
+		serverId: server.id,
+		memberId: member?.id ?? 0
 	});
 }

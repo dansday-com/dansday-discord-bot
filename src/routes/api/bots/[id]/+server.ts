@@ -22,11 +22,7 @@ async function getEnrichedBot(id: any) {
 	return botData;
 }
 
-export const GET: RequestHandler = async ({ locals, params }) => {
-	if (!locals.user.authenticated) {
-		return json({ error: 'Authentication required' }, { status: 401 });
-	}
-
+export const GET: RequestHandler = async ({ params }) => {
 	try {
 		const botData = await getEnrichedBot(params.id);
 		if (!botData) return json({ error: 'Bot not found' }, { status: 404 });
@@ -37,13 +33,9 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 };
 
 export const DELETE: RequestHandler = async ({ locals, params }) => {
-	if (!locals.user.authenticated || locals.user.account_source !== 'accounts') {
-		return json({ success: false, error: 'Admin access required' }, { status: 403 });
-	}
-
 	try {
 		const bot = await db.getBot(params.id);
-		if (bot) {
+		if (bot && locals.user.authenticated) {
 			logger.log(`${locals.user.username} removed bot "${bot.name}" (ID: ${bot.id})`);
 		}
 		await db.deleteBot(params.id);

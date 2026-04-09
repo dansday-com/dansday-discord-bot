@@ -19,7 +19,7 @@
 	let colorHex = $state(data.mainConfig?.color ?? '#5865F2');
 	let imageMode = $state<'url' | 'upload'>('url');
 	let imageUrl = $state('');
-	let uploadedImageUrl = $state('');
+	let uploadedImagePath = $state('');
 	let imagePreview = $state('');
 	let selectedChannels = $state<string[]>([]);
 	let selectedRoles = $state<string[]>([]);
@@ -52,7 +52,7 @@
 	}
 
 	function channelName(id: string) {
-		return data.channels.find((c: { discord_channel_id: string; name: string }) => c.discord_channel_id === id)?.name ?? id;
+		return data.channels.find((c) => c.discord_channel_id === id)?.name ?? id;
 	}
 
 	function roleName(id: string) {
@@ -73,7 +73,7 @@
 		});
 		const d = await res.json();
 		if (d.success) {
-			uploadedImageUrl = d.url;
+			uploadedImagePath = d.path;
 			imagePreview = d.url;
 			showToast('Image uploaded', 'success');
 		} else {
@@ -83,10 +83,12 @@
 
 	async function deleteUploadedImage() {
 		await fetch(`/api/servers/${data.serverId ?? ''}/delete-embed-image`, {
-			method: 'DELETE',
-			credentials: 'include'
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			credentials: 'include',
+			body: JSON.stringify({ path: uploadedImagePath })
 		});
-		uploadedImageUrl = '';
+		uploadedImagePath = '';
 		imagePreview = '';
 	}
 
@@ -116,7 +118,7 @@
 			};
 
 			if (imageMode === 'url' && imageUrl) body.image_url = imageUrl;
-			else if (imageMode === 'upload' && uploadedImageUrl) body.image_url = uploadedImageUrl;
+			else if (imageMode === 'upload' && uploadedImagePath) body.uploaded_image_path = uploadedImagePath;
 
 			const res = await fetch(`/api/servers/${data.serverId ?? ''}/send-embed`, {
 				method: 'POST',
@@ -132,6 +134,8 @@
 				return;
 			}
 			if (d.success) {
+				uploadedImagePath = '';
+				imagePreview = '';
 				showToast('Embed sent!', 'success');
 			} else {
 				showToast(d.error || 'Failed to send embed', 'error');
@@ -267,8 +271,8 @@
 			<div class="mb-4">
 				<label class="text-ash-300 mb-2 block text-xs font-medium">Channels <span class="text-ash-200">*</span></label>
 				<ChannelPicker
-					channels={data.channels}
-					categories={data.categories}
+					channels={data.channels as any}
+					categories={data.categories as any}
 					value={selectedChannels}
 					multi={true}
 					placeholder="Select channels..."
@@ -279,7 +283,12 @@
 			{#if (data.roles as unknown[]).length > 0}
 				<div class="mb-4">
 					<label class="text-ash-300 mb-2 block text-xs font-medium">Role Mentions</label>
-					<RolePicker roles={data.roles} value={selectedRoles} placeholder="Select roles to mention..." onchange={(v) => (selectedRoles = v as string[])} />
+					<RolePicker
+						roles={data.roles as any}
+						value={selectedRoles}
+						placeholder="Select roles to mention..."
+						onchange={(v) => (selectedRoles = v as string[])}
+					/>
 				</div>
 			{/if}
 

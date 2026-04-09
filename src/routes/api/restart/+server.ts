@@ -3,6 +3,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { restartBotById } from '$lib/botProcesses.js';
 import { logger } from '$lib/utils/index.js';
+import { accountOwnsBot, accountOwnsServer } from '$lib/serverPanelAccess.js';
 
 export const POST: RequestHandler = async ({ locals, request }) => {
 	if (!locals.user.authenticated) return json({ success: false, error: 'Authentication required' }, { status: 401 });
@@ -30,6 +31,9 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 
 		const panelBot = await db.getBot(bot_id);
 		if (panelBot) {
+			if (!(await accountOwnsBot(locals, panelBot.id))) {
+				return json({ success: false, error: 'Access denied' }, { status: 403 });
+			}
 			const result = await restartBotById(bot_id, panelBot);
 			if (result.success) logger.log(`${locals.user.username} restarted bot "${panelBot.name}" (ID: ${bot_id})`);
 			return json(result);
@@ -38,6 +42,9 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		const selfbot = await db.getServerBotById(Number(bot_id));
 		if (!selfbot) return json({ success: false, error: 'Bot not found' }, { status: 404 });
 
+		if (!(await accountOwnsServer(locals, selfbot.server_id))) {
+			return json({ success: false, error: 'Access denied' }, { status: 403 });
+		}
 		const result = await restartBotById(selfbot.id, selfbot);
 		if (result.success) logger.log(`${locals.user.username} restarted selfbot "${selfbot.name}" (ID: ${selfbot.id})`);
 		return json(result);

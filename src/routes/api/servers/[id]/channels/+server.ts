@@ -2,11 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 
-export const GET: RequestHandler = async ({ locals, params, url }) => {
-	if (!locals.user.authenticated) {
-		return json({ error: 'Authentication required' }, { status: 401 });
-	}
-
+export const GET: RequestHandler = async ({ params, url }) => {
 	try {
 		const search = url.searchParams.get('search');
 		let channels = await db.getChannelsForServer(params.id);

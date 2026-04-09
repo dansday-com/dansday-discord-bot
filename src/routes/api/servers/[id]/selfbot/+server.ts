@@ -1,20 +1,18 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
-import { canManageSelfbots, canViewSelfbots } from '$lib/serverPanelAccess.js';
+import { canManageSelfbots } from '$lib/serverPanelAccess.js';
 import { logger } from '$lib/utils/index.js';
 
-export const GET: RequestHandler = async ({ locals, params }) => {
+export const GET: RequestHandler = async ({ params }) => {
 	const serverId = Number(params.id);
-	if (!canViewSelfbots(locals, serverId)) return json({ success: false, error: 'Access denied' }, { status: 403 });
-
 	const selfbots = await db.getServerBots(serverId);
 	return json({ success: true, selfbots });
 };
 
 export const POST: RequestHandler = async ({ locals, params, request }) => {
 	const serverId = Number(params.id);
-	if (!canManageSelfbots(locals, serverId)) return json({ success: false, error: 'Access denied' }, { status: 403 });
+	if (!(await canManageSelfbots(locals, serverId))) return json({ success: false, error: 'Access denied' }, { status: 403 });
 
 	const body = await request.json();
 	const { token } = body;
@@ -29,24 +27,19 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 
 	let id: number;
 	try {
-		id = await db.addServerBot({
-			server_id: serverId,
-			name: 'Selfbot',
-			token
-		});
+		id = await db.addServerBot({ server_id: serverId, name: 'Selfbot', token });
 	} catch (err: any) {
 		logger.error(`Failed to add selfbot for server ${serverId}: ${err?.message ?? err}`);
 		return json({ success: false, error: 'Failed to add selfbot' }, { status: 500 });
 	}
 
 	if (locals.user.authenticated) logger.log(`${locals.user.username} created selfbot (ID: ${id}) for server ${serverId}`);
-
 	return json({ success: true, id });
 };
 
 export const DELETE: RequestHandler = async ({ locals, params, request }) => {
 	const serverId = Number(params.id);
-	if (!canManageSelfbots(locals, serverId)) return json({ success: false, error: 'Access denied' }, { status: 403 });
+	if (!(await canManageSelfbots(locals, serverId))) return json({ success: false, error: 'Access denied' }, { status: 403 });
 
 	const body = await request.json();
 	const selfbotId = Number(body.selfbot_id);
@@ -59,6 +52,5 @@ export const DELETE: RequestHandler = async ({ locals, params, request }) => {
 
 	await db.removeServerBot(selfbotId);
 	if (locals.user.authenticated) logger.log(`${locals.user.username} deleted selfbot "${selfbot.name}" (ID: ${selfbotId}) from server ${serverId}`);
-
 	return json({ success: true });
 };

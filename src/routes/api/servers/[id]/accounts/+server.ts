@@ -13,17 +13,20 @@ function maskEmail(email: string) {
 	return `${prefix}***@${domain}`;
 }
 
-function canManageAccounts(locals: App.Locals, serverId: number): boolean {
+async function canManageAccounts(locals: App.Locals, serverId: number): Promise<boolean> {
 	const user = locals.user;
 	if (!user.authenticated) return false;
-	if (user.account_source === 'accounts') return true;
+	if (user.account_source === 'accounts') {
+		const { accountOwnsServer } = await import('$lib/serverPanelAccess.js');
+		return accountOwnsServer(locals, serverId);
+	}
 	if (user.account_source === 'server_accounts') return user.server_id === serverId;
 	return false;
 }
 
 export const GET: RequestHandler = async ({ locals, params }) => {
 	const serverId = Number(params.id);
-	if (!canManageAccounts(locals, serverId)) {
+	if (!(await canManageAccounts(locals, serverId))) {
 		return json({ success: false, error: 'Access denied' }, { status: 403 });
 	}
 
@@ -45,7 +48,7 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 	if (locals.user.authenticated && locals.user.account_source === 'server_accounts' && locals.user.account_type === 'moderator') {
 		return json({ success: false, error: 'Access denied' }, { status: 403 });
 	}
-	if (!canManageAccounts(locals, serverId)) {
+	if (!(await canManageAccounts(locals, serverId))) {
 		return json({ success: false, error: 'Access denied' }, { status: 403 });
 	}
 

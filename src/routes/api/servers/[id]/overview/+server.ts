@@ -3,11 +3,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { logger } from '$lib/utils/index.js';
 
-export const GET: RequestHandler = async ({ locals, params }) => {
-	if (!locals.user.authenticated) {
-		return json({ error: 'Authentication required' }, { status: 401 });
-	}
-
+export const GET: RequestHandler = async ({ params }) => {
 	const serverId = parseInt(params.id ?? '');
 	if (isNaN(serverId)) {
 		return json({ error: 'Invalid server ID' }, { status: 400 });

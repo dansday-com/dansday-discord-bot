@@ -4,17 +4,12 @@ import { request as httpRequest } from 'http';
 import db from '$lib/database.js';
 import { SERVER_SETTINGS } from '$lib/serverSettingsComponents.js';
 import { extractOrbQuests, fetchQuestsMe, questPayloadOrbDiagnostics } from '$lib/discord-quest-api.js';
-import { canEditServerSettings } from '$lib/serverPanelAccess.js';
 import { mainAppearanceBlockingMessage, messageFromBotWebhookPayload } from '$lib/utils/configPrerequisiteErrors.js';
 
-export const POST: RequestHandler = async ({ locals, params }) => {
+export const POST: RequestHandler = async ({ params }) => {
 	const serverIdParam = params.id;
 	if (serverIdParam == null || serverIdParam === '') {
 		return json({ success: false, error: 'Server id required' }, { status: 400 });
-	}
-
-	if (!canEditServerSettings(locals, serverIdParam)) {
-		return json({ success: false, error: 'Access denied' }, { status: 403 });
 	}
 
 	const server = await db.getServer(serverIdParam);
@@ -27,13 +22,7 @@ export const POST: RequestHandler = async ({ locals, params }) => {
 	const raw = questRow?.settings;
 	const s = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
 	if (s.enabled === false) {
-		return json(
-			{
-				success: false,
-				error: 'Quest notifier is disabled for this server. Turn it on and save before running a test.'
-			},
-			{ status: 403 }
-		);
+		return json({ success: false, error: 'Quest notifier is disabled for this server. Turn it on and save before running a test.' }, { status: 403 });
 	}
 	const channelId = typeof s.channel_id === 'string' ? s.channel_id : '';
 	if (!channelId) {
@@ -54,13 +43,7 @@ export const POST: RequestHandler = async ({ locals, params }) => {
 
 	const selfbot = await db.getFirstRunningSelfbotForServer(Number(serverIdParam));
 	if (!selfbot?.token) {
-		return json(
-			{
-				success: false,
-				error: 'No running selfbot for this server. Add and start a selfbot under Selfbots for this guild.'
-			},
-			{ status: 400 }
-		);
+		return json({ success: false, error: 'No running selfbot for this server. Add and start a selfbot under Selfbots for this guild.' }, { status: 400 });
 	}
 
 	const httpProxyUrl = typeof s.http_proxy_url === 'string' ? s.http_proxy_url : '';
@@ -82,10 +65,7 @@ export const POST: RequestHandler = async ({ locals, params }) => {
 				: d.afterPreviewExpired === 0
 					? `Discord returned ${d.questCount} quest(s); all are preview or expired.`
 					: `Discord returned ${d.questCount} quest(s), ${d.afterPreviewExpired} active — none have orb-style rewards in the data we recognize.`;
-		return json({
-			success: false,
-			error: `No orb quests to test with. ${detail}`
-		});
+		return json({ success: false, error: `No orb quests to test with. ${detail}` });
 	}
 
 	const latest = orbQuests[0];
@@ -93,9 +73,6 @@ export const POST: RequestHandler = async ({ locals, params }) => {
 	if (!bot?.port || !bot.secret_key) {
 		return json({ success: false, error: 'Official bot port or secret not configured.' }, { status: 500 });
 	}
-
-	const botPort = bot.port;
-	const botSecret = bot.secret_key;
 
 	const body = JSON.stringify({
 		type: 'send_quest_notification',
@@ -125,14 +102,10 @@ export const POST: RequestHandler = async ({ locals, params }) => {
 		const req = httpRequest(
 			{
 				hostname: 'localhost',
-				port: botPort,
+				port: bot.port,
 				path: '/',
 				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					'Content-Length': Buffer.byteLength(body),
-					'X-Secret-Key': botSecret
-				}
+				headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body), 'X-Secret-Key': bot.secret_key }
 			},
 			(res) => {
 				let data = '';
@@ -163,8 +136,5 @@ export const POST: RequestHandler = async ({ locals, params }) => {
 		return json({ success: false, error: msg }, { status: webhookResult.status >= 400 && webhookResult.status < 600 ? webhookResult.status : 502 });
 	}
 
-	return json({
-		success: true,
-		quest: { id: latest.id, name: latest.questName, url: latest.questUrl }
-	});
+	return json({ success: true, quest: { id: latest.id, name: latest.questName, url: latest.questUrl } });
 };

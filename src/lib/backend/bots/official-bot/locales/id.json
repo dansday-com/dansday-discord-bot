@@ -430,5 +430,11 @@
 			"failed": "❌ Gagal membuka formulir pembuatan role: {error}",
 			"editFailed": "❌ Gagal membuka formulir edit: {error}"
 		}
+	},
+	"orbEnroll": {
+		"alreadyClaimed": "Sudah Diklaim",
+		"alreadyClaimedDescription": "Kamu sudah mendaftar ke **{questName}** sebelumnya dan hadiah orb sudah diklaim. Setiap quest hanya bisa diklaim sekali per anggota.",
+		"pendingTitle": "⏳ Berjalan di latar belakang",
+		"pendingDescription": "Hasil embed akan diposting di channel ini sebentar lagi.\n\nToken kamu **tidak** disimpan di database kami.\n\n**Risiko:** Discord dapat membatasi atau memban **akun pengguna** yang terkait dengan token tersebut; dalam beberapa kasus **bot atau server** juga bisa terdampak. Ini bukan perilaku resmi Discord — kamu memilih untuk melanjutkan."
 	}
 }

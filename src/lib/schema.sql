@@ -4,14 +4,6 @@ CREATE TABLE IF NOT EXISTS migrations (
     ran_at DATETIME NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS panels (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    slug VARCHAR(64) NOT NULL DEFAULT 'default',
-    created_at DATETIME NOT NULL,
-    updated_at DATETIME NOT NULL,
-    UNIQUE KEY uq_panels_slug (slug)
-);
-
 CREATE TABLE IF NOT EXISTS accounts (
     id INT PRIMARY KEY AUTO_INCREMENT,
     username VARCHAR(255) NOT NULL UNIQUE,
@@ -21,11 +13,18 @@ CREATE TABLE IF NOT EXISTS accounts (
     email_verified BOOLEAN DEFAULT FALSE,
     otp_code VARCHAR(6) NULL,
     otp_expires_at DATETIME NULL,
-    panel_id INT NOT NULL,
     ip_address TEXT NULL,
     created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS panels (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    account_id INT NOT NULL,
+    created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
-    FOREIGN KEY (panel_id) REFERENCES panels(id) ON DELETE CASCADE
+    UNIQUE KEY uq_panels_account_id (account_id),
+    FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS bots (
@@ -36,13 +35,13 @@ CREATE TABLE IF NOT EXISTS bots (
     bot_icon TEXT,
     port INT,
     secret_key TEXT,
-    account_id INT NOT NULL,
+    panel_id INT NOT NULL,
     status ENUM('running', 'stopped', 'starting', 'stopping') DEFAULT 'stopped',
     process_id INT,
     uptime_started_at DATETIME NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
-    FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+    FOREIGN KEY (panel_id) REFERENCES panels(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS servers (
@@ -313,33 +312,51 @@ CREATE TABLE IF NOT EXISTS server_settings (
     FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS server_discord_orbs (
+CREATE TABLE IF NOT EXISTS bot_discord_quests (
     id INT PRIMARY KEY AUTO_INCREMENT,
-    server_id INT NOT NULL,
-    discord_quest_id VARCHAR(64) NOT NULL,
+    bot_id INT NOT NULL,
+    quest_id VARCHAR(64) NOT NULL,
     quest_task_type VARCHAR(64) NOT NULL DEFAULT '',
     quest_task_label VARCHAR(128) NOT NULL DEFAULT '',
     quest_name TEXT NULL,
     game_title TEXT NULL,
-    game_subtitle TEXT NULL,
-    publisher VARCHAR(255) NULL,
     quest_url VARCHAR(512) NULL,
     quest_description TEXT NULL,
     orb_hint TEXT NULL,
     rewards_line TEXT NULL,
     task_detail_line TEXT NULL,
-    thumbnail_url VARCHAR(2048) NULL,
-    banner_url VARCHAR(2048) NULL,
     starts_at DATETIME NULL,
     expires_at DATETIME NULL,
     notified_at DATETIME NOT NULL,
-    orb_message_posted_at DATETIME NULL,
-    UNIQUE KEY unique_server_discord_orbs_quest (server_id, discord_quest_id),
-    INDEX idx_server_discord_orbs_server_id (server_id),
-    FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE
+    UNIQUE KEY unique_bot_discord_quests_quest (quest_id),
+    INDEX idx_bot_discord_quests_bot_id (bot_id),
+    FOREIGN KEY (bot_id) REFERENCES bots(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS server_giveaways (
+CREATE TABLE IF NOT EXISTS server_discord_quests (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    server_id INT NOT NULL,
+    quest_id INT NOT NULL,
+    message_posted_at DATETIME NULL,
+    UNIQUE KEY unique_server_discord_quests (server_id, quest_id),
+    INDEX idx_server_discord_quests_server_id (server_id),
+    FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE,
+    FOREIGN KEY (quest_id) REFERENCES bot_discord_quests(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS server_member_discord_quests (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    member_id INT NOT NULL,
+    quest_id INT NOT NULL,
+    orb_claimed BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at DATETIME NOT NULL,
+    UNIQUE KEY unique_server_member_discord_quests (member_id, quest_id),
+    INDEX idx_server_member_discord_quests_member (member_id),
+    FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE,
+    FOREIGN KEY (quest_id) REFERENCES server_discord_quests(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS server_member_giveaways (
     id INT PRIMARY KEY AUTO_INCREMENT,
     discord_message_id VARCHAR(150) NULL,
     member_id INT NOT NULL,
@@ -357,7 +374,7 @@ CREATE TABLE IF NOT EXISTS server_giveaways (
     FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS server_giveaway_entries (
+CREATE TABLE IF NOT EXISTS server_member_giveaway_entries (
     id INT PRIMARY KEY AUTO_INCREMENT,
     giveaway_id INT NOT NULL,
     member_id INT NOT NULL,
@@ -366,7 +383,7 @@ CREATE TABLE IF NOT EXISTS server_giveaway_entries (
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
     UNIQUE KEY unique_giveaway_member (giveaway_id, member_id),
-    FOREIGN KEY (giveaway_id) REFERENCES server_giveaways(id) ON DELETE CASCADE,
+    FOREIGN KEY (giveaway_id) REFERENCES server_member_giveaways(id) ON DELETE CASCADE,
     FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE
 );
 
@@ -454,7 +471,7 @@ CREATE TABLE IF NOT EXISTS server_member_content_creator_stream_logs (
     FOREIGN KEY (stream_id) REFERENCES server_member_content_creator_streams(id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_bots_account_id ON bots(account_id);
+CREATE INDEX IF NOT EXISTS idx_bots_panel_id ON bots(panel_id);
 CREATE INDEX IF NOT EXISTS idx_servers_discord_id ON servers(discord_server_id);
 CREATE INDEX IF NOT EXISTS idx_servers_discord_created_at ON servers(discord_created_at);
 CREATE INDEX IF NOT EXISTS idx_servers_invite_code ON servers(invite_code);
@@ -478,17 +495,16 @@ CREATE INDEX IF NOT EXISTS idx_server_settings_server_id ON server_settings(serv
 CREATE INDEX IF NOT EXISTS idx_server_settings_component ON server_settings(server_id, component_name);
 CREATE INDEX IF NOT EXISTS idx_accounts_email ON accounts(email);
 CREATE INDEX IF NOT EXISTS idx_accounts_username ON accounts(username);
-CREATE INDEX IF NOT EXISTS idx_accounts_panel_id ON accounts(panel_id);
 CREATE INDEX IF NOT EXISTS idx_server_accounts_server_id ON server_accounts(server_id);
 CREATE INDEX IF NOT EXISTS idx_server_accounts_email ON server_accounts(email);
 CREATE INDEX IF NOT EXISTS idx_server_account_invites_token ON server_account_invites(token);
 CREATE INDEX IF NOT EXISTS idx_server_account_invites_server_id ON server_account_invites(server_id);
 CREATE INDEX IF NOT EXISTS idx_server_bots_server_id ON server_bots(server_id);
-CREATE INDEX IF NOT EXISTS idx_server_giveaways_member_id ON server_giveaways(member_id);
-CREATE INDEX IF NOT EXISTS idx_server_giveaways_status ON server_giveaways(status);
-CREATE INDEX IF NOT EXISTS idx_server_giveaways_ends_at ON server_giveaways(ends_at);
-CREATE INDEX IF NOT EXISTS idx_server_giveaway_entries_giveaway_id ON server_giveaway_entries(giveaway_id);
-CREATE INDEX IF NOT EXISTS idx_server_giveaway_entries_member_id ON server_giveaway_entries(member_id);
+CREATE INDEX IF NOT EXISTS idx_server_member_giveaways_member_id ON server_member_giveaways(member_id);
+CREATE INDEX IF NOT EXISTS idx_server_member_giveaways_status ON server_member_giveaways(status);
+CREATE INDEX IF NOT EXISTS idx_server_member_giveaways_ends_at ON server_member_giveaways(ends_at);
+CREATE INDEX IF NOT EXISTS idx_server_member_giveaway_entries_giveaway_id ON server_member_giveaway_entries(giveaway_id);
+CREATE INDEX IF NOT EXISTS idx_server_member_giveaway_entries_member_id ON server_member_giveaway_entries(member_id);
 CREATE INDEX IF NOT EXISTS idx_server_member_staff_ratings_member ON server_member_staff_ratings(member_id);
 CREATE INDEX IF NOT EXISTS idx_server_member_staff_ratings_role ON server_member_staff_ratings(role_id);
 CREATE INDEX IF NOT EXISTS idx_server_member_staff_rating_reviews_staff ON server_member_staff_rating_reviews(reported_staff_id);

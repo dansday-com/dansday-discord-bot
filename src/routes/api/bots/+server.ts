@@ -84,6 +84,11 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			return json({ success: false, error: `Port ${port} is already in use by another official bot` }, { status: 400 });
 		}
 
+		const panel = await db.getPanel(account.id);
+		if (!panel) {
+			return json({ success: false, error: 'Panel not found for this account' }, { status: 500 });
+		}
+
 		const bot = await db.createBot({
 			name: name || 'Bot',
 			token,
@@ -91,8 +96,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			bot_icon: bot_icon || null,
 			port: port || 7777,
 			secret_key: secret_key || null,
-			account_id: account.id,
-			panel_id: account.panel_id
+			panel_id: panel.id
 		});
 
 		logger.log(`${locals.user.username} added official bot: "${name || 'Bot'}" (ID: ${bot.id})`);

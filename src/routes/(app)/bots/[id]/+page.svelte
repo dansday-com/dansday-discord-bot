@@ -177,7 +177,7 @@
 							class="text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg bg-green-600 px-3 text-xs font-medium transition-all hover:scale-105 hover:bg-green-700 active:scale-95 sm:h-10 sm:px-4 sm:text-sm"
 						>
 							<i class="fas fa-play text-sm text-green-200 sm:text-base"></i>
-							<span class="hidden sm:inline">Start</span>
+							<span>Start</span>
 						</button>
 					{/if}
 					{#if canStop}
@@ -186,14 +186,14 @@
 							class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-all hover:scale-105 active:scale-95 sm:h-10 sm:px-4 sm:text-sm"
 						>
 							<i class="fas fa-stop text-sm text-rose-200 sm:text-base"></i>
-							<span class="hidden sm:inline">Stop</span>
+							<span>Stop</span>
 						</button>
 						<button
 							onclick={() => botAction('restart')}
 							class="text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg bg-yellow-600 px-3 text-xs font-medium transition-all hover:scale-105 hover:bg-yellow-700 active:scale-95 sm:h-10 sm:px-4 sm:text-sm"
 						>
 							<i class="fas fa-redo text-sm text-yellow-200 sm:text-base"></i>
-							<span class="hidden sm:inline">Restart</span>
+							<span>Restart</span>
 						</button>
 					{/if}
 					<button

@@ -8,6 +8,7 @@ import { request as httpRequest } from 'http';
 import { SERVER_SETTINGS } from '$lib/serverSettingsComponents.js';
 import { canUseEmbedBuilder } from '$lib/serverPanelAccess.js';
 import { mainAppearanceBlockingMessage, messageFromBotWebhookPayload } from '$lib/utils/configPrerequisiteErrors.js';
+import { mainChannelId } from '$lib/utils/mainConfigSettings.js';
 
 const uploadsDir = join(process.cwd(), 'data', 'embed-images');
 
@@ -32,13 +33,8 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		const { channel_ids, role_ids, title, description, image_url, color, footer } = body;
 		uploaded_image_path = body.uploaded_image_path || null;
 
-		if (!channel_ids || !Array.isArray(channel_ids) || channel_ids.length === 0 || !title) {
-			return json({ success: false, error: 'channel_ids (array) and title are required' }, { status: 400 });
-		}
-
-		const validChannelIds = channel_ids.filter((id: any) => id != null && id !== '');
-		if (validChannelIds.length === 0) {
-			return json({ success: false, error: 'At least one valid channel ID is required' }, { status: 400 });
+		if (!title) {
+			return json({ success: false, error: 'title is required' }, { status: 400 });
 		}
 
 		const server = await db.getServer(serverId);
@@ -57,9 +53,22 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		}
 
 		const mainRow = await db.getServerSettings(serverId, SERVER_SETTINGS.component.main).catch(() => null);
-		const appearanceBlock = mainAppearanceBlockingMessage(mainRow?.settings ?? undefined);
+		const mainSettings = mainRow == null ? undefined : Array.isArray(mainRow) ? mainRow[0]?.settings : mainRow.settings;
+		const appearanceBlock = mainAppearanceBlockingMessage(mainSettings);
 		if (appearanceBlock) {
 			return json({ success: false, error: appearanceBlock }, { status: 400 });
+		}
+
+		let resolvedChannelIds: string[] = Array.isArray(channel_ids)
+			? channel_ids.filter((id: any) => id != null && id !== '')
+			: [];
+
+		if (resolvedChannelIds.length === 0) {
+			const defaultChannel = mainChannelId(mainSettings);
+			if (!defaultChannel) {
+				return json({ success: false, error: 'No channel selected and no default channel configured in main settings.' }, { status: 400 });
+			}
+			resolvedChannelIds = [defaultChannel];
 		}
 
 		let imageBuffer: Buffer | null = null;
@@ -93,7 +102,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		const payload = JSON.stringify({
 			type: 'send_embed',
 			guild_id: server.discord_server_id,
-			channel_ids: validChannelIds,
+			channel_ids: resolvedChannelIds,
 			role_ids: role_ids || [],
 			title,
 			description: description || null,
@@ -112,7 +121,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 				headers: {
 					'Content-Type': 'application/json',
 					'Content-Length': Buffer.byteLength(payload),
-					'X-Secret-Key': bot.secret_key
+					'X-Secret-Key': bot.secret_key ?? ''
 				}
 			};
 

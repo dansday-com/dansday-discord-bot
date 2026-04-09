@@ -172,7 +172,7 @@ const ROUTE_GUARDS: RouteGuard[] = [
 				? accountOwnsServer(locals, id)
 				: locals.user.account_source === 'server_accounts' && locals.user.server_id === id;
 		}
-	},
+	}
 
 	// start / stop / restart — body-based bot_id, can't pattern match here, handled in route
 	// leaderboards — public, no guard
@@ -185,13 +185,23 @@ const PUBLIC_PREFIXES = [
 	'/api/leaderboards/',
 	'/api/uploads/',
 	'/api/panel/',
-	'/api/start',   // body-based check inside route
-	'/api/stop',    // body-based check inside route
+	'/api/start', // body-based check inside route
+	'/api/stop', // body-based check inside route
 	'/api/restart', // body-based check inside route
 	'/api/bots/+server.ts' // handled via superadminOnly in bot pattern but POST creates bot
 ];
 
-const PUBLIC_EXACT = new Set(['/api/panel/login', '/api/panel/register', '/api/panel/verify-otp', '/api/panel/resend-otp', '/api/panel/logout', '/api/panel/auth', '/api/panel/invite-link', '/api/panel/register-with-token', '/api/panel/demo-login']);
+const PUBLIC_EXACT = new Set([
+	'/api/panel/login',
+	'/api/panel/register',
+	'/api/panel/verify-otp',
+	'/api/panel/resend-otp',
+	'/api/panel/logout',
+	'/api/panel/auth',
+	'/api/panel/invite-link',
+	'/api/panel/register-with-token',
+	'/api/panel/demo-login'
+]);
 
 /**
  * Call this in hooks.server.ts BEFORE resolve().

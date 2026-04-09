@@ -109,10 +109,15 @@ export const POST: RequestHandler = async ({ params }) => {
 			},
 			(res) => {
 				let data = '';
-				res.on('data', (chunk) => { data += chunk; });
+				res.on('data', (chunk) => {
+					data += chunk;
+				});
 				res.on('end', () => {
-					try { resolve({ status: res.statusCode ?? 500, body: JSON.parse(data) }); }
-					catch { resolve({ status: res.statusCode ?? 500, body: null }); }
+					try {
+						resolve({ status: res.statusCode ?? 500, body: JSON.parse(data) });
+					} catch {
+						resolve({ status: res.statusCode ?? 500, body: null });
+					}
 				});
 			}
 		);

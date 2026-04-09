@@ -26,7 +26,8 @@ export const POST: RequestHandler = async ({ params, request }) => {
 			if (!mime.startsWith('image/')) return json({ success: false, error: 'Invalid image format' }, { status: 400 });
 			fileExtension = mime.replace('image/', '').toLowerCase();
 			if (fileExtension === 'jpeg') fileExtension = 'jpg';
-			if (!supportedFormats.includes(fileExtension)) return json({ success: false, error: `Unsupported image format. Supported: ${supportedFormats.join(', ')}` }, { status: 400 });
+			if (!supportedFormats.includes(fileExtension))
+				return json({ success: false, error: `Unsupported image format. Supported: ${supportedFormats.join(', ')}` }, { status: 400 });
 			imageData = Buffer.from(await file.arrayBuffer());
 		} else {
 			const body = await request.json();
@@ -36,7 +37,8 @@ export const POST: RequestHandler = async ({ params, request }) => {
 			if (!matches) return json({ success: false, error: 'Invalid image data format' }, { status: 400 });
 			fileExtension = String(matches[1]).toLowerCase();
 			if (fileExtension === 'jpeg') fileExtension = 'jpg';
-			if (!supportedFormats.includes(fileExtension)) return json({ success: false, error: `Unsupported image format. Supported: ${supportedFormats.join(', ')}` }, { status: 400 });
+			if (!supportedFormats.includes(fileExtension))
+				return json({ success: false, error: `Unsupported image format. Supported: ${supportedFormats.join(', ')}` }, { status: 400 });
 			imageData = Buffer.from(matches[2], 'base64');
 		}
 

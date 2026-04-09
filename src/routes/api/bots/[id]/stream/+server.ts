@@ -58,7 +58,9 @@ export const GET: RequestHandler = async ({ locals, params, url }) => {
 			cleanup = () => {
 				clearInterval(heartbeat);
 				unsub();
-				try { controller.close(); } catch (_) {}
+				try {
+					controller.close();
+				} catch (_) {}
 			};
 		},
 		cancel() {

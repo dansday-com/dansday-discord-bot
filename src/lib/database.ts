@@ -2309,15 +2309,76 @@ async function markServerRobloxItemMessagePosted(serverId: number, assetId: numb
 	await initializeDatabase();
 	const posted = toMySQLDateTime();
 	const [item] = await db
-		.select({ id: schema.botRobloxItems.id })
+		.select({ id: schema.botRobloxItems.id, price: schema.botRobloxItems.price, total_quantity: schema.botRobloxItems.total_quantity })
 		.from(schema.botRobloxItems)
 		.where(eq(schema.botRobloxItems.asset_id, Number(assetId)))
 		.limit(1);
 	if (!item) return;
 	await db
 		.update(schema.serverRobloxItems)
-		.set({ message_posted_at: posted as any })
+		.set({
+			message_posted_at: posted as any,
+			last_price: item.price ?? null,
+			last_total_quantity: item.total_quantity ?? null
+		} as any)
 		.where(and(eq(schema.serverRobloxItems.server_id, serverId), eq(schema.serverRobloxItems.item_id, item.id)));
+}
+
+type RobloxItemChange = {
+	assetId: number;
+	field: 'price' | 'total_quantity';
+	oldValue: number | null;
+	newValue: number | null;
+};
+
+async function detectAndUpdateServerRobloxItemChanges(serverId: number, items: RobloxCatalogItemSnapshot[]): Promise<Map<number, RobloxItemChange[]>> {
+	await initializeDatabase();
+	const result = new Map<number, RobloxItemChange[]>();
+	if (!items || items.length === 0) return result;
+
+	const assetIds = items.map((x) => Number(x.assetId));
+
+	const rows = await db
+		.select({
+			asset_id: schema.botRobloxItems.asset_id,
+			last_price: schema.serverRobloxItems.last_price,
+			last_total_quantity: schema.serverRobloxItems.last_total_quantity,
+			message_posted_at: schema.serverRobloxItems.message_posted_at,
+			server_roblox_item_id: schema.serverRobloxItems.id
+		})
+		.from(schema.serverRobloxItems)
+		.innerJoin(schema.botRobloxItems, eq(schema.serverRobloxItems.item_id, schema.botRobloxItems.id))
+		.where(and(eq(schema.serverRobloxItems.server_id, serverId), inArray(schema.botRobloxItems.asset_id, assetIds as any)));
+
+	const rowMap = new Map(rows.map((r) => [Number(r.asset_id), r]));
+
+	for (const it of items) {
+		const assetId = Number(it.assetId);
+		const row = rowMap.get(assetId);
+		if (!row || !row.message_posted_at) continue; // not yet posted, skip change detection
+
+		const changes: RobloxItemChange[] = [];
+
+		if (row.last_price !== null && it.price !== null && it.price !== undefined && row.last_price !== it.price) {
+			changes.push({ assetId, field: 'price', oldValue: row.last_price, newValue: it.price });
+		}
+		if (row.last_total_quantity !== null && it.totalQuantity !== null && it.totalQuantity !== undefined && row.last_total_quantity !== it.totalQuantity) {
+			changes.push({ assetId, field: 'total_quantity', oldValue: row.last_total_quantity, newValue: it.totalQuantity });
+		}
+
+		if (changes.length > 0) result.set(assetId, changes);
+
+		// Update last known values
+		await db
+			.update(schema.serverRobloxItems)
+			.set({
+				last_price: it.price ?? null,
+				last_total_quantity: it.totalQuantity ?? null
+			} as any)
+			.where(eq(schema.serverRobloxItems.id, row.server_roblox_item_id));
+	}
+
+	return result;
 }
 
 async function getBotDiscordQuestByQuestId(questId: string) {
@@ -3216,6 +3277,7 @@ export default {
 	syncServerRobloxItemsFromApi,
 	listServerRobloxUnpostedAssetIds,
 	markServerRobloxItemMessagePosted,
+	detectAndUpdateServerRobloxItemChanges,
 	getBotDiscordQuestByQuestId,
 	hasServerMemberClaimedDiscordQuest,
 	markServerMemberDiscordQuestClaimed,

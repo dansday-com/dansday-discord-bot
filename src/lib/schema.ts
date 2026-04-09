@@ -518,7 +518,9 @@ export const serverRobloxItems = mysqlTable(
 		item_id: int('item_id')
 			.notNull()
 			.references(() => botRobloxItems.id, { onDelete: 'cascade' }),
-		message_posted_at: datetime('message_posted_at')
+		message_posted_at: datetime('message_posted_at'),
+		last_price: int('last_price'),
+		last_total_quantity: int('last_total_quantity')
 	},
 	(t) => [uniqueIndex('unique_server_roblox_items').on(t.server_id, t.item_id), index('idx_server_roblox_items_server_id').on(t.server_id)]
 );

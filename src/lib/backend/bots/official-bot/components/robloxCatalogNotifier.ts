@@ -79,8 +79,14 @@ async function processPage(client: Client, officialBotId: number, targets: Serve
 		const unposted = new Set(await db.listServerRobloxUnpostedAssetIds(target.serverId, assetIds));
 		if (unposted.size === 0) continue;
 
+		// Detect changes on already-posted items
+		const changes = await db.detectAndUpdateServerRobloxItemChanges(target.serverId, snapshots);
+
 		for (const item of newItems) {
-			if (!unposted.has(item.id)) continue;
+			const isNew = unposted.has(item.id);
+			const itemChanges = changes.get(item.id) ?? [];
+			if (!isNew && itemChanges.length === 0) continue;
+
 			try {
 				const url = robloxCatalogItemUrl(item.id);
 				const price = typeof item.price === 'number' ? (item.price === 0 ? 'FREE' : `${item.price} Robux`) : '—';
@@ -90,9 +96,11 @@ async function processPage(client: Client, officialBotId: number, targets: Serve
 				const category = assetTypeCategory(item.assetType) ?? '—';
 				const createdAt = item.itemCreatedUtc ? `<t:${Math.floor(new Date(item.itemCreatedUtc).getTime() / 1000)}:D>` : '—';
 
+				const title = isNew ? (item.name || `Item #${item.id}`).slice(0, 256) : `[Updated] ${item.name || `Item #${item.id}`}`.slice(0, 256);
+
 				const embed = new EmbedBuilder()
 					.setColor(target.embedConfig.COLOR)
-					.setTitle((item.name || `Item #${item.id}`).slice(0, 256))
+					.setTitle(title)
 					.addFields(
 						{ name: 'Category', value: category, inline: true },
 						{ name: 'Price', value: price, inline: true },
@@ -104,7 +112,19 @@ async function processPage(client: Client, officialBotId: number, targets: Serve
 					)
 					.setFooter({ text: target.embedConfig.FOOTER });
 
-				if (item.description?.trim()) embed.setDescription(item.description.trim().slice(0, 4096));
+				if (!isNew && itemChanges.length > 0) {
+					const changeLines = itemChanges
+						.map((c) => {
+							const label = c.field === 'total_quantity' ? 'Stock' : 'Price';
+							const fmt = (v: number | null) => (c.field === 'price' ? (v === 0 ? 'FREE' : `${v} Robux`) : String(v ?? '—'));
+							return `**${label}**: ${fmt(c.oldValue)} → ${fmt(c.newValue)}`;
+						})
+						.join('\n');
+					embed.setDescription(changeLines.slice(0, 4096));
+				} else if (item.description?.trim()) {
+					embed.setDescription(item.description.trim().slice(0, 4096));
+				}
+
 				if (item.thumbnailUrl?.startsWith('http')) embed.setThumbnail(item.thumbnailUrl);
 
 				const btnRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -112,8 +132,14 @@ async function processPage(client: Client, officialBotId: number, targets: Serve
 				);
 
 				await target.channel.send({ embeds: [embed], components: [btnRow] });
-				await db.markServerRobloxItemMessagePosted(target.serverId, item.id);
-				await logger.log(`🛍️ Roblox catalog: posted item ${item.id} → ${target.channelId} (server ${target.serverId})`);
+				if (isNew) {
+					await db.markServerRobloxItemMessagePosted(target.serverId, item.id);
+					await logger.log(`🛍️ Roblox catalog: posted item ${item.id} → ${target.channelId} (server ${target.serverId})`);
+				} else {
+					await logger.log(
+						`🔄 Roblox catalog: updated item ${item.id} → ${target.channelId} (server ${target.serverId}): ${itemChanges.map((c) => c.field).join(', ')}`
+					);
+				}
 			} catch (err: any) {
 				await logger.log(`❌ Roblox catalog: failed to post item ${item.id} for server ${target.serverId}: ${err?.message || err}`);
 			}
@@ -125,20 +151,20 @@ async function runTick(client: Client, officialBotId: number) {
 	if (tickRunning) return;
 	tickRunning = true;
 	try {
-	const targets = await getActiveServers(client, officialBotId);
-	if (targets.length === 0) return;
+		const targets = await getActiveServers(client, officialBotId);
+		if (targets.length === 0) return;
 
-	const seen = new Set<number>();
+		const seen = new Set<number>();
 
-	await streamCatalogPages({ CreatorType: 1, CreatorTargetId: 1, SortType: 2 }, async (items) => {
-		await processPage(client, officialBotId, targets, items, seen);
-	});
+		await streamCatalogPages({ CreatorType: 1, CreatorTargetId: 1, SortType: 2 }, async (items) => {
+			await processPage(client, officialBotId, targets, items, seen);
+		});
 
-	await new Promise((r) => setTimeout(r, 30_000));
+		await new Promise((r) => setTimeout(r, 30_000));
 
-	await streamCatalogPages({ SalesTypeFilter: 2, SortType: 2 }, async (items) => {
-		await processPage(client, officialBotId, targets, items, seen);
-	});
+		await streamCatalogPages({ SalesTypeFilter: 2, SortType: 2 }, async (items) => {
+			await processPage(client, officialBotId, targets, items, seen);
+		});
 	} finally {
 		tickRunning = false;
 	}

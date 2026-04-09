@@ -56,23 +56,21 @@
 		</p>
 	{/if}
 
-	{#if featureEnabled}
-		<div class="space-y-5">
-			<div>
-				<label class="text-ash-300 mb-1.5 block text-xs font-medium">
-					<i class="fas fa-hashtag mr-1.5 text-emerald-400"></i>Notification channel
-				</label>
-				<p class="text-ash-500 mb-2 text-xs">Where the bot posts Roblox catalog embeds.</p>
-				<ChannelPicker
-					channels={data.channels}
-					categories={data.categories}
-					value={channelId}
-					placeholder="Select channel…"
-					onchange={(v) => (channelId = typeof v === 'string' ? v : '')}
-				/>
-			</div>
+	<div class="space-y-5 transition-opacity" class:pointer-events-none={!featureEnabled} class:opacity-50={!featureEnabled}>
+		<div>
+			<label class="text-ash-300 mb-1.5 block text-xs font-medium">
+				<i class="fas fa-hashtag mr-1.5 text-emerald-400"></i>Notification channel
+			</label>
+			<p class="text-ash-500 mb-2 text-xs">Where the bot posts Roblox catalog embeds.</p>
+			<ChannelPicker
+				channels={data.channels}
+				categories={data.categories}
+				value={channelId}
+				placeholder="Select channel…"
+				onchange={(v) => (channelId = typeof v === 'string' ? v : '')}
+			/>
 		</div>
-	{/if}
+	</div>
 
 	<button
 		onclick={save}

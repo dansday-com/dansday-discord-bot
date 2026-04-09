@@ -503,6 +503,8 @@ export const botRobloxItems = mysqlTable(
 		thumbnail_url: varchar('thumbnail_url', { length: 512 }),
 		item_url: varchar('item_url', { length: 512 }),
 		item_created_at: datetime('item_created_at'),
+		last_price: int('last_price'),
+		last_total_quantity: int('last_total_quantity'),
 		notified_at: datetime('notified_at').notNull()
 	},
 	(t) => [uniqueIndex('unique_bot_roblox_items_asset').on(t.asset_id), index('idx_bot_roblox_items_bot_id').on(t.bot_id)]
@@ -518,9 +520,7 @@ export const serverRobloxItems = mysqlTable(
 		item_id: int('item_id')
 			.notNull()
 			.references(() => botRobloxItems.id, { onDelete: 'cascade' }),
-		message_posted_at: datetime('message_posted_at'),
-		last_price: int('last_price'),
-		last_total_quantity: int('last_total_quantity')
+		message_posted_at: datetime('message_posted_at')
 	},
 	(t) => [uniqueIndex('unique_server_roblox_items').on(t.server_id, t.item_id), index('idx_server_roblox_items_server_id').on(t.server_id)]
 );

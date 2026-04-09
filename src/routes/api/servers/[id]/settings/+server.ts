@@ -1,15 +1,10 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
-import { canEditServerSettings } from '$lib/serverPanelAccess.js';
 import { SERVER_SETTINGS } from '$lib/serverSettingsComponents.js';
 import { logger } from '$lib/utils/index.js';
 
-export const GET: RequestHandler = async ({ locals, params, url }) => {
-	if (!locals.user.authenticated) {
-		return json({ error: 'Authentication required' }, { status: 401 });
-	}
-
+export const GET: RequestHandler = async ({ params, url }) => {
 	try {
 		const component = url.searchParams.get('component');
 		let serverId = params.id;
@@ -56,9 +51,6 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 	const panelServerId = params.id;
 	if (!panelServerId) {
 		return json({ error: 'Server id required' }, { status: 400 });
-	}
-	if (!(await canEditServerSettings(locals, panelServerId))) {
-		return json({ error: 'Access denied' }, { status: 403 });
 	}
 
 	try {

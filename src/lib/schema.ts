@@ -484,8 +484,8 @@ export const serverMemberDiscordQuest = mysqlTable(
 	(t) => [uniqueIndex('unique_server_member_discord_quests').on(t.member_id, t.quest_id), index('idx_server_member_discord_quests_member').on(t.member_id)]
 );
 
-export const serverGiveaways = mysqlTable(
-	'server_giveaways',
+export const serverMemberGiveaways = mysqlTable(
+	'server_member_giveaways',
 	{
 		id: int('id').primaryKey().autoincrement(),
 		discord_message_id: varchar('discord_message_id', { length: 150 }),
@@ -505,19 +505,19 @@ export const serverGiveaways = mysqlTable(
 		updated_at: datetime('updated_at').notNull()
 	},
 	(t) => [
-		index('idx_server_giveaways_member_id').on(t.member_id),
-		index('idx_server_giveaways_status').on(t.status),
-		index('idx_server_giveaways_ends_at').on(t.ends_at)
+		index('idx_server_member_giveaways_member_id').on(t.member_id),
+		index('idx_server_member_giveaways_status').on(t.status),
+		index('idx_server_member_giveaways_ends_at').on(t.ends_at)
 	]
 );
 
-export const serverGiveawayEntries = mysqlTable(
-	'server_giveaway_entries',
+export const serverMemberGiveawayEntries = mysqlTable(
+	'server_member_giveaway_entries',
 	{
 		id: int('id').primaryKey().autoincrement(),
 		giveaway_id: int('giveaway_id')
 			.notNull()
-			.references(() => serverGiveaways.id, { onDelete: 'cascade' }),
+			.references(() => serverMemberGiveaways.id, { onDelete: 'cascade' }),
 		member_id: int('member_id')
 			.notNull()
 			.references(() => serverMembers.id, { onDelete: 'cascade' }),
@@ -528,8 +528,8 @@ export const serverGiveawayEntries = mysqlTable(
 	},
 	(t) => [
 		uniqueIndex('unique_giveaway_member').on(t.giveaway_id, t.member_id),
-		index('idx_server_giveaway_entries_giveaway_id').on(t.giveaway_id),
-		index('idx_server_giveaway_entries_member_id').on(t.member_id)
+		index('idx_server_member_giveaway_entries_giveaway_id').on(t.giveaway_id),
+		index('idx_server_member_giveaway_entries_member_id').on(t.member_id)
 	]
 );
 

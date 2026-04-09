@@ -2,6 +2,7 @@ import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 import db, { getOfficialBotIdForServer } from '$lib/database.js';
 import { webBotHome } from '$lib/frontend/redirect.js';
+import { accountOwnsServer } from '$lib/serverPanelAccess.js';
 
 export const load: LayoutServerLoad = async ({ locals, params, url }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
@@ -44,6 +45,10 @@ export const load: LayoutServerLoad = async ({ locals, params, url }) => {
 	}
 	if (botId !== canonicalBotId) {
 		redirect(302, `/bots/${canonicalBotId}/servers/${serverIdNum}`);
+	}
+
+	if (!(await accountOwnsServer(locals, serverIdNum))) {
+		redirect(302, webBotHome(url.pathname));
 	}
 
 	return { overview, botId: params.id, serverId: params.serverId, user: locals.user };

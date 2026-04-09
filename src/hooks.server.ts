@@ -4,6 +4,7 @@ import { getSession, getSessionIdFromCookie } from '$lib/utils/index.js';
 import db from '$lib/database.js';
 import { verifyBotStatuses } from '$lib/botProcesses.js';
 import { startDemoSessionExpiryListener } from '$lib/demo/demoSessionExpiry.js';
+import { guardApiRoute } from '$lib/serverPanelAccess.js';
 
 export const init = async () => {
 	await verifyBotStatuses();
@@ -102,6 +103,9 @@ export const handle: Handle = async ({ event, resolve }) => {
 			event.locals.user = { authenticated: false, can_register: false };
 		}
 	}
+
+	const guardResponse = await guardApiRoute(event.locals, event.url.pathname);
+	if (guardResponse) return guardResponse;
 
 	const response = await resolve(event, {
 		preload: ({ type }) => type === 'js' || type === 'css' || type === 'font'

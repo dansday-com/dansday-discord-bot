@@ -4,18 +4,16 @@ import db from '$lib/database.js';
 import { canViewSelfbots } from '$lib/serverPanelAccess.js';
 
 export const GET: RequestHandler = async ({ locals, params, url }) => {
-	if (!locals.user.authenticated) {
-		return new Response('Unauthorized', { status: 401 });
-	}
-
 	const botId = Number(params.id);
 	const streamKind: BotProcessKind = url.searchParams.get('kind') === 'selfbot' ? 'selfbot' : 'official';
 
+	// For selfbot streams, guard only checked panel bot ownership — need server-level check for selfbots
 	if (streamKind === 'selfbot') {
 		const sb = await db.getServerBotById(botId);
 		if (!sb) return new Response('Not found', { status: 404 });
 		if (!(await canViewSelfbots(locals, sb.server_id))) return new Response('Forbidden', { status: 403 });
 	}
+	// For official bot streams, guard already verified ownership
 
 	let cleanup: (() => void) | null = null;
 
@@ -31,22 +29,14 @@ export const GET: RequestHandler = async ({ locals, params, url }) => {
 				db.getServerBotById(botId)
 					.then((sb) => {
 						if (!sb) return;
-						send({
-							status: sb.status,
-							process_id: sb.process_id ?? null,
-							uptime_ms: getBotUptimeMs(sb)
-						});
+						send({ status: sb.status, process_id: sb.process_id ?? null, uptime_ms: getBotUptimeMs(sb) });
 					})
 					.catch((_) => {});
 			} else {
 				db.getBot(botId)
 					.then((bot) => {
 						if (!bot) return;
-						send({
-							status: bot.status,
-							process_id: bot.process_id ?? null,
-							uptime_ms: getBotUptimeMs(bot)
-						});
+						send({ status: bot.status, process_id: bot.process_id ?? null, uptime_ms: getBotUptimeMs(bot) });
 					})
 					.catch((_) => {});
 			}
@@ -68,9 +58,7 @@ export const GET: RequestHandler = async ({ locals, params, url }) => {
 			cleanup = () => {
 				clearInterval(heartbeat);
 				unsub();
-				try {
-					controller.close();
-				} catch (_) {}
+				try { controller.close(); } catch (_) {}
 			};
 		},
 		cancel() {
@@ -79,9 +67,6 @@ export const GET: RequestHandler = async ({ locals, params, url }) => {
 	});
 
 	return new Response(stream, {
-		headers: {
-			'Content-Type': 'text/event-stream',
-			Connection: 'keep-alive'
-		}
+		headers: { 'Content-Type': 'text/event-stream', Connection: 'keep-alive' }
 	});
 };

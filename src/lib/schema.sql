@@ -356,7 +356,7 @@ CREATE TABLE IF NOT EXISTS server_member_discord_quests (
     FOREIGN KEY (quest_id) REFERENCES server_discord_quests(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS server_giveaways (
+CREATE TABLE IF NOT EXISTS server_member_giveaways (
     id INT PRIMARY KEY AUTO_INCREMENT,
     discord_message_id VARCHAR(150) NULL,
     member_id INT NOT NULL,
@@ -374,7 +374,7 @@ CREATE TABLE IF NOT EXISTS server_giveaways (
     FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS server_giveaway_entries (
+CREATE TABLE IF NOT EXISTS server_member_giveaway_entries (
     id INT PRIMARY KEY AUTO_INCREMENT,
     giveaway_id INT NOT NULL,
     member_id INT NOT NULL,
@@ -383,7 +383,7 @@ CREATE TABLE IF NOT EXISTS server_giveaway_entries (
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
     UNIQUE KEY unique_giveaway_member (giveaway_id, member_id),
-    FOREIGN KEY (giveaway_id) REFERENCES server_giveaways(id) ON DELETE CASCADE,
+    FOREIGN KEY (giveaway_id) REFERENCES server_member_giveaways(id) ON DELETE CASCADE,
     FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE
 );
 
@@ -500,11 +500,11 @@ CREATE INDEX IF NOT EXISTS idx_server_accounts_email ON server_accounts(email);
 CREATE INDEX IF NOT EXISTS idx_server_account_invites_token ON server_account_invites(token);
 CREATE INDEX IF NOT EXISTS idx_server_account_invites_server_id ON server_account_invites(server_id);
 CREATE INDEX IF NOT EXISTS idx_server_bots_server_id ON server_bots(server_id);
-CREATE INDEX IF NOT EXISTS idx_server_giveaways_member_id ON server_giveaways(member_id);
-CREATE INDEX IF NOT EXISTS idx_server_giveaways_status ON server_giveaways(status);
-CREATE INDEX IF NOT EXISTS idx_server_giveaways_ends_at ON server_giveaways(ends_at);
-CREATE INDEX IF NOT EXISTS idx_server_giveaway_entries_giveaway_id ON server_giveaway_entries(giveaway_id);
-CREATE INDEX IF NOT EXISTS idx_server_giveaway_entries_member_id ON server_giveaway_entries(member_id);
+CREATE INDEX IF NOT EXISTS idx_server_member_giveaways_member_id ON server_member_giveaways(member_id);
+CREATE INDEX IF NOT EXISTS idx_server_member_giveaways_status ON server_member_giveaways(status);
+CREATE INDEX IF NOT EXISTS idx_server_member_giveaways_ends_at ON server_member_giveaways(ends_at);
+CREATE INDEX IF NOT EXISTS idx_server_member_giveaway_entries_giveaway_id ON server_member_giveaway_entries(giveaway_id);
+CREATE INDEX IF NOT EXISTS idx_server_member_giveaway_entries_member_id ON server_member_giveaway_entries(member_id);
 CREATE INDEX IF NOT EXISTS idx_server_member_staff_ratings_member ON server_member_staff_ratings(member_id);
 CREATE INDEX IF NOT EXISTS idx_server_member_staff_ratings_role ON server_member_staff_ratings(role_id);
 CREATE INDEX IF NOT EXISTS idx_server_member_staff_rating_reviews_staff ON server_member_staff_rating_reviews(reported_staff_id);

@@ -2361,7 +2361,7 @@ export async function createGiveaway(giveawayData: any) {
 	const durationMin = Number(giveawayData.duration_minutes);
 	const endsAt = new Date(createdAt.getTime() + (Number.isFinite(durationMin) ? durationMin : 0) * 60_000);
 
-	const result = await db.insert(schema.serverGiveaways).values({
+	const result = await db.insert(schema.serverMemberGiveaways).values({
 		member_id: giveawayData.member_id,
 		title: giveawayData.title,
 		prize: giveawayData.prize,
@@ -2380,18 +2380,18 @@ export async function createGiveaway(giveawayData: any) {
 export async function updateGiveawayMessageId(giveawayId: any, discordMessageId: string) {
 	await initializeDatabase();
 	await db
-		.update(schema.serverGiveaways)
+		.update(schema.serverMemberGiveaways)
 		.set({ discord_message_id: discordMessageId })
-		.where(eq(schema.serverGiveaways.id, Number(giveawayId)));
+		.where(eq(schema.serverMemberGiveaways.id, Number(giveawayId)));
 }
 
 export async function getEndedGiveaways() {
 	await initializeDatabase();
 	const rows = await db
-		.select({ giveaway: schema.serverGiveaways, server_id: schema.serverMembers.server_id })
-		.from(schema.serverGiveaways)
-		.innerJoin(schema.serverMembers, eq(schema.serverGiveaways.member_id, schema.serverMembers.id))
-		.where(and(eq(schema.serverGiveaways.status, 'active'), eq(schema.serverGiveaways.winners_announced, false)));
+		.select({ giveaway: schema.serverMemberGiveaways, server_id: schema.serverMembers.server_id })
+		.from(schema.serverMemberGiveaways)
+		.innerJoin(schema.serverMembers, eq(schema.serverMemberGiveaways.member_id, schema.serverMembers.id))
+		.where(and(eq(schema.serverMemberGiveaways.status, 'active'), eq(schema.serverMemberGiveaways.winners_announced, false)));
 	const now = new Date();
 	return rows
 		.filter((r) => {
@@ -2414,10 +2414,10 @@ export async function getEndedGiveaways() {
 export async function getGiveawayById(giveawayId: any) {
 	await initializeDatabase();
 	const rows = await db
-		.select({ giveaway: schema.serverGiveaways, server_id: schema.serverMembers.server_id })
-		.from(schema.serverGiveaways)
-		.innerJoin(schema.serverMembers, eq(schema.serverGiveaways.member_id, schema.serverMembers.id))
-		.where(eq(schema.serverGiveaways.id, Number(giveawayId)))
+		.select({ giveaway: schema.serverMemberGiveaways, server_id: schema.serverMembers.server_id })
+		.from(schema.serverMemberGiveaways)
+		.innerJoin(schema.serverMembers, eq(schema.serverMemberGiveaways.member_id, schema.serverMembers.id))
+		.where(eq(schema.serverMemberGiveaways.id, Number(giveawayId)))
 		.limit(1);
 	if (!rows[0]) return null;
 	const g = { ...rows[0].giveaway, server_id: rows[0].server_id } as any;
@@ -2435,14 +2435,14 @@ export async function getGiveawayById(giveawayId: any) {
 export async function getActiveGiveawayByMember(serverId: any, memberId: any) {
 	await initializeDatabase();
 	const rows = await db
-		.select({ giveaway: schema.serverGiveaways })
-		.from(schema.serverGiveaways)
-		.innerJoin(schema.serverMembers, eq(schema.serverGiveaways.member_id, schema.serverMembers.id))
+		.select({ giveaway: schema.serverMemberGiveaways })
+		.from(schema.serverMemberGiveaways)
+		.innerJoin(schema.serverMembers, eq(schema.serverMemberGiveaways.member_id, schema.serverMembers.id))
 		.where(
 			and(
 				eq(schema.serverMembers.server_id, Number(serverId)),
-				eq(schema.serverGiveaways.member_id, Number(memberId)),
-				eq(schema.serverGiveaways.status, 'active')
+				eq(schema.serverMemberGiveaways.member_id, Number(memberId)),
+				eq(schema.serverMemberGiveaways.status, 'active')
 			)
 		)
 		.limit(1);
@@ -2464,21 +2464,21 @@ export async function addGiveawayEntry(giveawayId: any, memberId: any, increment
 	const now = toMySQLDateTime();
 	if (increment) {
 		await db.execute(sql`
-			INSERT INTO server_giveaway_entries (giveaway_id, member_id, entry_count, created_at, updated_at)
+			INSERT INTO server_member_giveaway_entries (giveaway_id, member_id, entry_count, created_at, updated_at)
 			VALUES (${Number(giveawayId)}, ${Number(memberId)}, 1, ${now}, ${now})
 			ON DUPLICATE KEY UPDATE entry_count = entry_count + 1, updated_at = ${now}
 		`);
 	} else {
 		await db.execute(sql`
-			INSERT INTO server_giveaway_entries (giveaway_id, member_id, entry_count, created_at, updated_at)
+			INSERT INTO server_member_giveaway_entries (giveaway_id, member_id, entry_count, created_at, updated_at)
 			VALUES (${Number(giveawayId)}, ${Number(memberId)}, 1, ${now}, ${now})
 			ON DUPLICATE KEY UPDATE updated_at = ${now}
 		`);
 	}
 	const rows = await db
 		.select()
-		.from(schema.serverGiveawayEntries)
-		.where(and(eq(schema.serverGiveawayEntries.giveaway_id, Number(giveawayId)), eq(schema.serverGiveawayEntries.member_id, Number(memberId))))
+		.from(schema.serverMemberGiveawayEntries)
+		.where(and(eq(schema.serverMemberGiveawayEntries.giveaway_id, Number(giveawayId)), eq(schema.serverMemberGiveawayEntries.member_id, Number(memberId))))
 		.limit(1);
 	return rows[0] || null;
 }
@@ -2486,10 +2486,10 @@ export async function addGiveawayEntry(giveawayId: any, memberId: any, increment
 export async function getGiveawayEntries(giveawayId: any) {
 	await initializeDatabase();
 	return db
-		.select({ entry: schema.serverGiveawayEntries, discord_member_id: schema.serverMembers.discord_member_id })
-		.from(schema.serverGiveawayEntries)
-		.innerJoin(schema.serverMembers, eq(schema.serverGiveawayEntries.member_id, schema.serverMembers.id))
-		.where(eq(schema.serverGiveawayEntries.giveaway_id, Number(giveawayId)))
+		.select({ entry: schema.serverMemberGiveawayEntries, discord_member_id: schema.serverMembers.discord_member_id })
+		.from(schema.serverMemberGiveawayEntries)
+		.innerJoin(schema.serverMembers, eq(schema.serverMemberGiveawayEntries.member_id, schema.serverMembers.id))
+		.where(eq(schema.serverMemberGiveawayEntries.giveaway_id, Number(giveawayId)))
 		.orderBy(sql`RAND()`)
 		.then((rows) => rows.map((r) => ({ ...r.entry, discord_member_id: r.discord_member_id })));
 }
@@ -2539,26 +2539,26 @@ export async function getRandomGiveawayWinners(giveawayId: any, winnerCount: num
 export async function markGiveawayEnded(giveawayId: any) {
 	await initializeDatabase();
 	await db
-		.update(schema.serverGiveaways)
+		.update(schema.serverMemberGiveaways)
 		.set({ status: 'ended', winners_announced: true })
-		.where(eq(schema.serverGiveaways.id, Number(giveawayId)));
+		.where(eq(schema.serverMemberGiveaways.id, Number(giveawayId)));
 }
 
 export async function markGiveawayEndedForce(giveawayId: any) {
 	await initializeDatabase();
 	await db
-		.update(schema.serverGiveaways)
+		.update(schema.serverMemberGiveaways)
 		.set({ status: 'ended_force', winners_announced: true })
-		.where(eq(schema.serverGiveaways.id, Number(giveawayId)));
+		.where(eq(schema.serverMemberGiveaways.id, Number(giveawayId)));
 }
 
 export async function markGiveawayWinners(giveawayId: any, winnerMemberIds: any[]) {
 	await initializeDatabase();
 	if (!winnerMemberIds?.length) return;
 	await db
-		.update(schema.serverGiveawayEntries)
+		.update(schema.serverMemberGiveawayEntries)
 		.set({ is_winner: true })
-		.where(and(eq(schema.serverGiveawayEntries.giveaway_id, Number(giveawayId)), inArray(schema.serverGiveawayEntries.member_id, winnerMemberIds)));
+		.where(and(eq(schema.serverMemberGiveawayEntries.giveaway_id, Number(giveawayId)), inArray(schema.serverMemberGiveawayEntries.member_id, winnerMemberIds)));
 }
 
 export async function getStaffRating(serverId: any, staffMemberId: any) {

@@ -3,7 +3,6 @@ import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { getBotUptimeMs } from '$lib/botProcesses.js';
 import { logger } from '$lib/utils/index.js';
-import { accountOwnsBot } from '$lib/serverPanelAccess.js';
 
 async function getEnrichedBot(id: any) {
 	const bot = await db.getBot(id);
@@ -23,16 +22,8 @@ async function getEnrichedBot(id: any) {
 	return botData;
 }
 
-export const GET: RequestHandler = async ({ locals, params }) => {
-	if (!locals.user.authenticated) {
-		return json({ error: 'Authentication required' }, { status: 401 });
-	}
-
+export const GET: RequestHandler = async ({ params }) => {
 	try {
-		const botId = Number(params.id);
-		if (locals.user.account_source === 'accounts' && !(await accountOwnsBot(locals, botId))) {
-			return json({ error: 'Access denied' }, { status: 403 });
-		}
 		const botData = await getEnrichedBot(params.id);
 		if (!botData) return json({ error: 'Bot not found' }, { status: 404 });
 		return json(botData);
@@ -42,17 +33,9 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 };
 
 export const DELETE: RequestHandler = async ({ locals, params }) => {
-	if (!locals.user.authenticated || locals.user.account_source !== 'accounts') {
-		return json({ success: false, error: 'Admin access required' }, { status: 403 });
-	}
-
 	try {
-		const botId = Number(params.id);
-		if (!(await accountOwnsBot(locals, botId))) {
-			return json({ success: false, error: 'Access denied' }, { status: 403 });
-		}
 		const bot = await db.getBot(params.id);
-		if (bot) {
+		if (bot && locals.user.authenticated) {
 			logger.log(`${locals.user.username} removed bot "${bot.name}" (ID: ${bot.id})`);
 		}
 		await db.deleteBot(params.id);

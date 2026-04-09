@@ -3,6 +3,7 @@ import type { PageServerLoad } from './$types';
 import db, { getOfficialBotIdForServer } from '$lib/database.js';
 import { getBotUptimeMs } from '$lib/botProcesses.js';
 import { webRouteUp } from '$lib/frontend/redirect.js';
+import { accountOwnsBot } from '$lib/serverPanelAccess.js';
 
 export const load: PageServerLoad = async ({ locals, params, url }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
@@ -16,6 +17,9 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 		}
 		redirect(302, '/');
 	}
+
+	const botId = Number(params.id);
+	if (!(await accountOwnsBot(locals, botId))) redirect(302, webRouteUp(url.pathname));
 
 	const rawBot = await db.getBot(params.id);
 	if (!rawBot) redirect(302, webRouteUp(url.pathname));

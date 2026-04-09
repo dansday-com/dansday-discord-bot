@@ -49,7 +49,6 @@ export async function fetchRobloxCatalogSearchDetails(opts?: {
 	sortType?: number;
 	cursor?: string;
 }): Promise<{ items: RobloxCatalogSearchItem[]; nextCursor: string | null }> {
-	// Roblox allows higher page sizes on this endpoint (observed max 120).
 	const limit = Math.max(1, Math.min(120, Number(opts?.limit ?? 30)));
 	const sortType = Number.isFinite(Number(opts?.sortType)) ? Number(opts?.sortType) : 3;
 	const params: Record<string, any> = { Limit: limit, SortType: sortType };
@@ -90,4 +89,3 @@ export async function fetchRobloxCatalogSearchDetails(opts?: {
 
 	return { items, nextCursor: typeof payload.nextPageCursor === 'string' ? payload.nextPageCursor : null };
 }
-

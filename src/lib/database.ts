@@ -2292,7 +2292,11 @@ async function syncServerRobloxItemsFromApi(botId: number, serverId: number, ite
 				} as any
 			});
 
-		const [row] = await db.select({ id: schema.botRobloxItems.id }).from(schema.botRobloxItems).where(eq(schema.botRobloxItems.asset_id, Number(it.assetId))).limit(1);
+		const [row] = await db
+			.select({ id: schema.botRobloxItems.id })
+			.from(schema.botRobloxItems)
+			.where(eq(schema.botRobloxItems.asset_id, Number(it.assetId)))
+			.limit(1);
 		if (!row) continue;
 
 		await db
@@ -2309,14 +2313,24 @@ async function listServerRobloxUnpostedAssetIds(serverId: number, activeAssetIds
 		.select({ asset_id: schema.botRobloxItems.asset_id })
 		.from(schema.serverRobloxItems)
 		.innerJoin(schema.botRobloxItems, eq(schema.serverRobloxItems.item_id, schema.botRobloxItems.id))
-		.where(and(eq(schema.serverRobloxItems.server_id, serverId), inArray(schema.botRobloxItems.asset_id, activeAssetIds as any), isNull(schema.serverRobloxItems.message_posted_at)));
+		.where(
+			and(
+				eq(schema.serverRobloxItems.server_id, serverId),
+				inArray(schema.botRobloxItems.asset_id, activeAssetIds as any),
+				isNull(schema.serverRobloxItems.message_posted_at)
+			)
+		);
 	return rows.map((r) => Number(r.asset_id));
 }
 
 async function markServerRobloxItemMessagePosted(serverId: number, assetId: number): Promise<void> {
 	await initializeDatabase();
 	const posted = toMySQLDateTime();
-	const [item] = await db.select({ id: schema.botRobloxItems.id }).from(schema.botRobloxItems).where(eq(schema.botRobloxItems.asset_id, Number(assetId))).limit(1);
+	const [item] = await db
+		.select({ id: schema.botRobloxItems.id })
+		.from(schema.botRobloxItems)
+		.where(eq(schema.botRobloxItems.asset_id, Number(assetId)))
+		.limit(1);
 	if (!item) return;
 	await db
 		.update(schema.serverRobloxItems)

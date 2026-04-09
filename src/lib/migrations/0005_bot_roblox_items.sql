@@ -1,5 +1,3 @@
--- Migration 0005: Add Roblox catalog item tables (bot_roblox_items + server_roblox_items)
-
 CREATE TABLE IF NOT EXISTS bot_roblox_items (
     id INT PRIMARY KEY AUTO_INCREMENT,
     bot_id INT NOT NULL,

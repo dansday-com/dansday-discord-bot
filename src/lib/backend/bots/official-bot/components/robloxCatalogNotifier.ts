@@ -52,14 +52,7 @@ async function sendRobloxCatalogNotificationMessage(client: Client, guildId: str
 	const title = (it.name || `Roblox item #${it.assetId}`).slice(0, 256);
 	const embed = new EmbedBuilder().setColor(embedConfig.COLOR).setTitle(title);
 
-	const price =
-		typeof it.price === 'number'
-			? it.price === 0
-				? 'FREE'
-				: `${it.price} Robux`
-			: it.isFree
-				? 'FREE'
-				: '—';
+	const price = typeof it.price === 'number' ? (it.price === 0 ? 'FREE' : `${it.price} Robux`) : it.isFree ? 'FREE' : '—';
 
 	const creator = (it.creatorName || '—').slice(0, 1024);
 	const meta = [
@@ -112,9 +105,6 @@ async function runTick(client: Client, officialBotId: number) {
 		if (!channelId) continue;
 
 		try {
-			// Page through the entire catalog result set until nextPageCursor ends.
-			// Process page-by-page to avoid holding huge arrays in memory.
-			// IMPORTANT: we only care about free/limited/official items, so we only dedupe those IDs.
 			const seenRelevantAssetIds = new Set<number>();
 			let cursor: string | null = null;
 
@@ -218,4 +208,3 @@ export function stopRobloxCatalogNotifier() {
 }
 
 export default { initRobloxCatalogNotifier, stopRobloxCatalogNotifier };
-

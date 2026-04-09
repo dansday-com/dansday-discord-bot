@@ -253,13 +253,13 @@ async function runTick(client: Client, officialBotId: number) {
 
 		const seen = new Set<number>();
 
-		await streamCatalogPages({ CreatorType: 1, CreatorTargetId: 1, SortType: 2 }, async (items) => {
+		await streamCatalogPages({ CreatorType: 1, CreatorTargetId: 1, SortType: 3 }, async (items) => {
 			await processPage(officialBotId, targets, items, seen);
 		});
 
 		await new Promise((r) => setTimeout(r, 10_000));
 
-		await streamCatalogPages({ SalesTypeFilter: 2, SortType: 2 }, async (items) => {
+		await streamCatalogPages({ SalesTypeFilter: 2, SortType: 3 }, async (items) => {
 			await processPage(officialBotId, targets, items, seen);
 		});
 	} finally {

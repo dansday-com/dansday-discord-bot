@@ -5,6 +5,7 @@ import { logger } from '../../../../utils/index.js';
 import { assetTypeCategory, RobloxCatalogItem, robloxCatalogItemUrl, streamCatalogPages } from '../../../../roblox-catalog-api.js';
 
 let tickTimeoutRef: ReturnType<typeof setTimeout> | null = null;
+let tickRunning = false;
 
 const POLL_MS = 60_000;
 
@@ -121,6 +122,9 @@ async function processPage(client: Client, officialBotId: number, targets: Serve
 }
 
 async function runTick(client: Client, officialBotId: number) {
+	if (tickRunning) return;
+	tickRunning = true;
+	try {
 	const targets = await getActiveServers(client, officialBotId);
 	if (targets.length === 0) return;
 
@@ -135,6 +139,9 @@ async function runTick(client: Client, officialBotId: number) {
 	await streamCatalogPages({ SalesTypeFilter: 2 }, async (items) => {
 		await processPage(client, officialBotId, targets, items, seen);
 	});
+	} finally {
+		tickRunning = false;
+	}
 }
 
 function scheduleNextTick(client: Client, officialBotId: number) {

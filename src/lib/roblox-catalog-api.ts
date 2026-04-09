@@ -6,7 +6,6 @@ export type RobloxCatalogItem = {
 	name?: string;
 	description?: string;
 	creatorName?: string;
-	creatorHasVerifiedBadge?: boolean;
 	price?: number;
 	lowestPrice?: number;
 	lowestResalePrice?: number;
@@ -34,7 +33,6 @@ export async function fetchCatalogPage(cursor?: string): Promise<{ items: Roblox
 			name: typeof x.name === 'string' ? x.name : undefined,
 			description: typeof x.description === 'string' ? x.description : undefined,
 			creatorName: typeof x.creatorName === 'string' ? x.creatorName : undefined,
-			creatorHasVerifiedBadge: x.creatorHasVerifiedBadge === true,
 			price: Number.isFinite(Number(x?.price)) ? Number(x.price) : undefined,
 			lowestPrice: Number.isFinite(Number(x?.lowestPrice)) ? Number(x.lowestPrice) : undefined,
 			lowestResalePrice: Number.isFinite(Number(x?.lowestResalePrice)) ? Number(x.lowestResalePrice) : undefined,
@@ -76,7 +74,11 @@ export async function fetchAllCatalogVerifiedCreators(): Promise<RobloxCatalogIt
 
 	while (true) {
 		const { items, nextCursor } = await fetchCatalogPage(cursor);
-		const verified = items.filter((x) => x.creatorHasVerifiedBadge);
+		const verified = items.filter((x) => {
+			const isRoblox = x.creatorName?.trim().toLowerCase() === 'roblox';
+			const isLimitedWithStock = typeof x.totalQuantity === 'number' && x.totalQuantity > 0;
+			return isRoblox || isLimitedWithStock;
+		});
 
 		if (verified.length > 0) {
 			const thumbMap = await fetchThumbnailUrls(verified);

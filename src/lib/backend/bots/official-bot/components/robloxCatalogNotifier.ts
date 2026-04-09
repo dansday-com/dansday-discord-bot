@@ -123,7 +123,6 @@ async function initialSeed(client: Client, officialBotId: number, targets: Serve
 		fetchCatalogFirstPage({ SalesTypeFilter: 2, SortType: 3 })
 	]);
 
-	// Combine both sources, deduplicate by id
 	const seenIds = new Set<number>();
 	const all: RobloxCatalogItem[] = [];
 	for (const item of [...robloxItems, ...limitedItems]) {
@@ -132,19 +131,16 @@ async function initialSeed(client: Client, officialBotId: number, targets: Serve
 		all.push(item);
 	}
 
-	// Find newest UTC date across all combined items
 	const withDate = all.filter((x) => x.itemCreatedUtc);
 	const newestTs = withDate.reduce((max, x) => Math.max(max, new Date(x.itemCreatedUtc!).getTime()), 0);
 	const newestDay = new Date(newestTs).toISOString().slice(0, 10);
 
-	// Sort ALL by itemCreatedUtc ascending
 	all.sort((a, b) => {
 		const at = a.itemCreatedUtc ? new Date(a.itemCreatedUtc).getTime() : 0;
 		const bt = b.itemCreatedUtc ? new Date(b.itemCreatedUtc).getTime() : 0;
 		return at - bt;
 	});
 
-	// Items to post = only those from the newest date, sorted oldest → newest
 	const toPost = all
 		.filter((x) => x.itemCreatedUtc && utcDay(x.itemCreatedUtc) === newestDay)
 		.sort((a, b) => new Date(a.itemCreatedUtc!).getTime() - new Date(b.itemCreatedUtc!).getTime());
@@ -201,16 +197,13 @@ async function processPage(officialBotId: number, targets: ServerTarget[], items
 	const today = todayUtc();
 
 	for (const target of targets) {
-		// Sync ALL new items to DB
 		await db.syncServerRobloxItemsFromApi(officialBotId, target.serverId, snapshots);
 
-		// Only check unposted for items created today
 		const todayItems = newItems.filter((x) => x.itemCreatedUtc && utcDay(x.itemCreatedUtc) === today);
 		const unposted = todayItems.length > 0
 			? new Set(await db.listServerRobloxUnpostedAssetIds(target.serverId, todayItems.map((x) => x.id)))
 			: new Set<number>();
 
-		// Change tracking on ALL items
 		const changes = await db.detectAndUpdateServerRobloxItemChanges(target.serverId, snapshots);
 
 		for (const item of newItems) {

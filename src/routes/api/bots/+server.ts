@@ -91,7 +91,6 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			bot_icon: bot_icon || null,
 			port: port || 7777,
 			secret_key: secret_key || null,
-			account_id: account.id,
 			panel_id: account.panel_id
 		});
 

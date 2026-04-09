@@ -210,12 +210,10 @@ export async function getAllBots(panelId?: number | null) {
 	if (panelId != null) {
 		return retryOnConnectionError(() =>
 			db
-				.select({ bot: schema.bots })
+				.select()
 				.from(schema.bots)
-				.innerJoin(schema.accounts, eq(schema.accounts.id, schema.bots.account_id))
-				.where(eq(schema.accounts.panel_id, Number(panelId)))
+				.where(eq(schema.bots.panel_id, Number(panelId)))
 				.orderBy(asc(schema.bots.created_at))
-				.then((rows) => rows.map((r) => r.bot))
 		);
 	}
 	return retryOnConnectionError(() => db.select().from(schema.bots).orderBy(asc(schema.bots.created_at)));
@@ -240,8 +238,7 @@ export async function getBot(botId: number | string) {
 
 export async function createBot(botData: any) {
 	await initializeDatabase();
-	const panelId = botData.panel_id ?? (botData.account_id ? ((await getAccountById(botData.account_id))?.panel_id ?? null) : null);
-	const bots = await getAllBots(panelId);
+	const bots = await getAllBots(botData.panel_id);
 	const botNumber = bots.length + 1;
 	const now = toMySQLDateTime();
 
@@ -252,7 +249,7 @@ export async function createBot(botData: any) {
 		bot_icon: botData.bot_icon || null,
 		port: botData.port !== undefined ? botData.port : 7777,
 		secret_key: botData.secret_key || null,
-		account_id: botData.account_id,
+		panel_id: botData.panel_id,
 		created_at: now as any,
 		updated_at: now as any
 	});
@@ -286,6 +283,23 @@ export async function updateBot(botId: number, botData: any) {
 export async function deleteBot(botId: number) {
 	await db.delete(schema.bots).where(eq(schema.bots.id, botId));
 	return true;
+}
+
+export async function getBotPanelId(botId: number): Promise<number | null> {
+	await initializeDatabase();
+	const rows = await db.select({ panel_id: schema.bots.panel_id }).from(schema.bots).where(eq(schema.bots.id, botId)).limit(1);
+	return rows[0]?.panel_id ?? null;
+}
+
+export async function getServerPanelId(serverId: number): Promise<number | null> {
+	await initializeDatabase();
+	const rows = await db
+		.select({ panel_id: schema.bots.panel_id })
+		.from(schema.servers)
+		.innerJoin(schema.bots, eq(schema.bots.id, schema.servers.bot_id))
+		.where(eq(schema.servers.id, serverId))
+		.limit(1);
+	return rows[0]?.panel_id ?? null;
 }
 
 export async function getServer(serverId: any) {
@@ -3028,6 +3042,8 @@ export async function getStaffRatingRole(serverId: any, staffMemberId: any) {
 export default {
 	getAllBots,
 	getBot,
+	getBotPanelId,
+	getServerPanelId,
 	createBot,
 	updateBot,
 	deleteBot,

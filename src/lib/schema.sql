@@ -36,13 +36,13 @@ CREATE TABLE IF NOT EXISTS bots (
     bot_icon TEXT,
     port INT,
     secret_key TEXT,
-    account_id INT NOT NULL,
+    panel_id INT NOT NULL,
     status ENUM('running', 'stopped', 'starting', 'stopping') DEFAULT 'stopped',
     process_id INT,
     uptime_started_at DATETIME NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
-    FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+    FOREIGN KEY (panel_id) REFERENCES panels(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS servers (
@@ -472,7 +472,7 @@ CREATE TABLE IF NOT EXISTS server_member_content_creator_stream_logs (
     FOREIGN KEY (stream_id) REFERENCES server_member_content_creator_streams(id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_bots_account_id ON bots(account_id);
+CREATE INDEX IF NOT EXISTS idx_bots_panel_id ON bots(panel_id);
 CREATE INDEX IF NOT EXISTS idx_servers_discord_id ON servers(discord_server_id);
 CREATE INDEX IF NOT EXISTS idx_servers_discord_created_at ON servers(discord_created_at);
 CREATE INDEX IF NOT EXISTS idx_servers_invite_code ON servers(invite_code);

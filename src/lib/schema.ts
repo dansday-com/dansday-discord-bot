@@ -42,9 +42,9 @@ export const bots = mysqlTable('bots', {
 	bot_icon: text('bot_icon'),
 	port: int('port'),
 	secret_key: text('secret_key'),
-	account_id: int('account_id')
+	panel_id: int('panel_id')
 		.notNull()
-		.references(() => accounts.id, { onDelete: 'cascade' }),
+		.references(() => panel.id, { onDelete: 'cascade' }),
 	status: mysqlEnum('status', ['running', 'stopped', 'starting', 'stopping']).default('stopped'),
 	process_id: int('process_id'),
 	uptime_started_at: datetime('uptime_started_at'),

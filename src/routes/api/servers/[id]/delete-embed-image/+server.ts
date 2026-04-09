@@ -16,7 +16,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 	if (!serverId) {
 		return json({ success: false, error: 'Invalid server ID' }, { status: 400 });
 	}
-	if (!canUseEmbedBuilder(locals, serverId)) {
+	if (!(await canUseEmbedBuilder(locals, serverId))) {
 		return json({ success: false, error: 'Access denied' }, { status: 403 });
 	}
 

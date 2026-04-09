@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
+import { accountOwnsServer } from '$lib/serverPanelAccess.js';
 
 export const GET: RequestHandler = async ({ locals, params, url }) => {
 	if (!locals.user.authenticated) {
@@ -19,6 +20,13 @@ export const GET: RequestHandler = async ({ locals, params, url }) => {
 
 		if (Number(server.id) !== Number(serverId)) {
 			return json({ error: 'Server not found' }, { status: 404 });
+		}
+
+		if (locals.user.account_source === 'accounts' && !(await accountOwnsServer(locals, Number(serverId)))) {
+			return json({ error: 'Access denied' }, { status: 403 });
+		}
+		if (locals.user.account_source === 'server_accounts' && locals.user.server_id !== Number(serverId)) {
+			return json({ error: 'Access denied' }, { status: 403 });
 		}
 
 		let channels = await db.getServerBotChannelsForServer(Number(serverId));

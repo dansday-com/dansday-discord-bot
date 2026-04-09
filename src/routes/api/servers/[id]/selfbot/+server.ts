@@ -6,7 +6,7 @@ import { logger } from '$lib/utils/index.js';
 
 export const GET: RequestHandler = async ({ locals, params }) => {
 	const serverId = Number(params.id);
-	if (!canViewSelfbots(locals, serverId)) return json({ success: false, error: 'Access denied' }, { status: 403 });
+	if (!(await canViewSelfbots(locals, serverId))) return json({ success: false, error: 'Access denied' }, { status: 403 });
 
 	const selfbots = await db.getServerBots(serverId);
 	return json({ success: true, selfbots });
@@ -14,7 +14,7 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 
 export const POST: RequestHandler = async ({ locals, params, request }) => {
 	const serverId = Number(params.id);
-	if (!canManageSelfbots(locals, serverId)) return json({ success: false, error: 'Access denied' }, { status: 403 });
+	if (!(await canManageSelfbots(locals, serverId))) return json({ success: false, error: 'Access denied' }, { status: 403 });
 
 	const body = await request.json();
 	const { token } = body;
@@ -46,7 +46,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 
 export const DELETE: RequestHandler = async ({ locals, params, request }) => {
 	const serverId = Number(params.id);
-	if (!canManageSelfbots(locals, serverId)) return json({ success: false, error: 'Access denied' }, { status: 403 });
+	if (!(await canManageSelfbots(locals, serverId))) return json({ success: false, error: 'Access denied' }, { status: 403 });
 
 	const body = await request.json();
 	const selfbotId = Number(body.selfbot_id);

@@ -283,7 +283,12 @@
 			{#if (data.roles as unknown[]).length > 0}
 				<div class="mb-4">
 					<label class="text-ash-300 mb-2 block text-xs font-medium">Role Mentions</label>
-					<RolePicker roles={data.roles as any} value={selectedRoles} placeholder="Select roles to mention..." onchange={(v) => (selectedRoles = v as string[])} />
+					<RolePicker
+						roles={data.roles as any}
+						value={selectedRoles}
+						placeholder="Select roles to mention..."
+						onchange={(v) => (selectedRoles = v as string[])}
+					/>
 				</div>
 			{/if}
 

@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
+import { accountOwnsBot, accountOwnsServer } from '$lib/serverPanelAccess.js';
 
 export const GET: RequestHandler = async ({ locals, params }) => {
 	if (!locals.user.authenticated) {
@@ -11,10 +12,19 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 		const id = Number(params.id);
 		const official = await db.getBot(id);
 		if (official) {
+			if (locals.user.account_source === 'accounts' && !(await accountOwnsBot(locals, id))) {
+				return json({ error: 'Access denied' }, { status: 403 });
+			}
 			return json(await db.getServersForBot(id));
 		}
 		const selfbot = await db.getServerBotById(id);
 		if (selfbot) {
+			if (locals.user.account_source === 'server_accounts' && locals.user.server_id !== selfbot.server_id) {
+				return json({ error: 'Access denied' }, { status: 403 });
+			}
+			if (locals.user.account_source === 'accounts' && !(await accountOwnsServer(locals, selfbot.server_id))) {
+				return json({ error: 'Access denied' }, { status: 403 });
+			}
 			return json(await db.getServersForSelfbot(id));
 		}
 		return json({ error: 'Bot not found' }, { status: 404 });

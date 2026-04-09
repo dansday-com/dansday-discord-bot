@@ -105,7 +105,7 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 			bot_icon: null,
 			port: DEMO.demoBot.port,
 			secret_key: DEMO.demoBot.secret_key,
-			account_id: demoAdmin.id,
+			panel_id: demoPanel.id,
 			status: 'stopped',
 			process_id: null,
 			uptime_started_at: null,
@@ -115,7 +115,7 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 		.onDuplicateKeyUpdate({
 			set: {
 				name: DEMO.demoBot.name as any,
-				account_id: demoAdmin.id as any,
+				panel_id: demoPanel.id as any,
 				updated_at: nowDb
 			}
 		});

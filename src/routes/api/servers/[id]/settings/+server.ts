@@ -57,7 +57,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 	if (!panelServerId) {
 		return json({ error: 'Server id required' }, { status: 400 });
 	}
-	if (!canEditServerSettings(locals, panelServerId)) {
+	if (!(await canEditServerSettings(locals, panelServerId))) {
 		return json({ error: 'Access denied' }, { status: 403 });
 	}
 

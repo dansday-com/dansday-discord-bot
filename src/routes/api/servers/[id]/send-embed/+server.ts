@@ -22,7 +22,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		return json({ success: false, error: 'Invalid server ID' }, { status: 400 });
 	}
 
-	if (!canUseEmbedBuilder(locals, serverId)) {
+	if (!(await canUseEmbedBuilder(locals, serverId))) {
 		return json({ success: false, error: 'Access denied' }, { status: 403 });
 	}
 
@@ -59,9 +59,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			return json({ success: false, error: appearanceBlock }, { status: 400 });
 		}
 
-		let resolvedChannelIds: string[] = Array.isArray(channel_ids)
-			? channel_ids.filter((id: any) => id != null && id !== '')
-			: [];
+		let resolvedChannelIds: string[] = Array.isArray(channel_ids) ? channel_ids.filter((id: any) => id != null && id !== '') : [];
 
 		if (resolvedChannelIds.length === 0) {
 			const defaultChannel = mainChannelId(mainSettings);

@@ -6,9 +6,12 @@ import { logger } from '$lib/utils/index.js';
 import { request as httpRequest } from 'http';
 import { messageFromBotWebhookPayload } from '$lib/utils/configPrerequisiteErrors.js';
 
-function canManageAccounts(locals: App.Locals, serverId: number): boolean {
+async function canManageAccounts(locals: App.Locals, serverId: number): Promise<boolean> {
 	if (!locals.user.authenticated) return false;
-	if (locals.user.account_source === 'accounts') return true;
+	if (locals.user.account_source === 'accounts') {
+		const { accountOwnsServer } = await import('$lib/serverPanelAccess.js');
+		return accountOwnsServer(locals, serverId);
+	}
 	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'owner') return locals.user.server_id === serverId;
 	return false;
 }
@@ -23,7 +26,7 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'moderator') {
 		return json({ success: false, error: 'Access denied' }, { status: 403 });
 	}
-	if (!canManageAccounts(locals, serverId)) {
+	if (!(await canManageAccounts(locals, serverId))) {
 		return json({ success: false, error: 'Access denied' }, { status: 403 });
 	}
 

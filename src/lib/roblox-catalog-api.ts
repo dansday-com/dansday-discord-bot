@@ -116,7 +116,7 @@ export async function fetchRobloxThumbnailUrls(items: { id: number; itemType?: s
 	}
 
 	for (const ids of chunk(bundles, 100)) {
-		const res = await axios.get<RobloxThumbV1Response>('https://thumbnails.roblox.com/v1/bundles', {
+		const res = await axios.get<RobloxThumbV1Response>('https://thumbnails.roblox.com/v1/bundles/thumbnails', {
 			params: { bundleIds: ids.join(','), size: '420x420', format: 'Png', isCircular: 'false' },
 			headers: { 'User-Agent': 'dansday-discord-bot/roblox-catalog-notifier' },
 			timeout: 15_000

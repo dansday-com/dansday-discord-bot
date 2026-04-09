@@ -80,14 +80,16 @@ async function fetchThumbnailUrls(items: RobloxCatalogItem[]): Promise<Map<numbe
 	const ids = items.map((x) => x.id);
 	if (ids.length === 0) return out;
 
-	const data = await fetchWithRetry('https://thumbnails.roblox.com/v1/assets', {
-		assetIds: ids.join(','), size: '420x420', format: 'Png', isCircular: 'false'
-	});
-
-	for (const r of Array.isArray(data?.data) ? data.data : []) {
-		const id = Number(r?.targetId);
-		const url = typeof r?.imageUrl === 'string' ? r.imageUrl.trim() : '';
-		if (Number.isFinite(id) && url.startsWith('http')) out.set(id, url);
+	for (let i = 0; i < ids.length; i += 100) {
+		const chunk = ids.slice(i, i + 100);
+		const data = await fetchWithRetry('https://thumbnails.roblox.com/v1/assets', {
+			assetIds: chunk.join(','), size: '420x420', format: 'Png', isCircular: 'false'
+		});
+		for (const r of Array.isArray(data?.data) ? data.data : []) {
+			const id = Number(r?.targetId);
+			const url = typeof r?.imageUrl === 'string' ? r.imageUrl.trim() : '';
+			if (Number.isFinite(id) && url.startsWith('http')) out.set(id, url);
+		}
 	}
 
 	return out;

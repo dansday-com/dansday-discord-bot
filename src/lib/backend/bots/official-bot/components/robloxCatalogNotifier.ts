@@ -110,13 +110,11 @@ async function sendItemEmbed(target: ServerTarget, item: RobloxCatalogItem, isNe
 async function initialSeed(client: Client, officialBotId: number, targets: ServerTarget[]) {
 	await logger.log('🛍️ Roblox catalog: DB empty, performing initial seed...');
 
-	// Fetch first 120 from both sources
 	const [robloxItems, limitedItems] = await Promise.all([
 		fetchCatalogFirstPage({ CreatorType: 1, CreatorTargetId: 1, SortType: 3 }),
 		fetchCatalogFirstPage({ SalesTypeFilter: 2, SortType: 3 })
 	]);
 
-	// Merge and deduplicate
 	const seen = new Set<number>();
 	const all: RobloxCatalogItem[] = [];
 	for (const item of [...robloxItems, ...limitedItems]) {
@@ -125,7 +123,6 @@ async function initialSeed(client: Client, officialBotId: number, targets: Serve
 		all.push(item);
 	}
 
-	// Filter by today, fallback to most recent available date
 	const today = new Date().toDateString();
 	let merged = all.filter((x) => x.itemCreatedUtc && new Date(x.itemCreatedUtc).toDateString() === today);
 	if (merged.length === 0) {
@@ -134,7 +131,6 @@ async function initialSeed(client: Client, officialBotId: number, targets: Serve
 			.sort((a, b) => new Date(b.itemCreatedUtc!).getTime() - new Date(a.itemCreatedUtc!).getTime())[0]?.itemCreatedUtc;
 		if (newestDate) merged = all.filter((x) => x.itemCreatedUtc && new Date(x.itemCreatedUtc).toDateString() === new Date(newestDate).toDateString());
 	}
-	merged.sort((a, b) => new Date(a.itemCreatedUtc ?? 0).getTime() - new Date(b.itemCreatedUtc ?? 0).getTime());
 
 	await logger.log(`🛍️ Roblox catalog: initial seed found ${merged.length} items within today/yesterday`);
 
@@ -159,7 +155,6 @@ async function initialSeed(client: Client, officialBotId: number, targets: Serve
 		}
 	}
 
-	// Background: paginate the rest to fill DB (no posting)
 	backgroundSync(officialBotId, targets, seen).catch((err) => logger.log(`⚠️ Roblox catalog: background sync error: ${err?.message || err}`));
 }
 

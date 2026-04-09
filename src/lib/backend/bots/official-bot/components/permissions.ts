@@ -111,7 +111,8 @@ export async function getPermissionDeniedMessage(guild: any, action: string, use
 		content_creator: 'Content Creator',
 		notifications: 'Notifications',
 		menu: 'Menu',
-		setup: 'Setup'
+		setup: 'Setup',
+		quest_enroll: 'Quest Enroll'
 	};
 
 	const actionName = actionNames[action] || action;

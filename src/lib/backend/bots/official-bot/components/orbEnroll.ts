@@ -3,6 +3,7 @@ import type { ButtonInteraction, ModalSubmitInteraction } from 'discord.js';
 import db from '../../../../database.js';
 import { getEmbedConfig, getServerForCurrentBot, serverSettingsComponent } from '../../../config.js';
 import { translate } from '../i18n.js';
+import { hasPermission, getPermissionDeniedMessage } from './permissions.js';
 import { queueOrbEnrollJob } from './orbEnrollWorker.js';
 
 export const ORB_ENROLL_BUTTON_PREFIX = 'orb_enroll:';
@@ -13,6 +14,13 @@ export async function handleOrbEnrollButton(interaction: ButtonInteraction): Pro
 	const questId = interaction.customId.slice(ORB_ENROLL_BUTTON_PREFIX.length).trim();
 	if (!questId) {
 		await interaction.reply({ content: 'Invalid quest id.', flags: 64 }).catch(() => null);
+		return;
+	}
+
+	const member = interaction.guild ? await interaction.guild.members.fetch(interaction.user.id).catch(() => null) : null;
+	if (!member || !(await hasPermission(member, 'menu'))) {
+		const errorMessage = await getPermissionDeniedMessage(interaction.guild!, 'menu', interaction.user.id);
+		await interaction.reply({ content: errorMessage, flags: 64 }).catch(() => null);
 		return;
 	}
 

@@ -7,13 +7,11 @@ export const GET: RequestHandler = async ({ locals, params, url }) => {
 	const botId = Number(params.id);
 	const streamKind: BotProcessKind = url.searchParams.get('kind') === 'selfbot' ? 'selfbot' : 'official';
 
-	// For selfbot streams, guard only checked panel bot ownership — need server-level check for selfbots
 	if (streamKind === 'selfbot') {
 		const sb = await db.getServerBotById(botId);
 		if (!sb) return new Response('Not found', { status: 404 });
 		if (!(await canViewSelfbots(locals, sb.server_id))) return new Response('Forbidden', { status: 403 });
 	}
-	// For official bot streams, guard already verified ownership
 
 	let cleanup: (() => void) | null = null;
 

@@ -79,7 +79,6 @@ async function processPage(client: Client, officialBotId: number, targets: Serve
 		const unposted = new Set(await db.listServerRobloxUnpostedAssetIds(target.serverId, assetIds));
 		if (unposted.size === 0) continue;
 
-		// Detect changes on already-posted items
 		const changes = await db.detectAndUpdateServerRobloxItemChanges(target.serverId, snapshots);
 
 		for (const item of newItems) {

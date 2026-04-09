@@ -32,7 +32,7 @@ async function fetchWithRetry(url: string, params: Record<string, any>): Promise
 				await new Promise((r) => setTimeout(r, 30_000 * (attempt + 1)));
 				continue;
 			}
-			throw new Error(`[roblox-api] failed: ${status} — ${fullUrl} — ${body}`);
+			throw new Error(`[roblox-api] failed ${status} on ${fullUrl} — ${body}`);
 		}
 	}
 }
@@ -80,13 +80,11 @@ async function fetchThumbnailUrls(items: RobloxCatalogItem[]): Promise<Map<numbe
 	const ids = items.map((x) => x.id);
 	if (ids.length === 0) return out;
 
-	const res = await axios.get('https://thumbnails.roblox.com/v1/assets', {
-		params: { assetIds: ids.join(','), size: '420x420', format: 'Png', isCircular: 'false' },
-		headers: ROBLOX_HEADERS,
-		timeout: 15_000
+	const data = await fetchWithRetry('https://thumbnails.roblox.com/v1/assets', {
+		assetIds: ids.join(','), size: '420x420', format: 'Png', isCircular: 'false'
 	});
 
-	for (const r of Array.isArray(res.data?.data) ? res.data.data : []) {
+	for (const r of Array.isArray(data?.data) ? data.data : []) {
 		const id = Number(r?.targetId);
 		const url = typeof r?.imageUrl === 'string' ? r.imageUrl.trim() : '';
 		if (Number.isFinite(id) && url.startsWith('http')) out.set(id, url);

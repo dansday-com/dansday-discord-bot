@@ -8,13 +8,10 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 		const id = Number(params.id);
 		const official = await db.getBot(id);
 		if (official) {
-			// guard already verified bot ownership for accounts users
 			return json(await db.getServersForBot(id));
 		}
 		const selfbot = await db.getServerBotById(id);
 		if (selfbot) {
-			// for selfbot route, guard matched /api/bots/:id — but selfbot ids aren't panel bots,
-			// so verify server ownership explicitly here
 			if (locals.user.authenticated && locals.user.account_source === 'server_accounts') {
 				if (locals.user.server_id !== selfbot.server_id) {
 					return json({ error: 'Access denied' }, { status: 403 });

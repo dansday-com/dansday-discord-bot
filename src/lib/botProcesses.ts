@@ -364,10 +364,7 @@ export async function stopBotById(botId: number, bot?: any): Promise<{ success: 
 		emitBotStatus(mapKey, 'stopped', null, null);
 	} catch (_) {}
 
-	logger.log(`⏹️  Stopped bot ${mapKey}`);
-
-	// When the official bot is intentionally stopped, selfbot processes are left running independently.
-	// They do not depend on the official bot process and should continue unaffected.
+	logger.log(`⏹️  Stopped bot ${mapKey}`)
 
 	return { success: true };
 }

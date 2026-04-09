@@ -2355,7 +2355,7 @@ async function detectAndUpdateServerRobloxItemChanges(serverId: number, items: R
 	for (const it of items) {
 		const assetId = Number(it.assetId);
 		const row = rowMap.get(assetId);
-		if (!row || !row.message_posted_at) continue; // not yet posted, skip change detection
+		if (!row || !row.message_posted_at) continue;
 
 		const changes: RobloxItemChange[] = [];
 
@@ -2368,7 +2368,6 @@ async function detectAndUpdateServerRobloxItemChanges(serverId: number, items: R
 
 		if (changes.length > 0) result.set(assetId, changes);
 
-		// Update last known values
 		await db
 			.update(schema.serverRobloxItems)
 			.set({

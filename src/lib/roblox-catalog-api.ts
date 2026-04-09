@@ -29,7 +29,7 @@ async function fetchWithRetry(url: string, params: Record<string, any>): Promise
 			const fullUrl = `${url}?${new URLSearchParams(params).toString()}`;
 			console.error(`[roblox-api] attempt ${attempt + 1} failed: ${status} — ${fullUrl}`);
 			if ((status === 503 || status === 429) && attempt < 2) {
-				await new Promise((r) => setTimeout(r, 10_000 * (attempt + 1)));
+				await new Promise((r) => setTimeout(r, 30_000 * (attempt + 1)));
 				continue;
 			}
 			throw err;
@@ -69,7 +69,7 @@ async function fetchCatalogPages(extraParams: Record<string, any>): Promise<Robl
 		const nextCursor = typeof data?.nextPageCursor === 'string' ? data.nextPageCursor : null;
 		if (!nextCursor) break;
 		cursor = nextCursor;
-		if (!first) await new Promise((r) => setTimeout(r, 5_000));
+		await new Promise((r) => setTimeout(r, 10_000));
 		first = false;
 	}
 

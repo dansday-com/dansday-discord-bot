@@ -15,8 +15,8 @@ export type RobloxCatalogItem = {
 };
 
 const ROBLOX_HEADERS = {
-	'User-Agent': 'dansday-discord-bot/roblox-catalog-notifier',
-	...(process.env.ROBLOX_SECURITY_COOKIE ? { Cookie: `.ROBLOSECURITY=${process.env.ROBLOX_SECURITY_COOKIE}` } : {})
+	'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+	'Accept': 'application/json'
 };
 
 async function fetchWithRetry(url: string, params: Record<string, any>): Promise<any> {

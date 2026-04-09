@@ -27,7 +27,7 @@ async function fetchWithRetry(url: string, params: Record<string, any>): Promise
 		} catch (err: any) {
 			const status = err?.response?.status;
 			const fullUrl = `${url}?${new URLSearchParams(params).toString()}`;
-			console.error(`[roblox-api] attempt ${attempt + 1} failed: ${status} — ${fullUrl}`);
+			console.error(`[roblox-api] attempt ${attempt + 1} failed: ${status} — ${fullUrl} — ${err?.response?.data ? JSON.stringify(err.response.data) : err?.message}`);
 			if ((status === 503 || status === 429) && attempt < 2) {
 				await new Promise((r) => setTimeout(r, 30_000 * (attempt + 1)));
 				continue;
@@ -41,7 +41,7 @@ export async function streamCatalogPages(extraParams: Record<string, any>, onPag
 	let cursor: string | undefined = undefined;
 
 	while (true) {
-		const params: Record<string, any> = { Limit: 120, SortType: 3, ...extraParams };
+		const params: Record<string, any> = { Limit: 120, ...extraParams };
 		if (cursor) params.Cursor = cursor;
 
 		const data = await fetchWithRetry('https://catalog.roblox.com/v2/search/items/details', params);

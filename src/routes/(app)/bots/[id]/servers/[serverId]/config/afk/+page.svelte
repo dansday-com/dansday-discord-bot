@@ -8,7 +8,7 @@
 	let { data }: PageProps = $props();
 
 	let saving = $state(false);
-	let featureEnabled = $state(data.settings?.enabled !== false);
+	let featureEnabled = $state(data.settings?.enabled === true);
 
 	async function save() {
 		saving = true;

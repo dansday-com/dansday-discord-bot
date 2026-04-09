@@ -11,7 +11,7 @@
 	let { data }: PageProps = $props();
 
 	let saving = $state(false);
-	let featureEnabled = $state(data.settings?.enabled !== false);
+	let featureEnabled = $state(data.settings?.enabled === true);
 
 	let baseXP = $state<number>(data.settings?.REQUIREMENTS?.BASE_XP ?? 100);
 	let multiplier = $state<number>(data.settings?.REQUIREMENTS?.MULTIPLIER ?? 1.5);

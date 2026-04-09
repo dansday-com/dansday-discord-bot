@@ -484,6 +484,49 @@ export const serverMemberDiscordQuest = mysqlTable(
 	(t) => [uniqueIndex('unique_server_member_discord_quests').on(t.member_id, t.quest_id), index('idx_server_member_discord_quests_member').on(t.member_id)]
 );
 
+export const botRobloxItems = mysqlTable(
+	'bot_roblox_items',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		bot_id: int('bot_id')
+			.notNull()
+			.references(() => bots.id, { onDelete: 'cascade' }),
+		asset_id: bigint('asset_id', { mode: 'number' }).notNull(),
+		asset_type: int('asset_type'),
+		name: text('name'),
+		description: text('description'),
+		creator_name: text('creator_name'),
+		price: int('price'),
+		lowest_price: int('lowest_price'),
+		lowest_resale_price: int('lowest_resale_price'),
+		total_quantity: int('total_quantity'),
+		thumbnail_url: varchar('thumbnail_url', { length: 512 }),
+		item_url: varchar('item_url', { length: 512 }),
+		item_created_at: datetime('item_created_at'),
+		last_price: int('last_price'),
+		last_lowest_price: int('last_lowest_price'),
+		last_lowest_resale_price: int('last_lowest_resale_price'),
+		last_total_quantity: int('last_total_quantity'),
+		notified_at: datetime('notified_at').notNull()
+	},
+	(t) => [uniqueIndex('unique_bot_roblox_items_asset').on(t.asset_id), index('idx_bot_roblox_items_bot_id').on(t.bot_id)]
+);
+
+export const serverRobloxItems = mysqlTable(
+	'server_roblox_items',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		server_id: int('server_id')
+			.notNull()
+			.references(() => servers.id, { onDelete: 'cascade' }),
+		item_id: int('item_id')
+			.notNull()
+			.references(() => botRobloxItems.id, { onDelete: 'cascade' }),
+		message_posted_at: datetime('message_posted_at')
+	},
+	(t) => [uniqueIndex('unique_server_roblox_items').on(t.server_id, t.item_id), index('idx_server_roblox_items_server_id').on(t.server_id)]
+);
+
 export const serverMemberGiveaways = mysqlTable(
 	'server_member_giveaways',
 	{

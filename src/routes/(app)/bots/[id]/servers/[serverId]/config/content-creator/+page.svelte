@@ -12,7 +12,7 @@
 	let { data }: PageProps = $props();
 
 	let saving = $state(false);
-	let featureEnabled = $state(data.settings?.enabled !== false);
+	let featureEnabled = $state(data.settings?.enabled === true);
 	let admissionChannel = $state<string>(data.settings?.admission_channel_id ?? '');
 	let targetChannel = $state<string>(data.settings?.target_channel_id ?? '');
 	let cooldownDays = $state<number>(data.settings?.cooldown_days ?? 1);

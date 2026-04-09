@@ -113,6 +113,14 @@ const REGISTRY = [
 		iconClass: 'text-sky-400'
 	},
 	{
+		id: 'roblox_catalog_notifier',
+		label: 'Roblox Catalog',
+		featureSwitch: true,
+		hrefSuffix: '/roblox-catalog-notifier',
+		icon: 'fa-cube',
+		iconClass: 'text-emerald-400'
+	},
+	{
 		id: 'public_statistics',
 		label: 'Public statistics',
 		featureSwitch: true,

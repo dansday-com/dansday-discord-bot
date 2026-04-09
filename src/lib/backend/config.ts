@@ -180,10 +180,12 @@ export async function isComponentFeatureEnabled(guildDiscordId: string, componen
 		const serverId = await resolveServerIdForGuildSetting(guildDiscordId, component);
 		if (serverId == null) return true;
 		const row = await db.getServerSettings(serverId, component);
-		if (!row?.settings || typeof row.settings !== 'object') return true;
-		return (row.settings as Record<string, unknown>).enabled !== false;
+		if (!row || Array.isArray(row) || !row.settings || typeof row.settings !== 'object') {
+			return SERVER_SETTINGS.withFeatureSwitch.includes(component as ServerSettingsComponentName) ? false : true;
+		}
+		return (row.settings as Record<string, unknown>).enabled === true;
 	} catch {
-		return true;
+		return SERVER_SETTINGS.withFeatureSwitch.includes(component as ServerSettingsComponentName) ? false : true;
 	}
 }
 

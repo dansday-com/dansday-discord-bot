@@ -6,7 +6,7 @@ import { SERVER_SETTINGS } from '$lib/serverSettingsComponents.js';
 export const load: PageServerLoad = async ({ locals, params }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
 	const row = await db.getServerSettings(params.serverId, SERVER_SETTINGS.component.discord_quest_notifier).catch(() => null);
-	const raw = row?.settings;
+	const raw = row && !Array.isArray(row) ? row.settings : null;
 	const s = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
 
 	const selfbots = await db.getServerBots(Number(params.serverId));
@@ -14,7 +14,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 
 	return {
 		settings: {
-			enabled: s.enabled !== false,
+			enabled: s.enabled === true,
 			channel_id: typeof s.channel_id === 'string' ? s.channel_id : '',
 			http_proxy_url: typeof s.http_proxy_url === 'string' ? s.http_proxy_url : '',
 			auto_quest: s.auto_quest !== false

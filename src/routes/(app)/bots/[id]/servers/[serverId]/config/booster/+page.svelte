@@ -10,7 +10,7 @@
 	let { data }: PageProps = $props();
 
 	let saving = $state(false);
-	let featureEnabled = $state(data.settings?.enabled !== false);
+	let featureEnabled = $state(data.settings?.enabled === true);
 	let channels = $state<string[]>(data.settings?.channels ?? []);
 	let messages = $state<string[]>(data.settings?.messages ?? []);
 

@@ -9,7 +9,7 @@
 	let { data }: PageProps = $props();
 
 	let saving = $state(false);
-	let featureEnabled = $state(data.settings?.enabled !== false);
+	let featureEnabled = $state(data.settings?.enabled === true);
 	let giveawayChannel = $state<string>(data.settings?.giveaway_channel ?? '');
 	let creatorCanParticipate = $state<boolean>(data.settings?.giveaway_creator_can_participate ?? false);
 

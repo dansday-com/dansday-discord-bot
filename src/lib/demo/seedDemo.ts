@@ -51,7 +51,6 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 	const nowDb = (toMySQLDateTime(now) || new Date()) as any;
 	const nowSql = nowDb;
 
-	// account -> panel -> bots (waterfall order)
 	const sessionUsername = `demo_${sessionSlug}`;
 	const sessionEmail = `demo_${sessionSlug}@dansday.local`;
 	const pwHash = await bcrypt.hash(`demo-${now.getUTCFullYear()}`, 10);

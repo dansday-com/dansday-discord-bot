@@ -1,0 +1,27 @@
+SET @col1 := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bot_roblox_items' AND COLUMN_NAME = 'item_type');
+SET @sql1 := IF(@col1 > 0, 'ALTER TABLE bot_roblox_items DROP COLUMN item_type', 'SELECT 1');
+PREPARE stmt1 FROM @sql1; EXECUTE stmt1; DEALLOCATE PREPARE stmt1;
+
+SET @col2 := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bot_roblox_items' AND COLUMN_NAME = 'collectible_item_id');
+SET @sql2 := IF(@col2 > 0, 'ALTER TABLE bot_roblox_items DROP COLUMN collectible_item_id', 'SELECT 1');
+PREPARE stmt2 FROM @sql2; EXECUTE stmt2; DEALLOCATE PREPARE stmt2;
+
+SET @col3 := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bot_roblox_items' AND COLUMN_NAME = 'creator_type');
+SET @sql3 := IF(@col3 > 0, 'ALTER TABLE bot_roblox_items DROP COLUMN creator_type', 'SELECT 1');
+PREPARE stmt3 FROM @sql3; EXECUTE stmt3; DEALLOCATE PREPARE stmt3;
+
+SET @col4 := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bot_roblox_items' AND COLUMN_NAME = 'creator_target_id');
+SET @sql4 := IF(@col4 > 0, 'ALTER TABLE bot_roblox_items DROP COLUMN creator_target_id', 'SELECT 1');
+PREPARE stmt4 FROM @sql4; EXECUTE stmt4; DEALLOCATE PREPARE stmt4;
+
+SET @col5 := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bot_roblox_items' AND COLUMN_NAME = 'is_official');
+SET @sql5 := IF(@col5 > 0, 'ALTER TABLE bot_roblox_items DROP COLUMN is_official', 'SELECT 1');
+PREPARE stmt5 FROM @sql5; EXECUTE stmt5; DEALLOCATE PREPARE stmt5;
+
+SET @col6 := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bot_roblox_items' AND COLUMN_NAME = 'is_limited');
+SET @sql6 := IF(@col6 > 0, 'ALTER TABLE bot_roblox_items DROP COLUMN is_limited', 'SELECT 1');
+PREPARE stmt6 FROM @sql6; EXECUTE stmt6; DEALLOCATE PREPARE stmt6;
+
+SET @col7 := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bot_roblox_items' AND COLUMN_NAME = 'is_free');
+SET @sql7 := IF(@col7 > 0, 'ALTER TABLE bot_roblox_items DROP COLUMN is_free', 'SELECT 1');
+PREPARE stmt7 FROM @sql7; EXECUTE stmt7; DEALLOCATE PREPARE stmt7;

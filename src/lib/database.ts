@@ -2213,6 +2213,205 @@ async function markServerDiscordOrbMessagePosted(serverId: number, questId: stri
 		.where(and(eq(schema.serverDiscordQuest.server_id, serverId), eq(schema.serverDiscordQuest.quest_id, orb.id)));
 }
 
+type RobloxCatalogItemSnapshot = {
+	assetId: number;
+	assetType?: number | null;
+	name?: string | null;
+	description?: string | null;
+	creatorName?: string | null;
+	price?: number | null;
+	lowestPrice?: number | null;
+	lowestResalePrice?: number | null;
+	totalQuantity?: number | null;
+	thumbnailUrl?: string | null;
+	itemUrl?: string | null;
+	itemCreatedUtc?: string | null;
+};
+
+async function syncServerRobloxItemsFromApi(botId: number, serverId: number, items: RobloxCatalogItemSnapshot[]): Promise<void> {
+	await initializeDatabase();
+	if (!items || items.length === 0) return;
+	const now = toMySQLDateTime();
+
+	for (const it of items) {
+		if (!it || !Number.isFinite(Number(it.assetId))) continue;
+
+		const itemCreatedAt = it.itemCreatedUtc && typeof it.itemCreatedUtc === 'string' ? toMySQLDateTime(it.itemCreatedUtc) : null;
+
+		await db
+			.insert(schema.botRobloxItems)
+			.values({
+				bot_id: botId,
+				asset_id: Number(it.assetId),
+				asset_type: it.assetType == null ? null : Number(it.assetType),
+				name: it.name ?? null,
+				description: it.description ?? null,
+				creator_name: it.creatorName ?? null,
+				price: it.price == null ? null : Number(it.price),
+				lowest_price: it.lowestPrice == null ? null : Number(it.lowestPrice),
+				lowest_resale_price: it.lowestResalePrice == null ? null : Number(it.lowestResalePrice),
+				total_quantity: it.totalQuantity == null ? null : Number(it.totalQuantity),
+				thumbnail_url: it.thumbnailUrl ?? null,
+				item_url: it.itemUrl ?? null,
+				item_created_at: itemCreatedAt as any,
+				notified_at: now as any
+			})
+			.onDuplicateKeyUpdate({
+				set: {
+					bot_id: botId,
+					asset_type: it.assetType == null ? null : Number(it.assetType),
+					name: it.name ?? null,
+					description: it.description ?? null,
+					creator_name: it.creatorName ?? null,
+					price: it.price == null ? null : Number(it.price),
+					lowest_price: it.lowestPrice == null ? null : Number(it.lowestPrice),
+					lowest_resale_price: it.lowestResalePrice == null ? null : Number(it.lowestResalePrice),
+					total_quantity: it.totalQuantity == null ? null : Number(it.totalQuantity),
+					thumbnail_url: it.thumbnailUrl ?? null,
+					item_url: it.itemUrl ?? null,
+					item_created_at: itemCreatedAt as any,
+					notified_at: now as any
+				} as any
+			});
+
+		const [row] = await db
+			.select({ id: schema.botRobloxItems.id })
+			.from(schema.botRobloxItems)
+			.where(eq(schema.botRobloxItems.asset_id, Number(it.assetId)))
+			.limit(1);
+		if (!row) continue;
+
+		await db
+			.insert(schema.serverRobloxItems)
+			.values({ server_id: serverId, item_id: row.id, message_posted_at: null })
+			.onDuplicateKeyUpdate({ set: { server_id: serverId } as any });
+	}
+}
+
+async function listServerRobloxUnpostedAssetIds(serverId: number, activeAssetIds: number[]): Promise<number[]> {
+	if (!activeAssetIds || activeAssetIds.length === 0) return [];
+	await initializeDatabase();
+	const rows = await db
+		.select({ asset_id: schema.botRobloxItems.asset_id })
+		.from(schema.serverRobloxItems)
+		.innerJoin(schema.botRobloxItems, eq(schema.serverRobloxItems.item_id, schema.botRobloxItems.id))
+		.where(
+			and(
+				eq(schema.serverRobloxItems.server_id, serverId),
+				inArray(schema.botRobloxItems.asset_id, activeAssetIds as any),
+				isNull(schema.serverRobloxItems.message_posted_at)
+			)
+		);
+	return rows.map((r) => Number(r.asset_id));
+}
+
+async function markServerRobloxItemMessagePosted(serverId: number, assetId: number): Promise<void> {
+	await initializeDatabase();
+	const posted = toMySQLDateTime();
+	const [item] = await db
+		.select({
+			id: schema.botRobloxItems.id,
+			price: schema.botRobloxItems.price,
+			lowest_price: schema.botRobloxItems.lowest_price,
+			lowest_resale_price: schema.botRobloxItems.lowest_resale_price,
+			total_quantity: schema.botRobloxItems.total_quantity
+		})
+		.from(schema.botRobloxItems)
+		.where(eq(schema.botRobloxItems.asset_id, Number(assetId)))
+		.limit(1);
+	if (!item) return;
+	await db
+		.update(schema.botRobloxItems)
+		.set({
+			last_price: item.price ?? null,
+			last_lowest_price: item.lowest_price ?? null,
+			last_lowest_resale_price: item.lowest_resale_price ?? null,
+			last_total_quantity: item.total_quantity ?? null
+		} as any)
+		.where(eq(schema.botRobloxItems.id, item.id));
+	await db
+		.update(schema.serverRobloxItems)
+		.set({ message_posted_at: posted as any })
+		.where(and(eq(schema.serverRobloxItems.server_id, serverId), eq(schema.serverRobloxItems.item_id, item.id)));
+}
+
+type RobloxItemChange = {
+	assetId: number;
+	field: 'price' | 'lowest_price' | 'lowest_resale_price' | 'total_quantity';
+	oldValue: number | null;
+	newValue: number | null;
+};
+
+async function isBotRobloxItemsEmpty(botId: number): Promise<boolean> {
+	await initializeDatabase();
+	const [row] = await db.select({ id: schema.botRobloxItems.id }).from(schema.botRobloxItems).where(eq(schema.botRobloxItems.bot_id, botId)).limit(1);
+	return !row;
+}
+
+async function detectAndUpdateServerRobloxItemChanges(serverId: number, items: RobloxCatalogItemSnapshot[]): Promise<Map<number, RobloxItemChange[]>> {
+	await initializeDatabase();
+	const result = new Map<number, RobloxItemChange[]>();
+	if (!items || items.length === 0) return result;
+
+	const assetIds = items.map((x) => Number(x.assetId));
+
+	const rows = await db
+		.select({
+			asset_id: schema.botRobloxItems.asset_id,
+			bot_item_id: schema.botRobloxItems.id,
+			last_price: schema.botRobloxItems.last_price,
+			last_lowest_price: schema.botRobloxItems.last_lowest_price,
+			last_lowest_resale_price: schema.botRobloxItems.last_lowest_resale_price,
+			last_total_quantity: schema.botRobloxItems.last_total_quantity,
+			message_posted_at: schema.serverRobloxItems.message_posted_at
+		})
+		.from(schema.serverRobloxItems)
+		.innerJoin(schema.botRobloxItems, eq(schema.serverRobloxItems.item_id, schema.botRobloxItems.id))
+		.where(and(eq(schema.serverRobloxItems.server_id, serverId), inArray(schema.botRobloxItems.asset_id, assetIds as any)));
+
+	const rowMap = new Map(rows.map((r) => [Number(r.asset_id), r]));
+
+	for (const it of items) {
+		const assetId = Number(it.assetId);
+		const row = rowMap.get(assetId);
+		if (!row || !row.message_posted_at) continue;
+
+		const changes: RobloxItemChange[] = [];
+
+		if (row.last_price !== null && it.price !== null && it.price !== undefined && row.last_price !== it.price) {
+			changes.push({ assetId, field: 'price', oldValue: row.last_price, newValue: it.price });
+		}
+		if (row.last_lowest_price !== null && it.lowestPrice !== null && it.lowestPrice !== undefined && row.last_lowest_price !== it.lowestPrice) {
+			changes.push({ assetId, field: 'lowest_price', oldValue: row.last_lowest_price, newValue: it.lowestPrice });
+		}
+		if (
+			row.last_lowest_resale_price !== null &&
+			it.lowestResalePrice !== null &&
+			it.lowestResalePrice !== undefined &&
+			row.last_lowest_resale_price !== it.lowestResalePrice
+		) {
+			changes.push({ assetId, field: 'lowest_resale_price', oldValue: row.last_lowest_resale_price, newValue: it.lowestResalePrice });
+		}
+		if (row.last_total_quantity !== null && it.totalQuantity !== null && it.totalQuantity !== undefined && row.last_total_quantity !== it.totalQuantity) {
+			changes.push({ assetId, field: 'total_quantity', oldValue: row.last_total_quantity, newValue: it.totalQuantity });
+		}
+
+		if (changes.length > 0) result.set(assetId, changes);
+
+		await db
+			.update(schema.botRobloxItems)
+			.set({
+				last_price: it.price ?? null,
+				last_lowest_price: it.lowestPrice ?? null,
+				last_lowest_resale_price: it.lowestResalePrice ?? null,
+				last_total_quantity: it.totalQuantity ?? null
+			} as any)
+			.where(eq(schema.botRobloxItems.id, row.bot_item_id));
+	}
+
+	return result;
+}
+
 async function getBotDiscordQuestByQuestId(questId: string) {
 	await initializeDatabase();
 	const [row] = await db.select().from(schema.botDiscordQuest).where(eq(schema.botDiscordQuest.quest_id, questId)).limit(1);
@@ -3106,6 +3305,11 @@ export default {
 	syncServerDiscordOrbQuestsFromApi,
 	listServerDiscordOrbUnpostedQuestIds,
 	markServerDiscordOrbMessagePosted,
+	syncServerRobloxItemsFromApi,
+	isBotRobloxItemsEmpty,
+	listServerRobloxUnpostedAssetIds,
+	markServerRobloxItemMessagePosted,
+	detectAndUpdateServerRobloxItemChanges,
 	getBotDiscordQuestByQuestId,
 	hasServerMemberClaimedDiscordQuest,
 	markServerMemberDiscordQuestClaimed,

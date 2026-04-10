@@ -133,13 +133,12 @@ export type QuestOrbSummary = {
 	questUrl: string;
 	startsAt: string;
 	expiresAt: string;
-	orbHint: string;
+	reward: string;
 	taskTypeKey: string;
 	taskTypeLabel: string;
 	publisher: string;
 	gameSubtitle: string;
 	taskDetailLine: string;
-	rewardsLine: string;
 	thumbnailUrl: string | null;
 	bannerUrl: string | null;
 };
@@ -381,9 +380,32 @@ function buildTaskDetailLine(taskKey: string, taskLabel: string, taskObj: Record
 	return taskLabel;
 }
 
-function rewardsDisplayLine(orbHint: string): string {
-	if (!orbHint) return 'Orb reward';
-	return `• ${orbHint}`;
+function rewardLineFromQuest(quest: Record<string, unknown>): string {
+	const rewards = rewardListFromQuest(quest);
+	if (rewards.length === 0) return 'Quest reward';
+	const parts: string[] = [];
+	for (const r of rewards) {
+		const rec = r as Record<string, unknown>;
+		if (typeof rec.orb_quantity === 'number' && rec.orb_quantity > 0) {
+			parts.push(`${rec.orb_quantity} Orbs`);
+			continue;
+		}
+		const nm = (rec.messages as Record<string, unknown> | undefined)?.name;
+		if (typeof nm === 'string' && nm.trim()) {
+			parts.push(nm.trim());
+			continue;
+		}
+		const typeStr =
+			typeof rec.type === 'string'
+				? rec.type
+				: typeof rec.reward_type === 'string'
+					? rec.reward_type
+					: typeof rec.rewardType === 'string'
+						? rec.rewardType
+						: '';
+		if (typeStr) parts.push(typeStr);
+	}
+	return parts.length ? [...new Set(parts)].join(' · ') : 'Quest reward';
 }
 
 function rewardLooksLikeOrb(r: Record<string, unknown> | null | undefined): boolean {
@@ -425,20 +447,6 @@ function questExpired(quest: Record<string, unknown>): boolean {
 	return Number.isFinite(t) && t < Date.now();
 }
 
-function orbHintFromQuest(quest: Record<string, unknown>): string {
-	const rewards = rewardListFromQuest(quest);
-	if (rewards.length === 0) return '';
-	const parts: string[] = [];
-	for (const r of rewards) {
-		if (!rewardLooksLikeOrb(r as Record<string, unknown>)) continue;
-		const rec = r as Record<string, unknown>;
-		if (typeof rec.orb_quantity === 'number' && rec.orb_quantity > 0) parts.push(`${rec.orb_quantity} Orbs`);
-		const nm = (rec.messages as Record<string, unknown> | undefined)?.name;
-		if (typeof nm === 'string' && nm.trim()) parts.push(nm.trim());
-	}
-	return parts.length ? [...new Set(parts)].join(' · ') : 'Orb reward';
-}
-
 function toQuestOrbSummary(quest: Record<string, unknown>): QuestOrbSummary {
 	const id = String(quest.id ?? '');
 	const cfg = (quest.config ?? {}) as Record<string, unknown>;
@@ -448,7 +456,7 @@ function toQuestOrbSummary(quest: Record<string, unknown>): QuestOrbSummary {
 	const gameSubtitle = asStr(messages.game_name) || asStr(messages.promo_title) || asStr(messages.subtitle) || asStr(messages.secondary_title);
 	const startsAt = typeof cfg.starts_at === 'string' ? cfg.starts_at : '';
 	const expiresAt = typeof cfg.expires_at === 'string' ? cfg.expires_at : '';
-	const orbHint = orbHintFromQuest(quest);
+	const reward = rewardLineFromQuest(quest);
 	const taskTypeKey = primaryTaskKeyFromConfig(cfg);
 	const taskTypeLabel = labelForTaskKey(taskTypeKey);
 	const publisher =
@@ -465,8 +473,7 @@ function toQuestOrbSummary(quest: Record<string, unknown>): QuestOrbSummary {
 	const taskDetailLine = pt ? buildTaskDetailLine(pt.key, taskTypeLabel, taskObj) : taskTypeLabel;
 
 	const { thumb, banner } = resolveQuestBannerAndThumb(id, cfg);
-	const rewardsLine = rewardsDisplayLine(orbHint);
-	const desc = orbHint ? `**Reward:** ${orbHint}` : 'A quest with Orbs is available in the Discord client.';
+	const desc = reward !== 'Quest reward' ? `**Reward:** ${reward}` : 'A quest is available in the Discord client.';
 
 	return {
 		id,
@@ -476,13 +483,12 @@ function toQuestOrbSummary(quest: Record<string, unknown>): QuestOrbSummary {
 		questUrl: `https://discord.com/quests/${id}`,
 		startsAt,
 		expiresAt,
-		orbHint,
+		reward,
 		taskTypeKey,
 		taskTypeLabel,
 		publisher,
 		gameSubtitle,
 		taskDetailLine,
-		rewardsLine,
 		thumbnailUrl: thumb,
 		bannerUrl: banner
 	};
@@ -498,7 +504,6 @@ export function extractOrbQuests(payload: unknown): QuestOrbSummary[] {
 		const rec = q as Record<string, unknown>;
 		if (rec.preview === true) continue;
 		if (questExpired(rec)) continue;
-		if (!questHasOrbReward(rec)) continue;
 		out.push(toQuestOrbSummary(rec));
 	}
 	out.sort((a, b) => (b.startsAt || '').localeCompare(a.startsAt || ''));
@@ -891,7 +896,7 @@ export async function runOrbQuestUserAutomation(
 		const cfg = (quest.config ?? {}) as Record<string, unknown>;
 		const messages = (cfg.messages ?? {}) as Record<string, unknown>;
 		const questName = typeof messages.quest_name === 'string' ? messages.quest_name : `Quest ${questId}`;
-		const orbLine = orbHintFromQuest(quest);
+		const orbLine = rewardLineFromQuest(quest);
 
 		if (questExpired(quest)) {
 			return {

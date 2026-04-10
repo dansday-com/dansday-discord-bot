@@ -29,7 +29,7 @@ export async function sendQuestNotificationMessage(
 	if (!channel || !channel.isTextBased()) throw new Error('Channel not found or not text-based');
 
 	const embedConfig = await getEmbedConfig(guildId);
-	const rewardsCore = quest.rewardsLine || (quest.orbHint ? `• ${quest.orbHint}` : '• Orb reward');
+	const rewardsCore = quest.reward || '• Quest reward';
 	const rewardsBlock = `${rewardsCore.slice(0, 1008)} 🔮`.slice(0, 1024);
 	const taskBlock = `• ${(quest.taskDetailLine || quest.taskTypeLabel).slice(0, 1006)} ▶️`.slice(0, 1024);
 	const expiresBlock = quest.expiresAt && Number.isFinite(Date.parse(quest.expiresAt)) ? discordTs(quest.expiresAt, 'R') : '—';

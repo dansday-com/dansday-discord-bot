@@ -272,13 +272,7 @@ async function handleWebhookRequest(req, res) {
 						const taskLabel =
 							typeof payload.quest_task_label === 'string' && payload.quest_task_label.trim() ? String(payload.quest_task_label).trim() : 'Quest';
 						const taskKey = typeof payload.quest_task_type === 'string' ? String(payload.quest_task_type) : '';
-						const orbHint = typeof payload.orb_hint === 'string' ? payload.orb_hint : '';
-						const rewardsLine =
-							typeof payload.rewards_line === 'string' && payload.rewards_line.trim()
-								? String(payload.rewards_line).trim()
-								: orbHint
-									? `• ${orbHint}`
-									: '• Orb reward';
+						const reward = typeof payload.reward === 'string' && payload.reward.trim() ? String(payload.reward).trim() : '• Quest reward';
 						const thumb = typeof payload.thumbnail_url === 'string' && payload.thumbnail_url.startsWith('http') ? payload.thumbnail_url : null;
 						const banner = typeof payload.banner_url === 'string' && payload.banner_url.startsWith('http') ? payload.banner_url : null;
 						await sendQuestNotificationMessage(
@@ -293,14 +287,13 @@ async function handleWebhookRequest(req, res) {
 								questUrl: String(questUrl),
 								startsAt: typeof payload.starts_at === 'string' ? payload.starts_at : '',
 								expiresAt: typeof payload.expires_at === 'string' ? payload.expires_at : '',
-								orbHint,
+								reward,
 								taskTypeKey: taskKey,
 								taskTypeLabel: taskLabel,
 								publisher: typeof payload.publisher === 'string' ? payload.publisher : '',
 								gameSubtitle: typeof payload.game_subtitle === 'string' ? payload.game_subtitle : '',
 								taskDetailLine:
 									typeof payload.task_detail_line === 'string' && payload.task_detail_line.trim() ? String(payload.task_detail_line).trim() : taskLabel,
-								rewardsLine,
 								thumbnailUrl: thumb,
 								bannerUrl: banner
 							},

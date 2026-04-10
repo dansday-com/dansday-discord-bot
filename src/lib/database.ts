@@ -2122,8 +2122,7 @@ function orbSnapshotFromQuest(q: QuestOrbSummary) {
 		game_title: q.gameTitle?.trim() || null,
 		quest_url: q.questUrl?.trim() || null,
 		quest_description: q.description?.trim() || null,
-		orb_hint: q.orbHint?.trim() || null,
-		rewards_line: q.rewardsLine?.trim() || null,
+		reward: q.reward?.trim() || null,
 		task_detail_line: q.taskDetailLine?.trim() || null,
 		starts_at: questIsoToDbDate(q.startsAt),
 		expires_at: questIsoToDbDate(q.expiresAt)
@@ -2143,7 +2142,7 @@ async function syncServerDiscordOrbQuestsFromApi(botId: number, serverId: number
 				quest_id: q.id,
 				quest_task_type: q.taskTypeKey || '',
 				quest_task_label: q.taskTypeLabel || '',
-				notified_at: now as any,
+				created_at: now as any,
 				...snap
 			})
 			.onDuplicateKeyUpdate({
@@ -2151,7 +2150,7 @@ async function syncServerDiscordOrbQuestsFromApi(botId: number, serverId: number
 					bot_id: botId,
 					quest_task_type: q.taskTypeKey || '',
 					quest_task_label: q.taskTypeLabel || '',
-					notified_at: now as any,
+					created_at: now as any,
 					...snap
 				} as any
 			});
@@ -2233,7 +2232,7 @@ async function syncServerRobloxItemsFromApi(botId: number, serverId: number, ite
 				thumbnail_url: it.thumbnailUrl ?? null,
 				item_url: it.itemUrl ?? null,
 				item_created_at: itemCreatedAt as any,
-				notified_at: now as any
+				created_at: now as any
 			})
 			.onDuplicateKeyUpdate({
 				set: {
@@ -2249,7 +2248,7 @@ async function syncServerRobloxItemsFromApi(botId: number, serverId: number, ite
 					thumbnail_url: it.thumbnailUrl ?? null,
 					item_url: it.itemUrl ?? null,
 					item_created_at: itemCreatedAt as any,
-					notified_at: now as any
+					created_at: now as any
 				} as any
 			});
 
@@ -2418,7 +2417,7 @@ async function hasServerMemberClaimedDiscordQuest(serverId: number, memberId: nu
 			and(
 				eq(schema.serverMemberDiscordQuest.member_id, memberId),
 				eq(schema.serverMemberDiscordQuest.quest_id, serverQuest.id),
-				eq(schema.serverMemberDiscordQuest.orb_claimed, true)
+				eq(schema.serverMemberDiscordQuest.reward_claimed, true)
 			)
 		)
 		.limit(1);
@@ -2442,8 +2441,8 @@ async function markServerMemberDiscordQuestClaimed(serverId: number, memberId: n
 	const now = toMySQLDateTime();
 	await db
 		.insert(schema.serverMemberDiscordQuest)
-		.values({ member_id: memberId, quest_id: serverQuest.id, orb_claimed: true, created_at: now as any })
-		.onDuplicateKeyUpdate({ set: { orb_claimed: true } as any });
+		.values({ member_id: memberId, quest_id: serverQuest.id, reward_claimed: true, created_at: now as any })
+		.onDuplicateKeyUpdate({ set: { reward_claimed: true } as any });
 }
 
 async function getChannelsForServer(serverId: any) {

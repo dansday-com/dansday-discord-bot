@@ -64,15 +64,10 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 
 	const token = randomBytes(32).toString('hex');
 
-	const createdBy = locals.user.account_source === 'server_accounts' ? locals.user.account_id : null;
-	const createdByAdmin = locals.user.account_source === 'accounts' ? locals.user.account_id : null;
-
 	await db.createServerAccountInvite({
 		token,
 		server_id: serverId,
-		account_type,
-		created_by: createdBy,
-		created_by_admin: createdByAdmin
+		account_type
 	});
 
 	logger.log(`${locals.user.username} generated server invite for ${account_type} (server ${serverId})`);

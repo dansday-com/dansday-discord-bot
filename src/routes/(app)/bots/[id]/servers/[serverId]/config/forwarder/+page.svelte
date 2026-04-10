@@ -29,7 +29,7 @@
 	let editIndex = $state<number | null>(null);
 	let draft = $state<Forwarder>(emptyForwarder());
 
-	let selfbots = $state<any[]>([]);
+	let selfbots = $state<any[]>(data.selfbots ?? []);
 	let selfbotServers = $state<any[]>([]);
 	let selfbotChannels = $state<any[]>([]);
 	let selfbotCategories = $state<any[]>([]);
@@ -43,10 +43,6 @@
 	function emptyForwarder(): Forwarder {
 		return { selfbot_id: '', server_id: '', source_channels: [], target_channel_id: '', role_pings: [], only_forward_when_mentions_member: false, tag: '' };
 	}
-
-	$effect(() => {
-		if (selfbots.length === 0) loadSelfbots();
-	});
 
 	$effect(() => {
 		if (!hydratedListNames) hydrateForwarderSourceChannelNames();
@@ -119,10 +115,8 @@
 	async function openAdd() {
 		draft = emptyForwarder();
 		editIndex = null;
-		selfbots = [];
 		selfbotServers = [];
 		selfbotChannels = [];
-		await loadSelfbots();
 		modalOpen = true;
 	}
 
@@ -130,20 +124,11 @@
 		const fw = forwarders[i];
 		draft = { ...fw, source_channels: [...(fw.source_channels ?? [])], role_pings: [...(fw.role_pings ?? [])] };
 		editIndex = i;
-		selfbots = [];
 		selfbotServers = [];
 		selfbotChannels = [];
-		await loadSelfbots();
 		if (draft.selfbot_id) await loadServers(draft.selfbot_id);
 		if (draft.selfbot_id && draft.server_id) await loadChannels(draft.selfbot_id, draft.server_id);
 		modalOpen = true;
-	}
-
-	async function loadSelfbots() {
-		try {
-			const res = await fetch(`/api/bots/${data.botId}/selfbots`, { credentials: 'include' });
-			if (res.ok) selfbots = await res.json();
-		} catch (_) {}
 	}
 
 	async function loadServers(selfbotId: number | '') {

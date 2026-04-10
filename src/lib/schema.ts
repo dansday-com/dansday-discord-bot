@@ -117,8 +117,6 @@ export const serverAccountInvites = mysqlTable(
 			.notNull()
 			.references(() => servers.id, { onDelete: 'cascade' }),
 		account_type: mysqlEnum('account_type', ['owner', 'moderator']).notNull(),
-		created_by: int('created_by').references(() => serverAccounts.id, { onDelete: 'set null' }),
-		created_by_admin: int('created_by_admin').references(() => accounts.id, { onDelete: 'set null' }),
 		used_by: int('used_by').references(() => serverAccounts.id, { onDelete: 'set null' }),
 		expires_at: datetime('expires_at'),
 		created_at: datetime('created_at').notNull(),

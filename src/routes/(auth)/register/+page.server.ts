@@ -1,14 +1,23 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import db from '$lib/database.js';
+import { isUtcSqlExpired } from '$lib/utils/index.js';
 
-export const load: PageServerLoad = ({ locals, url }) => {
+export const load: PageServerLoad = async ({ locals, url }) => {
 	if (locals.user.authenticated) redirect(302, '/');
 
 	const token = url.searchParams.get('token') ?? null;
 
-	const canRegister = !locals.user.authenticated && (('can_register' in locals.user && locals.user.can_register) || Boolean(token));
+	if (token) {
+		const invite = await db.getServerAccountInviteByToken(token).catch(() => null);
+		if (!invite || invite.used_by || invite.used_at || (invite.expires_at && isUtcSqlExpired(invite.expires_at))) {
+			redirect(302, '/login?error=invite_invalid');
+		}
+		return { token };
+	}
 
+	const canRegister = !locals.user.authenticated && 'can_register' in locals.user && locals.user.can_register;
 	if (!canRegister) redirect(302, '/login');
 
-	return { token };
+	return { token: null };
 };

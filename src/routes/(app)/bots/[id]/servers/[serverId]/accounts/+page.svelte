@@ -284,9 +284,6 @@
 						<div class="bg-ash-700 flex flex-col gap-2 rounded-lg px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
 							<div class="min-w-0 flex-1">
 								<p class="text-ash-100 text-sm font-medium capitalize">{invite.account_type} invite</p>
-								<p class="text-ash-400 text-xs">
-									Created by {invite.creator_username ?? invite.creator_admin_username ?? 'Unknown'}
-								</p>
 								<p class="text-ash-300 mt-1 text-xs">
 									<i class="fas fa-clock mr-1 text-amber-400/80"></i>
 									{#if invite.used_by}

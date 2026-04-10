@@ -88,15 +88,11 @@ CREATE TABLE IF NOT EXISTS server_account_invites (
     token VARCHAR(255) NOT NULL UNIQUE,
     server_id INT NOT NULL,
     account_type ENUM('owner', 'moderator') NOT NULL,
-    created_by INT NULL,
-    created_by_admin INT NULL,
     used_by INT NULL,
     expires_at DATETIME NULL,
     created_at DATETIME NOT NULL,
     used_at DATETIME NULL,
     FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE,
-    FOREIGN KEY (created_by) REFERENCES server_accounts(id) ON DELETE SET NULL,
-    FOREIGN KEY (created_by_admin) REFERENCES accounts(id) ON DELETE SET NULL,
     FOREIGN KEY (used_by) REFERENCES server_accounts(id) ON DELETE SET NULL
 );
 

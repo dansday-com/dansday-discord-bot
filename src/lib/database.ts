@@ -1931,13 +1931,7 @@ async function getServerAccountsByServer(serverId: number) {
 
 const SERVER_ACCOUNT_INVITE_TTL_MINUTES = 10;
 
-async function createServerAccountInvite(data: {
-	token: string;
-	server_id: number;
-	account_type: 'owner' | 'moderator';
-	created_by: number | null;
-	created_by_admin: number | null;
-}) {
+async function createServerAccountInvite(data: { token: string; server_id: number; account_type: 'owner' | 'moderator' }) {
 	const now = getNowUtc();
 	const createdAt = now.toJSDate();
 	const expiresAt = now.plus({ minutes: SERVER_ACCOUNT_INVITE_TTL_MINUTES }).toJSDate();
@@ -1945,8 +1939,6 @@ async function createServerAccountInvite(data: {
 		token: data.token,
 		server_id: data.server_id,
 		account_type: data.account_type,
-		created_by: data.created_by,
-		created_by_admin: data.created_by_admin,
 		expires_at: expiresAt as any,
 		created_at: createdAt as any
 	});
@@ -1975,23 +1967,10 @@ async function updateServerAccountInvite(id: number, data: Partial<{ used_by: nu
 
 async function getServerAccountInvitesByServer(serverId: number) {
 	return db
-		.select({
-			invite: schema.serverAccountInvites,
-			creator_username: schema.serverAccounts.username,
-			creator_admin_username: schema.accounts.username
-		})
+		.select()
 		.from(schema.serverAccountInvites)
-		.leftJoin(schema.serverAccounts, eq(schema.serverAccountInvites.created_by, schema.serverAccounts.id))
-		.leftJoin(schema.accounts, eq(schema.serverAccountInvites.created_by_admin, schema.accounts.id))
 		.where(eq(schema.serverAccountInvites.server_id, serverId))
-		.orderBy(desc(schema.serverAccountInvites.created_at))
-		.then((rows) =>
-			rows.map((r) => ({
-				...r.invite,
-				creator_username: r.creator_username,
-				creator_admin_username: r.creator_admin_username
-			}))
-		);
+		.orderBy(desc(schema.serverAccountInvites.created_at));
 }
 
 async function getAllServerBots() {

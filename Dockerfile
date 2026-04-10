@@ -5,8 +5,8 @@ WORKDIR /app
 
 ENV NODE_OPTIONS=""
 
-COPY package.json ./
-RUN npm install --include=dev --legacy-peer-deps
+COPY package.json package-lock.json ./
+RUN npm ci --include=dev
 
 COPY . .
 

@@ -220,51 +220,38 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 			])
 			.onDuplicateKeyUpdate({ set: { updated_at: nowDb } });
 
+		const roleDefs = [
+			{ key: 'owner', name: 'Owner', position: 8, color: '#e74c3c' },
+			{ key: 'admin', name: 'Admin', position: 7, color: '#ff4d4d' },
+			{ key: 'moderator', name: 'Moderator', position: 6, color: '#4d7cff' },
+			{ key: 'staff', name: 'Staff', position: 5, color: '#95a5a6' },
+			{ key: 'content_creator', name: 'Content Creator', position: 4, color: '#9b59b6' },
+			{ key: 'supporter', name: 'Supporter', position: 3, color: '#f39c12' },
+			{ key: 'member', name: 'Member', position: 2, color: '#2ecc71' },
+			{ key: 'unverified', name: 'Unverified', position: 1, color: '#7b7b7b' }
+		];
+
 		await db
 			.insert(schema.serverRoles)
-			.values([
-				{
+			.values(
+				roleDefs.map((r) => ({
 					server_id: serverRow.id,
-					discord_role_id: `${pfx}_role_admin`,
-					name: 'Admin',
-					position: 4,
-					color: '#ff4d4d',
+					discord_role_id: `${pfx}_role_${r.key}`,
+					name: r.name,
+					position: r.position,
+					color: r.color,
 					permissions: '0',
 					created_at: nowDb,
 					updated_at: nowDb
-				},
-				{
-					server_id: serverRow.id,
-					discord_role_id: `${pfx}_role_mod`,
-					name: 'Moderator',
-					position: 3,
-					color: '#4d7cff',
-					permissions: '0',
-					created_at: nowDb,
-					updated_at: nowDb
-				},
-				{
-					server_id: serverRow.id,
-					discord_role_id: `${pfx}_role_vip`,
-					name: 'VIP',
-					position: 2,
-					color: '#f5b942',
-					permissions: '0',
-					created_at: nowDb,
-					updated_at: nowDb
-				},
-				{
-					server_id: serverRow.id,
-					discord_role_id: `${pfx}_role_member`,
-					name: 'Member',
-					position: 1,
-					color: '#7b7b7b',
-					permissions: '0',
-					created_at: nowDb,
-					updated_at: nowDb
-				}
-			])
+				}))
+			)
 			.onDuplicateKeyUpdate({ set: { updated_at: nowDb } });
+
+		const seededRoles = await db
+			.select()
+			.from(schema.serverRoles)
+			.where(sql`${schema.serverRoles.server_id} = ${serverRow.id}`);
+		const roleId = (key: string) => seededRoles.find((r: any) => r.discord_role_id === `${pfx}_role_${key}`)?.id ?? null;
 
 		const categories = await db
 			.select()
@@ -391,11 +378,12 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 			const n = i + 1;
 			const id = `${sessionSlug}${s}_user_${String(n).padStart(4, '0')}`;
 			const baseName = `${firstNames[i % firstNames.length]}${lastNames[Math.floor(i / firstNames.length) % lastNames.length]}${s}${n}`;
-			const withAfkPrefix = n % 17 === 0 || n === 7;
+			const withAfkPrefix = (n >= 1 && n <= 5) || n % 17 === 0 || n === 7;
 			const username = withAfkPrefix ? `[AFK] ${baseName}` : baseName;
 
-			const exp = Math.max(0, Math.round(120_000 / (1 + i * 0.07)) + (i % 9) * 133 - i * 31);
-			const lvl = Math.max(1, Math.round(exp / 650));
+			const isZeroMember = n >= 1 && n <= 10;
+			const exp = isZeroMember ? 0 : Math.max(0, Math.round(120_000 / (1 + i * 0.07)) + (i % 9) * 133 - i * 31);
+			const lvl = isZeroMember ? 0 : Math.max(1, Math.round(exp / 650));
 			const hasAfkRow = n % 13 === 0;
 			return {
 				discord_member_id: id,
@@ -411,12 +399,12 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 				created_at: nowDb,
 				updated_at: nowDb,
 				level: {
-					chat_total: Math.max(0, 22_000 - i * 83 + (i % 7) * 41),
-					voice_minutes_total: Math.max(0, 48_000 - i * 177 + (i % 11) * 97),
-					voice_minutes_active: Math.max(0, 36_000 - i * 141 + (i % 10) * 71),
-					voice_minutes_afk: Math.max(0, 12_000 - i * 41 + (i % 8) * 23),
-					voice_minutes_video: Math.max(0, 3_200 - i * 9 + (i % 6) * 7),
-					voice_minutes_streaming: Math.max(0, 1_100 - i * 4 + (i % 9) * 5),
+					chat_total: isZeroMember ? 0 : Math.max(0, 22_000 - i * 83 + (i % 7) * 41),
+					voice_minutes_total: isZeroMember ? 0 : Math.max(0, 48_000 - i * 177 + (i % 11) * 97),
+					voice_minutes_active: isZeroMember ? 0 : Math.max(0, 36_000 - i * 141 + (i % 10) * 71),
+					voice_minutes_afk: isZeroMember ? 0 : Math.max(0, 12_000 - i * 41 + (i % 8) * 23),
+					voice_minutes_video: isZeroMember ? 0 : Math.max(0, 3_200 - i * 9 + (i % 6) * 7),
+					voice_minutes_streaming: isZeroMember ? 0 : Math.max(0, 1_100 - i * 4 + (i % 9) * 5),
 					experience: exp,
 					level: lvl,
 					dm_notifications_enabled: true,
@@ -492,6 +480,16 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 					.insert(schema.serverMemberAfks)
 					.values({ member_id: memberRow.id as any, message: m.afk.message, created_at: nowDb, updated_at: nowDb })
 					.onDuplicateKeyUpdate({ set: { message: m.afk.message as any, updated_at: nowDb } });
+			}
+
+			const roleCycle = ['owner', 'admin', 'moderator', 'staff', 'content_creator', 'supporter', 'member', 'member', 'member', 'unverified'];
+			const assignedRoleKey = roleCycle[membersToSeed.indexOf(m) % roleCycle.length];
+			const assignedRoleId = roleId(assignedRoleKey);
+			if (assignedRoleId) {
+				await db
+					.insert(schema.serverMemberRoles)
+					.values({ member_id: memberRow.id as any, role_id: assignedRoleId, created_at: nowDb })
+					.onDuplicateKeyUpdate({ set: { role_id: assignedRoleId as any } });
 			}
 		}
 

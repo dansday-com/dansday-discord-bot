@@ -221,6 +221,8 @@ export const serverBotServers = mysqlTable(
 		name: text('name'),
 		total_members: int('total_members').default(0),
 		total_channels: int('total_channels').default(0),
+		total_boosters: int('total_boosters').default(0),
+		boost_level: int('boost_level').default(0),
 		server_icon: text('server_icon'),
 		discord_created_at: datetime('discord_created_at'),
 		vanity_url_code: varchar('vanity_url_code', { length: 255 }),

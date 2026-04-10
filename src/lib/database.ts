@@ -525,12 +525,14 @@ export async function upsertServerBotServer(serverBotId: number, guild: any) {
 	const v = await collectGuildSnapshotForUpsert(guild);
 	const now = toMySQLDateTime();
 	await db.execute(sql`
-		INSERT INTO server_bot_servers (server_bot_id, discord_server_id, name, total_members, total_channels, server_icon, discord_created_at, vanity_url_code, invite_code, created_at, updated_at)
-		VALUES (${serverBotId}, ${guild.id}, ${v.name}, ${v.memberCount}, ${v.channelCount}, ${v.iconUrl}, ${v.discordCreatedAt}, ${v.vanityCode}, ${v.inviteCode}, ${now}, ${now})
+		INSERT INTO server_bot_servers (server_bot_id, discord_server_id, name, total_members, total_channels, total_boosters, boost_level, server_icon, discord_created_at, vanity_url_code, invite_code, created_at, updated_at)
+		VALUES (${serverBotId}, ${guild.id}, ${v.name}, ${v.memberCount}, ${v.channelCount}, ${v.boosters}, ${v.boostLevel}, ${v.iconUrl}, ${v.discordCreatedAt}, ${v.vanityCode}, ${v.inviteCode}, ${now}, ${now})
 		ON DUPLICATE KEY UPDATE
 			name = VALUES(name),
 			total_members = VALUES(total_members),
 			total_channels = VALUES(total_channels),
+			total_boosters = VALUES(total_boosters),
+			boost_level = VALUES(boost_level),
 			server_icon = VALUES(server_icon),
 			discord_created_at = COALESCE(server_bot_servers.discord_created_at, VALUES(discord_created_at)),
 			vanity_url_code = VALUES(vanity_url_code),
@@ -547,58 +549,90 @@ export async function upsertServerBotServer(serverBotId: number, guild: any) {
 
 export async function syncServerBotCategories(serverBotServerId: number, categories: any[]) {
 	await initializeDatabase();
-	if (!categories || categories.length === 0) return true;
 	const now = toMySQLDateTime();
-	await Promise.all(
-		categories.map((cat) =>
-			db
-				.insert(schema.serverBotServerCategories)
-				.values({
-					server_bot_server_id: Number(serverBotServerId),
-					discord_category_id: String(cat.id),
-					name: cat.name ?? null,
-					position: cat.position ?? null,
-					created_at: now as any,
-					updated_at: now as any
-				})
-				.onDuplicateKeyUpdate({ set: { name: cat.name ?? null, position: cat.position ?? null, updated_at: now as any } })
-				.catch(() => null)
-		)
-	);
+	const sid = Number(serverBotServerId);
+
+	if (categories && categories.length > 0) {
+		await Promise.all(
+			categories.map((cat) =>
+				db
+					.insert(schema.serverBotServerCategories)
+					.values({
+						server_bot_server_id: sid,
+						discord_category_id: String(cat.id),
+						name: cat.name ?? null,
+						position: cat.position ?? null,
+						created_at: now as any,
+						updated_at: now as any
+					})
+					.onDuplicateKeyUpdate({ set: { name: cat.name ?? null, position: cat.position ?? null, updated_at: now as any } })
+					.catch(() => null)
+			)
+		);
+	}
+
+	const discordIds = new Set((categories ?? []).map((c) => String(c.id)));
+	const dbCats = await db
+		.select({ id: schema.serverBotServerCategories.id, discord_category_id: schema.serverBotServerCategories.discord_category_id })
+		.from(schema.serverBotServerCategories)
+		.where(eq(schema.serverBotServerCategories.server_bot_server_id, sid));
+	const toDelete = dbCats.filter((c) => !discordIds.has(c.discord_category_id)).map((c) => c.id);
+	if (toDelete.length > 0) {
+		await db
+			.delete(schema.serverBotServerCategories)
+			.where(and(eq(schema.serverBotServerCategories.server_bot_server_id, sid), inArray(schema.serverBotServerCategories.id, toDelete)));
+	}
+
 	return true;
 }
 
 export async function syncServerBotChannels(serverBotServerId: number, channels: any[]) {
 	await initializeDatabase();
-	if (!channels || channels.length === 0) return true;
 	const now = toMySQLDateTime();
-	const valid = channels.filter((ch) => ch.type !== 4);
-	await Promise.all(
-		valid.map((ch) =>
-			db
-				.insert(schema.serverBotServerChannels)
-				.values({
-					server_bot_server_id: Number(serverBotServerId),
-					discord_channel_id: String(ch.id),
-					name: ch.name ?? null,
-					type: ch.type ?? null,
-					discord_parent_category_id: ch.parent_id ? String(ch.parent_id) : null,
-					position: ch.position ?? null,
-					created_at: now as any,
-					updated_at: now as any
-				})
-				.onDuplicateKeyUpdate({
-					set: {
+	const sid = Number(serverBotServerId);
+	const valid = (channels ?? []).filter((ch) => ch.type !== 4);
+
+	if (valid.length > 0) {
+		await Promise.all(
+			valid.map((ch) =>
+				db
+					.insert(schema.serverBotServerChannels)
+					.values({
+						server_bot_server_id: sid,
+						discord_channel_id: String(ch.id),
 						name: ch.name ?? null,
 						type: ch.type ?? null,
 						discord_parent_category_id: ch.parent_id ? String(ch.parent_id) : null,
 						position: ch.position ?? null,
+						created_at: now as any,
 						updated_at: now as any
-					}
-				})
-				.catch(() => null)
-		)
-	);
+					})
+					.onDuplicateKeyUpdate({
+						set: {
+							name: ch.name ?? null,
+							type: ch.type ?? null,
+							discord_parent_category_id: ch.parent_id ? String(ch.parent_id) : null,
+							position: ch.position ?? null,
+							updated_at: now as any
+						}
+					})
+					.catch(() => null)
+			)
+		);
+	}
+
+	const discordIds = new Set(valid.map((ch) => String(ch.id)));
+	const dbChannels = await db
+		.select({ id: schema.serverBotServerChannels.id, discord_channel_id: schema.serverBotServerChannels.discord_channel_id })
+		.from(schema.serverBotServerChannels)
+		.where(eq(schema.serverBotServerChannels.server_bot_server_id, sid));
+	const toDelete = dbChannels.filter((ch) => !discordIds.has(ch.discord_channel_id)).map((ch) => ch.id);
+	if (toDelete.length > 0) {
+		await db
+			.delete(schema.serverBotServerChannels)
+			.where(and(eq(schema.serverBotServerChannels.server_bot_server_id, sid), inArray(schema.serverBotServerChannels.id, toDelete)));
+	}
+
 	return true;
 }
 

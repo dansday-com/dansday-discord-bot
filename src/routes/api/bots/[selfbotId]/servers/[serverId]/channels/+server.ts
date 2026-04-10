@@ -22,14 +22,25 @@ export const GET: RequestHandler = async ({ locals, params, url }) => {
 			return json({ error: 'Access denied' }, { status: 403 });
 		}
 
-		let channels = await db.getServerBotChannelsForServer(Number(serverId));
+		const [rawChannels, categories] = await Promise.all([
+			db.getServerBotChannelsForServer(Number(serverId)),
+			db.getServerBotCategoriesForServer(Number(serverId))
+		]);
+
+		const discordCatIdToId = new Map<string, number>();
+		for (const cat of categories) {
+			discordCatIdToId.set(cat.discord_category_id, cat.id);
+		}
+
+		let channels = rawChannels.map((ch: any) => ({
+			...ch,
+			category_id: ch.discord_parent_category_id ? (discordCatIdToId.get(ch.discord_parent_category_id) ?? null) : null
+		}));
 
 		if (search) {
 			const searchLower = search.toLowerCase();
 			channels = channels.filter((ch: any) => ch.name?.toLowerCase().includes(searchLower) || ch.discord_channel_id?.includes(searchLower));
 		}
-
-		const categories = await db.getServerBotCategoriesForServer(Number(serverId));
 
 		return json({ channels, categories });
 	} catch (error: any) {

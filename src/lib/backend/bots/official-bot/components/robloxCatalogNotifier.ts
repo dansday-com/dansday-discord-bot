@@ -210,8 +210,6 @@ async function processPage(officialBotId: number, targets: ServerTarget[], items
 	const snapshots = newItems.map(toSnapshot);
 	const today = todayUtc();
 
-	// Detect changes for ALL servers before updating last_* values,
-	// so every server sees the same diff (not just the first one).
 	const perServerChanges = new Map<number, Map<number, RobloxItemChange[]>>();
 	const perServerUnposted = new Map<number, Set<number>>();
 
@@ -234,7 +232,6 @@ async function processPage(officialBotId: number, targets: ServerTarget[], items
 		perServerChanges.set(target.serverId, changes);
 	}
 
-	// Now update the shared last_* columns once, after all servers have read the old values.
 	await db.updateBotRobloxItemLastValues(snapshots);
 
 	for (const target of targets) {

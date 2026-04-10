@@ -26,7 +26,6 @@ export const commandDefinition = {
 
 export async function execute(interaction: any, client: any) {
 	try {
-		// Only the Discord server owner may run this command
 		if (interaction.member.id !== interaction.guild.ownerId) {
 			await interaction.reply({ content: '❌ Only the server owner can use this command.', flags: 64 });
 			return;
@@ -45,10 +44,8 @@ export async function execute(interaction: any, client: any) {
 			return;
 		}
 
-		// Send the interface panel to the selected channel first
 		await sendInterfaceToChannel(targetChannel, interaction, client);
 
-		// Generate owner invite and send via email
 		try {
 			const botConfig = getBotConfig();
 			if (!botConfig) {

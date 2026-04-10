@@ -486,7 +486,7 @@
 	},
 	"orbEnroll": {
 		"alreadyClaimed": "Already Claimed",
-		"alreadyClaimedDescription": "You enrolled in **{questName}** previously and your orb reward has already been claimed. Each quest can only be claimed once per member.",
+		"alreadyClaimedDescription": "You enrolled in **{questName}** previously and your reward has already been claimed. Each quest can only be claimed once per member.",
 		"pendingTitle": "⏳ Running in the background",
 		"pendingDescription": "A result embed will be posted in this channel shortly.\n\nYour token is **not** saved in our database.\n\n**Risk:** Discord may restrict or ban the **user account** tied to that token; in some cases the **bot or server** could also be affected. This is not official Discord behaviour — you chose to proceed."
 	}

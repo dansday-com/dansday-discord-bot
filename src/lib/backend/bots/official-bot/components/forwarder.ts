@@ -175,7 +175,7 @@ export async function processMessageFromSelfBot(messageData, client) {
 
 	const targetChannelId = forwarderConfig.target_channel_id;
 	const targetGuildId = forwarderConfig.target_guild_id;
-	const roles = forwarderConfig.roles;
+	const rolePings = Array.isArray(forwarderConfig.role_pings) ? forwarderConfig.role_pings : [];
 	const onlyForwardWhenMentionsSelfBot = forwarderConfig.only_forward_when_mentions_member === true;
 
 	const targetChannel = client.channels.cache.get(targetChannelId);
@@ -301,8 +301,8 @@ export async function processMessageFromSelfBot(messageData, client) {
 		if (autoNotificationRoleId) {
 			contentParts.push(`<@&${autoNotificationRoleId}>`);
 		}
-		if (roles && Array.isArray(roles) && roles.length > 0) {
-			contentParts.push(roles.map((role) => `<@&${role.role_id}>`).join(' '));
+		if (rolePings.length > 0) {
+			contentParts.push(rolePings.map((id: string) => `<@&${id}>`).join(' '));
 		}
 		const messageOptions = {
 			embeds: embeds

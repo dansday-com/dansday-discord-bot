@@ -23,7 +23,7 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 		return json({ success: false, error: 'Authentication required' }, { status: 401 });
 	}
 
-	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'moderator') {
+	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'staff') {
 		return json({ success: false, error: 'Access denied' }, { status: 403 });
 	}
 	if (!(await canManageAccounts(locals, serverId))) {
@@ -31,7 +31,7 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 	}
 
 	const body = await request.json().catch(() => ({}));
-	const account_type = (body.account_type === 'owner' || body.account_type === 'moderator' ? body.account_type : null) as 'owner' | 'moderator' | null;
+	const account_type = (body.account_type === 'owner' || body.account_type === 'staff' ? body.account_type : null) as 'owner' | 'staff' | null;
 
 	const rawMulti = body.discord_member_ids;
 	const singleId = body.discord_member_id;
@@ -44,7 +44,7 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 
 	discord_member_ids = [...new Set(discord_member_ids)];
 
-	const validTypes = locals.user.account_source === 'accounts' ? ['owner', 'moderator'] : ['moderator'];
+	const validTypes = locals.user.account_source === 'accounts' ? ['owner', 'staff'] : ['staff'];
 	if (!account_type || !validTypes.includes(account_type)) {
 		return json({ success: false, error: `Valid account type required: ${validTypes.join(', ')}` }, { status: 400 });
 	}
@@ -80,15 +80,10 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 
 		const token = randomBytes(32).toString('hex');
 
-		const createdBy = locals.user.account_source === 'server_accounts' ? locals.user.account_id : null;
-		const createdByAdmin = locals.user.account_source === 'accounts' ? locals.user.account_id : null;
-
 		await db.createServerAccountInvite({
 			token,
 			server_id: serverId,
-			account_type,
-			created_by: createdBy,
-			created_by_admin: createdByAdmin
+			account_type
 		});
 
 		const inviteUrl = `${url.origin}/register?token=${token}`;

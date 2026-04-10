@@ -1807,7 +1807,7 @@ async function getAccountServerAccess(accountId: number) {
 		.where(eq(schema.accountServerAccess.account_id, accountId));
 }
 
-async function createAccountServerAccess(data: { account_id: number; server_id: number; role: 'owner' | 'moderator' }) {
+async function createAccountServerAccess(data: { account_id: number; server_id: number; role: 'owner' | 'staff' }) {
 	const now = toMySQLDateTime();
 	await db
 		.insert(schema.accountServerAccess)
@@ -1872,7 +1872,7 @@ async function createServerAccount(data: {
 	username: string;
 	email: string;
 	password_hash: string;
-	account_type: 'owner' | 'moderator';
+	account_type: 'owner' | 'staff';
 	email_verified?: boolean;
 	otp_code?: string | null;
 	otp_expires_at?: string | null;
@@ -1903,7 +1903,7 @@ async function updateServerAccount(
 		username: string;
 		email: string;
 		password_hash: string;
-		account_type: 'owner' | 'moderator';
+		account_type: 'owner' | 'staff';
 		email_verified: boolean;
 		otp_code: string | null;
 		otp_expires_at: string | null;
@@ -1931,13 +1931,7 @@ async function getServerAccountsByServer(serverId: number) {
 
 const SERVER_ACCOUNT_INVITE_TTL_MINUTES = 10;
 
-async function createServerAccountInvite(data: {
-	token: string;
-	server_id: number;
-	account_type: 'owner' | 'moderator';
-	created_by: number | null;
-	created_by_admin: number | null;
-}) {
+async function createServerAccountInvite(data: { token: string; server_id: number; account_type: 'owner' | 'staff' }) {
 	const now = getNowUtc();
 	const createdAt = now.toJSDate();
 	const expiresAt = now.plus({ minutes: SERVER_ACCOUNT_INVITE_TTL_MINUTES }).toJSDate();
@@ -1945,8 +1939,6 @@ async function createServerAccountInvite(data: {
 		token: data.token,
 		server_id: data.server_id,
 		account_type: data.account_type,
-		created_by: data.created_by,
-		created_by_admin: data.created_by_admin,
 		expires_at: expiresAt as any,
 		created_at: createdAt as any
 	});
@@ -1975,23 +1967,10 @@ async function updateServerAccountInvite(id: number, data: Partial<{ used_by: nu
 
 async function getServerAccountInvitesByServer(serverId: number) {
 	return db
-		.select({
-			invite: schema.serverAccountInvites,
-			creator_username: schema.serverAccounts.username,
-			creator_admin_username: schema.accounts.username
-		})
+		.select()
 		.from(schema.serverAccountInvites)
-		.leftJoin(schema.serverAccounts, eq(schema.serverAccountInvites.created_by, schema.serverAccounts.id))
-		.leftJoin(schema.accounts, eq(schema.serverAccountInvites.created_by_admin, schema.accounts.id))
 		.where(eq(schema.serverAccountInvites.server_id, serverId))
-		.orderBy(desc(schema.serverAccountInvites.created_at))
-		.then((rows) =>
-			rows.map((r) => ({
-				...r.invite,
-				creator_username: r.creator_username,
-				creator_admin_username: r.creator_admin_username
-			}))
-		);
+		.orderBy(desc(schema.serverAccountInvites.created_at));
 }
 
 async function getAllServerBots() {
@@ -2143,8 +2122,7 @@ function orbSnapshotFromQuest(q: QuestOrbSummary) {
 		game_title: q.gameTitle?.trim() || null,
 		quest_url: q.questUrl?.trim() || null,
 		quest_description: q.description?.trim() || null,
-		orb_hint: q.orbHint?.trim() || null,
-		rewards_line: q.rewardsLine?.trim() || null,
+		reward: q.reward?.trim() || null,
 		task_detail_line: q.taskDetailLine?.trim() || null,
 		starts_at: questIsoToDbDate(q.startsAt),
 		expires_at: questIsoToDbDate(q.expiresAt)
@@ -2164,7 +2142,7 @@ async function syncServerDiscordOrbQuestsFromApi(botId: number, serverId: number
 				quest_id: q.id,
 				quest_task_type: q.taskTypeKey || '',
 				quest_task_label: q.taskTypeLabel || '',
-				notified_at: now as any,
+				created_at: now as any,
 				...snap
 			})
 			.onDuplicateKeyUpdate({
@@ -2172,7 +2150,7 @@ async function syncServerDiscordOrbQuestsFromApi(botId: number, serverId: number
 					bot_id: botId,
 					quest_task_type: q.taskTypeKey || '',
 					quest_task_label: q.taskTypeLabel || '',
-					notified_at: now as any,
+					created_at: now as any,
 					...snap
 				} as any
 			});
@@ -2254,7 +2232,7 @@ async function syncServerRobloxItemsFromApi(botId: number, serverId: number, ite
 				thumbnail_url: it.thumbnailUrl ?? null,
 				item_url: it.itemUrl ?? null,
 				item_created_at: itemCreatedAt as any,
-				notified_at: now as any
+				created_at: now as any
 			})
 			.onDuplicateKeyUpdate({
 				set: {
@@ -2270,7 +2248,7 @@ async function syncServerRobloxItemsFromApi(botId: number, serverId: number, ite
 					thumbnail_url: it.thumbnailUrl ?? null,
 					item_url: it.itemUrl ?? null,
 					item_created_at: itemCreatedAt as any,
-					notified_at: now as any
+					created_at: now as any
 				} as any
 			});
 
@@ -2335,7 +2313,7 @@ async function markServerRobloxItemMessagePosted(serverId: number, assetId: numb
 		.where(and(eq(schema.serverRobloxItems.server_id, serverId), eq(schema.serverRobloxItems.item_id, item.id)));
 }
 
-type RobloxItemChange = {
+export type RobloxItemChange = {
 	assetId: number;
 	field: 'price' | 'lowest_price' | 'lowest_resale_price' | 'total_quantity';
 	oldValue: number | null;
@@ -2397,7 +2375,23 @@ async function detectAndUpdateServerRobloxItemChanges(serverId: number, items: R
 		}
 
 		if (changes.length > 0) result.set(assetId, changes);
+	}
 
+	return result;
+}
+
+async function updateBotRobloxItemLastValues(items: RobloxCatalogItemSnapshot[]): Promise<void> {
+	await initializeDatabase();
+	if (!items || items.length === 0) return;
+	const assetIds = items.map((x) => Number(x.assetId));
+	const rows = await db
+		.select({ id: schema.botRobloxItems.id, asset_id: schema.botRobloxItems.asset_id })
+		.from(schema.botRobloxItems)
+		.where(inArray(schema.botRobloxItems.asset_id, assetIds as any));
+	const rowMap = new Map(rows.map((r) => [Number(r.asset_id), r.id]));
+	for (const it of items) {
+		const botItemId = rowMap.get(Number(it.assetId));
+		if (!botItemId) continue;
 		await db
 			.update(schema.botRobloxItems)
 			.set({
@@ -2406,10 +2400,8 @@ async function detectAndUpdateServerRobloxItemChanges(serverId: number, items: R
 				last_lowest_resale_price: it.lowestResalePrice ?? null,
 				last_total_quantity: it.totalQuantity ?? null
 			} as any)
-			.where(eq(schema.botRobloxItems.id, row.bot_item_id));
+			.where(eq(schema.botRobloxItems.id, botItemId));
 	}
-
-	return result;
 }
 
 async function getBotDiscordQuestByQuestId(questId: string) {
@@ -2439,7 +2431,7 @@ async function hasServerMemberClaimedDiscordQuest(serverId: number, memberId: nu
 			and(
 				eq(schema.serverMemberDiscordQuest.member_id, memberId),
 				eq(schema.serverMemberDiscordQuest.quest_id, serverQuest.id),
-				eq(schema.serverMemberDiscordQuest.orb_claimed, true)
+				eq(schema.serverMemberDiscordQuest.reward_claimed, true)
 			)
 		)
 		.limit(1);
@@ -2463,8 +2455,8 @@ async function markServerMemberDiscordQuestClaimed(serverId: number, memberId: n
 	const now = toMySQLDateTime();
 	await db
 		.insert(schema.serverMemberDiscordQuest)
-		.values({ member_id: memberId, quest_id: serverQuest.id, orb_claimed: true, created_at: now as any })
-		.onDuplicateKeyUpdate({ set: { orb_claimed: true } as any });
+		.values({ member_id: memberId, quest_id: serverQuest.id, reward_claimed: true, created_at: now as any })
+		.onDuplicateKeyUpdate({ set: { reward_claimed: true } as any });
 }
 
 async function getChannelsForServer(serverId: any) {
@@ -3310,6 +3302,7 @@ export default {
 	listServerRobloxUnpostedAssetIds,
 	markServerRobloxItemMessagePosted,
 	detectAndUpdateServerRobloxItemChanges,
+	updateBotRobloxItemLastValues,
 	getBotDiscordQuestByQuestId,
 	hasServerMemberClaimedDiscordQuest,
 	markServerMemberDiscordQuestClaimed,

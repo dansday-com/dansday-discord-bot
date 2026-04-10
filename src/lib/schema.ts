@@ -91,7 +91,7 @@ export const serverAccounts = mysqlTable(
 		username: varchar('username', { length: 255 }).notNull(),
 		email: varchar('email', { length: 255 }).notNull(),
 		password_hash: text('password_hash').notNull(),
-		account_type: mysqlEnum('account_type', ['owner', 'moderator']).notNull(),
+		account_type: mysqlEnum('account_type', ['owner', 'staff']).notNull(),
 		email_verified: boolean('email_verified').default(false),
 		otp_code: varchar('otp_code', { length: 6 }),
 		otp_expires_at: datetime('otp_expires_at'),
@@ -116,9 +116,7 @@ export const serverAccountInvites = mysqlTable(
 		server_id: int('server_id')
 			.notNull()
 			.references(() => servers.id, { onDelete: 'cascade' }),
-		account_type: mysqlEnum('account_type', ['owner', 'moderator']).notNull(),
-		created_by: int('created_by').references(() => serverAccounts.id, { onDelete: 'set null' }),
-		created_by_admin: int('created_by_admin').references(() => accounts.id, { onDelete: 'set null' }),
+		account_type: mysqlEnum('account_type', ['owner', 'staff']).notNull(),
 		used_by: int('used_by').references(() => serverAccounts.id, { onDelete: 'set null' }),
 		expires_at: datetime('expires_at'),
 		created_at: datetime('created_at').notNull(),
@@ -443,12 +441,11 @@ export const botDiscordQuest = mysqlTable(
 		game_title: text('game_title'),
 		quest_url: varchar('quest_url', { length: 512 }),
 		quest_description: text('quest_description'),
-		orb_hint: text('orb_hint'),
-		rewards_line: text('rewards_line'),
+		reward: text('reward'),
 		task_detail_line: text('task_detail_line'),
 		starts_at: datetime('starts_at'),
 		expires_at: datetime('expires_at'),
-		notified_at: datetime('notified_at').notNull()
+		created_at: datetime('created_at').notNull()
 	},
 	(t) => [uniqueIndex('unique_bot_discord_quests_quest').on(t.quest_id), index('idx_bot_discord_quests_bot_id').on(t.bot_id)]
 );
@@ -478,7 +475,7 @@ export const serverMemberDiscordQuest = mysqlTable(
 		quest_id: int('quest_id')
 			.notNull()
 			.references(() => serverDiscordQuest.id, { onDelete: 'cascade' }),
-		orb_claimed: boolean('orb_claimed').notNull().default(false),
+		reward_claimed: boolean('reward_claimed').notNull().default(false),
 		created_at: datetime('created_at').notNull()
 	},
 	(t) => [uniqueIndex('unique_server_member_discord_quests').on(t.member_id, t.quest_id), index('idx_server_member_discord_quests_member').on(t.member_id)]
@@ -507,7 +504,7 @@ export const botRobloxItems = mysqlTable(
 		last_lowest_price: int('last_lowest_price'),
 		last_lowest_resale_price: int('last_lowest_resale_price'),
 		last_total_quantity: int('last_total_quantity'),
-		notified_at: datetime('notified_at').notNull()
+		created_at: datetime('created_at').notNull()
 	},
 	(t) => [uniqueIndex('unique_bot_roblox_items_asset').on(t.asset_id), index('idx_bot_roblox_items_bot_id').on(t.bot_id)]
 );
@@ -719,6 +716,6 @@ export const accountServerAccess = mysqlTable('account_server_access', {
 	server_id: int('server_id')
 		.notNull()
 		.references(() => servers.id, { onDelete: 'cascade' }),
-	role: mysqlEnum('role', ['owner', 'moderator']).notNull(),
+	role: mysqlEnum('role', ['owner', 'staff']).notNull(),
 	created_at: datetime('created_at').notNull()
 });

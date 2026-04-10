@@ -18,7 +18,7 @@ declare global {
 						account_id: number;
 						username: string;
 						email: string;
-						account_type: 'owner' | 'moderator';
+						account_type: 'owner' | 'staff';
 						account_source: 'server_accounts';
 						bot_id: number;
 						server_id: number;

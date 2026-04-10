@@ -11,13 +11,13 @@
 
 	let { data }: PageProps = $props();
 
-	let inviteType = $state<'owner' | 'moderator'>(data.user.authenticated && data.user.account_source === 'accounts' ? 'owner' : 'moderator');
+	let inviteType = $state<'owner' | 'staff'>(data.user.authenticated && data.user.account_source === 'accounts' ? 'owner' : 'staff');
 	let generatedLink = $state<string | null>(null);
 	let copyIcon = $state('fa-copy');
 	let selectedDiscordMemberIds = $state<string[]>([]);
 	let inviting = $state(false);
 
-	const validTypes = $derived(data.user.authenticated && data.user.account_source === 'accounts' ? ['owner', 'moderator'] : ['moderator']);
+	const validTypes = $derived(data.user.authenticated && data.user.account_source === 'accounts' ? ['owner', 'staff'] : ['staff']);
 	const inviteTypeOptions = $derived<LabeledSelectOption[]>(validTypes.map((t) => ({ value: t, label: t.charAt(0).toUpperCase() + t.slice(1) })));
 	const canInvite = $derived(
 		data.user.authenticated &&
@@ -249,7 +249,7 @@
 								{#if account.is_frozen}
 									<span class="rounded-full bg-red-900 px-2 py-0.5 text-xs text-red-300">Frozen</span>
 								{/if}
-								{#if isSuperadmin || (isOwner && account.account_type === 'moderator' && account.id !== data.user.account_id)}
+								{#if isSuperadmin || (isOwner && account.account_type === 'staff' && account.id !== data.user.account_id)}
 									<button
 										onclick={() => confirmFreeze(account.id, account.is_frozen, account.username)}
 										title={account.is_frozen ? 'Unfreeze account' : 'Freeze account'}
@@ -284,9 +284,6 @@
 						<div class="bg-ash-700 flex flex-col gap-2 rounded-lg px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
 							<div class="min-w-0 flex-1">
 								<p class="text-ash-100 text-sm font-medium capitalize">{invite.account_type} invite</p>
-								<p class="text-ash-400 text-xs">
-									Created by {invite.creator_username ?? invite.creator_admin_username ?? 'Unknown'}
-								</p>
 								<p class="text-ash-300 mt-1 text-xs">
 									<i class="fas fa-clock mr-1 text-amber-400/80"></i>
 									{#if invite.used_by}

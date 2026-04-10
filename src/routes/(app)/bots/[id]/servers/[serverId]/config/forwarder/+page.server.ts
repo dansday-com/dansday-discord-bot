@@ -13,6 +13,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 
 	return {
 		settings: normalizeForwarderSettings(row?.settings ?? {}),
+		selfbots: selfbots.map((sb) => ({ id: sb.id, name: sb.name })),
 		hasSelfbots: selfbots.length > 0,
 		hasRunningSelfbot: !!runningSelfbot
 	};

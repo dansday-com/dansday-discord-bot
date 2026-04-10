@@ -18,8 +18,8 @@ export async function handleOrbEnrollButton(interaction: ButtonInteraction): Pro
 	}
 
 	const member = interaction.guild ? await interaction.guild.members.fetch(interaction.user.id).catch(() => null) : null;
-	if (!member || !(await hasPermission(member, 'menu'))) {
-		const errorMessage = await getPermissionDeniedMessage(interaction.guild!, 'menu', interaction.user.id);
+	if (!member || !(await hasPermission(member, 'quest_enroll'))) {
+		const errorMessage = await getPermissionDeniedMessage(interaction.guild!, 'quest_enroll', interaction.user.id);
 		await interaction.reply({ content: errorMessage, flags: 64 }).catch(() => null);
 		return;
 	}

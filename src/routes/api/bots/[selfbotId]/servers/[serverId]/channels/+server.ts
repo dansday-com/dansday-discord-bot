@@ -11,21 +11,14 @@ export const GET: RequestHandler = async ({ locals, params, url }) => {
 	try {
 		const { selfbotId, serverId } = params;
 		const search = url.searchParams.get('search');
-		const discordServerId = url.searchParams.get('discordServerId');
 
-		const server = await db.getServerByDiscordId(Number(selfbotId), String(discordServerId), { forSelfbot: true });
-		if (!server) {
-			return json({ error: 'Server not found' }, { status: 404 });
-		}
+		const selfbot = await db.getServerBotById(Number(selfbotId));
+		if (!selfbot) return json({ error: 'Selfbot not found' }, { status: 404 });
 
-		if (Number(server.id) !== Number(serverId)) {
-			return json({ error: 'Server not found' }, { status: 404 });
-		}
-
-		if (locals.user.account_source === 'accounts' && !(await accountOwnsServer(locals, Number(serverId)))) {
+		if (locals.user.account_source === 'accounts' && !(await accountOwnsServer(locals, selfbot.server_id))) {
 			return json({ error: 'Access denied' }, { status: 403 });
 		}
-		if (locals.user.account_source === 'server_accounts' && locals.user.server_id !== Number(serverId)) {
+		if (locals.user.account_source === 'server_accounts' && locals.user.server_id !== selfbot.server_id) {
 			return json({ error: 'Access denied' }, { status: 403 });
 		}
 

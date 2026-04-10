@@ -1807,7 +1807,7 @@ async function getAccountServerAccess(accountId: number) {
 		.where(eq(schema.accountServerAccess.account_id, accountId));
 }
 
-async function createAccountServerAccess(data: { account_id: number; server_id: number; role: 'owner' | 'moderator' }) {
+async function createAccountServerAccess(data: { account_id: number; server_id: number; role: 'owner' | 'staff' }) {
 	const now = toMySQLDateTime();
 	await db
 		.insert(schema.accountServerAccess)
@@ -1872,7 +1872,7 @@ async function createServerAccount(data: {
 	username: string;
 	email: string;
 	password_hash: string;
-	account_type: 'owner' | 'moderator';
+	account_type: 'owner' | 'staff';
 	email_verified?: boolean;
 	otp_code?: string | null;
 	otp_expires_at?: string | null;
@@ -1903,7 +1903,7 @@ async function updateServerAccount(
 		username: string;
 		email: string;
 		password_hash: string;
-		account_type: 'owner' | 'moderator';
+		account_type: 'owner' | 'staff';
 		email_verified: boolean;
 		otp_code: string | null;
 		otp_expires_at: string | null;
@@ -1931,7 +1931,7 @@ async function getServerAccountsByServer(serverId: number) {
 
 const SERVER_ACCOUNT_INVITE_TTL_MINUTES = 10;
 
-async function createServerAccountInvite(data: { token: string; server_id: number; account_type: 'owner' | 'moderator' }) {
+async function createServerAccountInvite(data: { token: string; server_id: number; account_type: 'owner' | 'staff' }) {
 	const now = getNowUtc();
 	const createdAt = now.toJSDate();
 	const expiresAt = now.plus({ minutes: SERVER_ACCOUNT_INVITE_TTL_MINUTES }).toJSDate();

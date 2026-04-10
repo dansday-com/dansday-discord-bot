@@ -23,7 +23,7 @@ export const POST: RequestHandler = async ({ locals, params }) => {
 	if (!locals.user.authenticated) {
 		return json({ success: false, error: 'Authentication required' }, { status: 401 });
 	}
-	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'moderator') {
+	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'staff') {
 		return json({ success: false, error: 'Access denied' }, { status: 403 });
 	}
 	if (!(await canManageInvites(locals, serverId))) {

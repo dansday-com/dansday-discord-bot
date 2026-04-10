@@ -38,7 +38,7 @@ export async function canUseEmbedBuilder(locals: App.Locals, serverId: string | 
 	if (locals.user.account_source === 'accounts') return accountOwnsServer(locals, Number(serverId));
 	if (locals.user.account_source === 'server_accounts') {
 		if (locals.user.server_id !== Number(serverId)) return false;
-		return locals.user.account_type === 'owner' || locals.user.account_type === 'moderator';
+		return locals.user.account_type === 'owner' || locals.user.account_type === 'staff';
 	}
 	return false;
 }
@@ -61,12 +61,12 @@ export async function canManageSelfbots(locals: App.Locals, serverId: string | n
 	return false;
 }
 
-export function isGuildModeratorUser(user: App.Locals['user']): boolean {
-	return user.authenticated && user.account_source === 'server_accounts' && user.account_type === 'moderator';
+export function isGuildStaffUser(user: App.Locals['user']): boolean {
+	return user.authenticated && user.account_source === 'server_accounts' && user.account_type === 'staff';
 }
 
 export function isServerConfigReadOnly(locals: App.Locals): boolean {
-	return isGuildModeratorUser(locals.user);
+	return isGuildStaffUser(locals.user);
 }
 
 type RouteGuard = {

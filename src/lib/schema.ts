@@ -91,7 +91,7 @@ export const serverAccounts = mysqlTable(
 		username: varchar('username', { length: 255 }).notNull(),
 		email: varchar('email', { length: 255 }).notNull(),
 		password_hash: text('password_hash').notNull(),
-		account_type: mysqlEnum('account_type', ['owner', 'moderator']).notNull(),
+		account_type: mysqlEnum('account_type', ['owner', 'staff']).notNull(),
 		email_verified: boolean('email_verified').default(false),
 		otp_code: varchar('otp_code', { length: 6 }),
 		otp_expires_at: datetime('otp_expires_at'),
@@ -116,7 +116,7 @@ export const serverAccountInvites = mysqlTable(
 		server_id: int('server_id')
 			.notNull()
 			.references(() => servers.id, { onDelete: 'cascade' }),
-		account_type: mysqlEnum('account_type', ['owner', 'moderator']).notNull(),
+		account_type: mysqlEnum('account_type', ['owner', 'staff']).notNull(),
 		used_by: int('used_by').references(() => serverAccounts.id, { onDelete: 'set null' }),
 		expires_at: datetime('expires_at'),
 		created_at: datetime('created_at').notNull(),
@@ -716,6 +716,6 @@ export const accountServerAccess = mysqlTable('account_server_access', {
 	server_id: int('server_id')
 		.notNull()
 		.references(() => servers.id, { onDelete: 'cascade' }),
-	role: mysqlEnum('role', ['owner', 'moderator']).notNull(),
+	role: mysqlEnum('role', ['owner', 'staff']).notNull(),
 	created_at: datetime('created_at').notNull()
 });

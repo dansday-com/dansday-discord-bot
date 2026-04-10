@@ -45,7 +45,7 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 
 export const POST: RequestHandler = async ({ locals, params, request, url }) => {
 	const serverId = Number(params.id);
-	if (locals.user.authenticated && locals.user.account_source === 'server_accounts' && locals.user.account_type === 'moderator') {
+	if (locals.user.authenticated && locals.user.account_source === 'server_accounts' && locals.user.account_type === 'staff') {
 		return json({ success: false, error: 'Access denied' }, { status: 403 });
 	}
 	if (!(await canManageAccounts(locals, serverId))) {
@@ -57,7 +57,7 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 	const body = await request.json();
 	const { account_type } = body;
 
-	const validTypes = locals.user.account_source === 'accounts' ? ['owner', 'moderator'] : ['moderator'];
+	const validTypes = locals.user.account_source === 'accounts' ? ['owner', 'staff'] : ['staff'];
 	if (!account_type || !validTypes.includes(account_type)) {
 		return json({ success: false, error: `Valid account type required: ${validTypes.join(', ')}` }, { status: 400 });
 	}

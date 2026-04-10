@@ -373,7 +373,7 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 					username: u,
 					email: e,
 					password_hash: pw,
-					account_type: 'moderator',
+					account_type: 'staff',
 					email_verified: true,
 					otp_code: null,
 					otp_expires_at: null,

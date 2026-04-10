@@ -22,19 +22,19 @@ function isTargetSelfServerAccount(locals: App.Locals, targetServerAccountId: nu
 	return locals.user.authenticated && locals.user.account_source === 'server_accounts' && locals.user.account_id === targetServerAccountId;
 }
 
-function canActorModifyTargetServerAccount(locals: App.Locals, target: { account_type: 'owner' | 'moderator' | string }): boolean {
+function canActorModifyTargetServerAccount(locals: App.Locals, target: { account_type: 'owner' | 'staff' | string }): boolean {
 	if (!locals.user.authenticated) return false;
-	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'moderator') return false;
+	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'staff') return false;
 	if (isSuperadmin(locals)) return true;
 	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'owner') {
-		return target.account_type === 'moderator';
+		return target.account_type === 'staff';
 	}
 	return false;
 }
 
 export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 	const serverId = Number(params.id);
-	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'moderator') {
+	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'staff') {
 		return json({ success: false, error: 'Access denied' }, { status: 403 });
 	}
 	if (!(await canManageAccounts(locals, serverId))) {
@@ -79,7 +79,7 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 
 export const DELETE: RequestHandler = async ({ locals, params }) => {
 	const serverId = Number(params.id);
-	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'moderator') {
+	if (locals.user.account_source === 'server_accounts' && locals.user.account_type === 'staff') {
 		return json({ success: false, error: 'Access denied' }, { status: 403 });
 	}
 	if (!(await canManageAccounts(locals, serverId))) {

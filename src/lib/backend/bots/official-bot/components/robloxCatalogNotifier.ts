@@ -1,5 +1,5 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, Client, EmbedBuilder } from 'discord.js';
-import db from '../../../../database.js';
+import db, { type RobloxItemChange } from '../../../../database.js';
 import { getEmbedConfig, getMainChannel, isComponentFeatureEnabled, serverSettingsComponent } from '../../../config.js';
 import { logger } from '../../../../utils/index.js';
 import { assetTypeCategory, fetchCatalogFirstPage, RobloxCatalogItem, robloxCatalogItemUrl, streamCatalogPages } from '../../../../roblox-catalog-api.js';
@@ -210,6 +210,11 @@ async function processPage(officialBotId: number, targets: ServerTarget[], items
 	const snapshots = newItems.map(toSnapshot);
 	const today = todayUtc();
 
+	// Detect changes for ALL servers before updating last_* values,
+	// so every server sees the same diff (not just the first one).
+	const perServerChanges = new Map<number, Map<number, RobloxItemChange[]>>();
+	const perServerUnposted = new Map<number, Set<number>>();
+
 	for (const target of targets) {
 		await db.syncServerRobloxItemsFromApi(officialBotId, target.serverId, snapshots);
 
@@ -223,8 +228,18 @@ async function processPage(officialBotId: number, targets: ServerTarget[], items
 						)
 					)
 				: new Set<number>();
+		perServerUnposted.set(target.serverId, unposted);
 
 		const changes = await db.detectAndUpdateServerRobloxItemChanges(target.serverId, snapshots);
+		perServerChanges.set(target.serverId, changes);
+	}
+
+	// Now update the shared last_* columns once, after all servers have read the old values.
+	await db.updateBotRobloxItemLastValues(snapshots);
+
+	for (const target of targets) {
+		const unposted = perServerUnposted.get(target.serverId) ?? new Set<number>();
+		const changes = perServerChanges.get(target.serverId) ?? new Map<number, RobloxItemChange[]>();
 
 		for (const item of newItems) {
 			const isNew = unposted.has(item.id);

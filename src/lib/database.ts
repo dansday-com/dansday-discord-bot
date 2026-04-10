@@ -2313,7 +2313,7 @@ async function markServerRobloxItemMessagePosted(serverId: number, assetId: numb
 		.where(and(eq(schema.serverRobloxItems.server_id, serverId), eq(schema.serverRobloxItems.item_id, item.id)));
 }
 
-type RobloxItemChange = {
+export type RobloxItemChange = {
 	assetId: number;
 	field: 'price' | 'lowest_price' | 'lowest_resale_price' | 'total_quantity';
 	oldValue: number | null;
@@ -2375,7 +2375,23 @@ async function detectAndUpdateServerRobloxItemChanges(serverId: number, items: R
 		}
 
 		if (changes.length > 0) result.set(assetId, changes);
+	}
 
+	return result;
+}
+
+async function updateBotRobloxItemLastValues(items: RobloxCatalogItemSnapshot[]): Promise<void> {
+	await initializeDatabase();
+	if (!items || items.length === 0) return;
+	const assetIds = items.map((x) => Number(x.assetId));
+	const rows = await db
+		.select({ id: schema.botRobloxItems.id, asset_id: schema.botRobloxItems.asset_id })
+		.from(schema.botRobloxItems)
+		.where(inArray(schema.botRobloxItems.asset_id, assetIds as any));
+	const rowMap = new Map(rows.map((r) => [Number(r.asset_id), r.id]));
+	for (const it of items) {
+		const botItemId = rowMap.get(Number(it.assetId));
+		if (!botItemId) continue;
 		await db
 			.update(schema.botRobloxItems)
 			.set({
@@ -2384,10 +2400,8 @@ async function detectAndUpdateServerRobloxItemChanges(serverId: number, items: R
 				last_lowest_resale_price: it.lowestResalePrice ?? null,
 				last_total_quantity: it.totalQuantity ?? null
 			} as any)
-			.where(eq(schema.botRobloxItems.id, row.bot_item_id));
+			.where(eq(schema.botRobloxItems.id, botItemId));
 	}
-
-	return result;
 }
 
 async function getBotDiscordQuestByQuestId(questId: string) {
@@ -3288,6 +3302,7 @@ export default {
 	listServerRobloxUnpostedAssetIds,
 	markServerRobloxItemMessagePosted,
 	detectAndUpdateServerRobloxItemChanges,
+	updateBotRobloxItemLastValues,
 	getBotDiscordQuestByQuestId,
 	hasServerMemberClaimedDiscordQuest,
 	markServerMemberDiscordQuestClaimed,

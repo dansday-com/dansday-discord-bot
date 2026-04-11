@@ -1,4 +1,4 @@
-import { getRedisClient } from '../redis.js';
+import { getRedisClient } from '../../../redis.js';
 
 export type LeaderboardMetric = 'xp' | 'chat' | 'voice_total' | 'voice_active' | 'voice_afk';
 

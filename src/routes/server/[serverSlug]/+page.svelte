@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
 	import type { PageProps } from './$types';
-	import type { PublicPageStats } from '$lib/publicStatistics/index.js';
+	import type { PublicPageStats } from '$lib/frontend/public/statistics/index.js';
 
 	let { data }: PageProps = $props();
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-	/** `landing`: Login CTA. `stats`: live indicator (public statistics pages). */
+	/** `landing`: Login CTA. `stats`: live indicator (server statistics pages). */
 	type Mode = 'landing' | 'stats';
 
 	let { mode = 'landing' as Mode }: { mode?: Mode } = $props();

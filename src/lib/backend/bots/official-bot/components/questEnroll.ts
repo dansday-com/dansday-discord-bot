@@ -5,7 +5,7 @@ import { getEmbedConfig, getServerForCurrentBot, serverSettingsComponent } from 
 import { translate } from '../i18n.js';
 import { hasPermission, getPermissionDeniedMessage } from './permissions.js';
 import { queueQuestEnrollJob, isUserEnrollRunning } from './questEnrollWorker.js';
-import { fetchQuestsMe } from '../../../../discord-quest-api.js';
+import { fetchQuestsMe } from '../../../api/discord-quest-api.js';
 
 /** New quest enrollment buttons on quest notifier embeds */
 export const QUEST_ENROLL_BUTTON_PREFIX = 'quest_enroll:';

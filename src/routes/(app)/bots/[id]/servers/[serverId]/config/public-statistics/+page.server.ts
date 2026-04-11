@@ -1,9 +1,9 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import db from '$lib/database.js';
-import { SERVER_SETTINGS } from '$lib/serverSettingsComponents.js';
-import { computePublicServerSlugForServerConfig } from '$lib/publicServerSlug/index.js';
-import { publicServerPath } from '$lib/publicSiteUrls.js';
+import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
+import { computePublicServerSlugForServerConfig } from '$lib/frontend/public/server-slug/index.js';
+import { publicServerPath } from '$lib/url.js';
 
 export const load: PageServerLoad = async ({ locals, params, parent }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');

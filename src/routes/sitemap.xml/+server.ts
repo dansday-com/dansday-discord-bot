@@ -1,6 +1,6 @@
 import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
-import { listPublicServerSlugs } from '$lib/publicServerSlug/index.js';
+import { listPublicServerSlugs } from '$lib/frontend/public/server-slug/index.js';
 import { parseMySQLDateTimeUtc } from '$lib/utils/datetime.js';
 
 function escapeXml(unsafe: string): string {

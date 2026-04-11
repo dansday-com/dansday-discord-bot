@@ -1,4 +1,4 @@
-import { getRedisClient } from '../redis.js';
+import { getRedisClient } from '../../../redis.js';
 import type { PublicPageStats } from './shape.js';
 
 export type PublicStatisticsSnapshot = {

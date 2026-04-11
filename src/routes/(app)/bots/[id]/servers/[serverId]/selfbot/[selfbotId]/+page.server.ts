@@ -4,7 +4,7 @@ import type { PageServerLoad } from './$types';
 import db, { getOfficialBotIdForServer } from '$lib/database.js';
 import { getBotUptimeMs } from '$lib/botProcesses.js';
 import { webRouteUp } from '$lib/frontend/redirect.js';
-import { isGuildStaffUser } from '$lib/serverPanelAccess.js';
+import { isGuildStaffUser } from '$lib/frontend/panelServer.js';
 
 export const load: PageServerLoad = async ({ locals, params, url }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');

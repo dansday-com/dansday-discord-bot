@@ -3,8 +3,8 @@ import type { Handle } from '@sveltejs/kit';
 import { getSession, getSessionIdFromCookie } from '$lib/utils/index.js';
 import db from '$lib/database.js';
 import { verifyBotStatuses } from '$lib/botProcesses.js';
-import { startDemoSessionExpiryListener } from '$lib/demo/demoSessionExpiry.js';
-import { guardApiRoute } from '$lib/serverPanelAccess.js';
+import { startDemoSessionExpiryListener } from '$lib/backend/demo/demoSessionExpiry.js';
+import { guardApiRoute } from '$lib/frontend/panelServer.js';
 
 export const init = async () => {
 	await verifyBotStatuses();

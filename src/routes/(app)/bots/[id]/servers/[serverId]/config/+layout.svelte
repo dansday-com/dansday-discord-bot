@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import type { LayoutProps } from './$types';
-	import { SERVER_SETTINGS } from '$lib/serverSettingsComponents.js';
+	import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 
 	let { data, children }: LayoutProps = $props();
 

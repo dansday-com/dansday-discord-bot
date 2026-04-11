@@ -2,7 +2,7 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle, Client, EmbedBuilder } fr
 import db from '../../../../database.js';
 import { getEmbedConfig, isComponentFeatureEnabled, serverSettingsComponent } from '../../../config.js';
 import { logger } from '../../../../utils/index.js';
-import { extractDiscordQuestSummaries, fetchQuestsMe, type DiscordQuestSummary } from '../../../../discord-quest-api.js';
+import { extractDiscordQuestSummaries, fetchQuestsMe, type DiscordQuestSummary } from '../../../api/discord-quest-api.js';
 
 let tickTimeoutRef: ReturnType<typeof setTimeout> | null = null;
 

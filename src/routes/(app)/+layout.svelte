@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { onDestroy, onMount } from 'svelte';
+	import MainFooter from '$lib/frontend/components/MainFooter.svelte';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import type { LayoutProps } from './$types';
 
@@ -84,12 +85,5 @@
 		{@render children()}
 	</main>
 
-	<footer class="bg-ash-800 border-ash-700 flex-shrink-0 border-t">
-		<div class="mx-auto max-w-7xl px-3 py-3 sm:px-4 sm:py-4 lg:px-8">
-			<p class="text-ash-500 text-center text-xs sm:text-sm">
-				Copyright &copy; {new Date().getFullYear()}
-				<a href="https://dansday.com" target="_blank" class="text-ash-200 hover:text-ash-300 transition-colors">dansday.com</a>. All rights reserved.
-			</p>
-		</div>
-	</footer>
+	<MainFooter variant="panel" />
 </div>

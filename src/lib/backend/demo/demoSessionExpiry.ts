@@ -1,5 +1,5 @@
 import { cleanupDemoSession } from './seedDemo.js';
-import { DEMO_EXPIRE_REDIS_PREFIX, deleteSessionsWithDemoPanelSlug, getRedis } from '../utils/session.js';
+import { DEMO_EXPIRE_REDIS_PREFIX, deleteSessionsWithDemoPanelSlug, getRedis } from '../../utils/session.js';
 
 let listenerStarted = false;
 

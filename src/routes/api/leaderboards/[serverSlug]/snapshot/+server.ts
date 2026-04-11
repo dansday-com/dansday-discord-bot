@@ -1,8 +1,8 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
-import { SERVER_SETTINGS } from '$lib/serverSettingsComponents.js';
-import { type LeaderboardMetric, resolveLeaderboardSnapshot } from '$lib/leaderboard/index.js';
-import { resolvePublicServerBySlug } from '$lib/publicServerSlug/index.js';
+import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
+import { type LeaderboardMetric, resolveLeaderboardSnapshot } from '$lib/frontend/public/leaderboard/index.js';
+import { resolvePublicServerBySlug } from '$lib/frontend/public/server-slug/index.js';
 function parseMetric(m: string | null): LeaderboardMetric {
 	const v = (m || 'xp').toLowerCase();
 	if (v === 'chat') return 'chat';

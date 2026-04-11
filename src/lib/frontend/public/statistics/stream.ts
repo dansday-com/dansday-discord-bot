@@ -1,4 +1,4 @@
-import db from '../database.js';
+import db from '../../../database.js';
 import { type PublicStatisticsSnapshot, getCachedPublicStatistics, setCachedPublicStatistics } from './cache.js';
 import { shapePublicStatisticsFromOverview } from './shape.js';
 

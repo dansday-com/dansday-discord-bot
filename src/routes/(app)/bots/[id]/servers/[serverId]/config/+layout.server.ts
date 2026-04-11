@@ -1,8 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 import db, { getOfficialBotIdForServer } from '$lib/database.js';
-import { isServerConfigReadOnly } from '$lib/serverPanelAccess.js';
-import { SERVER_SETTINGS } from '$lib/serverSettingsComponents.js';
+import { isServerConfigReadOnly, SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 
 export const load: LayoutServerLoad = async ({ locals, params }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');

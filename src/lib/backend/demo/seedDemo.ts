@@ -1,10 +1,10 @@
 import bcrypt from 'bcryptjs';
 import { sql } from 'drizzle-orm';
-import { db } from '../drizzle.js';
-import * as schema from '../schema.js';
-import { SERVER_SETTINGS } from '../serverSettingsComponents.js';
-import { initializeDatabase } from '../database.js';
-import { toMySQLDateTime } from '../utils/datetime.js';
+import { db } from '../../drizzle.js';
+import * as schema from '../../schema.js';
+import { SERVER_SETTINGS } from '../../frontend/panelServer.js';
+import { initializeDatabase } from '../../database.js';
+import { toMySQLDateTime } from '../../utils/datetime.js';
 
 const DEMO = {
 	serverCount: 2,

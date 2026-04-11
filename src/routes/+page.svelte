@@ -1,9 +1,8 @@
 <script lang="ts">
 	import type { PageProps } from './$types';
-	import { publicServerPath } from '$lib/publicSiteUrls.js';
-	import PublicSiteNav from '$lib/components/PublicSiteNav.svelte';
-	import PublicSiteFooter from '$lib/components/PublicSiteFooter.svelte';
-	import './main.css';
+	import { publicServerPath } from '$lib/url.js';
+	import MainHeader from '$lib/frontend/components/MainHeader.svelte';
+	import MainFooter from '$lib/frontend/components/MainFooter.svelte';
 
 	let { data }: PageProps = $props();
 
@@ -151,7 +150,7 @@
 	<div class="m-blob m-blob-2"></div>
 	<div class="m-blob m-blob-3"></div>
 
-	<PublicSiteNav mode="landing" />
+	<MainHeader mode="landing" />
 
 	<main class="m-main">
 		<div class="m-inner m-landing-inner">
@@ -320,5 +319,5 @@
 		</div>
 	</main>
 
-	<PublicSiteFooter />
+	<MainFooter />
 </div>

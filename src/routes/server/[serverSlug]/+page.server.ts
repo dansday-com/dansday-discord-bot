@@ -1,6 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
-import { resolvePublicStatisticsSnapshot } from '$lib/publicStatistics/index.js';
+import { resolvePublicStatisticsSnapshot } from '$lib/frontend/public/statistics/index.js';
 
 export const load: PageServerLoad = async ({ parent }) => {
 	const { server } = await parent();

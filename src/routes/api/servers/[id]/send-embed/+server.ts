@@ -5,8 +5,7 @@ import { logger } from '$lib/utils/index.js';
 import { existsSync, readFileSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { request as httpRequest } from 'http';
-import { SERVER_SETTINGS } from '$lib/serverSettingsComponents.js';
-import { canUseEmbedBuilder } from '$lib/serverPanelAccess.js';
+import { canUseEmbedBuilder, SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 import { mainAppearanceBlockingMessage, messageFromBotWebhookPayload } from '$lib/utils/configPrerequisiteErrors.js';
 import { mainChannelId } from '$lib/utils/mainConfigSettings.js';
 

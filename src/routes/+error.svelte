@@ -1,9 +1,8 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import PublicSiteNav from '$lib/components/PublicSiteNav.svelte';
-	import PublicSiteFooter from '$lib/components/PublicSiteFooter.svelte';
-	import './main.css';
+	import MainHeader from '$lib/frontend/components/MainHeader.svelte';
+	import MainFooter from '$lib/frontend/components/MainFooter.svelte';
 
 	const status = $derived(page.status);
 	const isServerError = $derived(status >= 500 && status < 600);
@@ -22,7 +21,7 @@
 	<div class="m-blob m-blob-2"></div>
 	<div class="m-blob m-blob-3"></div>
 
-	<PublicSiteNav mode="landing" />
+	<MainHeader mode="landing" />
 
 	<main class="m-main m-main--error">
 		<div class="m-inner m-err-wrap">
@@ -59,5 +58,5 @@
 		</div>
 	</main>
 
-	<PublicSiteFooter />
+	<MainFooter />
 </div>

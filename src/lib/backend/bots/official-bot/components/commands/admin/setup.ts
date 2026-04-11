@@ -3,7 +3,7 @@ import { randomBytes } from 'crypto';
 import db from '../../../../../../database.js';
 import { getBotConfig } from '../../../../../config.js';
 import { sendServerOwnerInviteEmail } from '../../../../../../frontend/email.js';
-import { publicSiteOrigin } from '../../../../../../publicSiteUrls.js';
+import { publicSiteOrigin } from '$lib/url.js';
 
 export const commandDefinition = {
 	name: 'setup',

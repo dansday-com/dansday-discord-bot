@@ -1,4 +1,4 @@
-import { getServerMembersList } from '../database.js';
+import { getServerMembersList } from '../../../database.js';
 
 export type PublicMembersStreamPayload = {
 	members: NonNullable<Awaited<ReturnType<typeof getServerMembersList>>>;

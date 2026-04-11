@@ -1,4 +1,4 @@
-import db from '../database.js';
+import db from '../../../database.js';
 import { type LeaderboardMetric, type LeaderboardRow, type LeaderboardSnapshot, getCachedLeaderboard, setCachedLeaderboard } from './cache.js';
 
 export type MembersListEntry = {

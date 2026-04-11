@@ -1,5 +1,5 @@
 import db from '../database.js';
-import { SERVER_SETTINGS, type ServerSettingsComponentName } from '../serverSettingsComponents.js';
+import { SERVER_SETTINGS, type ServerSettingsComponentName } from '../frontend/panelServer.js';
 
 const serverSettingsComponent = SERVER_SETTINGS.component;
 import { normalizeForwarderSettings } from '../forwarder-settings.js';
@@ -769,5 +769,5 @@ export const FORWARDER = {
 export { SERVER_SETTINGS, type ServerSettingsComponentName };
 export { serverSettingsComponent };
 export const SERVER_SETTINGS_COMPONENTS_WITH_FEATURE_SWITCH = SERVER_SETTINGS.withFeatureSwitch;
-export { computePublicServerSlugForServerId } from '../publicServerSlug/index.js';
-export { publicSiteOrigin, publicServerPath, publicServerUrl } from '../publicSiteUrls.js';
+export { computePublicServerSlugForServerId } from '../frontend/public/server-slug/index.js';
+export { publicSiteOrigin, publicServerPath, publicServerUrl } from '../url.js';

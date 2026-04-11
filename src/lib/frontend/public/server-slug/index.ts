@@ -1,5 +1,5 @@
-import db from '../database.js';
-import { computeIndexedSlugForItemId, listIndexedSlugsForItems, resolveIndexedSlugToItem } from '../utils/index.js';
+import db from '../../../database.js';
+import { computeIndexedSlugForItemId, listIndexedSlugsForItems, resolveIndexedSlugToItem } from '../../../utils/index.js';
 
 export type PublicSlugServerRow = {
 	id: number;

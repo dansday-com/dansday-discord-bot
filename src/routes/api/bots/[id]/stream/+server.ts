@@ -1,7 +1,7 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import { subscribeBotStatus, getBotUptimeMs, type BotProcessKind } from '$lib/botProcesses.js';
 import db from '$lib/database.js';
-import { canViewSelfbots } from '$lib/serverPanelAccess.js';
+import { canViewSelfbots } from '$lib/frontend/panelServer.js';
 
 export const GET: RequestHandler = async ({ locals, params, url }) => {
 	const botId = Number(params.id);

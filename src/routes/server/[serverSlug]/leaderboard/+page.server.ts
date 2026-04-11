@@ -1,8 +1,13 @@
 import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
 import db from '$lib/database.js';
-import { SERVER_SETTINGS } from '$lib/serverSettingsComponents.js';
-import { type LeaderboardMetric, buildLeaderboardRowsFromMembersList, getCachedLeaderboard, setCachedLeaderboard } from '$lib/leaderboard/index.js';
+import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
+import {
+	type LeaderboardMetric,
+	buildLeaderboardRowsFromMembersList,
+	getCachedLeaderboard,
+	setCachedLeaderboard
+} from '$lib/frontend/public/leaderboard/index.js';
 
 function parseMetric(m: string | null): LeaderboardMetric {
 	const v = (m || 'xp').toLowerCase();

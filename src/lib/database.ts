@@ -1,16 +1,12 @@
 import { readFileSync, readdirSync, existsSync } from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import { join } from 'path';
 import mysql from 'mysql2/promise';
 import { eq, and, or, inArray, sql, desc, asc, isNull, isNotNull, count, avg, like, ne } from 'drizzle-orm';
 import { db } from './drizzle.js';
 import * as schema from './schema.js';
-import { SERVER_SETTINGS } from './serverSettingsComponents.js';
-import { logger, toMySQLDateTime, parseMySQLDateTimeUtc, getNowUtc, addMinutesToNow } from './utils/index.js';
-import type { DiscordQuestSummary } from './discord-quest-api.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import { SERVER_SETTINGS } from './frontend/panelServer.js';
+import { logger, toMySQLDateTime, parseMySQLDateTimeUtc, getNowUtc } from './utils/index.js';
+import type { DiscordQuestSummary } from './backend/api/discord-quest-api.js';
 
 function getConnectionConfig() {
 	const databaseUrl = process.env.DATABASE_URL;
@@ -1138,10 +1134,6 @@ export async function syncMemberRoles(memberId: any, discordRoleIds: string[], s
 	await syncMemberCustomSupporterRoles(mid, roleList, sid);
 	await refreshMemberIsContentCreator(mid, sid, roleList);
 	return true;
-}
-
-export async function memberHasAnyRole(_discordMemberId: string, _discordRoleIds: string[], _serverId: any) {
-	return false;
 }
 
 export async function syncMembers(serverId: any, members: any[]) {
@@ -3319,7 +3311,6 @@ export default {
 	searchServerMembers,
 	syncMembers,
 	syncMemberRoles,
-	memberHasAnyRole,
 	getMemberLevel,
 	ensureMemberLevel,
 	updateMemberLevelStats,

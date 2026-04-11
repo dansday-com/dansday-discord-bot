@@ -2,8 +2,8 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import { request as httpRequest } from 'http';
 import db from '$lib/database.js';
-import { SERVER_SETTINGS } from '$lib/serverSettingsComponents.js';
-import { extractDiscordQuestSummaries, fetchQuestsMe, questPayloadRewardDiagnostics } from '$lib/discord-quest-api.js';
+import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
+import { extractDiscordQuestSummaries, fetchQuestsMe, questPayloadRewardDiagnostics } from '$lib/backend/api/discord-quest-api.js';
 import { mainAppearanceBlockingMessage, messageFromBotWebhookPayload } from '$lib/utils/configPrerequisiteErrors.js';
 
 export const POST: RequestHandler = async ({ params }) => {

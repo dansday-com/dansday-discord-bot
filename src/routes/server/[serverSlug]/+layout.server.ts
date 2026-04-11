@@ -1,8 +1,8 @@
 import type { LayoutServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
 import db from '$lib/database.js';
-import { SERVER_SETTINGS } from '$lib/serverSettingsComponents.js';
-import { resolvePublicServerBySlug } from '$lib/publicServerSlug/index.js';
+import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
+import { resolvePublicServerBySlug } from '$lib/frontend/public/server-slug/index.js';
 
 export const load: LayoutServerLoad = async ({ params }) => {
 	const slug = String(params.serverSlug || '').trim();

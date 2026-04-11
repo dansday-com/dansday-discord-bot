@@ -1,10 +1,9 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { publicServerPath } from '$lib/publicSiteUrls.js';
-	import PublicSiteNav from '$lib/components/PublicSiteNav.svelte';
-	import PublicSiteFooter from '$lib/components/PublicSiteFooter.svelte';
+	import { publicServerPath } from '$lib/url.js';
+	import MainHeader from '$lib/frontend/components/MainHeader.svelte';
+	import MainFooter from '$lib/frontend/components/MainFooter.svelte';
 	import type { LayoutProps } from './$types';
-	import '../../main.css';
 
 	let { data, children }: LayoutProps = $props();
 
@@ -22,7 +21,7 @@
 	<div class="m-blob m-blob-2"></div>
 	<div class="m-blob m-blob-3"></div>
 
-	<PublicSiteNav mode="stats" />
+	<MainHeader mode="stats" />
 
 	<main class="m-main">
 		<div class="m-inner">
@@ -65,5 +64,5 @@
 		</div>
 	</main>
 
-	<PublicSiteFooter />
+	<MainFooter />
 </div>

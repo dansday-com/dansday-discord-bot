@@ -3329,6 +3329,8 @@ export default {
 	createBot,
 	updateBot,
 	deleteBot,
+	getBotStatusByBotId,
+	upsertBotStatus,
 	getServer,
 	getServersForBot,
 	getServersForSelfbot,

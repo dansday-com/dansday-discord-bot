@@ -1,100 +1,76 @@
-# Dansday – Discord Bot (Docker)
+# Dansday Discord Bot
 
-Discord bot management system with a web control panel: self-bot monitoring, official bot forwarding, leveling, giveaways, moderation, and more. Runs with Docker Compose.
+**Dansday** is an all-in-one Discord server management platform: a modern web control panel plus an official bot (and optional self-bot workflows) so you configure automation, moderation, and integrations in one place instead of scattering slash commands across channels.
 
-### First time? What you need
-
-You only need this on your machine:
-
-| Need                 | Why                                                                                                                                                             |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Git**              | To clone the repo                                                                                                                                               |
-| **Docker**           | To run the app                                                                                                                                                  |
-| **Docker Compose**   | To start the service (included with Docker Desktop)                                                                                                             |
-| **Make**             | To run `make up` / `make down` (built-in on macOS/Linux; on Windows use [Docker Desktop](https://www.docker.com/products/docker-desktop/) and WSL2 or Git Bash) |
-| **MySQL**            | Database; app connects via env vars                                                                                                                             |
-| **Redis** (optional) | Sessions / rate limit; set `REDIS_*` or `REDIS_URL` to use                                                                                                      |
-
-You do **not** need Node.js or npm installed — everything runs inside Docker.
-
-When running locally with `make up`, the control panel is at **http://localhost** (port 80, via `docker-compose.override.yml`). Ensure port **80** is free.
+The project is open source under the MIT license.
 
 ---
 
-### Preview / multiple deployments
+## Features
 
-The main **docker-compose.yaml** publishes the app as **`0:80`** (random host port), so multiple stacks (e.g. production and preview) never conflict on a fixed port. Your host or proxy can route by domain to the app on the internal network.
+### Web control panel
 
-- **Hosted / PaaS**: Use **docker-compose.yaml** only (no override). Set required env vars in your platform (DB\_\*, SESSION_SECRET, etc.). The app listens on container port 80; set `PORT` if your platform expects it.
-- **Local / clone repo**: `make up` merges **docker-compose.override.yml**, which binds **80:80**, so the panel is at http://localhost.
+- **Granular permissions** — Control who can change which settings. Owners and staff tiers let helpers contribute without full control of the server or bot.
+- **Server accounts** — Invite owners and staff into the panel with roles separate from ordinary Discord chat/moderation permissions.
+- **Per-module toggles** — Enable or disable major features per server so you only run what you need.
+- **Multi-language UI (Discord flows)** — English and Indonesian strings for buttons, selects, and labels, with room to grow.
+- **Embed builder** — Design rich embeds with live preview, placeholders, and images; send to channels from the browser.
 
----
+### Community & engagement
 
-### How to run (first time)
+- **Leveling & XP** — Message and voice activity feed a full XP system with levels, role rewards, and leaderboards.
+- **Welcomer** — Custom welcome messages and embeds for new members.
+- **Giveaways** — Entries, winner selection, and role-based eligibility.
+- **AFK** — Members set AFK status and custom messages; the bot warns when someone is mentioned while away.
+- **Feedback** — Collect and organize suggestions and feedback through Discord-facing flows.
+- **Staff rating** — Structured staff evaluation tied to your moderation workflow.
+- **Booster messages** — Thank Nitro boosters with configurable channels and templates (separate from custom supporter roles).
+- **Custom supporter roles** — Let supporters personalize role name and color within rules you set.
 
-**Step 1 – Clone the repo**
+### Safety & operations
 
-```bash
-git clone https://github.com/YOUR_USERNAME/Dansday-Discord-Bot.git
-cd Dansday-Discord-Bot
-```
+- **Moderation** — Warnings, mutes, bans, and staff actions coordinated from the panel.
+- **Channel notifications** — Alerts for important channel activity.
+- **Message forwarder** — Mirror or sync messages across channels (and related self-bot paths where configured).
 
-**Step 2 – Configure environment**
+### Integrations & alerts
 
-Copy `.env.example` to `.env` and set your values. Required: `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `SESSION_SECRET`, `CAPTCHA_SECRET`. Optional: `REDIS_URL`, `MAIL_*`.
+- **Discord Quest notifier** — Surface Discord Quest activity in your server; optional quest enrollment automation tuned per server.
+- **Roblox catalog watch** — Post embeds when catalog items change — aimed at trading and UGC communities.
+- **Content creator / TikTok** — Creator applications and TikTok live session digests tied to server channels.
 
-**Step 3 – Database**
+### Public web pages
 
-Ensure MySQL is running and run the schema once: execute `database/schema.sql` in your MySQL client.
+- **Public statistics** — Shareable pages with member insights, leaderboards, and live-oriented views for your community.
 
-**Step 4 – Start**
+### Advanced
 
-```bash
-make up
-```
-
-Then open the control panel at **http://localhost**.
-
-**Stop:** `make down`
-
-### Running without Docker (optional)
-
-Only if you run the app directly on your machine (no Docker): copy `.env.example` to `.env`, fill in your database and optional Redis/mail settings, then `npm install` and `node index.js`.
-
-### What’s running (services)
-
-- **app**
-  - Node.js control panel + official bot + self-bot logic
-  - Runs in Docker; local access at **http://localhost** (port 80)
-  - Connects to MySQL (and optionally Redis) via env vars
-
-- **MySQL**
-  - External; set `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` in `.env`
-
-- **Redis** (optional)
-  - External; set `REDIS_URL` (full URL with password) for sessions and rate limiting
-
-### Tech stack
-
-- **Control panel**
-  - **Express.js**, session auth (MySQL or Redis)
-  - **Node.js 22**
-
-- **Bots**
-  - **discord.js** (official bot)
-  - **discord.js-selfbot-v13** (self-bot)
-
-- **Database / cache**
-  - **MySQL** (mysql2)
-  - **Redis** (optional, for sessions + rate limit)
-
-- **Email** (optional)
-  - **Nodemailer**
-
-- **Infrastructure / Tooling**
-  - **Docker**, **Docker Compose**
-  - Make: `up`, `down`, `logs`, `restart`
+- **Official bot (discord.js)** — Core automation, slash `/setup`, buttons, and component interactions.
+- **Optional self-bot path** — Panel-managed tokens and user-context features where supported (e.g. forwarder and quest flows); use in line with Discord’s terms and your own risk assessment.
+- **Webhook server** — Incoming hooks for selected automation paths (see codebase for endpoints).
 
 ---
 
-License: MIT · Author: Akbar Yudhanto · Version: 7.8.0
+## Tech stack
+
+| Area             | Technologies                                                                                                                                 |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| App & UI         | [SvelteKit](https://kit.svelte.dev/), [Svelte 5](https://svelte.dev/), [Vite](https://vitejs.dev/), [Tailwind CSS](https://tailwindcss.com/) |
+| Bots             | [discord.js](https://discord.js.org/) v14, [discord.js-selfbot-v13](https://www.npmjs.com/package/discord.js-selfbot-v13) (optional)         |
+| Data             | [MySQL](https://www.mysql.com/) via [mysql2](https://github.com/sidorares/node-mysql2), [Drizzle ORM](https://orm.drizzle.team/)             |
+| Cache / sessions | [Redis](https://redis.io/) (optional)                                                                                                        |
+| Email            | [Nodemailer](https://nodemailer.com/) (optional)                                                                                             |
+| Observability    | [OpenTelemetry](https://opentelemetry.io/) (optional OTLP log export)                                                                        |
+| Runtime          | Node.js 22                                                                                                                                   |
+
+---
+
+## Configuration
+
+Environment variables drive database credentials, sessions, captcha, mail, Redis, and bot tokens. Copy **`.env.example`** to **`.env`** and adjust for your deployment.
+
+---
+
+## License
+
+MIT · Author: Akbar Yudhanto · Version: 8.1.0

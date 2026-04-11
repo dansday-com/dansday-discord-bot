@@ -3,16 +3,16 @@ import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { accountOwnsServer } from '$lib/frontend/panelServer.js';
 
-export const GET: RequestHandler = async ({ locals, params, url }) => {
+export const GET: RequestHandler = async ({ locals, params }) => {
 	if (!locals.user.authenticated) {
 		return json({ error: 'Authentication required' }, { status: 401 });
 	}
 
 	try {
-		const { selfbotId, serverId } = params;
-		const search = url.searchParams.get('search');
+		const selfbotId = Number(params.id);
+		const serverBotServerId = Number(params.serverId);
 
-		const selfbot = await db.getServerBotById(Number(selfbotId));
+		const selfbot = await db.getServerBotById(selfbotId);
 		if (!selfbot) return json({ error: 'Selfbot not found' }, { status: 404 });
 
 		if (locals.user.account_source === 'accounts' && !(await accountOwnsServer(locals, selfbot.server_id))) {
@@ -22,9 +22,12 @@ export const GET: RequestHandler = async ({ locals, params, url }) => {
 			return json({ error: 'Access denied' }, { status: 403 });
 		}
 
+		const linked = await db.getServerBotServerForSelfbot(selfbotId, serverBotServerId);
+		if (!linked) return json({ error: 'Server not found' }, { status: 404 });
+
 		const [rawChannels, categories] = await Promise.all([
-			db.getServerBotChannelsForServer(Number(serverId)),
-			db.getServerBotCategoriesForServer(Number(serverId))
+			db.getServerBotChannelsForServer(serverBotServerId),
+			db.getServerBotCategoriesForServer(serverBotServerId)
 		]);
 
 		const discordCatIdToId = new Map<string, number>();
@@ -32,15 +35,10 @@ export const GET: RequestHandler = async ({ locals, params, url }) => {
 			discordCatIdToId.set(cat.discord_category_id, cat.id);
 		}
 
-		let channels = rawChannels.map((ch: any) => ({
+		const channels = rawChannels.map((ch: any) => ({
 			...ch,
 			category_id: ch.discord_parent_category_id ? (discordCatIdToId.get(ch.discord_parent_category_id) ?? null) : null
 		}));
-
-		if (search) {
-			const searchLower = search.toLowerCase();
-			channels = channels.filter((ch: any) => ch.name?.toLowerCase().includes(searchLower) || ch.discord_channel_id?.includes(searchLower));
-		}
 
 		return json({ channels, categories });
 	} catch (error: any) {

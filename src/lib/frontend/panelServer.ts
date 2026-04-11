@@ -250,10 +250,6 @@ type RouteGuard = {
 
 const ROUTE_GUARDS: RouteGuard[] = [
 	{
-		pattern: /^\/api\/bots\/(\d+)\/servers(\/.*)?$/,
-		check: async () => true
-	},
-	{
 		pattern: /^\/api\/bots\/(\d+)(\/.*)?$/,
 		check: async (locals, match) => accountOwnsBot(locals, Number(match[1])),
 		superadminOnly: true

@@ -4,7 +4,25 @@
 	import { DASHBOARD_PATH } from '$lib/frontend/redirect.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import ConfirmModal from '$lib/frontend/components/ConfirmModal.svelte';
+	import LabeledSelect from '$lib/frontend/components/LabeledSelect.svelte';
+	import type { LabeledSelectOption } from '$lib/frontend/components/labeledSelect.js';
 	import type { PageProps } from './$types';
+
+	const PRESENCE_DISCORD_OPTIONS: LabeledSelectOption[] = [
+		{ value: 'online', label: 'Online' },
+		{ value: 'idle', label: 'Idle' },
+		{ value: 'dnd', label: 'Do not disturb' },
+		{ value: 'invisible', label: 'Invisible' }
+	];
+
+	const PRESENCE_ACTIVITY_OPTIONS: LabeledSelectOption[] = [
+		{ value: 'playing', label: 'Playing' },
+		{ value: 'streaming', label: 'Streaming' },
+		{ value: 'listening', label: 'Listening' },
+		{ value: 'watching', label: 'Watching' },
+		{ value: 'custom', label: 'Custom' },
+		{ value: 'competing', label: 'Competing' }
+	];
 
 	let { data }: PageProps = $props();
 
@@ -289,33 +307,29 @@
 		<p class="text-ash-400 mb-4 text-sm">Status and activity text shown on Discord. Applies when the bot process starts or restarts.</p>
 
 		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-			<div>
-				<label for="presence-discord-status" class="text-ash-400 mb-1 block text-xs">Visibility</label>
-				<select
+			<div class="min-w-0">
+				<LabeledSelect
 					id="presence-discord-status"
+					label="Visibility"
+					labelIconClass="fas fa-eye text-violet-400"
+					labelTone="cyan"
+					appearance="dashboard"
+					options={PRESENCE_DISCORD_OPTIONS}
 					bind:value={presence.discord_status}
-					class="bg-ash-700 border-ash-600 text-ash-100 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
-				>
-					<option value="online">Online</option>
-					<option value="idle">Idle</option>
-					<option value="dnd">Do not disturb</option>
-					<option value="invisible">Invisible</option>
-				</select>
+					ariaLabel="Discord visibility"
+				/>
 			</div>
-			<div>
-				<label for="presence-activity-type" class="text-ash-400 mb-1 block text-xs">Activity type</label>
-				<select
+			<div class="min-w-0">
+				<LabeledSelect
 					id="presence-activity-type"
+					label="Activity type"
+					labelIconClass="fas fa-gamepad text-violet-400"
+					labelTone="cyan"
+					appearance="dashboard"
+					options={PRESENCE_ACTIVITY_OPTIONS}
 					bind:value={presence.activity_type}
-					class="bg-ash-700 border-ash-600 text-ash-100 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
-				>
-					<option value="playing">Playing</option>
-					<option value="streaming">Streaming</option>
-					<option value="listening">Listening</option>
-					<option value="watching">Watching</option>
-					<option value="custom">Custom</option>
-					<option value="competing">Competing</option>
-				</select>
+					ariaLabel="Discord activity type"
+				/>
 			</div>
 			<div class="sm:col-span-2">
 				<label for="presence-activity-name" class="text-ash-400 mb-1 block text-xs">Activity name</label>

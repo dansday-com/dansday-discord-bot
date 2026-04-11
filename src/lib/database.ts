@@ -372,6 +372,16 @@ export async function getServersForSelfbot(selfbotId: number) {
 	return db.select().from(schema.serverBotServers).where(eq(schema.serverBotServers.server_bot_id, selfbotId)).orderBy(asc(schema.serverBotServers.name));
 }
 
+export async function getServerBotServerForSelfbot(selfbotId: number, serverBotServerId: number) {
+	await initializeDatabase();
+	const rows = await db
+		.select()
+		.from(schema.serverBotServers)
+		.where(and(eq(schema.serverBotServers.server_bot_id, selfbotId), eq(schema.serverBotServers.id, serverBotServerId)))
+		.limit(1);
+	return rows[0] ?? null;
+}
+
 export async function getOfficialServerByDiscordId(officialBotId: number, discordServerId: string) {
 	await initializeDatabase();
 	const rows = await db
@@ -3334,6 +3344,7 @@ export default {
 	getServer,
 	getServersForBot,
 	getServersForSelfbot,
+	getServerBotServerForSelfbot,
 	getOfficialServerByDiscordId,
 	getSelfbotServerByDiscordId,
 	getServerByDiscordId,

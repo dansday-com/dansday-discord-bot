@@ -52,7 +52,7 @@
 		const key = String(selfbotId);
 		if (serverCacheBySelfbotId.has(key)) return serverCacheBySelfbotId.get(key) || [];
 		try {
-			const res = await fetch(`/api/bots/${selfbotId}/servers`, { credentials: 'include' });
+			const res = await fetch(`/api/selfbots/${selfbotId}/servers`, { credentials: 'include' });
 			if (!res.ok) return [];
 			const list = await res.json();
 			serverCacheBySelfbotId.set(key, Array.isArray(list) ? list : []);
@@ -62,11 +62,11 @@
 		}
 	}
 
-	async function fetchSelfbotChannels(selfbotId: number, serverId: number, discordServerId: string): Promise<{ channels: any[]; categories: any[] }> {
-		const key = `${selfbotId}:${serverId}:${discordServerId || ''}`;
+	async function fetchSelfbotChannels(selfbotId: number, serverId: number): Promise<{ channels: any[]; categories: any[] }> {
+		const key = `${selfbotId}:${serverId}`;
 		if (channelsCacheBySelfbotAndServer.has(key)) return channelsCacheBySelfbotAndServer.get(key) || { channels: [], categories: [] };
 		try {
-			const res = await fetch(`/api/bots/${selfbotId}/servers/${serverId}/channels?discordServerId=${discordServerId}`, { credentials: 'include' });
+			const res = await fetch(`/api/selfbots/${selfbotId}/servers/${serverId}/channels`, { credentials: 'include' });
 			if (!res.ok) return { channels: [], categories: [] };
 			const d = await res.json();
 			const value = { channels: d?.channels ?? [], categories: d?.categories ?? [] };
@@ -97,10 +97,7 @@
 				if (!fw?.selfbot_id || !fw?.server_id || !Array.isArray(fw?.source_channels) || fw.source_channels.length === 0) continue;
 				if (Array.isArray(fw.source_channel_names) && fw.source_channel_names.length === fw.source_channels.length) continue;
 
-				const servers = await fetchSelfbotServers(Number(fw.selfbot_id));
-				const srv = servers.find((s: any) => String(s?.id) === String(fw.server_id));
-				const discordServerId = srv?.discord_server_id ?? '';
-				const { channels } = await fetchSelfbotChannels(Number(fw.selfbot_id), Number(fw.server_id), String(discordServerId));
+				const { channels } = await fetchSelfbotChannels(Number(fw.selfbot_id), Number(fw.server_id));
 				if (!Array.isArray(channels) || channels.length === 0) continue;
 
 				const names = fw.source_channels.map((id) => channelName(id, channels));
@@ -140,7 +137,7 @@
 		}
 		loadingServers = true;
 		try {
-			const res = await fetch(`/api/bots/${selfbotId}/servers`, { credentials: 'include' });
+			const res = await fetch(`/api/selfbots/${selfbotId}/servers`, { credentials: 'include' });
 			if (res.ok) selfbotServers = await res.json();
 		} catch (_) {}
 		loadingServers = false;
@@ -154,9 +151,7 @@
 		}
 		loadingChannels = true;
 		try {
-			const server = selfbotServers.find((s: any) => s.id == serverId);
-			const discordServerId = server?.discord_server_id ?? '';
-			const res = await fetch(`/api/bots/${selfbotId}/servers/${serverId}/channels?discordServerId=${discordServerId}`, { credentials: 'include' });
+			const res = await fetch(`/api/selfbots/${selfbotId}/servers/${serverId}/channels`, { credentials: 'include' });
 			if (res.ok) {
 				const d = await res.json();
 				selfbotChannels = d?.channels ?? [];

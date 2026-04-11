@@ -868,9 +868,7 @@ function userQuestRewardClaimed(quest: Record<string, unknown>): boolean {
 	return false;
 }
 
-export type QuestEnrollmentPrecheck =
-	| { ok: true }
-	| { ok: false; code: 'not_found' | 'expired' | 'reward_claimed' | 'completed' };
+export type QuestEnrollmentPrecheck = { ok: true } | { ok: false; code: 'not_found' | 'expired' | 'reward_claimed' | 'completed' };
 
 export function precheckQuestPayloadForEnrollment(payload: unknown, questId: string): QuestEnrollmentPrecheck {
 	const quest = findQuestByIdInPayload(payload, questId);

@@ -7,12 +7,17 @@
 
 	let { data }: PageProps = $props();
 
+	/** Add the official Dansday Bot to a Discord server */
+	const officialBotInviteUrl = 'https://discord.com/oauth2/authorize?client_id=1446572985849876640';
+	/** Community for updates and testing */
+	const communityDiscordUrl = 'https://discord.gg/7fEqEDSur3';
+
 	const features = [
 		{
 			icon: 'fa-shield-halved',
 			tone: 'stone',
 			title: 'Panel permissions',
-			desc: 'Control who can change what in the web panel — separate owner and staff access so your team can help without handing over the whole server.'
+			desc: 'Decide who can edit what in the web panel. Owners and staff get their own access levels so helpers can contribute without full control of the server.'
 		},
 		{
 			icon: 'fa-chart-line',
@@ -54,7 +59,7 @@
 			icon: 'fa-scroll',
 			tone: 'teal',
 			title: 'Discord Quest notifier',
-			desc: 'Surfaces Discord Quest home activity in your server: alerts when new quests appear and context for what to run next.'
+			desc: 'Bring Discord Quest home activity into your server with alerts when new quests show up and enough context to know what to run next.'
 		},
 		{
 			icon: 'fa-wand-magic-sparkles',
@@ -72,7 +77,7 @@
 			icon: 'fa-id-card',
 			tone: 'teal',
 			title: 'Server accounts',
-			desc: 'Invite owners and staff to the panel with controlled roles — separate from Discord permissions for day-to-day chatting.'
+			desc: 'Invite owners and staff into the panel with roles that fit how you run the team. This stays separate from who can chat or moderate in Discord.'
 		},
 		{
 			icon: 'fa-video',
@@ -84,7 +89,7 @@
 			icon: 'fa-cube',
 			tone: 'stone',
 			title: 'Roblox catalog watch',
-			desc: 'Monitor Roblox catalog changes and post rich embeds when items update — ideal for trading and UGC communities.'
+			desc: 'Watch the Roblox catalog and post rich embeds when items change. Built for trading groups and UGC focused servers.'
 		},
 		{
 			icon: 'fa-forward',
@@ -126,10 +131,10 @@
 </script>
 
 <svelte:head>
-	<title>Dansday Discord Bot - All-in-One Server Management</title>
+	<title>Dansday Discord Bot | All in one server management</title>
 	<meta
 		name="description"
-		content="Dansday Discord Bot: leveling, moderation, welcomer, giveaways, public live stats, Discord Quest & orb enroll, self-bot & accounts, TikTok creator tools, Roblox catalog watch, and more. Try the full web panel free for 5 minutes — demo login, no account required."
+		content="Add Dansday Bot to your server, then use the web panel for leveling, moderation, welcomer, giveaways, public live stats, Discord Quest and orb enroll, TikTok creator tools, Roblox catalog watch, and more. Optional five minute demo on login with no account required."
 	/>
 </svelte:head>
 
@@ -146,26 +151,34 @@
 			<section class="m-hero">
 				<div class="m-hero-badge">
 					<i class="fas fa-layer-group"></i>
-					Modular features · One web panel
+					Modular features in one web panel
 				</div>
 				<h1>
 					Supercharge Your<br />
 					<span class="m-gradient-text">Discord Server</span>
 				</h1>
 				<p>
-					Leveling, moderation, Discord Quests, orb enroll, self-bot options, creator tools, live public statistics pages, Roblox catalog alerts, and more —
-					tuned from the browser instead of scattering slash commands across every channel.
+					Run leveling, moderation, Discord Quests, orb enroll, self-bot options, creator tools, live public statistics pages, Roblox catalog alerts, and more
+					from the browser. Configure in one place instead of flooding channels with slash commands.
 				</p>
 				<div class="m-hero-actions">
-					<a href="/login" class="m-btn m-btn--primary">
-						<i class="fas fa-sign-in-alt"></i>
+					<a href={officialBotInviteUrl} class="m-btn m-btn--primary" target="_blank" rel="noopener noreferrer">
+						<i class="fab fa-discord"></i>
 						Get started
+					</a>
+					<a href="/login" class="m-btn m-btn--ghost">
+						<i class="fas fa-sign-in-alt"></i>
+						Log in to panel
 					</a>
 					<a href="#features" class="m-btn m-btn--ghost">
 						<i class="fas fa-th-large"></i>
 						See all features
 					</a>
 				</div>
+				<p class="m-hero-community">
+					<a href={communityDiscordUrl} class="m-hero-community-link" target="_blank" rel="noopener noreferrer">Join our Discord</a>
+					for updates and testing.
+				</p>
 			</section>
 
 			<!-- Metric strip (same scroll pattern as public statistics overview) -->
@@ -205,8 +218,8 @@
 				<div class="m-section-header">
 					<h2>Everything your server needs</h2>
 					<p>
-						Each module is independent: turn on leveling, Quest notifier, orb enroll, self-bot, forwarder, public statistics, or any combination — all from the
-						same server settings.
+						Each module stands on its own. Turn on leveling, Quest notifier, orb enroll, self-bot, forwarder, public statistics, or any mix you need. Everything
+						lives under the same server settings.
 					</p>
 				</div>
 				<div class="m-features-grid">
@@ -260,8 +273,8 @@
 				<div class="m-section-header">
 					<h2>Powerful web panel</h2>
 					<p>
-						Configure everything from your browser — no slash-command setup required. You open the panel directly after sign-in; stream live bot and server
-						state where modules support it.
+						Change settings from your browser without building long slash command workflows. After you sign in you land in the panel. Where a module supports
+						it, you get live bot and server state right in the UI.
 					</p>
 				</div>
 				<div class="m-features-grid m-features-grid--quad">
@@ -301,13 +314,19 @@
 				<div class="m-cta-card">
 					<h2>Ready to try it?</h2>
 					<p>
-						Already added the bot? Sign in with your server account. New here? The login screen includes an optional <strong>five-minute demo</strong> — full panel
-						access, no signup.
+						Add Dansday Bot to your server first. Then sign in to the web panel to configure your server. The login screen also offers an optional
+						<strong>five minute demo</strong> with full panel access and no signup.
 					</p>
-					<a href="/login" class="m-btn m-btn--primary">
-						<i class="fas fa-sign-in-alt"></i>
-						Open login
-					</a>
+					<div class="m-cta-actions">
+						<a href={officialBotInviteUrl} class="m-btn m-btn--primary" target="_blank" rel="noopener noreferrer">
+							<i class="fab fa-discord"></i>
+							Add Dansday Bot
+						</a>
+						<a href="/login" class="m-btn m-btn--ghost">
+							<i class="fas fa-sign-in-alt"></i>
+							Open login
+						</a>
+					</div>
 				</div>
 			</section>
 		</div>

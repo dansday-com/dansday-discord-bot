@@ -1910,6 +1910,29 @@
 	justify-content: center;
 	flex-wrap: wrap;
 }
+.m-hero-community {
+	font-size: 13px;
+	color: var(--lb-text-muted);
+	line-height: 1.55;
+	margin: 18px auto 0;
+	max-width: 520px;
+	text-align: center;
+}
+.m-hero-community-link {
+	color: var(--chili-hot);
+	font-weight: 600;
+	text-decoration: none;
+}
+.m-hero-community-link:hover {
+	text-decoration: underline;
+}
+.m-cta-actions {
+	display: flex;
+	gap: 10px;
+	justify-content: center;
+	flex-wrap: wrap;
+	margin-top: 4px;
+}
 
 /* ---- Landing: metric strip (reuses public stats overview strip scroll) ---- */
 .m-landing-at-glance {

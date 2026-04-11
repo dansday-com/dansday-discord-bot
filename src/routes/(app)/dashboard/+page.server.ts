@@ -2,6 +2,7 @@ import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import db, { getOfficialBotIdForServer } from '$lib/database.js';
 import { getBotUptimeMs } from '$lib/botProcesses.js';
+import { DASHBOARD_PATH } from '$lib/frontend/redirect.js';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	if (locals.user.authenticated && locals.user.account_source === 'server_accounts') {
@@ -11,7 +12,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		if (targetBot != null) {
 			redirect(302, `/bots/${targetBot}/servers/${locals.user.server_id}`);
 		}
-		redirect(302, '/dashboard');
+		redirect(302, DASHBOARD_PATH);
 	}
 
 	let bots: any[] = [];

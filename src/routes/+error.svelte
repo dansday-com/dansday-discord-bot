@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
+	import { DASHBOARD_PATH } from '$lib/frontend/redirect.js';
 	import MainHeader from '$lib/frontend/components/MainHeader.svelte';
 	import MainFooter from '$lib/frontend/components/MainFooter.svelte';
 
@@ -38,7 +39,7 @@
 					<div class="m-err-divider"></div>
 
 					<div class="m-err-actions">
-						<button type="button" onclick={() => goto('/dashboard')} class="m-btn m-btn--primary">
+						<button type="button" onclick={() => goto(DASHBOARD_PATH)} class="m-btn m-btn--primary">
 							<i class="fas fa-house"></i>
 							Panel home
 						</button>

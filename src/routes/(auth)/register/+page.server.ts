@@ -1,10 +1,11 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import db from '$lib/database.js';
+import { DASHBOARD_PATH } from '$lib/frontend/redirect.js';
 import { isUtcSqlExpired } from '$lib/utils/index.js';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
-	if (locals.user.authenticated) redirect(302, '/dashboard');
+	if (locals.user.authenticated) redirect(302, DASHBOARD_PATH);
 
 	const token = url.searchParams.get('token') ?? null;
 

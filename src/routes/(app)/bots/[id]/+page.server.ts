@@ -2,7 +2,7 @@ import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import db, { getOfficialBotIdForServer } from '$lib/database.js';
 import { getBotUptimeMs } from '$lib/botProcesses.js';
-import { webRouteUp } from '$lib/frontend/redirect.js';
+import { DASHBOARD_PATH, webRouteUp } from '$lib/frontend/redirect.js';
 import { accountOwnsBot } from '$lib/frontend/panelServer.js';
 
 export const load: PageServerLoad = async ({ locals, params, url }) => {
@@ -15,7 +15,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 		if (targetBot != null) {
 			redirect(302, `/bots/${targetBot}/servers/${locals.user.server_id}`);
 		}
-		redirect(302, '/dashboard');
+		redirect(302, DASHBOARD_PATH);
 	}
 
 	const botId = Number(params.id);

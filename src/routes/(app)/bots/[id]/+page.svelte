@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { goto, invalidateAll } from '$app/navigation';
+	import { DASHBOARD_PATH } from '$lib/frontend/redirect.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import ConfirmModal from '$lib/frontend/components/ConfirmModal.svelte';
 	import type { PageProps } from './$types';
@@ -126,7 +127,7 @@
 			const d = await res.json();
 			if (d.success) {
 				showToast('Bot deleted', 'success');
-				goto('/dashboard');
+				goto(DASHBOARD_PATH);
 			} else {
 				showToast(d.error || 'Failed to delete bot', 'error');
 			}
@@ -148,7 +149,7 @@
 </svelte:head>
 
 <div class="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6 lg:px-8 lg:py-8">
-	<a href="/dashboard" class="text-ash-400 hover:text-ash-100 mb-6 inline-flex items-center gap-2 text-sm transition-colors">
+	<a href={DASHBOARD_PATH} class="text-ash-400 hover:text-ash-100 mb-6 inline-flex items-center gap-2 text-sm transition-colors">
 		<i class="fas fa-arrow-left text-violet-300"></i>Back to Dashboard
 	</a>
 

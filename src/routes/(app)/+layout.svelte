@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { onDestroy, onMount } from 'svelte';
+	import { DASHBOARD_PATH } from '$lib/frontend/redirect.js';
 	import MainFooter from '$lib/frontend/components/MainFooter.svelte';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import type { LayoutProps } from './$types';
@@ -52,7 +53,7 @@
 <div class="bg-ash-950 text-ash-100 flex min-h-screen flex-col">
 	<header class="bg-ash-800 border-ash-700 sticky top-0 z-40 flex-shrink-0 border-b">
 		<div class="mx-auto flex h-14 w-full max-w-7xl items-center justify-between gap-3 px-3 sm:h-16 sm:px-4 lg:px-8">
-			<a href="/dashboard" class="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+			<a href={DASHBOARD_PATH} class="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
 				<div class="bg-ash-400 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full sm:h-10 sm:w-10">
 					<i class="fas fa-bolt text-ash-100 text-sm sm:text-base"></i>
 				</div>

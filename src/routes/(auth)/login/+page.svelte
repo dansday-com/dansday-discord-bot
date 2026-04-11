@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { DASHBOARD_PATH } from '$lib/frontend/redirect.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import type { PageProps } from './$types';
 
@@ -50,7 +51,7 @@
 			const data = await res.json();
 			if (data.success) {
 				showToast('Logged in to demo (5 minutes)', 'success');
-				setTimeout(() => goto('/dashboard'), 300);
+				setTimeout(() => goto(DASHBOARD_PATH), 300);
 			} else {
 				showToast(data.error || 'Demo login failed', 'error');
 			}
@@ -82,7 +83,7 @@
 
 			if (data.success) {
 				showToast(data.message || 'Login successful!', 'success');
-				setTimeout(() => goto('/dashboard'), 500);
+				setTimeout(() => goto(DASHBOARD_PATH), 500);
 			} else if (data.requires_verification) {
 				showToast('Please verify your email first. Redirecting...', 'error');
 				const source = data.account_source === 'server_accounts' ? '&source=server_accounts' : '';

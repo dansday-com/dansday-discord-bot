@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { DASHBOARD_PATH } from '$lib/frontend/redirect.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import type { PageProps } from './$types';
 
@@ -32,7 +33,7 @@
 			const d = await res.json();
 			if (d.success) {
 				showToast(d.message || 'Email verified successfully!', 'success');
-				setTimeout(() => goto('/dashboard'), 1000);
+				setTimeout(() => goto(DASHBOARD_PATH), 1000);
 			} else {
 				showToast(d.error || 'OTP verification failed', 'error');
 			}

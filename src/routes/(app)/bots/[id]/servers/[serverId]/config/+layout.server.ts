@@ -1,6 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 import db, { getOfficialBotIdForServer } from '$lib/database.js';
+import { DASHBOARD_PATH } from '$lib/frontend/redirect.js';
 import { isServerConfigReadOnly, SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 
 export const load: LayoutServerLoad = async ({ locals, params }) => {
@@ -16,7 +17,7 @@ export const load: LayoutServerLoad = async ({ locals, params }) => {
 			if (targetBot != null) {
 				redirect(302, `/bots/${targetBot}/servers/${locals.user.server_id}`);
 			}
-			redirect(302, '/dashboard');
+			redirect(302, DASHBOARD_PATH);
 		}
 		const canonical = await getOfficialBotIdForServer(serverId);
 		if (canonical != null && Number(params.id) !== canonical) {

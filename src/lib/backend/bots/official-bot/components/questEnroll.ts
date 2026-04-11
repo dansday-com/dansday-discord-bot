@@ -5,7 +5,7 @@ import { getEmbedConfig, getServerForCurrentBot, serverSettingsComponent } from 
 import { translate } from '../i18n.js';
 import { hasPermission, getPermissionDeniedMessage } from './permissions.js';
 import { queueQuestEnrollJob, isUserEnrollRunning } from './questEnrollWorker.js';
-import { fetchQuestsMe } from '../../../api/discord-quest-api.js';
+import { fetchQuestsMe, precheckQuestPayloadForEnrollment } from '../../../api/discord-quest-api.js';
 
 export const QUEST_ENROLL_BUTTON_PREFIX = 'quest_enroll:';
 export const LEGACY_ENROLL_BUTTON_PREFIX = '\u006f\u0072\u0062_enroll:';
@@ -139,8 +139,9 @@ export async function handleQuestEnrollModalSubmit(interaction: ModalSubmitInter
 	await interaction.deferReply({ flags: 64 });
 
 	const httpProxyUrlEarly = typeof s.http_proxy_url === 'string' && s.http_proxy_url.trim() ? s.http_proxy_url.trim() : null;
+	let questsPayload: unknown;
 	try {
-		await fetchQuestsMe(token, { httpProxyUrl: httpProxyUrlEarly });
+		questsPayload = await fetchQuestsMe(token, { httpProxyUrl: httpProxyUrlEarly });
 	} catch (e: unknown) {
 		const msg = e instanceof Error ? e.message : String(e);
 		const embedConfig = await getEmbedConfig(interaction.guild!.id);
@@ -151,6 +152,29 @@ export async function handleQuestEnrollModalSubmit(interaction: ModalSubmitInter
 			.setFooter({ text: embedConfig.FOOTER })
 			.setTimestamp();
 		await interaction.editReply({ embeds: [invalidEmbed] }).catch(() => null);
+		return;
+	}
+
+	const pre = precheckQuestPayloadForEnrollment(questsPayload, questId);
+	if (!pre.ok) {
+		const embedConfig = await getEmbedConfig(interaction.guild!.id);
+		const keyBase =
+			pre.code === 'not_found'
+				? 'precheckNotFound'
+				: pre.code === 'expired'
+					? 'precheckExpired'
+					: pre.code === 'reward_claimed'
+						? 'precheckRewardClaimed'
+						: 'precheckCompleted';
+		const title = await translate(`questEnroll.${keyBase}Title`, interaction.guild!.id, interaction.user.id);
+		const description = await translate(`questEnroll.${keyBase}Description`, interaction.guild!.id, interaction.user.id);
+		const blockEmbed = new EmbedBuilder()
+			.setColor(embedConfig.COLOR)
+			.setTitle(title)
+			.setDescription(description)
+			.setFooter({ text: embedConfig.FOOTER })
+			.setTimestamp();
+		await interaction.editReply({ embeds: [blockEmbed] }).catch(() => null);
 		return;
 	}
 	const embedConfig = await getEmbedConfig(interaction.guild!.id);

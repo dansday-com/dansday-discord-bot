@@ -101,11 +101,9 @@
 	});
 
 	async function botAction(action: 'start' | 'stop' | 'restart') {
-		const res = await fetch(`/api/${action}`, {
+		const res = await fetch(`/api/selfbots/${data.bot.id}/${action}`, {
 			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			credentials: 'include',
-			body: JSON.stringify({ bot_id: data.bot.id })
+			credentials: 'include'
 		});
 		const d = await res.json();
 		if (d.success || res.ok) {

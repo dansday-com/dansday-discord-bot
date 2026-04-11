@@ -46,10 +46,7 @@ export async function sendQuestNotificationMessage(
 	const pub = typeof quest.publisher === 'string' ? quest.publisher.trim() : '';
 	if (pub) fields.push({ name: '🏢 Publisher', value: pub.slice(0, 1024), inline: true });
 
-	fields.push(
-		{ name: '⏳ Expires', value: expiresBlock.slice(0, 1024), inline: true },
-		{ name: '📜 Quest', value: quest.questName.slice(0, 1024), inline: true }
-	);
+	fields.push({ name: '⏳ Expires', value: expiresBlock.slice(0, 1024), inline: true });
 
 	const embed = new EmbedBuilder().setColor(embedConfig.COLOR).setTitle(`🔮 ${quest.questName}`.slice(0, 256)).addFields(fields);
 

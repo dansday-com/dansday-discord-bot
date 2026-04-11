@@ -854,6 +854,33 @@ function userQuestCompleted(quest: Record<string, unknown>): boolean {
 	return false;
 }
 
+function userQuestRewardClaimed(quest: Record<string, unknown>): boolean {
+	const us = getQuestUserStatus(quest);
+	if (!us) return false;
+	if (us.reward_claimed === true || us.rewardClaimed === true) return true;
+	if (us.reward_claimed_at != null || us.rewardClaimedAt != null) return true;
+	if (us.claimed_at != null || us.claimedAt != null) return true;
+	const rew = us.reward;
+	if (rew && typeof rew === 'object') {
+		const r = rew as Record<string, unknown>;
+		if (r.claimed === true || r.claimed_at != null || r.claimedAt != null) return true;
+	}
+	return false;
+}
+
+export type QuestEnrollmentPrecheck =
+	| { ok: true }
+	| { ok: false; code: 'not_found' | 'expired' | 'reward_claimed' | 'completed' };
+
+export function precheckQuestPayloadForEnrollment(payload: unknown, questId: string): QuestEnrollmentPrecheck {
+	const quest = findQuestByIdInPayload(payload, questId);
+	if (!quest) return { ok: false, code: 'not_found' };
+	if (questExpired(quest)) return { ok: false, code: 'expired' };
+	if (userQuestRewardClaimed(quest)) return { ok: false, code: 'reward_claimed' };
+	if (userQuestCompleted(quest)) return { ok: false, code: 'completed' };
+	return { ok: true };
+}
+
 function enrolledAtMsFromQuest(quest: Record<string, unknown>): number {
 	const us = getQuestUserStatus(quest);
 	if (!us) return Date.now();

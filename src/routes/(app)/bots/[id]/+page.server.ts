@@ -1,6 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import db, { getOfficialBotIdForServer } from '$lib/database.js';
+import db, { DEFAULT_BOT_PRESENCE, getOfficialBotIdForServer } from '$lib/database.js';
 import { getBotUptimeMs } from '$lib/botProcesses.js';
 import { DASHBOARD_PATH, webRouteUp } from '$lib/frontend/redirect.js';
 import { accountOwnsBot } from '$lib/frontend/panelServer.js';
@@ -38,5 +38,16 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 
 	const servers = await db.getServersForBot(Number(params.id));
 
-	return { bot, servers, user: locals.user };
+	const statusRow = await db.getBotStatusByBotId(botId);
+	const botPresence = statusRow
+		? {
+				discord_status: statusRow.discord_status as (typeof DEFAULT_BOT_PRESENCE)['discord_status'],
+				activity_type: statusRow.activity_type as (typeof DEFAULT_BOT_PRESENCE)['activity_type'],
+				activity_name: statusRow.activity_name ?? '',
+				activity_url: statusRow.activity_url ?? null,
+				activity_state: statusRow.activity_state ?? null
+			}
+		: DEFAULT_BOT_PRESENCE;
+
+	return { bot, servers, user: locals.user, botPresence };
 };

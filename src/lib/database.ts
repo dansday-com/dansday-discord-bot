@@ -281,6 +281,61 @@ export async function deleteBot(botId: number) {
 	return true;
 }
 
+export type BotStatusInput = {
+	discord_status: 'online' | 'idle' | 'dnd' | 'invisible';
+	activity_type: 'playing' | 'streaming' | 'listening' | 'watching' | 'custom' | 'competing';
+	activity_name: string;
+	activity_url: string | null;
+	activity_state: string | null;
+};
+
+export const DEFAULT_BOT_PRESENCE: BotStatusInput = {
+	discord_status: 'online',
+	activity_type: 'playing',
+	activity_name: '',
+	activity_url: null,
+	activity_state: null
+};
+
+export async function getBotStatusByBotId(botId: number) {
+	await initializeDatabase();
+	const rows = await db
+		.select()
+		.from(schema.botStatus)
+		.where(eq(schema.botStatus.bot_id, Number(botId)))
+		.limit(1);
+	return rows[0] ?? null;
+}
+
+export async function upsertBotStatus(botId: number, data: BotStatusInput) {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	const stateTrimmed = data.activity_state?.trim() ? data.activity_state.trim() : null;
+	await db
+		.insert(schema.botStatus)
+		.values({
+			bot_id: botId,
+			discord_status: data.discord_status,
+			activity_type: data.activity_type,
+			activity_name: data.activity_name,
+			activity_url: data.activity_url?.trim() ? data.activity_url.trim() : null,
+			activity_state: stateTrimmed,
+			created_at: now as any,
+			updated_at: now as any
+		})
+		.onDuplicateKeyUpdate({
+			set: {
+				discord_status: data.discord_status,
+				activity_type: data.activity_type,
+				activity_name: data.activity_name,
+				activity_url: data.activity_url?.trim() ? data.activity_url.trim() : null,
+				activity_state: stateTrimmed,
+				updated_at: now as any
+			}
+		});
+	return getBotStatusByBotId(botId);
+}
+
 export async function getBotPanelId(botId: number): Promise<number | null> {
 	await initializeDatabase();
 	const rows = await db.select({ panel_id: schema.bots.panel_id }).from(schema.bots).where(eq(schema.bots.id, botId)).limit(1);

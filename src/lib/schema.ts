@@ -55,6 +55,24 @@ export const bots = mysqlTable('bots', {
 	updated_at: datetime('updated_at').notNull()
 });
 
+export const botStatus = mysqlTable(
+	'bot_status',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		bot_id: int('bot_id')
+			.notNull()
+			.references(() => bots.id, { onDelete: 'cascade' }),
+		discord_status: mysqlEnum('discord_status', ['online', 'idle', 'dnd', 'invisible']).notNull().default('online'),
+		activity_type: mysqlEnum('activity_type', ['playing', 'streaming', 'listening', 'watching', 'custom', 'competing']).notNull().default('playing'),
+		activity_name: varchar('activity_name', { length: 128 }).notNull().default(''),
+		activity_url: text('activity_url'),
+		activity_state: varchar('activity_state', { length: 128 }),
+		created_at: datetime('created_at').notNull(),
+		updated_at: datetime('updated_at').notNull()
+	},
+	(t) => [uniqueIndex('uq_bot_status_bot_id').on(t.bot_id)]
+);
+
 export const servers = mysqlTable(
 	'servers',
 	{

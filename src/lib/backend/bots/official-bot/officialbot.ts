@@ -1,5 +1,6 @@
 import { Client, GatewayIntentBits } from 'discord.js';
 import { getBotToken, initializeConfig } from '../../config.js';
+import { applyDiscordPresenceFromDb } from './applyDiscordPresence.js';
 import { logger } from '../../../utils/index.js';
 import forwarder from './components/forwarder.js';
 import welcomer from './components/welcomer.js';
@@ -64,6 +65,10 @@ client.on('clientReady', async () => {
 
 	await sync.init(client, BOT_TOKEN);
 	const officialBotId = sync.getBotId();
+	const presenceBotId = officialBotId ?? (process.env.BOT_ID ? Number(process.env.BOT_ID) : NaN);
+	if (Number.isFinite(presenceBotId)) {
+		await applyDiscordPresenceFromDb(client, presenceBotId);
+	}
 	questNotifier.initQuestNotifier(client, officialBotId);
 	robloxCatalogNotifier.initRobloxCatalogNotifier(client, officialBotId);
 	webhook.startWebhookServer(client, officialBotId);

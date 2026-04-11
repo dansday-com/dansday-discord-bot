@@ -488,6 +488,14 @@
 		"alreadyClaimed": "Already Claimed",
 		"alreadyClaimedDescription": "You enrolled in **{questName}** previously and your reward has already been claimed. Each quest can only be claimed once per member.",
 		"pendingTitle": "⏳ Running in the background",
-		"pendingDescription": "A result embed will be posted in this channel shortly.\n\nYour token is **not** saved in our database.\n\n**Risk:** Discord may restrict or ban the **user account** tied to that token; in some cases the **bot or server** could also be affected. This is not official Discord behaviour — you chose to proceed."
+		"pendingDescription": "A result embed will be posted in this channel shortly.\n\nYour token is **not** saved in our database.\n\n**Risk:** Discord may restrict or ban the **user account** tied to that token; in some cases the **bot or server** could also be affected. This is not official Discord behaviour — you chose to proceed.",
+		"precheckNotFoundTitle": "Quest not on this account",
+		"precheckNotFoundDescription": "This quest is not listed for the Discord account tied to your token. Open **Discord → Quests**, accept the quest if needed, then try again.",
+		"precheckExpiredTitle": "Quest expired",
+		"precheckExpiredDescription": "This quest has expired for that Discord account.",
+		"precheckRewardClaimedTitle": "Reward already claimed",
+		"precheckRewardClaimedDescription": "The reward for this quest was already claimed on this **Discord account** (for example after finishing in another server or in the Discord client). Auto-enroll cannot claim it again.",
+		"precheckCompletedTitle": "Quest already finished",
+		"precheckCompletedDescription": "Quest objectives are already completed on this **Discord account**. Claim any remaining reward under **Discord → Quests** if you have not yet — auto-enroll cannot add more progress."
 	}
 }

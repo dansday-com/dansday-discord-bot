@@ -258,6 +258,22 @@ const ROUTE_GUARDS: RouteGuard[] = [
 		check: async (locals, match) => accountOwnsBot(locals, Number(match[1])),
 		superadminOnly: true
 	},
+	{
+		pattern: /^\/api\/selfbots\/(\d+)(\/.*)?$/,
+		check: async (locals, match) => {
+			if (!locals.user.authenticated) return false;
+			const db = await getDb();
+			const sb = await db.getServerBotById(Number(match[1]));
+			if (!sb) return false;
+			if (locals.user.account_source === 'server_accounts') {
+				return locals.user.account_type === 'owner' && locals.user.server_id === sb.server_id;
+			}
+			if (locals.user.account_source === 'accounts') {
+				return accountOwnsServer(locals, sb.server_id);
+			}
+			return false;
+		}
+	},
 
 	{
 		pattern: /^\/api\/servers\/(\d+)\/categories/,
@@ -331,7 +347,7 @@ const ROUTE_GUARDS: RouteGuard[] = [
 	}
 ];
 
-const PUBLIC_PREFIXES = ['/api/leaderboards/', '/api/uploads/', '/api/panel/', '/api/start', '/api/stop', '/api/restart', '/api/bots/+server.ts'];
+const PUBLIC_PREFIXES = ['/api/leaderboards/', '/api/uploads/', '/api/panel/'];
 
 const PUBLIC_EXACT = new Set([
 	'/api/panel/login',

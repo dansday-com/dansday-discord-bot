@@ -1,5 +1,8 @@
 <script lang="ts">
-	/** `landing`: marketing / stats shell (light footer, GitHub line). `panel`: app shell (ash palette, copyright only). */
+	/**
+	 * `landing`: light marketing footer (`m-footer` styles).
+	 * `panel`: ash app shell (login, panel, etc.) — same content: copyright + GitHub line.
+	 */
 	type Variant = 'landing' | 'panel';
 
 	let { variant = 'landing' as Variant }: { variant?: Variant } = $props();
@@ -19,6 +22,17 @@
 		{#if variant === 'landing'}
 			<p class="m-footer-open">
 				<a href="https://github.com/dansday-com/dansday-discord-bot" target="_blank" rel="noopener noreferrer"> Free and open source on GitHub </a>
+			</p>
+		{:else}
+			<p class="text-ash-500 mt-3 text-center text-xs sm:mt-4 sm:text-sm">
+				<a
+					href="https://github.com/dansday-com/dansday-discord-bot"
+					target="_blank"
+					rel="noopener noreferrer"
+					class="text-ash-300 hover:text-ash-100 font-semibold transition-colors"
+				>
+					Free and open source on GitHub
+				</a>
 			</p>
 		{/if}
 	</div>

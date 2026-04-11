@@ -7,7 +7,7 @@
 </script>
 
 <div class="from-ash-950 to-ash-800 flex min-h-screen flex-col bg-gradient-to-br">
-	<MainHeader mode="landing" />
+	<MainHeader mode="auth" />
 	<main class="flex flex-1 flex-col items-center justify-center px-3 py-6 sm:px-4">
 		<div class="w-full max-w-md">
 			{@render children()}

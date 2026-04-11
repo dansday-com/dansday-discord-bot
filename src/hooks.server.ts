@@ -5,10 +5,13 @@ import db from '$lib/database.js';
 import { verifyBotStatuses } from '$lib/botProcesses.js';
 import { startDemoSessionExpiryListener } from '$lib/backend/demo/demoSessionExpiry.js';
 import { guardApiRoute } from '$lib/frontend/panelServer.js';
+import { pruneExpiredEmbedImages } from '$lib/utils/embedImageTemp.js';
 
 export const init = async () => {
 	await verifyBotStatuses();
 	await startDemoSessionExpiryListener();
+	pruneExpiredEmbedImages();
+	setInterval(pruneExpiredEmbedImages, 5 * 60 * 1000);
 };
 
 function detectDevice(ua: string): string {

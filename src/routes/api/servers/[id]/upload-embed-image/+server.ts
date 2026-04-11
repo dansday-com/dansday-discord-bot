@@ -46,7 +46,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		if (imageData.length > 10 * 1024 * 1024) return json({ success: false, error: 'Image file is too large. Maximum size is 10MB' }, { status: 400 });
 
 		if (!existsSync(uploadsDir)) mkdirSync(uploadsDir, { recursive: true });
-		const filename = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
+		const filename = `${serverId}-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
 		writeFileSync(join(uploadsDir, filename), imageData);
 
 		return json({ success: true, url: `/api/uploads/embed-images/${filename}`, path: filename });

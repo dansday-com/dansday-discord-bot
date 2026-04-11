@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import ChannelPicker from '$lib/frontend/components/ChannelPicker.svelte';
 	import RolePicker from '$lib/frontend/components/RolePicker.svelte';
@@ -29,6 +30,18 @@
 	const footerPreview = $derived(resolveEmbedFooterPlaceholders(footer, data.serverName ?? 'Server'));
 
 	const totalChars = $derived(title.length + description.length + footer.length);
+
+	onDestroy(() => {
+		const path = uploadedImagePath;
+		const sid = data.serverId;
+		if (!path || sid == null || sid === '') return;
+		fetch(`/api/servers/${sid}/delete-embed-image`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			credentials: 'include',
+			body: JSON.stringify({ path })
+		}).catch(() => {});
+	});
 
 	function charWarning(len: number, max: number) {
 		if (len >= max) return 'text-red-400';
@@ -63,6 +76,15 @@
 	async function handleImageUpload(e: Event) {
 		const file = (e.target as HTMLInputElement).files?.[0];
 		if (!file) return;
+
+		if (uploadedImagePath && data.serverId != null && data.serverId !== '') {
+			await fetch(`/api/servers/${data.serverId}/delete-embed-image`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				credentials: 'include',
+				body: JSON.stringify({ path: uploadedImagePath })
+			}).catch(() => {});
+		}
 
 		const formData = new FormData();
 		formData.append('image', file);

@@ -3,7 +3,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { logger } from '$lib/utils/index.js';
 import { existsSync, readFileSync, unlinkSync } from 'fs';
-import { join } from 'path';
+import { basename, join } from 'path';
 import { request as httpRequest } from 'http';
 import { canUseEmbedBuilder, SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 import { mainAppearanceBlockingMessage, messageFromBotWebhookPayload } from '$lib/utils/configPrerequisiteErrors.js';
@@ -70,12 +70,13 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 
 		let imageBuffer: Buffer | null = null;
 		let imageFilename: string | null = null;
-		if (uploaded_image_path) {
+		const uploadedBasename = uploaded_image_path ? basename(uploaded_image_path) : null;
+		if (uploadedBasename) {
 			try {
-				const filePath = join(uploadsDir, uploaded_image_path);
+				const filePath = join(uploadsDir, uploadedBasename);
 				if (existsSync(filePath)) {
 					imageBuffer = readFileSync(filePath);
-					imageFilename = uploaded_image_path.split('/').pop() || 'image.png';
+					imageFilename = uploadedBasename;
 				}
 			} catch (_) {}
 		}
@@ -85,16 +86,13 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			finalImageUrl = null;
 		}
 
-		const cleanup = (delay = 0) => {
-			if (!uploaded_image_path) return;
-			const fn = () => {
-				try {
-					const fp = join(uploadsDir, uploaded_image_path!);
-					if (existsSync(fp)) unlinkSync(fp);
-				} catch (_) {}
-			};
-			delay > 0 ? setTimeout(fn, delay) : fn();
-		};
+		function removeTempUpload() {
+			if (!uploadedBasename) return;
+			try {
+				const fp = join(uploadsDir, uploadedBasename);
+				if (existsSync(fp)) unlinkSync(fp);
+			} catch (_) {}
+		}
 
 		const payload = JSON.stringify({
 			type: 'send_embed',
@@ -144,18 +142,18 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		});
 
 		if (result.status === 200 && result.body.success) {
-			cleanup(uploaded_image_path && !imageBuffer ? 30000 : 0);
+			removeTempUpload();
 			logger.log(`${locals.user.username} used embed builder on server "${server.name || serverId}"`);
 			return json({ success: true, message: 'Embed sent successfully' });
 		} else {
-			cleanup();
+			removeTempUpload();
 			const msg = messageFromBotWebhookPayload(result.body);
 			return json({ success: false, error: msg }, { status: result.status });
 		}
 	} catch (error: any) {
 		if (uploaded_image_path) {
 			try {
-				unlinkSync(join(uploadsDir, uploaded_image_path));
+				unlinkSync(join(uploadsDir, basename(uploaded_image_path)));
 			} catch (_) {}
 		}
 		logger.log(`❌ Error sending embed: ${error.message}`);

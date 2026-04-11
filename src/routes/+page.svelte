@@ -159,6 +159,13 @@
 					Run leveling, moderation, Discord Quests, orb enroll, self-bot options, creator tools, live public statistics pages, Roblox catalog alerts, and more
 					from the free web panel in your browser. Configure in one place instead of flooding channels with slash commands.
 				</p>
+				<p class="m-hero-note">
+					Dansday stays <strong>free</strong> for everyone. Self host from
+					<a href={sourceRepoUrl} class="m-hero-note-link" target="_blank" rel="noopener noreferrer">GitHub</a>
+					when you want your own infrastructure. If you cannot self host, use
+					<a href={officialBotInviteUrl} class="m-hero-note-link" target="_blank" rel="noopener noreferrer">our hosted bot</a>
+					for the same features on our service at no charge.
+				</p>
 				<div class="m-hero-actions">
 					<a href={officialBotInviteUrl} class="m-btn m-btn--primary" target="_blank" rel="noopener noreferrer">
 						<i class="fab fa-discord"></i>

@@ -1901,6 +1901,33 @@
 	max-width: 36rem;
 	padding: 0 2px;
 }
+.m-hero-note {
+	font-size: 13px;
+	color: var(--lb-text-muted);
+	line-height: 1.6;
+	margin: 0 auto 22px;
+	max-width: 36rem;
+	padding: 12px 14px;
+	text-align: center;
+	background: rgba(36, 95, 115, 0.06);
+	border: 1px solid rgba(36, 95, 115, 0.12);
+	border-radius: 12px;
+	box-sizing: border-box;
+}
+.m-hero-note-link {
+	color: var(--chili-hot);
+	font-weight: 600;
+	text-decoration: none;
+}
+.m-hero-note-link:hover {
+	text-decoration: underline;
+}
+@media (min-width: 640px) {
+	.m-hero-note {
+		font-size: 14px;
+		padding: 14px 18px;
+	}
+}
 .m-hero-actions {
 	display: flex;
 	gap: 12px;

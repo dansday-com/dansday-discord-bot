@@ -431,7 +431,7 @@
 			"editFailed": "❌ Gagal membuka formulir edit: {error}"
 		}
 	},
-	"orbEnroll": {
+	"questEnroll": {
 		"alreadyClaimed": "Sudah Diklaim",
 		"alreadyClaimedDescription": "Kamu sudah mendaftar ke **{questName}** sebelumnya dan hadiahmu sudah diklaim. Setiap quest hanya bisa diklaim sekali per anggota.",
 		"pendingTitle": "⏳ Berjalan di latar belakang",

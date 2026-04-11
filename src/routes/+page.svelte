@@ -22,6 +22,12 @@
 			desc: 'Decide who can edit what in the web panel. Owners and staff get their own access levels so helpers can contribute without full control of the server.'
 		},
 		{
+			icon: 'fa-language',
+			tone: 'brick',
+			title: 'Multi-language interface',
+			desc: 'Discord flows use buttons, selects, and clear labels. Pick English (en) or Indonesian (id) for the interface strings, with room to add more languages over time.'
+		},
+		{
 			icon: 'fa-chart-line',
 			tone: 'teal',
 			title: 'Leveling & XP',
@@ -54,8 +60,8 @@
 		{
 			icon: 'fa-gem',
 			tone: 'brick',
-			title: 'Booster Rewards',
-			desc: 'Reward server boosters with special roles, perks, and recognition. Configure custom benefits for your supporters.'
+			title: 'Boost messages',
+			desc: 'Thank people when they boost your server. Choose channels and message templates in the panel, with placeholders for the member, boost tier, and boost counts. Separate from custom supporter roles.'
 		},
 		{
 			icon: 'fa-scroll',
@@ -66,8 +72,8 @@
 		{
 			icon: 'fa-wand-magic-sparkles',
 			tone: 'brick',
-			title: 'Orb enroll',
-			desc: 'Orb-eligible quest flows with enroll actions and worker automation so limited-time rewards are not missed.'
+			title: 'Quest enroll',
+			desc: 'Discord Quest enrollment and automation for whatever each quest pays out (game items, Nitro trials, in-game currency, and other rewards). Enable and tune auto quest enrollment in the Discord Quest notifier config so it fits your server.'
 		},
 		{
 			icon: 'fa-user-astronaut',
@@ -156,7 +162,7 @@
 					<span class="m-gradient-text">Discord Server</span>
 				</h1>
 				<p>
-					Run leveling, moderation, Discord Quests, orb enroll, self-bot options, creator tools, live public statistics pages, Roblox catalog alerts, and more
+					Run leveling, moderation, Discord Quests, quest enroll, self-bot options, creator tools, live public statistics pages, Roblox catalog alerts, and more
 					from the free web panel in your browser. Configure in one place instead of flooding channels with slash commands. Free for everyone. Self-host from
 					<a href={sourceRepoUrl} target="_blank" rel="noopener noreferrer">GitHub</a>
 					or add
@@ -200,8 +206,8 @@
 				<div class="m-section-header">
 					<h2>Everything your server needs</h2>
 					<p>
-						Each module stands on its own. Turn on leveling, Quest notifier, orb enroll, self-bot, forwarder, public statistics, or any mix you need. Everything
-						lives under the same server settings.
+						Each module stands on its own. Turn on leveling, Quest notifier, quest enroll, self-bot, forwarder, public statistics, or any mix you need.
+						Everything lives under the same server settings.
 					</p>
 				</div>
 				<div class="m-features-grid">

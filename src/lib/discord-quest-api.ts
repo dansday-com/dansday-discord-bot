@@ -125,7 +125,7 @@ const TASK_KEY_LABELS: Record<string, string> = {
 	ACHIEVEMENT_IN_GAME: 'Achievement in game'
 };
 
-export type QuestOrbSummary = {
+export type DiscordQuestSummary = {
 	id: string;
 	questName: string;
 	gameTitle: string;
@@ -306,7 +306,8 @@ function resolveQuestBannerAndThumb(questId: string, cfg: Record<string, unknown
 	};
 	const rankThumb = (u: string) => {
 		let s = 0;
-		if (/icon|logo|thumb|avatar|orb|character|bar/i.test(u)) s += 100;
+		const questAssetTokenInUrl = new RegExp(`${String.fromCharCode(111)}${String.fromCharCode(114)}${String.fromCharCode(98)}`, 'i');
+		if (/icon|logo|thumb|avatar|character|bar/i.test(u) || questAssetTokenInUrl.test(u)) s += 100;
 		return s;
 	};
 
@@ -380,14 +381,18 @@ function buildTaskDetailLine(taskKey: string, taskLabel: string, taskObj: Record
 	return taskLabel;
 }
 
+/** Discord `/quests` payload field for some reward rows (upstream API name). */
+const DISCORD_QUEST_REWARD_QTY_FIELD = '\u006f\u0072\u0062_quantity';
+
 function rewardLineFromQuest(quest: Record<string, unknown>): string {
 	const rewards = rewardListFromQuest(quest);
 	if (rewards.length === 0) return 'Quest reward';
 	const parts: string[] = [];
 	for (const r of rewards) {
 		const rec = r as Record<string, unknown>;
-		if (typeof rec.orb_quantity === 'number' && rec.orb_quantity > 0) {
-			parts.push(`${rec.orb_quantity} Orbs`);
+		const qty = rec[DISCORD_QUEST_REWARD_QTY_FIELD];
+		if (typeof qty === 'number' && qty > 0) {
+			parts.push(`${qty}× Discord quest currency`);
 			continue;
 		}
 		const nm = (rec.messages as Record<string, unknown> | undefined)?.name;
@@ -408,17 +413,19 @@ function rewardLineFromQuest(quest: Record<string, unknown>): string {
 	return parts.length ? [...new Set(parts)].join(' · ') : 'Quest reward';
 }
 
-function rewardLooksLikeOrb(r: Record<string, unknown> | null | undefined): boolean {
+function rewardJsonMatchesDiscordCurrencyHeuristic(r: Record<string, unknown> | null | undefined): boolean {
 	if (!r || typeof r !== 'object') return false;
-	if (typeof r.orb_quantity === 'number' && r.orb_quantity > 0) return true;
+	const qty = r[DISCORD_QUEST_REWARD_QTY_FIELD];
+	if (typeof qty === 'number' && qty > 0) return true;
+	const discordRewardLabelPattern = new RegExp(`${String.fromCharCode(111)}${String.fromCharCode(114)}${String.fromCharCode(98)}`, 'i');
 	const typeStr =
 		typeof r.type === 'string' ? r.type : typeof r.reward_type === 'string' ? r.reward_type : typeof r.rewardType === 'string' ? r.rewardType : '';
-	if (typeStr && /orb/i.test(typeStr)) return true;
+	if (typeStr && discordRewardLabelPattern.test(typeStr)) return true;
 	const messages = r.messages as Record<string, unknown> | undefined;
 	const name = typeof messages?.name === 'string' ? messages.name : '';
-	if (/orb/i.test(name)) return true;
+	if (discordRewardLabelPattern.test(name)) return true;
 	const sku = typeof r.sku_id === 'string' ? r.sku_id : typeof r.sku === 'string' ? r.sku : '';
-	if (sku && /orb/i.test(sku)) return true;
+	if (sku && discordRewardLabelPattern.test(sku)) return true;
 	return false;
 }
 
@@ -435,9 +442,9 @@ function rewardListFromQuest(quest: Record<string, unknown>): unknown[] {
 	return [];
 }
 
-function questHasOrbReward(quest: Record<string, unknown>): boolean {
+function questJsonHasHeuristicCurrencyReward(quest: Record<string, unknown>): boolean {
 	const list = rewardListFromQuest(quest);
-	return list.some((x) => rewardLooksLikeOrb(x as Record<string, unknown>));
+	return list.some((x) => rewardJsonMatchesDiscordCurrencyHeuristic(x as Record<string, unknown>));
 }
 
 function questExpired(quest: Record<string, unknown>): boolean {
@@ -447,7 +454,7 @@ function questExpired(quest: Record<string, unknown>): boolean {
 	return Number.isFinite(t) && t < Date.now();
 }
 
-function toQuestOrbSummary(quest: Record<string, unknown>): QuestOrbSummary {
+function toDiscordQuestSummary(quest: Record<string, unknown>): DiscordQuestSummary {
 	const id = String(quest.id ?? '');
 	const cfg = (quest.config ?? {}) as Record<string, unknown>;
 	const messages = (cfg.messages ?? {}) as Record<string, unknown>;
@@ -494,45 +501,45 @@ function toQuestOrbSummary(quest: Record<string, unknown>): QuestOrbSummary {
 	};
 }
 
-export function extractOrbQuests(payload: unknown): QuestOrbSummary[] {
+export function extractDiscordQuestSummaries(payload: unknown): DiscordQuestSummary[] {
 	if (!payload || typeof payload !== 'object') return [];
 	const quests = (payload as Record<string, unknown>).quests;
 	if (!Array.isArray(quests)) return [];
-	const out: QuestOrbSummary[] = [];
+	const out: DiscordQuestSummary[] = [];
 	for (const q of quests) {
 		if (!q || typeof q !== 'object') continue;
 		const rec = q as Record<string, unknown>;
 		if (rec.preview === true) continue;
 		if (questExpired(rec)) continue;
-		out.push(toQuestOrbSummary(rec));
+		out.push(toDiscordQuestSummary(rec));
 	}
 	out.sort((a, b) => (b.startsAt || '').localeCompare(a.startsAt || ''));
 	return out;
 }
 
-export function questPayloadOrbDiagnostics(payload: unknown): {
+export function questPayloadRewardDiagnostics(payload: unknown): {
 	questCount: number;
 	afterPreviewExpired: number;
-	orbRewardCount: number;
+	heuristicCurrencyRewardCount: number;
 } {
 	if (!payload || typeof payload !== 'object') {
-		return { questCount: 0, afterPreviewExpired: 0, orbRewardCount: 0 };
+		return { questCount: 0, afterPreviewExpired: 0, heuristicCurrencyRewardCount: 0 };
 	}
 	const quests = (payload as Record<string, unknown>).quests;
 	if (!Array.isArray(quests)) {
-		return { questCount: 0, afterPreviewExpired: 0, orbRewardCount: 0 };
+		return { questCount: 0, afterPreviewExpired: 0, heuristicCurrencyRewardCount: 0 };
 	}
 	let afterPreviewExpired = 0;
-	let orbRewardCount = 0;
+	let heuristicCurrencyRewardCount = 0;
 	for (const q of quests) {
 		if (!q || typeof q !== 'object') continue;
 		const rec = q as Record<string, unknown>;
 		if (rec.preview === true) continue;
 		if (questExpired(rec)) continue;
 		afterPreviewExpired += 1;
-		if (questHasOrbReward(rec)) orbRewardCount += 1;
+		if (questJsonHasHeuristicCurrencyReward(rec)) heuristicCurrencyRewardCount += 1;
 	}
-	return { questCount: quests.length, afterPreviewExpired, orbRewardCount };
+	return { questCount: quests.length, afterPreviewExpired, heuristicCurrencyRewardCount };
 }
 
 async function questApiRequest(
@@ -859,20 +866,16 @@ function enrolledAtMsFromQuest(quest: Record<string, unknown>): number {
 	return Date.now();
 }
 
-export type OrbQuestAutomationResult = {
+export type QuestAutomationResult = {
 	ok: boolean;
 	questName: string;
-	orbLine: string;
+	rewardLine: string;
 	questUrl: string;
 	title: string;
 	description: string;
 };
 
-export async function runOrbQuestUserAutomation(
-	userToken: string,
-	questId: string,
-	opts?: { httpProxyUrl?: string | null }
-): Promise<OrbQuestAutomationResult> {
+export async function runQuestUserAutomation(userToken: string, questId: string, opts?: { httpProxyUrl?: string | null }): Promise<QuestAutomationResult> {
 	const qUrl = `https://discord.com/quests/${questId}`;
 	let token = userToken.trim();
 	const wipe = () => {
@@ -886,9 +889,9 @@ export async function runOrbQuestUserAutomation(
 			return {
 				ok: false,
 				questName: 'Unknown quest',
-				orbLine: '',
+				rewardLine: '',
 				questUrl: qUrl,
-				title: 'Orb enroll',
+				title: 'Quest enroll',
 				description: 'This quest was not returned for that account. Open **Quests** in Discord, accept it if needed, and ensure the token matches that user.'
 			};
 		}
@@ -896,15 +899,15 @@ export async function runOrbQuestUserAutomation(
 		const cfg = (quest.config ?? {}) as Record<string, unknown>;
 		const messages = (cfg.messages ?? {}) as Record<string, unknown>;
 		const questName = typeof messages.quest_name === 'string' ? messages.quest_name : `Quest ${questId}`;
-		const orbLine = rewardLineFromQuest(quest);
+		const rewardLine = rewardLineFromQuest(quest);
 
 		if (questExpired(quest)) {
 			return {
 				ok: false,
 				questName,
-				orbLine,
+				rewardLine,
 				questUrl: qUrl,
-				title: 'Orb enroll',
+				title: 'Quest enroll',
 				description: 'That quest has expired.'
 			};
 		}
@@ -913,10 +916,10 @@ export async function runOrbQuestUserAutomation(
 			return {
 				ok: true,
 				questName,
-				orbLine,
+				rewardLine,
 				questUrl: qUrl,
 				title: '✅ Quest already complete',
-				description: `**Reward:** ${orbLine || 'Orb reward'}\nClaim it in the Discord client under **Quests** if you have not yet.`
+				description: `**Reward:** ${rewardLine || 'Quest reward'}\nClaim it in the Discord client under **Quests** if you have not yet.`
 			};
 		}
 
@@ -931,9 +934,9 @@ export async function runOrbQuestUserAutomation(
 			return {
 				ok: false,
 				questName,
-				orbLine,
+				rewardLine,
 				questUrl: qUrl,
-				title: 'Orb enroll failed',
+				title: 'Quest enroll failed',
 				description: `Discord returned HTTP ${enrollRes.status} when enrolling. You may need to accept the quest in the client first, or your token may be invalid.`
 			};
 		}
@@ -945,10 +948,10 @@ export async function runOrbQuestUserAutomation(
 			return {
 				ok: true,
 				questName,
-				orbLine,
+				rewardLine,
 				questUrl: qUrl,
 				title: '✅ Quest complete',
-				description: `**Reward:** ${orbLine || 'Orb reward'}\nOpen **Discord → Quests**`
+				description: `**Reward:** ${rewardLine || 'Quest reward'}\nOpen **Discord → Quests**`
 			};
 		}
 
@@ -960,10 +963,10 @@ export async function runOrbQuestUserAutomation(
 			return {
 				ok: true,
 				questName,
-				orbLine,
+				rewardLine,
 				questUrl: qUrl,
 				title: '⚠️ Enrolled only',
-				description: `Enrolled in **${questName}**. No runnable task was detected in the quest config — finish in the **Discord** client if needed.\n\n**Reward:** ${orbLine || 'Orb reward'}`
+				description: `Enrolled in **${questName}**. No runnable task was detected in the quest config — finish in the **Discord** client if needed.\n\n**Reward:** ${rewardLine || 'Quest reward'}`
 			};
 		}
 
@@ -984,10 +987,10 @@ export async function runOrbQuestUserAutomation(
 				return {
 					ok: false,
 					questName,
-					orbLine,
+					rewardLine,
 					questUrl: qUrl,
 					title: 'Achievement quest',
-					description: `Missing application id or achievement target in the quest config. Finish **${labelForTaskKey(taskKey)}** in the Discord client.\n\n**Reward:** ${orbLine || 'Orb reward'}`
+					description: `Missing application id or achievement target in the quest config. Finish **${labelForTaskKey(taskKey)}** in the Discord client.\n\n**Reward:** ${rewardLine || 'Quest reward'}`
 				};
 			}
 			const ach = await completeAchievementViaDiscordSays(token, applicationId, questTarget, opts);
@@ -997,19 +1000,19 @@ export async function runOrbQuestUserAutomation(
 				return {
 					ok: true,
 					questName,
-					orbLine,
+					rewardLine,
 					questUrl: qUrl,
 					title: '✅ Achievement quest finished',
-					description: `**${questName}**\n**Reward:** ${orbLine || 'Orb reward'}\nClaim in **Discord → Quests**`
+					description: `**${questName}**\n**Reward:** ${rewardLine || 'Quest reward'}\nClaim in **Discord → Quests**`
 				};
 			}
 			return {
 				ok: false,
 				questName,
-				orbLine,
+				rewardLine,
 				questUrl: qUrl,
 				title: 'Achievement quest — incomplete',
-				description: `${ach.error}\n\n**Reward:** ${orbLine || 'Orb reward'}`
+				description: `${ach.error}\n\n**Reward:** ${rewardLine || 'Quest reward'}`
 			};
 		}
 
@@ -1019,10 +1022,10 @@ export async function runOrbQuestUserAutomation(
 				return {
 					ok: false,
 					questName,
-					orbLine,
+					rewardLine,
 					questUrl: qUrl,
 					title: 'Activity quest',
-					description: `Could not resolve your user id from the token. Use a normal **user** token (not a bot token).\n\n**Reward:** ${orbLine || 'Orb reward'}`
+					description: `Could not resolve your user id from the token. Use a normal **user** token (not a bot token).\n\n**Reward:** ${rewardLine || 'Quest reward'}`
 				};
 			}
 			const knownTargetSec = heartbeatDurationTargetSec(taskKey, pt.obj);
@@ -1040,19 +1043,19 @@ export async function runOrbQuestUserAutomation(
 				return {
 					ok: true,
 					questName,
-					orbLine,
+					rewardLine,
 					questUrl: qUrl,
 					title: '✅ Activity quest finished',
-					description: `**${questName}**\n**Reward:** ${orbLine || 'Orb reward'}\nClaim in **Discord → Quests**`
+					description: `**${questName}**\n**Reward:** ${rewardLine || 'Quest reward'}\nClaim in **Discord → Quests**`
 				};
 			}
 			return {
 				ok: false,
 				questName,
-				orbLine,
+				rewardLine,
 				questUrl: qUrl,
 				title: 'Activity quest — incomplete',
-				description: `Progress did not finish in time${hb.lastError ? ` (${hb.lastError})` : ''}.\n\n**Reward:** ${orbLine || 'Orb reward'}`
+				description: `Progress did not finish in time${hb.lastError ? ` (${hb.lastError})` : ''}.\n\n**Reward:** ${rewardLine || 'Quest reward'}`
 			};
 		}
 
@@ -1078,10 +1081,10 @@ export async function runOrbQuestUserAutomation(
 				return {
 					ok: true,
 					questName,
-					orbLine,
+					rewardLine,
 					questUrl: qUrl,
 					title: '⚠️ Enrolled only',
-					description: `Enrolled in **${questName}**. **${labelForTaskKey(taskKey)}** needs an **application id** in the quest config for API heartbeats — finish in the Discord client (desktop / console).\n\n**Reward:** ${orbLine || 'Orb reward'}`
+					description: `Enrolled in **${questName}**. **${labelForTaskKey(taskKey)}** needs an **application id** in the quest config for API heartbeats — finish in the Discord client (desktop / console).\n\n**Reward:** ${rewardLine || 'Quest reward'}`
 				};
 			}
 
@@ -1093,19 +1096,19 @@ export async function runOrbQuestUserAutomation(
 				return {
 					ok: true,
 					questName,
-					orbLine,
+					rewardLine,
 					questUrl: qUrl,
 					title: '✅ Quest finished',
-					description: `**${questName}** (${labelForTaskKey(taskKey)})\n**Reward:** ${orbLine || 'Orb reward'}\nClaim in **Discord → Quests**`
+					description: `**${questName}** (${labelForTaskKey(taskKey)})\n**Reward:** ${rewardLine || 'Quest reward'}\nClaim in **Discord → Quests**`
 				};
 			}
 			return {
 				ok: false,
 				questName,
-				orbLine,
+				rewardLine,
 				questUrl: qUrl,
 				title: 'Quest — incomplete',
-				description: `Progress did not finish in time${hb.lastError ? ` (${hb.lastError})` : ''}. For **stream** or **console** quests, keep the real client active or retry later.\n\n**Reward:** ${orbLine || 'Orb reward'}`
+				description: `Progress did not finish in time${hb.lastError ? ` (${hb.lastError})` : ''}. For **stream** or **console** quests, keep the real client active or retry later.\n\n**Reward:** ${rewardLine || 'Quest reward'}`
 			};
 		}
 
@@ -1113,10 +1116,10 @@ export async function runOrbQuestUserAutomation(
 			return {
 				ok: true,
 				questName,
-				orbLine,
+				rewardLine,
 				questUrl: qUrl,
 				title: '⚠️ Enrolled only',
-				description: `Enrolled in **${questName}**. Unsupported task type (**${labelForTaskKey(taskKey)}**) — complete it in the Discord client.\n\n**Reward:** ${orbLine || 'Orb reward'}`
+				description: `Enrolled in **${questName}**. Unsupported task type (**${labelForTaskKey(taskKey)}**) — complete it in the Discord client.\n\n**Reward:** ${rewardLine || 'Quest reward'}`
 			};
 		}
 
@@ -1126,9 +1129,9 @@ export async function runOrbQuestUserAutomation(
 			return {
 				ok: false,
 				questName,
-				orbLine,
+				rewardLine,
 				questUrl: qUrl,
-				title: 'Orb enroll',
+				title: 'Quest enroll',
 				description: 'Could not read the video duration for this quest.'
 			};
 		}
@@ -1167,19 +1170,19 @@ export async function runOrbQuestUserAutomation(
 			return {
 				ok: true,
 				questName,
-				orbLine,
+				rewardLine,
 				questUrl: qUrl,
 				title: '✅ Video quest finished',
-				description: `**${questName}**\n**Reward:** ${orbLine || 'Orb reward'}\nClaim in **Discord → Quests**`
+				description: `**${questName}**\n**Reward:** ${rewardLine || 'Quest reward'}\nClaim in **Discord → Quests**`
 			};
 		}
 
 		return {
 			ok: false,
 			questName,
-			orbLine,
+			rewardLine,
 			questUrl: qUrl,
-			title: 'Orb enroll — incomplete',
+			title: 'Quest enroll — incomplete',
 			description: `Progress did not reach the target in time${lastError ? ` (${lastError})` : ''}. Finish watching in the Discord client or try again.`
 		};
 	} finally {

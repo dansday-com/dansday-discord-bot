@@ -7,7 +7,7 @@ import { db } from './drizzle.js';
 import * as schema from './schema.js';
 import { SERVER_SETTINGS } from './serverSettingsComponents.js';
 import { logger, toMySQLDateTime, parseMySQLDateTimeUtc, getNowUtc, addMinutesToNow } from './utils/index.js';
-import type { QuestOrbSummary } from './discord-quest-api.js';
+import type { DiscordQuestSummary } from './discord-quest-api.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -2150,7 +2150,7 @@ function questIsoToDbDate(iso: string | undefined | null): Date | null {
 	return toMySQLDateTime(iso.trim());
 }
 
-function orbSnapshotFromQuest(q: QuestOrbSummary) {
+function snapshotFromDiscordQuestSummary(q: DiscordQuestSummary) {
 	return {
 		quest_name: q.questName?.trim() || null,
 		game_title: q.gameTitle?.trim() || null,
@@ -2163,12 +2163,12 @@ function orbSnapshotFromQuest(q: QuestOrbSummary) {
 	};
 }
 
-async function syncServerDiscordOrbQuestsFromApi(botId: number, serverId: number, quests: QuestOrbSummary[]): Promise<void> {
+async function syncServerDiscordQuestsFromApi(botId: number, serverId: number, quests: DiscordQuestSummary[]): Promise<void> {
 	await initializeDatabase();
 	if (quests.length === 0) return;
 	const now = toMySQLDateTime();
 	for (const q of quests) {
-		const snap = orbSnapshotFromQuest(q);
+		const snap = snapshotFromDiscordQuestSummary(q);
 		await db
 			.insert(schema.botDiscordQuest)
 			.values({
@@ -2188,16 +2188,20 @@ async function syncServerDiscordOrbQuestsFromApi(botId: number, serverId: number
 					...snap
 				} as any
 			});
-		const [orb] = await db.select({ id: schema.botDiscordQuest.id }).from(schema.botDiscordQuest).where(eq(schema.botDiscordQuest.quest_id, q.id)).limit(1);
-		if (!orb) continue;
+		const [questRow] = await db
+			.select({ id: schema.botDiscordQuest.id })
+			.from(schema.botDiscordQuest)
+			.where(eq(schema.botDiscordQuest.quest_id, q.id))
+			.limit(1);
+		if (!questRow) continue;
 		await db
 			.insert(schema.serverDiscordQuest)
-			.values({ server_id: serverId, quest_id: orb.id, message_posted_at: null })
+			.values({ server_id: serverId, quest_id: questRow.id, message_posted_at: null })
 			.onDuplicateKeyUpdate({ set: { server_id: serverId } as any });
 	}
 }
 
-async function listServerDiscordOrbUnpostedQuestIds(serverId: number, activeQuestIds: string[]): Promise<string[]> {
+async function listServerDiscordQuestUnpostedIds(serverId: number, activeQuestIds: string[]): Promise<string[]> {
 	if (activeQuestIds.length === 0) return [];
 	await initializeDatabase();
 	const rows = await db
@@ -2214,15 +2218,19 @@ async function listServerDiscordOrbUnpostedQuestIds(serverId: number, activeQues
 	return rows.map((r) => r.quest_id);
 }
 
-async function markServerDiscordOrbMessagePosted(serverId: number, questId: string): Promise<void> {
+async function markServerDiscordQuestMessagePosted(serverId: number, questId: string): Promise<void> {
 	await initializeDatabase();
 	const posted = toMySQLDateTime();
-	const [orb] = await db.select({ id: schema.botDiscordQuest.id }).from(schema.botDiscordQuest).where(eq(schema.botDiscordQuest.quest_id, questId)).limit(1);
-	if (!orb) return;
+	const [questRow] = await db
+		.select({ id: schema.botDiscordQuest.id })
+		.from(schema.botDiscordQuest)
+		.where(eq(schema.botDiscordQuest.quest_id, questId))
+		.limit(1);
+	if (!questRow) return;
 	await db
 		.update(schema.serverDiscordQuest)
 		.set({ message_posted_at: posted as any })
-		.where(and(eq(schema.serverDiscordQuest.server_id, serverId), eq(schema.serverDiscordQuest.quest_id, orb.id)));
+		.where(and(eq(schema.serverDiscordQuest.server_id, serverId), eq(schema.serverDiscordQuest.quest_id, questRow.id)));
 }
 
 type RobloxCatalogItemSnapshot = {
@@ -3328,9 +3336,9 @@ export default {
 	memberHasCustomSupporterRole,
 	getServerSettings,
 	upsertServerSettings,
-	syncServerDiscordOrbQuestsFromApi,
-	listServerDiscordOrbUnpostedQuestIds,
-	markServerDiscordOrbMessagePosted,
+	syncServerDiscordQuestsFromApi,
+	listServerDiscordQuestUnpostedIds,
+	markServerDiscordQuestMessagePosted,
 	syncServerRobloxItemsFromApi,
 	isBotRobloxItemsEmpty,
 	listServerRobloxUnpostedAssetIds,

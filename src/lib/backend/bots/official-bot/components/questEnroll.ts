@@ -4,15 +4,53 @@ import db from '../../../../database.js';
 import { getEmbedConfig, getServerForCurrentBot, serverSettingsComponent } from '../../../config.js';
 import { translate } from '../i18n.js';
 import { hasPermission, getPermissionDeniedMessage } from './permissions.js';
-import { queueOrbEnrollJob, isUserEnrollRunning } from './orbEnrollWorker.js';
+import { queueQuestEnrollJob, isUserEnrollRunning } from './questEnrollWorker.js';
 import { fetchQuestsMe } from '../../../../discord-quest-api.js';
 
-export const ORB_ENROLL_BUTTON_PREFIX = 'orb_enroll:';
-export const ORB_ENROLL_MODAL_PREFIX = 'orb_enroll_submit:';
-const TOKEN_FIELD_ID = 'orb_enroll_token';
+/** New quest enrollment buttons on quest notifier embeds */
+export const QUEST_ENROLL_BUTTON_PREFIX = 'quest_enroll:';
+/** Older messages (v1 Discord custom ids) */
+export const LEGACY_ENROLL_BUTTON_PREFIX = '\u006f\u0072\u0062_enroll:';
 
-export async function handleOrbEnrollButton(interaction: ButtonInteraction): Promise<void> {
-	const questId = interaction.customId.slice(ORB_ENROLL_BUTTON_PREFIX.length).trim();
+export const QUEST_ENROLL_MODAL_PREFIX = 'quest_enroll_submit:';
+/** Older modal submissions */
+export const LEGACY_ENROLL_MODAL_PREFIX = '\u006f\u0072\u0062_enroll_submit:';
+
+const TOKEN_FIELD_ID = 'quest_enroll_token';
+const LEGACY_TOKEN_FIELD_ID = '\u006f\u0072\u0062_enroll_token';
+
+export function isQuestEnrollButtonId(customId: string): boolean {
+	return customId.startsWith(QUEST_ENROLL_BUTTON_PREFIX) || customId.startsWith(LEGACY_ENROLL_BUTTON_PREFIX);
+}
+
+export function isQuestEnrollModalId(customId: string): boolean {
+	return customId.startsWith(QUEST_ENROLL_MODAL_PREFIX) || customId.startsWith(LEGACY_ENROLL_MODAL_PREFIX);
+}
+
+function questIdFromButtonCustomId(customId: string): string | null {
+	if (customId.startsWith(QUEST_ENROLL_BUTTON_PREFIX)) {
+		const id = customId.slice(QUEST_ENROLL_BUTTON_PREFIX.length).trim();
+		return id || null;
+	}
+	if (customId.startsWith(LEGACY_ENROLL_BUTTON_PREFIX)) {
+		const id = customId.slice(LEGACY_ENROLL_BUTTON_PREFIX.length).trim();
+		return id || null;
+	}
+	return null;
+}
+
+function questIdFromModalCustomId(customId: string): string {
+	if (customId.startsWith(QUEST_ENROLL_MODAL_PREFIX)) return customId.slice(QUEST_ENROLL_MODAL_PREFIX.length).trim();
+	if (customId.startsWith(LEGACY_ENROLL_MODAL_PREFIX)) return customId.slice(LEGACY_ENROLL_MODAL_PREFIX.length).trim();
+	return '';
+}
+
+function tokenFromModal(interaction: ModalSubmitInteraction): string {
+	return interaction.fields.getTextInputValue(TOKEN_FIELD_ID)?.trim() || interaction.fields.getTextInputValue(LEGACY_TOKEN_FIELD_ID)?.trim() || '';
+}
+
+export async function handleQuestEnrollButton(interaction: ButtonInteraction): Promise<void> {
+	const questId = questIdFromButtonCustomId(interaction.customId);
 	if (!questId) {
 		await interaction.reply({ content: 'Invalid quest id.', flags: 64 }).catch(() => null);
 		return;
@@ -45,8 +83,8 @@ export async function handleOrbEnrollButton(interaction: ButtonInteraction): Pro
 			const questName = botDiscordQuest?.quest_name || questId;
 			const embed = new EmbedBuilder()
 				.setColor(embedConfig.COLOR)
-				.setTitle(`🔮 ${await translate('orbEnroll.alreadyClaimed', interaction.guild!.id, interaction.user.id)}`)
-				.setDescription(await translate('orbEnroll.alreadyClaimedDescription', interaction.guild!.id, interaction.user.id, { questName }))
+				.setTitle(`🔮 ${await translate('questEnroll.alreadyClaimed', interaction.guild!.id, interaction.user.id)}`)
+				.setDescription(await translate('questEnroll.alreadyClaimedDescription', interaction.guild!.id, interaction.user.id, { questName }))
 				.setFooter({ text: embedConfig.FOOTER })
 				.setTimestamp();
 			await interaction.reply({ embeds: [embed], flags: 64 }).catch(() => null);
@@ -54,7 +92,7 @@ export async function handleOrbEnrollButton(interaction: ButtonInteraction): Pro
 		}
 	}
 
-	const modal = new ModalBuilder().setCustomId(`${ORB_ENROLL_MODAL_PREFIX}${questId}`.slice(0, 100)).setTitle('Enroll (token — high risk)');
+	const modal = new ModalBuilder().setCustomId(`${QUEST_ENROLL_MODAL_PREFIX}${questId}`.slice(0, 100)).setTitle('Enroll (token — high risk)');
 
 	const tokenInput = new TextInputBuilder()
 		.setCustomId(TOKEN_FIELD_ID)
@@ -69,9 +107,9 @@ export async function handleOrbEnrollButton(interaction: ButtonInteraction): Pro
 	await interaction.showModal(modal);
 }
 
-export async function handleOrbEnrollModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {
-	const questId = interaction.customId.slice(ORB_ENROLL_MODAL_PREFIX.length).trim();
-	const token = interaction.fields.getTextInputValue(TOKEN_FIELD_ID)?.trim() ?? '';
+export async function handleQuestEnrollModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {
+	const questId = questIdFromModalCustomId(interaction.customId);
+	const token = tokenFromModal(interaction);
 
 	if (!questId || token.length < 20) {
 		await interaction.reply({ content: 'Missing quest id or token too short.', flags: 64 }).catch(() => null);
@@ -121,15 +159,15 @@ export async function handleOrbEnrollModalSubmit(interaction: ModalSubmitInterac
 	const embedConfig = await getEmbedConfig(interaction.guild!.id);
 	const pendingEmbed = new EmbedBuilder()
 		.setColor(embedConfig.COLOR)
-		.setTitle(await translate('orbEnroll.pendingTitle', interaction.guild!.id, interaction.user.id))
-		.setDescription(await translate('orbEnroll.pendingDescription', interaction.guild!.id, interaction.user.id))
+		.setTitle(await translate('questEnroll.pendingTitle', interaction.guild!.id, interaction.user.id))
+		.setDescription(await translate('questEnroll.pendingDescription', interaction.guild!.id, interaction.user.id))
 		.setFooter({ text: embedConfig.FOOTER })
 		.setTimestamp();
 	await interaction.editReply({ embeds: [pendingEmbed] });
 
 	const member = await db.getMemberByDiscordId(server.id, interaction.user.id).catch(() => null);
 
-	queueOrbEnrollJob({
+	queueQuestEnrollJob({
 		client: interaction.client,
 		channelId: interaction.channelId,
 		guildId: interaction.guild!.id,

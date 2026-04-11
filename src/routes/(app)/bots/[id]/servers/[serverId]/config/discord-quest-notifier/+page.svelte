@@ -77,12 +77,12 @@
 		<i class="fas fa-gem text-sky-400"></i>Discord Quest notifier
 	</h3>
 	<p class="text-ash-400 text-xs">
-		Orb quest alerts from this server’s selfbot; not the same as <strong class="text-ash-200">Channel notification</strong>.
+		Discord Quest alerts from this server’s selfbot (all reward types). Not the same as <strong class="text-ash-200">Channel notification</strong>.
 	</p>
 
 	<ConfigToggleRow
 		label="Quest notifier module"
-		description="When off, orb quest polling and posts are disabled. Requires a running selfbot when enabled."
+		description="When off, quest polling and posts are disabled. Requires a running selfbot when enabled."
 		labelIconClass="fas fa-gem text-sky-400"
 		bind:enabled={featureEnabled}
 		ariaLabel="Toggle quest notifier module"
@@ -150,7 +150,7 @@
 		class="border-ash-600 text-ash-100 hover:bg-ash-700 flex w-full items-center justify-center gap-2 rounded-lg border py-2.5 text-sm font-medium transition-all disabled:opacity-50"
 	>
 		{#if testing}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas fa-vial text-sky-400"></i>{/if}
-		{testing ? 'Testing…' : 'Test — latest orb quest'}
+		{testing ? 'Testing…' : 'Test — latest quest'}
 	</button>
 
 	<button

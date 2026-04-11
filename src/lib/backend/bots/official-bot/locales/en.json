@@ -484,7 +484,7 @@
 			"editFailed": "❌ Failed to open edit form: {error}"
 		}
 	},
-	"orbEnroll": {
+	"questEnroll": {
 		"alreadyClaimed": "Already Claimed",
 		"alreadyClaimedDescription": "You enrolled in **{questName}** previously and your reward has already been claimed. Each quest can only be claimed once per member.",
 		"pendingTitle": "⏳ Running in the background",

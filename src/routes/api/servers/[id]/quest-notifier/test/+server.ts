@@ -3,7 +3,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import { request as httpRequest } from 'http';
 import db from '$lib/database.js';
 import { SERVER_SETTINGS } from '$lib/serverSettingsComponents.js';
-import { extractOrbQuests, fetchQuestsMe, questPayloadOrbDiagnostics } from '$lib/discord-quest-api.js';
+import { extractDiscordQuestSummaries, fetchQuestsMe, questPayloadRewardDiagnostics } from '$lib/discord-quest-api.js';
 import { mainAppearanceBlockingMessage, messageFromBotWebhookPayload } from '$lib/utils/configPrerequisiteErrors.js';
 
 export const POST: RequestHandler = async ({ params }) => {
@@ -56,19 +56,19 @@ export const POST: RequestHandler = async ({ params }) => {
 		return json({ success: false, error: e?.message || 'Failed to fetch quests from Discord.' }, { status: 502 });
 	}
 
-	const orbQuests = extractOrbQuests(payload);
-	if (orbQuests.length === 0) {
-		const d = questPayloadOrbDiagnostics(payload);
+	const questSummaries = extractDiscordQuestSummaries(payload);
+	if (questSummaries.length === 0) {
+		const d = questPayloadRewardDiagnostics(payload);
 		const detail =
 			d.questCount === 0
 				? 'Discord returned no quests in the payload (empty list or unexpected shape).'
 				: d.afterPreviewExpired === 0
 					? `Discord returned ${d.questCount} quest(s); all are preview or expired.`
-					: `Discord returned ${d.questCount} quest(s), ${d.afterPreviewExpired} active — none have orb-style rewards in the data we recognize.`;
-		return json({ success: false, error: `No orb quests to test with. ${detail}` });
+					: `Discord returned ${d.questCount} quest(s), ${d.afterPreviewExpired} active — none match the reward heuristics we use for testing.`;
+		return json({ success: false, error: `No suitable quests to test with. ${detail}` });
 	}
 
-	const latest = orbQuests[0];
+	const latest = questSummaries[0];
 	const bot = await db.getBot(officialBotId);
 	if (!bot?.port || !bot.secret_key) {
 		return json({ success: false, error: 'Official bot port or secret not configured.' }, { status: 500 });

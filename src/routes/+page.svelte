@@ -189,52 +189,6 @@
 				</div>
 			</section>
 
-			<!-- Metric strip (same scroll pattern as public statistics overview) -->
-			<section class="m-overview-strip m-landing-at-glance" aria-label="At a glance">
-				<div class="m-overview-strip-item">
-					<div class="m-overview-strip-icon"><i class="fas fa-puzzle-piece"></i></div>
-					<div class="m-overview-strip-text">
-						<span class="m-overview-strip-value">15+</span>
-						<span class="m-overview-strip-label">Modules</span>
-					</div>
-				</div>
-				<div class="m-overview-strip-item">
-					<div class="m-overview-strip-icon"><i class="fas fa-gift"></i></div>
-					<div class="m-overview-strip-text">
-						<span class="m-overview-strip-value">Free</span>
-						<span class="m-overview-strip-label">Hosted bot</span>
-					</div>
-				</div>
-				<a href={sourceRepoUrl} class="m-overview-strip-item m-overview-strip-item--link" target="_blank" rel="noopener noreferrer">
-					<div class="m-overview-strip-icon"><i class="fab fa-github"></i></div>
-					<div class="m-overview-strip-text">
-						<span class="m-overview-strip-value">Open</span>
-						<span class="m-overview-strip-label">Source</span>
-					</div>
-				</a>
-				<div class="m-overview-strip-item">
-					<div class="m-overview-strip-icon"><i class="fas fa-sliders-h"></i></div>
-					<div class="m-overview-strip-text">
-						<span class="m-overview-strip-value">Web</span>
-						<span class="m-overview-strip-label">Panel</span>
-					</div>
-				</div>
-				<div class="m-overview-strip-item">
-					<div class="m-overview-strip-icon"><i class="fas fa-signal"></i></div>
-					<div class="m-overview-strip-text">
-						<span class="m-overview-strip-value">Live</span>
-						<span class="m-overview-strip-label">Public stats</span>
-					</div>
-				</div>
-				<div class="m-overview-strip-item">
-					<div class="m-overview-strip-icon"><i class="fas fa-shield-halved"></i></div>
-					<div class="m-overview-strip-text">
-						<span class="m-overview-strip-value">Full</span>
-						<span class="m-overview-strip-label">Control</span>
-					</div>
-				</div>
-			</section>
-
 			<!-- Features -->
 			<section class="m-section" id="features">
 				<div class="m-section-header">

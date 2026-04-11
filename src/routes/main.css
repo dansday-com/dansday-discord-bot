@@ -465,15 +465,6 @@
 	border-color: rgba(36, 95, 115, 0.28);
 	transform: translateY(-1px);
 }
-a.m-overview-strip-item {
-	text-decoration: none;
-	color: inherit;
-	cursor: pointer;
-}
-a.m-overview-strip-item:focus-visible {
-	outline: 2px solid var(--chili-hot);
-	outline-offset: 2px;
-}
 .m-overview-strip-icon {
 	width: 38px;
 	height: 38px;
@@ -1924,48 +1915,6 @@ a.m-overview-strip-item:focus-visible {
 	margin-top: 4px;
 }
 
-/* ---- Landing: metric strip (mobile-first: stack, then 2×2, then one row) ---- */
-.m-landing-at-glance {
-	margin: 8px 0 24px;
-}
-.m-inner.m-landing-inner > .m-overview-strip.m-landing-at-glance {
-	display: grid;
-	grid-template-columns: 1fr;
-	gap: 12px;
-	overflow-x: visible;
-	padding: 0 0 4px;
-	mask-image: none;
-	-webkit-mask-image: none;
-}
-.m-inner.m-landing-inner > .m-overview-strip.m-landing-at-glance .m-overview-strip-item {
-	min-width: 0;
-	width: 100%;
-	flex: 1 1 auto;
-}
-@media (min-width: 480px) {
-	.m-inner.m-landing-inner > .m-overview-strip.m-landing-at-glance {
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-	}
-}
-@media (min-width: 960px) {
-	.m-inner.m-landing-inner > .m-overview-strip.m-landing-at-glance {
-		display: flex;
-		flex-direction: row;
-		flex-wrap: nowrap;
-		gap: 10px;
-		overflow-x: auto;
-		padding: 4px 2px 8px;
-		-webkit-overflow-scrolling: touch;
-		justify-content: center;
-		scrollbar-width: thin;
-	}
-	.m-inner.m-landing-inner > .m-overview-strip.m-landing-at-glance .m-overview-strip-item {
-		width: auto;
-		flex: 0 0 auto;
-		min-width: 132px;
-	}
-}
-
 /* Landing hero + CTA: full-width stacked controls on small viewports */
 .m-inner.m-landing-inner .m-hero-actions {
 	flex-direction: column;
@@ -2230,10 +2179,6 @@ a.m-overview-strip-item:focus-visible {
 	padding-right: 0;
 }
 .m-inner.m-landing-inner > .m-cta {
-	padding-left: 0;
-	padding-right: 0;
-}
-.m-inner.m-landing-inner > .m-overview-strip.m-landing-at-glance {
 	padding-left: 0;
 	padding-right: 0;
 }

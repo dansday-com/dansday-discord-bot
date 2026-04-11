@@ -4,7 +4,8 @@ import db from '../../../../database.js';
 import { getEmbedConfig, getServerForCurrentBot, serverSettingsComponent } from '../../../config.js';
 import { translate } from '../i18n.js';
 import { hasPermission, getPermissionDeniedMessage } from './permissions.js';
-import { queueOrbEnrollJob } from './orbEnrollWorker.js';
+import { queueOrbEnrollJob, isUserEnrollRunning } from './orbEnrollWorker.js';
+import { fetchQuestsMe } from '../../../../discord-quest-api.js';
 
 export const ORB_ENROLL_BUTTON_PREFIX = 'orb_enroll:';
 export const ORB_ENROLL_MODAL_PREFIX = 'orb_enroll_submit:';
@@ -93,7 +94,30 @@ export async function handleOrbEnrollModalSubmit(interaction: ModalSubmitInterac
 		return;
 	}
 
+	if (isUserEnrollRunning(interaction.user.id)) {
+		await interaction
+			.reply({ content: 'You already have an auto quest running. Please wait for it to finish before starting another.', flags: 64 })
+			.catch(() => null);
+		return;
+	}
+
 	await interaction.deferReply({ flags: 64 });
+
+	const httpProxyUrlEarly = typeof s.http_proxy_url === 'string' && s.http_proxy_url.trim() ? s.http_proxy_url.trim() : null;
+	try {
+		await fetchQuestsMe(token, { httpProxyUrl: httpProxyUrlEarly });
+	} catch (e: unknown) {
+		const msg = e instanceof Error ? e.message : String(e);
+		const embedConfig = await getEmbedConfig(interaction.guild!.id);
+		const invalidEmbed = new EmbedBuilder()
+			.setColor(0xed4245)
+			.setTitle('Invalid token')
+			.setDescription(`The token you provided appears to be invalid or expired.\n\`${msg.slice(0, 500)}\``)
+			.setFooter({ text: embedConfig.FOOTER })
+			.setTimestamp();
+		await interaction.editReply({ embeds: [invalidEmbed] }).catch(() => null);
+		return;
+	}
 	const embedConfig = await getEmbedConfig(interaction.guild!.id);
 	const pendingEmbed = new EmbedBuilder()
 		.setColor(embedConfig.COLOR)
@@ -102,8 +126,6 @@ export async function handleOrbEnrollModalSubmit(interaction: ModalSubmitInterac
 		.setFooter({ text: embedConfig.FOOTER })
 		.setTimestamp();
 	await interaction.editReply({ embeds: [pendingEmbed] });
-
-	const httpProxyUrl = typeof s.http_proxy_url === 'string' && s.http_proxy_url.trim() ? s.http_proxy_url.trim() : null;
 
 	const member = await db.getMemberByDiscordId(server.id, interaction.user.id).catch(() => null);
 
@@ -115,7 +137,7 @@ export async function handleOrbEnrollModalSubmit(interaction: ModalSubmitInterac
 		requesterTag: interaction.user.tag,
 		requesterId: interaction.user.id,
 		userToken: token,
-		httpProxyUrl,
+		httpProxyUrl: httpProxyUrlEarly,
 		serverId: server.id,
 		memberId: member?.id ?? 0
 	});

@@ -4,6 +4,12 @@ import { getEmbedConfig } from '../../../config.js';
 import { logger } from '../../../../utils/index.js';
 import db from '../../../../database.js';
 
+const activeEnrollUsers = new Set<string>();
+
+export function isUserEnrollRunning(requesterId: string): boolean {
+	return activeEnrollUsers.has(requesterId);
+}
+
 export type OrbEnrollJob = {
 	client: Client;
 	channelId: string;
@@ -18,7 +24,8 @@ export type OrbEnrollJob = {
 };
 
 export function queueOrbEnrollJob(job: OrbEnrollJob): void {
-	void runOrbEnrollJob(job);
+	activeEnrollUsers.add(job.requesterId);
+	void runOrbEnrollJob(job).finally(() => activeEnrollUsers.delete(job.requesterId));
 }
 
 async function runOrbEnrollJob(job: OrbEnrollJob): Promise<void> {

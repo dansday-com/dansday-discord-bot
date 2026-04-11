@@ -17,7 +17,7 @@ export const load: LayoutServerLoad = async ({ locals, params }) => {
 			if (targetBot != null) {
 				redirect(302, `/bots/${targetBot}/servers/${locals.user.server_id}`);
 			}
-			redirect(302, '/');
+			redirect(302, '/dashboard');
 		}
 		const canonical = await getOfficialBotIdForServer(serverId);
 		if (canonical != null && Number(params.id) !== canonical) {

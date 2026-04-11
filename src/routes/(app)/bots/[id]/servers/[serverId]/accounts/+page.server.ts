@@ -22,7 +22,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 		if (targetBot != null) {
 			redirect(302, `/bots/${targetBot}/servers/${locals.user.server_id}/accounts`);
 		}
-		redirect(302, '/');
+		redirect(302, '/dashboard');
 	}
 
 	const [rawAccounts, invites] = await Promise.all([db.getServerAccountsByServer(serverId), db.getServerAccountInvitesByServer(serverId)]);

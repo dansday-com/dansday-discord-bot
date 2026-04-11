@@ -52,7 +52,7 @@
 	<header class="bg-ash-800 border-ash-700 sticky top-0 z-40 flex-shrink-0 border-b">
 		<div class="mx-auto max-w-7xl px-3 sm:px-4 lg:px-8">
 			<div class="flex h-14 items-center justify-between py-2 sm:h-16">
-				<a href="/" class="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+				<a href="/dashboard" class="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
 					<div class="bg-ash-400 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full sm:h-10 sm:w-10">
 						<i class="fas fa-bolt text-ash-100 text-sm sm:text-base"></i>
 					</div>

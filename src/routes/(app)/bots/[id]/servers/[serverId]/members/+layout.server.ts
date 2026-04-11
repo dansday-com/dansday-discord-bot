@@ -17,10 +17,10 @@ export const load: LayoutServerLoad = async ({ locals, params }) => {
 			if (targetBot != null) {
 				redirect(302, `/bots/${targetBot}/servers/${locals.user.server_id}/members`);
 			}
-			redirect(302, '/');
+			redirect(302, '/dashboard');
 		}
 	} else if (!(await accountOwnsServer(locals, serverId))) {
-		redirect(302, '/');
+		redirect(302, '/dashboard');
 	}
 
 	const [members, permissions] = await Promise.all([

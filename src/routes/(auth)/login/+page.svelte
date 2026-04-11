@@ -50,7 +50,7 @@
 			const data = await res.json();
 			if (data.success) {
 				showToast('Logged in to demo (5 minutes)', 'success');
-				setTimeout(() => goto('/'), 300);
+				setTimeout(() => goto('/dashboard'), 300);
 			} else {
 				showToast(data.error || 'Demo login failed', 'error');
 			}
@@ -82,7 +82,7 @@
 
 			if (data.success) {
 				showToast(data.message || 'Login successful!', 'success');
-				setTimeout(() => goto('/'), 500);
+				setTimeout(() => goto('/dashboard'), 500);
 			} else if (data.requires_verification) {
 				showToast('Please verify your email first. Redirecting...', 'error');
 				const source = data.account_source === 'server_accounts' ? '&source=server_accounts' : '';

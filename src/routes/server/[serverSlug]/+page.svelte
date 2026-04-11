@@ -146,101 +146,101 @@
 	<meta property="og:description" content="Members, channels, leveling, and voice activity for this community." />
 </svelte:head>
 
-<div class="lb-leaderboard-subhead lb-stats-overview-subhead">
+<div class="m-leaderboard-subhead m-stats-subhead">
 	<p>Server statistics</p>
 </div>
 
-<section class="lb-overview-strip" aria-label="Key metrics">
+<section class="m-overview-strip" aria-label="Key metrics">
 	{#each [{ icon: 'fa-users', label: 'Members', value: fmt(liveStats.members_total) }, { icon: 'fa-hashtag', label: 'Channels', value: fmt(liveStats.channels_total) }, { icon: 'fa-star', label: 'Total XP', value: heroXpDisplay.toLocaleString() }, { icon: 'fa-microphone', label: 'Voice min', value: fmt(liveStats.leveling_total_voice_minutes) }, { icon: 'fa-user-tag', label: 'Roles', value: fmt(liveStats.roles_total) }] as chip}
-		<div class="lb-overview-strip-item">
-			<div class="lb-overview-strip-icon"><i class="fas {chip.icon}"></i></div>
-			<div class="lb-overview-strip-text">
-				<span class="lb-overview-strip-value">{chip.value}</span>
-				<span class="lb-overview-strip-label">{chip.label}</span>
+		<div class="m-overview-strip-item">
+			<div class="m-overview-strip-icon"><i class="fas {chip.icon}"></i></div>
+			<div class="m-overview-strip-text">
+				<span class="m-overview-strip-value">{chip.value}</span>
+				<span class="m-overview-strip-label">{chip.label}</span>
 			</div>
 		</div>
 	{/each}
 </section>
 
-<div class="lb-stats-grid">
-	<div class="lb-stat-card lb-overview-card">
-		<div class="lb-stat-card-head">
-			<div class="lb-stat-card-icon lb-chili-stat-1">
+<div class="m-stats-grid">
+	<div class="m-stat-card m-overview-card">
+		<div class="m-stat-card-head">
+			<div class="m-stat-card-icon m-chili-stat-1">
 				<i class="fas fa-users"></i>
 			</div>
-			<h2 class="lb-stat-card-title">Members</h2>
+			<h2 class="m-stat-card-title">Members</h2>
 		</div>
-		<div class="lb-overview-hero">
-			<p class="lb-overview-hero-label">Community size</p>
-			<p class="lb-overview-hero-value">{fmt(liveStats.members_total)}</p>
+		<div class="m-overview-hero">
+			<p class="m-overview-hero-label">Community size</p>
+			<p class="m-overview-hero-value">{fmt(liveStats.members_total)}</p>
 		</div>
-		<div class="lb-overview-bar-block">
-			<div class="lb-overview-bar-head">
+		<div class="m-bar-block">
+			<div class="m-bar-head">
 				<span>Leveling coverage</span>
-				<span class="lb-overview-bar-meta">{fmt(liveStats.members_with_levels)} with levels</span>
+				<span class="m-bar-meta">{fmt(liveStats.members_with_levels)} with levels</span>
 			</div>
 			{#if membersLevelShare.empty}
-				<div class="lb-level-meter-track lb-level-meter-track--empty lb-overview-bar-empty"><span>No members yet</span></div>
+				<div class="m-level-meter-track m-level-meter-track--empty m-bar-empty"><span>No members yet</span></div>
 			{:else}
-				<div class="lb-overview-seg-bar" title="Share of members with leveling data">
-					<div class="lb-overview-seg lb-overview-seg--a" style="width: {membersLevelShare.withPct}%"></div>
-					<div class="lb-overview-seg lb-overview-seg--b" style="width: {membersLevelShare.withoutPct}%"></div>
+				<div class="m-seg-bar" title="Share of members with leveling data">
+					<div class="m-seg m-seg--a" style="width: {membersLevelShare.withPct}%"></div>
+					<div class="m-seg m-seg--b" style="width: {membersLevelShare.withoutPct}%"></div>
 				</div>
-				<div class="lb-overview-legend">
+				<div class="m-legend">
 					<span><i class="fas fa-circle"></i> With levels</span>
 					<span><i class="fas fa-circle"></i> Without</span>
 				</div>
 			{/if}
 		</div>
-		<div class="lb-overview-mini-grid">
-			<div class="lb-overview-mini">
+		<div class="m-mini-grid">
+			<div class="m-mini">
 				<i class="fas fa-chart-line"></i>
-				<span class="lb-overview-mini-value">{fmt(liveStats.members_with_levels)}</span>
-				<span class="lb-overview-mini-label">With levels</span>
+				<span class="m-mini-value">{fmt(liveStats.members_with_levels)}</span>
+				<span class="m-mini-label">With levels</span>
 			</div>
-			<div class="lb-overview-mini">
+			<div class="m-mini">
 				<i class="fas fa-gift"></i>
-				<span class="lb-overview-mini-value">{fmt(boostersCount)}</span>
-				<span class="lb-overview-mini-label">Boosting</span>
+				<span class="m-mini-value">{fmt(boostersCount)}</span>
+				<span class="m-mini-label">Boosting</span>
 			</div>
-			<div class="lb-overview-mini">
+			<div class="m-mini">
 				<i class="fas fa-moon"></i>
-				<span class="lb-overview-mini-value">{fmt(liveStats.member_afk)}</span>
-				<span class="lb-overview-mini-label">Active AFK</span>
+				<span class="m-mini-value">{fmt(liveStats.member_afk)}</span>
+				<span class="m-mini-label">Active AFK</span>
 			</div>
-			<div class="lb-overview-mini">
+			<div class="m-mini">
 				<i class="fas fa-user-slash"></i>
-				<span class="lb-overview-mini-value">{fmt(membersWithoutLevels)}</span>
-				<span class="lb-overview-mini-label">No levels</span>
+				<span class="m-mini-value">{fmt(membersWithoutLevels)}</span>
+				<span class="m-mini-label">No levels</span>
 			</div>
 		</div>
 	</div>
 
-	<div class="lb-stat-card lb-overview-card">
-		<div class="lb-stat-card-head">
-			<div class="lb-stat-card-icon lb-chili-stat-2">
+	<div class="m-stat-card m-overview-card">
+		<div class="m-stat-card-head">
+			<div class="m-stat-card-icon m-chili-stat-2">
 				<i class="fas fa-hashtag"></i>
 			</div>
-			<h2 class="lb-stat-card-title">Channels</h2>
+			<h2 class="m-stat-card-title">Channels</h2>
 		</div>
-		<div class="lb-overview-hero">
-			<p class="lb-overview-hero-label">Server layout</p>
-			<p class="lb-overview-hero-value">{fmt(liveStats.channels_total)}</p>
+		<div class="m-overview-hero">
+			<p class="m-overview-hero-label">Server layout</p>
+			<p class="m-overview-hero-value">{fmt(liveStats.channels_total)}</p>
 		</div>
-		<div class="lb-overview-bar-block">
-			<div class="lb-overview-bar-head">
+		<div class="m-bar-block">
+			<div class="m-bar-head">
 				<span>Mix</span>
-				<span class="lb-overview-bar-meta">Text · Voice · Other</span>
+				<span class="m-bar-meta">Text · Voice · Other</span>
 			</div>
 			{#if channelMix.empty}
-				<div class="lb-level-meter-track lb-level-meter-track--empty lb-overview-bar-empty"><span>No channels</span></div>
+				<div class="m-level-meter-track m-level-meter-track--empty m-bar-empty"><span>No channels</span></div>
 			{:else}
-				<div class="lb-overview-seg-bar lb-overview-seg-bar--3" title="Channel types">
-					<div class="lb-overview-seg lb-overview-seg--text" style="width: {channelMix.textPct}%"></div>
-					<div class="lb-overview-seg lb-overview-seg--voice" style="width: {channelMix.voicePct}%"></div>
-					<div class="lb-overview-seg lb-overview-seg--other" style="width: {channelMix.otherPct}%"></div>
+				<div class="m-seg-bar m-seg-bar--3" title="Channel types">
+					<div class="m-seg m-seg--text" style="width: {channelMix.textPct}%"></div>
+					<div class="m-seg m-seg--voice" style="width: {channelMix.voicePct}%"></div>
+					<div class="m-seg m-seg--other" style="width: {channelMix.otherPct}%"></div>
 				</div>
-				<div class="lb-overview-legend lb-overview-legend--3">
+				<div class="m-legend m-legend--3">
 					<span><i class="fas fa-circle"></i> Text {fmt(liveStats.channels_text)}</span>
 					<span><i class="fas fa-circle"></i> Voice {fmt(liveStats.channels_voice)}</span>
 					<span><i class="fas fa-circle"></i> Ann. / stage {fmt(channelsOtherTotal)}</span>
@@ -249,131 +249,131 @@
 		</div>
 	</div>
 
-	<div class="lb-stat-card lb-stat-card--leveling lb-overview-card">
-		<div class="lb-stat-card-head">
-			<div class="lb-stat-card-icon lb-chili-stat-3">
+	<div class="m-stat-card m-stat-card--leveling m-overview-card">
+		<div class="m-stat-card-head">
+			<div class="m-stat-card-icon m-chili-stat-3">
 				<i class="fas fa-star"></i>
 			</div>
-			<h2 class="lb-stat-card-title">Leveling</h2>
+			<h2 class="m-stat-card-title">Leveling</h2>
 		</div>
 
-		<div class="lb-leveling-hero">
-			<p class="lb-leveling-hero-label">Total experience</p>
-			<p class="lb-leveling-hero-value">{heroXpDisplay.toLocaleString()}</p>
-			<p class="lb-leveling-hero-hint">Pooled XP from all tracked members</p>
+		<div class="m-leveling-hero">
+			<p class="m-leveling-hero-label">Total experience</p>
+			<p class="m-leveling-hero-value">{heroXpDisplay.toLocaleString()}</p>
+			<p class="m-leveling-hero-hint">Pooled XP from all tracked members</p>
 		</div>
 
-		<div class="lb-leveling-meters">
-			<div class="lb-level-meter">
-				<div class="lb-level-meter-head">
-					<span class="lb-level-meter-title">Average vs peak level</span>
-					<span class="lb-level-meter-meta">{fmtDec(liveStats.leveling_avg_level)} / {fmt(liveStats.leveling_max_level)}</span>
+		<div class="m-leveling-meters">
+			<div class="m-level-meter">
+				<div class="m-level-meter-head">
+					<span class="m-level-meter-title">Average vs peak level</span>
+					<span class="m-level-meter-meta">{fmtDec(liveStats.leveling_avg_level)} / {fmt(liveStats.leveling_max_level)}</span>
 				</div>
-				<div class="lb-level-meter-track">
-					<div class="lb-level-meter-fill lb-level-meter-fill--avg" style="width: {avgLevelBarPct}%"></div>
+				<div class="m-level-meter-track">
+					<div class="m-level-meter-fill m-level-meter-fill--avg" style="width: {avgLevelBarPct}%"></div>
 				</div>
 			</div>
 		</div>
 
-		<div class="lb-leveling-tiles">
-			<div class="lb-level-tile">
+		<div class="m-leveling-tiles">
+			<div class="m-level-tile">
 				<i class="fas fa-comments"></i>
-				<span class="lb-level-tile-value">{fmt(liveStats.leveling_total_chat)}</span>
-				<span class="lb-level-tile-label">Messages</span>
+				<span class="m-level-tile-value">{fmt(liveStats.leveling_total_chat)}</span>
+				<span class="m-level-tile-label">Messages</span>
 			</div>
-			<div class="lb-level-tile">
+			<div class="m-level-tile">
 				<i class="fas fa-chart-line"></i>
-				<span class="lb-level-tile-value">{avgXP}</span>
-				<span class="lb-level-tile-label">Avg XP / member</span>
+				<span class="m-level-tile-value">{avgXP}</span>
+				<span class="m-level-tile-label">Avg XP / member</span>
 			</div>
-			<div class="lb-level-tile">
+			<div class="m-level-tile">
 				<i class="fas fa-crown"></i>
-				<span class="lb-level-tile-value">{fmt(liveStats.leveling_max_level)}</span>
-				<span class="lb-level-tile-label">Highest level</span>
+				<span class="m-level-tile-value">{fmt(liveStats.leveling_max_level)}</span>
+				<span class="m-level-tile-label">Highest level</span>
 			</div>
 		</div>
 	</div>
 
-	<div class="lb-stat-card lb-overview-card">
-		<div class="lb-stat-card-head">
-			<div class="lb-stat-card-icon lb-chili-stat-4">
+	<div class="m-stat-card m-overview-card">
+		<div class="m-stat-card-head">
+			<div class="m-stat-card-icon m-chili-stat-4">
 				<i class="fas fa-user-tag"></i>
 			</div>
-			<h2 class="lb-stat-card-title">Roles &amp; structure</h2>
+			<h2 class="m-stat-card-title">Roles &amp; structure</h2>
 		</div>
-		<div class="lb-overview-hero">
-			<p class="lb-overview-hero-label">Role catalog</p>
-			<p class="lb-overview-hero-value">{fmt(liveStats.roles_total)}</p>
+		<div class="m-overview-hero">
+			<p class="m-overview-hero-label">Role catalog</p>
+			<p class="m-overview-hero-value">{fmt(liveStats.roles_total)}</p>
 		</div>
-		<div class="lb-overview-mini-grid">
-			<div class="lb-overview-mini">
+		<div class="m-mini-grid">
+			<div class="m-mini">
 				<i class="fas fa-rocket"></i>
-				<span class="lb-overview-mini-value">{fmt(boostLevel)}</span>
-				<span class="lb-overview-mini-label">Boost tier</span>
+				<span class="m-mini-value">{fmt(boostLevel)}</span>
+				<span class="m-mini-label">Boost tier</span>
 			</div>
-			<div class="lb-overview-mini">
+			<div class="m-mini">
 				<i class="fas fa-gift"></i>
-				<span class="lb-overview-mini-value">{fmt(liveStats.members_boosters)}</span>
-				<span class="lb-overview-mini-label">Boosts</span>
+				<span class="m-mini-value">{fmt(liveStats.members_boosters)}</span>
+				<span class="m-mini-label">Boosts</span>
 			</div>
-			<div class="lb-overview-mini">
+			<div class="m-mini">
 				<i class="fas fa-folder"></i>
-				<span class="lb-overview-mini-value">{fmt(liveStats.categories_total)}</span>
-				<span class="lb-overview-mini-label">Categories</span>
+				<span class="m-mini-value">{fmt(liveStats.categories_total)}</span>
+				<span class="m-mini-label">Categories</span>
 			</div>
-			<div class="lb-overview-mini">
+			<div class="m-mini">
 				<i class="fas fa-user-cog"></i>
-				<span class="lb-overview-mini-value">{fmt(liveStats.members_with_custom_roles)}</span>
-				<span class="lb-overview-mini-label">Custom roles</span>
+				<span class="m-mini-value">{fmt(liveStats.members_with_custom_roles)}</span>
+				<span class="m-mini-label">Custom roles</span>
 			</div>
 		</div>
 	</div>
 
-	<div class="lb-stat-card lb-overview-card">
-		<div class="lb-stat-card-head">
-			<div class="lb-stat-card-icon lb-chili-stat-5">
+	<div class="m-stat-card m-overview-card">
+		<div class="m-stat-card-head">
+			<div class="m-stat-card-icon m-chili-stat-5">
 				<i class="fas fa-microphone-alt"></i>
 			</div>
-			<h2 class="lb-stat-card-title">Voice activity</h2>
+			<h2 class="m-stat-card-title">Voice activity</h2>
 		</div>
-		<div class="lb-overview-hero">
-			<p class="lb-overview-hero-label">Tracked minutes</p>
-			<p class="lb-overview-hero-value">{fmt(liveStats.leveling_total_voice_minutes)}</p>
+		<div class="m-overview-hero">
+			<p class="m-overview-hero-label">Tracked minutes</p>
+			<p class="m-overview-hero-value">{fmt(liveStats.leveling_total_voice_minutes)}</p>
 		</div>
-		<div class="lb-overview-bar-block">
-			<div class="lb-overview-bar-head">
+		<div class="m-bar-block">
+			<div class="m-bar-head">
 				<span>Active vs AFK</span>
-				<span class="lb-overview-bar-meta">{fmt(liveStats.leveling_total_voice_active)} · {fmt(liveStats.leveling_total_voice_afk)}</span>
+				<span class="m-bar-meta">{fmt(liveStats.leveling_total_voice_active)} · {fmt(liveStats.leveling_total_voice_afk)}</span>
 			</div>
 			{#if voiceMix.empty}
-				<div class="lb-level-meter-track lb-level-meter-track--empty lb-overview-bar-empty"><span>No voice data yet</span></div>
+				<div class="m-level-meter-track m-level-meter-track--empty m-bar-empty"><span>No voice data yet</span></div>
 			{:else}
-				<div class="lb-level-meter-stack" title="Share of voice minutes">
-					<div class="lb-level-meter-stack-active" style="width: {voiceMix.activePct}%"></div>
-					<div class="lb-level-meter-stack-afk" style="width: {voiceMix.afkPct}%"></div>
+				<div class="m-level-meter-stack" title="Share of voice minutes">
+					<div class="m-level-meter-stack-active" style="width: {voiceMix.activePct}%"></div>
+					<div class="m-level-meter-stack-afk" style="width: {voiceMix.afkPct}%"></div>
 				</div>
 			{/if}
 		</div>
-		<div class="lb-overview-mini-grid">
-			<div class="lb-overview-mini">
+		<div class="m-mini-grid">
+			<div class="m-mini">
 				<i class="fas fa-check-circle"></i>
-				<span class="lb-overview-mini-value">{fmt(liveStats.leveling_total_voice_active)}</span>
-				<span class="lb-overview-mini-label">Active min</span>
+				<span class="m-mini-value">{fmt(liveStats.leveling_total_voice_active)}</span>
+				<span class="m-mini-label">Active min</span>
 			</div>
-			<div class="lb-overview-mini">
+			<div class="m-mini">
 				<i class="fas fa-chart-line"></i>
-				<span class="lb-overview-mini-value">{avgVoiceMinutes}</span>
-				<span class="lb-overview-mini-label">Avg / member</span>
+				<span class="m-mini-value">{avgVoiceMinutes}</span>
+				<span class="m-mini-label">Avg / member</span>
 			</div>
-			<div class="lb-overview-mini">
+			<div class="m-mini">
 				<i class="fas fa-chart-bar"></i>
-				<span class="lb-overview-mini-value">{avgVoiceActive}</span>
-				<span class="lb-overview-mini-label">Avg active</span>
+				<span class="m-mini-value">{avgVoiceActive}</span>
+				<span class="m-mini-label">Avg active</span>
 			</div>
-			<div class="lb-overview-mini">
+			<div class="m-mini">
 				<i class="fas fa-pause-circle"></i>
-				<span class="lb-overview-mini-value">{fmt(liveStats.leveling_total_voice_afk)}</span>
-				<span class="lb-overview-mini-label">AFK min</span>
+				<span class="m-mini-value">{fmt(liveStats.leveling_total_voice_afk)}</span>
+				<span class="m-mini-label">AFK min</span>
 			</div>
 		</div>
 	</div>

@@ -21,7 +21,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 		if (targetBot != null) {
 			redirect(302, `/bots/${targetBot}/servers/${locals.user.server_id}/selfbot`);
 		}
-		redirect(302, '/');
+		redirect(302, '/dashboard');
 	}
 
 	let bot = await db.getServerBotById(selfbotId);

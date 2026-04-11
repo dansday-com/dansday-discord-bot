@@ -167,9 +167,9 @@
 	}
 
 	function podiumCardClass(rank: number | null | undefined): string {
-		if (rank === 1) return 'pubm-member-card--p1';
-		if (rank === 2) return 'pubm-member-card--p2';
-		if (rank === 3) return 'pubm-member-card--p3';
+		if (rank === 1) return 'm-members-card--p1';
+		if (rank === 2) return 'm-members-card--p2';
+		if (rank === 3) return 'm-members-card--p3';
 		return '';
 	}
 </script>
@@ -182,17 +182,17 @@
 	<meta property="og:description" content="Explore members, ranks, XP, and voice activity for this community." />
 </svelte:head>
 
-<div class="pubm">
-	<div class="lb-leaderboard-subhead lb-stats-overview-subhead">
+<div class="m-members">
+	<div class="m-leaderboard-subhead m-stats-subhead">
 		<p>Members</p>
 	</div>
 
-	<div class="pubm-search-bar">
-		<div class="pubm-search">
-			<i class="fas fa-search pubm-search-ic" aria-hidden="true"></i>
+	<div class="m-members-search-bar">
+		<div class="m-members-search">
+			<i class="fas fa-search m-members-search-ic" aria-hidden="true"></i>
 			<input
 				type="search"
-				class="pubm-search-inp"
+				class="m-members-search-inp"
 				placeholder="Search name or ID"
 				aria-label="Search members by name or Discord ID"
 				bind:value={search}
@@ -201,29 +201,29 @@
 			/>
 		</div>
 		{#if sorted.length > PER_PAGE}
-			<p class="pubm-page-hint">Page {listPage} / {totalPages}</p>
+			<p class="m-members-page-hint">Page {listPage} / {totalPages}</p>
 		{/if}
 	</div>
 
 	{#if paged.length === 0}
-		<div class="pubm-empty">
+		<div class="m-members-empty">
 			<i class="fas fa-users" aria-hidden="true"></i>
 			<p>No members found</p>
 		</div>
 	{:else}
-		<ul class="pubm-member-grid">
+		<ul class="m-members-grid">
 			{#each paged as member, i (member.discord_member_id)}
 				<li
-					class="lb-stat-card lb-overview-card pubm-member-card {podiumCardClass(member.rank)}"
-					class:pubm-card--in={mounted}
+					class="m-stat-card m-overview-card m-members-card {podiumCardClass(member.rank)}"
+					class:m-members-card--in={mounted}
 					style="--pubm-card-dly:{i * 32}ms"
 				>
-					<div class="pubm-member-top">
-						<div class="pubm-member-aside">
-							<span class="pubm-rank-pill" title="Leaderboard rank">{member.rank != null ? `#${member.rank}` : '—'}</span>
-							<div class="pubm-av-ring">
+					<div class="m-members-top">
+						<div class="m-members-aside">
+							<span class="m-members-rank-pill" title="Leaderboard rank">{member.rank != null ? `#${member.rank}` : '—'}</span>
+							<div class="m-members-av-ring">
 								<img
-									class="pubm-av-lg"
+									class="m-members-av-lg"
 									src={avatarSrc(member)}
 									alt=""
 									width="56"
@@ -232,33 +232,33 @@
 								/>
 							</div>
 						</div>
-						<div class="pubm-member-main">
-							<div class="pubm-name-row">
-								<span class="pubm-name">{listDisplayName(member)}</span>
-								{#if member.is_afk}<span class="pubm-afk"><i class="fas fa-moon" aria-hidden="true"></i> AFK</span>{/if}
+						<div class="m-members-main">
+							<div class="m-members-name-row">
+								<span class="m-members-name">{listDisplayName(member)}</span>
+								{#if member.is_afk}<span class="m-members-afk"><i class="fas fa-moon" aria-hidden="true"></i> AFK</span>{/if}
 							</div>
-							<p class="pubm-stats">
+							<p class="m-members-stats">
 								<span>Lv.{member.level ?? 0}</span>
-								<span class="pubm-dot">·</span>
+								<span class="m-members-dot">·</span>
 								<span title="Messages">{fmtNum(member.chat_total ?? 0)} msgs</span>
-								<span class="pubm-dot">·</span>
+								<span class="m-members-dot">·</span>
 								<span title="Voice minutes">{fmtNum(member.voice_minutes_active ?? 0)}m act / {fmtNum(member.voice_minutes_afk ?? 0)}m AFK</span>
 							</p>
-							<p class="pubm-dates">
-								<span><span class="pubm-dk">Joined</span> <LocalTime value={member.member_since} fallback="N/A" /></span>
-								<span class="pubm-dot">·</span>
-								<span><span class="pubm-dk">Discord since</span> <LocalTime value={member.profile_created_at} fallback="N/A" /></span>
+							<p class="m-members-dates">
+								<span><span class="m-members-dk">Joined</span> <LocalTime value={member.member_since} fallback="N/A" /></span>
+								<span class="m-members-dot">·</span>
+								<span><span class="m-members-dk">Discord since</span> <LocalTime value={member.profile_created_at} fallback="N/A" /></span>
 							</p>
 						</div>
 					</div>
-					<div class="pubm-member-xp-band">
-						<span class="pubm-xp-band-l"><i class="fas fa-star" aria-hidden="true"></i> Experience</span>
-						<span class="pubm-xp-band-v" title="Experience points">{fmtNum(member.experience ?? 0)}</span>
+					<div class="m-members-xp-band">
+						<span class="m-members-xp-band-l"><i class="fas fa-star" aria-hidden="true"></i> Experience</span>
+						<span class="m-members-xp-band-v" title="Experience points">{fmtNum(member.experience ?? 0)}</span>
 					</div>
 					{#if member.roles?.length > 0}
-						<div class="pubm-roles">
+						<div class="m-members-roles">
 							{#each member.roles as role}
-								<span class="pubm-role" style={rolePillCssVars(role.color)}>
+								<span class="m-members-role" style={rolePillCssVars(role.color)}>
 									<i class="fas fa-circle" aria-hidden="true"></i>
 									{role.name || 'Role'}
 								</span>
@@ -270,12 +270,12 @@
 		</ul>
 
 		{#if sorted.length > PER_PAGE}
-			<div class="pubm-pager">
-				<button type="button" class="pubm-btn" disabled={listPage === 1} onclick={() => (listPage = Math.max(1, listPage - 1))}>
+			<div class="m-members-pager">
+				<button type="button" class="m-members-btn" disabled={listPage === 1} onclick={() => (listPage = Math.max(1, listPage - 1))}>
 					<i class="fas fa-chevron-left" aria-hidden="true"></i> Prev
 				</button>
-				<span class="pubm-pg-meta">Page {listPage} / {totalPages}</span>
-				<button type="button" class="pubm-btn" disabled={listPage === totalPages} onclick={() => (listPage = Math.min(totalPages, listPage + 1))}>
+				<span class="m-members-pg-meta">Page {listPage} / {totalPages}</span>
+				<button type="button" class="m-members-btn" disabled={listPage === totalPages} onclick={() => (listPage = Math.min(totalPages, listPage + 1))}>
 					Next <i class="fas fa-chevron-right" aria-hidden="true"></i>
 				</button>
 			</div>

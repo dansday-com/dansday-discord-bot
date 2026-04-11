@@ -200,22 +200,22 @@
 	<meta property="og:description" content="See who's on top in {data.server.name || data.server.slug}." />
 </svelte:head>
 
-<div class="lb-leaderboard-subhead lb-stats-overview-subhead">
+<div class="m-leaderboard-subhead m-stats-subhead">
 	<p>
 		Leaderboard
-		<span class="lb-metric-pill">{metricLabel(metric)}</span>
+		<span class="m-metric-pill">{metricLabel(metric)}</span>
 		{#if streamConnected}
-			<span class="lb-metric-pill lb-metric-pill--live">
-				<span class="lb-live-dot"></span>
+			<span class="m-metric-pill m-metric-pill--live">
+				<span class="m-live-dot"></span>
 				Live
 			</span>
 		{/if}
 	</p>
 </div>
 
-<div class="lb-tabs">
+<div class="m-tabs">
 	{#each METRICS as m}
-		<button class="lb-tab {metric === m ? 'lb-tab--active' : ''}" onclick={() => setMetric(m)}>
+		<button class="m-tab {metric === m ? 'm-tab--active' : ''}" onclick={() => setMetric(m)}>
 			{#if m === 'xp'}
 				<i class="fas fa-star"></i> XP
 			{:else if m === 'chat'}
@@ -232,12 +232,12 @@
 </div>
 
 {#if top3.length > 0}
-	<section class="lb-podium-section">
-		<div class="lb-podium-stage">
+	<section class="m-podium-section">
+		<div class="m-podium-stage">
 			{#each podiumOrder as { r, rank }}
-				<div class="lb-podium-col lb-podium-col--{rank}" class:lb-mounted={mounted}>
+				<div class="m-podium-col m-podium-col--{rank}" class:m-mounted={mounted}>
 					{#if rank === 1}
-						<div class="lb-crown">
+						<div class="m-crown">
 							<svg viewBox="0 0 48 32" fill="none" xmlns="http://www.w3.org/2000/svg">
 								<path d="M4 28L10 10L18 20L24 4L30 20L38 10L44 28H4Z" fill="#FFD700" stroke="#FFA500" stroke-width="1.5" stroke-linejoin="round" />
 								<circle cx="4" cy="28" r="3" fill="#FFD700" />
@@ -248,32 +248,32 @@
 						</div>
 					{/if}
 
-					<div class="lb-avatar-wrap lb-avatar-wrap--{rank}">
-						<div class="lb-avatar-ring" style="--ring-color: {rankColors[rank]}; --ring-glow: {rankGlow[rank]};">
-							<div class="lb-avatar-img">
+					<div class="m-avatar-wrap m-avatar-wrap--{rank}">
+						<div class="m-avatar-ring" style="--ring-color: {rankColors[rank]}; --ring-glow: {rankGlow[rank]};">
+							<div class="m-avatar-img">
 								{#if r.avatar}
 									<img src={r.avatar} alt={displayName(r)} />
 								{:else}
-									<div class="lb-avatar-fallback">{displayName(r).charAt(0).toUpperCase()}</div>
+									<div class="m-avatar-fallback">{displayName(r).charAt(0).toUpperCase()}</div>
 								{/if}
 							</div>
 						</div>
-						<div class="lb-rank-badge" style="background: {rankGradients[rank]}; color: #111;">
+						<div class="m-rank-badge" style="background: {rankGradients[rank]}; color: #111;">
 							{rank}
 						</div>
 					</div>
 
-					<div class="lb-podium-info">
-						<div class="lb-podium-name" title={displayName(r)}>{displayName(r)}</div>
-						<div class="lb-podium-score" style="color: {rankColors[rank]};">
+					<div class="m-podium-info">
+						<div class="m-podium-name" title={displayName(r)}>{displayName(r)}</div>
+						<div class="m-podium-score" style="color: {rankColors[rank]};">
 							{metricValueAnimated(r, metric)}
-							<span class="lb-podium-unit">{metricUnit(metric)}</span>
+							<span class="m-podium-unit">{metricUnit(metric)}</span>
 						</div>
-						<div class="lb-podium-level">Level {r.level ?? 0}</div>
+						<div class="m-podium-level">Level {r.level ?? 0}</div>
 					</div>
 
-					<div class="lb-podium-block" style="height: {podiumHeights[rank]}; background: {rankGradients[rank]};">
-						<span class="lb-podium-block-num">#{rank}</span>
+					<div class="m-podium-block" style="height: {podiumHeights[rank]}; background: {rankGradients[rank]};">
+						<span class="m-podium-block-num">#{rank}</span>
 					</div>
 				</div>
 			{/each}
@@ -282,32 +282,32 @@
 {/if}
 
 {#if rest.length > 0}
-	<section class="lb-list-section">
-		<div class="lb-list-header">
+	<section class="m-list-section">
+		<div class="m-list-header">
 			<span>Rankings</span>
-			<span class="lb-list-count">{rows.length.toLocaleString()} members</span>
+			<span class="m-list-count">{rows.length.toLocaleString()} members</span>
 		</div>
-		<div class="lb-list">
+		<div class="m-list">
 			{#each rest as r, i (r.discord_member_id)}
-				<div class="lb-list-row" class:lb-mounted={mounted} style="animation-delay: {i * 40}ms">
-					<div class="lb-list-rank">#{i + 4}</div>
-					<div class="lb-list-avatar">
+				<div class="m-list-row" class:m-mounted={mounted} style="animation-delay: {i * 40}ms">
+					<div class="m-list-rank">#{i + 4}</div>
+					<div class="m-list-avatar">
 						{#if r.avatar}
 							<img src={r.avatar} alt={displayName(r)} />
 						{:else}
-							<div class="lb-list-avatar-fallback">{displayName(r).charAt(0).toUpperCase()}</div>
+							<div class="m-list-avatar-fallback">{displayName(r).charAt(0).toUpperCase()}</div>
 						{/if}
 					</div>
-					<div class="lb-list-info">
-						<div class="lb-list-name" title={displayName(r)}>{displayName(r)}</div>
-						<div class="lb-list-sub">Level {r.level ?? 0}</div>
-						<div class="lb-list-bar-track">
-							<div class="lb-list-bar-fill" style="width: {barWidthPct(r, metric)}%"></div>
+					<div class="m-list-info">
+						<div class="m-list-name" title={displayName(r)}>{displayName(r)}</div>
+						<div class="m-list-sub">Level {r.level ?? 0}</div>
+						<div class="m-list-bar-track">
+							<div class="m-list-bar-fill" style="width: {barWidthPct(r, metric)}%"></div>
 						</div>
 					</div>
-					<div class="lb-list-score">
+					<div class="m-list-score">
 						{metricValueAnimated(r, metric)}
-						<span class="lb-list-unit">{metricUnit(metric)}</span>
+						<span class="m-list-unit">{metricUnit(metric)}</span>
 					</div>
 				</div>
 			{/each}
@@ -316,7 +316,7 @@
 {/if}
 
 {#if rows.length === 0}
-	<div class="lb-empty">
+	<div class="m-empty">
 		<i class="fas fa-trophy" style="font-size: 48px; opacity: 0.2;"></i>
 		<p>No data yet</p>
 	</div>

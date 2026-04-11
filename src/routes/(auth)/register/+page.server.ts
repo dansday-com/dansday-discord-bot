@@ -4,7 +4,7 @@ import db from '$lib/database.js';
 import { isUtcSqlExpired } from '$lib/utils/index.js';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
-	if (locals.user.authenticated) redirect(302, '/');
+	if (locals.user.authenticated) redirect(302, '/dashboard');
 
 	const token = url.searchParams.get('token') ?? null;
 

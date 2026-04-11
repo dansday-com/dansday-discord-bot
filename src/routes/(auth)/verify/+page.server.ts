@@ -2,7 +2,7 @@ import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ locals, url }) => {
-	if (locals.user.authenticated) redirect(302, '/');
+	if (locals.user.authenticated) redirect(302, '/dashboard');
 
 	const token = url.searchParams.get('token');
 	if (!token) redirect(302, '/login');

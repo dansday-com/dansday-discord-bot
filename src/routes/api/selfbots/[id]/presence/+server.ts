@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import db, { DEFAULT_SERVER_BOT_PRESENCE, type ServerBotStatusInput } from '$lib/database.js';
+import db, { presenceFromDbRow, type ServerBotStatusInput } from '$lib/database.js';
 import { canManageSelfbots, canViewSelfbots } from '$lib/frontend/panelServer.js';
 
 const DISCORD_STATUSES = ['online', 'idle', 'dnd', 'invisible'] as const;
@@ -24,24 +24,6 @@ function isDiscordStreamingUrl(urlStr: string): boolean {
 	return h === 'twitch.tv' || h === 'www.twitch.tv' || h === 'youtube.com' || h === 'www.youtube.com' || h === 'youtu.be' || h === 'm.youtube.com';
 }
 
-type StatusRow = {
-	discord_status: string;
-	activity_type: string;
-	activity_name: string | null;
-	activity_url: string | null;
-	activity_state: string | null;
-};
-
-function rowToPayload(row: StatusRow): ServerBotStatusInput {
-	return {
-		discord_status: row.discord_status as ServerBotStatusInput['discord_status'],
-		activity_type: row.activity_type as ServerBotStatusInput['activity_type'],
-		activity_name: row.activity_name ?? '',
-		activity_url: row.activity_url ?? null,
-		activity_state: row.activity_state ?? null
-	};
-}
-
 export const GET: RequestHandler = async ({ locals, params }) => {
 	if (!locals.user.authenticated) {
 		return json({ error: 'Authentication required' }, { status: 401 });
@@ -62,7 +44,7 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 	}
 
 	const row = await db.getServerBotStatusByServerBotId(selfbotId);
-	return json({ presence: row ? rowToPayload(row) : DEFAULT_SERVER_BOT_PRESENCE });
+	return json({ presence: presenceFromDbRow(row) });
 };
 
 export const PATCH: RequestHandler = async ({ locals, params, request }) => {
@@ -149,5 +131,5 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 	};
 
 	const saved = await db.upsertServerBotStatus(selfbotId, payload);
-	return json({ success: true, presence: saved ? rowToPayload(saved) : payload });
+	return json({ success: true, presence: presenceFromDbRow(saved) });
 };

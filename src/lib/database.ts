@@ -297,6 +297,28 @@ export const DEFAULT_BOT_PRESENCE: BotStatusInput = {
 	activity_state: 'Free web panel for your Discord server. Hosted free or self host.'
 };
 
+type PresenceDbRow = {
+	discord_status: string;
+	activity_type: string;
+	activity_name: string | null;
+	activity_url: string | null;
+	activity_state: string | null;
+};
+
+export function presenceFromDbRow(row: PresenceDbRow | null | undefined): BotStatusInput {
+	const d = DEFAULT_BOT_PRESENCE;
+	if (!row) return { ...d };
+	const name = (row.activity_name ?? '').trim();
+	const state = (row.activity_state ?? '').trim();
+	return {
+		discord_status: row.discord_status as BotStatusInput['discord_status'],
+		activity_type: row.activity_type as BotStatusInput['activity_type'],
+		activity_url: row.activity_url?.trim() ? row.activity_url : null,
+		activity_name: name || d.activity_name,
+		activity_state: state || d.activity_state
+	};
+}
+
 export async function getBotStatusByBotId(botId: number) {
 	await initializeDatabase();
 	const rows = await db

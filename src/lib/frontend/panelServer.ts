@@ -1,8 +1,3 @@
-/**
- * Panel server: configurable components (`SERVER_SETTINGS`) and authorization / API guards.
- * Database is loaded lazily so `$lib/database` can import `SERVER_SETTINGS` without a circular dependency.
- */
-
 const REGISTRY = [
 	{ id: 'main', label: 'Main', featureSwitch: false, hrefSuffix: '', icon: 'fa-gear', iconClass: 'text-emerald-400' },
 	{
@@ -170,7 +165,6 @@ export const SERVER_SETTINGS = {
 
 export type ServerSettingsComponentName = keyof typeof SERVER_SETTINGS.component;
 
-/* Lazy DB — avoids circular import when database.ts imports SERVER_SETTINGS from this file */
 let dbCache: (typeof import('$lib/database.js'))['default'] | null = null;
 async function getDb() {
 	if (!dbCache) dbCache = (await import('$lib/database.js')).default;

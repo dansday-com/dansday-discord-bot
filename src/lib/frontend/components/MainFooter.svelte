@@ -1,8 +1,4 @@
 <script lang="ts">
-	/**
-	 * One footer for marketing + panel: identical structure and spacing;
-	 * `palette` only toggles `.m-footer--dark` (see app.css `.m-footer`).
-	 */
 	type Palette = 'light' | 'dark';
 
 	let { palette = 'light' as Palette }: { palette?: Palette } = $props();

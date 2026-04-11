@@ -7,13 +7,10 @@ import { hasPermission, getPermissionDeniedMessage } from './permissions.js';
 import { queueQuestEnrollJob, isUserEnrollRunning } from './questEnrollWorker.js';
 import { fetchQuestsMe } from '../../../api/discord-quest-api.js';
 
-/** New quest enrollment buttons on quest notifier embeds */
 export const QUEST_ENROLL_BUTTON_PREFIX = 'quest_enroll:';
-/** Older messages (v1 Discord custom ids) */
 export const LEGACY_ENROLL_BUTTON_PREFIX = '\u006f\u0072\u0062_enroll:';
 
 export const QUEST_ENROLL_MODAL_PREFIX = 'quest_enroll_submit:';
-/** Older modal submissions */
 export const LEGACY_ENROLL_MODAL_PREFIX = '\u006f\u0072\u0062_enroll_submit:';
 
 const TOKEN_FIELD_ID = 'quest_enroll_token';

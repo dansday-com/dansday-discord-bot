@@ -44,12 +44,6 @@
 	}
 }
 
-/* ============================================================
-   Dansday Discord Bot — Unified Stylesheet
-   All pages: landing, public stats, error
-   ============================================================ */
-
-/* ---- Root & Design Tokens ---- */
 .m-root {
 	--yacht-sand: #f2f0ef;
 	--yacht-stone: #bbbdbc;
@@ -88,7 +82,6 @@
 	overflow-y: auto;
 }
 
-/* ---- Shared: Ambient Blobs ---- */
 .m-blob {
 	position: fixed;
 	border-radius: 50%;
@@ -131,7 +124,6 @@
 	}
 }
 
-/* ---- Shared: Nav ---- */
 .m-nav {
 	position: sticky;
 	top: 0;
@@ -247,7 +239,6 @@
 	animation: m-live-pulse 1.8s ease-in-out infinite;
 }
 
-/* ---- Shared: Live Pulse Keyframe ---- */
 @keyframes m-live-pulse {
 	0%,
 	100% {
@@ -260,7 +251,6 @@
 	}
 }
 
-/* ---- Shared: Buttons ---- */
 .m-btn {
 	display: inline-flex;
 	align-items: center;
@@ -302,7 +292,6 @@
 	background: var(--chili-surface-mid);
 }
 
-/* ---- Shared: Footer (same DOM + spacing everywhere; .m-footer--dark swaps palette only) ---- */
 .m-footer {
 	position: relative;
 	z-index: 1;
@@ -415,11 +404,6 @@
 	color: var(--color-ash-200);
 }
 
-/* ============================================================
-   PUBLIC PAGE — Stats / Leaderboard / Members
-   ============================================================ */
-
-/* ---- Inner container ---- */
 .m-inner {
 	position: relative;
 	z-index: 1;
@@ -443,7 +427,6 @@
 	}
 }
 
-/* ---- Server header ---- */
 .m-header {
 	display: flex;
 	align-items: center;
@@ -489,7 +472,6 @@
 	gap: 6px;
 }
 
-/* ---- Metric pill ---- */
 .m-metric-pill {
 	background: rgba(36, 95, 115, 0.22);
 	border: 1px solid rgba(36, 95, 115, 0.35);
@@ -517,12 +499,10 @@
 	animation: m-live-pulse 1.6s ease-in-out infinite;
 }
 
-/* ---- Stats overview subhead ---- */
 .m-stats-subhead {
 	margin-bottom: 12px;
 }
 
-/* ---- Overview strip ---- */
 .m-overview-strip {
 	display: flex;
 	gap: 10px;
@@ -591,7 +571,6 @@
 	color: rgba(26, 52, 63, 0.52);
 }
 
-/* ---- Overview hero ---- */
 .m-overview-hero {
 	text-align: center;
 	padding: 14px 12px 16px;
@@ -617,7 +596,6 @@
 	color: var(--lb-text);
 }
 
-/* ---- Bar blocks ---- */
 .m-bar-block {
 	margin-top: 14px;
 }
@@ -670,7 +648,6 @@
 	background: linear-gradient(90deg, rgba(115, 62, 36, 0.55), rgba(187, 189, 188, 0.85));
 }
 
-/* ---- Legend ---- */
 .m-legend {
 	display: flex;
 	flex-wrap: wrap;
@@ -702,7 +679,6 @@
 	color: rgba(115, 62, 36, 0.85);
 }
 
-/* ---- Mini grid ---- */
 .m-mini-grid {
 	display: grid;
 	grid-template-columns: repeat(2, 1fr);
@@ -746,7 +722,6 @@
 	color: var(--lb-text-subtle);
 }
 
-/* ---- Tabs (leaderboard metric tabs) ---- */
 .m-tabs {
 	display: flex;
 	gap: 6px;
@@ -786,7 +761,6 @@
 	transform: scale(1.02);
 }
 
-/* ---- Podium ---- */
 .m-podium-section {
 	margin-bottom: 28px;
 }
@@ -1039,7 +1013,6 @@
 	z-index: 1;
 }
 
-/* ---- List section ---- */
 .m-list-section {
 	background: rgba(255, 255, 255, 0.82);
 	border: 1px solid var(--lb-border);
@@ -1166,7 +1139,6 @@
 	margin-left: 2px;
 }
 
-/* ---- Empty state ---- */
 .m-empty {
 	text-align: center;
 	padding: 60px 20px;
@@ -1181,7 +1153,6 @@
 	font-weight: 600;
 }
 
-/* ---- Section tabs (overview / leaderboard / members) ---- */
 .m-section-tabs {
 	display: flex;
 	flex-wrap: wrap;
@@ -1236,7 +1207,6 @@
 	box-shadow: 0 2px 12px rgba(36, 95, 115, 0.4);
 }
 
-/* ---- Stats grid ---- */
 .m-stats-grid {
 	display: grid;
 	grid-template-columns: 1fr;
@@ -1338,7 +1308,6 @@
 	flex-shrink: 0;
 }
 
-/* ---- Leaderboard subhead ---- */
 .m-leaderboard-subhead {
 	margin-bottom: 18px;
 }
@@ -1352,7 +1321,6 @@
 	flex-wrap: wrap;
 }
 
-/* ---- Chili stat icon variants ---- */
 .m-root .m-stat-card-icon.m-chili-stat-1 {
 	background: rgba(36, 95, 115, 0.2);
 	color: var(--chili-peach);
@@ -1379,7 +1347,6 @@
 	color: rgba(36, 95, 115, 0.88);
 }
 
-/* ---- Leveling hero ---- */
 .m-leveling-hero {
 	text-align: center;
 	padding: 18px 12px 20px;
@@ -1424,7 +1391,6 @@
 	color: var(--lb-text-subtle);
 }
 
-/* ---- Leveling meters ---- */
 .m-leveling-meters {
 	display: flex;
 	flex-direction: column;
@@ -1493,7 +1459,6 @@
 	transition: width 0.65s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* ---- Leveling tiles ---- */
 .m-leveling-tiles {
 	display: grid;
 	grid-template-columns: repeat(3, 1fr);
@@ -1533,10 +1498,6 @@
 	letter-spacing: 0.06em;
 	color: var(--lb-text-faint);
 }
-
-/* ============================================================
-   PUBLIC PAGE — Members
-   ============================================================ */
 
 .m-root .m-members {
 	--pubm-text: var(--lb-text);
@@ -1950,11 +1911,6 @@
 	}
 }
 
-/* ============================================================
-   LANDING PAGE
-   ============================================================ */
-
-/* ---- Landing inner: flex growth only; width comes from .m-inner (same as public stats) ---- */
 .m-landing-inner {
 	position: relative;
 	z-index: 1;
@@ -1962,7 +1918,6 @@
 	min-width: 0;
 }
 
-/* ---- Hero ---- */
 .m-hero {
 	text-align: center;
 	padding: 40px 16px 32px;
@@ -2074,7 +2029,6 @@
 	}
 }
 
-/* ---- Section headings ---- */
 .m-section {
 	padding: 36px 16px;
 }
@@ -2096,8 +2050,6 @@
 	line-height: 1.6;
 }
 
-/* ---- Feature cards ---- */
-/* Same content width as public statistics (.m-inner max 1280px) — no extra narrow caps */
 .m-features-grid {
 	display: grid;
 	grid-template-columns: 1fr;
@@ -2106,7 +2058,7 @@
 	max-width: none;
 	margin: 0;
 }
-/* Panel highlight: balanced 2×2 until wide viewports, then one row of four */
+
 .m-features-grid--quad {
 	max-width: none;
 }
@@ -2175,7 +2127,6 @@
 	margin: 0;
 }
 
-/* ---- Featured servers ---- */
 .m-servers-list {
 	display: grid;
 	grid-template-columns: 1fr;
@@ -2249,7 +2200,6 @@
 	flex-shrink: 0;
 }
 
-/* ---- CTA section ---- */
 .m-cta {
 	text-align: center;
 	padding: 36px 0 44px;
@@ -2279,7 +2229,6 @@
 	line-height: 1.65;
 }
 
-/* Landing: only .m-inner adds horizontal padding (matches public stats page, no double inset) */
 .m-inner.m-landing-inner > .m-hero {
 	padding-left: 0;
 	padding-right: 0;
@@ -2293,7 +2242,6 @@
 	padding-right: 0;
 }
 
-/* ---- Landing responsive ---- */
 @media (min-width: 420px) {
 	.m-hero {
 		padding: 48px 20px 36px;
@@ -2364,7 +2312,7 @@
 		padding: 56px 0;
 	}
 }
-/* Match .m-stats-grid: 3 columns from 1280px so cards use full inner width before wrapping */
+
 @media (min-width: 1280px) {
 	.m-features-grid {
 		grid-template-columns: repeat(3, 1fr);
@@ -2375,11 +2323,6 @@
 	}
 }
 
-/* ============================================================
-   ERROR PAGE
-   ============================================================ */
-
-/* ---- Error inner (centered layout) ---- */
 .m-main--error {
 	flex: 1;
 	display: flex;
@@ -2416,7 +2359,6 @@
 	}
 }
 
-/* ---- Error card ---- */
 .m-err-card {
 	width: 100%;
 	background: var(--chili-surface-elevated);
@@ -2429,7 +2371,6 @@
 		0 1px 0 rgba(255, 255, 255, 0.8) inset;
 }
 
-/* ---- Error icon badge ---- */
 .m-err-icon-wrap {
 	width: 68px;
 	height: 68px;
@@ -2501,7 +2442,6 @@
 	border-radius: 1px;
 }
 
-/* ---- Error actions ---- */
 .m-err-actions {
 	display: flex;
 	flex-direction: column;
@@ -2514,7 +2454,6 @@
 	}
 }
 
-/* ---- Error dev message ---- */
 .m-err-dev-msg {
 	margin: 20px 0 0;
 	font-family: monospace;
@@ -2525,7 +2464,6 @@
 	line-height: 1.5;
 }
 
-/* ---- Legal docs (privacy policy, terms) — same shell as landing ---- */
 .m-legal-doc {
 	max-width: 42rem;
 	margin: 0 auto;

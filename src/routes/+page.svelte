@@ -6,11 +6,8 @@
 
 	let { data }: PageProps = $props();
 
-	/** Add the official Dansday Bot to a Discord server */
 	const officialBotInviteUrl = 'https://discord.com/oauth2/authorize?client_id=1446572985849876640';
-	/** Community for updates and testing */
 	const communityDiscordUrl = 'https://discord.gg/7fEqEDSur3';
-	/** Open source repository (MIT) */
 	const sourceRepoUrl = 'https://github.com/dansday-com/dansday-discord-bot';
 
 	const features = [
@@ -160,7 +157,6 @@
 
 	<main class="m-main">
 		<div class="m-inner m-landing-inner">
-			<!-- Hero -->
 			<section class="m-hero">
 				<h1>
 					Supercharge Your<br />
@@ -207,7 +203,6 @@
 				</div>
 			</section>
 
-			<!-- Features -->
 			<section class="m-section" id="features">
 				<div class="m-section-header">
 					<h2>Everything your server needs</h2>
@@ -229,7 +224,6 @@
 				</div>
 			</section>
 
-			<!-- Featured servers -->
 			{#if data.featuredServers.length > 0}
 				<section class="m-section">
 					<div class="m-section-header">
@@ -262,7 +256,6 @@
 				</section>
 			{/if}
 
-			<!-- Web Panel highlight -->
 			<section class="m-section">
 				<div class="m-section-header">
 					<h2>Powerful web panel</h2>
@@ -303,7 +296,6 @@
 				</div>
 			</section>
 
-			<!-- CTA -->
 			<section class="m-cta">
 				<div class="m-cta-card">
 					<h2>Ready to try it?</h2>

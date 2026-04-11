@@ -1,8 +1,4 @@
 <script lang="ts">
-	/**
-	 * Shared chrome: same layout/spacing everywhere; `palette` only swaps colors.
-	 * `trailing`: right-side CTA — login (marketing), live (public stats), home (auth shell).
-	 */
 	type Palette = 'light' | 'dark';
 	type Trailing = 'login' | 'live' | 'home';
 

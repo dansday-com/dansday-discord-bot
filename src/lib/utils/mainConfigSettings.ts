@@ -1,14 +1,11 @@
-/** Default embed accent when none is saved (new servers). */
 export const DEFAULT_MAIN_EMBED_COLOR = '#ff0000';
 
-/** Default footer template; `{year}` and `{server}` are resolved when embeds are built. */
 export const DEFAULT_MAIN_EMBED_FOOTER = 'Powered by bot.dansday.com {year}';
 
 function trimStr(v: unknown): string {
 	return typeof v === 'string' ? v.trim() : '';
 }
 
-/** Effective color and footer for embeds and panel (fills in defaults when unset or blank). */
 export function getEffectiveMainEmbedAppearance(raw: unknown): { color: string; footer: string } {
 	const base = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
 	const colorIn = trimStr(base.color);

@@ -381,7 +381,6 @@ function buildTaskDetailLine(taskKey: string, taskLabel: string, taskObj: Record
 	return taskLabel;
 }
 
-/** Discord `/quests` payload field for some reward rows (upstream API name). */
 const DISCORD_QUEST_REWARD_QTY_FIELD = '\u006f\u0072\u0062_quantity';
 
 function rewardLineFromQuest(quest: Record<string, unknown>): string {

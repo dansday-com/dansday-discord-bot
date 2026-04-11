@@ -160,39 +160,53 @@
 					from the free web panel in your browser. Configure in one place instead of flooding channels with slash commands.
 				</p>
 				<p class="m-hero-note">
-					Dansday stays <strong>free</strong> for everyone. Self host from
+					<strong class="m-hero-note-lead">Free either way.</strong>
+					Self host from
 					<a href={sourceRepoUrl} class="m-hero-note-link" target="_blank" rel="noopener noreferrer">GitHub</a>
-					when you want your own infrastructure. If you cannot self host, use
+					or add
 					<a href={officialBotInviteUrl} class="m-hero-note-link" target="_blank" rel="noopener noreferrer">our hosted bot</a>
-					for the same features on our service at no charge.
+					if you do not run your own servers.
 				</p>
 				<div class="m-hero-actions">
-					<a href={officialBotInviteUrl} class="m-btn m-btn--primary" target="_blank" rel="noopener noreferrer">
+					<a
+						href={officialBotInviteUrl}
+						class="m-btn m-btn--primary m-hero-btn-primary"
+						target="_blank"
+						rel="noopener noreferrer"
+					>
 						<i class="fab fa-discord"></i>
 						Get started
 					</a>
-					<a href="/login" class="m-btn m-btn--ghost">
-						<i class="fas fa-sign-in-alt"></i>
-						Log in to panel
-					</a>
-					<a href="#features" class="m-btn m-btn--ghost">
-						<i class="fas fa-th-large"></i>
-						See all features
-					</a>
-					<a href={communityDiscordUrl} class="m-btn m-btn--ghost" target="_blank" rel="noopener noreferrer" title="Join our Discord for updates and testing">
-						<i class="fas fa-users"></i>
-						Join Discord
-					</a>
-					<a
-						href={sourceRepoUrl}
-						class="m-btn m-btn--ghost"
-						target="_blank"
-						rel="noopener noreferrer"
-						title="Free and open source on GitHub under the MIT license"
-					>
-						<i class="fab fa-github"></i>
-						GitHub
-					</a>
+					<div class="m-hero-actions-secondary" role="group" aria-label="More options">
+						<a href="/login" class="m-btn m-btn--ghost m-btn--compact">
+							<i class="fas fa-sign-in-alt"></i>
+							Log in
+						</a>
+						<a href="#features" class="m-btn m-btn--ghost m-btn--compact">
+							<i class="fas fa-th-large"></i>
+							Features
+						</a>
+						<a
+							href={communityDiscordUrl}
+							class="m-btn m-btn--ghost m-btn--compact"
+							target="_blank"
+							rel="noopener noreferrer"
+							title="Join our Discord for updates and testing"
+						>
+							<i class="fas fa-users"></i>
+							Discord
+						</a>
+						<a
+							href={sourceRepoUrl}
+							class="m-btn m-btn--ghost m-btn--compact"
+							target="_blank"
+							rel="noopener noreferrer"
+							title="Source on GitHub (MIT)"
+						>
+							<i class="fab fa-github"></i>
+							GitHub
+						</a>
+					</div>
 				</div>
 			</section>
 

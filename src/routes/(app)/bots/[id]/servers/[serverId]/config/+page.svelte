@@ -3,14 +3,15 @@
 	import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import ChannelPicker from '$lib/frontend/components/ChannelPicker.svelte';
+	import { DEFAULT_MAIN_EMBED_COLOR, DEFAULT_MAIN_EMBED_FOOTER } from '$lib/utils/mainConfigSettings.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 
 	let saving = $state(false);
 	let mainChannel = $state(data.settings?.main_channel ?? '');
-	let defaultColor = $state(data.settings?.color ?? '#5865F2');
-	let defaultFooter = $state(data.settings?.footer ?? '');
+	let defaultColor = $state(data.settings?.color ?? DEFAULT_MAIN_EMBED_COLOR);
+	let defaultFooter = $state(data.settings?.footer ?? DEFAULT_MAIN_EMBED_FOOTER);
 
 	async function save() {
 		saving = true;
@@ -66,7 +67,7 @@
 			<input
 				type="text"
 				bind:value={defaultColor}
-				placeholder="#5865F2"
+				placeholder={DEFAULT_MAIN_EMBED_COLOR}
 				class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 flex-1 rounded-lg border px-3 py-2 font-mono text-sm focus:ring-2 focus:outline-none"
 			/>
 		</div>
@@ -78,7 +79,7 @@
 		<input
 			type="text"
 			bind:value={defaultFooter}
-			placeholder="Enter footer text..."
+			placeholder={DEFAULT_MAIN_EMBED_FOOTER}
 			class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
 		/>
 		<div class="bg-ash-900 border-ash-600 mt-2 rounded-lg border p-3">

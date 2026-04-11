@@ -3,6 +3,7 @@
 	import ChannelPicker from '$lib/frontend/components/ChannelPicker.svelte';
 	import RolePicker from '$lib/frontend/components/RolePicker.svelte';
 	import { resolveEmbedFooterPlaceholders } from '$lib/utils/embedFooter.js';
+	import { DEFAULT_MAIN_EMBED_COLOR, DEFAULT_MAIN_EMBED_FOOTER } from '$lib/utils/mainConfigSettings.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -14,9 +15,9 @@
 
 	let title = $state('');
 	let description = $state('');
-	let footer = $state(data.mainConfig?.footer ?? '');
-	let color = $state(data.mainConfig?.color ?? '#5865F2');
-	let colorHex = $state(data.mainConfig?.color ?? '#5865F2');
+	let footer = $state(data.mainConfig?.footer ?? DEFAULT_MAIN_EMBED_FOOTER);
+	let color = $state(data.mainConfig?.color ?? DEFAULT_MAIN_EMBED_COLOR);
+	let colorHex = $state(data.mainConfig?.color ?? DEFAULT_MAIN_EMBED_COLOR);
 	let imageMode = $state<'url' | 'upload'>('url');
 	let imageUrl = $state('');
 	let uploadedImagePath = $state('');
@@ -212,7 +213,7 @@
 						type="text"
 						value={colorHex}
 						oninput={(e) => syncColorHex((e.target as HTMLInputElement).value)}
-						placeholder="#5865F2"
+						placeholder={DEFAULT_MAIN_EMBED_COLOR}
 						class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 flex-1 rounded-lg border px-3 py-2 font-mono text-sm focus:ring-2 focus:outline-none"
 					/>
 				</div>

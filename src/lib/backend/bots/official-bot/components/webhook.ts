@@ -380,6 +380,22 @@ async function handleWebhookRequest(req, res) {
 						res.writeHead(500, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify({ error: 'sync_component_runtime failed', details: runtimeErr.message }));
 					}
+				} else if (payload.type === 'apply_presence') {
+					try {
+						if (!currentBotId) {
+							res.writeHead(500, { 'Content-Type': 'application/json' });
+							res.end(JSON.stringify({ error: 'Current bot id not set' }));
+							return;
+						}
+						const { applyDiscordPresenceFromDb } = await import('../applyDiscordPresence.js');
+						await applyDiscordPresenceFromDb(client, currentBotId);
+						res.writeHead(200, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify({ success: true }));
+					} catch (presenceErr) {
+						await logger.log(`❌ apply_presence failed: ${presenceErr.message}`);
+						res.writeHead(500, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify({ error: 'apply_presence failed', details: presenceErr.message }));
+					}
 				} else if (payload.type === 'sync_notification_roles') {
 					try {
 						const guildId = payload.guild_id;

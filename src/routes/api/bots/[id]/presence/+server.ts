@@ -1,7 +1,36 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
+import { request as httpRequest } from 'http';
 import db, { DEFAULT_BOT_PRESENCE, type BotStatusInput } from '$lib/database.js';
 import { accountOwnsBot } from '$lib/frontend/panelServer.js';
+
+function pushPresenceToRunningOfficialBot(bot: { status?: string; port?: number; secret_key?: string | null }): void {
+	if (bot.status !== 'running' || !bot.port || !bot.secret_key) return;
+	const payload = JSON.stringify({ type: 'apply_presence' });
+	const req = httpRequest(
+		{
+			hostname: 'localhost',
+			port: bot.port,
+			path: '/',
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				'Content-Length': Buffer.byteLength(payload),
+				'X-Secret-Key': bot.secret_key
+			},
+			timeout: 10000
+		},
+		(res) => {
+			res.resume();
+		}
+	);
+	req.on('error', () => {});
+	req.on('timeout', () => {
+		req.destroy();
+	});
+	req.write(payload);
+	req.end();
+}
 
 const DISCORD_STATUSES = ['online', 'idle', 'dnd', 'invisible'] as const;
 const ACTIVITY_TYPES = ['playing', 'streaming', 'listening', 'watching', 'custom', 'competing'] as const;
@@ -109,5 +138,6 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 	};
 
 	const saved = await db.upsertBotStatus(botId, payload);
+	pushPresenceToRunningOfficialBot(bot);
 	return json({ success: true, presence: saved ? rowToPayload(saved) : payload });
 };

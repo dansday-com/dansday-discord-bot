@@ -167,8 +167,9 @@
 					<span class="m-gradient-text">Discord Server</span>
 				</h1>
 				<p>
-					Run leveling, moderation, an embed builder, Discord Quests, quest enroll, self-bot options, creator tools, live public statistics pages, Roblox catalog alerts, and more
-					from the free web panel in your browser. Configure in one place instead of flooding channels with slash commands. Free for everyone. Self-host from
+					Run leveling, moderation, an embed builder, Discord Quests, quest enroll, self-bot options, creator tools, live public statistics pages, Roblox
+					catalog alerts, and more from the free web panel in your browser. Configure in one place instead of flooding channels with slash commands. Free for
+					everyone. Self-host from
 					<a href={sourceRepoUrl} target="_blank" rel="noopener noreferrer">GitHub</a>
 					or add
 					<a href={officialBotInviteUrl} target="_blank" rel="noopener noreferrer">our hosted bot</a>
@@ -211,8 +212,8 @@
 				<div class="m-section-header">
 					<h2>Everything your server needs</h2>
 					<p>
-						Each module stands on its own. Turn on leveling, embed builder, Quest notifier, quest enroll, self-bot, forwarder, public statistics, or any mix you need.
-						Everything lives under the same server settings.
+						Each module stands on its own. Turn on leveling, embed builder, Quest notifier, quest enroll, self-bot, forwarder, public statistics, or any mix you
+						need. Everything lives under the same server settings.
 					</p>
 				</div>
 				<div class="m-features-grid">

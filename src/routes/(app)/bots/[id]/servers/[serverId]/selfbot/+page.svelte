@@ -58,7 +58,7 @@
 
 	function subscribeBot(id: number) {
 		if (streams[id]) return;
-		const es = new EventSource(`/api/bots/${id}/stream?kind=selfbot`);
+		const es = new EventSource(`/api/selfbots/${id}/stream`);
 		es.onmessage = (e) => {
 			const d = JSON.parse(e.data);
 			liveData[id] = { status: d.status, process_id: d.process_id ?? null, uptime_ms: d.uptime_ms ?? 0 };
@@ -84,11 +84,9 @@
 	});
 
 	async function botAction(selfbotId: number, action: 'start' | 'stop' | 'restart') {
-		const res = await fetch(`/api/${action}`, {
+		const res = await fetch(`/api/selfbots/${selfbotId}/${action}`, {
 			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			credentials: 'include',
-			body: JSON.stringify({ bot_id: selfbotId })
+			credentials: 'include'
 		});
 		const d = await res.json();
 		if (d.success || res.ok) {

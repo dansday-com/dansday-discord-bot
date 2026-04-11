@@ -1,16 +1,12 @@
 import { readFileSync, readdirSync, existsSync } from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import { join } from 'path';
 import mysql from 'mysql2/promise';
 import { eq, and, or, inArray, sql, desc, asc, isNull, isNotNull, count, avg, like, ne } from 'drizzle-orm';
 import { db } from './drizzle.js';
 import * as schema from './schema.js';
-import { SERVER_SETTINGS } from './serverSettingsComponents.js';
-import { logger, toMySQLDateTime, parseMySQLDateTimeUtc, getNowUtc, addMinutesToNow } from './utils/index.js';
-import type { QuestOrbSummary } from './discord-quest-api.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import { SERVER_SETTINGS } from './frontend/panelServer.js';
+import { logger, toMySQLDateTime, parseMySQLDateTimeUtc, getNowUtc } from './utils/index.js';
+import type { DiscordQuestSummary } from './backend/api/discord-quest-api.js';
 
 function getConnectionConfig() {
 	const databaseUrl = process.env.DATABASE_URL;
@@ -285,6 +281,126 @@ export async function deleteBot(botId: number) {
 	return true;
 }
 
+export type BotStatusInput = {
+	discord_status: 'online' | 'idle' | 'dnd' | 'invisible';
+	activity_type: 'playing' | 'streaming' | 'listening' | 'watching' | 'custom' | 'competing';
+	activity_name: string;
+	activity_url: string | null;
+	activity_state: string | null;
+};
+
+export const DEFAULT_BOT_PRESENCE: BotStatusInput = {
+	discord_status: 'online',
+	activity_type: 'playing',
+	activity_name: 'bot.dansday.com',
+	activity_url: null,
+	activity_state: 'Free web panel for your Discord server. Hosted free or self host.'
+};
+
+type PresenceDbRow = {
+	discord_status: string;
+	activity_type: string;
+	activity_name: string | null;
+	activity_url: string | null;
+	activity_state: string | null;
+};
+
+export function presenceFromDbRow(row: PresenceDbRow | null | undefined): BotStatusInput {
+	const d = DEFAULT_BOT_PRESENCE;
+	if (!row) return { ...d };
+	const name = (row.activity_name ?? '').trim();
+	const state = (row.activity_state ?? '').trim();
+	return {
+		discord_status: row.discord_status as BotStatusInput['discord_status'],
+		activity_type: row.activity_type as BotStatusInput['activity_type'],
+		activity_url: row.activity_url?.trim() ? row.activity_url : null,
+		activity_name: name || d.activity_name,
+		activity_state: state || d.activity_state
+	};
+}
+
+export async function getBotStatusByBotId(botId: number) {
+	await initializeDatabase();
+	const rows = await db
+		.select()
+		.from(schema.botStatus)
+		.where(eq(schema.botStatus.bot_id, Number(botId)))
+		.limit(1);
+	return rows[0] ?? null;
+}
+
+export async function upsertBotStatus(botId: number, data: BotStatusInput) {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	const stateTrimmed = data.activity_state?.trim() ? data.activity_state.trim() : null;
+	await db
+		.insert(schema.botStatus)
+		.values({
+			bot_id: botId,
+			discord_status: data.discord_status,
+			activity_type: data.activity_type,
+			activity_name: data.activity_name,
+			activity_url: data.activity_url?.trim() ? data.activity_url.trim() : null,
+			activity_state: stateTrimmed,
+			created_at: now as any,
+			updated_at: now as any
+		})
+		.onDuplicateKeyUpdate({
+			set: {
+				discord_status: data.discord_status,
+				activity_type: data.activity_type,
+				activity_name: data.activity_name,
+				activity_url: data.activity_url?.trim() ? data.activity_url.trim() : null,
+				activity_state: stateTrimmed,
+				updated_at: now as any
+			}
+		});
+	return getBotStatusByBotId(botId);
+}
+
+export type ServerBotStatusInput = BotStatusInput;
+
+export const DEFAULT_SERVER_BOT_PRESENCE: ServerBotStatusInput = DEFAULT_BOT_PRESENCE;
+
+export async function getServerBotStatusByServerBotId(serverBotId: number) {
+	await initializeDatabase();
+	const rows = await db
+		.select()
+		.from(schema.serverBotStatus)
+		.where(eq(schema.serverBotStatus.server_bot_id, Number(serverBotId)))
+		.limit(1);
+	return rows[0] ?? null;
+}
+
+export async function upsertServerBotStatus(serverBotId: number, data: ServerBotStatusInput) {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	const stateTrimmed = data.activity_state?.trim() ? data.activity_state.trim() : null;
+	await db
+		.insert(schema.serverBotStatus)
+		.values({
+			server_bot_id: serverBotId,
+			discord_status: data.discord_status,
+			activity_type: data.activity_type,
+			activity_name: data.activity_name,
+			activity_url: data.activity_url?.trim() ? data.activity_url.trim() : null,
+			activity_state: stateTrimmed,
+			created_at: now as any,
+			updated_at: now as any
+		})
+		.onDuplicateKeyUpdate({
+			set: {
+				discord_status: data.discord_status,
+				activity_type: data.activity_type,
+				activity_name: data.activity_name,
+				activity_url: data.activity_url?.trim() ? data.activity_url.trim() : null,
+				activity_state: stateTrimmed,
+				updated_at: now as any
+			}
+		});
+	return getServerBotStatusByServerBotId(serverBotId);
+}
+
 export async function getBotPanelId(botId: number): Promise<number | null> {
 	await initializeDatabase();
 	const rows = await db.select({ panel_id: schema.bots.panel_id }).from(schema.bots).where(eq(schema.bots.id, botId)).limit(1);
@@ -319,6 +435,16 @@ export async function getServersForBot(officialBotId: number) {
 export async function getServersForSelfbot(selfbotId: number) {
 	await initializeDatabase();
 	return db.select().from(schema.serverBotServers).where(eq(schema.serverBotServers.server_bot_id, selfbotId)).orderBy(asc(schema.serverBotServers.name));
+}
+
+export async function getServerBotServerForSelfbot(selfbotId: number, serverBotServerId: number) {
+	await initializeDatabase();
+	const rows = await db
+		.select()
+		.from(schema.serverBotServers)
+		.where(and(eq(schema.serverBotServers.server_bot_id, selfbotId), eq(schema.serverBotServers.id, serverBotServerId)))
+		.limit(1);
+	return rows[0] ?? null;
 }
 
 export async function getOfficialServerByDiscordId(officialBotId: number, discordServerId: string) {
@@ -1138,10 +1264,6 @@ export async function syncMemberRoles(memberId: any, discordRoleIds: string[], s
 	await syncMemberCustomSupporterRoles(mid, roleList, sid);
 	await refreshMemberIsContentCreator(mid, sid, roleList);
 	return true;
-}
-
-export async function memberHasAnyRole(_discordMemberId: string, _discordRoleIds: string[], _serverId: any) {
-	return false;
 }
 
 export async function syncMembers(serverId: any, members: any[]) {
@@ -2150,7 +2272,7 @@ function questIsoToDbDate(iso: string | undefined | null): Date | null {
 	return toMySQLDateTime(iso.trim());
 }
 
-function orbSnapshotFromQuest(q: QuestOrbSummary) {
+function snapshotFromDiscordQuestSummary(q: DiscordQuestSummary) {
 	return {
 		quest_name: q.questName?.trim() || null,
 		game_title: q.gameTitle?.trim() || null,
@@ -2163,12 +2285,12 @@ function orbSnapshotFromQuest(q: QuestOrbSummary) {
 	};
 }
 
-async function syncServerDiscordOrbQuestsFromApi(botId: number, serverId: number, quests: QuestOrbSummary[]): Promise<void> {
+async function syncServerDiscordQuestsFromApi(botId: number, serverId: number, quests: DiscordQuestSummary[]): Promise<void> {
 	await initializeDatabase();
 	if (quests.length === 0) return;
 	const now = toMySQLDateTime();
 	for (const q of quests) {
-		const snap = orbSnapshotFromQuest(q);
+		const snap = snapshotFromDiscordQuestSummary(q);
 		await db
 			.insert(schema.botDiscordQuest)
 			.values({
@@ -2188,16 +2310,20 @@ async function syncServerDiscordOrbQuestsFromApi(botId: number, serverId: number
 					...snap
 				} as any
 			});
-		const [orb] = await db.select({ id: schema.botDiscordQuest.id }).from(schema.botDiscordQuest).where(eq(schema.botDiscordQuest.quest_id, q.id)).limit(1);
-		if (!orb) continue;
+		const [questRow] = await db
+			.select({ id: schema.botDiscordQuest.id })
+			.from(schema.botDiscordQuest)
+			.where(eq(schema.botDiscordQuest.quest_id, q.id))
+			.limit(1);
+		if (!questRow) continue;
 		await db
 			.insert(schema.serverDiscordQuest)
-			.values({ server_id: serverId, quest_id: orb.id, message_posted_at: null })
+			.values({ server_id: serverId, quest_id: questRow.id, message_posted_at: null })
 			.onDuplicateKeyUpdate({ set: { server_id: serverId } as any });
 	}
 }
 
-async function listServerDiscordOrbUnpostedQuestIds(serverId: number, activeQuestIds: string[]): Promise<string[]> {
+async function listServerDiscordQuestUnpostedIds(serverId: number, activeQuestIds: string[]): Promise<string[]> {
 	if (activeQuestIds.length === 0) return [];
 	await initializeDatabase();
 	const rows = await db
@@ -2214,15 +2340,19 @@ async function listServerDiscordOrbUnpostedQuestIds(serverId: number, activeQues
 	return rows.map((r) => r.quest_id);
 }
 
-async function markServerDiscordOrbMessagePosted(serverId: number, questId: string): Promise<void> {
+async function markServerDiscordQuestMessagePosted(serverId: number, questId: string): Promise<void> {
 	await initializeDatabase();
 	const posted = toMySQLDateTime();
-	const [orb] = await db.select({ id: schema.botDiscordQuest.id }).from(schema.botDiscordQuest).where(eq(schema.botDiscordQuest.quest_id, questId)).limit(1);
-	if (!orb) return;
+	const [questRow] = await db
+		.select({ id: schema.botDiscordQuest.id })
+		.from(schema.botDiscordQuest)
+		.where(eq(schema.botDiscordQuest.quest_id, questId))
+		.limit(1);
+	if (!questRow) return;
 	await db
 		.update(schema.serverDiscordQuest)
 		.set({ message_posted_at: posted as any })
-		.where(and(eq(schema.serverDiscordQuest.server_id, serverId), eq(schema.serverDiscordQuest.quest_id, orb.id)));
+		.where(and(eq(schema.serverDiscordQuest.server_id, serverId), eq(schema.serverDiscordQuest.quest_id, questRow.id)));
 }
 
 type RobloxCatalogItemSnapshot = {
@@ -3274,9 +3404,14 @@ export default {
 	createBot,
 	updateBot,
 	deleteBot,
+	getBotStatusByBotId,
+	upsertBotStatus,
+	getServerBotStatusByServerBotId,
+	upsertServerBotStatus,
 	getServer,
 	getServersForBot,
 	getServersForSelfbot,
+	getServerBotServerForSelfbot,
 	getOfficialServerByDiscordId,
 	getSelfbotServerByDiscordId,
 	getServerByDiscordId,
@@ -3311,7 +3446,6 @@ export default {
 	searchServerMembers,
 	syncMembers,
 	syncMemberRoles,
-	memberHasAnyRole,
 	getMemberLevel,
 	ensureMemberLevel,
 	updateMemberLevelStats,
@@ -3328,9 +3462,9 @@ export default {
 	memberHasCustomSupporterRole,
 	getServerSettings,
 	upsertServerSettings,
-	syncServerDiscordOrbQuestsFromApi,
-	listServerDiscordOrbUnpostedQuestIds,
-	markServerDiscordOrbMessagePosted,
+	syncServerDiscordQuestsFromApi,
+	listServerDiscordQuestUnpostedIds,
+	markServerDiscordQuestMessagePosted,
 	syncServerRobloxItemsFromApi,
 	isBotRobloxItemsEmpty,
 	listServerRobloxUnpostedAssetIds,

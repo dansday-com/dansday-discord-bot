@@ -1,6 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import db, { getOfficialBotIdForServer } from '$lib/database.js';
+import { DASHBOARD_PATH } from '$lib/frontend/redirect.js';
 
 function maskEmail(email: string) {
 	const at = email.indexOf('@');
@@ -22,7 +23,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 		if (targetBot != null) {
 			redirect(302, `/bots/${targetBot}/servers/${locals.user.server_id}/accounts`);
 		}
-		redirect(302, '/');
+		redirect(302, DASHBOARD_PATH);
 	}
 
 	const [rawAccounts, invites] = await Promise.all([db.getServerAccountsByServer(serverId), db.getServerAccountInvitesByServer(serverId)]);

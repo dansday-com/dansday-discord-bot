@@ -1,10 +1,16 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import { existsSync, unlinkSync } from 'fs';
-import { join } from 'path';
+import { basename, join } from 'path';
 import { logger } from '$lib/utils/index.js';
 
 const uploadsDir = join(process.cwd(), 'data', 'embed-images');
+
+function embedFilenameBelongsToServer(filename: string, serverId: number): boolean {
+	const safe = basename(filename);
+	const m = safe.match(/^(\d+)-(\d+)-[a-z0-9]+\.[a-z0-9]+$/i);
+	return m != null && Number(m[1]) === serverId;
+}
 
 export const POST: RequestHandler = async ({ params, request }) => {
 	const serverId = parseInt(params.id ?? '', 10);
@@ -18,7 +24,11 @@ export const POST: RequestHandler = async ({ params, request }) => {
 			return json({ success: false, error: 'No filename provided' }, { status: 400 });
 		}
 
-		const filePath = join(uploadsDir, filename);
+		if (!embedFilenameBelongsToServer(filename, serverId)) {
+			return json({ success: false, error: 'Invalid or unsupported image path' }, { status: 400 });
+		}
+
+		const filePath = join(uploadsDir, basename(filename));
 		if (existsSync(filePath)) {
 			unlinkSync(filePath);
 		}

@@ -1,10 +1,10 @@
 import db from '../database.js';
-import { SERVER_SETTINGS, type ServerSettingsComponentName } from '../serverSettingsComponents.js';
+import { SERVER_SETTINGS, type ServerSettingsComponentName } from '../frontend/panelServer.js';
 
 const serverSettingsComponent = SERVER_SETTINGS.component;
 import { normalizeForwarderSettings } from '../forwarder-settings.js';
 import { resolveEmbedFooterPlaceholders } from '../utils/embedFooter.js';
-import { mainChannelId } from '../utils/mainConfigSettings.js';
+import { getEffectiveMainEmbedAppearance, mainChannelId } from '../utils/mainConfigSettings.js';
 
 interface BotConfig {
 	id: number;
@@ -343,19 +343,12 @@ export async function getEmbedConfig(guildId: string) {
 	const officialBotServer = await getOfficialBotServer(guildId);
 	const settings = await getServerSettingsForComponent(guildId, serverSettingsComponent.main);
 	const config = settings.settings;
+	const { color: colorStr, footer: footerStr } = getEffectiveMainEmbedAppearance(config);
 
-	if (!config.color) {
-		throw new Error(`Default color not configured for guild ${guildId}`);
-	}
-
-	const hex = config.color.replace('#', '');
+	const hex = colorStr.replace('#', '');
 	const color = parseInt(hex, 16);
 
-	if (!config.footer) {
-		throw new Error(`Default footer not configured for guild ${guildId}`);
-	}
-
-	const footerText = resolveEmbedFooterPlaceholders(config.footer, officialBotServer.name);
+	const footerText = resolveEmbedFooterPlaceholders(footerStr, officialBotServer.name ?? '');
 
 	return { COLOR: color, FOOTER: footerText };
 }
@@ -769,5 +762,5 @@ export const FORWARDER = {
 export { SERVER_SETTINGS, type ServerSettingsComponentName };
 export { serverSettingsComponent };
 export const SERVER_SETTINGS_COMPONENTS_WITH_FEATURE_SWITCH = SERVER_SETTINGS.withFeatureSwitch;
-export { computePublicServerSlugForServerId } from '../publicServerSlug/index.js';
-export { publicSiteOrigin, publicServerPath, publicServerUrl } from '../publicSiteUrls.js';
+export { computePublicServerSlugForServerId } from '../frontend/public/server-slug/index.js';
+export { publicSiteOrigin, publicServerPath, publicServerUrl } from '../url.js';

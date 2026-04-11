@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
-	import { SERVER_SETTINGS } from '$lib/serverSettingsComponents.js';
+	import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import RolePicker from '$lib/frontend/components/RolePicker.svelte';
 	import CategoryPicker from '$lib/frontend/components/CategoryPicker.svelte';
@@ -45,7 +45,7 @@
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
 		<i class="fas fa-bell text-rose-400"></i>Channel notification
 	</h3>
-	<p class="text-ash-400 text-xs">Per-channel ping roles from selected categories (bot menu). Not Discord Quest / Orb alerts.</p>
+	<p class="text-ash-400 text-xs">Per-channel ping roles from selected categories (bot menu). Not Discord Quest alerts.</p>
 
 	<ConfigToggleRow
 		label="Channel notification module"

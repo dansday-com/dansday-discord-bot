@@ -2,7 +2,7 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle, Client, EmbedBuilder } fr
 import db from '../../../../database.js';
 import { getEmbedConfig, isComponentFeatureEnabled, serverSettingsComponent } from '../../../config.js';
 import { logger } from '../../../../utils/index.js';
-import { extractOrbQuests, fetchQuestsMe, type QuestOrbSummary } from '../../../../discord-quest-api.js';
+import { extractDiscordQuestSummaries, fetchQuestsMe, type DiscordQuestSummary } from '../../../api/discord-quest-api.js';
 
 let tickTimeoutRef: ReturnType<typeof setTimeout> | null = null;
 
@@ -20,7 +20,7 @@ export async function sendQuestNotificationMessage(
 	client: Client,
 	guildId: string,
 	channelId: string,
-	quest: QuestOrbSummary,
+	quest: DiscordQuestSummary,
 	opts?: { test?: boolean; autoQuestEnabled?: boolean }
 ) {
 	const guild = await client.guilds.fetch(guildId).catch(() => null);
@@ -46,10 +46,7 @@ export async function sendQuestNotificationMessage(
 	const pub = typeof quest.publisher === 'string' ? quest.publisher.trim() : '';
 	if (pub) fields.push({ name: '🏢 Publisher', value: pub.slice(0, 1024), inline: true });
 
-	fields.push(
-		{ name: '⏳ Expires', value: expiresBlock.slice(0, 1024), inline: true },
-		{ name: '📜 Quest', value: quest.questName.slice(0, 1024), inline: true }
-	);
+	fields.push({ name: '⏳ Expires', value: expiresBlock.slice(0, 1024), inline: true });
 
 	const embed = new EmbedBuilder().setColor(embedConfig.COLOR).setTitle(`🔮 ${quest.questName}`.slice(0, 256)).addFields(fields);
 
@@ -71,7 +68,7 @@ export async function sendQuestNotificationMessage(
 	const buttons = [new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(quest.questUrl).setLabel('Open in Discord').setEmoji('🖥️')];
 
 	if (opts?.autoQuestEnabled !== false) {
-		const enrollCustomId = `orb_enroll:${quest.id}`.slice(0, 100);
+		const enrollCustomId = `quest_enroll:${quest.id}`.slice(0, 100);
 		buttons.push(new ButtonBuilder().setCustomId(enrollCustomId).setStyle(ButtonStyle.Primary).setLabel('Enroll').setEmoji('⚠️'));
 	}
 
@@ -102,23 +99,23 @@ async function runTick(client: Client, officialBotId: number) {
 
 		try {
 			const payload = await fetchQuestsMe(selfbot.token, { httpProxyUrl });
-			const orbQuests = extractOrbQuests(payload);
-			if (orbQuests.length === 0) continue;
+			const questSummaries = extractDiscordQuestSummaries(payload);
+			if (questSummaries.length === 0) continue;
 
-			await db.syncServerDiscordOrbQuestsFromApi(officialBotId, server.id, orbQuests);
+			await db.syncServerDiscordQuestsFromApi(officialBotId, server.id, questSummaries);
 			const unpostedIds = new Set(
-				await db.listServerDiscordOrbUnpostedQuestIds(
+				await db.listServerDiscordQuestUnpostedIds(
 					server.id,
-					orbQuests.map((q) => q.id)
+					questSummaries.map((q) => q.id)
 				)
 			);
 
-			for (const q of orbQuests) {
+			for (const q of questSummaries) {
 				if (!unpostedIds.has(q.id)) continue;
 				try {
 					await sendQuestNotificationMessage(client, server.discord_server_id, channelId, q, { autoQuestEnabled });
-					await db.markServerDiscordOrbMessagePosted(server.id, q.id);
-					await logger.log(`🔮 Quest notifier: posted orb quest "${q.questName}" → channel ${channelId} (${server.name})`);
+					await db.markServerDiscordQuestMessagePosted(server.id, q.id);
+					await logger.log(`🔮 Quest notifier: posted quest "${q.questName}" → channel ${channelId} (${server.name})`);
 				} catch (sendErr: any) {
 					await logger.log(`❌ Quest notifier: failed to post quest ${q.id} for server ${server.id}: ${sendErr?.message || sendErr}`);
 				}

@@ -1,6 +1,6 @@
 import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
-import { listPublicServerSlugs } from '$lib/publicServerSlug/index.js';
+import { listPublicServerSlugs } from '$lib/frontend/public/server-slug/index.js';
 import { parseMySQLDateTimeUtc } from '$lib/utils/datetime.js';
 
 function escapeXml(unsafe: string): string {
@@ -40,7 +40,7 @@ export const GET: RequestHandler = async () => {
 		.flatMap((s: { slug: string; updated_at?: unknown }) => {
 			const enc = encodeURIComponent(String(s.slug));
 			const lastmod = toLastmod(s.updated_at);
-			const base = { lastmod, changefreq: 'weekly' as const, priority: 0.8 as const };
+			const base = { lastmod, changefreq: 'hourly' as const, priority: 0.8 as const };
 			const root = `${baseUrl.replace(/\/$/, '')}/server`;
 			return [
 				{ loc: `${root}/${enc}`, ...base },
@@ -49,7 +49,23 @@ export const GET: RequestHandler = async () => {
 			];
 		});
 
-	const allUrlData = [{ loc: `${baseUrl}/`, changefreq: 'daily' as const, priority: 1.0, lastmod: new Date().toISOString() }, ...publicPageRows];
+	const staticPages = [
+		{ loc: `${baseUrl}/`, changefreq: 'weekly' as const, priority: 1.0, lastmod: new Date().toISOString() },
+		{
+			loc: `${baseUrl.replace(/\/$/, '')}/privacy-policy`,
+			changefreq: 'monthly' as const,
+			priority: 0.5,
+			lastmod: new Date().toISOString()
+		},
+		{
+			loc: `${baseUrl.replace(/\/$/, '')}/terms-of-service`,
+			changefreq: 'monthly' as const,
+			priority: 0.5,
+			lastmod: new Date().toISOString()
+		}
+	];
+
+	const allUrlData = [...staticPages, ...publicPageRows];
 
 	const urlElements = allUrlData
 		.map(({ loc, lastmod, changefreq, priority }) => {

@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypto';
-import { seedDemoSession } from '$lib/demo/seedDemo.js';
+import { seedDemoSession } from '$lib/backend/demo/seedDemo.js';
 import { getClientIp, checkRateLimit, logger, makeSessionCookie, newSessionId, setSession } from '$lib/utils/index.js';
 
 const MAX_DEMO_LOGIN_ATTEMPTS = 5;

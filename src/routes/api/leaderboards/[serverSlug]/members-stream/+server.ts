@@ -1,8 +1,8 @@
 import type { RequestHandler } from '@sveltejs/kit';
-import { SERVER_SETTINGS } from '$lib/serverSettingsComponents.js';
-import { resolvePublicServerBySlug } from '$lib/publicServerSlug/index.js';
+import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
+import { resolvePublicServerBySlug } from '$lib/frontend/public/server-slug/index.js';
 import db from '$lib/database.js';
-import { subscribePublicMembersList } from '$lib/publicMembers/index.js';
+import { subscribePublicMembersList } from '$lib/frontend/public/members/index.js';
 
 export const GET: RequestHandler = async ({ params }) => {
 	const serverSlug = String(params.serverSlug || '').trim();

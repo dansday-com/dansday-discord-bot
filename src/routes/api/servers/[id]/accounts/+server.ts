@@ -17,7 +17,7 @@ async function canManageAccounts(locals: App.Locals, serverId: number): Promise<
 	const user = locals.user;
 	if (!user.authenticated) return false;
 	if (user.account_source === 'accounts') {
-		const { accountOwnsServer } = await import('$lib/serverPanelAccess.js');
+		const { accountOwnsServer } = await import('$lib/frontend/panelServer.js');
 		return accountOwnsServer(locals, serverId);
 	}
 	if (user.account_source === 'server_accounts') return user.server_id === serverId;

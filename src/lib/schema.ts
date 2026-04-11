@@ -55,6 +55,24 @@ export const bots = mysqlTable('bots', {
 	updated_at: datetime('updated_at').notNull()
 });
 
+export const botStatus = mysqlTable(
+	'bot_status',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		bot_id: int('bot_id')
+			.notNull()
+			.references(() => bots.id, { onDelete: 'cascade' }),
+		discord_status: mysqlEnum('discord_status', ['online', 'idle', 'dnd', 'invisible']).notNull().default('online'),
+		activity_type: mysqlEnum('activity_type', ['playing', 'streaming', 'listening', 'watching', 'custom', 'competing']).notNull().default('playing'),
+		activity_name: varchar('activity_name', { length: 128 }).notNull().default(''),
+		activity_url: text('activity_url'),
+		activity_state: varchar('activity_state', { length: 128 }),
+		created_at: datetime('created_at').notNull(),
+		updated_at: datetime('updated_at').notNull()
+	},
+	(t) => [uniqueIndex('uq_bot_status_bot_id').on(t.bot_id)]
+);
+
 export const servers = mysqlTable(
 	'servers',
 	{
@@ -142,6 +160,24 @@ export const serverBots = mysqlTable(
 		updated_at: datetime('updated_at')
 	},
 	(t) => [index('idx_server_bots_server_id').on(t.server_id)]
+);
+
+export const serverBotStatus = mysqlTable(
+	'server_bot_status',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		server_bot_id: int('server_bot_id')
+			.notNull()
+			.references(() => serverBots.id, { onDelete: 'cascade' }),
+		discord_status: mysqlEnum('discord_status', ['online', 'idle', 'dnd', 'invisible']).notNull().default('online'),
+		activity_type: mysqlEnum('activity_type', ['playing', 'streaming', 'listening', 'watching', 'custom', 'competing']).notNull().default('playing'),
+		activity_name: varchar('activity_name', { length: 128 }).notNull().default(''),
+		activity_url: text('activity_url'),
+		activity_state: varchar('activity_state', { length: 128 }),
+		created_at: datetime('created_at').notNull(),
+		updated_at: datetime('updated_at').notNull()
+	},
+	(t) => [uniqueIndex('uq_server_bot_status_server_bot_id').on(t.server_bot_id)]
 );
 
 export const serverCategories = mysqlTable(

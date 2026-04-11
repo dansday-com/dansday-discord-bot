@@ -1,8 +1,8 @@
 import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 import db, { getOfficialBotIdForServer } from '$lib/database.js';
-import { SERVER_SETTINGS } from '$lib/serverSettingsComponents.js';
-import { accountOwnsServer } from '$lib/serverPanelAccess.js';
+import { DASHBOARD_PATH } from '$lib/frontend/redirect.js';
+import { accountOwnsServer, SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 
 export const load: LayoutServerLoad = async ({ locals, params }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
@@ -17,10 +17,10 @@ export const load: LayoutServerLoad = async ({ locals, params }) => {
 			if (targetBot != null) {
 				redirect(302, `/bots/${targetBot}/servers/${locals.user.server_id}/members`);
 			}
-			redirect(302, '/');
+			redirect(302, DASHBOARD_PATH);
 		}
 	} else if (!(await accountOwnsServer(locals, serverId))) {
-		redirect(302, '/');
+		redirect(302, DASHBOARD_PATH);
 	}
 
 	const [members, permissions] = await Promise.all([

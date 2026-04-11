@@ -431,10 +431,18 @@
 			"editFailed": "❌ Gagal membuka formulir edit: {error}"
 		}
 	},
-	"orbEnroll": {
+	"questEnroll": {
 		"alreadyClaimed": "Sudah Diklaim",
 		"alreadyClaimedDescription": "Kamu sudah mendaftar ke **{questName}** sebelumnya dan hadiahmu sudah diklaim. Setiap quest hanya bisa diklaim sekali per anggota.",
 		"pendingTitle": "⏳ Berjalan di latar belakang",
-		"pendingDescription": "Hasil embed akan diposting di channel ini sebentar lagi.\n\nToken kamu **tidak** disimpan di database kami.\n\n**Risiko:** Discord dapat membatasi atau memban **akun pengguna** yang terkait dengan token tersebut; dalam beberapa kasus **bot atau server** juga bisa terdampak. Ini bukan perilaku resmi Discord — kamu memilih untuk melanjutkan."
+		"pendingDescription": "Hasil embed akan diposting di channel ini sebentar lagi.\n\nToken kamu **tidak** disimpan di database kami.\n\n**Risiko:** Discord dapat membatasi atau memban **akun pengguna** yang terkait dengan token tersebut; dalam beberapa kasus **bot atau server** juga bisa terdampak. Ini bukan perilaku resmi Discord — kamu memilih untuk melanjutkan.",
+		"precheckNotFoundTitle": "Quest tidak ada di akun ini",
+		"precheckNotFoundDescription": "Quest ini tidak muncul untuk akun Discord yang terhubung dengan token-mu. Buka **Discord → Quests**, terima quest jika perlu, lalu coba lagi.",
+		"precheckExpiredTitle": "Quest sudah kedaluwarsa",
+		"precheckExpiredDescription": "Quest ini sudah kedaluwarsa untuk akun Discord tersebut.",
+		"precheckRewardClaimedTitle": "Hadiah sudah diklaim",
+		"precheckRewardClaimedDescription": "Hadiah quest ini sudah diklaim di **akun Discord** ini (misalnya setelah selesai di server lain atau di klien Discord). Pendaftaran otomatis tidak bisa mengklaim lagi.",
+		"precheckCompletedTitle": "Quest sudah selesai",
+		"precheckCompletedDescription": "Tujuan quest sudah selesai di **akun Discord** ini. Klaim sisa hadiah di **Discord → Quests** jika belum — pendaftaran otomatis tidak bisa menambah progres lagi."
 	}
 }

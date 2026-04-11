@@ -1,7 +1,8 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import db, { getOfficialBotIdForServer } from '$lib/database.js';
-import { isGuildStaffUser } from '$lib/serverPanelAccess.js';
+import { DASHBOARD_PATH } from '$lib/frontend/redirect.js';
+import { isGuildStaffUser } from '$lib/frontend/panelServer.js';
 
 export const load: PageServerLoad = async ({ locals, params }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
@@ -15,7 +16,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 		if (targetBot != null) {
 			redirect(302, `/bots/${targetBot}/servers/${locals.user.server_id}/selfbot`);
 		}
-		redirect(302, '/');
+		redirect(302, DASHBOARD_PATH);
 	}
 
 	const selfbots = await db.getServerBots(serverId);

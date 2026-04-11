@@ -1,10 +1,10 @@
 import process from 'node:process';
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import db, { getOfficialBotIdForServer } from '$lib/database.js';
+import db, { presenceFromDbRow, getOfficialBotIdForServer } from '$lib/database.js';
 import { getBotUptimeMs } from '$lib/botProcesses.js';
-import { webRouteUp } from '$lib/frontend/redirect.js';
-import { isGuildStaffUser } from '$lib/serverPanelAccess.js';
+import { DASHBOARD_PATH, webRouteUp } from '$lib/frontend/redirect.js';
+import { isGuildStaffUser } from '$lib/frontend/panelServer.js';
 
 export const load: PageServerLoad = async ({ locals, params, url }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
@@ -21,7 +21,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 		if (targetBot != null) {
 			redirect(302, `/bots/${targetBot}/servers/${locals.user.server_id}/selfbot`);
 		}
-		redirect(302, '/');
+		redirect(302, DASHBOARD_PATH);
 	}
 
 	let bot = await db.getServerBotById(selfbotId);
@@ -39,6 +39,9 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 
 	const servers = await db.getServersForSelfbot(selfbotId);
 
+	const statusRow = await db.getServerBotStatusByServerBotId(selfbotId);
+	const selfbotPresence = presenceFromDbRow(statusRow);
+
 	const { token: _token, ...botPublic } = bot as typeof bot & { token?: string };
 	void _token;
 
@@ -51,6 +54,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 		serverId,
 		botId: params.id,
 		user: locals.user,
-		selfbotViewOnly: isGuildStaffUser(locals.user)
+		selfbotViewOnly: isGuildStaffUser(locals.user),
+		selfbotPresence
 	};
 };

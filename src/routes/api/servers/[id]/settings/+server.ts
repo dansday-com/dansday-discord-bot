@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
-import { SERVER_SETTINGS } from '$lib/serverSettingsComponents.js';
+import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 import { logger } from '$lib/utils/index.js';
 
 export const GET: RequestHandler = async ({ params, url }) => {

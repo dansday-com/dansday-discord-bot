@@ -292,9 +292,9 @@ export type BotStatusInput = {
 export const DEFAULT_BOT_PRESENCE: BotStatusInput = {
 	discord_status: 'online',
 	activity_type: 'playing',
-	activity_name: '',
+	activity_name: 'bot.dansday.com',
 	activity_url: null,
-	activity_state: null
+	activity_state: 'Free web panel for your Discord server. Hosted free or self host.'
 };
 
 export async function getBotStatusByBotId(botId: number) {

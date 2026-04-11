@@ -1898,8 +1898,10 @@
 	color: var(--lb-text-muted);
 	line-height: 1.65;
 	margin: 0 auto 24px;
-	max-width: 36rem;
-	padding: 0 2px;
+	max-width: none;
+	width: 100%;
+	padding: 0;
+	box-sizing: border-box;
 }
 .m-hero p a {
 	color: var(--lb-text);
@@ -1920,9 +1922,10 @@
 	flex-direction: column;
 	align-items: stretch;
 	gap: 14px;
-	max-width: 22rem;
+	max-width: none;
 	margin: 0 auto;
 	width: 100%;
+	box-sizing: border-box;
 }
 .m-hero-btn-primary {
 	width: 100%;
@@ -1944,15 +1947,7 @@
 	font-weight: 600;
 	border-radius: 10px;
 }
-@media (min-width: 480px) {
-	.m-hero-actions {
-		max-width: 26rem;
-	}
-}
 @media (min-width: 640px) {
-	.m-hero-actions {
-		max-width: 36rem;
-	}
 	.m-hero-actions-secondary {
 		grid-template-columns: repeat(4, 1fr);
 		gap: 10px;

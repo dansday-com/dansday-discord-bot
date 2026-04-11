@@ -39,6 +39,12 @@
 			desc: 'Greet new members with customizable welcome messages and rich embeds. Make every newcomer feel at home.'
 		},
 		{
+			icon: 'fa-palette',
+			tone: 'stone',
+			title: 'Embed builder',
+			desc: 'Build rich Discord embeds in the panel with live preview, images, and placeholders—then send to channels from the browser without spamming slash commands in chat.'
+		},
+		{
 			icon: 'fa-gavel',
 			tone: 'teal',
 			title: 'Moderation',
@@ -141,7 +147,7 @@
 	<title>Dansday Discord Bot | All in one server management</title>
 	<meta
 		name="description"
-		content="Free and open source Dansday Discord Bot. Add our hosted bot to your server at no cost, or self host from GitHub. Free web panel for leveling, moderation, giveaways, public stats, Discord Quest, TikTok tools, Roblox catalog watch, and more. Free five minute demo on login."
+		content="Free and open source Dansday Discord Bot. Add our hosted bot to your server at no cost, or self host from GitHub. Free web panel for leveling, moderation, embed builder, giveaways, public stats, Discord Quest, TikTok tools, Roblox catalog watch, and more. Free five minute demo on login."
 	/>
 </svelte:head>
 
@@ -161,7 +167,7 @@
 					<span class="m-gradient-text">Discord Server</span>
 				</h1>
 				<p>
-					Run leveling, moderation, Discord Quests, quest enroll, self-bot options, creator tools, live public statistics pages, Roblox catalog alerts, and more
+					Run leveling, moderation, an embed builder, Discord Quests, quest enroll, self-bot options, creator tools, live public statistics pages, Roblox catalog alerts, and more
 					from the free web panel in your browser. Configure in one place instead of flooding channels with slash commands. Free for everyone. Self-host from
 					<a href={sourceRepoUrl} target="_blank" rel="noopener noreferrer">GitHub</a>
 					or add
@@ -205,7 +211,7 @@
 				<div class="m-section-header">
 					<h2>Everything your server needs</h2>
 					<p>
-						Each module stands on its own. Turn on leveling, Quest notifier, quest enroll, self-bot, forwarder, public statistics, or any mix you need.
+						Each module stands on its own. Turn on leveling, embed builder, Quest notifier, quest enroll, self-bot, forwarder, public statistics, or any mix you need.
 						Everything lives under the same server settings.
 					</p>
 				</div>

@@ -336,6 +336,49 @@ export async function upsertBotStatus(botId: number, data: BotStatusInput) {
 	return getBotStatusByBotId(botId);
 }
 
+export type ServerBotStatusInput = BotStatusInput;
+
+export const DEFAULT_SERVER_BOT_PRESENCE: ServerBotStatusInput = DEFAULT_BOT_PRESENCE;
+
+export async function getServerBotStatusByServerBotId(serverBotId: number) {
+	await initializeDatabase();
+	const rows = await db
+		.select()
+		.from(schema.serverBotStatus)
+		.where(eq(schema.serverBotStatus.server_bot_id, Number(serverBotId)))
+		.limit(1);
+	return rows[0] ?? null;
+}
+
+export async function upsertServerBotStatus(serverBotId: number, data: ServerBotStatusInput) {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	const stateTrimmed = data.activity_state?.trim() ? data.activity_state.trim() : null;
+	await db
+		.insert(schema.serverBotStatus)
+		.values({
+			server_bot_id: serverBotId,
+			discord_status: data.discord_status,
+			activity_type: data.activity_type,
+			activity_name: data.activity_name,
+			activity_url: data.activity_url?.trim() ? data.activity_url.trim() : null,
+			activity_state: stateTrimmed,
+			created_at: now as any,
+			updated_at: now as any
+		})
+		.onDuplicateKeyUpdate({
+			set: {
+				discord_status: data.discord_status,
+				activity_type: data.activity_type,
+				activity_name: data.activity_name,
+				activity_url: data.activity_url?.trim() ? data.activity_url.trim() : null,
+				activity_state: stateTrimmed,
+				updated_at: now as any
+			}
+		});
+	return getServerBotStatusByServerBotId(serverBotId);
+}
+
 export async function getBotPanelId(botId: number): Promise<number | null> {
 	await initializeDatabase();
 	const rows = await db.select({ panel_id: schema.bots.panel_id }).from(schema.bots).where(eq(schema.bots.id, botId)).limit(1);
@@ -3341,6 +3384,8 @@ export default {
 	deleteBot,
 	getBotStatusByBotId,
 	upsertBotStatus,
+	getServerBotStatusByServerBotId,
+	upsertServerBotStatus,
 	getServer,
 	getServersForBot,
 	getServersForSelfbot,

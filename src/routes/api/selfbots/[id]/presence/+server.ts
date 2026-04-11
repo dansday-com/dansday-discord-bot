@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import db, { DEFAULT_BOT_PRESENCE, type BotStatusInput } from '$lib/database.js';
-import { accountOwnsBot } from '$lib/frontend/panelServer.js';
+import db, { DEFAULT_SERVER_BOT_PRESENCE, type ServerBotStatusInput } from '$lib/database.js';
+import { canManageSelfbots, canViewSelfbots } from '$lib/frontend/panelServer.js';
 
 const DISCORD_STATUSES = ['online', 'idle', 'dnd', 'invisible'] as const;
 const ACTIVITY_TYPES = ['playing', 'streaming', 'listening', 'watching', 'custom', 'competing'] as const;
@@ -32,10 +32,10 @@ type StatusRow = {
 	activity_state: string | null;
 };
 
-function rowToPayload(row: StatusRow): BotStatusInput {
+function rowToPayload(row: StatusRow): ServerBotStatusInput {
 	return {
-		discord_status: row.discord_status as BotStatusInput['discord_status'],
-		activity_type: row.activity_type as BotStatusInput['activity_type'],
+		discord_status: row.discord_status as ServerBotStatusInput['discord_status'],
+		activity_type: row.activity_type as ServerBotStatusInput['activity_type'],
 		activity_name: row.activity_name ?? '',
 		activity_url: row.activity_url ?? null,
 		activity_state: row.activity_state ?? null
@@ -47,22 +47,22 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 		return json({ error: 'Authentication required' }, { status: 401 });
 	}
 
-	const botId = Number(params.id);
-	if (!Number.isFinite(botId)) {
-		return json({ error: 'Invalid bot id' }, { status: 400 });
+	const selfbotId = Number(params.id);
+	if (!Number.isFinite(selfbotId)) {
+		return json({ error: 'Invalid selfbot id' }, { status: 400 });
 	}
 
-	const bot = await db.getBot(botId);
-	if (!bot) {
-		return json({ error: 'Bot not found' }, { status: 404 });
+	const selfbot = await db.getServerBotById(selfbotId);
+	if (!selfbot) {
+		return json({ error: 'Selfbot not found' }, { status: 404 });
 	}
 
-	if (!(await accountOwnsBot(locals, botId))) {
+	if (!(await canViewSelfbots(locals, selfbot.server_id))) {
 		return json({ error: 'Access denied' }, { status: 403 });
 	}
 
-	const row = await db.getBotStatusByBotId(botId);
-	return json({ presence: row ? rowToPayload(row) : DEFAULT_BOT_PRESENCE });
+	const row = await db.getServerBotStatusByServerBotId(selfbotId);
+	return json({ presence: row ? rowToPayload(row) : DEFAULT_SERVER_BOT_PRESENCE });
 };
 
 export const PATCH: RequestHandler = async ({ locals, params, request }) => {
@@ -70,17 +70,17 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 		return json({ success: false, error: 'Authentication required' }, { status: 401 });
 	}
 
-	const botId = Number(params.id);
-	if (!Number.isFinite(botId)) {
-		return json({ success: false, error: 'Invalid bot id' }, { status: 400 });
+	const selfbotId = Number(params.id);
+	if (!Number.isFinite(selfbotId)) {
+		return json({ success: false, error: 'Invalid selfbot id' }, { status: 400 });
 	}
 
-	const bot = await db.getBot(botId);
-	if (!bot) {
-		return json({ success: false, error: 'Bot not found' }, { status: 404 });
+	const selfbot = await db.getServerBotById(selfbotId);
+	if (!selfbot) {
+		return json({ success: false, error: 'Selfbot not found' }, { status: 404 });
 	}
 
-	if (!(await accountOwnsBot(locals, botId))) {
+	if (!(await canManageSelfbots(locals, selfbot.server_id))) {
 		return json({ success: false, error: 'Access denied' }, { status: 403 });
 	}
 
@@ -140,14 +140,14 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 		}
 	}
 
-	const payload: BotStatusInput = {
-		discord_status: discord_status as BotStatusInput['discord_status'],
-		activity_type: activity_type as BotStatusInput['activity_type'],
+	const payload: ServerBotStatusInput = {
+		discord_status: discord_status as ServerBotStatusInput['discord_status'],
+		activity_type: activity_type as ServerBotStatusInput['activity_type'],
 		activity_name,
 		activity_url,
 		activity_state
 	};
 
-	const saved = await db.upsertBotStatus(botId, payload);
+	const saved = await db.upsertServerBotStatus(selfbotId, payload);
 	return json({ success: true, presence: saved ? rowToPayload(saved) : payload });
 };

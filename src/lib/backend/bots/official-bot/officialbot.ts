@@ -18,6 +18,9 @@ import contentCreator from './components/interface/contentcreator.js';
 import questNotifier from './components/questNotifier.js';
 import robloxCatalogNotifier from './components/robloxCatalogNotifier.js';
 
+const PRESENCE_POLL_MS = 30_000;
+let presencePollTimer: ReturnType<typeof setInterval> | null = null;
+
 let BOT_TOKEN: string | undefined;
 (async () => {
 	await initializeConfig();
@@ -68,6 +71,10 @@ client.on('clientReady', async () => {
 	const presenceBotId = officialBotId ?? (process.env.BOT_ID ? Number(process.env.BOT_ID) : NaN);
 	if (Number.isFinite(presenceBotId)) {
 		await applyDiscordPresenceFromDb(client, presenceBotId);
+		if (presencePollTimer) clearInterval(presencePollTimer);
+		presencePollTimer = setInterval(() => {
+			applyDiscordPresenceFromDb(client, presenceBotId).catch(() => {});
+		}, PRESENCE_POLL_MS);
 	}
 	questNotifier.initQuestNotifier(client, officialBotId);
 	robloxCatalogNotifier.initRobloxCatalogNotifier(client, officialBotId);
@@ -76,6 +83,10 @@ client.on('clientReady', async () => {
 
 function shutdown() {
 	logger.warn('Shutting down official bot');
+	if (presencePollTimer) {
+		clearInterval(presencePollTimer);
+		presencePollTimer = null;
+	}
 	questNotifier.stopQuestNotifier();
 	robloxCatalogNotifier.stopRobloxCatalogNotifier();
 	webhook.stopWebhookServer();

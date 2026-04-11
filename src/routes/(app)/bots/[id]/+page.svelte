@@ -306,8 +306,8 @@
 			<i class="fas fa-circle-notch mr-2 text-violet-400"></i>Discord presence
 		</h3>
 		<p class="text-ash-400 mb-4 text-sm">
-			Status and activity text shown on Discord. Applies when the bot process starts or restarts. For streaming, Discord only accepts
-			<strong class="text-ash-300">Twitch</strong> or <strong class="text-ash-300">YouTube</strong> URLs.
+			Updates apply about every 30 seconds while running, or after restart. Streaming: <strong class="text-ash-300">Twitch</strong> or
+			<strong class="text-ash-300">YouTube</strong> URLs only.
 		</p>
 
 		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">

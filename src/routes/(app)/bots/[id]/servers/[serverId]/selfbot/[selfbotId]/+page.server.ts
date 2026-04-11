@@ -1,7 +1,7 @@
 import process from 'node:process';
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import db, { getOfficialBotIdForServer } from '$lib/database.js';
+import db, { DEFAULT_SERVER_BOT_PRESENCE, getOfficialBotIdForServer } from '$lib/database.js';
 import { getBotUptimeMs } from '$lib/botProcesses.js';
 import { DASHBOARD_PATH, webRouteUp } from '$lib/frontend/redirect.js';
 import { isGuildStaffUser } from '$lib/frontend/panelServer.js';
@@ -39,6 +39,17 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 
 	const servers = await db.getServersForSelfbot(selfbotId);
 
+	const statusRow = await db.getServerBotStatusByServerBotId(selfbotId);
+	const selfbotPresence = statusRow
+		? {
+				discord_status: statusRow.discord_status as (typeof DEFAULT_SERVER_BOT_PRESENCE)['discord_status'],
+				activity_type: statusRow.activity_type as (typeof DEFAULT_SERVER_BOT_PRESENCE)['activity_type'],
+				activity_name: statusRow.activity_name ?? '',
+				activity_url: statusRow.activity_url ?? null,
+				activity_state: statusRow.activity_state ?? null
+			}
+		: DEFAULT_SERVER_BOT_PRESENCE;
+
 	const { token: _token, ...botPublic } = bot as typeof bot & { token?: string };
 	void _token;
 
@@ -51,6 +62,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 		serverId,
 		botId: params.id,
 		user: locals.user,
-		selfbotViewOnly: isGuildStaffUser(locals.user)
+		selfbotViewOnly: isGuildStaffUser(locals.user),
+		selfbotPresence
 	};
 };

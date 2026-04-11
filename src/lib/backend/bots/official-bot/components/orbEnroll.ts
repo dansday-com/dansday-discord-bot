@@ -110,7 +110,7 @@ export async function handleOrbEnrollModalSubmit(interaction: ModalSubmitInterac
 		const msg = e instanceof Error ? e.message : String(e);
 		const embedConfig = await getEmbedConfig(interaction.guild!.id);
 		const invalidEmbed = new EmbedBuilder()
-			.setColor(0xed4245)
+			.setColor(embedConfig.COLOR)
 			.setTitle('Invalid token')
 			.setDescription(`The token you provided appears to be invalid or expired.\n\`${msg.slice(0, 500)}\``)
 			.setFooter({ text: embedConfig.FOOTER })

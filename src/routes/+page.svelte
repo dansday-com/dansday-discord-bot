@@ -136,7 +136,7 @@
 	<title>Dansday Discord Bot | All in one server management</title>
 	<meta
 		name="description"
-		content="Open source Dansday Discord Bot. Add our hosted bot to your server or self host from GitHub. Web panel for leveling, moderation, giveaways, public stats, Discord Quest, TikTok tools, Roblox catalog watch, and more. Optional five minute demo on login."
+		content="Free and open source Dansday Discord Bot. Add our hosted bot to your server at no cost, or self host from GitHub. Free web panel for leveling, moderation, giveaways, public stats, Discord Quest, TikTok tools, Roblox catalog watch, and more. Free five minute demo on login."
 	/>
 </svelte:head>
 
@@ -157,13 +157,13 @@
 				</h1>
 				<p>
 					Run leveling, moderation, Discord Quests, orb enroll, self-bot options, creator tools, live public statistics pages, Roblox catalog alerts, and more
-					from the browser. Configure in one place instead of flooding channels with slash commands.
+					from the free web panel in your browser. Configure in one place instead of flooding channels with slash commands.
 				</p>
 				<p class="m-hero-opensource">
-					Dansday is <a href={sourceRepoUrl} class="m-hero-opensource-link" target="_blank" rel="noopener noreferrer">open source on GitHub</a> under the MIT
-					license. Self host with Docker when you want your own stack. If you do not want to self host, use
-					<a href={officialBotInviteUrl} class="m-hero-opensource-link" target="_blank" rel="noopener noreferrer">our hosted bot</a>
-					and the same features on our infrastructure.
+					Dansday is <a href={sourceRepoUrl} class="m-hero-opensource-link" target="_blank" rel="noopener noreferrer">free and open source on GitHub</a> under
+					the MIT license. Self host with Docker when you want your own stack. If you do not want to self host, add
+					<a href={officialBotInviteUrl} class="m-hero-opensource-link" target="_blank" rel="noopener noreferrer">our free hosted bot</a>
+					and get the same features on our infrastructure at no charge.
 				</p>
 				<div class="m-hero-actions">
 					<a href={officialBotInviteUrl} class="m-btn m-btn--primary" target="_blank" rel="noopener noreferrer">
@@ -318,7 +318,7 @@
 				<div class="m-cta-card">
 					<h2>Ready to try it?</h2>
 					<p>
-						Add Dansday Bot to your server first. Then sign in to the web panel to configure your server. The login screen also offers an optional
+						Add Dansday Bot to your server first for free. Then sign in to the web panel to configure your server. The login screen also offers an optional free
 						<strong>five minute demo</strong> with full panel access and no signup.
 					</p>
 					<div class="m-cta-actions">

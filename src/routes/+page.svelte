@@ -157,23 +157,14 @@
 				</h1>
 				<p>
 					Run leveling, moderation, Discord Quests, orb enroll, self-bot options, creator tools, live public statistics pages, Roblox catalog alerts, and more
-					from the free web panel in your browser. Configure in one place instead of flooding channels with slash commands.
-				</p>
-				<p class="m-hero-note">
-					<strong class="m-hero-note-lead">Free either way.</strong>
-					Self host from
-					<a href={sourceRepoUrl} class="m-hero-note-link" target="_blank" rel="noopener noreferrer">GitHub</a>
+					from the free web panel in your browser. Configure in one place instead of flooding channels with slash commands. Free for everyone. Self-host from
+					<a href={sourceRepoUrl} target="_blank" rel="noopener noreferrer">GitHub</a>
 					or add
-					<a href={officialBotInviteUrl} class="m-hero-note-link" target="_blank" rel="noopener noreferrer">our hosted bot</a>
+					<a href={officialBotInviteUrl} target="_blank" rel="noopener noreferrer">our hosted bot</a>
 					if you do not run your own servers.
 				</p>
 				<div class="m-hero-actions">
-					<a
-						href={officialBotInviteUrl}
-						class="m-btn m-btn--primary m-hero-btn-primary"
-						target="_blank"
-						rel="noopener noreferrer"
-					>
+					<a href={officialBotInviteUrl} class="m-btn m-btn--primary m-hero-btn-primary" target="_blank" rel="noopener noreferrer">
 						<i class="fab fa-discord"></i>
 						Get started
 					</a>
@@ -196,13 +187,7 @@
 							<i class="fas fa-users"></i>
 							Discord
 						</a>
-						<a
-							href={sourceRepoUrl}
-							class="m-btn m-btn--ghost m-btn--compact"
-							target="_blank"
-							rel="noopener noreferrer"
-							title="Source on GitHub (MIT)"
-						>
+						<a href={sourceRepoUrl} class="m-btn m-btn--ghost m-btn--compact" target="_blank" rel="noopener noreferrer" title="Source on GitHub (MIT)">
 							<i class="fab fa-github"></i>
 							GitHub
 						</a>

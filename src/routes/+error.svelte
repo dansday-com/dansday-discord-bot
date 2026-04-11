@@ -21,7 +21,7 @@
 	<div class="m-blob m-blob-2"></div>
 	<div class="m-blob m-blob-3"></div>
 
-	<MainHeader mode="landing" />
+	<MainHeader />
 
 	<main class="m-main m-main--error">
 		<div class="m-inner m-err-wrap">

@@ -156,7 +156,7 @@
 	<div class="m-blob m-blob-2"></div>
 	<div class="m-blob m-blob-3"></div>
 
-	<MainHeader mode="landing" />
+	<MainHeader />
 
 	<main class="m-main">
 		<div class="m-inner m-landing-inner">

@@ -21,7 +21,7 @@
 	<div class="m-blob m-blob-2"></div>
 	<div class="m-blob m-blob-3"></div>
 
-	<MainHeader mode="stats" />
+	<MainHeader trailing="live" />
 
 	<main class="m-main">
 		<div class="m-inner">

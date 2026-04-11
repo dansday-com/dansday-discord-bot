@@ -159,12 +159,6 @@
 					Run leveling, moderation, Discord Quests, orb enroll, self-bot options, creator tools, live public statistics pages, Roblox catalog alerts, and more
 					from the free web panel in your browser. Configure in one place instead of flooding channels with slash commands.
 				</p>
-				<p class="m-hero-opensource">
-					Dansday is <a href={sourceRepoUrl} class="m-hero-opensource-link" target="_blank" rel="noopener noreferrer">free and open source on GitHub</a> under
-					the MIT license. Self host with Docker when you want your own stack. If you do not want to self host, add
-					<a href={officialBotInviteUrl} class="m-hero-opensource-link" target="_blank" rel="noopener noreferrer">our free hosted bot</a>
-					and get the same features on our infrastructure at no charge.
-				</p>
 				<div class="m-hero-actions">
 					<a href={officialBotInviteUrl} class="m-btn m-btn--primary" target="_blank" rel="noopener noreferrer">
 						<i class="fab fa-discord"></i>
@@ -178,11 +172,21 @@
 						<i class="fas fa-th-large"></i>
 						See all features
 					</a>
+					<a href={communityDiscordUrl} class="m-btn m-btn--ghost" target="_blank" rel="noopener noreferrer" title="Join our Discord for updates and testing">
+						<i class="fas fa-users"></i>
+						Join Discord
+					</a>
+					<a
+						href={sourceRepoUrl}
+						class="m-btn m-btn--ghost"
+						target="_blank"
+						rel="noopener noreferrer"
+						title="Free and open source on GitHub under the MIT license"
+					>
+						<i class="fab fa-github"></i>
+						GitHub
+					</a>
 				</div>
-				<p class="m-hero-community">
-					<a href={communityDiscordUrl} class="m-hero-community-link" target="_blank" rel="noopener noreferrer">Join our Discord</a>
-					for updates and testing.
-				</p>
 			</section>
 
 			<!-- Metric strip (same scroll pattern as public statistics overview) -->
@@ -194,6 +198,20 @@
 						<span class="m-overview-strip-label">Modules</span>
 					</div>
 				</div>
+				<div class="m-overview-strip-item">
+					<div class="m-overview-strip-icon"><i class="fas fa-gift"></i></div>
+					<div class="m-overview-strip-text">
+						<span class="m-overview-strip-value">Free</span>
+						<span class="m-overview-strip-label">Hosted bot</span>
+					</div>
+				</div>
+				<a href={sourceRepoUrl} class="m-overview-strip-item m-overview-strip-item--link" target="_blank" rel="noopener noreferrer">
+					<div class="m-overview-strip-icon"><i class="fab fa-github"></i></div>
+					<div class="m-overview-strip-text">
+						<span class="m-overview-strip-value">Open</span>
+						<span class="m-overview-strip-label">Source</span>
+					</div>
+				</a>
 				<div class="m-overview-strip-item">
 					<div class="m-overview-strip-icon"><i class="fas fa-sliders-h"></i></div>
 					<div class="m-overview-strip-text">

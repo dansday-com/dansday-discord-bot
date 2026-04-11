@@ -948,7 +948,7 @@ export async function runOrbQuestUserAutomation(
 				orbLine,
 				questUrl: qUrl,
 				title: '✅ Quest complete',
-				description: `**Reward:** ${orbLine || 'Orb reward'}\nOpen **Discord → Quests** in the client to claim if prompted.`
+				description: `**Reward:** ${orbLine || 'Orb reward'}\nOpen **Discord → Quests**`
 			};
 		}
 
@@ -1000,7 +1000,7 @@ export async function runOrbQuestUserAutomation(
 					orbLine,
 					questUrl: qUrl,
 					title: '✅ Achievement quest finished',
-					description: `**${questName}**\n**Reward:** ${orbLine || 'Orb reward'}\nClaim in **Discord → Quests** if prompted.`
+					description: `**${questName}**\n**Reward:** ${orbLine || 'Orb reward'}\nClaim in **Discord → Quests**`
 				};
 			}
 			return {
@@ -1043,7 +1043,7 @@ export async function runOrbQuestUserAutomation(
 					orbLine,
 					questUrl: qUrl,
 					title: '✅ Activity quest finished',
-					description: `**${questName}**\n**Reward:** ${orbLine || 'Orb reward'}\nClaim in **Discord → Quests** if prompted.`
+					description: `**${questName}**\n**Reward:** ${orbLine || 'Orb reward'}\nClaim in **Discord → Quests**`
 				};
 			}
 			return {
@@ -1096,7 +1096,7 @@ export async function runOrbQuestUserAutomation(
 					orbLine,
 					questUrl: qUrl,
 					title: '✅ Quest finished',
-					description: `**${questName}** (${labelForTaskKey(taskKey)})\n**Reward:** ${orbLine || 'Orb reward'}\nClaim in **Discord → Quests** if prompted.`
+					description: `**${questName}** (${labelForTaskKey(taskKey)})\n**Reward:** ${orbLine || 'Orb reward'}\nClaim in **Discord → Quests**`
 				};
 			}
 			return {

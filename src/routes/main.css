@@ -300,6 +300,19 @@
 .m-footer-copy a:hover {
 	color: var(--lb-text);
 }
+.m-footer-open {
+	font-size: 0.75rem;
+	color: var(--lb-text-soft);
+	margin: 10px 0 0;
+}
+@media (min-width: 640px) {
+	.m-footer-open {
+		font-size: 0.8125rem;
+	}
+}
+.m-footer-open a {
+	font-weight: 600;
+}
 .m-footer p {
 	font-size: 12px;
 	color: var(--lb-text-faint);
@@ -1866,23 +1879,6 @@
 	text-align: center;
 	padding: 40px 16px 32px;
 }
-.m-hero-badge {
-	display: inline-flex;
-	align-items: center;
-	gap: 6px;
-	padding: 5px 14px;
-	border-radius: 99px;
-	background: rgba(36, 95, 115, 0.1);
-	border: 1px solid rgba(36, 95, 115, 0.2);
-	color: var(--chili-peach);
-	font-size: 11px;
-	font-weight: 600;
-	letter-spacing: 0.03em;
-	margin-bottom: 20px;
-}
-.m-hero-badge i {
-	font-size: 10px;
-}
 .m-hero h1 {
 	font-size: 28px;
 	font-weight: 800;
@@ -1900,23 +1896,42 @@
 .m-hero p {
 	font-size: 15px;
 	color: var(--lb-text-muted);
-	line-height: 1.6;
-	margin: 0 auto 24px;
-	max-width: 520px;
+	line-height: 1.65;
+	margin: 0 auto 28px;
+	max-width: 36rem;
+	padding: 0 2px;
 }
 .m-hero-actions {
 	display: flex;
-	gap: 10px;
+	gap: 12px;
 	justify-content: center;
 	flex-wrap: wrap;
+}
+.m-hero-opensource {
+	font-size: 13px;
+	color: var(--lb-text-muted);
+	line-height: 1.65;
+	margin: 20px auto 0;
+	max-width: 36rem;
+	text-align: center;
+	padding: 0 2px;
+}
+.m-hero-opensource-link {
+	color: var(--chili-hot);
+	font-weight: 600;
+	text-decoration: none;
+}
+.m-hero-opensource-link:hover {
+	text-decoration: underline;
 }
 .m-hero-community {
 	font-size: 13px;
 	color: var(--lb-text-muted);
 	line-height: 1.55;
-	margin: 18px auto 0;
-	max-width: 520px;
+	margin: 22px auto 0;
+	max-width: 36rem;
 	text-align: center;
+	padding: 0 2px;
 }
 .m-hero-community-link {
 	color: var(--chili-hot);
@@ -1928,24 +1943,110 @@
 }
 .m-cta-actions {
 	display: flex;
-	gap: 10px;
+	gap: 12px;
 	justify-content: center;
 	flex-wrap: wrap;
 	margin-top: 4px;
 }
 
-/* ---- Landing: metric strip (reuses public stats overview strip scroll) ---- */
+/* ---- Landing: metric strip (mobile-first: stack, then 2×2, then one row) ---- */
 .m-landing-at-glance {
-	margin-bottom: 8px;
+	margin: 8px 0 24px;
+}
+.m-inner.m-landing-inner > .m-overview-strip.m-landing-at-glance {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 12px;
+	overflow-x: visible;
+	padding: 0 0 4px;
+	mask-image: none;
+	-webkit-mask-image: none;
+}
+.m-inner.m-landing-inner > .m-overview-strip.m-landing-at-glance .m-overview-strip-item {
+	min-width: 0;
+	width: 100%;
+	flex: 1 1 auto;
+}
+@media (min-width: 480px) {
+	.m-inner.m-landing-inner > .m-overview-strip.m-landing-at-glance {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+@media (min-width: 960px) {
+	.m-inner.m-landing-inner > .m-overview-strip.m-landing-at-glance {
+		display: flex;
+		flex-direction: row;
+		flex-wrap: nowrap;
+		gap: 10px;
+		overflow-x: auto;
+		padding: 4px 2px 8px;
+		-webkit-overflow-scrolling: touch;
+		justify-content: center;
+		scrollbar-width: thin;
+	}
+	.m-inner.m-landing-inner > .m-overview-strip.m-landing-at-glance .m-overview-strip-item {
+		width: auto;
+		flex: 0 0 auto;
+		min-width: 132px;
+	}
+}
+
+/* Landing hero + CTA: full-width stacked controls on small viewports */
+.m-inner.m-landing-inner .m-hero-actions {
+	flex-direction: column;
+	align-items: stretch;
+	gap: 12px;
+	width: 100%;
+	max-width: 100%;
+}
+.m-inner.m-landing-inner .m-hero-actions .m-btn {
+	width: 100%;
+	justify-content: center;
+	box-sizing: border-box;
+}
+.m-inner.m-landing-inner .m-cta-actions {
+	flex-direction: column;
+	align-items: stretch;
+	width: 100%;
+	margin-top: 0;
+	gap: 12px;
+}
+.m-inner.m-landing-inner .m-cta-actions .m-btn {
+	width: 100%;
+	justify-content: center;
+	box-sizing: border-box;
+}
+@media (min-width: 640px) {
+	.m-inner.m-landing-inner .m-hero-actions {
+		flex-direction: row;
+		flex-wrap: wrap;
+		justify-content: center;
+		align-items: center;
+		max-width: none;
+	}
+	.m-inner.m-landing-inner .m-hero-actions .m-btn {
+		width: auto;
+		min-width: 10rem;
+	}
+	.m-inner.m-landing-inner .m-cta-actions {
+		flex-direction: row;
+		flex-wrap: wrap;
+		justify-content: center;
+		align-items: center;
+	}
+	.m-inner.m-landing-inner .m-cta-actions .m-btn {
+		width: auto;
+		min-width: 11rem;
+	}
 }
 
 /* ---- Section headings ---- */
 .m-section {
-	padding: 32px 16px;
+	padding: 36px 16px;
 }
 .m-section-header {
 	text-align: center;
-	margin-bottom: 24px;
+	margin-bottom: 28px;
 }
 .m-section-header h2 {
 	font-size: 22px;
@@ -1975,7 +2076,7 @@
 .m-features-grid--quad {
 	max-width: none;
 }
-@media (min-width: 420px) {
+@media (min-width: 480px) {
 	.m-features-grid--quad {
 		grid-template-columns: repeat(2, 1fr);
 	}
@@ -2117,30 +2218,49 @@
 /* ---- CTA section ---- */
 .m-cta {
 	text-align: center;
-	padding: 40px 16px;
+	padding: 36px 0 44px;
 }
 .m-cta-card {
 	background: linear-gradient(135deg, rgba(36, 95, 115, 0.08), rgba(115, 62, 36, 0.06));
 	border: 1px solid var(--lb-border);
 	border-radius: 20px;
-	padding: 32px 24px;
+	padding: 28px 20px 28px;
 	width: 100%;
 	max-width: none;
 	margin: 0 auto;
 	box-shadow: 0 4px 24px var(--lb-shadow);
+	box-sizing: border-box;
 }
 .m-cta-card h2 {
 	font-size: 20px;
 	font-weight: 800;
 	color: var(--lb-text);
-	margin: 0 0 10px;
+	margin: 0 0 14px;
 	letter-spacing: -0.3px;
 }
 .m-cta-card p {
 	font-size: 14px;
 	color: var(--lb-text-muted);
-	margin: 0 0 20px;
-	line-height: 1.6;
+	margin: 0 0 22px;
+	line-height: 1.65;
+}
+
+/* Landing: only .m-inner adds horizontal padding (matches public stats page, no double inset) */
+.m-inner.m-landing-inner > .m-hero {
+	padding-left: 0;
+	padding-right: 0;
+}
+.m-inner.m-landing-inner > .m-section {
+	padding-left: 0;
+	padding-right: 0;
+}
+.m-inner.m-landing-inner > .m-cta {
+	padding-left: 0;
+	padding-right: 0;
+}
+.m-inner.m-landing-inner > .m-overview-strip.m-landing-at-glance {
+	padding-left: 0;
+	padding-right: 0;
 }
 
 /* ---- Landing responsive ---- */
@@ -2154,8 +2274,11 @@
 	.m-section {
 		padding: 36px 20px;
 	}
-	.m-features-grid {
-		grid-template-columns: repeat(2, 1fr);
+	.m-inner.m-landing-inner > .m-hero {
+		padding: 48px 0 36px;
+	}
+	.m-inner.m-landing-inner > .m-section {
+		padding: 36px 0;
 	}
 }
 @media (min-width: 640px) {
@@ -2175,6 +2298,7 @@
 		font-size: 26px;
 	}
 	.m-features-grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
 		gap: 16px;
 	}
 	.m-feature-card {
@@ -2186,6 +2310,12 @@
 	.m-cta-card {
 		padding: 40px 32px;
 	}
+	.m-inner.m-landing-inner > .m-hero {
+		padding: 56px 0 40px;
+	}
+	.m-inner.m-landing-inner > .m-section {
+		padding: 44px 0;
+	}
 }
 @media (min-width: 1024px) {
 	.m-hero {
@@ -2196,6 +2326,12 @@
 	}
 	.m-section {
 		padding: 56px 32px;
+	}
+	.m-inner.m-landing-inner > .m-hero {
+		padding: 72px 0 48px;
+	}
+	.m-inner.m-landing-inner > .m-section {
+		padding: 56px 0;
 	}
 }
 /* Match .m-stats-grid: 3 columns from 1280px so cards use full inner width before wrapping */

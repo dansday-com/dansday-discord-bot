@@ -11,6 +11,8 @@
 	const officialBotInviteUrl = 'https://discord.com/oauth2/authorize?client_id=1446572985849876640';
 	/** Community for updates and testing */
 	const communityDiscordUrl = 'https://discord.gg/7fEqEDSur3';
+	/** Open source repository (MIT) */
+	const sourceRepoUrl = 'https://github.com/dansday-com/dansday-discord-bot';
 
 	const features = [
 		{
@@ -134,7 +136,7 @@
 	<title>Dansday Discord Bot | All in one server management</title>
 	<meta
 		name="description"
-		content="Add Dansday Bot to your server, then use the web panel for leveling, moderation, welcomer, giveaways, public live stats, Discord Quest and orb enroll, TikTok creator tools, Roblox catalog watch, and more. Optional five minute demo on login with no account required."
+		content="Open source Dansday Discord Bot. Add our hosted bot to your server or self host from GitHub. Web panel for leveling, moderation, giveaways, public stats, Discord Quest, TikTok tools, Roblox catalog watch, and more. Optional five minute demo on login."
 	/>
 </svelte:head>
 
@@ -149,10 +151,6 @@
 		<div class="m-inner m-landing-inner">
 			<!-- Hero -->
 			<section class="m-hero">
-				<div class="m-hero-badge">
-					<i class="fas fa-layer-group"></i>
-					Modular features in one web panel
-				</div>
 				<h1>
 					Supercharge Your<br />
 					<span class="m-gradient-text">Discord Server</span>
@@ -160,6 +158,12 @@
 				<p>
 					Run leveling, moderation, Discord Quests, orb enroll, self-bot options, creator tools, live public statistics pages, Roblox catalog alerts, and more
 					from the browser. Configure in one place instead of flooding channels with slash commands.
+				</p>
+				<p class="m-hero-opensource">
+					Dansday is <a href={sourceRepoUrl} class="m-hero-opensource-link" target="_blank" rel="noopener noreferrer">open source on GitHub</a> under the MIT
+					license. Self host with Docker when you want your own stack. If you do not want to self host, use
+					<a href={officialBotInviteUrl} class="m-hero-opensource-link" target="_blank" rel="noopener noreferrer">our hosted bot</a>
+					and the same features on our infrastructure.
 				</p>
 				<div class="m-hero-actions">
 					<a href={officialBotInviteUrl} class="m-btn m-btn--primary" target="_blank" rel="noopener noreferrer">

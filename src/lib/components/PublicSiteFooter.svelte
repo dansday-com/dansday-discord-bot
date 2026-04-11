@@ -4,5 +4,8 @@
 			Copyright &copy; {new Date().getFullYear()}
 			<a href="https://dansday.com" target="_blank" rel="noopener noreferrer">dansday.com</a>. All rights reserved.
 		</p>
+		<p class="m-footer-open">
+			<a href="https://github.com/dansday-com/dansday-discord-bot" target="_blank" rel="noopener noreferrer">Open source on GitHub</a>
+		</p>
 	</div>
 </footer>

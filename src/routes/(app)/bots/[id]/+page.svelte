@@ -179,6 +179,7 @@
 		try {
 			const urlStr = typeof presence.activity_url === 'string' ? presence.activity_url.trim() : '';
 			const stateStr = typeof presence.activity_state === 'string' ? presence.activity_state.trim() : '';
+			const isCustom = presence.activity_type === 'custom';
 			const res = await fetch(`/api/bots/${data.bot.id}/presence`, {
 				method: 'PATCH',
 				credentials: 'include',
@@ -186,7 +187,7 @@
 				body: JSON.stringify({
 					discord_status: presence.discord_status,
 					activity_type: presence.activity_type,
-					activity_name: presence.activity_name,
+					activity_name: isCustom ? '' : presence.activity_name,
 					activity_url: urlStr === '' ? null : urlStr,
 					activity_state: stateStr === '' ? null : stateStr
 				})
@@ -304,7 +305,10 @@
 		<h3 class="text-ash-100 mb-1 text-lg font-semibold">
 			<i class="fas fa-circle-notch mr-2 text-violet-400"></i>Discord presence
 		</h3>
-		<p class="text-ash-400 mb-4 text-sm">Status and activity text shown on Discord. Applies when the bot process starts or restarts.</p>
+		<p class="text-ash-400 mb-4 text-sm">
+			Status and activity text shown on Discord. Applies when the bot process starts or restarts. For streaming, Discord only accepts
+			<strong class="text-ash-300">Twitch</strong> or <strong class="text-ash-300">YouTube</strong> URLs.
+		</p>
 
 		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 			<div class="min-w-0">
@@ -331,40 +335,57 @@
 					ariaLabel="Discord activity type"
 				/>
 			</div>
-			<div class="sm:col-span-2">
-				<label for="presence-activity-name" class="text-ash-400 mb-1 block text-xs">Activity name</label>
-				<input
-					id="presence-activity-name"
-					type="text"
-					maxlength="128"
-					bind:value={presence.activity_name}
-					placeholder="e.g. your community name or track title"
-					class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
-				/>
-			</div>
-			{#if presence.activity_type === 'streaming'}
+			{#if presence.activity_type === 'custom'}
 				<div class="sm:col-span-2">
-					<label for="presence-activity-url" class="text-ash-400 mb-1 block text-xs">Stream URL</label>
+					<label for="presence-activity-state" class="text-ash-400 mb-1 block text-xs">Custom status</label>
 					<input
-						id="presence-activity-url"
-						type="url"
-						bind:value={presence.activity_url}
-						placeholder="https://twitch.tv/..."
+						id="presence-activity-state"
+						type="text"
+						maxlength="128"
+						bind:value={presence.activity_state}
+						placeholder="Text shown as custom status"
+						class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+					/>
+				</div>
+			{:else}
+				<div class="sm:col-span-2">
+					<label for="presence-activity-name" class="text-ash-400 mb-1 block text-xs">Activity name</label>
+					<input
+						id="presence-activity-name"
+						type="text"
+						maxlength="128"
+						bind:value={presence.activity_name}
+						placeholder="e.g. your community name or track title"
+						class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+					/>
+				</div>
+				{#if presence.activity_type === 'streaming'}
+					<div class="sm:col-span-2">
+						<label for="presence-activity-url" class="text-ash-400 mb-1 block text-xs">Stream URL</label>
+						<p class="text-ash-500 mb-1 text-xs">Must be a Twitch or YouTube watch URL. You can paste without https://.</p>
+						<input
+							id="presence-activity-url"
+							type="text"
+							inputmode="url"
+							autocomplete="url"
+							bind:value={presence.activity_url}
+							placeholder="https://twitch.tv/yourchannel or https://youtube.com/watch?v=…"
+							class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+						/>
+					</div>
+				{/if}
+				<div class="sm:col-span-2">
+					<label for="presence-activity-state-noncustom" class="text-ash-400 mb-1 block text-xs">State</label>
+					<input
+						id="presence-activity-state-noncustom"
+						type="text"
+						maxlength="128"
+						bind:value={presence.activity_state}
+						placeholder="Extra line under the activity, if supported"
 						class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
 					/>
 				</div>
 			{/if}
-			<div class="sm:col-span-2">
-				<label for="presence-activity-state" class="text-ash-400 mb-1 block text-xs">State (optional)</label>
-				<input
-					id="presence-activity-state"
-					type="text"
-					maxlength="128"
-					bind:value={presence.activity_state}
-					placeholder="Extra line under the activity, if supported"
-					class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
-				/>
-			</div>
 		</div>
 
 		<div class="mt-4 flex flex-wrap items-center gap-3">

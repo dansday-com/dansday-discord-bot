@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { publicServerPath } from '$lib/publicSiteUrls.js';
+	import PublicSiteNav from '$lib/components/PublicSiteNav.svelte';
+	import PublicSiteFooter from '$lib/components/PublicSiteFooter.svelte';
 	import type { LayoutProps } from './$types';
 	import '../../main.css';
 
@@ -20,22 +22,7 @@
 	<div class="m-blob m-blob-2"></div>
 	<div class="m-blob m-blob-3"></div>
 
-	<nav class="m-nav">
-		<div class="m-nav-inner">
-			<div class="m-nav-brand">
-				<div class="m-nav-icon">
-					<i class="fas fa-bolt"></i>
-				</div>
-				<span>Dansday Discord Bot Panel</span>
-			</div>
-			<div class="m-nav-right">
-				<span class="m-nav-live">
-					<span class="m-nav-live-dot"></span>
-					Live
-				</span>
-			</div>
-		</div>
-	</nav>
+	<PublicSiteNav mode="stats" />
 
 	<main class="m-main">
 		<div class="m-inner">
@@ -49,7 +36,13 @@
 				</div>
 				<div class="m-header-text">
 					<h1>{data.server.name || data.server.slug}</h1>
-					<p>Public statistics</p>
+					<p>
+						Public statistics
+						<span class="m-metric-pill m-metric-pill--live" title="Stats update from live data">
+							<span class="m-live-dot"></span>
+							Live
+						</span>
+					</p>
 				</div>
 			</header>
 
@@ -72,12 +65,5 @@
 		</div>
 	</main>
 
-	<footer class="m-footer">
-		<div class="m-footer-inner">
-			<p class="m-footer-copy">
-				Copyright &copy; {new Date().getFullYear()}
-				<a href="https://dansday.com" target="_blank">dansday.com</a>. All rights reserved.
-			</p>
-		</div>
-	</footer>
+	<PublicSiteFooter />
 </div>

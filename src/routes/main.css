@@ -77,8 +77,12 @@
 	animation-delay: -12s;
 }
 @keyframes m-blob-drift {
-	0% { transform: translate(0, 0) scale(1); }
-	100% { transform: translate(30px, 20px) scale(1.08); }
+	0% {
+		transform: translate(0, 0) scale(1);
+	}
+	100% {
+		transform: translate(30px, 20px) scale(1.08);
+	}
 }
 
 /* ---- Shared: Nav ---- */
@@ -199,8 +203,15 @@
 
 /* ---- Shared: Live Pulse Keyframe ---- */
 @keyframes m-live-pulse {
-	0%, 100% { opacity: 1; transform: scale(1); }
-	50% { opacity: 0.4; transform: scale(0.7); }
+	0%,
+	100% {
+		opacity: 1;
+		transform: scale(1);
+	}
+	50% {
+		opacity: 0.4;
+		transform: scale(0.7);
+	}
 }
 
 /* ---- Shared: Buttons ---- */
@@ -216,7 +227,10 @@
 	cursor: pointer;
 	border: none;
 	text-decoration: none;
-	transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
+	transition:
+		transform 0.15s,
+		box-shadow 0.15s,
+		background 0.15s;
 	white-space: nowrap;
 }
 .m-btn:hover {
@@ -370,6 +384,7 @@
 	margin: 0;
 	display: flex;
 	align-items: center;
+	flex-wrap: wrap;
 	gap: 6px;
 }
 
@@ -429,7 +444,9 @@
 	background: rgba(255, 255, 255, 0.88);
 	border: 1px solid var(--lb-border);
 	box-shadow: 0 4px 20px var(--lb-shadow);
-	transition: border-color 0.2s, transform 0.15s;
+	transition:
+		border-color 0.2s,
+		transform 0.15s;
 }
 .m-overview-strip-item:hover {
 	border-color: rgba(36, 95, 115, 0.28);
@@ -601,7 +618,9 @@
 	border-radius: 12px;
 	background: rgba(255, 255, 255, 0.75);
 	border: 1px solid var(--lb-border-light);
-	transition: border-color 0.2s, background 0.2s;
+	transition:
+		border-color 0.2s,
+		background 0.2s;
 }
 .m-mini:hover {
 	border-color: rgba(36, 95, 115, 0.35);
@@ -650,7 +669,10 @@
 	font-size: 11px;
 	font-weight: 600;
 	cursor: pointer;
-	transition: background 0.2s, color 0.2s, transform 0.15s;
+	transition:
+		background 0.2s,
+		color 0.2s,
+		transform 0.15s;
 	white-space: nowrap;
 }
 .m-tab:hover {
@@ -682,7 +704,9 @@
 	position: relative;
 	opacity: 0;
 	transform: translateY(24px);
-	transition: opacity 0.5s ease, transform 0.5s ease;
+	transition:
+		opacity 0.5s ease,
+		transform 0.5s ease;
 }
 .m-podium-col.m-mounted {
 	opacity: 1;
@@ -710,8 +734,13 @@
 	animation: m-crown-float 3s ease-in-out infinite;
 }
 @keyframes m-crown-float {
-	0%, 100% { transform: translateY(0); }
-	50% { transform: translateY(-5px); }
+	0%,
+	100% {
+		transform: translateY(0);
+	}
+	50% {
+		transform: translateY(-5px);
+	}
 }
 
 .m-avatar-wrap {
@@ -731,7 +760,9 @@
 	border-radius: 50%;
 	padding: 3px;
 	background: conic-gradient(from 0deg, var(--ring-color), transparent 60%, var(--ring-color));
-	box-shadow: 0 0 20px var(--ring-glow), 0 0 40px var(--ring-glow);
+	box-shadow:
+		0 0 20px var(--ring-glow),
+		0 0 40px var(--ring-glow);
 	animation: m-ring-spin 4s linear infinite;
 }
 .m-podium-col--2 .m-avatar-ring,
@@ -739,8 +770,12 @@
 	animation-play-state: paused;
 }
 @keyframes m-ring-spin {
-	from { background: conic-gradient(from 0deg, var(--ring-color), transparent 60%, var(--ring-color)); }
-	to { background: conic-gradient(from 360deg, var(--ring-color), transparent 60%, var(--ring-color)); }
+	from {
+		background: conic-gradient(from 0deg, var(--ring-color), transparent 60%, var(--ring-color));
+	}
+	to {
+		background: conic-gradient(from 360deg, var(--ring-color), transparent 60%, var(--ring-color));
+	}
 }
 
 .m-avatar-img {
@@ -784,8 +819,12 @@
 	animation-delay: 0.9s;
 }
 @keyframes m-avatar-shimmer {
-	0% { transform: translate3d(-35%, -35%, 0); }
-	100% { transform: translate3d(35%, 35%, 0); }
+	0% {
+		transform: translate3d(-35%, -35%, 0);
+	}
+	100% {
+		transform: translate3d(35%, 35%, 0);
+	}
 }
 @media (prefers-reduced-motion: reduce) {
 	.m-podium-col .m-avatar-img::after {
@@ -930,7 +969,10 @@
 	border-bottom: 1px solid var(--lb-border-light);
 	opacity: 0;
 	transform: translateX(-16px);
-	transition: opacity 0.4s ease, transform 0.4s ease, background 0.2s;
+	transition:
+		opacity 0.4s ease,
+		transform 0.4s ease,
+		background 0.2s;
 }
 .m-list-row:last-child {
 	border-bottom: none;
@@ -1064,7 +1106,10 @@
 	font-size: 11px;
 	font-weight: 600;
 	cursor: pointer;
-	transition: background 0.2s, color 0.2s, transform 0.15s;
+	transition:
+		background 0.2s,
+		color 0.2s,
+		transform 0.15s;
 	white-space: nowrap;
 	text-decoration: none;
 }
@@ -1264,8 +1309,13 @@
 	animation: m-hero-shine 8s ease-in-out infinite;
 }
 @keyframes m-hero-shine {
-	0%, 100% { background-position: 0% center; }
-	50% { background-position: 100% center; }
+	0%,
+	100% {
+		background-position: 0% center;
+	}
+	50% {
+		background-position: 100% center;
+	}
 }
 .m-leveling-hero-hint {
 	margin: 8px 0 0;
@@ -1400,7 +1450,10 @@
 .m-root .m-members-card {
 	opacity: 0;
 	transform: translateY(18px);
-	transition: border-color 0.22s ease, box-shadow 0.22s ease, transform 0.22s ease;
+	transition:
+		border-color 0.22s ease,
+		box-shadow 0.22s ease,
+		transform 0.22s ease;
 }
 .m-root .m-members-card.m-members-card--in {
 	animation: m-members-card-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
@@ -1417,13 +1470,19 @@
 	box-shadow: 0 10px 36px var(--lb-shadow);
 }
 .m-root .m-members-card--p1:hover {
-	box-shadow: inset 4px 0 0 #e6b800, 0 10px 36px var(--lb-shadow);
+	box-shadow:
+		inset 4px 0 0 #e6b800,
+		0 10px 36px var(--lb-shadow);
 }
 .m-root .m-members-card--p2:hover {
-	box-shadow: inset 4px 0 0 #9ca3af, 0 10px 36px var(--lb-shadow);
+	box-shadow:
+		inset 4px 0 0 #9ca3af,
+		0 10px 36px var(--lb-shadow);
 }
 .m-root .m-members-card--p3:hover {
-	box-shadow: inset 4px 0 0 #c97a3d, 0 10px 36px var(--lb-shadow);
+	box-shadow:
+		inset 4px 0 0 #c97a3d,
+		0 10px 36px var(--lb-shadow);
 }
 
 .m-root .m-members-search-bar {
@@ -1543,13 +1602,19 @@
 	overflow: hidden;
 }
 .m-root .m-members-card--p1 {
-	box-shadow: inset 4px 0 0 #e6b800, 0 4px 24px var(--lb-shadow);
+	box-shadow:
+		inset 4px 0 0 #e6b800,
+		0 4px 24px var(--lb-shadow);
 }
 .m-root .m-members-card--p2 {
-	box-shadow: inset 4px 0 0 #9ca3af, 0 4px 24px var(--lb-shadow);
+	box-shadow:
+		inset 4px 0 0 #9ca3af,
+		0 4px 24px var(--lb-shadow);
 }
 .m-root .m-members-card--p3 {
-	box-shadow: inset 4px 0 0 #c97a3d, 0 4px 24px var(--lb-shadow);
+	box-shadow:
+		inset 4px 0 0 #c97a3d,
+		0 4px 24px var(--lb-shadow);
 }
 
 .m-root .m-members-top {
@@ -1752,7 +1817,9 @@
 	color: var(--pubm-text);
 	cursor: pointer;
 	box-shadow: 0 2px 12px var(--pubm-sh);
-	transition: border-color 0.2s, background 0.2s;
+	transition:
+		border-color 0.2s,
+		background 0.2s;
 }
 .m-root .m-members-btn:hover:not(:disabled) {
 	border-color: rgba(36, 95, 115, 0.3);
@@ -1931,8 +1998,12 @@
 	border: 1px solid var(--lb-border);
 	border-radius: 16px;
 	padding: 20px;
-	box-shadow: 0 4px 20px var(--lb-shadow), 0 1px 0 rgba(255, 255, 255, 0.8) inset;
-	transition: transform 0.15s, border-color 0.2s;
+	box-shadow:
+		0 4px 20px var(--lb-shadow),
+		0 1px 0 rgba(255, 255, 255, 0.8) inset;
+	transition:
+		transform 0.15s,
+		border-color 0.2s;
 }
 .m-feature-card:hover {
 	transform: translateY(-2px);
@@ -1993,7 +2064,9 @@
 	box-shadow: 0 4px 16px var(--lb-shadow);
 	text-decoration: none;
 	color: var(--lb-text);
-	transition: transform 0.15s, border-color 0.2s;
+	transition:
+		transform 0.15s,
+		border-color 0.2s;
 }
 .m-server-card:hover {
 	transform: translateY(-1px);
@@ -2149,8 +2222,14 @@
 	animation: m-fade-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 @keyframes m-fade-up {
-	from { opacity: 0; transform: translateY(20px); }
-	to { opacity: 1; transform: translateY(0); }
+	from {
+		opacity: 0;
+		transform: translateY(20px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
 }
 
 /* ---- Error strip ---- */
@@ -2170,7 +2249,9 @@
 	background: rgba(255, 255, 255, 0.88);
 	border: 1px solid var(--lb-border);
 	box-shadow: 0 4px 16px var(--lb-shadow);
-	transition: transform 0.15s, border-color 0.2s;
+	transition:
+		transform 0.15s,
+		border-color 0.2s;
 }
 .m-err-strip-item:hover {
 	transform: translateY(-1px);
@@ -2203,7 +2284,9 @@
 	border-radius: 20px;
 	padding: 32px 28px;
 	text-align: center;
-	box-shadow: 0 4px 24px var(--lb-shadow), 0 1px 0 rgba(255, 255, 255, 0.8) inset;
+	box-shadow:
+		0 4px 24px var(--lb-shadow),
+		0 1px 0 rgba(255, 255, 255, 0.8) inset;
 }
 
 /* ---- Error icon badge ---- */
@@ -2218,16 +2301,26 @@
 	animation: m-icon-pop 0.5s 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 @keyframes m-icon-pop {
-	from { opacity: 0; transform: scale(0.6); }
-	to { opacity: 1; transform: scale(1); }
+	from {
+		opacity: 0;
+		transform: scale(0.6);
+	}
+	to {
+		opacity: 1;
+		transform: scale(1);
+	}
 }
 .m-err-icon-wrap--server {
 	background: linear-gradient(135deg, rgba(36, 95, 115, 0.15), rgba(36, 95, 115, 0.08));
-	box-shadow: 0 0 0 1px rgba(36, 95, 115, 0.22), 0 8px 24px rgba(36, 95, 115, 0.12);
+	box-shadow:
+		0 0 0 1px rgba(36, 95, 115, 0.22),
+		0 8px 24px rgba(36, 95, 115, 0.12);
 }
 .m-err-icon-wrap--client {
 	background: linear-gradient(135deg, rgba(115, 62, 36, 0.13), rgba(115, 62, 36, 0.06));
-	box-shadow: 0 0 0 1px rgba(115, 62, 36, 0.2), 0 8px 24px rgba(115, 62, 36, 0.1);
+	box-shadow:
+		0 0 0 1px rgba(115, 62, 36, 0.2),
+		0 8px 24px rgba(115, 62, 36, 0.1);
 }
 .m-err-icon {
 	font-size: 28px;

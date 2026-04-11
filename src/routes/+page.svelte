@@ -1,11 +1,19 @@
 <script lang="ts">
 	import type { PageProps } from './$types';
 	import { publicServerPath } from '$lib/publicSiteUrls.js';
+	import PublicSiteNav from '$lib/components/PublicSiteNav.svelte';
+	import PublicSiteFooter from '$lib/components/PublicSiteFooter.svelte';
 	import './main.css';
 
 	let { data }: PageProps = $props();
 
 	const features = [
+		{
+			icon: 'fa-shield-halved',
+			tone: 'stone',
+			title: 'Panel permissions',
+			desc: 'Control who can change what in the web panel — separate owner and staff access so your team can help without handing over the whole server.'
+		},
 		{
 			icon: 'fa-chart-line',
 			tone: 'teal',
@@ -43,9 +51,33 @@
 			desc: 'Reward server boosters with special roles, perks, and recognition. Configure custom benefits for your supporters.'
 		},
 		{
+			icon: 'fa-scroll',
+			tone: 'teal',
+			title: 'Discord Quests & orb enroll',
+			desc: 'Quest notifier for Discord Quest home, orb-eligible quests, enroll buttons, and worker automation — so members do not miss limited-time rewards.'
+		},
+		{
+			icon: 'fa-user-astronaut',
+			tone: 'stone',
+			title: 'Self-bot & accounts',
+			desc: 'Optional self-bot with panel-managed tokens, account invites, and forwarding rules next to the main bot — for workflows that need a user context.'
+		},
+		{
+			icon: 'fa-video',
+			tone: 'brick',
+			title: 'Content creator & TikTok live',
+			desc: 'Applications, approvals, and TikTok live session digests tied to your server — built for creator programs and streamer communities.'
+		},
+		{
+			icon: 'fa-cube',
+			tone: 'stone',
+			title: 'Roblox catalog watch',
+			desc: 'Monitor Roblox catalog changes and post rich embeds when items update — ideal for trading and UGC communities.'
+		},
+		{
 			icon: 'fa-forward',
 			tone: 'stone',
-			title: 'Message Forwarder',
+			title: 'Message forwarder',
 			desc: 'Automatically forward messages between channels or servers. Keep important announcements synced across communities.'
 		},
 		{
@@ -83,7 +115,10 @@
 
 <svelte:head>
 	<title>Dansday Discord Bot - All-in-One Server Management</title>
-	<meta name="description" content="Manage your Discord server with leveling, moderation, welcomer, giveaways, public statistics, and more. Free, feature-rich bot with a powerful web panel." />
+	<meta
+		name="description"
+		content="Dansday Discord Bot: leveling, moderation, welcomer, giveaways, public live stats, Discord Quest & orb enroll, self-bot & accounts, TikTok creator tools, Roblox catalog watch, and more. Try the full web panel free for 5 minutes — demo login, no account required."
+	/>
 </svelte:head>
 
 <div class="m-root">
@@ -91,189 +126,178 @@
 	<div class="m-blob m-blob-2"></div>
 	<div class="m-blob m-blob-3"></div>
 
-	<nav class="m-nav">
-		<div class="m-nav-inner">
-			<a href="/" class="m-nav-brand">
-				<div class="m-nav-icon">
-					<i class="fas fa-bolt"></i>
-				</div>
-				<span>Dansday Bot</span>
-			</a>
-			<div class="m-nav-actions">
-				<a href="/login" class="m-btn m-btn--ghost">
-					<i class="fas fa-sign-in-alt"></i>
-					Login
-				</a>
-				<a href="/login" class="m-btn m-btn--primary">
-					Dashboard
-				</a>
-			</div>
-		</div>
-	</nav>
+	<PublicSiteNav mode="landing" />
 
-	<div class="m-landing-inner">
-		<!-- Hero -->
-		<section class="m-hero">
-			<div class="m-hero-badge">
-				<i class="fas fa-bolt"></i>
-				All-in-One Discord Bot
-			</div>
-			<h1>
-				Supercharge Your<br />
-				<span class="m-gradient-text">Discord Server</span>
-			</h1>
-			<p>
-				Leveling, moderation, welcomer, giveaways, public statistics, and 12+ features - all managed from a single web panel.
-			</p>
-			<div class="m-hero-actions">
-				<a href="/login" class="m-btn m-btn--primary">
-					<i class="fas fa-rocket"></i>
-					Get Started
-				</a>
-				<a href="#features" class="m-btn m-btn--ghost">
-					<i class="fas fa-th-large"></i>
-					Explore Features
-				</a>
-			</div>
-		</section>
+	<main class="m-main">
+		<div class="m-inner m-landing-inner">
+			<!-- Hero -->
+			<section class="m-hero">
+				<div class="m-hero-badge">
+					<i class="fas fa-clock"></i>
+					Full panel preview — 5 minute demo, no account needed
+				</div>
+				<h1>
+					Supercharge Your<br />
+					<span class="m-gradient-text">Discord Server</span>
+				</h1>
+				<p>
+					Leveling, moderation, Discord Quests &amp; orb enroll, self-bot tools, creator programs, public live statistics, and more — all from one web panel.
+					Use <strong>demo login</strong> on the next screen for five minutes of full access before you invite the bot.
+				</p>
+				<div class="m-hero-actions">
+					<a href="/login" class="m-btn m-btn--primary">
+						<i class="fas fa-flask"></i>
+						Try 5-minute demo
+					</a>
+					<a href="#features" class="m-btn m-btn--ghost">
+						<i class="fas fa-th-large"></i>
+						See all features
+					</a>
+				</div>
+			</section>
 
-		<!-- Quick stats strip -->
-		<div class="m-stats-strip">
-			<div class="m-stat-chip">
-				<div class="m-stat-icon"><i class="fas fa-puzzle-piece"></i></div>
-				<div class="m-stat-text">
-					<span class="m-stat-value">15+</span>
-					<span class="m-stat-label">Features</span>
-				</div>
-			</div>
-			<div class="m-stat-chip">
-				<div class="m-stat-icon"><i class="fas fa-sliders-h"></i></div>
-				<div class="m-stat-text">
-					<span class="m-stat-value">Web</span>
-					<span class="m-stat-label">Panel</span>
-				</div>
-			</div>
-			<div class="m-stat-chip">
-				<div class="m-stat-icon"><i class="fas fa-chart-pie"></i></div>
-				<div class="m-stat-text">
-					<span class="m-stat-value">Live</span>
-					<span class="m-stat-label">Statistics</span>
-				</div>
-			</div>
-			<div class="m-stat-chip">
-				<div class="m-stat-icon"><i class="fas fa-shield-halved"></i></div>
-				<div class="m-stat-text">
-					<span class="m-stat-value">Full</span>
-					<span class="m-stat-label">Control</span>
-				</div>
-			</div>
-		</div>
-
-		<!-- Features -->
-		<section class="m-section" id="features">
-			<div class="m-section-header">
-				<h2>Everything Your Server Needs</h2>
-				<p>Packed with powerful features, all configurable from one dashboard.</p>
-			</div>
-			<div class="m-features-grid">
-				{#each features as feature}
-					<div class="m-feature-card">
-						<div class="m-feature-icon m-feature-icon--{feature.tone}">
-							<i class="fas {feature.icon}"></i>
-						</div>
-						<h3>{feature.title}</h3>
-						<p>{feature.desc}</p>
+			<!-- Quick stats strip -->
+			<div class="m-stats-strip">
+				<div class="m-stat-chip">
+					<div class="m-stat-icon"><i class="fas fa-puzzle-piece"></i></div>
+					<div class="m-stat-text">
+						<span class="m-stat-value">15+</span>
+						<span class="m-stat-label">Modules</span>
 					</div>
-				{/each}
-			</div>
-		</section>
-
-		<!-- Featured servers -->
-		{#if data.featuredServers.length > 0}
-			<section class="m-section">
-				<div class="m-section-header">
-					<h2>Active Communities</h2>
-					<p>Servers using Dansday Bot with public statistics enabled.</p>
 				</div>
-				<div class="m-servers-list">
-					{#each data.featuredServers as server}
-						<a href={publicServerPath(server.slug)} class="m-server-card">
-							<div class="m-landing-server-icon">
-								{#if server.server_icon}
-									<img src={server.server_icon} alt={server.name} loading="lazy" width="42" height="42" />
-								{:else}
-									<i class="fas fa-server m-landing-server-icon-placeholder"></i>
-								{/if}
+				<div class="m-stat-chip">
+					<div class="m-stat-icon"><i class="fas fa-sliders-h"></i></div>
+					<div class="m-stat-text">
+						<span class="m-stat-value">Web</span>
+						<span class="m-stat-label">Panel</span>
+					</div>
+				</div>
+				<div class="m-stat-chip">
+					<div class="m-stat-icon"><i class="fas fa-hourglass-start"></i></div>
+					<div class="m-stat-text">
+						<span class="m-stat-value">5 min</span>
+						<span class="m-stat-label">Demo access</span>
+					</div>
+				</div>
+				<div class="m-stat-chip">
+					<div class="m-stat-icon"><i class="fas fa-shield-halved"></i></div>
+					<div class="m-stat-text">
+						<span class="m-stat-value">Full</span>
+						<span class="m-stat-label">Control</span>
+					</div>
+				</div>
+			</div>
+
+			<!-- Features -->
+			<section class="m-section" id="features">
+				<div class="m-section-header">
+					<h2>Everything your server needs</h2>
+					<p>
+						From moderation and leveling to Discord Quest orb enroll, self-bot accounts, Roblox catalog watch, and public stats — everything is toggled from the
+						same panel. <strong>Try it first</strong> with demo login; add the bot when you are ready.
+					</p>
+				</div>
+				<div class="m-features-grid">
+					{#each features as feature}
+						<div class="m-feature-card">
+							<div class="m-feature-icon m-feature-icon--{feature.tone}">
+								<i class="fas {feature.icon}"></i>
 							</div>
-							<div class="m-server-info">
-								<div class="m-server-name">{server.name}</div>
-								<div class="m-server-sub">
-									<i class="fas fa-chart-bar"></i>
-									View public statistics
-								</div>
-							</div>
-							<i class="fas fa-chevron-right m-server-arrow"></i>
-						</a>
+							<h3>{feature.title}</h3>
+							<p>{feature.desc}</p>
+						</div>
 					{/each}
 				</div>
 			</section>
-		{/if}
 
-		<!-- Web Panel highlight -->
-		<section class="m-section">
-			<div class="m-section-header">
-				<h2>Powerful Web Panel</h2>
-				<p>Configure everything from your browser. No commands needed.</p>
-			</div>
-			<div class="m-features-grid" style="max-width: 720px; margin: 0 auto;">
-				<div class="m-feature-card">
-					<div class="m-feature-icon m-feature-icon--teal">
-						<i class="fas fa-toggle-on"></i>
+			<!-- Featured servers -->
+			{#if data.featuredServers.length > 0}
+				<section class="m-section">
+					<div class="m-section-header">
+						<h2>Active Communities</h2>
+						<p>Servers using Dansday Bot with public statistics enabled.</p>
 					</div>
-					<h3>Toggle Features</h3>
-					<p>Enable or disable any feature with a single click. Each module is independently configurable.</p>
-				</div>
-				<div class="m-feature-card">
-					<div class="m-feature-icon m-feature-icon--brick">
-						<i class="fas fa-users-gear"></i>
+					<div class="m-servers-list">
+						{#each data.featuredServers as server}
+							<a href={publicServerPath(server.slug)} class="m-server-card">
+								<div class="m-landing-server-icon">
+									{#if server.server_icon}
+										<img src={server.server_icon} alt={server.name} loading="lazy" width="42" height="42" />
+									{:else}
+										<i class="fas fa-server m-landing-server-icon-placeholder"></i>
+									{/if}
+								</div>
+								<div class="m-server-info">
+									<div class="m-server-name">{server.name}</div>
+									<div class="m-server-sub">
+										<i class="fas fa-chart-bar"></i>
+										View public statistics
+									</div>
+								</div>
+								<i class="fas fa-chevron-right m-server-arrow"></i>
+							</a>
+						{/each}
 					</div>
-					<h3>Team Access</h3>
-					<p>Invite staff members with role-based access. Owners and staff can manage the panel independently.</p>
-				</div>
-				<div class="m-feature-card">
-					<div class="m-feature-icon m-feature-icon--teal">
-						<i class="fas fa-eye"></i>
-					</div>
-					<h3>Live Monitoring</h3>
-					<p>Watch bot status, uptime, and server statistics in real-time with live streaming updates.</p>
-				</div>
-				<div class="m-feature-card">
-					<div class="m-feature-icon m-feature-icon--brick">
-						<i class="fas fa-mobile-screen"></i>
-					</div>
-					<h3>Mobile Ready</h3>
-					<p>Full responsive design works on any device. Manage your server from phone, tablet, or desktop.</p>
-				</div>
-			</div>
-		</section>
+				</section>
+			{/if}
 
-		<!-- CTA -->
-		<section class="m-cta">
-			<div class="m-cta-card">
-				<h2>Ready to Level Up Your Server?</h2>
-				<p>Access the dashboard and start configuring your bot today.</p>
-				<a href="/login" class="m-btn m-btn--primary">
-					<i class="fas fa-arrow-right"></i>
-					Go to Dashboard
-				</a>
-			</div>
-		</section>
-	</div>
+			<!-- Web Panel highlight -->
+			<section class="m-section">
+				<div class="m-section-header">
+					<h2>Powerful web panel</h2>
+					<p>
+						Configure everything from your browser — no slash-command setup required. Start a <strong>5-minute demo</strong> from the login page to click through
+						every module; there is no separate &ldquo;dashboard&rdquo; step — you land straight in the panel.
+					</p>
+				</div>
+				<div class="m-features-grid" style="max-width: 720px; margin: 0 auto;">
+					<div class="m-feature-card">
+						<div class="m-feature-icon m-feature-icon--teal">
+							<i class="fas fa-toggle-on"></i>
+						</div>
+						<h3>Toggle Features</h3>
+						<p>Enable or disable any feature with a single click. Each module is independently configurable.</p>
+					</div>
+					<div class="m-feature-card">
+						<div class="m-feature-icon m-feature-icon--brick">
+							<i class="fas fa-users-gear"></i>
+						</div>
+						<h3>Team Access</h3>
+						<p>Invite staff members with role-based access. Owners and staff can manage the panel independently.</p>
+					</div>
+					<div class="m-feature-card">
+						<div class="m-feature-icon m-feature-icon--teal">
+							<i class="fas fa-eye"></i>
+						</div>
+						<h3>Live Monitoring</h3>
+						<p>Watch bot status, uptime, and server statistics in real-time with live streaming updates.</p>
+					</div>
+					<div class="m-feature-card">
+						<div class="m-feature-icon m-feature-icon--brick">
+							<i class="fas fa-mobile-screen"></i>
+						</div>
+						<h3>Mobile Ready</h3>
+						<p>Full responsive design works on any device. Manage your server from phone, tablet, or desktop.</p>
+					</div>
+				</div>
+			</section>
 
-	<footer class="m-footer">
-		<p>
-			Copyright &copy; {new Date().getFullYear()}
-			<a href="https://dansday.com" target="_blank" rel="noopener">dansday.com</a>. All rights reserved.
-		</p>
-	</footer>
+			<!-- CTA -->
+			<section class="m-cta">
+				<div class="m-cta-card">
+					<h2>Ready to try it?</h2>
+					<p>
+						Open the login page and choose <strong>demo login</strong> for an instant five-minute session — full panel, no signup. Already use the bot? Sign in with
+						your account as usual.
+					</p>
+					<a href="/login" class="m-btn m-btn--primary">
+						<i class="fas fa-flask"></i>
+						Start demo or log in
+					</a>
+				</div>
+			</section>
+		</div>
+	</main>
+
+	<PublicSiteFooter />
 </div>

@@ -1853,13 +1853,12 @@
    LANDING PAGE
    ============================================================ */
 
-/* ---- Landing inner (full-width flex) ---- */
+/* ---- Landing inner: flex growth only; width comes from .m-inner (same as public stats) ---- */
 .m-landing-inner {
 	position: relative;
 	z-index: 1;
-	max-width: 1280px;
-	margin: 0 auto;
 	flex: 1;
+	min-width: 0;
 }
 
 /* ---- Hero ---- */
@@ -1912,55 +1911,9 @@
 	flex-wrap: wrap;
 }
 
-/* ---- Stats strip ---- */
-.m-stats-strip {
-	display: flex;
-	gap: 10px;
-	justify-content: center;
-	flex-wrap: wrap;
-	padding: 0 16px 32px;
-}
-.m-stat-chip {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	padding: 8px 14px;
-	border-radius: 12px;
-	background: rgba(255, 255, 255, 0.88);
-	border: 1px solid var(--lb-border);
-	box-shadow: 0 4px 16px var(--lb-shadow);
-}
-.m-stat-icon {
-	width: 30px;
-	height: 30px;
-	border-radius: 9px;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	background: linear-gradient(135deg, var(--chili-brick), var(--chili-hot));
-	color: #fff;
-	font-size: 12px;
-	flex-shrink: 0;
-}
-.m-stat-text {
-	display: flex;
-	flex-direction: column;
-	gap: 1px;
-}
-.m-stat-value {
-	font-size: 15px;
-	font-weight: 800;
-	color: var(--lb-text);
-	letter-spacing: -0.02em;
-	font-variant-numeric: tabular-nums;
-	line-height: 1.1;
-}
-.m-stat-label {
-	font-size: 10px;
-	font-weight: 500;
-	color: var(--lb-text-muted);
-	text-transform: uppercase;
-	letter-spacing: 0.04em;
+/* ---- Landing: metric strip (reuses public stats overview strip scroll) ---- */
+.m-landing-at-glance {
+	margin-bottom: 8px;
 }
 
 /* ---- Section headings ---- */
@@ -1986,12 +1939,31 @@
 }
 
 /* ---- Feature cards ---- */
+/* Same content width as public statistics (.m-inner max 1280px) — no extra narrow caps */
 .m-features-grid {
 	display: grid;
 	grid-template-columns: 1fr;
 	gap: 12px;
-	max-width: 1080px;
-	margin: 0 auto;
+	width: 100%;
+	max-width: none;
+	margin: 0;
+}
+/* Panel highlight: balanced 2×2 until wide viewports, then one row of four */
+.m-features-grid--quad {
+	max-width: none;
+}
+@media (min-width: 420px) {
+	.m-features-grid--quad {
+		grid-template-columns: repeat(2, 1fr);
+	}
+}
+
+.m-landing-server-live {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 11px;
+	color: var(--lb-text-muted);
 }
 .m-feature-card {
 	background: var(--chili-surface-elevated);
@@ -2050,8 +2022,9 @@
 	display: grid;
 	grid-template-columns: 1fr;
 	gap: 10px;
-	max-width: 640px;
-	margin: 0 auto;
+	width: 100%;
+	max-width: none;
+	margin: 0;
 }
 .m-server-card {
 	display: flex;
@@ -2128,7 +2101,8 @@
 	border: 1px solid var(--lb-border);
 	border-radius: 20px;
 	padding: 32px 24px;
-	max-width: 640px;
+	width: 100%;
+	max-width: none;
 	margin: 0 auto;
 	box-shadow: 0 4px 24px var(--lb-shadow);
 }
@@ -2200,8 +2174,15 @@
 	.m-section {
 		padding: 56px 32px;
 	}
+}
+/* Match .m-stats-grid: 3 columns from 1280px so cards use full inner width before wrapping */
+@media (min-width: 1280px) {
 	.m-features-grid {
 		grid-template-columns: repeat(3, 1fr);
+	}
+	.m-features-grid.m-features-grid--quad {
+		grid-template-columns: repeat(4, 1fr);
+		gap: 16px;
 	}
 }
 

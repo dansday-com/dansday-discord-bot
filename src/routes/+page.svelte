@@ -53,20 +53,32 @@
 		{
 			icon: 'fa-scroll',
 			tone: 'teal',
-			title: 'Discord Quests & orb enroll',
-			desc: 'Quest notifier for Discord Quest home, orb-eligible quests, enroll buttons, and worker automation — so members do not miss limited-time rewards.'
+			title: 'Discord Quest notifier',
+			desc: 'Surfaces Discord Quest home activity in your server: alerts when new quests appear and context for what to run next.'
+		},
+		{
+			icon: 'fa-wand-magic-sparkles',
+			tone: 'brick',
+			title: 'Orb enroll',
+			desc: 'Orb-eligible quest flows with enroll actions and worker automation so limited-time rewards are not missed.'
 		},
 		{
 			icon: 'fa-user-astronaut',
 			tone: 'stone',
-			title: 'Self-bot & accounts',
-			desc: 'Optional self-bot with panel-managed tokens, account invites, and forwarding rules next to the main bot — for workflows that need a user context.'
+			title: 'Self-bot',
+			desc: 'Optional self-bot path with panel-managed tokens and user-context workflows alongside the main bot.'
+		},
+		{
+			icon: 'fa-id-card',
+			tone: 'teal',
+			title: 'Server accounts',
+			desc: 'Invite owners and staff to the panel with controlled roles — separate from Discord permissions for day-to-day chatting.'
 		},
 		{
 			icon: 'fa-video',
 			tone: 'brick',
-			title: 'Content creator & TikTok live',
-			desc: 'Applications, approvals, and TikTok live session digests tied to your server — built for creator programs and streamer communities.'
+			title: 'Content creator',
+			desc: 'Creator applications, approvals, and TikTok live session digests tied to your server.'
 		},
 		{
 			icon: 'fa-cube',
@@ -133,21 +145,21 @@
 			<!-- Hero -->
 			<section class="m-hero">
 				<div class="m-hero-badge">
-					<i class="fas fa-clock"></i>
-					Full panel preview — 5 minute demo, no account needed
+					<i class="fas fa-layer-group"></i>
+					Modular features · One web panel
 				</div>
 				<h1>
 					Supercharge Your<br />
 					<span class="m-gradient-text">Discord Server</span>
 				</h1>
 				<p>
-					Leveling, moderation, Discord Quests &amp; orb enroll, self-bot tools, creator programs, public live statistics, and more — all from one web panel.
-					Use <strong>demo login</strong> on the next screen for five minutes of full access before you invite the bot.
+					Leveling, moderation, Discord Quests, orb enroll, self-bot options, creator tools, live public statistics pages, Roblox catalog alerts, and more —
+					tuned from the browser instead of scattering slash commands across every channel.
 				</p>
 				<div class="m-hero-actions">
 					<a href="/login" class="m-btn m-btn--primary">
-						<i class="fas fa-flask"></i>
-						Try 5-minute demo
+						<i class="fas fa-sign-in-alt"></i>
+						Get started
 					</a>
 					<a href="#features" class="m-btn m-btn--ghost">
 						<i class="fas fa-th-large"></i>
@@ -156,45 +168,45 @@
 				</div>
 			</section>
 
-			<!-- Quick stats strip -->
-			<div class="m-stats-strip">
-				<div class="m-stat-chip">
-					<div class="m-stat-icon"><i class="fas fa-puzzle-piece"></i></div>
-					<div class="m-stat-text">
-						<span class="m-stat-value">15+</span>
-						<span class="m-stat-label">Modules</span>
+			<!-- Metric strip (same scroll pattern as public statistics overview) -->
+			<section class="m-overview-strip m-landing-at-glance" aria-label="At a glance">
+				<div class="m-overview-strip-item">
+					<div class="m-overview-strip-icon"><i class="fas fa-puzzle-piece"></i></div>
+					<div class="m-overview-strip-text">
+						<span class="m-overview-strip-value">15+</span>
+						<span class="m-overview-strip-label">Modules</span>
 					</div>
 				</div>
-				<div class="m-stat-chip">
-					<div class="m-stat-icon"><i class="fas fa-sliders-h"></i></div>
-					<div class="m-stat-text">
-						<span class="m-stat-value">Web</span>
-						<span class="m-stat-label">Panel</span>
+				<div class="m-overview-strip-item">
+					<div class="m-overview-strip-icon"><i class="fas fa-sliders-h"></i></div>
+					<div class="m-overview-strip-text">
+						<span class="m-overview-strip-value">Web</span>
+						<span class="m-overview-strip-label">Panel</span>
 					</div>
 				</div>
-				<div class="m-stat-chip">
-					<div class="m-stat-icon"><i class="fas fa-hourglass-start"></i></div>
-					<div class="m-stat-text">
-						<span class="m-stat-value">5 min</span>
-						<span class="m-stat-label">Demo access</span>
+				<div class="m-overview-strip-item">
+					<div class="m-overview-strip-icon"><i class="fas fa-signal"></i></div>
+					<div class="m-overview-strip-text">
+						<span class="m-overview-strip-value">Live</span>
+						<span class="m-overview-strip-label">Public stats</span>
 					</div>
 				</div>
-				<div class="m-stat-chip">
-					<div class="m-stat-icon"><i class="fas fa-shield-halved"></i></div>
-					<div class="m-stat-text">
-						<span class="m-stat-value">Full</span>
-						<span class="m-stat-label">Control</span>
+				<div class="m-overview-strip-item">
+					<div class="m-overview-strip-icon"><i class="fas fa-shield-halved"></i></div>
+					<div class="m-overview-strip-text">
+						<span class="m-overview-strip-value">Full</span>
+						<span class="m-overview-strip-label">Control</span>
 					</div>
 				</div>
-			</div>
+			</section>
 
 			<!-- Features -->
 			<section class="m-section" id="features">
 				<div class="m-section-header">
 					<h2>Everything your server needs</h2>
 					<p>
-						From moderation and leveling to Discord Quest orb enroll, self-bot accounts, Roblox catalog watch, and public stats — everything is toggled from the
-						same panel. <strong>Try it first</strong> with demo login; add the bot when you are ready.
+						Each module is independent: turn on leveling, Quest notifier, orb enroll, self-bot, forwarder, public statistics, or any combination — all from the
+						same server settings.
 					</p>
 				</div>
 				<div class="m-features-grid">
@@ -230,8 +242,10 @@
 								<div class="m-server-info">
 									<div class="m-server-name">{server.name}</div>
 									<div class="m-server-sub">
-										<i class="fas fa-chart-bar"></i>
-										View public statistics
+										<span class="m-landing-server-live" title="Public page uses live data">
+											<span class="m-live-dot"></span>
+											Live public statistics
+										</span>
 									</div>
 								</div>
 								<i class="fas fa-chevron-right m-server-arrow"></i>
@@ -246,11 +260,11 @@
 				<div class="m-section-header">
 					<h2>Powerful web panel</h2>
 					<p>
-						Configure everything from your browser — no slash-command setup required. Start a <strong>5-minute demo</strong> from the login page to click through
-						every module; there is no separate &ldquo;dashboard&rdquo; step — you land straight in the panel.
+						Configure everything from your browser — no slash-command setup required. You open the panel directly after sign-in; stream live bot and server
+						state where modules support it.
 					</p>
 				</div>
-				<div class="m-features-grid" style="max-width: 720px; margin: 0 auto;">
+				<div class="m-features-grid m-features-grid--quad">
 					<div class="m-feature-card">
 						<div class="m-feature-icon m-feature-icon--teal">
 							<i class="fas fa-toggle-on"></i>
@@ -287,12 +301,12 @@
 				<div class="m-cta-card">
 					<h2>Ready to try it?</h2>
 					<p>
-						Open the login page and choose <strong>demo login</strong> for an instant five-minute session — full panel, no signup. Already use the bot? Sign in with
-						your account as usual.
+						Already added the bot? Sign in with your server account. New here? The login screen includes an optional <strong>five-minute demo</strong> — full panel
+						access, no signup.
 					</p>
 					<a href="/login" class="m-btn m-btn--primary">
-						<i class="fas fa-flask"></i>
-						Start demo or log in
+						<i class="fas fa-sign-in-alt"></i>
+						Open login
 					</a>
 				</div>
 			</section>

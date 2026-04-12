@@ -1,6 +1,14 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, Client, EmbedBuilder } from 'discord.js';
 import db, { type RobloxItemChange } from '../../../../database.js';
-import { getEmbedConfig, getMainChannel, isComponentFeatureEnabled, serverSettingsComponent } from '../../../config.js';
+import {
+	getEmbedConfig,
+	getMainChannel,
+	isComponentFeatureEnabled,
+	robloxCatalogEmbedColors,
+	robloxCatalogStreams,
+	robloxCatalogStreamPollOrder,
+	serverSettingsComponent
+} from '../../../config.js';
 import { logger } from '../../../../utils/index.js';
 import { fetchCatalogFirstPage, robloxCatalogItemUrl, streamCatalogPages } from '../../../api/roblox-catalog-api.js';
 import type { RobloxCatalogItem } from '../../../api/roblox-catalog-api.js';
@@ -9,9 +17,6 @@ let tickTimeoutRef: ReturnType<typeof setTimeout> | null = null;
 let tickRunning = false;
 
 const POLL_MS = 10_000;
-
-const CATALOG_OFFICIAL_ROBLOX_PARAMS = { CreatorType: 1, CreatorTargetId: 1, SortType: 3 };
-const CATALOG_LIMITED_PARAMS = { SalesTypeFilter: 2, SortType: 3 };
 
 const groupedInteger = new Intl.NumberFormat('id-ID');
 
@@ -167,7 +172,13 @@ async function sendItemEmbed(
 	const title = isNew ? (item.name || `Item #${item.id}`).slice(0, 256) : `[Updated] ${item.name || `Item #${item.id}`}`.slice(0, 256);
 
 	const embed = new EmbedBuilder()
-		.setColor(fromOfficialRobloxCatalogQuery ? 0x57f287 : changeLines ? 0xffc107 : target.embedConfig.COLOR)
+		.setColor(
+			fromOfficialRobloxCatalogQuery
+				? robloxCatalogEmbedColors.fromOfficialQuery
+				: changeLines
+					? robloxCatalogEmbedColors.itemUpdated
+					: target.embedConfig.COLOR
+		)
 		.setTitle(title)
 		.addFields(
 			{ name: 'Category', value: category.slice(0, 1024), inline: true },
@@ -197,7 +208,10 @@ async function sendItemEmbed(
 async function initialSeed(client: Client, officialBotId: number, targets: ServerTarget[]) {
 	await logger.log('🛍️ Roblox catalog: DB empty, performing initial seed...');
 
-	const [robloxItems, limitedItems] = await Promise.all([fetchCatalogFirstPage(CATALOG_OFFICIAL_ROBLOX_PARAMS), fetchCatalogFirstPage(CATALOG_LIMITED_PARAMS)]);
+	const [robloxItems, limitedItems] = await Promise.all([
+		fetchCatalogFirstPage(robloxCatalogStreams.officialRoblox.params),
+		fetchCatalogFirstPage(robloxCatalogStreams.limited.params)
+	]);
 
 	const assetIdsFromOfficialQuery = new Set(robloxItems.map((x) => x.id));
 
@@ -335,13 +349,13 @@ async function processPage(
 async function backgroundSync(officialBotId: number, targets: ServerTarget[], seen: Set<number>) {
 	await logger.log('🛍️ Roblox catalog: starting background sync...');
 
-	await streamCatalogPages(CATALOG_OFFICIAL_ROBLOX_PARAMS, async (items) => {
-		await processPage(officialBotId, targets, items, seen, true, false);
-	});
-	await new Promise((r) => setTimeout(r, 10_000));
-	await streamCatalogPages(CATALOG_LIMITED_PARAMS, async (items) => {
-		await processPage(officialBotId, targets, items, seen, false, false);
-	});
+	for (let i = 0; i < robloxCatalogStreamPollOrder.length; i++) {
+		if (i > 0) await new Promise((r) => setTimeout(r, 10_000));
+		const stream = robloxCatalogStreams[robloxCatalogStreamPollOrder[i]];
+		await streamCatalogPages(stream.params, async (items) => {
+			await processPage(officialBotId, targets, items, seen, stream.useOfficialCatalogEmbedStyle, false);
+		});
+	}
 
 	await logger.log('🛍️ Roblox catalog: background sync complete');
 }
@@ -362,13 +376,13 @@ async function runTick(client: Client, officialBotId: number) {
 		const seen = new Set<number>();
 		processPageCount = {};
 
-		await streamCatalogPages(CATALOG_OFFICIAL_ROBLOX_PARAMS, async (items) => {
-			await processPage(officialBotId, targets, items, seen, true, true);
-		});
-		await new Promise((r) => setTimeout(r, 10_000));
-		await streamCatalogPages(CATALOG_LIMITED_PARAMS, async (items) => {
-			await processPage(officialBotId, targets, items, seen, false, true);
-		});
+		for (let i = 0; i < robloxCatalogStreamPollOrder.length; i++) {
+			if (i > 0) await new Promise((r) => setTimeout(r, 10_000));
+			const stream = robloxCatalogStreams[robloxCatalogStreamPollOrder[i]];
+			await streamCatalogPages(stream.params, async (items) => {
+				await processPage(officialBotId, targets, items, seen, stream.useOfficialCatalogEmbedStyle, true);
+			});
+		}
 	} finally {
 		tickRunning = false;
 	}

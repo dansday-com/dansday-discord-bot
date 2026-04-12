@@ -9,6 +9,7 @@ let tickTimeoutRef: ReturnType<typeof setTimeout> | null = null;
 let tickRunning = false;
 
 const POLL_MS = 60_000;
+const ROBLOX_CATALOG_EMBED_GREEN = 0x57f287;
 
 const CATALOG_OFFICIAL_ROBLOX_PARAMS = { CreatorType: 1, CreatorTargetId: 1, SortType: 3 };
 const CATALOG_LIMITED_PARAMS = { SalesTypeFilter: 2, SortType: 3 };
@@ -139,36 +140,29 @@ async function getActiveServers(client: Client, officialBotId: number): Promise<
 async function sendItemEmbed(target: ServerTarget, item: RobloxCatalogItem, isNew: boolean, changeLines?: string) {
 	const url = robloxCatalogItemUrl(item.id);
 	const price = typeof item.price === 'number' ? formatRobux(item.price) : '—';
-	const lowestResale = typeof item.lowestResalePrice === 'number' ? formatRobux(item.lowestResalePrice) : '—';
 	const quantity = formatQuantityRatio(item);
 	const category = item.category?.trim() || '—';
 	const favorites = typeof item.favoriteCount === 'number' ? formatCount(item.favoriteCount) : '—';
 	const createdAt = item.itemCreatedUtc ? `<t:${Math.floor(new Date(item.itemCreatedUtc).getTime() / 1000)}:D>` : '—';
 
-	let saleOrResaleField: { name: string; value: string; inline: boolean };
-	if (item.hasResellers) {
-		saleOrResaleField = {
+	const resaleOrSaleFields: { name: string; value: string; inline: boolean }[] = [];
+	if (item.hasResellers && typeof item.lowestResalePrice === 'number') {
+		resaleOrSaleFields.push({
 			name: 'Lowest Resale',
-			value: typeof item.lowestResalePrice === 'number' ? lowestResale : '—',
+			value: formatRobux(item.lowestResalePrice),
 			inline: true
-		};
+		});
 	} else if (item.offSaleDeadline) {
 		const ts = Math.floor(new Date(item.offSaleDeadline).getTime() / 1000);
-		saleOrResaleField = {
-			name: 'Sale ends',
-			value: Number.isFinite(ts) ? `<t:${ts}:F>` : '—',
-			inline: true
-		};
-	} else {
-		saleOrResaleField = { name: 'Sale ends', value: '—', inline: true };
+		if (Number.isFinite(ts)) {
+			resaleOrSaleFields.push({ name: 'Sale ends', value: `<t:${ts}:F>`, inline: true });
+		}
 	}
 
 	const title = isNew ? (item.name || `Item #${item.id}`).slice(0, 256) : `[Updated] ${item.name || `Item #${item.id}`}`.slice(0, 256);
 
-	const color = changeLines ? 0xffc107 : target.embedConfig.COLOR;
-
 	const embed = new EmbedBuilder()
-		.setColor(color)
+		.setColor(ROBLOX_CATALOG_EMBED_GREEN)
 		.setTitle(title)
 		.addFields(
 			{ name: 'Category', value: category.slice(0, 1024), inline: true },
@@ -176,7 +170,7 @@ async function sendItemEmbed(target: ServerTarget, item: RobloxCatalogItem, isNe
 			{ name: 'Creator', value: (item.creatorHasVerifiedBadge ? `✅ ${item.creatorName}` : item.creatorName || '—').slice(0, 1024), inline: true },
 			{ name: 'Quantity', value: quantity, inline: true },
 			{ name: 'Favorites', value: favorites, inline: true },
-			saleOrResaleField,
+			...resaleOrSaleFields,
 			{ name: 'Created', value: createdAt, inline: true }
 		)
 		.setFooter({ text: target.embedConfig.FOOTER });

@@ -9,8 +9,6 @@ let tickRunning = false;
 
 const POLL_MS = 60_000;
 
-const FIRST_ANNOUNCE_LOOKBACK_DAYS = 90;
-
 const groupedInteger = new Intl.NumberFormat('id-ID');
 
 function formatRobux(n: number): string {
@@ -56,16 +54,14 @@ function utcCalendarDayMinusDays(offsetDays: number): string {
 	return new Date(t).toISOString().slice(0, 10);
 }
 
-function resolveAnnounceCreationUtcDay(items: RobloxCatalogItem[]): string | null {
+function resolveAnnounceDay(items: RobloxCatalogItem[]): string | null {
 	const daySet = new Set<string>();
 	for (const x of items) {
 		if (x.itemCreatedUtc) daySet.add(utcDay(x.itemCreatedUtc));
 	}
 	if (daySet.size === 0) return null;
-	for (let offset = 0; offset < FIRST_ANNOUNCE_LOOKBACK_DAYS; offset++) {
-		const candidate = utcCalendarDayMinusDays(offset);
-		if (daySet.has(candidate)) return candidate;
-	}
+	const today = utcCalendarDayMinusDays(0);
+	if (daySet.has(today)) return today;
 	return [...daySet].sort((a, b) => b.localeCompare(a))[0] ?? null;
 }
 
@@ -160,7 +156,7 @@ async function initialSeed(client: Client, officialBotId: number, targets: Serve
 		all.push(item);
 	}
 
-	const announceDay = resolveAnnounceCreationUtcDay(all);
+	const announceDay = resolveAnnounceDay(all);
 	const toPost = announceDay
 		? all
 				.filter((x) => x.itemCreatedUtc && utcDay(x.itemCreatedUtc) === announceDay)
@@ -194,26 +190,6 @@ async function initialSeed(client: Client, officialBotId: number, targets: Serve
 	backgroundSync(officialBotId, targets, seenIds).catch((err) => logger.log(`⚠️ Roblox catalog: background sync error: ${err?.message || err}`));
 }
 
-async function backgroundSync(officialBotId: number, targets: ServerTarget[], seen: Set<number>) {
-	await logger.log('🛍️ Roblox catalog: starting background sync...');
-
-	const syncPage = async (items: RobloxCatalogItem[]) => {
-		const newItems = items.filter((x) => !seen.has(x.id));
-		for (const x of newItems) seen.add(x.id);
-		if (newItems.length === 0) return;
-		for (const target of targets) {
-			await db.syncServerRobloxItemsFromApi(officialBotId, target.serverId, newItems.map(toSnapshot));
-		}
-		await logger.log(`🔄 Roblox catalog: background synced ${newItems.length} items (total seen: ${seen.size})`);
-	};
-
-	await streamCatalogPages({ CreatorType: 1, CreatorTargetId: 1, SortType: 3 }, syncPage);
-	await new Promise((r) => setTimeout(r, 10_000));
-	await streamCatalogPages({ SalesTypeFilter: 2, SortType: 3 }, syncPage);
-
-	await logger.log('🛍️ Roblox catalog: background sync complete');
-}
-
 let processPageCount: Record<string, number> = {};
 
 async function processPage(officialBotId: number, targets: ServerTarget[], items: RobloxCatalogItem[], seen: Set<number>, source: string) {
@@ -228,7 +204,7 @@ async function processPage(officialBotId: number, targets: ServerTarget[], items
 	await logger.log(`🔄 Roblox catalog [${source}] page ${pageNum}: ${newItems.length} new items (total seen: ${seen.size})`);
 
 	const snapshots = newItems.map(toSnapshot);
-	const announceDay = resolveAnnounceCreationUtcDay(newItems);
+	const announceDay = resolveAnnounceDay(newItems);
 
 	const perServerChanges = new Map<number, Map<number, RobloxItemChange[]>>();
 	const perServerUnposted = new Map<number, Set<number>>();
@@ -296,6 +272,20 @@ async function processPage(officialBotId: number, targets: ServerTarget[], items
 			}
 		}
 	}
+}
+
+async function backgroundSync(officialBotId: number, targets: ServerTarget[], seen: Set<number>) {
+	await logger.log('🛍️ Roblox catalog: starting background sync...');
+
+	await streamCatalogPages({ CreatorType: 1, CreatorTargetId: 1, SortType: 3 }, async (items) => {
+		await processPage(officialBotId, targets, items, seen, 'roblox-official');
+	});
+	await new Promise((r) => setTimeout(r, 10_000));
+	await streamCatalogPages({ SalesTypeFilter: 2, SortType: 3 }, async (items) => {
+		await processPage(officialBotId, targets, items, seen, 'limiteds');
+	});
+
+	await logger.log('🛍️ Roblox catalog: background sync complete');
 }
 
 async function runTick(client: Client, officialBotId: number) {

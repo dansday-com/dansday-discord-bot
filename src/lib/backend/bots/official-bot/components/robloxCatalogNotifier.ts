@@ -209,17 +209,16 @@ async function sendItemEmbed(
 async function initialSeed(client: Client, officialBotId: number, targets: ServerTarget[]) {
 	await logger.log('🛍️ Roblox catalog: DB empty, performing initial seed...');
 
-	const [robloxItems, limitedItems, limitedResellItems] = await Promise.all([
+	const [robloxItems, limitedItems] = await Promise.all([
 		fetchCatalogFirstPage(robloxCatalogStreams.officialRoblox.params),
-		fetchCatalogFirstPage(robloxCatalogStreams.limited.params),
-		fetchCatalogFirstPage(robloxCatalogStreams.limitedResellOnly.params)
+		fetchCatalogFirstPage(robloxCatalogStreams.limited.params)
 	]);
 
 	const assetIdsFromOfficialQuery = new Set(robloxItems.map((x) => x.id));
 
 	const seenIds = new Set<number>();
 	const all: RobloxCatalogItem[] = [];
-	for (const item of [...robloxItems, ...limitedItems, ...limitedResellItems]) {
+	for (const item of [...robloxItems, ...limitedItems]) {
 		if (seenIds.has(item.id)) continue;
 		seenIds.add(item.id);
 		all.push(item);

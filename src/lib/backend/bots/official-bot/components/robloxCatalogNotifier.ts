@@ -9,7 +9,6 @@ let tickTimeoutRef: ReturnType<typeof setTimeout> | null = null;
 let tickRunning = false;
 
 const POLL_MS = 10_000;
-const ROBLOX_CATALOG_EMBED_GREEN = 0x57f287;
 
 const CATALOG_OFFICIAL_ROBLOX_PARAMS = { CreatorType: 1, CreatorTargetId: 1, SortType: 3 };
 const CATALOG_LIMITED_PARAMS = { SalesTypeFilter: 2, SortType: 3 };
@@ -137,7 +136,13 @@ async function getActiveServers(client: Client, officialBotId: number): Promise<
 	return targets;
 }
 
-async function sendItemEmbed(target: ServerTarget, item: RobloxCatalogItem, isNew: boolean, changeLines?: string) {
+async function sendItemEmbed(
+	target: ServerTarget,
+	item: RobloxCatalogItem,
+	isNew: boolean,
+	changeLines: string | undefined,
+	fromOfficialRobloxCatalogQuery: boolean
+) {
 	const url = robloxCatalogItemUrl(item.id);
 	const price = typeof item.price === 'number' ? formatRobux(item.price) : '—';
 	const quantity = formatQuantityRatio(item);
@@ -162,7 +167,7 @@ async function sendItemEmbed(target: ServerTarget, item: RobloxCatalogItem, isNe
 	const title = isNew ? (item.name || `Item #${item.id}`).slice(0, 256) : `[Updated] ${item.name || `Item #${item.id}`}`.slice(0, 256);
 
 	const embed = new EmbedBuilder()
-		.setColor(ROBLOX_CATALOG_EMBED_GREEN)
+		.setColor(fromOfficialRobloxCatalogQuery ? 0x57f287 : changeLines ? 0xffc107 : target.embedConfig.COLOR)
 		.setTitle(title)
 		.addFields(
 			{ name: 'Category', value: category.slice(0, 1024), inline: true },
@@ -194,6 +199,8 @@ async function initialSeed(client: Client, officialBotId: number, targets: Serve
 
 	const [robloxItems, limitedItems] = await Promise.all([fetchCatalogFirstPage(CATALOG_OFFICIAL_ROBLOX_PARAMS), fetchCatalogFirstPage(CATALOG_LIMITED_PARAMS)]);
 
+	const assetIdsFromOfficialQuery = new Set(robloxItems.map((x) => x.id));
+
 	const seenIds = new Set<number>();
 	const all: RobloxCatalogItem[] = [];
 	for (const item of [...robloxItems, ...limitedItems]) {
@@ -220,7 +227,7 @@ async function initialSeed(client: Client, officialBotId: number, targets: Serve
 		for (const item of toPost) {
 			if (!unposted.has(item.id)) continue;
 			try {
-				await sendItemEmbed(target, item, true);
+				await sendItemEmbed(target, item, true, undefined, assetIdsFromOfficialQuery.has(item.id));
 				await db.markServerRobloxItemMessagePosted(target.serverId, item.id);
 				await logger.log(`🛍️ Roblox catalog: seeded item ${item.id} → ${target.channelId}`);
 			} catch (err: any) {
@@ -239,18 +246,19 @@ async function processPage(
 	targets: ServerTarget[],
 	items: RobloxCatalogItem[],
 	seen: Set<number>,
-	source: string,
+	fromOfficialRobloxCatalogQuery: boolean,
 	allowCatalogFirstMessage: boolean
 ) {
 	const newItems = items.filter((x) => !seen.has(x.id));
 	for (const x of newItems) seen.add(x.id);
-	processPageCount[source] = (processPageCount[source] ?? 0) + 1;
-	const pageNum = processPageCount[source];
+	const logKey = fromOfficialRobloxCatalogQuery ? 'official' : 'limited';
+	processPageCount[logKey] = (processPageCount[logKey] ?? 0) + 1;
+	const pageNum = processPageCount[logKey];
 	if (newItems.length === 0) {
-		await logger.log(`🔄 Roblox catalog [${source}] page ${pageNum}: 0 new items (skipped)`);
+		await logger.log(`🔄 Roblox catalog [${logKey}] page ${pageNum}: 0 new items (skipped)`);
 		return;
 	}
-	await logger.log(`🔄 Roblox catalog [${source}] page ${pageNum}: ${newItems.length} new items (total seen: ${seen.size})`);
+	await logger.log(`🔄 Roblox catalog [${logKey}] page ${pageNum}: ${newItems.length} new items (total seen: ${seen.size})`);
 
 	const snapshots = newItems.map(toSnapshot);
 	const todayUtcDay = utcCalendarDayMinusDays(0);
@@ -309,7 +317,7 @@ async function processPage(
 						.join('\n');
 				}
 
-				await sendItemEmbed(target, item, isNew, changeLines);
+				await sendItemEmbed(target, item, isNew, changeLines, fromOfficialRobloxCatalogQuery);
 
 				if (isNew) {
 					await db.markServerRobloxItemMessagePosted(target.serverId, item.id);
@@ -328,11 +336,11 @@ async function backgroundSync(officialBotId: number, targets: ServerTarget[], se
 	await logger.log('🛍️ Roblox catalog: starting background sync...');
 
 	await streamCatalogPages(CATALOG_OFFICIAL_ROBLOX_PARAMS, async (items) => {
-		await processPage(officialBotId, targets, items, seen, 'roblox-official', false);
+		await processPage(officialBotId, targets, items, seen, true, false);
 	});
 	await new Promise((r) => setTimeout(r, 10_000));
 	await streamCatalogPages(CATALOG_LIMITED_PARAMS, async (items) => {
-		await processPage(officialBotId, targets, items, seen, 'limiteds', false);
+		await processPage(officialBotId, targets, items, seen, false, false);
 	});
 
 	await logger.log('🛍️ Roblox catalog: background sync complete');
@@ -355,11 +363,11 @@ async function runTick(client: Client, officialBotId: number) {
 		processPageCount = {};
 
 		await streamCatalogPages(CATALOG_OFFICIAL_ROBLOX_PARAMS, async (items) => {
-			await processPage(officialBotId, targets, items, seen, 'roblox-official', true);
+			await processPage(officialBotId, targets, items, seen, true, true);
 		});
 		await new Promise((r) => setTimeout(r, 10_000));
 		await streamCatalogPages(CATALOG_LIMITED_PARAMS, async (items) => {
-			await processPage(officialBotId, targets, items, seen, 'limiteds', true);
+			await processPage(officialBotId, targets, items, seen, false, true);
 		});
 	} finally {
 		tickRunning = false;

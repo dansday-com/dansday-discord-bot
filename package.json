@@ -1,7 +1,7 @@
 {
 	"name": "dansday-discord-bot",
 	"private": true,
-	"version": "8.1.1",
+	"version": "8.1.2",
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
@@ -30,6 +30,7 @@
 		"nodemailer": "^8.0.4",
 		"proxy-agent": "^8.0.0",
 		"redis": "^5.11.0",
+		"rozod": "^6.6.0",
 		"tiktok-live-connector": "^2.1.1-beta1"
 	},
 	"devDependencies": {

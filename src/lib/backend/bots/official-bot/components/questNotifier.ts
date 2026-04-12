@@ -1,8 +1,14 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, Client, EmbedBuilder } from 'discord.js';
 import db from '../../../../database.js';
-import { getEmbedConfig, isComponentFeatureEnabled, serverSettingsComponent } from '../../../config.js';
+import {
+	extractDiscordQuestSummaries,
+	fetchQuestsMe,
+	getEmbedConfig,
+	isComponentFeatureEnabled,
+	serverSettingsComponent,
+	type DiscordQuestSummary
+} from '../../../config.js';
 import { logger } from '../../../../utils/index.js';
-import { extractDiscordQuestSummaries, fetchQuestsMe, type DiscordQuestSummary } from '../../../api/discord-quest-api.js';
 
 let tickTimeoutRef: ReturnType<typeof setTimeout> | null = null;
 

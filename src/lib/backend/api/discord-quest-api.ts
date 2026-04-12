@@ -1,8 +1,6 @@
 import axios from 'axios';
 import { ProxyAgent } from 'proxy-agent';
-
-const DISCORD_API_V9 = 'https://discord.com/api/v9';
-const QUESTS_ME_URL = `${DISCORD_API_V9}/quests/@me`;
+import { discordQuestHttp } from '../config.js';
 
 const CLIENT_USER_AGENT =
 	'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) discord/1.0.9044 Chrome/120.0.6099.291 Electron/28.2.10 Safari/537.36';
@@ -551,7 +549,7 @@ async function questApiRequest(
 	const headers = discordQuestRequestHeaders(userToken);
 	const proxyUrl = opts?.httpProxyUrl?.trim() || undefined;
 	const agent = proxyUrl ? getQuestProxyAgent(proxyUrl) : undefined;
-	const url = path.startsWith('http') ? path : `${DISCORD_API_V9}${path.startsWith('/') ? path : `/${path}`}`;
+	const url = path.startsWith('http') ? path : `${discordQuestHttp.apiBase}${path.startsWith('/') ? path : `/${path}`}`;
 	const maxAttempts = 3;
 
 	for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -583,7 +581,7 @@ async function questApiRequest(
 export async function fetchQuestsMe(userToken: string, opts?: { httpProxyUrl?: string | null }): Promise<unknown> {
 	const maxAttempts = 3;
 	for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-		const res = await questApiRequest(userToken, 'GET', '/quests/@me', undefined, opts);
+		const res = await questApiRequest(userToken, 'GET', discordQuestHttp.paths.questsMe, undefined, opts);
 
 		if (res.status === 429 && attempt < maxAttempts) {
 			await sleep(2000);
@@ -700,7 +698,7 @@ function discordUserIdFromToken(userToken: string): string | null {
 async function discordUserIdFromUserToken(userToken: string, opts?: { httpProxyUrl?: string | null }): Promise<string | null> {
 	const fromJwt = discordUserIdFromToken(userToken);
 	if (fromJwt) return fromJwt;
-	const res = await questApiRequest(userToken, 'GET', '/users/@me', undefined, opts);
+	const res = await questApiRequest(userToken, 'GET', discordQuestHttp.paths.usersMe, undefined, opts);
 	if (res.status !== 200 || !res.data || typeof res.data !== 'object') return null;
 	const id = (res.data as Record<string, unknown>).id;
 	return typeof id === 'string' ? id : null;

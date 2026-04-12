@@ -1,11 +1,10 @@
 import { ActionRowBuilder, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, type ModalActionRowComponentBuilder } from 'discord.js';
 import type { ButtonInteraction, ModalSubmitInteraction } from 'discord.js';
 import db from '../../../../database.js';
-import { getEmbedConfig, getServerForCurrentBot, serverSettingsComponent } from '../../../config.js';
+import { fetchQuestsMe, getEmbedConfig, getServerForCurrentBot, precheckQuestPayloadForEnrollment, serverSettingsComponent } from '../../../config.js';
 import { translate } from '../i18n.js';
 import { hasPermission, getPermissionDeniedMessage } from './permissions.js';
 import { queueQuestEnrollJob, isUserEnrollRunning } from './questEnrollWorker.js';
-import { fetchQuestsMe, precheckQuestPayloadForEnrollment } from '../../../api/discord-quest-api.js';
 
 export const QUEST_ENROLL_BUTTON_PREFIX = 'quest_enroll:';
 export const LEGACY_ENROLL_BUTTON_PREFIX = '\u006f\u0072\u0062_enroll:';

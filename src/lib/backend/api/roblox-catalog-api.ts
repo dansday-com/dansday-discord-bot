@@ -1,16 +1,22 @@
 import axios from 'axios';
+import { fetchApi } from 'rozod';
+import { getSearchItemsDetails } from 'rozod/lib/endpoints/catalogv2.js';
 
 export type RobloxCatalogItem = {
 	id: number;
 	assetType?: number;
+	category?: string;
 	name?: string;
 	description?: string;
 	creatorName?: string;
 	creatorHasVerifiedBadge?: boolean;
 	price?: number;
-	lowestPrice?: number;
 	lowestResalePrice?: number;
+	unitsAvailable?: number;
 	totalQuantity?: number;
+	favoriteCount?: number;
+	hasResellers?: boolean;
+	offSaleDeadline?: string | null;
 	itemCreatedUtc?: string;
 	thumbnailUrl?: string | null;
 };
@@ -20,43 +26,67 @@ const ROBLOX_HEADERS = {
 	Accept: 'application/json'
 };
 
-async function fetchWithRetry(url: string, params: Record<string, any>): Promise<any> {
+function taxonomyCategory(tax: unknown): string | undefined {
+	if (!Array.isArray(tax) || tax.length === 0) return undefined;
+	const names = tax.map((t: { taxonomyName?: string }) => (typeof t?.taxonomyName === 'string' ? t.taxonomyName.trim() : '')).filter(Boolean);
+	return names.length ? names.join(', ') : undefined;
+}
+
+function mapCatalogRow(x: Record<string, unknown>): RobloxCatalogItem | null {
+	if (!Number.isFinite(Number(x?.id))) return null;
+	const offRaw = x.offSaleDeadline;
+	const offSaleDeadline = typeof offRaw === 'string' && offRaw.length > 0 ? offRaw : null;
+	return {
+		id: Number(x.id),
+		assetType: Number.isFinite(Number(x?.assetType)) ? Number(x.assetType) : undefined,
+		category: taxonomyCategory(x.taxonomy),
+		name: typeof x.name === 'string' ? x.name : undefined,
+		description: typeof x.description === 'string' ? x.description : undefined,
+		creatorName: typeof x.creatorName === 'string' ? x.creatorName : undefined,
+		creatorHasVerifiedBadge: x.creatorHasVerifiedBadge === true,
+		price: Number.isFinite(Number(x?.price)) ? Number(x.price) : undefined,
+		lowestResalePrice: Number.isFinite(Number(x?.lowestResalePrice)) ? Number(x.lowestResalePrice) : undefined,
+		unitsAvailable: Number.isFinite(Number(x?.unitsAvailableForConsumption)) ? Number(x.unitsAvailableForConsumption) : undefined,
+		totalQuantity: Number.isFinite(Number(x?.totalQuantity)) ? Number(x.totalQuantity) : undefined,
+		favoriteCount: Number.isFinite(Number(x?.favoriteCount)) ? Number(x.favoriteCount) : undefined,
+		hasResellers: x.hasResellers === true,
+		offSaleDeadline,
+		itemCreatedUtc: typeof x.itemCreatedUtc === 'string' ? x.itemCreatedUtc : undefined,
+		thumbnailUrl: null
+	};
+}
+
+async function fetchCatalogJson(params: Record<string, unknown>): Promise<{ data: Record<string, unknown>[]; nextPageCursor: string | null }> {
 	for (let attempt = 0; attempt < 3; attempt++) {
 		try {
-			const res = await axios.get(url, { params, headers: ROBLOX_HEADERS, timeout: 15_000 });
-			return res.data;
-		} catch (err: any) {
-			const status = err?.response?.status;
-			const fullUrl = `${url}?${new URLSearchParams(params).toString()}`;
-			const body = err?.response?.data ? JSON.stringify(err.response.data) : err?.message;
+			const data = await fetchApi(getSearchItemsDetails, params as any, {
+				throwOnError: true,
+				retries: 0,
+				signal: AbortSignal.timeout(15_000)
+			});
+			const rows = Array.isArray(data?.data) ? data.data : [];
+			const next = typeof data?.nextPageCursor === 'string' ? data.nextPageCursor : null;
+			return { data: rows as Record<string, unknown>[], nextPageCursor: next };
+		} catch (err: unknown) {
+			const status = (err as { response?: { status?: number } })?.response?.status;
 			if ((status === 503 || status === 429) && attempt < 2) {
 				await new Promise((r) => setTimeout(r, 30_000 * (attempt + 1)));
 				continue;
 			}
-			throw new Error(`[roblox-api] failed ${status} on ${fullUrl} — ${body}`);
+			const msg = err instanceof Error ? err.message : String(err);
+			throw new Error(`[roblox-api] catalog fetch failed ${status ?? '?'} — ${msg}`);
 		}
 	}
+	throw new Error('[roblox-api] catalog fetch exhausted retries');
 }
 
-export async function fetchCatalogFirstPage(extraParams: Record<string, any>): Promise<RobloxCatalogItem[]> {
-	const data = await fetchWithRetry('https://catalog.roblox.com/v2/search/items/details', { Limit: 120, ...extraParams });
-	const rows = Array.isArray(data?.data) ? data.data : [];
-	const items: RobloxCatalogItem[] = rows
-		.filter((x: any) => Number.isFinite(Number(x?.id)))
-		.map((x: any) => ({
-			id: Number(x.id),
-			assetType: Number.isFinite(Number(x?.assetType)) ? Number(x.assetType) : undefined,
-			name: typeof x.name === 'string' ? x.name : undefined,
-			description: typeof x.description === 'string' ? x.description : undefined,
-			creatorName: typeof x.creatorName === 'string' ? x.creatorName : undefined,
-			creatorHasVerifiedBadge: x.creatorHasVerifiedBadge === true,
-			price: Number.isFinite(Number(x?.price)) ? Number(x.price) : undefined,
-			lowestPrice: Number.isFinite(Number(x?.lowestPrice)) ? Number(x.lowestPrice) : undefined,
-			lowestResalePrice: Number.isFinite(Number(x?.lowestResalePrice)) ? Number(x.lowestResalePrice) : undefined,
-			totalQuantity: Number.isFinite(Number(x?.totalQuantity)) ? Number(x.totalQuantity) : undefined,
-			itemCreatedUtc: typeof x.itemCreatedUtc === 'string' ? x.itemCreatedUtc : undefined,
-			thumbnailUrl: null
-		}));
+function filterVerifiedCreators(items: RobloxCatalogItem[]): RobloxCatalogItem[] {
+	return items.filter((x) => x.creatorHasVerifiedBadge === true);
+}
+
+export async function fetchCatalogFirstPage(extraParams: Record<string, unknown>): Promise<RobloxCatalogItem[]> {
+	const { data } = await fetchCatalogJson({ limit: 120, ...extraParams });
+	const items = filterVerifiedCreators(data.map((row) => mapCatalogRow(row)).filter((x): x is RobloxCatalogItem => x != null));
 	if (items.length > 0) {
 		const thumbMap = await fetchThumbnailUrls(items);
 		for (const item of items) item.thumbnailUrl = thumbMap.get(item.id) ?? null;
@@ -64,32 +94,15 @@ export async function fetchCatalogFirstPage(extraParams: Record<string, any>): P
 	return items;
 }
 
-export async function streamCatalogPages(extraParams: Record<string, any>, onPage: (items: RobloxCatalogItem[]) => Promise<void>): Promise<void> {
-	let cursor: string | undefined = undefined;
+export async function streamCatalogPages(extraParams: Record<string, unknown>, onPage: (items: RobloxCatalogItem[]) => Promise<void>): Promise<void> {
+	let cursor: string | undefined;
 
 	while (true) {
-		const params: Record<string, any> = { Limit: 120, ...extraParams };
-		if (cursor) params.Cursor = cursor;
+		const params: Record<string, unknown> = { limit: 120, ...extraParams };
+		if (cursor) params.cursor = cursor;
 
-		const data = await fetchWithRetry('https://catalog.roblox.com/v2/search/items/details', params);
-		const rows = Array.isArray(data?.data) ? data.data : [];
-
-		const items: RobloxCatalogItem[] = rows
-			.filter((x: any) => Number.isFinite(Number(x?.id)))
-			.map((x: any) => ({
-				id: Number(x.id),
-				assetType: Number.isFinite(Number(x?.assetType)) ? Number(x.assetType) : undefined,
-				name: typeof x.name === 'string' ? x.name : undefined,
-				description: typeof x.description === 'string' ? x.description : undefined,
-				creatorName: typeof x.creatorName === 'string' ? x.creatorName : undefined,
-				creatorHasVerifiedBadge: x.creatorHasVerifiedBadge === true,
-				price: Number.isFinite(Number(x?.price)) ? Number(x.price) : undefined,
-				lowestPrice: Number.isFinite(Number(x?.lowestPrice)) ? Number(x.lowestPrice) : undefined,
-				lowestResalePrice: Number.isFinite(Number(x?.lowestResalePrice)) ? Number(x.lowestResalePrice) : undefined,
-				totalQuantity: Number.isFinite(Number(x?.totalQuantity)) ? Number(x.totalQuantity) : undefined,
-				itemCreatedUtc: typeof x.itemCreatedUtc === 'string' ? x.itemCreatedUtc : undefined,
-				thumbnailUrl: null
-			}));
+		const { data, nextPageCursor } = await fetchCatalogJson(params);
+		const items = filterVerifiedCreators(data.map((row) => mapCatalogRow(row)).filter((x): x is RobloxCatalogItem => x != null));
 
 		if (items.length > 0) {
 			const thumbMap = await fetchThumbnailUrls(items);
@@ -97,9 +110,9 @@ export async function streamCatalogPages(extraParams: Record<string, any>, onPag
 			await onPage(items);
 		}
 
-		cursor = typeof data?.nextPageCursor === 'string' ? data.nextPageCursor : null;
+		cursor = nextPageCursor ?? undefined;
 		if (!cursor) break;
-		await new Promise((r) => setTimeout(r, 10_000));
+		await new Promise((r) => setTimeout(r, 3_000));
 	}
 }
 
@@ -126,45 +139,23 @@ async function fetchThumbnailUrls(items: RobloxCatalogItem[]): Promise<Map<numbe
 	return out;
 }
 
-export function robloxCatalogItemUrl(id: number): string {
-	return `https://www.roblox.com/catalog/${id}`;
+async function fetchWithRetry(url: string, params: Record<string, unknown>): Promise<any> {
+	for (let attempt = 0; attempt < 3; attempt++) {
+		try {
+			const res = await axios.get(url, { params, headers: ROBLOX_HEADERS, timeout: 15_000 });
+			return res.data;
+		} catch (err: any) {
+			const status = err?.response?.status;
+			const body = err?.response?.data ? JSON.stringify(err.response.data) : err?.message;
+			if ((status === 503 || status === 429) && attempt < 2) {
+				await new Promise((r) => setTimeout(r, 30_000 * (attempt + 1)));
+				continue;
+			}
+			throw new Error(`[roblox-api] thumbnails failed ${status} — ${body}`);
+		}
+	}
 }
 
-export function assetTypeCategory(assetType: number | undefined | null): string | null {
-	if (assetType == null) return null;
-	const m: Record<number, string> = {
-		8: 'Hat',
-		11: 'Shirt',
-		12: 'Pants',
-		17: 'Head',
-		18: 'Face',
-		27: 'Torso',
-		28: 'Right Arm',
-		29: 'Left Arm',
-		30: 'Left Leg',
-		31: 'Right Leg',
-		41: 'Hair',
-		42: 'Face Accessory',
-		43: 'Neck Accessory',
-		44: 'Shoulder Accessory',
-		45: 'Front Accessory',
-		46: 'Back Accessory',
-		47: 'Waist Accessory',
-		48: 'Climb Animation',
-		50: 'Fall Animation',
-		51: 'Idle Animation',
-		52: 'Jump Animation',
-		53: 'Run Animation',
-		54: 'Swim Animation',
-		55: 'Walk Animation',
-		61: 'Emote',
-		65: 'T-Shirt',
-		66: 'Shirt',
-		67: 'Pants',
-		76: 'Eyebrows',
-		78: 'Face Mood',
-		79: 'Head',
-		88: 'Face Makeup'
-	};
-	return m[assetType] ?? null;
+export function robloxCatalogItemUrl(id: number): string {
+	return `https://www.roblox.com/catalog/${id}`;
 }

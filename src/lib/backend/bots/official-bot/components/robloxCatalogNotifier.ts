@@ -1,16 +1,24 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, Client, EmbedBuilder } from 'discord.js';
 import db, { type RobloxItemChange } from '../../../../database.js';
-import { getEmbedConfig, getMainChannel, isComponentFeatureEnabled, serverSettingsComponent } from '../../../config.js';
+import {
+	fetchCatalogFirstPage,
+	getEmbedConfig,
+	getMainChannel,
+	isComponentFeatureEnabled,
+	robloxCatalogEmbedColors,
+	robloxCatalogItemUrl,
+	robloxCatalogStreams,
+	robloxCatalogStreamPollOrder,
+	serverSettingsComponent,
+	streamCatalogPages,
+	type RobloxCatalogItem
+} from '../../../config.js';
 import { logger } from '../../../../utils/index.js';
-import { assetTypeCategory, fetchCatalogFirstPage, RobloxCatalogItem, robloxCatalogItemUrl, streamCatalogPages } from '../../../api/roblox-catalog-api.js';
 
 let tickTimeoutRef: ReturnType<typeof setTimeout> | null = null;
 let tickRunning = false;
 
-const POLL_MS = 60_000;
-
-const CATALOG_OFFICIAL_ROBLOX_PARAMS = { CreatorType: 1, CreatorTargetId: 1, SortType: 3 };
-const CATALOG_LIMITED_PARAMS = { SalesTypeFilter: 2, SortType: 3 };
+const POLL_MS = 6_000;
 
 const groupedInteger = new Intl.NumberFormat('id-ID');
 
@@ -20,6 +28,15 @@ function formatRobux(n: number): string {
 
 function formatCount(n: number): string {
 	return groupedInteger.format(Math.trunc(n));
+}
+
+function formatQuantityRatio(item: RobloxCatalogItem): string {
+	const u = item.unitsAvailable;
+	const t = item.totalQuantity;
+	if (u != null && t != null) return `${formatCount(u)}/${formatCount(t)}`;
+	if (u != null) return `${formatCount(u)}/—`;
+	if (t != null) return `—/${formatCount(t)}`;
+	return '—';
 }
 
 type ServerTarget = {
@@ -34,15 +51,16 @@ function toSnapshot(x: RobloxCatalogItem) {
 	return {
 		assetId: x.id,
 		assetType: x.assetType ?? null,
+		category: x.category ?? null,
 		name: x.name ?? null,
 		description: x.description ?? null,
 		creatorName: x.creatorName ?? null,
 		price: x.price ?? null,
-		lowestPrice: x.lowestPrice ?? null,
 		lowestResalePrice: x.lowestResalePrice ?? null,
 		totalQuantity: x.totalQuantity ?? null,
+		unitsAvailable: x.unitsAvailable ?? null,
+		favoriteCount: x.favoriteCount ?? null,
 		thumbnailUrl: x.thumbnailUrl ?? null,
-		itemUrl: robloxCatalogItemUrl(x.id),
 		itemCreatedUtc: x.itemCreatedUtc ?? null
 	};
 }
@@ -68,7 +86,7 @@ function announceDayFromMergedFirstPages(robloxItems: RobloxCatalogItem[], limit
 	const offMax = maxItemCreatedTs(robloxItems);
 	const limMax = maxItemCreatedTs(limitedItems);
 	const winTs = Math.max(offMax, limMax);
-	if (winTs > 0) return utcDay(new Date(winTs));
+	if (winTs > 0) return utcDay(new Date(winTs).toISOString());
 	return [...daySet].sort((a, b) => b.localeCompare(a))[0] ?? null;
 }
 
@@ -125,29 +143,52 @@ async function getActiveServers(client: Client, officialBotId: number): Promise<
 	return targets;
 }
 
-async function sendItemEmbed(target: ServerTarget, item: RobloxCatalogItem, isNew: boolean, changeLines?: string) {
+async function sendItemEmbed(
+	target: ServerTarget,
+	item: RobloxCatalogItem,
+	isNew: boolean,
+	changeLines: string | undefined,
+	fromOfficialRobloxCatalogQuery: boolean
+) {
 	const url = robloxCatalogItemUrl(item.id);
 	const price = typeof item.price === 'number' ? formatRobux(item.price) : '—';
-	const lowestPrice = typeof item.lowestPrice === 'number' ? formatRobux(item.lowestPrice) : '—';
-	const lowestResale = typeof item.lowestResalePrice === 'number' ? formatRobux(item.lowestResalePrice) : '—';
-	const quantity = typeof item.totalQuantity === 'number' ? formatCount(item.totalQuantity) : '—';
-	const category = assetTypeCategory(item.assetType) ?? '—';
+	const quantity = formatQuantityRatio(item);
+	const category = item.category?.trim() || '—';
+	const favorites = typeof item.favoriteCount === 'number' ? formatCount(item.favoriteCount) : '—';
 	const createdAt = item.itemCreatedUtc ? `<t:${Math.floor(new Date(item.itemCreatedUtc).getTime() / 1000)}:D>` : '—';
+
+	const resaleOrSaleFields: { name: string; value: string; inline: boolean }[] = [];
+	if (item.hasResellers && typeof item.lowestResalePrice === 'number') {
+		resaleOrSaleFields.push({
+			name: 'Lowest Resale',
+			value: formatRobux(item.lowestResalePrice),
+			inline: true
+		});
+	} else if (item.offSaleDeadline) {
+		const ts = Math.floor(new Date(item.offSaleDeadline).getTime() / 1000);
+		if (Number.isFinite(ts)) {
+			resaleOrSaleFields.push({ name: 'Sale ends', value: `<t:${ts}:F>`, inline: true });
+		}
+	}
 
 	const title = isNew ? (item.name || `Item #${item.id}`).slice(0, 256) : `[Updated] ${item.name || `Item #${item.id}`}`.slice(0, 256);
 
-	const color = changeLines ? (item.creatorHasVerifiedBadge ? 0x57f287 : 0xffc107) : item.creatorHasVerifiedBadge ? 0x57f287 : target.embedConfig.COLOR;
-
 	const embed = new EmbedBuilder()
-		.setColor(color)
+		.setColor(
+			fromOfficialRobloxCatalogQuery
+				? robloxCatalogEmbedColors.fromOfficialQuery
+				: changeLines
+					? robloxCatalogEmbedColors.itemUpdated
+					: target.embedConfig.COLOR
+		)
 		.setTitle(title)
 		.addFields(
-			{ name: 'Category', value: category, inline: true },
+			{ name: 'Category', value: category.slice(0, 1024), inline: true },
 			{ name: 'Price', value: price, inline: true },
 			{ name: 'Creator', value: (item.creatorHasVerifiedBadge ? `✅ ${item.creatorName}` : item.creatorName || '—').slice(0, 1024), inline: true },
-			{ name: 'Lowest Price', value: lowestPrice, inline: true },
-			{ name: 'Lowest Resale', value: lowestResale, inline: true },
-			{ name: 'Total Quantity', value: quantity, inline: true },
+			{ name: 'Quantity', value: quantity, inline: true },
+			{ name: 'Favorites', value: favorites, inline: true },
+			...resaleOrSaleFields,
 			{ name: 'Created', value: createdAt, inline: true }
 		)
 		.setFooter({ text: target.embedConfig.FOOTER });
@@ -169,7 +210,12 @@ async function sendItemEmbed(target: ServerTarget, item: RobloxCatalogItem, isNe
 async function initialSeed(client: Client, officialBotId: number, targets: ServerTarget[]) {
 	await logger.log('🛍️ Roblox catalog: DB empty, performing initial seed...');
 
-	const [robloxItems, limitedItems] = await Promise.all([fetchCatalogFirstPage(CATALOG_OFFICIAL_ROBLOX_PARAMS), fetchCatalogFirstPage(CATALOG_LIMITED_PARAMS)]);
+	const [robloxItems, limitedItems] = await Promise.all([
+		fetchCatalogFirstPage(robloxCatalogStreams.officialRoblox.params),
+		fetchCatalogFirstPage(robloxCatalogStreams.limited.params)
+	]);
+
+	const assetIdsFromOfficialQuery = new Set(robloxItems.map((x) => x.id));
 
 	const seenIds = new Set<number>();
 	const all: RobloxCatalogItem[] = [];
@@ -197,7 +243,7 @@ async function initialSeed(client: Client, officialBotId: number, targets: Serve
 		for (const item of toPost) {
 			if (!unposted.has(item.id)) continue;
 			try {
-				await sendItemEmbed(target, item, true);
+				await sendItemEmbed(target, item, true, undefined, assetIdsFromOfficialQuery.has(item.id));
 				await db.markServerRobloxItemMessagePosted(target.serverId, item.id);
 				await logger.log(`🛍️ Roblox catalog: seeded item ${item.id} → ${target.channelId}`);
 			} catch (err: any) {
@@ -216,18 +262,19 @@ async function processPage(
 	targets: ServerTarget[],
 	items: RobloxCatalogItem[],
 	seen: Set<number>,
-	source: string,
+	fromOfficialRobloxCatalogQuery: boolean,
 	allowCatalogFirstMessage: boolean
 ) {
 	const newItems = items.filter((x) => !seen.has(x.id));
 	for (const x of newItems) seen.add(x.id);
-	processPageCount[source] = (processPageCount[source] ?? 0) + 1;
-	const pageNum = processPageCount[source];
+	const logKey = fromOfficialRobloxCatalogQuery ? 'official' : 'limited';
+	processPageCount[logKey] = (processPageCount[logKey] ?? 0) + 1;
+	const pageNum = processPageCount[logKey];
 	if (newItems.length === 0) {
-		await logger.log(`🔄 Roblox catalog [${source}] page ${pageNum}: 0 new items (skipped)`);
+		await logger.log(`🔄 Roblox catalog [${logKey}] page ${pageNum}: 0 new items (skipped)`);
 		return;
 	}
-	await logger.log(`🔄 Roblox catalog [${source}] page ${pageNum}: ${newItems.length} new items (total seen: ${seen.size})`);
+	await logger.log(`🔄 Roblox catalog [${logKey}] page ${pageNum}: ${newItems.length} new items (total seen: ${seen.size})`);
 
 	const snapshots = newItems.map(toSnapshot);
 	const todayUtcDay = utcCalendarDayMinusDays(0);
@@ -273,20 +320,20 @@ async function processPage(
 						.map((c) => {
 							const label =
 								c.field === 'total_quantity'
-									? 'Stock'
-									: c.field === 'lowest_price'
-										? 'Lowest Price'
+									? 'Total supply'
+									: c.field === 'units_available'
+										? 'Available'
 										: c.field === 'lowest_resale_price'
 											? 'Lowest Resale'
 											: 'Price';
-							const isPrice = c.field !== 'total_quantity';
+							const isPrice = c.field === 'price' || c.field === 'lowest_resale_price';
 							const fmt = (v: number | null) => (v == null ? '—' : isPrice ? formatRobux(v) : formatCount(v));
 							return `**${label}**: ${fmt(c.oldValue)} → ${fmt(c.newValue)}`;
 						})
 						.join('\n');
 				}
 
-				await sendItemEmbed(target, item, isNew, changeLines);
+				await sendItemEmbed(target, item, isNew, changeLines, fromOfficialRobloxCatalogQuery);
 
 				if (isNew) {
 					await db.markServerRobloxItemMessagePosted(target.serverId, item.id);
@@ -304,13 +351,13 @@ async function processPage(
 async function backgroundSync(officialBotId: number, targets: ServerTarget[], seen: Set<number>) {
 	await logger.log('🛍️ Roblox catalog: starting background sync...');
 
-	await streamCatalogPages(CATALOG_OFFICIAL_ROBLOX_PARAMS, async (items) => {
-		await processPage(officialBotId, targets, items, seen, 'roblox-official', false);
-	});
-	await new Promise((r) => setTimeout(r, 10_000));
-	await streamCatalogPages(CATALOG_LIMITED_PARAMS, async (items) => {
-		await processPage(officialBotId, targets, items, seen, 'limiteds', false);
-	});
+	for (let i = 0; i < robloxCatalogStreamPollOrder.length; i++) {
+		if (i > 0) await new Promise((r) => setTimeout(r, 6_000));
+		const stream = robloxCatalogStreams[robloxCatalogStreamPollOrder[i]];
+		await streamCatalogPages(stream.params, async (items) => {
+			await processPage(officialBotId, targets, items, seen, stream.useOfficialCatalogEmbedStyle, false);
+		});
+	}
 
 	await logger.log('🛍️ Roblox catalog: background sync complete');
 }
@@ -331,13 +378,13 @@ async function runTick(client: Client, officialBotId: number) {
 		const seen = new Set<number>();
 		processPageCount = {};
 
-		await streamCatalogPages(CATALOG_OFFICIAL_ROBLOX_PARAMS, async (items) => {
-			await processPage(officialBotId, targets, items, seen, 'roblox-official', true);
-		});
-		await new Promise((r) => setTimeout(r, 10_000));
-		await streamCatalogPages(CATALOG_LIMITED_PARAMS, async (items) => {
-			await processPage(officialBotId, targets, items, seen, 'limiteds', true);
-		});
+		for (let i = 0; i < robloxCatalogStreamPollOrder.length; i++) {
+			if (i > 0) await new Promise((r) => setTimeout(r, 6_000));
+			const stream = robloxCatalogStreams[robloxCatalogStreamPollOrder[i]];
+			await streamCatalogPages(stream.params, async (items) => {
+				await processPage(officialBotId, targets, items, seen, stream.useOfficialCatalogEmbedStyle, true);
+			});
+		}
 	} finally {
 		tickRunning = false;
 	}
@@ -370,5 +417,3 @@ export function stopRobloxCatalogNotifier() {
 		tickTimeoutRef = null;
 	}
 }
-
-export default { initRobloxCatalogNotifier, stopRobloxCatalogNotifier };

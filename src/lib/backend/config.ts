@@ -336,6 +336,44 @@ export const COMMUNICATION = {
 	}
 };
 
+export const discordQuestHttp = {
+	apiBase: 'https://discord.com/api/v9',
+	paths: {
+		questsMe: '/quests/@me',
+		usersMe: '/users/@me'
+	}
+} as const;
+
+export {
+	extractDiscordQuestSummaries,
+	fetchQuestsMe,
+	precheckQuestPayloadForEnrollment,
+	runQuestUserAutomation,
+	type DiscordQuestSummary
+} from './api/discord-quest-api.js';
+
+export const robloxCatalogStreams = {
+	officialRoblox: {
+		params: { CreatorType: 1, CreatorTargetId: 1, SortType: 3 },
+		useOfficialCatalogEmbedStyle: true
+	},
+	limited: {
+		params: { SalesTypeFilter: 2, SortType: 3 },
+		useOfficialCatalogEmbedStyle: false
+	}
+} as const;
+
+export type RobloxCatalogStreamKey = keyof typeof robloxCatalogStreams;
+
+export const robloxCatalogStreamPollOrder: RobloxCatalogStreamKey[] = ['officialRoblox', 'limited'];
+
+export const robloxCatalogEmbedColors = {
+	fromOfficialQuery: 0x57f287,
+	itemUpdated: 0xffc107
+} as const;
+
+export { fetchCatalogFirstPage, robloxCatalogItemUrl, streamCatalogPages, type RobloxCatalogItem } from './api/roblox-catalog-api.js';
+
 export async function getEmbedConfig(guildId: string) {
 	requireBotConfig();
 	requireGuildId(guildId, 'getting embed config');

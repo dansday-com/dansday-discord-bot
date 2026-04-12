@@ -16,7 +16,7 @@ import sync from './components/sync.js';
 import leveling from './components/leveling.js';
 import contentCreator from './components/interface/contentcreator.js';
 import questNotifier from './components/questNotifier.js';
-import robloxCatalogNotifier from './components/robloxCatalogNotifier.js';
+import { initRobloxCatalogNotifier, stopRobloxCatalogNotifier } from './components/robloxCatalogNotifier.js';
 
 const PRESENCE_POLL_MS = 30_000;
 let presencePollTimer: ReturnType<typeof setInterval> | null = null;
@@ -77,7 +77,7 @@ client.on('clientReady', async () => {
 		}, PRESENCE_POLL_MS);
 	}
 	questNotifier.initQuestNotifier(client, officialBotId);
-	robloxCatalogNotifier.initRobloxCatalogNotifier(client, officialBotId);
+	initRobloxCatalogNotifier(client, officialBotId);
 	webhook.startWebhookServer(client, officialBotId);
 });
 
@@ -88,7 +88,7 @@ function shutdown() {
 		presencePollTimer = null;
 	}
 	questNotifier.stopQuestNotifier();
-	robloxCatalogNotifier.stopRobloxCatalogNotifier();
+	stopRobloxCatalogNotifier();
 	webhook.stopWebhookServer();
 	client.destroy();
 	process.exit(0);

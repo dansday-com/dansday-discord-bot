@@ -136,7 +136,7 @@ async function sendItemEmbed(target: ServerTarget, item: RobloxCatalogItem, isNe
 
 	const title = isNew ? (item.name || `Item #${item.id}`).slice(0, 256) : `[Updated] ${item.name || `Item #${item.id}`}`.slice(0, 256);
 
-	const color = changeLines ? 0xffc107 : item.creatorHasVerifiedBadge ? 0x57f287 : target.embedConfig.COLOR;
+	const color = changeLines ? (item.creatorHasVerifiedBadge ? 0x57f287 : 0xffc107) : item.creatorHasVerifiedBadge ? 0x57f287 : target.embedConfig.COLOR;
 
 	const embed = new EmbedBuilder()
 		.setColor(color)

@@ -354,7 +354,7 @@ export {
 
 export const robloxCatalogStreams = {
 	officialRoblox: {
-		params: { CreatorType: 1, CreatorTargetId: 1, SortType: 3 },
+		params: { CreatorType: 1, CreatorTargetId: 1, SortType: 3, IncludeNotForSale: true },
 		useOfficialCatalogEmbedStyle: true
 	},
 	limited: {

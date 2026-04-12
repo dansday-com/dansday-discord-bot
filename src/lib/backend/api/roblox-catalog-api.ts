@@ -1,6 +1,8 @@
 import axios from 'axios';
 import { fetchApi } from 'rozod';
 import { getSearchItemsDetails } from 'rozod/lib/endpoints/catalogv2.js';
+import { ROBLOX_CATALOG_ABORT_MS, ROBLOX_CATALOG_NEXT_PAGE_MS, ROBLOX_CATALOG_POLL_MS } from '../config.js';
+import { logger } from '../../utils/index.js';
 
 export type RobloxCatalogItem = {
 	id: number;
@@ -57,36 +59,28 @@ function mapCatalogRow(x: Record<string, unknown>): RobloxCatalogItem | null {
 }
 
 async function fetchCatalogJson(params: Record<string, unknown>): Promise<{ data: Record<string, unknown>[]; nextPageCursor: string | null }> {
-	for (let attempt = 0; attempt < 3; attempt++) {
+	while (true) {
 		try {
 			const data = await fetchApi(getSearchItemsDetails, params as any, {
 				throwOnError: true,
 				retries: 0,
-				signal: AbortSignal.timeout(15_000)
+				signal: AbortSignal.timeout(ROBLOX_CATALOG_ABORT_MS)
 			});
 			const rows = Array.isArray(data?.data) ? data.data : [];
 			const next = typeof data?.nextPageCursor === 'string' ? data.nextPageCursor : null;
 			return { data: rows as Record<string, unknown>[], nextPageCursor: next };
 		} catch (err: unknown) {
 			const status = (err as { response?: { status?: number } })?.response?.status;
-			if ((status === 503 || status === 429) && attempt < 2) {
-				await new Promise((r) => setTimeout(r, 30_000 * (attempt + 1)));
-				continue;
-			}
 			const msg = err instanceof Error ? err.message : String(err);
-			throw new Error(`[roblox-api] catalog fetch failed ${status ?? '?'} — ${msg}`);
+			logger.log(`⚠️ [roblox-api] catalog fetch failed ${status ?? '?'} — ${msg}, retrying in ${ROBLOX_CATALOG_POLL_MS / 1000}s...`);
+			await new Promise((r) => setTimeout(r, ROBLOX_CATALOG_POLL_MS));
 		}
 	}
-	throw new Error('[roblox-api] catalog fetch exhausted retries');
-}
-
-function filterVerifiedCreators(items: RobloxCatalogItem[]): RobloxCatalogItem[] {
-	return items.filter((x) => x.creatorHasVerifiedBadge === true);
 }
 
 export async function fetchCatalogFirstPage(extraParams: Record<string, unknown>): Promise<RobloxCatalogItem[]> {
 	const { data } = await fetchCatalogJson({ limit: 120, ...extraParams });
-	const items = filterVerifiedCreators(data.map((row) => mapCatalogRow(row)).filter((x): x is RobloxCatalogItem => x != null));
+	const items = data.map((row) => mapCatalogRow(row)).filter((x): x is RobloxCatalogItem => x != null);
 	if (items.length > 0) {
 		const thumbMap = await fetchThumbnailUrls(items);
 		for (const item of items) item.thumbnailUrl = thumbMap.get(item.id) ?? null;
@@ -102,7 +96,7 @@ export async function streamCatalogPages(extraParams: Record<string, unknown>, o
 		if (cursor) params.cursor = cursor;
 
 		const { data, nextPageCursor } = await fetchCatalogJson(params);
-		const items = filterVerifiedCreators(data.map((row) => mapCatalogRow(row)).filter((x): x is RobloxCatalogItem => x != null));
+		const items = data.map((row) => mapCatalogRow(row)).filter((x): x is RobloxCatalogItem => x != null);
 
 		if (items.length > 0) {
 			const thumbMap = await fetchThumbnailUrls(items);
@@ -112,7 +106,7 @@ export async function streamCatalogPages(extraParams: Record<string, unknown>, o
 
 		cursor = nextPageCursor ?? undefined;
 		if (!cursor) break;
-		await new Promise((r) => setTimeout(r, 3_000));
+		await new Promise((r) => setTimeout(r, ROBLOX_CATALOG_NEXT_PAGE_MS));
 	}
 }
 

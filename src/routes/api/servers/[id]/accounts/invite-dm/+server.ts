@@ -90,14 +90,16 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 		const displayName = member.server_display_name || member.display_name || member.username || 'there';
 		const serverName = server.name || 'this server';
 		const embed_title = "You're invited";
-		const embed_description = `Hi ${displayName}! You've been invited to join **${serverName}** as **${account_type}**.\n\n**Register:** ${inviteUrl}`;
+		const embed_description = `Hi ${displayName}! You've been invited to join **${serverName}** as **${account_type}**.\n\n[**Click here to register**](${inviteUrl})`;
 
 		const payload = JSON.stringify({
 			type: 'send_dm',
 			guild_id: server.discord_server_id,
 			user_id: discord_member_id,
 			embed_title,
-			embed_description
+			embed_description,
+			link_url: inviteUrl,
+			link_label: 'Register'
 		});
 
 		const result = await new Promise<{ status: number; body: any }>((resolve) => {

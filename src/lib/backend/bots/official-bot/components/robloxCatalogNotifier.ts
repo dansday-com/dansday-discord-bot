@@ -9,6 +9,8 @@ let tickRunning = false;
 
 const POLL_MS = 60_000;
 
+const FIRST_ANNOUNCE_LOOKBACK_DAYS = 90;
+
 const groupedInteger = new Intl.NumberFormat('id-ID');
 
 function formatRobux(n: number): string {
@@ -48,8 +50,23 @@ function utcDay(utcStr: string): string {
 	return new Date(utcStr).toISOString().slice(0, 10);
 }
 
-function todayUtc(): string {
-	return new Date().toISOString().slice(0, 10);
+function utcCalendarDayMinusDays(offsetDays: number): string {
+	const d = new Date();
+	const t = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - offsetDays);
+	return new Date(t).toISOString().slice(0, 10);
+}
+
+function resolveAnnounceCreationUtcDay(items: RobloxCatalogItem[]): string | null {
+	const daySet = new Set<string>();
+	for (const x of items) {
+		if (x.itemCreatedUtc) daySet.add(utcDay(x.itemCreatedUtc));
+	}
+	if (daySet.size === 0) return null;
+	for (let offset = 0; offset < FIRST_ANNOUNCE_LOOKBACK_DAYS; offset++) {
+		const candidate = utcCalendarDayMinusDays(offset);
+		if (daySet.has(candidate)) return candidate;
+	}
+	return [...daySet].sort((a, b) => b.localeCompare(a))[0] ?? null;
 }
 
 async function getActiveServers(client: Client, officialBotId: number): Promise<ServerTarget[]> {
@@ -143,21 +160,14 @@ async function initialSeed(client: Client, officialBotId: number, targets: Serve
 		all.push(item);
 	}
 
-	const withDate = all.filter((x) => x.itemCreatedUtc);
-	const newestTs = withDate.reduce((max, x) => Math.max(max, new Date(x.itemCreatedUtc!).getTime()), 0);
-	const newestDay = new Date(newestTs).toISOString().slice(0, 10);
+	const announceDay = resolveAnnounceCreationUtcDay(all);
+	const toPost = announceDay
+		? all
+				.filter((x) => x.itemCreatedUtc && utcDay(x.itemCreatedUtc) === announceDay)
+				.sort((a, b) => new Date(a.itemCreatedUtc!).getTime() - new Date(b.itemCreatedUtc!).getTime())
+		: [];
 
-	all.sort((a, b) => {
-		const at = a.itemCreatedUtc ? new Date(a.itemCreatedUtc).getTime() : 0;
-		const bt = b.itemCreatedUtc ? new Date(b.itemCreatedUtc).getTime() : 0;
-		return at - bt;
-	});
-
-	const toPost = all
-		.filter((x) => x.itemCreatedUtc && utcDay(x.itemCreatedUtc) === newestDay)
-		.sort((a, b) => new Date(a.itemCreatedUtc!).getTime() - new Date(b.itemCreatedUtc!).getTime());
-
-	await logger.log(`🛍️ Roblox catalog: seed found ${all.length} total, posting ${toPost.length} from ${newestDay}`);
+	await logger.log(`🛍️ Roblox catalog: seed found ${all.length} total, posting ${toPost.length} first-announce items (${announceDay ?? 'no dated items'} UTC)`);
 
 	for (const target of targets) {
 		await db.syncServerRobloxItemsFromApi(officialBotId, target.serverId, all.map(toSnapshot));
@@ -218,7 +228,7 @@ async function processPage(officialBotId: number, targets: ServerTarget[], items
 	await logger.log(`🔄 Roblox catalog [${source}] page ${pageNum}: ${newItems.length} new items (total seen: ${seen.size})`);
 
 	const snapshots = newItems.map(toSnapshot);
-	const today = todayUtc();
+	const announceDay = resolveAnnounceCreationUtcDay(newItems);
 
 	const perServerChanges = new Map<number, Map<number, RobloxItemChange[]>>();
 	const perServerUnposted = new Map<number, Set<number>>();
@@ -226,13 +236,13 @@ async function processPage(officialBotId: number, targets: ServerTarget[], items
 	for (const target of targets) {
 		await db.syncServerRobloxItemsFromApi(officialBotId, target.serverId, snapshots);
 
-		const todayItems = newItems.filter((x) => x.itemCreatedUtc && utcDay(x.itemCreatedUtc) === today);
+		const announceItems = announceDay ? newItems.filter((x) => x.itemCreatedUtc && utcDay(x.itemCreatedUtc) === announceDay) : [];
 		const unposted =
-			todayItems.length > 0
+			announceItems.length > 0
 				? new Set(
 						await db.listServerRobloxUnpostedAssetIds(
 							target.serverId,
-							todayItems.map((x) => x.id)
+							announceItems.map((x) => x.id)
 						)
 					)
 				: new Set<number>();

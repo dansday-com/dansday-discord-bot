@@ -9,6 +9,17 @@ let tickRunning = false;
 
 const POLL_MS = 60_000;
 
+/** Group digits with dots (e.g. 8.500.000) so large Robux amounts stay readable. */
+const groupedInteger = new Intl.NumberFormat('id-ID');
+
+function formatRobux(n: number): string {
+	return n === 0 ? 'FREE' : `${groupedInteger.format(Math.trunc(n))} Robux`;
+}
+
+function formatCount(n: number): string {
+	return groupedInteger.format(Math.trunc(n));
+}
+
 type ServerTarget = {
 	serverId: number;
 	guildId: string;
@@ -78,10 +89,10 @@ async function getActiveServers(client: Client, officialBotId: number): Promise<
 
 async function sendItemEmbed(target: ServerTarget, item: RobloxCatalogItem, isNew: boolean, changeLines?: string) {
 	const url = robloxCatalogItemUrl(item.id);
-	const price = typeof item.price === 'number' ? (item.price === 0 ? 'FREE' : `${item.price} Robux`) : '—';
-	const lowestPrice = typeof item.lowestPrice === 'number' ? `${item.lowestPrice} Robux` : '—';
-	const lowestResale = typeof item.lowestResalePrice === 'number' ? `${item.lowestResalePrice} Robux` : '—';
-	const quantity = typeof item.totalQuantity === 'number' ? String(item.totalQuantity) : '—';
+	const price = typeof item.price === 'number' ? formatRobux(item.price) : '—';
+	const lowestPrice = typeof item.lowestPrice === 'number' ? formatRobux(item.lowestPrice) : '—';
+	const lowestResale = typeof item.lowestResalePrice === 'number' ? formatRobux(item.lowestResalePrice) : '—';
+	const quantity = typeof item.totalQuantity === 'number' ? formatCount(item.totalQuantity) : '—';
 	const category = assetTypeCategory(item.assetType) ?? '—';
 	const createdAt = item.itemCreatedUtc ? `<t:${Math.floor(new Date(item.itemCreatedUtc).getTime() / 1000)}:D>` : '—';
 
@@ -257,7 +268,7 @@ async function processPage(officialBotId: number, targets: ServerTarget[], items
 											? 'Lowest Resale'
 											: 'Price';
 							const isPrice = c.field !== 'total_quantity';
-							const fmt = (v: number | null) => (isPrice ? (v === 0 ? 'FREE' : `${v} Robux`) : String(v ?? '—'));
+							const fmt = (v: number | null) => (v == null ? '—' : isPrice ? formatRobux(v) : formatCount(v));
 							return `**${label}**: ${fmt(c.oldValue)} → ${fmt(c.newValue)}`;
 						})
 						.join('\n');

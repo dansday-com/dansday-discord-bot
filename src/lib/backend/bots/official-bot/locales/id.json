@@ -4,15 +4,26 @@
 		"description": "Pilih fitur dari tombol di bawah:",
 		"noAccess": "❌ Kamu tidak memiliki akses ke fitur apa pun.",
 		"button": "📋 Menu",
-		"web": {
-			"statistics": "🌐 Statistik"
-		}
+		"statistics": "🌐 Statistik"
 	},
 	"interface": {
 		"panel": {
 			"title": "Panel Bot Dansday",
 			"description": "Klik **Menu** untuk mengakses fitur bot sesuai izin role kamu.",
 			"sent": "✅ Antarmuka bot dikirim ke {channel}!",
+			"setupHasOwnerAccount": "✅ Antarmuka bot dikirim ke {channel}. Server ini sudah punya akun owner — login di panel web. Tidak ada undangan baru.",
+			"setupSignInLinkLine": "[**Klik di sini untuk membuka panel**]({url})",
+			"setupOpenPanelButton": "Buka panel",
+			"setupOwnerInviteReady": "✅ Antarmuka bot dikirim ke {channel}.\n\nHanya kamu yang melihat ini. Undangan owner yang belum dipakai kedaluwarsa **10 menit** setelah dibuat.\n\n[**Klik di sini untuk daftar sebagai owner**]({url})",
+			"setupOwnerInviteButton": "Buka pendaftaran",
+			"setupOwnerInviteEmbedTitle": "Pendaftaran owner",
+			"setupNotOwnerTitle": "Akses ditolak",
+			"setupNotOwnerBody": "Hanya **pemilik server** yang bisa memakai `/setup`.",
+			"setupNotTextChannelTitle": "Saluran tidak valid",
+			"setupNotTextChannelBody": "Pilih **saluran teks**.",
+			"setupWarnNoBotConfig": "⚠️ Antarmuka terkirim, tetapi konfigurasi bot tidak tersedia.",
+			"setupWarnNoServer": "⚠️ Antarmuka terkirim, tetapi catatan server tidak ditemukan untuk membuat undangan.",
+			"setupWarnNoBaseUrl": "⚠️ Antarmuka terkirim, tetapi BASE_URL belum dikonfigurasi — tidak bisa membuat tautan undangan.",
 			"error": "❌ Gagal mengirim antarmuka: {error}"
 		}
 	},
@@ -94,7 +105,7 @@
 			"voiceActive": "🎤 Suara Aktif",
 			"voiceAfk": "🔇 Suara AFK",
 			"chat": "💬 Chat",
-			"webLeaderboard": "🌐 Papan Peringkat"
+			"linkLeaderboard": "🌐 Papan Peringkat"
 		},
 		"errors": {
 			"notRegistered": "⚠️ Server ini tidak terdaftar dengan bot. Silakan jalankan sync terlebih dahulu.",

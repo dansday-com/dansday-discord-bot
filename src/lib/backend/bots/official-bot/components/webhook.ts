@@ -1,6 +1,6 @@
 import { COMMUNICATION, NOTIFICATIONS, getEmbedConfig, isComponentFeatureEnabled, serverSettingsComponent } from '../../../config.js';
 import { resolveEmbedFooterPlaceholders } from '../../../../utils/embedFooter.js';
-import { EmbedBuilder } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
 import { logger } from '../../../../utils/index.js';
 import db from '../../../../database.js';
 import { syncNotificationRoles } from './notificationsSync.js';
@@ -345,7 +345,17 @@ async function handleWebhookRequest(req, res) {
 							.setDescription(embedDescription.trim())
 							.setTimestamp()
 							.setFooter({ text: embedConfig.FOOTER });
-						await user.send({ embeds: [embed] });
+						const linkUrl = typeof payload.link_url === 'string' ? payload.link_url.trim() : '';
+						const linkLabelRaw = typeof payload.link_label === 'string' ? payload.link_label.trim() : '';
+						const linkLabel = (linkLabelRaw || 'Open link').slice(0, 80);
+						const dmComponents =
+							linkUrl && /^https?:\/\//i.test(linkUrl)
+								? [new ActionRowBuilder().addComponents(new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(linkUrl).setLabel(linkLabel))]
+								: [];
+						await user.send({
+							embeds: [embed],
+							...(dmComponents.length ? { components: dmComponents } : {})
+						});
 						await logger.log(`📩 DM sent via webhook to ${user.tag} (${user.id}) for guild ${guildId}`);
 						res.writeHead(200, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify({ success: true }));

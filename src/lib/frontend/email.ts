@@ -266,46 +266,10 @@ export async function sendAccountDeletedEmail(email: string, username: string) {
 	}
 }
 
-export async function sendServerOwnerInviteEmail(email: string, serverName: string, inviteUrl: string) {
-	const transporter = getTransporter();
-	const subject = `You're invited to manage ${serverName}`;
-	const year = new Date().getFullYear();
-
-	const body = `
-        <p>Hello,</p>
-        <p>You've been invited to set up your owner account for <strong>${serverName}</strong>.</p>
-        <div class="highlight-box">
-            <p>Click the link below to complete your registration. This link will expire in <strong>10 minutes</strong>.</p>
-        </div>
-        <div class="status-box">
-            <div class="icon">🔗</div>
-            <p><a href="${inviteUrl}" style="color: var(--link); word-break: break-all;">${inviteUrl}</a></p>
-        </div>
-        <div class="highlight-box">
-            <p>🔒 If you did not request this invitation, you can safely ignore this email.</p>
-        </div>
-    `;
-
-	const mailOptions = {
-		from: `"${APP_NAME}" <${process.env.MAIL_USERNAME}>`,
-		to: email,
-		subject,
-		html: emailLayout(subject, '#818cf8', body, year)
-	};
-
-	try {
-		const info = await transporter.sendMail(mailOptions);
-		return { success: true, messageId: info.messageId };
-	} catch (error: any) {
-		throw new Error(`Failed to send invite email: ${error.message}`);
-	}
-}
-
 export default {
 	sendOTPEmail,
 	sendVerificationSuccessEmail,
 	sendAccountFrozenEmail,
 	sendAccountUnfrozenEmail,
-	sendAccountDeletedEmail,
-	sendServerOwnerInviteEmail
+	sendAccountDeletedEmail
 };

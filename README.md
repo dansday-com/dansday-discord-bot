@@ -1,6 +1,6 @@
 # Dansday Discord Bot
 
-**Dansday** is an all-in-one Discord server management platform: a modern web control panel plus an official bot (and optional self-bot workflows) so you configure automation, moderation, and integrations in one place instead of scattering slash commands across channels.
+Run leveling, moderation, an embed builder, Discord Quests, quest enroll, self-bot options, creator tools, live public statistics pages, Roblox catalog alerts, and more from the free web panel in your browser. Configure in one place instead of flooding channels with slash commands. Free for everyone. Self-host from GitHub or add our hosted bot if you do not run your own servers.
 
 The project is open source under the MIT license.
 
@@ -53,15 +53,26 @@ The project is open source under the MIT license.
 
 ## Tech stack
 
-| Area             | Technologies                                                                                                                                 |
-| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| App & UI         | [SvelteKit](https://kit.svelte.dev/), [Svelte 5](https://svelte.dev/), [Vite](https://vitejs.dev/), [Tailwind CSS](https://tailwindcss.com/) |
-| Bots             | [discord.js](https://discord.js.org/) v14, [discord.js-selfbot-v13](https://www.npmjs.com/package/discord.js-selfbot-v13) (optional)         |
-| Data             | [MySQL](https://www.mysql.com/) via [mysql2](https://github.com/sidorares/node-mysql2), [Drizzle ORM](https://orm.drizzle.team/)             |
-| Cache / sessions | [Redis](https://redis.io/) (optional)                                                                                                        |
-| Email            | [Nodemailer](https://nodemailer.com/) (optional)                                                                                             |
-| Observability    | [OpenTelemetry](https://opentelemetry.io/) (optional OTLP log export)                                                                        |
-| Runtime          | Node.js 22                                                                                                                                   |
+| Area                       | Technologies                                                                                                                                                                                              |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Language                   | [TypeScript](https://www.typescriptlang.org/) 5                                                                                                                                                           |
+| App framework              | [SvelteKit](https://kit.svelte.dev/) 2, [Svelte](https://svelte.dev/) 5                                                                                                                                   |
+| Build & dev                | [Vite](https://vitejs.dev/) 8, [`@sveltejs/vite-plugin-svelte`](https://github.com/sveltejs/vite-plugin-svelte) 7                                                                                         |
+| SSR / hosting              | [`@sveltejs/adapter-node`](https://svelte.dev/docs/kit/adapters#@sveltejs/adapter-node) (Node server)                                                                                                     |
+| Styling                    | [Tailwind CSS](https://tailwindcss.com/) 4 ([`@tailwindcss/vite`](https://tailwindcss.com/docs/installation/framework-guides/sveltekit))                                                                  |
+| Formatting (dev)           | [Prettier](https://prettier.io/) 3 + Svelte / Tailwind plugins                                                                                                                                            |
+| Official bot               | [discord.js](https://discord.js.org/) 14, [discord-api-types](https://www.npmjs.com/package/discord-api-types)                                                                                            |
+| User-token path (optional) | [discord.js-selfbot-v13](https://www.npmjs.com/package/discord.js-selfbot-v13)                                                                                                                            |
+| HTTP client                | [axios](https://axios-http.com/)                                                                                                                                                                          |
+| Database                   | [MySQL](https://www.mysql.com/) via [mysql2](https://github.com/sidorares/node-mysql2), [Drizzle ORM](https://orm.drizzle.team/) + [Drizzle Kit](https://orm.drizzle.team/kit-docs/overview) (migrations) |
+| Password hashing           | [bcryptjs](https://www.npmjs.com/package/bcryptjs)                                                                                                                                                        |
+| Dates & time               | [Luxon](https://moment.github.io/luxon/)                                                                                                                                                                  |
+| Cache / sessions           | [Redis](https://redis.io/) client ([`redis`](https://www.npmjs.com/package/redis) for Node) — optional by configuration                                                                                   |
+| Email                      | [Nodemailer](https://nodemailer.com/) — optional                                                                                                                                                          |
+| Proxies                    | [proxy-agent](https://www.npmjs.com/package/proxy-agent) (where outbound HTTP uses a proxy)                                                                                                               |
+| Observability              | [OpenTelemetry](https://opentelemetry.io/) — API, SDK logs, auto-instrumentations, OTLP HTTP log exporter (optional)                                                                                      |
+| Integrations               | [TikTok Live Connector](https://www.npmjs.com/package/tiktok-live-connector) (creator / live flows)                                                                                                       |
+| Config                     | [dotenv](https://www.npmjs.com/package/dotenv)                                                                                                                                                            |
 
 ---
 
@@ -73,4 +84,4 @@ Environment variables drive database credentials, sessions, captcha, mail, Redis
 
 ## License
 
-MIT · Author: Akbar Yudhanto · Version: 8.1.0
+MIT · Author: Akbar Yudhanto · Version: 8.1.1

@@ -9,6 +9,19 @@ let tickRunning = false;
 
 const POLL_MS = 60_000;
 
+const CATALOG_OFFICIAL_ROBLOX_PARAMS = { CreatorType: 1, CreatorTargetId: 1, SortType: 3 };
+const CATALOG_LIMITED_PARAMS = { SalesTypeFilter: 2, SortType: 3 };
+
+const groupedInteger = new Intl.NumberFormat('id-ID');
+
+function formatRobux(n: number): string {
+	return n === 0 ? 'FREE' : `${groupedInteger.format(Math.trunc(n))} Robux`;
+}
+
+function formatCount(n: number): string {
+	return groupedInteger.format(Math.trunc(n));
+}
+
 type ServerTarget = {
 	serverId: number;
 	guildId: string;
@@ -38,8 +51,44 @@ function utcDay(utcStr: string): string {
 	return new Date(utcStr).toISOString().slice(0, 10);
 }
 
-function todayUtc(): string {
-	return new Date().toISOString().slice(0, 10);
+function utcCalendarDayMinusDays(offsetDays: number): string {
+	const d = new Date();
+	const t = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - offsetDays);
+	return new Date(t).toISOString().slice(0, 10);
+}
+
+function announceDayFromMergedFirstPages(robloxItems: RobloxCatalogItem[], limitedItems: RobloxCatalogItem[]): string | null {
+	const daySet = new Set<string>();
+	for (const x of [...robloxItems, ...limitedItems]) {
+		if (x.itemCreatedUtc) daySet.add(utcDay(x.itemCreatedUtc));
+	}
+	if (daySet.size === 0) return null;
+	const today = utcCalendarDayMinusDays(0);
+	if (daySet.has(today)) return today;
+	const offMax = maxItemCreatedTs(robloxItems);
+	const limMax = maxItemCreatedTs(limitedItems);
+	const winTs = Math.max(offMax, limMax);
+	if (winTs > 0) return utcDay(new Date(winTs));
+	return [...daySet].sort((a, b) => b.localeCompare(a))[0] ?? null;
+}
+
+function maxItemCreatedTs(items: RobloxCatalogItem[]): number {
+	let m = 0;
+	for (const x of items) {
+		if (!x.itemCreatedUtc) continue;
+		const t = new Date(x.itemCreatedUtc).getTime();
+		if (Number.isFinite(t) && t > m) m = t;
+	}
+	return m;
+}
+
+function sortItemsByCreatedOldestFirst(items: RobloxCatalogItem[]): RobloxCatalogItem[] {
+	return [...items].sort((a, b) => {
+		const at = a.itemCreatedUtc ? new Date(a.itemCreatedUtc).getTime() : Number.POSITIVE_INFINITY;
+		const bt = b.itemCreatedUtc ? new Date(b.itemCreatedUtc).getTime() : Number.POSITIVE_INFINITY;
+		if (at !== bt) return at - bt;
+		return a.id - b.id;
+	});
 }
 
 async function getActiveServers(client: Client, officialBotId: number): Promise<ServerTarget[]> {
@@ -78,16 +127,16 @@ async function getActiveServers(client: Client, officialBotId: number): Promise<
 
 async function sendItemEmbed(target: ServerTarget, item: RobloxCatalogItem, isNew: boolean, changeLines?: string) {
 	const url = robloxCatalogItemUrl(item.id);
-	const price = typeof item.price === 'number' ? (item.price === 0 ? 'FREE' : `${item.price} Robux`) : '—';
-	const lowestPrice = typeof item.lowestPrice === 'number' ? `${item.lowestPrice} Robux` : '—';
-	const lowestResale = typeof item.lowestResalePrice === 'number' ? `${item.lowestResalePrice} Robux` : '—';
-	const quantity = typeof item.totalQuantity === 'number' ? String(item.totalQuantity) : '—';
+	const price = typeof item.price === 'number' ? formatRobux(item.price) : '—';
+	const lowestPrice = typeof item.lowestPrice === 'number' ? formatRobux(item.lowestPrice) : '—';
+	const lowestResale = typeof item.lowestResalePrice === 'number' ? formatRobux(item.lowestResalePrice) : '—';
+	const quantity = typeof item.totalQuantity === 'number' ? formatCount(item.totalQuantity) : '—';
 	const category = assetTypeCategory(item.assetType) ?? '—';
 	const createdAt = item.itemCreatedUtc ? `<t:${Math.floor(new Date(item.itemCreatedUtc).getTime() / 1000)}:D>` : '—';
 
 	const title = isNew ? (item.name || `Item #${item.id}`).slice(0, 256) : `[Updated] ${item.name || `Item #${item.id}`}`.slice(0, 256);
 
-	const color = changeLines ? 0xffc107 : item.creatorHasVerifiedBadge ? 0x57f287 : target.embedConfig.COLOR;
+	const color = changeLines ? (item.creatorHasVerifiedBadge ? 0x57f287 : 0xffc107) : item.creatorHasVerifiedBadge ? 0x57f287 : target.embedConfig.COLOR;
 
 	const embed = new EmbedBuilder()
 		.setColor(color)
@@ -120,10 +169,7 @@ async function sendItemEmbed(target: ServerTarget, item: RobloxCatalogItem, isNe
 async function initialSeed(client: Client, officialBotId: number, targets: ServerTarget[]) {
 	await logger.log('🛍️ Roblox catalog: DB empty, performing initial seed...');
 
-	const [robloxItems, limitedItems] = await Promise.all([
-		fetchCatalogFirstPage({ CreatorType: 1, CreatorTargetId: 1, SortType: 3 }),
-		fetchCatalogFirstPage({ SalesTypeFilter: 2, SortType: 3 })
-	]);
+	const [robloxItems, limitedItems] = await Promise.all([fetchCatalogFirstPage(CATALOG_OFFICIAL_ROBLOX_PARAMS), fetchCatalogFirstPage(CATALOG_LIMITED_PARAMS)]);
 
 	const seenIds = new Set<number>();
 	const all: RobloxCatalogItem[] = [];
@@ -133,21 +179,10 @@ async function initialSeed(client: Client, officialBotId: number, targets: Serve
 		all.push(item);
 	}
 
-	const withDate = all.filter((x) => x.itemCreatedUtc);
-	const newestTs = withDate.reduce((max, x) => Math.max(max, new Date(x.itemCreatedUtc!).getTime()), 0);
-	const newestDay = new Date(newestTs).toISOString().slice(0, 10);
+	const announceDay = announceDayFromMergedFirstPages(robloxItems, limitedItems);
+	const toPost = announceDay ? sortItemsByCreatedOldestFirst(all.filter((x) => x.itemCreatedUtc && utcDay(x.itemCreatedUtc) === announceDay)) : [];
 
-	all.sort((a, b) => {
-		const at = a.itemCreatedUtc ? new Date(a.itemCreatedUtc).getTime() : 0;
-		const bt = b.itemCreatedUtc ? new Date(b.itemCreatedUtc).getTime() : 0;
-		return at - bt;
-	});
-
-	const toPost = all
-		.filter((x) => x.itemCreatedUtc && utcDay(x.itemCreatedUtc) === newestDay)
-		.sort((a, b) => new Date(a.itemCreatedUtc!).getTime() - new Date(b.itemCreatedUtc!).getTime());
-
-	await logger.log(`🛍️ Roblox catalog: seed found ${all.length} total, posting ${toPost.length} from ${newestDay}`);
+	await logger.log(`🛍️ Roblox catalog: seed found ${all.length} total, posting ${toPost.length} first-announce items (${announceDay ?? 'no dated items'} UTC)`);
 
 	for (const target of targets) {
 		await db.syncServerRobloxItemsFromApi(officialBotId, target.serverId, all.map(toSnapshot));
@@ -174,29 +209,16 @@ async function initialSeed(client: Client, officialBotId: number, targets: Serve
 	backgroundSync(officialBotId, targets, seenIds).catch((err) => logger.log(`⚠️ Roblox catalog: background sync error: ${err?.message || err}`));
 }
 
-async function backgroundSync(officialBotId: number, targets: ServerTarget[], seen: Set<number>) {
-	await logger.log('🛍️ Roblox catalog: starting background sync...');
-
-	const syncPage = async (items: RobloxCatalogItem[]) => {
-		const newItems = items.filter((x) => !seen.has(x.id));
-		for (const x of newItems) seen.add(x.id);
-		if (newItems.length === 0) return;
-		for (const target of targets) {
-			await db.syncServerRobloxItemsFromApi(officialBotId, target.serverId, newItems.map(toSnapshot));
-		}
-		await logger.log(`🔄 Roblox catalog: background synced ${newItems.length} items (total seen: ${seen.size})`);
-	};
-
-	await streamCatalogPages({ CreatorType: 1, CreatorTargetId: 1, SortType: 3 }, syncPage);
-	await new Promise((r) => setTimeout(r, 10_000));
-	await streamCatalogPages({ SalesTypeFilter: 2, SortType: 3 }, syncPage);
-
-	await logger.log('🛍️ Roblox catalog: background sync complete');
-}
-
 let processPageCount: Record<string, number> = {};
 
-async function processPage(officialBotId: number, targets: ServerTarget[], items: RobloxCatalogItem[], seen: Set<number>, source: string) {
+async function processPage(
+	officialBotId: number,
+	targets: ServerTarget[],
+	items: RobloxCatalogItem[],
+	seen: Set<number>,
+	source: string,
+	allowCatalogFirstMessage: boolean
+) {
 	const newItems = items.filter((x) => !seen.has(x.id));
 	for (const x of newItems) seen.add(x.id);
 	processPageCount[source] = (processPageCount[source] ?? 0) + 1;
@@ -208,7 +230,8 @@ async function processPage(officialBotId: number, targets: ServerTarget[], items
 	await logger.log(`🔄 Roblox catalog [${source}] page ${pageNum}: ${newItems.length} new items (total seen: ${seen.size})`);
 
 	const snapshots = newItems.map(toSnapshot);
-	const today = todayUtc();
+	const todayUtcDay = utcCalendarDayMinusDays(0);
+	const announceDay = allowCatalogFirstMessage ? todayUtcDay : null;
 
 	const perServerChanges = new Map<number, Map<number, RobloxItemChange[]>>();
 	const perServerUnposted = new Map<number, Set<number>>();
@@ -216,13 +239,13 @@ async function processPage(officialBotId: number, targets: ServerTarget[], items
 	for (const target of targets) {
 		await db.syncServerRobloxItemsFromApi(officialBotId, target.serverId, snapshots);
 
-		const todayItems = newItems.filter((x) => x.itemCreatedUtc && utcDay(x.itemCreatedUtc) === today);
+		const announceItems = announceDay ? newItems.filter((x) => x.itemCreatedUtc && utcDay(x.itemCreatedUtc) === announceDay) : [];
 		const unposted =
-			todayItems.length > 0
+			announceItems.length > 0
 				? new Set(
 						await db.listServerRobloxUnpostedAssetIds(
 							target.serverId,
-							todayItems.map((x) => x.id)
+							announceItems.map((x) => x.id)
 						)
 					)
 				: new Set<number>();
@@ -238,7 +261,7 @@ async function processPage(officialBotId: number, targets: ServerTarget[], items
 		const unposted = perServerUnposted.get(target.serverId) ?? new Set<number>();
 		const changes = perServerChanges.get(target.serverId) ?? new Map<number, RobloxItemChange[]>();
 
-		for (const item of newItems) {
+		for (const item of sortItemsByCreatedOldestFirst(newItems)) {
 			const isNew = unposted.has(item.id);
 			const itemChanges = changes.get(item.id) ?? [];
 			if (!isNew && itemChanges.length === 0) continue;
@@ -257,7 +280,7 @@ async function processPage(officialBotId: number, targets: ServerTarget[], items
 											? 'Lowest Resale'
 											: 'Price';
 							const isPrice = c.field !== 'total_quantity';
-							const fmt = (v: number | null) => (isPrice ? (v === 0 ? 'FREE' : `${v} Robux`) : String(v ?? '—'));
+							const fmt = (v: number | null) => (v == null ? '—' : isPrice ? formatRobux(v) : formatCount(v));
 							return `**${label}**: ${fmt(c.oldValue)} → ${fmt(c.newValue)}`;
 						})
 						.join('\n');
@@ -278,6 +301,20 @@ async function processPage(officialBotId: number, targets: ServerTarget[], items
 	}
 }
 
+async function backgroundSync(officialBotId: number, targets: ServerTarget[], seen: Set<number>) {
+	await logger.log('🛍️ Roblox catalog: starting background sync...');
+
+	await streamCatalogPages(CATALOG_OFFICIAL_ROBLOX_PARAMS, async (items) => {
+		await processPage(officialBotId, targets, items, seen, 'roblox-official', false);
+	});
+	await new Promise((r) => setTimeout(r, 10_000));
+	await streamCatalogPages(CATALOG_LIMITED_PARAMS, async (items) => {
+		await processPage(officialBotId, targets, items, seen, 'limiteds', false);
+	});
+
+	await logger.log('🛍️ Roblox catalog: background sync complete');
+}
+
 async function runTick(client: Client, officialBotId: number) {
 	if (tickRunning) return;
 	tickRunning = true;
@@ -294,14 +331,12 @@ async function runTick(client: Client, officialBotId: number) {
 		const seen = new Set<number>();
 		processPageCount = {};
 
-		await streamCatalogPages({ CreatorType: 1, CreatorTargetId: 1, SortType: 3 }, async (items) => {
-			await processPage(officialBotId, targets, items, seen, 'roblox-official');
+		await streamCatalogPages(CATALOG_OFFICIAL_ROBLOX_PARAMS, async (items) => {
+			await processPage(officialBotId, targets, items, seen, 'roblox-official', true);
 		});
-
 		await new Promise((r) => setTimeout(r, 10_000));
-
-		await streamCatalogPages({ SalesTypeFilter: 2, SortType: 3 }, async (items) => {
-			await processPage(officialBotId, targets, items, seen, 'limiteds');
+		await streamCatalogPages(CATALOG_LIMITED_PARAMS, async (items) => {
+			await processPage(officialBotId, targets, items, seen, 'limiteds', true);
 		});
 	} finally {
 		tickRunning = false;

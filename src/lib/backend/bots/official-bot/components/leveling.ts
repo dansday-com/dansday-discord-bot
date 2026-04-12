@@ -286,7 +286,7 @@ export async function sendLevelChangeDM(guildId, discordMemberId, serverName, ne
 
 		const dmRow = dmLeaderboardUrl
 			? new ActionRowBuilder<ButtonBuilder>().addComponents(
-					new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(dmLeaderboardUrl).setLabel('Web leaderboard').setEmoji('🌐')
+					new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(dmLeaderboardUrl).setLabel('Leaderboard').setEmoji('🌐')
 				)
 			: null;
 
@@ -409,7 +409,7 @@ export async function sendLevelProgressNotification({
 
 		const progressRow = leaderboardUrl
 			? new ActionRowBuilder<ButtonBuilder>().addComponents(
-					new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(leaderboardUrl).setLabel('Web leaderboard').setEmoji('🌐')
+					new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(leaderboardUrl).setLabel('Leaderboard').setEmoji('🌐')
 				)
 			: null;
 

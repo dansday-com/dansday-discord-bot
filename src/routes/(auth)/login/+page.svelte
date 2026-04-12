@@ -1,10 +1,18 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
 	import { DASHBOARD_PATH } from '$lib/frontend/redirect.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
+
+	onMount(() => {
+		if (data.authQueryError) {
+			showToast(data.authQueryError, 'error');
+			void goto('/login', { replaceState: true, noScroll: true });
+		}
+	});
 	let loading = $state(false);
 	let showPassword = $state(false);
 	let usernameOrEmail = $state('');

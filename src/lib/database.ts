@@ -2504,8 +2504,7 @@ async function detectAndUpdateServerRobloxItemChanges(serverId: number, items: R
 			last_price: schema.botRobloxItems.last_price,
 			last_lowest_price: schema.botRobloxItems.last_lowest_price,
 			last_lowest_resale_price: schema.botRobloxItems.last_lowest_resale_price,
-			last_total_quantity: schema.botRobloxItems.last_total_quantity,
-			message_posted_at: schema.serverRobloxItems.message_posted_at
+			last_total_quantity: schema.botRobloxItems.last_total_quantity
 		})
 		.from(schema.serverRobloxItems)
 		.innerJoin(schema.botRobloxItems, eq(schema.serverRobloxItems.item_id, schema.botRobloxItems.id))
@@ -2516,7 +2515,7 @@ async function detectAndUpdateServerRobloxItemChanges(serverId: number, items: R
 	for (const it of items) {
 		const assetId = Number(it.assetId);
 		const row = rowMap.get(assetId);
-		if (!row || !row.message_posted_at) continue;
+		if (!row) continue;
 
 		const changes: RobloxItemChange[] = [];
 

@@ -82,6 +82,15 @@ function maxItemCreatedTs(items: RobloxCatalogItem[]): number {
 	return m;
 }
 
+function sortItemsByCreatedOldestFirst(items: RobloxCatalogItem[]): RobloxCatalogItem[] {
+	return [...items].sort((a, b) => {
+		const at = a.itemCreatedUtc ? new Date(a.itemCreatedUtc).getTime() : Number.POSITIVE_INFINITY;
+		const bt = b.itemCreatedUtc ? new Date(b.itemCreatedUtc).getTime() : Number.POSITIVE_INFINITY;
+		if (at !== bt) return at - bt;
+		return a.id - b.id;
+	});
+}
+
 async function getActiveServers(client: Client, officialBotId: number): Promise<ServerTarget[]> {
 	const servers = await db.getServersForBot(officialBotId);
 	const targets: ServerTarget[] = [];
@@ -171,11 +180,7 @@ async function initialSeed(client: Client, officialBotId: number, targets: Serve
 	}
 
 	const announceDay = announceDayFromMergedFirstPages(robloxItems, limitedItems);
-	const toPost = announceDay
-		? all
-				.filter((x) => x.itemCreatedUtc && utcDay(x.itemCreatedUtc) === announceDay)
-				.sort((a, b) => new Date(b.itemCreatedUtc!).getTime() - new Date(a.itemCreatedUtc!).getTime())
-		: [];
+	const toPost = announceDay ? sortItemsByCreatedOldestFirst(all.filter((x) => x.itemCreatedUtc && utcDay(x.itemCreatedUtc) === announceDay)) : [];
 
 	await logger.log(`🛍️ Roblox catalog: seed found ${all.length} total, posting ${toPost.length} first-announce items (${announceDay ?? 'no dated items'} UTC)`);
 
@@ -256,7 +261,7 @@ async function processPage(
 		const unposted = perServerUnposted.get(target.serverId) ?? new Set<number>();
 		const changes = perServerChanges.get(target.serverId) ?? new Map<number, RobloxItemChange[]>();
 
-		for (const item of newItems) {
+		for (const item of sortItemsByCreatedOldestFirst(newItems)) {
 			const isNew = unposted.has(item.id);
 			const itemChanges = changes.get(item.id) ?? [];
 			if (!isNew && itemChanges.length === 0) continue;

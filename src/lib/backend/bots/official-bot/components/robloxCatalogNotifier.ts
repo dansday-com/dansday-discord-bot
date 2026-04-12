@@ -2,7 +2,8 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle, Client, EmbedBuilder } fr
 import db, { type RobloxItemChange } from '../../../../database.js';
 import { getEmbedConfig, getMainChannel, isComponentFeatureEnabled, serverSettingsComponent } from '../../../config.js';
 import { logger } from '../../../../utils/index.js';
-import { assetTypeCategory, fetchCatalogFirstPage, RobloxCatalogItem, robloxCatalogItemUrl, streamCatalogPages } from '../../../api/roblox-catalog-api.js';
+import { fetchCatalogFirstPage, robloxCatalogItemUrl, streamCatalogPages } from '../../../api/roblox-catalog-api.js';
+import type { RobloxCatalogItem } from '../../../api/roblox-catalog-api.js';
 
 let tickTimeoutRef: ReturnType<typeof setTimeout> | null = null;
 let tickRunning = false;
@@ -22,6 +23,15 @@ function formatCount(n: number): string {
 	return groupedInteger.format(Math.trunc(n));
 }
 
+function formatQuantityRatio(item: RobloxCatalogItem): string {
+	const u = item.unitsAvailable;
+	const t = item.totalQuantity;
+	if (u != null && t != null) return `${formatCount(u)}/${formatCount(t)}`;
+	if (u != null) return `${formatCount(u)}/—`;
+	if (t != null) return `—/${formatCount(t)}`;
+	return '—';
+}
+
 type ServerTarget = {
 	serverId: number;
 	guildId: string;
@@ -34,15 +44,16 @@ function toSnapshot(x: RobloxCatalogItem) {
 	return {
 		assetId: x.id,
 		assetType: x.assetType ?? null,
+		category: x.category ?? null,
 		name: x.name ?? null,
 		description: x.description ?? null,
 		creatorName: x.creatorName ?? null,
 		price: x.price ?? null,
-		lowestPrice: x.lowestPrice ?? null,
 		lowestResalePrice: x.lowestResalePrice ?? null,
 		totalQuantity: x.totalQuantity ?? null,
+		unitsAvailable: x.unitsAvailable ?? null,
+		favoriteCount: x.favoriteCount ?? null,
 		thumbnailUrl: x.thumbnailUrl ?? null,
-		itemUrl: robloxCatalogItemUrl(x.id),
 		itemCreatedUtc: x.itemCreatedUtc ?? null
 	};
 }
@@ -68,7 +79,7 @@ function announceDayFromMergedFirstPages(robloxItems: RobloxCatalogItem[], limit
 	const offMax = maxItemCreatedTs(robloxItems);
 	const limMax = maxItemCreatedTs(limitedItems);
 	const winTs = Math.max(offMax, limMax);
-	if (winTs > 0) return utcDay(new Date(winTs));
+	if (winTs > 0) return utcDay(new Date(winTs).toISOString());
 	return [...daySet].sort((a, b) => b.localeCompare(a))[0] ?? null;
 }
 
@@ -128,26 +139,44 @@ async function getActiveServers(client: Client, officialBotId: number): Promise<
 async function sendItemEmbed(target: ServerTarget, item: RobloxCatalogItem, isNew: boolean, changeLines?: string) {
 	const url = robloxCatalogItemUrl(item.id);
 	const price = typeof item.price === 'number' ? formatRobux(item.price) : '—';
-	const lowestPrice = typeof item.lowestPrice === 'number' ? formatRobux(item.lowestPrice) : '—';
 	const lowestResale = typeof item.lowestResalePrice === 'number' ? formatRobux(item.lowestResalePrice) : '—';
-	const quantity = typeof item.totalQuantity === 'number' ? formatCount(item.totalQuantity) : '—';
-	const category = assetTypeCategory(item.assetType) ?? '—';
+	const quantity = formatQuantityRatio(item);
+	const category = item.category?.trim() || '—';
+	const favorites = typeof item.favoriteCount === 'number' ? formatCount(item.favoriteCount) : '—';
 	const createdAt = item.itemCreatedUtc ? `<t:${Math.floor(new Date(item.itemCreatedUtc).getTime() / 1000)}:D>` : '—';
+
+	let saleOrResaleField: { name: string; value: string; inline: boolean };
+	if (item.hasResellers) {
+		saleOrResaleField = {
+			name: 'Lowest Resale',
+			value: typeof item.lowestResalePrice === 'number' ? lowestResale : '—',
+			inline: true
+		};
+	} else if (item.offSaleDeadline) {
+		const ts = Math.floor(new Date(item.offSaleDeadline).getTime() / 1000);
+		saleOrResaleField = {
+			name: 'Sale ends',
+			value: Number.isFinite(ts) ? `<t:${ts}:F>` : '—',
+			inline: true
+		};
+	} else {
+		saleOrResaleField = { name: 'Sale ends', value: '—', inline: true };
+	}
 
 	const title = isNew ? (item.name || `Item #${item.id}`).slice(0, 256) : `[Updated] ${item.name || `Item #${item.id}`}`.slice(0, 256);
 
-	const color = changeLines ? (item.creatorHasVerifiedBadge ? 0x57f287 : 0xffc107) : item.creatorHasVerifiedBadge ? 0x57f287 : target.embedConfig.COLOR;
+	const color = changeLines ? 0xffc107 : target.embedConfig.COLOR;
 
 	const embed = new EmbedBuilder()
 		.setColor(color)
 		.setTitle(title)
 		.addFields(
-			{ name: 'Category', value: category, inline: true },
+			{ name: 'Category', value: category.slice(0, 1024), inline: true },
 			{ name: 'Price', value: price, inline: true },
 			{ name: 'Creator', value: (item.creatorHasVerifiedBadge ? `✅ ${item.creatorName}` : item.creatorName || '—').slice(0, 1024), inline: true },
-			{ name: 'Lowest Price', value: lowestPrice, inline: true },
-			{ name: 'Lowest Resale', value: lowestResale, inline: true },
-			{ name: 'Total Quantity', value: quantity, inline: true },
+			{ name: 'Quantity', value: quantity, inline: true },
+			{ name: 'Favorites', value: favorites, inline: true },
+			saleOrResaleField,
 			{ name: 'Created', value: createdAt, inline: true }
 		)
 		.setFooter({ text: target.embedConfig.FOOTER });
@@ -273,13 +302,13 @@ async function processPage(
 						.map((c) => {
 							const label =
 								c.field === 'total_quantity'
-									? 'Stock'
-									: c.field === 'lowest_price'
-										? 'Lowest Price'
+									? 'Total supply'
+									: c.field === 'units_available'
+										? 'Available'
 										: c.field === 'lowest_resale_price'
 											? 'Lowest Resale'
 											: 'Price';
-							const isPrice = c.field !== 'total_quantity';
+							const isPrice = c.field === 'price' || c.field === 'lowest_resale_price';
 							const fmt = (v: number | null) => (v == null ? '—' : isPrice ? formatRobux(v) : formatCount(v));
 							return `**${label}**: ${fmt(c.oldValue)} → ${fmt(c.newValue)}`;
 						})
@@ -370,5 +399,3 @@ export function stopRobloxCatalogNotifier() {
 		tickTimeoutRef = null;
 	}
 }
-
-export default { initRobloxCatalogNotifier, stopRobloxCatalogNotifier };

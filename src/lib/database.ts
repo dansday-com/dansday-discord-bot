@@ -2358,15 +2358,16 @@ async function markServerDiscordQuestMessagePosted(serverId: number, questId: st
 type RobloxCatalogItemSnapshot = {
 	assetId: number;
 	assetType?: number | null;
+	category?: string | null;
 	name?: string | null;
 	description?: string | null;
 	creatorName?: string | null;
 	price?: number | null;
-	lowestPrice?: number | null;
 	lowestResalePrice?: number | null;
 	totalQuantity?: number | null;
+	unitsAvailable?: number | null;
+	favoriteCount?: number | null;
 	thumbnailUrl?: string | null;
-	itemUrl?: string | null;
 	itemCreatedUtc?: string | null;
 };
 
@@ -2386,15 +2387,16 @@ async function syncServerRobloxItemsFromApi(botId: number, serverId: number, ite
 				bot_id: botId,
 				asset_id: Number(it.assetId),
 				asset_type: it.assetType == null ? null : Number(it.assetType),
+				category: it.category ?? null,
 				name: it.name ?? null,
 				description: it.description ?? null,
 				creator_name: it.creatorName ?? null,
 				price: it.price == null ? null : Number(it.price),
-				lowest_price: it.lowestPrice == null ? null : Number(it.lowestPrice),
 				lowest_resale_price: it.lowestResalePrice == null ? null : Number(it.lowestResalePrice),
 				total_quantity: it.totalQuantity == null ? null : Number(it.totalQuantity),
+				favorite_count: it.favoriteCount == null ? null : Number(it.favoriteCount),
+				units_available: it.unitsAvailable == null ? null : Number(it.unitsAvailable),
 				thumbnail_url: it.thumbnailUrl ?? null,
-				item_url: it.itemUrl ?? null,
 				item_created_at: itemCreatedAt as any,
 				created_at: now as any
 			})
@@ -2402,15 +2404,16 @@ async function syncServerRobloxItemsFromApi(botId: number, serverId: number, ite
 				set: {
 					bot_id: botId,
 					asset_type: it.assetType == null ? null : Number(it.assetType),
+					category: it.category ?? null,
 					name: it.name ?? null,
 					description: it.description ?? null,
 					creator_name: it.creatorName ?? null,
 					price: it.price == null ? null : Number(it.price),
-					lowest_price: it.lowestPrice == null ? null : Number(it.lowestPrice),
 					lowest_resale_price: it.lowestResalePrice == null ? null : Number(it.lowestResalePrice),
 					total_quantity: it.totalQuantity == null ? null : Number(it.totalQuantity),
+					favorite_count: it.favoriteCount == null ? null : Number(it.favoriteCount),
+					units_available: it.unitsAvailable == null ? null : Number(it.unitsAvailable),
 					thumbnail_url: it.thumbnailUrl ?? null,
-					item_url: it.itemUrl ?? null,
 					item_created_at: itemCreatedAt as any,
 					created_at: now as any
 				} as any
@@ -2454,9 +2457,9 @@ async function markServerRobloxItemMessagePosted(serverId: number, assetId: numb
 		.select({
 			id: schema.botRobloxItems.id,
 			price: schema.botRobloxItems.price,
-			lowest_price: schema.botRobloxItems.lowest_price,
 			lowest_resale_price: schema.botRobloxItems.lowest_resale_price,
-			total_quantity: schema.botRobloxItems.total_quantity
+			total_quantity: schema.botRobloxItems.total_quantity,
+			units_available: schema.botRobloxItems.units_available
 		})
 		.from(schema.botRobloxItems)
 		.where(eq(schema.botRobloxItems.asset_id, Number(assetId)))
@@ -2466,9 +2469,9 @@ async function markServerRobloxItemMessagePosted(serverId: number, assetId: numb
 		.update(schema.botRobloxItems)
 		.set({
 			last_price: item.price ?? null,
-			last_lowest_price: item.lowest_price ?? null,
 			last_lowest_resale_price: item.lowest_resale_price ?? null,
-			last_total_quantity: item.total_quantity ?? null
+			last_total_quantity: item.total_quantity ?? null,
+			last_units_available: item.units_available ?? null
 		} as any)
 		.where(eq(schema.botRobloxItems.id, item.id));
 	await db
@@ -2479,7 +2482,7 @@ async function markServerRobloxItemMessagePosted(serverId: number, assetId: numb
 
 export type RobloxItemChange = {
 	assetId: number;
-	field: 'price' | 'lowest_price' | 'lowest_resale_price' | 'total_quantity';
+	field: 'price' | 'lowest_resale_price' | 'units_available' | 'total_quantity';
 	oldValue: number | null;
 	newValue: number | null;
 };
@@ -2502,9 +2505,9 @@ async function detectAndUpdateServerRobloxItemChanges(serverId: number, items: R
 			asset_id: schema.botRobloxItems.asset_id,
 			bot_item_id: schema.botRobloxItems.id,
 			last_price: schema.botRobloxItems.last_price,
-			last_lowest_price: schema.botRobloxItems.last_lowest_price,
 			last_lowest_resale_price: schema.botRobloxItems.last_lowest_resale_price,
-			last_total_quantity: schema.botRobloxItems.last_total_quantity
+			last_total_quantity: schema.botRobloxItems.last_total_quantity,
+			last_units_available: schema.botRobloxItems.last_units_available
 		})
 		.from(schema.serverRobloxItems)
 		.innerJoin(schema.botRobloxItems, eq(schema.serverRobloxItems.item_id, schema.botRobloxItems.id))
@@ -2522,9 +2525,6 @@ async function detectAndUpdateServerRobloxItemChanges(serverId: number, items: R
 		if (row.last_price !== null && it.price !== null && it.price !== undefined && row.last_price !== it.price) {
 			changes.push({ assetId, field: 'price', oldValue: row.last_price, newValue: it.price });
 		}
-		if (row.last_lowest_price !== null && it.lowestPrice !== null && it.lowestPrice !== undefined && row.last_lowest_price !== it.lowestPrice) {
-			changes.push({ assetId, field: 'lowest_price', oldValue: row.last_lowest_price, newValue: it.lowestPrice });
-		}
 		if (
 			row.last_lowest_resale_price !== null &&
 			it.lowestResalePrice !== null &&
@@ -2532,6 +2532,9 @@ async function detectAndUpdateServerRobloxItemChanges(serverId: number, items: R
 			row.last_lowest_resale_price !== it.lowestResalePrice
 		) {
 			changes.push({ assetId, field: 'lowest_resale_price', oldValue: row.last_lowest_resale_price, newValue: it.lowestResalePrice });
+		}
+		if (row.last_units_available !== null && it.unitsAvailable !== null && it.unitsAvailable !== undefined && row.last_units_available !== it.unitsAvailable) {
+			changes.push({ assetId, field: 'units_available', oldValue: row.last_units_available, newValue: it.unitsAvailable });
 		}
 		if (row.last_total_quantity !== null && it.totalQuantity !== null && it.totalQuantity !== undefined && row.last_total_quantity !== it.totalQuantity) {
 			changes.push({ assetId, field: 'total_quantity', oldValue: row.last_total_quantity, newValue: it.totalQuantity });
@@ -2559,9 +2562,9 @@ async function updateBotRobloxItemLastValues(items: RobloxCatalogItemSnapshot[])
 			.update(schema.botRobloxItems)
 			.set({
 				last_price: it.price ?? null,
-				last_lowest_price: it.lowestPrice ?? null,
 				last_lowest_resale_price: it.lowestResalePrice ?? null,
-				last_total_quantity: it.totalQuantity ?? null
+				last_total_quantity: it.totalQuantity ?? null,
+				last_units_available: it.unitsAvailable ?? null
 			} as any)
 			.where(eq(schema.botRobloxItems.id, botItemId));
 	}

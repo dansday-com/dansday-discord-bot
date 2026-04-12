@@ -53,26 +53,29 @@ The project is open source under the MIT license.
 
 ## Tech stack
 
-| Area                       | Technologies                                                                                                                                                                                              |
-| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Language                   | [TypeScript](https://www.typescriptlang.org/) 5                                                                                                                                                           |
-| App framework              | [SvelteKit](https://kit.svelte.dev/) 2, [Svelte](https://svelte.dev/) 5                                                                                                                                   |
-| Build & dev                | [Vite](https://vitejs.dev/) 8, [`@sveltejs/vite-plugin-svelte`](https://github.com/sveltejs/vite-plugin-svelte) 7                                                                                         |
-| SSR / hosting              | [`@sveltejs/adapter-node`](https://svelte.dev/docs/kit/adapters#@sveltejs/adapter-node) (Node server)                                                                                                     |
-| Styling                    | [Tailwind CSS](https://tailwindcss.com/) 4 ([`@tailwindcss/vite`](https://tailwindcss.com/docs/installation/framework-guides/sveltekit))                                                                  |
-| Formatting (dev)           | [Prettier](https://prettier.io/) 3 + Svelte / Tailwind plugins                                                                                                                                            |
-| Official bot               | [discord.js](https://discord.js.org/) 14, [discord-api-types](https://www.npmjs.com/package/discord-api-types)                                                                                            |
-| User-token path (optional) | [discord.js-selfbot-v13](https://www.npmjs.com/package/discord.js-selfbot-v13)                                                                                                                            |
-| HTTP client                | [axios](https://axios-http.com/)                                                                                                                                                                          |
-| Database                   | [MySQL](https://www.mysql.com/) via [mysql2](https://github.com/sidorares/node-mysql2), [Drizzle ORM](https://orm.drizzle.team/) + [Drizzle Kit](https://orm.drizzle.team/kit-docs/overview) (migrations) |
-| Password hashing           | [bcryptjs](https://www.npmjs.com/package/bcryptjs)                                                                                                                                                        |
-| Dates & time               | [Luxon](https://moment.github.io/luxon/)                                                                                                                                                                  |
-| Cache / sessions           | [Redis](https://redis.io/) client ([`redis`](https://www.npmjs.com/package/redis) for Node) — optional by configuration                                                                                   |
-| Email                      | [Nodemailer](https://nodemailer.com/) — optional                                                                                                                                                          |
-| Proxies                    | [proxy-agent](https://www.npmjs.com/package/proxy-agent) (where outbound HTTP uses a proxy)                                                                                                               |
-| Observability              | [OpenTelemetry](https://opentelemetry.io/) — API, SDK logs, auto-instrumentations, OTLP HTTP log exporter (optional)                                                                                      |
-| Integrations               | [TikTok Live Connector](https://www.npmjs.com/package/tiktok-live-connector) (creator / live flows)                                                                                                       |
-| Config                     | [dotenv](https://www.npmjs.com/package/dotenv)                                                                                                                                                            |
+Versions match `package.json` at release (caret ranges; run `npm ls` for the exact tree).
+
+| Area                       | Technologies                                                                                                                                                                                                             |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Language                   | [TypeScript](https://www.typescriptlang.org/) 5.9                                                                                                                                                                        |
+| App framework              | [SvelteKit](https://kit.svelte.dev/) 2.50, [Svelte](https://svelte.dev/) 5.54                                                                                                                                            |
+| Build & dev                | [Vite](https://vitejs.dev/) 8.0, [`@sveltejs/vite-plugin-svelte`](https://github.com/sveltejs/vite-plugin-svelte) 7.0, [svelte-check](https://www.npmjs.com/package/svelte-check) 4.4                                    |
+| SSR / hosting              | [`@sveltejs/adapter-node`](https://svelte.dev/docs/kit/adapters#@sveltejs/adapter-node) 5.5 (Node server)                                                                                                                |
+| Styling                    | [Tailwind CSS](https://tailwindcss.com/) 4.2 ([`@tailwindcss/vite`](https://tailwindcss.com/docs/installation/framework-guides/sveltekit) 4.2)                                                                           |
+| Formatting (dev)           | [Prettier](https://prettier.io/) 3.8 + Svelte / Tailwind plugins                                                                                                                                                         |
+| Official bot               | [discord.js](https://discord.js.org/) 14.26, [discord-api-types](https://www.npmjs.com/package/discord-api-types) 0.38                                                                                                   |
+| User-token path (optional) | [discord.js-selfbot-v13](https://www.npmjs.com/package/discord.js-selfbot-v13) 3.7                                                                                                                                       |
+| HTTP client                | [axios](https://axios-http.com/) 1.14                                                                                                                                                                                    |
+| Roblox catalog API         | [rozod](https://www.npmjs.com/package/rozod) 6.6 (typed catalog fetch alongside axios thumbnails)                                                                                                                        |
+| Database                   | [MySQL](https://www.mysql.com/) via [mysql2](https://github.com/sidorares/node-mysql2) 3.20, [Drizzle ORM](https://orm.drizzle.team/) 0.45 + [Drizzle Kit](https://orm.drizzle.team/kit-docs/overview) 0.31 (migrations) |
+| Password hashing           | [bcryptjs](https://www.npmjs.com/package/bcryptjs) 3.0                                                                                                                                                                   |
+| Dates & time               | [Luxon](https://moment.github.io/luxon/) 3.7                                                                                                                                                                             |
+| Cache / sessions           | [Redis](https://redis.io/) client ([`redis`](https://www.npmjs.com/package/redis) 5.11 for Node) — optional by configuration                                                                                             |
+| Email                      | [Nodemailer](https://nodemailer.com/) 8.0 — optional                                                                                                                                                                     |
+| Proxies                    | [proxy-agent](https://www.npmjs.com/package/proxy-agent) 8.0 (where outbound HTTP uses a proxy)                                                                                                                          |
+| Observability              | [OpenTelemetry](https://opentelemetry.io/) — `@opentelemetry/api` 1.9, logs SDK & auto-instrumentations 0.214, OTLP HTTP log exporter (optional)                                                                         |
+| Integrations               | [TikTok Live Connector](https://www.npmjs.com/package/tiktok-live-connector) 2.1 (creator / live flows)                                                                                                                  |
+| Config                     | [dotenv](https://www.npmjs.com/package/dotenv) 17.3                                                                                                                                                                      |
 
 ---
 
@@ -84,4 +87,4 @@ Environment variables drive database credentials, sessions, captcha, mail, Redis
 
 ## License
 
-MIT · Author: Akbar Yudhanto · Version: 8.1.1
+MIT · Author: Akbar Yudhanto · Version: 8.1.2

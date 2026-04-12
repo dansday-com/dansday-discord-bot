@@ -18,7 +18,7 @@ import { logger } from '../../../../utils/index.js';
 let tickTimeoutRef: ReturnType<typeof setTimeout> | null = null;
 let tickRunning = false;
 
-const POLL_MS = 10_000;
+const POLL_MS = 6_000;
 
 const groupedInteger = new Intl.NumberFormat('id-ID');
 
@@ -352,7 +352,7 @@ async function backgroundSync(officialBotId: number, targets: ServerTarget[], se
 	await logger.log('🛍️ Roblox catalog: starting background sync...');
 
 	for (let i = 0; i < robloxCatalogStreamPollOrder.length; i++) {
-		if (i > 0) await new Promise((r) => setTimeout(r, 10_000));
+		if (i > 0) await new Promise((r) => setTimeout(r, 6_000));
 		const stream = robloxCatalogStreams[robloxCatalogStreamPollOrder[i]];
 		await streamCatalogPages(stream.params, async (items) => {
 			await processPage(officialBotId, targets, items, seen, stream.useOfficialCatalogEmbedStyle, false);
@@ -379,7 +379,7 @@ async function runTick(client: Client, officialBotId: number) {
 		processPageCount = {};
 
 		for (let i = 0; i < robloxCatalogStreamPollOrder.length; i++) {
-			if (i > 0) await new Promise((r) => setTimeout(r, 10_000));
+			if (i > 0) await new Promise((r) => setTimeout(r, 6_000));
 			const stream = robloxCatalogStreams[robloxCatalogStreamPollOrder[i]];
 			await streamCatalogPages(stream.params, async (items) => {
 				await processPage(officialBotId, targets, items, seen, stream.useOfficialCatalogEmbedStyle, true);

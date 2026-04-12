@@ -338,8 +338,8 @@ async function createMenuRow(guildId = null, userId = null, serverId = null) {
 			const slug = await computePublicServerSlugForServerId(serverId);
 			const url = slug ? publicServerUrl(slug, 'leaderboard') : null;
 			if (url) {
-				const webLeaderboardLabel = await translate('leveling.buttons.webLeaderboard', guildId, userId);
-				buttons.push(new ButtonBuilder().setLabel(webLeaderboardLabel).setURL(url).setStyle(ButtonStyle.Link));
+				const linkLeaderboardLabel = await translate('leveling.buttons.linkLeaderboard', guildId, userId);
+				buttons.push(new ButtonBuilder().setLabel(linkLeaderboardLabel).setURL(url).setStyle(ButtonStyle.Link));
 			}
 		} catch (_) {}
 	}

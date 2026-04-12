@@ -232,13 +232,13 @@ async function handleMenuButton(interaction) {
 			const slug = await computePublicServerSlugForServerId(Number(server.id));
 			const url = slug ? publicServerUrl(slug) : null;
 			if (url) {
-				const webLabel = await translate('menu.web.statistics', interaction.guild.id, interaction.user.id);
-				const webBtn = new ButtonBuilder().setLabel(webLabel).setURL(url).setStyle(ButtonStyle.Link);
+				const statisticsLabel = await translate('menu.statistics', interaction.guild.id, interaction.user.id);
+				const statisticsBtn = new ButtonBuilder().setLabel(statisticsLabel).setURL(url).setStyle(ButtonStyle.Link);
 				const settingsRow = rows[rows.length - 1];
 				if (settingsRow.components.length < 5) {
-					settingsRow.addComponents(webBtn);
+					settingsRow.addComponents(statisticsBtn);
 				} else if (rows.length < 5) {
-					rows.push(new ActionRowBuilder().addComponents(webBtn));
+					rows.push(new ActionRowBuilder().addComponents(statisticsBtn));
 				}
 			}
 		} catch (_) {}

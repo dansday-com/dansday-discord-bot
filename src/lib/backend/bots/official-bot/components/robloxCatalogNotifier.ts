@@ -1,17 +1,19 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, Client, EmbedBuilder } from 'discord.js';
 import db, { type RobloxItemChange } from '../../../../database.js';
 import {
+	fetchCatalogFirstPage,
 	getEmbedConfig,
 	getMainChannel,
 	isComponentFeatureEnabled,
 	robloxCatalogEmbedColors,
+	robloxCatalogItemUrl,
 	robloxCatalogStreams,
 	robloxCatalogStreamPollOrder,
-	serverSettingsComponent
+	serverSettingsComponent,
+	streamCatalogPages,
+	type RobloxCatalogItem
 } from '../../../config.js';
 import { logger } from '../../../../utils/index.js';
-import { fetchCatalogFirstPage, robloxCatalogItemUrl, streamCatalogPages } from '../../../api/roblox-catalog-api.js';
-import type { RobloxCatalogItem } from '../../../api/roblox-catalog-api.js';
 
 let tickTimeoutRef: ReturnType<typeof setTimeout> | null = null;
 let tickRunning = false;

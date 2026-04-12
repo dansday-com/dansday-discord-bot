@@ -1,6 +1,5 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, type Client } from 'discord.js';
-import { runQuestUserAutomation } from '../../../api/discord-quest-api.js';
-import { getEmbedConfig } from '../../../config.js';
+import { getEmbedConfig, runQuestUserAutomation } from '../../../config.js';
 import { logger } from '../../../../utils/index.js';
 import db from '../../../../database.js';
 

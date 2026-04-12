@@ -344,6 +344,14 @@ export const discordQuestHttp = {
 	}
 } as const;
 
+export {
+	extractDiscordQuestSummaries,
+	fetchQuestsMe,
+	precheckQuestPayloadForEnrollment,
+	runQuestUserAutomation,
+	type DiscordQuestSummary
+} from './api/discord-quest-api.js';
+
 export const robloxCatalogStreams = {
 	officialRoblox: {
 		params: { CreatorType: 1, CreatorTargetId: 1, SortType: 3 },
@@ -363,6 +371,8 @@ export const robloxCatalogEmbedColors = {
 	fromOfficialQuery: 0x57f287,
 	itemUpdated: 0xffc107
 } as const;
+
+export { fetchCatalogFirstPage, robloxCatalogItemUrl, streamCatalogPages, type RobloxCatalogItem } from './api/roblox-catalog-api.js';
 
 export async function getEmbedConfig(guildId: string) {
 	requireBotConfig();

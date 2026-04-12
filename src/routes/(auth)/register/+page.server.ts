@@ -11,8 +11,14 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 	if (token) {
 		const invite = await db.getServerAccountInviteByToken(token).catch(() => null);
-		if (!invite || invite.used_by || invite.used_at || (invite.expires_at && isUtcSqlExpired(invite.expires_at))) {
-			redirect(302, '/login?error=invite_invalid');
+		if (!invite) {
+			redirect(302, '/login?error=invite_not_found');
+		}
+		if (invite.used_by || invite.used_at) {
+			redirect(302, '/login?error=invite_used');
+		}
+		if (invite.expires_at && isUtcSqlExpired(invite.expires_at)) {
+			redirect(302, '/login?error=invite_expired');
 		}
 		return { token };
 	}

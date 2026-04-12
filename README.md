@@ -53,8 +53,6 @@ The project is open source under the MIT license.
 
 ## Tech stack
 
-Versions below match **`package.json`** / **`package-lock.json`** (semver ranges). The **Dockerfile** builds and runs on **Node 25** (Alpine); there is no `engines` field, so use a recent Node that matches your deploy (Docker, or Node 20+ for local dev if you prefer LTS).
-
 | Area                       | Technologies                                                                                                                                                                                              |
 | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Language                   | [TypeScript](https://www.typescriptlang.org/) 5                                                                                                                                                           |

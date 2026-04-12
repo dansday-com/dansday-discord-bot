@@ -9,7 +9,6 @@ let tickRunning = false;
 
 const POLL_MS = 60_000;
 
-/** Group digits with dots (e.g. 8.500.000) so large Robux amounts stay readable. */
 const groupedInteger = new Intl.NumberFormat('id-ID');
 
 function formatRobux(n: number): string {

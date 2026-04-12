@@ -1,4 +1,3 @@
-# ── Stage 1: Build ──────────────────────────────────────────────
 FROM node:25.8.1-alpine AS builder
 
 WORKDIR /app
@@ -16,7 +15,6 @@ RUN npx tsc -p tsconfig.bots.json || true
 
 RUN npm prune --production
 
-# ── Stage 2: Runtime ─────────────────────────────────────────────
 FROM node:25.8.1-alpine AS runner
 
 WORKDIR /app

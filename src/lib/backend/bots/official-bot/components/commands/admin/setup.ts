@@ -8,7 +8,7 @@ import { isUtcSqlExpired } from '../../../../../../utils/index.js';
 
 export const commandDefinition = {
 	name: 'setup',
-	description: 'Send the bot panel to a channel and get an owner registration link when the server has no owner yet (Server Owner only)',
+	description: 'Send the web panel to a channel. Server owner only; owner invite if no owner yet.',
 	options: [
 		{
 			name: 'channel',

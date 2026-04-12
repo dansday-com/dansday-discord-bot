@@ -112,7 +112,7 @@ export async function streamCatalogPages(extraParams: Record<string, unknown>, o
 
 		cursor = nextPageCursor ?? undefined;
 		if (!cursor) break;
-		await new Promise((r) => setTimeout(r, 10_000));
+		await new Promise((r) => setTimeout(r, 5_000));
 	}
 }
 

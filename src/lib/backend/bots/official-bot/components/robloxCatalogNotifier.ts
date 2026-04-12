@@ -8,7 +8,7 @@ import type { RobloxCatalogItem } from '../../../api/roblox-catalog-api.js';
 let tickTimeoutRef: ReturnType<typeof setTimeout> | null = null;
 let tickRunning = false;
 
-const POLL_MS = 60_000;
+const POLL_MS = 10_000;
 const ROBLOX_CATALOG_EMBED_GREEN = 0x57f287;
 
 const CATALOG_OFFICIAL_ROBLOX_PARAMS = { CreatorType: 1, CreatorTargetId: 1, SortType: 3 };

@@ -358,10 +358,6 @@ export const robloxCatalogStreams = {
 		useOfficialCatalogEmbedStyle: true
 	},
 	limited: {
-		params: { SalesTypeFilter: 2, SortType: 3 },
-		useOfficialCatalogEmbedStyle: false
-	},
-	limitedResellOnly: {
 		params: { SalesTypeFilter: 2, SortType: 3, IncludeNotForSale: true },
 		useOfficialCatalogEmbedStyle: false
 	}
@@ -369,7 +365,7 @@ export const robloxCatalogStreams = {
 
 export type RobloxCatalogStreamKey = keyof typeof robloxCatalogStreams;
 
-export const robloxCatalogStreamPollOrder: RobloxCatalogStreamKey[] = ['officialRoblox', 'limited', 'limitedResellOnly'];
+export const robloxCatalogStreamPollOrder: RobloxCatalogStreamKey[] = ['officialRoblox', 'limited'];
 
 export const ROBLOX_CATALOG_POLL_MS = 4_000;
 export const ROBLOX_CATALOG_NEXT_PAGE_MS = 2_000;

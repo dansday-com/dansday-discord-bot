@@ -78,9 +78,13 @@ async function fetchCatalogJson(params: Record<string, unknown>): Promise<{ data
 	}
 }
 
+function filterVerifiedCreators(items: RobloxCatalogItem[]): RobloxCatalogItem[] {
+	return items.filter((x) => x.creatorHasVerifiedBadge === true);
+}
+
 export async function fetchCatalogFirstPage(extraParams: Record<string, unknown>): Promise<RobloxCatalogItem[]> {
 	const { data } = await fetchCatalogJson({ limit: 120, ...extraParams });
-	const items = data.map((row) => mapCatalogRow(row)).filter((x): x is RobloxCatalogItem => x != null);
+	const items = filterVerifiedCreators(data.map((row) => mapCatalogRow(row)).filter((x): x is RobloxCatalogItem => x != null));
 	if (items.length > 0) {
 		const thumbMap = await fetchThumbnailUrls(items);
 		for (const item of items) item.thumbnailUrl = thumbMap.get(item.id) ?? null;
@@ -96,7 +100,7 @@ export async function streamCatalogPages(extraParams: Record<string, unknown>, o
 		if (cursor) params.cursor = cursor;
 
 		const { data, nextPageCursor } = await fetchCatalogJson(params);
-		const items = data.map((row) => mapCatalogRow(row)).filter((x): x is RobloxCatalogItem => x != null);
+		const items = filterVerifiedCreators(data.map((row) => mapCatalogRow(row)).filter((x): x is RobloxCatalogItem => x != null));
 
 		if (items.length > 0) {
 			const thumbMap = await fetchThumbnailUrls(items);

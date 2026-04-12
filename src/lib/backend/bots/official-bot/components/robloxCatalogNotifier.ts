@@ -9,6 +9,9 @@ let tickRunning = false;
 
 const POLL_MS = 60_000;
 
+const CATALOG_OFFICIAL_ROBLOX_PARAMS = { CreatorType: 1, CreatorTargetId: 1, SortType: 3 };
+const CATALOG_LIMITED_PARAMS = { SalesTypeFilter: 2, SortType: 3 };
+
 const groupedInteger = new Intl.NumberFormat('id-ID');
 
 function formatRobux(n: number): string {
@@ -54,15 +57,29 @@ function utcCalendarDayMinusDays(offsetDays: number): string {
 	return new Date(t).toISOString().slice(0, 10);
 }
 
-function resolveAnnounceDay(items: RobloxCatalogItem[]): string | null {
+function announceDayFromMergedFirstPages(robloxItems: RobloxCatalogItem[], limitedItems: RobloxCatalogItem[]): string | null {
 	const daySet = new Set<string>();
-	for (const x of items) {
+	for (const x of [...robloxItems, ...limitedItems]) {
 		if (x.itemCreatedUtc) daySet.add(utcDay(x.itemCreatedUtc));
 	}
 	if (daySet.size === 0) return null;
 	const today = utcCalendarDayMinusDays(0);
 	if (daySet.has(today)) return today;
+	const offMax = maxItemCreatedTs(robloxItems);
+	const limMax = maxItemCreatedTs(limitedItems);
+	const winTs = Math.max(offMax, limMax);
+	if (winTs > 0) return utcDay(new Date(winTs));
 	return [...daySet].sort((a, b) => b.localeCompare(a))[0] ?? null;
+}
+
+function maxItemCreatedTs(items: RobloxCatalogItem[]): number {
+	let m = 0;
+	for (const x of items) {
+		if (!x.itemCreatedUtc) continue;
+		const t = new Date(x.itemCreatedUtc).getTime();
+		if (Number.isFinite(t) && t > m) m = t;
+	}
+	return m;
 }
 
 async function getActiveServers(client: Client, officialBotId: number): Promise<ServerTarget[]> {
@@ -143,10 +160,7 @@ async function sendItemEmbed(target: ServerTarget, item: RobloxCatalogItem, isNe
 async function initialSeed(client: Client, officialBotId: number, targets: ServerTarget[]) {
 	await logger.log('🛍️ Roblox catalog: DB empty, performing initial seed...');
 
-	const [robloxItems, limitedItems] = await Promise.all([
-		fetchCatalogFirstPage({ CreatorType: 1, CreatorTargetId: 1, SortType: 3 }),
-		fetchCatalogFirstPage({ SalesTypeFilter: 2, SortType: 3 })
-	]);
+	const [robloxItems, limitedItems] = await Promise.all([fetchCatalogFirstPage(CATALOG_OFFICIAL_ROBLOX_PARAMS), fetchCatalogFirstPage(CATALOG_LIMITED_PARAMS)]);
 
 	const seenIds = new Set<number>();
 	const all: RobloxCatalogItem[] = [];
@@ -156,11 +170,11 @@ async function initialSeed(client: Client, officialBotId: number, targets: Serve
 		all.push(item);
 	}
 
-	const announceDay = resolveAnnounceDay(all);
+	const announceDay = announceDayFromMergedFirstPages(robloxItems, limitedItems);
 	const toPost = announceDay
 		? all
 				.filter((x) => x.itemCreatedUtc && utcDay(x.itemCreatedUtc) === announceDay)
-				.sort((a, b) => new Date(a.itemCreatedUtc!).getTime() - new Date(b.itemCreatedUtc!).getTime())
+				.sort((a, b) => new Date(b.itemCreatedUtc!).getTime() - new Date(a.itemCreatedUtc!).getTime())
 		: [];
 
 	await logger.log(`🛍️ Roblox catalog: seed found ${all.length} total, posting ${toPost.length} first-announce items (${announceDay ?? 'no dated items'} UTC)`);
@@ -192,7 +206,14 @@ async function initialSeed(client: Client, officialBotId: number, targets: Serve
 
 let processPageCount: Record<string, number> = {};
 
-async function processPage(officialBotId: number, targets: ServerTarget[], items: RobloxCatalogItem[], seen: Set<number>, source: string) {
+async function processPage(
+	officialBotId: number,
+	targets: ServerTarget[],
+	items: RobloxCatalogItem[],
+	seen: Set<number>,
+	source: string,
+	allowCatalogFirstMessage: boolean
+) {
 	const newItems = items.filter((x) => !seen.has(x.id));
 	for (const x of newItems) seen.add(x.id);
 	processPageCount[source] = (processPageCount[source] ?? 0) + 1;
@@ -204,7 +225,8 @@ async function processPage(officialBotId: number, targets: ServerTarget[], items
 	await logger.log(`🔄 Roblox catalog [${source}] page ${pageNum}: ${newItems.length} new items (total seen: ${seen.size})`);
 
 	const snapshots = newItems.map(toSnapshot);
-	const announceDay = resolveAnnounceDay(newItems);
+	const todayUtcDay = utcCalendarDayMinusDays(0);
+	const announceDay = allowCatalogFirstMessage ? todayUtcDay : null;
 
 	const perServerChanges = new Map<number, Map<number, RobloxItemChange[]>>();
 	const perServerUnposted = new Map<number, Set<number>>();
@@ -277,12 +299,12 @@ async function processPage(officialBotId: number, targets: ServerTarget[], items
 async function backgroundSync(officialBotId: number, targets: ServerTarget[], seen: Set<number>) {
 	await logger.log('🛍️ Roblox catalog: starting background sync...');
 
-	await streamCatalogPages({ CreatorType: 1, CreatorTargetId: 1, SortType: 3 }, async (items) => {
-		await processPage(officialBotId, targets, items, seen, 'roblox-official');
+	await streamCatalogPages(CATALOG_OFFICIAL_ROBLOX_PARAMS, async (items) => {
+		await processPage(officialBotId, targets, items, seen, 'roblox-official', false);
 	});
 	await new Promise((r) => setTimeout(r, 10_000));
-	await streamCatalogPages({ SalesTypeFilter: 2, SortType: 3 }, async (items) => {
-		await processPage(officialBotId, targets, items, seen, 'limiteds');
+	await streamCatalogPages(CATALOG_LIMITED_PARAMS, async (items) => {
+		await processPage(officialBotId, targets, items, seen, 'limiteds', false);
 	});
 
 	await logger.log('🛍️ Roblox catalog: background sync complete');
@@ -304,14 +326,12 @@ async function runTick(client: Client, officialBotId: number) {
 		const seen = new Set<number>();
 		processPageCount = {};
 
-		await streamCatalogPages({ CreatorType: 1, CreatorTargetId: 1, SortType: 3 }, async (items) => {
-			await processPage(officialBotId, targets, items, seen, 'roblox-official');
+		await streamCatalogPages(CATALOG_OFFICIAL_ROBLOX_PARAMS, async (items) => {
+			await processPage(officialBotId, targets, items, seen, 'roblox-official', true);
 		});
-
 		await new Promise((r) => setTimeout(r, 10_000));
-
-		await streamCatalogPages({ SalesTypeFilter: 2, SortType: 3 }, async (items) => {
-			await processPage(officialBotId, targets, items, seen, 'limiteds');
+		await streamCatalogPages(CATALOG_LIMITED_PARAMS, async (items) => {
+			await processPage(officialBotId, targets, items, seen, 'limiteds', true);
 		});
 	} finally {
 		tickRunning = false;

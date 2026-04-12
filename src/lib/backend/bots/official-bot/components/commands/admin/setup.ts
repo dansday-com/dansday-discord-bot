@@ -2,27 +2,32 @@ import { sendInterfaceToChannel } from '../../interface.js';
 import { randomBytes } from 'crypto';
 import db from '../../../../../../database.js';
 import { getBotConfig } from '../../../../../config.js';
-import { sendServerOwnerInviteEmail } from '../../../../../../frontend/email.js';
 import { publicSiteOrigin } from '../../../../../../url.js';
+import { translate } from '../../../i18n.js';
+import { isUtcSqlExpired } from '../../../../../../utils/index.js';
 
 export const commandDefinition = {
 	name: 'setup',
-	description: 'Send bot interface to a channel and receive your owner invite link via email (Server Owner only)',
+	description: 'Send the bot panel to a channel and get an owner registration link when the server has no owner yet (Server Owner only)',
 	options: [
 		{
 			name: 'channel',
 			description: 'Target channel to send the interface to',
 			type: 7,
 			required: true
-		},
-		{
-			name: 'email',
-			description: 'Email address to receive your owner account invite link',
-			type: 3,
-			required: true
 		}
 	]
 };
+
+function findActiveOwnerInvite(invites: { account_type: string; used_by: unknown; used_at: unknown; expires_at: unknown; token: string }[]) {
+	for (const inv of invites) {
+		if (inv.account_type !== 'owner') continue;
+		if (inv.used_by || inv.used_at) continue;
+		if (inv.expires_at && isUtcSqlExpired(inv.expires_at as string | Date)) continue;
+		return inv;
+	}
+	return null;
+}
 
 export async function execute(interaction: any, client: any) {
 	try {
@@ -32,54 +37,75 @@ export async function execute(interaction: any, client: any) {
 		}
 
 		const targetChannel = interaction.options.getChannel('channel');
-		const email: string = interaction.options.getString('email')?.trim() ?? '';
 
 		if (!targetChannel.isTextBased()) {
 			await interaction.reply({ content: '❌ Please select a text channel.', flags: 64 });
 			return;
 		}
 
-		if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-			await interaction.reply({ content: '❌ Please provide a valid email address.', flags: 64 });
-			return;
-		}
+		const gid = interaction.guild.id;
+		const uid = interaction.user.id;
 
 		await sendInterfaceToChannel(targetChannel, interaction, client);
 
-		try {
-			const botConfig = getBotConfig();
-			if (!botConfig) {
-				await interaction.followUp({ content: '⚠️ Interface sent, but bot config is not available.', flags: 64 });
-				return;
-			}
-			const server = await db.getServerByDiscordId(botConfig.id, interaction.guild.id);
-			if (!server) {
-				await interaction.followUp({ content: '⚠️ Interface sent, but could not find server record to generate invite.', flags: 64 });
-				return;
-			}
-
-			const origin = publicSiteOrigin();
-			if (!origin) {
-				await interaction.followUp({ content: '⚠️ Interface sent, but BASE_URL is not configured — cannot generate invite link.', flags: 64 });
-				return;
-			}
-
-			const token = randomBytes(32).toString('hex');
-			await db.createServerAccountInvite({ token, server_id: server.id, account_type: 'owner' });
-
-			const inviteUrl = `${origin}/register?token=${token}`;
-			await sendServerOwnerInviteEmail(email, interaction.guild.name, inviteUrl);
-
-			await interaction.followUp({
-				content: `✅ Interface sent to ${targetChannel}! An owner invite link has been sent to **${email}**. The link expires in 10 minutes.`,
+		const botConfig = getBotConfig();
+		if (!botConfig) {
+			await interaction.reply({
+				content: await translate('interface.panel.setupWarnNoBotConfig', gid, uid),
 				flags: 64
 			});
-		} catch (emailError: any) {
-			await interaction.followUp({
-				content: `⚠️ Interface sent, but failed to send invite email: ${emailError.message}`,
-				flags: 64
-			});
+			return;
 		}
+
+		const server = await db.getServerByDiscordId(botConfig.id, interaction.guild.id);
+		if (!server) {
+			await interaction.reply({
+				content: await translate('interface.panel.setupWarnNoServer', gid, uid),
+				flags: 64
+			});
+			return;
+		}
+
+		const accounts = await db.getServerAccountsByServer(server.id);
+		const hasOwner = accounts.some((a: { account_type: string }) => a.account_type === 'owner');
+		if (hasOwner) {
+			await interaction.reply({
+				content: await translate('interface.panel.setupHasOwnerAccount', gid, uid, {
+					channel: targetChannel.toString()
+				}),
+				flags: 64
+			});
+			return;
+		}
+
+		const origin = publicSiteOrigin();
+		if (!origin) {
+			await interaction.reply({
+				content: await translate('interface.panel.setupWarnNoBaseUrl', gid, uid),
+				flags: 64
+			});
+			return;
+		}
+
+		const invites = await db.getServerAccountInvitesByServer(server.id);
+		const activeInvite = findActiveOwnerInvite(invites);
+
+		let token: string;
+		if (activeInvite) {
+			token = activeInvite.token;
+		} else {
+			token = randomBytes(32).toString('hex');
+			await db.createServerAccountInvite({ token, server_id: server.id, account_type: 'owner' });
+		}
+
+		const inviteUrl = `${origin}/register?token=${token}`;
+		await interaction.reply({
+			content: await translate('interface.panel.setupOwnerInviteReady', gid, uid, {
+				channel: targetChannel.toString(),
+				url: inviteUrl
+			}),
+			flags: 64
+		});
 	} catch (error: any) {
 		await interaction.reply({ content: `❌ Failed to send interface: ${error.message}`, flags: 64 });
 	}

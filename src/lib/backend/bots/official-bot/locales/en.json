@@ -13,6 +13,11 @@
 			"title": "Dansday Bot Panel",
 			"description": "Click **Menu** to access bot features based on your role permissions.",
 			"sent": "✅ Bot interface sent to {channel}!",
+			"setupHasOwnerAccount": "✅ Bot interface sent to {channel}. This server already has an owner account — sign in on the web panel. No new invite was created.",
+			"setupOwnerInviteReady": "✅ Bot interface sent to {channel}.\n\n**Owner registration link** (only you can see this — unused links expire **10 minutes** after they are created):\n{url}",
+			"setupWarnNoBotConfig": "⚠️ Interface sent, but bot config is not available.",
+			"setupWarnNoServer": "⚠️ Interface sent, but could not find server record to generate invite.",
+			"setupWarnNoBaseUrl": "⚠️ Interface sent, but BASE_URL is not configured — cannot generate invite link.",
 			"error": "❌ Failed to send interface: {error}"
 		}
 	},

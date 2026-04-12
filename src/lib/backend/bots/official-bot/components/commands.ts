@@ -1,9 +1,24 @@
-import { REST, Routes } from 'discord.js';
+import { ApplicationCommandType, REST, Routes } from 'discord.js';
+import type { APIApplicationCommand } from 'discord-api-types/v10';
 import { getBotToken, getApplicationId } from '../../../config.js';
 import { logger } from '../../../../utils/index.js';
 import { commandDefinition as setupCommand, execute as setupExecute } from './commands/admin/setup.js';
 
 const commandDefinitions = [setupCommand];
+
+function primaryEntryPointToPutBody(cmd: APIApplicationCommand) {
+	const o: Record<string, unknown> = {
+		type: ApplicationCommandType.PrimaryEntryPoint,
+		name: cmd.name
+	};
+	if (cmd.handler !== undefined) o.handler = cmd.handler;
+	if (cmd.name_localizations) o.name_localizations = cmd.name_localizations;
+	if (cmd.nsfw !== undefined) o.nsfw = cmd.nsfw;
+	if (cmd.default_member_permissions != null) o.default_member_permissions = cmd.default_member_permissions;
+	if (cmd.contexts !== undefined) o.contexts = cmd.contexts;
+	if (cmd.integration_types !== undefined) o.integration_types = cmd.integration_types;
+	return o;
+}
 
 async function executeSlashCommand(interaction: any, client: any) {
 	const commandName = interaction.commandName;
@@ -21,16 +36,18 @@ async function executeSlashCommand(interaction: any, client: any) {
 	return { success: false, reason: 'unknown_command' };
 }
 
-async function deployCommands(clearFirst = false) {
+async function deployCommands(_clearFirst = false) {
 	const token = getBotToken('official');
 	if (!token) throw new Error('Bot token not available for command deployment.');
 	const rest = new REST({ version: '10' }).setToken(token);
+	const appId = getApplicationId();
 
 	try {
-		if (clearFirst) {
-			await rest.put(Routes.applicationCommands(getApplicationId()), { body: [] });
-		}
-		await rest.put(Routes.applicationCommands(getApplicationId()), { body: commandDefinitions });
+		const existing = (await rest.get(Routes.applicationCommands(appId))) as APIApplicationCommand[];
+		const entryPoints = existing.filter((c) => c.type === ApplicationCommandType.PrimaryEntryPoint).map(primaryEntryPointToPutBody);
+		await rest.put(Routes.applicationCommands(appId), {
+			body: [...commandDefinitions, ...entryPoints] as unknown[]
+		});
 	} catch (error) {
 		throw error;
 	}

@@ -442,15 +442,6 @@ export async function sendInterfaceToChannel(targetChannel, interaction, client)
 			components: Array.isArray(buttonRow) ? buttonRow : [buttonRow]
 		});
 
-		const successMsg = await translate('interface.panel.sent', interaction.guild.id, interaction.user.id, {
-			channel: targetChannel.toString()
-		});
-
-		await interaction.reply({
-			content: successMsg,
-			flags: 64
-		});
-
 		await logger.log(`🎮 Bot interface sent to ${targetChannel.name} by ${interaction.user.tag} (${interaction.user.id})`);
 	} catch (error) {
 		const errorMsg = await translate('interface.panel.error', interaction.guild.id, interaction.user.id, {

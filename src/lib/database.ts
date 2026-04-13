@@ -2355,21 +2355,37 @@ async function markServerDiscordQuestMessagePosted(serverId: number, questId: st
 		.where(and(eq(schema.serverDiscordQuest.server_id, serverId), eq(schema.serverDiscordQuest.quest_id, questRow.id)));
 }
 
-type RobloxCatalogItemSnapshot = {
-	assetId: number;
+export type RobloxCatalogItemSnapshot = {
+	assetId: number | bigint;
 	assetType?: number | null;
 	category?: string | null;
 	name?: string | null;
 	description?: string | null;
 	creatorName?: string | null;
-	price?: number | null;
-	lowestResalePrice?: number | null;
-	totalQuantity?: number | null;
-	unitsAvailable?: number | null;
+	price?: bigint | number | null;
+	lowestResalePrice?: bigint | number | null;
+	totalQuantity?: bigint | number | null;
+	unitsAvailable?: bigint | number | null;
 	favoriteCount?: number | null;
 	thumbnailUrl?: string | null;
 	itemCreatedUtc?: string | null;
 };
+
+export function snapshotBigIntOrNull(v: bigint | number | null | undefined): bigint | null {
+	if (v == null) return null;
+	if (typeof v === 'bigint') return v;
+	if (typeof v === 'number') {
+		if (!Number.isFinite(v)) return null;
+		return BigInt(Math.trunc(v));
+	}
+	return null;
+}
+
+function snapshotAssetIdBigInt(assetId: number | bigint): bigint {
+	if (typeof assetId === 'bigint') return assetId;
+	if (typeof assetId === 'number' && Number.isFinite(assetId)) return BigInt(Math.trunc(assetId));
+	throw new Error('invalid asset id');
+}
 
 async function syncServerRobloxItemsFromApi(botId: number, serverId: number, items: RobloxCatalogItemSnapshot[]): Promise<void> {
 	await initializeDatabase();
@@ -2377,7 +2393,13 @@ async function syncServerRobloxItemsFromApi(botId: number, serverId: number, ite
 	const now = toMySQLDateTime();
 
 	for (const it of items) {
-		if (!it || !Number.isFinite(Number(it.assetId))) continue;
+		if (!it) continue;
+		let assetIdBi: bigint;
+		try {
+			assetIdBi = snapshotAssetIdBigInt(it.assetId);
+		} catch {
+			continue;
+		}
 
 		const itemCreatedAt = it.itemCreatedUtc && typeof it.itemCreatedUtc === 'string' ? toMySQLDateTime(it.itemCreatedUtc) : null;
 
@@ -2385,17 +2407,17 @@ async function syncServerRobloxItemsFromApi(botId: number, serverId: number, ite
 			.insert(schema.botRobloxItems)
 			.values({
 				bot_id: botId,
-				asset_id: Number(it.assetId),
+				asset_id: assetIdBi,
 				asset_type: it.assetType == null ? null : Number(it.assetType),
 				category: it.category ?? null,
 				name: it.name ?? null,
 				description: it.description ?? null,
 				creator_name: it.creatorName ?? null,
-				price: it.price == null ? null : Number(it.price),
-				lowest_resale_price: it.lowestResalePrice == null ? null : Number(it.lowestResalePrice),
-				total_quantity: it.totalQuantity == null ? null : Number(it.totalQuantity),
+				price: snapshotBigIntOrNull(it.price),
+				lowest_resale_price: snapshotBigIntOrNull(it.lowestResalePrice),
+				total_quantity: snapshotBigIntOrNull(it.totalQuantity),
 				favorite_count: it.favoriteCount == null ? null : Number(it.favoriteCount),
-				units_available: it.unitsAvailable == null ? null : Number(it.unitsAvailable),
+				units_available: snapshotBigIntOrNull(it.unitsAvailable),
 				thumbnail_url: it.thumbnailUrl ?? null,
 				item_created_at: itemCreatedAt as any,
 				created_at: now as any
@@ -2408,22 +2430,18 @@ async function syncServerRobloxItemsFromApi(botId: number, serverId: number, ite
 					name: it.name ?? null,
 					description: it.description ?? null,
 					creator_name: it.creatorName ?? null,
-					price: it.price == null ? null : Number(it.price),
-					lowest_resale_price: it.lowestResalePrice == null ? null : Number(it.lowestResalePrice),
-					total_quantity: it.totalQuantity == null ? null : Number(it.totalQuantity),
+					price: snapshotBigIntOrNull(it.price),
+					lowest_resale_price: snapshotBigIntOrNull(it.lowestResalePrice),
+					total_quantity: snapshotBigIntOrNull(it.totalQuantity),
 					favorite_count: it.favoriteCount == null ? null : Number(it.favoriteCount),
-					units_available: it.unitsAvailable == null ? null : Number(it.unitsAvailable),
+					units_available: snapshotBigIntOrNull(it.unitsAvailable),
 					thumbnail_url: it.thumbnailUrl ?? null,
 					item_created_at: itemCreatedAt as any,
 					created_at: now as any
 				} as any
 			});
 
-		const [row] = await db
-			.select({ id: schema.botRobloxItems.id })
-			.from(schema.botRobloxItems)
-			.where(eq(schema.botRobloxItems.asset_id, Number(it.assetId)))
-			.limit(1);
+		const [row] = await db.select({ id: schema.botRobloxItems.id }).from(schema.botRobloxItems).where(eq(schema.botRobloxItems.asset_id, assetIdBi)).limit(1);
 		if (!row) continue;
 
 		await db
@@ -2433,9 +2451,10 @@ async function syncServerRobloxItemsFromApi(botId: number, serverId: number, ite
 	}
 }
 
-async function listServerRobloxUnpostedAssetIds(serverId: number, activeAssetIds: number[]): Promise<number[]> {
+async function listServerRobloxUnpostedAssetIds(serverId: number, activeAssetIds: readonly (number | bigint)[]): Promise<bigint[]> {
 	if (!activeAssetIds || activeAssetIds.length === 0) return [];
 	await initializeDatabase();
+	const idList = activeAssetIds.map((id) => snapshotAssetIdBigInt(id));
 	const rows = await db
 		.select({ asset_id: schema.botRobloxItems.asset_id })
 		.from(schema.serverRobloxItems)
@@ -2443,14 +2462,14 @@ async function listServerRobloxUnpostedAssetIds(serverId: number, activeAssetIds
 		.where(
 			and(
 				eq(schema.serverRobloxItems.server_id, serverId),
-				inArray(schema.botRobloxItems.asset_id, activeAssetIds as any),
+				inArray(schema.botRobloxItems.asset_id, idList as any),
 				isNull(schema.serverRobloxItems.message_posted_at)
 			)
 		);
-	return rows.map((r) => Number(r.asset_id));
+	return rows.map((r) => r.asset_id);
 }
 
-async function markServerRobloxItemMessagePosted(serverId: number, assetId: number): Promise<void> {
+async function markServerRobloxItemMessagePosted(serverId: number, assetId: number | bigint): Promise<void> {
 	await initializeDatabase();
 	const posted = toMySQLDateTime();
 	const [item] = await db
@@ -2462,7 +2481,7 @@ async function markServerRobloxItemMessagePosted(serverId: number, assetId: numb
 			units_available: schema.botRobloxItems.units_available
 		})
 		.from(schema.botRobloxItems)
-		.where(eq(schema.botRobloxItems.asset_id, Number(assetId)))
+		.where(eq(schema.botRobloxItems.asset_id, snapshotAssetIdBigInt(assetId)))
 		.limit(1);
 	if (!item) return;
 	await db
@@ -2481,10 +2500,10 @@ async function markServerRobloxItemMessagePosted(serverId: number, assetId: numb
 }
 
 export type RobloxItemChange = {
-	assetId: number;
+	assetId: bigint;
 	field: 'price' | 'lowest_resale_price' | 'units_available' | 'total_quantity';
-	oldValue: number | null;
-	newValue: number | null;
+	oldValue: bigint | null;
+	newValue: bigint | null;
 };
 
 async function isBotRobloxItemsEmpty(botId: number): Promise<boolean> {
@@ -2493,12 +2512,12 @@ async function isBotRobloxItemsEmpty(botId: number): Promise<boolean> {
 	return !row;
 }
 
-async function detectAndUpdateServerRobloxItemChanges(serverId: number, items: RobloxCatalogItemSnapshot[]): Promise<Map<number, RobloxItemChange[]>> {
+async function detectAndUpdateServerRobloxItemChanges(serverId: number, items: RobloxCatalogItemSnapshot[]): Promise<Map<bigint, RobloxItemChange[]>> {
 	await initializeDatabase();
-	const result = new Map<number, RobloxItemChange[]>();
+	const result = new Map<bigint, RobloxItemChange[]>();
 	if (!items || items.length === 0) return result;
 
-	const assetIds = items.map((x) => Number(x.assetId));
+	const assetIds = items.map((x) => snapshotAssetIdBigInt(x.assetId));
 
 	const rows = await db
 		.select({
@@ -2513,34 +2532,34 @@ async function detectAndUpdateServerRobloxItemChanges(serverId: number, items: R
 		.innerJoin(schema.botRobloxItems, eq(schema.serverRobloxItems.item_id, schema.botRobloxItems.id))
 		.where(and(eq(schema.serverRobloxItems.server_id, serverId), inArray(schema.botRobloxItems.asset_id, assetIds as any)));
 
-	const rowMap = new Map(rows.map((r) => [Number(r.asset_id), r]));
+	const rowMap = new Map(rows.map((r) => [r.asset_id, r]));
 
 	for (const it of items) {
-		const assetId = Number(it.assetId);
-		const row = rowMap.get(assetId);
+		const assetIdBi = snapshotAssetIdBigInt(it.assetId);
+		const row = rowMap.get(assetIdBi);
 		if (!row) continue;
+
+		const nextPrice = snapshotBigIntOrNull(it.price);
+		const nextLowest = snapshotBigIntOrNull(it.lowestResalePrice);
+		const nextUnits = snapshotBigIntOrNull(it.unitsAvailable);
+		const nextTotal = snapshotBigIntOrNull(it.totalQuantity);
 
 		const changes: RobloxItemChange[] = [];
 
-		if (row.last_price !== null && it.price !== null && it.price !== undefined && row.last_price !== it.price) {
-			changes.push({ assetId, field: 'price', oldValue: row.last_price, newValue: it.price });
+		if (row.last_price !== null && nextPrice !== null && row.last_price !== nextPrice) {
+			changes.push({ assetId: assetIdBi, field: 'price', oldValue: row.last_price, newValue: nextPrice });
 		}
-		if (
-			row.last_lowest_resale_price !== null &&
-			it.lowestResalePrice !== null &&
-			it.lowestResalePrice !== undefined &&
-			row.last_lowest_resale_price !== it.lowestResalePrice
-		) {
-			changes.push({ assetId, field: 'lowest_resale_price', oldValue: row.last_lowest_resale_price, newValue: it.lowestResalePrice });
+		if (row.last_lowest_resale_price !== null && nextLowest !== null && row.last_lowest_resale_price !== nextLowest) {
+			changes.push({ assetId: assetIdBi, field: 'lowest_resale_price', oldValue: row.last_lowest_resale_price, newValue: nextLowest });
 		}
-		if (row.last_units_available !== null && it.unitsAvailable !== null && it.unitsAvailable !== undefined && row.last_units_available !== it.unitsAvailable) {
-			changes.push({ assetId, field: 'units_available', oldValue: row.last_units_available, newValue: it.unitsAvailable });
+		if (row.last_units_available !== null && nextUnits !== null && row.last_units_available !== nextUnits) {
+			changes.push({ assetId: assetIdBi, field: 'units_available', oldValue: row.last_units_available, newValue: nextUnits });
 		}
-		if (row.last_total_quantity !== null && it.totalQuantity !== null && it.totalQuantity !== undefined && row.last_total_quantity !== it.totalQuantity) {
-			changes.push({ assetId, field: 'total_quantity', oldValue: row.last_total_quantity, newValue: it.totalQuantity });
+		if (row.last_total_quantity !== null && nextTotal !== null && row.last_total_quantity !== nextTotal) {
+			changes.push({ assetId: assetIdBi, field: 'total_quantity', oldValue: row.last_total_quantity, newValue: nextTotal });
 		}
 
-		if (changes.length > 0) result.set(assetId, changes);
+		if (changes.length > 0) result.set(assetIdBi, changes);
 	}
 
 	return result;
@@ -2549,22 +2568,22 @@ async function detectAndUpdateServerRobloxItemChanges(serverId: number, items: R
 async function updateBotRobloxItemLastValues(items: RobloxCatalogItemSnapshot[]): Promise<void> {
 	await initializeDatabase();
 	if (!items || items.length === 0) return;
-	const assetIds = items.map((x) => Number(x.assetId));
+	const assetIds = items.map((x) => snapshotAssetIdBigInt(x.assetId));
 	const rows = await db
 		.select({ id: schema.botRobloxItems.id, asset_id: schema.botRobloxItems.asset_id })
 		.from(schema.botRobloxItems)
 		.where(inArray(schema.botRobloxItems.asset_id, assetIds as any));
-	const rowMap = new Map(rows.map((r) => [Number(r.asset_id), r.id]));
+	const rowMap = new Map(rows.map((r) => [r.asset_id, r.id]));
 	for (const it of items) {
-		const botItemId = rowMap.get(Number(it.assetId));
+		const botItemId = rowMap.get(snapshotAssetIdBigInt(it.assetId));
 		if (!botItemId) continue;
 		await db
 			.update(schema.botRobloxItems)
 			.set({
-				last_price: it.price ?? null,
-				last_lowest_resale_price: it.lowestResalePrice ?? null,
-				last_total_quantity: it.totalQuantity ?? null,
-				last_units_available: it.unitsAvailable ?? null
+				last_price: snapshotBigIntOrNull(it.price),
+				last_lowest_resale_price: snapshotBigIntOrNull(it.lowestResalePrice),
+				last_total_quantity: snapshotBigIntOrNull(it.totalQuantity),
+				last_units_available: snapshotBigIntOrNull(it.unitsAvailable)
 			} as any)
 			.where(eq(schema.botRobloxItems.id, botItemId));
 	}

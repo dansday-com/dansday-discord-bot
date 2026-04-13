@@ -11,6 +11,8 @@ export type RobloxCatalogItem = {
 	name?: string;
 	description?: string;
 	creatorName?: string;
+	creatorType?: string;
+	creatorTargetId?: number;
 	creatorHasVerifiedBadge?: boolean;
 	price?: number;
 	lowestResalePrice?: number;
@@ -34,17 +36,36 @@ function taxonomyCategory(tax: unknown): string | undefined {
 	return names.length ? names.join(', ') : undefined;
 }
 
+function parseCatalogAssetId(raw: unknown): number | null {
+	if (raw === null || raw === undefined) return null;
+	if (typeof raw === 'number') {
+		if (!Number.isFinite(raw) || !Number.isInteger(raw)) return null;
+		return raw;
+	}
+	if (typeof raw === 'string') {
+		const t = raw.trim();
+		if (t === '' || !/^-?\d+$/.test(t)) return null;
+		const n = Number(t);
+		if (!Number.isFinite(n) || !Number.isInteger(n)) return null;
+		return n;
+	}
+	return null;
+}
+
 function mapCatalogRow(x: Record<string, unknown>): RobloxCatalogItem | null {
-	if (!Number.isFinite(Number(x?.id))) return null;
+	const id = parseCatalogAssetId(x?.id);
+	if (id == null) return null;
 	const offRaw = x.offSaleDeadline;
 	const offSaleDeadline = typeof offRaw === 'string' && offRaw.length > 0 ? offRaw : null;
 	return {
-		id: Number(x.id),
+		id,
 		assetType: Number.isFinite(Number(x?.assetType)) ? Number(x.assetType) : undefined,
 		category: taxonomyCategory(x.taxonomy),
 		name: typeof x.name === 'string' ? x.name : undefined,
 		description: typeof x.description === 'string' ? x.description : undefined,
 		creatorName: typeof x.creatorName === 'string' ? x.creatorName : undefined,
+		creatorType: typeof x.creatorType === 'string' ? x.creatorType : undefined,
+		creatorTargetId: Number.isFinite(Number(x?.creatorTargetId)) ? Number(x.creatorTargetId) : undefined,
 		creatorHasVerifiedBadge: x.creatorHasVerifiedBadge === true,
 		price: Number.isFinite(Number(x?.price)) ? Number(x.price) : undefined,
 		lowestResalePrice: Number.isFinite(Number(x?.lowestResalePrice)) ? Number(x.lowestResalePrice) : undefined,

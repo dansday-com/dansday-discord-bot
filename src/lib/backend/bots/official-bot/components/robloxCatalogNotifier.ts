@@ -1,10 +1,12 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, Client, EmbedBuilder } from 'discord.js';
-import db, { type RobloxItemChange } from '../../../../database.js';
+import { randomInt } from 'node:crypto';
+import db, { snapshotBigIntOrNull, type RobloxItemChange } from '../../../../database.js';
 import {
 	fetchCatalogFirstPage,
 	getEmbedConfig,
 	getMainChannel,
 	isComponentFeatureEnabled,
+	PERMISSIONS,
 	robloxCatalogEmbedColors,
 	robloxCatalogItemUrl,
 	robloxCatalogStreams,
@@ -21,12 +23,46 @@ let tickRunning = false;
 
 const groupedInteger = new Intl.NumberFormat('id-ID');
 
-function formatRobux(n: number): string {
-	return n === 0 ? 'FREE' : `${groupedInteger.format(Math.trunc(n))} Robux`;
+function shuffledCatalogPollOrder(): (typeof robloxCatalogStreamPollOrder)[number][] {
+	const arr = [...robloxCatalogStreamPollOrder] as (typeof robloxCatalogStreamPollOrder)[number][];
+	for (let i = arr.length - 1; i > 0; i--) {
+		const j = randomInt(i + 1);
+		[arr[i], arr[j]] = [arr[j], arr[i]];
+	}
+	return arr;
 }
 
-function formatCount(n: number): string {
-	return groupedInteger.format(Math.trunc(n));
+function catalogAssetBi(item: Pick<RobloxCatalogItem, 'id'>): bigint {
+	const id = item.id;
+	if (typeof id !== 'number' || !Number.isInteger(id) || !Number.isFinite(id)) {
+		throw new Error(`[roblox-catalog-notifier] invalid asset id (expected finite integer): ${String(id)}`);
+	}
+	return BigInt(id);
+}
+
+function isOfficialRobloxAccount(item: RobloxCatalogItem): boolean {
+	if (item.creatorTargetId !== 1) return false;
+	const ct = (item.creatorType ?? '').trim().toLowerCase();
+	return ct === '' || ct === 'user' || ct === '1';
+}
+
+const MAX_SAFE_BIGINT = BigInt(Number.MAX_SAFE_INTEGER);
+
+function formatRobux(n: number | bigint): string {
+	const b = typeof n === 'bigint' ? n : BigInt(Math.trunc(Number(n)));
+	if (b === 0n) return 'FREE';
+	if (b > MAX_SAFE_BIGINT || b < -MAX_SAFE_BIGINT) {
+		return `${b.toLocaleString('id-ID')} Robux`;
+	}
+	return `${groupedInteger.format(Number(b))} Robux`;
+}
+
+function formatCount(n: number | bigint): string {
+	const b = typeof n === 'bigint' ? n : BigInt(Math.trunc(Number(n)));
+	if (b > MAX_SAFE_BIGINT || b < -MAX_SAFE_BIGINT) {
+		return b.toLocaleString('id-ID');
+	}
+	return groupedInteger.format(Number(b));
 }
 
 function formatQuantityRatio(item: RobloxCatalogItem): string {
@@ -54,10 +90,10 @@ function toSnapshot(x: RobloxCatalogItem) {
 		name: x.name ?? null,
 		description: x.description ?? null,
 		creatorName: x.creatorName ?? null,
-		price: x.price ?? null,
-		lowestResalePrice: x.lowestResalePrice ?? null,
-		totalQuantity: x.totalQuantity ?? null,
-		unitsAvailable: x.unitsAvailable ?? null,
+		price: snapshotBigIntOrNull(x.price),
+		lowestResalePrice: snapshotBigIntOrNull(x.lowestResalePrice),
+		totalQuantity: snapshotBigIntOrNull(x.totalQuantity),
+		unitsAvailable: snapshotBigIntOrNull(x.unitsAvailable),
 		favoriteCount: x.favoriteCount ?? null,
 		thumbnailUrl: x.thumbnailUrl ?? null,
 		itemCreatedUtc: x.itemCreatedUtc ?? null
@@ -147,6 +183,8 @@ async function sendItemEmbed(
 	changeLines: string | undefined,
 	fromOfficialRobloxCatalogQuery: boolean
 ) {
+	const isOfficial = isOfficialRobloxAccount(item) || fromOfficialRobloxCatalogQuery;
+	const isNewOfficial = isNew && isOfficial;
 	const url = robloxCatalogItemUrl(item.id);
 	const price = typeof item.price === 'number' ? formatRobux(item.price) : '—';
 	const quantity = formatQuantityRatio(item);
@@ -172,11 +210,13 @@ async function sendItemEmbed(
 
 	const embed = new EmbedBuilder()
 		.setColor(
-			fromOfficialRobloxCatalogQuery
-				? robloxCatalogEmbedColors.fromOfficialQuery
-				: changeLines
-					? robloxCatalogEmbedColors.itemUpdated
-					: target.embedConfig.COLOR
+			isNewOfficial
+				? 0xffd700
+				: isOfficial
+					? robloxCatalogEmbedColors.fromOfficialQuery
+					: changeLines
+						? robloxCatalogEmbedColors.itemUpdated
+						: target.embedConfig.COLOR
 		)
 		.setTitle(title)
 		.addFields(
@@ -201,27 +241,36 @@ async function sendItemEmbed(
 		new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(url).setLabel('Open on Roblox').setEmoji('🛍️')
 	);
 
-	await target.channel.send({ embeds: [embed], components: [btnRow] });
+	let content: string | undefined;
+	if (isNewOfficial) {
+		const memberRoleIds = (await PERMISSIONS.getPermissions(target.guildId).catch(() => null))?.MEMBER_ROLES ?? [];
+		const mentions = memberRoleIds.map((id: string) => `<@&${id}>`).join(' ');
+		content = mentions || undefined;
+	}
+
+	await target.channel.send({ content, embeds: [embed], components: [btnRow] });
 }
 
 async function initialSeed(officialBotId: number, targets: ServerTarget[]) {
 	await logger.log('🛍️ Roblox catalog: DB empty, performing initial seed...');
 
-	const firstPageResults = await Promise.all(robloxCatalogStreamPollOrder.map((key) => fetchCatalogFirstPage(robloxCatalogStreams[key].params)));
+	const pollOrder = shuffledCatalogPollOrder();
+	const firstPageResults = await Promise.all(pollOrder.map((key) => fetchCatalogFirstPage(robloxCatalogStreams[key].params)));
 
-	const assetIdsFromOfficialQuery = new Set<number>();
-	for (let i = 0; i < robloxCatalogStreamPollOrder.length; i++) {
-		if (robloxCatalogStreams[robloxCatalogStreamPollOrder[i]].useOfficialCatalogEmbedStyle) {
-			for (const item of firstPageResults[i]) assetIdsFromOfficialQuery.add(item.id);
+	const assetIdsFromOfficialQuery = new Set<bigint>();
+	for (let i = 0; i < pollOrder.length; i++) {
+		if (robloxCatalogStreams[pollOrder[i]].useOfficialCatalogEmbedStyle) {
+			for (const item of firstPageResults[i]) assetIdsFromOfficialQuery.add(catalogAssetBi(item));
 		}
 	}
 
-	const seenIds = new Set<number>();
+	const seenIds = new Set<bigint>();
 	const all: RobloxCatalogItem[] = [];
 	for (const items of firstPageResults) {
 		for (const item of items) {
-			if (seenIds.has(item.id)) continue;
-			seenIds.add(item.id);
+			const aid = catalogAssetBi(item);
+			if (seenIds.has(aid)) continue;
+			seenIds.add(aid);
 			all.push(item);
 		}
 	}
@@ -237,15 +286,15 @@ async function initialSeed(officialBotId: number, targets: ServerTarget[]) {
 		const unposted = new Set(
 			await db.listServerRobloxUnpostedAssetIds(
 				target.serverId,
-				toPost.map((x) => x.id)
+				toPost.map((x) => catalogAssetBi(x))
 			)
 		);
 
 		for (const item of toPost) {
-			if (!unposted.has(item.id)) continue;
+			if (!unposted.has(catalogAssetBi(item))) continue;
 			try {
-				await sendItemEmbed(target, item, true, undefined, assetIdsFromOfficialQuery.has(item.id));
-				await db.markServerRobloxItemMessagePosted(target.serverId, item.id);
+				await sendItemEmbed(target, item, true, undefined, assetIdsFromOfficialQuery.has(catalogAssetBi(item)));
+				await db.markServerRobloxItemMessagePosted(target.serverId, catalogAssetBi(item));
 				await logger.log(`🛍️ Roblox catalog: seeded item ${item.id} → ${target.channelId}`);
 			} catch (err: any) {
 				await logger.log(`❌ Roblox catalog: failed to seed item ${item.id}: ${err?.message || err}`);
@@ -262,12 +311,12 @@ async function processPage(
 	officialBotId: number,
 	targets: ServerTarget[],
 	items: RobloxCatalogItem[],
-	seen: Set<number>,
+	seen: Set<bigint>,
 	fromOfficialRobloxCatalogQuery: boolean,
 	allowCatalogFirstMessage: boolean
 ) {
-	const newItems = items.filter((x) => !seen.has(x.id));
-	for (const x of newItems) seen.add(x.id);
+	const newItems = items.filter((x) => !seen.has(catalogAssetBi(x)));
+	for (const x of newItems) seen.add(catalogAssetBi(x));
 	const logKey = fromOfficialRobloxCatalogQuery ? 'official' : 'limited';
 	processPageCount[logKey] = (processPageCount[logKey] ?? 0) + 1;
 	const pageNum = processPageCount[logKey];
@@ -281,8 +330,8 @@ async function processPage(
 	const todayUtcDay = utcCalendarDayMinusDays(0);
 	const announceDay = allowCatalogFirstMessage ? todayUtcDay : null;
 
-	const perServerChanges = new Map<number, Map<number, RobloxItemChange[]>>();
-	const perServerUnposted = new Map<number, Set<number>>();
+	const perServerChanges = new Map<number, Map<bigint, RobloxItemChange[]>>();
+	const perServerUnposted = new Map<number, Set<bigint>>();
 
 	for (const target of targets) {
 		await db.syncServerRobloxItemsFromApi(officialBotId, target.serverId, snapshots);
@@ -293,10 +342,10 @@ async function processPage(
 				? new Set(
 						await db.listServerRobloxUnpostedAssetIds(
 							target.serverId,
-							announceItems.map((x) => x.id)
+							announceItems.map((x) => catalogAssetBi(x))
 						)
 					)
-				: new Set<number>();
+				: new Set<bigint>();
 		perServerUnposted.set(target.serverId, unposted);
 
 		const changes = await db.detectAndUpdateServerRobloxItemChanges(target.serverId, snapshots);
@@ -306,12 +355,13 @@ async function processPage(
 	await db.updateBotRobloxItemLastValues(snapshots);
 
 	for (const target of targets) {
-		const unposted = perServerUnposted.get(target.serverId) ?? new Set<number>();
-		const changes = perServerChanges.get(target.serverId) ?? new Map<number, RobloxItemChange[]>();
+		const unposted = perServerUnposted.get(target.serverId) ?? new Set<bigint>();
+		const changes = perServerChanges.get(target.serverId) ?? new Map<bigint, RobloxItemChange[]>();
 
 		for (const item of sortItemsByCreatedOldestFirst(newItems)) {
-			const isNew = unposted.has(item.id);
-			const itemChanges = changes.get(item.id) ?? [];
+			const aid = catalogAssetBi(item);
+			const isNew = unposted.has(aid);
+			const itemChanges = changes.get(aid) ?? [];
 			if (!isNew && itemChanges.length === 0) continue;
 
 			try {
@@ -328,7 +378,7 @@ async function processPage(
 											? 'Lowest Resale'
 											: 'Price';
 							const isPrice = c.field === 'price' || c.field === 'lowest_resale_price';
-							const fmt = (v: number | null) => (v == null ? '—' : isPrice ? formatRobux(v) : formatCount(v));
+							const fmt = (v: bigint | number | null) => (v == null ? '—' : isPrice ? formatRobux(v) : formatCount(v));
 							return `**${label}**: ${fmt(c.oldValue)} → ${fmt(c.newValue)}`;
 						})
 						.join('\n');
@@ -337,7 +387,7 @@ async function processPage(
 				await sendItemEmbed(target, item, isNew, changeLines, fromOfficialRobloxCatalogQuery);
 
 				if (isNew) {
-					await db.markServerRobloxItemMessagePosted(target.serverId, item.id);
+					await db.markServerRobloxItemMessagePosted(target.serverId, aid);
 					await logger.log(`🛍️ Roblox catalog: posted item ${item.id} → ${target.channelId}`);
 				} else {
 					await logger.log(`🔄 Roblox catalog: updated item ${item.id} → ${target.channelId}: ${itemChanges.map((c) => c.field).join(', ')}`);
@@ -349,12 +399,13 @@ async function processPage(
 	}
 }
 
-async function backgroundSync(officialBotId: number, targets: ServerTarget[], seen: Set<number>) {
+async function backgroundSync(officialBotId: number, targets: ServerTarget[], seen: Set<bigint>) {
 	await logger.log('🛍️ Roblox catalog: starting background sync...');
 
-	for (let i = 0; i < robloxCatalogStreamPollOrder.length; i++) {
+	const pollOrder = shuffledCatalogPollOrder();
+	for (let i = 0; i < pollOrder.length; i++) {
 		if (i > 0) await new Promise((r) => setTimeout(r, ROBLOX_CATALOG_POLL_MS));
-		const stream = robloxCatalogStreams[robloxCatalogStreamPollOrder[i]];
+		const stream = robloxCatalogStreams[pollOrder[i]];
 		await streamCatalogPages(stream.params, async (items) => {
 			await processPage(officialBotId, targets, items, seen, stream.useOfficialCatalogEmbedStyle, false);
 		});
@@ -376,12 +427,13 @@ async function runTick(client: Client, officialBotId: number) {
 			return;
 		}
 
-		const seen = new Set<number>();
+		const seen = new Set<bigint>();
 		processPageCount = {};
 
-		for (let i = 0; i < robloxCatalogStreamPollOrder.length; i++) {
+		const pollOrder = shuffledCatalogPollOrder();
+		for (let i = 0; i < pollOrder.length; i++) {
 			if (i > 0) await new Promise((r) => setTimeout(r, ROBLOX_CATALOG_POLL_MS));
-			const stream = robloxCatalogStreams[robloxCatalogStreamPollOrder[i]];
+			const stream = robloxCatalogStreams[pollOrder[i]];
 			await streamCatalogPages(stream.params, async (items) => {
 				await processPage(officialBotId, targets, items, seen, stream.useOfficialCatalogEmbedStyle, true);
 			});

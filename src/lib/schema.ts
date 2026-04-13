@@ -526,23 +526,23 @@ export const botRobloxItems = mysqlTable(
 		bot_id: int('bot_id')
 			.notNull()
 			.references(() => bots.id, { onDelete: 'cascade' }),
-		asset_id: bigint('asset_id', { mode: 'number' }).notNull(),
+		asset_id: bigint('asset_id', { mode: 'bigint' }).notNull(),
 		asset_type: int('asset_type'),
 		category: varchar('category', { length: 512 }),
 		name: text('name'),
 		description: text('description'),
 		creator_name: text('creator_name'),
-		price: int('price'),
-		lowest_resale_price: int('lowest_resale_price'),
-		total_quantity: int('total_quantity'),
+		price: bigint('price', { mode: 'bigint' }),
+		lowest_resale_price: bigint('lowest_resale_price', { mode: 'bigint' }),
+		total_quantity: bigint('total_quantity', { mode: 'bigint' }),
 		favorite_count: int('favorite_count'),
-		units_available: int('units_available'),
+		units_available: bigint('units_available', { mode: 'bigint' }),
 		thumbnail_url: varchar('thumbnail_url', { length: 512 }),
 		item_created_at: datetime('item_created_at'),
-		last_price: int('last_price'),
-		last_lowest_resale_price: int('last_lowest_resale_price'),
-		last_total_quantity: int('last_total_quantity'),
-		last_units_available: int('last_units_available'),
+		last_price: bigint('last_price', { mode: 'bigint' }),
+		last_lowest_resale_price: bigint('last_lowest_resale_price', { mode: 'bigint' }),
+		last_total_quantity: bigint('last_total_quantity', { mode: 'bigint' }),
+		last_units_available: bigint('last_units_available', { mode: 'bigint' }),
 		created_at: datetime('created_at').notNull()
 	},
 	(t) => [uniqueIndex('unique_bot_roblox_items_asset').on(t.asset_id), index('idx_bot_roblox_items_bot_id').on(t.bot_id)]
@@ -722,7 +722,7 @@ export const serverMemberContentCreatorStreams = mysqlTable(
 export const serverMemberContentCreatorStreamLogs = mysqlTable(
 	'server_member_content_creator_stream_logs',
 	{
-		id: bigint('id', { mode: 'number' }).primaryKey().autoincrement(),
+		id: bigint('id', { mode: 'bigint' }).primaryKey().autoincrement(),
 		stream_id: int('stream_id')
 			.notNull()
 			.references(() => serverMemberContentCreatorStreams.id, { onDelete: 'cascade' }),

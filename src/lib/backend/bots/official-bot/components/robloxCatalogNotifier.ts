@@ -1,4 +1,5 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, Client, EmbedBuilder } from 'discord.js';
+import { randomInt } from 'node:crypto';
 import db, { type RobloxItemChange } from '../../../../database.js';
 import {
 	fetchCatalogFirstPage,
@@ -20,6 +21,20 @@ let tickTimeoutRef: ReturnType<typeof setTimeout> | null = null;
 let tickRunning = false;
 
 const groupedInteger = new Intl.NumberFormat('id-ID');
+
+function shuffledCatalogPollOrder(): (typeof robloxCatalogStreamPollOrder)[number][] {
+	const arr = [...robloxCatalogStreamPollOrder] as (typeof robloxCatalogStreamPollOrder)[number][];
+	for (let i = arr.length - 1; i > 0; i--) {
+		const j = randomInt(i + 1);
+		[arr[i], arr[j]] = [arr[j], arr[i]];
+	}
+	return arr;
+}
+
+function isRobloxOfficialCreator(item: RobloxCatalogItem): boolean {
+	const name = (item.creatorName ?? '').trim().toLowerCase();
+	return name === 'roblox';
+}
 
 function formatRobux(n: number): string {
 	return n === 0 ? 'FREE' : `${groupedInteger.format(Math.trunc(n))} Robux`;
@@ -207,11 +222,12 @@ async function sendItemEmbed(
 async function initialSeed(officialBotId: number, targets: ServerTarget[]) {
 	await logger.log('🛍️ Roblox catalog: DB empty, performing initial seed...');
 
-	const firstPageResults = await Promise.all(robloxCatalogStreamPollOrder.map((key) => fetchCatalogFirstPage(robloxCatalogStreams[key].params)));
+	const pollOrder = shuffledCatalogPollOrder();
+	const firstPageResults = await Promise.all(pollOrder.map((key) => fetchCatalogFirstPage(robloxCatalogStreams[key].params)));
 
 	const assetIdsFromOfficialQuery = new Set<number>();
-	for (let i = 0; i < robloxCatalogStreamPollOrder.length; i++) {
-		if (robloxCatalogStreams[robloxCatalogStreamPollOrder[i]].useOfficialCatalogEmbedStyle) {
+	for (let i = 0; i < pollOrder.length; i++) {
+		if (robloxCatalogStreams[pollOrder[i]].useOfficialCatalogEmbedStyle) {
 			for (const item of firstPageResults[i]) assetIdsFromOfficialQuery.add(item.id);
 		}
 	}
@@ -266,6 +282,10 @@ async function processPage(
 	fromOfficialRobloxCatalogQuery: boolean,
 	allowCatalogFirstMessage: boolean
 ) {
+	if (!fromOfficialRobloxCatalogQuery) {
+		items = items.filter((x) => !isRobloxOfficialCreator(x));
+	}
+
 	const newItems = items.filter((x) => !seen.has(x.id));
 	for (const x of newItems) seen.add(x.id);
 	const logKey = fromOfficialRobloxCatalogQuery ? 'official' : 'limited';
@@ -352,9 +372,10 @@ async function processPage(
 async function backgroundSync(officialBotId: number, targets: ServerTarget[], seen: Set<number>) {
 	await logger.log('🛍️ Roblox catalog: starting background sync...');
 
-	for (let i = 0; i < robloxCatalogStreamPollOrder.length; i++) {
+	const pollOrder = shuffledCatalogPollOrder();
+	for (let i = 0; i < pollOrder.length; i++) {
 		if (i > 0) await new Promise((r) => setTimeout(r, ROBLOX_CATALOG_POLL_MS));
-		const stream = robloxCatalogStreams[robloxCatalogStreamPollOrder[i]];
+		const stream = robloxCatalogStreams[pollOrder[i]];
 		await streamCatalogPages(stream.params, async (items) => {
 			await processPage(officialBotId, targets, items, seen, stream.useOfficialCatalogEmbedStyle, false);
 		});
@@ -379,9 +400,10 @@ async function runTick(client: Client, officialBotId: number) {
 		const seen = new Set<number>();
 		processPageCount = {};
 
-		for (let i = 0; i < robloxCatalogStreamPollOrder.length; i++) {
+		const pollOrder = shuffledCatalogPollOrder();
+		for (let i = 0; i < pollOrder.length; i++) {
 			if (i > 0) await new Promise((r) => setTimeout(r, ROBLOX_CATALOG_POLL_MS));
-			const stream = robloxCatalogStreams[robloxCatalogStreamPollOrder[i]];
+			const stream = robloxCatalogStreams[pollOrder[i]];
 			await streamCatalogPages(stream.params, async (items) => {
 				await processPage(officialBotId, targets, items, seen, stream.useOfficialCatalogEmbedStyle, true);
 			});

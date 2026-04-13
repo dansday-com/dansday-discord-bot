@@ -43,7 +43,9 @@ function getDb() {
 			connectionLimit: 10,
 			queueLimit: 0,
 			dateStrings: true,
-			timezone: tzOffset
+			timezone: tzOffset,
+			supportBigNumbers: true,
+			bigNumberStrings: true
 		});
 		_db = drizzle(pool, { schema, mode: 'default' });
 	}

@@ -1,6 +1,6 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, Client, EmbedBuilder } from 'discord.js';
 import { randomInt } from 'node:crypto';
-import db, { type RobloxItemChange } from '../../../../database.js';
+import db, { snapshotBigIntOrNull, type RobloxItemChange } from '../../../../database.js';
 import {
 	fetchCatalogFirstPage,
 	getEmbedConfig,
@@ -38,12 +38,23 @@ function isOfficialRobloxAccount(item: RobloxCatalogItem): boolean {
 	return ct === '' || ct === 'user' || ct === '1';
 }
 
-function formatRobux(n: number): string {
-	return n === 0 ? 'FREE' : `${groupedInteger.format(Math.trunc(n))} Robux`;
+const MAX_SAFE_BIGINT = BigInt(Number.MAX_SAFE_INTEGER);
+
+function formatRobux(n: number | bigint): string {
+	const b = typeof n === 'bigint' ? n : BigInt(Math.trunc(Number(n)));
+	if (b === 0n) return 'FREE';
+	if (b > MAX_SAFE_BIGINT || b < -MAX_SAFE_BIGINT) {
+		return `${b.toLocaleString('id-ID')} Robux`;
+	}
+	return `${groupedInteger.format(Number(b))} Robux`;
 }
 
-function formatCount(n: number): string {
-	return groupedInteger.format(Math.trunc(n));
+function formatCount(n: number | bigint): string {
+	const b = typeof n === 'bigint' ? n : BigInt(Math.trunc(Number(n)));
+	if (b > MAX_SAFE_BIGINT || b < -MAX_SAFE_BIGINT) {
+		return b.toLocaleString('id-ID');
+	}
+	return groupedInteger.format(Number(b));
 }
 
 function formatQuantityRatio(item: RobloxCatalogItem): string {
@@ -71,10 +82,10 @@ function toSnapshot(x: RobloxCatalogItem) {
 		name: x.name ?? null,
 		description: x.description ?? null,
 		creatorName: x.creatorName ?? null,
-		price: x.price ?? null,
-		lowestResalePrice: x.lowestResalePrice ?? null,
-		totalQuantity: x.totalQuantity ?? null,
-		unitsAvailable: x.unitsAvailable ?? null,
+		price: snapshotBigIntOrNull(x.price),
+		lowestResalePrice: snapshotBigIntOrNull(x.lowestResalePrice),
+		totalQuantity: snapshotBigIntOrNull(x.totalQuantity),
+		unitsAvailable: snapshotBigIntOrNull(x.unitsAvailable),
 		favoriteCount: x.favoriteCount ?? null,
 		thumbnailUrl: x.thumbnailUrl ?? null,
 		itemCreatedUtc: x.itemCreatedUtc ?? null
@@ -357,7 +368,7 @@ async function processPage(
 											? 'Lowest Resale'
 											: 'Price';
 							const isPrice = c.field === 'price' || c.field === 'lowest_resale_price';
-							const fmt = (v: number | null) => (v == null ? '—' : isPrice ? formatRobux(v) : formatCount(v));
+							const fmt = (v: bigint | number | null) => (v == null ? '—' : isPrice ? formatRobux(v) : formatCount(v));
 							return `**${label}**: ${fmt(c.oldValue)} → ${fmt(c.newValue)}`;
 						})
 						.join('\n');

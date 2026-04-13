@@ -74,17 +74,15 @@ function utcCalendarDayMinusDays(offsetDays: number): string {
 	return new Date(t).toISOString().slice(0, 10);
 }
 
-function announceDayFromMergedFirstPages(robloxItems: RobloxCatalogItem[], limitedItems: RobloxCatalogItem[]): string | null {
+function announceDayFromMergedFirstPages(items: RobloxCatalogItem[]): string | null {
 	const daySet = new Set<string>();
-	for (const x of [...robloxItems, ...limitedItems]) {
+	for (const x of items) {
 		if (x.itemCreatedUtc) daySet.add(utcDay(x.itemCreatedUtc));
 	}
 	if (daySet.size === 0) return null;
 	const today = utcCalendarDayMinusDays(0);
 	if (daySet.has(today)) return today;
-	const offMax = maxItemCreatedTs(robloxItems);
-	const limMax = maxItemCreatedTs(limitedItems);
-	const winTs = Math.max(offMax, limMax);
+	const winTs = maxItemCreatedTs(items);
 	if (winTs > 0) return utcDay(new Date(winTs).toISOString());
 	return [...daySet].sort((a, b) => b.localeCompare(a))[0] ?? null;
 }
@@ -206,25 +204,29 @@ async function sendItemEmbed(
 	await target.channel.send({ embeds: [embed], components: [btnRow] });
 }
 
-async function initialSeed(client: Client, officialBotId: number, targets: ServerTarget[]) {
+async function initialSeed(officialBotId: number, targets: ServerTarget[]) {
 	await logger.log('🛍️ Roblox catalog: DB empty, performing initial seed...');
 
-	const [robloxItems, limitedItems] = await Promise.all([
-		fetchCatalogFirstPage(robloxCatalogStreams.officialRoblox.params),
-		fetchCatalogFirstPage(robloxCatalogStreams.limited.params)
-	]);
+	const firstPageResults = await Promise.all(robloxCatalogStreamPollOrder.map((key) => fetchCatalogFirstPage(robloxCatalogStreams[key].params)));
 
-	const assetIdsFromOfficialQuery = new Set(robloxItems.map((x) => x.id));
+	const assetIdsFromOfficialQuery = new Set<number>();
+	for (let i = 0; i < robloxCatalogStreamPollOrder.length; i++) {
+		if (robloxCatalogStreams[robloxCatalogStreamPollOrder[i]].useOfficialCatalogEmbedStyle) {
+			for (const item of firstPageResults[i]) assetIdsFromOfficialQuery.add(item.id);
+		}
+	}
 
 	const seenIds = new Set<number>();
 	const all: RobloxCatalogItem[] = [];
-	for (const item of [...robloxItems, ...limitedItems]) {
-		if (seenIds.has(item.id)) continue;
-		seenIds.add(item.id);
-		all.push(item);
+	for (const items of firstPageResults) {
+		for (const item of items) {
+			if (seenIds.has(item.id)) continue;
+			seenIds.add(item.id);
+			all.push(item);
+		}
 	}
 
-	const announceDay = announceDayFromMergedFirstPages(robloxItems, limitedItems);
+	const announceDay = announceDayFromMergedFirstPages(all);
 	const toPost = announceDay ? sortItemsByCreatedOldestFirst(all.filter((x) => x.itemCreatedUtc && utcDay(x.itemCreatedUtc) === announceDay)) : [];
 
 	await logger.log(`🛍️ Roblox catalog: seed found ${all.length} total, posting ${toPost.length} first-announce items (${announceDay ?? 'no dated items'} UTC)`);
@@ -370,7 +372,7 @@ async function runTick(client: Client, officialBotId: number) {
 
 		const isEmpty = await db.isBotRobloxItemsEmpty(officialBotId);
 		if (isEmpty) {
-			await initialSeed(client, officialBotId, targets);
+			await initialSeed(officialBotId, targets);
 			return;
 		}
 

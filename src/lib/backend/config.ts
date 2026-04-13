@@ -354,21 +354,84 @@ export {
 
 export const robloxCatalogStreams = {
 	officialRoblox: {
+		params: { CreatorType: 1, CreatorTargetId: 1, IncludeNotForSale: true },
+		useOfficialCatalogEmbedStyle: true
+	},
+	officialRobloxSort0: {
+		params: { CreatorType: 1, CreatorTargetId: 1, SortType: 0, IncludeNotForSale: true },
+		useOfficialCatalogEmbedStyle: true
+	},
+	officialRobloxSort1: {
+		params: { CreatorType: 1, CreatorTargetId: 1, SortType: 1, IncludeNotForSale: true },
+		useOfficialCatalogEmbedStyle: true
+	},
+	officialRobloxSort2: {
+		params: { CreatorType: 1, CreatorTargetId: 1, SortType: 2, IncludeNotForSale: true },
+		useOfficialCatalogEmbedStyle: true
+	},
+	officialRobloxSort3: {
 		params: { CreatorType: 1, CreatorTargetId: 1, SortType: 3, IncludeNotForSale: true },
 		useOfficialCatalogEmbedStyle: true
 	},
+	officialRobloxSort4: {
+		params: { CreatorType: 1, CreatorTargetId: 1, SortType: 4, IncludeNotForSale: true },
+		useOfficialCatalogEmbedStyle: true
+	},
+	officialRobloxSort5: {
+		params: { CreatorType: 1, CreatorTargetId: 1, SortType: 5, IncludeNotForSale: true },
+		useOfficialCatalogEmbedStyle: true
+	},
 	limited: {
+		params: { SalesTypeFilter: 2, IncludeNotForSale: true },
+		useOfficialCatalogEmbedStyle: false
+	},
+	limitedSort0: {
+		params: { SalesTypeFilter: 2, SortType: 0, IncludeNotForSale: true },
+		useOfficialCatalogEmbedStyle: false
+	},
+	limitedSort1: {
+		params: { SalesTypeFilter: 2, SortType: 1, IncludeNotForSale: true },
+		useOfficialCatalogEmbedStyle: false
+	},
+	limitedSort2: {
+		params: { SalesTypeFilter: 2, SortType: 2, IncludeNotForSale: true },
+		useOfficialCatalogEmbedStyle: false
+	},
+	limitedSort3: {
 		params: { SalesTypeFilter: 2, SortType: 3, IncludeNotForSale: true },
+		useOfficialCatalogEmbedStyle: false
+	},
+	limitedSort4: {
+		params: { SalesTypeFilter: 2, SortType: 4, IncludeNotForSale: true },
+		useOfficialCatalogEmbedStyle: false
+	},
+	limitedSort5: {
+		params: { SalesTypeFilter: 2, SortType: 5, IncludeNotForSale: true },
 		useOfficialCatalogEmbedStyle: false
 	}
 } as const;
 
 export type RobloxCatalogStreamKey = keyof typeof robloxCatalogStreams;
 
-export const robloxCatalogStreamPollOrder: RobloxCatalogStreamKey[] = ['officialRoblox', 'limited'];
+export const robloxCatalogStreamPollOrder: RobloxCatalogStreamKey[] = [
+	'officialRoblox',
+	'officialRobloxSort0',
+	'officialRobloxSort1',
+	'officialRobloxSort2',
+	'officialRobloxSort3',
+	'officialRobloxSort4',
+	'officialRobloxSort5',
+	'limited',
+	'limitedSort0',
+	'limitedSort1',
+	'limitedSort2',
+	'limitedSort3',
+	'limitedSort4',
+	'limitedSort5'
+];
 
-export const ROBLOX_CATALOG_POLL_MS = 4_000;
-export const ROBLOX_CATALOG_NEXT_PAGE_MS = 2_000;
+export const ROBLOX_CATALOG_POLL_MS = 10_000;
+export const ROBLOX_CATALOG_NEXT_PAGE_MS = 5_000;
 export const ROBLOX_CATALOG_ABORT_MS = 10_000;
 
 export const robloxCatalogEmbedColors = {

@@ -32,6 +32,10 @@ function shuffledCatalogPollOrder(): (typeof robloxCatalogStreamPollOrder)[numbe
 	return arr;
 }
 
+function catalogAssetBi(item: Pick<RobloxCatalogItem, 'id'>): bigint {
+	return BigInt(item.id);
+}
+
 function isOfficialRobloxAccount(item: RobloxCatalogItem): boolean {
 	if (item.creatorTargetId !== 1) return false;
 	const ct = (item.creatorType ?? '').trim().toLowerCase();
@@ -249,19 +253,20 @@ async function initialSeed(officialBotId: number, targets: ServerTarget[]) {
 	const pollOrder = shuffledCatalogPollOrder();
 	const firstPageResults = await Promise.all(pollOrder.map((key) => fetchCatalogFirstPage(robloxCatalogStreams[key].params)));
 
-	const assetIdsFromOfficialQuery = new Set<number>();
+	const assetIdsFromOfficialQuery = new Set<bigint>();
 	for (let i = 0; i < pollOrder.length; i++) {
 		if (robloxCatalogStreams[pollOrder[i]].useOfficialCatalogEmbedStyle) {
-			for (const item of firstPageResults[i]) assetIdsFromOfficialQuery.add(item.id);
+			for (const item of firstPageResults[i]) assetIdsFromOfficialQuery.add(catalogAssetBi(item));
 		}
 	}
 
-	const seenIds = new Set<number>();
+	const seenIds = new Set<bigint>();
 	const all: RobloxCatalogItem[] = [];
 	for (const items of firstPageResults) {
 		for (const item of items) {
-			if (seenIds.has(item.id)) continue;
-			seenIds.add(item.id);
+			const aid = catalogAssetBi(item);
+			if (seenIds.has(aid)) continue;
+			seenIds.add(aid);
 			all.push(item);
 		}
 	}
@@ -277,15 +282,15 @@ async function initialSeed(officialBotId: number, targets: ServerTarget[]) {
 		const unposted = new Set(
 			await db.listServerRobloxUnpostedAssetIds(
 				target.serverId,
-				toPost.map((x) => x.id)
+				toPost.map((x) => catalogAssetBi(x))
 			)
 		);
 
 		for (const item of toPost) {
-			if (!unposted.has(item.id)) continue;
+			if (!unposted.has(catalogAssetBi(item))) continue;
 			try {
-				await sendItemEmbed(target, item, true, undefined, assetIdsFromOfficialQuery.has(item.id));
-				await db.markServerRobloxItemMessagePosted(target.serverId, item.id);
+				await sendItemEmbed(target, item, true, undefined, assetIdsFromOfficialQuery.has(catalogAssetBi(item)));
+				await db.markServerRobloxItemMessagePosted(target.serverId, catalogAssetBi(item));
 				await logger.log(`🛍️ Roblox catalog: seeded item ${item.id} → ${target.channelId}`);
 			} catch (err: any) {
 				await logger.log(`❌ Roblox catalog: failed to seed item ${item.id}: ${err?.message || err}`);
@@ -302,12 +307,12 @@ async function processPage(
 	officialBotId: number,
 	targets: ServerTarget[],
 	items: RobloxCatalogItem[],
-	seen: Set<number>,
+	seen: Set<bigint>,
 	fromOfficialRobloxCatalogQuery: boolean,
 	allowCatalogFirstMessage: boolean
 ) {
-	const newItems = items.filter((x) => !seen.has(x.id));
-	for (const x of newItems) seen.add(x.id);
+	const newItems = items.filter((x) => !seen.has(catalogAssetBi(x)));
+	for (const x of newItems) seen.add(catalogAssetBi(x));
 	const logKey = fromOfficialRobloxCatalogQuery ? 'official' : 'limited';
 	processPageCount[logKey] = (processPageCount[logKey] ?? 0) + 1;
 	const pageNum = processPageCount[logKey];
@@ -321,8 +326,8 @@ async function processPage(
 	const todayUtcDay = utcCalendarDayMinusDays(0);
 	const announceDay = allowCatalogFirstMessage ? todayUtcDay : null;
 
-	const perServerChanges = new Map<number, Map<number, RobloxItemChange[]>>();
-	const perServerUnposted = new Map<number, Set<number>>();
+	const perServerChanges = new Map<number, Map<bigint, RobloxItemChange[]>>();
+	const perServerUnposted = new Map<number, Set<bigint>>();
 
 	for (const target of targets) {
 		await db.syncServerRobloxItemsFromApi(officialBotId, target.serverId, snapshots);
@@ -333,10 +338,10 @@ async function processPage(
 				? new Set(
 						await db.listServerRobloxUnpostedAssetIds(
 							target.serverId,
-							announceItems.map((x) => x.id)
+							announceItems.map((x) => catalogAssetBi(x))
 						)
 					)
-				: new Set<number>();
+				: new Set<bigint>();
 		perServerUnposted.set(target.serverId, unposted);
 
 		const changes = await db.detectAndUpdateServerRobloxItemChanges(target.serverId, snapshots);
@@ -346,12 +351,13 @@ async function processPage(
 	await db.updateBotRobloxItemLastValues(snapshots);
 
 	for (const target of targets) {
-		const unposted = perServerUnposted.get(target.serverId) ?? new Set<number>();
-		const changes = perServerChanges.get(target.serverId) ?? new Map<number, RobloxItemChange[]>();
+		const unposted = perServerUnposted.get(target.serverId) ?? new Set<bigint>();
+		const changes = perServerChanges.get(target.serverId) ?? new Map<bigint, RobloxItemChange[]>();
 
 		for (const item of sortItemsByCreatedOldestFirst(newItems)) {
-			const isNew = unposted.has(item.id);
-			const itemChanges = changes.get(item.id) ?? [];
+			const aid = catalogAssetBi(item);
+			const isNew = unposted.has(aid);
+			const itemChanges = changes.get(aid) ?? [];
 			if (!isNew && itemChanges.length === 0) continue;
 
 			try {
@@ -377,7 +383,7 @@ async function processPage(
 				await sendItemEmbed(target, item, isNew, changeLines, fromOfficialRobloxCatalogQuery);
 
 				if (isNew) {
-					await db.markServerRobloxItemMessagePosted(target.serverId, item.id);
+					await db.markServerRobloxItemMessagePosted(target.serverId, aid);
 					await logger.log(`🛍️ Roblox catalog: posted item ${item.id} → ${target.channelId}`);
 				} else {
 					await logger.log(`🔄 Roblox catalog: updated item ${item.id} → ${target.channelId}: ${itemChanges.map((c) => c.field).join(', ')}`);
@@ -389,7 +395,7 @@ async function processPage(
 	}
 }
 
-async function backgroundSync(officialBotId: number, targets: ServerTarget[], seen: Set<number>) {
+async function backgroundSync(officialBotId: number, targets: ServerTarget[], seen: Set<bigint>) {
 	await logger.log('🛍️ Roblox catalog: starting background sync...');
 
 	const pollOrder = shuffledCatalogPollOrder();
@@ -417,7 +423,7 @@ async function runTick(client: Client, officialBotId: number) {
 			return;
 		}
 
-		const seen = new Set<number>();
+		const seen = new Set<bigint>();
 		processPageCount = {};
 
 		const pollOrder = shuffledCatalogPollOrder();

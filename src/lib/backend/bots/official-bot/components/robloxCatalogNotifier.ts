@@ -33,7 +33,11 @@ function shuffledCatalogPollOrder(): (typeof robloxCatalogStreamPollOrder)[numbe
 }
 
 function catalogAssetBi(item: Pick<RobloxCatalogItem, 'id'>): bigint {
-	return BigInt(item.id);
+	const id = item.id;
+	if (typeof id !== 'number' || !Number.isInteger(id) || !Number.isFinite(id)) {
+		throw new Error(`[roblox-catalog-notifier] invalid asset id (expected finite integer): ${String(id)}`);
+	}
+	return BigInt(id);
 }
 
 function isOfficialRobloxAccount(item: RobloxCatalogItem): boolean {

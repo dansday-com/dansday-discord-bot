@@ -6,6 +6,7 @@ import {
 	getEmbedConfig,
 	getMainChannel,
 	isComponentFeatureEnabled,
+	PERMISSIONS,
 	robloxCatalogEmbedColors,
 	robloxCatalogItemUrl,
 	robloxCatalogStreams,
@@ -31,9 +32,10 @@ function shuffledCatalogPollOrder(): (typeof robloxCatalogStreamPollOrder)[numbe
 	return arr;
 }
 
-function isRobloxOfficialCreator(item: RobloxCatalogItem): boolean {
-	const name = (item.creatorName ?? '').trim().toLowerCase();
-	return name === 'roblox';
+function isOfficialRobloxAccount(item: RobloxCatalogItem): boolean {
+	if (item.creatorTargetId !== 1) return false;
+	const ct = (item.creatorType ?? '').trim().toLowerCase();
+	return ct === '' || ct === 'user' || ct === '1';
 }
 
 function formatRobux(n: number): string {
@@ -162,6 +164,8 @@ async function sendItemEmbed(
 	changeLines: string | undefined,
 	fromOfficialRobloxCatalogQuery: boolean
 ) {
+	const isOfficial = isOfficialRobloxAccount(item) || fromOfficialRobloxCatalogQuery;
+	const isNewOfficial = isNew && isOfficial;
 	const url = robloxCatalogItemUrl(item.id);
 	const price = typeof item.price === 'number' ? formatRobux(item.price) : '—';
 	const quantity = formatQuantityRatio(item);
@@ -187,11 +191,13 @@ async function sendItemEmbed(
 
 	const embed = new EmbedBuilder()
 		.setColor(
-			fromOfficialRobloxCatalogQuery
-				? robloxCatalogEmbedColors.fromOfficialQuery
-				: changeLines
-					? robloxCatalogEmbedColors.itemUpdated
-					: target.embedConfig.COLOR
+			isNewOfficial
+				? 0xffd700
+				: isOfficial
+					? robloxCatalogEmbedColors.fromOfficialQuery
+					: changeLines
+						? robloxCatalogEmbedColors.itemUpdated
+						: target.embedConfig.COLOR
 		)
 		.setTitle(title)
 		.addFields(
@@ -216,7 +222,14 @@ async function sendItemEmbed(
 		new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(url).setLabel('Open on Roblox').setEmoji('🛍️')
 	);
 
-	await target.channel.send({ embeds: [embed], components: [btnRow] });
+	let content: string | undefined;
+	if (isNewOfficial) {
+		const memberRoleIds = (await PERMISSIONS.getPermissions(target.guildId).catch(() => null))?.MEMBER_ROLES ?? [];
+		const mentions = memberRoleIds.map((id: string) => `<@&${id}>`).join(' ');
+		content = mentions || undefined;
+	}
+
+	await target.channel.send({ content, embeds: [embed], components: [btnRow] });
 }
 
 async function initialSeed(officialBotId: number, targets: ServerTarget[]) {
@@ -282,10 +295,6 @@ async function processPage(
 	fromOfficialRobloxCatalogQuery: boolean,
 	allowCatalogFirstMessage: boolean
 ) {
-	if (!fromOfficialRobloxCatalogQuery) {
-		items = items.filter((x) => !isRobloxOfficialCreator(x));
-	}
-
 	const newItems = items.filter((x) => !seen.has(x.id));
 	for (const x of newItems) seen.add(x.id);
 	const logKey = fromOfficialRobloxCatalogQuery ? 'official' : 'limited';

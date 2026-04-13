@@ -11,6 +11,8 @@ export type RobloxCatalogItem = {
 	name?: string;
 	description?: string;
 	creatorName?: string;
+	creatorType?: string;
+	creatorTargetId?: number;
 	creatorHasVerifiedBadge?: boolean;
 	price?: number;
 	lowestResalePrice?: number;
@@ -45,6 +47,8 @@ function mapCatalogRow(x: Record<string, unknown>): RobloxCatalogItem | null {
 		name: typeof x.name === 'string' ? x.name : undefined,
 		description: typeof x.description === 'string' ? x.description : undefined,
 		creatorName: typeof x.creatorName === 'string' ? x.creatorName : undefined,
+		creatorType: typeof x.creatorType === 'string' ? x.creatorType : undefined,
+		creatorTargetId: Number.isFinite(Number(x?.creatorTargetId)) ? Number(x.creatorTargetId) : undefined,
 		creatorHasVerifiedBadge: x.creatorHasVerifiedBadge === true,
 		price: Number.isFinite(Number(x?.price)) ? Number(x.price) : undefined,
 		lowestResalePrice: Number.isFinite(Number(x?.lowestResalePrice)) ? Number(x.lowestResalePrice) : undefined,

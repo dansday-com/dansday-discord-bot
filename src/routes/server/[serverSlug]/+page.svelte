@@ -139,15 +139,15 @@
 </script>
 
 <svelte:head>
-	<title>{data.server.name || data.server.slug} — Server statistics | Dansday Discord Bot</title>
-	<meta name="description" content="Public server statistics for {data.server.name || data.server.slug}." />
+	<title>{data.server.name || data.server.slug} — Statistics | Dansday Discord Bot</title>
+	<meta name="description" content="Public statistics for {data.server.name || data.server.slug}." />
 	<meta name="theme-color" content="#245f73" />
-	<meta property="og:title" content="{data.server.name || data.server.slug} — Server statistics | Dansday Discord Bot" />
+	<meta property="og:title" content="{data.server.name || data.server.slug} — Statistics | Dansday Discord Bot" />
 	<meta property="og:description" content="Members, channels, leveling, and voice activity for this community." />
 </svelte:head>
 
 <div class="m-leaderboard-subhead m-stats-subhead">
-	<p>Server statistics</p>
+	<p>Statistics</p>
 </div>
 
 <section class="m-overview-strip" aria-label="Key metrics">

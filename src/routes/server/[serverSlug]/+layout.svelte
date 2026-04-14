@@ -48,7 +48,7 @@
 			<div class="m-section-tabs">
 				<a href={basePath} class="m-section-tab" class:m-section-tab--active={isOverview} data-sveltekit-preload-data="hover">
 					<i class="fas fa-chart-pie"></i>
-					Server statistics
+					Statistics
 				</a>
 				<a href={leaderboardPath} class="m-section-tab" class:m-section-tab--active={isLeaderboard} data-sveltekit-preload-data="hover">
 					<i class="fas fa-trophy"></i>

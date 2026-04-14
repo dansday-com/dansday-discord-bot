@@ -100,8 +100,8 @@
 		}
 	}
 
-	function drawSparkles(ctx: CanvasRenderingContext2D, w: number, h: number, t: number) {
-		ctx.clearRect(0, 0, w, h);
+	function drawSparkles(ctx: CanvasRenderingContext2D, w: number, h: number, t: number, clearFirst = true) {
+		if (clearFirst) ctx.clearRect(0, 0, w, h);
 		for (const s of sparkles) {
 			const pulse = 0.4 + 0.6 * Math.abs(Math.sin(t * s.speed * 0.002 + s.phase));
 			const alpha = s.opacity * pulse;
@@ -189,7 +189,8 @@
 	function drawSparklesOntoCanvas(ctx: CanvasRenderingContext2D, w: number, h: number) {
 		const fakeTime = performance.now();
 		if (sparkles.length === 0) initSparkles(w, h);
-		drawSparkles(ctx, w, h, fakeTime);
+		// Important: don't clear the destination ctx (it already has the full card drawn).
+		drawSparkles(ctx, w, h, fakeTime, false);
 	}
 
 	function cardFileName(): string {
@@ -679,6 +680,29 @@
 		return typeof navigator !== 'undefined' && !!navigator.share && !!navigator.canShare;
 	}
 
+	function isIOS(): boolean {
+		if (typeof navigator === 'undefined') return false;
+		const ua = navigator.userAgent || '';
+		// iPadOS 13+ reports as Mac; detect via touch points.
+		return /iPad|iPhone|iPod/i.test(ua) || (/\bMacintosh\b/i.test(ua) && (navigator.maxTouchPoints ?? 0) > 1);
+	}
+
+	function isProbablyMobile(): boolean {
+		if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
+		if (isIOS()) return true;
+		if ((navigator.maxTouchPoints ?? 0) > 1 && window.matchMedia?.('(pointer: coarse)')?.matches) return true;
+		const ua = navigator.userAgent || '';
+		return /Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+	}
+
+	/**
+	 * Only use native "share/save image" flows on mobile.
+	 * Desktop Chrome can support file sharing too, but for "Download" we want a real download.
+	 */
+	function shouldUseNativeShareForDownload(): boolean {
+		return isProbablyMobile() && canShareFiles();
+	}
+
 	/** Build a shareable File from the card blob */
 	async function cardFile(): Promise<File> {
 		const blob = await captureCardBlob();
@@ -710,7 +734,7 @@
 			const file = new File([blob], cardFileName(), { type: 'image/png' });
 
 			// Mobile: try Web Share API (works reliably on iOS/Android for saving)
-			if (canShareFiles()) {
+			if (shouldUseNativeShareForDownload()) {
 				const data: ShareData = { files: [file] };
 				if (navigator.canShare(data)) {
 					await navigator.share(data);

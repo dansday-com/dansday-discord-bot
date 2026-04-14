@@ -29,10 +29,8 @@
 
 	let visible = $state(false);
 	let cardEl: HTMLDivElement | undefined = $state();
-	let sparkleCanvas: HTMLCanvasElement | undefined = $state();
 	let downloading = $state(false);
 	let sharing = $state(false);
-	let sparkleRaf: number | null = null;
 
 	function memberName(m: MemberData): string {
 		if (m.server_display_name?.trim()) return m.server_display_name;
@@ -81,97 +79,13 @@
 
 	const roleColor = $derived(parseRoleHex(highestRole?.color));
 
-	type Sparkle = { x: number; y: number; size: number; opacity: number; speed: number; phase: number };
-
-	let sparkles: Sparkle[] = [];
-
-	function initSparkles(w: number, h: number) {
-		sparkles = [];
-		const count = 28;
-		for (let i = 0; i < count; i++) {
-			sparkles.push({
-				x: Math.random() * w,
-				y: Math.random() * h,
-				size: 1.5 + Math.random() * 3,
-				opacity: 0.15 + Math.random() * 0.6,
-				speed: 0.3 + Math.random() * 0.8,
-				phase: Math.random() * Math.PI * 2
-			});
-		}
-	}
-
-	function drawSparkles(ctx: CanvasRenderingContext2D, w: number, h: number, t: number, clearFirst = true) {
-		if (clearFirst) ctx.clearRect(0, 0, w, h);
-		for (const s of sparkles) {
-			const pulse = 0.4 + 0.6 * Math.abs(Math.sin(t * s.speed * 0.002 + s.phase));
-			const alpha = s.opacity * pulse;
-			const sz = s.size * (0.6 + 0.4 * pulse);
-
-			ctx.save();
-			ctx.translate(s.x, s.y);
-			ctx.globalAlpha = alpha;
-
-			// four-point star
-			ctx.beginPath();
-			const arm = sz * 2.2;
-			const inner = sz * 0.35;
-			for (let i = 0; i < 4; i++) {
-				const angle = (Math.PI / 2) * i - Math.PI / 2;
-				const nextAngle = angle + Math.PI / 4;
-				ctx.lineTo(Math.cos(angle) * arm, Math.sin(angle) * arm);
-				ctx.lineTo(Math.cos(nextAngle) * inner, Math.sin(nextAngle) * inner);
-			}
-			ctx.closePath();
-
-			const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, arm);
-			grad.addColorStop(0, 'rgba(255, 223, 100, 0.95)');
-			grad.addColorStop(0.5, 'rgba(230, 184, 0, 0.6)');
-			grad.addColorStop(1, 'rgba(230, 184, 0, 0)');
-			ctx.fillStyle = grad;
-			ctx.fill();
-
-			// bright center dot
-			ctx.beginPath();
-			ctx.arc(0, 0, sz * 0.4, 0, Math.PI * 2);
-			ctx.fillStyle = `rgba(255, 248, 220, ${alpha * 0.9})`;
-			ctx.fill();
-
-			ctx.restore();
-		}
-	}
-
-	function animateSparkles() {
-		if (!sparkleCanvas) return;
-		const ctx = sparkleCanvas.getContext('2d');
-		if (!ctx) return;
-		const w = sparkleCanvas.width;
-		const h = sparkleCanvas.height;
-
-		const tick = (t: number) => {
-			drawSparkles(ctx, w, h, t);
-			sparkleRaf = requestAnimationFrame(tick);
-		};
-		sparkleRaf = requestAnimationFrame(tick);
-	}
-
 	onMount(() => {
 		requestAnimationFrame(() => {
 			visible = true;
 		});
-		if (sparkleCanvas && cardEl) {
-			const rect = cardEl.getBoundingClientRect();
-			sparkleCanvas.width = rect.width * 2;
-			sparkleCanvas.height = rect.height * 2;
-			sparkleCanvas.style.width = rect.width + 'px';
-			sparkleCanvas.style.height = rect.height + 'px';
-			initSparkles(rect.width * 2, rect.height * 2);
-			animateSparkles();
-		}
 	});
 
-	onDestroy(() => {
-		if (sparkleRaf) cancelAnimationFrame(sparkleRaf);
-	});
+	onDestroy(() => {});
 
 	function closeModal() {
 		visible = false;
@@ -184,13 +98,6 @@
 
 	function handleKeydown(e: KeyboardEvent) {
 		if (e.key === 'Escape') closeModal();
-	}
-
-	function drawSparklesOntoCanvas(ctx: CanvasRenderingContext2D, w: number, h: number) {
-		const fakeTime = performance.now();
-		if (sparkles.length === 0) initSparkles(w, h);
-		// Important: don't clear the destination ctx (it already has the full card drawn).
-		drawSparkles(ctx, w, h, fakeTime, false);
 	}
 
 	function cardFileName(): string {
@@ -333,6 +240,10 @@
 		return `rgba(${r},${g},${b},${pct})`;
 	}
 
+	function clamp(n: number, min: number, max: number): number {
+		return Math.max(min, Math.min(max, n));
+	}
+
 	async function captureCardBlob(): Promise<Blob> {
 		const rc = roleColor;
 		const name = memberName(member);
@@ -384,10 +295,11 @@
 		else CH += 8;
 		CH += levelLabelH + 2 + levelValueH + 18 + statBoxH + 6 + joinedH + 10 + 1 + 10 + footerH + PAD_BOT;
 
-		const canvas = document.createElement('canvas');
-		canvas.width = CW * S;
-		canvas.height = CH * S;
-		const ctx = canvas.getContext('2d')!;
+		// Render the card at a stable internal size first.
+		const cardCanvas = document.createElement('canvas');
+		cardCanvas.width = CW * S;
+		cardCanvas.height = CH * S;
+		const ctx = cardCanvas.getContext('2d')!;
 		ctx.scale(S, S);
 
 		// --- Card background ---
@@ -667,11 +579,49 @@
 		ctx.letterSpacing = '1px';
 		ctx.fillText('DANSDAY BOT', cx, y);
 
-		// --- Sparkles overlay ---
-		drawSparklesOntoCanvas(ctx, CW, CH);
+		// Compose into a 9:16 export (1080x1920), centered + scaled, with opaque background.
+		const OUT_W = 1080;
+		const OUT_H = 1920;
+		const outCanvas = document.createElement('canvas');
+		outCanvas.width = OUT_W;
+		outCanvas.height = OUT_H;
+		const out = outCanvas.getContext('2d')!;
+
+		// Background similar to modal backdrop
+		const bg = out.createLinearGradient(0, 0, 0, OUT_H);
+		bg.addColorStop(0, '#73858c');
+		bg.addColorStop(1, '#6a7b82');
+		out.fillStyle = bg;
+		out.fillRect(0, 0, OUT_W, OUT_H);
+
+		// Subtle accent glow behind card
+		out.save();
+		out.globalAlpha = 0.22;
+		out.filter = 'blur(42px)';
+		const glow = out.createRadialGradient(OUT_W * 0.5, OUT_H * 0.34, 40, OUT_W * 0.5, OUT_H * 0.34, OUT_W * 0.48);
+		glow.addColorStop(0, rc);
+		glow.addColorStop(1, 'rgba(36,95,115,0)');
+		out.fillStyle = glow;
+		out.beginPath();
+		out.ellipse(OUT_W * 0.5, OUT_H * 0.34, OUT_W * 0.46, OUT_W * 0.32, 0, 0, Math.PI * 2);
+		out.fill();
+		out.restore();
+
+		// Fit card into output with safe margins
+		const maxW = OUT_W * 0.86;
+		const maxH = OUT_H * 0.82;
+		const scale = clamp(Math.min(maxW / cardCanvas.width, maxH / cardCanvas.height), 0.1, 10);
+		const drawW = cardCanvas.width * scale;
+		const drawH = cardCanvas.height * scale;
+		const dx = (OUT_W - drawW) / 2;
+		const dy = (OUT_H - drawH) / 2;
+
+		out.imageSmoothingEnabled = true;
+		out.imageSmoothingQuality = 'high';
+		out.drawImage(cardCanvas, dx, dy, drawW, drawH);
 
 		return new Promise<Blob>((resolve, reject) => {
-			canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('toBlob failed'))), 'image/png');
+			outCanvas.toBlob((b) => (b ? resolve(b) : reject(new Error('toBlob failed'))), 'image/png');
 		});
 	}
 
@@ -846,8 +796,6 @@
 		</button>
 
 		<div class="mc-card" bind:this={cardEl}>
-			<canvas class="mc-sparkle-canvas" bind:this={sparkleCanvas}></canvas>
-
 			<div class="mc-card-bg">
 				<div class="mc-card-accent" style="background: linear-gradient(135deg, {roleColor}, #245f73);"></div>
 			</div>

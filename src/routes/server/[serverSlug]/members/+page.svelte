@@ -2,6 +2,7 @@
 	import { onDestroy, onMount } from 'svelte';
 	import type { PageProps } from './$types';
 	import LocalTime from '$lib/frontend/components/LocalTime.svelte';
+	import MemberCard from '$lib/frontend/components/MemberCard.svelte';
 	import type { PublicMembersStreamPayload } from '$lib/frontend/public/members/index.js';
 
 	let { data }: PageProps = $props();
@@ -89,6 +90,16 @@
 	});
 
 	const members = $derived(liveMembers);
+
+	let cardMember = $state<(typeof liveMembers)[number] | null>(null);
+
+	function openCard(member: (typeof liveMembers)[number]) {
+		cardMember = member;
+	}
+
+	function closeCard() {
+		cardMember = null;
+	}
 
 	function fmtNum(n: number): string {
 		if (n == null) return '0';
@@ -265,6 +276,9 @@
 							{/each}
 						</div>
 					{/if}
+					<button class="m-members-card-btn" onclick={() => openCard(member)} title="View member card">
+						<i class="fas fa-id-card" aria-hidden="true"></i> Member Card
+					</button>
 				</li>
 			{/each}
 		</ul>
@@ -282,3 +296,7 @@
 		{/if}
 	{/if}
 </div>
+
+{#if cardMember}
+	<MemberCard member={cardMember} serverName={data.server.name || data.server.slug} serverIcon={data.server.server_icon} onclose={closeCard} />
+{/if}

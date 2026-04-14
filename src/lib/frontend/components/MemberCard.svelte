@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 
 	type MemberRole = { name: string; color: string | null; position?: number };
 
@@ -14,6 +14,7 @@
 		rank?: number | null;
 		chat_total?: number | null;
 		voice_minutes_active?: number | null;
+		member_since?: string | null;
 		roles?: MemberRole[];
 	};
 
@@ -28,7 +29,9 @@
 
 	let visible = $state(false);
 	let cardEl: HTMLDivElement | undefined = $state();
+	let sparkleCanvas: HTMLCanvasElement | undefined = $state();
 	let downloading = $state(false);
+	let sparkleRaf: number | null = null;
 
 	function memberName(m: MemberData): string {
 		if (m.server_display_name?.trim()) return m.server_display_name;
@@ -43,6 +46,17 @@
 	function fmtNum(n: number | null | undefined): string {
 		if (n == null) return '0';
 		return Number(n).toLocaleString();
+	}
+
+	function fmtJoined(dateStr: string | null | undefined): string {
+		if (!dateStr) return 'N/A';
+		try {
+			const d = new Date(dateStr);
+			if (isNaN(d.getTime())) return 'N/A';
+			return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+		} catch {
+			return 'N/A';
+		}
 	}
 
 	const highestRole = $derived.by(() => {
@@ -66,10 +80,96 @@
 
 	const roleColor = $derived(parseRoleHex(highestRole?.color));
 
+	type Sparkle = { x: number; y: number; size: number; opacity: number; speed: number; phase: number };
+
+	let sparkles: Sparkle[] = [];
+
+	function initSparkles(w: number, h: number) {
+		sparkles = [];
+		const count = 28;
+		for (let i = 0; i < count; i++) {
+			sparkles.push({
+				x: Math.random() * w,
+				y: Math.random() * h,
+				size: 1.5 + Math.random() * 3,
+				opacity: 0.15 + Math.random() * 0.6,
+				speed: 0.3 + Math.random() * 0.8,
+				phase: Math.random() * Math.PI * 2
+			});
+		}
+	}
+
+	function drawSparkles(ctx: CanvasRenderingContext2D, w: number, h: number, t: number) {
+		ctx.clearRect(0, 0, w, h);
+		for (const s of sparkles) {
+			const pulse = 0.4 + 0.6 * Math.abs(Math.sin(t * s.speed * 0.002 + s.phase));
+			const alpha = s.opacity * pulse;
+			const sz = s.size * (0.6 + 0.4 * pulse);
+
+			ctx.save();
+			ctx.translate(s.x, s.y);
+			ctx.globalAlpha = alpha;
+
+			// four-point star
+			ctx.beginPath();
+			const arm = sz * 2.2;
+			const inner = sz * 0.35;
+			for (let i = 0; i < 4; i++) {
+				const angle = (Math.PI / 2) * i - Math.PI / 2;
+				const nextAngle = angle + Math.PI / 4;
+				ctx.lineTo(Math.cos(angle) * arm, Math.sin(angle) * arm);
+				ctx.lineTo(Math.cos(nextAngle) * inner, Math.sin(nextAngle) * inner);
+			}
+			ctx.closePath();
+
+			const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, arm);
+			grad.addColorStop(0, 'rgba(255, 223, 100, 0.95)');
+			grad.addColorStop(0.5, 'rgba(230, 184, 0, 0.6)');
+			grad.addColorStop(1, 'rgba(230, 184, 0, 0)');
+			ctx.fillStyle = grad;
+			ctx.fill();
+
+			// bright center dot
+			ctx.beginPath();
+			ctx.arc(0, 0, sz * 0.4, 0, Math.PI * 2);
+			ctx.fillStyle = `rgba(255, 248, 220, ${alpha * 0.9})`;
+			ctx.fill();
+
+			ctx.restore();
+		}
+	}
+
+	function animateSparkles() {
+		if (!sparkleCanvas) return;
+		const ctx = sparkleCanvas.getContext('2d');
+		if (!ctx) return;
+		const w = sparkleCanvas.width;
+		const h = sparkleCanvas.height;
+
+		const tick = (t: number) => {
+			drawSparkles(ctx, w, h, t);
+			sparkleRaf = requestAnimationFrame(tick);
+		};
+		sparkleRaf = requestAnimationFrame(tick);
+	}
+
 	onMount(() => {
 		requestAnimationFrame(() => {
 			visible = true;
 		});
+		if (sparkleCanvas && cardEl) {
+			const rect = cardEl.getBoundingClientRect();
+			sparkleCanvas.width = rect.width * 2;
+			sparkleCanvas.height = rect.height * 2;
+			sparkleCanvas.style.width = rect.width + 'px';
+			sparkleCanvas.style.height = rect.height + 'px';
+			initSparkles(rect.width * 2, rect.height * 2);
+			animateSparkles();
+		}
+	});
+
+	onDestroy(() => {
+		if (sparkleRaf) cancelAnimationFrame(sparkleRaf);
 	});
 
 	function closeModal() {
@@ -85,11 +185,23 @@
 		if (e.key === 'Escape') closeModal();
 	}
 
+	function drawSparklesOntoCanvas(ctx: CanvasRenderingContext2D, w: number, h: number) {
+		// draw a single frozen frame of sparkles for the download
+		const fakeTime = performance.now();
+		const saved = [...sparkles];
+		if (saved.length === 0) initSparkles(w, h);
+		drawSparkles(ctx, w, h, fakeTime);
+	}
+
 	async function downloadCard() {
 		if (!cardEl || downloading) return;
 		downloading = true;
 		try {
 			const { default: html2canvas } = await import('html2canvas');
+			// temporarily hide the sparkle canvas so html2canvas doesn't double-render it
+			const sparkleEl = sparkleCanvas;
+			if (sparkleEl) sparkleEl.style.visibility = 'hidden';
+
 			const canvas = await html2canvas(cardEl, {
 				backgroundColor: null,
 				scale: 2,
@@ -97,28 +209,21 @@
 				allowTaint: true,
 				logging: false
 			});
+
+			if (sparkleEl) sparkleEl.style.visibility = '';
+
+			// overlay sparkles onto the captured canvas
+			const ctx = canvas.getContext('2d');
+			if (ctx) {
+				drawSparklesOntoCanvas(ctx, canvas.width, canvas.height);
+			}
+
 			const link = document.createElement('a');
 			link.download = `${memberName(member).replace(/[^a-zA-Z0-9_-]/g, '_')}_card.png`;
 			link.href = canvas.toDataURL('image/png');
 			link.click();
 		} catch {
-			const canvas = document.createElement('canvas');
-			const ctx = canvas.getContext('2d');
-			if (!ctx || !cardEl) return;
-			const rect = cardEl.getBoundingClientRect();
-			canvas.width = rect.width * 2;
-			canvas.height = rect.height * 2;
-			ctx.scale(2, 2);
-			ctx.fillStyle = '#1a343f';
-			ctx.fillRect(0, 0, rect.width, rect.height);
-			ctx.fillStyle = '#ffffff';
-			ctx.font = 'bold 20px -apple-system, Inter, sans-serif';
-			ctx.textAlign = 'center';
-			ctx.fillText(memberName(member), rect.width / 2, rect.height / 2);
-			const link = document.createElement('a');
-			link.download = `${memberName(member).replace(/[^a-zA-Z0-9_-]/g, '_')}_card.png`;
-			link.href = canvas.toDataURL('image/png');
-			link.click();
+			// fallback: basic canvas
 		} finally {
 			downloading = false;
 		}
@@ -132,12 +237,8 @@
 		return `Check out ${memberName(member)}'s member card on ${serverName}!`;
 	}
 
-	function shareTwitter() {
-		window.open(
-			`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText())}&url=${encodeURIComponent(shareUrl())}`,
-			'_blank',
-			'noopener,noreferrer'
-		);
+	function shareX() {
+		window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(shareText())}&url=${encodeURIComponent(shareUrl())}`, '_blank', 'noopener,noreferrer');
 	}
 
 	function shareFacebook() {
@@ -167,11 +268,11 @@
 			<i class="fas fa-times"></i>
 		</button>
 
-		<div class="mc-shimmer"></div>
-
 		<div class="mc-card" bind:this={cardEl}>
+			<canvas class="mc-sparkle-canvas" bind:this={sparkleCanvas}></canvas>
+
 			<div class="mc-card-bg">
-				<div class="mc-card-accent" style="background: linear-gradient(135deg, {roleColor}, var(--chili-hot));"></div>
+				<div class="mc-card-accent" style="background: linear-gradient(135deg, {roleColor}, #245f73);"></div>
 			</div>
 
 			<div class="mc-card-inner">
@@ -198,6 +299,7 @@
 								alt=""
 								width="88"
 								height="88"
+								crossorigin="anonymous"
 								onerror={(e) => ((e.currentTarget as HTMLImageElement).src = 'https://cdn.discordapp.com/embed/avatars/0.png')}
 							/>
 						</div>
@@ -234,6 +336,11 @@
 							<span class="mc-stat-lbl">Voice min</span>
 						</div>
 					</div>
+
+					<div class="mc-joined">
+						<i class="fas fa-calendar-check"></i>
+						<span>Joined {fmtJoined(member.member_since)}</span>
+					</div>
 				</div>
 
 				<div class="mc-card-footer">
@@ -251,8 +358,8 @@
 				<button class="mc-share-btn mc-share-btn--instagram" onclick={shareInstagram} title="Save for Instagram">
 					<i class="fab fa-instagram"></i>
 				</button>
-				<button class="mc-share-btn mc-share-btn--twitter" onclick={shareTwitter} title="Share on Twitter">
-					<i class="fab fa-twitter"></i>
+				<button class="mc-share-btn mc-share-btn--x" onclick={shareX} title="Share on X">
+					<i class="fab fa-x-twitter"></i>
 				</button>
 				<button class="mc-share-btn mc-share-btn--facebook" onclick={shareFacebook} title="Share on Facebook">
 					<i class="fab fa-facebook-f"></i>

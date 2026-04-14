@@ -229,6 +229,9 @@
 					class:m-members-card--in={mounted}
 					style="--pubm-card-dly:{i * 32}ms"
 				>
+					<button class="m-members-share-btn" onclick={() => openCard(member)} title="Share member card" aria-label="Share member card">
+						<i class="fas fa-share-alt" aria-hidden="true"></i>
+					</button>
 					<div class="m-members-top">
 						<div class="m-members-aside">
 							<span class="m-members-rank-pill" title="Leaderboard rank">{member.rank != null ? `#${member.rank}` : '—'}</span>
@@ -276,9 +279,6 @@
 							{/each}
 						</div>
 					{/if}
-					<button class="m-members-card-btn" onclick={() => openCard(member)} title="View member card">
-						<i class="fas fa-id-card" aria-hidden="true"></i> Member Card
-					</button>
 				</li>
 			{/each}
 		</ul>

@@ -1660,6 +1660,7 @@
 }
 
 .m-root .m-members-card {
+	position: relative;
 	padding: 16px 16px 14px;
 	overflow: hidden;
 }
@@ -1859,32 +1860,28 @@
 	color: var(--role-dot, var(--role-fg, #245f73));
 }
 
-.m-root .m-members-card-btn {
-	display: inline-flex;
-	align-items: center;
-	gap: 6px;
-	margin-top: 12px;
-	padding: 7px 14px;
-	border-radius: 10px;
-	border: 1px solid rgba(36, 95, 115, 0.2);
-	background: linear-gradient(145deg, rgba(36, 95, 115, 0.08) 0%, rgba(115, 62, 36, 0.05) 100%);
-	font-size: 11px;
-	font-weight: 700;
-	color: var(--chili-hot);
-	cursor: pointer;
-	transition:
-		background 0.2s,
-		border-color 0.2s,
-		transform 0.18s;
-}
-.m-root .m-members-card-btn:hover {
-	background: linear-gradient(145deg, rgba(36, 95, 115, 0.14) 0%, rgba(115, 62, 36, 0.08) 100%);
-	border-color: rgba(36, 95, 115, 0.35);
-	transform: translateY(-1px);
-}
-.m-root .m-members-card-btn i {
+.m-root .m-members-share-btn {
+	position: absolute;
+	top: 12px;
+	right: 12px;
+	width: 30px;
+	height: 30px;
+	border-radius: 8px;
+	border: 1px solid rgba(36, 95, 115, 0.15);
+	background: rgba(36, 95, 115, 0.06);
+	color: var(--lb-text-subtle);
 	font-size: 12px;
-	opacity: 0.85;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	transition: background 0.18s, color 0.18s, border-color 0.18s;
+	z-index: 2;
+}
+.m-root .m-members-share-btn:hover {
+	background: rgba(36, 95, 115, 0.14);
+	color: var(--chili-hot);
+	border-color: rgba(36, 95, 115, 0.3);
 }
 
 .m-root .m-members-pager {
@@ -2629,27 +2626,13 @@
 	background: #fff;
 }
 
-/* gold shimmer overlay */
-.mc-shimmer {
+/* sparkle canvas on top of card */
+.mc-sparkle-canvas {
 	position: absolute;
-	inset: -2px;
-	border-radius: 22px;
-	background: linear-gradient(135deg, transparent 20%, rgba(230, 184, 0, 0.18) 35%, rgba(255, 215, 0, 0.3) 50%, rgba(230, 184, 0, 0.18) 65%, transparent 80%);
-	background-size: 300% 300%;
-	animation: mc-shimmer-move 3s ease-in-out infinite;
+	inset: 0;
+	z-index: 5;
 	pointer-events: none;
-	z-index: 1;
-}
-@keyframes mc-shimmer-move {
-	0% {
-		background-position: 100% 100%;
-	}
-	50% {
-		background-position: 0% 0%;
-	}
-	100% {
-		background-position: 100% 100%;
-	}
+	border-radius: 20px;
 }
 
 /* the card itself */
@@ -2934,8 +2917,8 @@
 .mc-share-btn--instagram {
 	background: linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
 }
-.mc-share-btn--twitter {
-	background: #1da1f2;
+.mc-share-btn--x {
+	background: #000;
 }
 .mc-share-btn--facebook {
 	background: #1877f2;
@@ -2944,9 +2927,25 @@
 	background: #5865f2;
 }
 
+/* joined date */
+.mc-joined {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin-top: 10px;
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--lb-text-muted);
+}
+.mc-joined i {
+	font-size: 10px;
+	color: var(--chili-peach);
+	opacity: 0.8;
+}
+
 @media (prefers-reduced-motion: reduce) {
-	.mc-shimmer {
-		animation: none;
+	.mc-sparkle-canvas {
+		display: none;
 	}
 	.mc-modal {
 		transition: opacity 0.15s;

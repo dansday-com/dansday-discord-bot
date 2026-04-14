@@ -31,6 +31,7 @@
 	let cardEl: HTMLDivElement | undefined = $state();
 	let sparkleCanvas: HTMLCanvasElement | undefined = $state();
 	let downloading = $state(false);
+	let sharing = $state(false);
 	let sparkleRaf: number | null = null;
 
 	function memberName(m: MemberData): string {
@@ -186,47 +187,13 @@
 	}
 
 	function drawSparklesOntoCanvas(ctx: CanvasRenderingContext2D, w: number, h: number) {
-		// draw a single frozen frame of sparkles for the download
 		const fakeTime = performance.now();
-		const saved = [...sparkles];
-		if (saved.length === 0) initSparkles(w, h);
+		if (sparkles.length === 0) initSparkles(w, h);
 		drawSparkles(ctx, w, h, fakeTime);
 	}
 
-	async function downloadCard() {
-		if (!cardEl || downloading) return;
-		downloading = true;
-		try {
-			const { default: html2canvas } = await import('html2canvas');
-			// temporarily hide the sparkle canvas so html2canvas doesn't double-render it
-			const sparkleEl = sparkleCanvas;
-			if (sparkleEl) sparkleEl.style.visibility = 'hidden';
-
-			const canvas = await html2canvas(cardEl, {
-				backgroundColor: null,
-				scale: 2,
-				useCORS: true,
-				allowTaint: true,
-				logging: false
-			});
-
-			if (sparkleEl) sparkleEl.style.visibility = '';
-
-			// overlay sparkles onto the captured canvas
-			const ctx = canvas.getContext('2d');
-			if (ctx) {
-				drawSparklesOntoCanvas(ctx, canvas.width, canvas.height);
-			}
-
-			const link = document.createElement('a');
-			link.download = `${memberName(member).replace(/[^a-zA-Z0-9_-]/g, '_')}_card.png`;
-			link.href = canvas.toDataURL('image/png');
-			link.click();
-		} catch {
-			// fallback: basic canvas
-		} finally {
-			downloading = false;
-		}
+	function cardFileName(): string {
+		return `${memberName(member).replace(/[^a-zA-Z0-9_-]/g, '_')}_card.png`;
 	}
 
 	function shareUrl(): string {
@@ -237,25 +204,168 @@
 		return `Check out ${memberName(member)}'s member card on ${serverName}!`;
 	}
 
-	function shareX() {
-		window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(shareText())}&url=${encodeURIComponent(shareUrl())}`, '_blank', 'noopener,noreferrer');
+	/** Render the card to a PNG blob using html-to-image */
+	async function captureCardBlob(): Promise<Blob> {
+		if (!cardEl) throw new Error('Card element not ready');
+		const { toBlob } = await import('html-to-image');
+
+		const blob = await toBlob(cardEl, {
+			pixelRatio: 2,
+			cacheBust: true,
+			// Include the sparkle overlay by drawing it frozen
+			filter: () => true
+		});
+		if (!blob) throw new Error('Failed to capture card');
+
+		// Composite sparkles on top
+		const bmp = await createImageBitmap(blob);
+		const canvas = document.createElement('canvas');
+		canvas.width = bmp.width;
+		canvas.height = bmp.height;
+		const ctx = canvas.getContext('2d')!;
+		ctx.drawImage(bmp, 0, 0);
+		drawSparklesOntoCanvas(ctx, canvas.width, canvas.height);
+
+		return new Promise<Blob>((resolve, reject) => {
+			canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('toBlob failed'))), 'image/png');
+		});
+	}
+
+	/** Check if Web Share API supports file sharing */
+	function canShareFiles(): boolean {
+		return typeof navigator !== 'undefined' && !!navigator.share && !!navigator.canShare;
+	}
+
+	/** Build a shareable File from the card blob */
+	async function cardFile(): Promise<File> {
+		const blob = await captureCardBlob();
+		return new File([blob], cardFileName(), { type: 'image/png' });
+	}
+
+	/** Try native share with image, returns true if shared */
+	async function tryNativeShare(text: string, includeUrl: boolean): Promise<boolean> {
+		if (!canShareFiles()) return false;
+		try {
+			const file = await cardFile();
+			const data: ShareData = { text, files: [file] };
+			if (includeUrl) data.url = shareUrl();
+			if (navigator.canShare(data)) {
+				await navigator.share(data);
+				return true;
+			}
+		} catch (e) {
+			if (e instanceof Error && e.name === 'AbortError') return true; // user cancelled, still "handled"
+		}
+		return false;
+	}
+
+	async function downloadCard() {
+		if (!cardEl || downloading) return;
+		downloading = true;
+		try {
+			const blob = await captureCardBlob();
+			const file = new File([blob], cardFileName(), { type: 'image/png' });
+
+			// Mobile: try Web Share API (works reliably on iOS/Android for saving)
+			if (canShareFiles()) {
+				const data: ShareData = { files: [file] };
+				if (navigator.canShare(data)) {
+					await navigator.share(data);
+					return;
+				}
+			}
+
+			// Desktop / fallback: blob URL download
+			const url = URL.createObjectURL(blob);
+			const link = document.createElement('a');
+			link.download = cardFileName();
+			link.href = url;
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+			setTimeout(() => URL.revokeObjectURL(url), 5000);
+		} catch (e) {
+			if (e instanceof Error && e.name !== 'AbortError') {
+				console.error('Download failed:', e);
+			}
+		} finally {
+			downloading = false;
+		}
+	}
+
+	async function shareInstagram() {
+		if (sharing) return;
+		sharing = true;
+		try {
+			// Web Share API triggers the native share sheet – user picks Instagram Stories
+			const shared = await tryNativeShare(shareText(), false);
+			if (!shared) {
+				// Fallback: download the image so user can manually share
+				await downloadCard();
+			}
+		} finally {
+			sharing = false;
+		}
+	}
+
+	async function shareX() {
+		if (sharing) return;
+		sharing = true;
+		try {
+			// Try native share with image first (mobile)
+			const shared = await tryNativeShare(shareText() + ' ' + shareUrl(), false);
+			if (!shared) {
+				// Fallback: open X intent (no image, but includes text + URL)
+				window.open(
+					`https://x.com/intent/tweet?text=${encodeURIComponent(shareText())}&url=${encodeURIComponent(shareUrl())}`,
+					'_blank',
+					'noopener,noreferrer'
+				);
+			}
+		} finally {
+			sharing = false;
+		}
 	}
 
 	function shareFacebook() {
 		window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl())}`, '_blank', 'noopener,noreferrer');
 	}
 
-	function shareDiscord() {
-		navigator.clipboard
-			.writeText(`${shareText()} ${shareUrl()}`)
-			.then(() => {
-				alert('Copied to clipboard! Paste it in Discord.');
-			})
-			.catch(() => {});
-	}
-
-	function shareInstagram() {
-		downloadCard();
+	async function shareDiscord() {
+		if (sharing) return;
+		sharing = true;
+		try {
+			// Try native share with image first (mobile)
+			const shared = await tryNativeShare(shareText() + '\n' + shareUrl(), false);
+			if (!shared) {
+				// Fallback: copy text + download image so user can paste both in Discord
+				const blob = await captureCardBlob();
+				try {
+					// Try copying image to clipboard (Chrome/Edge support)
+					await navigator.clipboard.write([
+						new ClipboardItem({
+							'image/png': blob,
+							'text/plain': new Blob([`${shareText()} ${shareUrl()}`], { type: 'text/plain' })
+						})
+					]);
+					alert('Card image & text copied to clipboard! Paste it in Discord.');
+				} catch {
+					// Clipboard image not supported – copy text and download image
+					await navigator.clipboard.writeText(`${shareText()} ${shareUrl()}`).catch(() => {});
+					const url = URL.createObjectURL(blob);
+					const link = document.createElement('a');
+					link.download = cardFileName();
+					link.href = url;
+					document.body.appendChild(link);
+					link.click();
+					document.body.removeChild(link);
+					setTimeout(() => URL.revokeObjectURL(url), 5000);
+					alert('Card image downloaded & text copied! Drag the image into Discord.');
+				}
+			}
+		} finally {
+			sharing = false;
+		}
 	}
 </script>
 
@@ -350,21 +460,21 @@
 		</div>
 
 		<div class="mc-actions">
-			<button class="mc-action-btn mc-action-btn--download" onclick={downloadCard} disabled={downloading}>
+			<button class="mc-action-btn mc-action-btn--download" onclick={downloadCard} disabled={downloading || sharing}>
 				<i class="fas fa-download"></i>
 				{downloading ? 'Saving...' : 'Download'}
 			</button>
 			<div class="mc-share-row">
-				<button class="mc-share-btn mc-share-btn--instagram" onclick={shareInstagram} title="Save for Instagram">
+				<button class="mc-share-btn mc-share-btn--instagram" onclick={shareInstagram} disabled={sharing || downloading} title="Share to Instagram">
 					<i class="fab fa-instagram"></i>
 				</button>
-				<button class="mc-share-btn mc-share-btn--x" onclick={shareX} title="Share on X">
+				<button class="mc-share-btn mc-share-btn--x" onclick={shareX} disabled={sharing || downloading} title="Share on X">
 					<i class="fab fa-x-twitter"></i>
 				</button>
 				<button class="mc-share-btn mc-share-btn--facebook" onclick={shareFacebook} title="Share on Facebook">
 					<i class="fab fa-facebook-f"></i>
 				</button>
-				<button class="mc-share-btn mc-share-btn--discord" onclick={shareDiscord} title="Copy for Discord">
+				<button class="mc-share-btn mc-share-btn--discord" onclick={shareDiscord} disabled={sharing || downloading} title="Share to Discord">
 					<i class="fab fa-discord"></i>
 				</button>
 			</div>

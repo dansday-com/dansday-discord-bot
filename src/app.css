@@ -1875,7 +1875,10 @@
 	align-items: center;
 	justify-content: center;
 	cursor: pointer;
-	transition: background 0.18s, color 0.18s, border-color 0.18s;
+	transition:
+		background 0.18s,
+		color 0.18s,
+		border-color 0.18s;
 	z-index: 2;
 }
 .m-root .m-members-share-btn:hover {
@@ -2910,9 +2913,13 @@
 		box-shadow 0.18s;
 	box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
 }
-.mc-share-btn:hover {
+.mc-share-btn:hover:not(:disabled) {
 	transform: translateY(-2px) scale(1.08);
 	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22);
+}
+.mc-share-btn:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
 }
 .mc-share-btn--instagram {
 	background: linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);

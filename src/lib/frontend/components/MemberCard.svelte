@@ -310,19 +310,16 @@
 		ctx.fillStyle = bgGrad;
 		ctx.fill();
 
-		// Accent glow
+		// Accent glow (soft radial gradient — no ctx.filter which renders inconsistently)
 		ctx.save();
 		roundRect(ctx, 0, 0, CW, CH, RADIUS);
 		ctx.clip();
-		const accentGrad = ctx.createLinearGradient(0, 0, CW, CH * 0.4);
-		accentGrad.addColorStop(0, rc);
-		accentGrad.addColorStop(1, C.hot);
-		ctx.globalAlpha = 0.08;
-		ctx.filter = 'blur(40px)';
+		const [ar, ag, ab] = hexToRgb(rc);
+		const accentGrad = ctx.createRadialGradient(CW * 0.5, CH * 0.05, 0, CW * 0.5, CH * 0.05, CW * 0.8);
+		accentGrad.addColorStop(0, `rgba(${ar},${ag},${ab},0.08)`);
+		accentGrad.addColorStop(1, 'rgba(36,95,115,0)');
 		ctx.fillStyle = accentGrad;
-		ctx.beginPath();
-		ctx.ellipse(CW * 0.5, -CH * 0.1, CW * 0.7, CH * 0.4, 0, 0, Math.PI * 2);
-		ctx.fill();
+		ctx.fillRect(0, 0, CW, CH * 0.5);
 		ctx.restore();
 
 		// Border
@@ -552,15 +549,20 @@
 
 		y += statBoxH + 6;
 
-		// --- Joined date ---
-		ctx.fillStyle = C.peach;
-		drawCalendar(ctx, PAD_X + 6, y + joinedH / 2, 6);
-
+		// --- Joined date (centered) ---
+		const joinedText = `Joined ${joined}`;
 		ctx.font = `600 11px ${fontBase}`;
+		const joinedTW = ctx.measureText(joinedText).width;
+		const joinedBlockW = 16 + 6 + joinedTW; // icon + gap + text
+		const joinedStartX = cx - joinedBlockW / 2;
+
+		ctx.fillStyle = C.peach;
+		drawCalendar(ctx, joinedStartX + 6, y + joinedH / 2, 6);
+
 		ctx.fillStyle = C.textMuted;
 		ctx.textAlign = 'left';
 		ctx.textBaseline = 'middle';
-		ctx.fillText(`Joined ${joined}`, PAD_X + 18, y + joinedH / 2);
+		ctx.fillText(joinedText, joinedStartX + 18, y + joinedH / 2);
 		y += joinedH + 10;
 
 		// --- Footer ---
@@ -594,18 +596,15 @@
 		out.fillStyle = bg;
 		out.fillRect(0, 0, OUT_W, OUT_H);
 
-		// Subtle accent glow behind card
-		out.save();
-		out.globalAlpha = 0.22;
-		out.filter = 'blur(42px)';
-		const glow = out.createRadialGradient(OUT_W * 0.5, OUT_H * 0.34, 40, OUT_W * 0.5, OUT_H * 0.34, OUT_W * 0.48);
-		glow.addColorStop(0, rc);
+		// Subtle accent glow behind card (soft radial gradient, no ctx.filter)
+		const [gr, gg, gb] = hexToRgb(rc);
+		const glow = out.createRadialGradient(OUT_W * 0.5, OUT_H * 0.38, 40, OUT_W * 0.5, OUT_H * 0.38, OUT_W * 0.5);
+		glow.addColorStop(0, `rgba(${gr},${gg},${gb},0.18)`);
 		glow.addColorStop(1, 'rgba(36,95,115,0)');
 		out.fillStyle = glow;
 		out.beginPath();
-		out.ellipse(OUT_W * 0.5, OUT_H * 0.34, OUT_W * 0.46, OUT_W * 0.32, 0, 0, Math.PI * 2);
+		out.ellipse(OUT_W * 0.5, OUT_H * 0.38, OUT_W * 0.46, OUT_W * 0.32, 0, 0, Math.PI * 2);
 		out.fill();
-		out.restore();
 
 		// Fit card into output with safe margins
 		const maxW = OUT_W * 0.86;
@@ -697,10 +696,18 @@
 			const link = document.createElement('a');
 			link.download = cardFileName();
 			link.href = url;
+			link.style.display = 'none';
+			link.setAttribute('target', '_self');
 			document.body.appendChild(link);
-			link.click();
+			// Use setTimeout to ensure the link is in the DOM before clicking
+			await new Promise<void>((resolve) => {
+				setTimeout(() => {
+					link.click();
+					resolve();
+				}, 50);
+			});
 			document.body.removeChild(link);
-			setTimeout(() => URL.revokeObjectURL(url), 5000);
+			setTimeout(() => URL.revokeObjectURL(url), 10000);
 		} catch (e) {
 			if (e instanceof Error && e.name !== 'AbortError') {
 				console.error('Download failed:', e);

@@ -12,7 +12,7 @@ const CONTENT_TYPES: Record<string, string> = {
 	webp: 'image/webp'
 };
 
-const FILENAME_PATTERN = /^(?:\d+-\d+-[a-z0-9]+|\d+-[a-z0-9]+)\.(jpg|jpeg|png|gif|webp)$/i;
+const FILENAME_PATTERN = /^(?:global-\d+-[a-z0-9]+|\d+-\d+-[a-z0-9]+|\d+-[a-z0-9]+)\.(jpg|jpeg|png|gif|webp)$/i;
 
 export const GET: RequestHandler = ({ params }) => {
 	const filename = params.filename ?? '';

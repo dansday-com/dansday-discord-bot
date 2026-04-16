@@ -7,13 +7,8 @@ import { accountOwnsBot } from '$lib/frontend/panelServer.js';
 
 const uploadsDir = join(process.cwd(), 'data', 'embed-images');
 
-export const POST: RequestHandler = async ({ params, request, locals }) => {
-	const botId = parseInt(params.id ?? '');
-	if (!botId) {
-		return json({ success: false, error: 'Invalid bot ID' }, { status: 400 });
-	}
-
-	if (!locals.user.authenticated || !(await accountOwnsBot(locals, botId))) {
+export const POST: RequestHandler = async ({ request, locals }) => {
+	if (!locals.user.authenticated || locals.user.account_type !== 'superadmin') {
 		return json({ success: false, error: 'Authentication required' }, { status: 401 });
 	}
 
@@ -51,7 +46,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		if (imageData.length > 10 * 1024 * 1024) return json({ success: false, error: 'Image file is too large. Maximum size is 10MB' }, { status: 400 });
 
 		if (!existsSync(uploadsDir)) mkdirSync(uploadsDir, { recursive: true });
-		const filename = `bot-${botId}-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
+		const filename = `global-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
 		writeFileSync(join(uploadsDir, filename), imageData);
 
 		return json({ success: true, url: `/api/uploads/embed-images/${filename}`, path: filename });

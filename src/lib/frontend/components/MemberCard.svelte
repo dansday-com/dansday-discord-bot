@@ -311,16 +311,27 @@
 		ctx.fillStyle = bgGrad;
 		ctx.fill();
 
-		// Accent glow (soft radial gradient — no ctx.filter which renders inconsistently)
+		// Accent glow — matches CSS: ellipse at top:-40%, left:-20%, w:140%, h:80%, opacity 0.08
+		// The ellipse center sits well above the card, so glow only bleeds into the top ~40%
 		ctx.save();
 		roundRect(ctx, 0, 0, CW, CH, RADIUS);
 		ctx.clip();
 		const [ar, ag, ab] = hexToRgb(rc);
-		const accentGrad = ctx.createRadialGradient(CW * 0.5, CH * 0.05, 0, CW * 0.5, CH * 0.05, CW * 0.8);
-		accentGrad.addColorStop(0, `rgba(${ar},${ag},${ab},0.08)`);
-		accentGrad.addColorStop(1, 'rgba(36,95,115,0)');
+		const [hr, hg, hb] = hexToRgb(C.hot);
+		// Ellipse center: x = left(-20%) + width(140%)/2 = 50%, y = top(-40%) + height(80%)/2 = 0%
+		const ellCx = CW * 0.5;
+		const ellCy = CH * 0.0;
+		const ellRx = CW * 0.7;  // half of 140%
+		const ellRy = CH * 0.4;  // half of 80%
+		// Draw the ellipse with a gradient fill matching "linear-gradient(135deg, roleColor, #245f73)"
+		const accentGrad = ctx.createLinearGradient(ellCx - ellRx, ellCy - ellRy, ellCx + ellRx, ellCy + ellRy);
+		accentGrad.addColorStop(0, `rgba(${ar},${ag},${ab},1)`);
+		accentGrad.addColorStop(1, `rgba(${hr},${hg},${hb},1)`);
+		ctx.globalAlpha = 0.08;
 		ctx.fillStyle = accentGrad;
-		ctx.fillRect(0, 0, CW, CH * 0.5);
+		ctx.beginPath();
+		ctx.ellipse(ellCx, ellCy, ellRx, ellRy, 0, 0, Math.PI * 2);
+		ctx.fill();
 		ctx.restore();
 
 		// Border

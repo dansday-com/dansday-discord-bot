@@ -835,7 +835,6 @@ async function seedNewServerSettings(serverId: number) {
 	}
 
 	await upsertServerSettings(serverId, SERVER_SETTINGS.component.main, {
-		main_channel: '',
 		color: DEFAULT_MAIN_EMBED_COLOR,
 		footer: DEFAULT_MAIN_EMBED_FOOTER
 	});

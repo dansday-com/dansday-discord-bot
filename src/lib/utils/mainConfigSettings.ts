@@ -15,20 +15,12 @@ export function getEffectiveMainEmbedAppearance(raw: unknown): { color: string; 
 	return { color, footer };
 }
 
-export function mainChannelId(raw: unknown): string {
-	if (!raw || typeof raw !== 'object') return '';
-	const v = (raw as Record<string, unknown>).main_channel;
-	return typeof v === 'string' && v.trim() !== '' ? v.trim() : '';
-}
-
 export function normalizeMainConfigForPanel(raw: unknown): {
-	main_channel: string;
 	color: string;
 	footer: string;
 } {
 	const { color, footer } = getEffectiveMainEmbedAppearance(raw);
 	return {
-		main_channel: mainChannelId(raw),
 		color,
 		footer
 	};

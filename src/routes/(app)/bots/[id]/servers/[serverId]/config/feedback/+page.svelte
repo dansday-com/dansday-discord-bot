@@ -63,7 +63,7 @@
 			<label class="text-ash-300 mb-1.5 block text-xs font-medium">
 				<i class="fas fa-hashtag mr-1 text-cyan-400"></i>Feedback Channel
 			</label>
-			<p class="text-ash-500 mb-2 text-xs">Channel for user feedback. Uses default channel if not set.</p>
+			<p class="text-ash-500 mb-2 text-xs">Channel for user feedback.</p>
 			<ChannelPicker channels={data.channels} categories={data.categories} value={feedbackChannel} onchange={(id) => (feedbackChannel = id)} />
 		</div>
 

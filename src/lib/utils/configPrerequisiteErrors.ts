@@ -32,9 +32,6 @@ export function humanizeConfigPrerequisiteMessage(source: string | undefined | n
 	if (/default color not configured/i.test(t)) {
 		return `Set a default embed color under ${MAIN} (bot appearance).`;
 	}
-	if (/main channel not configured/i.test(t)) {
-		return `Set a default channel under ${MAIN}.`;
-	}
 	if (/permissions not configured/i.test(t)) {
 		return 'Configure role permissions under Configuration → Permissions.';
 	}

@@ -4,7 +4,7 @@ import { SERVER_SETTINGS, type ServerSettingsComponentName } from '../frontend/p
 const serverSettingsComponent = SERVER_SETTINGS.component;
 import { normalizeForwarderSettings } from '../forwarder-settings.js';
 import { resolveEmbedFooterPlaceholders } from '../utils/embedFooter.js';
-import { getEffectiveMainEmbedAppearance, mainChannelId } from '../utils/mainConfigSettings.js';
+import { getEffectiveMainEmbedAppearance } from '../utils/mainConfigSettings.js';
 
 interface BotConfig {
 	id: number;
@@ -229,24 +229,6 @@ export function getApplicationId() {
 	return botConfig.application_id;
 }
 
-export async function getMainChannel(guildId: string) {
-	requireBotConfig();
-	requireGuildId(guildId, 'getting main channel');
-
-	let config: unknown = null;
-	try {
-		const settings = await getServerSettingsForComponent(guildId, serverSettingsComponent.main);
-		config = settings.settings;
-	} catch {}
-	const channelId = mainChannelId(config);
-
-	if (!channelId) {
-		throw new Error(`Main channel not configured for guild ${guildId}`);
-	}
-
-	return channelId;
-}
-
 export const PERMISSIONS = {
 	async getPermissions(guildId: string) {
 		requireGuildId(guildId, 'permissions');
@@ -294,11 +276,7 @@ export async function getLevelingSettings(guildId: string) {
 
 	let progressChannelId = config.PROGRESS_CHANNEL_ID;
 	if (!progressChannelId) {
-		try {
-			progressChannelId = await getMainChannel(guildId);
-		} catch (_) {
-			progressChannelId = null;
-		}
+		progressChannelId = null;
 	}
 
 	const videoCfg = (config as { VIDEO?: { XP_PER_MINUTE?: number } }).VIDEO;
@@ -478,8 +456,7 @@ export const WELCOMER = {
 		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.welcomer))) return [];
 		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.welcomer);
 		if (settings?.settings?.channels?.length > 0) return settings.settings.channels;
-		const mainChannel = await getMainChannel(guildId);
-		return mainChannel ? [mainChannel] : [];
+		return [];
 	},
 
 	async getMessages(guildId: string) {
@@ -499,13 +476,12 @@ export const BOOSTER = {
 		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.booster))) return [];
 		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.booster);
 		if (settings?.settings?.channels?.length > 0) return settings.settings.channels;
-		const mainChannel = await getMainChannel(guildId);
-		return mainChannel ? [mainChannel] : [];
+		return [];
 	},
 
 	async getChannel(guildId: string) {
 		const channels = await BOOSTER.getChannels(guildId);
-		return channels.length > 0 ? channels[0] : await getMainChannel(guildId);
+		return channels.length > 0 ? channels[0] : null;
 	},
 
 	async getMessages(guildId: string) {
@@ -605,7 +581,7 @@ export const FEEDBACK = {
 		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.feedback))) return null;
 		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.feedback);
 		if (settings?.settings?.feedback_channel) return settings.settings.feedback_channel;
-		return await getMainChannel(guildId);
+		return null;
 	},
 
 	async getRole(guildId: string) {
@@ -638,11 +614,7 @@ export const GIVEAWAY = {
 	async getStoredGiveawayChannelId(guildId: string): Promise<string | null> {
 		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.giveaway);
 		if (settings?.settings?.giveaway_channel) return settings.settings.giveaway_channel;
-		try {
-			return await getMainChannel(guildId);
-		} catch {
-			return null;
-		}
+		return null;
 	},
 
 	async getCreatorCanParticipate(guildId: string) {
@@ -659,6 +631,13 @@ export const MODERATION_CONFIG = {
 		requireBotConfig();
 		requireGuildId(guildId, 'checking moderation logs enabled');
 		return isComponentFeatureEnabled(guildId, serverSettingsComponent.moderation);
+	},
+	async getLogChannel(guildId: string) {
+		requireBotConfig();
+		requireGuildId(guildId, 'getting moderation log channel');
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.moderation))) return null;
+		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.moderation);
+		return settings?.settings?.log_channel_id || null;
 	}
 };
 
@@ -685,8 +664,6 @@ export const STAFF_RATING = {
 		requireGuildId(guildId, 'getting staff rating channel');
 		const config = await STAFF_RATING.getConfig(guildId);
 		if (config?.rating_channel_id) return config.rating_channel_id;
-		const reviewId = config?.review_channel_id || config?.report_channel_id;
-		if (!reviewId) return await getMainChannel(guildId);
 		return null;
 	},
 
@@ -696,7 +673,6 @@ export const STAFF_RATING = {
 		const config = await STAFF_RATING.getConfig(guildId);
 		const reviewId = config?.review_channel_id || config?.report_channel_id;
 		if (reviewId) return reviewId;
-		if (!config?.rating_channel_id) return await getMainChannel(guildId);
 		return null;
 	},
 
@@ -743,7 +719,7 @@ export const CONTENT_CREATOR = {
 	async getTargetChannel(guildId: string) {
 		const config = await CONTENT_CREATOR.getConfig(guildId);
 		if (config?.target_channel_id) return config.target_channel_id;
-		return await getMainChannel(guildId);
+		return null;
 	},
 
 	async getContentCreatorRole(guildId: string) {
@@ -889,6 +865,7 @@ export const SETUP_CHANNEL_DEFS = [
 	{ name: '「💻」menu', settingsKey: 'menu' },
 	{ name: '「🚪」welcome', settingsKey: 'welcomer' },
 	{ name: '「🚀」booster', settingsKey: 'booster' },
+	{ name: '「🔨」moderation', settingsKey: 'moderation' },
 	{ name: '「🆙」level', settingsKey: 'leveling' },
 	{ name: '「🎁」giveaway', settingsKey: 'giveaway' },
 	{ name: '「⭐」staff-rating', settingsKey: 'staff_rating' },

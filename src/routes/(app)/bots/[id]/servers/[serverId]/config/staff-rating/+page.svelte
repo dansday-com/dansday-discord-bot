@@ -98,7 +98,7 @@
 			<label class="text-ash-300 mb-1.5 block text-xs font-medium">
 				<i class="fas fa-flag mr-1 text-orange-400"></i>Review channel
 			</label>
-			<p class="text-ash-500 mb-2 text-xs">Where submissions go for staff review. Uses the default channel if empty.</p>
+			<p class="text-ash-500 mb-2 text-xs">Where submissions go for staff review.</p>
 			<ChannelPicker channels={data.channels} categories={data.categories} value={reviewChannel} onchange={(id) => (reviewChannel = id)} />
 		</div>
 
@@ -106,7 +106,7 @@
 			<label class="text-ash-300 mb-1.5 block text-xs font-medium">
 				<i class="fas fa-bell mr-1 text-orange-400"></i>Rating Update Channel
 			</label>
-			<p class="text-ash-500 mb-2 text-xs">Where rating updates/announcements are sent. Falls back to the main/default channel if empty.</p>
+			<p class="text-ash-500 mb-2 text-xs">Where rating updates/announcements are sent.</p>
 			<ChannelPicker channels={data.channels} categories={data.categories} value={ratingChannel} onchange={(id) => (ratingChannel = id)} />
 		</div>
 

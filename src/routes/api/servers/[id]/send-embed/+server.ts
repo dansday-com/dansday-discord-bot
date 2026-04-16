@@ -7,7 +7,6 @@ import { basename, join } from 'path';
 import { request as httpRequest } from 'http';
 import { canUseEmbedBuilder, SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 import { mainAppearanceBlockingMessage, messageFromBotWebhookPayload } from '$lib/utils/configPrerequisiteErrors.js';
-import { mainChannelId } from '$lib/utils/mainConfigSettings.js';
 
 const uploadsDir = join(process.cwd(), 'data', 'embed-images');
 
@@ -61,11 +60,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		let resolvedChannelIds: string[] = Array.isArray(channel_ids) ? channel_ids.filter((id: any) => id != null && id !== '') : [];
 
 		if (resolvedChannelIds.length === 0) {
-			const defaultChannel = mainChannelId(mainSettings);
-			if (!defaultChannel) {
-				return json({ success: false, error: 'No channel selected and no default channel configured in main settings.' }, { status: 400 });
-			}
-			resolvedChannelIds = [defaultChannel];
+			return json({ success: false, error: 'No channel selected.' }, { status: 400 });
 		}
 
 		let imageBuffer: Buffer | null = null;

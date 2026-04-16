@@ -1,13 +1,15 @@
 import { EmbedBuilder } from 'discord.js';
-import { getMainChannel, getEmbedConfig, getBotConfig, MODERATION_CONFIG } from '../../../config.js';
+import { getEmbedConfig, getBotConfig, MODERATION_CONFIG } from '../../../config.js';
 import db from '../../../../database.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../utils/index.js';
 
 async function sendModerationLog(client, embedData, guildId = null) {
-	const mainChannel = await getMainChannel(guildId);
-	const channel = client.channels.cache.get(mainChannel);
+	if (!guildId) return;
+	const logChannelId = await MODERATION_CONFIG.getLogChannel(guildId);
+	if (!logChannelId) return;
+	const channel = client.channels.cache.get(logChannelId);
 	if (!channel) {
-		await logger.log(`❌ Main channel not found: ${mainChannel}`);
+		await logger.log(`❌ Moderation log channel not found: ${logChannelId}`);
 		return;
 	}
 

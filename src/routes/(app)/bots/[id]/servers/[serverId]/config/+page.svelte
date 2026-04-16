@@ -2,14 +2,12 @@
 	import { invalidateAll } from '$app/navigation';
 	import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
-	import ChannelPicker from '$lib/frontend/components/ChannelPicker.svelte';
 	import { DEFAULT_MAIN_EMBED_COLOR, DEFAULT_MAIN_EMBED_FOOTER } from '$lib/utils/mainConfigSettings.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 
 	let saving = $state(false);
-	let mainChannel = $state(data.settings?.main_channel ?? '');
 	let defaultColor = $state(data.settings?.color ?? DEFAULT_MAIN_EMBED_COLOR);
 	let defaultFooter = $state(data.settings?.footer ?? DEFAULT_MAIN_EMBED_FOOTER);
 
@@ -22,7 +20,6 @@
 				credentials: 'include',
 				body: JSON.stringify({
 					component: SERVER_SETTINGS.component.main,
-					main_channel: mainChannel,
 					color: defaultColor,
 					footer: defaultFooter
 				})
@@ -42,15 +39,7 @@
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
 		<i class="fas fa-gear text-emerald-400"></i>Main
 	</h3>
-	<p class="text-ash-400 text-xs">Set the default channel and embed style used across the bot.</p>
-
-	<div>
-		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
-			<i class="fas fa-hashtag mr-1 text-emerald-400"></i>Main channel
-		</label>
-		<p class="text-ash-500 mb-2 text-xs">Default channel used when a feature doesn’t have a channel set.</p>
-		<ChannelPicker channels={data.channels} categories={data.categories} value={mainChannel} onchange={(id) => (mainChannel = id)} />
-	</div>
+	<p class="text-ash-400 text-xs">Set the embed style used across the bot.</p>
 
 	<div>
 		<label class="text-ash-300 mb-1.5 block text-xs font-medium">

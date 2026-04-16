@@ -4,7 +4,6 @@ import db, { snapshotBigIntOrNull, type RobloxItemChange } from '../../../../dat
 import {
 	fetchCatalogFirstPage,
 	getEmbedConfig,
-	getMainChannel,
 	isComponentFeatureEnabled,
 	PERMISSIONS,
 	robloxCatalogEmbedColors,
@@ -155,13 +154,6 @@ async function getActiveServers(client: Client, officialBotId: number): Promise<
 		const s = row && !Array.isArray(row) && typeof row.settings === 'object' ? (row.settings as Record<string, unknown>) : {};
 
 		let channelId = typeof s.channel_id === 'string' ? s.channel_id : '';
-		if (!channelId) {
-			try {
-				channelId = await getMainChannel(guildId);
-			} catch {
-				channelId = '';
-			}
-		}
 		if (!channelId) continue;
 
 		const guild = await client.guilds.fetch(guildId).catch(() => null);

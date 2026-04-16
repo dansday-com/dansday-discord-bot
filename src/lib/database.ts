@@ -4,8 +4,9 @@ import mysql from 'mysql2/promise';
 import { eq, and, or, inArray, sql, desc, asc, isNull, isNotNull, count, avg, like, ne } from 'drizzle-orm';
 import { db } from './drizzle.js';
 import * as schema from './schema.js';
-import { SERVER_SETTINGS } from './frontend/panelServer.js';
+import { SERVER_SETTINGS, AUTO_ENABLED_COMPONENTS } from './frontend/panelServer.js';
 import { logger, toMySQLDateTime, parseMySQLDateTimeUtc, getNowUtc } from './utils/index.js';
+import { DEFAULT_MAIN_EMBED_COLOR, DEFAULT_MAIN_EMBED_FOOTER } from './utils/mainConfigSettings.js';
 import type { DiscordQuestSummary } from './backend/api/discord-quest-api.js';
 
 function getConnectionConfig() {
@@ -635,7 +636,7 @@ export async function upsertOfficialServer(officialBotId: number, guild: any) {
 	const server = await getOfficialServerByDiscordId(officialBotId, guild.id);
 	if (server) {
 		if (isNewServer) {
-			await seedNewServerFeatureSettingsDisabled(server.id);
+			await seedNewServerSettings(server.id);
 		}
 		await ensureLeaderboardSettingsHaveSlug(server.id, guild.name || 'server');
 	}
@@ -828,10 +829,18 @@ async function ensureLeaderboardSettingsHaveSlug(serverId: number, serverName: s
 	return true;
 }
 
-async function seedNewServerFeatureSettingsDisabled(serverId: number) {
+async function seedNewServerSettings(serverId: number) {
 	for (const component of SERVER_SETTINGS.withFeatureSwitch) {
-		await upsertServerSettings(serverId, component, { enabled: false });
+		await upsertServerSettings(serverId, component, { enabled: AUTO_ENABLED_COMPONENTS.has(component) });
 	}
+
+	await upsertServerSettings(serverId, SERVER_SETTINGS.component.main, {
+		main_channel: '',
+		color: DEFAULT_MAIN_EMBED_COLOR,
+		footer: DEFAULT_MAIN_EMBED_FOOTER
+	});
+
+	await upsertServerSettings(serverId, SERVER_SETTINGS.component.permissions, {});
 }
 
 export async function getServerByLeaderboardSlug(slug: string) {
@@ -2215,6 +2224,21 @@ async function getFirstRunningSelfbotForServer(serverId: number) {
 	return running[0] ?? null;
 }
 
+type ServerSettingsRow = {
+	id: number;
+	server_id: number;
+	component_name: string;
+	settings: unknown;
+	created_at: Date;
+	updated_at: Date;
+};
+
+function isServerSettingsRowArray(x: unknown): x is ServerSettingsRow[] {
+	return Array.isArray(x);
+}
+
+async function getServerSettings(serverId: any, componentName: string): Promise<ServerSettingsRow | null>;
+async function getServerSettings(serverId: any, componentName?: null): Promise<ServerSettingsRow[]>;
 async function getServerSettings(serverId: any, componentName: string | null = null) {
 	await initializeDatabase();
 	if (componentName) {
@@ -2239,7 +2263,7 @@ async function getServerSettings(serverId: any, componentName: string | null = n
 		.select()
 		.from(schema.serverSettings)
 		.where(eq(schema.serverSettings.server_id, Number(serverId)));
-	return rows.map((row) => {
+	const mapped = rows.map((row) => {
 		const r = { ...row };
 		if (r.settings && typeof r.settings === 'string') {
 			try {
@@ -2250,6 +2274,7 @@ async function getServerSettings(serverId: any, componentName: string | null = n
 		}
 		return r;
 	});
+	return isServerSettingsRowArray(mapped) ? mapped : [];
 }
 
 async function upsertServerSettings(serverId: any, componentName: string, settings: any) {

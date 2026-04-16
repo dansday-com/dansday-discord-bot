@@ -120,6 +120,12 @@ function requireGuildId(guildId: any, action = 'operation') {
 	}
 }
 
+async function getServerSettingsRow(serverId: any, componentName: string) {
+	const rowOrRows = await db.getServerSettings(serverId, componentName);
+	if (!rowOrRows) return null;
+	return Array.isArray(rowOrRows) ? (rowOrRows[0] ?? null) : rowOrRows;
+}
+
 async function getOfficialBotId() {
 	requireBotConfig();
 	if (botConfig!.isSelfbot) {
@@ -191,7 +197,7 @@ export async function isComponentFeatureEnabled(guildDiscordId: string, componen
 
 async function getServerSettingsForComponent(guildId: string, componentName: string) {
 	const officialBotServer = await getOfficialBotServer(guildId);
-	const settings = await db.getServerSettings(officialBotServer.id, componentName);
+	const settings = await getServerSettingsRow(officialBotServer.id, componentName);
 
 	if (!settings || !settings.settings) {
 		throw new Error(`Server settings not found for guild ${guildId} (component: ${componentName})`);
@@ -227,8 +233,12 @@ export async function getMainChannel(guildId: string) {
 	requireBotConfig();
 	requireGuildId(guildId, 'getting main channel');
 
-	const settings = await getServerSettingsForComponent(guildId, serverSettingsComponent.main);
-	const channelId = mainChannelId(settings.settings);
+	let config: unknown = null;
+	try {
+		const settings = await getServerSettingsForComponent(guildId, serverSettingsComponent.main);
+		config = settings.settings;
+	} catch {}
+	const channelId = mainChannelId(config);
 
 	if (!channelId) {
 		throw new Error(`Main channel not configured for guild ${guildId}`);
@@ -245,7 +255,7 @@ export const PERMISSIONS = {
 		if (!server) {
 			throw new Error(`Server not found for guild ${guildId}`);
 		}
-		const settings = await db.getServerSettings(server.id, serverSettingsComponent.permissions);
+		const settings = await getServerSettingsRow(server.id, serverSettingsComponent.permissions);
 		if (!settings || !settings.settings) {
 			throw new Error(`Permissions not configured for guild ${guildId}`);
 		}
@@ -274,7 +284,7 @@ export const PERMISSIONS = {
 
 export async function getLevelingSettings(guildId: string) {
 	const officialBotServer = await getOfficialBotServer(guildId);
-	const settings = await db.getServerSettings(officialBotServer.id, serverSettingsComponent.leveling);
+	const settings = await getServerSettingsRow(officialBotServer.id, serverSettingsComponent.leveling);
 
 	if (!settings || !settings.settings) {
 		throw new Error(`Leveling settings not configured for guild ${guildId}. Please configure in the panel.`);
@@ -446,8 +456,11 @@ export async function getEmbedConfig(guildId: string) {
 	requireGuildId(guildId, 'getting embed config');
 
 	const officialBotServer = await getOfficialBotServer(guildId);
-	const settings = await getServerSettingsForComponent(guildId, serverSettingsComponent.main);
-	const config = settings.settings;
+	let config: unknown = null;
+	try {
+		const settings = await getServerSettingsForComponent(guildId, serverSettingsComponent.main);
+		config = settings.settings;
+	} catch {}
 	const { color: colorStr, footer: footerStr } = getEffectiveMainEmbedAppearance(config);
 
 	const hex = colorStr.replace('#', '');
@@ -463,7 +476,7 @@ export const WELCOMER = {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting welcomer channels');
 		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.welcomer))) return [];
-		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.welcomer);
+		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.welcomer);
 		if (settings?.settings?.channels?.length > 0) return settings.settings.channels;
 		const mainChannel = await getMainChannel(guildId);
 		return mainChannel ? [mainChannel] : [];
@@ -473,7 +486,7 @@ export const WELCOMER = {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting welcomer messages');
 		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.welcomer))) return [];
-		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.welcomer);
+		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.welcomer);
 		if (settings?.settings?.messages?.length > 0) return settings.settings.messages;
 		return [];
 	}
@@ -484,7 +497,7 @@ export const BOOSTER = {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting booster channels');
 		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.booster))) return [];
-		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.booster);
+		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.booster);
 		if (settings?.settings?.channels?.length > 0) return settings.settings.channels;
 		const mainChannel = await getMainChannel(guildId);
 		return mainChannel ? [mainChannel] : [];
@@ -499,7 +512,7 @@ export const BOOSTER = {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting booster messages');
 		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.booster))) return [];
-		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.booster);
+		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.booster);
 		if (settings?.settings?.messages?.length > 0) return settings.settings.messages;
 		return [];
 	}
@@ -518,7 +531,10 @@ export const CUSTOM_SUPPORTER_ROLE = {
 	async getStoredRoleConstraints(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting stored custom role constraints');
-		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.custom_supporter_role);
+		const settings = await getServerSettingsRow(
+			(await getOfficialBotServer(guildId)).id,
+			serverSettingsComponent.custom_supporter_role
+		);
 		if (settings?.settings) {
 			return {
 				ROLE_START: settings.settings.role_start || null,
@@ -536,12 +552,12 @@ export const NOTIFICATIONS = {
 		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.notifications))) return null;
 		const sid = await resolveServerIdForGuildSetting(guildId, serverSettingsComponent.notifications);
 		if (sid == null) return null;
-		const settings = await db.getServerSettings(sid, serverSettingsComponent.notifications);
+		const settings = await getServerSettingsRow(sid, serverSettingsComponent.notifications);
 		return settings?.settings || null;
 	},
 
 	async getConfigByServerId(serverId: number) {
-		const settings = await db.getServerSettings(serverId, serverSettingsComponent.notifications);
+		const settings = await getServerSettingsRow(serverId, serverSettingsComponent.notifications);
 		return settings?.settings || null;
 	},
 
@@ -552,7 +568,7 @@ export const NOTIFICATIONS = {
 			return { ROLE_START: null, ROLE_END: null };
 		}
 		const sid = (await resolveServerIdForGuildSetting(guildId, serverSettingsComponent.notifications)) ?? (await getOfficialBotServer(guildId)).id;
-		const settings = await db.getServerSettings(sid, serverSettingsComponent.notifications);
+		const settings = await getServerSettingsRow(sid, serverSettingsComponent.notifications);
 		if (settings?.settings) {
 			return {
 				ROLE_START: settings.settings.role_start || null,
@@ -590,7 +606,7 @@ export const FEEDBACK = {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting feedback channel');
 		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.feedback))) return null;
-		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.feedback);
+		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.feedback);
 		if (settings?.settings?.feedback_channel) return settings.settings.feedback_channel;
 		return await getMainChannel(guildId);
 	},
@@ -599,7 +615,7 @@ export const FEEDBACK = {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting feedback role');
 		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.feedback))) return null;
-		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.feedback);
+		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.feedback);
 		return settings?.settings?.feedback_role || null;
 	}
 };
@@ -623,7 +639,7 @@ export const GIVEAWAY = {
 	},
 
 	async getStoredGiveawayChannelId(guildId: string): Promise<string | null> {
-		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.giveaway);
+		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.giveaway);
 		if (settings?.settings?.giveaway_channel) return settings.settings.giveaway_channel;
 		try {
 			return await getMainChannel(guildId);
@@ -636,7 +652,7 @@ export const GIVEAWAY = {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting giveaway creator can participate setting');
 		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.giveaway))) return false;
-		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.giveaway);
+		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.giveaway);
 		return settings?.settings?.giveaway_creator_can_participate ?? false;
 	}
 };
@@ -663,7 +679,7 @@ export const STAFF_RATING = {
 		requireGuildId(guildId, 'getting staff rating config');
 		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.staff_rating))) return null;
 		const serverId = (await getOfficialBotServer(guildId)).id;
-		const row = await db.getServerSettings(serverId, serverSettingsComponent.staff_rating);
+		const row = await getServerSettingsRow(serverId, serverSettingsComponent.staff_rating);
 		return row?.settings || null;
 	},
 
@@ -718,7 +734,7 @@ export const CONTENT_CREATOR = {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting content creator config');
 		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.content_creator))) return null;
-		const settings = await db.getServerSettings((await getOfficialBotServer(guildId)).id, serverSettingsComponent.content_creator);
+		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.content_creator);
 		return settings?.settings || null;
 	},
 
@@ -762,7 +778,7 @@ export const FORWARDER = {
 		const botIdToUse = await getOfficialBotId();
 		const server = await db.getServerByDiscordId(botIdToUse, guildId);
 		if (!server) return { forwarders: [] };
-		const settings = await db.getServerSettings(server.id, serverSettingsComponent.forwarder);
+		const settings = await getServerSettingsRow(server.id, serverSettingsComponent.forwarder);
 		if (!settings || !settings.settings) return { forwarders: [] };
 		return normalizeForwarderSettings(settings.settings);
 	},
@@ -869,3 +885,43 @@ export { serverSettingsComponent };
 export const SERVER_SETTINGS_COMPONENTS_WITH_FEATURE_SWITCH = SERVER_SETTINGS.withFeatureSwitch;
 export { computePublicServerSlugForServerId } from '../frontend/public/server-slug/index.js';
 export { publicSiteOrigin, publicServerPath, publicServerUrl } from '../url.js';
+
+export const SETUP_CATEGORY_NAME = '</DANSDAY>';
+
+export const SETUP_CHANNEL_DEFS = [
+	{ name: '「💻」menu', settingsKey: 'menu' },
+	{ name: '「🚪」welcome', settingsKey: 'welcomer' },
+	{ name: '「🚀」booster', settingsKey: 'booster' },
+	{ name: '「🆙」level', settingsKey: 'leveling' },
+	{ name: '「🎁」giveaway', settingsKey: 'giveaway' },
+	{ name: '「⭐」staff-rating', settingsKey: 'staff_rating' },
+	{ name: '「📜」discord-quest', settingsKey: 'discord_quest_notifier' },
+	{ name: '「📽️」content-creator', settingsKey: 'content_creator' },
+	{ name: '「👗」roblox-catalog', settingsKey: 'roblox_catalog_notifier' }
+] as const;
+
+export { AUTO_ENABLED_COMPONENTS } from '../frontend/panelServer.js';
+
+export const DEFAULT_LEVELING_SETTINGS = {
+	REQUIREMENTS: { BASE_XP: 50, MULTIPLIER: 1.2 },
+	MESSAGE: { XP: 15, COOLDOWN_SECONDS: 15 },
+	VOICE: { XP_PER_MINUTE: 50, AFK_XP_PER_MINUTE: 10, COOLDOWN_SECONDS: 60 },
+	VIDEO: { XP_PER_MINUTE: 50 },
+	STREAMING: { XP_PER_MINUTE: 50 }
+};
+
+export const DEFAULT_WELCOMER_MESSAGES = [
+	'👋 Welcome {user} to {server}! You are member #{memberCount} (Account age: {accountAge}).',
+	'🎉 {user} joined {server}! Member #{memberCount} | Account age: {accountAge}.',
+	'🌟 Welcome {user}! You\'re now part of {server} (Member #{memberCount}, Account age: {accountAge}).',
+	'🚀 {user} just joined {server}! Member #{memberCount} | Account age: {accountAge}.',
+	'🎊 Hello {user}! Welcome to {server}! You\'re member #{memberCount} (Account age: {accountAge}).'
+];
+
+export const DEFAULT_BOOSTER_MESSAGES = [
+	'🎉 {user} just boosted {server}! Current level: {boostLevel} | Total boosts: {totalBoosts}.',
+	'💎 Thanks {user} for boosting {server}! We\'re now Level {boostLevel} with {totalBoosts} boosts.',
+	'🚀 {user} boosted {server}! Server Level: {boostLevel} | Boosts: {totalBoosts}.',
+	'🔥 Huge thanks to {user} for boosting {server}! Total boosts: {totalBoosts} (Level {boostLevel}).',
+	'⭐ {user} just gave {server} a boost! Level {boostLevel} with {totalBoosts} boosts.'
+];

@@ -141,7 +141,7 @@ export async function execute(interaction: any, client: any) {
 			channels: [channelMap['booster']]
 		});
 
-		const mod = (await getSettings(SERVER_SETTINGS.component.moderation)) || { enabled: false };
+		const mod = (await getSettings(SERVER_SETTINGS.component.moderation)) || { enabled: true };
 		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.moderation, {
 			...mod,
 			log_channel_id: channelMap['moderation']

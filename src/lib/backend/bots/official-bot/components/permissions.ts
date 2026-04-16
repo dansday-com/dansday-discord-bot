@@ -1,5 +1,7 @@
-import { PERMISSIONS } from '../../../config.js';
+import { PERMISSIONS, getServerForCurrentBot } from '../../../config.js';
 import { translate } from '../i18n.js';
+import db from '../../../../database.js';
+import { publicSiteOrigin } from '../../../../url.js';
 
 async function getGuildPermissions(guildId: string) {
 	try {
@@ -96,9 +98,6 @@ export async function getRequiredRolesForAction(guild: any, action: string) {
 }
 
 export async function getPermissionDeniedMessage(guild: any, action: string, userId: string | null = null) {
-	const requiredRoles = await getRequiredRolesForAction(guild, action);
-	const roleList = requiredRoles.length > 0 ? requiredRoles.map((role) => `**${role}**`).join(', ') : 'the required role';
-
 	const actionNames: Record<string, string> = {
 		staff_only: 'Staff Only',
 		custom_supporter_role: 'Custom Supporter Role',
@@ -116,6 +115,43 @@ export async function getPermissionDeniedMessage(guild: any, action: string, use
 	};
 
 	const actionName = actionNames[action] || action;
+
+	try {
+		const server = await getServerForCurrentBot(guild.id);
+		const accounts = await db.getServerAccountsByServer(server.id);
+		const hasOwner = accounts.some((a: any) => a.account_type === 'owner');
+
+		if (!hasOwner) {
+			const origin = publicSiteOrigin();
+			let extra = '';
+			if (origin) {
+				const originId = origin;
+				const inviteMsg = await translate('permissions.ownerRequired.extra.invite', guild.id, userId ?? '', { url: originId });
+				extra = `\n\n${inviteMsg || `Run \`/setup\` to generate an invite link or go to ${originId}`}`;
+			}
+			const title = await translate('permissions.ownerRequired.title', guild.id, userId ?? '');
+			const desc = await translate('permissions.ownerRequired.description', guild.id, userId ?? '', { action: actionName, extra });
+			return `${title}\n\n${desc}`;
+		}
+
+		const perms = await getGuildPermissions(guild.id);
+		const allRoles = [...perms.ADMIN_ROLES, ...perms.STAFF_ROLES, ...perms.SUPPORTER_ROLES, ...perms.MEMBER_ROLES, ...perms.CONTENT_CREATOR_ROLES];
+		if (allRoles.length === 0) {
+			const origin = publicSiteOrigin();
+			const extraId = origin ? ` at ${origin}` : ' on the web panel';
+			const extra = await translate('permissions.notConfigured.extra', guild.id, userId ?? '', { url: origin || '' });
+			const fallbackExtra = extra ? extra : extraId;
+			const title = await translate('permissions.notConfigured.title', guild.id, userId ?? '');
+			const desc = await translate('permissions.notConfigured.description', guild.id, userId ?? '', { action: actionName, extra: fallbackExtra });
+			return `${title}\n\n${desc}`;
+		}
+	} catch (e) {
+		// Fallback to standard error if database query fails
+	}
+
+	const requiredRoles = await getRequiredRolesForAction(guild, action);
+	const roleList = requiredRoles.length > 0 ? requiredRoles.map((role) => `**${role}**`).join(', ') : 'the required role';
+
 	const title = await translate('permissions.denied.title', guild.id, userId ?? '');
 	const description = await translate('permissions.denied.description', guild.id, userId ?? '', { action: actionName, roles: roleList });
 	const footer = await translate('permissions.denied.footer', guild.id, userId ?? '');

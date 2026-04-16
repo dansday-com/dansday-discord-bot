@@ -13,6 +13,7 @@ import { hasPermission, getPermissionDeniedMessage } from './permissions.js';
 import {
 	handleCustomSupporterRoleButton,
 	handleCustomSupporterRoleModal,
+	handleCustomSupporterRoleEditModal,
 	handleEditCustomSupporterRole,
 	handleDeleteCustomSupporterRole
 } from './interface/customsupporterrole.js';
@@ -512,6 +513,9 @@ function init(client) {
 				if (interaction.customId === 'custom_supporter_role_create') {
 					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.custom_supporter_role)) return;
 					await handleCustomSupporterRoleModal(interaction);
+				} else if (interaction.customId === 'custom_supporter_role_edit') {
+					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.custom_supporter_role)) return;
+					await handleCustomSupporterRoleEditModal(interaction);
 				} else if (interaction.customId === 'feedback_submit') {
 					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.feedback)) return;
 					await handleFeedbackModal(interaction);

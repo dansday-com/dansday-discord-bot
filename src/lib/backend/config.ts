@@ -274,33 +274,36 @@ export async function getLevelingSettings(guildId: string) {
 
 	const config = settings.settings;
 
+	const req = config.REQUIREMENTS || DEFAULT_LEVELING_SETTINGS.REQUIREMENTS;
+	const msg = config.MESSAGE || DEFAULT_LEVELING_SETTINGS.MESSAGE;
+	const voi = config.VOICE || DEFAULT_LEVELING_SETTINGS.VOICE;
+	const videoCfg = config.VIDEO || DEFAULT_LEVELING_SETTINGS.VIDEO;
+	const streamCfg = config.STREAMING || DEFAULT_LEVELING_SETTINGS.STREAMING;
+
 	let progressChannelId = config.PROGRESS_CHANNEL_ID;
 	if (!progressChannelId) {
 		progressChannelId = null;
 	}
 
-	const videoCfg = (config as { VIDEO?: { XP_PER_MINUTE?: number } }).VIDEO;
-	const streamCfg = (config as { STREAMING?: { XP_PER_MINUTE?: number } }).STREAMING;
-
 	return {
 		MESSAGE: {
-			XP: config.MESSAGE.XP,
-			COOLDOWN_SECONDS: config.MESSAGE.COOLDOWN_SECONDS
+			XP: msg.XP ?? DEFAULT_LEVELING_SETTINGS.MESSAGE.XP,
+			COOLDOWN_SECONDS: msg.COOLDOWN_SECONDS ?? DEFAULT_LEVELING_SETTINGS.MESSAGE.COOLDOWN_SECONDS
 		},
 		VOICE: {
-			XP_PER_MINUTE: config.VOICE.XP_PER_MINUTE,
-			AFK_XP_PER_MINUTE: config.VOICE.AFK_XP_PER_MINUTE,
-			COOLDOWN_SECONDS: config.VOICE.COOLDOWN_SECONDS
+			XP_PER_MINUTE: voi.XP_PER_MINUTE ?? DEFAULT_LEVELING_SETTINGS.VOICE.XP_PER_MINUTE,
+			AFK_XP_PER_MINUTE: voi.AFK_XP_PER_MINUTE ?? DEFAULT_LEVELING_SETTINGS.VOICE.AFK_XP_PER_MINUTE,
+			COOLDOWN_SECONDS: voi.COOLDOWN_SECONDS ?? DEFAULT_LEVELING_SETTINGS.VOICE.COOLDOWN_SECONDS
 		},
 		VIDEO: {
-			XP_PER_MINUTE: Math.max(0, Number(videoCfg?.XP_PER_MINUTE ?? 0))
+			XP_PER_MINUTE: Math.max(0, Number(videoCfg?.XP_PER_MINUTE ?? DEFAULT_LEVELING_SETTINGS.VIDEO.XP_PER_MINUTE))
 		},
 		STREAMING: {
-			XP_PER_MINUTE: Math.max(0, Number(streamCfg?.XP_PER_MINUTE ?? 0))
+			XP_PER_MINUTE: Math.max(0, Number(streamCfg?.XP_PER_MINUTE ?? DEFAULT_LEVELING_SETTINGS.STREAMING.XP_PER_MINUTE))
 		},
 		REQUIREMENTS: {
-			BASE_XP: config.REQUIREMENTS.BASE_XP,
-			MULTIPLIER: config.REQUIREMENTS.MULTIPLIER
+			BASE_XP: req.BASE_XP ?? DEFAULT_LEVELING_SETTINGS.REQUIREMENTS.BASE_XP,
+			MULTIPLIER: req.MULTIPLIER ?? DEFAULT_LEVELING_SETTINGS.REQUIREMENTS.MULTIPLIER
 		},
 		PROGRESS_CHANNEL_ID: progressChannelId
 	};
@@ -465,7 +468,7 @@ export const WELCOMER = {
 		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.welcomer))) return [];
 		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.welcomer);
 		if (settings?.settings?.messages?.length > 0) return settings.settings.messages;
-		return [];
+		return DEFAULT_WELCOMER_MESSAGES;
 	}
 };
 
@@ -490,7 +493,7 @@ export const BOOSTER = {
 		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.booster))) return [];
 		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.booster);
 		if (settings?.settings?.messages?.length > 0) return settings.settings.messages;
-		return [];
+		return DEFAULT_BOOSTER_MESSAGES;
 	}
 };
 

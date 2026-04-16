@@ -323,7 +323,7 @@
 	{/if}
 
 	{#if data.user.authenticated && data.user.account_type === 'superadmin'}
-		<div class="bg-ash-800 border-ash-700 mb-4 mt-8 rounded-xl border p-4 sm:mb-6 sm:p-6">
+		<div class="bg-ash-800 border-ash-700 mt-8 mb-4 rounded-xl border p-4 sm:mb-6 sm:p-6">
 			<h3 class="text-ash-100 mb-1 text-lg font-semibold">
 				<i class="fas fa-bullhorn mr-2 text-violet-400"></i>Global Embed Builder
 			</h3>

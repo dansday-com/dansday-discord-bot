@@ -170,7 +170,6 @@
 	let presence = $state(presenceFromServer(data.botPresence));
 	let savingPresence = $state(false);
 
-
 	$effect(() => {
 		presence = presenceFromServer(data.botPresence);
 	});
@@ -404,7 +403,6 @@
 			</button>
 		</div>
 	</div>
-
 
 	<div class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-6">
 		<div class="mb-4 flex items-center justify-between">

@@ -7,6 +7,7 @@ import * as schema from './schema.js';
 import { SERVER_SETTINGS, AUTO_ENABLED_COMPONENTS } from './frontend/panelServer.js';
 import { logger, toMySQLDateTime, parseMySQLDateTimeUtc, getNowUtc } from './utils/index.js';
 import { DEFAULT_MAIN_EMBED_COLOR, DEFAULT_MAIN_EMBED_FOOTER } from './utils/mainConfigSettings.js';
+import { DEFAULT_LEVELING_SETTINGS, DEFAULT_WELCOMER_MESSAGES, DEFAULT_BOOSTER_MESSAGES } from './backend/config.js';
 import type { DiscordQuestSummary } from './backend/api/discord-quest-api.js';
 
 function getConnectionConfig() {
@@ -831,7 +832,17 @@ async function ensureLeaderboardSettingsHaveSlug(serverId: number, serverName: s
 
 async function seedNewServerSettings(serverId: number) {
 	for (const component of SERVER_SETTINGS.withFeatureSwitch) {
-		await upsertServerSettings(serverId, component, { enabled: AUTO_ENABLED_COMPONENTS.has(component) });
+		const baseSettings: Record<string, any> = { enabled: AUTO_ENABLED_COMPONENTS.has(component) };
+
+		if (component === SERVER_SETTINGS.component.leveling) {
+			Object.assign(baseSettings, DEFAULT_LEVELING_SETTINGS);
+		} else if (component === SERVER_SETTINGS.component.welcomer) {
+			baseSettings.messages = DEFAULT_WELCOMER_MESSAGES;
+		} else if (component === SERVER_SETTINGS.component.booster) {
+			baseSettings.messages = DEFAULT_BOOSTER_MESSAGES;
+		}
+
+		await upsertServerSettings(serverId, component, baseSettings);
 	}
 
 	await upsertServerSettings(serverId, SERVER_SETTINGS.component.main, {

@@ -80,12 +80,15 @@
 	const roleColor = $derived(parseRoleHex(highestRole?.color));
 
 	onMount(() => {
+		document.body.style.overflow = 'hidden';
 		requestAnimationFrame(() => {
 			visible = true;
 		});
 	});
 
-	onDestroy(() => {});
+	onDestroy(() => {
+		document.body.style.overflow = '';
+	});
 
 	function closeModal() {
 		visible = false;

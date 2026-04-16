@@ -356,14 +356,28 @@
 							<textarea
 								bind:value={embedDescription}
 								maxlength={MAX_DESC}
-								rows="4"
-								placeholder="Use markdown like **bold**, *italics*, [links](https://...)"
-								class="bg-ash-800 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full resize-y rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
+								rows={4}
+								placeholder="Embed description..."
+								class="bg-ash-800 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full resize-none rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
 							></textarea>
 						</div>
 
 						<div class="mb-4">
-							<label class="text-ash-300 mb-1 block text-xs font-medium">Color (Hex)</label>
+							<div class="mb-1 flex justify-between">
+								<label class="text-ash-300 text-xs font-medium">Footer</label>
+								<span class="text-xs {charWarning(embedFooter.length, MAX_FOOTER)}">{embedFooter.length}/{MAX_FOOTER}</span>
+							</div>
+							<input
+								type="text"
+								bind:value={embedFooter}
+								maxlength={MAX_FOOTER}
+								placeholder="Footer text..."
+								class="bg-ash-800 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
+							/>
+						</div>
+
+						<div class="mb-4">
+							<label class="text-ash-300 mb-1 block text-xs font-medium">Color</label>
 							<div class="flex items-center gap-2">
 								<input
 									type="color"
@@ -375,40 +389,26 @@
 									type="text"
 									bind:value={embedColorHex}
 									oninput={(e) => syncColorHex((e.target as HTMLInputElement).value)}
-									placeholder="#ff0000"
+									placeholder={embedColorHex}
 									class="bg-ash-800 border-ash-600 text-ash-100 focus:ring-ash-500 flex-1 rounded-lg border px-3 py-2 font-mono text-sm focus:ring-2 focus:outline-none"
 								/>
 							</div>
 						</div>
 
 						<div class="mb-4">
-							<div class="mb-1 flex justify-between">
-								<label class="text-ash-300 text-xs font-medium">Footer Text</label>
-								<span class="text-xs {charWarning(embedFooter.length, MAX_FOOTER)}">{embedFooter.length}/{MAX_FOOTER}</span>
-							</div>
-							<input
-								type="text"
-								bind:value={embedFooter}
-								maxlength={MAX_FOOTER}
-								placeholder="Footer..."
-								class="bg-ash-800 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
-							/>
-						</div>
-
-						<div class="mb-4">
-							<label class="text-ash-300 mb-1.5 block text-xs font-medium">Image (Optional)</label>
-							<div class="bg-ash-800 mb-2 flex rounded-lg p-1">
+							<label class="text-ash-300 mb-2 block text-xs font-medium">Image</label>
+							<div class="mb-2 flex gap-2">
 								<button
 									onclick={() => (imageMode = 'url')}
 									class="flex-1 rounded-lg py-1.5 text-xs font-medium transition-colors
-										{imageMode === 'url' ? 'bg-ash-600 text-ash-100' : 'text-ash-400 hover:text-ash-200'}"
+										{imageMode === 'url' ? 'bg-ash-500 text-ash-100' : 'bg-ash-700 text-ash-400 hover:text-ash-200'}"
 								>
 									URL
 								</button>
 								<button
 									onclick={() => (imageMode = 'upload')}
 									class="flex-1 rounded-lg py-1.5 text-xs font-medium transition-colors
-										{imageMode === 'upload' ? 'bg-ash-600 text-ash-100' : 'text-ash-400 hover:text-ash-200'}"
+										{imageMode === 'upload' ? 'bg-ash-500 text-ash-100' : 'bg-ash-700 text-ash-400 hover:text-ash-200'}"
 								>
 									Upload
 								</button>
@@ -450,7 +450,7 @@
 						<i class="fas fa-eye text-cyan-400"></i>Preview
 					</h3>
 
-					<div class="mb-6 rounded-lg bg-[#313338] p-3">
+					<div class="mb-4 rounded-lg bg-[#313338] p-3">
 						<div class="rounded-r-lg border-l-4 bg-[#2b2d31] py-2 pl-3" style="border-color: {embedColor}">
 							{#if embedTitle}
 								<p class="mb-1 text-sm font-semibold text-white">{embedTitle}</p>
@@ -466,7 +466,7 @@
 								<img src={imagePreview} alt="Embed" class="mt-2 max-w-full rounded" />
 							{/if}
 							{#if embedFooterPreview}
-								<p class="mt-2 text-[10px] text-[#949ba4]">{embedFooterPreview}</p>
+								<p class="mt-2 border-t border-[#3d4045] pt-2 text-xs text-[#949ba4]">{embedFooterPreview}</p>
 							{/if}
 						</div>
 					</div>

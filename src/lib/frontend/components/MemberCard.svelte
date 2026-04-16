@@ -551,39 +551,20 @@
 		ctx.letterSpacing = '1px';
 		ctx.fillText('</DANSDAY> BOT', cx, y);
 
-		const OUT_W = 1080;
-		const OUT_H = 1920;
-		const outCanvas = document.createElement('canvas');
-		outCanvas.width = OUT_W;
-		outCanvas.height = OUT_H;
-		const out = outCanvas.getContext('2d')!;
-
-		const bg = out.createLinearGradient(0, 0, 0, OUT_H);
-		bg.addColorStop(0, '#73858c');
-		bg.addColorStop(1, '#6a7b82');
-		out.fillStyle = bg;
-		out.fillRect(0, 0, OUT_W, OUT_H);
-
-		const [gr, gg, gb] = hexToRgb(rc);
-		const glow = out.createRadialGradient(OUT_W * 0.5, OUT_H * 0.38, 40, OUT_W * 0.5, OUT_H * 0.38, OUT_W * 0.5);
-		glow.addColorStop(0, `rgba(${gr},${gg},${gb},0.18)`);
-		glow.addColorStop(1, 'rgba(36,95,115,0)');
-		out.fillStyle = glow;
-		out.beginPath();
-		out.ellipse(OUT_W * 0.5, OUT_H * 0.38, OUT_W * 0.46, OUT_W * 0.32, 0, 0, Math.PI * 2);
-		out.fill();
-
-		const maxW = OUT_W * 0.86;
-		const maxH = OUT_H * 0.82;
+		const maxW = 1080 * 0.86;
+		const maxH = 1920 * 0.82;
 		const scale = clamp(Math.min(maxW / cardCanvas.width, maxH / cardCanvas.height), 0.1, 10);
 		const drawW = cardCanvas.width * scale;
 		const drawH = cardCanvas.height * scale;
-		const dx = (OUT_W - drawW) / 2;
-		const dy = (OUT_H - drawH) / 2;
+
+		const outCanvas = document.createElement('canvas');
+		outCanvas.width = drawW;
+		outCanvas.height = drawH;
+		const out = outCanvas.getContext('2d')!;
 
 		out.imageSmoothingEnabled = true;
 		out.imageSmoothingQuality = 'high';
-		out.drawImage(cardCanvas, dx, dy, drawW, drawH);
+		out.drawImage(cardCanvas, 0, 0, drawW, drawH);
 
 		return new Promise<Blob>((resolve, reject) => {
 			outCanvas.toBlob((b) => (b ? resolve(b) : reject(new Error('toBlob failed'))), 'image/png');

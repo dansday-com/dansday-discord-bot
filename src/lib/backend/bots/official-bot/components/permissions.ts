@@ -1,7 +1,6 @@
 import { PERMISSIONS, getServerForCurrentBot } from '../../../config.js';
 import { translate } from '../i18n.js';
 import db from '../../../../database.js';
-import { publicSiteOrigin } from '../../../../url.js';
 
 async function getGuildPermissions(guildId: string) {
 	try {

@@ -3,7 +3,6 @@ import type { RequestHandler } from '@sveltejs/kit';
 import { existsSync, unlinkSync } from 'fs';
 import { basename, join } from 'path';
 import { logger } from '$lib/utils/index.js';
-import { accountOwnsBot } from '$lib/frontend/panelServer.js';
 
 const uploadsDir = join(process.cwd(), 'data', 'embed-images');
 

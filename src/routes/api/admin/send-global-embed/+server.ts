@@ -5,7 +5,6 @@ import { logger } from '$lib/utils/index.js';
 import { existsSync, readFileSync, unlinkSync } from 'fs';
 import { basename, join } from 'path';
 import { request as httpRequest } from 'http';
-import { accountOwnsBot } from '$lib/frontend/panelServer.js';
 
 const uploadsDir = join(process.cwd(), 'data', 'embed-images');
 
@@ -15,7 +14,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 	}
 
 	try {
-		const bots = await db.getBots();
+		const bots = await db.getAllBots();
 		if (!bots || bots.length === 0) {
 			return json({ success: false, error: 'No bots found' }, { status: 404 });
 		}

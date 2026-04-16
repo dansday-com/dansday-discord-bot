@@ -157,7 +157,7 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 
 	for (let s = 1; s <= DEMO.serverCount; s++) {
 		const discordServerId = `${sessionSlug}_server_${String(s).padStart(4, '0')}`;
-		const serverName = `Dansday Demo Server ${s}`;
+		const serverName = `</DANSDAY> Demo Server ${s}`;
 
 		await db.execute(sql`
 			INSERT INTO servers

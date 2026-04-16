@@ -23,7 +23,7 @@
 </script>
 
 <svelte:head>
-	<title>Members | Dansday Discord Bot</title>
+	<title>Members | &lt;/DANSDAY&gt; Discord Bot</title>
 </svelte:head>
 
 <div class="bg-ash-800 border-ash-700 mb-4 flex gap-1 overflow-x-auto rounded-xl border p-1">

@@ -3,24 +3,24 @@
 </script>
 
 <LegalDocPage
-	title="Terms of Service | Dansday Discord Bot"
-	description="Terms governing use of Dansday Discord Bot, the web panel, and related services."
+	title="Terms of Service | &lt;/DANSDAY&gt; Discord Bot"
+	description="Terms governing use of &lt;/DANSDAY&gt; Discord Bot, the web panel, and related services."
 	heading="Terms of Service"
-	intro="Please read these terms before using Dansday Discord Bot or the website."
+	intro="Please read these terms before using &lt;/DANSDAY&gt; Discord Bot or the website."
 >
 	<p class="m-legal-meta">Last updated: April 11, 2026</p>
 
 	<h3>Agreement</h3>
 	<p>
-		By adding Dansday Discord Bot to a Discord server, using the web panel, or otherwise using the Service, you agree to these Terms of Service and to
+		By adding &lt;/DANSDAY&gt; Discord Bot to a Discord server, using the web panel, or otherwise using the Service, you agree to these Terms of Service and to
 		Discord&rsquo;s rules. If you do not agree, do not use the Service. Customize this document with your entity name, jurisdiction, and policies after legal
 		review.
 	</p>
 
 	<h3>The Service</h3>
 	<p>
-		Dansday Discord Bot provides Discord bot features and a web-based configuration panel. Features, availability, and limits may change. We may suspend or
-		discontinue parts of the Service with reasonable notice where practicable.
+		&lt;/DANSDAY&gt; Discord Bot provides Discord bot features and a web-based configuration panel. Features, availability, and limits may change. We may
+		suspend or discontinue parts of the Service with reasonable notice where practicable.
 	</p>
 
 	<h3>Eligibility and Discord</h3>

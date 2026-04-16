@@ -171,7 +171,7 @@
 </script>
 
 <svelte:head>
-	<title>Server Accounts | Dansday Discord Bot</title>
+	<title>Server Accounts | &lt;/DANSDAY&gt; Discord Bot</title>
 </svelte:head>
 
 <div class="space-y-6">

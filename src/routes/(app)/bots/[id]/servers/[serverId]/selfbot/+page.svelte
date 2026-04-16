@@ -119,7 +119,7 @@
 </script>
 
 <svelte:head>
-	<title>Selfbots | Dansday Discord Bot</title>
+	<title>Selfbots | &lt;/DANSDAY&gt; Discord Bot</title>
 </svelte:head>
 
 <AddSelfbotModal open={showAdd} serverId={data.serverId} onclose={() => (showAdd = false)} onadded={() => invalidateAll()} />

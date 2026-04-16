@@ -14,7 +14,7 @@
 </script>
 
 <svelte:head>
-	<title>{title} | Dansday Discord Bot</title>
+	<title>{title} | &lt;/DANSDAY&gt; Discord Bot</title>
 </svelte:head>
 
 <div class="m-root">

@@ -6,7 +6,7 @@
 </script>
 
 <svelte:head>
-	<title>Dansday Discord Bot</title>
+	<title>&lt;/DANSDAY&gt; Discord Bot</title>
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
 </svelte:head>
 

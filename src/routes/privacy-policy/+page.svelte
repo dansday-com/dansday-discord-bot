@@ -3,17 +3,17 @@
 </script>
 
 <LegalDocPage
-	title="Privacy Policy | Dansday Discord Bot"
-	description="How Dansday Discord Bot collects, uses, and protects information when you use the website and bot."
+	title="Privacy Policy | &lt;/DANSDAY&gt; Discord Bot"
+	description="How &lt;/DANSDAY&gt; Discord Bot collects, uses, and protects information when you use the website and bot."
 	heading="Privacy Policy"
-	intro="How we handle information for the Dansday Discord Bot service and this website."
+	intro="How we handle information for the &lt;/DANSDAY&gt; Discord Bot service and this website."
 >
 	<p class="m-legal-meta">Last updated: April 11, 2026</p>
 
 	<h3>Overview</h3>
 	<p>
-		This policy describes how information may be collected and used when you use Dansday Discord Bot (the &ldquo;Service&rdquo;), including the web panel,
-		Discord interactions, and related features. Replace or expand the sections below so they match how you actually operate the Service and your legal
+		This policy describes how information may be collected and used when you use &lt;/DANSDAY&gt; Discord Bot (the &ldquo;Service&rdquo;), including the web
+		panel, Discord interactions, and related features. Replace or expand the sections below so they match how you actually operate the Service and your legal
 		jurisdiction.
 	</p>
 

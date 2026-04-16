@@ -17,7 +17,7 @@
 </script>
 
 <svelte:head>
-	<title>Configuration | Dansday Discord Bot</title>
+	<title>Configuration | &lt;/DANSDAY&gt; Discord Bot</title>
 </svelte:head>
 
 <div class="flex flex-col gap-4 lg:flex-row">

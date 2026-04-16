@@ -14,8 +14,6 @@ import {
 import { publicSiteOrigin } from '../../../../../../url.js';
 import { translate } from '../../../i18n.js';
 import { isUtcSqlExpired } from '../../../../../../utils/index.js';
-import { DEFAULT_MAIN_EMBED_COLOR, DEFAULT_MAIN_EMBED_FOOTER } from '../../../../../../utils/mainConfigSettings.js';
-
 export const commandDefinition = {
 	name: 'setup',
 	description: 'Set up the bot: creates a </DANSDAY> category with all required channels. Administrator only.',
@@ -120,12 +118,6 @@ export async function execute(interaction: any, client: any) {
 			return;
 		}
 
-		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.main, {
-			main_channel: channelMap['menu'],
-			color: DEFAULT_MAIN_EMBED_COLOR,
-			footer: DEFAULT_MAIN_EMBED_FOOTER
-		});
-
 		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.leveling, {
 			enabled: true,
 			PROGRESS_CHANNEL_ID: channelMap['leveling'],
@@ -153,9 +145,6 @@ export async function execute(interaction: any, client: any) {
 			enabled: true,
 			channel_id: channelMap['roblox_catalog_notifier']
 		});
-
-		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.moderation, { enabled: true });
-		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.afk, { enabled: true });
 
 		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.staff_rating, {
 			enabled: false,

@@ -168,8 +168,6 @@ export type ServerSettingsComponentName = keyof typeof SERVER_SETTINGS.component
 export const AUTO_ENABLED_COMPONENTS: Set<string> = new Set([
 	component.public_statistics,
 	component.roblox_catalog_notifier,
-	component.moderation,
-	component.afk,
 	component.giveaway,
 	component.leveling,
 	component.welcomer,

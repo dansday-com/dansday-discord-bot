@@ -1,4 +1,4 @@
-# Dansday Discord Bot
+# </DANSDAY> Discord Bot
 
 Run leveling, moderation, an embed builder, Discord Quests, quest enroll, self-bot options, creator tools, live public statistics pages, Roblox catalog alerts, and more from the free web panel in your browser. Configure in one place instead of flooding channels with slash commands. Free for everyone. Self-host from GitHub or add our hosted bot if you do not run your own servers.
 
@@ -87,4 +87,4 @@ Environment variables drive database credentials, sessions, captcha, mail, Redis
 
 ## License
 
-MIT · Author: Akbar Yudhanto · Version: 8.1.2
+MIT · Author: Akbar Yudhanto · Version: 8.1.3

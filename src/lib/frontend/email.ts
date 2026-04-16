@@ -23,7 +23,7 @@ function getTransporter() {
 	});
 }
 
-const APP_NAME = 'Dansday Discord Bot Panel';
+const APP_NAME = '</DANSDAY> Discord Bot Panel';
 
 const baseStyles = `
     * { margin: 0; padding: 0; box-sizing: border-box; }

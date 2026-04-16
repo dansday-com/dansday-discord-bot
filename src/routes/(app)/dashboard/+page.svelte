@@ -96,7 +96,7 @@
 </script>
 
 <svelte:head>
-	<title>Dashboard | Dansday Discord Bot</title>
+	<title>Dashboard | &lt;/DANSDAY&gt; Discord Bot</title>
 </svelte:head>
 
 <AddBotModal open={showAddBot} onclose={() => (showAddBot = false)} onadded={() => invalidateAll()} />

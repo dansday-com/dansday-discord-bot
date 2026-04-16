@@ -1,6 +1,6 @@
 {
 	"menu": {
-		"title": "📋 Dansday Bot Menu",
+		"title": "📋 </DANSDAY> Bot Menu",
 		"description": "Select a feature from the buttons below:",
 		"noAccess": "❌ You don't have access to any features.",
 		"button": "📋 Menu",
@@ -8,7 +8,7 @@
 	},
 	"interface": {
 		"panel": {
-			"title": "Dansday Bot Panel",
+			"title": "</DANSDAY> Bot Panel",
 			"description": "Click **Menu** to access bot features based on your role permissions.",
 			"sent": "✅ Bot interface sent to {channel}!",
 			"setupHasOwnerAccount": "✅ Bot interface sent to {channel}. This server already has an owner account — sign in on the web panel. No new invite was created.",

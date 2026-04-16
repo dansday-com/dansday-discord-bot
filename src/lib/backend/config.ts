@@ -531,10 +531,7 @@ export const CUSTOM_SUPPORTER_ROLE = {
 	async getStoredRoleConstraints(guildId: string) {
 		requireBotConfig();
 		requireGuildId(guildId, 'getting stored custom role constraints');
-		const settings = await getServerSettingsRow(
-			(await getOfficialBotServer(guildId)).id,
-			serverSettingsComponent.custom_supporter_role
-		);
+		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.custom_supporter_role);
 		if (settings?.settings) {
 			return {
 				ROLE_START: settings.settings.role_start || null,
@@ -913,14 +910,14 @@ export const DEFAULT_LEVELING_SETTINGS = {
 export const DEFAULT_WELCOMER_MESSAGES = [
 	'👋 Welcome {user} to {server}! You are member #{memberCount} (Account age: {accountAge}).',
 	'🎉 {user} joined {server}! Member #{memberCount} | Account age: {accountAge}.',
-	'🌟 Welcome {user}! You\'re now part of {server} (Member #{memberCount}, Account age: {accountAge}).',
+	"🌟 Welcome {user}! You're now part of {server} (Member #{memberCount}, Account age: {accountAge}).",
 	'🚀 {user} just joined {server}! Member #{memberCount} | Account age: {accountAge}.',
-	'🎊 Hello {user}! Welcome to {server}! You\'re member #{memberCount} (Account age: {accountAge}).'
+	"🎊 Hello {user}! Welcome to {server}! You're member #{memberCount} (Account age: {accountAge})."
 ];
 
 export const DEFAULT_BOOSTER_MESSAGES = [
 	'🎉 {user} just boosted {server}! Current level: {boostLevel} | Total boosts: {totalBoosts}.',
-	'💎 Thanks {user} for boosting {server}! We\'re now Level {boostLevel} with {totalBoosts} boosts.',
+	"💎 Thanks {user} for boosting {server}! We're now Level {boostLevel} with {totalBoosts} boosts.",
 	'🚀 {user} boosted {server}! Server Level: {boostLevel} | Boosts: {totalBoosts}.',
 	'🔥 Huge thanks to {user} for boosting {server}! Total boosts: {totalBoosts} (Level {boostLevel}).',
 	'⭐ {user} just gave {server} a boost! Level {boostLevel} with {totalBoosts} boosts.'

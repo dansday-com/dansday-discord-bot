@@ -549,7 +549,7 @@
 		ctx.textAlign = 'center';
 		ctx.textBaseline = 'top';
 		ctx.letterSpacing = '1px';
-		ctx.fillText('DANSDAY BOT', cx, y);
+		ctx.fillText('&lt;/DANSDAY&gt; BOT', cx, y);
 
 		const OUT_W = 1080;
 		const OUT_H = 1920;
@@ -821,7 +821,7 @@
 				</div>
 
 				<div class="mc-card-footer">
-					<span class="mc-watermark">Dansday Bot</span>
+					<span class="mc-watermark">&lt;/DANSDAY&gt; Bot</span>
 				</div>
 			</div>
 		</div>

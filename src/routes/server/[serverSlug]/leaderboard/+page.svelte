@@ -193,10 +193,10 @@
 </script>
 
 <svelte:head>
-	<title>{data.server.name || data.server.slug} Leaderboard | Dansday Discord Bot</title>
+	<title>{data.server.name || data.server.slug} Leaderboard | &lt;/DANSDAY&gt; Discord Bot</title>
 	<meta name="description" content="Top members leaderboard for {data.server.name || data.server.slug}." />
 	<meta name="theme-color" content="#245f73" />
-	<meta property="og:title" content="{data.server.name || data.server.slug} Leaderboard | Dansday Discord Bot" />
+	<meta property="og:title" content="{data.server.name || data.server.slug} Leaderboard | &lt;/DANSDAY&gt; Discord Bot" />
 	<meta property="og:description" content="See who's on top in {data.server.name || data.server.slug}." />
 </svelte:head>
 

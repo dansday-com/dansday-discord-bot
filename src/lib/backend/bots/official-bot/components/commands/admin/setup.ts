@@ -118,46 +118,56 @@ export async function execute(interaction: any, client: any) {
 			return;
 		}
 
+		const getSettings = async (comp: string) => {
+			const row = await db.getServerSettings(server.id, comp);
+			return row?.settings && typeof row.settings === 'object' ? row.settings : null;
+		};
+
+		const lvl = (await getSettings(SERVER_SETTINGS.component.leveling)) || { enabled: true, ...DEFAULT_LEVELING_SETTINGS };
 		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.leveling, {
-			enabled: true,
-			PROGRESS_CHANNEL_ID: channelMap['leveling'],
-			...DEFAULT_LEVELING_SETTINGS
+			...lvl,
+			PROGRESS_CHANNEL_ID: channelMap['leveling']
 		});
 
+		const welc = (await getSettings(SERVER_SETTINGS.component.welcomer)) || { enabled: true, messages: DEFAULT_WELCOMER_MESSAGES };
 		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.welcomer, {
-			enabled: true,
-			channels: [channelMap['welcomer']],
-			messages: DEFAULT_WELCOMER_MESSAGES
+			...welc,
+			channels: [channelMap['welcomer']]
 		});
 
+		const boost = (await getSettings(SERVER_SETTINGS.component.booster)) || { enabled: true, messages: DEFAULT_BOOSTER_MESSAGES };
 		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.booster, {
-			enabled: true,
-			channels: [channelMap['booster']],
-			messages: DEFAULT_BOOSTER_MESSAGES
+			...boost,
+			channels: [channelMap['booster']]
 		});
 
+		const give = (await getSettings(SERVER_SETTINGS.component.giveaway)) || { enabled: true };
 		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.giveaway, {
-			enabled: true,
+			...give,
 			giveaway_channel: channelMap['giveaway']
 		});
 
+		const rblx = (await getSettings(SERVER_SETTINGS.component.roblox_catalog_notifier)) || { enabled: true };
 		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.roblox_catalog_notifier, {
-			enabled: true,
+			...rblx,
 			channel_id: channelMap['roblox_catalog_notifier']
 		});
 
+		const staff = (await getSettings(SERVER_SETTINGS.component.staff_rating)) || { enabled: false };
 		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.staff_rating, {
-			enabled: false,
+			...staff,
 			rating_channel_id: channelMap['staff_rating']
 		});
 
+		const quest = (await getSettings(SERVER_SETTINGS.component.discord_quest_notifier)) || { enabled: false };
 		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.discord_quest_notifier, {
-			enabled: false,
+			...quest,
 			channel_id: channelMap['discord_quest_notifier']
 		});
 
+		const cc = (await getSettings(SERVER_SETTINGS.component.content_creator)) || { enabled: false };
 		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.content_creator, {
-			enabled: false,
+			...cc,
 			target_channel_id: channelMap['content_creator']
 		});
 

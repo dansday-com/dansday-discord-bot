@@ -549,7 +549,7 @@
 		ctx.textAlign = 'center';
 		ctx.textBaseline = 'top';
 		ctx.letterSpacing = '1px';
-		ctx.fillText('&lt;/DANSDAY&gt; BOT', cx, y);
+		ctx.fillText('</DANSDAY> BOT', cx, y);
 
 		const OUT_W = 1080;
 		const OUT_H = 1920;

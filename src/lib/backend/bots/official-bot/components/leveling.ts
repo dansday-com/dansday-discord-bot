@@ -291,7 +291,7 @@ export async function sendLevelChangeDM(guildId, discordMemberId, serverName, ne
 			: null;
 
 		await dmChannel.send({
-			embeds: [embed],
+			embeds: [dmEmbed],
 			components: dmRow ? [dmRow] : undefined
 		});
 		await logger.log(`⭐ Sent level change DM (${contextLabel}) to ${discordMemberId} for level ${newLevel} in ${serverName}`);

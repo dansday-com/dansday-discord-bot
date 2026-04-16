@@ -149,6 +149,7 @@
 	}
 
 	function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+		r = Math.min(r, w / 2, h / 2);
 		ctx.beginPath();
 		ctx.moveTo(x + r, y);
 		ctx.lineTo(x + w - r, y);
@@ -458,13 +459,14 @@
 			const badgeX = cx - badgeW / 2;
 			const badgeH = 22;
 
-			// Badge background
-			roundRect(ctx, badgeX, y, badgeW, badgeH, 99);
+			// Badge background (pill shape: clamp radius to half the shortest side)
+			const badgeR = Math.min(badgeH / 2, badgeW / 2);
+			roundRect(ctx, badgeX, y, badgeW, badgeH, badgeR);
 			ctx.fillStyle = colorMix(rc, 0.1);
 			ctx.fill();
 			ctx.strokeStyle = colorMix(rc, 0.35);
 			ctx.lineWidth = 1;
-			roundRect(ctx, badgeX, y, badgeW, badgeH, 99);
+			roundRect(ctx, badgeX, y, badgeW, badgeH, badgeR);
 			ctx.stroke();
 
 			// Dot

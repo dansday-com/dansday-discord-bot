@@ -863,6 +863,7 @@ export const SETUP_CATEGORY_NAME = '</DANSDAY>';
 
 export const SETUP_CHANNEL_DEFS = [
 	{ name: '「💻」menu', settingsKey: 'menu' },
+	{ name: '「⚙️」bot-updates', settingsKey: 'bot_updates' },
 	{ name: '「🚪」welcome', settingsKey: 'welcomer' },
 	{ name: '「🚀」booster', settingsKey: 'booster' },
 	{ name: '「🔨」moderation', settingsKey: 'moderation' },

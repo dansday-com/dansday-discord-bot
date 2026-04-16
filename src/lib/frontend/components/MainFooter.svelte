@@ -10,11 +10,6 @@
 			Copyright © {new Date().getFullYear()}
 			<a href="https://dansday.com">dansday.com</a>. All rights reserved.
 		</p>
-		<p class="m-footer-legal">
-			<a href="/privacy-policy">Privacy Policy</a>
-			<span class="m-footer-legal-sep" aria-hidden="true">·</span>
-			<a href="/terms-of-service">Terms of Service</a>
-		</p>
 		<p class="m-footer-open">
 			Free and open source on
 			<a href="https://github.com/dansday/dansday-discord-bot">GitHub</a>.

@@ -51,15 +51,11 @@
 		},
 		"ownerRequired": {
 			"title": "❌ **Registrasi Owner Diperlukan**",
-			"description": "Owner server harus mendaftar akun di web panel sebelum siapapun dapat menggunakan fitur **{action}**.{extra}",
-			"extra": {
-				"invite": "Jalankan `/setup` untuk membuat tautan undangan atau pergi ke {url}"
-			}
+			"description": "Owner server harus mendaftar akun di web panel sebelum siapapun dapat menggunakan fitur **{action}**."
 		},
 		"notConfigured": {
 			"title": "❌ **Izin Belum Dikonfigurasi**",
-			"description": "Owner server atau administrator harus mengkonfigurasi izin role{extra} sebelum siapapun dapat menggunakan fitur **{action}**.",
-			"extra": " di {url}"
+			"description": "Owner server atau administrator harus mengkonfigurasi izin role sebelum siapapun dapat menggunakan fitur **{action}**."
 		}
 	},
 	"settings": {

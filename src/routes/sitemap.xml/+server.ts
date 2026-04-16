@@ -49,21 +49,7 @@ export const GET: RequestHandler = async () => {
 			];
 		});
 
-	const staticPages = [
-		{ loc: `${baseUrl}/`, changefreq: 'weekly' as const, priority: 1.0, lastmod: new Date().toISOString() },
-		{
-			loc: `${baseUrl.replace(/\/$/, '')}/privacy-policy`,
-			changefreq: 'monthly' as const,
-			priority: 0.5,
-			lastmod: new Date().toISOString()
-		},
-		{
-			loc: `${baseUrl.replace(/\/$/, '')}/terms-of-service`,
-			changefreq: 'monthly' as const,
-			priority: 0.5,
-			lastmod: new Date().toISOString()
-		}
-	];
+	const staticPages = [{ loc: `${baseUrl}/`, changefreq: 'weekly' as const, priority: 1.0, lastmod: new Date().toISOString() }];
 
 	const allUrlData = [...staticPages, ...publicPageRows];
 

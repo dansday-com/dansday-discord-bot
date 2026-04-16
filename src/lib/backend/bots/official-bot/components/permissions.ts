@@ -122,27 +122,16 @@ export async function getPermissionDeniedMessage(guild: any, action: string, use
 		const hasOwner = accounts.some((a: any) => a.account_type === 'owner');
 
 		if (!hasOwner) {
-			const origin = publicSiteOrigin();
-			let extra = '';
-			if (origin) {
-				const originId = origin;
-				const inviteMsg = await translate('permissions.ownerRequired.extra.invite', guild.id, userId ?? '', { url: originId });
-				extra = `\n\n${inviteMsg || `Run \`/setup\` to generate an invite link or go to ${originId}`}`;
-			}
 			const title = await translate('permissions.ownerRequired.title', guild.id, userId ?? '');
-			const desc = await translate('permissions.ownerRequired.description', guild.id, userId ?? '', { action: actionName, extra });
+			const desc = await translate('permissions.ownerRequired.description', guild.id, userId ?? '', { action: actionName });
 			return `${title}\n\n${desc}`;
 		}
 
 		const perms = await getGuildPermissions(guild.id);
 		const allRoles = [...perms.ADMIN_ROLES, ...perms.STAFF_ROLES, ...perms.SUPPORTER_ROLES, ...perms.MEMBER_ROLES, ...perms.CONTENT_CREATOR_ROLES];
 		if (allRoles.length === 0) {
-			const origin = publicSiteOrigin();
-			const extraId = origin ? ` at ${origin}` : ' on the web panel';
-			const extra = await translate('permissions.notConfigured.extra', guild.id, userId ?? '', { url: origin || '' });
-			const fallbackExtra = extra ? extra : extraId;
 			const title = await translate('permissions.notConfigured.title', guild.id, userId ?? '');
-			const desc = await translate('permissions.notConfigured.description', guild.id, userId ?? '', { action: actionName, extra: fallbackExtra });
+			const desc = await translate('permissions.notConfigured.description', guild.id, userId ?? '', { action: actionName });
 			return `${title}\n\n${desc}`;
 		}
 	} catch (e) {

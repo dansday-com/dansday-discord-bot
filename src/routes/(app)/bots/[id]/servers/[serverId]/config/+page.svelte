@@ -2,6 +2,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
+	import ChannelPicker from '$lib/frontend/components/ChannelPicker.svelte';
 	import { DEFAULT_MAIN_EMBED_COLOR, DEFAULT_MAIN_EMBED_FOOTER } from '$lib/utils/mainConfigSettings.js';
 	import type { PageProps } from './$types';
 
@@ -10,6 +11,7 @@
 	let saving = $state(false);
 	let defaultColor = $state(data.settings?.color ?? DEFAULT_MAIN_EMBED_COLOR);
 	let defaultFooter = $state(data.settings?.footer ?? DEFAULT_MAIN_EMBED_FOOTER);
+	let botUpdatesChannel = $state(data.settings?.bot_updates_channel_id ?? '');
 
 	async function save() {
 		saving = true;
@@ -21,7 +23,8 @@
 				body: JSON.stringify({
 					component: SERVER_SETTINGS.component.main,
 					color: defaultColor,
-					footer: defaultFooter
+					footer: defaultFooter,
+					bot_updates_channel_id: botUpdatesChannel
 				})
 			});
 			const d = await res.json();
@@ -84,6 +87,14 @@
 				</div>
 			</div>
 		</div>
+	</div>
+
+	<div>
+		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
+			<i class="fas fa-bullhorn mr-1.5 text-emerald-400"></i>Bot Updates Channel
+		</label>
+		<p class="text-ash-500 mb-2 text-xs">Channel to receive announcements and changelogs from the bot developers.</p>
+		<ChannelPicker channels={data.channels} categories={data.categories} value={botUpdatesChannel} onchange={(id) => (botUpdatesChannel = id)} />
 	</div>
 
 	<button

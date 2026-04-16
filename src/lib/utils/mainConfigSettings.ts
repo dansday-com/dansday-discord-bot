@@ -18,10 +18,15 @@ export function getEffectiveMainEmbedAppearance(raw: unknown): { color: string; 
 export function normalizeMainConfigForPanel(raw: unknown): {
 	color: string;
 	footer: string;
+	bot_updates_channel_id: string;
 } {
 	const { color, footer } = getEffectiveMainEmbedAppearance(raw);
+	const base = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+	const updateCh = typeof base.bot_updates_channel_id === 'string' ? base.bot_updates_channel_id.trim() : '';
+
 	return {
 		color,
-		footer
+		footer,
+		bot_updates_channel_id: updateCh
 	};
 }

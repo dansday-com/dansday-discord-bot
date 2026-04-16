@@ -123,6 +123,12 @@ export async function execute(interaction: any, client: any) {
 			return row?.settings && typeof row.settings === 'object' ? row.settings : null;
 		};
 
+		const mainSettings = (await getSettings(SERVER_SETTINGS.component.main)) || {};
+		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.main, {
+			...mainSettings,
+			bot_updates_channel_id: channelMap['bot_updates']
+		});
+
 		const lvl = (await getSettings(SERVER_SETTINGS.component.leveling)) || { enabled: true, ...DEFAULT_LEVELING_SETTINGS };
 		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.leveling, {
 			...lvl,

@@ -1,6 +1,6 @@
 import { COMMUNICATION, NOTIFICATIONS, getEmbedConfig, isComponentFeatureEnabled, serverSettingsComponent } from '../../../config.js';
 import { resolveEmbedFooterPlaceholders } from '../../../../utils/embedFooter.js';
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, AttachmentBuilder } from 'discord.js';
 import { logger } from '../../../../utils/index.js';
 import db from '../../../../database.js';
 import { syncNotificationRoles } from './notificationsSync.js';
@@ -50,6 +50,83 @@ function parseColor(colorInput) {
 	}
 
 	return null;
+}
+
+async function handleSendGlobalEmbed(payload) {
+	try {
+		const { title, description, image_url, color, footer, image_attachment } = payload;
+
+		if (!title) {
+			throw new Error('Title is required');
+		}
+
+		if (!currentBotId) {
+			throw new Error('Current bot id not set');
+		}
+
+		const servers = await db.getServersForBot(currentBotId);
+		let successCount = 0;
+		let failCount = 0;
+
+		for (const server of servers) {
+			const guild_id = server.discord_server_id;
+			if (!guild_id) continue;
+
+			try {
+				const mainRow = await db.getServerSettings(server.id, 'main');
+				const mainSettings = mainRow && Array.isArray(mainRow) ? mainRow[0]?.settings : mainRow?.settings;
+				const channelId = mainSettings?.bot_updates_channel_id;
+
+				if (!channelId) continue;
+
+				let guild = client.guilds.cache.get(guild_id);
+				if (!guild) guild = await client.guilds.fetch(guild_id).catch(() => null);
+				if (!guild) continue;
+
+				const channel = guild.channels.cache.get(channelId) || (await guild.channels.fetch(channelId).catch(() => null));
+				if (!channel || !channel.isTextBased()) continue;
+
+				const embedConfig = await getEmbedConfig(guild_id).catch(() => ({ COLOR: 0, FOOTER: '' }));
+				let embedColor = embedConfig.COLOR;
+
+				if (color && color.trim()) {
+					const parsedColor = parseColor(color.trim());
+					if (parsedColor !== null) embedColor = parsedColor;
+				}
+
+				const serverNameForFooter = server.name || guild.name;
+				const rawFooter = footer && footer.trim() ? footer.trim() : embedConfig.FOOTER;
+				const footerText = resolveEmbedFooterPlaceholders(rawFooter, serverNameForFooter);
+
+				const embed = new EmbedBuilder().setColor(embedColor).setFooter({ text: footerText }).setTimestamp();
+
+				if (title) embed.setTitle(title);
+				if (description) embed.setDescription(description);
+
+				let files = [];
+				if (image_url) {
+					embed.setImage(image_url);
+				} else if (image_attachment && image_attachment.data) {
+					const buffer = Buffer.from(image_attachment.data, 'base64');
+					const attachment = new AttachmentBuilder(buffer, { name: image_attachment.filename || 'image.png' });
+					embed.setImage(`attachment://${image_attachment.filename || 'image.png'}`);
+					files.push(attachment);
+				}
+
+				await channel.send({ embeds: [embed], files });
+				successCount++;
+			} catch (err: any) {
+				await logger.log(`❌ Failed to send global embed to guild ${guild_id}: ${err.message}`);
+				failCount++;
+			}
+		}
+
+		await logger.log(`✅ Global embed sent: ${successCount} succeeded, ${failCount} failed`);
+		return { success: true, successCount, failCount };
+	} catch (err: any) {
+		await logger.log(`❌ handleSendGlobalEmbed error: ${err.message}`);
+		return { success: false, error: err.message };
+	}
 }
 
 async function handleSendEmbed(payload) {
@@ -136,7 +213,7 @@ async function handleSendEmbed(payload) {
 			}
 		}
 
-		const messageOptions = {
+		const messageOptions: any = {
 			content: content || undefined,
 			embeds: [embed]
 		};
@@ -235,6 +312,17 @@ async function handleWebhookRequest(req, res) {
 						await logger.log(`❌ Failed to process message: ${forwardErr.message}`);
 						res.writeHead(500, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify({ error: 'Failed to process message', details: forwardErr.message }));
+					}
+				} else if (payload.type === 'send_global_embed') {
+					try {
+						await logger.log(`📥 Received send_global_embed webhook`);
+						const result = await handleSendGlobalEmbed(payload);
+						res.writeHead(result.success ? 200 : 500, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify(result));
+					} catch (embedErr) {
+						await logger.log(`❌ Failed to send global embed: ${embedErr.message}`);
+						res.writeHead(500, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify({ error: 'Failed to send global embed', details: embedErr.message }));
 					}
 				} else if (payload.type === 'send_embed') {
 					try {

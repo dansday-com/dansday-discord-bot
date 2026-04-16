@@ -51,15 +51,11 @@
 		},
 		"ownerRequired": {
 			"title": "❌ **Owner Registration Required**",
-			"description": "The server owner must register an account on the web panel before anyone can use the **{action}** feature.{extra}",
-			"extra": {
-				"invite": "Run `/setup` to generate an invite link or go to {url}"
-			}
+			"description": "The server owner must register an account on the web panel before anyone can use the **{action}** feature."
 		},
 		"notConfigured": {
 			"title": "❌ **Permissions Not Configured**",
-			"description": "The server owner or administrator must configure role permissions{extra} before anyone can use the **{action}** feature.",
-			"extra": " at {url}"
+			"description": "The server owner or administrator must configure role permissions before anyone can use the **{action}** feature."
 		}
 	},
 	"settings": {

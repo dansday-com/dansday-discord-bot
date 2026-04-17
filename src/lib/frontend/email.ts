@@ -23,7 +23,7 @@ function getTransporter() {
 	});
 }
 
-const APP_NAME = '</DANSDAY> Discord Bot Panel';
+const APP_NAME = '&lt;/DANSDAY&gt; Discord Bot';
 
 const baseStyles = `
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -94,8 +94,8 @@ function emailLayout(title: string, accentColor: string, bodyContent: string, ye
                     ${bodyContent}
                 </div>
                 <div class="footer">
-                    <p>© ${year} <a href="https://dansday.com">${APP_NAME}</a>. All rights reserved.</p>
-                    <p>This is an automated message, please do not reply.</p>
+                    <p>Copyright © ${year} <a href="https://dansday.com">dansday.com</a>. All rights reserved.</p>
+                    <p>Free and open source on <a href="https://github.com/dansday/dansday-discord-bot">GitHub</a>.</p>
                 </div>
             </div>
         </body>

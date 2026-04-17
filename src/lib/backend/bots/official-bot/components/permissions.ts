@@ -134,7 +134,6 @@ export async function getPermissionDeniedMessage(guild: any, action: string, use
 			return `${title}\n\n${desc}`;
 		}
 	} catch (e) {
-		// Fallback to standard error if database query fails
 	}
 
 	const requiredRoles = await getRequiredRolesForAction(guild, action);

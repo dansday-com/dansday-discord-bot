@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
+	import { page } from '$app/state';
 	import type { PageProps } from './$types';
 	import LocalTime from '$lib/frontend/components/LocalTime.svelte';
 	import MemberCard from '$lib/frontend/components/MemberCard.svelte';
@@ -93,10 +94,6 @@
 
 	let cardMember = $state<(typeof liveMembers)[number] | null>(null);
 
-	function openCard(member: (typeof liveMembers)[number]) {
-		cardMember = member;
-	}
-
 	function closeCard() {
 		cardMember = null;
 	}
@@ -107,6 +104,14 @@
 	}
 
 	onMount(() => {
+		const cardId = page.url.searchParams.get('card');
+		if (cardId && data.members) {
+			const found = data.members.find((m: any) => m.cardToken === cardId);
+			if (found) {
+				cardMember = found;
+			}
+		}
+
 		const url = `/api/leaderboards/${encodeURIComponent(data.server.slug)}/members-stream`;
 		const source = new EventSource(url);
 		es = source;
@@ -229,9 +234,6 @@
 					class:m-members-card--in={mounted}
 					style="--pubm-card-dly:{i * 32}ms"
 				>
-					<button class="m-members-share-btn" onclick={() => openCard(member)} title="Share member card" aria-label="Share member card">
-						<i class="fas fa-share-alt" aria-hidden="true"></i>
-					</button>
 					<div class="m-members-top">
 						<div class="m-members-aside">
 							<span class="m-members-rank-pill" title="Leaderboard rank">{member.rank != null ? `#${member.rank}` : '—'}</span>

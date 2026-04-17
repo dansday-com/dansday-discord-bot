@@ -1860,33 +1860,6 @@
 	color: var(--role-dot, var(--role-fg, #245f73));
 }
 
-.m-root .m-members-share-btn {
-	position: absolute;
-	top: 12px;
-	right: 12px;
-	width: 30px;
-	height: 30px;
-	border-radius: 8px;
-	border: 1px solid rgba(36, 95, 115, 0.15);
-	background: rgba(36, 95, 115, 0.06);
-	color: var(--lb-text-subtle);
-	font-size: 12px;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	cursor: pointer;
-	transition:
-		background 0.18s,
-		color 0.18s,
-		border-color 0.18s;
-	z-index: 2;
-}
-.m-root .m-members-share-btn:hover {
-	background: rgba(36, 95, 115, 0.14);
-	color: var(--chili-hot);
-	border-color: rgba(36, 95, 115, 0.3);
-}
-
 .m-root .m-members-pager {
 	display: flex;
 	align-items: center;

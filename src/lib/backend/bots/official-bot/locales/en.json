@@ -4,7 +4,8 @@
 		"description": "Select a feature from the buttons below:",
 		"noAccess": "❌ You don't have access to any features.",
 		"button": "📋 Menu",
-		"statistics": "🌐 Statistics"
+		"statistics": "🌐 Statistics",
+		"memberCard": "💳 Member Card"
 	},
 	"interface": {
 		"panel": {

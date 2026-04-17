@@ -133,8 +133,7 @@ export async function getPermissionDeniedMessage(guild: any, action: string, use
 			const desc = await translate('permissions.notConfigured.description', guild.id, userId ?? '', { action: actionName });
 			return `${title}\n\n${desc}`;
 		}
-	} catch (e) {
-	}
+	} catch (e) {}
 
 	const requiredRoles = await getRequiredRolesForAction(guild, action);
 	const roleList = requiredRoles.length > 0 ? requiredRoles.map((role) => `**${role}**`).join(', ') : 'the required role';

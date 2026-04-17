@@ -31,8 +31,8 @@ export async function handleNotificationsButton(interaction) {
 			return;
 		}
 
-		const rolesWithCategory = await NOTIFICATIONS.getNotificationRolesWithCategory(interaction.guild.id);
-		if (rolesWithCategory.length === 0) {
+		const channelsWithCategory = await NOTIFICATIONS.getNotificationChannelsWithCategory(interaction.guild.id);
+		if (channelsWithCategory.length === 0) {
 			const errorMsg = await translate('notifications.errors.noRoles', interaction.guild.id, interaction.user.id);
 			await interaction
 				.reply({
@@ -47,9 +47,9 @@ export async function handleNotificationsButton(interaction) {
 		const title = await translate('notifications.title', interaction.guild.id, interaction.user.id);
 		const description = await translate('notifications.description', interaction.guild.id, interaction.user.id);
 
-		const notificationRoles = rolesWithCategory.map(({ discord_role_id }) => interaction.guild.roles.cache.get(discord_role_id)).filter(Boolean);
+		const validChannels = channelsWithCategory.map(({ discord_channel_id }) => interaction.guild.channels.cache.get(discord_channel_id)).filter(Boolean);
 
-		if (notificationRoles.length === 0) {
+		if (validChannels.length === 0) {
 			const errorMsg = await translate('notifications.errors.noRoles', interaction.guild.id, interaction.user.id);
 			await interaction
 				.reply({
@@ -60,16 +60,16 @@ export async function handleNotificationsButton(interaction) {
 			return;
 		}
 
-		const memberCurrentNotificationRoleIds = notificationRoles.filter((r) => member.roles.cache.has(r.id)).map((r) => r.id);
+		const memberCurrentNotificationChannelIds = await NOTIFICATIONS.getMemberNotificationChannelIds(interaction.guild.id, interaction.user.id);
 
-		const roleIdToCategory = new Map(rolesWithCategory.map((r) => [r.discord_role_id, r.category_name || '']));
-		const options = notificationRoles.slice(0, 25).map((role) => {
-			const label = role.name.replace(/\[\d+\]\s*/, '');
+		const channelIdToCategory = new Map(channelsWithCategory.map((r) => [r.discord_channel_id, r.category_name || '']));
+		const options = validChannels.slice(0, 25).map((channel) => {
+			const label = channel.name;
 			return {
 				label: label.slice(0, 100),
-				value: role.id,
-				description: (roleIdToCategory.get(role.id) || '').slice(0, 100),
-				default: memberCurrentNotificationRoleIds.includes(role.id)
+				value: channel.id,
+				description: (channelIdToCategory.get(channel.id) || '').slice(0, 100),
+				default: memberCurrentNotificationChannelIds.includes(channel.id)
 			};
 		});
 
@@ -137,26 +137,11 @@ export async function handleNotificationsSelect(interaction) {
 			return;
 		}
 
-		const notificationRoleIds = new Set(await NOTIFICATIONS.getNotificationRoleIds(interaction.guild.id));
-		const selectedIds = new Set(interaction.values || []);
+		const channelsWithCategory = await NOTIFICATIONS.getNotificationChannelsWithCategory(interaction.guild.id);
+		const notificationChannelIds = new Set(channelsWithCategory.map((r) => r.discord_channel_id));
+		const selectedIds = new Set((interaction.values || []).filter((id) => notificationChannelIds.has(id)));
 
-		const toAdd = [...selectedIds].filter((id) => notificationRoleIds.has(id) && !member.roles.cache.has(id));
-		const toRemove = [...notificationRoleIds].filter((id) => !selectedIds.has(id) && member.roles.cache.has(id));
-
-		for (const roleId of toAdd) {
-			try {
-				await member.roles.add(roleId);
-			} catch (err) {
-				logger.log(`⚠️ Notifications: could not add role ${roleId} to ${member.user.tag}: ${err.message}`);
-			}
-		}
-		for (const roleId of toRemove) {
-			try {
-				await member.roles.remove(roleId);
-			} catch (err) {
-				logger.log(`⚠️ Notifications: could not remove role ${roleId} from ${member.user.tag}: ${err.message}`);
-			}
-		}
+		await NOTIFICATIONS.updateMemberNotificationChannels(interaction.guild.id, interaction.user.id, Array.from(selectedIds));
 
 		const successMsg = await translate('notifications.updated', interaction.guild.id, interaction.user.id);
 		await interaction
@@ -166,7 +151,7 @@ export async function handleNotificationsSelect(interaction) {
 			})
 			.catch(() => null);
 
-		await logger.log(`🔔 Notifications updated for ${member.user.tag}: +${toAdd.length} -${toRemove.length}`);
+		await logger.log(`🔔 Notifications updated for ${member.user.tag}: ${selectedIds.size} channels`);
 	} catch (error) {
 		logger.log(`❌ Notifications select error: ${error.message}`);
 		await interaction

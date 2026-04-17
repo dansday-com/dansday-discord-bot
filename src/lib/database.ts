@@ -493,77 +493,77 @@ async function getServerIdsInSameGuild(serverId: any) {
 	return rows.map((r) => r.id);
 }
 
-export async function getNotificationRolesForServer(serverId: any) {
+export async function getNotificationChannelsWithCategory(serverId: any, categoryIds: string[]) {
 	await initializeDatabase();
-	return db
-		.select({ discord_channel_id: schema.serverChannels.discord_channel_id, discord_role_id: schema.serverRoles.discord_role_id })
-		.from(schema.serverChannels)
-		.innerJoin(schema.serverRoles, eq(schema.serverRoles.id, schema.serverChannels.notification_role_id!))
-		.where(and(eq(schema.serverChannels.server_id, Number(serverId)), isNotNull(schema.serverChannels.notification_role_id)));
-}
-
-export async function getNotificationRolesWithCategory(serverId: any) {
-	await initializeDatabase();
+	if (!categoryIds || categoryIds.length === 0) return [];
 	const rows = await db.execute(sql`
-		SELECT r.discord_role_id, COALESCE(cat.name, c.name) AS category_name,
+		SELECT c.discord_channel_id, COALESCE(cat.name, c.name) AS category_name,
 		       COALESCE(cat.position, 9999) AS category_position,
 		       COALESCE(c.position, 0) AS channel_position,
 		       c.name AS channel_name
 		FROM server_channels c
-		INNER JOIN server_roles r ON r.id = c.notification_role_id
 		LEFT JOIN server_categories cat ON cat.id = c.category_id
-		WHERE c.server_id = ${Number(serverId)} AND c.notification_role_id IS NOT NULL
+		WHERE c.server_id = ${Number(serverId)} AND cat.discord_category_id IN (${sql.join(categoryIds, sql`, `)})
 		ORDER BY category_position ASC, channel_position ASC, channel_name ASC
 	`);
 	return (rows[0] as unknown as any[]) || [];
 }
 
-export async function getNotificationRoleByChannel(serverId: any, discordChannelId: string) {
+export async function getMemberNotificationChannelIds(serverId: any, discordMemberId: string) {
 	await initializeDatabase();
-	const rows = await db
-		.select({ discord_role_id: schema.serverRoles.discord_role_id })
-		.from(schema.serverChannels)
-		.innerJoin(schema.serverRoles, eq(schema.serverRoles.id, schema.serverChannels.notification_role_id!))
-		.where(and(eq(schema.serverChannels.server_id, Number(serverId)), eq(schema.serverChannels.discord_channel_id, discordChannelId)))
+	const rows = await db.execute(sql`
+		SELECT c.discord_channel_id
+		FROM server_member_notifications n
+		INNER JOIN server_members m ON m.id = n.member_id
+		INNER JOIN server_channels c ON c.id = n.channel_id
+		WHERE m.server_id = ${Number(serverId)} AND m.discord_member_id = ${discordMemberId}
+	`);
+	return ((rows[0] as unknown as any[]) || []).map((r) => r.discord_channel_id);
+}
+
+export async function getNotifiedMemberDiscordIds(serverId: any, discordChannelId: string) {
+	await initializeDatabase();
+	const rows = await db.execute(sql`
+		SELECT m.discord_member_id
+		FROM server_member_notifications n
+		INNER JOIN server_members m ON m.id = n.member_id
+		INNER JOIN server_channels c ON c.id = n.channel_id
+		WHERE c.server_id = ${Number(serverId)} AND c.discord_channel_id = ${discordChannelId}
+	`);
+	return ((rows[0] as unknown as any[]) || []).map((r) => r.discord_member_id);
+}
+
+export async function updateMemberNotificationChannels(serverId: any, discordMemberId: string, discordChannelIds: string[]) {
+	await initializeDatabase();
+	const mRows = await db
+		.select({ id: schema.serverMembers.id })
+		.from(schema.serverMembers)
+		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), eq(schema.serverMembers.discord_member_id, discordMemberId)))
 		.limit(1);
-	return rows[0]?.discord_role_id || null;
-}
+	if (!mRows.length) return false;
+	const mid = mRows[0].id;
 
-export async function upsertNotificationRole(serverId: any, discordChannelId: string, discordRoleId: string) {
-	await initializeDatabase();
-	const serverIds = await getServerIdsInSameGuild(serverId);
-	for (const sid of serverIds) {
-		const roleRows = await db
-			.select({ id: schema.serverRoles.id })
-			.from(schema.serverRoles)
-			.where(and(eq(schema.serverRoles.server_id, sid), eq(schema.serverRoles.discord_role_id, discordRoleId)))
-			.limit(1);
-		const roleId = roleRows[0]?.id;
-		if (!roleId) continue;
-		await db
-			.update(schema.serverChannels)
-			.set({ notification_role_id: roleId })
-			.where(and(eq(schema.serverChannels.server_id, sid), eq(schema.serverChannels.discord_channel_id, discordChannelId)));
+	await db.delete(schema.serverMemberNotifications).where(eq(schema.serverMemberNotifications.member_id, mid));
+
+	if (discordChannelIds && discordChannelIds.length > 0) {
+		const channelRows = await db
+			.select({ id: schema.serverChannels.id })
+			.from(schema.serverChannels)
+			.where(and(eq(schema.serverChannels.server_id, Number(serverId)), inArray(schema.serverChannels.discord_channel_id, discordChannelIds)));
+		const channelIds = channelRows.map((c) => c.id);
+
+		if (channelIds.length > 0) {
+			const now = toMySQLDateTime();
+			await db.insert(schema.serverMemberNotifications).values(
+				channelIds.map((cid) => ({
+					member_id: mid,
+					channel_id: cid,
+					created_at: now as any
+				}))
+			);
+		}
 	}
-}
-
-export async function deleteNotificationRole(serverId: any, discordChannelId: string) {
-	await initializeDatabase();
-	const serverIds = await getServerIdsInSameGuild(serverId);
-	if (serverIds.length === 0) return;
-	await db
-		.update(schema.serverChannels)
-		.set({ notification_role_id: null })
-		.where(and(inArray(schema.serverChannels.server_id, serverIds), eq(schema.serverChannels.discord_channel_id, discordChannelId)));
-}
-
-export async function getNotificationRoleDbIds(serverId: any) {
-	await initializeDatabase();
-	const rows = await db
-		.selectDistinct({ notification_role_id: schema.serverChannels.notification_role_id })
-		.from(schema.serverChannels)
-		.where(and(eq(schema.serverChannels.server_id, Number(serverId)), isNotNull(schema.serverChannels.notification_role_id)));
-	return new Set(rows.map((r) => r.notification_role_id).filter(Boolean));
+	return true;
 }
 
 export async function getContentCreatorRoleDbIds(serverId: any) {
@@ -1239,7 +1239,6 @@ export async function syncMemberRoles(memberId: any, discordRoleIds: string[], s
 
 	if (roleList.length === 0) {
 		await db.delete(schema.serverMemberRoles).where(eq(schema.serverMemberRoles.member_id, mid));
-		await db.delete(schema.serverMemberNotifications).where(eq(schema.serverMemberNotifications.member_id, mid));
 		await db.delete(schema.serverMemberCustomSupporterRoles).where(eq(schema.serverMemberCustomSupporterRoles.member_id, mid));
 		await refreshMemberIsContentCreator(mid, sid, []);
 		return true;
@@ -1260,22 +1259,6 @@ export async function syncMemberRoles(memberId: any, discordRoleIds: string[], s
 				member_id: mid,
 				role_id,
 				created_at: smrNow as any
-			}))
-		);
-	}
-
-	const notificationRoleDbIds = await getNotificationRoleDbIds(serverId);
-	const notificationRoleIdsForMember = roleIdsOnMember.filter((id) => notificationRoleDbIds.has(id));
-
-	await db.delete(schema.serverMemberNotifications).where(eq(schema.serverMemberNotifications.member_id, mid));
-
-	if (notificationRoleIdsForMember.length > 0) {
-		const now = toMySQLDateTime();
-		await db.insert(schema.serverMemberNotifications).values(
-			notificationRoleIdsForMember.map((role_id) => ({
-				member_id: mid,
-				role_id,
-				created_at: now as any
 			}))
 		);
 	}
@@ -3478,13 +3461,10 @@ export default {
 	getSelfbotServerByDiscordId,
 	getServerByDiscordId,
 	getOfficialBotServerIdForServer,
-	getNotificationRolesForServer,
-	getNotificationRolesWithCategory,
-	getNotificationRoleByChannel,
-	getNotificationRoleDbIds,
-	getContentCreatorRoleDbIds,
-	upsertNotificationRole,
-	deleteNotificationRole,
+	getNotificationChannelsWithCategory,
+	getMemberNotificationChannelIds,
+	getNotifiedMemberDiscordIds,
+	updateMemberNotificationChannels,
 	upsertServer,
 	upsertOfficialServer,
 	upsertSelfbotServer,

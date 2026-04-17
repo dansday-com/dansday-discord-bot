@@ -1,4 +1,4 @@
-import { BOOSTER, getEmbedConfig, getBotConfig, isComponentFeatureEnabled, serverSettingsComponent } from '../../../config.js';
+import { BOOSTER, getEmbedConfig, getBotConfig, isComponentFeatureEnabled, serverSettingsComponent, NOTIFICATIONS } from '../../../config.js';
 import { EmbedBuilder } from 'discord.js';
 import db from '../../../../database.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../utils/index.js';
@@ -125,7 +125,17 @@ async function thankBooster(member, client) {
 					.setFooter({ text: embedConfig.FOOTER })
 					.setTimestamp();
 
-				await boosterChannel.send({ embeds: [boosterEmbed] });
+				const notificationMentions = await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(member.guild.id, boosterChannelId).catch(() => null);
+				await boosterChannel.send({
+					content: notificationMentions && notificationMentions.length > 0 ? notificationMentions[0] : undefined,
+					embeds: [boosterEmbed]
+				});
+
+				if (notificationMentions && notificationMentions.length > 1) {
+					for (let i = 1; i < notificationMentions.length; i++) {
+						await boosterChannel.send({ content: notificationMentions[i] }).catch(() => null);
+					}
+				}
 				const memberName = memberData.display_name || memberData.username;
 				await logger.log(`✅ Thanked booster ${memberName} (${member.user.id}) in ${serverData.name} (channel: ${boosterChannel.name})`);
 			} catch (err) {

@@ -537,43 +537,50 @@ export const NOTIFICATIONS = {
 		return settings?.settings || null;
 	},
 
-	async getRoleConstraints(guildId: string) {
-		requireBotConfig();
-		requireGuildId(guildId, 'getting notifications role constraints');
-		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.notifications))) {
-			return { ROLE_START: null, ROLE_END: null };
-		}
-		const sid = (await resolveServerIdForGuildSetting(guildId, serverSettingsComponent.notifications)) ?? (await getOfficialBotServer(guildId)).id;
-		const settings = await getServerSettingsRow(sid, serverSettingsComponent.notifications);
-		if (settings?.settings) {
-			return {
-				ROLE_START: settings.settings.role_start || null,
-				ROLE_END: settings.settings.role_end || null
-			};
-		}
-		return { ROLE_START: null, ROLE_END: null };
-	},
-
-	async getNotificationRoleIds(guildId: string) {
+	async getNotificationChannelsWithCategory(guildId: string) {
 		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.notifications))) return [];
 		const server = await getOfficialBotServer(guildId).catch(() => null);
 		if (!server) return [];
-		const rows = await db.getNotificationRolesForServer(server.id);
-		return (rows || []).map((r: any) => r.discord_role_id).filter(Boolean);
+		const config = await this.getConfigByServerId(server.id);
+		const categoryIds = config?.category_ids || [];
+		if (categoryIds.length === 0) return [];
+		return await db.getNotificationChannelsWithCategory(server.id, categoryIds);
 	},
 
-	async getNotificationRolesWithCategory(guildId: string) {
-		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.notifications))) return [];
-		const server = await getOfficialBotServer(guildId).catch(() => null);
-		if (!server) return [];
-		return await db.getNotificationRolesWithCategory(server.id);
-	},
-
-	async getNotificationRoleIdForChannel(guildId: string, channelId: string) {
+	async getNotifiedMemberMentionsForChannel(guildId: string, channelId: string): Promise<string[] | null> {
 		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.notifications))) return null;
 		const server = await getOfficialBotServer(guildId).catch(() => null);
 		if (!server || !channelId) return null;
-		return (await db.getNotificationRoleByChannel(server.id, channelId)) || null;
+		const ids = await db.getNotifiedMemberDiscordIds(server.id, channelId);
+		if (!ids || ids.length === 0) return null;
+
+		const chunks: string[] = [];
+		let currentChunk = '';
+		for (const id of ids) {
+			const mention = `<@${id}> `;
+			if (currentChunk.length + mention.length > 1950) {
+				chunks.push(currentChunk.trim());
+				currentChunk = mention;
+			} else {
+				currentChunk += mention;
+			}
+		}
+		if (currentChunk) chunks.push(currentChunk.trim());
+
+		return chunks.length > 0 ? chunks : null;
+	},
+
+	async getMemberNotificationChannelIds(guildId: string, memberId: string) {
+		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.notifications))) return [];
+		const server = await getOfficialBotServer(guildId).catch(() => null);
+		if (!server || !memberId) return [];
+		return await db.getMemberNotificationChannelIds(server.id, memberId);
+	},
+
+	async updateMemberNotificationChannels(guildId: string, memberId: string, channelIds: string[]) {
+		const server = await getOfficialBotServer(guildId).catch(() => null);
+		if (!server || !memberId) return false;
+		return await db.updateMemberNotificationChannels(server.id, memberId, channelIds);
 	}
 };
 

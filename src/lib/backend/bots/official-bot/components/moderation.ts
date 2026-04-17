@@ -1,5 +1,5 @@
 import { EmbedBuilder } from 'discord.js';
-import { getEmbedConfig, getBotConfig, MODERATION_CONFIG } from '../../../config.js';
+import { getEmbedConfig, getBotConfig, MODERATION_CONFIG, NOTIFICATIONS } from '../../../config.js';
 import db from '../../../../database.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../utils/index.js';
 
@@ -30,7 +30,18 @@ async function sendModerationLog(client, embedData, guildId = null) {
 			embed.addFields(embedData.fields);
 		}
 
-		await channel.send({ embeds: [embed] });
+		const notificationMentions = await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(guildId, logChannelId).catch(() => null);
+		await channel.send({
+			content: notificationMentions && notificationMentions.length > 0 ? notificationMentions[0] : undefined,
+			embeds: [embed]
+		});
+
+		if (notificationMentions && notificationMentions.length > 1) {
+			for (let i = 1; i < notificationMentions.length; i++) {
+				await channel.send({ content: notificationMentions[i] }).catch(() => null);
+			}
+		}
+
 		await logger.log(`✅ Sent moderation log: ${embedData.title} for ${embedData.userTag || 'unknown'}`);
 	} catch (err) {
 		await logger.log(`❌ Failed to send moderation log: ${err.message}`);

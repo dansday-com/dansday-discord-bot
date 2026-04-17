@@ -234,7 +234,6 @@ export const serverChannels = mysqlTable(
 		type: text('type'),
 		category_id: int('category_id').references(() => serverCategories.id, { onDelete: 'set null' }),
 		position: int('position'),
-		notification_role_id: int('notification_role_id').references(() => serverRoles.id, { onDelete: 'set null' }),
 		created_at: datetime('created_at').notNull(),
 		updated_at: datetime('updated_at').notNull()
 	},
@@ -394,12 +393,12 @@ export const serverMemberNotifications = mysqlTable(
 		member_id: int('member_id')
 			.notNull()
 			.references(() => serverMembers.id, { onDelete: 'cascade' }),
-		role_id: int('role_id')
+		channel_id: int('channel_id')
 			.notNull()
-			.references(() => serverRoles.id, { onDelete: 'cascade' }),
+			.references(() => serverChannels.id, { onDelete: 'cascade' }),
 		created_at: datetime('created_at').notNull()
 	},
-	(t) => [uniqueIndex('unique_member_notification_role').on(t.member_id, t.role_id), index('idx_server_member_notifications_role').on(t.role_id)]
+	(t) => [uniqueIndex('unique_member_notification_channel').on(t.member_id, t.channel_id), index('idx_server_member_notifications_channel').on(t.channel_id)]
 );
 
 export const serverMemberRoles = mysqlTable(

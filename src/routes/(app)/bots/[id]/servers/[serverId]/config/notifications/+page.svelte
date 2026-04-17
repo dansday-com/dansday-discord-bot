@@ -2,7 +2,6 @@
 	import { invalidateAll } from '$app/navigation';
 	import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
-	import RolePicker from '$lib/frontend/components/RolePicker.svelte';
 	import CategoryPicker from '$lib/frontend/components/CategoryPicker.svelte';
 	import ConfigToggleRow from '$lib/frontend/components/ConfigToggleRow.svelte';
 	import type { PageProps } from './$types';
@@ -11,8 +10,6 @@
 
 	let saving = $state(false);
 	let featureEnabled = $state(data.settings?.enabled === true);
-	let roleStart = $state<string>(data.settings?.role_start ?? '');
-	let roleEnd = $state<string>(data.settings?.role_end ?? '');
 	let categoryIds = $state<string[]>(data.settings?.category_ids ?? []);
 
 	async function save() {
@@ -24,8 +21,6 @@
 				credentials: 'include',
 				body: JSON.stringify({
 					component: SERVER_SETTINGS.component.notifications,
-					role_start: roleStart,
-					role_end: roleEnd,
 					category_ids: categoryIds,
 					enabled: featureEnabled
 				})
@@ -45,11 +40,11 @@
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
 		<i class="fas fa-bell text-rose-400"></i>Channel notification
 	</h3>
-	<p class="text-ash-400 text-xs">Per-channel ping roles from selected categories (bot menu). Not Discord Quest alerts.</p>
+	<p class="text-ash-400 text-xs">Per-channel notification opt-in for members (bot menu) from selected categories. Not Discord Quest alerts.</p>
 
 	<ConfigToggleRow
 		label="Channel notification module"
-		description="When off, per-channel notification roles and menu actions are disabled."
+		description="When off, per-channel notifications and menu actions are disabled."
 		labelIconClass="fas fa-bell text-rose-400"
 		bind:enabled={featureEnabled}
 		ariaLabel="Toggle channel notification module"
@@ -63,26 +58,10 @@
 	<div class="space-y-5 transition-opacity" class:pointer-events-none={!featureEnabled} class:opacity-50={!featureEnabled}>
 		<div>
 			<label class="text-ash-300 mb-1.5 block text-xs font-medium">
-				<i class="fas fa-arrow-up mr-1 text-rose-400"></i>Notification Role Start (Top / Highest Position)
-			</label>
-			<p class="text-ash-500 mb-2 text-xs">Highest role position where notification roles will be created. Roles will be placed below this.</p>
-			<RolePicker roles={data.roles} value={roleStart} single placeholder="Select role..." onchange={(v) => (roleStart = v as string)} />
-		</div>
-
-		<div>
-			<label class="text-ash-300 mb-1.5 block text-xs font-medium">
-				<i class="fas fa-arrow-down mr-1 text-rose-400"></i>Notification Role End (Bottom / Lowest Position)
-			</label>
-			<p class="text-ash-500 mb-2 text-xs">Lowest role position where notification roles will be created. Roles will be placed above this.</p>
-			<RolePicker roles={data.roles} value={roleEnd} single placeholder="Select role..." onchange={(v) => (roleEnd = v as string)} />
-		</div>
-
-		<div>
-			<label class="text-ash-300 mb-1.5 block text-xs font-medium">
 				<i class="fas fa-folder mr-1 text-rose-400"></i>Categories
 			</label>
 			<p class="text-ash-500 mb-2 text-xs">
-				Channels inside these categories will get a notification role (one role per channel). Multiple categories allowed.
+				Channels inside these categories will be available for members to opt-in for notifications. Multiple categories allowed.
 			</p>
 			<CategoryPicker categories={data.categories} value={categoryIds} onchange={(v) => (categoryIds = v)} />
 		</div>

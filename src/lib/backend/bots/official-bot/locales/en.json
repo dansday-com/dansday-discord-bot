@@ -438,7 +438,7 @@
 	"notifications": {
 		"button": "🔔 Notifications",
 		"title": "🔔 Notification Preferences",
-		"description": "Select which channels you want to receive notifications for. You will get the selected roles assigned to you.",
+		"description": "Select which channels you want to receive notifications for. You will be tagged individually when a notification occurs.",
 		"selectPlaceholder": "Select notification channels...",
 		"updated": "✅ Your notification preferences have been updated.",
 		"errors": {

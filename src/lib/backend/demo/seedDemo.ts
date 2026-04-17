@@ -269,7 +269,6 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 					type: 'guild_text',
 					category_id: catId(`${pfx}_cat_info`),
 					position: 3,
-					notification_role_id: null,
 					created_at: nowDb,
 					updated_at: nowDb
 				},
@@ -280,7 +279,6 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 					type: 'guild_announcement',
 					category_id: catId(`${pfx}_cat_info`),
 					position: 2,
-					notification_role_id: null,
 					created_at: nowDb,
 					updated_at: nowDb
 				},
@@ -291,7 +289,6 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 					type: 'guild_text',
 					category_id: catId(`${pfx}_cat_chat`),
 					position: 1,
-					notification_role_id: null,
 					created_at: nowDb,
 					updated_at: nowDb
 				},
@@ -302,7 +299,6 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 					type: 'guild_voice',
 					category_id: catId(`${pfx}_cat_voice`),
 					position: 1,
-					notification_role_id: null,
 					created_at: nowDb,
 					updated_at: nowDb
 				}

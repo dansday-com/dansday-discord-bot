@@ -164,9 +164,15 @@ export async function updateStaffRatingRole(guild, serverId, staffMemberId, staf
 			const channel = guild.channels.cache.get(ratingChannelId) || (await guild.channels.fetch(ratingChannelId).catch(() => null));
 			if (channel && channel.isTextBased()) {
 				const ratingEmbed = buildRatingChannelEmbed(staffDiscordId, clamped, totalReports, embedConfig, options.channelContext);
-				const notificationRoleId = await NOTIFICATIONS.getNotificationRoleIdForChannel(guild.id, ratingChannelId).catch(() => null);
-				const content = notificationRoleId ? `<@&${notificationRoleId}>` : undefined;
+				const notificationMentions = await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(guild.id, ratingChannelId).catch(() => null);
+				const content = notificationMentions && notificationMentions.length > 0 ? notificationMentions[0] : undefined;
 				await channel.send({ content, embeds: [ratingEmbed] }).catch(() => null);
+
+				if (notificationMentions && notificationMentions.length > 1) {
+					for (let i = 1; i < notificationMentions.length; i++) {
+						await channel.send({ content: notificationMentions[i] }).catch(() => null);
+					}
+				}
 			}
 		}
 		await member

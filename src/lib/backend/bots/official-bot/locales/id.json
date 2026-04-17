@@ -385,7 +385,7 @@
 	"notifications": {
 		"button": "🔔 Notifikasi",
 		"title": "🔔 Preferensi Notifikasi",
-		"description": "Pilih channel mana yang ingin kamu dapatkan notifikasinya. Role yang dipilih akan diberikan kepadamu.",
+		"description": "Pilih channel mana yang ingin kamu dapatkan notifikasinya. Kamu akan di-tag secara individu saat ada notifikasi baru.",
 		"selectPlaceholder": "Pilih channel notifikasi...",
 		"updated": "✅ Preferensi notifikasi kamu telah diperbarui.",
 		"errors": {

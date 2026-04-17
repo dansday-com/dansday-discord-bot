@@ -375,6 +375,16 @@
 				<span class="m-mini-value">{fmt(liveStats.leveling_total_voice_afk)}</span>
 				<span class="m-mini-label">AFK min</span>
 			</div>
+			<div class="m-mini">
+				<i class="fas fa-video"></i>
+				<span class="m-mini-value">{fmt(liveStats.leveling_total_voice_video)}</span>
+				<span class="m-mini-label">Video min</span>
+			</div>
+			<div class="m-mini">
+				<i class="fas fa-desktop"></i>
+				<span class="m-mini-value">{fmt(liveStats.leveling_total_voice_streaming)}</span>
+				<span class="m-mini-label">Stream min</span>
+			</div>
 		</div>
 	</div>
 </div>

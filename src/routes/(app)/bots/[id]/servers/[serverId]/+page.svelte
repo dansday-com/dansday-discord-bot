@@ -122,7 +122,7 @@
 				<h3 class="text-ash-100 text-base font-bold">Voice Activity</h3>
 			</div>
 			<div class="space-y-2">
-				{#each [{ icon: 'fa-clock', label: 'Total Minutes', value: fmt(s.leveling_total_voice_minutes) }, { icon: 'fa-check-circle', label: 'Active', value: fmt(s.leveling_total_voice_active) }, { icon: 'fa-chart-line', label: 'Avg Minutes', value: avgVoiceMinutes }, { icon: 'fa-chart-bar', label: 'Avg Active', value: avgVoiceActive }, { icon: 'fa-pause-circle', label: 'AFK', value: fmt(s.leveling_total_voice_afk) }] as row}
+				{#each [{ icon: 'fa-clock', label: 'Total Minutes', value: fmt(s.leveling_total_voice_minutes) }, { icon: 'fa-check-circle', label: 'Active', value: fmt(s.leveling_total_voice_active) }, { icon: 'fa-pause-circle', label: 'AFK', value: fmt(s.leveling_total_voice_afk) }, { icon: 'fa-video', label: 'Video', value: fmt(s.leveling_total_voice_video) }, { icon: 'fa-desktop', label: 'Streaming', value: fmt(s.leveling_total_voice_streaming) }] as row}
 					<div class="bg-ash-800/50 flex items-center justify-between rounded-lg p-2">
 						<span class="text-ash-300 flex items-center gap-2 text-sm">
 							<i class="fas {row.icon} text-xs text-yellow-400/90"></i>{row.label}

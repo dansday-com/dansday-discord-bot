@@ -1595,7 +1595,7 @@ export async function getServerOverview(serverId: any, opts?: { forPublicPage?: 
 		db.execute(sql`SELECT COUNT(*) AS count FROM server_categories WHERE server_id = ${Number(serverId)}`),
 		db.execute(sql`SELECT COUNT(*) AS count FROM server_roles WHERE server_id = ${Number(serverId)}`),
 		db.execute(
-			sql`SELECT COALESCE(SUM(experience),0) AS total_experience, COALESCE(AVG(level),0) AS avg_level, COALESCE(MAX(level),0) AS max_level, COALESCE(SUM(chat_total),0) AS total_chat, COALESCE(SUM(voice_minutes_total),0) AS total_voice_minutes, COALESCE(SUM(voice_minutes_active),0) AS total_voice_active, COALESCE(SUM(voice_minutes_afk),0) AS total_voice_afk FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ${Number(serverId)}`
+			sql`SELECT COALESCE(SUM(experience),0) AS total_experience, COALESCE(AVG(level),0) AS avg_level, COALESCE(MAX(level),0) AS max_level, COALESCE(SUM(chat_total),0) AS total_chat, COALESCE(SUM(voice_minutes_total),0) AS total_voice_minutes, COALESCE(SUM(voice_minutes_active),0) AS total_voice_active, COALESCE(SUM(voice_minutes_afk),0) AS total_voice_afk, COALESCE(SUM(voice_minutes_video),0) AS total_voice_video, COALESCE(SUM(voice_minutes_streaming),0) AS total_voice_streaming FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ${Number(serverId)}`
 		),
 		db.execute(
 			sql`SELECT COUNT(DISTINCT smcsr.member_id) AS members_with_custom_roles FROM server_member_custom_supporter_roles smcsr INNER JOIN server_members sm ON sm.id = smcsr.member_id WHERE sm.server_id = ${Number(serverId)}`
@@ -1674,7 +1674,9 @@ export async function getServerOverview(serverId: any, opts?: { forPublicPage?: 
 		leveling_total_chat: r(levelingStats).total_chat || 0,
 		leveling_total_voice_minutes: r(levelingStats).total_voice_minutes || 0,
 		leveling_total_voice_active: r(levelingStats).total_voice_active || 0,
-		leveling_total_voice_afk: r(levelingStats).total_voice_afk || 0
+		leveling_total_voice_afk: r(levelingStats).total_voice_afk || 0,
+		leveling_total_voice_video: r(levelingStats).total_voice_video || 0,
+		leveling_total_voice_streaming: r(levelingStats).total_voice_streaming || 0
 	};
 
 	if (forPublic) {

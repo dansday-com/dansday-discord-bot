@@ -30,8 +30,6 @@
 	let visible = $state(false);
 	let cardEl: HTMLDivElement | undefined = $state();
 	let downloading = $state(false);
-	let sharing = $state(false);
-
 	function memberName(m: MemberData): string {
 		if (m.server_display_name?.trim()) return m.server_display_name;
 		if (m.display_name?.trim()) return m.display_name;
@@ -105,14 +103,6 @@
 
 	function cardFileName(): string {
 		return `${memberName(member).replace(/[^a-zA-Z0-9_-]/g, '_')}_card.png`;
-	}
-
-	function shareUrl(): string {
-		return typeof window !== 'undefined' ? window.location.href : '';
-	}
-
-	function shareText(): string {
-		return `Check out ${memberName(member)}'s member card on ${serverName}!`;
 	}
 
 	const S = 4;
@@ -558,27 +548,6 @@
 		return isProbablyMobile() && canShareFiles();
 	}
 
-	async function cardFile(): Promise<File> {
-		const blob = await captureCardBlob();
-		return new File([blob], cardFileName(), { type: 'image/png' });
-	}
-
-	async function tryNativeShare(text: string, includeUrl: boolean): Promise<boolean> {
-		if (!canShareFiles()) return false;
-		try {
-			const file = await cardFile();
-			const data: ShareData = { text, files: [file] };
-			if (includeUrl) data.url = shareUrl();
-			if (navigator.canShare(data)) {
-				await navigator.share(data);
-				return true;
-			}
-		} catch (e) {
-			if (e instanceof Error && e.name === 'AbortError') return true;
-		}
-		return false;
-	}
-
 	async function downloadCard() {
 		if (!cardEl || downloading) return;
 		downloading = true;
@@ -615,71 +584,6 @@
 			}
 		} finally {
 			downloading = false;
-		}
-	}
-
-	async function shareInstagram() {
-		if (sharing) return;
-		sharing = true;
-		try {
-			const shared = await tryNativeShare(shareText(), false);
-			if (!shared) await downloadCard();
-		} finally {
-			sharing = false;
-		}
-	}
-
-	async function shareX() {
-		if (sharing) return;
-		sharing = true;
-		try {
-			const shared = await tryNativeShare(shareText() + ' ' + shareUrl(), false);
-			if (!shared) {
-				window.open(
-					`https://x.com/intent/tweet?text=${encodeURIComponent(shareText())}&url=${encodeURIComponent(shareUrl())}`,
-					'_blank',
-					'noopener,noreferrer'
-				);
-			}
-		} finally {
-			sharing = false;
-		}
-	}
-
-	function shareFacebook() {
-		window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl())}`, '_blank', 'noopener,noreferrer');
-	}
-
-	async function shareDiscord() {
-		if (sharing) return;
-		sharing = true;
-		try {
-			const shared = await tryNativeShare(shareText() + '\n' + shareUrl(), false);
-			if (!shared) {
-				const blob = await captureCardBlob();
-				try {
-					await navigator.clipboard.write([
-						new ClipboardItem({
-							'image/png': blob,
-							'text/plain': new Blob([`${shareText()} ${shareUrl()}`], { type: 'text/plain' })
-						})
-					]);
-					alert('Card image & text copied to clipboard! Paste it in Discord.');
-				} catch {
-					await navigator.clipboard.writeText(`${shareText()} ${shareUrl()}`).catch(() => {});
-					const url = URL.createObjectURL(blob);
-					const link = document.createElement('a');
-					link.download = cardFileName();
-					link.href = url;
-					document.body.appendChild(link);
-					link.click();
-					document.body.removeChild(link);
-					setTimeout(() => URL.revokeObjectURL(url), 5000);
-					alert('Card image downloaded & text copied! Drag the image into Discord.');
-				}
-			}
-		} finally {
-			sharing = false;
 		}
 	}
 </script>
@@ -769,24 +673,10 @@
 		</div>
 
 		<div class="mc-actions">
-			<button class="mc-action-btn mc-action-btn--download" onclick={downloadCard} disabled={downloading || sharing}>
+			<button class="mc-action-btn mc-action-btn--download" onclick={downloadCard} disabled={downloading}>
 				<i class="fas fa-download"></i>
 				{downloading ? 'Saving...' : 'Download'}
 			</button>
-			<div class="mc-share-row">
-				<button class="mc-share-btn mc-share-btn--instagram" onclick={shareInstagram} disabled={sharing || downloading} title="Share to Instagram">
-					<i class="fab fa-instagram"></i>
-				</button>
-				<button class="mc-share-btn mc-share-btn--x" onclick={shareX} disabled={sharing || downloading} title="Share on X">
-					<i class="fab fa-x-twitter"></i>
-				</button>
-				<button class="mc-share-btn mc-share-btn--facebook" onclick={shareFacebook} title="Share on Facebook">
-					<i class="fab fa-facebook-f"></i>
-				</button>
-				<button class="mc-share-btn mc-share-btn--discord" onclick={shareDiscord} disabled={sharing || downloading} title="Share to Discord">
-					<i class="fab fa-discord"></i>
-				</button>
-			</div>
 		</div>
 	</div>
 </div>

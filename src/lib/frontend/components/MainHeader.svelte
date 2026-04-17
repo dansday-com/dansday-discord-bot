@@ -38,8 +38,7 @@
 			{:else}
 				<a
 					href="/"
-					class="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors sm:px-4 sm:py-2 sm:text-sm {palette ===
-					'light'
+					class="m-btn border {palette === 'light'
 						? 'border-[rgba(187,189,188,0.55)] bg-[#e8e6e3] text-[#1a343f] hover:bg-[#dedcd8]'
 						: 'border-ash-600 bg-ash-800/80 text-ash-200 hover:border-ash-500 hover:bg-ash-700 hover:text-ash-100'}"
 				>

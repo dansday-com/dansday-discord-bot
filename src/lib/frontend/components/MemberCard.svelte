@@ -115,7 +115,7 @@
 		return `Check out ${memberName(member)}'s member card on ${serverName}!`;
 	}
 
-	const S = 2;
+	const S = 4;
 	const CW = 340;
 	const PAD_X = 22;
 	const PAD_TOP = 20;
@@ -233,10 +233,6 @@
 		return `rgba(${r},${g},${b},${pct})`;
 	}
 
-	function clamp(n: number, min: number, max: number): number {
-		return Math.max(min, Math.min(max, n));
-	}
-
 	async function captureCardBlob(): Promise<Blob> {
 		const rc = roleColor;
 		const name = memberName(member);
@@ -284,7 +280,7 @@
 		let CH = PAD_TOP + headerH + 18 + avatarBlockH + 14 + nameH + 8;
 		if (role) CH += roleH + roleGap;
 		else CH += 8;
-		CH += levelLabelH + 2 + levelValueH + 18 + statBoxH + 6 + joinedH + 10 + 1 + 10 + footerH + PAD_BOT;
+		CH += levelLabelH + 2 + levelValueH + 18 + statBoxH + 6 + joinedH + PAD_BOT;
 
 		const cardCanvas = document.createElement('canvas');
 		cardCanvas.width = CW * S;
@@ -534,40 +530,9 @@
 		ctx.textAlign = 'left';
 		ctx.textBaseline = 'middle';
 		ctx.fillText(joinedText, joinedStartX + iconSize + iconGap, y + joinedH / 2);
-		y += joinedH + 10;
-
-		ctx.strokeStyle = C.footerLine;
-		ctx.lineWidth = 1;
-		ctx.beginPath();
-		ctx.moveTo(PAD_X, y);
-		ctx.lineTo(CW - PAD_X, y);
-		ctx.stroke();
-		y += 11;
-
-		ctx.font = `700 9px ${fontBase}`;
-		ctx.fillStyle = C.textFaint;
-		ctx.textAlign = 'center';
-		ctx.textBaseline = 'top';
-		ctx.letterSpacing = '1px';
-		ctx.fillText('</DANSDAY> BOT', cx, y);
-
-		const maxW = 1080 * 0.86;
-		const maxH = 1920 * 0.82;
-		const scale = clamp(Math.min(maxW / cardCanvas.width, maxH / cardCanvas.height), 0.1, 10);
-		const drawW = cardCanvas.width * scale;
-		const drawH = cardCanvas.height * scale;
-
-		const outCanvas = document.createElement('canvas');
-		outCanvas.width = drawW;
-		outCanvas.height = drawH;
-		const out = outCanvas.getContext('2d')!;
-
-		out.imageSmoothingEnabled = true;
-		out.imageSmoothingQuality = 'high';
-		out.drawImage(cardCanvas, 0, 0, drawW, drawH);
 
 		return new Promise<Blob>((resolve, reject) => {
-			outCanvas.toBlob((b) => (b ? resolve(b) : reject(new Error('toBlob failed'))), 'image/png');
+			cardCanvas.toBlob((b) => (b ? resolve(b) : reject(new Error('toBlob failed'))), 'image/png');
 		});
 	}
 
@@ -799,10 +764,6 @@
 						<i class="fas fa-calendar-check"></i>
 						<span>Joined {fmtJoined(member.member_since)}</span>
 					</div>
-				</div>
-
-				<div class="mc-card-footer">
-					<span class="mc-watermark">&lt;/DANSDAY&gt; Bot</span>
 				</div>
 			</div>
 		</div>

@@ -2843,20 +2843,6 @@
 	letter-spacing: 0.04em;
 }
 
-.mc-card-footer {
-	margin-top: 12px;
-	padding-top: 10px;
-	border-top: 1px solid rgba(187, 189, 188, 0.35);
-	text-align: center;
-}
-.mc-watermark {
-	font-size: 9px;
-	font-weight: 700;
-	text-transform: uppercase;
-	letter-spacing: 0.12em;
-	color: var(--lb-text-faint);
-}
-
 /* actions below card */
 .mc-actions {
 	position: relative;

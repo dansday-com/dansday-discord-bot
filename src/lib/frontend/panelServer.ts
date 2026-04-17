@@ -173,7 +173,8 @@ export const AUTO_ENABLED_COMPONENTS: Set<string> = new Set([
 	component.welcomer,
 	component.booster,
 	component.moderation,
-	component.afk
+	component.afk,
+	component.notifications
 ]);
 
 let dbCache: (typeof import('$lib/database.js'))['default'] | null = null;

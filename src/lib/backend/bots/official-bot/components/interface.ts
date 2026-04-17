@@ -288,7 +288,7 @@ async function handleMenuButton(interaction) {
 	}
 }
 
-export async function handleButtonInteraction(interaction, client) {
+export async function handleButtonInteraction(interaction) {
 	const { customId } = interaction;
 	const user = interaction.user;
 
@@ -499,7 +499,7 @@ function init(client) {
 			}
 
 			try {
-				await handleButtonInteraction(interaction, client);
+				await handleButtonInteraction(interaction);
 			} catch (error) {
 				await logger.log(`❌ Button interaction error: ${error.message}`);
 

@@ -34,8 +34,14 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		let imageFilename: string | null = null;
 		const uploadedBasename = uploaded_image_path ? basename(uploaded_image_path) : null;
 		if (uploadedBasename) {
+			if (!/^[a-zA-Z0-9_.\-]+$/.test(uploadedBasename)) {
+				return json({ success: false, error: 'Invalid uploaded image filename' }, { status: 400 });
+			}
 			try {
 				const filePath = join(uploadsDir, uploadedBasename);
+				if (!filePath.startsWith(uploadsDir)) {
+					return json({ success: false, error: 'Invalid uploaded image path' }, { status: 400 });
+				}
 				if (existsSync(filePath)) {
 					imageBuffer = readFileSync(filePath);
 					imageFilename = uploadedBasename;

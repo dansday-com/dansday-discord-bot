@@ -869,7 +869,8 @@ export const SERVER_SETTINGS_COMPONENTS_WITH_FEATURE_SWITCH = SERVER_SETTINGS.wi
 export { computePublicServerSlugForServerId } from '../frontend/public/server-slug/index.js';
 export { publicSiteOrigin, publicServerPath, publicServerUrl } from '../url.js';
 
-export const SETUP_CATEGORY_NAME = '</DANSDAY>';
+export const SETUP_MENU_CATEGORY_NAME = '</DANSDAY> Menu';
+export const SETUP_INFO_CATEGORY_NAME = '</DANSDAY> Information';
 
 export const SETUP_CHANNEL_DEFS = [
 	{ name: '「💻」menu', settingsKey: 'menu' },

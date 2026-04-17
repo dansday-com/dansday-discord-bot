@@ -1,6 +1,6 @@
 import { getRedisClient } from '../../../redis.js';
 
-export type LeaderboardMetric = 'xp' | 'chat' | 'voice_total' | 'voice_active' | 'voice_afk';
+export type LeaderboardMetric = 'xp' | 'chat' | 'voice_total' | 'voice_active' | 'voice_afk' | 'video' | 'streaming';
 
 export type LeaderboardRow = {
 	discord_member_id: string;
@@ -14,6 +14,8 @@ export type LeaderboardRow = {
 	voice_minutes_total: number | null;
 	voice_minutes_active: number | null;
 	voice_minutes_afk: number | null;
+	voice_minutes_video: number | null;
+	voice_minutes_streaming: number | null;
 	rank: number | null;
 };
 

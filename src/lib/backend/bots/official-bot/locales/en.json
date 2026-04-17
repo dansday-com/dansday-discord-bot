@@ -101,11 +101,15 @@
 			"topVoiceTotal": "🎤 Voice (Total • Top 3)",
 			"topVoiceActive": "🎤 Voice (Active • Top 3)",
 			"topVoiceAfk": "🔇 Voice (AFK • Top 3)",
+			"topVideo": "📹 Video (Top 3)",
+			"topStreaming": "📺 Streaming (Top 3)",
 			"noData": "No leveling data available yet.",
 			"member": "Member {position}",
 			"minTotal": "min total",
 			"minActive": "min active",
 			"minAfk": "min AFK",
+			"minVideo": "min video",
+			"minStreaming": "min streaming",
 			"messages": "messages"
 		},
 		"buttons": {
@@ -113,6 +117,8 @@
 			"voiceTotal": "🎤 Voice",
 			"voiceActive": "🎤 Voice Active",
 			"voiceAfk": "🔇 Voice AFK",
+			"video": "📹 Video",
+			"streaming": "📺 Streaming",
 			"chat": "💬 Chat",
 			"linkLeaderboard": "🌐 Leaderboard"
 		},

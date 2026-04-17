@@ -1484,6 +1484,8 @@ export async function getServerLeaderboard(serverId: any, limit = 3, sortType = 
 		voice_total: [desc(schema.serverMemberLevels.voice_minutes_total), asc(schema.serverMemberLevels.updated_at), asc(schema.serverMemberLevels.created_at)],
 		voice_active: [desc(schema.serverMemberLevels.voice_minutes_active), asc(schema.serverMemberLevels.updated_at), asc(schema.serverMemberLevels.created_at)],
 		voice_afk: [desc(schema.serverMemberLevels.voice_minutes_afk), asc(schema.serverMemberLevels.updated_at), asc(schema.serverMemberLevels.created_at)],
+		video: [desc(schema.serverMemberLevels.voice_minutes_video), asc(schema.serverMemberLevels.updated_at), asc(schema.serverMemberLevels.created_at)],
+		streaming: [desc(schema.serverMemberLevels.voice_minutes_streaming), asc(schema.serverMemberLevels.updated_at), asc(schema.serverMemberLevels.created_at)],
 		chat: [desc(schema.serverMemberLevels.chat_total), asc(schema.serverMemberLevels.updated_at), asc(schema.serverMemberLevels.created_at)],
 		xp: [desc(schema.serverMemberLevels.experience), asc(schema.serverMemberLevels.updated_at), asc(schema.serverMemberLevels.created_at)]
 	};
@@ -1510,6 +1512,8 @@ export async function getServerLeaderboard(serverId: any, limit = 3, sortType = 
 			voice_minutes_total: schema.serverMemberLevels.voice_minutes_total,
 			voice_minutes_active: schema.serverMemberLevels.voice_minutes_active,
 			voice_minutes_afk: schema.serverMemberLevels.voice_minutes_afk,
+			voice_minutes_video: schema.serverMemberLevels.voice_minutes_video,
+			voice_minutes_streaming: schema.serverMemberLevels.voice_minutes_streaming,
 			rank: schema.serverMemberLevels.rank
 		})
 		.from(schema.serverMemberLevels)

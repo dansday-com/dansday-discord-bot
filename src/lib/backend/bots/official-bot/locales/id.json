@@ -101,11 +101,15 @@
 			"topVoiceTotal": "🎤 Suara (Total • Top 3)",
 			"topVoiceActive": "🎤 Suara (Aktif • Top 3)",
 			"topVoiceAfk": "🔇 Suara (AFK • Top 3)",
+			"topVideo": "📹 Video (Top 3)",
+			"topStreaming": "📺 Streaming (Top 3)",
 			"noData": "Belum ada data leveling tersedia.",
 			"member": "Anggota {position}",
 			"minTotal": "menit total",
 			"minActive": "menit aktif",
 			"minAfk": "menit AFK",
+			"minVideo": "menit video",
+			"minStreaming": "menit streaming",
 			"messages": "pesan"
 		},
 		"buttons": {
@@ -113,6 +117,8 @@
 			"voiceTotal": "🎤 Suara",
 			"voiceActive": "🎤 Suara Aktif",
 			"voiceAfk": "🔇 Suara AFK",
+			"video": "📹 Video",
+			"streaming": "📺 Streaming",
 			"chat": "💬 Chat",
 			"linkLeaderboard": "🌐 Papan Peringkat"
 		},

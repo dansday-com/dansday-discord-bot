@@ -361,6 +361,8 @@ export async function handleButtonInteraction(interaction) {
 		case 'leaderboard_voice_total':
 		case 'leaderboard_voice_active':
 		case 'leaderboard_voice_afk':
+		case 'leaderboard_video':
+		case 'leaderboard_streaming':
 		case 'leaderboard_chat':
 			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.public_statistics)) break;
 			await handleLeaderboardButton(interaction);

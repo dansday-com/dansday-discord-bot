@@ -10,6 +10,8 @@ function parseMetric(m: string | null): LeaderboardMetric {
 	if (v === 'voice_total') return 'voice_total';
 	if (v === 'voice_active') return 'voice_active';
 	if (v === 'voice_afk') return 'voice_afk';
+	if (v === 'video') return 'video';
+	if (v === 'streaming') return 'streaming';
 	return 'xp';
 }
 

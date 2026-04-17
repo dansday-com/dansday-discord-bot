@@ -13,6 +13,8 @@ export type MembersListEntry = {
 	voice_minutes_total?: number | null;
 	voice_minutes_active?: number | null;
 	voice_minutes_afk?: number | null;
+	voice_minutes_video?: number | null;
+	voice_minutes_streaming?: number | null;
 	rank?: number | null;
 };
 
@@ -26,6 +28,10 @@ function memberSortValue(m: MembersListEntry, metric: LeaderboardMetric): number
 			return Number(m.voice_minutes_active ?? 0);
 		case 'voice_afk':
 			return Number(m.voice_minutes_afk ?? 0);
+		case 'video':
+			return Number(m.voice_minutes_video ?? 0);
+		case 'streaming':
+			return Number(m.voice_minutes_streaming ?? 0);
 		default:
 			return Number(m.experience ?? 0);
 	}
@@ -52,6 +58,8 @@ export function buildLeaderboardRowsFromMembersList(members: MembersListEntry[],
 		voice_minutes_total: m.voice_minutes_total ?? 0,
 		voice_minutes_active: m.voice_minutes_active ?? 0,
 		voice_minutes_afk: m.voice_minutes_afk ?? 0,
+		voice_minutes_video: m.voice_minutes_video ?? 0,
+		voice_minutes_streaming: m.voice_minutes_streaming ?? 0,
 		rank: m.rank ?? null
 	}));
 }

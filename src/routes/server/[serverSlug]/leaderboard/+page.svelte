@@ -6,7 +6,7 @@
 
 	type Metric = typeof data.metric;
 
-	const METRICS: Metric[] = ['xp', 'chat', 'voice_total', 'voice_active', 'voice_afk'];
+	const METRICS: Metric[] = ['xp', 'chat', 'voice_total', 'voice_active', 'voice_afk', 'video', 'streaming'];
 	const tabPrefetch = new Map<Metric, any[]>();
 
 	let metric = $state<Metric>(data.metric);
@@ -37,6 +37,8 @@
 		if (m === 'voice_total') return 'Voice (Total)';
 		if (m === 'voice_active') return 'Voice (Active)';
 		if (m === 'voice_afk') return 'Voice (AFK)';
+		if (m === 'video') return 'Video';
+		if (m === 'streaming') return 'Streaming';
 		return 'XP';
 	}
 
@@ -45,6 +47,8 @@
 		if (m === 'voice_total') return Number(r.voice_minutes_total || 0);
 		if (m === 'voice_active') return Number(r.voice_minutes_active || 0);
 		if (m === 'voice_afk') return Number(r.voice_minutes_afk || 0);
+		if (m === 'video') return Number(r.voice_minutes_video || 0);
+		if (m === 'streaming') return Number(r.voice_minutes_streaming || 0);
 		return Number(r.experience || 0);
 	}
 
@@ -55,7 +59,7 @@
 
 	function metricUnit(m: string) {
 		if (m === 'chat') return 'msgs';
-		if (m.startsWith('voice_')) return 'min';
+		if (m.startsWith('voice_') || m === 'video' || m === 'streaming') return 'min';
 		return 'xp';
 	}
 

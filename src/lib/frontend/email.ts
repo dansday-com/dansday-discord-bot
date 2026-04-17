@@ -23,7 +23,8 @@ function getTransporter() {
 	});
 }
 
-const APP_NAME = '&lt;/DANSDAY&gt; Discord Bot';
+const APP_NAME_TEXT = '</DANSDAY> Discord Bot';
+const APP_NAME_HTML = '&lt;/DANSDAY&gt; Discord Bot';
 
 const baseStyles = `
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -88,7 +89,7 @@ function emailLayout(title: string, accentColor: string, bodyContent: string, ye
             <div class="email-wrapper">
                 <div class="header">
                     <h1>${title}</h1>
-                    <div class="app-name">${APP_NAME}</div>
+                    <div class="app-name">${APP_NAME_HTML}</div>
                 </div>
                 <div class="content">
                     ${bodyContent}
@@ -124,7 +125,7 @@ export async function sendOTPEmail(email: string, otpCode: string) {
     `;
 
 	const mailOptions = {
-		from: `"${APP_NAME}" <${process.env.MAIL_USERNAME}>`,
+		from: `"${APP_NAME_TEXT}" <${process.env.MAIL_USERNAME}>`,
 		to: email,
 		subject,
 		html: emailLayout(subject, '#818cf8', body, year)
@@ -156,7 +157,7 @@ export async function sendVerificationSuccessEmail(email: string, username: stri
     `;
 
 	const mailOptions = {
-		from: `"${APP_NAME}" <${process.env.MAIL_USERNAME}>`,
+		from: `"${APP_NAME_TEXT}" <${process.env.MAIL_USERNAME}>`,
 		to: email,
 		subject,
 		html: emailLayout(subject, '#34d399', body, year)
@@ -188,7 +189,7 @@ export async function sendAccountFrozenEmail(email: string, username: string) {
     `;
 
 	const mailOptions = {
-		from: `"${APP_NAME}" <${process.env.MAIL_USERNAME}>`,
+		from: `"${APP_NAME_TEXT}" <${process.env.MAIL_USERNAME}>`,
 		to: email,
 		subject,
 		html: emailLayout(subject, '#f59e0b', body, year)
@@ -220,7 +221,7 @@ export async function sendAccountUnfrozenEmail(email: string, username: string) 
     `;
 
 	const mailOptions = {
-		from: `"${APP_NAME}" <${process.env.MAIL_USERNAME}>`,
+		from: `"${APP_NAME_TEXT}" <${process.env.MAIL_USERNAME}>`,
 		to: email,
 		subject,
 		html: emailLayout(subject, '#34d399', body, year)
@@ -252,7 +253,7 @@ export async function sendAccountDeletedEmail(email: string, username: string) {
     `;
 
 	const mailOptions = {
-		from: `"${APP_NAME}" <${process.env.MAIL_USERNAME}>`,
+		from: `"${APP_NAME_TEXT}" <${process.env.MAIL_USERNAME}>`,
 		to: email,
 		subject,
 		html: emailLayout(subject, '#f87171', body, year)

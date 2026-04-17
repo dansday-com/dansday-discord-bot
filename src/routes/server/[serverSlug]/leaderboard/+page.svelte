@@ -228,8 +228,12 @@
 				<i class="fas fa-microphone"></i> Voice
 			{:else if m === 'voice_active'}
 				<i class="fas fa-microphone-lines"></i> Active
-			{:else}
+			{:else if m === 'voice_afk'}
 				<i class="fas fa-moon"></i> AFK
+			{:else if m === 'video'}
+				<i class="fas fa-video"></i> Video
+			{:else if m === 'streaming'}
+				<i class="fas fa-tv"></i> Streaming
 			{/if}
 		</button>
 	{/each}

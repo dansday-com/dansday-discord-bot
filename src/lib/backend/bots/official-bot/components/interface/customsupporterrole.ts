@@ -296,14 +296,12 @@ export async function handleEditCustomSupporterRole(interaction) {
 		const modal = new ModalBuilder().setCustomId('custom_supporter_role_edit').setTitle(editModalTitle);
 
 		const currentName = existingRole.name;
-		const currentColor = existingRole.hexColor;
+		const currentColor = existingRole.color === 0 ? '' : existingRole.hexColor;
 		let currentIcon = '';
-		if (existingRole.icon) {
-			if (existingRole.unicodeEmoji) {
-				currentIcon = existingRole.unicodeEmoji;
-			} else {
-				currentIcon = existingRole.iconURL({ extension: 'png', size: 256 }) || '';
-			}
+		if (existingRole.unicodeEmoji) {
+			currentIcon = existingRole.unicodeEmoji;
+		} else if (existingRole.icon) {
+			currentIcon = existingRole.iconURL({ extension: 'png', size: 256 }) || '';
 		}
 
 		const nameInput = new TextInputBuilder()
@@ -312,8 +310,9 @@ export async function handleEditCustomSupporterRole(interaction) {
 			.setStyle(TextInputStyle.Short)
 			.setPlaceholder('Enter your custom role name...')
 			.setRequired(true)
-			.setMaxLength(100)
-			.setValue(currentName);
+			.setMaxLength(100);
+
+		if (currentName) nameInput.setValue(currentName);
 
 		const colorInput = new TextInputBuilder()
 			.setCustomId('role_color')
@@ -321,8 +320,9 @@ export async function handleEditCustomSupporterRole(interaction) {
 			.setStyle(TextInputStyle.Short)
 			.setPlaceholder('#FF5733 or 16729395 or red (optional)')
 			.setRequired(false)
-			.setMaxLength(20)
-			.setValue(currentColor);
+			.setMaxLength(20);
+
+		if (currentColor) colorInput.setValue(currentColor);
 
 		const iconInput = new TextInputBuilder()
 			.setCustomId('role_icon')
@@ -330,8 +330,9 @@ export async function handleEditCustomSupporterRole(interaction) {
 			.setStyle(TextInputStyle.Short)
 			.setPlaceholder('🔥 or https://example.com/icon.png (optional)')
 			.setRequired(false)
-			.setMaxLength(500)
-			.setValue(currentIcon);
+			.setMaxLength(500);
+
+		if (currentIcon) iconInput.setValue(currentIcon);
 
 		const nameRow = new ActionRowBuilder().addComponents(nameInput);
 		const colorRow = new ActionRowBuilder().addComponents(colorInput);

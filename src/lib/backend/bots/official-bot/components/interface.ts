@@ -83,7 +83,7 @@ async function handleMenuButton(interaction) {
 		return;
 	}
 
-	if (!(await hasPermission(member, 'leveling'))) {
+	if (!(await hasPermission(member, 'menu'))) {
 		const errorMessage = await getPermissionDeniedMessage(interaction.guild, 'menu', interaction.user.id);
 		if (interaction.replied || interaction.deferred) {
 			await interaction.editReply({

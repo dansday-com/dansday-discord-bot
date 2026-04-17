@@ -99,7 +99,7 @@ async function handleSendGlobalEmbed(payload) {
 
 				const embed = new EmbedBuilder().setColor(embedColor).setFooter({ text: footerText }).setTimestamp();
 
-				if (title) embed.setTitle(title);
+				embed.setTitle(title);
 				if (description) embed.setDescription(description);
 
 				let files = [];
@@ -183,7 +183,7 @@ async function handleSendEmbed(payload) {
 
 		const embed = new EmbedBuilder().setColor(embedColor).setFooter({ text: footerText }).setTimestamp();
 
-		if (title) embed.setTitle(title);
+		embed.setTitle(title);
 		if (description) embed.setDescription(description);
 
 		let imageAttachment = null;

@@ -20,7 +20,9 @@
 			scrollHorizontally: true,
 			navigation: true,
 			fitToSection: false,
-			scrollOverflow: true
+			scrollOverflow: true,
+			verticalCentered: false,
+			paddingBottom: '70px'
 		});
 
 		return () => {
@@ -184,47 +186,97 @@
 			<div class="section">
 				<div class="m-inner m-landing-inner">
 					<section class="m-hero">
-						<h1>
-							Supercharge Your<br />
-							<span class="m-gradient-text">Discord Server</span>
-						</h1>
-						<p>
-							Run leveling, moderation, an embed builder, Discord Quests, quest enroll, self-bot options, creator tools, live public statistics pages, Roblox
-							catalog alerts, and more from the free web panel in your browser. Configure in one place instead of flooding channels with slash commands. Free
-							for everyone. Self-host from
-							<a href={sourceRepoUrl} target="_blank" rel="noopener noreferrer">GitHub</a>
-							or add
-							<a href={officialBotInviteUrl} target="_blank" rel="noopener noreferrer">our hosted bot</a>
-							if you do not run your own servers.
-						</p>
-						<div class="m-hero-actions">
-							<a href={officialBotInviteUrl} class="m-btn m-btn--primary m-hero-btn-primary" target="_blank" rel="noopener noreferrer">
-								<i class="fab fa-discord"></i>
-								Get started
-							</a>
-							<div class="m-hero-actions-secondary" role="group" aria-label="More options">
-								<a href="/login" class="m-btn m-btn--ghost m-btn--compact">
-									<i class="fas fa-sign-in-alt"></i>
-									Log in
+						<div class="m-hero-content">
+							<h1>
+								Supercharge Your<br />
+								<span class="m-gradient-text">Discord Server</span>
+							</h1>
+							<p>
+								Run leveling, moderation, an embed builder, Discord Quests, quest enroll, self-bot options, creator tools, live public statistics pages, Roblox
+								catalog alerts, and more from the free web panel in your browser. Configure in one place instead of flooding channels with slash commands. Free
+								for everyone. Self-host from
+								<a href={sourceRepoUrl} target="_blank" rel="noopener noreferrer">GitHub</a>
+								or add
+								<a href={officialBotInviteUrl} target="_blank" rel="noopener noreferrer">our hosted bot</a>
+								if you do not run your own servers.
+							</p>
+							<div class="m-hero-actions">
+								<a href={officialBotInviteUrl} class="m-btn m-btn--primary m-hero-btn-primary" target="_blank" rel="noopener noreferrer">
+									<i class="fab fa-discord"></i>
+									Get started
 								</a>
-								<a href="#features" class="m-btn m-btn--ghost m-btn--compact">
-									<i class="fas fa-th-large"></i>
-									Features
-								</a>
-								<a
-									href={communityDiscordUrl}
-									class="m-btn m-btn--ghost m-btn--compact"
-									target="_blank"
-									rel="noopener noreferrer"
-									title="Join our Discord for updates and testing"
-								>
-									<i class="fas fa-users"></i>
-									Discord
-								</a>
-								<a href={sourceRepoUrl} class="m-btn m-btn--ghost m-btn--compact" target="_blank" rel="noopener noreferrer" title="Source on GitHub (MIT)">
-									<i class="fab fa-github"></i>
-									GitHub
-								</a>
+								<div class="m-hero-actions-secondary" role="group" aria-label="More options">
+									<a href="/login" class="m-btn m-btn--ghost m-btn--compact">
+										<i class="fas fa-sign-in-alt"></i>
+										Log in
+									</a>
+									<a href="#features" class="m-btn m-btn--ghost m-btn--compact">
+										<i class="fas fa-th-large"></i>
+										Features
+									</a>
+									<a
+										href={communityDiscordUrl}
+										class="m-btn m-btn--ghost m-btn--compact"
+										target="_blank"
+										rel="noopener noreferrer"
+										title="Join our Discord for updates and testing"
+									>
+										<i class="fas fa-users"></i>
+										Discord
+									</a>
+									<a href={sourceRepoUrl} class="m-btn m-btn--ghost m-btn--compact" target="_blank" rel="noopener noreferrer" title="Source on GitHub (MIT)">
+										<i class="fab fa-github"></i>
+										GitHub
+									</a>
+								</div>
+							</div>
+						</div>
+
+						<div class="m-hero-visual">
+							<div class="m-hero-floating-ui">
+								<div class="m-hero-float-1">
+									<div class="m-stat-card m-overview-card" style="padding: 14px 16px;">
+										<div class="m-stat-card-head" style="margin-bottom: 10px;">
+											<div class="m-stat-card-icon m-chili-stat-1" style="width: 32px; height: 32px; font-size: 0.9rem;">
+												<i class="fas fa-arrow-trend-up"></i>
+											</div>
+											<h3 class="m-stat-card-title" style="font-size: 14px;">Leveling</h3>
+										</div>
+										<div class="m-stat-rows">
+											<div class="m-stat-row" style="padding: 6px 10px;">
+												<span class="m-stat-row-label" style="font-size: 12px;"><i class="fas fa-trophy"></i> Top Member</span>
+												<span class="m-stat-row-value" style="font-size: 14px; color: var(--chili-hot);">Level 42</span>
+											</div>
+										</div>
+									</div>
+								</div>
+
+								<div class="m-hero-float-2">
+									<div class="m-overview-strip-item" style="box-shadow: 0 8px 30px var(--lb-shadow);">
+										<div class="m-overview-strip-icon" style="width: 32px; height: 32px; font-size: 0.9rem;"><i class="fas fa-users"></i></div>
+										<div class="m-overview-strip-text">
+											<div class="m-overview-strip-value" style="font-size: 15px;">1,240</div>
+											<div class="m-overview-strip-label" style="font-size: 9px;">Members</div>
+										</div>
+									</div>
+								</div>
+
+								<div class="m-hero-float-3">
+									<div class="m-members-search-bar" style="margin:0; box-shadow: 0 12px 40px rgba(36, 95, 115, 0.15);">
+										<div class="m-members-search">
+											<i class="fas fa-search m-members-search-ic"></i>
+											<input type="text" class="m-members-search-inp" placeholder="Search members..." disabled style="pointer-events: none;" />
+										</div>
+										<button class="m-members-btn" disabled style="pointer-events: none;"><i class="fas fa-filter"></i></button>
+									</div>
+								</div>
+
+								<div class="m-hero-float-4">
+									<div class="m-metric-pill m-metric-pill--live" style="box-shadow: 0 4px 15px rgba(36, 95, 115, 0.1);">
+										<span class="m-live-dot"></span>
+										Live syncing
+									</div>
+								</div>
 							</div>
 						</div>
 					</section>
@@ -360,10 +412,10 @@
 					</section>
 				</div>
 			</div>
-
-			<div class="section fp-auto-height">
-				<MainFooter />
-			</div>
 		</div>
 	</main>
+
+	<div style="position: fixed; bottom: 0; left: 0; width: 100%; z-index: 100;">
+		<MainFooter />
+	</div>
 </div>

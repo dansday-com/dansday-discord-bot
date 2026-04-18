@@ -5,12 +5,12 @@ import { getBotUptimeMs } from '$lib/botProcesses.js';
 import { logger } from '$lib/utils/index.js';
 
 export const GET: RequestHandler = async ({ locals }) => {
-	if (!locals.user.authenticated) {
-		return json({ error: 'Authentication required' }, { status: 401 });
+	if (!locals.user.authenticated || locals.user.account_source !== 'accounts') {
+		return json({ error: 'Admin access required' }, { status: 403 });
 	}
 
 	try {
-		const bots = locals.user.account_source === 'accounts' ? await db.getAllBots(locals.user.panel_id) : await db.getAllBots();
+		const bots = await db.getAllBots(locals.user.panel_id);
 
 		const botsWithDetails = await Promise.all(
 			bots.map(async (bot: any) => {

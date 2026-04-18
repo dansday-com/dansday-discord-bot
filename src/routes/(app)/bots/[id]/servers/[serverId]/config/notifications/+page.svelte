@@ -2,8 +2,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
-	import RolePicker from '$lib/frontend/components/RolePicker.svelte';
-	import CategoryPicker from '$lib/frontend/components/CategoryPicker.svelte';
+	import ChannelPicker from '$lib/frontend/components/ChannelPicker.svelte';
 	import ConfigToggleRow from '$lib/frontend/components/ConfigToggleRow.svelte';
 	import type { PageProps } from './$types';
 
@@ -11,9 +10,21 @@
 
 	let saving = $state(false);
 	let featureEnabled = $state(data.settings?.enabled === true);
-	let roleStart = $state<string>(data.settings?.role_start ?? '');
-	let roleEnd = $state<string>(data.settings?.role_end ?? '');
-	let categoryIds = $state<string[]>(data.settings?.category_ids ?? []);
+	let channelIds = $state<string[]>(data.settings?.channel_ids ?? []);
+
+	function channelById(id: string) {
+		return data.channels.find((c: any) => c.discord_channel_id === id);
+	}
+
+	function removeChannel(id: string) {
+		channelIds = channelIds.filter((c) => c !== id);
+	}
+
+	function addChannel(id: string) {
+		if (id && !channelIds.includes(id)) {
+			channelIds = [...channelIds, id];
+		}
+	}
 
 	async function save() {
 		saving = true;
@@ -24,9 +35,7 @@
 				credentials: 'include',
 				body: JSON.stringify({
 					component: SERVER_SETTINGS.component.notifications,
-					role_start: roleStart,
-					role_end: roleEnd,
-					category_ids: categoryIds,
+					channel_ids: channelIds,
 					enabled: featureEnabled
 				})
 			});
@@ -45,11 +54,11 @@
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
 		<i class="fas fa-bell text-rose-400"></i>Channel notification
 	</h3>
-	<p class="text-ash-400 text-xs">Per-channel ping roles from selected categories (bot menu). Not Discord Quest alerts.</p>
+	<p class="text-ash-400 text-xs">Per-channel notification opt-in for members (bot menu) from selected categories. Not Discord Quest alerts.</p>
 
 	<ConfigToggleRow
 		label="Channel notification module"
-		description="When off, per-channel notification roles and menu actions are disabled."
+		description="When off, per-channel notifications and menu actions are disabled."
 		labelIconClass="fas fa-bell text-rose-400"
 		bind:enabled={featureEnabled}
 		ariaLabel="Toggle channel notification module"
@@ -63,28 +72,23 @@
 	<div class="space-y-5 transition-opacity" class:pointer-events-none={!featureEnabled} class:opacity-50={!featureEnabled}>
 		<div>
 			<label class="text-ash-300 mb-1.5 block text-xs font-medium">
-				<i class="fas fa-arrow-up mr-1 text-rose-400"></i>Notification Role Start (Top / Highest Position)
+				<i class="fas fa-hashtag mr-1 text-rose-400"></i>Channels
 			</label>
-			<p class="text-ash-500 mb-2 text-xs">Highest role position where notification roles will be created. Roles will be placed below this.</p>
-			<RolePicker roles={data.roles} value={roleStart} single placeholder="Select role..." onchange={(v) => (roleStart = v as string)} />
-		</div>
-
-		<div>
-			<label class="text-ash-300 mb-1.5 block text-xs font-medium">
-				<i class="fas fa-arrow-down mr-1 text-rose-400"></i>Notification Role End (Bottom / Lowest Position)
-			</label>
-			<p class="text-ash-500 mb-2 text-xs">Lowest role position where notification roles will be created. Roles will be placed above this.</p>
-			<RolePicker roles={data.roles} value={roleEnd} single placeholder="Select role..." onchange={(v) => (roleEnd = v as string)} />
-		</div>
-
-		<div>
-			<label class="text-ash-300 mb-1.5 block text-xs font-medium">
-				<i class="fas fa-folder mr-1 text-rose-400"></i>Categories
-			</label>
-			<p class="text-ash-500 mb-2 text-xs">
-				Channels inside these categories will get a notification role (one role per channel). Multiple categories allowed.
-			</p>
-			<CategoryPicker categories={data.categories} value={categoryIds} onchange={(v) => (categoryIds = v)} />
+			<p class="text-ash-500 mb-2 text-xs">These channels will be available for members to opt-in for notifications. Multiple channels allowed.</p>
+			<ChannelPicker channels={data.channels} categories={data.categories} value={channelIds[0] ?? ''} onchange={(id) => addChannel(id as string)} />
+			{#if channelIds.length > 0}
+				<div class="mt-2 flex flex-wrap gap-1.5">
+					{#each channelIds as id}
+						{@const ch = channelById(id)}
+						<span class="bg-ash-600 text-ash-100 flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs">
+							#{ch ? ch.name : id}
+							<button type="button" onclick={() => removeChannel(id)} class="hover:text-ash-300 ml-0.5 transition-colors">
+								<i class="fas fa-times text-xs"></i>
+							</button>
+						</span>
+					{/each}
+				</div>
+			{/if}
 		</div>
 	</div>
 

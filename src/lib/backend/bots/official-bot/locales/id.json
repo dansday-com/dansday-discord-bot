@@ -1,14 +1,15 @@
 {
 	"menu": {
-		"title": "📋 Menu Bot Dansday",
+		"title": "📋 Menu Bot {botName}",
 		"description": "Pilih fitur dari tombol di bawah:",
 		"noAccess": "❌ Kamu tidak memiliki akses ke fitur apa pun.",
 		"button": "📋 Menu",
-		"statistics": "🌐 Statistik"
+		"statistics": "🌐 Statistik",
+		"memberCard": "💳 Kartu Member"
 	},
 	"interface": {
 		"panel": {
-			"title": "Panel Bot Dansday",
+			"title": "Panel Bot {botName}",
 			"description": "Klik **Menu** untuk mengakses fitur bot sesuai izin role kamu.",
 			"sent": "✅ Antarmuka bot dikirim ke {channel}!",
 			"setupHasOwnerAccount": "✅ Antarmuka bot dikirim ke {channel}. Server ini sudah punya akun owner — login di panel web. Tidak ada undangan baru.",
@@ -48,6 +49,14 @@
 			"title": "❌ **Izin Ditolak**",
 			"description": "Kamu memerlukan salah satu role berikut untuk menggunakan **{action}**:\\n{roles}",
 			"footer": "Silakan hubungi administrator server jika kamu merasa ini adalah kesalahan."
+		},
+		"ownerRequired": {
+			"title": "❌ **Registrasi Owner Diperlukan**",
+			"description": "Owner server harus mendaftar akun di web panel sebelum siapapun dapat menggunakan fitur **{action}**."
+		},
+		"notConfigured": {
+			"title": "❌ **Izin Belum Dikonfigurasi**",
+			"description": "Owner server atau administrator harus mengkonfigurasi izin role sebelum siapapun dapat menggunakan fitur **{action}**."
 		}
 	},
 	"settings": {
@@ -92,11 +101,15 @@
 			"topVoiceTotal": "🎤 Suara (Total • Top 3)",
 			"topVoiceActive": "🎤 Suara (Aktif • Top 3)",
 			"topVoiceAfk": "🔇 Suara (AFK • Top 3)",
+			"topVideo": "📹 Video (Top 3)",
+			"topStreaming": "📺 Streaming (Top 3)",
 			"noData": "Belum ada data leveling tersedia.",
 			"member": "Anggota {position}",
 			"minTotal": "menit total",
 			"minActive": "menit aktif",
 			"minAfk": "menit AFK",
+			"minVideo": "menit video",
+			"minStreaming": "menit streaming",
 			"messages": "pesan"
 		},
 		"buttons": {
@@ -104,6 +117,8 @@
 			"voiceTotal": "🎤 Suara",
 			"voiceActive": "🎤 Suara Aktif",
 			"voiceAfk": "🔇 Suara AFK",
+			"video": "📹 Video",
+			"streaming": "📺 Streaming",
 			"chat": "💬 Chat",
 			"linkLeaderboard": "🌐 Papan Peringkat"
 		},
@@ -370,7 +385,7 @@
 	"notifications": {
 		"button": "🔔 Notifikasi",
 		"title": "🔔 Preferensi Notifikasi",
-		"description": "Pilih channel mana yang ingin kamu dapatkan notifikasinya. Role yang dipilih akan diberikan kepadamu.",
+		"description": "Pilih channel mana yang ingin kamu dapatkan notifikasinya. Kamu akan di-tag secara individu saat ada notifikasi baru.",
 		"selectPlaceholder": "Pilih channel notifikasi...",
 		"updated": "✅ Preferensi notifikasi kamu telah diperbarui.",
 		"errors": {

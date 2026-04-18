@@ -161,7 +161,7 @@
 			<label class="text-ash-300 mb-1.5 block text-xs font-medium">
 				<i class="fas fa-hashtag mr-1 text-lime-400"></i>Level Progress Notification Channel
 			</label>
-			<p class="text-ash-500 mb-2 text-xs">Channel for level and rank notifications. Uses default channel if not set.</p>
+			<p class="text-ash-500 mb-2 text-xs">Channel for level and rank notifications.</p>
 			<ChannelPicker channels={data.channels} categories={data.categories} value={progressChannel} onchange={(id) => (progressChannel = id)} />
 		</div>
 	</div>

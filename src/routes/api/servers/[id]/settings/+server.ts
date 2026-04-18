@@ -81,6 +81,18 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			} catch (_) {}
 		}
 
+		if (component === SERVER_SETTINGS.component.main) {
+			try {
+				if (panelServer?.discord_server_id && bot) {
+					await postOfficialBotWebhook(bot, {
+						type: 'sync_bot_nickname',
+						guild_id: panelServer.discord_server_id,
+						nickname: (settings as { bot_nickname?: string }).bot_nickname || ''
+					});
+				}
+			} catch (_) {}
+		}
+
 		const featureSwitchIds = SERVER_SETTINGS.withFeatureSwitch as readonly string[];
 		if (panelServer?.discord_server_id && bot && featureSwitchIds.includes(component) && component !== SERVER_SETTINGS.component.notifications) {
 			const enabled = (settings as { enabled?: boolean }).enabled !== false;

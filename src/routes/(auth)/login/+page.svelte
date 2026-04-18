@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { DASHBOARD_PATH } from '$lib/frontend/redirect.js';
@@ -108,7 +109,7 @@
 </script>
 
 <svelte:head>
-	<title>Login | Dansday Discord Bot</title>
+	<title>Login | {APP_NAME} Discord Bot</title>
 </svelte:head>
 
 <div class="bg-ash-800 border-ash-700 rounded-2xl border p-6 shadow-2xl sm:p-8">
@@ -116,7 +117,7 @@
 		<div class="bg-ash-400 mb-3 inline-flex h-14 w-14 items-center justify-center rounded-full sm:mb-4 sm:h-16 sm:w-16">
 			<i class="fas fa-bolt text-xl text-amber-300 sm:text-2xl"></i>
 		</div>
-		<h1 class="text-ash-100 mb-2 text-2xl font-bold sm:text-3xl">Dansday</h1>
+		<h1 class="text-ash-100 mb-2 text-2xl font-bold sm:text-3xl">{APP_NAME}</h1>
 		<p class="text-ash-400 text-xs sm:text-sm">Discord Bot Panel</p>
 	</div>
 

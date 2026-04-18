@@ -1,6 +1,5 @@
 import db from '../../../../database.js';
 import { logger, separateChannelsAndCategories, mapCategoriesForSync, mapChannelsForSync } from '../../../../utils/index.js';
-import { syncNotificationRoles } from './notificationsSync.js';
 
 let client = null;
 let botId = null;
@@ -81,12 +80,6 @@ async function syncGuildData(guild) {
 
 		const members = Array.from(guild.members.cache.values()).filter((member) => !member.user.bot);
 		await db.syncMembers(serverId, members);
-
-		try {
-			await syncNotificationRoles(guild, serverId);
-		} catch (error) {
-			logger.log(`❌ Notifications sync failed for ${guild.name}: ${error.message}`);
-		}
 
 		logger.log(
 			`✅ Synced server: ${guild.name} (${guild.memberCount} members, ${categories.length} categories, ${channels.length} channels, ${roles.length} roles)`

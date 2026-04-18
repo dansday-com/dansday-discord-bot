@@ -6,6 +6,7 @@ import {
 	getEmbedConfig,
 	isComponentFeatureEnabled,
 	serverSettingsComponent,
+	NOTIFICATIONS,
 	type DiscordQuestSummary
 } from '../../../config.js';
 import { logger } from '../../../../utils/index.js';
@@ -80,7 +81,18 @@ export async function sendQuestNotificationMessage(
 
 	const row = new ActionRowBuilder<ButtonBuilder>().addComponents(...buttons);
 
-	await channel.send({ embeds: [embed], components: [row] });
+	const notificationMentions = await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(channel.guild.id, channel.id).catch(() => null);
+	await channel.send({
+		content: notificationMentions && notificationMentions.length > 0 ? notificationMentions[0] : undefined,
+		embeds: [embed],
+		components: [row]
+	});
+
+	if (notificationMentions && notificationMentions.length > 1) {
+		for (let i = 1; i < notificationMentions.length; i++) {
+			await channel.send({ content: notificationMentions[i] }).catch(() => null);
+		}
+	}
 }
 
 async function runTick(client: Client, officialBotId: number) {

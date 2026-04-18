@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { DASHBOARD_PATH } from '$lib/frontend/redirect.js';
@@ -14,7 +15,7 @@
 </script>
 
 <svelte:head>
-	<title>{title} | Dansday Discord Bot</title>
+	<title>{title} | {APP_NAME} Discord Bot</title>
 </svelte:head>
 
 <div class="m-root">

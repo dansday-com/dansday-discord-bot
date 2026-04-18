@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	type Palette = 'light' | 'dark';
 	type Trailing = 'login' | 'live' | 'home';
 
@@ -22,7 +23,7 @@
 			<div class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-sm sm:h-10 sm:w-10 sm:text-base {iconWrap}">
 				<i class="fas fa-bolt"></i>
 			</div>
-			<span class="truncate text-base font-bold sm:text-xl">Dansday Discord Bot</span>
+			<span class="truncate text-base font-bold sm:text-xl">{APP_NAME} Discord Bot</span>
 		</a>
 		<div class="flex flex-shrink-0 items-center gap-2 sm:gap-2.5">
 			{#if trailing === 'login'}
@@ -38,8 +39,7 @@
 			{:else}
 				<a
 					href="/"
-					class="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors sm:px-4 sm:py-2 sm:text-sm {palette ===
-					'light'
+					class="m-btn border {palette === 'light'
 						? 'border-[rgba(187,189,188,0.55)] bg-[#e8e6e3] text-[#1a343f] hover:bg-[#dedcd8]'
 						: 'border-ash-600 bg-ash-800/80 text-ash-200 hover:border-ash-500 hover:bg-ash-700 hover:text-ash-100'}"
 				>

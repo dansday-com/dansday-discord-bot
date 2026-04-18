@@ -16,6 +16,8 @@ export type PublicPageStats = {
 	leveling_total_voice_minutes: number;
 	leveling_total_voice_active: number;
 	leveling_total_voice_afk: number;
+	leveling_total_voice_video: number;
+	leveling_total_voice_streaming: number;
 	roles_total: number;
 	categories_total: number;
 	members_with_custom_roles: number;
@@ -48,6 +50,8 @@ export function shapePublicStatisticsFromOverview(overview: Record<string, unkno
 			leveling_total_voice_minutes: Number(s.leveling_total_voice_minutes ?? 0),
 			leveling_total_voice_active: Number(s.leveling_total_voice_active ?? 0),
 			leveling_total_voice_afk: Number(s.leveling_total_voice_afk ?? 0),
+			leveling_total_voice_video: Number(s.leveling_total_voice_video ?? 0),
+			leveling_total_voice_streaming: Number(s.leveling_total_voice_streaming ?? 0),
 			roles_total: Number(s.roles_total ?? 0),
 			categories_total: Number(s.categories_total ?? 0),
 			members_with_custom_roles: Number(s.members_with_custom_roles ?? 0)

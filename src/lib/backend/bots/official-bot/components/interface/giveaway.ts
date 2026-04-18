@@ -485,13 +485,19 @@ export async function handleGiveawayModal(interaction) {
 
 		const enterButtonRow = new ActionRowBuilder().addComponents(enterButton);
 
-		const notificationRoleId = await NOTIFICATIONS.getNotificationRoleIdForChannel(guild.id, giveawayChannel.id).catch(() => null);
-		const mentionContent = notificationRoleId ? `<@&${notificationRoleId}>` : undefined;
+		const notificationMentions = await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(guild.id, giveawayChannel.id).catch(() => null);
+		const mentionContent = notificationMentions && notificationMentions.length > 0 ? notificationMentions[0] : undefined;
 		const message = await giveawayChannel.send({
 			content: mentionContent,
 			embeds: [giveawayEmbed],
 			components: [enterButtonRow]
 		});
+
+		if (notificationMentions && notificationMentions.length > 1) {
+			for (let i = 1; i < notificationMentions.length; i++) {
+				await giveawayChannel.send({ content: notificationMentions[i] }).catch(() => null);
+			}
+		}
 
 		await db.updateGiveawayMessageId(giveaway.id, message.id);
 
@@ -777,13 +783,19 @@ export async function handleGiveawayFinish(interaction) {
 				.setTimestamp()
 				.setFooter({ text: embedConfig.FOOTER });
 
-			const noEntriesMention = await NOTIFICATIONS.getNotificationRoleIdForChannel(guild.id, channel.id).catch(() => null);
+			const noEntriesMention = await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(guild.id, channel.id).catch(() => null);
 			await channel
 				.send({
-					content: noEntriesMention ? `<@&${noEntriesMention}>` : undefined,
+					content: noEntriesMention && noEntriesMention.length > 0 ? noEntriesMention[0] : undefined,
 					embeds: [noEntriesEmbed]
 				})
 				.catch(() => null);
+
+			if (noEntriesMention && noEntriesMention.length > 1) {
+				for (let i = 1; i < noEntriesMention.length; i++) {
+					await channel.send({ content: noEntriesMention[i] }).catch(() => null);
+				}
+			}
 
 			const successEmbed = new EmbedBuilder()
 				.setColor(embedConfig.COLOR)
@@ -812,13 +824,19 @@ export async function handleGiveawayFinish(interaction) {
 				.setTimestamp()
 				.setFooter({ text: embedConfig.FOOTER });
 
-			const noWinnersMention = await NOTIFICATIONS.getNotificationRoleIdForChannel(guild.id, channel.id).catch(() => null);
+			const noWinnersMention = await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(guild.id, channel.id).catch(() => null);
 			await channel
 				.send({
-					content: noWinnersMention ? `<@&${noWinnersMention}>` : undefined,
+					content: noWinnersMention && noWinnersMention.length > 0 ? noWinnersMention[0] : undefined,
 					embeds: [noWinnersEmbed]
 				})
 				.catch(() => null);
+
+			if (noWinnersMention && noWinnersMention.length > 1) {
+				for (let i = 1; i < noWinnersMention.length; i++) {
+					await channel.send({ content: noWinnersMention[i] }).catch(() => null);
+				}
+			}
 
 			const successEmbed = new EmbedBuilder()
 				.setColor(embedConfig.COLOR)
@@ -857,13 +875,19 @@ export async function handleGiveawayFinish(interaction) {
 			.setTimestamp()
 			.setFooter({ text: embedConfig.FOOTER });
 
-		const winnersMention = await NOTIFICATIONS.getNotificationRoleIdForChannel(guild.id, channel.id).catch(() => null);
+		const winnersMention = await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(guild.id, channel.id).catch(() => null);
 		await channel
 			.send({
-				content: winnersMention ? `<@&${winnersMention}>` : undefined,
+				content: winnersMention && winnersMention.length > 0 ? winnersMention[0] : undefined,
 				embeds: [winnersEmbed]
 			})
 			.catch(() => null);
+
+		if (winnersMention && winnersMention.length > 1) {
+			for (let i = 1; i < winnersMention.length; i++) {
+				await channel.send({ content: winnersMention[i] }).catch(() => null);
+			}
+		}
 
 		const successEmbed = new EmbedBuilder()
 			.setColor(embedConfig.COLOR)
@@ -933,13 +957,19 @@ async function processEndedGiveaways(client) {
 							.setTimestamp()
 							.setFooter({ text: embedConfig.FOOTER });
 
-						const noEntriesMention = await NOTIFICATIONS.getNotificationRoleIdForChannel(guild.id, channel.id).catch(() => null);
+						const noEntriesMention = await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(guild.id, channel.id).catch(() => null);
 						await channel
 							.send({
-								content: noEntriesMention ? `<@&${noEntriesMention}>` : undefined,
+								content: noEntriesMention && noEntriesMention.length > 0 ? noEntriesMention[0] : undefined,
 								embeds: [noEntriesEmbed]
 							})
 							.catch(() => null);
+
+						if (noEntriesMention && noEntriesMention.length > 1) {
+							for (let i = 1; i < noEntriesMention.length; i++) {
+								await channel.send({ content: noEntriesMention[i] }).catch(() => null);
+							}
+						}
 					} else {
 						await logger.log(`⚠️ Giveaway ${giveaway.id} ended with no entries (no Discord channel/message — DB finalized only)`);
 					}
@@ -964,13 +994,19 @@ async function processEndedGiveaways(client) {
 							.setTimestamp()
 							.setFooter({ text: embedConfig.FOOTER });
 
-						const noWinnersMention = await NOTIFICATIONS.getNotificationRoleIdForChannel(guild.id, channel.id).catch(() => null);
+						const noWinnersMention = await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(guild.id, channel.id).catch(() => null);
 						await channel
 							.send({
-								content: noWinnersMention ? `<@&${noWinnersMention}>` : undefined,
+								content: noWinnersMention && noWinnersMention.length > 0 ? noWinnersMention[0] : undefined,
 								embeds: [noWinnersEmbed]
 							})
 							.catch(() => null);
+
+						if (noWinnersMention && noWinnersMention.length > 1) {
+							for (let i = 1; i < noWinnersMention.length; i++) {
+								await channel.send({ content: noWinnersMention[i] }).catch(() => null);
+							}
+						}
 					} else {
 						await logger.log(`⚠️ Giveaway ${giveaway.id} ended with no winners selectable (no Discord channel/message — DB finalized only)`);
 					}
@@ -1005,13 +1041,19 @@ async function processEndedGiveaways(client) {
 					await message.edit({ components: [] }).catch(() => null);
 				}
 				if (channel) {
-					const winnersMention = await NOTIFICATIONS.getNotificationRoleIdForChannel(guild.id, channel.id).catch(() => null);
+					const winnersMention = await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(guild.id, channel.id).catch(() => null);
 					await channel
 						.send({
-							content: winnersMention ? `<@&${winnersMention}>` : undefined,
+							content: winnersMention && winnersMention.length > 0 ? winnersMention[0] : undefined,
 							embeds: [winnersEmbed]
 						})
 						.catch(() => null);
+
+					if (winnersMention && winnersMention.length > 1) {
+						for (let i = 1; i < winnersMention.length; i++) {
+							await channel.send({ content: winnersMention[i] }).catch(() => null);
+						}
+					}
 				} else {
 					await logger.log(`⚠️ Giveaway ${giveaway.id} winners recorded in DB but no channel to announce (guild ${guild.id})`);
 				}

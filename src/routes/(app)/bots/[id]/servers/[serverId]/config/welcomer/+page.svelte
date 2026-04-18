@@ -72,7 +72,7 @@
 			<label class="text-ash-300 mb-1.5 block text-xs font-medium">
 				<i class="fas fa-hashtag mr-1 text-sky-400"></i>Welcome Channels
 			</label>
-			<p class="text-ash-500 mb-2 text-xs">Channels for welcome messages. Multiple channels allowed. Uses default channel if not set.</p>
+			<p class="text-ash-500 mb-2 text-xs">Channels for welcome messages. Multiple channels allowed.</p>
 			<ChannelPicker channels={data.channels} categories={data.categories} value={channels[0] ?? ''} onchange={(id) => addChannel(id)} />
 			{#if channels.length > 0}
 				<div class="mt-2 flex flex-wrap gap-1.5">

@@ -173,13 +173,11 @@ CREATE TABLE IF NOT EXISTS server_channels (
     type TEXT,
     category_id INT NULL,
     position INT,
-    notification_role_id INT NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
     UNIQUE KEY unique_server_channel (server_id, discord_channel_id),
     FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE,
-    FOREIGN KEY (category_id) REFERENCES server_categories(id) ON DELETE SET NULL,
-    FOREIGN KEY (notification_role_id) REFERENCES server_roles(id) ON DELETE SET NULL
+    FOREIGN KEY (category_id) REFERENCES server_categories(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS server_bot_servers (
@@ -288,11 +286,11 @@ CREATE TABLE IF NOT EXISTS server_member_levels (
 CREATE TABLE IF NOT EXISTS server_member_notifications (
     id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     member_id INT NOT NULL,
-    role_id INT NOT NULL,
+    channel_id INT NOT NULL,
     created_at DATETIME NOT NULL,
-    UNIQUE KEY unique_member_notification_role (member_id, role_id),
+    UNIQUE KEY unique_member_notification_channel (member_id, channel_id),
     FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE,
-    FOREIGN KEY (role_id) REFERENCES server_roles(id) ON DELETE CASCADE
+    FOREIGN KEY (channel_id) REFERENCES server_channels(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS server_member_roles (
@@ -511,7 +509,7 @@ CREATE INDEX IF NOT EXISTS idx_server_members_language ON server_members(languag
 CREATE INDEX IF NOT EXISTS idx_server_member_content_creators_created ON server_member_content_creators(created_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_levels_member_id ON server_member_levels(member_id);
 CREATE INDEX IF NOT EXISTS idx_server_member_levels_rank ON server_member_levels(`rank`);
-CREATE INDEX IF NOT EXISTS idx_server_member_notifications_role ON server_member_notifications(role_id);
+CREATE INDEX IF NOT EXISTS idx_server_member_notifications_channel ON server_member_notifications(channel_id);
 CREATE INDEX IF NOT EXISTS idx_server_member_custom_supporter_roles_role ON server_member_custom_supporter_roles(role_id);
 CREATE INDEX IF NOT EXISTS idx_server_member_afks_member_id ON server_member_afks(member_id);
 CREATE INDEX IF NOT EXISTS idx_server_settings_server_id ON server_settings(server_id);

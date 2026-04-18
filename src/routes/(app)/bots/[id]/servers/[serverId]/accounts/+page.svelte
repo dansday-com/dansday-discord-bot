@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { invalidateAll } from '$app/navigation';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import type { PageProps } from './$types';
@@ -171,7 +172,7 @@
 </script>
 
 <svelte:head>
-	<title>Server Accounts | Dansday Discord Bot</title>
+	<title>Server Accounts | {APP_NAME} Discord Bot</title>
 </svelte:head>
 
 <div class="space-y-6">

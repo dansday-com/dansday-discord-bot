@@ -3,12 +3,14 @@
 	import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import ConfigToggleRow from '$lib/frontend/components/ConfigToggleRow.svelte';
+	import ChannelPicker from '$lib/frontend/components/ChannelPicker.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 
 	let saving = $state(false);
 	let featureEnabled = $state(data.settings?.enabled === true);
+	let logChannelId = $state(data.settings?.log_channel_id ?? '');
 
 	async function save() {
 		saving = true;
@@ -17,7 +19,11 @@
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
-				body: JSON.stringify({ component: SERVER_SETTINGS.component.moderation, enabled: featureEnabled })
+				body: JSON.stringify({
+					component: SERVER_SETTINGS.component.moderation,
+					enabled: featureEnabled,
+					log_channel_id: logChannelId
+				})
 			});
 			const d = await res.json();
 			if (d.success) {
@@ -34,11 +40,11 @@
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
 		<i class="fas fa-gavel text-red-400"></i>Moderation
 	</h3>
-	<p class="text-ash-400 text-xs">Ban and kick log embeds posted to your main/default channel.</p>
+	<p class="text-ash-400 text-xs">Ban and kick log embeds posted to your chosen channel.</p>
 
 	<ConfigToggleRow
 		label="Moderation module"
-		description="When off, moderation is disabled for this server, including ban and kick log embeds to your main channel."
+		description="When off, moderation is disabled for this server, including ban and kick log embeds."
 		labelIconClass="fas fa-gavel text-red-400"
 		bind:enabled={featureEnabled}
 		ariaLabel="Toggle moderation module"
@@ -46,9 +52,20 @@
 	{#if !featureEnabled}
 		<p class="flex items-start gap-2 text-xs text-amber-200/90">
 			<i class="fas fa-power-off mt-0.5 shrink-0 text-amber-400/90" aria-hidden="true"></i>
-			<span>Module is off. Save configuration to apply. Turn the module on to re-enable moderation and logs.</span>
+			<span>Module is off. Save configuration to apply. Turn the module on to edit the options below.</span>
 		</p>
 	{/if}
+
+	<div class="space-y-5 transition-opacity" class:pointer-events-none={!featureEnabled} class:opacity-50={!featureEnabled}>
+		<div>
+			<label class="text-ash-300 mb-1.5 block text-xs font-medium">
+				<i class="fas fa-hashtag mr-1 text-red-400"></i>Moderation Logs Channel
+			</label>
+			<p class="text-ash-500 mb-2 text-xs">Where moderation logs will be posted.</p>
+			<ChannelPicker channels={data.channels} categories={data.categories} value={logChannelId} onchange={(id) => (logChannelId = id)} />
+		</div>
+	</div>
+
 	<button
 		onclick={save}
 		disabled={saving}

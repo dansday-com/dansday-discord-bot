@@ -291,7 +291,7 @@ export async function sendLevelChangeDM(guildId, discordMemberId, serverName, ne
 			: null;
 
 		await dmChannel.send({
-			embeds: [embed],
+			embeds: [dmEmbed],
 			components: dmRow ? [dmRow] : undefined
 		});
 		await logger.log(`⭐ Sent level change DM (${contextLabel}) to ${discordMemberId} for level ${newLevel} in ${serverName}`);
@@ -404,8 +404,8 @@ export async function sendLevelProgressNotification({
 				);
 		}
 
-		const notificationRoleId = await NOTIFICATIONS.getNotificationRoleIdForChannel(guildId, progressChannelId).catch(() => null);
-		const content = notificationRoleId ? `<@&${notificationRoleId}>` : undefined;
+		const notificationMentions = await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(guildId, progressChannelId).catch(() => null);
+		const content = notificationMentions && notificationMentions.length > 0 ? notificationMentions[0] : undefined;
 
 		const progressRow = leaderboardUrl
 			? new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -418,6 +418,12 @@ export async function sendLevelProgressNotification({
 			embeds: [embed],
 			components: progressRow ? [progressRow] : undefined
 		});
+
+		if (notificationMentions && notificationMentions.length > 1) {
+			for (let i = 1; i < notificationMentions.length; i++) {
+				await channel.send({ content: notificationMentions[i] }).catch(() => null);
+			}
+		}
 		const typeLabel = eventType === 'rank' ? 'rank' : 'level';
 		await logger.log(`⭐ Sent ${typeLabel} notification (${contextLabel}) to channel ${progressChannelId} for ${discordMemberId} in ${serverName}`);
 		return true;

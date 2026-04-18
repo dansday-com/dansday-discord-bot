@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { onDestroy, onMount } from 'svelte';
 	import type { PageProps } from './$types';
 	import type { PublicPageStats } from '$lib/frontend/public/statistics/index.js';
@@ -139,10 +140,10 @@
 </script>
 
 <svelte:head>
-	<title>{data.server.name || data.server.slug} — Statistics | Dansday Discord Bot</title>
+	<title>{data.server.name || data.server.slug} — Statistics | {APP_NAME} Discord Bot</title>
 	<meta name="description" content="Public statistics for {data.server.name || data.server.slug}." />
 	<meta name="theme-color" content="#245f73" />
-	<meta property="og:title" content="{data.server.name || data.server.slug} — Statistics | Dansday Discord Bot" />
+	<meta property="og:title" content="{data.server.name || data.server.slug} — Statistics | {APP_NAME} Discord Bot" />
 	<meta property="og:description" content="Members, channels, leveling, and voice activity for this community." />
 </svelte:head>
 
@@ -374,6 +375,16 @@
 				<i class="fas fa-pause-circle"></i>
 				<span class="m-mini-value">{fmt(liveStats.leveling_total_voice_afk)}</span>
 				<span class="m-mini-label">AFK min</span>
+			</div>
+			<div class="m-mini">
+				<i class="fas fa-video"></i>
+				<span class="m-mini-value">{fmt(liveStats.leveling_total_voice_video)}</span>
+				<span class="m-mini-label">Video min</span>
+			</div>
+			<div class="m-mini">
+				<i class="fas fa-desktop"></i>
+				<span class="m-mini-value">{fmt(liveStats.leveling_total_voice_streaming)}</span>
+				<span class="m-mini-label">Stream min</span>
 			</div>
 		</div>
 	</div>

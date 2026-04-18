@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { onDestroy, onMount } from 'svelte';
 	import type { PageProps } from './$types';
 
@@ -6,7 +7,7 @@
 
 	type Metric = typeof data.metric;
 
-	const METRICS: Metric[] = ['xp', 'chat', 'voice_total', 'voice_active', 'voice_afk'];
+	const METRICS: Metric[] = ['xp', 'chat', 'voice_total', 'voice_active', 'voice_afk', 'video', 'streaming'];
 	const tabPrefetch = new Map<Metric, any[]>();
 
 	let metric = $state<Metric>(data.metric);
@@ -37,6 +38,8 @@
 		if (m === 'voice_total') return 'Voice (Total)';
 		if (m === 'voice_active') return 'Voice (Active)';
 		if (m === 'voice_afk') return 'Voice (AFK)';
+		if (m === 'video') return 'Video';
+		if (m === 'streaming') return 'Streaming';
 		return 'XP';
 	}
 
@@ -45,6 +48,8 @@
 		if (m === 'voice_total') return Number(r.voice_minutes_total || 0);
 		if (m === 'voice_active') return Number(r.voice_minutes_active || 0);
 		if (m === 'voice_afk') return Number(r.voice_minutes_afk || 0);
+		if (m === 'video') return Number(r.voice_minutes_video || 0);
+		if (m === 'streaming') return Number(r.voice_minutes_streaming || 0);
 		return Number(r.experience || 0);
 	}
 
@@ -55,7 +60,7 @@
 
 	function metricUnit(m: string) {
 		if (m === 'chat') return 'msgs';
-		if (m.startsWith('voice_')) return 'min';
+		if (m.startsWith('voice_') || m === 'video' || m === 'streaming') return 'min';
 		return 'xp';
 	}
 
@@ -193,10 +198,10 @@
 </script>
 
 <svelte:head>
-	<title>{data.server.name || data.server.slug} Leaderboard | Dansday Discord Bot</title>
+	<title>{data.server.name || data.server.slug} Leaderboard | {APP_NAME} Discord Bot</title>
 	<meta name="description" content="Top members leaderboard for {data.server.name || data.server.slug}." />
 	<meta name="theme-color" content="#245f73" />
-	<meta property="og:title" content="{data.server.name || data.server.slug} Leaderboard | Dansday Discord Bot" />
+	<meta property="og:title" content="{data.server.name || data.server.slug} Leaderboard | {APP_NAME} Discord Bot" />
 	<meta property="og:description" content="See who's on top in {data.server.name || data.server.slug}." />
 </svelte:head>
 
@@ -224,8 +229,12 @@
 				<i class="fas fa-microphone"></i> Voice
 			{:else if m === 'voice_active'}
 				<i class="fas fa-microphone-lines"></i> Active
-			{:else}
+			{:else if m === 'voice_afk'}
 				<i class="fas fa-moon"></i> AFK
+			{:else if m === 'video'}
+				<i class="fas fa-video"></i> Video
+			{:else if m === 'streaming'}
+				<i class="fas fa-tv"></i> Streaming
 			{/if}
 		</button>
 	{/each}

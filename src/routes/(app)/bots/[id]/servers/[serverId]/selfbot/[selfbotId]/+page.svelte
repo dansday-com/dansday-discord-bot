@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { onDestroy, onMount } from 'svelte';
 	import { showToast } from '$lib/frontend/toast.svelte';
@@ -209,7 +210,7 @@
 </script>
 
 <svelte:head>
-	<title>{data.bot.name || `Selfbot #${data.bot.id}`} | Dansday Discord Bot</title>
+	<title>{data.bot.name || `Selfbot #${data.bot.id}`} | {APP_NAME} Discord Bot</title>
 </svelte:head>
 
 <div class="space-y-4">

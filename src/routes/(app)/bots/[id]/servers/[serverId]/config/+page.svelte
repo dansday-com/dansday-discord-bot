@@ -9,9 +9,10 @@
 	let { data }: PageProps = $props();
 
 	let saving = $state(false);
-	let mainChannel = $state(data.settings?.main_channel ?? '');
 	let defaultColor = $state(data.settings?.color ?? DEFAULT_MAIN_EMBED_COLOR);
 	let defaultFooter = $state(data.settings?.footer ?? DEFAULT_MAIN_EMBED_FOOTER);
+	let botUpdatesChannel = $state(data.settings?.bot_updates_channel_id ?? '');
+	let botNickname = $state(data.settings?.bot_nickname ?? '');
 
 	async function save() {
 		saving = true;
@@ -22,9 +23,10 @@
 				credentials: 'include',
 				body: JSON.stringify({
 					component: SERVER_SETTINGS.component.main,
-					main_channel: mainChannel,
 					color: defaultColor,
-					footer: defaultFooter
+					footer: defaultFooter,
+					bot_updates_channel_id: botUpdatesChannel,
+					bot_nickname: botNickname
 				})
 			});
 			const d = await res.json();
@@ -42,14 +44,20 @@
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
 		<i class="fas fa-gear text-emerald-400"></i>Main
 	</h3>
-	<p class="text-ash-400 text-xs">Set the default channel and embed style used across the bot.</p>
+	<p class="text-ash-400 text-xs">Set the embed style used across the bot.</p>
 
 	<div>
 		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
-			<i class="fas fa-hashtag mr-1 text-emerald-400"></i>Main channel
+			<i class="fas fa-robot mr-1.5 text-emerald-400"></i>Bot Nickname
 		</label>
-		<p class="text-ash-500 mb-2 text-xs">Default channel used when a feature doesn’t have a channel set.</p>
-		<ChannelPicker channels={data.channels} categories={data.categories} value={mainChannel} onchange={(id) => (mainChannel = id)} />
+		<p class="text-ash-500 mb-2 text-xs">Custom nickname for the bot in this server. Leave empty to use the default name.</p>
+		<input
+			type="text"
+			bind:value={botNickname}
+			placeholder="Leave empty for default"
+			class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
+			maxlength="32"
+		/>
 	</div>
 
 	<div>
@@ -95,6 +103,14 @@
 				</div>
 			</div>
 		</div>
+	</div>
+
+	<div>
+		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
+			<i class="fas fa-bullhorn mr-1.5 text-emerald-400"></i>Bot Updates Channel
+		</label>
+		<p class="text-ash-500 mb-2 text-xs">Channel to receive announcements and changelogs from the bot developers.</p>
+		<ChannelPicker channels={data.channels} categories={data.categories} value={botUpdatesChannel} onchange={(id) => (botUpdatesChannel = id)} />
 	</div>
 
 	<button

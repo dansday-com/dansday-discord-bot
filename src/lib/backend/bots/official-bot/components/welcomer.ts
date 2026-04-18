@@ -1,4 +1,4 @@
-import { WELCOMER, getEmbedConfig, getBotConfig, isComponentFeatureEnabled, serverSettingsComponent } from '../../../config.js';
+import { WELCOMER, getEmbedConfig, getBotConfig, isComponentFeatureEnabled, serverSettingsComponent, NOTIFICATIONS } from '../../../config.js';
 import { EmbedBuilder } from 'discord.js';
 import db from '../../../../database.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../utils/index.js';
@@ -106,7 +106,18 @@ async function welcomeUser(member, client) {
 			const welcomeChannel = client.channels.cache.get(channelId);
 			if (welcomeChannel) {
 				try {
-					await welcomeChannel.send({ embeds: [welcomeEmbed] });
+					const notificationMentions = await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(member.guild.id, channelId).catch(() => null);
+					await welcomeChannel.send({
+						content: notificationMentions && notificationMentions.length > 0 ? notificationMentions[0] : undefined,
+						embeds: [welcomeEmbed]
+					});
+
+					if (notificationMentions && notificationMentions.length > 1) {
+						for (let i = 1; i < notificationMentions.length; i++) {
+							await welcomeChannel.send({ content: notificationMentions[i] }).catch(() => null);
+						}
+					}
+
 					const memberName = memberData.display_name || memberData.username || `User ${member.user.id}`;
 					await logger.log(`✅ Welcomed ${memberName} (${member.user.id}) in ${serverData.name} to channel ${welcomeChannel.name}`);
 				} catch (err) {

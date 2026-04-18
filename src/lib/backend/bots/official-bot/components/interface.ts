@@ -13,6 +13,7 @@ import { hasPermission, getPermissionDeniedMessage } from './permissions.js';
 import {
 	handleCustomSupporterRoleButton,
 	handleCustomSupporterRoleModal,
+	handleCustomSupporterRoleEditModal,
 	handleEditCustomSupporterRole,
 	handleDeleteCustomSupporterRole
 } from './interface/customsupporterrole.js';
@@ -53,6 +54,7 @@ import {
 } from './interface/contentcreator.js';
 import { isQuestEnrollButtonId, isQuestEnrollModalId, handleQuestEnrollButton, handleQuestEnrollModalSubmit } from './questEnroll.js';
 import { translate } from '../i18n.js';
+import { createHash } from 'crypto';
 
 async function replyIfFeatureDisabled(interaction: any, component: string): Promise<boolean> {
 	if (!interaction.guild) return false;
@@ -81,7 +83,7 @@ async function handleMenuButton(interaction) {
 		return;
 	}
 
-	if (!(await hasPermission(member, 'leveling'))) {
+	if (!(await hasPermission(member, 'menu'))) {
 		const errorMessage = await getPermissionDeniedMessage(interaction.guild, 'menu', interaction.user.id);
 		if (interaction.replied || interaction.deferred) {
 			await interaction.editReply({
@@ -195,7 +197,7 @@ async function handleMenuButton(interaction) {
 	}
 
 	const embedConfig = await getEmbedConfig(interaction.guild.id);
-	const menuTitle = await translate('menu.title', interaction.guild.id, interaction.user.id);
+	const menuTitle = await translate('menu.title', interaction.guild.id, interaction.user.id, { botName: embedConfig.NICKNAME });
 	const menuDesc = await translate('menu.description', interaction.guild.id, interaction.user.id);
 
 	const menuEmbed = new EmbedBuilder()
@@ -231,6 +233,14 @@ async function handleMenuButton(interaction) {
 			const server = await getServerForCurrentBot(interaction.guild.id);
 			const slug = await computePublicServerSlugForServerId(Number(server.id));
 			const url = slug ? publicServerUrl(slug) : null;
+
+			let memberUrl: string | null = null;
+			if (slug) {
+				const joinedDate = member.joinedAt ? member.joinedAt.toISOString().split('T')[0] : '';
+				const cardHash = createHash('sha256').update(`${interaction.user.id}_${joinedDate}`).digest('hex').substring(0, 16);
+				memberUrl = `${publicServerUrl(slug, 'members')}?card=${cardHash}`;
+			}
+
 			if (url) {
 				const statisticsLabel = await translate('menu.statistics', interaction.guild.id, interaction.user.id);
 				const statisticsBtn = new ButtonBuilder().setLabel(statisticsLabel).setURL(url).setStyle(ButtonStyle.Link);
@@ -239,6 +249,17 @@ async function handleMenuButton(interaction) {
 					settingsRow.addComponents(statisticsBtn);
 				} else if (rows.length < 5) {
 					rows.push(new ActionRowBuilder().addComponents(statisticsBtn));
+				}
+			}
+
+			if (memberUrl) {
+				const memberCardLabel = await translate('menu.memberCard', interaction.guild.id, interaction.user.id);
+				const memberCardBtn = new ButtonBuilder().setLabel(memberCardLabel).setURL(memberUrl).setStyle(ButtonStyle.Link);
+				const targetRow = rows[rows.length - 1];
+				if (targetRow.components.length < 5) {
+					targetRow.addComponents(memberCardBtn);
+				} else if (rows.length < 5) {
+					rows.push(new ActionRowBuilder().addComponents(memberCardBtn));
 				}
 			}
 		} catch (_) {}
@@ -267,7 +288,7 @@ async function handleMenuButton(interaction) {
 	}
 }
 
-export async function handleButtonInteraction(interaction, client) {
+export async function handleButtonInteraction(interaction) {
 	const { customId } = interaction;
 	const user = interaction.user;
 
@@ -340,6 +361,8 @@ export async function handleButtonInteraction(interaction, client) {
 		case 'leaderboard_voice_total':
 		case 'leaderboard_voice_active':
 		case 'leaderboard_voice_afk':
+		case 'leaderboard_video':
+		case 'leaderboard_streaming':
 		case 'leaderboard_chat':
 			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.public_statistics)) break;
 			await handleLeaderboardButton(interaction);
@@ -406,7 +429,7 @@ export async function createInterfaceEmbed(client, guildId, userId = null) {
 
 	const embedConfig = await getEmbedConfig(guildId);
 	const langUserId = userId || '0';
-	const title = await translate('interface.panel.title', guildId, langUserId);
+	const title = await translate('interface.panel.title', guildId, langUserId, { botName: embedConfig.NICKNAME });
 	const description = await translate('interface.panel.description', guildId, langUserId);
 
 	const interfaceEmbed = {
@@ -478,7 +501,7 @@ function init(client) {
 			}
 
 			try {
-				await handleButtonInteraction(interaction, client);
+				await handleButtonInteraction(interaction);
 			} catch (error) {
 				await logger.log(`❌ Button interaction error: ${error.message}`);
 
@@ -512,6 +535,9 @@ function init(client) {
 				if (interaction.customId === 'custom_supporter_role_create') {
 					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.custom_supporter_role)) return;
 					await handleCustomSupporterRoleModal(interaction);
+				} else if (interaction.customId === 'custom_supporter_role_edit') {
+					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.custom_supporter_role)) return;
+					await handleCustomSupporterRoleEditModal(interaction);
 				} else if (interaction.customId === 'feedback_submit') {
 					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.feedback)) return;
 					await handleFeedbackModal(interaction);

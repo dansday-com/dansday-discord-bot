@@ -5,6 +5,7 @@ import * as schema from '../../schema.js';
 import { SERVER_SETTINGS } from '../../frontend/panelServer.js';
 import { initializeDatabase } from '../../database.js';
 import { toMySQLDateTime } from '../../utils/datetime.js';
+import { APP_NAME } from '../../frontend/panelServer.js';
 
 const DEMO = {
 	serverCount: 2,
@@ -157,7 +158,7 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 
 	for (let s = 1; s <= DEMO.serverCount; s++) {
 		const discordServerId = `${sessionSlug}_server_${String(s).padStart(4, '0')}`;
-		const serverName = `Dansday Demo Server ${s}`;
+		const serverName = `${APP_NAME} Demo Server ${s}`;
 
 		await db.execute(sql`
 			INSERT INTO servers
@@ -269,7 +270,6 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 					type: 'guild_text',
 					category_id: catId(`${pfx}_cat_info`),
 					position: 3,
-					notification_role_id: null,
 					created_at: nowDb,
 					updated_at: nowDb
 				},
@@ -280,7 +280,6 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 					type: 'guild_announcement',
 					category_id: catId(`${pfx}_cat_info`),
 					position: 2,
-					notification_role_id: null,
 					created_at: nowDb,
 					updated_at: nowDb
 				},
@@ -291,7 +290,6 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 					type: 'guild_text',
 					category_id: catId(`${pfx}_cat_chat`),
 					position: 1,
-					notification_role_id: null,
 					created_at: nowDb,
 					updated_at: nowDb
 				},
@@ -302,7 +300,6 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 					type: 'guild_voice',
 					category_id: catId(`${pfx}_cat_voice`),
 					position: 1,
-					notification_role_id: null,
 					created_at: nowDb,
 					updated_at: nowDb
 				}

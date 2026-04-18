@@ -4,7 +4,6 @@ import db, { snapshotBigIntOrNull, type RobloxItemChange } from '../../../../dat
 import {
 	fetchCatalogFirstPage,
 	getEmbedConfig,
-	getMainChannel,
 	isComponentFeatureEnabled,
 	PERMISSIONS,
 	robloxCatalogEmbedColors,
@@ -14,6 +13,7 @@ import {
 	ROBLOX_CATALOG_POLL_MS,
 	serverSettingsComponent,
 	streamCatalogPages,
+	NOTIFICATIONS,
 	type RobloxCatalogItem
 } from '../../../config.js';
 import { logger } from '../../../../utils/index.js';
@@ -155,13 +155,6 @@ async function getActiveServers(client: Client, officialBotId: number): Promise<
 		const s = row && !Array.isArray(row) && typeof row.settings === 'object' ? (row.settings as Record<string, unknown>) : {};
 
 		let channelId = typeof s.channel_id === 'string' ? s.channel_id : '';
-		if (!channelId) {
-			try {
-				channelId = await getMainChannel(guildId);
-			} catch {
-				channelId = '';
-			}
-		}
 		if (!channelId) continue;
 
 		const guild = await client.guilds.fetch(guildId).catch(() => null);
@@ -241,14 +234,20 @@ async function sendItemEmbed(
 		new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(url).setLabel('Open on Roblox').setEmoji('🛍️')
 	);
 
-	let content: string | undefined;
-	if (isNewOfficial) {
-		const memberRoleIds = (await PERMISSIONS.getPermissions(target.guildId).catch(() => null))?.MEMBER_ROLES ?? [];
-		const mentions = memberRoleIds.map((id: string) => `<@&${id}>`).join(' ');
-		content = mentions || undefined;
-	}
+	const parts: string[] = [];
+
+	const notificationMentions = await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(target.guildId, target.channel.id).catch(() => null);
+	if (notificationMentions && notificationMentions.length > 0) parts.push(notificationMentions[0]);
+
+	const content = parts.length > 0 ? parts.join(' ') : undefined;
 
 	await target.channel.send({ content, embeds: [embed], components: [btnRow] });
+
+	if (notificationMentions && notificationMentions.length > 1) {
+		for (let i = 1; i < notificationMentions.length; i++) {
+			await target.channel.send({ content: notificationMentions[i] }).catch(() => null);
+		}
+	}
 }
 
 async function initialSeed(officialBotId: number, targets: ServerTarget[]) {

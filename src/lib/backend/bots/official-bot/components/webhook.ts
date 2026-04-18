@@ -1,9 +1,8 @@
 import { COMMUNICATION, NOTIFICATIONS, getEmbedConfig, isComponentFeatureEnabled, serverSettingsComponent } from '../../../config.js';
 import { resolveEmbedFooterPlaceholders } from '../../../../utils/embedFooter.js';
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, AttachmentBuilder } from 'discord.js';
 import { logger } from '../../../../utils/index.js';
 import db from '../../../../database.js';
-import { syncNotificationRoles } from './notificationsSync.js';
 
 let webhookServer = null;
 let client = null;
@@ -52,6 +51,96 @@ function parseColor(colorInput) {
 	return null;
 }
 
+async function handleSendGlobalEmbed(payload) {
+	try {
+		const { title, description, image_url, color, footer, image_attachment } = payload;
+
+		if (!title) {
+			throw new Error('Title is required');
+		}
+
+		if (!currentBotId) {
+			throw new Error('Current bot id not set');
+		}
+
+		const servers = await db.getServersForBot(currentBotId);
+		let successCount = 0;
+		let failCount = 0;
+
+		for (const server of servers) {
+			const guild_id = server.discord_server_id;
+			if (!guild_id) continue;
+
+			try {
+				const mainRow = await db.getServerSettings(server.id, 'main');
+				const mainSettings = mainRow && Array.isArray(mainRow) ? mainRow[0]?.settings : mainRow?.settings;
+				const channelId = mainSettings?.bot_updates_channel_id;
+
+				if (!channelId) continue;
+
+				let guild = client.guilds.cache.get(guild_id);
+				if (!guild) guild = await client.guilds.fetch(guild_id).catch(() => null);
+				if (!guild) continue;
+
+				const channel = guild.channels.cache.get(channelId) || (await guild.channels.fetch(channelId).catch(() => null));
+				if (!channel || !channel.isTextBased()) continue;
+
+				const embedConfig = await getEmbedConfig(guild_id).catch(() => ({ COLOR: 0, FOOTER: '' }));
+				let embedColor = embedConfig.COLOR;
+
+				if (color && color.trim()) {
+					const parsedColor = parseColor(color.trim());
+					if (parsedColor !== null) embedColor = parsedColor;
+				}
+
+				const serverNameForFooter = server.name || guild.name;
+				const rawFooter = footer && footer.trim() ? footer.trim() : embedConfig.FOOTER;
+				const footerText = resolveEmbedFooterPlaceholders(rawFooter, serverNameForFooter);
+
+				const embed = new EmbedBuilder().setColor(embedColor).setFooter({ text: footerText }).setTimestamp();
+
+				embed.setTitle(title);
+				if (description) embed.setDescription(description);
+
+				let files = [];
+				if (image_url) {
+					embed.setImage(image_url);
+				} else if (image_attachment && image_attachment.data) {
+					const buffer = Buffer.from(image_attachment.data, 'base64');
+					const attachment = new AttachmentBuilder(buffer, { name: image_attachment.filename || 'image.png' });
+					embed.setImage(`attachment://${image_attachment.filename || 'image.png'}`);
+					files.push(attachment);
+				}
+
+				const messageOptions: any = { embeds: [embed] };
+				if (files.length > 0) messageOptions.files = files;
+
+				const notificationMentions = await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(guild_id, channel.id).catch(() => null);
+				const firstMentionChunk = notificationMentions ? notificationMentions[0] : null;
+				if (firstMentionChunk) messageOptions.content = firstMentionChunk;
+
+				await channel.send(messageOptions);
+
+				if (notificationMentions && notificationMentions.length > 1) {
+					for (let i = 1; i < notificationMentions.length; i++) {
+						await channel.send({ content: notificationMentions[i] }).catch(() => null);
+					}
+				}
+				successCount++;
+			} catch (err: any) {
+				await logger.log(`❌ Failed to send global embed to guild ${guild_id}: ${err.message}`);
+				failCount++;
+			}
+		}
+
+		await logger.log(`✅ Global embed sent: ${successCount} succeeded, ${failCount} failed`);
+		return { success: true, successCount, failCount };
+	} catch (err: any) {
+		await logger.log(`❌ handleSendGlobalEmbed error: ${err.message}`);
+		return { success: false, error: err.message };
+	}
+}
+
 async function handleSendEmbed(payload) {
 	try {
 		const { guild_id, channel_ids, role_ids, title, description, image_url, color, footer, image_attachment } = payload;
@@ -94,7 +183,7 @@ async function handleSendEmbed(payload) {
 
 		const embed = new EmbedBuilder().setColor(embedColor).setFooter({ text: footerText }).setTimestamp();
 
-		if (title) embed.setTitle(title);
+		embed.setTitle(title);
 		if (description) embed.setDescription(description);
 
 		let imageAttachment = null;
@@ -136,7 +225,7 @@ async function handleSendEmbed(payload) {
 			}
 		}
 
-		const messageOptions = {
+		const messageOptions: any = {
 			content: content || undefined,
 			embeds: [embed]
 		};
@@ -166,11 +255,18 @@ async function handleSendEmbed(payload) {
 					continue;
 				}
 
-				const notificationRoleId = await NOTIFICATIONS.getNotificationRoleIdForChannel(guild_id, channelId).catch(() => null);
-				const channelContent = [notificationRoleId ? `<@&${notificationRoleId}>` : null, content].filter(Boolean).join(' ') || undefined;
+				const notificationMentions = await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(guild_id, channelId).catch(() => null);
+				const firstMentionChunk = notificationMentions ? notificationMentions[0] : null;
+				const channelContent = [firstMentionChunk ? firstMentionChunk : null, content].filter(Boolean).join(' ') || undefined;
 				const channelMessageOptions = { ...messageOptions, content: channelContent };
 
 				await channel.send(channelMessageOptions);
+
+				if (notificationMentions && notificationMentions.length > 1) {
+					for (let i = 1; i < notificationMentions.length; i++) {
+						await channel.send({ content: notificationMentions[i] }).catch(() => null);
+					}
+				}
 				results.push({ channelId, success: true, channelName: channel.name });
 				await logger.log(`📤 Embed sent via webhook to ${channel.name} (${channel.id}) in ${guild.name} (${guild.id})`);
 			} catch (channelError) {
@@ -235,6 +331,17 @@ async function handleWebhookRequest(req, res) {
 						await logger.log(`❌ Failed to process message: ${forwardErr.message}`);
 						res.writeHead(500, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify({ error: 'Failed to process message', details: forwardErr.message }));
+					}
+				} else if (payload.type === 'send_global_embed') {
+					try {
+						await logger.log(`📥 Received send_global_embed webhook`);
+						const result = await handleSendGlobalEmbed(payload);
+						res.writeHead(result.success ? 200 : 500, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify(result));
+					} catch (embedErr) {
+						await logger.log(`❌ Failed to send global embed: ${embedErr.message}`);
+						res.writeHead(500, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify({ error: 'Failed to send global embed', details: embedErr.message }));
 					}
 				} else if (payload.type === 'send_embed') {
 					try {
@@ -364,6 +471,35 @@ async function handleWebhookRequest(req, res) {
 						res.writeHead(500, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify({ error: 'Failed to send DM', details: dmErr.message }));
 					}
+				} else if (payload.type === 'sync_bot_nickname') {
+					try {
+						const guildId = payload.guild_id;
+						const nickname = payload.nickname;
+						if (!guildId) {
+							res.writeHead(400, { 'Content-Type': 'application/json' });
+							res.end(JSON.stringify({ error: 'Missing guild_id' }));
+							return;
+						}
+
+						let guild = client.guilds.cache.get(guildId);
+						if (!guild) guild = await client.guilds.fetch(guildId).catch(() => null);
+						if (!guild) throw new Error('Guild not found');
+
+						const me = guild.members.me || (await guild.members.fetch(client.user.id).catch(() => null));
+						if (me) {
+							await me.setNickname(nickname || null);
+							await logger.log(`✅ Synced bot nickname for guild ${guildId} to "${nickname}"`);
+						} else {
+							throw new Error('Bot member not found in guild');
+						}
+
+						res.writeHead(200, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify({ success: true }));
+					} catch (err) {
+						await logger.log(`❌ Failed to sync bot nickname: ${err.message}`);
+						res.writeHead(500, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify({ error: 'Failed to sync bot nickname', details: err.message }));
+					}
 				} else if (payload.type === 'sync_component_runtime') {
 					try {
 						const guildId = payload.guild_id;
@@ -389,40 +525,6 @@ async function handleWebhookRequest(req, res) {
 						await logger.log(`❌ sync_component_runtime failed: ${runtimeErr.message}`);
 						res.writeHead(500, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify({ error: 'sync_component_runtime failed', details: runtimeErr.message }));
-					}
-				} else if (payload.type === 'sync_notification_roles') {
-					try {
-						const guildId = payload.guild_id;
-						if (!guildId) {
-							res.writeHead(400, { 'Content-Type': 'application/json' });
-							res.end(JSON.stringify({ error: 'Missing guild_id' }));
-							return;
-						}
-						let guild = client.guilds.cache.get(guildId);
-						if (!guild) {
-							guild = await client.guilds.fetch(guildId);
-						}
-						const botIdToUse = currentBotId;
-						if (!botIdToUse) {
-							res.writeHead(500, { 'Content-Type': 'application/json' });
-							res.end(JSON.stringify({ error: 'Current bot id not set' }));
-							return;
-						}
-						const server = await db.getServerByDiscordId(botIdToUse, guildId);
-						if (!server) {
-							res.writeHead(404, { 'Content-Type': 'application/json' });
-							res.end(JSON.stringify({ error: 'Server not found for this guild' }));
-							return;
-						}
-						await logger.log(`📥 Received sync_notification_roles webhook for guild ${guildId}`);
-						await syncNotificationRoles(guild, server.id);
-						await logger.log(`✅ Notification roles synced for guild ${guild.name}`);
-						res.writeHead(200, { 'Content-Type': 'application/json' });
-						res.end(JSON.stringify({ success: true, message: 'Notification roles synced' }));
-					} catch (syncErr) {
-						await logger.log(`❌ Failed to sync notification roles: ${syncErr.message}`);
-						res.writeHead(500, { 'Content-Type': 'application/json' });
-						res.end(JSON.stringify({ error: 'Failed to sync notification roles', details: syncErr.message }));
 					}
 				} else {
 					await logger.log(`❌ Invalid payload format: ${JSON.stringify(payload)}`);

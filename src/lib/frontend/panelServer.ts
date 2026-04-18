@@ -1,3 +1,7 @@
+export const APP_NAME = '</DANSDAY>';
+export const APP_DOMAIN = 'dansday.com';
+export const APP_URL = 'https://dansday.com';
+
 const REGISTRY = [
 	{ id: 'main', label: 'Main', featureSwitch: false, hrefSuffix: '', icon: 'fa-gear', iconClass: 'text-emerald-400' },
 	{
@@ -164,6 +168,18 @@ export const SERVER_SETTINGS = {
 };
 
 export type ServerSettingsComponentName = keyof typeof SERVER_SETTINGS.component;
+
+export const AUTO_ENABLED_COMPONENTS: Set<string> = new Set([
+	component.public_statistics,
+	component.roblox_catalog_notifier,
+	component.giveaway,
+	component.leveling,
+	component.welcomer,
+	component.booster,
+	component.moderation,
+	component.afk,
+	component.notifications
+]);
 
 let dbCache: (typeof import('$lib/database.js'))['default'] | null = null;
 async function getDb() {

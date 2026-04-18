@@ -4,8 +4,10 @@ import mysql from 'mysql2/promise';
 import { eq, and, or, inArray, sql, desc, asc, isNull, isNotNull, count, avg, like, ne } from 'drizzle-orm';
 import { db } from './drizzle.js';
 import * as schema from './schema.js';
-import { SERVER_SETTINGS } from './frontend/panelServer.js';
+import { SERVER_SETTINGS, AUTO_ENABLED_COMPONENTS } from './frontend/panelServer.js';
 import { logger, toMySQLDateTime, parseMySQLDateTimeUtc, getNowUtc } from './utils/index.js';
+import { DEFAULT_MAIN_EMBED_COLOR, DEFAULT_MAIN_EMBED_FOOTER, DEFAULT_BOT_NICKNAME } from './utils/mainConfigSettings.js';
+import { DEFAULT_LEVELING_SETTINGS, DEFAULT_WELCOMER_MESSAGES, DEFAULT_BOOSTER_MESSAGES } from './backend/config.js';
 import type { DiscordQuestSummary } from './backend/api/discord-quest-api.js';
 
 function getConnectionConfig() {
@@ -289,10 +291,12 @@ export type BotStatusInput = {
 	activity_state: string | null;
 };
 
+import { APP_DOMAIN } from './frontend/panelServer.js';
+
 export const DEFAULT_BOT_PRESENCE: BotStatusInput = {
 	discord_status: 'online',
 	activity_type: 'playing',
-	activity_name: 'bot.dansday.com',
+	activity_name: `bot.${APP_DOMAIN}`,
 	activity_url: null,
 	activity_state: 'Free web panel for your Discord server. Hosted free or self host.'
 };
@@ -491,77 +495,77 @@ async function getServerIdsInSameGuild(serverId: any) {
 	return rows.map((r) => r.id);
 }
 
-export async function getNotificationRolesForServer(serverId: any) {
+export async function getNotificationChannels(serverId: any, channelIds: string[]) {
 	await initializeDatabase();
-	return db
-		.select({ discord_channel_id: schema.serverChannels.discord_channel_id, discord_role_id: schema.serverRoles.discord_role_id })
-		.from(schema.serverChannels)
-		.innerJoin(schema.serverRoles, eq(schema.serverRoles.id, schema.serverChannels.notification_role_id!))
-		.where(and(eq(schema.serverChannels.server_id, Number(serverId)), isNotNull(schema.serverChannels.notification_role_id)));
-}
-
-export async function getNotificationRolesWithCategory(serverId: any) {
-	await initializeDatabase();
+	if (!channelIds || channelIds.length === 0) return [];
 	const rows = await db.execute(sql`
-		SELECT r.discord_role_id, COALESCE(cat.name, c.name) AS category_name,
+		SELECT c.discord_channel_id, COALESCE(cat.name, c.name) AS category_name,
 		       COALESCE(cat.position, 9999) AS category_position,
 		       COALESCE(c.position, 0) AS channel_position,
 		       c.name AS channel_name
 		FROM server_channels c
-		INNER JOIN server_roles r ON r.id = c.notification_role_id
 		LEFT JOIN server_categories cat ON cat.id = c.category_id
-		WHERE c.server_id = ${Number(serverId)} AND c.notification_role_id IS NOT NULL
+		WHERE c.server_id = ${Number(serverId)} AND c.discord_channel_id IN (${sql.join(channelIds, sql`, `)})
 		ORDER BY category_position ASC, channel_position ASC, channel_name ASC
 	`);
 	return (rows[0] as unknown as any[]) || [];
 }
 
-export async function getNotificationRoleByChannel(serverId: any, discordChannelId: string) {
+export async function getMemberNotificationChannelIds(serverId: any, discordMemberId: string) {
 	await initializeDatabase();
-	const rows = await db
-		.select({ discord_role_id: schema.serverRoles.discord_role_id })
-		.from(schema.serverChannels)
-		.innerJoin(schema.serverRoles, eq(schema.serverRoles.id, schema.serverChannels.notification_role_id!))
-		.where(and(eq(schema.serverChannels.server_id, Number(serverId)), eq(schema.serverChannels.discord_channel_id, discordChannelId)))
+	const rows = await db.execute(sql`
+		SELECT c.discord_channel_id
+		FROM server_member_notifications n
+		INNER JOIN server_members m ON m.id = n.member_id
+		INNER JOIN server_channels c ON c.id = n.channel_id
+		WHERE m.server_id = ${Number(serverId)} AND m.discord_member_id = ${discordMemberId}
+	`);
+	return ((rows[0] as unknown as any[]) || []).map((r) => r.discord_channel_id);
+}
+
+export async function getNotifiedMemberDiscordIds(serverId: any, discordChannelId: string) {
+	await initializeDatabase();
+	const rows = await db.execute(sql`
+		SELECT m.discord_member_id
+		FROM server_member_notifications n
+		INNER JOIN server_members m ON m.id = n.member_id
+		INNER JOIN server_channels c ON c.id = n.channel_id
+		WHERE c.server_id = ${Number(serverId)} AND c.discord_channel_id = ${discordChannelId}
+	`);
+	return ((rows[0] as unknown as any[]) || []).map((r) => r.discord_member_id);
+}
+
+export async function updateMemberNotificationChannels(serverId: any, discordMemberId: string, discordChannelIds: string[]) {
+	await initializeDatabase();
+	const mRows = await db
+		.select({ id: schema.serverMembers.id })
+		.from(schema.serverMembers)
+		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), eq(schema.serverMembers.discord_member_id, discordMemberId)))
 		.limit(1);
-	return rows[0]?.discord_role_id || null;
-}
+	if (!mRows.length) return false;
+	const mid = mRows[0].id;
 
-export async function upsertNotificationRole(serverId: any, discordChannelId: string, discordRoleId: string) {
-	await initializeDatabase();
-	const serverIds = await getServerIdsInSameGuild(serverId);
-	for (const sid of serverIds) {
-		const roleRows = await db
-			.select({ id: schema.serverRoles.id })
-			.from(schema.serverRoles)
-			.where(and(eq(schema.serverRoles.server_id, sid), eq(schema.serverRoles.discord_role_id, discordRoleId)))
-			.limit(1);
-		const roleId = roleRows[0]?.id;
-		if (!roleId) continue;
-		await db
-			.update(schema.serverChannels)
-			.set({ notification_role_id: roleId })
-			.where(and(eq(schema.serverChannels.server_id, sid), eq(schema.serverChannels.discord_channel_id, discordChannelId)));
+	await db.delete(schema.serverMemberNotifications).where(eq(schema.serverMemberNotifications.member_id, mid));
+
+	if (discordChannelIds && discordChannelIds.length > 0) {
+		const channelRows = await db
+			.select({ id: schema.serverChannels.id })
+			.from(schema.serverChannels)
+			.where(and(eq(schema.serverChannels.server_id, Number(serverId)), inArray(schema.serverChannels.discord_channel_id, discordChannelIds)));
+		const channelIds = channelRows.map((c) => c.id);
+
+		if (channelIds.length > 0) {
+			const now = toMySQLDateTime();
+			await db.insert(schema.serverMemberNotifications).values(
+				channelIds.map((cid) => ({
+					member_id: mid,
+					channel_id: cid,
+					created_at: now as any
+				}))
+			);
+		}
 	}
-}
-
-export async function deleteNotificationRole(serverId: any, discordChannelId: string) {
-	await initializeDatabase();
-	const serverIds = await getServerIdsInSameGuild(serverId);
-	if (serverIds.length === 0) return;
-	await db
-		.update(schema.serverChannels)
-		.set({ notification_role_id: null })
-		.where(and(inArray(schema.serverChannels.server_id, serverIds), eq(schema.serverChannels.discord_channel_id, discordChannelId)));
-}
-
-export async function getNotificationRoleDbIds(serverId: any) {
-	await initializeDatabase();
-	const rows = await db
-		.selectDistinct({ notification_role_id: schema.serverChannels.notification_role_id })
-		.from(schema.serverChannels)
-		.where(and(eq(schema.serverChannels.server_id, Number(serverId)), isNotNull(schema.serverChannels.notification_role_id)));
-	return new Set(rows.map((r) => r.notification_role_id).filter(Boolean));
+	return true;
 }
 
 export async function getContentCreatorRoleDbIds(serverId: any) {
@@ -635,7 +639,7 @@ export async function upsertOfficialServer(officialBotId: number, guild: any) {
 	const server = await getOfficialServerByDiscordId(officialBotId, guild.id);
 	if (server) {
 		if (isNewServer) {
-			await seedNewServerFeatureSettingsDisabled(server.id);
+			await seedNewServerSettings(server.id);
 		}
 		await ensureLeaderboardSettingsHaveSlug(server.id, guild.name || 'server');
 	}
@@ -828,10 +832,28 @@ async function ensureLeaderboardSettingsHaveSlug(serverId: number, serverName: s
 	return true;
 }
 
-async function seedNewServerFeatureSettingsDisabled(serverId: number) {
+async function seedNewServerSettings(serverId: number) {
 	for (const component of SERVER_SETTINGS.withFeatureSwitch) {
-		await upsertServerSettings(serverId, component, { enabled: false });
+		const baseSettings: Record<string, any> = { enabled: AUTO_ENABLED_COMPONENTS.has(component) };
+
+		if (component === SERVER_SETTINGS.component.leveling) {
+			Object.assign(baseSettings, DEFAULT_LEVELING_SETTINGS);
+		} else if (component === SERVER_SETTINGS.component.welcomer) {
+			baseSettings.messages = DEFAULT_WELCOMER_MESSAGES;
+		} else if (component === SERVER_SETTINGS.component.booster) {
+			baseSettings.messages = DEFAULT_BOOSTER_MESSAGES;
+		}
+
+		await upsertServerSettings(serverId, component, baseSettings);
 	}
+
+	await upsertServerSettings(serverId, SERVER_SETTINGS.component.main, {
+		color: DEFAULT_MAIN_EMBED_COLOR,
+		footer: DEFAULT_MAIN_EMBED_FOOTER,
+		bot_nickname: DEFAULT_BOT_NICKNAME
+	});
+
+	await upsertServerSettings(serverId, SERVER_SETTINGS.component.permissions, {});
 }
 
 export async function getServerByLeaderboardSlug(slug: string) {
@@ -1220,7 +1242,6 @@ export async function syncMemberRoles(memberId: any, discordRoleIds: string[], s
 
 	if (roleList.length === 0) {
 		await db.delete(schema.serverMemberRoles).where(eq(schema.serverMemberRoles.member_id, mid));
-		await db.delete(schema.serverMemberNotifications).where(eq(schema.serverMemberNotifications.member_id, mid));
 		await db.delete(schema.serverMemberCustomSupporterRoles).where(eq(schema.serverMemberCustomSupporterRoles.member_id, mid));
 		await refreshMemberIsContentCreator(mid, sid, []);
 		return true;
@@ -1241,22 +1262,6 @@ export async function syncMemberRoles(memberId: any, discordRoleIds: string[], s
 				member_id: mid,
 				role_id,
 				created_at: smrNow as any
-			}))
-		);
-	}
-
-	const notificationRoleDbIds = await getNotificationRoleDbIds(serverId);
-	const notificationRoleIdsForMember = roleIdsOnMember.filter((id) => notificationRoleDbIds.has(id));
-
-	await db.delete(schema.serverMemberNotifications).where(eq(schema.serverMemberNotifications.member_id, mid));
-
-	if (notificationRoleIdsForMember.length > 0) {
-		const now = toMySQLDateTime();
-		await db.insert(schema.serverMemberNotifications).values(
-			notificationRoleIdsForMember.map((role_id) => ({
-				member_id: mid,
-				role_id,
-				created_at: now as any
 			}))
 		);
 	}
@@ -1465,6 +1470,8 @@ export async function getServerLeaderboard(serverId: any, limit = 3, sortType = 
 		voice_total: [desc(schema.serverMemberLevels.voice_minutes_total), asc(schema.serverMemberLevels.updated_at), asc(schema.serverMemberLevels.created_at)],
 		voice_active: [desc(schema.serverMemberLevels.voice_minutes_active), asc(schema.serverMemberLevels.updated_at), asc(schema.serverMemberLevels.created_at)],
 		voice_afk: [desc(schema.serverMemberLevels.voice_minutes_afk), asc(schema.serverMemberLevels.updated_at), asc(schema.serverMemberLevels.created_at)],
+		video: [desc(schema.serverMemberLevels.voice_minutes_video), asc(schema.serverMemberLevels.updated_at), asc(schema.serverMemberLevels.created_at)],
+		streaming: [desc(schema.serverMemberLevels.voice_minutes_streaming), asc(schema.serverMemberLevels.updated_at), asc(schema.serverMemberLevels.created_at)],
 		chat: [desc(schema.serverMemberLevels.chat_total), asc(schema.serverMemberLevels.updated_at), asc(schema.serverMemberLevels.created_at)],
 		xp: [desc(schema.serverMemberLevels.experience), asc(schema.serverMemberLevels.updated_at), asc(schema.serverMemberLevels.created_at)]
 	};
@@ -1491,6 +1498,8 @@ export async function getServerLeaderboard(serverId: any, limit = 3, sortType = 
 			voice_minutes_total: schema.serverMemberLevels.voice_minutes_total,
 			voice_minutes_active: schema.serverMemberLevels.voice_minutes_active,
 			voice_minutes_afk: schema.serverMemberLevels.voice_minutes_afk,
+			voice_minutes_video: schema.serverMemberLevels.voice_minutes_video,
+			voice_minutes_streaming: schema.serverMemberLevels.voice_minutes_streaming,
 			rank: schema.serverMemberLevels.rank
 		})
 		.from(schema.serverMemberLevels)
@@ -1572,7 +1581,7 @@ export async function getServerOverview(serverId: any, opts?: { forPublicPage?: 
 		db.execute(sql`SELECT COUNT(*) AS count FROM server_categories WHERE server_id = ${Number(serverId)}`),
 		db.execute(sql`SELECT COUNT(*) AS count FROM server_roles WHERE server_id = ${Number(serverId)}`),
 		db.execute(
-			sql`SELECT COALESCE(SUM(experience),0) AS total_experience, COALESCE(AVG(level),0) AS avg_level, COALESCE(MAX(level),0) AS max_level, COALESCE(SUM(chat_total),0) AS total_chat, COALESCE(SUM(voice_minutes_total),0) AS total_voice_minutes, COALESCE(SUM(voice_minutes_active),0) AS total_voice_active, COALESCE(SUM(voice_minutes_afk),0) AS total_voice_afk FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ${Number(serverId)}`
+			sql`SELECT COALESCE(SUM(experience),0) AS total_experience, COALESCE(AVG(level),0) AS avg_level, COALESCE(MAX(level),0) AS max_level, COALESCE(SUM(chat_total),0) AS total_chat, COALESCE(SUM(voice_minutes_total),0) AS total_voice_minutes, COALESCE(SUM(voice_minutes_active),0) AS total_voice_active, COALESCE(SUM(voice_minutes_afk),0) AS total_voice_afk, COALESCE(SUM(voice_minutes_video),0) AS total_voice_video, COALESCE(SUM(voice_minutes_streaming),0) AS total_voice_streaming FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ${Number(serverId)}`
 		),
 		db.execute(
 			sql`SELECT COUNT(DISTINCT smcsr.member_id) AS members_with_custom_roles FROM server_member_custom_supporter_roles smcsr INNER JOIN server_members sm ON sm.id = smcsr.member_id WHERE sm.server_id = ${Number(serverId)}`
@@ -1651,7 +1660,9 @@ export async function getServerOverview(serverId: any, opts?: { forPublicPage?: 
 		leveling_total_chat: r(levelingStats).total_chat || 0,
 		leveling_total_voice_minutes: r(levelingStats).total_voice_minutes || 0,
 		leveling_total_voice_active: r(levelingStats).total_voice_active || 0,
-		leveling_total_voice_afk: r(levelingStats).total_voice_afk || 0
+		leveling_total_voice_afk: r(levelingStats).total_voice_afk || 0,
+		leveling_total_voice_video: r(levelingStats).total_voice_video || 0,
+		leveling_total_voice_streaming: r(levelingStats).total_voice_streaming || 0
 	};
 
 	if (forPublic) {
@@ -2215,6 +2226,21 @@ async function getFirstRunningSelfbotForServer(serverId: number) {
 	return running[0] ?? null;
 }
 
+type ServerSettingsRow = {
+	id: number;
+	server_id: number;
+	component_name: string;
+	settings: unknown;
+	created_at: Date;
+	updated_at: Date;
+};
+
+function isServerSettingsRowArray(x: unknown): x is ServerSettingsRow[] {
+	return Array.isArray(x);
+}
+
+async function getServerSettings(serverId: any, componentName: string): Promise<ServerSettingsRow | null>;
+async function getServerSettings(serverId: any, componentName?: null): Promise<ServerSettingsRow[]>;
 async function getServerSettings(serverId: any, componentName: string | null = null) {
 	await initializeDatabase();
 	if (componentName) {
@@ -2239,7 +2265,7 @@ async function getServerSettings(serverId: any, componentName: string | null = n
 		.select()
 		.from(schema.serverSettings)
 		.where(eq(schema.serverSettings.server_id, Number(serverId)));
-	return rows.map((row) => {
+	const mapped = rows.map((row) => {
 		const r = { ...row };
 		if (r.settings && typeof r.settings === 'string') {
 			try {
@@ -2250,6 +2276,7 @@ async function getServerSettings(serverId: any, componentName: string | null = n
 		}
 		return r;
 	});
+	return isServerSettingsRowArray(mapped) ? mapped : [];
 }
 
 async function upsertServerSettings(serverId: any, componentName: string, settings: any) {
@@ -3437,13 +3464,10 @@ export default {
 	getSelfbotServerByDiscordId,
 	getServerByDiscordId,
 	getOfficialBotServerIdForServer,
-	getNotificationRolesForServer,
-	getNotificationRolesWithCategory,
-	getNotificationRoleByChannel,
-	getNotificationRoleDbIds,
-	getContentCreatorRoleDbIds,
-	upsertNotificationRole,
-	deleteNotificationRole,
+	getNotificationChannels,
+	getMemberNotificationChannelIds,
+	getNotifiedMemberDiscordIds,
+	updateMemberNotificationChannels,
 	upsertServer,
 	upsertOfficialServer,
 	upsertSelfbotServer,

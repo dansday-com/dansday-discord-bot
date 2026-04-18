@@ -207,6 +207,12 @@ async function buildLevelingEmbeds(server, memberLevelData, sortType = 'xp', gui
 		case 'voice_afk':
 			leaderboardTitle = await translate('leveling.leaderboard.topVoiceAfk', actualGuildId, actualUserId);
 			break;
+		case 'video':
+			leaderboardTitle = await translate('leveling.leaderboard.topVideo', actualGuildId, actualUserId);
+			break;
+		case 'streaming':
+			leaderboardTitle = await translate('leveling.leaderboard.topStreaming', actualGuildId, actualUserId);
+			break;
 		case 'chat':
 			leaderboardTitle = await translate('leveling.leaderboard.topChat', actualGuildId, actualUserId);
 			break;
@@ -263,6 +269,18 @@ async function buildLevelingEmbeds(server, memberLevelData, sortType = 'xp', gui
 					value = `${medal} **${name}**\n${formatNumber(afkMinutes)} ${minAfkText}`;
 					break;
 				}
+				case 'video': {
+					const videoMinutes = entry.voice_minutes_video || 0;
+					const minVideoText = await translate('leveling.leaderboard.minVideo', actualGuildId, actualUserId);
+					value = `${medal} **${name}**\n${formatNumber(videoMinutes)} ${minVideoText}`;
+					break;
+				}
+				case 'streaming': {
+					const streamingMinutes = entry.voice_minutes_streaming || 0;
+					const minStreamingText = await translate('leveling.leaderboard.minStreaming', actualGuildId, actualUserId);
+					value = `${medal} **${name}**\n${formatNumber(streamingMinutes)} ${minStreamingText}`;
+					break;
+				}
 				case 'chat': {
 					const messagesText = await translate('leveling.leaderboard.messages', actualGuildId, actualUserId);
 					value = `${medal} **${name}**\n${formatNumber(entry.chat_total || 0)} ${messagesText}`;
@@ -290,12 +308,14 @@ async function buildLevelingEmbeds(server, memberLevelData, sortType = 'xp', gui
 
 async function createLeaderboardButtons(selectedType = 'xp', guildId = null, userId = null) {
 	if (guildId && !(await isComponentFeatureEnabled(guildId, serverSettingsComponent.leveling))) {
-		return null;
+		return [];
 	}
 	const xpLabel = await translate('leveling.buttons.xp', guildId, userId);
 	const voiceTotalLabel = await translate('leveling.buttons.voiceTotal', guildId, userId);
 	const voiceActiveLabel = await translate('leveling.buttons.voiceActive', guildId, userId);
 	const voiceAfkLabel = await translate('leveling.buttons.voiceAfk', guildId, userId);
+	const videoLabel = await translate('leveling.buttons.video', guildId, userId);
+	const streamingLabel = await translate('leveling.buttons.streaming', guildId, userId);
 	const chatLabel = await translate('leveling.buttons.chat', guildId, userId);
 
 	const buttons = [
@@ -316,12 +336,24 @@ async function createLeaderboardButtons(selectedType = 'xp', guildId = null, use
 			.setLabel(voiceAfkLabel)
 			.setStyle(selectedType === 'voice_afk' ? ButtonStyle.Primary : ButtonStyle.Secondary),
 		new ButtonBuilder()
+			.setCustomId('leaderboard_video')
+			.setLabel(videoLabel)
+			.setStyle(selectedType === 'video' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+		new ButtonBuilder()
+			.setCustomId('leaderboard_streaming')
+			.setLabel(streamingLabel)
+			.setStyle(selectedType === 'streaming' ? ButtonStyle.Primary : ButtonStyle.Secondary),
+		new ButtonBuilder()
 			.setCustomId('leaderboard_chat')
 			.setLabel(chatLabel)
 			.setStyle(selectedType === 'chat' ? ButtonStyle.Primary : ButtonStyle.Secondary)
 	];
 
-	return new ActionRowBuilder().addComponents(...buttons);
+	const rows = [];
+	for (let i = 0; i < buttons.length; i += 5) {
+		rows.push(new ActionRowBuilder().addComponents(...buttons.slice(i, i + 5)));
+	}
+	return rows;
 }
 
 async function createMenuRow(guildId = null, userId = null, serverId = null) {
@@ -400,7 +432,7 @@ export async function handleLevelingButton(interaction) {
 		const { profileEmbed, leaderboardEmbed } = await buildLevelingEmbeds(server, memberLevelData, sortType, interaction.guild.id, interaction.user.id);
 		const buttons = await createLeaderboardButtons(sortType, interaction.guild.id, interaction.user.id);
 		const menuRow = await createMenuRow(interaction.guild.id, interaction.user.id, server.id);
-		const components = [buttons, menuRow].filter(Boolean);
+		const components = [...buttons, menuRow].filter(Boolean);
 
 		await interaction.update({
 			embeds: [profileEmbed, leaderboardEmbed],
@@ -467,7 +499,7 @@ export async function handleLeaderboardButton(interaction) {
 		const { profileEmbed, leaderboardEmbed } = await buildLevelingEmbeds(server, memberLevelData, sortType, interaction.guild.id, interaction.user.id);
 		const buttons = await createLeaderboardButtons(sortType, interaction.guild.id, interaction.user.id);
 		const menuRow = await createMenuRow(interaction.guild.id, interaction.user.id, server.id);
-		const components = [buttons, menuRow].filter(Boolean);
+		const components = [...buttons, menuRow].filter(Boolean);
 
 		await interaction.update({
 			embeds: [profileEmbed, leaderboardEmbed],

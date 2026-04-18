@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { page } from '$app/state';
 	import type { LayoutProps } from './$types';
 
@@ -23,7 +24,7 @@
 </script>
 
 <svelte:head>
-	<title>Members | Dansday Discord Bot</title>
+	<title>Members | {APP_NAME} Discord Bot</title>
 </svelte:head>
 
 <div class="bg-ash-800 border-ash-700 mb-4 flex gap-1 overflow-x-auto rounded-xl border p-1">

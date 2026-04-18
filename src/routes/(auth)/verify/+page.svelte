@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { goto } from '$app/navigation';
 	import { DASHBOARD_PATH } from '$lib/frontend/redirect.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
@@ -61,7 +62,7 @@
 </script>
 
 <svelte:head>
-	<title>Verify Email | Dansday Discord Bot</title>
+	<title>Verify Email | {APP_NAME} Discord Bot</title>
 </svelte:head>
 
 <div class="bg-ash-800 border-ash-700 rounded-2xl border p-6 shadow-2xl sm:p-8">

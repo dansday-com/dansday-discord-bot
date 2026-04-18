@@ -8,7 +8,7 @@ import {
 	TextInputBuilder,
 	TextInputStyle
 } from 'discord.js';
-import { CONTENT_CREATOR, getBotConfig, getEmbedConfig, isComponentFeatureEnabled, serverSettingsComponent } from '../../../../config.js';
+import { CONTENT_CREATOR, getBotConfig, getEmbedConfig, isComponentFeatureEnabled, serverSettingsComponent, NOTIFICATIONS } from '../../../../config.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import { translate, t } from '../../i18n.js';
 import db from '../../../../../database.js';
@@ -302,7 +302,21 @@ async function broadcastLiveStart(guild: any, discordMemberId: string, tiktokUse
 	else embed.setFooter({ text: streamFooter });
 	const watchButton = new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(liveUrl).setLabel(t('contentCreator.channelEmbed.liveWatchButton', 'en'));
 	const row = new ActionRowBuilder<ButtonBuilder>().addComponents(watchButton);
-	await channel.send({ embeds: [embed], components: [row] }).catch(() => null);
+
+	const notificationMentions = await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(guild.id, targetChannelId).catch(() => null);
+	await channel
+		.send({
+			content: notificationMentions && notificationMentions.length > 0 ? notificationMentions[0] : undefined,
+			embeds: [embed],
+			components: [row]
+		})
+		.catch(() => null);
+
+	if (notificationMentions && notificationMentions.length > 1) {
+		for (let i = 1; i < notificationMentions.length; i++) {
+			await channel.send({ content: notificationMentions[i] }).catch(() => null);
+		}
+	}
 }
 
 async function broadcastLiveEnd(guild: any, discordMemberId: string, tiktokUsername: string, streamId: number, status: 'ended' | 'error') {

@@ -1,14 +1,15 @@
 {
 	"menu": {
-		"title": "📋 Dansday Bot Menu",
+		"title": "📋 {botName} Bot Menu",
 		"description": "Select a feature from the buttons below:",
 		"noAccess": "❌ You don't have access to any features.",
 		"button": "📋 Menu",
-		"statistics": "🌐 Statistics"
+		"statistics": "🌐 Statistics",
+		"memberCard": "💳 Member Card"
 	},
 	"interface": {
 		"panel": {
-			"title": "Dansday Bot Panel",
+			"title": "{botName} Bot Panel",
 			"description": "Click **Menu** to access bot features based on your role permissions.",
 			"sent": "✅ Bot interface sent to {channel}!",
 			"setupHasOwnerAccount": "✅ Bot interface sent to {channel}. This server already has an owner account — sign in on the web panel. No new invite was created.",
@@ -48,6 +49,14 @@
 			"title": "❌ **Permission Denied**",
 			"description": "You need one of the following roles to use **{action}**:\\n{roles}",
 			"footer": "Please contact a server administrator if you believe this is an error."
+		},
+		"ownerRequired": {
+			"title": "❌ **Owner Registration Required**",
+			"description": "The server owner must register an account on the web panel before anyone can use the **{action}** feature."
+		},
+		"notConfigured": {
+			"title": "❌ **Permissions Not Configured**",
+			"description": "The server owner or administrator must configure role permissions before anyone can use the **{action}** feature."
 		}
 	},
 	"settings": {
@@ -92,11 +101,15 @@
 			"topVoiceTotal": "🎤 Voice (Total • Top 3)",
 			"topVoiceActive": "🎤 Voice (Active • Top 3)",
 			"topVoiceAfk": "🔇 Voice (AFK • Top 3)",
+			"topVideo": "📹 Video (Top 3)",
+			"topStreaming": "📺 Streaming (Top 3)",
 			"noData": "No leveling data available yet.",
 			"member": "Member {position}",
 			"minTotal": "min total",
 			"minActive": "min active",
 			"minAfk": "min AFK",
+			"minVideo": "min video",
+			"minStreaming": "min streaming",
 			"messages": "messages"
 		},
 		"buttons": {
@@ -104,6 +117,8 @@
 			"voiceTotal": "🎤 Voice",
 			"voiceActive": "🎤 Voice Active",
 			"voiceAfk": "🔇 Voice AFK",
+			"video": "📹 Video",
+			"streaming": "📺 Streaming",
 			"chat": "💬 Chat",
 			"linkLeaderboard": "🌐 Leaderboard"
 		},
@@ -423,7 +438,7 @@
 	"notifications": {
 		"button": "🔔 Notifications",
 		"title": "🔔 Notification Preferences",
-		"description": "Select which channels you want to receive notifications for. You will get the selected roles assigned to you.",
+		"description": "Select which channels you want to receive notifications for. You will be tagged individually when a notification occurs.",
 		"selectPlaceholder": "Select notification channels...",
 		"updated": "✅ Your notification preferences have been updated.",
 		"errors": {

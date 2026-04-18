@@ -297,9 +297,9 @@ export async function processMessageFromSelfBot(messageData, client) {
 		}
 
 		const contentParts = [];
-		const autoNotificationRoleId = await NOTIFICATIONS.getNotificationRoleIdForChannel(targetGuildId, targetChannelId).catch(() => null);
-		if (autoNotificationRoleId) {
-			contentParts.push(`<@&${autoNotificationRoleId}>`);
+		const autoNotificationMentions = await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(targetGuildId, targetChannelId).catch(() => null);
+		if (autoNotificationMentions && autoNotificationMentions.length > 0) {
+			contentParts.push(autoNotificationMentions[0]);
 		}
 		if (rolePings.length > 0) {
 			contentParts.push(rolePings.map((id: string) => `<@&${id}>`).join(' '));
@@ -312,6 +312,12 @@ export async function processMessageFromSelfBot(messageData, client) {
 		}
 
 		await targetChannel.send(messageOptions);
+
+		if (autoNotificationMentions && autoNotificationMentions.length > 1) {
+			for (let i = 1; i < autoNotificationMentions.length; i++) {
+				await targetChannel.send({ content: autoNotificationMentions[i] }).catch(() => null);
+			}
+		}
 
 		await logger.log(`✅ Forwarded ${messageData.id} from source channel ${sourceChannelId}`);
 	} catch (err) {

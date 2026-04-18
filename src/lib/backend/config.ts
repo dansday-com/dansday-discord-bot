@@ -868,6 +868,7 @@ export { serverSettingsComponent };
 export const SERVER_SETTINGS_COMPONENTS_WITH_FEATURE_SWITCH = SERVER_SETTINGS.withFeatureSwitch;
 export { computePublicServerSlugForServerId } from '../frontend/public/server-slug/index.js';
 export { publicSiteOrigin, publicServerPath, publicServerUrl } from '../url.js';
+export { DEFAULT_BOT_NICKNAME } from '../utils/mainConfigSettings.js';
 
 export const SETUP_MENU_CATEGORY_NAME = '{botName} Menu';
 export const SETUP_INFO_CATEGORY_NAME = '{botName} Information';

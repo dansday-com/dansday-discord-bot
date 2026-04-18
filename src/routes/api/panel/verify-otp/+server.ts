@@ -67,7 +67,6 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ success: false, error: 'OTP code has expired. Please request a new one.' }, { status: 401 });
 		}
 
-		const ip = getClientIp(request);
 		await consumeVerifyToken(verifyToken);
 
 		if (accountSource === 'server_accounts') {

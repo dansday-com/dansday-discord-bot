@@ -74,10 +74,20 @@
 				<div class="bg-ash-700 flex items-start justify-between gap-3 rounded-lg p-3">
 					<p class="text-ash-100 min-w-0 flex-1 text-sm break-words">{msg}</p>
 					<div class="flex shrink-0 items-center gap-1.5">
-						<button type="button" onclick={() => openEdit(i)} class="bg-ash-600 hover:bg-ash-500 rounded-lg p-1.5 text-xs text-white transition-colors">
+						<button
+							type="button"
+							aria-label="Edit message"
+							onclick={() => openEdit(i)}
+							class="bg-ash-600 hover:bg-ash-500 rounded-lg p-1.5 text-xs text-white transition-colors"
+						>
 							<i class="fas fa-edit"></i>
 						</button>
-						<button type="button" onclick={() => remove(i)} class="rounded-lg bg-red-900 p-1.5 text-xs text-red-300 transition-colors hover:bg-red-800">
+						<button
+							type="button"
+							aria-label="Delete message"
+							onclick={() => remove(i)}
+							class="rounded-lg bg-red-900 p-1.5 text-xs text-red-300 transition-colors hover:bg-red-800"
+						>
 							<i class="fas fa-trash"></i>
 						</button>
 					</div>
@@ -101,8 +111,9 @@
 			</div>
 
 			<div class="mb-3 flex-1">
-				<label class="text-ash-300 mb-1.5 block text-xs font-medium">Message</label>
+				<label for="message-input" class="text-ash-300 mb-1.5 block text-xs font-medium">Message</label>
 				<textarea
+					id="message-input"
 					bind:value={draftText}
 					rows={6}
 					{placeholder}

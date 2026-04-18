@@ -37,6 +37,14 @@ async function cleanupInvalidRole(role) {
 
 async function hasSupporterRole(member) {
 	try {
+		if (supporterRoles.has(member.id)) {
+			const roleId = supporterRoles.get(member.id);
+			const role = member.guild.roles.cache.get(roleId);
+			if (role) {
+				return { has: true, role };
+			}
+		}
+
 		const botConfig = getBotConfig();
 		if (!botConfig || !botConfig.id) {
 			return { has: false };
@@ -53,12 +61,30 @@ async function hasSupporterRole(member) {
 		const result = await db.memberHasCustomSupporterRole(discordMemberId, server.id);
 
 		if (result.has && result.role) {
-			const role = member.guild.roles.cache.get(result.role.discord_role_id);
+			const roleIdToFind = result.role.discord_role_id || result.role.role_id;
+			const role = roleIdToFind ? member.guild.roles.cache.get(roleIdToFind) : null;
 			if (role) {
 				supporterRoles.set(member.id, role.id);
 				return { has: true, role };
 			}
 		}
+
+		try {
+			const constraints = await CUSTOM_SUPPORTER_ROLE.getStoredRoleConstraints(member.guild.id);
+			if (constraints && constraints.ROLE_START && constraints.ROLE_END) {
+				const startRole = member.guild.roles.cache.get(constraints.ROLE_START);
+				const endRole = member.guild.roles.cache.get(constraints.ROLE_END);
+
+				if (startRole && endRole) {
+					for (const role of member.roles.cache.values()) {
+						if (role.position < startRole.position && role.position > endRole.position && !role.managed) {
+							supporterRoles.set(member.id, role.id);
+							return { has: true, role };
+						}
+					}
+				}
+			}
+		} catch (err) {}
 
 		return { has: false };
 	} catch (error) {
@@ -167,6 +193,10 @@ export async function handleCustomSupporterRoleButton(interaction) {
 				.catch(() => null);
 			return;
 		}
+
+		try {
+			await member.fetch();
+		} catch (e) {}
 
 		const { has, role: existingRole } = await hasSupporterRole(member);
 
@@ -281,6 +311,10 @@ export async function handleEditCustomSupporterRole(interaction) {
 			return;
 		}
 
+		try {
+			await member.fetch();
+		} catch (e) {}
+
 		const { has, role: existingRole } = await hasSupporterRole(member);
 
 		if (!has || !existingRole) {
@@ -367,6 +401,10 @@ export async function handleDeleteCustomSupporterRole(interaction) {
 				.catch(() => null);
 			return;
 		}
+
+		try {
+			await member.fetch();
+		} catch (e) {}
 
 		const { has, role: existingRole } = await hasSupporterRole(member);
 

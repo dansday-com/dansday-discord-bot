@@ -5,6 +5,7 @@ import * as schema from '../../schema.js';
 import { SERVER_SETTINGS } from '../../frontend/panelServer.js';
 import { initializeDatabase } from '../../database.js';
 import { toMySQLDateTime } from '../../utils/datetime.js';
+import { APP_NAME } from '../../frontend/panelServer.js';
 
 const DEMO = {
 	serverCount: 2,
@@ -157,7 +158,7 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 
 	for (let s = 1; s <= DEMO.serverCount; s++) {
 		const discordServerId = `${sessionSlug}_server_${String(s).padStart(4, '0')}`;
-		const serverName = `</DANSDAY> Demo Server ${s}`;
+		const serverName = `${APP_NAME} Demo Server ${s}`;
 
 		await db.execute(sql`
 			INSERT INTO servers

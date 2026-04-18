@@ -6,7 +6,7 @@ import { db } from './drizzle.js';
 import * as schema from './schema.js';
 import { SERVER_SETTINGS, AUTO_ENABLED_COMPONENTS } from './frontend/panelServer.js';
 import { logger, toMySQLDateTime, parseMySQLDateTimeUtc, getNowUtc } from './utils/index.js';
-import { DEFAULT_MAIN_EMBED_COLOR, DEFAULT_MAIN_EMBED_FOOTER } from './utils/mainConfigSettings.js';
+import { DEFAULT_MAIN_EMBED_COLOR, DEFAULT_MAIN_EMBED_FOOTER, DEFAULT_BOT_NICKNAME } from './utils/mainConfigSettings.js';
 import { DEFAULT_LEVELING_SETTINGS, DEFAULT_WELCOMER_MESSAGES, DEFAULT_BOOSTER_MESSAGES } from './backend/config.js';
 import type { DiscordQuestSummary } from './backend/api/discord-quest-api.js';
 
@@ -291,10 +291,12 @@ export type BotStatusInput = {
 	activity_state: string | null;
 };
 
+import { APP_DOMAIN } from './frontend/panelServer.js';
+
 export const DEFAULT_BOT_PRESENCE: BotStatusInput = {
 	discord_status: 'online',
 	activity_type: 'playing',
-	activity_name: 'bot.dansday.com',
+	activity_name: `bot.${APP_DOMAIN}`,
 	activity_url: null,
 	activity_state: 'Free web panel for your Discord server. Hosted free or self host.'
 };
@@ -847,7 +849,8 @@ async function seedNewServerSettings(serverId: number) {
 
 	await upsertServerSettings(serverId, SERVER_SETTINGS.component.main, {
 		color: DEFAULT_MAIN_EMBED_COLOR,
-		footer: DEFAULT_MAIN_EMBED_FOOTER
+		footer: DEFAULT_MAIN_EMBED_FOOTER,
+		bot_nickname: DEFAULT_BOT_NICKNAME
 	});
 
 	await upsertServerSettings(serverId, SERVER_SETTINGS.component.permissions, {});

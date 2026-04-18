@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import type { PageProps } from './$types';
 	import { publicServerPath } from '$lib/url.js';
 	import MainHeader from '$lib/frontend/components/MainHeader.svelte';
@@ -141,10 +142,10 @@
 </script>
 
 <svelte:head>
-	<title>&lt;/DANSDAY&gt; Discord Bot | All in one server management</title>
+	<title>{APP_NAME} Discord Bot | All in one server management</title>
 	<meta
 		name="description"
-		content="Free and open source &lt;/DANSDAY&gt; Discord Bot. Add our hosted bot to your server at no cost, or self host from GitHub. Free web panel for leveling, moderation, embed builder, giveaways, public stats, Discord Quest, TikTok tools, Roblox catalog watch, and more. Free five minute demo on login."
+		content="Free and open source {APP_NAME} Discord Bot. Add our hosted bot to your server at no cost, or self host from GitHub. Free web panel for leveling, moderation, embed builder, giveaways, public stats, Discord Quest, TikTok tools, Roblox catalog watch, and more. Free five minute demo on login."
 	/>
 </svelte:head>
 
@@ -228,7 +229,7 @@
 				<section class="m-section">
 					<div class="m-section-header">
 						<h2>Active Communities</h2>
-						<p>Servers using &lt;/DANSDAY&gt; Bot with public statistics enabled.</p>
+						<p>Servers using {APP_NAME} Bot with public statistics enabled.</p>
 					</div>
 					<div class="m-servers-list">
 						{#each data.featuredServers as server}
@@ -300,14 +301,13 @@
 				<div class="m-cta-card">
 					<h2>Ready to try it?</h2>
 					<p>
-						Add &lt;/DANSDAY&gt; Bot to your server first for free. Then sign in to the web panel to configure your server. The login screen also offers an
-						optional free
+						Add {APP_NAME} Bot to your server first for free. Then sign in to the web panel to configure your server. The login screen also offers an optional free
 						<strong>five minute demo</strong> with full panel access and no signup.
 					</p>
 					<div class="m-cta-actions">
 						<a href={officialBotInviteUrl} class="m-btn m-btn--primary" target="_blank" rel="noopener noreferrer">
 							<i class="fab fa-discord"></i>
-							Add &lt;/DANSDAY&gt; Bot
+							Add {APP_NAME} Bot
 						</a>
 						<a href="/login" class="m-btn m-btn--ghost">
 							<i class="fas fa-sign-in-alt"></i>

@@ -4,7 +4,7 @@ import { SERVER_SETTINGS, type ServerSettingsComponentName } from '../frontend/p
 const serverSettingsComponent = SERVER_SETTINGS.component;
 import { normalizeForwarderSettings } from '../forwarder-settings.js';
 import { resolveEmbedFooterPlaceholders } from '../utils/embedFooter.js';
-import { getEffectiveMainEmbedAppearance } from '../utils/mainConfigSettings.js';
+import { getEffectiveMainEmbedAppearance, DEFAULT_BOT_NICKNAME } from '../utils/mainConfigSettings.js';
 
 interface BotConfig {
 	id: number;
@@ -442,14 +442,14 @@ export async function getEmbedConfig(guildId: string) {
 		const settings = await getServerSettingsForComponent(guildId, serverSettingsComponent.main);
 		config = settings.settings;
 	} catch {}
-	const { color: colorStr, footer: footerStr } = getEffectiveMainEmbedAppearance(config);
+	const { color: colorStr, footer: footerStr, bot_nickname } = getEffectiveMainEmbedAppearance(config);
 
 	const hex = colorStr.replace('#', '');
 	const color = parseInt(hex, 16);
 
 	const footerText = resolveEmbedFooterPlaceholders(footerStr, officialBotServer.name ?? '');
 
-	return { COLOR: color, FOOTER: footerText };
+	return { COLOR: color, FOOTER: footerText, NICKNAME: bot_nickname || DEFAULT_BOT_NICKNAME };
 }
 
 export const WELCOMER = {
@@ -869,8 +869,8 @@ export const SERVER_SETTINGS_COMPONENTS_WITH_FEATURE_SWITCH = SERVER_SETTINGS.wi
 export { computePublicServerSlugForServerId } from '../frontend/public/server-slug/index.js';
 export { publicSiteOrigin, publicServerPath, publicServerUrl } from '../url.js';
 
-export const SETUP_MENU_CATEGORY_NAME = '</DANSDAY> Menu';
-export const SETUP_INFO_CATEGORY_NAME = '</DANSDAY> Information';
+export const SETUP_MENU_CATEGORY_NAME = '{botName} Menu';
+export const SETUP_INFO_CATEGORY_NAME = '{botName} Information';
 
 export const SETUP_CHANNEL_DEFS = [
 	{ name: '「💻」menu', settingsKey: 'menu' },

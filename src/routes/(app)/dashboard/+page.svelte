@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { APP_NAME, APP_DOMAIN } from '$lib/frontend/panelServer.js';
 	import { onMount, onDestroy } from 'svelte';
 	import { invalidateAll } from '$app/navigation';
 	import AddBotModal from '$lib/frontend/components/AddBotModal.svelte';
@@ -103,7 +104,7 @@
 
 	let embedTitle = $state('');
 	let embedDescription = $state('');
-	let embedFooter = $state('Powered by bot.dansday.com {year}');
+	let embedFooter = $state(`Powered by bot.${APP_DOMAIN} {year}`);
 	let embedColor = $state('#ff0000');
 	let embedColorHex = $state('#ff0000');
 	let imageMode = $state<'url' | 'upload'>('url');
@@ -231,7 +232,7 @@
 </script>
 
 <svelte:head>
-	<title>Dashboard | &lt;/DANSDAY&gt; Discord Bot</title>
+	<title>Dashboard | {APP_NAME} Discord Bot</title>
 </svelte:head>
 
 <AddBotModal open={showAddBot} onclose={() => (showAddBot = false)} onadded={() => invalidateAll()} />

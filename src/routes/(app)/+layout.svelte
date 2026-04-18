@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { goto } from '$app/navigation';
 	import { onDestroy, onMount } from 'svelte';
 	import { DASHBOARD_PATH } from '$lib/frontend/redirect.js';
@@ -57,7 +58,7 @@
 				<div class="bg-ash-400 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full sm:h-10 sm:w-10">
 					<i class="fas fa-bolt text-ash-100 text-sm sm:text-base"></i>
 				</div>
-				<h1 class="text-ash-100 truncate text-base font-bold sm:text-xl">&lt;/DANSDAY&gt; Discord Bot Panel</h1>
+				<h1 class="text-ash-100 truncate text-base font-bold sm:text-xl">{APP_NAME} Discord Bot Panel</h1>
 				{#if isDemo}
 					<span class="rounded-full border border-cyan-300/30 bg-cyan-400/15 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-cyan-200"> DEMO </span>
 				{/if}

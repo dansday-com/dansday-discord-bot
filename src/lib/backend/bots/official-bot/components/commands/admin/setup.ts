@@ -7,6 +7,8 @@ import {
 	DEFAULT_LEVELING_SETTINGS,
 	DEFAULT_WELCOMER_MESSAGES,
 	getBotConfig,
+	getEmbedConfig,
+	DEFAULT_BOT_NICKNAME,
 	SERVER_SETTINGS,
 	SETUP_MENU_CATEGORY_NAME,
 	SETUP_INFO_CATEGORY_NAME,
@@ -17,7 +19,7 @@ import { translate } from '../../../i18n.js';
 import { isUtcSqlExpired } from '../../../../../../utils/index.js';
 export const commandDefinition = {
 	name: 'setup',
-	description: 'Set up the bot: creates a </DANSDAY> category with all required channels. Administrator only.',
+	description: 'Set up the bot: creates a {botName} category with all required channels. Administrator only.',
 	options: []
 };
 
@@ -77,9 +79,11 @@ export async function execute(interaction: any, client: any) {
 		await interaction.deferReply({ flags: EPHEMERAL });
 
 		const guild = interaction.guild;
+		const embedConfig = await getEmbedConfig(gid).catch(() => ({ NICKNAME: DEFAULT_BOT_NICKNAME }));
+		const botName = embedConfig.NICKNAME;
 
 		const menuCategory = await guild.channels.create({
-			name: SETUP_MENU_CATEGORY_NAME,
+			name: SETUP_MENU_CATEGORY_NAME.replace('{botName}', botName),
 			type: ChannelType.GuildCategory,
 			permissionOverwrites: [
 				{
@@ -90,7 +94,7 @@ export async function execute(interaction: any, client: any) {
 		});
 
 		const infoCategory = await guild.channels.create({
-			name: SETUP_INFO_CATEGORY_NAME,
+			name: SETUP_INFO_CATEGORY_NAME.replace('{botName}', botName),
 			type: ChannelType.GuildCategory,
 			permissionOverwrites: [
 				{

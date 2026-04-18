@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { page } from '$app/state';
 	import type { LayoutProps } from './$types';
 	import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
@@ -17,7 +18,7 @@
 </script>
 
 <svelte:head>
-	<title>Configuration | &lt;/DANSDAY&gt; Discord Bot</title>
+	<title>Configuration | {APP_NAME} Discord Bot</title>
 </svelte:head>
 
 <div class="flex flex-col gap-4 lg:flex-row">

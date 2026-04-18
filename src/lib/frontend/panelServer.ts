@@ -1,3 +1,7 @@
+export const APP_NAME = '</DANSDAY>';
+export const APP_DOMAIN = 'dansday.com';
+export const APP_URL = 'https://dansday.com';
+
 const REGISTRY = [
 	{ id: 'main', label: 'Main', featureSwitch: false, hrefSuffix: '', icon: 'fa-gear', iconClass: 'text-emerald-400' },
 	{

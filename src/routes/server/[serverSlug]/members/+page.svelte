@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { onDestroy, onMount } from 'svelte';
 	import { page } from '$app/state';
 	import type { PageProps } from './$types';
@@ -191,10 +192,10 @@
 </script>
 
 <svelte:head>
-	<title>{data.server.name || data.server.slug} Members | &lt;/DANSDAY&gt; Discord Bot</title>
+	<title>{data.server.name || data.server.slug} Members | {APP_NAME} Discord Bot</title>
 	<meta name="description" content="Members, ranks, XP, and voice stats for {data.server.name || data.server.slug}." />
 	<meta name="theme-color" content="#245f73" />
-	<meta property="og:title" content="{data.server.name || data.server.slug} Members | &lt;/DANSDAY&gt; Discord Bot" />
+	<meta property="og:title" content="{data.server.name || data.server.slug} Members | {APP_NAME} Discord Bot" />
 	<meta property="og:description" content="Explore members, ranks, XP, and voice activity for this community." />
 </svelte:head>
 

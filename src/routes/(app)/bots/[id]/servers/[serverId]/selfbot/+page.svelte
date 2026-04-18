@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { onMount, onDestroy } from 'svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { showToast } from '$lib/frontend/toast.svelte';
@@ -119,7 +120,7 @@
 </script>
 
 <svelte:head>
-	<title>Selfbots | &lt;/DANSDAY&gt; Discord Bot</title>
+	<title>Selfbots | {APP_NAME} Discord Bot</title>
 </svelte:head>
 
 <AddSelfbotModal open={showAdd} serverId={data.serverId} onclose={() => (showAdd = false)} onadded={() => invalidateAll()} />

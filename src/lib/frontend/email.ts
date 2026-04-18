@@ -23,8 +23,10 @@ function getTransporter() {
 	});
 }
 
-const APP_NAME_TEXT = '</DANSDAY> Discord Bot';
-const APP_NAME_HTML = '&lt;/DANSDAY&gt; Discord Bot';
+import { APP_NAME, APP_DOMAIN, APP_URL } from './panelServer.js';
+
+const APP_NAME_TEXT = `${APP_NAME} Discord Bot`;
+const APP_NAME_HTML = `${APP_NAME.replace(/</g, '&lt;').replace(/>/g, '&gt;')} Discord Bot`;
 
 const baseStyles = `
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -95,7 +97,7 @@ function emailLayout(title: string, accentColor: string, bodyContent: string, ye
                     ${bodyContent}
                 </div>
                 <div class="footer">
-                    <p>Copyright © ${year} <a href="https://dansday.com">dansday.com</a>. All rights reserved.</p>
+                    <p>Copyright © ${year} <a href="${APP_URL}">${APP_DOMAIN}</a>. All rights reserved.</p>
                     <p>Free and open source on <a href="https://github.com/dansday/dansday-discord-bot">GitHub</a>.</p>
                 </div>
             </div>

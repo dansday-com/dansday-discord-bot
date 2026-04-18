@@ -197,7 +197,7 @@ async function handleMenuButton(interaction) {
 	}
 
 	const embedConfig = await getEmbedConfig(interaction.guild.id);
-	const menuTitle = await translate('menu.title', interaction.guild.id, interaction.user.id);
+	const menuTitle = await translate('menu.title', interaction.guild.id, interaction.user.id, { botName: embedConfig.NICKNAME });
 	const menuDesc = await translate('menu.description', interaction.guild.id, interaction.user.id);
 
 	const menuEmbed = new EmbedBuilder()
@@ -429,7 +429,7 @@ export async function createInterfaceEmbed(client, guildId, userId = null) {
 
 	const embedConfig = await getEmbedConfig(guildId);
 	const langUserId = userId || '0';
-	const title = await translate('interface.panel.title', guildId, langUserId);
+	const title = await translate('interface.panel.title', guildId, langUserId, { botName: embedConfig.NICKNAME });
 	const description = await translate('interface.panel.description', guildId, langUserId);
 
 	const interfaceEmbed = {

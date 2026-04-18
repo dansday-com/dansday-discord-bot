@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { onDestroy } from 'svelte';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import ChannelPicker from '$lib/frontend/components/ChannelPicker.svelte';
@@ -170,7 +171,7 @@
 </script>
 
 <svelte:head>
-	<title>Embed Builder | &lt;/DANSDAY&gt; Discord Bot</title>
+	<title>Embed Builder | {APP_NAME} Discord Bot</title>
 </svelte:head>
 
 <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">

@@ -1,6 +1,6 @@
 {
 	"menu": {
-		"title": "📋 Menu Bot </DANSDAY>",
+		"title": "📋 Menu Bot {botName}",
 		"description": "Pilih fitur dari tombol di bawah:",
 		"noAccess": "❌ Kamu tidak memiliki akses ke fitur apa pun.",
 		"button": "📋 Menu",
@@ -9,7 +9,7 @@
 	},
 	"interface": {
 		"panel": {
-			"title": "Panel Bot </DANSDAY>",
+			"title": "Panel Bot {botName}",
 			"description": "Klik **Menu** untuk mengakses fitur bot sesuai izin role kamu.",
 			"sent": "✅ Antarmuka bot dikirim ke {channel}!",
 			"setupHasOwnerAccount": "✅ Antarmuka bot dikirim ke {channel}. Server ini sudah punya akun owner — login di panel web. Tidak ada undangan baru.",

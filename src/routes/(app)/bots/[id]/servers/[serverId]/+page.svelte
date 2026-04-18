@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import LocalTime from '$lib/frontend/components/LocalTime.svelte';
 	import type { LayoutProps } from './$types';
 
@@ -33,7 +34,7 @@
 </script>
 
 <svelte:head>
-	<title>{o.name} — Overview | &lt;/DANSDAY&gt; Discord Bot</title>
+	<title>{o.name} — Overview | {APP_NAME} Discord Bot</title>
 </svelte:head>
 
 <div class="space-y-4 sm:space-y-6">

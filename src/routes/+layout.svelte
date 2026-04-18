@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import '../app.css';
 	import Toast from '$lib/frontend/Toast.svelte';
 
@@ -6,7 +7,7 @@
 </script>
 
 <svelte:head>
-	<title>&lt;/DANSDAY&gt; Discord Bot</title>
+	<title>{APP_NAME} Discord Bot</title>
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
 </svelte:head>
 

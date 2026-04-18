@@ -497,6 +497,8 @@ export async function handleCustomSupporterRoleEditModal(interaction) {
 
 			if (roleColor !== null) {
 				updateData.color = roleColor;
+			} else if (colorInput === '') {
+				updateData.color = 0; // Clear color if input is empty
 			}
 
 			await existingRole.edit(updateData);
@@ -554,8 +556,11 @@ export async function handleCustomSupporterRoleEditModal(interaction) {
 			}
 
 			const embedConfig = await getEmbedConfig(interaction.guild.id);
-			const successTitle = await translate('customSupporterRole.create.successTitle', interaction.guild.id, interaction.user.id);
-			let successDesc = await translate('customSupporterRole.create.successDesc', interaction.guild.id, interaction.user.id);
+			const successTitle = await translate('customSupporterRole.updated.title', interaction.guild.id, interaction.user.id);
+			let successDesc = await translate('customSupporterRole.updated.description', interaction.guild.id, interaction.user.id, {
+				roleName: roleName,
+				iconWarning: ''
+			});
 
 			if (iconStatus === 'failed' || iconStatus === 'invalid') {
 				const warnMsg = iconError || 'Failed to set the icon. The role was updated but without the custom icon.';
@@ -568,7 +573,24 @@ export async function handleCustomSupporterRoleEditModal(interaction) {
 				.setColor(embedConfig.COLOR)
 				.addFields([
 					{
-						name: await translate('customSupporterRole.create.roleNameField', interaction.guild.id, interaction.user.id),
+						name: await translate('customSupporterRole.updated.roleDetails', interaction.guild.id, interaction.user.id),
+						value: await translate('customSupporterRole.updated.roleDetailsValue', interaction.guild.id, interaction.user.id, {
+							name: roleName,
+							color: colorInput || 'Default',
+							icon: await translate(
+								`customSupporterRole.updated.iconStatus${iconStatus.charAt(0).toUpperCase() + iconStatus.slice(1)}`,
+								interaction.guild.id,
+								interaction.user.id
+							)
+						}),
+						inline: false
+					}
+				]);
+
+			successEmbed
+				.addFields([
+					{
+						name: await translate('customSupporterRole.updated.role', interaction.guild.id, interaction.user.id),
 						value: `<@&${existingRole.id}>`,
 						inline: true
 					}
@@ -638,9 +660,7 @@ export async function handleCustomSupporterRoleModal(interaction) {
 			return;
 		}
 
-		const embedConfig = await getEmbedConfig(interaction.guild.id);
 		const roleColor = parseColor(colorInput);
-		const finalColor = roleColor !== null ? roleColor : embedConfig.COLOR;
 
 		const trimmedIconInput = iconInput?.trim() || '';
 		let iconStatus = 'none';
@@ -667,13 +687,16 @@ export async function handleCustomSupporterRoleModal(interaction) {
 			}
 		}
 
-		const roleData = {
+		const roleData: any = {
 			name: roleName,
-			color: finalColor,
 			mentionable: false,
 			hoist: true,
 			reason: `Custom supporter role for ${member.user.tag} (${member.user.id})`
 		};
+
+		if (roleColor !== null) {
+			roleData.color = roleColor;
+		}
 
 		if (isEmojiIcon && iconToSet) {
 			roleData.unicodeEmoji = iconToSet;

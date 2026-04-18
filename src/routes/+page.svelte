@@ -21,7 +21,7 @@
 			navigation: true,
 			fitToSection: false,
 			scrollOverflow: true,
-			verticalCentered: false,
+			verticalCentered: true,
 			paddingBottom: '70px'
 		});
 

@@ -255,7 +255,6 @@ async function handleSendEmbed(payload) {
 					continue;
 				}
 
-				// Recreate image attachment for each channel so stream isn't consumed
 				let currentImageAttachment = null;
 				if (image_attachment && image_attachment.data) {
 					try {
@@ -266,7 +265,7 @@ async function handleSendEmbed(payload) {
 							name: attachmentFilename
 						};
 					} catch (e) {
-						// Ignore
+						await logger.log(`⚠️  Failed to process image attachment: ${e.message}`);
 					}
 				}
 

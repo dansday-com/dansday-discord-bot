@@ -1,10 +1,10 @@
 import { redirect } from '@sveltejs/kit';
-import type { PageServerLoad } from './$types';
+import type { LayoutServerLoad } from './$types';
 import db, { getOfficialBotIdForServer } from '$lib/database.js';
 import { getBotUptimeMs } from '$lib/botProcesses.js';
 import { DASHBOARD_PATH } from '$lib/frontend/redirect.js';
 
-export const load: PageServerLoad = async ({ locals }) => {
+export const load: LayoutServerLoad = async ({ locals }) => {
 	if (locals.user.authenticated && locals.user.account_source === 'server_accounts') {
 		const ob = await getOfficialBotIdForServer(locals.user.server_id);
 		const fallback = locals.user.bot_id > 0 ? locals.user.bot_id : null;

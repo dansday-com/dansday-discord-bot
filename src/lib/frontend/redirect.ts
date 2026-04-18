@@ -1,4 +1,4 @@
-export const DASHBOARD_PATH = '/dashboard' as const;
+export const DASHBOARD_PATH = '/overview' as const;
 
 export function parentPathname(pathname: string): string {
 	const p = pathname.replace(/\/+$/, '') || '/';

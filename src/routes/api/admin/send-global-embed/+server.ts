@@ -14,7 +14,8 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 	}
 
 	try {
-		const bots = await db.getAllBots();
+		const bots = await db.getAllBots(locals.user.panel_id);
+
 		if (!bots || bots.length === 0) {
 			return json({ success: false, error: 'No bots found' }, { status: 404 });
 		}
@@ -34,7 +35,8 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		let imageFilename: string | null = null;
 		const uploadedBasename = uploaded_image_path ? basename(uploaded_image_path) : null;
 		if (uploadedBasename) {
-			if (!/^[a-zA-Z0-9_.\-]+$/.test(uploadedBasename)) {
+			const prefix = locals.user.panel_id ? `global-${locals.user.panel_id}-` : 'global-';
+			if (!uploadedBasename.startsWith(prefix) || !/^[a-zA-Z0-9_.\-]+$/.test(uploadedBasename)) {
 				return json({ success: false, error: 'Invalid uploaded image filename' }, { status: 400 });
 			}
 			try {

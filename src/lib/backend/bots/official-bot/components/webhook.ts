@@ -255,10 +255,32 @@ async function handleSendEmbed(payload) {
 					continue;
 				}
 
+				let currentImageAttachment = null;
+				if (image_attachment && image_attachment.data) {
+					try {
+						const imageBuffer = Buffer.from(image_attachment.data, 'base64');
+						const attachmentFilename = image_attachment.filename || 'image.png';
+						currentImageAttachment = {
+							attachment: imageBuffer,
+							name: attachmentFilename
+						};
+					} catch (e) {
+						await logger.log(`⚠️  Failed to process image attachment: ${e.message}`);
+					}
+				}
+
 				const notificationMentions = await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(guild_id, channelId).catch(() => null);
 				const firstMentionChunk = notificationMentions ? notificationMentions[0] : null;
 				const channelContent = [firstMentionChunk ? firstMentionChunk : null, content].filter(Boolean).join(' ') || undefined;
-				const channelMessageOptions = { ...messageOptions, content: channelContent };
+
+				const channelMessageOptions: any = {
+					content: channelContent,
+					embeds: [embed]
+				};
+
+				if (currentImageAttachment) {
+					channelMessageOptions.files = [currentImageAttachment];
+				}
 
 				await channel.send(channelMessageOptions);
 

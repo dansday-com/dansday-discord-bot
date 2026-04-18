@@ -1,12 +1,24 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
-import { peekVerifyToken, addMinutesToNow, toMySQLDateTime, logger } from '$lib/utils/index.js';
+import { peekVerifyToken, addMinutesToNow, toMySQLDateTime, logger, getClientIp, checkRateLimit } from '$lib/utils/index.js';
 import { sendOTPEmail } from '$lib/frontend/email.js';
 import { randomInt } from 'crypto';
 
+const MAX_RESEND_ATTEMPTS = 5;
+
 export const POST: RequestHandler = async ({ request }) => {
 	try {
+		const ip = getClientIp(request);
+		const rateLimit = await checkRateLimit(ip, 'resend-otp', MAX_RESEND_ATTEMPTS);
+
+		if (!rateLimit.allowed) {
+			return json(
+				{ success: false, error: 'Too many resend attempts. Please try again later.', resetTime: new Date(rateLimit.resetTime).toISOString() },
+				{ status: 429 }
+			);
+		}
+
 		const body = await request.json();
 		const verifyToken = typeof body.verify_token === 'string' ? body.verify_token.trim() : null;
 		const accountSource: 'accounts' | 'server_accounts' = body.account_source === 'server_accounts' ? 'server_accounts' : 'accounts';

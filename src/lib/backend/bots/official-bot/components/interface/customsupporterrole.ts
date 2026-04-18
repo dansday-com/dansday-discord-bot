@@ -498,7 +498,7 @@ export async function handleCustomSupporterRoleEditModal(interaction) {
 			if (roleColor !== null) {
 				updateData.color = roleColor;
 			} else if (colorInput === '') {
-				updateData.color = 0; // Clear color if input is empty
+				updateData.color = 0;
 			}
 
 			await existingRole.edit(updateData);

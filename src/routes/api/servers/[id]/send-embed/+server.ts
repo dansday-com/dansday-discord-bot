@@ -10,6 +10,12 @@ import { mainAppearanceBlockingMessage, messageFromBotWebhookPayload } from '$li
 
 const uploadsDir = join(process.cwd(), 'data', 'embed-images');
 
+function embedFilenameBelongsToServer(filename: string, serverId: number): boolean {
+	const safe = basename(filename);
+	const m = safe.match(/^(\d+)-(\d+)-[a-z0-9]+\.[a-z0-9]+$/i);
+	return m != null && Number(m[1]) === serverId;
+}
+
 export const POST: RequestHandler = async ({ locals, params, request }) => {
 	if (!locals.user.authenticated) {
 		return json({ success: false, error: 'Authentication required' }, { status: 401 });
@@ -67,8 +73,8 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		let imageFilename: string | null = null;
 		const uploadedBasename = uploaded_image_path ? basename(uploaded_image_path) : null;
 		if (uploadedBasename) {
-			if (!/^[a-zA-Z0-9_.\-]+$/.test(uploadedBasename)) {
-				return json({ success: false, error: 'Invalid uploaded image filename' }, { status: 400 });
+			if (!embedFilenameBelongsToServer(uploadedBasename, serverId)) {
+				return json({ success: false, error: 'Invalid or unsupported image path' }, { status: 400 });
 			}
 			try {
 				const filePath = join(uploadsDir, uploadedBasename);

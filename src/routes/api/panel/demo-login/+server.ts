@@ -5,7 +5,7 @@ import { seedDemoSession } from '$lib/backend/demo/seedDemo.js';
 import { getClientIp, checkRateLimit, logger, makeSessionCookie, newSessionId, setSession } from '$lib/utils/index.js';
 
 const MAX_DEMO_LOGIN_ATTEMPTS = 5;
-const DEMO_SESSION_TTL_SECONDS = 60 * 5;
+const DEMO_SESSION_TTL_SECONDS = 60 * 10;
 const CAPTCHA_TTL_SECONDS = 60 * 2;
 
 function generateCaptchaAnswer(): string {

@@ -8,15 +8,28 @@ import {
 	peekVerifyToken,
 	consumeVerifyToken,
 	getClientIp,
+	checkRateLimit,
 	sanitizeString,
 	isUtcSqlExpired,
 	toMySQLDateTime,
 	logger
 } from '$lib/utils/index.js';
+
+const MAX_OTP_ATTEMPTS = 10;
+
 import { sendVerificationSuccessEmail } from '$lib/frontend/email.js';
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
+		const ip = getClientIp(request);
+		const rateLimit = await checkRateLimit(ip, 'verify-otp', MAX_OTP_ATTEMPTS);
+
+		if (!rateLimit.allowed) {
+			return json(
+				{ success: false, error: 'Too many verification attempts. Please try again later.', resetTime: new Date(rateLimit.resetTime).toISOString() },
+				{ status: 429 }
+			);
+		}
 		const body = await request.json();
 		const verifyToken = typeof body.verify_token === 'string' ? body.verify_token.trim() : null;
 		const sanitizedOtpCode = sanitizeString(body.otp_code, 6);
@@ -54,7 +67,6 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ success: false, error: 'OTP code has expired. Please request a new one.' }, { status: 401 });
 		}
 
-		const ip = getClientIp(request);
 		await consumeVerifyToken(verifyToken);
 
 		if (accountSource === 'server_accounts') {

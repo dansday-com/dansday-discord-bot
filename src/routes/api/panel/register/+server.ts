@@ -48,7 +48,11 @@ async function validateRegistrationInputs(username: string, email: string, passw
 	return { valid: errors.length === 0, errors, sanitizedUsername: sanitizedUsername || '', sanitizedEmail: sanitizedEmail || '' };
 }
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, locals }) => {
+	if (!locals.user.can_register) {
+		return json({ success: false, error: 'Registration is disabled. A superadmin account already exists.' }, { status: 403 });
+	}
+
 	try {
 		const ip = getClientIp(request);
 		const rateLimit = await checkRateLimit(ip, 'register', MAX_REGISTER_ATTEMPTS);

@@ -8,6 +8,12 @@ const MAX_AGE_MS = 30 * 60 * 1000;
 function uploadTimestampMs(filename: string): number | null {
 	const base = basename(filename).replace(/\.[^.]+$/, '');
 	const parts = base.split('-');
+
+	if (parts[0] === 'global' && parts.length === 4) {
+		const ts = Number(parts[2]);
+		return Number.isFinite(ts) ? ts : null;
+	}
+
 	if (parts.length >= 3) {
 		const ts = Number(parts[1]);
 		return Number.isFinite(ts) ? ts : null;

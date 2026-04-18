@@ -21,8 +21,7 @@
 			navigation: true,
 			fitToSection: false,
 			scrollOverflow: true,
-			verticalCentered: true,
-			paddingBottom: '70px'
+			verticalCentered: true
 		});
 
 		return () => {

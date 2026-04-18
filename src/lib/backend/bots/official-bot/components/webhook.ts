@@ -273,7 +273,7 @@ async function handleSendEmbed(payload) {
 				const notificationMentions = await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(guild_id, channelId).catch(() => null);
 				const firstMentionChunk = notificationMentions ? notificationMentions[0] : null;
 				const channelContent = [firstMentionChunk ? firstMentionChunk : null, content].filter(Boolean).join(' ') || undefined;
-				
+
 				const channelMessageOptions: any = {
 					content: channelContent,
 					embeds: [embed]

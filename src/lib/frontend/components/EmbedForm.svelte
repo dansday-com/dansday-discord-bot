@@ -178,7 +178,7 @@
 					type="text"
 					bind:value={footer}
 					maxlength={MAX_FOOTER}
-					placeholder={defaultFooter || "Footer text..."}
+					placeholder={defaultFooter || 'Footer text...'}
 					class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
 				/>
 			</div>
@@ -196,7 +196,7 @@
 						type="text"
 						value={colorHex}
 						oninput={(e) => syncColorHex((e.target as HTMLInputElement).value)}
-						placeholder={defaultColor || "#ff0000"}
+						placeholder={defaultColor || '#ff0000'}
 						class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 flex-1 rounded-lg border px-3 py-2 font-mono text-sm focus:ring-2 focus:outline-none"
 					/>
 				</div>
@@ -259,7 +259,7 @@
 			<button
 				onclick={handleSubmit}
 				disabled={sending}
-				class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:cursor-not-allowed disabled:opacity-50 mt-4"
+				class="bg-ash-500 hover:bg-ash-400 text-ash-100 mt-4 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:cursor-not-allowed disabled:opacity-50"
 			>
 				{#if sending}<i class="fas fa-spinner fa-spin text-emerald-300"></i>{:else}<i class="fas fa-paper-plane text-emerald-300"></i>{/if}
 				{sending ? 'Sending...' : submitLabel}

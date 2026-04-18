@@ -12,6 +12,7 @@
 	let defaultColor = $state(data.settings?.color ?? DEFAULT_MAIN_EMBED_COLOR);
 	let defaultFooter = $state(data.settings?.footer ?? DEFAULT_MAIN_EMBED_FOOTER);
 	let botUpdatesChannel = $state(data.settings?.bot_updates_channel_id ?? '');
+	let botNickname = $state(data.settings?.bot_nickname ?? '');
 
 	async function save() {
 		saving = true;
@@ -24,7 +25,8 @@
 					component: SERVER_SETTINGS.component.main,
 					color: defaultColor,
 					footer: defaultFooter,
-					bot_updates_channel_id: botUpdatesChannel
+					bot_updates_channel_id: botUpdatesChannel,
+					bot_nickname: botNickname
 				})
 			});
 			const d = await res.json();
@@ -43,6 +45,20 @@
 		<i class="fas fa-gear text-emerald-400"></i>Main
 	</h3>
 	<p class="text-ash-400 text-xs">Set the embed style used across the bot.</p>
+
+	<div>
+		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
+			<i class="fas fa-robot mr-1.5 text-emerald-400"></i>Bot Nickname
+		</label>
+		<p class="text-ash-500 mb-2 text-xs">Custom nickname for the bot in this server. Leave empty to use the default name.</p>
+		<input
+			type="text"
+			bind:value={botNickname}
+			placeholder="Leave empty for default"
+			class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
+			maxlength="32"
+		/>
+	</div>
 
 	<div>
 		<label class="text-ash-300 mb-1.5 block text-xs font-medium">

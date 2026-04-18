@@ -471,6 +471,35 @@ async function handleWebhookRequest(req, res) {
 						res.writeHead(500, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify({ error: 'Failed to send DM', details: dmErr.message }));
 					}
+				} else if (payload.type === 'sync_bot_nickname') {
+					try {
+						const guildId = payload.guild_id;
+						const nickname = payload.nickname;
+						if (!guildId) {
+							res.writeHead(400, { 'Content-Type': 'application/json' });
+							res.end(JSON.stringify({ error: 'Missing guild_id' }));
+							return;
+						}
+
+						let guild = client.guilds.cache.get(guildId);
+						if (!guild) guild = await client.guilds.fetch(guildId).catch(() => null);
+						if (!guild) throw new Error('Guild not found');
+
+						const me = guild.members.me || (await guild.members.fetch(client.user.id).catch(() => null));
+						if (me) {
+							await me.setNickname(nickname || null);
+							await logger.log(`✅ Synced bot nickname for guild ${guildId} to "${nickname}"`);
+						} else {
+							throw new Error('Bot member not found in guild');
+						}
+
+						res.writeHead(200, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify({ success: true }));
+					} catch (err) {
+						await logger.log(`❌ Failed to sync bot nickname: ${err.message}`);
+						res.writeHead(500, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify({ error: 'Failed to sync bot nickname', details: err.message }));
+					}
 				} else if (payload.type === 'sync_component_runtime') {
 					try {
 						const guildId = payload.guild_id;

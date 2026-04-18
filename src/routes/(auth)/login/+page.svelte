@@ -59,7 +59,7 @@
 			});
 			const data = await res.json();
 			if (data.success) {
-				showToast('Logged in to demo (5 minutes)', 'success');
+				showToast('Logged in to demo (10 minutes)', 'success');
 				setTimeout(() => goto(DASHBOARD_PATH), 300);
 			} else {
 				showToast(data.error || 'Demo login failed', 'error');

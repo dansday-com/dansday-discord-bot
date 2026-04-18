@@ -145,7 +145,7 @@
 	<title>{APP_NAME} Discord Bot | All in one server management</title>
 	<meta
 		name="description"
-		content="Free and open source {APP_NAME} Discord Bot. Add our hosted bot to your server at no cost, or self host from GitHub. Free web panel for leveling, moderation, embed builder, giveaways, public stats, Discord Quest, TikTok tools, Roblox catalog watch, and more. Free five minute demo on login."
+		content="Free and open source {APP_NAME} Discord Bot. Add our hosted bot to your server at no cost, or self host from GitHub. Free web panel for leveling, moderation, embed builder, giveaways, public stats, Discord Quest, TikTok tools, Roblox catalog watch, and more. Free ten minute demo on login."
 	/>
 </svelte:head>
 
@@ -302,7 +302,7 @@
 					<h2>Ready to try it?</h2>
 					<p>
 						Add {APP_NAME} Bot to your server first for free. Then sign in to the web panel to configure your server. The login screen also offers an optional free
-						<strong>five minute demo</strong> with full panel access and no signup.
+						<strong>ten minute demo</strong> with full panel access and no signup.
 					</p>
 					<div class="m-cta-actions">
 						<a href={officialBotInviteUrl} class="m-btn m-btn--primary" target="_blank" rel="noopener noreferrer">

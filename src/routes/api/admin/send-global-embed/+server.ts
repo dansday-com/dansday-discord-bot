@@ -1,8 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
-import { db as drizzleDb } from '$lib/drizzle.js';
-import { sql } from 'drizzle-orm';
 import { logger } from '$lib/utils/index.js';
 import { existsSync, readFileSync, unlinkSync } from 'fs';
 import { basename, join } from 'path';
@@ -16,27 +14,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 	}
 
 	try {
-		let bots;
-		if (locals.user.account_type === 'superadmin' && locals.user.is_demo === true && locals.user.demo_panel_slug) {
-			const sessionUsername = `demo_${locals.user.demo_panel_slug}`;
-			const demoAdminRows = await drizzleDb.execute(sql`SELECT id FROM accounts WHERE username = ${sessionUsername} LIMIT 1`);
-			const demoAdminId =
-				(demoAdminRows as any)?.[0]?.[0]?.id ?? (Array.isArray(demoAdminRows) && demoAdminRows.length > 0 ? (demoAdminRows as any)[0].id : null);
-
-			if (demoAdminId) {
-				const demoPanelRows = await drizzleDb.execute(sql`SELECT id FROM panel WHERE account_id = ${demoAdminId} LIMIT 1`);
-				const panelId =
-					(demoPanelRows as any)?.[0]?.[0]?.id ?? (Array.isArray(demoPanelRows) && demoPanelRows.length > 0 ? (demoPanelRows as any)[0].id : null);
-				if (!panelId) return json({ success: false, error: 'Demo panel not found' }, { status: 404 });
-				bots = await db.getAllBots(panelId);
-			} else {
-				return json({ success: false, error: 'Demo admin not found' }, { status: 404 });
-			}
-		} else if (locals.user.account_type === 'superadmin') {
-			bots = await db.getAllBots(locals.user.panel_id);
-		} else {
-			return json({ success: false, error: 'Authentication required' }, { status: 401 });
-		}
+		const bots = await db.getAllBots(locals.user.panel_id);
 
 		if (!bots || bots.length === 0) {
 			return json({ success: false, error: 'No bots found' }, { status: 404 });
@@ -57,7 +35,8 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		let imageFilename: string | null = null;
 		const uploadedBasename = uploaded_image_path ? basename(uploaded_image_path) : null;
 		if (uploadedBasename) {
-			if (!/^[a-zA-Z0-9_.\-]+$/.test(uploadedBasename)) {
+			const prefix = locals.user.panel_id ? `global-${locals.user.panel_id}-` : 'global-';
+			if (!uploadedBasename.startsWith(prefix) || !/^[a-zA-Z0-9_.\-]+$/.test(uploadedBasename)) {
 				return json({ success: false, error: 'Invalid uploaded image filename' }, { status: 400 });
 			}
 			try {

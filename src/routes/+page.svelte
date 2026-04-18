@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { onMount, onDestroy } from 'svelte';
+	import 'fullpage.js/dist/fullpage.css';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import type { PageProps } from './$types';
 	import { publicServerPath } from '$lib/url.js';
@@ -6,6 +8,27 @@
 	import MainFooter from '$lib/frontend/components/MainFooter.svelte';
 
 	let { data }: PageProps = $props();
+
+	let fullpageInstance: any;
+
+	onMount(async () => {
+		const fullpage = (await import('fullpage.js')).default;
+
+		fullpageInstance = new fullpage('#fullpage', {
+			licenseKey: 'gplv3-license',
+			autoScrolling: true,
+			scrollHorizontally: true,
+			navigation: true,
+			fitToSection: false,
+			scrollOverflow: true
+		});
+
+		return () => {
+			if (fullpageInstance) {
+				fullpageInstance.destroy('all');
+			}
+		};
+	});
 
 	const officialBotInviteUrl = 'https://discord.com/oauth2/authorize?client_id=1446572985849876640';
 	const communityDiscordUrl = 'https://discord.gg/7fEqEDSur3';
@@ -156,168 +179,191 @@
 
 	<MainHeader />
 
-	<main class="m-main">
-		<div class="m-inner m-landing-inner">
-			<section class="m-hero">
-				<h1>
-					Supercharge Your<br />
-					<span class="m-gradient-text">Discord Server</span>
-				</h1>
-				<p>
-					Run leveling, moderation, an embed builder, Discord Quests, quest enroll, self-bot options, creator tools, live public statistics pages, Roblox
-					catalog alerts, and more from the free web panel in your browser. Configure in one place instead of flooding channels with slash commands. Free for
-					everyone. Self-host from
-					<a href={sourceRepoUrl} target="_blank" rel="noopener noreferrer">GitHub</a>
-					or add
-					<a href={officialBotInviteUrl} target="_blank" rel="noopener noreferrer">our hosted bot</a>
-					if you do not run your own servers.
-				</p>
-				<div class="m-hero-actions">
-					<a href={officialBotInviteUrl} class="m-btn m-btn--primary m-hero-btn-primary" target="_blank" rel="noopener noreferrer">
-						<i class="fab fa-discord"></i>
-						Get started
-					</a>
-					<div class="m-hero-actions-secondary" role="group" aria-label="More options">
-						<a href="/login" class="m-btn m-btn--ghost m-btn--compact">
-							<i class="fas fa-sign-in-alt"></i>
-							Log in
-						</a>
-						<a href="#features" class="m-btn m-btn--ghost m-btn--compact">
-							<i class="fas fa-th-large"></i>
-							Features
-						</a>
-						<a
-							href={communityDiscordUrl}
-							class="m-btn m-btn--ghost m-btn--compact"
-							target="_blank"
-							rel="noopener noreferrer"
-							title="Join our Discord for updates and testing"
-						>
-							<i class="fas fa-users"></i>
-							Discord
-						</a>
-						<a href={sourceRepoUrl} class="m-btn m-btn--ghost m-btn--compact" target="_blank" rel="noopener noreferrer" title="Source on GitHub (MIT)">
-							<i class="fab fa-github"></i>
-							GitHub
-						</a>
-					</div>
-				</div>
-			</section>
-
-			<section class="m-section" id="features">
-				<div class="m-section-header">
-					<h2>Everything your server needs</h2>
-					<p>
-						Each module stands on its own. Turn on leveling, embed builder, Quest notifier, quest enroll, self-bot, forwarder, public statistics, or any mix you
-						need. Everything lives under the same server settings.
-					</p>
-				</div>
-				<div class="m-features-grid">
-					{#each features as feature}
-						<div class="m-feature-card">
-							<div class="m-feature-icon m-feature-icon--{feature.tone}">
-								<i class="fas {feature.icon}"></i>
+	<main class="m-main" style="overflow-y: hidden;">
+		<div id="fullpage">
+			<div class="section">
+				<div class="m-inner m-landing-inner">
+					<section class="m-hero">
+						<h1>
+							Supercharge Your<br />
+							<span class="m-gradient-text">Discord Server</span>
+						</h1>
+						<p>
+							Run leveling, moderation, an embed builder, Discord Quests, quest enroll, self-bot options, creator tools, live public statistics pages, Roblox
+							catalog alerts, and more from the free web panel in your browser. Configure in one place instead of flooding channels with slash commands. Free
+							for everyone. Self-host from
+							<a href={sourceRepoUrl} target="_blank" rel="noopener noreferrer">GitHub</a>
+							or add
+							<a href={officialBotInviteUrl} target="_blank" rel="noopener noreferrer">our hosted bot</a>
+							if you do not run your own servers.
+						</p>
+						<div class="m-hero-actions">
+							<a href={officialBotInviteUrl} class="m-btn m-btn--primary m-hero-btn-primary" target="_blank" rel="noopener noreferrer">
+								<i class="fab fa-discord"></i>
+								Get started
+							</a>
+							<div class="m-hero-actions-secondary" role="group" aria-label="More options">
+								<a href="/login" class="m-btn m-btn--ghost m-btn--compact">
+									<i class="fas fa-sign-in-alt"></i>
+									Log in
+								</a>
+								<a href="#features" class="m-btn m-btn--ghost m-btn--compact">
+									<i class="fas fa-th-large"></i>
+									Features
+								</a>
+								<a
+									href={communityDiscordUrl}
+									class="m-btn m-btn--ghost m-btn--compact"
+									target="_blank"
+									rel="noopener noreferrer"
+									title="Join our Discord for updates and testing"
+								>
+									<i class="fas fa-users"></i>
+									Discord
+								</a>
+								<a href={sourceRepoUrl} class="m-btn m-btn--ghost m-btn--compact" target="_blank" rel="noopener noreferrer" title="Source on GitHub (MIT)">
+									<i class="fab fa-github"></i>
+									GitHub
+								</a>
 							</div>
-							<h3>{feature.title}</h3>
-							<p>{feature.desc}</p>
 						</div>
-					{/each}
+					</section>
 				</div>
-			</section>
+			</div>
+
+			<div class="section">
+				<div class="m-inner m-landing-inner">
+					<section class="m-section" id="features">
+						<div class="m-section-header">
+							<h2>Everything your server needs</h2>
+							<p>
+								Each module stands on its own. Turn on leveling, embed builder, Quest notifier, quest enroll, self-bot, forwarder, public statistics, or any mix
+								you need. Everything lives under the same server settings.
+							</p>
+						</div>
+						<div class="m-features-grid">
+							{#each features as feature}
+								<div class="m-feature-card">
+									<div class="m-feature-icon m-feature-icon--{feature.tone}">
+										<i class="fas {feature.icon}"></i>
+									</div>
+									<h3>{feature.title}</h3>
+									<p>{feature.desc}</p>
+								</div>
+							{/each}
+						</div>
+					</section>
+				</div>
+			</div>
 
 			{#if data.featuredServers.length > 0}
-				<section class="m-section">
-					<div class="m-section-header">
-						<h2>Active Communities</h2>
-						<p>Servers using {APP_NAME} Bot with public statistics enabled.</p>
+				<div class="section">
+					<div class="m-inner m-landing-inner">
+						<section class="m-section">
+							<div class="m-section-header">
+								<h2>Active Communities</h2>
+								<p>Servers using {APP_NAME} Bot with public statistics enabled.</p>
+							</div>
+							<div class="m-servers-list">
+								{#each data.featuredServers as server}
+									<a href={publicServerPath(server.slug)} class="m-server-card">
+										<div class="m-landing-server-icon">
+											{#if server.server_icon}
+												<img src={server.server_icon} alt={server.name} loading="lazy" width="42" height="42" />
+											{:else}
+												<i class="fas fa-server m-landing-server-icon-placeholder"></i>
+											{/if}
+										</div>
+										<div class="m-server-info">
+											<div class="m-server-name">{server.name}</div>
+											<div class="m-server-sub">
+												<span class="m-landing-server-live" title="Public page uses live data">
+													<span class="m-live-dot"></span>
+													Live public statistics
+												</span>
+											</div>
+										</div>
+										<i class="fas fa-chevron-right m-server-arrow"></i>
+									</a>
+								{/each}
+							</div>
+						</section>
 					</div>
-					<div class="m-servers-list">
-						{#each data.featuredServers as server}
-							<a href={publicServerPath(server.slug)} class="m-server-card">
-								<div class="m-landing-server-icon">
-									{#if server.server_icon}
-										<img src={server.server_icon} alt={server.name} loading="lazy" width="42" height="42" />
-									{:else}
-										<i class="fas fa-server m-landing-server-icon-placeholder"></i>
-									{/if}
-								</div>
-								<div class="m-server-info">
-									<div class="m-server-name">{server.name}</div>
-									<div class="m-server-sub">
-										<span class="m-landing-server-live" title="Public page uses live data">
-											<span class="m-live-dot"></span>
-											Live public statistics
-										</span>
-									</div>
-								</div>
-								<i class="fas fa-chevron-right m-server-arrow"></i>
-							</a>
-						{/each}
-					</div>
-				</section>
+				</div>
 			{/if}
 
-			<section class="m-section">
-				<div class="m-section-header">
-					<h2>Powerful web panel</h2>
-					<p>
-						Change settings from your browser without building long slash command workflows. After you sign in you land in the panel. Where a module supports
-						it, you get live bot and server state right in the UI.
-					</p>
+			<div class="section">
+				<div class="m-inner m-landing-inner">
+					<section class="m-section">
+						<div class="m-section-header">
+							<h2>Powerful web panel</h2>
+							<p>
+								Change settings from your browser without building long slash command workflows. After you sign in you land in the panel. Where a module
+								supports it, you get live bot and server state right in the UI.
+							</p>
+						</div>
+						<div class="m-features-grid m-features-grid--quad">
+							<div class="m-feature-card">
+								<div class="m-feature-icon m-feature-icon--teal">
+									<i class="fas fa-toggle-on"></i>
+								</div>
+								<h3>Toggle Features</h3>
+								<p>Enable or disable any feature with a single click. Each module is independently configurable.</p>
+							</div>
+							<div class="m-feature-card">
+								<div class="m-feature-icon m-feature-icon--brick">
+									<i class="fas fa-users-gear"></i>
+								</div>
+								<h3>Team Access</h3>
+								<p>Invite staff members with role-based access. Owners and staff can manage the panel independently.</p>
+							</div>
+							<div class="m-feature-card">
+								<div class="m-feature-icon m-feature-icon--teal">
+									<i class="fas fa-eye"></i>
+								</div>
+								<h3>Live Monitoring</h3>
+								<p>Watch bot status, uptime, and server statistics in real-time with live streaming updates.</p>
+							</div>
+							<div class="m-feature-card">
+								<div class="m-feature-icon m-feature-icon--brick">
+									<i class="fas fa-mobile-screen"></i>
+								</div>
+								<h3>Mobile Ready</h3>
+								<p>Full responsive design works on any device. Manage your server from phone, tablet, or desktop.</p>
+							</div>
+						</div>
+					</section>
 				</div>
-				<div class="m-features-grid m-features-grid--quad">
-					<div class="m-feature-card">
-						<div class="m-feature-icon m-feature-icon--teal">
-							<i class="fas fa-toggle-on"></i>
-						</div>
-						<h3>Toggle Features</h3>
-						<p>Enable or disable any feature with a single click. Each module is independently configurable.</p>
-					</div>
-					<div class="m-feature-card">
-						<div class="m-feature-icon m-feature-icon--brick">
-							<i class="fas fa-users-gear"></i>
-						</div>
-						<h3>Team Access</h3>
-						<p>Invite staff members with role-based access. Owners and staff can manage the panel independently.</p>
-					</div>
-					<div class="m-feature-card">
-						<div class="m-feature-icon m-feature-icon--teal">
-							<i class="fas fa-eye"></i>
-						</div>
-						<h3>Live Monitoring</h3>
-						<p>Watch bot status, uptime, and server statistics in real-time with live streaming updates.</p>
-					</div>
-					<div class="m-feature-card">
-						<div class="m-feature-icon m-feature-icon--brick">
-							<i class="fas fa-mobile-screen"></i>
-						</div>
-						<h3>Mobile Ready</h3>
-						<p>Full responsive design works on any device. Manage your server from phone, tablet, or desktop.</p>
-					</div>
-				</div>
-			</section>
+			</div>
 
-			<section class="m-cta">
-				<div class="m-cta-card">
-					<h2>Ready to try it?</h2>
-					<p>
-						Add {APP_NAME} Bot to your server first for free. Then sign in to the web panel to configure your server. The login screen also offers an optional free
-						<strong>ten minute demo</strong> with full panel access and no signup.
-					</p>
-					<div class="m-cta-actions">
-						<a href={officialBotInviteUrl} class="m-btn m-btn--primary" target="_blank" rel="noopener noreferrer">
-							<i class="fab fa-discord"></i>
-							Add {APP_NAME} Bot
-						</a>
-						<a href="/login" class="m-btn m-btn--ghost">
-							<i class="fas fa-sign-in-alt"></i>
-							Open login
-						</a>
-					</div>
+			<div class="section">
+				<div class="m-inner m-landing-inner">
+					<section class="m-cta">
+						<div class="m-cta-card">
+							<h2>Ready to try it?</h2>
+							<p>
+								Add {APP_NAME} Bot to your server first for free. Then sign in to the web panel to configure your server. The login screen also offers an optional
+								free
+								<strong>ten minute demo</strong> with full panel access and no signup.
+							</p>
+							<div class="m-cta-actions">
+								<a href={officialBotInviteUrl} class="m-btn m-btn--primary" target="_blank" rel="noopener noreferrer">
+									<i class="fab fa-discord"></i>
+									Add {APP_NAME} Bot
+								</a>
+								<a href="/login" class="m-btn m-btn--ghost">
+									<i class="fas fa-sign-in-alt"></i>
+									Open login
+								</a>
+							</div>
+						</div>
+					</section>
 				</div>
-			</section>
+			</div>
+
+			<div class="section fp-auto-height">
+				<MainFooter />
+			</div>
 		</div>
 	</main>
-
-	<MainFooter />
 </div>

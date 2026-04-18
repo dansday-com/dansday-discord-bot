@@ -2,7 +2,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
-	import CategoryPicker from '$lib/frontend/components/CategoryPicker.svelte';
+	import ChannelPicker from '$lib/frontend/components/ChannelPicker.svelte';
 	import ConfigToggleRow from '$lib/frontend/components/ConfigToggleRow.svelte';
 	import type { PageProps } from './$types';
 
@@ -10,7 +10,7 @@
 
 	let saving = $state(false);
 	let featureEnabled = $state(data.settings?.enabled === true);
-	let categoryIds = $state<string[]>(data.settings?.category_ids ?? []);
+	let channelIds = $state<string[]>(data.settings?.channel_ids ?? []);
 
 	async function save() {
 		saving = true;
@@ -21,7 +21,7 @@
 				credentials: 'include',
 				body: JSON.stringify({
 					component: SERVER_SETTINGS.component.notifications,
-					category_ids: categoryIds,
+					channel_ids: channelIds,
 					enabled: featureEnabled
 				})
 			});
@@ -58,12 +58,10 @@
 	<div class="space-y-5 transition-opacity" class:pointer-events-none={!featureEnabled} class:opacity-50={!featureEnabled}>
 		<div>
 			<label class="text-ash-300 mb-1.5 block text-xs font-medium">
-				<i class="fas fa-folder mr-1 text-rose-400"></i>Categories
+				<i class="fas fa-hashtag mr-1 text-rose-400"></i>Channels
 			</label>
-			<p class="text-ash-500 mb-2 text-xs">
-				Channels inside these categories will be available for members to opt-in for notifications. Multiple categories allowed.
-			</p>
-			<CategoryPicker categories={data.categories} value={categoryIds} onchange={(v) => (categoryIds = v)} />
+			<p class="text-ash-500 mb-2 text-xs">These channels will be available for members to opt-in for notifications. Multiple channels allowed.</p>
+			<ChannelPicker channels={data.channels} value={channelIds} onchange={(v) => (channelIds = v)} />
 		</div>
 	</div>
 

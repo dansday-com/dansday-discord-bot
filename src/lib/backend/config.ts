@@ -537,14 +537,14 @@ export const NOTIFICATIONS = {
 		return settings?.settings || null;
 	},
 
-	async getNotificationChannelsWithCategory(guildId: string) {
+	async getNotificationChannels(guildId: string) {
 		if (!(await isComponentFeatureEnabled(guildId, serverSettingsComponent.notifications))) return [];
 		const server = await getOfficialBotServer(guildId).catch(() => null);
 		if (!server) return [];
 		const config = await this.getConfigByServerId(server.id);
-		const categoryIds = config?.category_ids || [];
-		if (categoryIds.length === 0) return [];
-		return await db.getNotificationChannelsWithCategory(server.id, categoryIds);
+		const channelIds = config?.channel_ids || [];
+		if (channelIds.length === 0) return [];
+		return await db.getNotificationChannels(server.id, channelIds);
 	},
 
 	async getNotifiedMemberMentionsForChannel(guildId: string, channelId: string): Promise<string[] | null> {

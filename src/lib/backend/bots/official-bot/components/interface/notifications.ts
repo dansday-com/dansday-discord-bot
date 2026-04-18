@@ -31,7 +31,7 @@ export async function handleNotificationsButton(interaction) {
 			return;
 		}
 
-		const channelsWithCategory = await NOTIFICATIONS.getNotificationChannelsWithCategory(interaction.guild.id);
+		const channelsWithCategory = await NOTIFICATIONS.getNotificationChannels(interaction.guild.id);
 		if (channelsWithCategory.length === 0) {
 			const errorMsg = await translate('notifications.errors.noRoles', interaction.guild.id, interaction.user.id);
 			await interaction
@@ -137,7 +137,7 @@ export async function handleNotificationsSelect(interaction) {
 			return;
 		}
 
-		const channelsWithCategory = await NOTIFICATIONS.getNotificationChannelsWithCategory(interaction.guild.id);
+		const channelsWithCategory = await NOTIFICATIONS.getNotificationChannels(interaction.guild.id);
 		const notificationChannelIds = new Set(channelsWithCategory.map((r) => r.discord_channel_id));
 		const selectedIds = new Set((interaction.values || []).filter((id) => notificationChannelIds.has(id)));
 

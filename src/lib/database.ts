@@ -495,9 +495,9 @@ async function getServerIdsInSameGuild(serverId: any) {
 	return rows.map((r) => r.id);
 }
 
-export async function getNotificationChannelsWithCategory(serverId: any, categoryIds: string[]) {
+export async function getNotificationChannels(serverId: any, channelIds: string[]) {
 	await initializeDatabase();
-	if (!categoryIds || categoryIds.length === 0) return [];
+	if (!channelIds || channelIds.length === 0) return [];
 	const rows = await db.execute(sql`
 		SELECT c.discord_channel_id, COALESCE(cat.name, c.name) AS category_name,
 		       COALESCE(cat.position, 9999) AS category_position,
@@ -505,7 +505,7 @@ export async function getNotificationChannelsWithCategory(serverId: any, categor
 		       c.name AS channel_name
 		FROM server_channels c
 		LEFT JOIN server_categories cat ON cat.id = c.category_id
-		WHERE c.server_id = ${Number(serverId)} AND cat.discord_category_id IN (${sql.join(categoryIds, sql`, `)})
+		WHERE c.server_id = ${Number(serverId)} AND c.discord_channel_id IN (${sql.join(channelIds, sql`, `)})
 		ORDER BY category_position ASC, channel_position ASC, channel_name ASC
 	`);
 	return (rows[0] as unknown as any[]) || [];
@@ -3464,7 +3464,7 @@ export default {
 	getSelfbotServerByDiscordId,
 	getServerByDiscordId,
 	getOfficialBotServerIdForServer,
-	getNotificationChannelsWithCategory,
+	getNotificationChannels,
 	getMemberNotificationChannelIds,
 	getNotifiedMemberDiscordIds,
 	updateMemberNotificationChannels,

@@ -11,7 +11,6 @@ import {
 	DEFAULT_BOT_NICKNAME,
 	SERVER_SETTINGS,
 	SETUP_MENU_CATEGORY_NAME,
-	SETUP_INFO_CATEGORY_NAME,
 	SETUP_CHANNEL_DEFS
 } from '../../../../../config.js';
 import { publicSiteOrigin } from '../../../../../../url.js';
@@ -93,25 +92,13 @@ export async function execute(interaction: any, client: any) {
 			]
 		});
 
-		const infoCategory = await guild.channels.create({
-			name: SETUP_INFO_CATEGORY_NAME.replace('{botName}', botName),
-			type: ChannelType.GuildCategory,
-			permissionOverwrites: [
-				{
-					id: guild.id,
-					deny: [PermissionFlagsBits.SendMessages]
-				}
-			]
-		});
-
 		const channelMap: Record<string, string> = {};
 
 		for (const def of SETUP_CHANNEL_DEFS) {
-			const parentId = def.settingsKey === 'menu' ? menuCategory.id : infoCategory.id;
 			const ch = await guild.channels.create({
 				name: def.name,
 				type: ChannelType.GuildText,
-				parent: parentId
+				parent: menuCategory.id
 			});
 			channelMap[def.settingsKey] = ch.id;
 		}
@@ -213,10 +200,14 @@ export async function execute(interaction: any, client: any) {
 		});
 
 		const notifRaw = (await getSettings(SERVER_SETTINGS.component.notifications)) || {};
+		const notifChannelIds = Object.entries(channelMap)
+			.filter(([key]) => key !== 'menu')
+			.map(([, id]) => id);
+
 		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.notifications, {
 			enabled: true,
 			...notifRaw,
-			category_ids: [infoCategory.id]
+			channel_ids: notifChannelIds
 		});
 
 		const accounts = await db.getServerAccountsByServer(server.id);

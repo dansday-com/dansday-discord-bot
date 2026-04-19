@@ -241,17 +241,13 @@
 		} catch {
 			try {
 				avatarImg = await loadImg('https://cdn.discordapp.com/embed/avatars/0.png');
-			} catch {
-				/* skip */
-			}
+			} catch {}
 		}
 		let serverImg: HTMLImageElement | null = null;
 		if (serverIcon) {
 			try {
 				serverImg = await loadImg(serverIcon);
-			} catch {
-				/* skip */
-			}
+			} catch {}
 		}
 
 		const headerH = 24;

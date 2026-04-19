@@ -1,4 +1,4 @@
-# </DANSDAY> Discord Bot
+# &lt;/DANSDAY&gt; Discord Bot
 
 Run leveling, moderation, an embed builder, Discord Quests, quest enroll, self-bot options, creator tools, live public statistics pages, Roblox catalog alerts, and more from the free web panel in your browser. Configure in one place instead of flooding channels with slash commands. Free for everyone. Self-host from GitHub or add our hosted bot if you do not run your own servers.
 

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
+	import { fly } from 'svelte/transition';
 	import 'fullpage.js/dist/fullpage.css';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import type { PageProps } from './$types';
@@ -10,6 +11,109 @@
 	let { data }: PageProps = $props();
 
 	let fullpageInstance: any;
+	let isFirstSection = $state(true);
+
+	// Dynamic Feature Showcase Data
+	type ChatMessage = { id: number; author: string; bot: boolean; tag?: string; color?: string; content: string; featureIdx: number };
+
+	let chatMessages = $state<ChatMessage[]>([]);
+	let activeFeatureIdx = $state(0);
+	let msgCounter = 0;
+
+	const showcaseFeatures = [
+		{ title: 'Leveling & XP', icon: 'fa-chart-line', tone: 'teal' },
+		{ title: 'Welcomer', icon: 'fa-hand', tone: 'brick' },
+		{ title: 'Embed Builder', icon: 'fa-palette', tone: 'stone' },
+		{ title: 'Discord Quests', icon: 'fa-scroll', tone: 'teal' },
+		{ title: 'Roblox Watcher', icon: 'fa-cube', tone: 'brick' }
+	];
+
+	const scenarioEvents = [
+		// 0: Leveling
+		[
+			{ author: 'ProGamer', bot: false, content: 'That was a crazy game!', featureIdx: 0 },
+			{
+				author: APP_NAME,
+				bot: true,
+				tag: 'Leveling',
+				color: 'var(--chili-hot)',
+				content: '🏆 **ProGamer** just reached **Level 42**! (15,240 XP)\nRanked #1 on the leaderboard.',
+				featureIdx: 0
+			}
+		],
+		// 1: Welcomer
+		[
+			{ author: 'NewMember', bot: false, content: 'joined the server.', featureIdx: 1 },
+			{
+				author: APP_NAME,
+				bot: true,
+				tag: 'Welcomer',
+				color: 'var(--chili-teal)',
+				content: 'Welcome to the server, **NewMember**! 🎉\nMake sure to read the rules in <#rules> and grab your roles.',
+				featureIdx: 1
+			}
+		],
+		// 2: Embed Builder
+		[
+			{ author: 'AdminUser', bot: false, content: '/embed send channel:#announcements', featureIdx: 2 },
+			{
+				author: 'AdminUser',
+				bot: false,
+				tag: 'Announcement',
+				color: 'var(--yacht-stone)',
+				content: '📢 **Server Update v2.0**\n\nWe have completely revamped the server channels. Check out the new categories!',
+				featureIdx: 2
+			}
+		],
+		// 3: Quests
+		[
+			{ author: 'Streamer', bot: false, content: 'Going live now!', featureIdx: 3 },
+			{
+				author: APP_NAME,
+				bot: true,
+				tag: 'Quest Notifier',
+				color: 'var(--chili-peach)',
+				content: '🔔 **Discord Quest available!**\nStream to your friends for 15 minutes to unlock an exclusive in-game reward.',
+				featureIdx: 3
+			}
+		],
+		// 4: Roblox Watcher
+		[
+			{ author: 'TraderJoe', bot: false, content: 'Any new UGCs today?', featureIdx: 4 },
+			{
+				author: APP_NAME,
+				bot: true,
+				tag: 'Roblox Catalog',
+				color: 'var(--chili-brick)',
+				content: '🛒 **New Roblox Limited Item**\nDominus Aureus is now available in the catalog! Price: 50,000 Robux',
+				featureIdx: 4
+			}
+		]
+	];
+
+	let currentScenario = 0;
+	let currentEventInScenario = 0;
+
+	onMount(() => {
+		const interval = setInterval(() => {
+			if (currentEventInScenario < scenarioEvents[currentScenario].length) {
+				const event = scenarioEvents[currentScenario][currentEventInScenario];
+				activeFeatureIdx = event.featureIdx;
+				chatMessages = [...chatMessages, { ...event, id: ++msgCounter }];
+
+				if (chatMessages.length > 5) {
+					chatMessages = chatMessages.slice(1);
+				}
+
+				currentEventInScenario++;
+			} else {
+				currentScenario = (currentScenario + 1) % scenarioEvents.length;
+				currentEventInScenario = 0;
+			}
+		}, 2500);
+
+		return () => clearInterval(interval);
+	});
 
 	onMount(async () => {
 		const fullpage = (await import('fullpage.js')).default;
@@ -21,7 +125,12 @@
 			navigation: true,
 			fitToSection: false,
 			scrollOverflow: true,
-			verticalCentered: true
+			verticalCentered: false,
+			paddingBottom: '0px',
+			paddingTop: '0px',
+			onLeave: (origin, destination, direction) => {
+				isFirstSection = destination.index === 0;
+			}
 		});
 
 		return () => {
@@ -173,112 +282,162 @@
 	/>
 </svelte:head>
 
-<div class="m-root">
+<div class="m-root" class:m-first-section={isFirstSection}>
 	<div class="m-blob m-blob-1"></div>
 	<div class="m-blob m-blob-2"></div>
 	<div class="m-blob m-blob-3"></div>
 
-	<MainHeader />
+	<div class="m-nav-wrapper" class:m-nav-hidden={isFirstSection}>
+		<MainHeader />
+	</div>
 
 	<main class="m-main" style="overflow-y: hidden;">
 		<div id="fullpage">
-			<div class="section">
-				<div class="m-inner m-landing-inner">
-					<section class="m-hero">
-						<div class="m-hero-content">
-							<h1>
+			<div class="section" style="padding: 0 !important; margin: 0 !important; background: var(--bg-body);">
+				<div
+					class="m-hero-ultimate"
+					style="width: 100vw; height: 100vh; max-width: none; display: flex; align-items: center; justify-content: space-between; overflow: hidden; position: relative;"
+				>
+					<!-- Left Side: Copy and Highlighted Features -->
+					<div class="m-hero-u-left" style="padding-left: 6vw; width: 45vw; z-index: 10; display: flex; flex-direction: column; gap: 32px;">
+						<div>
+							<h1 style="font-size: 3.5vw; font-weight: 800; line-height: 1.1; margin-bottom: 20px;">
 								Supercharge Your<br />
-								<span class="m-gradient-text">Discord Server</span>
+								<span
+									style="background: linear-gradient(135deg, var(--chili-teal), var(--chili-peach)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;"
+									>Discord Server</span
+								>
 							</h1>
-							<p>
-								Run leveling, moderation, an embed builder, Discord Quests, quest enroll, self-bot options, creator tools, live public statistics pages, Roblox
-								catalog alerts, and more from the free web panel in your browser. Configure in one place instead of flooding channels with slash commands. Free
-								for everyone. Self-host from
-								<a href={sourceRepoUrl} target="_blank" rel="noopener noreferrer">GitHub</a>
-								or add
-								<a href={officialBotInviteUrl} target="_blank" rel="noopener noreferrer">our hosted bot</a>
-								if you do not run your own servers.
+							<p style="font-size: 1.1vw; color: var(--lb-text-muted); line-height: 1.6; max-width: 90%;">
+								Everything your server needs in one powerful bot and web panel. No more slash command spam—manage leveling, embeds, moderation, and alerts
+								straight from your browser.
 							</p>
-							<div class="m-hero-actions">
-								<a href={officialBotInviteUrl} class="m-btn m-btn--primary m-hero-btn-primary" target="_blank" rel="noopener noreferrer">
-									<i class="fab fa-discord"></i>
-									Get started
-								</a>
-								<div class="m-hero-actions-secondary" role="group" aria-label="More options">
-									<a href="/login" class="m-btn m-btn--ghost m-btn--compact">
-										<i class="fas fa-sign-in-alt"></i>
-										Log in
-									</a>
-									<a href="#features" class="m-btn m-btn--ghost m-btn--compact">
-										<i class="fas fa-th-large"></i>
-										Features
-									</a>
-									<a
-										href={communityDiscordUrl}
-										class="m-btn m-btn--ghost m-btn--compact"
-										target="_blank"
-										rel="noopener noreferrer"
-										title="Join our Discord for updates and testing"
+						</div>
+
+						<div class="m-hero-actions" style="display: flex; gap: 16px;">
+							<a
+								href={officialBotInviteUrl}
+								class="m-btn m-btn--primary"
+								target="_blank"
+								rel="noopener noreferrer"
+								style="font-size: 1.1vw; padding: 16px 32px;"
+							>
+								<i class="fab fa-discord"></i> Get started
+							</a>
+							<a href="/login" class="m-btn m-btn--ghost" style="font-size: 1.1vw; padding: 16px 32px;">
+								<i class="fas fa-sign-in-alt"></i> Web Panel
+							</a>
+						</div>
+
+						<!-- Dynamic Feature Highlights -->
+						<div class="m-hero-u-features" style="display: flex; flex-direction: column; gap: 12px; max-width: 80%; margin-top: 10px;">
+							{#each showcaseFeatures as feature, i}
+								<div
+									class="m-hero-u-feat"
+									style="
+									display: flex; align-items: center; gap: 16px; padding: 14px 20px; border-radius: 12px;
+									background: {activeFeatureIdx === i ? 'var(--bg-card)' : 'transparent'};
+									box-shadow: {activeFeatureIdx === i ? '0 12px 40px rgba(36, 95, 115, 0.15)' : 'none'};
+									border: 1px solid {activeFeatureIdx === i ? 'var(--border-color)' : 'transparent'};
+									opacity: {activeFeatureIdx === i ? '1' : '0.4'};
+									transform: {activeFeatureIdx === i ? 'scale(1.03)' : 'scale(1)'};
+									transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+								"
+								>
+									<div
+										class="m-feature-icon m-feature-icon--{feature.tone}"
+										style="width: 42px; height: 42px; font-size: 18px; display: flex; align-items: center; justify-content: center; border-radius: 50%; flex-shrink: 0;"
 									>
-										<i class="fas fa-users"></i>
-										Discord
-									</a>
-									<a href={sourceRepoUrl} class="m-btn m-btn--ghost m-btn--compact" target="_blank" rel="noopener noreferrer" title="Source on GitHub (MIT)">
-										<i class="fab fa-github"></i>
-										GitHub
-									</a>
+										<i class="fas {feature.icon}"></i>
+									</div>
+									<span style="font-weight: 700; font-size: 1.2vw; color: var(--lb-text);">{feature.title}</span>
 								</div>
+							{/each}
+						</div>
+					</div>
+
+					<!-- Right Side: Discord Simulator -->
+					<div
+						class="m-hero-u-right"
+						style="width: 50vw; height: 100vh; position: relative; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at center, rgba(36, 95, 115, 0.08), transparent 60%);"
+					>
+						<div
+							class="m-discord-mockup"
+							style="
+							width: 85%; height: 75vh; background: var(--bg-card); border-radius: 16px; 
+							box-shadow: 0 40px 80px rgba(0,0,0,0.3); border: 1px solid var(--border-color);
+							display: flex; flex-direction: column; overflow: hidden;
+						"
+						>
+							<div
+								class="m-discord-header"
+								style="padding: 18px 24px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 12px; background: rgba(0,0,0,0.03);"
+							>
+								<i class="fas fa-hashtag" style="color: var(--lb-text-muted); font-size: 1.3rem;"></i>
+								<span style="font-weight: 700; color: var(--lb-text); font-size: 1.2rem;">general-chat</span>
+							</div>
+							<div
+								class="m-discord-body"
+								style="flex: 1; padding: 24px; display: flex; flex-direction: column; justify-content: flex-end; gap: 24px; overflow: hidden;"
+							>
+								{#each chatMessages as msg (msg.id)}
+									<div class="m-discord-msg" in:fly={{ y: 30, duration: 400, opacity: 0 }} style="display: flex; gap: 18px;">
+										<div
+											class="m-discord-avatar"
+											style="
+											width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.3rem; flex-shrink: 0;
+											background: {msg.bot ? 'var(--chili-teal)' : 'var(--yacht-stone)'};
+										"
+										>
+											<i class="fas {msg.bot ? 'fa-robot' : 'fa-user'}"></i>
+										</div>
+										<div class="m-discord-content" style="flex: 1;">
+											<div class="m-discord-author" style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px; flex-wrap: wrap;">
+												<span style="font-weight: 700; color: var(--lb-text); font-size: 1.1rem;">{msg.author}</span>
+												{#if msg.bot}
+													<span
+														style="background: #5865F2; color: white; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; display: flex; align-items: center; gap: 4px; text-transform: uppercase; font-weight: 600;"
+													>
+														<i class="fas fa-check"></i> APP
+													</span>
+													{#if msg.tag}
+														<span
+															style="font-size: 0.75rem; padding: 2px 10px; border-radius: 12px; font-weight: 600; background: {msg.color}20; color: {msg.color}; border: 1px solid {msg.color}40;"
+														>
+															{msg.tag}
+														</span>
+													{/if}
+												{/if}
+											</div>
+											<div class="m-discord-text" style="color: var(--lb-text-muted); font-size: 1.05rem; line-height: 1.5;">
+												{#each msg.content.split('\n') as line}
+													<div>{@html line.replace(/\*\*(.*?)\*\*/g, '<strong style="color: var(--lb-text); font-weight: 700;">$1</strong>')}</div>
+												{/each}
+											</div>
+										</div>
+									</div>
+								{/each}
 							</div>
 						</div>
+					</div>
 
-						<div class="m-hero-visual">
-							<div class="m-hero-floating-ui">
-								<div class="m-hero-float-1">
-									<div class="m-stat-card m-overview-card" style="padding: 14px 16px;">
-										<div class="m-stat-card-head" style="margin-bottom: 10px;">
-											<div class="m-stat-card-icon m-chili-stat-1" style="width: 32px; height: 32px; font-size: 0.9rem;">
-												<i class="fas fa-arrow-trend-up"></i>
-											</div>
-											<h3 class="m-stat-card-title" style="font-size: 14px;">Leveling</h3>
-										</div>
-										<div class="m-stat-rows">
-											<div class="m-stat-row" style="padding: 6px 10px;">
-												<span class="m-stat-row-label" style="font-size: 12px;"><i class="fas fa-trophy"></i> Top Member</span>
-												<span class="m-stat-row-value" style="font-size: 14px; color: var(--chili-hot);">Level 42</span>
-											</div>
-										</div>
-									</div>
-								</div>
-
-								<div class="m-hero-float-2">
-									<div class="m-overview-strip-item" style="box-shadow: 0 8px 30px var(--lb-shadow);">
-										<div class="m-overview-strip-icon" style="width: 32px; height: 32px; font-size: 0.9rem;"><i class="fas fa-users"></i></div>
-										<div class="m-overview-strip-text">
-											<div class="m-overview-strip-value" style="font-size: 15px;">1,240</div>
-											<div class="m-overview-strip-label" style="font-size: 9px;">Members</div>
-										</div>
-									</div>
-								</div>
-
-								<div class="m-hero-float-3">
-									<div class="m-members-search-bar" style="margin:0; box-shadow: 0 12px 40px rgba(36, 95, 115, 0.15);">
-										<div class="m-members-search">
-											<i class="fas fa-search m-members-search-ic"></i>
-											<input type="text" class="m-members-search-inp" placeholder="Search members..." disabled style="pointer-events: none;" />
-										</div>
-										<button class="m-members-btn" disabled style="pointer-events: none;"><i class="fas fa-filter"></i></button>
-									</div>
-								</div>
-
-								<div class="m-hero-float-4">
-									<div class="m-metric-pill m-metric-pill--live" style="box-shadow: 0 4px 15px rgba(36, 95, 115, 0.1);">
-										<span class="m-live-dot"></span>
-										Live syncing
-									</div>
-								</div>
-							</div>
-						</div>
-					</section>
+					<!-- Arrow Down Indicator -->
+					{#if isFirstSection}
+						<button
+							class="m-scroll-down-indicator"
+							onclick={() => fullpageInstance?.moveSectionDown()}
+							style="
+							position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
+							width: 56px; height: 56px; border-radius: 50%; background: var(--bg-card);
+							box-shadow: 0 10px 30px rgba(0,0,0,0.15); border: 1px solid var(--border-color);
+							display: flex; align-items: center; justify-content: center; color: var(--chili-teal); font-size: 1.5rem;
+							cursor: pointer; z-index: 50; transition: all 0.3s ease; animation: bounce 2s infinite;
+						"
+							aria-label="Scroll down"
+						>
+							<i class="fas fa-chevron-down"></i>
+						</button>
+					{/if}
 				</div>
 			</div>
 
@@ -414,7 +573,7 @@
 		</div>
 	</main>
 
-	<div style="position: fixed; bottom: 0; left: 0; width: 100%; z-index: 100;">
+	<div class="m-footer-wrapper" class:m-footer-hidden={isFirstSection}>
 		<MainFooter />
 	</div>
 </div>

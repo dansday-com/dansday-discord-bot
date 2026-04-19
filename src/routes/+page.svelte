@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { fly } from 'svelte/transition';
+	import { fly, fade } from 'svelte/transition';
 	import 'fullpage.js/dist/fullpage.css';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import type { PageProps } from './$types';
@@ -13,105 +13,35 @@
 	let fullpageInstance: any;
 	let isFirstSection = $state(true);
 
-	// Dynamic Feature Showcase Data
-	type ChatMessage = { id: number; author: string; bot: boolean; tag?: string; color?: string; content: string; featureIdx: number };
+	// Interactive "ALL" Feature State
+	let activeTab = $state(0);
 
-	let chatMessages = $state<ChatMessage[]>([]);
-	let activeFeatureIdx = $state(0);
-	let msgCounter = 0;
+	// Embed Builder State
+	let embedTitle = $state('🚀 New Feature: Roblox Catalog Watcher');
+	let embedDesc = $state(
+		'We just launched the highly requested Roblox catalog tracker! Configure it directly in your web panel to start receiving live alerts for UGC items.'
+	);
 
-	const showcaseFeatures = [
-		{ title: 'Leveling & XP', icon: 'fa-chart-line', tone: 'teal' },
-		{ title: 'Welcomer', icon: 'fa-hand', tone: 'brick' },
-		{ title: 'Embed Builder', icon: 'fa-palette', tone: 'stone' },
-		{ title: 'Discord Quests', icon: 'fa-scroll', tone: 'teal' },
-		{ title: 'Roblox Watcher', icon: 'fa-cube', tone: 'brick' }
+	// Web Panel State
+	let panelLeveling = $state(true);
+	let panelWelcomer = $state(false);
+	let panelQuests = $state(true);
+
+	const robloxItems = [
+		{ name: 'Valkyrie Helm', price: '50,000', icon: 'fa-hat-wizard', trend: 'down', color: '#00b06f' },
+		{ name: 'Dominus Aureus', price: '150,000', icon: 'fa-crown', trend: 'up', color: '#f23f43' },
+		{ name: 'Korblox Deathspeaker', price: '17,000', icon: 'fa-shoe-prints', trend: 'down', color: '#00b06f' },
+		{ name: 'Super Super Happy Face', price: '85,000', icon: 'fa-face-smile', trend: 'up', color: '#f23f43' }
 	];
 
-	const scenarioEvents = [
-		// 0: Leveling
-		[
-			{ author: 'ProGamer', bot: false, content: 'That was a crazy game!', featureIdx: 0 },
-			{
-				author: APP_NAME,
-				bot: true,
-				tag: 'Leveling',
-				color: 'var(--chili-hot)',
-				content: '🏆 **ProGamer** just reached **Level 42**! (15,240 XP)\nRanked #1 on the leaderboard.',
-				featureIdx: 0
-			}
-		],
-		// 1: Welcomer
-		[
-			{ author: 'NewMember', bot: false, content: 'joined the server.', featureIdx: 1 },
-			{
-				author: APP_NAME,
-				bot: true,
-				tag: 'Welcomer',
-				color: 'var(--chili-teal)',
-				content: 'Welcome to the server, **NewMember**! 🎉\nMake sure to read the rules in <#rules> and grab your roles.',
-				featureIdx: 1
-			}
-		],
-		// 2: Embed Builder
-		[
-			{ author: 'AdminUser', bot: false, content: '/embed send channel:#announcements', featureIdx: 2 },
-			{
-				author: 'AdminUser',
-				bot: false,
-				tag: 'Announcement',
-				color: 'var(--yacht-stone)',
-				content: '📢 **Server Update v2.0**\n\nWe have completely revamped the server channels. Check out the new categories!',
-				featureIdx: 2
-			}
-		],
-		// 3: Quests
-		[
-			{ author: 'Streamer', bot: false, content: 'Going live now!', featureIdx: 3 },
-			{
-				author: APP_NAME,
-				bot: true,
-				tag: 'Quest Notifier',
-				color: 'var(--chili-peach)',
-				content: '🔔 **Discord Quest available!**\nStream to your friends for 15 minutes to unlock an exclusive in-game reward.',
-				featureIdx: 3
-			}
-		],
-		// 4: Roblox Watcher
-		[
-			{ author: 'TraderJoe', bot: false, content: 'Any new UGCs today?', featureIdx: 4 },
-			{
-				author: APP_NAME,
-				bot: true,
-				tag: 'Roblox Catalog',
-				color: 'var(--chili-brick)',
-				content: '🛒 **New Roblox Limited Item**\nDominus Aureus is now available in the catalog! Price: 50,000 Robux',
-				featureIdx: 4
-			}
-		]
-	];
-
-	let currentScenario = 0;
-	let currentEventInScenario = 0;
-
+	// Auto-cycle the tabs if user hasn't clicked
+	let userInteracted = false;
 	onMount(() => {
 		const interval = setInterval(() => {
-			if (currentEventInScenario < scenarioEvents[currentScenario].length) {
-				const event = scenarioEvents[currentScenario][currentEventInScenario];
-				activeFeatureIdx = event.featureIdx;
-				chatMessages = [...chatMessages, { ...event, id: ++msgCounter }];
-
-				if (chatMessages.length > 5) {
-					chatMessages = chatMessages.slice(1);
-				}
-
-				currentEventInScenario++;
-			} else {
-				currentScenario = (currentScenario + 1) % scenarioEvents.length;
-				currentEventInScenario = 0;
+			if (!userInteracted) {
+				activeTab = (activeTab + 1) % 5;
 			}
-		}, 2500);
-
+		}, 4000);
 		return () => clearInterval(interval);
 	});
 
@@ -293,12 +223,13 @@
 
 	<main class="m-main" style="overflow-y: hidden;">
 		<div id="fullpage">
+			<!-- FIRST SECTION: LITERALLY FULL PAGE, NO HEADER/FOOTER, NO MAX WIDTH -->
 			<div class="section" style="padding: 0 !important; margin: 0 !important; background: var(--bg-body);">
 				<div
 					class="m-hero-ultimate"
 					style="width: 100vw; height: 100vh; max-width: none; display: flex; align-items: center; justify-content: space-between; overflow: hidden; position: relative;"
 				>
-					<!-- Left Side: Copy and Highlighted Features -->
+					<!-- Left Side: Copy and Tabs -->
 					<div class="m-hero-u-left" style="padding-left: 6vw; width: 45vw; z-index: 10; display: flex; flex-direction: column; gap: 32px;">
 						<div>
 							<h1 style="font-size: 3.5vw; font-weight: 800; line-height: 1.1; margin-bottom: 20px;">
@@ -309,8 +240,8 @@
 								>
 							</h1>
 							<p style="font-size: 1.1vw; color: var(--lb-text-muted); line-height: 1.6; max-width: 90%;">
-								Everything your server needs in one powerful bot and web panel. No more slash command spam—manage leveling, embeds, moderation, and alerts
-								straight from your browser.
+								Ditch the slash commands. Manage advanced Leveling, Discord Quests, Roblox Catalogs, TikTok Digests, and Live Stats directly from a powerful
+								free web panel.
 							</p>
 						</div>
 
@@ -329,96 +260,289 @@
 							</a>
 						</div>
 
-						<!-- Dynamic Feature Highlights -->
-						<div class="m-hero-u-features" style="display: flex; flex-direction: column; gap: 12px; max-width: 80%; margin-top: 10px;">
-							{#each showcaseFeatures as feature, i}
-								<div
-									class="m-hero-u-feat"
+						<!-- Interactive "ALL" Tabs -->
+						<div class="m-hero-tabs" style="display: flex; flex-direction: column; gap: 10px; max-width: 80%; margin-top: 10px;">
+							{#each [{ title: 'Roblox Catalog Watcher', icon: 'fa-cube' }, { title: 'Live Global Statistics', icon: 'fa-chart-line' }, { title: 'Interactive Web Panel', icon: 'fa-toggle-on' }, { title: 'Embed Builder Sandbox', icon: 'fa-palette' }, { title: 'Wall of Communities', icon: 'fa-users' }] as tab, i}
+								<button
+									class="m-hero-tab-btn"
 									style="
-									display: flex; align-items: center; gap: 16px; padding: 14px 20px; border-radius: 12px;
-									background: {activeFeatureIdx === i ? 'var(--bg-card)' : 'transparent'};
-									box-shadow: {activeFeatureIdx === i ? '0 12px 40px rgba(36, 95, 115, 0.15)' : 'none'};
-									border: 1px solid {activeFeatureIdx === i ? 'var(--border-color)' : 'transparent'};
-									opacity: {activeFeatureIdx === i ? '1' : '0.4'};
-									transform: {activeFeatureIdx === i ? 'scale(1.03)' : 'scale(1)'};
-									transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-								"
+										display: flex; align-items: center; gap: 16px; padding: 14px 20px; border-radius: 12px; cursor: pointer; text-align: left;
+										background: {activeTab === i ? 'var(--bg-card)' : 'transparent'};
+										box-shadow: {activeTab === i ? '0 12px 40px rgba(36, 95, 115, 0.15)' : 'none'};
+										border: 1px solid {activeTab === i ? 'var(--border-color)' : 'transparent'};
+										color: {activeTab === i ? 'var(--lb-text)' : 'var(--lb-text-muted)'};
+										opacity: {activeTab === i ? '1' : '0.6'};
+										transform: {activeTab === i ? 'scale(1.03)' : 'scale(1)'};
+										transition: all 0.3s ease;
+									"
+									onclick={() => {
+										activeTab = i;
+										userInteracted = true;
+									}}
 								>
 									<div
-										class="m-feature-icon m-feature-icon--{feature.tone}"
-										style="width: 42px; height: 42px; font-size: 18px; display: flex; align-items: center; justify-content: center; border-radius: 50%; flex-shrink: 0;"
+										style="width: 32px; font-size: 1.2rem; display: flex; justify-content: center; color: {activeTab === i ? 'var(--chili-teal)' : 'inherit'};"
 									>
-										<i class="fas {feature.icon}"></i>
+										<i class="fas {tab.icon}"></i>
 									</div>
-									<span style="font-weight: 700; font-size: 1.2vw; color: var(--lb-text);">{feature.title}</span>
-								</div>
+									<span style="font-weight: 700; font-size: 1.1vw;">{tab.title}</span>
+								</button>
 							{/each}
 						</div>
 					</div>
 
-					<!-- Right Side: Discord Simulator -->
+					<!-- Right Side: The Dynamic "ALL" Showcase -->
 					<div
 						class="m-hero-u-right"
 						style="width: 50vw; height: 100vh; position: relative; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at center, rgba(36, 95, 115, 0.08), transparent 60%);"
 					>
-						<div
-							class="m-discord-mockup"
-							style="
-							width: 85%; height: 75vh; background: var(--bg-card); border-radius: 16px; 
-							box-shadow: 0 40px 80px rgba(0,0,0,0.3); border: 1px solid var(--border-color);
-							display: flex; flex-direction: column; overflow: hidden;
-						"
-						>
-							<div
-								class="m-discord-header"
-								style="padding: 18px 24px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 12px; background: rgba(0,0,0,0.03);"
-							>
-								<i class="fas fa-hashtag" style="color: var(--lb-text-muted); font-size: 1.3rem;"></i>
-								<span style="font-weight: 700; color: var(--lb-text); font-size: 1.2rem;">general-chat</span>
-							</div>
-							<div
-								class="m-discord-body"
-								style="flex: 1; padding: 24px; display: flex; flex-direction: column; justify-content: flex-end; gap: 24px; overflow: hidden;"
-							>
-								{#each chatMessages as msg (msg.id)}
-									<div class="m-discord-msg" in:fly={{ y: 30, duration: 400, opacity: 0 }} style="display: flex; gap: 18px;">
-										<div
-											class="m-discord-avatar"
-											style="
-											width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.3rem; flex-shrink: 0;
-											background: {msg.bot ? 'var(--chili-teal)' : 'var(--yacht-stone)'};
-										"
-										>
-											<i class="fas {msg.bot ? 'fa-robot' : 'fa-user'}"></i>
-										</div>
-										<div class="m-discord-content" style="flex: 1;">
-											<div class="m-discord-author" style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px; flex-wrap: wrap;">
-												<span style="font-weight: 700; color: var(--lb-text); font-size: 1.1rem;">{msg.author}</span>
-												{#if msg.bot}
-													<span
-														style="background: #5865F2; color: white; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; display: flex; align-items: center; gap: 4px; text-transform: uppercase; font-weight: 600;"
+						{#key activeTab}
+							<div in:fade={{ duration: 400 }} style="width: 85%; max-width: 800px; position: absolute;">
+								<!-- 0: ROBLOX CATALOG CAROUSEL -->
+								{#if activeTab === 0}
+									<div style="display: flex; flex-direction: column; gap: 20px;">
+										<h3 style="color: var(--lb-text); font-size: 1.5rem; font-weight: 800; display: flex; align-items: center; gap: 10px;">
+											<i class="fas fa-cube" style="color: var(--chili-brick);"></i> Live Roblox Catalog Tracker
+										</h3>
+										<p style="color: var(--lb-text-muted); font-size: 1.1rem;">
+											Automatically ping your server when highly anticipated UGC items drop or change price.
+										</p>
+
+										<div class="roblox-carousel-container" style="display: flex; gap: 20px; overflow-x: auto; padding-bottom: 20px; padding-top: 10px;">
+											{#each robloxItems as item}
+												<div
+													style="background: #1e1f22; border-radius: 16px; min-width: 240px; border: 1px solid #383a40; overflow: hidden; box-shadow: 0 15px 35px rgba(0,0,0,0.4);"
+												>
+													<div
+														style="height: 160px; background: #2b2d31; display: flex; align-items: center; justify-content: center; font-size: 5rem; color: #fff; position: relative;"
 													>
-														<i class="fas fa-check"></i> APP
-													</span>
-													{#if msg.tag}
-														<span
-															style="font-size: 0.75rem; padding: 2px 10px; border-radius: 12px; font-weight: 600; background: {msg.color}20; color: {msg.color}; border: 1px solid {msg.color}40;"
+														<i class="fas {item.icon}"></i>
+														<div
+															style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.6); padding: 4px 8px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; color: {item.color};"
 														>
-															{msg.tag}
-														</span>
-													{/if}
-												{/if}
+															<i class="fas fa-arrow-trend-{item.trend}"></i> Live
+														</div>
+													</div>
+													<div style="padding: 20px;">
+														<h4 style="color: #fff; font-weight: 700; margin: 0 0 12px; font-size: 1.2rem;">{item.name}</h4>
+														<div style="display: flex; justify-content: space-between; align-items: center;">
+															<span style="color: #00b06f; font-weight: 800; font-size: 1.2rem; display: flex; align-items: center; gap: 6px;">
+																<i class="fas fa-coins" style="color: #f6b539;"></i>
+																{item.price}
+															</span>
+															<button
+																style="background: #ffffff; color: #111; border: none; padding: 6px 12px; border-radius: 6px; font-weight: 700; cursor: pointer;"
+																>Buy</button
+															>
+														</div>
+													</div>
+												</div>
+											{/each}
+										</div>
+									</div>
+
+									<!-- 1: LIVE GLOBAL STATISTICS -->
+								{:else if activeTab === 1}
+									<div style="display: flex; flex-direction: column; gap: 20px;">
+										<h3 style="color: var(--lb-text); font-size: 1.5rem; font-weight: 800; display: flex; align-items: center; gap: 10px;">
+											<i class="fas fa-chart-line" style="color: var(--chili-teal);"></i> Live Global Statistics
+										</h3>
+										<p style="color: var(--lb-text-muted); font-size: 1.1rem;">
+											Real-time scale of the {APP_NAME} ecosystem. Our databases track activity across all these communities instantly.
+										</p>
+
+										<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 20px;">
+											<div
+												style="background: var(--bg-card); border-radius: 16px; padding: 40px 20px; text-align: center; border: 1px solid var(--border-color); box-shadow: 0 20px 40px rgba(36, 95, 115, 0.1);"
+											>
+												<div style="font-size: 4rem; font-weight: 900; color: var(--chili-teal); line-height: 1;">
+													{data.globalStats?.total_members?.toLocaleString() || '15,240'}
+												</div>
+												<div
+													style="color: var(--lb-text-muted); font-weight: 700; margin-top: 16px; text-transform: uppercase; letter-spacing: 2px; font-size: 1rem;"
+												>
+													Total Members
+												</div>
 											</div>
-											<div class="m-discord-text" style="color: var(--lb-text-muted); font-size: 1.05rem; line-height: 1.5;">
-												{#each msg.content.split('\n') as line}
-													<div>{@html line.replace(/\*\*(.*?)\*\*/g, '<strong style="color: var(--lb-text); font-weight: 700;">$1</strong>')}</div>
-												{/each}
+											<div
+												style="background: var(--bg-card); border-radius: 16px; padding: 40px 20px; text-align: center; border: 1px solid var(--border-color); box-shadow: 0 20px 40px rgba(36, 95, 115, 0.1);"
+											>
+												<div style="font-size: 4rem; font-weight: 900; color: var(--chili-hot); line-height: 1;">
+													{data.globalStats?.total_servers?.toLocaleString() || '245'}
+												</div>
+												<div
+													style="color: var(--lb-text-muted); font-weight: 700; margin-top: 16px; text-transform: uppercase; letter-spacing: 2px; font-size: 1rem;"
+												>
+													Active Servers
+												</div>
 											</div>
 										</div>
 									</div>
-								{/each}
+
+									<!-- 2: INTERACTIVE WEB PANEL -->
+								{:else if activeTab === 2}
+									<div style="display: flex; flex-direction: column; gap: 20px;">
+										<h3 style="color: var(--lb-text); font-size: 1.5rem; font-weight: 800; display: flex; align-items: center; gap: 10px;">
+											<i class="fas fa-toggle-on" style="color: var(--chili-peach);"></i> Configure in the Browser
+										</h3>
+										<p style="color: var(--lb-text-muted); font-size: 1.1rem;">
+											Stop typing slash commands. Manage every single feature of your server directly from a clean UI.
+										</p>
+
+										<div
+											style="width: 100%; background: var(--bg-card); border-radius: 16px; overflow: hidden; border: 1px solid var(--border-color); box-shadow: 0 20px 50px rgba(0,0,0,0.15); margin-top: 10px;"
+										>
+											<div
+												style="padding: 20px 24px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 12px; font-weight: 700; font-size: 1.1rem; background: rgba(0,0,0,0.02);"
+											>
+												<i class="fas fa-server"></i> Module Configuration
+											</div>
+											<div style="padding: 24px; display: flex; flex-direction: column; gap: 24px;">
+												<!-- Panel Toggles -->
+												<div style="display: flex; justify-content: space-between; align-items: center;">
+													<div>
+														<div style="font-weight: 700; font-size: 1.1rem; color: var(--lb-text);">Leveling & XP System</div>
+														<div style="font-size: 0.95rem; color: var(--lb-text-muted); margin-top: 4px;">Enable chat XP and rank leaderboards.</div>
+													</div>
+													<button
+														onclick={() => (panelLeveling = !panelLeveling)}
+														style="width: 54px; height: 30px; border-radius: 15px; background: {panelLeveling
+															? 'var(--chili-teal)'
+															: '#ccc'}; position: relative; transition: 0.3s; cursor: pointer; border: none;"
+													>
+														<div
+															style="width: 24px; height: 24px; background: white; border-radius: 50%; position: absolute; top: 3px; left: {panelLeveling
+																? '27px'
+																: '3px'}; transition: 0.3s; box-shadow: 0 2px 5px rgba(0,0,0,0.2);"
+														></div>
+													</button>
+												</div>
+												<div style="height: 1px; background: var(--border-color);"></div>
+												<div style="display: flex; justify-content: space-between; align-items: center;">
+													<div>
+														<div style="font-weight: 700; font-size: 1.1rem; color: var(--lb-text);">Welcomer & Goodbye</div>
+														<div style="font-size: 0.95rem; color: var(--lb-text-muted); margin-top: 4px;">Send rich embeds when members join.</div>
+													</div>
+													<button
+														onclick={() => (panelWelcomer = !panelWelcomer)}
+														style="width: 54px; height: 30px; border-radius: 15px; background: {panelWelcomer
+															? 'var(--chili-teal)'
+															: '#ccc'}; position: relative; transition: 0.3s; cursor: pointer; border: none;"
+													>
+														<div
+															style="width: 24px; height: 24px; background: white; border-radius: 50%; position: absolute; top: 3px; left: {panelWelcomer
+																? '27px'
+																: '3px'}; transition: 0.3s; box-shadow: 0 2px 5px rgba(0,0,0,0.2);"
+														></div>
+													</button>
+												</div>
+												<div style="height: 1px; background: var(--border-color);"></div>
+												<div style="display: flex; justify-content: space-between; align-items: center;">
+													<div>
+														<div style="font-weight: 700; font-size: 1.1rem; color: var(--lb-text);">Discord Quests Notifier</div>
+														<div style="font-size: 0.95rem; color: var(--lb-text-muted); margin-top: 4px;">Automate Quest enrollments for your community.</div>
+													</div>
+													<button
+														onclick={() => (panelQuests = !panelQuests)}
+														style="width: 54px; height: 30px; border-radius: 15px; background: {panelQuests
+															? 'var(--chili-teal)'
+															: '#ccc'}; position: relative; transition: 0.3s; cursor: pointer; border: none;"
+													>
+														<div
+															style="width: 24px; height: 24px; background: white; border-radius: 50%; position: absolute; top: 3px; left: {panelQuests
+																? '27px'
+																: '3px'}; transition: 0.3s; box-shadow: 0 2px 5px rgba(0,0,0,0.2);"
+														></div>
+													</button>
+												</div>
+											</div>
+										</div>
+									</div>
+
+									<!-- 3: EMBED BUILDER -->
+								{:else if activeTab === 3}
+									<div style="display: flex; flex-direction: column; gap: 20px;">
+										<h3 style="color: var(--lb-text); font-size: 1.5rem; font-weight: 800; display: flex; align-items: center; gap: 10px;">
+											<i class="fas fa-palette" style="color: var(--yacht-stone);"></i> Real-Time Embed Builder
+										</h3>
+										<p style="color: var(--lb-text-muted); font-size: 1.1rem;">
+											Draft and preview beautiful Discord embeds in the browser, then send them to any channel instantly.
+										</p>
+
+										<div style="display: flex; gap: 24px; width: 100%; height: 320px; margin-top: 10px;">
+											<!-- Inputs -->
+											<div
+												style="flex: 1; display: flex; flex-direction: column; gap: 16px; background: var(--bg-card); padding: 24px; border-radius: 16px; border: 1px solid var(--border-color); box-shadow: 0 15px 35px rgba(0,0,0,0.1);"
+											>
+												<div style="display: flex; flex-direction: column; gap: 8px;">
+													<label style="font-weight: 700; font-size: 0.95rem; color: var(--lb-text);">Title</label>
+													<input
+														bind:value={embedTitle}
+														style="background: var(--bg-body); border: 1px solid var(--border-color); padding: 12px; border-radius: 8px; color: var(--lb-text); font-size: 1rem;"
+													/>
+												</div>
+												<div style="display: flex; flex-direction: column; gap: 8px; flex: 1;">
+													<label style="font-weight: 700; font-size: 0.95rem; color: var(--lb-text);">Description</label>
+													<textarea
+														bind:value={embedDesc}
+														style="background: var(--bg-body); border: 1px solid var(--border-color); padding: 12px; border-radius: 8px; color: var(--lb-text); flex: 1; resize: none; font-size: 1rem;"
+													></textarea>
+												</div>
+											</div>
+											<!-- Preview -->
+											<div
+												style="flex: 1; background: #313338; border-radius: 16px; padding: 24px; display: flex; align-items: flex-start; box-shadow: 0 15px 35px rgba(0,0,0,0.3);"
+											>
+												<div style="border-left: 4px solid #5865F2; background: #2b2d31; border-radius: 4px; padding: 16px; width: 100%;">
+													<div style="color: #fff; font-weight: 700; margin-bottom: 10px; font-size: 1.1rem;">{embedTitle || 'Embed Title'}</div>
+													<div style="color: #dbdee1; font-size: 1rem; line-height: 1.5; white-space: pre-wrap;">{embedDesc || 'Embed Description'}</div>
+												</div>
+											</div>
+										</div>
+									</div>
+
+									<!-- 4: WALL OF COMMUNITIES -->
+								{:else}
+									<div style="display: flex; flex-direction: column; gap: 20px;">
+										<h3 style="color: var(--lb-text); font-size: 1.5rem; font-weight: 800; display: flex; align-items: center; gap: 10px;">
+											<i class="fas fa-users" style="color: var(--chili-brick);"></i> Trusted by Communities
+										</h3>
+										<p style="color: var(--lb-text-muted); font-size: 1.1rem;">
+											These are real servers actively using our live public statistics and leveling engines.
+										</p>
+
+										<div
+											style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; max-height: 400px; overflow-y: auto; padding: 10px; margin-top: 10px;"
+										>
+											{#each (data.featuredServers && data.featuredServers.length > 0 ? data.featuredServers : [{ name: 'Roblox Trading Hub', server_icon: null }, { name: 'Gamer Lounge', server_icon: null }, { name: 'Anime World', server_icon: null }, { name: 'Creator Space', server_icon: null }, { name: 'Dev Community', server_icon: null }, { name: 'Chill Zone', server_icon: null }]).slice(0, 9) as server}
+												<div
+													style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 16px; width: 160px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.05); transition: transform 0.2s; cursor: pointer;"
+												>
+													{#if server.server_icon}
+														<img
+															src={server.server_icon}
+															alt={server.name}
+															style="width: 72px; height: 72px; border-radius: 50%; border: 2px solid var(--border-color);"
+														/>
+													{:else}
+														<div
+															style="width: 72px; height: 72px; border-radius: 50%; background: var(--yacht-stone); color: white; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; border: 2px solid var(--border-color);"
+														>
+															<i class="fas fa-server"></i>
+														</div>
+													{/if}
+													<div
+														style="font-weight: 700; font-size: 1rem; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--lb-text);"
+													>
+														{server.name}
+													</div>
+												</div>
+											{/each}
+										</div>
+									</div>
+								{/if}
 							</div>
-						</div>
+						{/key}
 					</div>
 
 					<!-- Arrow Down Indicator -->
@@ -466,7 +590,7 @@
 				</div>
 			</div>
 
-			{#if data.featuredServers.length > 0}
+			{#if data.featuredServers && data.featuredServers.length > 0}
 				<div class="section">
 					<div class="m-inner m-landing-inner">
 						<section class="m-section">

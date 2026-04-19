@@ -1,9 +1,10 @@
 import type { PageServerLoad } from './$types';
-import { listEnabledLeaderboardServers } from '$lib/database.js';
+import { listEnabledLeaderboardServers, getGlobalStats } from '$lib/database.js';
 import { slugifyDisplayName, formatIndexedSlug } from '$lib/utils/slug.js';
 
 export const load: PageServerLoad = async () => {
 	let featuredServers: { name: string; slug: string; server_icon: string | null }[] = [];
+	let globalStats = { total_members: 0, total_servers: 0 };
 
 	try {
 		const servers = await listEnabledLeaderboardServers();
@@ -29,5 +30,7 @@ export const load: PageServerLoad = async () => {
 		}
 	} catch (_) {}
 
-	return { featuredServers };
+	globalStats = await getGlobalStats();
+
+	return { featuredServers, globalStats };
 };

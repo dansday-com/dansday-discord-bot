@@ -221,71 +221,51 @@
 		<MainHeader />
 	</div>
 
-	<main class="m-main" style="overflow-y: hidden;">
+	<main class="m-main overflow-hidden">
 		<div id="fullpage">
 			<!-- FIRST SECTION: LITERALLY FULL PAGE, NO HEADER/FOOTER, NO MAX WIDTH -->
-			<div class="section" style="padding: 0 !important; margin: 0 !important; background: var(--bg-body);">
-				<div
-					class="m-hero-ultimate"
-					style="width: 100vw; height: 100vh; max-width: none; display: flex; align-items: center; justify-content: space-between; overflow: hidden; position: relative;"
-				>
+			<div class="section m-0 bg-[var(--chili-bg)] p-0">
+				<div class="m-hero-ultimate relative flex h-screen w-screen max-w-none items-center justify-between overflow-hidden">
 					<!-- Left Side: Copy and Tabs -->
-					<div class="m-hero-u-left" style="padding-left: 6vw; width: 45vw; z-index: 10; display: flex; flex-direction: column; gap: 32px;">
+					<div class="m-hero-u-left z-10 flex w-[45vw] flex-col gap-8 pl-[6vw]">
 						<div>
-							<h1 style="font-size: 3.5vw; font-weight: 800; line-height: 1.1; margin-bottom: 20px;">
+							<h1 class="mb-5 text-[3.5vw] leading-[1.1] font-extrabold text-[var(--lb-text)]">
 								Supercharge Your<br />
-								<span
-									style="background: linear-gradient(135deg, var(--chili-teal), var(--chili-peach)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;"
+								<span class="bg-gradient-to-br from-[var(--chili-hot,#245f73)] to-[var(--chili-peach,#3a6d82)] bg-clip-text text-transparent"
 									>Discord Server</span
 								>
 							</h1>
-							<p style="font-size: 1.1vw; color: var(--lb-text-muted); line-height: 1.6; max-width: 90%;">
+							<p class="max-w-[90%] text-[1.1vw] leading-[1.6] text-[var(--lb-text-muted)]">
 								Ditch the slash commands. Manage advanced Leveling, Discord Quests, Roblox Catalogs, TikTok Digests, and Live Stats directly from a powerful
 								free web panel.
 							</p>
 						</div>
 
-						<div class="m-hero-actions" style="display: flex; gap: 16px;">
-							<a
-								href={officialBotInviteUrl}
-								class="m-btn m-btn--primary"
-								target="_blank"
-								rel="noopener noreferrer"
-								style="font-size: 1.1vw; padding: 16px 32px;"
-							>
+						<div class="m-hero-actions flex gap-4">
+							<a href={officialBotInviteUrl} class="m-btn m-btn--primary px-8 py-4 text-[1.1vw]" target="_blank" rel="noopener noreferrer">
 								<i class="fab fa-discord"></i> Get started
 							</a>
-							<a href="/login" class="m-btn m-btn--ghost" style="font-size: 1.1vw; padding: 16px 32px;">
+							<a href="/login" class="m-btn m-btn--ghost px-8 py-4 text-[1.1vw]">
 								<i class="fas fa-sign-in-alt"></i> Web Panel
 							</a>
 						</div>
 
 						<!-- Interactive "ALL" Tabs -->
-						<div class="m-hero-tabs" style="display: flex; flex-direction: column; gap: 10px; max-width: 80%; margin-top: 10px;">
+						<div class="m-hero-tabs mt-2.5 flex max-w-[80%] flex-col gap-2.5">
 							{#each [{ title: 'Roblox Catalog Watcher', icon: 'fa-cube' }, { title: 'Live Global Statistics', icon: 'fa-chart-line' }, { title: 'Interactive Web Panel', icon: 'fa-toggle-on' }, { title: 'Embed Builder Sandbox', icon: 'fa-palette' }, { title: 'Wall of Communities', icon: 'fa-users' }] as tab, i}
 								<button
-									class="m-hero-tab-btn"
-									style="
-										display: flex; align-items: center; gap: 16px; padding: 14px 20px; border-radius: 12px; cursor: pointer; text-align: left;
-										background: {activeTab === i ? 'var(--bg-card)' : 'transparent'};
-										box-shadow: {activeTab === i ? '0 12px 40px rgba(36, 95, 115, 0.15)' : 'none'};
-										border: 1px solid {activeTab === i ? 'var(--border-color)' : 'transparent'};
-										color: {activeTab === i ? 'var(--lb-text)' : 'var(--lb-text-muted)'};
-										opacity: {activeTab === i ? '1' : '0.6'};
-										transform: {activeTab === i ? 'scale(1.03)' : 'scale(1)'};
-										transition: all 0.3s ease;
-									"
+									class="flex cursor-pointer items-center gap-4 rounded-xl border px-5 py-3.5 text-left transition-all duration-300 {activeTab === i
+										? 'scale-[1.03] border-[var(--lb-border)] bg-[var(--chili-surface-elevated)] text-[var(--lb-text)] opacity-100 shadow-[0_12px_40px_rgba(36,95,115,0.15)]'
+										: 'scale-100 border-transparent bg-transparent text-[var(--lb-text-muted)] opacity-60 shadow-none'}"
 									onclick={() => {
 										activeTab = i;
 										userInteracted = true;
 									}}
 								>
-									<div
-										style="width: 32px; font-size: 1.2rem; display: flex; justify-content: center; color: {activeTab === i ? 'var(--chili-teal)' : 'inherit'};"
-									>
+									<div class="flex w-8 justify-center text-xl {activeTab === i ? 'text-[var(--chili-hot)]' : 'text-inherit'}">
 										<i class="fas {tab.icon}"></i>
 									</div>
-									<span style="font-weight: 700; font-size: 1.1vw;">{tab.title}</span>
+									<span class="text-[1.1vw] font-bold">{tab.title}</span>
 								</button>
 							{/each}
 						</div>
@@ -293,45 +273,40 @@
 
 					<!-- Right Side: The Dynamic "ALL" Showcase -->
 					<div
-						class="m-hero-u-right"
-						style="width: 50vw; height: 100vh; position: relative; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at center, rgba(36, 95, 115, 0.08), transparent 60%);"
+						class="m-hero-u-right relative flex h-screen w-[50vw] items-center justify-center bg-[radial-gradient(circle_at_center,rgba(36,95,115,0.08),transparent_60%)]"
 					>
 						{#key activeTab}
-							<div in:fade={{ duration: 400 }} style="width: 85%; max-width: 800px; position: absolute;">
+							<div in:fade={{ duration: 400 }} class="absolute w-[85%] max-w-[800px]">
 								<!-- 0: ROBLOX CATALOG CAROUSEL -->
 								{#if activeTab === 0}
-									<div style="display: flex; flex-direction: column; gap: 20px;">
-										<h3 style="color: var(--lb-text); font-size: 1.5rem; font-weight: 800; display: flex; align-items: center; gap: 10px;">
-											<i class="fas fa-cube" style="color: var(--chili-brick);"></i> Live Roblox Catalog Tracker
+									<div class="flex flex-col gap-5">
+										<h3 class="flex items-center gap-2.5 text-2xl font-extrabold text-[var(--lb-text)]">
+											<i class="fas fa-cube text-[var(--chili-brick)]"></i> Live Roblox Catalog Tracker
 										</h3>
-										<p style="color: var(--lb-text-muted); font-size: 1.1rem;">
-											Automatically ping your server when highly anticipated UGC items drop or change price.
-										</p>
+										<p class="text-lg text-[var(--lb-text-muted)]">Automatically ping your server when highly anticipated UGC items drop or change price.</p>
 
-										<div class="roblox-carousel-container" style="display: flex; gap: 20px; overflow-x: auto; padding-bottom: 20px; padding-top: 10px;">
+										<div class="roblox-carousel-container flex gap-5 overflow-x-auto pt-2.5 pb-5">
 											{#each robloxItems as item}
 												<div
-													style="background: #1e1f22; border-radius: 16px; min-width: 240px; border: 1px solid #383a40; overflow: hidden; box-shadow: 0 15px 35px rgba(0,0,0,0.4);"
+													class="min-w-[240px] overflow-hidden rounded-2xl border border-[var(--lb-border)] bg-[var(--chili-surface-elevated)] shadow-[0_15px_35px_rgba(36,95,115,0.15)]"
 												>
-													<div
-														style="height: 160px; background: #2b2d31; display: flex; align-items: center; justify-content: center; font-size: 5rem; color: #fff; position: relative;"
-													>
+													<div class="relative flex h-[160px] items-center justify-center bg-[var(--chili-surface-mid)] text-[5rem] text-[var(--chili-hot)]">
 														<i class="fas {item.icon}"></i>
 														<div
-															style="position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.6); padding: 4px 8px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; color: {item.color};"
+															class="absolute top-3 right-3 rounded-md border border-[var(--lb-border)] bg-[var(--chili-surface-elevated)] px-2 py-1 text-xs font-bold"
+															style="color: {item.color};"
 														>
 															<i class="fas fa-arrow-trend-{item.trend}"></i> Live
 														</div>
 													</div>
-													<div style="padding: 20px;">
-														<h4 style="color: #fff; font-weight: 700; margin: 0 0 12px; font-size: 1.2rem;">{item.name}</h4>
-														<div style="display: flex; justify-content: space-between; align-items: center;">
-															<span style="color: #00b06f; font-weight: 800; font-size: 1.2rem; display: flex; align-items: center; gap: 6px;">
-																<i class="fas fa-coins" style="color: #f6b539;"></i>
+													<div class="p-5">
+														<h4 class="m-0 mb-3 text-[1.2rem] font-bold text-[var(--lb-text)]">{item.name}</h4>
+														<div class="flex items-center justify-between">
+															<span class="flex items-center gap-1.5 text-[1.2rem] font-extrabold text-[#00b06f]">
+																<i class="fas fa-coins text-[#f6b539]"></i>
 																{item.price}
 															</span>
-															<button
-																style="background: #ffffff; color: #111; border: none; padding: 6px 12px; border-radius: 6px; font-weight: 700; cursor: pointer;"
+															<button class="cursor-pointer rounded-md border-none bg-[var(--chili-hot)] px-3 py-1.5 font-bold text-white hover:opacity-90"
 																>Buy</button
 															>
 														</div>
@@ -343,115 +318,105 @@
 
 									<!-- 1: LIVE GLOBAL STATISTICS -->
 								{:else if activeTab === 1}
-									<div style="display: flex; flex-direction: column; gap: 20px;">
-										<h3 style="color: var(--lb-text); font-size: 1.5rem; font-weight: 800; display: flex; align-items: center; gap: 10px;">
-											<i class="fas fa-chart-line" style="color: var(--chili-teal);"></i> Live Global Statistics
+									<div class="flex flex-col gap-5">
+										<h3 class="flex items-center gap-2.5 text-2xl font-extrabold text-[var(--lb-text)]">
+											<i class="fas fa-chart-line text-[var(--chili-hot)]"></i> Live Global Statistics
 										</h3>
-										<p style="color: var(--lb-text-muted); font-size: 1.1rem;">
+										<p class="text-lg text-[var(--lb-text-muted)]">
 											Real-time scale of the {APP_NAME} ecosystem. Our databases track activity across all these communities instantly.
 										</p>
 
-										<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 20px;">
+										<div class="mt-5 grid grid-cols-2 gap-6">
 											<div
-												style="background: var(--bg-card); border-radius: 16px; padding: 40px 20px; text-align: center; border: 1px solid var(--border-color); box-shadow: 0 20px 40px rgba(36, 95, 115, 0.1);"
+												class="rounded-2xl border border-[var(--lb-border)] bg-[var(--chili-surface-elevated)] px-5 py-10 text-center shadow-[0_20px_40px_rgba(36,95,115,0.1)]"
 											>
-												<div style="font-size: 4rem; font-weight: 900; color: var(--chili-teal); line-height: 1;">
+												<div class="text-6xl leading-none font-black text-[var(--chili-hot)]">
 													{data.globalStats?.total_members?.toLocaleString() || '15,240'}
 												</div>
-												<div
-													style="color: var(--lb-text-muted); font-weight: 700; margin-top: 16px; text-transform: uppercase; letter-spacing: 2px; font-size: 1rem;"
-												>
-													Total Members
-												</div>
+												<div class="mt-4 text-base font-bold tracking-[2px] text-[var(--lb-text-muted)] uppercase">Total Members</div>
 											</div>
 											<div
-												style="background: var(--bg-card); border-radius: 16px; padding: 40px 20px; text-align: center; border: 1px solid var(--border-color); box-shadow: 0 20px 40px rgba(36, 95, 115, 0.1);"
+												class="rounded-2xl border border-[var(--lb-border)] bg-[var(--chili-surface-elevated)] px-5 py-10 text-center shadow-[0_20px_40px_rgba(36,95,115,0.1)]"
 											>
-												<div style="font-size: 4rem; font-weight: 900; color: var(--chili-hot); line-height: 1;">
+												<div class="text-6xl leading-none font-black text-[var(--chili-hot)]">
 													{data.globalStats?.total_servers?.toLocaleString() || '245'}
 												</div>
-												<div
-													style="color: var(--lb-text-muted); font-weight: 700; margin-top: 16px; text-transform: uppercase; letter-spacing: 2px; font-size: 1rem;"
-												>
-													Active Servers
-												</div>
+												<div class="mt-4 text-base font-bold tracking-[2px] text-[var(--lb-text-muted)] uppercase">Active Servers</div>
 											</div>
 										</div>
 									</div>
 
 									<!-- 2: INTERACTIVE WEB PANEL -->
 								{:else if activeTab === 2}
-									<div style="display: flex; flex-direction: column; gap: 20px;">
-										<h3 style="color: var(--lb-text); font-size: 1.5rem; font-weight: 800; display: flex; align-items: center; gap: 10px;">
-											<i class="fas fa-toggle-on" style="color: var(--chili-peach);"></i> Configure in the Browser
+									<div class="flex flex-col gap-5">
+										<h3 class="flex items-center gap-2.5 text-2xl font-extrabold text-[var(--lb-text)]">
+											<i class="fas fa-toggle-on text-[var(--chili-peach)]"></i> Configure in the Browser
 										</h3>
-										<p style="color: var(--lb-text-muted); font-size: 1.1rem;">
+										<p class="text-lg text-[var(--lb-text-muted)]">
 											Stop typing slash commands. Manage every single feature of your server directly from a clean UI.
 										</p>
 
 										<div
-											style="width: 100%; background: var(--bg-card); border-radius: 16px; overflow: hidden; border: 1px solid var(--border-color); box-shadow: 0 20px 50px rgba(0,0,0,0.15); margin-top: 10px;"
+											class="mt-2.5 w-full overflow-hidden rounded-2xl border border-[var(--lb-border)] bg-[var(--chili-surface-elevated)] shadow-[0_20px_50px_rgba(0,0,0,0.15)]"
 										>
-											<div
-												style="padding: 20px 24px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 12px; font-weight: 700; font-size: 1.1rem; background: rgba(0,0,0,0.02);"
-											>
+											<div class="flex items-center gap-3 border-b border-[var(--lb-border)] bg-black/2 px-6 py-5 text-lg font-bold">
 												<i class="fas fa-server"></i> Module Configuration
 											</div>
-											<div style="padding: 24px; display: flex; flex-direction: column; gap: 24px;">
+											<div class="flex flex-col gap-6 p-6">
 												<!-- Panel Toggles -->
-												<div style="display: flex; justify-content: space-between; align-items: center;">
+												<div class="flex items-center justify-between">
 													<div>
-														<div style="font-weight: 700; font-size: 1.1rem; color: var(--lb-text);">Leveling & XP System</div>
-														<div style="font-size: 0.95rem; color: var(--lb-text-muted); margin-top: 4px;">Enable chat XP and rank leaderboards.</div>
+														<div class="text-lg font-bold text-[var(--lb-text)]">Leveling & XP System</div>
+														<div class="mt-1 text-[0.95rem] text-[var(--lb-text-muted)]">Enable chat XP and rank leaderboards.</div>
 													</div>
 													<button
 														onclick={() => (panelLeveling = !panelLeveling)}
-														style="width: 54px; height: 30px; border-radius: 15px; background: {panelLeveling
-															? 'var(--chili-teal)'
-															: '#ccc'}; position: relative; transition: 0.3s; cursor: pointer; border: none;"
+														class="relative h-[30px] w-[54px] cursor-pointer rounded-full border-none transition-all duration-300 {panelLeveling
+															? 'bg-[var(--chili-hot)]'
+															: 'bg-[#ccc]'}"
 													>
 														<div
-															style="width: 24px; height: 24px; background: white; border-radius: 50%; position: absolute; top: 3px; left: {panelLeveling
-																? '27px'
-																: '3px'}; transition: 0.3s; box-shadow: 0 2px 5px rgba(0,0,0,0.2);"
+															class="absolute top-[3px] h-6 w-6 rounded-full bg-white shadow-md transition-all duration-300 {panelLeveling
+																? 'left-[27px]'
+																: 'left-[3px]'}"
 														></div>
 													</button>
 												</div>
-												<div style="height: 1px; background: var(--border-color);"></div>
-												<div style="display: flex; justify-content: space-between; align-items: center;">
+												<div class="h-[1px] bg-[var(--lb-border)]"></div>
+												<div class="flex items-center justify-between">
 													<div>
-														<div style="font-weight: 700; font-size: 1.1rem; color: var(--lb-text);">Welcomer & Goodbye</div>
-														<div style="font-size: 0.95rem; color: var(--lb-text-muted); margin-top: 4px;">Send rich embeds when members join.</div>
+														<div class="text-lg font-bold text-[var(--lb-text)]">Welcomer & Goodbye</div>
+														<div class="mt-1 text-[0.95rem] text-[var(--lb-text-muted)]">Send rich embeds when members join.</div>
 													</div>
 													<button
 														onclick={() => (panelWelcomer = !panelWelcomer)}
-														style="width: 54px; height: 30px; border-radius: 15px; background: {panelWelcomer
-															? 'var(--chili-teal)'
-															: '#ccc'}; position: relative; transition: 0.3s; cursor: pointer; border: none;"
+														class="relative h-[30px] w-[54px] cursor-pointer rounded-full border-none transition-all duration-300 {panelWelcomer
+															? 'bg-[var(--chili-hot)]'
+															: 'bg-[#ccc]'}"
 													>
 														<div
-															style="width: 24px; height: 24px; background: white; border-radius: 50%; position: absolute; top: 3px; left: {panelWelcomer
-																? '27px'
-																: '3px'}; transition: 0.3s; box-shadow: 0 2px 5px rgba(0,0,0,0.2);"
+															class="absolute top-[3px] h-6 w-6 rounded-full bg-white shadow-md transition-all duration-300 {panelWelcomer
+																? 'left-[27px]'
+																: 'left-[3px]'}"
 														></div>
 													</button>
 												</div>
-												<div style="height: 1px; background: var(--border-color);"></div>
-												<div style="display: flex; justify-content: space-between; align-items: center;">
+												<div class="h-[1px] bg-[var(--lb-border)]"></div>
+												<div class="flex items-center justify-between">
 													<div>
-														<div style="font-weight: 700; font-size: 1.1rem; color: var(--lb-text);">Discord Quests Notifier</div>
-														<div style="font-size: 0.95rem; color: var(--lb-text-muted); margin-top: 4px;">Automate Quest enrollments for your community.</div>
+														<div class="text-lg font-bold text-[var(--lb-text)]">Discord Quests Notifier</div>
+														<div class="mt-1 text-[0.95rem] text-[var(--lb-text-muted)]">Automate Quest enrollments for your community.</div>
 													</div>
 													<button
 														onclick={() => (panelQuests = !panelQuests)}
-														style="width: 54px; height: 30px; border-radius: 15px; background: {panelQuests
-															? 'var(--chili-teal)'
-															: '#ccc'}; position: relative; transition: 0.3s; cursor: pointer; border: none;"
+														class="relative h-[30px] w-[54px] cursor-pointer rounded-full border-none transition-all duration-300 {panelQuests
+															? 'bg-[var(--chili-hot)]'
+															: 'bg-[#ccc]'}"
 													>
 														<div
-															style="width: 24px; height: 24px; background: white; border-radius: 50%; position: absolute; top: 3px; left: {panelQuests
-																? '27px'
-																: '3px'}; transition: 0.3s; box-shadow: 0 2px 5px rgba(0,0,0,0.2);"
+															class="absolute top-[3px] h-6 w-6 rounded-full bg-white shadow-md transition-all duration-300 {panelQuests
+																? 'left-[27px]'
+																: 'left-[3px]'}"
 														></div>
 													</button>
 												</div>
@@ -461,41 +426,39 @@
 
 									<!-- 3: EMBED BUILDER -->
 								{:else if activeTab === 3}
-									<div style="display: flex; flex-direction: column; gap: 20px;">
-										<h3 style="color: var(--lb-text); font-size: 1.5rem; font-weight: 800; display: flex; align-items: center; gap: 10px;">
-											<i class="fas fa-palette" style="color: var(--yacht-stone);"></i> Real-Time Embed Builder
+									<div class="flex flex-col gap-5">
+										<h3 class="flex items-center gap-2.5 text-2xl font-extrabold text-[var(--lb-text)]">
+											<i class="fas fa-palette text-[var(--yacht-stone)]"></i> Real-Time Embed Builder
 										</h3>
-										<p style="color: var(--lb-text-muted); font-size: 1.1rem;">
+										<p class="text-lg text-[var(--lb-text-muted)]">
 											Draft and preview beautiful Discord embeds in the browser, then send them to any channel instantly.
 										</p>
 
-										<div style="display: flex; gap: 24px; width: 100%; height: 320px; margin-top: 10px;">
+										<div class="mt-2.5 flex h-[320px] w-full gap-6">
 											<!-- Inputs -->
 											<div
-												style="flex: 1; display: flex; flex-direction: column; gap: 16px; background: var(--bg-card); padding: 24px; border-radius: 16px; border: 1px solid var(--border-color); box-shadow: 0 15px 35px rgba(0,0,0,0.1);"
+												class="flex flex-1 flex-col gap-4 rounded-2xl border border-[var(--lb-border)] bg-[var(--chili-surface-elevated)] p-6 shadow-[0_15px_35px_rgba(0,0,0,0.1)]"
 											>
-												<div style="display: flex; flex-direction: column; gap: 8px;">
-													<label style="font-weight: 700; font-size: 0.95rem; color: var(--lb-text);">Title</label>
+												<div class="flex flex-col gap-2">
+													<label class="text-[0.95rem] font-bold text-[var(--lb-text)]">Title</label>
 													<input
 														bind:value={embedTitle}
-														style="background: var(--bg-body); border: 1px solid var(--border-color); padding: 12px; border-radius: 8px; color: var(--lb-text); font-size: 1rem;"
+														class="rounded-lg border border-[var(--lb-border)] bg-[var(--chili-bg)] p-3 text-base text-[var(--lb-text)]"
 													/>
 												</div>
-												<div style="display: flex; flex-direction: column; gap: 8px; flex: 1;">
-													<label style="font-weight: 700; font-size: 0.95rem; color: var(--lb-text);">Description</label>
+												<div class="flex flex-1 flex-col gap-2">
+													<label class="text-[0.95rem] font-bold text-[var(--lb-text)]">Description</label>
 													<textarea
 														bind:value={embedDesc}
-														style="background: var(--bg-body); border: 1px solid var(--border-color); padding: 12px; border-radius: 8px; color: var(--lb-text); flex: 1; resize: none; font-size: 1rem;"
+														class="flex-1 resize-none rounded-lg border border-[var(--lb-border)] bg-[var(--chili-bg)] p-3 text-base text-[var(--lb-text)]"
 													></textarea>
 												</div>
 											</div>
 											<!-- Preview -->
-											<div
-												style="flex: 1; background: #313338; border-radius: 16px; padding: 24px; display: flex; align-items: flex-start; box-shadow: 0 15px 35px rgba(0,0,0,0.3);"
-											>
-												<div style="border-left: 4px solid #5865F2; background: #2b2d31; border-radius: 4px; padding: 16px; width: 100%;">
-													<div style="color: #fff; font-weight: 700; margin-bottom: 10px; font-size: 1.1rem;">{embedTitle || 'Embed Title'}</div>
-													<div style="color: #dbdee1; font-size: 1rem; line-height: 1.5; white-space: pre-wrap;">{embedDesc || 'Embed Description'}</div>
+											<div class="flex flex-1 items-start rounded-2xl bg-[#313338] p-6 shadow-[0_15px_35px_rgba(36,95,115,0.15)]">
+												<div class="w-full rounded-sm border-l-4 border-[#5865F2] bg-[#2b2d31] p-4">
+													<div class="mb-2.5 text-lg font-bold text-white">{embedTitle || 'Embed Title'}</div>
+													<div class="text-base leading-relaxed whitespace-pre-wrap text-[#dbdee1]">{embedDesc || 'Embed Description'}</div>
 												</div>
 											</div>
 										</div>
@@ -503,37 +466,27 @@
 
 									<!-- 4: WALL OF COMMUNITIES -->
 								{:else}
-									<div style="display: flex; flex-direction: column; gap: 20px;">
-										<h3 style="color: var(--lb-text); font-size: 1.5rem; font-weight: 800; display: flex; align-items: center; gap: 10px;">
-											<i class="fas fa-users" style="color: var(--chili-brick);"></i> Trusted by Communities
+									<div class="flex flex-col gap-5">
+										<h3 class="flex items-center gap-2.5 text-2xl font-extrabold text-[var(--lb-text)]">
+											<i class="fas fa-users text-[var(--chili-brick)]"></i> Trusted by Communities
 										</h3>
-										<p style="color: var(--lb-text-muted); font-size: 1.1rem;">
-											These are real servers actively using our live public statistics and leveling engines.
-										</p>
+										<p class="text-lg text-[var(--lb-text-muted)]">These are real servers actively using our live public statistics and leveling engines.</p>
 
-										<div
-											style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; max-height: 400px; overflow-y: auto; padding: 10px; margin-top: 10px;"
-										>
+										<div class="mt-2.5 flex max-h-[400px] flex-wrap justify-center gap-5 overflow-y-auto p-2.5">
 											{#each (data.featuredServers && data.featuredServers.length > 0 ? data.featuredServers : [{ name: 'Roblox Trading Hub', server_icon: null }, { name: 'Gamer Lounge', server_icon: null }, { name: 'Anime World', server_icon: null }, { name: 'Creator Space', server_icon: null }, { name: 'Dev Community', server_icon: null }, { name: 'Chill Zone', server_icon: null }]).slice(0, 9) as server}
 												<div
-													style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 16px; width: 160px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.05); transition: transform 0.2s; cursor: pointer;"
+													class="flex w-[160px] cursor-pointer flex-col items-center gap-4 rounded-2xl border border-[var(--lb-border)] bg-[var(--chili-surface-elevated)] p-5 text-center shadow-[0_10px_25px_rgba(0,0,0,0.05)] transition-transform duration-200 hover:scale-105"
 												>
 													{#if server.server_icon}
-														<img
-															src={server.server_icon}
-															alt={server.name}
-															style="width: 72px; height: 72px; border-radius: 50%; border: 2px solid var(--border-color);"
-														/>
+														<img src={server.server_icon} alt={server.name} class="h-[72px] w-[72px] rounded-full border-2 border-[var(--lb-border)]" />
 													{:else}
 														<div
-															style="width: 72px; height: 72px; border-radius: 50%; background: var(--yacht-stone); color: white; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; border: 2px solid var(--border-color);"
+															class="flex h-[72px] w-[72px] items-center justify-center rounded-full border-2 border-[var(--lb-border)] bg-[var(--yacht-stone)] text-[1.8rem] text-white"
 														>
 															<i class="fas fa-server"></i>
 														</div>
 													{/if}
-													<div
-														style="font-weight: 700; font-size: 1rem; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--lb-text);"
-													>
+													<div class="w-full overflow-hidden text-base font-bold text-ellipsis whitespace-nowrap text-[var(--lb-text)]">
 														{server.name}
 													</div>
 												</div>
@@ -548,15 +501,8 @@
 					<!-- Arrow Down Indicator -->
 					{#if isFirstSection}
 						<button
-							class="m-scroll-down-indicator"
 							onclick={() => fullpageInstance?.moveSectionDown()}
-							style="
-							position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
-							width: 56px; height: 56px; border-radius: 50%; background: var(--bg-card);
-							box-shadow: 0 10px 30px rgba(0,0,0,0.15); border: 1px solid var(--border-color);
-							display: flex; align-items: center; justify-content: center; color: var(--chili-teal); font-size: 1.5rem;
-							cursor: pointer; z-index: 50; transition: all 0.3s ease; animation: bounce 2s infinite;
-						"
+							class="m-scroll-down-indicator absolute bottom-10 left-1/2 z-50 flex h-14 w-14 -translate-x-1/2 animate-bounce cursor-pointer items-center justify-center rounded-full border border-[var(--lb-border)] bg-[var(--chili-surface-elevated)] text-2xl text-[var(--chili-hot)] shadow-[0_10px_30px_rgba(0,0,0,0.15)] transition-all duration-300"
 							aria-label="Scroll down"
 						>
 							<i class="fas fa-chevron-down"></i>

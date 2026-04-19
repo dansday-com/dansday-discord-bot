@@ -888,6 +888,21 @@ function leaderboardModuleEnabledFromSettings(s: Record<string, unknown>): boole
 	return s.enabled !== false;
 }
 
+export async function getGlobalStats() {
+	let globalStats = { total_members: 0, total_servers: 0 };
+	try {
+		const result = await db.execute(sql`SELECT COUNT(*) as s_count, SUM(total_members) as m_count FROM servers`);
+		if (result && result[0] && Array.isArray(result[0]) && result[0][0]) {
+			const row = result[0][0] as any;
+			if (row.s_count !== null && row.s_count !== undefined) globalStats.total_servers = Number(row.s_count) || 0;
+			if (row.m_count !== null && row.m_count !== undefined) globalStats.total_members = Number(row.m_count) || 0;
+		}
+	} catch (e) {
+		console.error('Failed to load globalStats', e);
+	}
+	return globalStats;
+}
+
 export async function listPublicLeaderboardSlugs() {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
@@ -3536,6 +3551,7 @@ export default {
 	getServerBotCategoriesForServer,
 	getServerBotChannelsForServer,
 	getServerByLeaderboardSlug,
+	getGlobalStats,
 	listPublicLeaderboardSlugs,
 	listEnabledLeaderboardServers,
 	upsertCategory,

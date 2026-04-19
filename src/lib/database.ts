@@ -888,6 +888,77 @@ function leaderboardModuleEnabledFromSettings(s: Record<string, unknown>): boole
 	return s.enabled !== false;
 }
 
+export async function getActivityTrackingStats() {
+	try {
+		const result = await db.execute(sql`
+			SELECT 
+				COALESCE(SUM(voice_minutes_total), 0) as voice_mins,
+				COALESCE(SUM(voice_minutes_video), 0) as video_mins,
+				COALESCE(SUM(voice_minutes_streaming), 0) as stream_mins,
+				(SELECT COUNT(*) FROM server_members) as total_tracked
+			FROM server_member_levels
+		`);
+		if (result && result[0] && Array.isArray(result[0]) && result[0][0]) {
+			return result[0][0];
+		}
+	} catch (e) {
+		console.error('Failed to load activity tracking stats', e);
+	}
+	return { voice_mins: 0, video_mins: 0, stream_mins: 0, total_tracked: 0 };
+}
+
+export async function getActiveDiscordQuests() {
+	try {
+		const result = await db.execute(
+			sql`SELECT quest_id, quest_task_type, quest_task_label, quest_name, game_title, quest_url, quest_description, reward, task_detail_line, starts_at, expires_at FROM bot_discord_quests ORDER BY created_at DESC LIMIT 1`
+		);
+		if (result && result[0] && Array.isArray(result[0])) {
+			return result[0];
+		}
+	} catch (e) {
+		console.error('Failed to load active quests', e);
+	}
+	return [];
+}
+
+export async function getLatestRobloxCatalogItems() {
+	try {
+		const result = await db.execute(
+			sql`SELECT asset_id, category, name, total_quantity, units_available, price, lowest_resale_price, creator_name, has_verified_badge FROM bot_roblox_items ORDER BY id DESC LIMIT 1`
+		);
+		if (result && result[0] && Array.isArray(result[0])) {
+			return result[0];
+		}
+	} catch (e) {
+		console.error('Failed to load catalog items', e);
+	}
+	return [];
+}
+
+export async function getTopGlobalMembers(limit = 3) {
+	try {
+		const result = await db.execute(sql`
+			SELECT 
+				sm.display_name, 
+				sm.avatar, 
+				ml.level, 
+				ml.xp, 
+				s.name as server_name 
+			FROM server_member_levels ml
+			JOIN server_members sm ON ml.member_id = sm.id
+			JOIN servers s ON sm.server_id = s.id
+			ORDER BY ml.xp DESC 
+			LIMIT ${limit}
+		`);
+		if (result && result[0] && Array.isArray(result[0])) {
+			return result[0];
+		}
+	} catch (e) {
+		console.error('Failed to load top global members', e);
+	}
+	return [];
+}
+
 export async function getGlobalStats() {
 	let globalStats = { total_members: 0, total_servers: 0 };
 	try {
@@ -3551,6 +3622,10 @@ export default {
 	getServerBotCategoriesForServer,
 	getServerBotChannelsForServer,
 	getServerByLeaderboardSlug,
+	getActivityTrackingStats,
+	getActiveDiscordQuests,
+	getLatestRobloxCatalogItems,
+	getTopGlobalMembers,
 	getGlobalStats,
 	listPublicLeaderboardSlugs,
 	listEnabledLeaderboardServers,

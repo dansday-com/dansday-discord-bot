@@ -1,10 +1,21 @@
 import type { PageServerLoad } from './$types';
-import { listEnabledLeaderboardServers, getGlobalStats } from '$lib/database.js';
+import {
+	listEnabledLeaderboardServers,
+	getGlobalStats,
+	getTopGlobalMembers,
+	getActivityTrackingStats,
+	getActiveDiscordQuests,
+	getLatestRobloxCatalogItems
+} from '$lib/database.js';
 import { slugifyDisplayName, formatIndexedSlug } from '$lib/utils/slug.js';
 
 export const load: PageServerLoad = async () => {
 	let featuredServers: { name: string; slug: string; server_icon: string | null }[] = [];
 	let globalStats = { total_members: 0, total_servers: 0 };
+	let activeQuests: any[] = [];
+	let catalogItems: any[] = [];
+	let topMembers: any[] = [];
+	let activityStats = { voice_mins: 0, video_mins: 0, stream_mins: 0, total_tracked: 0 };
 
 	try {
 		const servers = await listEnabledLeaderboardServers();
@@ -31,6 +42,8 @@ export const load: PageServerLoad = async () => {
 	} catch (_) {}
 
 	globalStats = await getGlobalStats();
+	activeQuests = (await getActiveDiscordQuests()) as any[];
+	catalogItems = (await getLatestRobloxCatalogItems()) as any[];
 
-	return { featuredServers, globalStats };
+	return { featuredServers, globalStats, activeQuests, catalogItems, topMembers, activityStats };
 };

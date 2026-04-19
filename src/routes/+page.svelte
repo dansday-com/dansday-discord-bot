@@ -17,6 +17,26 @@
 	let activeTab = $state(0);
 
 	// Embed Builder State
+	let activeQuest = $derived(
+		data.activeQuests?.[0] || {
+			quest_name: 'Genshin Impact Quest',
+			game_title: 'Genshin Impact',
+			task_detail_line: 'Play Genshin Impact for 15 minutes',
+			reward: 'In-game bundle + Avatar decoration',
+			publisher: 'HoYoverse'
+		}
+	);
+	let robloxItem = $derived(
+		data.catalogItems?.[0] || {
+			name: 'Dominus Aureus',
+			category: 'Hat',
+			price: 150000,
+			creator_name: 'Roblox',
+			has_verified_badge: true,
+			total_quantity: 1000,
+			units_available: 100
+		}
+	);
 	let embedTitle = $state('🚀 New Feature: Roblox Catalog Watcher');
 	let embedDesc = $state(
 		'We just launched the highly requested Roblox catalog tracker! Configure it directly in your web panel to start receiving live alerts for UGC items.'
@@ -39,7 +59,7 @@
 	onMount(() => {
 		const interval = setInterval(() => {
 			if (!userInteracted) {
-				activeTab = (activeTab + 1) % 5;
+				activeTab = (activeTab + 1) % 6;
 			}
 		}, 4000);
 		return () => clearInterval(interval);
@@ -261,7 +281,7 @@
 						<div
 							class="m-hero-tabs no-scrollbar mt-2 flex w-full max-w-full flex-row gap-2 overflow-x-auto pb-4 lg:mt-2.5 lg:max-w-[80%] lg:flex-col lg:gap-2.5 lg:overflow-visible lg:pb-0"
 						>
-							{#each [{ title: 'Roblox Catalog Watcher', icon: 'fa-cube' }, { title: 'Live Global Statistics', icon: 'fa-chart-line' }, { title: 'Interactive Web Panel', icon: 'fa-toggle-on' }, { title: 'Embed Builder Sandbox', icon: 'fa-palette' }, { title: 'Wall of Communities', icon: 'fa-users' }] as tab, i}
+							{#each [{ title: 'Discord Quests Notifier', icon: 'fa-scroll' }, { title: 'Advanced Activity Tracking', icon: 'fa-chart-line' }, { title: 'Interactive Web Panel', icon: 'fa-toggle-on' }, { title: 'Message Forwarder', icon: 'fa-forward' }, { title: 'Embed Builder Sandbox', icon: 'fa-palette' }, { title: 'Roblox Catalog Tracker', icon: 'fa-cube' }] as tab, i}
 								<button
 									class="flex shrink-0 cursor-pointer items-center gap-3 rounded-xl border px-4 py-2.5 text-left transition-all duration-300 lg:gap-4 lg:px-5 lg:py-3.5 {activeTab ===
 									i
@@ -287,71 +307,131 @@
 					>
 						{#key activeTab}
 							<div in:fade={{ duration: 400 }} class="absolute w-full max-w-[800px] px-6 lg:w-[85%] lg:px-0">
-								<!-- 0: ROBLOX CATALOG CAROUSEL -->
+								<!-- 0: DISCORD QUESTS NOTIFIER -->
 								{#if activeTab === 0}
 									<div class="flex flex-col gap-5">
 										<h3 class="flex items-center gap-2.5 text-2xl font-extrabold text-[var(--lb-text)]">
-											<i class="fas fa-cube text-[var(--chili-brick)]"></i> Live Roblox Catalog Tracker
+											<i class="fas fa-scroll text-[var(--chili-brick)]"></i> Discord Quests Notifier
 										</h3>
-										<p class="text-lg text-[var(--lb-text-muted)]">Automatically ping your server when highly anticipated UGC items drop or change price.</p>
+										<p class="text-lg text-[var(--lb-text-muted)]">
+											Automatically notify your community when new Discord Quests are available and let them enroll instantly.
+										</p>
 
-										<div class="roblox-carousel-container flex gap-5 overflow-x-auto pt-2.5 pb-5">
-											{#each robloxItems as item}
-												<div
-													class="min-w-[240px] overflow-hidden rounded-2xl border border-[var(--lb-border)] bg-[var(--chili-surface-elevated)] shadow-[0_15px_35px_rgba(36,95,115,0.15)]"
-												>
-													<div class="relative flex h-[160px] items-center justify-center bg-[var(--chili-surface-mid)] text-[5rem] text-[var(--chili-hot)]">
-														<i class="fas {item.icon}"></i>
-														<div
-															class="absolute top-3 right-3 rounded-md border border-[var(--lb-border)] bg-[var(--chili-surface-elevated)] px-2 py-1 text-xs font-bold"
-															style="color: {item.color};"
-														>
-															<i class="fas fa-arrow-trend-{item.trend}"></i> Live
+										<div class="mt-2.5 flex w-full flex-col gap-4 lg:h-[320px] lg:flex-row">
+											<div
+												class="flex flex-1 flex-col gap-4 rounded-2xl border border-[var(--lb-border)] bg-[var(--chili-surface-elevated)] p-6 shadow-[0_15px_35px_rgba(0,0,0,0.1)]"
+											>
+												<div class="flex flex-col gap-2">
+													<div class="text-[0.95rem] font-bold text-[var(--lb-text)]">Quest Status</div>
+													<div
+														class="flex items-center gap-3 rounded-lg border border-[var(--lb-border)] bg-[var(--chili-bg)] p-3 text-base text-[var(--lb-text)]"
+													>
+														<span class="relative flex h-3 w-3">
+															<span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"></span>
+															<span class="relative inline-flex h-3 w-3 rounded-full bg-green-500"></span>
+														</span>
+														<span class="font-bold">Watching for new Quests</span>
+													</div>
+												</div>
+												<div class="mt-2 flex flex-col gap-2">
+													<div class="text-[0.95rem] font-bold text-[var(--lb-text)]">Auto Enroll</div>
+													<button
+														class="flex cursor-pointer items-center justify-center gap-2 rounded-lg border-none bg-[var(--chili-hot)] p-3 font-bold text-white"
+													>
+														<i class="fas fa-check-circle"></i> Enabled for all members
+													</button>
+												</div>
+											</div>
+											<div class="no-scrollbar flex flex-1 items-start overflow-y-auto rounded-2xl bg-[#313338] p-6 shadow-[0_15px_35px_rgba(36,95,115,0.15)]">
+												<div class="w-full">
+													<div class="mb-2 inline-block rounded bg-[#3f4147]/50 px-2 py-1 text-sm font-bold text-[#dbdee1]">
+														@{activeQuest.game_title || 'Game'} Players
+													</div>
+													<div class="w-full rounded-sm border-l-4 border-[#5865F2] bg-[#2b2d31] p-4">
+														<div class="mb-2 cursor-pointer text-lg font-bold text-white hover:underline">🔮 {activeQuest.quest_name}</div>
+														<div class="mb-4 grid grid-cols-1 gap-2">
+															<div>
+																<div class="mb-1 text-xs font-bold text-white">Task</div>
+																<div class="text-sm text-[#dbdee1]">• {activeQuest.task_detail_line || activeQuest.quest_task_label} ▶️</div>
+															</div>
+															<div>
+																<div class="mb-1 text-xs font-bold text-white">Reward</div>
+																<div class="text-sm text-[#dbdee1]">• {activeQuest.reward || 'In-game bundle'} 🔮</div>
+															</div>
+															<div class="flex gap-4">
+																<div class="flex-1">
+																	<div class="mb-1 text-xs font-bold text-white">Status</div>
+																	<div class="text-sm text-[#dbdee1]">Active</div>
+																</div>
+															</div>
+														</div>
+														<div class="mt-4 flex items-center gap-2 border-t border-[#3f4147] pt-4">
+															<span class="text-xs text-[#949BA4]">{activeQuest.publisher || activeQuest.game_title} • Just now</span>
 														</div>
 													</div>
-													<div class="p-5">
-														<h4 class="m-0 mb-3 text-[1.2rem] font-bold text-[var(--lb-text)]">{item.name}</h4>
-														<div class="flex items-center justify-between">
-															<span class="flex items-center gap-1.5 text-[1.2rem] font-extrabold text-[#00b06f]">
-																<i class="fas fa-coins text-[#f6b539]"></i>
-																{item.price}
-															</span>
-															<button class="cursor-pointer rounded-md border-none bg-[var(--chili-hot)] px-3 py-1.5 font-bold text-white hover:opacity-90"
-																>Buy</button
-															>
+													<div class="mt-2 flex gap-2">
+														<div
+															class="inline-flex cursor-pointer items-center justify-center rounded bg-[#4E5058] px-4 py-2 text-sm font-medium text-white hover:bg-[#6D6F78]"
+														>
+															<i class="fas fa-desktop mr-2"></i> Open in Discord
+														</div>
+														<div
+															class="inline-flex cursor-pointer items-center justify-center rounded bg-[#5865F2] px-4 py-2 text-sm font-medium text-white hover:bg-[#4752C4]"
+														>
+															<i class="fas fa-exclamation-triangle mr-2"></i> Enroll
 														</div>
 													</div>
 												</div>
-											{/each}
+											</div>
 										</div>
 									</div>
 
-									<!-- 1: LIVE GLOBAL STATISTICS -->
+									<!-- 1: ADVANCED ACTIVITY TRACKING -->
 								{:else if activeTab === 1}
 									<div class="flex flex-col gap-5">
 										<h3 class="flex items-center gap-2.5 text-2xl font-extrabold text-[var(--lb-text)]">
-											<i class="fas fa-chart-line text-[var(--chili-hot)]"></i> Live Global Statistics
+											<i class="fas fa-chart-line text-[var(--chili-hot)]"></i> Advanced Activity Tracking
 										</h3>
 										<p class="text-lg text-[var(--lb-text-muted)]">
-											Real-time scale of the {APP_NAME} ecosystem. Our databases track activity across all these communities instantly.
+											Engage your community with deep tracking for Voice, Video, and Streaming activity beyond just text.
 										</p>
 
-										<div class="mt-5 grid grid-cols-2 gap-6">
+										<div class="mt-2.5 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
 											<div
-												class="rounded-2xl border border-[var(--lb-border)] bg-[var(--chili-surface-elevated)] px-5 py-10 text-center shadow-[0_20px_40px_rgba(36,95,115,0.1)]"
+												class="flex flex-col items-center rounded-2xl border border-[var(--lb-border)] bg-[var(--chili-surface-elevated)] p-6 text-center shadow-[0_15px_35px_rgba(36,95,115,0.08)]"
 											>
-												<div class="text-6xl leading-none font-black text-[var(--chili-hot)]">
-													{data.globalStats?.total_members?.toLocaleString() || '15,240'}
+												<div class="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-xl text-blue-600">
+													<i class="fas fa-microphone"></i>
 												</div>
-												<div class="mt-4 text-base font-bold tracking-[2px] text-[var(--lb-text-muted)] uppercase">Total Members</div>
+												<div class="text-3xl font-black text-[var(--lb-text)]">{(data.activityStats?.voice_mins || 0).toLocaleString()}</div>
+												<div class="text-sm font-bold tracking-wider text-[var(--lb-text-muted)] uppercase">Voice Minutes</div>
 											</div>
 											<div
-												class="rounded-2xl border border-[var(--lb-border)] bg-[var(--chili-surface-elevated)] px-5 py-10 text-center shadow-[0_20px_40px_rgba(36,95,115,0.1)]"
+												class="flex flex-col items-center rounded-2xl border border-[var(--lb-border)] bg-[var(--chili-surface-elevated)] p-6 text-center shadow-[0_15px_35px_rgba(36,95,115,0.08)]"
 											>
-												<div class="text-6xl leading-none font-black text-[var(--chili-hot)]">
-													{data.globalStats?.total_servers?.toLocaleString() || '245'}
+												<div class="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-purple-100 text-xl text-purple-600">
+													<i class="fas fa-video"></i>
 												</div>
-												<div class="mt-4 text-base font-bold tracking-[2px] text-[var(--lb-text-muted)] uppercase">Active Servers</div>
+												<div class="text-3xl font-black text-[var(--lb-text)]">{(data.activityStats?.video_mins || 0).toLocaleString()}</div>
+												<div class="text-sm font-bold tracking-wider text-[var(--lb-text-muted)] uppercase">Video Minutes</div>
+											</div>
+											<div
+												class="flex flex-col items-center rounded-2xl border border-[var(--lb-border)] bg-[var(--chili-surface-elevated)] p-6 text-center shadow-[0_15px_35px_rgba(36,95,115,0.08)]"
+											>
+												<div class="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-xl text-red-600">
+													<i class="fas fa-broadcast-tower"></i>
+												</div>
+												<div class="text-3xl font-black text-[var(--lb-text)]">{(data.activityStats?.stream_mins || 0).toLocaleString()}</div>
+												<div class="text-sm font-bold tracking-wider text-[var(--lb-text-muted)] uppercase">Stream Minutes</div>
+											</div>
+											<div
+												class="flex flex-col items-center rounded-2xl border border-[var(--lb-border)] bg-[var(--chili-surface-elevated)] p-6 text-center shadow-[0_15px_35px_rgba(36,95,115,0.08)]"
+											>
+												<div class="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-xl text-green-600">
+													<i class="fas fa-users"></i>
+												</div>
+												<div class="text-3xl font-black text-[var(--lb-text)]">{(data.activityStats?.total_tracked || 0).toLocaleString()}</div>
+												<div class="text-sm font-bold tracking-wider text-[var(--lb-text-muted)] uppercase">Tracked Members</div>
 											</div>
 										</div>
 									</div>
@@ -434,8 +514,80 @@
 										</div>
 									</div>
 
-									<!-- 3: EMBED BUILDER -->
+									<!-- 3: MESSAGE FORWARDER -->
 								{:else if activeTab === 3}
+									<div class="flex flex-col gap-5">
+										<h3 class="flex items-center gap-2.5 text-2xl font-extrabold text-[var(--lb-text)]">
+											<i class="fas fa-forward text-[var(--chili-peach)]"></i> Message Forwarder
+										</h3>
+										<p class="text-lg text-[var(--lb-text-muted)]">
+											Seamlessly sync announcements, media, or chat across multiple channels or servers in real-time.
+										</p>
+
+										<div class="mt-2.5 flex w-full flex-col gap-4 lg:h-[320px] lg:flex-row">
+											<div
+												class="flex flex-1 flex-col gap-4 rounded-2xl border border-[var(--lb-border)] bg-[var(--chili-surface-elevated)] p-6 shadow-[0_15px_35px_rgba(0,0,0,0.1)]"
+											>
+												<div class="flex items-center gap-4 rounded-xl border border-[var(--lb-border)] bg-[var(--chili-bg)] p-4">
+													<div class="flex flex-1 flex-col gap-1">
+														<div class="text-xs font-bold text-[var(--lb-text-muted)] uppercase">Source Channel</div>
+														<div class="flex items-center gap-2 font-bold text-[var(--lb-text)]">
+															<i class="fas fa-hashtag text-[var(--lb-text-muted)]"></i> announcements
+														</div>
+													</div>
+													<i class="fas fa-arrow-right text-xl text-[var(--chili-peach)]"></i>
+													<div class="flex flex-1 flex-col items-end gap-1 text-right">
+														<div class="text-xs font-bold text-[var(--lb-text-muted)] uppercase">Target Channel</div>
+														<div class="flex items-center justify-end gap-2 font-bold text-[var(--lb-text)]">
+															<i class="fas fa-hashtag text-[var(--lb-text-muted)]"></i> news-feed
+														</div>
+													</div>
+												</div>
+												<div class="mt-2 flex items-center justify-between p-2">
+													<span class="text-[0.95rem] font-bold text-[var(--lb-text)]">Forward Attachments</span>
+													<div class="relative h-6 w-10 rounded-full bg-[var(--chili-hot)] shadow-inner">
+														<div class="absolute top-1 right-1 h-4 w-4 rounded-full bg-white shadow-sm"></div>
+													</div>
+												</div>
+												<div class="flex items-center justify-between p-2">
+													<span class="text-[0.95rem] font-bold text-[var(--lb-text)]">Forward Embeds</span>
+													<div class="relative h-6 w-10 rounded-full bg-[var(--chili-hot)] shadow-inner">
+														<div class="absolute top-1 right-1 h-4 w-4 rounded-full bg-white shadow-sm"></div>
+													</div>
+												</div>
+											</div>
+
+											<div class="no-scrollbar flex flex-1 items-start overflow-y-auto rounded-2xl bg-[#313338] p-6 shadow-[0_15px_35px_rgba(36,95,115,0.15)]">
+												<div class="w-full">
+													<div class="mb-1 flex items-center gap-2">
+														<div class="flex h-10 w-10 items-center justify-center rounded-full bg-[#5865F2] text-white"><i class="fas fa-robot"></i></div>
+														<div class="flex flex-col">
+															<span class="flex items-center gap-1 font-bold text-white">My Bot <span class="rounded bg-[#5865F2] px-1 text-xs">APP</span></span
+															>
+															<span class="text-xs text-[#949BA4]">Today at 10:42 AM</span>
+														</div>
+													</div>
+													<div class="ml-12">
+														<div class="mt-1 w-full rounded-sm border-l-4 border-[#5865F2] bg-[#2b2d31] p-4">
+															<div class="mb-2 flex items-center gap-2">
+																<img src="https://cdn.discordapp.com/embed/avatars/0.png" alt="Avatar" class="h-6 w-6 rounded-full" />
+																<div class="text-sm font-bold text-white">Server Owner</div>
+															</div>
+															<div class="text-base leading-relaxed text-[#dbdee1]">
+																Hey everyone! We're launching the new update this weekend. Make sure to check the patch notes! 🚀
+															</div>
+															<div class="mt-3 flex items-center gap-2 border-t border-[#3f4147] pt-3">
+																<span class="text-xs text-[#949BA4]">Message Forwarder • Today at 10:42 AM</span>
+															</div>
+														</div>
+													</div>
+												</div>
+											</div>
+										</div>
+									</div>
+
+									<!-- 3: EMBED BUILDER -->
+								{:else if activeTab === 4}
 									<div class="flex flex-col gap-5">
 										<h3 class="flex items-center gap-2.5 text-2xl font-extrabold text-[var(--lb-text)]">
 											<i class="fas fa-palette text-[var(--yacht-stone)]"></i> Real-Time Embed Builder
@@ -474,33 +626,86 @@
 										</div>
 									</div>
 
-									<!-- 4: WALL OF COMMUNITIES -->
+									<!-- 4: ROBLOX CATALOG TRACKER -->
 								{:else}
 									<div class="flex flex-col gap-5">
 										<h3 class="flex items-center gap-2.5 text-2xl font-extrabold text-[var(--lb-text)]">
-											<i class="fas fa-users text-[var(--chili-brick)]"></i> Trusted by Communities
+											<i class="fas fa-cube text-[var(--chili-brick)]"></i> Roblox Catalog Tracker
 										</h3>
-										<p class="text-lg text-[var(--lb-text-muted)]">These are real servers actively using our live public statistics and leveling engines.</p>
+										<p class="text-lg text-[var(--lb-text-muted)]">Automatically ping your server when highly anticipated UGC items drop or change price.</p>
 
-										<div class="mt-2.5 flex max-h-[400px] flex-wrap justify-center gap-5 overflow-y-auto p-2.5">
-											{#each (data.featuredServers && data.featuredServers.length > 0 ? data.featuredServers : [{ name: 'Roblox Trading Hub', server_icon: null }, { name: 'Gamer Lounge', server_icon: null }, { name: 'Anime World', server_icon: null }, { name: 'Creator Space', server_icon: null }, { name: 'Dev Community', server_icon: null }, { name: 'Chill Zone', server_icon: null }]).slice(0, 9) as server}
-												<div
-													class="flex w-[160px] cursor-pointer flex-col items-center gap-4 rounded-2xl border border-[var(--lb-border)] bg-[var(--chili-surface-elevated)] p-5 text-center shadow-[0_10px_25px_rgba(0,0,0,0.05)] transition-transform duration-200 hover:scale-105"
-												>
-													{#if server.server_icon}
-														<img src={server.server_icon} alt={server.name} class="h-[72px] w-[72px] rounded-full border-2 border-[var(--lb-border)]" />
-													{:else}
-														<div
-															class="flex h-[72px] w-[72px] items-center justify-center rounded-full border-2 border-[var(--lb-border)] bg-[var(--yacht-stone)] text-[1.8rem] text-white"
+										<div class="mt-2.5 flex w-full flex-col gap-6 lg:h-[320px] lg:flex-row">
+											<!-- Setup UI -->
+											<div
+												class="flex flex-1 flex-col gap-4 rounded-2xl border border-[var(--lb-border)] bg-[var(--chili-surface-elevated)] p-6 shadow-[0_15px_35px_rgba(0,0,0,0.1)]"
+											>
+												<div class="flex flex-col gap-2">
+													<label class="text-[0.95rem] font-bold text-[var(--lb-text)]">Item ID</label>
+													<div class="flex gap-2">
+														<input
+															value={robloxItem.asset_id || '123456789'}
+															class="flex-1 rounded-lg border border-[var(--lb-border)] bg-[var(--chili-bg)] p-3 text-base text-[var(--lb-text)] outline-none"
+															readonly
+														/>
+														<button class="cursor-pointer rounded-lg border-none bg-[var(--chili-hot)] px-4 font-bold text-white hover:opacity-90">Track</button
 														>
-															<i class="fas fa-server"></i>
-														</div>
-													{/if}
-													<div class="w-full overflow-hidden text-base font-bold text-ellipsis whitespace-nowrap text-[var(--lb-text)]">
-														{server.name}
 													</div>
 												</div>
-											{/each}
+												<div class="flex flex-1 flex-col gap-2">
+													<label class="text-[0.95rem] font-bold text-[var(--lb-text)]">Ping Role</label>
+													<select class="rounded-lg border border-[var(--lb-border)] bg-[var(--chili-bg)] p-3 text-base text-[var(--lb-text)] outline-none">
+														<option>@Trading Pings</option>
+														<option>@Everyone</option>
+													</select>
+												</div>
+											</div>
+											<!-- Embed Preview -->
+											<div class="no-scrollbar flex flex-1 items-start overflow-y-auto rounded-2xl bg-[#313338] p-6 shadow-[0_15px_35px_rgba(36,95,115,0.15)]">
+												<div class="w-full">
+													<div class="mb-2 inline-block rounded bg-[#3f4147]/50 px-2 py-1 text-sm font-bold text-[#dbdee1]">@Trading Pings</div>
+													<div class="w-full rounded-sm border-l-4 border-[#00b06f] bg-[#2b2d31] p-4">
+														<div class="mb-2 flex items-center gap-2">
+															<span class="text-sm font-bold text-white">Roblox Catalog</span>
+														</div>
+														<div class="mb-2 cursor-pointer text-lg font-bold text-white hover:underline">{robloxItem.name}</div>
+														<div class="mb-4 grid grid-cols-2 gap-2">
+															<div>
+																<div class="mb-1 text-xs font-bold text-white">Category</div>
+																<div class="text-sm text-[#dbdee1]">{robloxItem.category || 'Hat'}</div>
+															</div>
+															<div>
+																<div class="mb-1 text-xs font-bold text-white">Price</div>
+																<div class="flex items-center gap-1 text-sm text-[#dbdee1]">
+																	<i class="fas fa-coins text-[#f6b539]"></i>
+																	{robloxItem.price ? robloxItem.price.toLocaleString() : '—'}
+																</div>
+															</div>
+															<div>
+																<div class="mb-1 text-xs font-bold text-white">Creator</div>
+																<div class="text-sm text-[#dbdee1]">{robloxItem.has_verified_badge ? '✅' : ''} {robloxItem.creator_name || 'Roblox'}</div>
+															</div>
+															<div>
+																<div class="mb-1 text-xs font-bold text-white">Quantity</div>
+																<div class="text-sm text-[#dbdee1]">
+																	{robloxItem.units_available ? robloxItem.units_available.toLocaleString() : '—'} / {robloxItem.total_quantity
+																		? robloxItem.total_quantity.toLocaleString()
+																		: '—'}
+																</div>
+															</div>
+														</div>
+														<div class="mt-4 flex items-center gap-2 border-t border-[#3f4147] pt-4">
+															<span class="text-xs text-[#949BA4]">Roblox Catalog Watcher • Just now</span>
+														</div>
+													</div>
+													<div class="mt-2 flex gap-2">
+														<div
+															class="inline-flex cursor-pointer items-center justify-center rounded bg-[#4E5058] px-4 py-2 text-sm font-medium text-white hover:bg-[#6D6F78]"
+														>
+															<i class="fas fa-shopping-bag mr-2"></i> Open on Roblox
+														</div>
+													</div>
+												</div>
+											</div>
 										</div>
 									</div>
 								{/if}

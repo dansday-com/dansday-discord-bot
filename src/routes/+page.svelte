@@ -225,36 +225,46 @@
 		<div id="fullpage">
 			<!-- FIRST SECTION: LITERALLY FULL PAGE, NO HEADER/FOOTER, NO MAX WIDTH -->
 			<div class="section m-0 bg-[var(--chili-bg)] p-0">
-				<div class="m-hero-ultimate relative flex h-screen w-screen max-w-none items-center justify-between overflow-hidden">
+				<div
+					class="m-hero-ultimate relative flex min-h-[100dvh] w-full max-w-none flex-col items-center justify-start overflow-hidden pt-24 lg:h-screen lg:flex-row lg:justify-between lg:overflow-hidden lg:pt-0"
+				>
 					<!-- Left Side: Copy and Tabs -->
-					<div class="m-hero-u-left z-10 flex w-[45vw] flex-col gap-8 pl-[6vw]">
+					<div class="m-hero-u-left z-10 flex w-full flex-col gap-6 px-6 lg:mt-0 lg:w-[45vw] lg:gap-8 lg:px-0 lg:pl-[6vw]">
 						<div>
-							<h1 class="mb-5 text-[3.5vw] leading-[1.1] font-extrabold text-[var(--lb-text)]">
+							<h1 class="mb-4 text-4xl leading-[1.1] font-extrabold text-[var(--lb-text)] sm:text-5xl lg:mb-5 lg:text-[3.5vw]">
 								Supercharge Your<br />
 								<span class="bg-gradient-to-br from-[var(--chili-hot,#245f73)] to-[var(--chili-peach,#3a6d82)] bg-clip-text text-transparent"
 									>Discord Server</span
 								>
 							</h1>
-							<p class="max-w-[90%] text-[1.1vw] leading-[1.6] text-[var(--lb-text-muted)]">
+							<p class="max-w-full text-base leading-[1.6] text-[var(--lb-text-muted)] lg:max-w-[90%] lg:text-[1.1vw]">
 								Ditch the slash commands. Manage advanced Leveling, Discord Quests, Roblox Catalogs, TikTok Digests, and Live Stats directly from a powerful
 								free web panel.
 							</p>
 						</div>
 
-						<div class="m-hero-actions flex gap-4">
-							<a href={officialBotInviteUrl} class="m-btn m-btn--primary px-8 py-4 text-[1.1vw]" target="_blank" rel="noopener noreferrer">
+						<div class="m-hero-actions flex flex-col gap-3 sm:flex-row lg:gap-4">
+							<a
+								href={officialBotInviteUrl}
+								class="m-btn m-btn--primary px-6 py-3.5 text-base lg:px-8 lg:py-4 lg:text-[1.1vw]"
+								target="_blank"
+								rel="noopener noreferrer"
+							>
 								<i class="fab fa-discord"></i> Get started
 							</a>
-							<a href="/login" class="m-btn m-btn--ghost px-8 py-4 text-[1.1vw]">
+							<a href="/login" class="m-btn m-btn--ghost px-6 py-3.5 text-base lg:px-8 lg:py-4 lg:text-[1.1vw]">
 								<i class="fas fa-sign-in-alt"></i> Web Panel
 							</a>
 						</div>
 
 						<!-- Interactive "ALL" Tabs -->
-						<div class="m-hero-tabs mt-2.5 flex max-w-[80%] flex-col gap-2.5">
+						<div
+							class="m-hero-tabs no-scrollbar mt-2 flex w-full max-w-full flex-row gap-2 overflow-x-auto pb-4 lg:mt-2.5 lg:max-w-[80%] lg:flex-col lg:gap-2.5 lg:overflow-visible lg:pb-0"
+						>
 							{#each [{ title: 'Roblox Catalog Watcher', icon: 'fa-cube' }, { title: 'Live Global Statistics', icon: 'fa-chart-line' }, { title: 'Interactive Web Panel', icon: 'fa-toggle-on' }, { title: 'Embed Builder Sandbox', icon: 'fa-palette' }, { title: 'Wall of Communities', icon: 'fa-users' }] as tab, i}
 								<button
-									class="flex cursor-pointer items-center gap-4 rounded-xl border px-5 py-3.5 text-left transition-all duration-300 {activeTab === i
+									class="flex shrink-0 cursor-pointer items-center gap-3 rounded-xl border px-4 py-2.5 text-left transition-all duration-300 lg:gap-4 lg:px-5 lg:py-3.5 {activeTab ===
+									i
 										? 'scale-[1.03] border-[var(--lb-border)] bg-[var(--chili-surface-elevated)] text-[var(--lb-text)] opacity-100 shadow-[0_12px_40px_rgba(36,95,115,0.15)]'
 										: 'scale-100 border-transparent bg-transparent text-[var(--lb-text-muted)] opacity-60 shadow-none'}"
 									onclick={() => {
@@ -265,7 +275,7 @@
 									<div class="flex w-8 justify-center text-xl {activeTab === i ? 'text-[var(--chili-hot)]' : 'text-inherit'}">
 										<i class="fas {tab.icon}"></i>
 									</div>
-									<span class="text-[1.1vw] font-bold">{tab.title}</span>
+									<span class="text-sm font-bold whitespace-nowrap lg:text-[1.1vw] lg:whitespace-normal">{tab.title}</span>
 								</button>
 							{/each}
 						</div>
@@ -273,10 +283,10 @@
 
 					<!-- Right Side: The Dynamic "ALL" Showcase -->
 					<div
-						class="m-hero-u-right relative flex h-screen w-[50vw] items-center justify-center bg-[radial-gradient(circle_at_center,rgba(36,95,115,0.08),transparent_60%)]"
+						class="m-hero-u-right relative flex min-h-[500px] w-full flex-1 items-center justify-center bg-[radial-gradient(circle_at_center,rgba(36,95,115,0.08),transparent_70%)] p-6 lg:h-screen lg:w-[50vw] lg:flex-none lg:p-0"
 					>
 						{#key activeTab}
-							<div in:fade={{ duration: 400 }} class="absolute w-[85%] max-w-[800px]">
+							<div in:fade={{ duration: 400 }} class="absolute w-full max-w-[800px] px-6 lg:w-[85%] lg:px-0">
 								<!-- 0: ROBLOX CATALOG CAROUSEL -->
 								{#if activeTab === 0}
 									<div class="flex flex-col gap-5">

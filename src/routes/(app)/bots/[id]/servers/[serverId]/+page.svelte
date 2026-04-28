@@ -1,6 +1,10 @@
 <script lang="ts">
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import LocalTime from '$lib/frontend/components/LocalTime.svelte';
+	import AnalyticsDashboard from '$lib/frontend/components/AnalyticsDashboard.svelte';
+	import ActivityHeatmap from '$lib/frontend/components/ActivityHeatmap.svelte';
+	import ChannelHealthMetrics from '$lib/frontend/components/ChannelHealthMetrics.svelte';
+	import EngagementScoring from '$lib/frontend/components/EngagementScoring.svelte';
 	import type { LayoutProps } from './$types';
 
 	let { data }: LayoutProps = $props();
@@ -9,6 +13,8 @@
 	const s = $derived(o.stats ?? {});
 	const sync = $derived(o.sync ?? {});
 	const enabledFeatures = $derived(Array.isArray(o.enabledFeatures) ? o.enabledFeatures : []);
+
+	let activeTab: 'overview' | 'analytics' | 'heatmap' | 'channels' | 'engagement' = $state('overview');
 
 	function fmt(val: number | null | undefined): string {
 		if (val == null) return '0';
@@ -38,6 +44,42 @@
 </svelte:head>
 
 <div class="space-y-4 sm:space-y-6">
+	<!-- Tab Navigation -->
+	<div class="flex flex-wrap gap-2 border-b border-ash-600 pb-4">
+		<button
+			on:click={() => (activeTab = 'overview')}
+			class={`px-4 py-2 rounded-t-lg font-medium text-sm transition-all ${activeTab === 'overview' ? 'bg-blue-500/20 text-blue-300 border-b-2 border-blue-500' : 'text-ash-400 hover:text-ash-200'}`}
+		>
+			<i class="fas fa-chart-bar mr-2"></i>Overview
+		</button>
+		<button
+			on:click={() => (activeTab = 'analytics')}
+			class={`px-4 py-2 rounded-t-lg font-medium text-sm transition-all ${activeTab === 'analytics' ? 'bg-blue-500/20 text-blue-300 border-b-2 border-blue-500' : 'text-ash-400 hover:text-ash-200'}`}
+		>
+			<i class="fas fa-chart-line mr-2"></i>Analytics
+		</button>
+		<button
+			on:click={() => (activeTab = 'heatmap')}
+			class={`px-4 py-2 rounded-t-lg font-medium text-sm transition-all ${activeTab === 'heatmap' ? 'bg-blue-500/20 text-blue-300 border-b-2 border-blue-500' : 'text-ash-400 hover:text-ash-200'}`}
+		>
+			<i class="fas fa-fire mr-2"></i>Activity Heatmap
+		</button>
+		<button
+			on:click={() => (activeTab = 'channels')}
+			class={`px-4 py-2 rounded-t-lg font-medium text-sm transition-all ${activeTab === 'channels' ? 'bg-blue-500/20 text-blue-300 border-b-2 border-blue-500' : 'text-ash-400 hover:text-ash-200'}`}
+		>
+			<i class="fas fa-heartbeat mr-2"></i>Channel Health
+		</button>
+		<button
+			on:click={() => (activeTab = 'engagement')}
+			class={`px-4 py-2 rounded-t-lg font-medium text-sm transition-all ${activeTab === 'engagement' ? 'bg-blue-500/20 text-blue-300 border-b-2 border-blue-500' : 'text-ash-400 hover:text-ash-200'}`}
+		>
+			<i class="fas fa-star mr-2"></i>Engagement
+		</button>
+	</div>
+
+	<!-- Overview Tab -->
+	{#if activeTab === 'overview'}
 	<div class="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2 xl:grid-cols-3">
 		<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-5 shadow-lg transition-all sm:p-6">
 			<div class="mb-4 flex items-center gap-3">
@@ -179,4 +221,25 @@
 			</div>
 		{/if}
 	</div>
+	{/if}
+
+	<!-- Analytics Tab -->
+	{#if activeTab === 'analytics'}
+		<AnalyticsDashboard serverId={o.id} />
+	{/if}
+
+	<!-- Activity Heatmap Tab -->
+	{#if activeTab === 'heatmap'}
+		<ActivityHeatmap serverId={o.id} />
+	{/if}
+
+	<!-- Channel Health Tab -->
+	{#if activeTab === 'channels'}
+		<ChannelHealthMetrics serverId={o.id} />
+	{/if}
+
+	<!-- Engagement Scoring Tab -->
+	{#if activeTab === 'engagement'}
+		<EngagementScoring serverId={o.id} />
+	{/if}
 </div>

@@ -757,3 +757,142 @@ export const accountServerAccess = mysqlTable('account_server_access', {
 	role: mysqlEnum('role', ['owner', 'staff']).notNull(),
 	created_at: datetime('created_at').notNull()
 });
+
+export const serverAnalyticsDaily = mysqlTable(
+	'server_analytics_daily',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		server_id: int('server_id')
+			.notNull()
+			.references(() => servers.id, { onDelete: 'cascade' }),
+		date: datetime('date').notNull(),
+		members_joined: int('members_joined').default(0),
+		members_left: int('members_left').default(0),
+		members_total: int('members_total').default(0),
+		messages_count: int('messages_count').default(0),
+		voice_sessions: int('voice_sessions').default(0),
+		voice_minutes: int('voice_minutes').default(0),
+		active_members: int('active_members').default(0),
+		created_at: datetime('created_at').notNull(),
+		updated_at: datetime('updated_at').notNull()
+	},
+	(t) => [
+		index('idx_server_analytics_daily_server').on(t.server_id),
+		index('idx_server_analytics_daily_date').on(t.date)
+	]
+);
+
+export const serverAnalyticsHourly = mysqlTable(
+	'server_analytics_hourly',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		server_id: int('server_id')
+			.notNull()
+			.references(() => servers.id, { onDelete: 'cascade' }),
+		date_hour: datetime('date_hour').notNull(),
+		messages_count: int('messages_count').default(0),
+		voice_sessions: int('voice_sessions').default(0),
+		voice_minutes: int('voice_minutes').default(0),
+		active_members: int('active_members').default(0),
+		created_at: datetime('created_at').notNull()
+	},
+	(t) => [
+		index('idx_server_analytics_hourly_server').on(t.server_id),
+		index('idx_server_analytics_hourly_hour').on(t.date_hour)
+	]
+);
+
+export const serverAnalyticsChannels = mysqlTable(
+	'server_analytics_channels',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		channel_id: int('channel_id')
+			.notNull()
+			.references(() => serverChannels.id, { onDelete: 'cascade' }),
+		server_id: int('server_id')
+			.notNull()
+			.references(() => servers.id, { onDelete: 'cascade' }),
+		date: datetime('date').notNull(),
+		messages_count: int('messages_count').default(0),
+		unique_authors: int('unique_authors').default(0),
+		voice_sessions: int('voice_sessions').default(0),
+		voice_minutes: int('voice_minutes').default(0),
+		health_score: decimal('health_score', { precision: 5, scale: 2 }).default(0),
+		created_at: datetime('created_at').notNull(),
+		updated_at: datetime('updated_at').notNull()
+	},
+	(t) => [
+		index('idx_server_analytics_channels_server').on(t.server_id),
+		index('idx_server_analytics_channels_date').on(t.date)
+	]
+);
+
+export const serverAnalyticsMemberEngagement = mysqlTable(
+	'server_analytics_member_engagement',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		member_id: int('member_id')
+			.notNull()
+			.unique()
+			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		server_id: int('server_id')
+			.notNull()
+			.references(() => servers.id, { onDelete: 'cascade' }),
+		engagement_score: decimal('engagement_score', { precision: 5, scale: 2 }).default(0),
+		last_activity_at: datetime('last_activity_at'),
+		messages_30d: int('messages_30d').default(0),
+		voice_minutes_30d: int('voice_minutes_30d').default(0),
+		days_active_30d: int('days_active_30d').default(0),
+		streak_days: int('streak_days').default(0),
+		created_at: datetime('created_at').notNull(),
+		updated_at: datetime('updated_at').notNull()
+	},
+	(t) => [
+		index('idx_server_analytics_member_engagement_server').on(t.server_id),
+		index('idx_server_analytics_member_engagement_score').on(t.engagement_score)
+	]
+);
+
+export const serverAnalyticsRetention = mysqlTable(
+	'server_analytics_retention',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		server_id: int('server_id')
+			.notNull()
+			.references(() => servers.id, { onDelete: 'cascade' }),
+		date: datetime('date').notNull(),
+		cohort_date: datetime('cohort_date').notNull(),
+		members_in_cohort: int('members_in_cohort').default(0),
+		members_retained: int('members_retained').default(0),
+		retention_rate: decimal('retention_rate', { precision: 5, scale: 2 }).default(0),
+		created_at: datetime('created_at').notNull()
+	},
+	(t) => [
+		index('idx_server_analytics_retention_server').on(t.server_id),
+		index('idx_server_analytics_retention_date').on(t.date),
+		index('idx_server_analytics_retention_cohort').on(t.cohort_date)
+	]
+);
+
+export const serverAnalyticsSnapshots = mysqlTable(
+	'server_analytics_snapshots',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		server_id: int('server_id')
+			.notNull()
+			.references(() => servers.id, { onDelete: 'cascade' }),
+		snapshot_date: datetime('snapshot_date').notNull(),
+		total_members: int('total_members').default(0),
+		members_with_activity: int('members_with_activity').default(0),
+		avg_engagement_score: decimal('avg_engagement_score', { precision: 5, scale: 2 }).default(0),
+		total_messages_30d: int('total_messages_30d').default(0),
+		total_voice_minutes_30d: int('total_voice_minutes_30d').default(0),
+		top_channels: json('top_channels'),
+		top_members: json('top_members'),
+		created_at: datetime('created_at').notNull()
+	},
+	(t) => [
+		index('idx_server_analytics_snapshots_server').on(t.server_id),
+		index('idx_server_analytics_snapshots_date').on(t.snapshot_date)
+	]
+);

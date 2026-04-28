@@ -3497,10 +3497,363 @@ export async function getStaffRatingRole(serverId: any, staffMemberId: any) {
 				eq(schema.serverMembers.server_id, Number(serverId)),
 				eq(schema.serverMemberStaffRatings.member_id, Number(staffMemberId)),
 				isNotNull(schema.serverMemberStaffRatings.role_id)
-			)
+		)
 		)
 		.limit(1);
 	return rows[0]?.discord_role_id || null;
+}
+
+export async function getAnalyticsOverview(serverId: any) {
+	await initializeDatabase();
+	const id = Number(serverId);
+	if (!Number.isFinite(id) || id <= 0) return null;
+
+	const today = new Date();
+	today.setHours(0, 0, 0, 0);
+	const thirtyDaysAgo = new Date(today);
+	thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+	const [dailyStats, engagementStats, retentionStats, channelStats] = await Promise.all([
+		db.execute(
+			sql`SELECT 
+				SUM(messages_count) as total_messages,
+				SUM(voice_minutes) as total_voice_minutes,
+				SUM(active_members) as avg_active_members,
+				COUNT(*) as days_tracked
+			FROM server_analytics_daily 
+			WHERE server_id = ${id} AND date >= ${thirtyDaysAgo}`
+		),
+		db.execute(
+			sql`SELECT 
+				COUNT(*) as total_members,
+				AVG(engagement_score) as avg_engagement,
+				SUM(CASE WHEN engagement_score >= 70 THEN 1 ELSE 0 END) as highly_engaged,
+				SUM(CASE WHEN engagement_score >= 40 AND engagement_score < 70 THEN 1 ELSE 0 END) as moderately_engaged,
+				SUM(CASE WHEN engagement_score < 40 THEN 1 ELSE 0 END) as low_engaged
+			FROM server_analytics_member_engagement 
+			WHERE server_id = ${id}`
+		),
+		db.execute(
+			sql`SELECT 
+				AVG(retention_rate) as avg_retention_rate,
+				MAX(retention_rate) as max_retention_rate,
+				MIN(retention_rate) as min_retention_rate
+			FROM server_analytics_retention 
+			WHERE server_id = ${id} AND date >= ${thirtyDaysAgo}`
+		),
+		db.execute(
+			sql`SELECT 
+				COUNT(*) as total_channels,
+				AVG(health_score) as avg_channel_health,
+				SUM(CASE WHEN health_score >= 70 THEN 1 ELSE 0 END) as healthy_channels,
+				SUM(CASE WHEN health_score < 30 THEN 1 ELSE 0 END) as dead_channels
+			FROM server_analytics_channels 
+			WHERE server_id = ${id} AND date >= ${thirtyDaysAgo}`
+		)
+	]);
+
+	const r = (raw: any, idx = 0) => (raw[0] as unknown as any[])[idx] || {};
+
+	return {
+		period: {
+			start: thirtyDaysAgo,
+			end: today,
+			days: 30
+		},
+		activity: {
+			total_messages: r(dailyStats).total_messages || 0,
+			total_voice_minutes: r(dailyStats).total_voice_minutes || 0,
+			avg_active_members: Math.round(r(dailyStats).avg_active_members || 0),
+			days_tracked: r(dailyStats).days_tracked || 0
+		},
+		engagement: {
+			total_members: r(engagementStats).total_members || 0,
+			avg_engagement_score: Math.round((r(engagementStats).avg_engagement || 0) * 100) / 100,
+			highly_engaged: r(engagementStats).highly_engaged || 0,
+			moderately_engaged: r(engagementStats).moderately_engaged || 0,
+			low_engaged: r(engagementStats).low_engaged || 0
+		},
+		retention: {
+			avg_retention_rate: Math.round((r(retentionStats).avg_retention_rate || 0) * 100) / 100,
+			max_retention_rate: Math.round((r(retentionStats).max_retention_rate || 0) * 100) / 100,
+			min_retention_rate: Math.round((r(retentionStats).min_retention_rate || 0) * 100) / 100
+		},
+		channels: {
+			total_channels: r(channelStats).total_channels || 0,
+			avg_health_score: Math.round((r(channelStats).avg_channel_health || 0) * 100) / 100,
+			healthy_channels: r(channelStats).healthy_channels || 0,
+			dead_channels: r(channelStats).dead_channels || 0
+		}
+	};
+}
+
+export async function getServerAnalyticsDaily(serverId: any, days: number = 30) {
+	await initializeDatabase();
+	const id = Number(serverId);
+	if (!Number.isFinite(id) || id <= 0) return null;
+
+	const startDate = new Date();
+	startDate.setDate(startDate.getDate() - days);
+	startDate.setHours(0, 0, 0, 0);
+
+	const rows = await db
+		.select()
+		.from(schema.serverAnalyticsDaily)
+		.where(and(eq(schema.serverAnalyticsDaily.server_id, id), sql`${schema.serverAnalyticsDaily.date} >= ${startDate}`))
+		.orderBy(asc(schema.serverAnalyticsDaily.date));
+
+	return {
+		period: { days, start: startDate },
+		data: rows
+	};
+}
+
+export async function getServerAnalyticsHourly(serverId: any, hours: number = 24) {
+	await initializeDatabase();
+	const id = Number(serverId);
+	if (!Number.isFinite(id) || id <= 0) return null;
+
+	const startTime = new Date();
+	startTime.setHours(startTime.getHours() - hours);
+
+	const rows = await db
+		.select()
+		.from(schema.serverAnalyticsHourly)
+		.where(and(eq(schema.serverAnalyticsHourly.server_id, id), sql`${schema.serverAnalyticsHourly.date_hour} >= ${startTime}`))
+		.orderBy(asc(schema.serverAnalyticsHourly.date_hour));
+
+	return {
+		period: { hours, start: startTime },
+		data: rows
+	};
+}
+
+export async function getChannelHealthMetrics(serverId: any, days: number = 30) {
+	await initializeDatabase();
+	const id = Number(serverId);
+	if (!Number.isFinite(id) || id <= 0) return null;
+
+	const startDate = new Date();
+	startDate.setDate(startDate.getDate() - days);
+	startDate.setHours(0, 0, 0, 0);
+
+	const rows = await db
+		.select({
+			channel_id: schema.serverAnalyticsChannels.channel_id,
+			channel_name: schema.serverChannels.name,
+			channel_type: schema.serverChannels.type,
+			messages_count: sql`SUM(${schema.serverAnalyticsChannels.messages_count})`,
+			unique_authors: sql`SUM(${schema.serverAnalyticsChannels.unique_authors})`,
+			voice_sessions: sql`SUM(${schema.serverAnalyticsChannels.voice_sessions})`,
+			voice_minutes: sql`SUM(${schema.serverAnalyticsChannels.voice_minutes})`,
+			avg_health_score: sql`AVG(${schema.serverAnalyticsChannels.health_score})`
+		})
+		.from(schema.serverAnalyticsChannels)
+		.innerJoin(schema.serverChannels, eq(schema.serverAnalyticsChannels.channel_id, schema.serverChannels.id))
+		.where(
+			and(
+				eq(schema.serverAnalyticsChannels.server_id, id),
+				sql`${schema.serverAnalyticsChannels.date} >= ${startDate}`
+			)
+		)
+		.groupBy(schema.serverAnalyticsChannels.channel_id)
+		.orderBy(desc(sql`AVG(${schema.serverAnalyticsChannels.health_score})`));
+
+	return {
+		period: { days, start: startDate },
+		channels: rows
+	};
+}
+
+export async function getMemberEngagementMetrics(serverId: any) {
+	await initializeDatabase();
+	const id = Number(serverId);
+	if (!Number.isFinite(id) || id <= 0) return null;
+
+	const rows = await db
+		.select({
+			member_id: schema.serverAnalyticsMemberEngagement.member_id,
+			username: schema.serverMembers.username,
+			display_name: schema.serverMembers.display_name,
+			avatar: schema.serverMembers.avatar,
+			engagement_score: schema.serverAnalyticsMemberEngagement.engagement_score,
+			last_activity_at: schema.serverAnalyticsMemberEngagement.last_activity_at,
+			messages_30d: schema.serverAnalyticsMemberEngagement.messages_30d,
+			voice_minutes_30d: schema.serverAnalyticsMemberEngagement.voice_minutes_30d,
+			days_active_30d: schema.serverAnalyticsMemberEngagement.days_active_30d,
+			streak_days: schema.serverAnalyticsMemberEngagement.streak_days
+		})
+		.from(schema.serverAnalyticsMemberEngagement)
+		.innerJoin(schema.serverMembers, eq(schema.serverAnalyticsMemberEngagement.member_id, schema.serverMembers.id))
+		.where(eq(schema.serverAnalyticsMemberEngagement.server_id, id))
+		.orderBy(desc(schema.serverAnalyticsMemberEngagement.engagement_score))
+		.limit(100);
+
+	const topEngaged = rows.slice(0, 10);
+	const lowEngaged = rows.slice(-10).reverse();
+
+	return {
+		total_members: rows.length,
+		top_engaged: topEngaged,
+		low_engaged: lowEngaged,
+		all_members: rows
+	};
+}
+
+export async function getRetentionMetrics(serverId: any, days: number = 30) {
+	await initializeDatabase();
+	const id = Number(serverId);
+	if (!Number.isFinite(id) || id <= 0) return null;
+
+	const startDate = new Date();
+	startDate.setDate(startDate.getDate() - days);
+	startDate.setHours(0, 0, 0, 0);
+
+	const rows = await db
+		.select()
+		.from(schema.serverAnalyticsRetention)
+		.where(and(eq(schema.serverAnalyticsRetention.server_id, id), sql`${schema.serverAnalyticsRetention.date} >= ${startDate}`))
+		.orderBy(asc(schema.serverAnalyticsRetention.date));
+
+	return {
+		period: { days, start: startDate },
+		data: rows
+	};
+}
+
+export async function upsertAnalyticsDaily(serverId: any, date: Date, data: any) {
+	await initializeDatabase();
+	const id = Number(serverId);
+	if (!Number.isFinite(id) || id <= 0) return null;
+
+	const now = getNowUtc();
+	const dateStr = toMySQLDateTime(date);
+
+	const existing = await db
+		.select()
+		.from(schema.serverAnalyticsDaily)
+		.where(and(eq(schema.serverAnalyticsDaily.server_id, id), eq(schema.serverAnalyticsDaily.date, dateStr)))
+		.limit(1);
+
+	if (existing.length > 0) {
+		await db
+			.update(schema.serverAnalyticsDaily)
+			.set({ ...data, updated_at: now })
+			.where(and(eq(schema.serverAnalyticsDaily.server_id, id), eq(schema.serverAnalyticsDaily.date, dateStr)));
+	} else {
+		await db.insert(schema.serverAnalyticsDaily).values({
+			server_id: id,
+			date: dateStr,
+			...data,
+			created_at: now,
+			updated_at: now
+		});
+	}
+}
+
+export async function upsertMemberEngagement(memberId: any, serverId: any, data: any) {
+	await initializeDatabase();
+	const mid = Number(memberId);
+	const sid = Number(serverId);
+	if (!Number.isFinite(mid) || mid <= 0 || !Number.isFinite(sid) || sid <= 0) return null;
+
+	const now = getNowUtc();
+
+	const existing = await db
+		.select()
+		.from(schema.serverAnalyticsMemberEngagement)
+		.where(eq(schema.serverAnalyticsMemberEngagement.member_id, mid))
+		.limit(1);
+
+	if (existing.length > 0) {
+		await db
+			.update(schema.serverAnalyticsMemberEngagement)
+			.set({ ...data, updated_at: now })
+			.where(eq(schema.serverAnalyticsMemberEngagement.member_id, mid));
+	} else {
+		await db.insert(schema.serverAnalyticsMemberEngagement).values({
+			member_id: mid,
+			server_id: sid,
+			...data,
+			created_at: now,
+			updated_at: now
+		});
+	}
+}
+
+export async function upsertChannelAnalytics(channelId: any, serverId: any, date: Date, data: any) {
+	await initializeDatabase();
+	const cid = Number(channelId);
+	const sid = Number(serverId);
+	if (!Number.isFinite(cid) || cid <= 0 || !Number.isFinite(sid) || sid <= 0) return null;
+
+	const now = getNowUtc();
+	const dateStr = toMySQLDateTime(date);
+
+	const existing = await db
+		.select()
+		.from(schema.serverAnalyticsChannels)
+		.where(and(eq(schema.serverAnalyticsChannels.channel_id, cid), eq(schema.serverAnalyticsChannels.date, dateStr)))
+		.limit(1);
+
+	if (existing.length > 0) {
+		await db
+			.update(schema.serverAnalyticsChannels)
+			.set({ ...data, updated_at: now })
+			.where(and(eq(schema.serverAnalyticsChannels.channel_id, cid), eq(schema.serverAnalyticsChannels.date, dateStr)));
+	} else {
+		await db.insert(schema.serverAnalyticsChannels).values({
+			channel_id: cid,
+			server_id: sid,
+			date: dateStr,
+			...data,
+			created_at: now,
+			updated_at: now
+		});
+	}
+}
+
+export async function upsertRetentionMetrics(serverId: any, date: Date, cohortDate: Date, data: any) {
+	await initializeDatabase();
+	const id = Number(serverId);
+	if (!Number.isFinite(id) || id <= 0) return null;
+
+	const now = getNowUtc();
+	const dateStr = toMySQLDateTime(date);
+	const cohortStr = toMySQLDateTime(cohortDate);
+
+	const existing = await db
+		.select()
+		.from(schema.serverAnalyticsRetention)
+		.where(
+			and(
+				eq(schema.serverAnalyticsRetention.server_id, id),
+				eq(schema.serverAnalyticsRetention.date, dateStr),
+				eq(schema.serverAnalyticsRetention.cohort_date, cohortStr)
+			)
+		)
+		.limit(1);
+
+	if (existing.length > 0) {
+		await db
+			.update(schema.serverAnalyticsRetention)
+			.set(data)
+			.where(
+				and(
+					eq(schema.serverAnalyticsRetention.server_id, id),
+					eq(schema.serverAnalyticsRetention.date, dateStr),
+					eq(schema.serverAnalyticsRetention.cohort_date, cohortStr)
+				)
+			);
+	} else {
+		await db.insert(schema.serverAnalyticsRetention).values({
+			server_id: id,
+			date: dateStr,
+			cohort_date: cohortStr,
+			...data,
+			created_at: now
+		});
+	}
 }
 
 export default {
@@ -3579,6 +3932,16 @@ export default {
 	getBotDiscordQuestByQuestId,
 	hasServerMemberClaimedDiscordQuest,
 	markServerMemberDiscordQuestClaimed,
+	getAnalyticsOverview,
+	getServerAnalyticsDaily,
+	getServerAnalyticsHourly,
+	getChannelHealthMetrics,
+	getMemberEngagementMetrics,
+	getRetentionMetrics,
+	upsertAnalyticsDaily,
+	upsertMemberEngagement,
+	upsertChannelAnalytics,
+	upsertRetentionMetrics,
 	getPanel,
 	createPanel,
 	hasAnyPanel,

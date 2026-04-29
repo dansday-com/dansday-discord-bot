@@ -45,37 +45,39 @@
 
 <div class="space-y-4 sm:space-y-6">
 	<!-- Tab Navigation -->
-	<div class="flex flex-wrap gap-2 border-b border-ash-600 pb-4">
+	<div class="overflow-x-auto border-b border-ash-600 pb-3">
+		<div class="flex min-w-max gap-1.5">
 		<button
 			on:click={() => (activeTab = 'overview')}
-			class={`px-4 py-2 rounded-t-lg font-medium text-sm transition-all ${activeTab === 'overview' ? 'bg-blue-500/20 text-blue-300 border-b-2 border-blue-500' : 'text-ash-400 hover:text-ash-200'}`}
+			class={`rounded-lg px-3 py-2 text-xs font-medium whitespace-nowrap transition-all sm:text-sm ${activeTab === 'overview' ? 'bg-blue-500/20 text-blue-300 ring-1 ring-blue-500/60' : 'bg-ash-800/50 text-ash-300 hover:bg-ash-700 hover:text-ash-100'}`}
 		>
 			<i class="fas fa-chart-bar mr-2"></i>Overview
 		</button>
 		<button
 			on:click={() => (activeTab = 'analytics')}
-			class={`px-4 py-2 rounded-t-lg font-medium text-sm transition-all ${activeTab === 'analytics' ? 'bg-blue-500/20 text-blue-300 border-b-2 border-blue-500' : 'text-ash-400 hover:text-ash-200'}`}
+			class={`rounded-lg px-3 py-2 text-xs font-medium whitespace-nowrap transition-all sm:text-sm ${activeTab === 'analytics' ? 'bg-blue-500/20 text-blue-300 ring-1 ring-blue-500/60' : 'bg-ash-800/50 text-ash-300 hover:bg-ash-700 hover:text-ash-100'}`}
 		>
 			<i class="fas fa-chart-line mr-2"></i>Analytics
 		</button>
 		<button
 			on:click={() => (activeTab = 'heatmap')}
-			class={`px-4 py-2 rounded-t-lg font-medium text-sm transition-all ${activeTab === 'heatmap' ? 'bg-blue-500/20 text-blue-300 border-b-2 border-blue-500' : 'text-ash-400 hover:text-ash-200'}`}
+			class={`rounded-lg px-3 py-2 text-xs font-medium whitespace-nowrap transition-all sm:text-sm ${activeTab === 'heatmap' ? 'bg-blue-500/20 text-blue-300 ring-1 ring-blue-500/60' : 'bg-ash-800/50 text-ash-300 hover:bg-ash-700 hover:text-ash-100'}`}
 		>
 			<i class="fas fa-fire mr-2"></i>Activity Heatmap
 		</button>
 		<button
 			on:click={() => (activeTab = 'channels')}
-			class={`px-4 py-2 rounded-t-lg font-medium text-sm transition-all ${activeTab === 'channels' ? 'bg-blue-500/20 text-blue-300 border-b-2 border-blue-500' : 'text-ash-400 hover:text-ash-200'}`}
+			class={`rounded-lg px-3 py-2 text-xs font-medium whitespace-nowrap transition-all sm:text-sm ${activeTab === 'channels' ? 'bg-blue-500/20 text-blue-300 ring-1 ring-blue-500/60' : 'bg-ash-800/50 text-ash-300 hover:bg-ash-700 hover:text-ash-100'}`}
 		>
 			<i class="fas fa-heartbeat mr-2"></i>Channel Health
 		</button>
 		<button
 			on:click={() => (activeTab = 'engagement')}
-			class={`px-4 py-2 rounded-t-lg font-medium text-sm transition-all ${activeTab === 'engagement' ? 'bg-blue-500/20 text-blue-300 border-b-2 border-blue-500' : 'text-ash-400 hover:text-ash-200'}`}
+			class={`rounded-lg px-3 py-2 text-xs font-medium whitespace-nowrap transition-all sm:text-sm ${activeTab === 'engagement' ? 'bg-blue-500/20 text-blue-300 ring-1 ring-blue-500/60' : 'bg-ash-800/50 text-ash-300 hover:bg-ash-700 hover:text-ash-100'}`}
 		>
 			<i class="fas fa-star mr-2"></i>Engagement
 		</button>
+	</div>
 	</div>
 
 	<!-- Overview Tab -->

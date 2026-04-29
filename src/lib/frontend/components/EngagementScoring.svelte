@@ -96,8 +96,8 @@
 			</div>
 		</div>
 	{:else if engagementData}
-		<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-5 shadow-lg transition-all sm:p-6">
-			<div class="mb-4 flex items-center justify-between">
+		<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-4 shadow-lg transition-all sm:p-6">
+			<div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 				<div class="flex items-center gap-3">
 					<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-500/15">
 						<i class="fas fa-star text-lg text-purple-400"></i>
@@ -107,24 +107,24 @@
 						<p class="text-ash-400 text-xs mt-0.5">{formatNumber(engagementData.total_members)} members tracked</p>
 					</div>
 				</div>
-				<div class="flex gap-2">
+				<div class="grid grid-cols-3 gap-2 sm:flex">
 					<button
 						on:click={() => (view = 'top')}
-						class={`px-3 py-1 rounded text-xs font-medium transition-all ${view === 'top' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50' : 'bg-ash-800 text-ash-300 hover:bg-ash-700'}`}
+						class={`rounded px-2 py-1.5 text-[11px] font-medium transition-all sm:px-3 sm:text-xs ${view === 'top' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50' : 'bg-ash-800 text-ash-300 hover:bg-ash-700'}`}
 					>
-						<i class="fas fa-arrow-up text-xs mr-1"></i>Top Engaged
+						<i class="fas fa-arrow-up text-[10px] mr-1"></i>Top
 					</button>
 					<button
 						on:click={() => (view = 'low')}
-						class={`px-3 py-1 rounded text-xs font-medium transition-all ${view === 'low' ? 'bg-red-500/20 text-red-300 border border-red-500/50' : 'bg-ash-800 text-ash-300 hover:bg-ash-700'}`}
+						class={`rounded px-2 py-1.5 text-[11px] font-medium transition-all sm:px-3 sm:text-xs ${view === 'low' ? 'bg-red-500/20 text-red-300 border border-red-500/50' : 'bg-ash-800 text-ash-300 hover:bg-ash-700'}`}
 					>
-						<i class="fas fa-arrow-down text-xs mr-1"></i>Low Engagement
+						<i class="fas fa-arrow-down text-[10px] mr-1"></i>Low
 					</button>
 					<button
 						on:click={() => (view = 'all')}
-						class={`px-3 py-1 rounded text-xs font-medium transition-all ${view === 'all' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/50' : 'bg-ash-800 text-ash-300 hover:bg-ash-700'}`}
+						class={`rounded px-2 py-1.5 text-[11px] font-medium transition-all sm:px-3 sm:text-xs ${view === 'all' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/50' : 'bg-ash-800 text-ash-300 hover:bg-ash-700'}`}
 					>
-						<i class="fas fa-list text-xs mr-1"></i>All Members
+						<i class="fas fa-list text-[10px] mr-1"></i>All
 					</button>
 				</div>
 			</div>

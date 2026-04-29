@@ -73,7 +73,7 @@
 			</div>
 		</div>
 	{:else if heatmapData && heatmapData.data.length > 0}
-		<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-5 shadow-lg transition-all sm:p-6">
+		<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-4 shadow-lg transition-all sm:p-6">
 			<div class="mb-4 flex items-center gap-3">
 				<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/15">
 					<i class="fas fa-fire text-lg text-blue-400"></i>
@@ -82,14 +82,14 @@
 			</div>
 
 			<div class="overflow-x-auto">
-				<div class="flex gap-1 pb-4">
+				<div class="flex gap-1 pb-3">
 					{#each heatmapData.data as hour}
 						<div class="flex flex-col items-center gap-2">
 							<div
-								class={`w-8 h-8 rounded transition-all hover:scale-110 cursor-pointer ${getHeatmapColor(hour.messages_count, getMaxValue(heatmapData.data))}`}
+								class={`h-6 w-6 rounded transition-all hover:scale-105 cursor-pointer sm:h-8 sm:w-8 ${getHeatmapColor(hour.messages_count, getMaxValue(heatmapData.data))}`}
 								title={`${formatHour(hour.date_hour)}: ${hour.messages_count} messages, ${hour.active_members} active members`}
 							></div>
-							<span class="text-ash-400 text-xs whitespace-nowrap">{formatHour(hour.date_hour)}</span>
+							<span class="text-ash-400 text-[10px] whitespace-nowrap sm:text-xs">{formatHour(hour.date_hour)}</span>
 						</div>
 					{/each}
 				</div>

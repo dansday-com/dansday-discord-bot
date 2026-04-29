@@ -96,30 +96,30 @@
 			</div>
 		</div>
 	{:else if channelData && channelData.channels.length > 0}
-		<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-5 shadow-lg transition-all sm:p-6">
-			<div class="mb-4 flex items-center justify-between">
+		<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-4 shadow-lg transition-all sm:p-6">
+			<div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 				<div class="flex items-center gap-3">
 					<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-rose-500/15">
 						<i class="fas fa-heartbeat text-lg text-rose-400"></i>
 					</div>
 					<h3 class="text-ash-100 text-base font-bold">Channel Health Metrics</h3>
 				</div>
-				<div class="flex gap-2">
+				<div class="grid grid-cols-3 gap-2 sm:flex">
 					<button
 						on:click={() => (sortBy = 'health')}
-						class={`px-3 py-1 rounded text-xs font-medium transition-all ${sortBy === 'health' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/50' : 'bg-ash-800 text-ash-300 hover:bg-ash-700'}`}
+						class={`rounded px-2.5 py-1.5 text-[11px] font-medium transition-all sm:px-3 sm:text-xs ${sortBy === 'health' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/50' : 'bg-ash-800 text-ash-300 hover:bg-ash-700'}`}
 					>
 						Health
 					</button>
 					<button
 						on:click={() => (sortBy = 'messages')}
-						class={`px-3 py-1 rounded text-xs font-medium transition-all ${sortBy === 'messages' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/50' : 'bg-ash-800 text-ash-300 hover:bg-ash-700'}`}
+						class={`rounded px-2.5 py-1.5 text-[11px] font-medium transition-all sm:px-3 sm:text-xs ${sortBy === 'messages' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/50' : 'bg-ash-800 text-ash-300 hover:bg-ash-700'}`}
 					>
 						Messages
 					</button>
 					<button
 						on:click={() => (sortBy = 'authors')}
-						class={`px-3 py-1 rounded text-xs font-medium transition-all ${sortBy === 'authors' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/50' : 'bg-ash-800 text-ash-300 hover:bg-ash-700'}`}
+						class={`rounded px-2.5 py-1.5 text-[11px] font-medium transition-all sm:px-3 sm:text-xs ${sortBy === 'authors' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/50' : 'bg-ash-800 text-ash-300 hover:bg-ash-700'}`}
 					>
 						Authors
 					</button>

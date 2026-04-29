@@ -60,6 +60,11 @@
 		return num.toLocaleString();
 	}
 
+	function num(value: unknown): number {
+		const parsed = Number(value ?? 0);
+		return Number.isFinite(parsed) ? parsed : 0;
+	}
+
 	function getViewData(): MemberEngagement[] {
 		if (!engagementData) return [];
 		switch (view) {
@@ -126,7 +131,7 @@
 
 			<div class="space-y-2 max-h-96 overflow-y-auto">
 				{#each getViewData() as member, idx}
-					<div class={`rounded-lg p-3 border transition-all ${getEngagementBg(member.engagement_score)}`}>
+					<div class={`rounded-lg p-3 border transition-all ${getEngagementBg(num(member.engagement_score))}`}>
 						<div class="flex items-center justify-between gap-3">
 							<div class="flex items-center gap-3 flex-1 min-w-0">
 								<div class="flex-shrink-0">
@@ -142,30 +147,30 @@
 									<p class="text-ash-100 font-medium truncate">{getDisplayName(member)}</p>
 									<div class="flex flex-wrap gap-1 mt-1">
 										<span class="text-ash-400 text-xs bg-ash-700/50 px-1.5 py-0.5 rounded">
-											<i class="fas fa-comments text-xs mr-0.5"></i>{formatNumber(member.messages_30d)}
+											<i class="fas fa-comments text-xs mr-0.5"></i>{formatNumber(num(member.messages_30d))}
 										</span>
 										<span class="text-ash-400 text-xs bg-ash-700/50 px-1.5 py-0.5 rounded">
-											<i class="fas fa-microphone text-xs mr-0.5"></i>{formatNumber(member.voice_minutes_30d)}m
+											<i class="fas fa-microphone text-xs mr-0.5"></i>{formatNumber(num(member.voice_minutes_30d))}m
 										</span>
 										<span class="text-ash-400 text-xs bg-ash-700/50 px-1.5 py-0.5 rounded">
-											<i class="fas fa-calendar text-xs mr-0.5"></i>{member.days_active_30d}d
+											<i class="fas fa-calendar text-xs mr-0.5"></i>{num(member.days_active_30d)}d
 										</span>
-										{#if member.streak_days > 0}
+										{#if num(member.streak_days) > 0}
 											<span class="text-amber-400 text-xs bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/30">
-												<i class="fas fa-fire text-xs mr-0.5"></i>{member.streak_days} streak
+												<i class="fas fa-fire text-xs mr-0.5"></i>{num(member.streak_days)} streak
 											</span>
 										{/if}
 									</div>
 								</div>
 							</div>
 							<div class="flex flex-col items-end gap-1 flex-shrink-0">
-								<div class={`text-lg font-bold ${getEngagementColor(member.engagement_score)}`}>
-									{member.engagement_score.toFixed(1)}
+								<div class={`text-lg font-bold ${getEngagementColor(num(member.engagement_score))}`}>
+									{num(member.engagement_score).toFixed(1)}
 								</div>
 								<div class="w-12 h-1.5 bg-ash-700 rounded-full overflow-hidden">
 									<div
-										class={`h-full transition-all ${member.engagement_score >= 70 ? 'bg-emerald-500' : member.engagement_score >= 40 ? 'bg-amber-500' : 'bg-red-500'}`}
-										style={`width: ${Math.min(100, member.engagement_score)}%`}
+										class={`h-full transition-all ${num(member.engagement_score) >= 70 ? 'bg-emerald-500' : num(member.engagement_score) >= 40 ? 'bg-amber-500' : 'bg-red-500'}`}
+										style={`width: ${Math.min(100, num(member.engagement_score))}%`}
 									></div>
 								</div>
 							</div>

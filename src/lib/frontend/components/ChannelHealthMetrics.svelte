@@ -59,17 +59,22 @@
 		return num.toLocaleString();
 	}
 
+	function num(value: unknown): number {
+		const parsed = Number(value ?? 0);
+		return Number.isFinite(parsed) ? parsed : 0;
+	}
+
 	function getSortedChannels(): ChannelMetric[] {
 		if (!channelData?.channels) return [];
 		const sorted = [...channelData.channels];
 		switch (sortBy) {
 			case 'messages':
-				return sorted.sort((a, b) => (b.messages_count || 0) - (a.messages_count || 0));
+				return sorted.sort((a, b) => num(b.messages_count) - num(a.messages_count));
 			case 'authors':
-				return sorted.sort((a, b) => (b.unique_authors || 0) - (a.unique_authors || 0));
+				return sorted.sort((a, b) => num(b.unique_authors) - num(a.unique_authors));
 			case 'health':
 			default:
-				return sorted.sort((a, b) => (b.avg_health_score || 0) - (a.avg_health_score || 0));
+				return sorted.sort((a, b) => num(b.avg_health_score) - num(a.avg_health_score));
 		}
 	}
 </script>
@@ -123,7 +128,7 @@
 
 			<div class="space-y-2 max-h-96 overflow-y-auto">
 				{#each getSortedChannels() as channel}
-					<div class={`bg-ash-800/50 rounded-lg p-3 border border-ash-700/50 hover:border-ash-600 transition-all ${getHealthBg(channel.avg_health_score)}`}>
+					<div class={`bg-ash-800/50 rounded-lg p-3 border border-ash-700/50 hover:border-ash-600 transition-all ${getHealthBg(num(channel.avg_health_score))}`}>
 						<div class="flex items-start justify-between gap-3">
 							<div class="flex items-start gap-3 flex-1 min-w-0">
 								<div class="flex h-8 w-8 items-center justify-center rounded bg-ash-700 flex-shrink-0">
@@ -133,27 +138,27 @@
 									<p class="text-ash-100 font-medium truncate">{channel.channel_name}</p>
 									<div class="flex flex-wrap gap-2 mt-1">
 										<span class="text-ash-400 text-xs bg-ash-700/50 px-2 py-0.5 rounded">
-											<i class="fas fa-comments text-xs mr-1"></i>{formatNumber(channel.messages_count || 0)} msgs
+											<i class="fas fa-comments text-xs mr-1"></i>{formatNumber(num(channel.messages_count))} msgs
 										</span>
 										<span class="text-ash-400 text-xs bg-ash-700/50 px-2 py-0.5 rounded">
-											<i class="fas fa-user text-xs mr-1"></i>{formatNumber(channel.unique_authors || 0)} authors
+											<i class="fas fa-user text-xs mr-1"></i>{formatNumber(num(channel.unique_authors))} authors
 										</span>
-										{#if channel.voice_sessions}
+										{#if num(channel.voice_sessions)}
 											<span class="text-ash-400 text-xs bg-ash-700/50 px-2 py-0.5 rounded">
-												<i class="fas fa-microphone text-xs mr-1"></i>{formatNumber(channel.voice_minutes || 0)} min
+												<i class="fas fa-microphone text-xs mr-1"></i>{formatNumber(num(channel.voice_minutes))} min
 											</span>
 										{/if}
 									</div>
 								</div>
 							</div>
 							<div class="flex flex-col items-end gap-1 flex-shrink-0">
-								<div class={`text-lg font-bold ${getHealthColor(channel.avg_health_score)}`}>
-									{(channel.avg_health_score || 0).toFixed(1)}
+								<div class={`text-lg font-bold ${getHealthColor(num(channel.avg_health_score))}`}>
+									{num(channel.avg_health_score).toFixed(1)}
 								</div>
 								<div class="w-16 h-1.5 bg-ash-700 rounded-full overflow-hidden">
 									<div
-										class={`h-full transition-all ${channel.avg_health_score >= 70 ? 'bg-emerald-500' : channel.avg_health_score >= 40 ? 'bg-amber-500' : 'bg-red-500'}`}
-										style={`width: ${Math.min(100, (channel.avg_health_score || 0))}%`}
+										class={`h-full transition-all ${num(channel.avg_health_score) >= 70 ? 'bg-emerald-500' : num(channel.avg_health_score) >= 40 ? 'bg-amber-500' : 'bg-red-500'}`}
+										style={`width: ${Math.min(100, num(channel.avg_health_score))}%`}
 									></div>
 								</div>
 							</div>

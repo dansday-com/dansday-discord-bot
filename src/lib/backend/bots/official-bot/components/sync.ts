@@ -242,6 +242,7 @@ async function init(discordClient, botToken) {
 					if (dbMember) {
 						const memberRoles = member.roles ? Array.from(member.roles.cache.keys()).filter((roleId) => roleId !== member.guild.id) : [];
 						await db.syncMemberRoles(dbMember.id, memberRoles, serverData.id);
+						await db.collectAnalyticsMemberDelta(serverData.id, 1, 0, new Date());
 					}
 				}
 			} catch (error) {
@@ -253,6 +254,14 @@ async function init(discordClient, botToken) {
 
 	client.on('guildMemberRemove', async (member) => {
 		if (member.guild && botId) {
+			try {
+				const serverData = await db.getServerByDiscordId(botId, member.guild.id);
+				if (serverData) {
+					await db.collectAnalyticsMemberDelta(serverData.id, 0, 1, new Date());
+				}
+			} catch (error) {
+				await logger.log(`⚠️ Failed to collect member leave analytics ${member.id}: ${error.message}`);
+			}
 			await syncGuildData(member.guild);
 		}
 	});

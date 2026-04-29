@@ -589,6 +589,8 @@ async function handleMessageCreate(message) {
 			experienceIncrement: xpGained,
 			chatRewardedAt: message.createdAt ? new Date(message.createdAt) : new Date()
 		});
+		const dbChannelId = message.channel?.id ? await db.getServerChannelIdByDiscordId(server.id, message.channel.id) : null;
+		await db.collectAnalyticsMessage(server.id, dbMember.id, dbChannelId, message.createdAt ? new Date(message.createdAt) : new Date());
 
 		await sendXPLogToChannel(message.guild, dbMember, xpGained, 'Chat');
 
@@ -604,7 +606,7 @@ async function handleMessageCreate(message) {
 	}
 }
 
-async function awardVoiceXP(server, dbMember, guildId, reason, previousStats, buckets, mediaFlags) {
+async function awardVoiceXP(server, dbMember, guildId, reason, previousStats, buckets, mediaFlags, channelId: any = null) {
 	const { isAFK, voiceMinutes, videoMinutes, streamMinutes } = buckets;
 	const vm = Math.max(0, Math.floor(Number(voiceMinutes) || 0));
 	const vid = Math.max(0, Math.floor(Number(videoMinutes) || 0));
@@ -629,6 +631,7 @@ async function awardVoiceXP(server, dbMember, guildId, reason, previousStats, bu
 		...(vid > 0 ? { voiceMinutesVideoIncrement: vid } : {}),
 		...(strm > 0 ? { voiceMinutesStreamingIncrement: strm } : {})
 	});
+	await db.collectAnalyticsVoice(server.id, dbMember.id, channelId, vm, !isAFK, new Date());
 
 	const discordGuild = clientInstance?.guilds.cache.get(guildId);
 	if (discordGuild) {
@@ -743,6 +746,7 @@ async function startVoiceSession(state, resumed = false) {
 			await db.updateMemberLevelStats(dbMember.id, { isInVoice: true });
 		}
 
+		const dbChannelId = state.channelId ? await db.getServerChannelIdByDiscordId(server.id, state.channelId) : null;
 		if (resumed && wasMarkedInVoice && lastVoiceMs !== null) {
 			const mVoice = Math.max(0, Math.floor((now - lastVoiceMs) / 60000));
 			const rawVideo = state.selfVideo && dbInVideo && lastVideoMs !== null ? Math.max(0, Math.floor((now - lastVideoMs) / 60000)) : 0;
@@ -762,7 +766,8 @@ async function startVoiceSession(state, resumed = false) {
 						videoMinutes: mVideo,
 						streamMinutes: mStream
 					},
-					mediaFlags
+					mediaFlags,
+					dbChannelId
 				);
 				finalLastRewardedAt = now;
 			}
@@ -779,7 +784,8 @@ async function startVoiceSession(state, resumed = false) {
 					videoMinutes: state.selfVideo ? 1 : 0,
 					streamMinutes: state.streaming ? 1 : 0
 				},
-				mediaFlags
+				mediaFlags,
+				dbChannelId
 			);
 			finalLastRewardedAt = now;
 		}
@@ -880,6 +886,7 @@ async function handleVoiceTick(sessionKey) {
 		const serverInfo = { id: session.serverId, name: session.serverName };
 
 		const mf = { selfVideo: !!voiceState?.selfVideo, streaming: !!voiceState?.streaming };
+		const dbChannelId = session.channelId ? await db.getServerChannelIdByDiscordId(session.serverId, session.channelId) : null;
 		await awardVoiceXP(
 			serverInfo,
 			dbMember,
@@ -892,7 +899,8 @@ async function handleVoiceTick(sessionKey) {
 				videoMinutes: mf.selfVideo ? 1 : 0,
 				streamMinutes: mf.streaming ? 1 : 0
 			},
-			mf
+			mf,
+			dbChannelId
 		);
 		session.lastRewardedAt = now;
 	} catch (error) {

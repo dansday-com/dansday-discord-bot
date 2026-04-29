@@ -23,6 +23,8 @@
 	let loading = true;
 	let error: string | null = null;
 	let sortBy: 'health' | 'messages' | 'authors' = 'health';
+	let page = 1;
+	const ITEMS_PER_PAGE = 10;
 
 	onMount(async () => {
 		try {
@@ -77,6 +79,17 @@
 				return sorted.sort((a, b) => num(b.avg_health_score) - num(a.avg_health_score));
 		}
 	}
+
+	function totalPages(): number {
+		const total = getSortedChannels().length;
+		return Math.max(1, Math.ceil(total / ITEMS_PER_PAGE));
+	}
+
+	function getPagedChannels(): ChannelMetric[] {
+		const sorted = getSortedChannels();
+		const start = (page - 1) * ITEMS_PER_PAGE;
+		return sorted.slice(start, start + ITEMS_PER_PAGE);
+	}
 </script>
 
 <div class="space-y-4">
@@ -106,19 +119,28 @@
 				</div>
 				<div class="grid grid-cols-3 gap-2 sm:flex">
 					<button
-						on:click={() => (sortBy = 'health')}
+						on:click={() => {
+							sortBy = 'health';
+							page = 1;
+						}}
 						class={`rounded px-2.5 py-1.5 text-[11px] font-medium transition-all sm:px-3 sm:text-xs ${sortBy === 'health' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/50' : 'bg-ash-800 text-ash-300 hover:bg-ash-700'}`}
 					>
 						Health
 					</button>
 					<button
-						on:click={() => (sortBy = 'messages')}
+						on:click={() => {
+							sortBy = 'messages';
+							page = 1;
+						}}
 						class={`rounded px-2.5 py-1.5 text-[11px] font-medium transition-all sm:px-3 sm:text-xs ${sortBy === 'messages' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/50' : 'bg-ash-800 text-ash-300 hover:bg-ash-700'}`}
 					>
 						Messages
 					</button>
 					<button
-						on:click={() => (sortBy = 'authors')}
+						on:click={() => {
+							sortBy = 'authors';
+							page = 1;
+						}}
 						class={`rounded px-2.5 py-1.5 text-[11px] font-medium transition-all sm:px-3 sm:text-xs ${sortBy === 'authors' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/50' : 'bg-ash-800 text-ash-300 hover:bg-ash-700'}`}
 					>
 						Authors
@@ -126,8 +148,8 @@
 				</div>
 			</div>
 
-			<div class="space-y-2 max-h-96 overflow-y-auto">
-				{#each getSortedChannels() as channel}
+			<div class="space-y-2">
+				{#each getPagedChannels() as channel}
 					<div class={`bg-ash-800/50 rounded-lg p-3 border border-ash-700/50 hover:border-ash-600 transition-all ${getHealthBg(num(channel.avg_health_score))}`}>
 						<div class="flex items-start justify-between gap-3">
 							<div class="flex items-start gap-3 flex-1 min-w-0">
@@ -166,6 +188,27 @@
 					</div>
 				{/each}
 			</div>
+			{#if totalPages() > 1}
+				<div class="mt-4 flex items-center justify-between gap-2 border-t border-ash-600 pt-3">
+					<button
+						type="button"
+						class="bg-ash-800 text-ash-200 rounded-md px-3 py-1.5 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50"
+						onclick={() => (page = Math.max(1, page - 1))}
+						disabled={page === 1}
+					>
+						<i class="fas fa-chevron-left mr-1 text-[10px]"></i>Previous
+					</button>
+					<span class="text-ash-400 text-xs">Page {page} of {totalPages()}</span>
+					<button
+						type="button"
+						class="bg-ash-800 text-ash-200 rounded-md px-3 py-1.5 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50"
+						onclick={() => (page = Math.min(totalPages(), page + 1))}
+						disabled={page === totalPages()}
+					>
+						Next<i class="fas fa-chevron-right ml-1 text-[10px]"></i>
+					</button>
+				</div>
+			{/if}
 		</div>
 	{:else}
 		<div class="bg-ash-700 border-ash-600 rounded-xl border p-8 text-center">

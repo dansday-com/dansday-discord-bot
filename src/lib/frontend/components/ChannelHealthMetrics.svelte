@@ -24,7 +24,7 @@
 	let error: string | null = null;
 	let sortBy: 'health' | 'messages' | 'authors' = 'health';
 	let page = 1;
-	const ITEMS_PER_PAGE = 10;
+	const ITEMS_PER_PAGE = 20;
 
 	onMount(async () => {
 		try {
@@ -42,12 +42,6 @@
 		if (score >= 70) return 'text-emerald-400';
 		if (score >= 40) return 'text-amber-400';
 		return 'text-red-400';
-	}
-
-	function getHealthBg(score: number): string {
-		if (score >= 70) return 'bg-emerald-500/10';
-		if (score >= 40) return 'bg-amber-500/10';
-		return 'bg-red-500/10';
 	}
 
 	function getChannelIcon(type: string): string {
@@ -90,130 +84,156 @@
 		const start = (page - 1) * ITEMS_PER_PAGE;
 		return sorted.slice(start, start + ITEMS_PER_PAGE);
 	}
+
+	$: sortedCount = channelData?.channels?.length ?? 0;
+	$: tp = totalPages();
+	$: paged = getPagedChannels();
 </script>
 
-<div class="space-y-4">
+<div class="flex flex-col gap-0">
 	{#if loading}
-		<div class="bg-ash-700 border-ash-600 rounded-xl border p-8 text-center">
-			<i class="fas fa-spinner fa-spin text-2xl text-blue-400"></i>
-			<p class="text-ash-300 mt-3">Loading channel metrics...</p>
+		<div class="text-ash-400 py-10 text-center text-sm">
+			<i class="fas fa-spinner fa-spin mr-2 text-cyan-400"></i>Loading channel metrics…
 		</div>
 	{:else if error}
-		<div class="bg-ash-700 border-red-600/50 rounded-xl border p-6">
-			<div class="flex items-center gap-3">
-				<i class="fas fa-exclamation-circle text-lg text-red-400"></i>
-				<div>
-					<h3 class="text-ash-100 font-semibold">Error loading channels</h3>
-					<p class="text-ash-300 text-sm">{error}</p>
-				</div>
-			</div>
+		<div class="text-ash-400 border-ash-600 bg-ash-800/60 rounded-lg border px-4 py-3 text-sm">
+			<p class="text-ash-200 font-medium">Could not load channels</p>
+			<p class="text-ash-500 mt-1 text-xs">{error}</p>
 		</div>
 	{:else if channelData && channelData.channels.length > 0}
-		<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-4 shadow-lg transition-all sm:p-6">
-			<div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-				<div class="flex items-center gap-3">
-					<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-rose-500/15">
-						<i class="fas fa-heartbeat text-lg text-rose-400"></i>
-					</div>
-					<h3 class="text-ash-100 text-base font-bold">Channel Health Metrics</h3>
-				</div>
-				<div class="grid grid-cols-3 gap-2 sm:flex">
-					<button
-						on:click={() => {
-							sortBy = 'health';
-							page = 1;
-						}}
-						class={`rounded px-2.5 py-1.5 text-[11px] font-medium transition-all sm:px-3 sm:text-xs ${sortBy === 'health' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/50' : 'bg-ash-800 text-ash-300 hover:bg-ash-700'}`}
-					>
-						Health
-					</button>
-					<button
-						on:click={() => {
-							sortBy = 'messages';
-							page = 1;
-						}}
-						class={`rounded px-2.5 py-1.5 text-[11px] font-medium transition-all sm:px-3 sm:text-xs ${sortBy === 'messages' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/50' : 'bg-ash-800 text-ash-300 hover:bg-ash-700'}`}
-					>
-						Messages
-					</button>
-					<button
-						on:click={() => {
-							sortBy = 'authors';
-							page = 1;
-						}}
-						class={`rounded px-2.5 py-1.5 text-[11px] font-medium transition-all sm:px-3 sm:text-xs ${sortBy === 'authors' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/50' : 'bg-ash-800 text-ash-300 hover:bg-ash-700'}`}
-					>
-						Authors
-					</button>
-				</div>
+		<div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+			<p class="text-ash-500 text-xs">
+				{sortedCount} channel{sortedCount !== 1 ? 's' : ''}
+			</p>
+			<div class="grid w-full grid-cols-3 gap-2 sm:w-auto sm:flex sm:justify-end">
+				<button
+					type="button"
+					onclick={() => {
+						sortBy = 'health';
+						page = 1;
+					}}
+					class={`rounded-lg px-3 py-2 text-xs font-medium transition-all sm:text-sm ${sortBy === 'health' ? 'bg-blue-500/20 text-blue-300 ring-1 ring-blue-500/50' : 'bg-ash-800 border-ash-700 text-ash-300 hover:bg-ash-700 border'}`}
+				>
+					Health
+				</button>
+				<button
+					type="button"
+					onclick={() => {
+						sortBy = 'messages';
+						page = 1;
+					}}
+					class={`rounded-lg px-3 py-2 text-xs font-medium transition-all sm:text-sm ${sortBy === 'messages' ? 'bg-blue-500/20 text-blue-300 ring-1 ring-blue-500/50' : 'bg-ash-800 border-ash-700 text-ash-300 hover:bg-ash-700 border'}`}
+				>
+					Messages
+				</button>
+				<button
+					type="button"
+					onclick={() => {
+						sortBy = 'authors';
+						page = 1;
+					}}
+					class={`rounded-lg px-3 py-2 text-xs font-medium transition-all sm:text-sm ${sortBy === 'authors' ? 'bg-blue-500/20 text-blue-300 ring-1 ring-blue-500/50' : 'bg-ash-800 border-ash-700 text-ash-300 hover:bg-ash-700 border'}`}
+				>
+					Authors
+				</button>
 			</div>
+		</div>
 
-			<div class="space-y-2">
-				{#each getPagedChannels() as channel}
-					<div class={`bg-ash-800/50 rounded-lg p-3 border border-ash-700/50 hover:border-ash-600 transition-all ${getHealthBg(num(channel.avg_health_score))}`}>
-						<div class="flex items-start justify-between gap-3">
-							<div class="flex items-start gap-3 flex-1 min-w-0">
-								<div class="flex h-8 w-8 items-center justify-center rounded bg-ash-700 flex-shrink-0">
-									<i class={`fas ${getChannelIcon(channel.channel_type)} text-xs text-ash-400`}></i>
+		{#if paged.length === 0}
+			<div class="text-ash-400 py-10 text-center text-sm">No channels found</div>
+		{:else}
+			<div class="mb-4 space-y-3">
+				{#each paged as channel (channel.channel_id)}
+					<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-4 shadow-lg transition-all sm:p-5">
+						<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+							<div class="flex min-w-0 flex-1 items-start gap-3">
+								<div class="border-ash-600 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border bg-ash-800">
+									<i class={`fas ${getChannelIcon(channel.channel_type)} text-sm text-ash-300`}></i>
 								</div>
 								<div class="min-w-0 flex-1">
-									<p class="text-ash-100 font-medium truncate">{channel.channel_name}</p>
-									<div class="flex flex-wrap gap-2 mt-1">
-										<span class="text-ash-400 text-xs bg-ash-700/50 px-2 py-0.5 rounded">
-											<i class="fas fa-comments text-xs mr-1"></i>{formatNumber(num(channel.messages_count))} msgs
-										</span>
-										<span class="text-ash-400 text-xs bg-ash-700/50 px-2 py-0.5 rounded">
-											<i class="fas fa-user text-xs mr-1"></i>{formatNumber(num(channel.unique_authors))} authors
-										</span>
-										{#if num(channel.voice_sessions)}
-											<span class="text-ash-400 text-xs bg-ash-700/50 px-2 py-0.5 rounded">
-												<i class="fas fa-microphone text-xs mr-1"></i>{formatNumber(num(channel.voice_minutes))} min
-											</span>
-										{/if}
+									<h4 class="text-ash-100 truncate text-base font-bold sm:text-lg">
+										{channel.channel_name || 'Unnamed channel'}
+									</h4>
+									<div class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+										<div class="bg-ash-800 border-ash-600 flex items-center gap-2 rounded-lg border p-2">
+											<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/20">
+												<i class="fas fa-comments text-xs text-emerald-400"></i>
+											</div>
+											<div class="min-w-0">
+												<div class="text-ash-400 text-[0.6rem] uppercase tracking-wide">Messages</div>
+												<div class="text-ash-100 text-sm font-bold">{formatNumber(num(channel.messages_count))}</div>
+											</div>
+										</div>
+										<div class="bg-ash-800 border-ash-600 flex items-center gap-2 rounded-lg border p-2">
+											<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/20">
+												<i class="fas fa-user text-xs text-sky-400"></i>
+											</div>
+											<div class="min-w-0">
+												<div class="text-ash-400 text-[0.6rem] uppercase tracking-wide">Authors</div>
+												<div class="text-ash-100 text-sm font-bold">{formatNumber(num(channel.unique_authors))}</div>
+											</div>
+										</div>
+										<div class="bg-ash-800 border-ash-600 flex items-center gap-2 rounded-lg border p-2">
+											<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/20">
+												<i class="fas fa-headphones text-xs text-violet-400"></i>
+											</div>
+											<div class="min-w-0">
+												<div class="text-ash-400 text-[0.6rem] uppercase tracking-wide">Voice sessions</div>
+												<div class="text-ash-100 text-sm font-bold">{formatNumber(num(channel.voice_sessions))}</div>
+											</div>
+										</div>
+										<div class="bg-ash-800 border-ash-600 flex items-center gap-2 rounded-lg border p-2">
+											<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-cyan-500/20">
+												<i class="fas fa-microphone text-xs text-cyan-400"></i>
+											</div>
+											<div class="min-w-0">
+												<div class="text-ash-400 text-[0.6rem] uppercase tracking-wide">Voice min</div>
+												<div class="text-ash-100 text-sm font-bold">{formatNumber(num(channel.voice_minutes))}</div>
+											</div>
+										</div>
 									</div>
 								</div>
 							</div>
-							<div class="flex flex-col items-end gap-1 flex-shrink-0">
-								<div class={`text-lg font-bold ${getHealthColor(num(channel.avg_health_score))}`}>
+							<div class="flex shrink-0 flex-col items-end gap-2 sm:pt-1">
+								<div class={`text-2xl font-bold ${getHealthColor(num(channel.avg_health_score))}`}>
 									{num(channel.avg_health_score).toFixed(1)}
 								</div>
-								<div class="w-16 h-1.5 bg-ash-700 rounded-full overflow-hidden">
+								<div class="bg-ash-800 h-2 w-28 max-w-full overflow-hidden rounded-full">
 									<div
 										class={`h-full transition-all ${num(channel.avg_health_score) >= 70 ? 'bg-emerald-500' : num(channel.avg_health_score) >= 40 ? 'bg-amber-500' : 'bg-red-500'}`}
 										style={`width: ${Math.min(100, num(channel.avg_health_score))}%`}
 									></div>
 								</div>
+								<span class="text-ash-500 text-[0.65rem] uppercase tracking-wide">Health</span>
 							</div>
 						</div>
 					</div>
 				{/each}
 			</div>
-			{#if totalPages() > 1}
-				<div class="mt-4 flex items-center justify-between gap-2 border-t border-ash-600 pt-3">
+
+			{#if tp > 1}
+				<div class="flex items-center justify-between">
 					<button
 						type="button"
-						class="bg-ash-800 text-ash-200 rounded-md px-3 py-1.5 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50"
 						onclick={() => (page = Math.max(1, page - 1))}
 						disabled={page === 1}
+						class="bg-ash-800 border-ash-700 hover:bg-ash-700 text-ash-200 flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40"
 					>
-						<i class="fas fa-chevron-left mr-1 text-[10px]"></i>Previous
+						<i class="fas fa-chevron-left text-xs text-violet-300"></i>Previous
 					</button>
-					<span class="text-ash-400 text-xs">Page {page} of {totalPages()}</span>
+					<span class="text-ash-400 text-sm">Page {page} of {tp}</span>
 					<button
 						type="button"
-						class="bg-ash-800 text-ash-200 rounded-md px-3 py-1.5 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50"
-						onclick={() => (page = Math.min(totalPages(), page + 1))}
-						disabled={page === totalPages()}
+						onclick={() => (page = Math.min(tp, page + 1))}
+						disabled={page === tp}
+						class="bg-ash-800 border-ash-700 hover:bg-ash-700 text-ash-200 flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40"
 					>
-						Next<i class="fas fa-chevron-right ml-1 text-[10px]"></i>
+						Next<i class="fas fa-chevron-right text-xs text-violet-300"></i>
 					</button>
 				</div>
 			{/if}
-		</div>
+		{/if}
 	{:else}
-		<div class="bg-ash-700 border-ash-600 rounded-xl border p-8 text-center">
-			<i class="fas fa-chart-bar text-2xl text-ash-500"></i>
-			<p class="text-ash-300 mt-3">No channel data available yet</p>
-		</div>
+		<div class="text-ash-400 py-10 text-center text-sm">No channel data available yet</div>
 	{/if}
 </div>

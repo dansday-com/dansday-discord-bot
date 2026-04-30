@@ -21,13 +21,17 @@
 		all_members: MemberEngagement[];
 	}
 
-	export let serverId: number;
+	interface Props {
+		serverId: number;
+	}
 
-	let engagementData: EngagementData | null = null;
-	let loading = true;
-	let error: string | null = null;
-	let view: 'top' | 'low' | 'all' = 'top';
-	let page = 1;
+	let { serverId }: Props = $props();
+
+	let engagementData = $state<EngagementData | null>(null);
+	let loading = $state(true);
+	let error = $state<string | null>(null);
+	let view = $state<'top' | 'low' | 'all'>('top');
+	let page = $state(1);
 	const ITEMS_PER_PAGE = 20;
 
 	onMount(async () => {
@@ -61,7 +65,7 @@
 		return Number.isFinite(parsed) ? parsed : 0;
 	}
 
-	function getViewData(): MemberEngagement[] {
+	const viewRows = $derived.by((): MemberEngagement[] => {
 		if (!engagementData) return [];
 		switch (view) {
 			case 'low':
@@ -72,18 +76,13 @@
 			default:
 				return engagementData.top_engaged;
 		}
-	}
+	});
 
-	function totalPages(): number {
-		const total = getViewData().length;
-		return Math.max(1, Math.ceil(total / ITEMS_PER_PAGE));
-	}
+	const viewCount = $derived(viewRows.length);
 
-	function getPagedData(): MemberEngagement[] {
-		const data = getViewData();
-		const start = (page - 1) * ITEMS_PER_PAGE;
-		return data.slice(start, start + ITEMS_PER_PAGE);
-	}
+	const tp = $derived(Math.max(1, Math.ceil(viewRows.length / ITEMS_PER_PAGE)));
+
+	const paged = $derived(viewRows.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE));
 
 	function avatarSrc(member: MemberEngagement): string {
 		return (
@@ -91,10 +90,6 @@
 			`https://cdn.discordapp.com/embed/avatars/${Number(member.member_id) % 5 || 0}.png`
 		);
 	}
-
-	$: viewCount = getViewData().length;
-	$: tp = totalPages();
-	$: paged = getPagedData();
 </script>
 
 <div class="flex flex-col gap-0">
@@ -162,7 +157,7 @@
 			<div class="text-ash-400 py-10 text-center text-sm">No members in this view</div>
 		{:else}
 			<div class="mb-4 space-y-3">
-				{#each paged as member (member.member_id)}
+				{#each paged as member, i (member.member_id ?? `m-${i}`)}
 					<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-4 shadow-lg transition-all sm:p-5">
 						<div class="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
 							<div class="relative shrink-0">

@@ -17,13 +17,17 @@
 		channels: ChannelMetric[];
 	}
 
-	export let serverId: number;
+	interface Props {
+		serverId: number;
+	}
 
-	let channelData: ChannelAnalytics | null = null;
-	let loading = true;
-	let error: string | null = null;
-	let sortBy: 'health' | 'messages' | 'authors' = 'health';
-	let page = 1;
+	let { serverId }: Props = $props();
+
+	let channelData = $state<ChannelAnalytics | null>(null);
+	let loading = $state(true);
+	let error = $state<string | null>(null);
+	let sortBy = $state<'health' | 'messages' | 'authors'>('health');
+	let page = $state(1);
 	const ITEMS_PER_PAGE = 20;
 
 	onMount(async () => {
@@ -51,8 +55,8 @@
 		return 'fa-hashtag';
 	}
 
-	function formatNumber(num: number): string {
-		return num.toLocaleString();
+	function formatNumber(n: number): string {
+		return n.toLocaleString();
 	}
 
 	function num(value: unknown): number {
@@ -60,34 +64,30 @@
 		return Number.isFinite(parsed) ? parsed : 0;
 	}
 
-	function getSortedChannels(): ChannelMetric[] {
-		if (!channelData?.channels) return [];
-		const sorted = [...channelData.channels];
+	const sortedCount = $derived(channelData?.channels?.length ?? 0);
+
+	const sortedChannels = $derived.by(() => {
+		const list = channelData?.channels;
+		if (!list?.length) return [];
+		const sorted = [...list];
 		switch (sortBy) {
 			case 'messages':
-				return sorted.sort((a, b) => num(b.messages_count) - num(a.messages_count));
+				sorted.sort((a, b) => num(b.messages_count) - num(a.messages_count));
+				break;
 			case 'authors':
-				return sorted.sort((a, b) => num(b.unique_authors) - num(a.unique_authors));
+				sorted.sort((a, b) => num(b.unique_authors) - num(a.unique_authors));
+				break;
 			case 'health':
 			default:
-				return sorted.sort((a, b) => num(b.avg_health_score) - num(a.avg_health_score));
+				sorted.sort((a, b) => num(b.avg_health_score) - num(a.avg_health_score));
+				break;
 		}
-	}
+		return sorted;
+	});
 
-	function totalPages(): number {
-		const total = getSortedChannels().length;
-		return Math.max(1, Math.ceil(total / ITEMS_PER_PAGE));
-	}
+	const tp = $derived(Math.max(1, Math.ceil(sortedChannels.length / ITEMS_PER_PAGE)));
 
-	function getPagedChannels(): ChannelMetric[] {
-		const sorted = getSortedChannels();
-		const start = (page - 1) * ITEMS_PER_PAGE;
-		return sorted.slice(start, start + ITEMS_PER_PAGE);
-	}
-
-	$: sortedCount = channelData?.channels?.length ?? 0;
-	$: tp = totalPages();
-	$: paged = getPagedChannels();
+	const paged = $derived(sortedChannels.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE));
 </script>
 
 <div class="flex flex-col gap-0">
@@ -143,7 +143,7 @@
 			<div class="text-ash-400 py-10 text-center text-sm">No channels found</div>
 		{:else}
 			<div class="mb-4 space-y-3">
-				{#each paged as channel (channel.channel_id)}
+				{#each paged as channel, i (channel.channel_id ?? `ch-${i}`)}
 					<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-4 shadow-lg transition-all sm:p-5">
 						<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 							<div class="flex min-w-0 flex-1 items-start gap-3">

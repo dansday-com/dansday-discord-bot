@@ -1589,7 +1589,7 @@ export async function getPanelOverview(panelId: number) {
 		}
 
 		const uptimeResult = await db.execute(sql`
-            SELECT SUM(TIMESTAMPDIFF(SECOND, uptime_started_at, UTC_TIMESTAMP())) * 1000 as uptime_ms
+            SELECT SUM(TIMESTAMPDIFF(SECOND, sb.uptime_started_at, UTC_TIMESTAMP())) * 1000 as uptime_ms
             FROM server_bots sb
             JOIN servers s ON sb.server_id = s.id
             JOIN bots b ON s.bot_id = b.id

@@ -210,6 +210,10 @@ function normalizeRankValue(value) {
 	if (value === null || value === undefined) {
 		return null;
 	}
+	if (typeof value === 'bigint') {
+		const n = Number(value);
+		return Number.isFinite(n) && n > 0 ? n : null;
+	}
 	if (typeof value === 'number') {
 		return Number.isFinite(value) && value > 0 ? value : null;
 	}
@@ -457,9 +461,15 @@ async function handleLevelEvaluation(server, dbMember, currentStats, guildId, co
 	}
 
 	const { previousLevel = null, previousExperience = null, previousRank: contextPreviousRank = null, reason = 'unknown' } = context;
-	const expectedLevel = await determineLevel(currentStats.experience || 0, guildId);
+	const rawXp = currentStats.experience ?? 0;
+	const experienceForLevel =
+		typeof rawXp === 'bigint' ? Number(rawXp) : typeof rawXp === 'string' ? parseFloat(rawXp) || 0 : Number(rawXp) || 0;
+	const expectedLevel = await determineLevel(experienceForLevel, guildId);
 
 	let storedLevel = currentStats.level;
+	if (typeof storedLevel === 'bigint') {
+		storedLevel = Number(storedLevel);
+	}
 	if (typeof storedLevel === 'string') {
 		const parsed = parseInt(storedLevel, 10);
 		storedLevel = Number.isNaN(parsed) ? null : parsed;
@@ -469,6 +479,20 @@ async function handleLevelEvaluation(server, dbMember, currentStats, guildId, co
 
 	const baselineLevel = await deriveBaselineLevel({ previousLevel, previousExperience, storedLevel }, guildId);
 	const normalizedPreviousRank = normalizeRankValue(contextPreviousRank);
+
+	let finalStats = currentStats;
+	if (storedLevel !== expectedLevel) {
+		const updatedStats = await db.updateMemberLevelStats(dbMember.id, { level: expectedLevel });
+		if (updatedStats) {
+			finalStats = updatedStats;
+			let lv = updatedStats.level;
+			if (typeof lv === 'bigint') lv = Number(lv);
+			storedLevel = typeof lv === 'number' && !Number.isNaN(lv) ? lv : expectedLevel;
+		}
+		const memberName = dbMember.display_name || dbMember.username || dbMember.discord_member_id || 'Unknown member';
+		await logger.log(`⭐ Level stored update (${reason}): ${memberName} -> level ${expectedLevel} in ${server.name}`);
+	}
+
 	let memberLevelSnapshot = null;
 	let currentRank = null;
 	if (dbMember.discord_member_id) {
@@ -477,17 +501,6 @@ async function handleLevelEvaluation(server, dbMember, currentStats, guildId, co
 		currentRank = normalizeRankValue(memberLevelSnapshot?.rank);
 	}
 	const rankImproved = normalizedPreviousRank !== null && currentRank !== null && currentRank < normalizedPreviousRank;
-
-	let finalStats = currentStats;
-	if (storedLevel !== expectedLevel) {
-		const updatedStats = await db.updateMemberLevelStats(dbMember.id, { level: expectedLevel });
-		if (updatedStats) {
-			finalStats = updatedStats;
-			storedLevel = updatedStats.level ?? expectedLevel;
-		}
-		const memberName = dbMember.display_name || dbMember.username || dbMember.discord_member_id || 'Unknown member';
-		await logger.log(`⭐ Level stored update (${reason}): ${memberName} -> level ${expectedLevel} in ${server.name}`);
-	}
 
 	const dmPreference = finalStats?.dm_notifications_enabled;
 	const notificationsEnabled = !(dmPreference === false || dmPreference === 0);

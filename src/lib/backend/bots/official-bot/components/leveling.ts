@@ -14,6 +14,7 @@ import db from '../../../../database.js';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../utils/index.js';
 import { getRedisClient } from '../../../../redis.js';
+import { applyAwardEffects, creditLeechers } from './shop.js';
 
 const recentMessages = new Map();
 
@@ -615,14 +616,16 @@ async function handleMessageCreate(message) {
 
 		await db.ensureMemberLevel(dbMember.id);
 		const previousStats = await db.getMemberLevel(dbMember.id);
-		const xpGained = await getExperienceForMessage(guildId);
+		const baseXp = await getExperienceForMessage(guildId);
+		const { memberXp, leechCredits } = await applyAwardEffects(dbMember.id, baseXp, 'message');
 		const stats = await db.updateMemberLevelStats(dbMember.id, {
 			chatIncrement: 1,
-			experienceIncrement: xpGained,
+			experienceIncrement: memberXp,
 			chatRewardedAt: message.createdAt ? new Date(message.createdAt) : new Date()
 		});
+		await creditLeechers(leechCredits, guildId);
 
-		await sendXPLogToChannel(message.guild, dbMember, xpGained, 'Chat');
+		await sendXPLogToChannel(message.guild, dbMember, memberXp, 'Chat');
 
 		await handleLevelEvaluation(server, dbMember, stats, message.guild.id, {
 			previousLevel: previousStats?.level ?? null,
@@ -646,7 +649,8 @@ async function awardVoiceXP(server, dbMember, guildId, reason, previousStats, bu
 	const baseXp = await getExperienceForVoiceMinutes(vm, isAFK, guildId);
 	const videoXp = await getVideoXpForVoiceTick(vid, guildId);
 	const streamXp = await getStreamingXpForVoiceTick(strm, guildId);
-	const xpGained = baseXp + videoXp + streamXp;
+	const rawXpGained = baseXp + videoXp + streamXp;
+	const { memberXp: xpGained, leechCredits } = await applyAwardEffects(dbMember.id, rawXpGained, 'voice');
 
 	const stats = await db.updateMemberLevelStats(dbMember.id, {
 		experienceIncrement: xpGained,
@@ -660,6 +664,7 @@ async function awardVoiceXP(server, dbMember, guildId, reason, previousStats, bu
 		...(vid > 0 ? { voiceMinutesVideoIncrement: vid } : {}),
 		...(strm > 0 ? { voiceMinutesStreamingIncrement: strm } : {})
 	});
+	await creditLeechers(leechCredits, guildId);
 
 	const discordGuild = clientInstance?.guilds.cache.get(guildId);
 	if (discordGuild) {

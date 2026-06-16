@@ -370,6 +370,7 @@ export const serverMemberLevels = mysqlTable(
 		voice_minutes_video: int('voice_minutes_video').default(0),
 		voice_minutes_streaming: int('voice_minutes_streaming').default(0),
 		experience: int('experience').default(0),
+		vault_xp: int('vault_xp').notNull().default(0),
 		level: int('level').default(1),
 		dm_notifications_enabled: boolean('dm_notifications_enabled').default(true),
 		is_in_voice: boolean('is_in_voice').default(false),
@@ -757,3 +758,113 @@ export const accountServerAccess = mysqlTable('account_server_access', {
 	role: mysqlEnum('role', ['owner', 'staff']).notNull(),
 	created_at: datetime('created_at').notNull()
 });
+
+export const botItems = mysqlTable(
+	'bot_items',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		bot_id: int('bot_id')
+			.notNull()
+			.references(() => bots.id, { onDelete: 'cascade' }),
+		name: varchar('name', { length: 150 }).notNull(),
+		effect_type: varchar('effect_type', { length: 32 }).notNull(),
+		category: varchar('category', { length: 16 }).notNull(),
+		description: text('description'),
+		cost: int('cost').notNull().default(0),
+		config: json('config').notNull().default({}),
+		icon: varchar('icon', { length: 255 }),
+		enabled: boolean('enabled').notNull().default(true),
+		available_from: datetime('available_from'),
+		available_to: datetime('available_to'),
+		recurring_schedule: json('recurring_schedule'),
+		sort_order: int('sort_order').notNull().default(0),
+		created_at: datetime('created_at').notNull(),
+		updated_at: datetime('updated_at').notNull()
+	},
+	(t) => [index('idx_bot_items_bot_id').on(t.bot_id), index('idx_bot_items_enabled').on(t.bot_id, t.enabled)]
+);
+
+export const serverMemberItems = mysqlTable(
+	'server_member_items',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		member_id: int('member_id')
+			.notNull()
+			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		item_id: int('item_id')
+			.notNull()
+			.references(() => botItems.id, { onDelete: 'cascade' }),
+		quantity: int('quantity').notNull().default(1),
+		acquired_at: datetime('acquired_at').notNull(),
+		created_at: datetime('created_at').notNull(),
+		updated_at: datetime('updated_at').notNull()
+	},
+	(t) => [uniqueIndex('unique_server_member_item').on(t.member_id, t.item_id), index('idx_server_member_items_member').on(t.member_id)]
+);
+
+export const serverMemberItemActives = mysqlTable(
+	'server_member_item_actives',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		member_item_id: int('member_item_id')
+			.notNull()
+			.references(() => serverMemberItems.id, { onDelete: 'cascade' }),
+		magnitude: decimal('magnitude', { precision: 6, scale: 2 }).notNull().default('0'),
+		source_member_id: int('source_member_id').references(() => serverMembers.id, { onDelete: 'set null' }),
+		expires_at: datetime('expires_at').notNull(),
+		created_at: datetime('created_at').notNull()
+	},
+	(t) => [
+		index('idx_server_member_item_actives_active').on(t.member_item_id, t.expires_at),
+		index('idx_server_member_item_actives_source').on(t.source_member_id, t.expires_at)
+	]
+);
+
+export const serverMemberItemLogs = mysqlTable(
+	'server_member_item_logs',
+	{
+		id: bigint('id', { mode: 'bigint' }).primaryKey().autoincrement(),
+		member_item_id: int('member_item_id')
+			.notNull()
+			.references(() => serverMemberItems.id, { onDelete: 'cascade' }),
+		target_member_id: int('target_member_id').references(() => serverMembers.id, { onDelete: 'set null' }),
+		action: varchar('action', { length: 32 }).notNull(),
+		xp_amount: int('xp_amount').notNull().default(0),
+		outcome: varchar('outcome', { length: 16 }).notNull(),
+		created_at: datetime('created_at').notNull()
+	},
+	(t) => [
+		index('idx_server_member_item_logs_item').on(t.member_item_id, t.created_at),
+		index('idx_server_member_item_logs_target').on(t.target_member_id, t.created_at)
+	]
+);
+
+export const serverMemberBounties = mysqlTable(
+	'server_member_bounties',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		target_member_id: int('target_member_id')
+			.notNull()
+			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		placed_by_member_id: int('placed_by_member_id').references(() => serverMembers.id, { onDelete: 'set null' }),
+		amount: int('amount').notNull().default(0),
+		collected: boolean('collected').notNull().default(false),
+		created_at: datetime('created_at').notNull()
+	},
+	(t) => [index('idx_server_member_bounties_target').on(t.target_member_id, t.collected)]
+);
+
+export const serverMemberCosmetics = mysqlTable(
+	'server_member_cosmetics',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		member_id: int('member_id')
+			.notNull()
+			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		cosmetic_kind: varchar('cosmetic_kind', { length: 16 }).notNull(),
+		value: varchar('value', { length: 64 }).notNull(),
+		item_id: int('item_id').references(() => botItems.id, { onDelete: 'set null' }),
+		created_at: datetime('created_at').notNull()
+	},
+	(t) => [uniqueIndex('unique_member_cosmetic_kind').on(t.member_id, t.cosmetic_kind), index('idx_server_member_cosmetics_member').on(t.member_id)]
+);

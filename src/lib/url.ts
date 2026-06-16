@@ -7,7 +7,7 @@ export function publicServerPath(slug: string): string {
 	return `/server/${encodeURIComponent(slug)}`;
 }
 
-export function publicServerUrl(slug: string, page?: 'leaderboard' | 'members'): string | null {
+export function publicServerUrl(slug: string, page?: 'leaderboard' | 'members' | 'shop'): string | null {
 	const origin = publicSiteOrigin();
 	if (!origin || !slug) return null;
 	return origin + publicServerPath(slug) + (page ? `/${page}` : '');

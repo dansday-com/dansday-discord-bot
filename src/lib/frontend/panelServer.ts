@@ -131,6 +131,14 @@ const REGISTRY = [
 		hrefSuffix: '/public-statistics',
 		icon: 'fa-chart-pie',
 		iconClass: 'text-amber-400'
+	},
+	{
+		id: 'shop',
+		label: 'Shop',
+		featureSwitch: true,
+		hrefSuffix: '/shop',
+		icon: 'fa-store',
+		iconClass: 'text-teal-400'
 	}
 ] as const;
 

@@ -548,6 +548,28 @@ async function handleWebhookRequest(req, res) {
 						res.writeHead(500, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify({ error: 'sync_component_runtime failed', details: runtimeErr.message }));
 					}
+				} else if (payload.type === 'use_item') {
+					try {
+						const { handleShopItemUse } = await import('./shop.js');
+						const result = await handleShopItemUse(client, payload);
+						res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify(result));
+					} catch (shopErr: any) {
+						await logger.log(`❌ use_item failed: ${shopErr.message}`);
+						res.writeHead(500, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify({ ok: false, error: 'use_item failed', details: shopErr.message }));
+					}
+				} else if (payload.type === 'buy_item') {
+					try {
+						const { handleShopItemBuy } = await import('./shop.js');
+						const result = await handleShopItemBuy(client, payload);
+						res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify(result));
+					} catch (shopErr: any) {
+						await logger.log(`❌ buy_item failed: ${shopErr.message}`);
+						res.writeHead(500, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify({ ok: false, error: 'buy_item failed', details: shopErr.message }));
+					}
 				} else {
 					await logger.log(`❌ Invalid payload format: ${JSON.stringify(payload)}`);
 					res.writeHead(400, { 'Content-Type': 'application/json' });

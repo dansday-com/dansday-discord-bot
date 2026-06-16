@@ -2742,6 +2742,20 @@
 	white-space: nowrap;
 }
 
+.mc-cosmetic-badge {
+	margin-left: 6px;
+	font-size: 18px;
+	vertical-align: middle;
+}
+
+.mc-cosmetic-title {
+	font-size: 12px;
+	font-weight: 600;
+	font-style: italic;
+	color: var(--lb-muted, #9aa7b2);
+	margin: -4px 0 8px;
+}
+
 .mc-role-badge {
 	display: inline-flex;
 	align-items: center;

@@ -5,7 +5,9 @@
 		"noAccess": "❌ Kamu tidak memiliki akses ke fitur apa pun.",
 		"button": "📋 Menu",
 		"statistics": "🌐 Statistik",
-		"memberCard": "💳 Kartu Member"
+		"memberCard": "💳 Kartu Member",
+		"shop": "🛒 Toko",
+		"inventory": "🎒 Inventaris"
 	},
 	"interface": {
 		"panel": {

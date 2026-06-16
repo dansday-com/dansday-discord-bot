@@ -13,8 +13,29 @@ import {
 import db from '../../../../database.js';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../utils/index.js';
+import { getRedisClient } from '../../../../redis.js';
 
 const recentMessages = new Map();
+
+async function claimMessageCooldown(cooldownKey, cooldownMs) {
+	if (cooldownMs <= 0) return true;
+
+	const redis = await getRedisClient().catch(() => null);
+	if (redis) {
+		try {
+			const res = await redis.set(`lvl:msgcd:${cooldownKey}`, '1', { NX: true, PX: cooldownMs });
+			return res === 'OK';
+		} catch (error) {
+			await logger.log(`⚠️ Leveling cooldown Redis error, falling back to memory: ${error.message}`);
+		}
+	}
+
+	const now = Date.now();
+	const lastMessageAt = recentMessages.get(cooldownKey);
+	if (lastMessageAt && now - lastMessageAt < cooldownMs) return false;
+	recentMessages.set(cooldownKey, now);
+	return true;
+}
 const voiceSessions = new Map();
 let clientInstance = null;
 
@@ -572,13 +593,11 @@ async function handleMessageCreate(message) {
 		if (!message?.guild || message.author?.bot) return;
 		if (!(await isComponentFeatureEnabled(message.guild.id, serverSettingsComponent.leveling))) return;
 
-		const now = Date.now();
 		const cooldownKey = `${message.guild.id}:${message.author.id}`;
-		const lastMessageAt = recentMessages.get(cooldownKey);
 		const guildId = message.guild.id;
 
 		const messageCooldownMs = await getMessageCooldownMs(guildId);
-		if (messageCooldownMs > 0 && lastMessageAt && now - lastMessageAt < messageCooldownMs) {
+		if (!(await claimMessageCooldown(cooldownKey, messageCooldownMs))) {
 			return;
 		}
 
@@ -611,7 +630,6 @@ async function handleMessageCreate(message) {
 			previousRank: previousStats?.rank ?? null,
 			reason: 'message'
 		});
-		recentMessages.set(cooldownKey, now);
 	} catch (error) {
 		await logger.log(`❌ Leveling message handler error: ${error.message}`);
 	}

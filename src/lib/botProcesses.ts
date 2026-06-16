@@ -297,13 +297,16 @@ export async function stopBotById(botId: number, bot?: any): Promise<{ success: 
 
 	const botInfo = botProcesses.get(mapKey);
 
+	const scriptName = bot && isSelfbot(bot) ? 'selfbot.js' : 'officialbot.js';
+
 	if (!botInfo || !botInfo.process) {
-		if (botInfo && botInfo.pid) {
+		if (botInfo && botInfo.pid && pidMatchesBotScript(botInfo.pid, scriptName)) {
+			const adoptedPid = botInfo.pid;
 			try {
-				process.kill(botInfo.pid, 'SIGINT');
+				process.kill(adoptedPid, 'SIGINT');
 				setTimeout(() => {
 					try {
-						if (botInfo.pid) process.kill(botInfo.pid, 'SIGKILL');
+						if (pidMatchesBotScript(adoptedPid, scriptName)) process.kill(adoptedPid, 'SIGKILL');
 					} catch (_) {}
 				}, 2000);
 				botProcesses.delete(mapKey);
@@ -336,16 +339,23 @@ export async function stopBotById(botId: number, bot?: any): Promise<{ success: 
 		return { success: false, error: 'Bot is not running' };
 	}
 
-	if (botInfo.process && !(botInfo.process as any).killed && (botInfo.process as any).exitCode === null) {
+	const childProcess = botInfo.process;
+	const childPid = botInfo.pid;
+
+	if (childProcess && !(childProcess as any).killed && (childProcess as any).exitCode === null) {
 		try {
-			botInfo.process.kill('SIGINT');
+			childProcess.kill('SIGINT');
 		} catch (_) {}
 	}
 
 	setTimeout(() => {
-		if (botInfo.process && !(botInfo.process as any).killed && (botInfo.process as any).exitCode === null) {
+		if (childProcess && !(childProcess as any).killed && (childProcess as any).exitCode === null) {
 			try {
-				botInfo.process.kill('SIGKILL');
+				childProcess.kill('SIGKILL');
+			} catch (_) {}
+		} else if (childPid && pidMatchesBotScript(childPid, scriptName)) {
+			try {
+				process.kill(childPid, 'SIGKILL');
 			} catch (_) {}
 		}
 	}, 2000);
@@ -369,12 +379,48 @@ export async function stopBotById(botId: number, bot?: any): Promise<{ success: 
 	return { success: true };
 }
 
+function pidMatchesBotScript(pid: number, scriptName: string): boolean {
+	try {
+		const cmdline = readFileSync(`/proc/${pid}/cmdline`, 'utf8').replace(/\0/g, ' ');
+		return cmdline.includes(scriptName);
+	} catch (_) {
+		return false;
+	}
+}
+
+async function waitForProcessExit(pid: number, scriptName: string, timeoutMs: number): Promise<void> {
+	const deadline = Date.now() + timeoutMs;
+	while (Date.now() < deadline) {
+		if (!pidMatchesBotScript(pid, scriptName)) {
+			return;
+		}
+		await new Promise((resolve) => setTimeout(resolve, 200));
+	}
+	if (pidMatchesBotScript(pid, scriptName)) {
+		try {
+			process.kill(pid, 'SIGKILL');
+		} catch (_) {}
+	}
+}
+
 export async function restartBotById(botId: number, bot: any): Promise<{ success: boolean; error?: string; pid?: number }> {
+	const mapKey = processKeyForBot(bot);
+	const scriptName = isSelfbot(bot) ? 'selfbot.js' : 'officialbot.js';
+	const candidatePid = botProcesses.get(mapKey)?.pid ?? (bot?.process_id ? Number(bot.process_id) : null);
+	const previousPid =
+		candidatePid && Number.isFinite(candidatePid) && pidMatchesBotScript(candidatePid, scriptName) ? candidatePid : null;
+
 	const stopResult = await stopBotById(botId, bot);
 	if (!stopResult.success && stopResult.error !== 'Bot is not running') {
 		return { success: false, error: `Failed to stop: ${stopResult.error}` };
 	}
-	await new Promise((resolve) => setTimeout(resolve, 2000));
+
+	if (previousPid) {
+		await waitForProcessExit(previousPid, scriptName, 8000);
+	} else {
+		await new Promise((resolve) => setTimeout(resolve, 2000));
+	}
+
 	return startBotById(botId, bot);
 }
 

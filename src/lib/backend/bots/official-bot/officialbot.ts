@@ -17,9 +17,11 @@ import leveling from './components/leveling.js';
 import contentCreator from './components/interface/contentcreator.js';
 import questNotifier from './components/questNotifier.js';
 import { initRobloxCatalogNotifier, stopRobloxCatalogNotifier } from './components/robloxCatalogNotifier.js';
+import { acquireBotSingletonLock, type BotSingletonLock } from '../botSingletonLock.js';
 
 const PRESENCE_POLL_MS = 30_000;
 let presencePollTimer: ReturnType<typeof setInterval> | null = null;
+let singletonLock: BotSingletonLock | null = null;
 
 let BOT_TOKEN: string | undefined;
 (async () => {
@@ -81,7 +83,7 @@ client.on('clientReady', async () => {
 	webhook.startWebhookServer(client, officialBotId);
 });
 
-function shutdown() {
+async function shutdown() {
 	logger.warn('Shutting down official bot');
 	if (presencePollTimer) {
 		clearInterval(presencePollTimer);
@@ -91,6 +93,10 @@ function shutdown() {
 	stopRobloxCatalogNotifier();
 	webhook.stopWebhookServer();
 	client.destroy();
+	if (singletonLock) {
+		await singletonLock.release().catch(() => {});
+		singletonLock = null;
+	}
 	process.exit(0);
 }
 
@@ -104,6 +110,13 @@ process.on('SIGTERM', shutdown);
 	}
 
 	if (!BOT_TOKEN) throw new Error('Bot token not available. Cannot login.');
+
+	const botId = process.env.BOT_ID ?? 'unknown';
+	singletonLock = await acquireBotSingletonLock('official', botId);
+	if (!singletonLock) {
+		logger.error('Another official bot instance is already running; exiting', { botId });
+		process.exit(0);
+	}
 
 	await client.login(BOT_TOKEN);
 })().catch((err: Error) => {

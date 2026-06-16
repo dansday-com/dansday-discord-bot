@@ -1472,7 +1472,11 @@ export async function listBotItems(botId: any, options: any = {}) {
 
 export async function getBotItem(itemId: any) {
 	await initializeDatabase();
-	const rows = await db.select().from(schema.botItems).where(eq(schema.botItems.id, Number(itemId))).limit(1);
+	const rows = await db
+		.select()
+		.from(schema.botItems)
+		.where(eq(schema.botItems.id, Number(itemId)))
+		.limit(1);
 	return rows[0] || null;
 }
 
@@ -1517,7 +1521,10 @@ export async function updateBotItem(itemId: any, data: any = {}) {
 	if (data.available_to !== undefined) set.available_to = data.available_to ? (toMySQLDateTime(data.available_to) as any) : null;
 	if (data.recurring_schedule !== undefined) set.recurring_schedule = data.recurring_schedule ?? null;
 	if (data.sort_order !== undefined) set.sort_order = Number(data.sort_order);
-	await db.update(schema.botItems).set(set).where(eq(schema.botItems.id, Number(itemId)));
+	await db
+		.update(schema.botItems)
+		.set(set)
+		.where(eq(schema.botItems.id, Number(itemId)));
 	return getBotItem(itemId);
 }
 
@@ -1543,7 +1550,11 @@ export async function getMemberInventory(memberId: any) {
 
 export async function getMemberItem(memberItemId: any) {
 	await initializeDatabase();
-	const rows = await db.select().from(schema.serverMemberItems).where(eq(schema.serverMemberItems.id, Number(memberItemId))).limit(1);
+	const rows = await db
+		.select()
+		.from(schema.serverMemberItems)
+		.where(eq(schema.serverMemberItems.id, Number(memberItemId)))
+		.limit(1);
 	return rows[0] || null;
 }
 
@@ -1653,7 +1664,10 @@ export async function getLastActionAgainstTarget(targetMemberId: any, actions: s
 	const rows = await db.execute(sql`
 		SELECT created_at
 		FROM server_member_item_logs
-		WHERE target_member_id = ${Number(targetMemberId)} AND action IN (${sql.join(list.map((a) => sql`${a}`), sql`, `)})
+		WHERE target_member_id = ${Number(targetMemberId)} AND action IN (${sql.join(
+			list.map((a) => sql`${a}`),
+			sql`, `
+		)})
 		ORDER BY created_at DESC
 		LIMIT 1
 	`);
@@ -1731,7 +1745,10 @@ export async function equipCosmetic(memberId: any, cosmeticKind: any, value: any
 
 export async function getMemberCosmetics(memberId: any) {
 	await initializeDatabase();
-	const rows = await db.select().from(schema.serverMemberCosmetics).where(eq(schema.serverMemberCosmetics.member_id, Number(memberId)));
+	const rows = await db
+		.select()
+		.from(schema.serverMemberCosmetics)
+		.where(eq(schema.serverMemberCosmetics.member_id, Number(memberId)));
 	const out: Record<string, string> = {};
 	for (const r of rows as any[]) out[r.cosmetic_kind] = r.value;
 	return out;

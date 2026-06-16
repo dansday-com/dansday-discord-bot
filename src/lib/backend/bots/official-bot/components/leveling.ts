@@ -484,8 +484,7 @@ async function handleLevelEvaluation(server, dbMember, currentStats, guildId, co
 
 	const { previousLevel = null, previousExperience = null, previousRank: contextPreviousRank = null, reason = 'unknown' } = context;
 	const rawXp = currentStats.experience ?? 0;
-	const experienceForLevel =
-		typeof rawXp === 'bigint' ? Number(rawXp) : typeof rawXp === 'string' ? parseFloat(rawXp) || 0 : Number(rawXp) || 0;
+	const experienceForLevel = typeof rawXp === 'bigint' ? Number(rawXp) : typeof rawXp === 'string' ? parseFloat(rawXp) || 0 : Number(rawXp) || 0;
 	const expectedLevel = await determineLevel(experienceForLevel, guildId);
 
 	let storedLevel = currentStats.level;

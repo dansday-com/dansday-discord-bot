@@ -174,9 +174,19 @@
 			let res;
 			if (form.id) {
 				payload.id = form.id;
-				res = await fetch('/api/admin/shop-items', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload) });
+				res = await fetch('/api/admin/shop-items', {
+					method: 'PUT',
+					headers: { 'Content-Type': 'application/json' },
+					credentials: 'include',
+					body: JSON.stringify(payload)
+				});
 			} else {
-				res = await fetch('/api/admin/shop-items', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload) });
+				res = await fetch('/api/admin/shop-items', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					credentials: 'include',
+					body: JSON.stringify(payload)
+				});
 			}
 			const d = await res.json();
 			if (d.success) {
@@ -191,7 +201,12 @@
 
 	async function remove(item: any) {
 		if (!confirm(`Delete "${item.name}"?`)) return;
-		const res = await fetch('/api/admin/shop-items', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ id: item.id }) });
+		const res = await fetch('/api/admin/shop-items', {
+			method: 'DELETE',
+			headers: { 'Content-Type': 'application/json' },
+			credentials: 'include',
+			body: JSON.stringify({ id: item.id })
+		});
 		const d = await res.json();
 		if (d.success) {
 			showToast('Deleted', 'success');
@@ -225,7 +240,7 @@
 			<h2 class="text-ash-100 flex items-center gap-2 text-lg font-semibold"><i class="fas fa-store text-teal-400"></i>Shop Items</h2>
 			<p class="text-ash-400 text-xs">Global catalog. Items appear in every server with the shop enabled.</p>
 		</div>
-		<button onclick={startCreate} class="bg-teal-600 hover:bg-teal-500 text-white flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium">
+		<button onclick={startCreate} class="flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-500">
 			<i class="fas fa-plus"></i>Add Item
 		</button>
 	</div>
@@ -252,12 +267,12 @@
 								{#if item.enabled === false}<span class="rounded bg-red-900/50 px-1.5 py-0.5 text-red-300">disabled</span>{/if}
 							</div>
 						</div>
-						<div class="text-teal-400 shrink-0 text-sm font-semibold">{item.cost} XP</div>
+						<div class="shrink-0 text-sm font-semibold text-teal-400">{item.cost} XP</div>
 					</div>
 					{#if item.description}<p class="text-ash-400 mt-2 line-clamp-2 text-xs">{item.description}</p>{/if}
 					<div class="mt-3 flex gap-2">
 						<button onclick={() => startEdit(item)} class="bg-ash-700 hover:bg-ash-600 text-ash-200 flex-1 rounded-lg py-1.5 text-xs">Edit</button>
-						<button onclick={() => remove(item)} class="rounded-lg bg-red-900/40 py-1.5 px-3 text-xs text-red-300 hover:bg-red-900/60">Delete</button>
+						<button onclick={() => remove(item)} class="rounded-lg bg-red-900/40 px-3 py-1.5 text-xs text-red-300 hover:bg-red-900/60">Delete</button>
 					</div>
 				</div>
 			{/each}
@@ -267,7 +282,11 @@
 
 {#if editing}
 	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onclick={() => (editing = null)} role="presentation">
-		<div class="bg-ash-800 border-ash-700 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border p-5" onclick={(e) => e.stopPropagation()} role="presentation">
+		<div
+			class="bg-ash-800 border-ash-700 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border p-5"
+			onclick={(e) => e.stopPropagation()}
+			role="presentation"
+		>
 			<h3 class="text-ash-100 mb-4 text-base font-semibold">{form.id ? 'Edit Item' : 'Add Item'}</h3>
 
 			<div class="space-y-4">
@@ -279,7 +298,11 @@
 				<div class="grid grid-cols-2 gap-3">
 					<div>
 						<label class="text-ash-300 mb-1 block text-xs font-medium">Effect type</label>
-						<select bind:value={form.effect_type} onchange={onEffectTypeChange} class="bg-ash-900 border-ash-700 text-ash-100 w-full rounded-lg border px-3 py-2 text-sm">
+						<select
+							bind:value={form.effect_type}
+							onchange={onEffectTypeChange}
+							class="bg-ash-900 border-ash-700 text-ash-100 w-full rounded-lg border px-3 py-2 text-sm"
+						>
 							{#each EFFECT_TYPES as e}<option value={e.value}>{e.label}</option>{/each}
 						</select>
 					</div>
@@ -293,7 +316,12 @@
 
 				<div>
 					<label class="text-ash-300 mb-1 block text-xs font-medium">Description</label>
-					<textarea bind:value={form.description} rows="2" class="bg-ash-900 border-ash-700 text-ash-100 w-full rounded-lg border px-3 py-2 text-sm" placeholder="Shown on the shop hover card"></textarea>
+					<textarea
+						bind:value={form.description}
+						rows="2"
+						class="bg-ash-900 border-ash-700 text-ash-100 w-full rounded-lg border px-3 py-2 text-sm"
+						placeholder="Shown on the shop hover card"
+					></textarea>
 				</div>
 
 				<div class="grid grid-cols-2 gap-3">
@@ -308,20 +336,60 @@
 				</div>
 
 				<div class="border-ash-700 space-y-3 rounded-lg border p-3">
-					<p class="text-ash-400 text-[11px] font-medium uppercase tracking-wide">Effect settings</p>
+					<p class="text-ash-400 text-[11px] font-medium tracking-wide uppercase">Effect settings</p>
 					{#if form.effect_type === 'xp_steal' || form.effect_type === 'xp_bomb'}
 						<div class="grid grid-cols-2 gap-3">
-							<label class="text-ash-300 text-xs">Min %<input type="number" bind:value={form.cfg.min_percent} class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm" /></label>
-							<label class="text-ash-300 text-xs">Max %<input type="number" bind:value={form.cfg.max_percent} class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm" /></label>
-							<label class="text-ash-300 text-xs">Cooldown (min)<input type="number" bind:value={form.cfg.cooldown_minutes} class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm" /></label>
-							<label class="text-ash-300 text-xs">Victim immunity (min)<input type="number" bind:value={form.cfg.immunity_minutes} class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm" /></label>
+							<label class="text-ash-300 text-xs"
+								>Min %<input
+									type="number"
+									bind:value={form.cfg.min_percent}
+									class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+								/></label
+							>
+							<label class="text-ash-300 text-xs"
+								>Max %<input
+									type="number"
+									bind:value={form.cfg.max_percent}
+									class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+								/></label
+							>
+							<label class="text-ash-300 text-xs"
+								>Cooldown (min)<input
+									type="number"
+									bind:value={form.cfg.cooldown_minutes}
+									class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+								/></label
+							>
+							<label class="text-ash-300 text-xs"
+								>Victim immunity (min)<input
+									type="number"
+									bind:value={form.cfg.immunity_minutes}
+									class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+								/></label
+							>
 						</div>
-						<p class="text-ash-500 text-[11px]">{form.effect_type === 'xp_steal' ? 'Random % of target total XP, transferred to buyer.' : 'Random % of target total XP, destroyed (vanishes).'}</p>
+						<p class="text-ash-500 text-[11px]">
+							{form.effect_type === 'xp_steal' ? 'Random % of target total XP, transferred to buyer.' : 'Random % of target total XP, destroyed (vanishes).'}
+						</p>
 					{:else if form.effect_type === 'xp_boost'}
 						<div class="grid grid-cols-2 gap-3">
-							<label class="text-ash-300 text-xs">Multiplier<input type="number" step="0.1" bind:value={form.cfg.multiplier} class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm" /></label>
-							<label class="text-ash-300 text-xs">Duration (min)<input type="number" bind:value={form.cfg.effect_duration_minutes} class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm" /></label>
-							<label class="text-ash-300 col-span-2 text-xs">Scope
+							<label class="text-ash-300 text-xs"
+								>Multiplier<input
+									type="number"
+									step="0.1"
+									bind:value={form.cfg.multiplier}
+									class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+								/></label
+							>
+							<label class="text-ash-300 text-xs"
+								>Duration (min)<input
+									type="number"
+									bind:value={form.cfg.effect_duration_minutes}
+									class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+								/></label
+							>
+							<label class="text-ash-300 col-span-2 text-xs"
+								>Scope
 								<select bind:value={form.cfg.scope} class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm">
 									<option value="all">All XP</option>
 									<option value="message">Message only</option>
@@ -330,45 +398,109 @@
 							</label>
 						</div>
 					{:else if form.effect_type === 'shield' || form.effect_type === 'reflect' || form.effect_type === 'insurance'}
-						<label class="text-ash-300 text-xs">Duration (min)<input type="number" bind:value={form.cfg.effect_duration_minutes} class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm" /></label>
+						<label class="text-ash-300 text-xs"
+							>Duration (min)<input
+								type="number"
+								bind:value={form.cfg.effect_duration_minutes}
+								class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+							/></label
+						>
 						<p class="text-ash-500 text-[11px]">
-							{#if form.effect_type === 'reflect'}While active, the next steal/bomb against you fails and hits the attacker instead.{:else if form.effect_type === 'insurance'}While active, the next time you're robbed your XP is refunded once.{:else}Blocks incoming steal/bomb while active.{/if}
+							{#if form.effect_type === 'reflect'}While active, the next steal/bomb against you fails and hits the attacker instead.{:else if form.effect_type === 'insurance'}While
+								active, the next time you're robbed your XP is refunded once.{:else}Blocks incoming steal/bomb while active.{/if}
 						</p>
 					{:else if form.effect_type === 'gift'}
 						<div class="grid grid-cols-2 gap-3">
-							<label class="text-ash-300 text-xs">Gift amount (XP)<input type="number" bind:value={form.cfg.gift_amount} class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm" /></label>
-							<label class="text-ash-300 text-xs">Tax %<input type="number" bind:value={form.cfg.tax_percent} class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm" /></label>
+							<label class="text-ash-300 text-xs"
+								>Gift amount (XP)<input
+									type="number"
+									bind:value={form.cfg.gift_amount}
+									class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+								/></label
+							>
+							<label class="text-ash-300 text-xs"
+								>Tax %<input
+									type="number"
+									bind:value={form.cfg.tax_percent}
+									class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+								/></label
+							>
 						</div>
 						<p class="text-ash-500 text-[11px]">Sends a fixed XP amount to a chosen member, minus the tax (burned).</p>
 					{:else if form.effect_type === 'leech'}
 						<div class="grid grid-cols-2 gap-3">
-							<label class="text-ash-300 text-xs">Skim %<input type="number" bind:value={form.cfg.skim_percent} class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm" /></label>
-							<label class="text-ash-300 text-xs">Duration (min)<input type="number" bind:value={form.cfg.effect_duration_minutes} class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm" /></label>
+							<label class="text-ash-300 text-xs"
+								>Skim %<input
+									type="number"
+									bind:value={form.cfg.skim_percent}
+									class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+								/></label
+							>
+							<label class="text-ash-300 text-xs"
+								>Duration (min)<input
+									type="number"
+									bind:value={form.cfg.effect_duration_minutes}
+									class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+								/></label
+							>
 						</div>
 					{:else if form.effect_type === 'gamble'}
 						<div class="grid grid-cols-2 gap-3">
-							<label class="text-ash-300 text-xs">Win chance %<input type="number" bind:value={form.cfg.win_chance} class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm" /></label>
-							<label class="text-ash-300 text-xs">Payout multiplier<input type="number" step="0.1" bind:value={form.cfg.payout_multiplier} class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm" /></label>
-							<label class="text-ash-300 col-span-2 text-xs">Stake (XP)<input type="number" bind:value={form.cfg.stake} class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm" /></label>
+							<label class="text-ash-300 text-xs"
+								>Win chance %<input
+									type="number"
+									bind:value={form.cfg.win_chance}
+									class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+								/></label
+							>
+							<label class="text-ash-300 text-xs"
+								>Payout multiplier<input
+									type="number"
+									step="0.1"
+									bind:value={form.cfg.payout_multiplier}
+									class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+								/></label
+							>
+							<label class="text-ash-300 col-span-2 text-xs"
+								>Stake (XP)<input
+									type="number"
+									bind:value={form.cfg.stake}
+									class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+								/></label
+							>
 						</div>
 						<p class="text-ash-500 text-[11px]">Stakes the XP, rolls win chance; on win pays stake × multiplier.</p>
 					{:else if form.effect_type === 'vault'}
 						<div class="grid grid-cols-2 gap-3">
-							<label class="text-ash-300 text-xs">Direction
+							<label class="text-ash-300 text-xs"
+								>Direction
 								<select bind:value={form.cfg.vault_direction} class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm">
 									<option value="deposit">Deposit (hide)</option>
 									<option value="withdraw">Withdraw (restore)</option>
 								</select>
 							</label>
-							<label class="text-ash-300 text-xs">Amount (XP)<input type="number" bind:value={form.cfg.vault_amount} class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm" /></label>
+							<label class="text-ash-300 text-xs"
+								>Amount (XP)<input
+									type="number"
+									bind:value={form.cfg.vault_amount}
+									class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+								/></label
+							>
 						</div>
 						<p class="text-ash-500 text-[11px]">Deposit moves XP into a vault (safe from steal/bomb, doesn't count toward level). Withdraw restores it.</p>
 					{:else if form.effect_type === 'bounty'}
-						<label class="text-ash-300 text-xs">Bounty amount (XP)<input type="number" bind:value={form.cfg.bounty_amount} class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm" /></label>
+						<label class="text-ash-300 text-xs"
+							>Bounty amount (XP)<input
+								type="number"
+								bind:value={form.cfg.bounty_amount}
+								class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+							/></label
+						>
 						<p class="text-ash-500 text-[11px]">Puts XP on a member's head. Whoever lands the next successful steal on them collects it.</p>
 					{:else if form.effect_type === 'cosmetic'}
 						<div class="grid grid-cols-2 gap-3">
-							<label class="text-ash-300 text-xs">Kind
+							<label class="text-ash-300 text-xs"
+								>Kind
 								<select bind:value={form.cfg.cosmetic_kind} class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm">
 									<option value="theme">Theme</option>
 									<option value="badge">Badge</option>
@@ -376,7 +508,13 @@
 									<option value="frame">Frame</option>
 								</select>
 							</label>
-							<label class="text-ash-300 text-xs">Value<input bind:value={form.cfg.value} class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm" placeholder="midnight" /></label>
+							<label class="text-ash-300 text-xs"
+								>Value<input
+									bind:value={form.cfg.value}
+									class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+									placeholder="midnight"
+								/></label
+							>
 						</div>
 					{:else}
 						<p class="text-ash-500 text-[11px]">No extra settings for this effect type yet.</p>
@@ -384,21 +522,49 @@
 				</div>
 
 				<div class="border-ash-700 space-y-3 rounded-lg border p-3">
-					<p class="text-ash-400 text-[11px] font-medium uppercase tracking-wide">Availability (optional, UTC)</p>
+					<p class="text-ash-400 text-[11px] font-medium tracking-wide uppercase">Availability (optional, UTC)</p>
 					<div class="grid grid-cols-2 gap-3">
-						<label class="text-ash-300 text-xs">From<input type="datetime-local" bind:value={form.available_from} class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm" /></label>
-						<label class="text-ash-300 text-xs">To<input type="datetime-local" bind:value={form.available_to} class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm" /></label>
+						<label class="text-ash-300 text-xs"
+							>From<input
+								type="datetime-local"
+								bind:value={form.available_from}
+								class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+							/></label
+						>
+						<label class="text-ash-300 text-xs"
+							>To<input
+								type="datetime-local"
+								bind:value={form.available_to}
+								class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+							/></label
+						>
 					</div>
 					<div>
 						<p class="text-ash-300 mb-1 text-xs">Recurring days (UTC)</p>
 						<div class="flex flex-wrap gap-1">
 							{#each DAYS as d}
-								<button type="button" onclick={() => toggleDay(d.v)} class="rounded px-2 py-1 text-[11px] {form.cfg.recur_days.includes(d.v) ? 'bg-teal-600 text-white' : 'bg-ash-700 text-ash-300'}">{d.l}</button>
+								<button
+									type="button"
+									onclick={() => toggleDay(d.v)}
+									class="rounded px-2 py-1 text-[11px] {form.cfg.recur_days.includes(d.v) ? 'bg-teal-600 text-white' : 'bg-ash-700 text-ash-300'}">{d.l}</button
+								>
 							{/each}
 						</div>
 						<div class="mt-2 grid grid-cols-2 gap-3">
-							<label class="text-ash-300 text-xs">From (HH:MM)<input bind:value={form.cfg.recur_from} class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm" placeholder="18:00" /></label>
-							<label class="text-ash-300 text-xs">To (HH:MM)<input bind:value={form.cfg.recur_to} class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm" placeholder="21:00" /></label>
+							<label class="text-ash-300 text-xs"
+								>From (HH:MM)<input
+									bind:value={form.cfg.recur_from}
+									class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+									placeholder="18:00"
+								/></label
+							>
+							<label class="text-ash-300 text-xs"
+								>To (HH:MM)<input
+									bind:value={form.cfg.recur_to}
+									class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+									placeholder="21:00"
+								/></label
+							>
 						</div>
 					</div>
 				</div>

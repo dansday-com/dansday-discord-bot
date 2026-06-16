@@ -371,9 +371,15 @@
 
 {#if inventoryOpen}
 	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onclick={closeInventory} role="presentation">
-		<div class="max-h-[88vh] w-full max-w-md overflow-y-auto rounded-2xl border border-white/10 bg-[#10131a] p-5" onclick={(e) => e.stopPropagation()} role="presentation">
+		<div
+			class="max-h-[88vh] w-full max-w-md overflow-y-auto rounded-2xl border border-white/10 bg-[#10131a] p-5"
+			onclick={(e) => e.stopPropagation()}
+			role="presentation"
+		>
 			<div class="mb-4 flex items-center justify-between">
-				<h3 class="flex items-center gap-2 text-base font-semibold text-white"><i class="fas fa-backpack text-teal-400"></i>Inventory{#if inventoryOwner}<span class="text-white/40">· {inventoryOwner}</span>{/if}</h3>
+				<h3 class="flex items-center gap-2 text-base font-semibold text-white">
+					<i class="fas fa-backpack text-teal-400"></i>Inventory{#if inventoryOwner}<span class="text-white/40">· {inventoryOwner}</span>{/if}
+				</h3>
 				<button onclick={closeInventory} class="text-white/50 hover:text-white" aria-label="Close"><i class="fas fa-xmark"></i></button>
 			</div>
 
@@ -383,7 +389,9 @@
 				<p class="py-8 text-center text-sm text-white/50">No items. Buy some in the shop!</p>
 			{:else if pickingTargetFor}
 				<div>
-					<button onclick={() => (pickingTargetFor = null)} class="mb-3 text-xs text-white/60 hover:text-white"><i class="fas fa-arrow-left mr-1"></i>Back</button>
+					<button onclick={() => (pickingTargetFor = null)} class="mb-3 text-xs text-white/60 hover:text-white"
+						><i class="fas fa-arrow-left mr-1"></i>Back</button
+					>
 					<p class="mb-2 text-sm text-white">Pick a target for <strong>{pickingTargetFor.name}</strong>:</p>
 					<div class="max-h-64 space-y-1 overflow-y-auto">
 						{#each members as m}

@@ -41,7 +41,9 @@
 			case 'gamble':
 				return `Stake ${c.stake ?? 0} XP — ${c.win_chance ?? 50}% chance to win ${c.payout_multiplier ?? 2}× it.`;
 			case 'vault':
-				return c.vault_direction === 'withdraw' ? `Withdraw ${c.vault_amount ?? 0} XP from your vault.` : `Hide ${c.vault_amount ?? 0} XP in a vault, safe from theft.`;
+				return c.vault_direction === 'withdraw'
+					? `Withdraw ${c.vault_amount ?? 0} XP from your vault.`
+					: `Hide ${c.vault_amount ?? 0} XP in a vault, safe from theft.`;
 			case 'bounty':
 				return `Put ${c.bounty_amount ?? 0} XP on a member — collected by whoever robs them next.`;
 			case 'reflect':
@@ -122,7 +124,7 @@
 							<span class="text-2xl">{item.icon || '🎁'}</span>
 							<div>
 								<div class="font-semibold text-white">{item.name}</div>
-								<div class="text-[10px] uppercase tracking-wide text-white/40">{item.category}</div>
+								<div class="text-[10px] tracking-wide text-white/40 uppercase">{item.category}</div>
 							</div>
 						</div>
 						<div class="shrink-0 rounded-lg bg-teal-500/15 px-2 py-1 text-sm font-semibold text-teal-300">{item.cost} XP</div>
@@ -138,7 +140,9 @@
 						{#if buying === item.id}<i class="fas fa-spinner fa-spin mr-1"></i>{/if}Buy
 					</button>
 
-					<div class="m-shop-tooltip pointer-events-none absolute left-1/2 top-2 z-20 w-64 -translate-x-1/2 -translate-y-full rounded-xl border border-teal-500/30 bg-[#10131a] p-3 opacity-0 shadow-2xl transition-all duration-200 group-hover:-translate-y-[calc(100%+8px)] group-hover:opacity-100">
+					<div
+						class="m-shop-tooltip pointer-events-none absolute top-2 left-1/2 z-20 w-64 -translate-x-1/2 -translate-y-full rounded-xl border border-teal-500/30 bg-[#10131a] p-3 opacity-0 shadow-2xl transition-all duration-200 group-hover:-translate-y-[calc(100%+8px)] group-hover:opacity-100"
+					>
 						<div class="mb-1 flex items-center gap-2 font-semibold text-white">{item.icon || '🎁'} {item.name}</div>
 						<p class="text-xs text-white/70">{effectSummary(item)}</p>
 						<div class="mt-2 space-y-0.5 text-[11px] text-white/50">

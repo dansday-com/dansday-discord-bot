@@ -573,7 +573,9 @@ function isItemAvailableNow(item: any) {
 		if (schedule.from && schedule.to) {
 			const minutes = now.getUTCHours() * 60 + now.getUTCMinutes();
 			const toMin = (hhmm: any) => {
-				const [h, m] = String(hhmm).split(':').map((n) => Number(n) || 0);
+				const [h, m] = String(hhmm)
+					.split(':')
+					.map((n) => Number(n) || 0);
 				return h * 60 + m;
 			};
 			const start = toMin(schedule.from);

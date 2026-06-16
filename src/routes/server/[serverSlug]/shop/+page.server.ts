@@ -14,7 +14,9 @@ function itemAvailableNow(item: any): boolean {
 		if (schedule.from && schedule.to) {
 			const minutes = now.getUTCHours() * 60 + now.getUTCMinutes();
 			const toMin = (hhmm: any) => {
-				const [h, m] = String(hhmm).split(':').map((n) => Number(n) || 0);
+				const [h, m] = String(hhmm)
+					.split(':')
+					.map((n) => Number(n) || 0);
 				return h * 60 + m;
 			};
 			if (minutes < toMin(schedule.from) || minutes > toMin(schedule.to)) return false;

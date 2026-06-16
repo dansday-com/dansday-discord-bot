@@ -42,3 +42,7 @@ export async function getRedisClient(): Promise<RedisClientType | null> {
 export function hasRedis(): boolean {
 	return client != null;
 }
+
+export function isRedisConfigured(): boolean {
+	return buildRedisUrl() != null;
+}

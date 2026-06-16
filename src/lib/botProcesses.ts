@@ -297,13 +297,16 @@ export async function stopBotById(botId: number, bot?: any): Promise<{ success: 
 
 	const botInfo = botProcesses.get(mapKey);
 
+	const scriptName = bot && isSelfbot(bot) ? 'selfbot.js' : 'officialbot.js';
+
 	if (!botInfo || !botInfo.process) {
-		if (botInfo && botInfo.pid) {
+		if (botInfo && botInfo.pid && pidMatchesBotScript(botInfo.pid, scriptName)) {
+			const adoptedPid = botInfo.pid;
 			try {
-				process.kill(botInfo.pid, 'SIGINT');
+				process.kill(adoptedPid, 'SIGINT');
 				setTimeout(() => {
 					try {
-						if (botInfo.pid) process.kill(botInfo.pid, 'SIGKILL');
+						if (pidMatchesBotScript(adoptedPid, scriptName)) process.kill(adoptedPid, 'SIGKILL');
 					} catch (_) {}
 				}, 2000);
 				botProcesses.delete(mapKey);
@@ -350,9 +353,8 @@ export async function stopBotById(botId: number, bot?: any): Promise<{ success: 
 			try {
 				childProcess.kill('SIGKILL');
 			} catch (_) {}
-		} else if (childPid) {
+		} else if (childPid && pidMatchesBotScript(childPid, scriptName)) {
 			try {
-				process.kill(childPid, 0);
 				process.kill(childPid, 'SIGKILL');
 			} catch (_) {}
 		}
@@ -377,32 +379,44 @@ export async function stopBotById(botId: number, bot?: any): Promise<{ success: 
 	return { success: true };
 }
 
-async function waitForProcessExit(pid: number, timeoutMs: number): Promise<void> {
+function pidMatchesBotScript(pid: number, scriptName: string): boolean {
+	try {
+		const cmdline = readFileSync(`/proc/${pid}/cmdline`, 'utf8').replace(/\0/g, ' ');
+		return cmdline.includes(scriptName);
+	} catch (_) {
+		return false;
+	}
+}
+
+async function waitForProcessExit(pid: number, scriptName: string, timeoutMs: number): Promise<void> {
 	const deadline = Date.now() + timeoutMs;
 	while (Date.now() < deadline) {
-		try {
-			process.kill(pid, 0);
-		} catch (_) {
+		if (!pidMatchesBotScript(pid, scriptName)) {
 			return;
 		}
 		await new Promise((resolve) => setTimeout(resolve, 200));
 	}
-	try {
-		process.kill(pid, 'SIGKILL');
-	} catch (_) {}
+	if (pidMatchesBotScript(pid, scriptName)) {
+		try {
+			process.kill(pid, 'SIGKILL');
+		} catch (_) {}
+	}
 }
 
 export async function restartBotById(botId: number, bot: any): Promise<{ success: boolean; error?: string; pid?: number }> {
 	const mapKey = processKeyForBot(bot);
-	const previousPid = botProcesses.get(mapKey)?.pid ?? (bot?.process_id ? Number(bot.process_id) : null);
+	const scriptName = isSelfbot(bot) ? 'selfbot.js' : 'officialbot.js';
+	const candidatePid = botProcesses.get(mapKey)?.pid ?? (bot?.process_id ? Number(bot.process_id) : null);
+	const previousPid =
+		candidatePid && Number.isFinite(candidatePid) && pidMatchesBotScript(candidatePid, scriptName) ? candidatePid : null;
 
 	const stopResult = await stopBotById(botId, bot);
 	if (!stopResult.success && stopResult.error !== 'Bot is not running') {
 		return { success: false, error: `Failed to stop: ${stopResult.error}` };
 	}
 
-	if (previousPid && Number.isFinite(previousPid)) {
-		await waitForProcessExit(previousPid, 8000);
+	if (previousPid) {
+		await waitForProcessExit(previousPid, scriptName, 8000);
 	} else {
 		await new Promise((resolve) => setTimeout(resolve, 2000));
 	}

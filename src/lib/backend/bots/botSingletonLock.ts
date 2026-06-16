@@ -1,8 +1,9 @@
-import { getRedisClient } from '../../redis.js';
+import { getRedisClient, isRedisConfigured } from '../../redis.js';
 import { logger } from '../../utils/index.js';
 
 const LOCK_TTL_SECONDS = 30;
 const RENEW_INTERVAL_MS = 10_000;
+const FENCE_AFTER_MS = (LOCK_TTL_SECONDS - RENEW_INTERVAL_MS / 1000) * 1000;
 
 function lockKey(kind: string, botId: string): string {
 	return `bot:lock:${kind}:${botId}`;
@@ -15,7 +16,11 @@ export interface BotSingletonLock {
 export async function acquireBotSingletonLock(kind: string, botId: string): Promise<BotSingletonLock | null> {
 	const redis = await getRedisClient();
 	if (!redis) {
-		logger.warn('Bot singleton lock skipped: Redis unavailable', { kind, botId });
+		if (isRedisConfigured()) {
+			logger.error('Bot singleton lock unavailable: Redis configured but unreachable; refusing to start', { kind, botId });
+			return null;
+		}
+		logger.warn('Bot singleton lock skipped: Redis not configured', { kind, botId });
 		return { release: async () => {} };
 	}
 
@@ -38,11 +43,23 @@ export async function acquireBotSingletonLock(kind: string, botId: string): Prom
 	const renewScript = `if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('expire', KEYS[1], ARGV[2]) else return 0 end`;
 	const releaseScript = `if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end`;
 
+	let lastRenewedAt = Date.now();
+
+	const fenceIfStale = () => {
+		if (Date.now() - lastRenewedAt >= FENCE_AFTER_MS) {
+			logger.error('Bot singleton lock could not be renewed within TTL; exiting to avoid duplicate bot', { kind, botId });
+			clearInterval(timer);
+			process.exit(1);
+		}
+	};
+
 	const timer: ReturnType<typeof setInterval> = setInterval(() => {
 		redis
 			.eval(renewScript, { keys: [key], arguments: [token, String(LOCK_TTL_SECONDS)] })
 			.then((res) => {
-				if (res !== 1) {
+				if (res === 1) {
+					lastRenewedAt = Date.now();
+				} else {
 					logger.error('Bot singleton lock lost; exiting to avoid duplicate bot', { kind, botId });
 					clearInterval(timer);
 					process.exit(1);
@@ -50,6 +67,7 @@ export async function acquireBotSingletonLock(kind: string, botId: string): Prom
 			})
 			.catch((err: Error) => {
 				logger.warn('Bot singleton lock renew failed', { kind, botId, error: String(err?.message || err) });
+				fenceIfStale();
 			});
 	}, RENEW_INTERVAL_MS);
 	timer.unref?.();

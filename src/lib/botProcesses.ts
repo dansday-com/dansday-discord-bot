@@ -336,16 +336,24 @@ export async function stopBotById(botId: number, bot?: any): Promise<{ success: 
 		return { success: false, error: 'Bot is not running' };
 	}
 
-	if (botInfo.process && !(botInfo.process as any).killed && (botInfo.process as any).exitCode === null) {
+	const childProcess = botInfo.process;
+	const childPid = botInfo.pid;
+
+	if (childProcess && !(childProcess as any).killed && (childProcess as any).exitCode === null) {
 		try {
-			botInfo.process.kill('SIGINT');
+			childProcess.kill('SIGINT');
 		} catch (_) {}
 	}
 
 	setTimeout(() => {
-		if (botInfo.process && !(botInfo.process as any).killed && (botInfo.process as any).exitCode === null) {
+		if (childProcess && !(childProcess as any).killed && (childProcess as any).exitCode === null) {
 			try {
-				botInfo.process.kill('SIGKILL');
+				childProcess.kill('SIGKILL');
+			} catch (_) {}
+		} else if (childPid) {
+			try {
+				process.kill(childPid, 0);
+				process.kill(childPid, 'SIGKILL');
 			} catch (_) {}
 		}
 	}, 2000);
@@ -369,12 +377,36 @@ export async function stopBotById(botId: number, bot?: any): Promise<{ success: 
 	return { success: true };
 }
 
+async function waitForProcessExit(pid: number, timeoutMs: number): Promise<void> {
+	const deadline = Date.now() + timeoutMs;
+	while (Date.now() < deadline) {
+		try {
+			process.kill(pid, 0);
+		} catch (_) {
+			return;
+		}
+		await new Promise((resolve) => setTimeout(resolve, 200));
+	}
+	try {
+		process.kill(pid, 'SIGKILL');
+	} catch (_) {}
+}
+
 export async function restartBotById(botId: number, bot: any): Promise<{ success: boolean; error?: string; pid?: number }> {
+	const mapKey = processKeyForBot(bot);
+	const previousPid = botProcesses.get(mapKey)?.pid ?? (bot?.process_id ? Number(bot.process_id) : null);
+
 	const stopResult = await stopBotById(botId, bot);
 	if (!stopResult.success && stopResult.error !== 'Bot is not running') {
 		return { success: false, error: `Failed to stop: ${stopResult.error}` };
 	}
-	await new Promise((resolve) => setTimeout(resolve, 2000));
+
+	if (previousPid && Number.isFinite(previousPid)) {
+		await waitForProcessExit(previousPid, 8000);
+	} else {
+		await new Promise((resolve) => setTimeout(resolve, 2000));
+	}
+
 	return startBotById(botId, bot);
 }
 

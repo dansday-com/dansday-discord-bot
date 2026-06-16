@@ -4,9 +4,11 @@ import { logger } from '../../../utils/index.js';
 import { applySelfbotDiscordPresenceFromDb } from './applySelfbotDiscordPresence.js';
 import forwarder from './components/forwarder.js';
 import sync from './components/sync.js';
+import { acquireBotSingletonLock, type BotSingletonLock } from '../botSingletonLock.js';
 
 const PRESENCE_POLL_MS = 30_000;
 let presencePollTimer: ReturnType<typeof setInterval> | null = null;
+let singletonLock: BotSingletonLock | null = null;
 
 let BOT_TOKEN: string | undefined;
 (async () => {
@@ -44,13 +46,17 @@ client.on('ready', async () => {
 	}
 });
 
-function shutdown() {
+async function shutdown() {
 	logger.warn('Shutting down self-bot');
 	if (presencePollTimer) {
 		clearInterval(presencePollTimer);
 		presencePollTimer = null;
 	}
 	client.destroy();
+	if (singletonLock) {
+		await singletonLock.release().catch(() => {});
+		singletonLock = null;
+	}
 	process.exit(0);
 }
 
@@ -64,6 +70,12 @@ process.on('SIGTERM', shutdown);
 	}
 
 	if (!BOT_TOKEN) throw new Error('Bot token not available. Cannot login.');
+
+	singletonLock = await acquireBotSingletonLock('selfbot', BOT_ID ?? 'unknown');
+	if (!singletonLock) {
+		logger.error('Another self-bot instance is already running; exiting', { botId: BOT_ID ?? 'unknown' });
+		process.exit(0);
+	}
 
 	await client.login(BOT_TOKEN);
 })().catch((err: Error) => {

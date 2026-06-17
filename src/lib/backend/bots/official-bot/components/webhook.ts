@@ -550,8 +550,8 @@ async function handleWebhookRequest(req, res) {
 					}
 				} else if (payload.type === 'use_item') {
 					try {
-						const { handleShopItemUse } = await import('./shop.js');
-						const result = await handleShopItemUse(client, payload);
+						const { handleItemUse } = await import('./items.js');
+						const result = await handleItemUse(client, payload);
 						res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify(result));
 					} catch (shopErr: any) {
@@ -561,8 +561,8 @@ async function handleWebhookRequest(req, res) {
 					}
 				} else if (payload.type === 'buy_item') {
 					try {
-						const { handleShopItemBuy } = await import('./shop.js');
-						const result = await handleShopItemBuy(client, payload);
+						const { handleItemBuy } = await import('./items.js');
+						const result = await handleItemBuy(client, payload);
 						res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify(result));
 					} catch (shopErr: any) {

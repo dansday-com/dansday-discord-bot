@@ -6,8 +6,7 @@
 		"button": "📋 Menu",
 		"statistics": "🌐 Statistics",
 		"memberCard": "💳 Member Card",
-		"shop": "🛒 Shop",
-		"inventory": "🎒 Inventory"
+		"items": "🛒 Items"
 	},
 	"interface": {
 		"panel": {

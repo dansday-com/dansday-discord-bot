@@ -14,7 +14,7 @@ import db from '../../../../database.js';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../utils/index.js';
 import { getRedisClient } from '../../../../redis.js';
-import { applyAwardEffects, creditLeechers } from './shop.js';
+import { applyAwardEffects, creditLeechers } from './items.js';
 
 const recentMessages = new Map();
 

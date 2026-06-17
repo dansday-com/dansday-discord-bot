@@ -67,7 +67,7 @@
 	async function loadItems() {
 		loading = true;
 		try {
-			const res = await fetch('/api/admin/shop-items', { credentials: 'include' });
+			const res = await fetch('/api/admin/items', { credentials: 'include' });
 			const d = await res.json();
 			if (d.success) items = d.items ?? [];
 			else showToast(d.error || 'Failed to load', 'error');
@@ -174,14 +174,14 @@
 			let res;
 			if (form.id) {
 				payload.id = form.id;
-				res = await fetch('/api/admin/shop-items', {
+				res = await fetch('/api/admin/items', {
 					method: 'PUT',
 					headers: { 'Content-Type': 'application/json' },
 					credentials: 'include',
 					body: JSON.stringify(payload)
 				});
 			} else {
-				res = await fetch('/api/admin/shop-items', {
+				res = await fetch('/api/admin/items', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					credentials: 'include',
@@ -201,7 +201,7 @@
 
 	async function remove(item: any) {
 		if (!confirm(`Delete "${item.name}"?`)) return;
-		const res = await fetch('/api/admin/shop-items', {
+		const res = await fetch('/api/admin/items', {
 			method: 'DELETE',
 			headers: { 'Content-Type': 'application/json' },
 			credentials: 'include',
@@ -237,8 +237,8 @@
 <div class="space-y-5">
 	<div class="flex items-center justify-between">
 		<div>
-			<h2 class="text-ash-100 flex items-center gap-2 text-lg font-semibold"><i class="fas fa-store text-teal-400"></i>Shop Items</h2>
-			<p class="text-ash-400 text-xs">Global catalog. Items appear in every server with the shop enabled.</p>
+			<h2 class="text-ash-100 flex items-center gap-2 text-lg font-semibold"><i class="fas fa-store text-teal-400"></i>Items</h2>
+			<p class="text-ash-400 text-xs">Global catalog. Items appear in every server with the items module enabled.</p>
 		</div>
 		<button onclick={startCreate} class="flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-500">
 			<i class="fas fa-plus"></i>Add Item
@@ -320,7 +320,7 @@
 						bind:value={form.description}
 						rows="2"
 						class="bg-ash-900 border-ash-700 text-ash-100 w-full rounded-lg border px-3 py-2 text-sm"
-						placeholder="Shown on the shop hover card"
+						placeholder="Shown on the item hover card"
 					></textarea>
 				</div>
 

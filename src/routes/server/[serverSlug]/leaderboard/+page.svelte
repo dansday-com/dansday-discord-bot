@@ -95,12 +95,12 @@
 	}
 
 	function snapshotUrl(m: Metric) {
-		return `/api/leaderboards/${data.server.slug}/snapshot?metric=${m}&limit=${data.limit}`;
+		return `/api/public-statistics/${data.server.slug}/snapshot?metric=${m}&limit=${data.limit}`;
 	}
 
 	function connect() {
 		es?.close();
-		const myEs = new EventSource(`/api/leaderboards/${data.server.slug}/stream?metric=${metric}&limit=${data.limit}`);
+		const myEs = new EventSource(`/api/public-statistics/${data.server.slug}/stream?metric=${metric}&limit=${data.limit}`);
 		es = myEs;
 		myEs.onmessage = (e) => {
 			if (es !== myEs) return;

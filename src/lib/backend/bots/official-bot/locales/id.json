@@ -6,8 +6,7 @@
 		"button": "📋 Menu",
 		"statistics": "🌐 Statistik",
 		"memberCard": "💳 Kartu Member",
-		"shop": "🛒 Toko",
-		"inventory": "🎒 Inventaris"
+		"items": "🛒 Item"
 	},
 	"interface": {
 		"panel": {

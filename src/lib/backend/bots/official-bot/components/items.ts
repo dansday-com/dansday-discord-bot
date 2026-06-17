@@ -7,7 +7,7 @@ const EFFECT_CACHE_TTL_MS = 5000;
 const memoryEffectCache = new Map();
 
 function effectCacheKey(memberId: any) {
-	return `shop:effects:${memberId}`;
+	return `items:effects:${memberId}`;
 }
 
 async function readActiveEffects(memberId: any) {
@@ -464,7 +464,7 @@ async function resolveServerMemberId(serverId: any, discordMemberId: any) {
 
 const TARGETED_EFFECTS = new Set(['xp_steal', 'xp_bomb', 'leech', 'gift', 'bounty']);
 
-export async function handleShopItemUse(client: any, payload: any) {
+export async function handleItemUse(client: any, payload: any) {
 	const { guild_id, actor_discord_id, target_discord_id, member_item_id } = payload || {};
 	if (!guild_id || !actor_discord_id || !member_item_id) {
 		return { ok: false, error: 'missing_fields' };
@@ -479,7 +479,7 @@ export async function handleShopItemUse(client: any, payload: any) {
 		return { ok: false, error: 'server_not_found' };
 	}
 
-	if (!(await isComponentFeatureEnabled(guild_id, serverSettingsComponent.shop))) {
+	if (!(await isComponentFeatureEnabled(guild_id, serverSettingsComponent.items))) {
 		return { ok: false, error: 'shop_disabled' };
 	}
 
@@ -541,7 +541,7 @@ export async function handleShopItemUse(client: any, payload: any) {
 		}
 	} catch (err: any) {
 		await db.grantMemberItem(memberItem.member_id, memberItem.item_id, 1);
-		await logger.log(`❌ Shop item use failed (${effectType}): ${err.message}`);
+		await logger.log(`❌ Item use failed (${effectType}): ${err.message}`);
 		return { ok: false, error: 'resolution_failed' };
 	}
 
@@ -586,7 +586,7 @@ function isItemAvailableNow(item: any) {
 	return true;
 }
 
-export async function handleShopItemBuy(client: any, payload: any) {
+export async function handleItemBuy(client: any, payload: any) {
 	const { guild_id, actor_discord_id, item_id, quantity } = payload || {};
 	if (!guild_id || !actor_discord_id || !item_id) return { ok: false, error: 'missing_fields' };
 
@@ -598,7 +598,7 @@ export async function handleShopItemBuy(client: any, payload: any) {
 	} catch (_) {
 		return { ok: false, error: 'server_not_found' };
 	}
-	if (!(await isComponentFeatureEnabled(guild_id, serverSettingsComponent.shop))) {
+	if (!(await isComponentFeatureEnabled(guild_id, serverSettingsComponent.items))) {
 		return { ok: false, error: 'shop_disabled' };
 	}
 
@@ -640,9 +640,9 @@ async function notifyTargetIfNeeded(client: any, guildId: any, server: any, targ
 	if (effectType === 'gift') {
 		line = `🎁 A member just received a gift of${amount || ' XP'}!`;
 	} else if (result.outcome === 'blocked') {
-		line = `🛡️ A shop attack was blocked by an active shield.`;
+		line = `🛡️ An attack was blocked by an active shield.`;
 	} else if (result.outcome === 'reflected') {
-		line = `🪞 A shop attack was reflected back at the attacker!${amount}`;
+		line = `🪞 An attack was reflected back at the attacker!${amount}`;
 	} else {
 		const verb = effectType === 'xp_steal' ? 'robbed' : effectType === 'xp_bomb' ? 'bombed' : 'leeched';
 		line = `💥 A member just got ${verb}!${amount}`;

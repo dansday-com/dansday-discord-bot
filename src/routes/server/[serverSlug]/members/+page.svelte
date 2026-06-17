@@ -99,66 +99,6 @@
 		cardMember = null;
 	}
 
-	let inventoryToken = $state<string>('');
-	let inventoryOpen = $state(false);
-	let inventoryLoading = $state(false);
-	let inventoryItems = $state<any[]>([]);
-	let inventoryOwner = $state<string>('');
-	let usingItem = $state<number | null>(null);
-	let pickingTargetFor = $state<any | null>(null);
-
-	const TARGETED = new Set(['xp_steal', 'xp_bomb', 'leech', 'gift', 'bounty']);
-
-	async function openInventory(token: string) {
-		inventoryToken = token;
-		inventoryOpen = true;
-		inventoryLoading = true;
-		try {
-			const res = await fetch(`/api/leaderboards/${encodeURIComponent(data.server.slug)}/shop/inventory?card=${encodeURIComponent(token)}`);
-			const d = await res.json();
-			if (d.success) {
-				inventoryItems = d.items ?? [];
-				inventoryOwner = d.member?.name ?? '';
-			} else {
-				inventoryItems = [];
-			}
-		} finally {
-			inventoryLoading = false;
-		}
-	}
-
-	function closeInventory() {
-		inventoryOpen = false;
-		pickingTargetFor = null;
-	}
-
-	async function useItem(item: any, targetToken?: string) {
-		usingItem = item.member_item_id;
-		try {
-			const res = await fetch(`/api/leaderboards/${encodeURIComponent(data.server.slug)}/shop/use`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ card: inventoryToken, target_card: targetToken, member_item_id: item.member_item_id })
-			});
-			const d = await res.json();
-			if (d.success) {
-				const detail = d.result?.xp ? ` (${d.result.xp} XP)` : '';
-				alert(`Used ${item.name}!${detail}`);
-				pickingTargetFor = null;
-				await openInventory(inventoryToken);
-			} else {
-				alert(d.error || 'Failed to use item');
-			}
-		} finally {
-			usingItem = null;
-		}
-	}
-
-	function onUseClick(item: any) {
-		if (TARGETED.has(item.effect_type)) pickingTargetFor = item;
-		else useItem(item);
-	}
-
 	function fmtNum(n: number): string {
 		if (n == null) return '0';
 		return Number(n).toLocaleString();
@@ -173,12 +113,7 @@
 			}
 		}
 
-		const invId = page.url.searchParams.get('inventory');
-		if (invId) {
-			openInventory(invId);
-		}
-
-		const url = `/api/leaderboards/${encodeURIComponent(data.server.slug)}/members-stream`;
+		const url = `/api/public-statistics/${encodeURIComponent(data.server.slug)}/members-stream`;
 		const source = new EventSource(url);
 		es = source;
 		source.onmessage = (e) => {
@@ -367,69 +302,4 @@
 
 {#if cardMember}
 	<MemberCard member={cardMember} serverName={data.server.name || data.server.slug} serverIcon={data.server.server_icon} onclose={closeCard} />
-{/if}
-
-{#if inventoryOpen}
-	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onclick={closeInventory} role="presentation">
-		<div
-			class="max-h-[88vh] w-full max-w-md overflow-y-auto rounded-2xl border border-white/10 bg-[#10131a] p-5"
-			onclick={(e) => e.stopPropagation()}
-			role="presentation"
-		>
-			<div class="mb-4 flex items-center justify-between">
-				<h3 class="flex items-center gap-2 text-base font-semibold text-white">
-					<i class="fas fa-backpack text-teal-400"></i>Inventory{#if inventoryOwner}<span class="text-white/40">· {inventoryOwner}</span>{/if}
-				</h3>
-				<button onclick={closeInventory} class="text-white/50 hover:text-white" aria-label="Close"><i class="fas fa-xmark"></i></button>
-			</div>
-
-			{#if inventoryLoading}
-				<p class="py-8 text-center text-sm text-white/50"><i class="fas fa-spinner fa-spin mr-1"></i>Loading...</p>
-			{:else if inventoryItems.length === 0}
-				<p class="py-8 text-center text-sm text-white/50">No items. Buy some in the shop!</p>
-			{:else if pickingTargetFor}
-				<div>
-					<button onclick={() => (pickingTargetFor = null)} class="mb-3 text-xs text-white/60 hover:text-white"
-						><i class="fas fa-arrow-left mr-1"></i>Back</button
-					>
-					<p class="mb-2 text-sm text-white">Pick a target for <strong>{pickingTargetFor.name}</strong>:</p>
-					<div class="max-h-64 space-y-1 overflow-y-auto">
-						{#each members as m}
-							{#if m.cardToken !== inventoryToken}
-								<button
-									onclick={() => useItem(pickingTargetFor, m.cardToken)}
-									disabled={usingItem === pickingTargetFor.member_item_id}
-									class="flex w-full items-center gap-2 rounded-lg bg-white/5 px-3 py-2 text-left text-sm text-white/80 hover:bg-white/10 disabled:opacity-50"
-								>
-									<span class="truncate">{m.server_display_name || m.display_name || m.username}</span>
-								</button>
-							{/if}
-						{/each}
-					</div>
-				</div>
-			{:else}
-				<div class="space-y-2">
-					{#each inventoryItems as item (item.member_item_id)}
-						<div class="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
-							<span class="text-2xl">{item.icon || '🎁'}</span>
-							<div class="min-w-0 flex-1">
-								<div class="flex items-center gap-2 text-sm font-medium text-white">
-									<span class="truncate">{item.name}</span>
-									<span class="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-white/60">×{item.quantity}</span>
-								</div>
-								{#if item.description}<p class="line-clamp-1 text-xs text-white/50">{item.description}</p>{/if}
-							</div>
-							<button
-								onclick={() => onUseClick(item)}
-								disabled={usingItem === item.member_item_id || item.quantity <= 0}
-								class="shrink-0 rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-500 disabled:opacity-50"
-							>
-								{#if usingItem === item.member_item_id}<i class="fas fa-spinner fa-spin"></i>{:else}Use{/if}
-							</button>
-						</div>
-					{/each}
-				</div>
-			{/if}
-		</div>
-	</div>
 {/if}

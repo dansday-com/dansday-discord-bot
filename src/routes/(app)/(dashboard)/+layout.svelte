@@ -8,7 +8,7 @@
 		{ label: 'Overview', icon: 'fa-chart-pie', iconClass: 'text-sky-400', href: '/overview' },
 		{ label: 'Bots', icon: 'fa-robot', iconClass: 'text-violet-400', href: '/bots' },
 		{ label: 'Global Embed', icon: 'fa-bullhorn', iconClass: 'text-rose-400', href: '/global-embed' },
-		{ label: 'Shop Items', icon: 'fa-store', iconClass: 'text-teal-400', href: '/shop-items' }
+		{ label: 'Items', icon: 'fa-store', iconClass: 'text-teal-400', href: '/items' }
 	]);
 
 	function isActive(href: string) {

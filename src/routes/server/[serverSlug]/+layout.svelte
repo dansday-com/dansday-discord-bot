@@ -13,7 +13,10 @@
 	const pathNorm = $derived(page.url.pathname.replace(/\/$/, ''));
 	const isLeaderboard = $derived(pathNorm.endsWith('/leaderboard'));
 	const isMembers = $derived(pathNorm.endsWith('/members'));
-	const isOverview = $derived(!isLeaderboard && !isMembers);
+	const itemsMatch = $derived(pathNorm.match(/\/items\/([^/]+)$/));
+	const isItems = $derived(!!itemsMatch);
+	const itemsPath = $derived(itemsMatch ? `${basePath}/items/${itemsMatch[1]}` : null);
+	const isOverview = $derived(!isLeaderboard && !isMembers && !isItems);
 </script>
 
 <div class="m-root">
@@ -58,6 +61,12 @@
 					<i class="fas fa-users"></i>
 					Members
 				</a>
+				{#if isItems && itemsPath}
+					<a href={itemsPath} class="m-section-tab m-section-tab--active">
+						<i class="fas fa-store"></i>
+						Items
+					</a>
+				{/if}
 			</div>
 
 			{@render children()}

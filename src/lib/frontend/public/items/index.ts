@@ -26,6 +26,52 @@ export async function resolveActiveBotForServer(server: any): Promise<any | null
 	return bot ?? null;
 }
 
+function safeParse(raw: any) {
+	try {
+		return JSON.parse(raw);
+	} catch {
+		return null;
+	}
+}
+
+function itemAvailableNow(item: any): boolean {
+	const nowMs = Date.now();
+	if (item.available_from && nowMs < new Date(item.available_from).getTime()) return false;
+	if (item.available_to && nowMs > new Date(item.available_to).getTime()) return false;
+	const schedule = typeof item.recurring_schedule === 'string' ? safeParse(item.recurring_schedule) : item.recurring_schedule;
+	if (schedule && Array.isArray(schedule.days) && schedule.days.length > 0) {
+		const now = new Date(nowMs);
+		if (!schedule.days.map(Number).includes(now.getUTCDay())) return false;
+		if (schedule.from && schedule.to) {
+			const minutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+			const toMin = (hhmm: any) => {
+				const [h, m] = String(hhmm)
+					.split(':')
+					.map((n) => Number(n) || 0);
+				return h * 60 + m;
+			};
+			if (minutes < toMin(schedule.from) || minutes > toMin(schedule.to)) return false;
+		}
+	}
+	return true;
+}
+
+export async function loadItemsCatalog(serverId: number): Promise<any[]> {
+	const botId = await db.getOfficialBotIdForServer(serverId).catch(() => null);
+	if (botId == null) return [];
+	const all = await db.listBotItems(botId, { enabledOnly: true }).catch(() => []);
+	return (all as any[]).filter(itemAvailableNow).map((i) => ({
+		id: i.id,
+		name: i.name,
+		effect_type: i.effect_type,
+		category: i.category,
+		description: i.description,
+		cost: i.cost,
+		icon: i.icon,
+		config: typeof i.config === 'string' ? safeParse(i.config) : i.config
+	}));
+}
+
 export function postBotWebhook(bot: any, payload: any): Promise<{ status: number; body: any }> {
 	const body = JSON.stringify(payload);
 	return new Promise((resolve) => {

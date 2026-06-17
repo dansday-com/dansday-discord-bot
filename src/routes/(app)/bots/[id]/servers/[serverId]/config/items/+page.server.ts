@@ -5,6 +5,6 @@ import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 
 export const load: PageServerLoad = async ({ locals, params }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
-	const settings = await db.getServerSettings(params.serverId, SERVER_SETTINGS.component.shop).catch(() => ({}));
+	const settings = await db.getServerSettings(params.serverId, SERVER_SETTINGS.component.items).catch(() => ({}));
 	return { settings: (settings as any)?.settings ?? {} };
 };

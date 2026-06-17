@@ -265,28 +265,24 @@ async function handleMenuButton(interaction) {
 		} catch (_) {}
 	}
 
-	if (await isComponentFeatureEnabled(interaction.guild.id, serverSettingsComponent.shop)) {
+	if (await isComponentFeatureEnabled(interaction.guild.id, serverSettingsComponent.items)) {
 		try {
 			const server = await getServerForCurrentBot(interaction.guild.id);
 			const slug = await computePublicServerSlugForServerId(Number(server.id));
-			if (slug) {
+			const base = slug ? publicServerUrl(slug) : null;
+			if (base) {
 				const joinedDate = member.joinedAt ? member.joinedAt.toISOString().split('T')[0] : '';
 				const cardHash = createHash('sha256').update(`${interaction.user.id}_${joinedDate}`).digest('hex').substring(0, 16);
-				const shopUrl = `${publicServerUrl(slug, 'shop')}?card=${cardHash}`;
-				const inventoryUrl = `${publicServerUrl(slug, 'members')}?inventory=${cardHash}`;
+				const itemsUrl = `${base}/items/${cardHash}`;
 
-				const shopLabel = await translate('menu.shop', interaction.guild.id, interaction.user.id);
-				const inventoryLabel = await translate('menu.inventory', interaction.guild.id, interaction.user.id);
-				const shopBtn = new ButtonBuilder().setLabel(shopLabel).setURL(shopUrl).setStyle(ButtonStyle.Link);
-				const inventoryBtn = new ButtonBuilder().setLabel(inventoryLabel).setURL(inventoryUrl).setStyle(ButtonStyle.Link);
+				const itemsLabel = await translate('menu.items', interaction.guild.id, interaction.user.id);
+				const itemsBtn = new ButtonBuilder().setLabel(itemsLabel).setURL(itemsUrl).setStyle(ButtonStyle.Link);
 
-				for (const btn of [shopBtn, inventoryBtn]) {
-					const targetRow = rows[rows.length - 1];
-					if (targetRow.components.length < 5) {
-						targetRow.addComponents(btn);
-					} else if (rows.length < 5) {
-						rows.push(new ActionRowBuilder().addComponents(btn));
-					}
+				const targetRow = rows[rows.length - 1];
+				if (targetRow.components.length < 5) {
+					targetRow.addComponents(itemsBtn);
+				} else if (rows.length < 5) {
+					rows.push(new ActionRowBuilder().addComponents(itemsBtn));
 				}
 			}
 		} catch (_) {}

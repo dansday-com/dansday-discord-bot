@@ -54,7 +54,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		recurring_schedule: body.recurring_schedule ?? null,
 		sort_order: Number(body.sort_order) || 0
 	});
-	await logger.log(`${(locals.user as any).username} created shop item "${body.name}" (${body.effect_type})`);
+	await logger.log(`${(locals.user as any).username} created item "${body.name}" (${body.effect_type})`);
 	return json({ success: true, item });
 };
 
@@ -91,7 +91,7 @@ export const PUT: RequestHandler = async ({ locals, request }) => {
 		recurring_schedule: body.recurring_schedule,
 		sort_order: body.sort_order != null ? Number(body.sort_order) : undefined
 	});
-	await logger.log(`${(locals.user as any).username} updated shop item ${body.id}`);
+	await logger.log(`${(locals.user as any).username} updated item ${body.id}`);
 	return json({ success: true, item });
 };
 
@@ -108,6 +108,6 @@ export const DELETE: RequestHandler = async ({ locals, request }) => {
 	}
 
 	await db.deleteBotItem(body.id);
-	await logger.log(`${(locals.user as any).username} deleted shop item ${body.id}`);
+	await logger.log(`${(locals.user as any).username} deleted item ${body.id}`);
 	return json({ success: true });
 };

@@ -121,7 +121,7 @@
 	}
 
 	onMount(() => {
-		const url = `/api/leaderboards/${encodeURIComponent(data.server.slug)}/overview-stream`;
+		const url = `/api/public-statistics/${encodeURIComponent(data.server.slug)}/overview-stream`;
 		const source = new EventSource(url);
 		es = source;
 		source.onmessage = (e) => {

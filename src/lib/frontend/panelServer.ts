@@ -133,10 +133,10 @@ const REGISTRY = [
 		iconClass: 'text-amber-400'
 	},
 	{
-		id: 'shop',
-		label: 'Shop',
+		id: 'items',
+		label: 'Items',
 		featureSwitch: true,
-		hrefSuffix: '/shop',
+		hrefSuffix: '/items',
 		icon: 'fa-store',
 		iconClass: 'text-teal-400'
 	}
@@ -367,7 +367,7 @@ const ROUTE_GUARDS: RouteGuard[] = [
 	}
 ];
 
-const PUBLIC_PREFIXES = ['/api/leaderboards/', '/api/uploads/', '/api/panel/'];
+const PUBLIC_PREFIXES = ['/api/public-statistics/', '/api/uploads/', '/api/panel/'];
 
 const PUBLIC_EXACT = new Set([
 	'/api/panel/login',

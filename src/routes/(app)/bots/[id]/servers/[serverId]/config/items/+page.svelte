@@ -18,7 +18,7 @@
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
 				body: JSON.stringify({
-					component: SERVER_SETTINGS.component.shop,
+					component: SERVER_SETTINGS.component.items,
 					enabled: featureEnabled
 				})
 			});
@@ -35,19 +35,19 @@
 
 <div class="bg-ash-800 border-ash-700 space-y-5 rounded-xl border p-4 sm:p-6">
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
-		<i class="fas fa-store text-teal-400"></i>Shop
+		<i class="fas fa-store text-teal-400"></i>Items
 	</h3>
 	<p class="text-ash-400 text-xs">
-		Let members spend XP on items: boosts, shields, and PvP (steal, bomb, leech). Items are managed globally. Members open the shop from the bot menu or the
-		public site.
+		Let members spend XP on items: boosts, shields, and PvP (steal, bomb, leech). Items are managed globally. Members open them from the bot menu or the public
+		site.
 	</p>
 
 	<ConfigToggleRow
-		label="Shop module"
-		description="When off, the shop button and all buy/use actions are disabled for this server."
+		label="Items module"
+		description="When off, the Items button and all buy/use actions are disabled for this server."
 		labelIconClass="fas fa-store text-teal-400"
 		bind:enabled={featureEnabled}
-		ariaLabel="Toggle shop module"
+		ariaLabel="Toggle items module"
 	/>
 	{#if !featureEnabled}
 		<p class="flex items-start gap-2 text-xs text-amber-200/90">
@@ -57,7 +57,7 @@
 	{:else}
 		<p class="text-ash-500 flex items-start gap-2 text-xs">
 			<i class="fas fa-circle-info mt-0.5 shrink-0 text-teal-400/90" aria-hidden="true"></i>
-			<span>Members must use the bot menu's Shop button (opens the website) to browse and buy. PvP actions affect this server's XP only.</span>
+			<span>Members must use the bot menu's Items button (opens the website) to browse and buy. PvP actions affect this server's XP only.</span>
 		</p>
 	{/if}
 

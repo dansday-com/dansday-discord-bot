@@ -136,19 +136,22 @@
 		{:else}
 			<ul class="m-items-grid">
 				{#each visibleItems as item (item.id)}
-					<li class="m-items-card">
+					<li class="m-items-card" data-cat={item.category}>
+						<div class="m-items-accent"></div>
 						<div class="m-items-card-top">
-							<span class="m-items-icon">{item.icon || '🎁'}</span>
+							<span class="m-items-medallion">{item.icon || '🎁'}</span>
 							<div class="m-items-card-head">
 								<span class="m-items-name">{item.name}</span>
 								<span class="m-items-cat">{item.category}</span>
 							</div>
-							<span class="m-items-cost">{item.cost} XP</span>
 						</div>
 						<p class="m-items-desc">{item.description || effectSummary(item)}</p>
-						<button class="m-items-buy" disabled={busy === item.id || !data.valid} onclick={() => buy(item)}>
-							{#if busy === item.id}<i class="fas fa-spinner fa-spin"></i>{/if}Buy
-						</button>
+						<div class="m-items-foot">
+							<span class="m-items-cost"><i class="fas fa-star"></i>{item.cost} XP</span>
+							<button class="m-items-buy" disabled={busy === item.id || !data.valid} onclick={() => buy(item)}>
+								{#if busy === item.id}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas fa-cart-plus"></i>{/if}Buy
+							</button>
+						</div>
 					</li>
 				{/each}
 			</ul>
@@ -168,18 +171,22 @@
 	{:else}
 		<ul class="m-items-grid">
 			{#each data.inventory as item (item.member_item_id)}
-				<li class="m-items-card">
+				<li class="m-items-card" data-cat={item.category}>
+					<div class="m-items-accent"></div>
+					<span class="m-items-badge">×{item.quantity}</span>
 					<div class="m-items-card-top">
-						<span class="m-items-icon">{item.icon || '🎁'}</span>
+						<span class="m-items-medallion">{item.icon || '🎁'}</span>
 						<div class="m-items-card-head">
-							<span class="m-items-name">{item.name}<span class="m-items-qty">×{item.quantity}</span></span>
+							<span class="m-items-name">{item.name}</span>
 							<span class="m-items-cat">{item.category}</span>
 						</div>
 					</div>
 					<p class="m-items-desc">{item.description || effectSummary(item)}</p>
-					<button class="m-items-buy" disabled={busy === item.member_item_id || item.quantity <= 0} onclick={() => onUse(item)}>
-						{#if busy === item.member_item_id}<i class="fas fa-spinner fa-spin"></i>{/if}Use
-					</button>
+					<div class="m-items-foot">
+						<button class="m-items-buy m-items-buy--use" disabled={busy === item.member_item_id || item.quantity <= 0} onclick={() => onUse(item)}>
+							{#if busy === item.member_item_id}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas fa-bolt"></i>{/if}Use
+						</button>
+					</div>
 				</li>
 			{/each}
 		</ul>

@@ -3027,19 +3027,27 @@
 	display: inline-flex;
 	align-items: center;
 	gap: 7px;
-	padding: 7px 13px;
-	border-radius: 9px;
+	padding: 8px 14px;
+	border-radius: 10px;
 	font-size: 13px;
+	font-weight: 600;
 	color: var(--lb-muted, #9aa7b2);
 	background: rgba(255, 255, 255, 0.05);
-	border: 1px solid transparent;
+	border: 1px solid rgba(255, 255, 255, 0.06);
 	cursor: pointer;
 	transition: all 0.15s;
 }
 
+.m-root .m-items-tab:hover {
+	color: var(--lb-text, #e8eef2);
+	background: rgba(255, 255, 255, 0.08);
+}
+
 .m-root .m-items-tab--active {
-	background: #0d9488;
+	background: linear-gradient(135deg, #14b8a6, #0d9488);
 	color: #fff;
+	border-color: transparent;
+	box-shadow: 0 6px 16px -8px rgba(13, 148, 136, 0.9);
 }
 
 .m-root .m-items-grid {
@@ -3047,36 +3055,81 @@
 	margin: 0;
 	padding: 0;
 	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-	gap: 14px;
+	grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+	gap: 16px;
 }
 
 .m-root .m-items-card {
-	background: rgba(255, 255, 255, 0.04);
+	--cat: #2dd4bf;
+	--cat-soft: rgba(45, 212, 191, 0.14);
+	position: relative;
+	overflow: hidden;
+	background: linear-gradient(160deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.02));
 	border: 1px solid rgba(255, 255, 255, 0.08);
-	border-radius: 14px;
-	padding: 16px;
+	border-radius: 18px;
+	padding: 18px;
 	display: flex;
 	flex-direction: column;
+	box-shadow:
+		0 1px 0 rgba(255, 255, 255, 0.04) inset,
+		0 8px 24px -16px rgba(0, 0, 0, 0.6);
 	transition:
-		border-color 0.15s,
-		background 0.15s;
+		transform 0.18s ease,
+		border-color 0.18s ease,
+		box-shadow 0.18s ease;
+}
+
+.m-root .m-items-card[data-cat='pvp'] {
+	--cat: #fb7185;
+	--cat-soft: rgba(251, 113, 133, 0.15);
+}
+.m-root .m-items-card[data-cat='boost'] {
+	--cat: #fbbf24;
+	--cat-soft: rgba(251, 191, 36, 0.15);
+}
+.m-root .m-items-card[data-cat='cosmetic'] {
+	--cat: #c084fc;
+	--cat-soft: rgba(192, 132, 252, 0.15);
+}
+.m-root .m-items-card[data-cat='fun'] {
+	--cat: #38bdf8;
+	--cat-soft: rgba(56, 189, 248, 0.15);
 }
 
 .m-root .m-items-card:hover {
-	border-color: rgba(13, 148, 136, 0.5);
-	background: rgba(255, 255, 255, 0.06);
+	transform: translateY(-4px);
+	border-color: color-mix(in srgb, var(--cat) 55%, transparent);
+	box-shadow:
+		0 1px 0 rgba(255, 255, 255, 0.06) inset,
+		0 18px 40px -20px color-mix(in srgb, var(--cat) 50%, black);
+}
+
+.m-root .m-items-accent {
+	position: absolute;
+	inset: 0 0 auto 0;
+	height: 3px;
+	background: linear-gradient(90deg, var(--cat), transparent 85%);
+	opacity: 0.85;
 }
 
 .m-root .m-items-card-top {
 	display: flex;
-	align-items: flex-start;
-	gap: 10px;
+	align-items: center;
+	gap: 12px;
 }
 
-.m-root .m-items-icon {
+.m-root .m-items-medallion {
+	flex-shrink: 0;
+	width: 48px;
+	height: 48px;
+	display: grid;
+	place-items: center;
 	font-size: 26px;
 	line-height: 1;
+	border-radius: 14px;
+	background: var(--cat-soft);
+	border: 1px solid color-mix(in srgb, var(--cat) 35%, transparent);
+	box-shadow: 0 0 20px -6px color-mix(in srgb, var(--cat) 60%, transparent);
 }
 
 .m-root .m-items-card-head {
@@ -3088,41 +3141,45 @@
 	display: block;
 	font-weight: 700;
 	color: var(--lb-text, #e8eef2);
-	font-size: 14px;
-}
-
-.m-root .m-items-qty {
-	margin-left: 6px;
-	font-size: 11px;
-	color: var(--lb-muted, #9aa7b2);
-	background: rgba(255, 255, 255, 0.1);
-	border-radius: 999px;
-	padding: 1px 6px;
+	font-size: 15px;
+	letter-spacing: -0.01em;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .m-root .m-items-cat {
-	display: block;
+	display: inline-block;
 	font-size: 10px;
+	font-weight: 700;
 	text-transform: uppercase;
-	letter-spacing: 0.04em;
-	color: var(--lb-muted, #9aa7b2);
-	margin-top: 2px;
+	letter-spacing: 0.06em;
+	color: var(--cat);
+	background: var(--cat-soft);
+	border-radius: 999px;
+	padding: 2px 8px;
+	margin-top: 6px;
 }
 
-.m-root .m-items-cost {
-	flex-shrink: 0;
-	background: rgba(13, 148, 136, 0.18);
-	color: #5eead4;
+.m-root .m-items-badge {
+	position: absolute;
+	top: 12px;
+	right: 12px;
+	z-index: 1;
+	font-size: 11px;
 	font-weight: 700;
-	font-size: 13px;
-	border-radius: 8px;
-	padding: 4px 8px;
+	color: var(--lb-text, #e8eef2);
+	background: rgba(0, 0, 0, 0.35);
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	border-radius: 999px;
+	padding: 2px 9px;
 }
 
 .m-root .m-items-desc {
-	font-size: 12px;
+	font-size: 12.5px;
+	line-height: 1.5;
 	color: var(--lb-muted, #9aa7b2);
-	margin: 12px 0 0;
+	margin: 14px 0 0;
 	flex: 1;
 	display: -webkit-box;
 	-webkit-line-clamp: 3;
@@ -3130,27 +3187,75 @@
 	overflow: hidden;
 }
 
+.m-root .m-items-foot {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin-top: 16px;
+}
+
+.m-root .m-items-cost {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	flex-shrink: 0;
+	background: rgba(13, 148, 136, 0.16);
+	color: #5eead4;
+	font-weight: 800;
+	font-size: 13px;
+	border-radius: 10px;
+	padding: 8px 11px;
+	border: 1px solid rgba(45, 212, 191, 0.25);
+}
+
+.m-root .m-items-cost i {
+	font-size: 10px;
+	opacity: 0.9;
+}
+
 .m-root .m-items-buy {
-	margin-top: 14px;
-	width: 100%;
-	padding: 9px;
-	border-radius: 9px;
+	flex: 1;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 7px;
+	padding: 10px;
+	border-radius: 11px;
 	border: none;
-	background: #0d9488;
+	background: linear-gradient(135deg, #14b8a6, #0d9488);
 	color: #fff;
-	font-weight: 600;
+	font-weight: 700;
 	font-size: 13px;
 	cursor: pointer;
-	transition: background 0.15s;
+	box-shadow: 0 8px 20px -10px rgba(13, 148, 136, 0.9);
+	transition:
+		filter 0.15s,
+		transform 0.1s,
+		box-shadow 0.15s;
+}
+
+.m-root .m-items-buy i {
+	font-size: 12px;
 }
 
 .m-root .m-items-buy:hover:not(:disabled) {
-	background: #0f766e;
+	filter: brightness(1.1);
+	box-shadow: 0 10px 26px -10px rgba(13, 148, 136, 1);
+}
+
+.m-root .m-items-buy:active:not(:disabled) {
+	transform: translateY(1px);
+}
+
+.m-root .m-items-buy--use {
+	background: linear-gradient(135deg, var(--cat), color-mix(in srgb, var(--cat) 70%, black 20%));
+	box-shadow: 0 8px 20px -10px color-mix(in srgb, var(--cat) 90%, transparent);
 }
 
 .m-root .m-items-buy:disabled {
-	opacity: 0.5;
+	opacity: 0.45;
 	cursor: not-allowed;
+	box-shadow: none;
 }
 
 .m-root .m-items-back {

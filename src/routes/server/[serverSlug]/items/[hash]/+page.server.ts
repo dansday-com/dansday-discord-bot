@@ -33,15 +33,25 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 
 	const valid = true;
 
+	const permissionsRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.permissions).catch(() => null);
+	const memberRoleIds: string[] = (permissionsRow as any)?.settings?.member_roles ?? [];
+
 	let inventory: any[] = [];
 	let targets: any[] = [];
 	if (member) {
 		const list = await db.getServerMembersList(server.id).catch(() => []);
 		targets = (list as any[])
 			.filter((m) => m.discord_member_id && Number(m.id) !== Number(member.id))
+			.filter((m) => (m.roles ?? []).some((r: any) => memberRoleIds.includes(r.id)))
 			.map((m) => ({
 				hash: computeCardToken(m.discord_member_id, m.member_since),
-				name: m.server_display_name || m.display_name || m.username
+				name: m.server_display_name || m.display_name || m.username,
+				avatar: m.avatar ?? null,
+				discord_member_id: String(m.discord_member_id),
+				level: Number(m.level ?? 0) || 0,
+				experience: Number(m.experience ?? 0) || 0,
+				rank: m.rank != null ? Number(m.rank) : null,
+				roles: (m.roles ?? []).map((r: any) => ({ name: r.name, color: r.color }))
 			}));
 
 		const rows = await db.getMemberInventory(member.id).catch(() => []);

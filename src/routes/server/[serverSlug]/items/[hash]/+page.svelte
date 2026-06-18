@@ -127,12 +127,45 @@
 		}, 600);
 	}
 
-	async function buy(item: any) {
+	let bagTabEl: HTMLButtonElement | undefined = $state();
+	let bagPulse = $state(false);
+
+	function flyToBag(fromEl: HTMLElement | null, icon: string) {
+		if (!fromEl || !bagTabEl || typeof document === 'undefined') return;
+		const start = fromEl.getBoundingClientRect();
+		const end = bagTabEl.getBoundingClientRect();
+		const clone = document.createElement('div');
+		clone.className = 'm-fly';
+		clone.textContent = icon || '🎁';
+		clone.style.left = `${start.left + start.width / 2}px`;
+		clone.style.top = `${start.top + start.height / 2}px`;
+		document.body.appendChild(clone);
+		const dx = end.left + end.width / 2 - (start.left + start.width / 2);
+		const dy = end.top + end.height / 2 - (start.top + start.height / 2);
+		const anim = clone.animate(
+			[
+				{ transform: 'translate(-50%, -50%) scale(1)', opacity: 1, offset: 0 },
+				{ transform: `translate(calc(-50% + ${dx * 0.5}px), calc(-50% + ${dy * 0.5 - 60}px)) scale(1.15)`, opacity: 1, offset: 0.6 },
+				{ transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(0.3)`, opacity: 0.2, offset: 1 }
+			],
+			{ duration: 620, easing: 'cubic-bezier(0.5, 0, 0.7, 1)' }
+		);
+		anim.onfinish = () => {
+			clone.remove();
+			bagPulse = false;
+			requestAnimationFrame(() => (bagPulse = true));
+			setTimeout(() => (bagPulse = false), 520);
+		};
+	}
+
+	async function buy(item: any, ev?: MouseEvent) {
 		if (!data.valid) return;
 		if (!canAfford(item)) {
 			showToast(`Not enough XP — need ${fmt(item.cost)}`, 'error');
 			return;
 		}
+		const card = (ev?.currentTarget as HTMLElement | undefined)?.closest('.m-card');
+		const medallion = card?.querySelector('.m-card-medallion') as HTMLElement | null;
 		busy = item.id;
 		const optimistic = Math.max(0, liveXp - (Number(item.cost) || 0));
 		try {
@@ -145,7 +178,7 @@
 			if (d.success) {
 				burst(item.id);
 				setXp(optimistic);
-				showToast(`Bought ${item.name}!`, 'success');
+				flyToBag(medallion, item.icon);
 				await invalidateAll();
 			} else showToast(d.error || 'Purchase failed', 'error');
 		} catch {
@@ -166,8 +199,21 @@
 			showToast(`${effectLabel(item.effect_type)} is already active`, 'error');
 			return;
 		}
-		if (TARGETED.has(item.effect_type)) pickingTargetFor = item;
-		else use(item);
+		if (TARGETED.has(item.effect_type)) {
+			targetSearch = '';
+			pickingTargetFor = item;
+		} else use(item);
+	}
+
+	let targetSearch = $state('');
+	const visibleTargets = $derived.by(() => {
+		const q = targetSearch.trim().toLowerCase();
+		const list = q ? data.targets.filter((t: any) => (t.name ?? '').toLowerCase().includes(q)) : data.targets;
+		return [...list].sort((a: any, b: any) => (b.experience ?? 0) - (a.experience ?? 0));
+	});
+
+	function targetAvatar(t: any): string {
+		return t.avatar ?? `https://cdn.discordapp.com/embed/avatars/${Number(t.discord_member_id) % 5 || 0}.png`;
 	}
 
 	let outcome = $state<ItemOutcome | null>(null);
@@ -217,6 +263,10 @@
 	let reel = $state<string[]>([]);
 	let reelOffset = $state(0);
 	let reelResult = $state<'win' | 'lose' | null>(null);
+	let reelSpinning = $state(false);
+	let gambleShake = $state(false);
+	let coins = $state<{ id: number; x: number; delay: number }[]>([]);
+	let winCount = $state(0);
 	let reelWrapEl: HTMLDivElement | undefined = $state();
 
 	function randomCells(n: number): ('win' | 'lose')[] {
@@ -231,11 +281,37 @@
 		reel = randomCells(12);
 		reelOffset = 0;
 		reelResult = null;
+		reelSpinning = false;
+		gambleShake = false;
+		coins = [];
+		winCount = 0;
 	}
 
 	const wagerXp = $derived(
 		gamblePercent === 'custom' ? Math.min(Math.max(0, Math.floor(Number(gambleCustom) || 0)), liveXp) : Math.floor((liveXp * (gamblePercent as number)) / 100)
 	);
+
+	const payoutMultiplier = $derived(Number(gambleItem?.config?.payout_multiplier ?? 2) || 2);
+	const potentialWin = $derived(Math.floor(wagerXp * payoutMultiplier));
+
+	function spawnCoins() {
+		coins = Array.from({ length: 14 }, (_, i) => ({ id: i, x: (i / 13) * 100, delay: (i % 7) * 55 }));
+		setTimeout(() => (coins = []), 1600);
+	}
+
+	function countUpWin(target: number) {
+		winCount = 0;
+		const steps = 28;
+		let i = 0;
+		const t = setInterval(() => {
+			i++;
+			winCount = Math.round(target * (1 - Math.pow(1 - i / steps, 2)));
+			if (i >= steps) {
+				winCount = target;
+				clearInterval(t);
+			}
+		}, 22);
+	}
 
 	async function playGamble() {
 		const item = gambleItem;
@@ -246,6 +322,7 @@
 		}
 		gambleRolling = true;
 		reelResult = null;
+		reelSpinning = true;
 		try {
 			const body =
 				gamblePercent === 'custom' ? { card: data.hash, item_id: item.id, amount: wagerXp } : { card: data.hash, item_id: item.id, percent: gamblePercent };
@@ -258,12 +335,15 @@
 			if (!d.success) {
 				showToast(d.error || 'Gamble failed', 'error');
 				gambleRolling = false;
+				reelSpinning = false;
 				return;
 			}
 			const won = !!d.result?.won;
 			const landIndex = 32;
 			const cells = randomCells(40);
 			cells[landIndex] = won ? 'win' : 'lose';
+			cells[landIndex - 1] = won ? 'lose' : 'win';
+			cells[landIndex + 1] = won ? 'lose' : 'win';
 			reel = cells;
 			reelOffset = 0;
 			await new Promise((r) => requestAnimationFrame(() => r(null)));
@@ -275,19 +355,31 @@
 				reelOffset = wrapW / 2 - cellCenter;
 			}
 			setTimeout(async () => {
+				reelSpinning = false;
 				reelResult = won ? 'win' : 'lose';
+				gambleShake = true;
+				setTimeout(() => (gambleShake = false), 480);
+				if (won) {
+					spawnCoins();
+					countUpWin(Math.floor(Number(d.result?.payout) || potentialWin));
+				}
 				await invalidateAll();
 				gambleRolling = false;
-				setTimeout(() => {
-					gambleItem = null;
-					reel = [];
-					reelResult = null;
-					showOutcome('gamble', d.result);
-				}, 900);
-			}, 3600);
+				setTimeout(
+					() => {
+						gambleItem = null;
+						reel = [];
+						reelResult = null;
+						coins = [];
+						showOutcome('gamble', d.result);
+					},
+					won ? 1700 : 1100
+				);
+			}, 3700);
 		} catch {
 			showToast('Gamble failed', 'error');
 			gambleRolling = false;
+			reelSpinning = false;
 		}
 	}
 </script>
@@ -344,8 +436,14 @@
 	<div class="m-items-bar">
 		<div class="m-items-toggle">
 			<button class="m-items-seg" class:m-items-seg--active={view === 'shop'} onclick={() => (view = 'shop')}><i class="fas fa-store"></i>Shop</button>
-			<button class="m-items-seg" class:m-items-seg--active={view === 'bag'} onclick={() => (view = 'bag')}>
-				<i class="fas fa-bag-shopping"></i>Bag<span class="m-items-count">{data.inventory.length}</span>
+			<button
+				bind:this={bagTabEl}
+				class="m-items-seg"
+				class:m-items-seg--active={view === 'bag'}
+				class:m-items-seg--pulse={bagPulse}
+				onclick={() => (view = 'bag')}
+			>
+				<i class="fas fa-bag-shopping"></i>Bag<span class="m-items-count" class:m-items-count--bump={bagPulse}>{data.inventory.length}</span>
 			</button>
 		</div>
 	</div>
@@ -362,23 +460,26 @@
 		{#if visibleItems.length === 0}
 			<div class="m-members-empty">No items in this category.</div>
 		{:else}
-			<ul class="m-items-list">
+			<div class="m-cards">
 				{#each visibleItems as item (item.id)}
 					{@const affordable = canAfford(item)}
-					<li class="m-row" class:m-row--locked={!affordable} class:m-row--burst={burstId === item.id} data-cat={item.effect_type}>
-						<span class="m-row-medallion">{item.icon || '🎁'}</span>
-						<div class="m-row-body">
-							<span class="m-row-name">{item.name}</span>
-							<span class="m-row-desc">{item.description || effectSummary(item)}</span>
+					<article class="m-card" class:m-card--locked={!affordable} class:m-card--burst={burstId === item.id} data-cat={item.effect_type}>
+						<div class="m-card-glow"></div>
+						<div class="m-card-top">
+							<span class="m-card-medallion">{item.icon || '🎁'}</span>
+							<span class="m-card-tag">{effectLabel(item.effect_type)}</span>
 						</div>
-						<div class="m-row-action">
+						<h3 class="m-card-name">{item.name}</h3>
+						<p class="m-card-desc">{item.description || effectSummary(item)}</p>
+						<div class="m-card-foot">
 							{#if item.effect_type === 'gamble'}
-								<button class="m-row-btn m-row-btn--play" onclick={() => openGamble(item)}>
+								<span class="m-card-price m-card-price--wager"><i class="fas fa-dice"></i>Wager</span>
+								<button class="m-card-btn m-card-btn--play" onclick={() => openGamble(item)}>
 									<i class="fas fa-dice"></i>Play
 								</button>
 							{:else}
-								<span class="m-row-cost" class:m-row-cost--short={!affordable}><i class="fas fa-star"></i>{fmt(item.cost)}</span>
-								<button class="m-row-btn" disabled={busy === item.id || !affordable} onclick={() => buy(item)}>
+								<span class="m-card-price" class:m-card-price--short={!affordable}><i class="fas fa-star"></i>{fmt(item.cost)}</span>
+								<button class="m-card-btn" disabled={busy === item.id || !affordable} onclick={(e) => buy(item, e)}>
 									{#if busy === item.id}<i class="fas fa-spinner fa-spin"></i>{:else if !affordable}<i class="fas fa-lock"></i>{:else}<i
 											class="fas fa-cart-plus"
 										></i>{/if}
@@ -386,53 +487,98 @@
 								</button>
 							{/if}
 						</div>
-					</li>
+					</article>
 				{/each}
-			</ul>
+			</div>
 		{/if}
 	{:else if pickingTargetFor}
 		<button class="m-items-back" onclick={() => (pickingTargetFor = null)}><i class="fas fa-arrow-left"></i>Back</button>
 		<p class="m-items-pick-label">Pick a target for <strong>{pickingTargetFor.name}</strong>:</p>
-		<ul class="m-items-targets">
-			{#each data.targets as t}
-				<li>
-					<button class="m-items-target" disabled={busy === pickingTargetFor.member_item_id} onclick={() => use(pickingTargetFor, t.hash)}>
-						<i class="fas fa-crosshairs"></i>{t.name}
-					</button>
-				</li>
-			{/each}
-		</ul>
+		{#if data.targets.length === 0}
+			<div class="m-members-empty">No eligible targets in this server.</div>
+		{:else}
+			<div class="m-tgt-search">
+				<i class="fas fa-search m-tgt-search-ic" aria-hidden="true"></i>
+				<input type="search" class="m-tgt-search-inp" placeholder="Search a member to attack…" bind:value={targetSearch} />
+			</div>
+			{#if visibleTargets.length === 0}
+				<div class="m-members-empty">No members match “{targetSearch}”.</div>
+			{:else}
+				<ul class="m-tgt-list">
+					{#each visibleTargets as t (t.hash)}
+						<li>
+							<button class="m-tgt" disabled={busy === pickingTargetFor.member_item_id} onclick={() => use(pickingTargetFor, t.hash)}>
+								<span class="m-tgt-rank">{t.rank != null ? `#${t.rank}` : '—'}</span>
+								<img
+									class="m-tgt-av"
+									src={targetAvatar(t)}
+									alt={t.name}
+									loading="lazy"
+									onerror={(e) => ((e.currentTarget as HTMLImageElement).src = 'https://cdn.discordapp.com/embed/avatars/0.png')}
+								/>
+								<span class="m-tgt-body">
+									<span class="m-tgt-name">{t.name}</span>
+									<span class="m-tgt-stats"><span>Lv.{t.level}</span><span class="m-tgt-dot">·</span><span>{fmt(t.experience)} XP</span></span>
+									{#if t.roles.length > 0}
+										<span class="m-tgt-roles">
+											{#each t.roles.slice(0, 3) as role}
+												<span class="m-tgt-role" style="--rc: {role.color || '#888'}">{role.name}</span>
+											{/each}
+										</span>
+									{/if}
+								</span>
+								<i class="fas fa-crosshairs m-tgt-aim"></i>
+							</button>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+		{/if}
 	{:else if data.inventory.length === 0}
 		<div class="m-members-empty">Your bag is empty. Buy items in the shop!</div>
 	{:else}
-		<ul class="m-items-list">
+		<div class="m-cards">
 			{#each data.inventory as item (item.member_item_id)}
-				<li class="m-row" data-cat={item.effect_type}>
-					<span class="m-row-medallion">{item.icon || '🎁'}<span class="m-row-qty">×{item.quantity}</span></span>
-					<div class="m-row-body">
-						<span class="m-row-name">{item.name}</span>
-						<span class="m-row-desc">{item.description || effectSummary(item)}</span>
+				<article class="m-card" data-cat={item.effect_type}>
+					<div class="m-card-glow"></div>
+					<div class="m-card-top">
+						<span class="m-card-medallion">{item.icon || '🎁'}<span class="m-card-qty">×{item.quantity}</span></span>
+						<span class="m-card-tag">{effectLabel(item.effect_type)}</span>
 					</div>
-					<div class="m-row-action">
+					<h3 class="m-card-name">{item.name}</h3>
+					<p class="m-card-desc">{item.description || effectSummary(item)}</p>
+					<div class="m-card-foot">
 						{#if isBuffActive(item.effect_type)}
-							<button class="m-row-btn m-row-btn--use" disabled><i class="fas fa-check"></i>Active</button>
+							<span class="m-card-active"><i class="fas fa-circle-check"></i>Active</span>
+							<button class="m-card-btn m-card-btn--use" disabled><i class="fas fa-check"></i>In use</button>
 						{:else}
-							<button class="m-row-btn m-row-btn--use" disabled={busy === item.member_item_id || item.quantity <= 0} onclick={() => onUse(item)}>
+							<span class="m-card-owned">Owned ×{item.quantity}</span>
+							<button class="m-card-btn m-card-btn--use" disabled={busy === item.member_item_id || item.quantity <= 0} onclick={() => onUse(item)}>
 								{#if busy === item.member_item_id}<i class="fas fa-spinner fa-spin"></i>{:else if TARGETED.has(item.effect_type)}<i class="fas fa-crosshairs"
 									></i>{:else}<i class="fas fa-bolt"></i>{/if}
-								{TARGETED.has(item.effect_type) ? 'Use' : 'Use'}
+								{TARGETED.has(item.effect_type) ? 'Attack' : 'Use'}
 							</button>
 						{/if}
 					</div>
-				</li>
+				</article>
 			{/each}
-		</ul>
+		</div>
 	{/if}
 </div>
 
 {#if gambleItem}
 	<div class="m-gamble-overlay" role="presentation" onclick={() => (!gambleRolling ? (gambleItem = null) : null)}>
-		<div class="m-gamble" role="dialog" aria-modal="true" aria-label="Gamble" onclick={(e) => e.stopPropagation()}>
+		<div
+			class="m-gamble"
+			class:m-gamble--shake={gambleShake}
+			class:m-gamble--won={reelResult === 'win'}
+			class:m-gamble--lost={reelResult === 'lose'}
+			role="dialog"
+			aria-modal="true"
+			aria-label="Gamble"
+			onclick={(e) => e.stopPropagation()}
+		>
+			<div class="m-gamble-aura"></div>
 			<div class="m-gamble-head">
 				<span class="m-gamble-title"><span class="m-gamble-ico">{gambleItem.icon || '🎲'}</span>{gambleItem.name}</span>
 				{#if !gambleRolling}<button class="m-gamble-x" aria-label="Close" onclick={() => (gambleItem = null)}><i class="fas fa-times"></i></button>{/if}
@@ -443,16 +589,39 @@
 				class="m-gamble-reelwrap"
 				class:m-gamble-reelwrap--win={reelResult === 'win'}
 				class:m-gamble-reelwrap--lose={reelResult === 'lose'}
+				class:m-gamble-reelwrap--spinning={reelSpinning}
 			>
+				<div class="m-gamble-frame"></div>
 				<div class="m-gamble-pointer"></div>
 				<div
 					class="m-gamble-reel"
-					style="transform: translateX({reelOffset}px); transition: {reelOffset === 0 ? 'none' : 'transform 3.5s cubic-bezier(0.12, 0.8, 0.16, 1)'};"
+					class:m-gamble-reel--spin={reelSpinning}
+					style="transform: translateX({reelOffset}px); transition: {reelOffset === 0 ? 'none' : 'transform 3.6s cubic-bezier(0.09, 0.62, 0.12, 1)'};"
 				>
 					{#each reel as cell, i (i)}
 						<div class="m-gamble-cell m-gamble-cell--{cell}">{cell === 'win' ? '🤑' : '💀'}</div>
 					{/each}
 				</div>
+
+				{#if coins.length > 0}
+					<div class="m-gamble-coins">
+						{#each coins as c (c.id)}
+							<span class="m-gamble-coin" style="left: {c.x}%; animation-delay: {c.delay}ms">🪙</span>
+						{/each}
+					</div>
+				{/if}
+
+				{#if reelResult}
+					<div class="m-gamble-verdict m-gamble-verdict--{reelResult}">
+						{#if reelResult === 'win'}
+							<span class="m-gamble-verdict-label">WIN</span>
+							<span class="m-gamble-verdict-amt">+{fmt(winCount)} XP</span>
+						{:else}
+							<span class="m-gamble-verdict-label">BUST</span>
+							<span class="m-gamble-verdict-amt">−{fmt(wagerXp)} XP</span>
+						{/if}
+					</div>
+				{/if}
 			</div>
 
 			<div class="m-gamble-picker">
@@ -468,9 +637,23 @@
 			{#if gamblePercent === 'custom'}
 				<input class="m-gamble-custom" type="number" min="1" max={liveXp} placeholder="Enter XP to wager" bind:value={gambleCustom} disabled={gambleRolling} />
 			{/if}
-			<p class="m-gamble-wager">Wagering <strong>{fmt(wagerXp)} XP</strong> of {fmt(liveXp)}</p>
-			<button class="m-gamble-play" disabled={gambleRolling || wagerXp <= 0} onclick={playGamble}>
-				{#if gambleRolling}<i class="fas fa-spinner fa-spin"></i>Rolling…{:else}<i class="fas fa-dice"></i>Gamble{/if}
+
+			<div class="m-gamble-stakes">
+				<div class="m-gamble-stake">
+					<span class="m-gamble-stake-k">Wager</span>
+					<span class="m-gamble-stake-v m-gamble-stake-v--bet">{fmt(wagerXp)}</span>
+				</div>
+				<i class="fas fa-arrow-right m-gamble-stake-arrow"></i>
+				<div class="m-gamble-stake">
+					<span class="m-gamble-stake-k">Win pays</span>
+					<span class="m-gamble-stake-v m-gamble-stake-v--win">{fmt(potentialWin)}</span>
+				</div>
+			</div>
+
+			<button class="m-gamble-play" class:m-gamble-play--charged={!gambleRolling && wagerXp > 0} disabled={gambleRolling || wagerXp <= 0} onclick={playGamble}>
+				{#if gambleRolling}<i class="fas fa-circle-notch fa-spin"></i>Rolling…{:else}<i class="fas fa-dice"></i>Spin {gamblePercent === 'custom'
+						? ''
+						: `${gamblePercent}%`}{/if}
 			</button>
 		</div>
 	</div>

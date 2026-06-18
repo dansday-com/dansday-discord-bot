@@ -1,6 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { showToast } from '$lib/frontend/toast.svelte';
+	import LabeledSelect from '$lib/frontend/components/LabeledSelect.svelte';
+	import ConfigToggleRow from '$lib/frontend/components/ConfigToggleRow.svelte';
+	import ConfirmModal from '$lib/frontend/components/ConfirmModal.svelte';
+	import type { LabeledSelectOption } from '$lib/frontend/components/labeledSelect.js';
 
 	const EFFECT_TYPES = [
 		{ value: 'xp_steal', label: 'XP Steal', category: 'pvp' },
@@ -17,11 +21,16 @@
 	];
 	const CATEGORIES = ['pvp', 'boost', 'cosmetic', 'fun'];
 
+	const effectOptions: LabeledSelectOption[] = EFFECT_TYPES.map((e) => ({ value: e.value, label: e.label }));
+	const categoryOptions: LabeledSelectOption[] = CATEGORIES.map((c) => ({ value: c, label: c.charAt(0).toUpperCase() + c.slice(1) }));
+
 	let items = $state<any[]>([]);
 	let loading = $state(true);
 	let saving = $state(false);
 
 	let editing = $state<any | null>(null);
+	let confirmDelete = $state<any | null>(null);
+	let deleting = $state(false);
 
 	function blankForm() {
 		return {
@@ -79,6 +88,12 @@
 		const def = EFFECT_TYPES.find((e) => e.value === form.effect_type);
 		if (def) form.category = def.category;
 	}
+
+	// Keep category in sync when the effect type changes via the picker.
+	$effect(() => {
+		form.effect_type;
+		onEffectTypeChange();
+	});
 
 	function buildConfig() {
 		const c = form.cfg;
@@ -193,19 +208,26 @@
 		}
 	}
 
-	async function remove(item: any) {
-		if (!confirm(`Delete "${item.name}"?`)) return;
-		const res = await fetch('/api/admin/items', {
-			method: 'DELETE',
-			headers: { 'Content-Type': 'application/json' },
-			credentials: 'include',
-			body: JSON.stringify({ id: item.id })
-		});
-		const d = await res.json();
-		if (d.success) {
-			showToast('Deleted', 'success');
-			await loadItems();
-		} else showToast(d.error || 'Failed to delete', 'error');
+	async function remove() {
+		const item = confirmDelete;
+		if (!item) return;
+		deleting = true;
+		try {
+			const res = await fetch('/api/admin/items', {
+				method: 'DELETE',
+				headers: { 'Content-Type': 'application/json' },
+				credentials: 'include',
+				body: JSON.stringify({ id: item.id })
+			});
+			const d = await res.json();
+			if (d.success) {
+				showToast('Deleted', 'success');
+				confirmDelete = null;
+				await loadItems();
+			} else showToast(d.error || 'Failed to delete', 'error');
+		} finally {
+			deleting = false;
+		}
 	}
 
 	const DAYS = [
@@ -226,6 +248,20 @@
 	}
 
 	const isTargeted = $derived(['xp_steal', 'xp_bomb'].includes(form.effect_type));
+
+	function effectLabel(value: string) {
+		return EFFECT_TYPES.find((e) => e.value === value)?.label ?? value;
+	}
+
+	// Close the editor on Escape.
+	$effect(() => {
+		if (!editing) return;
+		const onKey = (e: KeyboardEvent) => {
+			if (e.key === 'Escape') editing = null;
+		};
+		window.addEventListener('keydown', onKey);
+		return () => window.removeEventListener('keydown', onKey);
+	});
 </script>
 
 <div class="space-y-5">
@@ -256,7 +292,7 @@
 								<span class="truncate">{item.name}</span>
 							</div>
 							<div class="text-ash-500 mt-1 flex flex-wrap gap-1 text-[10px]">
-								<span class="bg-ash-700 rounded px-1.5 py-0.5">{item.effect_type}</span>
+								<span class="bg-ash-700 rounded px-1.5 py-0.5">{effectLabel(item.effect_type)}</span>
 								<span class="bg-ash-700 rounded px-1.5 py-0.5">{item.category}</span>
 								{#if item.enabled === false}<span class="rounded bg-red-900/50 px-1.5 py-0.5 text-red-300">disabled</span>{/if}
 							</div>
@@ -266,7 +302,7 @@
 					{#if item.description}<p class="text-ash-400 mt-2 line-clamp-2 text-xs">{item.description}</p>{/if}
 					<div class="mt-3 flex gap-2">
 						<button onclick={() => startEdit(item)} class="bg-ash-700 hover:bg-ash-600 text-ash-200 flex-1 rounded-lg py-1.5 text-xs">Edit</button>
-						<button onclick={() => remove(item)} class="rounded-lg bg-red-900/40 px-3 py-1.5 text-xs text-red-300 hover:bg-red-900/60">Delete</button>
+						<button onclick={() => (confirmDelete = item)} class="rounded-lg bg-red-900/40 px-3 py-1.5 text-xs text-red-300 hover:bg-red-900/60">Delete</button>
 					</div>
 				</div>
 			{/each}
@@ -275,90 +311,113 @@
 </div>
 
 {#if editing}
-	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onclick={() => (editing = null)} role="presentation">
+	<div class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-3 sm:p-4" onclick={() => (editing = null)} role="presentation">
 		<div
-			class="bg-ash-800 border-ash-700 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border p-5"
+			class="bg-ash-800 border-ash-700 my-4 flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl border shadow-2xl"
 			onclick={(e) => e.stopPropagation()}
-			role="presentation"
+			role="dialog"
+			aria-modal="true"
+			aria-label={form.id ? 'Edit item' : 'Add item'}
 		>
-			<h3 class="text-ash-100 mb-4 text-base font-semibold">{form.id ? 'Edit Item' : 'Add Item'}</h3>
+			<!-- Header -->
+			<div class="border-ash-700 flex items-center justify-between border-b px-4 py-4 sm:px-6">
+				<h3 class="text-ash-100 flex items-center gap-2 text-lg font-bold sm:text-xl">
+					<i class="fas fa-store text-teal-400"></i>{form.id ? 'Edit Item' : 'Add Item'}
+				</h3>
+				<button type="button" onclick={() => (editing = null)} aria-label="Close" class="text-ash-400 hover:text-ash-100 p-1 transition-colors">
+					<i class="fas fa-times text-lg"></i>
+				</button>
+			</div>
 
-			<div class="space-y-4">
-				<div>
-					<label class="text-ash-300 mb-1 block text-xs font-medium">Name</label>
-					<input bind:value={form.name} class="bg-ash-900 border-ash-700 text-ash-100 w-full rounded-lg border px-3 py-2 text-sm" placeholder="Mega Bomb" />
+			<!-- Body -->
+			<div class="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-5 sm:px-6">
+				<!-- Basics -->
+				<div class="space-y-4">
+					<div>
+						<label for="item-name" class="text-ash-300 mb-1.5 block text-xs font-medium">Name</label>
+						<input
+							id="item-name"
+							bind:value={form.name}
+							class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none"
+							placeholder="Mega Bomb"
+						/>
+					</div>
+
+					<div class="grid gap-4 sm:grid-cols-2">
+						<div>
+							<span class="text-ash-300 mb-1.5 block text-xs font-medium">Effect type</span>
+							<LabeledSelect id="item-effect" appearance="form-inline" selectClass="w-full" options={effectOptions} bind:value={form.effect_type} />
+						</div>
+						<div>
+							<span class="text-ash-300 mb-1.5 block text-xs font-medium">Category</span>
+							<LabeledSelect id="item-category" appearance="form-inline" selectClass="w-full" options={categoryOptions} bind:value={form.category} />
+						</div>
+					</div>
+
+					<div>
+						<label for="item-desc" class="text-ash-300 mb-1.5 block text-xs font-medium">Description</label>
+						<textarea
+							id="item-desc"
+							bind:value={form.description}
+							rows="2"
+							class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none"
+							placeholder="Shown on the item hover card"
+						></textarea>
+					</div>
+
+					<div class="grid gap-4 sm:grid-cols-2">
+						<div>
+							<label for="item-cost" class="text-ash-300 mb-1.5 block text-xs font-medium">Cost (XP)</label>
+							<input
+								id="item-cost"
+								type="number"
+								bind:value={form.cost}
+								class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none"
+							/>
+						</div>
+						<div>
+							<label for="item-icon" class="text-ash-300 mb-1.5 block text-xs font-medium">Icon (emoji)</label>
+							<input
+								id="item-icon"
+								bind:value={form.icon}
+								class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none"
+								placeholder="💣"
+							/>
+						</div>
+					</div>
 				</div>
 
-				<div class="grid grid-cols-2 gap-3">
-					<div>
-						<label class="text-ash-300 mb-1 block text-xs font-medium">Effect type</label>
-						<select
-							bind:value={form.effect_type}
-							onchange={onEffectTypeChange}
-							class="bg-ash-900 border-ash-700 text-ash-100 w-full rounded-lg border px-3 py-2 text-sm"
-						>
-							{#each EFFECT_TYPES as e}<option value={e.value}>{e.label}</option>{/each}
-						</select>
-					</div>
-					<div>
-						<label class="text-ash-300 mb-1 block text-xs font-medium">Category</label>
-						<select bind:value={form.category} class="bg-ash-900 border-ash-700 text-ash-100 w-full rounded-lg border px-3 py-2 text-sm">
-							{#each CATEGORIES as c}<option value={c}>{c}</option>{/each}
-						</select>
-					</div>
-				</div>
-
-				<div>
-					<label class="text-ash-300 mb-1 block text-xs font-medium">Description</label>
-					<textarea
-						bind:value={form.description}
-						rows="2"
-						class="bg-ash-900 border-ash-700 text-ash-100 w-full rounded-lg border px-3 py-2 text-sm"
-						placeholder="Shown on the item hover card"
-					></textarea>
-				</div>
-
-				<div class="grid grid-cols-2 gap-3">
-					<div>
-						<label class="text-ash-300 mb-1 block text-xs font-medium">Cost (XP)</label>
-						<input type="number" bind:value={form.cost} class="bg-ash-900 border-ash-700 text-ash-100 w-full rounded-lg border px-3 py-2 text-sm" />
-					</div>
-					<div>
-						<label class="text-ash-300 mb-1 block text-xs font-medium">Icon (emoji)</label>
-						<input bind:value={form.icon} class="bg-ash-900 border-ash-700 text-ash-100 w-full rounded-lg border px-3 py-2 text-sm" placeholder="💣" />
-					</div>
-				</div>
-
-				<div class="border-ash-700 space-y-3 rounded-lg border p-3">
-					<p class="text-ash-400 text-[11px] font-medium tracking-wide uppercase">Effect settings</p>
+				<!-- Effect settings -->
+				<div class="border-ash-700 bg-ash-900/40 space-y-3 rounded-xl border p-4">
+					<p class="text-ash-400 text-[11px] font-semibold tracking-wide uppercase">Effect settings</p>
 					{#if form.effect_type === 'xp_steal' || form.effect_type === 'xp_bomb'}
 						<div class="grid grid-cols-2 gap-3">
 							<label class="text-ash-300 text-xs"
 								>Min %<input
 									type="number"
 									bind:value={form.cfg.min_percent}
-									class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
 								/></label
 							>
 							<label class="text-ash-300 text-xs"
 								>Max %<input
 									type="number"
 									bind:value={form.cfg.max_percent}
-									class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
 								/></label
 							>
 							<label class="text-ash-300 text-xs"
 								>Cooldown (min)<input
 									type="number"
 									bind:value={form.cfg.cooldown_minutes}
-									class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
 								/></label
 							>
 							<label class="text-ash-300 text-xs"
 								>Victim immunity (min)<input
 									type="number"
 									bind:value={form.cfg.immunity_minutes}
-									class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
 								/></label
 							>
 						</div>
@@ -372,19 +431,19 @@
 									type="number"
 									step="0.1"
 									bind:value={form.cfg.multiplier}
-									class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
 								/></label
 							>
 							<label class="text-ash-300 text-xs"
 								>Duration (min)<input
 									type="number"
 									bind:value={form.cfg.effect_duration_minutes}
-									class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
 								/></label
 							>
 							<label class="text-ash-300 col-span-2 text-xs"
 								>Scope
-								<select bind:value={form.cfg.scope} class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm">
+								<select bind:value={form.cfg.scope} class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm">
 									<option value="all">All XP</option>
 									<option value="message">Message only</option>
 									<option value="voice">Voice only</option>
@@ -396,7 +455,7 @@
 							>Duration (min)<input
 								type="number"
 								bind:value={form.cfg.effect_duration_minutes}
-								class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+								class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
 							/></label
 						>
 						<p class="text-ash-500 text-[11px]">
@@ -409,14 +468,14 @@
 								>Gift amount (XP)<input
 									type="number"
 									bind:value={form.cfg.gift_amount}
-									class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
 								/></label
 							>
 							<label class="text-ash-300 text-xs"
 								>Tax %<input
 									type="number"
 									bind:value={form.cfg.tax_percent}
-									class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
 								/></label
 							>
 						</div>
@@ -427,14 +486,14 @@
 								>Skim %<input
 									type="number"
 									bind:value={form.cfg.skim_percent}
-									class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
 								/></label
 							>
 							<label class="text-ash-300 text-xs"
 								>Duration (min)<input
 									type="number"
 									bind:value={form.cfg.effect_duration_minutes}
-									class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
 								/></label
 							>
 						</div>
@@ -444,7 +503,7 @@
 								>Win chance %<input
 									type="number"
 									bind:value={form.cfg.win_chance}
-									class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
 								/></label
 							>
 							<label class="text-ash-300 text-xs"
@@ -452,14 +511,14 @@
 									type="number"
 									step="0.1"
 									bind:value={form.cfg.payout_multiplier}
-									class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
 								/></label
 							>
 							<label class="text-ash-300 col-span-2 text-xs"
 								>Stake (XP)<input
 									type="number"
 									bind:value={form.cfg.stake}
-									class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
 								/></label
 							>
 						</div>
@@ -469,7 +528,7 @@
 							>Bounty amount (XP)<input
 								type="number"
 								bind:value={form.cfg.bounty_amount}
-								class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+								class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
 							/></label
 						>
 						<p class="text-ash-500 text-[11px]">Puts XP on a member's head. Whoever lands the next successful steal on them collects it.</p>
@@ -477,7 +536,7 @@
 						<div class="grid grid-cols-2 gap-3">
 							<label class="text-ash-300 text-xs"
 								>Kind
-								<select bind:value={form.cfg.cosmetic_kind} class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm">
+								<select bind:value={form.cfg.cosmetic_kind} class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm">
 									<option value="theme">Theme</option>
 									<option value="badge">Badge</option>
 									<option value="title">Title</option>
@@ -487,7 +546,7 @@
 							<label class="text-ash-300 text-xs"
 								>Value<input
 									bind:value={form.cfg.value}
-									class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
 									placeholder="midnight"
 								/></label
 							>
@@ -497,32 +556,35 @@
 					{/if}
 				</div>
 
-				<div class="border-ash-700 space-y-3 rounded-lg border p-3">
-					<p class="text-ash-400 text-[11px] font-medium tracking-wide uppercase">Availability (optional, UTC)</p>
+				<!-- Availability -->
+				<div class="border-ash-700 bg-ash-900/40 space-y-3 rounded-xl border p-4">
+					<p class="text-ash-400 text-[11px] font-semibold tracking-wide uppercase">Availability (optional, UTC)</p>
 					<div class="grid grid-cols-2 gap-3">
 						<label class="text-ash-300 text-xs"
 							>From<input
 								type="datetime-local"
 								bind:value={form.available_from}
-								class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+								class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
 							/></label
 						>
 						<label class="text-ash-300 text-xs"
 							>To<input
 								type="datetime-local"
 								bind:value={form.available_to}
-								class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+								class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
 							/></label
 						>
 					</div>
 					<div>
-						<p class="text-ash-300 mb-1 text-xs">Recurring days (UTC)</p>
+						<p class="text-ash-300 mb-1.5 text-xs">Recurring days (UTC)</p>
 						<div class="flex flex-wrap gap-1">
 							{#each DAYS as d}
 								<button
 									type="button"
 									onclick={() => toggleDay(d.v)}
-									class="rounded px-2 py-1 text-[11px] {form.cfg.recur_days.includes(d.v) ? 'bg-teal-600 text-white' : 'bg-ash-700 text-ash-300'}">{d.l}</button
+									class="rounded-lg px-2.5 py-1 text-[11px] transition-colors {form.cfg.recur_days.includes(d.v)
+										? 'bg-teal-600 text-white'
+										: 'bg-ash-700 text-ash-300 hover:bg-ash-600'}">{d.l}</button
 								>
 							{/each}
 						</div>
@@ -530,14 +592,14 @@
 							<label class="text-ash-300 text-xs"
 								>From (HH:MM)<input
 									bind:value={form.cfg.recur_from}
-									class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
 									placeholder="18:00"
 								/></label
 							>
 							<label class="text-ash-300 text-xs"
 								>To (HH:MM)<input
 									bind:value={form.cfg.recur_to}
-									class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
+									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
 									placeholder="21:00"
 								/></label
 							>
@@ -545,16 +607,45 @@
 					</div>
 				</div>
 
-				<label class="text-ash-300 flex items-center gap-2 text-sm"><input type="checkbox" bind:checked={form.enabled} />Enabled</label>
-				{#if isTargeted}<p class="text-ash-500 text-[11px]">This is a targeted PvP item — members pick a target when using it.</p>{/if}
+				<!-- Enabled toggle -->
+				<div class="border-ash-700 bg-ash-900/40 rounded-xl border p-4">
+					<ConfigToggleRow
+						label="Enabled"
+						description="Disabled items stay hidden from the shop."
+						labelIconClass="fas fa-power-off text-teal-400"
+						bind:enabled={form.enabled}
+					/>
+				</div>
+
+				{#if isTargeted}<p class="text-ash-500 text-[11px]">
+						<i class="fas fa-crosshairs mr-1"></i>This is a targeted PvP item — members pick a target when using it.
+					</p>{/if}
 			</div>
 
-			<div class="mt-5 flex gap-2">
-				<button onclick={() => (editing = null)} class="bg-ash-700 hover:bg-ash-600 text-ash-200 flex-1 rounded-lg py-2 text-sm">Cancel</button>
-				<button onclick={save} disabled={saving} class="flex-1 rounded-lg bg-teal-600 py-2 text-sm text-white hover:bg-teal-500 disabled:opacity-50">
-					{#if saving}<i class="fas fa-spinner fa-spin mr-1"></i>{/if}{saving ? 'Saving...' : 'Save'}
+			<!-- Footer -->
+			<div class="border-ash-700 flex gap-3 border-t px-4 py-4 sm:px-6">
+				<button onclick={() => (editing = null)} class="bg-ash-700 hover:bg-ash-600 text-ash-100 flex-1 rounded-lg py-2.5 text-sm font-medium transition-colors"
+					>Cancel</button
+				>
+				<button
+					onclick={save}
+					disabled={saving}
+					class="flex flex-1 items-center justify-center gap-2 rounded-lg bg-teal-600 py-2.5 text-sm font-medium text-white transition-colors hover:bg-teal-500 disabled:opacity-50"
+				>
+					{#if saving}<i class="fas fa-spinner fa-spin"></i>{/if}{saving ? 'Saving...' : 'Save'}
 				</button>
 			</div>
 		</div>
 	</div>
 {/if}
+
+<ConfirmModal
+	open={confirmDelete !== null}
+	title="Delete item"
+	message={confirmDelete ? `Delete "${confirmDelete.name}"? This removes it from every server's shop.` : ''}
+	confirmLabel="Delete"
+	dangerous
+	loading={deleting}
+	onconfirm={remove}
+	oncancel={() => (confirmDelete = null)}
+/>

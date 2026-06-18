@@ -55,6 +55,14 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 		targets,
 		hash,
 		valid,
-		memberName: member ? member.server_display_name || member.display_name || member.username : null
+		memberName: member ? member.server_display_name || member.display_name || member.username : null,
+		memberDiscordId: member ? String(member.discord_member_id) : null,
+		balance: member
+			? {
+					experience: Number(member.experience ?? 0) || 0,
+					level: Number(member.level ?? 1) || 1,
+					rank: member.rank != null ? Number(member.rank) : null
+				}
+			: null
 	};
 };

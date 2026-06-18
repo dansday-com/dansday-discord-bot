@@ -17,6 +17,7 @@ import leveling from './components/leveling.js';
 import contentCreator from './components/interface/contentcreator.js';
 import questNotifier from './components/questNotifier.js';
 import { initRobloxCatalogNotifier, stopRobloxCatalogNotifier } from './components/robloxCatalogNotifier.js';
+import { initExpirySweeper, stopExpirySweeper } from './components/items.js';
 import { acquireBotSingletonLock, type BotSingletonLock } from '../botSingletonLock.js';
 
 const PRESENCE_POLL_MS = 30_000;
@@ -80,6 +81,7 @@ client.on('clientReady', async () => {
 	}
 	questNotifier.initQuestNotifier(client, officialBotId);
 	initRobloxCatalogNotifier(client, officialBotId);
+	initExpirySweeper(client);
 	webhook.startWebhookServer(client, officialBotId);
 });
 
@@ -91,6 +93,7 @@ async function shutdown() {
 	}
 	questNotifier.stopQuestNotifier();
 	stopRobloxCatalogNotifier();
+	stopExpirySweeper();
 	webhook.stopWebhookServer();
 	client.destroy();
 	if (singletonLock) {

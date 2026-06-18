@@ -569,7 +569,7 @@ const XP_LOG_EMOJI = {
 	Streaming: '📡'
 };
 
-async function sendXPLogToChannel(guild, dbMember, xpGained, xpType) {
+async function sendXPLogToChannel(guild, dbMember, xpGained, xpType, award: any = null) {
 	try {
 		const settings = await getLevelingSettings(guild.id);
 		if (!settings.PROGRESS_CHANNEL_ID) return;
@@ -579,7 +579,10 @@ async function sendXPLogToChannel(guild, dbMember, xpGained, xpType) {
 
 		const memberName = dbMember.server_display_name || dbMember.display_name || dbMember.username || 'Unknown';
 		const emoji = XP_LOG_EMOJI[xpType] ?? '⭐';
-		const logMessage = `${emoji} ${xpType} XP: ${memberName} gained +${xpGained} XP`;
+		// Annotate active item effects so members see why their XP gain changed.
+		const boostSuffix = award?.boosted ? ` (${award.multiplier}× Boost ⚡)` : '';
+		const leechSuffix = award?.leeched ? ` (−${award.skimPercent}% Leech 🩸)` : '';
+		const logMessage = `${emoji} ${xpType} XP: ${memberName} gained +${xpGained} XP${boostSuffix}${leechSuffix}`;
 
 		await channel.send(logMessage);
 	} catch (error) {
@@ -616,7 +619,8 @@ async function handleMessageCreate(message) {
 		await db.ensureMemberLevel(dbMember.id);
 		const previousStats = await db.getMemberLevel(dbMember.id);
 		const baseXp = await getExperienceForMessage(guildId);
-		const { memberXp, leechCredits } = await applyAwardEffects(dbMember.id, baseXp, 'message');
+		const award = await applyAwardEffects(dbMember.id, baseXp, 'message');
+		const { memberXp, leechCredits } = award;
 		const stats = await db.updateMemberLevelStats(dbMember.id, {
 			chatIncrement: 1,
 			experienceIncrement: memberXp,
@@ -624,7 +628,7 @@ async function handleMessageCreate(message) {
 		});
 		await creditLeechers(leechCredits, guildId);
 
-		await sendXPLogToChannel(message.guild, dbMember, memberXp, 'Chat');
+		await sendXPLogToChannel(message.guild, dbMember, memberXp, 'Chat', award);
 
 		await handleLevelEvaluation(server, dbMember, stats, message.guild.id, {
 			previousLevel: previousStats?.level ?? null,
@@ -649,7 +653,8 @@ async function awardVoiceXP(server, dbMember, guildId, reason, previousStats, bu
 	const videoXp = await getVideoXpForVoiceTick(vid, guildId);
 	const streamXp = await getStreamingXpForVoiceTick(strm, guildId);
 	const rawXpGained = baseXp + videoXp + streamXp;
-	const { memberXp: xpGained, leechCredits } = await applyAwardEffects(dbMember.id, rawXpGained, 'voice');
+	const award = await applyAwardEffects(dbMember.id, rawXpGained, 'voice');
+	const { memberXp: xpGained, leechCredits } = award;
 
 	const stats = await db.updateMemberLevelStats(dbMember.id, {
 		experienceIncrement: xpGained,
@@ -668,13 +673,13 @@ async function awardVoiceXP(server, dbMember, guildId, reason, previousStats, bu
 	const discordGuild = clientInstance?.guilds.cache.get(guildId);
 	if (discordGuild) {
 		if (baseXp > 0) {
-			await sendXPLogToChannel(discordGuild, dbMember, baseXp, isAFK ? 'AFK Voice' : 'Voice');
+			await sendXPLogToChannel(discordGuild, dbMember, baseXp, isAFK ? 'AFK Voice' : 'Voice', award);
 		}
 		if (videoXp > 0) {
-			await sendXPLogToChannel(discordGuild, dbMember, videoXp, 'Video');
+			await sendXPLogToChannel(discordGuild, dbMember, videoXp, 'Video', award);
 		}
 		if (streamXp > 0) {
-			await sendXPLogToChannel(discordGuild, dbMember, streamXp, 'Streaming');
+			await sendXPLogToChannel(discordGuild, dbMember, streamXp, 'Streaming', award);
 		}
 	}
 

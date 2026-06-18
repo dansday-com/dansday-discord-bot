@@ -811,11 +811,13 @@ export const serverMemberItemActives = mysqlTable(
 		magnitude: decimal('magnitude', { precision: 6, scale: 2 }).notNull().default('0'),
 		source_member_id: int('source_member_id').references(() => serverMembers.id, { onDelete: 'set null' }),
 		expires_at: datetime('expires_at').notNull(),
+		expiry_notified: boolean('expiry_notified').notNull().default(false),
 		created_at: datetime('created_at').notNull()
 	},
 	(t) => [
 		index('idx_server_member_item_actives_active').on(t.member_item_id, t.expires_at),
-		index('idx_server_member_item_actives_source').on(t.source_member_id, t.expires_at)
+		index('idx_server_member_item_actives_source').on(t.source_member_id, t.expires_at),
+		index('idx_server_member_item_actives_sweep').on(t.expiry_notified, t.expires_at)
 	]
 );
 
@@ -851,6 +853,23 @@ export const serverMemberBounties = mysqlTable(
 		created_at: datetime('created_at').notNull()
 	},
 	(t) => [index('idx_server_member_bounties_target').on(t.target_member_id, t.collected)]
+);
+
+// Dedup ledger for one-off "event finished" notifications that aren't backed by a
+// stored row (attack cooldown ended, victim immunity ended). The unique key prevents
+// announcing the same end-event twice across sweeper ticks.
+export const serverMemberItemEventNotifs = mysqlTable(
+	'server_member_item_event_notifs',
+	{
+		id: bigint('id', { mode: 'bigint' }).primaryKey().autoincrement(),
+		member_id: int('member_id')
+			.notNull()
+			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		kind: varchar('kind', { length: 24 }).notNull(),
+		event_at: datetime('event_at').notNull(),
+		created_at: datetime('created_at').notNull()
+	},
+	(t) => [uniqueIndex('unique_member_item_event').on(t.member_id, t.kind, t.event_at)]
 );
 
 export const serverMemberCosmetics = mysqlTable(

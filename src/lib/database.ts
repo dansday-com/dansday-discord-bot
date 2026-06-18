@@ -1620,6 +1620,102 @@ export async function clearExpiredMemberItemActives() {
 	return true;
 }
 
+// Timed buff rows that have expired but whose "effect finished" notice hasn't been sent yet.
+// Joined to member + server so the bot can resolve the guild/member and announce. Scoped to one bot.
+export async function getNewlyExpiredEffects(botId: any, limit = 100) {
+	await initializeDatabase();
+	if (!botId) return [] as any[];
+	const rows = await db.execute(sql`
+		SELECT sma.id, sma.magnitude, sma.expires_at, sma.source_member_id,
+		       bi.effect_type, bi.name AS item_name, bi.icon AS item_icon,
+		       sm.discord_member_id, s.discord_server_id
+		FROM server_member_item_actives sma
+		INNER JOIN server_member_items smi ON smi.id = sma.member_item_id
+		INNER JOIN bot_items bi ON bi.id = smi.item_id
+		INNER JOIN server_members sm ON sm.id = smi.member_id
+		INNER JOIN servers s ON s.id = sm.server_id
+		WHERE sma.expiry_notified = FALSE
+		  AND sma.expires_at <= UTC_TIMESTAMP()
+		  AND s.bot_id = ${Number(botId)}
+		ORDER BY sma.expires_at ASC
+		LIMIT ${Number(limit)}
+	`);
+	return rows[0] as unknown as any[];
+}
+
+export async function markEffectExpiryNotified(ids: any[]) {
+	await initializeDatabase();
+	const list = (Array.isArray(ids) ? ids : []).map((n) => Number(n)).filter((n) => Number.isFinite(n));
+	if (list.length === 0) return 0;
+	await db.execute(
+		sql`UPDATE server_member_item_actives SET expiry_notified = TRUE WHERE id IN (${sql.join(
+			list.map((n) => sql`${n}`),
+			sql`, `
+		)})`
+	);
+	return list.length;
+}
+
+// Records that a derived end-event (cooldown ready / immunity ended) has been announced.
+// Returns true only the first time a given (member, kind, event_at) is seen.
+export async function recordItemEventNotif(memberId: any, kind: string, eventAt: any) {
+	await initializeDatabase();
+	if (!memberId || !kind || !eventAt) return false;
+	try {
+		const result: any = await db.insert(schema.serverMemberItemEventNotifs).values({
+			member_id: Number(memberId),
+			kind: String(kind),
+			event_at: toMySQLDateTime(eventAt) as any,
+			created_at: toMySQLDateTime() as any
+		});
+		const affected = result?.affectedRows ?? result?.[0]?.affectedRows ?? 1;
+		return Number(affected) > 0;
+	} catch (_) {
+		// Duplicate key → already announced.
+		return false;
+	}
+}
+
+// Most recent steal/bomb each member SUFFERED, for this bot's servers — used to derive
+// when a victim's immunity window ends. Returns rows with discord ids + the last hit time.
+export async function getRecentVictimHits(botId: any, sinceMinutes = 720) {
+	await initializeDatabase();
+	if (!botId) return [] as any[];
+	const rows = await db.execute(sql`
+		SELECT sml.target_member_id AS member_id, MAX(sml.created_at) AS last_hit,
+		       sm.discord_member_id, s.discord_server_id
+		FROM server_member_item_logs sml
+		INNER JOIN server_members sm ON sm.id = sml.target_member_id
+		INNER JOIN servers s ON s.id = sm.server_id
+		WHERE sml.action IN ('steal', 'bomb')
+		  AND sml.target_member_id IS NOT NULL
+		  AND sml.created_at >= (UTC_TIMESTAMP() - INTERVAL ${Number(sinceMinutes)} MINUTE)
+		  AND s.bot_id = ${Number(botId)}
+		GROUP BY sml.target_member_id, sm.discord_member_id, s.discord_server_id
+	`);
+	return rows[0] as unknown as any[];
+}
+
+// Most recent steal/bomb each member PERFORMED, for this bot's servers — used to derive
+// when an attacker's cooldown ends.
+export async function getRecentAttackerActions(botId: any, sinceMinutes = 720) {
+	await initializeDatabase();
+	if (!botId) return [] as any[];
+	const rows = await db.execute(sql`
+		SELECT smi.member_id AS member_id, MAX(sml.created_at) AS last_attack,
+		       sm.discord_member_id, s.discord_server_id
+		FROM server_member_item_logs sml
+		INNER JOIN server_member_items smi ON smi.id = sml.member_item_id
+		INNER JOIN server_members sm ON sm.id = smi.member_id
+		INNER JOIN servers s ON s.id = sm.server_id
+		WHERE sml.action IN ('steal', 'bomb')
+		  AND sml.created_at >= (UTC_TIMESTAMP() - INTERVAL ${Number(sinceMinutes)} MINUTE)
+		  AND s.bot_id = ${Number(botId)}
+		GROUP BY smi.member_id, sm.discord_member_id, s.discord_server_id
+	`);
+	return rows[0] as unknown as any[];
+}
+
 export async function expireMemberItemActive(activeId: any) {
 	await initializeDatabase();
 	if (!activeId) return false;
@@ -3867,6 +3963,11 @@ export default {
 	addMemberItemActive,
 	getActiveEffectsForMember,
 	clearExpiredMemberItemActives,
+	getNewlyExpiredEffects,
+	markEffectExpiryNotified,
+	recordItemEventNotif,
+	getRecentVictimHits,
+	getRecentAttackerActions,
 	expireMemberItemActive,
 	logMemberItemAction,
 	getLastActionByActor,

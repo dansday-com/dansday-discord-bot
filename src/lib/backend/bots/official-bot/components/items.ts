@@ -96,7 +96,7 @@ export async function computeAwardModifiers(memberId: any, source: any = 'all') 
 
 export async function applyAwardEffects(memberId: any, baseXp: any, source: any = 'all') {
 	const safeBase = Math.max(0, Math.floor(Number(baseXp) || 0));
-	if (safeBase <= 0) return { memberXp: 0, leechCredits: [] as any[] };
+	if (safeBase <= 0) return { memberXp: 0, leechCredits: [] as any[], baseXp: 0, multiplier: 1, boosted: false, skimPercent: 0, skimmed: 0, leeched: false };
 
 	const { multiplier, skimPercent, leeches } = await computeAwardModifiers(memberId, source);
 	const boosted = Math.floor(safeBase * multiplier);
@@ -116,7 +116,7 @@ export async function applyAwardEffects(memberId: any, baseXp: any, source: any 
 		}
 	}
 
-	return { memberXp, leechCredits };
+	return { memberXp, leechCredits, baseXp: safeBase, multiplier, boosted: multiplier > 1, skimPercent, skimmed: totalSkim, leeched: totalSkim > 0 };
 }
 
 export async function creditLeechers(leechCredits: any, guildId: any) {
@@ -183,34 +183,46 @@ async function hasActiveShield(memberId: any) {
 }
 
 async function isUnderAttackCooldown(actorMemberId: any, cooldownMinutes: any) {
+	return (await attackCooldownUntil(actorMemberId, cooldownMinutes)) !== null;
+}
+
+// Returns the Date the attacker's cooldown ends, or null if not on cooldown.
+async function attackCooldownUntil(actorMemberId: any, cooldownMinutes: any): Promise<Date | null> {
 	const minutes = Math.max(0, Number(cooldownMinutes) || 0);
-	if (minutes <= 0) return false;
+	if (minutes <= 0) return null;
 	const last = await db.getLastAttackActionByActor(actorMemberId);
-	if (!last) return false;
-	const elapsedMs = Date.now() - last.getTime();
-	return elapsedMs < minutes * 60000;
+	if (!last) return null;
+	const until = new Date(last.getTime() + minutes * 60000);
+	return until.getTime() > Date.now() ? until : null;
 }
 
 async function isTargetImmune(targetMemberId: any, immunityMinutes: any) {
+	return (await targetImmuneUntil(targetMemberId, immunityMinutes)) !== null;
+}
+
+// Returns the Date the target's immunity ends, or null if not immune.
+async function targetImmuneUntil(targetMemberId: any, immunityMinutes: any): Promise<Date | null> {
 	const minutes = Math.max(0, Number(immunityMinutes) || 0);
-	if (minutes <= 0) return false;
+	if (minutes <= 0) return null;
 	const last = await db.getLastActionAgainstTarget(targetMemberId, ['steal', 'bomb']);
-	if (!last) return false;
-	const elapsedMs = Date.now() - last.getTime();
-	return elapsedMs < minutes * 60000;
+	if (!last) return null;
+	const until = new Date(last.getTime() + minutes * 60000);
+	return until.getTime() > Date.now() ? until : null;
 }
 
 export async function resolveSteal({ actorMemberId, actorMemberItemId, targetMemberId, config, guildId }: any) {
 	const cfg = parseConfig(config);
-	if (await isUnderAttackCooldown(actorMemberId, cfg.cooldown_minutes)) {
-		return { outcome: 'cooldown', xp: 0 };
+	const cooldownUntil = await attackCooldownUntil(actorMemberId, cfg.cooldown_minutes);
+	if (cooldownUntil) {
+		return { outcome: 'cooldown', xp: 0, cooldownUntil };
 	}
 	if (await hasActiveShield(targetMemberId)) {
 		await db.logMemberItemAction(actorMemberItemId, { target_member_id: targetMemberId, action: 'steal', xp_amount: 0, outcome: 'blocked' });
 		return { outcome: 'blocked', xp: 0 };
 	}
-	if (await isTargetImmune(targetMemberId, cfg.immunity_minutes)) {
-		return { outcome: 'immune', xp: 0 };
+	const immuneUntil = await targetImmuneUntil(targetMemberId, cfg.immunity_minutes);
+	if (immuneUntil) {
+		return { outcome: 'immune', xp: 0, immuneUntil };
 	}
 
 	const target = await getSpendableXp(targetMemberId, guildId);
@@ -249,20 +261,23 @@ export async function resolveSteal({ actorMemberId, actorMemberItemId, targetMem
 
 	await db.logMemberItemAction(actorMemberItemId, { target_member_id: targetMemberId, action: 'steal', xp_amount: amount, outcome: 'success' });
 	await invalidateEffectCache(targetMemberId);
-	return { outcome: 'success', xp: amount, percent: pct, refunded, bountyCollected };
+	const grantedImmunityUntil = newImmunityUntil(cfg.immunity_minutes);
+	return { outcome: 'success', xp: amount, percent: pct, refunded, bountyCollected, immuneUntil: grantedImmunityUntil };
 }
 
 export async function resolveBomb({ actorMemberId, actorMemberItemId, targetMemberId, config, guildId }: any) {
 	const cfg = parseConfig(config);
-	if (await isUnderAttackCooldown(actorMemberId, cfg.cooldown_minutes)) {
-		return { outcome: 'cooldown', xp: 0 };
+	const cooldownUntil = await attackCooldownUntil(actorMemberId, cfg.cooldown_minutes);
+	if (cooldownUntil) {
+		return { outcome: 'cooldown', xp: 0, cooldownUntil };
 	}
 	if (await hasActiveShield(targetMemberId)) {
 		await db.logMemberItemAction(actorMemberItemId, { target_member_id: targetMemberId, action: 'bomb', xp_amount: 0, outcome: 'blocked' });
 		return { outcome: 'blocked', xp: 0 };
 	}
-	if (await isTargetImmune(targetMemberId, cfg.immunity_minutes)) {
-		return { outcome: 'immune', xp: 0 };
+	const immuneUntil = await targetImmuneUntil(targetMemberId, cfg.immunity_minutes);
+	if (immuneUntil) {
+		return { outcome: 'immune', xp: 0, immuneUntil };
 	}
 
 	const target = await getSpendableXp(targetMemberId, guildId);
@@ -291,11 +306,19 @@ export async function resolveBomb({ actorMemberId, actorMemberItemId, targetMemb
 
 	await db.logMemberItemAction(actorMemberItemId, { target_member_id: targetMemberId, action: 'bomb', xp_amount: amount, outcome: 'success' });
 	await invalidateEffectCache(targetMemberId);
-	return { outcome: 'success', xp: amount, percent: pct, refunded };
+	const grantedImmunityUntil = newImmunityUntil(cfg.immunity_minutes);
+	return { outcome: 'success', xp: amount, percent: pct, refunded, immuneUntil: grantedImmunityUntil };
 }
 
 function computeExpiry(durationMinutes: any) {
 	const minutes = Math.max(1, Number(durationMinutes) || 60);
+	return new Date(Date.now() + minutes * 60000);
+}
+
+// The immunity window a victim receives after being hit, or null if immunity is disabled.
+function newImmunityUntil(immunityMinutes: any): Date | null {
+	const minutes = Math.max(0, Number(immunityMinutes) || 0);
+	if (minutes <= 0) return null;
 	return new Date(Date.now() + minutes * 60000);
 }
 
@@ -520,7 +543,14 @@ export async function handleItemUse(client: any, payload: any) {
 		return { ok: false, error: result.outcome, outcome: result.outcome };
 	}
 
-	await notifyTargetIfNeeded(client, guild_id, server, targetMemberId, effectType, result).catch(() => null);
+	await announceItemUse(client, {
+		guildId: guild_id,
+		actorDiscordId: actor_discord_id,
+		targetDiscordId: target_discord_id,
+		effectType,
+		item,
+		result
+	}).catch(() => null);
 
 	return { ok: true, outcome: result?.outcome ?? 'success', effect_type: effectType, result };
 }
@@ -590,12 +620,209 @@ export async function handleItemBuy(client: any, payload: any) {
 	return { ok: true, member_item_id: owned?.id, quantity: owned?.quantity, cost: totalCost };
 }
 
-async function notifyTargetIfNeeded(client: any, guildId: any, server: any, targetMemberId: any, effectType: any, result: any) {
-	if (!TARGETED_EFFECTS.has(effectType) || !targetMemberId) return;
-	const okOutcomes = new Set(['success', 'blocked', 'reflected']);
-	if (!result || !okOutcomes.has(result.outcome)) return;
+// Effects that produce a public announcement in the progress channel.
+const ANNOUNCED_EFFECTS = new Set(['xp_steal', 'xp_bomb', 'leech', 'gift', 'bounty', 'gamble', 'shield', 'reflect', 'insurance', 'xp_boost', 'vault']);
 
-	const { getLevelingSettings } = await import('../../../config.js');
+// Discord relative timestamp, e.g. "in 28 minutes".
+function discordRelative(date: any): string | null {
+	if (!date) return null;
+	const ms = date instanceof Date ? date.getTime() : new Date(date).getTime();
+	if (!Number.isFinite(ms)) return null;
+	return `<t:${Math.floor(ms / 1000)}:R>`;
+}
+
+function fmtXp(n: any): string {
+	return `${(Number(n) || 0).toLocaleString()} XP`;
+}
+
+/**
+ * Builds the embed describing one item use. Returns null when the effect/outcome
+ * isn't worth announcing. actor/target are fetched guild members (may be null).
+ */
+function buildItemUseEmbed(EmbedBuilder: any, embedConfig: any, ctx: any) {
+	const { effectType, result, actor, target, item } = ctx;
+	const outcome = result?.outcome;
+	const icon = item?.icon ? `${item.icon} ` : '';
+	const actorMention = actor ? `${actor}` : 'A member';
+	const targetMention = target ? `${target}` : 'a member';
+	const immuneRel = discordRelative(result?.immuneUntil);
+
+	const embed = new EmbedBuilder()
+		.setColor(embedConfig.COLOR)
+		.setFooter({ text: embedConfig.FOOTER || 'Items' })
+		.setTimestamp();
+	if (actor?.user) embed.setThumbnail(actor.user.displayAvatarURL({ dynamic: true }));
+
+	const fields: any[] = [];
+
+	if (effectType === 'xp_steal' || effectType === 'xp_bomb') {
+		const verbPast = effectType === 'xp_steal' ? 'robbed' : 'bombed';
+		const emoji = effectType === 'xp_steal' ? '💰' : '💥';
+
+		if (outcome === 'blocked') {
+			embed
+				.setColor(0x38bdf8)
+				.setTitle('🛡️ Attack Blocked')
+				.setDescription(`${targetMention}'s **Shield** blocked ${actorMention}'s ${effectType === 'xp_steal' ? 'steal' : 'bomb'}!`);
+			return embed;
+		}
+		if (outcome === 'reflected') {
+			embed
+				.setColor(0xc084fc)
+				.setTitle('🪞 Attack Reflected')
+				.setDescription(`${targetMention} reflected the attack back at ${actorMention}!`)
+				.addFields({ name: 'XP lost by attacker', value: fmtXp(result?.xp), inline: true });
+			return embed;
+		}
+
+		embed.setTitle(`${emoji} Member ${verbPast.charAt(0).toUpperCase() + verbPast.slice(1)}!`);
+		embed.setDescription(
+			effectType === 'xp_steal'
+				? `${actorMention} robbed ${targetMention}${item?.name ? ` with **${icon}${item.name}**` : ''}!`
+				: `${actorMention} bombed ${targetMention}${item?.name ? ` with **${icon}${item.name}**` : ''}!`
+		);
+		fields.push({ name: 'Attacker', value: actorMention, inline: true });
+		fields.push({ name: 'Victim', value: targetMention, inline: true });
+		fields.push({
+			name: effectType === 'xp_steal' ? 'XP stolen' : 'XP destroyed',
+			value: `${fmtXp(result?.xp)}${result?.percent ? ` (${result.percent}%)` : ''}`,
+			inline: true
+		});
+		if (result?.refunded) fields.push({ name: '💵 Insurance refund', value: `${targetMention} was refunded ${fmtXp(result.refunded)}`, inline: false });
+		if (result?.bountyCollected)
+			fields.push({ name: '🎯 Bounty collected', value: `${actorMention} also claimed ${fmtXp(result.bountyCollected)}`, inline: false });
+		if (immuneRel) fields.push({ name: '🛡️ Immunity', value: `${targetMention} is immune until ${immuneRel}`, inline: false });
+		embed.addFields(fields);
+		return embed;
+	}
+
+	if (effectType === 'leech') {
+		embed
+			.setColor(0xfb7185)
+			.setTitle('🩸 Leech Attached')
+			.setDescription(`${actorMention} attached a leech to ${targetMention} — siphoning a cut of their XP while active.`);
+		return embed;
+	}
+
+	if (effectType === 'gift') {
+		embed
+			.setColor(0x4ade80)
+			.setTitle('🎁 Gift Sent')
+			.setDescription(`${actorMention} sent a gift to ${targetMention}!`)
+			.addFields({ name: 'Received', value: fmtXp(result?.xp), inline: true });
+		return embed;
+	}
+
+	if (effectType === 'bounty') {
+		embed
+			.setColor(0xfbbf24)
+			.setTitle('🎯 Bounty Placed')
+			.setDescription(`${actorMention} placed a bounty on ${targetMention} — whoever robs them next collects it.`)
+			.addFields({ name: 'Bounty', value: fmtXp(result?.xp), inline: true });
+		return embed;
+	}
+
+	if (effectType === 'gamble') {
+		if (result?.won) {
+			embed
+				.setColor(0x4ade80)
+				.setTitle('🎲 Gamble — Win!')
+				.setDescription(`${actorMention} gambled and **won**!`)
+				.addFields({ name: 'Net gain', value: `+${fmtXp(result?.net)}`, inline: true });
+		} else {
+			embed
+				.setColor(0xfb7185)
+				.setTitle('🎲 Gamble — Lost')
+				.setDescription(`${actorMention} gambled and **lost**.`)
+				.addFields({ name: 'XP lost', value: fmtXp(result?.stake), inline: true });
+		}
+		return embed;
+	}
+
+	// Defensive / self buffs
+	if (effectType === 'shield' || effectType === 'reflect' || effectType === 'insurance') {
+		const meta: Record<string, { emoji: string; title: string; desc: string; color: number }> = {
+			shield: { emoji: '🛡️', title: 'Shield Activated', desc: 'is now protected — incoming steals and bombs will be blocked', color: 0x38bdf8 },
+			reflect: { emoji: '🪞', title: 'Reflect Activated', desc: 'will bounce the next attack back at the attacker', color: 0xc084fc },
+			insurance: { emoji: '💵', title: 'Insurance Activated', desc: 'will be refunded the next time they are robbed', color: 0x5eead4 }
+		};
+		const m = meta[effectType];
+		const untilRel = discordRelative(result?.expiresAt);
+		embed
+			.setColor(m.color)
+			.setTitle(`${m.emoji} ${m.title}`)
+			.setDescription(`${actorMention} ${m.desc}${untilRel ? ` (until ${untilRel})` : ''}.`);
+		return embed;
+	}
+
+	if (effectType === 'xp_boost') {
+		const untilRel = discordRelative(result?.expiresAt);
+		embed
+			.setColor(0xfbbf24)
+			.setTitle('⚡ XP Boost Activated')
+			.setDescription(`${actorMention} activated an XP boost${untilRel ? ` — active until ${untilRel}` : ''}. Earnings are multiplied while it lasts.`);
+		return embed;
+	}
+
+	if (effectType === 'vault') {
+		const dir = result?.direction === 'withdraw' ? 'withdrew' : 'deposited';
+		embed
+			.setColor(0x9aa7b2)
+			.setTitle('🏦 Vault')
+			.setDescription(
+				`${actorMention} ${dir} ${fmtXp(result?.xp)}${result?.direction === 'withdraw' ? ' from their vault.' : ' into their vault (safe from theft).'}`
+			);
+		return embed;
+	}
+
+	return null;
+}
+
+// Builds an "Open Items" link button row deep-linked to the member's own shop/bag.
+// Returns null when the public site URL, slug, or member can't be resolved (button is then omitted).
+const itemsUrlCache = new Map<string, { url: string | null; at: number }>();
+async function buildItemsButtonRow(guildId: any, discordMemberId: any) {
+	if (!discordMemberId) return null;
+	const cacheKey = `${guildId}:${discordMemberId}`;
+	const cached = itemsUrlCache.get(cacheKey);
+	let url: string | null;
+	if (cached && Date.now() - cached.at < 300_000) {
+		url = cached.url;
+	} else {
+		url = await resolveMemberItemsUrl(guildId, discordMemberId);
+		itemsUrlCache.set(cacheKey, { url, at: Date.now() });
+	}
+	if (!url) return null;
+
+	const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = await import('discord.js');
+	return new ActionRowBuilder<any>().addComponents(new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(url).setLabel('Open Items').setEmoji('🛒'));
+}
+
+async function resolveMemberItemsUrl(guildId: any, discordMemberId: any): Promise<string | null> {
+	try {
+		const { publicItemsUrl } = await import('../../../../url.js');
+		const { computePublicServerSlugForServerId } = await import('../../../../frontend/public/server-slug/index.js');
+		const { computeCardToken } = await import('../../../../frontend/public/items/index.js');
+		const { getServerForCurrentBot } = await import('../../../config.js');
+
+		const server = await getServerForCurrentBot(String(guildId));
+		const member = await db.getMemberByDiscordId(server.id, String(discordMemberId)).catch(() => null);
+		if (!member?.member_since) return null;
+		const slug = await computePublicServerSlugForServerId(Number(server.id));
+		if (!slug) return null;
+		const token = computeCardToken(String(discordMemberId), member.member_since);
+		return publicItemsUrl(slug, token);
+	} catch (_) {
+		return null;
+	}
+}
+
+async function announceItemUse(client: any, ctx: any) {
+	const { guildId, actorDiscordId, targetDiscordId, effectType, item, result } = ctx;
+	if (!ANNOUNCED_EFFECTS.has(effectType)) return;
+	if (!result || result.outcome === 'unsupported') return;
+
+	const { getLevelingSettings, getEmbedConfig } = await import('../../../config.js');
 	const settings = await getLevelingSettings(guildId).catch(() => null);
 	const channelId = settings?.PROGRESS_CHANNEL_ID;
 	if (!channelId) return;
@@ -605,19 +832,209 @@ async function notifyTargetIfNeeded(client: any, guildId: any, server: any, targ
 	const channel = await guild.channels.fetch(channelId).catch(() => null);
 	if (!channel || !channel.isTextBased()) return;
 
-	const amount = result.xp ? ` ${result.xp} XP` : '';
-	let line: string;
-	if (effectType === 'gift') {
-		line = `🎁 A member just received a gift of${amount || ' XP'}!`;
-	} else if (result.outcome === 'blocked') {
-		line = `🛡️ An attack was blocked by an active shield.`;
-	} else if (result.outcome === 'reflected') {
-		line = `🪞 An attack was reflected back at the attacker!${amount}`;
-	} else {
-		const verb = effectType === 'xp_steal' ? 'robbed' : effectType === 'xp_bomb' ? 'bombed' : 'leeched';
-		line = `💥 A member just got ${verb}!${amount}`;
+	const { EmbedBuilder } = await import('discord.js');
+	const embedConfig = await getEmbedConfig(guildId).catch(() => ({ COLOR: 0x14b8a6, FOOTER: 'Items' }));
+
+	const actor = actorDiscordId ? await guild.members.fetch(String(actorDiscordId)).catch(() => null) : null;
+	const target = targetDiscordId ? await guild.members.fetch(String(targetDiscordId)).catch(() => null) : null;
+
+	const embed = buildItemUseEmbed(EmbedBuilder, embedConfig, { effectType, result, actor, target, item });
+	if (!embed) return;
+
+	// Mention attacker + victim so they get pinged.
+	const mentions = [actor, target].filter(Boolean).map((m: any) => `${m}`);
+	const content = mentions.length > 0 ? mentions.join(' ') : undefined;
+
+	// Link button to the actor's shop (the one who used the item).
+	const row = await buildItemsButtonRow(guildId, actorDiscordId);
+	await channel.send({ content, embeds: [embed], components: row ? [row] : undefined }).catch(() => null);
+}
+
+// ---------------------------------------------------------------------------
+// Expiry sweeper: announces when timed effects finish, cooldowns become ready,
+// and victim immunity ends. Runs on an interval from officialbot.ts.
+// ---------------------------------------------------------------------------
+
+const EXPIRY_SWEEP_MS = 60_000;
+let expirySweepTimer: any = null;
+
+// Buff effects that get an "effect finished" notice when their duration ends.
+const EXPIRING_BUFFS: Record<string, { emoji: string; label: string; color: number; selfDesc: (mag: number) => string }> = {
+	xp_boost: { emoji: '⚡', label: 'XP Boost', color: 0xfbbf24, selfDesc: (m) => `Your **${m || 2}× XP Boost** has worn off.` },
+	shield: { emoji: '🛡️', label: 'Shield', color: 0x38bdf8, selfDesc: () => `Your **Shield** has worn off — you can be attacked again.` },
+	reflect: { emoji: '🪞', label: 'Reflect', color: 0xc084fc, selfDesc: () => `Your **Reflect** has worn off.` },
+	insurance: { emoji: '💵', label: 'Insurance', color: 0x5eead4, selfDesc: () => `Your **Insurance** has expired.` },
+	leech: { emoji: '🩸', label: 'Leech', color: 0xfb7185, selfDesc: (m) => `The **${m || 0}% Leech** on you has ended.` }
+};
+
+async function embedConfigFor(guildId: any) {
+	const { getEmbedConfig } = await import('../../../config.js');
+	return getEmbedConfig(guildId).catch(() => ({ COLOR: 0x14b8a6, FOOTER: 'Items' }));
+}
+
+async function getProgressChannel(client: any, guild: any) {
+	const { getLevelingSettings } = await import('../../../config.js');
+	const settings = await getLevelingSettings(guild.id).catch(() => null);
+	const channelId = settings?.PROGRESS_CHANNEL_ID;
+	if (!channelId) return null;
+	const channel = await guild.channels.fetch(channelId).catch(() => null);
+	return channel && channel.isTextBased() ? channel : null;
+}
+
+// Deliver an embed both as a DM to the member and to the progress channel, with an
+// "Open Items" button deep-linked to that member's shop.
+async function deliverToMemberAndChannel(client: any, guild: any, member: any, embed: any, channelContent?: string) {
+	const row = member?.id ? await buildItemsButtonRow(guild.id, member.id) : null;
+	const components = row ? [row] : undefined;
+	if (member?.user) await member.user.send({ embeds: [embed], components }).catch(() => null);
+	const channel = await getProgressChannel(client, guild);
+	if (channel) await channel.send({ content: channelContent, embeds: [embed], components }).catch(() => null);
+}
+
+async function sweepExpiredBuffs(client: any, botId: any, EmbedBuilder: any) {
+	const rows = await db.getNewlyExpiredEffects(botId).catch(() => []);
+	if (!rows || rows.length === 0) return;
+
+	const handledIds: number[] = [];
+	for (const row of rows) {
+		const meta = EXPIRING_BUFFS[row.effect_type];
+		// Effects with no "finished" concept (or unknown types) are just marked handled.
+		if (meta) {
+			const guild = client?.guilds?.cache?.get(String(row.discord_server_id));
+			const member = guild ? await guild.members.fetch(String(row.discord_member_id)).catch(() => null) : null;
+			if (guild) {
+				const embedConfig = await embedConfigFor(guild.id);
+				const mag = Number(row.magnitude) || 0;
+				const embed = new EmbedBuilder()
+					.setColor(meta.color)
+					.setTitle(`${meta.emoji} ${meta.label} Ended`)
+					.setDescription(member ? `${member} — ${meta.selfDesc(mag)}` : meta.selfDesc(mag))
+					.setFooter({ text: embedConfig.FOOTER || 'Items' })
+					.setTimestamp();
+				await deliverToMemberAndChannel(client, guild, member, embed, member ? `${member}` : undefined);
+			}
+		}
+		handledIds.push(Number(row.id));
 	}
-	await channel.send(line).catch(() => null);
+	if (handledIds.length > 0) await db.markEffectExpiryNotified(handledIds).catch(() => null);
+}
+
+// Derives cooldown-ready / immunity-ended events from the action log and announces
+// each exactly once. We can't know each item's configured duration here, so we read
+// the catalog defaults via the most recent matching action's item config.
+async function sweepDerivedEvents(client: any, botId: any, EmbedBuilder: any) {
+	const now = Date.now();
+
+	// Immunity ended — for members hit recently, compute when immunity lapses.
+	const hits = await db.getRecentVictimHits(botId).catch(() => []);
+	for (const hit of hits || []) {
+		const lastHit = hit.last_hit instanceof Date ? hit.last_hit.getTime() : new Date(hit.last_hit).getTime();
+		if (!Number.isFinite(lastHit)) continue;
+		const immunityMs = await defaultImmunityMsForServer(hit.discord_server_id).catch(() => 0);
+		if (immunityMs <= 0) continue;
+		const endsAt = lastHit + immunityMs;
+		// Only announce shortly after it actually ended (within one sweep window).
+		if (endsAt > now || now - endsAt > EXPIRY_SWEEP_MS) continue;
+		const fresh = await db.recordItemEventNotif(hit.member_id, 'immunity_ended', new Date(endsAt)).catch(() => false);
+		if (!fresh) continue;
+
+		const guild = client?.guilds?.cache?.get(String(hit.discord_server_id));
+		if (!guild) continue;
+		const member = await guild.members.fetch(String(hit.discord_member_id)).catch(() => null);
+		const embedConfig = await embedConfigFor(guild.id);
+		const embed = new EmbedBuilder()
+			.setColor(0xfb7185)
+			.setTitle('🛡️ Immunity Ended')
+			.setDescription(member ? `${member} is no longer immune — fair game again!` : `A member is no longer immune.`)
+			.setFooter({ text: embedConfig.FOOTER || 'Items' })
+			.setTimestamp();
+		await deliverToMemberAndChannel(client, guild, member, embed, member ? `${member}` : undefined);
+	}
+
+	// Cooldown ready — for members who attacked recently, compute when their cooldown lapses.
+	const attacks = await db.getRecentAttackerActions(botId).catch(() => []);
+	for (const atk of attacks || []) {
+		const lastAtk = atk.last_attack instanceof Date ? atk.last_attack.getTime() : new Date(atk.last_attack).getTime();
+		if (!Number.isFinite(lastAtk)) continue;
+		const cooldownMs = await defaultCooldownMsForServer(atk.discord_server_id).catch(() => 0);
+		if (cooldownMs <= 0) continue;
+		const endsAt = lastAtk + cooldownMs;
+		if (endsAt > now || now - endsAt > EXPIRY_SWEEP_MS) continue;
+		const fresh = await db.recordItemEventNotif(atk.member_id, 'cooldown_ready', new Date(endsAt)).catch(() => false);
+		if (!fresh) continue;
+
+		const guild = client?.guilds?.cache?.get(String(atk.discord_server_id));
+		if (!guild) continue;
+		const member = await guild.members.fetch(String(atk.discord_member_id)).catch(() => null);
+		const embedConfig = await embedConfigFor(guild.id);
+		const embed = new EmbedBuilder()
+			.setColor(0x4ade80)
+			.setTitle('✅ Cooldown Ready')
+			.setDescription(member ? `${member} — your attack cooldown is up. You can steal or bomb again!` : `Attack cooldown is up.`)
+			.setFooter({ text: embedConfig.FOOTER || 'Items' })
+			.setTimestamp();
+		await deliverToMemberAndChannel(client, guild, member, embed, member ? `${member}` : undefined);
+	}
+}
+
+// The largest cooldown/immunity configured across this server's steal/bomb items, in ms.
+// Cooldown/immunity aren't per-action-recorded, so we use the catalog values as the window.
+async function defaultCooldownMsForServer(discordServerId: any): Promise<number> {
+	return maxAttackConfigMs(discordServerId, 'cooldown_minutes');
+}
+async function defaultImmunityMsForServer(discordServerId: any): Promise<number> {
+	return maxAttackConfigMs(discordServerId, 'immunity_minutes');
+}
+
+const attackCfgCache = new Map<string, { value: number; at: number }>();
+async function maxAttackConfigMs(discordServerId: any, key: string): Promise<number> {
+	const cacheKey = `${discordServerId}:${key}`;
+	const cached = attackCfgCache.get(cacheKey);
+	if (cached && Date.now() - cached.at < 60_000) return cached.value;
+
+	const { getServerForCurrentBot } = await import('../../../config.js');
+	let server: any;
+	try {
+		server = await getServerForCurrentBot(String(discordServerId));
+	} catch (_) {
+		return 0;
+	}
+	const items = await db.listBotItems(server.bot_id, {}).catch(() => []);
+	let maxMin = 0;
+	for (const it of (items as any[]) || []) {
+		if (it.effect_type !== 'xp_steal' && it.effect_type !== 'xp_bomb') continue;
+		const cfg = parseConfig(it.config);
+		const v = Math.max(0, Number(cfg[key]) || 0);
+		if (v > maxMin) maxMin = v;
+	}
+	const ms = maxMin * 60000;
+	attackCfgCache.set(cacheKey, { value: ms, at: Date.now() });
+	return ms;
+}
+
+async function runExpirySweep(client: any) {
+	try {
+		const { getBotConfig } = await import('../../../config.js');
+		const botConfig = getBotConfig();
+		if (!botConfig?.id) return;
+		const { EmbedBuilder } = await import('discord.js');
+		await sweepExpiredBuffs(client, botConfig.id, EmbedBuilder);
+		await sweepDerivedEvents(client, botConfig.id, EmbedBuilder);
+	} catch (err: any) {
+		await logger.log(`⚠️ Item expiry sweep failed: ${err.message}`);
+	}
+}
+
+export function initExpirySweeper(client: any) {
+	if (expirySweepTimer) clearInterval(expirySweepTimer);
+	expirySweepTimer = setInterval(() => {
+		runExpirySweep(client).catch(() => null);
+	}, EXPIRY_SWEEP_MS);
+}
+
+export function stopExpirySweeper() {
+	if (expirySweepTimer) clearInterval(expirySweepTimer);
+	expirySweepTimer = null;
 }
 
 export { invalidateEffectCache };

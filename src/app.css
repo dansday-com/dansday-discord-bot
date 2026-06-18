@@ -3303,3 +3303,259 @@
 .m-root .m-items-target:hover:not(:disabled) {
 	background: rgba(13, 148, 136, 0.2);
 }
+
+.m-root .m-items-target i {
+	margin-right: 8px;
+	color: #5eead4;
+	font-size: 11px;
+}
+
+/* ---- XP balance header ---- */
+.m-root .m-xp {
+	position: sticky;
+	top: 8px;
+	z-index: 5;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin-bottom: 16px;
+	padding: 14px 16px;
+	border-radius: 16px;
+	background:
+		radial-gradient(120% 140% at 0% 0%, rgba(13, 148, 136, 0.22), transparent 60%),
+		linear-gradient(160deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+	border: 1px solid rgba(45, 212, 191, 0.22);
+	box-shadow:
+		0 1px 0 rgba(255, 255, 255, 0.05) inset,
+		0 14px 36px -22px rgba(13, 148, 136, 0.9);
+	backdrop-filter: blur(8px);
+}
+
+.m-root .m-xp-main {
+	display: flex;
+	align-items: center;
+	gap: 14px;
+	min-width: 0;
+}
+
+.m-root .m-xp-coin {
+	flex-shrink: 0;
+	width: 46px;
+	height: 46px;
+	display: grid;
+	place-items: center;
+	border-radius: 14px;
+	font-size: 20px;
+	color: #042f2a;
+	background: linear-gradient(135deg, #5eead4, #14b8a6);
+	box-shadow: 0 0 26px -6px rgba(45, 212, 191, 0.8);
+	transition: transform 0.25s ease;
+}
+
+.m-root .m-xp-coin--bump {
+	animation: m-xp-coin-spin 0.7s ease;
+}
+
+@keyframes m-xp-coin-spin {
+	0% {
+		transform: rotateY(0) scale(1);
+	}
+	50% {
+		transform: rotateY(180deg) scale(1.18);
+	}
+	100% {
+		transform: rotateY(360deg) scale(1);
+	}
+}
+
+.m-root .m-xp-figures {
+	min-width: 0;
+}
+
+.m-root .m-xp-amount {
+	display: flex;
+	align-items: baseline;
+	gap: 6px;
+	font-size: 26px;
+	font-weight: 800;
+	letter-spacing: -0.02em;
+	color: var(--lb-text, #e8eef2);
+	line-height: 1.05;
+	font-variant-numeric: tabular-nums;
+	transition: color 0.2s ease;
+}
+
+.m-root .m-xp-amount--bump {
+	color: #5eead4;
+}
+
+.m-root .m-xp-unit {
+	font-size: 12px;
+	font-weight: 700;
+	color: #5eead4;
+	letter-spacing: 0.04em;
+}
+
+.m-root .m-xp-sub {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-top: 5px;
+	flex-wrap: wrap;
+}
+
+.m-root .m-xp-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	font-size: 11px;
+	font-weight: 700;
+	color: var(--lb-muted, #9aa7b2);
+	background: rgba(255, 255, 255, 0.06);
+	border-radius: 999px;
+	padding: 3px 9px;
+}
+
+.m-root .m-xp-chip i {
+	font-size: 10px;
+	opacity: 0.85;
+}
+
+.m-root .m-xp-live {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	font-size: 10px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	color: #5eead4;
+}
+
+.m-root .m-xp-dot {
+	width: 7px;
+	height: 7px;
+	border-radius: 999px;
+	background: #2dd4bf;
+	box-shadow: 0 0 0 0 rgba(45, 212, 191, 0.7);
+	animation: m-xp-pulse 1.8s infinite;
+}
+
+@keyframes m-xp-pulse {
+	0% {
+		box-shadow: 0 0 0 0 rgba(45, 212, 191, 0.6);
+	}
+	70% {
+		box-shadow: 0 0 0 7px rgba(45, 212, 191, 0);
+	}
+	100% {
+		box-shadow: 0 0 0 0 rgba(45, 212, 191, 0);
+	}
+}
+
+.m-root .m-xp-delta {
+	flex-shrink: 0;
+	font-size: 16px;
+	font-weight: 800;
+	font-variant-numeric: tabular-nums;
+	animation: m-xp-delta-float 0.9s ease forwards;
+}
+
+.m-root .m-xp-delta--up {
+	color: #4ade80;
+}
+
+.m-root .m-xp-delta--down {
+	color: #fb7185;
+}
+
+@keyframes m-xp-delta-float {
+	0% {
+		opacity: 0;
+		transform: translateY(8px);
+	}
+	25% {
+		opacity: 1;
+		transform: translateY(0);
+	}
+	75% {
+		opacity: 1;
+		transform: translateY(0);
+	}
+	100% {
+		opacity: 0;
+		transform: translateY(-8px);
+	}
+}
+
+/* ---- Affordability + buy burst on cards ---- */
+.m-root .m-items-card--locked {
+	opacity: 0.62;
+}
+
+.m-root .m-items-card--locked .m-items-medallion {
+	filter: grayscale(0.6);
+}
+
+.m-root .m-items-cost--short {
+	background: rgba(251, 113, 133, 0.16);
+	color: #fda4af;
+	border-color: rgba(251, 113, 133, 0.3);
+}
+
+.m-root .m-items-card--burst {
+	animation: m-items-pop 0.5s ease;
+}
+
+.m-root .m-items-card--burst::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+	background: radial-gradient(circle at 50% 60%, color-mix(in srgb, var(--cat) 45%, transparent), transparent 60%);
+	animation: m-items-flash 0.55s ease forwards;
+	pointer-events: none;
+}
+
+@keyframes m-items-pop {
+	0% {
+		transform: scale(1);
+	}
+	35% {
+		transform: scale(1.035);
+	}
+	100% {
+		transform: scale(1);
+	}
+}
+
+@keyframes m-items-flash {
+	0% {
+		opacity: 0.85;
+	}
+	100% {
+		opacity: 0;
+	}
+}
+
+@media (max-width: 640px) {
+	.m-root .m-xp-amount {
+		font-size: 22px;
+	}
+	.m-root .m-xp-coin {
+		width: 40px;
+		height: 40px;
+		font-size: 17px;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.m-root .m-xp-coin--bump,
+	.m-root .m-xp-dot,
+	.m-root .m-xp-delta,
+	.m-root .m-items-card--burst,
+	.m-root .m-items-card--burst::after {
+		animation: none;
+	}
+}

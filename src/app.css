@@ -3129,14 +3129,21 @@
 .m-root .m-card-glow {
 	position: absolute;
 	z-index: 1;
-	inset: 0;
-	border-radius: inherit;
-	background: linear-gradient(115deg, transparent 30%, color-mix(in srgb, var(--cat) 38%, transparent) 50%, transparent 70%);
-	background-size: 300% 100%;
-	background-position: 200% 0;
-	opacity: 0;
-	transition: opacity 0.3s ease;
+	inset: -60%;
 	pointer-events: none;
+	opacity: 0;
+	background: linear-gradient(
+		125deg,
+		transparent 0%,
+		transparent 42%,
+		color-mix(in srgb, var(--cat) 12%, transparent) 47%,
+		color-mix(in srgb, var(--cat) 45%, transparent) 50%,
+		color-mix(in srgb, var(--cat) 12%, transparent) 53%,
+		transparent 58%,
+		transparent 100%
+	);
+	mix-blend-mode: screen;
+	transform: translate3d(-45%, -45%, 0);
 }
 
 .m-root .m-card:active {
@@ -3444,8 +3451,7 @@
 		box-shadow: 0 16px 34px -16px color-mix(in srgb, var(--cat) 65%, transparent);
 	}
 	.m-root .m-card:hover .m-card-glow {
-		opacity: 1;
-		animation: m-card-shine 5s ease-in-out infinite;
+		animation: m-card-shine 6.2s ease-in-out infinite;
 	}
 	.m-root .m-card-btn:hover:not(:disabled) {
 		filter: brightness(1.12);
@@ -3454,13 +3460,23 @@
 
 @keyframes m-card-shine {
 	0% {
-		background-position: 200% 0;
+		opacity: 0;
+		transform: translate3d(-45%, -45%, 0);
 	}
-	45% {
-		background-position: -200% 0;
+	3% {
+		opacity: 1;
+	}
+	19% {
+		opacity: 1;
+		transform: translate3d(45%, 45%, 0);
+	}
+	22% {
+		opacity: 0;
+		transform: translate3d(45%, 45%, 0);
 	}
 	100% {
-		background-position: -200% 0;
+		opacity: 0;
+		transform: translate3d(45%, 45%, 0);
 	}
 }
 
@@ -4045,33 +4061,32 @@
 	position: absolute;
 	z-index: -1;
 	inset: -40%;
-	background: radial-gradient(circle at 50% 0%, rgba(184, 134, 11, 0.16), transparent 60%);
-	opacity: 1;
-	transition: background 0.4s ease;
+	background: radial-gradient(circle at 50% 0%, rgba(184, 134, 11, 0.16), transparent 55%);
+	opacity: 0.5;
 	pointer-events: none;
 }
 
 .m-gamble--won .m-gamble-aura {
-	background: radial-gradient(circle at 50% 40%, rgba(47, 143, 78, 0.32), transparent 65%);
-	animation: m-g-auraflash 0.6s ease;
+	background: radial-gradient(circle at 50% 35%, rgba(47, 143, 78, 0.4), transparent 60%);
+	animation: m-g-auraflash 0.7s ease forwards;
 }
 
 .m-gamble--lost .m-gamble-aura {
-	background: radial-gradient(circle at 50% 40%, rgba(192, 57, 43, 0.26), transparent 65%);
-	animation: m-g-auraflash 0.5s ease;
+	background: radial-gradient(circle at 50% 35%, rgba(192, 57, 43, 0.34), transparent 60%);
+	animation: m-g-auraflash 0.6s ease forwards;
 }
 
 @keyframes m-g-auraflash {
 	0% {
-		opacity: 0.2;
+		opacity: 0;
 		transform: scale(0.9);
 	}
-	40% {
+	35% {
 		opacity: 1;
 		transform: scale(1.05);
 	}
 	100% {
-		opacity: 1;
+		opacity: 0;
 		transform: scale(1);
 	}
 }
@@ -4122,10 +4137,9 @@
 	overflow: hidden;
 	border-radius: 14px;
 	border: 1px solid var(--lb-border);
-	background: repeating-linear-gradient(90deg, transparent, transparent 86px, rgba(0, 0, 0, 0.04) 86px, rgba(0, 0, 0, 0.04) 94px), var(--chili-surface);
+	background: var(--chili-surface);
 	padding: 12px 0;
 	margin-bottom: 14px;
-	mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
 	transition:
 		border-color 0.25s ease,
 		box-shadow 0.25s ease;
@@ -4216,7 +4230,7 @@
 	inset: 0;
 	overflow: hidden;
 	pointer-events: none;
-	z-index: 5;
+	z-index: 7;
 }
 
 .m-gamble-coin {
@@ -4252,7 +4266,16 @@
 	gap: 2px;
 	z-index: 6;
 	pointer-events: none;
+	background: var(--chili-surface);
 	animation: m-g-verdict 0.4s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.m-gamble-verdict--win {
+	background: linear-gradient(180deg, color-mix(in srgb, #2f8f4e 16%, var(--chili-surface)), var(--chili-surface));
+}
+
+.m-gamble-verdict--lose {
+	background: linear-gradient(180deg, color-mix(in srgb, #c0392b 14%, var(--chili-surface)), var(--chili-surface));
 }
 
 @keyframes m-g-verdict {
@@ -4274,10 +4297,9 @@
 }
 
 .m-gamble-verdict-amt {
-	font-size: 24px;
+	font-size: 26px;
 	font-weight: 900;
 	font-variant-numeric: tabular-nums;
-	text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .m-gamble-verdict--win .m-gamble-verdict-label {

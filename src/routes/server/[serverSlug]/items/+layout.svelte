@@ -383,7 +383,6 @@
 				} else {
 					lostAmount = Math.floor(Number(d.result?.wager) || wagerXp);
 				}
-				invalidateAll();
 			}, 3700);
 		} catch {
 			showToast('Gamble failed', 'error');
@@ -466,7 +465,7 @@
 
 	<div class="m-items-bar">
 		<div class="m-items-toggle">
-			<a class="m-items-seg" class:m-items-seg--active={isShop} href="{itemsBase}/shop/{pd.hash}" data-sveltekit-preload-data="hover"
+			<a class="m-items-seg" class:m-items-seg--active={isShop} href="{itemsBase}/shop/all/{pd.hash}" data-sveltekit-preload-data="hover"
 				><i class="fas fa-store"></i>Shop</a
 			>
 			<a

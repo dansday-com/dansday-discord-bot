@@ -94,6 +94,91 @@ export async function loadItemsCatalog(serverId: number): Promise<any[]> {
 	}));
 }
 
+export async function loadItemsShared(server: any, hash: string) {
+	const { SERVER_SETTINGS } = await import('$lib/frontend/panelServer.js');
+
+	const itemsRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.items).catch(() => null);
+	if ((itemsRow as any)?.settings?.enabled !== true) return { notFound: true } as const;
+
+	const member = hash ? await resolveMemberByCardToken(server.id, hash) : null;
+	if (!member) return { invalid: true } as const;
+
+	const levelingRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.leveling).catch(() => null);
+	const req = (levelingRow as any)?.settings?.REQUIREMENTS ?? {};
+	const levelReq = { baseXp: Number(req.BASE_XP) || 100, multiplier: Number(req.MULTIPLIER) || 1.2 };
+
+	const items = await loadItemsCatalog(server.id);
+
+	const invRows = await db.getMemberInventory(member.id).catch(() => []);
+	const bagStock = (invRows as any[]).reduce((sum, r) => sum + (Number(r.quantity) || 0), 0);
+
+	const effectRows = await db.getActiveEffectsForMember(member.id).catch(() => []);
+	const activeEffects = (effectRows as any[]).map((e) => ({
+		effect_type: e.effect_type,
+		effect_value: Number(e.effect_value) || 0,
+		expiresAt: e.expires_at ? new Date(e.expires_at).getTime() : null
+	}));
+
+	let cooldownUntil: number | null = null;
+	let immuneUntil: number | null = null;
+	let maxCooldownMin = 0;
+	let maxImmunityMin = 0;
+	for (const it of items as any[]) {
+		if (it.effect_type !== 'steal' && it.effect_type !== 'bomb') continue;
+		const cfg = it.config || {};
+		maxCooldownMin = Math.max(maxCooldownMin, Number(cfg.cooldown_minutes) || 0);
+		maxImmunityMin = Math.max(maxImmunityMin, Number(cfg.immunity_minutes) || 0);
+	}
+	if (maxCooldownMin > 0) {
+		const last = await db.getLastAttackActionByActor(member.id).catch(() => null);
+		if (last) {
+			const ends = last.getTime() + maxCooldownMin * 60000;
+			if (ends > Date.now()) cooldownUntil = ends;
+		}
+	}
+	if (maxImmunityMin > 0) {
+		const last = await db.getLastActionAgainstTarget(member.id, ['steal', 'bomb']).catch(() => null);
+		if (last) {
+			const ends = last.getTime() + maxImmunityMin * 60000;
+			if (ends > Date.now()) immuneUntil = ends;
+		}
+	}
+
+	return {
+		member,
+		items,
+		hash,
+		bagStock,
+		categories: [...new Set((items as any[]).map((i) => i.effect_type))],
+		memberName: member.server_display_name || member.display_name || member.username,
+		memberDiscordId: String(member.discord_member_id),
+		memberAvatar: member.avatar ?? null,
+		memberCard: {
+			discord_member_id: String(member.discord_member_id),
+			username: member.username ?? null,
+			display_name: member.display_name ?? null,
+			server_display_name: member.server_display_name ?? null,
+			avatar: member.avatar ?? null,
+			level: Number(member.level ?? 0) || 0,
+			experience: Number(member.experience ?? 0) || 0,
+			rank: member.rank != null ? Number(member.rank) : null,
+			chat_total: Number(member.chat_total ?? 0) || 0,
+			voice_minutes_active: Number(member.voice_minutes_active ?? 0) || 0,
+			member_since: member.member_since ? new Date(member.member_since).toISOString() : null,
+			roles: (member.roles ?? []).map((r: any) => ({ name: r.name, color: r.color, position: r.position }))
+		},
+		balance: {
+			experience: Number(member.experience ?? 0) || 0,
+			level: Number(member.level ?? 1) || 1,
+			rank: member.rank != null ? Number(member.rank) : null
+		},
+		activeEffects,
+		cooldownUntil,
+		immuneUntil,
+		levelReq
+	};
+}
+
 export function postBotWebhook(bot: any, payload: any): Promise<{ status: number; body: any }> {
 	const body = JSON.stringify(payload);
 	return new Promise((resolve) => {

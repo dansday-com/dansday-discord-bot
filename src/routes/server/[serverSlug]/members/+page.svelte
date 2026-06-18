@@ -1,10 +1,8 @@
 <script lang="ts">
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { onDestroy, onMount } from 'svelte';
-	import { page } from '$app/state';
 	import type { PageProps } from './$types';
 	import LocalTime from '$lib/frontend/components/LocalTime.svelte';
-	import MemberCard from '$lib/frontend/components/MemberCard.svelte';
 	import type { PublicMembersStreamPayload } from '$lib/frontend/public/members/index.js';
 
 	let { data }: PageProps = $props();
@@ -93,26 +91,12 @@
 
 	const members = $derived(liveMembers);
 
-	let cardMember = $state<(typeof liveMembers)[number] | null>(null);
-
-	function closeCard() {
-		cardMember = null;
-	}
-
 	function fmtNum(n: number): string {
 		if (n == null) return '0';
 		return Number(n).toLocaleString();
 	}
 
 	onMount(() => {
-		const cardId = page.url.searchParams.get('card');
-		if (cardId && data.members) {
-			const found = data.members.find((m: any) => m.cardToken === cardId);
-			if (found) {
-				cardMember = found;
-			}
-		}
-
 		const url = `/api/public-statistics/${encodeURIComponent(data.server.slug)}/members-stream`;
 		const source = new EventSource(url);
 		es = source;
@@ -299,7 +283,3 @@
 		{/if}
 	{/if}
 </div>
-
-{#if cardMember}
-	<MemberCard member={cardMember} serverName={data.server.name || data.server.slug} serverIcon={data.server.server_icon} onclose={closeCard} />
-{/if}

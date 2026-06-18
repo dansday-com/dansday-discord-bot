@@ -12,9 +12,3 @@ export function publicServerUrl(slug: string, page?: 'leaderboard' | 'members'):
 	if (!origin || !slug) return null;
 	return origin + publicServerPath(slug) + (page ? `/${page}` : '');
 }
-
-export function publicItemsUrl(slug: string, cardToken: string): string | null {
-	const origin = publicSiteOrigin();
-	if (!origin || !slug || !cardToken) return null;
-	return `${origin}${publicServerPath(slug)}/items/${encodeURIComponent(cardToken)}`;
-}

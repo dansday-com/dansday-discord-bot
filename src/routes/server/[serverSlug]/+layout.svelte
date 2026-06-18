@@ -13,7 +13,7 @@
 	const pathNorm = $derived(page.url.pathname.replace(/\/$/, ''));
 	const isLeaderboard = $derived(pathNorm.endsWith('/leaderboard'));
 	const isMembers = $derived(pathNorm.endsWith('/members'));
-	const isItems = $derived(/\/items\/[^/]+$/.test(pathNorm));
+	const isItems = $derived(/\/items(\/|$)/.test(pathNorm));
 	const isOverview = $derived(!isLeaderboard && !isMembers && !isItems);
 </script>
 

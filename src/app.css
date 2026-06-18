@@ -3758,6 +3758,36 @@
 	box-shadow: 0 10px 26px -16px rgba(36, 95, 115, 0.8);
 }
 
+.m-root .m-xp-card-btn {
+	position: absolute;
+	top: 10px;
+	right: 12px;
+	z-index: 2;
+	width: 32px;
+	height: 32px;
+	display: grid;
+	place-items: center;
+	border-radius: 9px;
+	border: 1px solid rgba(255, 255, 255, 0.22);
+	background: rgba(255, 255, 255, 0.12);
+	color: #fff;
+	font-size: 14px;
+	cursor: pointer;
+	transition:
+		background 0.15s,
+		transform 0.1s;
+}
+
+.m-root .m-xp-card-btn:active {
+	transform: scale(0.92);
+}
+
+@media (hover: hover) {
+	.m-root .m-xp-card-btn:hover {
+		background: rgba(255, 255, 255, 0.22);
+	}
+}
+
 .m-root .m-xp-glow {
 	position: absolute;
 	top: -60%;
@@ -3875,6 +3905,7 @@
 	align-items: center;
 	gap: 18px;
 	padding-left: 18px;
+	padding-top: 18px;
 	border-left: 1px solid rgba(255, 255, 255, 0.16);
 }
 

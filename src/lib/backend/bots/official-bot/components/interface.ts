@@ -234,13 +234,6 @@ async function handleMenuButton(interaction) {
 			const slug = await computePublicServerSlugForServerId(Number(server.id));
 			const url = slug ? publicServerUrl(slug) : null;
 
-			let memberUrl: string | null = null;
-			if (slug) {
-				const joinedDate = member.joinedAt ? member.joinedAt.toISOString().split('T')[0] : '';
-				const cardHash = createHash('sha256').update(`${interaction.user.id}_${joinedDate}`).digest('hex').substring(0, 16);
-				memberUrl = `${publicServerUrl(slug, 'members')}?card=${cardHash}`;
-			}
-
 			if (url) {
 				const statisticsLabel = await translate('menu.statistics', interaction.guild.id, interaction.user.id);
 				const statisticsBtn = new ButtonBuilder().setLabel(statisticsLabel).setURL(url).setStyle(ButtonStyle.Link);
@@ -249,17 +242,6 @@ async function handleMenuButton(interaction) {
 					settingsRow.addComponents(statisticsBtn);
 				} else if (rows.length < 5) {
 					rows.push(new ActionRowBuilder().addComponents(statisticsBtn));
-				}
-			}
-
-			if (memberUrl) {
-				const memberCardLabel = await translate('menu.memberCard', interaction.guild.id, interaction.user.id);
-				const memberCardBtn = new ButtonBuilder().setLabel(memberCardLabel).setURL(memberUrl).setStyle(ButtonStyle.Link);
-				const targetRow = rows[rows.length - 1];
-				if (targetRow.components.length < 5) {
-					targetRow.addComponents(memberCardBtn);
-				} else if (rows.length < 5) {
-					rows.push(new ActionRowBuilder().addComponents(memberCardBtn));
 				}
 			}
 		} catch (_) {}
@@ -273,7 +255,7 @@ async function handleMenuButton(interaction) {
 			if (base) {
 				const joinedDate = member.joinedAt ? member.joinedAt.toISOString().split('T')[0] : '';
 				const cardHash = createHash('sha256').update(`${interaction.user.id}_${joinedDate}`).digest('hex').substring(0, 16);
-				const itemsUrl = `${base}/items/${cardHash}`;
+				const itemsUrl = `${base}/items/shop/all/${cardHash}`;
 
 				const itemsLabel = await translate('menu.items', interaction.guild.id, interaction.user.id);
 				const itemsBtn = new ButtonBuilder().setLabel(itemsLabel).setURL(itemsUrl).setStyle(ButtonStyle.Link);

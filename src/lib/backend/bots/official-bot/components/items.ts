@@ -80,13 +80,13 @@ export async function computeAwardModifiers(memberId: any, source: any = 'all') 
 
 	for (const effect of effects) {
 		if (effect.effect_type === 'boost' && effectScopeMatches(effect, source)) {
-			const m = Number(effect.magnitude) || 0;
+			const m = Number(effect.effect_value) || 0;
 			if (m > 0) multiplier *= m;
 		} else if (effect.effect_type === 'leech') {
-			const pct = Number(effect.magnitude) || 0;
-			if (pct > 0 && effect.source_member_id != null) {
+			const pct = Number(effect.effect_value) || 0;
+			if (pct > 0 && effect.beneficiary_member_id != null) {
 				skimPercent += pct;
-				leeches.push({ sourceMemberId: Number(effect.source_member_id), percent: pct });
+				leeches.push({ beneficiaryMemberId: Number(effect.beneficiary_member_id), percent: pct });
 			}
 		}
 	}
@@ -113,7 +113,7 @@ export async function applyAwardEffects(memberId: any, baseXp: any, source: any 
 		const share = isLast ? remaining : Math.floor((boosted * leech.percent) / 100);
 		const amount = Math.min(remaining, share);
 		if (amount > 0) {
-			leechCredits.push({ sourceMemberId: leech.sourceMemberId, amount });
+			leechCredits.push({ beneficiaryMemberId: leech.beneficiaryMemberId, amount });
 			remaining -= amount;
 		}
 	}
@@ -125,12 +125,12 @@ export async function creditLeechers(leechCredits: any, guildId: any) {
 	if (!Array.isArray(leechCredits) || leechCredits.length === 0) return;
 	for (const credit of leechCredits) {
 		try {
-			await db.ensureMemberLevel(credit.sourceMemberId);
-			const before = await db.getMemberLevel(credit.sourceMemberId);
-			const after = await db.updateMemberLevelStats(credit.sourceMemberId, { experienceIncrement: credit.amount });
-			await reevaluateLevel(credit.sourceMemberId, after ?? before, guildId);
+			await db.ensureMemberLevel(credit.beneficiaryMemberId);
+			const before = await db.getMemberLevel(credit.beneficiaryMemberId);
+			const after = await db.updateMemberLevelStats(credit.beneficiaryMemberId, { experienceIncrement: credit.amount });
+			await reevaluateLevel(credit.beneficiaryMemberId, after ?? before, guildId);
 		} catch (error: any) {
-			await logger.log(`⚠️ Leech credit failed for member ${credit.sourceMemberId}: ${error.message}`);
+			await logger.log(`⚠️ Leech credit failed for member ${credit.beneficiaryMemberId}: ${error.message}`);
 		}
 	}
 }
@@ -312,14 +312,14 @@ function newImmunityUntil(immunityMinutes: any): Date | null {
 export async function resolveBoost({ memberItemId, config }: any) {
 	const cfg = parseConfig(config);
 	const expiresAt = computeExpiry(cfg.effect_duration_minutes);
-	await db.addMemberItemActive(memberItemId, { magnitude: Number(cfg.multiplier ?? 2), expires_at: expiresAt });
+	await db.addMemberItemActive(memberItemId, { effect_value: Number(cfg.multiplier ?? 2), expires_at: expiresAt });
 	return { outcome: 'success', expiresAt };
 }
 
 export async function resolveShield({ memberItemId, ownerMemberId, config }: any) {
 	const cfg = parseConfig(config);
 	const expiresAt = computeExpiry(cfg.effect_duration_minutes);
-	await db.addMemberItemActive(memberItemId, { magnitude: 1, expires_at: expiresAt });
+	await db.addMemberItemActive(memberItemId, { effect_value: 1, expires_at: expiresAt });
 	await invalidateEffectCache(ownerMemberId);
 	return { outcome: 'success', expiresAt };
 }
@@ -328,8 +328,8 @@ export async function resolveLeech({ memberItemId, actorMemberId, targetMemberId
 	const cfg = parseConfig(config);
 	const expiresAt = computeExpiry(cfg.effect_duration_minutes);
 	await db.addMemberItemActive(memberItemId, {
-		magnitude: Number(cfg.skim_percent ?? 10),
-		source_member_id: actorMemberId,
+		effect_value: Number(cfg.skim_percent ?? 10),
+		beneficiary_member_id: actorMemberId,
 		expires_at: expiresAt
 	});
 	await invalidateEffectCache(targetMemberId);
@@ -339,7 +339,7 @@ export async function resolveLeech({ memberItemId, actorMemberId, targetMemberId
 export async function resolveReflect({ memberItemId, ownerMemberId, config }: any) {
 	const cfg = parseConfig(config);
 	const expiresAt = computeExpiry(cfg.effect_duration_minutes);
-	await db.addMemberItemActive(memberItemId, { magnitude: 1, expires_at: expiresAt });
+	await db.addMemberItemActive(memberItemId, { effect_value: 1, expires_at: expiresAt });
 	await invalidateEffectCache(ownerMemberId);
 	return { outcome: 'success', expiresAt };
 }
@@ -347,7 +347,7 @@ export async function resolveReflect({ memberItemId, ownerMemberId, config }: an
 export async function resolveInsurance({ memberItemId, ownerMemberId, config }: any) {
 	const cfg = parseConfig(config);
 	const expiresAt = computeExpiry(cfg.effect_duration_minutes);
-	await db.addMemberItemActive(memberItemId, { magnitude: 1, expires_at: expiresAt });
+	await db.addMemberItemActive(memberItemId, { effect_value: 1, expires_at: expiresAt });
 	await invalidateEffectCache(ownerMemberId);
 	return { outcome: 'success', expiresAt };
 }
@@ -386,7 +386,7 @@ export async function handleGamble(client: any, payload: any) {
 		return { ok: false, error: 'shop_disabled' };
 	}
 
-	const item = await db.getBotItem(item_id).catch(() => null);
+	const item = await db.getItem(item_id).catch(() => null);
 	if (!item || item.enabled !== true || item.effect_type !== 'gamble') return { ok: false, error: 'item_unavailable' };
 	if (!isItemAvailableNow(item)) return { ok: false, error: 'item_not_in_window' };
 
@@ -504,7 +504,7 @@ export async function handleItemUse(client: any, payload: any) {
 	}
 	if (Number(memberItem.quantity) <= 0) return { ok: false, error: 'out_of_stock' };
 
-	const item = await db.getBotItem(memberItem.item_id).catch(() => null);
+	const item = await db.getItem(memberItem.item_id).catch(() => null);
 	if (!item) return { ok: false, error: 'catalog_item_missing' };
 
 	const config = parseConfig(item.config);
@@ -622,7 +622,7 @@ export async function handleItemBuy(client: any, payload: any) {
 		return { ok: false, error: 'shop_disabled' };
 	}
 
-	const item = await db.getBotItem(item_id).catch(() => null);
+	const item = await db.getItem(item_id).catch(() => null);
 	if (!item || item.enabled !== true) return { ok: false, error: 'item_unavailable' };
 	if (!isItemAvailableNow(item)) return { ok: false, error: 'item_not_in_window' };
 
@@ -843,7 +843,7 @@ async function sweepExpiredBuffs(client: any, botId: any, EmbedBuilder: any) {
 			const member = guild ? await guild.members.fetch(String(row.discord_member_id)).catch(() => null) : null;
 			if (guild) {
 				const embedConfig = await embedConfigFor(guild.id);
-				const mag = Number(row.magnitude) || 0;
+				const mag = Number(row.effect_value) || 0;
 				const text = meta.buffExpiredText(mag);
 				const embed = new EmbedBuilder()
 					.setColor(meta.color)
@@ -870,7 +870,7 @@ async function sweepDerivedEvents(client: any, botId: any, EmbedBuilder: any) {
 		if (immunityMs <= 0) continue;
 		const endsAt = lastHit + immunityMs;
 		if (endsAt > now || now - endsAt > EXPIRY_SWEEP_MS) continue;
-		const fresh = await db.recordItemEventNotif(hit.member_id, 'immunity_ended', new Date(endsAt)).catch(() => false);
+		const fresh = await db.recordItemNotification(hit.member_id, 'immunity_ended', new Date(endsAt)).catch(() => false);
 		if (!fresh) continue;
 
 		const guild = client?.guilds?.cache?.get(String(hit.discord_server_id));
@@ -894,7 +894,7 @@ async function sweepDerivedEvents(client: any, botId: any, EmbedBuilder: any) {
 		if (cooldownMs <= 0) continue;
 		const endsAt = lastAtk + cooldownMs;
 		if (endsAt > now || now - endsAt > EXPIRY_SWEEP_MS) continue;
-		const fresh = await db.recordItemEventNotif(atk.member_id, 'cooldown_ready', new Date(endsAt)).catch(() => false);
+		const fresh = await db.recordItemNotification(atk.member_id, 'cooldown_ready', new Date(endsAt)).catch(() => false);
 		if (!fresh) continue;
 
 		const guild = client?.guilds?.cache?.get(String(atk.discord_server_id));
@@ -931,7 +931,9 @@ async function maxAttackConfigMs(discordServerId: any, key: string): Promise<num
 	} catch (_) {
 		return 0;
 	}
-	const items = await db.listBotItems(server.bot_id, {}).catch(() => []);
+	const panelId = await db.getBotPanelId(server.bot_id).catch(() => null);
+	if (panelId == null) return 0;
+	const items = await db.listItems(panelId, {}).catch(() => []);
 	let maxMin = 0;
 	for (const it of (items as any[]) || []) {
 		if (it.effect_type !== 'steal' && it.effect_type !== 'bomb') continue;

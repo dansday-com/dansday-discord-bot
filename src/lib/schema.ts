@@ -758,13 +758,13 @@ export const accountServerAccess = mysqlTable('account_server_access', {
 	created_at: datetime('created_at').notNull()
 });
 
-export const botItems = mysqlTable(
-	'bot_items',
+export const items = mysqlTable(
+	'items',
 	{
 		id: int('id').primaryKey().autoincrement(),
-		bot_id: int('bot_id')
+		panel_id: int('panel_id')
 			.notNull()
-			.references(() => bots.id, { onDelete: 'cascade' }),
+			.references(() => panel.id, { onDelete: 'cascade' }),
 		name: varchar('name', { length: 150 }).notNull(),
 		effect_type: varchar('effect_type', { length: 32 }).notNull(),
 		description: text('description'),
@@ -779,7 +779,7 @@ export const botItems = mysqlTable(
 		created_at: datetime('created_at').notNull(),
 		updated_at: datetime('updated_at').notNull()
 	},
-	(t) => [index('idx_bot_items_bot_id').on(t.bot_id), index('idx_bot_items_enabled').on(t.bot_id, t.enabled)]
+	(t) => [index('idx_items_panel_id').on(t.panel_id), index('idx_items_enabled').on(t.panel_id, t.enabled)]
 );
 
 export const serverMemberItems = mysqlTable(
@@ -791,7 +791,7 @@ export const serverMemberItems = mysqlTable(
 			.references(() => serverMembers.id, { onDelete: 'cascade' }),
 		item_id: int('item_id')
 			.notNull()
-			.references(() => botItems.id, { onDelete: 'cascade' }),
+			.references(() => items.id, { onDelete: 'cascade' }),
 		quantity: int('quantity').notNull().default(1),
 		acquired_at: datetime('acquired_at').notNull(),
 		created_at: datetime('created_at').notNull(),
@@ -807,15 +807,15 @@ export const serverMemberItemActives = mysqlTable(
 		member_item_id: int('member_item_id')
 			.notNull()
 			.references(() => serverMemberItems.id, { onDelete: 'cascade' }),
-		magnitude: decimal('magnitude', { precision: 6, scale: 2 }).notNull().default('0'),
-		source_member_id: int('source_member_id').references(() => serverMembers.id, { onDelete: 'set null' }),
+		effect_value: decimal('effect_value', { precision: 6, scale: 2 }).notNull().default('0'),
+		beneficiary_member_id: int('beneficiary_member_id').references(() => serverMembers.id, { onDelete: 'set null' }),
 		expires_at: datetime('expires_at').notNull(),
 		expiry_notified: boolean('expiry_notified').notNull().default(false),
 		created_at: datetime('created_at').notNull()
 	},
 	(t) => [
 		index('idx_server_member_item_actives_active').on(t.member_item_id, t.expires_at),
-		index('idx_server_member_item_actives_source').on(t.source_member_id, t.expires_at),
+		index('idx_server_member_item_actives_beneficiary').on(t.beneficiary_member_id, t.expires_at),
 		index('idx_server_member_item_actives_sweep').on(t.expiry_notified, t.expires_at)
 	]
 );
@@ -839,8 +839,8 @@ export const serverMemberItemLogs = mysqlTable(
 	]
 );
 
-export const serverMemberBounties = mysqlTable(
-	'server_member_bounties',
+export const serverMemberItemBounties = mysqlTable(
+	'server_member_item_bounties',
 	{
 		id: int('id').primaryKey().autoincrement(),
 		target_member_id: int('target_member_id')
@@ -851,19 +851,19 @@ export const serverMemberBounties = mysqlTable(
 		collected: boolean('collected').notNull().default(false),
 		created_at: datetime('created_at').notNull()
 	},
-	(t) => [index('idx_server_member_bounties_target').on(t.target_member_id, t.collected)]
+	(t) => [index('idx_server_member_item_bounties_target').on(t.target_member_id, t.collected)]
 );
 
-export const serverMemberItemEventNotifs = mysqlTable(
-	'server_member_item_event_notifs',
+export const serverMemberItemNotifications = mysqlTable(
+	'server_member_item_notifications',
 	{
 		id: bigint('id', { mode: 'bigint' }).primaryKey().autoincrement(),
 		member_id: int('member_id')
 			.notNull()
 			.references(() => serverMembers.id, { onDelete: 'cascade' }),
-		kind: varchar('kind', { length: 24 }).notNull(),
-		event_at: datetime('event_at').notNull(),
+		notification_type: varchar('notification_type', { length: 24 }).notNull(),
+		notified_for_at: datetime('notified_for_at').notNull(),
 		created_at: datetime('created_at').notNull()
 	},
-	(t) => [uniqueIndex('unique_member_item_event').on(t.member_id, t.kind, t.event_at)]
+	(t) => [uniqueIndex('unique_member_item_notification').on(t.member_id, t.notification_type, t.notified_for_at)]
 );

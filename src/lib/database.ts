@@ -1457,34 +1457,34 @@ export async function getMembersWithInVoiceFlag(serverId: any) {
 		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), eq(schema.serverMemberLevels.is_in_voice, true)));
 }
 
-export async function listBotItems(botId: any, options: any = {}) {
+export async function listItems(panelId: any, options: any = {}) {
 	await initializeDatabase();
-	if (!botId) throw new Error('botId is required');
-	const conditions: any[] = [eq(schema.botItems.bot_id, Number(botId))];
-	if (options.enabledOnly) conditions.push(eq(schema.botItems.enabled, true));
+	if (!panelId) throw new Error('panelId is required');
+	const conditions: any[] = [eq(schema.items.panel_id, Number(panelId))];
+	if (options.enabledOnly) conditions.push(eq(schema.items.enabled, true));
 	return db
 		.select()
-		.from(schema.botItems)
+		.from(schema.items)
 		.where(and(...conditions))
-		.orderBy(asc(schema.botItems.sort_order), asc(schema.botItems.id));
+		.orderBy(asc(schema.items.sort_order), asc(schema.items.id));
 }
 
-export async function getBotItem(itemId: any) {
+export async function getItem(itemId: any) {
 	await initializeDatabase();
 	const rows = await db
 		.select()
-		.from(schema.botItems)
-		.where(eq(schema.botItems.id, Number(itemId)))
+		.from(schema.items)
+		.where(eq(schema.items.id, Number(itemId)))
 		.limit(1);
 	return rows[0] || null;
 }
 
-export async function createBotItem(botId: any, data: any = {}) {
+export async function createItem(panelId: any, data: any = {}) {
 	await initializeDatabase();
-	if (!botId) throw new Error('botId is required');
+	if (!panelId) throw new Error('panelId is required');
 	const now = toMySQLDateTime();
-	const result: any = await db.insert(schema.botItems).values({
-		bot_id: Number(botId),
+	const result: any = await db.insert(schema.items).values({
+		panel_id: Number(panelId),
 		name: String(data.name ?? ''),
 		effect_type: String(data.effect_type ?? ''),
 		description: data.description ?? null,
@@ -1500,10 +1500,10 @@ export async function createBotItem(botId: any, data: any = {}) {
 		updated_at: now as any
 	});
 	const insertId = result?.insertId ?? result?.[0]?.insertId;
-	return getBotItem(insertId);
+	return getItem(insertId);
 }
 
-export async function updateBotItem(itemId: any, data: any = {}) {
+export async function updateItem(itemId: any, data: any = {}) {
 	await initializeDatabase();
 	if (!itemId) throw new Error('itemId is required');
 	const set: any = { updated_at: toMySQLDateTime() as any };
@@ -1519,16 +1519,16 @@ export async function updateBotItem(itemId: any, data: any = {}) {
 	if (data.recurring_schedule !== undefined) set.recurring_schedule = data.recurring_schedule ?? null;
 	if (data.sort_order !== undefined) set.sort_order = Number(data.sort_order);
 	await db
-		.update(schema.botItems)
+		.update(schema.items)
 		.set(set)
-		.where(eq(schema.botItems.id, Number(itemId)));
-	return getBotItem(itemId);
+		.where(eq(schema.items.id, Number(itemId)));
+	return getItem(itemId);
 }
 
-export async function deleteBotItem(itemId: any) {
+export async function deleteItem(itemId: any) {
 	await initializeDatabase();
 	if (!itemId) throw new Error('itemId is required');
-	await db.delete(schema.botItems).where(eq(schema.botItems.id, Number(itemId)));
+	await db.delete(schema.items).where(eq(schema.items.id, Number(itemId)));
 	return true;
 }
 
@@ -1538,7 +1538,7 @@ export async function getMemberInventory(memberId: any) {
 	const rows = await db.execute(sql`
 		SELECT smi.*, bi.name, bi.effect_type, bi.description, bi.cost, bi.config, bi.icon
 		FROM server_member_items smi
-		INNER JOIN bot_items bi ON bi.id = smi.item_id
+		INNER JOIN items bi ON bi.id = smi.item_id
 		WHERE smi.member_id = ${Number(memberId)} AND smi.quantity > 0
 		ORDER BY smi.updated_at DESC
 	`);
@@ -1606,8 +1606,8 @@ export async function addMemberItemActive(memberItemId: any, data: any = {}) {
 	const now = toMySQLDateTime();
 	const result: any = await db.insert(schema.serverMemberItemActives).values({
 		member_item_id: Number(memberItemId),
-		magnitude: String(data.magnitude ?? 0) as any,
-		source_member_id: data.source_member_id != null ? Number(data.source_member_id) : null,
+		effect_value: String(data.effect_value ?? 0) as any,
+		beneficiary_member_id: data.beneficiary_member_id != null ? Number(data.beneficiary_member_id) : null,
 		expires_at: toMySQLDateTime(data.expires_at) as any,
 		created_at: now as any
 	});
@@ -1619,10 +1619,10 @@ export async function getActiveEffectsForMember(memberId: any) {
 	await initializeDatabase();
 	if (!memberId) throw new Error('memberId is required');
 	const rows = await db.execute(sql`
-		SELECT sma.id, sma.member_item_id, sma.magnitude, sma.source_member_id, sma.expires_at, bi.id AS item_id, bi.name, bi.effect_type, bi.config
+		SELECT sma.id, sma.member_item_id, sma.effect_value, sma.beneficiary_member_id, sma.expires_at, bi.id AS item_id, bi.name, bi.effect_type, bi.config
 		FROM server_member_item_actives sma
 		INNER JOIN server_member_items smi ON smi.id = sma.member_item_id
-		INNER JOIN bot_items bi ON bi.id = smi.item_id
+		INNER JOIN items bi ON bi.id = smi.item_id
 		WHERE smi.member_id = ${Number(memberId)} AND sma.expires_at > UTC_TIMESTAMP()
 	`);
 	return rows[0] as unknown as any[];
@@ -1638,12 +1638,12 @@ export async function getNewlyExpiredEffects(botId: any, limit = 100) {
 	await initializeDatabase();
 	if (!botId) return [] as any[];
 	const rows = await db.execute(sql`
-		SELECT sma.id, sma.magnitude, sma.expires_at, sma.source_member_id,
+		SELECT sma.id, sma.effect_value, sma.expires_at, sma.beneficiary_member_id,
 		       bi.effect_type, bi.name AS item_name, bi.icon AS item_icon,
 		       sm.discord_member_id, s.discord_server_id, lvl.dm_notifications_enabled
 		FROM server_member_item_actives sma
 		INNER JOIN server_member_items smi ON smi.id = sma.member_item_id
-		INNER JOIN bot_items bi ON bi.id = smi.item_id
+		INNER JOIN items bi ON bi.id = smi.item_id
 		INNER JOIN server_members sm ON sm.id = smi.member_id
 		INNER JOIN servers s ON s.id = sm.server_id
 		LEFT JOIN server_member_levels lvl ON lvl.member_id = sm.id
@@ -1669,14 +1669,14 @@ export async function markEffectExpiryNotified(ids: any[]) {
 	return list.length;
 }
 
-export async function recordItemEventNotif(memberId: any, kind: string, eventAt: any) {
+export async function recordItemNotification(memberId: any, notificationType: string, notifiedForAt: any) {
 	await initializeDatabase();
-	if (!memberId || !kind || !eventAt) return false;
+	if (!memberId || !notificationType || !notifiedForAt) return false;
 	try {
-		const result: any = await db.insert(schema.serverMemberItemEventNotifs).values({
+		const result: any = await db.insert(schema.serverMemberItemNotifications).values({
 			member_id: Number(memberId),
-			kind: String(kind),
-			event_at: toMySQLDateTime(eventAt) as any,
+			notification_type: String(notificationType),
+			notified_for_at: toMySQLDateTime(notifiedForAt) as any,
 			created_at: toMySQLDateTime() as any
 		});
 		const affected = result?.affectedRows ?? result?.[0]?.affectedRows ?? 1;
@@ -1797,7 +1797,7 @@ export async function getLastActionAgainstTarget(targetMemberId: any, actions: s
 export async function placeBounty(targetMemberId: any, placedByMemberId: any, amount: any) {
 	await initializeDatabase();
 	if (!targetMemberId) throw new Error('targetMemberId is required');
-	await db.insert(schema.serverMemberBounties).values({
+	await db.insert(schema.serverMemberItemBounties).values({
 		target_member_id: Number(targetMemberId),
 		placed_by_member_id: placedByMemberId != null ? Number(placedByMemberId) : null,
 		amount: Number(amount) || 0,
@@ -1810,7 +1810,7 @@ export async function placeBounty(targetMemberId: any, placedByMemberId: any, am
 export async function getActiveBountyTotal(targetMemberId: any) {
 	await initializeDatabase();
 	const rows = await db.execute(
-		sql`SELECT COALESCE(SUM(amount), 0) AS total FROM server_member_bounties WHERE target_member_id = ${Number(targetMemberId)} AND collected = FALSE`
+		sql`SELECT COALESCE(SUM(amount), 0) AS total FROM server_member_item_bounties WHERE target_member_id = ${Number(targetMemberId)} AND collected = FALSE`
 	);
 	const row = (rows[0] as unknown as any[])[0];
 	return Number(row?.total ?? 0) || 0;
@@ -1821,7 +1821,7 @@ export async function collectBounties(targetMemberId: any) {
 	if (!targetMemberId) return 0;
 	const total = await getActiveBountyTotal(targetMemberId);
 	if (total <= 0) return 0;
-	await db.execute(sql`UPDATE server_member_bounties SET collected = TRUE WHERE target_member_id = ${Number(targetMemberId)} AND collected = FALSE`);
+	await db.execute(sql`UPDATE server_member_item_bounties SET collected = TRUE WHERE target_member_id = ${Number(targetMemberId)} AND collected = FALSE`);
 	return total;
 }
 
@@ -3927,11 +3927,11 @@ export default {
 	recalculateServerMemberRanks,
 	getMemberLevelByDiscordId,
 	getMembersWithInVoiceFlag,
-	listBotItems,
-	getBotItem,
-	createBotItem,
-	updateBotItem,
-	deleteBotItem,
+	listItems,
+	getItem,
+	createItem,
+	updateItem,
+	deleteItem,
 	getMemberInventory,
 	getMemberItem,
 	grantMemberItem,
@@ -3941,7 +3941,7 @@ export default {
 	clearExpiredMemberItemActives,
 	getNewlyExpiredEffects,
 	markEffectExpiryNotified,
-	recordItemEventNotif,
+	recordItemNotification,
 	getRecentVictimHits,
 	getRecentAttackerActions,
 	expireMemberItemActive,

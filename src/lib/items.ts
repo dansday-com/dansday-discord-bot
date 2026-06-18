@@ -11,7 +11,7 @@ export type ItemEffect = {
 	targeted: boolean;
 	announced: boolean;
 	expiringBuff: boolean;
-	buffExpiredText?: (magnitude: number) => string;
+	buffExpiredText?: (effectValue: number) => string;
 	summary: (config: any) => string;
 };
 

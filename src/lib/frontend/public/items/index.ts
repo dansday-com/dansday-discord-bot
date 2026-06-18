@@ -57,9 +57,9 @@ function itemAvailableNow(item: any): boolean {
 }
 
 export async function loadItemsCatalog(serverId: number): Promise<any[]> {
-	const botId = await db.getOfficialBotIdForServer(serverId).catch(() => null);
-	if (botId == null) return [];
-	const all = await db.listBotItems(botId, { enabledOnly: true }).catch(() => []);
+	const panelId = await db.getServerPanelId(serverId).catch(() => null);
+	if (panelId == null) return [];
+	const all = await db.listItems(panelId, { enabledOnly: true }).catch(() => []);
 	return (all as any[]).filter(itemAvailableNow).map((i) => ({
 		id: i.id,
 		name: i.name,

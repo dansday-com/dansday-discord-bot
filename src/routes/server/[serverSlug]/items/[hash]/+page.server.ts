@@ -64,7 +64,7 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 		const effectRows = await db.getActiveEffectsForMember(member.id).catch(() => []);
 		activeEffects = (effectRows as any[]).map((e) => ({
 			effect_type: e.effect_type,
-			magnitude: Number(e.magnitude) || 0,
+			effect_value: Number(e.effect_value) || 0,
 			expiresAt: e.expires_at ? new Date(e.expires_at).getTime() : null
 		}));
 

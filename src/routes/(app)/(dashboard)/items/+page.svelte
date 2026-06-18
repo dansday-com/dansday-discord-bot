@@ -114,9 +114,9 @@
 		f.available_from = item.available_from ? String(item.available_from).slice(0, 16).replace(' ', 'T') : '';
 		f.available_to = item.available_to ? String(item.available_to).slice(0, 16).replace(' ', 'T') : '';
 		f.cfg = { ...f.cfg, ...cfg };
-		const recur = cfg.recurring_schedule;
+		const recur = typeof item.recurring_schedule === 'string' ? JSON.parse(item.recurring_schedule || 'null') : item.recurring_schedule;
 		if (recur) {
-			f.cfg.recur_days = recur.days ?? [];
+			f.cfg.recur_days = (recur.days ?? []).map(Number);
 			f.cfg.recur_from = recur.from ?? '';
 			f.cfg.recur_to = recur.to ?? '';
 		}

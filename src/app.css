@@ -3977,7 +3977,8 @@
 
 @media (prefers-reduced-motion: reduce) {
 	.m-root .m-card--burst,
-	.m-root .m-card--burst::after {
+	.m-root .m-card--burst::after,
+	.m-root .m-card:hover .m-card-glow {
 		animation: none;
 	}
 	.m-root .m-card:hover {

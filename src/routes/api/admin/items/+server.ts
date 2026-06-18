@@ -3,7 +3,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { logger } from '$lib/utils/index.js';
 
-const EFFECT_TYPES = ['xp_steal', 'xp_bomb', 'xp_boost', 'shield', 'leech', 'reflect', 'insurance', 'gamble', 'gift', 'vault', 'bounty', 'cosmetic'];
+const EFFECT_TYPES = ['xp_steal', 'xp_bomb', 'xp_boost', 'shield', 'leech', 'reflect', 'insurance', 'gamble', 'gift', 'bounty', 'cosmetic'];
 const CATEGORIES = ['pvp', 'boost', 'cosmetic', 'fun'];
 
 function isSuperadmin(locals: App.Locals) {

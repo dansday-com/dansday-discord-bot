@@ -1656,6 +1656,21 @@ export async function getLastActionByActor(memberId: any, action: string) {
 	return row ? parseMySQLDateTimeUtc(row.created_at) : null;
 }
 
+export async function getLastAttackActionByActor(memberId: any) {
+	await initializeDatabase();
+	if (!memberId) throw new Error('memberId is required');
+	const rows = await db.execute(sql`
+		SELECT sml.created_at
+		FROM server_member_item_logs sml
+		INNER JOIN server_member_items smi ON smi.id = sml.member_item_id
+		WHERE smi.member_id = ${Number(memberId)} AND sml.action IN ('steal', 'bomb')
+		ORDER BY sml.created_at DESC
+		LIMIT 1
+	`);
+	const row = (rows[0] as unknown as any[])[0];
+	return row ? parseMySQLDateTimeUtc(row.created_at) : null;
+}
+
 export async function getLastActionAgainstTarget(targetMemberId: any, actions: string[]) {
 	await initializeDatabase();
 	if (!targetMemberId) throw new Error('targetMemberId is required');
@@ -1673,26 +1688,6 @@ export async function getLastActionAgainstTarget(targetMemberId: any, actions: s
 	`);
 	const row = (rows[0] as unknown as any[])[0];
 	return row ? parseMySQLDateTimeUtc(row.created_at) : null;
-}
-
-export async function getVaultXp(memberId: any) {
-	await initializeDatabase();
-	const rows = await db
-		.select({ vault_xp: schema.serverMemberLevels.vault_xp })
-		.from(schema.serverMemberLevels)
-		.where(eq(schema.serverMemberLevels.member_id, Number(memberId)))
-		.limit(1);
-	return Number(rows[0]?.vault_xp ?? 0) || 0;
-}
-
-export async function addVaultXp(memberId: any, delta: any) {
-	await initializeDatabase();
-	if (!memberId) throw new Error('memberId is required');
-	const amount = Number(delta) || 0;
-	await db.execute(
-		sql`UPDATE server_member_levels SET vault_xp = GREATEST(0, vault_xp + ${amount}), updated_at = ${toMySQLDateTime()} WHERE member_id = ${Number(memberId)}`
-	);
-	return getVaultXp(memberId);
 }
 
 export async function placeBounty(targetMemberId: any, placedByMemberId: any, amount: any) {
@@ -3875,9 +3870,8 @@ export default {
 	expireMemberItemActive,
 	logMemberItemAction,
 	getLastActionByActor,
+	getLastAttackActionByActor,
 	getLastActionAgainstTarget,
-	getVaultXp,
-	addVaultXp,
 	placeBounty,
 	getActiveBountyTotal,
 	collectBounties,

@@ -36,10 +36,6 @@
 				return `Skim ${c.skim_percent ?? 10}% of a member's XP for ${c.effect_duration_minutes ?? 120} min.`;
 			case 'gamble':
 				return `Stake ${c.stake ?? 0} XP — ${c.win_chance ?? 50}% chance to win ${c.payout_multiplier ?? 2}× it.`;
-			case 'vault':
-				return c.vault_direction === 'withdraw'
-					? `Withdraw ${c.vault_amount ?? 0} XP from your vault.`
-					: `Hide ${c.vault_amount ?? 0} XP in a vault, safe from theft.`;
 			case 'bounty':
 				return `Put ${c.bounty_amount ?? 0} XP on a member — collected by whoever robs them next.`;
 			case 'reflect':

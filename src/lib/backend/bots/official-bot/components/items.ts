@@ -185,7 +185,7 @@ async function hasActiveShield(memberId: any) {
 async function isUnderAttackCooldown(actorMemberId: any, cooldownMinutes: any) {
 	const minutes = Math.max(0, Number(cooldownMinutes) || 0);
 	if (minutes <= 0) return false;
-	const last = await db.getLastActionByActor(actorMemberId, 'attack');
+	const last = await db.getLastAttackActionByActor(actorMemberId);
 	if (!last) return false;
 	const elapsedMs = Date.now() - last.getTime();
 	return elapsedMs < minutes * 60000;
@@ -390,34 +390,6 @@ export async function resolveGamble({ actorMemberId, actorMemberItemId, config, 
 	return { outcome: won ? 'win' : 'lose', won, stake, net: netChange };
 }
 
-export async function resolveVault({ actorMemberId, config, guildId }: any) {
-	const cfg = parseConfig(config);
-	const direction = cfg.vault_direction === 'withdraw' ? 'withdraw' : 'deposit';
-	const amount = Math.max(0, Math.floor(Number(cfg.vault_amount) || 0));
-	if (amount <= 0) return { outcome: 'success', xp: 0 };
-
-	if (direction === 'deposit') {
-		const stats = await db.getMemberLevel(actorMemberId);
-		const total = Number(stats?.experience ?? 0) || 0;
-		const moved = Math.min(total, amount);
-		if (moved <= 0) return { outcome: 'success', xp: 0 };
-		await db.updateMemberLevelStats(actorMemberId, { experienceIncrement: -moved });
-		await db.addVaultXp(actorMemberId, moved);
-		const after = await db.getMemberLevel(actorMemberId);
-		await reevaluateLevel(actorMemberId, after, guildId);
-		return { outcome: 'success', xp: moved, direction };
-	}
-
-	const vaulted = await db.getVaultXp(actorMemberId);
-	const moved = Math.min(vaulted, amount);
-	if (moved <= 0) return { outcome: 'success', xp: 0 };
-	await db.addVaultXp(actorMemberId, -moved);
-	await db.ensureMemberLevel(actorMemberId);
-	const stats = await db.updateMemberLevelStats(actorMemberId, { experienceIncrement: moved });
-	await reevaluateLevel(actorMemberId, stats, guildId);
-	return { outcome: 'success', xp: moved, direction };
-}
-
 export async function resolveBounty({ actorMemberId, actorMemberItemId, targetMemberId, config, guildId }: any) {
 	const cfg = parseConfig(config);
 	const amount = Math.max(0, Math.floor(Number(cfg.bounty_amount) || 0));
@@ -530,8 +502,6 @@ export async function handleItemUse(client: any, payload: any) {
 			result = await resolveGift({ actorMemberId, actorMemberItemId: member_item_id, targetMemberId, config, guildId: guild_id });
 		} else if (effectType === 'gamble') {
 			result = await resolveGamble({ actorMemberId, actorMemberItemId: member_item_id, config, guildId: guild_id });
-		} else if (effectType === 'vault') {
-			result = await resolveVault({ actorMemberId, config, guildId: guild_id });
 		} else if (effectType === 'bounty') {
 			result = await resolveBounty({ actorMemberId, actorMemberItemId: member_item_id, targetMemberId, config, guildId: guild_id });
 		} else if (effectType === 'cosmetic') {

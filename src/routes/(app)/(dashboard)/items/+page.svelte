@@ -12,7 +12,6 @@
 		{ value: 'insurance', label: 'Insurance', category: 'pvp' },
 		{ value: 'gamble', label: 'Gamble', category: 'fun' },
 		{ value: 'gift', label: 'Gift', category: 'fun' },
-		{ value: 'vault', label: 'Vault', category: 'fun' },
 		{ value: 'bounty', label: 'Bounty', category: 'pvp' },
 		{ value: 'cosmetic', label: 'Cosmetic', category: 'cosmetic' }
 	];
@@ -50,8 +49,6 @@
 				stake: 100,
 				gift_amount: 500,
 				tax_percent: 10,
-				vault_direction: 'deposit',
-				vault_amount: 1000,
 				bounty_amount: 500,
 				cosmetic_kind: 'theme',
 				value: '',
@@ -108,9 +105,6 @@
 			config.win_chance = Number(c.win_chance);
 			config.payout_multiplier = Number(c.payout_multiplier);
 			config.stake = Number(c.stake);
-		} else if (t === 'vault') {
-			config.vault_direction = c.vault_direction;
-			config.vault_amount = Number(c.vault_amount);
 		} else if (t === 'bounty') {
 			config.bounty_amount = Number(c.bounty_amount);
 		} else if (t === 'cosmetic') {
@@ -470,24 +464,6 @@
 							>
 						</div>
 						<p class="text-ash-500 text-[11px]">Stakes the XP, rolls win chance; on win pays stake × multiplier.</p>
-					{:else if form.effect_type === 'vault'}
-						<div class="grid grid-cols-2 gap-3">
-							<label class="text-ash-300 text-xs"
-								>Direction
-								<select bind:value={form.cfg.vault_direction} class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm">
-									<option value="deposit">Deposit (hide)</option>
-									<option value="withdraw">Withdraw (restore)</option>
-								</select>
-							</label>
-							<label class="text-ash-300 text-xs"
-								>Amount (XP)<input
-									type="number"
-									bind:value={form.cfg.vault_amount}
-									class="bg-ash-900 border-ash-700 text-ash-100 mt-1 w-full rounded border px-2 py-1.5 text-sm"
-								/></label
-							>
-						</div>
-						<p class="text-ash-500 text-[11px]">Deposit moves XP into a vault (safe from steal/bomb, doesn't count toward level). Withdraw restores it.</p>
 					{:else if form.effect_type === 'bounty'}
 						<label class="text-ash-300 text-xs"
 							>Bounty amount (XP)<input

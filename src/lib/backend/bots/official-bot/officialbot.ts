@@ -44,8 +44,13 @@ const client = new Client({
 	]
 });
 
+let initialized = false;
+
 client.on('clientReady', async () => {
 	logger.info('Official bot logged in', { userTag: client.user?.tag });
+
+	if (initialized) return;
+	initialized = true;
 
 	if (!BOT_TOKEN) {
 		await initializeConfig();

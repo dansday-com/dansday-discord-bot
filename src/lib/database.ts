@@ -1626,12 +1626,13 @@ export async function getNewlyExpiredEffects(botId: any, limit = 100) {
 	const rows = await db.execute(sql`
 		SELECT sma.id, sma.magnitude, sma.expires_at, sma.source_member_id,
 		       bi.effect_type, bi.name AS item_name, bi.icon AS item_icon,
-		       sm.discord_member_id, s.discord_server_id
+		       sm.discord_member_id, s.discord_server_id, lvl.dm_notifications_enabled
 		FROM server_member_item_actives sma
 		INNER JOIN server_member_items smi ON smi.id = sma.member_item_id
 		INNER JOIN bot_items bi ON bi.id = smi.item_id
 		INNER JOIN server_members sm ON sm.id = smi.member_id
 		INNER JOIN servers s ON s.id = sm.server_id
+		LEFT JOIN server_member_levels lvl ON lvl.member_id = sm.id
 		WHERE sma.expiry_notified = FALSE
 		  AND sma.expires_at <= UTC_TIMESTAMP()
 		  AND s.bot_id = ${Number(botId)}
@@ -1676,15 +1677,16 @@ export async function getRecentVictimHits(botId: any, sinceMinutes = 720) {
 	if (!botId) return [] as any[];
 	const rows = await db.execute(sql`
 		SELECT sml.target_member_id AS member_id, MAX(sml.created_at) AS last_hit,
-		       sm.discord_member_id, s.discord_server_id
+		       sm.discord_member_id, s.discord_server_id, lvl.dm_notifications_enabled
 		FROM server_member_item_logs sml
 		INNER JOIN server_members sm ON sm.id = sml.target_member_id
 		INNER JOIN servers s ON s.id = sm.server_id
+		LEFT JOIN server_member_levels lvl ON lvl.member_id = sm.id
 		WHERE sml.action IN ('steal', 'bomb')
 		  AND sml.target_member_id IS NOT NULL
 		  AND sml.created_at >= (UTC_TIMESTAMP() - INTERVAL ${Number(sinceMinutes)} MINUTE)
 		  AND s.bot_id = ${Number(botId)}
-		GROUP BY sml.target_member_id, sm.discord_member_id, s.discord_server_id
+		GROUP BY sml.target_member_id, sm.discord_member_id, s.discord_server_id, lvl.dm_notifications_enabled
 	`);
 	return rows[0] as unknown as any[];
 }
@@ -1694,15 +1696,16 @@ export async function getRecentAttackerActions(botId: any, sinceMinutes = 720) {
 	if (!botId) return [] as any[];
 	const rows = await db.execute(sql`
 		SELECT smi.member_id AS member_id, MAX(sml.created_at) AS last_attack,
-		       sm.discord_member_id, s.discord_server_id
+		       sm.discord_member_id, s.discord_server_id, lvl.dm_notifications_enabled
 		FROM server_member_item_logs sml
 		INNER JOIN server_member_items smi ON smi.id = sml.member_item_id
 		INNER JOIN server_members sm ON sm.id = smi.member_id
 		INNER JOIN servers s ON s.id = sm.server_id
+		LEFT JOIN server_member_levels lvl ON lvl.member_id = sm.id
 		WHERE sml.action IN ('steal', 'bomb')
 		  AND sml.created_at >= (UTC_TIMESTAMP() - INTERVAL ${Number(sinceMinutes)} MINUTE)
 		  AND s.bot_id = ${Number(botId)}
-		GROUP BY smi.member_id, sm.discord_member_id, s.discord_server_id
+		GROUP BY smi.member_id, sm.discord_member_id, s.discord_server_id, lvl.dm_notifications_enabled
 	`);
 	return rows[0] as unknown as any[];
 }

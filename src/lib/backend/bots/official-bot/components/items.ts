@@ -849,12 +849,17 @@ async function getProgressChannel(client: any, guild: any) {
 	return channel && channel.isTextBased() ? channel : null;
 }
 
-async function deliverToMemberAndChannel(client: any, guild: any, member: any, embed: any, channelContent?: string) {
+async function deliverToMemberAndChannel(client: any, guild: any, member: any, embed: any, dmAllowed: boolean, channelContent?: string) {
 	const row = member?.id ? await buildItemsButtonRow(guild.id, member.id) : null;
 	const components = row ? [row] : undefined;
-	if (member?.user) await member.user.send({ embeds: [embed], components }).catch(() => null);
+	if (member?.user && dmAllowed) await member.user.send({ embeds: [embed], components }).catch(() => null);
 	const channel = await getProgressChannel(client, guild);
 	if (channel) await channel.send({ content: channelContent, embeds: [embed], components }).catch(() => null);
+}
+
+function dmAllowedFromRow(row: any): boolean {
+	const v = row?.dm_notifications_enabled;
+	return v === undefined || v === null || v === 1 || v === true;
 }
 
 async function sweepExpiredBuffs(client: any, botId: any, EmbedBuilder: any) {
@@ -876,7 +881,7 @@ async function sweepExpiredBuffs(client: any, botId: any, EmbedBuilder: any) {
 					.setDescription(member ? `${member} — ${meta.selfDesc(mag)}` : meta.selfDesc(mag))
 					.setFooter({ text: embedConfig.FOOTER || 'Items' })
 					.setTimestamp();
-				await deliverToMemberAndChannel(client, guild, member, embed, member ? `${member}` : undefined);
+				await deliverToMemberAndChannel(client, guild, member, embed, dmAllowedFromRow(row), member ? `${member}` : undefined);
 			}
 		}
 		handledIds.push(Number(row.id));
@@ -908,7 +913,7 @@ async function sweepDerivedEvents(client: any, botId: any, EmbedBuilder: any) {
 			.setDescription(member ? `${member} is no longer immune — fair game again!` : `A member is no longer immune.`)
 			.setFooter({ text: embedConfig.FOOTER || 'Items' })
 			.setTimestamp();
-		await deliverToMemberAndChannel(client, guild, member, embed, member ? `${member}` : undefined);
+		await deliverToMemberAndChannel(client, guild, member, embed, dmAllowedFromRow(hit), member ? `${member}` : undefined);
 	}
 
 	const attacks = await db.getRecentAttackerActions(botId).catch(() => []);
@@ -932,7 +937,7 @@ async function sweepDerivedEvents(client: any, botId: any, EmbedBuilder: any) {
 			.setDescription(member ? `${member} — your attack cooldown is up. You can steal or bomb again!` : `Attack cooldown is up.`)
 			.setFooter({ text: embedConfig.FOOTER || 'Items' })
 			.setTimestamp();
-		await deliverToMemberAndChannel(client, guild, member, embed, member ? `${member}` : undefined);
+		await deliverToMemberAndChannel(client, guild, member, embed, dmAllowedFromRow(atk), member ? `${member}` : undefined);
 	}
 }
 

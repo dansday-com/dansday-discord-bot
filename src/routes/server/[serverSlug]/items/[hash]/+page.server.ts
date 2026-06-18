@@ -1,7 +1,8 @@
-import { error } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import db from '$lib/database.js';
 import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
+import { publicServerPath } from '$lib/url.js';
 import { loadItemsCatalog, resolveMemberByCardToken, computeCardToken } from '$lib/frontend/public/items/index.js';
 
 function safeParse(raw: any) {
@@ -13,10 +14,16 @@ function safeParse(raw: any) {
 }
 
 export const load: PageServerLoad = async ({ parent, params }) => {
-	const { server } = await parent();
+	const { server, publicStatsEnabled } = await parent();
 
 	const itemsRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.items).catch(() => null);
 	if ((itemsRow as any)?.settings?.enabled !== true) error(404, 'Items not available');
+
+	const hash = String(params.hash || '').trim();
+	const member = hash ? await resolveMemberByCardToken(server.id, hash) : null;
+	if (!member) {
+		redirect(303, publicStatsEnabled ? publicServerPath(server.slug) : '/');
+	}
 
 	const levelingRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.leveling).catch(() => null);
 	const req = (levelingRow as any)?.settings?.REQUIREMENTS ?? {};
@@ -24,9 +31,7 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 
 	const items = await loadItemsCatalog(server.id);
 
-	const hash = String(params.hash || '').trim();
-	const member = hash ? await resolveMemberByCardToken(server.id, hash) : null;
-	const valid = !!member;
+	const valid = true;
 
 	let inventory: any[] = [];
 	let targets: any[] = [];

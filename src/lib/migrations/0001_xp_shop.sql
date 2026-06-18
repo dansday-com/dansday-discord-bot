@@ -39,9 +39,11 @@ CREATE TABLE IF NOT EXISTS server_member_item_actives (
     magnitude DECIMAL(6,2) NOT NULL DEFAULT 0,
     source_member_id INT NULL,
     expires_at DATETIME NOT NULL,
+    expiry_notified BOOLEAN NOT NULL DEFAULT FALSE,
     created_at DATETIME NOT NULL,
     INDEX idx_server_member_item_actives_active (member_item_id, expires_at),
     INDEX idx_server_member_item_actives_source (source_member_id, expires_at),
+    INDEX idx_server_member_item_actives_sweep (expiry_notified, expires_at),
     FOREIGN KEY (member_item_id) REFERENCES server_member_items(id) ON DELETE CASCADE,
     FOREIGN KEY (source_member_id) REFERENCES server_members(id) ON DELETE SET NULL
 );
@@ -70,4 +72,14 @@ CREATE TABLE IF NOT EXISTS server_member_bounties (
     INDEX idx_server_member_bounties_target (target_member_id, collected),
     FOREIGN KEY (target_member_id) REFERENCES server_members(id) ON DELETE CASCADE,
     FOREIGN KEY (placed_by_member_id) REFERENCES server_members(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS server_member_item_event_notifs (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    member_id INT NOT NULL,
+    kind VARCHAR(24) NOT NULL,
+    event_at DATETIME NOT NULL,
+    created_at DATETIME NOT NULL,
+    UNIQUE KEY unique_member_item_event (member_id, kind, event_at),
+    FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE
 );

@@ -116,7 +116,6 @@
 	const visibleItems = $derived(activeType === 'all' ? data.items : data.items.filter((i: any) => i.effect_type === activeType));
 
 	function canAfford(item: any): boolean {
-		if (!data.valid) return true;
 		return liveXp >= (Number(item.cost) || 0);
 	}
 
@@ -345,18 +344,11 @@
 	<div class="m-items-bar">
 		<div class="m-items-toggle">
 			<button class="m-items-seg" class:m-items-seg--active={view === 'shop'} onclick={() => (view = 'shop')}><i class="fas fa-store"></i>Shop</button>
-			<button class="m-items-seg" class:m-items-seg--active={view === 'bag'} onclick={() => (view = 'bag')} disabled={!data.valid}>
-				<i class="fas fa-bag-shopping"></i>Bag{#if data.valid}<span class="m-items-count">{data.inventory.length}</span>{/if}
+			<button class="m-items-seg" class:m-items-seg--active={view === 'bag'} onclick={() => (view = 'bag')}>
+				<i class="fas fa-bag-shopping"></i>Bag<span class="m-items-count">{data.inventory.length}</span>
 			</button>
 		</div>
 	</div>
-
-	{#if !data.valid}
-		<p class="m-items-anon">
-			<i class="fas fa-circle-info"></i>
-			Browsing read-only. Open <strong>Items</strong> from the bot menu to buy and use.
-		</p>
-	{/if}
 
 	{#if view === 'shop'}
 		<div class="m-items-tabs">
@@ -381,12 +373,12 @@
 						</div>
 						<div class="m-row-action">
 							{#if item.effect_type === 'gamble'}
-								<button class="m-row-btn m-row-btn--play" disabled={!data.valid} onclick={() => openGamble(item)}>
+								<button class="m-row-btn m-row-btn--play" onclick={() => openGamble(item)}>
 									<i class="fas fa-dice"></i>Play
 								</button>
 							{:else}
 								<span class="m-row-cost" class:m-row-cost--short={!affordable}><i class="fas fa-star"></i>{fmt(item.cost)}</span>
-								<button class="m-row-btn" disabled={busy === item.id || !data.valid || !affordable} onclick={() => buy(item)}>
+								<button class="m-row-btn" disabled={busy === item.id || !affordable} onclick={() => buy(item)}>
 									{#if busy === item.id}<i class="fas fa-spinner fa-spin"></i>{:else if !affordable}<i class="fas fa-lock"></i>{:else}<i
 											class="fas fa-cart-plus"
 										></i>{/if}

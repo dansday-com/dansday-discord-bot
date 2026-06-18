@@ -2981,11 +2981,6 @@
 	font-size: 11px;
 }
 
-.m-root .m-items-who {
-	font-size: 13px;
-	color: var(--lb-text-muted);
-}
-
 .m-root .m-items-anon {
 	display: flex;
 	align-items: center;
@@ -3326,12 +3321,12 @@
 	overflow: hidden;
 	display: flex;
 	align-items: center;
-	gap: 16px;
+	gap: 13px;
 	margin-bottom: 16px;
-	padding: 18px;
-	border-radius: 20px;
+	padding: 12px 18px;
+	border-radius: 16px;
 	background: linear-gradient(135deg, #245f73, #173f4d);
-	box-shadow: 0 14px 34px -18px rgba(36, 95, 115, 0.8);
+	box-shadow: 0 10px 26px -16px rgba(36, 95, 115, 0.8);
 }
 
 .m-root .m-xp-glow {
@@ -3348,10 +3343,10 @@
 .m-root .m-xp-avatar {
 	position: relative;
 	flex-shrink: 0;
-	width: 58px;
-	height: 58px;
+	width: 46px;
+	height: 46px;
 	border-radius: 50%;
-	padding: 3px;
+	padding: 2px;
 	background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.35));
 	box-shadow: 0 4px 14px -4px rgba(0, 0, 0, 0.4);
 }
@@ -3374,24 +3369,40 @@
 .m-root .m-xp-wallet {
 	display: inline-flex;
 	align-items: center;
-	gap: 6px;
-	font-size: 11px;
+	gap: 5px;
+	font-size: 10px;
 	font-weight: 700;
 	text-transform: uppercase;
 	letter-spacing: 0.08em;
-	color: rgba(255, 255, 255, 0.7);
+	color: rgba(255, 255, 255, 0.6);
+}
+
+.m-root .m-xp-wallet i {
+	font-size: 10px;
+}
+
+.m-root .m-xp-name {
+	display: block;
+	font-size: 15px;
+	font-weight: 800;
+	color: #fff;
+	letter-spacing: -0.01em;
+	margin-top: 1px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .m-root .m-xp-amount {
 	display: flex;
 	align-items: baseline;
 	gap: 6px;
-	margin-top: 2px;
-	font-size: 30px;
+	margin-top: 3px;
+	font-size: 24px;
 	font-weight: 800;
 	letter-spacing: -0.02em;
 	color: #fff;
-	line-height: 1.05;
+	line-height: 1.1;
 	font-variant-numeric: tabular-nums;
 }
 
@@ -3402,29 +3413,63 @@
 	letter-spacing: 0.04em;
 }
 
-.m-root .m-xp-sub {
+.m-root .m-xp-bar {
+	margin-top: 8px;
+	height: 6px;
+	border-radius: 999px;
+	background: rgba(255, 255, 255, 0.18);
+	overflow: hidden;
+}
+
+.m-root .m-xp-bar-fill {
+	height: 100%;
+	border-radius: 999px;
+	background: linear-gradient(90deg, #5eead4, #fbbf24);
+	box-shadow: 0 0 10px -1px rgba(94, 234, 212, 0.6);
+	transition: width 0.6s cubic-bezier(0.22, 0.8, 0.3, 1);
+}
+
+.m-root .m-xp-bar-meta {
+	display: flex;
+	justify-content: space-between;
+	gap: 8px;
+	margin-top: 5px;
+	font-size: 10.5px;
+	font-weight: 600;
+	color: rgba(255, 255, 255, 0.65);
+}
+
+.m-root .m-xp-stats {
+	position: relative;
+	flex-shrink: 0;
 	display: flex;
 	align-items: center;
-	gap: 8px;
-	margin-top: 8px;
-	flex-wrap: wrap;
+	gap: 18px;
+	padding-left: 18px;
+	border-left: 1px solid rgba(255, 255, 255, 0.16);
 }
 
-.m-root .m-xp-chip {
-	display: inline-flex;
+.m-root .m-xp-stat {
+	display: flex;
+	flex-direction: column;
 	align-items: center;
-	gap: 5px;
-	font-size: 11px;
-	font-weight: 700;
-	color: #fff;
-	background: rgba(255, 255, 255, 0.16);
-	border-radius: 999px;
-	padding: 3px 10px;
+	line-height: 1.1;
 }
 
-.m-root .m-xp-chip i {
+.m-root .m-xp-stat-val {
+	font-size: 18px;
+	font-weight: 800;
+	color: #fff;
+	font-variant-numeric: tabular-nums;
+}
+
+.m-root .m-xp-stat-lbl {
 	font-size: 10px;
-	opacity: 0.85;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: rgba(255, 255, 255, 0.6);
+	margin-top: 2px;
 }
 
 @keyframes m-items-pop {

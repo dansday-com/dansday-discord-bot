@@ -18,6 +18,10 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 	const itemsRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.items).catch(() => null);
 	if ((itemsRow as any)?.settings?.enabled !== true) error(404, 'Items not available');
 
+	const levelingRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.leveling).catch(() => null);
+	const req = (levelingRow as any)?.settings?.REQUIREMENTS ?? {};
+	const levelReq = { baseXp: Number(req.BASE_XP) || 100, multiplier: Number(req.MULTIPLIER) || 1.2 };
+
 	const items = await loadItemsCatalog(server.id);
 
 	const hash = String(params.hash || '').trim();
@@ -101,6 +105,7 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 			: null,
 		activeEffects,
 		cooldownUntil,
-		immuneUntil
+		immuneUntil,
+		levelReq
 	};
 };

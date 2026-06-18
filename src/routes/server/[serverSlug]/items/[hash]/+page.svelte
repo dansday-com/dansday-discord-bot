@@ -97,6 +97,22 @@
 
 	const memberAvatar = $derived(data.memberAvatar ?? `https://cdn.discordapp.com/embed/avatars/${Number(data.memberDiscordId) % 5 || 0}.png`);
 
+	function xpForLevel(lvl: number): number {
+		if (lvl <= 1) return 0;
+		const { baseXp, multiplier } = data.levelReq ?? { baseXp: 100, multiplier: 1.2 };
+		if (multiplier === 1) return baseXp * (lvl - 1);
+		return Math.floor((baseXp * (Math.pow(multiplier, lvl - 1) - 1)) / (multiplier - 1));
+	}
+
+	const levelInfo = $derived.by(() => {
+		const floor = xpForLevel(level);
+		const next = xpForLevel(level + 1);
+		const span = Math.max(1, next - floor);
+		const gained = Math.max(0, liveXp - floor);
+		const pct = Math.max(0, Math.min(100, Math.round((gained / span) * 100)));
+		return { floor, next, span, gained, pct, toNext: Math.max(0, next - liveXp) };
+	});
+
 	const visibleItems = $derived(activeType === 'all' ? data.items : data.items.filter((i: any) => i.effect_type === activeType));
 
 	function canAfford(item: any): boolean {
@@ -283,11 +299,27 @@
 			</div>
 			<div class="m-xp-figures">
 				<span class="m-xp-wallet"><i class="fas fa-wallet"></i>Wallet</span>
+				{#if data.memberName}<span class="m-xp-name">{data.memberName}</span>{/if}
 				<span class="m-xp-amount">{fmt(liveXp)}<span class="m-xp-unit">XP</span></span>
-				<span class="m-xp-sub">
-					<span class="m-xp-chip"><i class="fas fa-layer-group"></i>Lvl {level}</span>
-					{#if rank}<span class="m-xp-chip"><i class="fas fa-ranking-star"></i>#{rank}</span>{/if}
+				<div class="m-xp-bar">
+					<div class="m-xp-bar-fill" style="width: {levelInfo.pct}%"></div>
+				</div>
+				<span class="m-xp-bar-meta">
+					<span>Lvl {level}</span>
+					<span>{levelInfo.toNext > 0 ? `${fmt(levelInfo.toNext)} XP to Lvl ${level + 1}` : 'Max progress'}</span>
 				</span>
+			</div>
+			<div class="m-xp-stats">
+				<div class="m-xp-stat">
+					<span class="m-xp-stat-val">{levelInfo.pct}%</span>
+					<span class="m-xp-stat-lbl">Level {level}</span>
+				</div>
+				{#if rank}
+					<div class="m-xp-stat">
+						<span class="m-xp-stat-val">#{rank}</span>
+						<span class="m-xp-stat-lbl">Rank</span>
+					</div>
+				{/if}
 			</div>
 		</div>
 
@@ -311,7 +343,6 @@
 				<i class="fas fa-bag-shopping"></i>Bag{#if data.valid}<span class="m-items-count">{data.inventory.length}</span>{/if}
 			</button>
 		</div>
-		{#if data.valid}<span class="m-items-who">{data.memberName}</span>{/if}
 	</div>
 
 	{#if !data.valid}

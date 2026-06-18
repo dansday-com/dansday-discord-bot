@@ -4025,18 +4025,20 @@
 	height: 70px;
 	display: grid;
 	place-items: center;
-	font-size: 33px;
+	font-size: 27px;
 	border-radius: 11px;
 	border: 1px solid var(--lb-border-light);
 	background: linear-gradient(160deg, var(--chili-surface-elevated), color-mix(in srgb, var(--chili-surface) 60%, var(--chili-surface-elevated)));
 }
 
 .m-gamble-cell--win {
+	color: #2f8f4e;
 	background: linear-gradient(160deg, rgba(47, 143, 78, 0.18), rgba(47, 143, 78, 0.06));
 	border-color: rgba(47, 143, 78, 0.35);
 }
 
 .m-gamble-cell--lose {
+	color: #c0392b;
 	background: linear-gradient(160deg, rgba(192, 57, 43, 0.16), rgba(192, 57, 43, 0.05));
 	border-color: rgba(192, 57, 43, 0.32);
 }
@@ -4053,7 +4055,8 @@
 .m-gamble-coin {
 	position: absolute;
 	top: 50%;
-	font-size: 20px;
+	font-size: 18px;
+	color: #d9a528;
 	animation: m-g-coin 1.4s cubic-bezier(0.2, 0.7, 0.4, 1) forwards;
 }
 
@@ -4366,7 +4369,7 @@
 	.m-gamble-cell {
 		flex-basis: 92px;
 		height: 76px;
-		font-size: 36px;
+		font-size: 30px;
 	}
 	.m-gamble-reel {
 		padding-left: 100px;
@@ -4426,11 +4429,30 @@
 	border-top: 4px solid var(--yacht-teal);
 }
 
-.m-out-emoji {
-	font-size: 54px;
-	line-height: 1;
-	margin-bottom: 10px;
+.m-out-icon {
+	width: 76px;
+	height: 76px;
+	margin: 0 auto 12px;
+	display: grid;
+	place-items: center;
+	font-size: 34px;
+	border-radius: 50%;
+	color: var(--yacht-teal);
+	background: color-mix(in srgb, var(--yacht-teal) 14%, transparent);
+	border: 1px solid color-mix(in srgb, var(--yacht-teal) 35%, transparent);
 	animation: m-out-emoji-pop 0.5s ease;
+}
+
+.m-out--win .m-out-icon {
+	color: #2f8f4e;
+	background: rgba(47, 143, 78, 0.14);
+	border-color: rgba(47, 143, 78, 0.4);
+}
+
+.m-out--lose .m-out-icon {
+	color: #c0392b;
+	background: rgba(192, 57, 43, 0.14);
+	border-color: rgba(192, 57, 43, 0.4);
 }
 
 .m-out-title {
@@ -4518,7 +4540,7 @@
 
 @media (prefers-reduced-motion: reduce) {
 	.m-out,
-	.m-out-emoji,
+	.m-out-icon,
 	.m-out-overlay {
 		animation: none;
 	}

@@ -626,14 +626,16 @@
 					style="transform: translateX({reelOffset}px); transition: {reelOffset === 0 ? 'none' : 'transform 3.6s cubic-bezier(0.09, 0.62, 0.12, 1)'};"
 				>
 					{#each reel as cell, i (i)}
-						<div class="m-gamble-cell m-gamble-cell--{cell}">{cell === 'win' ? '🤑' : '💀'}</div>
+						<div class="m-gamble-cell m-gamble-cell--{cell}">
+							<i class="fas {cell === 'win' ? 'fa-sack-dollar' : 'fa-skull'}"></i>
+						</div>
 					{/each}
 				</div>
 
 				{#if coins.length > 0}
 					<div class="m-gamble-coins">
 						{#each coins as c (c.id)}
-							<span class="m-gamble-coin" style="left: {c.x}%; animation-delay: {c.delay}ms">🪙</span>
+							<span class="m-gamble-coin" style="left: {c.x}%; animation-delay: {c.delay}ms"><i class="fas fa-coins"></i></span>
 						{/each}
 					</div>
 				{/if}
@@ -714,7 +716,7 @@
 {#if outcome}
 	<div class="m-out-overlay" role="presentation" onclick={dismissOutcome}>
 		<div class="m-out m-out--{outcome.tone}" role="dialog" aria-modal="true" aria-label={outcome.title} onclick={(e) => e.stopPropagation()}>
-			<div class="m-out-emoji">{outcome.emoji}</div>
+			<div class="m-out-icon"><i class="fas {outcome.icon}"></i></div>
 			<div class="m-out-title">{outcome.title}</div>
 			{#if outcome.deltaXp != null && outcome.deltaXp !== 0}
 				<div class="m-out-delta {outcome.deltaXp >= 0 ? 'm-out-delta--up' : 'm-out-delta--down'}">

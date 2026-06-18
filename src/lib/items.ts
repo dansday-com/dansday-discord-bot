@@ -178,7 +178,7 @@ export function isTargetedEffect(type: string): boolean {
 
 export type ItemOutcome = {
 	tone: 'win' | 'lose' | 'neutral';
-	emoji: string;
+	icon: string;
 	title: string;
 	line: string;
 	deltaXp: number | null;
@@ -197,19 +197,20 @@ export function describeItemOutcome(effectType: string, result: any): ItemOutcom
 	const xp = Number(r.xp) || 0;
 
 	if (effectType === 'gamble') {
-		if (r.won) return { tone: 'win', emoji: '🤑', title: 'You Won!', line: `Your wager paid off.`, deltaXp: Number(r.net) || 0, untilMs: null };
-		return { tone: 'lose', emoji: '💀', title: 'You Lost', line: `Better luck next time.`, deltaXp: -(Number(r.wager) || 0), untilMs: null };
+		if (r.won) return { tone: 'win', icon: 'fa-trophy', title: 'You Won!', line: `Your wager paid off.`, deltaXp: Number(r.net) || 0, untilMs: null };
+		return { tone: 'lose', icon: 'fa-skull', title: 'You Lost', line: `Better luck next time.`, deltaXp: -(Number(r.wager) || 0), untilMs: null };
 	}
 
 	if (effectType === 'steal' || effectType === 'bomb') {
 		const verb = effectType === 'steal' ? 'Robbed' : 'Bombed';
-		if (outcome === 'blocked') return { tone: 'lose', emoji: '🛡️', title: 'Blocked!', line: `Their shield blocked your attack.`, deltaXp: null, untilMs: null };
+		if (outcome === 'blocked')
+			return { tone: 'lose', icon: 'fa-shield', title: 'Blocked!', line: `Their shield blocked your attack.`, deltaXp: null, untilMs: null };
 		if (outcome === 'reflected')
-			return { tone: 'lose', emoji: '🪞', title: 'Reflected!', line: `It bounced back — you lost the XP.`, deltaXp: -xp, untilMs: null };
+			return { tone: 'lose', icon: 'fa-arrows-rotate', title: 'Reflected!', line: `It bounced back — you lost the XP.`, deltaXp: -xp, untilMs: null };
 		const extra = effectType === 'steal' ? `+${xp.toLocaleString()} XP taken` : `${xp.toLocaleString()} XP destroyed`;
 		return {
 			tone: 'win',
-			emoji: effectType === 'steal' ? '💰' : '💥',
+			icon: effectIcon(effectType),
 			title: `${verb}!`,
 			line: extra,
 			deltaXp: effectType === 'steal' ? xp : 0,
@@ -218,13 +219,13 @@ export function describeItemOutcome(effectType: string, result: any): ItemOutcom
 	}
 
 	if (effectType === 'gift')
-		return { tone: 'neutral', emoji: '🎁', title: 'Gift Sent', line: `They received ${xp.toLocaleString()} XP.`, deltaXp: null, untilMs: null };
+		return { tone: 'neutral', icon: effectIcon('gift'), title: 'Gift Sent', line: `They received ${xp.toLocaleString()} XP.`, deltaXp: null, untilMs: null };
 	if (effectType === 'bounty')
-		return { tone: 'neutral', emoji: '🎯', title: 'Bounty Placed', line: `Whoever robs them next collects it.`, deltaXp: -xp, untilMs: null };
+		return { tone: 'neutral', icon: effectIcon('bounty'), title: 'Bounty Placed', line: `Whoever robs them next collects it.`, deltaXp: -xp, untilMs: null };
 	if (effectType === 'leech')
 		return {
 			tone: 'neutral',
-			emoji: '🩸',
+			icon: effectIcon('leech'),
 			title: 'Leech Attached',
 			line: `You'll siphon a cut of their XP while active.`,
 			deltaXp: null,
@@ -234,7 +235,7 @@ export function describeItemOutcome(effectType: string, result: any): ItemOutcom
 	if (effectType === 'shield')
 		return {
 			tone: 'win',
-			emoji: '🛡️',
+			icon: effectIcon('shield'),
 			title: 'Shield Active',
 			line: `You're protected — incoming steals and bombs will be blocked.`,
 			deltaXp: null,
@@ -243,7 +244,7 @@ export function describeItemOutcome(effectType: string, result: any): ItemOutcom
 	if (effectType === 'reflect')
 		return {
 			tone: 'win',
-			emoji: '🪞',
+			icon: effectIcon('reflect'),
 			title: 'Reflect Active',
 			line: `The next attack on you bounces back at the attacker.`,
 			deltaXp: null,
@@ -252,7 +253,7 @@ export function describeItemOutcome(effectType: string, result: any): ItemOutcom
 	if (effectType === 'insurance')
 		return {
 			tone: 'win',
-			emoji: '💵',
+			icon: effectIcon('insurance'),
 			title: 'Insurance Active',
 			line: `The next time you're robbed, your XP is refunded.`,
 			deltaXp: null,
@@ -261,12 +262,12 @@ export function describeItemOutcome(effectType: string, result: any): ItemOutcom
 	if (effectType === 'boost')
 		return {
 			tone: 'win',
-			emoji: '⚡',
+			icon: effectIcon('boost'),
 			title: 'Boost Active',
 			line: `Your XP earnings are multiplied while it lasts.`,
 			deltaXp: null,
 			untilMs: toMs(r.expiresAt)
 		};
 
-	return { tone: 'neutral', emoji: '✅', title: 'Done', line: `Item used.`, deltaXp: xp || null, untilMs: null };
+	return { tone: 'neutral', icon: 'fa-circle-check', title: 'Done', line: `Item used.`, deltaXp: xp || null, untilMs: null };
 }

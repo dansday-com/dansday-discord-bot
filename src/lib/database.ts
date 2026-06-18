@@ -1536,10 +1536,10 @@ export async function getMemberInventory(memberId: any) {
 	await initializeDatabase();
 	if (!memberId) throw new Error('memberId is required');
 	const rows = await db.execute(sql`
-		SELECT smi.*, bi.name, bi.effect_type, bi.category, bi.description, bi.cost, bi.config, bi.icon
+		SELECT smi.*, bi.name, bi.effect_type, bi.description, bi.cost, bi.config, bi.icon
 		FROM server_member_items smi
 		INNER JOIN bot_items bi ON bi.id = smi.item_id
-		WHERE smi.member_id = ${Number(memberId)}
+		WHERE smi.member_id = ${Number(memberId)} AND smi.quantity > 0
 		ORDER BY smi.updated_at DESC
 	`);
 	return rows[0] as unknown as any[];
@@ -1575,12 +1575,29 @@ export async function grantMemberItem(memberId: any, itemId: any, quantity = 1) 
 export async function consumeMemberItem(memberItemId: any, quantity = 1) {
 	await initializeDatabase();
 	if (!memberItemId) throw new Error('memberItemId is required');
+	const id = Number(memberItemId);
 	const qty = Math.max(1, Number(quantity) || 1);
 	const result: any = await db.execute(
-		sql`UPDATE server_member_items SET quantity = quantity - ${qty}, updated_at = ${toMySQLDateTime()} WHERE id = ${Number(memberItemId)} AND quantity >= ${qty}`
+		sql`UPDATE server_member_items SET quantity = quantity - ${qty}, updated_at = ${toMySQLDateTime()} WHERE id = ${id} AND quantity >= ${qty}`
 	);
 	const affected = result?.[0]?.affectedRows ?? result?.affectedRows ?? 0;
+	if (affected > 0) await deleteMemberItemIfDepleted(id);
 	return affected > 0;
+}
+
+async function deleteMemberItemIfDepleted(memberItemId: number) {
+	const rows = await db.execute(sql`
+		SELECT smi.quantity,
+			(SELECT COUNT(*) FROM server_member_item_actives a WHERE a.member_item_id = smi.id) AS actives,
+			(SELECT COUNT(*) FROM server_member_item_logs l WHERE l.member_item_id = smi.id) AS logs
+		FROM server_member_items smi
+		WHERE smi.id = ${memberItemId}
+	`);
+	const row = (rows[0] as unknown as any[])[0];
+	if (!row) return;
+	if (Number(row.quantity) <= 0 && Number(row.actives) === 0 && Number(row.logs) === 0) {
+		await db.execute(sql`DELETE FROM server_member_items WHERE id = ${memberItemId} AND quantity <= 0`);
+	}
 }
 
 export async function addMemberItemActive(memberItemId: any, data: any = {}) {

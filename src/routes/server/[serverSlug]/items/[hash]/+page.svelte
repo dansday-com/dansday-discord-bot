@@ -19,41 +19,51 @@
 	let busy = $state<number | null>(null);
 	let pickingTargetFor = $state<any | null>(null);
 
+	let now = $state(Date.now());
+	onMount(() => {
+		const t = setInterval(() => (now = Date.now()), 1000);
+		return () => clearInterval(t);
+	});
+
+	function remainingLabel(untilMs: number): string {
+		const s = Math.max(0, Math.floor((untilMs - now) / 1000));
+		const m = Math.floor(s / 60);
+		const h = Math.floor(m / 60);
+		if (h > 0) return `${h}h ${m % 60}m`;
+		if (m > 0) return `${m}m ${s % 60}s`;
+		return `${s}s`;
+	}
+
+	const EFFECT_ICON: Record<string, { icon: string; label: string }> = Object.fromEntries(ITEM_EFFECTS.map((e) => [e.id, { icon: e.icon, label: e.label }]));
+
+	const activeChips = $derived.by(() => {
+		const chips: { key: string; icon: string; label: string; until: number; tone: string }[] = [];
+		for (const e of (data.activeEffects ?? []) as any[]) {
+			if (!e.expiresAt || e.expiresAt <= now) continue;
+			const meta = EFFECT_ICON[e.effect_type];
+			chips.push({
+				key: `eff-${e.effect_type}-${e.expiresAt}`,
+				icon: meta?.icon ?? 'fa-star',
+				label: meta?.label ?? e.effect_type,
+				until: e.expiresAt,
+				tone: 'good'
+			});
+		}
+		if (data.immuneUntil && data.immuneUntil > now) {
+			chips.push({ key: 'immune', icon: 'fa-shield-halved', label: 'Immune', until: data.immuneUntil, tone: 'good' });
+		}
+		if (data.cooldownUntil && data.cooldownUntil > now) {
+			chips.push({ key: 'cooldown', icon: 'fa-hourglass-half', label: 'Attack cooldown', until: data.cooldownUntil, tone: 'wait' });
+		}
+		return chips.sort((a, b) => a.until - b.until);
+	});
+
 	let liveXp = $state(data.balance?.experience ?? 0);
 	let level = $state(data.balance?.level ?? 1);
 	let rank = $state(data.balance?.rank ?? null);
-	let xpBumped = $state(false);
-	let lastDelta = $state<number | null>(null);
-
-	let displayXp = $state(data.balance?.experience ?? 0);
-	let rafId: number | null = null;
-
-	function animateTo(target: number) {
-		if (rafId) cancelAnimationFrame(rafId);
-		const start = displayXp;
-		const diff = target - start;
-		if (diff === 0) return;
-		const dur = 650;
-		let t0: number | null = null;
-		const step = (ts: number) => {
-			if (t0 === null) t0 = ts;
-			const p = Math.min(1, (ts - t0) / dur);
-			const eased = 1 - Math.pow(1 - p, 3);
-			displayXp = Math.round(start + diff * eased);
-			if (p < 1) rafId = requestAnimationFrame(step);
-			else displayXp = target;
-		};
-		rafId = requestAnimationFrame(step);
-	}
 
 	function setXp(next: number) {
-		const prev = liveXp;
-		if (next === prev) return;
-		lastDelta = next - prev;
 		liveXp = next;
-		animateTo(next);
-		xpBumped = true;
-		setTimeout(() => (xpBumped = false), 700);
 	}
 
 	let es: EventSource | null = null;
@@ -79,7 +89,6 @@
 
 	onDestroy(() => {
 		es?.close();
-		if (rafId) cancelAnimationFrame(rafId);
 	});
 
 	function fmt(n: number): string {
@@ -129,7 +138,17 @@
 		}
 	}
 
+	const SELF_BUFFS = new Set(['xp_boost', 'shield', 'reflect', 'insurance']);
+	function isBuffActive(effectType: string): boolean {
+		if (!SELF_BUFFS.has(effectType)) return false;
+		return ((data.activeEffects ?? []) as any[]).some((e) => e.effect_type === effectType && e.expiresAt && e.expiresAt > now);
+	}
+
 	function onUse(item: any) {
+		if (isBuffActive(item.effect_type)) {
+			showToast(`${effectLabel(item.effect_type)} is already active`, 'error');
+			return;
+		}
 		if (TARGETED.has(item.effect_type)) pickingTargetFor = item;
 		else use(item);
 	}
@@ -180,6 +199,7 @@
 	let reel = $state<string[]>([]);
 	let reelOffset = $state(0);
 	let reelResult = $state<'win' | 'lose' | null>(null);
+	let reelWrapEl: HTMLDivElement | undefined = $state();
 
 	function randomCells(n: number): ('win' | 'lose')[] {
 		return Array.from({ length: n }, () => (Math.random() < 0.5 ? 'win' : 'lose'));
@@ -223,9 +243,14 @@
 			cells[landIndex] = won ? 'win' : 'lose';
 			reel = cells;
 			reelOffset = 0;
-			const cellW = 96;
 			await new Promise((r) => requestAnimationFrame(() => r(null)));
-			reelOffset = -(landIndex * cellW - 96);
+			const wrapW = reelWrapEl?.clientWidth ?? 360;
+			const cellEls = reelWrapEl?.querySelectorAll<HTMLElement>('.m-gamble-cell');
+			const target = cellEls?.[landIndex];
+			if (target) {
+				const cellCenter = target.offsetLeft + target.offsetWidth / 2;
+				reelOffset = wrapW / 2 - cellCenter;
+			}
 			setTimeout(async () => {
 				reelResult = won ? 'win' : 'lose';
 				await invalidateAll();
@@ -251,22 +276,28 @@
 		<!-- XP balance header -->
 		<div class="m-xp">
 			<div class="m-xp-main">
-				<span class="m-xp-coin" class:m-xp-coin--bump={xpBumped}><i class="fas fa-star"></i></span>
+				<span class="m-xp-coin"><i class="fas fa-star"></i></span>
 				<div class="m-xp-figures">
-					<span class="m-xp-amount" class:m-xp-amount--bump={xpBumped}>{fmt(displayXp)}<span class="m-xp-unit">XP</span></span>
+					<span class="m-xp-amount">{fmt(liveXp)}<span class="m-xp-unit">XP</span></span>
 					<span class="m-xp-sub">
 						<span class="m-xp-chip"><i class="fas fa-layer-group"></i>Lvl {level}</span>
 						{#if rank}<span class="m-xp-chip"><i class="fas fa-ranking-star"></i>#{rank}</span>{/if}
-						<span class="m-xp-live"><span class="m-xp-dot"></span>Live</span>
 					</span>
 				</div>
 			</div>
-			{#if lastDelta != null}
-				{#key lastDelta}
-					<span class="m-xp-delta {lastDelta >= 0 ? 'm-xp-delta--up' : 'm-xp-delta--down'}">{lastDelta >= 0 ? '+' : ''}{fmt(lastDelta)}</span>
-				{/key}
-			{/if}
 		</div>
+
+		{#if activeChips.length > 0}
+			<div class="m-active">
+				{#each activeChips as chip (chip.key)}
+					<span class="m-active-chip m-active-chip--{chip.tone}">
+						<i class="fas {chip.icon}"></i>
+						<span class="m-active-label">{chip.label}</span>
+						<span class="m-active-time">{remainingLabel(chip.until)}</span>
+					</span>
+				{/each}
+			</div>
+		{/if}
 	{/if}
 
 	<div class="m-items-bar">
@@ -359,11 +390,15 @@
 					</div>
 					<p class="m-items-desc">{item.description || effectSummary(item)}</p>
 					<div class="m-items-foot">
-						<button class="m-items-buy m-items-buy--use" disabled={busy === item.member_item_id || item.quantity <= 0} onclick={() => onUse(item)}>
-							{#if busy === item.member_item_id}<i class="fas fa-spinner fa-spin"></i>{:else if TARGETED.has(item.effect_type)}<i class="fas fa-crosshairs"
-								></i>{:else}<i class="fas fa-bolt"></i>{/if}
-							{TARGETED.has(item.effect_type) ? 'Use on…' : 'Use'}
-						</button>
+						{#if isBuffActive(item.effect_type)}
+							<button class="m-items-buy m-items-buy--use" disabled><i class="fas fa-check"></i>Active</button>
+						{:else}
+							<button class="m-items-buy m-items-buy--use" disabled={busy === item.member_item_id || item.quantity <= 0} onclick={() => onUse(item)}>
+								{#if busy === item.member_item_id}<i class="fas fa-spinner fa-spin"></i>{:else if TARGETED.has(item.effect_type)}<i class="fas fa-crosshairs"
+									></i>{:else}<i class="fas fa-bolt"></i>{/if}
+								{TARGETED.has(item.effect_type) ? 'Use on…' : 'Use'}
+							</button>
+						{/if}
 					</div>
 				</li>
 			{/each}
@@ -379,7 +414,12 @@
 				{#if !gambleRolling}<button class="m-gamble-x" aria-label="Close" onclick={() => (gambleItem = null)}><i class="fas fa-times"></i></button>{/if}
 			</div>
 
-			<div class="m-gamble-reelwrap" class:m-gamble-reelwrap--win={reelResult === 'win'} class:m-gamble-reelwrap--lose={reelResult === 'lose'}>
+			<div
+				bind:this={reelWrapEl}
+				class="m-gamble-reelwrap"
+				class:m-gamble-reelwrap--win={reelResult === 'win'}
+				class:m-gamble-reelwrap--lose={reelResult === 'lose'}
+			>
 				<div class="m-gamble-pointer"></div>
 				<div
 					class="m-gamble-reel"

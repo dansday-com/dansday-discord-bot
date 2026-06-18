@@ -6,6 +6,7 @@ import { TARGETED_EFFECTS, ANNOUNCED_EFFECTS, getItemEffect } from '../../../../
 
 const EFFECT_CACHE_TTL_MS = 5000;
 const memoryEffectCache = new Map();
+const SELF_BUFFS = new Set(['xp_boost', 'shield', 'reflect', 'insurance']);
 
 function effectCacheKey(memberId: any) {
 	return `items:effects:${memberId}`;
@@ -509,6 +510,13 @@ export async function handleItemUse(client: any, payload: any) {
 		targetMemberId = await resolveServerMemberId(server.id, target_discord_id);
 		if (!targetMemberId) return { ok: false, error: 'target_not_found' };
 		if (Number(targetMemberId) === Number(actorMemberId)) return { ok: false, error: 'cannot_target_self' };
+	}
+
+	if (SELF_BUFFS.has(effectType)) {
+		const active = await getCachedActiveEffects(actorMemberId);
+		if (active.some((e: any) => e.effect_type === effectType)) {
+			return { ok: false, error: 'already_active', outcome: 'already_active' };
+		}
 	}
 
 	const consumed = await db.consumeMemberItem(member_item_id, 1);

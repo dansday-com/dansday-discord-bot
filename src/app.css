@@ -3337,23 +3337,6 @@
 	color: #fff;
 	background: linear-gradient(135deg, #3a6d82, #245f73);
 	box-shadow: 0 6px 18px -6px rgba(36, 95, 115, 0.7);
-	transition: transform 0.25s ease;
-}
-
-.m-root .m-xp-coin--bump {
-	animation: m-xp-coin-spin 0.7s ease;
-}
-
-@keyframes m-xp-coin-spin {
-	0% {
-		transform: rotateY(0) scale(1);
-	}
-	50% {
-		transform: rotateY(180deg) scale(1.18);
-	}
-	100% {
-		transform: rotateY(360deg) scale(1);
-	}
 }
 
 .m-root .m-xp-figures {
@@ -3370,11 +3353,6 @@
 	color: var(--lb-text);
 	line-height: 1.05;
 	font-variant-numeric: tabular-nums;
-	transition: color 0.2s ease;
-}
-
-.m-root .m-xp-amount--bump {
-	color: var(--yacht-teal);
 }
 
 .m-root .m-xp-unit {
@@ -3407,73 +3385,6 @@
 .m-root .m-xp-chip i {
 	font-size: 10px;
 	opacity: 0.85;
-}
-
-.m-root .m-xp-live {
-	display: inline-flex;
-	align-items: center;
-	gap: 5px;
-	font-size: 10px;
-	font-weight: 700;
-	text-transform: uppercase;
-	letter-spacing: 0.08em;
-	color: var(--yacht-teal);
-}
-
-.m-root .m-xp-dot {
-	width: 7px;
-	height: 7px;
-	border-radius: 999px;
-	background: var(--yacht-teal);
-	box-shadow: 0 0 0 0 rgba(36, 95, 115, 0.6);
-	animation: m-xp-pulse 1.8s infinite;
-}
-
-@keyframes m-xp-pulse {
-	0% {
-		box-shadow: 0 0 0 0 rgba(36, 95, 115, 0.5);
-	}
-	70% {
-		box-shadow: 0 0 0 7px rgba(36, 95, 115, 0);
-	}
-	100% {
-		box-shadow: 0 0 0 0 rgba(36, 95, 115, 0);
-	}
-}
-
-.m-root .m-xp-delta {
-	flex-shrink: 0;
-	font-size: 16px;
-	font-weight: 800;
-	font-variant-numeric: tabular-nums;
-	animation: m-xp-delta-float 0.9s ease forwards;
-}
-
-.m-root .m-xp-delta--up {
-	color: #2f8f4e;
-}
-
-.m-root .m-xp-delta--down {
-	color: #c0392b;
-}
-
-@keyframes m-xp-delta-float {
-	0% {
-		opacity: 0;
-		transform: translateY(8px);
-	}
-	25% {
-		opacity: 1;
-		transform: translateY(0);
-	}
-	75% {
-		opacity: 1;
-		transform: translateY(0);
-	}
-	100% {
-		opacity: 0;
-		transform: translateY(-8px);
-	}
 }
 
 .m-root .m-items-card--locked {
@@ -3537,9 +3448,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.m-root .m-xp-coin--bump,
-	.m-root .m-xp-dot,
-	.m-root .m-xp-delta,
 	.m-root .m-items-card--burst,
 	.m-root .m-items-card--burst::after {
 		animation: none;
@@ -3865,5 +3773,80 @@
 	.m-out-emoji,
 	.m-out-overlay {
 		animation: none;
+	}
+}
+
+.m-root .m-active {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	margin: -6px 0 16px;
+}
+
+.m-root .m-active-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
+	padding: 6px 11px;
+	border-radius: 999px;
+	font-size: 12px;
+	font-weight: 700;
+	border: 1px solid;
+}
+
+.m-root .m-active-chip i {
+	font-size: 11px;
+}
+
+.m-root .m-active-chip--good {
+	color: var(--yacht-teal);
+	background: rgba(36, 95, 115, 0.1);
+	border-color: rgba(36, 95, 115, 0.25);
+}
+
+.m-root .m-active-chip--wait {
+	color: #b8860b;
+	background: rgba(184, 134, 11, 0.1);
+	border-color: rgba(184, 134, 11, 0.28);
+}
+
+.m-root .m-active-label {
+	color: var(--lb-text);
+}
+
+.m-root .m-active-time {
+	font-variant-numeric: tabular-nums;
+	opacity: 0.85;
+}
+
+@media (max-width: 400px) {
+	.m-root .m-items-grid {
+		grid-template-columns: 1fr;
+		gap: 12px;
+	}
+	.m-root .m-items-card {
+		padding: 14px;
+	}
+	.m-root .m-xp {
+		padding: 12px 14px;
+	}
+	.m-root .m-xp-amount {
+		font-size: 21px;
+	}
+	.m-gamble,
+	.m-out {
+		padding: 16px;
+	}
+	.m-gamble-cell {
+		flex-basis: 76px;
+		height: 64px;
+		font-size: 30px;
+	}
+	.m-gamble-reel {
+		padding-left: 84px;
+	}
+	.m-gamble-pct {
+		padding: 9px 0;
+		font-size: 13px;
 	}
 }

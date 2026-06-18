@@ -41,12 +41,46 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 			item_id: r.item_id,
 			name: r.name,
 			effect_type: r.effect_type,
-			category: r.category,
 			description: r.description,
 			icon: r.icon,
 			quantity: r.quantity,
 			config: typeof r.config === 'string' ? safeParse(r.config) : r.config
 		}));
+	}
+
+	let activeEffects: any[] = [];
+	let cooldownUntil: number | null = null;
+	let immuneUntil: number | null = null;
+	if (member) {
+		const effectRows = await db.getActiveEffectsForMember(member.id).catch(() => []);
+		activeEffects = (effectRows as any[]).map((e) => ({
+			effect_type: e.effect_type,
+			magnitude: Number(e.magnitude) || 0,
+			expiresAt: e.expires_at ? new Date(e.expires_at).getTime() : null
+		}));
+
+		let maxCooldownMin = 0;
+		let maxImmunityMin = 0;
+		for (const it of items as any[]) {
+			if (it.effect_type !== 'xp_steal' && it.effect_type !== 'xp_bomb') continue;
+			const cfg = typeof it.config === 'string' ? safeParse(it.config) || {} : it.config || {};
+			maxCooldownMin = Math.max(maxCooldownMin, Number(cfg.cooldown_minutes) || 0);
+			maxImmunityMin = Math.max(maxImmunityMin, Number(cfg.immunity_minutes) || 0);
+		}
+		if (maxCooldownMin > 0) {
+			const last = await db.getLastAttackActionByActor(member.id).catch(() => null);
+			if (last) {
+				const ends = last.getTime() + maxCooldownMin * 60000;
+				if (ends > Date.now()) cooldownUntil = ends;
+			}
+		}
+		if (maxImmunityMin > 0) {
+			const last = await db.getLastActionAgainstTarget(member.id, ['steal', 'bomb']).catch(() => null);
+			if (last) {
+				const ends = last.getTime() + maxImmunityMin * 60000;
+				if (ends > Date.now()) immuneUntil = ends;
+			}
+		}
 	}
 
 	return {
@@ -63,6 +97,9 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 					level: Number(member.level ?? 1) || 1,
 					rank: member.rank != null ? Number(member.rank) : null
 				}
-			: null
+			: null,
+		activeEffects,
+		cooldownUntil,
+		immuneUntil
 	};
 };

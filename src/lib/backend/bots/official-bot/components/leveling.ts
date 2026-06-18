@@ -579,7 +579,6 @@ async function sendXPLogToChannel(guild, dbMember, xpGained, xpType, award: any 
 
 		const memberName = dbMember.server_display_name || dbMember.display_name || dbMember.username || 'Unknown';
 		const emoji = XP_LOG_EMOJI[xpType] ?? '⭐';
-		// Annotate active item effects so members see why their XP gain changed.
 		const boostSuffix = award?.boosted ? ` (${award.multiplier}× Boost ⚡)` : '';
 		const leechSuffix = award?.leeched ? ` (−${award.skimPercent}% Leech 🩸)` : '';
 		const logMessage = `${emoji} ${xpType} XP: ${memberName} gained +${xpGained} XP${boostSuffix}${leechSuffix}`;

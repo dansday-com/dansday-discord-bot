@@ -21,14 +21,12 @@
 	let busy = $state<number | null>(null);
 	let pickingTargetFor = $state<any | null>(null);
 
-	// ---- Live XP balance (streamed) ----
 	let liveXp = $state(data.balance?.experience ?? 0);
 	let level = $state(data.balance?.level ?? 1);
 	let rank = $state(data.balance?.rank ?? null);
 	let xpBumped = $state(false);
 	let lastDelta = $state<number | null>(null);
 
-	// Animated display value that eases toward liveXp.
 	let displayXp = $state(data.balance?.experience ?? 0);
 	let rafId: number | null = null;
 
@@ -42,7 +40,7 @@
 		const step = (ts: number) => {
 			if (t0 === null) t0 = ts;
 			const p = Math.min(1, (ts - t0) / dur);
-			const eased = 1 - Math.pow(1 - p, 3); // easeOutCubic
+			const eased = 1 - Math.pow(1 - p, 3);
 			displayXp = Math.round(start + diff * eased);
 			if (p < 1) rafId = requestAnimationFrame(step);
 			else displayXp = target;
@@ -93,7 +91,7 @@
 	const visibleItems = $derived(activeCategory === 'all' ? data.items : data.items.filter((i: any) => i.category === activeCategory));
 
 	function canAfford(item: any): boolean {
-		if (!data.valid) return true; // don't grey out for read-only browsers
+		if (!data.valid) return true;
 		return liveXp >= (Number(item.cost) || 0);
 	}
 
@@ -127,7 +125,6 @@
 		}
 	}
 
-	// burst animation marker keyed by card id
 	let burstId = $state<number | null>(null);
 	function burst(id: number) {
 		burstId = id;
@@ -143,7 +140,6 @@
 			return;
 		}
 		busy = item.id;
-		// optimistic balance dip for snappy feel; reconciled by invalidateAll/stream
 		const optimistic = Math.max(0, liveXp - (Number(item.cost) || 0));
 		try {
 			const res = await fetch(`/api/public-statistics/${encodeURIComponent(data.server.slug)}/items/buy`, {

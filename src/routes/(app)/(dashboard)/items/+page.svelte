@@ -60,7 +60,7 @@
 				tax_percent: 10,
 				bounty_amount: 500,
 				cosmetic_kind: 'theme',
-				value: '',
+				value: '#1e2a78',
 				recur_days: [] as number[],
 				recur_from: '',
 				recur_to: ''
@@ -89,7 +89,6 @@
 		if (def) form.category = def.category;
 	}
 
-	// Keep category in sync when the effect type changes via the picker.
 	$effect(() => {
 		form.effect_type;
 		onEffectTypeChange();
@@ -253,7 +252,6 @@
 		return EFFECT_TYPES.find((e) => e.value === value)?.label ?? value;
 	}
 
-	// Close the editor on Escape.
 	$effect(() => {
 		if (!editing) return;
 		const onKey = (e: KeyboardEvent) => {
@@ -533,24 +531,47 @@
 						>
 						<p class="text-ash-500 text-[11px]">Puts XP on a member's head. Whoever lands the next successful steal on them collects it.</p>
 					{:else if form.effect_type === 'cosmetic'}
-						<div class="grid grid-cols-2 gap-3">
-							<label class="text-ash-300 text-xs"
-								>Kind
-								<select bind:value={form.cfg.cosmetic_kind} class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm">
-									<option value="theme">Theme</option>
-									<option value="badge">Badge</option>
-									<option value="title">Title</option>
-									<option value="frame">Frame</option>
-								</select>
-							</label>
-							<label class="text-ash-300 text-xs"
+						<label class="text-ash-300 block text-xs"
+							>Kind
+							<select bind:value={form.cfg.cosmetic_kind} class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm">
+								<option value="theme">Theme (card color)</option>
+								<option value="badge">Badge (emoji)</option>
+								<option value="title">Title (text)</option>
+								<option value="frame">Frame (style)</option>
+							</select>
+						</label>
+
+						{#if form.cfg.cosmetic_kind === 'theme'}
+							<div class="mt-3">
+								<p class="text-ash-300 mb-1.5 text-xs">Card color</p>
+								<div class="flex items-center gap-2">
+									<input
+										type="color"
+										bind:value={form.cfg.value}
+										class="bg-ash-700 border-ash-600 h-9 w-10 shrink-0 cursor-pointer rounded border"
+										aria-label="Theme color"
+									/>
+									<input
+										type="text"
+										bind:value={form.cfg.value}
+										placeholder="#1e2a78"
+										class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 flex-1 rounded-lg border px-3 py-2 font-mono text-sm focus:ring-2 focus:outline-none"
+									/>
+								</div>
+							</div>
+						{:else}
+							<label class="text-ash-300 mt-3 block text-xs"
 								>Value<input
 									bind:value={form.cfg.value}
 									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-									placeholder="midnight"
+									placeholder={form.cfg.cosmetic_kind === 'badge' ? '⭐' : form.cfg.cosmetic_kind === 'title' ? 'Legend' : 'gold'}
 								/></label
 							>
-						</div>
+							<p class="text-ash-500 mt-2 text-[11px]">
+								{#if form.cfg.cosmetic_kind === 'badge'}An emoji shown next to the member's name.{:else if form.cfg.cosmetic_kind === 'title'}A short text title
+									shown under the member's name.{:else}A named frame style for the member's card.{/if}
+							</p>
+						{/if}
 					{:else}
 						<p class="text-ash-500 text-[11px]">No extra settings for this effect type yet.</p>
 					{/if}

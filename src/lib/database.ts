@@ -1620,8 +1620,6 @@ export async function clearExpiredMemberItemActives() {
 	return true;
 }
 
-// Timed buff rows that have expired but whose "effect finished" notice hasn't been sent yet.
-// Joined to member + server so the bot can resolve the guild/member and announce. Scoped to one bot.
 export async function getNewlyExpiredEffects(botId: any, limit = 100) {
 	await initializeDatabase();
 	if (!botId) return [] as any[];
@@ -1656,8 +1654,6 @@ export async function markEffectExpiryNotified(ids: any[]) {
 	return list.length;
 }
 
-// Records that a derived end-event (cooldown ready / immunity ended) has been announced.
-// Returns true only the first time a given (member, kind, event_at) is seen.
 export async function recordItemEventNotif(memberId: any, kind: string, eventAt: any) {
 	await initializeDatabase();
 	if (!memberId || !kind || !eventAt) return false;
@@ -1671,13 +1667,10 @@ export async function recordItemEventNotif(memberId: any, kind: string, eventAt:
 		const affected = result?.affectedRows ?? result?.[0]?.affectedRows ?? 1;
 		return Number(affected) > 0;
 	} catch (_) {
-		// Duplicate key → already announced.
 		return false;
 	}
 }
 
-// Most recent steal/bomb each member SUFFERED, for this bot's servers — used to derive
-// when a victim's immunity window ends. Returns rows with discord ids + the last hit time.
 export async function getRecentVictimHits(botId: any, sinceMinutes = 720) {
 	await initializeDatabase();
 	if (!botId) return [] as any[];
@@ -1696,8 +1689,6 @@ export async function getRecentVictimHits(botId: any, sinceMinutes = 720) {
 	return rows[0] as unknown as any[];
 }
 
-// Most recent steal/bomb each member PERFORMED, for this bot's servers — used to derive
-// when an attacker's cooldown ends.
 export async function getRecentAttackerActions(botId: any, sinceMinutes = 720) {
 	await initializeDatabase();
 	if (!botId) return [] as any[];

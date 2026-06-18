@@ -81,15 +81,7 @@
 
 	const roleColor = $derived(parseRoleHex(highestRole?.color));
 
-	const THEME_COLORS: Record<string, string> = {
-		midnight: '#1e2a78',
-		crimson: '#a01b2d',
-		emerald: '#0f7a52',
-		gold: '#b8860b',
-		violet: '#6b21a8',
-		ocean: '#0e7490'
-	};
-	const accentColor = $derived(member.cosmetic_theme && THEME_COLORS[member.cosmetic_theme] ? THEME_COLORS[member.cosmetic_theme] : roleColor);
+	const accentColor = $derived(member.cosmetic_theme || roleColor);
 
 	onMount(() => {
 		document.body.style.overflow = 'hidden';
@@ -255,17 +247,13 @@
 		} catch {
 			try {
 				avatarImg = await loadImg('https://cdn.discordapp.com/embed/avatars/0.png');
-			} catch {
-				/* skip */
-			}
+			} catch {}
 		}
 		let serverImg: HTMLImageElement | null = null;
 		if (serverIcon) {
 			try {
 				serverImg = await loadImg(serverIcon);
-			} catch {
-				/* skip */
-			}
+			} catch {}
 		}
 
 		const headerH = 24;

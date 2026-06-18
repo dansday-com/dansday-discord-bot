@@ -855,9 +855,6 @@ export const serverMemberBounties = mysqlTable(
 	(t) => [index('idx_server_member_bounties_target').on(t.target_member_id, t.collected)]
 );
 
-// Dedup ledger for one-off "event finished" notifications that aren't backed by a
-// stored row (attack cooldown ended, victim immunity ended). The unique key prevents
-// announcing the same end-event twice across sweeper ticks.
 export const serverMemberItemEventNotifs = mysqlTable(
 	'server_member_item_event_notifs',
 	{

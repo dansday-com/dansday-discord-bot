@@ -34,6 +34,28 @@ function safeParse(raw: any) {
 	}
 }
 
+function availableUntilMs(item: any): number | null {
+	const ends: number[] = [];
+	if (item.available_to) {
+		const t = new Date(item.available_to).getTime();
+		if (Number.isFinite(t)) ends.push(t);
+	}
+	const schedule = typeof item.recurring_schedule === 'string' ? safeParse(item.recurring_schedule) : item.recurring_schedule;
+	if (schedule && Array.isArray(schedule.days) && schedule.days.length > 0 && schedule.from && schedule.to) {
+		const now = new Date();
+		const toMin = (hhmm: any) => {
+			const [h, m] = String(hhmm)
+				.split(':')
+				.map((n) => Number(n) || 0);
+			return h * 60 + m;
+		};
+		const endOfWindow = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0) + toMin(schedule.to) * 60000;
+		if (Number.isFinite(endOfWindow)) ends.push(endOfWindow);
+	}
+	if (ends.length === 0) return null;
+	return Math.min(...ends);
+}
+
 function itemAvailableNow(item: any): boolean {
 	const nowMs = Date.now();
 	if (item.available_from && nowMs < new Date(item.available_from).getTime()) return false;
@@ -67,6 +89,7 @@ export async function loadItemsCatalog(serverId: number): Promise<any[]> {
 		category: i.category,
 		description: i.description,
 		cost: i.cost,
+		availableUntil: availableUntilMs(i),
 		config: typeof i.config === 'string' ? safeParse(i.config) : i.config
 	}));
 }

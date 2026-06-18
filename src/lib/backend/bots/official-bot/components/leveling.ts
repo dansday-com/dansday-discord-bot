@@ -671,14 +671,16 @@ async function awardVoiceXP(server, dbMember, guildId, reason, previousStats, bu
 
 	const discordGuild = clientInstance?.guilds.cache.get(guildId);
 	if (discordGuild) {
+		const rate = rawXpGained > 0 ? xpGained / rawXpGained : 1;
+		const shown = (bucket: number) => Math.max(0, Math.round(bucket * rate));
 		if (baseXp > 0) {
-			await sendXPLogToChannel(discordGuild, dbMember, baseXp, isAFK ? 'AFK Voice' : 'Voice', award);
+			await sendXPLogToChannel(discordGuild, dbMember, shown(baseXp), isAFK ? 'AFK Voice' : 'Voice', award);
 		}
 		if (videoXp > 0) {
-			await sendXPLogToChannel(discordGuild, dbMember, videoXp, 'Video', award);
+			await sendXPLogToChannel(discordGuild, dbMember, shown(videoXp), 'Video', award);
 		}
 		if (streamXp > 0) {
-			await sendXPLogToChannel(discordGuild, dbMember, streamXp, 'Streaming', award);
+			await sendXPLogToChannel(discordGuild, dbMember, shown(streamXp), 'Streaming', award);
 		}
 	}
 

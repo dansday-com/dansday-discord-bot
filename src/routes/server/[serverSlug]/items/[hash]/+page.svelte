@@ -17,8 +17,47 @@
 
 	let { data }: PageProps = $props();
 
-	let view = $state<'shop' | 'bag'>('shop');
+	let view = $state<'shop' | 'bag' | 'history'>('shop');
 	let activeType = $state('all');
+
+	const HISTORY_PER_PAGE = 12;
+	let historyPage = $state(1);
+	const historyTotalPages = $derived(Math.max(1, Math.ceil((data.history?.length ?? 0) / HISTORY_PER_PAGE)));
+	const pagedHistory = $derived((data.history ?? []).slice((historyPage - 1) * HISTORY_PER_PAGE, historyPage * HISTORY_PER_PAGE));
+
+	function historyLine(h: any): { icon: string; title: string; tone: string; delta: number; deltaLabel: string } {
+		if (h.action === 'buy') {
+			return { icon: 'fa-cart-shopping', title: `Bought ${h.itemName ?? 'item'}`, tone: 'spend', delta: -h.xpAmount, deltaLabel: `−${fmt(h.xpAmount)} XP` };
+		}
+		if (h.action === 'gamble') {
+			const won = h.outcome === 'win';
+			return {
+				icon: won ? 'fa-trophy' : 'fa-skull',
+				title: won ? 'Gamble — Won' : 'Gamble — Lost',
+				tone: won ? 'win' : 'lose',
+				delta: h.xpAmount,
+				deltaLabel: `${h.xpAmount >= 0 ? '+' : '−'}${fmt(Math.abs(h.xpAmount))} XP`
+			};
+		}
+		const verb = actionVerb(h.action);
+		const target = h.targetName ? ` → ${h.targetName}` : '';
+		let tone = 'neutral';
+		let deltaLabel = '';
+		if (h.outcome === 'blocked' || h.outcome === 'reflected') {
+			tone = 'lose';
+			deltaLabel = h.outcome === 'blocked' ? 'Blocked' : 'Reflected';
+		} else if (h.action === 'steal' && h.xpAmount > 0) {
+			tone = 'win';
+			deltaLabel = `+${fmt(h.xpAmount)} XP`;
+		} else if (h.action === 'bomb' && h.xpAmount > 0) {
+			tone = 'neutral';
+			deltaLabel = `${fmt(h.xpAmount)} XP destroyed`;
+		} else if (h.action === 'gift' && h.xpAmount > 0) {
+			tone = 'neutral';
+			deltaLabel = `${fmt(h.xpAmount)} XP sent`;
+		}
+		return { icon: verb.icon, title: `${verb.label}${target}`, tone, delta: h.xpAmount, deltaLabel };
+	}
 
 	const typeTabs = $derived.by(() => {
 		const present = new Set((data.items ?? []).map((i: any) => i.effect_type));
@@ -41,6 +80,17 @@
 		if (h > 0) return `${h}h ${m % 60}m`;
 		if (m > 0) return `${m}m ${s % 60}s`;
 		return `${s}s`;
+	}
+
+	function remainingAgo(ms: number): string {
+		const s = Math.max(0, Math.floor((now - ms) / 1000));
+		const m = Math.floor(s / 60);
+		const h = Math.floor(m / 60);
+		const d = Math.floor(h / 24);
+		if (d > 0) return `${d}d ago`;
+		if (h > 0) return `${h}h ago`;
+		if (m > 0) return `${m}m ago`;
+		return `${s}s ago`;
 	}
 
 	const EFFECT_ICON: Record<string, { icon: string; label: string }> = Object.fromEntries(ITEM_EFFECTS.map((e) => [e.id, { icon: e.icon, label: e.label }]));
@@ -411,7 +461,6 @@
 
 <div class="m-items">
 	{#if data.valid}
-		<!-- XP balance header -->
 		<div class="m-xp">
 			<div class="m-xp-glow"></div>
 			<div class="m-xp-avatar">
@@ -468,6 +517,9 @@
 			>
 				<i class="fas fa-bag-shopping"></i>Bag<span class="m-items-count" class:m-items-count--bump={bagPulse}>{bagStock}</span>
 			</button>
+			<button class="m-items-seg" class:m-items-seg--active={view === 'history'} onclick={() => (view = 'history')}>
+				<i class="fas fa-clock-rotate-left"></i>History
+			</button>
 		</div>
 	</div>
 
@@ -492,6 +544,9 @@
 							<span class="m-card-medallion"><i class="fas {effectIcon(item.effect_type)}"></i></span>
 							<span class="m-card-tag">{effectLabel(item.effect_type)}</span>
 						</div>
+						{#if item.availableUntil && item.availableUntil > now}
+							<span class="m-card-timer"><i class="fas fa-hourglass-half"></i>Ends in {remainingLabel(item.availableUntil)}</span>
+						{/if}
 						<h3 class="m-card-name">{item.name}</h3>
 						<p class="m-card-desc">{item.description || effectSummary(item)}</p>
 						<div class="m-card-foot">
@@ -513,6 +568,39 @@
 					</article>
 				{/each}
 			</div>
+		{/if}
+	{:else if view === 'history'}
+		{#if (data.history?.length ?? 0) === 0}
+			<div class="m-members-empty">No activity yet. Buy or use an item to start your history.</div>
+		{:else}
+			<ul class="m-hist">
+				{#each pagedHistory as h (h.id)}
+					{@const line = historyLine(h)}
+					<li class="m-hist-row m-hist-row--{line.tone}">
+						<span class="m-hist-icon"><i class="fas {line.icon}"></i></span>
+						<span class="m-hist-body">
+							<span class="m-hist-title">{line.title}</span>
+							<span class="m-hist-time">{h.at ? remainingAgo(h.at) : ''}</span>
+						</span>
+						{#if line.deltaLabel}<span class="m-hist-delta m-hist-delta--{line.tone}">{line.deltaLabel}</span>{/if}
+					</li>
+				{/each}
+			</ul>
+			{#if historyTotalPages > 1}
+				<div class="m-hist-pager">
+					<button class="m-hist-page-btn" disabled={historyPage <= 1} onclick={() => (historyPage = Math.max(1, historyPage - 1))}>
+						<i class="fas fa-chevron-left"></i>
+					</button>
+					<span class="m-hist-page-info">{historyPage} / {historyTotalPages}</span>
+					<button
+						class="m-hist-page-btn"
+						disabled={historyPage >= historyTotalPages}
+						onclick={() => (historyPage = Math.min(historyTotalPages, historyPage + 1))}
+					>
+						<i class="fas fa-chevron-right"></i>
+					</button>
+				</div>
+			{/if}
 		{/if}
 	{:else if pickingTargetFor}
 		<button class="m-items-back" onclick={() => (pickingTargetFor = null)}><i class="fas fa-arrow-left"></i>Back</button>

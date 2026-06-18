@@ -209,7 +209,13 @@ export async function resolveSteal({ actorMemberId, actorMemberItemId, targetMem
 		return { outcome: 'cooldown', xp: 0 };
 	}
 	if (await hasActiveShield(targetMemberId)) {
-		await db.logMemberItemAction(actorMemberItemId, { target_member_id: targetMemberId, action: 'steal', xp_amount: 0, outcome: 'blocked' });
+		await db.logMemberItemAction(actorMemberId, {
+			member_item_id: actorMemberItemId,
+			target_member_id: targetMemberId,
+			action: 'steal',
+			xp_amount: 0,
+			outcome: 'blocked'
+		});
 		return { outcome: 'blocked', xp: 0 };
 	}
 	if (await targetImmuneUntil(targetMemberId, cfg.immunity_minutes)) {
@@ -225,12 +231,24 @@ export async function resolveSteal({ actorMemberId, actorMemberItemId, targetMem
 			await spendXp(actorMemberId, amount, guildId);
 			await invalidateEffectCache(actorMemberId);
 		}
-		await db.logMemberItemAction(actorMemberItemId, { target_member_id: targetMemberId, action: 'steal', xp_amount: amount, outcome: 'reflected' });
+		await db.logMemberItemAction(actorMemberId, {
+			member_item_id: actorMemberItemId,
+			target_member_id: targetMemberId,
+			action: 'steal',
+			xp_amount: amount,
+			outcome: 'reflected'
+		});
 		return { outcome: 'reflected', xp: amount };
 	}
 
 	if (amount <= 0) {
-		await db.logMemberItemAction(actorMemberItemId, { target_member_id: targetMemberId, action: 'steal', xp_amount: 0, outcome: 'success' });
+		await db.logMemberItemAction(actorMemberId, {
+			member_item_id: actorMemberItemId,
+			target_member_id: targetMemberId,
+			action: 'steal',
+			xp_amount: 0,
+			outcome: 'success'
+		});
 		return { outcome: 'success', xp: 0 };
 	}
 
@@ -250,7 +268,13 @@ export async function resolveSteal({ actorMemberId, actorMemberItemId, targetMem
 
 	const bountyCollected = await payoutBountyOnHit(targetMemberId, actorMemberId, guildId);
 
-	await db.logMemberItemAction(actorMemberItemId, { target_member_id: targetMemberId, action: 'steal', xp_amount: amount, outcome: 'success' });
+	await db.logMemberItemAction(actorMemberId, {
+		member_item_id: actorMemberItemId,
+		target_member_id: targetMemberId,
+		action: 'steal',
+		xp_amount: amount,
+		outcome: 'success'
+	});
 	await invalidateEffectCache(targetMemberId);
 	const grantedImmunityUntil = newImmunityUntil(cfg.immunity_minutes);
 	return { outcome: 'success', xp: amount, percent: pct, refunded, bountyCollected, immuneUntil: grantedImmunityUntil };
@@ -262,7 +286,13 @@ export async function resolveBomb({ actorMemberId, actorMemberItemId, targetMemb
 		return { outcome: 'cooldown', xp: 0 };
 	}
 	if (await hasActiveShield(targetMemberId)) {
-		await db.logMemberItemAction(actorMemberItemId, { target_member_id: targetMemberId, action: 'bomb', xp_amount: 0, outcome: 'blocked' });
+		await db.logMemberItemAction(actorMemberId, {
+			member_item_id: actorMemberItemId,
+			target_member_id: targetMemberId,
+			action: 'bomb',
+			xp_amount: 0,
+			outcome: 'blocked'
+		});
 		return { outcome: 'blocked', xp: 0 };
 	}
 	if (await targetImmuneUntil(targetMemberId, cfg.immunity_minutes)) {
@@ -278,7 +308,13 @@ export async function resolveBomb({ actorMemberId, actorMemberItemId, targetMemb
 			await spendXp(actorMemberId, amount, guildId);
 			await invalidateEffectCache(actorMemberId);
 		}
-		await db.logMemberItemAction(actorMemberItemId, { target_member_id: targetMemberId, action: 'bomb', xp_amount: amount, outcome: 'reflected' });
+		await db.logMemberItemAction(actorMemberId, {
+			member_item_id: actorMemberItemId,
+			target_member_id: targetMemberId,
+			action: 'bomb',
+			xp_amount: amount,
+			outcome: 'reflected'
+		});
 		return { outcome: 'reflected', xp: amount };
 	}
 
@@ -293,7 +329,13 @@ export async function resolveBomb({ actorMemberId, actorMemberItemId, targetMemb
 		refunded = amount;
 	}
 
-	await db.logMemberItemAction(actorMemberItemId, { target_member_id: targetMemberId, action: 'bomb', xp_amount: amount, outcome: 'success' });
+	await db.logMemberItemAction(actorMemberId, {
+		member_item_id: actorMemberItemId,
+		target_member_id: targetMemberId,
+		action: 'bomb',
+		xp_amount: amount,
+		outcome: 'success'
+	});
 	await invalidateEffectCache(targetMemberId);
 	const grantedImmunityUntil = newImmunityUntil(cfg.immunity_minutes);
 	return { outcome: 'success', xp: amount, percent: pct, refunded, immuneUntil: grantedImmunityUntil };
@@ -310,10 +352,11 @@ function newImmunityUntil(immunityMinutes: any): Date | null {
 	return new Date(Date.now() + minutes * 60000);
 }
 
-export async function resolveBoost({ memberItemId, config }: any) {
+export async function resolveBoost({ memberItemId, ownerMemberId, config }: any) {
 	const cfg = parseConfig(config);
 	const expiresAt = computeExpiry(cfg.effect_duration_minutes);
 	await db.addMemberItemActive(memberItemId, { effect_value: Number(cfg.multiplier ?? 2), expires_at: expiresAt });
+	await db.logMemberItemAction(ownerMemberId, { member_item_id: memberItemId, action: 'boost', xp_amount: 0, outcome: 'success' });
 	return { outcome: 'success', expiresAt };
 }
 
@@ -321,6 +364,7 @@ export async function resolveShield({ memberItemId, ownerMemberId, config }: any
 	const cfg = parseConfig(config);
 	const expiresAt = computeExpiry(cfg.effect_duration_minutes);
 	await db.addMemberItemActive(memberItemId, { effect_value: 1, expires_at: expiresAt });
+	await db.logMemberItemAction(ownerMemberId, { member_item_id: memberItemId, action: 'shield', xp_amount: 0, outcome: 'success' });
 	await invalidateEffectCache(ownerMemberId);
 	return { outcome: 'success', expiresAt };
 }
@@ -333,6 +377,13 @@ export async function resolveLeech({ memberItemId, actorMemberId, targetMemberId
 		beneficiary_member_id: actorMemberId,
 		expires_at: expiresAt
 	});
+	await db.logMemberItemAction(actorMemberId, {
+		member_item_id: memberItemId,
+		target_member_id: targetMemberId,
+		action: 'leech',
+		xp_amount: 0,
+		outcome: 'success'
+	});
 	await invalidateEffectCache(targetMemberId);
 	return { outcome: 'success', expiresAt };
 }
@@ -341,6 +392,7 @@ export async function resolveReflect({ memberItemId, ownerMemberId, config }: an
 	const cfg = parseConfig(config);
 	const expiresAt = computeExpiry(cfg.effect_duration_minutes);
 	await db.addMemberItemActive(memberItemId, { effect_value: 1, expires_at: expiresAt });
+	await db.logMemberItemAction(ownerMemberId, { member_item_id: memberItemId, action: 'reflect', xp_amount: 0, outcome: 'success' });
 	await invalidateEffectCache(ownerMemberId);
 	return { outcome: 'success', expiresAt };
 }
@@ -349,6 +401,7 @@ export async function resolveInsurance({ memberItemId, ownerMemberId, config }: 
 	const cfg = parseConfig(config);
 	const expiresAt = computeExpiry(cfg.effect_duration_minutes);
 	await db.addMemberItemActive(memberItemId, { effect_value: 1, expires_at: expiresAt });
+	await db.logMemberItemAction(ownerMemberId, { member_item_id: memberItemId, action: 'insurance', xp_amount: 0, outcome: 'success' });
 	await invalidateEffectCache(ownerMemberId);
 	return { outcome: 'success', expiresAt };
 }
@@ -357,7 +410,13 @@ export async function resolveGift({ actorMemberId, actorMemberItemId, targetMemb
 	const cfg = parseConfig(config);
 	const amount = Math.max(0, Math.floor(Number(cfg.gift_amount) || 0));
 	if (amount <= 0) {
-		await db.logMemberItemAction(actorMemberItemId, { target_member_id: targetMemberId, action: 'gift', xp_amount: 0, outcome: 'success' });
+		await db.logMemberItemAction(actorMemberId, {
+			member_item_id: actorMemberItemId,
+			target_member_id: targetMemberId,
+			action: 'gift',
+			xp_amount: 0,
+			outcome: 'success'
+		});
 		return { outcome: 'success', xp: 0 };
 	}
 	const taxPercent = Math.max(0, Math.min(100, Number(cfg.tax_percent) || 0));
@@ -367,7 +426,13 @@ export async function resolveGift({ actorMemberId, actorMemberItemId, targetMemb
 	const targetStats = await db.updateMemberLevelStats(targetMemberId, { experienceIncrement: received });
 	await reevaluateLevel(targetMemberId, targetStats, guildId);
 
-	await db.logMemberItemAction(actorMemberItemId, { target_member_id: targetMemberId, action: 'gift', xp_amount: received, outcome: 'success' });
+	await db.logMemberItemAction(actorMemberId, {
+		member_item_id: actorMemberItemId,
+		target_member_id: targetMemberId,
+		action: 'gift',
+		xp_amount: received,
+		outcome: 'success'
+	});
 	return { outcome: 'success', xp: received };
 }
 
@@ -428,6 +493,13 @@ export async function handleGamble(client: any, payload: any) {
 	}
 	await invalidateEffectCache(actorMemberId);
 
+	await db.logMemberItemAction(actorMemberId, {
+		item_id,
+		action: 'gamble',
+		xp_amount: netChange,
+		outcome: won ? 'win' : 'lose'
+	});
+
 	const result = { outcome: won ? 'win' : 'lose', won, wager, payout, net: netChange };
 	setTimeout(() => {
 		announceItemUse(client, {
@@ -452,7 +524,13 @@ export async function resolveBounty({ actorMemberId, actorMemberItemId, targetMe
 	if (!spend.ok) return { outcome: 'insufficient', xp: 0 };
 
 	await db.placeBounty(targetMemberId, actorMemberId, amount);
-	await db.logMemberItemAction(actorMemberItemId, { target_member_id: targetMemberId, action: 'bounty', xp_amount: amount, outcome: 'success' });
+	await db.logMemberItemAction(actorMemberId, {
+		member_item_id: actorMemberItemId,
+		target_member_id: targetMemberId,
+		action: 'bounty',
+		xp_amount: amount,
+		outcome: 'success'
+	});
 	return { outcome: 'success', xp: amount };
 }
 
@@ -538,7 +616,7 @@ export async function handleItemUse(client: any, payload: any) {
 		} else if (effectType === 'bomb') {
 			result = await resolveBomb({ actorMemberId, actorMemberItemId: member_item_id, targetMemberId, config, guildId: guild_id });
 		} else if (effectType === 'boost') {
-			result = await resolveBoost({ memberItemId: member_item_id, config });
+			result = await resolveBoost({ memberItemId: member_item_id, ownerMemberId: actorMemberId, config });
 			await invalidateEffectCache(actorMemberId);
 		} else if (effectType === 'shield') {
 			result = await resolveShield({ memberItemId: member_item_id, ownerMemberId: actorMemberId, config });
@@ -640,6 +718,13 @@ export async function handleItemBuy(client: any, payload: any) {
 
 	await db.ensureMemberLevel(actorMemberId);
 	const owned = await db.grantMemberItem(actorMemberId, item_id, qty);
+	await db.logMemberItemAction(actorMemberId, {
+		member_item_id: owned?.id ?? null,
+		item_id,
+		action: 'buy',
+		xp_amount: totalCost,
+		outcome: 'success'
+	});
 	return { ok: true, member_item_id: owned?.id, quantity: owned?.quantity, cost: totalCost };
 }
 

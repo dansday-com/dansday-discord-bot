@@ -823,17 +823,19 @@ export const serverMemberItemLogs = mysqlTable(
 	'server_member_item_logs',
 	{
 		id: bigint('id', { mode: 'bigint' }).primaryKey().autoincrement(),
-		member_item_id: int('member_item_id')
+		member_id: int('member_id')
 			.notNull()
-			.references(() => serverMemberItems.id, { onDelete: 'cascade' }),
+			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		member_item_id: int('member_item_id').references(() => serverMemberItems.id, { onDelete: 'set null' }),
 		target_member_id: int('target_member_id').references(() => serverMembers.id, { onDelete: 'set null' }),
+		item_id: int('item_id').references(() => items.id, { onDelete: 'set null' }),
 		action: varchar('action', { length: 32 }).notNull(),
 		xp_amount: int('xp_amount').notNull().default(0),
 		outcome: varchar('outcome', { length: 16 }).notNull(),
 		created_at: datetime('created_at').notNull()
 	},
 	(t) => [
-		index('idx_server_member_item_logs_item').on(t.member_item_id, t.created_at),
+		index('idx_server_member_item_logs_member').on(t.member_id, t.created_at),
 		index('idx_server_member_item_logs_target').on(t.target_member_id, t.created_at)
 	]
 );

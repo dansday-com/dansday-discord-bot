@@ -69,7 +69,20 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 	let activeEffects: any[] = [];
 	let cooldownUntil: number | null = null;
 	let immuneUntil: number | null = null;
+	let history: any[] = [];
 	if (member) {
+		const historyRows = await db.getMemberItemHistory(member.id, 200).catch(() => []);
+		history = (historyRows as any[]).map((h) => ({
+			id: String(h.id),
+			action: h.action,
+			effect_type: h.effect_type ?? null,
+			itemName: h.item_name ?? null,
+			outcome: h.outcome,
+			xpAmount: Number(h.xp_amount) || 0,
+			targetName: h.target_server_display_name || h.target_display_name || h.target_username || null,
+			at: h.created_at ? new Date(h.created_at).getTime() : null
+		}));
+
 		const effectRows = await db.getActiveEffectsForMember(member.id).catch(() => []);
 		activeEffects = (effectRows as any[]).map((e) => ({
 			effect_type: e.effect_type,
@@ -105,6 +118,7 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 		items,
 		inventory,
 		targets,
+		history,
 		hash,
 		valid,
 		memberName: member ? member.server_display_name || member.display_name || member.username : null,

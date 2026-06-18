@@ -49,16 +49,20 @@ CREATE TABLE IF NOT EXISTS server_member_item_actives (
 
 CREATE TABLE IF NOT EXISTS server_member_item_logs (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    member_item_id INT NOT NULL,
+    member_id INT NOT NULL,
+    member_item_id INT NULL,
     target_member_id INT NULL,
+    item_id INT NULL,
     action VARCHAR(32) NOT NULL,
     xp_amount INT NOT NULL DEFAULT 0,
     outcome VARCHAR(16) NOT NULL,
     created_at DATETIME NOT NULL,
-    INDEX idx_server_member_item_logs_item (member_item_id, created_at),
+    INDEX idx_server_member_item_logs_member (member_id, created_at),
     INDEX idx_server_member_item_logs_target (target_member_id, created_at),
-    FOREIGN KEY (member_item_id) REFERENCES server_member_items(id) ON DELETE CASCADE,
-    FOREIGN KEY (target_member_id) REFERENCES server_members(id) ON DELETE SET NULL
+    FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE,
+    FOREIGN KEY (member_item_id) REFERENCES server_member_items(id) ON DELETE SET NULL,
+    FOREIGN KEY (target_member_id) REFERENCES server_members(id) ON DELETE SET NULL,
+    FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS server_member_item_bounties (

@@ -1729,18 +1729,41 @@ export async function expireMemberItemActive(activeId: any) {
 	return true;
 }
 
-export async function logMemberItemAction(memberItemId: any, data: any = {}) {
+export async function logMemberItemAction(memberId: any, data: any = {}) {
 	await initializeDatabase();
-	if (!memberItemId) throw new Error('memberItemId is required');
+	if (!memberId) throw new Error('memberId is required');
 	await db.insert(schema.serverMemberItemLogs).values({
-		member_item_id: Number(memberItemId),
+		member_id: Number(memberId),
+		member_item_id: data.member_item_id != null ? Number(data.member_item_id) : null,
 		target_member_id: data.target_member_id != null ? Number(data.target_member_id) : null,
+		item_id: data.item_id != null ? Number(data.item_id) : null,
 		action: String(data.action ?? ''),
 		xp_amount: Number(data.xp_amount ?? 0),
 		outcome: String(data.outcome ?? ''),
 		created_at: toMySQLDateTime() as any
 	});
 	return true;
+}
+
+export async function getMemberItemHistory(memberId: any, limit = 200) {
+	await initializeDatabase();
+	if (!memberId) return [] as any[];
+	const rows = await db.execute(sql`
+		SELECT
+			sml.id, sml.action, sml.xp_amount, sml.outcome, sml.created_at,
+			COALESCE(bi.name, bi2.name) AS item_name,
+			COALESCE(bi.effect_type, bi2.effect_type) AS effect_type,
+			tgt.username AS target_username, tgt.display_name AS target_display_name, tgt.server_display_name AS target_server_display_name
+		FROM server_member_item_logs sml
+		LEFT JOIN items bi ON bi.id = sml.item_id
+		LEFT JOIN server_member_items smi ON smi.id = sml.member_item_id
+		LEFT JOIN items bi2 ON bi2.id = smi.item_id
+		LEFT JOIN server_members tgt ON tgt.id = sml.target_member_id
+		WHERE sml.member_id = ${Number(memberId)}
+		ORDER BY sml.created_at DESC, sml.id DESC
+		LIMIT ${Number(limit)}
+	`);
+	return rows[0] as unknown as any[];
 }
 
 export async function getLastActionByActor(memberId: any, action: string) {
@@ -3944,6 +3967,7 @@ export default {
 	getRecentAttackerActions,
 	expireMemberItemActive,
 	logMemberItemAction,
+	getMemberItemHistory,
 	getLastActionByActor,
 	getLastAttackActionByActor,
 	getLastActionAgainstTarget,

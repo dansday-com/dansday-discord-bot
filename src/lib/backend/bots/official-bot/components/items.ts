@@ -5,6 +5,7 @@ import { getLevelRequirement, determineLevel } from './leveling.js';
 import { TARGETED_EFFECTS, ANNOUNCED_EFFECTS, getItemEffect } from '../../../../items.js';
 
 const EFFECT_CACHE_TTL_MS = 5000;
+const GAMBLE_ANNOUNCE_DELAY_MS = 3900;
 const memoryEffectCache = new Map();
 const SELF_BUFFS = new Set(['boost', 'shield', 'reflect', 'insurance']);
 
@@ -428,14 +429,16 @@ export async function handleGamble(client: any, payload: any) {
 	await invalidateEffectCache(actorMemberId);
 
 	const result = { outcome: won ? 'win' : 'lose', won, wager, payout, net: netChange };
-	await announceItemUse(client, {
-		guildId: guild_id,
-		actorDiscordId: actor_discord_id,
-		targetDiscordId: null,
-		effectType: 'gamble',
-		item,
-		result
-	}).catch(() => null);
+	setTimeout(() => {
+		announceItemUse(client, {
+			guildId: guild_id,
+			actorDiscordId: actor_discord_id,
+			targetDiscordId: null,
+			effectType: 'gamble',
+			item,
+			result
+		}).catch(() => null);
+	}, GAMBLE_ANNOUNCE_DELAY_MS);
 
 	return { ok: true, outcome: result.outcome, effect_type: 'gamble', result };
 }

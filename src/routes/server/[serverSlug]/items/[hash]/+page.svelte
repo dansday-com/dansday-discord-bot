@@ -115,6 +115,8 @@
 
 	const visibleItems = $derived(activeType === 'all' ? data.items : data.items.filter((i: any) => i.effect_type === activeType));
 
+	const bagStock = $derived((data.inventory ?? []).reduce((sum: number, it: any) => sum + (Number(it.quantity) || 0), 0));
+
 	function canAfford(item: any): boolean {
 		return liveXp >= (Number(item.cost) || 0);
 	}
@@ -267,6 +269,7 @@
 	let gambleShake = $state(false);
 	let coins = $state<{ id: number; x: number; delay: number }[]>([]);
 	let winCount = $state(0);
+	let lostAmount = $state(0);
 	let reelWrapEl: HTMLDivElement | undefined = $state();
 
 	function randomCells(n: number): ('win' | 'lose')[] {
@@ -285,6 +288,7 @@
 		gambleShake = false;
 		coins = [];
 		winCount = 0;
+		lostAmount = 0;
 	}
 
 	const wagerXp = $derived(
@@ -362,6 +366,8 @@
 				if (won) {
 					spawnCoins();
 					countUpWin(Math.floor(Number(d.result?.payout) || potentialWin));
+				} else {
+					lostAmount = Math.floor(Number(d.result?.wager) || wagerXp);
 				}
 				await invalidateAll();
 				gambleRolling = false;
@@ -371,7 +377,6 @@
 						reel = [];
 						reelResult = null;
 						coins = [];
-						showOutcome('gamble', d.result);
 					},
 					won ? 1700 : 1100
 				);
@@ -443,7 +448,7 @@
 				class:m-items-seg--pulse={bagPulse}
 				onclick={() => (view = 'bag')}
 			>
-				<i class="fas fa-bag-shopping"></i>Bag<span class="m-items-count" class:m-items-count--bump={bagPulse}>{data.inventory.length}</span>
+				<i class="fas fa-bag-shopping"></i>Bag<span class="m-items-count" class:m-items-count--bump={bagPulse}>{bagStock}</span>
 			</button>
 		</div>
 	</div>
@@ -618,7 +623,7 @@
 							<span class="m-gamble-verdict-amt">+{fmt(winCount)} XP</span>
 						{:else}
 							<span class="m-gamble-verdict-label">BUST</span>
-							<span class="m-gamble-verdict-amt">−{fmt(wagerXp)} XP</span>
+							<span class="m-gamble-verdict-amt">−{fmt(lostAmount)} XP</span>
 						{/if}
 					</div>
 				{/if}

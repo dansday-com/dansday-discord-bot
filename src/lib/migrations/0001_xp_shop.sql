@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS bot_items (
     sort_order INT NOT NULL DEFAULT 0,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
+    INDEX idx_bot_items_bot_id (bot_id),
+    INDEX idx_bot_items_enabled (bot_id, enabled),
     FOREIGN KEY (bot_id) REFERENCES bots(id) ON DELETE CASCADE
 );
 
@@ -26,6 +28,7 @@ CREATE TABLE IF NOT EXISTS server_member_items (
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
     UNIQUE KEY unique_server_member_item (member_id, item_id),
+    INDEX idx_server_member_items_member (member_id),
     FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE,
     FOREIGN KEY (item_id) REFERENCES bot_items(id) ON DELETE CASCADE
 );
@@ -37,6 +40,8 @@ CREATE TABLE IF NOT EXISTS server_member_item_actives (
     source_member_id INT NULL,
     expires_at DATETIME NOT NULL,
     created_at DATETIME NOT NULL,
+    INDEX idx_server_member_item_actives_active (member_item_id, expires_at),
+    INDEX idx_server_member_item_actives_source (source_member_id, expires_at),
     FOREIGN KEY (member_item_id) REFERENCES server_member_items(id) ON DELETE CASCADE,
     FOREIGN KEY (source_member_id) REFERENCES server_members(id) ON DELETE SET NULL
 );
@@ -49,6 +54,8 @@ CREATE TABLE IF NOT EXISTS server_member_item_logs (
     xp_amount INT NOT NULL DEFAULT 0,
     outcome VARCHAR(16) NOT NULL,
     created_at DATETIME NOT NULL,
+    INDEX idx_server_member_item_logs_item (member_item_id, created_at),
+    INDEX idx_server_member_item_logs_target (target_member_id, created_at),
     FOREIGN KEY (member_item_id) REFERENCES server_member_items(id) ON DELETE CASCADE,
     FOREIGN KEY (target_member_id) REFERENCES server_members(id) ON DELETE SET NULL
 );
@@ -60,15 +67,7 @@ CREATE TABLE IF NOT EXISTS server_member_bounties (
     amount INT NOT NULL DEFAULT 0,
     collected BOOLEAN NOT NULL DEFAULT FALSE,
     created_at DATETIME NOT NULL,
+    INDEX idx_server_member_bounties_target (target_member_id, collected),
     FOREIGN KEY (target_member_id) REFERENCES server_members(id) ON DELETE CASCADE,
     FOREIGN KEY (placed_by_member_id) REFERENCES server_members(id) ON DELETE SET NULL
 );
-
-CREATE INDEX idx_bot_items_bot_id ON bot_items(bot_id);
-CREATE INDEX idx_bot_items_enabled ON bot_items(bot_id, enabled);
-CREATE INDEX idx_server_member_items_member ON server_member_items(member_id);
-CREATE INDEX idx_server_member_item_actives_active ON server_member_item_actives(member_item_id, expires_at);
-CREATE INDEX idx_server_member_item_actives_source ON server_member_item_actives(source_member_id, expires_at);
-CREATE INDEX idx_server_member_item_logs_item ON server_member_item_logs(member_item_id, created_at);
-CREATE INDEX idx_server_member_item_logs_target ON server_member_item_logs(target_member_id, created_at);
-CREATE INDEX idx_server_member_bounties_target ON server_member_bounties(target_member_id, collected);

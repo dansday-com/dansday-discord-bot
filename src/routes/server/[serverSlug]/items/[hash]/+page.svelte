@@ -4,7 +4,7 @@
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import type { PageProps } from './$types';
 	import type { PublicMembersStreamPayload } from '$lib/frontend/public/members/index.js';
-	import { ITEM_EFFECTS, TARGETED_EFFECTS as TARGETED, effectLabel, effectSummary } from '$lib/items.js';
+	import { ITEM_EFFECTS, TARGETED_EFFECTS as TARGETED, effectLabel, effectSummary, describeItemOutcome, type ItemOutcome } from '$lib/items.js';
 
 	let { data }: PageProps = $props();
 
@@ -134,24 +134,24 @@
 		else use(item);
 	}
 
-	function useOutcomeToast(item: any, d: any) {
-		const r = d.result ?? {};
-		const outcome = d.outcome ?? r.outcome;
-		const amt = r.xp ? ` (${fmt(r.xp)} XP)` : '';
-		switch (item.effect_type) {
-			case 'xp_steal':
-				if (outcome === 'blocked') return showToast('🛡️ Blocked by their shield.', 'error');
-				if (outcome === 'reflected') return showToast(`🪞 Reflected back at you!${amt}`, 'error');
-				return showToast(`💰 Robbed them${amt}!`, 'success');
-			case 'xp_bomb':
-				if (outcome === 'blocked') return showToast('🛡️ Blocked by their shield.', 'error');
-				if (outcome === 'reflected') return showToast(`🪞 Reflected back at you!${amt}`, 'error');
-				return showToast(`💥 Bombed them${amt}!`, 'success');
-			case 'gift':
-				return showToast(`🎁 Gift sent${amt}!`, 'success');
-			default:
-				return showToast(`Used ${item.name}!${amt}`, 'success');
-		}
+	let outcome = $state<ItemOutcome | null>(null);
+	let outcomeTimer: ReturnType<typeof setTimeout> | null = null;
+
+	function showOutcome(effectType: string, result: any) {
+		if (outcomeTimer) clearTimeout(outcomeTimer);
+		outcome = describeItemOutcome(effectType, result);
+		outcomeTimer = setTimeout(() => (outcome = null), 3500);
+	}
+
+	function dismissOutcome() {
+		if (outcomeTimer) clearTimeout(outcomeTimer);
+		outcome = null;
+	}
+
+	function untilLabel(ms: number | null): string {
+		if (!ms) return '';
+		const d = new Date(ms);
+		return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 	}
 
 	async function use(item: any, targetHash?: string) {
@@ -164,9 +164,9 @@
 			});
 			const d = await res.json();
 			if (d.success) {
-				useOutcomeToast(item, d);
 				pickingTargetFor = null;
 				await invalidateAll();
+				showOutcome(item.effect_type, d.result ?? { outcome: d.outcome });
 			} else showToast(d.error || 'Failed to use item', 'error');
 		} finally {
 			busy = null;
@@ -181,21 +181,17 @@
 	let reelOffset = $state(0);
 	let reelResult = $state<'win' | 'lose' | null>(null);
 
+	function randomCells(n: number): ('win' | 'lose')[] {
+		return Array.from({ length: n }, () => (Math.random() < 0.5 ? 'win' : 'lose'));
+	}
+
 	function openGamble(item: any) {
 		if (!data.valid) return;
 		gambleItem = item;
 		gamblePercent = 25;
-		reel = [];
+		reel = randomCells(12);
 		reelOffset = 0;
 		reelResult = null;
-	}
-
-	function buildReel(landing: 'win' | 'lose') {
-		const cells: string[] = [];
-		for (let i = 0; i < 40; i++) cells.push(Math.random() < 0.5 ? 'win' : 'lose');
-		const landIndex = 32;
-		cells[landIndex] = landing;
-		return { cells, landIndex };
 	}
 
 	const wagerXp = $derived(Math.floor((liveXp * gamblePercent) / 100));
@@ -222,7 +218,9 @@
 				return;
 			}
 			const won = !!d.result?.won;
-			const { cells, landIndex } = buildReel(won ? 'win' : 'lose');
+			const landIndex = 32;
+			const cells = randomCells(40);
+			cells[landIndex] = won ? 'win' : 'lose';
 			reel = cells;
 			reelOffset = 0;
 			const cellW = 96;
@@ -230,10 +228,14 @@
 			reelOffset = -(landIndex * cellW - 96);
 			setTimeout(async () => {
 				reelResult = won ? 'win' : 'lose';
-				if (won) showToast(`🎲 You won! +${fmt(d.result?.net ?? 0)} XP`, 'success');
-				else showToast(`🎲 You lost ${fmt(d.result?.wager ?? 0)} XP`, 'error');
 				await invalidateAll();
 				gambleRolling = false;
+				setTimeout(() => {
+					gambleItem = null;
+					reel = [];
+					reelResult = null;
+					showOutcome('gamble', d.result);
+				}, 900);
 			}, 3600);
 		} catch {
 			showToast('Gamble failed', 'error');
@@ -377,38 +379,46 @@
 				{#if !gambleRolling}<button class="m-gamble-x" aria-label="Close" onclick={() => (gambleItem = null)}><i class="fas fa-times"></i></button>{/if}
 			</div>
 
-			<div class="m-gamble-reelwrap">
+			<div class="m-gamble-reelwrap" class:m-gamble-reelwrap--win={reelResult === 'win'} class:m-gamble-reelwrap--lose={reelResult === 'lose'}>
 				<div class="m-gamble-pointer"></div>
 				<div
 					class="m-gamble-reel"
 					style="transform: translateX({reelOffset}px); transition: {reelOffset === 0 ? 'none' : 'transform 3.5s cubic-bezier(0.12, 0.8, 0.16, 1)'};"
 				>
-					{#if reel.length === 0}
-						{#each Array(7) as _, i (i)}
-							<div class="m-gamble-cell m-gamble-cell--idle">{i % 2 === 0 ? '🎲' : '✨'}</div>
-						{/each}
-					{:else}
-						{#each reel as cell, i (i)}
-							<div class="m-gamble-cell m-gamble-cell--{cell}">{cell === 'win' ? '🤑' : '💀'}</div>
-						{/each}
-					{/if}
+					{#each reel as cell, i (i)}
+						<div class="m-gamble-cell m-gamble-cell--{cell}">{cell === 'win' ? '🤑' : '💀'}</div>
+					{/each}
 				</div>
 			</div>
 
-			{#if reelResult}
-				<p class="m-gamble-result m-gamble-result--{reelResult}">{reelResult === 'win' ? '🎉 You won!' : '💀 You lost it all'}</p>
-			{:else}
-				<div class="m-gamble-picker">
-					{#each WAGER_PERCENTS as p}
-						<button class="m-gamble-pct" class:m-gamble-pct--active={gamblePercent === p} disabled={gambleRolling} onclick={() => (gamblePercent = p)}
-							>{p}%</button
-						>
-					{/each}
+			<div class="m-gamble-picker">
+				{#each WAGER_PERCENTS as p}
+					<button class="m-gamble-pct" class:m-gamble-pct--active={gamblePercent === p} disabled={gambleRolling} onclick={() => (gamblePercent = p)}
+						>{p}%</button
+					>
+				{/each}
+			</div>
+			<p class="m-gamble-wager">Wagering <strong>{fmt(wagerXp)} XP</strong> of {fmt(liveXp)}</p>
+			<button class="m-gamble-play" disabled={gambleRolling || wagerXp <= 0} onclick={playGamble}>
+				{#if gambleRolling}<i class="fas fa-spinner fa-spin"></i>Rolling…{:else}<i class="fas fa-dice"></i>Gamble{/if}
+			</button>
+		</div>
+	</div>
+{/if}
+
+{#if outcome}
+	<div class="m-out-overlay" role="presentation" onclick={dismissOutcome}>
+		<div class="m-out m-out--{outcome.tone}" role="dialog" aria-modal="true" aria-label={outcome.title} onclick={(e) => e.stopPropagation()}>
+			<div class="m-out-emoji">{outcome.emoji}</div>
+			<div class="m-out-title">{outcome.title}</div>
+			{#if outcome.deltaXp != null && outcome.deltaXp !== 0}
+				<div class="m-out-delta {outcome.deltaXp >= 0 ? 'm-out-delta--up' : 'm-out-delta--down'}">
+					{outcome.deltaXp >= 0 ? '+' : '−'}{fmt(Math.abs(outcome.deltaXp))} XP
 				</div>
-				<p class="m-gamble-wager">Wagering <strong>{fmt(wagerXp)} XP</strong> of {fmt(liveXp)}</p>
-				<button class="m-gamble-play" disabled={gambleRolling || wagerXp <= 0} onclick={playGamble}>
-					{#if gambleRolling}<i class="fas fa-spinner fa-spin"></i>Rolling…{:else}<i class="fas fa-dice"></i>Gamble{/if}
-				</button>
+			{/if}
+			<p class="m-out-line">{outcome.line}</p>
+			{#if outcome.untilMs}
+				<div class="m-out-until"><i class="fas fa-clock"></i>Active until {untilLabel(outcome.untilMs)}</div>
 			{/if}
 		</div>
 	</div>

@@ -4,20 +4,18 @@
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import type { PageProps } from './$types';
 	import type { PublicMembersStreamPayload } from '$lib/frontend/public/members/index.js';
+	import { ITEM_EFFECTS, TARGETED_EFFECTS as TARGETED, effectLabel, effectSummary } from '$lib/items.js';
 
 	let { data }: PageProps = $props();
 
-	const CATEGORIES = [
-		{ id: 'all', label: 'All', icon: 'fa-grip' },
-		{ id: 'pvp', label: 'PvP', icon: 'fa-crosshairs' },
-		{ id: 'boost', label: 'Boosts', icon: 'fa-bolt' },
-		{ id: 'cosmetic', label: 'Cosmetic', icon: 'fa-palette' },
-		{ id: 'fun', label: 'Fun', icon: 'fa-dice' }
-	];
-	const TARGETED = new Set(['xp_steal', 'xp_bomb', 'leech', 'gift', 'bounty']);
-
 	let view = $state<'shop' | 'bag'>('shop');
-	let activeCategory = $state('all');
+	let activeType = $state('all');
+
+	const typeTabs = $derived.by(() => {
+		const present = new Set((data.items ?? []).map((i: any) => i.effect_type));
+		const ordered = ITEM_EFFECTS.filter((e) => present.has(e.id));
+		return [{ id: 'all', label: 'All', icon: 'fa-grip' }, ...ordered.map((e) => ({ id: e.id, label: e.label, icon: e.icon }))];
+	});
 	let busy = $state<number | null>(null);
 	let pickingTargetFor = $state<any | null>(null);
 
@@ -88,41 +86,11 @@
 		return Number(n ?? 0).toLocaleString();
 	}
 
-	const visibleItems = $derived(activeCategory === 'all' ? data.items : data.items.filter((i: any) => i.category === activeCategory));
+	const visibleItems = $derived(activeType === 'all' ? data.items : data.items.filter((i: any) => i.effect_type === activeType));
 
 	function canAfford(item: any): boolean {
 		if (!data.valid) return true;
 		return liveXp >= (Number(item.cost) || 0);
-	}
-
-	function effectSummary(item: any): string {
-		const c = item.config ?? {};
-		switch (item.effect_type) {
-			case 'xp_steal':
-				return `Steal ${c.min_percent ?? 1}–${c.max_percent ?? 25}% of a member's total XP.`;
-			case 'xp_bomb':
-				return `Destroy ${c.min_percent ?? 1}–${c.max_percent ?? 50}% of a member's total XP.`;
-			case 'xp_boost':
-				return `${c.multiplier ?? 2}× XP for ${c.effect_duration_minutes ?? 60} min (${c.scope ?? 'all'}).`;
-			case 'shield':
-				return `Block incoming attacks for ${c.effect_duration_minutes ?? 60} min.`;
-			case 'leech':
-				return `Skim ${c.skim_percent ?? 10}% of a member's XP for ${c.effect_duration_minutes ?? 120} min.`;
-			case 'gamble':
-				return `Stake ${c.stake ?? 0} XP — ${c.win_chance ?? 50}% chance to win ${c.payout_multiplier ?? 2}× it.`;
-			case 'bounty':
-				return `Put ${c.bounty_amount ?? 0} XP on a member — collected by whoever robs them next.`;
-			case 'reflect':
-				return `Bounce the next attack back at the attacker for ${c.effect_duration_minutes ?? 60} min.`;
-			case 'insurance':
-				return `Refund your XP the next time you're robbed (${c.effect_duration_minutes ?? 60} min).`;
-			case 'gift':
-				return `Send ${c.gift_amount ?? 0} XP to a member${c.tax_percent ? ` (−${c.tax_percent}% tax)` : ''}.`;
-			case 'cosmetic':
-				return `Unlock a ${c.cosmetic_kind ?? 'cosmetic'} for your card.`;
-			default:
-				return item.description ?? '';
-		}
 	}
 
 	let burstId = $state<number | null>(null);
@@ -171,9 +139,6 @@
 		const outcome = d.outcome ?? r.outcome;
 		const amt = r.xp ? ` (${fmt(r.xp)} XP)` : '';
 		switch (item.effect_type) {
-			case 'gamble':
-				if (r.won) return showToast(`🎲 You won!${r.net != null ? ` +${fmt(r.net)} XP` : ''}`, 'success');
-				return showToast(`🎲 You lost the gamble${r.stake ? ` (−${fmt(r.stake)} XP)` : ''}.`, 'error');
 			case 'xp_steal':
 				if (outcome === 'blocked') return showToast('🛡️ Blocked by their shield.', 'error');
 				if (outcome === 'reflected') return showToast(`🪞 Reflected back at you!${amt}`, 'error');
@@ -205,6 +170,74 @@
 			} else showToast(d.error || 'Failed to use item', 'error');
 		} finally {
 			busy = null;
+		}
+	}
+
+	const WAGER_PERCENTS = [25, 50, 75, 100];
+	let gambleItem = $state<any | null>(null);
+	let gamblePercent = $state(25);
+	let gambleRolling = $state(false);
+	let reel = $state<string[]>([]);
+	let reelOffset = $state(0);
+	let reelResult = $state<'win' | 'lose' | null>(null);
+
+	function openGamble(item: any) {
+		if (!data.valid) return;
+		gambleItem = item;
+		gamblePercent = 25;
+		reel = [];
+		reelOffset = 0;
+		reelResult = null;
+	}
+
+	function buildReel(landing: 'win' | 'lose') {
+		const cells: string[] = [];
+		for (let i = 0; i < 40; i++) cells.push(Math.random() < 0.5 ? 'win' : 'lose');
+		const landIndex = 32;
+		cells[landIndex] = landing;
+		return { cells, landIndex };
+	}
+
+	const wagerXp = $derived(Math.floor((liveXp * gamblePercent) / 100));
+
+	async function playGamble() {
+		const item = gambleItem;
+		if (!item || gambleRolling) return;
+		if (wagerXp <= 0) {
+			showToast('Not enough XP to wager', 'error');
+			return;
+		}
+		gambleRolling = true;
+		reelResult = null;
+		try {
+			const res = await fetch(`/api/public-statistics/${encodeURIComponent(data.server.slug)}/items/gamble`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ card: data.hash, item_id: item.id, percent: gamblePercent })
+			});
+			const d = await res.json();
+			if (!d.success) {
+				showToast(d.error || 'Gamble failed', 'error');
+				gambleRolling = false;
+				return;
+			}
+			const won = !!d.result?.won;
+			const { cells, landIndex } = buildReel(won ? 'win' : 'lose');
+			reel = cells;
+			reelOffset = 0;
+			const cellW = 96;
+			await new Promise((r) => requestAnimationFrame(() => r(null)));
+			reelOffset = -(landIndex * cellW - 96);
+			setTimeout(async () => {
+				reelResult = won ? 'win' : 'lose';
+				if (won) showToast(`🎲 You won! +${fmt(d.result?.net ?? 0)} XP`, 'success');
+				else showToast(`🎲 You lost ${fmt(d.result?.wager ?? 0)} XP`, 'error');
+				await invalidateAll();
+				gambleRolling = false;
+			}, 3600);
+		} catch {
+			showToast('Gamble failed', 'error');
+			gambleRolling = false;
 		}
 	}
 </script>
@@ -253,8 +286,8 @@
 
 	{#if view === 'shop'}
 		<div class="m-items-tabs">
-			{#each CATEGORIES as cat}
-				<button class="m-items-tab" class:m-items-tab--active={activeCategory === cat.id} onclick={() => (activeCategory = cat.id)}>
+			{#each typeTabs as cat}
+				<button class="m-items-tab" class:m-items-tab--active={activeType === cat.id} onclick={() => (activeType = cat.id)}>
 					<i class="fas {cat.icon}"></i>{cat.label}
 				</button>
 			{/each}
@@ -266,23 +299,30 @@
 			<ul class="m-items-grid">
 				{#each visibleItems as item (item.id)}
 					{@const affordable = canAfford(item)}
-					<li class="m-items-card" class:m-items-card--locked={!affordable} class:m-items-card--burst={burstId === item.id} data-cat={item.category}>
+					<li class="m-items-card" class:m-items-card--locked={!affordable} class:m-items-card--burst={burstId === item.id} data-cat={item.effect_type}>
 						<div class="m-items-accent"></div>
 						<div class="m-items-card-top">
 							<span class="m-items-medallion">{item.icon || '🎁'}</span>
 							<div class="m-items-card-head">
 								<span class="m-items-name">{item.name}</span>
-								<span class="m-items-cat">{item.category}</span>
+								<span class="m-items-cat">{effectLabel(item.effect_type)}</span>
 							</div>
 						</div>
 						<p class="m-items-desc">{item.description || effectSummary(item)}</p>
 						<div class="m-items-foot">
-							<span class="m-items-cost" class:m-items-cost--short={!affordable}><i class="fas fa-star"></i>{fmt(item.cost)}</span>
-							<button class="m-items-buy" disabled={busy === item.id || !data.valid || !affordable} onclick={() => buy(item)}>
-								{#if busy === item.id}<i class="fas fa-spinner fa-spin"></i>{:else if !affordable}<i class="fas fa-lock"></i>{:else}<i class="fas fa-cart-plus"
-									></i>{/if}
-								{affordable ? 'Buy' : 'Locked'}
-							</button>
+							{#if item.effect_type === 'gamble'}
+								<button class="m-items-buy m-items-buy--play" disabled={!data.valid} onclick={() => openGamble(item)}>
+									<i class="fas fa-dice"></i>Play
+								</button>
+							{:else}
+								<span class="m-items-cost" class:m-items-cost--short={!affordable}><i class="fas fa-star"></i>{fmt(item.cost)}</span>
+								<button class="m-items-buy" disabled={busy === item.id || !data.valid || !affordable} onclick={() => buy(item)}>
+									{#if busy === item.id}<i class="fas fa-spinner fa-spin"></i>{:else if !affordable}<i class="fas fa-lock"></i>{:else}<i
+											class="fas fa-cart-plus"
+										></i>{/if}
+									{affordable ? 'Buy' : 'Locked'}
+								</button>
+							{/if}
 						</div>
 					</li>
 				{/each}
@@ -305,14 +345,14 @@
 	{:else}
 		<ul class="m-items-grid">
 			{#each data.inventory as item (item.member_item_id)}
-				<li class="m-items-card" data-cat={item.category}>
+				<li class="m-items-card" data-cat={item.effect_type}>
 					<div class="m-items-accent"></div>
 					<span class="m-items-badge">×{item.quantity}</span>
 					<div class="m-items-card-top">
 						<span class="m-items-medallion">{item.icon || '🎁'}</span>
 						<div class="m-items-card-head">
 							<span class="m-items-name">{item.name}</span>
-							<span class="m-items-cat">{item.category}</span>
+							<span class="m-items-cat">{effectLabel(item.effect_type)}</span>
 						</div>
 					</div>
 					<p class="m-items-desc">{item.description || effectSummary(item)}</p>
@@ -328,3 +368,48 @@
 		</ul>
 	{/if}
 </div>
+
+{#if gambleItem}
+	<div class="m-gamble-overlay" role="presentation" onclick={() => (!gambleRolling ? (gambleItem = null) : null)}>
+		<div class="m-gamble" role="dialog" aria-modal="true" aria-label="Gamble" onclick={(e) => e.stopPropagation()}>
+			<div class="m-gamble-head">
+				<span class="m-gamble-title"><span class="m-gamble-ico">{gambleItem.icon || '🎲'}</span>{gambleItem.name}</span>
+				{#if !gambleRolling}<button class="m-gamble-x" aria-label="Close" onclick={() => (gambleItem = null)}><i class="fas fa-times"></i></button>{/if}
+			</div>
+
+			<div class="m-gamble-reelwrap">
+				<div class="m-gamble-pointer"></div>
+				<div
+					class="m-gamble-reel"
+					style="transform: translateX({reelOffset}px); transition: {reelOffset === 0 ? 'none' : 'transform 3.5s cubic-bezier(0.12, 0.8, 0.16, 1)'};"
+				>
+					{#if reel.length === 0}
+						{#each Array(7) as _, i (i)}
+							<div class="m-gamble-cell m-gamble-cell--idle">{i % 2 === 0 ? '🎲' : '✨'}</div>
+						{/each}
+					{:else}
+						{#each reel as cell, i (i)}
+							<div class="m-gamble-cell m-gamble-cell--{cell}">{cell === 'win' ? '🤑' : '💀'}</div>
+						{/each}
+					{/if}
+				</div>
+			</div>
+
+			{#if reelResult}
+				<p class="m-gamble-result m-gamble-result--{reelResult}">{reelResult === 'win' ? '🎉 You won!' : '💀 You lost it all'}</p>
+			{:else}
+				<div class="m-gamble-picker">
+					{#each WAGER_PERCENTS as p}
+						<button class="m-gamble-pct" class:m-gamble-pct--active={gamblePercent === p} disabled={gambleRolling} onclick={() => (gamblePercent = p)}
+							>{p}%</button
+						>
+					{/each}
+				</div>
+				<p class="m-gamble-wager">Wagering <strong>{fmt(wagerXp)} XP</strong> of {fmt(liveXp)}</p>
+				<button class="m-gamble-play" disabled={gambleRolling || wagerXp <= 0} onclick={playGamble}>
+					{#if gambleRolling}<i class="fas fa-spinner fa-spin"></i>Rolling…{:else}<i class="fas fa-dice"></i>Gamble{/if}
+				</button>
+			{/if}
+		</div>
+	</div>
+{/if}

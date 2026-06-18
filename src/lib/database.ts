@@ -1461,7 +1461,6 @@ export async function listBotItems(botId: any, options: any = {}) {
 	await initializeDatabase();
 	if (!botId) throw new Error('botId is required');
 	const conditions: any[] = [eq(schema.botItems.bot_id, Number(botId))];
-	if (options.category) conditions.push(eq(schema.botItems.category, String(options.category)));
 	if (options.enabledOnly) conditions.push(eq(schema.botItems.enabled, true));
 	return db
 		.select()
@@ -1488,7 +1487,6 @@ export async function createBotItem(botId: any, data: any = {}) {
 		bot_id: Number(botId),
 		name: String(data.name ?? ''),
 		effect_type: String(data.effect_type ?? ''),
-		category: String(data.category ?? ''),
 		description: data.description ?? null,
 		cost: Number(data.cost ?? 0),
 		config: data.config ?? {},
@@ -1511,7 +1509,6 @@ export async function updateBotItem(itemId: any, data: any = {}) {
 	const set: any = { updated_at: toMySQLDateTime() as any };
 	if (data.name !== undefined) set.name = String(data.name);
 	if (data.effect_type !== undefined) set.effect_type = String(data.effect_type);
-	if (data.category !== undefined) set.category = String(data.category);
 	if (data.description !== undefined) set.description = data.description ?? null;
 	if (data.cost !== undefined) set.cost = Number(data.cost);
 	if (data.config !== undefined) set.config = data.config ?? {};
@@ -1811,34 +1808,6 @@ export async function collectBounties(targetMemberId: any) {
 	return total;
 }
 
-export async function equipCosmetic(memberId: any, cosmeticKind: any, value: any, itemId: any) {
-	await initializeDatabase();
-	if (!memberId) throw new Error('memberId is required');
-	const now = toMySQLDateTime();
-	await db
-		.insert(schema.serverMemberCosmetics)
-		.values({
-			member_id: Number(memberId),
-			cosmetic_kind: String(cosmeticKind),
-			value: String(value ?? ''),
-			item_id: itemId != null ? Number(itemId) : null,
-			created_at: now as any
-		})
-		.onDuplicateKeyUpdate({ set: { value: String(value ?? ''), item_id: itemId != null ? Number(itemId) : null, created_at: now as any } });
-	return true;
-}
-
-export async function getMemberCosmetics(memberId: any) {
-	await initializeDatabase();
-	const rows = await db
-		.select()
-		.from(schema.serverMemberCosmetics)
-		.where(eq(schema.serverMemberCosmetics.member_id, Number(memberId)));
-	const out: Record<string, string> = {};
-	for (const r of rows as any[]) out[r.cosmetic_kind] = r.value;
-	return out;
-}
-
 export async function getServerLeaderboard(serverId: any, limit = 3, sortType = 'xp', range: any = 'all') {
 	await initializeDatabase();
 	if (!serverId) throw new Error('serverId is required');
@@ -1902,10 +1871,6 @@ export async function getServerMembersList(serverId: any) {
 			sml.level, sml.experience, sml.chat_total, sml.voice_minutes_total, sml.voice_minutes_active, sml.voice_minutes_afk,
 			sml.voice_minutes_video, sml.voice_minutes_streaming, sml.rank,
 			sma.message as afk_message, sma.created_at as afk_since,
-			(SELECT value FROM server_member_cosmetics c WHERE c.member_id = sm.id AND c.cosmetic_kind = 'title' LIMIT 1) as cosmetic_title,
-			(SELECT value FROM server_member_cosmetics c WHERE c.member_id = sm.id AND c.cosmetic_kind = 'badge' LIMIT 1) as cosmetic_badge,
-			(SELECT value FROM server_member_cosmetics c WHERE c.member_id = sm.id AND c.cosmetic_kind = 'theme' LIMIT 1) as cosmetic_theme,
-			(SELECT value FROM server_member_cosmetics c WHERE c.member_id = sm.id AND c.cosmetic_kind = 'frame' LIMIT 1) as cosmetic_frame,
 			GROUP_CONCAT(
 				DISTINCT CONCAT(sr.discord_role_id, ':', sr.name, ':', sr.color, ':', sr.position)
 				ORDER BY sr.position DESC SEPARATOR ','
@@ -3970,8 +3935,6 @@ export default {
 	placeBounty,
 	getActiveBountyTotal,
 	collectBounties,
-	equipCosmetic,
-	getMemberCosmetics,
 	getServerLeaderboard,
 	getServerMembersList,
 	getPanelOverview,

@@ -16,10 +16,6 @@
 		voice_minutes_active?: number | null;
 		member_since?: string | null;
 		roles?: MemberRole[];
-		cosmetic_title?: string | null;
-		cosmetic_badge?: string | null;
-		cosmetic_theme?: string | null;
-		cosmetic_frame?: string | null;
 	};
 
 	type Props = {
@@ -81,7 +77,7 @@
 
 	const roleColor = $derived(parseRoleHex(highestRole?.color));
 
-	const accentColor = $derived(member.cosmetic_theme || roleColor);
+	const accentColor = $derived(roleColor);
 
 	onMount(() => {
 		document.body.style.overflow = 'hidden';
@@ -636,12 +632,7 @@
 
 					<h2 class="mc-name">
 						{memberName(member)}
-						{#if member.cosmetic_badge}<span class="mc-cosmetic-badge" title="Badge">{member.cosmetic_badge}</span>{/if}
 					</h2>
-
-					{#if member.cosmetic_title}
-						<div class="mc-cosmetic-title">{member.cosmetic_title}</div>
-					{/if}
 
 					{#if highestRole}
 						<div class="mc-role-badge" style="--mc-role-c: {roleColor};">

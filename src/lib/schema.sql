@@ -497,7 +497,6 @@ CREATE TABLE IF NOT EXISTS bot_items (
     bot_id INT NOT NULL,
     name VARCHAR(150) NOT NULL,
     effect_type VARCHAR(32) NOT NULL,
-    category VARCHAR(16) NOT NULL,
     description TEXT NULL,
     cost INT NOT NULL DEFAULT 0,
     config JSON NOT NULL DEFAULT ('{}'),
@@ -570,18 +569,6 @@ CREATE TABLE IF NOT EXISTS server_member_bounties (
     FOREIGN KEY (placed_by_member_id) REFERENCES server_members(id) ON DELETE SET NULL
 );
 
-CREATE TABLE IF NOT EXISTS server_member_cosmetics (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    member_id INT NOT NULL,
-    cosmetic_kind VARCHAR(16) NOT NULL,
-    value VARCHAR(64) NOT NULL,
-    item_id INT NULL,
-    created_at DATETIME NOT NULL,
-    UNIQUE KEY unique_member_cosmetic_kind (member_id, cosmetic_kind),
-    FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE,
-    FOREIGN KEY (item_id) REFERENCES bot_items(id) ON DELETE SET NULL
-);
-
 CREATE INDEX IF NOT EXISTS idx_bots_panel_id ON bots(panel_id);
 CREATE INDEX IF NOT EXISTS idx_servers_discord_id ON servers(discord_server_id);
 CREATE INDEX IF NOT EXISTS idx_servers_discord_created_at ON servers(discord_created_at);
@@ -639,4 +626,3 @@ CREATE INDEX IF NOT EXISTS idx_server_member_item_actives_sweep ON server_member
 CREATE INDEX IF NOT EXISTS idx_server_member_item_logs_item ON server_member_item_logs(member_item_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_item_logs_target ON server_member_item_logs(target_member_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_bounties_target ON server_member_bounties(target_member_id, collected);
-CREATE INDEX IF NOT EXISTS idx_server_member_cosmetics_member ON server_member_cosmetics(member_id);

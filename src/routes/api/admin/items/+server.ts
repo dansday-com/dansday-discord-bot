@@ -2,9 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { logger } from '$lib/utils/index.js';
-
-const EFFECT_TYPES = ['xp_steal', 'xp_bomb', 'xp_boost', 'shield', 'leech', 'reflect', 'insurance', 'gamble', 'gift', 'bounty', 'cosmetic'];
-const CATEGORIES = ['pvp', 'boost', 'cosmetic', 'fun'];
+import { EFFECT_TYPE_IDS } from '$lib/items.js';
 
 function isSuperadmin(locals: App.Locals) {
 	return locals.user.authenticated && locals.user.account_type === 'superadmin' && locals.user.account_source === 'accounts';
@@ -36,14 +34,13 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 	const botId = await resolveBotId(locals, body.bot_id);
 	if (botId == null) return json({ success: false, error: 'No bot available' }, { status: 404 });
 
-	if (!body.name || !EFFECT_TYPES.includes(body.effect_type) || !CATEGORIES.includes(body.category)) {
-		return json({ success: false, error: 'name, valid effect_type and category are required' }, { status: 400 });
+	if (!body.name || !EFFECT_TYPE_IDS.includes(body.effect_type)) {
+		return json({ success: false, error: 'name and valid effect_type are required' }, { status: 400 });
 	}
 
 	const item = await db.createBotItem(botId, {
 		name: body.name,
 		effect_type: body.effect_type,
-		category: body.category,
 		description: body.description ?? null,
 		cost: Number(body.cost) || 0,
 		config: body.config ?? {},
@@ -70,17 +67,13 @@ export const PUT: RequestHandler = async ({ locals, request }) => {
 		return json({ success: false, error: 'Forbidden' }, { status: 403 });
 	}
 
-	if (body.effect_type != null && !EFFECT_TYPES.includes(body.effect_type)) {
+	if (body.effect_type != null && !EFFECT_TYPE_IDS.includes(body.effect_type)) {
 		return json({ success: false, error: 'invalid effect_type' }, { status: 400 });
-	}
-	if (body.category != null && !CATEGORIES.includes(body.category)) {
-		return json({ success: false, error: 'invalid category' }, { status: 400 });
 	}
 
 	const item = await db.updateBotItem(body.id, {
 		name: body.name,
 		effect_type: body.effect_type,
-		category: body.category,
 		description: body.description,
 		cost: body.cost != null ? Number(body.cost) : undefined,
 		config: body.config,

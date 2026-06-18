@@ -767,7 +767,6 @@ export const botItems = mysqlTable(
 			.references(() => bots.id, { onDelete: 'cascade' }),
 		name: varchar('name', { length: 150 }).notNull(),
 		effect_type: varchar('effect_type', { length: 32 }).notNull(),
-		category: varchar('category', { length: 16 }).notNull(),
 		description: text('description'),
 		cost: int('cost').notNull().default(0),
 		config: json('config').notNull().default({}),
@@ -867,19 +866,4 @@ export const serverMemberItemEventNotifs = mysqlTable(
 		created_at: datetime('created_at').notNull()
 	},
 	(t) => [uniqueIndex('unique_member_item_event').on(t.member_id, t.kind, t.event_at)]
-);
-
-export const serverMemberCosmetics = mysqlTable(
-	'server_member_cosmetics',
-	{
-		id: int('id').primaryKey().autoincrement(),
-		member_id: int('member_id')
-			.notNull()
-			.references(() => serverMembers.id, { onDelete: 'cascade' }),
-		cosmetic_kind: varchar('cosmetic_kind', { length: 16 }).notNull(),
-		value: varchar('value', { length: 64 }).notNull(),
-		item_id: int('item_id').references(() => botItems.id, { onDelete: 'set null' }),
-		created_at: datetime('created_at').notNull()
-	},
-	(t) => [uniqueIndex('unique_member_cosmetic_kind').on(t.member_id, t.cosmetic_kind), index('idx_server_member_cosmetics_member').on(t.member_id)]
 );

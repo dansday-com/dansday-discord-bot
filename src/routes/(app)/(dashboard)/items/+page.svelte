@@ -5,24 +5,9 @@
 	import ConfigToggleRow from '$lib/frontend/components/ConfigToggleRow.svelte';
 	import ConfirmModal from '$lib/frontend/components/ConfirmModal.svelte';
 	import type { LabeledSelectOption } from '$lib/frontend/components/labeledSelect.js';
+	import { ITEM_EFFECTS, effectLabel, isTargetedEffect } from '$lib/items.js';
 
-	const EFFECT_TYPES = [
-		{ value: 'xp_steal', label: 'XP Steal', category: 'pvp' },
-		{ value: 'xp_bomb', label: 'XP Bomb', category: 'pvp' },
-		{ value: 'xp_boost', label: 'XP Boost', category: 'boost' },
-		{ value: 'shield', label: 'Shield', category: 'pvp' },
-		{ value: 'leech', label: 'Leech', category: 'pvp' },
-		{ value: 'reflect', label: 'Reflect', category: 'pvp' },
-		{ value: 'insurance', label: 'Insurance', category: 'pvp' },
-		{ value: 'gamble', label: 'Gamble', category: 'fun' },
-		{ value: 'gift', label: 'Gift', category: 'fun' },
-		{ value: 'bounty', label: 'Bounty', category: 'pvp' },
-		{ value: 'cosmetic', label: 'Cosmetic', category: 'cosmetic' }
-	];
-	const CATEGORIES = ['pvp', 'boost', 'cosmetic', 'fun'];
-
-	const effectOptions: LabeledSelectOption[] = EFFECT_TYPES.map((e) => ({ value: e.value, label: e.label }));
-	const categoryOptions: LabeledSelectOption[] = CATEGORIES.map((c) => ({ value: c, label: c.charAt(0).toUpperCase() + c.slice(1) }));
+	const effectOptions: LabeledSelectOption[] = ITEM_EFFECTS.map((e) => ({ value: e.id, label: e.label }));
 
 	let items = $state<any[]>([]);
 	let loading = $state(true);
@@ -37,7 +22,6 @@
 			id: null as number | null,
 			name: '',
 			effect_type: 'xp_boost',
-			category: 'boost',
 			description: '',
 			cost: 100,
 			icon: '',
@@ -55,12 +39,9 @@
 				scope: 'all',
 				win_chance: 50,
 				payout_multiplier: 2,
-				stake: 100,
 				gift_amount: 500,
 				tax_percent: 10,
 				bounty_amount: 500,
-				cosmetic_kind: 'theme',
-				value: '#1e2a78',
 				recur_days: [] as number[],
 				recur_from: '',
 				recur_to: ''
@@ -83,16 +64,6 @@
 	}
 
 	onMount(loadItems);
-
-	function onEffectTypeChange() {
-		const def = EFFECT_TYPES.find((e) => e.value === form.effect_type);
-		if (def) form.category = def.category;
-	}
-
-	$effect(() => {
-		form.effect_type;
-		onEffectTypeChange();
-	});
 
 	function buildConfig() {
 		const c = form.cfg;
@@ -118,12 +89,8 @@
 		} else if (t === 'gamble') {
 			config.win_chance = Number(c.win_chance);
 			config.payout_multiplier = Number(c.payout_multiplier);
-			config.stake = Number(c.stake);
 		} else if (t === 'bounty') {
 			config.bounty_amount = Number(c.bounty_amount);
-		} else if (t === 'cosmetic') {
-			config.cosmetic_kind = c.cosmetic_kind;
-			config.value = c.value;
 		}
 		if (Array.isArray(c.recur_days) && c.recur_days.length > 0) {
 			config.recurring_schedule = { days: c.recur_days.map(Number), from: c.recur_from, to: c.recur_to };
@@ -142,7 +109,6 @@
 		f.id = item.id;
 		f.name = item.name ?? '';
 		f.effect_type = item.effect_type ?? 'xp_boost';
-		f.category = item.category ?? 'boost';
 		f.description = item.description ?? '';
 		f.cost = item.cost ?? 0;
 		f.icon = item.icon ?? '';
@@ -169,7 +135,6 @@
 			const payload: any = {
 				name: form.name,
 				effect_type: form.effect_type,
-				category: form.category,
 				description: form.description,
 				cost: Number(form.cost),
 				icon: form.icon || null,
@@ -246,11 +211,7 @@
 		form.cfg.recur_days = [...set].sort((a, b) => a - b);
 	}
 
-	const isTargeted = $derived(['xp_steal', 'xp_bomb'].includes(form.effect_type));
-
-	function effectLabel(value: string) {
-		return EFFECT_TYPES.find((e) => e.value === value)?.label ?? value;
-	}
+	const isTargeted = $derived(isTargetedEffect(form.effect_type));
 
 	$effect(() => {
 		if (!editing) return;
@@ -291,7 +252,6 @@
 							</div>
 							<div class="text-ash-500 mt-1 flex flex-wrap gap-1 text-[10px]">
 								<span class="bg-ash-700 rounded px-1.5 py-0.5">{effectLabel(item.effect_type)}</span>
-								<span class="bg-ash-700 rounded px-1.5 py-0.5">{item.category}</span>
 								{#if item.enabled === false}<span class="rounded bg-red-900/50 px-1.5 py-0.5 text-red-300">disabled</span>{/if}
 							</div>
 						</div>
@@ -341,15 +301,9 @@
 						/>
 					</div>
 
-					<div class="grid gap-4 sm:grid-cols-2">
-						<div>
-							<span class="text-ash-300 mb-1.5 block text-xs font-medium">Effect type</span>
-							<LabeledSelect id="item-effect" appearance="form-inline" selectClass="w-full" options={effectOptions} bind:value={form.effect_type} />
-						</div>
-						<div>
-							<span class="text-ash-300 mb-1.5 block text-xs font-medium">Category</span>
-							<LabeledSelect id="item-category" appearance="form-inline" selectClass="w-full" options={categoryOptions} bind:value={form.category} />
-						</div>
+					<div>
+						<span class="text-ash-300 mb-1.5 block text-xs font-medium">Effect type</span>
+						<LabeledSelect id="item-effect" appearance="form-inline" selectClass="w-full" options={effectOptions} bind:value={form.effect_type} />
 					</div>
 
 					<div>
@@ -512,15 +466,11 @@
 									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
 								/></label
 							>
-							<label class="text-ash-300 col-span-2 text-xs"
-								>Stake (XP)<input
-									type="number"
-									bind:value={form.cfg.stake}
-									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-								/></label
-							>
 						</div>
-						<p class="text-ash-500 text-[11px]">Stakes the XP, rolls win chance; on win pays stake × multiplier.</p>
+						<p class="text-ash-500 text-[11px]">
+							Members pick how much XP to wager (25/50/75/100%). On win they get the wager × multiplier; on loss they lose it. Not bought — played from the
+							shop.
+						</p>
 					{:else if form.effect_type === 'bounty'}
 						<label class="text-ash-300 text-xs"
 							>Bounty amount (XP)<input
@@ -530,48 +480,6 @@
 							/></label
 						>
 						<p class="text-ash-500 text-[11px]">Puts XP on a member's head. Whoever lands the next successful steal on them collects it.</p>
-					{:else if form.effect_type === 'cosmetic'}
-						<label class="text-ash-300 block text-xs"
-							>Kind
-							<select bind:value={form.cfg.cosmetic_kind} class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm">
-								<option value="theme">Theme (card color)</option>
-								<option value="badge">Badge (emoji)</option>
-								<option value="title">Title (text)</option>
-								<option value="frame">Frame (style)</option>
-							</select>
-						</label>
-
-						{#if form.cfg.cosmetic_kind === 'theme'}
-							<div class="mt-3">
-								<p class="text-ash-300 mb-1.5 text-xs">Card color</p>
-								<div class="flex items-center gap-2">
-									<input
-										type="color"
-										bind:value={form.cfg.value}
-										class="bg-ash-700 border-ash-600 h-9 w-10 shrink-0 cursor-pointer rounded border"
-										aria-label="Theme color"
-									/>
-									<input
-										type="text"
-										bind:value={form.cfg.value}
-										placeholder="#1e2a78"
-										class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 flex-1 rounded-lg border px-3 py-2 font-mono text-sm focus:ring-2 focus:outline-none"
-									/>
-								</div>
-							</div>
-						{:else}
-							<label class="text-ash-300 mt-3 block text-xs"
-								>Value<input
-									bind:value={form.cfg.value}
-									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-									placeholder={form.cfg.cosmetic_kind === 'badge' ? '⭐' : form.cfg.cosmetic_kind === 'title' ? 'Legend' : 'gold'}
-								/></label
-							>
-							<p class="text-ash-500 mt-2 text-[11px]">
-								{#if form.cfg.cosmetic_kind === 'badge'}An emoji shown next to the member's name.{:else if form.cfg.cosmetic_kind === 'title'}A short text title
-									shown under the member's name.{:else}A named frame style for the member's card.{/if}
-							</p>
-						{/if}
 					{:else}
 						<p class="text-ash-500 text-[11px]">No extra settings for this effect type yet.</p>
 					{/if}

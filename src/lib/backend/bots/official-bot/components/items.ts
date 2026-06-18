@@ -2,6 +2,7 @@ import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 import { getRedisClient } from '../../../../redis.js';
 import { getLevelRequirement, determineLevel } from './leveling.js';
+import { TARGETED_EFFECTS, ANNOUNCED_EFFECTS, getItemEffect } from '../../../../items.js';
 
 const EFFECT_CACHE_TTL_MS = 5000;
 const memoryEffectCache = new Map();
@@ -368,34 +369,68 @@ export async function resolveGift({ actorMemberId, actorMemberItemId, targetMemb
 	return { outcome: 'success', xp: received };
 }
 
-export async function resolveGamble({ actorMemberId, actorMemberItemId, config, guildId }: any) {
-	const cfg = parseConfig(config);
-	const stake = Math.max(0, Math.floor(Number(cfg.stake) || 0));
+export async function handleGamble(client: any, payload: any) {
+	const { guild_id, actor_discord_id, item_id, percent } = payload || {};
+	if (!guild_id || !actor_discord_id || !item_id) return { ok: false, error: 'missing_fields' };
+
+	const { getServerForCurrentBot, isComponentFeatureEnabled, serverSettingsComponent } = await import('../../../config.js');
+
+	let server: any;
+	try {
+		server = await getServerForCurrentBot(guild_id);
+	} catch (_) {
+		return { ok: false, error: 'server_not_found' };
+	}
+	if (!(await isComponentFeatureEnabled(guild_id, serverSettingsComponent.items))) {
+		return { ok: false, error: 'shop_disabled' };
+	}
+
+	const item = await db.getBotItem(item_id).catch(() => null);
+	if (!item || item.enabled !== true || item.effect_type !== 'gamble') return { ok: false, error: 'item_unavailable' };
+	if (!isItemAvailableNow(item)) return { ok: false, error: 'item_not_in_window' };
+
+	const actorMemberId = await resolveServerMemberId(server.id, actor_discord_id);
+	if (!actorMemberId) return { ok: false, error: 'member_not_found' };
+
+	const pct = Math.max(1, Math.min(100, Math.floor(Number(percent) || 0)));
+	const stats = await db.getMemberLevel(actorMemberId);
+	const rawXp = stats?.experience ?? 0;
+	const total = typeof rawXp === 'bigint' ? Number(rawXp) : Number(rawXp) || 0;
+	const wager = Math.floor((total * pct) / 100);
+	if (wager <= 0) return { ok: false, error: 'insufficient_xp' };
+
+	const cfg = parseConfig(item.config);
 	const winChance = Math.max(0, Math.min(100, Number(cfg.win_chance) || 0));
 	const payoutMultiplier = Math.max(0, Number(cfg.payout_multiplier) || 0);
 
-	if (stake <= 0) {
-		await db.logMemberItemAction(actorMemberItemId, { target_member_id: null, action: 'gamble', xp_amount: 0, outcome: 'win' });
-		return { outcome: 'win', xp: 0, won: true };
-	}
-
-	const spend = await spendXp(actorMemberId, stake, guildId);
-	if (!spend.ok) return { outcome: 'insufficient', xp: 0 };
+	const spend = await spendXp(actorMemberId, wager, guild_id);
+	if (!spend.ok) return { ok: false, error: 'insufficient_xp' };
 
 	const roll = Math.floor(Math.random() * 100) + 1;
 	const won = roll <= winChance;
 
-	let netChange = -stake;
+	let netChange = -wager;
+	let payout = 0;
 	if (won) {
-		const payout = Math.floor(stake * payoutMultiplier);
+		payout = Math.floor(wager * payoutMultiplier);
 		await db.ensureMemberLevel(actorMemberId);
-		const stats = await db.updateMemberLevelStats(actorMemberId, { experienceIncrement: payout });
-		await reevaluateLevel(actorMemberId, stats, guildId);
-		netChange = payout - stake;
+		const after = await db.updateMemberLevelStats(actorMemberId, { experienceIncrement: payout });
+		await reevaluateLevel(actorMemberId, after, guild_id);
+		netChange = payout - wager;
 	}
+	await invalidateEffectCache(actorMemberId);
 
-	await db.logMemberItemAction(actorMemberItemId, { target_member_id: null, action: 'gamble', xp_amount: Math.abs(netChange), outcome: won ? 'win' : 'lose' });
-	return { outcome: won ? 'win' : 'lose', won, stake, net: netChange };
+	const result = { outcome: won ? 'win' : 'lose', won, wager, payout, percent: pct, net: netChange };
+	await announceItemUse(client, {
+		guildId: guild_id,
+		actorDiscordId: actor_discord_id,
+		targetDiscordId: null,
+		effectType: 'gamble',
+		item,
+		result
+	}).catch(() => null);
+
+	return { ok: true, outcome: result.outcome, effect_type: 'gamble', result };
 }
 
 export async function resolveBounty({ actorMemberId, actorMemberItemId, targetMemberId, config, guildId }: any) {
@@ -409,14 +444,6 @@ export async function resolveBounty({ actorMemberId, actorMemberItemId, targetMe
 	await db.placeBounty(targetMemberId, actorMemberId, amount);
 	await db.logMemberItemAction(actorMemberItemId, { target_member_id: targetMemberId, action: 'bounty', xp_amount: amount, outcome: 'success' });
 	return { outcome: 'success', xp: amount };
-}
-
-export async function resolveCosmetic({ actorMemberId, itemId, config }: any) {
-	const cfg = parseConfig(config);
-	const kind = cfg.cosmetic_kind || 'theme';
-	const value = cfg.value ?? '';
-	await db.equipCosmetic(actorMemberId, kind, value, itemId);
-	return { outcome: 'success', cosmetic_kind: kind, value };
 }
 
 async function payoutBountyOnHit(targetMemberId: any, attackerMemberId: any, guildId: any) {
@@ -441,8 +468,6 @@ async function resolveServerMemberId(serverId: any, discordMemberId: any) {
 	const member = await db.getMemberByDiscordId(serverId, String(discordMemberId)).catch(() => null);
 	return member?.id ?? null;
 }
-
-const TARGETED_EFFECTS = new Set(['xp_steal', 'xp_bomb', 'leech', 'gift', 'bounty']);
 
 export async function handleItemUse(client: any, payload: any) {
 	const { guild_id, actor_discord_id, target_discord_id, member_item_id } = payload || {};
@@ -508,12 +533,8 @@ export async function handleItemUse(client: any, payload: any) {
 			result = await resolveInsurance({ memberItemId: member_item_id, ownerMemberId: actorMemberId, config });
 		} else if (effectType === 'gift') {
 			result = await resolveGift({ actorMemberId, actorMemberItemId: member_item_id, targetMemberId, config, guildId: guild_id });
-		} else if (effectType === 'gamble') {
-			result = await resolveGamble({ actorMemberId, actorMemberItemId: member_item_id, config, guildId: guild_id });
 		} else if (effectType === 'bounty') {
 			result = await resolveBounty({ actorMemberId, actorMemberItemId: member_item_id, targetMemberId, config, guildId: guild_id });
-		} else if (effectType === 'cosmetic') {
-			result = await resolveCosmetic({ actorMemberId, itemId: memberItem.item_id, config });
 		} else {
 			result = { outcome: 'unsupported' };
 		}
@@ -604,8 +625,6 @@ export async function handleItemBuy(client: any, payload: any) {
 	const owned = await db.grantMemberItem(actorMemberId, item_id, qty);
 	return { ok: true, member_item_id: owned?.id, quantity: owned?.quantity, cost: totalCost };
 }
-
-const ANNOUNCED_EFFECTS = new Set(['xp_steal', 'xp_bomb', 'leech', 'gift', 'bounty', 'gamble', 'shield', 'reflect', 'insurance', 'xp_boost', 'vault']);
 
 function discordRelative(date: any): string | null {
 	if (!date) return null;
@@ -702,18 +721,19 @@ function buildItemUseEmbed(EmbedBuilder: any, embedConfig: any, ctx: any) {
 	}
 
 	if (effectType === 'gamble') {
+		const pctNote = result?.percent ? ` (${result.percent}% of XP)` : '';
 		if (result?.won) {
 			embed
 				.setColor(0x4ade80)
 				.setTitle('🎲 Gamble — Win!')
-				.setDescription(`${actorMention} gambled and **won**!`)
-				.addFields({ name: 'Net gain', value: `+${fmtXp(result?.net)}`, inline: true });
+				.setDescription(`${actorMention} wagered ${fmtXp(result?.wager)}${pctNote} and **won**!`)
+				.addFields({ name: 'Payout', value: fmtXp(result?.payout), inline: true }, { name: 'Net gain', value: `+${fmtXp(result?.net)}`, inline: true });
 		} else {
 			embed
 				.setColor(0xfb7185)
 				.setTitle('🎲 Gamble — Lost')
-				.setDescription(`${actorMention} gambled and **lost**.`)
-				.addFields({ name: 'XP lost', value: fmtXp(result?.stake), inline: true });
+				.setDescription(`${actorMention} wagered ${fmtXp(result?.wager)}${pctNote} and **lost it all**.`)
+				.addFields({ name: 'XP lost', value: fmtXp(result?.wager), inline: true });
 		}
 		return embed;
 	}
@@ -739,17 +759,6 @@ function buildItemUseEmbed(EmbedBuilder: any, embedConfig: any, ctx: any) {
 			.setColor(0xfbbf24)
 			.setTitle('⚡ XP Boost Activated')
 			.setDescription(`${actorMention} activated an XP boost${untilRel ? ` — active until ${untilRel}` : ''}. Earnings are multiplied while it lasts.`);
-		return embed;
-	}
-
-	if (effectType === 'vault') {
-		const dir = result?.direction === 'withdraw' ? 'withdrew' : 'deposited';
-		embed
-			.setColor(0x9aa7b2)
-			.setTitle('🏦 Vault')
-			.setDescription(
-				`${actorMention} ${dir} ${fmtXp(result?.xp)}${result?.direction === 'withdraw' ? ' from their vault.' : ' into their vault (safe from theft).'}`
-			);
 		return embed;
 	}
 
@@ -827,14 +836,6 @@ async function announceItemUse(client: any, ctx: any) {
 const EXPIRY_SWEEP_MS = 60_000;
 let expirySweepTimer: any = null;
 
-const EXPIRING_BUFFS: Record<string, { emoji: string; label: string; color: number; selfDesc: (mag: number) => string }> = {
-	xp_boost: { emoji: '⚡', label: 'XP Boost', color: 0xfbbf24, selfDesc: (m) => `Your **${m || 2}× XP Boost** has worn off.` },
-	shield: { emoji: '🛡️', label: 'Shield', color: 0x38bdf8, selfDesc: () => `Your **Shield** has worn off — you can be attacked again.` },
-	reflect: { emoji: '🪞', label: 'Reflect', color: 0xc084fc, selfDesc: () => `Your **Reflect** has worn off.` },
-	insurance: { emoji: '💵', label: 'Insurance', color: 0x5eead4, selfDesc: () => `Your **Insurance** has expired.` },
-	leech: { emoji: '🩸', label: 'Leech', color: 0xfb7185, selfDesc: (m) => `The **${m || 0}% Leech** on you has ended.` }
-};
-
 async function embedConfigFor(guildId: any) {
 	const { getEmbedConfig } = await import('../../../config.js');
 	return getEmbedConfig(guildId).catch(() => ({ COLOR: 0x14b8a6, FOOTER: 'Items' }));
@@ -868,17 +869,18 @@ async function sweepExpiredBuffs(client: any, botId: any, EmbedBuilder: any) {
 
 	const handledIds: number[] = [];
 	for (const row of rows) {
-		const meta = EXPIRING_BUFFS[row.effect_type];
-		if (meta) {
+		const meta = getItemEffect(row.effect_type);
+		if (meta?.expiringBuff && meta.buffExpiredText) {
 			const guild = client?.guilds?.cache?.get(String(row.discord_server_id));
 			const member = guild ? await guild.members.fetch(String(row.discord_member_id)).catch(() => null) : null;
 			if (guild) {
 				const embedConfig = await embedConfigFor(guild.id);
 				const mag = Number(row.magnitude) || 0;
+				const text = meta.buffExpiredText(mag);
 				const embed = new EmbedBuilder()
 					.setColor(meta.color)
 					.setTitle(`${meta.emoji} ${meta.label} Ended`)
-					.setDescription(member ? `${member} — ${meta.selfDesc(mag)}` : meta.selfDesc(mag))
+					.setDescription(member ? `${member} — ${text}` : text)
 					.setFooter({ text: embedConfig.FOOTER || 'Items' })
 					.setTimestamp();
 				await deliverToMemberAndChannel(client, guild, member, embed, dmAllowedFromRow(row), member ? `${member}` : undefined);

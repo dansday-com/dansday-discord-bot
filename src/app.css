@@ -3614,10 +3614,35 @@
 }
 
 .m-gamble-picker {
-	display: grid;
-	grid-template-columns: repeat(4, 1fr);
+	display: flex;
+	flex-wrap: wrap;
 	gap: 8px;
 	margin-bottom: 12px;
+}
+
+.m-gamble-picker .m-gamble-pct {
+	flex: 1 1 0;
+	min-width: 56px;
+}
+
+.m-gamble-custom {
+	width: 100%;
+	box-sizing: border-box;
+	margin-bottom: 12px;
+	padding: 11px 12px;
+	border-radius: 10px;
+	border: 1px solid var(--lb-border);
+	background: var(--chili-surface);
+	color: var(--lb-text);
+	font-size: 14px;
+	font-weight: 700;
+	text-align: center;
+	font-variant-numeric: tabular-nums;
+}
+
+.m-gamble-custom:focus {
+	outline: none;
+	border-color: #b8860b;
 }
 
 .m-gamble-pct {

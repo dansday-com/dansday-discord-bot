@@ -371,7 +371,7 @@ export async function resolveGift({ actorMemberId, actorMemberItemId, targetMemb
 }
 
 export async function handleGamble(client: any, payload: any) {
-	const { guild_id, actor_discord_id, item_id, percent } = payload || {};
+	const { guild_id, actor_discord_id, item_id, percent, amount } = payload || {};
 	if (!guild_id || !actor_discord_id || !item_id) return { ok: false, error: 'missing_fields' };
 
 	const { getServerForCurrentBot, isComponentFeatureEnabled, serverSettingsComponent } = await import('../../../config.js');
@@ -393,11 +393,17 @@ export async function handleGamble(client: any, payload: any) {
 	const actorMemberId = await resolveServerMemberId(server.id, actor_discord_id);
 	if (!actorMemberId) return { ok: false, error: 'member_not_found' };
 
-	const pct = Math.max(1, Math.min(100, Math.floor(Number(percent) || 0)));
 	const stats = await db.getMemberLevel(actorMemberId);
 	const rawXp = stats?.experience ?? 0;
 	const total = typeof rawXp === 'bigint' ? Number(rawXp) : Number(rawXp) || 0;
-	const wager = Math.floor((total * pct) / 100);
+	const customAmount = Math.max(0, Math.floor(Number(amount) || 0));
+	let wager: number;
+	if (customAmount > 0) {
+		wager = Math.min(customAmount, total);
+	} else {
+		const pct = Math.max(1, Math.min(100, Math.floor(Number(percent) || 0)));
+		wager = Math.floor((total * pct) / 100);
+	}
 	if (wager <= 0) return { ok: false, error: 'insufficient_xp' };
 
 	const cfg = parseConfig(item.config);
@@ -421,7 +427,7 @@ export async function handleGamble(client: any, payload: any) {
 	}
 	await invalidateEffectCache(actorMemberId);
 
-	const result = { outcome: won ? 'win' : 'lose', won, wager, payout, percent: pct, net: netChange };
+	const result = { outcome: won ? 'win' : 'lose', won, wager, payout, net: netChange };
 	await announceItemUse(client, {
 		guildId: guild_id,
 		actorDiscordId: actor_discord_id,

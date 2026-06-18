@@ -212,7 +212,8 @@
 
 	const WAGER_PERCENTS = [25, 50, 75, 100];
 	let gambleItem = $state<any | null>(null);
-	let gamblePercent = $state(25);
+	let gamblePercent = $state<number | 'custom'>(25);
+	let gambleCustom = $state<number | null>(null);
 	let gambleRolling = $state(false);
 	let reel = $state<string[]>([]);
 	let reelOffset = $state(0);
@@ -227,12 +228,15 @@
 		if (!data.valid) return;
 		gambleItem = item;
 		gamblePercent = 25;
+		gambleCustom = null;
 		reel = randomCells(12);
 		reelOffset = 0;
 		reelResult = null;
 	}
 
-	const wagerXp = $derived(Math.floor((liveXp * gamblePercent) / 100));
+	const wagerXp = $derived(
+		gamblePercent === 'custom' ? Math.min(Math.max(0, Math.floor(Number(gambleCustom) || 0)), liveXp) : Math.floor((liveXp * (gamblePercent as number)) / 100)
+	);
 
 	async function playGamble() {
 		const item = gambleItem;
@@ -244,10 +248,12 @@
 		gambleRolling = true;
 		reelResult = null;
 		try {
+			const body =
+				gamblePercent === 'custom' ? { card: data.hash, item_id: item.id, amount: wagerXp } : { card: data.hash, item_id: item.id, percent: gamblePercent };
 			const res = await fetch(`/api/public-statistics/${encodeURIComponent(data.server.slug)}/items/gamble`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ card: data.hash, item_id: item.id, percent: gamblePercent })
+				body: JSON.stringify(body)
 			});
 			const d = await res.json();
 			if (!d.success) {
@@ -463,7 +469,13 @@
 						>{p}%</button
 					>
 				{/each}
+				<button class="m-gamble-pct" class:m-gamble-pct--active={gamblePercent === 'custom'} disabled={gambleRolling} onclick={() => (gamblePercent = 'custom')}
+					>Custom</button
+				>
 			</div>
+			{#if gamblePercent === 'custom'}
+				<input class="m-gamble-custom" type="number" min="1" max={liveXp} placeholder="Enter XP to wager" bind:value={gambleCustom} disabled={gambleRolling} />
+			{/if}
 			<p class="m-gamble-wager">Wagering <strong>{fmt(wagerXp)} XP</strong> of {fmt(liveXp)}</p>
 			<button class="m-gamble-play" disabled={gambleRolling || wagerXp <= 0} onclick={playGamble}>
 				{#if gambleRolling}<i class="fas fa-spinner fa-spin"></i>Rolling…{:else}<i class="fas fa-dice"></i>Gamble{/if}

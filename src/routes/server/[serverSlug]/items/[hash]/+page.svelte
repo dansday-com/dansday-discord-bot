@@ -95,6 +95,8 @@
 		return Number(n ?? 0).toLocaleString();
 	}
 
+	const memberAvatar = $derived(data.memberAvatar ?? `https://cdn.discordapp.com/embed/avatars/${Number(data.memberDiscordId) % 5 || 0}.png`);
+
 	const visibleItems = $derived(activeType === 'all' ? data.items : data.items.filter((i: any) => i.effect_type === activeType));
 
 	function canAfford(item: any): boolean {
@@ -138,7 +140,7 @@
 		}
 	}
 
-	const SELF_BUFFS = new Set(['xp_boost', 'shield', 'reflect', 'insurance']);
+	const SELF_BUFFS = new Set(['boost', 'shield', 'reflect', 'insurance']);
 	function isBuffActive(effectType: string): boolean {
 		if (!SELF_BUFFS.has(effectType)) return false;
 		return ((data.activeEffects ?? []) as any[]).some((e) => e.effect_type === effectType && e.expiresAt && e.expiresAt > now);
@@ -275,15 +277,17 @@
 	{#if data.valid}
 		<!-- XP balance header -->
 		<div class="m-xp">
-			<div class="m-xp-main">
-				<span class="m-xp-coin"><i class="fas fa-star"></i></span>
-				<div class="m-xp-figures">
-					<span class="m-xp-amount">{fmt(liveXp)}<span class="m-xp-unit">XP</span></span>
-					<span class="m-xp-sub">
-						<span class="m-xp-chip"><i class="fas fa-layer-group"></i>Lvl {level}</span>
-						{#if rank}<span class="m-xp-chip"><i class="fas fa-ranking-star"></i>#{rank}</span>{/if}
-					</span>
-				</div>
+			<div class="m-xp-glow"></div>
+			<div class="m-xp-avatar">
+				<img src={memberAvatar} alt={data.memberName ?? ''} loading="lazy" />
+			</div>
+			<div class="m-xp-figures">
+				<span class="m-xp-wallet"><i class="fas fa-wallet"></i>Wallet</span>
+				<span class="m-xp-amount">{fmt(liveXp)}<span class="m-xp-unit">XP</span></span>
+				<span class="m-xp-sub">
+					<span class="m-xp-chip"><i class="fas fa-layer-group"></i>Lvl {level}</span>
+					{#if rank}<span class="m-xp-chip"><i class="fas fa-ranking-star"></i>#{rank}</span>{/if}
+				</span>
 			</div>
 		</div>
 
@@ -329,27 +333,23 @@
 		{#if visibleItems.length === 0}
 			<div class="m-members-empty">No items in this category.</div>
 		{:else}
-			<ul class="m-items-grid">
+			<ul class="m-items-list">
 				{#each visibleItems as item (item.id)}
 					{@const affordable = canAfford(item)}
-					<li class="m-items-card" class:m-items-card--locked={!affordable} class:m-items-card--burst={burstId === item.id} data-cat={item.effect_type}>
-						<div class="m-items-accent"></div>
-						<div class="m-items-card-top">
-							<span class="m-items-medallion">{item.icon || '🎁'}</span>
-							<div class="m-items-card-head">
-								<span class="m-items-name">{item.name}</span>
-								<span class="m-items-cat">{effectLabel(item.effect_type)}</span>
-							</div>
+					<li class="m-row" class:m-row--locked={!affordable} class:m-row--burst={burstId === item.id} data-cat={item.effect_type}>
+						<span class="m-row-medallion">{item.icon || '🎁'}</span>
+						<div class="m-row-body">
+							<span class="m-row-name">{item.name}</span>
+							<span class="m-row-desc">{item.description || effectSummary(item)}</span>
 						</div>
-						<p class="m-items-desc">{item.description || effectSummary(item)}</p>
-						<div class="m-items-foot">
+						<div class="m-row-action">
 							{#if item.effect_type === 'gamble'}
-								<button class="m-items-buy m-items-buy--play" disabled={!data.valid} onclick={() => openGamble(item)}>
+								<button class="m-row-btn m-row-btn--play" disabled={!data.valid} onclick={() => openGamble(item)}>
 									<i class="fas fa-dice"></i>Play
 								</button>
 							{:else}
-								<span class="m-items-cost" class:m-items-cost--short={!affordable}><i class="fas fa-star"></i>{fmt(item.cost)}</span>
-								<button class="m-items-buy" disabled={busy === item.id || !data.valid || !affordable} onclick={() => buy(item)}>
+								<span class="m-row-cost" class:m-row-cost--short={!affordable}><i class="fas fa-star"></i>{fmt(item.cost)}</span>
+								<button class="m-row-btn" disabled={busy === item.id || !data.valid || !affordable} onclick={() => buy(item)}>
 									{#if busy === item.id}<i class="fas fa-spinner fa-spin"></i>{:else if !affordable}<i class="fas fa-lock"></i>{:else}<i
 											class="fas fa-cart-plus"
 										></i>{/if}
@@ -376,27 +376,22 @@
 	{:else if data.inventory.length === 0}
 		<div class="m-members-empty">Your bag is empty. Buy items in the shop!</div>
 	{:else}
-		<ul class="m-items-grid">
+		<ul class="m-items-list">
 			{#each data.inventory as item (item.member_item_id)}
-				<li class="m-items-card" data-cat={item.effect_type}>
-					<div class="m-items-accent"></div>
-					<span class="m-items-badge">×{item.quantity}</span>
-					<div class="m-items-card-top">
-						<span class="m-items-medallion">{item.icon || '🎁'}</span>
-						<div class="m-items-card-head">
-							<span class="m-items-name">{item.name}</span>
-							<span class="m-items-cat">{effectLabel(item.effect_type)}</span>
-						</div>
+				<li class="m-row" data-cat={item.effect_type}>
+					<span class="m-row-medallion">{item.icon || '🎁'}<span class="m-row-qty">×{item.quantity}</span></span>
+					<div class="m-row-body">
+						<span class="m-row-name">{item.name}</span>
+						<span class="m-row-desc">{item.description || effectSummary(item)}</span>
 					</div>
-					<p class="m-items-desc">{item.description || effectSummary(item)}</p>
-					<div class="m-items-foot">
+					<div class="m-row-action">
 						{#if isBuffActive(item.effect_type)}
-							<button class="m-items-buy m-items-buy--use" disabled><i class="fas fa-check"></i>Active</button>
+							<button class="m-row-btn m-row-btn--use" disabled><i class="fas fa-check"></i>Active</button>
 						{:else}
-							<button class="m-items-buy m-items-buy--use" disabled={busy === item.member_item_id || item.quantity <= 0} onclick={() => onUse(item)}>
+							<button class="m-row-btn m-row-btn--use" disabled={busy === item.member_item_id || item.quantity <= 0} onclick={() => onUse(item)}>
 								{#if busy === item.member_item_id}<i class="fas fa-spinner fa-spin"></i>{:else if TARGETED.has(item.effect_type)}<i class="fas fa-crosshairs"
 									></i>{:else}<i class="fas fa-bolt"></i>{/if}
-								{TARGETED.has(item.effect_type) ? 'Use on…' : 'Use'}
+								{TARGETED.has(item.effect_type) ? 'Use' : 'Use'}
 							</button>
 						{/if}
 					</div>

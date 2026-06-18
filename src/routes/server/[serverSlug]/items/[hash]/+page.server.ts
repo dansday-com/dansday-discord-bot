@@ -62,7 +62,7 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 		let maxCooldownMin = 0;
 		let maxImmunityMin = 0;
 		for (const it of items as any[]) {
-			if (it.effect_type !== 'xp_steal' && it.effect_type !== 'xp_bomb') continue;
+			if (it.effect_type !== 'steal' && it.effect_type !== 'bomb') continue;
 			const cfg = typeof it.config === 'string' ? safeParse(it.config) || {} : it.config || {};
 			maxCooldownMin = Math.max(maxCooldownMin, Number(cfg.cooldown_minutes) || 0);
 			maxImmunityMin = Math.max(maxImmunityMin, Number(cfg.immunity_minutes) || 0);
@@ -91,6 +91,7 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 		valid,
 		memberName: member ? member.server_display_name || member.display_name || member.username : null,
 		memberDiscordId: member ? String(member.discord_member_id) : null,
+		memberAvatar: member?.avatar ?? null,
 		balance: member
 			? {
 					experience: Number(member.experience ?? 0) || 0,

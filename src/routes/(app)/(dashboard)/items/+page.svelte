@@ -21,7 +21,7 @@
 		return {
 			id: null as number | null,
 			name: '',
-			effect_type: 'xp_boost',
+			effect_type: 'boost',
 			description: '',
 			cost: 100,
 			icon: '',
@@ -69,12 +69,12 @@
 		const c = form.cfg;
 		const t = form.effect_type;
 		const config: Record<string, any> = {};
-		if (t === 'xp_steal' || t === 'xp_bomb') {
+		if (t === 'steal' || t === 'bomb') {
 			config.min_percent = Number(c.min_percent);
 			config.max_percent = Number(c.max_percent);
 			config.cooldown_minutes = Number(c.cooldown_minutes);
 			config.immunity_minutes = Number(c.immunity_minutes);
-		} else if (t === 'xp_boost') {
+		} else if (t === 'boost') {
 			config.multiplier = Number(c.multiplier);
 			config.effect_duration_minutes = Number(c.effect_duration_minutes);
 			config.scope = c.scope;
@@ -108,7 +108,7 @@
 		const f = blankForm();
 		f.id = item.id;
 		f.name = item.name ?? '';
-		f.effect_type = item.effect_type ?? 'xp_boost';
+		f.effect_type = item.effect_type ?? 'boost';
 		f.description = item.description ?? '';
 		f.cost = item.cost ?? 0;
 		f.icon = item.icon ?? '';
@@ -342,7 +342,7 @@
 				<!-- Effect settings -->
 				<div class="border-ash-700 bg-ash-900/40 space-y-3 rounded-xl border p-4">
 					<p class="text-ash-400 text-[11px] font-semibold tracking-wide uppercase">Effect settings</p>
-					{#if form.effect_type === 'xp_steal' || form.effect_type === 'xp_bomb'}
+					{#if form.effect_type === 'steal' || form.effect_type === 'bomb'}
 						<div class="grid grid-cols-2 gap-3">
 							<label class="text-ash-300 text-xs"
 								>Min %<input
@@ -374,9 +374,9 @@
 							>
 						</div>
 						<p class="text-ash-500 text-[11px]">
-							{form.effect_type === 'xp_steal' ? 'Random % of target total XP, transferred to buyer.' : 'Random % of target total XP, destroyed (vanishes).'}
+							{form.effect_type === 'steal' ? 'Random % of target total XP, transferred to buyer.' : 'Random % of target total XP, destroyed (vanishes).'}
 						</p>
-					{:else if form.effect_type === 'xp_boost'}
+					{:else if form.effect_type === 'boost'}
 						<div class="grid grid-cols-2 gap-3">
 							<label class="text-ash-300 text-xs"
 								>Multiplier<input

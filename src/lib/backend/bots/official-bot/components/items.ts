@@ -6,7 +6,7 @@ import { TARGETED_EFFECTS, ANNOUNCED_EFFECTS, getItemEffect } from '../../../../
 
 const EFFECT_CACHE_TTL_MS = 5000;
 const memoryEffectCache = new Map();
-const SELF_BUFFS = new Set(['xp_boost', 'shield', 'reflect', 'insurance']);
+const SELF_BUFFS = new Set(['boost', 'shield', 'reflect', 'insurance']);
 
 function effectCacheKey(memberId: any) {
 	return `items:effects:${memberId}`;
@@ -79,7 +79,7 @@ export async function computeAwardModifiers(memberId: any, source: any = 'all') 
 	const leeches: any[] = [];
 
 	for (const effect of effects) {
-		if (effect.effect_type === 'xp_boost' && effectScopeMatches(effect, source)) {
+		if (effect.effect_type === 'boost' && effectScopeMatches(effect, source)) {
 			const m = Number(effect.magnitude) || 0;
 			if (m > 0) multiplier *= m;
 		} else if (effect.effect_type === 'leech') {
@@ -524,11 +524,11 @@ export async function handleItemUse(client: any, payload: any) {
 
 	let result: any;
 	try {
-		if (effectType === 'xp_steal') {
+		if (effectType === 'steal') {
 			result = await resolveSteal({ actorMemberId, actorMemberItemId: member_item_id, targetMemberId, config, guildId: guild_id });
-		} else if (effectType === 'xp_bomb') {
+		} else if (effectType === 'bomb') {
 			result = await resolveBomb({ actorMemberId, actorMemberItemId: member_item_id, targetMemberId, config, guildId: guild_id });
-		} else if (effectType === 'xp_boost') {
+		} else if (effectType === 'boost') {
 			result = await resolveBoost({ memberItemId: member_item_id, config });
 			await invalidateEffectCache(actorMemberId);
 		} else if (effectType === 'shield') {
@@ -661,15 +661,15 @@ function buildItemUseEmbed(EmbedBuilder: any, embedConfig: any, ctx: any) {
 
 	const fields: any[] = [];
 
-	if (effectType === 'xp_steal' || effectType === 'xp_bomb') {
-		const verbPast = effectType === 'xp_steal' ? 'robbed' : 'bombed';
-		const emoji = effectType === 'xp_steal' ? '💰' : '💥';
+	if (effectType === 'steal' || effectType === 'bomb') {
+		const verbPast = effectType === 'steal' ? 'robbed' : 'bombed';
+		const emoji = effectType === 'steal' ? '💰' : '💥';
 
 		if (outcome === 'blocked') {
 			embed
 				.setColor(0x38bdf8)
 				.setTitle('🛡️ Attack Blocked')
-				.setDescription(`${targetMention}'s **Shield** blocked ${actorMention}'s ${effectType === 'xp_steal' ? 'steal' : 'bomb'}!`);
+				.setDescription(`${targetMention}'s **Shield** blocked ${actorMention}'s ${effectType === 'steal' ? 'steal' : 'bomb'}!`);
 			return embed;
 		}
 		if (outcome === 'reflected') {
@@ -683,14 +683,14 @@ function buildItemUseEmbed(EmbedBuilder: any, embedConfig: any, ctx: any) {
 
 		embed.setTitle(`${emoji} Member ${verbPast.charAt(0).toUpperCase() + verbPast.slice(1)}!`);
 		embed.setDescription(
-			effectType === 'xp_steal'
+			effectType === 'steal'
 				? `${actorMention} robbed ${targetMention}${item?.name ? ` with **${icon}${item.name}**` : ''}!`
 				: `${actorMention} bombed ${targetMention}${item?.name ? ` with **${icon}${item.name}**` : ''}!`
 		);
 		fields.push({ name: 'Attacker', value: actorMention, inline: true });
 		fields.push({ name: 'Victim', value: targetMention, inline: true });
 		fields.push({
-			name: effectType === 'xp_steal' ? 'XP stolen' : 'XP destroyed',
+			name: effectType === 'steal' ? 'XP stolen' : 'XP destroyed',
 			value: `${fmtXp(result?.xp)}${result?.percent ? ` (${result.percent}%)` : ''}`,
 			inline: true
 		});
@@ -761,53 +761,16 @@ function buildItemUseEmbed(EmbedBuilder: any, embedConfig: any, ctx: any) {
 		return embed;
 	}
 
-	if (effectType === 'xp_boost') {
+	if (effectType === 'boost') {
 		const untilRel = discordRelative(result?.expiresAt);
 		embed
 			.setColor(0xfbbf24)
-			.setTitle('⚡ XP Boost Activated')
-			.setDescription(`${actorMention} activated an XP boost${untilRel ? ` — active until ${untilRel}` : ''}. Earnings are multiplied while it lasts.`);
+			.setTitle('⚡ Boost Activated')
+			.setDescription(`${actorMention} activated a boost${untilRel ? ` — active until ${untilRel}` : ''}. Earnings are multiplied while it lasts.`);
 		return embed;
 	}
 
 	return null;
-}
-
-const itemsUrlCache = new Map<string, { url: string | null; at: number }>();
-async function buildItemsButtonRow(guildId: any, discordMemberId: any) {
-	if (!discordMemberId) return null;
-	const cacheKey = `${guildId}:${discordMemberId}`;
-	const cached = itemsUrlCache.get(cacheKey);
-	let url: string | null;
-	if (cached && Date.now() - cached.at < 300_000) {
-		url = cached.url;
-	} else {
-		url = await resolveMemberItemsUrl(guildId, discordMemberId);
-		itemsUrlCache.set(cacheKey, { url, at: Date.now() });
-	}
-	if (!url) return null;
-
-	const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = await import('discord.js');
-	return new ActionRowBuilder<any>().addComponents(new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(url).setLabel('Open Items').setEmoji('🛒'));
-}
-
-async function resolveMemberItemsUrl(guildId: any, discordMemberId: any): Promise<string | null> {
-	try {
-		const { publicItemsUrl } = await import('../../../../url.js');
-		const { computePublicServerSlugForServerId } = await import('../../../../frontend/public/server-slug/index.js');
-		const { computeCardToken } = await import('../../../../frontend/public/items/index.js');
-		const { getServerForCurrentBot } = await import('../../../config.js');
-
-		const server = await getServerForCurrentBot(String(guildId));
-		const member = await db.getMemberByDiscordId(server.id, String(discordMemberId)).catch(() => null);
-		if (!member?.member_since) return null;
-		const slug = await computePublicServerSlugForServerId(Number(server.id));
-		if (!slug) return null;
-		const token = computeCardToken(String(discordMemberId), member.member_since);
-		return publicItemsUrl(slug, token);
-	} catch (_) {
-		return null;
-	}
 }
 
 async function announceItemUse(client: any, ctx: any) {
@@ -837,8 +800,7 @@ async function announceItemUse(client: any, ctx: any) {
 	const mentions = [actor, target].filter(Boolean).map((m: any) => `${m}`);
 	const content = mentions.length > 0 ? mentions.join(' ') : undefined;
 
-	const row = await buildItemsButtonRow(guildId, actorDiscordId);
-	await channel.send({ content, embeds: [embed], components: row ? [row] : undefined }).catch(() => null);
+	await channel.send({ content, embeds: [embed] }).catch(() => null);
 }
 
 const EXPIRY_SWEEP_MS = 60_000;
@@ -858,17 +820,9 @@ async function getProgressChannel(client: any, guild: any) {
 	return channel && channel.isTextBased() ? channel : null;
 }
 
-async function deliverToMemberAndChannel(client: any, guild: any, member: any, embed: any, dmAllowed: boolean, channelContent?: string) {
-	const row = member?.id ? await buildItemsButtonRow(guild.id, member.id) : null;
-	const components = row ? [row] : undefined;
-	if (member?.user && dmAllowed) await member.user.send({ embeds: [embed], components }).catch(() => null);
+async function deliverToMemberAndChannel(client: any, guild: any, embed: any, channelContent?: string) {
 	const channel = await getProgressChannel(client, guild);
-	if (channel) await channel.send({ content: channelContent, embeds: [embed], components }).catch(() => null);
-}
-
-function dmAllowedFromRow(row: any): boolean {
-	const v = row?.dm_notifications_enabled;
-	return v === undefined || v === null || v === 1 || v === true;
+	if (channel) await channel.send({ content: channelContent, embeds: [embed] }).catch(() => null);
 }
 
 async function sweepExpiredBuffs(client: any, botId: any, EmbedBuilder: any) {
@@ -891,7 +845,7 @@ async function sweepExpiredBuffs(client: any, botId: any, EmbedBuilder: any) {
 					.setDescription(member ? `${member} — ${text}` : text)
 					.setFooter({ text: embedConfig.FOOTER || 'Items' })
 					.setTimestamp();
-				await deliverToMemberAndChannel(client, guild, member, embed, dmAllowedFromRow(row), member ? `${member}` : undefined);
+				await deliverToMemberAndChannel(client, guild, embed, member ? `${member}` : undefined);
 			}
 		}
 		handledIds.push(Number(row.id));
@@ -923,7 +877,7 @@ async function sweepDerivedEvents(client: any, botId: any, EmbedBuilder: any) {
 			.setDescription(member ? `${member} is no longer immune — fair game again!` : `A member is no longer immune.`)
 			.setFooter({ text: embedConfig.FOOTER || 'Items' })
 			.setTimestamp();
-		await deliverToMemberAndChannel(client, guild, member, embed, dmAllowedFromRow(hit), member ? `${member}` : undefined);
+		await deliverToMemberAndChannel(client, guild, embed, member ? `${member}` : undefined);
 	}
 
 	const attacks = await db.getRecentAttackerActions(botId).catch(() => []);
@@ -947,7 +901,7 @@ async function sweepDerivedEvents(client: any, botId: any, EmbedBuilder: any) {
 			.setDescription(member ? `${member} — your attack cooldown is up. You can steal or bomb again!` : `Attack cooldown is up.`)
 			.setFooter({ text: embedConfig.FOOTER || 'Items' })
 			.setTimestamp();
-		await deliverToMemberAndChannel(client, guild, member, embed, dmAllowedFromRow(atk), member ? `${member}` : undefined);
+		await deliverToMemberAndChannel(client, guild, embed, member ? `${member}` : undefined);
 	}
 }
 
@@ -974,7 +928,7 @@ async function maxAttackConfigMs(discordServerId: any, key: string): Promise<num
 	const items = await db.listBotItems(server.bot_id, {}).catch(() => []);
 	let maxMin = 0;
 	for (const it of (items as any[]) || []) {
-		if (it.effect_type !== 'xp_steal' && it.effect_type !== 'xp_bomb') continue;
+		if (it.effect_type !== 'steal' && it.effect_type !== 'bomb') continue;
 		const cfg = parseConfig(it.config);
 		const v = Math.max(0, Number(cfg[key]) || 0);
 		if (v > maxMin) maxMin = v;

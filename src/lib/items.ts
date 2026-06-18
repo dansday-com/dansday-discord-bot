@@ -1,4 +1,4 @@
-export type ItemEffectId = 'xp_steal' | 'xp_bomb' | 'xp_boost' | 'shield' | 'leech' | 'reflect' | 'insurance' | 'gamble' | 'gift' | 'bounty';
+export type ItemEffectId = 'steal' | 'bomb' | 'boost' | 'shield' | 'leech' | 'reflect' | 'insurance' | 'gamble' | 'gift' | 'bounty';
 
 export type ItemEffect = {
 	id: ItemEffectId;
@@ -17,8 +17,8 @@ export type ItemEffect = {
 
 export const ITEM_EFFECTS: ItemEffect[] = [
 	{
-		id: 'xp_steal',
-		label: 'XP Steal',
+		id: 'steal',
+		label: 'Steal',
 		icon: 'fa-hand',
 		accent: '#fb7185',
 		accentSoft: 'rgba(251, 113, 133, 0.15)',
@@ -30,8 +30,8 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		summary: (c) => `Steal ${c.min_percent ?? 1}–${c.max_percent ?? 25}% of a member's total XP.`
 	},
 	{
-		id: 'xp_bomb',
-		label: 'XP Bomb',
+		id: 'bomb',
+		label: 'Bomb',
 		icon: 'fa-bomb',
 		accent: '#fb7185',
 		accentSoft: 'rgba(251, 113, 133, 0.15)',
@@ -43,8 +43,8 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		summary: (c) => `Destroy ${c.min_percent ?? 1}–${c.max_percent ?? 50}% of a member's total XP.`
 	},
 	{
-		id: 'xp_boost',
-		label: 'XP Boost',
+		id: 'boost',
+		label: 'Boost',
 		icon: 'fa-bolt',
 		accent: '#fbbf24',
 		accentSoft: 'rgba(251, 191, 36, 0.15)',
@@ -53,7 +53,7 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		targeted: false,
 		announced: true,
 		expiringBuff: true,
-		buffExpiredText: (m) => `Your **${m || 2}× XP Boost** has worn off.`,
+		buffExpiredText: (m) => `Your **${m || 2}× Boost** has worn off.`,
 		summary: (c) => `${c.multiplier ?? 2}× XP for ${c.effect_duration_minutes ?? 60} min (${c.scope ?? 'all'}).`
 	},
 	{
@@ -202,18 +202,18 @@ export function describeItemOutcome(effectType: string, result: any): ItemOutcom
 		return { tone: 'lose', emoji: '💀', title: 'You Lost', line: `Better luck next time.`, deltaXp: -(Number(r.wager) || 0), untilMs: null };
 	}
 
-	if (effectType === 'xp_steal' || effectType === 'xp_bomb') {
-		const verb = effectType === 'xp_steal' ? 'Robbed' : 'Bombed';
+	if (effectType === 'steal' || effectType === 'bomb') {
+		const verb = effectType === 'steal' ? 'Robbed' : 'Bombed';
 		if (outcome === 'blocked') return { tone: 'lose', emoji: '🛡️', title: 'Blocked!', line: `Their shield blocked your attack.`, deltaXp: null, untilMs: null };
 		if (outcome === 'reflected')
 			return { tone: 'lose', emoji: '🪞', title: 'Reflected!', line: `It bounced back — you lost the XP.`, deltaXp: -xp, untilMs: null };
-		const extra = effectType === 'xp_steal' ? `+${xp.toLocaleString()} XP taken` : `${xp.toLocaleString()} XP destroyed`;
+		const extra = effectType === 'steal' ? `+${xp.toLocaleString()} XP taken` : `${xp.toLocaleString()} XP destroyed`;
 		return {
 			tone: 'win',
-			emoji: effectType === 'xp_steal' ? '💰' : '💥',
+			emoji: effectType === 'steal' ? '💰' : '💥',
 			title: `${verb}!`,
 			line: extra,
-			deltaXp: effectType === 'xp_steal' ? xp : 0,
+			deltaXp: effectType === 'steal' ? xp : 0,
 			untilMs: null
 		};
 	}
@@ -259,7 +259,7 @@ export function describeItemOutcome(effectType: string, result: any): ItemOutcom
 			deltaXp: null,
 			untilMs: toMs(r.expiresAt)
 		};
-	if (effectType === 'xp_boost')
+	if (effectType === 'boost')
 		return {
 			tone: 'win',
 			emoji: '⚡',

@@ -1,12 +1,180 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
-	import { effectSummary } from '$lib/items.js';
+	import { showToast } from '$lib/frontend/toast.svelte';
+	import { effectSummary, effectIcon, effectLabel } from '$lib/items.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 
 	const ctx = getContext('items') as any;
-	const { fmt, canAfford, buy, openGamble, effectIcon, effectLabel } = ctx;
+	const { fmt, canAfford } = ctx;
+
+	async function buy(item: any, ev?: MouseEvent) {
+		if (!canAfford(item)) {
+			showToast(`Not enough XP — need ${fmt(item.cost)}`, 'error');
+			return;
+		}
+		const card = (ev?.currentTarget as HTMLElement | undefined)?.closest('.m-card');
+		const medallion = card?.querySelector('.m-card-medallion') as HTMLElement | null;
+		ctx.setBusy(item.id);
+		const optimistic = Math.max(0, ctx.liveXp - (Number(item.cost) || 0));
+		try {
+			const res = await fetch(`/api/items/${encodeURIComponent(ctx.serverSlug)}/buy`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ card: ctx.hash, item_id: item.id, quantity: 1 })
+			});
+			const d = await res.json();
+			if (d.success) {
+				ctx.setBurst(item.id);
+				setTimeout(() => ctx.setBurst(null), 600);
+				ctx.setLiveXp(optimistic);
+				ctx.flyToBag(medallion, effectIcon(item.effect_type));
+				await ctx.invalidateAll();
+			} else showToast(d.error || 'Purchase failed', 'error');
+		} catch {
+			showToast('Purchase failed', 'error');
+		} finally {
+			ctx.setBusy(null);
+		}
+	}
+
+	const WAGER_PERCENTS = [25, 50, 75, 100];
+	let gambleItem = $state<any | null>(null);
+	let gamblePercent = $state<number | 'custom'>(25);
+	let gambleCustom = $state<number | null>(null);
+	let gambleRolling = $state(false);
+	let reel = $state<string[]>([]);
+	let reelOffset = $state(0);
+	let reelResult = $state<'win' | 'lose' | null>(null);
+	let reelSpinning = $state(false);
+	let gambleShake = $state(false);
+	let coins = $state<{ id: number; x: number; delay: number }[]>([]);
+	let winCount = $state(0);
+	let lostAmount = $state(0);
+	let reelWrapEl: HTMLDivElement | undefined = $state();
+
+	function randomCells(n: number): ('win' | 'lose')[] {
+		return Array.from({ length: n }, () => (Math.random() < 0.5 ? 'win' : 'lose'));
+	}
+
+	function openGamble(item: any) {
+		gambleItem = item;
+		gamblePercent = 25;
+		gambleCustom = null;
+		reel = randomCells(12);
+		reelOffset = 0;
+		reelResult = null;
+		reelSpinning = false;
+		gambleShake = false;
+		coins = [];
+		winCount = 0;
+		lostAmount = 0;
+	}
+
+	function resetGamble() {
+		gamblePercent = 25;
+		gambleCustom = null;
+		reel = randomCells(12);
+		reelOffset = 0;
+		reelResult = null;
+		coins = [];
+		winCount = 0;
+		lostAmount = 0;
+	}
+
+	const wagerXp = $derived(
+		gamblePercent === 'custom'
+			? Math.min(Math.max(0, Math.floor(Number(gambleCustom) || 0)), ctx.liveXp)
+			: Math.floor((ctx.liveXp * (gamblePercent as number)) / 100)
+	);
+	const payoutMultiplier = $derived(Number(gambleItem?.config?.payout_multiplier ?? 2) || 2);
+	const potentialWin = $derived(Math.floor(wagerXp * payoutMultiplier));
+
+	function spawnCoins() {
+		coins = Array.from({ length: 14 }, (_, i) => ({ id: i, x: (i / 13) * 100, delay: (i % 7) * 55 }));
+		setTimeout(() => (coins = []), 1600);
+	}
+
+	function countUpWin(target: number) {
+		winCount = 0;
+		const steps = 28;
+		let i = 0;
+		const t = setInterval(() => {
+			i++;
+			winCount = Math.round(target * (1 - Math.pow(1 - i / steps, 2)));
+			if (i >= steps) {
+				winCount = target;
+				clearInterval(t);
+			}
+		}, 22);
+	}
+
+	async function playGamble() {
+		const item = gambleItem;
+		if (!item || gambleRolling) return;
+		if (wagerXp <= 0) {
+			showToast('Not enough XP to wager', 'error');
+			return;
+		}
+		gambleRolling = true;
+		reelResult = null;
+		coins = [];
+		winCount = 0;
+		lostAmount = 0;
+		reel = randomCells(12);
+		reelOffset = 0;
+		reelSpinning = true;
+		try {
+			const body =
+				gamblePercent === 'custom' ? { card: ctx.hash, item_id: item.id, amount: wagerXp } : { card: ctx.hash, item_id: item.id, percent: gamblePercent };
+			const res = await fetch(`/api/items/${encodeURIComponent(ctx.serverSlug)}/gamble`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(body)
+			});
+			const d = await res.json();
+			if (!d.success) {
+				showToast(d.error || 'Gamble failed', 'error');
+				gambleRolling = false;
+				reelSpinning = false;
+				return;
+			}
+			const won = !!d.result?.won;
+			const landIndex = 32;
+			const cells = randomCells(40);
+			cells[landIndex] = won ? 'win' : 'lose';
+			cells[landIndex - 1] = won ? 'lose' : 'win';
+			cells[landIndex + 1] = won ? 'lose' : 'win';
+			reel = cells;
+			reelOffset = 0;
+			await new Promise((r) => requestAnimationFrame(() => r(null)));
+			const wrapW = reelWrapEl?.clientWidth ?? 360;
+			const cellEls = reelWrapEl?.querySelectorAll<HTMLElement>('.m-gamble-cell');
+			const target = cellEls?.[landIndex];
+			if (target) {
+				const cellCenter = target.offsetLeft + target.offsetWidth / 2;
+				reelOffset = wrapW / 2 - cellCenter;
+			}
+			setTimeout(() => {
+				reelSpinning = false;
+				gambleRolling = false;
+				reelResult = won ? 'win' : 'lose';
+				gambleShake = true;
+				setTimeout(() => (gambleShake = false), 480);
+				if (won) {
+					spawnCoins();
+					countUpWin(Math.floor(Number(d.result?.payout) || potentialWin));
+				} else {
+					lostAmount = Math.floor(Number(d.result?.wager) || wagerXp);
+				}
+			}, 3700);
+		} catch {
+			showToast('Gamble failed', 'error');
+			gambleRolling = false;
+			reelSpinning = false;
+		}
+	}
 </script>
 
 <svelte:head><title>Shop · {data.server.name}</title></svelte:head>
@@ -46,5 +214,125 @@
 				</div>
 			</article>
 		{/each}
+	</div>
+{/if}
+
+{#if gambleItem}
+	<div class="m-gamble-overlay" role="presentation" onclick={() => (!gambleRolling ? (gambleItem = null) : null)}>
+		<div
+			class="m-gamble"
+			class:m-gamble--shake={gambleShake}
+			class:m-gamble--won={reelResult === 'win'}
+			class:m-gamble--lost={reelResult === 'lose'}
+			role="dialog"
+			aria-modal="true"
+			aria-label="Gamble"
+			onclick={(e) => e.stopPropagation()}
+		>
+			<div class="m-gamble-aura"></div>
+			<div class="m-gamble-head">
+				<span class="m-gamble-title"><span class="m-gamble-ico"><i class="fas {effectIcon(gambleItem.effect_type)}"></i></span>{gambleItem.name}</span>
+				{#if !gambleRolling}<button class="m-gamble-x" aria-label="Close" onclick={() => (gambleItem = null)}><i class="fas fa-times"></i></button>{/if}
+			</div>
+
+			<div
+				bind:this={reelWrapEl}
+				class="m-gamble-reelwrap"
+				class:m-gamble-reelwrap--win={reelResult === 'win'}
+				class:m-gamble-reelwrap--lose={reelResult === 'lose'}
+				class:m-gamble-reelwrap--spinning={reelSpinning}
+			>
+				<div class="m-gamble-frame"></div>
+				<div class="m-gamble-pointer"></div>
+				<div
+					class="m-gamble-reel"
+					class:m-gamble-reel--spin={reelSpinning}
+					style="transform: translateX({reelOffset}px); transition: {reelOffset === 0 ? 'none' : 'transform 3.6s cubic-bezier(0.09, 0.62, 0.12, 1)'};"
+				>
+					{#each reel as cell, i (i)}
+						<div class="m-gamble-cell m-gamble-cell--{cell}">
+							<i class="fas {cell === 'win' ? 'fa-sack-dollar' : 'fa-skull'}"></i>
+						</div>
+					{/each}
+				</div>
+
+				{#if coins.length > 0}
+					<div class="m-gamble-coins">
+						{#each coins as c (c.id)}
+							<span class="m-gamble-coin" style="left: {c.x}%; animation-delay: {c.delay}ms"><i class="fas fa-coins"></i></span>
+						{/each}
+					</div>
+				{/if}
+
+				{#if reelResult}
+					<div class="m-gamble-verdict m-gamble-verdict--{reelResult}">
+						{#if reelResult === 'win'}
+							<span class="m-gamble-verdict-label">WIN</span>
+							<span class="m-gamble-verdict-amt">+{fmt(winCount)} XP</span>
+						{:else}
+							<span class="m-gamble-verdict-label">BUST</span>
+							<span class="m-gamble-verdict-amt">−{fmt(lostAmount)} XP</span>
+						{/if}
+					</div>
+				{/if}
+			</div>
+
+			{#if reelResult && !gambleRolling}
+				<div class="m-gamble-again">
+					<button class="m-gamble-reset" onclick={resetGamble}><i class="fas fa-sliders"></i>Change bet</button>
+					<button class="m-gamble-play m-gamble-play--charged" disabled={wagerXp <= 0 || wagerXp > ctx.liveXp} onclick={playGamble}>
+						<i class="fas fa-rotate-right"></i>Spin again · {fmt(wagerXp)}
+					</button>
+				</div>
+			{:else}
+				<div class="m-gamble-picker">
+					{#each WAGER_PERCENTS as p}
+						<button class="m-gamble-pct" class:m-gamble-pct--active={gamblePercent === p} disabled={gambleRolling} onclick={() => (gamblePercent = p)}
+							>{p}%</button
+						>
+					{/each}
+					<button
+						class="m-gamble-pct"
+						class:m-gamble-pct--active={gamblePercent === 'custom'}
+						disabled={gambleRolling}
+						onclick={() => (gamblePercent = 'custom')}>Custom</button
+					>
+				</div>
+				{#if gamblePercent === 'custom'}
+					<input
+						class="m-gamble-custom"
+						type="number"
+						min="1"
+						max={ctx.liveXp}
+						placeholder="Enter XP to wager"
+						bind:value={gambleCustom}
+						disabled={gambleRolling}
+					/>
+				{/if}
+
+				<div class="m-gamble-stakes">
+					<div class="m-gamble-stake">
+						<span class="m-gamble-stake-k">Wager</span>
+						<span class="m-gamble-stake-v m-gamble-stake-v--bet">{fmt(wagerXp)}</span>
+					</div>
+					<i class="fas fa-arrow-right m-gamble-stake-arrow"></i>
+					<div class="m-gamble-stake">
+						<span class="m-gamble-stake-k">Win pays</span>
+						<span class="m-gamble-stake-v m-gamble-stake-v--win">{fmt(potentialWin)}</span>
+					</div>
+				</div>
+
+				<button
+					class="m-gamble-play"
+					class:m-gamble-play--charged={!gambleRolling && wagerXp > 0}
+					disabled={gambleRolling || wagerXp <= 0}
+					onclick={playGamble}
+				>
+					{#if gambleRolling}<i class="fas fa-circle-notch fa-spin"></i>Rolling…{:else}<i class="fas fa-dice"></i>Spin {gamblePercent === 'custom'
+							? ''
+							: `${gamblePercent}%`}{/if}
+				</button>
+			{/if}
+		</div>
 	</div>
 {/if}

@@ -1,12 +1,79 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
-	import { effectSummary } from '$lib/items.js';
+	import { showToast } from '$lib/frontend/toast.svelte';
+	import { effectSummary, effectLabel, effectIcon, actionVerb, describeItemOutcome, TARGETED_EFFECTS as TARGETED, type ItemOutcome } from '$lib/items.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 
 	const ctx = getContext('items') as any;
-	const { onUse, isBuffActive, effectIcon, effectLabel, actionVerb } = ctx;
+	const { fmt, isBuffActive } = ctx;
+
+	let pickingTargetFor = $state<any | null>(null);
+	let targetSearch = $state('');
+
+	let outcome = $state<ItemOutcome | null>(null);
+	let outcomeTimer: ReturnType<typeof setTimeout> | null = null;
+
+	function showOutcome(effectType: string, result: any) {
+		if (outcomeTimer) clearTimeout(outcomeTimer);
+		outcome = describeItemOutcome(effectType, result);
+		outcomeTimer = setTimeout(() => (outcome = null), 3500);
+	}
+
+	function dismissOutcome() {
+		if (outcomeTimer) clearTimeout(outcomeTimer);
+		outcome = null;
+	}
+
+	function untilLabel(ms: number | null): string {
+		if (!ms) return '';
+		return new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+	}
+
+	async function use(item: any, targetHash?: string) {
+		ctx.setBusy(item.member_item_id);
+		try {
+			const res = await fetch(`/api/items/${encodeURIComponent(ctx.serverSlug)}/use`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ card: ctx.hash, target_card: targetHash, member_item_id: item.member_item_id })
+			});
+			const d = await res.json();
+			if (d.success) {
+				await ctx.invalidateAll();
+				showOutcome(item.effect_type, d.result ?? { outcome: d.outcome });
+			} else showToast(d.error || 'Failed to use item', 'error');
+		} finally {
+			ctx.setBusy(null);
+		}
+	}
+
+	function onUse(item: any) {
+		if (isBuffActive(item.effect_type)) {
+			showToast(`${effectLabel(item.effect_type)} is already active`, 'error');
+			return;
+		}
+		if (TARGETED.has(item.effect_type)) {
+			targetSearch = '';
+			pickingTargetFor = item;
+		} else use(item);
+	}
+
+	async function pickTarget(item: any, targetHash: string) {
+		await use(item, targetHash);
+		pickingTargetFor = null;
+	}
+
+	const visibleTargets = $derived.by(() => {
+		const q = targetSearch.trim().toLowerCase();
+		const list = q ? (data.targets ?? []).filter((t: any) => (t.name ?? '').toLowerCase().includes(q)) : (data.targets ?? []);
+		return [...list].sort((a: any, b: any) => (b.experience ?? 0) - (a.experience ?? 0));
+	});
+
+	function targetAvatar(t: any): string {
+		return t.avatar ?? `https://cdn.discordapp.com/embed/avatars/${Number(t.discord_member_id) % 5 || 0}.png`;
+	}
 </script>
 
 <svelte:head><title>Bag · {data.server.name}</title></svelte:head>
@@ -38,5 +105,77 @@
 				</div>
 			</article>
 		{/each}
+	</div>
+{/if}
+
+{#if pickingTargetFor}
+	<div class="m-tgt-overlay" role="presentation" onclick={() => (pickingTargetFor = null)}>
+		<div class="m-tgt-modal" role="dialog" aria-modal="true" aria-label="Pick a target" onclick={(e) => e.stopPropagation()}>
+			<button class="m-items-back" onclick={() => (pickingTargetFor = null)}><i class="fas fa-arrow-left"></i>Back</button>
+			<p class="m-items-pick-label">Pick a target for <strong>{pickingTargetFor.name}</strong>:</p>
+			{#if (data.targets ?? []).length === 0}
+				<div class="m-members-empty">No eligible targets in this server.</div>
+			{:else}
+				<div class="m-tgt-search">
+					<i class="fas fa-search m-tgt-search-ic" aria-hidden="true"></i>
+					<input
+						type="search"
+						class="m-tgt-search-inp"
+						placeholder="Search a member to {actionVerb(pickingTargetFor.effect_type).label.toLowerCase()}…"
+						bind:value={targetSearch}
+					/>
+				</div>
+				{#if visibleTargets.length === 0}
+					<div class="m-members-empty">No members match “{targetSearch}”.</div>
+				{:else}
+					<ul class="m-tgt-list">
+						{#each visibleTargets as t (t.hash)}
+							<li>
+								<button class="m-tgt" disabled={ctx.busy === pickingTargetFor.member_item_id} onclick={() => pickTarget(pickingTargetFor, t.hash)}>
+									<span class="m-tgt-rank">{t.rank != null ? `#${t.rank}` : '—'}</span>
+									<img
+										class="m-tgt-av"
+										src={targetAvatar(t)}
+										alt={t.name}
+										loading="lazy"
+										onerror={(e) => ((e.currentTarget as HTMLImageElement).src = 'https://cdn.discordapp.com/embed/avatars/0.png')}
+									/>
+									<span class="m-tgt-body">
+										<span class="m-tgt-name">{t.name}</span>
+										<span class="m-tgt-stats"><span>Lv.{t.level}</span><span class="m-tgt-dot">·</span><span>{fmt(t.experience)} XP</span></span>
+										{#if t.roles.length > 0}
+											<span class="m-tgt-roles">
+												{#each t.roles.slice(0, 3) as role}
+													<span class="m-tgt-role" style="--rc: {role.color || '#888'}">{role.name}</span>
+												{/each}
+											</span>
+										{/if}
+									</span>
+									<i class="fas fa-crosshairs m-tgt-aim"></i>
+								</button>
+							</li>
+						{/each}
+					</ul>
+				{/if}
+			{/if}
+		</div>
+	</div>
+{/if}
+
+{#if outcome}
+	<div class="m-out-overlay" role="presentation" onclick={dismissOutcome}>
+		<div class="m-out m-out--{outcome.tone}" role="dialog" aria-modal="true" aria-label={outcome.title} onclick={(e) => e.stopPropagation()}>
+			<div class="m-out-icon"><i class="fas {outcome.icon}"></i></div>
+			<div class="m-out-title">{outcome.title}</div>
+			{#if outcome.deltaXp != null && outcome.deltaXp !== 0}
+				<div class="m-out-delta {outcome.deltaXp >= 0 ? 'm-out-delta--up' : 'm-out-delta--down'}">
+					{outcome.deltaXp >= 0 ? '+' : '−'}{fmt(Math.abs(outcome.deltaXp))} XP
+				</div>
+			{/if}
+			<p class="m-out-line">{outcome.line}</p>
+			{#if outcome.untilMs}
+				<div class="m-out-until"><i class="fas fa-clock"></i>Active until {untilLabel(outcome.untilMs)}</div>
+			{/if}
+		</div>
 	</div>
 {/if}

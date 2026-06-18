@@ -4082,7 +4082,6 @@
 	}
 }
 
-/* color wash behind everything that flips on win/lose */
 .m-gamble-aura {
 	position: absolute;
 	z-index: -1;
@@ -4175,15 +4174,14 @@
 	box-shadow: inset 0 0 30px -6px rgba(184, 134, 11, 0.35);
 }
 
-/* the fixed center frame the winning tile lands inside */
 .m-gamble-frame {
 	position: absolute;
 	top: 6px;
 	bottom: 6px;
 	left: 50%;
-	width: 76px;
+	width: 88px;
 	transform: translateX(-50%);
-	border-radius: 12px;
+	border-radius: 13px;
 	border: 2px solid rgba(184, 134, 11, 0.55);
 	box-shadow: 0 0 18px 2px rgba(184, 134, 11, 0.35);
 	z-index: 3;
@@ -4281,7 +4279,6 @@
 	}
 }
 
-/* verdict overlay (WIN / BUST + amount) */
 .m-gamble-verdict {
 	position: absolute;
 	inset: 0;
@@ -4402,7 +4399,6 @@
 	cursor: not-allowed;
 }
 
-/* stakes row: wager → win pays */
 .m-gamble-stakes {
 	display: flex;
 	align-items: center;
@@ -4493,7 +4489,6 @@
 	}
 }
 
-/* sweeping sheen across the play button */
 .m-gamble-play--charged::after {
 	content: '';
 	position: absolute;
@@ -4590,7 +4585,7 @@
 		padding-left: 100px;
 	}
 	.m-gamble-frame {
-		width: 84px;
+		width: 96px;
 	}
 }
 

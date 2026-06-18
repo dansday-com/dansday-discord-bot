@@ -370,7 +370,6 @@ export const serverMemberLevels = mysqlTable(
 		voice_minutes_video: int('voice_minutes_video').default(0),
 		voice_minutes_streaming: int('voice_minutes_streaming').default(0),
 		experience: int('experience').default(0),
-		vault_xp: int('vault_xp').notNull().default(0),
 		level: int('level').default(1),
 		dm_notifications_enabled: boolean('dm_notifications_enabled').default(true),
 		is_in_voice: boolean('is_in_voice').default(false),

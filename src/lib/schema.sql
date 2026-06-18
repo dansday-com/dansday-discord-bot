@@ -267,7 +267,6 @@ CREATE TABLE IF NOT EXISTS server_member_levels (
     voice_minutes_video INT NOT NULL DEFAULT 0,
     voice_minutes_streaming INT NOT NULL DEFAULT 0,
     experience INT DEFAULT 0,
-    vault_xp INT NOT NULL DEFAULT 0,
     level INT DEFAULT 1,
     dm_notifications_enabled BOOLEAN DEFAULT TRUE,
     is_in_voice BOOLEAN DEFAULT FALSE,

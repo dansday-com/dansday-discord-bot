@@ -77,8 +77,6 @@ CREATE TABLE IF NOT EXISTS server_member_cosmetics (
     FOREIGN KEY (item_id) REFERENCES bot_items(id) ON DELETE SET NULL
 );
 
-ALTER TABLE server_member_levels ADD COLUMN vault_xp INT NOT NULL DEFAULT 0;
-
 CREATE INDEX idx_bot_items_bot_id ON bot_items(bot_id);
 CREATE INDEX idx_bot_items_enabled ON bot_items(bot_id, enabled);
 CREATE INDEX idx_server_member_items_member ON server_member_items(member_id);

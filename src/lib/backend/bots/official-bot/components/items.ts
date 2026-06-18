@@ -670,19 +670,18 @@ function isItemAvailableNow(item: any) {
 	if (schedule && Array.isArray(schedule.days) && schedule.days.length > 0) {
 		const now = new Date(nowMs);
 		const day = now.getUTCDay();
-		if (!schedule.days.includes(day)) return false;
-		if (schedule.from && schedule.to) {
-			const minutes = now.getUTCHours() * 60 + now.getUTCMinutes();
-			const toMin = (hhmm: any) => {
-				const [h, m] = String(hhmm)
-					.split(':')
-					.map((n) => Number(n) || 0);
-				return h * 60 + m;
-			};
-			const start = toMin(schedule.from);
-			const end = toMin(schedule.to);
-			if (minutes < start || minutes > end) return false;
-		}
+		if (!schedule.days.map(Number).includes(day)) return false;
+		const toMin = (hhmm: any, fallback: number) => {
+			if (hhmm == null || hhmm === '') return fallback;
+			const [h, m] = String(hhmm)
+				.split(':')
+				.map((n) => Number(n) || 0);
+			return h * 60 + m;
+		};
+		const minutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+		const start = toMin(schedule.from, 0);
+		const end = toMin(schedule.to, 1439);
+		if (minutes < start || minutes > end) return false;
 	}
 	return true;
 }

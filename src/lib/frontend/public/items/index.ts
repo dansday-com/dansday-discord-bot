@@ -34,6 +34,14 @@ function safeParse(raw: any) {
 	}
 }
 
+function scheduleMinutes(hhmm: any, fallback: number): number {
+	if (hhmm == null || hhmm === '') return fallback;
+	const [h, m] = String(hhmm)
+		.split(':')
+		.map((n) => Number(n) || 0);
+	return h * 60 + m;
+}
+
 function availableUntilMs(item: any): number | null {
 	const ends: number[] = [];
 	if (item.available_to) {
@@ -41,15 +49,10 @@ function availableUntilMs(item: any): number | null {
 		if (Number.isFinite(t)) ends.push(t);
 	}
 	const schedule = typeof item.recurring_schedule === 'string' ? safeParse(item.recurring_schedule) : item.recurring_schedule;
-	if (schedule && Array.isArray(schedule.days) && schedule.days.length > 0 && schedule.from && schedule.to) {
+	if (schedule && Array.isArray(schedule.days) && schedule.days.length > 0) {
 		const now = new Date();
-		const toMin = (hhmm: any) => {
-			const [h, m] = String(hhmm)
-				.split(':')
-				.map((n) => Number(n) || 0);
-			return h * 60 + m;
-		};
-		const endOfWindow = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0) + toMin(schedule.to) * 60000;
+		const toMin = scheduleMinutes(schedule.to, 1439);
+		const endOfWindow = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0) + (toMin * 60 + 59) * 1000;
 		if (Number.isFinite(endOfWindow)) ends.push(endOfWindow);
 	}
 	if (ends.length === 0) return null;
@@ -64,16 +67,10 @@ function itemAvailableNow(item: any): boolean {
 	if (schedule && Array.isArray(schedule.days) && schedule.days.length > 0) {
 		const now = new Date(nowMs);
 		if (!schedule.days.map(Number).includes(now.getUTCDay())) return false;
-		if (schedule.from && schedule.to) {
-			const minutes = now.getUTCHours() * 60 + now.getUTCMinutes();
-			const toMin = (hhmm: any) => {
-				const [h, m] = String(hhmm)
-					.split(':')
-					.map((n) => Number(n) || 0);
-				return h * 60 + m;
-			};
-			if (minutes < toMin(schedule.from) || minutes > toMin(schedule.to)) return false;
-		}
+		const minutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+		const fromMin = scheduleMinutes(schedule.from, 0);
+		const toMin = scheduleMinutes(schedule.to, 1439);
+		if (minutes < fromMin || minutes > toMin) return false;
 	}
 	return true;
 }

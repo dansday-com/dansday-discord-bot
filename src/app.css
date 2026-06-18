@@ -3086,6 +3086,47 @@
 	z-index: 2;
 }
 
+.m-root .m-card[data-cat='steal'] {
+	--cat: #c0392b;
+	--cat-soft: rgba(192, 57, 43, 0.12);
+}
+.m-root .m-card[data-cat='bomb'] {
+	--cat: #d35400;
+	--cat-soft: rgba(211, 84, 0, 0.13);
+}
+.m-root .m-card[data-cat='boost'] {
+	--cat: #d9a528;
+	--cat-soft: rgba(217, 165, 40, 0.15);
+}
+.m-root .m-card[data-cat='shield'] {
+	--cat: #1d6f8a;
+	--cat-soft: rgba(29, 111, 138, 0.12);
+}
+.m-root .m-card[data-cat='leech'] {
+	--cat: #5a8a1f;
+	--cat-soft: rgba(90, 138, 31, 0.14);
+}
+.m-root .m-card[data-cat='reflect'] {
+	--cat: #7b5ea7;
+	--cat-soft: rgba(123, 94, 167, 0.14);
+}
+.m-root .m-card[data-cat='insurance'] {
+	--cat: #1f9e8f;
+	--cat-soft: rgba(31, 158, 143, 0.13);
+}
+.m-root .m-card[data-cat='gamble'] {
+	--cat: #c8911a;
+	--cat-soft: rgba(200, 145, 26, 0.15);
+}
+.m-root .m-card[data-cat='gift'] {
+	--cat: #2f8f4e;
+	--cat-soft: rgba(47, 143, 78, 0.14);
+}
+.m-root .m-card[data-cat='bounty'] {
+	--cat: #a8327d;
+	--cat-soft: rgba(168, 50, 125, 0.13);
+}
+
 .m-root .m-card-glow {
 	position: absolute;
 	z-index: 1;
@@ -3116,9 +3157,10 @@
 	height: 46px;
 	display: grid;
 	place-items: center;
-	font-size: 25px;
+	font-size: 21px;
 	line-height: 1;
 	border-radius: 14px;
+	color: var(--cat);
 	background:
 		radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.28), transparent 55%),
 		linear-gradient(150deg, color-mix(in srgb, var(--cat) 38%, transparent), color-mix(in srgb, var(--cat) 14%, transparent));
@@ -3126,6 +3168,10 @@
 	box-shadow:
 		inset 0 1px 1px rgba(255, 255, 255, 0.2),
 		0 4px 12px -6px color-mix(in srgb, var(--cat) 80%, transparent);
+}
+
+.m-root .m-card-medallion i {
+	filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.18));
 }
 
 .m-root .m-card-qty {
@@ -3297,10 +3343,11 @@
 .m-fly {
 	position: fixed;
 	z-index: 9999;
-	font-size: 30px;
+	font-size: 26px;
 	line-height: 1;
+	color: #d9a528;
 	pointer-events: none;
-	filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.4));
+	filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.35));
 	will-change: transform, opacity;
 }
 
@@ -3353,7 +3400,7 @@
 	.m-root .m-card-medallion {
 		width: 54px;
 		height: 54px;
-		font-size: 29px;
+		font-size: 24px;
 		border-radius: 16px;
 	}
 	.m-root .m-card-tag {
@@ -3878,7 +3925,8 @@
 }
 
 .m-gamble-ico {
-	font-size: 22px;
+	font-size: 19px;
+	color: #d9a528;
 	animation: m-g-wobble 2.6s ease-in-out infinite;
 }
 
@@ -4257,6 +4305,39 @@
 	animation: none;
 }
 
+.m-gamble-again {
+	display: flex;
+	gap: 9px;
+	animation: m-g-verdict 0.35s cubic-bezier(0.2, 1.3, 0.4, 1);
+}
+
+.m-gamble-again .m-gamble-play {
+	flex: 1 1 auto;
+}
+
+.m-gamble-reset {
+	flex: 0 0 auto;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 14px 16px;
+	border-radius: 13px;
+	border: 1px solid var(--lb-border);
+	background: var(--chili-surface);
+	color: var(--lb-text);
+	font-weight: 700;
+	font-size: 13px;
+	cursor: pointer;
+	transition:
+		border-color 0.15s,
+		background 0.15s,
+		transform 0.1s;
+}
+
+.m-gamble-reset:active {
+	transform: scale(0.96);
+}
+
 .m-gamble-reelwrap--win {
 	border-color: rgba(47, 143, 78, 0.6);
 }
@@ -4271,6 +4352,10 @@
 	}
 	.m-gamble-pct:hover:not(:disabled):not(.m-gamble-pct--active) {
 		border-color: color-mix(in srgb, #b8860b 50%, transparent);
+	}
+	.m-gamble-reset:hover {
+		border-color: color-mix(in srgb, #b8860b 45%, transparent);
+		background: var(--chili-surface-mid);
 	}
 }
 

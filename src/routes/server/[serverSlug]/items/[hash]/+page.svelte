@@ -4,7 +4,16 @@
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import type { PageProps } from './$types';
 	import type { PublicMembersStreamPayload } from '$lib/frontend/public/members/index.js';
-	import { ITEM_EFFECTS, TARGETED_EFFECTS as TARGETED, effectLabel, effectSummary, describeItemOutcome, type ItemOutcome } from '$lib/items.js';
+	import {
+		ITEM_EFFECTS,
+		TARGETED_EFFECTS as TARGETED,
+		effectLabel,
+		effectIcon,
+		effectSummary,
+		actionVerb,
+		describeItemOutcome,
+		type ItemOutcome
+	} from '$lib/items.js';
 
 	let { data }: PageProps = $props();
 
@@ -132,13 +141,15 @@
 	let bagTabEl: HTMLButtonElement | undefined = $state();
 	let bagPulse = $state(false);
 
-	function flyToBag(fromEl: HTMLElement | null, icon: string) {
+	function flyToBag(fromEl: HTMLElement | null, iconClass: string) {
 		if (!fromEl || !bagTabEl || typeof document === 'undefined') return;
 		const start = fromEl.getBoundingClientRect();
 		const end = bagTabEl.getBoundingClientRect();
 		const clone = document.createElement('div');
 		clone.className = 'm-fly';
-		clone.textContent = icon || '🎁';
+		const ic = document.createElement('i');
+		ic.className = `fas ${iconClass || 'fa-cube'}`;
+		clone.appendChild(ic);
 		clone.style.left = `${start.left + start.width / 2}px`;
 		clone.style.top = `${start.top + start.height / 2}px`;
 		document.body.appendChild(clone);
@@ -180,7 +191,7 @@
 			if (d.success) {
 				burst(item.id);
 				setXp(optimistic);
-				flyToBag(medallion, item.icon);
+				flyToBag(medallion, effectIcon(item.effect_type));
 				await invalidateAll();
 			} else showToast(d.error || 'Purchase failed', 'error');
 		} catch {
@@ -291,6 +302,17 @@
 		lostAmount = 0;
 	}
 
+	function resetGamble() {
+		gamblePercent = 25;
+		gambleCustom = null;
+		reel = randomCells(12);
+		reelOffset = 0;
+		reelResult = null;
+		coins = [];
+		winCount = 0;
+		lostAmount = 0;
+	}
+
 	const wagerXp = $derived(
 		gamblePercent === 'custom' ? Math.min(Math.max(0, Math.floor(Number(gambleCustom) || 0)), liveXp) : Math.floor((liveXp * (gamblePercent as number)) / 100)
 	);
@@ -326,6 +348,11 @@
 		}
 		gambleRolling = true;
 		reelResult = null;
+		coins = [];
+		winCount = 0;
+		lostAmount = 0;
+		reel = randomCells(12);
+		reelOffset = 0;
 		reelSpinning = true;
 		try {
 			const body =
@@ -371,15 +398,6 @@
 				}
 				await invalidateAll();
 				gambleRolling = false;
-				setTimeout(
-					() => {
-						gambleItem = null;
-						reel = [];
-						reelResult = null;
-						coins = [];
-					},
-					won ? 1700 : 1100
-				);
 			}, 3700);
 		} catch {
 			showToast('Gamble failed', 'error');
@@ -471,7 +489,7 @@
 					<article class="m-card" class:m-card--locked={!affordable} class:m-card--burst={burstId === item.id} data-cat={item.effect_type}>
 						<div class="m-card-glow"></div>
 						<div class="m-card-top">
-							<span class="m-card-medallion">{item.icon || '🎁'}</span>
+							<span class="m-card-medallion"><i class="fas {effectIcon(item.effect_type)}"></i></span>
 							<span class="m-card-tag">{effectLabel(item.effect_type)}</span>
 						</div>
 						<h3 class="m-card-name">{item.name}</h3>
@@ -504,7 +522,12 @@
 		{:else}
 			<div class="m-tgt-search">
 				<i class="fas fa-search m-tgt-search-ic" aria-hidden="true"></i>
-				<input type="search" class="m-tgt-search-inp" placeholder="Search a member to attack…" bind:value={targetSearch} />
+				<input
+					type="search"
+					class="m-tgt-search-inp"
+					placeholder="Search a member to {actionVerb(pickingTargetFor.effect_type).label.toLowerCase()}…"
+					bind:value={targetSearch}
+				/>
 			</div>
 			{#if visibleTargets.length === 0}
 				<div class="m-members-empty">No members match “{targetSearch}”.</div>
@@ -547,7 +570,7 @@
 				<article class="m-card" data-cat={item.effect_type}>
 					<div class="m-card-glow"></div>
 					<div class="m-card-top">
-						<span class="m-card-medallion">{item.icon || '🎁'}<span class="m-card-qty">×{item.quantity}</span></span>
+						<span class="m-card-medallion"><i class="fas {effectIcon(item.effect_type)}"></i><span class="m-card-qty">×{item.quantity}</span></span>
 						<span class="m-card-tag">{effectLabel(item.effect_type)}</span>
 					</div>
 					<h3 class="m-card-name">{item.name}</h3>
@@ -559,9 +582,8 @@
 						{:else}
 							<span class="m-card-owned">Owned ×{item.quantity}</span>
 							<button class="m-card-btn m-card-btn--use" disabled={busy === item.member_item_id || item.quantity <= 0} onclick={() => onUse(item)}>
-								{#if busy === item.member_item_id}<i class="fas fa-spinner fa-spin"></i>{:else if TARGETED.has(item.effect_type)}<i class="fas fa-crosshairs"
-									></i>{:else}<i class="fas fa-bolt"></i>{/if}
-								{TARGETED.has(item.effect_type) ? 'Attack' : 'Use'}
+								{#if busy === item.member_item_id}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas {actionVerb(item.effect_type).icon}"></i>{/if}
+								{actionVerb(item.effect_type).label}
 							</button>
 						{/if}
 					</div>
@@ -585,7 +607,7 @@
 		>
 			<div class="m-gamble-aura"></div>
 			<div class="m-gamble-head">
-				<span class="m-gamble-title"><span class="m-gamble-ico">{gambleItem.icon || '🎲'}</span>{gambleItem.name}</span>
+				<span class="m-gamble-title"><span class="m-gamble-ico"><i class="fas {effectIcon(gambleItem.effect_type)}"></i></span>{gambleItem.name}</span>
 				{#if !gambleRolling}<button class="m-gamble-x" aria-label="Close" onclick={() => (gambleItem = null)}><i class="fas fa-times"></i></button>{/if}
 			</div>
 
@@ -629,37 +651,62 @@
 				{/if}
 			</div>
 
-			<div class="m-gamble-picker">
-				{#each WAGER_PERCENTS as p}
-					<button class="m-gamble-pct" class:m-gamble-pct--active={gamblePercent === p} disabled={gambleRolling} onclick={() => (gamblePercent = p)}
-						>{p}%</button
+			{#if reelResult && !gambleRolling}
+				<div class="m-gamble-again">
+					<button class="m-gamble-reset" onclick={resetGamble}><i class="fas fa-sliders"></i>Change bet</button>
+					<button class="m-gamble-play m-gamble-play--charged" disabled={wagerXp <= 0 || wagerXp > liveXp} onclick={playGamble}>
+						<i class="fas fa-rotate-right"></i>Spin again · {fmt(wagerXp)}
+					</button>
+				</div>
+			{:else}
+				<div class="m-gamble-picker">
+					{#each WAGER_PERCENTS as p}
+						<button class="m-gamble-pct" class:m-gamble-pct--active={gamblePercent === p} disabled={gambleRolling} onclick={() => (gamblePercent = p)}
+							>{p}%</button
+						>
+					{/each}
+					<button
+						class="m-gamble-pct"
+						class:m-gamble-pct--active={gamblePercent === 'custom'}
+						disabled={gambleRolling}
+						onclick={() => (gamblePercent = 'custom')}>Custom</button
 					>
-				{/each}
-				<button class="m-gamble-pct" class:m-gamble-pct--active={gamblePercent === 'custom'} disabled={gambleRolling} onclick={() => (gamblePercent = 'custom')}
-					>Custom</button
+				</div>
+				{#if gamblePercent === 'custom'}
+					<input
+						class="m-gamble-custom"
+						type="number"
+						min="1"
+						max={liveXp}
+						placeholder="Enter XP to wager"
+						bind:value={gambleCustom}
+						disabled={gambleRolling}
+					/>
+				{/if}
+
+				<div class="m-gamble-stakes">
+					<div class="m-gamble-stake">
+						<span class="m-gamble-stake-k">Wager</span>
+						<span class="m-gamble-stake-v m-gamble-stake-v--bet">{fmt(wagerXp)}</span>
+					</div>
+					<i class="fas fa-arrow-right m-gamble-stake-arrow"></i>
+					<div class="m-gamble-stake">
+						<span class="m-gamble-stake-k">Win pays</span>
+						<span class="m-gamble-stake-v m-gamble-stake-v--win">{fmt(potentialWin)}</span>
+					</div>
+				</div>
+
+				<button
+					class="m-gamble-play"
+					class:m-gamble-play--charged={!gambleRolling && wagerXp > 0}
+					disabled={gambleRolling || wagerXp <= 0}
+					onclick={playGamble}
 				>
-			</div>
-			{#if gamblePercent === 'custom'}
-				<input class="m-gamble-custom" type="number" min="1" max={liveXp} placeholder="Enter XP to wager" bind:value={gambleCustom} disabled={gambleRolling} />
+					{#if gambleRolling}<i class="fas fa-circle-notch fa-spin"></i>Rolling…{:else}<i class="fas fa-dice"></i>Spin {gamblePercent === 'custom'
+							? ''
+							: `${gamblePercent}%`}{/if}
+				</button>
 			{/if}
-
-			<div class="m-gamble-stakes">
-				<div class="m-gamble-stake">
-					<span class="m-gamble-stake-k">Wager</span>
-					<span class="m-gamble-stake-v m-gamble-stake-v--bet">{fmt(wagerXp)}</span>
-				</div>
-				<i class="fas fa-arrow-right m-gamble-stake-arrow"></i>
-				<div class="m-gamble-stake">
-					<span class="m-gamble-stake-k">Win pays</span>
-					<span class="m-gamble-stake-v m-gamble-stake-v--win">{fmt(potentialWin)}</span>
-				</div>
-			</div>
-
-			<button class="m-gamble-play" class:m-gamble-play--charged={!gambleRolling && wagerXp > 0} disabled={gambleRolling || wagerXp <= 0} onclick={playGamble}>
-				{#if gambleRolling}<i class="fas fa-circle-notch fa-spin"></i>Rolling…{:else}<i class="fas fa-dice"></i>Spin {gamblePercent === 'custom'
-						? ''
-						: `${gamblePercent}%`}{/if}
-			</button>
 		</div>
 	</div>
 {/if}

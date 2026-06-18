@@ -67,7 +67,6 @@ export async function loadItemsCatalog(serverId: number): Promise<any[]> {
 		category: i.category,
 		description: i.description,
 		cost: i.cost,
-		icon: i.icon,
 		config: typeof i.config === 'string' ? safeParse(i.config) : i.config
 	}));
 }

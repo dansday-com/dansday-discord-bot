@@ -4,8 +4,6 @@ export type ItemEffect = {
 	id: ItemEffectId;
 	label: string;
 	icon: string;
-	accent: string;
-	accentSoft: string;
 	color: number;
 	emoji: string;
 	targeted: boolean;
@@ -20,8 +18,6 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		id: 'steal',
 		label: 'Steal',
 		icon: 'fa-hand',
-		accent: '#fb7185',
-		accentSoft: 'rgba(251, 113, 133, 0.15)',
 		color: 0xfb7185,
 		emoji: '💰',
 		targeted: true,
@@ -33,8 +29,6 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		id: 'bomb',
 		label: 'Bomb',
 		icon: 'fa-bomb',
-		accent: '#fb7185',
-		accentSoft: 'rgba(251, 113, 133, 0.15)',
 		color: 0xfb7185,
 		emoji: '💥',
 		targeted: true,
@@ -46,8 +40,6 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		id: 'boost',
 		label: 'Boost',
 		icon: 'fa-bolt',
-		accent: '#fbbf24',
-		accentSoft: 'rgba(251, 191, 36, 0.15)',
 		color: 0xfbbf24,
 		emoji: '⚡',
 		targeted: false,
@@ -60,8 +52,6 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		id: 'shield',
 		label: 'Shield',
 		icon: 'fa-shield',
-		accent: '#38bdf8',
-		accentSoft: 'rgba(56, 189, 248, 0.15)',
 		color: 0x38bdf8,
 		emoji: '🛡️',
 		targeted: false,
@@ -74,8 +64,6 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		id: 'leech',
 		label: 'Leech',
 		icon: 'fa-droplet',
-		accent: '#a3e635',
-		accentSoft: 'rgba(163, 230, 53, 0.15)',
 		color: 0xfb7185,
 		emoji: '🩸',
 		targeted: true,
@@ -88,8 +76,6 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		id: 'reflect',
 		label: 'Reflect',
 		icon: 'fa-arrows-rotate',
-		accent: '#38bdf8',
-		accentSoft: 'rgba(56, 189, 248, 0.15)',
 		color: 0xc084fc,
 		emoji: '🪞',
 		targeted: false,
@@ -102,8 +88,6 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		id: 'insurance',
 		label: 'Insurance',
 		icon: 'fa-umbrella',
-		accent: '#38bdf8',
-		accentSoft: 'rgba(56, 189, 248, 0.15)',
 		color: 0x5eead4,
 		emoji: '💵',
 		targeted: false,
@@ -116,8 +100,6 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		id: 'gamble',
 		label: 'Gamble',
 		icon: 'fa-dice',
-		accent: '#fbbf24',
-		accentSoft: 'rgba(251, 191, 36, 0.15)',
 		color: 0xfbbf24,
 		emoji: '🎲',
 		targeted: false,
@@ -129,8 +111,6 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		id: 'gift',
 		label: 'Gift',
 		icon: 'fa-gift',
-		accent: '#4ade80',
-		accentSoft: 'rgba(74, 222, 128, 0.15)',
 		color: 0x4ade80,
 		emoji: '🎁',
 		targeted: true,
@@ -142,8 +122,6 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		id: 'bounty',
 		label: 'Bounty',
 		icon: 'fa-crosshairs',
-		accent: '#c084fc',
-		accentSoft: 'rgba(192, 132, 252, 0.15)',
 		color: 0xfbbf24,
 		emoji: '🎯',
 		targeted: true,
@@ -167,10 +145,31 @@ export function effectLabel(type: string): string {
 	return EFFECT_BY_ID[type]?.label ?? type;
 }
 
+export function effectIcon(type: string): string {
+	return EFFECT_BY_ID[type]?.icon ?? 'fa-cube';
+}
+
 export function effectSummary(item: { effect_type: string; description?: string | null; config?: any }): string {
 	const effect = EFFECT_BY_ID[item.effect_type];
 	if (!effect) return item.description ?? '';
 	return effect.summary(item.config ?? {});
+}
+
+const ACTION_VERB: Record<string, { label: string; icon: string }> = {
+	steal: { label: 'Steal', icon: 'fa-hand' },
+	bomb: { label: 'Bomb', icon: 'fa-bomb' },
+	leech: { label: 'Leech', icon: 'fa-droplet' },
+	gift: { label: 'Give', icon: 'fa-gift' },
+	bounty: { label: 'Place', icon: 'fa-crosshairs' },
+	boost: { label: 'Activate', icon: 'fa-bolt' },
+	shield: { label: 'Activate', icon: 'fa-shield' },
+	reflect: { label: 'Activate', icon: 'fa-arrows-rotate' },
+	insurance: { label: 'Activate', icon: 'fa-umbrella' },
+	gamble: { label: 'Play', icon: 'fa-dice' }
+};
+
+export function actionVerb(effectType: string): { label: string; icon: string } {
+	return ACTION_VERB[effectType] ?? { label: 'Use', icon: 'fa-bolt' };
 }
 
 export function isTargetedEffect(type: string): boolean {

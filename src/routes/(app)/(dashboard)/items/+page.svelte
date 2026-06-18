@@ -5,7 +5,7 @@
 	import ConfigToggleRow from '$lib/frontend/components/ConfigToggleRow.svelte';
 	import ConfirmModal from '$lib/frontend/components/ConfirmModal.svelte';
 	import type { LabeledSelectOption } from '$lib/frontend/components/labeledSelect.js';
-	import { ITEM_EFFECTS, effectLabel, isTargetedEffect } from '$lib/items.js';
+	import { ITEM_EFFECTS, effectLabel, effectIcon, isTargetedEffect } from '$lib/items.js';
 
 	const effectOptions: LabeledSelectOption[] = ITEM_EFFECTS.map((e) => ({ value: e.id, label: e.label }));
 
@@ -24,7 +24,6 @@
 			effect_type: 'boost',
 			description: '',
 			cost: 100,
-			icon: '',
 			enabled: true,
 			available_from: '',
 			available_to: '',
@@ -111,7 +110,6 @@
 		f.effect_type = item.effect_type ?? 'boost';
 		f.description = item.description ?? '';
 		f.cost = item.cost ?? 0;
-		f.icon = item.icon ?? '';
 		f.enabled = item.enabled !== false;
 		f.available_from = item.available_from ? String(item.available_from).slice(0, 16).replace(' ', 'T') : '';
 		f.available_to = item.available_to ? String(item.available_to).slice(0, 16).replace(' ', 'T') : '';
@@ -137,7 +135,6 @@
 				effect_type: form.effect_type,
 				description: form.description,
 				cost: Number(form.cost),
-				icon: form.icon || null,
 				enabled: form.enabled,
 				available_from: form.available_from ? form.available_from.replace('T', ' ') + ':00' : null,
 				available_to: form.available_to ? form.available_to.replace('T', ' ') + ':00' : null,
@@ -247,7 +244,7 @@
 					<div class="flex items-start justify-between gap-2">
 						<div class="min-w-0">
 							<div class="text-ash-100 flex items-center gap-2 text-sm font-semibold">
-								{#if item.icon}<span>{item.icon}</span>{/if}
+								<i class="fas {effectIcon(item.effect_type)} text-ash-400"></i>
 								<span class="truncate">{item.name}</span>
 							</div>
 							<div class="text-ash-500 mt-1 flex flex-wrap gap-1 text-[10px]">
@@ -317,25 +314,14 @@
 						></textarea>
 					</div>
 
-					<div class="grid gap-4 sm:grid-cols-2">
-						<div>
-							<label for="item-cost" class="text-ash-300 mb-1.5 block text-xs font-medium">Cost (XP)</label>
-							<input
-								id="item-cost"
-								type="number"
-								bind:value={form.cost}
-								class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none"
-							/>
-						</div>
-						<div>
-							<label for="item-icon" class="text-ash-300 mb-1.5 block text-xs font-medium">Icon (emoji)</label>
-							<input
-								id="item-icon"
-								bind:value={form.icon}
-								class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none"
-								placeholder="💣"
-							/>
-						</div>
+					<div>
+						<label for="item-cost" class="text-ash-300 mb-1.5 block text-xs font-medium">Cost (XP)</label>
+						<input
+							id="item-cost"
+							type="number"
+							bind:value={form.cost}
+							class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none"
+						/>
 					</div>
 				</div>
 

@@ -1490,7 +1490,6 @@ export async function createItem(panelId: any, data: any = {}) {
 		description: data.description ?? null,
 		cost: Number(data.cost ?? 0),
 		config: data.config ?? {},
-		icon: data.icon ?? null,
 		enabled: data.enabled === undefined ? true : !!data.enabled,
 		available_from: data.available_from ? (toMySQLDateTime(data.available_from) as any) : null,
 		available_to: data.available_to ? (toMySQLDateTime(data.available_to) as any) : null,
@@ -1512,7 +1511,6 @@ export async function updateItem(itemId: any, data: any = {}) {
 	if (data.description !== undefined) set.description = data.description ?? null;
 	if (data.cost !== undefined) set.cost = Number(data.cost);
 	if (data.config !== undefined) set.config = data.config ?? {};
-	if (data.icon !== undefined) set.icon = data.icon ?? null;
 	if (data.enabled !== undefined) set.enabled = !!data.enabled;
 	if (data.available_from !== undefined) set.available_from = data.available_from ? (toMySQLDateTime(data.available_from) as any) : null;
 	if (data.available_to !== undefined) set.available_to = data.available_to ? (toMySQLDateTime(data.available_to) as any) : null;
@@ -1536,7 +1534,7 @@ export async function getMemberInventory(memberId: any) {
 	await initializeDatabase();
 	if (!memberId) throw new Error('memberId is required');
 	const rows = await db.execute(sql`
-		SELECT smi.*, bi.name, bi.effect_type, bi.description, bi.cost, bi.config, bi.icon
+		SELECT smi.*, bi.name, bi.effect_type, bi.description, bi.cost, bi.config
 		FROM server_member_items smi
 		INNER JOIN items bi ON bi.id = smi.item_id
 		WHERE smi.member_id = ${Number(memberId)} AND smi.quantity > 0
@@ -1639,7 +1637,7 @@ export async function getNewlyExpiredEffects(botId: any, limit = 100) {
 	if (!botId) return [] as any[];
 	const rows = await db.execute(sql`
 		SELECT sma.id, sma.effect_value, sma.expires_at, sma.beneficiary_member_id,
-		       bi.effect_type, bi.name AS item_name, bi.icon AS item_icon,
+		       bi.effect_type, bi.name AS item_name,
 		       sm.discord_member_id, s.discord_server_id, lvl.dm_notifications_enabled
 		FROM server_member_item_actives sma
 		INNER JOIN server_member_items smi ON smi.id = sma.member_item_id

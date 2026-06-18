@@ -770,7 +770,6 @@ export const items = mysqlTable(
 		description: text('description'),
 		cost: int('cost').notNull().default(0),
 		config: json('config').notNull().default({}),
-		icon: varchar('icon', { length: 255 }),
 		enabled: boolean('enabled').notNull().default(true),
 		available_from: datetime('available_from'),
 		available_to: datetime('available_to'),

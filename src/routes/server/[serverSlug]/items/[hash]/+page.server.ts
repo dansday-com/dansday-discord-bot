@@ -61,7 +61,6 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 			name: r.name,
 			effect_type: r.effect_type,
 			description: r.description,
-			icon: r.icon,
 			quantity: r.quantity,
 			config: typeof r.config === 'string' ? safeParse(r.config) : r.config
 		}));

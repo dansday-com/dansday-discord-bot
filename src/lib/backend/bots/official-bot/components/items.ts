@@ -657,7 +657,6 @@ function fmtXp(n: any): string {
 function buildItemUseEmbed(EmbedBuilder: any, embedConfig: any, ctx: any) {
 	const { effectType, result, actor, target, item } = ctx;
 	const outcome = result?.outcome;
-	const icon = item?.icon ? `${item.icon} ` : '';
 	const actorMention = actor ? `${actor}` : 'A member';
 	const targetMention = target ? `${target}` : 'a member';
 	const immuneRel = discordRelative(result?.immuneUntil);
@@ -693,8 +692,8 @@ function buildItemUseEmbed(EmbedBuilder: any, embedConfig: any, ctx: any) {
 		embed.setTitle(`${emoji} Member ${verbPast.charAt(0).toUpperCase() + verbPast.slice(1)}!`);
 		embed.setDescription(
 			effectType === 'steal'
-				? `${actorMention} robbed ${targetMention}${item?.name ? ` with **${icon}${item.name}**` : ''}!`
-				: `${actorMention} bombed ${targetMention}${item?.name ? ` with **${icon}${item.name}**` : ''}!`
+				? `${actorMention} robbed ${targetMention}${item?.name ? ` with **${item.name}**` : ''}!`
+				: `${actorMention} bombed ${targetMention}${item?.name ? ` with **${item.name}**` : ''}!`
 		);
 		fields.push({ name: 'Attacker', value: actorMention, inline: true });
 		fields.push({ name: 'Victim', value: targetMention, inline: true });

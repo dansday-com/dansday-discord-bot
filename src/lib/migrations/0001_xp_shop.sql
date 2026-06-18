@@ -6,7 +6,6 @@ CREATE TABLE IF NOT EXISTS items (
     description TEXT NULL,
     cost INT NOT NULL DEFAULT 0,
     config JSON NOT NULL DEFAULT ('{}'),
-    icon VARCHAR(255) NULL,
     enabled BOOLEAN NOT NULL DEFAULT TRUE,
     available_from DATETIME NULL,
     available_to DATETIME NULL,

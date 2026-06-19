@@ -34,6 +34,9 @@
 				deltaLabel: `${h.xpAmount >= 0 ? '+' : '−'}${fmt(Math.abs(h.xpAmount))} XP`
 			};
 		}
+
+		if (h.direction === 'incoming') return incomingLine(h);
+
 		const PAST_TITLE: Record<string, string> = {
 			steal: 'Robbed',
 			bomb: 'Bombed',
@@ -64,6 +67,31 @@
 			deltaLabel = `−${fmt(h.xpAmount)} XP`;
 		}
 		return { icon: effectIcon(h.action), title: `${title}${target}`, tone, deltaLabel };
+	}
+
+	function incomingLine(h: any): { icon: string; title: string; tone: string; deltaLabel: string } {
+		const by = h.actorName ? ` ← ${h.actorName}` : '';
+		const icon = effectIcon(h.action);
+
+		if (h.outcome === 'blocked') return { icon: 'fa-shield-halved', title: `Blocked ${h.action}${by}`, tone: 'win', deltaLabel: 'Defended' };
+		if (h.outcome === 'reflected') return { icon: 'fa-arrows-rotate', title: `Reflected ${h.action}${by}`, tone: 'win', deltaLabel: 'Reflected' };
+
+		if (h.action === 'gift') {
+			return { icon, title: `Received gift${by}`, tone: 'win', deltaLabel: h.xpAmount > 0 ? `+${fmt(h.xpAmount)} XP` : '' };
+		}
+		if (h.action === 'steal') {
+			return { icon, title: `Robbed${by}`, tone: 'lose', deltaLabel: h.xpAmount > 0 ? `−${fmt(h.xpAmount)} XP` : '' };
+		}
+		if (h.action === 'bomb') {
+			return { icon, title: `Bombed${by}`, tone: 'lose', deltaLabel: h.xpAmount > 0 ? `−${fmt(h.xpAmount)} XP` : '' };
+		}
+		if (h.action === 'leech') {
+			return { icon, title: `Leeched${by}`, tone: 'lose', deltaLabel: '' };
+		}
+		if (h.action === 'bounty') {
+			return { icon, title: `Bounty on you${by}`, tone: 'lose', deltaLabel: '' };
+		}
+		return { icon, title: `${effectLabel(h.action)}${by}`, tone: 'neutral', deltaLabel: '' };
 	}
 </script>
 

@@ -1763,13 +1763,17 @@ export async function getMemberItemHistory(memberId: any, limit = 200) {
 			sml.id, sml.action, sml.xp_amount, sml.outcome, sml.created_at,
 			COALESCE(bi.name, bi2.name) AS item_name,
 			COALESCE(bi.effect_type, bi2.effect_type) AS effect_type,
-			tgt.username AS target_username, tgt.display_name AS target_display_name, tgt.server_display_name AS target_server_display_name
+			CASE WHEN sml.member_id = ${Number(memberId)} THEN 'outgoing' ELSE 'incoming' END AS direction,
+			tgt.username AS target_username, tgt.display_name AS target_display_name, tgt.server_display_name AS target_server_display_name,
+			act.username AS actor_username, act.display_name AS actor_display_name, act.server_display_name AS actor_server_display_name
 		FROM server_member_item_logs sml
 		LEFT JOIN items bi ON bi.id = sml.item_id
 		LEFT JOIN server_member_items smi ON smi.id = sml.member_item_id
 		LEFT JOIN items bi2 ON bi2.id = smi.item_id
 		LEFT JOIN server_members tgt ON tgt.id = sml.target_member_id
+		LEFT JOIN server_members act ON act.id = sml.member_id
 		WHERE sml.member_id = ${Number(memberId)}
+		   OR sml.target_member_id = ${Number(memberId)}
 		ORDER BY sml.created_at DESC, sml.id DESC
 		LIMIT ${Number(limit)}
 	`);

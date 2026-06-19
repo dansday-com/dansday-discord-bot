@@ -22,7 +22,9 @@ export const load: PageServerLoad = async ({ parent, params, url }) => {
 		itemName: h.item_name ?? null,
 		outcome: h.outcome,
 		xpAmount: Number(h.xp_amount) || 0,
+		direction: h.direction === 'incoming' ? 'incoming' : 'outgoing',
 		targetName: h.target_server_display_name || h.target_display_name || h.target_username || null,
+		actorName: h.actor_server_display_name || h.actor_display_name || h.actor_username || null,
 		at: h.created_at ? new Date(h.created_at).getTime() : null
 	}));
 

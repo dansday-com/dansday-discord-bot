@@ -918,7 +918,7 @@ async function embedConfigFor(guildId: any) {
 	return getEmbedConfig(guildId).catch(() => ({ COLOR: 0x14b8a6, FOOTER: 'Items' }));
 }
 
-async function getProgressChannel(client: any, guild: any) {
+async function getProgressChannel(guild: any) {
 	const { getLevelingSettings } = await import('../../../config.js');
 	const settings = await getLevelingSettings(guild.id).catch(() => null);
 	const channelId = settings?.PROGRESS_CHANNEL_ID;
@@ -927,8 +927,8 @@ async function getProgressChannel(client: any, guild: any) {
 	return channel && channel.isTextBased() ? channel : null;
 }
 
-async function deliverToMemberAndChannel(client: any, guild: any, embed: any, channelContent?: string) {
-	const channel = await getProgressChannel(client, guild);
+async function deliverToMemberAndChannel(guild: any, embed: any, channelContent?: string) {
+	const channel = await getProgressChannel(guild);
 	if (channel) await channel.send({ content: channelContent, embeds: [embed] }).catch(() => null);
 }
 
@@ -957,7 +957,7 @@ async function sweepExpiredBuffs(client: any, botId: any, EmbedBuilder: any) {
 					.setDescription(member ? `${member} — ${text}` : text)
 					.setFooter({ text: embedConfig.FOOTER || 'Items' })
 					.setTimestamp();
-				await deliverToMemberAndChannel(client, guild, embed, member ? `${member}` : undefined);
+				await deliverToMemberAndChannel(guild, embed, member ? `${member}` : undefined);
 			}
 		}
 		handledIds.push(Number(row.id));
@@ -989,7 +989,7 @@ async function sweepDerivedEvents(client: any, botId: any, EmbedBuilder: any) {
 			.setDescription(member ? `${member} is no longer immune — fair game again!` : `A member is no longer immune.`)
 			.setFooter({ text: embedConfig.FOOTER || 'Items' })
 			.setTimestamp();
-		await deliverToMemberAndChannel(client, guild, embed, member ? `${member}` : undefined);
+		await deliverToMemberAndChannel(guild, embed, member ? `${member}` : undefined);
 	}
 
 	const attacks = await db.getRecentAttackerActions(botId).catch(() => []);
@@ -1013,7 +1013,7 @@ async function sweepDerivedEvents(client: any, botId: any, EmbedBuilder: any) {
 			.setDescription(member ? `${member} — your attack cooldown is up. You can steal or bomb again!` : `Attack cooldown is up.`)
 			.setFooter({ text: embedConfig.FOOTER || 'Items' })
 			.setTimestamp();
-		await deliverToMemberAndChannel(client, guild, embed, member ? `${member}` : undefined);
+		await deliverToMemberAndChannel(guild, embed, member ? `${member}` : undefined);
 	}
 }
 

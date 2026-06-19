@@ -1642,23 +1642,31 @@ export async function consumeMemberItem(memberItemId: any, quantity = 1) {
 		sql`UPDATE server_member_items SET quantity = quantity - ${qty}, updated_at = ${toMySQLDateTime()} WHERE id = ${id} AND quantity >= ${qty}`
 	);
 	const affected = result?.[0]?.affectedRows ?? result?.affectedRows ?? 0;
-	if (affected > 0) await deleteMemberItemIfDepleted(id);
 	return affected > 0;
 }
 
-async function deleteMemberItemIfDepleted(memberItemId: number) {
-	const rows = await db.execute(sql`
-		SELECT smi.quantity,
-			(SELECT COUNT(*) FROM server_member_item_actives a WHERE a.member_item_id = smi.id) AS actives,
-			(SELECT COUNT(*) FROM server_member_item_logs l WHERE l.member_item_id = smi.id) AS logs
-		FROM server_member_items smi
-		WHERE smi.id = ${memberItemId}
+export async function backfillItemLogItemIds() {
+	await initializeDatabase();
+	const result: any = await db.execute(sql`
+		UPDATE server_member_item_logs sml
+		JOIN server_member_items smi ON smi.id = sml.member_item_id
+		SET sml.item_id = smi.item_id
+		WHERE sml.item_id IS NULL AND sml.member_item_id IS NOT NULL
 	`);
-	const row = (rows[0] as unknown as any[])[0];
-	if (!row) return;
-	if (Number(row.quantity) <= 0 && Number(row.actives) === 0 && Number(row.logs) === 0) {
-		await db.execute(sql`DELETE FROM server_member_items WHERE id = ${memberItemId} AND quantity <= 0`);
-	}
+	return result?.[0]?.affectedRows ?? result?.affectedRows ?? 0;
+}
+
+export async function purgeDepletedMemberItems() {
+	await initializeDatabase();
+	const result: any = await db.execute(sql`
+		DELETE smi FROM server_member_items smi
+		WHERE smi.quantity <= 0
+		  AND NOT EXISTS (
+		    SELECT 1 FROM server_member_item_actives a
+		    WHERE a.member_item_id = smi.id AND a.expires_at > UTC_TIMESTAMP()
+		  )
+	`);
+	return result?.[0]?.affectedRows ?? result?.affectedRows ?? 0;
 }
 
 export async function addMemberItemActive(memberItemId: any, data: any = {}) {
@@ -1803,11 +1811,17 @@ export async function expireMemberItemActive(activeId: any) {
 export async function logMemberItemAction(memberId: any, data: any = {}) {
 	await initializeDatabase();
 	if (!memberId) throw new Error('memberId is required');
+	let itemId = data.item_id != null ? Number(data.item_id) : null;
+	if (itemId == null && data.member_item_id != null) {
+		const rows = await db.execute(sql`SELECT item_id FROM server_member_items WHERE id = ${Number(data.member_item_id)}`);
+		const row = (rows[0] as unknown as any[])[0];
+		if (row?.item_id != null) itemId = Number(row.item_id);
+	}
 	await db.insert(schema.serverMemberItemLogs).values({
 		member_id: Number(memberId),
 		member_item_id: data.member_item_id != null ? Number(data.member_item_id) : null,
 		target_member_id: data.target_member_id != null ? Number(data.target_member_id) : null,
-		item_id: data.item_id != null ? Number(data.item_id) : null,
+		item_id: itemId,
 		action: String(data.action ?? ''),
 		xp_amount: Number(data.xp_amount ?? 0),
 		outcome: String(data.outcome ?? ''),
@@ -4071,6 +4085,8 @@ export default {
 	getMemberItem,
 	grantMemberItem,
 	consumeMemberItem,
+	backfillItemLogItemIds,
+	purgeDepletedMemberItems,
 	addMemberItemActive,
 	getActiveEffectsForMember,
 	clearExpiredMemberItemActives,

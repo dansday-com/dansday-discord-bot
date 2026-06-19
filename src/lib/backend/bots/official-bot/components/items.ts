@@ -1194,6 +1194,7 @@ async function runExpirySweep(client: any) {
 		const { EmbedBuilder } = await import('discord.js');
 		await sweepExpiredBuffs(client, botConfig.id, EmbedBuilder);
 		await sweepDerivedEvents(client, botConfig.id, EmbedBuilder);
+		await db.purgeDepletedMemberItems().catch(() => 0);
 	} catch (err: any) {
 		await logger.log(`⚠️ Item expiry sweep failed: ${err.message}`);
 	}
@@ -1201,6 +1202,9 @@ async function runExpirySweep(client: any) {
 
 export function initExpirySweeper(client: any) {
 	if (expirySweepTimer) clearInterval(expirySweepTimer);
+	db.backfillItemLogItemIds()
+		.then((n: number) => (n > 0 ? logger.log(`🧾 Backfilled item_id on ${n} item-history rows`) : null))
+		.catch(() => null);
 	expirySweepTimer = setInterval(() => {
 		runExpirySweep(client).catch(() => null);
 	}, EXPIRY_SWEEP_MS);

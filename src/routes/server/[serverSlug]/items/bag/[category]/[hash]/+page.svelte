@@ -72,6 +72,26 @@
 		pickingTargetFor = null;
 	}
 
+	let discardingId = $state<number | null>(null);
+
+	async function discard(item: any) {
+		discardingId = item.member_item_id;
+		try {
+			const res = await fetch(`/api/items/${encodeURIComponent(ctx.serverSlug)}/discard`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ card: ctx.hash, member_item_id: item.member_item_id, quantity: 1 })
+			});
+			const d = await res.json();
+			if (d.success) await ctx.invalidateAll();
+			else showToast(d.error || 'Failed to remove item', 'error');
+		} catch {
+			showToast('Failed to remove item', 'error');
+		} finally {
+			discardingId = null;
+		}
+	}
+
 	const visibleTargets = $derived.by(() => {
 		const q = targetSearch.trim().toLowerCase();
 		const list = q ? (data.targets ?? []).filter((t: any) => (t.name ?? '').toLowerCase().includes(q)) : (data.targets ?? []);
@@ -106,6 +126,15 @@
 						<button class="m-card-btn m-card-btn--use" disabled><i class="fas fa-check"></i>In use</button>
 					{:else}
 						<span class="m-card-owned">Owned ×{item.quantity}</span>
+						<button
+							class="m-card-discard"
+							aria-label="Remove one from bag"
+							title="Remove one"
+							disabled={discardingId === item.member_item_id || ctx.busy === item.member_item_id}
+							onclick={() => discard(item)}
+						>
+							{#if discardingId === item.member_item_id}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas fa-trash-can"></i>{/if}
+						</button>
 						<button class="m-card-btn m-card-btn--use" disabled={ctx.busy === item.member_item_id || item.quantity <= 0} onclick={() => onUse(item)}>
 							{#if ctx.busy === item.member_item_id}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas {actionVerb(item.effect_type).icon}"></i>{/if}
 							{actionVerb(item.effect_type).label}

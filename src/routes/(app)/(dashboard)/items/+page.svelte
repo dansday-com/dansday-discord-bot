@@ -182,6 +182,32 @@
 		}
 	}
 
+	let togglingId = $state<number | null>(null);
+
+	async function toggleEnabled(item: any) {
+		const next = item.enabled === false;
+		togglingId = item.id;
+		item.enabled = next;
+		try {
+			const res = await fetch('/api/admin/items', {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				credentials: 'include',
+				body: JSON.stringify({ id: item.id, enabled: next })
+			});
+			const d = await res.json();
+			if (!d.success) {
+				item.enabled = !next;
+				showToast(d.error || 'Failed to update', 'error');
+			}
+		} catch {
+			item.enabled = !next;
+			showToast('Failed to update', 'error');
+		} finally {
+			togglingId = null;
+		}
+	}
+
 	async function remove() {
 		const item = confirmDelete;
 		if (!item) return;
@@ -238,12 +264,15 @@
 </svelte:head>
 
 <div class="space-y-5">
-	<div class="flex items-center justify-between">
-		<div>
+	<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+		<div class="min-w-0">
 			<h2 class="text-ash-100 flex items-center gap-2 text-lg font-semibold"><i class="fas fa-store text-teal-400"></i>Items</h2>
 			<p class="text-ash-400 text-xs">Global catalog. Items appear in every server with the items module enabled.</p>
 		</div>
-		<button onclick={startCreate} class="flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-500">
+		<button
+			onclick={startCreate}
+			class="flex shrink-0 items-center justify-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-500"
+		>
 			<i class="fas fa-plus"></i>Add Item
 		</button>
 	</div>
@@ -257,22 +286,45 @@
 	{:else}
 		<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 			{#each items as item}
-				<div class="bg-ash-800 border-ash-700 rounded-xl border p-4">
+				<div
+					class="bg-ash-800 border-ash-700 rounded-xl border border-l-4 p-4 transition-opacity"
+					class:opacity-60={item.enabled === false}
+					style="--cat: var(--effect-{item.effect_type}, var(--effect-default)); border-left-color: var(--cat)"
+				>
 					<div class="flex items-start justify-between gap-2">
-						<div class="min-w-0">
-							<div class="text-ash-100 flex items-center gap-2 text-sm font-semibold">
-								<i class="fas {effectIcon(item.effect_type)} text-ash-400"></i>
-								<span class="truncate">{item.name}</span>
-							</div>
-							<div class="text-ash-500 mt-1 flex flex-wrap gap-1 text-[10px]">
-								<span class="bg-ash-700 rounded px-1.5 py-0.5">{effectLabel(item.effect_type)}</span>
-								{#if item.enabled === false}<span class="rounded bg-red-900/50 px-1.5 py-0.5 text-red-300">disabled</span>{/if}
+						<div class="flex min-w-0 items-start gap-2.5">
+							<span
+								class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm"
+								style="color: var(--cat); background: color-mix(in srgb, var(--cat) 16%, transparent)"
+							>
+								<i class="fas {effectIcon(item.effect_type)}"></i>
+							</span>
+							<div class="min-w-0">
+								<div class="text-ash-100 truncate text-sm font-semibold">{item.name}</div>
+								<div class="text-ash-500 mt-1 flex flex-wrap gap-1 text-[10px]">
+									<span class="bg-ash-700 rounded px-1.5 py-0.5">{effectLabel(item.effect_type)}</span>
+								</div>
 							</div>
 						</div>
 						<div class="shrink-0 text-sm font-semibold text-teal-400">{item.cost} XP</div>
 					</div>
 					{#if item.description}<p class="text-ash-400 mt-2 line-clamp-2 text-xs">{item.description}</p>{/if}
-					<div class="mt-3 flex gap-2">
+					<div class="mt-3 flex items-center gap-2">
+						<button
+							type="button"
+							role="switch"
+							aria-checked={item.enabled !== false}
+							aria-label={item.enabled !== false ? 'Disable item' : 'Enable item'}
+							disabled={togglingId === item.id}
+							onclick={() => toggleEnabled(item)}
+							class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 {item.enabled !== false
+								? 'bg-ash-400'
+								: 'bg-ash-700'}"
+						>
+							<span
+								class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {item.enabled !== false ? 'translate-x-6' : 'translate-x-1'}"
+							></span>
+						</button>
 						<button onclick={() => startEdit(item)} class="bg-ash-700 hover:bg-ash-600 text-ash-200 flex-1 rounded-lg py-1.5 text-xs">Edit</button>
 						<button onclick={() => (confirmDelete = item)} class="rounded-lg bg-red-900/40 px-3 py-1.5 text-xs text-red-300 hover:bg-red-900/60">Delete</button>
 					</div>

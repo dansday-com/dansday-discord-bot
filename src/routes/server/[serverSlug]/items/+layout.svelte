@@ -4,7 +4,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import MemberCard from '$lib/frontend/components/MemberCard.svelte';
 	import { publicServerPath } from '$lib/url.js';
-	import { ITEM_EFFECTS, effectLabel, effectIcon, actionVerb } from '$lib/items.js';
+	import { ITEM_EFFECTS, effectLabel, effectIcon, actionVerb, BAG_CAPACITY } from '$lib/items.js';
 	import type { PublicMembersStreamPayload } from '$lib/frontend/public/members/index.js';
 	import type { LayoutProps } from './$types';
 
@@ -227,6 +227,13 @@
 		get liveXp() {
 			return liveXp;
 		},
+		bagCapacity: BAG_CAPACITY,
+		get bagStock() {
+			return pd.bagStock ?? 0;
+		},
+		get bagFull() {
+			return (pd.bagStock ?? 0) >= BAG_CAPACITY;
+		},
 		get hash() {
 			return pd.hash;
 		},
@@ -300,7 +307,7 @@
 				href="{itemsBase}/bag/all/{pd.hash}"
 				data-sveltekit-preload-data="hover"
 			>
-				<i class="fas fa-bag-shopping"></i>Bag<span class="m-items-count" class:m-items-count--bump={bagPulse}>{pd.bagStock ?? 0}</span>
+				<i class="fas fa-bag-shopping"></i>Bag<span class="m-items-count" class:m-items-count--bump={bagPulse}>{pd.bagStock ?? 0}/{BAG_CAPACITY}</span>
 			</a>
 			<a class="m-items-seg" class:m-items-seg--active={isHistory} href="{itemsBase}/history/all/{pd.hash}" data-sveltekit-preload-data="hover">
 				<i class="fas fa-clock-rotate-left"></i>History

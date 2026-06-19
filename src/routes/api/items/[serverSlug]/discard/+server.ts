@@ -19,8 +19,8 @@ export const POST: RequestHandler = async ({ params, request }) => {
 
 	const body = await request.json().catch(() => null);
 	if (!body) return json({ success: false, error: 'Invalid body' }, { status: 400 });
-	const { card, item_id, quantity, tz_offset } = body;
-	if (!card || !item_id) return json({ success: false, error: 'Missing fields' }, { status: 400 });
+	const { card, member_item_id, quantity } = body;
+	if (!card || !member_item_id) return json({ success: false, error: 'Missing fields' }, { status: 400 });
 
 	const actor = await resolveMemberByCardToken(server.id, String(card));
 	if (!actor) return json({ success: false, error: 'Member not found' }, { status: 404 });
@@ -35,23 +35,17 @@ export const POST: RequestHandler = async ({ params, request }) => {
 	}
 
 	const webhookResult = await postBotWebhook(bot, {
-		type: 'buy_item',
+		type: 'discard_item',
 		guild_id: fullServer.discord_server_id,
 		actor_discord_id: actor.discord_member_id,
-		item_id: Number(item_id),
-		quantity: Number(quantity) || 1,
-		tz_offset: Number(tz_offset) || 0
+		member_item_id: Number(member_item_id),
+		quantity: quantity != null ? Number(quantity) : undefined
 	});
 
 	if (webhookResult.status !== 200 || !webhookResult.body?.ok) {
-		const code = webhookResult.body?.error;
-		const friendly: Record<string, string> = {
-			bag_full: `Your bag is full (max ${webhookResult.body?.capacity ?? 50} items).`,
-			insufficient_xp: 'Not enough XP.'
-		};
-		const err = friendly[code] || code || (webhookResult.status === 502 ? 'Could not reach the bot.' : 'Purchase failed.');
+		const err = webhookResult.body?.error || (webhookResult.status === 502 ? 'Could not reach the bot.' : 'Failed to remove item.');
 		return json({ success: false, error: err }, { status: webhookResult.status === 502 ? 502 : 400 });
 	}
 
-	return json({ success: true, member_item_id: webhookResult.body.member_item_id, quantity: webhookResult.body.quantity, cost: webhookResult.body.cost });
+	return json({ success: true, removed: webhookResult.body.removed });
 };

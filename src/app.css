@@ -14,6 +14,21 @@
 	--color-ash-950: #1e1f22;
 }
 
+/* Single source of truth for item effect accent colors. Used by the shop cards and the admin items list. */
+:root {
+	--effect-default: #245f73;
+	--effect-steal: #c0392b;
+	--effect-bomb: #d35400;
+	--effect-boost: #d9a528;
+	--effect-shield: #1d6f8a;
+	--effect-leech: #5a8a1f;
+	--effect-reflect: #7b5ea7;
+	--effect-insurance: #1f9e8f;
+	--effect-gamble: #c8911a;
+	--effect-gift: #2f8f4e;
+	--effect-bounty: #a8327d;
+}
+
 @layer base {
 	* {
 		@apply border-ash-700;
@@ -3043,8 +3058,8 @@
 }
 
 .m-root .m-card {
-	--cat: #245f73;
-	--cat-soft: rgba(36, 95, 115, 0.12);
+	--cat: var(--effect-default);
+	--cat-soft: color-mix(in srgb, var(--cat) 13%, transparent);
 	position: relative;
 	display: flex;
 	flex-direction: column;
@@ -3086,44 +3101,34 @@
 }
 
 .m-root .m-card[data-cat='steal'] {
-	--cat: #c0392b;
-	--cat-soft: rgba(192, 57, 43, 0.12);
+	--cat: var(--effect-steal);
 }
 .m-root .m-card[data-cat='bomb'] {
-	--cat: #d35400;
-	--cat-soft: rgba(211, 84, 0, 0.13);
+	--cat: var(--effect-bomb);
 }
 .m-root .m-card[data-cat='boost'] {
-	--cat: #d9a528;
-	--cat-soft: rgba(217, 165, 40, 0.15);
+	--cat: var(--effect-boost);
 }
 .m-root .m-card[data-cat='shield'] {
-	--cat: #1d6f8a;
-	--cat-soft: rgba(29, 111, 138, 0.12);
+	--cat: var(--effect-shield);
 }
 .m-root .m-card[data-cat='leech'] {
-	--cat: #5a8a1f;
-	--cat-soft: rgba(90, 138, 31, 0.14);
+	--cat: var(--effect-leech);
 }
 .m-root .m-card[data-cat='reflect'] {
-	--cat: #7b5ea7;
-	--cat-soft: rgba(123, 94, 167, 0.14);
+	--cat: var(--effect-reflect);
 }
 .m-root .m-card[data-cat='insurance'] {
-	--cat: #1f9e8f;
-	--cat-soft: rgba(31, 158, 143, 0.13);
+	--cat: var(--effect-insurance);
 }
 .m-root .m-card[data-cat='gamble'] {
-	--cat: #c8911a;
-	--cat-soft: rgba(200, 145, 26, 0.15);
+	--cat: var(--effect-gamble);
 }
 .m-root .m-card[data-cat='gift'] {
-	--cat: #2f8f4e;
-	--cat-soft: rgba(47, 143, 78, 0.14);
+	--cat: var(--effect-gift);
 }
 .m-root .m-card[data-cat='bounty'] {
-	--cat: #a8327d;
-	--cat-soft: rgba(168, 50, 125, 0.13);
+	--cat: var(--effect-bounty);
 }
 
 .m-root .m-card-glow {
@@ -3207,6 +3212,44 @@
 	background: var(--cat-soft);
 	border: 1px solid color-mix(in srgb, var(--cat) 30%, transparent);
 	white-space: nowrap;
+}
+
+.m-root .m-card-foot .m-card-owned {
+	margin-right: auto;
+}
+
+.m-root .m-card-discard {
+	display: grid;
+	place-items: center;
+	width: 32px;
+	height: 32px;
+	flex: 0 0 auto;
+	border-radius: 10px;
+	font-size: 12px;
+	color: var(--lb-text-muted);
+	background: color-mix(in srgb, var(--chili-surface) 70%, var(--chili-surface-elevated));
+	border: 1px solid var(--lb-border-light);
+	cursor: pointer;
+	transition:
+		color 0.16s ease,
+		background 0.16s ease,
+		border-color 0.16s ease,
+		transform 0.1s ease;
+}
+
+.m-root .m-card-discard:hover:not(:disabled) {
+	color: #c0392b;
+	background: color-mix(in srgb, #c0392b 14%, var(--chili-surface-elevated));
+	border-color: color-mix(in srgb, #c0392b 40%, transparent);
+}
+
+.m-root .m-card-discard:active:not(:disabled) {
+	transform: scale(0.92);
+}
+
+.m-root .m-card-discard:disabled {
+	cursor: not-allowed;
+	opacity: 0.5;
 }
 
 .m-root .m-card-timer {

@@ -570,6 +570,17 @@ async function handleWebhookRequest(req, res) {
 						res.writeHead(500, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify({ ok: false, error: 'buy_item failed', details: shopErr.message }));
 					}
+				} else if (payload.type === 'discard_item') {
+					try {
+						const { handleItemDiscard } = await import('./items.js');
+						const result = await handleItemDiscard(client, payload);
+						res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify(result));
+					} catch (shopErr: any) {
+						await logger.log(`❌ discard_item failed: ${shopErr.message}`);
+						res.writeHead(500, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify({ ok: false, error: 'discard_item failed', details: shopErr.message }));
+					}
 				} else if (payload.type === 'gamble') {
 					try {
 						const { handleGamble } = await import('./items.js');

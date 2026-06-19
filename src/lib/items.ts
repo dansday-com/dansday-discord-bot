@@ -1,5 +1,7 @@
 export type ItemEffectId = 'steal' | 'bomb' | 'boost' | 'shield' | 'leech' | 'reflect' | 'insurance' | 'gamble' | 'gift' | 'bounty';
 
+export const BAG_CAPACITY = 50;
+
 export type ItemEffect = {
 	id: ItemEffectId;
 	label: string;

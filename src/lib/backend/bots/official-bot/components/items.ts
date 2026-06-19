@@ -2,7 +2,7 @@ import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 import { getRedisClient } from '../../../../redis.js';
 import { getLevelRequirement, determineLevel } from './leveling.js';
-import { TARGETED_EFFECTS, ANNOUNCED_EFFECTS, getItemEffect } from '../../../../items.js';
+import { TARGETED_EFFECTS, ANNOUNCED_EFFECTS, getItemEffect, BAG_CAPACITY } from '../../../../items.js';
 
 const EFFECT_CACHE_TTL_MS = 5000;
 const GAMBLE_ANNOUNCE_DELAY_MS = 3900;
@@ -690,6 +690,50 @@ export async function handleItemUse(client: any, payload: any) {
 	return { ok: true, outcome: result?.outcome ?? 'success', effect_type: effectType, result };
 }
 
+export async function handleItemDiscard(client: any, payload: any) {
+	const { guild_id, actor_discord_id, member_item_id, quantity } = payload || {};
+	if (!guild_id || !actor_discord_id || !member_item_id) return { ok: false, error: 'missing_fields' };
+
+	const { getServerForCurrentBot, isComponentFeatureEnabled, serverSettingsComponent } = await import('../../../config.js');
+
+	let server: any;
+	try {
+		server = await getServerForCurrentBot(guild_id);
+	} catch (_) {
+		return { ok: false, error: 'server_not_found' };
+	}
+	if (!(await isComponentFeatureEnabled(guild_id, serverSettingsComponent.items))) {
+		return { ok: false, error: 'shop_disabled' };
+	}
+
+	const memberItem = await db.getMemberItem(member_item_id).catch(() => null);
+	if (!memberItem) return { ok: false, error: 'item_not_found' };
+
+	const actorMemberId = await resolveServerMemberId(server.id, actor_discord_id);
+	if (!actorMemberId || Number(memberItem.member_id) !== Number(actorMemberId)) {
+		return { ok: false, error: 'not_owner' };
+	}
+
+	const owned = Math.max(0, Number(memberItem.quantity) || 0);
+	if (owned <= 0) return { ok: false, error: 'out_of_stock' };
+
+	const requested = Number(quantity);
+	const qty = Number.isFinite(requested) && requested > 0 ? Math.min(owned, Math.floor(requested)) : owned;
+
+	const removed = await db.consumeMemberItem(member_item_id, qty);
+	if (!removed) return { ok: false, error: 'out_of_stock' };
+
+	await db.logMemberItemAction(actorMemberId, {
+		member_item_id,
+		item_id: memberItem.item_id,
+		action: 'discard',
+		xp_amount: 0,
+		outcome: 'success'
+	});
+
+	return { ok: true, outcome: 'success', removed: qty };
+}
+
 function isItemAvailableNow(item: any, tzOffsetMin = 0) {
 	const nowMs = Date.now();
 	if (item.available_from) {
@@ -746,6 +790,12 @@ export async function handleItemBuy(client: any, payload: any) {
 
 	const qty = Math.max(1, Math.min(99, Number(quantity) || 1));
 	const totalCost = (Number(item.cost) || 0) * qty;
+
+	const inventory = await db.getMemberInventory(actorMemberId).catch(() => []);
+	const bagStock = (inventory as any[]).reduce((sum, r) => sum + (Number(r.quantity) || 0), 0);
+	if (bagStock + qty > BAG_CAPACITY) {
+		return { ok: false, error: 'bag_full', capacity: BAG_CAPACITY, bagStock };
+	}
 
 	const spend = await spendXp(actorMemberId, totalCost, guild_id);
 	if (!spend.ok) return { ok: false, error: spend.reason || 'insufficient_xp' };

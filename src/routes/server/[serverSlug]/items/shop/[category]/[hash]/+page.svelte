@@ -22,6 +22,10 @@
 	);
 
 	async function buy(item: any, ev?: MouseEvent) {
+		if (ctx.bagFull) {
+			showToast(`Your bag is full (max ${ctx.bagCapacity} items)`, 'error');
+			return;
+		}
 		if (!canAfford(item)) {
 			showToast(`Not enough XP — need ${fmt(item.cost)}`, 'error');
 			return;
@@ -60,6 +64,7 @@
 	let reelOffset = $state(0);
 	let reelResult = $state<'win' | 'lose' | null>(null);
 	let reelSpinning = $state(false);
+	let reelAnimating = $state(false);
 	let gambleShake = $state(false);
 	let coins = $state<{ id: number; x: number; delay: number }[]>([]);
 	let winCount = $state(0);
@@ -76,6 +81,16 @@
 		return Array.from({ length: n }, () => (Math.random() < 0.5 ? 'win' : 'lose'));
 	}
 
+	function centerCell(index: number) {
+		requestAnimationFrame(() => {
+			const wrapW = reelWrapEl?.clientWidth ?? 360;
+			const cell = reelWrapEl?.querySelectorAll<HTMLElement>('.m-gamble-cell')?.[index];
+			if (!cell) return;
+			const cellCenter = cell.offsetLeft + cell.offsetWidth / 2;
+			reelOffset = wrapW / 2 - cellCenter;
+		});
+	}
+
 	function openGamble(item: any) {
 		gambleItem = item;
 		gamblePercent = 25;
@@ -84,10 +99,12 @@
 		reelOffset = 0;
 		reelResult = null;
 		reelSpinning = false;
+		reelAnimating = false;
 		gambleShake = false;
 		coins = [];
 		winCount = 0;
 		lostAmount = 0;
+		centerCell(2);
 	}
 
 	function resetGamble() {
@@ -96,9 +113,11 @@
 		reel = randomCells(12);
 		reelOffset = 0;
 		reelResult = null;
+		reelAnimating = false;
 		coins = [];
 		winCount = 0;
 		lostAmount = 0;
+		centerCell(2);
 	}
 
 	const wagerXp = $derived(
@@ -141,6 +160,7 @@
 		winCount = 0;
 		lostAmount = 0;
 		reel = randomCells(12);
+		reelAnimating = false;
 		reelOffset = 0;
 		reelSpinning = true;
 		try {
@@ -167,6 +187,7 @@
 			cells[landIndex - 1] = won ? 'lose' : 'win';
 			cells[landIndex + 1] = won ? 'lose' : 'win';
 			reel = cells;
+			reelAnimating = false;
 			reelOffset = 0;
 			await new Promise((r) => requestAnimationFrame(() => r(null)));
 			const wrapW = reelWrapEl?.clientWidth ?? 360;
@@ -174,10 +195,12 @@
 			const target = cellEls?.[landIndex];
 			if (target) {
 				const cellCenter = target.offsetLeft + target.offsetWidth / 2;
+				reelAnimating = true;
 				reelOffset = wrapW / 2 - cellCenter;
 			}
 			setTimeout(() => {
 				reelSpinning = false;
+				reelAnimating = false;
 				gambleRolling = false;
 				reelResult = won ? 'win' : 'lose';
 				gambleShake = true;
@@ -224,11 +247,11 @@
 						</button>
 					{:else}
 						<span class="m-card-price" class:m-card-price--short={!affordable}>{fmt(item.cost)}<span class="m-card-price-unit">XP</span></span>
-						<button class="m-card-btn" disabled={ctx.busy === item.id || !affordable} onclick={(e) => buy(item, e)}>
-							{#if ctx.busy === item.id}<i class="fas fa-spinner fa-spin"></i>{:else if !affordable}<i class="fas fa-lock"></i>{:else}<i
-									class="fas fa-cart-plus"
-								></i>{/if}
-							{affordable ? 'Buy' : 'Locked'}
+						<button class="m-card-btn" disabled={ctx.busy === item.id || !affordable || ctx.bagFull} onclick={(e) => buy(item, e)}>
+							{#if ctx.busy === item.id}<i class="fas fa-spinner fa-spin"></i>{:else if ctx.bagFull}<i class="fas fa-bag-shopping"></i>{:else if !affordable}<i
+									class="fas fa-lock"
+								></i>{:else}<i class="fas fa-cart-plus"></i>{/if}
+							{ctx.bagFull ? 'Bag full' : affordable ? 'Buy' : 'Locked'}
 						</button>
 					{/if}
 				</div>
@@ -267,7 +290,7 @@
 				<div
 					class="m-gamble-reel"
 					class:m-gamble-reel--spin={reelSpinning}
-					style="transform: translateX({reelOffset}px); transition: {reelOffset === 0 ? 'none' : 'transform 3.6s cubic-bezier(0.09, 0.62, 0.12, 1)'};"
+					style="transform: translateX({reelOffset}px); transition: {reelAnimating ? 'transform 3.6s cubic-bezier(0.09, 0.62, 0.12, 1)' : 'none'};"
 				>
 					{#each reel as cell, i (i)}
 						<div class="m-gamble-cell m-gamble-cell--{cell}">

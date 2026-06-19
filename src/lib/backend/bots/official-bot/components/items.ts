@@ -114,7 +114,7 @@ export async function applyAwardEffects(memberId: any, baseXp: any, source: any 
 		const share = isLast ? remaining : Math.floor((boosted * leech.percent) / 100);
 		const amount = Math.min(remaining, share);
 		if (amount > 0) {
-			leechCredits.push({ beneficiaryMemberId: leech.beneficiaryMemberId, amount });
+			leechCredits.push({ beneficiaryMemberId: leech.beneficiaryMemberId, amount, percent: leech.percent });
 			remaining -= amount;
 		}
 	}
@@ -123,17 +123,31 @@ export async function applyAwardEffects(memberId: any, baseXp: any, source: any 
 }
 
 export async function creditLeechers(leechCredits: any, guildId: any) {
-	if (!Array.isArray(leechCredits) || leechCredits.length === 0) return;
+	const applied: any[] = [];
+	if (!Array.isArray(leechCredits) || leechCredits.length === 0) return applied;
 	for (const credit of leechCredits) {
 		try {
 			await db.ensureMemberLevel(credit.beneficiaryMemberId);
 			const before = await db.getMemberLevel(credit.beneficiaryMemberId);
 			const after = await db.updateMemberLevelStats(credit.beneficiaryMemberId, { experienceIncrement: credit.amount });
-			await reevaluateLevel(credit.beneficiaryMemberId, after ?? before, guildId);
+			const stats = (await reevaluateLevel(credit.beneficiaryMemberId, after ?? before, guildId)) ?? after ?? before;
+			await db
+				.logMemberLevelGain(credit.beneficiaryMemberId, {
+					source: 'leech',
+					amount: credit.amount,
+					total_xp: stats?.experience != null ? Number(stats.experience) : null,
+					level: stats?.level != null ? Number(stats.level) : null,
+					rank: stats?.rank != null ? Number(stats.rank) : null,
+					skim_percent: credit.percent ?? null
+				})
+				.catch(() => null);
+			const beneficiary = await db.getServerMemberById(credit.beneficiaryMemberId).catch(() => null);
+			applied.push({ ...credit, beneficiary });
 		} catch (error: any) {
 			await logger.log(`⚠️ Leech credit failed for member ${credit.beneficiaryMemberId}: ${error.message}`);
 		}
 	}
+	return applied;
 }
 
 async function reevaluateLevel(memberId: any, stats: any, guildId: any) {
@@ -263,6 +277,12 @@ export async function resolveSteal({ actorMemberId, actorMemberItemId, targetMem
 	if (await consumeReactiveDefense(targetMemberId, 'insurance')) {
 		const refundStats = await db.updateMemberLevelStats(targetMemberId, { experienceIncrement: amount });
 		await reevaluateLevel(targetMemberId, refundStats, guildId);
+		await db.logMemberItemAction(targetMemberId, {
+			target_member_id: actorMemberId,
+			action: 'insurance',
+			xp_amount: amount,
+			outcome: 'refunded'
+		});
 		refunded = amount;
 	}
 
@@ -326,6 +346,12 @@ export async function resolveBomb({ actorMemberId, actorMemberItemId, targetMemb
 	if (amount > 0 && (await consumeReactiveDefense(targetMemberId, 'insurance'))) {
 		const refundStats = await db.updateMemberLevelStats(targetMemberId, { experienceIncrement: amount });
 		await reevaluateLevel(targetMemberId, refundStats, guildId);
+		await db.logMemberItemAction(targetMemberId, {
+			target_member_id: actorMemberId,
+			action: 'insurance',
+			xp_amount: amount,
+			outcome: 'refunded'
+		});
 		refunded = amount;
 	}
 

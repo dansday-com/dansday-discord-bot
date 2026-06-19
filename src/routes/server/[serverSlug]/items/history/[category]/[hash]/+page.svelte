@@ -17,7 +17,8 @@
 		voice: { label: 'Voice', icon: 'fa-microphone' },
 		voice_afk: { label: 'AFK Voice', icon: 'fa-moon' },
 		video: { label: 'Video', icon: 'fa-video' },
-		stream: { label: 'Streaming', icon: 'fa-tower-broadcast' }
+		stream: { label: 'Streaming', icon: 'fa-tower-broadcast' },
+		leech: { label: 'Leech', icon: 'fa-droplet' }
 	};
 
 	type Badge = { icon: string; text: string };
@@ -29,7 +30,7 @@
 		if (h.rank != null) badges.push({ icon: 'fa-ranking-star', text: `#${h.rank}` });
 		if (h.totalXp != null) badges.push({ icon: 'fa-star', text: `${fmt(h.totalXp)} total` });
 		if (h.multiplier) badges.push({ icon: 'fa-bolt', text: `${h.multiplier}× Boost` });
-		if (h.skimPercent) badges.push({ icon: 'fa-droplet', text: `−${h.skimPercent}% Leech` });
+		if (h.skimPercent) badges.push({ icon: 'fa-droplet', text: h.source === 'leech' ? `${h.skimPercent}% Siphoned` : `−${h.skimPercent}% Leech` });
 		return {
 			icon: src.icon,
 			title: `${src.label} XP`,
@@ -75,6 +76,10 @@
 			reflect: 'Reflect activated',
 			insurance: 'Insurance activated'
 		};
+		if (h.action === 'insurance' && h.outcome === 'refunded') {
+			const from = h.targetName ? ` ← ${h.targetName}` : '';
+			return { icon: 'fa-money-bill-transfer', title: `Insurance refund${from}`, tone: 'win', deltaLabel: h.xpAmount > 0 ? `+${fmt(h.xpAmount)} XP` : '' };
+		}
 		const target = h.targetName ? ` → ${h.targetName}` : '';
 		const title = PAST_TITLE[h.action] ?? effectLabel(h.action);
 		let tone = 'neutral';

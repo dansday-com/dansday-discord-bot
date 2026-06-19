@@ -1123,6 +1123,18 @@ export async function getMemberByDiscordId(serverId: any, discordMemberId: strin
 	return member;
 }
 
+export async function getServerMemberById(memberId: any) {
+	await initializeDatabase();
+	if (!memberId) return null;
+	const rows = await db.execute(sql`
+		SELECT id, server_id, discord_member_id, username, display_name, server_display_name
+		FROM server_members
+		WHERE id = ${Number(memberId)}
+		LIMIT 1
+	`);
+	return (rows[0] as unknown as any[])[0] || null;
+}
+
 export async function searchServerMembers(serverId: any, queryText: string | null, limit = 15) {
 	await initializeDatabase();
 	const q = (queryText || '').trim();
@@ -1693,6 +1705,7 @@ export async function getRecentVictimHits(botId: any, sinceMinutes = 720) {
 		INNER JOIN server_members sm ON sm.id = sml.target_member_id
 		INNER JOIN servers s ON s.id = sm.server_id
 		WHERE sml.action IN ('steal', 'bomb')
+		  AND sml.outcome = 'success'
 		  AND sml.target_member_id IS NOT NULL
 		  AND sml.created_at >= (UTC_TIMESTAMP() - INTERVAL ${Number(sinceMinutes)} MINUTE)
 		  AND s.bot_id = ${Number(botId)}
@@ -1842,7 +1855,7 @@ export async function getLastActionAgainstTarget(targetMemberId: any, actions: s
 	const rows = await db.execute(sql`
 		SELECT created_at
 		FROM server_member_item_logs
-		WHERE target_member_id = ${Number(targetMemberId)} AND action IN (${sql.join(
+		WHERE target_member_id = ${Number(targetMemberId)} AND outcome = 'success' AND action IN (${sql.join(
 			list.map((a) => sql`${a}`),
 			sql`, `
 		)})
@@ -3974,6 +3987,7 @@ export default {
 	syncRoles,
 	upsertMember,
 	getMemberByDiscordId,
+	getServerMemberById,
 	searchServerMembers,
 	syncMembers,
 	syncMemberRoles,

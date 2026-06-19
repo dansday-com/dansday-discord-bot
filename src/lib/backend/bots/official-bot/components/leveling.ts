@@ -511,12 +511,12 @@ const XP_LOG_SOURCE: Record<string, string> = {
 	Streaming: 'stream'
 };
 
-async function sendXPLogToChannel(guild, dbMember, xpGained, xpType, award: any = null, stats: any = null) {
+async function sendXPLogToChannel(guild, dbMember, xpGained, xpType, award: any = null, stats: any = null, rawXp: any = null) {
 	try {
 		await db
 			.logMemberLevelGain(dbMember.id, {
 				source: XP_LOG_SOURCE[xpType] ?? String(xpType).toLowerCase(),
-				amount: xpGained,
+				amount: rawXp != null ? rawXp : xpGained,
 				total_xp: stats?.experience != null ? Number(stats.experience) : null,
 				level: stats?.level != null ? Number(stats.level) : null,
 				rank: stats?.rank != null ? Number(stats.rank) : null,
@@ -541,6 +541,28 @@ async function sendXPLogToChannel(guild, dbMember, xpGained, xpType, award: any 
 	} catch (error) {
 		const msg = error instanceof Error ? error.message : String(error);
 		await logger.log(`⚠️ Failed to send XP log to channel: ${msg}`);
+	}
+}
+
+async function announceLeechCredits(guild, victim, credits) {
+	try {
+		if (!guild || !Array.isArray(credits) || credits.length === 0) return;
+		const settings = await getLevelingSettings(guild.id);
+		if (!settings.PROGRESS_CHANNEL_ID) return;
+		const channel = await guild.channels.fetch(settings.PROGRESS_CHANNEL_ID).catch(() => null);
+		if (!channel) return;
+
+		const victimName = victim?.server_display_name || victim?.display_name || victim?.username || 'a member';
+		for (const credit of credits) {
+			if (!credit?.amount || credit.amount <= 0) continue;
+			const b = credit.beneficiary;
+			const attackerName = b?.server_display_name || b?.display_name || b?.username || 'A leecher';
+			const pct = credit.percent != null ? ` (${credit.percent}%)` : '';
+			await channel.send(`🩸 Leech: ${attackerName} siphoned +${credit.amount} XP from ${victimName}${pct}`).catch(() => null);
+		}
+	} catch (error) {
+		const msg = error instanceof Error ? error.message : String(error);
+		await logger.log(`⚠️ Failed to announce leech credits: ${msg}`);
 	}
 }
 
@@ -579,9 +601,10 @@ async function handleMessageCreate(message) {
 			experienceIncrement: memberXp,
 			chatRewardedAt: message.createdAt ? new Date(message.createdAt) : new Date()
 		});
-		await creditLeechers(leechCredits, guildId);
+		const leechApplied = await creditLeechers(leechCredits, guildId);
 
-		await sendXPLogToChannel(message.guild, dbMember, memberXp, 'Chat', award, stats);
+		await sendXPLogToChannel(message.guild, dbMember, memberXp, 'Chat', award, stats, baseXp);
+		await announceLeechCredits(message.guild, dbMember, leechApplied);
 
 		await handleLevelEvaluation(server, dbMember, stats, message.guild.id, {
 			previousLevel: previousStats?.level ?? null,
@@ -621,21 +644,22 @@ async function awardVoiceXP(server, dbMember, guildId, reason, previousStats, bu
 		...(vid > 0 ? { voiceMinutesVideoIncrement: vid } : {}),
 		...(strm > 0 ? { voiceMinutesStreamingIncrement: strm } : {})
 	});
-	await creditLeechers(leechCredits, guildId);
+	const leechApplied = await creditLeechers(leechCredits, guildId);
 
 	const discordGuild = clientInstance?.guilds.cache.get(guildId);
 	if (discordGuild) {
 		const rate = rawXpGained > 0 ? xpGained / rawXpGained : 1;
 		const shown = (bucket: number) => Math.max(0, Math.round(bucket * rate));
 		if (baseXp > 0) {
-			await sendXPLogToChannel(discordGuild, dbMember, shown(baseXp), isAFK ? 'AFK Voice' : 'Voice', award, stats);
+			await sendXPLogToChannel(discordGuild, dbMember, shown(baseXp), isAFK ? 'AFK Voice' : 'Voice', award, stats, baseXp);
 		}
 		if (videoXp > 0) {
-			await sendXPLogToChannel(discordGuild, dbMember, shown(videoXp), 'Video', award, stats);
+			await sendXPLogToChannel(discordGuild, dbMember, shown(videoXp), 'Video', award, stats, videoXp);
 		}
 		if (streamXp > 0) {
-			await sendXPLogToChannel(discordGuild, dbMember, shown(streamXp), 'Streaming', award, stats);
+			await sendXPLogToChannel(discordGuild, dbMember, shown(streamXp), 'Streaming', award, stats, streamXp);
 		}
+		await announceLeechCredits(discordGuild, dbMember, leechApplied);
 	}
 
 	return await handleLevelEvaluation(server, dbMember, stats, guildId, {

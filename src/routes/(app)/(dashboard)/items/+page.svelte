@@ -230,7 +230,6 @@
 		}
 	}
 
-	// --- Give to member ---
 	let giftItem = $state<any | null>(null);
 	let giftSearch = $state('');
 	let giftMembers = $state<any[]>([]);

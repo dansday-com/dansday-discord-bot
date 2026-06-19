@@ -1182,6 +1182,67 @@ export async function searchServerMembers(serverId: any, queryText: string | nul
 		.limit(safeLimit);
 }
 
+export async function searchPanelMembersForGift(panelId: any, queryText: string | null, limit = 60) {
+	await initializeDatabase();
+	if (panelId == null) return [];
+	const q = (queryText || '').trim();
+	const safeLimit = Math.max(1, Math.min(200, Number(limit) || 60));
+	const likeValue = `%${q.replace(/[%_]/g, '\\$&')}%`;
+	const searchClause = q
+		? sql`AND (
+				m.discord_member_id LIKE ${likeValue}
+				OR m.username LIKE ${likeValue}
+				OR m.display_name LIKE ${likeValue}
+				OR m.server_display_name LIKE ${likeValue}
+			)`
+		: sql``;
+
+	const rows = await db.execute(sql`
+		SELECT
+			m.id,
+			m.discord_member_id,
+			m.username,
+			m.display_name,
+			m.server_display_name,
+			m.avatar,
+			sv.id AS server_id,
+			sv.name AS server_name,
+			COALESCE(inv.total, 0) AS inventory_total
+		FROM server_members m
+		INNER JOIN servers sv ON sv.id = m.server_id
+		INNER JOIN bots b ON b.id = sv.bot_id AND b.panel_id = ${Number(panelId)}
+		INNER JOIN server_settings ss
+			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.items}
+			AND JSON_EXTRACT(ss.settings, '$.enabled') = true
+		LEFT JOIN (
+			SELECT member_id, SUM(quantity) AS total
+			FROM server_member_items
+			GROUP BY member_id
+		) inv ON inv.member_id = m.id
+		WHERE 1=1 ${searchClause}
+		ORDER BY sv.name ASC, COALESCE(inv.total, 0) DESC, m.updated_at DESC
+		LIMIT ${safeLimit}
+	`);
+	return (rows[0] as unknown as any[]) || [];
+}
+
+export async function memberServerHasItemsEnabled(memberId: any, panelId: any) {
+	await initializeDatabase();
+	if (memberId == null || panelId == null) return false;
+	const rows = await db.execute(sql`
+		SELECT 1
+		FROM server_members m
+		INNER JOIN servers sv ON sv.id = m.server_id
+		INNER JOIN bots b ON b.id = sv.bot_id AND b.panel_id = ${Number(panelId)}
+		INNER JOIN server_settings ss
+			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.items}
+			AND JSON_EXTRACT(ss.settings, '$.enabled') = true
+		WHERE m.id = ${Number(memberId)}
+		LIMIT 1
+	`);
+	return ((rows[0] as unknown as any[]) || []).length > 0;
+}
+
 async function refreshMemberIsContentCreator(memberId: number, serverId: number, discordRoleIds: string[]) {
 	await initializeDatabase();
 	const ccRoleDbIds = await getContentCreatorRoleDbIds(serverId);
@@ -3989,6 +4050,8 @@ export default {
 	getMemberByDiscordId,
 	getServerMemberById,
 	searchServerMembers,
+	searchPanelMembersForGift,
+	memberServerHasItemsEnabled,
 	syncMembers,
 	syncMemberRoles,
 	getMemberLevel,

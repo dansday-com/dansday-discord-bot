@@ -14,7 +14,6 @@
 	--color-ash-950: #1e1f22;
 }
 
-/* Single source of truth for item effect accent colors. Used by the shop cards and the admin items list. */
 :root {
 	--effect-default: #245f73;
 	--effect-steal: #c0392b;
@@ -3214,8 +3213,6 @@
 	white-space: nowrap;
 }
 
-/* Bag card foot — mobile-first (360px): qty lives on the medallion, so hide the
-   redundant "Owned ×N" text and let the action button fill the row beside the trash. */
 .m-root .m-card-foot .m-card-owned {
 	display: none;
 }

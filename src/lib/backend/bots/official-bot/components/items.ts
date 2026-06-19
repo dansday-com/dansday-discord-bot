@@ -1,7 +1,7 @@
 import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 import { getRedisClient } from '../../../../redis.js';
-import { getLevelRequirement, determineLevel } from './leveling.js';
+import { getLevelRequirement, determineLevel, evaluateMemberLevelAndRank } from './leveling.js';
 import { TARGETED_EFFECTS, ANNOUNCED_EFFECTS, getItemEffect, BAG_CAPACITY } from '../../../../items.js';
 
 const EFFECT_CACHE_TTL_MS = 5000;
@@ -141,6 +141,12 @@ export async function creditLeechers(leechCredits: any, guildId: any) {
 					skim_percent: credit.percent ?? null
 				})
 				.catch(() => null);
+			await evaluateMemberLevelAndRank(guildId, credit.beneficiaryMemberId, {
+				previousLevel: before?.level != null ? Number(before.level) : null,
+				previousRank: before?.rank != null ? Number(before.rank) : null,
+				previousExperience: before?.experience != null ? Number(before.experience) : null,
+				reason: 'item-leech-credit'
+			}).catch(() => null);
 			const beneficiary = await db.getServerMemberById(credit.beneficiaryMemberId).catch(() => null);
 			applied.push({ ...credit, beneficiary });
 		} catch (error: any) {
@@ -161,6 +167,31 @@ async function reevaluateLevel(memberId: any, stats: any, guildId: any) {
 		return db.updateMemberLevelStats(memberId, { level: expectedLevel });
 	}
 	return stats;
+}
+
+async function snapshotMembers(memberIds: any[]) {
+	const ids = [...new Set(memberIds.filter((id) => id != null).map((id) => Number(id)))];
+	const snapshots = new Map<number, { level: any; rank: any; experience: any }>();
+	for (const id of ids) {
+		const stats = await db.getMemberLevel(id).catch(() => null);
+		snapshots.set(id, {
+			level: stats?.level ?? null,
+			rank: stats?.rank ?? null,
+			experience: stats?.experience ?? null
+		});
+	}
+	return snapshots;
+}
+
+async function finalizeXpChanges(guildId: any, snapshots: Map<number, { level: any; rank: any; experience: any }>, reason: string) {
+	for (const [memberId, before] of snapshots) {
+		await evaluateMemberLevelAndRank(guildId, memberId, {
+			previousLevel: before.level != null ? Number(before.level) : null,
+			previousRank: before.rank != null ? Number(before.rank) : null,
+			previousExperience: before.experience != null ? Number(before.experience) : null,
+			reason
+		}).catch(() => null);
+	}
 }
 
 export async function getSpendableXp(memberId: any, guildId: any) {
@@ -513,6 +544,7 @@ export async function handleGamble(client: any, payload: any) {
 	const winChance = Math.max(0, Math.min(100, Number(cfg.win_chance) || 0));
 	const payoutMultiplier = Math.max(0, Number(cfg.payout_multiplier) || 0);
 
+	const gambleSnapshots = await snapshotMembers([actorMemberId]);
 	const spend = await spendXp(actorMemberId, wager, guild_id);
 	if (!spend.ok) return { ok: false, error: 'insufficient_xp' };
 
@@ -536,6 +568,8 @@ export async function handleGamble(client: any, payload: any) {
 		xp_amount: netChange,
 		outcome: won ? 'win' : 'lose'
 	});
+
+	await finalizeXpChanges(guild_id, gambleSnapshots, 'item-gamble');
 
 	const result = { outcome: won ? 'win' : 'lose', won, wager, payout, net: netChange };
 	setTimeout(() => {
@@ -643,6 +677,8 @@ export async function handleItemUse(client: any, payload: any) {
 	const consumed = await db.consumeMemberItem(member_item_id, 1);
 	if (!consumed) return { ok: false, error: 'out_of_stock' };
 
+	const useSnapshots = await snapshotMembers([actorMemberId, targetMemberId]);
+
 	let result: any;
 	try {
 		if (effectType === 'steal') {
@@ -677,6 +713,8 @@ export async function handleItemUse(client: any, payload: any) {
 		await db.grantMemberItem(memberItem.member_id, memberItem.item_id, 1);
 		return { ok: false, error: result.outcome, outcome: result.outcome };
 	}
+
+	await finalizeXpChanges(guild_id, useSnapshots, `item-${effectType}`);
 
 	await announceItemUse(client, {
 		guildId: guild_id,
@@ -797,6 +835,7 @@ export async function handleItemBuy(client: any, payload: any) {
 		return { ok: false, error: 'bag_full', capacity: BAG_CAPACITY, bagStock };
 	}
 
+	const snapshots = await snapshotMembers([actorMemberId]);
 	const spend = await spendXp(actorMemberId, totalCost, guild_id);
 	if (!spend.ok) return { ok: false, error: spend.reason || 'insufficient_xp' };
 
@@ -809,6 +848,7 @@ export async function handleItemBuy(client: any, payload: any) {
 		xp_amount: totalCost,
 		outcome: 'success'
 	});
+	await finalizeXpChanges(guild_id, snapshots, 'item-buy');
 	return { ok: true, member_item_id: owned?.id, quantity: owned?.quantity, cost: totalCost };
 }
 

@@ -495,6 +495,26 @@ async function handleLevelEvaluation(server, dbMember, currentStats, guildId, co
 	return finalStats;
 }
 
+export async function evaluateMemberLevelAndRank(guildId, memberId, context = {}) {
+	try {
+		if (!guildId || !memberId) return null;
+		let server;
+		try {
+			server = await getServerForCurrentBot(guildId);
+		} catch {
+			return null;
+		}
+		const dbMember = await db.getServerMemberById(memberId);
+		if (!dbMember || Number(dbMember.server_id) !== Number(server.id)) return null;
+		const currentStats = await db.getMemberLevel(memberId);
+		if (!currentStats) return null;
+		return await handleLevelEvaluation(server, dbMember, currentStats, guildId, { reason: 'items', ...context });
+	} catch (error) {
+		await logger.log(`⚠️ evaluateMemberLevelAndRank failed for member ${memberId}: ${error.message}`);
+		return null;
+	}
+}
+
 const XP_LOG_EMOJI = {
 	Chat: '💬',
 	Voice: '🎤',

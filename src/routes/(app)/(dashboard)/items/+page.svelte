@@ -230,6 +230,87 @@
 		}
 	}
 
+	// --- Give to member ---
+	let giftItem = $state<any | null>(null);
+	let giftSearch = $state('');
+	let giftMembers = $state<any[]>([]);
+	let giftLoading = $state(false);
+	let giftingMemberId = $state<number | null>(null);
+	let giftSearchTimer: ReturnType<typeof setTimeout> | null = null;
+
+	async function loadGiftMembers() {
+		giftLoading = true;
+		try {
+			const res = await fetch(`/api/admin/items/gift?q=${encodeURIComponent(giftSearch.trim())}`, { credentials: 'include' });
+			const d = await res.json();
+			if (d.success) giftMembers = d.members ?? [];
+			else showToast(d.error || 'Failed to load members', 'error');
+		} finally {
+			giftLoading = false;
+		}
+	}
+
+	function startGift(item: any) {
+		giftItem = item;
+		giftSearch = '';
+		giftMembers = [];
+		loadGiftMembers();
+	}
+
+	function onGiftSearchInput() {
+		if (giftSearchTimer) clearTimeout(giftSearchTimer);
+		giftSearchTimer = setTimeout(loadGiftMembers, 250);
+	}
+
+	const giftGroups = $derived.by(() => {
+		const groups = new Map<string, { server: string; members: any[] }>();
+		for (const m of giftMembers) {
+			const key = `${m.server_id}`;
+			if (!groups.has(key)) groups.set(key, { server: m.server_name || 'Unknown server', members: [] });
+			groups.get(key)!.members.push(m);
+		}
+		return [...groups.values()];
+	});
+
+	function giftAvatar(m: any): string {
+		return m.avatar || `https://cdn.discordapp.com/embed/avatars/${Number(m.discord_member_id) % 5 || 0}.png`;
+	}
+
+	function giftMemberName(m: any): string {
+		return m.server_display_name || m.display_name || m.username || 'Unknown';
+	}
+
+	async function giveTo(member: any) {
+		if (!giftItem) return;
+		giftingMemberId = member.id;
+		try {
+			const res = await fetch('/api/admin/items/gift', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				credentials: 'include',
+				body: JSON.stringify({ item_id: giftItem.id, member_id: member.id, quantity: 1 })
+			});
+			const d = await res.json();
+			if (d.success) {
+				showToast(`Gave "${giftItem.name}" to ${giftMemberName(member)} (${member.server_name})`, 'success');
+				member.inventory_total = Number(member.inventory_total || 0) + 1;
+			} else showToast(d.error || 'Failed to give item', 'error');
+		} catch {
+			showToast('Failed to give item', 'error');
+		} finally {
+			giftingMemberId = null;
+		}
+	}
+
+	$effect(() => {
+		if (!giftItem) return;
+		const onKey = (e: KeyboardEvent) => {
+			if (e.key === 'Escape') giftItem = null;
+		};
+		window.addEventListener('keydown', onKey);
+		return () => window.removeEventListener('keydown', onKey);
+	});
+
 	const DAYS = [
 		{ v: 0, l: 'Sun' },
 		{ v: 1, l: 'Mon' },
@@ -326,7 +407,22 @@
 							></span>
 						</button>
 						<button onclick={() => startEdit(item)} class="bg-ash-700 hover:bg-ash-600 text-ash-200 flex-1 rounded-lg py-1.5 text-xs">Edit</button>
-						<button onclick={() => (confirmDelete = item)} class="rounded-lg bg-red-900/40 px-3 py-1.5 text-xs text-red-300 hover:bg-red-900/60">Delete</button>
+						<button
+							onclick={() => startGift(item)}
+							title="Give to a member"
+							aria-label="Give to a member"
+							class="rounded-lg bg-teal-900/40 px-3 py-1.5 text-xs text-teal-300 hover:bg-teal-900/60"
+						>
+							<i class="fas fa-gift"></i>
+						</button>
+						<button
+							onclick={() => (confirmDelete = item)}
+							title="Delete item"
+							aria-label="Delete item"
+							class="rounded-lg bg-red-900/40 px-3 py-1.5 text-xs text-red-300 hover:bg-red-900/60"
+						>
+							<i class="fas fa-trash-can"></i>
+						</button>
 					</div>
 				</div>
 			{/each}
@@ -343,7 +439,6 @@
 			aria-modal="true"
 			aria-label={form.id ? 'Edit item' : 'Add item'}
 		>
-			<!-- Header -->
 			<div class="border-ash-700 flex items-center justify-between border-b px-4 py-4 sm:px-6">
 				<h3 class="text-ash-100 flex items-center gap-2 text-lg font-bold sm:text-xl">
 					<i class="fas fa-store text-teal-400"></i>{form.id ? 'Edit Item' : 'Add Item'}
@@ -353,9 +448,7 @@
 				</button>
 			</div>
 
-			<!-- Body -->
 			<div class="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-5 sm:px-6">
-				<!-- Basics -->
 				<div class="space-y-4">
 					<div>
 						<label for="item-name" class="text-ash-300 mb-1.5 block text-xs font-medium">Name</label>
@@ -394,7 +487,6 @@
 					</div>
 				</div>
 
-				<!-- Effect settings -->
 				<div class="border-ash-700 bg-ash-900/40 space-y-3 rounded-xl border p-4">
 					<p class="text-ash-400 text-[11px] font-semibold tracking-wide uppercase">Effect settings</p>
 					{#if form.effect_type === 'steal' || form.effect_type === 'bomb'}
@@ -540,7 +632,6 @@
 					{/if}
 				</div>
 
-				<!-- Availability -->
 				<div class="border-ash-700 bg-ash-900/40 space-y-3 rounded-xl border p-4">
 					<p class="text-ash-400 text-[11px] font-semibold tracking-wide uppercase">Availability (optional, UTC)</p>
 					<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -613,7 +704,6 @@
 					</div>
 				</div>
 
-				<!-- Enabled toggle -->
 				<div class="border-ash-700 bg-ash-900/40 rounded-xl border p-4">
 					<ConfigToggleRow
 						label="Enabled"
@@ -628,7 +718,6 @@
 					</p>{/if}
 			</div>
 
-			<!-- Footer -->
 			<div class="border-ash-700 flex gap-3 border-t px-4 py-4 sm:px-6">
 				<button onclick={() => (editing = null)} class="bg-ash-700 hover:bg-ash-600 text-ash-100 flex-1 rounded-lg py-2.5 text-sm font-medium transition-colors"
 					>Cancel</button
@@ -656,8 +745,77 @@
 	oncancel={() => (confirmDelete = null)}
 />
 
+{#if giftItem}
+	<div class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-3 sm:p-4" onclick={() => (giftItem = null)} role="presentation">
+		<div
+			class="bg-ash-800 border-ash-700 my-4 flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl border shadow-2xl"
+			onclick={(e) => e.stopPropagation()}
+			role="dialog"
+			aria-modal="true"
+			aria-label="Give item to a member"
+		>
+			<div class="border-ash-700 flex items-center justify-between border-b px-4 py-4 sm:px-6">
+				<h3 class="text-ash-100 flex min-w-0 items-center gap-2 text-lg font-bold sm:text-xl">
+					<i class="fas fa-gift text-teal-400"></i><span class="truncate">Give “{giftItem.name}”</span>
+				</h3>
+				<button type="button" onclick={() => (giftItem = null)} aria-label="Close" class="text-ash-400 hover:text-ash-100 p-1 transition-colors">
+					<i class="fas fa-times text-lg"></i>
+				</button>
+			</div>
+
+			<div class="border-ash-700 border-b px-4 py-3 sm:px-6">
+				<div class="relative">
+					<i class="fas fa-search text-ash-500 absolute top-1/2 left-3 -translate-y-1/2 text-xs"></i>
+					<input
+						type="search"
+						bind:value={giftSearch}
+						oninput={onGiftSearchInput}
+						placeholder="Search members by name…"
+						class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border py-2.5 pr-3 pl-9 text-sm focus:ring-2 focus:outline-none"
+					/>
+				</div>
+				<p class="text-ash-500 mt-2 text-[11px]">Only members in servers with the items module enabled are shown. Same person can appear per server.</p>
+			</div>
+
+			<div class="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6">
+				{#if giftLoading}
+					<p class="text-ash-400 text-sm"><i class="fas fa-spinner fa-spin mr-1"></i>Loading…</p>
+				{:else if giftGroups.length === 0}
+					<p class="text-ash-400 py-6 text-center text-sm">No members found.</p>
+				{:else}
+					{#each giftGroups as group}
+						<div>
+							<div class="text-ash-400 mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold tracking-wide uppercase">
+								<i class="fas fa-server text-ash-500"></i>{group.server}
+								<span class="text-ash-600 normal-case">· {group.members.length}</span>
+							</div>
+							<div class="space-y-1">
+								{#each group.members as m}
+									<div class="bg-ash-700/50 flex items-center gap-3 rounded-lg p-2">
+										<img src={giftAvatar(m)} alt={giftMemberName(m)} loading="lazy" class="h-9 w-9 shrink-0 rounded-full object-cover" />
+										<div class="min-w-0 flex-1">
+											<div class="text-ash-100 truncate text-sm font-medium">{giftMemberName(m)}</div>
+											<div class="text-ash-500 text-[11px]"><i class="fas fa-bag-shopping mr-1"></i>{Number(m.inventory_total || 0)} in bag</div>
+										</div>
+										<button
+											onclick={() => giveTo(m)}
+											disabled={giftingMemberId === m.id}
+											class="flex shrink-0 items-center gap-1.5 rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-teal-500 disabled:opacity-50"
+										>
+											{#if giftingMemberId === m.id}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas fa-gift"></i>{/if}Give
+										</button>
+									</div>
+								{/each}
+							</div>
+						</div>
+					{/each}
+				{/if}
+			</div>
+		</div>
+	</div>
+{/if}
+
 <style>
-	/* Native datetime-local: make the calendar indicator visible on dark theme */
 	.m-date::-webkit-calendar-picker-indicator {
 		filter: invert(0.7);
 		cursor: pointer;

@@ -588,7 +588,6 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
 <div class="mc-overlay" class:mc-overlay--visible={visible} onclick={handleBackdrop}>
 	<div class="mc-modal" class:mc-modal--visible={visible}>
 		<button class="mc-close" onclick={closeModal} aria-label="Close member card">

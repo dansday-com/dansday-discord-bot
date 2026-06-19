@@ -1024,6 +1024,39 @@ async function announceItemUse(client: any, ctx: any) {
 	await channel.send({ content, embeds: [embed] }).catch(() => null);
 }
 
+export async function handleAdminGiftAnnounce(client: any, payload: any) {
+	const { guild_id, member_discord_id, item_name, quantity } = payload || {};
+	if (!guild_id || !member_discord_id) return { ok: false, error: 'missing_fields' };
+
+	const { getLevelingSettings, getEmbedConfig } = await import('../../../config.js');
+	const settings = await getLevelingSettings(guild_id).catch(() => null);
+	const channelId = settings?.PROGRESS_CHANNEL_ID;
+	if (!channelId) return { ok: true, announced: false };
+
+	const guild = client?.guilds?.cache?.get(guild_id);
+	if (!guild) return { ok: true, announced: false };
+	const channel = await guild.channels.fetch(channelId).catch(() => null);
+	if (!channel || !channel.isTextBased()) return { ok: true, announced: false };
+
+	const member = await guild.members.fetch(String(member_discord_id)).catch(() => null);
+	if (!member) return { ok: true, announced: false };
+
+	const { EmbedBuilder } = await import('discord.js');
+	const embedConfig = await getEmbedConfig(guild_id).catch(() => ({ COLOR: 0x14b8a6, FOOTER: 'Items' }));
+	const qty = Math.max(1, Number(quantity) || 1);
+
+	const embed = new EmbedBuilder()
+		.setColor(0x2dd4bf)
+		.setTitle('🎁 A Gift Has Arrived')
+		.setDescription(`${member} received **${qty}× ${item_name || 'an item'}** from the admin — check your bag!`)
+		.setFooter({ text: embedConfig.FOOTER || 'Items' })
+		.setTimestamp();
+	if (member.user) embed.setThumbnail(member.user.displayAvatarURL({ dynamic: true }));
+
+	await channel.send({ content: `${member}`, embeds: [embed] }).catch(() => null);
+	return { ok: true, announced: true };
+}
+
 const EXPIRY_SWEEP_MS = 60_000;
 let expirySweepTimer: any = null;
 

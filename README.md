@@ -18,6 +18,17 @@ The project is open source under the MIT license.
 
 ### Community & engagement
 
+- **Items & XP economy** ⭐ _new_ — Spend earned XP in a per-server shop on PvP and utility items, each with a configurable cost, effect, and optional timed/recurring availability. Members keep purchases in a bag (capacity 50) and use them through Discord flows; outcomes are announced in the progress channel. Effects:
+  - 💰 **Steal** — take a slice of another member's XP (with cooldown and post-hit immunity).
+  - 💥 **Bomb** — destroy a slice of a member's XP outright.
+  - 🩸 **Leech** — siphon a percentage of a target's XP for a set duration.
+  - 🎯 **Bounty** — put XP on a member's head; whoever robs them next collects it.
+  - 🛡️ **Shield** — block incoming steals, bombs, and leeches while active.
+  - 🪞 **Reflect** — bounce the next attack back at the attacker.
+  - 💵 **Insurance** — refund your XP the next time you're robbed.
+  - ⚡ **Boost** — multiply your XP earnings for a set duration.
+  - 🎲 **Gamble** — wager XP for a chance at a multiplied payout.
+  - 🎁 **Gift** — send XP to another member (with optional tax).
 - **Leveling & XP** — Message and voice activity feed a full XP system with levels, role rewards, and leaderboards.
 - **Welcomer** — Custom welcome messages and embeds for new members.
 - **Giveaways** — Entries, winner selection, and role-based eligibility.
@@ -87,4 +98,4 @@ Environment variables drive database credentials, sessions, captcha, mail, Redis
 
 ## License
 
-MIT · Author: Akbar Yudhanto · Version: 8.1.4
+MIT · Author: Akbar Yudhanto · Version: 26.1.0

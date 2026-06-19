@@ -16,6 +16,12 @@
 	let outcome = $state<ItemOutcome | null>(null);
 	let outcomeTimer: ReturnType<typeof setTimeout> | null = null;
 
+	$effect(() => {
+		if (pickingTargetFor === null && outcome === null) return;
+		document.body.style.overflow = 'hidden';
+		return () => (document.body.style.overflow = '');
+	});
+
 	function showOutcome(effectType: string, result: any) {
 		if (outcomeTimer) clearTimeout(outcomeTimer);
 		outcome = describeItemOutcome(effectType, result);

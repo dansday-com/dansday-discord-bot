@@ -55,6 +55,12 @@
 	let lostAmount = $state(0);
 	let reelWrapEl: HTMLDivElement | undefined = $state();
 
+	$effect(() => {
+		if (gambleItem === null) return;
+		document.body.style.overflow = 'hidden';
+		return () => (document.body.style.overflow = '');
+	});
+
 	function randomCells(n: number): ('win' | 'lose')[] {
 		return Array.from({ length: n }, () => (Math.random() < 0.5 ? 'win' : 'lose'));
 	}

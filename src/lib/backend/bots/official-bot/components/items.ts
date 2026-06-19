@@ -531,9 +531,6 @@ export async function resolveBounty({ actorMemberId, actorMemberItemId, targetMe
 	const amount = Math.max(0, Math.floor(Number(cfg.bounty_amount) || 0));
 	if (amount <= 0) return { outcome: 'success', xp: 0 };
 
-	const spend = await spendXp(actorMemberId, amount, guildId);
-	if (!spend.ok) return { outcome: 'insufficient', xp: 0 };
-
 	await db.placeBounty(targetMemberId, actorMemberId, amount);
 	await db.logMemberItemAction(actorMemberId, {
 		member_item_id: actorMemberItemId,

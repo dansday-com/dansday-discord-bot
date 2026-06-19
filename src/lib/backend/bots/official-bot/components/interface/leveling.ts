@@ -11,7 +11,7 @@ import {
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import db from '../../../../../database.js';
 import { logger } from '../../../../../utils/index.js';
-import { getLevelRequirement, determineLevel, sendLevelChangeDM, sendLevelProgressNotification } from '../leveling.js';
+import { getLevelRequirement, determineLevel, sendLevelProgressNotification } from '../leveling.js';
 import { translate } from '../../i18n.js';
 const PROGRESS_BAR_SLOTS = 10;
 
@@ -39,8 +39,6 @@ async function refreshMemberLevelData(serverId, discordMemberId) {
 	}
 
 	const previousLevel = levelData.level ?? 1;
-	const dmPreference = levelData.dm_notifications_enabled;
-	const notificationsEnabled = !(dmPreference === false || dmPreference === 0);
 
 	const botConfig = getBotConfig();
 	let guildId = null;
@@ -78,9 +76,6 @@ async function refreshMemberLevelData(serverId, discordMemberId) {
 					previousRank: levelData.rank ?? null,
 					contextLabel: 'interface-refresh'
 				});
-				if (notificationsEnabled) {
-					await sendLevelChangeDM(guildId, levelData.discord_member_id, serverName, recalculatedLevel);
-				}
 			}
 			return {
 				...levelData,
@@ -100,9 +95,6 @@ async function refreshMemberLevelData(serverId, discordMemberId) {
 				previousRank: levelData.rank ?? null,
 				contextLabel: 'interface-refresh'
 			});
-			if (notificationsEnabled) {
-				await sendLevelChangeDM(guildId, levelData.discord_member_id, serverName, recalculatedLevel);
-			}
 		}
 		return {
 			...levelData,

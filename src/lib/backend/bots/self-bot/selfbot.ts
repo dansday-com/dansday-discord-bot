@@ -22,8 +22,13 @@ let BOT_TOKEN: string | undefined;
 const BOT_ID = process.env.BOT_ID;
 const client = new Client();
 
+let initialized = false;
+
 client.on('ready', async () => {
 	logger.info('Self-bot logged in', { userTag: (client.user as any)?.tag });
+
+	if (initialized) return;
+	initialized = true;
 
 	if (!BOT_TOKEN) {
 		await initializeConfig();

@@ -3,9 +3,19 @@
 	import { resolveEmbedFooterPlaceholders } from '$lib/utils/embedFooter.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import EmbedForm from '$lib/frontend/components/EmbedForm.svelte';
+	import RolePicker from '$lib/frontend/components/RolePicker.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
+
+	const MENTION_CATEGORIES = [
+		{ discord_role_id: 'admin', name: 'Admin Roles', color: '#ef4444', position: 5 },
+		{ discord_role_id: 'staff', name: 'Staff Roles', color: '#f59e0b', position: 4 },
+		{ discord_role_id: 'content_creator', name: 'Content Creator Roles', color: '#8b5cf6', position: 3 },
+		{ discord_role_id: 'supporter', name: 'Supporter Roles', color: '#22c55e', position: 2 },
+		{ discord_role_id: 'member', name: 'Member Roles', color: '#3b82f6', position: 1 }
+	];
+	let mentionCategories = $state<string[]>([]);
 
 	let embedTitle = $state('');
 	let embedDescription = $state('');
@@ -26,7 +36,8 @@
 				title: embedTitle,
 				description: embedDescription,
 				footer: embedFooter,
-				color: embedColor
+				color: embedColor,
+				mention_categories: mentionCategories
 			};
 
 			if (imageMode === 'url' && imageUrl) body.image_url = imageUrl;
@@ -51,6 +62,7 @@
 				embedTitle = '';
 				embedDescription = '';
 				imageUrl = '';
+				mentionCategories = [];
 				showToast(`Global embed sent! Succeeded: ${d.successCount}, Failed: ${d.failCount}`, 'success');
 			} else {
 				showToast(d.error || 'Failed to send global embed', 'error');
@@ -74,6 +86,21 @@
 	</p>
 </div>
 
+{#snippet sendToContent()}
+	<div class="mb-4">
+		<span class="text-ash-300 mb-2 block text-xs font-medium">Mention role groups <span class="text-ash-500">(optional)</span></span>
+		<RolePicker
+			roles={MENTION_CATEGORIES as any}
+			value={mentionCategories}
+			placeholder="Select role groups to mention..."
+			onchange={(v) => (mentionCategories = v as string[])}
+		/>
+		<p class="text-ash-500 mt-2 text-xs">
+			Each server pings its own roles configured under <strong>Permissions</strong> for the selected groups. Servers without matching roles are simply not pinged.
+		</p>
+	</div>
+{/snippet}
+
 <div class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-6">
 	<EmbedForm
 		bind:title={embedTitle}
@@ -92,5 +119,6 @@
 		sending={sendingGlobalEmbed}
 		onsubmit={sendGlobalEmbed}
 		submitLabel="Send Global Embed"
+		sendToSnippet={sendToContent}
 	/>
 </div>

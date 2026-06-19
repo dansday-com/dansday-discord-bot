@@ -51,9 +51,33 @@ function parseColor(colorInput) {
 	return null;
 }
 
+const PERMISSION_CATEGORY_KEYS: Record<string, string> = {
+	admin: 'admin_roles',
+	staff: 'staff_roles',
+	content_creator: 'content_creator_roles',
+	supporter: 'supporter_roles',
+	member: 'member_roles'
+};
+
+async function resolveCategoryRoleMentions(serverId: any, categories: string[]): Promise<string> {
+	if (!Array.isArray(categories) || categories.length === 0) return '';
+	const permRow = await db.getServerSettings(serverId, 'permissions').catch(() => null);
+	const permSettings = permRow && Array.isArray(permRow) ? permRow[0]?.settings : permRow?.settings;
+	if (!permSettings) return '';
+	const roleIds = new Set<string>();
+	for (const cat of categories) {
+		const key = PERMISSION_CATEGORY_KEYS[cat];
+		if (!key) continue;
+		for (const id of permSettings[key] || []) {
+			if (id) roleIds.add(String(id));
+		}
+	}
+	return [...roleIds].map((id) => `<@&${id}>`).join(' ');
+}
+
 async function handleSendGlobalEmbed(payload) {
 	try {
-		const { title, description, image_url, color, footer, image_attachment } = payload;
+		const { title, description, image_url, color, footer, image_attachment, mention_categories } = payload;
 
 		if (!title) {
 			throw new Error('Title is required');
@@ -115,9 +139,12 @@ async function handleSendGlobalEmbed(payload) {
 				const messageOptions: any = { embeds: [embed] };
 				if (files.length > 0) messageOptions.files = files;
 
+				const roleMentions = await resolveCategoryRoleMentions(server.id, mention_categories).catch(() => '');
+
 				const notificationMentions = await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(guild_id, channel.id).catch(() => null);
 				const firstMentionChunk = notificationMentions ? notificationMentions[0] : null;
-				if (firstMentionChunk) messageOptions.content = firstMentionChunk;
+				const content = [roleMentions, firstMentionChunk].filter(Boolean).join(' ');
+				if (content) messageOptions.content = content;
 
 				await channel.send(messageOptions);
 
@@ -547,6 +574,61 @@ async function handleWebhookRequest(req, res) {
 						await logger.log(`❌ sync_component_runtime failed: ${runtimeErr.message}`);
 						res.writeHead(500, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify({ error: 'sync_component_runtime failed', details: runtimeErr.message }));
+					}
+				} else if (payload.type === 'use_item') {
+					try {
+						const { handleItemUse } = await import('./items.js');
+						const result = await handleItemUse(client, payload);
+						res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify(result));
+					} catch (shopErr: any) {
+						await logger.log(`❌ use_item failed: ${shopErr.message}`);
+						res.writeHead(500, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify({ ok: false, error: 'use_item failed', details: shopErr.message }));
+					}
+				} else if (payload.type === 'buy_item') {
+					try {
+						const { handleItemBuy } = await import('./items.js');
+						const result = await handleItemBuy(client, payload);
+						res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify(result));
+					} catch (shopErr: any) {
+						await logger.log(`❌ buy_item failed: ${shopErr.message}`);
+						res.writeHead(500, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify({ ok: false, error: 'buy_item failed', details: shopErr.message }));
+					}
+				} else if (payload.type === 'discard_item') {
+					try {
+						const { handleItemDiscard } = await import('./items.js');
+						const result = await handleItemDiscard(client, payload);
+						res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify(result));
+					} catch (shopErr: any) {
+						await logger.log(`❌ discard_item failed: ${shopErr.message}`);
+						res.writeHead(500, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify({ ok: false, error: 'discard_item failed', details: shopErr.message }));
+					}
+				} else if (payload.type === 'gamble') {
+					try {
+						const { handleGamble } = await import('./items.js');
+						const result = await handleGamble(client, payload);
+						res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify(result));
+					} catch (shopErr: any) {
+						await logger.log(`❌ gamble failed: ${shopErr.message}`);
+						res.writeHead(500, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify({ ok: false, error: 'gamble failed', details: shopErr.message }));
+					}
+				} else if (payload.type === 'gift_item_announce') {
+					try {
+						const { handleAdminGiftAnnounce } = await import('./items.js');
+						const result = await handleAdminGiftAnnounce(client, payload);
+						res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify(result));
+					} catch (shopErr: any) {
+						await logger.log(`❌ gift_item_announce failed: ${shopErr.message}`);
+						res.writeHead(500, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify({ ok: false, error: 'gift_item_announce failed', details: shopErr.message }));
 					}
 				} else {
 					await logger.log(`❌ Invalid payload format: ${JSON.stringify(payload)}`);

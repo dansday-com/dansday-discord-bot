@@ -77,6 +77,8 @@
 
 	const roleColor = $derived(parseRoleHex(highestRole?.color));
 
+	const accentColor = $derived(roleColor);
+
 	onMount(() => {
 		document.body.style.overflow = 'hidden';
 		requestAnimationFrame(() => {
@@ -241,17 +243,13 @@
 		} catch {
 			try {
 				avatarImg = await loadImg('https://cdn.discordapp.com/embed/avatars/0.png');
-			} catch {
-				/* skip */
-			}
+			} catch {}
 		}
 		let serverImg: HTMLImageElement | null = null;
 		if (serverIcon) {
 			try {
 				serverImg = await loadImg(serverIcon);
-			} catch {
-				/* skip */
-			}
+			} catch {}
 		}
 
 		const headerH = 24;
@@ -590,7 +588,6 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
 <div class="mc-overlay" class:mc-overlay--visible={visible} onclick={handleBackdrop}>
 	<div class="mc-modal" class:mc-modal--visible={visible}>
 		<button class="mc-close" onclick={closeModal} aria-label="Close member card">
@@ -599,7 +596,7 @@
 
 		<div class="mc-card" bind:this={cardEl}>
 			<div class="mc-card-bg">
-				<div class="mc-card-accent" style="background: linear-gradient(135deg, {roleColor}, #245f73);"></div>
+				<div class="mc-card-accent" style="background: linear-gradient(135deg, {accentColor}, #245f73);"></div>
 			</div>
 
 			<div class="mc-card-inner">
@@ -619,7 +616,7 @@
 
 				<div class="mc-card-body">
 					<div class="mc-avatar-wrap">
-						<div class="mc-avatar-ring" style="--mc-ring-color: {roleColor};">
+						<div class="mc-avatar-ring" style="--mc-ring-color: {accentColor};">
 							<img
 								class="mc-avatar"
 								src={avatarUrl(member)}
@@ -632,7 +629,9 @@
 						</div>
 					</div>
 
-					<h2 class="mc-name">{memberName(member)}</h2>
+					<h2 class="mc-name">
+						{memberName(member)}
+					</h2>
 
 					{#if highestRole}
 						<div class="mc-role-badge" style="--mc-role-c: {roleColor};">

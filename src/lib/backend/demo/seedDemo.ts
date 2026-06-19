@@ -3,6 +3,7 @@ import { sql } from 'drizzle-orm';
 import { db } from '../../drizzle.js';
 import * as schema from '../../schema.js';
 import { SERVER_SETTINGS } from '../../frontend/panelServer.js';
+import { ITEM_EFFECTS } from '../../items.js';
 import { initializeDatabase } from '../../database.js';
 import { toMySQLDateTime } from '../../utils/datetime.js';
 import { APP_NAME } from '../../frontend/panelServer.js';
@@ -125,6 +126,34 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 
 	if (!botRow?.id) throw new Error('Failed to ensure demo bot');
 
+	const seededItems: { id: number; effect: string }[] = [];
+	for (let idx = 0; idx < ITEM_EFFECTS.length; idx++) {
+		const effect = ITEM_EFFECTS[idx];
+		await db
+			.insert(schema.items)
+			.values({
+				panel_id: demoPanel.id,
+				name: effect.label,
+				effect_type: effect.id,
+				description: effect.summary(effect.defaultConfig),
+				cost: effect.defaultCost,
+				config: effect.defaultConfig,
+				enabled: true,
+				sort_order: idx,
+				created_at: nowDb,
+				updated_at: nowDb
+			})
+			.onDuplicateKeyUpdate({ set: { name: effect.label as any, config: effect.defaultConfig as any, cost: effect.defaultCost as any, updated_at: nowDb } });
+		const itemRow = await db
+			.select({ id: schema.items.id })
+			.from(schema.items)
+			.where(sql`${schema.items.panel_id} = ${demoPanel.id} AND ${schema.items.effect_type} = ${effect.id}`)
+			.limit(1)
+			.then((r: any[]) => r[0] ?? null);
+		if (itemRow?.id) seededItems.push({ id: itemRow.id, effect: effect.id });
+	}
+	const ownableItems = seededItems.filter((it) => it.effect !== 'gamble');
+
 	const base = Date.now();
 	const firstNames = [
 		'Budi',
@@ -193,6 +222,22 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 			.onDuplicateKeyUpdate({
 				set: {
 					settings: sql`JSON_SET(COALESCE(${schema.serverSettings.settings}, JSON_OBJECT()), '$.enabled', true, '$.slug', ${slug})`,
+					updated_at: nowDb
+				}
+			});
+
+		await db
+			.insert(schema.serverSettings)
+			.values({
+				server_id: serverRow.id,
+				component_name: SERVER_SETTINGS.component.items,
+				settings: { enabled: true },
+				created_at: nowDb,
+				updated_at: nowDb
+			})
+			.onDuplicateKeyUpdate({
+				set: {
+					settings: sql`JSON_SET(COALESCE(${schema.serverSettings.settings}, JSON_OBJECT()), '$.enabled', true)`,
 					updated_at: nowDb
 				}
 			});
@@ -404,7 +449,6 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 					voice_minutes_streaming: isZeroMember ? 0 : Math.max(0, 1_100 - i * 4 + (i % 9) * 5),
 					experience: exp,
 					level: lvl,
-					dm_notifications_enabled: true,
 					is_in_voice: false,
 					is_in_video: false,
 					is_in_stream: false,
@@ -479,8 +523,58 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 					.onDuplicateKeyUpdate({ set: { message: m.afk.message as any, updated_at: nowDb } });
 			}
 
+			const mi = membersToSeed.indexOf(m);
+
+			await db.delete(schema.serverMemberItemLogs).where(sql`${schema.serverMemberItemLogs.member_id} = ${memberRow.id}`);
+			await db.delete(schema.serverMemberLevelLogs).where(sql`${schema.serverMemberLevelLogs.member_id} = ${memberRow.id}`);
+
+			if (ownableItems.length > 0 && mi % 10 !== 3 && (m.level.experience as number) > 0) {
+				const bagSize = 1 + (mi % 4);
+				let bagTotal = 0;
+				for (let b = 0; b < bagSize; b++) {
+					const it = ownableItems[(mi + b) % ownableItems.length];
+					const qty = 1 + ((mi + b) % 5);
+					if (bagTotal + qty > 50) break;
+					bagTotal += qty;
+					const acquiredAt = toMySQLDateTime(new Date(base - (mi + b) * 3_600_000)) as any;
+					await db
+						.insert(schema.serverMemberItems)
+						.values({ member_id: memberRow.id as any, item_id: it.id, quantity: qty, acquired_at: acquiredAt, created_at: nowDb, updated_at: nowDb })
+						.onDuplicateKeyUpdate({ set: { quantity: qty as any, updated_at: nowDb } });
+
+					await db.insert(schema.serverMemberItemLogs).values({
+						member_id: memberRow.id as any,
+						member_item_id: null,
+						target_member_id: null,
+						item_id: it.id,
+						action: 'buy',
+						xp_amount: 100 * qty,
+						outcome: 'success',
+						created_at: acquiredAt
+					});
+				}
+			}
+
+			if ((m.level.experience as number) > 0) {
+				const sources = ['chat', 'voice', 'video'];
+				for (let h = 0; h < 4; h++) {
+					const amount = 50 + ((mi + h) % 6) * 25;
+					await db.insert(schema.serverMemberLevelLogs).values({
+						member_id: memberRow.id as any,
+						source: sources[(mi + h) % sources.length],
+						amount,
+						total_xp: Math.max(0, (m.level.experience as number) - (3 - h) * amount),
+						level: m.level.level as any,
+						rank: null,
+						multiplier: null,
+						skim_percent: null,
+						created_at: toMySQLDateTime(new Date(base - h * 1_800_000)) as any
+					});
+				}
+			}
+
 			const roleCycle = ['owner', 'admin', 'moderator', 'staff', 'content_creator', 'supporter', 'member', 'member', 'member', 'unverified'];
-			const assignedRoleKey = roleCycle[membersToSeed.indexOf(m) % roleCycle.length];
+			const assignedRoleKey = roleCycle[mi % roleCycle.length];
 			const assignedRoleId = roleId(assignedRoleKey);
 			if (assignedRoleId) {
 				await db

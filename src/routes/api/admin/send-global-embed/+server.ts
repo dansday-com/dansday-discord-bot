@@ -25,7 +25,10 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			return json({ success: false, error: 'Invalid JSON body' }, { status: 400 });
 		}
 
-		const { title, description, image_url, uploaded_image_path, color, footer } = bodyObj;
+		const { title, description, image_url, uploaded_image_path, color, footer, mention_categories } = bodyObj;
+
+		const VALID_CATEGORIES = ['admin', 'staff', 'content_creator', 'supporter', 'member'];
+		const mentionCategories = Array.isArray(mention_categories) ? mention_categories.filter((c: unknown) => VALID_CATEGORIES.includes(c as string)) : [];
 
 		if (!title) {
 			return json({ success: false, error: 'Title is required.' }, { status: 400 });
@@ -71,6 +74,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			image_url: imageBuffer ? null : finalImageUrl,
 			color: color || null,
 			footer: footer || null,
+			mention_categories: mentionCategories,
 			image_attachment: imageBuffer ? { filename: imageFilename, data: imageBuffer.toString('base64') } : null
 		});
 

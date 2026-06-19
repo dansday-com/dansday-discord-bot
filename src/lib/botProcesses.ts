@@ -407,8 +407,7 @@ export async function restartBotById(botId: number, bot: any): Promise<{ success
 	const mapKey = processKeyForBot(bot);
 	const scriptName = isSelfbot(bot) ? 'selfbot.js' : 'officialbot.js';
 	const candidatePid = botProcesses.get(mapKey)?.pid ?? (bot?.process_id ? Number(bot.process_id) : null);
-	const previousPid =
-		candidatePid && Number.isFinite(candidatePid) && pidMatchesBotScript(candidatePid, scriptName) ? candidatePid : null;
+	const previousPid = candidatePid && Number.isFinite(candidatePid) && pidMatchesBotScript(candidatePid, scriptName) ? candidatePid : null;
 
 	const stopResult = await stopBotById(botId, bot);
 	if (!stopResult.success && stopResult.error !== 'Bot is not running') {

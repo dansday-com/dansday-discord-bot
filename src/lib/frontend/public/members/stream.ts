@@ -15,7 +15,7 @@ type StreamState = {
 
 const streams = new Map<number, StreamState>();
 
-const POLL_MS = 10_000;
+const POLL_MS = 3_000;
 
 async function fetchMembers(serverId: number): Promise<PublicMembersStreamPayload> {
 	const members = await getServerMembersList(serverId);

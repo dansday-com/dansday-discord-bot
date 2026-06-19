@@ -1,0 +1,222 @@
+import { createHash } from 'crypto';
+import { request as httpRequest } from 'http';
+import db from '$lib/database.js';
+import { parseMySQLDateTimeUtc } from '$lib/utils/index.js';
+
+export function computeCardToken(discordMemberId: string, memberSince: any): string {
+	const dt = parseMySQLDateTimeUtc(memberSince);
+	const joinedDate = dt ? dt.toISOString().split('T')[0] : '';
+	return createHash('sha256').update(`${discordMemberId}_${joinedDate}`).digest('hex').substring(0, 16);
+}
+
+export async function resolveMemberByCardToken(serverId: number, token: string): Promise<any | null> {
+	if (!token) return null;
+	const members = await db.getServerMembersList(serverId).catch(() => []);
+	for (const m of members as any[]) {
+		if (!m.discord_member_id) continue;
+		if (computeCardToken(m.discord_member_id, m.member_since) === token) return m;
+	}
+	return null;
+}
+
+export async function resolveActiveBotForServer(server: any): Promise<any | null> {
+	const officialBotId = await db.resolveOfficialBotIdForServer(server).catch(() => null);
+	if (officialBotId == null) return null;
+	const bot = await db.getBot(officialBotId).catch(() => null);
+	return bot ?? null;
+}
+
+function safeParse(raw: any) {
+	try {
+		return JSON.parse(raw);
+	} catch {
+		return null;
+	}
+}
+
+function scheduleMinutes(hhmm: any, fallback: number): number {
+	if (hhmm == null || hhmm === '') return fallback;
+	const [h, m] = String(hhmm)
+		.split(':')
+		.map((n) => Number(n) || 0);
+	return h * 60 + m;
+}
+
+function hasRecurringSchedule(item: any): boolean {
+	const schedule = typeof item.recurring_schedule === 'string' ? safeParse(item.recurring_schedule) : item.recurring_schedule;
+	return !!(schedule && Array.isArray(schedule.days) && schedule.days.length > 0);
+}
+
+function availableUntilMs(item: any): number | null {
+	const ends: number[] = [];
+	if (item.available_to) {
+		const t = new Date(item.available_to).getTime();
+		if (Number.isFinite(t)) ends.push(t);
+	}
+	const schedule = typeof item.recurring_schedule === 'string' ? safeParse(item.recurring_schedule) : item.recurring_schedule;
+	if (schedule && Array.isArray(schedule.days) && schedule.days.length > 0) {
+		const now = new Date();
+		const toMin = scheduleMinutes(schedule.to, 1439);
+		const endOfWindow = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0) + (toMin * 60 + 59) * 1000;
+		if (Number.isFinite(endOfWindow)) ends.push(endOfWindow);
+	}
+	if (ends.length === 0) return null;
+	return Math.min(...ends);
+}
+
+function itemAvailableNow(item: any): boolean {
+	const nowMs = Date.now();
+	if (item.available_from && nowMs < new Date(item.available_from).getTime()) return false;
+	if (item.available_to && nowMs > new Date(item.available_to).getTime()) return false;
+	const schedule = typeof item.recurring_schedule === 'string' ? safeParse(item.recurring_schedule) : item.recurring_schedule;
+	if (schedule && Array.isArray(schedule.days) && schedule.days.length > 0) {
+		const now = new Date(nowMs);
+		if (!schedule.days.map(Number).includes(now.getUTCDay())) return false;
+		const minutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+		const fromMin = scheduleMinutes(schedule.from, 0);
+		const toMin = scheduleMinutes(schedule.to, 1439);
+		if (minutes < fromMin || minutes > toMin) return false;
+	}
+	return true;
+}
+
+export async function loadItemsCatalog(serverId: number): Promise<any[]> {
+	const panelId = await db.getServerPanelId(serverId).catch(() => null);
+	if (panelId == null) return [];
+	const all = await db.listItems(panelId, { enabledOnly: true }).catch(() => []);
+	return (all as any[])
+		.filter((i) => itemAvailableNow(i) || hasRecurringSchedule(i))
+		.map((i) => ({
+			id: i.id,
+			name: i.name,
+			effect_type: i.effect_type,
+			category: i.category,
+			description: i.description,
+			cost: i.cost,
+			availableUntil: availableUntilMs(i),
+			available_from: i.available_from ? new Date(i.available_from).toISOString() : null,
+			available_to: i.available_to ? new Date(i.available_to).toISOString() : null,
+			recurring_schedule: typeof i.recurring_schedule === 'string' ? safeParse(i.recurring_schedule) : (i.recurring_schedule ?? null),
+			config: typeof i.config === 'string' ? safeParse(i.config) : i.config
+		}));
+}
+
+export async function loadItemsShared(server: any, hash: string) {
+	const { SERVER_SETTINGS } = await import('$lib/frontend/panelServer.js');
+
+	const itemsRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.items).catch(() => null);
+	if ((itemsRow as any)?.settings?.enabled !== true) return { notFound: true } as const;
+
+	const member = hash ? await resolveMemberByCardToken(server.id, hash) : null;
+	if (!member) return { invalid: true } as const;
+
+	const levelingRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.leveling).catch(() => null);
+	const req = (levelingRow as any)?.settings?.REQUIREMENTS ?? {};
+	const levelReq = { baseXp: Number(req.BASE_XP) || 100, multiplier: Number(req.MULTIPLIER) || 1.2 };
+
+	const items = await loadItemsCatalog(server.id);
+
+	const invRows = await db.getMemberInventory(member.id).catch(() => []);
+	const bagStock = (invRows as any[]).reduce((sum, r) => sum + (Number(r.quantity) || 0), 0);
+
+	const effectRows = await db.getActiveEffectsForMember(member.id).catch(() => []);
+	const activeEffects = (effectRows as any[]).map((e) => ({
+		effect_type: e.effect_type,
+		effect_value: Number(e.effect_value) || 0,
+		expiresAt: e.expires_at ? new Date(e.expires_at).getTime() : null
+	}));
+
+	const cooldownMinByAction: Record<'steal' | 'bomb', number> = { steal: 0, bomb: 0 };
+	let maxImmunityMin = 0;
+	for (const it of items as any[]) {
+		if (it.effect_type !== 'steal' && it.effect_type !== 'bomb') continue;
+		const cfg = it.config || {};
+		const action = it.effect_type as 'steal' | 'bomb';
+		cooldownMinByAction[action] = Math.max(cooldownMinByAction[action], Number(cfg.cooldown_minutes) || 0);
+		maxImmunityMin = Math.max(maxImmunityMin, Number(cfg.immunity_minutes) || 0);
+	}
+
+	const attackCooldowns: { action: 'steal' | 'bomb'; until: number }[] = [];
+	for (const action of ['steal', 'bomb'] as const) {
+		const min = cooldownMinByAction[action];
+		if (min <= 0) continue;
+		const last = await db.getLastAttackActionByActor(member.id, [action]).catch(() => null);
+		if (!last) continue;
+		const ends = last.getTime() + min * 60000;
+		if (ends > Date.now()) attackCooldowns.push({ action, until: ends });
+	}
+
+	let immuneUntil: number | null = null;
+	if (maxImmunityMin > 0) {
+		const last = await db.getLastActionAgainstTarget(member.id, ['steal', 'bomb']).catch(() => null);
+		if (last) {
+			const ends = last.getTime() + maxImmunityMin * 60000;
+			if (ends > Date.now()) immuneUntil = ends;
+		}
+	}
+
+	return {
+		member,
+		items,
+		hash,
+		bagStock,
+		categories: [...new Set((items as any[]).map((i) => i.effect_type))],
+		memberName: member.server_display_name || member.display_name || member.username,
+		memberDiscordId: String(member.discord_member_id),
+		memberAvatar: member.avatar ?? null,
+		memberCard: {
+			discord_member_id: String(member.discord_member_id),
+			username: member.username ?? null,
+			display_name: member.display_name ?? null,
+			server_display_name: member.server_display_name ?? null,
+			avatar: member.avatar ?? null,
+			level: Number(member.level ?? 0) || 0,
+			experience: Number(member.experience ?? 0) || 0,
+			rank: member.rank != null ? Number(member.rank) : null,
+			chat_total: Number(member.chat_total ?? 0) || 0,
+			voice_minutes_active: Number(member.voice_minutes_active ?? 0) || 0,
+			member_since: member.member_since ? new Date(member.member_since).toISOString() : null,
+			roles: (member.roles ?? []).map((r: any) => ({ name: r.name, color: r.color, position: r.position }))
+		},
+		balance: {
+			experience: Number(member.experience ?? 0) || 0,
+			level: Number(member.level ?? 1) || 1,
+			rank: member.rank != null ? Number(member.rank) : null
+		},
+		activeEffects,
+		attackCooldowns,
+		immuneUntil,
+		levelReq
+	};
+}
+
+export function postBotWebhook(bot: any, payload: any): Promise<{ status: number; body: any }> {
+	const body = JSON.stringify(payload);
+	return new Promise((resolve) => {
+		const req = httpRequest(
+			{
+				hostname: 'localhost',
+				port: bot.port,
+				path: '/',
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body), 'X-Secret-Key': bot.secret_key }
+			},
+			(res) => {
+				let data = '';
+				res.on('data', (chunk) => {
+					data += chunk;
+				});
+				res.on('end', () => {
+					try {
+						resolve({ status: res.statusCode ?? 500, body: JSON.parse(data) });
+					} catch {
+						resolve({ status: res.statusCode ?? 500, body: null });
+					}
+				});
+			}
+		);
+		req.on('error', () => resolve({ status: 502, body: null }));
+		req.write(body);
+		req.end();
+	});
+}

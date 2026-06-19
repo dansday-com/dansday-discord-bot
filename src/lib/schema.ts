@@ -371,7 +371,6 @@ export const serverMemberLevels = mysqlTable(
 		voice_minutes_streaming: int('voice_minutes_streaming').default(0),
 		experience: int('experience').default(0),
 		level: int('level').default(1),
-		dm_notifications_enabled: boolean('dm_notifications_enabled').default(true),
 		is_in_voice: boolean('is_in_voice').default(false),
 		is_in_video: boolean('is_in_video').default(false),
 		is_in_stream: boolean('is_in_stream').default(false),
@@ -757,3 +756,135 @@ export const accountServerAccess = mysqlTable('account_server_access', {
 	role: mysqlEnum('role', ['owner', 'staff']).notNull(),
 	created_at: datetime('created_at').notNull()
 });
+
+export const items = mysqlTable(
+	'items',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		panel_id: int('panel_id')
+			.notNull()
+			.references(() => panel.id, { onDelete: 'cascade' }),
+		name: varchar('name', { length: 150 }).notNull(),
+		effect_type: varchar('effect_type', { length: 32 }).notNull(),
+		description: text('description'),
+		cost: int('cost').notNull().default(0),
+		config: json('config').notNull().default({}),
+		enabled: boolean('enabled').notNull().default(true),
+		available_from: datetime('available_from'),
+		available_to: datetime('available_to'),
+		recurring_schedule: json('recurring_schedule'),
+		sort_order: int('sort_order').notNull().default(0),
+		created_at: datetime('created_at').notNull(),
+		updated_at: datetime('updated_at').notNull()
+	},
+	(t) => [index('idx_items_panel_id').on(t.panel_id), index('idx_items_enabled').on(t.panel_id, t.enabled)]
+);
+
+export const serverMemberItems = mysqlTable(
+	'server_member_items',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		member_id: int('member_id')
+			.notNull()
+			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		item_id: int('item_id')
+			.notNull()
+			.references(() => items.id, { onDelete: 'cascade' }),
+		quantity: int('quantity').notNull().default(1),
+		acquired_at: datetime('acquired_at').notNull(),
+		created_at: datetime('created_at').notNull(),
+		updated_at: datetime('updated_at').notNull()
+	},
+	(t) => [uniqueIndex('unique_server_member_item').on(t.member_id, t.item_id), index('idx_server_member_items_member').on(t.member_id)]
+);
+
+export const serverMemberItemActives = mysqlTable(
+	'server_member_item_actives',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		member_item_id: int('member_item_id')
+			.notNull()
+			.references(() => serverMemberItems.id, { onDelete: 'cascade' }),
+		effect_value: decimal('effect_value', { precision: 6, scale: 2 }).notNull().default('0'),
+		beneficiary_member_id: int('beneficiary_member_id').references(() => serverMembers.id, { onDelete: 'set null' }),
+		target_member_id: int('target_member_id').references(() => serverMembers.id, { onDelete: 'cascade' }),
+		expires_at: datetime('expires_at').notNull(),
+		expiry_notified: boolean('expiry_notified').notNull().default(false),
+		created_at: datetime('created_at').notNull()
+	},
+	(t) => [
+		index('idx_server_member_item_actives_active').on(t.member_item_id, t.expires_at),
+		index('idx_server_member_item_actives_beneficiary').on(t.beneficiary_member_id, t.expires_at),
+		index('idx_server_member_item_actives_target').on(t.target_member_id, t.expires_at),
+		index('idx_server_member_item_actives_sweep').on(t.expiry_notified, t.expires_at)
+	]
+);
+
+export const serverMemberItemLogs = mysqlTable(
+	'server_member_item_logs',
+	{
+		id: bigint('id', { mode: 'bigint' }).primaryKey().autoincrement(),
+		member_id: int('member_id')
+			.notNull()
+			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		member_item_id: int('member_item_id').references(() => serverMemberItems.id, { onDelete: 'set null' }),
+		target_member_id: int('target_member_id').references(() => serverMembers.id, { onDelete: 'set null' }),
+		item_id: int('item_id').references(() => items.id, { onDelete: 'set null' }),
+		action: varchar('action', { length: 32 }).notNull(),
+		xp_amount: int('xp_amount').notNull().default(0),
+		outcome: varchar('outcome', { length: 16 }).notNull(),
+		created_at: datetime('created_at').notNull()
+	},
+	(t) => [
+		index('idx_server_member_item_logs_member').on(t.member_id, t.created_at),
+		index('idx_server_member_item_logs_target').on(t.target_member_id, t.created_at)
+	]
+);
+
+export const serverMemberLevelLogs = mysqlTable(
+	'server_member_level_logs',
+	{
+		id: bigint('id', { mode: 'bigint' }).primaryKey().autoincrement(),
+		member_id: int('member_id')
+			.notNull()
+			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		source: varchar('source', { length: 24 }).notNull(),
+		amount: int('amount').notNull().default(0),
+		total_xp: bigint('total_xp', { mode: 'number' }),
+		level: int('level'),
+		rank: int('rank'),
+		multiplier: decimal('multiplier', { precision: 6, scale: 2 }),
+		skim_percent: int('skim_percent'),
+		created_at: datetime('created_at').notNull()
+	},
+	(t) => [index('idx_server_member_level_logs_member').on(t.member_id, t.created_at)]
+);
+
+export const serverMemberItemBounties = mysqlTable(
+	'server_member_item_bounties',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		target_member_id: int('target_member_id')
+			.notNull()
+			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		placed_by_member_id: int('placed_by_member_id').references(() => serverMembers.id, { onDelete: 'set null' }),
+		amount: int('amount').notNull().default(0),
+		collected: boolean('collected').notNull().default(false),
+		created_at: datetime('created_at').notNull()
+	},
+	(t) => [index('idx_server_member_item_bounties_target').on(t.target_member_id, t.collected)]
+);
+
+export const serverMemberItemNotifications = mysqlTable(
+	'server_member_item_notifications',
+	{
+		id: bigint('id', { mode: 'bigint' }).primaryKey().autoincrement(),
+		member_id: int('member_id')
+			.notNull()
+			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		notification_type: varchar('notification_type', { length: 24 }).notNull(),
+		notified_for_at: datetime('notified_for_at').notNull(),
+		created_at: datetime('created_at').notNull()
+	},
+	(t) => [uniqueIndex('unique_member_item_notification').on(t.member_id, t.notification_type, t.notified_for_at)]
+);

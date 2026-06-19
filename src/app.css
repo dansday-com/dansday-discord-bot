@@ -3214,17 +3214,26 @@
 	white-space: nowrap;
 }
 
+/* Bag card foot — mobile-first (360px): qty lives on the medallion, so hide the
+   redundant "Owned ×N" text and let the action button fill the row beside the trash. */
 .m-root .m-card-foot .m-card-owned {
-	margin-right: auto;
+	display: none;
+}
+
+.m-root .m-card-foot .m-card-btn--use {
+	flex: 1 1 auto;
+	min-width: 0;
+	padding-left: 8px;
+	padding-right: 8px;
 }
 
 .m-root .m-card-discard {
 	display: grid;
 	place-items: center;
-	width: 32px;
-	height: 32px;
+	width: 30px;
+	height: 30px;
 	flex: 0 0 auto;
-	border-radius: 10px;
+	border-radius: 9px;
 	font-size: 12px;
 	color: var(--lb-text-muted);
 	background: color-mix(in srgb, var(--chili-surface) 70%, var(--chili-surface-elevated));
@@ -3235,6 +3244,23 @@
 		background 0.16s ease,
 		border-color 0.16s ease,
 		transform 0.1s ease;
+}
+
+@media (min-width: 420px) {
+	.m-root .m-card-foot .m-card-owned {
+		display: inline-flex;
+		margin-right: auto;
+	}
+	.m-root .m-card-foot .m-card-btn--use {
+		flex: 0 0 auto;
+		padding-left: 13px;
+		padding-right: 13px;
+	}
+	.m-root .m-card-discard {
+		width: 32px;
+		height: 32px;
+		border-radius: 10px;
+	}
 }
 
 .m-root .m-card-discard:hover:not(:disabled) {

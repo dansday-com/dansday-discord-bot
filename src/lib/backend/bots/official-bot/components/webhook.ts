@@ -51,9 +51,33 @@ function parseColor(colorInput) {
 	return null;
 }
 
+const PERMISSION_CATEGORY_KEYS: Record<string, string> = {
+	admin: 'admin_roles',
+	staff: 'staff_roles',
+	content_creator: 'content_creator_roles',
+	supporter: 'supporter_roles',
+	member: 'member_roles'
+};
+
+async function resolveCategoryRoleMentions(serverId: any, categories: string[]): Promise<string> {
+	if (!Array.isArray(categories) || categories.length === 0) return '';
+	const permRow = await db.getServerSettings(serverId, 'permissions').catch(() => null);
+	const permSettings = permRow && Array.isArray(permRow) ? permRow[0]?.settings : permRow?.settings;
+	if (!permSettings) return '';
+	const roleIds = new Set<string>();
+	for (const cat of categories) {
+		const key = PERMISSION_CATEGORY_KEYS[cat];
+		if (!key) continue;
+		for (const id of permSettings[key] || []) {
+			if (id) roleIds.add(String(id));
+		}
+	}
+	return [...roleIds].map((id) => `<@&${id}>`).join(' ');
+}
+
 async function handleSendGlobalEmbed(payload) {
 	try {
-		const { title, description, image_url, color, footer, image_attachment } = payload;
+		const { title, description, image_url, color, footer, image_attachment, mention_categories } = payload;
 
 		if (!title) {
 			throw new Error('Title is required');
@@ -115,9 +139,12 @@ async function handleSendGlobalEmbed(payload) {
 				const messageOptions: any = { embeds: [embed] };
 				if (files.length > 0) messageOptions.files = files;
 
+				const roleMentions = await resolveCategoryRoleMentions(server.id, mention_categories).catch(() => '');
+
 				const notificationMentions = await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(guild_id, channel.id).catch(() => null);
 				const firstMentionChunk = notificationMentions ? notificationMentions[0] : null;
-				if (firstMentionChunk) messageOptions.content = firstMentionChunk;
+				const content = [roleMentions, firstMentionChunk].filter(Boolean).join(' ');
+				if (content) messageOptions.content = content;
 
 				await channel.send(messageOptions);
 

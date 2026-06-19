@@ -79,7 +79,9 @@
 <svelte:head><title>Bag · {data.server.name}</title></svelte:head>
 
 {#if data.inventory.length === 0}
-	<div class="m-members-empty">Your bag is empty. Buy items in the shop!</div>
+	<div class="m-members-empty">
+		{#if (data.bagCategory ?? 'all') === 'all'}Your bag is empty. Buy items in the shop!{:else}No items in this category.{/if}
+	</div>
 {:else}
 	<div class="m-cards">
 		{#each data.inventory as item (item.member_item_id)}

@@ -1786,14 +1786,19 @@ export async function getLastActionByActor(memberId: any, action: string) {
 	return row ? parseMySQLDateTimeUtc(row.created_at) : null;
 }
 
-export async function getLastAttackActionByActor(memberId: any) {
+export async function getLastAttackActionByActor(memberId: any, actions: string[]) {
 	await initializeDatabase();
 	if (!memberId) throw new Error('memberId is required');
+	const list = (Array.isArray(actions) ? actions : [actions]).map((a) => String(a));
+	if (list.length === 0) return null;
 	const rows = await db.execute(sql`
 		SELECT sml.created_at
 		FROM server_member_item_logs sml
 		INNER JOIN server_member_items smi ON smi.id = sml.member_item_id
-		WHERE smi.member_id = ${Number(memberId)} AND sml.action IN ('steal', 'bomb')
+		WHERE smi.member_id = ${Number(memberId)} AND sml.action IN (${sql.join(
+			list.map((a) => sql`${a}`),
+			sql`, `
+		)})
 		ORDER BY sml.created_at DESC
 		LIMIT 1
 	`);

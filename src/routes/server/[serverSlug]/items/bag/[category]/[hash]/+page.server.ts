@@ -22,7 +22,7 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 	if ('invalid' in shared) redirect(303, publicStatsEnabled ? publicServerPath(server.slug) : '/');
 
 	const rows = await db.getMemberInventory(shared.member.id).catch(() => []);
-	const inventory = (rows as any[]).map((r) => ({
+	const allInventory = (rows as any[]).map((r) => ({
 		member_item_id: r.id,
 		item_id: r.item_id,
 		name: r.name,
@@ -31,6 +31,10 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 		quantity: r.quantity,
 		config: typeof r.config === 'string' ? safeParse(r.config) : r.config
 	}));
+
+	const bagCategories = [...new Set(allInventory.map((i) => i.effect_type))];
+	const category = String(params.category || 'all');
+	const inventory = category === 'all' ? allInventory : allInventory.filter((i) => i.effect_type === category);
 
 	const permissionsRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.permissions).catch(() => null);
 	const memberRoleIds: string[] = (permissionsRow as any)?.settings?.member_roles ?? [];
@@ -49,5 +53,5 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 			roles: (m.roles ?? []).map((r: any) => ({ name: r.name, color: r.color }))
 		}));
 
-	return { ...shared, inventory, targets };
+	return { ...shared, inventory, targets, bagCategories, bagCategory: category };
 };

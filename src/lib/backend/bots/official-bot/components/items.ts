@@ -185,10 +185,10 @@ async function hasActiveShield(memberId: any) {
 	return effects.some((e: any) => e.effect_type === 'shield');
 }
 
-async function attackCooldownUntil(actorMemberId: any, cooldownMinutes: any): Promise<Date | null> {
+async function attackCooldownUntil(actorMemberId: any, cooldownMinutes: any, action: 'steal' | 'bomb'): Promise<Date | null> {
 	const minutes = Math.max(0, Number(cooldownMinutes) || 0);
 	if (minutes <= 0) return null;
-	const last = await db.getLastAttackActionByActor(actorMemberId);
+	const last = await db.getLastAttackActionByActor(actorMemberId, [action]);
 	if (!last) return null;
 	const until = new Date(last.getTime() + minutes * 60000);
 	return until.getTime() > Date.now() ? until : null;
@@ -205,7 +205,7 @@ async function targetImmuneUntil(targetMemberId: any, immunityMinutes: any): Pro
 
 export async function resolveSteal({ actorMemberId, actorMemberItemId, targetMemberId, config, guildId }: any) {
 	const cfg = parseConfig(config);
-	if (await attackCooldownUntil(actorMemberId, cfg.cooldown_minutes)) {
+	if (await attackCooldownUntil(actorMemberId, cfg.cooldown_minutes, 'steal')) {
 		return { outcome: 'cooldown', xp: 0 };
 	}
 	if (await hasActiveShield(targetMemberId)) {
@@ -282,7 +282,7 @@ export async function resolveSteal({ actorMemberId, actorMemberItemId, targetMem
 
 export async function resolveBomb({ actorMemberId, actorMemberItemId, targetMemberId, config, guildId }: any) {
 	const cfg = parseConfig(config);
-	if (await attackCooldownUntil(actorMemberId, cfg.cooldown_minutes)) {
+	if (await attackCooldownUntil(actorMemberId, cfg.cooldown_minutes, 'bomb')) {
 		return { outcome: 'cooldown', xp: 0 };
 	}
 	if (await hasActiveShield(targetMemberId)) {

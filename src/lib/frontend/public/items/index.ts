@@ -116,23 +116,27 @@ export async function loadItemsShared(server: any, hash: string) {
 		expiresAt: e.expires_at ? new Date(e.expires_at).getTime() : null
 	}));
 
-	let cooldownUntil: number | null = null;
-	let immuneUntil: number | null = null;
-	let maxCooldownMin = 0;
+	const cooldownMinByAction: Record<'steal' | 'bomb', number> = { steal: 0, bomb: 0 };
 	let maxImmunityMin = 0;
 	for (const it of items as any[]) {
 		if (it.effect_type !== 'steal' && it.effect_type !== 'bomb') continue;
 		const cfg = it.config || {};
-		maxCooldownMin = Math.max(maxCooldownMin, Number(cfg.cooldown_minutes) || 0);
+		const action = it.effect_type as 'steal' | 'bomb';
+		cooldownMinByAction[action] = Math.max(cooldownMinByAction[action], Number(cfg.cooldown_minutes) || 0);
 		maxImmunityMin = Math.max(maxImmunityMin, Number(cfg.immunity_minutes) || 0);
 	}
-	if (maxCooldownMin > 0) {
-		const last = await db.getLastAttackActionByActor(member.id).catch(() => null);
-		if (last) {
-			const ends = last.getTime() + maxCooldownMin * 60000;
-			if (ends > Date.now()) cooldownUntil = ends;
-		}
+
+	const attackCooldowns: { action: 'steal' | 'bomb'; until: number }[] = [];
+	for (const action of ['steal', 'bomb'] as const) {
+		const min = cooldownMinByAction[action];
+		if (min <= 0) continue;
+		const last = await db.getLastAttackActionByActor(member.id, [action]).catch(() => null);
+		if (!last) continue;
+		const ends = last.getTime() + min * 60000;
+		if (ends > Date.now()) attackCooldowns.push({ action, until: ends });
 	}
+
+	let immuneUntil: number | null = null;
 	if (maxImmunityMin > 0) {
 		const last = await db.getLastActionAgainstTarget(member.id, ['steal', 'bomb']).catch(() => null);
 		if (last) {
@@ -170,7 +174,7 @@ export async function loadItemsShared(server: any, hash: string) {
 			rank: member.rank != null ? Number(member.rank) : null
 		},
 		activeEffects,
-		cooldownUntil,
+		attackCooldowns,
 		immuneUntil,
 		levelReq
 	};

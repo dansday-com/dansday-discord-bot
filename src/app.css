@@ -3557,12 +3557,13 @@
 .m-root .m-tgt-list {
 	list-style: none;
 	margin: 0;
-	padding: 0;
+	padding: 2px;
 	display: flex;
 	flex-direction: column;
 	gap: 7px;
 	max-height: 440px;
 	overflow-y: auto;
+	overflow-x: hidden;
 }
 
 .m-root .m-tgt {
@@ -3586,7 +3587,6 @@
 .m-root .m-tgt:hover:not(:disabled) {
 	border-color: color-mix(in srgb, #c0392b 45%, transparent);
 	background: rgba(192, 57, 43, 0.08);
-	transform: translateX(2px);
 }
 
 .m-root .m-tgt:disabled {
@@ -4758,12 +4758,20 @@
 
 .m-root .m-active {
 	display: flex;
-	flex-wrap: wrap;
+	flex-wrap: nowrap;
 	gap: 8px;
 	margin: -6px 0 16px;
+	overflow-x: auto;
+	-webkit-overflow-scrolling: touch;
+	scrollbar-width: none;
+}
+
+.m-root .m-active::-webkit-scrollbar {
+	display: none;
 }
 
 .m-root .m-active-chip {
+	flex: 0 0 auto;
 	display: inline-flex;
 	align-items: center;
 	gap: 7px;
@@ -4771,23 +4779,14 @@
 	border-radius: 999px;
 	font-size: 12px;
 	font-weight: 700;
-	border: 1px solid;
+	white-space: nowrap;
+	color: var(--chip-accent, var(--yacht-teal));
+	background: color-mix(in srgb, var(--chip-accent, var(--yacht-teal)) 11%, transparent);
+	border: 1px solid color-mix(in srgb, var(--chip-accent, var(--yacht-teal)) 30%, transparent);
 }
 
 .m-root .m-active-chip i {
 	font-size: 11px;
-}
-
-.m-root .m-active-chip--good {
-	color: var(--yacht-teal);
-	background: rgba(36, 95, 115, 0.1);
-	border-color: rgba(36, 95, 115, 0.25);
-}
-
-.m-root .m-active-chip--wait {
-	color: #b8860b;
-	background: rgba(184, 134, 11, 0.1);
-	border-color: rgba(184, 134, 11, 0.28);
 }
 
 .m-root .m-active-label {

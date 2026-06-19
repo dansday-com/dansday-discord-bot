@@ -18,7 +18,7 @@
 	const isHistory = $derived(/\/items\/history\//.test(pathNorm));
 	const isShop = $derived(!isBag && !isHistory);
 	const activeCat = $derived.by(() => {
-		const m = pathNorm.match(/\/items\/shop\/([^/]+)\/[^/]+$/);
+		const m = pathNorm.match(/\/items\/(?:shop|bag)\/([^/]+)\/[^/]+$/);
 		return m ? m[1] : 'all';
 	});
 
@@ -59,8 +59,22 @@
 
 	const EFFECT_ICON: Record<string, { icon: string; label: string }> = Object.fromEntries(ITEM_EFFECTS.map((e) => [e.id, { icon: e.icon, label: e.label }]));
 
+	const EFFECT_ACCENT: Record<string, string> = {
+		steal: '#c0392b',
+		bomb: '#d35400',
+		boost: '#d9a528',
+		shield: '#1d6f8a',
+		leech: '#5a8a1f',
+		reflect: '#7b5ea7',
+		insurance: '#1f9e8f',
+		gamble: '#c8911a',
+		gift: '#2f8f4e',
+		bounty: '#a8327d'
+	};
+	const NEUTRAL_ACCENT = '#1d6f8a';
+
 	const activeChips = $derived.by(() => {
-		const chips: { key: string; icon: string; label: string; until: number; tone: string }[] = [];
+		const chips: { key: string; icon: string; label: string; until: number; accent: string }[] = [];
 		for (const e of (pd.activeEffects ?? []) as any[]) {
 			if (!e.expiresAt || e.expiresAt <= now) continue;
 			const meta = EFFECT_ICON[e.effect_type];
@@ -69,12 +83,21 @@
 				icon: meta?.icon ?? 'fa-star',
 				label: meta?.label ?? e.effect_type,
 				until: e.expiresAt,
-				tone: 'good'
+				accent: EFFECT_ACCENT[e.effect_type] ?? NEUTRAL_ACCENT
 			});
 		}
-		if (pd.immuneUntil && pd.immuneUntil > now) chips.push({ key: 'immune', icon: 'fa-shield-halved', label: 'Immune', until: pd.immuneUntil, tone: 'good' });
-		if (pd.cooldownUntil && pd.cooldownUntil > now)
-			chips.push({ key: 'cooldown', icon: 'fa-hourglass-half', label: 'Attack cooldown', until: pd.cooldownUntil, tone: 'wait' });
+		if (pd.immuneUntil && pd.immuneUntil > now)
+			chips.push({ key: 'immune', icon: 'fa-shield-halved', label: 'Immune', until: pd.immuneUntil, accent: '#1f9e8f' });
+		for (const cd of (pd.attackCooldowns ?? []) as { action: 'steal' | 'bomb'; until: number }[]) {
+			if (!cd.until || cd.until <= now) continue;
+			chips.push({
+				key: `cd-${cd.action}`,
+				icon: cd.action === 'steal' ? 'fa-hand' : 'fa-bomb',
+				label: cd.action === 'steal' ? 'Steal cooldown' : 'Bomb cooldown',
+				until: cd.until,
+				accent: EFFECT_ACCENT[cd.action]
+			});
+		}
 		return chips.sort((a, b) => a.until - b.until);
 	});
 
@@ -88,7 +111,8 @@
 	}
 
 	const typeTabs = $derived.by(() => {
-		const present = new Set((pd.categories ?? []) as string[]);
+		const source = isBag ? (pd.bagCategories ?? []) : (pd.categories ?? []);
+		const present = new Set(source as string[]);
 		const ordered = ITEM_EFFECTS.filter((e) => present.has(e.id));
 		return [{ id: 'all', label: 'All', icon: 'fa-grip' }, ...ordered.map((e) => ({ id: e.id, label: e.label, icon: e.icon }))];
 	});
@@ -247,7 +271,7 @@
 	{#if activeChips.length > 0}
 		<div class="m-active">
 			{#each activeChips as chip (chip.key)}
-				<span class="m-active-chip m-active-chip--{chip.tone}">
+				<span class="m-active-chip" style="--chip-accent: {chip.accent}">
 					<i class="fas {chip.icon}"></i>
 					<span class="m-active-label">{chip.label}</span>
 					<span class="m-active-time">{remainingLabel(chip.until)}</span>
@@ -266,7 +290,7 @@
 				class="m-items-seg"
 				class:m-items-seg--active={isBag}
 				class:m-items-seg--pulse={bagPulse}
-				href="{itemsBase}/bag/{pd.hash}"
+				href="{itemsBase}/bag/all/{pd.hash}"
 				data-sveltekit-preload-data="hover"
 			>
 				<i class="fas fa-bag-shopping"></i>Bag<span class="m-items-count" class:m-items-count--bump={bagPulse}>{pd.bagStock ?? 0}</span>
@@ -281,6 +305,14 @@
 		<div class="m-items-tabs">
 			{#each typeTabs as cat}
 				<a class="m-items-tab" class:m-items-tab--active={activeCat === cat.id} href="{itemsBase}/shop/{cat.id}/{pd.hash}" data-sveltekit-preload-data="hover">
+					<i class="fas {cat.icon}"></i>{cat.label}
+				</a>
+			{/each}
+		</div>
+	{:else if isBag && typeTabs.length > 1}
+		<div class="m-items-tabs">
+			{#each typeTabs as cat}
+				<a class="m-items-tab" class:m-items-tab--active={activeCat === cat.id} href="{itemsBase}/bag/{cat.id}/{pd.hash}" data-sveltekit-preload-data="hover">
 					<i class="fas {cat.icon}"></i>{cat.label}
 				</a>
 			{/each}

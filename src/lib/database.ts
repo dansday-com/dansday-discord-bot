@@ -1606,6 +1606,7 @@ export async function addMemberItemActive(memberItemId: any, data: any = {}) {
 		member_item_id: Number(memberItemId),
 		effect_value: String(data.effect_value ?? 0) as any,
 		beneficiary_member_id: data.beneficiary_member_id != null ? Number(data.beneficiary_member_id) : null,
+		target_member_id: data.target_member_id != null ? Number(data.target_member_id) : null,
 		expires_at: toMySQLDateTime(data.expires_at) as any,
 		created_at: now as any
 	});
@@ -1617,11 +1618,15 @@ export async function getActiveEffectsForMember(memberId: any) {
 	await initializeDatabase();
 	if (!memberId) throw new Error('memberId is required');
 	const rows = await db.execute(sql`
-		SELECT sma.id, sma.member_item_id, sma.effect_value, sma.beneficiary_member_id, sma.expires_at, bi.id AS item_id, bi.name, bi.effect_type, bi.config
+		SELECT sma.id, sma.member_item_id, sma.effect_value, sma.beneficiary_member_id, sma.target_member_id, sma.expires_at, bi.id AS item_id, bi.name, bi.effect_type, bi.config
 		FROM server_member_item_actives sma
 		INNER JOIN server_member_items smi ON smi.id = sma.member_item_id
 		INNER JOIN items bi ON bi.id = smi.item_id
-		WHERE smi.member_id = ${Number(memberId)} AND sma.expires_at > UTC_TIMESTAMP()
+		WHERE sma.expires_at > UTC_TIMESTAMP()
+		  AND (
+		    (sma.target_member_id IS NULL AND smi.member_id = ${Number(memberId)})
+		    OR sma.target_member_id = ${Number(memberId)}
+		  )
 	`);
 	return rows[0] as unknown as any[];
 }

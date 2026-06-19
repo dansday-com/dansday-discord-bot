@@ -375,6 +375,7 @@ export async function resolveLeech({ memberItemId, actorMemberId, targetMemberId
 	await db.addMemberItemActive(memberItemId, {
 		effect_value: Number(cfg.skim_percent ?? 10),
 		beneficiary_member_id: actorMemberId,
+		target_member_id: targetMemberId,
 		expires_at: expiresAt
 	});
 	await db.logMemberItemAction(actorMemberId, {

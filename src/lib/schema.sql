@@ -528,11 +528,13 @@ CREATE TABLE IF NOT EXISTS server_member_item_actives (
     member_item_id INT NOT NULL,
     effect_value DECIMAL(6,2) NOT NULL DEFAULT 0,
     beneficiary_member_id INT NULL,
+    target_member_id INT NULL,
     expires_at DATETIME NOT NULL,
     expiry_notified BOOLEAN NOT NULL DEFAULT FALSE,
     created_at DATETIME NOT NULL,
     FOREIGN KEY (member_item_id) REFERENCES server_member_items(id) ON DELETE CASCADE,
-    FOREIGN KEY (beneficiary_member_id) REFERENCES server_members(id) ON DELETE SET NULL
+    FOREIGN KEY (beneficiary_member_id) REFERENCES server_members(id) ON DELETE SET NULL,
+    FOREIGN KEY (target_member_id) REFERENCES server_members(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS server_member_item_notifications (
@@ -625,6 +627,7 @@ CREATE INDEX IF NOT EXISTS idx_items_enabled ON items(panel_id, enabled);
 CREATE INDEX IF NOT EXISTS idx_server_member_items_member ON server_member_items(member_id);
 CREATE INDEX IF NOT EXISTS idx_server_member_item_actives_active ON server_member_item_actives(member_item_id, expires_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_item_actives_beneficiary ON server_member_item_actives(beneficiary_member_id, expires_at);
+CREATE INDEX IF NOT EXISTS idx_server_member_item_actives_target ON server_member_item_actives(target_member_id, expires_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_item_actives_sweep ON server_member_item_actives(expiry_notified, expires_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_item_logs_member ON server_member_item_logs(member_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_item_logs_target ON server_member_item_logs(target_member_id, created_at);

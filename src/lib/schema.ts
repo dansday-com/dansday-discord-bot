@@ -808,6 +808,7 @@ export const serverMemberItemActives = mysqlTable(
 			.references(() => serverMemberItems.id, { onDelete: 'cascade' }),
 		effect_value: decimal('effect_value', { precision: 6, scale: 2 }).notNull().default('0'),
 		beneficiary_member_id: int('beneficiary_member_id').references(() => serverMembers.id, { onDelete: 'set null' }),
+		target_member_id: int('target_member_id').references(() => serverMembers.id, { onDelete: 'cascade' }),
 		expires_at: datetime('expires_at').notNull(),
 		expiry_notified: boolean('expiry_notified').notNull().default(false),
 		created_at: datetime('created_at').notNull()
@@ -815,6 +816,7 @@ export const serverMemberItemActives = mysqlTable(
 	(t) => [
 		index('idx_server_member_item_actives_active').on(t.member_item_id, t.expires_at),
 		index('idx_server_member_item_actives_beneficiary').on(t.beneficiary_member_id, t.expires_at),
+		index('idx_server_member_item_actives_target').on(t.target_member_id, t.expires_at),
 		index('idx_server_member_item_actives_sweep').on(t.expiry_notified, t.expires_at)
 	]
 );

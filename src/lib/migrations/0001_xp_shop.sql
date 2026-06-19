@@ -37,14 +37,17 @@ CREATE TABLE IF NOT EXISTS server_member_item_actives (
     member_item_id INT NOT NULL,
     effect_value DECIMAL(6,2) NOT NULL DEFAULT 0,
     beneficiary_member_id INT NULL,
+    target_member_id INT NULL,
     expires_at DATETIME NOT NULL,
     expiry_notified BOOLEAN NOT NULL DEFAULT FALSE,
     created_at DATETIME NOT NULL,
     INDEX idx_server_member_item_actives_active (member_item_id, expires_at),
     INDEX idx_server_member_item_actives_beneficiary (beneficiary_member_id, expires_at),
+    INDEX idx_server_member_item_actives_target (target_member_id, expires_at),
     INDEX idx_server_member_item_actives_sweep (expiry_notified, expires_at),
     FOREIGN KEY (member_item_id) REFERENCES server_member_items(id) ON DELETE CASCADE,
-    FOREIGN KEY (beneficiary_member_id) REFERENCES server_members(id) ON DELETE SET NULL
+    FOREIGN KEY (beneficiary_member_id) REFERENCES server_members(id) ON DELETE SET NULL,
+    FOREIGN KEY (target_member_id) REFERENCES server_members(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS server_member_item_logs (

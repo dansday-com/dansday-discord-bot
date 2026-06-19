@@ -10,6 +10,18 @@
 
 	const effectOptions: LabeledSelectOption[] = ITEM_EFFECTS.map((e) => ({ value: e.id, label: e.label }));
 
+	function toLocalInput(value: any): string {
+		if (!value) return '';
+		const d = value instanceof Date ? value : new Date(String(value).includes('T') ? value : String(value).replace(' ', 'T') + 'Z');
+		if (Number.isNaN(d.getTime())) return '';
+		return d.toISOString().slice(0, 16);
+	}
+
+	function fromLocalInput(value: string): string | null {
+		if (!value) return null;
+		return value.length === 16 ? `${value}:00Z` : `${value}Z`;
+	}
+
 	let items = $state<any[]>([]);
 	let loading = $state(true);
 	let saving = $state(false);
@@ -112,8 +124,8 @@
 		f.description = item.description ?? '';
 		f.cost = item.cost ?? 0;
 		f.enabled = item.enabled !== false;
-		f.available_from = item.available_from ? String(item.available_from).slice(0, 16).replace(' ', 'T') : '';
-		f.available_to = item.available_to ? String(item.available_to).slice(0, 16).replace(' ', 'T') : '';
+		f.available_from = toLocalInput(item.available_from);
+		f.available_to = toLocalInput(item.available_to);
 		f.cfg = { ...f.cfg, ...cfg };
 		const recur = typeof item.recurring_schedule === 'string' ? JSON.parse(item.recurring_schedule || 'null') : item.recurring_schedule;
 		if (recur) {
@@ -137,8 +149,8 @@
 				description: form.description,
 				cost: Number(form.cost),
 				enabled: form.enabled,
-				available_from: form.available_from ? form.available_from.replace('T', ' ') + ':00' : null,
-				available_to: form.available_to ? form.available_to.replace('T', ' ') + ':00' : null,
+				available_from: fromLocalInput(form.available_from),
+				available_to: fromLocalInput(form.available_to),
 				recurring_schedule: recurringSchedule,
 				config
 			};
@@ -480,20 +492,42 @@
 				<div class="border-ash-700 bg-ash-900/40 space-y-3 rounded-xl border p-4">
 					<p class="text-ash-400 text-[11px] font-semibold tracking-wide uppercase">Availability (optional, UTC)</p>
 					<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-						<label class="text-ash-300 text-xs"
-							>From<input
-								type="datetime-local"
-								bind:value={form.available_from}
-								class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-							/></label
-						>
-						<label class="text-ash-300 text-xs"
-							>To<input
-								type="datetime-local"
-								bind:value={form.available_to}
-								class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-							/></label
-						>
+						<label class="text-ash-300 text-xs">
+							From
+							<div
+								class="bg-ash-700 border-ash-600 hover:border-ash-500 mt-1 flex w-full items-center gap-2 rounded-lg border px-3 py-2.5 transition-colors focus-within:border-teal-500"
+							>
+								<i class="fas fa-calendar-day text-ash-400 text-xs"></i>
+								<input
+									type="datetime-local"
+									bind:value={form.available_from}
+									class="text-ash-100 m-date min-w-0 flex-1 bg-transparent text-sm focus:outline-none"
+								/>
+								{#if form.available_from}
+									<button type="button" onclick={() => (form.available_from = '')} aria-label="Clear" class="text-ash-500 hover:text-ash-200 text-xs">
+										<i class="fas fa-times"></i>
+									</button>
+								{/if}
+							</div>
+						</label>
+						<label class="text-ash-300 text-xs">
+							To
+							<div
+								class="bg-ash-700 border-ash-600 hover:border-ash-500 mt-1 flex w-full items-center gap-2 rounded-lg border px-3 py-2.5 transition-colors focus-within:border-teal-500"
+							>
+								<i class="fas fa-calendar-day text-ash-400 text-xs"></i>
+								<input
+									type="datetime-local"
+									bind:value={form.available_to}
+									class="text-ash-100 m-date min-w-0 flex-1 bg-transparent text-sm focus:outline-none"
+								/>
+								{#if form.available_to}
+									<button type="button" onclick={() => (form.available_to = '')} aria-label="Clear" class="text-ash-500 hover:text-ash-200 text-xs">
+										<i class="fas fa-times"></i>
+									</button>
+								{/if}
+							</div>
+						</label>
 					</div>
 					<div>
 						<p class="text-ash-300 mb-1.5 text-xs">Recurring days (UTC)</p>
@@ -569,3 +603,14 @@
 	onconfirm={remove}
 	oncancel={() => (confirmDelete = null)}
 />
+
+<style>
+	/* Native datetime-local: make the calendar indicator visible on dark theme */
+	.m-date::-webkit-calendar-picker-indicator {
+		filter: invert(0.7);
+		cursor: pointer;
+	}
+	.m-date::-webkit-datetime-edit {
+		color: inherit;
+	}
+</style>

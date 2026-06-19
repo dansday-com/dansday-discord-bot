@@ -62,10 +62,6 @@
 	"settings": {
 		"title": "⚙️ Pengaturan",
 		"description": "Konfigurasi preferensi bot kamu",
-		"notifications": {
-			"levelUpOn": "🔔 DM Naik Level: Aktif",
-			"levelUpOff": "🔕 DM Naik Level: Nonaktif"
-		},
 		"language": {
 			"title": "🌐 Pengaturan Bahasa",
 			"description": "Pilih bahasa pilihan kamu:",
@@ -128,8 +124,7 @@
 			"noData": "⚠️ Data leveling tidak ditemukan untuk anggota ini.",
 			"createRecordFailed": "❌ Gagal membuat catatan anggota. Silakan coba lagi.",
 			"loadFailed": "❌ Gagal memuat informasi leveling: {error}",
-			"leaderboardFailed": "❌ Gagal memuat leaderboard: {error}",
-			"dmToggleFailed": "❌ Gagal memperbarui notifikasi DM: {error}"
+			"leaderboardFailed": "❌ Gagal memuat leaderboard: {error}"
 		}
 	},
 	"afk": {

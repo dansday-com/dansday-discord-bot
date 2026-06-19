@@ -268,7 +268,6 @@ CREATE TABLE IF NOT EXISTS server_member_levels (
     voice_minutes_streaming INT NOT NULL DEFAULT 0,
     experience INT DEFAULT 0,
     level INT DEFAULT 1,
-    dm_notifications_enabled BOOLEAN DEFAULT TRUE,
     is_in_voice BOOLEAN DEFAULT FALSE,
     is_in_video BOOLEAN NOT NULL DEFAULT FALSE,
     is_in_stream BOOLEAN NOT NULL DEFAULT FALSE,
@@ -563,11 +562,14 @@ CREATE TABLE IF NOT EXISTS server_member_item_logs (
     FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE SET NULL
 );
 
-CREATE TABLE IF NOT EXISTS server_member_xp_logs (
+CREATE TABLE IF NOT EXISTS server_member_level_logs (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     member_id INT NOT NULL,
     source VARCHAR(24) NOT NULL,
     amount INT NOT NULL DEFAULT 0,
+    total_xp BIGINT NULL,
+    level INT NULL,
+    rank INT NULL,
     multiplier DECIMAL(6,2) NULL,
     skim_percent INT NULL,
     created_at DATETIME NOT NULL,
@@ -643,4 +645,4 @@ CREATE INDEX IF NOT EXISTS idx_server_member_item_actives_sweep ON server_member
 CREATE INDEX IF NOT EXISTS idx_server_member_item_logs_member ON server_member_item_logs(member_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_item_logs_target ON server_member_item_logs(target_member_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_item_bounties_target ON server_member_item_bounties(target_member_id, collected);
-CREATE INDEX IF NOT EXISTS idx_server_member_xp_logs_member ON server_member_xp_logs(member_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_server_member_level_logs_member ON server_member_level_logs(member_id, created_at);

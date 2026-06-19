@@ -273,61 +273,6 @@ function getRankMedal(rank) {
 	return null;
 }
 
-export async function sendLevelChangeDM(guildId, discordMemberId, serverName, newLevel, contextLabel = 'level-change') {
-	if (!clientInstance || !guildId || !discordMemberId || !newLevel) {
-		return false;
-	}
-
-	try {
-		const guild = clientInstance.guilds.cache.get(guildId);
-		if (!guild) {
-			return false;
-		}
-
-		const member = await guild.members.fetch(discordMemberId);
-		if (!member || !member.user) {
-			return false;
-		}
-
-		const dmChannel = await member.user.createDM();
-
-		const embedConfig = await getEmbedConfig(guildId);
-		const dmEmbed = new EmbedBuilder()
-			.setColor(embedConfig.COLOR)
-			.setTitle('🎉 Congratulations!')
-			.setDescription(`You've reached **Level ${newLevel}** in **${serverName}**!\n\nKeep up the great work! 🚀`)
-			.setTimestamp();
-		if (embedConfig.FOOTER && String(embedConfig.FOOTER).trim()) {
-			dmEmbed.setFooter({ text: String(embedConfig.FOOTER).trim() });
-		}
-
-		let dmLeaderboardUrl: string | null = null;
-		if (await isComponentFeatureEnabled(guildId, serverSettingsComponent.public_statistics)) {
-			try {
-				const srv = await getServerForCurrentBot(guildId);
-				const slug = await computePublicServerSlugForServerId(Number(srv.id));
-				if (slug) dmLeaderboardUrl = publicServerUrl(slug, 'leaderboard');
-			} catch (_) {}
-		}
-
-		const dmRow = dmLeaderboardUrl
-			? new ActionRowBuilder<ButtonBuilder>().addComponents(
-					new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(dmLeaderboardUrl).setLabel('Leaderboard').setEmoji('🌐')
-				)
-			: null;
-
-		await dmChannel.send({
-			embeds: [dmEmbed],
-			components: dmRow ? [dmRow] : undefined
-		});
-		await logger.log(`⭐ Sent level change DM (${contextLabel}) to ${discordMemberId} for level ${newLevel} in ${serverName}`);
-		return true;
-	} catch (error) {
-		await logger.log(`⚠️ Failed to send level change DM (${contextLabel}) to ${discordMemberId}: ${error.message}`);
-		return false;
-	}
-}
-
 export async function sendLevelProgressNotification({
 	guildId,
 	discordMemberId,
@@ -523,12 +468,7 @@ async function handleLevelEvaluation(server, dbMember, currentStats, guildId, co
 	}
 	const rankImproved = normalizedPreviousRank !== null && currentRank !== null && currentRank < normalizedPreviousRank;
 
-	const dmPreference = finalStats?.dm_notifications_enabled;
-	const notificationsEnabled = !(dmPreference === false || dmPreference === 0);
-
 	if (expectedLevel > baselineLevel) {
-		const memberName = dbMember.server_display_name || dbMember.display_name || dbMember.username || dbMember.discord_member_id || 'Unknown member';
-
 		if (dbMember.discord_member_id) {
 			await sendLevelProgressNotification({
 				guildId,
@@ -539,12 +479,6 @@ async function handleLevelEvaluation(server, dbMember, currentStats, guildId, co
 				memberLevelSnapshot,
 				contextLabel: `level-eval:${reason}`
 			});
-		}
-
-		if (!notificationsEnabled) {
-			await logger.log(`🔕 Level up detected (${reason}) for ${memberName} but DM notifications are disabled`);
-		} else if (dbMember.discord_member_id) {
-			await sendLevelChangeDM(guildId, dbMember.discord_member_id, server.name, expectedLevel, `level-eval:${reason}`);
 		}
 	} else if (dbMember.discord_member_id && rankImproved) {
 		await sendLevelProgressNotification({
@@ -577,12 +511,15 @@ const XP_LOG_SOURCE: Record<string, string> = {
 	Streaming: 'stream'
 };
 
-async function sendXPLogToChannel(guild, dbMember, xpGained, xpType, award: any = null) {
+async function sendXPLogToChannel(guild, dbMember, xpGained, xpType, award: any = null, stats: any = null) {
 	try {
 		await db
-			.logMemberXpGain(dbMember.id, {
+			.logMemberLevelGain(dbMember.id, {
 				source: XP_LOG_SOURCE[xpType] ?? String(xpType).toLowerCase(),
 				amount: xpGained,
+				total_xp: stats?.experience != null ? Number(stats.experience) : null,
+				level: stats?.level != null ? Number(stats.level) : null,
+				rank: stats?.rank != null ? Number(stats.rank) : null,
 				multiplier: award?.boosted ? award.multiplier : null,
 				skim_percent: award?.leeched ? award.skimPercent : null
 			})
@@ -644,7 +581,7 @@ async function handleMessageCreate(message) {
 		});
 		await creditLeechers(leechCredits, guildId);
 
-		await sendXPLogToChannel(message.guild, dbMember, memberXp, 'Chat', award);
+		await sendXPLogToChannel(message.guild, dbMember, memberXp, 'Chat', award, stats);
 
 		await handleLevelEvaluation(server, dbMember, stats, message.guild.id, {
 			previousLevel: previousStats?.level ?? null,
@@ -691,13 +628,13 @@ async function awardVoiceXP(server, dbMember, guildId, reason, previousStats, bu
 		const rate = rawXpGained > 0 ? xpGained / rawXpGained : 1;
 		const shown = (bucket: number) => Math.max(0, Math.round(bucket * rate));
 		if (baseXp > 0) {
-			await sendXPLogToChannel(discordGuild, dbMember, shown(baseXp), isAFK ? 'AFK Voice' : 'Voice', award);
+			await sendXPLogToChannel(discordGuild, dbMember, shown(baseXp), isAFK ? 'AFK Voice' : 'Voice', award, stats);
 		}
 		if (videoXp > 0) {
-			await sendXPLogToChannel(discordGuild, dbMember, shown(videoXp), 'Video', award);
+			await sendXPLogToChannel(discordGuild, dbMember, shown(videoXp), 'Video', award, stats);
 		}
 		if (streamXp > 0) {
-			await sendXPLogToChannel(discordGuild, dbMember, shown(streamXp), 'Streaming', award);
+			await sendXPLogToChannel(discordGuild, dbMember, shown(streamXp), 'Streaming', award, stats);
 		}
 	}
 

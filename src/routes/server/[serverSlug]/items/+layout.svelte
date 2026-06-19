@@ -25,7 +25,7 @@
 	const historyTabs = [
 		{ id: 'all', label: 'All', icon: 'fa-grip' },
 		{ id: 'items', label: 'Items', icon: 'fa-bag-shopping' },
-		{ id: 'xp', label: 'XP', icon: 'fa-star' }
+		{ id: 'level', label: 'Level', icon: 'fa-star' }
 	];
 
 	let now = $state(Date.now());

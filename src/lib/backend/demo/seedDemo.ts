@@ -404,7 +404,6 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 					voice_minutes_streaming: isZeroMember ? 0 : Math.max(0, 1_100 - i * 4 + (i % 9) * 5),
 					experience: exp,
 					level: lvl,
-					dm_notifications_enabled: true,
 					is_in_voice: false,
 					is_in_video: false,
 					is_in_stream: false,

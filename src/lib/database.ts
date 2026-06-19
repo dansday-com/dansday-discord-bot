@@ -1404,16 +1404,6 @@ export async function getMemberLanguage(serverId: any, discordMemberId: string) 
 	return rows[0]?.language || 'en';
 }
 
-export async function setMemberLevelDMPreference(memberId: any, enabled = true) {
-	await initializeDatabase();
-	if (!memberId) throw new Error('memberId is required');
-	await db
-		.update(schema.serverMemberLevels)
-		.set({ dm_notifications_enabled: enabled, updated_at: toMySQLDateTime() as any })
-		.where(eq(schema.serverMemberLevels.member_id, Number(memberId)));
-	return getMemberLevel(memberId);
-}
-
 export async function recalculateServerMemberRanks(serverId: any) {
 	await initializeDatabase();
 	if (!serverId) throw new Error('serverId is required');
@@ -1643,7 +1633,7 @@ export async function getNewlyExpiredEffects(botId: any, limit = 100) {
 	const rows = await db.execute(sql`
 		SELECT sma.id, sma.effect_value, sma.expires_at, sma.beneficiary_member_id, sma.target_member_id,
 		       bi.effect_type, bi.name AS item_name,
-		       sm.discord_member_id, s.discord_server_id, lvl.dm_notifications_enabled,
+		       sm.discord_member_id, s.discord_server_id,
 		       tgt.discord_member_id AS target_discord_member_id,
 		       tgt.server_display_name AS target_server_display_name,
 		       tgt.display_name AS target_display_name,
@@ -1653,7 +1643,6 @@ export async function getNewlyExpiredEffects(botId: any, limit = 100) {
 		INNER JOIN items bi ON bi.id = smi.item_id
 		INNER JOIN server_members sm ON sm.id = smi.member_id
 		INNER JOIN servers s ON s.id = sm.server_id
-		LEFT JOIN server_member_levels lvl ON lvl.member_id = sm.id
 		LEFT JOIN server_members tgt ON tgt.id = sma.target_member_id
 		WHERE sma.expiry_notified = FALSE
 		  AND sma.expires_at <= UTC_TIMESTAMP()
@@ -1699,16 +1688,15 @@ export async function getRecentVictimHits(botId: any, sinceMinutes = 720) {
 	if (!botId) return [] as any[];
 	const rows = await db.execute(sql`
 		SELECT sml.target_member_id AS member_id, MAX(sml.created_at) AS last_hit,
-		       sm.discord_member_id, s.discord_server_id, lvl.dm_notifications_enabled
+		       sm.discord_member_id, s.discord_server_id
 		FROM server_member_item_logs sml
 		INNER JOIN server_members sm ON sm.id = sml.target_member_id
 		INNER JOIN servers s ON s.id = sm.server_id
-		LEFT JOIN server_member_levels lvl ON lvl.member_id = sm.id
 		WHERE sml.action IN ('steal', 'bomb')
 		  AND sml.target_member_id IS NOT NULL
 		  AND sml.created_at >= (UTC_TIMESTAMP() - INTERVAL ${Number(sinceMinutes)} MINUTE)
 		  AND s.bot_id = ${Number(botId)}
-		GROUP BY sml.target_member_id, sm.discord_member_id, s.discord_server_id, lvl.dm_notifications_enabled
+		GROUP BY sml.target_member_id, sm.discord_member_id, s.discord_server_id
 	`);
 	return rows[0] as unknown as any[];
 }
@@ -1718,16 +1706,15 @@ export async function getRecentAttackerActions(botId: any, sinceMinutes = 720) {
 	if (!botId) return [] as any[];
 	const rows = await db.execute(sql`
 		SELECT smi.member_id AS member_id, MAX(sml.created_at) AS last_attack,
-		       sm.discord_member_id, s.discord_server_id, lvl.dm_notifications_enabled
+		       sm.discord_member_id, s.discord_server_id
 		FROM server_member_item_logs sml
 		INNER JOIN server_member_items smi ON smi.id = sml.member_item_id
 		INNER JOIN server_members sm ON sm.id = smi.member_id
 		INNER JOIN servers s ON s.id = sm.server_id
-		LEFT JOIN server_member_levels lvl ON lvl.member_id = sm.id
 		WHERE sml.action IN ('steal', 'bomb')
 		  AND sml.created_at >= (UTC_TIMESTAMP() - INTERVAL ${Number(sinceMinutes)} MINUTE)
 		  AND s.bot_id = ${Number(botId)}
-		GROUP BY smi.member_id, sm.discord_member_id, s.discord_server_id, lvl.dm_notifications_enabled
+		GROUP BY smi.member_id, sm.discord_member_id, s.discord_server_id
 	`);
 	return rows[0] as unknown as any[];
 }
@@ -1755,15 +1742,18 @@ export async function logMemberItemAction(memberId: any, data: any = {}) {
 	return true;
 }
 
-export async function logMemberXpGain(memberId: any, data: any = {}) {
+export async function logMemberLevelGain(memberId: any, data: any = {}) {
 	await initializeDatabase();
 	if (!memberId) return false;
 	const amount = Math.floor(Number(data.amount) || 0);
 	if (amount <= 0) return false;
-	await db.insert(schema.serverMemberXpLogs).values({
+	await db.insert(schema.serverMemberLevelLogs).values({
 		member_id: Number(memberId),
 		source: String(data.source ?? 'unknown').slice(0, 24),
 		amount,
+		total_xp: data.total_xp != null ? Number(data.total_xp) : null,
+		level: data.level != null ? Number(data.level) : null,
+		rank: data.rank != null ? Number(data.rank) : null,
 		multiplier: data.multiplier != null ? (String(data.multiplier) as any) : null,
 		skim_percent: data.skim_percent != null ? Number(data.skim_percent) : null,
 		created_at: toMySQLDateTime() as any
@@ -1771,12 +1761,12 @@ export async function logMemberXpGain(memberId: any, data: any = {}) {
 	return true;
 }
 
-export async function getMemberXpHistory(memberId: any, limit = 200) {
+export async function getMemberLevelHistory(memberId: any, limit = 200) {
 	await initializeDatabase();
 	if (!memberId) return [] as any[];
 	const rows = await db.execute(sql`
-		SELECT id, source, amount, multiplier, skim_percent, created_at
-		FROM server_member_xp_logs
+		SELECT id, source, amount, total_xp, level, rank, multiplier, skim_percent, created_at
+		FROM server_member_level_logs
 		WHERE member_id = ${Number(memberId)}
 		ORDER BY created_at DESC, id DESC
 		LIMIT ${Number(limit)}
@@ -3990,7 +3980,6 @@ export default {
 	getMemberLevel,
 	ensureMemberLevel,
 	updateMemberLevelStats,
-	setMemberLevelDMPreference,
 	setMemberLanguage,
 	getMemberLanguage,
 	recalculateServerMemberRanks,
@@ -4016,8 +4005,8 @@ export default {
 	expireMemberItemActive,
 	logMemberItemAction,
 	getMemberItemHistory,
-	logMemberXpGain,
-	getMemberXpHistory,
+	logMemberLevelGain,
+	getMemberLevelHistory,
 	getLastActionByActor,
 	getLastAttackActionByActor,
 	getLastActionAgainstTarget,

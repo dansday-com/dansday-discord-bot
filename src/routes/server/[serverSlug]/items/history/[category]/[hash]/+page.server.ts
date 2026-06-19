@@ -15,7 +15,7 @@ export const load: PageServerLoad = async ({ parent, params, url }) => {
 	if ('invalid' in shared) redirect(303, publicStatsEnabled ? publicServerPath(server.slug) : '/');
 
 	const tabParam = String(params.category || 'all');
-	const tab = tabParam === 'items' || tabParam === 'xp' ? tabParam : 'all';
+	const tab = tabParam === 'items' || tabParam === 'level' ? tabParam : 'all';
 
 	const itemRows = await db.getMemberItemHistory(shared.member.id, 600).catch(() => []);
 	const itemEvents = (itemRows as any[]).map((h) => ({
@@ -32,18 +32,21 @@ export const load: PageServerLoad = async ({ parent, params, url }) => {
 		at: h.created_at ? new Date(h.created_at).getTime() : null
 	}));
 
-	const xpRows = await db.getMemberXpHistory(shared.member.id, 600).catch(() => []);
-	const xpEvents = (xpRows as any[]).map((x) => ({
-		id: `x-${x.id}`,
-		kind: 'xp' as const,
+	const levelRows = await db.getMemberLevelHistory(shared.member.id, 600).catch(() => []);
+	const levelEvents = (levelRows as any[]).map((x) => ({
+		id: `l-${x.id}`,
+		kind: 'level' as const,
 		source: x.source,
 		xpAmount: Number(x.amount) || 0,
+		totalXp: x.total_xp != null ? Number(x.total_xp) : null,
+		level: x.level != null ? Number(x.level) : null,
+		rank: x.rank != null ? Number(x.rank) : null,
 		multiplier: x.multiplier != null ? Number(x.multiplier) : null,
 		skimPercent: x.skim_percent != null ? Number(x.skim_percent) : null,
 		at: x.created_at ? new Date(x.created_at).getTime() : null
 	}));
 
-	const events = tab === 'items' ? itemEvents : tab === 'xp' ? xpEvents : [...itemEvents, ...xpEvents].sort((a, b) => (b.at ?? 0) - (a.at ?? 0));
+	const events = tab === 'items' ? itemEvents : tab === 'level' ? levelEvents : [...itemEvents, ...levelEvents].sort((a, b) => (b.at ?? 0) - (a.at ?? 0));
 
 	const totalPages = Math.max(1, Math.ceil(events.length / PER_PAGE));
 	const reqPage = Math.max(1, Math.floor(Number(url.searchParams.get('page')) || 1));

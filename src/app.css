@@ -3742,6 +3742,32 @@
 	color: var(--lb-text-muted);
 }
 
+.m-root .m-hist-badges {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 5px;
+	margin: 3px 0 1px;
+}
+
+.m-root .m-hist-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	font-size: 10px;
+	font-weight: 700;
+	line-height: 1;
+	padding: 3px 7px;
+	border-radius: 999px;
+	color: var(--lb-text-muted);
+	background: var(--chili-surface);
+	border: 1px solid var(--lb-border-light);
+}
+
+.m-root .m-hist-badge i {
+	font-size: 9px;
+	opacity: 0.85;
+}
+
 .m-root .m-hist-delta {
 	flex: 0 0 auto;
 	font-size: 12px;

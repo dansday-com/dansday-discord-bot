@@ -371,7 +371,6 @@ export const serverMemberLevels = mysqlTable(
 		voice_minutes_streaming: int('voice_minutes_streaming').default(0),
 		experience: int('experience').default(0),
 		level: int('level').default(1),
-		dm_notifications_enabled: boolean('dm_notifications_enabled').default(true),
 		is_in_voice: boolean('is_in_voice').default(false),
 		is_in_video: boolean('is_in_video').default(false),
 		is_in_stream: boolean('is_in_stream').default(false),
@@ -842,8 +841,8 @@ export const serverMemberItemLogs = mysqlTable(
 	]
 );
 
-export const serverMemberXpLogs = mysqlTable(
-	'server_member_xp_logs',
+export const serverMemberLevelLogs = mysqlTable(
+	'server_member_level_logs',
 	{
 		id: bigint('id', { mode: 'bigint' }).primaryKey().autoincrement(),
 		member_id: int('member_id')
@@ -851,11 +850,14 @@ export const serverMemberXpLogs = mysqlTable(
 			.references(() => serverMembers.id, { onDelete: 'cascade' }),
 		source: varchar('source', { length: 24 }).notNull(),
 		amount: int('amount').notNull().default(0),
+		total_xp: bigint('total_xp', { mode: 'number' }),
+		level: int('level'),
+		rank: int('rank'),
 		multiplier: decimal('multiplier', { precision: 6, scale: 2 }),
 		skim_percent: int('skim_percent'),
 		created_at: datetime('created_at').notNull()
 	},
-	(t) => [index('idx_server_member_xp_logs_member').on(t.member_id, t.created_at)]
+	(t) => [index('idx_server_member_level_logs_member').on(t.member_id, t.created_at)]
 );
 
 export const serverMemberItemBounties = mysqlTable(

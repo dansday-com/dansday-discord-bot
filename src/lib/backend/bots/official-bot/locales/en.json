@@ -62,10 +62,6 @@
 	"settings": {
 		"title": "⚙️ Settings",
 		"description": "Configure your bot preferences",
-		"notifications": {
-			"levelUpOn": "🔔 Level Up DM: On",
-			"levelUpOff": "🔕 Level Up DM: Off"
-		},
 		"language": {
 			"title": "🌐 Language Settings",
 			"description": "Select your preferred language:",
@@ -128,8 +124,7 @@
 			"noData": "⚠️ No leveling data found for this member.",
 			"createRecordFailed": "❌ Failed to create member record. Please try again.",
 			"loadFailed": "❌ Failed to load leveling information: {error}",
-			"leaderboardFailed": "❌ Failed to load leaderboard: {error}",
-			"dmToggleFailed": "❌ Failed to update DM notifications: {error}"
+			"leaderboardFailed": "❌ Failed to load leaderboard: {error}"
 		}
 	},
 	"afk": {

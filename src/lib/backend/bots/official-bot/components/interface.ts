@@ -28,7 +28,7 @@ import {
 	handleGiveawaySkipRolesContinue,
 	handleGiveawayFinish
 } from './interface/giveaway.js';
-import { handleSettingsButton, handleLanguageButton, handleLanguageSelect, handleDMToggleButton } from './interface/settings.js';
+import { handleSettingsButton, handleLanguageButton, handleLanguageSelect } from './interface/settings.js';
 import {
 	handleStaffRatingButton,
 	handleStaffRatingUserSelect,
@@ -371,9 +371,6 @@ export async function handleButtonInteraction(interaction) {
 		case 'leaderboard_chat':
 			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.public_statistics)) break;
 			await handleLeaderboardButton(interaction);
-			break;
-		case 'settings_dm_toggle':
-			await handleDMToggleButton(interaction);
 			break;
 		case 'bot_settings':
 			await handleSettingsButton(interaction);

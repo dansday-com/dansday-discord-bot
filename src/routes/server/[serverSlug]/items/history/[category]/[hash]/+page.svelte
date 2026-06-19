@@ -12,7 +12,7 @@
 
 	const base = $derived(`${publicServerPath(data.server.slug)}/items/history/${data.tab}/${data.hash}`);
 
-	const XP_SOURCE: Record<string, { label: string; icon: string }> = {
+	const LEVEL_SOURCE: Record<string, { label: string; icon: string }> = {
 		chat: { label: 'Chat', icon: 'fa-message' },
 		voice: { label: 'Voice', icon: 'fa-microphone' },
 		voice_afk: { label: 'AFK Voice', icon: 'fa-moon' },
@@ -20,14 +20,22 @@
 		stream: { label: 'Streaming', icon: 'fa-tower-broadcast' }
 	};
 
-	function xpLine(h: any): { icon: string; title: string; tone: string; deltaLabel: string } {
-		const meta = XP_SOURCE[h.source] ?? { label: h.source ?? 'XP', icon: 'fa-star' };
-		const suffix = [h.multiplier ? `${h.multiplier}× Boost` : '', h.skimPercent ? `−${h.skimPercent}% Leech` : ''].filter(Boolean).join(' · ');
+	type Badge = { icon: string; text: string };
+
+	function levelLine(h: any): { icon: string; title: string; tone: string; deltaLabel: string; badges: Badge[] } {
+		const src = LEVEL_SOURCE[h.source] ?? { label: h.source ?? 'Level', icon: 'fa-star' };
+		const badges: Badge[] = [];
+		if (h.level != null) badges.push({ icon: 'fa-arrow-up-right-dots', text: `Lv ${h.level}` });
+		if (h.rank != null) badges.push({ icon: 'fa-ranking-star', text: `#${h.rank}` });
+		if (h.totalXp != null) badges.push({ icon: 'fa-star', text: `${fmt(h.totalXp)} total` });
+		if (h.multiplier) badges.push({ icon: 'fa-bolt', text: `${h.multiplier}× Boost` });
+		if (h.skimPercent) badges.push({ icon: 'fa-droplet', text: `−${h.skimPercent}% Leech` });
 		return {
-			icon: meta.icon,
-			title: suffix ? `${meta.label} XP (${suffix})` : `${meta.label} XP`,
+			icon: src.icon,
+			title: `${src.label} XP`,
 			tone: 'win',
-			deltaLabel: `+${fmt(h.xpAmount)} XP`
+			deltaLabel: `+${fmt(h.xpAmount)} XP`,
+			badges
 		};
 	}
 
@@ -114,21 +122,28 @@
 	}
 </script>
 
-<svelte:head><title>{data.server.name || data.server.slug} Item History | {APP_NAME} Discord Bot</title></svelte:head>
+<svelte:head><title>{data.server.name || data.server.slug} Level History | {APP_NAME} Discord Bot</title></svelte:head>
 
 {#if data.historyTotal === 0}
 	<div class="m-members-empty">
-		{#if data.tab === 'xp'}No XP earned yet. Chat or join voice to start earning.{:else if data.tab === 'items'}No item activity yet. Buy or use an item to
-			start.{:else}No activity yet.{/if}
+		{#if data.tab === 'level'}No level XP earned yet. Chat or join voice to start earning.{:else if data.tab === 'items'}No item activity yet. Buy or use an
+			item to start.{:else}No activity yet.{/if}
 	</div>
 {:else}
 	<ul class="m-hist">
 		{#each data.pagedHistory as h (h.id)}
-			{@const l = h.kind === 'xp' ? xpLine(h) : line(h)}
+			{@const l = h.kind === 'level' ? levelLine(h) : line(h)}
 			<li class="m-hist-row m-hist-row--{l.tone}">
 				<span class="m-hist-icon"><i class="fas {l.icon}"></i></span>
 				<span class="m-hist-body">
 					<span class="m-hist-title">{l.title}</span>
+					{#if (l as any).badges?.length}
+						<span class="m-hist-badges">
+							{#each (l as any).badges as b}
+								<span class="m-hist-badge"><i class="fas {b.icon}"></i>{b.text}</span>
+							{/each}
+						</span>
+					{/if}
 					<span class="m-hist-time">{h.at ? ago(h.at) : ''}</span>
 				</span>
 				{#if l.deltaLabel}<span class="m-hist-delta m-hist-delta--{l.tone}">{l.deltaLabel}</span>{/if}

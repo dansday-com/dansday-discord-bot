@@ -407,14 +407,16 @@
 							></span>
 						</button>
 						<button onclick={() => startEdit(item)} class="bg-ash-700 hover:bg-ash-600 text-ash-200 flex-1 rounded-lg py-1.5 text-xs">Edit</button>
-						<button
-							onclick={() => startGift(item)}
-							title="Give to a member"
-							aria-label="Give to a member"
-							class="rounded-lg bg-teal-900/40 px-3 py-1.5 text-xs text-teal-300 hover:bg-teal-900/60"
-						>
-							<i class="fas fa-gift"></i>
-						</button>
+						{#if item.effect_type !== 'gamble'}
+							<button
+								onclick={() => startGift(item)}
+								title="Give to a member"
+								aria-label="Give to a member"
+								class="rounded-lg bg-teal-900/40 px-3 py-1.5 text-xs text-teal-300 hover:bg-teal-900/60"
+							>
+								<i class="fas fa-gift"></i>
+							</button>
+						{/if}
 						<button
 							onclick={() => (confirmDelete = item)}
 							title="Delete item"

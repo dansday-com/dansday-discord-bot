@@ -35,6 +35,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 	const item = await db.getItem(body.item_id);
 	if (!item) return json({ success: false, error: 'Item not found' }, { status: 404 });
 	if (Number((item as any).panel_id) !== panelId) return json({ success: false, error: 'Forbidden' }, { status: 403 });
+	if ((item as any).effect_type === 'gamble') return json({ success: false, error: 'Gamble items cannot be gifted — they are played, not owned.' }, { status: 400 });
 
 	const enabled = await db.memberServerHasItemsEnabled(body.member_id, panelId);
 	if (!enabled) return json({ success: false, error: 'That member’s server does not have the items module enabled.' }, { status: 400 });

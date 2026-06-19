@@ -367,7 +367,7 @@ const ROUTE_GUARDS: RouteGuard[] = [
 	}
 ];
 
-const PUBLIC_PREFIXES = ['/api/public-statistics/', '/api/uploads/', '/api/panel/'];
+const PUBLIC_PREFIXES = ['/api/public-statistics/', '/api/uploads/', '/api/panel/', '/api/items/'];
 
 const PUBLIC_EXACT = new Set([
 	'/api/panel/login',

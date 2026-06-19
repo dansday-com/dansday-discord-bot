@@ -3304,18 +3304,27 @@
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+	flex-wrap: wrap;
 	gap: 6px;
 	margin-top: auto;
 	padding-top: 5px;
 }
 
+.m-root .m-card-foot .m-card-btn {
+	margin-left: auto;
+}
+
 .m-root .m-card-price {
 	display: inline-flex;
-	align-items: center;
+	align-items: baseline;
 	gap: 4px;
+	min-width: 0;
+	flex: 1 1 auto;
 	font-weight: 800;
 	font-size: 14px;
+	line-height: 1.1;
 	color: #d9a528;
+	white-space: nowrap;
 }
 
 .m-root .m-card-price i {
@@ -3369,6 +3378,7 @@
 	font-size: 12px;
 	cursor: pointer;
 	white-space: nowrap;
+	flex: 0 0 auto;
 	box-shadow: 0 6px 16px -10px rgba(36, 95, 115, 0.7);
 	transition:
 		filter 0.15s,

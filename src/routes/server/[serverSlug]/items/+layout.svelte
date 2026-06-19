@@ -4,7 +4,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import MemberCard from '$lib/frontend/components/MemberCard.svelte';
 	import { publicServerPath } from '$lib/url.js';
-	import { ITEM_EFFECTS, effectLabel, effectIcon, actionVerb, BAG_CAPACITY } from '$lib/items.js';
+	import { ITEM_EFFECTS, effectLabel, effectIcon, effectAccentHex, actionVerb, BAG_CAPACITY } from '$lib/items.js';
 	import type { PublicMembersStreamPayload } from '$lib/frontend/public/members/index.js';
 	import type { LayoutProps } from './$types';
 
@@ -63,37 +63,20 @@
 		return { floor, next, span, gained, pct, toNext: Math.max(0, next - liveXp) };
 	});
 
-	const EFFECT_ICON: Record<string, { icon: string; label: string }> = Object.fromEntries(ITEM_EFFECTS.map((e) => [e.id, { icon: e.icon, label: e.label }]));
-
-	const EFFECT_ACCENT: Record<string, string> = {
-		steal: '#c0392b',
-		bomb: '#d35400',
-		boost: '#d9a528',
-		shield: '#1d6f8a',
-		leech: '#5a8a1f',
-		reflect: '#7b5ea7',
-		insurance: '#1f9e8f',
-		gamble: '#c8911a',
-		gift: '#2f8f4e',
-		bounty: '#a8327d'
-	};
-	const NEUTRAL_ACCENT = '#1d6f8a';
-
 	const activeChips = $derived.by(() => {
 		const chips: { key: string; icon: string; label: string; until: number; accent: string }[] = [];
 		for (const e of (pd.activeEffects ?? []) as any[]) {
 			if (!e.expiresAt || e.expiresAt <= now) continue;
-			const meta = EFFECT_ICON[e.effect_type];
 			chips.push({
 				key: `eff-${e.effect_type}-${e.expiresAt}`,
-				icon: meta?.icon ?? 'fa-star',
-				label: meta?.label ?? e.effect_type,
+				icon: effectIcon(e.effect_type),
+				label: effectLabel(e.effect_type),
 				until: e.expiresAt,
-				accent: EFFECT_ACCENT[e.effect_type] ?? NEUTRAL_ACCENT
+				accent: effectAccentHex(e.effect_type)
 			});
 		}
 		if (pd.immuneUntil && pd.immuneUntil > now)
-			chips.push({ key: 'immune', icon: 'fa-shield-halved', label: 'Immune', until: pd.immuneUntil, accent: '#1f9e8f' });
+			chips.push({ key: 'immune', icon: 'fa-shield-halved', label: 'Immune', until: pd.immuneUntil, accent: effectAccentHex('insurance') });
 		for (const cd of (pd.attackCooldowns ?? []) as { action: 'steal' | 'bomb'; until: number }[]) {
 			if (!cd.until || cd.until <= now) continue;
 			chips.push({
@@ -101,7 +84,7 @@
 				icon: cd.action === 'steal' ? 'fa-hand' : 'fa-bomb',
 				label: cd.action === 'steal' ? 'Steal cooldown' : 'Bomb cooldown',
 				until: cd.until,
-				accent: EFFECT_ACCENT[cd.action]
+				accent: effectAccentHex(cd.action)
 			});
 		}
 		return chips.sort((a, b) => a.until - b.until);

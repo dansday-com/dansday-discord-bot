@@ -6,11 +6,14 @@ export type ItemEffect = {
 	id: ItemEffectId;
 	label: string;
 	icon: string;
-	color: number;
+	accent: string;
 	emoji: string;
+	verb: string;
 	targeted: boolean;
 	announced: boolean;
 	expiringBuff: boolean;
+	defaultCost: number;
+	defaultConfig: Record<string, any>;
 	buffExpiredText?: (effectValue: number) => string;
 	summary: (config: any) => string;
 };
@@ -20,116 +23,146 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		id: 'steal',
 		label: 'Steal',
 		icon: 'fa-hand',
-		color: 0xfb7185,
+		accent: '#c0392b',
 		emoji: '💰',
+		verb: 'Steal',
 		targeted: true,
 		announced: true,
 		expiringBuff: false,
-		summary: (c) => `Steal ${c.min_percent ?? 1}–${c.max_percent ?? 25}% of a member's total XP.`
+		defaultCost: 400,
+		defaultConfig: { min_percent: 1, max_percent: 25, cooldown_minutes: 30, immunity_minutes: 30 },
+		summary: (c) => `Steal ${c.min_percent}–${c.max_percent}% of a member's total XP.`
 	},
 	{
 		id: 'bomb',
 		label: 'Bomb',
 		icon: 'fa-bomb',
-		color: 0xfb7185,
+		accent: '#d35400',
 		emoji: '💥',
+		verb: 'Bomb',
 		targeted: true,
 		announced: true,
 		expiringBuff: false,
-		summary: (c) => `Destroy ${c.min_percent ?? 1}–${c.max_percent ?? 50}% of a member's total XP.`
+		defaultCost: 600,
+		defaultConfig: { min_percent: 1, max_percent: 50, cooldown_minutes: 45, immunity_minutes: 30 },
+		summary: (c) => `Destroy ${c.min_percent}–${c.max_percent}% of a member's total XP.`
 	},
 	{
 		id: 'boost',
 		label: 'Boost',
 		icon: 'fa-bolt',
-		color: 0xfbbf24,
+		accent: '#d9a528',
 		emoji: '⚡',
+		verb: 'Activate',
 		targeted: false,
 		announced: true,
 		expiringBuff: true,
+		defaultCost: 800,
+		defaultConfig: { multiplier: 2, effect_duration_minutes: 60, scope: 'all' },
 		buffExpiredText: (m) => `Your **${m || 2}× Boost** has worn off.`,
-		summary: (c) => `${c.multiplier ?? 2}× XP for ${c.effect_duration_minutes ?? 60} min (${c.scope ?? 'all'}).`
+		summary: (c) => `${c.multiplier}× XP for ${c.effect_duration_minutes} min (${c.scope}).`
 	},
 	{
 		id: 'shield',
 		label: 'Shield',
 		icon: 'fa-shield',
-		color: 0x38bdf8,
+		accent: '#1d6f8a',
 		emoji: '🛡️',
+		verb: 'Activate',
 		targeted: false,
 		announced: true,
 		expiringBuff: true,
+		defaultCost: 500,
+		defaultConfig: { effect_duration_minutes: 120 },
 		buffExpiredText: () => `Your **Shield** has worn off — you can be attacked again.`,
-		summary: (c) => `Block incoming steals, bombs and leeches for ${c.effect_duration_minutes ?? 60} min.`
+		summary: (c) => `Block incoming steals, bombs and leeches for ${c.effect_duration_minutes} min.`
 	},
 	{
 		id: 'leech',
 		label: 'Leech',
 		icon: 'fa-droplet',
-		color: 0xfb7185,
+		accent: '#5a8a1f',
 		emoji: '🩸',
+		verb: 'Leech',
 		targeted: true,
 		announced: true,
 		expiringBuff: true,
+		defaultCost: 700,
+		defaultConfig: { skim_percent: 10, effect_duration_minutes: 120 },
 		buffExpiredText: (m) => `Your **${m || 0}% Leech** has ended.`,
-		summary: (c) => `Skim ${c.skim_percent ?? 10}% of a member's XP for ${c.effect_duration_minutes ?? 120} min.`
+		summary: (c) => `Skim ${c.skim_percent}% of a member's XP for ${c.effect_duration_minutes} min.`
 	},
 	{
 		id: 'reflect',
 		label: 'Reflect',
 		icon: 'fa-arrows-rotate',
-		color: 0xc084fc,
+		accent: '#7b5ea7',
 		emoji: '🪞',
+		verb: 'Activate',
 		targeted: false,
 		announced: true,
 		expiringBuff: true,
+		defaultCost: 650,
+		defaultConfig: { effect_duration_minutes: 60 },
 		buffExpiredText: () => `Your **Reflect** has worn off.`,
-		summary: (c) => `Bounce the next attack back at the attacker for ${c.effect_duration_minutes ?? 60} min.`
+		summary: (c) => `Bounce the next attack back at the attacker for ${c.effect_duration_minutes} min.`
 	},
 	{
 		id: 'insurance',
 		label: 'Insurance',
 		icon: 'fa-umbrella',
-		color: 0x5eead4,
+		accent: '#1f9e8f',
 		emoji: '💵',
+		verb: 'Activate',
 		targeted: false,
 		announced: true,
 		expiringBuff: true,
+		defaultCost: 450,
+		defaultConfig: { effect_duration_minutes: 90 },
 		buffExpiredText: () => `Your **Insurance** has expired.`,
-		summary: (c) => `Refund your XP the next time you're robbed (${c.effect_duration_minutes ?? 60} min).`
+		summary: (c) => `Refund your XP the next time you're robbed (${c.effect_duration_minutes} min).`
 	},
 	{
 		id: 'gamble',
 		label: 'Gamble',
 		icon: 'fa-dice',
-		color: 0xfbbf24,
+		accent: '#c8911a',
 		emoji: '🎲',
+		verb: 'Play',
 		targeted: false,
 		announced: true,
 		expiringBuff: false,
-		summary: (c) => `Wager your XP — ${c.win_chance ?? 50}% chance to win ${c.payout_multiplier ?? 2}× it.`
+		defaultCost: 0,
+		defaultConfig: { win_chance: 50, payout_multiplier: 2 },
+		summary: (c) => `Wager your XP — ${c.win_chance}% chance to win ${c.payout_multiplier}× it.`
 	},
 	{
 		id: 'gift',
 		label: 'Gift',
 		icon: 'fa-gift',
-		color: 0x4ade80,
+		accent: '#2f8f4e',
 		emoji: '🎁',
+		verb: 'Give',
 		targeted: true,
 		announced: true,
 		expiringBuff: false,
-		summary: (c) => `Send ${c.gift_amount ?? 0} XP to a member${c.tax_percent ? ` (−${c.tax_percent}% tax)` : ''}.`
+		defaultCost: 300,
+		defaultConfig: { gift_amount: 500, tax_percent: 10 },
+		summary: (c) => `Send ${c.gift_amount} XP to a member${c.tax_percent ? ` (−${c.tax_percent}% tax)` : ''}.`
 	},
 	{
 		id: 'bounty',
 		label: 'Bounty',
 		icon: 'fa-crosshairs',
-		color: 0xfbbf24,
+		accent: '#a8327d',
 		emoji: '🎯',
+		verb: 'Place',
 		targeted: true,
 		announced: true,
 		expiringBuff: false,
-		summary: (c) => `Put ${c.bounty_amount ?? 0} XP on a member — collected by whoever robs them next.`
+		defaultCost: 350,
+		defaultConfig: { bounty_amount: 500 },
+		summary: (c) => `Put ${c.bounty_amount} XP on a member — collected by whoever robs them next.`
 	}
 ];
 
@@ -151,27 +184,40 @@ export function effectIcon(type: string): string {
 	return EFFECT_BY_ID[type]?.icon ?? 'fa-cube';
 }
 
+export const EFFECT_ACCENT_DEFAULT = '#245f73';
+
+export const EFFECT_ACCENT_HEX: Record<string, string> = Object.fromEntries(ITEM_EFFECTS.map((e) => [e.id, e.accent]));
+
+export function effectAccentHex(type: string): string {
+	return EFFECT_BY_ID[type]?.accent ?? EFFECT_ACCENT_DEFAULT;
+}
+
+export function effectAccentInt(type: string): number {
+	return parseInt(effectAccentHex(type).slice(1), 16);
+}
+
+export function effectAccentCssVars(): string {
+	const lines = [`--effect-default: ${EFFECT_ACCENT_DEFAULT};`, ...ITEM_EFFECTS.map((e) => `--effect-${e.id}: ${e.accent};`)];
+	return `:root{${lines.join('')}}`;
+}
+
+export function effectDefaultConfig(type: string): Record<string, any> {
+	return { ...(EFFECT_BY_ID[type]?.defaultConfig ?? {}) };
+}
+
+export function effectDefaultCost(type: string): number {
+	return EFFECT_BY_ID[type]?.defaultCost ?? 0;
+}
+
 export function effectSummary(item: { effect_type: string; description?: string | null; config?: any }): string {
 	const effect = EFFECT_BY_ID[item.effect_type];
 	if (!effect) return item.description ?? '';
-	return effect.summary(item.config ?? {});
+	return effect.summary({ ...effect.defaultConfig, ...(item.config ?? {}) });
 }
 
-const ACTION_VERB: Record<string, { label: string; icon: string }> = {
-	steal: { label: 'Steal', icon: 'fa-hand' },
-	bomb: { label: 'Bomb', icon: 'fa-bomb' },
-	leech: { label: 'Leech', icon: 'fa-droplet' },
-	gift: { label: 'Give', icon: 'fa-gift' },
-	bounty: { label: 'Place', icon: 'fa-crosshairs' },
-	boost: { label: 'Activate', icon: 'fa-bolt' },
-	shield: { label: 'Activate', icon: 'fa-shield' },
-	reflect: { label: 'Activate', icon: 'fa-arrows-rotate' },
-	insurance: { label: 'Activate', icon: 'fa-umbrella' },
-	gamble: { label: 'Play', icon: 'fa-dice' }
-};
-
 export function actionVerb(effectType: string): { label: string; icon: string } {
-	return ACTION_VERB[effectType] ?? { label: 'Use', icon: 'fa-bolt' };
+	const effect = EFFECT_BY_ID[effectType];
+	return effect ? { label: effect.verb, icon: effect.icon } : { label: 'Use', icon: 'fa-bolt' };
 }
 
 export function isTargetedEffect(type: string): boolean {

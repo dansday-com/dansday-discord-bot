@@ -2,7 +2,7 @@ import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 import { getRedisClient } from '../../../../redis.js';
 import { getLevelRequirement, determineLevel, evaluateMemberLevelAndRank } from './leveling.js';
-import { TARGETED_EFFECTS, ANNOUNCED_EFFECTS, getItemEffect, BAG_CAPACITY } from '../../../../items.js';
+import { TARGETED_EFFECTS, ANNOUNCED_EFFECTS, getItemEffect, BAG_CAPACITY, effectAccentInt } from '../../../../items.js';
 
 const EFFECT_CACHE_TTL_MS = 5000;
 const GAMBLE_ANNOUNCE_DELAY_MS = 3900;
@@ -871,10 +871,9 @@ function buildItemUseEmbed(EmbedBuilder: any, embedConfig: any, ctx: any) {
 	const immuneRel = discordRelative(result?.immuneUntil);
 
 	const embed = new EmbedBuilder()
-		.setColor(embedConfig.COLOR)
+		.setColor(effectAccentInt(effectType))
 		.setFooter({ text: embedConfig.FOOTER || 'Items' })
 		.setTimestamp();
-	if (actor?.user) embed.setThumbnail(actor.user.displayAvatarURL({ dynamic: true }));
 
 	const fields: any[] = [];
 
@@ -884,14 +883,14 @@ function buildItemUseEmbed(EmbedBuilder: any, embedConfig: any, ctx: any) {
 
 		if (outcome === 'blocked') {
 			embed
-				.setColor(0x38bdf8)
+				.setColor(effectAccentInt('shield'))
 				.setTitle('🛡️ Attack Blocked')
 				.setDescription(`${targetMention}'s **Shield** blocked ${actorMention}'s ${effectType === 'steal' ? 'steal' : 'bomb'}!`);
 			return embed;
 		}
 		if (outcome === 'reflected') {
 			embed
-				.setColor(0xc084fc)
+				.setColor(effectAccentInt('reflect'))
 				.setTitle('🪞 Attack Reflected')
 				.setDescription(`${targetMention} reflected the attack back at ${actorMention}!`)
 				.addFields({ name: 'XP lost by attacker', value: fmtXp(result?.xp), inline: true });
@@ -921,19 +920,15 @@ function buildItemUseEmbed(EmbedBuilder: any, embedConfig: any, ctx: any) {
 
 	if (effectType === 'leech') {
 		if (outcome === 'blocked') {
-			embed.setColor(0x38bdf8).setTitle('🛡️ Leech Blocked').setDescription(`${targetMention}'s **Shield** blocked ${actorMention}'s leech!`);
+			embed.setColor(effectAccentInt('shield')).setTitle('🛡️ Leech Blocked').setDescription(`${targetMention}'s **Shield** blocked ${actorMention}'s leech!`);
 			return embed;
 		}
-		embed
-			.setColor(0xfb7185)
-			.setTitle('🩸 Leech Attached')
-			.setDescription(`${actorMention} attached a leech to ${targetMention} — siphoning a cut of their XP while active.`);
+		embed.setTitle('🩸 Leech Attached').setDescription(`${actorMention} attached a leech to ${targetMention} — siphoning a cut of their XP while active.`);
 		return embed;
 	}
 
 	if (effectType === 'gift') {
 		embed
-			.setColor(0x4ade80)
 			.setTitle('🎁 Gift Sent')
 			.setDescription(`${actorMention} sent a gift to ${targetMention}!`)
 			.addFields({ name: 'Received', value: fmtXp(result?.xp), inline: true });
@@ -942,7 +937,6 @@ function buildItemUseEmbed(EmbedBuilder: any, embedConfig: any, ctx: any) {
 
 	if (effectType === 'bounty') {
 		embed
-			.setColor(0xfbbf24)
 			.setTitle('🎯 Bounty Placed')
 			.setDescription(`${actorMention} placed a bounty on ${targetMention} — whoever robs them next collects it.`)
 			.addFields({ name: 'Bounty', value: fmtXp(result?.xp), inline: true });
@@ -953,13 +947,11 @@ function buildItemUseEmbed(EmbedBuilder: any, embedConfig: any, ctx: any) {
 		const pctNote = result?.percent ? ` (${result.percent}% of XP)` : '';
 		if (result?.won) {
 			embed
-				.setColor(0x4ade80)
 				.setTitle('🎲 Gamble — Win!')
 				.setDescription(`${actorMention} wagered ${fmtXp(result?.wager)}${pctNote} and **won**!`)
 				.addFields({ name: 'Payout', value: fmtXp(result?.payout), inline: true }, { name: 'Net gain', value: `+${fmtXp(result?.net)}`, inline: true });
 		} else {
 			embed
-				.setColor(0xfb7185)
 				.setTitle('🎲 Gamble — Lost')
 				.setDescription(`${actorMention} wagered ${fmtXp(result?.wager)}${pctNote} and **lost it all**.`)
 				.addFields({ name: 'XP lost', value: fmtXp(result?.wager), inline: true });
@@ -968,24 +960,20 @@ function buildItemUseEmbed(EmbedBuilder: any, embedConfig: any, ctx: any) {
 	}
 
 	if (effectType === 'shield' || effectType === 'reflect' || effectType === 'insurance') {
-		const meta: Record<string, { emoji: string; title: string; desc: string; color: number }> = {
-			shield: { emoji: '🛡️', title: 'Shield Activated', desc: 'is now protected — incoming steals, bombs and leeches will be blocked', color: 0x38bdf8 },
-			reflect: { emoji: '🪞', title: 'Reflect Activated', desc: 'will bounce the next attack back at the attacker', color: 0xc084fc },
-			insurance: { emoji: '💵', title: 'Insurance Activated', desc: 'will be refunded the next time they are robbed', color: 0x5eead4 }
+		const meta: Record<string, { emoji: string; title: string; desc: string }> = {
+			shield: { emoji: '🛡️', title: 'Shield Activated', desc: 'is now protected — incoming steals, bombs and leeches will be blocked' },
+			reflect: { emoji: '🪞', title: 'Reflect Activated', desc: 'will bounce the next attack back at the attacker' },
+			insurance: { emoji: '💵', title: 'Insurance Activated', desc: 'will be refunded the next time they are robbed' }
 		};
 		const m = meta[effectType];
 		const untilRel = discordRelative(result?.expiresAt);
-		embed
-			.setColor(m.color)
-			.setTitle(`${m.emoji} ${m.title}`)
-			.setDescription(`${actorMention} ${m.desc}${untilRel ? ` (until ${untilRel})` : ''}.`);
+		embed.setTitle(`${m.emoji} ${m.title}`).setDescription(`${actorMention} ${m.desc}${untilRel ? ` (until ${untilRel})` : ''}.`);
 		return embed;
 	}
 
 	if (effectType === 'boost') {
 		const untilRel = discordRelative(result?.expiresAt);
 		embed
-			.setColor(0xfbbf24)
 			.setTitle('⚡ Boost Activated')
 			.setDescription(`${actorMention} activated a boost${untilRel ? ` — active until ${untilRel}` : ''}. Earnings are multiplied while it lasts.`);
 		return embed;
@@ -1025,7 +1013,7 @@ async function announceItemUse(client: any, ctx: any) {
 }
 
 export async function handleAdminGiftAnnounce(client: any, payload: any) {
-	const { guild_id, member_discord_id, item_name, quantity } = payload || {};
+	const { guild_id, member_discord_id, item_name, effect_type, quantity } = payload || {};
 	if (!guild_id || !member_discord_id) return { ok: false, error: 'missing_fields' };
 
 	const { getLevelingSettings, getEmbedConfig } = await import('../../../config.js');
@@ -1046,12 +1034,11 @@ export async function handleAdminGiftAnnounce(client: any, payload: any) {
 	const qty = Math.max(1, Number(quantity) || 1);
 
 	const embed = new EmbedBuilder()
-		.setColor(0x2dd4bf)
+		.setColor(effectAccentInt(effect_type))
 		.setTitle('🎁 A Gift Has Arrived')
 		.setDescription(`${member} received **${qty}× ${item_name || 'an item'}** from the admin — check your bag!`)
 		.setFooter({ text: embedConfig.FOOTER || 'Items' })
 		.setTimestamp();
-	if (member.user) embed.setThumbnail(member.user.displayAvatarURL({ dynamic: true }));
 
 	await channel.send({ content: `${member}`, embeds: [embed] }).catch(() => null);
 	return { ok: true, announced: true };
@@ -1099,7 +1086,7 @@ async function sweepExpiredBuffs(client: any, botId: any, EmbedBuilder: any) {
 					text = `Your **${mag || 0}% Leech** on ${targetName} has ended.`;
 				}
 				const embed = new EmbedBuilder()
-					.setColor(meta.color)
+					.setColor(effectAccentInt(row.effect_type))
 					.setTitle(`${meta.emoji} ${meta.label} Ended`)
 					.setDescription(member ? `${member} — ${text}` : text)
 					.setFooter({ text: embedConfig.FOOTER || 'Items' })
@@ -1131,7 +1118,7 @@ async function sweepDerivedEvents(client: any, botId: any, EmbedBuilder: any) {
 		const member = await guild.members.fetch(String(hit.discord_member_id)).catch(() => null);
 		const embedConfig = await embedConfigFor(guild.id);
 		const embed = new EmbedBuilder()
-			.setColor(0xfb7185)
+			.setColor(effectAccentInt('shield'))
 			.setTitle('🛡️ Immunity Ended')
 			.setDescription(member ? `${member} is no longer immune — fair game again!` : `A member is no longer immune.`)
 			.setFooter({ text: embedConfig.FOOTER || 'Items' })
@@ -1155,7 +1142,7 @@ async function sweepDerivedEvents(client: any, botId: any, EmbedBuilder: any) {
 		const member = await guild.members.fetch(String(atk.discord_member_id)).catch(() => null);
 		const embedConfig = await embedConfigFor(guild.id);
 		const embed = new EmbedBuilder()
-			.setColor(0x4ade80)
+			.setColor(effectAccentInt('steal'))
 			.setTitle('✅ Cooldown Ready')
 			.setDescription(member ? `${member} — your attack cooldown is up. You can steal or bomb again!` : `Attack cooldown is up.`)
 			.setFooter({ text: embedConfig.FOOTER || 'Items' })

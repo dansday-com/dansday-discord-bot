@@ -5,10 +5,12 @@
 	import ConfigToggleRow from '$lib/frontend/components/ConfigToggleRow.svelte';
 	import ConfirmModal from '$lib/frontend/components/ConfirmModal.svelte';
 	import type { LabeledSelectOption } from '$lib/frontend/components/labeledSelect.js';
-	import { ITEM_EFFECTS, effectLabel, effectIcon, isTargetedEffect } from '$lib/items.js';
+	import { ITEM_EFFECTS, effectLabel, effectIcon, isTargetedEffect, getItemEffect, effectDefaultCost } from '$lib/items.js';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 
 	const effectOptions: LabeledSelectOption[] = ITEM_EFFECTS.map((e) => ({ value: e.id, label: e.label }));
+
+	const ALL_DEFAULT_CFG: Record<string, any> = Object.assign({}, ...ITEM_EFFECTS.map((e) => e.defaultConfig));
 
 	function toLocalInput(value: any): string {
 		if (!value) return '';
@@ -36,28 +38,16 @@
 			name: '',
 			effect_type: 'boost',
 			description: '',
-			cost: 100,
+			cost: effectDefaultCost('boost'),
 			enabled: true,
 			available_from: '',
 			available_to: '',
 			cfg: {
-				min_percent: 1,
-				max_percent: 25,
-				cooldown_minutes: 30,
-				immunity_minutes: 30,
-				multiplier: 2,
-				skim_percent: 10,
-				effect_duration_minutes: 60,
-				scope: 'all',
-				win_chance: 50,
-				payout_multiplier: 2,
-				gift_amount: 500,
-				tax_percent: 10,
-				bounty_amount: 500,
+				...ALL_DEFAULT_CFG,
 				recur_days: [] as number[],
 				recur_from: '',
 				recur_to: ''
-			}
+			} as Record<string, any>
 		};
 	}
 
@@ -78,31 +68,11 @@
 	onMount(loadItems);
 
 	function buildConfig() {
-		const c = form.cfg;
-		const t = form.effect_type;
+		const c = form.cfg as Record<string, any>;
+		const defaults = getItemEffect(form.effect_type)?.defaultConfig ?? {};
 		const config: Record<string, any> = {};
-		if (t === 'steal' || t === 'bomb') {
-			config.min_percent = Number(c.min_percent);
-			config.max_percent = Number(c.max_percent);
-			config.cooldown_minutes = Number(c.cooldown_minutes);
-			config.immunity_minutes = Number(c.immunity_minutes);
-		} else if (t === 'boost') {
-			config.multiplier = Number(c.multiplier);
-			config.effect_duration_minutes = Number(c.effect_duration_minutes);
-			config.scope = c.scope;
-		} else if (t === 'shield' || t === 'reflect' || t === 'insurance') {
-			config.effect_duration_minutes = Number(c.effect_duration_minutes);
-		} else if (t === 'gift') {
-			config.gift_amount = Number(c.gift_amount);
-			config.tax_percent = Number(c.tax_percent);
-		} else if (t === 'leech') {
-			config.skim_percent = Number(c.skim_percent);
-			config.effect_duration_minutes = Number(c.effect_duration_minutes);
-		} else if (t === 'gamble') {
-			config.win_chance = Number(c.win_chance);
-			config.payout_multiplier = Number(c.payout_multiplier);
-		} else if (t === 'bounty') {
-			config.bounty_amount = Number(c.bounty_amount);
+		for (const [key, def] of Object.entries(defaults)) {
+			config[key] = typeof def === 'number' ? Number(c[key]) : c[key];
 		}
 		if (Array.isArray(c.recur_days) && c.recur_days.length > 0) {
 			config.recurring_schedule = { days: c.recur_days.map(Number), from: c.recur_from, to: c.recur_to };

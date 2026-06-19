@@ -126,37 +126,24 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 
 	if (!botRow?.id) throw new Error('Failed to ensure demo bot');
 
-	const ITEM_CONFIG: Record<string, { cost: number; config: Record<string, any> }> = {
-		steal: { cost: 400, config: { min_percent: 1, max_percent: 25, cooldown_minutes: 30, immunity_minutes: 30 } },
-		bomb: { cost: 600, config: { min_percent: 1, max_percent: 50, cooldown_minutes: 45, immunity_minutes: 30 } },
-		boost: { cost: 800, config: { multiplier: 2, effect_duration_minutes: 60, scope: 'all' } },
-		shield: { cost: 500, config: { effect_duration_minutes: 120 } },
-		leech: { cost: 700, config: { skim_percent: 10, effect_duration_minutes: 120 } },
-		reflect: { cost: 650, config: { effect_duration_minutes: 60 } },
-		insurance: { cost: 450, config: { effect_duration_minutes: 90 } },
-		gamble: { cost: 0, config: { win_chance: 50, payout_multiplier: 2 } },
-		gift: { cost: 300, config: { gift_amount: 500, tax_percent: 10 } },
-		bounty: { cost: 350, config: { bounty_amount: 500 } }
-	};
 	const seededItems: { id: number; effect: string }[] = [];
 	for (let idx = 0; idx < ITEM_EFFECTS.length; idx++) {
 		const effect = ITEM_EFFECTS[idx];
-		const cfg = ITEM_CONFIG[effect.id] ?? { cost: 300, config: {} };
 		await db
 			.insert(schema.items)
 			.values({
 				panel_id: demoPanel.id,
 				name: effect.label,
 				effect_type: effect.id,
-				description: effect.summary(cfg.config),
-				cost: cfg.cost,
-				config: cfg.config,
+				description: effect.summary(effect.defaultConfig),
+				cost: effect.defaultCost,
+				config: effect.defaultConfig,
 				enabled: true,
 				sort_order: idx,
 				created_at: nowDb,
 				updated_at: nowDb
 			})
-			.onDuplicateKeyUpdate({ set: { name: effect.label as any, config: cfg.config as any, cost: cfg.cost as any, updated_at: nowDb } });
+			.onDuplicateKeyUpdate({ set: { name: effect.label as any, config: effect.defaultConfig as any, cost: effect.defaultCost as any, updated_at: nowDb } });
 		const itemRow = await db
 			.select({ id: schema.items.id })
 			.from(schema.items)

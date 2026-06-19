@@ -14,20 +14,6 @@
 	--color-ash-950: #1e1f22;
 }
 
-:root {
-	--effect-default: #245f73;
-	--effect-steal: #c0392b;
-	--effect-bomb: #d35400;
-	--effect-boost: #d9a528;
-	--effect-shield: #1d6f8a;
-	--effect-leech: #5a8a1f;
-	--effect-reflect: #7b5ea7;
-	--effect-insurance: #1f9e8f;
-	--effect-gamble: #c8911a;
-	--effect-gift: #2f8f4e;
-	--effect-bounty: #a8327d;
-}
-
 @layer base {
 	* {
 		@apply border-ash-700;

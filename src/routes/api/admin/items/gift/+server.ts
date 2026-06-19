@@ -58,6 +58,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 						guild_id: server.discord_server_id,
 						member_discord_id: member.discord_member_id,
 						item_name: (item as any).name,
+						effect_type: (item as any).effect_type,
 						quantity
 					});
 					announced = result.status === 200 && result.body?.announced === true;

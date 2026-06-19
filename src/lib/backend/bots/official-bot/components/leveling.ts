@@ -531,12 +531,12 @@ const XP_LOG_SOURCE: Record<string, string> = {
 	Streaming: 'stream'
 };
 
-async function sendXPLogToChannel(guild, dbMember, xpGained, xpType, award: any = null, stats: any = null, rawXp: any = null) {
+async function sendXPLogToChannel(guild, dbMember, xpGained, xpType, award: any = null, stats: any = null) {
 	try {
 		await db
 			.logMemberLevelGain(dbMember.id, {
 				source: XP_LOG_SOURCE[xpType] ?? String(xpType).toLowerCase(),
-				amount: rawXp != null ? rawXp : xpGained,
+				amount: xpGained,
 				total_xp: stats?.experience != null ? Number(stats.experience) : null,
 				level: stats?.level != null ? Number(stats.level) : null,
 				rank: stats?.rank != null ? Number(stats.rank) : null,
@@ -623,7 +623,7 @@ async function handleMessageCreate(message) {
 		});
 		const leechApplied = await creditLeechers(leechCredits, guildId);
 
-		await sendXPLogToChannel(message.guild, dbMember, memberXp, 'Chat', award, stats, baseXp);
+		await sendXPLogToChannel(message.guild, dbMember, memberXp, 'Chat', award, stats);
 		await announceLeechCredits(message.guild, dbMember, leechApplied);
 
 		await handleLevelEvaluation(server, dbMember, stats, message.guild.id, {
@@ -671,13 +671,13 @@ async function awardVoiceXP(server, dbMember, guildId, reason, previousStats, bu
 		const rate = rawXpGained > 0 ? xpGained / rawXpGained : 1;
 		const shown = (bucket: number) => Math.max(0, Math.round(bucket * rate));
 		if (baseXp > 0) {
-			await sendXPLogToChannel(discordGuild, dbMember, shown(baseXp), isAFK ? 'AFK Voice' : 'Voice', award, stats, baseXp);
+			await sendXPLogToChannel(discordGuild, dbMember, shown(baseXp), isAFK ? 'AFK Voice' : 'Voice', award, stats);
 		}
 		if (videoXp > 0) {
-			await sendXPLogToChannel(discordGuild, dbMember, shown(videoXp), 'Video', award, stats, videoXp);
+			await sendXPLogToChannel(discordGuild, dbMember, shown(videoXp), 'Video', award, stats);
 		}
 		if (streamXp > 0) {
-			await sendXPLogToChannel(discordGuild, dbMember, shown(streamXp), 'Streaming', award, stats, streamXp);
+			await sendXPLogToChannel(discordGuild, dbMember, shown(streamXp), 'Streaming', award, stats);
 		}
 		await announceLeechCredits(discordGuild, dbMember, leechApplied);
 	}

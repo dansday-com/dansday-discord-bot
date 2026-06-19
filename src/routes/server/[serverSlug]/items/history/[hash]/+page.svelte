@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
-	import { actionVerb } from '$lib/items.js';
+	import { effectLabel, effectIcon } from '$lib/items.js';
 	import { publicServerPath } from '$lib/url.js';
+	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -33,8 +34,19 @@
 				deltaLabel: `${h.xpAmount >= 0 ? '+' : '−'}${fmt(Math.abs(h.xpAmount))} XP`
 			};
 		}
-		const verb = actionVerb(h.action);
+		const PAST_TITLE: Record<string, string> = {
+			steal: 'Robbed',
+			bomb: 'Bombed',
+			leech: 'Leeched',
+			gift: 'Gifted',
+			bounty: 'Bounty placed',
+			boost: 'Boost activated',
+			shield: 'Shield activated',
+			reflect: 'Reflect activated',
+			insurance: 'Insurance activated'
+		};
 		const target = h.targetName ? ` → ${h.targetName}` : '';
+		const title = PAST_TITLE[h.action] ?? effectLabel(h.action);
 		let tone = 'neutral';
 		let deltaLabel = '';
 		if (h.outcome === 'blocked' || h.outcome === 'reflected') {
@@ -47,12 +59,15 @@
 			deltaLabel = `${fmt(h.xpAmount)} XP destroyed`;
 		} else if (h.action === 'gift' && h.xpAmount > 0) {
 			deltaLabel = `${fmt(h.xpAmount)} XP sent`;
+		} else if (h.action === 'bounty' && h.xpAmount > 0) {
+			tone = 'spend';
+			deltaLabel = `−${fmt(h.xpAmount)} XP`;
 		}
-		return { icon: verb.icon, title: `${verb.label}${target}`, tone, deltaLabel };
+		return { icon: effectIcon(h.action), title: `${title}${target}`, tone, deltaLabel };
 	}
 </script>
 
-<svelte:head><title>History · {data.server.name}</title></svelte:head>
+<svelte:head><title>{data.server.name || data.server.slug} Item History | {APP_NAME} Discord Bot</title></svelte:head>
 
 {#if data.historyTotal === 0}
 	<div class="m-members-empty">No activity yet. Buy or use an item to start your history.</div>

@@ -1641,15 +1641,20 @@ export async function getNewlyExpiredEffects(botId: any, limit = 100) {
 	await initializeDatabase();
 	if (!botId) return [] as any[];
 	const rows = await db.execute(sql`
-		SELECT sma.id, sma.effect_value, sma.expires_at, sma.beneficiary_member_id,
+		SELECT sma.id, sma.effect_value, sma.expires_at, sma.beneficiary_member_id, sma.target_member_id,
 		       bi.effect_type, bi.name AS item_name,
-		       sm.discord_member_id, s.discord_server_id, lvl.dm_notifications_enabled
+		       sm.discord_member_id, s.discord_server_id, lvl.dm_notifications_enabled,
+		       tgt.discord_member_id AS target_discord_member_id,
+		       tgt.server_display_name AS target_server_display_name,
+		       tgt.display_name AS target_display_name,
+		       tgt.username AS target_username
 		FROM server_member_item_actives sma
 		INNER JOIN server_member_items smi ON smi.id = sma.member_item_id
 		INNER JOIN items bi ON bi.id = smi.item_id
 		INNER JOIN server_members sm ON sm.id = smi.member_id
 		INNER JOIN servers s ON s.id = sm.server_id
 		LEFT JOIN server_member_levels lvl ON lvl.member_id = sm.id
+		LEFT JOIN server_members tgt ON tgt.id = sma.target_member_id
 		WHERE sma.expiry_notified = FALSE
 		  AND sma.expires_at <= UTC_TIMESTAMP()
 		  AND s.bot_id = ${Number(botId)}

@@ -371,6 +371,16 @@ export async function resolveShield({ memberItemId, ownerMemberId, config }: any
 
 export async function resolveLeech({ memberItemId, actorMemberId, targetMemberId, config }: any) {
 	const cfg = parseConfig(config);
+	if (await hasActiveShield(targetMemberId)) {
+		await db.logMemberItemAction(actorMemberId, {
+			member_item_id: memberItemId,
+			target_member_id: targetMemberId,
+			action: 'leech',
+			xp_amount: 0,
+			outcome: 'blocked'
+		});
+		return { outcome: 'blocked' };
+	}
 	const expiresAt = computeExpiry(cfg.effect_duration_minutes);
 	await db.addMemberItemActive(memberItemId, {
 		effect_value: Number(cfg.skim_percent ?? 10),
@@ -796,6 +806,10 @@ function buildItemUseEmbed(EmbedBuilder: any, embedConfig: any, ctx: any) {
 	}
 
 	if (effectType === 'leech') {
+		if (outcome === 'blocked') {
+			embed.setColor(0x38bdf8).setTitle('🛡️ Leech Blocked').setDescription(`${targetMention}'s **Shield** blocked ${actorMention}'s leech!`);
+			return embed;
+		}
 		embed
 			.setColor(0xfb7185)
 			.setTitle('🩸 Leech Attached')
@@ -841,7 +855,7 @@ function buildItemUseEmbed(EmbedBuilder: any, embedConfig: any, ctx: any) {
 
 	if (effectType === 'shield' || effectType === 'reflect' || effectType === 'insurance') {
 		const meta: Record<string, { emoji: string; title: string; desc: string; color: number }> = {
-			shield: { emoji: '🛡️', title: 'Shield Activated', desc: 'is now protected — incoming steals and bombs will be blocked', color: 0x38bdf8 },
+			shield: { emoji: '🛡️', title: 'Shield Activated', desc: 'is now protected — incoming steals, bombs and leeches will be blocked', color: 0x38bdf8 },
 			reflect: { emoji: '🪞', title: 'Reflect Activated', desc: 'will bounce the next attack back at the attacker', color: 0xc084fc },
 			insurance: { emoji: '💵', title: 'Insurance Activated', desc: 'will be refunded the next time they are robbed', color: 0x5eead4 }
 		};
@@ -931,7 +945,12 @@ async function sweepExpiredBuffs(client: any, botId: any, EmbedBuilder: any) {
 			if (guild) {
 				const embedConfig = await embedConfigFor(guild.id);
 				const mag = Number(row.effect_value) || 0;
-				const text = meta.buffExpiredText(mag);
+				let text = meta.buffExpiredText(mag);
+				if (row.effect_type === 'leech' && row.target_discord_member_id) {
+					const targetMember = await guild.members.fetch(String(row.target_discord_member_id)).catch(() => null);
+					const targetName = targetMember ? `${targetMember}` : row.target_server_display_name || row.target_display_name || row.target_username || 'them';
+					text = `Your **${mag || 0}% Leech** on ${targetName} has ended.`;
+				}
 				const embed = new EmbedBuilder()
 					.setColor(meta.color)
 					.setTitle(`${meta.emoji} ${meta.label} Ended`)

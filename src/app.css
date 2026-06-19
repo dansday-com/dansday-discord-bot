@@ -3271,6 +3271,13 @@
 	filter: drop-shadow(0 1px 2px color-mix(in srgb, #d9a528 60%, transparent));
 }
 
+.m-root .m-card-price-unit {
+	font-size: 10px;
+	font-weight: 700;
+	opacity: 0.7;
+	letter-spacing: 0.03em;
+}
+
 .m-root .m-card-price--short {
 	color: #c0392b;
 }

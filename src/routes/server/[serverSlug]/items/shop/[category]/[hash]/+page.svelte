@@ -2,6 +2,7 @@
 	import { getContext } from 'svelte';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import { effectSummary, effectIcon, effectLabel } from '$lib/items.js';
+	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -177,7 +178,7 @@
 	}
 </script>
 
-<svelte:head><title>Shop · {data.server.name}</title></svelte:head>
+<svelte:head><title>{data.server.name || data.server.slug} Item Shop | {APP_NAME} Discord Bot</title></svelte:head>
 
 {#if data.visibleItems.length === 0}
 	<div class="m-members-empty">No items in this category.</div>
@@ -203,7 +204,7 @@
 							<i class="fas fa-dice"></i>Play
 						</button>
 					{:else}
-						<span class="m-card-price" class:m-card-price--short={!affordable}><i class="fas fa-star"></i>{fmt(item.cost)}</span>
+						<span class="m-card-price" class:m-card-price--short={!affordable}>{fmt(item.cost)}<span class="m-card-price-unit">XP</span></span>
 						<button class="m-card-btn" disabled={ctx.busy === item.id || !affordable} onclick={(e) => buy(item, e)}>
 							{#if ctx.busy === item.id}<i class="fas fa-spinner fa-spin"></i>{:else if !affordable}<i class="fas fa-lock"></i>{:else}<i
 									class="fas fa-cart-plus"

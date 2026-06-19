@@ -140,10 +140,10 @@
 </script>
 
 <svelte:head>
-	<title>{data.server.name || data.server.slug} — Statistics | {APP_NAME} Discord Bot</title>
+	<title>{data.server.name || data.server.slug} Statistics | {APP_NAME} Discord Bot</title>
 	<meta name="description" content="Public statistics for {data.server.name || data.server.slug}." />
 	<meta name="theme-color" content="#245f73" />
-	<meta property="og:title" content="{data.server.name || data.server.slug} — Statistics | {APP_NAME} Discord Bot" />
+	<meta property="og:title" content="{data.server.name || data.server.slug} Statistics | {APP_NAME} Discord Bot" />
 	<meta property="og:description" content="Members, channels, leveling, and voice activity for this community." />
 </svelte:head>
 

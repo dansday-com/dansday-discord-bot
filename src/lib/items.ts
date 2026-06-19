@@ -58,7 +58,7 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		announced: true,
 		expiringBuff: true,
 		buffExpiredText: () => `Your **Shield** has worn off — you can be attacked again.`,
-		summary: (c) => `Block incoming attacks for ${c.effect_duration_minutes ?? 60} min.`
+		summary: (c) => `Block incoming steals, bombs and leeches for ${c.effect_duration_minutes ?? 60} min.`
 	},
 	{
 		id: 'leech',
@@ -69,7 +69,7 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		targeted: true,
 		announced: true,
 		expiringBuff: true,
-		buffExpiredText: (m) => `The **${m || 0}% Leech** on you has ended.`,
+		buffExpiredText: (m) => `Your **${m || 0}% Leech** has ended.`,
 		summary: (c) => `Skim ${c.skim_percent ?? 10}% of a member's XP for ${c.effect_duration_minutes ?? 120} min.`
 	},
 	{

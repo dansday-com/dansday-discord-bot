@@ -2,6 +2,7 @@
 	import { getContext } from 'svelte';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import { effectSummary, effectLabel, effectIcon, actionVerb, describeItemOutcome, TARGETED_EFFECTS as TARGETED, type ItemOutcome } from '$lib/items.js';
+	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -76,7 +77,7 @@
 	}
 </script>
 
-<svelte:head><title>Bag · {data.server.name}</title></svelte:head>
+<svelte:head><title>{data.server.name || data.server.slug} Item Bag | {APP_NAME} Discord Bot</title></svelte:head>
 
 {#if data.inventory.length === 0}
 	<div class="m-members-empty">

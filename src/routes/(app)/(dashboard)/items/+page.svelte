@@ -6,6 +6,7 @@
 	import ConfirmModal from '$lib/frontend/components/ConfirmModal.svelte';
 	import type { LabeledSelectOption } from '$lib/frontend/components/labeledSelect.js';
 	import { ITEM_EFFECTS, effectLabel, effectIcon, isTargetedEffect } from '$lib/items.js';
+	import { APP_NAME } from '$lib/frontend/panelServer.js';
 
 	const effectOptions: LabeledSelectOption[] = ITEM_EFFECTS.map((e) => ({ value: e.id, label: e.label }));
 
@@ -220,6 +221,10 @@
 	});
 </script>
 
+<svelte:head>
+	<title>Items | {APP_NAME} Discord Bot</title>
+</svelte:head>
+
 <div class="space-y-5">
 	<div class="flex items-center justify-between">
 		<div>
@@ -329,7 +334,7 @@
 				<div class="border-ash-700 bg-ash-900/40 space-y-3 rounded-xl border p-4">
 					<p class="text-ash-400 text-[11px] font-semibold tracking-wide uppercase">Effect settings</p>
 					{#if form.effect_type === 'steal' || form.effect_type === 'bomb'}
-						<div class="grid grid-cols-2 gap-3">
+						<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 							<label class="text-ash-300 text-xs"
 								>Min %<input
 									type="number"
@@ -363,7 +368,7 @@
 							{form.effect_type === 'steal' ? 'Random % of target total XP, transferred to buyer.' : 'Random % of target total XP, destroyed (vanishes).'}
 						</p>
 					{:else if form.effect_type === 'boost'}
-						<div class="grid grid-cols-2 gap-3">
+						<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 							<label class="text-ash-300 text-xs"
 								>Multiplier<input
 									type="number"
@@ -379,7 +384,7 @@
 									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
 								/></label
 							>
-							<label class="text-ash-300 col-span-2 text-xs"
+							<label class="text-ash-300 text-xs sm:col-span-2"
 								>Scope
 								<select bind:value={form.cfg.scope} class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm">
 									<option value="all">All XP</option>
@@ -401,7 +406,7 @@
 								active, the next time you're robbed your XP is refunded once.{:else}Blocks incoming steal/bomb while active.{/if}
 						</p>
 					{:else if form.effect_type === 'gift'}
-						<div class="grid grid-cols-2 gap-3">
+						<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 							<label class="text-ash-300 text-xs"
 								>Gift amount (XP)<input
 									type="number"
@@ -419,7 +424,7 @@
 						</div>
 						<p class="text-ash-500 text-[11px]">Sends a fixed XP amount to a chosen member, minus the tax (burned).</p>
 					{:else if form.effect_type === 'leech'}
-						<div class="grid grid-cols-2 gap-3">
+						<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 							<label class="text-ash-300 text-xs"
 								>Skim %<input
 									type="number"
@@ -436,7 +441,7 @@
 							>
 						</div>
 					{:else if form.effect_type === 'gamble'}
-						<div class="grid grid-cols-2 gap-3">
+						<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 							<label class="text-ash-300 text-xs"
 								>Win chance %<input
 									type="number"
@@ -474,7 +479,7 @@
 				<!-- Availability -->
 				<div class="border-ash-700 bg-ash-900/40 space-y-3 rounded-xl border p-4">
 					<p class="text-ash-400 text-[11px] font-semibold tracking-wide uppercase">Availability (optional, UTC)</p>
-					<div class="grid grid-cols-2 gap-3">
+					<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 						<label class="text-ash-300 text-xs"
 							>From<input
 								type="datetime-local"
@@ -503,7 +508,7 @@
 								>
 							{/each}
 						</div>
-						<div class="mt-2 grid grid-cols-2 gap-3">
+						<div class="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
 							<label class="text-ash-300 text-xs"
 								>From (HH:MM)<input
 									bind:value={form.cfg.recur_from}

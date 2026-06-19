@@ -563,6 +563,17 @@ CREATE TABLE IF NOT EXISTS server_member_item_logs (
     FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE SET NULL
 );
 
+CREATE TABLE IF NOT EXISTS server_member_xp_logs (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    member_id INT NOT NULL,
+    source VARCHAR(24) NOT NULL,
+    amount INT NOT NULL DEFAULT 0,
+    multiplier DECIMAL(6,2) NULL,
+    skim_percent INT NULL,
+    created_at DATETIME NOT NULL,
+    FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS server_member_item_bounties (
     id INT PRIMARY KEY AUTO_INCREMENT,
     target_member_id INT NOT NULL,
@@ -632,3 +643,4 @@ CREATE INDEX IF NOT EXISTS idx_server_member_item_actives_sweep ON server_member
 CREATE INDEX IF NOT EXISTS idx_server_member_item_logs_member ON server_member_item_logs(member_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_item_logs_target ON server_member_item_logs(target_member_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_item_bounties_target ON server_member_item_bounties(target_member_id, collected);
+CREATE INDEX IF NOT EXISTS idx_server_member_xp_logs_member ON server_member_xp_logs(member_id, created_at);

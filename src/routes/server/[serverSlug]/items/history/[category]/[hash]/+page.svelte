@@ -10,7 +10,26 @@
 	const ctx = getContext('items') as any;
 	const { fmt } = ctx;
 
-	const base = $derived(`${publicServerPath(data.server.slug)}/items/history/${data.hash}`);
+	const base = $derived(`${publicServerPath(data.server.slug)}/items/history/${data.tab}/${data.hash}`);
+
+	const XP_SOURCE: Record<string, { label: string; icon: string }> = {
+		chat: { label: 'Chat', icon: 'fa-message' },
+		voice: { label: 'Voice', icon: 'fa-microphone' },
+		voice_afk: { label: 'AFK Voice', icon: 'fa-moon' },
+		video: { label: 'Video', icon: 'fa-video' },
+		stream: { label: 'Streaming', icon: 'fa-tower-broadcast' }
+	};
+
+	function xpLine(h: any): { icon: string; title: string; tone: string; deltaLabel: string } {
+		const meta = XP_SOURCE[h.source] ?? { label: h.source ?? 'XP', icon: 'fa-star' };
+		const suffix = [h.multiplier ? `${h.multiplier}× Boost` : '', h.skimPercent ? `−${h.skimPercent}% Leech` : ''].filter(Boolean).join(' · ');
+		return {
+			icon: meta.icon,
+			title: suffix ? `${meta.label} XP (${suffix})` : `${meta.label} XP`,
+			tone: 'win',
+			deltaLabel: `+${fmt(h.xpAmount)} XP`
+		};
+	}
 
 	function ago(ms: number): string {
 		const s = Math.max(0, Math.floor((ctx.now - ms) / 1000));
@@ -98,11 +117,14 @@
 <svelte:head><title>{data.server.name || data.server.slug} Item History | {APP_NAME} Discord Bot</title></svelte:head>
 
 {#if data.historyTotal === 0}
-	<div class="m-members-empty">No activity yet. Buy or use an item to start your history.</div>
+	<div class="m-members-empty">
+		{#if data.tab === 'xp'}No XP earned yet. Chat or join voice to start earning.{:else if data.tab === 'items'}No item activity yet. Buy or use an item to
+			start.{:else}No activity yet.{/if}
+	</div>
 {:else}
 	<ul class="m-hist">
 		{#each data.pagedHistory as h (h.id)}
-			{@const l = line(h)}
+			{@const l = h.kind === 'xp' ? xpLine(h) : line(h)}
 			<li class="m-hist-row m-hist-row--{l.tone}">
 				<span class="m-hist-icon"><i class="fas {l.icon}"></i></span>
 				<span class="m-hist-body">

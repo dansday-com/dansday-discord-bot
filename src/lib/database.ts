@@ -1755,6 +1755,35 @@ export async function logMemberItemAction(memberId: any, data: any = {}) {
 	return true;
 }
 
+export async function logMemberXpGain(memberId: any, data: any = {}) {
+	await initializeDatabase();
+	if (!memberId) return false;
+	const amount = Math.floor(Number(data.amount) || 0);
+	if (amount <= 0) return false;
+	await db.insert(schema.serverMemberXpLogs).values({
+		member_id: Number(memberId),
+		source: String(data.source ?? 'unknown').slice(0, 24),
+		amount,
+		multiplier: data.multiplier != null ? (String(data.multiplier) as any) : null,
+		skim_percent: data.skim_percent != null ? Number(data.skim_percent) : null,
+		created_at: toMySQLDateTime() as any
+	});
+	return true;
+}
+
+export async function getMemberXpHistory(memberId: any, limit = 200) {
+	await initializeDatabase();
+	if (!memberId) return [] as any[];
+	const rows = await db.execute(sql`
+		SELECT id, source, amount, multiplier, skim_percent, created_at
+		FROM server_member_xp_logs
+		WHERE member_id = ${Number(memberId)}
+		ORDER BY created_at DESC, id DESC
+		LIMIT ${Number(limit)}
+	`);
+	return rows[0] as unknown as any[];
+}
+
 export async function getMemberItemHistory(memberId: any, limit = 200) {
 	await initializeDatabase();
 	if (!memberId) return [] as any[];
@@ -3987,6 +4016,8 @@ export default {
 	expireMemberItemActive,
 	logMemberItemAction,
 	getMemberItemHistory,
+	logMemberXpGain,
+	getMemberXpHistory,
 	getLastActionByActor,
 	getLastAttackActionByActor,
 	getLastActionAgainstTarget,

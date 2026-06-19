@@ -18,9 +18,15 @@
 	const isHistory = $derived(/\/items\/history\//.test(pathNorm));
 	const isShop = $derived(!isBag && !isHistory);
 	const activeCat = $derived.by(() => {
-		const m = pathNorm.match(/\/items\/(?:shop|bag)\/([^/]+)\/[^/]+$/);
+		const m = pathNorm.match(/\/items\/(?:shop|bag|history)\/([^/]+)\/[^/]+$/);
 		return m ? m[1] : 'all';
 	});
+
+	const historyTabs = [
+		{ id: 'all', label: 'All', icon: 'fa-grip' },
+		{ id: 'items', label: 'Items', icon: 'fa-bag-shopping' },
+		{ id: 'xp', label: 'XP', icon: 'fa-star' }
+	];
 
 	let now = $state(Date.now());
 	let busy = $state<number | null>(null);
@@ -295,7 +301,7 @@
 			>
 				<i class="fas fa-bag-shopping"></i>Bag<span class="m-items-count" class:m-items-count--bump={bagPulse}>{pd.bagStock ?? 0}</span>
 			</a>
-			<a class="m-items-seg" class:m-items-seg--active={isHistory} href="{itemsBase}/history/{pd.hash}" data-sveltekit-preload-data="hover">
+			<a class="m-items-seg" class:m-items-seg--active={isHistory} href="{itemsBase}/history/all/{pd.hash}" data-sveltekit-preload-data="hover">
 				<i class="fas fa-clock-rotate-left"></i>History
 			</a>
 		</div>
@@ -313,6 +319,19 @@
 		<div class="m-items-tabs">
 			{#each typeTabs as cat}
 				<a class="m-items-tab" class:m-items-tab--active={activeCat === cat.id} href="{itemsBase}/bag/{cat.id}/{pd.hash}" data-sveltekit-preload-data="hover">
+					<i class="fas {cat.icon}"></i>{cat.label}
+				</a>
+			{/each}
+		</div>
+	{:else if isHistory}
+		<div class="m-items-tabs">
+			{#each historyTabs as cat}
+				<a
+					class="m-items-tab"
+					class:m-items-tab--active={activeCat === cat.id}
+					href="{itemsBase}/history/{cat.id}/{pd.hash}"
+					data-sveltekit-preload-data="hover"
+				>
 					<i class="fas {cat.icon}"></i>{cat.label}
 				</a>
 			{/each}

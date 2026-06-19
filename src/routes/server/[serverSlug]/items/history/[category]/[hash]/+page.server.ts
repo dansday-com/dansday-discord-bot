@@ -14,9 +14,13 @@ export const load: PageServerLoad = async ({ parent, params, url }) => {
 	if ('notFound' in shared) error(404, 'Items not available');
 	if ('invalid' in shared) redirect(303, publicStatsEnabled ? publicServerPath(server.slug) : '/');
 
-	const rows = await db.getMemberItemHistory(shared.member.id, 600).catch(() => []);
-	const history = (rows as any[]).map((h) => ({
-		id: String(h.id),
+	const tabParam = String(params.category || 'all');
+	const tab = tabParam === 'items' || tabParam === 'xp' ? tabParam : 'all';
+
+	const itemRows = await db.getMemberItemHistory(shared.member.id, 600).catch(() => []);
+	const itemEvents = (itemRows as any[]).map((h) => ({
+		id: `i-${h.id}`,
+		kind: 'item' as const,
 		action: h.action,
 		effect_type: h.effect_type ?? null,
 		itemName: h.item_name ?? null,
@@ -28,10 +32,23 @@ export const load: PageServerLoad = async ({ parent, params, url }) => {
 		at: h.created_at ? new Date(h.created_at).getTime() : null
 	}));
 
-	const totalPages = Math.max(1, Math.ceil(history.length / PER_PAGE));
+	const xpRows = await db.getMemberXpHistory(shared.member.id, 600).catch(() => []);
+	const xpEvents = (xpRows as any[]).map((x) => ({
+		id: `x-${x.id}`,
+		kind: 'xp' as const,
+		source: x.source,
+		xpAmount: Number(x.amount) || 0,
+		multiplier: x.multiplier != null ? Number(x.multiplier) : null,
+		skimPercent: x.skim_percent != null ? Number(x.skim_percent) : null,
+		at: x.created_at ? new Date(x.created_at).getTime() : null
+	}));
+
+	const events = tab === 'items' ? itemEvents : tab === 'xp' ? xpEvents : [...itemEvents, ...xpEvents].sort((a, b) => (b.at ?? 0) - (a.at ?? 0));
+
+	const totalPages = Math.max(1, Math.ceil(events.length / PER_PAGE));
 	const reqPage = Math.max(1, Math.floor(Number(url.searchParams.get('page')) || 1));
 	const historyPage = Math.min(reqPage, totalPages);
-	const pagedHistory = history.slice((historyPage - 1) * PER_PAGE, historyPage * PER_PAGE);
+	const pagedHistory = events.slice((historyPage - 1) * PER_PAGE, historyPage * PER_PAGE);
 
-	return { ...shared, historyTotal: history.length, historyPage, totalPages, pagedHistory };
+	return { ...shared, tab, historyTotal: events.length, historyPage, totalPages, pagedHistory };
 };

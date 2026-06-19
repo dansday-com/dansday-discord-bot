@@ -842,6 +842,22 @@ export const serverMemberItemLogs = mysqlTable(
 	]
 );
 
+export const serverMemberXpLogs = mysqlTable(
+	'server_member_xp_logs',
+	{
+		id: bigint('id', { mode: 'bigint' }).primaryKey().autoincrement(),
+		member_id: int('member_id')
+			.notNull()
+			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		source: varchar('source', { length: 24 }).notNull(),
+		amount: int('amount').notNull().default(0),
+		multiplier: decimal('multiplier', { precision: 6, scale: 2 }),
+		skim_percent: int('skim_percent'),
+		created_at: datetime('created_at').notNull()
+	},
+	(t) => [index('idx_server_member_xp_logs_member').on(t.member_id, t.created_at)]
+);
+
 export const serverMemberItemBounties = mysqlTable(
 	'server_member_item_bounties',
 	{

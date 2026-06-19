@@ -569,8 +569,25 @@ const XP_LOG_EMOJI = {
 	Streaming: '📡'
 };
 
+const XP_LOG_SOURCE: Record<string, string> = {
+	Chat: 'chat',
+	Voice: 'voice',
+	'AFK Voice': 'voice_afk',
+	Video: 'video',
+	Streaming: 'stream'
+};
+
 async function sendXPLogToChannel(guild, dbMember, xpGained, xpType, award: any = null) {
 	try {
+		await db
+			.logMemberXpGain(dbMember.id, {
+				source: XP_LOG_SOURCE[xpType] ?? String(xpType).toLowerCase(),
+				amount: xpGained,
+				multiplier: award?.boosted ? award.multiplier : null,
+				skim_percent: award?.leeched ? award.skimPercent : null
+			})
+			.catch(() => null);
+
 		const settings = await getLevelingSettings(guild.id);
 		if (!settings.PROGRESS_CHANNEL_ID) return;
 

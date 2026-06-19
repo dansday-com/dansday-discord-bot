@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
 	import { showToast } from '$lib/frontend/toast.svelte';
-	import { effectSummary, effectIcon, effectLabel } from '$lib/items.js';
+	import { effectSummary, effectIcon, effectLabel, itemAvailability } from '$lib/items.js';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import type { PageProps } from './$types';
 
@@ -9,6 +9,17 @@
 
 	const ctx = getContext('items') as any;
 	const { fmt, canAfford } = ctx;
+
+	const tzOffset = () => -new Date().getTimezoneOffset();
+
+	const shopItems = $derived(
+		(data.visibleItems ?? [])
+			.map((item: any) => {
+				const a = itemAvailability(item, ctx.now);
+				return { ...item, availableUntil: a.availableUntil, _visible: a.visible };
+			})
+			.filter((item: any) => item._visible)
+	);
 
 	async function buy(item: any, ev?: MouseEvent) {
 		if (!canAfford(item)) {
@@ -23,7 +34,7 @@
 			const res = await fetch(`/api/items/${encodeURIComponent(ctx.serverSlug)}/buy`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ card: ctx.hash, item_id: item.id, quantity: 1 })
+				body: JSON.stringify({ card: ctx.hash, item_id: item.id, quantity: 1, tz_offset: tzOffset() })
 			});
 			const d = await res.json();
 			if (d.success) {
@@ -134,7 +145,9 @@
 		reelSpinning = true;
 		try {
 			const body =
-				gamblePercent === 'custom' ? { card: ctx.hash, item_id: item.id, amount: wagerXp } : { card: ctx.hash, item_id: item.id, percent: gamblePercent };
+				gamblePercent === 'custom'
+					? { card: ctx.hash, item_id: item.id, amount: wagerXp, tz_offset: tzOffset() }
+					: { card: ctx.hash, item_id: item.id, percent: gamblePercent, tz_offset: tzOffset() };
 			const res = await fetch(`/api/items/${encodeURIComponent(ctx.serverSlug)}/gamble`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -186,11 +199,11 @@
 
 <svelte:head><title>{data.server.name || data.server.slug} Item Shop | {APP_NAME} Discord Bot</title></svelte:head>
 
-{#if data.visibleItems.length === 0}
+{#if shopItems.length === 0}
 	<div class="m-members-empty">No items in this category.</div>
 {:else}
 	<div class="m-cards">
-		{#each data.visibleItems as item (item.id)}
+		{#each shopItems as item (item.id)}
 			{@const affordable = canAfford(item)}
 			<article class="m-card" class:m-card--locked={!affordable} class:m-card--burst={ctx.burstId === item.id} data-cat={item.effect_type}>
 				<div class="m-card-glow"></div>

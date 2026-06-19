@@ -448,7 +448,7 @@ export async function resolveGift({ actorMemberId, actorMemberItemId, targetMemb
 }
 
 export async function handleGamble(client: any, payload: any) {
-	const { guild_id, actor_discord_id, item_id, percent, amount } = payload || {};
+	const { guild_id, actor_discord_id, item_id, percent, amount, tz_offset } = payload || {};
 	if (!guild_id || !actor_discord_id || !item_id) return { ok: false, error: 'missing_fields' };
 
 	const { getServerForCurrentBot, isComponentFeatureEnabled, serverSettingsComponent } = await import('../../../config.js');
@@ -465,7 +465,7 @@ export async function handleGamble(client: any, payload: any) {
 
 	const item = await db.getItem(item_id).catch(() => null);
 	if (!item || item.enabled !== true || item.effect_type !== 'gamble') return { ok: false, error: 'item_unavailable' };
-	if (!isItemAvailableNow(item)) return { ok: false, error: 'item_not_in_window' };
+	if (!isItemAvailableNow(item, tz_offset)) return { ok: false, error: 'item_not_in_window' };
 
 	const actorMemberId = await resolveServerMemberId(server.id, actor_discord_id);
 	if (!actorMemberId) return { ok: false, error: 'member_not_found' };
@@ -667,7 +667,7 @@ export async function handleItemUse(client: any, payload: any) {
 	return { ok: true, outcome: result?.outcome ?? 'success', effect_type: effectType, result };
 }
 
-function isItemAvailableNow(item: any) {
+function isItemAvailableNow(item: any, tzOffsetMin = 0) {
 	const nowMs = Date.now();
 	if (item.available_from) {
 		const from = new Date(item.available_from).getTime();
@@ -679,8 +679,9 @@ function isItemAvailableNow(item: any) {
 	}
 	const schedule = parseConfig(item.recurring_schedule);
 	if (schedule && Array.isArray(schedule.days) && schedule.days.length > 0) {
-		const now = new Date(nowMs);
-		const day = now.getUTCDay();
+		const offset = Number.isFinite(Number(tzOffsetMin)) ? Number(tzOffsetMin) : 0;
+		const local = new Date(nowMs + offset * 60000);
+		const day = local.getUTCDay();
 		if (!schedule.days.map(Number).includes(day)) return false;
 		const toMin = (hhmm: any, fallback: number) => {
 			if (hhmm == null || hhmm === '') return fallback;
@@ -689,7 +690,7 @@ function isItemAvailableNow(item: any) {
 				.map((n) => Number(n) || 0);
 			return h * 60 + m;
 		};
-		const minutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+		const minutes = local.getUTCHours() * 60 + local.getUTCMinutes();
 		const start = toMin(schedule.from, 0);
 		const end = toMin(schedule.to, 1439);
 		if (minutes < start || minutes > end) return false;
@@ -698,7 +699,7 @@ function isItemAvailableNow(item: any) {
 }
 
 export async function handleItemBuy(client: any, payload: any) {
-	const { guild_id, actor_discord_id, item_id, quantity } = payload || {};
+	const { guild_id, actor_discord_id, item_id, quantity, tz_offset } = payload || {};
 	if (!guild_id || !actor_discord_id || !item_id) return { ok: false, error: 'missing_fields' };
 
 	const { getServerForCurrentBot, isComponentFeatureEnabled, serverSettingsComponent } = await import('../../../config.js');
@@ -715,7 +716,7 @@ export async function handleItemBuy(client: any, payload: any) {
 
 	const item = await db.getItem(item_id).catch(() => null);
 	if (!item || item.enabled !== true) return { ok: false, error: 'item_unavailable' };
-	if (!isItemAvailableNow(item)) return { ok: false, error: 'item_not_in_window' };
+	if (!isItemAvailableNow(item, tz_offset)) return { ok: false, error: 'item_not_in_window' };
 
 	const actorMemberId = await resolveServerMemberId(server.id, actor_discord_id);
 	if (!actorMemberId) return { ok: false, error: 'member_not_found' };

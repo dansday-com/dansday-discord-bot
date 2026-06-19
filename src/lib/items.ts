@@ -176,6 +176,47 @@ export function isTargetedEffect(type: string): boolean {
 	return TARGETED_EFFECTS.has(type);
 }
 
+function scheduleMinutesLocal(hhmm: any, fallback: number): number {
+	if (hhmm == null || hhmm === '') return fallback;
+	const [h, m] = String(hhmm)
+		.split(':')
+		.map((n) => Number(n) || 0);
+	return h * 60 + m;
+}
+
+export function itemAvailability(
+	item: { available_from?: string | null; available_to?: string | null; recurring_schedule?: any; availableUntil?: number | null },
+	nowMs: number
+): { visible: boolean; availableUntil: number | null } {
+	const schedule = item.recurring_schedule;
+	const hasSchedule = !!(schedule && Array.isArray(schedule.days) && schedule.days.length > 0);
+
+	if (!hasSchedule) {
+		return { visible: true, availableUntil: item.availableUntil ?? null };
+	}
+
+	const now = new Date(nowMs);
+	if (item.available_from && nowMs < new Date(item.available_from).getTime()) return { visible: false, availableUntil: null };
+	if (item.available_to && nowMs > new Date(item.available_to).getTime()) return { visible: false, availableUntil: null };
+
+	const days = schedule.days.map(Number);
+	const fromMin = scheduleMinutesLocal(schedule.from, 0);
+	const toMin = scheduleMinutesLocal(schedule.to, 1439);
+	const minutes = now.getHours() * 60 + now.getMinutes();
+	if (!days.includes(now.getDay()) || minutes < fromMin || minutes > toMin) {
+		return { visible: false, availableUntil: null };
+	}
+
+	const ends: number[] = [];
+	if (item.available_to) {
+		const t = new Date(item.available_to).getTime();
+		if (Number.isFinite(t)) ends.push(t);
+	}
+	const endOfWindow = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0).getTime() + (toMin * 60 + 59) * 1000;
+	ends.push(endOfWindow);
+	return { visible: true, availableUntil: ends.length ? Math.min(...ends) : null };
+}
+
 export type ItemOutcome = {
 	tone: 'win' | 'lose' | 'neutral';
 	icon: string;

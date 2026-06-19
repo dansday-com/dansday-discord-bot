@@ -241,8 +241,9 @@
 	<div class="m-xp">
 		<div class="m-xp-glow"></div>
 		{#if pd.memberCard}
-			<button class="m-xp-card-btn" onclick={() => (showCard = true)} aria-label="View and share your card" title="My card">
-				<i class="fas fa-id-card"></i>
+			<button class="m-xp-card-btn" onclick={() => (showCard = true)} aria-label="Share your card" title="Share card">
+				<i class="fas fa-share-nodes"></i>
+				<span class="m-xp-card-btn-label">Share</span>
 			</button>
 		{/if}
 		<div class="m-xp-avatar">

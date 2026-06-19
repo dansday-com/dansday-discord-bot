@@ -569,7 +569,7 @@ CREATE TABLE IF NOT EXISTS server_member_level_logs (
     amount INT NOT NULL DEFAULT 0,
     total_xp BIGINT NULL,
     level INT NULL,
-    rank INT NULL,
+    `rank` INT NULL,
     multiplier DECIMAL(6,2) NULL,
     skim_percent INT NULL,
     created_at DATETIME NOT NULL,

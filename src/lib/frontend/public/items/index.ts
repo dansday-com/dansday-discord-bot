@@ -42,6 +42,11 @@ function scheduleMinutes(hhmm: any, fallback: number): number {
 	return h * 60 + m;
 }
 
+function hasRecurringSchedule(item: any): boolean {
+	const schedule = typeof item.recurring_schedule === 'string' ? safeParse(item.recurring_schedule) : item.recurring_schedule;
+	return !!(schedule && Array.isArray(schedule.days) && schedule.days.length > 0);
+}
+
 function availableUntilMs(item: any): number | null {
 	const ends: number[] = [];
 	if (item.available_to) {
@@ -79,16 +84,21 @@ export async function loadItemsCatalog(serverId: number): Promise<any[]> {
 	const panelId = await db.getServerPanelId(serverId).catch(() => null);
 	if (panelId == null) return [];
 	const all = await db.listItems(panelId, { enabledOnly: true }).catch(() => []);
-	return (all as any[]).filter(itemAvailableNow).map((i) => ({
-		id: i.id,
-		name: i.name,
-		effect_type: i.effect_type,
-		category: i.category,
-		description: i.description,
-		cost: i.cost,
-		availableUntil: availableUntilMs(i),
-		config: typeof i.config === 'string' ? safeParse(i.config) : i.config
-	}));
+	return (all as any[])
+		.filter((i) => itemAvailableNow(i) || hasRecurringSchedule(i))
+		.map((i) => ({
+			id: i.id,
+			name: i.name,
+			effect_type: i.effect_type,
+			category: i.category,
+			description: i.description,
+			cost: i.cost,
+			availableUntil: availableUntilMs(i),
+			available_from: i.available_from ? new Date(i.available_from).toISOString() : null,
+			available_to: i.available_to ? new Date(i.available_to).toISOString() : null,
+			recurring_schedule: typeof i.recurring_schedule === 'string' ? safeParse(i.recurring_schedule) : (i.recurring_schedule ?? null),
+			config: typeof i.config === 'string' ? safeParse(i.config) : i.config
+		}));
 }
 
 export async function loadItemsShared(server: any, hash: string) {

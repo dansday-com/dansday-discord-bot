@@ -1765,7 +1765,7 @@ export async function getMemberLevelHistory(memberId: any, limit = 200) {
 	await initializeDatabase();
 	if (!memberId) return [] as any[];
 	const rows = await db.execute(sql`
-		SELECT id, source, amount, total_xp, level, rank, multiplier, skim_percent, created_at
+		SELECT id, source, amount, total_xp, level, \`rank\`, multiplier, skim_percent, created_at
 		FROM server_member_level_logs
 		WHERE member_id = ${Number(memberId)}
 		ORDER BY created_at DESC, id DESC

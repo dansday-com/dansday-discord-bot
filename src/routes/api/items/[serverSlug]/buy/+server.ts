@@ -19,7 +19,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
 
 	const body = await request.json().catch(() => null);
 	if (!body) return json({ success: false, error: 'Invalid body' }, { status: 400 });
-	const { card, item_id, quantity } = body;
+	const { card, item_id, quantity, tz_offset } = body;
 	if (!card || !item_id) return json({ success: false, error: 'Missing fields' }, { status: 400 });
 
 	const actor = await resolveMemberByCardToken(server.id, String(card));
@@ -39,7 +39,8 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		guild_id: fullServer.discord_server_id,
 		actor_discord_id: actor.discord_member_id,
 		item_id: Number(item_id),
-		quantity: Number(quantity) || 1
+		quantity: Number(quantity) || 1,
+		tz_offset: Number(tz_offset) || 0
 	});
 
 	if (webhookResult.status !== 200 || !webhookResult.body?.ok) {

@@ -1,7 +1,16 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
 	import { showToast } from '$lib/frontend/toast.svelte';
-	import { effectSummary, effectLabel, effectIcon, actionVerb, describeItemOutcome, TARGETED_EFFECTS as TARGETED, type ItemOutcome } from '$lib/items.js';
+	import {
+		effectSummary,
+		effectLabel,
+		effectIcon,
+		actionVerb,
+		describeItemOutcome,
+		TARGETED_EFFECTS as TARGETED,
+		ITEM_EFFECTS,
+		type ItemOutcome
+	} from '$lib/items.js';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import type { PageProps } from './$types';
 
@@ -105,61 +114,89 @@
 	function targetAvatar(t: any): string {
 		return t.avatar ?? `https://cdn.discordapp.com/embed/avatars/${Number(t.discord_member_id) % 5 || 0}.png`;
 	}
+
+	const bagGroups = $derived.by(() => {
+		const inv = (data.inventory ?? []) as any[];
+		const out: { key: string; label: string; icon: string; items: any[] }[] = [];
+		for (const eff of ITEM_EFFECTS) {
+			const items = inv.filter((i) => i.effect_type === eff.id);
+			if (items.length > 0) out.push({ key: eff.id, label: eff.label, icon: eff.icon, items });
+		}
+		return out;
+	});
 </script>
 
 <svelte:head><title>{data.server.name || data.server.slug} Item Bag | {APP_NAME} Discord Bot</title></svelte:head>
+
+{#snippet bagCard(item: any)}
+	<article class="m-card" data-cat={item.effect_type}>
+		<div class="m-card-glow"></div>
+		<div class="m-card-top">
+			<span class="m-card-medallion"><i class="fas {effectIcon(item.effect_type)}"></i><span class="m-card-qty">×{item.quantity}</span></span>
+			<span class="m-card-tag">{effectLabel(item.effect_type)}</span>
+		</div>
+		<h3 class="m-card-name">{item.name}</h3>
+		<p class="m-card-desc">{item.description || effectSummary(item)}</p>
+		<div class="m-card-foot">
+			{#if !item.usable}
+				<span class="m-card-owned">Owned ×{item.quantity}</span>
+				<button
+					class="m-card-discard"
+					aria-label="Remove one from bag"
+					title="Remove one"
+					disabled={discardingId === item.member_item_id || ctx.busy === item.member_item_id}
+					onclick={() => discard(item)}
+				>
+					{#if discardingId === item.member_item_id}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas fa-trash-can"></i>{/if}
+				</button>
+				<button class="m-card-btn m-card-btn--use" disabled title="Disabled by admin"><i class="fas fa-ban"></i>Disabled</button>
+			{:else if isBuffActive(item.effect_type)}
+				<span class="m-card-active"><i class="fas fa-circle-check"></i>Active</span>
+				<button class="m-card-btn m-card-btn--use" disabled><i class="fas fa-check"></i>In use</button>
+			{:else}
+				<span class="m-card-owned">Owned ×{item.quantity}</span>
+				<button
+					class="m-card-discard"
+					aria-label="Remove one from bag"
+					title="Remove one"
+					disabled={discardingId === item.member_item_id || ctx.busy === item.member_item_id}
+					onclick={() => discard(item)}
+				>
+					{#if discardingId === item.member_item_id}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas fa-trash-can"></i>{/if}
+				</button>
+				<button class="m-card-btn m-card-btn--use" disabled={ctx.busy === item.member_item_id || item.quantity <= 0} onclick={() => onUse(item)}>
+					{#if ctx.busy === item.member_item_id}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas {actionVerb(item.effect_type).icon}"></i>{/if}
+					{actionVerb(item.effect_type).label}
+				</button>
+			{/if}
+		</div>
+	</article>
+{/snippet}
 
 {#if data.inventory.length === 0}
 	<div class="m-members-empty">
 		{#if (data.bagCategory ?? 'all') === 'all'}Your bag is empty. Buy items in the shop!{:else}No items in this category.{/if}
 	</div>
-{:else}
+{:else if (data.bagCategory ?? 'all') !== 'all'}
 	<div class="m-cards">
 		{#each data.inventory as item (item.member_item_id)}
-			<article class="m-card" data-cat={item.effect_type}>
-				<div class="m-card-glow"></div>
-				<div class="m-card-top">
-					<span class="m-card-medallion"><i class="fas {effectIcon(item.effect_type)}"></i><span class="m-card-qty">×{item.quantity}</span></span>
-					<span class="m-card-tag">{effectLabel(item.effect_type)}</span>
-				</div>
-				<h3 class="m-card-name">{item.name}</h3>
-				<p class="m-card-desc">{item.description || effectSummary(item)}</p>
-				<div class="m-card-foot">
-					{#if !item.usable}
-						<span class="m-card-owned">Owned ×{item.quantity}</span>
-						<button
-							class="m-card-discard"
-							aria-label="Remove one from bag"
-							title="Remove one"
-							disabled={discardingId === item.member_item_id || ctx.busy === item.member_item_id}
-							onclick={() => discard(item)}
-						>
-							{#if discardingId === item.member_item_id}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas fa-trash-can"></i>{/if}
-						</button>
-						<button class="m-card-btn m-card-btn--use" disabled title="Disabled by admin"><i class="fas fa-ban"></i>Disabled</button>
-					{:else if isBuffActive(item.effect_type)}
-						<span class="m-card-active"><i class="fas fa-circle-check"></i>Active</span>
-						<button class="m-card-btn m-card-btn--use" disabled><i class="fas fa-check"></i>In use</button>
-					{:else}
-						<span class="m-card-owned">Owned ×{item.quantity}</span>
-						<button
-							class="m-card-discard"
-							aria-label="Remove one from bag"
-							title="Remove one"
-							disabled={discardingId === item.member_item_id || ctx.busy === item.member_item_id}
-							onclick={() => discard(item)}
-						>
-							{#if discardingId === item.member_item_id}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas fa-trash-can"></i>{/if}
-						</button>
-						<button class="m-card-btn m-card-btn--use" disabled={ctx.busy === item.member_item_id || item.quantity <= 0} onclick={() => onUse(item)}>
-							{#if ctx.busy === item.member_item_id}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas {actionVerb(item.effect_type).icon}"></i>{/if}
-							{actionVerb(item.effect_type).label}
-						</button>
-					{/if}
-				</div>
-			</article>
+			{@render bagCard(item)}
 		{/each}
 	</div>
+{:else}
+	{#each bagGroups as group (group.key)}
+		<div class="m-group">
+			<h2 class="m-group-head">
+				<i class="fas {group.icon}"></i>{group.label}
+				<span class="m-group-count">{group.items.length}</span>
+			</h2>
+			<div class="m-cards">
+				{#each group.items as item (item.member_item_id)}
+					{@render bagCard(item)}
+				{/each}
+			</div>
+		</div>
+	{/each}
 {/if}
 
 {#if pickingTargetFor}

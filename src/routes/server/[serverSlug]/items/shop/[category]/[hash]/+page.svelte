@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
 	import { showToast } from '$lib/frontend/toast.svelte';
-	import { effectSummary, effectIcon, effectLabel, itemAvailability } from '$lib/items.js';
+	import { effectSummary, effectIcon, effectLabel, itemAvailability, ITEM_EFFECTS } from '$lib/items.js';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import type { PageProps } from './$types';
 
@@ -12,6 +12,8 @@
 
 	const tzOffset = () => -new Date().getTimezoneOffset();
 
+	const byCost = (a: any, b: any) => (Number(a.cost) || 0) - (Number(b.cost) || 0);
+
 	const shopItems = $derived(
 		(data.visibleItems ?? [])
 			.map((item: any) => {
@@ -20,6 +22,21 @@
 			})
 			.filter((item: any) => item._visible)
 	);
+
+	const groups = $derived.by(() => {
+		const list = [...shopItems].sort(byCost);
+		if (data.category !== 'all') {
+			return [{ key: 'flat', label: '', icon: '', items: list }];
+		}
+		const out: { key: string; label: string; icon: string; items: any[] }[] = [];
+		const limited = list.filter((i) => i.availableUntil && i.availableUntil > ctx.now);
+		if (limited.length > 0) out.push({ key: 'limited', label: 'Limited', icon: 'fa-hourglass-half', items: limited });
+		for (const eff of ITEM_EFFECTS) {
+			const items = list.filter((i) => i.effect_type === eff.id);
+			if (items.length > 0) out.push({ key: eff.id, label: eff.label, icon: eff.icon, items });
+		}
+		return out;
+	});
 
 	async function buy(item: any, ev?: MouseEvent) {
 		if (ctx.bagFull) {
@@ -222,42 +239,60 @@
 
 <svelte:head><title>{data.server.name || data.server.slug} Item Shop | {APP_NAME} Discord Bot</title></svelte:head>
 
+{#snippet card(item: any)}
+	{@const affordable = canAfford(item)}
+	<article class="m-card" class:m-card--locked={!affordable} class:m-card--burst={ctx.burstId === item.id} data-cat={item.effect_type}>
+		<div class="m-card-glow"></div>
+		<div class="m-card-top">
+			<span class="m-card-medallion"><i class="fas {effectIcon(item.effect_type)}"></i></span>
+			<span class="m-card-tag">{effectLabel(item.effect_type)}</span>
+		</div>
+		{#if item.availableUntil && item.availableUntil > ctx.now}
+			<span class="m-card-timer"><i class="fas fa-hourglass-half"></i>Ends in {ctx.remainingLabel(item.availableUntil)}</span>
+		{/if}
+		<h3 class="m-card-name">{item.name}</h3>
+		<p class="m-card-desc">{item.description || effectSummary(item)}</p>
+		<div class="m-card-foot">
+			{#if item.effect_type === 'gamble'}
+				<span class="m-card-price m-card-price--wager"><i class="fas fa-dice"></i>Wager</span>
+				<button class="m-card-btn m-card-btn--play" onclick={() => openGamble(item)}>
+					<i class="fas fa-dice"></i>Play
+				</button>
+			{:else}
+				<span class="m-card-price" class:m-card-price--short={!affordable}>{fmt(item.cost)}<span class="m-card-price-unit">XP</span></span>
+				<button class="m-card-btn" disabled={ctx.busy === item.id || !affordable || ctx.bagFull} onclick={(e) => buy(item, e)}>
+					{#if ctx.busy === item.id}<i class="fas fa-spinner fa-spin"></i>{:else if ctx.bagFull}<i class="fas fa-bag-shopping"></i>{:else if !affordable}<i
+							class="fas fa-lock"
+						></i>{:else}<i class="fas fa-cart-plus"></i>{/if}
+					{ctx.bagFull ? 'Bag full' : affordable ? 'Buy' : 'Locked'}
+				</button>
+			{/if}
+		</div>
+	</article>
+{/snippet}
+
 {#if shopItems.length === 0}
 	<div class="m-members-empty">No items in this category.</div>
-{:else}
+{:else if data.category !== 'all'}
 	<div class="m-cards">
-		{#each shopItems as item (item.id)}
-			{@const affordable = canAfford(item)}
-			<article class="m-card" class:m-card--locked={!affordable} class:m-card--burst={ctx.burstId === item.id} data-cat={item.effect_type}>
-				<div class="m-card-glow"></div>
-				<div class="m-card-top">
-					<span class="m-card-medallion"><i class="fas {effectIcon(item.effect_type)}"></i></span>
-					<span class="m-card-tag">{effectLabel(item.effect_type)}</span>
-				</div>
-				{#if item.availableUntil && item.availableUntil > ctx.now}
-					<span class="m-card-timer"><i class="fas fa-hourglass-half"></i>Ends in {ctx.remainingLabel(item.availableUntil)}</span>
-				{/if}
-				<h3 class="m-card-name">{item.name}</h3>
-				<p class="m-card-desc">{item.description || effectSummary(item)}</p>
-				<div class="m-card-foot">
-					{#if item.effect_type === 'gamble'}
-						<span class="m-card-price m-card-price--wager"><i class="fas fa-dice"></i>Wager</span>
-						<button class="m-card-btn m-card-btn--play" onclick={() => openGamble(item)}>
-							<i class="fas fa-dice"></i>Play
-						</button>
-					{:else}
-						<span class="m-card-price" class:m-card-price--short={!affordable}>{fmt(item.cost)}<span class="m-card-price-unit">XP</span></span>
-						<button class="m-card-btn" disabled={ctx.busy === item.id || !affordable || ctx.bagFull} onclick={(e) => buy(item, e)}>
-							{#if ctx.busy === item.id}<i class="fas fa-spinner fa-spin"></i>{:else if ctx.bagFull}<i class="fas fa-bag-shopping"></i>{:else if !affordable}<i
-									class="fas fa-lock"
-								></i>{:else}<i class="fas fa-cart-plus"></i>{/if}
-							{ctx.bagFull ? 'Bag full' : affordable ? 'Buy' : 'Locked'}
-						</button>
-					{/if}
-				</div>
-			</article>
+		{#each shopItems.slice().sort(byCost) as item (item.id)}
+			{@render card(item)}
 		{/each}
 	</div>
+{:else}
+	{#each groups as group (group.key)}
+		<div class="m-group">
+			<h2 class="m-group-head" class:m-group-head--limited={group.key === 'limited'}>
+				<i class="fas {group.icon}"></i>{group.label}
+				<span class="m-group-count">{group.items.length}</span>
+			</h2>
+			<div class="m-cards">
+				{#each group.items as item (item.id)}
+					{@render card(item)}
+				{/each}
+			</div>
+		</div>
+	{/each}
 {/if}
 
 {#if gambleItem}

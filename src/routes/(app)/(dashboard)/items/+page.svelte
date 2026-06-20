@@ -365,7 +365,7 @@
 			{#each items as item}
 				<div
 					class="bg-ash-800 border-ash-700 rounded-xl border border-l-4 p-4 transition-opacity"
-					class:opacity-60={item.enabled === false}
+					class:opacity-60={item.enabled === false && item.usable === false}
 					style="--cat: var(--effect-{item.effect_type}, var(--effect-default)); border-left-color: var(--cat)"
 				>
 					<div class="flex items-start justify-between gap-2">
@@ -396,7 +396,7 @@
 								disabled={togglingId === item.id}
 								onclick={() => toggleEnabled(item)}
 								class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 {item.enabled !== false
-									? 'bg-ash-400'
+									? 'bg-teal-600'
 									: 'bg-ash-700'}"
 							>
 								<span

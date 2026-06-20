@@ -93,6 +93,14 @@
 				accent: effectAccentHex(cd.action)
 			});
 		}
+		if (pd.insuranceCooldownUntil && pd.insuranceCooldownUntil > now)
+			chips.push({
+				key: 'cd-insurance',
+				icon: effectIcon('insurance'),
+				label: 'Insurance cooldown',
+				until: pd.insuranceCooldownUntil,
+				accent: effectAccentHex('insurance')
+			});
 		return chips.sort((a, b) => a.until - b.until);
 	});
 

@@ -168,6 +168,20 @@ export async function loadItemsShared(server: any, hash: string) {
 		}
 	}
 
+	let insuranceCooldownUntil: number | null = null;
+	let maxInsuranceCooldownMin = 0;
+	for (const it of items as any[]) {
+		if (it.effect_type !== 'insurance') continue;
+		maxInsuranceCooldownMin = Math.max(maxInsuranceCooldownMin, Number((it.config || {}).cooldown_minutes) || 0);
+	}
+	if (maxInsuranceCooldownMin > 0) {
+		const last = await db.getLastActionByActor(member.id, 'insurance').catch(() => null);
+		if (last) {
+			const ends = last.getTime() + maxInsuranceCooldownMin * 60000;
+			if (ends > Date.now()) insuranceCooldownUntil = ends;
+		}
+	}
+
 	return {
 		member,
 		items,
@@ -199,6 +213,7 @@ export async function loadItemsShared(server: any, hash: string) {
 		activeEffects,
 		attackCooldowns,
 		immuneUntil,
+		insuranceCooldownUntil,
 		levelReq
 	};
 }

@@ -1219,6 +1219,30 @@ async function sweepDerivedEvents(client: any, botId: any, EmbedBuilder: any) {
 			.setTimestamp();
 		await deliverToMemberAndChannel(guild, embed, member ? `${member}` : undefined);
 	}
+
+	const insuranceActs = await db.getRecentInsuranceActivations(botId).catch(() => []);
+	for (const act of insuranceActs || []) {
+		const lastAct = act.last_activation instanceof Date ? act.last_activation.getTime() : new Date(act.last_activation).getTime();
+		if (!Number.isFinite(lastAct)) continue;
+		const cooldownMs = await maxAttackConfigMs(act.discord_server_id, 'cooldown_minutes', 'insurance').catch(() => 0);
+		if (cooldownMs <= 0) continue;
+		const endsAt = lastAct + cooldownMs;
+		if (endsAt > now || now - endsAt > EXPIRY_SWEEP_MS) continue;
+		const fresh = await db.recordItemNotification(act.member_id, 'cooldown_ready_insurance', new Date(endsAt)).catch(() => false);
+		if (!fresh) continue;
+
+		const guild = client?.guilds?.cache?.get(String(act.discord_server_id));
+		if (!guild) continue;
+		const member = await guild.members.fetch(String(act.discord_member_id)).catch(() => null);
+		const embedConfig = await embedConfigFor(guild.id);
+		const embed = new EmbedBuilder()
+			.setColor(effectAccentInt('insurance'))
+			.setTitle(`${getItemEffect('insurance')?.emoji ?? '✅'} Insurance Cooldown Ready`)
+			.setDescription(member ? `${member} — your insurance cooldown is up. You can activate insurance again!` : `Insurance cooldown is up.`)
+			.setFooter({ text: embedConfig.FOOTER || 'Items' })
+			.setTimestamp();
+		await deliverToMemberAndChannel(guild, embed, member ? `${member}` : undefined);
+	}
 }
 
 async function cooldownMsForAction(discordServerId: any, action: 'steal' | 'bomb'): Promise<number> {
@@ -1229,7 +1253,7 @@ async function defaultImmunityMsForServer(discordServerId: any): Promise<number>
 }
 
 const attackCfgCache = new Map<string, { value: number; at: number }>();
-async function maxAttackConfigMs(discordServerId: any, key: string, effectType: 'steal' | 'bomb'): Promise<number> {
+async function maxAttackConfigMs(discordServerId: any, key: string, effectType: string): Promise<number> {
 	const cacheKey = `${discordServerId}:${effectType}:${key}`;
 	const cached = attackCfgCache.get(cacheKey);
 	if (cached && Date.now() - cached.at < 60_000) return cached.value;

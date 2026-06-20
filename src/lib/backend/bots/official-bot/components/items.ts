@@ -386,6 +386,8 @@ export async function resolveBomb({ actorMemberId, actorMemberItemId, targetMemb
 		refunded = amount;
 	}
 
+	const bountyCollected = await payoutBountyOnHit(targetMemberId, actorMemberId, guildId);
+
 	await db.logMemberItemAction(actorMemberId, {
 		member_item_id: actorMemberItemId,
 		target_member_id: targetMemberId,
@@ -395,7 +397,7 @@ export async function resolveBomb({ actorMemberId, actorMemberItemId, targetMemb
 	});
 	await invalidateEffectCache(targetMemberId);
 	const grantedImmunityUntil = newImmunityUntil(cfg.immunity_minutes);
-	return { outcome: 'success', xp: amount, percent: pct, refunded, immuneUntil: grantedImmunityUntil };
+	return { outcome: 'success', xp: amount, percent: pct, refunded, bountyCollected, immuneUntil: grantedImmunityUntil };
 }
 
 function computeExpiry(durationMinutes: any) {
@@ -426,6 +428,11 @@ export async function resolveShield({ memberItemId, ownerMemberId, config }: any
 	return { outcome: 'success', expiresAt };
 }
 
+async function activeLeechOnTarget(targetMemberId: any) {
+	const effects = await getCachedActiveEffects(targetMemberId);
+	return effects.find((e: any) => e.effect_type === 'leech' && Number(e.target_member_id) === Number(targetMemberId)) ?? null;
+}
+
 export async function resolveLeech({ memberItemId, actorMemberId, targetMemberId, config }: any) {
 	const cfg = parseConfig(config);
 	if (await hasActiveShield(targetMemberId)) {
@@ -437,6 +444,17 @@ export async function resolveLeech({ memberItemId, actorMemberId, targetMemberId
 			outcome: 'blocked'
 		});
 		return { outcome: 'blocked' };
+	}
+	const mine = await db.getActiveLeechByBeneficiary(actorMemberId).catch(() => null);
+	if (mine) {
+		const who = mine.target_server_display_name || mine.target_display_name || mine.target_username || 'someone';
+		return { outcome: 'leeched', error: `Your leech on ${who} is still active — you can only run one at a time.` };
+	}
+	const existing = await activeLeechOnTarget(targetMemberId);
+	if (existing) {
+		const beneficiary = await db.getServerMemberById(existing.beneficiary_member_id).catch(() => null);
+		const who = beneficiary?.server_display_name || beneficiary?.display_name || beneficiary?.username || 'another member';
+		return { outcome: 'leeched', error: `This member is already being leeched by ${who}.` };
 	}
 	const expiresAt = computeExpiry(cfg.effect_duration_minutes);
 	await db.addMemberItemActive(memberItemId, {
@@ -655,6 +673,7 @@ export async function handleItemUse(client: any, payload: any) {
 
 	const item = await db.getItem(memberItem.item_id).catch(() => null);
 	if (!item) return { ok: false, error: 'catalog_item_missing' };
+	if (item.usable === false) return { ok: false, error: 'This item has been disabled and can no longer be used.', outcome: 'disabled' };
 
 	const config = parseConfig(item.config);
 	const effectType = item.effect_type;
@@ -709,9 +728,9 @@ export async function handleItemUse(client: any, payload: any) {
 		return { ok: false, error: 'resolution_failed' };
 	}
 
-	if (result?.outcome === 'cooldown' || result?.outcome === 'immune' || result?.outcome === 'insufficient') {
+	if (result?.outcome === 'cooldown' || result?.outcome === 'immune' || result?.outcome === 'insufficient' || result?.outcome === 'leeched') {
 		await db.grantMemberItem(memberItem.member_id, memberItem.item_id, 1);
-		return { ok: false, error: result.outcome, outcome: result.outcome };
+		return { ok: false, error: result.error || result.outcome, outcome: result.outcome };
 	}
 
 	await finalizeXpChanges(guild_id, useSnapshots, `item-${effectType}`);
@@ -938,7 +957,7 @@ function buildItemUseEmbed(EmbedBuilder: any, embedConfig: any, ctx: any) {
 	if (effectType === 'bounty') {
 		embed
 			.setTitle('🎯 Bounty Placed')
-			.setDescription(`${actorMention} placed a bounty on ${targetMention} — whoever robs them next collects it.`)
+			.setDescription(`${actorMention} placed a bounty on ${targetMention} — whoever steals or bombs them next collects it.`)
 			.addFields({ name: 'Bounty', value: fmtXp(result?.xp), inline: true });
 		return embed;
 	}

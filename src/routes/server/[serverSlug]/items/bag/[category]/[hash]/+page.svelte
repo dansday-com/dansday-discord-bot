@@ -57,6 +57,10 @@
 	}
 
 	function onUse(item: any) {
+		if (!item.usable) {
+			showToast(`${item.name} has been disabled and can't be used right now.`, 'error');
+			return;
+		}
 		if (isBuffActive(item.effect_type)) {
 			showToast(`${effectLabel(item.effect_type)} is already active`, 'error');
 			return;
@@ -121,7 +125,19 @@
 				<h3 class="m-card-name">{item.name}</h3>
 				<p class="m-card-desc">{item.description || effectSummary(item)}</p>
 				<div class="m-card-foot">
-					{#if isBuffActive(item.effect_type)}
+					{#if !item.usable}
+						<span class="m-card-owned">Owned ×{item.quantity}</span>
+						<button
+							class="m-card-discard"
+							aria-label="Remove one from bag"
+							title="Remove one"
+							disabled={discardingId === item.member_item_id || ctx.busy === item.member_item_id}
+							onclick={() => discard(item)}
+						>
+							{#if discardingId === item.member_item_id}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas fa-trash-can"></i>{/if}
+						</button>
+						<button class="m-card-btn m-card-btn--use" disabled title="Disabled by admin"><i class="fas fa-ban"></i>Disabled</button>
+					{:else if isBuffActive(item.effect_type)}
 						<span class="m-card-active"><i class="fas fa-circle-check"></i>Active</span>
 						<button class="m-card-btn m-card-btn--use" disabled><i class="fas fa-check"></i>In use</button>
 					{:else}

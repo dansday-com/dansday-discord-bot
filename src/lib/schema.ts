@@ -770,6 +770,7 @@ export const items = mysqlTable(
 		cost: int('cost').notNull().default(0),
 		config: json('config').notNull().default({}),
 		enabled: boolean('enabled').notNull().default(true),
+		usable: boolean('usable').notNull().default(true),
 		available_from: datetime('available_from'),
 		available_to: datetime('available_to'),
 		recurring_schedule: json('recurring_schedule'),

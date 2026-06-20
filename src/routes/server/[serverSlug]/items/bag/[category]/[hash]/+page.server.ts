@@ -29,6 +29,7 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 		effect_type: r.effect_type,
 		description: r.description,
 		quantity: r.quantity,
+		usable: r.usable !== false && r.usable !== 0,
 		config: typeof r.config === 'string' ? safeParse(r.config) : r.config
 	}));
 

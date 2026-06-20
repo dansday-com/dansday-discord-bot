@@ -162,7 +162,7 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		expiringBuff: false,
 		defaultCost: 350,
 		defaultConfig: { bounty_amount: 500 },
-		summary: (c) => `Put ${c.bounty_amount} XP on a member — collected by whoever robs them next.`
+		summary: (c) => `Put ${c.bounty_amount} XP on a member — collected by whoever steals or bombs them next.`
 	}
 ];
 
@@ -310,7 +310,7 @@ export function describeItemOutcome(effectType: string, result: any): ItemOutcom
 	if (effectType === 'gift')
 		return { tone: 'neutral', icon: effectIcon('gift'), title: 'Gift Sent', line: `They received ${xp.toLocaleString()} XP.`, deltaXp: null, untilMs: null };
 	if (effectType === 'bounty')
-		return { tone: 'neutral', icon: effectIcon('bounty'), title: 'Bounty Placed', line: `Whoever robs them next collects it.`, deltaXp: -xp, untilMs: null };
+		return { tone: 'neutral', icon: effectIcon('bounty'), title: 'Bounty Placed', line: `Whoever steals or bombs them next collects it.`, deltaXp: -xp, untilMs: null };
 	if (effectType === 'leech')
 		return {
 			tone: 'neutral',

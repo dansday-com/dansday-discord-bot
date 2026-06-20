@@ -28,6 +28,16 @@
 	let loading = $state(true);
 	let saving = $state(false);
 
+	const adminGroups = $derived.by(() => {
+		const byCost = (a: any, b: any) => (Number(a.cost) || 0) - (Number(b.cost) || 0);
+		const out: { key: string; label: string; icon: string; items: any[] }[] = [];
+		for (const eff of ITEM_EFFECTS) {
+			const groupItems = items.filter((i) => i.effect_type === eff.id).sort(byCost);
+			if (groupItems.length > 0) out.push({ key: eff.id, label: eff.label, icon: eff.icon, items: groupItems });
+		}
+		return out;
+	});
+
 	let editing = $state<any | null>(null);
 	let confirmDelete = $state<any | null>(null);
 	let deleting = $state(false);
@@ -361,13 +371,12 @@
 			<p class="text-ash-400 text-sm">No items yet. Click "Add Item" to create your first one.</p>
 		</div>
 	{:else}
-		<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-			{#each items as item}
-				<div
-					class="bg-ash-800 border-ash-700 rounded-xl border border-l-4 p-4 transition-opacity"
-					class:opacity-60={item.enabled === false && item.usable === false}
-					style="--cat: var(--effect-{item.effect_type}, var(--effect-default)); border-left-color: var(--cat)"
-				>
+		{#snippet adminCard(item: any)}
+			<div
+				class="bg-ash-800 border-ash-700 rounded-xl border border-l-4 p-4 transition-opacity"
+				class:opacity-60={item.enabled === false && item.usable === false}
+				style="--cat: var(--effect-{item.effect_type}, var(--effect-default)); border-left-color: var(--cat)"
+			>
 					<div class="flex items-start justify-between gap-2">
 						<div class="flex min-w-0 items-start gap-2.5">
 							<span
@@ -442,6 +451,21 @@
 						>
 							<i class="fas fa-trash-can"></i>
 						</button>
+					</div>
+				</div>
+		{/snippet}
+
+		<div class="space-y-6">
+			{#each adminGroups as group (group.key)}
+				<div>
+					<h2 class="text-ash-300 mb-2.5 flex items-center gap-2 text-xs font-bold tracking-wide uppercase">
+						<i class="fas {group.icon}" style="color: var(--effect-{group.key}, var(--effect-default))"></i>{group.label}
+						<span class="bg-ash-700 text-ash-400 rounded-full px-2 py-0.5 text-[10px] font-semibold">{group.items.length}</span>
+					</h2>
+					<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+						{#each group.items as item (item.id)}
+							{@render adminCard(item)}
+						{/each}
 					</div>
 				</div>
 			{/each}

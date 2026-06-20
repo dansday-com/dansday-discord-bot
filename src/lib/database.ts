@@ -1705,6 +1705,7 @@ export async function getActiveEffectsForMember(memberId: any) {
 		  AND (
 		    (sma.target_member_id IS NULL AND smi.member_id = ${Number(memberId)})
 		    OR sma.target_member_id = ${Number(memberId)}
+		    OR sma.beneficiary_member_id = ${Number(memberId)}
 		  )
 	`);
 	return rows[0] as unknown as any[];

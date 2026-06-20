@@ -85,7 +85,8 @@ export async function computeAwardModifiers(memberId: any, source: any = 'all') 
 			if (m > 0) multiplier *= m;
 		} else if (effect.effect_type === 'leech') {
 			const pct = Number(effect.effect_value) || 0;
-			if (pct > 0 && effect.beneficiary_member_id != null) {
+			const targetsThisMember = Number(effect.target_member_id) === Number(memberId);
+			if (pct > 0 && targetsThisMember && effect.beneficiary_member_id != null) {
 				skimPercent += pct;
 				leeches.push({ beneficiaryMemberId: Number(effect.beneficiary_member_id), percent: pct });
 			}

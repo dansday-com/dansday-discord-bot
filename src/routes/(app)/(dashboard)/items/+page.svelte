@@ -564,7 +564,7 @@
 							>
 						</div>
 						<p class="text-ash-500 text-[11px]">
-							{form.effect_type === 'steal' ? 'Random % of target total XP, transferred to buyer.' : 'Random % of target total XP, destroyed (vanishes).'}
+							{form.effect_type === 'steal' ? 'Steals a random % of XP to the buyer.' : 'Destroys a random % of XP (vanishes).'}
 						</p>
 					{:else if form.effect_type === 'boost'}
 						<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -592,6 +592,7 @@
 								</select>
 							</label>
 						</div>
+						<p class="text-ash-500 text-[11px]">Multiplies earned XP for the duration.</p>
 					{:else if form.effect_type === 'shield' || form.effect_type === 'reflect'}
 						<label class="text-ash-300 text-xs"
 							>Duration (min)<input
@@ -601,8 +602,7 @@
 							/></label
 						>
 						<p class="text-ash-500 text-[11px]">
-							{#if form.effect_type === 'reflect'}While active, the next steal/bomb against you fails and hits the attacker instead.{:else}Blocks incoming
-								steal/bomb while active.{/if}
+							{#if form.effect_type === 'reflect'}Bounces the next attack back at the attacker.{:else}Blocks incoming attacks while active.{/if}
 						</p>
 					{:else if form.effect_type === 'insurance'}
 						<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -630,9 +630,7 @@
 								/></label
 							>
 						</div>
-						<p class="text-ash-500 text-[11px]">
-							While active, the next time you're robbed it refunds that % of the loss (once). Cooldown limits how often it can be re-activated — 1440 = 1 day.
-						</p>
+						<p class="text-ash-500 text-[11px]">Refunds that % of a loss once. Cooldown in minutes (1440 = 1 day).</p>
 					{:else if form.effect_type === 'gift'}
 						<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 							<label class="text-ash-300 text-xs"
@@ -650,7 +648,7 @@
 								/></label
 							>
 						</div>
-						<p class="text-ash-500 text-[11px]">Sends a fixed XP amount to a chosen member, minus the tax (burned).</p>
+						<p class="text-ash-500 text-[11px]">Sends fixed XP to a member, minus the tax (burned).</p>
 					{:else if form.effect_type === 'leech'}
 						<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 							<label class="text-ash-300 text-xs"
@@ -668,6 +666,7 @@
 								/></label
 							>
 						</div>
+						<p class="text-ash-500 text-[11px]">Skims a % of the target's XP while active.</p>
 					{:else if form.effect_type === 'gamble'}
 						<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 							<label class="text-ash-300 text-xs"
@@ -686,10 +685,7 @@
 								/></label
 							>
 						</div>
-						<p class="text-ash-500 text-[11px]">
-							Members pick how much XP to wager (25/50/75/100%). On win they get the wager × multiplier; on loss they lose it. Not bought — played from the
-							shop.
-						</p>
+						<p class="text-ash-500 text-[11px]">Wager XP at this win chance for the multiplier; lose it otherwise. Played, not bought.</p>
 					{:else if form.effect_type === 'bounty'}
 						<label class="text-ash-300 text-xs"
 							>Bounty amount (XP)<input
@@ -698,7 +694,7 @@
 								class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
 							/></label
 						>
-						<p class="text-ash-500 text-[11px]">Puts XP on a member's head. Whoever lands the next successful steal on them collects it.</p>
+						<p class="text-ash-500 text-[11px]">XP on a member's head, claimed by whoever hits them next.</p>
 					{:else}
 						<p class="text-ash-500 text-[11px]">No extra settings for this effect type yet.</p>
 					{/if}
@@ -792,7 +788,7 @@
 				</div>
 
 				{#if isTargeted}<p class="text-ash-500 text-[11px]">
-						<i class="fas fa-crosshairs mr-1"></i>This is a targeted PvP item — members pick a target when using it.
+						<i class="fas fa-crosshairs mr-1"></i>Targeted — members pick a target on use.
 					</p>{/if}
 			</div>
 

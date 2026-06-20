@@ -5,6 +5,7 @@
 		effectSummary,
 		effectLabel,
 		effectIcon,
+		effectMeta,
 		actionVerb,
 		describeItemOutcome,
 		TARGETED_EFFECTS as TARGETED,
@@ -137,6 +138,13 @@
 		</div>
 		<h3 class="m-card-name">{item.name}</h3>
 		<p class="m-card-desc">{item.description || effectSummary(item)}</p>
+		{#if effectMeta(item).length > 0}
+			<div class="m-card-meta">
+				{#each effectMeta(item) as chip}
+					<span class="m-card-stat" title={chip.label}><i class="fas {chip.icon}"></i>{chip.label}</span>
+				{/each}
+			</div>
+		{/if}
 		<div class="m-card-foot">
 			{#if !item.usable}
 				<span class="m-card-owned">Owned ×{item.quantity}</span>

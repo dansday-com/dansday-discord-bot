@@ -2,6 +2,33 @@ export type ItemEffectId = 'steal' | 'bomb' | 'boost' | 'shield' | 'leech' | 're
 
 export const BAG_CAPACITY = 50;
 
+export function formatDuration(minutes: any): string {
+	let m = Math.max(0, Math.round(Number(minutes) || 0));
+	if (m <= 0) return '0m';
+	const units: [number, string][] = [
+		[10080, 'w'],
+		[1440, 'd'],
+		[60, 'h'],
+		[1, 'm']
+	];
+	const parts: string[] = [];
+	for (const [size, suffix] of units) {
+		if (m >= size) {
+			const value = Math.floor(m / size);
+			m -= value * size;
+			parts.push(`${value}${suffix}`);
+		}
+	}
+	return parts.slice(0, 2).join(' ');
+}
+
+function shortXp(n: any): string {
+	const v = Math.max(0, Math.round(Number(n) || 0));
+	if (v >= 1_000_000) return `${Number.isInteger(v / 1_000_000) ? v / 1_000_000 : (v / 1_000_000).toFixed(1)}M`;
+	if (v >= 1_000) return `${Number.isInteger(v / 1_000) ? v / 1_000 : (v / 1_000).toFixed(1)}k`;
+	return `${v}`;
+}
+
 export type ItemEffect = {
 	id: ItemEffectId;
 	label: string;
@@ -31,7 +58,7 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		expiringBuff: false,
 		defaultCost: 400,
 		defaultConfig: { min_percent: 1, max_percent: 25, cooldown_minutes: 30, immunity_minutes: 30 },
-		summary: (c) => `Steal ${c.min_percent}–${c.max_percent}% of a member's total XP.`
+		summary: (c) => `Steal ${c.min_percent}–${c.max_percent}% of their XP.`
 	},
 	{
 		id: 'bomb',
@@ -45,7 +72,7 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		expiringBuff: false,
 		defaultCost: 600,
 		defaultConfig: { min_percent: 1, max_percent: 50, cooldown_minutes: 45, immunity_minutes: 30 },
-		summary: (c) => `Destroy ${c.min_percent}–${c.max_percent}% of a member's total XP.`
+		summary: (c) => `Destroy ${c.min_percent}–${c.max_percent}% of their XP.`
 	},
 	{
 		id: 'boost',
@@ -60,7 +87,7 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		defaultCost: 800,
 		defaultConfig: { multiplier: 2, effect_duration_minutes: 60, scope: 'all' },
 		buffExpiredText: (m) => `Your **${m || 2}× Boost** has worn off.`,
-		summary: (c) => `${c.multiplier}× XP for ${c.effect_duration_minutes} min (${c.scope}).`
+		summary: (c) => `${c.multiplier}× XP · ${formatDuration(c.effect_duration_minutes)}`
 	},
 	{
 		id: 'shield',
@@ -75,7 +102,7 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		defaultCost: 500,
 		defaultConfig: { effect_duration_minutes: 120 },
 		buffExpiredText: () => `Your **Shield** has worn off — you can be attacked again.`,
-		summary: (c) => `Block incoming steals, bombs and leeches for ${c.effect_duration_minutes} min.`
+		summary: (c) => `Block all attacks · ${formatDuration(c.effect_duration_minutes)}`
 	},
 	{
 		id: 'leech',
@@ -90,7 +117,7 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		defaultCost: 700,
 		defaultConfig: { skim_percent: 10, effect_duration_minutes: 120 },
 		buffExpiredText: (m) => `Your **${m || 0}% Leech** has ended.`,
-		summary: (c) => `Skim ${c.skim_percent}% of a member's XP for ${c.effect_duration_minutes} min.`
+		summary: (c) => `Skim ${c.skim_percent}% of their XP · ${formatDuration(c.effect_duration_minutes)}`
 	},
 	{
 		id: 'reflect',
@@ -105,7 +132,7 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		defaultCost: 650,
 		defaultConfig: { effect_duration_minutes: 60 },
 		buffExpiredText: () => `Your **Reflect** has worn off.`,
-		summary: (c) => `Bounce the next attack back at the attacker for ${c.effect_duration_minutes} min.`
+		summary: (c) => `Reflect the next attack · ${formatDuration(c.effect_duration_minutes)}`
 	},
 	{
 		id: 'insurance',
@@ -120,8 +147,7 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		defaultCost: 450,
 		defaultConfig: { refund_percent: 50, effect_duration_minutes: 90, cooldown_minutes: 1440 },
 		buffExpiredText: () => `Your **Insurance** has expired.`,
-		summary: (c) =>
-			`Refund ${c.refund_percent ?? 100}% of XP the next time you're robbed (${c.effect_duration_minutes} min)${c.cooldown_minutes ? `, ${Math.round((c.cooldown_minutes / 60) * 10) / 10}h cooldown` : ''}.`
+		summary: (c) => `Refund ${c.refund_percent ?? 100}% if robbed · ${formatDuration(c.effect_duration_minutes)}`
 	},
 	{
 		id: 'gamble',
@@ -135,7 +161,7 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		expiringBuff: false,
 		defaultCost: 0,
 		defaultConfig: { win_chance: 50, payout_multiplier: 2 },
-		summary: (c) => `Wager your XP — ${c.win_chance}% chance to win ${c.payout_multiplier}× it.`
+		summary: (c) => `${c.win_chance}% to win ${c.payout_multiplier}× your wager`
 	},
 	{
 		id: 'gift',
@@ -149,7 +175,7 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		expiringBuff: false,
 		defaultCost: 300,
 		defaultConfig: { gift_amount: 500, tax_percent: 10 },
-		summary: (c) => `Send ${c.gift_amount} XP to a member${c.tax_percent ? ` (−${c.tax_percent}% tax)` : ''}.`
+		summary: (c) => `Send ${shortXp(c.gift_amount)} XP${c.tax_percent ? ` · −${c.tax_percent}% tax` : ''}`
 	},
 	{
 		id: 'bounty',
@@ -163,7 +189,7 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		expiringBuff: false,
 		defaultCost: 350,
 		defaultConfig: { bounty_amount: 500 },
-		summary: (c) => `Put ${c.bounty_amount} XP on a member — collected by whoever steals or bombs them next.`
+		summary: (c) => `${shortXp(c.bounty_amount)} XP bounty · claimed on next hit`
 	}
 ];
 
@@ -214,6 +240,54 @@ export function effectSummary(item: { effect_type: string; description?: string 
 	const effect = EFFECT_BY_ID[item.effect_type];
 	if (!effect) return item.description ?? '';
 	return effect.summary({ ...effect.defaultConfig, ...(item.config ?? {}) });
+}
+
+export type EffectMetaChip = { icon: string; label: string };
+
+export function effectMeta(item: { effect_type: string; config?: any }): EffectMetaChip[] {
+	const effect = EFFECT_BY_ID[item.effect_type];
+	if (!effect) return [];
+	const c = { ...effect.defaultConfig, ...(item.config ?? {}) } as Record<string, any>;
+	const chips: EffectMetaChip[] = [];
+	const pctRange = (min: any, max: any) => (Number(min) === Number(max) ? `${Number(max) || 0}%` : `${Number(min) || 0}–${Number(max) || 0}%`);
+
+	switch (item.effect_type) {
+		case 'steal':
+		case 'bomb':
+			chips.push({ icon: 'fa-percent', label: pctRange(c.min_percent, c.max_percent) });
+			if (Number(c.cooldown_minutes) > 0) chips.push({ icon: 'fa-stopwatch', label: formatDuration(c.cooldown_minutes) });
+			if (Number(c.immunity_minutes) > 0) chips.push({ icon: 'fa-shield-halved', label: formatDuration(c.immunity_minutes) });
+			break;
+		case 'boost':
+			chips.push({ icon: 'fa-xmark', label: `${c.multiplier ?? 2}×` });
+			chips.push({ icon: 'fa-hourglass-half', label: formatDuration(c.effect_duration_minutes) });
+			break;
+		case 'leech':
+			chips.push({ icon: 'fa-percent', label: `${c.skim_percent ?? 0}%` });
+			chips.push({ icon: 'fa-hourglass-half', label: formatDuration(c.effect_duration_minutes) });
+			break;
+		case 'shield':
+		case 'reflect':
+			chips.push({ icon: 'fa-hourglass-half', label: formatDuration(c.effect_duration_minutes) });
+			break;
+		case 'insurance':
+			chips.push({ icon: 'fa-rotate-left', label: `${c.refund_percent ?? 100}%` });
+			chips.push({ icon: 'fa-hourglass-half', label: formatDuration(c.effect_duration_minutes) });
+			if (Number(c.cooldown_minutes) > 0) chips.push({ icon: 'fa-stopwatch', label: formatDuration(c.cooldown_minutes) });
+			break;
+		case 'gamble':
+			chips.push({ icon: 'fa-dice', label: `${c.win_chance ?? 0}%` });
+			chips.push({ icon: 'fa-coins', label: `${c.payout_multiplier ?? 0}×` });
+			break;
+		case 'gift':
+			chips.push({ icon: 'fa-coins', label: `${shortXp(c.gift_amount)} XP` });
+			if (Number(c.tax_percent) > 0) chips.push({ icon: 'fa-receipt', label: `−${c.tax_percent}%` });
+			break;
+		case 'bounty':
+			chips.push({ icon: 'fa-coins', label: `${shortXp(c.bounty_amount)} XP` });
+			break;
+	}
+	return chips;
 }
 
 export function actionVerb(effectType: string): { label: string; icon: string } {

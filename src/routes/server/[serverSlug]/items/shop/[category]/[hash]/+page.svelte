@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
 	import { showToast } from '$lib/frontend/toast.svelte';
-	import { effectSummary, effectIcon, effectLabel, itemAvailability, ITEM_EFFECTS } from '$lib/items.js';
+	import { effectSummary, effectIcon, effectLabel, effectMeta, itemAvailability, ITEM_EFFECTS } from '$lib/items.js';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import type { PageProps } from './$types';
 
@@ -252,6 +252,13 @@
 		{/if}
 		<h3 class="m-card-name">{item.name}</h3>
 		<p class="m-card-desc">{item.description || effectSummary(item)}</p>
+		{#if effectMeta(item).length > 0}
+			<div class="m-card-meta">
+				{#each effectMeta(item) as chip}
+					<span class="m-card-stat" title={chip.label}><i class="fas {chip.icon}"></i>{chip.label}</span>
+				{/each}
+			</div>
+		{/if}
 		<div class="m-card-foot">
 			{#if item.effect_type === 'gamble'}
 				<span class="m-card-price m-card-price--wager"><i class="fas fa-dice"></i>Wager</span>

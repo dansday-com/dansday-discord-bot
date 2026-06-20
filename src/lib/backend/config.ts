@@ -309,6 +309,17 @@ export async function getLevelingSettings(guildId: string) {
 	};
 }
 
+export async function getItemsChannelId(guildId: string): Promise<string | null> {
+	try {
+		const officialBotServer = await getOfficialBotServer(guildId);
+		const settings = await getServerSettingsRow(officialBotServer.id, serverSettingsComponent.items);
+		const channelId = settings?.settings?.ITEMS_CHANNEL_ID;
+		return channelId ? String(channelId) : null;
+	} catch (_) {
+		return null;
+	}
+}
+
 export const COMMUNICATION = {
 	get WEBHOOK_URL() {
 		if (!botConfig) throw new Error('Bot config not loaded. Call initializeConfig() first.');
@@ -884,7 +895,8 @@ export const SETUP_CHANNEL_DEFS = [
 	{ name: '「⭐」staff-rating', settingsKey: 'staff_rating' },
 	{ name: '「📜」discord-quest', settingsKey: 'discord_quest_notifier' },
 	{ name: '「📽️」content-creator', settingsKey: 'content_creator' },
-	{ name: '「👗」roblox-catalog', settingsKey: 'roblox_catalog_notifier' }
+	{ name: '「👗」roblox-catalog', settingsKey: 'roblox_catalog_notifier' },
+	{ name: '「🛍️」items', settingsKey: 'items' }
 ] as const;
 
 export { AUTO_ENABLED_COMPONENTS } from '../frontend/panelServer.js';

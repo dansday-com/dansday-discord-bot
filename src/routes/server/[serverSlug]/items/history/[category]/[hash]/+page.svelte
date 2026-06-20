@@ -63,6 +63,14 @@
 				deltaLabel: `${h.xpAmount >= 0 ? '+' : '−'}${fmt(Math.abs(h.xpAmount))} XP`
 			};
 		}
+		if (h.action === 'bounty_collected') {
+			if (h.direction === 'incoming') {
+				const from = h.actorName ? ` ← ${h.actorName}` : '';
+				return { icon: effectIcon('bounty'), title: `Bounty on you claimed${from}`, tone: 'neutral', deltaLabel: '' };
+			}
+			const on = h.targetName ? ` ← ${h.targetName}` : '';
+			return { icon: effectIcon('bounty'), title: `Bounty collected${on}`, tone: 'win', deltaLabel: h.xpAmount > 0 ? `+${fmt(h.xpAmount)} XP` : '' };
+		}
 
 		if (h.direction === 'incoming') return incomingLine(h);
 

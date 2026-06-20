@@ -240,6 +240,15 @@ async function attackCooldownUntil(actorMemberId: any, cooldownMinutes: any, act
 	return until.getTime() > Date.now() ? until : null;
 }
 
+async function activationCooldownUntil(actorMemberId: any, cooldownMinutes: any, action: string): Promise<Date | null> {
+	const minutes = Math.max(0, Number(cooldownMinutes) || 0);
+	if (minutes <= 0) return null;
+	const last = await db.getLastActionByActor(actorMemberId, action).catch(() => null);
+	if (!last) return null;
+	const until = new Date(last.getTime() + minutes * 60000);
+	return until.getTime() > Date.now() ? until : null;
+}
+
 async function targetImmuneUntil(targetMemberId: any, immunityMinutes: any): Promise<Date | null> {
 	const minutes = Math.max(0, Number(immunityMinutes) || 0);
 	if (minutes <= 0) return null;
@@ -306,16 +315,19 @@ export async function resolveSteal({ actorMemberId, actorMemberItemId, targetMem
 	await reevaluateLevel(actorMemberId, actorStats, guildId);
 
 	let refunded = 0;
-	if (await consumeReactiveDefense(targetMemberId, 'insurance')) {
-		const refundStats = await db.updateMemberLevelStats(targetMemberId, { experienceIncrement: amount });
-		await reevaluateLevel(targetMemberId, refundStats, guildId);
+	const insuranceSteal = await consumeReactiveDefense(targetMemberId, 'insurance');
+	if (insuranceSteal) {
+		refunded = insuranceRefundAmount(amount, insuranceSteal.effect_value);
+		if (refunded > 0) {
+			const refundStats = await db.updateMemberLevelStats(targetMemberId, { experienceIncrement: refunded });
+			await reevaluateLevel(targetMemberId, refundStats, guildId);
+		}
 		await db.logMemberItemAction(targetMemberId, {
 			target_member_id: actorMemberId,
 			action: 'insurance',
-			xp_amount: amount,
+			xp_amount: refunded,
 			outcome: 'refunded'
 		});
-		refunded = amount;
 	}
 
 	const bountyCollected = await payoutBountyOnHit(targetMemberId, actorMemberId, guildId);
@@ -375,16 +387,21 @@ export async function resolveBomb({ actorMemberId, actorMemberItemId, targetMemb
 	}
 
 	let refunded = 0;
-	if (amount > 0 && (await consumeReactiveDefense(targetMemberId, 'insurance'))) {
-		const refundStats = await db.updateMemberLevelStats(targetMemberId, { experienceIncrement: amount });
-		await reevaluateLevel(targetMemberId, refundStats, guildId);
-		await db.logMemberItemAction(targetMemberId, {
-			target_member_id: actorMemberId,
-			action: 'insurance',
-			xp_amount: amount,
-			outcome: 'refunded'
-		});
-		refunded = amount;
+	if (amount > 0) {
+		const insuranceBomb = await consumeReactiveDefense(targetMemberId, 'insurance');
+		if (insuranceBomb) {
+			refunded = insuranceRefundAmount(amount, insuranceBomb.effect_value);
+			if (refunded > 0) {
+				const refundStats = await db.updateMemberLevelStats(targetMemberId, { experienceIncrement: refunded });
+				await reevaluateLevel(targetMemberId, refundStats, guildId);
+			}
+			await db.logMemberItemAction(targetMemberId, {
+				target_member_id: actorMemberId,
+				action: 'insurance',
+				xp_amount: refunded,
+				outcome: 'refunded'
+			});
+		}
 	}
 
 	const bountyCollected = await payoutBountyOnHit(targetMemberId, actorMemberId, guildId);
@@ -484,13 +501,22 @@ export async function resolveReflect({ memberItemId, ownerMemberId, config }: an
 	return { outcome: 'success', expiresAt };
 }
 
+function insuranceRefundAmount(lostAmount: any, refundPercent: any) {
+	const lost = Math.max(0, Math.floor(Number(lostAmount) || 0));
+	const pct = Math.max(0, Math.min(100, Number(refundPercent) || 0));
+	return Math.floor((lost * pct) / 100);
+}
+
 export async function resolveInsurance({ memberItemId, ownerMemberId, config }: any) {
 	const cfg = parseConfig(config);
+	const cooldownUntil = await activationCooldownUntil(ownerMemberId, cfg.cooldown_minutes, 'insurance');
+	if (cooldownUntil) return { outcome: 'cooldown', error: `Insurance is on cooldown — try again in ${humanizeUntil(cooldownUntil)}.` };
+	const refundPercent = Math.max(0, Math.min(100, Number(cfg.refund_percent ?? 100)));
 	const expiresAt = computeExpiry(cfg.effect_duration_minutes);
-	await db.addMemberItemActive(memberItemId, { effect_value: 1, expires_at: expiresAt });
+	await db.addMemberItemActive(memberItemId, { effect_value: refundPercent, expires_at: expiresAt });
 	await db.logMemberItemAction(ownerMemberId, { member_item_id: memberItemId, action: 'insurance', xp_amount: 0, outcome: 'success' });
 	await invalidateEffectCache(ownerMemberId);
-	return { outcome: 'success', expiresAt };
+	return { outcome: 'success', expiresAt, refundPercent };
 }
 
 export async function resolveGift({ actorMemberId, actorMemberItemId, targetMemberId, config, guildId }: any) {
@@ -627,16 +653,24 @@ async function payoutBountyOnHit(targetMemberId: any, attackerMemberId: any, gui
 	await db.ensureMemberLevel(attackerMemberId);
 	const stats = await db.updateMemberLevelStats(attackerMemberId, { experienceIncrement: total });
 	await reevaluateLevel(attackerMemberId, stats, guildId);
+	await db
+		.logMemberItemAction(attackerMemberId, {
+			target_member_id: targetMemberId,
+			action: 'bounty_collected',
+			xp_amount: total,
+			outcome: 'success'
+		})
+		.catch(() => null);
 	return total;
 }
 
 async function consumeReactiveDefense(memberId: any, kind: string) {
 	const effects = await getCachedActiveEffects(memberId);
 	const match = effects.find((e: any) => e.effect_type === kind);
-	if (!match) return false;
+	if (!match) return null;
 	await db.expireMemberItemActive(match.id).catch(() => null);
 	await invalidateEffectCache(memberId);
-	return true;
+	return match;
 }
 
 async function resolveServerMemberId(serverId: any, discordMemberId: any) {
@@ -879,6 +913,18 @@ function discordRelative(date: any): string | null {
 	return `<t:${Math.floor(ms / 1000)}:R>`;
 }
 
+function humanizeUntil(date: any): string {
+	const ms = date instanceof Date ? date.getTime() : new Date(date).getTime();
+	const secs = Math.max(0, Math.round((ms - Date.now()) / 1000));
+	const d = Math.floor(secs / 86400);
+	const h = Math.floor((secs % 86400) / 3600);
+	const m = Math.floor((secs % 3600) / 60);
+	if (d > 0) return `${d}d ${h}h`;
+	if (h > 0) return `${h}h ${m}m`;
+	if (m > 0) return `${m}m`;
+	return `${secs}s`;
+}
+
 function fmtXp(n: any): string {
 	return `${(Number(n) || 0).toLocaleString()} XP`;
 }
@@ -983,7 +1029,11 @@ function buildItemUseEmbed(EmbedBuilder: any, embedConfig: any, ctx: any) {
 		const meta: Record<string, { emoji: string; title: string; desc: string }> = {
 			shield: { emoji: '🛡️', title: 'Shield Activated', desc: 'is now protected — incoming steals, bombs and leeches will be blocked' },
 			reflect: { emoji: '🪞', title: 'Reflect Activated', desc: 'will bounce the next attack back at the attacker' },
-			insurance: { emoji: '💵', title: 'Insurance Activated', desc: 'will be refunded the next time they are robbed' }
+			insurance: {
+				emoji: '💵',
+				title: 'Insurance Activated',
+				desc: `will be refunded ${result?.refundPercent ?? 100}% of their loss the next time they are robbed`
+			}
 		};
 		const m = meta[effectType];
 		const untilRel = discordRelative(result?.expiresAt);
@@ -1007,9 +1057,8 @@ async function announceItemUse(client: any, ctx: any) {
 	if (!ANNOUNCED_EFFECTS.has(effectType)) return;
 	if (!result || result.outcome === 'unsupported') return;
 
-	const { getLevelingSettings, getEmbedConfig } = await import('../../../config.js');
-	const settings = await getLevelingSettings(guildId).catch(() => null);
-	const channelId = settings?.PROGRESS_CHANNEL_ID;
+	const { getItemsChannelId, getEmbedConfig } = await import('../../../config.js');
+	const channelId = await getItemsChannelId(guildId);
 	if (!channelId) return;
 
 	const guild = client?.guilds?.cache?.get(guildId);
@@ -1036,9 +1085,8 @@ export async function handleAdminGiftAnnounce(client: any, payload: any) {
 	const { guild_id, member_discord_id, item_name, effect_type, quantity } = payload || {};
 	if (!guild_id || !member_discord_id) return { ok: false, error: 'missing_fields' };
 
-	const { getLevelingSettings, getEmbedConfig } = await import('../../../config.js');
-	const settings = await getLevelingSettings(guild_id).catch(() => null);
-	const channelId = settings?.PROGRESS_CHANNEL_ID;
+	const { getItemsChannelId, getEmbedConfig } = await import('../../../config.js');
+	const channelId = await getItemsChannelId(guild_id);
 	if (!channelId) return { ok: true, announced: false };
 
 	const guild = client?.guilds?.cache?.get(guild_id);
@@ -1073,9 +1121,8 @@ async function embedConfigFor(guildId: any) {
 }
 
 async function getProgressChannel(guild: any) {
-	const { getLevelingSettings } = await import('../../../config.js');
-	const settings = await getLevelingSettings(guild.id).catch(() => null);
-	const channelId = settings?.PROGRESS_CHANNEL_ID;
+	const { getItemsChannelId } = await import('../../../config.js');
+	const channelId = await getItemsChannelId(guild.id);
 	if (!channelId) return null;
 	const channel = await guild.channels.fetch(channelId).catch(() => null);
 	return channel && channel.isTextBased() ? channel : null;
@@ -1148,39 +1195,42 @@ async function sweepDerivedEvents(client: any, botId: any, EmbedBuilder: any) {
 
 	const attacks = await db.getRecentAttackerActions(botId).catch(() => []);
 	for (const atk of attacks || []) {
+		const action = atk.action === 'bomb' ? 'bomb' : 'steal';
 		const lastAtk = atk.last_attack instanceof Date ? atk.last_attack.getTime() : new Date(atk.last_attack).getTime();
 		if (!Number.isFinite(lastAtk)) continue;
-		const cooldownMs = await defaultCooldownMsForServer(atk.discord_server_id).catch(() => 0);
+		const cooldownMs = await cooldownMsForAction(atk.discord_server_id, action).catch(() => 0);
 		if (cooldownMs <= 0) continue;
 		const endsAt = lastAtk + cooldownMs;
 		if (endsAt > now || now - endsAt > EXPIRY_SWEEP_MS) continue;
-		const fresh = await db.recordItemNotification(atk.member_id, 'cooldown_ready', new Date(endsAt)).catch(() => false);
+		const fresh = await db.recordItemNotification(atk.member_id, `cooldown_ready_${action}`, new Date(endsAt)).catch(() => false);
 		if (!fresh) continue;
 
 		const guild = client?.guilds?.cache?.get(String(atk.discord_server_id));
 		if (!guild) continue;
 		const member = await guild.members.fetch(String(atk.discord_member_id)).catch(() => null);
 		const embedConfig = await embedConfigFor(guild.id);
+		const label = action === 'bomb' ? 'Bomb' : 'Steal';
+		const verb = action === 'bomb' ? 'bomb' : 'steal';
 		const embed = new EmbedBuilder()
-			.setColor(effectAccentInt('steal'))
-			.setTitle('✅ Cooldown Ready')
-			.setDescription(member ? `${member} — your attack cooldown is up. You can steal or bomb again!` : `Attack cooldown is up.`)
+			.setColor(effectAccentInt(action))
+			.setTitle(`${getItemEffect(action)?.emoji ?? '✅'} ${label} Cooldown Ready`)
+			.setDescription(member ? `${member} — your ${verb} cooldown is up. You can ${verb} again!` : `${label} cooldown is up.`)
 			.setFooter({ text: embedConfig.FOOTER || 'Items' })
 			.setTimestamp();
 		await deliverToMemberAndChannel(guild, embed, member ? `${member}` : undefined);
 	}
 }
 
-async function defaultCooldownMsForServer(discordServerId: any): Promise<number> {
-	return maxAttackConfigMs(discordServerId, 'cooldown_minutes');
+async function cooldownMsForAction(discordServerId: any, action: 'steal' | 'bomb'): Promise<number> {
+	return maxAttackConfigMs(discordServerId, 'cooldown_minutes', action);
 }
 async function defaultImmunityMsForServer(discordServerId: any): Promise<number> {
-	return maxAttackConfigMs(discordServerId, 'immunity_minutes');
+	return Math.max(await maxAttackConfigMs(discordServerId, 'immunity_minutes', 'steal'), await maxAttackConfigMs(discordServerId, 'immunity_minutes', 'bomb'));
 }
 
 const attackCfgCache = new Map<string, { value: number; at: number }>();
-async function maxAttackConfigMs(discordServerId: any, key: string): Promise<number> {
-	const cacheKey = `${discordServerId}:${key}`;
+async function maxAttackConfigMs(discordServerId: any, key: string, effectType: 'steal' | 'bomb'): Promise<number> {
+	const cacheKey = `${discordServerId}:${effectType}:${key}`;
 	const cached = attackCfgCache.get(cacheKey);
 	if (cached && Date.now() - cached.at < 60_000) return cached.value;
 
@@ -1196,7 +1246,7 @@ async function maxAttackConfigMs(discordServerId: any, key: string): Promise<num
 	const items = await db.listItems(panelId, {}).catch(() => []);
 	let maxMin = 0;
 	for (const it of (items as any[]) || []) {
-		if (it.effect_type !== 'steal' && it.effect_type !== 'bomb') continue;
+		if (it.effect_type !== effectType) continue;
 		const cfg = parseConfig(it.config);
 		const v = Math.max(0, Number(cfg[key]) || 0);
 		if (v > maxMin) maxMin = v;

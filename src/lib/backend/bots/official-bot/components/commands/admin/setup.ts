@@ -141,6 +141,13 @@ export async function execute(interaction: any, client: any) {
 			PROGRESS_CHANNEL_ID: channelMap['leveling']
 		});
 
+		const itemsRaw = (await getSettings(SERVER_SETTINGS.component.items)) || {};
+		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.items, {
+			enabled: true,
+			...itemsRaw,
+			ITEMS_CHANNEL_ID: channelMap['items']
+		});
+
 		const welcRaw = (await getSettings(SERVER_SETTINGS.component.welcomer)) || {};
 		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.welcomer, {
 			enabled: true,

@@ -568,7 +568,7 @@
 								</select>
 							</label>
 						</div>
-					{:else if form.effect_type === 'shield' || form.effect_type === 'reflect' || form.effect_type === 'insurance'}
+					{:else if form.effect_type === 'shield' || form.effect_type === 'reflect'}
 						<label class="text-ash-300 text-xs"
 							>Duration (min)<input
 								type="number"
@@ -577,8 +577,37 @@
 							/></label
 						>
 						<p class="text-ash-500 text-[11px]">
-							{#if form.effect_type === 'reflect'}While active, the next steal/bomb against you fails and hits the attacker instead.{:else if form.effect_type === 'insurance'}While
-								active, the next time you're robbed your XP is refunded once.{:else}Blocks incoming steal/bomb while active.{/if}
+							{#if form.effect_type === 'reflect'}While active, the next steal/bomb against you fails and hits the attacker instead.{:else}Blocks incoming
+								steal/bomb while active.{/if}
+						</p>
+					{:else if form.effect_type === 'insurance'}
+						<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+							<label class="text-ash-300 text-xs"
+								>Refund %<input
+									type="number"
+									min="0"
+									max="100"
+									bind:value={form.cfg.refund_percent}
+									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+								/></label
+							>
+							<label class="text-ash-300 text-xs"
+								>Duration (min)<input
+									type="number"
+									bind:value={form.cfg.effect_duration_minutes}
+									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+								/></label
+							>
+							<label class="text-ash-300 text-xs sm:col-span-2"
+								>Cooldown (min)<input
+									type="number"
+									bind:value={form.cfg.cooldown_minutes}
+									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+								/></label
+							>
+						</div>
+						<p class="text-ash-500 text-[11px]">
+							While active, the next time you're robbed it refunds that % of the loss (once). Cooldown limits how often it can be re-activated — 1440 = 1 day.
 						</p>
 					{:else if form.effect_type === 'gift'}
 						<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">

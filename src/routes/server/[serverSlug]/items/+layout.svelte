@@ -188,6 +188,9 @@
 
 	const SELF_BUFFS = new Set(['boost', 'shield', 'reflect', 'insurance']);
 	function isBuffActive(effectType: string): boolean {
+		if (effectType === 'leech') {
+			return ((pd.activeEffects ?? []) as any[]).some((e) => e.effect_type === 'leech' && e.leechRole === 'attacker' && e.expiresAt && e.expiresAt > now);
+		}
 		if (!SELF_BUFFS.has(effectType)) return false;
 		return ((pd.activeEffects ?? []) as any[]).some((e) => e.effect_type === effectType && e.expiresAt && e.expiresAt > now);
 	}

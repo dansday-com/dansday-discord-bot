@@ -118,9 +118,10 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		announced: true,
 		expiringBuff: true,
 		defaultCost: 450,
-		defaultConfig: { effect_duration_minutes: 90 },
+		defaultConfig: { refund_percent: 50, effect_duration_minutes: 90, cooldown_minutes: 1440 },
 		buffExpiredText: () => `Your **Insurance** has expired.`,
-		summary: (c) => `Refund your XP the next time you're robbed (${c.effect_duration_minutes} min).`
+		summary: (c) =>
+			`Refund ${c.refund_percent ?? 100}% of XP the next time you're robbed (${c.effect_duration_minutes} min)${c.cooldown_minutes ? `, ${Math.round((c.cooldown_minutes / 60) * 10) / 10}h cooldown` : ''}.`
 	},
 	{
 		id: 'gamble',
@@ -310,7 +311,14 @@ export function describeItemOutcome(effectType: string, result: any): ItemOutcom
 	if (effectType === 'gift')
 		return { tone: 'neutral', icon: effectIcon('gift'), title: 'Gift Sent', line: `They received ${xp.toLocaleString()} XP.`, deltaXp: null, untilMs: null };
 	if (effectType === 'bounty')
-		return { tone: 'neutral', icon: effectIcon('bounty'), title: 'Bounty Placed', line: `Whoever steals or bombs them next collects it.`, deltaXp: -xp, untilMs: null };
+		return {
+			tone: 'neutral',
+			icon: effectIcon('bounty'),
+			title: 'Bounty Placed',
+			line: `Whoever steals or bombs them next collects it.`,
+			deltaXp: -xp,
+			untilMs: null
+		};
 	if (effectType === 'leech')
 		return {
 			tone: 'neutral',
@@ -344,7 +352,7 @@ export function describeItemOutcome(effectType: string, result: any): ItemOutcom
 			tone: 'win',
 			icon: effectIcon('insurance'),
 			title: 'Insurance Active',
-			line: `The next time you're robbed, your XP is refunded.`,
+			line: `The next time you're robbed, ${r.refundPercent ?? 100}% of your loss is refunded.`,
 			deltaXp: null,
 			untilMs: toMs(r.expiresAt)
 		};

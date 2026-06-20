@@ -1815,7 +1815,7 @@ export async function getRecentAttackerActions(botId: any, sinceMinutes = 720) {
 	await initializeDatabase();
 	if (!botId) return [] as any[];
 	const rows = await db.execute(sql`
-		SELECT smi.member_id AS member_id, MAX(sml.created_at) AS last_attack,
+		SELECT smi.member_id AS member_id, sml.action AS action, MAX(sml.created_at) AS last_attack,
 		       sm.discord_member_id, s.discord_server_id
 		FROM server_member_item_logs sml
 		INNER JOIN server_member_items smi ON smi.id = sml.member_item_id
@@ -1824,7 +1824,7 @@ export async function getRecentAttackerActions(botId: any, sinceMinutes = 720) {
 		WHERE sml.action IN ('steal', 'bomb')
 		  AND sml.created_at >= (UTC_TIMESTAMP() - INTERVAL ${Number(sinceMinutes)} MINUTE)
 		  AND s.bot_id = ${Number(botId)}
-		GROUP BY smi.member_id, sm.discord_member_id, s.discord_server_id
+		GROUP BY smi.member_id, sml.action, sm.discord_member_id, s.discord_server_id
 	`);
 	return rows[0] as unknown as any[];
 }

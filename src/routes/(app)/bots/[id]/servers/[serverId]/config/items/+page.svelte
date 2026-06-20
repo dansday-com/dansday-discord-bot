@@ -3,12 +3,14 @@
 	import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import ConfigToggleRow from '$lib/frontend/components/ConfigToggleRow.svelte';
+	import ChannelPicker from '$lib/frontend/components/ChannelPicker.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 
 	let saving = $state(false);
 	let featureEnabled = $state(data.settings?.enabled === true);
+	let itemsChannel = $state<string>(data.settings?.ITEMS_CHANNEL_ID ?? '');
 
 	async function save() {
 		saving = true;
@@ -19,7 +21,8 @@
 				credentials: 'include',
 				body: JSON.stringify({
 					component: SERVER_SETTINGS.component.items,
-					enabled: featureEnabled
+					enabled: featureEnabled,
+					ITEMS_CHANNEL_ID: itemsChannel
 				})
 			});
 			const d = await res.json();
@@ -59,6 +62,17 @@
 			<i class="fas fa-circle-info mt-0.5 shrink-0 text-teal-400/90" aria-hidden="true"></i>
 			<span>Members must use the bot menu's Items button (opens the website) to browse and buy. PvP actions affect this server's XP only.</span>
 		</p>
+
+		<div>
+			<label class="text-ash-300 mb-1.5 block text-xs font-medium">
+				<i class="fas fa-hashtag mr-1 text-teal-400"></i>Item Events Channel
+			</label>
+			<p class="text-ash-500 mb-2 text-xs">
+				Where steal, bomb, leech, gift and other item announcements are posted. Keep it separate from your level channel to avoid clutter. If unset, item events
+				are not announced.
+			</p>
+			<ChannelPicker channels={data.channels} categories={data.categories} value={itemsChannel} onchange={(id) => (itemsChannel = id)} />
+		</div>
 	{/if}
 
 	<button

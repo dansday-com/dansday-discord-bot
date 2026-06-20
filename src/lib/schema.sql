@@ -500,6 +500,7 @@ CREATE TABLE IF NOT EXISTS items (
     cost INT NOT NULL DEFAULT 0,
     config JSON NOT NULL DEFAULT ('{}'),
     enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    usable BOOLEAN NOT NULL DEFAULT TRUE,
     available_from DATETIME NULL,
     available_to DATETIME NULL,
     recurring_schedule JSON NULL,

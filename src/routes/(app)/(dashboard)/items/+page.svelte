@@ -40,6 +40,7 @@
 			description: '',
 			cost: effectDefaultCost('boost'),
 			enabled: true,
+			usable: true,
 			available_from: '',
 			available_to: '',
 			cfg: {
@@ -94,6 +95,7 @@
 		f.description = item.description ?? '';
 		f.cost = item.cost ?? 0;
 		f.enabled = item.enabled !== false;
+		f.usable = item.usable !== false;
 		f.available_from = toLocalInput(item.available_from);
 		f.available_to = toLocalInput(item.available_to);
 		f.cfg = { ...f.cfg, ...cfg };
@@ -119,6 +121,7 @@
 				description: form.description,
 				cost: Number(form.cost),
 				enabled: form.enabled,
+				usable: form.usable,
 				available_from: fromLocalInput(form.available_from),
 				available_to: fromLocalInput(form.available_to),
 				recurring_schedule: recurringSchedule,
@@ -172,6 +175,30 @@
 			}
 		} catch {
 			item.enabled = !next;
+			showToast('Failed to update', 'error');
+		} finally {
+			togglingId = null;
+		}
+	}
+
+	async function toggleUsable(item: any) {
+		const next = item.usable === false;
+		togglingId = item.id;
+		item.usable = next;
+		try {
+			const res = await fetch('/api/admin/items', {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				credentials: 'include',
+				body: JSON.stringify({ id: item.id, usable: next })
+			});
+			const d = await res.json();
+			if (!d.success) {
+				item.usable = !next;
+				showToast(d.error || 'Failed to update', 'error');
+			}
+		} catch {
+			item.usable = !next;
 			showToast('Failed to update', 'error');
 		} finally {
 			togglingId = null;
@@ -359,22 +386,43 @@
 						<div class="shrink-0 text-sm font-semibold text-teal-400">{item.cost} XP</div>
 					</div>
 					{#if item.description}<p class="text-ash-400 mt-2 line-clamp-2 text-xs">{item.description}</p>{/if}
-					<div class="mt-3 flex items-center gap-2">
-						<button
-							type="button"
-							role="switch"
-							aria-checked={item.enabled !== false}
-							aria-label={item.enabled !== false ? 'Disable item' : 'Enable item'}
-							disabled={togglingId === item.id}
-							onclick={() => toggleEnabled(item)}
-							class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 {item.enabled !== false
-								? 'bg-ash-400'
-								: 'bg-ash-700'}"
-						>
-							<span
-								class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {item.enabled !== false ? 'translate-x-6' : 'translate-x-1'}"
-							></span>
-						</button>
+					<div class="mt-3 flex flex-wrap items-center gap-2">
+						<div class="flex items-center gap-1.5" title="Show in shop / allow buying">
+							<button
+								type="button"
+								role="switch"
+								aria-checked={item.enabled !== false}
+								aria-label={item.enabled !== false ? 'Hide from shop' : 'Show in shop'}
+								disabled={togglingId === item.id}
+								onclick={() => toggleEnabled(item)}
+								class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 {item.enabled !== false
+									? 'bg-ash-400'
+									: 'bg-ash-700'}"
+							>
+								<span
+									class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {item.enabled !== false ? 'translate-x-6' : 'translate-x-1'}"
+								></span>
+							</button>
+							<span class="text-ash-400 text-[10px] leading-tight">Shop</span>
+						</div>
+						<div class="flex items-center gap-1.5" title="Allow members to use copies they already own">
+							<button
+								type="button"
+								role="switch"
+								aria-checked={item.usable !== false}
+								aria-label={item.usable !== false ? 'Disable use' : 'Enable use'}
+								disabled={togglingId === item.id}
+								onclick={() => toggleUsable(item)}
+								class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 {item.usable !== false
+									? 'bg-teal-600'
+									: 'bg-ash-700'}"
+							>
+								<span
+									class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {item.usable !== false ? 'translate-x-6' : 'translate-x-1'}"
+								></span>
+							</button>
+							<span class="text-ash-400 text-[10px] leading-tight">Use</span>
+						</div>
 						<button onclick={() => startEdit(item)} class="bg-ash-700 hover:bg-ash-600 text-ash-200 flex-1 rounded-lg py-1.5 text-xs">Edit</button>
 						{#if item.effect_type !== 'gamble'}
 							<button
@@ -675,12 +723,18 @@
 					</div>
 				</div>
 
-				<div class="border-ash-700 bg-ash-900/40 rounded-xl border p-4">
+				<div class="border-ash-700 bg-ash-900/40 space-y-3 rounded-xl border p-4">
 					<ConfigToggleRow
-						label="Enabled"
-						description="Disabled items stay hidden from the shop."
-						labelIconClass="fas fa-power-off text-teal-400"
+						label="Show in shop"
+						description="When off, the item is hidden from the shop and can't be bought. Copies members already own still work."
+						labelIconClass="fas fa-store text-teal-400"
 						bind:enabled={form.enabled}
+					/>
+					<ConfigToggleRow
+						label="Allow use"
+						description="When off, members can't use copies they already own — it becomes dead weight in their bag."
+						labelIconClass="fas fa-hand-pointer text-teal-400"
+						bind:enabled={form.usable}
 					/>
 				</div>
 

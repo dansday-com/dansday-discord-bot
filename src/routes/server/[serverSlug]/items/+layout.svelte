@@ -67,12 +67,18 @@
 		const chips: { key: string; icon: string; label: string; until: number; accent: string }[] = [];
 		for (const e of (pd.activeEffects ?? []) as any[]) {
 			if (!e.expiresAt || e.expiresAt <= now) continue;
+			let label = effectLabel(e.effect_type);
+			let accent = effectAccentHex(e.effect_type);
+			if (e.effect_type === 'leech' && e.leechRole) {
+				label = e.leechRole === 'victim' ? `Leeched by ${e.leechWith}` : `Leeching ${e.leechWith}`;
+				if (e.leechRole === 'victim') accent = effectAccentHex('steal');
+			}
 			chips.push({
 				key: `eff-${e.effect_type}-${e.expiresAt}`,
 				icon: effectIcon(e.effect_type),
-				label: effectLabel(e.effect_type),
+				label,
 				until: e.expiresAt,
-				accent: effectAccentHex(e.effect_type)
+				accent
 			});
 		}
 		if (pd.immuneUntil && pd.immuneUntil > now)

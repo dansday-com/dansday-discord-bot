@@ -120,11 +120,24 @@ export async function loadItemsShared(server: any, hash: string) {
 	const bagStock = (invRows as any[]).reduce((sum, r) => sum + (Number(r.quantity) || 0), 0);
 
 	const effectRows = await db.getActiveEffectsForMember(member.id).catch(() => []);
-	const activeEffects = (effectRows as any[]).map((e) => ({
-		effect_type: e.effect_type,
-		effect_value: Number(e.effect_value) || 0,
-		expiresAt: e.expires_at ? new Date(e.expires_at).getTime() : null
-	}));
+	const nameOf = (sdn: any, dn: any, un: any) => sdn || dn || un || 'a member';
+	const activeEffects = (effectRows as any[]).map((e) => {
+		const base = {
+			effect_type: e.effect_type,
+			effect_value: Number(e.effect_value) || 0,
+			expiresAt: e.expires_at ? new Date(e.expires_at).getTime() : null,
+			leechRole: null as 'attacker' | 'victim' | null,
+			leechWith: null as string | null
+		};
+		if (e.effect_type === 'leech') {
+			const isVictim = Number(e.target_member_id) === Number(member.id);
+			base.leechRole = isVictim ? 'victim' : 'attacker';
+			base.leechWith = isVictim
+				? nameOf(e.beneficiary_server_display_name, e.beneficiary_display_name, e.beneficiary_username)
+				: nameOf(e.target_server_display_name, e.target_display_name, e.target_username);
+		}
+		return base;
+	});
 
 	const cooldownMinByAction: Record<'steal' | 'bomb', number> = { steal: 0, bomb: 0 };
 	let maxImmunityMin = 0;

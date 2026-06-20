@@ -1554,6 +1554,7 @@ export async function createItem(panelId: any, data: any = {}) {
 		cost: Number(data.cost ?? 0),
 		config: data.config ?? {},
 		enabled: data.enabled === undefined ? true : !!data.enabled,
+		usable: data.usable === undefined ? true : !!data.usable,
 		available_from: data.available_from ? (toMySQLDateTime(data.available_from) as any) : null,
 		available_to: data.available_to ? (toMySQLDateTime(data.available_to) as any) : null,
 		recurring_schedule: data.recurring_schedule ?? null,
@@ -1575,6 +1576,7 @@ export async function updateItem(itemId: any, data: any = {}) {
 	if (data.cost !== undefined) set.cost = Number(data.cost);
 	if (data.config !== undefined) set.config = data.config ?? {};
 	if (data.enabled !== undefined) set.enabled = !!data.enabled;
+	if (data.usable !== undefined) set.usable = !!data.usable;
 	if (data.available_from !== undefined) set.available_from = data.available_from ? (toMySQLDateTime(data.available_from) as any) : null;
 	if (data.available_to !== undefined) set.available_to = data.available_to ? (toMySQLDateTime(data.available_to) as any) : null;
 	if (data.recurring_schedule !== undefined) set.recurring_schedule = data.recurring_schedule ?? null;
@@ -1597,7 +1599,7 @@ export async function getMemberInventory(memberId: any) {
 	await initializeDatabase();
 	if (!memberId) throw new Error('memberId is required');
 	const rows = await db.execute(sql`
-		SELECT smi.*, bi.name, bi.effect_type, bi.description, bi.cost, bi.config
+		SELECT smi.*, bi.name, bi.effect_type, bi.description, bi.cost, bi.config, bi.usable
 		FROM server_member_items smi
 		INNER JOIN items bi ON bi.id = smi.item_id
 		WHERE smi.member_id = ${Number(memberId)} AND smi.quantity > 0
@@ -1689,10 +1691,16 @@ export async function getActiveEffectsForMember(memberId: any) {
 	await initializeDatabase();
 	if (!memberId) throw new Error('memberId is required');
 	const rows = await db.execute(sql`
-		SELECT sma.id, sma.member_item_id, sma.effect_value, sma.beneficiary_member_id, sma.target_member_id, sma.expires_at, bi.id AS item_id, bi.name, bi.effect_type, bi.config
+		SELECT sma.id, sma.member_item_id, sma.effect_value, sma.beneficiary_member_id, sma.target_member_id, sma.expires_at,
+		       bi.id AS item_id, bi.name, bi.effect_type, bi.config,
+		       smi.member_id AS owner_member_id,
+		       ben.server_display_name AS beneficiary_server_display_name, ben.display_name AS beneficiary_display_name, ben.username AS beneficiary_username,
+		       tgt.server_display_name AS target_server_display_name, tgt.display_name AS target_display_name, tgt.username AS target_username
 		FROM server_member_item_actives sma
 		INNER JOIN server_member_items smi ON smi.id = sma.member_item_id
 		INNER JOIN items bi ON bi.id = smi.item_id
+		LEFT JOIN server_members ben ON ben.id = sma.beneficiary_member_id
+		LEFT JOIN server_members tgt ON tgt.id = sma.target_member_id
 		WHERE sma.expires_at > UTC_TIMESTAMP()
 		  AND (
 		    (sma.target_member_id IS NULL AND smi.member_id = ${Number(memberId)})
@@ -1700,6 +1708,25 @@ export async function getActiveEffectsForMember(memberId: any) {
 		  )
 	`);
 	return rows[0] as unknown as any[];
+}
+
+export async function getActiveLeechByBeneficiary(beneficiaryMemberId: any) {
+	await initializeDatabase();
+	if (!beneficiaryMemberId) return null;
+	const rows = await db.execute(sql`
+		SELECT sma.id, sma.target_member_id, sma.expires_at,
+		       tgt.server_display_name AS target_server_display_name, tgt.display_name AS target_display_name, tgt.username AS target_username
+		FROM server_member_item_actives sma
+		INNER JOIN server_member_items smi ON smi.id = sma.member_item_id
+		INNER JOIN items bi ON bi.id = smi.item_id
+		LEFT JOIN server_members tgt ON tgt.id = sma.target_member_id
+		WHERE bi.effect_type = 'leech'
+		  AND sma.beneficiary_member_id = ${Number(beneficiaryMemberId)}
+		  AND sma.expires_at > UTC_TIMESTAMP()
+		ORDER BY sma.expires_at DESC
+		LIMIT 1
+	`);
+	return (rows[0] as unknown as any[])?.[0] ?? null;
 }
 
 export async function clearExpiredMemberItemActives() {
@@ -4089,6 +4116,7 @@ export default {
 	purgeDepletedMemberItems,
 	addMemberItemActive,
 	getActiveEffectsForMember,
+	getActiveLeechByBeneficiary,
 	clearExpiredMemberItemActives,
 	getNewlyExpiredEffects,
 	markEffectExpiryNotified,

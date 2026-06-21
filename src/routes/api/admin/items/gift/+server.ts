@@ -43,6 +43,16 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 	if (!enabled) return json({ success: false, error: 'That member’s server does not have the items module enabled.' }, { status: 400 });
 
 	const owned = await db.grantMemberItem(body.member_id, body.item_id, quantity);
+	for (let i = 0; i < quantity; i++) {
+		await db
+			.logMemberItemAction(body.member_id, {
+				item_id: body.item_id,
+				action: 'gift',
+				xp_amount: 0,
+				outcome: 'admin'
+			})
+			.catch(() => null);
+	}
 	await logger.log(`${(locals.user as any).username} gifted ${quantity}× item ${body.item_id} to member ${body.member_id}`);
 
 	let announced = false;

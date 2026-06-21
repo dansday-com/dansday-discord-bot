@@ -52,6 +52,7 @@
 	}
 
 	function line(h: any): { icon: string; title: string; tone: string; deltaLabel: string } {
+		if (h.action === 'gift' && h.outcome === 'admin') return { icon: effectIcon('gift'), title: `Gift from admin — ${h.itemName ?? 'item'}`, tone: 'win', deltaLabel: 'Received' };
 		if (h.action === 'buy') return { icon: 'fa-cart-shopping', title: `Bought ${h.itemName ?? 'item'}`, tone: 'spend', deltaLabel: `−${fmt(h.xpAmount)} XP` };
 		if (h.action === 'discard') return { icon: 'fa-trash-can', title: `Removed ${h.itemName ?? 'item'}`, tone: 'neutral', deltaLabel: 'Discarded' };
 		if (h.action === 'gamble') {

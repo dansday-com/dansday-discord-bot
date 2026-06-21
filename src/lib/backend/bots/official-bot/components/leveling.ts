@@ -614,7 +614,7 @@ async function handleMessageCreate(message) {
 		await db.ensureMemberLevel(dbMember.id);
 		const previousStats = await db.getMemberLevel(dbMember.id);
 		const baseXp = await getExperienceForMessage(guildId);
-		const award = await applyAwardEffects(dbMember.id, baseXp, 'message');
+		const award = await applyAwardEffects(dbMember.id, baseXp, 'message', guildId);
 		const { memberXp, leechCredits } = award;
 		const stats = await db.updateMemberLevelStats(dbMember.id, {
 			chatIncrement: 1,
@@ -649,7 +649,7 @@ async function awardVoiceXP(server, dbMember, guildId, reason, previousStats, bu
 	const videoXp = await getVideoXpForVoiceTick(vid, guildId);
 	const streamXp = await getStreamingXpForVoiceTick(strm, guildId);
 	const rawXpGained = baseXp + videoXp + streamXp;
-	const award = await applyAwardEffects(dbMember.id, rawXpGained, 'voice');
+	const award = await applyAwardEffects(dbMember.id, rawXpGained, 'voice', guildId);
 	const { memberXp: xpGained, leechCredits } = award;
 
 	const stats = await db.updateMemberLevelStats(dbMember.id, {

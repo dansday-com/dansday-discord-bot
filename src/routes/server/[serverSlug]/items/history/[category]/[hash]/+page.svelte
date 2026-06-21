@@ -93,9 +93,9 @@
 		const title = PAST_TITLE[h.action] ?? effectLabel(h.action);
 		let tone = 'neutral';
 		let deltaLabel = '';
-		if (h.outcome === 'blocked' || h.outcome === 'reflected') {
+		if (h.outcome === 'blocked' || h.outcome === 'reflected' || h.outcome === 'immune') {
 			tone = 'lose';
-			deltaLabel = h.outcome === 'blocked' ? 'Blocked' : 'Reflected';
+			deltaLabel = h.outcome === 'reflected' ? 'Reflected' : h.outcome === 'immune' ? 'Immune' : 'Blocked';
 		} else if (h.action === 'steal' && h.xpAmount > 0) {
 			tone = 'win';
 			deltaLabel = `+${fmt(h.xpAmount)} XP`;
@@ -115,6 +115,7 @@
 		const icon = effectIcon(h.action);
 
 		if (h.outcome === 'blocked') return { icon: 'fa-shield-halved', title: `Blocked ${h.action}${by}`, tone: 'win', deltaLabel: 'Defended' };
+		if (h.outcome === 'immune') return { icon: 'fa-shield-halved', title: `Immune to ${h.action}${by}`, tone: 'win', deltaLabel: 'Defended' };
 		if (h.outcome === 'reflected') return { icon: 'fa-arrows-rotate', title: `Reflected ${h.action}${by}`, tone: 'win', deltaLabel: 'Reflected' };
 
 		if (h.action === 'gift') {

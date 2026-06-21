@@ -73,17 +73,20 @@ function effectScopeMatches(effect: any, source: any) {
 	return scope === source;
 }
 
-export async function computeAwardModifiers(memberId: any, source: any = 'all') {
+export async function computeAwardModifiers(memberId: any, source: any = 'all', guildId: any = null) {
 	const effects = await getCachedActiveEffects(memberId);
 	let multiplier = 1;
 	let skimPercent = 0;
 	const leeches: any[] = [];
 
+	const shielded = effects.some((e: any) => e.effect_type === 'shield');
+	const protectedFromLeech = shielded || (guildId != null && !!(await targetImmuneUntil(memberId, guildId)));
+
 	for (const effect of effects) {
 		if (effect.effect_type === 'boost' && effectScopeMatches(effect, source)) {
 			const m = Number(effect.effect_value) || 0;
 			if (m > 0) multiplier *= m;
-		} else if (effect.effect_type === 'leech') {
+		} else if (effect.effect_type === 'leech' && !protectedFromLeech) {
 			const pct = Number(effect.effect_value) || 0;
 			const targetsThisMember = Number(effect.target_member_id) === Number(memberId);
 			if (pct > 0 && targetsThisMember && effect.beneficiary_member_id != null) {
@@ -98,11 +101,11 @@ export async function computeAwardModifiers(memberId: any, source: any = 'all') 
 	return { multiplier, skimPercent, leeches };
 }
 
-export async function applyAwardEffects(memberId: any, baseXp: any, source: any = 'all') {
+export async function applyAwardEffects(memberId: any, baseXp: any, source: any = 'all', guildId: any = null) {
 	const safeBase = Math.max(0, Math.floor(Number(baseXp) || 0));
 	if (safeBase <= 0) return { memberXp: 0, leechCredits: [] as any[], multiplier: 1, boosted: false, skimPercent: 0, leeched: false };
 
-	const { multiplier, skimPercent, leeches } = await computeAwardModifiers(memberId, source);
+	const { multiplier, skimPercent, leeches } = await computeAwardModifiers(memberId, source, guildId);
 	const boosted = Math.floor(safeBase * multiplier);
 	const totalSkim = Math.floor((boosted * skimPercent) / 100);
 	const memberXp = Math.max(0, boosted - totalSkim);
@@ -249,13 +252,17 @@ async function activationCooldownUntil(actorMemberId: any, cooldownMinutes: any,
 	return until.getTime() > Date.now() ? until : null;
 }
 
-async function targetImmuneUntil(targetMemberId: any, immunityMinutes: any): Promise<Date | null> {
-	const minutes = Math.max(0, Number(immunityMinutes) || 0);
-	if (minutes <= 0) return null;
-	const last = await db.getLastActionAgainstTarget(targetMemberId, ['steal', 'bomb']);
-	if (!last) return null;
-	const until = new Date(last.getTime() + minutes * 60000);
-	return until.getTime() > Date.now() ? until : null;
+async function targetImmuneUntil(targetMemberId: any, guildId: any): Promise<Date | null> {
+	let latest = 0;
+	for (const action of ['steal', 'bomb'] as const) {
+		const ms = await maxAttackConfigMs(guildId, 'immunity_minutes', action).catch(() => 0);
+		if (ms <= 0) continue;
+		const last = await db.getLastActionAgainstTarget(targetMemberId, [action]).catch(() => null);
+		if (!last) continue;
+		const ends = last.getTime() + ms;
+		if (ends > Date.now() && ends > latest) latest = ends;
+	}
+	return latest > 0 ? new Date(latest) : null;
 }
 
 export async function resolveSteal({ actorMemberId, actorMemberItemId, targetMemberId, config, guildId }: any) {
@@ -273,7 +280,14 @@ export async function resolveSteal({ actorMemberId, actorMemberItemId, targetMem
 		});
 		return { outcome: 'blocked', xp: 0 };
 	}
-	if (await targetImmuneUntil(targetMemberId, cfg.immunity_minutes)) {
+	if (await targetImmuneUntil(targetMemberId, guildId)) {
+		await db.logMemberItemAction(actorMemberId, {
+			member_item_id: actorMemberItemId,
+			target_member_id: targetMemberId,
+			action: 'steal',
+			xp_amount: 0,
+			outcome: 'immune'
+		});
 		return { outcome: 'immune', xp: 0 };
 	}
 
@@ -359,7 +373,14 @@ export async function resolveBomb({ actorMemberId, actorMemberItemId, targetMemb
 		});
 		return { outcome: 'blocked', xp: 0 };
 	}
-	if (await targetImmuneUntil(targetMemberId, cfg.immunity_minutes)) {
+	if (await targetImmuneUntil(targetMemberId, guildId)) {
+		await db.logMemberItemAction(actorMemberId, {
+			member_item_id: actorMemberItemId,
+			target_member_id: targetMemberId,
+			action: 'bomb',
+			xp_amount: 0,
+			outcome: 'immune'
+		});
 		return { outcome: 'immune', xp: 0 };
 	}
 
@@ -451,7 +472,7 @@ async function activeLeechOnTarget(targetMemberId: any) {
 	return effects.find((e: any) => e.effect_type === 'leech' && Number(e.target_member_id) === Number(targetMemberId)) ?? null;
 }
 
-export async function resolveLeech({ memberItemId, actorMemberId, targetMemberId, config }: any) {
+export async function resolveLeech({ memberItemId, actorMemberId, targetMemberId, config, guildId }: any) {
 	const cfg = parseConfig(config);
 	if (await hasActiveShield(targetMemberId)) {
 		await db.logMemberItemAction(actorMemberId, {
@@ -463,7 +484,14 @@ export async function resolveLeech({ memberItemId, actorMemberId, targetMemberId
 		});
 		return { outcome: 'blocked' };
 	}
-	if (await targetImmuneUntil(targetMemberId, cfg.immunity_minutes)) {
+	if (await targetImmuneUntil(targetMemberId, guildId)) {
+		await db.logMemberItemAction(actorMemberId, {
+			member_item_id: memberItemId,
+			target_member_id: targetMemberId,
+			action: 'leech',
+			xp_amount: 0,
+			outcome: 'immune'
+		});
 		return { outcome: 'immune' };
 	}
 	const mine = await db.getActiveLeechByBeneficiary(actorMemberId).catch(() => null);
@@ -748,7 +776,7 @@ export async function handleItemUse(client: any, payload: any) {
 		} else if (effectType === 'shield') {
 			result = await resolveShield({ memberItemId: member_item_id, ownerMemberId: actorMemberId, config });
 		} else if (effectType === 'leech') {
-			result = await resolveLeech({ memberItemId: member_item_id, actorMemberId, targetMemberId, config });
+			result = await resolveLeech({ memberItemId: member_item_id, actorMemberId, targetMemberId, config, guildId: guild_id });
 		} else if (effectType === 'reflect') {
 			result = await resolveReflect({ memberItemId: member_item_id, ownerMemberId: actorMemberId, config });
 		} else if (effectType === 'insurance') {
@@ -1173,12 +1201,25 @@ async function sweepDerivedEvents(client: any, botId: any, EmbedBuilder: any) {
 	const now = Date.now();
 
 	const hits = await db.getRecentVictimHits(botId).catch(() => []);
+	const immunityByMember = new Map<string, { endsAt: number; discord_member_id: any; discord_server_id: any; member_id: any }>();
 	for (const hit of hits || []) {
 		const lastHit = hit.last_hit instanceof Date ? hit.last_hit.getTime() : new Date(hit.last_hit).getTime();
 		if (!Number.isFinite(lastHit)) continue;
-		const immunityMs = await defaultImmunityMsForServer(hit.discord_server_id).catch(() => 0);
+		const immunityMs = await maxAttackConfigMs(hit.discord_server_id, 'immunity_minutes', hit.action).catch(() => 0);
 		if (immunityMs <= 0) continue;
 		const endsAt = lastHit + immunityMs;
+		const prev = immunityByMember.get(String(hit.member_id));
+		if (!prev || endsAt > prev.endsAt) {
+			immunityByMember.set(String(hit.member_id), {
+				endsAt,
+				discord_member_id: hit.discord_member_id,
+				discord_server_id: hit.discord_server_id,
+				member_id: hit.member_id
+			});
+		}
+	}
+	for (const hit of immunityByMember.values()) {
+		const endsAt = hit.endsAt;
 		if (endsAt > now || now - endsAt > EXPIRY_SWEEP_MS) continue;
 		const fresh = await db.recordItemNotification(hit.member_id, 'immunity_ended', new Date(endsAt)).catch(() => false);
 		if (!fresh) continue;
@@ -1250,9 +1291,6 @@ async function sweepDerivedEvents(client: any, botId: any, EmbedBuilder: any) {
 
 async function cooldownMsForAction(discordServerId: any, action: 'steal' | 'bomb'): Promise<number> {
 	return maxAttackConfigMs(discordServerId, 'cooldown_minutes', action);
-}
-async function defaultImmunityMsForServer(discordServerId: any): Promise<number> {
-	return Math.max(await maxAttackConfigMs(discordServerId, 'immunity_minutes', 'steal'), await maxAttackConfigMs(discordServerId, 'immunity_minutes', 'bomb'));
 }
 
 const attackCfgCache = new Map<string, { value: number; at: number }>();

@@ -140,13 +140,13 @@ export async function loadItemsShared(server: any, hash: string) {
 	});
 
 	const cooldownMinByAction: Record<'steal' | 'bomb', number> = { steal: 0, bomb: 0 };
-	let maxImmunityMin = 0;
+	const immunityMinByAction: Record<'steal' | 'bomb', number> = { steal: 0, bomb: 0 };
 	for (const it of items as any[]) {
 		if (it.effect_type !== 'steal' && it.effect_type !== 'bomb') continue;
 		const cfg = it.config || {};
 		const action = it.effect_type as 'steal' | 'bomb';
 		cooldownMinByAction[action] = Math.max(cooldownMinByAction[action], Number(cfg.cooldown_minutes) || 0);
-		maxImmunityMin = Math.max(maxImmunityMin, Number(cfg.immunity_minutes) || 0);
+		immunityMinByAction[action] = Math.max(immunityMinByAction[action], Number(cfg.immunity_minutes) || 0);
 	}
 
 	const attackCooldowns: { action: 'steal' | 'bomb'; until: number }[] = [];
@@ -160,12 +160,13 @@ export async function loadItemsShared(server: any, hash: string) {
 	}
 
 	let immuneUntil: number | null = null;
-	if (maxImmunityMin > 0) {
-		const last = await db.getLastActionAgainstTarget(member.id, ['steal', 'bomb']).catch(() => null);
-		if (last) {
-			const ends = last.getTime() + maxImmunityMin * 60000;
-			if (ends > Date.now()) immuneUntil = ends;
-		}
+	for (const action of ['steal', 'bomb'] as const) {
+		const min = immunityMinByAction[action];
+		if (min <= 0) continue;
+		const last = await db.getLastActionAgainstTarget(member.id, [action]).catch(() => null);
+		if (!last) continue;
+		const ends = last.getTime() + min * 60000;
+		if (ends > Date.now() && (immuneUntil === null || ends > immuneUntil)) immuneUntil = ends;
 	}
 
 	let insuranceCooldownUntil: number | null = null;

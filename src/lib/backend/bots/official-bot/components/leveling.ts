@@ -38,6 +38,7 @@ async function claimMessageCooldown(cooldownKey, cooldownMs) {
 	return true;
 }
 const voiceSessions = new Map();
+const voiceAwardLocks = new Set();
 let clientInstance = null;
 
 export async function getLevelRequirement(level, guildId) {
@@ -638,6 +639,17 @@ async function handleMessageCreate(message) {
 }
 
 async function awardVoiceXP(server, dbMember, guildId, reason, previousStats, buckets, mediaFlags) {
+	const lockKey = `${guildId}:${dbMember.id}`;
+	if (voiceAwardLocks.has(lockKey)) return null;
+	voiceAwardLocks.add(lockKey);
+	try {
+		return await awardVoiceXPLocked(server, dbMember, guildId, reason, previousStats, buckets, mediaFlags);
+	} finally {
+		voiceAwardLocks.delete(lockKey);
+	}
+}
+
+async function awardVoiceXPLocked(server, dbMember, guildId, reason, previousStats, buckets, mediaFlags) {
 	const { isAFK, voiceMinutes, videoMinutes, streamMinutes } = buckets;
 	const vm = Math.max(0, Math.floor(Number(voiceMinutes) || 0));
 	const vid = Math.max(0, Math.floor(Number(videoMinutes) || 0));

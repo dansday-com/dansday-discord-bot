@@ -463,6 +463,9 @@ export async function resolveLeech({ memberItemId, actorMemberId, targetMemberId
 		});
 		return { outcome: 'blocked' };
 	}
+	if (await targetImmuneUntil(targetMemberId, cfg.immunity_minutes)) {
+		return { outcome: 'immune' };
+	}
 	const mine = await db.getActiveLeechByBeneficiary(actorMemberId).catch(() => null);
 	if (mine) {
 		const who = mine.target_server_display_name || mine.target_display_name || mine.target_username || 'someone';

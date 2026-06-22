@@ -573,6 +573,7 @@ CREATE TABLE IF NOT EXISTS server_member_level_logs (
     `rank` INT NULL,
     multiplier DECIMAL(6,2) NULL,
     skim_percent INT NULL,
+    friend_percent INT NULL,
     created_at DATETIME NOT NULL,
     FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE
 );

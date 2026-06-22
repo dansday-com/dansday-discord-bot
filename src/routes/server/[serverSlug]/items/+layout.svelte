@@ -4,7 +4,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import MemberCard from '$lib/frontend/components/MemberCard.svelte';
 	import { publicServerPath } from '$lib/url.js';
-	import { ITEM_EFFECTS, effectLabel, effectIcon, effectAccentHex, actionVerb, BAG_CAPACITY } from '$lib/items.js';
+	import { ITEM_EFFECTS, effectLabel, effectIcon, effectAccentHex, actionVerb, BAG_CAPACITY, formatDuration } from '$lib/items.js';
 	import type { PublicMembersStreamPayload } from '$lib/frontend/public/members/index.js';
 	import type { LayoutProps } from './$types';
 
@@ -107,8 +107,7 @@
 	function remainingLabel(untilMs: number): string {
 		const s = Math.max(0, Math.floor((untilMs - now) / 1000));
 		const m = Math.floor(s / 60);
-		const h = Math.floor(m / 60);
-		if (h > 0) return `${h}h ${m % 60}m`;
+		if (m >= 60) return formatDuration(m);
 		if (m > 0) return `${m}m ${s % 60}s`;
 		return `${s}s`;
 	}

@@ -856,6 +856,7 @@ export const serverMemberLevelLogs = mysqlTable(
 		rank: int('rank'),
 		multiplier: decimal('multiplier', { precision: 6, scale: 2 }),
 		skim_percent: int('skim_percent'),
+		friend_percent: int('friend_percent'),
 		created_at: datetime('created_at').notNull()
 	},
 	(t) => [index('idx_server_member_level_logs_member').on(t.member_id, t.created_at)]

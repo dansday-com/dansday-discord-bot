@@ -30,6 +30,7 @@
 		if (h.rank != null) badges.push({ icon: 'fa-ranking-star', text: `#${h.rank}` });
 		if (h.totalXp != null) badges.push({ icon: 'fa-star', text: `${fmt(h.totalXp)} total` });
 		if (h.multiplier) badges.push({ icon: 'fa-bolt', text: `${h.multiplier}× Boost` });
+		if (h.friendPercent) badges.push({ icon: 'fa-handshake', text: `+${h.friendPercent}% Friend boost` });
 		if (h.skimPercent) badges.push({ icon: 'fa-droplet', text: h.source === 'leech' ? `${h.skimPercent}% Siphoned` : `−${h.skimPercent}% Leech` });
 		return {
 			icon: src.icon,

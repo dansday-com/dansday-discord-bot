@@ -43,6 +43,7 @@ export const load: PageServerLoad = async ({ parent, params, url }) => {
 		rank: x.rank != null ? Number(x.rank) : null,
 		multiplier: x.multiplier != null ? Number(x.multiplier) : null,
 		skimPercent: x.skim_percent != null ? Number(x.skim_percent) : null,
+		friendPercent: x.friend_percent != null ? Number(x.friend_percent) : null,
 		at: x.created_at ? new Date(x.created_at).getTime() : null
 	}));
 

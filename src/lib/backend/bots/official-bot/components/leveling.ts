@@ -229,6 +229,32 @@ async function isMemberEligible(guildId, guildMember) {
 	}
 }
 
+async function countVoiceFriends(guildId, discordMemberId) {
+	const guild = clientInstance?.guilds.cache.get(guildId);
+	if (!guild) return 0;
+
+	const self = resolveGuildVoiceState(guild, discordMemberId);
+	const channelId = self?.channelId;
+	if (!channelId) return 0;
+
+	const memberRoles = await getMemberRoleIds(guildId);
+	if (!memberRoles || memberRoles.length === 0) return 0;
+
+	let friends = 0;
+	for (const [, vs] of guild.voiceStates.cache) {
+		if (vs.channelId !== channelId) continue;
+		if (vs.id === discordMemberId) continue;
+		const otherMember = vs.member ?? guild.members.cache.get(vs.id);
+		if (!otherMember || otherMember.user?.bot) continue;
+		try {
+			if (await PERMISSIONS.hasAnyRole(otherMember, memberRoles)) friends++;
+		} catch {
+			/* ignore */
+		}
+	}
+	return friends;
+}
+
 function normalizeRankValue(value) {
 	if (value === null || value === undefined) {
 		return null;
@@ -542,7 +568,8 @@ async function sendXPLogToChannel(guild, dbMember, xpGained, xpType, award: any 
 				level: stats?.level != null ? Number(stats.level) : null,
 				rank: stats?.rank != null ? Number(stats.rank) : null,
 				multiplier: award?.boosted ? award.multiplier : null,
-				skim_percent: award?.leeched ? award.skimPercent : null
+				skim_percent: award?.leeched ? award.skimPercent : null,
+				friend_percent: award?.friendBoosted ? award.friendPercent : null
 			})
 			.catch(() => null);
 
@@ -555,8 +582,9 @@ async function sendXPLogToChannel(guild, dbMember, xpGained, xpType, award: any 
 		const memberName = dbMember.server_display_name || dbMember.display_name || dbMember.username || 'Unknown';
 		const emoji = XP_LOG_EMOJI[xpType] ?? '⭐';
 		const boostSuffix = award?.boosted ? ` (${award.multiplier}× Boost ⚡)` : '';
+		const friendSuffix = award?.friendBoosted ? ` (+${award.friendPercent}% Friend boost 🤝)` : '';
 		const leechSuffix = award?.leeched ? ` (−${award.skimPercent}% Leech 🩸)` : '';
-		const logMessage = `${emoji} ${xpType} XP: ${memberName} gained +${xpGained} XP${boostSuffix}${leechSuffix}`;
+		const logMessage = `${emoji} ${xpType} XP: ${memberName} gained +${xpGained} XP${boostSuffix}${friendSuffix}${leechSuffix}`;
 
 		await channel.send(logMessage);
 	} catch (error) {
@@ -662,7 +690,14 @@ async function awardVoiceXPLocked(server, dbMember, guildId, reason, previousSta
 	const streamXp = await getStreamingXpForVoiceTick(strm, guildId);
 	const rawXpGained = baseXp + videoXp + streamXp;
 	const award = await applyAwardEffects(dbMember.id, rawXpGained, 'voice', guildId);
-	const { memberXp: xpGained, leechCredits } = award;
+	const { memberXp: baseAwardXp, leechCredits } = award;
+
+	const friendCount = await countVoiceFriends(guildId, dbMember.discord_member_id);
+	const friendPercent = friendCount * 10;
+	const friendBonus = Math.floor((baseAwardXp * friendPercent) / 100);
+	const xpGained = baseAwardXp + friendBonus;
+	(award as any).friendPercent = friendPercent;
+	(award as any).friendBoosted = friendPercent > 0;
 
 	const stats = await db.updateMemberLevelStats(dbMember.id, {
 		experienceIncrement: xpGained,

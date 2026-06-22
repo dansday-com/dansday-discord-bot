@@ -147,7 +147,7 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		defaultCost: 450,
 		defaultConfig: { refund_percent: 50, effect_duration_minutes: 90, cooldown_minutes: 1440 },
 		buffExpiredText: () => `Your **Insurance** has expired.`,
-		summary: (c) => `Refund ${c.refund_percent ?? 100}% if robbed · ${formatDuration(c.effect_duration_minutes)}`
+		summary: (c) => `Refund ${c.refund_percent ?? 100}% if robbed or bombed · ${formatDuration(c.effect_duration_minutes)}`
 	},
 	{
 		id: 'gamble',
@@ -325,8 +325,8 @@ export function itemAvailability(
 	const days = schedule.days.map(Number);
 	const fromMin = scheduleMinutesLocal(schedule.from, 0);
 	const toMin = scheduleMinutesLocal(schedule.to, 1439);
-	const minutes = now.getHours() * 60 + now.getMinutes();
-	if (!days.includes(now.getDay()) || minutes < fromMin || minutes > toMin) {
+	const minutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+	if (!days.includes(now.getUTCDay()) || minutes < fromMin || minutes > toMin) {
 		return { visible: false, availableUntil: null };
 	}
 
@@ -335,7 +335,19 @@ export function itemAvailability(
 		const t = new Date(item.available_to).getTime();
 		if (Number.isFinite(t)) ends.push(t);
 	}
-	const endOfWindow = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0).getTime() + (toMin * 60 + 59) * 1000;
+	const startOfUTCDay = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+	const uniqueDays = new Set(days);
+	const isFullDay = fromMin <= 0 && toMin >= 1439;
+	if (isFullDay && uniqueDays.size >= 7) {
+		return { visible: true, availableUntil: ends.length ? Math.min(...ends) : null };
+	}
+	let trailingDays = 0;
+	if (isFullDay) {
+		while (trailingDays < 6 && uniqueDays.has((now.getUTCDay() + trailingDays + 1) % 7)) {
+			trailingDays++;
+		}
+	}
+	const endOfWindow = startOfUTCDay + trailingDays * 86400000 + (toMin * 60 + 59) * 1000;
 	ends.push(endOfWindow);
 	return { visible: true, availableUntil: ends.length ? Math.min(...ends) : null };
 }
@@ -426,7 +438,7 @@ export function describeItemOutcome(effectType: string, result: any): ItemOutcom
 			tone: 'win',
 			icon: effectIcon('insurance'),
 			title: 'Insurance Active',
-			line: `The next time you're robbed, ${r.refundPercent ?? 100}% of your loss is refunded.`,
+			line: `The next time you're robbed or bombed, ${r.refundPercent ?? 100}% of your loss is refunded.`,
 			deltaXp: null,
 			untilMs: toMs(r.expiresAt)
 		};

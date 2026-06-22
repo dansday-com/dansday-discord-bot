@@ -2,7 +2,7 @@ import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 import { getRedisClient } from '../../../../redis.js';
 import { getLevelRequirement, determineLevel, evaluateMemberLevelAndRank } from './leveling.js';
-import { TARGETED_EFFECTS, ANNOUNCED_EFFECTS, getItemEffect, BAG_CAPACITY, effectAccentInt } from '../../../../items.js';
+import { TARGETED_EFFECTS, ANNOUNCED_EFFECTS, getItemEffect, BAG_CAPACITY, effectAccentInt, formatDuration } from '../../../../items.js';
 
 const EFFECT_CACHE_TTL_MS = 5000;
 const GAMBLE_ANNOUNCE_DELAY_MS = 3900;
@@ -296,18 +296,20 @@ export async function resolveSteal({ actorMemberId, actorMemberItemId, targetMem
 	const amount = Math.min(target.total, Math.floor((target.total * pct) / 100));
 
 	if (await consumeReactiveDefense(targetMemberId, 'reflect')) {
-		if (amount > 0) {
-			await spendXp(actorMemberId, amount, guildId);
+		const attacker = await getSpendableXp(actorMemberId, guildId);
+		const reflected = Math.min(amount, attacker.total);
+		if (reflected > 0) {
+			await spendXp(actorMemberId, reflected, guildId);
 			await invalidateEffectCache(actorMemberId);
 		}
 		await db.logMemberItemAction(actorMemberId, {
 			member_item_id: actorMemberItemId,
 			target_member_id: targetMemberId,
 			action: 'steal',
-			xp_amount: amount,
+			xp_amount: reflected,
 			outcome: 'reflected'
 		});
-		return { outcome: 'reflected', xp: amount };
+		return { outcome: 'reflected', xp: reflected };
 	}
 
 	if (amount <= 0) {
@@ -389,18 +391,20 @@ export async function resolveBomb({ actorMemberId, actorMemberItemId, targetMemb
 	const amount = Math.min(target.total, Math.floor((target.total * pct) / 100));
 
 	if (await consumeReactiveDefense(targetMemberId, 'reflect')) {
-		if (amount > 0) {
-			await spendXp(actorMemberId, amount, guildId);
+		const attacker = await getSpendableXp(actorMemberId, guildId);
+		const reflected = Math.min(amount, attacker.total);
+		if (reflected > 0) {
+			await spendXp(actorMemberId, reflected, guildId);
 			await invalidateEffectCache(actorMemberId);
 		}
 		await db.logMemberItemAction(actorMemberId, {
 			member_item_id: actorMemberItemId,
 			target_member_id: targetMemberId,
 			action: 'bomb',
-			xp_amount: amount,
+			xp_amount: reflected,
 			outcome: 'reflected'
 		});
-		return { outcome: 'reflected', xp: amount };
+		return { outcome: 'reflected', xp: reflected };
 	}
 
 	if (amount > 0) {
@@ -947,13 +951,8 @@ function discordRelative(date: any): string | null {
 function humanizeUntil(date: any): string {
 	const ms = date instanceof Date ? date.getTime() : new Date(date).getTime();
 	const secs = Math.max(0, Math.round((ms - Date.now()) / 1000));
-	const d = Math.floor(secs / 86400);
-	const h = Math.floor((secs % 86400) / 3600);
-	const m = Math.floor((secs % 3600) / 60);
-	if (d > 0) return `${d}d ${h}h`;
-	if (h > 0) return `${h}h ${m}m`;
-	if (m > 0) return `${m}m`;
-	return `${secs}s`;
+	if (secs < 60) return `${secs}s`;
+	return formatDuration(Math.floor(secs / 60));
 }
 
 function fmtXp(n: any): string {
@@ -1063,7 +1062,7 @@ function buildItemUseEmbed(EmbedBuilder: any, embedConfig: any, ctx: any) {
 			insurance: {
 				emoji: '💵',
 				title: 'Insurance Activated',
-				desc: `will be refunded ${result?.refundPercent ?? 100}% of their loss the next time they are robbed`
+				desc: `will be refunded ${result?.refundPercent ?? 100}% of their loss the next time they are robbed or bombed`
 			}
 		};
 		const m = meta[effectType];

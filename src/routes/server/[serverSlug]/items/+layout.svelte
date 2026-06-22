@@ -105,11 +105,9 @@
 	});
 
 	function remainingLabel(untilMs: number): string {
-		const s = Math.max(0, Math.floor((untilMs - now) / 1000));
-		const m = Math.floor(s / 60);
-		if (m >= 60) return formatDuration(m);
-		if (m > 0) return `${m}m ${s % 60}s`;
-		return `${s}s`;
+		const secs = Math.max(0, Math.floor((untilMs - now) / 1000));
+		if (secs < 60) return `${secs}s`;
+		return formatDuration(Math.floor(secs / 60));
 	}
 
 	const typeTabs = $derived.by(() => {

@@ -1755,7 +1755,14 @@ export async function getNewlyExpiredEffects(botId: any, limit = 100) {
 		       tgt.discord_member_id AS target_discord_member_id,
 		       tgt.server_display_name AS target_server_display_name,
 		       tgt.display_name AS target_display_name,
-		       tgt.username AS target_username
+		       tgt.username AS target_username,
+		       (
+		         SELECT l.actor_disguised
+		         FROM server_member_item_logs l
+		         WHERE l.member_item_id = sma.member_item_id AND l.action = bi.effect_type AND l.created_at <= sma.created_at
+		         ORDER BY l.created_at DESC, l.id DESC
+		         LIMIT 1
+		       ) AS disguised_at_activation
 		FROM server_member_item_actives sma
 		INNER JOIN server_member_items smi ON smi.id = sma.member_item_id
 		INNER JOIN items bi ON bi.id = smi.item_id

@@ -17,7 +17,7 @@
 	const shopItems = $derived(
 		(data.visibleItems ?? [])
 			.map((item: any) => {
-				const a = itemAvailability(item, ctx.now);
+				const a = itemAvailability(item, ctx.now, tzOffset());
 				return { ...item, availableUntil: a.availableUntil, _visible: a.visible };
 			})
 			.filter((item: any) => item._visible)

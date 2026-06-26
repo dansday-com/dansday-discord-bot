@@ -3345,6 +3345,15 @@
 .m-root .m-card[data-cat='bounty'] {
 	--cat: var(--effect-bounty);
 }
+.m-root .m-card[data-cat='spy'] {
+	--cat: var(--effect-spy);
+}
+.m-root .m-card[data-cat='disguise'] {
+	--cat: var(--effect-disguise);
+}
+.m-root .m-card[data-cat='purifier'] {
+	--cat: var(--effect-purifier);
+}
 
 .m-root .m-card-glow {
 	position: absolute;
@@ -4975,6 +4984,9 @@
 .m-out {
 	width: 100%;
 	max-width: 360px;
+	max-height: calc(100dvh - 32px);
+	overflow-y: auto;
+	-webkit-overflow-scrolling: touch;
 	text-align: center;
 	padding: 28px 24px 24px;
 	border-radius: 20px;

@@ -440,7 +440,8 @@ function scheduleMinutesLocal(hhmm: any, fallback: number): number {
 
 export function itemAvailability(
 	item: { available_from?: string | null; available_to?: string | null; recurring_schedule?: any; availableUntil?: number | null },
-	nowMs: number
+	nowMs: number,
+	tzOffsetMin = 0
 ): { visible: boolean; availableUntil: number | null } {
 	const schedule = item.recurring_schedule;
 	const hasSchedule = !!(schedule && Array.isArray(schedule.days) && schedule.days.length > 0);
@@ -449,15 +450,17 @@ export function itemAvailability(
 		return { visible: true, availableUntil: item.availableUntil ?? null };
 	}
 
-	const now = new Date(nowMs);
 	if (item.available_from && nowMs < new Date(item.available_from).getTime()) return { visible: false, availableUntil: null };
 	if (item.available_to && nowMs > new Date(item.available_to).getTime()) return { visible: false, availableUntil: null };
+
+	const offsetMs = (Number.isFinite(Number(tzOffsetMin)) ? Number(tzOffsetMin) : 0) * 60000;
+	const local = new Date(nowMs + offsetMs);
 
 	const days = schedule.days.map(Number);
 	const fromMin = scheduleMinutesLocal(schedule.from, 0);
 	const toMin = scheduleMinutesLocal(schedule.to, 1439);
-	const minutes = now.getUTCHours() * 60 + now.getUTCMinutes();
-	if (!days.includes(now.getUTCDay()) || minutes < fromMin || minutes > toMin) {
+	const minutes = local.getUTCHours() * 60 + local.getUTCMinutes();
+	if (!days.includes(local.getUTCDay()) || minutes < fromMin || minutes > toMin) {
 		return { visible: false, availableUntil: null };
 	}
 
@@ -466,7 +469,8 @@ export function itemAvailability(
 		const t = new Date(item.available_to).getTime();
 		if (Number.isFinite(t)) ends.push(t);
 	}
-	const startOfUTCDay = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+	// Local day boundary expressed back in real (UTC) ms by subtracting the offset.
+	const startOfLocalDay = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate()) - offsetMs;
 	const uniqueDays = new Set(days);
 	const isFullDay = fromMin <= 0 && toMin >= 1439;
 	if (isFullDay && uniqueDays.size >= 7) {
@@ -474,11 +478,11 @@ export function itemAvailability(
 	}
 	let trailingDays = 0;
 	if (isFullDay) {
-		while (trailingDays < 6 && uniqueDays.has((now.getUTCDay() + trailingDays + 1) % 7)) {
+		while (trailingDays < 6 && uniqueDays.has((local.getUTCDay() + trailingDays + 1) % 7)) {
 			trailingDays++;
 		}
 	}
-	const endOfWindow = startOfUTCDay + trailingDays * 86400000 + (toMin * 60 + 59) * 1000;
+	const endOfWindow = startOfLocalDay + trailingDays * 86400000 + (toMin * 60 + 59) * 1000;
 	ends.push(endOfWindow);
 	return { visible: true, availableUntil: ends.length ? Math.min(...ends) : null };
 }

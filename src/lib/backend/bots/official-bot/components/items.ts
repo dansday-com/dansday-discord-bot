@@ -966,6 +966,10 @@ export async function handleItemUse(client: any, payload: any) {
 		result
 	}).catch(() => null);
 
+	if (effectType === 'purifier' && (result?.cleared ?? 0) > 0) {
+		await runExpirySweep(client).catch(() => null);
+	}
+
 	return { ok: true, outcome: result?.outcome ?? 'success', effect_type: effectType, result };
 }
 
@@ -1362,13 +1366,14 @@ async function sweepExpiredBuffs(client: any, botId: any, EmbedBuilder: any) {
 					const targetName = targetMember ? `${targetMember}` : row.target_server_display_name || row.target_display_name || row.target_username || 'them';
 					text = `Your **${mag || 0}% Leech** on ${targetName} has ended.`;
 				}
+				const anonymous = row.effect_type === 'disguise';
 				const embed = new EmbedBuilder()
 					.setColor(effectAccentInt(row.effect_type))
 					.setTitle(`${meta.emoji} ${meta.label} Ended`)
-					.setDescription(member ? `${member} — ${text}` : text)
+					.setDescription(anonymous ? 'A member stepped out of disguise — they are visible again.' : member ? `${member} — ${text}` : text)
 					.setFooter({ text: embedConfig.FOOTER || 'Items' })
 					.setTimestamp();
-				await deliverToMemberAndChannel(guild, embed, member ? `${member}` : undefined);
+				await deliverToMemberAndChannel(guild, embed, anonymous ? undefined : member ? `${member}` : undefined);
 			}
 		}
 		handledIds.push(Number(row.id));

@@ -1751,7 +1751,7 @@ export async function getNewlyExpiredEffects(botId: any, limit = 100) {
 	const rows = await db.execute(sql`
 		SELECT sma.id, sma.effect_value, sma.expires_at, sma.beneficiary_member_id, sma.target_member_id,
 		       bi.effect_type, bi.name AS item_name,
-		       sm.discord_member_id, s.discord_server_id,
+		       sm.id AS member_id, sm.discord_member_id, s.discord_server_id,
 		       tgt.discord_member_id AS target_discord_member_id,
 		       tgt.server_display_name AS target_server_display_name,
 		       tgt.display_name AS target_display_name,
@@ -1962,8 +1962,7 @@ export async function getLastActionByActor(memberId: any, action: string) {
 	const rows = await db.execute(sql`
 		SELECT sml.created_at
 		FROM server_member_item_logs sml
-		INNER JOIN server_member_items smi ON smi.id = sml.member_item_id
-		WHERE smi.member_id = ${Number(memberId)} AND sml.action = ${String(action)}
+		WHERE sml.member_id = ${Number(memberId)} AND sml.action = ${String(action)}
 		ORDER BY sml.created_at DESC
 		LIMIT 1
 	`);
@@ -1979,8 +1978,7 @@ export async function getLastAttackActionByActor(memberId: any, actions: string[
 	const rows = await db.execute(sql`
 		SELECT sml.created_at
 		FROM server_member_item_logs sml
-		INNER JOIN server_member_items smi ON smi.id = sml.member_item_id
-		WHERE smi.member_id = ${Number(memberId)} AND sml.action IN (${sql.join(
+		WHERE sml.member_id = ${Number(memberId)} AND sml.action IN (${sql.join(
 			list.map((a) => sql`${a}`),
 			sql`, `
 		)})

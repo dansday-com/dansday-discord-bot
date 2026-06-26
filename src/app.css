@@ -4981,21 +4981,13 @@
 	background: rgba(26, 52, 63, 0.45);
 	backdrop-filter: blur(4px);
 	animation: m-out-fade 0.2s ease;
-	overflow-y: auto;
-	-webkit-overflow-scrolling: touch;
-}
-/* When the dialog is taller than the viewport, top-align so the whole thing
-   (incl. the Done button) is reachable by scrolling the overlay. */
-@media (max-height: 720px) {
-	.m-out-overlay {
-		align-items: flex-start;
-	}
+	overflow: hidden;
 }
 
 .m-out {
 	width: 100%;
 	max-width: 360px;
-	margin: auto;
+	max-height: 100%;
 	text-align: center;
 	padding: 28px 24px 24px;
 	border-radius: 20px;
@@ -5007,6 +4999,44 @@
 
 .m-out--spy {
 	max-width: 440px;
+	display: flex;
+	flex-direction: column;
+	padding: 22px 20px 20px;
+}
+.m-out--spy .m-spy {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow-y: auto;
+	-webkit-overflow-scrolling: touch;
+	margin-top: 12px;
+	padding-right: 2px;
+}
+.m-out--spy .m-out-icon,
+.m-out--spy .m-out-title,
+.m-out--spy .m-out-line,
+.m-out--spy .m-out-close {
+	flex: 0 0 auto;
+}
+.m-out--spy .m-out-close {
+	margin-top: 14px;
+}
+.m-out--spy .m-out-icon {
+	width: 52px;
+	height: 52px;
+	margin-bottom: 8px;
+	font-size: 22px;
+}
+.m-out--spy .m-out-title {
+	font-size: 19px;
+}
+.m-out--spy .m-out-line {
+	margin-top: 4px;
+}
+.m-out--spy .m-spy-sec {
+	padding: 10px 12px;
+}
+.m-out--spy .m-spy-head {
+	margin-bottom: 7px;
 }
 
 .m-out--win {

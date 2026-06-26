@@ -1386,6 +1386,10 @@ async function sweepExpiredBuffs(client: any, botId: any, EmbedBuilder: any) {
 	const rows = await db.getNewlyExpiredEffects(botId).catch(() => []);
 	if (!rows || rows.length === 0) return;
 
+	// Members whose disguise is ending in this same batch (e.g. via Purifier) — any
+	// other effect of theirs that ends now was set up while hidden, so keep it anonymous.
+	const disguiseEndingMembers = new Set(rows.filter((r: any) => r.effect_type === 'disguise').map((r: any) => String(r.discord_member_id)));
+
 	const handledIds: number[] = [];
 	for (const row of rows) {
 		const meta = getItemEffect(row.effect_type);
@@ -1401,14 +1405,17 @@ async function sweepExpiredBuffs(client: any, botId: any, EmbedBuilder: any) {
 					const targetName = targetMember ? `${targetMember}` : row.target_server_display_name || row.target_display_name || row.target_username || 'them';
 					text = `Your **${mag || 0}% Leech** on ${targetName} has ended.`;
 				}
-				const anonymous = row.effect_type === 'disguise';
+				const disguisedNow = row.member_id ? await isDisguised(row.member_id).catch(() => false) : false;
+				const hidden = row.effect_type === 'disguise' || disguisedNow || disguiseEndingMembers.has(String(row.discord_member_id));
+				const description =
+					row.effect_type === 'disguise' ? 'A member stepped out of disguise — they are visible again.' : hidden ? text : member ? `${member} — ${text}` : text;
 				const embed = new EmbedBuilder()
 					.setColor(effectAccentInt(row.effect_type))
 					.setTitle(`${meta.emoji} ${meta.label} Ended`)
-					.setDescription(anonymous ? 'A member stepped out of disguise — they are visible again.' : member ? `${member} — ${text}` : text)
+					.setDescription(description)
 					.setFooter({ text: embedConfig.FOOTER || 'Items' })
 					.setTimestamp();
-				await deliverToMemberAndChannel(guild, embed, anonymous ? undefined : member ? `${member}` : undefined);
+				await deliverToMemberAndChannel(guild, embed, hidden ? undefined : member ? `${member}` : undefined);
 			}
 		}
 		handledIds.push(Number(row.id));

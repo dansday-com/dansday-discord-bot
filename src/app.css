@@ -807,6 +807,12 @@
 	margin-bottom: 28px;
 	background: rgba(255, 255, 255, 0.35);
 }
+.m-tabs--sub:has(+ .m-tabs--sub2) {
+	margin-bottom: 8px;
+}
+.m-tabs--sub2 {
+	background: rgba(255, 255, 255, 0.25);
+}
 .m-tab--sm {
 	flex: 0 1 auto;
 	padding: 6px 10px;

@@ -1,6 +1,16 @@
 import { getRedisClient } from '../../../redis.js';
 
-export type LeaderboardMetric = 'xp' | 'chat' | 'voice_total' | 'voice_active' | 'voice_afk' | 'video' | 'streaming';
+export type LeaderboardMetric =
+	| 'xp'
+	| 'chat'
+	| 'voice_total'
+	| 'voice_active'
+	| 'voice_afk'
+	| 'video'
+	| 'streaming'
+	| 'items_gamble_net'
+	| 'items_gamble_ratio'
+	| 'items_gamble_big';
 
 export type LeaderboardPeriod = 'all' | 'month' | 'week';
 
@@ -18,6 +28,11 @@ export type LeaderboardRow = {
 	voice_minutes_afk: number | null;
 	voice_minutes_video: number | null;
 	voice_minutes_streaming: number | null;
+	gamble_net?: number | null;
+	gamble_wins?: number | null;
+	gamble_total?: number | null;
+	gamble_big_win?: number | null;
+	gamble_ratio?: number | null;
 	rank: number | null;
 };
 

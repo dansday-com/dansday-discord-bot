@@ -8,8 +8,20 @@
 	type Metric = typeof data.metric;
 	type Period = typeof data.period;
 
-	const METRICS: Metric[] = ['xp', 'chat', 'voice_total', 'voice_active', 'voice_afk', 'video', 'streaming'];
+	const METRICS: Metric[] = [
+		'xp',
+		'chat',
+		'voice_total',
+		'voice_active',
+		'voice_afk',
+		'video',
+		'streaming',
+		'items_gamble_net',
+		'items_gamble_ratio',
+		'items_gamble_big'
+	];
 	const VOICE_METRICS: Metric[] = ['voice_total', 'voice_active', 'voice_afk', 'video', 'streaming'];
+	const ITEMS_METRICS: Metric[] = ['items_gamble_net', 'items_gamble_ratio', 'items_gamble_big'];
 	const PERIODS: { id: Period; label: string }[] = [
 		{ id: 'all', label: 'All time' },
 		{ id: 'month', label: 'This month' },
@@ -26,6 +38,8 @@
 	let streamConnected = $state(false);
 
 	const isVoiceGroup = $derived(VOICE_METRICS.includes(metric));
+	const isItemsGroup = $derived(ITEMS_METRICS.includes(metric));
+	const isRatio = $derived(metric === 'items_gamble_ratio');
 	const isPeriod = $derived(period !== 'all');
 
 	const top3 = $derived(rows.slice(0, 3));
@@ -53,6 +67,9 @@
 		if (m === 'voice_afk') return 'Voice (AFK)';
 		if (m === 'video') return 'Video';
 		if (m === 'streaming') return 'Streaming';
+		if (m === 'items_gamble_net') return 'Gambler — Win XP';
+		if (m === 'items_gamble_ratio') return 'Gambler — Win ratio';
+		if (m === 'items_gamble_big') return 'Gambler — Big win';
 		return 'XP';
 	}
 
@@ -63,15 +80,22 @@
 		if (m === 'voice_afk') return Number(r.voice_minutes_afk || 0);
 		if (m === 'video') return Number(r.voice_minutes_video || 0);
 		if (m === 'streaming') return Number(r.voice_minutes_streaming || 0);
+		if (m === 'items_gamble_net') return Number(r.gamble_net || 0);
+		if (m === 'items_gamble_ratio') return Number(r.gamble_ratio || 0);
+		if (m === 'items_gamble_big') return Number(r.gamble_big_win || 0);
 		return Number(r.experience || 0);
 	}
 
 	function metricValueAnimated(r: any, m: string) {
 		const n = anim[r.discord_member_id] ?? metricValueNumber(r, m);
-		return Math.round(n).toLocaleString();
+		if (m === 'items_gamble_ratio') return (Math.round(n * 10) / 10).toLocaleString();
+		const rounded = Math.round(n);
+		return rounded.toLocaleString();
 	}
 
 	function metricUnit(m: string) {
+		if (m === 'items_gamble_ratio') return '%';
+		if (m === 'items_gamble_net' || m === 'items_gamble_big') return 'xp';
 		if (isPeriod) {
 			if (m === 'xp') return 'xp';
 			return 'times';
@@ -79,6 +103,18 @@
 		if (m === 'chat') return 'msgs';
 		if (m.startsWith('voice_') || m === 'video' || m === 'streaming') return 'min';
 		return 'xp';
+	}
+
+	function gambleSub(r: any, m: string) {
+		if (m === 'items_gamble_net' || m === 'items_gamble_big') {
+			const w = Number(r.gamble_wins || 0);
+			const t = Number(r.gamble_total || 0);
+			return `${w}/${t} wins`;
+		}
+		if (m === 'items_gamble_ratio') {
+			return `${Number(r.gamble_wins || 0)}/${Number(r.gamble_total || 0)} wins`;
+		}
+		return '';
 	}
 
 	function barWidthPct(r: any, m: string) {
@@ -266,7 +302,29 @@
 	<button class="m-tab {isVoiceGroup ? 'm-tab--active' : ''}" onclick={() => setMetric('voice_total')}>
 		<i class="fas fa-microphone"></i> Voice
 	</button>
+	<button class="m-tab {isItemsGroup ? 'm-tab--active' : ''}" onclick={() => setMetric('items_gamble_net')}>
+		<i class="fas fa-dice"></i> Items
+	</button>
 </div>
+
+{#if isItemsGroup}
+	<div class="m-tabs m-tabs--sub">
+		<button class="m-tab m-tab--sm m-tab--active" onclick={() => setMetric('items_gamble_net')}>
+			<i class="fas fa-dice"></i> Top Gambler
+		</button>
+	</div>
+	<div class="m-tabs m-tabs--sub m-tabs--sub2">
+		<button class="m-tab m-tab--sm {metric === 'items_gamble_net' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_gamble_net')}>
+			<i class="fas fa-coins"></i> Win XP
+		</button>
+		<button class="m-tab m-tab--sm {metric === 'items_gamble_ratio' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_gamble_ratio')}>
+			<i class="fas fa-percent"></i> Win ratio
+		</button>
+		<button class="m-tab m-tab--sm {metric === 'items_gamble_big' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_gamble_big')}>
+			<i class="fas fa-trophy"></i> Big win
+		</button>
+	</div>
+{/if}
 
 {#if isVoiceGroup}
 	<div class="m-tabs m-tabs--sub">
@@ -326,7 +384,7 @@
 							{metricValueAnimated(r, metric)}
 							<span class="m-podium-unit">{metricUnit(metric)}</span>
 						</div>
-						<div class="m-podium-level">Level {r.level ?? 0}</div>
+						<div class="m-podium-level">{isItemsGroup ? gambleSub(r, metric) : `Level ${r.level ?? 0}`}</div>
 					</div>
 
 					<div class="m-podium-block" style="height: {podiumHeights[rank]}; background: {rankGradients[rank]};">
@@ -357,7 +415,7 @@
 					</div>
 					<div class="m-list-info">
 						<div class="m-list-name" title={displayName(r)}>{displayName(r)}</div>
-						<div class="m-list-sub">Level {r.level ?? 0}</div>
+						<div class="m-list-sub">{isItemsGroup ? gambleSub(r, metric) : `Level ${r.level ?? 0}`}</div>
 						<div class="m-list-bar-track">
 							<div class="m-list-bar-fill" style="width: {barWidthPct(r, metric)}%"></div>
 						</div>

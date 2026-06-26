@@ -126,6 +126,61 @@ function buildPeriodRows(entries: any[], metric: LeaderboardMetric, limit: numbe
 		}));
 }
 
+const GAMBLER_METRICS: LeaderboardMetric[] = ['items_gamble_net', 'items_gamble_ratio', 'items_gamble_big'];
+const MIN_GAMBLES_FOR_RATIO = 5;
+
+function buildGamblerRows(entries: any[], metric: LeaderboardMetric, limit: number): LeaderboardRow[] {
+	const safe = Math.max(1, Math.min(100, limit));
+	const ratio = (e: any): number => {
+		const total = Number(e.gamble_total ?? 0);
+		if (total <= 0) return 0;
+		return (Number(e.gamble_wins ?? 0) / total) * 100;
+	};
+	const value = (e: any): number => {
+		switch (metric) {
+			case 'items_gamble_ratio':
+				return ratio(e);
+			case 'items_gamble_big':
+				return Number(e.gamble_big_win ?? 0);
+			default:
+				return Number(e.gamble_net ?? 0);
+		}
+	};
+
+	let pool = entries.filter((e) => Number(e.gamble_total ?? 0) > 0);
+	if (metric === 'items_gamble_ratio') pool = pool.filter((e) => Number(e.gamble_total ?? 0) >= MIN_GAMBLES_FOR_RATIO);
+	if (metric === 'items_gamble_big') pool = pool.filter((e) => Number(e.gamble_big_win ?? 0) > 0);
+
+	const sorted = [...pool].sort((a, b) => {
+		const vb = value(b);
+		const va = value(a);
+		if (vb !== va) return vb - va;
+		return String(a.discord_member_id).localeCompare(String(b.discord_member_id));
+	});
+
+	return sorted.slice(0, safe).map((e) => ({
+		discord_member_id: e.discord_member_id,
+		username: e.username,
+		display_name: e.display_name,
+		server_display_name: e.server_display_name,
+		avatar: e.avatar,
+		experience: 0,
+		level: e.level ?? 0,
+		chat_total: 0,
+		voice_minutes_total: 0,
+		voice_minutes_active: 0,
+		voice_minutes_afk: 0,
+		voice_minutes_video: 0,
+		voice_minutes_streaming: 0,
+		gamble_net: Number(e.gamble_net ?? 0),
+		gamble_wins: Number(e.gamble_wins ?? 0),
+		gamble_total: Number(e.gamble_total ?? 0),
+		gamble_big_win: Number(e.gamble_big_win ?? 0),
+		gamble_ratio: Math.round(ratio(e) * 10) / 10,
+		rank: null
+	}));
+}
+
 type Listener = (snap: LeaderboardSnapshot) => void;
 
 type StreamKey = string;
@@ -147,7 +202,10 @@ const CACHE_FRESH_MS = 20_000;
 async function buildSnapshot(serverId: number, metric: LeaderboardMetric, period: LeaderboardPeriod, limit: number): Promise<LeaderboardSnapshot> {
 	let rows: LeaderboardRow[];
 	const since = periodSince(period);
-	if (since) {
+	if (GAMBLER_METRICS.includes(metric)) {
+		const entries = await db.getItemsGamblerLeaderboard(serverId, since).catch(() => []);
+		rows = buildGamblerRows(entries, metric, limit);
+	} else if (since) {
 		const entries = await db.getLeaderboardPeriodCounts(serverId, since).catch(() => []);
 		rows = buildPeriodRows(entries, metric, limit);
 	} else {

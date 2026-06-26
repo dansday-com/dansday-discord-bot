@@ -12,16 +12,9 @@
 
 	const pd = $derived(page.data as any);
 
-	const basePath = $derived(publicServerPath(data.server.slug));
-	const itemsBase = $derived(`${basePath}/items`);
+	const itemsBase = $derived(`${publicServerPath(data.server.slug)}/items`);
 	const readOnly = $derived(!!pd.readOnly || !pd.memberCard);
 	const navHash = $derived(pd.hash || 'guest');
-	const sectionTabs = $derived([
-		{ label: 'Statistics', icon: 'fa-chart-pie', href: basePath },
-		{ label: 'Leaderboard', icon: 'fa-trophy', href: `${basePath}/leaderboard` },
-		{ label: 'Members', icon: 'fa-users', href: `${basePath}/members` },
-		{ label: 'Items', icon: 'fa-store', href: `${itemsBase}/shop/all/${navHash}`, active: true }
-	]);
 	const pathNorm = $derived(page.url.pathname.replace(/\/$/, ''));
 	const isBag = $derived(/\/items\/bag\//.test(pathNorm));
 	const isHistory = $derived(/\/items\/history\//.test(pathNorm));
@@ -284,30 +277,6 @@
 </script>
 
 <div class="m-items">
-	<header class="m-header">
-		<div class="m-server-icon">
-			{#if data.server.server_icon}
-				<img src={data.server.server_icon} alt={data.server.name || ''} />
-			{:else}
-				<span class="m-icon-placeholder">🏆</span>
-			{/if}
-		</div>
-		<div class="m-header-text">
-			<h1>{data.server.name || data.server.slug}</h1>
-		</div>
-	</header>
-
-	{#if pd.publicStatsEnabled}
-		<div class="m-section-tabs">
-			{#each sectionTabs as tab}
-				<a href={tab.href} class="m-section-tab" class:m-section-tab--active={tab.active} data-sveltekit-preload-data="hover">
-					<i class="fas {tab.icon}"></i>
-					{tab.label}
-				</a>
-			{/each}
-		</div>
-	{/if}
-
 	{#if !readOnly}
 		<div class="m-xp">
 			<div class="m-xp-glow"></div>
@@ -416,7 +385,17 @@
 		</div>
 	{/if}
 
-	{#if readOnly}
+	{#if readOnly && isShop}
+		<div class="m-guest">
+			<div class="m-guest-ic"><i class="fas fa-lock"></i></div>
+			<div class="m-guest-body">
+				<h3>You're browsing as a guest</h3>
+				<p>Buying and using items is locked. Open the items page from the <strong>items button</strong> in your Discord server to log in and play.</p>
+			</div>
+		</div>
+	{/if}
+
+	{#if readOnly && !isGuide}
 		<div class="m-readonly" inert>
 			{@render children()}
 		</div>

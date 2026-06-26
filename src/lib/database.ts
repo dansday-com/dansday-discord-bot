@@ -918,10 +918,13 @@ export async function listEnabledLeaderboardServers() {
 			sv.name,
 			sv.updated_at,
 			sv.server_icon,
-			ss.settings AS settings
+			ss.settings AS settings,
+			si.settings AS items_settings
 		FROM servers sv
 		INNER JOIN server_settings ss
 			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.public_statistics}
+		LEFT JOIN server_settings si
+			ON si.server_id = sv.id AND si.component_name = ${SERVER_SETTINGS.component.items}
 	`);
 	const list = (rows[0] as unknown as any[]) || [];
 	return list
@@ -930,7 +933,13 @@ export async function listEnabledLeaderboardServers() {
 			const s = parseLeaderboardSettingsColumn(r.settings);
 			return s.enabled !== false;
 		})
-		.map((r: any) => ({ id: Number(r.id), name: r.name ?? null, updated_at: r.updated_at, server_icon: r.server_icon ?? null }));
+		.map((r: any) => ({
+			id: Number(r.id),
+			name: r.name ?? null,
+			updated_at: r.updated_at,
+			server_icon: r.server_icon ?? null,
+			items_enabled: parseLeaderboardSettingsColumn(r.items_settings).enabled === true
+		}));
 }
 
 export async function upsertCategory(serverId: any, categoryData: any) {

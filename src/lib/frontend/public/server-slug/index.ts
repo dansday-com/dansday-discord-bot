@@ -6,6 +6,7 @@ export type PublicSlugServerRow = {
 	name: string | null;
 	updated_at: any;
 	server_icon?: string | null;
+	items_enabled?: boolean;
 };
 
 function serverSlugKey(s: PublicSlugServerRow) {
@@ -20,10 +21,14 @@ export async function resolvePublicServerBySlug(requestedSlug: string): Promise<
 	return { server: resolved.item, computedSlug: resolved.computedSlug };
 }
 
-export async function listPublicServerSlugs(): Promise<{ slug: string; updated_at: any }[]> {
+export async function listPublicServerSlugs(): Promise<{ slug: string; updated_at: any; items_enabled: boolean }[]> {
 	const servers: PublicSlugServerRow[] = await (db as any).listEnabledLeaderboardServers();
 	if (!Array.isArray(servers) || servers.length === 0) return [];
-	return listIndexedSlugsForItems(servers, serverSlugKey);
+	return listIndexedSlugsForItems(servers, serverSlugKey).map((row) => ({
+		slug: row.slug,
+		updated_at: row.updated_at,
+		items_enabled: row.item.items_enabled === true
+	}));
 }
 
 export async function computePublicServerSlugForServerId(serverId: number): Promise<string | null> {

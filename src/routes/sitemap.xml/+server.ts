@@ -2,6 +2,7 @@ import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
 import { listPublicServerSlugs } from '$lib/frontend/public/server-slug/index.js';
 import { parseMySQLDateTimeUtc } from '$lib/utils/datetime.js';
+import { ITEM_EFFECTS } from '$lib/items.js';
 
 function escapeXml(unsafe: string): string {
 	return unsafe.replace(
@@ -37,16 +38,26 @@ export const GET: RequestHandler = async () => {
 
 	const publicPageRows = servers
 		.filter((s: { slug?: string }) => s.slug)
-		.flatMap((s: { slug: string; updated_at?: unknown }) => {
+		.flatMap((s: { slug: string; updated_at?: unknown; items_enabled?: boolean }) => {
 			const enc = encodeURIComponent(String(s.slug));
 			const lastmod = toLastmod(s.updated_at);
-			const base = { lastmod, changefreq: 'hourly' as const, priority: 0.8 as const };
+			const base = { lastmod, changefreq: 'hourly' as const, priority: 0.8 };
 			const root = `${baseUrl.replace(/\/$/, '')}/server`;
-			return [
+			const urls: { loc: string; lastmod: string | undefined; changefreq: 'hourly'; priority: number }[] = [
 				{ loc: `${root}/${enc}`, ...base },
 				{ loc: `${root}/${enc}/leaderboard`, ...base },
 				{ loc: `${root}/${enc}/members`, ...base }
 			];
+			if (s.items_enabled) {
+				const itemsBase = `${root}/${enc}/items`;
+				const shopCategories = ['all', ...ITEM_EFFECTS.map((e) => e.id)];
+				urls.push({ loc: itemsBase, ...base, priority: 0.7 });
+				urls.push({ loc: `${itemsBase}/guide/guest`, ...base, priority: 0.7 });
+				for (const cat of shopCategories) {
+					urls.push({ loc: `${itemsBase}/shop/${cat}/guest`, ...base, priority: 0.6 });
+				}
+			}
+			return urls;
 		});
 
 	const staticPages = [{ loc: `${baseUrl}/`, changefreq: 'weekly' as const, priority: 1.0, lastmod: new Date().toISOString() }];

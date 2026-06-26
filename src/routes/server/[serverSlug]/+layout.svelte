@@ -1,21 +1,10 @@
 <script lang="ts">
-	import { page } from '$app/state';
-	import { publicServerPath } from '$lib/url.js';
 	import MainHeader from '$lib/frontend/components/MainHeader.svelte';
 	import MainFooter from '$lib/frontend/components/MainFooter.svelte';
+	import ServerNav from '$lib/frontend/components/ServerNav.svelte';
 	import type { LayoutProps } from './$types';
 
 	let { data, children }: LayoutProps = $props();
-
-	const basePath = $derived(publicServerPath(data.server.slug));
-	const leaderboardPath = $derived(`${basePath}/leaderboard`);
-	const membersPath = $derived(`${basePath}/members`);
-	const itemsPath = $derived(`${basePath}/items`);
-	const pathNorm = $derived(page.url.pathname.replace(/\/$/, ''));
-	const isLeaderboard = $derived(pathNorm.endsWith('/leaderboard'));
-	const isMembers = $derived(pathNorm.endsWith('/members'));
-	const isItems = $derived(/\/items(\/|$)/.test(pathNorm));
-	const isOverview = $derived(!isLeaderboard && !isMembers && !isItems);
 </script>
 
 <div class="m-root">
@@ -27,41 +16,7 @@
 
 	<main class="m-main">
 		<div class="m-inner">
-			{#if !isItems}
-				<header class="m-header">
-					<div class="m-server-icon">
-						{#if data.server.server_icon}
-							<img src={data.server.server_icon} alt={data.server.name || ''} />
-						{:else}
-							<span class="m-icon-placeholder">🏆</span>
-						{/if}
-					</div>
-					<div class="m-header-text">
-						<h1>{data.server.name || data.server.slug}</h1>
-					</div>
-				</header>
-
-				<div class="m-section-tabs">
-					<a href={basePath} class="m-section-tab" class:m-section-tab--active={isOverview} data-sveltekit-preload-data="hover">
-						<i class="fas fa-chart-pie"></i>
-						Statistics
-					</a>
-					<a href={leaderboardPath} class="m-section-tab" class:m-section-tab--active={isLeaderboard} data-sveltekit-preload-data="hover">
-						<i class="fas fa-trophy"></i>
-						Leaderboard
-					</a>
-					<a href={membersPath} class="m-section-tab" class:m-section-tab--active={isMembers} data-sveltekit-preload-data="hover">
-						<i class="fas fa-users"></i>
-						Members
-					</a>
-					{#if data.itemsEnabled}
-						<a href={itemsPath} class="m-section-tab" class:m-section-tab--active={isItems} data-sveltekit-preload-data="hover">
-							<i class="fas fa-store"></i>
-							Items
-						</a>
-					{/if}
-				</div>
-			{/if}
+			<ServerNav server={data.server} itemsEnabled={data.itemsEnabled} publicStatsEnabled={data.publicStatsEnabled} />
 
 			{@render children()}
 		</div>

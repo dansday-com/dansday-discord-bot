@@ -12,7 +12,8 @@
 	const BOUNTY_METRICS: Metric[] = ['items_bounty_total', 'items_bounty_claimer', 'items_bounty_give'];
 	const STEAL_METRICS: Metric[] = ['items_steal_total', 'items_steal_rate', 'items_steal_big'];
 	const BOMB_METRICS: Metric[] = ['items_bomb_total', 'items_bomb_rate', 'items_bomb_big'];
-	const ITEMS_METRICS: Metric[] = [...GAMBLER_METRICS, ...BOUNTY_METRICS, ...STEAL_METRICS, ...BOMB_METRICS];
+	const GIFT_METRICS: Metric[] = ['items_gift_give', 'items_gift_receive'];
+	const ITEMS_METRICS: Metric[] = [...GAMBLER_METRICS, ...BOUNTY_METRICS, ...STEAL_METRICS, ...BOMB_METRICS, ...GIFT_METRICS];
 	const VOICE_METRICS: Metric[] = ['voice_total', 'voice_active', 'voice_afk', 'video', 'streaming'];
 	const METRICS: Metric[] = ['xp', 'chat', ...VOICE_METRICS, ...ITEMS_METRICS];
 	const PERIODS: { id: Period; label: string }[] = [
@@ -36,6 +37,7 @@
 	const isBountyGroup = $derived(BOUNTY_METRICS.includes(metric));
 	const isStealGroup = $derived(STEAL_METRICS.includes(metric));
 	const isBombGroup = $derived(BOMB_METRICS.includes(metric));
+	const isGiftGroup = $derived(GIFT_METRICS.includes(metric));
 	const isPeriod = $derived(period !== 'all');
 
 	const top3 = $derived(rows.slice(0, 3));
@@ -75,6 +77,8 @@
 		if (m === 'items_bomb_total') return 'Bomber — XP destroyed';
 		if (m === 'items_bomb_rate') return 'Bomber — Success rate';
 		if (m === 'items_bomb_big') return 'Bomber — Big bomb';
+		if (m === 'items_gift_give') return 'Gifts — Top giver';
+		if (m === 'items_gift_receive') return 'Gifts — Most received';
 		return 'XP';
 	}
 
@@ -94,6 +98,8 @@
 		if (m === 'items_steal_rate' || m === 'items_bomb_rate') return Number(r.attack_rate || 0);
 		if (m === 'items_steal_big' || m === 'items_bomb_big') return Number(r.attack_big || 0);
 		if (m === 'items_steal_total' || m === 'items_bomb_total') return Number(r.attack_total || 0);
+		if (m === 'items_gift_give') return Number(r.gift_given || 0);
+		if (m === 'items_gift_receive') return Number(r.gift_received || 0);
 		return Number(r.experience || 0);
 	}
 
@@ -109,6 +115,7 @@
 		if (m === 'items_gamble_net' || m === 'items_gamble_big') return 'xp';
 		if (m === 'items_bounty_total' || m === 'items_bounty_claimer' || m === 'items_bounty_give') return 'xp';
 		if (m.startsWith('items_steal_') || m.startsWith('items_bomb_')) return 'xp';
+		if (m.startsWith('items_gift_')) return 'xp';
 		if (isPeriod) {
 			if (m === 'xp') return 'xp';
 			return 'times';
@@ -128,6 +135,8 @@
 		if (m.startsWith('items_steal_') || m.startsWith('items_bomb_')) {
 			return `${Number(r.attack_success || 0)}/${Number(r.attack_attempts || 0)} hits`;
 		}
+		if (m === 'items_gift_give') return 'gifted';
+		if (m === 'items_gift_receive') return 'received';
 		return '';
 	}
 
@@ -335,6 +344,9 @@
 		<button class="m-tab m-tab--sm {isBountyGroup ? 'm-tab--active' : ''}" onclick={() => setMetric('items_bounty_total')}>
 			<i class="fas fa-crosshairs"></i> Top Bounties
 		</button>
+		<button class="m-tab m-tab--sm {isGiftGroup ? 'm-tab--active' : ''}" onclick={() => setMetric('items_gift_give')}>
+			<i class="fas fa-gift"></i> Top Gifts
+		</button>
 	</div>
 	{#if isGamblerGroup}
 		<div class="m-tabs m-tabs--sub m-tabs--sub2">
@@ -372,7 +384,7 @@
 				<i class="fas fa-trophy"></i> Big bomb
 			</button>
 		</div>
-	{:else}
+	{:else if isBountyGroup}
 		<div class="m-tabs m-tabs--sub m-tabs--sub2">
 			<button class="m-tab m-tab--sm {metric === 'items_bounty_total' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_bounty_total')}>
 				<i class="fas fa-skull"></i> Total bounties
@@ -382,6 +394,15 @@
 			</button>
 			<button class="m-tab m-tab--sm {metric === 'items_bounty_give' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_bounty_give')}>
 				<i class="fas fa-crosshairs"></i> Top giver
+			</button>
+		</div>
+	{:else}
+		<div class="m-tabs m-tabs--sub m-tabs--sub2">
+			<button class="m-tab m-tab--sm {metric === 'items_gift_give' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_gift_give')}>
+				<i class="fas fa-gift"></i> Total give
+			</button>
+			<button class="m-tab m-tab--sm {metric === 'items_gift_receive' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_gift_receive')}>
+				<i class="fas fa-coins"></i> Most received
 			</button>
 		</div>
 	{/if}

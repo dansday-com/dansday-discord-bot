@@ -2309,6 +2309,42 @@ export async function getItemsBountyLeaderboard(serverId: any, since: Date | nul
 	return rows[0] as unknown as any[];
 }
 
+export async function getItemsGiftLeaderboard(serverId: any, since: Date | null) {
+	await initializeDatabase();
+	if (!serverId) return [] as any[];
+
+	const disguisedIds = await getDisguisedMemberIds(serverId);
+	const sinceClause = since ? sql`AND l.created_at >= ${toMySQLDateTime(since)}` : sql``;
+	const hideClause = disguisedIds.length > 0 ? sql`AND sm.id NOT IN (${sql.join(disguisedIds, sql`, `)})` : sql``;
+
+	const rows = await db.execute(sql`
+		SELECT
+			sm.discord_member_id, sm.username, sm.display_name, sm.server_display_name, sm.avatar,
+			sml.level,
+			SUM(agg.gift_given) AS gift_given,
+			SUM(agg.gift_received) AS gift_received
+		FROM (
+			SELECT l.member_id AS member_id,
+				COALESCE(SUM(l.xp_amount), 0) AS gift_given, 0 AS gift_received
+			FROM server_member_item_logs l
+			WHERE l.action = 'gift' ${sinceClause}
+			GROUP BY l.member_id
+			UNION ALL
+			SELECT l.target_member_id AS member_id,
+				0 AS gift_given, COALESCE(SUM(l.xp_amount), 0) AS gift_received
+			FROM server_member_item_logs l
+			WHERE l.action = 'gift' AND l.target_member_id IS NOT NULL ${sinceClause}
+			GROUP BY l.target_member_id
+		) agg
+		INNER JOIN server_members sm ON sm.id = agg.member_id
+		LEFT JOIN server_member_levels sml ON sml.member_id = sm.id
+		WHERE sm.server_id = ${Number(serverId)} ${hideClause}
+		GROUP BY sm.id, sm.discord_member_id, sm.username, sm.display_name, sm.server_display_name, sm.avatar, sml.level
+	`);
+
+	return rows[0] as unknown as any[];
+}
+
 export async function getServerMembersList(serverId: any) {
 	await initializeDatabase();
 	if (serverId === undefined || serverId === null || serverId === '') return [];
@@ -4400,6 +4436,7 @@ export default {
 	getItemsGamblerLeaderboard,
 	getItemsAttackLeaderboard,
 	getItemsBountyLeaderboard,
+	getItemsGiftLeaderboard,
 	getDisguisedMemberIds,
 	getServerMembersList,
 	getPanelOverview,

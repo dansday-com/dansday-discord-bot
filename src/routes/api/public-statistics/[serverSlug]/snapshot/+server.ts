@@ -23,6 +23,8 @@ function parseMetric(m: string | null): LeaderboardMetric {
 	if (v === 'items_bomb_total') return 'items_bomb_total';
 	if (v === 'items_bomb_rate') return 'items_bomb_rate';
 	if (v === 'items_bomb_big') return 'items_bomb_big';
+	if (v === 'items_gift_give') return 'items_gift_give';
+	if (v === 'items_gift_receive') return 'items_gift_receive';
 	return 'xp';
 }
 

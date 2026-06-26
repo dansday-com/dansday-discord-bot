@@ -19,7 +19,9 @@ export type LeaderboardMetric =
 	| 'items_steal_big'
 	| 'items_bomb_total'
 	| 'items_bomb_rate'
-	| 'items_bomb_big';
+	| 'items_bomb_big'
+	| 'items_gift_give'
+	| 'items_gift_receive';
 
 export type LeaderboardPeriod = 'all' | 'month' | 'week';
 
@@ -50,6 +52,8 @@ export type LeaderboardRow = {
 	attack_attempts?: number | null;
 	attack_big?: number | null;
 	attack_rate?: number | null;
+	gift_given?: number | null;
+	gift_received?: number | null;
 	rank: number | null;
 };
 

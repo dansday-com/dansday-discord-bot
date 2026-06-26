@@ -526,11 +526,6 @@ export async function resolveLeech({ memberItemId, actorMemberId, targetMemberId
 		});
 		return { outcome: 'immune', actorDisguised };
 	}
-	const mine = await db.getActiveLeechByBeneficiary(actorMemberId).catch(() => null);
-	if (mine) {
-		const who = mine.target_server_display_name || mine.target_display_name || mine.target_username || 'someone';
-		return { outcome: 'leeched', error: `Your leech on ${who} is still active — you can only run one at a time.` };
-	}
 	const existing = await activeLeechOnTarget(targetMemberId);
 	if (existing) {
 		const beneficiary = await db.getServerMemberById(existing.beneficiary_member_id).catch(() => null);
@@ -1275,7 +1270,7 @@ function buildItemUseEmbed(EmbedBuilder: any, embedConfig: any, ctx: any) {
 			.setColor(effectAccentInt('disguise'))
 			.setTitle('🎭 A Member Vanished into the Crowd')
 			.setDescription(
-				`Someone slipped on a **Disguise**${untilRel ? ` (until ${untilRel})` : ''}. Their attacks now hide their name, they're invisible to spies, and they've dropped off the leaderboard.`
+				`Someone slipped on a **Disguise**${untilRel ? ` (until ${untilRel})` : ''}. Their attacks now hide their name and they've dropped off the leaderboard.`
 			);
 		return embed;
 	}

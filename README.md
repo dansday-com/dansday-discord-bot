@@ -29,6 +29,9 @@ The project is open source under the MIT license.
   - ⚡ **Boost** — multiply your XP earnings for a set duration.
   - 🎲 **Gamble** — wager XP for a chance at a multiplied payout.
   - 🎁 **Gift** — send XP to another member (with optional tax).
+  - 🔍 **Spy** — reveal a member's bag, active effects, cooldowns, and bounty.
+  - 🎭 **Disguise** — go anonymous and drop off the leaderboard for a set duration.
+  - 🧼 **Purifier** — wipe all of your own active effects at once.
 - **Leveling & XP** — Message and voice activity feed a full XP system with levels, role rewards, and leaderboards.
 - **Welcomer** — Custom welcome messages and embeds for new members.
 - **Giveaways** — Entries, winner selection, and role-based eligibility.

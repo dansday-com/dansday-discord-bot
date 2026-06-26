@@ -387,8 +387,8 @@ const EFFECT_GUIDES: Record<string, EffectGuide> = {
 	},
 	leech: {
 		what: 'Attach to a target and quietly siphon a percentage of every XP they earn to you.',
-		how: 'Pick a target. While active, a cut of their gains is redirected to you. One leech per target.',
-		tip: 'Leech an active grinder, then stay quiet — the longer it runs, the more you skim.'
+		how: 'Pick a target. A cut of their gains is redirected to you while active. You can leech several members at once, but each member can only be leeched by one person.',
+		tip: 'Spread leeches across active grinders and stay quiet.'
 	},
 	reflect: {
 		what: 'Bounce the next attack back at whoever hits you.',
@@ -416,14 +416,14 @@ const EFFECT_GUIDES: Record<string, EffectGuide> = {
 		tip: 'Stack bounties on a rival to turn the whole server into their hunters.'
 	},
 	spy: {
-		what: 'Secretly reveal a member’s bag, active effects, cooldowns and bounty — even through a Disguise.',
-		how: 'Pick a target. Some spies have a success chance: succeed and the report is yours alone; fail and you’re caught — no intel, and the target is publicly alerted with your name.',
-		tip: 'Scout before a big attack, but on a low-chance spy weigh the risk: getting caught hands your rival a free warning.'
+		what: 'Secretly reveal a member’s bag, active effects, cooldowns and bounty.',
+		how: 'Pick a target. If the spy has a success chance and you fail, you’re caught and the target is alerted with your name.',
+		tip: 'Scout before a big attack, and skip a risky spy when you can’t afford to be seen.'
 	},
 	disguise: {
 		what: 'Go anonymous — your attacks hide your name and you drop off the leaderboard.',
-		how: 'Activate on yourself. While it lasts, victims only see “a mysterious member” in history. A successful Spy can still see through it.',
-		tip: 'Strike rivals without painting a target on your own back — but a lucky spy may still unmask you.'
+		how: 'Activate on yourself. Victims only see “a mysterious member” in history, though a successful Spy can still unmask you.',
+		tip: 'Strike rivals without painting a target on your own back.'
 	},
 	purifier: {
 		what: 'Wipe every active effect off yourself — shields, boosts, leeches, disguise and immunity.',
@@ -475,7 +475,6 @@ export function itemAvailability(
 		const t = new Date(item.available_to).getTime();
 		if (Number.isFinite(t)) ends.push(t);
 	}
-	// Local day boundary expressed back in real (UTC) ms by subtracting the offset.
 	const startOfLocalDay = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate()) - offsetMs;
 	const uniqueDays = new Set(days);
 	const isFullDay = fromMin <= 0 && toMin >= 1439;
@@ -623,7 +622,7 @@ export function describeItemOutcome(effectType: string, result: any): ItemOutcom
 			tone: 'win',
 			icon: effectIcon('disguise'),
 			title: 'Disguise Active',
-			line: `You're anonymous — your attacks hide your name, spies can't read you, and you're off the leaderboard.`,
+			line: `You're anonymous — your attacks hide your name and you're off the leaderboard.`,
 			deltaXp: null,
 			untilMs: toMs(r.expiresAt)
 		};

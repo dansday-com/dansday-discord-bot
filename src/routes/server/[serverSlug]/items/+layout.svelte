@@ -77,7 +77,7 @@
 				if (e.leechRole === 'victim') accent = effectAccentHex('steal');
 			}
 			chips.push({
-				key: `eff-${e.effect_type}-${e.expiresAt}`,
+				key: `eff-${e.effect_type}-${e.leechWith ?? ''}-${e.expiresAt}`,
 				icon: effectIcon(e.effect_type),
 				label,
 				until: e.expiresAt,
@@ -250,9 +250,6 @@
 
 	const SELF_BUFFS = new Set(['boost', 'shield', 'reflect', 'insurance', 'disguise']);
 	function isBuffActive(effectType: string): boolean {
-		if (effectType === 'leech') {
-			return ((pd.activeEffects ?? []) as any[]).some((e) => e.effect_type === 'leech' && e.leechRole === 'attacker' && e.expiresAt && e.expiresAt > now);
-		}
 		if (!SELF_BUFFS.has(effectType)) return false;
 		return ((pd.activeEffects ?? []) as any[]).some((e) => e.effect_type === effectType && e.expiresAt && e.expiresAt > now);
 	}

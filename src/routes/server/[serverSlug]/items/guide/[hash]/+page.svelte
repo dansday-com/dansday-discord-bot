@@ -121,12 +121,8 @@
 
 	const tips = [
 		{ icon: 'fa-magnifying-glass', accent: effectAccentHex('spy'), text: 'Spy before you attack — never waste an item on a shielded target.' },
-		{
-			icon: 'fa-triangle-exclamation',
-			accent: effectAccentHex('spy'),
-			text: 'A risky Spy can be caught — fail and the target is alerted with your name. Spy when you can afford to be seen.'
-		},
-		{ icon: 'fa-mask', accent: effectAccentHex('disguise'), text: 'Disguise hides your name, but a lucky Spy still sees through it — stay unpredictable.' },
+		{ icon: 'fa-triangle-exclamation', accent: effectAccentHex('spy'), text: 'A risky Spy can backfire — fail and the target is alerted with your name.' },
+		{ icon: 'fa-mask', accent: effectAccentHex('disguise'), text: 'Disguise hides your name, but a lucky Spy can still unmask you.' },
 		{ icon: 'fa-shield', accent: effectAccentHex('shield'), text: 'Raise a Shield before you log off so nobody farms you while away.' },
 		{ icon: 'fa-soap', accent: effectAccentHex('purifier'), text: 'Stuck with a leech draining you? A Purifier wipes it instantly.' },
 		{ icon: 'fa-handshake', accent: '#2f8f4e', text: 'Grind voice with friends — Friend Boost stacks +10% each.' },

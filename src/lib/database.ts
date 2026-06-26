@@ -1948,8 +1948,10 @@ export async function getMemberItemHistory(memberId: any, limit = 200) {
 		LEFT JOIN items bi2 ON bi2.id = smi.item_id
 		LEFT JOIN server_members tgt ON tgt.id = sml.target_member_id
 		LEFT JOIN server_members act ON act.id = sml.member_id
-		WHERE sml.member_id = ${Number(memberId)}
-		   OR sml.target_member_id = ${Number(memberId)}
+		WHERE (
+			sml.member_id = ${Number(memberId)}
+			OR (sml.target_member_id = ${Number(memberId)} AND NOT (sml.action = 'spy' AND sml.outcome = 'success'))
+		)
 		ORDER BY sml.created_at DESC, sml.id DESC
 		LIMIT ${Number(limit)}
 	`);

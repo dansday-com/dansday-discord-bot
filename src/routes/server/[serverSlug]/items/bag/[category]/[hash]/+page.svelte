@@ -305,13 +305,7 @@
 				</div>
 			{/if}
 			<p class="m-out-line">{outcome.line}</p>
-			{#if outcome.spyReport?.disguised}
-				<div class="m-spy">
-					<div class="m-spy-sec">
-						<div class="m-spy-empty">🎭 They're wearing a Disguise — your spy couldn't read their bag, effects, or cooldowns.</div>
-					</div>
-				</div>
-			{:else if outcome.spyReport}
+			{#if outcome.spyReport}
 				{@const rep = outcome.spyReport}
 				<div class="m-spy">
 					<div class="m-spy-sec">

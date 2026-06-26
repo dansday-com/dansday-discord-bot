@@ -29,7 +29,9 @@ export const load: PageServerLoad = async ({ parent, params, url }) => {
 		direction: h.direction === 'incoming' ? 'incoming' : 'outgoing',
 		targetName: h.target_server_display_name || h.target_display_name || h.target_username || null,
 		actorName:
-			h.direction === 'incoming' && Number(h.actor_disguised) === 1 ? null : h.actor_server_display_name || h.actor_display_name || h.actor_username || null,
+			h.direction === 'incoming' && Number(h.actor_disguised) === 1 && !(h.action === 'spy' && h.outcome === 'caught')
+				? null
+				: h.actor_server_display_name || h.actor_display_name || h.actor_username || null,
 		actorDisguised: Number(h.actor_disguised) === 1,
 		at: h.created_at ? new Date(h.created_at).getTime() : null
 	}));

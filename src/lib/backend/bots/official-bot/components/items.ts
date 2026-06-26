@@ -768,18 +768,21 @@ export async function resolveBounty({ actorMemberId, actorMemberItemId, targetMe
 	return { outcome: 'success', xp: amount, actorDisguised };
 }
 
-export async function resolveSpy({ actorMemberId, actorMemberItemId, targetMemberId, guildId }: any) {
+export async function resolveSpy({ actorMemberId, actorMemberItemId, targetMemberId, config, guildId }: any) {
 	const targetName = await spyTargetName(targetMemberId);
+	const cfg = parseConfig(config);
+	const chance = Math.max(0, Math.min(100, Number(cfg.spy_chance ?? 100)));
+	const caught = chance < 100 && Math.floor(Math.random() * 100) + 1 > chance;
 
-	if (await isDisguised(targetMemberId)) {
+	if (caught) {
 		await db.logMemberItemAction(actorMemberId, {
 			member_item_id: actorMemberItemId,
 			target_member_id: targetMemberId,
 			action: 'spy',
 			xp_amount: 0,
-			outcome: 'foiled'
+			outcome: 'caught'
 		});
-		return { outcome: 'success', spyReport: { targetName, disguised: true, bag: [], effects: [], cooldowns: [], bounty: 0 } };
+		return { outcome: 'caught', spyReport: { targetName, caught: true, bag: [], effects: [], cooldowns: [], bounty: 0 } };
 	}
 
 	const bag = await spyTargetBag(targetMemberId);
@@ -973,7 +976,7 @@ export async function handleItemUse(client: any, payload: any) {
 		} else if (effectType === 'bounty') {
 			result = await resolveBounty({ actorMemberId, actorMemberItemId: member_item_id, targetMemberId, config, guildId: guild_id });
 		} else if (effectType === 'spy') {
-			result = await resolveSpy({ actorMemberId, actorMemberItemId: member_item_id, targetMemberId, guildId: guild_id });
+			result = await resolveSpy({ actorMemberId, actorMemberItemId: member_item_id, targetMemberId, config, guildId: guild_id });
 		} else if (effectType === 'purifier') {
 			result = await resolvePurifier({ memberItemId: member_item_id, ownerMemberId: actorMemberId });
 		} else {
@@ -1000,6 +1003,10 @@ export async function handleItemUse(client: any, payload: any) {
 		item,
 		result
 	}).catch(() => null);
+
+	if (effectType === 'spy' && result?.outcome === 'caught') {
+		await announceSpyCaught(client, { guildId: guild_id, actorDiscordId: actor_discord_id, targetDiscordId: target_discord_id }).catch(() => null);
+	}
 
 	if (effectType === 'purifier' && (result?.cleared ?? 0) > 0) {
 		await runExpirySweep(client).catch(() => null);
@@ -1328,6 +1335,34 @@ async function announceItemUse(client: any, ctx: any) {
 	const content = mentions.length > 0 ? mentions.join(' ') : undefined;
 
 	await channel.send({ content, embeds: [embed] }).catch(() => null);
+}
+
+async function announceSpyCaught(client: any, ctx: any) {
+	const { guildId, actorDiscordId, targetDiscordId } = ctx;
+	const { getItemsChannelId, getEmbedConfig } = await import('../../../config.js');
+	const channelId = await getItemsChannelId(guildId);
+	if (!channelId) return;
+	const guild = client?.guilds?.cache?.get(guildId);
+	if (!guild) return;
+	const channel = await guild.channels.fetch(channelId).catch(() => null);
+	if (!channel || !channel.isTextBased()) return;
+
+	const { EmbedBuilder } = await import('discord.js');
+	const embedConfig = await getEmbedConfig(guildId).catch(() => ({ COLOR: 0x14b8a6, FOOTER: 'Items' }));
+	const spy = actorDiscordId ? await guild.members.fetch(String(actorDiscordId)).catch(() => null) : null;
+	const target = targetDiscordId ? await guild.members.fetch(String(targetDiscordId)).catch(() => null) : null;
+
+	const spyMention = spy ? `${spy}` : 'Someone';
+	const targetMention = target ? `${target}` : 'a member';
+	const embed = new EmbedBuilder()
+		.setColor(effectAccentInt('spy'))
+		.setTitle('🔍 Spy Caught')
+		.setDescription(`${targetMention} caught ${spyMention} trying to spy on them — no intel was gathered.`)
+		.setFooter({ text: embedConfig.FOOTER || 'Items' })
+		.setTimestamp();
+
+	const mentions = [spy, target].filter(Boolean).map((m: any) => `${m}`);
+	await channel.send({ content: mentions.length ? mentions.join(' ') : undefined, embeds: [embed] }).catch(() => null);
 }
 
 export async function handleAdminGiftAnnounce(client: any, payload: any) {

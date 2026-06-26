@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
-	import { ITEM_EFFECTS, effectAccentHex, effectGuide, effectSummary } from '$lib/items.js';
+	import { ITEM_EFFECTS, effectAccentHex, effectGuide, effectLabel, effectSummary } from '$lib/items.js';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import type { PageProps } from './$types';
 
@@ -23,7 +23,7 @@
 			const live = itemByEffect.get(e.id);
 			return {
 				id: e.id,
-				label: live?.name || e.label,
+				label: e.label,
 				emoji: e.emoji,
 				icon: e.icon,
 				accent: effectAccentHex(e.id),
@@ -98,7 +98,7 @@
 			emoji: '🎲',
 			icon: 'fa-dice',
 			accent: effectAccentHex('gamble'),
-			title: gambleItem?.name || 'Gamble',
+			title: effectLabel('gamble'),
 			available: !!gambleItem,
 			what: 'Bet a chunk of your Wallet XP on a coin-flip of fate — win and your wager is multiplied, lose and it’s gone.',
 			how: 'Open Gamble, choose how much XP to wager, and roll. There’s no cooldown, but every loss comes straight out of your balance (and can drop your level).',
@@ -121,9 +121,14 @@
 
 	const tips = [
 		{ icon: 'fa-magnifying-glass', accent: effectAccentHex('spy'), text: 'Spy before you attack — never waste an item on a shielded target.' },
+		{
+			icon: 'fa-triangle-exclamation',
+			accent: effectAccentHex('spy'),
+			text: 'A risky Spy can be caught — fail and the target is alerted with your name. Spy when you can afford to be seen.'
+		},
+		{ icon: 'fa-mask', accent: effectAccentHex('disguise'), text: 'Disguise hides your name, but a lucky Spy still sees through it — stay unpredictable.' },
 		{ icon: 'fa-shield', accent: effectAccentHex('shield'), text: 'Raise a Shield before you log off so nobody farms you while away.' },
 		{ icon: 'fa-soap', accent: effectAccentHex('purifier'), text: 'Stuck with a leech draining you? A Purifier wipes it instantly.' },
-		{ icon: 'fa-mask', accent: effectAccentHex('disguise'), text: 'Disguise lets you strike rivals without revealing who you are.' },
 		{ icon: 'fa-handshake', accent: '#2f8f4e', text: 'Grind voice with friends — Friend Boost stacks +10% each.' },
 		{ icon: 'fa-arrows-rotate', accent: effectAccentHex('reflect'), text: 'Expecting a hit? Reflect turns their attack back on them.' }
 	];

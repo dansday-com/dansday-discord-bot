@@ -215,8 +215,11 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		announced: false,
 		expiringBuff: false,
 		defaultCost: 300,
-		defaultConfig: {},
-		summary: () => `Reveal a member's bag, active effects and cooldowns.`
+		defaultConfig: { spy_chance: 100 },
+		summary: (c) =>
+			Number(c.spy_chance ?? 100) >= 100
+				? `Reveal a member's bag, active effects and cooldowns.`
+				: `${c.spy_chance}% to reveal their bag, effects & cooldowns — fail and they're alerted.`
 	},
 	{
 		id: 'disguise',
@@ -343,6 +346,9 @@ export function effectMeta(item: { effect_type: string; config?: any }): EffectM
 		case 'bounty':
 			chips.push({ icon: 'fa-coins', label: `${shortXp(c.bounty_amount)} XP` });
 			break;
+		case 'spy':
+			if (Number(c.spy_chance ?? 100) < 100) chips.push({ icon: 'fa-percent', label: `${c.spy_chance}%` });
+			break;
 	}
 	return chips;
 }
@@ -410,14 +416,14 @@ const EFFECT_GUIDES: Record<string, EffectGuide> = {
 		tip: 'Stack bounties on a rival to turn the whole server into their hunters.'
 	},
 	spy: {
-		what: 'Secretly reveal a member’s bag, active effects, cooldowns and bounty.',
-		how: 'Pick a target. The report is private to you — they’re never told they were spied on.',
-		tip: 'Scout before every attack so you never waste an item on a shielded target.'
+		what: 'Secretly reveal a member’s bag, active effects, cooldowns and bounty — even through a Disguise.',
+		how: 'Pick a target. Some spies have a success chance: succeed and the report is yours alone; fail and you’re caught — no intel, and the target is publicly alerted with your name.',
+		tip: 'Scout before a big attack, but on a low-chance spy weigh the risk: getting caught hands your rival a free warning.'
 	},
 	disguise: {
-		what: 'Go anonymous — your attacks hide your name, spies can’t read you, and you drop off the leaderboard.',
-		how: 'Activate on yourself. While it lasts, victims only see “a mysterious member” in history.',
-		tip: 'Strike rivals without painting a target on your own back.'
+		what: 'Go anonymous — your attacks hide your name and you drop off the leaderboard.',
+		how: 'Activate on yourself. While it lasts, victims only see “a mysterious member” in history. A successful Spy can still see through it.',
+		tip: 'Strike rivals without painting a target on your own back — but a lucky spy may still unmask you.'
 	},
 	purifier: {
 		what: 'Wipe every active effect off yourself — shields, boosts, leeches, disguise and immunity.',
@@ -499,6 +505,7 @@ export type SpyReportCooldown = { kind: 'steal' | 'bomb' | 'insurance' | 'immuni
 export type SpyReport = {
 	targetName: string;
 	disguised?: boolean;
+	caught?: boolean;
 	bag: SpyReportBagItem[];
 	effects: SpyReportEffect[];
 	cooldowns: SpyReportCooldown[];
@@ -551,15 +558,14 @@ export function describeItemOutcome(effectType: string, result: any): ItemOutcom
 	if (effectType === 'spy') {
 		const report = (r.spyReport ?? null) as SpyReport | null;
 		const name = report?.targetName || 'the target';
-		if (report?.disguised) {
+		if (outcome === 'caught' || report?.caught) {
 			return {
 				tone: 'lose',
-				icon: 'fa-mask',
-				title: 'Spy Foiled',
-				line: `${name} is in disguise — your spy came back with nothing.`,
+				icon: 'fa-triangle-exclamation',
+				title: 'Spy Caught',
+				line: `${name} caught you — no intel, and they know it was you.`,
 				deltaXp: null,
-				untilMs: null,
-				spyReport: report
+				untilMs: null
 			};
 		}
 		return {

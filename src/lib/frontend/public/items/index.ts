@@ -19,41 +19,15 @@ export async function resolveMemberByCardToken(serverId: number, token: string):
 	return null;
 }
 
-// Session: remember a member's card token per server so they can revisit /items without the hash in the URL.
-const SENTINEL_GUEST = 'guest';
-
-function itemsSessionCookie(serverSlug: string): string {
-	return `items_card_${serverSlug.replace(/[^a-z0-9_-]/gi, '')}`;
-}
+export const SENTINEL_GUEST = 'guest';
 
 export function isGuestHash(hash: any): boolean {
 	return !hash || String(hash) === SENTINEL_GUEST;
 }
 
-export function readItemsSession(cookies: any, serverSlug: string): string | null {
-	const v = cookies?.get?.(itemsSessionCookie(serverSlug));
-	return v ? String(v) : null;
-}
-
-export function writeItemsSession(cookies: any, serverSlug: string, hash: string) {
-	if (!cookies?.set || !hash || hash === SENTINEL_GUEST) return;
-	cookies.set(itemsSessionCookie(serverSlug), hash, {
-		path: '/',
-		httpOnly: true,
-		sameSite: 'lax',
-		maxAge: 60 * 60 * 24 * 30
-	});
-}
-
-// Resolve the effective card token for an items request:
-// URL hash wins (and is persisted to the session); otherwise fall back to the session cookie.
-// Returns { hash, fromSession } — empty hash means read-only guest mode.
-export function resolveItemsCardToken(cookies: any, serverSlug: string, urlHash: any): { hash: string; persist: boolean } {
+export function itemsCardTokenFromUrl(urlHash: any): string {
 	const raw = urlHash != null ? String(urlHash) : '';
-	if (raw && raw !== SENTINEL_GUEST) return { hash: raw, persist: true };
-	const session = readItemsSession(cookies, serverSlug);
-	if (session) return { hash: session, persist: false };
-	return { hash: '', persist: false };
+	return raw && raw !== SENTINEL_GUEST ? raw : '';
 }
 
 export async function resolveActiveBotForServer(server: any): Promise<any | null> {
@@ -152,7 +126,6 @@ export async function loadItemsShared(server: any, hash: string) {
 
 	const member = hash ? await resolveMemberByCardToken(server.id, hash) : null;
 
-	// Read-only browse: no card token / session. Catalog (Shop + Guide) still loads, but no personal data or actions.
 	if (!member) {
 		return {
 			readOnly: true as const,

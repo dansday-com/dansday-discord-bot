@@ -8,7 +8,6 @@
 
 	const ctx = getContext('items') as any;
 
-	// Real configured items for this server, keyed by effect type, so the guide shows actual costs.
 	const itemByEffect = $derived.by(() => {
 		const map = new Map<string, any>();
 		for (const it of (data.items ?? []) as any[]) {
@@ -17,10 +16,8 @@
 		return map;
 	});
 
-	// Minigames get their own section below — keep them out of the item grid.
 	const MINIGAME_EFFECTS = new Set(['gamble']);
 
-	// Walk the full catalog so every item type is explained, even if not enabled yet.
 	const guideItems = $derived.by(() =>
 		ITEM_EFFECTS.filter((e) => !MINIGAME_EFFECTS.has(e.id)).map((e) => {
 			const live = itemByEffect.get(e.id);
@@ -78,7 +75,6 @@
 		}
 	];
 
-	// Minigames — data-driven so new ones can be added here later.
 	const minigames = $derived.by(() => {
 		const list: {
 			id: string;
@@ -137,7 +133,6 @@
 		return (ctx?.fmt ? ctx.fmt(n) : Number(n).toLocaleString()) + ' XP';
 	}
 
-	// Scroll-reveal: add .in when a section enters the viewport.
 	function reveal(node: HTMLElement) {
 		if (typeof IntersectionObserver === 'undefined') {
 			node.classList.add('in');

@@ -2,19 +2,16 @@ import { error, redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import db from '$lib/database.js';
 import { publicServerPath } from '$lib/url.js';
-import { loadItemsShared, resolveItemsCardToken, writeItemsSession } from '$lib/frontend/public/items/index.js';
+import { loadItemsShared, itemsCardTokenFromUrl } from '$lib/frontend/public/items/index.js';
 
 const PER_PAGE = 12;
 
-export const load: PageServerLoad = async ({ parent, params, url, cookies }) => {
+export const load: PageServerLoad = async ({ parent, params, url }) => {
 	const { server } = await parent();
 
-	const { hash, persist } = resolveItemsCardToken(cookies, server.slug, params.hash);
-	if (persist) writeItemsSession(cookies, server.slug, hash);
-
+	const hash = itemsCardTokenFromUrl(params.hash);
 	const shared = await loadItemsShared(server, hash);
 	if ('notFound' in shared) error(404, 'Items not available');
-	// History is personal — read-only guests can't view it.
 	if (shared.readOnly || !shared.member) redirect(303, `${publicServerPath(server.slug)}/items/shop/all/guest`);
 
 	const tabParam = String(params.category || 'all');

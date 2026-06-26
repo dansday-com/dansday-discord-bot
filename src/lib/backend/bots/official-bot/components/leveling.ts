@@ -249,7 +249,7 @@ async function countVoiceFriends(guildId, discordMemberId) {
 		try {
 			if (await PERMISSIONS.hasAnyRole(otherMember, memberRoles)) friends++;
 		} catch {
-			/* ignore */
+			void 0;
 		}
 	}
 	return friends;

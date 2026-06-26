@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onDestroy, onMount, setContext } from 'svelte';
 	import { page } from '$app/state';
-	import { invalidateAll } from '$app/navigation';
+	import { invalidateAll, goto } from '$app/navigation';
 	import MemberCard from '$lib/frontend/components/MemberCard.svelte';
 	import { publicServerPath } from '$lib/url.js';
 	import { ITEM_EFFECTS, effectLabel, effectIcon, effectAccentHex, actionVerb, BAG_CAPACITY, formatDuration } from '$lib/items.js';
@@ -15,7 +15,6 @@
 	const basePath = $derived(publicServerPath(data.server.slug));
 	const itemsBase = $derived(`${basePath}/items`);
 	const readOnly = $derived(!!pd.readOnly || !pd.memberCard);
-	// In read-only/guest mode every items link carries the sentinel so the session (if any) resolves server-side.
 	const navHash = $derived(pd.hash || 'guest');
 	const sectionTabs = $derived([
 		{ label: 'Statistics', icon: 'fa-chart-pie', href: basePath },
@@ -138,8 +137,27 @@
 		return [{ id: 'all', label: 'All', icon: 'fa-grip' }, ...ordered.map((e) => ({ id: e.id, label: e.label, icon: e.icon }))];
 	});
 
+	const sessionKey = $derived(`items_card_${data.server.slug}`);
+
+	function syncTabSession() {
+		if (typeof sessionStorage === 'undefined') return;
+		const urlHash = pd.hash && pd.hash !== 'guest' ? String(pd.hash) : '';
+		if (urlHash) {
+			sessionStorage.setItem(sessionKey, urlHash);
+			return;
+		}
+		const stored = sessionStorage.getItem(sessionKey);
+		if (stored) {
+			const cat = activeCat || 'all';
+			const section = isBag ? 'bag' : isHistory ? 'history' : isGuide ? 'guide' : 'shop';
+			const target = isGuide ? `${itemsBase}/guide/${stored}` : `${itemsBase}/${section}/${cat}/${stored}`;
+			goto(target, { replaceState: true });
+		}
+	}
+
 	let es: EventSource | null = null;
 	onMount(() => {
+		syncTabSession();
 		const t = setInterval(() => (now = Date.now()), 1000);
 		if (pd.memberDiscordId) {
 			const url = `/api/public-statistics/${encodeURIComponent(data.server.slug)}/members-stream`;
@@ -266,6 +284,19 @@
 </script>
 
 <div class="m-items">
+	<header class="m-header">
+		<div class="m-server-icon">
+			{#if data.server.server_icon}
+				<img src={data.server.server_icon} alt={data.server.name || ''} />
+			{:else}
+				<span class="m-icon-placeholder">🏆</span>
+			{/if}
+		</div>
+		<div class="m-header-text">
+			<h1>{data.server.name || data.server.slug}</h1>
+		</div>
+	</header>
+
 	{#if pd.publicStatsEnabled}
 		<div class="m-section-tabs">
 			{#each sectionTabs as tab}
@@ -277,18 +308,7 @@
 		</div>
 	{/if}
 
-	{#if readOnly}
-		<div class="m-guest">
-			<div class="m-guest-ic"><i class="fas fa-eye"></i></div>
-			<div class="m-guest-body">
-				<h3>Browsing as a guest</h3>
-				<p>
-					You can explore the shop and the guide. To buy, use items and see your bag, open your own card link from the leaderboard or <code>/items</code> in Discord.
-				</p>
-			</div>
-			<a class="m-guest-cta" href={`${basePath}/leaderboard`} data-sveltekit-preload-data="hover"><i class="fas fa-trophy"></i>Leaderboard</a>
-		</div>
-	{:else}
+	{#if !readOnly}
 		<div class="m-xp">
 			<div class="m-xp-glow"></div>
 			{#if pd.memberCard}
@@ -396,7 +416,13 @@
 		</div>
 	{/if}
 
-	{@render children()}
+	{#if readOnly}
+		<div class="m-readonly" inert>
+			{@render children()}
+		</div>
+	{:else}
+		{@render children()}
+	{/if}
 </div>
 
 {#if showCard && pd.memberCard}

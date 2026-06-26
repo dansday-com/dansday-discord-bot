@@ -789,7 +789,6 @@ async function spyTargetEffects(targetMemberId: any) {
 			const isVictim = Number(e.target_member_id) === Number(targetMemberId);
 			base.leechRole = isVictim ? 'victim' : 'attacker';
 			if (isVictim) {
-				// The leecher (beneficiary) hides behind their disguise.
 				base.leechWith = (await isDisguised(e.beneficiary_member_id))
 					? 'an unknown member 🎭'
 					: nameOf(e.beneficiary_server_display_name, e.beneficiary_display_name, e.beneficiary_username);

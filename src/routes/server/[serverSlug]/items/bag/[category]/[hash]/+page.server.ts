@@ -3,7 +3,7 @@ import type { PageServerLoad } from './$types';
 import db from '$lib/database.js';
 import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 import { publicServerPath } from '$lib/url.js';
-import { loadItemsShared, computeCardToken, resolveItemsCardToken, writeItemsSession } from '$lib/frontend/public/items/index.js';
+import { loadItemsShared, computeCardToken, itemsCardTokenFromUrl } from '$lib/frontend/public/items/index.js';
 
 function safeParse(raw: any) {
 	try {
@@ -13,15 +13,12 @@ function safeParse(raw: any) {
 	}
 }
 
-export const load: PageServerLoad = async ({ parent, params, cookies }) => {
+export const load: PageServerLoad = async ({ parent, params }) => {
 	const { server } = await parent();
 
-	const { hash, persist } = resolveItemsCardToken(cookies, server.slug, params.hash);
-	if (persist) writeItemsSession(cookies, server.slug, hash);
-
+	const hash = itemsCardTokenFromUrl(params.hash);
 	const shared = await loadItemsShared(server, hash);
 	if ('notFound' in shared) error(404, 'Items not available');
-	// Bag is personal — read-only guests can't view it. Send them to the shop they can browse.
 	if (shared.readOnly || !shared.member) redirect(303, `${publicServerPath(server.slug)}/items/shop/all/guest`);
 
 	const rows = await db.getMemberInventory(shared.member.id).catch(() => []);

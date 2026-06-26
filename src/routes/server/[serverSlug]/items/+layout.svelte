@@ -175,6 +175,31 @@
 
 	let showCard = $state(false);
 
+	let tabsEl: HTMLDivElement | undefined = $state();
+	let canScrollLeft = $state(false);
+	let canScrollRight = $state(false);
+
+	function updateTabScroll() {
+		const el = tabsEl;
+		if (!el) return;
+		canScrollLeft = el.scrollLeft > 1;
+		canScrollRight = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+	}
+
+	function scrollTabs(dir: -1 | 1) {
+		const el = tabsEl;
+		if (!el) return;
+		el.scrollBy({ left: dir * Math.max(160, el.clientWidth * 0.7), behavior: 'smooth' });
+	}
+
+	$effect(() => {
+		typeTabs;
+		isShop;
+		isBag;
+		isHistory;
+		requestAnimationFrame(updateTabScroll);
+	});
+
 	let bagTabEl: HTMLAnchorElement | undefined = $state();
 	let bagPulse = $state(false);
 	let burstId = $state<number | null>(null);
@@ -354,35 +379,49 @@
 		</div>
 	</div>
 
+	{#snippet tabStrip(tabs: { id: string; label: string; icon: string }[], section: 'shop' | 'bag' | 'history', hash: string)}
+		<div class="m-items-tabswrap">
+			<button
+				type="button"
+				class="m-items-arrow m-items-arrow--left"
+				class:m-items-arrow--show={canScrollLeft}
+				aria-label="Scroll categories left"
+				tabindex={canScrollLeft ? 0 : -1}
+				onclick={() => scrollTabs(-1)}
+			>
+				<i class="fas fa-chevron-left"></i>
+			</button>
+			<div bind:this={tabsEl} class="m-items-tabs" onscroll={updateTabScroll}>
+				{#each tabs as cat}
+					<a
+						class="m-items-tab"
+						class:m-items-tab--active={activeCat === cat.id}
+						href="{itemsBase}/{section}/{cat.id}/{hash}"
+						data-sveltekit-preload-data="hover"
+					>
+						<i class="fas {cat.icon}"></i>{cat.label}
+					</a>
+				{/each}
+			</div>
+			<button
+				type="button"
+				class="m-items-arrow m-items-arrow--right"
+				class:m-items-arrow--show={canScrollRight}
+				aria-label="Scroll categories right"
+				tabindex={canScrollRight ? 0 : -1}
+				onclick={() => scrollTabs(1)}
+			>
+				<i class="fas fa-chevron-right"></i>
+			</button>
+		</div>
+	{/snippet}
+
 	{#if isShop}
-		<div class="m-items-tabs">
-			{#each typeTabs as cat}
-				<a class="m-items-tab" class:m-items-tab--active={activeCat === cat.id} href="{itemsBase}/shop/{cat.id}/{navHash}" data-sveltekit-preload-data="hover">
-					<i class="fas {cat.icon}"></i>{cat.label}
-				</a>
-			{/each}
-		</div>
+		{@render tabStrip(typeTabs, 'shop', navHash)}
 	{:else if isBag && typeTabs.length > 1}
-		<div class="m-items-tabs">
-			{#each typeTabs as cat}
-				<a class="m-items-tab" class:m-items-tab--active={activeCat === cat.id} href="{itemsBase}/bag/{cat.id}/{pd.hash}" data-sveltekit-preload-data="hover">
-					<i class="fas {cat.icon}"></i>{cat.label}
-				</a>
-			{/each}
-		</div>
+		{@render tabStrip(typeTabs, 'bag', pd.hash)}
 	{:else if isHistory}
-		<div class="m-items-tabs">
-			{#each historyTabs as cat}
-				<a
-					class="m-items-tab"
-					class:m-items-tab--active={activeCat === cat.id}
-					href="{itemsBase}/history/{cat.id}/{pd.hash}"
-					data-sveltekit-preload-data="hover"
-				>
-					<i class="fas {cat.icon}"></i>{cat.label}
-				</a>
-			{/each}
-		</div>
+		{@render tabStrip(historyTabs, 'history', pd.hash)}
 	{/if}
 
 	{#if readOnly && isShop}

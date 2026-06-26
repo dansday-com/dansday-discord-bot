@@ -21,6 +21,10 @@ export const load: PageServerLoad = async () => {
 					all.push({ server: list[i], slug: formatIndexedSlug(base, i + 1) });
 				}
 			}
+			for (let i = all.length - 1; i > 0; i--) {
+				const j = Math.floor(Math.random() * (i + 1));
+				[all[i], all[j]] = [all[j], all[i]];
+			}
 			featuredServers = all.slice(0, 5).map((e) => ({
 				name: e.server.name || e.slug,
 				slug: e.slug,

@@ -17,9 +17,12 @@
 		return map;
 	});
 
+	// Minigames get their own section below — keep them out of the item grid.
+	const MINIGAME_EFFECTS = new Set(['gamble']);
+
 	// Walk the full catalog so every item type is explained, even if not enabled yet.
 	const guideItems = $derived.by(() =>
-		ITEM_EFFECTS.filter((e) => e.id !== 'gamble' || itemByEffect.has('gamble')).map((e) => {
+		ITEM_EFFECTS.filter((e) => !MINIGAME_EFFECTS.has(e.id)).map((e) => {
 			const live = itemByEffect.get(e.id);
 			return {
 				id: e.id,
@@ -41,6 +44,77 @@
 		{ icon: 'fa-video', accent: '#7b5ea7', title: 'Video', desc: 'Turn your camera on in voice for bonus XP per minute.' },
 		{ icon: 'fa-tower-broadcast', accent: '#c8911a', title: 'Streaming', desc: 'Go live / screen-share in voice for extra XP per minute.' }
 	];
+
+	const concepts = [
+		{
+			icon: 'fa-wallet',
+			accent: '#245f73',
+			title: 'Wallet XP',
+			desc: 'Your Wallet is your total XP — it’s both your level progress AND the currency you spend in the shop. Buying or losing XP can drop your level and leaderboard rank, so spend wisely.'
+		},
+		{
+			icon: 'fa-wand-magic-sparkles',
+			accent: '#7b5ea7',
+			title: 'Effect Status',
+			desc: 'Active buffs and debuffs (Shield, Boost, Leech, Disguise, a Bounty on you…) show as chips at the top with their time left. Watch them to know when you’re protected — or exposed.'
+		},
+		{
+			icon: 'fa-stopwatch',
+			accent: '#d35400',
+			title: 'Cooldown',
+			desc: 'After you steal, bomb or use insurance, that action goes on cooldown — you must wait before using it again. Cooldowns show as status chips counting down. A Purifier does NOT reset them.'
+		},
+		{
+			icon: 'fa-shield-halved',
+			accent: '#1f9e8f',
+			title: 'Immunity',
+			desc: 'Right after someone robs or bombs you, you get a short Immunity window where attacks bounce off. It ticks down like a cooldown and protects you until it ends.'
+		},
+		{
+			icon: 'fa-clock-rotate-left',
+			accent: '#4b6584',
+			title: 'History',
+			desc: 'The History tab logs everything — what you bought, used, earned, and every attack for and against you. Anonymous attackers (Disguise) stay hidden there forever.'
+		}
+	];
+
+	// Minigames — data-driven so new ones can be added here later.
+	const minigames = $derived.by(() => {
+		const list: {
+			id: string;
+			emoji: string;
+			icon: string;
+			accent: string;
+			title: string;
+			available: boolean;
+			what: string;
+			how: string;
+			tip: string;
+			stats: { icon: string; label: string }[];
+		}[] = [];
+
+		const gambleItem = itemByEffect.get('gamble');
+		const gcfg = gambleItem?.config ?? {};
+		const winChance = Number(gcfg.win_chance ?? 50) || 0;
+		const payout = Number(gcfg.payout_multiplier ?? 2) || 0;
+		list.push({
+			id: 'gamble',
+			emoji: '🎲',
+			icon: 'fa-dice',
+			accent: effectAccentHex('gamble'),
+			title: gambleItem?.name || 'Gamble',
+			available: !!gambleItem,
+			what: 'Bet a chunk of your Wallet XP on a coin-flip of fate — win and your wager is multiplied, lose and it’s gone.',
+			how: 'Open Gamble, choose how much XP to wager, and roll. There’s no cooldown, but every loss comes straight out of your balance (and can drop your level).',
+			tip: 'Set a limit before you start. Chasing losses is the fastest way to fall down the leaderboard.',
+			stats: [
+				{ icon: 'fa-percent', label: `${winChance}% to win` },
+				{ icon: 'fa-coins', label: `${payout}× payout` }
+			]
+		});
+
+		return list;
+	});
 
 	const steps = [
 		{ icon: 'fa-store', title: 'Open the Shop', desc: 'Browse items by category. Each shows its cost and what it does.' },
@@ -122,6 +196,22 @@
 	</section>
 
 	<section class="g-sec" use:reveal>
+		<h2 class="g-sec-head"><i class="fas fa-circle-info"></i>Know the basics</h2>
+		<p class="g-sec-lead">A few things you’ll see around the items page and what they mean.</p>
+		<div class="g-earn">
+			{#each concepts as c, i}
+				<div class="g-earn-card" style="--ac: {c.accent}; --d: {i * 60}ms">
+					<span class="g-earn-ic"><i class="fas {c.icon}"></i></span>
+					<div class="g-earn-body">
+						<h3>{c.title}</h3>
+						<p>{c.desc}</p>
+					</div>
+				</div>
+			{/each}
+		</div>
+	</section>
+
+	<section class="g-sec" use:reveal>
 		<h2 class="g-sec-head"><i class="fas fa-cart-shopping"></i>How to buy &amp; use items</h2>
 		<div class="g-steps">
 			{#each steps as s, i}
@@ -159,6 +249,36 @@
 					{:else}
 						<p class="g-item-what">{it.summary}</p>
 					{/if}
+				</article>
+			{/each}
+		</div>
+	</section>
+
+	<section class="g-sec" use:reveal>
+		<h2 class="g-sec-head"><i class="fas fa-gamepad"></i>Minigames</h2>
+		<p class="g-sec-lead">Side games you can play with your XP. More are on the way.</p>
+		<div class="g-items">
+			{#each minigames as mg, i}
+				<article class="g-item" class:g-item--soon={!mg.available} style="--ac: {mg.accent}; --d: {(i % 6) * 60}ms">
+					<div class="g-item-glow"></div>
+					<div class="g-item-top">
+						<span class="g-item-emoji">{mg.emoji}</span>
+						<div class="g-item-titles">
+							<h3 class="g-item-name">{mg.title}</h3>
+							{#if mg.available}
+								<span class="g-mg-stats">
+									{#each mg.stats as s}
+										<span class="g-mg-stat"><i class="fas {s.icon}"></i>{s.label}</span>
+									{/each}
+								</span>
+							{:else}
+								<span class="g-item-cost g-item-cost--soon">Not enabled in this server yet</span>
+							{/if}
+						</div>
+					</div>
+					<p class="g-item-what">{mg.what}</p>
+					<div class="g-item-row"><i class="fas fa-circle-play"></i><span>{mg.how}</span></div>
+					<div class="g-item-tip"><i class="fas fa-lightbulb"></i><span>{mg.tip}</span></div>
 				</article>
 			{/each}
 		</div>

@@ -19,6 +19,43 @@ export async function resolveMemberByCardToken(serverId: number, token: string):
 	return null;
 }
 
+// Session: remember a member's card token per server so they can revisit /items without the hash in the URL.
+const SENTINEL_GUEST = 'guest';
+
+function itemsSessionCookie(serverSlug: string): string {
+	return `items_card_${serverSlug.replace(/[^a-z0-9_-]/gi, '')}`;
+}
+
+export function isGuestHash(hash: any): boolean {
+	return !hash || String(hash) === SENTINEL_GUEST;
+}
+
+export function readItemsSession(cookies: any, serverSlug: string): string | null {
+	const v = cookies?.get?.(itemsSessionCookie(serverSlug));
+	return v ? String(v) : null;
+}
+
+export function writeItemsSession(cookies: any, serverSlug: string, hash: string) {
+	if (!cookies?.set || !hash || hash === SENTINEL_GUEST) return;
+	cookies.set(itemsSessionCookie(serverSlug), hash, {
+		path: '/',
+		httpOnly: true,
+		sameSite: 'lax',
+		maxAge: 60 * 60 * 24 * 30
+	});
+}
+
+// Resolve the effective card token for an items request:
+// URL hash wins (and is persisted to the session); otherwise fall back to the session cookie.
+// Returns { hash, fromSession } — empty hash means read-only guest mode.
+export function resolveItemsCardToken(cookies: any, serverSlug: string, urlHash: any): { hash: string; persist: boolean } {
+	const raw = urlHash != null ? String(urlHash) : '';
+	if (raw && raw !== SENTINEL_GUEST) return { hash: raw, persist: true };
+	const session = readItemsSession(cookies, serverSlug);
+	if (session) return { hash: session, persist: false };
+	return { hash: '', persist: false };
+}
+
 export async function resolveActiveBotForServer(server: any): Promise<any | null> {
 	const officialBotId = await db.resolveOfficialBotIdForServer(server).catch(() => null);
 	if (officialBotId == null) return null;
@@ -107,14 +144,36 @@ export async function loadItemsShared(server: any, hash: string) {
 	const itemsRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.items).catch(() => null);
 	if ((itemsRow as any)?.settings?.enabled !== true) return { notFound: true } as const;
 
-	const member = hash ? await resolveMemberByCardToken(server.id, hash) : null;
-	if (!member) return { invalid: true } as const;
-
 	const levelingRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.leveling).catch(() => null);
 	const req = (levelingRow as any)?.settings?.REQUIREMENTS ?? {};
 	const levelReq = { baseXp: Number(req.BASE_XP) || 100, multiplier: Number(req.MULTIPLIER) || 1.2 };
 
 	const items = await loadItemsCatalog(server.id);
+
+	const member = hash ? await resolveMemberByCardToken(server.id, hash) : null;
+
+	// Read-only browse: no card token / session. Catalog (Shop + Guide) still loads, but no personal data or actions.
+	if (!member) {
+		return {
+			readOnly: true as const,
+			member: null,
+			items,
+			hash: '',
+			bagStock: 0,
+			categories: [...new Set((items as any[]).map((i) => i.effect_type))],
+			memberName: null,
+			memberDiscordId: null,
+			memberAvatar: null,
+			memberCard: null,
+			balance: { experience: 0, level: 1, rank: null },
+			activeEffects: [],
+			attackCooldowns: [],
+			immuneUntil: null,
+			insuranceCooldownUntil: null,
+			bountyTotal: 0,
+			levelReq
+		};
+	}
 
 	const invRows = await db.getMemberInventory(member.id).catch(() => []);
 	const bagStock = (invRows as any[]).reduce((sum, r) => sum + (Number(r.quantity) || 0), 0);
@@ -186,6 +245,7 @@ export async function loadItemsShared(server: any, hash: string) {
 	const bountyTotal = await db.getActiveBountyTotal(member.id).catch(() => 0);
 
 	return {
+		readOnly: false as const,
 		member,
 		items,
 		hash,

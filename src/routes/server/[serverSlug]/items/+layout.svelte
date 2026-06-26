@@ -12,7 +12,17 @@
 
 	const pd = $derived(page.data as any);
 
-	const itemsBase = $derived(`${publicServerPath(data.server.slug)}/items`);
+	const basePath = $derived(publicServerPath(data.server.slug));
+	const itemsBase = $derived(`${basePath}/items`);
+	const readOnly = $derived(!!pd.readOnly || !pd.memberCard);
+	// In read-only/guest mode every items link carries the sentinel so the session (if any) resolves server-side.
+	const navHash = $derived(pd.hash || 'guest');
+	const sectionTabs = $derived([
+		{ label: 'Statistics', icon: 'fa-chart-pie', href: basePath },
+		{ label: 'Leaderboard', icon: 'fa-trophy', href: `${basePath}/leaderboard` },
+		{ label: 'Members', icon: 'fa-users', href: `${basePath}/members` },
+		{ label: 'Items', icon: 'fa-store', href: `${itemsBase}/shop/all/${navHash}`, active: true }
+	]);
 	const pathNorm = $derived(page.url.pathname.replace(/\/$/, ''));
 	const isBag = $derived(/\/items\/bag\//.test(pathNorm));
 	const isHistory = $derived(/\/items\/history\//.test(pathNorm));
@@ -245,6 +255,9 @@
 		get hash() {
 			return pd.hash;
 		},
+		get readOnly() {
+			return readOnly;
+		},
 		get serverSlug() {
 			return data.server.slug;
 		},
@@ -253,42 +266,66 @@
 </script>
 
 <div class="m-items">
-	<div class="m-xp">
-		<div class="m-xp-glow"></div>
-		{#if pd.memberCard}
-			<button class="m-xp-card-btn" onclick={() => (showCard = true)} aria-label="Share your card" title="Share card">
-				<i class="fas fa-share-nodes"></i>
-				<span class="m-xp-card-btn-label">Share</span>
-			</button>
-		{/if}
-		<div class="m-xp-avatar">
-			<img src={memberAvatar} alt={pd.memberName ?? ''} loading="lazy" />
+	{#if pd.publicStatsEnabled}
+		<div class="m-section-tabs">
+			{#each sectionTabs as tab}
+				<a href={tab.href} class="m-section-tab" class:m-section-tab--active={tab.active} data-sveltekit-preload-data="hover">
+					<i class="fas {tab.icon}"></i>
+					{tab.label}
+				</a>
+			{/each}
 		</div>
-		<div class="m-xp-figures">
-			<span class="m-xp-wallet"><i class="fas fa-wallet"></i>Wallet</span>
-			{#if pd.memberName}<span class="m-xp-name">{pd.memberName}</span>{/if}
-			<span class="m-xp-amount">{fmt(liveXp)}<span class="m-xp-unit">XP</span></span>
-			<div class="m-xp-bar">
-				<div class="m-xp-bar-fill" style="width: {levelInfo.pct}%"></div>
+	{/if}
+
+	{#if readOnly}
+		<div class="m-guest">
+			<div class="m-guest-ic"><i class="fas fa-eye"></i></div>
+			<div class="m-guest-body">
+				<h3>Browsing as a guest</h3>
+				<p>
+					You can explore the shop and the guide. To buy, use items and see your bag, open your own card link from the leaderboard or <code>/items</code> in Discord.
+				</p>
 			</div>
-			<span class="m-xp-bar-meta">
-				<span>Lvl {level}</span>
-				<span>{levelInfo.toNext > 0 ? `${fmt(levelInfo.toNext)} XP to Lvl ${level + 1}` : 'Max progress'}</span>
-			</span>
+			<a class="m-guest-cta" href={`${basePath}/leaderboard`} data-sveltekit-preload-data="hover"><i class="fas fa-trophy"></i>Leaderboard</a>
 		</div>
-		<div class="m-xp-stats">
-			<div class="m-xp-stat">
-				<span class="m-xp-stat-val">{levelInfo.pct}%</span>
-				<span class="m-xp-stat-lbl">Level {level}</span>
-			</div>
-			{#if rank}
-				<div class="m-xp-stat">
-					<span class="m-xp-stat-val">#{rank}</span>
-					<span class="m-xp-stat-lbl">Rank</span>
-				</div>
+	{:else}
+		<div class="m-xp">
+			<div class="m-xp-glow"></div>
+			{#if pd.memberCard}
+				<button class="m-xp-card-btn" onclick={() => (showCard = true)} aria-label="Share your card" title="Share card">
+					<i class="fas fa-share-nodes"></i>
+					<span class="m-xp-card-btn-label">Share</span>
+				</button>
 			{/if}
+			<div class="m-xp-avatar">
+				<img src={memberAvatar} alt={pd.memberName ?? ''} loading="lazy" />
+			</div>
+			<div class="m-xp-figures">
+				<span class="m-xp-wallet"><i class="fas fa-wallet"></i>Wallet</span>
+				{#if pd.memberName}<span class="m-xp-name">{pd.memberName}</span>{/if}
+				<span class="m-xp-amount">{fmt(liveXp)}<span class="m-xp-unit">XP</span></span>
+				<div class="m-xp-bar">
+					<div class="m-xp-bar-fill" style="width: {levelInfo.pct}%"></div>
+				</div>
+				<span class="m-xp-bar-meta">
+					<span>Lvl {level}</span>
+					<span>{levelInfo.toNext > 0 ? `${fmt(levelInfo.toNext)} XP to Lvl ${level + 1}` : 'Max progress'}</span>
+				</span>
+			</div>
+			<div class="m-xp-stats">
+				<div class="m-xp-stat">
+					<span class="m-xp-stat-val">{levelInfo.pct}%</span>
+					<span class="m-xp-stat-lbl">Level {level}</span>
+				</div>
+				{#if rank}
+					<div class="m-xp-stat">
+						<span class="m-xp-stat-val">#{rank}</span>
+						<span class="m-xp-stat-lbl">Rank</span>
+					</div>
+				{/if}
+			</div>
 		</div>
-	</div>
+	{/if}
 
 	{#if activeChips.length > 0}
 		<div class="m-active">
@@ -304,24 +341,26 @@
 
 	<div class="m-items-bar">
 		<div class="m-items-toggle">
-			<a class="m-items-seg" class:m-items-seg--active={isShop} href="{itemsBase}/shop/all/{pd.hash}" data-sveltekit-preload-data="hover"
+			<a class="m-items-seg" class:m-items-seg--active={isShop} href="{itemsBase}/shop/all/{navHash}" data-sveltekit-preload-data="hover"
 				><i class="fas fa-store"></i>Shop</a
 			>
-			<a
-				bind:this={bagTabEl}
-				class="m-items-seg"
-				class:m-items-seg--active={isBag}
-				class:m-items-seg--pulse={bagPulse}
-				href="{itemsBase}/bag/all/{pd.hash}"
-				data-sveltekit-preload-data="hover"
-			>
-				<i class="fas fa-bag-shopping"></i>Bag<span class="m-items-count" class:m-items-count--bump={bagPulse}>{pd.bagStock ?? 0}/{BAG_CAPACITY}</span>
-			</a>
-			<a class="m-items-seg" class:m-items-seg--active={isGuide} href="{itemsBase}/guide/{pd.hash}" data-sveltekit-preload-data="hover">
+			{#if !readOnly}
+				<a
+					bind:this={bagTabEl}
+					class="m-items-seg"
+					class:m-items-seg--active={isBag}
+					class:m-items-seg--pulse={bagPulse}
+					href="{itemsBase}/bag/all/{navHash}"
+					data-sveltekit-preload-data="hover"
+				>
+					<i class="fas fa-bag-shopping"></i>Bag<span class="m-items-count" class:m-items-count--bump={bagPulse}>{pd.bagStock ?? 0}/{BAG_CAPACITY}</span>
+				</a>
+				<a class="m-items-seg" class:m-items-seg--active={isHistory} href="{itemsBase}/history/all/{navHash}" data-sveltekit-preload-data="hover">
+					<i class="fas fa-clock-rotate-left"></i>History
+				</a>
+			{/if}
+			<a class="m-items-seg" class:m-items-seg--active={isGuide} href="{itemsBase}/guide/{navHash}" data-sveltekit-preload-data="hover">
 				<i class="fas fa-circle-question"></i>Guide
-			</a>
-			<a class="m-items-seg" class:m-items-seg--active={isHistory} href="{itemsBase}/history/all/{pd.hash}" data-sveltekit-preload-data="hover">
-				<i class="fas fa-clock-rotate-left"></i>History
 			</a>
 		</div>
 	</div>
@@ -329,7 +368,7 @@
 	{#if isShop}
 		<div class="m-items-tabs">
 			{#each typeTabs as cat}
-				<a class="m-items-tab" class:m-items-tab--active={activeCat === cat.id} href="{itemsBase}/shop/{cat.id}/{pd.hash}" data-sveltekit-preload-data="hover">
+				<a class="m-items-tab" class:m-items-tab--active={activeCat === cat.id} href="{itemsBase}/shop/{cat.id}/{navHash}" data-sveltekit-preload-data="hover">
 					<i class="fas {cat.icon}"></i>{cat.label}
 				</a>
 			{/each}

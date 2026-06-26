@@ -10,6 +10,7 @@
 	const basePath = $derived(publicServerPath(data.server.slug));
 	const leaderboardPath = $derived(`${basePath}/leaderboard`);
 	const membersPath = $derived(`${basePath}/members`);
+	const itemsPath = $derived(`${basePath}/items`);
 	const pathNorm = $derived(page.url.pathname.replace(/\/$/, ''));
 	const isLeaderboard = $derived(pathNorm.endsWith('/leaderboard'));
 	const isMembers = $derived(pathNorm.endsWith('/members'));
@@ -37,13 +38,6 @@
 					</div>
 					<div class="m-header-text">
 						<h1>{data.server.name || data.server.slug}</h1>
-						<p>
-							Public statistics
-							<span class="m-metric-pill m-metric-pill--live" title="Stats update from live data">
-								<span class="m-live-dot"></span>
-								Live
-							</span>
-						</p>
 					</div>
 				</header>
 
@@ -60,6 +54,12 @@
 						<i class="fas fa-users"></i>
 						Members
 					</a>
+					{#if data.itemsEnabled}
+						<a href={itemsPath} class="m-section-tab" class:m-section-tab--active={isItems} data-sveltekit-preload-data="hover">
+							<i class="fas fa-store"></i>
+							Items
+						</a>
+					{/if}
 				</div>
 			{/if}
 

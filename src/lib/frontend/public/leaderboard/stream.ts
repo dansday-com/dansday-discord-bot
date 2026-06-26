@@ -227,6 +227,59 @@ function buildBountyRows(entries: any[], metric: LeaderboardMetric, limit: numbe
 		}));
 }
 
+const STEAL_METRICS: LeaderboardMetric[] = ['items_steal_total', 'items_steal_rate', 'items_steal_big'];
+const BOMB_METRICS: LeaderboardMetric[] = ['items_bomb_total', 'items_bomb_rate', 'items_bomb_big'];
+const MIN_ATTEMPTS_FOR_RATE = 5;
+
+function buildAttackRows(entries: any[], metric: LeaderboardMetric, limit: number): LeaderboardRow[] {
+	const safe = Math.max(1, Math.min(100, limit));
+	const isRate = metric.endsWith('_rate');
+	const isBig = metric.endsWith('_big');
+	const rate = (e: any): number => {
+		const attempts = Number(e.attack_attempts ?? 0);
+		if (attempts <= 0) return 0;
+		return (Number(e.attack_success ?? 0) / attempts) * 100;
+	};
+	const value = (e: any): number => {
+		if (isRate) return rate(e);
+		if (isBig) return Number(e.attack_big ?? 0);
+		return Number(e.attack_total ?? 0);
+	};
+
+	let pool = entries.filter((e) => Number(e.attack_attempts ?? 0) > 0);
+	if (isRate) pool = pool.filter((e) => Number(e.attack_attempts ?? 0) >= MIN_ATTEMPTS_FOR_RATE);
+	else pool = pool.filter((e) => value(e) > 0);
+
+	const sorted = [...pool].sort((a, b) => {
+		const vb = value(b);
+		const va = value(a);
+		if (vb !== va) return vb - va;
+		return String(a.discord_member_id).localeCompare(String(b.discord_member_id));
+	});
+
+	return sorted.slice(0, safe).map((e) => ({
+		discord_member_id: e.discord_member_id,
+		username: e.username,
+		display_name: e.display_name,
+		server_display_name: e.server_display_name,
+		avatar: e.avatar,
+		experience: 0,
+		level: e.level ?? 0,
+		chat_total: 0,
+		voice_minutes_total: 0,
+		voice_minutes_active: 0,
+		voice_minutes_afk: 0,
+		voice_minutes_video: 0,
+		voice_minutes_streaming: 0,
+		attack_total: Number(e.attack_total ?? 0),
+		attack_success: Number(e.attack_success ?? 0),
+		attack_attempts: Number(e.attack_attempts ?? 0),
+		attack_big: Number(e.attack_big ?? 0),
+		attack_rate: Math.round(rate(e) * 10) / 10,
+		rank: null
+	}));
+}
+
 type Listener = (snap: LeaderboardSnapshot) => void;
 
 type StreamKey = string;
@@ -254,6 +307,12 @@ async function buildSnapshot(serverId: number, metric: LeaderboardMetric, period
 	} else if (BOUNTY_METRICS.includes(metric)) {
 		const entries = await db.getItemsBountyLeaderboard(serverId, since).catch(() => []);
 		rows = buildBountyRows(entries, metric, limit);
+	} else if (STEAL_METRICS.includes(metric)) {
+		const entries = await db.getItemsAttackLeaderboard(serverId, 'steal', since).catch(() => []);
+		rows = buildAttackRows(entries, metric, limit);
+	} else if (BOMB_METRICS.includes(metric)) {
+		const entries = await db.getItemsAttackLeaderboard(serverId, 'bomb', since).catch(() => []);
+		rows = buildAttackRows(entries, metric, limit);
 	} else if (since) {
 		const entries = await db.getLeaderboardPeriodCounts(serverId, since).catch(() => []);
 		rows = buildPeriodRows(entries, metric, limit);

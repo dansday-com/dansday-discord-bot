@@ -17,6 +17,12 @@ function parseMetric(m: string | null): LeaderboardMetric {
 	if (v === 'items_bounty_total') return 'items_bounty_total';
 	if (v === 'items_bounty_claimer') return 'items_bounty_claimer';
 	if (v === 'items_bounty_give') return 'items_bounty_give';
+	if (v === 'items_steal_total') return 'items_steal_total';
+	if (v === 'items_steal_rate') return 'items_steal_rate';
+	if (v === 'items_steal_big') return 'items_steal_big';
+	if (v === 'items_bomb_total') return 'items_bomb_total';
+	if (v === 'items_bomb_rate') return 'items_bomb_rate';
+	if (v === 'items_bomb_big') return 'items_bomb_big';
 	return 'xp';
 }
 

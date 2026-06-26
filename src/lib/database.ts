@@ -2221,6 +2221,50 @@ export async function getItemsGamblerLeaderboard(serverId: any, since: Date | nu
 	return rows as any[];
 }
 
+export async function getItemsAttackLeaderboard(serverId: any, action: 'steal' | 'bomb', since: Date | null) {
+	await initializeDatabase();
+	if (!serverId) return [] as any[];
+
+	const disguisedIds = await getDisguisedMemberIds(serverId);
+	const hideDisguised = disguisedIds.length > 0 ? notInArray(schema.serverMembers.id, disguisedIds) : undefined;
+
+	const rows = await db
+		.select({
+			discord_member_id: schema.serverMembers.discord_member_id,
+			username: schema.serverMembers.username,
+			display_name: schema.serverMembers.display_name,
+			server_display_name: schema.serverMembers.server_display_name,
+			avatar: schema.serverMembers.avatar,
+			level: schema.serverMemberLevels.level,
+			attack_total: sql<number>`COALESCE(SUM(CASE WHEN ${schema.serverMemberItemLogs.outcome} = 'success' THEN ${schema.serverMemberItemLogs.xp_amount} ELSE 0 END), 0)`,
+			attack_success: sql<number>`SUM(CASE WHEN ${schema.serverMemberItemLogs.outcome} = 'success' THEN 1 ELSE 0 END)`,
+			attack_attempts: sql<number>`COUNT(*)`,
+			attack_big: sql<number>`COALESCE(MAX(CASE WHEN ${schema.serverMemberItemLogs.outcome} = 'success' THEN ${schema.serverMemberItemLogs.xp_amount} ELSE 0 END), 0)`
+		})
+		.from(schema.serverMemberItemLogs)
+		.innerJoin(schema.serverMembers, eq(schema.serverMembers.id, schema.serverMemberItemLogs.member_id))
+		.leftJoin(schema.serverMemberLevels, eq(schema.serverMemberLevels.member_id, schema.serverMembers.id))
+		.where(
+			and(
+				eq(schema.serverMembers.server_id, Number(serverId)),
+				eq(schema.serverMemberItemLogs.action, action),
+				...(since ? [sql`${schema.serverMemberItemLogs.created_at} >= ${toMySQLDateTime(since)}`] : []),
+				...(hideDisguised ? [hideDisguised] : [])
+			)
+		)
+		.groupBy(
+			schema.serverMembers.id,
+			schema.serverMembers.discord_member_id,
+			schema.serverMembers.username,
+			schema.serverMembers.display_name,
+			schema.serverMembers.server_display_name,
+			schema.serverMembers.avatar,
+			schema.serverMemberLevels.level
+		);
+
+	return rows as any[];
+}
+
 export async function getItemsBountyLeaderboard(serverId: any, since: Date | null) {
 	await initializeDatabase();
 	if (!serverId) return [] as any[];
@@ -4354,6 +4398,7 @@ export default {
 	getServerLeaderboard,
 	getLeaderboardPeriodCounts,
 	getItemsGamblerLeaderboard,
+	getItemsAttackLeaderboard,
 	getItemsBountyLeaderboard,
 	getDisguisedMemberIds,
 	getServerMembersList,

@@ -10,7 +10,9 @@
 
 	const GAMBLER_METRICS: Metric[] = ['items_gamble_net', 'items_gamble_ratio', 'items_gamble_big'];
 	const BOUNTY_METRICS: Metric[] = ['items_bounty_total', 'items_bounty_claimer', 'items_bounty_give'];
-	const ITEMS_METRICS: Metric[] = [...GAMBLER_METRICS, ...BOUNTY_METRICS];
+	const STEAL_METRICS: Metric[] = ['items_steal_total', 'items_steal_rate', 'items_steal_big'];
+	const BOMB_METRICS: Metric[] = ['items_bomb_total', 'items_bomb_rate', 'items_bomb_big'];
+	const ITEMS_METRICS: Metric[] = [...GAMBLER_METRICS, ...BOUNTY_METRICS, ...STEAL_METRICS, ...BOMB_METRICS];
 	const VOICE_METRICS: Metric[] = ['voice_total', 'voice_active', 'voice_afk', 'video', 'streaming'];
 	const METRICS: Metric[] = ['xp', 'chat', ...VOICE_METRICS, ...ITEMS_METRICS];
 	const PERIODS: { id: Period; label: string }[] = [
@@ -32,6 +34,8 @@
 	const isItemsGroup = $derived(ITEMS_METRICS.includes(metric));
 	const isGamblerGroup = $derived(GAMBLER_METRICS.includes(metric));
 	const isBountyGroup = $derived(BOUNTY_METRICS.includes(metric));
+	const isStealGroup = $derived(STEAL_METRICS.includes(metric));
+	const isBombGroup = $derived(BOMB_METRICS.includes(metric));
 	const isPeriod = $derived(period !== 'all');
 
 	const top3 = $derived(rows.slice(0, 3));
@@ -65,6 +69,12 @@
 		if (m === 'items_bounty_total') return 'Bounties — Most wanted';
 		if (m === 'items_bounty_claimer') return 'Bounties — Top claimer';
 		if (m === 'items_bounty_give') return 'Bounties — Top giver';
+		if (m === 'items_steal_total') return 'Stealer — XP stolen';
+		if (m === 'items_steal_rate') return 'Stealer — Success rate';
+		if (m === 'items_steal_big') return 'Stealer — Big steal';
+		if (m === 'items_bomb_total') return 'Bomber — XP destroyed';
+		if (m === 'items_bomb_rate') return 'Bomber — Success rate';
+		if (m === 'items_bomb_big') return 'Bomber — Big bomb';
 		return 'XP';
 	}
 
@@ -81,20 +91,24 @@
 		if (m === 'items_bounty_total') return Number(r.bounty_on_them || 0);
 		if (m === 'items_bounty_claimer') return Number(r.bounty_collected || 0);
 		if (m === 'items_bounty_give') return Number(r.bounty_given || 0);
+		if (m === 'items_steal_rate' || m === 'items_bomb_rate') return Number(r.attack_rate || 0);
+		if (m === 'items_steal_big' || m === 'items_bomb_big') return Number(r.attack_big || 0);
+		if (m === 'items_steal_total' || m === 'items_bomb_total') return Number(r.attack_total || 0);
 		return Number(r.experience || 0);
 	}
 
 	function metricValueAnimated(r: any, m: string) {
 		const n = anim[r.discord_member_id] ?? metricValueNumber(r, m);
-		if (m === 'items_gamble_ratio') return (Math.round(n * 10) / 10).toLocaleString();
+		if (m === 'items_gamble_ratio' || m === 'items_steal_rate' || m === 'items_bomb_rate') return (Math.round(n * 10) / 10).toLocaleString();
 		const rounded = Math.round(n);
 		return rounded.toLocaleString();
 	}
 
 	function metricUnit(m: string) {
-		if (m === 'items_gamble_ratio') return '%';
+		if (m === 'items_gamble_ratio' || m === 'items_steal_rate' || m === 'items_bomb_rate') return '%';
 		if (m === 'items_gamble_net' || m === 'items_gamble_big') return 'xp';
 		if (m === 'items_bounty_total' || m === 'items_bounty_claimer' || m === 'items_bounty_give') return 'xp';
+		if (m.startsWith('items_steal_') || m.startsWith('items_bomb_')) return 'xp';
 		if (isPeriod) {
 			if (m === 'xp') return 'xp';
 			return 'times';
@@ -111,6 +125,9 @@
 		if (m === 'items_bounty_claimer') return 'claimed';
 		if (m === 'items_bounty_give') return 'placed';
 		if (m === 'items_bounty_total') return 'on their head';
+		if (m.startsWith('items_steal_') || m.startsWith('items_bomb_')) {
+			return `${Number(r.attack_success || 0)}/${Number(r.attack_attempts || 0)} hits`;
+		}
 		return '';
 	}
 
@@ -309,6 +326,12 @@
 		<button class="m-tab m-tab--sm {isGamblerGroup ? 'm-tab--active' : ''}" onclick={() => setMetric('items_gamble_net')}>
 			<i class="fas fa-dice"></i> Top Gambler
 		</button>
+		<button class="m-tab m-tab--sm {isStealGroup ? 'm-tab--active' : ''}" onclick={() => setMetric('items_steal_total')}>
+			<i class="fas fa-hand"></i> Top Stealer
+		</button>
+		<button class="m-tab m-tab--sm {isBombGroup ? 'm-tab--active' : ''}" onclick={() => setMetric('items_bomb_total')}>
+			<i class="fas fa-bomb"></i> Top Bomber
+		</button>
 		<button class="m-tab m-tab--sm {isBountyGroup ? 'm-tab--active' : ''}" onclick={() => setMetric('items_bounty_total')}>
 			<i class="fas fa-crosshairs"></i> Top Bounties
 		</button>
@@ -323,6 +346,30 @@
 			</button>
 			<button class="m-tab m-tab--sm {metric === 'items_gamble_big' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_gamble_big')}>
 				<i class="fas fa-trophy"></i> Big win
+			</button>
+		</div>
+	{:else if isStealGroup}
+		<div class="m-tabs m-tabs--sub m-tabs--sub2">
+			<button class="m-tab m-tab--sm {metric === 'items_steal_total' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_steal_total')}>
+				<i class="fas fa-coins"></i> XP stolen
+			</button>
+			<button class="m-tab m-tab--sm {metric === 'items_steal_rate' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_steal_rate')}>
+				<i class="fas fa-percent"></i> Success rate
+			</button>
+			<button class="m-tab m-tab--sm {metric === 'items_steal_big' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_steal_big')}>
+				<i class="fas fa-trophy"></i> Big steal
+			</button>
+		</div>
+	{:else if isBombGroup}
+		<div class="m-tabs m-tabs--sub m-tabs--sub2">
+			<button class="m-tab m-tab--sm {metric === 'items_bomb_total' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_bomb_total')}>
+				<i class="fas fa-coins"></i> XP destroyed
+			</button>
+			<button class="m-tab m-tab--sm {metric === 'items_bomb_rate' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_bomb_rate')}>
+				<i class="fas fa-percent"></i> Success rate
+			</button>
+			<button class="m-tab m-tab--sm {metric === 'items_bomb_big' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_bomb_big')}>
+				<i class="fas fa-trophy"></i> Big bomb
 			</button>
 		</div>
 	{:else}

@@ -13,7 +13,13 @@ export type LeaderboardMetric =
 	| 'items_gamble_big'
 	| 'items_bounty_total'
 	| 'items_bounty_claimer'
-	| 'items_bounty_give';
+	| 'items_bounty_give'
+	| 'items_steal_total'
+	| 'items_steal_rate'
+	| 'items_steal_big'
+	| 'items_bomb_total'
+	| 'items_bomb_rate'
+	| 'items_bomb_big';
 
 export type LeaderboardPeriod = 'all' | 'month' | 'week';
 
@@ -39,6 +45,11 @@ export type LeaderboardRow = {
 	bounty_on_them?: number | null;
 	bounty_collected?: number | null;
 	bounty_given?: number | null;
+	attack_total?: number | null;
+	attack_success?: number | null;
+	attack_attempts?: number | null;
+	attack_big?: number | null;
+	attack_rate?: number | null;
 	rank: number | null;
 };
 

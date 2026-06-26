@@ -68,17 +68,17 @@
 		if (m === 'items_gamble_net') return 'Gambler — Win XP';
 		if (m === 'items_gamble_ratio') return 'Gambler — Win ratio';
 		if (m === 'items_gamble_big') return 'Gambler — Big win';
-		if (m === 'items_bounty_total') return 'Bounties — Most wanted';
-		if (m === 'items_bounty_claimer') return 'Bounties — Top claimer';
-		if (m === 'items_bounty_give') return 'Bounties — Top giver';
+		if (m === 'items_bounty_total') return 'Bounties — Total bounties';
+		if (m === 'items_bounty_claimer') return 'Bounties — Claimer';
+		if (m === 'items_bounty_give') return 'Bounties — Giver';
 		if (m === 'items_steal_total') return 'Stealer — XP stolen';
 		if (m === 'items_steal_rate') return 'Stealer — Success rate';
 		if (m === 'items_steal_big') return 'Stealer — Big steal';
 		if (m === 'items_bomb_total') return 'Bomber — XP destroyed';
 		if (m === 'items_bomb_rate') return 'Bomber — Success rate';
 		if (m === 'items_bomb_big') return 'Bomber — Big bomb';
-		if (m === 'items_gift_give') return 'Gifts — Top giver';
-		if (m === 'items_gift_receive') return 'Gifts — Most received';
+		if (m === 'items_gift_give') return 'Gifts — Given';
+		if (m === 'items_gift_receive') return 'Gifts — Received';
 		return 'XP';
 	}
 
@@ -333,19 +333,19 @@
 {#if isItemsGroup}
 	<div class="m-tabs m-tabs--sub">
 		<button class="m-tab m-tab--sm {isGamblerGroup ? 'm-tab--active' : ''}" onclick={() => setMetric('items_gamble_net')}>
-			<i class="fas fa-dice"></i> Top Gambler
+			<i class="fas fa-dice"></i> Gambler
 		</button>
 		<button class="m-tab m-tab--sm {isStealGroup ? 'm-tab--active' : ''}" onclick={() => setMetric('items_steal_total')}>
-			<i class="fas fa-hand"></i> Top Stealer
+			<i class="fas fa-hand"></i> Stealer
 		</button>
 		<button class="m-tab m-tab--sm {isBombGroup ? 'm-tab--active' : ''}" onclick={() => setMetric('items_bomb_total')}>
-			<i class="fas fa-bomb"></i> Top Bomber
+			<i class="fas fa-bomb"></i> Bomber
 		</button>
 		<button class="m-tab m-tab--sm {isBountyGroup ? 'm-tab--active' : ''}" onclick={() => setMetric('items_bounty_total')}>
-			<i class="fas fa-crosshairs"></i> Top Bounties
+			<i class="fas fa-crosshairs"></i> Bounties
 		</button>
 		<button class="m-tab m-tab--sm {isGiftGroup ? 'm-tab--active' : ''}" onclick={() => setMetric('items_gift_give')}>
-			<i class="fas fa-gift"></i> Top Gifts
+			<i class="fas fa-gift"></i> Gifts
 		</button>
 	</div>
 	{#if isGamblerGroup}
@@ -390,19 +390,19 @@
 				<i class="fas fa-skull"></i> Total bounties
 			</button>
 			<button class="m-tab m-tab--sm {metric === 'items_bounty_claimer' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_bounty_claimer')}>
-				<i class="fas fa-coins"></i> Top claimer
+				<i class="fas fa-coins"></i> Claimer
 			</button>
 			<button class="m-tab m-tab--sm {metric === 'items_bounty_give' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_bounty_give')}>
-				<i class="fas fa-crosshairs"></i> Top giver
+				<i class="fas fa-crosshairs"></i> Giver
 			</button>
 		</div>
 	{:else}
 		<div class="m-tabs m-tabs--sub m-tabs--sub2">
 			<button class="m-tab m-tab--sm {metric === 'items_gift_give' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_gift_give')}>
-				<i class="fas fa-gift"></i> Total give
+				<i class="fas fa-gift"></i> Given
 			</button>
 			<button class="m-tab m-tab--sm {metric === 'items_gift_receive' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_gift_receive')}>
-				<i class="fas fa-coins"></i> Most received
+				<i class="fas fa-coins"></i> Received
 			</button>
 		</div>
 	{/if}

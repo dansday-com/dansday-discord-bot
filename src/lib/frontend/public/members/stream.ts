@@ -1,4 +1,4 @@
-import { getServerMembersList } from '../../../database.js';
+import { getServerMembersList, getDisguisedMemberIds } from '../../../database.js';
 
 export type PublicMembersStreamPayload = {
 	members: NonNullable<Awaited<ReturnType<typeof getServerMembersList>>>;
@@ -18,7 +18,8 @@ const streams = new Map<number, StreamState>();
 const POLL_MS = 3_000;
 
 async function fetchMembers(serverId: number): Promise<PublicMembersStreamPayload> {
-	const members = await getServerMembersList(serverId);
+	const disguisedIds = new Set((await getDisguisedMemberIds(serverId).catch(() => [])).map((n: number) => Number(n)));
+	const members = (await getServerMembersList(serverId)).filter((m: any) => !disguisedIds.has(Number(m.id)));
 	return { members: members ?? [], updated_at: Date.now() };
 }
 

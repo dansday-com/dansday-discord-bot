@@ -60,8 +60,6 @@
 		}
 	},
 	"settings": {
-		"title": "⚙️ Settings",
-		"description": "Configure your bot preferences",
 		"language": {
 			"title": "🌐 Language Settings",
 			"description": "Select your preferred language:",

@@ -60,8 +60,6 @@
 		}
 	},
 	"settings": {
-		"title": "⚙️ Pengaturan",
-		"description": "Konfigurasi preferensi bot kamu",
 		"language": {
 			"title": "🌐 Pengaturan Bahasa",
 			"description": "Pilih bahasa pilihan kamu:",

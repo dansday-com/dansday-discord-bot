@@ -27,7 +27,7 @@ import {
 	handleGiveawaySkipRolesContinue,
 	handleGiveawayFinish
 } from './interface/giveaway.js';
-import { handleSettingsButton, handleLanguageButton, handleLanguageSelect } from './interface/settings.js';
+import { handleLanguageButton, handleLanguageSelect } from './interface/settings.js';
 import {
 	handleStaffRatingButton,
 	handleStaffRatingUserSelect,
@@ -203,8 +203,8 @@ async function handleMenuButton(interaction) {
 	}
 
 	const settingsButton = new ButtonBuilder()
-		.setCustomId('bot_settings')
-		.setLabel(await translate('settings.title', interaction.guild.id, interaction.user.id))
+		.setCustomId('settings_language')
+		.setLabel(await translate('settings.language.select', interaction.guild.id, interaction.user.id))
 		.setStyle(ButtonStyle.Secondary);
 
 	if (rows.length === 0) {
@@ -347,9 +347,6 @@ export async function handleButtonInteraction(interaction) {
 			break;
 		case 'afk_remove':
 			await handleRemoveAFKButton(interaction);
-			break;
-		case 'bot_settings':
-			await handleSettingsButton(interaction);
 			break;
 		case 'settings_language':
 			await handleLanguageButton(interaction);

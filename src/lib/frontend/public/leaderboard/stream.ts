@@ -181,6 +181,52 @@ function buildGamblerRows(entries: any[], metric: LeaderboardMetric, limit: numb
 	}));
 }
 
+const BOUNTY_METRICS: LeaderboardMetric[] = ['items_bounty_total', 'items_bounty_claimer', 'items_bounty_give'];
+
+function buildBountyRows(entries: any[], metric: LeaderboardMetric, limit: number): LeaderboardRow[] {
+	const safe = Math.max(1, Math.min(100, limit));
+	const value = (e: any): number => {
+		switch (metric) {
+			case 'items_bounty_claimer':
+				return Number(e.bounty_collected ?? 0);
+			case 'items_bounty_give':
+				return Number(e.bounty_given ?? 0);
+			default:
+				return Number(e.bounty_on_them ?? 0);
+		}
+	};
+
+	const sorted = [...entries].sort((a, b) => {
+		const vb = value(b);
+		const va = value(a);
+		if (vb !== va) return vb - va;
+		return String(a.discord_member_id).localeCompare(String(b.discord_member_id));
+	});
+
+	return sorted
+		.filter((e) => value(e) > 0)
+		.slice(0, safe)
+		.map((e) => ({
+			discord_member_id: e.discord_member_id,
+			username: e.username,
+			display_name: e.display_name,
+			server_display_name: e.server_display_name,
+			avatar: e.avatar,
+			experience: 0,
+			level: e.level ?? 0,
+			chat_total: 0,
+			voice_minutes_total: 0,
+			voice_minutes_active: 0,
+			voice_minutes_afk: 0,
+			voice_minutes_video: 0,
+			voice_minutes_streaming: 0,
+			bounty_on_them: Number(e.bounty_on_them ?? 0),
+			bounty_collected: Number(e.bounty_collected ?? 0),
+			bounty_given: Number(e.bounty_given ?? 0),
+			rank: null
+		}));
+}
+
 type Listener = (snap: LeaderboardSnapshot) => void;
 
 type StreamKey = string;
@@ -205,6 +251,9 @@ async function buildSnapshot(serverId: number, metric: LeaderboardMetric, period
 	if (GAMBLER_METRICS.includes(metric)) {
 		const entries = await db.getItemsGamblerLeaderboard(serverId, since).catch(() => []);
 		rows = buildGamblerRows(entries, metric, limit);
+	} else if (BOUNTY_METRICS.includes(metric)) {
+		const entries = await db.getItemsBountyLeaderboard(serverId, since).catch(() => []);
+		rows = buildBountyRows(entries, metric, limit);
 	} else if (since) {
 		const entries = await db.getLeaderboardPeriodCounts(serverId, since).catch(() => []);
 		rows = buildPeriodRows(entries, metric, limit);

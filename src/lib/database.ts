@@ -2221,6 +2221,50 @@ export async function getItemsGamblerLeaderboard(serverId: any, since: Date | nu
 	return rows as any[];
 }
 
+export async function getItemsBountyLeaderboard(serverId: any, since: Date | null) {
+	await initializeDatabase();
+	if (!serverId) return [] as any[];
+
+	const disguisedIds = await getDisguisedMemberIds(serverId);
+	const sinceClause = since ? sql`AND b.created_at >= ${toMySQLDateTime(since)}` : sql``;
+	const sinceLogClause = since ? sql`AND l.created_at >= ${toMySQLDateTime(since)}` : sql``;
+	const hideClause = disguisedIds.length > 0 ? sql`AND sm.id NOT IN (${sql.join(disguisedIds, sql`, `)})` : sql``;
+
+	const rows = await db.execute(sql`
+		SELECT
+			sm.discord_member_id, sm.username, sm.display_name, sm.server_display_name, sm.avatar,
+			sml.level,
+			SUM(agg.bounty_on_them) AS bounty_on_them,
+			SUM(agg.bounty_collected) AS bounty_collected,
+			SUM(agg.bounty_given) AS bounty_given
+		FROM (
+			SELECT b.target_member_id AS member_id,
+				COALESCE(SUM(b.amount), 0) AS bounty_on_them, 0 AS bounty_collected, 0 AS bounty_given
+			FROM server_member_item_bounties b
+			WHERE 1=1 ${sinceClause}
+			GROUP BY b.target_member_id
+			UNION ALL
+			SELECT b.placed_by_member_id AS member_id,
+				0 AS bounty_on_them, 0 AS bounty_collected, COALESCE(SUM(b.amount), 0) AS bounty_given
+			FROM server_member_item_bounties b
+			WHERE b.placed_by_member_id IS NOT NULL ${sinceClause}
+			GROUP BY b.placed_by_member_id
+			UNION ALL
+			SELECT l.member_id AS member_id,
+				0 AS bounty_on_them, COALESCE(SUM(l.xp_amount), 0) AS bounty_collected, 0 AS bounty_given
+			FROM server_member_item_logs l
+			WHERE l.action = 'bounty_collected' ${sinceLogClause}
+			GROUP BY l.member_id
+		) agg
+		INNER JOIN server_members sm ON sm.id = agg.member_id
+		LEFT JOIN server_member_levels sml ON sml.member_id = sm.id
+		WHERE sm.server_id = ${Number(serverId)} ${hideClause}
+		GROUP BY sm.id, sm.discord_member_id, sm.username, sm.display_name, sm.server_display_name, sm.avatar, sml.level
+	`);
+
+	return rows[0] as unknown as any[];
+}
+
 export async function getServerMembersList(serverId: any) {
 	await initializeDatabase();
 	if (serverId === undefined || serverId === null || serverId === '') return [];
@@ -4310,6 +4354,7 @@ export default {
 	getServerLeaderboard,
 	getLeaderboardPeriodCounts,
 	getItemsGamblerLeaderboard,
+	getItemsBountyLeaderboard,
 	getDisguisedMemberIds,
 	getServerMembersList,
 	getPanelOverview,

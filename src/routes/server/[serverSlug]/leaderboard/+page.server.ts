@@ -15,6 +15,9 @@ function parseMetric(m: string | null): LeaderboardMetric {
 	if (v === 'items_gamble_net') return 'items_gamble_net';
 	if (v === 'items_gamble_ratio') return 'items_gamble_ratio';
 	if (v === 'items_gamble_big') return 'items_gamble_big';
+	if (v === 'items_bounty_total') return 'items_bounty_total';
+	if (v === 'items_bounty_claimer') return 'items_bounty_claimer';
+	if (v === 'items_bounty_give') return 'items_bounty_give';
 	return 'xp';
 }
 

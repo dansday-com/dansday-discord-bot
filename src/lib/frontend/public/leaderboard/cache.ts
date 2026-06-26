@@ -10,7 +10,10 @@ export type LeaderboardMetric =
 	| 'streaming'
 	| 'items_gamble_net'
 	| 'items_gamble_ratio'
-	| 'items_gamble_big';
+	| 'items_gamble_big'
+	| 'items_bounty_total'
+	| 'items_bounty_claimer'
+	| 'items_bounty_give';
 
 export type LeaderboardPeriod = 'all' | 'month' | 'week';
 
@@ -33,6 +36,9 @@ export type LeaderboardRow = {
 	gamble_total?: number | null;
 	gamble_big_win?: number | null;
 	gamble_ratio?: number | null;
+	bounty_on_them?: number | null;
+	bounty_collected?: number | null;
+	bounty_given?: number | null;
 	rank: number | null;
 };
 

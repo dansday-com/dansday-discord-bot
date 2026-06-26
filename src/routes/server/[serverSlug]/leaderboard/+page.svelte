@@ -8,20 +8,11 @@
 	type Metric = typeof data.metric;
 	type Period = typeof data.period;
 
-	const METRICS: Metric[] = [
-		'xp',
-		'chat',
-		'voice_total',
-		'voice_active',
-		'voice_afk',
-		'video',
-		'streaming',
-		'items_gamble_net',
-		'items_gamble_ratio',
-		'items_gamble_big'
-	];
+	const GAMBLER_METRICS: Metric[] = ['items_gamble_net', 'items_gamble_ratio', 'items_gamble_big'];
+	const BOUNTY_METRICS: Metric[] = ['items_bounty_total', 'items_bounty_claimer', 'items_bounty_give'];
+	const ITEMS_METRICS: Metric[] = [...GAMBLER_METRICS, ...BOUNTY_METRICS];
 	const VOICE_METRICS: Metric[] = ['voice_total', 'voice_active', 'voice_afk', 'video', 'streaming'];
-	const ITEMS_METRICS: Metric[] = ['items_gamble_net', 'items_gamble_ratio', 'items_gamble_big'];
+	const METRICS: Metric[] = ['xp', 'chat', ...VOICE_METRICS, ...ITEMS_METRICS];
 	const PERIODS: { id: Period; label: string }[] = [
 		{ id: 'all', label: 'All time' },
 		{ id: 'month', label: 'This month' },
@@ -39,7 +30,8 @@
 
 	const isVoiceGroup = $derived(VOICE_METRICS.includes(metric));
 	const isItemsGroup = $derived(ITEMS_METRICS.includes(metric));
-	const isRatio = $derived(metric === 'items_gamble_ratio');
+	const isGamblerGroup = $derived(GAMBLER_METRICS.includes(metric));
+	const isBountyGroup = $derived(BOUNTY_METRICS.includes(metric));
 	const isPeriod = $derived(period !== 'all');
 
 	const top3 = $derived(rows.slice(0, 3));
@@ -70,6 +62,9 @@
 		if (m === 'items_gamble_net') return 'Gambler — Win XP';
 		if (m === 'items_gamble_ratio') return 'Gambler — Win ratio';
 		if (m === 'items_gamble_big') return 'Gambler — Big win';
+		if (m === 'items_bounty_total') return 'Bounties — Most wanted';
+		if (m === 'items_bounty_claimer') return 'Bounties — Top claimer';
+		if (m === 'items_bounty_give') return 'Bounties — Top giver';
 		return 'XP';
 	}
 
@@ -83,6 +78,9 @@
 		if (m === 'items_gamble_net') return Number(r.gamble_net || 0);
 		if (m === 'items_gamble_ratio') return Number(r.gamble_ratio || 0);
 		if (m === 'items_gamble_big') return Number(r.gamble_big_win || 0);
+		if (m === 'items_bounty_total') return Number(r.bounty_on_them || 0);
+		if (m === 'items_bounty_claimer') return Number(r.bounty_collected || 0);
+		if (m === 'items_bounty_give') return Number(r.bounty_given || 0);
 		return Number(r.experience || 0);
 	}
 
@@ -96,6 +94,7 @@
 	function metricUnit(m: string) {
 		if (m === 'items_gamble_ratio') return '%';
 		if (m === 'items_gamble_net' || m === 'items_gamble_big') return 'xp';
+		if (m === 'items_bounty_total' || m === 'items_bounty_claimer' || m === 'items_bounty_give') return 'xp';
 		if (isPeriod) {
 			if (m === 'xp') return 'xp';
 			return 'times';
@@ -105,15 +104,13 @@
 		return 'xp';
 	}
 
-	function gambleSub(r: any, m: string) {
-		if (m === 'items_gamble_net' || m === 'items_gamble_big') {
-			const w = Number(r.gamble_wins || 0);
-			const t = Number(r.gamble_total || 0);
-			return `${w}/${t} wins`;
-		}
-		if (m === 'items_gamble_ratio') {
+	function itemsSub(r: any, m: string) {
+		if (m.startsWith('items_gamble_')) {
 			return `${Number(r.gamble_wins || 0)}/${Number(r.gamble_total || 0)} wins`;
 		}
+		if (m === 'items_bounty_claimer') return 'claimed';
+		if (m === 'items_bounty_give') return 'placed';
+		if (m === 'items_bounty_total') return 'on their head';
 		return '';
 	}
 
@@ -303,27 +300,44 @@
 		<i class="fas fa-microphone"></i> Voice
 	</button>
 	<button class="m-tab {isItemsGroup ? 'm-tab--active' : ''}" onclick={() => setMetric('items_gamble_net')}>
-		<i class="fas fa-dice"></i> Items
+		<i class="fas fa-store"></i> Items
 	</button>
 </div>
 
 {#if isItemsGroup}
 	<div class="m-tabs m-tabs--sub">
-		<button class="m-tab m-tab--sm m-tab--active" onclick={() => setMetric('items_gamble_net')}>
+		<button class="m-tab m-tab--sm {isGamblerGroup ? 'm-tab--active' : ''}" onclick={() => setMetric('items_gamble_net')}>
 			<i class="fas fa-dice"></i> Top Gambler
 		</button>
-	</div>
-	<div class="m-tabs m-tabs--sub m-tabs--sub2">
-		<button class="m-tab m-tab--sm {metric === 'items_gamble_net' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_gamble_net')}>
-			<i class="fas fa-coins"></i> Win XP
-		</button>
-		<button class="m-tab m-tab--sm {metric === 'items_gamble_ratio' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_gamble_ratio')}>
-			<i class="fas fa-percent"></i> Win ratio
-		</button>
-		<button class="m-tab m-tab--sm {metric === 'items_gamble_big' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_gamble_big')}>
-			<i class="fas fa-trophy"></i> Big win
+		<button class="m-tab m-tab--sm {isBountyGroup ? 'm-tab--active' : ''}" onclick={() => setMetric('items_bounty_total')}>
+			<i class="fas fa-crosshairs"></i> Top Bounties
 		</button>
 	</div>
+	{#if isGamblerGroup}
+		<div class="m-tabs m-tabs--sub m-tabs--sub2">
+			<button class="m-tab m-tab--sm {metric === 'items_gamble_net' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_gamble_net')}>
+				<i class="fas fa-coins"></i> Win XP
+			</button>
+			<button class="m-tab m-tab--sm {metric === 'items_gamble_ratio' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_gamble_ratio')}>
+				<i class="fas fa-percent"></i> Win ratio
+			</button>
+			<button class="m-tab m-tab--sm {metric === 'items_gamble_big' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_gamble_big')}>
+				<i class="fas fa-trophy"></i> Big win
+			</button>
+		</div>
+	{:else}
+		<div class="m-tabs m-tabs--sub m-tabs--sub2">
+			<button class="m-tab m-tab--sm {metric === 'items_bounty_total' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_bounty_total')}>
+				<i class="fas fa-skull"></i> Total bounties
+			</button>
+			<button class="m-tab m-tab--sm {metric === 'items_bounty_claimer' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_bounty_claimer')}>
+				<i class="fas fa-coins"></i> Top claimer
+			</button>
+			<button class="m-tab m-tab--sm {metric === 'items_bounty_give' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_bounty_give')}>
+				<i class="fas fa-crosshairs"></i> Top giver
+			</button>
+		</div>
+	{/if}
 {/if}
 
 {#if isVoiceGroup}
@@ -384,7 +398,7 @@
 							{metricValueAnimated(r, metric)}
 							<span class="m-podium-unit">{metricUnit(metric)}</span>
 						</div>
-						<div class="m-podium-level">{isItemsGroup ? gambleSub(r, metric) : `Level ${r.level ?? 0}`}</div>
+						<div class="m-podium-level">{isItemsGroup ? itemsSub(r, metric) : `Level ${r.level ?? 0}`}</div>
 					</div>
 
 					<div class="m-podium-block" style="height: {podiumHeights[rank]}; background: {rankGradients[rank]};">
@@ -415,7 +429,7 @@
 					</div>
 					<div class="m-list-info">
 						<div class="m-list-name" title={displayName(r)}>{displayName(r)}</div>
-						<div class="m-list-sub">{isItemsGroup ? gambleSub(r, metric) : `Level ${r.level ?? 0}`}</div>
+						<div class="m-list-sub">{isItemsGroup ? itemsSub(r, metric) : `Level ${r.level ?? 0}`}</div>
 						<div class="m-list-bar-track">
 							<div class="m-list-bar-fill" style="width: {barWidthPct(r, metric)}%"></div>
 						</div>

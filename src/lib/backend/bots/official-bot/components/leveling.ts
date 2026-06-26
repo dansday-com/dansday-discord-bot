@@ -558,6 +558,27 @@ const XP_LOG_SOURCE: Record<string, string> = {
 	Streaming: 'stream'
 };
 
+const disguisedCache = new Map<string, { ids: Set<number>; at: number }>();
+const DISGUISE_CACHE_MS = 10_000;
+
+async function isMemberDisguised(guild: any, memberId: any): Promise<boolean> {
+	if (!guild?.id || !memberId) return false;
+	try {
+		const key = String(guild.id);
+		const cached = disguisedCache.get(key);
+		let ids = cached && Date.now() - cached.at < DISGUISE_CACHE_MS ? cached.ids : null;
+		if (!ids) {
+			const server = await getServerForCurrentBot(guild.id);
+			const list = await db.getDisguisedMemberIds(server.id).catch(() => []);
+			ids = new Set((list as number[]).map((n) => Number(n)));
+			disguisedCache.set(key, { ids, at: Date.now() });
+		}
+		return ids.has(Number(memberId));
+	} catch (_) {
+		return false;
+	}
+}
+
 async function sendXPLogToChannel(guild, dbMember, xpGained, xpType, award: any = null, stats: any = null) {
 	try {
 		await db
@@ -579,7 +600,9 @@ async function sendXPLogToChannel(guild, dbMember, xpGained, xpType, award: any 
 		const channel = await guild.channels.fetch(settings.PROGRESS_CHANNEL_ID).catch(() => null);
 		if (!channel) return;
 
-		const memberName = dbMember.server_display_name || dbMember.display_name || dbMember.username || 'Unknown';
+		const memberName = (await isMemberDisguised(guild, dbMember.id))
+			? 'A mysterious member 🎭'
+			: dbMember.server_display_name || dbMember.display_name || dbMember.username || 'Unknown';
 		const emoji = XP_LOG_EMOJI[xpType] ?? '⭐';
 		const boostSuffix = award?.boosted ? ` (${award.multiplier}× Boost ⚡)` : '';
 		const friendSuffix = award?.friendBoosted ? ` (+${award.friendPercent}% Friend boost 🤝)` : '';
@@ -605,7 +628,9 @@ async function announceLeechCredits(guild, victim, credits) {
 		for (const credit of credits) {
 			if (!credit?.amount || credit.amount <= 0) continue;
 			const b = credit.beneficiary;
-			const attackerName = b?.server_display_name || b?.display_name || b?.username || 'A leecher';
+			const attackerName = (await isMemberDisguised(guild, b?.id))
+				? 'A mysterious member 🎭'
+				: b?.server_display_name || b?.display_name || b?.username || 'A leecher';
 			const pct = credit.percent != null ? ` (${credit.percent}%)` : '';
 			await channel.send(`🩸 Leech: ${attackerName} siphoned +${credit.amount} XP from ${victimName}${pct}`).catch(() => null);
 		}

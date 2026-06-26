@@ -467,19 +467,33 @@ function newImmunityUntil(immunityMinutes: any): Date | null {
 
 export async function resolveBoost({ memberItemId, ownerMemberId, config }: any) {
 	const cfg = parseConfig(config);
+	const actorDisguised = await isDisguised(ownerMemberId);
 	const expiresAt = computeExpiry(cfg.effect_duration_minutes);
 	await db.addMemberItemActive(memberItemId, { effect_value: Number(cfg.multiplier ?? 2), expires_at: expiresAt });
-	await db.logMemberItemAction(ownerMemberId, { member_item_id: memberItemId, action: 'boost', xp_amount: 0, outcome: 'success' });
-	return { outcome: 'success', expiresAt };
+	await db.logMemberItemAction(ownerMemberId, {
+		member_item_id: memberItemId,
+		action: 'boost',
+		xp_amount: 0,
+		outcome: 'success',
+		actor_disguised: actorDisguised
+	});
+	return { outcome: 'success', expiresAt, actorDisguised };
 }
 
 export async function resolveShield({ memberItemId, ownerMemberId, config }: any) {
 	const cfg = parseConfig(config);
+	const actorDisguised = await isDisguised(ownerMemberId);
 	const expiresAt = computeExpiry(cfg.effect_duration_minutes);
 	await db.addMemberItemActive(memberItemId, { effect_value: 1, expires_at: expiresAt });
-	await db.logMemberItemAction(ownerMemberId, { member_item_id: memberItemId, action: 'shield', xp_amount: 0, outcome: 'success' });
+	await db.logMemberItemAction(ownerMemberId, {
+		member_item_id: memberItemId,
+		action: 'shield',
+		xp_amount: 0,
+		outcome: 'success',
+		actor_disguised: actorDisguised
+	});
 	await invalidateEffectCache(ownerMemberId);
-	return { outcome: 'success', expiresAt };
+	return { outcome: 'success', expiresAt, actorDisguised };
 }
 
 async function activeLeechOnTarget(targetMemberId: any) {
@@ -544,11 +558,18 @@ export async function resolveLeech({ memberItemId, actorMemberId, targetMemberId
 
 export async function resolveReflect({ memberItemId, ownerMemberId, config }: any) {
 	const cfg = parseConfig(config);
+	const actorDisguised = await isDisguised(ownerMemberId);
 	const expiresAt = computeExpiry(cfg.effect_duration_minutes);
 	await db.addMemberItemActive(memberItemId, { effect_value: 1, expires_at: expiresAt });
-	await db.logMemberItemAction(ownerMemberId, { member_item_id: memberItemId, action: 'reflect', xp_amount: 0, outcome: 'success' });
+	await db.logMemberItemAction(ownerMemberId, {
+		member_item_id: memberItemId,
+		action: 'reflect',
+		xp_amount: 0,
+		outcome: 'success',
+		actor_disguised: actorDisguised
+	});
 	await invalidateEffectCache(ownerMemberId);
-	return { outcome: 'success', expiresAt };
+	return { outcome: 'success', expiresAt, actorDisguised };
 }
 
 export async function resolveDisguise({ memberItemId, ownerMemberId, config }: any) {
@@ -597,16 +618,24 @@ export async function resolveInsurance({ memberItemId, ownerMemberId, config }: 
 	const cfg = parseConfig(config);
 	const cooldownUntil = await activationCooldownUntil(ownerMemberId, cfg.cooldown_minutes, 'insurance');
 	if (cooldownUntil) return { outcome: 'cooldown', error: `Insurance is on cooldown — try again in ${humanizeUntil(cooldownUntil)}.` };
+	const actorDisguised = await isDisguised(ownerMemberId);
 	const refundPercent = Math.max(0, Math.min(100, Number(cfg.refund_percent ?? 100)));
 	const expiresAt = computeExpiry(cfg.effect_duration_minutes);
 	await db.addMemberItemActive(memberItemId, { effect_value: refundPercent, expires_at: expiresAt });
-	await db.logMemberItemAction(ownerMemberId, { member_item_id: memberItemId, action: 'insurance', xp_amount: 0, outcome: 'success' });
+	await db.logMemberItemAction(ownerMemberId, {
+		member_item_id: memberItemId,
+		action: 'insurance',
+		xp_amount: 0,
+		outcome: 'success',
+		actor_disguised: actorDisguised
+	});
 	await invalidateEffectCache(ownerMemberId);
-	return { outcome: 'success', expiresAt, refundPercent };
+	return { outcome: 'success', expiresAt, refundPercent, actorDisguised };
 }
 
 export async function resolveGift({ actorMemberId, actorMemberItemId, targetMemberId, config, guildId }: any) {
 	const cfg = parseConfig(config);
+	const actorDisguised = await isDisguised(actorMemberId);
 	const amount = Math.max(0, Math.floor(Number(cfg.gift_amount) || 0));
 	if (amount <= 0) {
 		await db.logMemberItemAction(actorMemberId, {
@@ -614,9 +643,10 @@ export async function resolveGift({ actorMemberId, actorMemberItemId, targetMemb
 			target_member_id: targetMemberId,
 			action: 'gift',
 			xp_amount: 0,
-			outcome: 'success'
+			outcome: 'success',
+			actor_disguised: actorDisguised
 		});
-		return { outcome: 'success', xp: 0 };
+		return { outcome: 'success', xp: 0, actorDisguised };
 	}
 	const taxPercent = Math.max(0, Math.min(100, Number(cfg.tax_percent) || 0));
 	const received = Math.max(0, amount - Math.floor((amount * taxPercent) / 100));
@@ -630,9 +660,10 @@ export async function resolveGift({ actorMemberId, actorMemberItemId, targetMemb
 		target_member_id: targetMemberId,
 		action: 'gift',
 		xp_amount: received,
-		outcome: 'success'
+		outcome: 'success',
+		actor_disguised: actorDisguised
 	});
-	return { outcome: 'success', xp: received };
+	return { outcome: 'success', xp: received, actorDisguised };
 }
 
 export async function handleGamble(client: any, payload: any) {
@@ -693,16 +724,18 @@ export async function handleGamble(client: any, payload: any) {
 	}
 	await invalidateEffectCache(actorMemberId);
 
+	const actorDisguised = await isDisguised(actorMemberId);
 	await db.logMemberItemAction(actorMemberId, {
 		item_id,
 		action: 'gamble',
 		xp_amount: netChange,
-		outcome: won ? 'win' : 'lose'
+		outcome: won ? 'win' : 'lose',
+		actor_disguised: actorDisguised
 	});
 
 	await finalizeXpChanges(guild_id, gambleSnapshots, 'item-gamble');
 
-	const result = { outcome: won ? 'win' : 'lose', won, wager, payout, net: netChange };
+	const result = { outcome: won ? 'win' : 'lose', won, wager, payout, net: netChange, actorDisguised };
 	setTimeout(() => {
 		announceItemUse(client, {
 			guildId: guild_id,
@@ -719,8 +752,9 @@ export async function handleGamble(client: any, payload: any) {
 
 export async function resolveBounty({ actorMemberId, actorMemberItemId, targetMemberId, config, guildId }: any) {
 	const cfg = parseConfig(config);
+	const actorDisguised = await isDisguised(actorMemberId);
 	const amount = Math.max(0, Math.floor(Number(cfg.bounty_amount) || 0));
-	if (amount <= 0) return { outcome: 'success', xp: 0 };
+	if (amount <= 0) return { outcome: 'success', xp: 0, actorDisguised };
 
 	await db.placeBounty(targetMemberId, actorMemberId, amount);
 	await db.logMemberItemAction(actorMemberId, {
@@ -728,9 +762,10 @@ export async function resolveBounty({ actorMemberId, actorMemberItemId, targetMe
 		target_member_id: targetMemberId,
 		action: 'bounty',
 		xp_amount: amount,
-		outcome: 'success'
+		outcome: 'success',
+		actor_disguised: actorDisguised
 	});
-	return { outcome: 'success', xp: amount };
+	return { outcome: 'success', xp: amount, actorDisguised };
 }
 
 export async function resolveSpy({ actorMemberId, actorMemberItemId, targetMemberId, guildId }: any) {

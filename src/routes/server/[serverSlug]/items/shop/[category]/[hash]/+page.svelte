@@ -215,6 +215,8 @@
 				reelAnimating = true;
 				reelOffset = wrapW / 2 - cellCenter;
 			}
+			const net = Number(d.result?.net);
+			const newXp = Number.isFinite(net) ? Math.max(0, ctx.liveXp + net) : ctx.liveXp;
 			setTimeout(() => {
 				reelSpinning = false;
 				reelAnimating = false;
@@ -228,6 +230,8 @@
 				} else {
 					lostAmount = Math.floor(Number(d.result?.wager) || wagerXp);
 				}
+				ctx.setLiveXp(newXp);
+				ctx.invalidateAll();
 			}, 3700);
 		} catch {
 			showToast('Gamble failed', 'error');

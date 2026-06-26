@@ -183,6 +183,8 @@ export async function loadItemsShared(server: any, hash: string) {
 		}
 	}
 
+	const bountyTotal = await db.getActiveBountyTotal(member.id).catch(() => 0);
+
 	return {
 		member,
 		items,
@@ -215,6 +217,7 @@ export async function loadItemsShared(server: any, hash: string) {
 		attackCooldowns,
 		immuneUntil,
 		insuranceCooldownUntil,
+		bountyTotal,
 		levelReq
 	};
 }

@@ -19,7 +19,6 @@ import {
 } from './interface/customsupporterrole.js';
 import { handleFeedbackButton, handleFeedbackModal } from './interface/feedback.js';
 import { handleAFKButton, handleAFKModal, handleRemoveAFKButton } from './interface/afk.js';
-import { handleLevelingButton, handleLeaderboardButton } from './interface/leveling.js';
 import {
 	handleGiveawayButton,
 	handleGiveawayModal,
@@ -112,15 +111,6 @@ async function handleMenuButton(interaction) {
 			new ButtonBuilder()
 				.setCustomId('bot_custom_supporter_role')
 				.setLabel(await translate('customSupporterRole.existing.title', interaction.guild.id, interaction.user.id))
-				.setStyle(ButtonStyle.Success)
-		);
-	}
-
-	if ((await hasPermission(member, 'leveling')) && (await isComponentFeatureEnabled(interaction.guild.id, serverSettingsComponent.leveling))) {
-		buttons.push(
-			new ButtonBuilder()
-				.setCustomId('bot_leveling')
-				.setLabel(await translate('leveling.profile.title', interaction.guild.id, interaction.user.id))
 				.setStyle(ButtonStyle.Success)
 		);
 	}
@@ -315,10 +305,6 @@ export async function handleButtonInteraction(interaction) {
 			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.custom_supporter_role)) break;
 			await handleDeleteCustomSupporterRole(interaction);
 			break;
-		case 'bot_leveling':
-			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.leveling)) break;
-			await handleLevelingButton(interaction);
-			break;
 		case 'bot_giveaway':
 			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.giveaway)) break;
 			await handleGiveawayButton(interaction);
@@ -361,16 +347,6 @@ export async function handleButtonInteraction(interaction) {
 			break;
 		case 'afk_remove':
 			await handleRemoveAFKButton(interaction);
-			break;
-		case 'leaderboard_xp':
-		case 'leaderboard_voice_total':
-		case 'leaderboard_voice_active':
-		case 'leaderboard_voice_afk':
-		case 'leaderboard_video':
-		case 'leaderboard_streaming':
-		case 'leaderboard_chat':
-			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.public_statistics)) break;
-			await handleLeaderboardButton(interaction);
 			break;
 		case 'bot_settings':
 			await handleSettingsButton(interaction);

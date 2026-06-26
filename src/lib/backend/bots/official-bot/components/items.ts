@@ -7,7 +7,7 @@ import { TARGETED_EFFECTS, ANNOUNCED_EFFECTS, getItemEffect, BAG_CAPACITY, effec
 const EFFECT_CACHE_TTL_MS = 5000;
 const GAMBLE_ANNOUNCE_DELAY_MS = 3900;
 const memoryEffectCache = new Map();
-const SELF_BUFFS = new Set(['boost', 'shield', 'reflect', 'insurance']);
+const SELF_BUFFS = new Set(['boost', 'shield', 'reflect', 'insurance', 'disguise']);
 
 function effectCacheKey(memberId: any) {
 	return `items:effects:${memberId}`;
@@ -267,6 +267,7 @@ async function targetImmuneUntil(targetMemberId: any, guildId: any): Promise<Dat
 
 export async function resolveSteal({ actorMemberId, actorMemberItemId, targetMemberId, config, guildId }: any) {
 	const cfg = parseConfig(config);
+	const actorDisguised = await isDisguised(actorMemberId);
 	if (await attackCooldownUntil(actorMemberId, cfg.cooldown_minutes, 'steal')) {
 		return { outcome: 'cooldown', xp: 0 };
 	}
@@ -276,9 +277,10 @@ export async function resolveSteal({ actorMemberId, actorMemberItemId, targetMem
 			target_member_id: targetMemberId,
 			action: 'steal',
 			xp_amount: 0,
-			outcome: 'blocked'
+			outcome: 'blocked',
+			actor_disguised: actorDisguised
 		});
-		return { outcome: 'blocked', xp: 0 };
+		return { outcome: 'blocked', xp: 0, actorDisguised };
 	}
 	if (await targetImmuneUntil(targetMemberId, guildId)) {
 		await db.logMemberItemAction(actorMemberId, {
@@ -286,9 +288,10 @@ export async function resolveSteal({ actorMemberId, actorMemberItemId, targetMem
 			target_member_id: targetMemberId,
 			action: 'steal',
 			xp_amount: 0,
-			outcome: 'immune'
+			outcome: 'immune',
+			actor_disguised: actorDisguised
 		});
-		return { outcome: 'immune', xp: 0 };
+		return { outcome: 'immune', xp: 0, actorDisguised };
 	}
 
 	const target = await getSpendableXp(targetMemberId, guildId);
@@ -307,9 +310,10 @@ export async function resolveSteal({ actorMemberId, actorMemberItemId, targetMem
 			target_member_id: targetMemberId,
 			action: 'steal',
 			xp_amount: reflected,
-			outcome: 'reflected'
+			outcome: 'reflected',
+			actor_disguised: actorDisguised
 		});
-		return { outcome: 'reflected', xp: reflected };
+		return { outcome: 'reflected', xp: reflected, actorDisguised };
 	}
 
 	if (amount <= 0) {
@@ -318,13 +322,14 @@ export async function resolveSteal({ actorMemberId, actorMemberItemId, targetMem
 			target_member_id: targetMemberId,
 			action: 'steal',
 			xp_amount: 0,
-			outcome: 'success'
+			outcome: 'success',
+			actor_disguised: actorDisguised
 		});
-		return { outcome: 'success', xp: 0 };
+		return { outcome: 'success', xp: 0, actorDisguised };
 	}
 
 	const spent = await spendXp(targetMemberId, amount, guildId);
-	if (!spent.ok) return { outcome: 'immune', xp: 0 };
+	if (!spent.ok) return { outcome: 'immune', xp: 0, actorDisguised };
 
 	await db.ensureMemberLevel(actorMemberId);
 	const actorStats = await db.updateMemberLevelStats(actorMemberId, { experienceIncrement: amount });
@@ -353,15 +358,17 @@ export async function resolveSteal({ actorMemberId, actorMemberItemId, targetMem
 		target_member_id: targetMemberId,
 		action: 'steal',
 		xp_amount: amount,
-		outcome: 'success'
+		outcome: 'success',
+		actor_disguised: actorDisguised
 	});
 	await invalidateEffectCache(targetMemberId);
 	const grantedImmunityUntil = newImmunityUntil(cfg.immunity_minutes);
-	return { outcome: 'success', xp: amount, percent: pct, refunded, bountyCollected, immuneUntil: grantedImmunityUntil };
+	return { outcome: 'success', xp: amount, percent: pct, refunded, bountyCollected, immuneUntil: grantedImmunityUntil, actorDisguised };
 }
 
 export async function resolveBomb({ actorMemberId, actorMemberItemId, targetMemberId, config, guildId }: any) {
 	const cfg = parseConfig(config);
+	const actorDisguised = await isDisguised(actorMemberId);
 	if (await attackCooldownUntil(actorMemberId, cfg.cooldown_minutes, 'bomb')) {
 		return { outcome: 'cooldown', xp: 0 };
 	}
@@ -371,9 +378,10 @@ export async function resolveBomb({ actorMemberId, actorMemberItemId, targetMemb
 			target_member_id: targetMemberId,
 			action: 'bomb',
 			xp_amount: 0,
-			outcome: 'blocked'
+			outcome: 'blocked',
+			actor_disguised: actorDisguised
 		});
-		return { outcome: 'blocked', xp: 0 };
+		return { outcome: 'blocked', xp: 0, actorDisguised };
 	}
 	if (await targetImmuneUntil(targetMemberId, guildId)) {
 		await db.logMemberItemAction(actorMemberId, {
@@ -381,9 +389,10 @@ export async function resolveBomb({ actorMemberId, actorMemberItemId, targetMemb
 			target_member_id: targetMemberId,
 			action: 'bomb',
 			xp_amount: 0,
-			outcome: 'immune'
+			outcome: 'immune',
+			actor_disguised: actorDisguised
 		});
-		return { outcome: 'immune', xp: 0 };
+		return { outcome: 'immune', xp: 0, actorDisguised };
 	}
 
 	const target = await getSpendableXp(targetMemberId, guildId);
@@ -402,9 +411,10 @@ export async function resolveBomb({ actorMemberId, actorMemberItemId, targetMemb
 			target_member_id: targetMemberId,
 			action: 'bomb',
 			xp_amount: reflected,
-			outcome: 'reflected'
+			outcome: 'reflected',
+			actor_disguised: actorDisguised
 		});
-		return { outcome: 'reflected', xp: reflected };
+		return { outcome: 'reflected', xp: reflected, actorDisguised };
 	}
 
 	if (amount > 0) {
@@ -436,11 +446,12 @@ export async function resolveBomb({ actorMemberId, actorMemberItemId, targetMemb
 		target_member_id: targetMemberId,
 		action: 'bomb',
 		xp_amount: amount,
-		outcome: 'success'
+		outcome: 'success',
+		actor_disguised: actorDisguised
 	});
 	await invalidateEffectCache(targetMemberId);
 	const grantedImmunityUntil = newImmunityUntil(cfg.immunity_minutes);
-	return { outcome: 'success', xp: amount, percent: pct, refunded, bountyCollected, immuneUntil: grantedImmunityUntil };
+	return { outcome: 'success', xp: amount, percent: pct, refunded, bountyCollected, immuneUntil: grantedImmunityUntil, actorDisguised };
 }
 
 function computeExpiry(durationMinutes: any) {
@@ -478,15 +489,17 @@ async function activeLeechOnTarget(targetMemberId: any) {
 
 export async function resolveLeech({ memberItemId, actorMemberId, targetMemberId, config, guildId }: any) {
 	const cfg = parseConfig(config);
+	const actorDisguised = await isDisguised(actorMemberId);
 	if (await hasActiveShield(targetMemberId)) {
 		await db.logMemberItemAction(actorMemberId, {
 			member_item_id: memberItemId,
 			target_member_id: targetMemberId,
 			action: 'leech',
 			xp_amount: 0,
-			outcome: 'blocked'
+			outcome: 'blocked',
+			actor_disguised: actorDisguised
 		});
-		return { outcome: 'blocked' };
+		return { outcome: 'blocked', actorDisguised };
 	}
 	if (await targetImmuneUntil(targetMemberId, guildId)) {
 		await db.logMemberItemAction(actorMemberId, {
@@ -494,9 +507,10 @@ export async function resolveLeech({ memberItemId, actorMemberId, targetMemberId
 			target_member_id: targetMemberId,
 			action: 'leech',
 			xp_amount: 0,
-			outcome: 'immune'
+			outcome: 'immune',
+			actor_disguised: actorDisguised
 		});
-		return { outcome: 'immune' };
+		return { outcome: 'immune', actorDisguised };
 	}
 	const mine = await db.getActiveLeechByBeneficiary(actorMemberId).catch(() => null);
 	if (mine) {
@@ -521,10 +535,11 @@ export async function resolveLeech({ memberItemId, actorMemberId, targetMemberId
 		target_member_id: targetMemberId,
 		action: 'leech',
 		xp_amount: 0,
-		outcome: 'success'
+		outcome: 'success',
+		actor_disguised: actorDisguised
 	});
 	await invalidateEffectCache(targetMemberId);
-	return { outcome: 'success', expiresAt };
+	return { outcome: 'success', expiresAt, actorDisguised };
 }
 
 export async function resolveReflect({ memberItemId, ownerMemberId, config }: any) {
@@ -534,6 +549,42 @@ export async function resolveReflect({ memberItemId, ownerMemberId, config }: an
 	await db.logMemberItemAction(ownerMemberId, { member_item_id: memberItemId, action: 'reflect', xp_amount: 0, outcome: 'success' });
 	await invalidateEffectCache(ownerMemberId);
 	return { outcome: 'success', expiresAt };
+}
+
+export async function resolveDisguise({ memberItemId, ownerMemberId, config }: any) {
+	const cfg = parseConfig(config);
+	const expiresAt = computeExpiry(cfg.effect_duration_minutes);
+	await db.addMemberItemActive(memberItemId, { effect_value: 1, expires_at: expiresAt });
+	await db.logMemberItemAction(ownerMemberId, { member_item_id: memberItemId, action: 'disguise', xp_amount: 0, outcome: 'success' });
+	await invalidateEffectCache(ownerMemberId);
+	return { outcome: 'success', expiresAt };
+}
+
+async function isDisguised(memberId: any) {
+	const effects = await getCachedActiveEffects(memberId);
+	return effects.some((e: any) => e.effect_type === 'disguise' && Number(e.owner_member_id) === Number(memberId));
+}
+
+export async function resolvePurifier({ memberItemId, ownerMemberId }: any) {
+	const effects = (await db.getActiveEffectsForMember(ownerMemberId).catch(() => [])) as any[];
+	const affected = new Set<number>([Number(ownerMemberId)]);
+
+	for (const effect of effects) {
+		await db.endMemberItemActiveNow(effect.id).catch(() => null);
+		if (effect.beneficiary_member_id != null) affected.add(Number(effect.beneficiary_member_id));
+		if (effect.target_member_id != null) affected.add(Number(effect.target_member_id));
+	}
+
+	const immunityCleared = await db.clearImmunityForMember(ownerMemberId).catch(() => 0);
+
+	for (const memberId of affected) {
+		await invalidateEffectCache(memberId).catch(() => null);
+	}
+
+	await db.logMemberItemAction(ownerMemberId, { member_item_id: memberItemId, action: 'purifier', xp_amount: 0, outcome: 'success' });
+
+	const cleared = effects.length + (immunityCleared > 0 ? 1 : 0);
+	return { outcome: 'success', cleared };
 }
 
 function insuranceRefundAmount(lostAmount: any, refundPercent: any) {
@@ -682,6 +733,102 @@ export async function resolveBounty({ actorMemberId, actorMemberItemId, targetMe
 	return { outcome: 'success', xp: amount };
 }
 
+export async function resolveSpy({ actorMemberId, actorMemberItemId, targetMemberId, guildId }: any) {
+	const targetName = await spyTargetName(targetMemberId);
+
+	if (await isDisguised(targetMemberId)) {
+		await db.logMemberItemAction(actorMemberId, {
+			member_item_id: actorMemberItemId,
+			target_member_id: targetMemberId,
+			action: 'spy',
+			xp_amount: 0,
+			outcome: 'foiled'
+		});
+		return { outcome: 'success', spyReport: { targetName, disguised: true, bag: [], effects: [], cooldowns: [], bounty: 0 } };
+	}
+
+	const bag = await spyTargetBag(targetMemberId);
+	const effects = await spyTargetEffects(targetMemberId);
+	const cooldowns = await spyTargetCooldowns(targetMemberId, guildId);
+	const bounty = await db.getActiveBountyTotal(targetMemberId).catch(() => 0);
+
+	await db.logMemberItemAction(actorMemberId, {
+		member_item_id: actorMemberItemId,
+		target_member_id: targetMemberId,
+		action: 'spy',
+		xp_amount: 0,
+		outcome: 'success'
+	});
+
+	return { outcome: 'success', spyReport: { targetName, disguised: false, bag, effects, cooldowns, bounty } };
+}
+
+async function spyTargetName(targetMemberId: any): Promise<string> {
+	const member = await db.getServerMemberById(targetMemberId).catch(() => null);
+	return member?.server_display_name || member?.display_name || member?.username || 'a member';
+}
+
+async function spyTargetBag(targetMemberId: any) {
+	const rows = await db.getMemberInventory(targetMemberId).catch(() => []);
+	return ((rows as any[]) || []).map((r) => ({ name: r.name, effect_type: r.effect_type, quantity: Number(r.quantity) || 0 })).filter((r) => r.quantity > 0);
+}
+
+async function spyTargetEffects(targetMemberId: any) {
+	const rows = await getCachedActiveEffects(targetMemberId);
+	const nameOf = (sdn: any, dn: any, un: any) => sdn || dn || un || 'a member';
+	const out: any[] = [];
+	for (const e of (rows as any[]) || []) {
+		const base: any = {
+			effect_type: e.effect_type,
+			effect_value: Number(e.effect_value) || 0,
+			expiresAt: e.expires_at ? new Date(e.expires_at).getTime() : null,
+			leechRole: null,
+			leechWith: null
+		};
+		if (e.effect_type === 'leech') {
+			const isVictim = Number(e.target_member_id) === Number(targetMemberId);
+			base.leechRole = isVictim ? 'victim' : 'attacker';
+			if (isVictim) {
+				// The leecher (beneficiary) hides behind their disguise.
+				base.leechWith = (await isDisguised(e.beneficiary_member_id))
+					? 'an unknown member 🎭'
+					: nameOf(e.beneficiary_server_display_name, e.beneficiary_display_name, e.beneficiary_username);
+			} else {
+				base.leechWith = nameOf(e.target_server_display_name, e.target_display_name, e.target_username);
+			}
+		}
+		out.push(base);
+	}
+	return out;
+}
+
+async function spyTargetCooldowns(targetMemberId: any, guildId: any) {
+	const cooldowns: { kind: string; until: number }[] = [];
+
+	for (const action of ['steal', 'bomb'] as const) {
+		const ms = await cooldownMsForAction(guildId, action).catch(() => 0);
+		if (ms <= 0) continue;
+		const last = await db.getLastAttackActionByActor(targetMemberId, [action]).catch(() => null);
+		if (!last) continue;
+		const ends = last.getTime() + ms;
+		if (ends > Date.now()) cooldowns.push({ kind: action, until: ends });
+	}
+
+	const insuranceMs = await maxAttackConfigMs(guildId, 'cooldown_minutes', 'insurance').catch(() => 0);
+	if (insuranceMs > 0) {
+		const last = await db.getLastActionByActor(targetMemberId, 'insurance').catch(() => null);
+		if (last) {
+			const ends = last.getTime() + insuranceMs;
+			if (ends > Date.now()) cooldowns.push({ kind: 'insurance', until: ends });
+		}
+	}
+
+	const immune = await targetImmuneUntil(targetMemberId, guildId).catch(() => null);
+	if (immune) cooldowns.push({ kind: 'immunity', until: immune.getTime() });
+
+	return cooldowns;
+}
+
 async function payoutBountyOnHit(targetMemberId: any, attackerMemberId: any, guildId: any) {
 	const total = await db.collectBounties(targetMemberId).catch(() => 0);
 	if (!total || total <= 0) return 0;
@@ -783,12 +930,18 @@ export async function handleItemUse(client: any, payload: any) {
 			result = await resolveLeech({ memberItemId: member_item_id, actorMemberId, targetMemberId, config, guildId: guild_id });
 		} else if (effectType === 'reflect') {
 			result = await resolveReflect({ memberItemId: member_item_id, ownerMemberId: actorMemberId, config });
+		} else if (effectType === 'disguise') {
+			result = await resolveDisguise({ memberItemId: member_item_id, ownerMemberId: actorMemberId, config });
 		} else if (effectType === 'insurance') {
 			result = await resolveInsurance({ memberItemId: member_item_id, ownerMemberId: actorMemberId, config });
 		} else if (effectType === 'gift') {
 			result = await resolveGift({ actorMemberId, actorMemberItemId: member_item_id, targetMemberId, config, guildId: guild_id });
 		} else if (effectType === 'bounty') {
 			result = await resolveBounty({ actorMemberId, actorMemberItemId: member_item_id, targetMemberId, config, guildId: guild_id });
+		} else if (effectType === 'spy') {
+			result = await resolveSpy({ actorMemberId, actorMemberItemId: member_item_id, targetMemberId, guildId: guild_id });
+		} else if (effectType === 'purifier') {
+			result = await resolvePurifier({ memberItemId: member_item_id, ownerMemberId: actorMemberId });
 		} else {
 			result = { outcome: 'unsupported' };
 		}
@@ -798,7 +951,7 @@ export async function handleItemUse(client: any, payload: any) {
 		return { ok: false, error: 'resolution_failed' };
 	}
 
-	if (result?.outcome === 'cooldown' || result?.outcome === 'immune' || result?.outcome === 'insufficient' || result?.outcome === 'leeched') {
+	if (result?.outcome === 'cooldown' || result?.outcome === 'insufficient' || result?.outcome === 'leeched') {
 		await db.grantMemberItem(memberItem.member_id, memberItem.item_id, 1);
 		return { ok: false, error: result.error || result.outcome, outcome: result.outcome };
 	}
@@ -962,7 +1115,7 @@ function fmtXp(n: any): string {
 function buildItemUseEmbed(EmbedBuilder: any, embedConfig: any, ctx: any) {
 	const { effectType, result, actor, target, item } = ctx;
 	const outcome = result?.outcome;
-	const actorMention = actor ? `${actor}` : 'A member';
+	const actorMention = result?.actorDisguised ? 'A mysterious member 🎭' : actor ? `${actor}` : 'A member';
 	const targetMention = target ? `${target}` : 'a member';
 	const immuneRel = discordRelative(result?.immuneUntil);
 
@@ -982,6 +1135,15 @@ function buildItemUseEmbed(EmbedBuilder: any, embedConfig: any, ctx: any) {
 				.setColor(effectAccentInt('shield'))
 				.setTitle('🛡️ Attack Blocked')
 				.setDescription(`${targetMention}'s **Shield** blocked ${actorMention}'s ${effectType === 'steal' ? 'steal' : 'bomb'}!`);
+			return embed;
+		}
+		if (outcome === 'immune') {
+			embed
+				.setColor(effectAccentInt('shield'))
+				.setTitle('🛡️ Attack Absorbed by Immunity')
+				.setDescription(
+					`${targetMention} is still immune — ${actorMention}'s ${effectType === 'steal' ? 'steal' : 'bomb'} did nothing and the **${item?.name || 'item'}** was lost.`
+				);
 			return embed;
 		}
 		if (outcome === 'reflected') {
@@ -1019,6 +1181,13 @@ function buildItemUseEmbed(EmbedBuilder: any, embedConfig: any, ctx: any) {
 			embed.setColor(effectAccentInt('shield')).setTitle('🛡️ Leech Blocked').setDescription(`${targetMention}'s **Shield** blocked ${actorMention}'s leech!`);
 			return embed;
 		}
+		if (outcome === 'immune') {
+			embed
+				.setColor(effectAccentInt('shield'))
+				.setTitle('🛡️ Leech Absorbed by Immunity')
+				.setDescription(`${targetMention} is still immune — ${actorMention}'s leech failed and the **${item?.name || 'item'}** was lost.`);
+			return embed;
+		}
 		embed.setTitle('🩸 Leech Attached').setDescription(`${actorMention} attached a leech to ${targetMention} — siphoning a cut of their XP while active.`);
 		return embed;
 	}
@@ -1052,6 +1221,17 @@ function buildItemUseEmbed(EmbedBuilder: any, embedConfig: any, ctx: any) {
 				.setDescription(`${actorMention} wagered ${fmtXp(result?.wager)}${pctNote} and **lost it all**.`)
 				.addFields({ name: 'XP lost', value: fmtXp(result?.wager), inline: true });
 		}
+		return embed;
+	}
+
+	if (effectType === 'disguise') {
+		const untilRel = discordRelative(result?.expiresAt);
+		embed
+			.setColor(effectAccentInt('disguise'))
+			.setTitle('🎭 A Member Vanished into the Crowd')
+			.setDescription(
+				`Someone slipped on a **Disguise**${untilRel ? ` (until ${untilRel})` : ''}. Their attacks now hide their name, they're invisible to spies, and they've dropped off the leaderboard.`
+			);
 		return embed;
 	}
 
@@ -1105,7 +1285,8 @@ async function announceItemUse(client: any, ctx: any) {
 	const embed = buildItemUseEmbed(EmbedBuilder, embedConfig, { effectType, result, actor, target, item });
 	if (!embed) return;
 
-	const mentions = [actor, target].filter(Boolean).map((m: any) => `${m}`);
+	const hideActor = result?.actorDisguised || effectType === 'disguise';
+	const mentions = [hideActor ? null : actor, target].filter(Boolean).map((m: any) => `${m}`);
 	const content = mentions.length > 0 ? mentions.join(' ') : undefined;
 
 	await channel.send({ content, embeds: [embed] }).catch(() => null);

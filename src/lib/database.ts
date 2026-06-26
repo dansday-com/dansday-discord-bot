@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync, existsSync } from 'fs';
 import { join } from 'path';
 import mysql from 'mysql2/promise';
-import { eq, and, or, inArray, sql, desc, asc, isNull, isNotNull, count, avg, like, ne } from 'drizzle-orm';
+import { eq, and, or, inArray, notInArray, sql, desc, asc, isNull, isNotNull, count, avg, like, ne } from 'drizzle-orm';
 import { db } from './drizzle.js';
 import * as schema from './schema.js';
 import { SERVER_SETTINGS, AUTO_ENABLED_COMPONENTS } from './frontend/panelServer.js';
@@ -1803,6 +1803,7 @@ export async function getRecentVictimHits(botId: any, sinceMinutes = 720) {
 		INNER JOIN servers s ON s.id = sm.server_id
 		WHERE sml.action IN ('steal', 'bomb')
 		  AND sml.outcome = 'success'
+		  AND sml.immunity_cleared = 0
 		  AND sml.target_member_id IS NOT NULL
 		  AND sml.created_at >= (UTC_TIMESTAMP() - INTERVAL ${Number(sinceMinutes)} MINUTE)
 		  AND s.bot_id = ${Number(botId)}
@@ -1855,6 +1856,16 @@ export async function expireMemberItemActive(activeId: any) {
 	return true;
 }
 
+export async function endMemberItemActiveNow(activeId: any) {
+	await initializeDatabase();
+	if (!activeId) return false;
+	await db
+		.update(schema.serverMemberItemActives)
+		.set({ expires_at: toMySQLDateTime() as any })
+		.where(eq(schema.serverMemberItemActives.id, Number(activeId)));
+	return true;
+}
+
 export async function logMemberItemAction(memberId: any, data: any = {}) {
 	await initializeDatabase();
 	if (!memberId) throw new Error('memberId is required');
@@ -1872,6 +1883,7 @@ export async function logMemberItemAction(memberId: any, data: any = {}) {
 		action: String(data.action ?? ''),
 		xp_amount: Number(data.xp_amount ?? 0),
 		outcome: String(data.outcome ?? ''),
+		actor_disguised: data.actor_disguised ? 1 : 0,
 		created_at: toMySQLDateTime() as any
 	});
 	return true;
@@ -1915,7 +1927,7 @@ export async function getMemberItemHistory(memberId: any, limit = 200) {
 	if (!memberId) return [] as any[];
 	const rows = await db.execute(sql`
 		SELECT
-			sml.id, sml.action, sml.xp_amount, sml.outcome, sml.created_at,
+			sml.id, sml.action, sml.xp_amount, sml.outcome, sml.actor_disguised, sml.created_at,
 			COALESCE(bi.name, bi2.name) AS item_name,
 			COALESCE(bi.effect_type, bi2.effect_type) AS effect_type,
 			CASE WHEN sml.member_id = ${Number(memberId)} THEN 'outgoing' ELSE 'incoming' END AS direction,
@@ -1978,7 +1990,7 @@ export async function getLastActionAgainstTarget(targetMemberId: any, actions: s
 	const rows = await db.execute(sql`
 		SELECT created_at
 		FROM server_member_item_logs
-		WHERE target_member_id = ${Number(targetMemberId)} AND outcome = 'success' AND action IN (${sql.join(
+		WHERE target_member_id = ${Number(targetMemberId)} AND outcome = 'success' AND immunity_cleared = 0 AND action IN (${sql.join(
 			list.map((a) => sql`${a}`),
 			sql`, `
 		)})
@@ -1987,6 +1999,20 @@ export async function getLastActionAgainstTarget(targetMemberId: any, actions: s
 	`);
 	const row = (rows[0] as unknown as any[])[0];
 	return row ? parseMySQLDateTimeUtc(row.created_at) : null;
+}
+
+export async function clearImmunityForMember(targetMemberId: any) {
+	await initializeDatabase();
+	if (!targetMemberId) return 0;
+	const result: any = await db.execute(sql`
+		UPDATE server_member_item_logs
+		SET immunity_cleared = 1
+		WHERE target_member_id = ${Number(targetMemberId)}
+		  AND outcome = 'success'
+		  AND immunity_cleared = 0
+		  AND action IN ('steal', 'bomb')
+	`);
+	return Number(result?.[0]?.affectedRows ?? result?.affectedRows ?? 0) || 0;
 }
 
 export async function placeBounty(targetMemberId: any, placedByMemberId: any, amount: any) {
@@ -2020,6 +2046,22 @@ export async function collectBounties(targetMemberId: any) {
 	return total;
 }
 
+export async function getDisguisedMemberIds(serverId: any): Promise<number[]> {
+	await initializeDatabase();
+	if (!serverId) return [];
+	const rows = await db.execute(sql`
+		SELECT DISTINCT smi.member_id
+		FROM server_member_item_actives sma
+		INNER JOIN server_member_items smi ON smi.id = sma.member_item_id
+		INNER JOIN items bi ON bi.id = smi.item_id
+		INNER JOIN server_members sm ON sm.id = smi.member_id
+		WHERE bi.effect_type = 'disguise'
+		  AND sma.expires_at > UTC_TIMESTAMP()
+		  AND sm.server_id = ${Number(serverId)}
+	`);
+	return ((rows[0] as unknown as any[]) || []).map((r) => Number(r.member_id)).filter((n) => Number.isFinite(n));
+}
+
 export async function getServerLeaderboard(serverId: any, limit = 3, sortType = 'xp', range: any = 'all') {
 	await initializeDatabase();
 	if (!serverId) throw new Error('serverId is required');
@@ -2048,6 +2090,15 @@ export async function getServerLeaderboard(serverId: any, limit = 3, sortType = 
 				? and(isNotNull(schema.serverMemberLevels.voice_rewarded_at), sql`${schema.serverMemberLevels.voice_rewarded_at} >= ${toMySQLDateTime(since)}`)
 				: sql`${schema.serverMemberLevels.updated_at} >= ${toMySQLDateTime(since)}`;
 
+	const disguisedIds = await getDisguisedMemberIds(serverId);
+	const hideDisguised = disguisedIds.length > 0 ? notInArray(schema.serverMemberLevels.member_id, disguisedIds) : undefined;
+
+	const whereClause = and(
+		eq(schema.serverMembers.server_id, Number(serverId)),
+		...(whereRange ? [whereRange as any] : []),
+		...(hideDisguised ? [hideDisguised] : [])
+	);
+
 	return db
 		.select({
 			discord_member_id: schema.serverMembers.discord_member_id,
@@ -2067,7 +2118,7 @@ export async function getServerLeaderboard(serverId: any, limit = 3, sortType = 
 		})
 		.from(schema.serverMemberLevels)
 		.innerJoin(schema.serverMembers, eq(schema.serverMembers.id, schema.serverMemberLevels.member_id))
-		.where(whereRange ? and(eq(schema.serverMembers.server_id, Number(serverId)), whereRange as any) : eq(schema.serverMembers.server_id, Number(serverId)))
+		.where(whereClause)
 		.orderBy(...orderBy)
 		.limit(safeLimit);
 }
@@ -4146,6 +4197,7 @@ export default {
 	getRecentAttackerActions,
 	getRecentInsuranceActivations,
 	expireMemberItemActive,
+	endMemberItemActiveNow,
 	logMemberItemAction,
 	getMemberItemHistory,
 	logMemberLevelGain,
@@ -4153,10 +4205,12 @@ export default {
 	getLastActionByActor,
 	getLastAttackActionByActor,
 	getLastActionAgainstTarget,
+	clearImmunityForMember,
 	placeBounty,
 	getActiveBountyTotal,
 	collectBounties,
 	getServerLeaderboard,
+	getDisguisedMemberIds,
 	getServerMembersList,
 	getPanelOverview,
 	getServerOverview,

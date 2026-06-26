@@ -593,7 +593,7 @@
 							</label>
 						</div>
 						<p class="text-ash-500 text-[11px]">Multiplies earned XP for the duration.</p>
-					{:else if form.effect_type === 'shield' || form.effect_type === 'reflect'}
+					{:else if form.effect_type === 'shield' || form.effect_type === 'reflect' || form.effect_type === 'disguise'}
 						<label class="text-ash-300 text-xs"
 							>Duration (min)<input
 								type="number"
@@ -602,7 +602,8 @@
 							/></label
 						>
 						<p class="text-ash-500 text-[11px]">
-							{#if form.effect_type === 'reflect'}Bounces the next attack back at the attacker.{:else}Blocks incoming attacks while active.{/if}
+							{#if form.effect_type === 'reflect'}Bounces the next attack back at the attacker.{:else if form.effect_type === 'disguise'}Go anonymous in attack
+								messages, invisible to spies, and off the XP leaderboard while active.{:else}Blocks incoming attacks while active.{/if}
 						</p>
 					{:else if form.effect_type === 'insurance'}
 						<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">

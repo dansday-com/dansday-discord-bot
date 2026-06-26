@@ -72,59 +72,9 @@
 		}
 	},
 	"leveling": {
-		"profile": {
-			"title": "📈 Leveling",
-			"description": "Stats for **{member}**",
-			"yourProgress": "Your Progress",
-			"level": "Level",
-			"experience": "Experience",
-			"progress": "Progress",
-			"chatTotal": "💬 Chat",
-			"voiceMinutes": "🎤 Voice Minutes",
-			"voiceActive": "🎤 Active",
-			"voiceAfk": "🔇 AFK",
-			"voiceVideo": "📹 Video",
-			"voiceStreaming": "📡 Streaming",
-			"rank": "Rank",
-			"unranked": "Unranked",
-			"unknown": "Unknown",
-			"xp": "XP",
-			"minutes": "minutes"
-		},
-		"leaderboard": {
-			"topXp": "⭐ XP (Top 3)",
-			"topChat": "💬 Chat (Top 3)",
-			"topVoiceTotal": "🎤 Voice (Total • Top 3)",
-			"topVoiceActive": "🎤 Voice (Active • Top 3)",
-			"topVoiceAfk": "🔇 Voice (AFK • Top 3)",
-			"topVideo": "📹 Video (Top 3)",
-			"topStreaming": "📺 Streaming (Top 3)",
-			"noData": "No leveling data available yet.",
-			"member": "Member {position}",
-			"minTotal": "min total",
-			"minActive": "min active",
-			"minAfk": "min AFK",
-			"minVideo": "min video",
-			"minStreaming": "min streaming",
-			"messages": "messages"
-		},
-		"buttons": {
-			"xp": "⭐ XP",
-			"voiceTotal": "🎤 Voice",
-			"voiceActive": "🎤 Voice Active",
-			"voiceAfk": "🔇 Voice AFK",
-			"video": "📹 Video",
-			"streaming": "📺 Streaming",
-			"chat": "💬 Chat",
-			"linkLeaderboard": "🌐 Leaderboard"
-		},
 		"errors": {
 			"notRegistered": "⚠️ This server is not registered with the bot. Please run a sync first.",
-			"memberNotFound": "❌ Failed to fetch member information. Please try again.",
-			"noData": "⚠️ No leveling data found for this member.",
-			"createRecordFailed": "❌ Failed to create member record. Please try again.",
-			"loadFailed": "❌ Failed to load leveling information: {error}",
-			"leaderboardFailed": "❌ Failed to load leaderboard: {error}"
+			"createRecordFailed": "❌ Failed to create member record. Please try again."
 		}
 	},
 	"afk": {

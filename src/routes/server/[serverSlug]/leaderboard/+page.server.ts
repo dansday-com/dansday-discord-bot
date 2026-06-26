@@ -33,7 +33,10 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 	const cached = await getCachedLeaderboard(server.id, metric, limit);
 	const snapshot = cached && Date.now() - cached.updated_at < 20_000 ? cached : (() => null)();
 
-	const rows = snapshot ? snapshot.rows : buildLeaderboardRowsFromMembersList(await db.getServerMembersList(server.id), metric, limit);
+	const disguisedIds = new Set((await db.getDisguisedMemberIds(server.id).catch(() => [])).map((n: number) => Number(n)));
+	const visibleMembers = (await db.getServerMembersList(server.id)).filter((m: any) => !disguisedIds.has(Number(m.id)));
+
+	const rows = snapshot ? snapshot.rows : buildLeaderboardRowsFromMembersList(visibleMembers, metric, limit);
 	const snap = snapshot || { metric, limit, updated_at: Date.now(), rows };
 	if (!snapshot) setCachedLeaderboard(server.id, metric, limit, snap).catch(() => {});
 

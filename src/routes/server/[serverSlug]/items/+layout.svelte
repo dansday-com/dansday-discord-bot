@@ -16,7 +16,8 @@
 	const pathNorm = $derived(page.url.pathname.replace(/\/$/, ''));
 	const isBag = $derived(/\/items\/bag\//.test(pathNorm));
 	const isHistory = $derived(/\/items\/history\//.test(pathNorm));
-	const isShop = $derived(!isBag && !isHistory);
+	const isGuide = $derived(/\/items\/guide\//.test(pathNorm));
+	const isShop = $derived(!isBag && !isHistory && !isGuide);
 	const activeCat = $derived.by(() => {
 		const m = pathNorm.match(/\/items\/(?:shop|bag|history)\/([^/]+)\/[^/]+$/);
 		return m ? m[1] : 'all';
@@ -64,7 +65,7 @@
 	});
 
 	const activeChips = $derived.by(() => {
-		const chips: { key: string; icon: string; label: string; until: number; accent: string }[] = [];
+		const chips: { key: string; icon: string; label: string; until: number; accent: string; text?: string }[] = [];
 		for (const e of (pd.activeEffects ?? []) as any[]) {
 			if (!e.expiresAt || e.expiresAt <= now) continue;
 			let label = effectLabel(e.effect_type);
@@ -101,7 +102,17 @@
 				until: pd.insuranceCooldownUntil,
 				accent: effectAccentHex('insurance')
 			});
-		return chips.sort((a, b) => a.until - b.until);
+		chips.sort((a, b) => a.until - b.until);
+		if ((pd.bountyTotal ?? 0) > 0)
+			chips.push({
+				key: 'bounty',
+				icon: effectIcon('bounty'),
+				label: 'Bounty on you',
+				until: 0,
+				accent: effectAccentHex('bounty'),
+				text: `${fmt(pd.bountyTotal)} XP`
+			});
+		return chips;
 	});
 
 	function remainingLabel(untilMs: number): string {
@@ -285,7 +296,7 @@
 				<span class="m-active-chip" style="--chip-accent: {chip.accent}">
 					<i class="fas {chip.icon}"></i>
 					<span class="m-active-label">{chip.label}</span>
-					<span class="m-active-time">{remainingLabel(chip.until)}</span>
+					<span class="m-active-time">{chip.text ?? remainingLabel(chip.until)}</span>
 				</span>
 			{/each}
 		</div>
@@ -305,6 +316,9 @@
 				data-sveltekit-preload-data="hover"
 			>
 				<i class="fas fa-bag-shopping"></i>Bag<span class="m-items-count" class:m-items-count--bump={bagPulse}>{pd.bagStock ?? 0}/{BAG_CAPACITY}</span>
+			</a>
+			<a class="m-items-seg" class:m-items-seg--active={isGuide} href="{itemsBase}/guide/{pd.hash}" data-sveltekit-preload-data="hover">
+				<i class="fas fa-circle-question"></i>Guide
 			</a>
 			<a class="m-items-seg" class:m-items-seg--active={isHistory} href="{itemsBase}/history/all/{pd.hash}" data-sveltekit-preload-data="hover">
 				<i class="fas fa-clock-rotate-left"></i>History

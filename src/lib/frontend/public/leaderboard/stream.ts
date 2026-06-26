@@ -83,7 +83,9 @@ function makeKeyV2(serverId: number, metric: LeaderboardMetric, limit: number): 
 const CACHE_FRESH_MS = 20_000;
 
 async function buildSnapshot(serverId: number, metric: LeaderboardMetric, limit: number): Promise<LeaderboardSnapshot> {
-	const rows = buildLeaderboardRowsFromMembersList(await db.getServerMembersList(serverId), metric, limit);
+	const disguisedIds = new Set((await db.getDisguisedMemberIds(serverId).catch(() => [])).map((n: number) => Number(n)));
+	const members = (await db.getServerMembersList(serverId)).filter((m: any) => !disguisedIds.has(Number(m.id)));
+	const rows = buildLeaderboardRowsFromMembersList(members, metric, limit);
 	const snap: LeaderboardSnapshot = { metric, limit, updated_at: Date.now(), rows };
 	setCachedLeaderboard(serverId, metric, limit, snap).catch(() => {});
 	return snap;

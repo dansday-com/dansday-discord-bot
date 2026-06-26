@@ -556,6 +556,8 @@ CREATE TABLE IF NOT EXISTS server_member_item_logs (
     action VARCHAR(32) NOT NULL,
     xp_amount INT NOT NULL DEFAULT 0,
     outcome VARCHAR(16) NOT NULL,
+    actor_disguised TINYINT(1) NOT NULL DEFAULT 0,
+    immunity_cleared TINYINT(1) NOT NULL DEFAULT 0,
     created_at DATETIME NOT NULL,
     FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE,
     FOREIGN KEY (member_item_id) REFERENCES server_member_items(id) ON DELETE SET NULL,

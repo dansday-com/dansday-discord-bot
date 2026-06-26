@@ -98,4 +98,4 @@ Environment variables drive database credentials, sessions, captcha, mail, Redis
 
 ## License
 
-MIT · Author: Akbar Yudhanto · Version: 26.1.1
+MIT · Author: Akbar Yudhanto · Version: 26.2.0

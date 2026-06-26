@@ -6,14 +6,27 @@
 	let { data }: PageProps = $props();
 
 	type Metric = typeof data.metric;
+	type Period = typeof data.period;
 
 	const METRICS: Metric[] = ['xp', 'chat', 'voice_total', 'voice_active', 'voice_afk', 'video', 'streaming'];
-	const tabPrefetch = new Map<Metric, any[]>();
+	const VOICE_METRICS: Metric[] = ['voice_total', 'voice_active', 'voice_afk', 'video', 'streaming'];
+	const PERIODS: { id: Period; label: string }[] = [
+		{ id: 'all', label: 'All time' },
+		{ id: 'month', label: 'This month' },
+		{ id: 'week', label: 'This week' }
+	];
+
+	const tabPrefetch = new Map<string, any[]>();
+	const prefetchKey = (m: Metric, p: Period) => `${m}:${p}`;
 
 	let metric = $state<Metric>(data.metric);
+	let period = $state<Period>(data.period);
 	let rows = $state(data.rows);
 	let es: EventSource | null = null;
 	let streamConnected = $state(false);
+
+	const isVoiceGroup = $derived(VOICE_METRICS.includes(metric));
+	const isPeriod = $derived(period !== 'all');
 
 	const top3 = $derived(rows.slice(0, 3));
 	const rest = $derived(rows.slice(3));
@@ -59,6 +72,10 @@
 	}
 
 	function metricUnit(m: string) {
+		if (isPeriod) {
+			if (m === 'xp') return 'xp';
+			return 'times';
+		}
 		if (m === 'chat') return 'msgs';
 		if (m.startsWith('voice_') || m === 'video' || m === 'streaming') return 'min';
 		return 'xp';
@@ -94,13 +111,13 @@
 		raf = requestAnimationFrame(tick);
 	}
 
-	function snapshotUrl(m: Metric) {
-		return `/api/public-statistics/${data.server.slug}/snapshot?metric=${m}&limit=${data.limit}`;
+	function snapshotUrl(m: Metric, p: Period) {
+		return `/api/public-statistics/${data.server.slug}/snapshot?metric=${m}&period=${p}&limit=${data.limit}`;
 	}
 
 	function connect() {
 		es?.close();
-		const myEs = new EventSource(`/api/public-statistics/${data.server.slug}/stream?metric=${metric}&limit=${data.limit}`);
+		const myEs = new EventSource(`/api/public-statistics/${data.server.slug}/stream?metric=${metric}&period=${period}&limit=${data.limit}`);
 		es = myEs;
 		myEs.onmessage = (e) => {
 			if (es !== myEs) return;
@@ -108,7 +125,7 @@
 				const snap = JSON.parse(e.data);
 				if (snap?.rows) {
 					rows = snap.rows;
-					tabPrefetch.set(metric, snap.rows);
+					tabPrefetch.set(prefetchKey(metric, period), snap.rows);
 					animateToCurrentValues(false);
 				}
 			} catch (_) {}
@@ -120,13 +137,13 @@
 	}
 
 	onMount(() => {
-		tabPrefetch.set(data.metric, data.rows);
+		tabPrefetch.set(prefetchKey(data.metric, data.period), data.rows);
 		for (const m of METRICS) {
 			if (m === data.metric) continue;
-			fetch(snapshotUrl(m))
+			fetch(snapshotUrl(m, period))
 				.then((r) => (r.ok ? r.json() : null))
 				.then((snap) => {
-					if (snap?.rows && Array.isArray(snap.rows)) tabPrefetch.set(m, snap.rows);
+					if (snap?.rows && Array.isArray(snap.rows)) tabPrefetch.set(prefetchKey(m, period), snap.rows);
 				})
 				.catch(() => {});
 		}
@@ -140,26 +157,38 @@
 		if (raf) cancelAnimationFrame(raf);
 	});
 
-	async function setMetric(m: Metric) {
-		if (m === metric) return;
-		metric = m;
-		const hit = tabPrefetch.get(m);
+	async function loadCurrent() {
+		const hit = tabPrefetch.get(prefetchKey(metric, period));
 		if (hit && hit.length > 0) {
 			rows = hit;
 			animateToCurrentValues(false);
+		} else {
+			rows = [];
 		}
 		connect();
 		try {
-			const res = await fetch(snapshotUrl(m));
+			const res = await fetch(snapshotUrl(metric, period));
 			if (res.ok) {
 				const snap = await res.json();
 				if (Array.isArray(snap?.rows)) {
-					tabPrefetch.set(m, snap.rows);
+					tabPrefetch.set(prefetchKey(metric, period), snap.rows);
 					rows = snap.rows;
 					animateToCurrentValues(false);
 				}
 			}
 		} catch (_) {}
+	}
+
+	async function setMetric(m: Metric) {
+		if (m === metric) return;
+		metric = m;
+		await loadCurrent();
+	}
+
+	async function setPeriod(p: Period) {
+		if (p === period) return;
+		period = p;
+		await loadCurrent();
 	}
 
 	const podiumOrder = $derived(
@@ -209,6 +238,7 @@
 	<p>
 		Leaderboard
 		<span class="m-metric-pill">{metricLabel(metric)}</span>
+		<span class="m-metric-pill">{PERIODS.find((p) => p.id === period)?.label ?? 'All time'}</span>
 		{#if streamConnected}
 			<span class="m-metric-pill m-metric-pill--live">
 				<span class="m-live-dot"></span>
@@ -218,27 +248,45 @@
 	</p>
 </div>
 
-<div class="m-tabs">
-	{#each METRICS as m}
-		<button class="m-tab {metric === m ? 'm-tab--active' : ''}" onclick={() => setMetric(m)}>
-			{#if m === 'xp'}
-				<i class="fas fa-star"></i> XP
-			{:else if m === 'chat'}
-				<i class="fas fa-message"></i> Chat
-			{:else if m === 'voice_total'}
-				<i class="fas fa-microphone"></i> Voice
-			{:else if m === 'voice_active'}
-				<i class="fas fa-microphone-lines"></i> Active
-			{:else if m === 'voice_afk'}
-				<i class="fas fa-moon"></i> AFK
-			{:else if m === 'video'}
-				<i class="fas fa-video"></i> Video
-			{:else if m === 'streaming'}
-				<i class="fas fa-tv"></i> Streaming
-			{/if}
+<div class="m-period">
+	{#each PERIODS as p}
+		<button class="m-period-btn {period === p.id ? 'm-period-btn--active' : ''}" onclick={() => setPeriod(p.id)}>
+			{p.label}
 		</button>
 	{/each}
 </div>
+
+<div class="m-tabs">
+	<button class="m-tab {metric === 'xp' ? 'm-tab--active' : ''}" onclick={() => setMetric('xp')}>
+		<i class="fas fa-star"></i> XP
+	</button>
+	<button class="m-tab {metric === 'chat' ? 'm-tab--active' : ''}" onclick={() => setMetric('chat')}>
+		<i class="fas fa-message"></i> Chat
+	</button>
+	<button class="m-tab {isVoiceGroup ? 'm-tab--active' : ''}" onclick={() => setMetric('voice_total')}>
+		<i class="fas fa-microphone"></i> Voice
+	</button>
+</div>
+
+{#if isVoiceGroup}
+	<div class="m-tabs m-tabs--sub">
+		<button class="m-tab m-tab--sm {metric === 'voice_total' ? 'm-tab--active' : ''}" onclick={() => setMetric('voice_total')}>
+			<i class="fas fa-layer-group"></i> Total
+		</button>
+		<button class="m-tab m-tab--sm {metric === 'voice_active' ? 'm-tab--active' : ''}" onclick={() => setMetric('voice_active')}>
+			<i class="fas fa-microphone-lines"></i> Active
+		</button>
+		<button class="m-tab m-tab--sm {metric === 'voice_afk' ? 'm-tab--active' : ''}" onclick={() => setMetric('voice_afk')}>
+			<i class="fas fa-moon"></i> AFK
+		</button>
+		<button class="m-tab m-tab--sm {metric === 'video' ? 'm-tab--active' : ''}" onclick={() => setMetric('video')}>
+			<i class="fas fa-video"></i> Video
+		</button>
+		<button class="m-tab m-tab--sm {metric === 'streaming' ? 'm-tab--active' : ''}" onclick={() => setMetric('streaming')}>
+			<i class="fas fa-tv"></i> Streaming
+		</button>
+	</div>
+{/if}
 
 {#if top3.length > 0}
 	<section class="m-podium-section">

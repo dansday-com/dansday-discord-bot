@@ -1,7 +1,7 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
-import { type LeaderboardMetric, resolveLeaderboardSnapshot } from '$lib/frontend/public/leaderboard/index.js';
+import { type LeaderboardMetric, type LeaderboardPeriod, resolveLeaderboardSnapshot } from '$lib/frontend/public/leaderboard/index.js';
 import { resolvePublicServerBySlug } from '$lib/frontend/public/server-slug/index.js';
 function parseMetric(m: string | null): LeaderboardMetric {
 	const v = (m || 'xp').toLowerCase();
@@ -12,6 +12,13 @@ function parseMetric(m: string | null): LeaderboardMetric {
 	if (v === 'video') return 'video';
 	if (v === 'streaming') return 'streaming';
 	return 'xp';
+}
+
+function parsePeriod(p: string | null): LeaderboardPeriod {
+	const v = (p || 'all').toLowerCase();
+	if (v === 'month') return 'month';
+	if (v === 'week') return 'week';
+	return 'all';
 }
 
 export const GET: RequestHandler = async ({ params, url }) => {
@@ -27,9 +34,10 @@ export const GET: RequestHandler = async ({ params, url }) => {
 	}
 
 	const metric = parseMetric(url.searchParams.get('metric'));
+	const period = parsePeriod(url.searchParams.get('period'));
 	const limit = Math.max(3, Math.min(100, Number(url.searchParams.get('limit') || 50)));
 
-	const snap = await resolveLeaderboardSnapshot(server.id, metric, limit);
+	const snap = await resolveLeaderboardSnapshot(server.id, metric, period, limit);
 
 	return new Response(JSON.stringify(snap), {
 		headers: {

@@ -2132,6 +2132,51 @@ export async function getServerLeaderboard(serverId: any, limit = 3, sortType = 
 		.limit(safeLimit);
 }
 
+export async function getLeaderboardPeriodCounts(serverId: any, since: Date) {
+	await initializeDatabase();
+	if (!serverId) return [] as any[];
+
+	const disguisedIds = await getDisguisedMemberIds(serverId);
+	const hideDisguised = disguisedIds.length > 0 ? notInArray(schema.serverMembers.id, disguisedIds) : undefined;
+
+	const rows = await db
+		.select({
+			discord_member_id: schema.serverMembers.discord_member_id,
+			username: schema.serverMembers.username,
+			display_name: schema.serverMembers.display_name,
+			server_display_name: schema.serverMembers.server_display_name,
+			avatar: schema.serverMembers.avatar,
+			level: schema.serverMemberLevels.level,
+			xp_amount: sql<number>`COALESCE(SUM(${schema.serverMemberLevelLogs.amount}), 0)`,
+			chat_count: sql<number>`SUM(CASE WHEN ${schema.serverMemberLevelLogs.source} = 'chat' THEN 1 ELSE 0 END)`,
+			voice_active_count: sql<number>`SUM(CASE WHEN ${schema.serverMemberLevelLogs.source} = 'voice' THEN 1 ELSE 0 END)`,
+			voice_afk_count: sql<number>`SUM(CASE WHEN ${schema.serverMemberLevelLogs.source} = 'voice_afk' THEN 1 ELSE 0 END)`,
+			video_count: sql<number>`SUM(CASE WHEN ${schema.serverMemberLevelLogs.source} = 'video' THEN 1 ELSE 0 END)`,
+			stream_count: sql<number>`SUM(CASE WHEN ${schema.serverMemberLevelLogs.source} = 'stream' THEN 1 ELSE 0 END)`
+		})
+		.from(schema.serverMemberLevelLogs)
+		.innerJoin(schema.serverMembers, eq(schema.serverMembers.id, schema.serverMemberLevelLogs.member_id))
+		.leftJoin(schema.serverMemberLevels, eq(schema.serverMemberLevels.member_id, schema.serverMembers.id))
+		.where(
+			and(
+				eq(schema.serverMembers.server_id, Number(serverId)),
+				sql`${schema.serverMemberLevelLogs.created_at} >= ${toMySQLDateTime(since)}`,
+				...(hideDisguised ? [hideDisguised] : [])
+			)
+		)
+		.groupBy(
+			schema.serverMembers.id,
+			schema.serverMembers.discord_member_id,
+			schema.serverMembers.username,
+			schema.serverMembers.display_name,
+			schema.serverMembers.server_display_name,
+			schema.serverMembers.avatar,
+			schema.serverMemberLevels.level
+		);
+
+	return rows as any[];
+}
+
 export async function getServerMembersList(serverId: any) {
 	await initializeDatabase();
 	if (serverId === undefined || serverId === null || serverId === '') return [];
@@ -4219,6 +4264,7 @@ export default {
 	getActiveBountyTotal,
 	collectBounties,
 	getServerLeaderboard,
+	getLeaderboardPeriodCounts,
 	getDisguisedMemberIds,
 	getServerMembersList,
 	getPanelOverview,

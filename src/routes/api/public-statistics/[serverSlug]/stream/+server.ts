@@ -1,7 +1,7 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
-import { type LeaderboardMetric, subscribeLeaderboard } from '$lib/frontend/public/leaderboard/index.js';
+import { type LeaderboardMetric, type LeaderboardPeriod, subscribeLeaderboard } from '$lib/frontend/public/leaderboard/index.js';
 import { resolvePublicServerBySlug } from '$lib/frontend/public/server-slug/index.js';
 
 function parseMetric(m: string | null): LeaderboardMetric {
@@ -15,6 +15,13 @@ function parseMetric(m: string | null): LeaderboardMetric {
 	return 'xp';
 }
 
+function parsePeriod(p: string | null): LeaderboardPeriod {
+	const v = (p || 'all').toLowerCase();
+	if (v === 'month') return 'month';
+	if (v === 'week') return 'week';
+	return 'all';
+}
+
 export const GET: RequestHandler = async ({ params, url }) => {
 	const serverSlug = String(params.serverSlug || '').trim();
 	const resolved = await resolvePublicServerBySlug(serverSlug);
@@ -26,6 +33,7 @@ export const GET: RequestHandler = async ({ params, url }) => {
 	if (settings.enabled === false) return new Response('Not found', { status: 404 });
 
 	const metric = parseMetric(url.searchParams.get('metric'));
+	const period = parsePeriod(url.searchParams.get('period'));
 	const limit = Math.max(3, Math.min(100, Number(url.searchParams.get('limit') || 50)));
 
 	let cleanup: (() => void) | null = null;
@@ -38,7 +46,7 @@ export const GET: RequestHandler = async ({ params, url }) => {
 				} catch (_) {}
 			};
 
-			const unsub = subscribeLeaderboard(server.id, metric, limit, (snap) => send(snap));
+			const unsub = subscribeLeaderboard(server.id, metric, period, limit, (snap) => send(snap));
 
 			const heartbeat = setInterval(() => {
 				try {

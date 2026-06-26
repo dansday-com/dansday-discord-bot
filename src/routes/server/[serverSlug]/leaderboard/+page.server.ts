@@ -2,12 +2,7 @@ import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
-import {
-	type LeaderboardMetric,
-	buildLeaderboardRowsFromMembersList,
-	getCachedLeaderboard,
-	setCachedLeaderboard
-} from '$lib/frontend/public/leaderboard/index.js';
+import { type LeaderboardMetric, type LeaderboardPeriod, resolveLeaderboardSnapshot } from '$lib/frontend/public/leaderboard/index.js';
 
 function parseMetric(m: string | null): LeaderboardMetric {
 	const v = (m || 'xp').toLowerCase();
@@ -20,6 +15,13 @@ function parseMetric(m: string | null): LeaderboardMetric {
 	return 'xp';
 }
 
+function parsePeriod(p: string | null): LeaderboardPeriod {
+	const v = (p || 'all').toLowerCase();
+	if (v === 'month') return 'month';
+	if (v === 'week') return 'week';
+	return 'all';
+}
+
 export const load: PageServerLoad = async ({ parent, url }) => {
 	const { server } = await parent();
 
@@ -28,21 +30,15 @@ export const load: PageServerLoad = async ({ parent, url }) => {
 	if (settings.enabled === false) throw error(404, 'Not found');
 
 	const metric = parseMetric(url.searchParams.get('metric'));
+	const period = parsePeriod(url.searchParams.get('period'));
 	const limit = 100;
 
-	const cached = await getCachedLeaderboard(server.id, metric, limit);
-	const snapshot = cached && Date.now() - cached.updated_at < 20_000 ? cached : (() => null)();
-
-	const disguisedIds = new Set((await db.getDisguisedMemberIds(server.id).catch(() => [])).map((n: number) => Number(n)));
-	const visibleMembers = (await db.getServerMembersList(server.id)).filter((m: any) => !disguisedIds.has(Number(m.id)));
-
-	const rows = snapshot ? snapshot.rows : buildLeaderboardRowsFromMembersList(visibleMembers, metric, limit);
-	const snap = snapshot || { metric, limit, updated_at: Date.now(), rows };
-	if (!snapshot) setCachedLeaderboard(server.id, metric, limit, snap).catch(() => {});
+	const snap = await resolveLeaderboardSnapshot(server.id, metric, period, limit);
 
 	return {
 		metric,
+		period,
 		limit,
-		rows
+		rows: snap.rows
 	};
 };

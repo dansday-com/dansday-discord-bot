@@ -767,6 +767,52 @@
 	transform: scale(1.02);
 }
 
+.m-period {
+	display: flex;
+	gap: 4px;
+	margin-bottom: 12px;
+	background: rgba(255, 255, 255, 0.55);
+	border: 1px solid var(--lb-border-light);
+	border-radius: 12px;
+	padding: 4px;
+	width: fit-content;
+}
+.m-period-btn {
+	padding: 6px 14px;
+	border: none;
+	border-radius: 9px;
+	background: transparent;
+	color: var(--lb-text-faint);
+	font-size: 11.5px;
+	font-weight: 700;
+	cursor: pointer;
+	white-space: nowrap;
+	transition:
+		background 0.2s,
+		color 0.2s;
+}
+.m-period-btn:hover {
+	color: var(--lb-text);
+}
+.m-period-btn--active {
+	background: var(--chili-surface-elevated, #fff);
+	color: var(--lb-text);
+	box-shadow: 0 1px 6px rgba(0, 0, 0, 0.12);
+}
+
+.m-tabs:has(+ .m-tabs--sub) {
+	margin-bottom: 8px;
+}
+.m-tabs--sub {
+	margin-bottom: 28px;
+	background: rgba(255, 255, 255, 0.35);
+}
+.m-tab--sm {
+	flex: 0 1 auto;
+	padding: 6px 10px;
+	font-size: 10.5px;
+}
+
 .m-podium-section {
 	margin-bottom: 28px;
 }

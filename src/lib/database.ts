@@ -2155,19 +2155,24 @@ export async function getLeaderboardPeriodCounts(serverId: any, since: Date) {
 			avatar: schema.serverMembers.avatar,
 			level: schema.serverMemberLevels.level,
 			xp_amount: sql<number>`COALESCE(SUM(${schema.serverMemberLevelLogs.amount}), 0)`,
-			chat_count: sql<number>`SUM(CASE WHEN ${schema.serverMemberLevelLogs.source} = 'chat' THEN 1 ELSE 0 END)`,
-			voice_active_count: sql<number>`SUM(CASE WHEN ${schema.serverMemberLevelLogs.source} = 'voice' THEN 1 ELSE 0 END)`,
-			voice_afk_count: sql<number>`SUM(CASE WHEN ${schema.serverMemberLevelLogs.source} = 'voice_afk' THEN 1 ELSE 0 END)`,
-			video_count: sql<number>`SUM(CASE WHEN ${schema.serverMemberLevelLogs.source} = 'video' THEN 1 ELSE 0 END)`,
-			stream_count: sql<number>`SUM(CASE WHEN ${schema.serverMemberLevelLogs.source} = 'stream' THEN 1 ELSE 0 END)`
+			chat_count: sql<number>`COALESCE(SUM(CASE WHEN ${schema.serverMemberLevelLogs.source} = 'chat' THEN 1 ELSE 0 END), 0)`,
+			voice_active_count: sql<number>`COALESCE(SUM(CASE WHEN ${schema.serverMemberLevelLogs.source} = 'voice' THEN 1 ELSE 0 END), 0)`,
+			voice_afk_count: sql<number>`COALESCE(SUM(CASE WHEN ${schema.serverMemberLevelLogs.source} = 'voice_afk' THEN 1 ELSE 0 END), 0)`,
+			video_count: sql<number>`COALESCE(SUM(CASE WHEN ${schema.serverMemberLevelLogs.source} = 'video' THEN 1 ELSE 0 END), 0)`,
+			stream_count: sql<number>`COALESCE(SUM(CASE WHEN ${schema.serverMemberLevelLogs.source} = 'stream' THEN 1 ELSE 0 END), 0)`
 		})
-		.from(schema.serverMemberLevelLogs)
-		.innerJoin(schema.serverMembers, eq(schema.serverMembers.id, schema.serverMemberLevelLogs.member_id))
+		.from(schema.serverMembers)
+		.leftJoin(
+			schema.serverMemberLevelLogs,
+			and(
+				eq(schema.serverMemberLevelLogs.member_id, schema.serverMembers.id),
+				sql`${schema.serverMemberLevelLogs.created_at} >= ${toMySQLDateTime(since)}`
+			)
+		)
 		.leftJoin(schema.serverMemberLevels, eq(schema.serverMemberLevels.member_id, schema.serverMembers.id))
 		.where(
 			and(
 				eq(schema.serverMembers.server_id, Number(serverId)),
-				sql`${schema.serverMemberLevelLogs.created_at} >= ${toMySQLDateTime(since)}`,
 				...(hideDisguised ? [hideDisguised] : [])
 			)
 		)
@@ -2200,18 +2205,23 @@ export async function getItemsGamblerLeaderboard(serverId: any, since: Date | nu
 			avatar: schema.serverMembers.avatar,
 			level: schema.serverMemberLevels.level,
 			gamble_net: sql<number>`COALESCE(SUM(${schema.serverMemberItemLogs.xp_amount}), 0)`,
-			gamble_wins: sql<number>`SUM(CASE WHEN ${schema.serverMemberItemLogs.outcome} = 'win' THEN 1 ELSE 0 END)`,
-			gamble_total: sql<number>`COUNT(*)`,
+			gamble_wins: sql<number>`COALESCE(SUM(CASE WHEN ${schema.serverMemberItemLogs.outcome} = 'win' THEN 1 ELSE 0 END), 0)`,
+			gamble_total: sql<number>`COUNT(${schema.serverMemberItemLogs.id})`,
 			gamble_big_win: sql<number>`COALESCE(MAX(${schema.serverMemberItemLogs.xp_amount}), 0)`
 		})
-		.from(schema.serverMemberItemLogs)
-		.innerJoin(schema.serverMembers, eq(schema.serverMembers.id, schema.serverMemberItemLogs.member_id))
+		.from(schema.serverMembers)
+		.leftJoin(
+			schema.serverMemberItemLogs,
+			and(
+				eq(schema.serverMemberItemLogs.member_id, schema.serverMembers.id),
+				eq(schema.serverMemberItemLogs.action, 'gamble'),
+				...(since ? [sql`${schema.serverMemberItemLogs.created_at} >= ${toMySQLDateTime(since)}`] : [])
+			)
+		)
 		.leftJoin(schema.serverMemberLevels, eq(schema.serverMemberLevels.member_id, schema.serverMembers.id))
 		.where(
 			and(
 				eq(schema.serverMembers.server_id, Number(serverId)),
-				eq(schema.serverMemberItemLogs.action, 'gamble'),
-				...(since ? [sql`${schema.serverMemberItemLogs.created_at} >= ${toMySQLDateTime(since)}`] : []),
 				...(hideDisguised ? [hideDisguised] : [])
 			)
 		)
@@ -2244,18 +2254,23 @@ export async function getItemsAttackLeaderboard(serverId: any, action: 'steal' |
 			avatar: schema.serverMembers.avatar,
 			level: schema.serverMemberLevels.level,
 			attack_total: sql<number>`COALESCE(SUM(CASE WHEN ${schema.serverMemberItemLogs.outcome} = 'success' THEN ${schema.serverMemberItemLogs.xp_amount} ELSE 0 END), 0)`,
-			attack_success: sql<number>`SUM(CASE WHEN ${schema.serverMemberItemLogs.outcome} = 'success' THEN 1 ELSE 0 END)`,
-			attack_attempts: sql<number>`COUNT(*)`,
+			attack_success: sql<number>`COALESCE(SUM(CASE WHEN ${schema.serverMemberItemLogs.outcome} = 'success' THEN 1 ELSE 0 END), 0)`,
+			attack_attempts: sql<number>`COUNT(${schema.serverMemberItemLogs.id})`,
 			attack_big: sql<number>`COALESCE(MAX(CASE WHEN ${schema.serverMemberItemLogs.outcome} = 'success' THEN ${schema.serverMemberItemLogs.xp_amount} ELSE 0 END), 0)`
 		})
-		.from(schema.serverMemberItemLogs)
-		.innerJoin(schema.serverMembers, eq(schema.serverMembers.id, schema.serverMemberItemLogs.member_id))
+		.from(schema.serverMembers)
+		.leftJoin(
+			schema.serverMemberItemLogs,
+			and(
+				eq(schema.serverMemberItemLogs.member_id, schema.serverMembers.id),
+				eq(schema.serverMemberItemLogs.action, action),
+				...(since ? [sql`${schema.serverMemberItemLogs.created_at} >= ${toMySQLDateTime(since)}`] : [])
+			)
+		)
 		.leftJoin(schema.serverMemberLevels, eq(schema.serverMemberLevels.member_id, schema.serverMembers.id))
 		.where(
 			and(
 				eq(schema.serverMembers.server_id, Number(serverId)),
-				eq(schema.serverMemberItemLogs.action, action),
-				...(since ? [sql`${schema.serverMemberItemLogs.created_at} >= ${toMySQLDateTime(since)}`] : []),
 				...(hideDisguised ? [hideDisguised] : [])
 			)
 		)
@@ -2285,10 +2300,11 @@ export async function getItemsBountyLeaderboard(serverId: any, since: Date | nul
 		SELECT
 			sm.discord_member_id, sm.username, sm.display_name, sm.server_display_name, sm.avatar,
 			sml.level,
-			SUM(agg.bounty_on_them) AS bounty_on_them,
-			SUM(agg.bounty_collected) AS bounty_collected,
-			SUM(agg.bounty_given) AS bounty_given
-		FROM (
+			COALESCE(SUM(agg.bounty_on_them), 0) AS bounty_on_them,
+			COALESCE(SUM(agg.bounty_collected), 0) AS bounty_collected,
+			COALESCE(SUM(agg.bounty_given), 0) AS bounty_given
+		FROM server_members sm
+		LEFT JOIN (
 			SELECT b.target_member_id AS member_id,
 				COALESCE(SUM(b.amount), 0) AS bounty_on_them, 0 AS bounty_collected, 0 AS bounty_given
 			FROM server_member_item_bounties b
@@ -2306,8 +2322,7 @@ export async function getItemsBountyLeaderboard(serverId: any, since: Date | nul
 			FROM server_member_item_logs l
 			WHERE l.action = 'bounty_collected' ${sinceLogClause}
 			GROUP BY l.member_id
-		) agg
-		INNER JOIN server_members sm ON sm.id = agg.member_id
+		) agg ON agg.member_id = sm.id
 		LEFT JOIN server_member_levels sml ON sml.member_id = sm.id
 		WHERE sm.server_id = ${Number(serverId)} ${hideClause}
 		GROUP BY sm.id, sm.discord_member_id, sm.username, sm.display_name, sm.server_display_name, sm.avatar, sml.level
@@ -2328,9 +2343,10 @@ export async function getItemsGiftLeaderboard(serverId: any, since: Date | null)
 		SELECT
 			sm.discord_member_id, sm.username, sm.display_name, sm.server_display_name, sm.avatar,
 			sml.level,
-			SUM(agg.gift_given) AS gift_given,
-			SUM(agg.gift_received) AS gift_received
-		FROM (
+			COALESCE(SUM(agg.gift_given), 0) AS gift_given,
+			COALESCE(SUM(agg.gift_received), 0) AS gift_received
+		FROM server_members sm
+		LEFT JOIN (
 			SELECT l.member_id AS member_id,
 				COALESCE(SUM(l.xp_amount), 0) AS gift_given, 0 AS gift_received
 			FROM server_member_item_logs l
@@ -2342,8 +2358,7 @@ export async function getItemsGiftLeaderboard(serverId: any, since: Date | null)
 			FROM server_member_item_logs l
 			WHERE l.action = 'gift' AND l.target_member_id IS NOT NULL ${sinceClause}
 			GROUP BY l.target_member_id
-		) agg
-		INNER JOIN server_members sm ON sm.id = agg.member_id
+		) agg ON agg.member_id = sm.id
 		LEFT JOIN server_member_levels sml ON sml.member_id = sm.id
 		WHERE sm.server_id = ${Number(serverId)} ${hideClause}
 		GROUP BY sm.id, sm.discord_member_id, sm.username, sm.display_name, sm.server_display_name, sm.avatar, sml.level

@@ -125,7 +125,6 @@ function buildPeriodRows(entries: any[], metric: LeaderboardMetric, limit: numbe
 }
 
 const GAMBLER_METRICS: LeaderboardMetric[] = ['items_gamble_net', 'items_gamble_ratio', 'items_gamble_big'];
-const MIN_GAMBLES_FOR_RATIO = 5;
 
 function buildGamblerRows(entries: any[], metric: LeaderboardMetric, limit: number): LeaderboardRow[] {
 	const safe = Math.max(1, Math.min(100, limit));
@@ -145,8 +144,7 @@ function buildGamblerRows(entries: any[], metric: LeaderboardMetric, limit: numb
 		}
 	};
 
-	let pool = entries;
-	if (metric === 'items_gamble_ratio') pool = pool.filter((e) => Number(e.gamble_total ?? 0) >= MIN_GAMBLES_FOR_RATIO);
+	const pool = entries;
 
 	const sorted = [...pool].sort((a, b) => {
 		const vb = value(b);
@@ -223,7 +221,6 @@ function buildBountyRows(entries: any[], metric: LeaderboardMetric, limit: numbe
 
 const STEAL_METRICS: LeaderboardMetric[] = ['items_steal_total', 'items_steal_rate', 'items_steal_big'];
 const BOMB_METRICS: LeaderboardMetric[] = ['items_bomb_total', 'items_bomb_rate', 'items_bomb_big'];
-const MIN_ATTEMPTS_FOR_RATE = 5;
 
 function buildAttackRows(entries: any[], metric: LeaderboardMetric, limit: number): LeaderboardRow[] {
 	const safe = Math.max(1, Math.min(100, limit));
@@ -240,10 +237,7 @@ function buildAttackRows(entries: any[], metric: LeaderboardMetric, limit: numbe
 		return Number(e.attack_total ?? 0);
 	};
 
-	let pool = entries;
-	if (isRate) pool = pool.filter((e) => Number(e.attack_attempts ?? 0) >= MIN_ATTEMPTS_FOR_RATE);
-
-	const sorted = [...pool].sort((a, b) => {
+	const sorted = [...entries].sort((a, b) => {
 		const vb = value(b);
 		const va = value(a);
 		if (vb !== va) return vb - va;

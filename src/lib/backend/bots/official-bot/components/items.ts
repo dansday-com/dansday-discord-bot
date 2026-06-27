@@ -2,7 +2,16 @@ import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 import { getRedisClient } from '../../../../redis.js';
 import { getLevelRequirement, determineLevel, evaluateMemberLevelAndRank } from './leveling.js';
-import { TARGETED_EFFECTS, ANNOUNCED_EFFECTS, getItemEffect, BAG_CAPACITY, effectAccentInt, formatDuration } from '../../../../items.js';
+import {
+	TARGETED_EFFECTS,
+	ANNOUNCED_EFFECTS,
+	getItemEffect,
+	BAG_CAPACITY,
+	effectAccentInt,
+	formatDuration,
+	DISGUISED_MENTION,
+	disguisedText
+} from '../../../../items.js';
 
 const EFFECT_CACHE_TTL_MS = 5000;
 const GAMBLE_ANNOUNCE_DELAY_MS = 3900;
@@ -864,6 +873,7 @@ async function spyTargetCooldowns(targetMemberId: any, guildId: any) {
 async function payoutBountyOnHit(targetMemberId: any, attackerMemberId: any, guildId: any) {
 	const total = await db.collectBounties(targetMemberId).catch(() => 0);
 	if (!total || total <= 0) return 0;
+	const attackerDisguised = await isDisguised(attackerMemberId);
 	await db.ensureMemberLevel(attackerMemberId);
 	const stats = await db.updateMemberLevelStats(attackerMemberId, { experienceIncrement: total });
 	await reevaluateLevel(attackerMemberId, stats, guildId);
@@ -872,7 +882,8 @@ async function payoutBountyOnHit(targetMemberId: any, attackerMemberId: any, gui
 			target_member_id: targetMemberId,
 			action: 'bounty_collected',
 			xp_amount: total,
-			outcome: 'success'
+			outcome: 'success',
+			actor_disguised: attackerDisguised
 		})
 		.catch(() => null);
 	return total;
@@ -1155,7 +1166,7 @@ function fmtXp(n: any): string {
 function buildItemUseEmbed(EmbedBuilder: any, embedConfig: any, ctx: any) {
 	const { effectType, result, actor, target, item } = ctx;
 	const outcome = result?.outcome;
-	const actorMention = result?.actorDisguised ? 'A mysterious member 🎭' : actor ? `${actor}` : 'A member';
+	const actorMention = result?.actorDisguised ? DISGUISED_MENTION : actor ? `${actor}` : 'A member';
 	const targetMention = target ? `${target}` : 'a member';
 	const immuneRel = discordRelative(result?.immuneUntil);
 
@@ -1437,7 +1448,13 @@ async function sweepExpiredBuffs(client: any, botId: any, EmbedBuilder: any) {
 				const disguisedAtActivation = Number(row.disguised_at_activation) === 1;
 				const hidden = row.effect_type === 'disguise' || disguisedNow || disguisedAtActivation || disguiseEndingMembers.has(String(row.discord_member_id));
 				const description =
-					row.effect_type === 'disguise' ? 'A member stepped out of disguise. They are visible again.' : hidden ? text : member ? `${member}, ${text}` : text;
+					row.effect_type === 'disguise'
+						? 'A member stepped out of disguise. They are visible again.'
+						: hidden
+							? disguisedText(text)
+							: member
+								? `${member}, ${text}`
+								: text;
 				const embed = new EmbedBuilder()
 					.setColor(effectAccentInt(row.effect_type))
 					.setTitle(`${meta.emoji} ${meta.label} Ended`)
@@ -1507,16 +1524,18 @@ async function sweepDerivedEvents(client: any, botId: any, EmbedBuilder: any) {
 		const guild = client?.guilds?.cache?.get(String(atk.discord_server_id));
 		if (!guild) continue;
 		const member = await guild.members.fetch(String(atk.discord_member_id)).catch(() => null);
+		const hidden = atk.member_id ? await isDisguised(atk.member_id).catch(() => false) : false;
 		const embedConfig = await embedConfigFor(guild.id);
 		const label = action === 'bomb' ? 'Bomb' : 'Steal';
 		const verb = action === 'bomb' ? 'bomb' : 'steal';
+		const text = `Your ${verb} cooldown is up. You can ${verb} again!`;
 		const embed = new EmbedBuilder()
 			.setColor(effectAccentInt(action))
 			.setTitle(`${getItemEffect(action)?.emoji ?? '✅'} ${label} Cooldown Ready`)
-			.setDescription(member ? `${member}, your ${verb} cooldown is up. You can ${verb} again!` : `${label} cooldown is up.`)
+			.setDescription(hidden ? disguisedText(text) : member ? `${member}, ${text}` : text)
 			.setFooter({ text: embedConfig.FOOTER || 'Items' })
 			.setTimestamp();
-		await deliverToMemberAndChannel(guild, embed, member ? `${member}` : undefined);
+		await deliverToMemberAndChannel(guild, embed, hidden ? undefined : member ? `${member}` : undefined);
 	}
 
 	const insuranceActs = await db.getRecentInsuranceActivations(botId).catch(() => []);
@@ -1533,14 +1552,16 @@ async function sweepDerivedEvents(client: any, botId: any, EmbedBuilder: any) {
 		const guild = client?.guilds?.cache?.get(String(act.discord_server_id));
 		if (!guild) continue;
 		const member = await guild.members.fetch(String(act.discord_member_id)).catch(() => null);
+		const hidden = act.member_id ? await isDisguised(act.member_id).catch(() => false) : false;
 		const embedConfig = await embedConfigFor(guild.id);
+		const text = `Your insurance cooldown is up. You can activate insurance again!`;
 		const embed = new EmbedBuilder()
 			.setColor(effectAccentInt('insurance'))
 			.setTitle(`${getItemEffect('insurance')?.emoji ?? '✅'} Insurance Cooldown Ready`)
-			.setDescription(member ? `${member}, your insurance cooldown is up. You can activate insurance again!` : `Insurance cooldown is up.`)
+			.setDescription(hidden ? disguisedText(text) : member ? `${member}, ${text}` : text)
 			.setFooter({ text: embedConfig.FOOTER || 'Items' })
 			.setTimestamp();
-		await deliverToMemberAndChannel(guild, embed, member ? `${member}` : undefined);
+		await deliverToMemberAndChannel(guild, embed, hidden ? undefined : member ? `${member}` : undefined);
 	}
 }
 

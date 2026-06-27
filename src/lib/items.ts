@@ -362,6 +362,12 @@ export function isTargetedEffect(type: string): boolean {
 	return TARGETED_EFFECTS.has(type);
 }
 
+export const DISGUISED_MENTION = 'A mysterious member 🎭';
+
+export function disguisedText(text: string): string {
+	return text.replace(/^Your\b/, `${DISGUISED_MENTION}'s`);
+}
+
 export type EffectGuide = { what: string; how: string; tip: string };
 
 const EFFECT_GUIDES: Record<string, EffectGuide> = {

@@ -1,3 +1,4 @@
+import { DateTime } from 'luxon';
 import db from '../../../database.js';
 import {
 	type LeaderboardMetric,
@@ -72,8 +73,8 @@ export function buildLeaderboardRowsFromMembersList(members: MembersListEntry[],
 }
 
 function periodSince(period: LeaderboardPeriod): Date | null {
-	if (period === 'week') return new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-	if (period === 'month') return new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+	if (period === 'week') return DateTime.utc().startOf('week').toJSDate();
+	if (period === 'month') return DateTime.utc().startOf('month').toJSDate();
 	return null;
 }
 
@@ -105,25 +106,22 @@ function buildPeriodRows(entries: any[], metric: LeaderboardMetric, limit: numbe
 		return String(a.discord_member_id).localeCompare(String(b.discord_member_id));
 	});
 
-	return sorted
-		.filter((e) => value(e) > 0)
-		.slice(0, safe)
-		.map((e) => ({
-			discord_member_id: e.discord_member_id,
-			username: e.username,
-			display_name: e.display_name,
-			server_display_name: e.server_display_name,
-			avatar: e.avatar,
-			experience: Number(e.xp_amount ?? 0),
-			level: e.level ?? 0,
-			chat_total: Number(e.chat_count ?? 0),
-			voice_minutes_total: Number(e.voice_active_count ?? 0) + Number(e.voice_afk_count ?? 0),
-			voice_minutes_active: Number(e.voice_active_count ?? 0),
-			voice_minutes_afk: Number(e.voice_afk_count ?? 0),
-			voice_minutes_video: Number(e.video_count ?? 0),
-			voice_minutes_streaming: Number(e.stream_count ?? 0),
-			rank: null
-		}));
+	return sorted.slice(0, safe).map((e) => ({
+		discord_member_id: e.discord_member_id,
+		username: e.username,
+		display_name: e.display_name,
+		server_display_name: e.server_display_name,
+		avatar: e.avatar,
+		experience: Number(e.xp_amount ?? 0),
+		level: e.level ?? 0,
+		chat_total: Number(e.chat_count ?? 0),
+		voice_minutes_total: Number(e.voice_active_count ?? 0) + Number(e.voice_afk_count ?? 0),
+		voice_minutes_active: Number(e.voice_active_count ?? 0),
+		voice_minutes_afk: Number(e.voice_afk_count ?? 0),
+		voice_minutes_video: Number(e.video_count ?? 0),
+		voice_minutes_streaming: Number(e.stream_count ?? 0),
+		rank: null
+	}));
 }
 
 const GAMBLER_METRICS: LeaderboardMetric[] = ['items_gamble_net', 'items_gamble_ratio', 'items_gamble_big'];
@@ -147,9 +145,8 @@ function buildGamblerRows(entries: any[], metric: LeaderboardMetric, limit: numb
 		}
 	};
 
-	let pool = entries.filter((e) => Number(e.gamble_total ?? 0) > 0);
+	let pool = entries;
 	if (metric === 'items_gamble_ratio') pool = pool.filter((e) => Number(e.gamble_total ?? 0) >= MIN_GAMBLES_FOR_RATIO);
-	if (metric === 'items_gamble_big') pool = pool.filter((e) => Number(e.gamble_big_win ?? 0) > 0);
 
 	const sorted = [...pool].sort((a, b) => {
 		const vb = value(b);
@@ -203,28 +200,25 @@ function buildBountyRows(entries: any[], metric: LeaderboardMetric, limit: numbe
 		return String(a.discord_member_id).localeCompare(String(b.discord_member_id));
 	});
 
-	return sorted
-		.filter((e) => value(e) > 0)
-		.slice(0, safe)
-		.map((e) => ({
-			discord_member_id: e.discord_member_id,
-			username: e.username,
-			display_name: e.display_name,
-			server_display_name: e.server_display_name,
-			avatar: e.avatar,
-			experience: 0,
-			level: e.level ?? 0,
-			chat_total: 0,
-			voice_minutes_total: 0,
-			voice_minutes_active: 0,
-			voice_minutes_afk: 0,
-			voice_minutes_video: 0,
-			voice_minutes_streaming: 0,
-			bounty_on_them: Number(e.bounty_on_them ?? 0),
-			bounty_collected: Number(e.bounty_collected ?? 0),
-			bounty_given: Number(e.bounty_given ?? 0),
-			rank: null
-		}));
+	return sorted.slice(0, safe).map((e) => ({
+		discord_member_id: e.discord_member_id,
+		username: e.username,
+		display_name: e.display_name,
+		server_display_name: e.server_display_name,
+		avatar: e.avatar,
+		experience: 0,
+		level: e.level ?? 0,
+		chat_total: 0,
+		voice_minutes_total: 0,
+		voice_minutes_active: 0,
+		voice_minutes_afk: 0,
+		voice_minutes_video: 0,
+		voice_minutes_streaming: 0,
+		bounty_on_them: Number(e.bounty_on_them ?? 0),
+		bounty_collected: Number(e.bounty_collected ?? 0),
+		bounty_given: Number(e.bounty_given ?? 0),
+		rank: null
+	}));
 }
 
 const STEAL_METRICS: LeaderboardMetric[] = ['items_steal_total', 'items_steal_rate', 'items_steal_big'];
@@ -246,9 +240,8 @@ function buildAttackRows(entries: any[], metric: LeaderboardMetric, limit: numbe
 		return Number(e.attack_total ?? 0);
 	};
 
-	let pool = entries.filter((e) => Number(e.attack_attempts ?? 0) > 0);
+	let pool = entries;
 	if (isRate) pool = pool.filter((e) => Number(e.attack_attempts ?? 0) >= MIN_ATTEMPTS_FOR_RATE);
-	else pool = pool.filter((e) => value(e) > 0);
 
 	const sorted = [...pool].sort((a, b) => {
 		const vb = value(b);
@@ -293,27 +286,24 @@ function buildGiftRows(entries: any[], metric: LeaderboardMetric, limit: number)
 		return String(a.discord_member_id).localeCompare(String(b.discord_member_id));
 	});
 
-	return sorted
-		.filter((e) => value(e) > 0)
-		.slice(0, safe)
-		.map((e) => ({
-			discord_member_id: e.discord_member_id,
-			username: e.username,
-			display_name: e.display_name,
-			server_display_name: e.server_display_name,
-			avatar: e.avatar,
-			experience: 0,
-			level: e.level ?? 0,
-			chat_total: 0,
-			voice_minutes_total: 0,
-			voice_minutes_active: 0,
-			voice_minutes_afk: 0,
-			voice_minutes_video: 0,
-			voice_minutes_streaming: 0,
-			gift_given: Number(e.gift_given ?? 0),
-			gift_received: Number(e.gift_received ?? 0),
-			rank: null
-		}));
+	return sorted.slice(0, safe).map((e) => ({
+		discord_member_id: e.discord_member_id,
+		username: e.username,
+		display_name: e.display_name,
+		server_display_name: e.server_display_name,
+		avatar: e.avatar,
+		experience: 0,
+		level: e.level ?? 0,
+		chat_total: 0,
+		voice_minutes_total: 0,
+		voice_minutes_active: 0,
+		voice_minutes_afk: 0,
+		voice_minutes_video: 0,
+		voice_minutes_streaming: 0,
+		gift_given: Number(e.gift_given ?? 0),
+		gift_received: Number(e.gift_received ?? 0),
+		rank: null
+	}));
 }
 
 type Listener = (snap: LeaderboardSnapshot) => void;

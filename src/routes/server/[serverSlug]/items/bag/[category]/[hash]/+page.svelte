@@ -8,6 +8,7 @@
 		effectMeta,
 		actionVerb,
 		describeItemOutcome,
+		formatDuration,
 		TARGETED_EFFECTS as TARGETED,
 		ITEM_EFFECTS,
 		type ItemOutcome
@@ -51,10 +52,7 @@
 	function relUntil(ms: number): string {
 		const mins = Math.max(0, Math.round((ms - Date.now()) / 60000));
 		if (mins <= 0) return 'now';
-		if (mins < 60) return `${mins}m`;
-		const h = Math.floor(mins / 60);
-		const m = mins % 60;
-		return m ? `${h}h ${m}m` : `${h}h`;
+		return formatDuration(mins);
 	}
 
 	function effectLine(e: any): string {

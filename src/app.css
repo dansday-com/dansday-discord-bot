@@ -4971,7 +4971,7 @@
 .m-out-overlay {
 	position: fixed;
 	inset: 0;
-	z-index: 70;
+	z-index: 99999;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -4987,13 +4987,14 @@
 .m-out {
 	width: 100%;
 	max-width: 360px;
-	max-height: 100%;
+	max-height: calc(100dvh - max(16px, env(safe-area-inset-top)) - max(16px, env(safe-area-inset-bottom)) - 16px);
 	text-align: center;
 	padding: 28px 24px 24px;
 	border-radius: 20px;
 	background: var(--chili-surface-elevated);
 	border: 1px solid var(--lb-border);
 	box-shadow: 0 24px 60px -20px rgba(26, 52, 63, 0.45);
+	overflow: hidden;
 	animation: m-out-pop 0.34s cubic-bezier(0.18, 0.9, 0.3, 1.2);
 }
 

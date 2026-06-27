@@ -1759,7 +1759,7 @@ export async function getNewlyExpiredEffects(botId: any, limit = 100) {
 		       (
 		         SELECT l.actor_disguised
 		         FROM server_member_item_logs l
-		         WHERE l.member_item_id = sma.member_item_id AND l.action = bi.effect_type AND l.created_at <= sma.created_at
+		         WHERE l.member_item_id = sma.member_item_id AND l.action = bi.effect_type
 		         ORDER BY l.created_at DESC, l.id DESC
 		         LIMIT 1
 		       ) AS disguised_at_activation

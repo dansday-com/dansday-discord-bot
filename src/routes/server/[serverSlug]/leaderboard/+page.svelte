@@ -14,8 +14,8 @@
 	const BOMB_METRICS: Metric[] = ['items_bomb_total', 'items_bomb_rate', 'items_bomb_big'];
 	const GIFT_METRICS: Metric[] = ['items_gift_give', 'items_gift_receive'];
 	const ITEMS_METRICS: Metric[] = [...GAMBLER_METRICS, ...BOUNTY_METRICS, ...STEAL_METRICS, ...BOMB_METRICS, ...GIFT_METRICS];
-	const VOICE_METRICS: Metric[] = ['voice_total', 'voice_active', 'voice_afk', 'video', 'streaming'];
-	const METRICS: Metric[] = ['xp', 'chat', ...VOICE_METRICS, ...ITEMS_METRICS];
+	const VOICE_METRICS: Metric[] = ['voice_total', 'voice_active', 'voice_afk'];
+	const METRICS: Metric[] = ['xp', 'chat', ...VOICE_METRICS, 'video', 'streaming', ...ITEMS_METRICS];
 	const PERIODS: { id: Period; label: string }[] = [
 		{ id: 'all', label: 'All time' },
 		{ id: 'month', label: 'This month' },
@@ -325,6 +325,12 @@
 	<button class="m-tab {isVoiceGroup ? 'm-tab--active' : ''}" onclick={() => setMetric('voice_total')}>
 		<i class="fas fa-microphone"></i> Voice
 	</button>
+	<button class="m-tab {metric === 'video' ? 'm-tab--active' : ''}" onclick={() => setMetric('video')}>
+		<i class="fas fa-video"></i> Video
+	</button>
+	<button class="m-tab {metric === 'streaming' ? 'm-tab--active' : ''}" onclick={() => setMetric('streaming')}>
+		<i class="fas fa-tv"></i> Streaming
+	</button>
 	<button class="m-tab {isItemsGroup ? 'm-tab--active' : ''}" onclick={() => setMetric('items_gamble_net')}>
 		<i class="fas fa-store"></i> Items
 	</button>
@@ -418,12 +424,6 @@
 		</button>
 		<button class="m-tab m-tab--sm {metric === 'voice_afk' ? 'm-tab--active' : ''}" onclick={() => setMetric('voice_afk')}>
 			<i class="fas fa-moon"></i> AFK
-		</button>
-		<button class="m-tab m-tab--sm {metric === 'video' ? 'm-tab--active' : ''}" onclick={() => setMetric('video')}>
-			<i class="fas fa-video"></i> Video
-		</button>
-		<button class="m-tab m-tab--sm {metric === 'streaming' ? 'm-tab--active' : ''}" onclick={() => setMetric('streaming')}>
-			<i class="fas fa-tv"></i> Streaming
 		</button>
 	</div>
 {/if}

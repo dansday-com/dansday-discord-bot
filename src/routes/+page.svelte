@@ -182,10 +182,6 @@
 							<i class="fas fa-book-open"></i>
 							Docs
 						</a>
-						<a href="/login" class="m-btn m-btn--ghost m-btn--compact">
-							<i class="fas fa-sign-in-alt"></i>
-							Log in
-						</a>
 						<a href="#features" class="m-btn m-btn--ghost m-btn--compact">
 							<i class="fas fa-th-large"></i>
 							Features

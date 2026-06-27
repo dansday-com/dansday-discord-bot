@@ -10,84 +10,6 @@ const languageNames = {
 	id: 'Bahasa Indonesia'
 };
 
-export async function handleSettingsButton(interaction) {
-	try {
-		if (!(await hasPermission(interaction.member, 'settings'))) {
-			const errorMessage = await getPermissionDeniedMessage(interaction.guild, 'settings', interaction.user.id);
-			await interaction
-				.reply({
-					content: errorMessage,
-					flags: 64
-				})
-				.catch(() => null);
-			return;
-		}
-
-		const server = await getServerForInteraction(interaction);
-		if (!server) {
-			const errorMsg = await translate('leveling.errors.notRegistered', interaction.guild.id, interaction.user.id);
-			await interaction.reply({
-				content: errorMsg,
-				flags: 64
-			});
-			return;
-		}
-
-		const guildMember = interaction.member || (await interaction.guild.members.fetch(interaction.user.id).catch(() => null));
-		if (!guildMember) {
-			const errorMsg = await translate('common.errors.memberNotFound', interaction.guild.id, interaction.user.id);
-			await interaction.reply({
-				content: errorMsg,
-				flags: 64
-			});
-			return;
-		}
-
-		const dbMember = await db.upsertMember(server.id, guildMember);
-		if (!dbMember) {
-			const errorMsg = await translate('leveling.errors.createRecordFailed', interaction.guild.id, interaction.user.id);
-			await interaction.reply({
-				content: errorMsg,
-				flags: 64
-			});
-			return;
-		}
-
-		const embedConfig = await getEmbedConfig(interaction.guild.id);
-		const settingsTitle = await translate('settings.title', interaction.guild.id, interaction.user.id);
-		const settingsDesc = await translate('settings.description', interaction.guild.id, interaction.user.id);
-
-		const settingsEmbed = new EmbedBuilder()
-			.setColor(embedConfig.COLOR)
-			.setTitle(settingsTitle)
-			.setDescription(settingsDesc)
-			.setFooter({ text: embedConfig.FOOTER })
-			.setTimestamp();
-
-		const languageButton = new ButtonBuilder()
-			.setCustomId('settings_language')
-			.setLabel(await translate('settings.language.select', interaction.guild.id, interaction.user.id))
-			.setStyle(ButtonStyle.Primary);
-
-		const backButton = new ButtonBuilder().setCustomId('bot_menu').setLabel('📋 Menu').setStyle(ButtonStyle.Secondary);
-
-		const buttonRow = new ActionRowBuilder().addComponents(languageButton, backButton);
-
-		await interaction.update({
-			embeds: [settingsEmbed],
-			components: [buttonRow]
-		});
-	} catch (error) {
-		await logger.log(`❌ Settings button error: ${error.message}`);
-		await interaction
-			.reply({
-				content: `❌ Failed to load settings: ${error.message}`,
-				flags: 64
-			})
-			.catch(() => null);
-	}
-}
-
 export async function handleLanguageButton(interaction) {
 	try {
 		if (!(await hasPermission(interaction.member, 'settings'))) {
@@ -158,8 +80,8 @@ export async function handleLanguageButton(interaction) {
 		const selectRow = new ActionRowBuilder().addComponents(selectMenu);
 
 		const backButton = new ButtonBuilder()
-			.setCustomId('bot_settings')
-			.setLabel(await translate('settings.title', interaction.guild.id, interaction.user.id))
+			.setCustomId('bot_menu')
+			.setLabel(await translate('menu.button', interaction.guild.id, interaction.user.id))
 			.setStyle(ButtonStyle.Secondary);
 
 		const backRow = new ActionRowBuilder().addComponents(backButton);
@@ -259,8 +181,8 @@ export async function handleLanguageSelect(interaction) {
 			const selectRow = new ActionRowBuilder().addComponents(selectMenu);
 
 			const backButton = new ButtonBuilder()
-				.setCustomId('bot_settings')
-				.setLabel(await translate('settings.title', interaction.guild.id, interaction.user.id))
+				.setCustomId('bot_menu')
+				.setLabel(await translate('menu.button', interaction.guild.id, interaction.user.id))
 				.setStyle(ButtonStyle.Secondary);
 
 			const backRow = new ActionRowBuilder().addComponents(backButton);

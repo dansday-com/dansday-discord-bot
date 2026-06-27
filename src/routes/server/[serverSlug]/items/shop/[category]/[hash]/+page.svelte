@@ -17,7 +17,7 @@
 	const shopItems = $derived(
 		(data.visibleItems ?? [])
 			.map((item: any) => {
-				const a = itemAvailability(item, ctx.now);
+				const a = itemAvailability(item, ctx.now, tzOffset());
 				return { ...item, availableUntil: a.availableUntil, _visible: a.visible };
 			})
 			.filter((item: any) => item._visible)
@@ -215,6 +215,8 @@
 				reelAnimating = true;
 				reelOffset = wrapW / 2 - cellCenter;
 			}
+			const net = Number(d.result?.net);
+			const newXp = Number.isFinite(net) ? Math.max(0, ctx.liveXp + net) : ctx.liveXp;
 			setTimeout(() => {
 				reelSpinning = false;
 				reelAnimating = false;
@@ -228,6 +230,8 @@
 				} else {
 					lostAmount = Math.floor(Number(d.result?.wager) || wagerXp);
 				}
+				ctx.setLiveXp(newXp);
+				ctx.invalidateAll();
 			}, 3700);
 		} catch {
 			showToast('Gamble failed', 'error');
@@ -241,7 +245,7 @@
 
 {#snippet card(item: any)}
 	{@const affordable = canAfford(item)}
-	<article class="m-card" class:m-card--locked={!affordable} class:m-card--burst={ctx.burstId === item.id} data-cat={item.effect_type}>
+	<article class="m-card" class:m-card--locked={!ctx.readOnly && !affordable} class:m-card--burst={ctx.burstId === item.id} data-cat={item.effect_type}>
 		<div class="m-card-glow"></div>
 		<div class="m-card-top">
 			<span class="m-card-medallion"><i class="fas {effectIcon(item.effect_type)}"></i></span>
@@ -262,17 +266,25 @@
 		<div class="m-card-foot">
 			{#if item.effect_type === 'gamble'}
 				<span class="m-card-price m-card-price--wager"><i class="fas fa-dice"></i>Wager</span>
-				<button class="m-card-btn m-card-btn--play" onclick={() => openGamble(item)}>
-					<i class="fas fa-dice"></i>Play
-				</button>
+				{#if ctx.readOnly}
+					<button class="m-card-btn" disabled title="Open your card to play"><i class="fas fa-eye"></i>View only</button>
+				{:else}
+					<button class="m-card-btn m-card-btn--play" onclick={() => openGamble(item)}>
+						<i class="fas fa-dice"></i>Play
+					</button>
+				{/if}
 			{:else}
-				<span class="m-card-price" class:m-card-price--short={!affordable}>{fmt(item.cost)}<span class="m-card-price-unit">XP</span></span>
-				<button class="m-card-btn" disabled={ctx.busy === item.id || !affordable || ctx.bagFull} onclick={(e) => buy(item, e)}>
-					{#if ctx.busy === item.id}<i class="fas fa-spinner fa-spin"></i>{:else if ctx.bagFull}<i class="fas fa-bag-shopping"></i>{:else if !affordable}<i
-							class="fas fa-lock"
-						></i>{:else}<i class="fas fa-cart-plus"></i>{/if}
-					{ctx.bagFull ? 'Bag full' : affordable ? 'Buy' : 'Locked'}
-				</button>
+				<span class="m-card-price" class:m-card-price--short={!ctx.readOnly && !affordable}>{fmt(item.cost)}<span class="m-card-price-unit">XP</span></span>
+				{#if ctx.readOnly}
+					<button class="m-card-btn" disabled title="Open your card to buy"><i class="fas fa-eye"></i>View only</button>
+				{:else}
+					<button class="m-card-btn" disabled={ctx.busy === item.id || !affordable || ctx.bagFull} onclick={(e) => buy(item, e)}>
+						{#if ctx.busy === item.id}<i class="fas fa-spinner fa-spin"></i>{:else if ctx.bagFull}<i class="fas fa-bag-shopping"></i>{:else if !affordable}<i
+								class="fas fa-lock"
+							></i>{:else}<i class="fas fa-cart-plus"></i>{/if}
+						{ctx.bagFull ? 'Bag full' : affordable ? 'Buy' : 'Locked'}
+					</button>
+				{/if}
 			{/if}
 		</div>
 	</article>

@@ -103,7 +103,7 @@
 		source.onmessage = (e) => {
 			try {
 				const payload = JSON.parse(e.data) as PublicMembersStreamPayload;
-				if (payload?.members && Array.isArray(payload.members)) liveMembers = payload.members;
+				if (payload?.members && Array.isArray(payload.members)) liveMembers = payload.members.filter((m: any) => !m.isDisguised);
 			} catch (_) {}
 		};
 		source.onerror = () => {};

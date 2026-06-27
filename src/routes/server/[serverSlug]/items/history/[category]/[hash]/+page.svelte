@@ -53,7 +53,8 @@
 	}
 
 	function line(h: any): { icon: string; title: string; tone: string; deltaLabel: string } {
-		if (h.action === 'gift' && h.outcome === 'admin') return { icon: effectIcon('gift'), title: `Gift from admin — ${h.itemName ?? 'item'}`, tone: 'win', deltaLabel: 'Received' };
+		if (h.action === 'gift' && h.outcome === 'admin')
+			return { icon: effectIcon('gift'), title: `Gift from admin — ${h.itemName ?? 'item'}`, tone: 'win', deltaLabel: 'Received' };
 		if (h.action === 'buy') return { icon: 'fa-cart-shopping', title: `Bought ${h.itemName ?? 'item'}`, tone: 'spend', deltaLabel: `−${fmt(h.xpAmount)} XP` };
 		if (h.action === 'discard') return { icon: 'fa-trash-can', title: `Removed ${h.itemName ?? 'item'}`, tone: 'neutral', deltaLabel: 'Discarded' };
 		if (h.action === 'gamble') {
@@ -92,6 +93,10 @@
 			return { icon: 'fa-money-bill-transfer', title: `Insurance refund${from}`, tone: 'win', deltaLabel: h.xpAmount > 0 ? `+${fmt(h.xpAmount)} XP` : '' };
 		}
 		const target = h.targetName ? ` → ${h.targetName}` : '';
+		if (h.action === 'spy') {
+			if (h.outcome === 'caught') return { icon: 'fa-triangle-exclamation', title: `Spy caught${target}`, tone: 'lose', deltaLabel: 'Caught' };
+			return { icon: effectIcon('spy'), title: `Spied${target}`, tone: 'neutral', deltaLabel: '' };
+		}
 		const title = PAST_TITLE[h.action] ?? effectLabel(h.action);
 		let tone = 'neutral';
 		let deltaLabel = '';
@@ -113,8 +118,13 @@
 	}
 
 	function incomingLine(h: any): { icon: string; title: string; tone: string; deltaLabel: string } {
-		const by = h.actorName ? ` ← ${h.actorName}` : '';
+		const by = h.actorName ? ` ← ${h.actorName}` : h.actorDisguised ? ` ← an unknown member 🎭` : '';
 		const icon = effectIcon(h.action);
+
+		if (h.action === 'spy' && h.outcome === 'caught') {
+			const caughtBy = h.actorName ? ` ← ${h.actorName}` : '';
+			return { icon: 'fa-magnifying-glass', title: `Caught a spy${caughtBy}`, tone: 'win', deltaLabel: 'Caught' };
+		}
 
 		if (h.outcome === 'blocked') return { icon: 'fa-shield-halved', title: `Blocked ${h.action}${by}`, tone: 'win', deltaLabel: 'Defended' };
 		if (h.outcome === 'immune') return { icon: 'fa-shield-halved', title: `Immune to ${h.action}${by}`, tone: 'win', deltaLabel: 'Defended' };

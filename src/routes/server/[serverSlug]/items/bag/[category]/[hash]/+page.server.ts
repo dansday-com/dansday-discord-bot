@@ -3,7 +3,7 @@ import type { PageServerLoad } from './$types';
 import db from '$lib/database.js';
 import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 import { publicServerPath } from '$lib/url.js';
-import { loadItemsShared, computeCardToken } from '$lib/frontend/public/items/index.js';
+import { loadItemsShared, computeCardToken, itemsCardTokenFromUrl } from '$lib/frontend/public/items/index.js';
 
 function safeParse(raw: any) {
 	try {
@@ -14,12 +14,12 @@ function safeParse(raw: any) {
 }
 
 export const load: PageServerLoad = async ({ parent, params }) => {
-	const { server, publicStatsEnabled } = await parent();
-	const hash = String(params.hash || '').trim();
+	const { server } = await parent();
 
+	const hash = itemsCardTokenFromUrl(params.hash);
 	const shared = await loadItemsShared(server, hash);
 	if ('notFound' in shared) error(404, 'Items not available');
-	if ('invalid' in shared) redirect(303, publicStatsEnabled ? publicServerPath(server.slug) : '/');
+	if (shared.readOnly || !shared.member) redirect(303, `${publicServerPath(server.slug)}/items/shop/all/guest`);
 
 	const rows = await db.getMemberInventory(shared.member.id).catch(() => []);
 	const allInventory = (rows as any[]).map((r) => ({

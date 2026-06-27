@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync, existsSync } from 'fs';
 import { join } from 'path';
 import mysql from 'mysql2/promise';
-import { eq, and, or, inArray, sql, desc, asc, isNull, isNotNull, count, avg, like, ne } from 'drizzle-orm';
+import { eq, and, or, inArray, notInArray, sql, desc, asc, isNull, isNotNull, count, avg, like, ne } from 'drizzle-orm';
 import { db } from './drizzle.js';
 import * as schema from './schema.js';
 import { SERVER_SETTINGS, AUTO_ENABLED_COMPONENTS } from './frontend/panelServer.js';
@@ -918,10 +918,13 @@ export async function listEnabledLeaderboardServers() {
 			sv.name,
 			sv.updated_at,
 			sv.server_icon,
-			ss.settings AS settings
+			ss.settings AS settings,
+			si.settings AS items_settings
 		FROM servers sv
 		INNER JOIN server_settings ss
 			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.public_statistics}
+		LEFT JOIN server_settings si
+			ON si.server_id = sv.id AND si.component_name = ${SERVER_SETTINGS.component.items}
 	`);
 	const list = (rows[0] as unknown as any[]) || [];
 	return list
@@ -930,7 +933,13 @@ export async function listEnabledLeaderboardServers() {
 			const s = parseLeaderboardSettingsColumn(r.settings);
 			return s.enabled !== false;
 		})
-		.map((r: any) => ({ id: Number(r.id), name: r.name ?? null, updated_at: r.updated_at, server_icon: r.server_icon ?? null }));
+		.map((r: any) => ({
+			id: Number(r.id),
+			name: r.name ?? null,
+			updated_at: r.updated_at,
+			server_icon: r.server_icon ?? null,
+			items_enabled: parseLeaderboardSettingsColumn(r.items_settings).enabled === true
+		}));
 }
 
 export async function upsertCategory(serverId: any, categoryData: any) {
@@ -1742,11 +1751,18 @@ export async function getNewlyExpiredEffects(botId: any, limit = 100) {
 	const rows = await db.execute(sql`
 		SELECT sma.id, sma.effect_value, sma.expires_at, sma.beneficiary_member_id, sma.target_member_id,
 		       bi.effect_type, bi.name AS item_name,
-		       sm.discord_member_id, s.discord_server_id,
+		       sm.id AS member_id, sm.discord_member_id, s.discord_server_id,
 		       tgt.discord_member_id AS target_discord_member_id,
 		       tgt.server_display_name AS target_server_display_name,
 		       tgt.display_name AS target_display_name,
-		       tgt.username AS target_username
+		       tgt.username AS target_username,
+		       (
+		         SELECT l.actor_disguised
+		         FROM server_member_item_logs l
+		         WHERE l.member_item_id = sma.member_item_id AND l.action = bi.effect_type AND l.created_at <= sma.created_at
+		         ORDER BY l.created_at DESC, l.id DESC
+		         LIMIT 1
+		       ) AS disguised_at_activation
 		FROM server_member_item_actives sma
 		INNER JOIN server_member_items smi ON smi.id = sma.member_item_id
 		INNER JOIN items bi ON bi.id = smi.item_id
@@ -1803,6 +1819,7 @@ export async function getRecentVictimHits(botId: any, sinceMinutes = 720) {
 		INNER JOIN servers s ON s.id = sm.server_id
 		WHERE sml.action IN ('steal', 'bomb')
 		  AND sml.outcome = 'success'
+		  AND sml.immunity_cleared = 0
 		  AND sml.target_member_id IS NOT NULL
 		  AND sml.created_at >= (UTC_TIMESTAMP() - INTERVAL ${Number(sinceMinutes)} MINUTE)
 		  AND s.bot_id = ${Number(botId)}
@@ -1855,6 +1872,16 @@ export async function expireMemberItemActive(activeId: any) {
 	return true;
 }
 
+export async function endMemberItemActiveNow(activeId: any) {
+	await initializeDatabase();
+	if (!activeId) return false;
+	await db
+		.update(schema.serverMemberItemActives)
+		.set({ expires_at: toMySQLDateTime() as any })
+		.where(eq(schema.serverMemberItemActives.id, Number(activeId)));
+	return true;
+}
+
 export async function logMemberItemAction(memberId: any, data: any = {}) {
 	await initializeDatabase();
 	if (!memberId) throw new Error('memberId is required');
@@ -1872,6 +1899,7 @@ export async function logMemberItemAction(memberId: any, data: any = {}) {
 		action: String(data.action ?? ''),
 		xp_amount: Number(data.xp_amount ?? 0),
 		outcome: String(data.outcome ?? ''),
+		actor_disguised: data.actor_disguised ? 1 : 0,
 		created_at: toMySQLDateTime() as any
 	});
 	return true;
@@ -1915,7 +1943,7 @@ export async function getMemberItemHistory(memberId: any, limit = 200) {
 	if (!memberId) return [] as any[];
 	const rows = await db.execute(sql`
 		SELECT
-			sml.id, sml.action, sml.xp_amount, sml.outcome, sml.created_at,
+			sml.id, sml.action, sml.xp_amount, sml.outcome, sml.actor_disguised, sml.created_at,
 			COALESCE(bi.name, bi2.name) AS item_name,
 			COALESCE(bi.effect_type, bi2.effect_type) AS effect_type,
 			CASE WHEN sml.member_id = ${Number(memberId)} THEN 'outgoing' ELSE 'incoming' END AS direction,
@@ -1927,8 +1955,10 @@ export async function getMemberItemHistory(memberId: any, limit = 200) {
 		LEFT JOIN items bi2 ON bi2.id = smi.item_id
 		LEFT JOIN server_members tgt ON tgt.id = sml.target_member_id
 		LEFT JOIN server_members act ON act.id = sml.member_id
-		WHERE sml.member_id = ${Number(memberId)}
-		   OR sml.target_member_id = ${Number(memberId)}
+		WHERE (
+			sml.member_id = ${Number(memberId)}
+			OR (sml.target_member_id = ${Number(memberId)} AND NOT (sml.action = 'spy' AND sml.outcome = 'success'))
+		)
 		ORDER BY sml.created_at DESC, sml.id DESC
 		LIMIT ${Number(limit)}
 	`);
@@ -1941,8 +1971,7 @@ export async function getLastActionByActor(memberId: any, action: string) {
 	const rows = await db.execute(sql`
 		SELECT sml.created_at
 		FROM server_member_item_logs sml
-		INNER JOIN server_member_items smi ON smi.id = sml.member_item_id
-		WHERE smi.member_id = ${Number(memberId)} AND sml.action = ${String(action)}
+		WHERE sml.member_id = ${Number(memberId)} AND sml.action = ${String(action)}
 		ORDER BY sml.created_at DESC
 		LIMIT 1
 	`);
@@ -1958,8 +1987,7 @@ export async function getLastAttackActionByActor(memberId: any, actions: string[
 	const rows = await db.execute(sql`
 		SELECT sml.created_at
 		FROM server_member_item_logs sml
-		INNER JOIN server_member_items smi ON smi.id = sml.member_item_id
-		WHERE smi.member_id = ${Number(memberId)} AND sml.action IN (${sql.join(
+		WHERE sml.member_id = ${Number(memberId)} AND sml.action IN (${sql.join(
 			list.map((a) => sql`${a}`),
 			sql`, `
 		)})
@@ -1978,7 +2006,7 @@ export async function getLastActionAgainstTarget(targetMemberId: any, actions: s
 	const rows = await db.execute(sql`
 		SELECT created_at
 		FROM server_member_item_logs
-		WHERE target_member_id = ${Number(targetMemberId)} AND outcome = 'success' AND action IN (${sql.join(
+		WHERE target_member_id = ${Number(targetMemberId)} AND outcome = 'success' AND immunity_cleared = 0 AND action IN (${sql.join(
 			list.map((a) => sql`${a}`),
 			sql`, `
 		)})
@@ -1987,6 +2015,20 @@ export async function getLastActionAgainstTarget(targetMemberId: any, actions: s
 	`);
 	const row = (rows[0] as unknown as any[])[0];
 	return row ? parseMySQLDateTimeUtc(row.created_at) : null;
+}
+
+export async function clearImmunityForMember(targetMemberId: any) {
+	await initializeDatabase();
+	if (!targetMemberId) return 0;
+	const result: any = await db.execute(sql`
+		UPDATE server_member_item_logs
+		SET immunity_cleared = 1
+		WHERE target_member_id = ${Number(targetMemberId)}
+		  AND outcome = 'success'
+		  AND immunity_cleared = 0
+		  AND action IN ('steal', 'bomb')
+	`);
+	return Number(result?.[0]?.affectedRows ?? result?.affectedRows ?? 0) || 0;
 }
 
 export async function placeBounty(targetMemberId: any, placedByMemberId: any, amount: any) {
@@ -2020,6 +2062,22 @@ export async function collectBounties(targetMemberId: any) {
 	return total;
 }
 
+export async function getDisguisedMemberIds(serverId: any): Promise<number[]> {
+	await initializeDatabase();
+	if (!serverId) return [];
+	const rows = await db.execute(sql`
+		SELECT DISTINCT smi.member_id
+		FROM server_member_item_actives sma
+		INNER JOIN server_member_items smi ON smi.id = sma.member_item_id
+		INNER JOIN items bi ON bi.id = smi.item_id
+		INNER JOIN server_members sm ON sm.id = smi.member_id
+		WHERE bi.effect_type = 'disguise'
+		  AND sma.expires_at > UTC_TIMESTAMP()
+		  AND sm.server_id = ${Number(serverId)}
+	`);
+	return ((rows[0] as unknown as any[]) || []).map((r) => Number(r.member_id)).filter((n) => Number.isFinite(n));
+}
+
 export async function getServerLeaderboard(serverId: any, limit = 3, sortType = 'xp', range: any = 'all') {
 	await initializeDatabase();
 	if (!serverId) throw new Error('serverId is required');
@@ -2048,6 +2106,15 @@ export async function getServerLeaderboard(serverId: any, limit = 3, sortType = 
 				? and(isNotNull(schema.serverMemberLevels.voice_rewarded_at), sql`${schema.serverMemberLevels.voice_rewarded_at} >= ${toMySQLDateTime(since)}`)
 				: sql`${schema.serverMemberLevels.updated_at} >= ${toMySQLDateTime(since)}`;
 
+	const disguisedIds = await getDisguisedMemberIds(serverId);
+	const hideDisguised = disguisedIds.length > 0 ? notInArray(schema.serverMemberLevels.member_id, disguisedIds) : undefined;
+
+	const whereClause = and(
+		eq(schema.serverMembers.server_id, Number(serverId)),
+		...(whereRange ? [whereRange as any] : []),
+		...(hideDisguised ? [hideDisguised] : [])
+	);
+
 	return db
 		.select({
 			discord_member_id: schema.serverMembers.discord_member_id,
@@ -2067,9 +2134,222 @@ export async function getServerLeaderboard(serverId: any, limit = 3, sortType = 
 		})
 		.from(schema.serverMemberLevels)
 		.innerJoin(schema.serverMembers, eq(schema.serverMembers.id, schema.serverMemberLevels.member_id))
-		.where(whereRange ? and(eq(schema.serverMembers.server_id, Number(serverId)), whereRange as any) : eq(schema.serverMembers.server_id, Number(serverId)))
+		.where(whereClause)
 		.orderBy(...orderBy)
 		.limit(safeLimit);
+}
+
+export async function getLeaderboardPeriodCounts(serverId: any, since: Date) {
+	await initializeDatabase();
+	if (!serverId) return [] as any[];
+
+	const disguisedIds = await getDisguisedMemberIds(serverId);
+	const hideDisguised = disguisedIds.length > 0 ? notInArray(schema.serverMembers.id, disguisedIds) : undefined;
+
+	const rows = await db
+		.select({
+			discord_member_id: schema.serverMembers.discord_member_id,
+			username: schema.serverMembers.username,
+			display_name: schema.serverMembers.display_name,
+			server_display_name: schema.serverMembers.server_display_name,
+			avatar: schema.serverMembers.avatar,
+			level: schema.serverMemberLevels.level,
+			xp_amount: sql<number>`COALESCE(SUM(${schema.serverMemberLevelLogs.amount}), 0)`,
+			chat_count: sql<number>`SUM(CASE WHEN ${schema.serverMemberLevelLogs.source} = 'chat' THEN 1 ELSE 0 END)`,
+			voice_active_count: sql<number>`SUM(CASE WHEN ${schema.serverMemberLevelLogs.source} = 'voice' THEN 1 ELSE 0 END)`,
+			voice_afk_count: sql<number>`SUM(CASE WHEN ${schema.serverMemberLevelLogs.source} = 'voice_afk' THEN 1 ELSE 0 END)`,
+			video_count: sql<number>`SUM(CASE WHEN ${schema.serverMemberLevelLogs.source} = 'video' THEN 1 ELSE 0 END)`,
+			stream_count: sql<number>`SUM(CASE WHEN ${schema.serverMemberLevelLogs.source} = 'stream' THEN 1 ELSE 0 END)`
+		})
+		.from(schema.serverMemberLevelLogs)
+		.innerJoin(schema.serverMembers, eq(schema.serverMembers.id, schema.serverMemberLevelLogs.member_id))
+		.leftJoin(schema.serverMemberLevels, eq(schema.serverMemberLevels.member_id, schema.serverMembers.id))
+		.where(
+			and(
+				eq(schema.serverMembers.server_id, Number(serverId)),
+				sql`${schema.serverMemberLevelLogs.created_at} >= ${toMySQLDateTime(since)}`,
+				...(hideDisguised ? [hideDisguised] : [])
+			)
+		)
+		.groupBy(
+			schema.serverMembers.id,
+			schema.serverMembers.discord_member_id,
+			schema.serverMembers.username,
+			schema.serverMembers.display_name,
+			schema.serverMembers.server_display_name,
+			schema.serverMembers.avatar,
+			schema.serverMemberLevels.level
+		);
+
+	return rows as any[];
+}
+
+export async function getItemsGamblerLeaderboard(serverId: any, since: Date | null) {
+	await initializeDatabase();
+	if (!serverId) return [] as any[];
+
+	const disguisedIds = await getDisguisedMemberIds(serverId);
+	const hideDisguised = disguisedIds.length > 0 ? notInArray(schema.serverMembers.id, disguisedIds) : undefined;
+
+	const rows = await db
+		.select({
+			discord_member_id: schema.serverMembers.discord_member_id,
+			username: schema.serverMembers.username,
+			display_name: schema.serverMembers.display_name,
+			server_display_name: schema.serverMembers.server_display_name,
+			avatar: schema.serverMembers.avatar,
+			level: schema.serverMemberLevels.level,
+			gamble_net: sql<number>`COALESCE(SUM(${schema.serverMemberItemLogs.xp_amount}), 0)`,
+			gamble_wins: sql<number>`SUM(CASE WHEN ${schema.serverMemberItemLogs.outcome} = 'win' THEN 1 ELSE 0 END)`,
+			gamble_total: sql<number>`COUNT(*)`,
+			gamble_big_win: sql<number>`COALESCE(MAX(${schema.serverMemberItemLogs.xp_amount}), 0)`
+		})
+		.from(schema.serverMemberItemLogs)
+		.innerJoin(schema.serverMembers, eq(schema.serverMembers.id, schema.serverMemberItemLogs.member_id))
+		.leftJoin(schema.serverMemberLevels, eq(schema.serverMemberLevels.member_id, schema.serverMembers.id))
+		.where(
+			and(
+				eq(schema.serverMembers.server_id, Number(serverId)),
+				eq(schema.serverMemberItemLogs.action, 'gamble'),
+				...(since ? [sql`${schema.serverMemberItemLogs.created_at} >= ${toMySQLDateTime(since)}`] : []),
+				...(hideDisguised ? [hideDisguised] : [])
+			)
+		)
+		.groupBy(
+			schema.serverMembers.id,
+			schema.serverMembers.discord_member_id,
+			schema.serverMembers.username,
+			schema.serverMembers.display_name,
+			schema.serverMembers.server_display_name,
+			schema.serverMembers.avatar,
+			schema.serverMemberLevels.level
+		);
+
+	return rows as any[];
+}
+
+export async function getItemsAttackLeaderboard(serverId: any, action: 'steal' | 'bomb', since: Date | null) {
+	await initializeDatabase();
+	if (!serverId) return [] as any[];
+
+	const disguisedIds = await getDisguisedMemberIds(serverId);
+	const hideDisguised = disguisedIds.length > 0 ? notInArray(schema.serverMembers.id, disguisedIds) : undefined;
+
+	const rows = await db
+		.select({
+			discord_member_id: schema.serverMembers.discord_member_id,
+			username: schema.serverMembers.username,
+			display_name: schema.serverMembers.display_name,
+			server_display_name: schema.serverMembers.server_display_name,
+			avatar: schema.serverMembers.avatar,
+			level: schema.serverMemberLevels.level,
+			attack_total: sql<number>`COALESCE(SUM(CASE WHEN ${schema.serverMemberItemLogs.outcome} = 'success' THEN ${schema.serverMemberItemLogs.xp_amount} ELSE 0 END), 0)`,
+			attack_success: sql<number>`SUM(CASE WHEN ${schema.serverMemberItemLogs.outcome} = 'success' THEN 1 ELSE 0 END)`,
+			attack_attempts: sql<number>`COUNT(*)`,
+			attack_big: sql<number>`COALESCE(MAX(CASE WHEN ${schema.serverMemberItemLogs.outcome} = 'success' THEN ${schema.serverMemberItemLogs.xp_amount} ELSE 0 END), 0)`
+		})
+		.from(schema.serverMemberItemLogs)
+		.innerJoin(schema.serverMembers, eq(schema.serverMembers.id, schema.serverMemberItemLogs.member_id))
+		.leftJoin(schema.serverMemberLevels, eq(schema.serverMemberLevels.member_id, schema.serverMembers.id))
+		.where(
+			and(
+				eq(schema.serverMembers.server_id, Number(serverId)),
+				eq(schema.serverMemberItemLogs.action, action),
+				...(since ? [sql`${schema.serverMemberItemLogs.created_at} >= ${toMySQLDateTime(since)}`] : []),
+				...(hideDisguised ? [hideDisguised] : [])
+			)
+		)
+		.groupBy(
+			schema.serverMembers.id,
+			schema.serverMembers.discord_member_id,
+			schema.serverMembers.username,
+			schema.serverMembers.display_name,
+			schema.serverMembers.server_display_name,
+			schema.serverMembers.avatar,
+			schema.serverMemberLevels.level
+		);
+
+	return rows as any[];
+}
+
+export async function getItemsBountyLeaderboard(serverId: any, since: Date | null) {
+	await initializeDatabase();
+	if (!serverId) return [] as any[];
+
+	const disguisedIds = await getDisguisedMemberIds(serverId);
+	const sinceClause = since ? sql`AND b.created_at >= ${toMySQLDateTime(since)}` : sql``;
+	const sinceLogClause = since ? sql`AND l.created_at >= ${toMySQLDateTime(since)}` : sql``;
+	const hideClause = disguisedIds.length > 0 ? sql`AND sm.id NOT IN (${sql.join(disguisedIds, sql`, `)})` : sql``;
+
+	const rows = await db.execute(sql`
+		SELECT
+			sm.discord_member_id, sm.username, sm.display_name, sm.server_display_name, sm.avatar,
+			sml.level,
+			SUM(agg.bounty_on_them) AS bounty_on_them,
+			SUM(agg.bounty_collected) AS bounty_collected,
+			SUM(agg.bounty_given) AS bounty_given
+		FROM (
+			SELECT b.target_member_id AS member_id,
+				COALESCE(SUM(b.amount), 0) AS bounty_on_them, 0 AS bounty_collected, 0 AS bounty_given
+			FROM server_member_item_bounties b
+			WHERE 1=1 ${sinceClause}
+			GROUP BY b.target_member_id
+			UNION ALL
+			SELECT b.placed_by_member_id AS member_id,
+				0 AS bounty_on_them, 0 AS bounty_collected, COALESCE(SUM(b.amount), 0) AS bounty_given
+			FROM server_member_item_bounties b
+			WHERE b.placed_by_member_id IS NOT NULL ${sinceClause}
+			GROUP BY b.placed_by_member_id
+			UNION ALL
+			SELECT l.member_id AS member_id,
+				0 AS bounty_on_them, COALESCE(SUM(l.xp_amount), 0) AS bounty_collected, 0 AS bounty_given
+			FROM server_member_item_logs l
+			WHERE l.action = 'bounty_collected' ${sinceLogClause}
+			GROUP BY l.member_id
+		) agg
+		INNER JOIN server_members sm ON sm.id = agg.member_id
+		LEFT JOIN server_member_levels sml ON sml.member_id = sm.id
+		WHERE sm.server_id = ${Number(serverId)} ${hideClause}
+		GROUP BY sm.id, sm.discord_member_id, sm.username, sm.display_name, sm.server_display_name, sm.avatar, sml.level
+	`);
+
+	return rows[0] as unknown as any[];
+}
+
+export async function getItemsGiftLeaderboard(serverId: any, since: Date | null) {
+	await initializeDatabase();
+	if (!serverId) return [] as any[];
+
+	const disguisedIds = await getDisguisedMemberIds(serverId);
+	const sinceClause = since ? sql`AND l.created_at >= ${toMySQLDateTime(since)}` : sql``;
+	const hideClause = disguisedIds.length > 0 ? sql`AND sm.id NOT IN (${sql.join(disguisedIds, sql`, `)})` : sql``;
+
+	const rows = await db.execute(sql`
+		SELECT
+			sm.discord_member_id, sm.username, sm.display_name, sm.server_display_name, sm.avatar,
+			sml.level,
+			SUM(agg.gift_given) AS gift_given,
+			SUM(agg.gift_received) AS gift_received
+		FROM (
+			SELECT l.member_id AS member_id,
+				COALESCE(SUM(l.xp_amount), 0) AS gift_given, 0 AS gift_received
+			FROM server_member_item_logs l
+			WHERE l.action = 'gift' ${sinceClause}
+			GROUP BY l.member_id
+			UNION ALL
+			SELECT l.target_member_id AS member_id,
+				0 AS gift_given, COALESCE(SUM(l.xp_amount), 0) AS gift_received
+			FROM server_member_item_logs l
+			WHERE l.action = 'gift' AND l.target_member_id IS NOT NULL ${sinceClause}
+			GROUP BY l.target_member_id
+		) agg
+		INNER JOIN server_members sm ON sm.id = agg.member_id
+		LEFT JOIN server_member_levels sml ON sml.member_id = sm.id
+		WHERE sm.server_id = ${Number(serverId)} ${hideClause}
+		GROUP BY sm.id, sm.discord_member_id, sm.username, sm.display_name, sm.server_display_name, sm.avatar, sml.level
+	`);
+
+	return rows[0] as unknown as any[];
 }
 
 export async function getServerMembersList(serverId: any) {
@@ -4146,6 +4426,7 @@ export default {
 	getRecentAttackerActions,
 	getRecentInsuranceActivations,
 	expireMemberItemActive,
+	endMemberItemActiveNow,
 	logMemberItemAction,
 	getMemberItemHistory,
 	logMemberLevelGain,
@@ -4153,10 +4434,17 @@ export default {
 	getLastActionByActor,
 	getLastAttackActionByActor,
 	getLastActionAgainstTarget,
+	clearImmunityForMember,
 	placeBounty,
 	getActiveBountyTotal,
 	collectBounties,
 	getServerLeaderboard,
+	getLeaderboardPeriodCounts,
+	getItemsGamblerLeaderboard,
+	getItemsAttackLeaderboard,
+	getItemsBountyLeaderboard,
+	getItemsGiftLeaderboard,
+	getDisguisedMemberIds,
 	getServerMembersList,
 	getPanelOverview,
 	getServerOverview,

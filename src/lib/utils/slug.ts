@@ -66,18 +66,18 @@ export function listIndexedSlugsForItems<T extends WithId>(
 	items: T[],
 	slugKey: (row: T) => string,
 	updatedAt: (row: T) => unknown = (row) => (row as { updated_at?: unknown }).updated_at
-): { slug: string; updated_at: unknown }[] {
+): { slug: string; updated_at: unknown; item: T }[] {
 	const groups = new Map<string, T[]>();
 	for (const row of items) {
 		const base = slugifyDisplayName(slugKey(row), 'item');
 		if (!groups.has(base)) groups.set(base, []);
 		groups.get(base)!.push(row);
 	}
-	const out: { slug: string; updated_at: unknown }[] = [];
+	const out: { slug: string; updated_at: unknown; item: T }[] = [];
 	for (const [base, list] of groups) {
 		list.sort((a, b) => Number(a.id) - Number(b.id));
 		for (let i = 0; i < list.length; i++) {
-			out.push({ slug: formatIndexedSlug(base, i + 1), updated_at: updatedAt(list[i]) });
+			out.push({ slug: formatIndexedSlug(base, i + 1), updated_at: updatedAt(list[i]), item: list[i] });
 		}
 	}
 	return out;

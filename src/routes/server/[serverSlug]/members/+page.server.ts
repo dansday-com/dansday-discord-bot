@@ -10,7 +10,8 @@ export const load: PageServerLoad = async ({ parent }) => {
 	const settings = (settingsRow as any)?.settings || {};
 	if (settings.enabled === false) throw error(404, 'Not found');
 
-	const members = await db.getServerMembersList(server.id);
+	const disguisedIds = new Set((await db.getDisguisedMemberIds(server.id).catch(() => [])).map((n: number) => Number(n)));
+	const members = (await db.getServerMembersList(server.id)).filter((m: any) => !disguisedIds.has(Number(m.id)));
 
 	return { members: members ?? [] };
 };

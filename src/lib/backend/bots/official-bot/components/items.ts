@@ -7,7 +7,7 @@ import { TARGETED_EFFECTS, ANNOUNCED_EFFECTS, getItemEffect, BAG_CAPACITY, effec
 const EFFECT_CACHE_TTL_MS = 5000;
 const GAMBLE_ANNOUNCE_DELAY_MS = 3900;
 const memoryEffectCache = new Map();
-const SELF_BUFFS = new Set(['boost', 'shield', 'reflect', 'insurance']);
+const SELF_BUFFS = new Set(['boost', 'shield', 'reflect', 'insurance', 'disguise']);
 
 function effectCacheKey(memberId: any) {
 	return `items:effects:${memberId}`;
@@ -267,6 +267,7 @@ async function targetImmuneUntil(targetMemberId: any, guildId: any): Promise<Dat
 
 export async function resolveSteal({ actorMemberId, actorMemberItemId, targetMemberId, config, guildId }: any) {
 	const cfg = parseConfig(config);
+	const actorDisguised = await isDisguised(actorMemberId);
 	if (await attackCooldownUntil(actorMemberId, cfg.cooldown_minutes, 'steal')) {
 		return { outcome: 'cooldown', xp: 0 };
 	}
@@ -276,9 +277,10 @@ export async function resolveSteal({ actorMemberId, actorMemberItemId, targetMem
 			target_member_id: targetMemberId,
 			action: 'steal',
 			xp_amount: 0,
-			outcome: 'blocked'
+			outcome: 'blocked',
+			actor_disguised: actorDisguised
 		});
-		return { outcome: 'blocked', xp: 0 };
+		return { outcome: 'blocked', xp: 0, actorDisguised };
 	}
 	if (await targetImmuneUntil(targetMemberId, guildId)) {
 		await db.logMemberItemAction(actorMemberId, {
@@ -286,9 +288,10 @@ export async function resolveSteal({ actorMemberId, actorMemberItemId, targetMem
 			target_member_id: targetMemberId,
 			action: 'steal',
 			xp_amount: 0,
-			outcome: 'immune'
+			outcome: 'immune',
+			actor_disguised: actorDisguised
 		});
-		return { outcome: 'immune', xp: 0 };
+		return { outcome: 'immune', xp: 0, actorDisguised };
 	}
 
 	const target = await getSpendableXp(targetMemberId, guildId);
@@ -307,9 +310,10 @@ export async function resolveSteal({ actorMemberId, actorMemberItemId, targetMem
 			target_member_id: targetMemberId,
 			action: 'steal',
 			xp_amount: reflected,
-			outcome: 'reflected'
+			outcome: 'reflected',
+			actor_disguised: actorDisguised
 		});
-		return { outcome: 'reflected', xp: reflected };
+		return { outcome: 'reflected', xp: reflected, actorDisguised };
 	}
 
 	if (amount <= 0) {
@@ -318,13 +322,14 @@ export async function resolveSteal({ actorMemberId, actorMemberItemId, targetMem
 			target_member_id: targetMemberId,
 			action: 'steal',
 			xp_amount: 0,
-			outcome: 'success'
+			outcome: 'success',
+			actor_disguised: actorDisguised
 		});
-		return { outcome: 'success', xp: 0 };
+		return { outcome: 'success', xp: 0, actorDisguised };
 	}
 
 	const spent = await spendXp(targetMemberId, amount, guildId);
-	if (!spent.ok) return { outcome: 'immune', xp: 0 };
+	if (!spent.ok) return { outcome: 'immune', xp: 0, actorDisguised };
 
 	await db.ensureMemberLevel(actorMemberId);
 	const actorStats = await db.updateMemberLevelStats(actorMemberId, { experienceIncrement: amount });
@@ -353,15 +358,17 @@ export async function resolveSteal({ actorMemberId, actorMemberItemId, targetMem
 		target_member_id: targetMemberId,
 		action: 'steal',
 		xp_amount: amount,
-		outcome: 'success'
+		outcome: 'success',
+		actor_disguised: actorDisguised
 	});
 	await invalidateEffectCache(targetMemberId);
 	const grantedImmunityUntil = newImmunityUntil(cfg.immunity_minutes);
-	return { outcome: 'success', xp: amount, percent: pct, refunded, bountyCollected, immuneUntil: grantedImmunityUntil };
+	return { outcome: 'success', xp: amount, percent: pct, refunded, bountyCollected, immuneUntil: grantedImmunityUntil, actorDisguised };
 }
 
 export async function resolveBomb({ actorMemberId, actorMemberItemId, targetMemberId, config, guildId }: any) {
 	const cfg = parseConfig(config);
+	const actorDisguised = await isDisguised(actorMemberId);
 	if (await attackCooldownUntil(actorMemberId, cfg.cooldown_minutes, 'bomb')) {
 		return { outcome: 'cooldown', xp: 0 };
 	}
@@ -371,9 +378,10 @@ export async function resolveBomb({ actorMemberId, actorMemberItemId, targetMemb
 			target_member_id: targetMemberId,
 			action: 'bomb',
 			xp_amount: 0,
-			outcome: 'blocked'
+			outcome: 'blocked',
+			actor_disguised: actorDisguised
 		});
-		return { outcome: 'blocked', xp: 0 };
+		return { outcome: 'blocked', xp: 0, actorDisguised };
 	}
 	if (await targetImmuneUntil(targetMemberId, guildId)) {
 		await db.logMemberItemAction(actorMemberId, {
@@ -381,9 +389,10 @@ export async function resolveBomb({ actorMemberId, actorMemberItemId, targetMemb
 			target_member_id: targetMemberId,
 			action: 'bomb',
 			xp_amount: 0,
-			outcome: 'immune'
+			outcome: 'immune',
+			actor_disguised: actorDisguised
 		});
-		return { outcome: 'immune', xp: 0 };
+		return { outcome: 'immune', xp: 0, actorDisguised };
 	}
 
 	const target = await getSpendableXp(targetMemberId, guildId);
@@ -402,9 +411,10 @@ export async function resolveBomb({ actorMemberId, actorMemberItemId, targetMemb
 			target_member_id: targetMemberId,
 			action: 'bomb',
 			xp_amount: reflected,
-			outcome: 'reflected'
+			outcome: 'reflected',
+			actor_disguised: actorDisguised
 		});
-		return { outcome: 'reflected', xp: reflected };
+		return { outcome: 'reflected', xp: reflected, actorDisguised };
 	}
 
 	if (amount > 0) {
@@ -436,11 +446,12 @@ export async function resolveBomb({ actorMemberId, actorMemberItemId, targetMemb
 		target_member_id: targetMemberId,
 		action: 'bomb',
 		xp_amount: amount,
-		outcome: 'success'
+		outcome: 'success',
+		actor_disguised: actorDisguised
 	});
 	await invalidateEffectCache(targetMemberId);
 	const grantedImmunityUntil = newImmunityUntil(cfg.immunity_minutes);
-	return { outcome: 'success', xp: amount, percent: pct, refunded, bountyCollected, immuneUntil: grantedImmunityUntil };
+	return { outcome: 'success', xp: amount, percent: pct, refunded, bountyCollected, immuneUntil: grantedImmunityUntil, actorDisguised };
 }
 
 function computeExpiry(durationMinutes: any) {
@@ -456,19 +467,33 @@ function newImmunityUntil(immunityMinutes: any): Date | null {
 
 export async function resolveBoost({ memberItemId, ownerMemberId, config }: any) {
 	const cfg = parseConfig(config);
+	const actorDisguised = await isDisguised(ownerMemberId);
 	const expiresAt = computeExpiry(cfg.effect_duration_minutes);
 	await db.addMemberItemActive(memberItemId, { effect_value: Number(cfg.multiplier ?? 2), expires_at: expiresAt });
-	await db.logMemberItemAction(ownerMemberId, { member_item_id: memberItemId, action: 'boost', xp_amount: 0, outcome: 'success' });
-	return { outcome: 'success', expiresAt };
+	await db.logMemberItemAction(ownerMemberId, {
+		member_item_id: memberItemId,
+		action: 'boost',
+		xp_amount: 0,
+		outcome: 'success',
+		actor_disguised: actorDisguised
+	});
+	return { outcome: 'success', expiresAt, actorDisguised };
 }
 
 export async function resolveShield({ memberItemId, ownerMemberId, config }: any) {
 	const cfg = parseConfig(config);
+	const actorDisguised = await isDisguised(ownerMemberId);
 	const expiresAt = computeExpiry(cfg.effect_duration_minutes);
 	await db.addMemberItemActive(memberItemId, { effect_value: 1, expires_at: expiresAt });
-	await db.logMemberItemAction(ownerMemberId, { member_item_id: memberItemId, action: 'shield', xp_amount: 0, outcome: 'success' });
+	await db.logMemberItemAction(ownerMemberId, {
+		member_item_id: memberItemId,
+		action: 'shield',
+		xp_amount: 0,
+		outcome: 'success',
+		actor_disguised: actorDisguised
+	});
 	await invalidateEffectCache(ownerMemberId);
-	return { outcome: 'success', expiresAt };
+	return { outcome: 'success', expiresAt, actorDisguised };
 }
 
 async function activeLeechOnTarget(targetMemberId: any) {
@@ -478,15 +503,17 @@ async function activeLeechOnTarget(targetMemberId: any) {
 
 export async function resolveLeech({ memberItemId, actorMemberId, targetMemberId, config, guildId }: any) {
 	const cfg = parseConfig(config);
+	const actorDisguised = await isDisguised(actorMemberId);
 	if (await hasActiveShield(targetMemberId)) {
 		await db.logMemberItemAction(actorMemberId, {
 			member_item_id: memberItemId,
 			target_member_id: targetMemberId,
 			action: 'leech',
 			xp_amount: 0,
-			outcome: 'blocked'
+			outcome: 'blocked',
+			actor_disguised: actorDisguised
 		});
-		return { outcome: 'blocked' };
+		return { outcome: 'blocked', actorDisguised };
 	}
 	if (await targetImmuneUntil(targetMemberId, guildId)) {
 		await db.logMemberItemAction(actorMemberId, {
@@ -494,14 +521,10 @@ export async function resolveLeech({ memberItemId, actorMemberId, targetMemberId
 			target_member_id: targetMemberId,
 			action: 'leech',
 			xp_amount: 0,
-			outcome: 'immune'
+			outcome: 'immune',
+			actor_disguised: actorDisguised
 		});
-		return { outcome: 'immune' };
-	}
-	const mine = await db.getActiveLeechByBeneficiary(actorMemberId).catch(() => null);
-	if (mine) {
-		const who = mine.target_server_display_name || mine.target_display_name || mine.target_username || 'someone';
-		return { outcome: 'leeched', error: `Your leech on ${who} is still active — you can only run one at a time.` };
+		return { outcome: 'immune', actorDisguised };
 	}
 	const existing = await activeLeechOnTarget(targetMemberId);
 	if (existing) {
@@ -521,19 +544,63 @@ export async function resolveLeech({ memberItemId, actorMemberId, targetMemberId
 		target_member_id: targetMemberId,
 		action: 'leech',
 		xp_amount: 0,
-		outcome: 'success'
+		outcome: 'success',
+		actor_disguised: actorDisguised
 	});
 	await invalidateEffectCache(targetMemberId);
-	return { outcome: 'success', expiresAt };
+	return { outcome: 'success', expiresAt, actorDisguised };
 }
 
 export async function resolveReflect({ memberItemId, ownerMemberId, config }: any) {
 	const cfg = parseConfig(config);
+	const actorDisguised = await isDisguised(ownerMemberId);
 	const expiresAt = computeExpiry(cfg.effect_duration_minutes);
 	await db.addMemberItemActive(memberItemId, { effect_value: 1, expires_at: expiresAt });
-	await db.logMemberItemAction(ownerMemberId, { member_item_id: memberItemId, action: 'reflect', xp_amount: 0, outcome: 'success' });
+	await db.logMemberItemAction(ownerMemberId, {
+		member_item_id: memberItemId,
+		action: 'reflect',
+		xp_amount: 0,
+		outcome: 'success',
+		actor_disguised: actorDisguised
+	});
+	await invalidateEffectCache(ownerMemberId);
+	return { outcome: 'success', expiresAt, actorDisguised };
+}
+
+export async function resolveDisguise({ memberItemId, ownerMemberId, config }: any) {
+	const cfg = parseConfig(config);
+	const expiresAt = computeExpiry(cfg.effect_duration_minutes);
+	await db.addMemberItemActive(memberItemId, { effect_value: 1, expires_at: expiresAt });
+	await db.logMemberItemAction(ownerMemberId, { member_item_id: memberItemId, action: 'disguise', xp_amount: 0, outcome: 'success' });
 	await invalidateEffectCache(ownerMemberId);
 	return { outcome: 'success', expiresAt };
+}
+
+async function isDisguised(memberId: any) {
+	const effects = await getCachedActiveEffects(memberId);
+	return effects.some((e: any) => e.effect_type === 'disguise' && Number(e.owner_member_id) === Number(memberId));
+}
+
+export async function resolvePurifier({ memberItemId, ownerMemberId }: any) {
+	const effects = (await db.getActiveEffectsForMember(ownerMemberId).catch(() => [])) as any[];
+	const affected = new Set<number>([Number(ownerMemberId)]);
+
+	for (const effect of effects) {
+		await db.endMemberItemActiveNow(effect.id).catch(() => null);
+		if (effect.beneficiary_member_id != null) affected.add(Number(effect.beneficiary_member_id));
+		if (effect.target_member_id != null) affected.add(Number(effect.target_member_id));
+	}
+
+	const immunityCleared = await db.clearImmunityForMember(ownerMemberId).catch(() => 0);
+
+	for (const memberId of affected) {
+		await invalidateEffectCache(memberId).catch(() => null);
+	}
+
+	await db.logMemberItemAction(ownerMemberId, { member_item_id: memberItemId, action: 'purifier', xp_amount: 0, outcome: 'success' });
+
+	const cleared = effects.length + (immunityCleared > 0 ? 1 : 0);
+	return { outcome: 'success', cleared };
 }
 
 function insuranceRefundAmount(lostAmount: any, refundPercent: any) {
@@ -545,17 +612,25 @@ function insuranceRefundAmount(lostAmount: any, refundPercent: any) {
 export async function resolveInsurance({ memberItemId, ownerMemberId, config }: any) {
 	const cfg = parseConfig(config);
 	const cooldownUntil = await activationCooldownUntil(ownerMemberId, cfg.cooldown_minutes, 'insurance');
-	if (cooldownUntil) return { outcome: 'cooldown', error: `Insurance is on cooldown — try again in ${humanizeUntil(cooldownUntil)}.` };
+	if (cooldownUntil) return { outcome: 'cooldown', error: `Insurance is on cooldown. Try again in ${humanizeUntil(cooldownUntil)}.` };
+	const actorDisguised = await isDisguised(ownerMemberId);
 	const refundPercent = Math.max(0, Math.min(100, Number(cfg.refund_percent ?? 100)));
 	const expiresAt = computeExpiry(cfg.effect_duration_minutes);
 	await db.addMemberItemActive(memberItemId, { effect_value: refundPercent, expires_at: expiresAt });
-	await db.logMemberItemAction(ownerMemberId, { member_item_id: memberItemId, action: 'insurance', xp_amount: 0, outcome: 'success' });
+	await db.logMemberItemAction(ownerMemberId, {
+		member_item_id: memberItemId,
+		action: 'insurance',
+		xp_amount: 0,
+		outcome: 'success',
+		actor_disguised: actorDisguised
+	});
 	await invalidateEffectCache(ownerMemberId);
-	return { outcome: 'success', expiresAt, refundPercent };
+	return { outcome: 'success', expiresAt, refundPercent, actorDisguised };
 }
 
 export async function resolveGift({ actorMemberId, actorMemberItemId, targetMemberId, config, guildId }: any) {
 	const cfg = parseConfig(config);
+	const actorDisguised = await isDisguised(actorMemberId);
 	const amount = Math.max(0, Math.floor(Number(cfg.gift_amount) || 0));
 	if (amount <= 0) {
 		await db.logMemberItemAction(actorMemberId, {
@@ -563,9 +638,10 @@ export async function resolveGift({ actorMemberId, actorMemberItemId, targetMemb
 			target_member_id: targetMemberId,
 			action: 'gift',
 			xp_amount: 0,
-			outcome: 'success'
+			outcome: 'success',
+			actor_disguised: actorDisguised
 		});
-		return { outcome: 'success', xp: 0 };
+		return { outcome: 'success', xp: 0, actorDisguised };
 	}
 	const taxPercent = Math.max(0, Math.min(100, Number(cfg.tax_percent) || 0));
 	const received = Math.max(0, amount - Math.floor((amount * taxPercent) / 100));
@@ -579,9 +655,10 @@ export async function resolveGift({ actorMemberId, actorMemberItemId, targetMemb
 		target_member_id: targetMemberId,
 		action: 'gift',
 		xp_amount: received,
-		outcome: 'success'
+		outcome: 'success',
+		actor_disguised: actorDisguised
 	});
-	return { outcome: 'success', xp: received };
+	return { outcome: 'success', xp: received, actorDisguised };
 }
 
 export async function handleGamble(client: any, payload: any) {
@@ -642,16 +719,18 @@ export async function handleGamble(client: any, payload: any) {
 	}
 	await invalidateEffectCache(actorMemberId);
 
+	const actorDisguised = await isDisguised(actorMemberId);
 	await db.logMemberItemAction(actorMemberId, {
 		item_id,
 		action: 'gamble',
 		xp_amount: netChange,
-		outcome: won ? 'win' : 'lose'
+		outcome: won ? 'win' : 'lose',
+		actor_disguised: actorDisguised
 	});
 
 	await finalizeXpChanges(guild_id, gambleSnapshots, 'item-gamble');
 
-	const result = { outcome: won ? 'win' : 'lose', won, wager, payout, net: netChange };
+	const result = { outcome: won ? 'win' : 'lose', won, wager, payout, net: netChange, actorDisguised };
 	setTimeout(() => {
 		announceItemUse(client, {
 			guildId: guild_id,
@@ -668,8 +747,9 @@ export async function handleGamble(client: any, payload: any) {
 
 export async function resolveBounty({ actorMemberId, actorMemberItemId, targetMemberId, config, guildId }: any) {
 	const cfg = parseConfig(config);
+	const actorDisguised = await isDisguised(actorMemberId);
 	const amount = Math.max(0, Math.floor(Number(cfg.bounty_amount) || 0));
-	if (amount <= 0) return { outcome: 'success', xp: 0 };
+	if (amount <= 0) return { outcome: 'success', xp: 0, actorDisguised };
 
 	await db.placeBounty(targetMemberId, actorMemberId, amount);
 	await db.logMemberItemAction(actorMemberId, {
@@ -677,9 +757,108 @@ export async function resolveBounty({ actorMemberId, actorMemberItemId, targetMe
 		target_member_id: targetMemberId,
 		action: 'bounty',
 		xp_amount: amount,
+		outcome: 'success',
+		actor_disguised: actorDisguised
+	});
+	return { outcome: 'success', xp: amount, actorDisguised };
+}
+
+export async function resolveSpy({ actorMemberId, actorMemberItemId, targetMemberId, config, guildId }: any) {
+	const targetName = await spyTargetName(targetMemberId);
+	const cfg = parseConfig(config);
+	const chance = Math.max(0, Math.min(100, Number(cfg.spy_chance ?? 100)));
+	const caught = chance < 100 && Math.floor(Math.random() * 100) + 1 > chance;
+
+	if (caught) {
+		await db.logMemberItemAction(actorMemberId, {
+			member_item_id: actorMemberItemId,
+			target_member_id: targetMemberId,
+			action: 'spy',
+			xp_amount: 0,
+			outcome: 'caught'
+		});
+		return { outcome: 'caught', spyReport: { targetName, caught: true, bag: [], effects: [], cooldowns: [], bounty: 0 } };
+	}
+
+	const bag = await spyTargetBag(targetMemberId);
+	const effects = await spyTargetEffects(targetMemberId);
+	const cooldowns = await spyTargetCooldowns(targetMemberId, guildId);
+	const bounty = await db.getActiveBountyTotal(targetMemberId).catch(() => 0);
+
+	await db.logMemberItemAction(actorMemberId, {
+		member_item_id: actorMemberItemId,
+		target_member_id: targetMemberId,
+		action: 'spy',
+		xp_amount: 0,
 		outcome: 'success'
 	});
-	return { outcome: 'success', xp: amount };
+
+	return { outcome: 'success', spyReport: { targetName, disguised: false, bag, effects, cooldowns, bounty } };
+}
+
+async function spyTargetName(targetMemberId: any): Promise<string> {
+	const member = await db.getServerMemberById(targetMemberId).catch(() => null);
+	return member?.server_display_name || member?.display_name || member?.username || 'a member';
+}
+
+async function spyTargetBag(targetMemberId: any) {
+	const rows = await db.getMemberInventory(targetMemberId).catch(() => []);
+	return ((rows as any[]) || []).map((r) => ({ name: r.name, effect_type: r.effect_type, quantity: Number(r.quantity) || 0 })).filter((r) => r.quantity > 0);
+}
+
+async function spyTargetEffects(targetMemberId: any) {
+	const rows = await getCachedActiveEffects(targetMemberId);
+	const nameOf = (sdn: any, dn: any, un: any) => sdn || dn || un || 'a member';
+	const out: any[] = [];
+	for (const e of (rows as any[]) || []) {
+		const base: any = {
+			effect_type: e.effect_type,
+			effect_value: Number(e.effect_value) || 0,
+			expiresAt: e.expires_at ? new Date(e.expires_at).getTime() : null,
+			leechRole: null,
+			leechWith: null
+		};
+		if (e.effect_type === 'leech') {
+			const isVictim = Number(e.target_member_id) === Number(targetMemberId);
+			base.leechRole = isVictim ? 'victim' : 'attacker';
+			if (isVictim) {
+				base.leechWith = (await isDisguised(e.beneficiary_member_id))
+					? 'an unknown member 🎭'
+					: nameOf(e.beneficiary_server_display_name, e.beneficiary_display_name, e.beneficiary_username);
+			} else {
+				base.leechWith = nameOf(e.target_server_display_name, e.target_display_name, e.target_username);
+			}
+		}
+		out.push(base);
+	}
+	return out;
+}
+
+async function spyTargetCooldowns(targetMemberId: any, guildId: any) {
+	const cooldowns: { kind: string; until: number }[] = [];
+
+	for (const action of ['steal', 'bomb'] as const) {
+		const ms = await cooldownMsForAction(guildId, action).catch(() => 0);
+		if (ms <= 0) continue;
+		const last = await db.getLastAttackActionByActor(targetMemberId, [action]).catch(() => null);
+		if (!last) continue;
+		const ends = last.getTime() + ms;
+		if (ends > Date.now()) cooldowns.push({ kind: action, until: ends });
+	}
+
+	const insuranceMs = await maxAttackConfigMs(guildId, 'cooldown_minutes', 'insurance').catch(() => 0);
+	if (insuranceMs > 0) {
+		const last = await db.getLastActionByActor(targetMemberId, 'insurance').catch(() => null);
+		if (last) {
+			const ends = last.getTime() + insuranceMs;
+			if (ends > Date.now()) cooldowns.push({ kind: 'insurance', until: ends });
+		}
+	}
+
+	const immune = await targetImmuneUntil(targetMemberId, guildId).catch(() => null);
+	if (immune) cooldowns.push({ kind: 'immunity', until: immune.getTime() });
+
+	return cooldowns;
 }
 
 async function payoutBountyOnHit(targetMemberId: any, attackerMemberId: any, guildId: any) {
@@ -783,12 +962,18 @@ export async function handleItemUse(client: any, payload: any) {
 			result = await resolveLeech({ memberItemId: member_item_id, actorMemberId, targetMemberId, config, guildId: guild_id });
 		} else if (effectType === 'reflect') {
 			result = await resolveReflect({ memberItemId: member_item_id, ownerMemberId: actorMemberId, config });
+		} else if (effectType === 'disguise') {
+			result = await resolveDisguise({ memberItemId: member_item_id, ownerMemberId: actorMemberId, config });
 		} else if (effectType === 'insurance') {
 			result = await resolveInsurance({ memberItemId: member_item_id, ownerMemberId: actorMemberId, config });
 		} else if (effectType === 'gift') {
 			result = await resolveGift({ actorMemberId, actorMemberItemId: member_item_id, targetMemberId, config, guildId: guild_id });
 		} else if (effectType === 'bounty') {
 			result = await resolveBounty({ actorMemberId, actorMemberItemId: member_item_id, targetMemberId, config, guildId: guild_id });
+		} else if (effectType === 'spy') {
+			result = await resolveSpy({ actorMemberId, actorMemberItemId: member_item_id, targetMemberId, config, guildId: guild_id });
+		} else if (effectType === 'purifier') {
+			result = await resolvePurifier({ memberItemId: member_item_id, ownerMemberId: actorMemberId });
 		} else {
 			result = { outcome: 'unsupported' };
 		}
@@ -798,7 +983,7 @@ export async function handleItemUse(client: any, payload: any) {
 		return { ok: false, error: 'resolution_failed' };
 	}
 
-	if (result?.outcome === 'cooldown' || result?.outcome === 'immune' || result?.outcome === 'insufficient' || result?.outcome === 'leeched') {
+	if (result?.outcome === 'cooldown' || result?.outcome === 'insufficient' || result?.outcome === 'leeched') {
 		await db.grantMemberItem(memberItem.member_id, memberItem.item_id, 1);
 		return { ok: false, error: result.error || result.outcome, outcome: result.outcome };
 	}
@@ -813,6 +998,14 @@ export async function handleItemUse(client: any, payload: any) {
 		item,
 		result
 	}).catch(() => null);
+
+	if (effectType === 'spy' && result?.outcome === 'caught') {
+		await announceSpyCaught(client, { guildId: guild_id, actorDiscordId: actor_discord_id, targetDiscordId: target_discord_id }).catch(() => null);
+	}
+
+	if (effectType === 'purifier' && (result?.cleared ?? 0) > 0) {
+		await runExpirySweep(client).catch(() => null);
+	}
 
 	return { ok: true, outcome: result?.outcome ?? 'success', effect_type: effectType, result };
 }
@@ -962,7 +1155,7 @@ function fmtXp(n: any): string {
 function buildItemUseEmbed(EmbedBuilder: any, embedConfig: any, ctx: any) {
 	const { effectType, result, actor, target, item } = ctx;
 	const outcome = result?.outcome;
-	const actorMention = actor ? `${actor}` : 'A member';
+	const actorMention = result?.actorDisguised ? 'A mysterious member 🎭' : actor ? `${actor}` : 'A member';
 	const targetMention = target ? `${target}` : 'a member';
 	const immuneRel = discordRelative(result?.immuneUntil);
 
@@ -982,6 +1175,15 @@ function buildItemUseEmbed(EmbedBuilder: any, embedConfig: any, ctx: any) {
 				.setColor(effectAccentInt('shield'))
 				.setTitle('🛡️ Attack Blocked')
 				.setDescription(`${targetMention}'s **Shield** blocked ${actorMention}'s ${effectType === 'steal' ? 'steal' : 'bomb'}!`);
+			return embed;
+		}
+		if (outcome === 'immune') {
+			embed
+				.setColor(effectAccentInt('shield'))
+				.setTitle('🛡️ Attack Absorbed by Immunity')
+				.setDescription(
+					`${targetMention} is still immune. ${actorMention}'s ${effectType === 'steal' ? 'steal' : 'bomb'} did nothing and the **${item?.name || 'item'}** was lost.`
+				);
 			return embed;
 		}
 		if (outcome === 'reflected') {
@@ -1019,7 +1221,14 @@ function buildItemUseEmbed(EmbedBuilder: any, embedConfig: any, ctx: any) {
 			embed.setColor(effectAccentInt('shield')).setTitle('🛡️ Leech Blocked').setDescription(`${targetMention}'s **Shield** blocked ${actorMention}'s leech!`);
 			return embed;
 		}
-		embed.setTitle('🩸 Leech Attached').setDescription(`${actorMention} attached a leech to ${targetMention} — siphoning a cut of their XP while active.`);
+		if (outcome === 'immune') {
+			embed
+				.setColor(effectAccentInt('shield'))
+				.setTitle('🛡️ Leech Absorbed by Immunity')
+				.setDescription(`${targetMention} is still immune. ${actorMention}'s leech failed and the **${item?.name || 'item'}** was lost.`);
+			return embed;
+		}
+		embed.setTitle('🩸 Leech Attached').setDescription(`${actorMention} attached a leech to ${targetMention}, siphoning a cut of their XP while active.`);
 		return embed;
 	}
 
@@ -1034,7 +1243,7 @@ function buildItemUseEmbed(EmbedBuilder: any, embedConfig: any, ctx: any) {
 	if (effectType === 'bounty') {
 		embed
 			.setTitle('🎯 Bounty Placed')
-			.setDescription(`${actorMention} placed a bounty on ${targetMention} — whoever steals or bombs them next collects it.`)
+			.setDescription(`${actorMention} placed a bounty on ${targetMention}. Whoever steals or bombs them next collects it.`)
 			.addFields({ name: 'Bounty', value: fmtXp(result?.xp), inline: true });
 		return embed;
 	}
@@ -1043,21 +1252,32 @@ function buildItemUseEmbed(EmbedBuilder: any, embedConfig: any, ctx: any) {
 		const pctNote = result?.percent ? ` (${result.percent}% of XP)` : '';
 		if (result?.won) {
 			embed
-				.setTitle('🎲 Gamble — Win!')
+				.setTitle('🎲 Gamble Win!')
 				.setDescription(`${actorMention} wagered ${fmtXp(result?.wager)}${pctNote} and **won**!`)
 				.addFields({ name: 'Payout', value: fmtXp(result?.payout), inline: true }, { name: 'Net gain', value: `+${fmtXp(result?.net)}`, inline: true });
 		} else {
 			embed
-				.setTitle('🎲 Gamble — Lost')
+				.setTitle('🎲 Gamble Lost')
 				.setDescription(`${actorMention} wagered ${fmtXp(result?.wager)}${pctNote} and **lost it all**.`)
 				.addFields({ name: 'XP lost', value: fmtXp(result?.wager), inline: true });
 		}
 		return embed;
 	}
 
+	if (effectType === 'disguise') {
+		const untilRel = discordRelative(result?.expiresAt);
+		embed
+			.setColor(effectAccentInt('disguise'))
+			.setTitle('🎭 A Member Vanished into the Crowd')
+			.setDescription(
+				`Someone slipped on a **Disguise**${untilRel ? ` (until ${untilRel})` : ''}. Their attacks now hide their name and they've dropped off the leaderboard.`
+			);
+		return embed;
+	}
+
 	if (effectType === 'shield' || effectType === 'reflect' || effectType === 'insurance') {
 		const meta: Record<string, { emoji: string; title: string; desc: string }> = {
-			shield: { emoji: '🛡️', title: 'Shield Activated', desc: 'is now protected — incoming steals, bombs and leeches will be blocked' },
+			shield: { emoji: '🛡️', title: 'Shield Activated', desc: 'is now protected, so incoming steals, bombs and leeches will be blocked' },
 			reflect: { emoji: '🪞', title: 'Reflect Activated', desc: 'will bounce the next attack back at the attacker' },
 			insurance: {
 				emoji: '💵',
@@ -1075,7 +1295,7 @@ function buildItemUseEmbed(EmbedBuilder: any, embedConfig: any, ctx: any) {
 		const untilRel = discordRelative(result?.expiresAt);
 		embed
 			.setTitle('⚡ Boost Activated')
-			.setDescription(`${actorMention} activated a boost${untilRel ? ` — active until ${untilRel}` : ''}. Earnings are multiplied while it lasts.`);
+			.setDescription(`${actorMention} activated a boost${untilRel ? ` (active until ${untilRel})` : ''}. Earnings are multiplied while it lasts.`);
 		return embed;
 	}
 
@@ -1105,10 +1325,39 @@ async function announceItemUse(client: any, ctx: any) {
 	const embed = buildItemUseEmbed(EmbedBuilder, embedConfig, { effectType, result, actor, target, item });
 	if (!embed) return;
 
-	const mentions = [actor, target].filter(Boolean).map((m: any) => `${m}`);
+	const hideActor = result?.actorDisguised || effectType === 'disguise';
+	const mentions = [hideActor ? null : actor, target].filter(Boolean).map((m: any) => `${m}`);
 	const content = mentions.length > 0 ? mentions.join(' ') : undefined;
 
 	await channel.send({ content, embeds: [embed] }).catch(() => null);
+}
+
+async function announceSpyCaught(client: any, ctx: any) {
+	const { guildId, actorDiscordId, targetDiscordId } = ctx;
+	const { getItemsChannelId, getEmbedConfig } = await import('../../../config.js');
+	const channelId = await getItemsChannelId(guildId);
+	if (!channelId) return;
+	const guild = client?.guilds?.cache?.get(guildId);
+	if (!guild) return;
+	const channel = await guild.channels.fetch(channelId).catch(() => null);
+	if (!channel || !channel.isTextBased()) return;
+
+	const { EmbedBuilder } = await import('discord.js');
+	const embedConfig = await getEmbedConfig(guildId).catch(() => ({ COLOR: 0x14b8a6, FOOTER: 'Items' }));
+	const spy = actorDiscordId ? await guild.members.fetch(String(actorDiscordId)).catch(() => null) : null;
+	const target = targetDiscordId ? await guild.members.fetch(String(targetDiscordId)).catch(() => null) : null;
+
+	const spyMention = spy ? `${spy}` : 'Someone';
+	const targetMention = target ? `${target}` : 'a member';
+	const embed = new EmbedBuilder()
+		.setColor(effectAccentInt('spy'))
+		.setTitle('🔍 Spy Caught')
+		.setDescription(`${targetMention} caught ${spyMention} trying to spy on them. No intel was gathered.`)
+		.setFooter({ text: embedConfig.FOOTER || 'Items' })
+		.setTimestamp();
+
+	const mentions = [spy, target].filter(Boolean).map((m: any) => `${m}`);
+	await channel.send({ content: mentions.length ? mentions.join(' ') : undefined, embeds: [embed] }).catch(() => null);
 }
 
 export async function handleAdminGiftAnnounce(client: any, payload: any) {
@@ -1134,7 +1383,7 @@ export async function handleAdminGiftAnnounce(client: any, payload: any) {
 	const embed = new EmbedBuilder()
 		.setColor(effectAccentInt(effect_type))
 		.setTitle('🎁 A Gift Has Arrived')
-		.setDescription(`${member} received **${qty}× ${item_name || 'an item'}** from the admin — check your bag!`)
+		.setDescription(`${member} received **${qty}× ${item_name || 'an item'}** from the admin. Check your bag!`)
 		.setFooter({ text: embedConfig.FOOTER || 'Items' })
 		.setTimestamp();
 
@@ -1167,6 +1416,8 @@ async function sweepExpiredBuffs(client: any, botId: any, EmbedBuilder: any) {
 	const rows = await db.getNewlyExpiredEffects(botId).catch(() => []);
 	if (!rows || rows.length === 0) return;
 
+	const disguiseEndingMembers = new Set(rows.filter((r: any) => r.effect_type === 'disguise').map((r: any) => String(r.discord_member_id)));
+
 	const handledIds: number[] = [];
 	for (const row of rows) {
 		const meta = getItemEffect(row.effect_type);
@@ -1182,13 +1433,18 @@ async function sweepExpiredBuffs(client: any, botId: any, EmbedBuilder: any) {
 					const targetName = targetMember ? `${targetMember}` : row.target_server_display_name || row.target_display_name || row.target_username || 'them';
 					text = `Your **${mag || 0}% Leech** on ${targetName} has ended.`;
 				}
+				const disguisedNow = row.member_id ? await isDisguised(row.member_id).catch(() => false) : false;
+				const disguisedAtActivation = Number(row.disguised_at_activation) === 1;
+				const hidden = row.effect_type === 'disguise' || disguisedNow || disguisedAtActivation || disguiseEndingMembers.has(String(row.discord_member_id));
+				const description =
+					row.effect_type === 'disguise' ? 'A member stepped out of disguise. They are visible again.' : hidden ? text : member ? `${member}, ${text}` : text;
 				const embed = new EmbedBuilder()
 					.setColor(effectAccentInt(row.effect_type))
 					.setTitle(`${meta.emoji} ${meta.label} Ended`)
-					.setDescription(member ? `${member} — ${text}` : text)
+					.setDescription(description)
 					.setFooter({ text: embedConfig.FOOTER || 'Items' })
 					.setTimestamp();
-				await deliverToMemberAndChannel(guild, embed, member ? `${member}` : undefined);
+				await deliverToMemberAndChannel(guild, embed, hidden ? undefined : member ? `${member}` : undefined);
 			}
 		}
 		handledIds.push(Number(row.id));
@@ -1230,7 +1486,7 @@ async function sweepDerivedEvents(client: any, botId: any, EmbedBuilder: any) {
 		const embed = new EmbedBuilder()
 			.setColor(effectAccentInt('shield'))
 			.setTitle('🛡️ Immunity Ended')
-			.setDescription(member ? `${member} is no longer immune — fair game again!` : `A member is no longer immune.`)
+			.setDescription(member ? `${member} is no longer immune. Fair game again!` : `A member is no longer immune.`)
 			.setFooter({ text: embedConfig.FOOTER || 'Items' })
 			.setTimestamp();
 		await deliverToMemberAndChannel(guild, embed, member ? `${member}` : undefined);
@@ -1257,7 +1513,7 @@ async function sweepDerivedEvents(client: any, botId: any, EmbedBuilder: any) {
 		const embed = new EmbedBuilder()
 			.setColor(effectAccentInt(action))
 			.setTitle(`${getItemEffect(action)?.emoji ?? '✅'} ${label} Cooldown Ready`)
-			.setDescription(member ? `${member} — your ${verb} cooldown is up. You can ${verb} again!` : `${label} cooldown is up.`)
+			.setDescription(member ? `${member}, your ${verb} cooldown is up. You can ${verb} again!` : `${label} cooldown is up.`)
 			.setFooter({ text: embedConfig.FOOTER || 'Items' })
 			.setTimestamp();
 		await deliverToMemberAndChannel(guild, embed, member ? `${member}` : undefined);
@@ -1281,7 +1537,7 @@ async function sweepDerivedEvents(client: any, botId: any, EmbedBuilder: any) {
 		const embed = new EmbedBuilder()
 			.setColor(effectAccentInt('insurance'))
 			.setTitle(`${getItemEffect('insurance')?.emoji ?? '✅'} Insurance Cooldown Ready`)
-			.setDescription(member ? `${member} — your insurance cooldown is up. You can activate insurance again!` : `Insurance cooldown is up.`)
+			.setDescription(member ? `${member}, your insurance cooldown is up. You can activate insurance again!` : `Insurance cooldown is up.`)
 			.setFooter({ text: embedConfig.FOOTER || 'Items' })
 			.setTimestamp();
 		await deliverToMemberAndChannel(guild, embed, member ? `${member}` : undefined);

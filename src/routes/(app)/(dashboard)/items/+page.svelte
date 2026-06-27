@@ -328,7 +328,7 @@
 	];
 
 	function toggleDay(v: number) {
-		const set = new Set(form.cfg.recur_days);
+		const set = new Set<number>((form.cfg.recur_days ?? []).map(Number));
 		if (set.has(v)) set.delete(v);
 		else set.add(v);
 		form.cfg.recur_days = [...set].sort((a, b) => a - b);
@@ -593,7 +593,7 @@
 							</label>
 						</div>
 						<p class="text-ash-500 text-[11px]">Multiplies earned XP for the duration.</p>
-					{:else if form.effect_type === 'shield' || form.effect_type === 'reflect'}
+					{:else if form.effect_type === 'shield' || form.effect_type === 'reflect' || form.effect_type === 'disguise'}
 						<label class="text-ash-300 text-xs"
 							>Duration (min)<input
 								type="number"
@@ -602,7 +602,8 @@
 							/></label
 						>
 						<p class="text-ash-500 text-[11px]">
-							{#if form.effect_type === 'reflect'}Bounces the next attack back at the attacker.{:else}Blocks incoming attacks while active.{/if}
+							{#if form.effect_type === 'reflect'}Bounces the next attack back at the attacker.{:else if form.effect_type === 'disguise'}Go anonymous in attack
+								messages, invisible to spies, and off the XP leaderboard while active.{:else}Blocks incoming attacks while active.{/if}
 						</p>
 					{:else if form.effect_type === 'insurance'}
 						<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -695,6 +696,19 @@
 							/></label
 						>
 						<p class="text-ash-500 text-[11px]">XP on a member's head, claimed by whoever hits them next.</p>
+					{:else if form.effect_type === 'spy'}
+						<label class="text-ash-300 text-xs"
+							>Spy success chance %<input
+								type="number"
+								min="1"
+								max="100"
+								bind:value={form.cfg.spy_chance}
+								class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+							/></label
+						>
+						<p class="text-ash-500 text-[11px]">
+							Chance the spy succeeds (sees through disguise too). On a miss, the target is publicly alerted and the spy is named — 100% means it always works.
+						</p>
 					{:else}
 						<p class="text-ash-500 text-[11px]">No extra settings for this effect type yet.</p>
 					{/if}

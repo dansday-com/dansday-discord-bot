@@ -2,17 +2,17 @@ import { error, redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import db from '$lib/database.js';
 import { publicServerPath } from '$lib/url.js';
-import { loadItemsShared } from '$lib/frontend/public/items/index.js';
+import { loadItemsShared, itemsCardTokenFromUrl } from '$lib/frontend/public/items/index.js';
 
 const PER_PAGE = 12;
 
 export const load: PageServerLoad = async ({ parent, params, url }) => {
-	const { server, publicStatsEnabled } = await parent();
-	const hash = String(params.hash || '').trim();
+	const { server } = await parent();
 
+	const hash = itemsCardTokenFromUrl(params.hash);
 	const shared = await loadItemsShared(server, hash);
 	if ('notFound' in shared) error(404, 'Items not available');
-	if ('invalid' in shared) redirect(303, publicStatsEnabled ? publicServerPath(server.slug) : '/');
+	if (shared.readOnly || !shared.member) redirect(303, `${publicServerPath(server.slug)}/items/shop/all/guest`);
 
 	const tabParam = String(params.category || 'all');
 	const tab = tabParam === 'items' || tabParam === 'level' ? tabParam : 'all';
@@ -28,7 +28,11 @@ export const load: PageServerLoad = async ({ parent, params, url }) => {
 		xpAmount: Number(h.xp_amount) || 0,
 		direction: h.direction === 'incoming' ? 'incoming' : 'outgoing',
 		targetName: h.target_server_display_name || h.target_display_name || h.target_username || null,
-		actorName: h.actor_server_display_name || h.actor_display_name || h.actor_username || null,
+		actorName:
+			h.direction === 'incoming' && Number(h.actor_disguised) === 1 && !(h.action === 'spy' && h.outcome === 'caught')
+				? null
+				: h.actor_server_display_name || h.actor_display_name || h.actor_username || null,
+		actorDisguised: Number(h.actor_disguised) === 1,
 		at: h.created_at ? new Date(h.created_at).getTime() : null
 	}));
 

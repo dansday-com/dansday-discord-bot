@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onDestroy, onMount, setContext } from 'svelte';
 	import { page } from '$app/state';
-	import { invalidateAll } from '$app/navigation';
+	import { invalidateAll, goto } from '$app/navigation';
 	import MemberCard from '$lib/frontend/components/MemberCard.svelte';
 	import { publicServerPath } from '$lib/url.js';
 	import { ITEM_EFFECTS, effectLabel, effectIcon, effectAccentHex, actionVerb, BAG_CAPACITY, formatDuration } from '$lib/items.js';
@@ -13,10 +13,13 @@
 	const pd = $derived(page.data as any);
 
 	const itemsBase = $derived(`${publicServerPath(data.server.slug)}/items`);
+	const readOnly = $derived(!!pd.readOnly || !pd.memberCard);
+	const navHash = $derived(pd.hash || 'guest');
 	const pathNorm = $derived(page.url.pathname.replace(/\/$/, ''));
 	const isBag = $derived(/\/items\/bag\//.test(pathNorm));
 	const isHistory = $derived(/\/items\/history\//.test(pathNorm));
-	const isShop = $derived(!isBag && !isHistory);
+	const isGuide = $derived(/\/items\/guide\//.test(pathNorm));
+	const isShop = $derived(!isBag && !isHistory && !isGuide);
 	const activeCat = $derived.by(() => {
 		const m = pathNorm.match(/\/items\/(?:shop|bag|history)\/([^/]+)\/[^/]+$/);
 		return m ? m[1] : 'all';
@@ -64,7 +67,7 @@
 	});
 
 	const activeChips = $derived.by(() => {
-		const chips: { key: string; icon: string; label: string; until: number; accent: string }[] = [];
+		const chips: { key: string; icon: string; label: string; until: number; accent: string; text?: string }[] = [];
 		for (const e of (pd.activeEffects ?? []) as any[]) {
 			if (!e.expiresAt || e.expiresAt <= now) continue;
 			let label = effectLabel(e.effect_type);
@@ -74,7 +77,7 @@
 				if (e.leechRole === 'victim') accent = effectAccentHex('steal');
 			}
 			chips.push({
-				key: `eff-${e.effect_type}-${e.expiresAt}`,
+				key: `eff-${e.effect_type}-${e.leechWith ?? ''}-${e.expiresAt}`,
 				icon: effectIcon(e.effect_type),
 				label,
 				until: e.expiresAt,
@@ -101,7 +104,17 @@
 				until: pd.insuranceCooldownUntil,
 				accent: effectAccentHex('insurance')
 			});
-		return chips.sort((a, b) => a.until - b.until);
+		chips.sort((a, b) => a.until - b.until);
+		if ((pd.bountyTotal ?? 0) > 0)
+			chips.push({
+				key: 'bounty',
+				icon: effectIcon('bounty'),
+				label: 'Bounty on you',
+				until: 0,
+				accent: effectAccentHex('bounty'),
+				text: `${fmt(pd.bountyTotal)} XP`
+			});
+		return chips;
 	});
 
 	function remainingLabel(untilMs: number): string {
@@ -117,8 +130,27 @@
 		return [{ id: 'all', label: 'All', icon: 'fa-grip' }, ...ordered.map((e) => ({ id: e.id, label: e.label, icon: e.icon }))];
 	});
 
+	const sessionKey = $derived(`items_card_${data.server.slug}`);
+
+	function syncTabSession() {
+		if (typeof sessionStorage === 'undefined') return;
+		const urlHash = pd.hash && pd.hash !== 'guest' ? String(pd.hash) : '';
+		if (urlHash) {
+			sessionStorage.setItem(sessionKey, urlHash);
+			return;
+		}
+		const stored = sessionStorage.getItem(sessionKey);
+		if (stored) {
+			const cat = activeCat || 'all';
+			const section = isBag ? 'bag' : isHistory ? 'history' : isGuide ? 'guide' : 'shop';
+			const target = isGuide ? `${itemsBase}/guide/${stored}` : `${itemsBase}/${section}/${cat}/${stored}`;
+			goto(target, { replaceState: true });
+		}
+	}
+
 	let es: EventSource | null = null;
 	onMount(() => {
+		syncTabSession();
 		const t = setInterval(() => (now = Date.now()), 1000);
 		if (pd.memberDiscordId) {
 			const url = `/api/public-statistics/${encodeURIComponent(data.server.slug)}/members-stream`;
@@ -142,6 +174,31 @@
 	onDestroy(() => es?.close());
 
 	let showCard = $state(false);
+
+	let tabsEl: HTMLDivElement | undefined = $state();
+	let canScrollLeft = $state(false);
+	let canScrollRight = $state(false);
+
+	function updateTabScroll() {
+		const el = tabsEl;
+		if (!el) return;
+		canScrollLeft = el.scrollLeft > 1;
+		canScrollRight = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+	}
+
+	function scrollTabs(dir: -1 | 1) {
+		const el = tabsEl;
+		if (!el) return;
+		el.scrollBy({ left: dir * Math.max(160, el.clientWidth * 0.7), behavior: 'smooth' });
+	}
+
+	$effect(() => {
+		typeTabs;
+		isShop;
+		isBag;
+		isHistory;
+		requestAnimationFrame(updateTabScroll);
+	});
 
 	let bagTabEl: HTMLAnchorElement | undefined = $state();
 	let bagPulse = $state(false);
@@ -191,11 +248,8 @@
 		burstId = id;
 	}
 
-	const SELF_BUFFS = new Set(['boost', 'shield', 'reflect', 'insurance']);
+	const SELF_BUFFS = new Set(['boost', 'shield', 'reflect', 'insurance', 'disguise']);
 	function isBuffActive(effectType: string): boolean {
-		if (effectType === 'leech') {
-			return ((pd.activeEffects ?? []) as any[]).some((e) => e.effect_type === 'leech' && e.leechRole === 'attacker' && e.expiresAt && e.expiresAt > now);
-		}
 		if (!SELF_BUFFS.has(effectType)) return false;
 		return ((pd.activeEffects ?? []) as any[]).some((e) => e.effect_type === effectType && e.expiresAt && e.expiresAt > now);
 	}
@@ -234,6 +288,9 @@
 		get hash() {
 			return pd.hash;
 		},
+		get readOnly() {
+			return readOnly;
+		},
 		get serverSlug() {
 			return data.server.slug;
 		},
@@ -242,42 +299,44 @@
 </script>
 
 <div class="m-items">
-	<div class="m-xp">
-		<div class="m-xp-glow"></div>
-		{#if pd.memberCard}
-			<button class="m-xp-card-btn" onclick={() => (showCard = true)} aria-label="Share your card" title="Share card">
-				<i class="fas fa-share-nodes"></i>
-				<span class="m-xp-card-btn-label">Share</span>
-			</button>
-		{/if}
-		<div class="m-xp-avatar">
-			<img src={memberAvatar} alt={pd.memberName ?? ''} loading="lazy" />
-		</div>
-		<div class="m-xp-figures">
-			<span class="m-xp-wallet"><i class="fas fa-wallet"></i>Wallet</span>
-			{#if pd.memberName}<span class="m-xp-name">{pd.memberName}</span>{/if}
-			<span class="m-xp-amount">{fmt(liveXp)}<span class="m-xp-unit">XP</span></span>
-			<div class="m-xp-bar">
-				<div class="m-xp-bar-fill" style="width: {levelInfo.pct}%"></div>
-			</div>
-			<span class="m-xp-bar-meta">
-				<span>Lvl {level}</span>
-				<span>{levelInfo.toNext > 0 ? `${fmt(levelInfo.toNext)} XP to Lvl ${level + 1}` : 'Max progress'}</span>
-			</span>
-		</div>
-		<div class="m-xp-stats">
-			<div class="m-xp-stat">
-				<span class="m-xp-stat-val">{levelInfo.pct}%</span>
-				<span class="m-xp-stat-lbl">Level {level}</span>
-			</div>
-			{#if rank}
-				<div class="m-xp-stat">
-					<span class="m-xp-stat-val">#{rank}</span>
-					<span class="m-xp-stat-lbl">Rank</span>
-				</div>
+	{#if !readOnly}
+		<div class="m-xp">
+			<div class="m-xp-glow"></div>
+			{#if pd.memberCard}
+				<button class="m-xp-card-btn" onclick={() => (showCard = true)} aria-label="Share your card" title="Share card">
+					<i class="fas fa-share-nodes"></i>
+					<span class="m-xp-card-btn-label">Share</span>
+				</button>
 			{/if}
+			<div class="m-xp-avatar">
+				<img src={memberAvatar} alt={pd.memberName ?? ''} loading="lazy" />
+			</div>
+			<div class="m-xp-figures">
+				<span class="m-xp-wallet"><i class="fas fa-wallet"></i>Wallet</span>
+				{#if pd.memberName}<span class="m-xp-name">{pd.memberName}</span>{/if}
+				<span class="m-xp-amount">{fmt(liveXp)}<span class="m-xp-unit">XP</span></span>
+				<div class="m-xp-bar">
+					<div class="m-xp-bar-fill" style="width: {levelInfo.pct}%"></div>
+				</div>
+				<span class="m-xp-bar-meta">
+					<span>Lvl {level}</span>
+					<span>{levelInfo.toNext > 0 ? `${fmt(levelInfo.toNext)} XP to Lvl ${level + 1}` : 'Max progress'}</span>
+				</span>
+			</div>
+			<div class="m-xp-stats">
+				<div class="m-xp-stat">
+					<span class="m-xp-stat-val">{levelInfo.pct}%</span>
+					<span class="m-xp-stat-lbl">Level {level}</span>
+				</div>
+				{#if rank}
+					<div class="m-xp-stat">
+						<span class="m-xp-stat-val">#{rank}</span>
+						<span class="m-xp-stat-lbl">Rank</span>
+					</div>
+				{/if}
+			</div>
 		</div>
-	</div>
+	{/if}
 
 	{#if activeChips.length > 0}
 		<div class="m-active">
@@ -285,7 +344,7 @@
 				<span class="m-active-chip" style="--chip-accent: {chip.accent}">
 					<i class="fas {chip.icon}"></i>
 					<span class="m-active-label">{chip.label}</span>
-					<span class="m-active-time">{remainingLabel(chip.until)}</span>
+					<span class="m-active-time">{chip.text ?? remainingLabel(chip.until)}</span>
 				</span>
 			{/each}
 		</div>
@@ -293,57 +352,92 @@
 
 	<div class="m-items-bar">
 		<div class="m-items-toggle">
-			<a class="m-items-seg" class:m-items-seg--active={isShop} href="{itemsBase}/shop/all/{pd.hash}" data-sveltekit-preload-data="hover"
+			<a class="m-items-seg" class:m-items-seg--active={isShop} href="{itemsBase}/shop/all/{navHash}" data-sveltekit-preload-data="hover"
 				><i class="fas fa-store"></i>Shop</a
 			>
-			<a
-				bind:this={bagTabEl}
-				class="m-items-seg"
-				class:m-items-seg--active={isBag}
-				class:m-items-seg--pulse={bagPulse}
-				href="{itemsBase}/bag/all/{pd.hash}"
-				data-sveltekit-preload-data="hover"
-			>
-				<i class="fas fa-bag-shopping"></i>Bag<span class="m-items-count" class:m-items-count--bump={bagPulse}>{pd.bagStock ?? 0}/{BAG_CAPACITY}</span>
-			</a>
-			<a class="m-items-seg" class:m-items-seg--active={isHistory} href="{itemsBase}/history/all/{pd.hash}" data-sveltekit-preload-data="hover">
-				<i class="fas fa-clock-rotate-left"></i>History
+			{#if !readOnly}
+				<a
+					bind:this={bagTabEl}
+					class="m-items-seg"
+					class:m-items-seg--active={isBag}
+					class:m-items-seg--pulse={bagPulse}
+					href="{itemsBase}/bag/all/{navHash}"
+					data-sveltekit-preload-data="hover"
+				>
+					<i class="fas fa-bag-shopping"></i>Bag<span class="m-items-count" class:m-items-count--bump={bagPulse}>{pd.bagStock ?? 0}/{BAG_CAPACITY}</span>
+				</a>
+				<a class="m-items-seg" class:m-items-seg--active={isHistory} href="{itemsBase}/history/all/{navHash}" data-sveltekit-preload-data="hover">
+					<i class="fas fa-clock-rotate-left"></i>History
+				</a>
+			{/if}
+			<a class="m-items-seg" class:m-items-seg--active={isGuide} href="{itemsBase}/guide/{navHash}" data-sveltekit-preload-data="hover">
+				<i class="fas fa-circle-question"></i>Guide
 			</a>
 		</div>
 	</div>
 
+	{#snippet tabStrip(tabs: { id: string; label: string; icon: string }[], section: 'shop' | 'bag' | 'history', hash: string)}
+		<div class="m-items-tabswrap">
+			<button
+				type="button"
+				class="m-items-arrow m-items-arrow--left"
+				class:m-items-arrow--show={canScrollLeft}
+				aria-label="Scroll categories left"
+				tabindex={canScrollLeft ? 0 : -1}
+				onclick={() => scrollTabs(-1)}
+			>
+				<i class="fas fa-chevron-left"></i>
+			</button>
+			<div bind:this={tabsEl} class="m-items-tabs" onscroll={updateTabScroll}>
+				{#each tabs as cat}
+					<a
+						class="m-items-tab"
+						class:m-items-tab--active={activeCat === cat.id}
+						href="{itemsBase}/{section}/{cat.id}/{hash}"
+						data-sveltekit-preload-data="hover"
+					>
+						<i class="fas {cat.icon}"></i>{cat.label}
+					</a>
+				{/each}
+			</div>
+			<button
+				type="button"
+				class="m-items-arrow m-items-arrow--right"
+				class:m-items-arrow--show={canScrollRight}
+				aria-label="Scroll categories right"
+				tabindex={canScrollRight ? 0 : -1}
+				onclick={() => scrollTabs(1)}
+			>
+				<i class="fas fa-chevron-right"></i>
+			</button>
+		</div>
+	{/snippet}
+
 	{#if isShop}
-		<div class="m-items-tabs">
-			{#each typeTabs as cat}
-				<a class="m-items-tab" class:m-items-tab--active={activeCat === cat.id} href="{itemsBase}/shop/{cat.id}/{pd.hash}" data-sveltekit-preload-data="hover">
-					<i class="fas {cat.icon}"></i>{cat.label}
-				</a>
-			{/each}
-		</div>
+		{@render tabStrip(typeTabs, 'shop', navHash)}
 	{:else if isBag && typeTabs.length > 1}
-		<div class="m-items-tabs">
-			{#each typeTabs as cat}
-				<a class="m-items-tab" class:m-items-tab--active={activeCat === cat.id} href="{itemsBase}/bag/{cat.id}/{pd.hash}" data-sveltekit-preload-data="hover">
-					<i class="fas {cat.icon}"></i>{cat.label}
-				</a>
-			{/each}
-		</div>
+		{@render tabStrip(typeTabs, 'bag', pd.hash)}
 	{:else if isHistory}
-		<div class="m-items-tabs">
-			{#each historyTabs as cat}
-				<a
-					class="m-items-tab"
-					class:m-items-tab--active={activeCat === cat.id}
-					href="{itemsBase}/history/{cat.id}/{pd.hash}"
-					data-sveltekit-preload-data="hover"
-				>
-					<i class="fas {cat.icon}"></i>{cat.label}
-				</a>
-			{/each}
+		{@render tabStrip(historyTabs, 'history', pd.hash)}
+	{/if}
+
+	{#if readOnly && isShop}
+		<div class="m-guest">
+			<div class="m-guest-ic"><i class="fas fa-lock"></i></div>
+			<div class="m-guest-body">
+				<h3>You're browsing as a guest</h3>
+				<p>Buying and using items is locked. Open the items page from the <strong>items button</strong> in your Discord server to log in and play.</p>
+			</div>
 		</div>
 	{/if}
 
-	{@render children()}
+	{#if readOnly && !isGuide}
+		<div class="m-readonly" inert>
+			{@render children()}
+		</div>
+	{:else}
+		{@render children()}
+	{/if}
 </div>
 
 {#if showCard && pd.memberCard}

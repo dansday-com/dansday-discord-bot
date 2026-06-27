@@ -834,6 +834,8 @@ export const serverMemberItemLogs = mysqlTable(
 		action: varchar('action', { length: 32 }).notNull(),
 		xp_amount: int('xp_amount').notNull().default(0),
 		outcome: varchar('outcome', { length: 16 }).notNull(),
+		actor_disguised: tinyint('actor_disguised').notNull().default(0),
+		immunity_cleared: tinyint('immunity_cleared').notNull().default(0),
 		created_at: datetime('created_at').notNull()
 	},
 	(t) => [

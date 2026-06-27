@@ -19,6 +19,17 @@ export async function resolveMemberByCardToken(serverId: number, token: string):
 	return null;
 }
 
+export const SENTINEL_GUEST = 'guest';
+
+export function isGuestHash(hash: any): boolean {
+	return !hash || String(hash) === SENTINEL_GUEST;
+}
+
+export function itemsCardTokenFromUrl(urlHash: any): string {
+	const raw = urlHash != null ? String(urlHash) : '';
+	return raw && raw !== SENTINEL_GUEST ? raw : '';
+}
+
 export async function resolveActiveBotForServer(server: any): Promise<any | null> {
 	const officialBotId = await db.resolveOfficialBotIdForServer(server).catch(() => null);
 	if (officialBotId == null) return null;
@@ -107,14 +118,35 @@ export async function loadItemsShared(server: any, hash: string) {
 	const itemsRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.items).catch(() => null);
 	if ((itemsRow as any)?.settings?.enabled !== true) return { notFound: true } as const;
 
-	const member = hash ? await resolveMemberByCardToken(server.id, hash) : null;
-	if (!member) return { invalid: true } as const;
-
 	const levelingRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.leveling).catch(() => null);
 	const req = (levelingRow as any)?.settings?.REQUIREMENTS ?? {};
 	const levelReq = { baseXp: Number(req.BASE_XP) || 100, multiplier: Number(req.MULTIPLIER) || 1.2 };
 
 	const items = await loadItemsCatalog(server.id);
+
+	const member = hash ? await resolveMemberByCardToken(server.id, hash) : null;
+
+	if (!member) {
+		return {
+			readOnly: true as const,
+			member: null,
+			items,
+			hash: '',
+			bagStock: 0,
+			categories: [...new Set((items as any[]).map((i) => i.effect_type))],
+			memberName: null,
+			memberDiscordId: null,
+			memberAvatar: null,
+			memberCard: null,
+			balance: { experience: 0, level: 1, rank: null },
+			activeEffects: [],
+			attackCooldowns: [],
+			immuneUntil: null,
+			insuranceCooldownUntil: null,
+			bountyTotal: 0,
+			levelReq
+		};
+	}
 
 	const invRows = await db.getMemberInventory(member.id).catch(() => []);
 	const bagStock = (invRows as any[]).reduce((sum, r) => sum + (Number(r.quantity) || 0), 0);
@@ -183,7 +215,10 @@ export async function loadItemsShared(server: any, hash: string) {
 		}
 	}
 
+	const bountyTotal = await db.getActiveBountyTotal(member.id).catch(() => 0);
+
 	return {
+		readOnly: false as const,
 		member,
 		items,
 		hash,
@@ -215,6 +250,7 @@ export async function loadItemsShared(server: any, hash: string) {
 		attackCooldowns,
 		immuneUntil,
 		insuranceCooldownUntil,
+		bountyTotal,
 		levelReq
 	};
 }

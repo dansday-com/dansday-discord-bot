@@ -9,8 +9,5 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 	const shared = await loadItemsShared(server, hash);
 	if ('notFound' in shared) error(404, 'Items not available');
 
-	const category = String(params.category || 'all');
-	const visibleItems = category === 'all' ? shared.items : shared.items.filter((i: any) => i.effect_type === category);
-
-	return { ...shared, category, visibleItems };
+	return { ...shared };
 };

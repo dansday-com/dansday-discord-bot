@@ -13,12 +13,16 @@ export const load: LayoutServerLoad = async ({ params, url }) => {
 	const settings = (settingsRow as any)?.settings || {};
 	const publicStatsEnabled = settings.enabled !== false;
 
-	const isItemsPath = /\/items\/[^/]+\/?$/.test(url.pathname);
+	const itemsRow = await db.getServerSettings(resolved.server.id, SERVER_SETTINGS.component.items).catch(() => null);
+	const itemsEnabled = (itemsRow as any)?.settings?.enabled === true;
+
+	const isItemsPath = /\/items(\/|$)/.test(url.pathname);
 	if (!publicStatsEnabled && !isItemsPath) error(404, 'Not found');
 
 	const server = resolved.server;
 	return {
 		publicStatsEnabled,
+		itemsEnabled,
 		server: {
 			id: server.id,
 			name: server.name,

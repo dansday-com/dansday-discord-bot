@@ -35,7 +35,7 @@
 	function showOutcome(effectType: string, result: any) {
 		if (outcomeTimer) clearTimeout(outcomeTimer);
 		outcome = describeItemOutcome(effectType, result);
-		outcomeTimer = setTimeout(() => (outcome = null), 3500);
+		if (!outcome.spyReport) outcomeTimer = setTimeout(() => (outcome = null), 3500);
 	}
 
 	function dismissOutcome() {
@@ -47,6 +47,32 @@
 		if (!ms) return '';
 		return new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 	}
+
+	function relUntil(ms: number): string {
+		const mins = Math.max(0, Math.round((ms - Date.now()) / 60000));
+		if (mins <= 0) return 'now';
+		if (mins < 60) return `${mins}m`;
+		const h = Math.floor(mins / 60);
+		const m = mins % 60;
+		return m ? `${h}h ${m}m` : `${h}h`;
+	}
+
+	function effectLine(e: any): string {
+		if (e.effect_type === 'boost') return `${e.effect_value || 2}× Boost`;
+		if (e.effect_type === 'leech') {
+			if (e.leechRole === 'victim') return `Leeched by ${e.leechWith} (${e.effect_value || 0}%)`;
+			return `Leeching ${e.leechWith} (${e.effect_value || 0}%)`;
+		}
+		if (e.effect_type === 'insurance') return `Insurance (${e.effect_value || 0}% refund)`;
+		return effectLabel(e.effect_type);
+	}
+
+	const cooldownLabels: Record<string, string> = {
+		steal: 'Steal cooldown',
+		bomb: 'Bomb cooldown',
+		insurance: 'Insurance cooldown',
+		immunity: 'Immune to attacks'
+	};
 
 	async function use(item: any, targetHash?: string) {
 		ctx.setBusy(item.member_item_id);
@@ -263,7 +289,14 @@
 
 {#if outcome}
 	<div class="m-out-overlay" role="presentation" onclick={dismissOutcome}>
-		<div class="m-out m-out--{outcome.tone}" role="dialog" aria-modal="true" aria-label={outcome.title} onclick={(e) => e.stopPropagation()}>
+		<div
+			class="m-out m-out--{outcome.tone}"
+			class:m-out--spy={outcome.spyReport}
+			role="dialog"
+			aria-modal="true"
+			aria-label={outcome.title}
+			onclick={(e) => e.stopPropagation()}
+		>
 			<div class="m-out-icon"><i class="fas {outcome.icon}"></i></div>
 			<div class="m-out-title">{outcome.title}</div>
 			{#if outcome.deltaXp != null && outcome.deltaXp !== 0}
@@ -272,8 +305,69 @@
 				</div>
 			{/if}
 			<p class="m-out-line">{outcome.line}</p>
+			{#if outcome.spyReport}
+				{@const rep = outcome.spyReport}
+				<div class="m-spy">
+					<div class="m-spy-sec">
+						<div class="m-spy-head"><i class="fas fa-briefcase"></i>Bag</div>
+						{#if rep.bag.length === 0}
+							<div class="m-spy-empty">Their bag is empty.</div>
+						{:else}
+							<div class="m-spy-chips">
+								{#each rep.bag as b}
+									<span class="m-spy-chip"><i class="fas {effectIcon(b.effect_type)}"></i>{b.name} ×{b.quantity}</span>
+								{/each}
+							</div>
+						{/if}
+					</div>
+					<div class="m-spy-sec">
+						<div class="m-spy-head"><i class="fas fa-wand-magic-sparkles"></i>Active effects</div>
+						{#if rep.effects.length === 0}
+							<div class="m-spy-empty">No active effects.</div>
+						{:else}
+							<div class="m-spy-chips">
+								{#each rep.effects as e}
+									<span class="m-spy-chip"
+										><i class="fas {effectIcon(e.effect_type)}"></i>{effectLine(e)}{#if e.expiresAt}<span class="m-spy-rel">· {relUntil(e.expiresAt)}</span
+											>{/if}</span
+									>
+								{/each}
+							</div>
+						{/if}
+					</div>
+					<div class="m-spy-sec">
+						<div class="m-spy-head"><i class="fas fa-stopwatch"></i>Cooldowns</div>
+						{#if rep.cooldowns.length === 0}
+							<div class="m-spy-empty">No active cooldowns.</div>
+						{:else}
+							<div class="m-spy-chips">
+								{#each rep.cooldowns as c}
+									<span class="m-spy-chip" class:m-spy-chip--shield={c.kind === 'immunity'}>
+										<i class="fas {c.kind === 'immunity' ? 'fa-shield-halved' : 'fa-clock'}"></i>{cooldownLabels[c.kind] ?? c.kind}<span class="m-spy-rel"
+											>· {relUntil(c.until)}</span
+										>
+									</span>
+								{/each}
+							</div>
+						{/if}
+					</div>
+					<div class="m-spy-sec">
+						<div class="m-spy-head"><i class="fas fa-crosshairs"></i>Bounty</div>
+						{#if (rep.bounty ?? 0) > 0}
+							<div class="m-spy-chips">
+								<span class="m-spy-chip m-spy-chip--bounty"><i class="fas fa-crosshairs"></i>{fmt(rep.bounty)} XP on their head</span>
+							</div>
+						{:else}
+							<div class="m-spy-empty">No bounty on them.</div>
+						{/if}
+					</div>
+				</div>
+			{/if}
 			{#if outcome.untilMs}
 				<div class="m-out-until"><i class="fas fa-clock"></i>Active until {untilLabel(outcome.untilMs)}</div>
+			{/if}
+			{#if outcome.spyReport}
+				<button class="m-out-close" onclick={dismissOutcome}><i class="fas fa-check"></i>Done</button>
 			{/if}
 		</div>
 	</div>

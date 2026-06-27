@@ -114,7 +114,7 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		expiringBuff: true,
 		defaultCost: 500,
 		defaultConfig: { effect_duration_minutes: 120 },
-		buffExpiredText: () => `Your **Shield** has worn off — you can be attacked again.`,
+		buffExpiredText: () => `Your **Shield** has worn off. You can be attacked again.`,
 		summary: (c) => `Block all attacks · ${formatDuration(c.effect_duration_minutes)}`
 	},
 	{
@@ -219,7 +219,7 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		summary: (c) =>
 			Number(c.spy_chance ?? 100) >= 100
 				? `Reveal a member's bag, active effects and cooldowns.`
-				: `${c.spy_chance}% to reveal their bag, effects & cooldowns — fail and they're alerted.`
+				: `${c.spy_chance}% to reveal their bag, effects & cooldowns. Fail and they're alerted.`
 	},
 	{
 		id: 'disguise',
@@ -233,7 +233,7 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		expiringBuff: true,
 		defaultCost: 750,
 		defaultConfig: { effect_duration_minutes: 120 },
-		buffExpiredText: () => `Your **Disguise** has worn off — you're visible again.`,
+		buffExpiredText: () => `Your **Disguise** has worn off. You're visible again.`,
 		summary: (c) => `Go anonymous & off the leaderboard · ${formatDuration(c.effect_duration_minutes)}`
 	},
 	{
@@ -248,7 +248,7 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		expiringBuff: false,
 		defaultCost: 600,
 		defaultConfig: {},
-		summary: () => `Wipe all your active effects — shields, leeches, immunity and more.`
+		summary: () => `Wipe all your active effects: shields, leeches, immunity and more.`
 	}
 ];
 
@@ -368,16 +368,16 @@ const EFFECT_GUIDES: Record<string, EffectGuide> = {
 	steal: {
 		what: 'Take a slice of another member’s XP and add it straight to your own balance.',
 		how: 'Pick a target. They keep playing, you just walk off with a cut. Blocked by their Shield, Reflect or active Immunity.',
-		tip: 'Spy first — robbing a shielded target just wastes the item.'
+		tip: 'Spy first. Robbing a shielded target just wastes the item.'
 	},
 	bomb: {
-		what: 'Destroy a chunk of a target’s XP. Unlike Steal, the XP is gone — nobody gets it.',
+		what: 'Destroy a chunk of a target’s XP. Unlike Steal, the XP is gone for good.',
 		how: 'Pick a target. Pure sabotage, higher ceiling than Steal. Blocked by Shield, Reflect or Immunity.',
 		tip: 'Use it to knock a rival off the top of the leaderboard.'
 	},
 	boost: {
 		what: 'Multiply the XP you earn from chatting and voice for a limited time.',
-		how: 'Activate it on yourself — no target. Every XP gain is multiplied until it wears off.',
+		how: 'Activate it on yourself, no target needed. Every XP gain is multiplied until it wears off.',
 		tip: 'Pop it right before a long voice session with friends to stack with the Friend Boost.'
 	},
 	shield: {
@@ -392,7 +392,7 @@ const EFFECT_GUIDES: Record<string, EffectGuide> = {
 	},
 	reflect: {
 		what: 'Bounce the next attack back at whoever hits you.',
-		how: 'Activate on yourself. The next Steal or Bomb is reflected — the attacker takes the loss instead.',
+		how: 'Activate on yourself. The next Steal or Bomb is reflected, so the attacker takes the loss instead.',
 		tip: 'A nasty surprise for anyone who thinks you’re an easy target.'
 	},
 	insurance: {
@@ -401,7 +401,7 @@ const EFFECT_GUIDES: Record<string, EffectGuide> = {
 		tip: 'Good when you can’t sit on a Shield but still want a safety net.'
 	},
 	gamble: {
-		what: 'Wager your XP for a chance to multiply it — or lose it all.',
+		what: 'Wager your XP for a chance to multiply it, or lose it all.',
 		how: 'Choose how much to risk. Win and your wager is multiplied; lose and it’s gone.',
 		tip: 'Only gamble what you can afford to drop on the leaderboard.'
 	},
@@ -411,7 +411,7 @@ const EFFECT_GUIDES: Record<string, EffectGuide> = {
 		tip: 'Reward teammates, pay off a debt, or fund an alliance.'
 	},
 	bounty: {
-		what: 'Put a price on a target’s head — whoever steals or bombs them next collects it.',
+		what: 'Put a price on a target’s head. Whoever steals or bombs them next collects it.',
 		how: 'Pick a target. The bounty sits on them until someone lands a hit and claims the reward.',
 		tip: 'Stack bounties on a rival to turn the whole server into their hunters.'
 	},
@@ -421,12 +421,12 @@ const EFFECT_GUIDES: Record<string, EffectGuide> = {
 		tip: 'Scout before a big attack, and skip a risky spy when you can’t afford to be seen.'
 	},
 	disguise: {
-		what: 'Go anonymous — your attacks hide your name and you drop off the leaderboard.',
+		what: 'Go anonymous. Your attacks hide your name and you drop off the leaderboard.',
 		how: 'Activate on yourself. Victims only see “a mysterious member” in history, though a successful Spy can still unmask you.',
 		tip: 'Strike rivals without painting a target on your own back.'
 	},
 	purifier: {
-		what: 'Wipe every active effect off yourself — shields, boosts, leeches, disguise and immunity.',
+		what: 'Wipe every active effect off yourself: shields, boosts, leeches, disguise and immunity.',
 		how: 'Activate on yourself. Each effect ends immediately. Your attack cooldowns are NOT cleared.',
 		tip: 'The fastest way to shake off a leech that’s draining you.'
 	}
@@ -542,7 +542,7 @@ export function describeItemOutcome(effectType: string, result: any): ItemOutcom
 		if (outcome === 'blocked')
 			return { tone: 'lose', icon: 'fa-shield', title: 'Blocked!', line: `Their shield blocked your attack.`, deltaXp: null, untilMs: null };
 		if (outcome === 'reflected')
-			return { tone: 'lose', icon: 'fa-arrows-rotate', title: 'Reflected!', line: `It bounced back — you lost the XP.`, deltaXp: -xp, untilMs: null };
+			return { tone: 'lose', icon: 'fa-arrows-rotate', title: 'Reflected!', line: `It bounced back and you lost the XP.`, deltaXp: -xp, untilMs: null };
 		const extra = effectType === 'steal' ? `+${xp.toLocaleString()} XP taken` : `${xp.toLocaleString()} XP destroyed`;
 		return {
 			tone: 'win',
@@ -562,7 +562,7 @@ export function describeItemOutcome(effectType: string, result: any): ItemOutcom
 				tone: 'lose',
 				icon: 'fa-triangle-exclamation',
 				title: 'Spy Caught',
-				line: `${name} caught you — no intel, and they know it was you.`,
+				line: `${name} caught you. No intel, and they know it was you.`,
 				deltaXp: null,
 				untilMs: null
 			};
@@ -604,7 +604,7 @@ export function describeItemOutcome(effectType: string, result: any): ItemOutcom
 			tone: 'win',
 			icon: effectIcon('shield'),
 			title: 'Shield Active',
-			line: `You're protected — incoming steals and bombs will be blocked.`,
+			line: `You're protected. Incoming steals and bombs will be blocked.`,
 			deltaXp: null,
 			untilMs: toMs(r.expiresAt)
 		};
@@ -622,7 +622,7 @@ export function describeItemOutcome(effectType: string, result: any): ItemOutcom
 			tone: 'win',
 			icon: effectIcon('disguise'),
 			title: 'Disguise Active',
-			line: `You're anonymous — your attacks hide your name and you're off the leaderboard.`,
+			line: `You're anonymous. Your attacks hide your name and you're off the leaderboard.`,
 			deltaXp: null,
 			untilMs: toMs(r.expiresAt)
 		};
@@ -632,7 +632,7 @@ export function describeItemOutcome(effectType: string, result: any): ItemOutcom
 			tone: 'win',
 			icon: effectIcon('purifier'),
 			title: 'Purified',
-			line: n > 0 ? `Wiped ${n} active effect${n === 1 ? '' : 's'} off you — clean slate.` : `Nothing to cleanse — you were already clean.`,
+			line: n > 0 ? `Wiped ${n} active effect${n === 1 ? '' : 's'} off you. Clean slate.` : `Nothing to cleanse. You were already clean.`,
 			deltaXp: null,
 			untilMs: null
 		};

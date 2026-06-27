@@ -178,6 +178,10 @@
 						Get started
 					</a>
 					<div class="m-hero-actions-secondary" role="group" aria-label="More options">
+						<a href="/docs" class="m-btn m-btn--ghost m-btn--compact" title="Setup guide and documentation">
+							<i class="fas fa-book-open"></i>
+							Docs
+						</a>
 						<a href="/login" class="m-btn m-btn--ghost m-btn--compact">
 							<i class="fas fa-sign-in-alt"></i>
 							Log in
@@ -312,6 +316,10 @@
 						<a href="/login" class="m-btn m-btn--ghost">
 							<i class="fas fa-sign-in-alt"></i>
 							Open login
+						</a>
+						<a href="/docs" class="m-btn m-btn--ghost">
+							<i class="fas fa-book-open"></i>
+							Read the docs
 						</a>
 					</div>
 				</div>

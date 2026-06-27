@@ -10,58 +10,58 @@ The project is open source under the MIT license.
 
 ### Web control panel
 
-- **Granular permissions** — Control who can change which settings. Owners and staff tiers let helpers contribute without full control of the server or bot.
-- **Server accounts** — Invite owners and staff into the panel with roles separate from ordinary Discord chat/moderation permissions.
-- **Per-module toggles** — Enable or disable major features per server so you only run what you need.
-- **Multi-language UI (Discord flows)** — English and Indonesian strings for buttons, selects, and labels, with room to grow.
-- **Embed builder** — Design rich embeds with live preview, placeholders, and images; send to channels from the browser.
+- **Granular permissions** - Control who can change which settings. Owners and staff tiers let helpers contribute without full control of the server or bot.
+- **Server accounts** - Invite owners and staff into the panel with roles separate from ordinary Discord chat/moderation permissions.
+- **Per-module toggles** - Enable or disable major features per server so you only run what you need.
+- **Multi-language UI (Discord flows)** - English and Indonesian strings for buttons, selects, and labels, with room to grow.
+- **Embed builder** - Design rich embeds with live preview, placeholders, and images; send to channels from the browser.
 
 ### Community & engagement
 
-- **Items & XP economy** ⭐ _new_ — Spend earned XP in a per-server shop on PvP and utility items, each with a configurable cost, effect, and optional timed/recurring availability. Members keep purchases in a bag (capacity 50) and use them through Discord flows; outcomes are announced in the progress channel. Effects:
-  - 💰 **Steal** — take a slice of another member's XP (with cooldown and post-hit immunity).
-  - 💥 **Bomb** — destroy a slice of a member's XP outright.
-  - 🩸 **Leech** — siphon a percentage of a target's XP for a set duration.
-  - 🎯 **Bounty** — put XP on a member's head; whoever robs them next collects it.
-  - 🛡️ **Shield** — block incoming steals, bombs, and leeches while active.
-  - 🪞 **Reflect** — bounce the next attack back at the attacker.
-  - 💵 **Insurance** — refund your XP the next time you're robbed.
-  - ⚡ **Boost** — multiply your XP earnings for a set duration.
-  - 🎲 **Gamble** — wager XP for a chance at a multiplied payout.
-  - 🎁 **Gift** — send XP to another member (with optional tax).
-  - 🔍 **Spy** — reveal a member's bag, active effects, cooldowns, and bounty.
-  - 🎭 **Disguise** — go anonymous and drop off the leaderboard for a set duration.
-  - 🧼 **Purifier** — wipe all of your own active effects at once.
-- **Leveling & XP** — Message and voice activity feed a full XP system with levels, role rewards, and leaderboards.
-- **Welcomer** — Custom welcome messages and embeds for new members.
-- **Giveaways** — Entries, winner selection, and role-based eligibility.
-- **AFK** — Members set AFK status and custom messages; the bot warns when someone is mentioned while away.
-- **Feedback** — Collect and organize suggestions and feedback through Discord-facing flows.
-- **Staff rating** — Structured staff evaluation tied to your moderation workflow.
-- **Booster messages** — Thank Nitro boosters with configurable channels and templates (separate from custom supporter roles).
-- **Custom supporter roles** — Let supporters personalize role name and color within rules you set.
+- **Items & XP economy** ⭐ _new_ - Spend earned XP in a per-server shop on PvP and utility items, each with a configurable cost, effect, and optional timed/recurring availability. Members keep purchases in a bag (capacity 50) and use them through Discord flows; outcomes are announced in the progress channel. Effects:
+  - 💰 **Steal** - take a slice of another member's XP (with cooldown and post-hit immunity).
+  - 💥 **Bomb** - destroy a slice of a member's XP outright.
+  - 🩸 **Leech** - siphon a percentage of a target's XP for a set duration.
+  - 🎯 **Bounty** - put XP on a member's head; whoever robs them next collects it.
+  - 🛡️ **Shield** - block incoming steals, bombs, and leeches while active.
+  - 🪞 **Reflect** - bounce the next attack back at the attacker.
+  - 💵 **Insurance** - refund your XP the next time you're robbed.
+  - ⚡ **Boost** - multiply your XP earnings for a set duration.
+  - 🎲 **Gamble** - wager XP for a chance at a multiplied payout.
+  - 🎁 **Gift** - send XP to another member (with optional tax).
+  - 🔍 **Spy** - reveal a member's bag, active effects, cooldowns, and bounty.
+  - 🎭 **Disguise** - go anonymous and drop off the leaderboard for a set duration.
+  - 🧼 **Purifier** - wipe all of your own active effects at once.
+- **Leveling & XP** - Message and voice activity feed a full XP system with levels, role rewards, and leaderboards.
+- **Welcomer** - Custom welcome messages and embeds for new members.
+- **Giveaways** - Entries, winner selection, and role-based eligibility.
+- **AFK** - Members set AFK status and custom messages; the bot warns when someone is mentioned while away.
+- **Feedback** - Collect and organize suggestions and feedback through Discord-facing flows.
+- **Staff rating** - Structured staff evaluation tied to your moderation workflow.
+- **Booster messages** - Thank Nitro boosters with configurable channels and templates (separate from custom supporter roles).
+- **Custom supporter roles** - Let supporters personalize role name and color within rules you set.
 
 ### Safety & operations
 
-- **Moderation** — Warnings, mutes, bans, and staff actions coordinated from the panel.
-- **Channel notifications** — Alerts for important channel activity.
-- **Message forwarder** — Mirror or sync messages across channels (and related self-bot paths where configured).
+- **Moderation** - Warnings, mutes, bans, and staff actions coordinated from the panel.
+- **Channel notifications** - Alerts for important channel activity.
+- **Message forwarder** - Mirror or sync messages across channels (and related self-bot paths where configured).
 
 ### Integrations & alerts
 
-- **Discord Quest notifier** — Surface Discord Quest activity in your server; optional quest enrollment automation tuned per server.
-- **Roblox catalog watch** — Post embeds when catalog items change — aimed at trading and UGC communities.
-- **Content creator / TikTok** — Creator applications and TikTok live session digests tied to server channels.
+- **Discord Quest notifier** - Surface Discord Quest activity in your server; optional quest enrollment automation tuned per server.
+- **Roblox catalog watch** - Post embeds when catalog items change, aimed at trading and UGC communities.
+- **Content creator / TikTok** - Creator applications and TikTok live session digests tied to server channels.
 
 ### Public web pages
 
-- **Public statistics** — Shareable pages with member insights, leaderboards, and live-oriented views for your community.
+- **Public statistics** - Shareable pages with member insights, leaderboards, and live-oriented views for your community.
 
 ### Advanced
 
-- **Official bot (discord.js)** — Core automation, slash `/setup`, buttons, and component interactions.
-- **Optional self-bot path** — Panel-managed tokens and user-context features where supported (e.g. forwarder and quest flows); use in line with Discord’s terms and your own risk assessment.
-- **Webhook server** — Incoming hooks for selected automation paths (see codebase for endpoints).
+- **Official bot (discord.js)** - Core automation, slash `/setup`, buttons, and component interactions.
+- **Optional self-bot path** - Panel-managed tokens and user-context features where supported (e.g. forwarder and quest flows); use in line with Discord’s terms and your own risk assessment.
+- **Webhook server** - Incoming hooks for selected automation paths (see codebase for endpoints).
 
 ---
 
@@ -84,10 +84,10 @@ Versions match `package.json` at release (caret ranges; run `npm ls` for the exa
 | Database                   | [MySQL](https://www.mysql.com/) via [mysql2](https://github.com/sidorares/node-mysql2) 3.20, [Drizzle ORM](https://orm.drizzle.team/) 0.45 + [Drizzle Kit](https://orm.drizzle.team/kit-docs/overview) 0.31 (migrations) |
 | Password hashing           | [bcryptjs](https://www.npmjs.com/package/bcryptjs) 3.0                                                                                                                                                                   |
 | Dates & time               | [Luxon](https://moment.github.io/luxon/) 3.7                                                                                                                                                                             |
-| Cache / sessions           | [Redis](https://redis.io/) client ([`redis`](https://www.npmjs.com/package/redis) 5.11 for Node) — optional by configuration                                                                                             |
-| Email                      | [Nodemailer](https://nodemailer.com/) 8.0 — optional                                                                                                                                                                     |
+| Cache / sessions           | [Redis](https://redis.io/) client ([`redis`](https://www.npmjs.com/package/redis) 5.11 for Node), optional by configuration                                                                                              |
+| Email                      | [Nodemailer](https://nodemailer.com/) 8.0, optional                                                                                                                                                                      |
 | Proxies                    | [proxy-agent](https://www.npmjs.com/package/proxy-agent) 8.0 (where outbound HTTP uses a proxy)                                                                                                                          |
-| Observability              | [OpenTelemetry](https://opentelemetry.io/) — `@opentelemetry/api` 1.9, logs SDK & auto-instrumentations 0.214, OTLP HTTP log exporter (optional)                                                                         |
+| Observability              | [OpenTelemetry](https://opentelemetry.io/) `@opentelemetry/api` 1.9, logs SDK & auto-instrumentations 0.214, OTLP HTTP log exporter (optional)                                                                           |
 | Integrations               | [TikTok Live Connector](https://www.npmjs.com/package/tiktok-live-connector) 2.1 (creator / live flows)                                                                                                                  |
 | Config                     | [dotenv](https://www.npmjs.com/package/dotenv) 17.3                                                                                                                                                                      |
 

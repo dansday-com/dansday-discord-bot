@@ -612,7 +612,7 @@ function insuranceRefundAmount(lostAmount: any, refundPercent: any) {
 export async function resolveInsurance({ memberItemId, ownerMemberId, config }: any) {
 	const cfg = parseConfig(config);
 	const cooldownUntil = await activationCooldownUntil(ownerMemberId, cfg.cooldown_minutes, 'insurance');
-	if (cooldownUntil) return { outcome: 'cooldown', error: `Insurance is on cooldown — try again in ${humanizeUntil(cooldownUntil)}.` };
+	if (cooldownUntil) return { outcome: 'cooldown', error: `Insurance is on cooldown. Try again in ${humanizeUntil(cooldownUntil)}.` };
 	const actorDisguised = await isDisguised(ownerMemberId);
 	const refundPercent = Math.max(0, Math.min(100, Number(cfg.refund_percent ?? 100)));
 	const expiresAt = computeExpiry(cfg.effect_duration_minutes);
@@ -1182,7 +1182,7 @@ function buildItemUseEmbed(EmbedBuilder: any, embedConfig: any, ctx: any) {
 				.setColor(effectAccentInt('shield'))
 				.setTitle('🛡️ Attack Absorbed by Immunity')
 				.setDescription(
-					`${targetMention} is still immune — ${actorMention}'s ${effectType === 'steal' ? 'steal' : 'bomb'} did nothing and the **${item?.name || 'item'}** was lost.`
+					`${targetMention} is still immune. ${actorMention}'s ${effectType === 'steal' ? 'steal' : 'bomb'} did nothing and the **${item?.name || 'item'}** was lost.`
 				);
 			return embed;
 		}
@@ -1225,10 +1225,10 @@ function buildItemUseEmbed(EmbedBuilder: any, embedConfig: any, ctx: any) {
 			embed
 				.setColor(effectAccentInt('shield'))
 				.setTitle('🛡️ Leech Absorbed by Immunity')
-				.setDescription(`${targetMention} is still immune — ${actorMention}'s leech failed and the **${item?.name || 'item'}** was lost.`);
+				.setDescription(`${targetMention} is still immune. ${actorMention}'s leech failed and the **${item?.name || 'item'}** was lost.`);
 			return embed;
 		}
-		embed.setTitle('🩸 Leech Attached').setDescription(`${actorMention} attached a leech to ${targetMention} — siphoning a cut of their XP while active.`);
+		embed.setTitle('🩸 Leech Attached').setDescription(`${actorMention} attached a leech to ${targetMention}, siphoning a cut of their XP while active.`);
 		return embed;
 	}
 
@@ -1243,7 +1243,7 @@ function buildItemUseEmbed(EmbedBuilder: any, embedConfig: any, ctx: any) {
 	if (effectType === 'bounty') {
 		embed
 			.setTitle('🎯 Bounty Placed')
-			.setDescription(`${actorMention} placed a bounty on ${targetMention} — whoever steals or bombs them next collects it.`)
+			.setDescription(`${actorMention} placed a bounty on ${targetMention}. Whoever steals or bombs them next collects it.`)
 			.addFields({ name: 'Bounty', value: fmtXp(result?.xp), inline: true });
 		return embed;
 	}
@@ -1252,12 +1252,12 @@ function buildItemUseEmbed(EmbedBuilder: any, embedConfig: any, ctx: any) {
 		const pctNote = result?.percent ? ` (${result.percent}% of XP)` : '';
 		if (result?.won) {
 			embed
-				.setTitle('🎲 Gamble — Win!')
+				.setTitle('🎲 Gamble Win!')
 				.setDescription(`${actorMention} wagered ${fmtXp(result?.wager)}${pctNote} and **won**!`)
 				.addFields({ name: 'Payout', value: fmtXp(result?.payout), inline: true }, { name: 'Net gain', value: `+${fmtXp(result?.net)}`, inline: true });
 		} else {
 			embed
-				.setTitle('🎲 Gamble — Lost')
+				.setTitle('🎲 Gamble Lost')
 				.setDescription(`${actorMention} wagered ${fmtXp(result?.wager)}${pctNote} and **lost it all**.`)
 				.addFields({ name: 'XP lost', value: fmtXp(result?.wager), inline: true });
 		}
@@ -1277,7 +1277,7 @@ function buildItemUseEmbed(EmbedBuilder: any, embedConfig: any, ctx: any) {
 
 	if (effectType === 'shield' || effectType === 'reflect' || effectType === 'insurance') {
 		const meta: Record<string, { emoji: string; title: string; desc: string }> = {
-			shield: { emoji: '🛡️', title: 'Shield Activated', desc: 'is now protected — incoming steals, bombs and leeches will be blocked' },
+			shield: { emoji: '🛡️', title: 'Shield Activated', desc: 'is now protected, so incoming steals, bombs and leeches will be blocked' },
 			reflect: { emoji: '🪞', title: 'Reflect Activated', desc: 'will bounce the next attack back at the attacker' },
 			insurance: {
 				emoji: '💵',
@@ -1295,7 +1295,7 @@ function buildItemUseEmbed(EmbedBuilder: any, embedConfig: any, ctx: any) {
 		const untilRel = discordRelative(result?.expiresAt);
 		embed
 			.setTitle('⚡ Boost Activated')
-			.setDescription(`${actorMention} activated a boost${untilRel ? ` — active until ${untilRel}` : ''}. Earnings are multiplied while it lasts.`);
+			.setDescription(`${actorMention} activated a boost${untilRel ? ` (active until ${untilRel})` : ''}. Earnings are multiplied while it lasts.`);
 		return embed;
 	}
 
@@ -1352,7 +1352,7 @@ async function announceSpyCaught(client: any, ctx: any) {
 	const embed = new EmbedBuilder()
 		.setColor(effectAccentInt('spy'))
 		.setTitle('🔍 Spy Caught')
-		.setDescription(`${targetMention} caught ${spyMention} trying to spy on them — no intel was gathered.`)
+		.setDescription(`${targetMention} caught ${spyMention} trying to spy on them. No intel was gathered.`)
 		.setFooter({ text: embedConfig.FOOTER || 'Items' })
 		.setTimestamp();
 
@@ -1383,7 +1383,7 @@ export async function handleAdminGiftAnnounce(client: any, payload: any) {
 	const embed = new EmbedBuilder()
 		.setColor(effectAccentInt(effect_type))
 		.setTitle('🎁 A Gift Has Arrived')
-		.setDescription(`${member} received **${qty}× ${item_name || 'an item'}** from the admin — check your bag!`)
+		.setDescription(`${member} received **${qty}× ${item_name || 'an item'}** from the admin. Check your bag!`)
 		.setFooter({ text: embedConfig.FOOTER || 'Items' })
 		.setTimestamp();
 
@@ -1437,7 +1437,7 @@ async function sweepExpiredBuffs(client: any, botId: any, EmbedBuilder: any) {
 				const disguisedAtActivation = Number(row.disguised_at_activation) === 1;
 				const hidden = row.effect_type === 'disguise' || disguisedNow || disguisedAtActivation || disguiseEndingMembers.has(String(row.discord_member_id));
 				const description =
-					row.effect_type === 'disguise' ? 'A member stepped out of disguise — they are visible again.' : hidden ? text : member ? `${member} — ${text}` : text;
+					row.effect_type === 'disguise' ? 'A member stepped out of disguise. They are visible again.' : hidden ? text : member ? `${member}, ${text}` : text;
 				const embed = new EmbedBuilder()
 					.setColor(effectAccentInt(row.effect_type))
 					.setTitle(`${meta.emoji} ${meta.label} Ended`)
@@ -1486,7 +1486,7 @@ async function sweepDerivedEvents(client: any, botId: any, EmbedBuilder: any) {
 		const embed = new EmbedBuilder()
 			.setColor(effectAccentInt('shield'))
 			.setTitle('🛡️ Immunity Ended')
-			.setDescription(member ? `${member} is no longer immune — fair game again!` : `A member is no longer immune.`)
+			.setDescription(member ? `${member} is no longer immune. Fair game again!` : `A member is no longer immune.`)
 			.setFooter({ text: embedConfig.FOOTER || 'Items' })
 			.setTimestamp();
 		await deliverToMemberAndChannel(guild, embed, member ? `${member}` : undefined);
@@ -1513,7 +1513,7 @@ async function sweepDerivedEvents(client: any, botId: any, EmbedBuilder: any) {
 		const embed = new EmbedBuilder()
 			.setColor(effectAccentInt(action))
 			.setTitle(`${getItemEffect(action)?.emoji ?? '✅'} ${label} Cooldown Ready`)
-			.setDescription(member ? `${member} — your ${verb} cooldown is up. You can ${verb} again!` : `${label} cooldown is up.`)
+			.setDescription(member ? `${member}, your ${verb} cooldown is up. You can ${verb} again!` : `${label} cooldown is up.`)
 			.setFooter({ text: embedConfig.FOOTER || 'Items' })
 			.setTimestamp();
 		await deliverToMemberAndChannel(guild, embed, member ? `${member}` : undefined);
@@ -1537,7 +1537,7 @@ async function sweepDerivedEvents(client: any, botId: any, EmbedBuilder: any) {
 		const embed = new EmbedBuilder()
 			.setColor(effectAccentInt('insurance'))
 			.setTitle(`${getItemEffect('insurance')?.emoji ?? '✅'} Insurance Cooldown Ready`)
-			.setDescription(member ? `${member} — your insurance cooldown is up. You can activate insurance again!` : `Insurance cooldown is up.`)
+			.setDescription(member ? `${member}, your insurance cooldown is up. You can activate insurance again!` : `Insurance cooldown is up.`)
 			.setFooter({ text: embedConfig.FOOTER || 'Items' })
 			.setTimestamp();
 		await deliverToMemberAndChannel(guild, embed, member ? `${member}` : undefined);

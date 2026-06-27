@@ -73,7 +73,10 @@ export const GET: RequestHandler = async () => {
 		return urls;
 	});
 
-	const staticPages = [{ loc: `${baseUrl}/`, changefreq: 'weekly' as const, priority: 1.0, lastmod: new Date().toISOString() }];
+	const staticPages = [
+		{ loc: `${baseUrl}/`, changefreq: 'weekly' as const, priority: 1.0, lastmod: new Date().toISOString() },
+		{ loc: `${baseUrl.replace(/\/$/, '')}/docs`, changefreq: 'monthly' as const, priority: 0.7, lastmod: new Date().toISOString() }
+	];
 
 	const allUrlData = [...staticPages, ...publicPageRows];
 

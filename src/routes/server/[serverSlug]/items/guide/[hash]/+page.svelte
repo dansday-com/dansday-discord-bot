@@ -37,7 +37,7 @@
 
 	const earnMethods = [
 		{ icon: 'fa-comments', accent: '#5a8a1f', title: 'Chat', desc: 'Send messages in enabled channels to steadily earn XP.' },
-		{ icon: 'fa-microphone', accent: '#1d6f8a', title: 'Voice', desc: 'Hang out in voice channels — XP ticks up the longer you stay active.' },
+		{ icon: 'fa-microphone', accent: '#1d6f8a', title: 'Voice', desc: 'Hang out in voice channels. XP ticks up the longer you stay active.' },
 		{ icon: 'fa-video', accent: '#7b5ea7', title: 'Video', desc: 'Turn your camera on in voice for bonus XP per minute.' },
 		{ icon: 'fa-tower-broadcast', accent: '#c8911a', title: 'Streaming', desc: 'Go live / screen-share in voice for extra XP per minute.' }
 	];
@@ -47,19 +47,19 @@
 			icon: 'fa-wallet',
 			accent: '#245f73',
 			title: 'Wallet XP',
-			desc: 'Your Wallet is your total XP — it’s both your level progress AND the currency you spend in the shop. Buying or losing XP can drop your level and leaderboard rank, so spend wisely.'
+			desc: 'Your Wallet is your total XP. It’s both your level progress AND the currency you spend in the shop. Buying or losing XP can drop your level and leaderboard rank, so spend wisely.'
 		},
 		{
 			icon: 'fa-wand-magic-sparkles',
 			accent: '#7b5ea7',
 			title: 'Effect Status',
-			desc: 'Active buffs and debuffs (Shield, Boost, Leech, Disguise, a Bounty on you…) show as chips at the top with their time left. Watch them to know when you’re protected — or exposed.'
+			desc: 'Active buffs and debuffs (Shield, Boost, Leech, Disguise, a Bounty on you…) show as chips at the top with their time left. Watch them to know when you’re protected or exposed.'
 		},
 		{
 			icon: 'fa-stopwatch',
 			accent: '#d35400',
 			title: 'Cooldown',
-			desc: 'After you steal, bomb or use insurance, that action goes on cooldown — you must wait before using it again. Cooldowns show as status chips counting down. A Purifier does NOT reset them.'
+			desc: 'After you steal, bomb or use insurance, that action goes on cooldown and you must wait before using it again. Cooldowns show as status chips counting down. A Purifier does NOT reset them.'
 		},
 		{
 			icon: 'fa-shield-halved',
@@ -71,7 +71,7 @@
 			icon: 'fa-clock-rotate-left',
 			accent: '#4b6584',
 			title: 'History',
-			desc: 'The History tab logs everything — what you bought, used, earned, and every attack for and against you. Anonymous attackers (Disguise) stay hidden there forever.'
+			desc: 'The History tab logs everything you bought, used, earned, and every attack for and against you. Anonymous attackers (Disguise) stay hidden there forever.'
 		}
 	];
 
@@ -100,7 +100,7 @@
 			accent: effectAccentHex('gamble'),
 			title: effectLabel('gamble'),
 			available: !!gambleItem,
-			what: 'Bet a chunk of your Wallet XP on a coin-flip of fate — win and your wager is multiplied, lose and it’s gone.',
+			what: 'Bet a chunk of your Wallet XP on a coin-flip of fate. Win and your wager is multiplied, lose and it’s gone.',
 			how: 'Open Gamble, choose how much XP to wager, and roll. There’s no cooldown, but every loss comes straight out of your balance (and can drop your level).',
 			tip: 'Set a limit before you start. Chasing losses is the fastest way to fall down the leaderboard.',
 			stats: [
@@ -120,12 +120,12 @@
 	];
 
 	const tips = [
-		{ icon: 'fa-magnifying-glass', accent: effectAccentHex('spy'), text: 'Spy before you attack — never waste an item on a shielded target.' },
-		{ icon: 'fa-triangle-exclamation', accent: effectAccentHex('spy'), text: 'A risky Spy can backfire — fail and the target is alerted with your name.' },
+		{ icon: 'fa-magnifying-glass', accent: effectAccentHex('spy'), text: 'Spy before you attack so you never waste an item on a shielded target.' },
+		{ icon: 'fa-triangle-exclamation', accent: effectAccentHex('spy'), text: 'A risky Spy can backfire. Fail and the target is alerted with your name.' },
 		{ icon: 'fa-mask', accent: effectAccentHex('disguise'), text: 'Disguise hides your name, but a lucky Spy can still unmask you.' },
 		{ icon: 'fa-shield', accent: effectAccentHex('shield'), text: 'Raise a Shield before you log off so nobody farms you while away.' },
 		{ icon: 'fa-soap', accent: effectAccentHex('purifier'), text: 'Stuck with a leech draining you? A Purifier wipes it instantly.' },
-		{ icon: 'fa-handshake', accent: '#2f8f4e', text: 'Grind voice with friends — Friend Boost stacks +10% each.' },
+		{ icon: 'fa-handshake', accent: '#2f8f4e', text: 'Grind voice with friends. Friend Boost stacks +10% each.' },
 		{ icon: 'fa-arrows-rotate', accent: effectAccentHex('reflect'), text: 'Expecting a hit? Reflect turns their attack back on them.' }
 	];
 
@@ -166,7 +166,7 @@
 
 	<section class="g-sec" use:reveal>
 		<h2 class="g-sec-head"><i class="fas fa-bolt"></i>How to earn XP</h2>
-		<p class="g-sec-lead">XP is the currency. The more you earn, the more you can buy — and the higher you climb the leaderboard.</p>
+		<p class="g-sec-lead">XP is the currency. The more you earn, the more you can buy, and the higher you climb the leaderboard.</p>
 		<div class="g-earn">
 			{#each earnMethods as m, i}
 				<div class="g-earn-card" style="--ac: {m.accent}; --d: {i * 70}ms">
@@ -185,7 +185,7 @@
 				<h3>🤝 Friend Boost</h3>
 				<p>
 					Hang out in the <strong>same voice channel</strong> as other members and your voice XP gets a
-					<strong>+10% boost for every friend</strong> in there with you. Five friends? That's <strong>+50% XP</strong> — it stacks.
+					<strong>+10% boost for every friend</strong> in there with you. Five friends? That's <strong>+50% XP</strong>, it stacks.
 				</p>
 			</div>
 		</div>

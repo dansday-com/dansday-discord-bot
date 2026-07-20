@@ -40,10 +40,17 @@
 		{ id: 'positions', label: 'My Assets', icon: 'fa-wallet' }
 	];
 
-	let assetSummary = $state<{ invested: number; value: number; pnl: number; pnlPct: number; count: number } | null>(null);
+	let assetSummaryLive = $state<{ invested: number; value: number; pnl: number; pnlPct: number; count: number } | null>(null);
 	function setAssetSummary(s: any) {
-		assetSummary = s;
+		assetSummaryLive = s;
 	}
+	const assetSummary = $derived.by(() => {
+		if (assetSummaryLive) return assetSummaryLive;
+		const invested = Number(pd.totalInvested) || 0;
+		const value = Number(pd.totalValue) || 0;
+		const pnl = value - invested;
+		return { invested, value, pnl, pnlPct: invested > 0 ? (pnl / invested) * 100 : 0, count: (pd.positions ?? []).length };
+	});
 
 	let now = $state(Date.now());
 	let busy = $state<number | null>(null);
@@ -326,7 +333,7 @@
 			<div class="m-xp-avatar">
 				<img src={memberAvatar} alt={pd.memberName ?? ''} loading="lazy" />
 			</div>
-			{#if isAssets && assetSummary}
+			{#if isAssets}
 				<div class="m-xp-figures">
 					<span class="m-xp-wallet"><i class="fas fa-chart-line"></i>Invested in Assets</span>
 					<span class="m-xp-amount">{fmt(assetSummary.invested)}<span class="m-xp-unit">XP</span></span>
@@ -456,12 +463,15 @@
 		{@render tabStrip(assetTabs, 'assets', navHash)}
 	{/if}
 
-	{#if readOnly && isShop}
+	{#if readOnly && (isShop || isAssets)}
 		<div class="m-guest">
 			<div class="m-guest-ic"><i class="fas fa-lock"></i></div>
 			<div class="m-guest-body">
 				<h3>You're browsing as a guest</h3>
-				<p>Buying and using items is locked. Open the items page from the <strong>items button</strong> in your Discord server to log in and play.</p>
+				<p>
+					{isAssets ? 'Trading assets' : 'Buying and using items'} is locked. Open the account page from the
+					<strong>account button</strong> in your Discord server to log in and play.
+				</p>
 			</div>
 		</div>
 	{/if}

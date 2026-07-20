@@ -69,6 +69,9 @@ export const GET: RequestHandler = async () => {
 			for (const cat of presentCategories) {
 				urls.push({ loc: `${itemsBase}/items/${cat}/guest`, ...base, priority: 0.6 });
 			}
+			for (const view of ['top', 'gainers', 'losers', 'search']) {
+				urls.push({ loc: `${itemsBase}/assets/${view}/guest`, ...base, priority: 0.6 });
+			}
 		}
 		return urls;
 	});

@@ -11,6 +11,7 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 	await markAssetViewer();
 	const hash = itemsCardTokenFromUrl(params.hash);
 	const shared = await loadAssetsShared(server, hash);
+	if ('notFound' in shared) error(404, 'Assets not available');
 
 	const category = VALID.has(String(params.category)) ? String(params.category) : 'top';
 

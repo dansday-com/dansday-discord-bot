@@ -396,12 +396,12 @@
 				</div>
 				{#if item.description}<p class="text-ash-400 mt-2 line-clamp-2 text-xs">{item.description}</p>{/if}
 				<div class="mt-3 flex flex-wrap items-center gap-2">
-					<div class="flex items-center gap-1.5" title="Show in shop / allow buying">
+					<div class="flex items-center gap-1.5" title="Allow members to buy this item">
 						<button
 							type="button"
 							role="switch"
 							aria-checked={item.enabled !== false}
-							aria-label={item.enabled !== false ? 'Hide from shop' : 'Show in shop'}
+							aria-label={item.enabled !== false ? 'Disable buying' : 'Enable buying'}
 							disabled={togglingId === item.id}
 							onclick={() => toggleEnabled(item)}
 							class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 {item.enabled !== false
@@ -412,7 +412,7 @@
 								class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {item.enabled !== false ? 'translate-x-6' : 'translate-x-1'}"
 							></span>
 						</button>
-						<span class="text-ash-400 text-[10px] leading-tight">Shop</span>
+						<span class="text-ash-400 text-[10px] leading-tight">Buy</span>
 					</div>
 					<div class="flex items-center gap-1.5" title="Allow members to use copies they already own">
 						<button
@@ -788,14 +788,14 @@
 
 				<div class="border-ash-700 bg-ash-900/40 space-y-3 rounded-xl border p-4">
 					<ConfigToggleRow
-						label="Show in shop"
-						description="When off, the item is hidden from the shop and can't be bought. Copies members already own still work."
-						labelIconClass="fas fa-store text-teal-400"
+						label="Allow buy"
+						description="When off, the Buy button is disabled so members can't buy it. Copies members already own still work."
+						labelIconClass="fas fa-cart-plus text-teal-400"
 						bind:enabled={form.enabled}
 					/>
 					<ConfigToggleRow
 						label="Allow use"
-						description="When off, members can't use copies they already own — it becomes dead weight in their bag."
+						description="When off, members can't use copies they already own — it becomes dead weight in their items."
 						labelIconClass="fas fa-hand-pointer text-teal-400"
 						bind:enabled={form.usable}
 					/>
@@ -825,7 +825,7 @@
 <ConfirmModal
 	open={confirmDelete !== null}
 	title="Delete item"
-	message={confirmDelete ? `Delete "${confirmDelete.name}"? This removes it from every server's shop.` : ''}
+	message={confirmDelete ? `Delete "${confirmDelete.name}"? This removes it from every server's items.` : ''}
 	confirmLabel="Delete"
 	dangerous
 	loading={deleting}
@@ -883,7 +883,7 @@
 										<img src={giftAvatar(m)} alt={giftMemberName(m)} loading="lazy" class="h-9 w-9 shrink-0 rounded-full object-cover" />
 										<div class="min-w-0 flex-1">
 											<div class="text-ash-100 truncate text-sm font-medium">{giftMemberName(m)}</div>
-											<div class="text-ash-500 text-[11px]"><i class="fas fa-bag-shopping mr-1"></i>{Number(m.inventory_total || 0)} in bag</div>
+											<div class="text-ash-500 text-[11px]"><i class="fas fa-bag-shopping mr-1"></i>{Number(m.inventory_total || 0)} owned</div>
 										</div>
 										<button
 											onclick={() => giveTo(m)}

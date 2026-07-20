@@ -162,10 +162,13 @@
 		}
 		const stored = sessionStorage.getItem(sessionKey);
 		if (stored) {
-			const cat = activeCat || 'all';
-			const section = isHistory ? 'history' : isGuide ? 'guide' : 'items';
-			const target = isGuide ? `${accountBase}/guide/${stored}` : `${accountBase}/${section}/${cat}/${stored}`;
-			goto(target, { replaceState: true });
+			if (isGuide) {
+				goto(`${accountBase}/guide/${stored}`, { replaceState: true });
+				return;
+			}
+			const section = isHistory ? 'history' : isAssets ? 'assets' : 'items';
+			const cat = activeCat && activeCat !== 'guest' ? activeCat : isAssets ? 'top' : 'all';
+			goto(`${accountBase}/${section}/${cat}/${stored}`, { replaceState: true });
 		}
 	}
 

@@ -3,7 +3,8 @@ import { getRedisClient } from '$lib/redis.js';
 import { loadItemsShared } from '$lib/frontend/public/items/index.js';
 
 const MARKETS_KEY = 'assets:markets';
-const priceKey = (assetType: string, assetId: string) => `assets:price:${assetType}:${assetId}`;
+const MOVERS_KEY = 'assets:movers';
+const PRICES_KEY = 'assets:prices';
 
 async function cacheGet(key: string): Promise<any | null> {
 	const redis = await getRedisClient().catch(() => null);
@@ -21,26 +22,32 @@ export async function loadMarketsBoard(): Promise<any[]> {
 	return cached?.rows ?? [];
 }
 
-type BoardListener = (rows: any[]) => void;
+type MarketSnapshot = { board: any[]; gainers: any[]; losers: any[] };
+type BoardListener = (snap: MarketSnapshot) => void;
 
 const boardListeners = new Set<BoardListener>();
 let boardTimer: ReturnType<typeof setInterval> | null = null;
 let boardLastJson = '';
 
+async function loadSnapshot(): Promise<MarketSnapshot> {
+	const [board, movers] = await Promise.all([loadMarketsBoard(), loadMovers()]);
+	return { board, gainers: movers.gainers, losers: movers.losers };
+}
+
 export function subscribeAssetsBoard(fn: BoardListener): () => void {
 	boardListeners.add(fn);
-	loadMarketsBoard().then((rows) => {
-		if (rows.length) fn(rows);
+	loadSnapshot().then((snap) => {
+		if (snap.board.length) fn(snap);
 	});
 
 	if (!boardTimer) {
 		boardTimer = setInterval(async () => {
 			if (boardListeners.size === 0) return;
-			const rows = await loadMarketsBoard();
-			const json = JSON.stringify(rows);
+			const snap = await loadSnapshot();
+			const json = JSON.stringify(snap);
 			if (json === boardLastJson) return;
 			boardLastJson = json;
-			for (const l of boardListeners) l(rows);
+			for (const l of boardListeners) l(snap);
 		}, 5_000);
 		boardTimer.unref?.();
 	}
@@ -55,17 +62,9 @@ export function subscribeAssetsBoard(fn: BoardListener): () => void {
 	};
 }
 
-async function priceFor(assetType: string, assetId: string): Promise<{ price: number; change24h: number } | null> {
-	const cached = await cacheGet(priceKey(assetType, assetId));
-	if (cached && Number(cached.price) > 0) return { price: Number(cached.price), change24h: Number(cached.change24h) || 0 };
-	return null;
-}
-
-function computeMovers(board: any[]) {
-	const withChange = board.filter((r) => Number.isFinite(r.change24h));
-	const gainers = [...withChange].sort((a, b) => b.change24h - a.change24h).slice(0, 50);
-	const losers = [...withChange].sort((a, b) => a.change24h - b.change24h).slice(0, 50);
-	return { gainers, losers };
+export async function loadMovers(): Promise<{ gainers: any[]; losers: any[] }> {
+	const cached = await cacheGet(MOVERS_KEY);
+	return { gainers: cached?.gainers ?? [], losers: cached?.losers ?? [] };
 }
 
 export async function loadAssetsShared(server: any, hash: string) {
@@ -73,7 +72,8 @@ export async function loadAssetsShared(server: any, hash: string) {
 	if ('notFound' in shared) return shared;
 
 	const board = await loadMarketsBoard();
-	const { gainers, losers } = computeMovers(board);
+	const { gainers, losers } = await loadMovers();
+	const priceMap = (await cacheGet(PRICES_KEY))?.map ?? {};
 
 	const positions: any[] = [];
 	let totalInvested = 0;
@@ -84,8 +84,8 @@ export async function loadAssetsShared(server: any, hash: string) {
 		for (const p of (rows as any[]) || []) {
 			const invested = Number(p.xp_invested) || 0;
 			const buyPrice = Number(p.buy_price) || 0;
-			const market = await priceFor(p.asset_type, p.asset_id);
-			const price = market?.price ?? buyPrice;
+			const market = priceMap[`${p.asset_type}:${p.asset_id}`];
+			const price = Number(market?.price) > 0 ? Number(market.price) : buyPrice;
 			const value = buyPrice > 0 ? Math.round(invested * (price / buyPrice)) : invested;
 			totalInvested += invested;
 			totalValue += value;

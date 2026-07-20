@@ -11,13 +11,13 @@ export const GET: RequestHandler = async ({ params }) => {
 
 	const stream = new ReadableStream({
 		start(controller) {
-			const send = (rows: any[]) => {
+			const send = (snap: { board: any[]; gainers: any[]; losers: any[] }) => {
 				try {
-					controller.enqueue(`data: ${JSON.stringify({ board: rows })}\n\n`);
+					controller.enqueue(`data: ${JSON.stringify(snap)}\n\n`);
 				} catch (_) {}
 			};
 
-			const unsub = subscribeAssetsBoard((rows) => send(rows));
+			const unsub = subscribeAssetsBoard((snap) => send(snap));
 
 			const heartbeat = setInterval(() => {
 				try {

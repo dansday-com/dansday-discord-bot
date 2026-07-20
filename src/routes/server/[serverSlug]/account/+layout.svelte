@@ -32,13 +32,13 @@
 		{ id: 'level', label: 'Level', icon: 'fa-star' }
 	];
 
-	const assetTabs = [
+	const assetTabs = $derived([
 		{ id: 'top', label: 'Top 50', icon: 'fa-ranking-star' },
 		{ id: 'gainers', label: 'Gainers', icon: 'fa-arrow-trend-up' },
 		{ id: 'losers', label: 'Losers', icon: 'fa-arrow-trend-down' },
 		{ id: 'search', label: 'Search', icon: 'fa-magnifying-glass' },
-		{ id: 'positions', label: 'My Assets', icon: 'fa-wallet' }
-	];
+		...(readOnly ? [] : [{ id: 'positions', label: 'My Assets', icon: 'fa-wallet' }])
+	]);
 
 	let assetSummaryLive = $state<{ invested: number; value: number; pnl: number; pnlPct: number; count: number } | null>(null);
 	function setAssetSummary(s: any) {
@@ -327,7 +327,7 @@
 	{#if !readOnly}
 		<div class="m-xp">
 			<div class="m-xp-glow"></div>
-			{#if pd.memberCard}
+			{#if pd.memberCard && !(isAssets && assetSummary.count === 0)}
 				<button class="m-xp-card-btn" onclick={() => (showCard = true)} aria-label="Share your card" title="Share card">
 					<i class="fas fa-share-nodes"></i>
 					<span class="m-xp-card-btn-label">Share</span>
@@ -340,11 +340,9 @@
 				<span class="m-xp-wallet"><i class="fas {isAssets ? 'fa-chart-line' : 'fa-wallet'}"></i>{isAssets ? 'Invested in Assets' : 'Wallet'}</span>
 				{#if pd.memberName}<span class="m-xp-name">{pd.memberName}</span>{/if}
 				<span class="m-xp-amount">{fmt(isAssets ? assetSummary.invested : liveXp)}<span class="m-xp-unit">XP</span></span>
-				{#if !isAssets}
-					<div class="m-xp-bar">
-						<div class="m-xp-bar-fill" style="width: {levelInfo.pct}%"></div>
-					</div>
-				{/if}
+				<div class="m-xp-bar" class:m-xp-bar--hidden={isAssets}>
+					<div class="m-xp-bar-fill" style="width: {levelInfo.pct}%"></div>
+				</div>
 				<span class="m-xp-bar-meta">
 					{#if isAssets}
 						<span>{assetSummary.count} position{assetSummary.count === 1 ? '' : 's'}</span>
@@ -404,10 +402,10 @@
 				<i class="fas fa-store"></i>Items{#if !readOnly}<span class="m-items-count" class:m-items-count--bump={bagPulse}>{pd.bagStock ?? 0}/{BAG_CAPACITY}</span
 					>{/if}
 			</a>
+			<a class="m-items-seg" class:m-items-seg--active={isAssets} href="{accountBase}/assets/top/{navHash}" data-sveltekit-preload-data="hover">
+				<i class="fas fa-chart-line"></i>Assets
+			</a>
 			{#if !readOnly}
-				<a class="m-items-seg" class:m-items-seg--active={isAssets} href="{accountBase}/assets/top/{navHash}" data-sveltekit-preload-data="hover">
-					<i class="fas fa-chart-line"></i>Assets
-				</a>
 				<a class="m-items-seg" class:m-items-seg--active={isHistory} href="{accountBase}/history/all/{navHash}" data-sveltekit-preload-data="hover">
 					<i class="fas fa-clock-rotate-left"></i>History
 				</a>
@@ -488,6 +486,8 @@
 {#if showCard && pd.memberCard}
 	<MemberCard
 		member={{ ...pd.memberCard, level, experience: liveXp, rank }}
+		mode={isAssets ? 'assets' : 'level'}
+		assets={{ invested: assetSummary.invested, value: assetSummary.value, pnl: assetSummary.pnl, pnlPct: assetSummary.pnlPct, count: assetSummary.count }}
 		serverName={data.server.name || data.server.slug}
 		serverIcon={data.server.server_icon}
 		onclose={() => (showCard = false)}

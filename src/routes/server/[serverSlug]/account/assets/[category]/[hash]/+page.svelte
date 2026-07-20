@@ -10,22 +10,23 @@
 	const { fmt } = ctx;
 
 	let board = $state<any[]>(data.board ?? []);
+	let gainers = $state<any[]>(data.gainers ?? []);
+	let losers = $state<any[]>(data.losers ?? []);
 	let positions = $state<any[]>(data.positions ?? []);
 	let lastSync = $state(Date.now());
 
 	$effect(() => {
 		board = data.board ?? [];
+		gainers = data.gainers ?? [];
+		losers = data.losers ?? [];
 		positions = data.positions ?? [];
 	});
 
 	const priceMap = $derived.by(() => {
 		const m = new Map<string, { price: number; change24h: number }>();
-		for (const r of board) m.set(`${r.asset_type}:${r.asset_id}`, { price: r.price, change24h: r.change24h });
+		for (const r of [...board, ...gainers, ...losers]) m.set(`${r.asset_type}:${r.asset_id}`, { price: r.price, change24h: r.change24h });
 		return m;
 	});
-
-	const gainers = $derived([...board].filter((r) => Number.isFinite(r.change24h)).sort((a, b) => b.change24h - a.change24h));
-	const losers = $derived([...board].filter((r) => Number.isFinite(r.change24h)).sort((a, b) => a.change24h - b.change24h));
 
 	const livePositions = $derived(
 		positions.map((p) => {
@@ -82,10 +83,10 @@
 		es.onmessage = (e) => {
 			try {
 				const d = JSON.parse(e.data);
-				if (Array.isArray(d.board)) {
-					board = d.board;
-					lastSync = Date.now();
-				}
+				if (Array.isArray(d.board)) board = d.board;
+				if (Array.isArray(d.gainers)) gainers = d.gainers;
+				if (Array.isArray(d.losers)) losers = d.losers;
+				lastSync = Date.now();
 			} catch {}
 		};
 		es.onerror = () => {};
@@ -270,7 +271,7 @@
 							>{/if}
 						<div class="m-asset-name">
 							<span class="m-asset-sym">{p.symbol}</span>
-							<span class="m-asset-full">{fmt(p.xp_invested)} XP @ {fmtPrice(p.buy_price)}</span>
+							<span class="m-asset-full">{fmtUnits(p.buy_price > 0 ? p.xp_invested / p.buy_price : 0)} {p.symbol}</span>
 						</div>
 					</div>
 					<div class="m-asset-fig">

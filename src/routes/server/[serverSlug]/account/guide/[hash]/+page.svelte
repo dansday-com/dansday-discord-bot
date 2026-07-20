@@ -335,17 +335,6 @@
 			{/each}
 		</div>
 
-		<div class="g-steps">
-			{#each assetSteps as s, i}
-				<div class="g-step" style="--d: {i * 80}ms">
-					<span class="g-step-num">{i + 1}</span>
-					<span class="g-step-ic"><i class="fas {s.icon}"></i></span>
-					<h3>{s.title}</h3>
-					<p>{s.desc}</p>
-				</div>
-			{/each}
-		</div>
-
 		<div class="g-friend" style="--ac: #b23b2e">
 			<span class="g-friend-ic"><i class="fas fa-triangle-exclamation"></i></span>
 			<div class="g-friend-body">
@@ -355,6 +344,20 @@
 					willing to risk on the leaderboard.
 				</p>
 			</div>
+		</div>
+	</section>
+
+	<section class="g-sec" use:reveal>
+		<h2 class="g-sec-head"><i class="fas fa-arrow-trend-up"></i>How to trade assets</h2>
+		<div class="g-steps">
+			{#each assetSteps as s, i}
+				<div class="g-step" style="--d: {i * 80}ms">
+					<span class="g-step-num">{i + 1}</span>
+					<span class="g-step-ic"><i class="fas {s.icon}"></i></span>
+					<h3>{s.title}</h3>
+					<p>{s.desc}</p>
+				</div>
+			{/each}
 		</div>
 	</section>
 

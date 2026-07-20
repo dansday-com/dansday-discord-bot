@@ -10,10 +10,14 @@ const MARKETS_TTL_MS = 5 * 60_000;
 const SEARCH_TTL_MS = 10 * 60_000;
 const POLL_LOCK_TTL_S = Math.ceil(POLL_INTERVAL_MS / 1000) + 20;
 const MARKETS_PER_PAGE = 50;
+const UNIVERSE_PER_PAGE = 250;
+const UNIVERSE_PAGES = 4;
+const MOVERS_COUNT = 50;
 export const MIN_BUY_XP = 1000;
 
 const MARKETS_KEY = 'assets:markets';
-const priceKey = (assetType: string, assetId: string) => `assets:price:${assetType}:${assetId}`;
+const MOVERS_KEY = 'assets:movers';
+const PRICES_KEY = 'assets:prices';
 const searchKey = (q: string) => `assets:search:${q.toLowerCase()}`;
 
 function apiKey(): string | null {
@@ -70,6 +74,19 @@ async function fetchTopMarkets() {
 	return Array.isArray(rows) ? rows.map(shapeMarketRow) : [];
 }
 
+async function fetchUniverse() {
+	const all: any[] = [];
+	for (let page = 1; page <= UNIVERSE_PAGES; page++) {
+		const sparkline = page === 1 ? 'true' : 'false';
+		const path =
+			`/coins/markets?vs_currency=idr&order=market_cap_desc&per_page=${UNIVERSE_PER_PAGE}` + `&page=${page}&sparkline=${sparkline}&price_change_percentage=24h`;
+		const rows = await cgFetch(path).catch(() => null);
+		if (!Array.isArray(rows) || rows.length === 0) break;
+		for (const r of rows) all.push(shapeMarketRow(r));
+	}
+	return all;
+}
+
 async function fetchPricesFor(assetIds: string[]): Promise<Record<string, { price: number; change24h: number }>> {
 	if (assetIds.length === 0) return {};
 	const ids = encodeURIComponent(assetIds.join(','));
@@ -102,23 +119,29 @@ async function pollOnce(botId: string): Promise<void> {
 	}
 
 	try {
-		const markets = await fetchTopMarkets();
-		if (markets.length > 0) {
-			await cacheSet(MARKETS_KEY, { rows: markets, ts: Date.now() }, MARKETS_TTL_MS);
-			for (const m of markets) {
-				await cacheSet(priceKey('crypto', m.asset_id), { price: m.price, change24h: m.change24h, ts: Date.now() }, MARKETS_TTL_MS);
-			}
+		const universe = await fetchUniverse();
+		const priceMap: Record<string, { price: number; change24h: number }> = {};
+		if (universe.length > 0) {
+			const board = universe.slice(0, MARKETS_PER_PAGE);
+			await cacheSet(MARKETS_KEY, { rows: board, ts: Date.now() }, MARKETS_TTL_MS);
+
+			const withChange = universe.filter((m) => Number.isFinite(m.change24h) && m.change24h !== 0);
+			const gainers = [...withChange].sort((a, b) => b.change24h - a.change24h).slice(0, MOVERS_COUNT);
+			const losers = [...withChange].sort((a, b) => a.change24h - b.change24h).slice(0, MOVERS_COUNT);
+			await cacheSet(MOVERS_KEY, { gainers, losers, ts: Date.now() }, MARKETS_TTL_MS);
+
+			for (const m of universe) priceMap[`crypto:${m.asset_id}`] = { price: m.price, change24h: m.change24h };
 		}
 
 		const held = await distinctHeldCryptoIds();
-		const inBoard = new Set(markets.map((m) => m.asset_id));
-		const missing = held.filter((id) => !inBoard.has(id));
+		const inUniverse = new Set(universe.map((m) => m.asset_id));
+		const missing = held.filter((id) => !inUniverse.has(id));
 		if (missing.length > 0) {
 			const prices = await fetchPricesFor(missing);
-			for (const [id, p] of Object.entries(prices)) {
-				await cacheSet(priceKey('crypto', id), { price: p.price, change24h: p.change24h, ts: Date.now() }, MARKETS_TTL_MS);
-			}
+			for (const [id, p] of Object.entries(prices)) priceMap[`crypto:${id}`] = { price: p.price, change24h: p.change24h };
 		}
+
+		if (Object.keys(priceMap).length > 0) await cacheSet(PRICES_KEY, { map: priceMap, ts: Date.now() }, MARKETS_TTL_MS);
 	} catch (err: any) {
 		logger.warn(`Asset market poll failed: ${err?.message || err}`);
 	}
@@ -151,16 +174,14 @@ export async function getMarketsBoard(): Promise<any[]> {
 }
 
 export async function getAssetPrice(assetType: string, assetId: string): Promise<{ price: number; change24h: number } | null> {
-	const cached = await cacheGet(priceKey(assetType, assetId));
-	if (cached && Number(cached.price) > 0) return { price: Number(cached.price), change24h: Number(cached.change24h) || 0 };
+	const cached = await cacheGet(PRICES_KEY);
+	const hit = cached?.map?.[`${assetType}:${assetId}`];
+	if (hit && Number(hit.price) > 0) return { price: Number(hit.price), change24h: Number(hit.change24h) || 0 };
 	if (assetType !== 'crypto') return null;
 	try {
 		const prices = await fetchPricesFor([assetId]);
 		const p = prices[assetId];
-		if (p && p.price > 0) {
-			await cacheSet(priceKey(assetType, assetId), { price: p.price, change24h: p.change24h, ts: Date.now() }, MARKETS_TTL_MS);
-			return p;
-		}
+		if (p && p.price > 0) return p;
 	} catch {}
 	return null;
 }
@@ -179,8 +200,33 @@ export async function searchAssets(query: string): Promise<any[]> {
 			symbol: String(c.symbol || '').toUpperCase(),
 			name: c.name,
 			image: c.thumb ?? c.large ?? null,
-			market_cap_rank: c.market_cap_rank != null ? Number(c.market_cap_rank) : null
+			market_cap_rank: c.market_cap_rank != null ? Number(c.market_cap_rank) : null,
+			price: 0,
+			change24h: 0
 		}));
+
+		const cachedPrices = (await cacheGet(PRICES_KEY))?.map ?? {};
+		const needFetch: string[] = [];
+		for (const r of results) {
+			const hit = cachedPrices[`crypto:${r.asset_id}`];
+			if (hit && Number(hit.price) > 0) {
+				r.price = Number(hit.price);
+				r.change24h = Number(hit.change24h) || 0;
+			} else {
+				needFetch.push(r.asset_id);
+			}
+		}
+		if (needFetch.length > 0) {
+			const prices = await fetchPricesFor(needFetch);
+			for (const r of results) {
+				const p = prices[r.asset_id];
+				if (p) {
+					r.price = p.price;
+					r.change24h = p.change24h;
+				}
+			}
+		}
+
 		await cacheSet(searchKey(q), results, SEARCH_TTL_MS);
 		return results;
 	} catch (err: any) {

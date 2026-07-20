@@ -47,9 +47,17 @@
 		if (v >= 1) return `Rp${v.toLocaleString('id-ID', { maximumFractionDigits: 2 })}`;
 		return `Rp${v.toLocaleString('id-ID', { maximumFractionDigits: 6 })}`;
 	}
+	function fmtUnits(qty: number): string {
+		const v = Number(qty) || 0;
+		if (v <= 0) return '0';
+		if (v >= 1) return v.toLocaleString('en-US', { maximumFractionDigits: 4 });
+		if (v >= 0.0001) return v.toFixed(6);
+		return v.toFixed(8);
+	}
 
 	function assetLine(h: any): { icon: string; title: string; tone: string; deltaLabel: string; badges: Badge[] } {
-		const badges: Badge[] = [{ icon: 'fa-tag', text: fmtIdr(h.price) }];
+		const units = Number(h.price) > 0 ? Number(h.xpAmount) / Number(h.price) : 0;
+		const badges: Badge[] = [{ icon: 'fa-coins', text: `${fmtUnits(units)} ${h.symbol}` }];
 		if (h.action === 'buy') {
 			return { icon: 'fa-arrow-trend-up', title: `Bought ${h.symbol}`, tone: 'spend', deltaLabel: `−${fmt(h.xpAmount)} XP`, badges };
 		}

@@ -4,5 +4,5 @@ import { publicServerPath } from '$lib/url.js';
 
 export const load: PageServerLoad = async ({ parent }) => {
 	const { server } = await parent();
-	redirect(303, `${publicServerPath(server.slug)}/items/shop/all/guest`);
+	redirect(303, `${publicServerPath(server.slug)}/account/shop/all/guest`);
 };

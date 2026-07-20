@@ -62,7 +62,7 @@ export const GET: RequestHandler = async () => {
 		];
 		const presentCategories = categoriesByServer.get(Number(s.id)) ?? [];
 		if (s.items_enabled && presentCategories.length > 0) {
-			const itemsBase = `${root}/${enc}/items`;
+			const itemsBase = `${root}/${enc}/account`;
 			urls.push({ loc: itemsBase, ...base, priority: 0.7 });
 			urls.push({ loc: `${itemsBase}/guide/guest`, ...base, priority: 0.7 });
 			urls.push({ loc: `${itemsBase}/shop/all/guest`, ...base, priority: 0.6 });

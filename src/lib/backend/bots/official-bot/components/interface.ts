@@ -245,7 +245,7 @@ async function handleMenuButton(interaction) {
 			if (base) {
 				const joinedDate = member.joinedAt ? member.joinedAt.toISOString().split('T')[0] : '';
 				const cardHash = createHash('sha256').update(`${interaction.user.id}_${joinedDate}`).digest('hex').substring(0, 16);
-				const itemsUrl = `${base}/items/shop/all/${cardHash}`;
+				const itemsUrl = `${base}/account/shop/all/${cardHash}`;
 
 				const itemsLabel = await translate('menu.items', interaction.guild.id, interaction.user.id);
 				const itemsBtn = new ButtonBuilder().setLabel(itemsLabel).setURL(itemsUrl).setStyle(ButtonStyle.Link);

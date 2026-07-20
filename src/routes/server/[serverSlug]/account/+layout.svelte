@@ -12,16 +12,16 @@
 
 	const pd = $derived(page.data as any);
 
-	const itemsBase = $derived(`${publicServerPath(data.server.slug)}/items`);
+	const accountBase = $derived(`${publicServerPath(data.server.slug)}/account`);
 	const readOnly = $derived(!!pd.readOnly || !pd.memberCard);
 	const navHash = $derived(pd.hash || 'guest');
 	const pathNorm = $derived(page.url.pathname.replace(/\/$/, ''));
-	const isBag = $derived(/\/items\/bag\//.test(pathNorm));
-	const isHistory = $derived(/\/items\/history\//.test(pathNorm));
-	const isGuide = $derived(/\/items\/guide\//.test(pathNorm));
+	const isBag = $derived(/\/account\/bag\//.test(pathNorm));
+	const isHistory = $derived(/\/account\/history\//.test(pathNorm));
+	const isGuide = $derived(/\/account\/guide\//.test(pathNorm));
 	const isShop = $derived(!isBag && !isHistory && !isGuide);
 	const activeCat = $derived.by(() => {
-		const m = pathNorm.match(/\/items\/(?:shop|bag|history)\/([^/]+)\/[^/]+$/);
+		const m = pathNorm.match(/\/account\/(?:shop|bag|history)\/([^/]+)\/[^/]+$/);
 		return m ? m[1] : 'all';
 	});
 
@@ -143,7 +143,7 @@
 		if (stored) {
 			const cat = activeCat || 'all';
 			const section = isBag ? 'bag' : isHistory ? 'history' : isGuide ? 'guide' : 'shop';
-			const target = isGuide ? `${itemsBase}/guide/${stored}` : `${itemsBase}/${section}/${cat}/${stored}`;
+			const target = isGuide ? `${accountBase}/guide/${stored}` : `${accountBase}/${section}/${cat}/${stored}`;
 			goto(target, { replaceState: true });
 		}
 	}
@@ -352,7 +352,7 @@
 
 	<div class="m-items-bar">
 		<div class="m-items-toggle">
-			<a class="m-items-seg" class:m-items-seg--active={isShop} href="{itemsBase}/shop/all/{navHash}" data-sveltekit-preload-data="hover"
+			<a class="m-items-seg" class:m-items-seg--active={isShop} href="{accountBase}/shop/all/{navHash}" data-sveltekit-preload-data="hover"
 				><i class="fas fa-store"></i>Shop</a
 			>
 			{#if !readOnly}
@@ -361,16 +361,16 @@
 					class="m-items-seg"
 					class:m-items-seg--active={isBag}
 					class:m-items-seg--pulse={bagPulse}
-					href="{itemsBase}/bag/all/{navHash}"
+					href="{accountBase}/bag/all/{navHash}"
 					data-sveltekit-preload-data="hover"
 				>
 					<i class="fas fa-bag-shopping"></i>Bag<span class="m-items-count" class:m-items-count--bump={bagPulse}>{pd.bagStock ?? 0}/{BAG_CAPACITY}</span>
 				</a>
-				<a class="m-items-seg" class:m-items-seg--active={isHistory} href="{itemsBase}/history/all/{navHash}" data-sveltekit-preload-data="hover">
+				<a class="m-items-seg" class:m-items-seg--active={isHistory} href="{accountBase}/history/all/{navHash}" data-sveltekit-preload-data="hover">
 					<i class="fas fa-clock-rotate-left"></i>History
 				</a>
 			{/if}
-			<a class="m-items-seg" class:m-items-seg--active={isGuide} href="{itemsBase}/guide/{navHash}" data-sveltekit-preload-data="hover">
+			<a class="m-items-seg" class:m-items-seg--active={isGuide} href="{accountBase}/guide/{navHash}" data-sveltekit-preload-data="hover">
 				<i class="fas fa-circle-question"></i>Guide
 			</a>
 		</div>
@@ -393,7 +393,7 @@
 					<a
 						class="m-items-tab"
 						class:m-items-tab--active={activeCat === cat.id}
-						href="{itemsBase}/{section}/{cat.id}/{hash}"
+						href="{accountBase}/{section}/{cat.id}/{hash}"
 						data-sveltekit-preload-data="hover"
 					>
 						<i class="fas {cat.icon}"></i>{cat.label}

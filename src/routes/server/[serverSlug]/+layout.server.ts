@@ -16,7 +16,7 @@ export const load: LayoutServerLoad = async ({ params, url }) => {
 	const itemsRow = await db.getServerSettings(resolved.server.id, SERVER_SETTINGS.component.items).catch(() => null);
 	const itemsEnabled = (itemsRow as any)?.settings?.enabled === true;
 
-	const isItemsPath = /\/items(\/|$)/.test(url.pathname);
+	const isItemsPath = /\/account(\/|$)/.test(url.pathname);
 	if (!publicStatsEnabled && !isItemsPath) error(404, 'Not found');
 
 	const server = resolved.server;

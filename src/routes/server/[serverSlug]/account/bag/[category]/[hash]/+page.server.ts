@@ -19,7 +19,7 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 	const hash = itemsCardTokenFromUrl(params.hash);
 	const shared = await loadItemsShared(server, hash);
 	if ('notFound' in shared) error(404, 'Items not available');
-	if (shared.readOnly || !shared.member) redirect(303, `${publicServerPath(server.slug)}/items/shop/all/guest`);
+	if (shared.readOnly || !shared.member) redirect(303, `${publicServerPath(server.slug)}/account/shop/all/guest`);
 
 	const rows = await db.getMemberInventory(shared.member.id).catch(() => []);
 	const allInventory = (rows as any[]).map((r) => ({

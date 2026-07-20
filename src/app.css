@@ -3443,7 +3443,7 @@
 }
 
 .m-root .m-card--owned .m-card-tag {
-	margin-right: 34px;
+	margin-left: auto;
 }
 
 .m-root .m-card-foot .m-card-owned {
@@ -3694,10 +3694,9 @@
 }
 
 .m-root .m-card-remove {
-	position: absolute;
-	top: 10px;
-	right: 10px;
+	position: relative;
 	z-index: 4;
+	flex: 0 0 auto;
 	width: 28px;
 	height: 28px;
 	display: grid;

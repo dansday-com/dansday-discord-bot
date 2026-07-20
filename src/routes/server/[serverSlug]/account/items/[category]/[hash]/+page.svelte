@@ -445,7 +445,8 @@
 									title={!canUse ? 'Using is turned off' : actionVerb(item.effect_type).label}
 									onclick={() => onUse({ ...item, member_item_id: item.member_item_id, quantity: owned, usable: canUse })}
 								>
-									{#if ctx.busy === item.member_item_id}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas {actionVerb(item.effect_type).icon}"></i>{/if}
+									{#if ctx.busy === item.member_item_id}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas {actionVerb(item.effect_type).icon}"
+										></i>{/if}
 									{actionVerb(item.effect_type).label}
 								</button>
 							{/if}

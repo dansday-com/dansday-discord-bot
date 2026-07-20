@@ -394,7 +394,8 @@
 				href="{accountBase}/items/all/{navHash}"
 				data-sveltekit-preload-data="hover"
 			>
-				<i class="fas fa-store"></i>Items{#if !readOnly}<span class="m-items-count" class:m-items-count--bump={bagPulse}>{pd.bagStock ?? 0}/{BAG_CAPACITY}</span>{/if}
+				<i class="fas fa-store"></i>Items{#if !readOnly}<span class="m-items-count" class:m-items-count--bump={bagPulse}>{pd.bagStock ?? 0}/{BAG_CAPACITY}</span
+					>{/if}
 			</a>
 			{#if !readOnly}
 				<a class="m-items-seg" class:m-items-seg--active={isAssets} href="{accountBase}/assets/top/{navHash}" data-sveltekit-preload-data="hover">

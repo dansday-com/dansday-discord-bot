@@ -21,6 +21,11 @@ export async function loadMarketsBoard(): Promise<any[]> {
 	return cached?.rows ?? [];
 }
 
+export async function markAssetViewer(): Promise<void> {
+	const redis = await getRedisClient().catch(() => null);
+	if (redis) await redis.set('assets:viewers', String(Date.now()), { EX: 90 }).catch(() => null);
+}
+
 async function priceFor(assetType: string, assetId: string): Promise<{ price: number; change24h: number } | null> {
 	const cached = await cacheGet(priceKey(assetType, assetId));
 	if (cached && Number(cached.price) > 0) return { price: Number(cached.price), change24h: Number(cached.change24h) || 0 };

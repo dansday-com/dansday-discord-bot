@@ -87,7 +87,18 @@ async function distinctHeldCryptoIds(): Promise<string[]> {
 	return ((rows as any[]) || []).map((r) => String(r.asset_id)).filter(Boolean);
 }
 
+const VIEWER_KEY = 'assets:viewers';
+
+async function hasRecentViewer(): Promise<boolean> {
+	const redis = await getRedisClient().catch(() => null);
+	if (!redis) return true;
+	const v = await redis.get(VIEWER_KEY).catch(() => null);
+	return v != null;
+}
+
 async function pollOnce(botId: string): Promise<void> {
+	if (!(await hasRecentViewer())) return;
+
 	const redis = await getRedisClient().catch(() => null);
 	if (redis) {
 		const token = `${process.pid}:${botId}`;

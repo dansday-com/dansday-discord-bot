@@ -18,5 +18,15 @@ CREATE TABLE IF NOT EXISTS server_member_asset_positions (
     FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_server_member_asset_positions_member ON server_member_asset_positions(member_id, status);
-CREATE INDEX IF NOT EXISTS idx_server_member_asset_positions_held ON server_member_asset_positions(status, asset_type, asset_id);
+DROP PROCEDURE IF EXISTS _add_idx_asset_positions;
+CREATE PROCEDURE _add_idx_asset_positions()
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'server_member_asset_positions' AND index_name = 'idx_server_member_asset_positions_member') THEN
+        CREATE INDEX idx_server_member_asset_positions_member ON server_member_asset_positions(member_id, status);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'server_member_asset_positions' AND index_name = 'idx_server_member_asset_positions_held') THEN
+        CREATE INDEX idx_server_member_asset_positions_held ON server_member_asset_positions(status, asset_type, asset_id);
+    END IF;
+END;
+CALL _add_idx_asset_positions();
+DROP PROCEDURE IF EXISTS _add_idx_asset_positions;

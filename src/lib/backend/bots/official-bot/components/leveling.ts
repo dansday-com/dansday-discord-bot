@@ -860,7 +860,7 @@ async function startVoiceSession(state, resumed = false) {
 			const rawStream = state.streaming && dbInStream && lastStreamMs !== null ? Math.max(0, Math.floor((now - lastStreamMs) / 60000)) : 0;
 			const mVideo = mVoice > 0 ? Math.min(mVoice, rawVideo) : 0;
 			const mStream = mVoice > 0 ? Math.min(mVoice, rawStream) : 0;
-			if (mVoice > 0 || mVideo > 0 || mStream > 0) {
+			if ((mVoice > 0 || mVideo > 0 || mStream > 0) && (await db.claimVoiceRewardWindow(dbMember.id, voiceCooldownMs))) {
 				await awardVoiceXP(
 					server,
 					dbMember,
@@ -877,7 +877,7 @@ async function startVoiceSession(state, resumed = false) {
 				);
 				finalLastRewardedAt = now;
 			}
-		} else if (lastVoiceMs !== null && now - lastVoiceMs >= voiceCooldownMs) {
+		} else if (lastVoiceMs !== null && (await db.claimVoiceRewardWindow(dbMember.id, voiceCooldownMs))) {
 			await awardVoiceXP(
 				server,
 				dbMember,
@@ -978,10 +978,8 @@ async function handleVoiceTick(sessionKey) {
 
 		const guildId = session.guildId;
 		const voiceCooldownMs = await getVoiceCooldownMs(guildId);
-		const now = Date.now();
-		const lastRewardedAt = session.lastRewardedAt || 0;
 
-		if (now - lastRewardedAt < voiceCooldownMs) return;
+		if (!(await db.claimVoiceRewardWindow(dbMember.id, voiceCooldownMs))) return;
 
 		const guild = clientInstance?.guilds.cache.get(session.guildId);
 		const voiceState = resolveGuildVoiceState(guild, session.discordMemberId);
@@ -1005,7 +1003,6 @@ async function handleVoiceTick(sessionKey) {
 			},
 			mf
 		);
-		session.lastRewardedAt = now;
 	} catch (error) {
 		await logger.log(`❌ Leveling voice tick error: ${error.message}`);
 	}

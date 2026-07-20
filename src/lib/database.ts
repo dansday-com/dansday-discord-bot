@@ -1466,6 +1466,21 @@ export async function updateMemberLevelStats(memberId: any, updates: any = {}) {
 	return getMemberLevel(memberId);
 }
 
+export async function claimVoiceRewardWindow(memberId: any, cooldownMs: number) {
+	await initializeDatabase();
+	if (!memberId) throw new Error('memberId is required');
+	const now = toMySQLDateTime();
+	const cooldownSeconds = Math.max(0, Math.floor(Number(cooldownMs) / 1000));
+	const result = await db.execute(sql`
+		UPDATE server_member_levels
+		SET voice_rewarded_at = ${now}, updated_at = ${now}
+		WHERE member_id = ${Number(memberId)}
+			AND (voice_rewarded_at IS NULL OR voice_rewarded_at <= DATE_SUB(${now}, INTERVAL ${cooldownSeconds} SECOND))
+	`);
+	const affected = (result as any)?.[0]?.affectedRows ?? (result as any)?.affectedRows ?? 0;
+	return affected > 0;
+}
+
 export async function setMemberLanguage(serverId: any, discordMemberId: string, language = 'en') {
 	await initializeDatabase();
 	await db
@@ -2164,18 +2179,10 @@ export async function getLeaderboardPeriodCounts(serverId: any, since: Date) {
 		.from(schema.serverMembers)
 		.leftJoin(
 			schema.serverMemberLevelLogs,
-			and(
-				eq(schema.serverMemberLevelLogs.member_id, schema.serverMembers.id),
-				sql`${schema.serverMemberLevelLogs.created_at} >= ${toMySQLDateTime(since)}`
-			)
+			and(eq(schema.serverMemberLevelLogs.member_id, schema.serverMembers.id), sql`${schema.serverMemberLevelLogs.created_at} >= ${toMySQLDateTime(since)}`)
 		)
 		.leftJoin(schema.serverMemberLevels, eq(schema.serverMemberLevels.member_id, schema.serverMembers.id))
-		.where(
-			and(
-				eq(schema.serverMembers.server_id, Number(serverId)),
-				...(hideDisguised ? [hideDisguised] : [])
-			)
-		)
+		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), ...(hideDisguised ? [hideDisguised] : [])))
 		.groupBy(
 			schema.serverMembers.id,
 			schema.serverMembers.discord_member_id,
@@ -2219,12 +2226,7 @@ export async function getItemsGamblerLeaderboard(serverId: any, since: Date | nu
 			)
 		)
 		.leftJoin(schema.serverMemberLevels, eq(schema.serverMemberLevels.member_id, schema.serverMembers.id))
-		.where(
-			and(
-				eq(schema.serverMembers.server_id, Number(serverId)),
-				...(hideDisguised ? [hideDisguised] : [])
-			)
-		)
+		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), ...(hideDisguised ? [hideDisguised] : [])))
 		.groupBy(
 			schema.serverMembers.id,
 			schema.serverMembers.discord_member_id,
@@ -2268,12 +2270,7 @@ export async function getItemsAttackLeaderboard(serverId: any, action: 'steal' |
 			)
 		)
 		.leftJoin(schema.serverMemberLevels, eq(schema.serverMemberLevels.member_id, schema.serverMembers.id))
-		.where(
-			and(
-				eq(schema.serverMembers.server_id, Number(serverId)),
-				...(hideDisguised ? [hideDisguised] : [])
-			)
-		)
+		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), ...(hideDisguised ? [hideDisguised] : [])))
 		.groupBy(
 			schema.serverMembers.id,
 			schema.serverMembers.discord_member_id,
@@ -4414,6 +4411,7 @@ export default {
 	getMemberLevel,
 	ensureMemberLevel,
 	updateMemberLevelStats,
+	claimVoiceRewardWindow,
 	setMemberLanguage,
 	getMemberLanguage,
 	recalculateServerMemberRanks,

@@ -3442,6 +3442,10 @@
 	white-space: nowrap;
 }
 
+.m-root .m-card--owned .m-card-tag {
+	margin-right: 34px;
+}
+
 .m-root .m-card-foot .m-card-owned {
 	display: none;
 }
@@ -3689,33 +3693,43 @@
 	flex: 0 0 auto;
 }
 
-.m-root .m-card--owned .m-card-price {
-	flex: 1 1 100%;
+.m-root .m-card-remove {
+	position: absolute;
+	top: 10px;
+	right: 10px;
+	z-index: 4;
+	width: 28px;
+	height: 28px;
+	display: grid;
+	place-items: center;
+	border-radius: 9px;
+	font-size: 12px;
+	color: var(--lb-text-muted);
+	background: color-mix(in srgb, var(--chili-surface) 75%, var(--chili-surface-elevated));
+	border: 1px solid var(--lb-border-light);
+	cursor: pointer;
+	transition:
+		color 0.16s ease,
+		background 0.16s ease,
+		border-color 0.16s ease,
+		transform 0.1s ease;
 }
 
-.m-root .m-card-actions--owned {
-	flex-direction: column;
-	align-items: stretch;
-	gap: 6px;
+.m-root .m-card-remove:active:not(:disabled) {
+	transform: scale(0.9);
 }
 
-.m-root .m-card-actions--owned .m-card-btn--buy {
-	width: 100%;
+.m-root .m-card-remove:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
 }
 
-.m-root .m-card-actions-own {
-	display: flex;
-	align-items: center;
-	gap: 6px;
-}
-
-.m-root .m-card-actions-own .m-card-btn {
-	flex: 1 1 auto;
-	padding: 8px 6px;
-}
-
-.m-root .m-card-actions-own .m-card-discard {
-	flex: 0 0 auto;
+@media (hover: hover) {
+	.m-root .m-card-remove:hover:not(:disabled) {
+		color: #c0392b;
+		background: color-mix(in srgb, #c0392b 14%, var(--chili-surface-elevated));
+		border-color: color-mix(in srgb, #c0392b 40%, transparent);
+	}
 }
 
 .m-root .m-card-btn:disabled {

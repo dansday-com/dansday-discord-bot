@@ -389,6 +389,17 @@
 				{#if owned > 0}<span class="m-card-qty">×{owned}</span>{/if}
 			</span>
 			<span class="m-card-tag">{effectLabel(item.effect_type)}</span>
+			{#if owned > 0 && !ctx.readOnly}
+				<button
+					class="m-card-remove"
+					aria-label="Remove one"
+					title="Remove one"
+					disabled={discardingId === item.member_item_id || ctx.busy === item.member_item_id}
+					onclick={() => discard({ member_item_id: item.member_item_id })}
+				>
+					{#if discardingId === item.member_item_id}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas fa-trash-can"></i>{/if}
+				</button>
+			{/if}
 		</div>
 		{#if item.availableUntil && item.availableUntil > ctx.now}
 			<span class="m-card-timer"><i class="fas fa-hourglass-half"></i>Ends in {ctx.remainingLabel(item.availableUntil)}</span>
@@ -422,7 +433,7 @@
 						<button class="m-card-btn m-card-btn--buy" disabled title="Open your card to buy"><i class="fas fa-cart-plus"></i>Buy</button>
 					</div>
 				{:else}
-					<div class="m-card-actions" class:m-card-actions--owned={owned > 0}>
+					<div class="m-card-actions">
 						<button
 							class="m-card-btn m-card-btn--buy"
 							disabled={ctx.busy === item.id || !canBuy || !affordable || ctx.bagFull}
@@ -434,31 +445,20 @@
 						</button>
 
 						{#if owned > 0}
-							<div class="m-card-actions-own">
-								{#if buffActive}
-									<button class="m-card-btn m-card-btn--use" disabled title="Already active"><i class="fas fa-check"></i>Active</button>
-								{:else}
-									<button
-										class="m-card-btn m-card-btn--use"
-										disabled={ctx.busy === item.member_item_id || !canUse}
-										title={!canUse ? 'Using is turned off' : actionVerb(item.effect_type).label}
-										onclick={() => onUse({ ...item, member_item_id: item.member_item_id, quantity: owned, usable: canUse })}
-									>
-										{#if ctx.busy === item.member_item_id}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas {actionVerb(item.effect_type).icon}"
-											></i>{/if}
-										{actionVerb(item.effect_type).label}
-									</button>
-								{/if}
+							{#if buffActive}
+								<button class="m-card-btn m-card-btn--use" disabled title="Already active"><i class="fas fa-check"></i>Active</button>
+							{:else}
 								<button
-									class="m-card-discard"
-									aria-label="Remove one"
-									title="Remove one"
-									disabled={discardingId === item.member_item_id || ctx.busy === item.member_item_id}
-									onclick={() => discard({ member_item_id: item.member_item_id })}
+									class="m-card-btn m-card-btn--use"
+									disabled={ctx.busy === item.member_item_id || !canUse}
+									title={!canUse ? 'Using is turned off' : actionVerb(item.effect_type).label}
+									onclick={() => onUse({ ...item, member_item_id: item.member_item_id, quantity: owned, usable: canUse })}
 								>
-									{#if discardingId === item.member_item_id}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas fa-trash-can"></i>{/if}
+									{#if ctx.busy === item.member_item_id}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas {actionVerb(item.effect_type).icon}"
+										></i>{/if}
+									{actionVerb(item.effect_type).label}
 								</button>
-							</div>
+							{/if}
 						{/if}
 					</div>
 				{/if}

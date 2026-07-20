@@ -41,6 +41,29 @@
 		};
 	}
 
+	function fmtIdr(n: number): string {
+		const v = Number(n) || 0;
+		if (v >= 100) return `Rp${Math.round(v).toLocaleString('id-ID')}`;
+		if (v >= 1) return `Rp${v.toLocaleString('id-ID', { maximumFractionDigits: 2 })}`;
+		return `Rp${v.toLocaleString('id-ID', { maximumFractionDigits: 6 })}`;
+	}
+
+	function assetLine(h: any): { icon: string; title: string; tone: string; deltaLabel: string; badges: Badge[] } {
+		const badges: Badge[] = [{ icon: 'fa-tag', text: fmtIdr(h.price) }];
+		if (h.action === 'buy') {
+			return { icon: 'fa-arrow-trend-up', title: `Bought ${h.symbol}`, tone: 'spend', deltaLabel: `−${fmt(h.xpAmount)} XP`, badges };
+		}
+		const net = Number(h.net) || 0;
+		const won = net >= 0;
+		return {
+			icon: 'fa-hand-holding-dollar',
+			title: `Sold ${h.symbol}`,
+			tone: won ? 'win' : 'lose',
+			deltaLabel: `+${fmt(h.xpAmount)} XP`,
+			badges: [...badges, { icon: won ? 'fa-arrow-up' : 'fa-arrow-down', text: `${net >= 0 ? '+' : '−'}${fmt(Math.abs(net))} XP` }]
+		};
+	}
+
 	function ago(ms: number): string {
 		const s = Math.max(0, Math.floor((ctx.now - ms) / 1000));
 		const m = Math.floor(s / 60);
@@ -154,12 +177,12 @@
 {#if data.historyTotal === 0}
 	<div class="m-members-empty">
 		{#if data.tab === 'level'}No level XP earned yet. Chat or join voice to start earning.{:else if data.tab === 'items'}No item activity yet. Buy or use an
-			item to start.{:else}No activity yet.{/if}
+			item to start.{:else if data.tab === 'assets'}No asset trades yet. Invest XP from the Assets tab to start.{:else}No activity yet.{/if}
 	</div>
 {:else}
 	<ul class="m-hist">
 		{#each data.pagedHistory as h (h.id)}
-			{@const l = h.kind === 'level' ? levelLine(h) : line(h)}
+			{@const l = h.kind === 'level' ? levelLine(h) : h.kind === 'asset' ? assetLine(h) : line(h)}
 			<li class="m-hist-row m-hist-row--{l.tone}">
 				<span class="m-hist-icon"><i class="fas {l.icon}"></i></span>
 				<span class="m-hist-body">

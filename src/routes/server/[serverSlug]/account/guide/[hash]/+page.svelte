@@ -71,7 +71,7 @@
 			icon: 'fa-clock-rotate-left',
 			accent: '#4b6584',
 			title: 'History',
-			desc: 'The History tab logs everything you bought, used, earned, and every attack for and against you. Anonymous attackers (Disguise) stay hidden there forever.'
+			desc: 'The History tab logs everything you bought, used, earned, every attack for and against you, and every asset trade. Anonymous attackers (Disguise) stay hidden there forever.'
 		}
 	];
 
@@ -111,6 +111,40 @@
 
 		return list;
 	});
+
+	const assetSteps = [
+		{ icon: 'fa-chart-line', title: 'Open Assets', desc: 'Tap the Assets tab. Browse the Top 50, Gainers, Losers, or Search any coin.' },
+		{ icon: 'fa-arrow-trend-up', title: 'Invest XP', desc: 'Pick a coin, choose how much XP to invest, and buy at the live market price.' },
+		{ icon: 'fa-wallet', title: 'Watch it move', desc: 'Your position tracks the real price. My Assets shows live profit or loss in XP.' },
+		{ icon: 'fa-hand-holding-dollar', title: 'Sell anytime', desc: 'Sell to cash out. You get XP back scaled by how the price moved since you bought.' }
+	];
+
+	const assetConcepts = [
+		{
+			icon: 'fa-coins',
+			accent: '#245f73',
+			title: 'XP becomes the investment',
+			desc: 'When you buy an asset, that XP leaves your Wallet and locks into the position. It no longer counts toward your level or leaderboard rank until you sell.'
+		},
+		{
+			icon: 'fa-shield-halved',
+			accent: '#1f9e8f',
+			title: 'Safe from attacks',
+			desc: 'XP held in assets can’t be stolen, bombed, or leeched. Parking XP in the market is one way to protect it, at the cost of price risk.'
+		},
+		{
+			icon: 'fa-arrow-trend-up',
+			accent: '#1a7f57',
+			title: 'Real market prices',
+			desc: 'Prices are live crypto prices in IDR from the real market. Sell higher than you bought and you gain XP; sell lower and you lose some. No cooldown, sell whenever.'
+		},
+		{
+			icon: 'fa-clock-rotate-left',
+			accent: '#4b6584',
+			title: 'Tracked in History',
+			desc: 'Every buy and sell is logged in the History tab so you can review what you invested, when, and how each trade turned out.'
+		}
+	];
 
 	const steps = [
 		{ icon: 'fa-store', title: 'Open the Shop', desc: 'Browse items by category. Each shows its cost and what it does.' },
@@ -277,6 +311,46 @@
 					<div class="g-item-tip"><i class="fas fa-lightbulb"></i><span>{mg.tip}</span></div>
 				</article>
 			{/each}
+		</div>
+	</section>
+
+	<section class="g-sec" use:reveal>
+		<h2 class="g-sec-head"><i class="fas fa-chart-line"></i>Assets market</h2>
+		<p class="g-sec-lead">
+			Invest your XP in real-world crypto at live prices. It behaves like a stock market, but you’re trading with XP, no real money and no real coins.
+		</p>
+		<div class="g-earn">
+			{#each assetConcepts as c, i}
+				<div class="g-earn-card" style="--ac: {c.accent}; --d: {i * 60}ms">
+					<span class="g-earn-ic"><i class="fas {c.icon}"></i></span>
+					<div class="g-earn-body">
+						<h3>{c.title}</h3>
+						<p>{c.desc}</p>
+					</div>
+				</div>
+			{/each}
+		</div>
+
+		<div class="g-steps">
+			{#each assetSteps as s, i}
+				<div class="g-step" style="--d: {i * 80}ms">
+					<span class="g-step-num">{i + 1}</span>
+					<span class="g-step-ic"><i class="fas {s.icon}"></i></span>
+					<h3>{s.title}</h3>
+					<p>{s.desc}</p>
+				</div>
+			{/each}
+		</div>
+
+		<div class="g-friend" style="--ac: #b23b2e">
+			<span class="g-friend-ic"><i class="fas fa-triangle-exclamation"></i></span>
+			<div class="g-friend-body">
+				<h3>⚠️ Prices go down too</h3>
+				<p>
+					The market is real and volatile. If a coin drops after you buy, selling returns <strong>less XP than you invested</strong>. Only invest XP you’re
+					willing to risk on the leaderboard.
+				</p>
+			</div>
 		</div>
 	</section>
 

@@ -19,17 +19,32 @@
 	const isBag = $derived(/\/account\/bag\//.test(pathNorm));
 	const isHistory = $derived(/\/account\/history\//.test(pathNorm));
 	const isGuide = $derived(/\/account\/guide\//.test(pathNorm));
-	const isShop = $derived(!isBag && !isHistory && !isGuide);
+	const isAssets = $derived(/\/account\/assets\//.test(pathNorm));
+	const isShop = $derived(!isBag && !isHistory && !isGuide && !isAssets);
 	const activeCat = $derived.by(() => {
-		const m = pathNorm.match(/\/account\/(?:shop|bag|history)\/([^/]+)\/[^/]+$/);
+		const m = pathNorm.match(/\/account\/(?:shop|bag|history|assets)\/([^/]+)\/[^/]+$/);
 		return m ? m[1] : 'all';
 	});
 
 	const historyTabs = [
 		{ id: 'all', label: 'All', icon: 'fa-grip' },
 		{ id: 'items', label: 'Items', icon: 'fa-bag-shopping' },
+		{ id: 'assets', label: 'Assets', icon: 'fa-chart-line' },
 		{ id: 'level', label: 'Level', icon: 'fa-star' }
 	];
+
+	const assetTabs = [
+		{ id: 'top', label: 'Top 50', icon: 'fa-ranking-star' },
+		{ id: 'gainers', label: 'Gainers', icon: 'fa-arrow-trend-up' },
+		{ id: 'losers', label: 'Losers', icon: 'fa-arrow-trend-down' },
+		{ id: 'search', label: 'Search', icon: 'fa-magnifying-glass' },
+		{ id: 'positions', label: 'My Assets', icon: 'fa-wallet' }
+	];
+
+	let assetSummary = $state<{ invested: number; value: number; pnl: number; pnlPct: number; count: number } | null>(null);
+	function setAssetSummary(s: any) {
+		assetSummary = s;
+	}
 
 	let now = $state(Date.now());
 	let busy = $state<number | null>(null);
@@ -265,6 +280,7 @@
 		setLiveXp,
 		setBusy,
 		setBurst,
+		setAssetSummary,
 		invalidateAll,
 		get busy() {
 			return busy;
@@ -311,30 +327,49 @@
 			<div class="m-xp-avatar">
 				<img src={memberAvatar} alt={pd.memberName ?? ''} loading="lazy" />
 			</div>
-			<div class="m-xp-figures">
-				<span class="m-xp-wallet"><i class="fas fa-wallet"></i>Wallet</span>
-				{#if pd.memberName}<span class="m-xp-name">{pd.memberName}</span>{/if}
-				<span class="m-xp-amount">{fmt(liveXp)}<span class="m-xp-unit">XP</span></span>
-				<div class="m-xp-bar">
-					<div class="m-xp-bar-fill" style="width: {levelInfo.pct}%"></div>
+			{#if isAssets && assetSummary}
+				<div class="m-xp-figures">
+					<span class="m-xp-wallet"><i class="fas fa-chart-line"></i>Invested in Assets</span>
+					<span class="m-xp-amount">{fmt(assetSummary.invested)}<span class="m-xp-unit">XP</span></span>
+					<span class="m-xp-bar-meta">
+						<span>{assetSummary.count} position{assetSummary.count === 1 ? '' : 's'}</span>
+						<span>Now worth {fmt(assetSummary.value)} XP</span>
+					</span>
 				</div>
-				<span class="m-xp-bar-meta">
-					<span>Lvl {level}</span>
-					<span>{levelInfo.toNext > 0 ? `${fmt(levelInfo.toNext)} XP to Lvl ${level + 1}` : 'Max progress'}</span>
-				</span>
-			</div>
-			<div class="m-xp-stats">
-				<div class="m-xp-stat">
-					<span class="m-xp-stat-val">{levelInfo.pct}%</span>
-					<span class="m-xp-stat-lbl">Level {level}</span>
-				</div>
-				{#if rank}
-					<div class="m-xp-stat">
-						<span class="m-xp-stat-val">#{rank}</span>
-						<span class="m-xp-stat-lbl">Rank</span>
+				<div class="m-xp-stats">
+					<div class="m-xp-stat m-xp-stat--pnl" data-dir={assetSummary.pnl > 0 ? 'up' : assetSummary.pnl < 0 ? 'down' : 'flat'}>
+						<span class="m-xp-stat-val">
+							<i class="fas fa-caret-{assetSummary.pnl >= 0 ? 'up' : 'down'}"></i>{assetSummary.pnlPct >= 0 ? '+' : ''}{assetSummary.pnlPct.toFixed(2)}%
+						</span>
+						<span class="m-xp-stat-lbl">{assetSummary.pnl >= 0 ? '+' : ''}{fmt(assetSummary.pnl)} XP</span>
 					</div>
-				{/if}
-			</div>
+				</div>
+			{:else}
+				<div class="m-xp-figures">
+					<span class="m-xp-wallet"><i class="fas fa-wallet"></i>Wallet</span>
+					{#if pd.memberName}<span class="m-xp-name">{pd.memberName}</span>{/if}
+					<span class="m-xp-amount">{fmt(liveXp)}<span class="m-xp-unit">XP</span></span>
+					<div class="m-xp-bar">
+						<div class="m-xp-bar-fill" style="width: {levelInfo.pct}%"></div>
+					</div>
+					<span class="m-xp-bar-meta">
+						<span>Lvl {level}</span>
+						<span>{levelInfo.toNext > 0 ? `${fmt(levelInfo.toNext)} XP to Lvl ${level + 1}` : 'Max progress'}</span>
+					</span>
+				</div>
+				<div class="m-xp-stats">
+					<div class="m-xp-stat">
+						<span class="m-xp-stat-val">{levelInfo.pct}%</span>
+						<span class="m-xp-stat-lbl">Level {level}</span>
+					</div>
+					{#if rank}
+						<div class="m-xp-stat">
+							<span class="m-xp-stat-val">#{rank}</span>
+							<span class="m-xp-stat-lbl">Rank</span>
+						</div>
+					{/if}
+				</div>
+			{/if}
 		</div>
 	{/if}
 
@@ -366,6 +401,9 @@
 				>
 					<i class="fas fa-bag-shopping"></i>Bag<span class="m-items-count" class:m-items-count--bump={bagPulse}>{pd.bagStock ?? 0}/{BAG_CAPACITY}</span>
 				</a>
+				<a class="m-items-seg" class:m-items-seg--active={isAssets} href="{accountBase}/assets/top/{navHash}" data-sveltekit-preload-data="hover">
+					<i class="fas fa-chart-line"></i>Assets
+				</a>
 				<a class="m-items-seg" class:m-items-seg--active={isHistory} href="{accountBase}/history/all/{navHash}" data-sveltekit-preload-data="hover">
 					<i class="fas fa-clock-rotate-left"></i>History
 				</a>
@@ -376,7 +414,7 @@
 		</div>
 	</div>
 
-	{#snippet tabStrip(tabs: { id: string; label: string; icon: string }[], section: 'shop' | 'bag' | 'history', hash: string)}
+	{#snippet tabStrip(tabs: { id: string; label: string; icon: string }[], section: 'shop' | 'bag' | 'history' | 'assets', hash: string)}
 		<div class="m-items-tabswrap">
 			<button
 				type="button"
@@ -419,6 +457,8 @@
 		{@render tabStrip(typeTabs, 'bag', pd.hash)}
 	{:else if isHistory}
 		{@render tabStrip(historyTabs, 'history', pd.hash)}
+	{:else if isAssets}
+		{@render tabStrip(assetTabs, 'assets', navHash)}
 	{/if}
 
 	{#if readOnly && isShop}

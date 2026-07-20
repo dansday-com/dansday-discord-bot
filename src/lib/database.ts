@@ -2077,6 +2077,88 @@ export async function collectBounties(targetMemberId: any) {
 	return total;
 }
 
+export async function getDistinctHeldAssetIds(assetType?: string) {
+	await initializeDatabase();
+	if (assetType) {
+		const rows = await db.execute(sql`SELECT DISTINCT asset_id FROM server_member_asset_positions WHERE status = 'open' AND asset_type = ${String(assetType)}`);
+		return (rows[0] as unknown as any[]) || [];
+	}
+	const rows = await db.execute(sql`SELECT DISTINCT asset_type, asset_id FROM server_member_asset_positions WHERE status = 'open'`);
+	return (rows[0] as unknown as any[]) || [];
+}
+
+export async function openAssetPosition(data: {
+	member_id: number;
+	asset_type: string;
+	asset_id: string;
+	symbol: string;
+	asset_name: string;
+	asset_image: string | null;
+	xp_invested: number;
+	buy_price: number;
+}) {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	const [result] = await db.insert(schema.serverMemberAssetPositions).values({
+		member_id: Number(data.member_id),
+		asset_type: String(data.asset_type),
+		asset_id: String(data.asset_id),
+		symbol: String(data.symbol),
+		asset_name: String(data.asset_name),
+		asset_image: data.asset_image != null ? String(data.asset_image) : null,
+		xp_invested: Number(data.xp_invested) || 0,
+		buy_price: String(data.buy_price) as any,
+		status: 'open',
+		opened_at: now as any,
+		created_at: now as any,
+		updated_at: now as any
+	});
+	const id = (result as any)?.insertId ?? null;
+	return id ? getAssetPosition(id) : null;
+}
+
+export async function getAssetPosition(positionId: any) {
+	await initializeDatabase();
+	const rows = await db.execute(sql`SELECT * FROM server_member_asset_positions WHERE id = ${Number(positionId)} LIMIT 1`);
+	return ((rows[0] as unknown as any[]) || [])[0] ?? null;
+}
+
+export async function getOpenAssetPositions(memberId: any) {
+	await initializeDatabase();
+	const rows = await db.execute(
+		sql`SELECT * FROM server_member_asset_positions WHERE member_id = ${Number(memberId)} AND status = 'open' ORDER BY opened_at DESC`
+	);
+	return (rows[0] as unknown as any[]) || [];
+}
+
+export async function getMemberAssetHistory(memberId: any, limit = 600) {
+	await initializeDatabase();
+	const rows = await db.execute(sql`
+		SELECT id, asset_type, asset_id, symbol, asset_name, asset_image,
+		       xp_invested, buy_price, status, opened_at, closed_at, sell_price, xp_returned
+		FROM server_member_asset_positions
+		WHERE member_id = ${Number(memberId)}
+		ORDER BY COALESCE(closed_at, opened_at) DESC
+		LIMIT ${Number(limit) || 600}
+	`);
+	return (rows[0] as unknown as any[]) || [];
+}
+
+export async function closeAssetPosition(positionId: any, data: { sell_price: number; xp_returned: number }) {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	await db.execute(sql`
+		UPDATE server_member_asset_positions
+		SET status = 'closed',
+		    sell_price = ${String(data.sell_price)},
+		    xp_returned = ${Number(data.xp_returned) || 0},
+		    closed_at = ${now},
+		    updated_at = ${now}
+		WHERE id = ${Number(positionId)} AND status = 'open'
+	`);
+	return true;
+}
+
 export async function getDisguisedMemberIds(serverId: any): Promise<number[]> {
 	await initializeDatabase();
 	if (!serverId) return [];
@@ -4451,6 +4533,12 @@ export default {
 	placeBounty,
 	getActiveBountyTotal,
 	collectBounties,
+	getDistinctHeldAssetIds,
+	openAssetPosition,
+	getAssetPosition,
+	getOpenAssetPositions,
+	getMemberAssetHistory,
+	closeAssetPosition,
 	getServerLeaderboard,
 	getLeaderboardPeriodCounts,
 	getItemsGamblerLeaderboard,

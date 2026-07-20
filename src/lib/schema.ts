@@ -892,3 +892,31 @@ export const serverMemberItemNotifications = mysqlTable(
 	},
 	(t) => [uniqueIndex('unique_member_item_notification').on(t.member_id, t.notification_type, t.notified_for_at)]
 );
+
+export const serverMemberAssetPositions = mysqlTable(
+	'server_member_asset_positions',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		member_id: int('member_id')
+			.notNull()
+			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		asset_type: varchar('asset_type', { length: 24 }).notNull().default('crypto'),
+		asset_id: varchar('asset_id', { length: 96 }).notNull(),
+		symbol: varchar('symbol', { length: 32 }).notNull(),
+		asset_name: varchar('asset_name', { length: 128 }).notNull(),
+		asset_image: varchar('asset_image', { length: 255 }),
+		xp_invested: int('xp_invested').notNull().default(0),
+		buy_price: decimal('buy_price', { precision: 30, scale: 12 }).notNull(),
+		status: varchar('status', { length: 12 }).notNull().default('open'),
+		opened_at: datetime('opened_at').notNull(),
+		closed_at: datetime('closed_at'),
+		sell_price: decimal('sell_price', { precision: 30, scale: 12 }),
+		xp_returned: int('xp_returned'),
+		created_at: datetime('created_at').notNull(),
+		updated_at: datetime('updated_at').notNull()
+	},
+	(t) => [
+		index('idx_server_member_asset_positions_member').on(t.member_id, t.status),
+		index('idx_server_member_asset_positions_held').on(t.status, t.asset_type, t.asset_id)
+	]
+);

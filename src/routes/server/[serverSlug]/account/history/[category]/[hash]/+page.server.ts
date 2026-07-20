@@ -15,7 +15,7 @@ export const load: PageServerLoad = async ({ parent, params, url }) => {
 	if (shared.readOnly || !shared.member) redirect(303, `${publicServerPath(server.slug)}/account/shop/all/guest`);
 
 	const tabParam = String(params.category || 'all');
-	const tab = tabParam === 'items' || tabParam === 'level' ? tabParam : 'all';
+	const tab = tabParam === 'items' || tabParam === 'level' || tabParam === 'assets' ? tabParam : 'all';
 
 	const itemRows = await db.getMemberItemHistory(shared.member.id, 600).catch(() => []);
 	const itemEvents = (itemRows as any[]).map((h) => ({
@@ -51,7 +51,47 @@ export const load: PageServerLoad = async ({ parent, params, url }) => {
 		at: x.created_at ? new Date(x.created_at).getTime() : null
 	}));
 
-	const events = tab === 'items' ? itemEvents : tab === 'level' ? levelEvents : [...itemEvents, ...levelEvents].sort((a, b) => (b.at ?? 0) - (a.at ?? 0));
+	const assetRows = await db.getMemberAssetHistory(shared.member.id, 600).catch(() => []);
+	const assetEvents: any[] = [];
+	for (const p of assetRows as any[]) {
+		const invested = Number(p.xp_invested) || 0;
+		const openedAt = p.opened_at ? new Date(p.opened_at).getTime() : null;
+		assetEvents.push({
+			id: `a-buy-${p.id}`,
+			kind: 'asset' as const,
+			action: 'buy',
+			symbol: p.symbol,
+			assetName: p.asset_name,
+			assetImage: p.asset_image ?? null,
+			xpAmount: invested,
+			price: Number(p.buy_price) || 0,
+			at: openedAt
+		});
+		if (p.status === 'closed') {
+			const returned = Number(p.xp_returned) || 0;
+			assetEvents.push({
+				id: `a-sell-${p.id}`,
+				kind: 'asset' as const,
+				action: 'sell',
+				symbol: p.symbol,
+				assetName: p.asset_name,
+				assetImage: p.asset_image ?? null,
+				xpAmount: returned,
+				net: returned - invested,
+				price: Number(p.sell_price) || 0,
+				at: p.closed_at ? new Date(p.closed_at).getTime() : openedAt
+			});
+		}
+	}
+
+	const events =
+		tab === 'items'
+			? itemEvents
+			: tab === 'level'
+				? levelEvents
+				: tab === 'assets'
+					? assetEvents
+					: [...itemEvents, ...levelEvents, ...assetEvents].sort((a, b) => (b.at ?? 0) - (a.at ?? 0));
 
 	const totalPages = Math.max(1, Math.ceil(events.length / PER_PAGE));
 	const reqPage = Math.max(1, Math.floor(Number(url.searchParams.get('page')) || 1));

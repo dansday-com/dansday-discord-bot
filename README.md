@@ -32,6 +32,7 @@ The project is open source under the MIT license.
   - 🔍 **Spy** - reveal a member's bag, active effects, cooldowns, and bounty.
   - 🎭 **Disguise** - go anonymous and drop off the leaderboard for a set duration.
   - 🧼 **Purifier** - wipe all of your own active effects at once.
+- **Assets market (XP paper-trading)** ⭐ _new_ - Members invest earned XP in real-world crypto at live prices (via CoinGecko). XP is locked into a position and tracks the real market; sell any time to realize gains or losses. Search thousands of coins, browse the top 50, gainers and losers, and watch a live portfolio with per-position and total profit/loss. No real money and no real coins — purely an XP game. Designed to extend to other asset types later.
 - **Leveling & XP** - Message and voice activity feed a full XP system with levels, role rewards, and leaderboards.
 - **Welcomer** - Custom welcome messages and embeds for new members.
 - **Giveaways** - Entries, winner selection, and role-based eligibility.
@@ -101,4 +102,4 @@ Environment variables drive database credentials, sessions, captcha, mail, Redis
 
 ## License
 
-MIT · Author: Akbar Yudhanto · Version: 26.2.0
+MIT · Author: Akbar Yudhanto · Version: 26.3.0

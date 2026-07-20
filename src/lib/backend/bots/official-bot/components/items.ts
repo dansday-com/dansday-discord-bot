@@ -1316,7 +1316,7 @@ export async function handleAdminGiftAnnounce(client: any, payload: any) {
 	const embed = new EmbedBuilder()
 		.setColor(effectAccentInt(effect_type))
 		.setTitle('🎁 A Gift Has Arrived')
-		.setDescription(`${member} received **${qty}× ${item_name || 'an item'}** from the admin. Check your bag!`)
+		.setDescription(`${member} received **${qty}× ${item_name || 'an item'}** from the admin. Check your items!`)
 		.setFooter({ text: embedConfig.FOOTER || 'Items' })
 		.setTimestamp();
 

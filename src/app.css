@@ -3670,6 +3670,29 @@
 	box-shadow: 0 6px 16px -10px rgba(184, 134, 11, 0.8);
 }
 
+.m-root .m-card-actions {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	margin-left: auto;
+	flex: 1 1 100%;
+	justify-content: flex-end;
+}
+
+.m-root .m-card-actions .m-card-btn {
+	margin-left: 0;
+	flex: 1 1 auto;
+	padding: 8px 6px;
+}
+
+.m-root .m-card-actions .m-card-discard {
+	flex: 0 0 auto;
+}
+
+.m-root .m-card--owned .m-card-price {
+	flex: 1 1 100%;
+}
+
 .m-root .m-card-btn:disabled {
 	opacity: 0.5;
 	cursor: not-allowed;

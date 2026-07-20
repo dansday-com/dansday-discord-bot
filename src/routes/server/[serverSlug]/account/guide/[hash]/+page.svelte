@@ -147,9 +147,9 @@
 	];
 
 	const steps = [
-		{ icon: 'fa-store', title: 'Open the Shop', desc: 'Browse items by category. Each shows its cost and what it does.' },
-		{ icon: 'fa-coins', title: 'Buy with XP', desc: 'Spend your earned XP. The item drops into your Bag (holds up to 50).' },
-		{ icon: 'fa-bag-shopping', title: 'Open your Bag', desc: 'Find the item and hit Use. Buffs apply to you instantly.' },
+		{ icon: 'fa-store', title: 'Open Items', desc: 'Browse items by category. Each card shows its cost and what it does.' },
+		{ icon: 'fa-coins', title: 'Buy with XP', desc: 'Spend your earned XP. Owned items stack on the same card (you can hold up to 50).' },
+		{ icon: 'fa-bolt', title: 'Use it', desc: 'On an owned item, hit Use right on the card. Buffs apply to you instantly; Remove drops one.' },
 		{ icon: 'fa-crosshairs', title: 'Pick a target', desc: 'Offensive items (steal, bomb, leech, spy, gift, bounty) ask who to use it on.' }
 	];
 

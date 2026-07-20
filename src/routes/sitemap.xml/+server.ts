@@ -65,9 +65,9 @@ export const GET: RequestHandler = async () => {
 			const itemsBase = `${root}/${enc}/account`;
 			urls.push({ loc: itemsBase, ...base, priority: 0.7 });
 			urls.push({ loc: `${itemsBase}/guide/guest`, ...base, priority: 0.7 });
-			urls.push({ loc: `${itemsBase}/shop/all/guest`, ...base, priority: 0.6 });
+			urls.push({ loc: `${itemsBase}/items/all/guest`, ...base, priority: 0.6 });
 			for (const cat of presentCategories) {
-				urls.push({ loc: `${itemsBase}/shop/${cat}/guest`, ...base, priority: 0.6 });
+				urls.push({ loc: `${itemsBase}/items/${cat}/guest`, ...base, priority: 0.6 });
 			}
 		}
 		return urls;

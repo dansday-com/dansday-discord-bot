@@ -16,13 +16,12 @@
 	const readOnly = $derived(!!pd.readOnly || !pd.memberCard);
 	const navHash = $derived(pd.hash || 'guest');
 	const pathNorm = $derived(page.url.pathname.replace(/\/$/, ''));
-	const isBag = $derived(/\/account\/bag\//.test(pathNorm));
 	const isHistory = $derived(/\/account\/history\//.test(pathNorm));
 	const isGuide = $derived(/\/account\/guide\//.test(pathNorm));
 	const isAssets = $derived(/\/account\/assets\//.test(pathNorm));
-	const isShop = $derived(!isBag && !isHistory && !isGuide && !isAssets);
+	const isShop = $derived(!isHistory && !isGuide && !isAssets);
 	const activeCat = $derived.by(() => {
-		const m = pathNorm.match(/\/account\/(?:shop|bag|history|assets)\/([^/]+)\/[^/]+$/);
+		const m = pathNorm.match(/\/account\/(?:items|history|assets)\/([^/]+)\/[^/]+$/);
 		return m ? m[1] : 'all';
 	});
 
@@ -139,7 +138,7 @@
 	}
 
 	const typeTabs = $derived.by(() => {
-		const source = isBag ? (pd.bagCategories ?? []) : (pd.categories ?? []);
+		const source = pd.categories ?? [];
 		const present = new Set(source as string[]);
 		const ordered = ITEM_EFFECTS.filter((e) => present.has(e.id));
 		return [{ id: 'all', label: 'All', icon: 'fa-grip' }, ...ordered.map((e) => ({ id: e.id, label: e.label, icon: e.icon }))];
@@ -157,7 +156,7 @@
 		const stored = sessionStorage.getItem(sessionKey);
 		if (stored) {
 			const cat = activeCat || 'all';
-			const section = isBag ? 'bag' : isHistory ? 'history' : isGuide ? 'guide' : 'shop';
+			const section = isHistory ? 'history' : isGuide ? 'guide' : 'items';
 			const target = isGuide ? `${accountBase}/guide/${stored}` : `${accountBase}/${section}/${cat}/${stored}`;
 			goto(target, { replaceState: true });
 		}
@@ -210,8 +209,8 @@
 	$effect(() => {
 		typeTabs;
 		isShop;
-		isBag;
 		isHistory;
+		isAssets;
 		requestAnimationFrame(updateTabScroll);
 	});
 
@@ -387,20 +386,17 @@
 
 	<div class="m-items-bar">
 		<div class="m-items-toggle">
-			<a class="m-items-seg" class:m-items-seg--active={isShop} href="{accountBase}/shop/all/{navHash}" data-sveltekit-preload-data="hover"
-				><i class="fas fa-store"></i>Shop</a
+			<a
+				bind:this={bagTabEl}
+				class="m-items-seg"
+				class:m-items-seg--active={isShop}
+				class:m-items-seg--pulse={bagPulse}
+				href="{accountBase}/items/all/{navHash}"
+				data-sveltekit-preload-data="hover"
 			>
+				<i class="fas fa-store"></i>Items{#if !readOnly}<span class="m-items-count" class:m-items-count--bump={bagPulse}>{pd.bagStock ?? 0}/{BAG_CAPACITY}</span>{/if}
+			</a>
 			{#if !readOnly}
-				<a
-					bind:this={bagTabEl}
-					class="m-items-seg"
-					class:m-items-seg--active={isBag}
-					class:m-items-seg--pulse={bagPulse}
-					href="{accountBase}/bag/all/{navHash}"
-					data-sveltekit-preload-data="hover"
-				>
-					<i class="fas fa-bag-shopping"></i>Bag<span class="m-items-count" class:m-items-count--bump={bagPulse}>{pd.bagStock ?? 0}/{BAG_CAPACITY}</span>
-				</a>
 				<a class="m-items-seg" class:m-items-seg--active={isAssets} href="{accountBase}/assets/top/{navHash}" data-sveltekit-preload-data="hover">
 					<i class="fas fa-chart-line"></i>Assets
 				</a>
@@ -414,7 +410,7 @@
 		</div>
 	</div>
 
-	{#snippet tabStrip(tabs: { id: string; label: string; icon: string }[], section: 'shop' | 'bag' | 'history' | 'assets', hash: string)}
+	{#snippet tabStrip(tabs: { id: string; label: string; icon: string }[], section: 'items' | 'history' | 'assets', hash: string)}
 		<div class="m-items-tabswrap">
 			<button
 				type="button"
@@ -452,9 +448,7 @@
 	{/snippet}
 
 	{#if isShop}
-		{@render tabStrip(typeTabs, 'shop', navHash)}
-	{:else if isBag && typeTabs.length > 1}
-		{@render tabStrip(typeTabs, 'bag', pd.hash)}
+		{@render tabStrip(typeTabs, 'items', navHash)}
 	{:else if isHistory}
 		{@render tabStrip(historyTabs, 'history', pd.hash)}
 	{:else if isAssets}

@@ -94,7 +94,7 @@ function itemAvailableNow(item: any): boolean {
 export async function loadItemsCatalog(serverId: number): Promise<any[]> {
 	const panelId = await db.getServerPanelId(serverId).catch(() => null);
 	if (panelId == null) return [];
-	const all = await db.listItems(panelId, { enabledOnly: true }).catch(() => []);
+	const all = await db.listItems(panelId).catch(() => []);
 	return (all as any[])
 		.filter((i) => itemAvailableNow(i) || hasRecurringSchedule(i))
 		.map((i) => ({
@@ -104,6 +104,8 @@ export async function loadItemsCatalog(serverId: number): Promise<any[]> {
 			category: i.category,
 			description: i.description,
 			cost: i.cost,
+			enabled: i.enabled !== false && i.enabled !== 0,
+			usable: i.usable !== false && i.usable !== 0,
 			availableUntil: availableUntilMs(i),
 			available_from: i.available_from ? new Date(i.available_from).toISOString() : null,
 			available_to: i.available_to ? new Date(i.available_to).toISOString() : null,

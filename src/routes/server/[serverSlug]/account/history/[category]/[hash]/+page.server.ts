@@ -12,7 +12,7 @@ export const load: PageServerLoad = async ({ parent, params, url }) => {
 	const hash = itemsCardTokenFromUrl(params.hash);
 	const shared = await loadItemsShared(server, hash);
 	if ('notFound' in shared) error(404, 'Items not available');
-	if (shared.readOnly || !shared.member) redirect(303, `${publicServerPath(server.slug)}/account/shop/all/guest`);
+	if (shared.readOnly || !shared.member) redirect(303, `${publicServerPath(server.slug)}/account/items/all/guest`);
 
 	const tabParam = String(params.category || 'all');
 	const tab = tabParam === 'items' || tabParam === 'level' || tabParam === 'assets' ? tabParam : 'all';

@@ -406,25 +406,23 @@
 		<div class="m-card-foot">
 			{#if item.effect_type === 'gamble'}
 				<span class="m-card-price m-card-price--wager"><i class="fas fa-dice"></i>Wager</span>
-				{#if ctx.readOnly}
-					<button class="m-card-btn" disabled title="Open your card to play"><i class="fas fa-eye"></i>View only</button>
-				{:else}
-					<button
-						class="m-card-btn m-card-btn--play"
-						disabled={!canBuy || !canUse}
-						title={!canBuy || !canUse ? 'Unavailable right now' : 'Play'}
-						onclick={() => openGamble(item)}
-					>
-						<i class="fas fa-dice"></i>Play
-					</button>
-				{/if}
+				<button
+					class="m-card-btn m-card-btn--play"
+					disabled={ctx.readOnly || !canBuy || !canUse}
+					title={ctx.readOnly ? 'Open your card to play' : !canBuy || !canUse ? 'Unavailable right now' : 'Play'}
+					onclick={() => !ctx.readOnly && openGamble(item)}
+				>
+					<i class="fas fa-dice"></i>Play
+				</button>
 			{:else}
 				<span class="m-card-price" class:m-card-price--short={!ctx.readOnly && !affordable}>{fmt(item.cost)}<span class="m-card-price-unit">XP</span></span>
 
 				{#if ctx.readOnly}
-					<button class="m-card-btn" disabled title="Open your card to buy"><i class="fas fa-eye"></i>View only</button>
-				{:else}
 					<div class="m-card-actions">
+						<button class="m-card-btn m-card-btn--buy" disabled title="Open your card to buy"><i class="fas fa-cart-plus"></i>Buy</button>
+					</div>
+				{:else}
+					<div class="m-card-actions" class:m-card-actions--owned={owned > 0}>
 						<button
 							class="m-card-btn m-card-btn--buy"
 							disabled={ctx.busy === item.id || !canBuy || !affordable || ctx.bagFull}
@@ -436,29 +434,31 @@
 						</button>
 
 						{#if owned > 0}
-							{#if buffActive}
-								<button class="m-card-btn m-card-btn--use" disabled title="Already active"><i class="fas fa-check"></i>Active</button>
-							{:else}
+							<div class="m-card-actions-own">
+								{#if buffActive}
+									<button class="m-card-btn m-card-btn--use" disabled title="Already active"><i class="fas fa-check"></i>Active</button>
+								{:else}
+									<button
+										class="m-card-btn m-card-btn--use"
+										disabled={ctx.busy === item.member_item_id || !canUse}
+										title={!canUse ? 'Using is turned off' : actionVerb(item.effect_type).label}
+										onclick={() => onUse({ ...item, member_item_id: item.member_item_id, quantity: owned, usable: canUse })}
+									>
+										{#if ctx.busy === item.member_item_id}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas {actionVerb(item.effect_type).icon}"
+											></i>{/if}
+										{actionVerb(item.effect_type).label}
+									</button>
+								{/if}
 								<button
-									class="m-card-btn m-card-btn--use"
-									disabled={ctx.busy === item.member_item_id || !canUse}
-									title={!canUse ? 'Using is turned off' : actionVerb(item.effect_type).label}
-									onclick={() => onUse({ ...item, member_item_id: item.member_item_id, quantity: owned, usable: canUse })}
+									class="m-card-discard"
+									aria-label="Remove one"
+									title="Remove one"
+									disabled={discardingId === item.member_item_id || ctx.busy === item.member_item_id}
+									onclick={() => discard({ member_item_id: item.member_item_id })}
 								>
-									{#if ctx.busy === item.member_item_id}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas {actionVerb(item.effect_type).icon}"
-										></i>{/if}
-									{actionVerb(item.effect_type).label}
+									{#if discardingId === item.member_item_id}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas fa-trash-can"></i>{/if}
 								</button>
-							{/if}
-							<button
-								class="m-card-discard"
-								aria-label="Remove one"
-								title="Remove one"
-								disabled={discardingId === item.member_item_id || ctx.busy === item.member_item_id}
-								onclick={() => discard({ member_item_id: item.member_item_id })}
-							>
-								{#if discardingId === item.member_item_id}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas fa-trash-can"></i>{/if}
-							</button>
+							</div>
 						{/if}
 					</div>
 				{/if}

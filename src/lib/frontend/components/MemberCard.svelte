@@ -220,6 +220,48 @@
 		ctx.restore();
 	}
 
+	function drawCoin(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
+		ctx.beginPath();
+		ctx.arc(cx, cy, r, 0, Math.PI * 2);
+		ctx.fill();
+		ctx.save();
+		ctx.fillStyle = 'rgba(255,255,255,0.7)';
+		ctx.font = `900 ${r * 1.1}px -apple-system, 'Inter', sans-serif`;
+		ctx.textAlign = 'center';
+		ctx.textBaseline = 'middle';
+		ctx.fillText('$', cx, cy + r * 0.05);
+		ctx.restore();
+	}
+
+	function drawSack(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
+		ctx.beginPath();
+		ctx.moveTo(cx - r * 0.45, cy - r * 0.55);
+		ctx.lineTo(cx + r * 0.45, cy - r * 0.55);
+		ctx.lineTo(cx + r * 0.3, cy - r * 0.25);
+		ctx.lineTo(cx - r * 0.3, cy - r * 0.25);
+		ctx.closePath();
+		ctx.fill();
+		ctx.beginPath();
+		ctx.moveTo(cx - r * 0.3, cy - r * 0.25);
+		ctx.quadraticCurveTo(cx - r, cy + r * 0.2, cx - r * 0.7, cy + r * 0.7);
+		ctx.quadraticCurveTo(cx - r * 0.4, cy + r, cx, cy + r);
+		ctx.quadraticCurveTo(cx + r * 0.4, cy + r, cx + r * 0.7, cy + r * 0.7);
+		ctx.quadraticCurveTo(cx + r, cy + r * 0.2, cx + r * 0.3, cy - r * 0.25);
+		ctx.closePath();
+		ctx.fill();
+	}
+
+	function drawStack(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
+		for (let i = 0; i < 3; i++) {
+			const oy = cy + (i - 1) * r * 0.65;
+			ctx.beginPath();
+			ctx.ellipse(cx, oy, r, r * 0.42, 0, 0, Math.PI * 2);
+			ctx.globalAlpha = 1 - i * 0.22;
+			ctx.fill();
+		}
+		ctx.globalAlpha = 1;
+	}
+
 	function hexToRgb(hex: string): [number, number, number] {
 		const h = hex.replace('#', '');
 		return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
@@ -246,9 +288,9 @@
 		const statItems =
 			isAssets && assets
 				? [
-						{ icon: 'star', val: fmtNum(assets.invested), lbl: 'Invested' },
-						{ icon: 'star', val: fmtNum(assets.value), lbl: 'Worth' },
-						{ icon: 'star', val: String(assets.count), lbl: 'Positions' }
+						{ icon: 'coin', val: fmtNum(assets.invested), lbl: 'Invested' },
+						{ icon: 'sack', val: fmtNum(assets.value), lbl: 'Worth' },
+						{ icon: 'stack', val: String(assets.count), lbl: 'Positions' }
 					]
 				: [
 						{ icon: 'star', val: xp, lbl: 'XP' },
@@ -511,6 +553,9 @@
 			if (si.icon === 'star') drawStar(ctx, iconCx, iconY, 6);
 			else if (si.icon === 'comment') drawComment(ctx, iconCx, iconY, 5);
 			else if (si.icon === 'mic') drawMic(ctx, iconCx, iconY, 6);
+			else if (si.icon === 'coin') drawCoin(ctx, iconCx, iconY, 6);
+			else if (si.icon === 'sack') drawSack(ctx, iconCx, iconY, 6);
+			else if (si.icon === 'stack') drawStack(ctx, iconCx, iconY, 5);
 
 			ctx.font = `800 14px ${fontBase}`;
 			ctx.fillStyle = C.text;

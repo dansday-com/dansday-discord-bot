@@ -69,15 +69,6 @@
 		return 'flat';
 	}
 
-	function sparkPath(prices: number[], w = 72, h = 24): string {
-		if (!prices || prices.length < 2) return '';
-		const min = Math.min(...prices);
-		const max = Math.max(...prices);
-		const span = max - min || 1;
-		const step = w / (prices.length - 1);
-		return prices.map((p, i) => `${i === 0 ? 'M' : 'L'}${(i * step).toFixed(1)},${(h - ((p - min) / span) * h).toFixed(1)}`).join(' ');
-	}
-
 	async function refresh() {
 		try {
 			const res = await fetch(`/api/assets/${encodeURIComponent(ctx.serverSlug)}/board`);
@@ -173,27 +164,45 @@
 		}
 	}
 
-	let sellBusy = $state<number | null>(null);
-	async function sell(position: any) {
-		if (sellBusy) return;
-		sellBusy = position.id;
+	let sellPos = $state<any | null>(null);
+	let sellPercent = $state(100);
+	let sellBusy = $state(false);
+
+	const SELL_PCTS = [25, 50, 75, 100];
+
+	function openSell(p: any) {
+		sellPos = p;
+		sellPercent = 100;
+	}
+
+	$effect(() => {
+		if (sellPos === null) return;
+		document.body.style.overflow = 'hidden';
+		return () => (document.body.style.overflow = '');
+	});
+
+	async function confirmSell() {
+		const p = sellPos;
+		if (!p || sellBusy) return;
+		sellBusy = true;
 		try {
 			const res = await fetch(`/api/assets/${encodeURIComponent(ctx.serverSlug)}/sell`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ card: ctx.hash, position_id: position.id })
+				body: JSON.stringify({ card: ctx.hash, position_id: p.id, percent: sellPercent })
 			});
 			const d = await res.json();
 			if (d.success) {
 				ctx.setLiveXp(ctx.liveXp + (Number(d.payout) || 0));
 				const net = Number(d.net) || 0;
-				showToast(`Sold ${position.symbol} · ${net >= 0 ? '+' : ''}${fmt(net)} XP`, net >= 0 ? 'success' : 'error');
+				showToast(`Sold ${p.symbol} · ${net >= 0 ? '+' : ''}${fmt(net)} XP`, net >= 0 ? 'success' : 'error');
+				sellPos = null;
 				await ctx.invalidateAll();
 			} else showToast(d.error || 'Sell failed', 'error');
 		} catch {
 			showToast('Sell failed', 'error');
 		} finally {
-			sellBusy = null;
+			sellBusy = false;
 		}
 	}
 
@@ -202,11 +211,18 @@
 
 <svelte:head><title>{data.server.name || data.server.slug} Assets | {APP_NAME} Discord Bot</title></svelte:head>
 
-{#snippet assetRow(a: any, showBuy = true)}
+{#snippet assetRow(a: any)}
 	{@const live = priceMap.get(`${a.asset_type}:${a.asset_id}`)}
 	{@const price = live?.price ?? a.price ?? 0}
 	{@const change = live?.change24h ?? a.change24h ?? 0}
-	<article class="m-asset-row" data-dir={dir(change)}>
+	<button
+		type="button"
+		class="m-asset-row"
+		data-dir={dir(change)}
+		disabled={ctx.readOnly}
+		onclick={() => !ctx.readOnly && openBuy(a)}
+		aria-label="Buy {a.symbol}"
+	>
 		<div class="m-asset-id">
 			{#if a.image}<img class="m-asset-logo" src={a.image} alt="" loading="lazy" />{:else}<span class="m-asset-logo m-asset-logo--ph"
 					>{(a.symbol || '?').slice(0, 1)}</span
@@ -217,27 +233,13 @@
 			</div>
 		</div>
 
-		{#if a.sparkline?.length > 1}
-			<svg class="m-asset-spark" viewBox="0 0 72 24" preserveAspectRatio="none" aria-hidden="true">
-				<path d={sparkPath(a.sparkline)} fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
-			</svg>
-		{/if}
-
 		<div class="m-asset-fig">
 			<span class="m-asset-price">{fmtPrice(price)}</span>
 			<span class="m-asset-chg" data-dir={dir(change)}>
 				<i class="fas fa-caret-{change >= 0 ? 'up' : 'down'}"></i>{pctText(change)}
 			</span>
 		</div>
-
-		{#if showBuy}
-			{#if ctx.readOnly}
-				<button class="m-asset-buy" disabled title="Open your card to trade"><i class="fas fa-eye"></i></button>
-			{:else}
-				<button class="m-asset-buy" onclick={() => openBuy(a)} aria-label="Buy {a.symbol}"><i class="fas fa-plus"></i></button>
-			{/if}
-		{/if}
-	</article>
+	</button>
 {/snippet}
 
 {#if data.category === 'positions'}
@@ -246,7 +248,14 @@
 	{:else}
 		<div class="m-asset-list">
 			{#each livePositions as p (p.id)}
-				<article class="m-asset-pos" data-dir={dir(p.pnl)}>
+				<button
+					type="button"
+					class="m-asset-row"
+					data-dir={dir(p.pnl)}
+					disabled={ctx.readOnly}
+					onclick={() => !ctx.readOnly && openSell(p)}
+					aria-label="Sell {p.symbol}"
+				>
 					<div class="m-asset-id">
 						{#if p.asset_image}<img class="m-asset-logo" src={p.asset_image} alt="" loading="lazy" />{:else}<span class="m-asset-logo m-asset-logo--ph"
 								>{(p.symbol || '?').slice(0, 1)}</span
@@ -256,18 +265,13 @@
 							<span class="m-asset-full">{fmt(p.xp_invested)} XP @ {fmtPrice(p.buy_price)}</span>
 						</div>
 					</div>
-					<div class="m-asset-pos-fig">
+					<div class="m-asset-fig">
 						<span class="m-asset-price">{fmt(p.value)} XP</span>
 						<span class="m-asset-chg" data-dir={dir(p.pnl)}>
 							<i class="fas fa-caret-{p.pnl >= 0 ? 'up' : 'down'}"></i>{p.pnl >= 0 ? '+' : ''}{fmt(p.pnl)} ({pctText(p.pnl_percent)})
 						</span>
 					</div>
-					{#if !ctx.readOnly}
-						<button class="m-asset-sell" disabled={sellBusy === p.id} onclick={() => sell(p)}>
-							{#if sellBusy === p.id}<i class="fas fa-spinner fa-spin"></i>{:else}Sell{/if}
-						</button>
-					{/if}
-				</article>
+				</button>
 			{/each}
 		</div>
 	{/if}
@@ -300,19 +304,15 @@
 	{@const live = priceMap.get(`${buyAsset.asset_type}:${buyAsset.asset_id}`)}
 	{@const price = live?.price ?? buyAsset.price ?? 0}
 	{@const change = live?.change24h ?? buyAsset.change24h ?? 0}
-	<div class="m-asset-overlay" role="presentation" onclick={() => (!buyBusy ? (buyAsset = null) : null)}>
-		<div class="m-asset-modal" role="dialog" aria-modal="true" aria-label="Buy asset" onclick={(e) => e.stopPropagation()}>
-			<div class="m-asset-modal-head">
-				<div class="m-asset-id">
-					{#if buyAsset.image}<img class="m-asset-logo" src={buyAsset.image} alt="" />{:else}<span class="m-asset-logo m-asset-logo--ph"
-							>{(buyAsset.symbol || '?').slice(0, 1)}</span
-						>{/if}
-					<div class="m-asset-name">
-						<span class="m-asset-sym">{buyAsset.symbol}</span>
-						<span class="m-asset-full">{buyAsset.name}</span>
-					</div>
-				</div>
-				<button class="m-asset-x" aria-label="Close" onclick={() => (buyAsset = null)}><i class="fas fa-times"></i></button>
+	<div class="m-gamble-overlay" role="presentation" onclick={() => (!buyBusy ? (buyAsset = null) : null)}>
+		<div class="m-gamble" role="dialog" aria-modal="true" aria-label="Buy asset" onclick={(e) => e.stopPropagation()}>
+			<div class="m-gamble-head">
+				<span class="m-gamble-title">
+					<span class="m-gamble-ico">
+						{#if buyAsset.image}<img class="m-asset-logo" src={buyAsset.image} alt="" />{:else}{(buyAsset.symbol || '?').slice(0, 1)}{/if}
+					</span>{buyAsset.symbol}
+				</span>
+				{#if !buyBusy}<button class="m-gamble-x" aria-label="Close" onclick={() => (buyAsset = null)}><i class="fas fa-times"></i></button>{/if}
 			</div>
 
 			<div class="m-asset-modal-price">
@@ -320,22 +320,72 @@
 				<span class="m-asset-chg" data-dir={dir(change)}><i class="fas fa-caret-{change >= 0 ? 'up' : 'down'}"></i>{pctText(change)} · 24h</span>
 			</div>
 
-			<div class="m-asset-pcts">
+			<div class="m-gamble-picker">
 				{#each BUY_PCTS as p}
-					<button class="m-asset-pct" onclick={() => setBuyPct(p)}>{p === 100 ? 'Max' : `${p}%`}</button>
+					<button class="m-gamble-pct" disabled={buyBusy} onclick={() => setBuyPct(p)}>{p === 100 ? 'Max' : `${p}%`}</button>
 				{/each}
 			</div>
-			<input class="m-asset-input" type="number" min="1" max={ctx.liveXp} placeholder="XP to invest" bind:value={buyAmount} disabled={buyBusy} />
+			<input class="m-gamble-custom" type="number" min="1" max={ctx.liveXp} placeholder="XP to invest" bind:value={buyAmount} disabled={buyBusy} />
 
 			<div class="m-asset-modal-meta">
 				<span>Balance: {fmt(ctx.liveXp)} XP</span>
 				<span>≈ {buyAmount && price > 0 ? (Number(buyAmount) / price).toPrecision(4) : '0'} {buyAsset.symbol}</span>
 			</div>
 
-			<button class="m-asset-confirm" disabled={buyBusy || !buyAmount || Number(buyAmount) <= 0 || Number(buyAmount) > ctx.liveXp} onclick={confirmBuy}>
+			<button
+				class="m-gamble-play m-gamble-play--charged"
+				disabled={buyBusy || !buyAmount || Number(buyAmount) <= 0 || Number(buyAmount) > ctx.liveXp}
+				onclick={confirmBuy}
+			>
 				{#if buyBusy}<i class="fas fa-circle-notch fa-spin"></i>Buying…{:else}<i class="fas fa-arrow-trend-up"></i>Invest {buyAmount
 						? `${fmt(Number(buyAmount))} XP`
 						: ''}{/if}
+			</button>
+		</div>
+	</div>
+{/if}
+
+{#if sellPos}
+	{@const live = priceMap.get(`${sellPos.asset_type}:${sellPos.asset_id}`)}
+	{@const price = live?.price ?? sellPos.current_price ?? sellPos.buy_price ?? 0}
+	{@const value = sellPos.buy_price > 0 ? Math.round(sellPos.xp_invested * (price / sellPos.buy_price)) : sellPos.xp_invested}
+	{@const sellValue = Math.round((value * sellPercent) / 100)}
+	{@const sellNet = Math.round(((value - sellPos.xp_invested) * sellPercent) / 100)}
+	<div class="m-gamble-overlay" role="presentation" onclick={() => (!sellBusy ? (sellPos = null) : null)}>
+		<div class="m-gamble" role="dialog" aria-modal="true" aria-label="Sell asset" onclick={(e) => e.stopPropagation()}>
+			<div class="m-gamble-head">
+				<span class="m-gamble-title">
+					<span class="m-gamble-ico">
+						{#if sellPos.asset_image}<img class="m-asset-logo" src={sellPos.asset_image} alt="" />{:else}{(sellPos.symbol || '?').slice(0, 1)}{/if}
+					</span>{sellPos.symbol}
+				</span>
+				{#if !sellBusy}<button class="m-gamble-x" aria-label="Close" onclick={() => (sellPos = null)}><i class="fas fa-times"></i></button>{/if}
+			</div>
+
+			<div class="m-asset-modal-price">
+				<span class="m-asset-modal-p">{fmt(value)} XP</span>
+				<span class="m-asset-chg" data-dir={dir(sellPos.pnl)}
+					><i class="fas fa-caret-{sellPos.pnl >= 0 ? 'up' : 'down'}"></i>{sellPos.pnl >= 0 ? '+' : ''}{fmt(sellPos.pnl)} XP</span
+				>
+			</div>
+
+			<div class="m-gamble-picker">
+				{#each SELL_PCTS as p}
+					<button class="m-gamble-pct" class:m-gamble-pct--active={sellPercent === p} disabled={sellBusy} onclick={() => (sellPercent = p)}
+						>{p === 100 ? 'All' : `${p}%`}</button
+					>
+				{/each}
+			</div>
+
+			<div class="m-asset-modal-meta">
+				<span>Selling {sellPercent}%</span>
+				<span>Get back {fmt(sellValue)} XP ({sellNet >= 0 ? '+' : ''}{fmt(sellNet)})</span>
+			</div>
+
+			<button class="m-gamble-play m-gamble-play--charged" disabled={sellBusy} onclick={confirmSell}>
+				{#if sellBusy}<i class="fas fa-circle-notch fa-spin"></i>Selling…{:else}<i class="fas fa-hand-holding-dollar"></i>Sell {sellPercent === 100
+						? 'all'
+						: `${sellPercent}%`} · {fmt(sellValue)} XP{/if}
 			</button>
 		</div>
 	</div>

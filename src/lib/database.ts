@@ -2159,6 +2159,38 @@ export async function closeAssetPosition(positionId: any, data: { sell_price: nu
 	return true;
 }
 
+export async function reduceAssetPosition(positionId: any, data: { sold_invested: number; sell_price: number; xp_returned: number }) {
+	await initializeDatabase();
+	const position = await getAssetPosition(positionId);
+	if (!position || position.status !== 'open') return false;
+	const now = toMySQLDateTime();
+	const sold = Math.max(0, Math.floor(Number(data.sold_invested) || 0));
+	const remaining = Math.max(0, (Number(position.xp_invested) || 0) - sold);
+	await db.insert(schema.serverMemberAssetPositions).values({
+		member_id: Number(position.member_id),
+		asset_type: String(position.asset_type),
+		asset_id: String(position.asset_id),
+		symbol: String(position.symbol),
+		asset_name: String(position.asset_name),
+		asset_image: position.asset_image != null ? String(position.asset_image) : null,
+		xp_invested: sold,
+		buy_price: String(position.buy_price) as any,
+		status: 'closed',
+		opened_at: position.opened_at as any,
+		closed_at: now as any,
+		sell_price: String(data.sell_price) as any,
+		xp_returned: Number(data.xp_returned) || 0,
+		created_at: now as any,
+		updated_at: now as any
+	});
+	await db.execute(sql`
+		UPDATE server_member_asset_positions
+		SET xp_invested = ${remaining}, updated_at = ${now}
+		WHERE id = ${Number(positionId)} AND status = 'open'
+	`);
+	return true;
+}
+
 export async function getDisguisedMemberIds(serverId: any): Promise<number[]> {
 	await initializeDatabase();
 	if (!serverId) return [];
@@ -4539,6 +4571,7 @@ export default {
 	getOpenAssetPositions,
 	getMemberAssetHistory,
 	closeAssetPosition,
+	reduceAssetPosition,
 	getServerLeaderboard,
 	getLeaderboardPeriodCounts,
 	getItemsGamblerLeaderboard,

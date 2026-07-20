@@ -84,6 +84,8 @@ export const load: PageServerLoad = async ({ parent, params, url }) => {
 		}
 	}
 
+	assetEvents.sort((a, b) => (b.at ?? 0) - (a.at ?? 0));
+
 	const events =
 		tab === 'items'
 			? itemEvents

@@ -260,7 +260,7 @@ export async function handleAssetBuy(_client: any, payload: any) {
 }
 
 export async function handleAssetSell(_client: any, payload: any) {
-	const { guild_id, actor_discord_id, position_id } = payload || {};
+	const { guild_id, actor_discord_id, position_id, percent } = payload || {};
 	if (!guild_id || !actor_discord_id || !position_id) return { ok: false, error: 'missing_fields' };
 
 	const { getServerForCurrentBot } = await import('../../../config.js');
@@ -283,15 +283,22 @@ export async function handleAssetSell(_client: any, payload: any) {
 
 	const buyPrice = Number(position.buy_price) || 0;
 	const invested = Number(position.xp_invested) || 0;
-	const payout = buyPrice > 0 ? Math.max(0, Math.round(invested * (market.price / buyPrice))) : invested;
+	const pct = Math.max(1, Math.min(100, Math.floor(Number(percent) || 100)));
+	const soldInvested = pct >= 100 ? invested : Math.max(1, Math.min(invested, Math.floor((invested * pct) / 100)));
+	const full = soldInvested >= invested;
+	const payout = buyPrice > 0 ? Math.max(0, Math.round(soldInvested * (market.price / buyPrice))) : soldInvested;
 
 	const before = await db.getMemberLevel(memberId).catch(() => null);
 	await db.ensureMemberLevel(memberId);
 	await db.updateMemberLevelStats(memberId, { experienceIncrement: payout });
-	await db.closeAssetPosition(position_id, { sell_price: market.price, xp_returned: payout });
+	if (full) {
+		await db.closeAssetPosition(position_id, { sell_price: market.price, xp_returned: payout });
+	} else {
+		await db.reduceAssetPosition(position_id, { sold_invested: soldInvested, sell_price: market.price, xp_returned: payout });
+	}
 	await finalize(guild_id, memberId, before, 'asset-sell');
 
-	return { ok: true, payout, invested, sell_price: market.price, net: payout - invested };
+	return { ok: true, payout, invested: soldInvested, sell_price: market.price, net: payout - soldInvested, full };
 }
 
 async function resolveAssetMeta(assetType: string, assetId: string): Promise<{ symbol: string; name: string; image: string | null }> {

@@ -2131,6 +2131,27 @@ export async function getOpenAssetPositions(memberId: any) {
 	return (rows[0] as unknown as any[]) || [];
 }
 
+export async function getOpenAssetPosition(memberId: any, assetType: string, assetId: string) {
+	await initializeDatabase();
+	const rows = await db.execute(sql`
+		SELECT * FROM server_member_asset_positions
+		WHERE member_id = ${Number(memberId)} AND status = 'open' AND asset_type = ${String(assetType)} AND asset_id = ${String(assetId)}
+		LIMIT 1
+	`);
+	return ((rows[0] as unknown as any[]) || [])[0] ?? null;
+}
+
+export async function mergeAssetPosition(positionId: any, data: { xp_invested: number; buy_price: number }) {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	await db.execute(sql`
+		UPDATE server_member_asset_positions
+		SET xp_invested = ${Number(data.xp_invested) || 0}, buy_price = ${String(data.buy_price)}, updated_at = ${now}
+		WHERE id = ${Number(positionId)} AND status = 'open'
+	`);
+	return true;
+}
+
 export async function getMemberAssetHistory(memberId: any, limit = 600) {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
@@ -4569,6 +4590,8 @@ export default {
 	openAssetPosition,
 	getAssetPosition,
 	getOpenAssetPositions,
+	getOpenAssetPosition,
+	mergeAssetPosition,
 	getMemberAssetHistory,
 	closeAssetPosition,
 	reduceAssetPosition,

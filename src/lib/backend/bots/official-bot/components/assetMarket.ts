@@ -10,6 +10,7 @@ const MARKETS_TTL_MS = 5 * 60_000;
 const SEARCH_TTL_MS = 10 * 60_000;
 const POLL_LOCK_TTL_S = Math.ceil(POLL_INTERVAL_MS / 1000) + 20;
 const MARKETS_PER_PAGE = 50;
+export const MIN_BUY_XP = 1000;
 
 const MARKETS_KEY = 'assets:markets';
 const priceKey = (assetType: string, assetId: string) => `assets:price:${assetType}:${assetId}`;
@@ -87,18 +88,7 @@ async function distinctHeldCryptoIds(): Promise<string[]> {
 	return ((rows as any[]) || []).map((r) => String(r.asset_id)).filter(Boolean);
 }
 
-const VIEWER_KEY = 'assets:viewers';
-
-async function hasRecentViewer(): Promise<boolean> {
-	const redis = await getRedisClient().catch(() => null);
-	if (!redis) return true;
-	const v = await redis.get(VIEWER_KEY).catch(() => null);
-	return v != null;
-}
-
 async function pollOnce(botId: string): Promise<void> {
-	if (!(await hasRecentViewer())) return;
-
 	const redis = await getRedisClient().catch(() => null);
 	if (redis) {
 		const token = `${process.pid}:${botId}`;
@@ -231,6 +221,7 @@ export async function handleAssetBuy(_client: any, payload: any) {
 	const type = String(asset_type || 'crypto');
 	const amount = Math.max(0, Math.floor(Number(xp_amount) || 0));
 	if (amount <= 0) return { ok: false, error: 'invalid_amount' };
+	if (amount < MIN_BUY_XP) return { ok: false, error: 'below_minimum', min: MIN_BUY_XP };
 
 	const market = await getAssetPrice(type, String(asset_id));
 	if (!market || market.price <= 0) return { ok: false, error: 'price_unavailable' };
@@ -244,16 +235,27 @@ export async function handleAssetBuy(_client: any, payload: any) {
 	const spent = await spendXp(memberId, amount, guild_id);
 	if (!spent.ok) return { ok: false, error: 'insufficient_xp' };
 
-	const position = await db.openAssetPosition({
-		member_id: memberId,
-		asset_type: type,
-		asset_id: String(asset_id),
-		symbol: meta.symbol,
-		asset_name: meta.name,
-		asset_image: meta.image,
-		xp_invested: amount,
-		buy_price: market.price
-	});
+	const existing = await db.getOpenAssetPosition(memberId, type, String(asset_id)).catch(() => null);
+	let position;
+	if (existing) {
+		const prevInvested = Number(existing.xp_invested) || 0;
+		const prevPrice = Number(existing.buy_price) || market.price;
+		const newInvested = prevInvested + amount;
+		const avgPrice = newInvested > 0 ? (prevInvested * prevPrice + amount * market.price) / newInvested : market.price;
+		await db.mergeAssetPosition(existing.id, { xp_invested: newInvested, buy_price: avgPrice });
+		position = await db.getAssetPosition(existing.id);
+	} else {
+		position = await db.openAssetPosition({
+			member_id: memberId,
+			asset_type: type,
+			asset_id: String(asset_id),
+			symbol: meta.symbol,
+			asset_name: meta.name,
+			asset_image: meta.image,
+			xp_invested: amount,
+			buy_price: market.price
+		});
+	}
 
 	await finalize(guild_id, memberId, before, 'asset-buy');
 	return { ok: true, position, price: market.price };

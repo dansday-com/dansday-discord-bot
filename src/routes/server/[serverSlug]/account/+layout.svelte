@@ -333,37 +333,34 @@
 			<div class="m-xp-avatar">
 				<img src={memberAvatar} alt={pd.memberName ?? ''} loading="lazy" />
 			</div>
-			{#if isAssets}
-				<div class="m-xp-figures">
-					<span class="m-xp-wallet"><i class="fas fa-chart-line"></i>Invested in Assets</span>
-					<span class="m-xp-amount">{fmt(assetSummary.invested)}<span class="m-xp-unit">XP</span></span>
-					<span class="m-xp-bar-meta">
+			<div class="m-xp-figures">
+				<span class="m-xp-wallet"><i class="fas {isAssets ? 'fa-chart-line' : 'fa-wallet'}"></i>{isAssets ? 'Invested in Assets' : 'Wallet'}</span>
+				{#if pd.memberName}<span class="m-xp-name">{pd.memberName}</span>{/if}
+				<span class="m-xp-amount">{fmt(isAssets ? assetSummary.invested : liveXp)}<span class="m-xp-unit">XP</span></span>
+				{#if !isAssets}
+					<div class="m-xp-bar">
+						<div class="m-xp-bar-fill" style="width: {levelInfo.pct}%"></div>
+					</div>
+				{/if}
+				<span class="m-xp-bar-meta">
+					{#if isAssets}
 						<span>{assetSummary.count} position{assetSummary.count === 1 ? '' : 's'}</span>
 						<span>Now worth {fmt(assetSummary.value)} XP</span>
-					</span>
-				</div>
-				<div class="m-xp-stats">
+					{:else}
+						<span>Lvl {level}</span>
+						<span>{levelInfo.toNext > 0 ? `${fmt(levelInfo.toNext)} XP to Lvl ${level + 1}` : 'Max progress'}</span>
+					{/if}
+				</span>
+			</div>
+			<div class="m-xp-stats">
+				{#if isAssets}
 					<div class="m-xp-stat m-xp-stat--pnl" data-dir={assetSummary.pnl > 0 ? 'up' : assetSummary.pnl < 0 ? 'down' : 'flat'}>
 						<span class="m-xp-stat-val">
 							<i class="fas fa-caret-{assetSummary.pnl >= 0 ? 'up' : 'down'}"></i>{assetSummary.pnlPct >= 0 ? '+' : ''}{assetSummary.pnlPct.toFixed(2)}%
 						</span>
 						<span class="m-xp-stat-lbl">{assetSummary.pnl >= 0 ? '+' : ''}{fmt(assetSummary.pnl)} XP</span>
 					</div>
-				</div>
-			{:else}
-				<div class="m-xp-figures">
-					<span class="m-xp-wallet"><i class="fas fa-wallet"></i>Wallet</span>
-					{#if pd.memberName}<span class="m-xp-name">{pd.memberName}</span>{/if}
-					<span class="m-xp-amount">{fmt(liveXp)}<span class="m-xp-unit">XP</span></span>
-					<div class="m-xp-bar">
-						<div class="m-xp-bar-fill" style="width: {levelInfo.pct}%"></div>
-					</div>
-					<span class="m-xp-bar-meta">
-						<span>Lvl {level}</span>
-						<span>{levelInfo.toNext > 0 ? `${fmt(levelInfo.toNext)} XP to Lvl ${level + 1}` : 'Max progress'}</span>
-					</span>
-				</div>
-				<div class="m-xp-stats">
+				{:else}
 					<div class="m-xp-stat">
 						<span class="m-xp-stat-val">{levelInfo.pct}%</span>
 						<span class="m-xp-stat-lbl">Level {level}</span>
@@ -374,8 +371,8 @@
 							<span class="m-xp-stat-lbl">Rank</span>
 						</div>
 					{/if}
-				</div>
-			{/if}
+				{/if}
+			</div>
 		</div>
 	{/if}
 

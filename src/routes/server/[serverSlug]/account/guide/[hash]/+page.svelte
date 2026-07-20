@@ -114,8 +114,12 @@
 
 	const assetSteps = [
 		{ icon: 'fa-chart-line', title: 'Open Assets', desc: 'Tap the Assets tab. Browse the Top 50, Gainers, Losers, or Search any coin.' },
-		{ icon: 'fa-arrow-trend-up', title: 'Invest XP', desc: 'Pick a coin, choose how much XP to invest, and buy at the live market price.' },
-		{ icon: 'fa-wallet', title: 'Watch it move', desc: 'Your position tracks the real price. My Assets shows live profit or loss in XP.' },
+		{ icon: 'fa-arrow-trend-up', title: 'Invest XP', desc: 'Pick a coin, choose how much XP to invest (minimum 1,000 XP), and buy at the live market price.' },
+		{
+			icon: 'fa-wallet',
+			title: 'Watch it move',
+			desc: 'Your position tracks the real price. My Assets shows live profit or loss in XP. Buying the same coin again averages into one holding.'
+		},
 		{ icon: 'fa-hand-holding-dollar', title: 'Sell anytime', desc: 'Sell to cash out. You get XP back scaled by how the price moved since you bought.' }
 	];
 

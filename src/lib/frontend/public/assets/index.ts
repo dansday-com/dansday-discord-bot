@@ -21,9 +21,38 @@ export async function loadMarketsBoard(): Promise<any[]> {
 	return cached?.rows ?? [];
 }
 
-export async function markAssetViewer(): Promise<void> {
-	const redis = await getRedisClient().catch(() => null);
-	if (redis) await redis.set('assets:viewers', String(Date.now()), { EX: 90 }).catch(() => null);
+type BoardListener = (rows: any[]) => void;
+
+const boardListeners = new Set<BoardListener>();
+let boardTimer: ReturnType<typeof setInterval> | null = null;
+let boardLastJson = '';
+
+export function subscribeAssetsBoard(fn: BoardListener): () => void {
+	boardListeners.add(fn);
+	loadMarketsBoard().then((rows) => {
+		if (rows.length) fn(rows);
+	});
+
+	if (!boardTimer) {
+		boardTimer = setInterval(async () => {
+			if (boardListeners.size === 0) return;
+			const rows = await loadMarketsBoard();
+			const json = JSON.stringify(rows);
+			if (json === boardLastJson) return;
+			boardLastJson = json;
+			for (const l of boardListeners) l(rows);
+		}, 5_000);
+		boardTimer.unref?.();
+	}
+
+	return () => {
+		boardListeners.delete(fn);
+		if (boardListeners.size === 0 && boardTimer) {
+			clearInterval(boardTimer);
+			boardTimer = null;
+			boardLastJson = '';
+		}
+	};
 }
 
 async function priceFor(assetType: string, assetId: string): Promise<{ price: number; change24h: number } | null> {

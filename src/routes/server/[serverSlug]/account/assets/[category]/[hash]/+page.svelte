@@ -63,26 +63,33 @@
 		const v = Number(n) || 0;
 		return `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
 	}
+	function fmtUnits(qty: number): string {
+		const v = Number(qty) || 0;
+		if (v <= 0) return '0';
+		if (v >= 1) return v.toLocaleString('en-US', { maximumFractionDigits: 4 });
+		if (v >= 0.0001) return v.toFixed(6);
+		return v.toFixed(8);
+	}
 	function dir(n: number): 'up' | 'down' | 'flat' {
 		if (n > 0) return 'up';
 		if (n < 0) return 'down';
 		return 'flat';
 	}
 
-	async function refresh() {
-		try {
-			const res = await fetch(`/api/assets/${encodeURIComponent(ctx.serverSlug)}/board`);
-			if (!res.ok) return;
-			const d = await res.json();
-			if (Array.isArray(d.board)) {
-				board = d.board;
-				lastSync = Date.now();
-			}
-		} catch {}
-	}
 	$effect(() => {
-		const t = setInterval(refresh, 20_000);
-		return () => clearInterval(t);
+		if (typeof EventSource === 'undefined') return;
+		const es = new EventSource(`/api/assets/${encodeURIComponent(ctx.serverSlug)}/board-stream`);
+		es.onmessage = (e) => {
+			try {
+				const d = JSON.parse(e.data);
+				if (Array.isArray(d.board)) {
+					board = d.board;
+					lastSync = Date.now();
+				}
+			} catch {}
+		};
+		es.onerror = () => {};
+		return () => es.close();
 	});
 
 	let searchQuery = $state('');
@@ -116,6 +123,7 @@
 	let buyBusy = $state(false);
 
 	const BUY_PCTS = [25, 50, 75, 100];
+	const MIN_BUY = 1000;
 	function setBuyPct(p: number) {
 		buyAmount = Math.floor((ctx.liveXp * p) / 100);
 	}
@@ -308,8 +316,8 @@
 		<div class="m-gamble" role="dialog" aria-modal="true" aria-label="Buy asset" onclick={(e) => e.stopPropagation()}>
 			<div class="m-gamble-head">
 				<span class="m-gamble-title">
-					<span class="m-gamble-ico">
-						{#if buyAsset.image}<img class="m-asset-logo" src={buyAsset.image} alt="" />{:else}{(buyAsset.symbol || '?').slice(0, 1)}{/if}
+					<span class="m-gamble-ico m-gamble-ico--asset">
+						{#if buyAsset.image}<img src={buyAsset.image} alt="" />{:else}{(buyAsset.symbol || '?').slice(0, 1)}{/if}
 					</span>{buyAsset.symbol}
 				</span>
 				{#if !buyBusy}<button class="m-gamble-x" aria-label="Close" onclick={() => (buyAsset = null)}><i class="fas fa-times"></i></button>{/if}
@@ -325,16 +333,24 @@
 					<button class="m-gamble-pct" disabled={buyBusy} onclick={() => setBuyPct(p)}>{p === 100 ? 'Max' : `${p}%`}</button>
 				{/each}
 			</div>
-			<input class="m-gamble-custom" type="number" min="1" max={ctx.liveXp} placeholder="XP to invest" bind:value={buyAmount} disabled={buyBusy} />
+			<input
+				class="m-gamble-custom"
+				type="number"
+				min={MIN_BUY}
+				max={ctx.liveXp}
+				placeholder="XP to invest (min {fmt(MIN_BUY)})"
+				bind:value={buyAmount}
+				disabled={buyBusy}
+			/>
 
 			<div class="m-asset-modal-meta">
 				<span>Balance: {fmt(ctx.liveXp)} XP</span>
-				<span>≈ {buyAmount && price > 0 ? (Number(buyAmount) / price).toPrecision(4) : '0'} {buyAsset.symbol}</span>
+				<span>≈ {buyAmount && price > 0 ? fmtUnits(Number(buyAmount) / price) : '0'} {buyAsset.symbol}</span>
 			</div>
 
 			<button
 				class="m-gamble-play m-gamble-play--charged"
-				disabled={buyBusy || !buyAmount || Number(buyAmount) <= 0 || Number(buyAmount) > ctx.liveXp}
+				disabled={buyBusy || !buyAmount || Number(buyAmount) < MIN_BUY || Number(buyAmount) > ctx.liveXp}
 				onclick={confirmBuy}
 			>
 				{#if buyBusy}<i class="fas fa-circle-notch fa-spin"></i>Buying…{:else}<i class="fas fa-arrow-trend-up"></i>Invest {buyAmount
@@ -355,8 +371,8 @@
 		<div class="m-gamble" role="dialog" aria-modal="true" aria-label="Sell asset" onclick={(e) => e.stopPropagation()}>
 			<div class="m-gamble-head">
 				<span class="m-gamble-title">
-					<span class="m-gamble-ico">
-						{#if sellPos.asset_image}<img class="m-asset-logo" src={sellPos.asset_image} alt="" />{:else}{(sellPos.symbol || '?').slice(0, 1)}{/if}
+					<span class="m-gamble-ico m-gamble-ico--asset">
+						{#if sellPos.asset_image}<img src={sellPos.asset_image} alt="" />{:else}{(sellPos.symbol || '?').slice(0, 1)}{/if}
 					</span>{sellPos.symbol}
 				</span>
 				{#if !sellBusy}<button class="m-gamble-x" aria-label="Close" onclick={() => (sellPos = null)}><i class="fas fa-times"></i></button>{/if}

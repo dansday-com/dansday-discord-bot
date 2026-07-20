@@ -1,14 +1,13 @@
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { itemsCardTokenFromUrl } from '$lib/frontend/public/items/index.js';
-import { loadAssetsShared, markAssetViewer } from '$lib/frontend/public/assets/index.js';
+import { loadAssetsShared } from '$lib/frontend/public/assets/index.js';
 
 const VALID = new Set(['top', 'gainers', 'losers', 'search', 'positions']);
 
 export const load: PageServerLoad = async ({ parent, params }) => {
 	const { server } = await parent();
 
-	await markAssetViewer();
 	const hash = itemsCardTokenFromUrl(params.hash);
 	const shared = await loadAssetsShared(server, hash);
 	if ('notFound' in shared) error(404, 'Assets not available');

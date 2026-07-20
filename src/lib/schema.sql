@@ -668,7 +668,13 @@ CREATE INDEX IF NOT EXISTS idx_server_member_item_actives_target ON server_membe
 CREATE INDEX IF NOT EXISTS idx_server_member_item_actives_sweep ON server_member_item_actives(expiry_notified, expires_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_item_logs_member ON server_member_item_logs(member_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_item_logs_target ON server_member_item_logs(target_member_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_server_member_item_logs_action_created ON server_member_item_logs(action, created_at);
+CREATE INDEX IF NOT EXISTS idx_server_member_item_logs_action_member ON server_member_item_logs(action, member_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_server_member_item_logs_action_target ON server_member_item_logs(action, target_member_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_item_bounties_target ON server_member_item_bounties(target_member_id, collected);
+CREATE INDEX IF NOT EXISTS idx_server_member_item_bounties_placed ON server_member_item_bounties(placed_by_member_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_server_member_item_bounties_created ON server_member_item_bounties(created_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_asset_positions_member ON server_member_asset_positions(member_id, status);
 CREATE INDEX IF NOT EXISTS idx_server_member_asset_positions_held ON server_member_asset_positions(status, asset_type, asset_id);
 CREATE INDEX IF NOT EXISTS idx_server_member_level_logs_member ON server_member_level_logs(member_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_server_member_level_logs_member_created_source ON server_member_level_logs(member_id, created_at, source);

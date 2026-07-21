@@ -346,7 +346,6 @@ export async function handleAssetSell(_client: any, payload: any) {
 	const invested = Number(position.xp_invested) || 0;
 	const currentValue = buyPrice > 0 ? Math.round(invested * (market.price / buyPrice)) : invested;
 
-	// amount is the XP payout the member wants to cash out; default to selling the whole position.
 	const requested = Math.floor(Number(amount) || 0);
 	const targetPayout = requested > 0 ? Math.min(requested, currentValue) : currentValue;
 	if (targetPayout <= 0) return { ok: false, error: 'invalid_amount' };

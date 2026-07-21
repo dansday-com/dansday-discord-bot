@@ -37,10 +37,7 @@
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
 		<i class="fas fa-chart-line text-sky-400"></i>Assets
 	</h3>
-	<p class="text-ash-400 text-xs">
-		Let members invest their XP in real-world crypto at live prices — an XP paper-trading market. No real money, no channel announcements; members open it from
-		the Account page.
-	</p>
+	<p class="text-ash-400 text-xs">XP paper-trading market with live crypto prices.</p>
 
 	<ConfigToggleRow
 		label="Assets module"
@@ -53,13 +50,6 @@
 		<p class="flex items-start gap-2 text-xs text-amber-200/90">
 			<i class="fas fa-power-off mt-0.5 shrink-0 text-amber-400/90" aria-hidden="true"></i>
 			<span>Module is off. Save configuration to apply.</span>
-		</p>
-	{:else}
-		<p class="text-ash-500 flex items-start gap-2 text-xs">
-			<i class="fas fa-circle-info mt-0.5 shrink-0 text-sky-400/90" aria-hidden="true"></i>
-			<span
-				>Members trade with XP earned above their current level, so a bad trade never drops their level or leaderboard rank. Prices are live and volatile.</span
-			>
 		</p>
 	{/if}
 

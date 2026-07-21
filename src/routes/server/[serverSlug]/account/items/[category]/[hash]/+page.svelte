@@ -30,10 +30,10 @@
 		(data.visibleItems ?? [])
 			.map((item: any) => {
 				const a = itemAvailability(item, ctx.now, tzOffset());
-				return { ...item, availableUntil: a.availableUntil, _visible: a.visible };
+				const buyable = item.enabled !== false && (a.state === 'always' || a.state === 'active');
+				return { ...item, availableUntil: a.availableUntil, _state: a.state, _startsAt: a.startsAt, _buyable: buyable };
 			})
-			.filter((item: any) => item._visible)
-			.filter((item: any) => item.enabled !== false || item.usable !== false || (Number(item.owned_quantity) || 0) > 0)
+			.filter((item: any) => item._buyable || (Number(item.owned_quantity) || 0) > 0)
 	);
 
 	const groups = $derived.by(() => {
@@ -102,6 +102,11 @@
 		outcome = describeItemOutcome(effectType, result);
 		if (!outcome.spyReport) outcomeTimer = setTimeout(() => (outcome = null), 3500);
 	}
+	function showFailOutcome(title: string, line: string) {
+		if (outcomeTimer) clearTimeout(outcomeTimer);
+		outcome = { tone: 'lose', icon: 'fa-triangle-exclamation', title, line, deltaXp: null, untilMs: null };
+		outcomeTimer = setTimeout(() => (outcome = null), 3500);
+	}
 	function dismissOutcome() {
 		if (outcomeTimer) clearTimeout(outcomeTimer);
 		outcome = null;
@@ -144,7 +149,7 @@
 			if (d.success) {
 				await ctx.invalidateAll();
 				showOutcome(item.effect_type, d.result ?? { outcome: d.outcome });
-			} else showToast(d.error || 'Failed to use item', 'error');
+			} else showFailOutcome(`${item.name} failed`, d.error || 'Please try again.');
 		} finally {
 			ctx.setBusy(null);
 		}
@@ -205,7 +210,8 @@
 	{@const affordable = canAfford(item)}
 	{@const owned = Number(item.owned_quantity) || 0}
 	{@const buffActive = isBuffActive(item.effect_type)}
-	{@const canBuy = item.enabled !== false}
+	{@const notStarted = item._state === 'upcoming'}
+	{@const canBuy = item._buyable}
 	{@const canUse = item.usable !== false}
 	<article
 		class="m-card"
@@ -232,7 +238,9 @@
 				</button>
 			{/if}
 		</div>
-		{#if item.availableUntil && item.availableUntil > ctx.now}
+		{#if item._state === 'upcoming' && item._startsAt}
+			<span class="m-card-timer m-card-timer--soon"><i class="fas fa-hourglass-start"></i>Starts in {ctx.remainingLabel(item._startsAt)}</span>
+		{:else if item.availableUntil && item.availableUntil > ctx.now}
 			<span class="m-card-timer"><i class="fas fa-hourglass-half"></i>Ends in {ctx.remainingLabel(item.availableUntil)}</span>
 		{/if}
 		<h3 class="m-card-name">{item.name}</h3>
@@ -257,7 +265,15 @@
 					<button
 						class="m-card-btn m-card-btn--buy"
 						disabled={ctx.busy === item.id || !canBuy || !affordable || ctx.bagFull}
-						title={!canBuy ? 'Buying is turned off' : ctx.bagFull ? 'Items full' : !affordable ? 'Not enough XP' : 'Buy one'}
+						title={notStarted
+							? 'Not available yet'
+							: item.enabled === false
+								? 'Buying is turned off'
+								: ctx.bagFull
+									? 'Items full'
+									: !affordable
+										? 'Not enough XP'
+										: 'Buy one'}
 						onclick={(e) => buy(item, e)}
 					>
 						{#if ctx.busy === item.id}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas fa-cart-plus"></i>{/if}

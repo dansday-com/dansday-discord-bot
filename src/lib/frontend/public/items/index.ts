@@ -91,27 +91,44 @@ function itemAvailableNow(item: any): boolean {
 	return true;
 }
 
+function hasWindow(item: any): boolean {
+	return !!(item.available_from || item.available_to || hasRecurringSchedule(item));
+}
+
 export async function loadItemsCatalog(serverId: number): Promise<any[]> {
 	const panelId = await db.getServerPanelId(serverId).catch(() => null);
 	if (panelId == null) return [];
 	const all = await db.listItems(panelId).catch(() => []);
-	return (all as any[])
-		.filter((i) => itemAvailableNow(i) || hasRecurringSchedule(i))
-		.map((i) => ({
+	const out: any[] = [];
+	for (const i of all as any[]) {
+		if (!(itemAvailableNow(i) || hasRecurringSchedule(i))) continue;
+
+		let enabled = i.enabled !== false && i.enabled !== 0;
+		if (hasWindow(i)) {
+			const shouldBeEnabled = itemAvailableNow(i);
+			if (shouldBeEnabled !== enabled) {
+				enabled = shouldBeEnabled;
+				db.setItemEnabled(i.id, shouldBeEnabled).catch(() => null);
+			}
+		}
+
+		out.push({
 			id: i.id,
 			name: i.name,
 			effect_type: i.effect_type,
 			category: i.category,
 			description: i.description,
 			cost: i.cost,
-			enabled: i.enabled !== false && i.enabled !== 0,
+			enabled,
 			usable: i.usable !== false && i.usable !== 0,
 			availableUntil: availableUntilMs(i),
 			available_from: i.available_from ? new Date(i.available_from).toISOString() : null,
 			available_to: i.available_to ? new Date(i.available_to).toISOString() : null,
 			recurring_schedule: typeof i.recurring_schedule === 'string' ? safeParse(i.recurring_schedule) : (i.recurring_schedule ?? null),
 			config: typeof i.config === 'string' ? safeParse(i.config) : i.config
-		}));
+		});
+	}
+	return out;
 }
 
 export async function loadItemsShared(server: any, hash: string, gateComponent?: string) {

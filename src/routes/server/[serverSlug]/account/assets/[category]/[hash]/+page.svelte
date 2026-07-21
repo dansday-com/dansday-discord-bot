@@ -9,6 +9,23 @@
 	const ctx = getContext('items') as any;
 	const { fmt } = ctx;
 
+	let outcome = $state<{ tone: 'win' | 'lose' | 'neutral'; icon: string; title: string; line: string; deltaXp: number | null } | null>(null);
+	let outcomeTimer: ReturnType<typeof setTimeout> | null = null;
+	function showOutcome(o: { tone: 'win' | 'lose' | 'neutral'; icon: string; title: string; line: string; deltaXp: number | null }) {
+		if (outcomeTimer) clearTimeout(outcomeTimer);
+		outcome = o;
+		outcomeTimer = setTimeout(() => (outcome = null), 3500);
+	}
+	function dismissOutcome() {
+		if (outcomeTimer) clearTimeout(outcomeTimer);
+		outcome = null;
+	}
+	$effect(() => {
+		if (outcome === null) return;
+		document.body.style.overflow = 'hidden';
+		return () => (document.body.style.overflow = '');
+	});
+
 	function grp(n: number | null): string {
 		return n == null || !Number.isFinite(n) ? '' : Math.floor(n).toLocaleString();
 	}
@@ -180,12 +197,18 @@
 			const d = await res.json();
 			if (d.success) {
 				ctx.setLiveXp(Math.max(0, ctx.liveXp - amount));
-				showToast(`Bought ${asset.symbol} with ${fmt(amount)} XP`, 'success');
 				buyAsset = null;
+				showOutcome({
+					tone: 'neutral',
+					icon: 'fa-arrow-trend-up',
+					title: `Bought ${asset.symbol}`,
+					line: `Invested in ${asset.name || asset.symbol}.`,
+					deltaXp: -amount
+				});
 				await ctx.invalidateAll();
-			} else showToast(d.error || 'Buy failed', 'error');
+			} else showOutcome({ tone: 'lose', icon: 'fa-triangle-exclamation', title: 'Buy failed', line: d.error || 'Please try again.', deltaXp: null });
 		} catch {
-			showToast('Buy failed', 'error');
+			showOutcome({ tone: 'lose', icon: 'fa-triangle-exclamation', title: 'Buy failed', line: 'Please try again.', deltaXp: null });
 		} finally {
 			buyBusy = false;
 		}
@@ -236,14 +259,21 @@
 			});
 			const d = await res.json();
 			if (d.success) {
-				ctx.setLiveXp(ctx.liveXp + (Number(d.payout) || 0));
+				const payoutXp = Number(d.payout) || 0;
 				const net = Number(d.net) || 0;
-				showToast(`Sold ${p.symbol} · ${net >= 0 ? '+' : ''}${fmt(net)} XP`, net >= 0 ? 'success' : 'error');
+				ctx.setLiveXp(ctx.liveXp + payoutXp);
 				sellPos = null;
+				showOutcome({
+					tone: net >= 0 ? 'win' : 'lose',
+					icon: net >= 0 ? 'fa-hand-holding-dollar' : 'fa-arrow-trend-down',
+					title: `Sold ${p.symbol}`,
+					line: `Cashed out for ${fmt(payoutXp)} XP.`,
+					deltaXp: net
+				});
 				await ctx.invalidateAll();
-			} else showToast(d.error || 'Sell failed', 'error');
+			} else showOutcome({ tone: 'lose', icon: 'fa-triangle-exclamation', title: 'Sell failed', line: d.error || 'Please try again.', deltaXp: null });
 		} catch {
-			showToast('Sell failed', 'error');
+			showOutcome({ tone: 'lose', icon: 'fa-triangle-exclamation', title: 'Sell failed', line: 'Please try again.', deltaXp: null });
 		} finally {
 			sellBusy = false;
 		}
@@ -450,6 +480,21 @@
 						payout
 					)} XP{/if}
 			</button>
+		</div>
+	</div>
+{/if}
+
+{#if outcome}
+	<div class="m-out-overlay" role="presentation" onclick={dismissOutcome}>
+		<div class="m-out m-out--{outcome.tone}" role="dialog" aria-modal="true" aria-label={outcome.title} onclick={(e) => e.stopPropagation()}>
+			<div class="m-out-icon"><i class="fas {outcome.icon}"></i></div>
+			<div class="m-out-title">{outcome.title}</div>
+			{#if outcome.deltaXp != null && outcome.deltaXp !== 0}
+				<div class="m-out-delta {outcome.deltaXp >= 0 ? 'm-out-delta--up' : 'm-out-delta--down'}">
+					{outcome.deltaXp >= 0 ? '+' : '−'}{fmt(Math.abs(outcome.deltaXp))} XP
+				</div>
+			{/if}
+			<p class="m-out-line">{outcome.line}</p>
 		</div>
 	</div>
 {/if}

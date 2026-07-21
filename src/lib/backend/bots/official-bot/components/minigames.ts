@@ -45,10 +45,10 @@ export async function handleMinigamePlay(client: any, payload: any) {
 	const mult = clampMultiplier(multiplier);
 	const chance = winChanceFor(mult);
 
-	const spendable = await getSpendableXp(actorMemberId, guild_id);
+	const balance = await getSpendableXp(actorMemberId, guild_id);
 	const wager = Math.max(0, Math.floor(Number(amount) || 0));
 	if (wager < MIN_WAGER) return { ok: false, error: 'below_minimum', min: MIN_WAGER };
-	if (wager > spendable.spendable) return { ok: false, error: 'insufficient_xp' };
+	if (wager > balance.total) return { ok: false, error: 'insufficient_xp' };
 
 	const spend = await spendXp(actorMemberId, wager, guild_id);
 	if (!spend.ok) return { ok: false, error: 'insufficient_xp' };
@@ -111,14 +111,14 @@ async function announceMinigame(client: any, ctx: any) {
 		if (!channel || !channel.isTextBased()) return;
 
 		const { EmbedBuilder } = await import('discord.js');
-		const embedConfig = await getEmbedConfig(guildId).catch(() => ({ COLOR: 0x8b5cf6, FOOTER: 'Minigames' }));
+		const embedConfig = await getEmbedConfig(guildId).catch(() => ({ COLOR: 0xc8911a, FOOTER: 'Minigames' }));
 
 		const actor = actorDiscordId ? await guild.members.fetch(String(actorDiscordId)).catch(() => null) : null;
 		const actorMention = actor ? `${actor}` : 'A member';
 		const multNote = ` at ${result.multiplier}×`;
 
 		const embed = new EmbedBuilder()
-			.setColor(0x8b5cf6)
+			.setColor(0xc8911a)
 			.setFooter({ text: embedConfig.FOOTER || 'Minigames' })
 			.setTimestamp();
 

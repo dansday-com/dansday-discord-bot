@@ -9,15 +9,7 @@
 	const ctx = getContext('items') as any;
 	const { fmt } = ctx;
 
-	function xpForLevel(lvl: number): number {
-		const { baseXp, multiplier } = data.levelReq;
-		if (lvl <= 1) return 0;
-		let total = 0;
-		for (let i = 1; i < lvl; i++) total += Math.floor(baseXp * Math.pow(multiplier, i - 1));
-		return total;
-	}
-	const level = $derived(Number(data.balance?.level ?? 1) || 1);
-	const spendable = $derived(Math.max(0, ctx.liveXp - xpForLevel(level)));
+	const spendable = $derived(Math.max(0, Number(ctx.liveXp) || 0));
 
 	const ALL_GAMES = [
 		{
@@ -26,7 +18,7 @@
 			icon: 'fa-dice',
 			name: 'Gamble',
 			desc: 'Pick your own multiplier and take the odds. Fair chance = 100 ÷ multiplier.',
-			accent: '#8b5cf6'
+			accent: '#c8911a'
 		}
 	];
 	const games = $derived(data.category === 'all' ? ALL_GAMES : ALL_GAMES.filter((g) => g.category === data.category));
@@ -35,7 +27,6 @@
 	const MAX_MULT = 10;
 	const WAGER_PERCENTS = [25, 50, 75, 100];
 
-	// play modal state
 	let playing = $state<string | null>(null);
 	let multiplier = $state(2);
 	const winChance = $derived(100 / multiplier);
@@ -71,7 +62,6 @@
 		return () => (document.body.style.overflow = '');
 	});
 
-	// reel animation
 	let reel = $state<('win' | 'lose')[]>([]);
 	let reelOffset = $state(0);
 	let reelResult = $state<'win' | 'lose' | null>(null);
@@ -158,29 +148,26 @@
 {#if games.length === 0}
 	<div class="m-members-empty">No games in this category.</div>
 {:else}
-	<div class="m-cards m-cards--mg">
+	<div class="m-cards">
 		{#each games as game (game.id)}
-			<article class="m-card m-card--mg" data-cat="minigame" style="--cat: {game.accent}">
+			<article class="m-card" data-cat={game.id} style="--cat: {game.accent}">
 				<div class="m-card-glow"></div>
 				<div class="m-card-top">
 					<span class="m-card-medallion"><i class="fas {game.icon}"></i></span>
+					<span class="m-card-tag">{game.name}</span>
 				</div>
 				<h3 class="m-card-name">{game.name}</h3>
 				<p class="m-card-desc">{game.desc}</p>
-				<div class="m-card-meta">
-					<span class="m-card-stat"><i class="fas fa-coins"></i>Free to play</span>
-					<span class="m-card-stat"><i class="fas fa-arrow-up-right-dots"></i>Up to {MAX_MULT}×</span>
-				</div>
+
 				<div class="m-card-foot">
-					<span class="m-card-price m-card-price--wager"><i class="fas fa-dice"></i>Wager XP</span>
-					<button
-						class="m-card-btn m-card-btn--play"
-						disabled={ctx.readOnly}
-						title={ctx.readOnly ? 'Open your card to play' : 'Play'}
-						onclick={() => openPlay(game.id)}
-					>
-						<i class="fas fa-dice"></i>Play
-					</button>
+					<span class="m-card-price m-card-price--wager"><i class="fas fa-dice"></i>Wager</span>
+					{#if ctx.readOnly}
+						<button class="m-card-btn" disabled title="Open your card to play"><i class="fas fa-eye"></i>View only</button>
+					{:else}
+						<button class="m-card-btn m-card-btn--play" title="Play" onclick={() => openPlay(game.id)}>
+							<i class="fas fa-dice"></i>Play
+						</button>
+					{/if}
 				</div>
 			</article>
 		{/each}

@@ -40,10 +40,7 @@
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
 		<i class="fas fa-dice text-purple-400"></i>Minigames
 	</h3>
-	<p class="text-ash-400 text-xs">
-		Let members wager XP on a multiplier bet: pick a multiplier up to 10×, and the win chance is set fairly from it (2× = 50%, 4× = 25%). Free to play — members
-		open it from the bot menu or the public site.
-	</p>
+	<p class="text-ash-400 text-xs">Free-to-play games where members wager XP.</p>
 
 	<ConfigToggleRow
 		label="Minigames module"
@@ -58,18 +55,11 @@
 			<span>Module is off. Save configuration to apply.</span>
 		</p>
 	{:else}
-		<p class="text-ash-500 flex items-start gap-2 text-xs">
-			<i class="fas fa-circle-info mt-0.5 shrink-0 text-purple-400/90" aria-hidden="true"></i>
-			<span>Members wager XP earned above their current level, so a bad run never drops their level or leaderboard rank.</span>
-		</p>
-
 		<div>
 			<label class="text-ash-300 mb-1.5 block text-xs font-medium">
 				<i class="fas fa-hashtag mr-1 text-purple-400"></i>Minigame Events Channel
 			</label>
-			<p class="text-ash-500 mb-2 text-xs">
-				Where win and loss announcements are posted. Keep it separate from your level channel to avoid clutter. If unset, results are not announced.
-			</p>
+			<p class="text-ash-500 mb-2 text-xs">Where win and loss announcements are posted. If unset, results are not announced.</p>
 			<ChannelPicker channels={data.channels} categories={data.categories} value={minigamesChannel} onchange={(id) => (minigamesChannel = id)} />
 		</div>
 	{/if}

@@ -40,10 +40,7 @@
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
 		<i class="fas fa-store text-teal-400"></i>Items
 	</h3>
-	<p class="text-ash-400 text-xs">
-		Let members spend XP on items: boosts, shields, and PvP (steal, bomb, leech). Items are managed globally. Members open them from the bot menu or the public
-		site.
-	</p>
+	<p class="text-ash-400 text-xs">Spend XP on boosts, shields and PvP items.</p>
 
 	<ConfigToggleRow
 		label="Items module"
@@ -58,19 +55,11 @@
 			<span>Module is off. Save configuration to apply.</span>
 		</p>
 	{:else}
-		<p class="text-ash-500 flex items-start gap-2 text-xs">
-			<i class="fas fa-circle-info mt-0.5 shrink-0 text-teal-400/90" aria-hidden="true"></i>
-			<span>Members must use the bot menu's Items button (opens the website) to browse and buy. PvP actions affect this server's XP only.</span>
-		</p>
-
 		<div>
 			<label class="text-ash-300 mb-1.5 block text-xs font-medium">
 				<i class="fas fa-hashtag mr-1 text-teal-400"></i>Item Events Channel
 			</label>
-			<p class="text-ash-500 mb-2 text-xs">
-				Where steal, bomb, leech, gift and other item announcements are posted. Keep it separate from your level channel to avoid clutter. If unset, item events
-				are not announced.
-			</p>
+			<p class="text-ash-500 mb-2 text-xs">Where item announcements are posted. If unset, item events are not announced.</p>
 			<ChannelPicker channels={data.channels} categories={data.categories} value={itemsChannel} onchange={(id) => (itemsChannel = id)} />
 		</div>
 	{/if}

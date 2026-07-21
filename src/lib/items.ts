@@ -414,20 +414,27 @@ function scheduleMinutesLocal(hhmm: any, fallback: number): number {
 	return h * 60 + m;
 }
 
+export type ItemWindowState = 'active' | 'upcoming' | 'ended' | 'always';
+
 export function itemAvailability(
 	item: { available_from?: string | null; available_to?: string | null; recurring_schedule?: any; availableUntil?: number | null },
 	nowMs: number,
 	tzOffsetMin = 0
-): { visible: boolean; availableUntil: number | null } {
+): { visible: boolean; availableUntil: number | null; state: ItemWindowState; startsAt: number | null } {
 	const schedule = item.recurring_schedule;
 	const hasSchedule = !!(schedule && Array.isArray(schedule.days) && schedule.days.length > 0);
+	const fromMs = item.available_from ? new Date(item.available_from).getTime() : null;
+	const toMs = item.available_to ? new Date(item.available_to).getTime() : null;
 
 	if (!hasSchedule) {
-		return { visible: true, availableUntil: item.availableUntil ?? null };
+		if (fromMs && nowMs < fromMs) return { visible: true, availableUntil: null, state: 'upcoming', startsAt: fromMs };
+		if (toMs && nowMs > toMs) return { visible: false, availableUntil: null, state: 'ended', startsAt: null };
+		if (!fromMs && !toMs) return { visible: true, availableUntil: item.availableUntil ?? null, state: 'always', startsAt: null };
+		return { visible: true, availableUntil: toMs ?? item.availableUntil ?? null, state: 'active', startsAt: null };
 	}
 
-	if (item.available_from && nowMs < new Date(item.available_from).getTime()) return { visible: false, availableUntil: null };
-	if (item.available_to && nowMs > new Date(item.available_to).getTime()) return { visible: false, availableUntil: null };
+	if (fromMs && nowMs < fromMs) return { visible: true, availableUntil: null, state: 'upcoming', startsAt: fromMs };
+	if (toMs && nowMs > toMs) return { visible: false, availableUntil: null, state: 'ended', startsAt: null };
 
 	const offsetMs = (Number.isFinite(Number(tzOffsetMin)) ? Number(tzOffsetMin) : 0) * 60000;
 	const local = new Date(nowMs + offsetMs);
@@ -436,20 +443,29 @@ export function itemAvailability(
 	const fromMin = scheduleMinutesLocal(schedule.from, 0);
 	const toMin = scheduleMinutesLocal(schedule.to, 1439);
 	const minutes = local.getUTCHours() * 60 + local.getUTCMinutes();
+	const startOfLocalDay = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate()) - offsetMs;
+	const uniqueDays = new Set(days);
+
 	if (!days.includes(local.getUTCDay()) || minutes < fromMin || minutes > toMin) {
-		return { visible: false, availableUntil: null };
+		let startsAt: number | null = null;
+		for (let ahead = 0; ahead <= 7; ahead++) {
+			const day = (local.getUTCDay() + ahead) % 7;
+			if (!uniqueDays.has(day)) continue;
+			const candidate = startOfLocalDay + ahead * 86400000 + fromMin * 60000;
+			if (candidate > nowMs) {
+				startsAt = candidate;
+				break;
+			}
+		}
+		if (startsAt != null && (!toMs || startsAt <= toMs)) return { visible: true, availableUntil: null, state: 'upcoming', startsAt };
+		return { visible: false, availableUntil: null, state: 'ended', startsAt: null };
 	}
 
 	const ends: number[] = [];
-	if (item.available_to) {
-		const t = new Date(item.available_to).getTime();
-		if (Number.isFinite(t)) ends.push(t);
-	}
-	const startOfLocalDay = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate()) - offsetMs;
-	const uniqueDays = new Set(days);
+	if (toMs && Number.isFinite(toMs)) ends.push(toMs);
 	const isFullDay = fromMin <= 0 && toMin >= 1439;
 	if (isFullDay && uniqueDays.size >= 7) {
-		return { visible: true, availableUntil: ends.length ? Math.min(...ends) : null };
+		return { visible: true, availableUntil: ends.length ? Math.min(...ends) : null, state: 'active', startsAt: null };
 	}
 	let trailingDays = 0;
 	if (isFullDay) {
@@ -459,7 +475,7 @@ export function itemAvailability(
 	}
 	const endOfWindow = startOfLocalDay + trailingDays * 86400000 + (toMin * 60 + 59) * 1000;
 	ends.push(endOfWindow);
-	return { visible: true, availableUntil: ends.length ? Math.min(...ends) : null };
+	return { visible: true, availableUntil: ends.length ? Math.min(...ends) : null, state: 'active', startsAt: null };
 }
 
 export type SpyReportBagItem = { name: string; effect_type: string; quantity: number };

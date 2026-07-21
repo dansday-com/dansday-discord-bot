@@ -74,21 +74,16 @@
 	];
 
 	const minigameSteps = [
-		{ icon: 'fa-dice', title: 'Open Minigames', desc: 'Tap the Minigames tab. It’s free to play — no item or ticket needed.' },
-		{
-			icon: 'fa-sliders',
-			title: 'Pick a multiplier',
-			desc: 'Drag the slider from 1.1× up to 10×. The higher the multiplier, the lower your win chance — a fair 100 ÷ multiplier (2× = 50%, 4× = 25%).'
-		},
+		{ icon: 'fa-dice', title: 'Open Minigames', desc: 'Tap the Minigames tab and pick a game. Everything is free to play — no item or ticket needed.' },
 		{
 			icon: 'fa-coins',
-			title: 'Set your wager',
-			desc: 'Choose how much XP to risk (minimum 1,000). You can only wager XP earned above your current level, so a loss never drops your level.'
+			title: 'Wager XP',
+			desc: 'Choose how much XP to risk. You can only wager XP earned above your current level, so a loss never drops your level or rank.'
 		},
 		{
 			icon: 'fa-bolt',
-			title: 'Play',
-			desc: 'Win and your wager is multiplied and paid back as XP; lose and it’s gone. Every result is logged and counts toward the Minigames leaderboard.'
+			title: 'Play & win',
+			desc: 'Win to grow your XP, lose and it’s gone. Every play is logged and counts toward the Minigames leaderboard.'
 		}
 	];
 
@@ -270,9 +265,7 @@
 
 	<section class="g-sec" use:reveal>
 		<h2 class="g-sec-head"><i class="fas fa-dice"></i>Minigames</h2>
-		<p class="g-sec-lead">
-			Free-to-play games you wager XP on, in the separate Minigames tab. Right now there’s Gamble: pick your own multiplier and take the odds.
-		</p>
+		<p class="g-sec-lead">Free-to-play games in the Minigames tab where you wager XP for a shot at more. More games are added over time.</p>
 		<div class="g-steps">
 			{#each minigameSteps as s, i}
 				<div class="g-step" style="--d: {i * 80}ms">

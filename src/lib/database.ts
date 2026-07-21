@@ -1574,6 +1574,15 @@ export async function getItem(itemId: any) {
 	return rows[0] || null;
 }
 
+export async function setItemEnabled(itemId: any, enabled: boolean) {
+	await initializeDatabase();
+	await db
+		.update(schema.items)
+		.set({ enabled: !!enabled })
+		.where(eq(schema.items.id, Number(itemId)));
+	return true;
+}
+
 export async function createItem(panelId: any, data: any = {}) {
 	await initializeDatabase();
 	if (!panelId) throw new Error('panelId is required');
@@ -4594,6 +4603,7 @@ export default {
 	getMembersWithInVoiceFlag,
 	listItems,
 	getItem,
+	setItemEnabled,
 	createItem,
 	updateItem,
 	deleteItem,

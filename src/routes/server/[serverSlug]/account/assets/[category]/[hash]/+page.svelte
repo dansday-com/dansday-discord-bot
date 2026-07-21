@@ -9,6 +9,14 @@
 	const ctx = getContext('items') as any;
 	const { fmt } = ctx;
 
+	function grp(n: number | null): string {
+		return n == null || !Number.isFinite(n) ? '' : Math.floor(n).toLocaleString();
+	}
+	function onAmountInput(e: Event, set: (v: number | null) => void) {
+		const digits = (e.currentTarget as HTMLInputElement).value.replace(/\D/g, '');
+		set(digits === '' ? null : Number(digits));
+	}
+
 	let board = $state<any[]>(data.board ?? []);
 	let gainers = $state<any[]>(data.gainers ?? []);
 	let losers = $state<any[]>(data.losers ?? []);
@@ -77,6 +85,15 @@
 		return 'flat';
 	}
 
+	function sparkPath(prices: number[], w = 72, h = 24): string {
+		if (!prices || prices.length < 2) return '';
+		const min = Math.min(...prices);
+		const max = Math.max(...prices);
+		const span = max - min || 1;
+		const step = w / (prices.length - 1);
+		return prices.map((p, i) => `${i === 0 ? 'M' : 'L'}${(i * step).toFixed(1)},${(h - ((p - min) / span) * h).toFixed(1)}`).join(' ');
+	}
+
 	$effect(() => {
 		if (typeof EventSource === 'undefined') return;
 		const es = new EventSource(`/api/assets/${encodeURIComponent(ctx.serverSlug)}/board-stream`);
@@ -111,6 +128,7 @@
 				const res = await fetch(`/api/assets/${encodeURIComponent(ctx.serverSlug)}/search?q=${encodeURIComponent(q)}`);
 				const d = await res.json();
 				searchResults = d.success ? d.results : [];
+				if (!d.success && d.error) showToast(d.error, 'error');
 			} catch {
 				searchResults = [];
 			} finally {
@@ -242,6 +260,12 @@
 			</div>
 		</div>
 
+		{#if a.sparkline?.length > 1}
+			<svg class="m-asset-spark" viewBox="0 0 72 24" preserveAspectRatio="none" aria-hidden="true">
+				<path d={sparkPath(a.sparkline)} fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+			</svg>
+		{/if}
+
 		<div class="m-asset-fig">
 			<span class="m-asset-price">{fmtPrice(price)}</span>
 			<span class="m-asset-chg" data-dir={dir(change)}>
@@ -251,7 +275,7 @@
 	</button>
 {/snippet}
 
-{#if data.category === 'positions'}
+{#if data.category === 'mine'}
 	{#if livePositions.length === 0}
 		<div class="m-members-empty">You don't hold any assets yet. Open the Top or Search tab to invest XP.</div>
 	{:else}
@@ -336,11 +360,11 @@
 			</div>
 			<input
 				class="m-gamble-custom"
-				type="number"
-				min={MIN_BUY}
-				max={ctx.liveXp}
+				type="text"
+				inputmode="numeric"
 				placeholder="XP to invest (min {fmt(MIN_BUY)})"
-				bind:value={buyAmount}
+				value={grp(buyAmount)}
+				oninput={(e) => onAmountInput(e, (v) => (buyAmount = v))}
 				disabled={buyBusy}
 			/>
 

@@ -507,6 +507,15 @@ export type SpyReportEffect = {
 	leechWith: string | null;
 };
 export type SpyReportCooldown = { kind: 'steal' | 'bomb' | 'insurance' | 'immunity'; until: number };
+export type SpyReportAsset = {
+	symbol: string;
+	asset_name: string;
+	asset_image: string | null;
+	xp_invested: number;
+	value: number;
+	pnl: number;
+	pnl_percent: number;
+};
 export type SpyReport = {
 	targetName: string;
 	disguised?: boolean;
@@ -515,6 +524,9 @@ export type SpyReport = {
 	effects: SpyReportEffect[];
 	cooldowns: SpyReportCooldown[];
 	bounty?: number;
+	assets?: SpyReportAsset[];
+	assetsInvested?: number;
+	assetsValue?: number;
 };
 
 export type ItemOutcome = {

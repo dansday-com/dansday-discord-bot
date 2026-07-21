@@ -24,6 +24,14 @@
 
 	const tzOffset = () => -new Date().getTimezoneOffset();
 
+	function grp(n: number | null): string {
+		return n == null || !Number.isFinite(n) ? '' : Math.floor(n).toLocaleString();
+	}
+	function onAmountInput(e: Event, set: (v: number | null) => void) {
+		const digits = (e.currentTarget as HTMLInputElement).value.replace(/\D/g, '');
+		set(digits === '' ? null : Number(digits));
+	}
+
 	const byCost = (a: any, b: any) => (Number(a.cost) || 0) - (Number(b.cost) || 0);
 
 	const shopItems = $derived(
@@ -388,7 +396,6 @@
 				<i class="fas {effectIcon(item.effect_type)}"></i>
 				{#if owned > 0}<span class="m-card-qty">×{owned}</span>{/if}
 			</span>
-			<span class="m-card-tag">{effectLabel(item.effect_type)}</span>
 			{#if owned > 0 && !ctx.readOnly}
 				<button
 					class="m-card-remove"
@@ -619,6 +626,27 @@
 							<div class="m-spy-empty">No bounty on them.</div>
 						{/if}
 					</div>
+					<div class="m-spy-sec">
+						<div class="m-spy-head">
+							<i class="fas fa-chart-line"></i>Assets
+							{#if (rep.assets?.length ?? 0) > 0}
+								<span class="m-spy-total">{fmt(rep.assetsInvested)} XP invested · worth {fmt(rep.assetsValue)}</span>
+							{/if}
+						</div>
+						{#if (rep.assets?.length ?? 0) === 0}
+							<div class="m-spy-empty">No assets held.</div>
+						{:else}
+							<div class="m-spy-chips">
+								{#each rep.assets as a}
+									<span class="m-spy-chip m-spy-chip--asset" data-dir={a.pnl > 0 ? 'up' : a.pnl < 0 ? 'down' : 'flat'}>
+										{#if a.asset_image}<img class="m-spy-asset-logo" src={a.asset_image} alt="" />{:else}<i class="fas fa-coins"></i>{/if}
+										{a.symbol}
+										<span class="m-spy-rel">· {fmt(a.xp_invested)} XP ({a.pnl >= 0 ? '+' : ''}{a.pnl_percent.toFixed(1)}%)</span>
+									</span>
+								{/each}
+							</div>
+						{/if}
+					</div>
 				</div>
 			{/if}
 			{#if outcome.untilMs}
@@ -715,11 +743,11 @@
 				{#if gamblePercent === 'custom'}
 					<input
 						class="m-gamble-custom"
-						type="number"
-						min="1"
-						max={ctx.liveXp}
+						type="text"
+						inputmode="numeric"
 						placeholder="Enter XP to wager"
-						bind:value={gambleCustom}
+						value={grp(gambleCustom)}
+						oninput={(e) => onAmountInput(e, (v) => (gambleCustom = v))}
 						disabled={gambleRolling}
 					/>
 				{/if}

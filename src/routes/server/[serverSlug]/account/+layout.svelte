@@ -37,7 +37,7 @@
 		{ id: 'gainers', label: 'Gainers', icon: 'fa-arrow-trend-up' },
 		{ id: 'losers', label: 'Losers', icon: 'fa-arrow-trend-down' },
 		{ id: 'search', label: 'Search', icon: 'fa-magnifying-glass' },
-		...(readOnly ? [] : [{ id: 'positions', label: 'My Assets', icon: 'fa-wallet' }])
+		...(readOnly ? [] : [{ id: 'mine', label: 'My Assets', icon: 'fa-wallet' }])
 	]);
 
 	let assetSummaryLive = $state<{ invested: number; value: number; pnl: number; pnlPct: number; count: number } | null>(null);
@@ -345,8 +345,8 @@
 				</div>
 				<span class="m-xp-bar-meta">
 					{#if isAssets}
-						<span>{assetSummary.count} position{assetSummary.count === 1 ? '' : 's'}</span>
-						<span>Now worth {fmt(assetSummary.value)} XP</span>
+						<span>{assetSummary.count} asset{assetSummary.count === 1 ? '' : 's'}</span>
+						<span>Worth {fmt(assetSummary.value)} XP</span>
 					{:else}
 						<span>Lvl {level}</span>
 						<span>{levelInfo.toNext > 0 ? `${fmt(levelInfo.toNext)} XP to Lvl ${level + 1}` : 'Max progress'}</span>

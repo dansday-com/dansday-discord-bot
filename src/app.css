@@ -3429,23 +3429,6 @@
 	border: 2px solid var(--chili-surface-elevated);
 }
 
-.m-root .m-card-tag {
-	font-size: 9.5px;
-	font-weight: 700;
-	letter-spacing: 0.04em;
-	text-transform: uppercase;
-	padding: 3px 8px;
-	border-radius: 999px;
-	color: var(--cat);
-	background: var(--cat-soft);
-	border: 1px solid color-mix(in srgb, var(--cat) 30%, transparent);
-	white-space: nowrap;
-}
-
-.m-root .m-card--owned .m-card-tag {
-	margin-left: auto;
-}
-
 .m-root .m-card-foot .m-card-owned {
 	display: none;
 }
@@ -3697,6 +3680,7 @@
 	position: relative;
 	z-index: 4;
 	flex: 0 0 auto;
+	margin-left: auto;
 	width: 28px;
 	height: 28px;
 	display: grid;
@@ -3820,9 +3804,6 @@
 		height: 54px;
 		font-size: 24px;
 		border-radius: 16px;
-	}
-	.m-root .m-card-tag {
-		font-size: 10.5px;
 	}
 	.m-root .m-card-name {
 		font-size: 15.5px;
@@ -5274,6 +5255,39 @@
 	font-weight: 500;
 }
 
+.m-spy-total {
+	margin-left: auto;
+	font-size: 10.5px;
+	font-weight: 700;
+	letter-spacing: 0;
+	text-transform: none;
+	color: var(--lb-text);
+	opacity: 0.85;
+}
+
+.m-spy-chip--asset {
+	--dir: var(--asset-flat);
+	color: var(--dir);
+	background: color-mix(in srgb, var(--dir) 10%, var(--chili-surface));
+	border-color: color-mix(in srgb, var(--dir) 28%, transparent);
+}
+
+.m-spy-chip--asset[data-dir='up'] {
+	--dir: var(--asset-up);
+}
+
+.m-spy-chip--asset[data-dir='down'] {
+	--dir: var(--asset-down);
+}
+
+.m-spy-asset-logo {
+	width: 15px;
+	height: 15px;
+	border-radius: 50%;
+	object-fit: cover;
+	flex-shrink: 0;
+}
+
 .m-out-close {
 	margin-top: 18px;
 	display: inline-flex;
@@ -6087,7 +6101,7 @@
 	--dir: var(--asset-flat);
 	position: relative;
 	display: grid;
-	grid-template-columns: minmax(0, 1fr) auto;
+	grid-template-columns: minmax(0, 1fr) auto auto;
 	align-items: center;
 	gap: 12px;
 	width: 100%;
@@ -6158,9 +6172,17 @@
 }
 
 .m-root .m-asset-id,
+.m-root .m-asset-spark,
 .m-root .m-asset-fig {
 	position: relative;
 	z-index: 2;
+}
+
+.m-root .m-asset-spark {
+	width: 56px;
+	height: 24px;
+	color: var(--dir);
+	flex-shrink: 0;
 }
 
 .m-root .m-asset-id {
@@ -6369,5 +6391,8 @@
 	}
 	.m-root .m-asset-row {
 		padding: 11px 12px 11px 14px;
+	}
+	.m-root .m-asset-spark {
+		display: none;
 	}
 }

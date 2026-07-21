@@ -1,8 +1,16 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import { resolvePublicServerBySlug } from '$lib/frontend/public/server-slug/index.js';
 import { subscribeAssetsBoard } from '$lib/frontend/public/assets/index.js';
+import { getClientIp, checkRateLimit } from '$lib/utils/index.js';
 
-export const GET: RequestHandler = async ({ params }) => {
+const RATE_WINDOW_MS = 60 * 1000;
+const MAX_STREAMS = 20;
+
+export const GET: RequestHandler = async ({ params, request }) => {
+	const ip = getClientIp(request);
+	const rate = await checkRateLimit(ip, 'asset_board_stream', MAX_STREAMS, RATE_WINDOW_MS);
+	if (!rate.allowed) return new Response('Too many requests', { status: 429 });
+
 	const serverSlug = String(params.serverSlug || '').trim();
 	const resolved = await resolvePublicServerBySlug(serverSlug);
 	if (!resolved) return new Response('Not found', { status: 404 });

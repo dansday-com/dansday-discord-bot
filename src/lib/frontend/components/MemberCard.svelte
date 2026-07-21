@@ -220,6 +220,21 @@
 		ctx.restore();
 	}
 
+	function drawChartLine(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
+		ctx.save();
+		ctx.strokeStyle = ctx.fillStyle as string;
+		ctx.lineWidth = r * 0.28;
+		ctx.lineJoin = 'round';
+		ctx.lineCap = 'round';
+		ctx.beginPath();
+		ctx.moveTo(cx - r, cy + r * 0.55);
+		ctx.lineTo(cx - r * 0.3, cy - r * 0.15);
+		ctx.lineTo(cx + r * 0.2, cy + r * 0.3);
+		ctx.lineTo(cx + r, cy - r * 0.6);
+		ctx.stroke();
+		ctx.restore();
+	}
+
 	function drawCoin(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
 		ctx.beginPath();
 		ctx.arc(cx, cy, r, 0, Math.PI * 2);
@@ -290,7 +305,7 @@
 				? [
 						{ icon: 'coin', val: fmtNum(assets.invested), lbl: 'Invested' },
 						{ icon: 'sack', val: fmtNum(assets.value), lbl: 'Worth' },
-						{ icon: 'stack', val: String(assets.count), lbl: 'Positions' }
+						{ icon: 'stack', val: String(assets.count), lbl: 'Assets' }
 					]
 				: [
 						{ icon: 'star', val: xp, lbl: 'XP' },
@@ -579,7 +594,8 @@
 		const joinedStartX = cx - joinedBlockW / 2;
 
 		ctx.fillStyle = C.peach;
-		drawCalendar(ctx, joinedStartX + iconSize / 2, y + joinedH / 2, 6);
+		if (isAssets) drawChartLine(ctx, joinedStartX + iconSize / 2, y + joinedH / 2, 6);
+		else drawCalendar(ctx, joinedStartX + iconSize / 2, y + joinedH / 2, 6);
 
 		ctx.fillStyle = C.textMuted;
 		ctx.textAlign = 'left';
@@ -729,7 +745,7 @@
 							<div class="mc-stat">
 								<i class="fas fa-layer-group"></i>
 								<span class="mc-stat-val">{assets.count}</span>
-								<span class="mc-stat-lbl">Positions</span>
+								<span class="mc-stat-lbl">Assets</span>
 							</div>
 						</div>
 

@@ -685,10 +685,40 @@ export async function resolveSpy({ actorMemberId, actorMemberItemId, targetMembe
 	const effects = await spyTargetEffects(targetMemberId);
 	const cooldowns = await spyTargetCooldowns(targetMemberId, guildId);
 	const bounty = await db.getActiveBountyTotal(targetMemberId).catch(() => 0);
+	const assetsReport = await spyTargetAssets(targetMemberId);
 
 	await logAction(actorMemberId, { member_item_id: actorMemberItemId, target_member_id: targetMemberId, action: 'spy' });
 
-	return { outcome: 'success', spyReport: { targetName, disguised: false, bag, effects, cooldowns, bounty } };
+	return {
+		outcome: 'success',
+		spyReport: {
+			targetName,
+			disguised: false,
+			bag,
+			effects,
+			cooldowns,
+			bounty,
+			assets: assetsReport.assets,
+			assetsInvested: assetsReport.invested,
+			assetsValue: assetsReport.value
+		}
+	};
+}
+
+async function spyTargetAssets(targetMemberId: any) {
+	const { getMemberPortfolio } = await import('./assetMarket.js');
+	const portfolio = await getMemberPortfolio(targetMemberId).catch(() => null);
+	if (!portfolio) return { assets: [], invested: 0, value: 0 };
+	const assets = portfolio.positions.map((p) => ({
+		symbol: p.symbol,
+		asset_name: p.asset_name,
+		asset_image: p.asset_image,
+		xp_invested: p.xp_invested,
+		value: p.value,
+		pnl: p.pnl,
+		pnl_percent: p.pnl_percent
+	}));
+	return { assets, invested: portfolio.totalInvested, value: portfolio.totalValue };
 }
 
 async function spyTargetName(targetMemberId: any): Promise<string> {

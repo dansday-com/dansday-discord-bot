@@ -118,7 +118,7 @@
 		{
 			icon: 'fa-wallet',
 			title: 'Watch it move',
-			desc: 'Your position tracks the real price. My Assets shows live profit or loss in XP. Buying the same coin again averages into one holding.'
+			desc: 'Your asset tracks the real price. My Assets shows live profit or loss in XP. Buying the same coin again averages into one holding.'
 		},
 		{ icon: 'fa-hand-holding-dollar', title: 'Sell anytime', desc: 'Sell to cash out. You get XP back scaled by how the price moved since you bought.' }
 	];
@@ -128,7 +128,7 @@
 			icon: 'fa-coins',
 			accent: '#245f73',
 			title: 'XP becomes the investment',
-			desc: 'When you buy an asset, that XP leaves your Wallet and locks into the position. It no longer counts toward your level or leaderboard rank until you sell.'
+			desc: 'When you buy an asset, that XP leaves your Wallet and locks into the asset. It no longer counts toward your level or leaderboard rank until you sell.'
 		},
 		{
 			icon: 'fa-shield-halved',

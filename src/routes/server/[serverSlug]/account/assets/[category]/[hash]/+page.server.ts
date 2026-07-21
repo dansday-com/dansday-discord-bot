@@ -3,7 +3,7 @@ import type { PageServerLoad } from './$types';
 import { itemsCardTokenFromUrl } from '$lib/frontend/public/items/index.js';
 import { loadAssetsShared } from '$lib/frontend/public/assets/index.js';
 
-const VALID = new Set(['top', 'gainers', 'losers', 'search', 'positions']);
+const VALID = new Set(['top', 'gainers', 'losers', 'search', 'mine']);
 
 export const load: PageServerLoad = async ({ parent, params }) => {
 	const { server } = await parent();

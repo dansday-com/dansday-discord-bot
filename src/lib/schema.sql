@@ -614,13 +614,25 @@ CREATE TABLE IF NOT EXISTS server_member_assets (
     asset_image VARCHAR(255) NULL,
     xp_invested INT NOT NULL DEFAULT 0,
     buy_price DECIMAL(30, 12) NOT NULL,
-    status VARCHAR(12) NOT NULL DEFAULT 'open',
     opened_at DATETIME NOT NULL,
-    closed_at DATETIME NULL,
-    sell_price DECIMAL(30, 12) NULL,
-    xp_returned INT NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
+    FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS server_member_asset_logs (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    member_id INT NOT NULL,
+    action VARCHAR(8) NOT NULL,
+    asset_type VARCHAR(24) NOT NULL DEFAULT 'crypto',
+    asset_id VARCHAR(96) NOT NULL,
+    symbol VARCHAR(32) NOT NULL,
+    asset_name VARCHAR(128) NOT NULL,
+    asset_image VARCHAR(255) NULL,
+    xp_amount INT NOT NULL DEFAULT 0,
+    price DECIMAL(30, 12) NOT NULL DEFAULT 0,
+    net INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL,
     FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE
 );
 
@@ -689,7 +701,8 @@ CREATE INDEX IF NOT EXISTS idx_server_member_minigame_logs_created ON server_mem
 CREATE INDEX IF NOT EXISTS idx_server_member_item_bounties_target ON server_member_item_bounties(target_member_id, collected);
 CREATE INDEX IF NOT EXISTS idx_server_member_item_bounties_placed ON server_member_item_bounties(placed_by_member_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_item_bounties_created ON server_member_item_bounties(created_at);
-CREATE INDEX IF NOT EXISTS idx_server_member_assets_member ON server_member_assets(member_id, status);
-CREATE INDEX IF NOT EXISTS idx_server_member_assets_held ON server_member_assets(status, asset_type, asset_id);
+CREATE INDEX IF NOT EXISTS idx_server_member_assets_member ON server_member_assets(member_id);
+CREATE INDEX IF NOT EXISTS idx_server_member_assets_held ON server_member_assets(asset_type, asset_id);
+CREATE INDEX IF NOT EXISTS idx_server_member_asset_logs_member ON server_member_asset_logs(member_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_level_logs_member ON server_member_level_logs(member_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_level_logs_member_created_source ON server_member_level_logs(member_id, created_at, source);

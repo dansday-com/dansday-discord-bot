@@ -2161,11 +2161,40 @@ export async function collectBounties(targetMemberId: any) {
 export async function getDistinctHeldAssetIds(assetType?: string) {
 	await initializeDatabase();
 	if (assetType) {
-		const rows = await db.execute(sql`SELECT DISTINCT asset_id FROM server_member_assets WHERE status = 'open' AND asset_type = ${String(assetType)}`);
+		const rows = await db.execute(sql`SELECT DISTINCT asset_id FROM server_member_assets WHERE asset_type = ${String(assetType)}`);
 		return (rows[0] as unknown as any[]) || [];
 	}
-	const rows = await db.execute(sql`SELECT DISTINCT asset_type, asset_id FROM server_member_assets WHERE status = 'open'`);
+	const rows = await db.execute(sql`SELECT DISTINCT asset_type, asset_id FROM server_member_assets`);
 	return (rows[0] as unknown as any[]) || [];
+}
+
+export async function logAssetEvent(data: {
+	member_id: number;
+	action: 'buy' | 'sell';
+	asset_type: string;
+	asset_id: string;
+	symbol: string;
+	asset_name: string;
+	asset_image: string | null;
+	xp_amount: number;
+	price: number | string;
+	net?: number;
+}) {
+	await initializeDatabase();
+	await db.insert(schema.serverMemberAssetLogs).values({
+		member_id: Number(data.member_id),
+		action: data.action,
+		asset_type: String(data.asset_type),
+		asset_id: String(data.asset_id),
+		symbol: String(data.symbol),
+		asset_name: String(data.asset_name),
+		asset_image: data.asset_image != null ? String(data.asset_image) : null,
+		xp_amount: Number(data.xp_amount) || 0,
+		price: String(data.price ?? 0) as any,
+		net: Number(data.net) || 0,
+		created_at: toMySQLDateTime() as any
+	});
+	return true;
 }
 
 export async function openAssetPosition(data: {
@@ -2189,7 +2218,6 @@ export async function openAssetPosition(data: {
 		asset_image: data.asset_image != null ? String(data.asset_image) : null,
 		xp_invested: Number(data.xp_invested) || 0,
 		buy_price: String(data.buy_price) as any,
-		status: 'open',
 		opened_at: now as any,
 		created_at: now as any,
 		updated_at: now as any
@@ -2206,7 +2234,7 @@ export async function getAssetPosition(positionId: any) {
 
 export async function getOpenAssetPositions(memberId: any) {
 	await initializeDatabase();
-	const rows = await db.execute(sql`SELECT * FROM server_member_assets WHERE member_id = ${Number(memberId)} AND status = 'open' ORDER BY opened_at DESC`);
+	const rows = await db.execute(sql`SELECT * FROM server_member_assets WHERE member_id = ${Number(memberId)} ORDER BY opened_at DESC`);
 	return (rows[0] as unknown as any[]) || [];
 }
 
@@ -2214,7 +2242,7 @@ export async function getOpenAssetPosition(memberId: any, assetType: string, ass
 	await initializeDatabase();
 	const rows = await db.execute(sql`
 		SELECT * FROM server_member_assets
-		WHERE member_id = ${Number(memberId)} AND status = 'open' AND asset_type = ${String(assetType)} AND asset_id = ${String(assetId)}
+		WHERE member_id = ${Number(memberId)} AND asset_type = ${String(assetType)} AND asset_id = ${String(assetId)}
 		LIMIT 1
 	`);
 	return ((rows[0] as unknown as any[]) || [])[0] ?? null;
@@ -2226,7 +2254,7 @@ export async function mergeAssetPosition(positionId: any, data: { xp_invested: n
 	await db.execute(sql`
 		UPDATE server_member_assets
 		SET xp_invested = ${Number(data.xp_invested) || 0}, buy_price = ${String(data.buy_price)}, updated_at = ${now}
-		WHERE id = ${Number(positionId)} AND status = 'open'
+		WHERE id = ${Number(positionId)}
 	`);
 	return true;
 }
@@ -2234,60 +2262,37 @@ export async function mergeAssetPosition(positionId: any, data: { xp_invested: n
 export async function getMemberAssetHistory(memberId: any, limit = 600) {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
-		SELECT id, asset_type, asset_id, symbol, asset_name, asset_image,
-		       xp_invested, buy_price, status, opened_at, closed_at, sell_price, xp_returned
-		FROM server_member_assets
+		SELECT id, action, asset_type, asset_id, symbol, asset_name, asset_image, xp_amount, price, net, created_at
+		FROM server_member_asset_logs
 		WHERE member_id = ${Number(memberId)}
-		ORDER BY COALESCE(closed_at, opened_at) DESC
+		ORDER BY created_at DESC
 		LIMIT ${Number(limit) || 600}
 	`);
 	return (rows[0] as unknown as any[]) || [];
 }
 
-export async function closeAssetPosition(positionId: any, data: { sell_price: number; xp_returned: number }) {
+export async function closeAssetPosition(positionId: any) {
 	await initializeDatabase();
-	const now = toMySQLDateTime();
-	await db.execute(sql`
-		UPDATE server_member_assets
-		SET status = 'closed',
-		    sell_price = ${String(data.sell_price)},
-		    xp_returned = ${Number(data.xp_returned) || 0},
-		    closed_at = ${now},
-		    updated_at = ${now}
-		WHERE id = ${Number(positionId)} AND status = 'open'
-	`);
+	await db.execute(sql`DELETE FROM server_member_assets WHERE id = ${Number(positionId)}`);
 	return true;
 }
 
-export async function reduceAssetPosition(positionId: any, data: { sold_invested: number; sell_price: number; xp_returned: number }) {
+export async function reduceAssetPosition(positionId: any, data: { sold_invested: number }) {
 	await initializeDatabase();
 	const position = await getAssetPosition(positionId);
-	if (!position || position.status !== 'open') return false;
+	if (!position) return false;
 	const now = toMySQLDateTime();
 	const sold = Math.max(0, Math.floor(Number(data.sold_invested) || 0));
 	const remaining = Math.max(0, (Number(position.xp_invested) || 0) - sold);
-	await db.insert(schema.serverMemberAssets).values({
-		member_id: Number(position.member_id),
-		asset_type: String(position.asset_type),
-		asset_id: String(position.asset_id),
-		symbol: String(position.symbol),
-		asset_name: String(position.asset_name),
-		asset_image: position.asset_image != null ? String(position.asset_image) : null,
-		xp_invested: sold,
-		buy_price: String(position.buy_price) as any,
-		status: 'closed',
-		opened_at: position.opened_at as any,
-		closed_at: now as any,
-		sell_price: String(data.sell_price) as any,
-		xp_returned: Number(data.xp_returned) || 0,
-		created_at: now as any,
-		updated_at: now as any
-	});
-	await db.execute(sql`
-		UPDATE server_member_assets
-		SET xp_invested = ${remaining}, updated_at = ${now}
-		WHERE id = ${Number(positionId)} AND status = 'open'
-	`);
+	if (remaining <= 0) {
+		await db.execute(sql`DELETE FROM server_member_assets WHERE id = ${Number(positionId)}`);
+	} else {
+		await db.execute(sql`
+			UPDATE server_member_assets
+			SET xp_invested = ${remaining}, updated_at = ${now}
+			WHERE id = ${Number(positionId)}
+		`);
+	}
 	return true;
 }
 
@@ -4631,6 +4636,7 @@ export default {
 	getOpenAssetPosition,
 	mergeAssetPosition,
 	getMemberAssetHistory,
+	logAssetEvent,
 	closeAssetPosition,
 	reduceAssetPosition,
 	getServerLeaderboard,

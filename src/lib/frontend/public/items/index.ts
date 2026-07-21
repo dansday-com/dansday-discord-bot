@@ -126,6 +126,7 @@ export async function loadItemsShared(server: any, hash: string, gateComponent?:
 	const levelReq = { baseXp: Number(req.BASE_XP) || 100, multiplier: Number(req.MULTIPLIER) || 1.2 };
 
 	const items = await loadItemsCatalog(server.id);
+	const enabledCategories = [...new Set((items as any[]).filter((i) => i.enabled !== false).map((i) => i.effect_type))];
 
 	const member = hash ? await resolveMemberByCardToken(server.id, hash) : null;
 
@@ -136,7 +137,7 @@ export async function loadItemsShared(server: any, hash: string, gateComponent?:
 			items,
 			hash: '',
 			bagStock: 0,
-			categories: [...new Set((items as any[]).map((i) => i.effect_type))],
+			categories: enabledCategories,
 			memberName: null,
 			memberDiscordId: null,
 			memberAvatar: null,
@@ -226,7 +227,7 @@ export async function loadItemsShared(server: any, hash: string, gateComponent?:
 		items,
 		hash,
 		bagStock,
-		categories: [...new Set((items as any[]).map((i) => i.effect_type))],
+		categories: [...new Set([...enabledCategories, ...(invRows as any[]).map((r) => r.effect_type)])],
 		memberName: member.server_display_name || member.display_name || member.username,
 		memberDiscordId: String(member.discord_member_id),
 		memberAvatar: member.avatar ?? null,

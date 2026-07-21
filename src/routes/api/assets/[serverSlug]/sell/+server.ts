@@ -54,7 +54,8 @@ export const POST: RequestHandler = async ({ params, request }) => {
 			price_unavailable: 'Price unavailable right now, try again shortly.'
 		};
 		const err = friendly[code] || code || (webhookResult.status === 502 ? 'Could not reach the bot.' : 'Sell failed.');
-		return json({ success: false, error: err }, { status: webhookResult.status === 502 ? 502 : 400 });
+		console.error('[asset_sell] failed', { status: webhookResult.status, code, details: webhookResult.body?.details });
+		return json({ success: false, error: err, code: code ?? null }, { status: webhookResult.status === 502 ? 502 : 400 });
 	}
 
 	return json({

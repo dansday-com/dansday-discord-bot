@@ -303,6 +303,20 @@ export async function handleAssetBuy(_client: any, payload: any) {
 		});
 	}
 
+	await db
+		.logAssetEvent({
+			member_id: memberId,
+			action: 'buy',
+			asset_type: type,
+			asset_id: String(asset_id),
+			symbol: meta.symbol,
+			asset_name: meta.name,
+			asset_image: meta.image,
+			xp_amount: amount,
+			price: market.price
+		})
+		.catch(() => null);
+
 	await finalize(guild_id, memberId, before, 'asset-buy');
 	return { ok: true, position, price: market.price };
 }
@@ -324,7 +338,6 @@ export async function handleAssetSell(_client: any, payload: any) {
 
 	const position = await db.getAssetPosition(position_id).catch(() => null);
 	if (!position || Number(position.member_id) !== Number(memberId)) return { ok: false, error: 'not_owner' };
-	if (position.status !== 'open') return { ok: false, error: 'already_closed' };
 
 	const market = await getAssetPrice(position.asset_type, position.asset_id);
 	if (!market || market.price <= 0) return { ok: false, error: 'price_unavailable' };
@@ -346,10 +359,24 @@ export async function handleAssetSell(_client: any, payload: any) {
 	await db.ensureMemberLevel(memberId);
 	await db.updateMemberLevelStats(memberId, { experienceIncrement: payout });
 	if (full) {
-		await db.closeAssetPosition(position_id, { sell_price: market.price, xp_returned: payout });
+		await db.closeAssetPosition(position_id);
 	} else {
-		await db.reduceAssetPosition(position_id, { sold_invested: soldInvested, sell_price: market.price, xp_returned: payout });
+		await db.reduceAssetPosition(position_id, { sold_invested: soldInvested });
 	}
+	await db
+		.logAssetEvent({
+			member_id: memberId,
+			action: 'sell',
+			asset_type: position.asset_type,
+			asset_id: position.asset_id,
+			symbol: position.symbol,
+			asset_name: position.asset_name,
+			asset_image: position.asset_image ?? null,
+			xp_amount: payout,
+			price: market.price,
+			net: payout - soldInvested
+		})
+		.catch(() => null);
 	await finalize(guild_id, memberId, before, 'asset-sell');
 
 	return { ok: true, payout, invested: soldInvested, sell_price: market.price, net: payout - soldInvested, full };

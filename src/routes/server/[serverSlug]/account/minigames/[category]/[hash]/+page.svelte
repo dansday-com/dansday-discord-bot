@@ -31,36 +31,37 @@
 	];
 	const games = $derived(data.category === 'all' ? ALL_GAMES : ALL_GAMES.filter((g) => g.category === data.category));
 
-	const MIN_MULT = 1.1;
+	const MIN_MULT = 2;
 	const MAX_MULT = 10;
-	const MIN_WAGER = 1000;
-	const PRESETS = [2, 3, 5, 10];
+	const WAGER_PERCENTS = [25, 50, 75, 100];
 
 	// play modal state
 	let playing = $state<string | null>(null);
 	let multiplier = $state(2);
 	const winChance = $derived(100 / multiplier);
-	let wager = $state<number | null>(null);
+	let gamblePercent = $state<number | 'custom'>(25);
+	let gambleCustom = $state<number | null>(null);
 	let busy = $state(false);
 
-	function grp(n: number | null): string {
-		return n == null || !Number.isFinite(n) ? '' : Math.floor(n).toLocaleString();
-	}
-	function onWagerInput(e: Event) {
-		const digits = (e.currentTarget as HTMLInputElement).value.replace(/\D/g, '');
-		wager = digits === '' ? null : Number(digits);
-	}
-	function setWagerPct(pct: number) {
-		wager = Math.floor((spendable * pct) / 100);
-	}
-	const potentialWin = $derived(wager && wager > 0 ? Math.floor(wager * multiplier) : 0);
-	const canPlay = $derived(!ctx.readOnly && !busy && !!wager && wager >= MIN_WAGER && wager <= spendable);
+	const wagerXp = $derived(
+		gamblePercent === 'custom'
+			? Math.min(Math.max(0, Math.floor(Number(gambleCustom) || 0)), spendable)
+			: Math.floor((spendable * (gamblePercent as number)) / 100)
+	);
+	const potentialWin = $derived(Math.floor(wagerXp * multiplier));
 
 	function openPlay(gameId: string) {
 		if (ctx.readOnly) return;
 		playing = gameId;
 		multiplier = 2;
-		wager = null;
+		gamblePercent = 25;
+		gambleCustom = null;
+		initReel();
+	}
+
+	function resetGamble() {
+		gamblePercent = 25;
+		gambleCustom = null;
 		initReel();
 	}
 
@@ -102,8 +103,8 @@
 	}
 
 	async function play() {
-		if (!canPlay) return;
-		const bet = Math.floor(Number(wager) || 0);
+		const bet = wagerXp;
+		if (busy || bet <= 0 || bet > spendable) return;
 		busy = true;
 		reelResult = null;
 		try {
@@ -150,17 +151,6 @@
 			busy = false;
 		}
 	}
-
-	function relTime(iso: string | null): string {
-		if (!iso) return '';
-		const diff = Date.now() - new Date(iso).getTime();
-		const m = Math.floor(diff / 60000);
-		if (m < 1) return 'just now';
-		if (m < 60) return `${m}m ago`;
-		const h = Math.floor(m / 60);
-		if (h < 24) return `${h}h ago`;
-		return `${Math.floor(h / 24)}d ago`;
-	}
 </script>
 
 <svelte:head><title>{data.server.name || data.server.slug} Minigames | {APP_NAME} Discord Bot</title></svelte:head>
@@ -194,28 +184,6 @@
 				</div>
 			</article>
 		{/each}
-	</div>
-{/if}
-
-{#if !ctx.readOnly && (data.history?.length ?? 0) > 0}
-	<div class="m-mg-history">
-		<div class="m-spy-head"><i class="fas fa-clock-rotate-left"></i>Recent plays</div>
-		<div class="m-asset-list">
-			{#each (data.history ?? []).slice(0, 20) as h (h.id)}
-				<div class="m-asset-row" data-dir={h.net > 0 ? 'up' : h.net < 0 ? 'down' : 'flat'}>
-					<div class="m-asset-id">
-						<span class="m-asset-logo m-asset-logo--ph"><i class="fas {h.outcome === 'win' ? 'fa-sack-dollar' : 'fa-skull'}"></i></span>
-						<div class="m-asset-name">
-							<span class="m-asset-sym">{h.multiplier.toFixed(2)}× · {h.outcome === 'win' ? 'Win' : 'Loss'}</span>
-							<span class="m-asset-full">{relTime(h.created_at)}</span>
-						</div>
-					</div>
-					<div class="m-asset-fig">
-						<span class="m-asset-chg" data-dir={h.net >= 0 ? 'up' : 'down'}>{h.net >= 0 ? '+' : ''}{fmt(h.net)} XP</span>
-					</div>
-				</div>
-			{/each}
-		</div>
 	</div>
 {/if}
 
@@ -272,36 +240,46 @@
 					<span class="m-mg-chance">Win chance {winChance.toFixed(1)}%</span>
 				</div>
 				<input type="range" class="m-mg-slider" min={MIN_MULT} max={MAX_MULT} step="0.05" bind:value={multiplier} disabled={busy} />
-				<div class="m-gamble-picker">
-					{#each PRESETS as p}
-						<button class="m-gamble-pct" class:m-gamble-pct--active={multiplier === p} disabled={busy} onclick={() => (multiplier = p)}>{p}×</button>
-					{/each}
+			</div>
+
+			{#if reelResult && !busy}
+				<div class="m-gamble-again">
+					<button class="m-gamble-reset" onclick={resetGamble}><i class="fas fa-sliders"></i>Change bet</button>
+					<button class="m-gamble-play m-gamble-play--charged" disabled={wagerXp <= 0 || wagerXp > spendable} onclick={play}>
+						<i class="fas fa-rotate-right"></i>Spin again · {fmt(wagerXp)}
+					</button>
 				</div>
-			</div>
+			{:else}
+				<div class="m-gamble-picker">
+					{#each WAGER_PERCENTS as p}
+						<button class="m-gamble-pct" class:m-gamble-pct--active={gamblePercent === p} disabled={busy} onclick={() => (gamblePercent = p)}>{p}%</button>
+					{/each}
+					<button class="m-gamble-pct" class:m-gamble-pct--active={gamblePercent === 'custom'} disabled={busy} onclick={() => (gamblePercent = 'custom')}
+						>Custom</button
+					>
+				</div>
+				{#if gamblePercent === 'custom'}
+					<input class="m-gamble-custom" type="number" min="1" max={spendable} placeholder="Enter XP to wager" bind:value={gambleCustom} disabled={busy} />
+				{/if}
 
-			<div class="m-gamble-picker">
-				{#each [25, 50, 75, 100] as p}
-					<button class="m-gamble-pct" disabled={busy} onclick={() => setWagerPct(p)}>{p === 100 ? 'Max' : `${p}%`}</button>
-				{/each}
-			</div>
-			<input
-				class="m-gamble-custom"
-				type="text"
-				inputmode="numeric"
-				placeholder="XP to wager (min {fmt(MIN_WAGER)})"
-				value={grp(wager)}
-				oninput={onWagerInput}
-				disabled={busy}
-			/>
+				<div class="m-gamble-stakes">
+					<div class="m-gamble-stake">
+						<span class="m-gamble-stake-k">Wager</span>
+						<span class="m-gamble-stake-v m-gamble-stake-v--bet">{fmt(wagerXp)}</span>
+					</div>
+					<i class="fas fa-arrow-right m-gamble-stake-arrow"></i>
+					<div class="m-gamble-stake">
+						<span class="m-gamble-stake-k">Win pays</span>
+						<span class="m-gamble-stake-v m-gamble-stake-v--win">{fmt(potentialWin)}</span>
+					</div>
+				</div>
 
-			<div class="m-asset-modal-meta">
-				<span>Playable: {fmt(spendable)} XP</span>
-				<span>Win pays {fmt(potentialWin)} XP</span>
-			</div>
-
-			<button class="m-gamble-play m-gamble-play--charged" disabled={!canPlay} onclick={play}>
-				{#if busy}<i class="fas fa-circle-notch fa-spin"></i>Playing…{:else}<i class="fas fa-dice"></i>Play {wager ? `· ${fmt(Number(wager))} XP` : ''}{/if}
-			</button>
+				<button class="m-gamble-play" class:m-gamble-play--charged={!busy && wagerXp > 0} disabled={busy || wagerXp <= 0} onclick={play}>
+					{#if busy}<i class="fas fa-circle-notch fa-spin"></i>Rolling…{:else}<i class="fas fa-dice"></i>Spin {gamblePercent === 'custom'
+							? ''
+							: `${gamblePercent}%`}{/if}
+				</button>
+			{/if}
 		</div>
 	</div>
 {/if}

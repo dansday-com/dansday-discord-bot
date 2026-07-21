@@ -33,8 +33,8 @@
 	const historyTabs = $derived([
 		{ id: 'all', label: 'All', icon: 'fa-grip' },
 		...(data.itemsEnabled === true ? [{ id: 'items', label: 'Items', icon: 'fa-bag-shopping' }] : []),
-		...(data.assetsEnabled === true ? [{ id: 'assets', label: 'Assets', icon: 'fa-chart-line' }] : []),
 		...(data.minigamesEnabled === true ? [{ id: 'minigames', label: 'Minigames', icon: 'fa-dice' }] : []),
+		...(data.assetsEnabled === true ? [{ id: 'assets', label: 'Assets', icon: 'fa-chart-line' }] : []),
 		{ id: 'level', label: 'Level', icon: 'fa-star' }
 	]);
 
@@ -416,14 +416,14 @@
 						>{/if}
 				</a>
 			{/if}
-			{#if assetsEnabled}
-				<a class="m-items-seg" class:m-items-seg--active={isAssets} href="{accountBase}/assets/top/{navHash}" data-sveltekit-preload-data="hover">
-					<i class="fas fa-chart-line"></i>Assets
-				</a>
-			{/if}
 			{#if minigamesEnabled}
 				<a class="m-items-seg" class:m-items-seg--active={isMinigames} href="{accountBase}/minigames/all/{navHash}" data-sveltekit-preload-data="hover">
 					<i class="fas fa-dice"></i>Minigames
+				</a>
+			{/if}
+			{#if assetsEnabled}
+				<a class="m-items-seg" class:m-items-seg--active={isAssets} href="{accountBase}/assets/top/{navHash}" data-sveltekit-preload-data="hover">
+					<i class="fas fa-chart-line"></i>Assets
 				</a>
 			{/if}
 			{#if !readOnly}

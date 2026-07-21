@@ -141,20 +141,20 @@ const REGISTRY = [
 		iconClass: 'text-teal-400'
 	},
 	{
-		id: 'assets',
-		label: 'Assets',
-		featureSwitch: true,
-		hrefSuffix: '/assets',
-		icon: 'fa-chart-line',
-		iconClass: 'text-sky-400'
-	},
-	{
 		id: 'minigames',
 		label: 'Minigames',
 		featureSwitch: true,
 		hrefSuffix: '/minigames',
 		icon: 'fa-dice',
 		iconClass: 'text-purple-400'
+	},
+	{
+		id: 'assets',
+		label: 'Assets',
+		featureSwitch: true,
+		hrefSuffix: '/assets',
+		icon: 'fa-chart-line',
+		iconClass: 'text-sky-400'
 	}
 ] as const;
 

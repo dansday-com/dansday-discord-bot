@@ -60,39 +60,18 @@ export const load: PageServerLoad = async ({ parent, params, url }) => {
 	}));
 
 	const assetRows = assetsEnabled ? await db.getMemberAssetHistory(shared.member.id, 600).catch(() => []) : [];
-	const assetEvents: any[] = [];
-	for (const p of assetRows as any[]) {
-		const invested = Number(p.xp_invested) || 0;
-		const openedAt = p.opened_at ? new Date(p.opened_at).getTime() : null;
-		assetEvents.push({
-			id: `a-buy-${p.id}`,
-			kind: 'asset' as const,
-			action: 'buy',
-			symbol: p.symbol,
-			assetName: p.asset_name,
-			assetImage: p.asset_image ?? null,
-			xpAmount: invested,
-			price: Number(p.buy_price) || 0,
-			at: openedAt
-		});
-		if (p.status === 'closed') {
-			const returned = Number(p.xp_returned) || 0;
-			assetEvents.push({
-				id: `a-sell-${p.id}`,
-				kind: 'asset' as const,
-				action: 'sell',
-				symbol: p.symbol,
-				assetName: p.asset_name,
-				assetImage: p.asset_image ?? null,
-				xpAmount: returned,
-				net: returned - invested,
-				price: Number(p.sell_price) || 0,
-				at: p.closed_at ? new Date(p.closed_at).getTime() : openedAt
-			});
-		}
-	}
-
-	assetEvents.sort((a, b) => (b.at ?? 0) - (a.at ?? 0));
+	const assetEvents = (assetRows as any[]).map((r) => ({
+		id: `a-${r.id}`,
+		kind: 'asset' as const,
+		action: r.action,
+		symbol: r.symbol,
+		assetName: r.asset_name,
+		assetImage: r.asset_image ?? null,
+		xpAmount: Number(r.xp_amount) || 0,
+		net: Number(r.net) || 0,
+		price: Number(r.price) || 0,
+		at: r.created_at ? new Date(r.created_at).getTime() : null
+	}));
 
 	const minigameRows = minigamesEnabled ? await db.getMemberMinigameHistory(shared.member.id, 600).catch(() => []) : [];
 	const minigameEvents = (minigameRows as any[]).map((h) => ({

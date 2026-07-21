@@ -210,7 +210,7 @@
 
 	function openSell(p: any) {
 		sellPos = p;
-		sellAmount = sellPosValue(p);
+		sellAmount = null;
 	}
 
 	$effect(() => {
@@ -407,8 +407,6 @@
 	{@const price = live?.price ?? sellPos.current_price ?? sellPos.buy_price ?? 0}
 	{@const value = sellPos.buy_price > 0 ? Math.round(sellPos.xp_invested * (price / sellPos.buy_price)) : sellPos.xp_invested}
 	{@const payout = Math.min(Math.max(0, Math.floor(Number(sellAmount) || 0)), value)}
-	{@const soldInvested = value > 0 ? Math.round(sellPos.xp_invested * (payout / value)) : 0}
-	{@const sellNet = payout - soldInvested}
 	<div class="m-gamble-overlay" role="presentation" onclick={() => (!sellBusy ? (sellPos = null) : null)}>
 		<div class="m-gamble" role="dialog" aria-modal="true" aria-label="Sell asset" onclick={(e) => e.stopPropagation()}>
 			<div class="m-gamble-head">
@@ -444,7 +442,7 @@
 
 			<div class="m-asset-modal-meta">
 				<span>Worth: {fmt(value)} XP</span>
-				<span>Get back {fmt(payout)} XP ({sellNet >= 0 ? '+' : ''}{fmt(sellNet)})</span>
+				<span>You receive {fmt(payout)} XP</span>
 			</div>
 
 			<button class="m-gamble-play m-gamble-play--charged" disabled={sellBusy || payout <= 0} onclick={confirmSell}>

@@ -4443,6 +4443,31 @@
 	color: rgba(255, 255, 255, 0.65);
 }
 
+.m-root .m-xp-roles {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 5px;
+	margin-top: 8px;
+}
+
+.m-root .m-xp-role {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	padding: 3px 9px;
+	border-radius: 99px;
+	font-size: 10.5px;
+	font-weight: 600;
+	color: #fff;
+	background: rgba(255, 255, 255, 0.12);
+	border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.m-root .m-xp-role i {
+	font-size: 7px;
+	color: var(--role-color, rgba(255, 255, 255, 0.6));
+}
+
 .m-root .m-xp-stats {
 	position: relative;
 	flex-shrink: 0;

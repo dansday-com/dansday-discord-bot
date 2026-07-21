@@ -3,7 +3,6 @@
 	import { page } from '$app/state';
 	import { invalidateAll } from '$app/navigation';
 	import MemberCard from '$lib/frontend/components/MemberCard.svelte';
-	import LocalTime from '$lib/frontend/components/LocalTime.svelte';
 	import { publicServerPath } from '$lib/url.js';
 	import { ITEM_EFFECTS, effectLabel, effectIcon, effectAccentHex, actionVerb, BAG_CAPACITY, formatDuration } from '$lib/items.js';
 	import type { PublicMembersStreamPayload } from '$lib/frontend/public/members/index.js';
@@ -88,17 +87,12 @@
 
 	const memberAvatar = $derived(pd.memberAvatar ?? `https://cdn.discordapp.com/embed/avatars/${Number(pd.memberDiscordId) % 5 || 0}.png`);
 
-	function rolePillVars(color: string | null): string {
-		if (!color) return '';
-		return `--role-color: ${color};`;
-	}
-
-	const tenureDays = $derived.by(() => {
+	const joinedDate = $derived.by(() => {
 		const joined = pd.profile?.joined;
 		if (!joined) return null;
-		const t = new Date(String(joined).replace(' ', 'T') + 'Z').getTime();
-		if (Number.isNaN(t)) return null;
-		return Math.max(0, Math.floor((Date.now() - t) / 86400000));
+		const d = new Date(String(joined).replace(' ', 'T') + 'Z');
+		if (Number.isNaN(d.getTime())) return null;
+		return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${d.getUTCFullYear()}`;
 	});
 
 	function xpForLevel(lvl: number): number {
@@ -354,27 +348,41 @@
 				<img src={memberAvatar} alt={pd.memberName ?? ''} loading="lazy" />
 			</div>
 			<div class="m-xp-figures">
-				<span class="m-xp-wallet"><i class="fas {isAssets ? 'fa-chart-line' : 'fa-wallet'}"></i>{isAssets ? 'Invested in Assets' : 'Wallet'}</span>
-				{#if pd.memberName}<span class="m-xp-name">{pd.memberName}</span>{/if}
-				<span class="m-xp-amount">{fmt(isAssets ? assetSummary.invested : liveXp)}<span class="m-xp-unit">XP</span></span>
-				<div class="m-xp-bar" class:m-xp-bar--hidden={isAssets}>
-					<div class="m-xp-bar-fill" style="width: {levelInfo.pct}%"></div>
-				</div>
-				<span class="m-xp-bar-meta">
-					{#if isAssets}
-						<span>{assetSummary.count} asset{assetSummary.count === 1 ? '' : 's'}</span>
-						<span>Worth {fmt(assetSummary.value)} XP</span>
-					{:else if isOverview}
-						<span
-							>Joined <LocalTime value={pd.profile?.joined} fallback="—" />{#if tenureDays != null}
-								· {fmt(tenureDays)}d ago{/if}</span
-						>
-						<span>{pd.profile?.isBooster ? 'Booster' : ''}{pd.profile?.isBooster && pd.profile?.isAfk ? ' · ' : ''}{pd.profile?.isAfk ? 'AFK' : ''}</span>
-					{:else}
-						<span>Lvl {level}</span>
-						<span>{levelInfo.toNext > 0 ? `${fmt(levelInfo.toNext)} XP to Lvl ${level + 1}` : 'Max progress'}</span>
+				{#if isOverview}
+					<span class="m-xp-wallet"><i class="fas fa-user"></i>Profile</span>
+					{#if pd.memberName}<span class="m-xp-name">{pd.memberName}</span>{/if}
+					<span class="m-xp-bar-meta">
+						<span>Joined {joinedDate ?? '—'}</span>
+						{#if pd.profile?.isBooster || pd.profile?.isAfk}
+							<span>{pd.profile?.isBooster ? 'Booster' : ''}{pd.profile?.isBooster && pd.profile?.isAfk ? ' · ' : ''}{pd.profile?.isAfk ? 'AFK' : ''}</span>
+						{/if}
+					</span>
+					{#if (pd.profile?.roles ?? []).length > 0}
+						<div class="m-xp-roles">
+							{#each pd.profile.roles as role}
+								<span class="m-xp-role" style={role.color ? `--role-color: ${role.color};` : ''}>
+									<i class="fas fa-circle"></i>{role.name || 'Role'}
+								</span>
+							{/each}
+						</div>
 					{/if}
-				</span>
+				{:else}
+					<span class="m-xp-wallet"><i class="fas {isAssets ? 'fa-chart-line' : 'fa-wallet'}"></i>{isAssets ? 'Invested in Assets' : 'Wallet'}</span>
+					{#if pd.memberName}<span class="m-xp-name">{pd.memberName}</span>{/if}
+					<span class="m-xp-amount">{fmt(isAssets ? assetSummary.invested : liveXp)}<span class="m-xp-unit">XP</span></span>
+					<div class="m-xp-bar" class:m-xp-bar--hidden={isAssets}>
+						<div class="m-xp-bar-fill" style="width: {levelInfo.pct}%"></div>
+					</div>
+					<span class="m-xp-bar-meta">
+						{#if isAssets}
+							<span>{assetSummary.count} asset{assetSummary.count === 1 ? '' : 's'}</span>
+							<span>Worth {fmt(assetSummary.value)} XP</span>
+						{:else}
+							<span>Lvl {level}</span>
+							<span>{levelInfo.toNext > 0 ? `${fmt(levelInfo.toNext)} XP to Lvl ${level + 1}` : 'Max progress'}</span>
+						{/if}
+					</span>
+				{/if}
 			</div>
 			<div class="m-xp-stats">
 				{#if isAssets}
@@ -399,18 +407,7 @@
 			</div>
 		</div>
 
-		{#if isOverview && (pd.profile?.roles ?? []).length > 0}
-			<div class="m-active">
-				{#each pd.profile.roles as role}
-					<span class="m-active-chip" style={role.color ? `--chip-accent: ${role.color};` : ''}>
-						<i class="fas fa-circle"></i>
-						<span class="m-active-label">{role.name || 'Role'}</span>
-					</span>
-				{/each}
-			</div>
-		{/if}
-
-		{#if activeChips.length > 0}
+		{#if !isOverview && activeChips.length > 0}
 			<div class="m-active">
 				{#each activeChips as chip (chip.key)}
 					<span class="m-active-chip" style="--chip-accent: {chip.accent}">

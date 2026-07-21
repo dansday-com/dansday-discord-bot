@@ -49,7 +49,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		const code = webhookResult.body?.error;
 		const friendly: Record<string, string> = {
 			insufficient_xp: 'Not enough XP.',
-			below_minimum: `Minimum wager is ${webhookResult.body?.min ?? 1000} XP.`,
+			below_minimum: `Minimum wager is ${webhookResult.body?.min ?? 1} XP.`,
 			minigames_disabled: 'Minigames are disabled for this server.'
 		};
 		const err = friendly[code] || code || (webhookResult.status === 502 ? 'Could not reach the bot.' : 'Play failed.');

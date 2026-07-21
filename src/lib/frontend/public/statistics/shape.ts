@@ -21,6 +21,30 @@ export type PublicPageStats = {
 	roles_total: number;
 	categories_total: number;
 	members_with_custom_roles: number;
+	leveling_wallet_experience: number;
+	leveling_assets_value: number;
+	assets_invested: number;
+	assets_market_value: number;
+	assets_open_positions: number;
+	assets_traders: number;
+	assets_buy_volume: number;
+	assets_sell_volume: number;
+	assets_realized_net: number;
+	assets_trade_count: number;
+	minigames_wagered: number;
+	minigames_paid_out: number;
+	minigames_net: number;
+	minigames_wins: number;
+	minigames_plays: number;
+	minigames_biggest_win: number;
+	items_stolen: number;
+	items_bombed: number;
+	items_gifted: number;
+	items_steal_attempts: number;
+	items_bomb_attempts: number;
+	items_spies: number;
+	items_bounties_placed: number;
+	items_biggest_steal: number;
 };
 
 export function shapePublicStatisticsFromOverview(overview: Record<string, unknown> | null | undefined): {
@@ -54,7 +78,31 @@ export function shapePublicStatisticsFromOverview(overview: Record<string, unkno
 			leveling_total_voice_streaming: Number(s.leveling_total_voice_streaming ?? 0),
 			roles_total: Number(s.roles_total ?? 0),
 			categories_total: Number(s.categories_total ?? 0),
-			members_with_custom_roles: Number(s.members_with_custom_roles ?? 0)
+			members_with_custom_roles: Number(s.members_with_custom_roles ?? 0),
+			leveling_wallet_experience: Number(s.leveling_wallet_experience ?? 0),
+			leveling_assets_value: Number(s.leveling_assets_value ?? 0),
+			assets_invested: Number(s.assets_invested ?? 0),
+			assets_market_value: Number(s.assets_market_value ?? 0),
+			assets_open_positions: Number(s.assets_open_positions ?? 0),
+			assets_traders: Number(s.assets_traders ?? 0),
+			assets_buy_volume: Number(s.assets_buy_volume ?? 0),
+			assets_sell_volume: Number(s.assets_sell_volume ?? 0),
+			assets_realized_net: Number(s.assets_realized_net ?? 0),
+			assets_trade_count: Number(s.assets_trade_count ?? 0),
+			minigames_wagered: Number(s.minigames_wagered ?? 0),
+			minigames_paid_out: Number(s.minigames_paid_out ?? 0),
+			minigames_net: Number(s.minigames_net ?? 0),
+			minigames_wins: Number(s.minigames_wins ?? 0),
+			minigames_plays: Number(s.minigames_plays ?? 0),
+			minigames_biggest_win: Number(s.minigames_biggest_win ?? 0),
+			items_stolen: Number(s.items_stolen ?? 0),
+			items_bombed: Number(s.items_bombed ?? 0),
+			items_gifted: Number(s.items_gifted ?? 0),
+			items_steal_attempts: Number(s.items_steal_attempts ?? 0),
+			items_bomb_attempts: Number(s.items_bomb_attempts ?? 0),
+			items_spies: Number(s.items_spies ?? 0),
+			items_bounties_placed: Number(s.items_bounties_placed ?? 0),
+			items_biggest_steal: Number(s.items_biggest_steal ?? 0)
 		},
 		boost_level: Number(boostLevel)
 	};

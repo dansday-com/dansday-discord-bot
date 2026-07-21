@@ -5,8 +5,8 @@ import { getSpendableXp, spendXp } from './xp-economy.js';
 
 const MIN_MULTIPLIER = 1.01;
 const MAX_MULTIPLIER = 10;
-const MIN_WAGER = 1000;
-const ANNOUNCE_DELAY_MS = 3900;
+const MIN_WAGER = 1;
+const ANNOUNCE_DELAY_MS = 7000;
 
 function clampMultiplier(raw: any): number {
 	const m = Number(raw);

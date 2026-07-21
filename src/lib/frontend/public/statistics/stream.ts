@@ -1,6 +1,7 @@
 import db from '../../../database.js';
 import { type PublicStatisticsSnapshot, getCachedPublicStatistics, setCachedPublicStatistics } from './cache.js';
 import { shapePublicStatisticsFromOverview } from './shape.js';
+import { loadAssetPriceMap } from '../assets/index.js';
 
 type Listener = (payload: PublicStatisticsSnapshot) => void;
 
@@ -15,7 +16,8 @@ const streams = new Map<number, StreamState>();
 const CACHE_FRESH_MS = 20_000;
 
 async function buildSnapshotFromDb(serverId: number): Promise<PublicStatisticsSnapshot | null> {
-	const overview = await db.getServerOverview(serverId, { forPublicPage: true });
+	const priceMap = await loadAssetPriceMap().catch(() => ({}));
+	const overview = await db.getServerOverview(serverId, { forPublicPage: true, priceMap });
 	const shaped = shapePublicStatisticsFromOverview(overview as Record<string, unknown>);
 	if (!shaped) return null;
 	const snap: PublicStatisticsSnapshot = { ...shaped, updated_at: Date.now() };

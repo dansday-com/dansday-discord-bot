@@ -220,19 +220,21 @@
 				{/if}
 			</div>
 
-			<div class="m-mg-mult">
-				<div class="m-mg-mult-head">
-					<span>Multiplier <strong>{multiplier.toFixed(2)}×</strong></span>
-					<span class="m-mg-chance">Win chance {winChance.toFixed(1)}%</span>
+			{#if !reelResult}
+				<div class="m-mg-mult">
+					<div class="m-mg-mult-head">
+						<span>Multiplier <strong>{multiplier.toFixed(2)}×</strong></span>
+						<span class="m-mg-chance">Win chance {winChance.toFixed(1)}%</span>
+					</div>
+					<input type="range" class="m-mg-slider" min={MIN_MULT} max={MAX_MULT} step="0.05" bind:value={multiplier} disabled={busy} />
 				</div>
-				<input type="range" class="m-mg-slider" min={MIN_MULT} max={MAX_MULT} step="0.05" bind:value={multiplier} disabled={busy} />
-			</div>
+			{/if}
 
 			{#if reelResult && !busy}
 				<div class="m-gamble-again">
 					<button class="m-gamble-reset" onclick={resetGamble}><i class="fas fa-sliders"></i>Change bet</button>
 					<button class="m-gamble-play m-gamble-play--charged" disabled={wagerXp <= 0 || wagerXp > spendable} onclick={play}>
-						<i class="fas fa-rotate-right"></i>Spin again · {fmt(wagerXp)}
+						<i class="fas fa-rotate-right"></i>Spin again {multiplier.toFixed(2)}× · {fmt(wagerXp)}
 					</button>
 				</div>
 			{:else}

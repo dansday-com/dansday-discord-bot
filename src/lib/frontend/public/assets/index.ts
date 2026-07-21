@@ -17,6 +17,10 @@ async function cacheGet(key: string): Promise<any | null> {
 	}
 }
 
+export async function loadAssetPriceMap(): Promise<Record<string, { price: number; change24h: number }>> {
+	return (await cacheGet(PRICES_KEY))?.map ?? {};
+}
+
 export async function loadMarketsBoard(): Promise<any[]> {
 	const cached = await cacheGet(MARKETS_KEY);
 	return cached?.rows ?? [];

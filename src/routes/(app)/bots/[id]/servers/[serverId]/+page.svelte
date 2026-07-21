@@ -23,6 +23,13 @@
 	const membersWithoutLevels = $derived(Math.max(0, (s.members_total ?? 0) - (s.members_with_levels ?? 0)));
 
 	const avgXP = $derived((s.members_with_levels ?? 0) > 0 ? Math.round((s.leveling_total_experience ?? 0) / s.members_with_levels).toLocaleString() : '0');
+	const hasEconomy = $derived(
+		(s.assets_market_value ?? 0) > 0 ||
+			(s.assets_trade_count ?? 0) > 0 ||
+			(s.minigames_plays ?? 0) > 0 ||
+			(s.items_stolen ?? 0) > 0 ||
+			(s.items_gifted ?? 0) > 0
+	);
 
 	const avgVoiceMinutes = $derived(
 		(s.members_with_levels ?? 0) > 0 ? Math.round((s.leveling_total_voice_minutes ?? 0) / s.members_with_levels).toLocaleString() : '0'
@@ -152,6 +159,27 @@
 				{/each}
 			</div>
 		</div>
+
+		{#if hasEconomy}
+			<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-5 shadow-lg transition-all sm:p-6">
+				<div class="mb-4 flex items-center gap-3">
+					<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-yellow-500/15">
+						<i class="fas fa-coins text-lg text-yellow-400"></i>
+					</div>
+					<h3 class="text-ash-100 text-base font-bold">Economy</h3>
+				</div>
+				<div class="space-y-2">
+					{#each [{ icon: 'fa-chart-line', label: 'XP in market', value: fmt(s.assets_market_value) }, { icon: 'fa-briefcase', label: 'Open positions', value: fmt(s.assets_open_positions) }, { icon: 'fa-right-left', label: 'Trades', value: fmt(s.assets_trade_count) }, { icon: 'fa-dice', label: 'XP wagered', value: fmt(s.minigames_wagered) }, { icon: 'fa-gamepad', label: 'Plays', value: fmt(s.minigames_plays) }, { icon: 'fa-hand', label: 'XP stolen', value: fmt(s.items_stolen) }, { icon: 'fa-gift', label: 'XP gifted', value: fmt(s.items_gifted) }] as row}
+						<div class="bg-ash-800/50 flex items-center justify-between rounded-lg p-2">
+							<span class="text-ash-300 flex items-center gap-2 text-sm">
+								<i class="fas {row.icon} text-xs text-yellow-400/90"></i>{row.label}
+							</span>
+							<span class="text-ash-100 text-lg font-bold">{row.value}</span>
+						</div>
+					{/each}
+				</div>
+			</div>
+		{/if}
 	</div>
 
 	<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-4 shadow-lg transition-all sm:p-6">

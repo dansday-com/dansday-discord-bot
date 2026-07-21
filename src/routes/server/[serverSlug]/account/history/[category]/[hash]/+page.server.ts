@@ -4,7 +4,7 @@ import db from '$lib/database.js';
 import { publicServerPath } from '$lib/url.js';
 import { loadItemsShared, itemsCardTokenFromUrl } from '$lib/frontend/public/items/index.js';
 
-const PER_PAGE = 12;
+const PER_PAGE = 50;
 
 export const load: PageServerLoad = async ({ parent, params, url }) => {
 	const { server, itemsEnabled, assetsEnabled, minigamesEnabled } = await parent();

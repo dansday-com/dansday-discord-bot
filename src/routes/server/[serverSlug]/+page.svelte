@@ -30,6 +30,19 @@
 			: '0'
 	);
 
+	const hasEconomy = $derived(
+		(liveStats.assets_market_value ?? 0) > 0 ||
+			(liveStats.assets_trade_count ?? 0) > 0 ||
+			(liveStats.minigames_plays ?? 0) > 0 ||
+			(liveStats.items_steal_attempts ?? 0) > 0 ||
+			(liveStats.items_bomb_attempts ?? 0) > 0 ||
+			(liveStats.items_gifted ?? 0) > 0
+	);
+
+	const minigamesWinRate = $derived(
+		(liveStats.minigames_plays ?? 0) > 0 ? Math.round((Number(liveStats.minigames_wins) / Number(liveStats.minigames_plays)) * 100) : 0
+	);
+
 	const avgVoiceMinutes = $derived(
 		(liveStats.members_with_levels ?? 0) > 0
 			? Math.round((liveStats.leveling_total_voice_minutes ?? 0) / Number(liveStats.members_with_levels)).toLocaleString()
@@ -261,7 +274,10 @@
 		<div class="m-leveling-hero">
 			<p class="m-leveling-hero-label">Total experience</p>
 			<p class="m-leveling-hero-value">{heroXpDisplay.toLocaleString()}</p>
-			<p class="m-leveling-hero-hint">Pooled XP from all tracked members</p>
+			<p class="m-leveling-hero-hint">
+				Wallet + XP invested in assets{#if liveStats.leveling_assets_value > 0}
+					· {fmt(liveStats.leveling_wallet_experience)} wallet + {fmt(liveStats.leveling_assets_value)} in market{/if}
+			</p>
 		</div>
 
 		<div class="m-leveling-meters">
@@ -388,4 +404,79 @@
 			</div>
 		</div>
 	</div>
+
+	{#if hasEconomy}
+		<div class="m-stat-card m-overview-card">
+			<div class="m-stat-card-head">
+				<div class="m-stat-card-icon m-chili-stat-1">
+					<i class="fas fa-coins"></i>
+				</div>
+				<h2 class="m-stat-card-title">Economy</h2>
+			</div>
+
+			{#if liveStats.assets_market_value > 0 || liveStats.assets_trade_count > 0}
+				<div class="m-overview-hero">
+					<p class="m-overview-hero-label">XP in the market</p>
+					<p class="m-overview-hero-value">{fmt(liveStats.assets_market_value)}</p>
+				</div>
+				<div class="m-mini-grid">
+					<div class="m-mini">
+						<i class="fas fa-briefcase"></i>
+						<span class="m-mini-value">{fmt(liveStats.assets_open_positions)}</span>
+						<span class="m-mini-label">Open positions</span>
+					</div>
+					<div class="m-mini">
+						<i class="fas fa-users"></i>
+						<span class="m-mini-value">{fmt(liveStats.assets_traders)}</span>
+						<span class="m-mini-label">Traders</span>
+					</div>
+					<div class="m-mini">
+						<i class="fas fa-right-left"></i>
+						<span class="m-mini-value">{fmt(liveStats.assets_trade_count)}</span>
+						<span class="m-mini-label">Trades</span>
+					</div>
+				</div>
+			{/if}
+
+			{#if liveStats.minigames_plays > 0}
+				<div class="m-mini-grid">
+					<div class="m-mini">
+						<i class="fas fa-dice"></i>
+						<span class="m-mini-value">{fmt(liveStats.minigames_wagered)}</span>
+						<span class="m-mini-label">XP wagered</span>
+					</div>
+					<div class="m-mini">
+						<i class="fas fa-percent"></i>
+						<span class="m-mini-value">{minigamesWinRate}%</span>
+						<span class="m-mini-label">Win rate</span>
+					</div>
+					<div class="m-mini">
+						<i class="fas fa-trophy"></i>
+						<span class="m-mini-value">{fmt(liveStats.minigames_biggest_win)}</span>
+						<span class="m-mini-label">Biggest win</span>
+					</div>
+				</div>
+			{/if}
+
+			{#if liveStats.items_steal_attempts > 0 || liveStats.items_bomb_attempts > 0 || liveStats.items_gifted > 0}
+				<div class="m-mini-grid">
+					<div class="m-mini">
+						<i class="fas fa-hand"></i>
+						<span class="m-mini-value">{fmt(liveStats.items_stolen)}</span>
+						<span class="m-mini-label">XP stolen</span>
+					</div>
+					<div class="m-mini">
+						<i class="fas fa-bomb"></i>
+						<span class="m-mini-value">{fmt(liveStats.items_bombed)}</span>
+						<span class="m-mini-label">XP bombed</span>
+					</div>
+					<div class="m-mini">
+						<i class="fas fa-gift"></i>
+						<span class="m-mini-value">{fmt(liveStats.items_gifted)}</span>
+						<span class="m-mini-label">XP gifted</span>
+					</div>
+				</div>
+			{/if}
+		</div>
+	{/if}
 </div>

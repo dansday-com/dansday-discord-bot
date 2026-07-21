@@ -2280,6 +2280,95 @@ export async function getMemberAssetHistory(memberId: any, limit = 600) {
 	return (rows[0] as unknown as any[]) || [];
 }
 
+export async function getServerEconomyStats(serverId: any, priceMap: Record<string, { price: number }> = {}) {
+	await initializeDatabase();
+	const sid = Number(serverId);
+
+	const [posRows, assetLogRows, minigameRows, itemRows] = await Promise.all([
+		db.execute(sql`
+			SELECT a.asset_type, a.asset_id, a.xp_invested, a.buy_price, a.member_id
+			FROM server_member_assets a INNER JOIN server_members sm ON sm.id = a.member_id
+			WHERE sm.server_id = ${sid}
+		`),
+		db.execute(sql`
+			SELECT
+				COALESCE(SUM(CASE WHEN al.action = 'buy' THEN al.xp_amount ELSE 0 END), 0) AS buy_volume,
+				COALESCE(SUM(CASE WHEN al.action = 'sell' THEN al.xp_amount ELSE 0 END), 0) AS sell_volume,
+				COALESCE(SUM(CASE WHEN al.action = 'sell' THEN al.net ELSE 0 END), 0) AS realized_net,
+				COUNT(*) AS trade_count
+			FROM server_member_asset_logs al INNER JOIN server_members sm ON sm.id = al.member_id
+			WHERE sm.server_id = ${sid}
+		`),
+		db.execute(sql`
+			SELECT
+				COALESCE(SUM(ml.wager), 0) AS wagered,
+				COALESCE(SUM(ml.payout), 0) AS paid_out,
+				COALESCE(SUM(ml.xp_amount), 0) AS net,
+				COALESCE(SUM(CASE WHEN ml.outcome = 'win' THEN 1 ELSE 0 END), 0) AS wins,
+				COUNT(*) AS plays,
+				COALESCE(MAX(CASE WHEN ml.outcome = 'win' THEN ml.payout ELSE 0 END), 0) AS biggest_win
+			FROM server_member_minigame_logs ml INNER JOIN server_members sm ON sm.id = ml.member_id
+			WHERE sm.server_id = ${sid}
+		`),
+		db.execute(sql`
+			SELECT
+				COALESCE(SUM(CASE WHEN il.action = 'steal' AND il.outcome = 'success' THEN il.xp_amount ELSE 0 END), 0) AS stolen,
+				COALESCE(SUM(CASE WHEN il.action = 'bomb' AND il.outcome = 'success' THEN il.xp_amount ELSE 0 END), 0) AS bombed,
+				COALESCE(SUM(CASE WHEN il.action = 'gift' THEN il.xp_amount ELSE 0 END), 0) AS gifted,
+				COALESCE(SUM(CASE WHEN il.action = 'steal' THEN 1 ELSE 0 END), 0) AS steal_attempts,
+				COALESCE(SUM(CASE WHEN il.action = 'bomb' THEN 1 ELSE 0 END), 0) AS bomb_attempts,
+				COALESCE(SUM(CASE WHEN il.action = 'spy' THEN 1 ELSE 0 END), 0) AS spies,
+				COALESCE(SUM(CASE WHEN il.action = 'bounty' THEN 1 ELSE 0 END), 0) AS bounties_placed,
+				COALESCE(MAX(CASE WHEN il.action = 'steal' AND il.outcome = 'success' THEN il.xp_amount ELSE 0 END), 0) AS biggest_steal
+			FROM server_member_item_logs il INNER JOIN server_members sm ON sm.id = il.member_id
+			WHERE sm.server_id = ${sid}
+		`)
+	]);
+
+	const positions = (posRows[0] as unknown as any[]) || [];
+	let invested = 0;
+	let marketValue = 0;
+	const traders = new Set<number>();
+	for (const p of positions) {
+		const xpInv = Number(p.xp_invested) || 0;
+		const buy = Number(p.buy_price) || 0;
+		const live = priceMap[`${p.asset_type}:${p.asset_id}`];
+		const price = Number(live?.price) > 0 ? Number(live.price) : buy;
+		invested += xpInv;
+		marketValue += buy > 0 ? Math.round(xpInv * (price / buy)) : xpInv;
+		traders.add(Number(p.member_id));
+	}
+
+	const al = (assetLogRows[0] as unknown as any[])[0] || {};
+	const mg = (minigameRows[0] as unknown as any[])[0] || {};
+	const it = (itemRows[0] as unknown as any[])[0] || {};
+
+	return {
+		assets_invested: invested,
+		assets_market_value: marketValue,
+		assets_open_positions: positions.length,
+		assets_traders: traders.size,
+		assets_buy_volume: Number(al.buy_volume) || 0,
+		assets_sell_volume: Number(al.sell_volume) || 0,
+		assets_realized_net: Number(al.realized_net) || 0,
+		assets_trade_count: Number(al.trade_count) || 0,
+		minigames_wagered: Number(mg.wagered) || 0,
+		minigames_paid_out: Number(mg.paid_out) || 0,
+		minigames_net: Number(mg.net) || 0,
+		minigames_wins: Number(mg.wins) || 0,
+		minigames_plays: Number(mg.plays) || 0,
+		minigames_biggest_win: Number(mg.biggest_win) || 0,
+		items_stolen: Number(it.stolen) || 0,
+		items_bombed: Number(it.bombed) || 0,
+		items_gifted: Number(it.gifted) || 0,
+		items_steal_attempts: Number(it.steal_attempts) || 0,
+		items_bomb_attempts: Number(it.bomb_attempts) || 0,
+		items_spies: Number(it.spies) || 0,
+		items_bounties_placed: Number(it.bounties_placed) || 0,
+		items_biggest_steal: Number(it.biggest_steal) || 0
+	};
+}
+
 export async function closeAssetPosition(positionId: any) {
 	await initializeDatabase();
 	await db.execute(sql`DELETE FROM server_member_assets WHERE id = ${Number(positionId)}`);
@@ -2650,7 +2739,7 @@ export async function getPanelOverview(panelId: number) {
 	};
 }
 
-export async function getServerOverview(serverId: any, opts?: { forPublicPage?: boolean }) {
+export async function getServerOverview(serverId: any, opts?: { forPublicPage?: boolean; priceMap?: Record<string, { price: number }> }) {
 	await initializeDatabase();
 	if (serverId === undefined || serverId === null || serverId === '') return null;
 
@@ -2736,7 +2825,11 @@ export async function getServerOverview(serverId: any, opts?: { forPublicPage?: 
 		]);
 	}
 
+	const economy = await getServerEconomyStats(serverId, opts?.priceMap ?? {}).catch(() => null);
+
 	const r = (raw: any, idx = 0) => (raw[0] as unknown as any[])[idx] || {};
+
+	const walletXp = Math.round(r(levelingStats).total_experience || 0);
 
 	const stats = {
 		members_total: r(memberCounts).total || 0,
@@ -2752,7 +2845,9 @@ export async function getServerOverview(serverId: any, opts?: { forPublicPage?: 
 		channels_stage: r(channelCounts).stage_count || 0,
 		categories_total: r(categoriesCount).count || 0,
 		roles_total: r(rolesCount).count || 0,
-		leveling_total_experience: Math.round(r(levelingStats).total_experience || 0),
+		leveling_wallet_experience: walletXp,
+		leveling_assets_value: economy?.assets_market_value || 0,
+		leveling_total_experience: walletXp + (economy?.assets_market_value || 0),
 		leveling_avg_level: Math.round((r(levelingStats).avg_level || 0) * 100) / 100,
 		leveling_max_level: r(levelingStats).max_level || 0,
 		leveling_total_chat: r(levelingStats).total_chat || 0,
@@ -2760,7 +2855,8 @@ export async function getServerOverview(serverId: any, opts?: { forPublicPage?: 
 		leveling_total_voice_active: r(levelingStats).total_voice_active || 0,
 		leveling_total_voice_afk: r(levelingStats).total_voice_afk || 0,
 		leveling_total_voice_video: r(levelingStats).total_voice_video || 0,
-		leveling_total_voice_streaming: r(levelingStats).total_voice_streaming || 0
+		leveling_total_voice_streaming: r(levelingStats).total_voice_streaming || 0,
+		...(economy ?? {})
 	};
 
 	if (forPublic) {
@@ -4658,6 +4754,7 @@ export default {
 	getServerMembersList,
 	getPanelOverview,
 	getServerOverview,
+	getServerEconomyStats,
 	updateCustomRoleFlags,
 	memberHasCustomSupporterRole,
 	getServerSettings,

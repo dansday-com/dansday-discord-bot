@@ -154,7 +154,6 @@
 				<div class="m-card-glow"></div>
 				<div class="m-card-top">
 					<span class="m-card-medallion"><i class="fas {game.icon}"></i></span>
-					<span class="m-card-tag">{game.name}</span>
 				</div>
 				<h3 class="m-card-name">{game.name}</h3>
 				<p class="m-card-desc">{game.desc}</p>

@@ -2686,9 +2686,10 @@ export async function getMemberInsights(memberId: any) {
 	const mid = Number(memberId);
 
 	const nameExpr = sql`COALESCE(NULLIF(m.server_display_name, ''), NULLIF(m.display_name, ''), m.username)`;
+	const q = (query: any) => db.execute(query).catch(() => [[]] as any);
 
 	const [topItems, topTargets, topAggressors, topGiftees, effectUsage, xpFlow] = await Promise.all([
-		db.execute(sql`
+		q(sql`
 			SELECT bi.name AS name, bi.effect_type AS effect_type, COUNT(*) AS uses
 			FROM server_member_item_logs il
 			LEFT JOIN items bi ON bi.id = il.item_id
@@ -2696,36 +2697,36 @@ export async function getMemberInsights(memberId: any) {
 			GROUP BY bi.id, bi.name, bi.effect_type
 			ORDER BY uses DESC LIMIT 3
 		`),
-		db.execute(sql`
+		q(sql`
 			SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp_amount), 0) AS xp
 			FROM server_member_item_logs il
 			INNER JOIN server_members m ON m.id = il.target_member_id
 			WHERE il.member_id = ${mid} AND il.action = 'steal' AND il.outcome = 'success'
-			GROUP BY m.id, name ORDER BY xp DESC LIMIT 3
+			GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY xp DESC LIMIT 3
 		`),
-		db.execute(sql`
+		q(sql`
 			SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp_amount), 0) AS xp
 			FROM server_member_item_logs il
 			INNER JOIN server_members m ON m.id = il.member_id
 			WHERE il.target_member_id = ${mid} AND il.action = 'steal' AND il.outcome = 'success' AND il.actor_disguised = 0
-			GROUP BY m.id, name ORDER BY xp DESC LIMIT 3
+			GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY xp DESC LIMIT 3
 		`),
-		db.execute(sql`
+		q(sql`
 			SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp_amount), 0) AS xp
 			FROM server_member_item_logs il
 			INNER JOIN server_members m ON m.id = il.target_member_id
 			WHERE il.member_id = ${mid} AND il.action = 'gift'
-			GROUP BY m.id, name ORDER BY xp DESC LIMIT 3
+			GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY xp DESC LIMIT 3
 		`),
-		db.execute(sql`
+		q(sql`
 			SELECT COALESCE(bi.effect_type, il.action) AS effect_type, COUNT(*) AS uses
 			FROM server_member_item_logs il
 			LEFT JOIN items bi ON bi.id = il.item_id
 			WHERE il.member_id = ${mid} AND il.action NOT IN ('buy', 'discard')
-			GROUP BY effect_type
+			GROUP BY COALESCE(bi.effect_type, il.action)
 			ORDER BY uses DESC
 		`),
-		db.execute(sql`
+		q(sql`
 			SELECT d AS day, SUM(net) AS net FROM (
 				SELECT DATE(created_at) AS d, SUM(xp_amount) AS net FROM server_member_minigame_logs
 					WHERE member_id = ${mid} AND created_at >= UTC_TIMESTAMP() - INTERVAL 14 DAY GROUP BY DATE(created_at)

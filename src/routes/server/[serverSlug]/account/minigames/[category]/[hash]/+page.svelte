@@ -113,8 +113,8 @@
 			const net = Number(d.result?.net) || 0;
 			const payout = Number(d.result?.payout) || 0;
 
-			reel = randomCells(14);
-			const landIndex = 10;
+			reel = randomCells(40);
+			const landIndex = 32;
 			reel[landIndex] = won ? 'win' : 'lose';
 			reelAnimating = false;
 			centerCell(2);
@@ -135,7 +135,7 @@
 				showToast(won ? `Won +${fmt(net)} XP` : `Lost ${fmt(bet)} XP`, won ? 'success' : 'error');
 				busy = false;
 				ctx.invalidateAll();
-			}, 3700);
+			}, 7000);
 		} catch {
 			showToast('Play failed', 'error');
 			busy = false;
@@ -201,7 +201,7 @@
 				<div class="m-gamble-pointer"></div>
 				<div
 					class="m-gamble-reel"
-					style="transform: translateX({reelOffset}px); transition: {reelAnimating ? 'transform 3.6s cubic-bezier(0.09, 0.62, 0.12, 1)' : 'none'};"
+					style="transform: translateX({reelOffset}px); transition: {reelAnimating ? 'transform 6.8s cubic-bezier(0.06, 0.72, 0.06, 1)' : 'none'};"
 				>
 					{#each reel as cell, i (i)}
 						<div class="m-gamble-cell m-gamble-cell--{cell}"><i class="fas {cell === 'win' ? 'fa-sack-dollar' : 'fa-skull'}"></i></div>

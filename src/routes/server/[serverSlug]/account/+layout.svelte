@@ -16,19 +16,19 @@
 	const readOnly = false;
 	const navHash = $derived(pd.hash || '');
 	const pathNorm = $derived(page.url.pathname.replace(/\/$/, ''));
-	const isOverview = $derived(/\/account\/overview\//.test(pathNorm));
-	const isHistory = $derived(/\/account\/overview\/history\//.test(pathNorm));
-	const isGuide = $derived(/\/account\/overview\/guide\//.test(pathNorm));
+	const isDashboard = $derived(/\/account\/dashboard\//.test(pathNorm));
+	const isHistory = $derived(/\/account\/dashboard\/history\//.test(pathNorm));
+	const isGuide = $derived(/\/account\/dashboard\/guide\//.test(pathNorm));
 	const isAssets = $derived(/\/account\/assets\//.test(pathNorm));
 	const isMinigames = $derived(/\/account\/minigames\//.test(pathNorm));
-	const isShop = $derived(!isOverview && !isAssets && !isMinigames);
-	const overviewCat = $derived(isHistory ? 'history' : isGuide ? 'guide' : 'information');
+	const isShop = $derived(!isDashboard && !isAssets && !isMinigames);
+	const dashboardCat = $derived(isHistory ? 'history' : isGuide ? 'guide' : 'overview');
 	const activeCat = $derived.by(() => {
 		const m = pathNorm.match(/\/account\/(?:items|assets|minigames)\/([^/]+)\/[^/]+$/);
 		return m ? m[1] : 'all';
 	});
 	const historyCat = $derived.by(() => {
-		const m = pathNorm.match(/\/account\/overview\/history\/([^/]+)\/[^/]+$/);
+		const m = pathNorm.match(/\/account\/dashboard\/history\/([^/]+)\/[^/]+$/);
 		return m ? m[1] : 'all';
 	});
 
@@ -52,8 +52,8 @@
 		{ id: 'mine', label: 'My Assets', icon: 'fa-wallet' }
 	]);
 
-	const overviewTabs = [
-		{ id: 'information', label: 'Information', icon: 'fa-id-card' },
+	const dashboardTabs = [
+		{ id: 'overview', label: 'Overview', icon: 'fa-id-card' },
 		{ id: 'history', label: 'History', icon: 'fa-clock-rotate-left' },
 		{ id: 'guide', label: 'Guide', icon: 'fa-circle-question' }
 	];
@@ -399,8 +399,8 @@
 
 	<div class="m-items-bar">
 		<div class="m-items-toggle">
-			<a class="m-items-seg" class:m-items-seg--active={isOverview} href="{accountBase}/overview/information/{navHash}" data-sveltekit-preload-data="hover">
-				<i class="fas fa-gauge-high"></i>Overview
+			<a class="m-items-seg" class:m-items-seg--active={isDashboard} href="{accountBase}/dashboard/overview/{navHash}" data-sveltekit-preload-data="hover">
+				<i class="fas fa-gauge-high"></i>Dashboard
 			</a>
 			{#if itemsEnabled}
 				<a
@@ -459,17 +459,17 @@
 		</div>
 	{/snippet}
 
-	{#if isOverview}
+	{#if isDashboard}
 		{@render tabStrip(
-			overviewTabs.map((t) => ({
+			dashboardTabs.map((t) => ({
 				...t,
-				href: t.id === 'history' ? `${accountBase}/overview/history/${historyCat}/${navHash}` : `${accountBase}/overview/${t.id}/${navHash}`
+				href: t.id === 'history' ? `${accountBase}/dashboard/history/${historyCat}/${navHash}` : `${accountBase}/dashboard/${t.id}/${navHash}`
 			})),
-			overviewCat
+			dashboardCat
 		)}
 		{#if isHistory}
 			{@render tabStrip(
-				historyTabs.map((t) => ({ ...t, href: `${accountBase}/overview/history/${t.id}/${navHash}` })),
+				historyTabs.map((t) => ({ ...t, href: `${accountBase}/dashboard/history/${t.id}/${navHash}` })),
 				historyCat
 			)}
 		{/if}

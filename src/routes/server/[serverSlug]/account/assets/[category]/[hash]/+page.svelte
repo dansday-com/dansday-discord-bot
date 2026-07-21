@@ -193,13 +193,37 @@
 
 	let sellPos = $state<any | null>(null);
 	let sellPercent = $state(100);
+	let sellCustom = $state<number | null>(null);
 	let sellBusy = $state(false);
 
 	const SELL_PCTS = [25, 50, 75, 100];
 
+	function sellPosValue(p: any): number {
+		const live = priceMap.get(`${p.asset_type}:${p.asset_id}`);
+		const price = live?.price ?? p.current_price ?? p.buy_price ?? 0;
+		return p.buy_price > 0 ? Math.round(p.xp_invested * (price / p.buy_price)) : p.xp_invested;
+	}
+
+	function setSellPct(pct: number) {
+		sellPercent = pct;
+		sellCustom = null;
+	}
+
+	function onSellCustom(v: number | null) {
+		sellCustom = v;
+		if (!sellPos) return;
+		const value = sellPosValue(sellPos);
+		if (v == null || value <= 0) {
+			sellPercent = 0;
+			return;
+		}
+		sellPercent = Math.max(1, Math.min(100, Math.round((v / value) * 100)));
+	}
+
 	function openSell(p: any) {
 		sellPos = p;
 		sellPercent = 100;
+		sellCustom = null;
 	}
 
 	$effect(() => {
@@ -412,18 +436,27 @@
 
 			<div class="m-gamble-picker">
 				{#each SELL_PCTS as p}
-					<button class="m-gamble-pct" class:m-gamble-pct--active={sellPercent === p} disabled={sellBusy} onclick={() => (sellPercent = p)}
+					<button class="m-gamble-pct" class:m-gamble-pct--active={sellCustom == null && sellPercent === p} disabled={sellBusy} onclick={() => setSellPct(p)}
 						>{p === 100 ? 'All' : `${p}%`}</button
 					>
 				{/each}
 			</div>
+			<input
+				class="m-gamble-custom"
+				type="text"
+				inputmode="numeric"
+				placeholder="XP to cash out (max {fmt(value)})"
+				value={grp(sellCustom)}
+				oninput={(e) => onAmountInput(e, onSellCustom)}
+				disabled={sellBusy}
+			/>
 
 			<div class="m-asset-modal-meta">
 				<span>Selling {sellPercent}%</span>
 				<span>Get back {fmt(sellValue)} XP ({sellNet >= 0 ? '+' : ''}{fmt(sellNet)})</span>
 			</div>
 
-			<button class="m-gamble-play m-gamble-play--charged" disabled={sellBusy} onclick={confirmSell}>
+			<button class="m-gamble-play m-gamble-play--charged" disabled={sellBusy || sellPercent < 1} onclick={confirmSell}>
 				{#if sellBusy}<i class="fas fa-circle-notch fa-spin"></i>Selling…{:else}<i class="fas fa-hand-holding-dollar"></i>Sell {sellPercent === 100
 						? 'all'
 						: `${sellPercent}%`} · {fmt(sellValue)} XP{/if}

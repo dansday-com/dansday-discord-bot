@@ -915,8 +915,5 @@ export const serverMemberAssets = mysqlTable(
 		created_at: datetime('created_at').notNull(),
 		updated_at: datetime('updated_at').notNull()
 	},
-	(t) => [
-		index('idx_server_member_assets_member').on(t.member_id, t.status),
-		index('idx_server_member_assets_held').on(t.status, t.asset_type, t.asset_id)
-	]
+	(t) => [index('idx_server_member_assets_member').on(t.member_id, t.status), index('idx_server_member_assets_held').on(t.status, t.asset_type, t.asset_id)]
 );

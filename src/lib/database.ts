@@ -1687,6 +1687,7 @@ export async function purgeDepletedMemberItems() {
 	const result: any = await db.execute(sql`
 		DELETE smi FROM server_member_items smi
 		WHERE smi.quantity <= 0
+		  AND smi.updated_at <= UTC_TIMESTAMP() - INTERVAL 60 SECOND
 		  AND NOT EXISTS (
 		    SELECT 1 FROM server_member_item_actives a
 		    WHERE a.member_item_id = smi.id AND a.expires_at > UTC_TIMESTAMP()
@@ -2125,9 +2126,7 @@ export async function getAssetPosition(positionId: any) {
 
 export async function getOpenAssetPositions(memberId: any) {
 	await initializeDatabase();
-	const rows = await db.execute(
-		sql`SELECT * FROM server_member_assets WHERE member_id = ${Number(memberId)} AND status = 'open' ORDER BY opened_at DESC`
-	);
+	const rows = await db.execute(sql`SELECT * FROM server_member_assets WHERE member_id = ${Number(memberId)} AND status = 'open' ORDER BY opened_at DESC`);
 	return (rows[0] as unknown as any[]) || [];
 }
 

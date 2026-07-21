@@ -2080,10 +2080,10 @@ export async function collectBounties(targetMemberId: any) {
 export async function getDistinctHeldAssetIds(assetType?: string) {
 	await initializeDatabase();
 	if (assetType) {
-		const rows = await db.execute(sql`SELECT DISTINCT asset_id FROM server_member_asset_positions WHERE status = 'open' AND asset_type = ${String(assetType)}`);
+		const rows = await db.execute(sql`SELECT DISTINCT asset_id FROM server_member_assets WHERE status = 'open' AND asset_type = ${String(assetType)}`);
 		return (rows[0] as unknown as any[]) || [];
 	}
-	const rows = await db.execute(sql`SELECT DISTINCT asset_type, asset_id FROM server_member_asset_positions WHERE status = 'open'`);
+	const rows = await db.execute(sql`SELECT DISTINCT asset_type, asset_id FROM server_member_assets WHERE status = 'open'`);
 	return (rows[0] as unknown as any[]) || [];
 }
 
@@ -2099,7 +2099,7 @@ export async function openAssetPosition(data: {
 }) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
-	const [result] = await db.insert(schema.serverMemberAssetPositions).values({
+	const [result] = await db.insert(schema.serverMemberAssets).values({
 		member_id: Number(data.member_id),
 		asset_type: String(data.asset_type),
 		asset_id: String(data.asset_id),
@@ -2119,14 +2119,14 @@ export async function openAssetPosition(data: {
 
 export async function getAssetPosition(positionId: any) {
 	await initializeDatabase();
-	const rows = await db.execute(sql`SELECT * FROM server_member_asset_positions WHERE id = ${Number(positionId)} LIMIT 1`);
+	const rows = await db.execute(sql`SELECT * FROM server_member_assets WHERE id = ${Number(positionId)} LIMIT 1`);
 	return ((rows[0] as unknown as any[]) || [])[0] ?? null;
 }
 
 export async function getOpenAssetPositions(memberId: any) {
 	await initializeDatabase();
 	const rows = await db.execute(
-		sql`SELECT * FROM server_member_asset_positions WHERE member_id = ${Number(memberId)} AND status = 'open' ORDER BY opened_at DESC`
+		sql`SELECT * FROM server_member_assets WHERE member_id = ${Number(memberId)} AND status = 'open' ORDER BY opened_at DESC`
 	);
 	return (rows[0] as unknown as any[]) || [];
 }
@@ -2134,7 +2134,7 @@ export async function getOpenAssetPositions(memberId: any) {
 export async function getOpenAssetPosition(memberId: any, assetType: string, assetId: string) {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
-		SELECT * FROM server_member_asset_positions
+		SELECT * FROM server_member_assets
 		WHERE member_id = ${Number(memberId)} AND status = 'open' AND asset_type = ${String(assetType)} AND asset_id = ${String(assetId)}
 		LIMIT 1
 	`);
@@ -2145,7 +2145,7 @@ export async function mergeAssetPosition(positionId: any, data: { xp_invested: n
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	await db.execute(sql`
-		UPDATE server_member_asset_positions
+		UPDATE server_member_assets
 		SET xp_invested = ${Number(data.xp_invested) || 0}, buy_price = ${String(data.buy_price)}, updated_at = ${now}
 		WHERE id = ${Number(positionId)} AND status = 'open'
 	`);
@@ -2157,7 +2157,7 @@ export async function getMemberAssetHistory(memberId: any, limit = 600) {
 	const rows = await db.execute(sql`
 		SELECT id, asset_type, asset_id, symbol, asset_name, asset_image,
 		       xp_invested, buy_price, status, opened_at, closed_at, sell_price, xp_returned
-		FROM server_member_asset_positions
+		FROM server_member_assets
 		WHERE member_id = ${Number(memberId)}
 		ORDER BY COALESCE(closed_at, opened_at) DESC
 		LIMIT ${Number(limit) || 600}
@@ -2169,7 +2169,7 @@ export async function closeAssetPosition(positionId: any, data: { sell_price: nu
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	await db.execute(sql`
-		UPDATE server_member_asset_positions
+		UPDATE server_member_assets
 		SET status = 'closed',
 		    sell_price = ${String(data.sell_price)},
 		    xp_returned = ${Number(data.xp_returned) || 0},
@@ -2187,7 +2187,7 @@ export async function reduceAssetPosition(positionId: any, data: { sold_invested
 	const now = toMySQLDateTime();
 	const sold = Math.max(0, Math.floor(Number(data.sold_invested) || 0));
 	const remaining = Math.max(0, (Number(position.xp_invested) || 0) - sold);
-	await db.insert(schema.serverMemberAssetPositions).values({
+	await db.insert(schema.serverMemberAssets).values({
 		member_id: Number(position.member_id),
 		asset_type: String(position.asset_type),
 		asset_id: String(position.asset_id),
@@ -2205,7 +2205,7 @@ export async function reduceAssetPosition(positionId: any, data: { sold_invested
 		updated_at: now as any
 	});
 	await db.execute(sql`
-		UPDATE server_member_asset_positions
+		UPDATE server_member_assets
 		SET xp_invested = ${remaining}, updated_at = ${now}
 		WHERE id = ${Number(positionId)} AND status = 'open'
 	`);

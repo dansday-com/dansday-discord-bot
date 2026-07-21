@@ -893,8 +893,8 @@ export const serverMemberItemNotifications = mysqlTable(
 	(t) => [uniqueIndex('unique_member_item_notification').on(t.member_id, t.notification_type, t.notified_for_at)]
 );
 
-export const serverMemberAssetPositions = mysqlTable(
-	'server_member_asset_positions',
+export const serverMemberAssets = mysqlTable(
+	'server_member_assets',
 	{
 		id: int('id').primaryKey().autoincrement(),
 		member_id: int('member_id')
@@ -916,7 +916,7 @@ export const serverMemberAssetPositions = mysqlTable(
 		updated_at: datetime('updated_at').notNull()
 	},
 	(t) => [
-		index('idx_server_member_asset_positions_member').on(t.member_id, t.status),
-		index('idx_server_member_asset_positions_held').on(t.status, t.asset_type, t.asset_id)
+		index('idx_server_member_assets_member').on(t.member_id, t.status),
+		index('idx_server_member_assets_held').on(t.status, t.asset_type, t.asset_id)
 	]
 );

@@ -150,27 +150,7 @@ export async function loadItemsShared(server: any, hash: string, gateComponent?:
 
 	const member = hash ? await resolveMemberByCardToken(server.id, hash) : null;
 
-	if (!member) {
-		return {
-			readOnly: true as const,
-			member: null,
-			items,
-			hash: '',
-			bagStock: 0,
-			categories: enabledCategories,
-			memberName: null,
-			memberDiscordId: null,
-			memberAvatar: null,
-			memberCard: null,
-			balance: { experience: 0, level: 1, rank: null },
-			activeEffects: [],
-			attackCooldowns: [],
-			immuneUntil: null,
-			insuranceCooldownUntil: null,
-			bountyTotal: 0,
-			levelReq
-		};
-	}
+	if (!member) return { guest: true as const };
 
 	const invRows = await db.getMemberInventory(member.id).catch(() => []);
 	const bagStock = (invRows as any[]).reduce((sum, r) => sum + (Number(r.quantity) || 0), 0);

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onDestroy, onMount, setContext } from 'svelte';
 	import { page } from '$app/state';
-	import { invalidateAll, goto } from '$app/navigation';
+	import { invalidateAll } from '$app/navigation';
 	import MemberCard from '$lib/frontend/components/MemberCard.svelte';
 	import { publicServerPath } from '$lib/url.js';
 	import { ITEM_EFFECTS, effectLabel, effectIcon, effectAccentHex, actionVerb, BAG_CAPACITY, formatDuration } from '$lib/items.js';
@@ -13,16 +13,23 @@
 	const pd = $derived(page.data as any);
 
 	const accountBase = $derived(`${publicServerPath(data.server.slug)}/account`);
-	const readOnly = $derived(!!pd.readOnly || !pd.memberCard);
-	const navHash = $derived(pd.hash || 'guest');
+	const readOnly = false;
+	const navHash = $derived(pd.hash || '');
 	const pathNorm = $derived(page.url.pathname.replace(/\/$/, ''));
-	const isHistory = $derived(/\/account\/history\//.test(pathNorm));
-	const isGuide = $derived(/\/account\/guide\//.test(pathNorm));
+	const isOverview = $derived(/\/account\/overview\//.test(pathNorm));
+	const isStatistics = $derived(/\/account\/overview\/statistics\//.test(pathNorm));
+	const isHistory = $derived(/\/account\/overview\/history\//.test(pathNorm));
+	const isGuide = $derived(/\/account\/overview\/guide\//.test(pathNorm));
 	const isAssets = $derived(/\/account\/assets\//.test(pathNorm));
 	const isMinigames = $derived(/\/account\/minigames\//.test(pathNorm));
-	const isShop = $derived(!isHistory && !isGuide && !isAssets && !isMinigames);
+	const isShop = $derived(!isOverview && !isAssets && !isMinigames);
+	const overviewCat = $derived(isStatistics ? 'statistics' : isHistory ? 'history' : isGuide ? 'guide' : 'information');
 	const activeCat = $derived.by(() => {
-		const m = pathNorm.match(/\/account\/(?:items|history|assets|minigames)\/([^/]+)\/[^/]+$/);
+		const m = pathNorm.match(/\/account\/(?:items|assets|minigames)\/([^/]+)\/[^/]+$/);
+		return m ? m[1] : 'all';
+	});
+	const historyCat = $derived.by(() => {
+		const m = pathNorm.match(/\/account\/overview\/history\/([^/]+)\/[^/]+$/);
 		return m ? m[1] : 'all';
 	});
 
@@ -42,9 +49,16 @@
 		{ id: 'top', label: 'Top 50', icon: 'fa-ranking-star' },
 		{ id: 'gainers', label: 'Gainers', icon: 'fa-arrow-trend-up' },
 		{ id: 'losers', label: 'Losers', icon: 'fa-arrow-trend-down' },
-		...(readOnly ? [] : [{ id: 'search', label: 'Search', icon: 'fa-magnifying-glass' }]),
-		...(readOnly ? [] : [{ id: 'mine', label: 'My Assets', icon: 'fa-wallet' }])
+		{ id: 'search', label: 'Search', icon: 'fa-magnifying-glass' },
+		{ id: 'mine', label: 'My Assets', icon: 'fa-wallet' }
 	]);
+
+	const overviewTabs = [
+		{ id: 'information', label: 'Information', icon: 'fa-id-card' },
+		{ id: 'statistics', label: 'Statistics', icon: 'fa-chart-pie' },
+		{ id: 'history', label: 'History', icon: 'fa-clock-rotate-left' },
+		{ id: 'guide', label: 'Guide', icon: 'fa-circle-question' }
+	];
 
 	const minigameTabs = [
 		{ id: 'all', label: 'All', icon: 'fa-grip' },
@@ -166,21 +180,8 @@
 
 	function syncTabSession() {
 		if (typeof sessionStorage === 'undefined') return;
-		const urlHash = pd.hash && pd.hash !== 'guest' ? String(pd.hash) : '';
-		if (urlHash) {
-			sessionStorage.setItem(sessionKey, urlHash);
-			return;
-		}
-		const stored = sessionStorage.getItem(sessionKey);
-		if (stored) {
-			if (isGuide) {
-				goto(`${accountBase}/guide/${stored}`, { replaceState: true });
-				return;
-			}
-			const section = isHistory ? 'history' : isAssets ? 'assets' : isMinigames ? 'minigames' : 'items';
-			const cat = activeCat && activeCat !== 'guest' ? activeCat : isAssets ? 'top' : 'all';
-			goto(`${accountBase}/${section}/${cat}/${stored}`, { replaceState: true });
-		}
+		const urlHash = pd.hash ? String(pd.hash) : '';
+		if (urlHash) sessionStorage.setItem(sessionKey, urlHash);
 	}
 
 	let es: EventSource | null = null;
@@ -335,58 +336,56 @@
 </script>
 
 <div class="m-items">
-	{#if !readOnly}
-		<div class="m-xp">
-			<div class="m-xp-glow"></div>
-			{#if pd.memberCard && !(isAssets && assetSummary.count === 0)}
-				<button class="m-xp-card-btn" onclick={() => (showCard = true)} aria-label="Share your card" title="Share card">
-					<i class="fas fa-share-nodes"></i>
-					<span class="m-xp-card-btn-label">Share</span>
-				</button>
-			{/if}
-			<div class="m-xp-avatar">
-				<img src={memberAvatar} alt={pd.memberName ?? ''} loading="lazy" />
-			</div>
-			<div class="m-xp-figures">
-				<span class="m-xp-wallet"><i class="fas {isAssets ? 'fa-chart-line' : 'fa-wallet'}"></i>{isAssets ? 'Invested in Assets' : 'Wallet'}</span>
-				{#if pd.memberName}<span class="m-xp-name">{pd.memberName}</span>{/if}
-				<span class="m-xp-amount">{fmt(isAssets ? assetSummary.invested : liveXp)}<span class="m-xp-unit">XP</span></span>
-				<div class="m-xp-bar" class:m-xp-bar--hidden={isAssets}>
-					<div class="m-xp-bar-fill" style="width: {levelInfo.pct}%"></div>
-				</div>
-				<span class="m-xp-bar-meta">
-					{#if isAssets}
-						<span>{assetSummary.count} asset{assetSummary.count === 1 ? '' : 's'}</span>
-						<span>Worth {fmt(assetSummary.value)} XP</span>
-					{:else}
-						<span>Lvl {level}</span>
-						<span>{levelInfo.toNext > 0 ? `${fmt(levelInfo.toNext)} XP to Lvl ${level + 1}` : 'Max progress'}</span>
-					{/if}
-				</span>
-			</div>
-			<div class="m-xp-stats">
-				{#if isAssets}
-					<div class="m-xp-stat m-xp-stat--pnl" data-dir={assetSummary.pnl > 0 ? 'up' : assetSummary.pnl < 0 ? 'down' : 'flat'}>
-						<span class="m-xp-stat-val">
-							<i class="fas fa-caret-{assetSummary.pnl >= 0 ? 'up' : 'down'}"></i>{assetSummary.pnlPct >= 0 ? '+' : ''}{assetSummary.pnlPct.toFixed(2)}%
-						</span>
-						<span class="m-xp-stat-lbl">{assetSummary.pnl >= 0 ? '+' : ''}{fmt(assetSummary.pnl)} XP</span>
-					</div>
-				{:else}
-					<div class="m-xp-stat">
-						<span class="m-xp-stat-val">{levelInfo.pct}%</span>
-						<span class="m-xp-stat-lbl">Level {level}</span>
-					</div>
-					{#if rank}
-						<div class="m-xp-stat">
-							<span class="m-xp-stat-val">#{rank}</span>
-							<span class="m-xp-stat-lbl">Rank</span>
-						</div>
-					{/if}
-				{/if}
-			</div>
+	<div class="m-xp">
+		<div class="m-xp-glow"></div>
+		{#if pd.memberCard && !(isAssets && assetSummary.count === 0)}
+			<button class="m-xp-card-btn" onclick={() => (showCard = true)} aria-label="Share your card" title="Share card">
+				<i class="fas fa-share-nodes"></i>
+				<span class="m-xp-card-btn-label">Share</span>
+			</button>
+		{/if}
+		<div class="m-xp-avatar">
+			<img src={memberAvatar} alt={pd.memberName ?? ''} loading="lazy" />
 		</div>
-	{/if}
+		<div class="m-xp-figures">
+			<span class="m-xp-wallet"><i class="fas {isAssets ? 'fa-chart-line' : 'fa-wallet'}"></i>{isAssets ? 'Invested in Assets' : 'Wallet'}</span>
+			{#if pd.memberName}<span class="m-xp-name">{pd.memberName}</span>{/if}
+			<span class="m-xp-amount">{fmt(isAssets ? assetSummary.invested : liveXp)}<span class="m-xp-unit">XP</span></span>
+			<div class="m-xp-bar" class:m-xp-bar--hidden={isAssets}>
+				<div class="m-xp-bar-fill" style="width: {levelInfo.pct}%"></div>
+			</div>
+			<span class="m-xp-bar-meta">
+				{#if isAssets}
+					<span>{assetSummary.count} asset{assetSummary.count === 1 ? '' : 's'}</span>
+					<span>Worth {fmt(assetSummary.value)} XP</span>
+				{:else}
+					<span>Lvl {level}</span>
+					<span>{levelInfo.toNext > 0 ? `${fmt(levelInfo.toNext)} XP to Lvl ${level + 1}` : 'Max progress'}</span>
+				{/if}
+			</span>
+		</div>
+		<div class="m-xp-stats">
+			{#if isAssets}
+				<div class="m-xp-stat m-xp-stat--pnl" data-dir={assetSummary.pnl > 0 ? 'up' : assetSummary.pnl < 0 ? 'down' : 'flat'}>
+					<span class="m-xp-stat-val">
+						<i class="fas fa-caret-{assetSummary.pnl >= 0 ? 'up' : 'down'}"></i>{assetSummary.pnlPct >= 0 ? '+' : ''}{assetSummary.pnlPct.toFixed(2)}%
+					</span>
+					<span class="m-xp-stat-lbl">{assetSummary.pnl >= 0 ? '+' : ''}{fmt(assetSummary.pnl)} XP</span>
+				</div>
+			{:else}
+				<div class="m-xp-stat">
+					<span class="m-xp-stat-val">{levelInfo.pct}%</span>
+					<span class="m-xp-stat-lbl">Level {level}</span>
+				</div>
+				{#if rank}
+					<div class="m-xp-stat">
+						<span class="m-xp-stat-val">#{rank}</span>
+						<span class="m-xp-stat-lbl">Rank</span>
+					</div>
+				{/if}
+			{/if}
+		</div>
+	</div>
 
 	{#if activeChips.length > 0}
 		<div class="m-active">
@@ -402,6 +401,9 @@
 
 	<div class="m-items-bar">
 		<div class="m-items-toggle">
+			<a class="m-items-seg" class:m-items-seg--active={isOverview} href="{accountBase}/overview/information/{navHash}" data-sveltekit-preload-data="hover">
+				<i class="fas fa-gauge-high"></i>Overview
+			</a>
 			{#if itemsEnabled}
 				<a
 					bind:this={bagTabEl}
@@ -411,9 +413,7 @@
 					href="{accountBase}/items/all/{navHash}"
 					data-sveltekit-preload-data="hover"
 				>
-					<i class="fas fa-store"></i>Items{#if !readOnly}<span class="m-items-count" class:m-items-count--bump={bagPulse}
-							>{pd.bagStock ?? 0}/{BAG_CAPACITY}</span
-						>{/if}
+					<i class="fas fa-store"></i>Items<span class="m-items-count" class:m-items-count--bump={bagPulse}>{pd.bagStock ?? 0}/{BAG_CAPACITY}</span>
 				</a>
 			{/if}
 			{#if minigamesEnabled}
@@ -426,18 +426,10 @@
 					<i class="fas fa-chart-line"></i>Assets
 				</a>
 			{/if}
-			{#if !readOnly}
-				<a class="m-items-seg" class:m-items-seg--active={isHistory} href="{accountBase}/history/all/{navHash}" data-sveltekit-preload-data="hover">
-					<i class="fas fa-clock-rotate-left"></i>History
-				</a>
-			{/if}
-			<a class="m-items-seg" class:m-items-seg--active={isGuide} href="{accountBase}/guide/{navHash}" data-sveltekit-preload-data="hover">
-				<i class="fas fa-circle-question"></i>Guide
-			</a>
 		</div>
 	</div>
 
-	{#snippet tabStrip(tabs: { id: string; label: string; icon: string }[], section: 'items' | 'history' | 'assets' | 'minigames', hash: string)}
+	{#snippet tabStrip(tabs: { id: string; label: string; icon: string; href: string }[], activeId: string)}
 		<div class="m-items-tabswrap">
 			<button
 				type="button"
@@ -451,12 +443,7 @@
 			</button>
 			<div bind:this={tabsEl} class="m-items-tabs" onscroll={updateTabScroll}>
 				{#each tabs as cat}
-					<a
-						class="m-items-tab"
-						class:m-items-tab--active={activeCat === cat.id}
-						href="{accountBase}/{section}/{cat.id}/{hash}"
-						data-sveltekit-preload-data="hover"
-					>
+					<a class="m-items-tab" class:m-items-tab--active={activeId === cat.id} href={cat.href} data-sveltekit-preload-data="hover">
 						<i class="fas {cat.icon}"></i>{cat.label}
 					</a>
 				{/each}
@@ -474,36 +461,38 @@
 		</div>
 	{/snippet}
 
-	{#if isShop}
-		{@render tabStrip(typeTabs, 'items', navHash)}
-	{:else if isHistory}
-		{@render tabStrip(historyTabs, 'history', pd.hash)}
+	{#if isOverview}
+		{@render tabStrip(
+			overviewTabs.map((t) => ({
+				...t,
+				href: t.id === 'history' ? `${accountBase}/overview/history/${historyCat}/${navHash}` : `${accountBase}/overview/${t.id}/${navHash}`
+			})),
+			overviewCat
+		)}
+		{#if isHistory}
+			{@render tabStrip(
+				historyTabs.map((t) => ({ ...t, href: `${accountBase}/overview/history/${t.id}/${navHash}` })),
+				historyCat
+			)}
+		{/if}
+	{:else if isShop}
+		{@render tabStrip(
+			typeTabs.map((t) => ({ ...t, href: `${accountBase}/items/${t.id}/${navHash}` })),
+			activeCat
+		)}
 	{:else if isAssets}
-		{@render tabStrip(assetTabs, 'assets', navHash)}
+		{@render tabStrip(
+			assetTabs.map((t) => ({ ...t, href: `${accountBase}/assets/${t.id}/${navHash}` })),
+			activeCat
+		)}
 	{:else if isMinigames}
-		{@render tabStrip(minigameTabs, 'minigames', navHash)}
+		{@render tabStrip(
+			minigameTabs.map((t) => ({ ...t, href: `${accountBase}/minigames/${t.id}/${navHash}` })),
+			activeCat
+		)}
 	{/if}
 
-	{#if readOnly && (isShop || isAssets || isMinigames)}
-		<div class="m-guest">
-			<div class="m-guest-ic"><i class="fas fa-lock"></i></div>
-			<div class="m-guest-body">
-				<h3>You're browsing as a guest</h3>
-				<p>
-					{isAssets ? 'Trading assets' : isMinigames ? 'Playing minigames' : 'Buying and using items'} is locked. Open the account page from the
-					<strong>account button</strong> in your Discord server to log in and play.
-				</p>
-			</div>
-		</div>
-	{/if}
-
-	{#if readOnly && !isGuide}
-		<div class="m-readonly" inert>
-			{@render children()}
-		</div>
-	{:else}
-		{@render children()}
-	{/if}
+	{@render children()}
 </div>
 
 {#if showCard && pd.memberCard}

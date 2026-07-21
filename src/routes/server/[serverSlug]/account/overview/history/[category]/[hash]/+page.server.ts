@@ -16,7 +16,7 @@ export const load: PageServerLoad = async ({ parent, params, url }) => {
 	const hash = itemsCardTokenFromUrl(params.hash);
 	const shared = await loadItemsShared(server, hash, gate);
 	if ('notFound' in shared) error(404, 'Account not available');
-	if (shared.readOnly || !shared.member) redirect(303, `${publicServerPath(server.slug)}/account/guide/guest`);
+	if ('guest' in shared || !shared.member) redirect(303, publicServerPath(server.slug));
 
 	const tabParam = String(params.category || 'all');
 	const allowed = new Set(['all', 'level']);

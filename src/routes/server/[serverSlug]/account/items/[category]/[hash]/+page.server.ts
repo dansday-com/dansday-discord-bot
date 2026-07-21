@@ -1,6 +1,7 @@
-import { error } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
+import { publicServerPath } from '$lib/url.js';
 import db from '$lib/database.js';
 import { loadItemsShared, computeCardToken, itemsCardTokenFromUrl } from '$lib/frontend/public/items/index.js';
 
@@ -18,6 +19,7 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 	const hash = itemsCardTokenFromUrl(params.hash);
 	const shared = await loadItemsShared(server, hash);
 	if ('notFound' in shared) error(404, 'Items not available');
+	if ('guest' in shared) redirect(303, publicServerPath(server.slug));
 
 	const category = String(params.category || 'all');
 	const visibleItems = category === 'all' ? shared.items : shared.items.filter((i: any) => i.effect_type === category);
@@ -25,7 +27,7 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 	let ownedByItemId: Record<number, { member_item_id: number; quantity: number; usable: boolean }> = {};
 	let targets: any[] = [];
 
-	if (!shared.readOnly && shared.member) {
+	if (shared.member) {
 		const rows = await db.getMemberInventory(shared.member.id).catch(() => []);
 		for (const r of rows as any[]) {
 			ownedByItemId[Number(r.item_id)] = {

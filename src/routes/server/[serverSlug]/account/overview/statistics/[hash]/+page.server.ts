@@ -1,6 +1,9 @@
-import { error } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import { publicServerPath } from '$lib/url.js';
+import db from '$lib/database.js';
 import { loadItemsShared, itemsCardTokenFromUrl } from '$lib/frontend/public/items/index.js';
+import { loadAssetPriceMap } from '$lib/frontend/public/assets/index.js';
 
 export const load: PageServerLoad = async ({ parent, params }) => {
 	const { server, itemsEnabled, assetsEnabled, minigamesEnabled } = await parent();
@@ -12,6 +15,13 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 	const hash = itemsCardTokenFromUrl(params.hash);
 	const shared = await loadItemsShared(server, hash, gate);
 	if ('notFound' in shared) error(404, 'Account not available');
+	if ('guest' in shared || !shared.member) redirect(303, publicServerPath(server.slug));
 
-	return { ...shared, itemsEnabled, assetsEnabled, minigamesEnabled };
+	const priceMap = assetsEnabled ? await loadAssetPriceMap().catch(() => ({})) : {};
+	const [dashboard, insights] = await Promise.all([
+		db.getMemberDashboard(shared.member.id, priceMap as any).catch(() => null),
+		db.getMemberInsights(shared.member.id).catch(() => null)
+	]);
+
+	return { ...shared, dashboard, insights };
 };

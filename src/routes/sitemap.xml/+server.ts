@@ -1,9 +1,7 @@
 import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
 import { listPublicServerSlugs } from '$lib/frontend/public/server-slug/index.js';
-import { loadItemsCatalog } from '$lib/frontend/public/items/index.js';
 import { parseMySQLDateTimeUtc } from '$lib/utils/datetime.js';
-import { ITEM_EFFECTS } from '$lib/items.js';
 
 function escapeXml(unsafe: string): string {
 	return unsafe.replace(
@@ -39,19 +37,6 @@ export const GET: RequestHandler = async () => {
 
 	const visibleServers = servers.filter((s) => s.slug);
 
-	const categoriesByServer = new Map<number, string[]>();
-	await Promise.all(
-		visibleServers
-			.filter((s) => s.items_enabled)
-			.map(async (s) => {
-				const catalog = await loadItemsCatalog(Number(s.id)).catch(() => []);
-				const present = [...new Set((catalog as any[]).filter((i) => i.enabled !== false || i.live).map((i) => i.effect_type))].filter((t) =>
-					ITEM_EFFECTS.some((e) => e.id === t)
-				);
-				categoriesByServer.set(Number(s.id), present);
-			})
-	);
-
 	const publicPageRows = visibleServers.flatMap((s) => {
 		const enc = encodeURIComponent(String(s.slug));
 		const lastmod = toLastmod(s.updated_at);
@@ -62,28 +47,6 @@ export const GET: RequestHandler = async () => {
 			{ loc: `${root}/${enc}/leaderboard`, ...base },
 			{ loc: `${root}/${enc}/members`, ...base }
 		];
-		const accountEnabled = s.items_enabled || s.assets_enabled || s.minigames_enabled;
-		if (accountEnabled) {
-			const accountBase = `${root}/${enc}/account`;
-			urls.push({ loc: accountBase, ...base, priority: 0.7 });
-			urls.push({ loc: `${accountBase}/guide/guest`, ...base, priority: 0.7 });
-			if (s.items_enabled) {
-				const presentCategories = categoriesByServer.get(Number(s.id)) ?? [];
-				urls.push({ loc: `${accountBase}/items/all/guest`, ...base, priority: 0.6 });
-				for (const cat of presentCategories) {
-					urls.push({ loc: `${accountBase}/items/${cat}/guest`, ...base, priority: 0.6 });
-				}
-			}
-			if (s.assets_enabled) {
-				for (const view of ['top', 'gainers', 'losers']) {
-					urls.push({ loc: `${accountBase}/assets/${view}/guest`, ...base, priority: 0.6 });
-				}
-			}
-			if (s.minigames_enabled) {
-				urls.push({ loc: `${accountBase}/minigames/all/guest`, ...base, priority: 0.6 });
-				urls.push({ loc: `${accountBase}/minigames/gamble/guest`, ...base, priority: 0.6 });
-			}
-		}
 		return urls;
 	});
 

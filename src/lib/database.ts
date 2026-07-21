@@ -2495,6 +2495,189 @@ export async function getServerFeatureStats(serverId: any) {
 	};
 }
 
+export async function getMemberDashboard(memberId: any, priceMap: Record<string, { price: number }> = {}) {
+	await initializeDatabase();
+	const mid = Number(memberId);
+
+	const [posRows, assetLogRows, minigameRows, outgoingRows, incomingRows, giveawayRows, questRows, streamRows, feedbackRows, bountyOnRows] = await Promise.all([
+		db.execute(sql`SELECT asset_type, asset_id, xp_invested, buy_price FROM server_member_assets WHERE member_id = ${mid}`),
+		db.execute(sql`
+				SELECT
+					COALESCE(SUM(CASE WHEN action = 'buy' THEN xp_amount ELSE 0 END), 0) AS buy_volume,
+					COALESCE(SUM(CASE WHEN action = 'sell' THEN xp_amount ELSE 0 END), 0) AS sell_volume,
+					COALESCE(SUM(CASE WHEN action = 'sell' THEN net ELSE 0 END), 0) AS realized_net,
+					COUNT(*) AS trade_count
+				FROM server_member_asset_logs WHERE member_id = ${mid}
+			`),
+		db.execute(sql`
+				SELECT
+					COALESCE(SUM(wager), 0) AS wagered,
+					COALESCE(SUM(xp_amount), 0) AS net,
+					COALESCE(SUM(CASE WHEN outcome = 'win' THEN 1 ELSE 0 END), 0) AS wins,
+					COUNT(*) AS plays,
+					COALESCE(MAX(CASE WHEN outcome = 'win' THEN payout ELSE 0 END), 0) AS biggest_win
+				FROM server_member_minigame_logs WHERE member_id = ${mid}
+			`),
+		db.execute(sql`
+				SELECT
+					COALESCE(SUM(CASE WHEN action = 'buy' THEN 1 ELSE 0 END), 0) AS buys,
+					COALESCE(SUM(CASE WHEN action = 'buy' THEN xp_amount ELSE 0 END), 0) AS buy_spend,
+					COALESCE(SUM(CASE WHEN action NOT IN ('buy','discard','steal','bomb','gift','spy','bounty') THEN 1 ELSE 0 END), 0) AS activations,
+					COALESCE(SUM(CASE WHEN action = 'steal' AND outcome = 'success' THEN xp_amount ELSE 0 END), 0) AS stolen,
+					COALESCE(SUM(CASE WHEN action = 'steal' AND outcome = 'success' THEN 1 ELSE 0 END), 0) AS steals_landed,
+					COALESCE(SUM(CASE WHEN action = 'steal' AND outcome = 'caught' THEN 1 ELSE 0 END), 0) AS steals_caught,
+					COALESCE(SUM(CASE WHEN action = 'bomb' AND outcome = 'success' THEN xp_amount ELSE 0 END), 0) AS bombed,
+					COALESCE(SUM(CASE WHEN action = 'gift' THEN xp_amount ELSE 0 END), 0) AS gifted,
+					COALESCE(SUM(CASE WHEN action = 'spy' THEN 1 ELSE 0 END), 0) AS spies,
+					COALESCE(SUM(CASE WHEN action = 'bounty' THEN 1 ELSE 0 END), 0) AS bounties_placed
+				FROM server_member_item_logs WHERE member_id = ${mid}
+			`),
+		db.execute(sql`
+				SELECT
+					COALESCE(SUM(CASE WHEN action = 'steal' AND outcome = 'success' THEN xp_amount ELSE 0 END), 0) AS stolen_from,
+					COALESCE(SUM(CASE WHEN action = 'bomb' AND outcome = 'success' THEN xp_amount ELSE 0 END), 0) AS bombed_by,
+					COALESCE(SUM(CASE WHEN action = 'gift' THEN xp_amount ELSE 0 END), 0) AS gifts_received
+				FROM server_member_item_logs WHERE target_member_id = ${mid}
+			`),
+		db.execute(sql`
+				SELECT
+					(SELECT COUNT(*) FROM server_member_giveaways WHERE member_id = ${mid}) AS hosted,
+					(SELECT COUNT(*) FROM server_member_giveaway_entries WHERE member_id = ${mid}) AS entered,
+					(SELECT COUNT(*) FROM server_member_giveaway_entries WHERE member_id = ${mid} AND is_winner = 1) AS won
+			`),
+		db.execute(sql`
+				SELECT COUNT(*) AS enrolled, COALESCE(SUM(CASE WHEN reward_claimed = 1 THEN 1 ELSE 0 END), 0) AS claimed
+				FROM server_member_discord_quests WHERE member_id = ${mid}
+			`),
+		db.execute(sql`
+				SELECT
+					COUNT(*) AS streams,
+					COALESCE(MAX(peak_viewers), 0) AS peak_viewers,
+					COALESCE(SUM(total_likes), 0) AS likes,
+					COALESCE(SUM(total_gifts), 0) AS gifts
+				FROM server_member_content_creator_streams WHERE member_id = ${mid}
+			`),
+		db.execute(sql`SELECT COUNT(*) AS submitted FROM server_member_feedbacks WHERE member_id = ${mid}`),
+		db.execute(
+			sql`SELECT COALESCE(SUM(amount), 0) AS pooled, COUNT(*) AS count FROM server_member_item_bounties WHERE target_member_id = ${mid} AND collected = 0`
+		)
+	]);
+
+	const positions = (posRows[0] as unknown as any[]) || [];
+	let invested = 0;
+	let marketValue = 0;
+	for (const p of positions) {
+		const xpInv = Number(p.xp_invested) || 0;
+		const buy = Number(p.buy_price) || 0;
+		const live = priceMap[`${p.asset_type}:${p.asset_id}`];
+		const price = Number(live?.price) > 0 ? Number(live.price) : buy;
+		invested += xpInv;
+		marketValue += buy > 0 ? Math.round(xpInv * (price / buy)) : xpInv;
+	}
+
+	const al = (assetLogRows[0] as unknown as any[])[0] || {};
+	const mg = (minigameRows[0] as unknown as any[])[0] || {};
+	const out = (outgoingRows[0] as unknown as any[])[0] || {};
+	const inc = (incomingRows[0] as unknown as any[])[0] || {};
+	const gv = (giveawayRows[0] as unknown as any[])[0] || {};
+	const qs = (questRows[0] as unknown as any[])[0] || {};
+	const st = (streamRows[0] as unknown as any[])[0] || {};
+	const fb = (feedbackRows[0] as unknown as any[])[0] || {};
+	const bn = (bountyOnRows[0] as unknown as any[])[0] || {};
+
+	return {
+		assets_invested: invested,
+		assets_market_value: marketValue,
+		assets_open_positions: positions.length,
+		assets_pnl: marketValue - invested,
+		assets_realized_net: Number(al.realized_net) || 0,
+		assets_trade_count: Number(al.trade_count) || 0,
+		minigames_wagered: Number(mg.wagered) || 0,
+		minigames_net: Number(mg.net) || 0,
+		minigames_wins: Number(mg.wins) || 0,
+		minigames_plays: Number(mg.plays) || 0,
+		minigames_biggest_win: Number(mg.biggest_win) || 0,
+		items_buys: Number(out.buys) || 0,
+		items_buy_spend: Number(out.buy_spend) || 0,
+		items_activations: Number(out.activations) || 0,
+		items_stolen: Number(out.stolen) || 0,
+		items_steals_landed: Number(out.steals_landed) || 0,
+		items_steals_caught: Number(out.steals_caught) || 0,
+		items_bombed: Number(out.bombed) || 0,
+		items_gifted: Number(out.gifted) || 0,
+		items_spies: Number(out.spies) || 0,
+		items_bounties_placed: Number(out.bounties_placed) || 0,
+		items_stolen_from: Number(inc.stolen_from) || 0,
+		items_bombed_by: Number(inc.bombed_by) || 0,
+		items_gifts_received: Number(inc.gifts_received) || 0,
+		giveaways_hosted: Number(gv.hosted) || 0,
+		giveaways_entered: Number(gv.entered) || 0,
+		giveaways_won: Number(gv.won) || 0,
+		quests_enrolled: Number(qs.enrolled) || 0,
+		quests_claimed: Number(qs.claimed) || 0,
+		streams_total: Number(st.streams) || 0,
+		streams_peak_viewers: Number(st.peak_viewers) || 0,
+		streams_likes: Number(st.likes) || 0,
+		streams_gifts: Number(st.gifts) || 0,
+		feedback_submitted: Number(fb.submitted) || 0,
+		bounty_on_me: Number(bn.pooled) || 0,
+		bounty_on_me_count: Number(bn.count) || 0
+	};
+}
+
+export async function getMemberInsights(memberId: any) {
+	await initializeDatabase();
+	const mid = Number(memberId);
+
+	const nameExpr = sql`COALESCE(NULLIF(m.server_display_name, ''), NULLIF(m.display_name, ''), m.username)`;
+
+	const [topItems, topTargets, topAggressors, topGiftees] = await Promise.all([
+		db.execute(sql`
+			SELECT bi.name AS name, bi.effect_type AS effect_type, COUNT(*) AS uses
+			FROM server_member_item_logs il
+			LEFT JOIN items bi ON bi.id = il.item_id
+			WHERE il.member_id = ${mid} AND il.item_id IS NOT NULL AND il.action NOT IN ('discard')
+			GROUP BY bi.id, bi.name, bi.effect_type
+			ORDER BY uses DESC LIMIT 3
+		`),
+		db.execute(sql`
+			SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp_amount), 0) AS xp
+			FROM server_member_item_logs il
+			INNER JOIN server_members m ON m.id = il.target_member_id
+			WHERE il.member_id = ${mid} AND il.action = 'steal' AND il.outcome = 'success'
+			GROUP BY m.id, name ORDER BY xp DESC LIMIT 3
+		`),
+		db.execute(sql`
+			SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp_amount), 0) AS xp
+			FROM server_member_item_logs il
+			INNER JOIN server_members m ON m.id = il.member_id
+			WHERE il.target_member_id = ${mid} AND il.action = 'steal' AND il.outcome = 'success' AND il.actor_disguised = 0
+			GROUP BY m.id, name ORDER BY xp DESC LIMIT 3
+		`),
+		db.execute(sql`
+			SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp_amount), 0) AS xp
+			FROM server_member_item_logs il
+			INNER JOIN server_members m ON m.id = il.target_member_id
+			WHERE il.member_id = ${mid} AND il.action = 'gift'
+			GROUP BY m.id, name ORDER BY xp DESC LIMIT 3
+		`)
+	]);
+
+	const mapName = (rows: any) =>
+		((rows[0] as unknown as any[]) || []).map((r) => ({ name: r.name || 'a member', hits: Number(r.hits) || 0, xp: Number(r.xp) || 0 }));
+
+	return {
+		favorite_items: ((topItems[0] as unknown as any[]) || []).map((r) => ({
+			name: r.name || 'Item',
+			effect_type: r.effect_type || null,
+			uses: Number(r.uses) || 0
+		})),
+		top_steal_targets: mapName(topTargets),
+		top_aggressors: mapName(topAggressors),
+		top_giftees: mapName(topGiftees)
+	};
+}
+
 export async function closeAssetPosition(positionId: any) {
 	await initializeDatabase();
 	await db.execute(sql`DELETE FROM server_member_assets WHERE id = ${Number(positionId)}`);
@@ -4886,6 +5069,8 @@ export default {
 	getServerOverview,
 	getServerEconomyStats,
 	getServerFeatureStats,
+	getMemberDashboard,
+	getMemberInsights,
 	updateCustomRoleFlags,
 	memberHasCustomSupporterRole,
 	getServerSettings,

@@ -6,10 +6,10 @@ export const MINIGAME_CATEGORIES = ['all', 'gamble'];
 export async function loadMinigamesShared(server: any, hash: string) {
 	const { SERVER_SETTINGS } = await import('$lib/frontend/panelServer.js');
 	const shared = await loadItemsShared(server, hash, SERVER_SETTINGS.component.minigames);
-	if ('notFound' in shared) return shared;
+	if ('notFound' in shared || 'guest' in shared) return shared;
 
 	let history: any[] = [];
-	if (!shared.readOnly && shared.member) {
+	if (shared.member) {
 		const rows = await db.getMemberMinigameHistory(shared.member.id, 200).catch(() => []);
 		history = (rows as any[]).map((h) => ({
 			id: Number(h.id),

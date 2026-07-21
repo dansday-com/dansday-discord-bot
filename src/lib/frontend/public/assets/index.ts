@@ -74,7 +74,7 @@ export async function loadMovers(): Promise<{ gainers: any[]; losers: any[] }> {
 export async function loadAssetsShared(server: any, hash: string) {
 	const { SERVER_SETTINGS } = await import('$lib/frontend/panelServer.js');
 	const shared = await loadItemsShared(server, hash, SERVER_SETTINGS.component.assets);
-	if ('notFound' in shared) return shared;
+	if ('notFound' in shared || 'guest' in shared) return shared;
 
 	const board = await loadMarketsBoard();
 	const { gainers, losers } = await loadMovers();
@@ -84,7 +84,7 @@ export async function loadAssetsShared(server: any, hash: string) {
 	let totalInvested = 0;
 	let totalValue = 0;
 
-	if (!shared.readOnly && shared.member) {
+	if (shared.member) {
 		const rows = await db.getOpenAssetPositions(shared.member.id).catch(() => []);
 		for (const p of (rows as any[]) || []) {
 			const invested = Number(p.xp_invested) || 0;

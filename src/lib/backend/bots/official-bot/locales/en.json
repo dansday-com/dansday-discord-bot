@@ -5,7 +5,7 @@
 		"noAccess": "❌ You don't have access to any features.",
 		"button": "📋 Menu",
 		"statistics": "🌐 Statistics",
-		"items": "👤 Account"
+		"account": "👤 Account"
 	},
 	"interface": {
 		"panel": {

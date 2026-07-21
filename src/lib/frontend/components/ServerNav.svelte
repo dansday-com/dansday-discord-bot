@@ -20,7 +20,7 @@
 	const isOverview = $derived(!isLeaderboard && !isMembers && !isAccount);
 
 	const accountHash = $derived((page.data as any)?.hash || pathNorm.match(/\/account\/(?:\w+\/)*([0-9a-f]{16})$/)?.[1] || '');
-	const accountHref = $derived(accountHash ? `${basePath}/account/overview/${accountHash}` : `${basePath}/account`);
+	const accountHref = $derived(accountHash ? `${basePath}/account/overview/information/${accountHash}` : `${basePath}/account`);
 
 	const tabs = $derived(
 		[

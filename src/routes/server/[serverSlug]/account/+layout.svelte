@@ -17,13 +17,12 @@
 	const navHash = $derived(pd.hash || '');
 	const pathNorm = $derived(page.url.pathname.replace(/\/$/, ''));
 	const isOverview = $derived(/\/account\/overview\//.test(pathNorm));
-	const isStatistics = $derived(/\/account\/overview\/statistics\//.test(pathNorm));
 	const isHistory = $derived(/\/account\/overview\/history\//.test(pathNorm));
 	const isGuide = $derived(/\/account\/overview\/guide\//.test(pathNorm));
 	const isAssets = $derived(/\/account\/assets\//.test(pathNorm));
 	const isMinigames = $derived(/\/account\/minigames\//.test(pathNorm));
 	const isShop = $derived(!isOverview && !isAssets && !isMinigames);
-	const overviewCat = $derived(isStatistics ? 'statistics' : isHistory ? 'history' : isGuide ? 'guide' : 'information');
+	const overviewCat = $derived(isHistory ? 'history' : isGuide ? 'guide' : 'information');
 	const activeCat = $derived.by(() => {
 		const m = pathNorm.match(/\/account\/(?:items|assets|minigames)\/([^/]+)\/[^/]+$/);
 		return m ? m[1] : 'all';
@@ -55,7 +54,6 @@
 
 	const overviewTabs = [
 		{ id: 'information', label: 'Information', icon: 'fa-id-card' },
-		{ id: 'statistics', label: 'Statistics', icon: 'fa-chart-pie' },
 		{ id: 'history', label: 'History', icon: 'fa-clock-rotate-left' },
 		{ id: 'guide', label: 'Guide', icon: 'fa-circle-question' }
 	];

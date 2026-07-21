@@ -1,7 +1,9 @@
 import { error, redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { publicServerPath } from '$lib/url.js';
+import db from '$lib/database.js';
 import { loadItemsShared, itemsCardTokenFromUrl } from '$lib/frontend/public/items/index.js';
+import { loadAssetPriceMap } from '$lib/frontend/public/assets/index.js';
 
 export const load: PageServerLoad = async ({ parent, params }) => {
 	const { server, itemsEnabled, assetsEnabled, minigamesEnabled } = await parent();
@@ -31,5 +33,12 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 		roles: (m.roles ?? []).map((r: any) => ({ name: r.name, color: r.color }))
 	};
 
-	return { ...shared, profile };
+	const priceMap = assetsEnabled ? await loadAssetPriceMap().catch(() => ({})) : {};
+	const [dashboard, insights, levelingFriends] = await Promise.all([
+		db.getMemberDashboard(shared.member.id, priceMap as any).catch(() => null),
+		db.getMemberInsights(shared.member.id).catch(() => null),
+		db.getMemberLevelingFriends(shared.member.id, 5).catch(() => [])
+	]);
+
+	return { ...shared, profile, dashboard, insights, levelingFriends };
 };

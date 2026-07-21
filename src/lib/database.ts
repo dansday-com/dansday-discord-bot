@@ -1954,6 +1954,60 @@ export async function logMinigameAction(memberId: any, data: any = {}) {
 	return true;
 }
 
+export async function recordLevelingFriends(serverId: any, actorMemberId: any, friendDiscordIds: string[], perFriendXp = 0) {
+	await initializeDatabase();
+	const actorId = Number(actorMemberId);
+	if (!actorId || !Array.isArray(friendDiscordIds) || friendDiscordIds.length === 0) return;
+
+	const ids = friendDiscordIds.map((x) => String(x)).filter(Boolean);
+	if (ids.length === 0) return;
+
+	const rows = await db.execute(sql`
+		SELECT id FROM server_members WHERE server_id = ${Number(serverId)} AND discord_member_id IN (${sql.join(ids, sql`, `)})
+	`);
+	const friendIds = ((rows[0] as unknown as any[]) || []).map((r) => Number(r.id)).filter((n) => Number.isFinite(n) && n !== actorId);
+	if (friendIds.length === 0) return;
+
+	const xp = Math.max(0, Math.floor(Number(perFriendXp) || 0));
+	const now = toMySQLDateTime();
+	for (const fid of friendIds) {
+		const a = Math.min(actorId, fid);
+		const b = Math.max(actorId, fid);
+		await db
+			.execute(
+				sql`
+			INSERT INTO server_member_leveling_friends (member_a_id, member_b_id, ticks, xp_together, updated_at)
+			VALUES (${a}, ${b}, 1, ${xp}, ${now})
+			ON DUPLICATE KEY UPDATE ticks = ticks + 1, xp_together = xp_together + ${xp}, updated_at = ${now}
+		`
+			)
+			.catch(() => null);
+	}
+}
+
+export async function getMemberLevelingFriends(memberId: any, limit = 5) {
+	await initializeDatabase();
+	const mid = Number(memberId);
+	if (!mid) return [] as any[];
+	const nameExpr = sql`COALESCE(NULLIF(m.server_display_name, ''), NULLIF(m.display_name, ''), m.username)`;
+	const rows = await db.execute(sql`
+		SELECT
+			CASE WHEN t.member_a_id = ${mid} THEN t.member_b_id ELSE t.member_a_id END AS buddy_id,
+			${nameExpr} AS name, m.avatar AS avatar, t.ticks AS ticks, t.xp_together AS xp
+		FROM server_member_leveling_friends t
+		INNER JOIN server_members m ON m.id = CASE WHEN t.member_a_id = ${mid} THEN t.member_b_id ELSE t.member_a_id END
+		WHERE t.member_a_id = ${mid} OR t.member_b_id = ${mid}
+		ORDER BY t.ticks DESC
+		LIMIT ${Number(limit) || 5}
+	`);
+	return ((rows[0] as unknown as any[]) || []).map((r) => ({
+		name: r.name || 'a member',
+		avatar: r.avatar ?? null,
+		ticks: Number(r.ticks) || 0,
+		xp: Number(r.xp) || 0
+	}));
+}
+
 export async function getMemberMinigameHistory(memberId: any, limit = 600) {
 	await initializeDatabase();
 	if (!memberId) return [] as any[];
@@ -5104,6 +5158,8 @@ export default {
 	getServerFeatureStats,
 	getMemberDashboard,
 	getMemberInsights,
+	recordLevelingFriends,
+	getMemberLevelingFriends,
 	updateCustomRoleFlags,
 	memberHasCustomSupporterRole,
 	getServerSettings,

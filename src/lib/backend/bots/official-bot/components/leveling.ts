@@ -231,28 +231,28 @@ async function isMemberEligible(guildId, guildMember) {
 
 async function countVoiceFriends(guildId, discordMemberId) {
 	const guild = clientInstance?.guilds.cache.get(guildId);
-	if (!guild) return 0;
+	if (!guild) return { count: 0, discordIds: [] };
 
 	const self = resolveGuildVoiceState(guild, discordMemberId);
 	const channelId = self?.channelId;
-	if (!channelId) return 0;
+	if (!channelId) return { count: 0, discordIds: [] };
 
 	const memberRoles = await getMemberRoleIds(guildId);
-	if (!memberRoles || memberRoles.length === 0) return 0;
+	if (!memberRoles || memberRoles.length === 0) return { count: 0, discordIds: [] };
 
-	let friends = 0;
+	const discordIds: string[] = [];
 	for (const [, vs] of guild.voiceStates.cache) {
 		if (vs.channelId !== channelId) continue;
 		if (vs.id === discordMemberId) continue;
 		const otherMember = vs.member ?? guild.members.cache.get(vs.id);
 		if (!otherMember || otherMember.user?.bot) continue;
 		try {
-			if (await PERMISSIONS.hasAnyRole(otherMember, memberRoles)) friends++;
+			if (await PERMISSIONS.hasAnyRole(otherMember, memberRoles)) discordIds.push(vs.id);
 		} catch {
 			void 0;
 		}
 	}
-	return friends;
+	return { count: discordIds.length, discordIds };
 }
 
 function normalizeRankValue(value) {
@@ -717,12 +717,17 @@ async function awardVoiceXPLocked(server, dbMember, guildId, reason, previousSta
 	const award = await applyAwardEffects(dbMember.id, rawXpGained, 'voice', guildId);
 	const { memberXp: baseAwardXp, leechCredits } = award;
 
-	const friendCount = await countVoiceFriends(guildId, dbMember.discord_member_id);
+	const { count: friendCount, discordIds: friendDiscordIds } = await countVoiceFriends(guildId, dbMember.discord_member_id);
 	const friendPercent = friendCount * 10;
 	const friendBonus = Math.floor((baseAwardXp * friendPercent) / 100);
 	const xpGained = baseAwardXp + friendBonus;
 	(award as any).friendPercent = friendPercent;
 	(award as any).friendBoosted = friendPercent > 0;
+
+	if (friendDiscordIds.length > 0) {
+		const perFriendXp = Math.floor(friendBonus / friendDiscordIds.length);
+		db.recordLevelingFriends(guildId, dbMember.id, friendDiscordIds, perFriendXp).catch(() => null);
+	}
 
 	const stats = await db.updateMemberLevelStats(dbMember.id, {
 		experienceIncrement: xpGained,

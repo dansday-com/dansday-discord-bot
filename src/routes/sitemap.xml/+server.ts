@@ -45,7 +45,7 @@ export const GET: RequestHandler = async () => {
 			.filter((s) => s.items_enabled)
 			.map(async (s) => {
 				const catalog = await loadItemsCatalog(Number(s.id)).catch(() => []);
-				const present = [...new Set((catalog as any[]).filter((i) => i.enabled !== false).map((i) => i.effect_type))].filter((t) =>
+				const present = [...new Set((catalog as any[]).filter((i) => i.enabled !== false || i.live).map((i) => i.effect_type))].filter((t) =>
 					ITEM_EFFECTS.some((e) => e.id === t)
 				);
 				categoriesByServer.set(Number(s.id), present);

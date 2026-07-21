@@ -33,7 +33,7 @@
 				const buyable = item.enabled !== false && (a.state === 'always' || a.state === 'active');
 				return { ...item, availableUntil: a.availableUntil, _state: a.state, _startsAt: a.startsAt, _buyable: buyable };
 			})
-			.filter((item: any) => item._buyable || (Number(item.owned_quantity) || 0) > 0)
+			.filter((item: any) => item._state === 'active' || item._state === 'upcoming' || item._buyable || (Number(item.owned_quantity) || 0) > 0)
 	);
 
 	const groups = $derived.by(() => {

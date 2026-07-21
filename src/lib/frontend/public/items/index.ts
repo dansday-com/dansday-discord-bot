@@ -2,6 +2,7 @@ import { createHash } from 'crypto';
 import { request as httpRequest } from 'http';
 import db from '$lib/database.js';
 import { parseMySQLDateTimeUtc } from '$lib/utils/index.js';
+import { itemAvailability } from '$lib/items.js';
 
 export function computeCardToken(discordMemberId: string, memberSince: any): string {
 	const dt = parseMySQLDateTimeUtc(memberSince);
@@ -112,7 +113,7 @@ export async function loadItemsCatalog(serverId: number): Promise<any[]> {
 			}
 		}
 
-		out.push({
+		const mapped = {
 			id: i.id,
 			name: i.name,
 			effect_type: i.effect_type,
@@ -126,7 +127,9 @@ export async function loadItemsCatalog(serverId: number): Promise<any[]> {
 			available_to: i.available_to ? new Date(i.available_to).toISOString() : null,
 			recurring_schedule: typeof i.recurring_schedule === 'string' ? safeParse(i.recurring_schedule) : (i.recurring_schedule ?? null),
 			config: typeof i.config === 'string' ? safeParse(i.config) : i.config
-		});
+		};
+		const state = itemAvailability(mapped, Date.now(), 0).state;
+		out.push({ ...mapped, live: state === 'active' || state === 'upcoming' });
 	}
 	return out;
 }
@@ -143,7 +146,7 @@ export async function loadItemsShared(server: any, hash: string, gateComponent?:
 	const levelReq = { baseXp: Number(req.BASE_XP) || 100, multiplier: Number(req.MULTIPLIER) || 1.2 };
 
 	const items = await loadItemsCatalog(server.id);
-	const enabledCategories = [...new Set((items as any[]).filter((i) => i.enabled !== false).map((i) => i.effect_type))];
+	const enabledCategories = [...new Set((items as any[]).filter((i) => i.enabled !== false || i.live).map((i) => i.effect_type))];
 
 	const member = hash ? await resolveMemberByCardToken(server.id, hash) : null;
 

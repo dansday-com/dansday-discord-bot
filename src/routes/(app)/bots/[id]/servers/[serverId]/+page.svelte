@@ -23,36 +23,110 @@
 	const membersWithoutLevels = $derived(Math.max(0, (s.members_total ?? 0) - (s.members_with_levels ?? 0)));
 
 	const avgXP = $derived((s.members_with_levels ?? 0) > 0 ? Math.round((s.leveling_total_experience ?? 0) / s.members_with_levels).toLocaleString() : '0');
-	const economyRows = $derived(
+	const minigamesWinRate = $derived((s.minigames_plays ?? 0) > 0 ? Math.round((Number(s.minigames_wins) / Number(s.minigames_plays)) * 100) : 0);
+
+	const featureCards = $derived(
 		[
-			{ icon: 'fa-chart-line', label: 'XP in market', value: s.assets_market_value },
-			{ icon: 'fa-right-left', label: 'Trades', value: s.assets_trade_count },
-			{ icon: 'fa-users', label: 'Traders', value: s.assets_traders },
-			{ icon: 'fa-cart-shopping', label: 'Items bought', value: s.items_buys },
-			{ icon: 'fa-coins', label: 'XP spent on items', value: s.items_buy_spend },
-			{ icon: 'fa-wand-magic-sparkles', label: 'Item activations', value: s.items_activations },
-			{ icon: 'fa-hand', label: 'XP stolen', value: s.items_stolen },
-			{ icon: 'fa-bomb', label: 'XP bombed', value: s.items_bombed },
-			{ icon: 'fa-gift', label: 'XP gifted', value: s.items_gifted },
-			{ icon: 'fa-crown', label: 'Bounties set', value: s.items_bounties_placed },
-			{ icon: 'fa-magnifying-glass', label: 'Spy reports', value: s.items_spies },
-			{ icon: 'fa-dice', label: 'XP wagered', value: s.minigames_wagered },
-			{ icon: 'fa-gamepad', label: 'Minigame plays', value: s.minigames_plays },
-			{ icon: 'fa-trophy', label: 'Biggest win', value: s.minigames_biggest_win },
-			{ icon: 'fa-gift', label: 'Giveaways hosted', value: s.giveaways_total },
-			{ icon: 'fa-medal', label: 'Giveaway winners', value: s.giveaways_winners },
-			{ icon: 'fa-ticket', label: 'Giveaway entries', value: s.giveaways_entries },
-			{ icon: 'fa-tower-broadcast', label: 'Streams', value: s.streams_total },
-			{ icon: 'fa-eye', label: 'Peak viewers', value: s.streams_peak_viewers },
-			{ icon: 'fa-heart', label: 'Stream likes', value: s.streams_likes },
-			{ icon: 'fa-gem', label: 'Stream gifts', value: s.streams_gifts },
-			{ icon: 'fa-scroll', label: 'Quests enrolled', value: s.quests_enrolled },
-			{ icon: 'fa-award', label: 'Quest rewards', value: s.quests_claimed },
-			{ icon: 'fa-shield-halved', label: 'Staff reviews', value: s.staff_reviews },
-			{ icon: 'fa-comment-dots', label: 'Feedback', value: s.feedback_submissions }
-		].filter((r) => (Number(r.value) || 0) > 0)
+			{
+				title: 'Market',
+				icon: 'fa-chart-line',
+				accent: 'emerald',
+				rows: [
+					{ icon: 'fa-chart-line', label: 'XP in market', value: s.assets_market_value },
+					{ icon: 'fa-right-left', label: 'Trades', value: s.assets_trade_count },
+					{ icon: 'fa-users', label: 'Traders', value: s.assets_traders },
+					{ icon: 'fa-briefcase', label: 'Open assets', value: s.assets_open_positions },
+					{ icon: 'fa-arrow-up-from-bracket', label: 'XP bought in', value: s.assets_buy_volume },
+					{ icon: 'fa-arrow-down-to-bracket', label: 'XP cashed out', value: s.assets_sell_volume }
+				]
+			},
+			{
+				title: 'Items',
+				icon: 'fa-bag-shopping',
+				accent: 'yellow',
+				rows: [
+					{ icon: 'fa-cart-shopping', label: 'Items bought', value: s.items_buys },
+					{ icon: 'fa-coins', label: 'XP spent', value: s.items_buy_spend },
+					{ icon: 'fa-wand-magic-sparkles', label: 'Activations', value: s.items_activations },
+					{ icon: 'fa-hand', label: 'XP stolen', value: s.items_stolen },
+					{ icon: 'fa-bomb', label: 'XP bombed', value: s.items_bombed },
+					{ icon: 'fa-gift', label: 'XP gifted', value: s.items_gifted },
+					{ icon: 'fa-magnifying-glass', label: 'Spy reports', value: s.items_spies },
+					{ icon: 'fa-crown', label: 'Bounties set', value: s.items_bounties_placed }
+				]
+			},
+			{
+				title: 'Minigames',
+				icon: 'fa-dice',
+				accent: 'orange',
+				rows: [
+					{ icon: 'fa-coins', label: 'XP wagered', value: s.minigames_wagered },
+					{ icon: 'fa-gamepad', label: 'Plays', value: s.minigames_plays },
+					{ icon: 'fa-percent', label: 'Win rate', value: `${minigamesWinRate}%`, raw: s.minigames_plays },
+					{ icon: 'fa-trophy', label: 'Biggest win', value: s.minigames_biggest_win },
+					{ icon: 'fa-hand-holding-dollar', label: 'XP paid out', value: s.minigames_paid_out }
+				]
+			},
+			{
+				title: 'Giveaways',
+				icon: 'fa-gift',
+				accent: 'pink',
+				rows: [
+					{ icon: 'fa-gift', label: 'Hosted', value: s.giveaways_total },
+					{ icon: 'fa-medal', label: 'Winners', value: s.giveaways_winners },
+					{ icon: 'fa-ticket', label: 'Entries', value: s.giveaways_entries },
+					{ icon: 'fa-users', label: 'Entrants', value: s.giveaways_entrants },
+					{ icon: 'fa-hourglass-half', label: 'Running now', value: s.giveaways_active }
+				]
+			},
+			{
+				title: 'Content creators',
+				icon: 'fa-tower-broadcast',
+				accent: 'rose',
+				rows: [
+					{ icon: 'fa-tower-broadcast', label: 'Streams', value: s.streams_total },
+					{ icon: 'fa-video', label: 'Creators', value: s.streams_creators },
+					{ icon: 'fa-eye', label: 'Peak viewers', value: s.streams_peak_viewers },
+					{ icon: 'fa-heart', label: 'Likes', value: s.streams_likes },
+					{ icon: 'fa-comments', label: 'Chat msgs', value: s.streams_chat_messages },
+					{ icon: 'fa-gem', label: 'Gifts', value: s.streams_gifts }
+				]
+			},
+			{
+				title: 'Quests',
+				icon: 'fa-scroll',
+				accent: 'blue',
+				rows: [
+					{ icon: 'fa-scroll', label: 'Enrolled', value: s.quests_enrolled },
+					{ icon: 'fa-award', label: 'Rewards claimed', value: s.quests_claimed },
+					{ icon: 'fa-users', label: 'Participants', value: s.quests_participants }
+				]
+			},
+			{
+				title: 'Staff & feedback',
+				icon: 'fa-shield-halved',
+				accent: 'cyan',
+				rows: [
+					{ icon: 'fa-shield-halved', label: 'Staff reviews', value: s.staff_reviews },
+					{ icon: 'fa-star', label: 'Avg rating', value: s.staff_avg_rating, raw: s.staff_reviews },
+					{ icon: 'fa-comment-dots', label: 'Feedback', value: s.feedback_submissions },
+					{ icon: 'fa-moon', label: 'AFK now', value: s.afk_active }
+				]
+			}
+		]
+			.map((c) => ({ ...c, rows: c.rows.filter((r) => (Number((r as any).raw ?? r.value) || 0) > 0) }))
+			.filter((c) => c.rows.length > 0)
 	);
-	const hasEconomy = $derived(economyRows.length > 0);
+
+	const accentClasses: Record<string, { bg: string; icon: string; row: string }> = {
+		emerald: { bg: 'bg-emerald-500/15', icon: 'text-emerald-400', row: 'text-emerald-400/90' },
+		yellow: { bg: 'bg-yellow-500/15', icon: 'text-yellow-400', row: 'text-yellow-400/90' },
+		orange: { bg: 'bg-orange-500/15', icon: 'text-orange-400', row: 'text-orange-400/90' },
+		pink: { bg: 'bg-pink-500/15', icon: 'text-pink-400', row: 'text-pink-400/90' },
+		rose: { bg: 'bg-rose-500/15', icon: 'text-rose-400', row: 'text-rose-400/90' },
+		blue: { bg: 'bg-blue-500/15', icon: 'text-blue-400', row: 'text-blue-400/90' },
+		cyan: { bg: 'bg-cyan-500/15', icon: 'text-cyan-400', row: 'text-cyan-400/90' }
+	};
 
 	const avgVoiceMinutes = $derived(
 		(s.members_with_levels ?? 0) > 0 ? Math.round((s.leveling_total_voice_minutes ?? 0) / s.members_with_levels).toLocaleString() : '0'
@@ -183,26 +257,26 @@
 			</div>
 		</div>
 
-		{#if hasEconomy}
+		{#each featureCards as card}
 			<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-5 shadow-lg transition-all sm:p-6">
 				<div class="mb-4 flex items-center gap-3">
-					<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-yellow-500/15">
-						<i class="fas fa-coins text-lg text-yellow-400"></i>
+					<div class="flex h-10 w-10 items-center justify-center rounded-lg {accentClasses[card.accent].bg}">
+						<i class="fas {card.icon} text-lg {accentClasses[card.accent].icon}"></i>
 					</div>
-					<h3 class="text-ash-100 text-base font-bold">Activity &amp; economy</h3>
+					<h3 class="text-ash-100 text-base font-bold">{card.title}</h3>
 				</div>
 				<div class="space-y-2">
-					{#each economyRows as row}
+					{#each card.rows as row}
 						<div class="bg-ash-800/50 flex items-center justify-between rounded-lg p-2">
 							<span class="text-ash-300 flex items-center gap-2 text-sm">
-								<i class="fas {row.icon} text-xs text-yellow-400/90"></i>{row.label}
+								<i class="fas {row.icon} text-xs {accentClasses[card.accent].row}"></i>{row.label}
 							</span>
-							<span class="text-ash-100 text-lg font-bold">{fmt(row.value)}</span>
+							<span class="text-ash-100 text-lg font-bold">{typeof row.value === 'string' ? row.value : fmt(row.value)}</span>
 						</div>
 					{/each}
 				</div>
 			</div>
-		{/if}
+		{/each}
 	</div>
 
 	<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-4 shadow-lg transition-all sm:p-6">

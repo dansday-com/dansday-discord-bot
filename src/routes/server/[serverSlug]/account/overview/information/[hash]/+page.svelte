@@ -15,6 +15,22 @@
 		if (!color) return '';
 		return `--role-color: ${color};`;
 	}
+
+	const voiceMix = $derived.by(() => {
+		const active = Math.max(0, p.voiceActive || 0);
+		const afk = Math.max(0, p.voiceAfk || 0);
+		const video = Math.max(0, p.voiceVideo || 0);
+		const stream = Math.max(0, p.voiceStreaming || 0);
+		const total = active + afk + video + stream;
+		if (total <= 0) return null;
+		return {
+			total,
+			active: (active / total) * 100,
+			afk: (afk / total) * 100,
+			video: (video / total) * 100,
+			stream: (stream / total) * 100
+		};
+	});
 </script>
 
 <svelte:head><title>{data.server.name || data.server.slug} Account | {APP_NAME} Discord Bot</title></svelte:head>
@@ -66,6 +82,25 @@
 			<div class="m-stat-card-icon m-chili-stat-5"><i class="fas fa-microphone-alt"></i></div>
 			<h2 class="m-stat-card-title">Activity</h2>
 		</div>
+		{#if voiceMix}
+			<div class="m-bar-block">
+				<div class="m-bar-head">
+					<span>Voice time breakdown</span>
+					<span class="m-bar-meta">{fmt(voiceMix.total)} min</span>
+				</div>
+				<div class="m-seg-bar m-seg-bar--3" title="Active · AFK · Video · Stream">
+					<div class="m-seg m-seg--text" style="width: {voiceMix.active}%"></div>
+					<div class="m-seg m-seg--other" style="width: {voiceMix.afk}%"></div>
+					<div class="m-seg m-seg--voice" style="width: {voiceMix.video}%"></div>
+					<div class="m-seg m-seg--b" style="width: {voiceMix.stream}%"></div>
+				</div>
+				<div class="m-legend m-legend--3">
+					<span><i class="fas fa-circle"></i> Active</span>
+					<span><i class="fas fa-circle"></i> AFK</span>
+					<span><i class="fas fa-circle"></i> Video</span>
+				</div>
+			</div>
+		{/if}
 		<div class="m-mini-grid">
 			<div class="m-mini">
 				<i class="fas fa-comments"></i>
@@ -115,9 +150,14 @@
 <style>
 	.m-ov {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+		grid-template-columns: 1fr;
 		gap: 16px;
 		align-items: start;
+	}
+	@media (min-width: 640px) {
+		.m-ov {
+			grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+		}
 	}
 	.m-ov-full {
 		grid-column: 1 / -1;

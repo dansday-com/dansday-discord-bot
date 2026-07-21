@@ -1957,12 +1957,13 @@ export async function logMinigameAction(memberId: any, data: any = {}) {
 export async function getMemberMinigameHistory(memberId: any, limit = 600) {
 	await initializeDatabase();
 	if (!memberId) return [] as any[];
+	const lim = Number(limit) > 0 ? sql`LIMIT ${Number(limit)}` : sql``;
 	const rows = await db.execute(sql`
 		SELECT id, game, multiplier, wager, payout, xp_amount, outcome, created_at
 		FROM server_member_minigame_logs
 		WHERE member_id = ${Number(memberId)}
 		ORDER BY created_at DESC
-		LIMIT ${Number(limit)}
+		${lim}
 	`);
 	return (rows[0] as unknown as any[]) || [];
 }
@@ -2033,12 +2034,13 @@ export async function logMemberLevelGain(memberId: any, data: any = {}) {
 export async function getMemberLevelHistory(memberId: any, limit = 200) {
 	await initializeDatabase();
 	if (!memberId) return [] as any[];
+	const lim = Number(limit) > 0 ? sql`LIMIT ${Number(limit)}` : sql``;
 	const rows = await db.execute(sql`
 		SELECT id, source, amount, total_xp, level, \`rank\`, multiplier, skim_percent, friend_percent, created_at
 		FROM server_member_level_logs
 		WHERE member_id = ${Number(memberId)}
 		ORDER BY created_at DESC, id DESC
-		LIMIT ${Number(limit)}
+		${lim}
 	`);
 	return rows[0] as unknown as any[];
 }
@@ -2065,7 +2067,7 @@ export async function getMemberItemHistory(memberId: any, limit = 200) {
 			OR (sml.target_member_id = ${Number(memberId)} AND NOT (sml.action = 'spy' AND sml.outcome = 'success'))
 		)
 		ORDER BY sml.created_at DESC, sml.id DESC
-		LIMIT ${Number(limit)}
+		${Number(limit) > 0 ? sql`LIMIT ${Number(limit)}` : sql``}
 	`);
 	return rows[0] as unknown as any[];
 }
@@ -2275,7 +2277,7 @@ export async function getMemberAssetHistory(memberId: any, limit = 600) {
 		FROM server_member_asset_logs
 		WHERE member_id = ${Number(memberId)}
 		ORDER BY created_at DESC
-		LIMIT ${Number(limit) || 600}
+		${Number(limit) > 0 ? sql`LIMIT ${Number(limit)}` : sql``}
 	`);
 	return (rows[0] as unknown as any[]) || [];
 }
@@ -2631,7 +2633,7 @@ export async function getMemberInsights(memberId: any) {
 
 	const nameExpr = sql`COALESCE(NULLIF(m.server_display_name, ''), NULLIF(m.display_name, ''), m.username)`;
 
-	const [topItems, topTargets, topAggressors, topGiftees] = await Promise.all([
+	const [topItems, topTargets, topAggressors, topGiftees, effectUsage, xpFlow] = await Promise.all([
 		db.execute(sql`
 			SELECT bi.name AS name, bi.effect_type AS effect_type, COUNT(*) AS uses
 			FROM server_member_item_logs il
@@ -2660,11 +2662,38 @@ export async function getMemberInsights(memberId: any) {
 			INNER JOIN server_members m ON m.id = il.target_member_id
 			WHERE il.member_id = ${mid} AND il.action = 'gift'
 			GROUP BY m.id, name ORDER BY xp DESC LIMIT 3
+		`),
+		db.execute(sql`
+			SELECT COALESCE(bi.effect_type, il.action) AS effect_type, COUNT(*) AS uses
+			FROM server_member_item_logs il
+			LEFT JOIN items bi ON bi.id = il.item_id
+			WHERE il.member_id = ${mid} AND il.action NOT IN ('buy', 'discard')
+			GROUP BY effect_type
+			ORDER BY uses DESC
+		`),
+		db.execute(sql`
+			SELECT d AS day, SUM(net) AS net FROM (
+				SELECT DATE(created_at) AS d, SUM(xp_amount) AS net FROM server_member_minigame_logs
+					WHERE member_id = ${mid} AND created_at >= UTC_TIMESTAMP() - INTERVAL 14 DAY GROUP BY DATE(created_at)
+				UNION ALL
+				SELECT DATE(created_at) AS d, SUM(net) AS net FROM server_member_asset_logs
+					WHERE member_id = ${mid} AND action = 'sell' AND created_at >= UTC_TIMESTAMP() - INTERVAL 14 DAY GROUP BY DATE(created_at)
+				UNION ALL
+				SELECT DATE(created_at) AS d,
+					SUM(CASE WHEN action IN ('steal','bomb') AND outcome = 'success' THEN xp_amount
+						WHEN action = 'gift' THEN -xp_amount WHEN action = 'buy' THEN -xp_amount ELSE 0 END) AS net
+					FROM server_member_item_logs WHERE member_id = ${mid} AND created_at >= UTC_TIMESTAMP() - INTERVAL 14 DAY GROUP BY DATE(created_at)
+			) t GROUP BY d ORDER BY d ASC
 		`)
 	]);
 
 	const mapName = (rows: any) =>
 		((rows[0] as unknown as any[]) || []).map((r) => ({ name: r.name || 'a member', hits: Number(r.hits) || 0, xp: Number(r.xp) || 0 }));
+
+	const flowRows = ((xpFlow[0] as unknown as any[]) || []).map((r) => ({
+		day: r.day instanceof Date ? r.day.toISOString().split('T')[0] : String(r.day),
+		net: Number(r.net) || 0
+	}));
 
 	return {
 		favorite_items: ((topItems[0] as unknown as any[]) || []).map((r) => ({
@@ -2674,7 +2703,11 @@ export async function getMemberInsights(memberId: any) {
 		})),
 		top_steal_targets: mapName(topTargets),
 		top_aggressors: mapName(topAggressors),
-		top_giftees: mapName(topGiftees)
+		top_giftees: mapName(topGiftees),
+		effect_usage: ((effectUsage[0] as unknown as any[]) || [])
+			.map((r) => ({ effect_type: r.effect_type || 'unknown', uses: Number(r.uses) || 0 }))
+			.filter((r) => r.uses > 0),
+		xp_flow: flowRows
 	};
 }
 

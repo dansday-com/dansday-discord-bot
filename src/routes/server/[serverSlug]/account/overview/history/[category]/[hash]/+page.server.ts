@@ -25,7 +25,7 @@ export const load: PageServerLoad = async ({ parent, params, url }) => {
 	if (minigamesEnabled) allowed.add('minigames');
 	const tab = allowed.has(tabParam) ? tabParam : 'all';
 
-	const itemRows = itemsEnabled ? await db.getMemberItemHistory(shared.member.id, 600).catch(() => []) : [];
+	const itemRows = itemsEnabled ? await db.getMemberItemHistory(shared.member.id, 0).catch(() => []) : [];
 	const itemEvents = (itemRows as any[]).map((h) => ({
 		id: `i-${h.id}`,
 		kind: 'item' as const,
@@ -44,7 +44,7 @@ export const load: PageServerLoad = async ({ parent, params, url }) => {
 		at: h.created_at ? new Date(h.created_at).getTime() : null
 	}));
 
-	const levelRows = await db.getMemberLevelHistory(shared.member.id, 600).catch(() => []);
+	const levelRows = await db.getMemberLevelHistory(shared.member.id, 0).catch(() => []);
 	const levelEvents = (levelRows as any[]).map((x) => ({
 		id: `l-${x.id}`,
 		kind: 'level' as const,
@@ -59,7 +59,7 @@ export const load: PageServerLoad = async ({ parent, params, url }) => {
 		at: x.created_at ? new Date(x.created_at).getTime() : null
 	}));
 
-	const assetRows = assetsEnabled ? await db.getMemberAssetHistory(shared.member.id, 600).catch(() => []) : [];
+	const assetRows = assetsEnabled ? await db.getMemberAssetHistory(shared.member.id, 0).catch(() => []) : [];
 	const assetEvents = (assetRows as any[]).map((r) => ({
 		id: `a-${r.id}`,
 		kind: 'asset' as const,
@@ -73,7 +73,7 @@ export const load: PageServerLoad = async ({ parent, params, url }) => {
 		at: r.created_at ? new Date(r.created_at).getTime() : null
 	}));
 
-	const minigameRows = minigamesEnabled ? await db.getMemberMinigameHistory(shared.member.id, 600).catch(() => []) : [];
+	const minigameRows = minigamesEnabled ? await db.getMemberMinigameHistory(shared.member.id, 0).catch(() => []) : [];
 	const minigameEvents = (minigameRows as any[]).map((h) => ({
 		id: `m-${h.id}`,
 		kind: 'minigame' as const,

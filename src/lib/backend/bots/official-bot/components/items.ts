@@ -766,7 +766,7 @@ export async function handleItemUse(client: any, payload: any) {
 		return { ok: false, error: 'missing_fields' };
 	}
 
-	const { getServerForCurrentBot, isComponentFeatureEnabled, serverSettingsComponent } = await import('../../../config.js');
+	const { getServerForCurrentBot, isPublicSubFeatureEnabled } = await import('../../../config.js');
 
 	let server: any;
 	try {
@@ -775,7 +775,7 @@ export async function handleItemUse(client: any, payload: any) {
 		return { ok: false, error: 'server_not_found' };
 	}
 
-	if (!(await isComponentFeatureEnabled(guild_id, serverSettingsComponent.items))) {
+	if (!(await isPublicSubFeatureEnabled(guild_id, 'items'))) {
 		return { ok: false, error: 'shop_disabled' };
 	}
 
@@ -859,7 +859,7 @@ export async function handleItemDiscard(client: any, payload: any) {
 	const { guild_id, actor_discord_id, member_item_id, quantity } = payload || {};
 	if (!guild_id || !actor_discord_id || !member_item_id) return { ok: false, error: 'missing_fields' };
 
-	const { getServerForCurrentBot, isComponentFeatureEnabled, serverSettingsComponent } = await import('../../../config.js');
+	const { getServerForCurrentBot, isPublicSubFeatureEnabled } = await import('../../../config.js');
 
 	let server: any;
 	try {
@@ -867,7 +867,7 @@ export async function handleItemDiscard(client: any, payload: any) {
 	} catch (_) {
 		return { ok: false, error: 'server_not_found' };
 	}
-	if (!(await isComponentFeatureEnabled(guild_id, serverSettingsComponent.items))) {
+	if (!(await isPublicSubFeatureEnabled(guild_id, 'items'))) {
 		return { ok: false, error: 'shop_disabled' };
 	}
 
@@ -934,7 +934,7 @@ export async function handleItemBuy(client: any, payload: any) {
 	const { guild_id, actor_discord_id, item_id, quantity, tz_offset } = payload || {};
 	if (!guild_id || !actor_discord_id || !item_id) return { ok: false, error: 'missing_fields' };
 
-	const { getServerForCurrentBot, isComponentFeatureEnabled, serverSettingsComponent } = await import('../../../config.js');
+	const { getServerForCurrentBot, isPublicSubFeatureEnabled } = await import('../../../config.js');
 
 	let server: any;
 	try {
@@ -942,7 +942,7 @@ export async function handleItemBuy(client: any, payload: any) {
 	} catch (_) {
 		return { ok: false, error: 'server_not_found' };
 	}
-	if (!(await isComponentFeatureEnabled(guild_id, serverSettingsComponent.items))) {
+	if (!(await isPublicSubFeatureEnabled(guild_id, 'items'))) {
 		return { ok: false, error: 'shop_disabled' };
 	}
 

@@ -1,4 +1,4 @@
-import { error, redirect } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { publicServerPath } from '$lib/url.js';
 import { itemsCardTokenFromUrl } from '$lib/frontend/public/items/index.js';
@@ -11,7 +11,7 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 
 	const hash = itemsCardTokenFromUrl(params.hash);
 	const shared = await loadAssetsShared(server, hash);
-	if ('notFound' in shared) error(404, 'Assets not available');
+	if ('notFound' in shared) redirect(303, `${publicServerPath(server.slug)}/account/overview/${params.hash}`);
 	if ('guest' in shared) redirect(303, publicServerPath(server.slug));
 
 	const category = VALID.has(String(params.category)) ? String(params.category) : 'top';

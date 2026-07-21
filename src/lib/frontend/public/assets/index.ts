@@ -72,8 +72,7 @@ export async function loadMovers(): Promise<{ gainers: any[]; losers: any[] }> {
 }
 
 export async function loadAssetsShared(server: any, hash: string) {
-	const { SERVER_SETTINGS } = await import('$lib/frontend/panelServer.js');
-	const shared = await loadItemsShared(server, hash, SERVER_SETTINGS.component.assets);
+	const shared = await loadItemsShared(server, hash, 'assets');
 	if ('notFound' in shared || 'guest' in shared) return shared;
 
 	const board = await loadMarketsBoard();

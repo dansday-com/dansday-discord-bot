@@ -10,7 +10,7 @@
 	const ctx = getContext('items') as any;
 	const { fmt } = ctx;
 
-	const base = $derived(`${publicServerPath(data.server.slug)}/account/dashboard/history/${data.tab}/${data.hash}`);
+	const base = $derived(`${publicServerPath(data.server.slug)}/account/history/${data.tab}/${data.hash}`);
 
 	const LEVEL_SOURCE: Record<string, { label: string; icon: string }> = {
 		chat: { label: 'Chat', icon: 'fa-message' },

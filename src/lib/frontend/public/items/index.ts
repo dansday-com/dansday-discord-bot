@@ -134,12 +134,13 @@ export async function loadItemsCatalog(serverId: number): Promise<any[]> {
 	return out;
 }
 
-export async function loadItemsShared(server: any, hash: string, gateComponent?: string) {
+export async function loadItemsShared(server: any, hash: string, subKey?: 'items' | 'assets' | 'minigames' | null) {
 	const { SERVER_SETTINGS } = await import('$lib/frontend/panelServer.js');
 
-	const gate = gateComponent ?? SERVER_SETTINGS.component.items;
-	const gateRow = await db.getServerSettings(server.id, gate).catch(() => null);
-	if ((gateRow as any)?.settings?.enabled !== true) return { notFound: true } as const;
+	const psRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.public_statistics).catch(() => null);
+	const ps = (psRow as any)?.settings ?? {};
+	if (ps.enabled === false) return { notFound: true } as const;
+	if (subKey && ps[`${subKey}_enabled`] !== true) return { notFound: true } as const;
 
 	const levelingRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.leveling).catch(() => null);
 	const req = (levelingRow as any)?.settings?.REQUIREMENTS ?? {};

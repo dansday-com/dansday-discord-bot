@@ -10,6 +10,14 @@
 	const ctx = getContext('items') as any;
 	const { fmt } = ctx;
 
+	function fmtShort(v: number): string {
+		const n = Math.abs(Number(v) || 0);
+		if (n >= 1e9) return (v / 1e9).toFixed(n >= 1e10 ? 0 : 1) + 'B';
+		if (n >= 1e6) return (v / 1e6).toFixed(n >= 1e7 ? 0 : 1) + 'M';
+		if (n >= 1e3) return (v / 1e3).toFixed(n >= 1e4 ? 0 : 1) + 'K';
+		return String(Math.round(v));
+	}
+
 	let mounted = $state(false);
 	let reduceMotion = false;
 	onMount(() => {
@@ -206,6 +214,8 @@
 		return buildPie(items);
 	});
 
+	const hasPortfolio = $derived(allocationPie.total > 0 || positions.length > 0);
+
 	function barPct(v: number, list: { xp?: number; hits?: number; uses?: number; ticks?: number }[]): number {
 		const max = Math.max(1, ...list.map((x) => Number(x.xp ?? x.hits ?? x.uses ?? x.ticks) || 0));
 		return Math.max(4, Math.round((v / max) * 100));
@@ -400,71 +410,67 @@
 		</div>
 	{/if}
 
-	{#if allocationPie.total > 0}
-		<div class="m-stat-card m-overview-card">
-			<div class="m-stat-card-head">
-				<div class="m-stat-card-icon m-chili-stat-2"><i class="fas fa-chart-pie"></i></div>
-				<h2 class="m-stat-card-title">Portfolio allocation</h2>
-			</div>
-			<div class="m-pie-wrap m-pie-wrap--stack">
-				<svg class="m-pie" viewBox="0 0 100 100" role="img" aria-label="Invested XP by asset">
-					{#if allocationPie.segments.length === 1}
-						<circle cx="50" cy="50" r="48" fill={allocationPie.segments[0].color} />
-					{:else}
-						{#each allocationPie.segments as slice}
-							<path d={slice.d} fill={slice.color} stroke="rgba(255,255,255,0.85)" stroke-width="0.8" />
-						{/each}
-					{/if}
-					<circle cx="50" cy="50" r="26" fill="#fff" />
-					<text x="50" y="47" text-anchor="middle" class="m-pie-total">{fmt(allocationPie.total)}</text>
-					<text x="50" y="58" text-anchor="middle" class="m-pie-cap">invested</text>
-				</svg>
-				<div class="m-donut-legend">
-					{#each allocationPie.segments as seg}
-						<div class="m-donut-leg">
-							<span class="m-donut-dot" style="background: {seg.color};"></span>
-							<i class="fas {seg.icon}" style="color: {seg.color};"></i>
-							<span class="m-donut-leg-name">{seg.label}</span>
-							<span class="m-donut-leg-val">{fmt(seg.value)} · {seg.pct.toFixed(0)}%</span>
-						</div>
-					{/each}
-				</div>
-			</div>
-		</div>
-	{/if}
-
-	{#if positions.length > 0}
+	{#if hasPortfolio}
 		<div class="m-stat-card m-overview-card m-ov-full">
 			<div class="m-stat-card-head">
 				<div class="m-stat-card-icon m-chili-stat-2"><i class="fas fa-briefcase"></i></div>
-				<h2 class="m-stat-card-title">Holdings</h2>
+				<h2 class="m-stat-card-title">Portfolio</h2>
 			</div>
-			<div class="m-hold-list">
-				{#each positions as pos}
-					<div class="m-hold">
-						{#if pos.image}
-							<img
-								class="m-hold-ic"
-								src={pos.image}
-								alt=""
-								loading="lazy"
-								onerror={(e) => ((e.currentTarget as HTMLImageElement).style.visibility = 'hidden')}
-							/>
-						{:else}
-							<span class="m-hold-ic m-hold-ic--ph"><i class="fas fa-coins"></i></span>
-						{/if}
-						<div class="m-hold-id">
-							<span class="m-hold-sym">{pos.symbol}</span>
-							<span class="m-hold-sub">{fmt(pos.value)} XP · from {fmt(pos.invested)}</span>
-						</div>
-						<div class="m-hold-pnl" data-dir={pos.pnl > 0 ? 'up' : pos.pnl < 0 ? 'down' : 'flat'}>
-							<span class="m-hold-pnl-v"
-								><i class="fas fa-caret-{pos.pnl >= 0 ? 'up' : 'down'}"></i>{pos.pnlPercent >= 0 ? '+' : ''}{pos.pnlPercent.toFixed(1)}%</span
-							>
-							<span class="m-hold-pnl-x">{pos.pnl >= 0 ? '+' : '−'}{fmt(Math.abs(pos.pnl))} XP</span>
+			<div class="m-portfolio">
+				{#if allocationPie.total > 0}
+					<div class="m-portfolio-alloc">
+						<svg class="m-pie" viewBox="0 0 100 100" role="img" aria-label="Invested XP by asset">
+							{#if allocationPie.segments.length === 1}
+								<circle cx="50" cy="50" r="48" fill={allocationPie.segments[0].color} />
+							{:else}
+								{#each allocationPie.segments as slice}
+									<path d={slice.d} fill={slice.color} stroke="rgba(255,255,255,0.85)" stroke-width="0.8" />
+								{/each}
+							{/if}
+							<circle cx="50" cy="50" r="27" fill="#fff" />
+							<text x="50" y="48" text-anchor="middle" class="m-pie-total">{fmtShort(allocationPie.total)}</text>
+							<text x="50" y="58" text-anchor="middle" class="m-pie-cap">invested</text>
+						</svg>
+						<div class="m-donut-legend">
+							{#each allocationPie.segments as seg}
+								<div class="m-donut-leg">
+									<span class="m-donut-dot" style="background: {seg.color};"></span>
+									<span class="m-donut-leg-name">{seg.label}</span>
+									<span class="m-donut-leg-val">{seg.pct.toFixed(0)}%</span>
+								</div>
+							{/each}
 						</div>
 					</div>
-				{/each}
+				{/if}
+				{#if positions.length > 0}
+					<div class="m-hold-list">
+						{#each positions as pos}
+							<div class="m-hold">
+								{#if pos.image}
+									<img
+										class="m-hold-ic"
+										src={pos.image}
+										alt=""
+										loading="lazy"
+										onerror={(e) => ((e.currentTarget as HTMLImageElement).style.visibility = 'hidden')}
+									/>
+								{:else}
+									<span class="m-hold-ic m-hold-ic--ph"><i class="fas fa-coins"></i></span>
+								{/if}
+								<div class="m-hold-id">
+									<span class="m-hold-sym">{pos.symbol}</span>
+									<span class="m-hold-sub">{fmtShort(pos.value)} · from {fmtShort(pos.invested)}</span>
+								</div>
+								<div class="m-hold-pnl" data-dir={pos.pnl > 0 ? 'up' : pos.pnl < 0 ? 'down' : 'flat'}>
+									<span class="m-hold-pnl-v"
+										><i class="fas fa-caret-{pos.pnl >= 0 ? 'up' : 'down'}"></i>{pos.pnlPercent >= 0 ? '+' : ''}{pos.pnlPercent.toFixed(1)}%</span
+									>
+									<span class="m-hold-pnl-x">{pos.pnl >= 0 ? '+' : '−'}{fmtShort(Math.abs(pos.pnl))}</span>
+								</div>
+							</div>
+						{/each}
+					</div>
+				{/if}
 			</div>
 		</div>
 	{/if}
@@ -587,94 +593,98 @@
 		</div>
 	{/if}
 
-	{#if hasMarket}
-		<div class="m-stat-card m-overview-card">
-			<div class="m-stat-card-head">
-				<div class="m-stat-card-icon m-chili-stat-2"><i class="fas fa-chart-line"></i></div>
-				<h2 class="m-stat-card-title">Market</h2>
-			</div>
-			<div class="m-hero">
-				<span class="m-hero-val" use:countUp={d.assets_market_value}>{fmt(d.assets_market_value)}</span>
-				<span class="m-hero-cap">assets value · XP</span>
-				<span class="m-hero-chip" data-dir={assetsPnl >= 0 ? 'up' : 'down'}>
-					<i class="fas fa-arrow-trend-{assetsPnl >= 0 ? 'up' : 'down'}"></i>{assetsPnl >= 0 ? '+' : '−'}{fmt(Math.abs(assetsPnl))} open P/L
-				</span>
-			</div>
-			<div class="m-mini-grid">
-				<div class="m-mini">
-					<i class="fas fa-right-left"></i>
-					<span class="m-mini-value">{fmt(d.assets_trade_count)}</span>
-					<span class="m-mini-label">Trades</span>
-				</div>
-				<div class="m-mini">
-					<i class="fas fa-briefcase"></i>
-					<span class="m-mini-value">{fmt(d.assets_open_positions)}</span>
-					<span class="m-mini-label">Open assets</span>
-				</div>
-			</div>
-		</div>
-	{/if}
-
-	{#if hasItems}
-		<div class="m-stat-card m-overview-card">
-			<div class="m-stat-card-head">
-				<div class="m-stat-card-icon m-chili-stat-4"><i class="fas fa-bag-shopping"></i></div>
-				<h2 class="m-stat-card-title">Items</h2>
-			</div>
-			<div class="m-hero">
-				<span class="m-hero-val" use:countUp={d.items_buys}>{fmt(d.items_buys)}</span>
-				<span class="m-hero-cap">items bought</span>
-			</div>
-			<div class="m-mini-grid">
-				<div class="m-mini">
-					<i class="fas fa-coins"></i>
-					<span class="m-mini-value">{fmt(d.items_buy_spend)}</span>
-					<span class="m-mini-label">XP spent</span>
-				</div>
-				<div class="m-mini">
-					<i class="fas fa-wand-magic-sparkles"></i>
-					<span class="m-mini-value">{fmt(d.items_activations)}</span>
-					<span class="m-mini-label">Activations</span>
-				</div>
-			</div>
-		</div>
-	{/if}
-
-	{#if hasMinigames}
-		<div class="m-stat-card m-overview-card">
-			<div class="m-stat-card-head">
-				<div class="m-stat-card-icon m-chili-stat-3"><i class="fas fa-dice"></i></div>
-				<h2 class="m-stat-card-title">Minigames</h2>
-			</div>
-			<div class="m-ring-row">
-				<div class="m-ring" style="--pct: {minigamesWinRate * grow}; --ring-color: {minigamesWinRate >= 50 ? '#1f8a4c' : '#c8911a'};">
-					<span class="m-ring-val"><span use:countUp={minigamesWinRate}>{minigamesWinRate}</span>%</span>
-					<span class="m-ring-cap">win rate</span>
-				</div>
-				<div class="m-ring-side">
-					<div class="m-ring-stat"><span>{fmt(d.minigames_plays)}</span><small>plays</small></div>
-					<div class="m-ring-stat" data-dir={minigamesNet >= 0 ? 'up' : 'down'}>
-						<span>{minigamesNet >= 0 ? '+' : '−'}{fmt(Math.abs(minigamesNet))}</span><small>net winnings</small>
+	{#if hasMarket || hasItems || hasMinigames}
+		<div class="m-econ3 m-ov-full">
+			{#if hasMarket}
+				<div class="m-stat-card m-overview-card">
+					<div class="m-stat-card-head">
+						<div class="m-stat-card-icon m-chili-stat-2"><i class="fas fa-chart-line"></i></div>
+						<h2 class="m-stat-card-title">Market</h2>
+					</div>
+					<div class="m-hero">
+						<span class="m-hero-val" use:countUp={d.assets_market_value}>{fmt(d.assets_market_value)}</span>
+						<span class="m-hero-cap">assets value · XP</span>
+						<span class="m-hero-chip" data-dir={assetsPnl >= 0 ? 'up' : 'down'}>
+							<i class="fas fa-arrow-trend-{assetsPnl >= 0 ? 'up' : 'down'}"></i>{assetsPnl >= 0 ? '+' : '−'}{fmt(Math.abs(assetsPnl))} open P/L
+						</span>
+					</div>
+					<div class="m-mini-grid">
+						<div class="m-mini">
+							<i class="fas fa-right-left"></i>
+							<span class="m-mini-value">{fmt(d.assets_trade_count)}</span>
+							<span class="m-mini-label">Trades</span>
+						</div>
+						<div class="m-mini">
+							<i class="fas fa-briefcase"></i>
+							<span class="m-mini-value">{fmt(d.assets_open_positions)}</span>
+							<span class="m-mini-label">Open assets</span>
+						</div>
 					</div>
 				</div>
-			</div>
-			<div class="m-mini-grid">
-				<div class="m-mini">
-					<i class="fas fa-coins"></i>
-					<span class="m-mini-value">{fmt(d.minigames_wagered)}</span>
-					<span class="m-mini-label">XP wagered</span>
+			{/if}
+
+			{#if hasItems}
+				<div class="m-stat-card m-overview-card">
+					<div class="m-stat-card-head">
+						<div class="m-stat-card-icon m-chili-stat-4"><i class="fas fa-bag-shopping"></i></div>
+						<h2 class="m-stat-card-title">Items</h2>
+					</div>
+					<div class="m-hero">
+						<span class="m-hero-val" use:countUp={d.items_buys}>{fmt(d.items_buys)}</span>
+						<span class="m-hero-cap">items bought</span>
+					</div>
+					<div class="m-mini-grid">
+						<div class="m-mini">
+							<i class="fas fa-coins"></i>
+							<span class="m-mini-value">{fmt(d.items_buy_spend)}</span>
+							<span class="m-mini-label">XP spent</span>
+						</div>
+						<div class="m-mini">
+							<i class="fas fa-wand-magic-sparkles"></i>
+							<span class="m-mini-value">{fmt(d.items_activations)}</span>
+							<span class="m-mini-label">Activations</span>
+						</div>
+					</div>
 				</div>
-				<div class="m-mini">
-					<i class="fas fa-trophy"></i>
-					<span class="m-mini-value">{fmt(d.minigames_biggest_win)}</span>
-					<span class="m-mini-label">Biggest win</span>
+			{/if}
+
+			{#if hasMinigames}
+				<div class="m-stat-card m-overview-card">
+					<div class="m-stat-card-head">
+						<div class="m-stat-card-icon m-chili-stat-3"><i class="fas fa-dice"></i></div>
+						<h2 class="m-stat-card-title">Minigames</h2>
+					</div>
+					<div class="m-ring-row">
+						<div class="m-ring" style="--pct: {minigamesWinRate * grow}; --ring-color: {minigamesWinRate >= 50 ? '#1f8a4c' : '#c8911a'};">
+							<span class="m-ring-val"><span use:countUp={minigamesWinRate}>{minigamesWinRate}</span>%</span>
+							<span class="m-ring-cap">win rate</span>
+						</div>
+						<div class="m-ring-side">
+							<div class="m-ring-stat"><span>{fmt(d.minigames_plays)}</span><small>plays</small></div>
+							<div class="m-ring-stat" data-dir={minigamesNet >= 0 ? 'up' : 'down'}>
+								<span>{minigamesNet >= 0 ? '+' : '−'}{fmt(Math.abs(minigamesNet))}</span><small>net winnings</small>
+							</div>
+						</div>
+					</div>
+					<div class="m-mini-grid">
+						<div class="m-mini">
+							<i class="fas fa-coins"></i>
+							<span class="m-mini-value">{fmt(d.minigames_wagered)}</span>
+							<span class="m-mini-label">XP wagered</span>
+						</div>
+						<div class="m-mini">
+							<i class="fas fa-trophy"></i>
+							<span class="m-mini-value">{fmt(d.minigames_biggest_win)}</span>
+							<span class="m-mini-label">Biggest win</span>
+						</div>
+					</div>
 				</div>
-			</div>
+			{/if}
 		</div>
 	{/if}
 
 	{#if hasPvp}
-		<div class="m-stat-card m-overview-card">
+		<div class="m-stat-card m-overview-card m-ov-full">
 			<div class="m-stat-card-head">
 				<div class="m-stat-card-icon m-chili-stat-3"><i class="fas fa-crosshairs"></i></div>
 				<h2 class="m-stat-card-title">Your PvP record</h2>

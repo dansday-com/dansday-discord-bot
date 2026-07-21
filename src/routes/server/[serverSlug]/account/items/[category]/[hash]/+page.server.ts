@@ -1,4 +1,4 @@
-import { error, redirect } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 import { publicServerPath } from '$lib/url.js';
@@ -17,8 +17,8 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 	const { server } = await parent();
 
 	const hash = itemsCardTokenFromUrl(params.hash);
-	const shared = await loadItemsShared(server, hash);
-	if ('notFound' in shared) error(404, 'Items not available');
+	const shared = await loadItemsShared(server, hash, 'items');
+	if ('notFound' in shared) redirect(303, `${publicServerPath(server.slug)}/account/overview/${params.hash}`);
 	if ('guest' in shared) redirect(303, publicServerPath(server.slug));
 
 	const category = String(params.category || 'all');

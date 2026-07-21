@@ -22,8 +22,9 @@ export const GET: RequestHandler = async ({ params, url, request }) => {
 	if (!resolved) return json({ success: false, error: 'Not found' }, { status: 404 });
 	const server = resolved.server;
 
-	const itemsRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.assets).catch(() => null);
-	if ((itemsRow as any)?.settings?.enabled !== true) {
+	const psRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.public_statistics).catch(() => null);
+	const psSettings = (psRow as any)?.settings || {};
+	if (psSettings.enabled === false || psSettings.assets_enabled !== true) {
 		return json({ success: false, error: 'Assets are disabled for this server.' }, { status: 403 });
 	}
 

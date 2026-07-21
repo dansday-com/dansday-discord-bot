@@ -237,12 +237,7 @@ async function handleMenuButton(interaction) {
 		} catch (_) {}
 	}
 
-	const [itemsOn, assetsOn, minigamesOn] = await Promise.all([
-		isComponentFeatureEnabled(interaction.guild.id, serverSettingsComponent.items),
-		isComponentFeatureEnabled(interaction.guild.id, serverSettingsComponent.assets),
-		isComponentFeatureEnabled(interaction.guild.id, serverSettingsComponent.minigames)
-	]);
-	if (itemsOn || assetsOn || minigamesOn) {
+	if (await isComponentFeatureEnabled(interaction.guild.id, serverSettingsComponent.public_statistics)) {
 		try {
 			const server = await getServerForCurrentBot(interaction.guild.id);
 			const slug = await computePublicServerSlugForServerId(Number(server.id));
@@ -250,7 +245,7 @@ async function handleMenuButton(interaction) {
 			if (base) {
 				const joinedDate = member.joinedAt ? member.joinedAt.toISOString().split('T')[0] : '';
 				const cardHash = createHash('sha256').update(`${interaction.user.id}_${joinedDate}`).digest('hex').substring(0, 16);
-				const accountUrl = `${base}/account/dashboard/overview/${cardHash}`;
+				const accountUrl = `${base}/account/overview/${cardHash}`;
 
 				const accountLabel = await translate('menu.account', interaction.guild.id, interaction.user.id);
 				const accountBtn = new ButtonBuilder().setLabel(accountLabel).setURL(accountUrl).setStyle(ButtonStyle.Link);

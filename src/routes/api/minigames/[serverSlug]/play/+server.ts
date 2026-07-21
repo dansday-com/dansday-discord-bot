@@ -19,8 +19,9 @@ export const POST: RequestHandler = async ({ params, request }) => {
 	if (!resolved) return json({ success: false, error: 'Not found' }, { status: 404 });
 	const server = resolved.server;
 
-	const row = await db.getServerSettings(server.id, SERVER_SETTINGS.component.minigames).catch(() => null);
-	if ((row as any)?.settings?.enabled !== true) {
+	const row = await db.getServerSettings(server.id, SERVER_SETTINGS.component.public_statistics).catch(() => null);
+	const ps = (row as any)?.settings ?? {};
+	if (ps.enabled === false || ps.minigames_enabled !== true) {
 		return json({ success: false, error: 'Minigames are disabled for this server.' }, { status: 403 });
 	}
 

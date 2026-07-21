@@ -309,26 +309,33 @@ export async function getLevelingSettings(guildId: string) {
 	};
 }
 
-export async function getItemsChannelId(guildId: string): Promise<string | null> {
+async function getPublicStatsSettings(guildId: string): Promise<Record<string, any> | null> {
 	try {
 		const officialBotServer = await getOfficialBotServer(guildId);
-		const settings = await getServerSettingsRow(officialBotServer.id, serverSettingsComponent.items);
-		const channelId = settings?.settings?.ITEMS_CHANNEL_ID;
-		return channelId ? String(channelId) : null;
+		const row = await getServerSettingsRow(officialBotServer.id, serverSettingsComponent.public_statistics);
+		if (!row || !row.settings || typeof row.settings !== 'object' || Array.isArray(row.settings)) return null;
+		return row.settings as Record<string, any>;
 	} catch (_) {
 		return null;
 	}
 }
 
+export async function isPublicSubFeatureEnabled(guildId: string, key: 'items' | 'assets' | 'minigames'): Promise<boolean> {
+	const settings = await getPublicStatsSettings(guildId);
+	if (!settings || settings.enabled === false) return false;
+	return settings[`${key}_enabled`] === true;
+}
+
+export async function getItemsChannelId(guildId: string): Promise<string | null> {
+	const settings = await getPublicStatsSettings(guildId);
+	const channelId = settings?.ITEMS_CHANNEL_ID;
+	return channelId ? String(channelId) : null;
+}
+
 export async function getMinigamesChannelId(guildId: string): Promise<string | null> {
-	try {
-		const officialBotServer = await getOfficialBotServer(guildId);
-		const settings = await getServerSettingsRow(officialBotServer.id, serverSettingsComponent.minigames);
-		const channelId = settings?.settings?.MINIGAMES_CHANNEL_ID;
-		return channelId ? String(channelId) : null;
-	} catch (_) {
-		return null;
-	}
+	const settings = await getPublicStatsSettings(guildId);
+	const channelId = settings?.MINIGAMES_CHANNEL_ID;
+	return channelId ? String(channelId) : null;
 }
 
 export const COMMUNICATION = {

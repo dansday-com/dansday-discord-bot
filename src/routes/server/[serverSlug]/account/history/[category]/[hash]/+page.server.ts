@@ -1,4 +1,4 @@
-import { error, redirect } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import db from '$lib/database.js';
 import { publicServerPath } from '$lib/url.js';
@@ -7,15 +7,13 @@ import { loadItemsShared, itemsCardTokenFromUrl } from '$lib/frontend/public/ite
 const PER_PAGE = 50;
 
 export const load: PageServerLoad = async ({ parent, params, url }) => {
-	const { server, itemsEnabled, assetsEnabled, minigamesEnabled } = await parent();
-	const { SERVER_SETTINGS } = await import('$lib/frontend/panelServer.js');
+	const { server, accountEnabled, itemsEnabled, assetsEnabled, minigamesEnabled } = await parent();
 
-	if (!itemsEnabled && !assetsEnabled && !minigamesEnabled) error(404, 'Account not available');
-	const gate = itemsEnabled ? SERVER_SETTINGS.component.items : assetsEnabled ? SERVER_SETTINGS.component.assets : SERVER_SETTINGS.component.minigames;
+	if (!accountEnabled) redirect(303, '/');
 
 	const hash = itemsCardTokenFromUrl(params.hash);
-	const shared = await loadItemsShared(server, hash, gate);
-	if ('notFound' in shared) error(404, 'Account not available');
+	const shared = await loadItemsShared(server, hash, null);
+	if ('notFound' in shared) redirect(303, '/');
 	if ('guest' in shared || !shared.member) redirect(303, publicServerPath(server.slug));
 
 	const tabParam = String(params.category || 'all');

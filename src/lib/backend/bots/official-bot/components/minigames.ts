@@ -27,7 +27,7 @@ export async function handleMinigamePlay(client: any, payload: any) {
 	const { guild_id, actor_discord_id, multiplier, amount } = payload || {};
 	if (!guild_id || !actor_discord_id) return { ok: false, error: 'missing_fields' };
 
-	const { getServerForCurrentBot, isComponentFeatureEnabled, serverSettingsComponent } = await import('../../../config.js');
+	const { getServerForCurrentBot, isPublicSubFeatureEnabled } = await import('../../../config.js');
 
 	let server: any;
 	try {
@@ -35,7 +35,7 @@ export async function handleMinigamePlay(client: any, payload: any) {
 	} catch (_) {
 		return { ok: false, error: 'server_not_found' };
 	}
-	if (!(await isComponentFeatureEnabled(guild_id, serverSettingsComponent.minigames))) {
+	if (!(await isPublicSubFeatureEnabled(guild_id, 'minigames'))) {
 		return { ok: false, error: 'minigames_disabled' };
 	}
 

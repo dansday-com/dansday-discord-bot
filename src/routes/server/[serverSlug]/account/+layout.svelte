@@ -21,7 +21,7 @@
 	const isGuide = $derived(/\/account\/dashboard\/guide\//.test(pathNorm));
 	const isAssets = $derived(/\/account\/assets\//.test(pathNorm));
 	const isMinigames = $derived(/\/account\/minigames\//.test(pathNorm));
-	const isShop = $derived(!isDashboard && !isAssets && !isMinigames);
+	const isItems = $derived(!isDashboard && !isAssets && !isMinigames);
 	const dashboardCat = $derived(isHistory ? 'history' : isGuide ? 'guide' : 'overview');
 	const activeCat = $derived.by(() => {
 		const m = pathNorm.match(/\/account\/(?:items|assets|minigames)\/([^/]+)\/[^/]+$/);
@@ -228,7 +228,7 @@
 
 	$effect(() => {
 		typeTabs;
-		isShop;
+		isItems;
 		isHistory;
 		isAssets;
 		requestAnimationFrame(updateTabScroll);
@@ -334,68 +334,70 @@
 </script>
 
 <div class="m-items">
-	<div class="m-xp">
-		<div class="m-xp-glow"></div>
-		{#if pd.memberCard && !(isAssets && assetSummary.count === 0)}
-			<button class="m-xp-card-btn" onclick={() => (showCard = true)} aria-label="Share your card" title="Share card">
-				<i class="fas fa-share-nodes"></i>
-				<span class="m-xp-card-btn-label">Share</span>
-			</button>
-		{/if}
-		<div class="m-xp-avatar">
-			<img src={memberAvatar} alt={pd.memberName ?? ''} loading="lazy" />
-		</div>
-		<div class="m-xp-figures">
-			<span class="m-xp-wallet"><i class="fas {isAssets ? 'fa-chart-line' : 'fa-wallet'}"></i>{isAssets ? 'Invested in Assets' : 'Wallet'}</span>
-			{#if pd.memberName}<span class="m-xp-name">{pd.memberName}</span>{/if}
-			<span class="m-xp-amount">{fmt(isAssets ? assetSummary.invested : liveXp)}<span class="m-xp-unit">XP</span></span>
-			<div class="m-xp-bar" class:m-xp-bar--hidden={isAssets}>
-				<div class="m-xp-bar-fill" style="width: {levelInfo.pct}%"></div>
-			</div>
-			<span class="m-xp-bar-meta">
-				{#if isAssets}
-					<span>{assetSummary.count} asset{assetSummary.count === 1 ? '' : 's'}</span>
-					<span>Worth {fmt(assetSummary.value)} XP</span>
-				{:else}
-					<span>Lvl {level}</span>
-					<span>{levelInfo.toNext > 0 ? `${fmt(levelInfo.toNext)} XP to Lvl ${level + 1}` : 'Max progress'}</span>
-				{/if}
-			</span>
-		</div>
-		<div class="m-xp-stats">
-			{#if isAssets}
-				<div class="m-xp-stat m-xp-stat--pnl" data-dir={assetSummary.pnl > 0 ? 'up' : assetSummary.pnl < 0 ? 'down' : 'flat'}>
-					<span class="m-xp-stat-val">
-						<i class="fas fa-caret-{assetSummary.pnl >= 0 ? 'up' : 'down'}"></i>{assetSummary.pnlPct >= 0 ? '+' : ''}{assetSummary.pnlPct.toFixed(2)}%
-					</span>
-					<span class="m-xp-stat-lbl">{assetSummary.pnl >= 0 ? '+' : ''}{fmt(assetSummary.pnl)} XP</span>
-				</div>
-			{:else}
-				<div class="m-xp-stat">
-					<span class="m-xp-stat-val">{levelInfo.pct}%</span>
-					<span class="m-xp-stat-lbl">Level {level}</span>
-				</div>
-				{#if rank}
-					<div class="m-xp-stat">
-						<span class="m-xp-stat-val">#{rank}</span>
-						<span class="m-xp-stat-lbl">Rank</span>
-					</div>
-				{/if}
+	{#snippet walletHero()}
+		<div class="m-xp">
+			<div class="m-xp-glow"></div>
+			{#if pd.memberCard && !(isAssets && assetSummary.count === 0)}
+				<button class="m-xp-card-btn" onclick={() => (showCard = true)} aria-label="Share your card" title="Share card">
+					<i class="fas fa-share-nodes"></i>
+					<span class="m-xp-card-btn-label">Share</span>
+				</button>
 			{/if}
-		</div>
-	</div>
-
-	{#if activeChips.length > 0}
-		<div class="m-active">
-			{#each activeChips as chip (chip.key)}
-				<span class="m-active-chip" style="--chip-accent: {chip.accent}">
-					<i class="fas {chip.icon}"></i>
-					<span class="m-active-label">{chip.label}</span>
-					<span class="m-active-time">{chip.text ?? remainingLabel(chip.until)}</span>
+			<div class="m-xp-avatar">
+				<img src={memberAvatar} alt={pd.memberName ?? ''} loading="lazy" />
+			</div>
+			<div class="m-xp-figures">
+				<span class="m-xp-wallet"><i class="fas {isAssets ? 'fa-chart-line' : 'fa-wallet'}"></i>{isAssets ? 'Invested in Assets' : 'Wallet'}</span>
+				{#if pd.memberName}<span class="m-xp-name">{pd.memberName}</span>{/if}
+				<span class="m-xp-amount">{fmt(isAssets ? assetSummary.invested : liveXp)}<span class="m-xp-unit">XP</span></span>
+				<div class="m-xp-bar" class:m-xp-bar--hidden={isAssets}>
+					<div class="m-xp-bar-fill" style="width: {levelInfo.pct}%"></div>
+				</div>
+				<span class="m-xp-bar-meta">
+					{#if isAssets}
+						<span>{assetSummary.count} asset{assetSummary.count === 1 ? '' : 's'}</span>
+						<span>Worth {fmt(assetSummary.value)} XP</span>
+					{:else}
+						<span>Lvl {level}</span>
+						<span>{levelInfo.toNext > 0 ? `${fmt(levelInfo.toNext)} XP to Lvl ${level + 1}` : 'Max progress'}</span>
+					{/if}
 				</span>
-			{/each}
+			</div>
+			<div class="m-xp-stats">
+				{#if isAssets}
+					<div class="m-xp-stat m-xp-stat--pnl" data-dir={assetSummary.pnl > 0 ? 'up' : assetSummary.pnl < 0 ? 'down' : 'flat'}>
+						<span class="m-xp-stat-val">
+							<i class="fas fa-caret-{assetSummary.pnl >= 0 ? 'up' : 'down'}"></i>{assetSummary.pnlPct >= 0 ? '+' : ''}{assetSummary.pnlPct.toFixed(2)}%
+						</span>
+						<span class="m-xp-stat-lbl">{assetSummary.pnl >= 0 ? '+' : ''}{fmt(assetSummary.pnl)} XP</span>
+					</div>
+				{:else}
+					<div class="m-xp-stat">
+						<span class="m-xp-stat-val">{levelInfo.pct}%</span>
+						<span class="m-xp-stat-lbl">Level {level}</span>
+					</div>
+					{#if rank}
+						<div class="m-xp-stat">
+							<span class="m-xp-stat-val">#{rank}</span>
+							<span class="m-xp-stat-lbl">Rank</span>
+						</div>
+					{/if}
+				{/if}
+			</div>
 		</div>
-	{/if}
+
+		{#if activeChips.length > 0}
+			<div class="m-active">
+				{#each activeChips as chip (chip.key)}
+					<span class="m-active-chip" style="--chip-accent: {chip.accent}">
+						<i class="fas {chip.icon}"></i>
+						<span class="m-active-label">{chip.label}</span>
+						<span class="m-active-time">{chip.text ?? remainingLabel(chip.until)}</span>
+					</span>
+				{/each}
+			</div>
+		{/if}
+	{/snippet}
 
 	<div class="m-items-bar">
 		<div class="m-items-toggle">
@@ -406,7 +408,7 @@
 				<a
 					bind:this={bagTabEl}
 					class="m-items-seg"
-					class:m-items-seg--active={isShop}
+					class:m-items-seg--active={isItems}
 					class:m-items-seg--pulse={bagPulse}
 					href="{accountBase}/items/all/{navHash}"
 					data-sveltekit-preload-data="hover"
@@ -426,6 +428,10 @@
 			{/if}
 		</div>
 	</div>
+
+	{#if isItems || isMinigames || isAssets}
+		{@render walletHero()}
+	{/if}
 
 	{#snippet tabStrip(tabs: { id: string; label: string; icon: string; href: string }[], activeId: string)}
 		<div class="m-items-tabswrap">
@@ -473,7 +479,7 @@
 				historyCat
 			)}
 		{/if}
-	{:else if isShop}
+	{:else if isItems}
 		{@render tabStrip(
 			typeTabs.map((t) => ({ ...t, href: `${accountBase}/items/${t.id}/${navHash}` })),
 			activeCat

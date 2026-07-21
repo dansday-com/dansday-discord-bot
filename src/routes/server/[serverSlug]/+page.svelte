@@ -10,6 +10,9 @@
 	let liveBoost = $state(data.boost_level);
 	let es: EventSource | null = null;
 
+	let mounted = $state(false);
+	const grow = $derived(mounted ? 1 : 0);
+
 	const boostLevel = $derived(liveBoost);
 
 	function fmt(val: number | null | undefined): string {
@@ -166,8 +169,10 @@
 	$effect(() => {
 		const t = Number(liveStats.leveling_total_experience) || 0;
 		if (lastXpForHero === null) {
-			heroXpDisplay = t;
 			lastXpForHero = t;
+			const reduce = typeof window !== 'undefined' && (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
+			if (reduce) heroXpDisplay = t;
+			else animateHeroXp(t);
 			return;
 		}
 		if (t !== lastXpForHero) {
@@ -182,6 +187,10 @@
 	}
 
 	onMount(() => {
+		const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+		if (reduce) mounted = true;
+		else requestAnimationFrame(() => requestAnimationFrame(() => (mounted = true)));
+
 		const url = `/api/public-statistics/${encodeURIComponent(data.server.slug)}/overview-stream`;
 		const source = new EventSource(url);
 		es = source;
@@ -212,7 +221,7 @@
 	<p>Statistics</p>
 </div>
 
-<section class="m-overview-strip" aria-label="Key metrics">
+<section class="m-overview-strip" class:m-overview-strip--in={mounted} aria-label="Key metrics">
 	{#each [{ icon: 'fa-users', label: 'Members', value: fmt(liveStats.members_total) }, { icon: 'fa-hashtag', label: 'Channels', value: fmt(liveStats.channels_total) }, { icon: 'fa-star', label: 'Total XP', value: heroXpDisplay.toLocaleString() }, { icon: 'fa-microphone', label: 'Voice min', value: fmt(liveStats.leveling_total_voice_minutes) }, { icon: 'fa-user-tag', label: 'Roles', value: fmt(liveStats.roles_total) }] as chip}
 		<div class="m-overview-strip-item">
 			<div class="m-overview-strip-icon"><i class="fas {chip.icon}"></i></div>
@@ -224,7 +233,7 @@
 	{/each}
 </section>
 
-<div class="m-stats-grid">
+<div class="m-stats-grid" class:m-stats-grid--in={mounted}>
 	<div class="m-stat-card m-overview-card">
 		<div class="m-stat-card-head">
 			<div class="m-stat-card-icon m-chili-stat-1">
@@ -245,8 +254,8 @@
 				<div class="m-level-meter-track m-level-meter-track--empty m-bar-empty"><span>No members yet</span></div>
 			{:else}
 				<div class="m-seg-bar" title="Share of members with leveling data">
-					<div class="m-seg m-seg--a" style="width: {membersLevelShare.withPct}%"></div>
-					<div class="m-seg m-seg--b" style="width: {membersLevelShare.withoutPct}%"></div>
+					<div class="m-seg m-seg--a" style="width: {membersLevelShare.withPct * grow}%"></div>
+					<div class="m-seg m-seg--b" style="width: {membersLevelShare.withoutPct * grow}%"></div>
 				</div>
 				<div class="m-legend">
 					<span><i class="fas fa-circle"></i> With levels</span>
@@ -298,9 +307,9 @@
 				<div class="m-level-meter-track m-level-meter-track--empty m-bar-empty"><span>No channels</span></div>
 			{:else}
 				<div class="m-seg-bar m-seg-bar--3" title="Channel types">
-					<div class="m-seg m-seg--text" style="width: {channelMix.textPct}%"></div>
-					<div class="m-seg m-seg--voice" style="width: {channelMix.voicePct}%"></div>
-					<div class="m-seg m-seg--other" style="width: {channelMix.otherPct}%"></div>
+					<div class="m-seg m-seg--text" style="width: {channelMix.textPct * grow}%"></div>
+					<div class="m-seg m-seg--voice" style="width: {channelMix.voicePct * grow}%"></div>
+					<div class="m-seg m-seg--other" style="width: {channelMix.otherPct * grow}%"></div>
 				</div>
 				<div class="m-legend m-legend--3">
 					<span><i class="fas fa-circle"></i> Text {fmt(liveStats.channels_text)}</span>
@@ -335,7 +344,7 @@
 					<span class="m-level-meter-meta">{fmtDec(liveStats.leveling_avg_level)} / {fmt(liveStats.leveling_max_level)}</span>
 				</div>
 				<div class="m-level-meter-track">
-					<div class="m-level-meter-fill m-level-meter-fill--avg" style="width: {avgLevelBarPct}%"></div>
+					<div class="m-level-meter-fill m-level-meter-fill--avg" style="width: {avgLevelBarPct * grow}%"></div>
 				</div>
 			</div>
 		</div>
@@ -414,8 +423,8 @@
 				<div class="m-level-meter-track m-level-meter-track--empty m-bar-empty"><span>No voice data yet</span></div>
 			{:else}
 				<div class="m-level-meter-stack" title="Share of voice minutes">
-					<div class="m-level-meter-stack-active" style="width: {voiceMix.activePct}%"></div>
-					<div class="m-level-meter-stack-afk" style="width: {voiceMix.afkPct}%"></div>
+					<div class="m-level-meter-stack-active" style="width: {voiceMix.activePct * grow}%"></div>
+					<div class="m-level-meter-stack-afk" style="width: {voiceMix.afkPct * grow}%"></div>
 				</div>
 			{/if}
 		</div>
@@ -476,8 +485,8 @@
 					<div class="m-level-meter-track m-level-meter-track--empty m-bar-empty"><span>No trades yet</span></div>
 				{:else}
 					<div class="m-seg-bar" title="XP bought in vs cashed out">
-						<div class="m-seg m-seg--a" style="width: {marketFlow.inPct}%"></div>
-						<div class="m-seg m-seg--b" style="width: {marketFlow.outPct}%"></div>
+						<div class="m-seg m-seg--a" style="width: {marketFlow.inPct * grow}%"></div>
+						<div class="m-seg m-seg--b" style="width: {marketFlow.outPct * grow}%"></div>
 					</div>
 					<div class="m-legend">
 						<span><i class="fas fa-circle"></i> Bought in {fmt(liveStats.assets_buy_volume)}</span>
@@ -535,8 +544,8 @@
 					<div class="m-level-meter-track m-level-meter-track--empty m-bar-empty"><span>No heists attempted</span></div>
 				{:else}
 					<div class="m-seg-bar" title="Successful steals vs caught">
-						<div class="m-seg m-seg--a" style="width: {heistMix.landedPct}%"></div>
-						<div class="m-seg m-seg--b" style="width: {heistMix.caughtPct}%"></div>
+						<div class="m-seg m-seg--a" style="width: {heistMix.landedPct * grow}%"></div>
+						<div class="m-seg m-seg--b" style="width: {heistMix.caughtPct * grow}%"></div>
 					</div>
 					<div class="m-legend">
 						<span><i class="fas fa-circle"></i> Landed {fmt(liveStats.items_steals_landed)}</span>
@@ -596,7 +605,7 @@
 					<span class="m-bar-meta">{minigamesWinRate}%</span>
 				</div>
 				<div class="m-level-meter-track">
-					<div class="m-level-meter-fill m-level-meter-fill--avg" style="width: {Math.max(4, minigamesWinRate)}%"></div>
+					<div class="m-level-meter-fill m-level-meter-fill--avg" style="width: {Math.max(4, minigamesWinRate) * grow}%"></div>
 				</div>
 			</div>
 			<div class="m-mini-grid">
@@ -632,7 +641,7 @@
 				</div>
 				{#if liveStats.giveaways_entrants > 0}
 					<div class="m-level-meter-track">
-						<div class="m-level-meter-fill m-level-meter-fill--avg" style="width: {Math.max(4, giveawayClaimPct)}%"></div>
+						<div class="m-level-meter-fill m-level-meter-fill--avg" style="width: {Math.max(4, giveawayClaimPct) * grow}%"></div>
 					</div>
 				{:else}
 					<div class="m-level-meter-track m-level-meter-track--empty m-bar-empty"><span>No entrants yet</span></div>
@@ -673,10 +682,10 @@
 					<div class="m-level-meter-track m-level-meter-track--empty m-bar-empty"><span>No engagement yet</span></div>
 				{:else}
 					<div class="m-seg-bar m-seg-bar--3" title="Stream engagement breakdown">
-						<div class="m-seg m-seg--text" style="width: {streamEngage.likePct}%"></div>
-						<div class="m-seg m-seg--voice" style="width: {streamEngage.chatPct}%"></div>
-						<div class="m-seg m-seg--other" style="width: {streamEngage.giftPct}%"></div>
-						<div class="m-seg m-seg--b" style="width: {streamEngage.sharePct}%"></div>
+						<div class="m-seg m-seg--text" style="width: {streamEngage.likePct * grow}%"></div>
+						<div class="m-seg m-seg--voice" style="width: {streamEngage.chatPct * grow}%"></div>
+						<div class="m-seg m-seg--other" style="width: {streamEngage.giftPct * grow}%"></div>
+						<div class="m-seg m-seg--b" style="width: {streamEngage.sharePct * grow}%"></div>
 					</div>
 					<div class="m-legend m-legend--3">
 						<span><i class="fas fa-circle"></i> Likes {fmt(liveStats.streams_likes)}</span>
@@ -721,7 +730,7 @@
 					<span class="m-bar-meta">{questClaimPct.toFixed(0)}%</span>
 				</div>
 				<div class="m-level-meter-track">
-					<div class="m-level-meter-fill m-level-meter-fill--avg" style="width: {Math.max(4, questClaimPct)}%"></div>
+					<div class="m-level-meter-fill m-level-meter-fill--avg" style="width: {Math.max(4, questClaimPct) * grow}%"></div>
 				</div>
 			</div>
 			<div class="m-mini-grid">
@@ -756,7 +765,7 @@
 						<span class="m-bar-meta">{liveStats.staff_avg_rating || '—'} / 5</span>
 					</div>
 					<div class="m-level-meter-track">
-						<div class="m-level-meter-fill m-level-meter-fill--avg" style="width: {Math.max(4, staffRatingPct)}%"></div>
+						<div class="m-level-meter-fill m-level-meter-fill--avg" style="width: {Math.max(4, staffRatingPct) * grow}%"></div>
 					</div>
 				</div>
 			{/if}

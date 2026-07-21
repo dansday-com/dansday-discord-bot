@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getContext } from 'svelte';
+	import { getContext, onMount } from 'svelte';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import LocalTime from '$lib/frontend/components/LocalTime.svelte';
 	import { effectLabel, effectIcon, effectAccentHex } from '$lib/items.js';
@@ -9,6 +9,37 @@
 
 	const ctx = getContext('items') as any;
 	const { fmt } = ctx;
+
+	let mounted = $state(false);
+	let reduceMotion = false;
+	onMount(() => {
+		reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+		if (reduceMotion) {
+			mounted = true;
+			return;
+		}
+		requestAnimationFrame(() => requestAnimationFrame(() => (mounted = true)));
+	});
+	const grow = $derived(mounted ? 1 : 0);
+
+	function countUp(node: HTMLElement, target: number) {
+		const render = (v: number) => (node.textContent = Math.round(v).toLocaleString());
+		if (reduceMotion || !Number.isFinite(target)) {
+			render(target || 0);
+			return {};
+		}
+		let start = 0;
+		let raf = 0;
+		const tick = (now: number) => {
+			if (!start) start = now;
+			const t = Math.min(1, (now - start) / 900);
+			render(target * (1 - Math.pow(1 - t, 3)));
+			if (t < 1) raf = requestAnimationFrame(tick);
+		};
+		render(0);
+		raf = requestAnimationFrame(tick);
+		return { destroy: () => cancelAnimationFrame(raf) };
+	}
 
 	const p = $derived(data.profile);
 
@@ -40,6 +71,13 @@
 		const t = new Date(p.joined.replace(' ', 'T') + 'Z').getTime();
 		if (Number.isNaN(t)) return null;
 		return Math.max(0, Math.floor((Date.now() - t) / 86400000));
+	});
+
+	const xpSources = $derived((p.xpSources ?? []) as { key: string; label: string; icon: string; color: string; xp: number }[]);
+	const xpSourceTotal = $derived(xpSources.reduce((s, x) => s + x.xp, 0));
+	const xpSourceBars = $derived.by(() => {
+		const max = Math.max(1, ...xpSources.map((s) => s.xp));
+		return xpSources.map((s) => ({ ...s, pct: Math.max(3, Math.round((s.xp / max) * 100)), share: xpSourceTotal > 0 ? (s.xp / xpSourceTotal) * 100 : 0 }));
 	});
 
 	const activityBars = $derived.by(() => {
@@ -98,6 +136,19 @@
 	const hasFavorites = $derived((ins.favorite_items ?? []).length > 0);
 	const hasHighlights = $derived(hasFavorites || interactionLists.length > 0);
 
+	const positions = $derived(
+		(data.positions ?? []) as {
+			symbol: string;
+			name: string;
+			image: string | null;
+			change24h: number;
+			invested: number;
+			value: number;
+			pnl: number;
+			pnlPercent: number;
+		}[]
+	);
+
 	const assetsPnl = $derived(Number(d.assets_pnl) || 0);
 	const minigamesNet = $derived(Number(d.minigames_net) || 0);
 	const minigamesWinRate = $derived((d.minigames_plays ?? 0) > 0 ? Math.round((Number(d.minigames_wins) / Number(d.minigames_plays)) * 100) : 0);
@@ -110,19 +161,24 @@
 	}
 	function buildPie(items: { value: number; color: string; label: string; icon: string }[]) {
 		const total = items.reduce((s, x) => s + x.value, 0);
-		if (total <= 0) return { total: 0, segments: [] as any[] };
+		if (total <= 0) return { total: 0, segments: [] as any[], full: null as any };
+		const visible = items.filter((it) => (it.value / total) * 100 >= 0.5);
+		if (visible.length === 1) {
+			const it = visible[0];
+			return { total, segments: [{ ...it, pct: 100, d: '' }], full: { ...it, pct: 100 } };
+		}
 		let offset = 0;
-		const segments = items.map((it) => {
+		const segments = visible.map((it) => {
 			const pct = (it.value / total) * 100;
 			const large = pct > 50 ? 1 : 0;
 			const p1 = polar(50, 50, 48, offset);
 			const p2 = polar(50, 50, 48, offset + pct);
-			const dPath = items.length === 1 ? '' : `M50,50 L${p1.x.toFixed(2)},${p1.y.toFixed(2)} A48,48 0 ${large} 1 ${p2.x.toFixed(2)},${p2.y.toFixed(2)} Z`;
+			const dPath = `M50,50 L${p1.x.toFixed(2)},${p1.y.toFixed(2)} A48,48 0 ${large} 1 ${p2.x.toFixed(2)},${p2.y.toFixed(2)} Z`;
 			const seg = { ...it, pct, d: dPath };
 			offset += pct;
 			return seg;
 		});
-		return { total, segments };
+		return { total, segments, full: null };
 	}
 
 	const usagePie = $derived.by(() => {
@@ -183,7 +239,7 @@
 
 <svelte:head><title>{data.server.name || data.server.slug} Account | {APP_NAME} Discord Bot</title></svelte:head>
 
-<div class="m-ov">
+<div class="m-ov" class:m-ov--in={mounted}>
 	<div class="m-stat-card m-overview-card m-ov-full m-profile">
 		<div class="m-profile-top">
 			<div class="m-profile-av">
@@ -232,6 +288,41 @@
 
 	<div class="m-stat-card m-overview-card m-ov-full">
 		<div class="m-stat-card-head">
+			<div class="m-stat-card-icon m-chili-stat-3"><i class="fas fa-star"></i></div>
+			<h2 class="m-stat-card-title">Total XP</h2>
+		</div>
+		<div class="m-hero">
+			<span class="m-hero-val" use:countUp={p.totalXp}>{fmt(p.totalXp)}</span>
+			<span class="m-hero-cap">lifetime experience</span>
+		</div>
+		{#if xpSourceBars.length > 0}
+			<div class="m-bar-block">
+				<div class="m-bar-head">
+					<span>Where your XP came from</span>
+					<span class="m-bar-meta">{fmt(xpSourceTotal)} tracked</span>
+				</div>
+				<div class="m-seg-bar m-seg-bar--3" title="XP by source">
+					{#each xpSourceBars as s}
+						<div class="m-seg" style="width: {s.share * grow}%; background: {s.color};"></div>
+					{/each}
+				</div>
+			</div>
+			<div class="m-hbars">
+				{#each xpSourceBars as s}
+					<div class="m-hbar">
+						<span class="m-hbar-label"><i class="fas {s.icon}" style="color: {s.color};"></i> {s.label}</span>
+						<div class="m-hbar-track">
+							<div class="m-hbar-fill" style="width: {s.pct * grow}%; background: {s.color};"></div>
+						</div>
+						<span class="m-hbar-val">{fmt(s.xp)}</span>
+					</div>
+				{/each}
+			</div>
+		{/if}
+	</div>
+
+	<div class="m-stat-card m-overview-card m-ov-full">
+		<div class="m-stat-card-head">
 			<div class="m-stat-card-icon m-chili-stat-5"><i class="fas fa-microphone-alt"></i></div>
 			<h2 class="m-stat-card-title">Activity</h2>
 		</div>
@@ -242,10 +333,10 @@
 					<span class="m-bar-meta">{fmt(voiceMix.total)} min</span>
 				</div>
 				<div class="m-seg-bar m-seg-bar--3" title="Active · AFK · Video · Stream">
-					<div class="m-seg m-seg--text" style="width: {voiceMix.active}%"></div>
-					<div class="m-seg m-seg--other" style="width: {voiceMix.afk}%"></div>
-					<div class="m-seg m-seg--voice" style="width: {voiceMix.video}%"></div>
-					<div class="m-seg m-seg--b" style="width: {voiceMix.stream}%"></div>
+					<div class="m-seg m-seg--text" style="width: {voiceMix.active * grow}%"></div>
+					<div class="m-seg m-seg--other" style="width: {voiceMix.afk * grow}%"></div>
+					<div class="m-seg m-seg--voice" style="width: {voiceMix.video * grow}%"></div>
+					<div class="m-seg m-seg--b" style="width: {voiceMix.stream * grow}%"></div>
 				</div>
 			</div>
 		{/if}
@@ -254,7 +345,7 @@
 				<div class="m-hbar">
 					<span class="m-hbar-label"><i class="fas {bar.icon}" style="color: {bar.color};"></i> {bar.label}</span>
 					<div class="m-hbar-track">
-						<div class="m-hbar-fill" style="width: {bar.pct}%; background: {bar.color};"></div>
+						<div class="m-hbar-fill" style="width: {bar.pct * grow}%; background: {bar.color};"></div>
 					</div>
 					<span class="m-hbar-val">{fmt(bar.value)}</span>
 				</div>
@@ -299,7 +390,7 @@
 						<div class="m-col">
 							<span class="m-col-val">{fmt(seg.value)}</span>
 							<div class="m-col-track">
-								<div class="m-col-fill" style="height: {Math.max(6, seg.pct)}%; background: {seg.color};"></div>
+								<div class="m-col-fill" style="height: {Math.max(6, seg.pct) * grow}%; background: {seg.color};"></div>
 							</div>
 							<i class="fas {seg.icon} m-col-ico" style="color: {seg.color};" title={seg.label}></i>
 						</div>
@@ -310,12 +401,12 @@
 	{/if}
 
 	{#if allocationPie.total > 0}
-		<div class="m-stat-card m-overview-card m-ov-full">
+		<div class="m-stat-card m-overview-card">
 			<div class="m-stat-card-head">
 				<div class="m-stat-card-icon m-chili-stat-2"><i class="fas fa-chart-pie"></i></div>
 				<h2 class="m-stat-card-title">Portfolio allocation</h2>
 			</div>
-			<div class="m-pie-wrap">
+			<div class="m-pie-wrap m-pie-wrap--stack">
 				<svg class="m-pie" viewBox="0 0 100 100" role="img" aria-label="Invested XP by asset">
 					{#if allocationPie.segments.length === 1}
 						<circle cx="50" cy="50" r="48" fill={allocationPie.segments[0].color} />
@@ -338,6 +429,42 @@
 						</div>
 					{/each}
 				</div>
+			</div>
+		</div>
+	{/if}
+
+	{#if positions.length > 0}
+		<div class="m-stat-card m-overview-card m-ov-full">
+			<div class="m-stat-card-head">
+				<div class="m-stat-card-icon m-chili-stat-2"><i class="fas fa-briefcase"></i></div>
+				<h2 class="m-stat-card-title">Holdings</h2>
+			</div>
+			<div class="m-hold-list">
+				{#each positions as pos}
+					<div class="m-hold">
+						{#if pos.image}
+							<img
+								class="m-hold-ic"
+								src={pos.image}
+								alt=""
+								loading="lazy"
+								onerror={(e) => ((e.currentTarget as HTMLImageElement).style.visibility = 'hidden')}
+							/>
+						{:else}
+							<span class="m-hold-ic m-hold-ic--ph"><i class="fas fa-coins"></i></span>
+						{/if}
+						<div class="m-hold-id">
+							<span class="m-hold-sym">{pos.symbol}</span>
+							<span class="m-hold-sub">{fmt(pos.value)} XP · from {fmt(pos.invested)}</span>
+						</div>
+						<div class="m-hold-pnl" data-dir={pos.pnl > 0 ? 'up' : pos.pnl < 0 ? 'down' : 'flat'}>
+							<span class="m-hold-pnl-v"
+								><i class="fas fa-caret-{pos.pnl >= 0 ? 'up' : 'down'}"></i>{pos.pnlPercent >= 0 ? '+' : ''}{pos.pnlPercent.toFixed(1)}%</span
+							>
+							<span class="m-hold-pnl-x">{pos.pnl >= 0 ? '+' : '−'}{fmt(Math.abs(pos.pnl))} XP</span>
+						</div>
+					</div>
+				{/each}
 			</div>
 		</div>
 	{/if}
@@ -403,7 +530,7 @@
 									style="width: {barPct(
 										b.ticks,
 										buddies.map((x) => ({ ticks: x.ticks }))
-									)}%;"
+									) * grow}%;"
 								></div>
 							</div>
 						</div>
@@ -421,26 +548,17 @@
 			</div>
 			<div class="m-ov-lists">
 				{#if hasFavorites}
+					{@const fav = ins.favorite_items[0]}
 					<div class="m-ov-list">
-						<span class="m-ov-list-title"><i class="fas fa-star"></i> Favorite items</span>
-						{#each ins.favorite_items as it}
-							<div class="m-ov-bar-row">
-								<div class="m-ov-bar-head">
-									<i
-										class="fas {it.effect_type ? effectIcon(it.effect_type) : 'fa-cube'}"
-										style="color: {it.effect_type ? effectAccentHex(it.effect_type) : 'var(--chili-hot)'};"
-									></i>
-									<span class="m-ov-list-name">{it.name}</span>
-									<span class="m-ov-list-val">{fmt(it.uses)}×</span>
-								</div>
-								<div class="m-ov-bar-track">
-									<div
-										class="m-ov-bar-fill"
-										style="width: {barPct(it.uses, ins.favorite_items)}%; background: {it.effect_type ? effectAccentHex(it.effect_type) : 'var(--chili-hot)'};"
-									></div>
-								</div>
+						<span class="m-ov-list-title"><i class="fas fa-star"></i> Favorite item</span>
+						<div class="m-fav" style="--fav: {fav.effect_type ? effectAccentHex(fav.effect_type) : 'var(--chili-hot)'};">
+							<span class="m-fav-ic"><i class="fas {fav.effect_type ? effectIcon(fav.effect_type) : 'fa-cube'}"></i></span>
+							<div class="m-fav-body">
+								<span class="m-fav-name">{fav.name}</span>
+								<span class="m-fav-sub">most used</span>
 							</div>
-						{/each}
+							<span class="m-fav-count">{fmt(fav.uses)}×</span>
+						</div>
 					</div>
 				{/if}
 				{#each interactionLists as list}
@@ -458,7 +576,7 @@
 										style="width: {barPct(
 											t.xp || t.hits,
 											list.rows.map((r) => ({ xp: r.xp || r.hits }))
-										)}%;"
+										) * grow}%;"
 									></div>
 								</div>
 							</div>
@@ -476,7 +594,7 @@
 				<h2 class="m-stat-card-title">Market</h2>
 			</div>
 			<div class="m-hero">
-				<span class="m-hero-val">{fmt(d.assets_market_value)}</span>
+				<span class="m-hero-val" use:countUp={d.assets_market_value}>{fmt(d.assets_market_value)}</span>
 				<span class="m-hero-cap">assets value · XP</span>
 				<span class="m-hero-chip" data-dir={assetsPnl >= 0 ? 'up' : 'down'}>
 					<i class="fas fa-arrow-trend-{assetsPnl >= 0 ? 'up' : 'down'}"></i>{assetsPnl >= 0 ? '+' : '−'}{fmt(Math.abs(assetsPnl))} open P/L
@@ -504,7 +622,7 @@
 				<h2 class="m-stat-card-title">Items</h2>
 			</div>
 			<div class="m-hero">
-				<span class="m-hero-val">{fmt(d.items_buys)}</span>
+				<span class="m-hero-val" use:countUp={d.items_buys}>{fmt(d.items_buys)}</span>
 				<span class="m-hero-cap">items bought</span>
 			</div>
 			<div class="m-mini-grid">
@@ -529,8 +647,8 @@
 				<h2 class="m-stat-card-title">Minigames</h2>
 			</div>
 			<div class="m-ring-row">
-				<div class="m-ring" style="--pct: {minigamesWinRate}; --ring-color: {minigamesWinRate >= 50 ? '#1f8a4c' : '#c8911a'};">
-					<span class="m-ring-val">{minigamesWinRate}%</span>
+				<div class="m-ring" style="--pct: {minigamesWinRate * grow}; --ring-color: {minigamesWinRate >= 50 ? '#1f8a4c' : '#c8911a'};">
+					<span class="m-ring-val"><span use:countUp={minigamesWinRate}>{minigamesWinRate}</span>%</span>
 					<span class="m-ring-cap">win rate</span>
 				</div>
 				<div class="m-ring-side">
@@ -569,10 +687,13 @@
 						<span class="m-duel-r">{fmt(d.items_stolen_from)} lost</span>
 					</div>
 					<div class="m-duel-bar">
-						<div class="m-duel-fill m-duel-fill--win" style="width: {barPct(d.items_stolen, [{ xp: d.items_stolen }, { xp: d.items_stolen_from }])}%;"></div>
+						<div
+							class="m-duel-fill m-duel-fill--win"
+							style="width: {barPct(d.items_stolen, [{ xp: d.items_stolen }, { xp: d.items_stolen_from }]) * grow}%;"
+						></div>
 						<div
 							class="m-duel-fill m-duel-fill--lose"
-							style="width: {barPct(d.items_stolen_from, [{ xp: d.items_stolen }, { xp: d.items_stolen_from }])}%;"
+							style="width: {barPct(d.items_stolen_from, [{ xp: d.items_stolen }, { xp: d.items_stolen_from }]) * grow}%;"
 						></div>
 					</div>
 				</div>

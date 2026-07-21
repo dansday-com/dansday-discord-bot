@@ -1954,7 +1954,7 @@ export async function logMinigameAction(memberId: any, data: any = {}) {
 	return true;
 }
 
-export async function recordLevelFriends(serverId: any, actorMemberId: any, friendDiscordIds: string[], perFriendXp = 0) {
+export async function recordLevelFriends(actorMemberId: any, friendDiscordIds: string[], perFriendXp = 0) {
 	await initializeDatabase();
 	const actorId = Number(actorMemberId);
 	if (!actorId || !Array.isArray(friendDiscordIds) || friendDiscordIds.length === 0) return;
@@ -1962,8 +1962,12 @@ export async function recordLevelFriends(serverId: any, actorMemberId: any, frie
 	const ids = friendDiscordIds.map((x) => String(x)).filter(Boolean);
 	if (ids.length === 0) return;
 
+	const actorRow = await db.execute(sql`SELECT server_id FROM server_members WHERE id = ${actorId} LIMIT 1`);
+	const serverId = Number(((actorRow[0] as unknown as any[]) || [])[0]?.server_id);
+	if (!Number.isFinite(serverId)) return;
+
 	const rows = await db.execute(sql`
-		SELECT id FROM server_members WHERE server_id = ${Number(serverId)} AND discord_member_id IN (${sql.join(ids, sql`, `)})
+		SELECT id FROM server_members WHERE server_id = ${serverId} AND discord_member_id IN (${sql.join(ids, sql`, `)})
 	`);
 	const friendIds = ((rows[0] as unknown as any[]) || []).map((r) => Number(r.id)).filter((n) => Number.isFinite(n) && n !== actorId);
 	if (friendIds.length === 0) return;
@@ -2727,7 +2731,7 @@ export async function getMemberInsights(memberId: any) {
 			LEFT JOIN items bi ON bi.id = il.item_id
 			WHERE il.member_id = ${mid} AND il.item_id IS NOT NULL AND il.action NOT IN ('discard')
 			GROUP BY bi.id, bi.name, bi.effect_type
-			ORDER BY uses DESC LIMIT 3
+			ORDER BY uses DESC LIMIT 1
 		`),
 		q(sql`
 			SELECT COALESCE(bi.effect_type, il.action) AS effect_type, COUNT(*) AS uses

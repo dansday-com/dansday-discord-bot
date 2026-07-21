@@ -16,7 +16,7 @@
 
 	<main class="m-main">
 		<div class="m-inner">
-			<ServerNav server={data.server} itemsEnabled={data.itemsEnabled} minigamesEnabled={data.minigamesEnabled} publicStatsEnabled={data.publicStatsEnabled} />
+			<ServerNav server={data.server} accountEnabled={data.accountEnabled} publicStatsEnabled={data.publicStatsEnabled} />
 
 			{@render children()}
 		</div>

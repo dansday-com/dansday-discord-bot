@@ -72,6 +72,18 @@
 		};
 	}
 
+	function minigameLine(h: any): { icon: string; title: string; tone: string; deltaLabel: string; badges: Badge[] } {
+		const won = h.outcome === 'win';
+		const net = Number(h.xpAmount) || 0;
+		return {
+			icon: won ? 'fa-sack-dollar' : 'fa-skull',
+			title: won ? 'Gamble — Won' : 'Gamble — Lost',
+			tone: won ? 'win' : 'lose',
+			deltaLabel: `${net >= 0 ? '+' : '−'}${fmt(Math.abs(net))} XP`,
+			badges: [{ icon: 'fa-dice', text: `${Number(h.multiplier).toFixed(2)}×` }]
+		};
+	}
+
 	function ago(ms: number): string {
 		const s = Math.max(0, Math.floor((ctx.now - ms) / 1000));
 		const m = Math.floor(s / 60);
@@ -181,7 +193,7 @@
 {:else}
 	<ul class="m-hist">
 		{#each data.pagedHistory as h (h.id)}
-			{@const l = h.kind === 'level' ? levelLine(h) : h.kind === 'asset' ? assetLine(h) : line(h)}
+			{@const l = h.kind === 'level' ? levelLine(h) : h.kind === 'asset' ? assetLine(h) : h.kind === 'minigame' ? minigameLine(h) : line(h)}
 			<li class="m-hist-row m-hist-row--{l.tone}">
 				<span class="m-hist-icon"><i class="fas {l.icon}"></i></span>
 				<span class="m-hist-body">

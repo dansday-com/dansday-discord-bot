@@ -19,14 +19,14 @@ export const POST: RequestHandler = async ({ params, request }) => {
 	if (!resolved) return json({ success: false, error: 'Not found' }, { status: 404 });
 	const server = resolved.server;
 
-	const itemsRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.items).catch(() => null);
+	const itemsRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.assets).catch(() => null);
 	if ((itemsRow as any)?.settings?.enabled !== true) {
 		return json({ success: false, error: 'Assets are disabled for this server.' }, { status: 403 });
 	}
 
 	const body = await request.json().catch(() => null);
 	if (!body) return json({ success: false, error: 'Invalid body' }, { status: 400 });
-	const { card, position_id, percent } = body;
+	const { card, position_id, amount } = body;
 	if (!card || !position_id) return json({ success: false, error: 'Missing fields' }, { status: 400 });
 
 	const actor = await resolveMemberByCardToken(server.id, String(card));
@@ -42,7 +42,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		guild_id: fullServer.discord_server_id,
 		actor_discord_id: actor.discord_member_id,
 		position_id: Number(position_id),
-		percent: Number(percent) || 100
+		amount: Number(amount) || 0
 	});
 
 	if (webhookResult.status !== 200 || !webhookResult.body?.ok) {
@@ -50,6 +50,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		const friendly: Record<string, string> = {
 			not_owner: 'That asset is not yours.',
 			already_closed: 'This asset was already sold.',
+			invalid_amount: 'Enter a valid XP amount.',
 			price_unavailable: 'Price unavailable right now, try again shortly.'
 		};
 		const err = friendly[code] || code || (webhookResult.status === 502 ? 'Could not reach the bot.' : 'Sell failed.');

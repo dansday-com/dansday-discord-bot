@@ -7,17 +7,25 @@ import { loadItemsShared, itemsCardTokenFromUrl } from '$lib/frontend/public/ite
 const PER_PAGE = 12;
 
 export const load: PageServerLoad = async ({ parent, params, url }) => {
-	const { server } = await parent();
+	const { server, itemsEnabled, assetsEnabled, minigamesEnabled } = await parent();
+	const { SERVER_SETTINGS } = await import('$lib/frontend/panelServer.js');
+
+	if (!itemsEnabled && !assetsEnabled && !minigamesEnabled) error(404, 'Account not available');
+	const gate = itemsEnabled ? SERVER_SETTINGS.component.items : assetsEnabled ? SERVER_SETTINGS.component.assets : SERVER_SETTINGS.component.minigames;
 
 	const hash = itemsCardTokenFromUrl(params.hash);
-	const shared = await loadItemsShared(server, hash);
-	if ('notFound' in shared) error(404, 'Items not available');
-	if (shared.readOnly || !shared.member) redirect(303, `${publicServerPath(server.slug)}/account/items/all/guest`);
+	const shared = await loadItemsShared(server, hash, gate);
+	if ('notFound' in shared) error(404, 'Account not available');
+	if (shared.readOnly || !shared.member) redirect(303, `${publicServerPath(server.slug)}/account/guide/guest`);
 
 	const tabParam = String(params.category || 'all');
-	const tab = tabParam === 'items' || tabParam === 'level' || tabParam === 'assets' ? tabParam : 'all';
+	const allowed = new Set(['all', 'level']);
+	if (itemsEnabled) allowed.add('items');
+	if (assetsEnabled) allowed.add('assets');
+	if (minigamesEnabled) allowed.add('minigames');
+	const tab = allowed.has(tabParam) ? tabParam : 'all';
 
-	const itemRows = await db.getMemberItemHistory(shared.member.id, 600).catch(() => []);
+	const itemRows = itemsEnabled ? await db.getMemberItemHistory(shared.member.id, 600).catch(() => []) : [];
 	const itemEvents = (itemRows as any[]).map((h) => ({
 		id: `i-${h.id}`,
 		kind: 'item' as const,
@@ -51,7 +59,7 @@ export const load: PageServerLoad = async ({ parent, params, url }) => {
 		at: x.created_at ? new Date(x.created_at).getTime() : null
 	}));
 
-	const assetRows = await db.getMemberAssetHistory(shared.member.id, 600).catch(() => []);
+	const assetRows = assetsEnabled ? await db.getMemberAssetHistory(shared.member.id, 600).catch(() => []) : [];
 	const assetEvents: any[] = [];
 	for (const p of assetRows as any[]) {
 		const invested = Number(p.xp_invested) || 0;
@@ -86,6 +94,19 @@ export const load: PageServerLoad = async ({ parent, params, url }) => {
 
 	assetEvents.sort((a, b) => (b.at ?? 0) - (a.at ?? 0));
 
+	const minigameRows = minigamesEnabled ? await db.getMemberMinigameHistory(shared.member.id, 600).catch(() => []) : [];
+	const minigameEvents = (minigameRows as any[]).map((h) => ({
+		id: `m-${h.id}`,
+		kind: 'minigame' as const,
+		game: h.game,
+		multiplier: Number(h.multiplier) || 0,
+		wager: Number(h.wager) || 0,
+		payout: Number(h.payout) || 0,
+		xpAmount: Number(h.xp_amount) || 0,
+		outcome: h.outcome,
+		at: h.created_at ? new Date(h.created_at).getTime() : null
+	}));
+
 	const events =
 		tab === 'items'
 			? itemEvents
@@ -93,7 +114,9 @@ export const load: PageServerLoad = async ({ parent, params, url }) => {
 				? levelEvents
 				: tab === 'assets'
 					? assetEvents
-					: [...itemEvents, ...levelEvents, ...assetEvents].sort((a, b) => (b.at ?? 0) - (a.at ?? 0));
+					: tab === 'minigames'
+						? minigameEvents
+						: [...itemEvents, ...levelEvents, ...assetEvents, ...minigameEvents].sort((a, b) => (b.at ?? 0) - (a.at ?? 0));
 
 	const totalPages = Math.max(1, Math.ceil(events.length / PER_PAGE));
 	const reqPage = Math.max(1, Math.floor(Number(url.searchParams.get('page')) || 1));

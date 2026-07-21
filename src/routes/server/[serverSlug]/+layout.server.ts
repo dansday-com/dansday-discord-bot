@@ -13,21 +13,26 @@ export const load: LayoutServerLoad = async ({ params, url }) => {
 	const settings = (settingsRow as any)?.settings || {};
 	const publicStatsEnabled = settings.enabled !== false;
 
-	const itemsRow = await db.getServerSettings(resolved.server.id, SERVER_SETTINGS.component.items).catch(() => null);
+	const [itemsRow, assetsRow, minigamesRow] = await Promise.all([
+		db.getServerSettings(resolved.server.id, SERVER_SETTINGS.component.items).catch(() => null),
+		db.getServerSettings(resolved.server.id, SERVER_SETTINGS.component.assets).catch(() => null),
+		db.getServerSettings(resolved.server.id, SERVER_SETTINGS.component.minigames).catch(() => null)
+	]);
 	const itemsEnabled = (itemsRow as any)?.settings?.enabled === true;
-
-	const minigamesRow = await db.getServerSettings(resolved.server.id, SERVER_SETTINGS.component.minigames).catch(() => null);
+	const assetsEnabled = (assetsRow as any)?.settings?.enabled === true;
 	const minigamesEnabled = (minigamesRow as any)?.settings?.enabled === true;
+	const accountEnabled = itemsEnabled || assetsEnabled || minigamesEnabled;
 
-	const isItemsPath = /\/account(\/|$)/.test(url.pathname);
-	const isMinigamesPath = /\/minigames(\/|$)/.test(url.pathname);
-	if (!publicStatsEnabled && !isItemsPath && !isMinigamesPath) error(404, 'Not found');
+	const isAccountPath = /\/account(\/|$)/.test(url.pathname);
+	if (!publicStatsEnabled && !isAccountPath) error(404, 'Not found');
 
 	const server = resolved.server;
 	return {
 		publicStatsEnabled,
 		itemsEnabled,
+		assetsEnabled,
 		minigamesEnabled,
+		accountEnabled,
 		server: {
 			id: server.id,
 			name: server.name,

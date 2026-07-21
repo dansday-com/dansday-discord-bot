@@ -308,7 +308,7 @@ export async function handleAssetBuy(_client: any, payload: any) {
 }
 
 export async function handleAssetSell(_client: any, payload: any) {
-	const { guild_id, actor_discord_id, position_id, percent } = payload || {};
+	const { guild_id, actor_discord_id, position_id, amount } = payload || {};
 	if (!guild_id || !actor_discord_id || !position_id) return { ok: false, error: 'missing_fields' };
 
 	const { getServerForCurrentBot } = await import('../../../config.js');
@@ -331,10 +331,16 @@ export async function handleAssetSell(_client: any, payload: any) {
 
 	const buyPrice = Number(position.buy_price) || 0;
 	const invested = Number(position.xp_invested) || 0;
-	const pct = Math.max(1, Math.min(100, Math.floor(Number(percent) || 100)));
-	const soldInvested = pct >= 100 ? invested : Math.max(1, Math.min(invested, Math.floor((invested * pct) / 100)));
-	const full = soldInvested >= invested;
-	const payout = buyPrice > 0 ? Math.max(0, Math.round(soldInvested * (market.price / buyPrice))) : soldInvested;
+	const currentValue = buyPrice > 0 ? Math.round(invested * (market.price / buyPrice)) : invested;
+
+	// amount is the XP payout the member wants to cash out; default to selling the whole position.
+	const requested = Math.floor(Number(amount) || 0);
+	const targetPayout = requested > 0 ? Math.min(requested, currentValue) : currentValue;
+	if (targetPayout <= 0) return { ok: false, error: 'invalid_amount' };
+
+	const full = targetPayout >= currentValue;
+	const soldInvested = full ? invested : Math.max(1, Math.min(invested, Math.round(invested * (targetPayout / currentValue))));
+	const payout = full ? currentValue : buyPrice > 0 ? Math.max(0, Math.round(soldInvested * (market.price / buyPrice))) : soldInvested;
 
 	const before = await db.getMemberLevel(memberId).catch(() => null);
 	await db.ensureMemberLevel(memberId);

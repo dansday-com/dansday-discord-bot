@@ -60,21 +60,27 @@ export const GET: RequestHandler = async () => {
 			{ loc: `${root}/${enc}/leaderboard`, ...base },
 			{ loc: `${root}/${enc}/members`, ...base }
 		];
-		const presentCategories = categoriesByServer.get(Number(s.id)) ?? [];
-		if (s.items_enabled && presentCategories.length > 0) {
-			const itemsBase = `${root}/${enc}/account`;
-			urls.push({ loc: itemsBase, ...base, priority: 0.7 });
-			urls.push({ loc: `${itemsBase}/guide/guest`, ...base, priority: 0.7 });
-			urls.push({ loc: `${itemsBase}/items/all/guest`, ...base, priority: 0.6 });
-			for (const cat of presentCategories) {
-				urls.push({ loc: `${itemsBase}/items/${cat}/guest`, ...base, priority: 0.6 });
+		const accountEnabled = s.items_enabled || s.assets_enabled || s.minigames_enabled;
+		if (accountEnabled) {
+			const accountBase = `${root}/${enc}/account`;
+			urls.push({ loc: accountBase, ...base, priority: 0.7 });
+			urls.push({ loc: `${accountBase}/guide/guest`, ...base, priority: 0.7 });
+			if (s.items_enabled) {
+				const presentCategories = categoriesByServer.get(Number(s.id)) ?? [];
+				urls.push({ loc: `${accountBase}/items/all/guest`, ...base, priority: 0.6 });
+				for (const cat of presentCategories) {
+					urls.push({ loc: `${accountBase}/items/${cat}/guest`, ...base, priority: 0.6 });
+				}
 			}
-			for (const view of ['top', 'gainers', 'losers', 'search']) {
-				urls.push({ loc: `${itemsBase}/assets/${view}/guest`, ...base, priority: 0.6 });
+			if (s.assets_enabled) {
+				for (const view of ['top', 'gainers', 'losers']) {
+					urls.push({ loc: `${accountBase}/assets/${view}/guest`, ...base, priority: 0.6 });
+				}
 			}
-		}
-		if (s.minigames_enabled) {
-			urls.push({ loc: `${root}/${enc}/minigames/guest`, ...base, priority: 0.6 });
+			if (s.minigames_enabled) {
+				urls.push({ loc: `${accountBase}/minigames/all/guest`, ...base, priority: 0.6 });
+				urls.push({ loc: `${accountBase}/minigames/gamble/guest`, ...base, priority: 0.6 });
+			}
 		}
 		return urls;
 	});

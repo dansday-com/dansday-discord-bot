@@ -19,26 +19,37 @@
 	const isHistory = $derived(/\/account\/history\//.test(pathNorm));
 	const isGuide = $derived(/\/account\/guide\//.test(pathNorm));
 	const isAssets = $derived(/\/account\/assets\//.test(pathNorm));
-	const isShop = $derived(!isHistory && !isGuide && !isAssets);
+	const isMinigames = $derived(/\/account\/minigames\//.test(pathNorm));
+	const isShop = $derived(!isHistory && !isGuide && !isAssets && !isMinigames);
 	const activeCat = $derived.by(() => {
-		const m = pathNorm.match(/\/account\/(?:items|history|assets)\/([^/]+)\/[^/]+$/);
+		const m = pathNorm.match(/\/account\/(?:items|history|assets|minigames)\/([^/]+)\/[^/]+$/);
 		return m ? m[1] : 'all';
 	});
 
-	const historyTabs = [
+	const itemsEnabled = $derived(data.itemsEnabled === true);
+	const assetsEnabled = $derived(data.assetsEnabled === true);
+	const minigamesEnabled = $derived(data.minigamesEnabled === true);
+
+	const historyTabs = $derived([
 		{ id: 'all', label: 'All', icon: 'fa-grip' },
-		{ id: 'items', label: 'Items', icon: 'fa-bag-shopping' },
-		{ id: 'assets', label: 'Assets', icon: 'fa-chart-line' },
+		...(data.itemsEnabled === true ? [{ id: 'items', label: 'Items', icon: 'fa-bag-shopping' }] : []),
+		...(data.assetsEnabled === true ? [{ id: 'assets', label: 'Assets', icon: 'fa-chart-line' }] : []),
+		...(data.minigamesEnabled === true ? [{ id: 'minigames', label: 'Minigames', icon: 'fa-dice' }] : []),
 		{ id: 'level', label: 'Level', icon: 'fa-star' }
-	];
+	]);
 
 	const assetTabs = $derived([
 		{ id: 'top', label: 'Top 50', icon: 'fa-ranking-star' },
 		{ id: 'gainers', label: 'Gainers', icon: 'fa-arrow-trend-up' },
 		{ id: 'losers', label: 'Losers', icon: 'fa-arrow-trend-down' },
-		{ id: 'search', label: 'Search', icon: 'fa-magnifying-glass' },
+		...(readOnly ? [] : [{ id: 'search', label: 'Search', icon: 'fa-magnifying-glass' }]),
 		...(readOnly ? [] : [{ id: 'mine', label: 'My Assets', icon: 'fa-wallet' }])
 	]);
+
+	const minigameTabs = [
+		{ id: 'all', label: 'All', icon: 'fa-grip' },
+		{ id: 'gamble', label: 'Gamble', icon: 'fa-dice' }
+	];
 
 	let assetSummaryLive = $state<{ invested: number; value: number; pnl: number; pnlPct: number; count: number } | null>(null);
 	function setAssetSummary(s: any) {
@@ -166,7 +177,7 @@
 				goto(`${accountBase}/guide/${stored}`, { replaceState: true });
 				return;
 			}
-			const section = isHistory ? 'history' : isAssets ? 'assets' : 'items';
+			const section = isHistory ? 'history' : isAssets ? 'assets' : isMinigames ? 'minigames' : 'items';
 			const cat = activeCat && activeCat !== 'guest' ? activeCat : isAssets ? 'top' : 'all';
 			goto(`${accountBase}/${section}/${cat}/${stored}`, { replaceState: true });
 		}
@@ -391,20 +402,30 @@
 
 	<div class="m-items-bar">
 		<div class="m-items-toggle">
-			<a
-				bind:this={bagTabEl}
-				class="m-items-seg"
-				class:m-items-seg--active={isShop}
-				class:m-items-seg--pulse={bagPulse}
-				href="{accountBase}/items/all/{navHash}"
-				data-sveltekit-preload-data="hover"
-			>
-				<i class="fas fa-store"></i>Items{#if !readOnly}<span class="m-items-count" class:m-items-count--bump={bagPulse}>{pd.bagStock ?? 0}/{BAG_CAPACITY}</span
-					>{/if}
-			</a>
-			<a class="m-items-seg" class:m-items-seg--active={isAssets} href="{accountBase}/assets/top/{navHash}" data-sveltekit-preload-data="hover">
-				<i class="fas fa-chart-line"></i>Assets
-			</a>
+			{#if itemsEnabled}
+				<a
+					bind:this={bagTabEl}
+					class="m-items-seg"
+					class:m-items-seg--active={isShop}
+					class:m-items-seg--pulse={bagPulse}
+					href="{accountBase}/items/all/{navHash}"
+					data-sveltekit-preload-data="hover"
+				>
+					<i class="fas fa-store"></i>Items{#if !readOnly}<span class="m-items-count" class:m-items-count--bump={bagPulse}
+							>{pd.bagStock ?? 0}/{BAG_CAPACITY}</span
+						>{/if}
+				</a>
+			{/if}
+			{#if assetsEnabled}
+				<a class="m-items-seg" class:m-items-seg--active={isAssets} href="{accountBase}/assets/top/{navHash}" data-sveltekit-preload-data="hover">
+					<i class="fas fa-chart-line"></i>Assets
+				</a>
+			{/if}
+			{#if minigamesEnabled}
+				<a class="m-items-seg" class:m-items-seg--active={isMinigames} href="{accountBase}/minigames/all/{navHash}" data-sveltekit-preload-data="hover">
+					<i class="fas fa-dice"></i>Minigames
+				</a>
+			{/if}
 			{#if !readOnly}
 				<a class="m-items-seg" class:m-items-seg--active={isHistory} href="{accountBase}/history/all/{navHash}" data-sveltekit-preload-data="hover">
 					<i class="fas fa-clock-rotate-left"></i>History
@@ -416,7 +437,7 @@
 		</div>
 	</div>
 
-	{#snippet tabStrip(tabs: { id: string; label: string; icon: string }[], section: 'items' | 'history' | 'assets', hash: string)}
+	{#snippet tabStrip(tabs: { id: string; label: string; icon: string }[], section: 'items' | 'history' | 'assets' | 'minigames', hash: string)}
 		<div class="m-items-tabswrap">
 			<button
 				type="button"
@@ -459,15 +480,17 @@
 		{@render tabStrip(historyTabs, 'history', pd.hash)}
 	{:else if isAssets}
 		{@render tabStrip(assetTabs, 'assets', navHash)}
+	{:else if isMinigames}
+		{@render tabStrip(minigameTabs, 'minigames', navHash)}
 	{/if}
 
-	{#if readOnly && (isShop || isAssets)}
+	{#if readOnly && (isShop || isAssets || isMinigames)}
 		<div class="m-guest">
 			<div class="m-guest-ic"><i class="fas fa-lock"></i></div>
 			<div class="m-guest-body">
 				<h3>You're browsing as a guest</h3>
 				<p>
-					{isAssets ? 'Trading assets' : 'Buying and using items'} is locked. Open the account page from the
+					{isAssets ? 'Trading assets' : isMinigames ? 'Playing minigames' : 'Buying and using items'} is locked. Open the account page from the
 					<strong>account button</strong> in your Discord server to log in and play.
 				</p>
 			</div>

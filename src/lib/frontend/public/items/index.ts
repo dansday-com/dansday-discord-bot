@@ -114,11 +114,12 @@ export async function loadItemsCatalog(serverId: number): Promise<any[]> {
 		}));
 }
 
-export async function loadItemsShared(server: any, hash: string) {
+export async function loadItemsShared(server: any, hash: string, gateComponent?: string) {
 	const { SERVER_SETTINGS } = await import('$lib/frontend/panelServer.js');
 
-	const itemsRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.items).catch(() => null);
-	if ((itemsRow as any)?.settings?.enabled !== true) return { notFound: true } as const;
+	const gate = gateComponent ?? SERVER_SETTINGS.component.items;
+	const gateRow = await db.getServerSettings(server.id, gate).catch(() => null);
+	if ((gateRow as any)?.settings?.enabled !== true) return { notFound: true } as const;
 
 	const levelingRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.leveling).catch(() => null);
 	const req = (levelingRow as any)?.settings?.REQUIREMENTS ?? {};

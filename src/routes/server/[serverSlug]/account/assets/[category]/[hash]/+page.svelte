@@ -192,8 +192,7 @@
 	}
 
 	let sellPos = $state<any | null>(null);
-	let sellPercent = $state(100);
-	let sellCustom = $state<number | null>(null);
+	let sellAmount = $state<number | null>(null);
 	let sellBusy = $state(false);
 
 	const SELL_PCTS = [25, 50, 75, 100];
@@ -205,25 +204,13 @@
 	}
 
 	function setSellPct(pct: number) {
-		sellPercent = pct;
-		sellCustom = null;
-	}
-
-	function onSellCustom(v: number | null) {
-		sellCustom = v;
 		if (!sellPos) return;
-		const value = sellPosValue(sellPos);
-		if (v == null || value <= 0) {
-			sellPercent = 0;
-			return;
-		}
-		sellPercent = Math.max(1, Math.min(100, Math.round((v / value) * 100)));
+		sellAmount = Math.floor((sellPosValue(sellPos) * pct) / 100);
 	}
 
 	function openSell(p: any) {
 		sellPos = p;
-		sellPercent = 100;
-		sellCustom = null;
+		sellAmount = sellPosValue(p);
 	}
 
 	$effect(() => {
@@ -235,12 +222,17 @@
 	async function confirmSell() {
 		const p = sellPos;
 		if (!p || sellBusy) return;
+		const amount = Math.floor(Number(sellAmount) || 0);
+		if (amount <= 0) {
+			showToast('Enter an XP amount', 'error');
+			return;
+		}
 		sellBusy = true;
 		try {
 			const res = await fetch(`/api/assets/${encodeURIComponent(ctx.serverSlug)}/sell`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ card: ctx.hash, position_id: p.id, percent: sellPercent })
+				body: JSON.stringify({ card: ctx.hash, position_id: p.id, amount })
 			});
 			const d = await res.json();
 			if (d.success) {
@@ -414,8 +406,9 @@
 	{@const live = priceMap.get(`${sellPos.asset_type}:${sellPos.asset_id}`)}
 	{@const price = live?.price ?? sellPos.current_price ?? sellPos.buy_price ?? 0}
 	{@const value = sellPos.buy_price > 0 ? Math.round(sellPos.xp_invested * (price / sellPos.buy_price)) : sellPos.xp_invested}
-	{@const sellValue = Math.round((value * sellPercent) / 100)}
-	{@const sellNet = Math.round(((value - sellPos.xp_invested) * sellPercent) / 100)}
+	{@const payout = Math.min(Math.max(0, Math.floor(Number(sellAmount) || 0)), value)}
+	{@const soldInvested = value > 0 ? Math.round(sellPos.xp_invested * (payout / value)) : 0}
+	{@const sellNet = payout - soldInvested}
 	<div class="m-gamble-overlay" role="presentation" onclick={() => (!sellBusy ? (sellPos = null) : null)}>
 		<div class="m-gamble" role="dialog" aria-modal="true" aria-label="Sell asset" onclick={(e) => e.stopPropagation()}>
 			<div class="m-gamble-head">
@@ -436,9 +429,7 @@
 
 			<div class="m-gamble-picker">
 				{#each SELL_PCTS as p}
-					<button class="m-gamble-pct" class:m-gamble-pct--active={sellCustom == null && sellPercent === p} disabled={sellBusy} onclick={() => setSellPct(p)}
-						>{p === 100 ? 'All' : `${p}%`}</button
-					>
+					<button class="m-gamble-pct" disabled={sellBusy} onclick={() => setSellPct(p)}>{p === 100 ? 'All' : `${p}%`}</button>
 				{/each}
 			</div>
 			<input
@@ -446,20 +437,20 @@
 				type="text"
 				inputmode="numeric"
 				placeholder="XP to cash out (max {fmt(value)})"
-				value={grp(sellCustom)}
-				oninput={(e) => onAmountInput(e, onSellCustom)}
+				value={grp(sellAmount)}
+				oninput={(e) => onAmountInput(e, (v) => (sellAmount = v))}
 				disabled={sellBusy}
 			/>
 
 			<div class="m-asset-modal-meta">
-				<span>Selling {sellPercent}%</span>
-				<span>Get back {fmt(sellValue)} XP ({sellNet >= 0 ? '+' : ''}{fmt(sellNet)})</span>
+				<span>Worth: {fmt(value)} XP</span>
+				<span>Get back {fmt(payout)} XP ({sellNet >= 0 ? '+' : ''}{fmt(sellNet)})</span>
 			</div>
 
-			<button class="m-gamble-play m-gamble-play--charged" disabled={sellBusy || sellPercent < 1} onclick={confirmSell}>
-				{#if sellBusy}<i class="fas fa-circle-notch fa-spin"></i>Selling…{:else}<i class="fas fa-hand-holding-dollar"></i>Sell {sellPercent === 100
-						? 'all'
-						: `${sellPercent}%`} · {fmt(sellValue)} XP{/if}
+			<button class="m-gamble-play m-gamble-play--charged" disabled={sellBusy || payout <= 0} onclick={confirmSell}>
+				{#if sellBusy}<i class="fas fa-circle-notch fa-spin"></i>Selling…{:else}<i class="fas fa-hand-holding-dollar"></i>Sell {payout >= value ? 'all' : ''} · {fmt(
+						payout
+					)} XP{/if}
 			</button>
 		</div>
 	</div>

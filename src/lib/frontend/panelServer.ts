@@ -141,6 +141,14 @@ const REGISTRY = [
 		iconClass: 'text-teal-400'
 	},
 	{
+		id: 'assets',
+		label: 'Assets',
+		featureSwitch: true,
+		hrefSuffix: '/assets',
+		icon: 'fa-chart-line',
+		iconClass: 'text-sky-400'
+	},
+	{
 		id: 'minigames',
 		label: 'Minigames',
 		featureSwitch: true,
@@ -196,6 +204,7 @@ export const AUTO_ENABLED_COMPONENTS: Set<string> = new Set([
 	component.afk,
 	component.notifications,
 	component.items,
+	component.assets,
 	component.minigames
 ]);
 

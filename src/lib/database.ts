@@ -920,12 +920,15 @@ export async function listEnabledLeaderboardServers() {
 			sv.server_icon,
 			ss.settings AS settings,
 			si.settings AS items_settings,
+			sa.settings AS assets_settings,
 			sm.settings AS minigames_settings
 		FROM servers sv
 		INNER JOIN server_settings ss
 			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.public_statistics}
 		LEFT JOIN server_settings si
 			ON si.server_id = sv.id AND si.component_name = ${SERVER_SETTINGS.component.items}
+		LEFT JOIN server_settings sa
+			ON sa.server_id = sv.id AND sa.component_name = ${SERVER_SETTINGS.component.assets}
 		LEFT JOIN server_settings sm
 			ON sm.server_id = sv.id AND sm.component_name = ${SERVER_SETTINGS.component.minigames}
 	`);
@@ -942,6 +945,7 @@ export async function listEnabledLeaderboardServers() {
 			updated_at: r.updated_at,
 			server_icon: r.server_icon ?? null,
 			items_enabled: parseLeaderboardSettingsColumn(r.items_settings).enabled === true,
+			assets_enabled: parseLeaderboardSettingsColumn(r.assets_settings).enabled === true,
 			minigames_enabled: parseLeaderboardSettingsColumn(r.minigames_settings).enabled === true
 		}));
 }

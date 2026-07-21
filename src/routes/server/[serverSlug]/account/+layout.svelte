@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { invalidateAll } from '$app/navigation';
 	import MemberCard from '$lib/frontend/components/MemberCard.svelte';
+	import LocalTime from '$lib/frontend/components/LocalTime.svelte';
 	import { publicServerPath } from '$lib/url.js';
 	import { ITEM_EFFECTS, effectLabel, effectIcon, effectAccentHex, actionVerb, BAG_CAPACITY, formatDuration } from '$lib/items.js';
 	import type { PublicMembersStreamPayload } from '$lib/frontend/public/members/index.js';
@@ -86,6 +87,19 @@
 	}
 
 	const memberAvatar = $derived(pd.memberAvatar ?? `https://cdn.discordapp.com/embed/avatars/${Number(pd.memberDiscordId) % 5 || 0}.png`);
+
+	function rolePillVars(color: string | null): string {
+		if (!color) return '';
+		return `--role-color: ${color};`;
+	}
+
+	const tenureDays = $derived.by(() => {
+		const joined = pd.profile?.joined;
+		if (!joined) return null;
+		const t = new Date(String(joined).replace(' ', 'T') + 'Z').getTime();
+		if (Number.isNaN(t)) return null;
+		return Math.max(0, Math.floor((Date.now() - t) / 86400000));
+	});
 
 	function xpForLevel(lvl: number): number {
 		if (lvl <= 1) return 0;
@@ -350,6 +364,12 @@
 					{#if isAssets}
 						<span>{assetSummary.count} asset{assetSummary.count === 1 ? '' : 's'}</span>
 						<span>Worth {fmt(assetSummary.value)} XP</span>
+					{:else if isOverview}
+						<span
+							>Joined <LocalTime value={pd.profile?.joined} fallback="—" />{#if tenureDays != null}
+								· {fmt(tenureDays)}d ago{/if}</span
+						>
+						<span>{pd.profile?.isBooster ? 'Booster' : ''}{pd.profile?.isBooster && pd.profile?.isAfk ? ' · ' : ''}{pd.profile?.isAfk ? 'AFK' : ''}</span>
 					{:else}
 						<span>Lvl {level}</span>
 						<span>{levelInfo.toNext > 0 ? `${fmt(levelInfo.toNext)} XP to Lvl ${level + 1}` : 'Max progress'}</span>
@@ -378,6 +398,17 @@
 				{/if}
 			</div>
 		</div>
+
+		{#if isOverview && (pd.profile?.roles ?? []).length > 0}
+			<div class="m-active">
+				{#each pd.profile.roles as role}
+					<span class="m-active-chip" style={role.color ? `--chip-accent: ${role.color};` : ''}>
+						<i class="fas fa-circle"></i>
+						<span class="m-active-label">{role.name || 'Role'}</span>
+					</span>
+				{/each}
+			</div>
+		{/if}
 
 		{#if activeChips.length > 0}
 			<div class="m-active">
@@ -428,7 +459,7 @@
 		</div>
 	</div>
 
-	{#if isItems || isMinigames || isAssets || isHistory}
+	{#if isOverview || isItems || isMinigames || isAssets || isHistory}
 		{@render walletHero()}
 	{/if}
 

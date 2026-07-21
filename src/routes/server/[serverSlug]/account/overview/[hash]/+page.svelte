@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { getContext, onMount } from 'svelte';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
-	import LocalTime from '$lib/frontend/components/LocalTime.svelte';
 	import { effectLabel, effectIcon, effectAccentHex } from '$lib/items.js';
 	import type { PageProps } from './$types';
 
@@ -51,11 +50,6 @@
 
 	const p = $derived(data.profile);
 
-	function rolePillVars(color: string | null): string {
-		if (!color) return '';
-		return `--role-color: ${color};`;
-	}
-
 	const voiceMix = $derived.by(() => {
 		const active = Math.max(0, p.voiceActive || 0);
 		const afk = Math.max(0, p.voiceAfk || 0);
@@ -70,15 +64,6 @@
 			video: (video / total) * 100,
 			stream: (stream / total) * 100
 		};
-	});
-
-	const memberAvatar = $derived(data.memberAvatar ?? `https://cdn.discordapp.com/embed/avatars/${(Number(data.memberDiscordId) || 0) % 5}.png`);
-
-	const tenureDays = $derived.by(() => {
-		if (!p.joined) return null;
-		const t = new Date(p.joined.replace(' ', 'T') + 'Z').getTime();
-		if (Number.isNaN(t)) return null;
-		return Math.max(0, Math.floor((Date.now() - t) / 86400000));
 	});
 
 	const xpSources = $derived((p.xpSources ?? []) as { key: string; label: string; icon: string; color: string; xp: number }[]);
@@ -250,60 +235,14 @@
 <svelte:head><title>{data.server.name || data.server.slug} Account | {APP_NAME} Discord Bot</title></svelte:head>
 
 <div class="m-ov" class:m-ov--in={mounted}>
-	<div class="m-stat-card m-overview-card m-ov-full m-profile">
-		<div class="m-profile-top">
-			<div class="m-profile-av">
-				<img src={memberAvatar} alt={data.memberName ?? ''} loading="lazy" />
-				<span class="m-profile-status" class:m-profile-status--afk={p.isAfk} title={p.isAfk ? 'AFK' : 'Active'}></span>
-			</div>
-			<div class="m-profile-id">
-				<span class="m-profile-name">{data.memberName ?? 'Member'}</span>
-				<div class="m-profile-badges">
-					{#if data.balance?.rank}<span class="m-badge m-badge--rank"><i class="fas fa-ranking-star"></i> Rank #{fmt(data.balance.rank)}</span>{/if}
-					<span class="m-badge"><i class="fas fa-chart-simple"></i> Lvl {fmt(data.balance?.level ?? 1)}</span>
-					{#if p.isBooster}<span class="m-badge m-badge--boost"><i class="fas fa-gem"></i> Booster</span>{/if}
-					<span class="m-badge" class:m-badge--afk={p.isAfk}><i class="fas {p.isAfk ? 'fa-moon' : 'fa-circle-check'}"></i> {p.isAfk ? 'AFK' : 'Active'}</span>
-				</div>
-			</div>
-		</div>
-		<div class="m-profile-meta">
-			<div class="m-profile-metaitem">
-				<i class="fas fa-calendar-check"></i>
-				<div>
-					<span class="m-profile-metaval"><LocalTime value={p.joined} fallback="—" /></span>
-					<span class="m-profile-metacap"
-						>Joined{#if tenureDays != null}
-							· {fmt(tenureDays)}d ago{/if}</span
-					>
-				</div>
-			</div>
-			<div class="m-profile-metaitem">
-				<i class="fab fa-discord"></i>
-				<div>
-					<span class="m-profile-metaval"><LocalTime value={p.discordSince} fallback="—" /></span>
-					<span class="m-profile-metacap">On Discord since</span>
-				</div>
-			</div>
-		</div>
-		{#if p.roles.length > 0}
-			<div class="m-ov-roles">
-				{#each p.roles as role}
-					<span class="m-ov-role" style={rolePillVars(role.color)}>
-						<i class="fas fa-circle"></i>{role.name || 'Role'}
-					</span>
-				{/each}
-			</div>
-		{/if}
-	</div>
-
 	<div class="m-stat-card m-overview-card m-ov-full">
 		<div class="m-stat-card-head">
 			<div class="m-stat-card-icon m-chili-stat-3"><i class="fas fa-star"></i></div>
 			<h2 class="m-stat-card-title">Total XP</h2>
 		</div>
-		<div class="m-hero">
-			<span class="m-hero-val" use:countUp={p.totalXp}>{fmt(p.totalXp)}</span>
-			<span class="m-hero-cap">lifetime experience</span>
+		<div class="m-stat-hero">
+			<span class="m-stat-hero-val" use:countUp={p.totalXp}>{fmt(p.totalXp)}</span>
+			<span class="m-stat-hero-cap">lifetime experience</span>
 		</div>
 		{#if xpSourceBars.length > 0}
 			<div class="m-bar-block">
@@ -601,10 +540,10 @@
 						<div class="m-stat-card-icon m-chili-stat-2"><i class="fas fa-chart-line"></i></div>
 						<h2 class="m-stat-card-title">Market</h2>
 					</div>
-					<div class="m-hero">
-						<span class="m-hero-val" use:countUp={d.assets_market_value}>{fmt(d.assets_market_value)}</span>
-						<span class="m-hero-cap">assets value · XP</span>
-						<span class="m-hero-chip" data-dir={assetsPnl >= 0 ? 'up' : 'down'}>
+					<div class="m-stat-hero">
+						<span class="m-stat-hero-val" use:countUp={d.assets_market_value}>{fmt(d.assets_market_value)}</span>
+						<span class="m-stat-hero-cap">assets value · XP</span>
+						<span class="m-stat-hero-chip" data-dir={assetsPnl >= 0 ? 'up' : 'down'}>
 							<i class="fas fa-arrow-trend-{assetsPnl >= 0 ? 'up' : 'down'}"></i>{assetsPnl >= 0 ? '+' : '−'}{fmt(Math.abs(assetsPnl))} open P/L
 						</span>
 					</div>
@@ -629,9 +568,9 @@
 						<div class="m-stat-card-icon m-chili-stat-4"><i class="fas fa-bag-shopping"></i></div>
 						<h2 class="m-stat-card-title">Items</h2>
 					</div>
-					<div class="m-hero">
-						<span class="m-hero-val" use:countUp={d.items_buys}>{fmt(d.items_buys)}</span>
-						<span class="m-hero-cap">items bought</span>
+					<div class="m-stat-hero">
+						<span class="m-stat-hero-val" use:countUp={d.items_buys}>{fmt(d.items_buys)}</span>
+						<span class="m-stat-hero-cap">items bought</span>
 					</div>
 					<div class="m-mini-grid">
 						<div class="m-mini">

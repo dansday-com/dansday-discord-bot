@@ -6591,28 +6591,6 @@
 .m-ov .m-mini[data-dir='down'] .m-mini-value {
 	color: #b23b3b;
 }
-.m-ov-roles {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 8px;
-	margin-top: 14px;
-}
-.m-ov-role {
-	display: inline-flex;
-	align-items: center;
-	gap: 6px;
-	padding: 5px 12px;
-	border-radius: 99px;
-	font-size: 12px;
-	font-weight: 600;
-	color: var(--lb-text);
-	background: rgba(255, 255, 255, 0.65);
-	border: 1px solid var(--lb-border-light);
-}
-.m-ov-role i {
-	font-size: 8px;
-	color: var(--role-color, var(--chili-hot));
-}
 .m-ov-lists {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -6965,129 +6943,6 @@
 	font-weight: 600;
 	color: var(--lb-text);
 }
-.m-profile {
-	display: flex;
-	flex-direction: column;
-	gap: 16px;
-}
-.m-profile-top {
-	display: flex;
-	align-items: center;
-	gap: 14px;
-}
-.m-profile-av {
-	position: relative;
-	width: 58px;
-	height: 58px;
-	flex-shrink: 0;
-}
-.m-profile-av img {
-	width: 100%;
-	height: 100%;
-	border-radius: 50%;
-	object-fit: cover;
-	border: 2px solid rgba(255, 255, 255, 0.85);
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-}
-.m-profile-status {
-	position: absolute;
-	right: 1px;
-	bottom: 1px;
-	width: 14px;
-	height: 14px;
-	border-radius: 50%;
-	background: #1f8a4c;
-	border: 2px solid #fff;
-}
-.m-profile-status--afk {
-	background: #b23b3b;
-}
-.m-profile-id {
-	min-width: 0;
-	flex: 1;
-}
-.m-profile-name {
-	display: block;
-	font-size: 18px;
-	font-weight: 800;
-	letter-spacing: -0.02em;
-	color: var(--lb-text);
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-.m-profile-badges {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 6px;
-	margin-top: 6px;
-}
-.m-badge {
-	display: inline-flex;
-	align-items: center;
-	gap: 5px;
-	padding: 3px 9px;
-	border-radius: 99px;
-	font-size: 11px;
-	font-weight: 700;
-	background: rgba(36, 95, 115, 0.1);
-	color: rgba(36, 95, 115, 0.95);
-}
-.m-badge i {
-	font-size: 9px;
-}
-.m-badge--rank {
-	background: linear-gradient(135deg, #c8911a, #e0a838);
-	color: #fff;
-}
-.m-badge--boost {
-	background: rgba(157, 44, 111, 0.14);
-	color: #9b2c6f;
-}
-.m-badge--afk {
-	background: rgba(178, 59, 59, 0.12);
-	color: #b23b3b;
-}
-.m-profile-meta {
-	display: grid;
-	grid-template-columns: 1fr;
-	gap: 10px;
-}
-@media (min-width: 480px) {
-	.m-profile-meta {
-		grid-template-columns: 1fr 1fr;
-	}
-}
-.m-profile-metaitem {
-	display: flex;
-	align-items: center;
-	gap: 10px;
-	padding: 10px 12px;
-	border-radius: 12px;
-	background: rgba(255, 255, 255, 0.6);
-	border: 1px solid var(--lb-border-light);
-}
-.m-profile-metaitem i {
-	font-size: 15px;
-	color: var(--chili-hot);
-	width: 18px;
-	text-align: center;
-}
-.m-profile-metaval {
-	display: block;
-	font-size: 13px;
-	font-weight: 700;
-	color: var(--lb-text);
-}
-.m-profile-metacap {
-	display: block;
-	font-size: 10px;
-	font-weight: 600;
-	color: var(--lb-text-muted);
-	text-transform: uppercase;
-	letter-spacing: 0.05em;
-}
-
 .m-hbars {
 	display: flex;
 	flex-direction: column;
@@ -7141,7 +6996,7 @@
 	white-space: nowrap;
 }
 
-.m-hero {
+.m-stat-hero {
 	text-align: center;
 	padding: 12px;
 	margin-top: 10px;
@@ -7149,7 +7004,7 @@
 	background: linear-gradient(145deg, rgba(36, 95, 115, 0.1), rgba(115, 62, 36, 0.06));
 	border: 1px solid rgba(36, 95, 115, 0.14);
 }
-.m-hero-val {
+.m-stat-hero-val {
 	display: block;
 	font-size: clamp(24px, 6vw, 32px);
 	font-weight: 800;
@@ -7157,7 +7012,7 @@
 	color: var(--lb-text);
 	font-variant-numeric: tabular-nums;
 }
-.m-hero-cap {
+.m-stat-hero-cap {
 	display: block;
 	font-size: 10px;
 	font-weight: 600;
@@ -7166,7 +7021,7 @@
 	color: var(--lb-text-muted);
 	margin-top: 2px;
 }
-.m-hero-chip {
+.m-stat-hero-chip {
 	display: inline-flex;
 	align-items: center;
 	gap: 5px;
@@ -7176,11 +7031,11 @@
 	font-size: 11px;
 	font-weight: 700;
 }
-.m-hero-chip[data-dir='up'] {
+.m-stat-hero-chip[data-dir='up'] {
 	background: rgba(31, 138, 76, 0.14);
 	color: #1f8a4c;
 }
-.m-hero-chip[data-dir='down'] {
+.m-stat-hero-chip[data-dir='down'] {
 	background: rgba(178, 59, 59, 0.14);
 	color: #b23b3b;
 }

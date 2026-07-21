@@ -578,7 +578,7 @@ CREATE TABLE IF NOT EXISTS server_member_minigame_logs (
     FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS server_member_leveling_friends (
+CREATE TABLE IF NOT EXISTS server_member_level_friends (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     member_a_id INT NOT NULL,
     member_b_id INT NOT NULL,
@@ -587,7 +587,7 @@ CREATE TABLE IF NOT EXISTS server_member_leveling_friends (
     updated_at DATETIME NOT NULL,
     FOREIGN KEY (member_a_id) REFERENCES server_members(id) ON DELETE CASCADE,
     FOREIGN KEY (member_b_id) REFERENCES server_members(id) ON DELETE CASCADE,
-    UNIQUE KEY uniq_leveling_friends_pair (member_a_id, member_b_id)
+    UNIQUE KEY uniq_level_friends_pair (member_a_id, member_b_id)
 );
 
 CREATE TABLE IF NOT EXISTS server_member_level_logs (
@@ -718,5 +718,5 @@ CREATE INDEX IF NOT EXISTS idx_server_member_assets_held ON server_member_assets
 CREATE INDEX IF NOT EXISTS idx_server_member_asset_logs_member ON server_member_asset_logs(member_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_level_logs_member ON server_member_level_logs(member_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_level_logs_member_created_source ON server_member_level_logs(member_id, created_at, source);
-CREATE INDEX IF NOT EXISTS idx_leveling_friends_a ON server_member_leveling_friends(member_a_id, ticks);
-CREATE INDEX IF NOT EXISTS idx_leveling_friends_b ON server_member_leveling_friends(member_b_id, ticks);
+CREATE INDEX IF NOT EXISTS idx_level_friends_a ON server_member_level_friends(member_a_id, ticks);
+CREATE INDEX IF NOT EXISTS idx_level_friends_b ON server_member_level_friends(member_b_id, ticks);

@@ -726,7 +726,7 @@ async function awardVoiceXPLocked(server, dbMember, guildId, reason, previousSta
 
 	if (friendDiscordIds.length > 0) {
 		const perFriendXp = Math.floor(friendBonus / friendDiscordIds.length);
-		db.recordLevelingFriends(guildId, dbMember.id, friendDiscordIds, perFriendXp).catch(() => null);
+		db.recordLevelFriends(guildId, dbMember.id, friendDiscordIds, perFriendXp).catch(() => null);
 	}
 
 	const stats = await db.updateMemberLevelStats(dbMember.id, {

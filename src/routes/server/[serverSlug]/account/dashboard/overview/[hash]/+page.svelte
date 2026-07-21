@@ -33,10 +33,34 @@
 		};
 	});
 
-	const d = $derived((data.dashboard ?? {}) as Record<string, number>);
-	const ins = $derived(data.insights ?? { favorite_items: [], top_steal_targets: [], top_aggressors: [], top_giftees: [], effect_usage: [] });
+	const memberAvatar = $derived(data.memberAvatar ?? `https://cdn.discordapp.com/embed/avatars/${(Number(data.memberDiscordId) || 0) % 5}.png`);
 
-	const hasEconomy = $derived((d.assets_trade_count ?? 0) > 0 || (d.items_buys ?? 0) > 0 || (d.minigames_plays ?? 0) > 0);
+	const tenureDays = $derived.by(() => {
+		if (!p.joined) return null;
+		const t = new Date(p.joined.replace(' ', 'T') + 'Z').getTime();
+		if (Number.isNaN(t)) return null;
+		return Math.max(0, Math.floor((Date.now() - t) / 86400000));
+	});
+
+	const activityBars = $derived.by(() => {
+		const rows = [
+			{ label: 'Messages', value: Math.max(0, p.chatTotal || 0), icon: 'fa-comments', color: '#245f73' },
+			{ label: 'Voice', value: Math.max(0, p.voiceActive || 0), icon: 'fa-microphone', color: '#1f8a4c' },
+			{ label: 'Video', value: Math.max(0, p.voiceVideo || 0), icon: 'fa-video', color: '#6d5bd0' },
+			{ label: 'Stream', value: Math.max(0, p.voiceStreaming || 0), icon: 'fa-desktop', color: '#c8911a' },
+			{ label: 'AFK', value: Math.max(0, p.voiceAfk || 0), icon: 'fa-moon', color: '#b23b3b' }
+		];
+		const max = Math.max(1, ...rows.map((r) => r.value));
+		return rows.map((r) => ({ ...r, pct: Math.max(2, Math.round((r.value / max) * 100)) }));
+	});
+
+	const d = $derived((data.dashboard ?? {}) as Record<string, number>);
+	const ins = $derived(data.insights ?? { favorite_items: [], interactions: {}, effect_usage: [], asset_holdings: [] });
+	const interactions = $derived((ins.interactions ?? {}) as Record<string, { out: any[]; in: any[] }>);
+
+	const hasMarket = $derived((d.assets_trade_count ?? 0) > 0 || (d.assets_market_value ?? 0) > 0);
+	const hasItems = $derived((d.items_buys ?? 0) > 0);
+	const hasMinigames = $derived((d.minigames_plays ?? 0) > 0);
 	const hasPvp = $derived(
 		(d.items_steals_landed ?? 0) > 0 ||
 			(d.items_steals_caught ?? 0) > 0 ||
@@ -56,51 +80,75 @@
 			(d.streams_total ?? 0) > 0 ||
 			(d.feedback_submitted ?? 0) > 0
 	);
-	const hasInsights = $derived(
-		ins.favorite_items.length > 0 || ins.top_steal_targets.length > 0 || ins.top_aggressors.length > 0 || ins.top_giftees.length > 0
+
+	const INTERACTION_LISTS = [
+		{ key: 'steal', dir: 'out', title: 'Robbed most', icon: 'fa-hand', fill: 'm-ov-bar-fill--steal' },
+		{ key: 'steal', dir: 'in', title: 'Robbed by', icon: 'fa-skull-crossbones', fill: 'm-ov-bar-fill--danger' },
+		{ key: 'bomb', dir: 'out', title: 'Bombed most', icon: 'fa-bomb', fill: 'm-ov-bar-fill--steal' },
+		{ key: 'bomb', dir: 'in', title: 'Bombed by', icon: 'fa-burst', fill: 'm-ov-bar-fill--danger' },
+		{ key: 'leech', dir: 'out', title: 'Leeched most', icon: 'fa-droplet', fill: 'm-ov-bar-fill--steal' },
+		{ key: 'leech', dir: 'in', title: 'Leeched by', icon: 'fa-droplet', fill: 'm-ov-bar-fill--danger' },
+		{ key: 'gift', dir: 'out', title: 'Gifts to', icon: 'fa-gift', fill: 'm-ov-bar-fill--gift' },
+		{ key: 'gift', dir: 'in', title: 'Gifts from', icon: 'fa-hand-holding-heart', fill: 'm-ov-bar-fill--gift' },
+		{ key: 'spy', dir: 'out', title: 'Spied most', icon: 'fa-magnifying-glass', fill: 'm-ov-bar-fill--steal' }
+	];
+	const interactionLists = $derived(
+		INTERACTION_LISTS.map((l) => ({ ...l, rows: (interactions[l.key]?.[l.dir as 'out' | 'in'] ?? []) as any[] })).filter((l) => l.rows.length > 0)
 	);
+	const hasFavorites = $derived((ins.favorite_items ?? []).length > 0);
+	const hasHighlights = $derived(hasFavorites || interactionLists.length > 0);
 
 	const assetsPnl = $derived(Number(d.assets_pnl) || 0);
 	const minigamesNet = $derived(Number(d.minigames_net) || 0);
+	const minigamesWinRate = $derived((d.minigames_plays ?? 0) > 0 ? Math.round((Number(d.minigames_wins) / Number(d.minigames_plays)) * 100) : 0);
 
 	const PALETTE = ['#245f73', '#733e24', '#c8911a', '#1f8a4c', '#b23b3b', '#6d5bd0', '#e07a5f', '#2a9d8f', '#9b2c6f', '#457b9d'];
-
-	const usageTotal = $derived((ins.effect_usage ?? []).reduce((sum: number, e: any) => sum + (Number(e.uses) || 0), 0));
-	const usageSegments = $derived.by(() => {
-		const rows = (ins.effect_usage ?? []) as { effect_type: string; uses: number }[];
-		if (usageTotal <= 0) return [];
-		let offset = 0;
-		return rows.map((r, i) => {
-			const pct = (r.uses / usageTotal) * 100;
-			const accent = effectAccentHex(r.effect_type);
-			const color = accent === '#245f73' && i > 0 ? PALETTE[i % PALETTE.length] : accent;
-			const seg = {
-				...r,
-				pct,
-				start: offset,
-				end: offset + pct,
-				color,
-				label: effectLabel(r.effect_type),
-				icon: effectIcon(r.effect_type)
-			};
-			offset += pct;
-			return seg;
-		});
-	});
 
 	function polar(cx: number, cy: number, r: number, pctPoint: number) {
 		const a = (pctPoint / 100) * 2 * Math.PI - Math.PI / 2;
 		return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
 	}
-	const pieSlices = $derived(
-		usageSegments.map((s) => {
-			const large = s.pct > 50 ? 1 : 0;
-			const p1 = polar(50, 50, 48, s.start);
-			const p2 = polar(50, 50, 48, s.end);
-			if (usageSegments.length === 1) return { ...s, d: '' };
-			return { ...s, d: `M50,50 L${p1.x.toFixed(2)},${p1.y.toFixed(2)} A48,48 0 ${large} 1 ${p2.x.toFixed(2)},${p2.y.toFixed(2)} Z` };
-		})
-	);
+	function buildPie(items: { value: number; color: string; label: string; icon: string }[]) {
+		const total = items.reduce((s, x) => s + x.value, 0);
+		if (total <= 0) return { total: 0, segments: [] as any[] };
+		let offset = 0;
+		const segments = items.map((it) => {
+			const pct = (it.value / total) * 100;
+			const large = pct > 50 ? 1 : 0;
+			const p1 = polar(50, 50, 48, offset);
+			const p2 = polar(50, 50, 48, offset + pct);
+			const dPath = items.length === 1 ? '' : `M50,50 L${p1.x.toFixed(2)},${p1.y.toFixed(2)} A48,48 0 ${large} 1 ${p2.x.toFixed(2)},${p2.y.toFixed(2)} Z`;
+			const seg = { ...it, pct, d: dPath };
+			offset += pct;
+			return seg;
+		});
+		return { total, segments };
+	}
+
+	const usagePie = $derived.by(() => {
+		const rows = (ins.effect_usage ?? []) as { effect_type: string; uses: number }[];
+		const items = rows.map((r, i) => {
+			const accent = effectAccentHex(r.effect_type);
+			return {
+				value: Number(r.uses) || 0,
+				color: accent === '#245f73' && i > 0 ? PALETTE[i % PALETTE.length] : accent,
+				label: effectLabel(r.effect_type),
+				icon: effectIcon(r.effect_type)
+			};
+		});
+		return buildPie(items);
+	});
+
+	const allocationPie = $derived.by(() => {
+		const rows = (ins.asset_holdings ?? []) as { symbol: string; name: string; invested: number }[];
+		const items = rows.map((r, i) => ({
+			value: Number(r.invested) || 0,
+			color: PALETTE[i % PALETTE.length],
+			label: r.symbol || r.name,
+			icon: 'fa-coins'
+		}));
+		return buildPie(items);
+	});
 
 	function barPct(v: number, list: { xp?: number; hits?: number; uses?: number; ticks?: number }[]): number {
 		const max = Math.max(1, ...list.map((x) => Number(x.xp ?? x.hits ?? x.uses ?? x.ticks) || 0));
@@ -130,51 +178,56 @@
 		return { W, H, line, area, zeroY, last: pts[pts.length - 1], up: pts[pts.length - 1] >= 0, coords };
 	});
 
-	const buddies = $derived((data.levelingFriends ?? []) as { name: string; avatar: string | null; ticks: number; xp: number }[]);
+	const buddies = $derived((data.levelFriends ?? []) as { name: string; avatar: string | null; ticks: number; xp: number }[]);
 </script>
 
 <svelte:head><title>{data.server.name || data.server.slug} Account | {APP_NAME} Discord Bot</title></svelte:head>
 
 <div class="m-ov">
-	<div class="m-stat-card m-overview-card m-ov-full">
-		<div class="m-stat-card-head">
-			<div class="m-stat-card-icon m-chili-stat-1"><i class="fas fa-id-card"></i></div>
-			<h2 class="m-stat-card-title">Membership</h2>
-		</div>
-		<div class="m-mini-grid">
-			<div class="m-mini">
-				<i class="fas fa-calendar-check"></i>
-				<span class="m-mini-value"><LocalTime value={p.joined} fallback="—" /></span>
-				<span class="m-mini-label">Joined server</span>
+	<div class="m-stat-card m-overview-card m-ov-full m-profile">
+		<div class="m-profile-top">
+			<div class="m-profile-av">
+				<img src={memberAvatar} alt={data.memberName ?? ''} loading="lazy" />
+				<span class="m-profile-status" class:m-profile-status--afk={p.isAfk} title={p.isAfk ? 'AFK' : 'Active'}></span>
 			</div>
-			<div class="m-mini">
-				<i class="fab fa-discord"></i>
-				<span class="m-mini-value"><LocalTime value={p.discordSince} fallback="—" /></span>
-				<span class="m-mini-label">On Discord since</span>
-			</div>
-			<div class="m-mini">
-				<i class="fas fa-gem"></i>
-				<span class="m-mini-value">{p.isBooster ? 'Yes' : 'No'}</span>
-				<span class="m-mini-label">Server booster</span>
-			</div>
-			{#if p.isBooster && p.boosterSince}
-				<div class="m-mini">
-					<i class="fas fa-heart"></i>
-					<span class="m-mini-value"><LocalTime value={p.boosterSince} fallback="—" /></span>
-					<span class="m-mini-label">Boosting since</span>
+			<div class="m-profile-id">
+				<span class="m-profile-name">{data.memberName ?? 'Member'}</span>
+				<div class="m-profile-badges">
+					{#if data.balance?.rank}<span class="m-badge m-badge--rank"><i class="fas fa-ranking-star"></i> Rank #{fmt(data.balance.rank)}</span>{/if}
+					<span class="m-badge"><i class="fas fa-chart-simple"></i> Lvl {fmt(data.balance?.level ?? 1)}</span>
+					{#if p.isBooster}<span class="m-badge m-badge--boost"><i class="fas fa-gem"></i> Booster</span>{/if}
+					<span class="m-badge" class:m-badge--afk={p.isAfk}><i class="fas {p.isAfk ? 'fa-moon' : 'fa-circle-check'}"></i> {p.isAfk ? 'AFK' : 'Active'}</span>
 				</div>
-			{/if}
-			<div class="m-mini">
-				<i class="fas fa-ranking-star"></i>
-				<span class="m-mini-value">{data.balance?.rank ? `#${fmt(data.balance.rank)}` : '—'}</span>
-				<span class="m-mini-label">Server rank</span>
-			</div>
-			<div class="m-mini">
-				<i class="fas fa-moon"></i>
-				<span class="m-mini-value">{p.isAfk ? 'AFK' : 'Active'}</span>
-				<span class="m-mini-label">Status</span>
 			</div>
 		</div>
+		<div class="m-profile-meta">
+			<div class="m-profile-metaitem">
+				<i class="fas fa-calendar-check"></i>
+				<div>
+					<span class="m-profile-metaval"><LocalTime value={p.joined} fallback="—" /></span>
+					<span class="m-profile-metacap"
+						>Joined{#if tenureDays != null}
+							· {fmt(tenureDays)}d ago{/if}</span
+					>
+				</div>
+			</div>
+			<div class="m-profile-metaitem">
+				<i class="fab fa-discord"></i>
+				<div>
+					<span class="m-profile-metaval"><LocalTime value={p.discordSince} fallback="—" /></span>
+					<span class="m-profile-metacap">On Discord since</span>
+				</div>
+			</div>
+		</div>
+		{#if p.roles.length > 0}
+			<div class="m-ov-roles">
+				{#each p.roles as role}
+					<span class="m-ov-role" style={rolePillVars(role.color)}>
+						<i class="fas fa-circle"></i>{role.name || 'Role'}
+					</span>
+				{/each}
+			</div>
+		{/if}
 	</div>
 
 	<div class="m-stat-card m-overview-card m-ov-full">
@@ -185,7 +238,7 @@
 		{#if voiceMix}
 			<div class="m-bar-block">
 				<div class="m-bar-head">
-					<span>Voice time breakdown</span>
+					<span>Voice time split</span>
 					<span class="m-bar-meta">{fmt(voiceMix.total)} min</span>
 				</div>
 				<div class="m-seg-bar m-seg-bar--3" title="Active · AFK · Video · Stream">
@@ -194,59 +247,22 @@
 					<div class="m-seg m-seg--voice" style="width: {voiceMix.video}%"></div>
 					<div class="m-seg m-seg--b" style="width: {voiceMix.stream}%"></div>
 				</div>
-				<div class="m-legend m-legend--3">
-					<span><i class="fas fa-circle"></i> Active</span>
-					<span><i class="fas fa-circle"></i> AFK</span>
-					<span><i class="fas fa-circle"></i> Video</span>
-				</div>
 			</div>
 		{/if}
-		<div class="m-mini-grid">
-			<div class="m-mini">
-				<i class="fas fa-comments"></i>
-				<span class="m-mini-value">{fmt(p.chatTotal)}</span>
-				<span class="m-mini-label">Messages</span>
-			</div>
-			<div class="m-mini">
-				<i class="fas fa-check-circle"></i>
-				<span class="m-mini-value">{fmt(p.voiceActive)}</span>
-				<span class="m-mini-label">Voice min</span>
-			</div>
-			<div class="m-mini">
-				<i class="fas fa-pause-circle"></i>
-				<span class="m-mini-value">{fmt(p.voiceAfk)}</span>
-				<span class="m-mini-label">AFK min</span>
-			</div>
-			<div class="m-mini">
-				<i class="fas fa-video"></i>
-				<span class="m-mini-value">{fmt(p.voiceVideo)}</span>
-				<span class="m-mini-label">Video min</span>
-			</div>
-			<div class="m-mini">
-				<i class="fas fa-desktop"></i>
-				<span class="m-mini-value">{fmt(p.voiceStreaming)}</span>
-				<span class="m-mini-label">Stream min</span>
-			</div>
+		<div class="m-hbars">
+			{#each activityBars as bar}
+				<div class="m-hbar">
+					<span class="m-hbar-label"><i class="fas {bar.icon}" style="color: {bar.color};"></i> {bar.label}</span>
+					<div class="m-hbar-track">
+						<div class="m-hbar-fill" style="width: {bar.pct}%; background: {bar.color};"></div>
+					</div>
+					<span class="m-hbar-val">{fmt(bar.value)}</span>
+				</div>
+			{/each}
 		</div>
 	</div>
 
-	{#if p.roles.length > 0}
-		<div class="m-stat-card m-overview-card m-ov-full">
-			<div class="m-stat-card-head">
-				<div class="m-stat-card-icon m-chili-stat-4"><i class="fas fa-user-tag"></i></div>
-				<h2 class="m-stat-card-title">Roles</h2>
-			</div>
-			<div class="m-ov-roles">
-				{#each p.roles as role}
-					<span class="m-ov-role" style={rolePillVars(role.color)}>
-						<i class="fas fa-circle"></i>{role.name || 'Role'}
-					</span>
-				{/each}
-			</div>
-		</div>
-	{/if}
-
-	{#if usageSegments.length > 0}
+	{#if usagePie.total > 0}
 		<div class="m-stat-card m-overview-card m-ov-full">
 			<div class="m-stat-card-head">
 				<div class="m-stat-card-icon m-chili-stat-3"><i class="fas fa-chart-pie"></i></div>
@@ -255,37 +271,70 @@
 			<div class="m-chart-split">
 				<div class="m-pie-wrap">
 					<svg class="m-pie" viewBox="0 0 100 100" role="img" aria-label="Item usage by type">
-						{#if usageSegments.length === 1}
-							<circle cx="50" cy="50" r="48" fill={usageSegments[0].color} />
+						{#if usagePie.segments.length === 1}
+							<circle cx="50" cy="50" r="48" fill={usagePie.segments[0].color} />
 						{:else}
-							{#each pieSlices as slice}
+							{#each usagePie.segments as slice}
 								<path d={slice.d} fill={slice.color} stroke="rgba(255,255,255,0.85)" stroke-width="0.8" />
 							{/each}
 						{/if}
 						<circle cx="50" cy="50" r="26" fill="#fff" />
-						<text x="50" y="47" text-anchor="middle" class="m-pie-total">{fmt(usageTotal)}</text>
+						<text x="50" y="47" text-anchor="middle" class="m-pie-total">{fmt(usagePie.total)}</text>
 						<text x="50" y="58" text-anchor="middle" class="m-pie-cap">uses</text>
 					</svg>
 					<div class="m-donut-legend">
-						{#each usageSegments as seg}
+						{#each usagePie.segments as seg}
 							<div class="m-donut-leg">
 								<span class="m-donut-dot" style="background: {seg.color};"></span>
 								<i class="fas {seg.icon}" style="color: {seg.color};"></i>
 								<span class="m-donut-leg-name">{seg.label}</span>
-								<span class="m-donut-leg-val">{fmt(seg.uses)}× · {seg.pct.toFixed(0)}%</span>
+								<span class="m-donut-leg-val">{fmt(seg.value)}× · {seg.pct.toFixed(0)}%</span>
 							</div>
 						{/each}
 					</div>
 				</div>
 
 				<div class="m-colchart">
-					{#each usageSegments as seg}
+					{#each usagePie.segments as seg}
 						<div class="m-col">
-							<span class="m-col-val">{fmt(seg.uses)}</span>
+							<span class="m-col-val">{fmt(seg.value)}</span>
 							<div class="m-col-track">
 								<div class="m-col-fill" style="height: {Math.max(6, seg.pct)}%; background: {seg.color};"></div>
 							</div>
 							<i class="fas {seg.icon} m-col-ico" style="color: {seg.color};" title={seg.label}></i>
+						</div>
+					{/each}
+				</div>
+			</div>
+		</div>
+	{/if}
+
+	{#if allocationPie.total > 0}
+		<div class="m-stat-card m-overview-card m-ov-full">
+			<div class="m-stat-card-head">
+				<div class="m-stat-card-icon m-chili-stat-2"><i class="fas fa-chart-pie"></i></div>
+				<h2 class="m-stat-card-title">Portfolio allocation</h2>
+			</div>
+			<div class="m-pie-wrap">
+				<svg class="m-pie" viewBox="0 0 100 100" role="img" aria-label="Invested XP by asset">
+					{#if allocationPie.segments.length === 1}
+						<circle cx="50" cy="50" r="48" fill={allocationPie.segments[0].color} />
+					{:else}
+						{#each allocationPie.segments as slice}
+							<path d={slice.d} fill={slice.color} stroke="rgba(255,255,255,0.85)" stroke-width="0.8" />
+						{/each}
+					{/if}
+					<circle cx="50" cy="50" r="26" fill="#fff" />
+					<text x="50" y="47" text-anchor="middle" class="m-pie-total">{fmt(allocationPie.total)}</text>
+					<text x="50" y="58" text-anchor="middle" class="m-pie-cap">invested</text>
+				</svg>
+				<div class="m-donut-legend">
+					{#each allocationPie.segments as seg}
+						<div class="m-donut-leg">
+							<span class="m-donut-dot" style="background: {seg.color};"></span>
+							<i class="fas {seg.icon}" style="color: {seg.color};"></i>
+							<span class="m-donut-leg-name">{seg.label}</span>
+							<span class="m-donut-leg-val">{fmt(seg.value)} · {seg.pct.toFixed(0)}%</span>
 						</div>
 					{/each}
 				</div>
@@ -364,14 +413,14 @@
 		</div>
 	{/if}
 
-	{#if hasInsights}
+	{#if hasHighlights}
 		<div class="m-stat-card m-overview-card m-ov-full">
 			<div class="m-stat-card-head">
 				<div class="m-stat-card-icon m-chili-stat-1"><i class="fas fa-fire-flame-curved"></i></div>
 				<h2 class="m-stat-card-title">Highlights</h2>
 			</div>
 			<div class="m-ov-lists">
-				{#if ins.favorite_items.length > 0}
+				{#if hasFavorites}
 					<div class="m-ov-list">
 						<span class="m-ov-list-title"><i class="fas fa-star"></i> Favorite items</span>
 						{#each ins.favorite_items as it}
@@ -394,116 +443,114 @@
 						{/each}
 					</div>
 				{/if}
-				{#if ins.top_steal_targets.length > 0}
+				{#each interactionLists as list}
 					<div class="m-ov-list">
-						<span class="m-ov-list-title"><i class="fas fa-hand"></i> Steals from</span>
-						{#each ins.top_steal_targets as t}
+						<span class="m-ov-list-title"><i class="fas {list.icon}"></i> {list.title}</span>
+						{#each list.rows as t}
 							<div class="m-ov-bar-row">
 								<div class="m-ov-bar-head">
 									<span class="m-ov-list-name">{t.name}</span>
-									<span class="m-ov-list-val">{fmt(t.xp)} XP</span>
+									<span class="m-ov-list-val">{t.xp > 0 ? `${fmt(t.xp)} XP` : `${fmt(t.hits)}×`}</span>
 								</div>
 								<div class="m-ov-bar-track">
-									<div class="m-ov-bar-fill m-ov-bar-fill--steal" style="width: {barPct(t.xp, ins.top_steal_targets)}%;"></div>
+									<div
+										class="m-ov-bar-fill {list.fill}"
+										style="width: {barPct(
+											t.xp || t.hits,
+											list.rows.map((r) => ({ xp: r.xp || r.hits }))
+										)}%;"
+									></div>
 								</div>
 							</div>
 						{/each}
 					</div>
-				{/if}
-				{#if ins.top_aggressors.length > 0}
-					<div class="m-ov-list">
-						<span class="m-ov-list-title"><i class="fas fa-skull-crossbones"></i> Robbed by</span>
-						{#each ins.top_aggressors as t}
-							<div class="m-ov-bar-row">
-								<div class="m-ov-bar-head">
-									<span class="m-ov-list-name">{t.name}</span>
-									<span class="m-ov-list-val">{fmt(t.xp)} XP</span>
-								</div>
-								<div class="m-ov-bar-track">
-									<div class="m-ov-bar-fill m-ov-bar-fill--danger" style="width: {barPct(t.xp, ins.top_aggressors)}%;"></div>
-								</div>
-							</div>
-						{/each}
-					</div>
-				{/if}
-				{#if ins.top_giftees.length > 0}
-					<div class="m-ov-list">
-						<span class="m-ov-list-title"><i class="fas fa-gift"></i> Gifts to</span>
-						{#each ins.top_giftees as t}
-							<div class="m-ov-bar-row">
-								<div class="m-ov-bar-head">
-									<span class="m-ov-list-name">{t.name}</span>
-									<span class="m-ov-list-val">{fmt(t.xp)} XP</span>
-								</div>
-								<div class="m-ov-bar-track">
-									<div class="m-ov-bar-fill m-ov-bar-fill--gift" style="width: {barPct(t.xp, ins.top_giftees)}%;"></div>
-								</div>
-							</div>
-						{/each}
-					</div>
-				{/if}
+				{/each}
 			</div>
 		</div>
 	{/if}
 
-	{#if hasEconomy}
+	{#if hasMarket}
 		<div class="m-stat-card m-overview-card">
 			<div class="m-stat-card-head">
-				<div class="m-stat-card-icon m-chili-stat-2"><i class="fas fa-coins"></i></div>
-				<h2 class="m-stat-card-title">Your economy</h2>
+				<div class="m-stat-card-icon m-chili-stat-2"><i class="fas fa-chart-line"></i></div>
+				<h2 class="m-stat-card-title">Market</h2>
+			</div>
+			<div class="m-hero">
+				<span class="m-hero-val">{fmt(d.assets_market_value)}</span>
+				<span class="m-hero-cap">assets value · XP</span>
+				<span class="m-hero-chip" data-dir={assetsPnl >= 0 ? 'up' : 'down'}>
+					<i class="fas fa-arrow-trend-{assetsPnl >= 0 ? 'up' : 'down'}"></i>{assetsPnl >= 0 ? '+' : '−'}{fmt(Math.abs(assetsPnl))} open P/L
+				</span>
 			</div>
 			<div class="m-mini-grid">
-				{#if d.assets_trade_count > 0 || d.assets_market_value > 0}
-					<div class="m-mini">
-						<i class="fas fa-chart-line"></i>
-						<span class="m-mini-value">{fmt(d.assets_market_value)}</span>
-						<span class="m-mini-label">Assets value</span>
+				<div class="m-mini">
+					<i class="fas fa-right-left"></i>
+					<span class="m-mini-value">{fmt(d.assets_trade_count)}</span>
+					<span class="m-mini-label">Trades</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-briefcase"></i>
+					<span class="m-mini-value">{fmt(d.assets_open_positions)}</span>
+					<span class="m-mini-label">Open assets</span>
+				</div>
+			</div>
+		</div>
+	{/if}
+
+	{#if hasItems}
+		<div class="m-stat-card m-overview-card">
+			<div class="m-stat-card-head">
+				<div class="m-stat-card-icon m-chili-stat-4"><i class="fas fa-bag-shopping"></i></div>
+				<h2 class="m-stat-card-title">Items</h2>
+			</div>
+			<div class="m-hero">
+				<span class="m-hero-val">{fmt(d.items_buys)}</span>
+				<span class="m-hero-cap">items bought</span>
+			</div>
+			<div class="m-mini-grid">
+				<div class="m-mini">
+					<i class="fas fa-coins"></i>
+					<span class="m-mini-value">{fmt(d.items_buy_spend)}</span>
+					<span class="m-mini-label">XP spent</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-wand-magic-sparkles"></i>
+					<span class="m-mini-value">{fmt(d.items_activations)}</span>
+					<span class="m-mini-label">Activations</span>
+				</div>
+			</div>
+		</div>
+	{/if}
+
+	{#if hasMinigames}
+		<div class="m-stat-card m-overview-card">
+			<div class="m-stat-card-head">
+				<div class="m-stat-card-icon m-chili-stat-3"><i class="fas fa-dice"></i></div>
+				<h2 class="m-stat-card-title">Minigames</h2>
+			</div>
+			<div class="m-ring-row">
+				<div class="m-ring" style="--pct: {minigamesWinRate}; --ring-color: {minigamesWinRate >= 50 ? '#1f8a4c' : '#c8911a'};">
+					<span class="m-ring-val">{minigamesWinRate}%</span>
+					<span class="m-ring-cap">win rate</span>
+				</div>
+				<div class="m-ring-side">
+					<div class="m-ring-stat"><span>{fmt(d.minigames_plays)}</span><small>plays</small></div>
+					<div class="m-ring-stat" data-dir={minigamesNet >= 0 ? 'up' : 'down'}>
+						<span>{minigamesNet >= 0 ? '+' : '−'}{fmt(Math.abs(minigamesNet))}</span><small>net winnings</small>
 					</div>
-					<div class="m-mini" data-dir={assetsPnl >= 0 ? 'up' : 'down'}>
-						<i class="fas fa-scale-balanced"></i>
-						<span class="m-mini-value">{assetsPnl >= 0 ? '+' : '−'}{fmt(Math.abs(assetsPnl))}</span>
-						<span class="m-mini-label">Open P/L</span>
-					</div>
-					<div class="m-mini">
-						<i class="fas fa-right-left"></i>
-						<span class="m-mini-value">{fmt(d.assets_trade_count)}</span>
-						<span class="m-mini-label">Trades</span>
-					</div>
-				{/if}
-				{#if d.items_buys > 0}
-					<div class="m-mini">
-						<i class="fas fa-cart-shopping"></i>
-						<span class="m-mini-value">{fmt(d.items_buys)}</span>
-						<span class="m-mini-label">Items bought</span>
-					</div>
-					<div class="m-mini">
-						<i class="fas fa-coins"></i>
-						<span class="m-mini-value">{fmt(d.items_buy_spend)}</span>
-						<span class="m-mini-label">XP spent</span>
-					</div>
-					<div class="m-mini">
-						<i class="fas fa-wand-magic-sparkles"></i>
-						<span class="m-mini-value">{fmt(d.items_activations)}</span>
-						<span class="m-mini-label">Activations</span>
-					</div>
-				{/if}
-				{#if d.minigames_plays > 0}
-					<div class="m-mini">
-						<i class="fas fa-dice"></i>
-						<span class="m-mini-value">{fmt(d.minigames_wagered)}</span>
-						<span class="m-mini-label">XP wagered</span>
-					</div>
-					<div class="m-mini" data-dir={minigamesNet >= 0 ? 'up' : 'down'}>
-						<i class="fas fa-scale-balanced"></i>
-						<span class="m-mini-value">{minigamesNet >= 0 ? '+' : '−'}{fmt(Math.abs(minigamesNet))}</span>
-						<span class="m-mini-label">Net winnings</span>
-					</div>
-					<div class="m-mini">
-						<i class="fas fa-trophy"></i>
-						<span class="m-mini-value">{fmt(d.minigames_biggest_win)}</span>
-						<span class="m-mini-label">Biggest win</span>
-					</div>
-				{/if}
+				</div>
+			</div>
+			<div class="m-mini-grid">
+				<div class="m-mini">
+					<i class="fas fa-coins"></i>
+					<span class="m-mini-value">{fmt(d.minigames_wagered)}</span>
+					<span class="m-mini-label">XP wagered</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-trophy"></i>
+					<span class="m-mini-value">{fmt(d.minigames_biggest_win)}</span>
+					<span class="m-mini-label">Biggest win</span>
+				</div>
 			</div>
 		</div>
 	{/if}

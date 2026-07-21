@@ -41,11 +41,11 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 	};
 
 	const priceMap = assetsEnabled ? await loadAssetPriceMap().catch(() => ({})) : {};
-	const [dashboard, insights, levelingFriends] = await Promise.all([
+	const [dashboard, insights, levelFriends] = await Promise.all([
 		db.getMemberDashboard(shared.member.id, priceMap as any).catch(() => null),
 		db.getMemberInsights(shared.member.id).catch(() => null),
-		db.getMemberLevelingFriends(shared.member.id, 5).catch(() => [])
+		db.getMemberLevelFriends(shared.member.id, 5).catch(() => [])
 	]);
 
-	return { ...shared, profile, dashboard, insights, levelingFriends };
+	return { ...shared, profile, dashboard, insights, levelFriends };
 };

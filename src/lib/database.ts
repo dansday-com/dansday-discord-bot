@@ -1954,7 +1954,7 @@ export async function logMinigameAction(memberId: any, data: any = {}) {
 	return true;
 }
 
-export async function recordLevelingFriends(serverId: any, actorMemberId: any, friendDiscordIds: string[], perFriendXp = 0) {
+export async function recordLevelFriends(serverId: any, actorMemberId: any, friendDiscordIds: string[], perFriendXp = 0) {
 	await initializeDatabase();
 	const actorId = Number(actorMemberId);
 	if (!actorId || !Array.isArray(friendDiscordIds) || friendDiscordIds.length === 0) return;
@@ -1976,7 +1976,7 @@ export async function recordLevelingFriends(serverId: any, actorMemberId: any, f
 		await db
 			.execute(
 				sql`
-			INSERT INTO server_member_leveling_friends (member_a_id, member_b_id, ticks, xp_together, updated_at)
+			INSERT INTO server_member_level_friends (member_a_id, member_b_id, ticks, xp_together, updated_at)
 			VALUES (${a}, ${b}, 1, ${xp}, ${now})
 			ON DUPLICATE KEY UPDATE ticks = ticks + 1, xp_together = xp_together + ${xp}, updated_at = ${now}
 		`
@@ -1985,7 +1985,7 @@ export async function recordLevelingFriends(serverId: any, actorMemberId: any, f
 	}
 }
 
-export async function getMemberLevelingFriends(memberId: any, limit = 5) {
+export async function getMemberLevelFriends(memberId: any, limit = 5) {
 	await initializeDatabase();
 	const mid = Number(memberId);
 	if (!mid) return [] as any[];
@@ -1994,7 +1994,7 @@ export async function getMemberLevelingFriends(memberId: any, limit = 5) {
 		SELECT
 			CASE WHEN t.member_a_id = ${mid} THEN t.member_b_id ELSE t.member_a_id END AS buddy_id,
 			${nameExpr} AS name, m.avatar AS avatar, t.ticks AS ticks, t.xp_together AS xp
-		FROM server_member_leveling_friends t
+		FROM server_member_level_friends t
 		INNER JOIN server_members m ON m.id = CASE WHEN t.member_a_id = ${mid} THEN t.member_b_id ELSE t.member_a_id END
 		WHERE t.member_a_id = ${mid} OR t.member_b_id = ${mid}
 		ORDER BY t.ticks DESC
@@ -2687,8 +2687,40 @@ export async function getMemberInsights(memberId: any) {
 
 	const nameExpr = sql`COALESCE(NULLIF(m.server_display_name, ''), NULLIF(m.display_name, ''), m.username)`;
 	const q = (query: any) => db.execute(query).catch(() => [[]] as any);
+	const mapName = (rows: any) =>
+		((rows[0] as unknown as any[]) || []).map((r) => ({ name: r.name || 'a member', hits: Number(r.hits) || 0, xp: Number(r.xp) || 0 }));
 
-	const [topItems, topTargets, topAggressors, topGiftees, effectUsage, xpFlow] = await Promise.all([
+	const outgoing = (action: string, successOnly: boolean) =>
+		q(sql`
+			SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp_amount), 0) AS xp
+			FROM server_member_item_logs il
+			INNER JOIN server_members m ON m.id = il.target_member_id
+			WHERE il.member_id = ${mid} AND il.action = ${action} ${successOnly ? sql`AND il.outcome = 'success'` : sql``}
+			GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY xp DESC, hits DESC LIMIT 3
+		`);
+	const incoming = (action: string, successOnly: boolean) =>
+		q(sql`
+			SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp_amount), 0) AS xp
+			FROM server_member_item_logs il
+			INNER JOIN server_members m ON m.id = il.member_id
+			WHERE il.target_member_id = ${mid} AND il.action = ${action} ${successOnly ? sql`AND il.outcome = 'success'` : sql``} AND il.actor_disguised = 0
+			GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY xp DESC, hits DESC LIMIT 3
+		`);
+
+	const INTERACTIONS = [
+		{ key: 'steal', out: true, in: true, success: true },
+		{ key: 'bomb', out: true, in: true, success: true },
+		{ key: 'leech', out: true, in: true, success: false },
+		{ key: 'gift', out: true, in: true, success: false },
+		{ key: 'spy', out: true, in: false, success: false }
+	];
+
+	const interactionQueries = INTERACTIONS.flatMap((it) => [
+		...(it.out ? [{ key: it.key, dir: 'out', p: outgoing(it.key, it.success) }] : []),
+		...(it.in ? [{ key: it.key, dir: 'in', p: incoming(it.key, it.success) }] : [])
+	]);
+
+	const [topItems, effectUsage, xpFlow, holdings, ...interactionResults] = await Promise.all([
 		q(sql`
 			SELECT bi.name AS name, bi.effect_type AS effect_type, COUNT(*) AS uses
 			FROM server_member_item_logs il
@@ -2696,27 +2728,6 @@ export async function getMemberInsights(memberId: any) {
 			WHERE il.member_id = ${mid} AND il.item_id IS NOT NULL AND il.action NOT IN ('discard')
 			GROUP BY bi.id, bi.name, bi.effect_type
 			ORDER BY uses DESC LIMIT 3
-		`),
-		q(sql`
-			SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp_amount), 0) AS xp
-			FROM server_member_item_logs il
-			INNER JOIN server_members m ON m.id = il.target_member_id
-			WHERE il.member_id = ${mid} AND il.action = 'steal' AND il.outcome = 'success'
-			GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY xp DESC LIMIT 3
-		`),
-		q(sql`
-			SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp_amount), 0) AS xp
-			FROM server_member_item_logs il
-			INNER JOIN server_members m ON m.id = il.member_id
-			WHERE il.target_member_id = ${mid} AND il.action = 'steal' AND il.outcome = 'success' AND il.actor_disguised = 0
-			GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY xp DESC LIMIT 3
-		`),
-		q(sql`
-			SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp_amount), 0) AS xp
-			FROM server_member_item_logs il
-			INNER JOIN server_members m ON m.id = il.target_member_id
-			WHERE il.member_id = ${mid} AND il.action = 'gift'
-			GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY xp DESC LIMIT 3
 		`),
 		q(sql`
 			SELECT COALESCE(bi.effect_type, il.action) AS effect_type, COUNT(*) AS uses
@@ -2739,16 +2750,37 @@ export async function getMemberInsights(memberId: any) {
 						WHEN action = 'gift' THEN -xp_amount WHEN action = 'buy' THEN -xp_amount ELSE 0 END) AS net
 					FROM server_member_item_logs WHERE member_id = ${mid} AND created_at >= UTC_TIMESTAMP() - INTERVAL 14 DAY GROUP BY DATE(created_at)
 			) t GROUP BY d ORDER BY d ASC
-		`)
+		`),
+		q(sql`
+			SELECT asset_type, asset_id, symbol, asset_name, asset_image, SUM(xp_invested) AS invested
+			FROM server_member_assets WHERE member_id = ${mid}
+			GROUP BY asset_type, asset_id, symbol, asset_name, asset_image
+			ORDER BY invested DESC
+		`),
+		...interactionQueries.map((iq) => iq.p)
 	]);
 
-	const mapName = (rows: any) =>
-		((rows[0] as unknown as any[]) || []).map((r) => ({ name: r.name || 'a member', hits: Number(r.hits) || 0, xp: Number(r.xp) || 0 }));
+	const interactions: Record<string, { out: any[]; in: any[] }> = {};
+	interactionQueries.forEach((iq, i) => {
+		if (!interactions[iq.key]) interactions[iq.key] = { out: [], in: [] };
+		interactions[iq.key][iq.dir as 'out' | 'in'] = mapName(interactionResults[i]);
+	});
 
 	const flowRows = ((xpFlow[0] as unknown as any[]) || []).map((r) => ({
 		day: r.day instanceof Date ? r.day.toISOString().split('T')[0] : String(r.day),
 		net: Number(r.net) || 0
 	}));
+
+	const assetHoldings = ((holdings[0] as unknown as any[]) || [])
+		.map((r) => ({
+			asset_type: r.asset_type,
+			asset_id: r.asset_id,
+			symbol: r.symbol || r.asset_name || 'Asset',
+			name: r.asset_name || r.symbol || 'Asset',
+			image: r.asset_image ?? null,
+			invested: Number(r.invested) || 0
+		}))
+		.filter((r) => r.invested > 0);
 
 	return {
 		favorite_items: ((topItems[0] as unknown as any[]) || []).map((r) => ({
@@ -2756,13 +2788,12 @@ export async function getMemberInsights(memberId: any) {
 			effect_type: r.effect_type || null,
 			uses: Number(r.uses) || 0
 		})),
-		top_steal_targets: mapName(topTargets),
-		top_aggressors: mapName(topAggressors),
-		top_giftees: mapName(topGiftees),
+		interactions,
 		effect_usage: ((effectUsage[0] as unknown as any[]) || [])
 			.map((r) => ({ effect_type: r.effect_type || 'unknown', uses: Number(r.uses) || 0 }))
 			.filter((r) => r.uses > 0),
-		xp_flow: flowRows
+		xp_flow: flowRows,
+		asset_holdings: assetHoldings
 	};
 }
 
@@ -5159,8 +5190,8 @@ export default {
 	getServerFeatureStats,
 	getMemberDashboard,
 	getMemberInsights,
-	recordLevelingFriends,
-	getMemberLevelingFriends,
+	recordLevelFriends,
+	getMemberLevelFriends,
 	updateCustomRoleFlags,
 	memberHasCustomSupporterRole,
 	getServerSettings,

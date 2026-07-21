@@ -235,12 +235,16 @@ export function getItemEffect(type: string): ItemEffect | undefined {
 	return EFFECT_BY_ID[type];
 }
 
+const ACTION_META: Record<string, { label: string; icon: string }> = {
+	bounty_collected: { label: 'Bounty claimed', icon: 'fa-sack-dollar' }
+};
+
 export function effectLabel(type: string): string {
-	return EFFECT_BY_ID[type]?.label ?? type;
+	return EFFECT_BY_ID[type]?.label ?? ACTION_META[type]?.label ?? type;
 }
 
 export function effectIcon(type: string): string {
-	return EFFECT_BY_ID[type]?.icon ?? 'fa-cube';
+	return EFFECT_BY_ID[type]?.icon ?? ACTION_META[type]?.icon ?? 'fa-cube';
 }
 
 export const EFFECT_ACCENT_DEFAULT = '#245f73';

@@ -37,7 +37,7 @@
 					{ icon: 'fa-users', label: 'Traders', value: s.assets_traders },
 					{ icon: 'fa-briefcase', label: 'Open assets', value: s.assets_open_positions },
 					{ icon: 'fa-arrow-up-from-bracket', label: 'XP bought in', value: s.assets_buy_volume },
-					{ icon: 'fa-arrow-down-to-bracket', label: 'XP cashed out', value: s.assets_sell_volume }
+					{ icon: 'fa-download', label: 'XP cashed out', value: s.assets_sell_volume }
 				]
 			},
 			{

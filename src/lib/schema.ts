@@ -862,8 +862,8 @@ export const serverMemberMinigameLogs = mysqlTable(
 	(t) => [index('idx_server_member_minigame_logs_member').on(t.member_id, t.created_at), index('idx_server_member_minigame_logs_created').on(t.created_at)]
 );
 
-export const serverMemberLevelingFriends = mysqlTable(
-	'server_member_leveling_friends',
+export const serverMemberLevelFriends = mysqlTable(
+	'server_member_level_friends',
 	{
 		id: bigint('id', { mode: 'bigint' }).primaryKey().autoincrement(),
 		member_a_id: int('member_a_id')
@@ -877,9 +877,9 @@ export const serverMemberLevelingFriends = mysqlTable(
 		updated_at: datetime('updated_at').notNull()
 	},
 	(t) => [
-		uniqueIndex('uniq_leveling_friends_pair').on(t.member_a_id, t.member_b_id),
-		index('idx_leveling_friends_a').on(t.member_a_id, t.ticks),
-		index('idx_leveling_friends_b').on(t.member_b_id, t.ticks)
+		uniqueIndex('uniq_level_friends_pair').on(t.member_a_id, t.member_b_id),
+		index('idx_level_friends_a').on(t.member_a_id, t.ticks),
+		index('idx_level_friends_b').on(t.member_b_id, t.ticks)
 	]
 );
 

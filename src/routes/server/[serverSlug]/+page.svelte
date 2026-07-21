@@ -507,7 +507,7 @@
 					<span class="m-mini-label">XP bought in</span>
 				</div>
 				<div class="m-mini">
-					<i class="fas fa-arrow-down-to-bracket"></i>
+					<i class="fas fa-download"></i>
 					<span class="m-mini-value">{fmt(liveStats.assets_sell_volume)}</span>
 					<span class="m-mini-label">XP cashed out</span>
 				</div>

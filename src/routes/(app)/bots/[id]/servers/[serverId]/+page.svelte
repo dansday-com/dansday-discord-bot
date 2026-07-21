@@ -23,13 +23,36 @@
 	const membersWithoutLevels = $derived(Math.max(0, (s.members_total ?? 0) - (s.members_with_levels ?? 0)));
 
 	const avgXP = $derived((s.members_with_levels ?? 0) > 0 ? Math.round((s.leveling_total_experience ?? 0) / s.members_with_levels).toLocaleString() : '0');
-	const hasEconomy = $derived(
-		(s.assets_market_value ?? 0) > 0 ||
-			(s.assets_trade_count ?? 0) > 0 ||
-			(s.minigames_plays ?? 0) > 0 ||
-			(s.items_stolen ?? 0) > 0 ||
-			(s.items_gifted ?? 0) > 0
+	const economyRows = $derived(
+		[
+			{ icon: 'fa-chart-line', label: 'XP in market', value: s.assets_market_value },
+			{ icon: 'fa-right-left', label: 'Trades', value: s.assets_trade_count },
+			{ icon: 'fa-users', label: 'Traders', value: s.assets_traders },
+			{ icon: 'fa-cart-shopping', label: 'Items bought', value: s.items_buys },
+			{ icon: 'fa-coins', label: 'XP spent on items', value: s.items_buy_spend },
+			{ icon: 'fa-wand-magic-sparkles', label: 'Item activations', value: s.items_activations },
+			{ icon: 'fa-hand', label: 'XP stolen', value: s.items_stolen },
+			{ icon: 'fa-bomb', label: 'XP bombed', value: s.items_bombed },
+			{ icon: 'fa-gift', label: 'XP gifted', value: s.items_gifted },
+			{ icon: 'fa-crown', label: 'Bounties set', value: s.items_bounties_placed },
+			{ icon: 'fa-magnifying-glass', label: 'Spy reports', value: s.items_spies },
+			{ icon: 'fa-dice', label: 'XP wagered', value: s.minigames_wagered },
+			{ icon: 'fa-gamepad', label: 'Minigame plays', value: s.minigames_plays },
+			{ icon: 'fa-trophy', label: 'Biggest win', value: s.minigames_biggest_win },
+			{ icon: 'fa-gift', label: 'Giveaways hosted', value: s.giveaways_total },
+			{ icon: 'fa-medal', label: 'Giveaway winners', value: s.giveaways_winners },
+			{ icon: 'fa-ticket', label: 'Giveaway entries', value: s.giveaways_entries },
+			{ icon: 'fa-tower-broadcast', label: 'Streams', value: s.streams_total },
+			{ icon: 'fa-eye', label: 'Peak viewers', value: s.streams_peak_viewers },
+			{ icon: 'fa-heart', label: 'Stream likes', value: s.streams_likes },
+			{ icon: 'fa-gem', label: 'Stream gifts', value: s.streams_gifts },
+			{ icon: 'fa-scroll', label: 'Quests enrolled', value: s.quests_enrolled },
+			{ icon: 'fa-award', label: 'Quest rewards', value: s.quests_claimed },
+			{ icon: 'fa-shield-halved', label: 'Staff reviews', value: s.staff_reviews },
+			{ icon: 'fa-comment-dots', label: 'Feedback', value: s.feedback_submissions }
+		].filter((r) => (Number(r.value) || 0) > 0)
 	);
+	const hasEconomy = $derived(economyRows.length > 0);
 
 	const avgVoiceMinutes = $derived(
 		(s.members_with_levels ?? 0) > 0 ? Math.round((s.leveling_total_voice_minutes ?? 0) / s.members_with_levels).toLocaleString() : '0'
@@ -166,15 +189,15 @@
 					<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-yellow-500/15">
 						<i class="fas fa-coins text-lg text-yellow-400"></i>
 					</div>
-					<h3 class="text-ash-100 text-base font-bold">Economy</h3>
+					<h3 class="text-ash-100 text-base font-bold">Activity &amp; economy</h3>
 				</div>
 				<div class="space-y-2">
-					{#each [{ icon: 'fa-chart-line', label: 'XP in market', value: fmt(s.assets_market_value) }, { icon: 'fa-briefcase', label: 'Open positions', value: fmt(s.assets_open_positions) }, { icon: 'fa-right-left', label: 'Trades', value: fmt(s.assets_trade_count) }, { icon: 'fa-dice', label: 'XP wagered', value: fmt(s.minigames_wagered) }, { icon: 'fa-gamepad', label: 'Plays', value: fmt(s.minigames_plays) }, { icon: 'fa-hand', label: 'XP stolen', value: fmt(s.items_stolen) }, { icon: 'fa-gift', label: 'XP gifted', value: fmt(s.items_gifted) }] as row}
+					{#each economyRows as row}
 						<div class="bg-ash-800/50 flex items-center justify-between rounded-lg p-2">
 							<span class="text-ash-300 flex items-center gap-2 text-sm">
 								<i class="fas {row.icon} text-xs text-yellow-400/90"></i>{row.label}
 							</span>
-							<span class="text-ash-100 text-lg font-bold">{row.value}</span>
+							<span class="text-ash-100 text-lg font-bold">{fmt(row.value)}</span>
 						</div>
 					{/each}
 				</div>

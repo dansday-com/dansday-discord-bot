@@ -2319,7 +2319,15 @@ export async function getServerEconomyStats(serverId: any, priceMap: Record<stri
 				COALESCE(SUM(CASE WHEN il.action = 'bomb' THEN 1 ELSE 0 END), 0) AS bomb_attempts,
 				COALESCE(SUM(CASE WHEN il.action = 'spy' THEN 1 ELSE 0 END), 0) AS spies,
 				COALESCE(SUM(CASE WHEN il.action = 'bounty' THEN 1 ELSE 0 END), 0) AS bounties_placed,
-				COALESCE(MAX(CASE WHEN il.action = 'steal' AND il.outcome = 'success' THEN il.xp_amount ELSE 0 END), 0) AS biggest_steal
+				COALESCE(MAX(CASE WHEN il.action = 'steal' AND il.outcome = 'success' THEN il.xp_amount ELSE 0 END), 0) AS biggest_steal,
+				COALESCE(SUM(CASE WHEN il.action = 'buy' THEN 1 ELSE 0 END), 0) AS buys,
+				COALESCE(SUM(CASE WHEN il.action = 'buy' THEN il.xp_amount ELSE 0 END), 0) AS buy_spend,
+				COALESCE(SUM(CASE WHEN il.action = 'gift' THEN 1 ELSE 0 END), 0) AS gifts,
+				COALESCE(SUM(CASE WHEN il.action = 'discard' THEN 1 ELSE 0 END), 0) AS discards,
+				COALESCE(SUM(CASE WHEN il.action NOT IN ('buy','discard','steal','bomb','gift','spy','bounty') THEN 1 ELSE 0 END), 0) AS activations,
+				COALESCE(SUM(CASE WHEN il.action = 'steal' AND il.outcome = 'caught' THEN 1 ELSE 0 END), 0) AS steals_caught,
+				COALESCE(SUM(CASE WHEN il.action = 'steal' AND il.outcome = 'success' THEN 1 ELSE 0 END), 0) AS steals_landed,
+				COUNT(DISTINCT CASE WHEN il.action = 'buy' THEN il.item_id END) AS distinct_items_bought
 			FROM server_member_item_logs il INNER JOIN server_members sm ON sm.id = il.member_id
 			WHERE sm.server_id = ${sid}
 		`)
@@ -2365,7 +2373,125 @@ export async function getServerEconomyStats(serverId: any, priceMap: Record<stri
 		items_bomb_attempts: Number(it.bomb_attempts) || 0,
 		items_spies: Number(it.spies) || 0,
 		items_bounties_placed: Number(it.bounties_placed) || 0,
-		items_biggest_steal: Number(it.biggest_steal) || 0
+		items_biggest_steal: Number(it.biggest_steal) || 0,
+		items_buys: Number(it.buys) || 0,
+		items_buy_spend: Number(it.buy_spend) || 0,
+		items_gifts: Number(it.gifts) || 0,
+		items_discards: Number(it.discards) || 0,
+		items_activations: Number(it.activations) || 0,
+		items_steals_caught: Number(it.steals_caught) || 0,
+		items_steals_landed: Number(it.steals_landed) || 0,
+		items_distinct_bought: Number(it.distinct_items_bought) || 0
+	};
+}
+
+export async function getServerFeatureStats(serverId: any) {
+	await initializeDatabase();
+	const sid = Number(serverId);
+
+	const [giveawayRows, entryRows, streamRows, questRows, bountyRows, staffReviewRows, feedbackRows, afkRows] = await Promise.all([
+		db.execute(sql`
+			SELECT
+				COUNT(*) AS total,
+				COALESCE(SUM(CASE WHEN g.status = 'active' THEN 1 ELSE 0 END), 0) AS active,
+				COALESCE(SUM(CASE WHEN g.winners_announced = 1 THEN g.winner_count ELSE 0 END), 0) AS winners
+			FROM server_member_giveaways g INNER JOIN server_members sm ON sm.id = g.member_id
+			WHERE sm.server_id = ${sid}
+		`),
+		db.execute(sql`
+			SELECT
+				COUNT(DISTINCT e.member_id) AS unique_entrants,
+				COALESCE(SUM(e.entry_count), 0) AS total_entries
+			FROM server_member_giveaway_entries e
+			INNER JOIN server_member_giveaways g ON g.id = e.giveaway_id
+			INNER JOIN server_members sm ON sm.id = g.member_id
+			WHERE sm.server_id = ${sid}
+		`),
+		db.execute(sql`
+			SELECT
+				COUNT(*) AS total_streams,
+				COUNT(DISTINCT s.member_id) AS creators,
+				COALESCE(SUM(CASE WHEN s.status = 'live' THEN 1 ELSE 0 END), 0) AS live_now,
+				COALESCE(MAX(s.peak_viewers), 0) AS peak_viewers,
+				COALESCE(SUM(s.total_likes), 0) AS likes,
+				COALESCE(SUM(s.total_chat_messages), 0) AS chat_messages,
+				COALESCE(SUM(s.total_gifts), 0) AS gifts,
+				COALESCE(SUM(s.total_follows), 0) AS follows,
+				COALESCE(SUM(s.total_shares), 0) AS shares,
+				COALESCE(SUM(s.unique_chatters), 0) AS unique_chatters
+			FROM server_member_content_creator_streams s INNER JOIN server_members sm ON sm.id = s.member_id
+			WHERE sm.server_id = ${sid}
+		`),
+		db.execute(sql`
+			SELECT
+				COUNT(*) AS enrolled,
+				COALESCE(SUM(CASE WHEN q.reward_claimed = 1 THEN 1 ELSE 0 END), 0) AS claimed,
+				COUNT(DISTINCT q.member_id) AS participants
+			FROM server_member_discord_quests q INNER JOIN server_members sm ON sm.id = q.member_id
+			WHERE sm.server_id = ${sid}
+		`),
+		db.execute(sql`
+			SELECT
+				COUNT(*) AS placed,
+				COALESCE(SUM(CASE WHEN b.collected = 1 THEN 1 ELSE 0 END), 0) AS collected,
+				COALESCE(SUM(b.amount), 0) AS pooled
+			FROM server_member_item_bounties b INNER JOIN server_members sm ON sm.id = b.placed_by_member_id
+			WHERE sm.server_id = ${sid}
+		`),
+		db.execute(sql`
+			SELECT
+				COUNT(*) AS reviews,
+				COALESCE(AVG(r.rating), 0) AS avg_rating
+			FROM server_member_staff_rating_reviews r INNER JOIN server_members sm ON sm.id = r.reporter_member_id
+			WHERE sm.server_id = ${sid}
+		`),
+		db.execute(sql`
+			SELECT COUNT(*) AS submissions
+			FROM server_member_feedbacks f INNER JOIN server_members sm ON sm.id = f.member_id
+			WHERE sm.server_id = ${sid}
+		`),
+		db.execute(sql`
+			SELECT COUNT(*) AS active
+			FROM server_member_afks a INNER JOIN server_members sm ON sm.id = a.member_id
+			WHERE sm.server_id = ${sid}
+		`)
+	]);
+
+	const gv = (giveawayRows[0] as unknown as any[])[0] || {};
+	const en = (entryRows[0] as unknown as any[])[0] || {};
+	const st = (streamRows[0] as unknown as any[])[0] || {};
+	const qs = (questRows[0] as unknown as any[])[0] || {};
+	const bn = (bountyRows[0] as unknown as any[])[0] || {};
+	const sr = (staffReviewRows[0] as unknown as any[])[0] || {};
+	const fb = (feedbackRows[0] as unknown as any[])[0] || {};
+	const af = (afkRows[0] as unknown as any[])[0] || {};
+
+	return {
+		giveaways_total: Number(gv.total) || 0,
+		giveaways_active: Number(gv.active) || 0,
+		giveaways_winners: Number(gv.winners) || 0,
+		giveaways_entrants: Number(en.unique_entrants) || 0,
+		giveaways_entries: Number(en.total_entries) || 0,
+		streams_total: Number(st.total_streams) || 0,
+		streams_creators: Number(st.creators) || 0,
+		streams_live_now: Number(st.live_now) || 0,
+		streams_peak_viewers: Number(st.peak_viewers) || 0,
+		streams_likes: Number(st.likes) || 0,
+		streams_chat_messages: Number(st.chat_messages) || 0,
+		streams_gifts: Number(st.gifts) || 0,
+		streams_follows: Number(st.follows) || 0,
+		streams_shares: Number(st.shares) || 0,
+		streams_unique_chatters: Number(st.unique_chatters) || 0,
+		quests_enrolled: Number(qs.enrolled) || 0,
+		quests_claimed: Number(qs.claimed) || 0,
+		quests_participants: Number(qs.participants) || 0,
+		bounties_placed: Number(bn.placed) || 0,
+		bounties_collected: Number(bn.collected) || 0,
+		bounties_pooled: Number(bn.pooled) || 0,
+		staff_reviews: Number(sr.reviews) || 0,
+		staff_avg_rating: Math.round((Number(sr.avg_rating) || 0) * 10) / 10,
+		feedback_submissions: Number(fb.submissions) || 0,
+		afk_active: Number(af.active) || 0
 	};
 }
 
@@ -2825,7 +2951,10 @@ export async function getServerOverview(serverId: any, opts?: { forPublicPage?: 
 		]);
 	}
 
-	const economy = await getServerEconomyStats(serverId, opts?.priceMap ?? {}).catch(() => null);
+	const [economy, features] = await Promise.all([
+		getServerEconomyStats(serverId, opts?.priceMap ?? {}).catch(() => null),
+		getServerFeatureStats(serverId).catch(() => null)
+	]);
 
 	const r = (raw: any, idx = 0) => (raw[0] as unknown as any[])[idx] || {};
 
@@ -2856,7 +2985,8 @@ export async function getServerOverview(serverId: any, opts?: { forPublicPage?: 
 		leveling_total_voice_afk: r(levelingStats).total_voice_afk || 0,
 		leveling_total_voice_video: r(levelingStats).total_voice_video || 0,
 		leveling_total_voice_streaming: r(levelingStats).total_voice_streaming || 0,
-		...(economy ?? {})
+		...(economy ?? {}),
+		...(features ?? {})
 	};
 
 	if (forPublic) {
@@ -4755,6 +4885,7 @@ export default {
 	getPanelOverview,
 	getServerOverview,
 	getServerEconomyStats,
+	getServerFeatureStats,
 	updateCustomRoleFlags,
 	memberHasCustomSupporterRole,
 	getServerSettings,

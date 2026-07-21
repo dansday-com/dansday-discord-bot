@@ -30,18 +30,66 @@
 			: '0'
 	);
 
-	const hasEconomy = $derived(
-		(liveStats.assets_market_value ?? 0) > 0 ||
-			(liveStats.assets_trade_count ?? 0) > 0 ||
-			(liveStats.minigames_plays ?? 0) > 0 ||
+	const hasMarket = $derived((liveStats.assets_market_value ?? 0) > 0 || (liveStats.assets_trade_count ?? 0) > 0);
+	const hasItems = $derived(
+		(liveStats.items_buys ?? 0) > 0 ||
 			(liveStats.items_steal_attempts ?? 0) > 0 ||
 			(liveStats.items_bomb_attempts ?? 0) > 0 ||
-			(liveStats.items_gifted ?? 0) > 0
+			(liveStats.items_gifts ?? 0) > 0 ||
+			(liveStats.items_spies ?? 0) > 0 ||
+			(liveStats.items_bounties_placed ?? 0) > 0
+	);
+	const hasMinigames = $derived((liveStats.minigames_plays ?? 0) > 0);
+	const hasGiveaways = $derived((liveStats.giveaways_total ?? 0) > 0);
+	const hasStreams = $derived((liveStats.streams_total ?? 0) > 0);
+	const hasQuests = $derived((liveStats.quests_enrolled ?? 0) > 0);
+	const hasStaffFeedback = $derived((liveStats.staff_reviews ?? 0) > 0 || (liveStats.feedback_submissions ?? 0) > 0 || (liveStats.afk_active ?? 0) > 0);
+
+	const stealHitRate = $derived(
+		(liveStats.items_steal_attempts ?? 0) > 0 ? Math.round((Number(liveStats.items_steals_landed) / Number(liveStats.items_steal_attempts)) * 100) : 0
 	);
 
 	const minigamesWinRate = $derived(
 		(liveStats.minigames_plays ?? 0) > 0 ? Math.round((Number(liveStats.minigames_wins) / Number(liveStats.minigames_plays)) * 100) : 0
 	);
+
+	function pct(part: number | null | undefined, whole: number | null | undefined): number {
+		const w = Number(whole) || 0;
+		if (w <= 0) return 0;
+		return Math.min(100, Math.max(0, (Number(part) / w) * 100));
+	}
+
+	const marketFlow = $derived.by(() => {
+		const inn = Math.max(0, Number(liveStats.assets_buy_volume) || 0);
+		const out = Math.max(0, Number(liveStats.assets_sell_volume) || 0);
+		const t = inn + out;
+		if (t <= 0) return { inPct: 0, outPct: 0, empty: true };
+		return { inPct: (inn / t) * 100, outPct: (out / t) * 100, empty: false };
+	});
+
+	const marketProfit = $derived(Number(liveStats.assets_realized_net) || 0);
+
+	const heistMix = $derived.by(() => {
+		const landed = Math.max(0, Number(liveStats.items_steals_landed) || 0);
+		const caught = Math.max(0, Number(liveStats.items_steals_caught) || 0);
+		const t = landed + caught;
+		if (t <= 0) return { landedPct: 0, caughtPct: 0, empty: true };
+		return { landedPct: (landed / t) * 100, caughtPct: (caught / t) * 100, empty: false };
+	});
+
+	const giveawayClaimPct = $derived(pct(liveStats.giveaways_winners, liveStats.giveaways_entrants));
+	const questClaimPct = $derived(pct(liveStats.quests_claimed, liveStats.quests_enrolled));
+	const staffRatingPct = $derived(pct(liveStats.staff_avg_rating, 5));
+
+	const streamEngage = $derived.by(() => {
+		const likes = Math.max(0, Number(liveStats.streams_likes) || 0);
+		const chat = Math.max(0, Number(liveStats.streams_chat_messages) || 0);
+		const gifts = Math.max(0, Number(liveStats.streams_gifts) || 0);
+		const shares = Math.max(0, Number(liveStats.streams_shares) || 0);
+		const t = likes + chat + gifts + shares;
+		if (t <= 0) return { likePct: 0, chatPct: 0, giftPct: 0, sharePct: 0, empty: true };
+		return { likePct: (likes / t) * 100, chatPct: (chat / t) * 100, giftPct: (gifts / t) * 100, sharePct: (shares / t) * 100, empty: false };
+	});
 
 	const avgVoiceMinutes = $derived(
 		(liveStats.members_with_levels ?? 0) > 0
@@ -405,78 +453,325 @@
 		</div>
 	</div>
 
-	{#if hasEconomy}
+	{#if hasMarket}
 		<div class="m-stat-card m-overview-card">
 			<div class="m-stat-card-head">
-				<div class="m-stat-card-icon m-chili-stat-1">
-					<i class="fas fa-coins"></i>
-				</div>
-				<h2 class="m-stat-card-title">Economy</h2>
+				<div class="m-stat-card-icon m-chili-stat-1"><i class="fas fa-chart-line"></i></div>
+				<h2 class="m-stat-card-title">Market</h2>
 			</div>
-
-			{#if liveStats.assets_market_value > 0 || liveStats.assets_trade_count > 0}
-				<div class="m-overview-hero">
-					<p class="m-overview-hero-label">XP in the market</p>
-					<p class="m-overview-hero-value">{fmt(liveStats.assets_market_value)}</p>
+			<div class="m-overview-hero">
+				<p class="m-overview-hero-label">XP in the market</p>
+				<p class="m-overview-hero-value">{fmt(liveStats.assets_market_value)}</p>
+				<p class="m-overview-hero-hint m-hero-trend" class:m-hero-trend--up={marketProfit >= 0} class:m-hero-trend--down={marketProfit < 0}>
+					<i class="fas {marketProfit >= 0 ? 'fa-arrow-trend-up' : 'fa-arrow-trend-down'}"></i>
+					{marketProfit >= 0 ? '+' : '−'}{fmt(Math.abs(marketProfit))} XP realized P/L
+				</p>
+			</div>
+			<div class="m-bar-block">
+				<div class="m-bar-head">
+					<span>Capital flow</span>
+					<span class="m-bar-meta">In · Out</span>
 				</div>
-				<div class="m-mini-grid">
-					<div class="m-mini">
-						<i class="fas fa-briefcase"></i>
-						<span class="m-mini-value">{fmt(liveStats.assets_open_positions)}</span>
-						<span class="m-mini-label">Open positions</span>
+				{#if marketFlow.empty}
+					<div class="m-level-meter-track m-level-meter-track--empty m-bar-empty"><span>No trades yet</span></div>
+				{:else}
+					<div class="m-seg-bar" title="XP bought in vs cashed out">
+						<div class="m-seg m-seg--a" style="width: {marketFlow.inPct}%"></div>
+						<div class="m-seg m-seg--b" style="width: {marketFlow.outPct}%"></div>
 					</div>
-					<div class="m-mini">
-						<i class="fas fa-users"></i>
-						<span class="m-mini-value">{fmt(liveStats.assets_traders)}</span>
-						<span class="m-mini-label">Traders</span>
+					<div class="m-legend">
+						<span><i class="fas fa-circle"></i> Bought in {fmt(liveStats.assets_buy_volume)}</span>
+						<span><i class="fas fa-circle"></i> Cashed out {fmt(liveStats.assets_sell_volume)}</span>
 					</div>
-					<div class="m-mini">
-						<i class="fas fa-right-left"></i>
-						<span class="m-mini-value">{fmt(liveStats.assets_trade_count)}</span>
-						<span class="m-mini-label">Trades</span>
+				{/if}
+			</div>
+			<div class="m-mini-grid">
+				<div class="m-mini">
+					<i class="fas fa-right-left"></i>
+					<span class="m-mini-value">{fmt(liveStats.assets_trade_count)}</span>
+					<span class="m-mini-label">Trades</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-users"></i>
+					<span class="m-mini-value">{fmt(liveStats.assets_traders)}</span>
+					<span class="m-mini-label">Traders</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-briefcase"></i>
+					<span class="m-mini-value">{fmt(liveStats.assets_open_positions)}</span>
+					<span class="m-mini-label">Open assets</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-arrow-up-from-bracket"></i>
+					<span class="m-mini-value">{fmt(liveStats.assets_buy_volume)}</span>
+					<span class="m-mini-label">XP bought in</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-arrow-down-to-bracket"></i>
+					<span class="m-mini-value">{fmt(liveStats.assets_sell_volume)}</span>
+					<span class="m-mini-label">XP cashed out</span>
+				</div>
+			</div>
+		</div>
+	{/if}
+
+	{#if hasItems}
+		<div class="m-stat-card m-overview-card">
+			<div class="m-stat-card-head">
+				<div class="m-stat-card-icon m-chili-stat-2"><i class="fas fa-bag-shopping"></i></div>
+				<h2 class="m-stat-card-title">Items</h2>
+			</div>
+			<div class="m-overview-hero">
+				<p class="m-overview-hero-label">Items bought</p>
+				<p class="m-overview-hero-value">{fmt(liveStats.items_buys)}</p>
+				<p class="m-overview-hero-hint">{fmt(liveStats.items_buy_spend)} XP spent across {fmt(liveStats.items_distinct_bought)} unique items</p>
+			</div>
+			<div class="m-bar-block">
+				<div class="m-bar-head">
+					<span>Heist outcomes</span>
+					<span class="m-bar-meta">{stealHitRate}% success</span>
+				</div>
+				{#if heistMix.empty}
+					<div class="m-level-meter-track m-level-meter-track--empty m-bar-empty"><span>No heists attempted</span></div>
+				{:else}
+					<div class="m-seg-bar" title="Successful steals vs caught">
+						<div class="m-seg m-seg--a" style="width: {heistMix.landedPct}%"></div>
+						<div class="m-seg m-seg--b" style="width: {heistMix.caughtPct}%"></div>
+					</div>
+					<div class="m-legend">
+						<span><i class="fas fa-circle"></i> Landed {fmt(liveStats.items_steals_landed)}</span>
+						<span><i class="fas fa-circle"></i> Caught {fmt(liveStats.items_steals_caught)}</span>
+					</div>
+				{/if}
+			</div>
+			<div class="m-mini-grid">
+				<div class="m-mini">
+					<i class="fas fa-wand-magic-sparkles"></i>
+					<span class="m-mini-value">{fmt(liveStats.items_activations)}</span>
+					<span class="m-mini-label">Activations</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-hand"></i>
+					<span class="m-mini-value">{fmt(liveStats.items_stolen)}</span>
+					<span class="m-mini-label">XP stolen</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-bomb"></i>
+					<span class="m-mini-value">{fmt(liveStats.items_bombed)}</span>
+					<span class="m-mini-label">XP bombed</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-gift"></i>
+					<span class="m-mini-value">{fmt(liveStats.items_gifted)}</span>
+					<span class="m-mini-label">XP gifted</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-magnifying-glass"></i>
+					<span class="m-mini-value">{fmt(liveStats.items_spies)}</span>
+					<span class="m-mini-label">Spy reports</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-crown"></i>
+					<span class="m-mini-value">{fmt(liveStats.items_bounties_placed)}</span>
+					<span class="m-mini-label">Bounties set</span>
+				</div>
+			</div>
+		</div>
+	{/if}
+
+	{#if hasMinigames}
+		<div class="m-stat-card m-overview-card">
+			<div class="m-stat-card-head">
+				<div class="m-stat-card-icon m-chili-stat-3"><i class="fas fa-dice"></i></div>
+				<h2 class="m-stat-card-title">Minigames</h2>
+			</div>
+			<div class="m-overview-hero">
+				<p class="m-overview-hero-label">XP wagered</p>
+				<p class="m-overview-hero-value">{fmt(liveStats.minigames_wagered)}</p>
+				<p class="m-overview-hero-hint">{fmt(liveStats.minigames_plays)} plays · {fmt(liveStats.minigames_paid_out)} XP paid out</p>
+			</div>
+			<div class="m-bar-block">
+				<div class="m-bar-head">
+					<span>Player win rate</span>
+					<span class="m-bar-meta">{minigamesWinRate}%</span>
+				</div>
+				<div class="m-level-meter-track">
+					<div class="m-level-meter-fill m-level-meter-fill--avg" style="width: {Math.max(4, minigamesWinRate)}%"></div>
+				</div>
+			</div>
+			<div class="m-mini-grid">
+				<div class="m-mini">
+					<i class="fas fa-trophy"></i>
+					<span class="m-mini-value">{fmt(liveStats.minigames_biggest_win)}</span>
+					<span class="m-mini-label">Biggest win</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-scale-balanced"></i>
+					<span class="m-mini-value">{liveStats.minigames_net <= 0 ? '+' : '−'}{fmt(Math.abs(liveStats.minigames_net))}</span>
+					<span class="m-mini-label">House edge</span>
+				</div>
+			</div>
+		</div>
+	{/if}
+
+	{#if hasGiveaways}
+		<div class="m-stat-card m-overview-card">
+			<div class="m-stat-card-head">
+				<div class="m-stat-card-icon m-chili-stat-4"><i class="fas fa-gift"></i></div>
+				<h2 class="m-stat-card-title">Giveaways</h2>
+			</div>
+			<div class="m-overview-hero">
+				<p class="m-overview-hero-label">Giveaways hosted</p>
+				<p class="m-overview-hero-value">{fmt(liveStats.giveaways_total)}</p>
+				<p class="m-overview-hero-hint">{fmt(liveStats.giveaways_entries)} entries from {fmt(liveStats.giveaways_entrants)} members</p>
+			</div>
+			<div class="m-bar-block">
+				<div class="m-bar-head">
+					<span>Odds of winning</span>
+					<span class="m-bar-meta">{giveawayClaimPct.toFixed(1)}%</span>
+				</div>
+				{#if liveStats.giveaways_entrants > 0}
+					<div class="m-level-meter-track">
+						<div class="m-level-meter-fill m-level-meter-fill--avg" style="width: {Math.max(4, giveawayClaimPct)}%"></div>
+					</div>
+				{:else}
+					<div class="m-level-meter-track m-level-meter-track--empty m-bar-empty"><span>No entrants yet</span></div>
+				{/if}
+			</div>
+			<div class="m-mini-grid">
+				<div class="m-mini">
+					<i class="fas fa-medal"></i>
+					<span class="m-mini-value">{fmt(liveStats.giveaways_winners)}</span>
+					<span class="m-mini-label">Winners drawn</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-hourglass-half"></i>
+					<span class="m-mini-value">{fmt(liveStats.giveaways_active)}</span>
+					<span class="m-mini-label">Running now</span>
+				</div>
+			</div>
+		</div>
+	{/if}
+
+	{#if hasStreams}
+		<div class="m-stat-card m-overview-card">
+			<div class="m-stat-card-head">
+				<div class="m-stat-card-icon m-chili-stat-5"><i class="fas fa-tower-broadcast"></i></div>
+				<h2 class="m-stat-card-title">Content creators</h2>
+			</div>
+			<div class="m-overview-hero">
+				<p class="m-overview-hero-label">Streams broadcast</p>
+				<p class="m-overview-hero-value">{fmt(liveStats.streams_total)}</p>
+				<p class="m-overview-hero-hint">{fmt(liveStats.streams_creators)} creators · {fmt(liveStats.streams_peak_viewers)} peak viewers</p>
+			</div>
+			<div class="m-bar-block">
+				<div class="m-bar-head">
+					<span>Engagement mix</span>
+					<span class="m-bar-meta">Likes · Chat · Gifts · Shares</span>
+				</div>
+				{#if streamEngage.empty}
+					<div class="m-level-meter-track m-level-meter-track--empty m-bar-empty"><span>No engagement yet</span></div>
+				{:else}
+					<div class="m-seg-bar m-seg-bar--3" title="Stream engagement breakdown">
+						<div class="m-seg m-seg--text" style="width: {streamEngage.likePct}%"></div>
+						<div class="m-seg m-seg--voice" style="width: {streamEngage.chatPct}%"></div>
+						<div class="m-seg m-seg--other" style="width: {streamEngage.giftPct}%"></div>
+						<div class="m-seg m-seg--b" style="width: {streamEngage.sharePct}%"></div>
+					</div>
+					<div class="m-legend m-legend--3">
+						<span><i class="fas fa-circle"></i> Likes {fmt(liveStats.streams_likes)}</span>
+						<span><i class="fas fa-circle"></i> Chat {fmt(liveStats.streams_chat_messages)}</span>
+						<span><i class="fas fa-circle"></i> Gifts {fmt(liveStats.streams_gifts)}</span>
+					</div>
+				{/if}
+			</div>
+			<div class="m-mini-grid">
+				<div class="m-mini">
+					<i class="fas fa-user-plus"></i>
+					<span class="m-mini-value">{fmt(liveStats.streams_follows)}</span>
+					<span class="m-mini-label">Follows</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-share-nodes"></i>
+					<span class="m-mini-value">{fmt(liveStats.streams_shares)}</span>
+					<span class="m-mini-label">Shares</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-user-group"></i>
+					<span class="m-mini-value">{fmt(liveStats.streams_unique_chatters)}</span>
+					<span class="m-mini-label">Chatters</span>
+				</div>
+			</div>
+		</div>
+	{/if}
+
+	{#if hasQuests}
+		<div class="m-stat-card m-overview-card">
+			<div class="m-stat-card-head">
+				<div class="m-stat-card-icon m-chili-stat-1"><i class="fas fa-scroll"></i></div>
+				<h2 class="m-stat-card-title">Quests</h2>
+			</div>
+			<div class="m-overview-hero">
+				<p class="m-overview-hero-label">Quests enrolled</p>
+				<p class="m-overview-hero-value">{fmt(liveStats.quests_enrolled)}</p>
+			</div>
+			<div class="m-bar-block">
+				<div class="m-bar-head">
+					<span>Rewards claimed</span>
+					<span class="m-bar-meta">{questClaimPct.toFixed(0)}%</span>
+				</div>
+				<div class="m-level-meter-track">
+					<div class="m-level-meter-fill m-level-meter-fill--avg" style="width: {Math.max(4, questClaimPct)}%"></div>
+				</div>
+			</div>
+			<div class="m-mini-grid">
+				<div class="m-mini">
+					<i class="fas fa-award"></i>
+					<span class="m-mini-value">{fmt(liveStats.quests_claimed)}</span>
+					<span class="m-mini-label">Rewards claimed</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-users"></i>
+					<span class="m-mini-value">{fmt(liveStats.quests_participants)}</span>
+					<span class="m-mini-label">Participants</span>
+				</div>
+			</div>
+		</div>
+	{/if}
+
+	{#if hasStaffFeedback}
+		<div class="m-stat-card m-overview-card">
+			<div class="m-stat-card-head">
+				<div class="m-stat-card-icon m-chili-stat-2"><i class="fas fa-shield-halved"></i></div>
+				<h2 class="m-stat-card-title">Staff &amp; feedback</h2>
+			</div>
+			<div class="m-overview-hero">
+				<p class="m-overview-hero-label">Staff reviews</p>
+				<p class="m-overview-hero-value">{fmt(liveStats.staff_reviews)}</p>
+			</div>
+			{#if liveStats.staff_reviews > 0}
+				<div class="m-bar-block">
+					<div class="m-bar-head">
+						<span>Average staff rating</span>
+						<span class="m-bar-meta">{liveStats.staff_avg_rating || '—'} / 5</span>
+					</div>
+					<div class="m-level-meter-track">
+						<div class="m-level-meter-fill m-level-meter-fill--avg" style="width: {Math.max(4, staffRatingPct)}%"></div>
 					</div>
 				</div>
 			{/if}
-
-			{#if liveStats.minigames_plays > 0}
-				<div class="m-mini-grid">
-					<div class="m-mini">
-						<i class="fas fa-dice"></i>
-						<span class="m-mini-value">{fmt(liveStats.minigames_wagered)}</span>
-						<span class="m-mini-label">XP wagered</span>
-					</div>
-					<div class="m-mini">
-						<i class="fas fa-percent"></i>
-						<span class="m-mini-value">{minigamesWinRate}%</span>
-						<span class="m-mini-label">Win rate</span>
-					</div>
-					<div class="m-mini">
-						<i class="fas fa-trophy"></i>
-						<span class="m-mini-value">{fmt(liveStats.minigames_biggest_win)}</span>
-						<span class="m-mini-label">Biggest win</span>
-					</div>
+			<div class="m-mini-grid">
+				<div class="m-mini">
+					<i class="fas fa-comment-dots"></i>
+					<span class="m-mini-value">{fmt(liveStats.feedback_submissions)}</span>
+					<span class="m-mini-label">Feedback</span>
 				</div>
-			{/if}
-
-			{#if liveStats.items_steal_attempts > 0 || liveStats.items_bomb_attempts > 0 || liveStats.items_gifted > 0}
-				<div class="m-mini-grid">
-					<div class="m-mini">
-						<i class="fas fa-hand"></i>
-						<span class="m-mini-value">{fmt(liveStats.items_stolen)}</span>
-						<span class="m-mini-label">XP stolen</span>
-					</div>
-					<div class="m-mini">
-						<i class="fas fa-bomb"></i>
-						<span class="m-mini-value">{fmt(liveStats.items_bombed)}</span>
-						<span class="m-mini-label">XP bombed</span>
-					</div>
-					<div class="m-mini">
-						<i class="fas fa-gift"></i>
-						<span class="m-mini-value">{fmt(liveStats.items_gifted)}</span>
-						<span class="m-mini-label">XP gifted</span>
-					</div>
+				<div class="m-mini">
+					<i class="fas fa-moon"></i>
+					<span class="m-mini-value">{fmt(liveStats.afk_active)}</span>
+					<span class="m-mini-label">AFK now</span>
 				</div>
-			{/if}
+			</div>
 		</div>
 	{/if}
 </div>

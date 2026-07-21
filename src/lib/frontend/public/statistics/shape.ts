@@ -45,6 +45,39 @@ export type PublicPageStats = {
 	items_spies: number;
 	items_bounties_placed: number;
 	items_biggest_steal: number;
+	items_buys: number;
+	items_buy_spend: number;
+	items_gifts: number;
+	items_discards: number;
+	items_activations: number;
+	items_steals_caught: number;
+	items_steals_landed: number;
+	items_distinct_bought: number;
+	giveaways_total: number;
+	giveaways_active: number;
+	giveaways_winners: number;
+	giveaways_entrants: number;
+	giveaways_entries: number;
+	streams_total: number;
+	streams_creators: number;
+	streams_live_now: number;
+	streams_peak_viewers: number;
+	streams_likes: number;
+	streams_chat_messages: number;
+	streams_gifts: number;
+	streams_follows: number;
+	streams_shares: number;
+	streams_unique_chatters: number;
+	quests_enrolled: number;
+	quests_claimed: number;
+	quests_participants: number;
+	bounties_placed: number;
+	bounties_collected: number;
+	bounties_pooled: number;
+	staff_reviews: number;
+	staff_avg_rating: number;
+	feedback_submissions: number;
+	afk_active: number;
 };
 
 export function shapePublicStatisticsFromOverview(overview: Record<string, unknown> | null | undefined): {
@@ -102,7 +135,40 @@ export function shapePublicStatisticsFromOverview(overview: Record<string, unkno
 			items_bomb_attempts: Number(s.items_bomb_attempts ?? 0),
 			items_spies: Number(s.items_spies ?? 0),
 			items_bounties_placed: Number(s.items_bounties_placed ?? 0),
-			items_biggest_steal: Number(s.items_biggest_steal ?? 0)
+			items_biggest_steal: Number(s.items_biggest_steal ?? 0),
+			items_buys: Number(s.items_buys ?? 0),
+			items_buy_spend: Number(s.items_buy_spend ?? 0),
+			items_gifts: Number(s.items_gifts ?? 0),
+			items_discards: Number(s.items_discards ?? 0),
+			items_activations: Number(s.items_activations ?? 0),
+			items_steals_caught: Number(s.items_steals_caught ?? 0),
+			items_steals_landed: Number(s.items_steals_landed ?? 0),
+			items_distinct_bought: Number(s.items_distinct_bought ?? 0),
+			giveaways_total: Number(s.giveaways_total ?? 0),
+			giveaways_active: Number(s.giveaways_active ?? 0),
+			giveaways_winners: Number(s.giveaways_winners ?? 0),
+			giveaways_entrants: Number(s.giveaways_entrants ?? 0),
+			giveaways_entries: Number(s.giveaways_entries ?? 0),
+			streams_total: Number(s.streams_total ?? 0),
+			streams_creators: Number(s.streams_creators ?? 0),
+			streams_live_now: Number(s.streams_live_now ?? 0),
+			streams_peak_viewers: Number(s.streams_peak_viewers ?? 0),
+			streams_likes: Number(s.streams_likes ?? 0),
+			streams_chat_messages: Number(s.streams_chat_messages ?? 0),
+			streams_gifts: Number(s.streams_gifts ?? 0),
+			streams_follows: Number(s.streams_follows ?? 0),
+			streams_shares: Number(s.streams_shares ?? 0),
+			streams_unique_chatters: Number(s.streams_unique_chatters ?? 0),
+			quests_enrolled: Number(s.quests_enrolled ?? 0),
+			quests_claimed: Number(s.quests_claimed ?? 0),
+			quests_participants: Number(s.quests_participants ?? 0),
+			bounties_placed: Number(s.bounties_placed ?? 0),
+			bounties_collected: Number(s.bounties_collected ?? 0),
+			bounties_pooled: Number(s.bounties_pooled ?? 0),
+			staff_reviews: Number(s.staff_reviews ?? 0),
+			staff_avg_rating: Number(s.staff_avg_rating ?? 0),
+			feedback_submissions: Number(s.feedback_submissions ?? 0),
+			afk_active: Number(s.afk_active ?? 0)
 		},
 		boost_level: Number(boostLevel)
 	};

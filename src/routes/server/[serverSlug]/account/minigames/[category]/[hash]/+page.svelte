@@ -17,7 +17,7 @@
 			category: 'gamble',
 			icon: 'fa-dice',
 			name: 'Gamble',
-			desc: 'Pick your own multiplier and take the odds. Fair chance = 100 ÷ multiplier.',
+			desc: 'Set your multiplier, take the odds.',
 			accent: '#c8911a'
 		}
 	];

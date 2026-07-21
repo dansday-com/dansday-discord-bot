@@ -844,6 +844,24 @@ export const serverMemberItemLogs = mysqlTable(
 	]
 );
 
+export const serverMemberMinigameLogs = mysqlTable(
+	'server_member_minigame_logs',
+	{
+		id: bigint('id', { mode: 'bigint' }).primaryKey().autoincrement(),
+		member_id: int('member_id')
+			.notNull()
+			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		game: varchar('game', { length: 24 }).notNull().default('gamble'),
+		multiplier: decimal('multiplier', { precision: 6, scale: 2 }).notNull().default('2'),
+		wager: int('wager').notNull().default(0),
+		payout: int('payout').notNull().default(0),
+		xp_amount: int('xp_amount').notNull().default(0),
+		outcome: varchar('outcome', { length: 16 }).notNull(),
+		created_at: datetime('created_at').notNull()
+	},
+	(t) => [index('idx_server_member_minigame_logs_member').on(t.member_id, t.created_at), index('idx_server_member_minigame_logs_created').on(t.created_at)]
+);
+
 export const serverMemberLevelLogs = mysqlTable(
 	'server_member_level_logs',
 	{

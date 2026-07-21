@@ -148,6 +148,13 @@ export async function execute(interaction: any, client: any) {
 			ITEMS_CHANNEL_ID: channelMap['items']
 		});
 
+		const minigamesRaw = (await getSettings(SERVER_SETTINGS.component.minigames)) || {};
+		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.minigames, {
+			enabled: true,
+			...minigamesRaw,
+			MINIGAMES_CHANNEL_ID: channelMap['minigames']
+		});
+
 		const welcRaw = (await getSettings(SERVER_SETTINGS.component.welcomer)) || {};
 		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.welcomer, {
 			enabled: true,

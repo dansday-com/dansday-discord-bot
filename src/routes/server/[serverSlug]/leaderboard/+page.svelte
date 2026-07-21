@@ -8,14 +8,14 @@
 	type Metric = typeof data.metric;
 	type Period = typeof data.period;
 
-	const GAMBLER_METRICS: Metric[] = ['items_gamble_net', 'items_gamble_ratio', 'items_gamble_big'];
+	const MINIGAMES_METRICS: Metric[] = ['minigames_gamble_net', 'minigames_gamble_ratio', 'minigames_gamble_big'];
 	const BOUNTY_METRICS: Metric[] = ['items_bounty_total', 'items_bounty_claimer', 'items_bounty_give'];
 	const STEAL_METRICS: Metric[] = ['items_steal_total', 'items_steal_rate', 'items_steal_big'];
 	const BOMB_METRICS: Metric[] = ['items_bomb_total', 'items_bomb_rate', 'items_bomb_big'];
 	const GIFT_METRICS: Metric[] = ['items_gift_give', 'items_gift_receive'];
-	const ITEMS_METRICS: Metric[] = [...GAMBLER_METRICS, ...BOUNTY_METRICS, ...STEAL_METRICS, ...BOMB_METRICS, ...GIFT_METRICS];
+	const ITEMS_METRICS: Metric[] = [...BOUNTY_METRICS, ...STEAL_METRICS, ...BOMB_METRICS, ...GIFT_METRICS];
 	const VOICE_METRICS: Metric[] = ['voice_total', 'voice_active', 'voice_afk'];
-	const METRICS: Metric[] = ['xp', 'chat', ...VOICE_METRICS, 'video', 'streaming', ...ITEMS_METRICS];
+	const METRICS: Metric[] = ['xp', 'chat', ...VOICE_METRICS, 'video', 'streaming', ...ITEMS_METRICS, ...MINIGAMES_METRICS];
 	const PERIODS: { id: Period; label: string }[] = [
 		{ id: 'all', label: 'All time' },
 		{ id: 'month', label: 'This month' },
@@ -33,7 +33,7 @@
 
 	const isVoiceGroup = $derived(VOICE_METRICS.includes(metric));
 	const isItemsGroup = $derived(ITEMS_METRICS.includes(metric));
-	const isGamblerGroup = $derived(GAMBLER_METRICS.includes(metric));
+	const isMinigamesGroup = $derived(MINIGAMES_METRICS.includes(metric));
 	const isBountyGroup = $derived(BOUNTY_METRICS.includes(metric));
 	const isStealGroup = $derived(STEAL_METRICS.includes(metric));
 	const isBombGroup = $derived(BOMB_METRICS.includes(metric));
@@ -65,9 +65,9 @@
 		if (m === 'voice_afk') return 'Voice (AFK)';
 		if (m === 'video') return 'Video';
 		if (m === 'streaming') return 'Streaming';
-		if (m === 'items_gamble_net') return 'Gambler — Win XP';
-		if (m === 'items_gamble_ratio') return 'Gambler — Win ratio';
-		if (m === 'items_gamble_big') return 'Gambler — Big win';
+		if (m === 'minigames_gamble_net') return 'Minigames — Gamble — Net XP';
+		if (m === 'minigames_gamble_ratio') return 'Minigames — Gamble — Win ratio';
+		if (m === 'minigames_gamble_big') return 'Minigames — Gamble — Big win';
 		if (m === 'items_bounty_total') return 'Bounties — Total bounties';
 		if (m === 'items_bounty_claimer') return 'Bounties — Claimer';
 		if (m === 'items_bounty_give') return 'Bounties — Giver';
@@ -89,9 +89,9 @@
 		if (m === 'voice_afk') return Number(r.voice_minutes_afk || 0);
 		if (m === 'video') return Number(r.voice_minutes_video || 0);
 		if (m === 'streaming') return Number(r.voice_minutes_streaming || 0);
-		if (m === 'items_gamble_net') return Number(r.gamble_net || 0);
-		if (m === 'items_gamble_ratio') return Number(r.gamble_ratio || 0);
-		if (m === 'items_gamble_big') return Number(r.gamble_big_win || 0);
+		if (m === 'minigames_gamble_net') return Number(r.minigame_net || 0);
+		if (m === 'minigames_gamble_ratio') return Number(r.minigame_ratio || 0);
+		if (m === 'minigames_gamble_big') return Number(r.minigame_big_win || 0);
 		if (m === 'items_bounty_total') return Number(r.bounty_on_them || 0);
 		if (m === 'items_bounty_claimer') return Number(r.bounty_collected || 0);
 		if (m === 'items_bounty_give') return Number(r.bounty_given || 0);
@@ -105,14 +105,14 @@
 
 	function metricValueAnimated(r: any, m: string) {
 		const n = anim[r.discord_member_id] ?? metricValueNumber(r, m);
-		if (m === 'items_gamble_ratio' || m === 'items_steal_rate' || m === 'items_bomb_rate') return (Math.round(n * 10) / 10).toLocaleString();
+		if (m === 'minigames_gamble_ratio' || m === 'items_steal_rate' || m === 'items_bomb_rate') return (Math.round(n * 10) / 10).toLocaleString();
 		const rounded = Math.round(n);
 		return rounded.toLocaleString();
 	}
 
 	function metricUnit(m: string) {
-		if (m === 'items_gamble_ratio' || m === 'items_steal_rate' || m === 'items_bomb_rate') return '%';
-		if (m === 'items_gamble_net' || m === 'items_gamble_big') return 'xp';
+		if (m === 'minigames_gamble_ratio' || m === 'items_steal_rate' || m === 'items_bomb_rate') return '%';
+		if (m === 'minigames_gamble_net' || m === 'minigames_gamble_big') return 'xp';
 		if (m === 'items_bounty_total' || m === 'items_bounty_claimer' || m === 'items_bounty_give') return 'xp';
 		if (m.startsWith('items_steal_') || m.startsWith('items_bomb_')) return 'xp';
 		if (m.startsWith('items_gift_')) return 'xp';
@@ -126,8 +126,8 @@
 	}
 
 	function itemsSub(r: any, m: string) {
-		if (m.startsWith('items_gamble_')) {
-			return `${Number(r.gamble_wins || 0)}/${Number(r.gamble_total || 0)} wins`;
+		if (m.startsWith('minigames_')) {
+			return `${Number(r.minigame_wins || 0)}/${Number(r.minigame_total || 0)} wins`;
 		}
 		if (m === 'items_bounty_claimer') return 'claimed';
 		if (m === 'items_bounty_give') return 'placed';
@@ -331,16 +331,16 @@
 	<button class="m-tab {metric === 'streaming' ? 'm-tab--active' : ''}" onclick={() => setMetric('streaming')}>
 		<i class="fas fa-tv"></i> Streaming
 	</button>
-	<button class="m-tab {isItemsGroup ? 'm-tab--active' : ''}" onclick={() => setMetric('items_gamble_net')}>
+	<button class="m-tab {isItemsGroup ? 'm-tab--active' : ''}" onclick={() => setMetric('items_bounty_total')}>
 		<i class="fas fa-store"></i> Items
+	</button>
+	<button class="m-tab {isMinigamesGroup ? 'm-tab--active' : ''}" onclick={() => setMetric('minigames_gamble_net')}>
+		<i class="fas fa-dice"></i> Minigames
 	</button>
 </div>
 
 {#if isItemsGroup}
 	<div class="m-tabs m-tabs--sub">
-		<button class="m-tab m-tab--sm {isGamblerGroup ? 'm-tab--active' : ''}" onclick={() => setMetric('items_gamble_net')}>
-			<i class="fas fa-dice"></i> Gambler
-		</button>
 		<button class="m-tab m-tab--sm {isStealGroup ? 'm-tab--active' : ''}" onclick={() => setMetric('items_steal_total')}>
 			<i class="fas fa-hand"></i> Stealer
 		</button>
@@ -354,19 +354,7 @@
 			<i class="fas fa-gift"></i> Gifts
 		</button>
 	</div>
-	{#if isGamblerGroup}
-		<div class="m-tabs m-tabs--sub m-tabs--sub2">
-			<button class="m-tab m-tab--sm {metric === 'items_gamble_net' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_gamble_net')}>
-				<i class="fas fa-coins"></i> Win XP
-			</button>
-			<button class="m-tab m-tab--sm {metric === 'items_gamble_ratio' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_gamble_ratio')}>
-				<i class="fas fa-percent"></i> Win ratio
-			</button>
-			<button class="m-tab m-tab--sm {metric === 'items_gamble_big' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_gamble_big')}>
-				<i class="fas fa-trophy"></i> Big win
-			</button>
-		</div>
-	{:else if isStealGroup}
+	{#if isStealGroup}
 		<div class="m-tabs m-tabs--sub m-tabs--sub2">
 			<button class="m-tab m-tab--sm {metric === 'items_steal_total' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_steal_total')}>
 				<i class="fas fa-coins"></i> XP stolen
@@ -412,6 +400,25 @@
 			</button>
 		</div>
 	{/if}
+{/if}
+
+{#if isMinigamesGroup}
+	<div class="m-tabs m-tabs--sub">
+		<button class="m-tab m-tab--sm m-tab--active" onclick={() => setMetric('minigames_gamble_net')}>
+			<i class="fas fa-dice"></i> Gamble
+		</button>
+	</div>
+	<div class="m-tabs m-tabs--sub m-tabs--sub2">
+		<button class="m-tab m-tab--sm {metric === 'minigames_gamble_net' ? 'm-tab--active' : ''}" onclick={() => setMetric('minigames_gamble_net')}>
+			<i class="fas fa-coins"></i> Net XP
+		</button>
+		<button class="m-tab m-tab--sm {metric === 'minigames_gamble_ratio' ? 'm-tab--active' : ''}" onclick={() => setMetric('minigames_gamble_ratio')}>
+			<i class="fas fa-percent"></i> Win ratio
+		</button>
+		<button class="m-tab m-tab--sm {metric === 'minigames_gamble_big' ? 'm-tab--active' : ''}" onclick={() => setMetric('minigames_gamble_big')}>
+			<i class="fas fa-trophy"></i> Big win
+		</button>
+	</div>
 {/if}
 
 {#if isVoiceGroup}
@@ -466,7 +473,7 @@
 							{metricValueAnimated(r, metric)}
 							<span class="m-podium-unit">{metricUnit(metric)}</span>
 						</div>
-						<div class="m-podium-level">{isItemsGroup ? itemsSub(r, metric) : `Level ${r.level ?? 0}`}</div>
+						<div class="m-podium-level">{isItemsGroup || isMinigamesGroup ? itemsSub(r, metric) : `Level ${r.level ?? 0}`}</div>
 					</div>
 
 					<div class="m-podium-block" style="height: {podiumHeights[rank]}; background: {rankGradients[rank]};">
@@ -497,7 +504,7 @@
 					</div>
 					<div class="m-list-info">
 						<div class="m-list-name" title={displayName(r)}>{displayName(r)}</div>
-						<div class="m-list-sub">{isItemsGroup ? itemsSub(r, metric) : `Level ${r.level ?? 0}`}</div>
+						<div class="m-list-sub">{isItemsGroup || isMinigamesGroup ? itemsSub(r, metric) : `Level ${r.level ?? 0}`}</div>
 						<div class="m-list-bar-track">
 							<div class="m-list-bar-fill" style="width: {barWidthPct(r, metric)}%"></div>
 						</div>

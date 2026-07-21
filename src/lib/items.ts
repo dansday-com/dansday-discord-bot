@@ -1,17 +1,4 @@
-export type ItemEffectId =
-	| 'steal'
-	| 'bomb'
-	| 'boost'
-	| 'shield'
-	| 'leech'
-	| 'reflect'
-	| 'insurance'
-	| 'gamble'
-	| 'gift'
-	| 'bounty'
-	| 'spy'
-	| 'disguise'
-	| 'purifier';
+export type ItemEffectId = 'steal' | 'bomb' | 'boost' | 'shield' | 'leech' | 'reflect' | 'insurance' | 'gift' | 'bounty' | 'spy' | 'disguise' | 'purifier';
 
 export const BAG_CAPACITY = 50;
 
@@ -161,20 +148,6 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		defaultConfig: { refund_percent: 50, effect_duration_minutes: 90, cooldown_minutes: 1440 },
 		buffExpiredText: () => `Your **Insurance** has expired.`,
 		summary: (c) => `Refund ${c.refund_percent ?? 100}% if robbed or bombed · ${formatDuration(c.effect_duration_minutes)}`
-	},
-	{
-		id: 'gamble',
-		label: 'Gamble',
-		icon: 'fa-dice',
-		accent: '#c8911a',
-		emoji: '🎲',
-		verb: 'Play',
-		targeted: false,
-		announced: true,
-		expiringBuff: false,
-		defaultCost: 0,
-		defaultConfig: { win_chance: 50, payout_multiplier: 2 },
-		summary: (c) => `${c.win_chance}% to win ${c.payout_multiplier}× your wager`
 	},
 	{
 		id: 'gift',
@@ -335,10 +308,6 @@ export function effectMeta(item: { effect_type: string; config?: any }): EffectM
 			chips.push({ icon: 'fa-hourglass-half', label: formatDuration(c.effect_duration_minutes) });
 			if (Number(c.cooldown_minutes) > 0) chips.push({ icon: 'fa-stopwatch', label: formatDuration(c.cooldown_minutes) });
 			break;
-		case 'gamble':
-			chips.push({ icon: 'fa-dice', label: `${c.win_chance ?? 0}%` });
-			chips.push({ icon: 'fa-coins', label: `${c.payout_multiplier ?? 0}×` });
-			break;
 		case 'gift':
 			chips.push({ icon: 'fa-coins', label: `${shortXp(c.gift_amount)} XP` });
 			if (Number(c.tax_percent) > 0) chips.push({ icon: 'fa-receipt', label: `−${c.tax_percent}%` });
@@ -405,11 +374,6 @@ const EFFECT_GUIDES: Record<string, EffectGuide> = {
 		what: 'Refund part of your loss the next time you’re robbed or bombed.',
 		how: 'Activate on yourself. If you get hit while it’s up, a percentage of the lost XP comes back.',
 		tip: 'Good when you can’t sit on a Shield but still want a safety net.'
-	},
-	gamble: {
-		what: 'Wager your XP for a chance to multiply it, or lose it all.',
-		how: 'Choose how much to risk. Win and your wager is multiplied; lose and it’s gone.',
-		tip: 'Only gamble what you can afford to drop on the leaderboard.'
 	},
 	gift: {
 		what: 'Send some of your XP to another member.',
@@ -549,11 +513,6 @@ export function describeItemOutcome(effectType: string, result: any): ItemOutcom
 	const r = result ?? {};
 	const outcome = r.outcome;
 	const xp = Number(r.xp) || 0;
-
-	if (effectType === 'gamble') {
-		if (r.won) return { tone: 'win', icon: 'fa-trophy', title: 'You Won!', line: `Your wager paid off.`, deltaXp: Number(r.net) || 0, untilMs: null };
-		return { tone: 'lose', icon: 'fa-skull', title: 'You Lost', line: `Better luck next time.`, deltaXp: -(Number(r.wager) || 0), untilMs: null };
-	}
 
 	if (effectType === 'steal' || effectType === 'bomb') {
 		const verb = effectType === 'steal' ? 'Robbed' : 'Bombed';

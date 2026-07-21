@@ -608,16 +608,16 @@ async function handleWebhookRequest(req, res) {
 						res.writeHead(500, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify({ ok: false, error: 'discard_item failed', details: shopErr.message }));
 					}
-				} else if (payload.type === 'gamble') {
+				} else if (payload.type === 'minigame_play') {
 					try {
-						const { handleGamble } = await import('./items.js');
-						const result = await handleGamble(client, payload);
+						const { handleMinigamePlay } = await import('./minigames.js');
+						const result = await handleMinigamePlay(client, payload);
 						res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify(result));
 					} catch (shopErr: any) {
-						await logger.log(`❌ gamble failed: ${shopErr.message}`);
+						await logger.log(`❌ minigame_play failed: ${shopErr.message}`);
 						res.writeHead(500, { 'Content-Type': 'application/json' });
-						res.end(JSON.stringify({ ok: false, error: 'gamble failed', details: shopErr.message }));
+						res.end(JSON.stringify({ ok: false, error: 'minigame_play failed', details: shopErr.message }));
 					}
 				} else if (payload.type === 'gift_item_announce') {
 					try {

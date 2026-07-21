@@ -919,12 +919,15 @@ export async function listEnabledLeaderboardServers() {
 			sv.updated_at,
 			sv.server_icon,
 			ss.settings AS settings,
-			si.settings AS items_settings
+			si.settings AS items_settings,
+			sm.settings AS minigames_settings
 		FROM servers sv
 		INNER JOIN server_settings ss
 			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.public_statistics}
 		LEFT JOIN server_settings si
 			ON si.server_id = sv.id AND si.component_name = ${SERVER_SETTINGS.component.items}
+		LEFT JOIN server_settings sm
+			ON sm.server_id = sv.id AND sm.component_name = ${SERVER_SETTINGS.component.minigames}
 	`);
 	const list = (rows[0] as unknown as any[]) || [];
 	return list
@@ -938,7 +941,8 @@ export async function listEnabledLeaderboardServers() {
 			name: r.name ?? null,
 			updated_at: r.updated_at,
 			server_icon: r.server_icon ?? null,
-			items_enabled: parseLeaderboardSettingsColumn(r.items_settings).enabled === true
+			items_enabled: parseLeaderboardSettingsColumn(r.items_settings).enabled === true,
+			minigames_enabled: parseLeaderboardSettingsColumn(r.minigames_settings).enabled === true
 		}));
 }
 
@@ -1921,6 +1925,78 @@ export async function logMemberItemAction(memberId: any, data: any = {}) {
 	return true;
 }
 
+export async function logMinigameAction(memberId: any, data: any = {}) {
+	await initializeDatabase();
+	if (!memberId) throw new Error('memberId is required');
+	await db.insert(schema.serverMemberMinigameLogs).values({
+		member_id: Number(memberId),
+		game: String(data.game ?? 'gamble'),
+		multiplier: String(data.multiplier ?? 2) as any,
+		wager: Number(data.wager ?? 0),
+		payout: Number(data.payout ?? 0),
+		xp_amount: Number(data.xp_amount ?? 0),
+		outcome: String(data.outcome ?? ''),
+		created_at: toMySQLDateTime() as any
+	});
+	return true;
+}
+
+export async function getMemberMinigameHistory(memberId: any, limit = 600) {
+	await initializeDatabase();
+	if (!memberId) return [] as any[];
+	const rows = await db.execute(sql`
+		SELECT id, game, multiplier, wager, payout, xp_amount, outcome, created_at
+		FROM server_member_minigame_logs
+		WHERE member_id = ${Number(memberId)}
+		ORDER BY created_at DESC
+		LIMIT ${Number(limit)}
+	`);
+	return (rows[0] as unknown as any[]) || [];
+}
+
+export async function getMinigamesLeaderboard(serverId: any, since: Date | null) {
+	await initializeDatabase();
+	if (!serverId) return [] as any[];
+
+	const disguisedIds = await getDisguisedMemberIds(serverId);
+	const hideDisguised = disguisedIds.length > 0 ? notInArray(schema.serverMembers.id, disguisedIds) : undefined;
+
+	const rows = await db
+		.select({
+			discord_member_id: schema.serverMembers.discord_member_id,
+			username: schema.serverMembers.username,
+			display_name: schema.serverMembers.display_name,
+			server_display_name: schema.serverMembers.server_display_name,
+			avatar: schema.serverMembers.avatar,
+			level: schema.serverMemberLevels.level,
+			minigame_net: sql<number>`COALESCE(SUM(${schema.serverMemberMinigameLogs.xp_amount}), 0)`,
+			minigame_wins: sql<number>`COALESCE(SUM(CASE WHEN ${schema.serverMemberMinigameLogs.outcome} = 'win' THEN 1 ELSE 0 END), 0)`,
+			minigame_total: sql<number>`COUNT(${schema.serverMemberMinigameLogs.id})`,
+			minigame_big_win: sql<number>`COALESCE(MAX(${schema.serverMemberMinigameLogs.xp_amount}), 0)`
+		})
+		.from(schema.serverMembers)
+		.leftJoin(
+			schema.serverMemberMinigameLogs,
+			and(
+				eq(schema.serverMemberMinigameLogs.member_id, schema.serverMembers.id),
+				...(since ? [sql`${schema.serverMemberMinigameLogs.created_at} >= ${toMySQLDateTime(since)}`] : [])
+			)
+		)
+		.leftJoin(schema.serverMemberLevels, eq(schema.serverMemberLevels.member_id, schema.serverMembers.id))
+		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), ...(hideDisguised ? [hideDisguised] : [])))
+		.groupBy(
+			schema.serverMembers.id,
+			schema.serverMembers.discord_member_id,
+			schema.serverMembers.username,
+			schema.serverMembers.display_name,
+			schema.serverMembers.server_display_name,
+			schema.serverMembers.avatar,
+			schema.serverMemberLevels.level
+		);
+
+	return rows as any[];
+}
+
 export async function logMemberLevelGain(memberId: any, data: any = {}) {
 	await initializeDatabase();
 	if (!memberId) return false;
@@ -2314,50 +2390,6 @@ export async function getLeaderboardPeriodCounts(serverId: any, since: Date) {
 		.leftJoin(
 			schema.serverMemberLevelLogs,
 			and(eq(schema.serverMemberLevelLogs.member_id, schema.serverMembers.id), sql`${schema.serverMemberLevelLogs.created_at} >= ${toMySQLDateTime(since)}`)
-		)
-		.leftJoin(schema.serverMemberLevels, eq(schema.serverMemberLevels.member_id, schema.serverMembers.id))
-		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), ...(hideDisguised ? [hideDisguised] : [])))
-		.groupBy(
-			schema.serverMembers.id,
-			schema.serverMembers.discord_member_id,
-			schema.serverMembers.username,
-			schema.serverMembers.display_name,
-			schema.serverMembers.server_display_name,
-			schema.serverMembers.avatar,
-			schema.serverMemberLevels.level
-		);
-
-	return rows as any[];
-}
-
-export async function getItemsGamblerLeaderboard(serverId: any, since: Date | null) {
-	await initializeDatabase();
-	if (!serverId) return [] as any[];
-
-	const disguisedIds = await getDisguisedMemberIds(serverId);
-	const hideDisguised = disguisedIds.length > 0 ? notInArray(schema.serverMembers.id, disguisedIds) : undefined;
-
-	const rows = await db
-		.select({
-			discord_member_id: schema.serverMembers.discord_member_id,
-			username: schema.serverMembers.username,
-			display_name: schema.serverMembers.display_name,
-			server_display_name: schema.serverMembers.server_display_name,
-			avatar: schema.serverMembers.avatar,
-			level: schema.serverMemberLevels.level,
-			gamble_net: sql<number>`COALESCE(SUM(${schema.serverMemberItemLogs.xp_amount}), 0)`,
-			gamble_wins: sql<number>`COALESCE(SUM(CASE WHEN ${schema.serverMemberItemLogs.outcome} = 'win' THEN 1 ELSE 0 END), 0)`,
-			gamble_total: sql<number>`COUNT(${schema.serverMemberItemLogs.id})`,
-			gamble_big_win: sql<number>`COALESCE(MAX(${schema.serverMemberItemLogs.xp_amount}), 0)`
-		})
-		.from(schema.serverMembers)
-		.leftJoin(
-			schema.serverMemberItemLogs,
-			and(
-				eq(schema.serverMemberItemLogs.member_id, schema.serverMembers.id),
-				eq(schema.serverMemberItemLogs.action, 'gamble'),
-				...(since ? [sql`${schema.serverMemberItemLogs.created_at} >= ${toMySQLDateTime(since)}`] : [])
-			)
 		)
 		.leftJoin(schema.serverMemberLevels, eq(schema.serverMemberLevels.member_id, schema.serverMembers.id))
 		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), ...(hideDisguised ? [hideDisguised] : [])))
@@ -4575,6 +4607,9 @@ export default {
 	expireMemberItemActive,
 	endMemberItemActiveNow,
 	logMemberItemAction,
+	logMinigameAction,
+	getMemberMinigameHistory,
+	getMinigamesLeaderboard,
 	getMemberItemHistory,
 	logMemberLevelGain,
 	getMemberLevelHistory,
@@ -4596,7 +4631,6 @@ export default {
 	reduceAssetPosition,
 	getServerLeaderboard,
 	getLeaderboardPeriodCounts,
-	getItemsGamblerLeaderboard,
 	getItemsAttackLeaderboard,
 	getItemsBountyLeaderboard,
 	getItemsGiftLeaderboard,

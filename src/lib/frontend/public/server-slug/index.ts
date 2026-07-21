@@ -21,14 +21,15 @@ export async function resolvePublicServerBySlug(requestedSlug: string): Promise<
 	return { server: resolved.item, computedSlug: resolved.computedSlug };
 }
 
-export async function listPublicServerSlugs(): Promise<{ id: number; slug: string; updated_at: any; items_enabled: boolean }[]> {
+export async function listPublicServerSlugs(): Promise<{ id: number; slug: string; updated_at: any; items_enabled: boolean; minigames_enabled: boolean }[]> {
 	const servers: PublicSlugServerRow[] = await (db as any).listEnabledLeaderboardServers();
 	if (!Array.isArray(servers) || servers.length === 0) return [];
 	return listIndexedSlugsForItems(servers, serverSlugKey).map((row) => ({
 		id: Number(row.item.id),
 		slug: row.slug,
 		updated_at: row.updated_at,
-		items_enabled: row.item.items_enabled === true
+		items_enabled: row.item.items_enabled === true,
+		minigames_enabled: (row.item as any).minigames_enabled === true
 	}));
 }
 

@@ -152,7 +152,7 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 			.then((r: any[]) => r[0] ?? null);
 		if (itemRow?.id) seededItems.push({ id: itemRow.id, effect: effect.id });
 	}
-	const ownableItems = seededItems.filter((it) => it.effect !== 'gamble');
+	const ownableItems = seededItems;
 
 	const base = Date.now();
 	const firstNames = [

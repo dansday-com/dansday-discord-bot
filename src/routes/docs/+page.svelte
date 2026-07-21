@@ -37,7 +37,7 @@
 		{
 			icon: 'fa-sliders',
 			title: 'Tune the effect',
-			desc: 'Each effect type has its own settings: percentages and cooldowns for steal/bomb, multiplier and scope for boost, win chance and payout for gamble, spy success chance, and so on.'
+			desc: 'Each effect type has its own settings: percentages and cooldowns for steal/bomb, multiplier and scope for boost, spy success chance, and so on.'
 		},
 		{
 			icon: 'fa-clock',
@@ -281,7 +281,7 @@
 				},
 				{
 					label: 'Item: effect settings',
-					desc: 'Per effect type: Steal/Bomb use Min %, Max %, Cooldown, Victim immunity; Boost uses Multiplier, Duration, Scope (all/message/voice); Shield/Reflect/Disguise use Duration; Insurance uses Refund %, Duration, Cooldown; Gift uses Gift amount, Tax %; Leech uses Skim %, Duration; Gamble uses Win chance %, Payout multiplier; Bounty uses Bounty amount; Spy uses Spy success chance %.'
+					desc: 'Per effect type: Steal/Bomb use Min %, Max %, Cooldown, Victim immunity; Boost uses Multiplier, Duration, Scope (all/message/voice); Shield/Reflect/Disguise use Duration; Insurance uses Refund %, Duration, Cooldown; Gift uses Gift amount, Tax %; Leech uses Skim %, Duration; Bounty uses Bounty amount; Spy uses Spy success chance %.'
 				},
 				{
 					label: 'Item: Availability',

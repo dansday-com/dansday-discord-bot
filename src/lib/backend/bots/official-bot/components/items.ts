@@ -1,7 +1,8 @@
 import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 import { getRedisClient } from '../../../../redis.js';
-import { getLevelRequirement, determineLevel, evaluateMemberLevelAndRank } from './leveling.js';
+import { evaluateMemberLevelAndRank } from './leveling.js';
+import { getSpendableXp, spendXp, reevaluateLevel } from './xp-economy.js';
 import {
 	TARGETED_EFFECTS,
 	ANNOUNCED_EFFECTS,
@@ -14,7 +15,6 @@ import {
 } from '../../../../items.js';
 
 const EFFECT_CACHE_TTL_MS = 5000;
-const GAMBLE_ANNOUNCE_DELAY_MS = 3900;
 const memoryEffectCache = new Map();
 
 function effectCacheKey(memberId: any) {
@@ -168,19 +168,6 @@ export async function creditLeechers(leechCredits: any, guildId: any) {
 	return applied;
 }
 
-async function reevaluateLevel(memberId: any, stats: any, guildId: any) {
-	if (!stats || !guildId) return stats;
-	const rawXp = stats.experience ?? 0;
-	const xp = typeof rawXp === 'bigint' ? Number(rawXp) : Number(rawXp) || 0;
-	const expectedLevel = await determineLevel(xp, guildId);
-	let storedLevel = stats.level;
-	if (typeof storedLevel === 'bigint') storedLevel = Number(storedLevel);
-	if (storedLevel !== expectedLevel) {
-		return db.updateMemberLevelStats(memberId, { level: expectedLevel });
-	}
-	return stats;
-}
-
 async function snapshotMembers(memberIds: any[]) {
 	const ids = [...new Set(memberIds.filter((id) => id != null).map((id) => Number(id)))];
 	const snapshots = new Map<number, { level: any; rank: any; experience: any }>();
@@ -204,31 +191,6 @@ async function finalizeXpChanges(guildId: any, snapshots: Map<number, { level: a
 			reason
 		}).catch(() => null);
 	}
-}
-
-export async function getSpendableXp(memberId: any, guildId: any) {
-	const stats = await db.getMemberLevel(memberId);
-	if (!stats) return { total: 0, spendable: 0, floor: 0, level: 1 };
-	const rawXp = stats.experience ?? 0;
-	const total = typeof rawXp === 'bigint' ? Number(rawXp) : Number(rawXp) || 0;
-	let level = stats.level;
-	if (typeof level === 'bigint') level = Number(level);
-	level = Number(level) || 1;
-	const floor = await getLevelRequirement(level, guildId);
-	const spendable = Math.max(0, total - floor);
-	return { total, spendable, floor, level };
-}
-
-export async function spendXp(memberId: any, amount: any, guildId: any) {
-	const cost = Math.max(0, Math.floor(Number(amount) || 0));
-	if (cost <= 0) return { ok: true, stats: await db.getMemberLevel(memberId) };
-	const stats = await db.getMemberLevel(memberId);
-	const rawXp = stats?.experience ?? 0;
-	const total = typeof rawXp === 'bigint' ? Number(rawXp) : Number(rawXp) || 0;
-	if (total < cost) return { ok: false, reason: 'insufficient_xp', stats };
-	const updated = await db.updateMemberLevelStats(memberId, { experienceIncrement: -cost });
-	const reevaluated = await reevaluateLevel(memberId, updated, guildId);
-	return { ok: true, stats: reevaluated };
 }
 
 function rollPercent(minPercent: any, maxPercent: any) {
@@ -561,90 +523,6 @@ export async function resolveGift({ actorMemberId, actorMemberItemId, targetMemb
 		actor_disguised: actorDisguised
 	});
 	return { outcome: 'success', xp: received, actorDisguised };
-}
-
-export async function handleGamble(client: any, payload: any) {
-	const { guild_id, actor_discord_id, item_id, percent, amount, tz_offset } = payload || {};
-	if (!guild_id || !actor_discord_id || !item_id) return { ok: false, error: 'missing_fields' };
-
-	const { getServerForCurrentBot, isComponentFeatureEnabled, serverSettingsComponent } = await import('../../../config.js');
-
-	let server: any;
-	try {
-		server = await getServerForCurrentBot(guild_id);
-	} catch (_) {
-		return { ok: false, error: 'server_not_found' };
-	}
-	if (!(await isComponentFeatureEnabled(guild_id, serverSettingsComponent.items))) {
-		return { ok: false, error: 'shop_disabled' };
-	}
-
-	const item = await db.getItem(item_id).catch(() => null);
-	if (!item || item.enabled !== true || item.effect_type !== 'gamble') return { ok: false, error: 'item_unavailable' };
-	if (!isItemAvailableNow(item, tz_offset)) return { ok: false, error: 'item_not_in_window' };
-
-	const actorMemberId = await resolveServerMemberId(server.id, actor_discord_id);
-	if (!actorMemberId) return { ok: false, error: 'member_not_found' };
-
-	const stats = await db.getMemberLevel(actorMemberId);
-	const rawXp = stats?.experience ?? 0;
-	const total = typeof rawXp === 'bigint' ? Number(rawXp) : Number(rawXp) || 0;
-	const customAmount = Math.max(0, Math.floor(Number(amount) || 0));
-	let wager: number;
-	if (customAmount > 0) {
-		wager = Math.min(customAmount, total);
-	} else {
-		const pct = Math.max(1, Math.min(100, Math.floor(Number(percent) || 0)));
-		wager = Math.floor((total * pct) / 100);
-	}
-	if (wager <= 0) return { ok: false, error: 'insufficient_xp' };
-
-	const cfg = parseConfig(item.config);
-	const winChance = Math.max(0, Math.min(100, Number(cfg.win_chance) || 0));
-	const payoutMultiplier = Math.max(0, Number(cfg.payout_multiplier) || 0);
-
-	const gambleSnapshots = await snapshotMembers([actorMemberId]);
-	const spend = await spendXp(actorMemberId, wager, guild_id);
-	if (!spend.ok) return { ok: false, error: 'insufficient_xp' };
-
-	const roll = Math.floor(Math.random() * 100) + 1;
-	const won = roll <= winChance;
-
-	let netChange = -wager;
-	let payout = 0;
-	if (won) {
-		payout = Math.floor(wager * payoutMultiplier);
-		await db.ensureMemberLevel(actorMemberId);
-		const after = await db.updateMemberLevelStats(actorMemberId, { experienceIncrement: payout });
-		await reevaluateLevel(actorMemberId, after, guild_id);
-		netChange = payout - wager;
-	}
-	await invalidateEffectCache(actorMemberId);
-
-	const actorDisguised = await isDisguised(actorMemberId);
-	await db.logMemberItemAction(actorMemberId, {
-		item_id,
-		action: 'gamble',
-		xp_amount: netChange,
-		outcome: won ? 'win' : 'lose',
-		actor_disguised: actorDisguised
-	});
-
-	await finalizeXpChanges(guild_id, gambleSnapshots, 'item-gamble');
-
-	const result = { outcome: won ? 'win' : 'lose', won, wager, payout, net: netChange, actorDisguised };
-	setTimeout(() => {
-		announceItemUse(client, {
-			guildId: guild_id,
-			actorDiscordId: actor_discord_id,
-			targetDiscordId: null,
-			effectType: 'gamble',
-			item,
-			result
-		}).catch(() => null);
-	}, GAMBLE_ANNOUNCE_DELAY_MS);
-
-	return { ok: true, outcome: result.outcome, effect_type: 'gamble', result };
 }
 
 export async function resolveBounty({ actorMemberId, actorMemberItemId, targetMemberId, config, guildId }: any) {
@@ -1174,20 +1052,6 @@ const ITEM_EMBEDS: Record<string, (ctx: EmbedCtx) => any> = {
 			.setTitle('🎯 Bounty Placed')
 			.setDescription(`${ctx.actorMention} placed a bounty on ${ctx.targetMention}. Whoever steals or bombs them next collects it.`)
 			.addFields({ name: 'Bounty', value: fmtXp(ctx.result?.xp), inline: true }),
-	gamble: (ctx) => {
-		const { embed, actorMention, result } = ctx;
-		const pctNote = result?.percent ? ` (${result.percent}% of XP)` : '';
-		if (result?.won) {
-			return embed
-				.setTitle('🎲 Gamble Win!')
-				.setDescription(`${actorMention} wagered ${fmtXp(result?.wager)}${pctNote} and **won**!`)
-				.addFields({ name: 'Payout', value: fmtXp(result?.payout), inline: true }, { name: 'Net gain', value: `+${fmtXp(result?.net)}`, inline: true });
-		}
-		return embed
-			.setTitle('🎲 Gamble Lost')
-			.setDescription(`${actorMention} wagered ${fmtXp(result?.wager)}${pctNote} and **lost it all**.`)
-			.addFields({ name: 'XP lost', value: fmtXp(result?.wager), inline: true });
-	},
 	disguise: (ctx) => {
 		const untilRel = discordRelative(ctx.result?.expiresAt);
 		return ctx.embed

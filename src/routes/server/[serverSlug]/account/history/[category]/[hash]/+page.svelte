@@ -88,15 +88,6 @@
 			return { icon: effectIcon('gift'), title: `Gift from admin — ${h.itemName ?? 'item'}`, tone: 'win', deltaLabel: 'Received' };
 		if (h.action === 'buy') return { icon: 'fa-cart-shopping', title: `Bought ${h.itemName ?? 'item'}`, tone: 'spend', deltaLabel: `−${fmt(h.xpAmount)} XP` };
 		if (h.action === 'discard') return { icon: 'fa-trash-can', title: `Removed ${h.itemName ?? 'item'}`, tone: 'neutral', deltaLabel: 'Discarded' };
-		if (h.action === 'gamble') {
-			const won = h.outcome === 'win';
-			return {
-				icon: won ? 'fa-trophy' : 'fa-skull',
-				title: won ? 'Gamble — Won' : 'Gamble — Lost',
-				tone: won ? 'win' : 'lose',
-				deltaLabel: `${h.xpAmount >= 0 ? '+' : '−'}${fmt(Math.abs(h.xpAmount))} XP`
-			};
-		}
 		if (h.action === 'bounty_collected') {
 			if (h.direction === 'incoming') {
 				const from = h.actorName ? ` ← ${h.actorName}` : '';

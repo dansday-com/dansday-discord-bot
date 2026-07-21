@@ -2,7 +2,7 @@ import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 import { getRedisClient } from '../../../../redis.js';
 import { evaluateMemberLevelAndRank } from './leveling.js';
-import { getSpendableXp, spendXp } from './items.js';
+import { getSpendableXp, spendXp } from './xp-economy.js';
 
 const COINGECKO_BASE = 'https://api.coingecko.com/api/v3';
 const POLL_INTERVAL_MS = 60_000;

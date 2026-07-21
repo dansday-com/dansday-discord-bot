@@ -8,9 +8,9 @@ export type LeaderboardMetric =
 	| 'voice_afk'
 	| 'video'
 	| 'streaming'
-	| 'items_gamble_net'
-	| 'items_gamble_ratio'
-	| 'items_gamble_big'
+	| 'minigames_gamble_net'
+	| 'minigames_gamble_ratio'
+	| 'minigames_gamble_big'
 	| 'items_bounty_total'
 	| 'items_bounty_claimer'
 	| 'items_bounty_give'
@@ -39,11 +39,11 @@ export type LeaderboardRow = {
 	voice_minutes_afk: number | null;
 	voice_minutes_video: number | null;
 	voice_minutes_streaming: number | null;
-	gamble_net?: number | null;
-	gamble_wins?: number | null;
-	gamble_total?: number | null;
-	gamble_big_win?: number | null;
-	gamble_ratio?: number | null;
+	minigame_net?: number | null;
+	minigame_wins?: number | null;
+	minigame_total?: number | null;
+	minigame_big_win?: number | null;
+	minigame_ratio?: number | null;
 	bounty_on_them?: number | null;
 	bounty_collected?: number | null;
 	bounty_given?: number | null;

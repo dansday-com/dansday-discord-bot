@@ -5,10 +5,12 @@
 	let {
 		server,
 		itemsEnabled = false,
+		minigamesEnabled = false,
 		publicStatsEnabled = true
 	}: {
 		server: { slug: string; name?: string | null; server_icon?: string | null };
 		itemsEnabled?: boolean;
+		minigamesEnabled?: boolean;
 		publicStatsEnabled?: boolean;
 	} = $props();
 
@@ -17,14 +19,16 @@
 	const isLeaderboard = $derived(pathNorm.endsWith('/leaderboard'));
 	const isMembers = $derived(pathNorm.endsWith('/members'));
 	const isItems = $derived(/\/account(\/|$)/.test(pathNorm));
-	const isOverview = $derived(!isLeaderboard && !isMembers && !isItems);
+	const isMinigames = $derived(/\/minigames(\/|$)/.test(pathNorm));
+	const isOverview = $derived(!isLeaderboard && !isMembers && !isItems && !isMinigames);
 
 	const tabs = $derived(
 		[
 			{ label: 'Statistics', icon: 'fa-chart-pie', href: basePath, active: isOverview, show: publicStatsEnabled },
 			{ label: 'Leaderboard', icon: 'fa-trophy', href: `${basePath}/leaderboard`, active: isLeaderboard, show: publicStatsEnabled },
 			{ label: 'Members', icon: 'fa-users', href: `${basePath}/members`, active: isMembers, show: publicStatsEnabled },
-			{ label: 'Account', icon: 'fa-user', href: `${basePath}/account`, active: isItems, show: itemsEnabled }
+			{ label: 'Account', icon: 'fa-user', href: `${basePath}/account`, active: isItems, show: itemsEnabled },
+			{ label: 'Minigames', icon: 'fa-dice', href: `${basePath}/minigames`, active: isMinigames, show: minigamesEnabled }
 		].filter((t) => t.show)
 	);
 </script>

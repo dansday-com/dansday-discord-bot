@@ -433,16 +433,14 @@
 						<span class="text-ash-400 text-[10px] leading-tight">Use</span>
 					</div>
 					<button onclick={() => startEdit(item)} class="bg-ash-700 hover:bg-ash-600 text-ash-200 flex-1 rounded-lg py-1.5 text-xs">Edit</button>
-					{#if item.effect_type !== 'gamble'}
-						<button
-							onclick={() => startGift(item)}
-							title="Give to a member"
-							aria-label="Give to a member"
-							class="rounded-lg bg-teal-900/40 px-3 py-1.5 text-xs text-teal-300 hover:bg-teal-900/60"
-						>
-							<i class="fas fa-gift"></i>
-						</button>
-					{/if}
+					<button
+						onclick={() => startGift(item)}
+						title="Give to a member"
+						aria-label="Give to a member"
+						class="rounded-lg bg-teal-900/40 px-3 py-1.5 text-xs text-teal-300 hover:bg-teal-900/60"
+					>
+						<i class="fas fa-gift"></i>
+					</button>
 					<button
 						onclick={() => (confirmDelete = item)}
 						title="Delete item"
@@ -668,25 +666,6 @@
 							>
 						</div>
 						<p class="text-ash-500 text-[11px]">Skims a % of the target's XP while active.</p>
-					{:else if form.effect_type === 'gamble'}
-						<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-							<label class="text-ash-300 text-xs"
-								>Win chance %<input
-									type="number"
-									bind:value={form.cfg.win_chance}
-									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-								/></label
-							>
-							<label class="text-ash-300 text-xs"
-								>Payout multiplier<input
-									type="number"
-									step="0.1"
-									bind:value={form.cfg.payout_multiplier}
-									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
-								/></label
-							>
-						</div>
-						<p class="text-ash-500 text-[11px]">Wager XP at this win chance for the multiplier; lose it otherwise. Played, not bought.</p>
 					{:else if form.effect_type === 'bounty'}
 						<label class="text-ash-300 text-xs"
 							>Bounty amount (XP)<input

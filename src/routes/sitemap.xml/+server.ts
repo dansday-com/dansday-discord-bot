@@ -73,6 +73,9 @@ export const GET: RequestHandler = async () => {
 				urls.push({ loc: `${itemsBase}/assets/${view}/guest`, ...base, priority: 0.6 });
 			}
 		}
+		if (s.minigames_enabled) {
+			urls.push({ loc: `${root}/${enc}/minigames/guest`, ...base, priority: 0.6 });
+		}
 		return urls;
 	});
 

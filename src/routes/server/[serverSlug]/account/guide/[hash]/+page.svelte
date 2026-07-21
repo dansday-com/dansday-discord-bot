@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
-	import { ITEM_EFFECTS, effectAccentHex, effectGuide, effectLabel, effectSummary } from '$lib/items.js';
+	import { ITEM_EFFECTS, effectAccentHex, effectGuide, effectSummary } from '$lib/items.js';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import type { PageProps } from './$types';
 
@@ -16,10 +16,8 @@
 		return map;
 	});
 
-	const MINIGAME_EFFECTS = new Set(['gamble']);
-
 	const guideItems = $derived.by(() =>
-		ITEM_EFFECTS.filter((e) => !MINIGAME_EFFECTS.has(e.id)).map((e) => {
+		ITEM_EFFECTS.map((e) => {
 			const live = itemByEffect.get(e.id);
 			return {
 				id: e.id,
@@ -75,42 +73,24 @@
 		}
 	];
 
-	const minigames = $derived.by(() => {
-		const list: {
-			id: string;
-			emoji: string;
-			icon: string;
-			accent: string;
-			title: string;
-			available: boolean;
-			what: string;
-			how: string;
-			tip: string;
-			stats: { icon: string; label: string }[];
-		}[] = [];
-
-		const gambleItem = itemByEffect.get('gamble');
-		const gcfg = gambleItem?.config ?? {};
-		const winChance = Number(gcfg.win_chance ?? 50) || 0;
-		const payout = Number(gcfg.payout_multiplier ?? 2) || 0;
-		list.push({
-			id: 'gamble',
-			emoji: '🎲',
-			icon: 'fa-dice',
-			accent: effectAccentHex('gamble'),
-			title: effectLabel('gamble'),
-			available: !!gambleItem,
-			what: 'Bet a chunk of your Wallet XP on a coin-flip of fate. Win and your wager is multiplied, lose and it’s gone.',
-			how: 'Open Gamble, choose how much XP to wager, and roll. There’s no cooldown, but every loss comes straight out of your balance (and can drop your level).',
-			tip: 'Set a limit before you start. Chasing losses is the fastest way to fall down the leaderboard.',
-			stats: [
-				{ icon: 'fa-percent', label: `${winChance}% to win` },
-				{ icon: 'fa-coins', label: `${payout}× payout` }
-			]
-		});
-
-		return list;
-	});
+	const minigameSteps = [
+		{ icon: 'fa-dice', title: 'Open Minigames', desc: 'Tap the Minigames tab. It’s free to play — no item or ticket needed.' },
+		{
+			icon: 'fa-sliders',
+			title: 'Pick a multiplier',
+			desc: 'Drag the slider from 1.1× up to 10×. The higher the multiplier, the lower your win chance — a fair 100 ÷ multiplier (2× = 50%, 4× = 25%).'
+		},
+		{
+			icon: 'fa-coins',
+			title: 'Set your wager',
+			desc: 'Choose how much XP to risk (minimum 1,000). You can only wager XP earned above your current level, so a loss never drops your level.'
+		},
+		{
+			icon: 'fa-bolt',
+			title: 'Play',
+			desc: 'Win and your wager is multiplied and paid back as XP; lose and it’s gone. Every result is logged and counts toward the Minigames leaderboard.'
+		}
+	];
 
 	const assetSteps = [
 		{ icon: 'fa-chart-line', title: 'Open Assets', desc: 'Tap the Assets tab. Browse the Top 50, Gainers, Losers, or Search any coin.' },
@@ -289,32 +269,30 @@
 	</section>
 
 	<section class="g-sec" use:reveal>
-		<h2 class="g-sec-head"><i class="fas fa-gamepad"></i>Minigames</h2>
-		<p class="g-sec-lead">Side games you can play with your XP. More are on the way.</p>
-		<div class="g-items">
-			{#each minigames as mg, i}
-				<article class="g-item" class:g-item--soon={!mg.available} style="--ac: {mg.accent}; --d: {(i % 6) * 60}ms">
-					<div class="g-item-glow"></div>
-					<div class="g-item-top">
-						<span class="g-item-emoji">{mg.emoji}</span>
-						<div class="g-item-titles">
-							<h3 class="g-item-name">{mg.title}</h3>
-							{#if mg.available}
-								<span class="g-mg-stats">
-									{#each mg.stats as s}
-										<span class="g-mg-stat"><i class="fas {s.icon}"></i>{s.label}</span>
-									{/each}
-								</span>
-							{:else}
-								<span class="g-item-cost g-item-cost--soon">Not enabled in this server yet</span>
-							{/if}
-						</div>
-					</div>
-					<p class="g-item-what">{mg.what}</p>
-					<div class="g-item-row"><i class="fas fa-circle-play"></i><span>{mg.how}</span></div>
-					<div class="g-item-tip"><i class="fas fa-lightbulb"></i><span>{mg.tip}</span></div>
-				</article>
+		<h2 class="g-sec-head"><i class="fas fa-dice"></i>Minigames</h2>
+		<p class="g-sec-lead">
+			Free-to-play games you wager XP on, in the separate Minigames tab. Right now there’s Gamble: pick your own multiplier and take the odds.
+		</p>
+		<div class="g-steps">
+			{#each minigameSteps as s, i}
+				<div class="g-step" style="--d: {i * 80}ms">
+					<span class="g-step-num">{i + 1}</span>
+					<span class="g-step-ic"><i class="fas {s.icon}"></i></span>
+					<h3>{s.title}</h3>
+					<p>{s.desc}</p>
+				</div>
 			{/each}
+		</div>
+
+		<div class="g-friend" style="--ac: #b23b2e">
+			<span class="g-friend-ic"><i class="fas fa-triangle-exclamation"></i></span>
+			<div class="g-friend-body">
+				<h3>⚠️ The house always has an edge over time</h3>
+				<p>
+					Odds are fair per play, but chasing losses drains XP fast. Only wager XP you’re willing to drop on the leaderboard — losses come straight out of your
+					balance.
+				</p>
+			</div>
 		</div>
 	</section>
 

@@ -139,6 +139,14 @@ const REGISTRY = [
 		hrefSuffix: '/items',
 		icon: 'fa-store',
 		iconClass: 'text-teal-400'
+	},
+	{
+		id: 'minigames',
+		label: 'Minigames',
+		featureSwitch: true,
+		hrefSuffix: '/minigames',
+		icon: 'fa-dice',
+		iconClass: 'text-purple-400'
 	}
 ] as const;
 
@@ -187,7 +195,8 @@ export const AUTO_ENABLED_COMPONENTS: Set<string> = new Set([
 	component.moderation,
 	component.afk,
 	component.notifications,
-	component.items
+	component.items,
+	component.minigames
 ]);
 
 let dbCache: (typeof import('$lib/database.js'))['default'] | null = null;

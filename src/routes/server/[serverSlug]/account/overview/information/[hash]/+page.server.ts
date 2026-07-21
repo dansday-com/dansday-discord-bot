@@ -17,12 +17,19 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 	if ('notFound' in shared) error(404, 'Account not available');
 	if ('guest' in shared || !shared.member) redirect(303, publicServerPath(server.slug));
 
+	const toSql = (v: any) => {
+		if (!v) return null;
+		const d = v instanceof Date ? v : new Date(v);
+		if (Number.isNaN(d.getTime())) return null;
+		return d.toISOString().slice(0, 19).replace('T', ' ');
+	};
+
 	const m = shared.member;
 	const profile = {
-		joined: m.member_since ? new Date(m.member_since).toISOString() : null,
-		discordSince: m.profile_created_at ? new Date(m.profile_created_at).toISOString() : null,
+		joined: toSql(m.member_since),
+		discordSince: toSql(m.profile_created_at),
 		isBooster: !!m.is_booster,
-		boosterSince: m.booster_since ? new Date(m.booster_since).toISOString() : null,
+		boosterSince: toSql(m.booster_since),
 		isAfk: !!m.is_afk,
 		afkMessage: m.afk_message ?? null,
 		chatTotal: Number(m.chat_total) || 0,

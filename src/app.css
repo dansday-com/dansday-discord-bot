@@ -6567,14 +6567,16 @@
 	grid-column: 1 / -1;
 }
 .m-ov > .m-stat-card,
-.m-ov > .m-econ3 > .m-stat-card {
+.m-ov > .m-econ3 > .m-stat-card,
+.m-ov > .m-econ2 > .m-stat-card {
 	opacity: 0;
 	transform: translateY(14px);
 	transition:
 		opacity 0.5s ease,
 		transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
-.m-ov--in > .m-econ3 > .m-stat-card {
+.m-ov--in > .m-econ3 > .m-stat-card,
+.m-ov--in > .m-econ2 > .m-stat-card {
 	opacity: 1;
 	transform: translateY(0);
 }
@@ -6602,7 +6604,8 @@
 }
 @media (prefers-reduced-motion: reduce) {
 	.m-ov > .m-stat-card,
-	.m-ov > .m-econ3 > .m-stat-card {
+	.m-ov > .m-econ3 > .m-stat-card,
+	.m-ov > .m-econ2 > .m-stat-card {
 		opacity: 1;
 		transform: none;
 		transition: none;
@@ -7306,6 +7309,24 @@
 	height: 100%;
 }
 .m-ov--in .m-econ3 > .m-stat-card {
+	opacity: 1;
+	transform: translateY(0);
+}
+.m-econ2 {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 16px;
+}
+@media (min-width: 900px) {
+	.m-econ2 {
+		grid-template-columns: repeat(2, 1fr);
+		align-items: stretch;
+	}
+}
+.m-econ2 > .m-stat-card {
+	height: 100%;
+}
+.m-ov--in .m-econ2 > .m-stat-card {
 	opacity: 1;
 	transform: translateY(0);
 }

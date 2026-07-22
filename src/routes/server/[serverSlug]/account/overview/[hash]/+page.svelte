@@ -639,7 +639,8 @@
 		</div>
 	</div>
 
-	<div class="m-stat-card m-overview-card m-ov-full">
+	<div class="m-econ2 m-ov-full">
+	<div class="m-stat-card m-overview-card">
 		<div class="m-stat-card-head">
 			<div class="m-stat-card-icon m-chili-stat-3"><i class="fas fa-crosshairs"></i></div>
 			<h2 class="m-stat-card-title">Your PvP record</h2>
@@ -792,5 +793,6 @@
 				<span class="m-mini-label">Feedback given</span>
 			</div>
 		</div>
+	</div>
 	</div>
 </div>

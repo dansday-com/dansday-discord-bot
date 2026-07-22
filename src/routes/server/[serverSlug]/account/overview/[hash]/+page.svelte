@@ -269,151 +269,6 @@
 		{/if}
 	</div>
 
-	<div class="m-stat-card m-overview-card m-ov-full">
-		<div class="m-stat-card-head">
-			<div class="m-stat-card-icon m-chili-stat-5"><i class="fas fa-microphone-alt"></i></div>
-			<h2 class="m-stat-card-title">Activity</h2>
-		</div>
-		{#if voiceMix}
-			<div class="m-bar-block">
-				<div class="m-bar-head">
-					<span>Voice time split</span>
-					<span class="m-bar-meta">{fmt(voiceMix.total)} min</span>
-				</div>
-				<div class="m-seg-bar m-seg-bar--3" title="Active · AFK · Video · Stream">
-					<div class="m-seg" style="width: {voiceMix.active * grow}%; background: #1f8a4c;"></div>
-					<div class="m-seg" style="width: {voiceMix.afk * grow}%; background: #b23b3b;"></div>
-					<div class="m-seg" style="width: {voiceMix.video * grow}%; background: #6d5bd0;"></div>
-					<div class="m-seg" style="width: {voiceMix.stream * grow}%; background: #c8911a;"></div>
-				</div>
-			</div>
-		{/if}
-		<div class="m-hbars">
-			{#each activityBars as bar}
-				<div class="m-hbar">
-					<span class="m-hbar-label"><i class="fas {bar.icon}" style="color: {bar.color};"></i> {bar.label}</span>
-					<div class="m-hbar-track">
-						<div class="m-hbar-fill" style="width: {bar.pct * grow}%; background: {bar.color};"></div>
-					</div>
-					<span class="m-hbar-val">{fmt(bar.value)}</span>
-				</div>
-			{/each}
-		</div>
-	</div>
-
-	{#if usagePie.total > 0}
-		<div class="m-stat-card m-overview-card m-ov-full">
-			<div class="m-stat-card-head">
-				<div class="m-stat-card-icon m-chili-stat-3"><i class="fas fa-chart-pie"></i></div>
-				<h2 class="m-stat-card-title">Item usage by type</h2>
-			</div>
-			<p class="m-card-note">How often you've used each item effect — attacks, buffs and utility combined.</p>
-			<div class="m-chart-split">
-				<div class="m-pie-wrap">
-					<svg class="m-pie" viewBox="0 0 100 100" role="img" aria-label="Item usage by type">
-						{#if usagePie.segments.length === 1}
-							<circle cx="50" cy="50" r="48" fill={usagePie.segments[0].color} />
-						{:else}
-							{#each usagePie.segments as slice}
-								<path d={slice.d} fill={slice.color} stroke="rgba(255,255,255,0.85)" stroke-width="0.8" />
-							{/each}
-						{/if}
-						<circle cx="50" cy="50" r="26" fill="#fff" />
-						<text x="50" y="47" text-anchor="middle" class="m-pie-total">{fmt(usagePie.total)}</text>
-						<text x="50" y="58" text-anchor="middle" class="m-pie-cap">uses</text>
-					</svg>
-					<div class="m-donut-legend">
-						{#each usagePie.segments as seg}
-							<div class="m-donut-leg">
-								<span class="m-donut-dot" style="background: {seg.color};"></span>
-								<i class="fas {seg.icon}" style="color: {seg.color};"></i>
-								<span class="m-donut-leg-name">{seg.label}</span>
-								<span class="m-donut-leg-val">{fmt(seg.value)}× · {seg.pct.toFixed(0)}%</span>
-							</div>
-						{/each}
-					</div>
-				</div>
-
-				<div class="m-colchart">
-					{#each usagePie.segments as seg}
-						<div class="m-col">
-							<span class="m-col-val">{fmt(seg.value)}</span>
-							<div class="m-col-track">
-								<div class="m-col-fill" style="height: {Math.max(6, seg.pct) * grow}%; background: {seg.color};"></div>
-							</div>
-							<i class="fas {seg.icon} m-col-ico" style="color: {seg.color};" title={seg.label}></i>
-						</div>
-					{/each}
-				</div>
-			</div>
-		</div>
-	{/if}
-
-	{#if hasPortfolio}
-		<div class="m-stat-card m-overview-card m-ov-full">
-			<div class="m-stat-card-head">
-				<div class="m-stat-card-icon m-chili-stat-2"><i class="fas fa-briefcase"></i></div>
-				<h2 class="m-stat-card-title">Portfolio</h2>
-			</div>
-			<div class="m-portfolio">
-				{#if allocationPie.total > 0}
-					<div class="m-portfolio-alloc">
-						<svg class="m-pie" viewBox="0 0 100 100" role="img" aria-label="Invested XP by asset">
-							{#if allocationPie.segments.length === 1}
-								<circle cx="50" cy="50" r="48" fill={allocationPie.segments[0].color} />
-							{:else}
-								{#each allocationPie.segments as slice}
-									<path d={slice.d} fill={slice.color} stroke="rgba(255,255,255,0.85)" stroke-width="0.8" />
-								{/each}
-							{/if}
-							<circle cx="50" cy="50" r="27" fill="#fff" />
-							<text x="50" y="48" text-anchor="middle" class="m-pie-total">{fmtShort(allocationPie.total)}</text>
-							<text x="50" y="58" text-anchor="middle" class="m-pie-cap">invested</text>
-						</svg>
-						<div class="m-donut-legend">
-							{#each allocationPie.segments as seg}
-								<div class="m-donut-leg m-donut-leg--tight">
-									<span class="m-donut-dot" style="background: {seg.color};"></span>
-									<span class="m-donut-leg-name">{seg.label}</span>
-									<span class="m-donut-leg-pct">{seg.pct.toFixed(0)}%</span>
-								</div>
-							{/each}
-						</div>
-					</div>
-				{/if}
-				{#if positions.length > 0}
-					<div class="m-hold-list">
-						{#each positions as pos}
-							<div class="m-hold">
-								{#if pos.image}
-									<img
-										class="m-hold-ic"
-										src={pos.image}
-										alt=""
-										loading="lazy"
-										onerror={(e) => ((e.currentTarget as HTMLImageElement).style.visibility = 'hidden')}
-									/>
-								{:else}
-									<span class="m-hold-ic m-hold-ic--ph"><i class="fas fa-coins"></i></span>
-								{/if}
-								<div class="m-hold-id">
-									<span class="m-hold-sym">{pos.symbol}</span>
-									<span class="m-hold-sub">{fmtShort(pos.value)} · from {fmtShort(pos.invested)}</span>
-								</div>
-								<div class="m-hold-pnl" data-dir={pos.pnl > 0 ? 'up' : pos.pnl < 0 ? 'down' : 'flat'}>
-									<span class="m-hold-pnl-v"
-										><i class="fas fa-caret-{pos.pnl >= 0 ? 'up' : 'down'}"></i>{pos.pnlPercent >= 0 ? '+' : ''}{pos.pnlPercent.toFixed(2)}%</span
-									>
-									<span class="m-hold-pnl-x">{pos.pnl >= 0 ? '+' : '−'}{fmtShort(Math.abs(pos.pnl))}</span>
-								</div>
-							</div>
-						{/each}
-					</div>
-				{/if}
-			</div>
-		</div>
-	{/if}
-
 	{#if flowChart}
 		<div class="m-stat-card m-overview-card m-ov-full">
 			<div class="m-stat-card-head">
@@ -447,6 +302,38 @@
 			</svg>
 		</div>
 	{/if}
+
+	<div class="m-stat-card m-overview-card m-ov-full">
+		<div class="m-stat-card-head">
+			<div class="m-stat-card-icon m-chili-stat-5"><i class="fas fa-microphone-alt"></i></div>
+			<h2 class="m-stat-card-title">Activity</h2>
+		</div>
+		{#if voiceMix}
+			<div class="m-bar-block">
+				<div class="m-bar-head">
+					<span>Voice time split</span>
+					<span class="m-bar-meta">{fmt(voiceMix.total)} min</span>
+				</div>
+				<div class="m-seg-bar m-seg-bar--3" title="Active · AFK · Video · Stream">
+					<div class="m-seg" style="width: {voiceMix.active * grow}%; background: #1f8a4c;"></div>
+					<div class="m-seg" style="width: {voiceMix.afk * grow}%; background: #b23b3b;"></div>
+					<div class="m-seg" style="width: {voiceMix.video * grow}%; background: #6d5bd0;"></div>
+					<div class="m-seg" style="width: {voiceMix.stream * grow}%; background: #c8911a;"></div>
+				</div>
+			</div>
+		{/if}
+		<div class="m-hbars">
+			{#each activityBars as bar}
+				<div class="m-hbar">
+					<span class="m-hbar-label"><i class="fas {bar.icon}" style="color: {bar.color};"></i> {bar.label}</span>
+					<div class="m-hbar-track">
+						<div class="m-hbar-fill" style="width: {bar.pct * grow}%; background: {bar.color};"></div>
+					</div>
+					<span class="m-hbar-val">{fmt(bar.value)}</span>
+				</div>
+			{/each}
+		</div>
+	</div>
 
 	{#if buddies.length > 0}
 		<div class="m-stat-card m-overview-card m-ov-full">
@@ -484,78 +371,6 @@
 			</div>
 		</div>
 	{/if}
-
-	<div class="m-stat-card m-overview-card m-ov-full">
-		<div class="m-stat-card-head">
-			<div class="m-stat-card-icon m-chili-stat-1"><i class="fas fa-fire-flame-curved"></i></div>
-			<h2 class="m-stat-card-title">Highlights</h2>
-		</div>
-		{#if relationCards.length > 0}
-			<div class="m-rel-row">
-				{#each relationCards as r}
-					<div class="m-rel" style="--rel: {r.accent};">
-						<span class="m-rel-ic"><i class="fas {r.icon}"></i></span>
-						<div class="m-rel-body">
-							<span class="m-rel-title">{r.title}</span>
-							<span class="m-rel-name">{r.row?.name}</span>
-							<span class="m-rel-sub">{r.sub} · {r.row && r.row.xp > 0 ? `${fmtShort(r.row.xp)} XP` : `${fmt(r.row?.hits ?? 0)}×`}</span>
-						</div>
-					</div>
-				{/each}
-			</div>
-		{/if}
-		{#snippet listGroup(lists: any[])}
-			<div class="m-ov-lists">
-				{#each lists as list}
-					<div class="m-ov-list">
-						<span class="m-ov-list-title"><i class="fas {list.icon}"></i> {list.title}</span>
-						{#each list.rows as t}
-							<div class="m-ov-bar-row">
-								<div class="m-ov-bar-head">
-									<span class="m-ov-list-name">{t.name}</span>
-									<span class="m-ov-list-val">{t.xp > 0 ? `${fmt(t.xp)} XP` : `${fmt(t.hits)}×`}</span>
-								</div>
-								<div class="m-ov-bar-track">
-									<div
-										class="m-ov-bar-fill {list.fill}"
-										style="width: {barPct(
-											t.xp || t.hits,
-											list.rows.map((r) => ({ xp: r.xp || r.hits }))
-										) * grow}%;"
-									></div>
-								</div>
-							</div>
-						{/each}
-					</div>
-				{/each}
-			</div>
-		{/snippet}
-
-		{#if hasFavorites}
-			{@const fav = ins.favorite_items[0]}
-			<div class="m-ov-fav-wrap">
-				<span class="m-ov-group-title"><i class="fas fa-star"></i> Favorite item</span>
-				<div class="m-fav" style="--fav: {fav.effect_type ? effectAccentHex(fav.effect_type) : 'var(--chili-hot)'};">
-					<span class="m-fav-ic"><i class="fas {fav.effect_type ? effectIcon(fav.effect_type) : 'fa-cube'}"></i></span>
-					<div class="m-fav-body">
-						<span class="m-fav-name">{fav.name}</span>
-						<span class="m-fav-sub">most used{fav.effect_type ? ` · ${effectLabel(fav.effect_type)}` : ''}</span>
-					</div>
-					<span class="m-fav-count">{fmt(fav.uses)}×</span>
-				</div>
-			</div>
-		{/if}
-
-		{#if offenseLists.length > 0}
-			<span class="m-ov-group-title m-ov-group-title--off"><i class="fas fa-crosshairs"></i> Offense · who you hit</span>
-			{@render listGroup(offenseLists)}
-		{/if}
-
-		{#if defenseLists.length > 0}
-			<span class="m-ov-group-title m-ov-group-title--def"><i class="fas fa-shield-halved"></i> Defense · done to you &amp; blocked</span>
-			{@render listGroup(defenseLists)}
-		{/if}
-	</div>
 
 	<div class="m-econ3 m-ov-full">
 		<div class="m-stat-card m-overview-card">
@@ -638,6 +453,191 @@
 			</div>
 		</div>
 	</div>
+
+	{#if hasPortfolio}
+		<div class="m-stat-card m-overview-card m-ov-full">
+			<div class="m-stat-card-head">
+				<div class="m-stat-card-icon m-chili-stat-2"><i class="fas fa-briefcase"></i></div>
+				<h2 class="m-stat-card-title">Portfolio</h2>
+			</div>
+			<div class="m-portfolio">
+				{#if allocationPie.total > 0}
+					<div class="m-portfolio-alloc">
+						<svg class="m-pie" viewBox="0 0 100 100" role="img" aria-label="Invested XP by asset">
+							{#if allocationPie.segments.length === 1}
+								<circle cx="50" cy="50" r="48" fill={allocationPie.segments[0].color} />
+							{:else}
+								{#each allocationPie.segments as slice}
+									<path d={slice.d} fill={slice.color} stroke="rgba(255,255,255,0.85)" stroke-width="0.8" />
+								{/each}
+							{/if}
+							<circle cx="50" cy="50" r="27" fill="#fff" />
+							<text x="50" y="48" text-anchor="middle" class="m-pie-total">{fmtShort(allocationPie.total)}</text>
+							<text x="50" y="58" text-anchor="middle" class="m-pie-cap">invested</text>
+						</svg>
+						<div class="m-donut-legend">
+							{#each allocationPie.segments as seg}
+								<div class="m-donut-leg m-donut-leg--tight">
+									<span class="m-donut-dot" style="background: {seg.color};"></span>
+									<span class="m-donut-leg-name">{seg.label}</span>
+									<span class="m-donut-leg-pct">{seg.pct.toFixed(0)}%</span>
+								</div>
+							{/each}
+						</div>
+					</div>
+				{/if}
+				{#if positions.length > 0}
+					<div class="m-hold-list">
+						{#each positions as pos}
+							<div class="m-hold">
+								{#if pos.image}
+									<img
+										class="m-hold-ic"
+										src={pos.image}
+										alt=""
+										loading="lazy"
+										onerror={(e) => ((e.currentTarget as HTMLImageElement).style.visibility = 'hidden')}
+									/>
+								{:else}
+									<span class="m-hold-ic m-hold-ic--ph"><i class="fas fa-coins"></i></span>
+								{/if}
+								<div class="m-hold-id">
+									<span class="m-hold-sym">{pos.symbol}</span>
+									<span class="m-hold-sub">{fmtShort(pos.value)} · from {fmtShort(pos.invested)}</span>
+								</div>
+								<div class="m-hold-pnl" data-dir={pos.pnl > 0 ? 'up' : pos.pnl < 0 ? 'down' : 'flat'}>
+									<span class="m-hold-pnl-v"
+										><i class="fas fa-caret-{pos.pnl >= 0 ? 'up' : 'down'}"></i>{pos.pnlPercent >= 0 ? '+' : ''}{pos.pnlPercent.toFixed(2)}%</span
+									>
+									<span class="m-hold-pnl-x">{pos.pnl >= 0 ? '+' : '−'}{fmtShort(Math.abs(pos.pnl))}</span>
+								</div>
+							</div>
+						{/each}
+					</div>
+				{/if}
+			</div>
+		</div>
+	{/if}
+
+	<div class="m-stat-card m-overview-card m-ov-full">
+		<div class="m-stat-card-head">
+			<div class="m-stat-card-icon m-chili-stat-1"><i class="fas fa-fire-flame-curved"></i></div>
+			<h2 class="m-stat-card-title">Highlights</h2>
+		</div>
+		{#if relationCards.length > 0}
+			<div class="m-rel-row">
+				{#each relationCards as r}
+					<div class="m-rel" style="--rel: {r.accent};">
+						<span class="m-rel-ic"><i class="fas {r.icon}"></i></span>
+						<div class="m-rel-body">
+							<span class="m-rel-title">{r.title}</span>
+							<span class="m-rel-name">{r.row?.name}</span>
+							<span class="m-rel-sub">{r.sub} · {r.row && r.row.xp > 0 ? `${fmtShort(r.row.xp)} XP` : `${fmt(r.row?.hits ?? 0)}×`}</span>
+						</div>
+					</div>
+				{/each}
+			</div>
+		{/if}
+		{#snippet listGroup(lists: any[])}
+			<div class="m-ov-lists">
+				{#each lists as list}
+					<div class="m-ov-list">
+						<span class="m-ov-list-title"><i class="fas {list.icon}"></i> {list.title}</span>
+						{#each list.rows as t}
+							<div class="m-ov-bar-row">
+								<div class="m-ov-bar-head">
+									<span class="m-ov-list-name">{t.name}</span>
+									<span class="m-ov-list-val">{t.xp > 0 ? `${fmt(t.xp)} XP` : `${fmt(t.hits)}×`}</span>
+								</div>
+								<div class="m-ov-bar-track">
+									<div
+										class="m-ov-bar-fill {list.fill}"
+										style="width: {barPct(
+											t.xp || t.hits,
+											list.rows.map((r) => ({ xp: r.xp || r.hits }))
+										) * grow}%;"
+									></div>
+								</div>
+							</div>
+						{/each}
+					</div>
+				{/each}
+			</div>
+		{/snippet}
+
+		{#if hasFavorites}
+			{@const fav = ins.favorite_items[0]}
+			<div class="m-ov-fav-wrap">
+				<span class="m-ov-group-title"><i class="fas fa-star"></i> Favorite item</span>
+				<div class="m-fav" style="--fav: {fav.effect_type ? effectAccentHex(fav.effect_type) : 'var(--chili-hot)'};">
+					<span class="m-fav-ic"><i class="fas {fav.effect_type ? effectIcon(fav.effect_type) : 'fa-cube'}"></i></span>
+					<div class="m-fav-body">
+						<span class="m-fav-name">{fav.name}</span>
+						<span class="m-fav-sub">most used{fav.effect_type ? ` · ${effectLabel(fav.effect_type)}` : ''}</span>
+					</div>
+					<span class="m-fav-count">{fmt(fav.uses)}×</span>
+				</div>
+			</div>
+		{/if}
+
+		{#if offenseLists.length > 0}
+			<span class="m-ov-group-title m-ov-group-title--off"><i class="fas fa-crosshairs"></i> Offense · who you hit</span>
+			{@render listGroup(offenseLists)}
+		{/if}
+
+		{#if defenseLists.length > 0}
+			<span class="m-ov-group-title m-ov-group-title--def"><i class="fas fa-shield-halved"></i> Defense · done to you &amp; blocked</span>
+			{@render listGroup(defenseLists)}
+		{/if}
+	</div>
+
+	{#if usagePie.total > 0}
+		<div class="m-stat-card m-overview-card m-ov-full">
+			<div class="m-stat-card-head">
+				<div class="m-stat-card-icon m-chili-stat-3"><i class="fas fa-chart-pie"></i></div>
+				<h2 class="m-stat-card-title">Item usage by type</h2>
+			</div>
+			<p class="m-card-note">How often you've used each item effect — attacks, buffs and utility combined.</p>
+			<div class="m-chart-split">
+				<div class="m-pie-wrap">
+					<svg class="m-pie" viewBox="0 0 100 100" role="img" aria-label="Item usage by type">
+						{#if usagePie.segments.length === 1}
+							<circle cx="50" cy="50" r="48" fill={usagePie.segments[0].color} />
+						{:else}
+							{#each usagePie.segments as slice}
+								<path d={slice.d} fill={slice.color} stroke="rgba(255,255,255,0.85)" stroke-width="0.8" />
+							{/each}
+						{/if}
+						<circle cx="50" cy="50" r="26" fill="#fff" />
+						<text x="50" y="47" text-anchor="middle" class="m-pie-total">{fmt(usagePie.total)}</text>
+						<text x="50" y="58" text-anchor="middle" class="m-pie-cap">uses</text>
+					</svg>
+					<div class="m-donut-legend">
+						{#each usagePie.segments as seg}
+							<div class="m-donut-leg">
+								<span class="m-donut-dot" style="background: {seg.color};"></span>
+								<i class="fas {seg.icon}" style="color: {seg.color};"></i>
+								<span class="m-donut-leg-name">{seg.label}</span>
+								<span class="m-donut-leg-val">{fmt(seg.value)}× · {seg.pct.toFixed(0)}%</span>
+							</div>
+						{/each}
+					</div>
+				</div>
+
+				<div class="m-colchart">
+					{#each usagePie.segments as seg}
+						<div class="m-col">
+							<span class="m-col-val">{fmt(seg.value)}</span>
+							<div class="m-col-track">
+								<div class="m-col-fill" style="height: {Math.max(6, seg.pct) * grow}%; background: {seg.color};"></div>
+							</div>
+							<i class="fas {seg.icon} m-col-ico" style="color: {seg.color};" title={seg.label}></i>
+						</div>
+					{/each}
+				</div>
+			</div>
+		</div>
+	{/if}
 
 	<div class="m-econ2 m-ov-full">
 		<div class="m-stat-card m-overview-card">

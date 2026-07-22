@@ -1380,15 +1380,6 @@
 	.m-stats-grid {
 		grid-template-columns: repeat(3, 1fr);
 	}
-	.m-stats-grid .m-stat-card--leveling {
-		grid-column: 3;
-		grid-row: span 2;
-	}
-}
-@media (min-width: 640px) and (max-width: 1023px) {
-	.m-stats-grid .m-stat-card--leveling {
-		grid-column: 1 / -1;
-	}
 }
 .m-stat-card {
 	background: rgba(255, 255, 255, 0.9);

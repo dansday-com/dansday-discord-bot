@@ -113,14 +113,14 @@ export async function computeAwardModifiers(memberId: any, source: any = 'all', 
 
 	if (skimPercent > 100) skimPercent = 100;
 
-	return { multiplier, skimPercent, leeches };
+	return { multiplier, skimPercent, leeches, victimLuckPercent };
 }
 
 export async function applyAwardEffects(memberId: any, baseXp: any, source: any = 'all', guildId: any = null) {
 	const safeBase = Math.max(0, Math.floor(Number(baseXp) || 0));
-	if (safeBase <= 0) return { memberXp: 0, leechCredits: [] as any[], multiplier: 1, boosted: false, skimPercent: 0, leeched: false };
+	if (safeBase <= 0) return { memberXp: 0, leechCredits: [] as any[], multiplier: 1, boosted: false, skimPercent: 0, leeched: false, victimLuckPercent: 0 };
 
-	const { multiplier, skimPercent, leeches } = await computeAwardModifiers(memberId, source, guildId);
+	const { multiplier, skimPercent, leeches, victimLuckPercent } = await computeAwardModifiers(memberId, source, guildId);
 	const boosted = Math.floor(safeBase * multiplier);
 	const totalSkim = Math.floor((boosted * skimPercent) / 100);
 	const memberXp = Math.max(0, boosted - totalSkim);
@@ -138,7 +138,7 @@ export async function applyAwardEffects(memberId: any, baseXp: any, source: any 
 		}
 	}
 
-	return { memberXp, leechCredits, multiplier, boosted: multiplier > 1, skimPercent, leeched: totalSkim > 0 };
+	return { memberXp, leechCredits, multiplier, boosted: multiplier > 1, skimPercent, leeched: totalSkim > 0, victimLuckPercent };
 }
 
 export async function creditLeechers(leechCredits: any, guildId: any) {
@@ -271,7 +271,8 @@ async function runSelfBuff({
 	active = {},
 	trackDisguise = true,
 	invalidateSelf = true,
-	extra = {}
+	extra = {},
+	logFields = {}
 }: {
 	memberItemId: any;
 	ownerMemberId: any;
@@ -282,11 +283,17 @@ async function runSelfBuff({
 	trackDisguise?: boolean;
 	invalidateSelf?: boolean;
 	extra?: Record<string, any>;
+	logFields?: Record<string, any>;
 }) {
 	const actorDisguised = trackDisguise ? await isDisguised(ownerMemberId) : false;
 	const expiresAt = computeExpiry(durationMinutes);
 	await db.addMemberItemActive(memberItemId, { effect_value: effectValue, expires_at: expiresAt, ...active });
-	await logAction(ownerMemberId, { member_item_id: memberItemId, action, ...(trackDisguise ? { actor_disguised: actorDisguised } : {}) });
+	await logAction(ownerMemberId, {
+		member_item_id: memberItemId,
+		action,
+		...(trackDisguise ? { actor_disguised: actorDisguised } : {}),
+		...logFields
+	});
 	if (invalidateSelf) await invalidateEffectCache(ownerMemberId);
 	return { outcome: 'success', expiresAt, actorDisguised, ...extra };
 }
@@ -455,7 +462,14 @@ export async function resolveLeech({ memberItemId, actorMemberId, targetMemberId
 		target_member_id: targetMemberId,
 		expires_at: expiresAt
 	});
-	await logAction(actorMemberId, { member_item_id: memberItemId, target_member_id: targetMemberId, action: 'leech', actor_disguised: actorDisguised });
+	await logAction(actorMemberId, {
+		member_item_id: memberItemId,
+		target_member_id: targetMemberId,
+		action: 'leech',
+		rate_percent: skimPercent,
+		luck_percent: luckPercent || null,
+		actor_disguised: actorDisguised
+	});
 	await invalidateEffectCache(targetMemberId);
 	return { outcome: 'success', expiresAt, skimPercent, luckPercent, actorDisguised };
 }
@@ -522,7 +536,8 @@ export async function resolveInsurance({ memberItemId, ownerMemberId, config }: 
 		action: 'insurance',
 		effectValue: refundPercent,
 		durationMinutes: cfg.effect_duration_minutes,
-		extra: { refundPercent, luckPercent }
+		extra: { refundPercent, luckPercent },
+		logFields: { rate_percent: refundPercent, luck_percent: luckPercent || null }
 	});
 }
 
@@ -535,7 +550,8 @@ export async function resolveLuck({ memberItemId, ownerMemberId, config }: any) 
 		action: 'luck',
 		effectValue: luckPercent,
 		durationMinutes: cfg.effect_duration_minutes,
-		extra: { luckPercent }
+		extra: { luckPercent },
+		logFields: { rate_percent: luckPercent }
 	});
 }
 
@@ -560,6 +576,8 @@ export async function resolveGift({ actorMemberId, actorMemberItemId, targetMemb
 		target_member_id: targetMemberId,
 		action: 'gift',
 		xp_amount: received,
+		rate_percent: taxPercent || null,
+		luck_percent: luckPercent || null,
 		actor_disguised: actorDisguised
 	});
 	return { outcome: 'success', xp: received, taxPercent, luckPercent, actorDisguised };
@@ -595,7 +613,9 @@ export async function resolveSpy({ actorMemberId, actorMemberItemId, targetMembe
 			target_member_id: targetMemberId,
 			action: 'spy',
 			xp_amount: 0,
-			outcome: 'caught'
+			outcome: 'caught',
+			rate_percent: chance,
+			luck_percent: luckPercent || null
 		});
 		return { outcome: 'caught', spyReport: { targetName, caught: true, bag: [], effects: [], cooldowns: [], bounty: 0 } };
 	}
@@ -606,7 +626,13 @@ export async function resolveSpy({ actorMemberId, actorMemberItemId, targetMembe
 	const bounty = await db.getActiveBountyTotal(targetMemberId).catch(() => 0);
 	const assetsReport = await spyTargetAssets(targetMemberId);
 
-	await logAction(actorMemberId, { member_item_id: actorMemberItemId, target_member_id: targetMemberId, action: 'spy' });
+	await logAction(actorMemberId, {
+		member_item_id: actorMemberItemId,
+		target_member_id: targetMemberId,
+		action: 'spy',
+		rate_percent: chance,
+		luck_percent: luckPercent || null
+	});
 
 	return {
 		outcome: 'success',

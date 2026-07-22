@@ -81,7 +81,9 @@ export async function handleMinigamePlay(client: any, payload: any) {
 			wager,
 			payout,
 			xp_amount: netChange,
-			outcome: won ? 'win' : 'lose'
+			outcome: won ? 'win' : 'lose',
+			chance,
+			luck_percent: luckPercent || null
 		})
 		.catch(() => null);
 

@@ -590,7 +590,8 @@ async function sendXPLogToChannel(guild, dbMember, xpGained, xpType, award: any 
 				rank: stats?.rank != null ? Number(stats.rank) : null,
 				multiplier: award?.boosted ? award.multiplier : null,
 				skim_percent: award?.leeched ? award.skimPercent : null,
-				friend_percent: award?.friendBoosted ? award.friendPercent : null
+				friend_percent: award?.friendBoosted ? award.friendPercent : null,
+				luck_percent: award?.victimLuckPercent > 0 ? award.victimLuckPercent : null
 			})
 			.catch(() => null);
 
@@ -604,9 +605,15 @@ async function sendXPLogToChannel(guild, dbMember, xpGained, xpType, award: any 
 			? 'A mysterious member 🎭'
 			: dbMember.server_display_name || dbMember.display_name || dbMember.username || 'Unknown';
 		const emoji = XP_LOG_EMOJI[xpType] ?? '⭐';
+		let luckNoteUsed = false;
+		const takeLuckNote = () => {
+			if (luckNoteUsed || !(award?.victimLuckPercent > 0)) return '';
+			luckNoteUsed = true;
+			return ` +${award.victimLuckPercent}% luck 🍀`;
+		};
 		const boostSuffix = award?.boosted ? ` (${award.multiplier}× Boost ⚡)` : '';
-		const friendSuffix = award?.friendBoosted ? ` (+${award.friendPercent}% Friend boost 🤝)` : '';
-		const leechSuffix = award?.leeched ? ` (−${award.skimPercent}% Leech 🩸)` : '';
+		const friendSuffix = award?.friendBoosted ? ` (+${award.friendPercent}% Friend boost 🤝${takeLuckNote()})` : '';
+		const leechSuffix = award?.leeched ? ` (−${award.skimPercent}% Leech 🩸${takeLuckNote()})` : '';
 		const logMessage = `${emoji} ${xpType} XP: ${memberName} gained +${xpGained} XP${boostSuffix}${friendSuffix}${leechSuffix}`;
 
 		await channel.send(logMessage);

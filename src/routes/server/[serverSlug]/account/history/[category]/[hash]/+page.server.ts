@@ -32,6 +32,8 @@ export const load: PageServerLoad = async ({ parent, params, url }) => {
 		itemName: h.item_name ?? null,
 		outcome: h.outcome,
 		xpAmount: Number(h.xp_amount) || 0,
+		ratePercent: h.rate_percent != null ? Number(h.rate_percent) : null,
+		luckPercent: h.luck_percent != null ? Number(h.luck_percent) : null,
 		direction: h.direction === 'incoming' ? 'incoming' : 'outgoing',
 		targetName: h.target_server_display_name || h.target_display_name || h.target_username || null,
 		actorName:
@@ -54,6 +56,7 @@ export const load: PageServerLoad = async ({ parent, params, url }) => {
 		multiplier: x.multiplier != null ? Number(x.multiplier) : null,
 		skimPercent: x.skim_percent != null ? Number(x.skim_percent) : null,
 		friendPercent: x.friend_percent != null ? Number(x.friend_percent) : null,
+		luckPercent: x.luck_percent != null ? Number(x.luck_percent) : null,
 		at: x.created_at ? new Date(x.created_at).getTime() : null
 	}));
 
@@ -81,6 +84,8 @@ export const load: PageServerLoad = async ({ parent, params, url }) => {
 		payout: Number(h.payout) || 0,
 		xpAmount: Number(h.xp_amount) || 0,
 		outcome: h.outcome,
+		chance: h.chance != null ? Number(h.chance) : null,
+		luckPercent: h.luck_percent != null ? Number(h.luck_percent) : null,
 		at: h.created_at ? new Date(h.created_at).getTime() : null
 	}));
 

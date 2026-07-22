@@ -1928,6 +1928,8 @@ export async function logMemberItemAction(memberId: any, data: any = {}) {
 		action: String(data.action ?? ''),
 		xp_amount: Number(data.xp_amount ?? 0),
 		outcome: String(data.outcome ?? ''),
+		rate_percent: data.rate_percent != null ? (String(data.rate_percent) as any) : null,
+		luck_percent: data.luck_percent != null ? (String(data.luck_percent) as any) : null,
 		actor_disguised: data.actor_disguised ? 1 : 0,
 		created_at: toMySQLDateTime() as any
 	});
@@ -1945,6 +1947,8 @@ export async function logMinigameAction(memberId: any, data: any = {}) {
 		payout: Number(data.payout ?? 0),
 		xp_amount: Number(data.xp_amount ?? 0),
 		outcome: String(data.outcome ?? ''),
+		chance: data.chance != null ? (String(data.chance) as any) : null,
+		luck_percent: data.luck_percent != null ? (String(data.luck_percent) as any) : null,
 		created_at: toMySQLDateTime() as any
 	});
 	return true;
@@ -2013,7 +2017,7 @@ export async function getMemberMinigameHistory(memberId: any, limit = 600) {
 	if (!memberId) return [] as any[];
 	const lim = Number(limit) > 0 ? sql`LIMIT ${Number(limit)}` : sql``;
 	const rows = await db.execute(sql`
-		SELECT id, game, multiplier, wager, payout, xp_amount, outcome, created_at
+		SELECT id, game, multiplier, wager, payout, xp_amount, outcome, chance, luck_percent, created_at
 		FROM server_member_minigame_logs
 		WHERE member_id = ${Number(memberId)}
 		ORDER BY created_at DESC
@@ -2080,6 +2084,7 @@ export async function logMemberLevelGain(memberId: any, data: any = {}) {
 		multiplier: data.multiplier != null ? (String(data.multiplier) as any) : null,
 		skim_percent: data.skim_percent != null ? Number(data.skim_percent) : null,
 		friend_percent: data.friend_percent != null ? Number(data.friend_percent) : null,
+		luck_percent: data.luck_percent != null ? Number(data.luck_percent) : null,
 		created_at: toMySQLDateTime() as any
 	});
 	return true;
@@ -2090,7 +2095,7 @@ export async function getMemberLevelHistory(memberId: any, limit = 200) {
 	if (!memberId) return [] as any[];
 	const lim = Number(limit) > 0 ? sql`LIMIT ${Number(limit)}` : sql``;
 	const rows = await db.execute(sql`
-		SELECT id, source, amount, total_xp, level, \`rank\`, multiplier, skim_percent, friend_percent, created_at
+		SELECT id, source, amount, total_xp, level, \`rank\`, multiplier, skim_percent, friend_percent, luck_percent, created_at
 		FROM server_member_level_logs
 		WHERE member_id = ${Number(memberId)}
 		ORDER BY created_at DESC, id DESC
@@ -2104,7 +2109,7 @@ export async function getMemberItemHistory(memberId: any, limit = 200) {
 	if (!memberId) return [] as any[];
 	const rows = await db.execute(sql`
 		SELECT
-			sml.id, sml.action, sml.xp_amount, sml.outcome, sml.actor_disguised, sml.created_at,
+			sml.id, sml.action, sml.xp_amount, sml.outcome, sml.rate_percent, sml.luck_percent, sml.actor_disguised, sml.created_at,
 			COALESCE(bi.name, bi2.name) AS item_name,
 			COALESCE(bi.effect_type, bi2.effect_type) AS effect_type,
 			CASE WHEN sml.member_id = ${Number(memberId)} THEN 'outgoing' ELSE 'incoming' END AS direction,

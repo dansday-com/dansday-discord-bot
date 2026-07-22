@@ -834,6 +834,8 @@ export const serverMemberItemLogs = mysqlTable(
 		action: varchar('action', { length: 32 }).notNull(),
 		xp_amount: int('xp_amount').notNull().default(0),
 		outcome: varchar('outcome', { length: 16 }).notNull(),
+		rate_percent: decimal('rate_percent', { precision: 6, scale: 2 }),
+		luck_percent: decimal('luck_percent', { precision: 6, scale: 2 }),
 		actor_disguised: tinyint('actor_disguised').notNull().default(0),
 		immunity_cleared: tinyint('immunity_cleared').notNull().default(0),
 		created_at: datetime('created_at').notNull()
@@ -857,6 +859,8 @@ export const serverMemberMinigameLogs = mysqlTable(
 		payout: int('payout').notNull().default(0),
 		xp_amount: int('xp_amount').notNull().default(0),
 		outcome: varchar('outcome', { length: 16 }).notNull(),
+		chance: decimal('chance', { precision: 6, scale: 2 }),
+		luck_percent: decimal('luck_percent', { precision: 6, scale: 2 }),
 		created_at: datetime('created_at').notNull()
 	},
 	(t) => [index('idx_server_member_minigame_logs_member').on(t.member_id, t.created_at), index('idx_server_member_minigame_logs_created').on(t.created_at)]
@@ -898,6 +902,7 @@ export const serverMemberLevelLogs = mysqlTable(
 		multiplier: decimal('multiplier', { precision: 6, scale: 2 }),
 		skim_percent: int('skim_percent'),
 		friend_percent: int('friend_percent'),
+		luck_percent: int('luck_percent'),
 		created_at: datetime('created_at').notNull()
 	},
 	(t) => [index('idx_server_member_level_logs_member').on(t.member_id, t.created_at)]

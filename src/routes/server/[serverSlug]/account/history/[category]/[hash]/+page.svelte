@@ -32,6 +32,7 @@
 		if (h.multiplier) badges.push({ icon: 'fa-bolt', text: `${h.multiplier}× Boost` });
 		if (h.friendPercent) badges.push({ icon: 'fa-handshake', text: `+${h.friendPercent}% Friend boost` });
 		if (h.skimPercent) badges.push({ icon: 'fa-droplet', text: h.source === 'leech' ? `${h.skimPercent}% Siphoned` : `−${h.skimPercent}% Leech` });
+		if (h.luckPercent) badges.push({ icon: 'fa-clover', text: `+${h.luckPercent}% Luck` });
 		return {
 			icon: src.icon,
 			title: `${src.label} XP`,
@@ -75,12 +76,15 @@
 	function minigameLine(h: any): { icon: string; title: string; tone: string; deltaLabel: string; badges: Badge[] } {
 		const won = h.outcome === 'win';
 		const net = Number(h.xpAmount) || 0;
+		const badges: Badge[] = [{ icon: 'fa-dice', text: `${Number(h.multiplier).toFixed(2)}×` }];
+		if (h.chance != null) badges.push({ icon: 'fa-percent', text: `${Number(h.chance).toFixed(1)}% chance` });
+		if (h.luckPercent) badges.push({ icon: 'fa-clover', text: `+${h.luckPercent}% Luck` });
 		return {
 			icon: won ? 'fa-sack-dollar' : 'fa-skull',
 			title: won ? 'Gamble — Won' : 'Gamble — Lost',
 			tone: won ? 'win' : 'lose',
 			deltaLabel: `${net >= 0 ? '+' : '−'}${fmt(Math.abs(net))} XP`,
-			badges: [{ icon: 'fa-dice', text: `${Number(h.multiplier).toFixed(2)}×` }]
+			badges
 		};
 	}
 
@@ -95,7 +99,14 @@
 		return `${s}s ago`;
 	}
 
-	function line(h: any): { icon: string; title: string; tone: string; deltaLabel: string } {
+	function luckBadges(h: any, rateLabel?: (rate: number) => string): Badge[] {
+		const badges: Badge[] = [];
+		if (h.ratePercent != null && rateLabel) badges.push({ icon: 'fa-percent', text: rateLabel(h.ratePercent) });
+		if (h.luckPercent) badges.push({ icon: 'fa-clover', text: `+${h.luckPercent}% Luck` });
+		return badges;
+	}
+
+	function line(h: any): { icon: string; title: string; tone: string; deltaLabel: string; badges?: Badge[] } {
 		if (h.action === 'gift' && h.outcome === 'admin')
 			return { icon: effectIcon('gift'), title: `Gift from admin — ${h.itemName ?? 'item'}`, tone: 'win', deltaLabel: 'Received' };
 		if (h.action === 'buy') return { icon: 'fa-cart-shopping', title: `Bought ${h.itemName ?? 'item'}`, tone: 'spend', deltaLabel: `−${fmt(h.xpAmount)} XP` };
@@ -120,16 +131,38 @@
 			boost: 'Boost activated',
 			shield: 'Shield activated',
 			reflect: 'Reflect activated',
-			insurance: 'Insurance activated'
+			insurance: 'Insurance activated',
+			luck: 'Luck activated'
 		};
 		if (h.action === 'insurance' && h.outcome === 'refunded') {
 			const from = h.targetName ? ` ← ${h.targetName}` : '';
 			return { icon: 'fa-money-bill-transfer', title: `Insurance refund${from}`, tone: 'win', deltaLabel: h.xpAmount > 0 ? `+${fmt(h.xpAmount)} XP` : '' };
 		}
+		if (h.action === 'insurance') {
+			return {
+				icon: effectIcon('insurance'),
+				title: 'Insurance activated',
+				tone: 'neutral',
+				deltaLabel: '',
+				badges: luckBadges(h, (r) => `${r}% Refund`)
+			};
+		}
+		if (h.action === 'luck') {
+			return {
+				icon: effectIcon('luck'),
+				title: 'Luck activated',
+				tone: 'win',
+				deltaLabel: '',
+				badges: [{ icon: 'fa-clover', text: `+${h.ratePercent ?? 0}%` }]
+			};
+		}
 		const target = h.targetName ? ` → ${h.targetName}` : '';
 		if (h.action === 'spy') {
 			if (h.outcome === 'caught') return { icon: 'fa-triangle-exclamation', title: `Spy caught${target}`, tone: 'lose', deltaLabel: 'Caught' };
-			return { icon: effectIcon('spy'), title: `Spied${target}`, tone: 'neutral', deltaLabel: '' };
+			return { icon: effectIcon('spy'), title: `Spied${target}`, tone: 'neutral', deltaLabel: '', badges: luckBadges(h, (r) => `${r}% Chance`) };
+		}
+		if (h.action === 'leech') {
+			return { icon: effectIcon('leech'), title: `Leeched${target}`, tone: 'neutral', deltaLabel: '', badges: luckBadges(h, (r) => `${r}% Skim`) };
 		}
 		const title = PAST_TITLE[h.action] ?? effectLabel(h.action);
 		let tone = 'neutral';
@@ -148,10 +181,13 @@
 			tone = 'spend';
 			deltaLabel = `−${fmt(h.xpAmount)} XP`;
 		}
+		if (h.action === 'gift' && (h.ratePercent || h.luckPercent)) {
+			return { icon: effectIcon(h.action), title: `${title}${target}`, tone, deltaLabel, badges: luckBadges(h, (r) => `${r.toFixed(1)}% Tax`) };
+		}
 		return { icon: effectIcon(h.action), title: `${title}${target}`, tone, deltaLabel };
 	}
 
-	function incomingLine(h: any): { icon: string; title: string; tone: string; deltaLabel: string } {
+	function incomingLine(h: any): { icon: string; title: string; tone: string; deltaLabel: string; badges?: Badge[] } {
 		const by = h.actorName ? ` ← ${h.actorName}` : h.actorDisguised ? ` ← an unknown member 🎭` : '';
 		const icon = effectIcon(h.action);
 
@@ -165,7 +201,13 @@
 		if (h.outcome === 'reflected') return { icon: 'fa-arrows-rotate', title: `Reflected ${h.action}${by}`, tone: 'win', deltaLabel: 'Reflected' };
 
 		if (h.action === 'gift') {
-			return { icon, title: `Received gift${by}`, tone: 'win', deltaLabel: h.xpAmount > 0 ? `+${fmt(h.xpAmount)} XP` : '' };
+			return {
+				icon,
+				title: `Received gift${by}`,
+				tone: 'win',
+				deltaLabel: h.xpAmount > 0 ? `+${fmt(h.xpAmount)} XP` : '',
+				badges: luckBadges(h, (r) => `${r.toFixed(1)}% Tax`)
+			};
 		}
 		if (h.action === 'steal') {
 			return { icon, title: `Robbed${by}`, tone: 'lose', deltaLabel: h.xpAmount > 0 ? `−${fmt(h.xpAmount)} XP` : '' };
@@ -174,7 +216,7 @@
 			return { icon, title: `Bombed${by}`, tone: 'lose', deltaLabel: h.xpAmount > 0 ? `−${fmt(h.xpAmount)} XP` : '' };
 		}
 		if (h.action === 'leech') {
-			return { icon, title: `Leeched${by}`, tone: 'lose', deltaLabel: '' };
+			return { icon, title: `Leeched${by}`, tone: 'lose', deltaLabel: '', badges: luckBadges(h, (r) => `${r}% Skimmed`) };
 		}
 		if (h.action === 'bounty') {
 			return { icon, title: `Bounty on you${by}`, tone: 'lose', deltaLabel: '' };

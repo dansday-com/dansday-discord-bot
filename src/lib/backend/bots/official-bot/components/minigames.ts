@@ -46,7 +46,7 @@ export async function handleMinigamePlay(client: any, payload: any) {
 	const mult = clampMultiplier(multiplier);
 	const luckPercent = await getActiveLuckPercent(actorMemberId);
 	const baseChance = winChanceFor(mult);
-	const chance = luckPercent > 0 ? Math.min(100, baseChance * (1 + luckPercent / 100)) : baseChance;
+	const chance = luckPercent > 0 ? Math.min(100, baseChance + luckPercent) : baseChance;
 
 	const balance = await getSpendableXp(actorMemberId, guild_id);
 	const wager = Math.max(0, Math.floor(Number(amount) || 0));

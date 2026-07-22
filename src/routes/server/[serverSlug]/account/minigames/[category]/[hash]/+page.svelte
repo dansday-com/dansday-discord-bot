@@ -32,7 +32,7 @@
 	let playing = $state<string | null>(null);
 	let multiplier = $state(2);
 	const baseWinChance = $derived(100 / multiplier);
-	const winChance = $derived(luckPercent > 0 ? Math.min(100, baseWinChance * (1 + luckPercent / 100)) : baseWinChance);
+	const winChance = $derived(luckPercent > 0 ? Math.min(100, baseWinChance + luckPercent) : baseWinChance);
 	let gamblePercent = $state<number | 'custom'>(25);
 	let gambleCustom = $state<number | null>(null);
 	let busy = $state(false);

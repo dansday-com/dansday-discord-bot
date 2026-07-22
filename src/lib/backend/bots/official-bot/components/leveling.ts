@@ -726,7 +726,7 @@ async function awardVoiceXPLocked(server, dbMember, guildId, reason, previousSta
 
 	const { count: friendCount, discordIds: friendDiscordIds } = await countVoiceFriends(guildId, dbMember.discord_member_id);
 	const luckPercent = await getActiveLuckPercent(dbMember.id);
-	const friendPercent = Math.round(friendCount * 10 * (1 + luckPercent / 100));
+	const friendPercent = friendCount * 10 + luckPercent;
 	const friendBonus = Math.floor((baseAwardXp * friendPercent) / 100);
 	const xpGained = baseAwardXp + friendBonus;
 	(award as any).friendPercent = friendPercent;

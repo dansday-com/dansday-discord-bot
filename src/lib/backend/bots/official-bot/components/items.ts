@@ -219,12 +219,12 @@ export async function getActiveLuckPercent(memberId: any): Promise<number> {
 
 function applyLuckBoost(value: number, luckPercent: number, max = 100): number {
 	if (luckPercent <= 0) return value;
-	return Math.min(max, value * (1 + luckPercent / 100));
+	return Math.min(max, value + luckPercent);
 }
 
 function applyLuckReduction(value: number, luckPercent: number): number {
 	if (luckPercent <= 0) return value;
-	return Math.max(0, value * (1 - luckPercent / 100));
+	return Math.max(0, value - luckPercent);
 }
 
 async function attackCooldownUntil(actorMemberId: any, cooldownMinutes: any, action: 'steal' | 'bomb'): Promise<Date | null> {

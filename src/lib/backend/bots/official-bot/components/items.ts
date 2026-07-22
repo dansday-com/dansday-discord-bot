@@ -8,6 +8,7 @@ import {
 	ANNOUNCED_EFFECTS,
 	getItemEffect,
 	BAG_CAPACITY,
+	effectiveBagStock,
 	effectAccentInt,
 	formatDuration,
 	DISGUISED_MENTION,
@@ -957,7 +958,7 @@ export async function handleItemBuy(client: any, payload: any) {
 	const totalCost = (Number(item.cost) || 0) * qty;
 
 	const inventory = await db.getMemberInventory(actorMemberId).catch(() => []);
-	const bagStock = (inventory as any[]).reduce((sum, r) => sum + (Number(r.quantity) || 0), 0);
+	const bagStock = effectiveBagStock(inventory as any[]);
 	if (bagStock + qty > BAG_CAPACITY) {
 		return { ok: false, error: 'bag_full', capacity: BAG_CAPACITY, bagStock };
 	}

@@ -1636,7 +1636,7 @@ export async function getMemberInventory(memberId: any) {
 	await initializeDatabase();
 	if (!memberId) throw new Error('memberId is required');
 	const rows = await db.execute(sql`
-		SELECT smi.*, bi.name, bi.effect_type, bi.description, bi.cost, bi.config, bi.usable
+		SELECT smi.*, bi.name, bi.effect_type, bi.description, bi.cost, bi.config, bi.usable, bi.enabled
 		FROM server_member_items smi
 		INNER JOIN items bi ON bi.id = smi.item_id
 		WHERE smi.member_id = ${Number(memberId)} AND smi.quantity > 0

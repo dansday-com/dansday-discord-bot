@@ -2,7 +2,7 @@ import { createHash } from 'crypto';
 import { request as httpRequest } from 'http';
 import db from '$lib/database.js';
 import { parseMySQLDateTimeUtc } from '$lib/utils/index.js';
-import { itemAvailability } from '$lib/items.js';
+import { itemAvailability, effectiveBagStock } from '$lib/items.js';
 
 export function computeCardToken(discordMemberId: string, memberSince: any): string {
 	const dt = parseMySQLDateTimeUtc(memberSince);
@@ -104,14 +104,8 @@ export async function loadItemsCatalog(serverId: number): Promise<any[]> {
 	for (const i of all as any[]) {
 		if (!(itemAvailableNow(i) || hasRecurringSchedule(i))) continue;
 
-		let enabled = i.enabled !== false && i.enabled !== 0;
-		if (hasWindow(i)) {
-			const shouldBeEnabled = itemAvailableNow(i);
-			if (shouldBeEnabled !== enabled) {
-				enabled = shouldBeEnabled;
-				db.setItemEnabled(i.id, shouldBeEnabled).catch(() => null);
-			}
-		}
+		const allowBuy = i.enabled !== false && i.enabled !== 0;
+		const enabled = hasWindow(i) ? allowBuy && itemAvailableNow(i) : allowBuy;
 
 		const mapped = {
 			id: i.id,
@@ -154,7 +148,7 @@ export async function loadItemsShared(server: any, hash: string, subKey?: 'items
 	if (!member) return { guest: true as const };
 
 	const invRows = await db.getMemberInventory(member.id).catch(() => []);
-	const bagStock = (invRows as any[]).reduce((sum, r) => sum + (Number(r.quantity) || 0), 0);
+	const bagStock = effectiveBagStock(invRows as any[]);
 
 	const effectRows = await db.getActiveEffectsForMember(member.id).catch(() => []);
 	const nameOf = (sdn: any, dn: any, un: any) => sdn || dn || un || 'a member';

@@ -2,6 +2,15 @@ export type ItemEffectId = 'steal' | 'bomb' | 'boost' | 'shield' | 'leech' | 're
 
 export const BAG_CAPACITY = 50;
 
+export function effectiveBagStock(inventory: { quantity?: number; enabled?: boolean | number; usable?: boolean | number }[]): number {
+	return inventory.reduce((sum, r) => {
+		const enabled = r.enabled !== false && r.enabled !== 0;
+		const usable = r.usable !== false && r.usable !== 0;
+		if (!enabled && !usable) return sum;
+		return sum + (Number(r.quantity) || 0);
+	}, 0);
+}
+
 export function formatDuration(minutes: any): string {
 	let m = Math.max(0, Math.round(Number(minutes) || 0));
 	if (m <= 0) return '0m';

@@ -442,16 +442,10 @@
 		<div class="m-overview-hero">
 			<p class="m-overview-hero-label">XP in the market</p>
 			<p class="m-overview-hero-value">{fmt(liveStats.assets_market_value)}</p>
-			<div class="m-hero-trend-row">
-				<p class="m-overview-hero-hint m-hero-trend" class:m-hero-trend--up={marketUnrealized >= 0} class:m-hero-trend--down={marketUnrealized < 0}>
-					<i class="fas {marketUnrealized >= 0 ? 'fa-arrow-trend-up' : 'fa-arrow-trend-down'}"></i>
-					{marketUnrealized >= 0 ? '+' : '−'}{fmt(Math.abs(marketUnrealized))} XP unrealized P/L
-				</p>
-				<p class="m-overview-hero-hint m-hero-trend" class:m-hero-trend--up={marketProfit >= 0} class:m-hero-trend--down={marketProfit < 0}>
-					<i class="fas {marketProfit >= 0 ? 'fa-arrow-trend-up' : 'fa-arrow-trend-down'}"></i>
-					{marketProfit >= 0 ? '+' : '−'}{fmt(Math.abs(marketProfit))} XP realized P/L
-				</p>
-			</div>
+			<p class="m-overview-hero-hint m-hero-trend" class:m-hero-trend--up={marketUnrealized >= 0} class:m-hero-trend--down={marketUnrealized < 0}>
+				<i class="fas {marketUnrealized >= 0 ? 'fa-arrow-trend-up' : 'fa-arrow-trend-down'}"></i>
+				{marketUnrealized >= 0 ? '+' : '−'}{fmt(Math.abs(marketUnrealized))} XP unrealized P/L
+			</p>
 		</div>
 		<div class="m-bar-block">
 			<div class="m-bar-head">
@@ -492,6 +486,11 @@
 				<i class="fas fa-download"></i>
 				<span class="m-mini-value">{fmt(liveStats.assets_sell_volume)}</span>
 				<span class="m-mini-label">XP cashed out</span>
+			</div>
+			<div class="m-mini" data-dir={marketProfit >= 0 ? 'up' : 'down'}>
+				<i class="fas fa-scale-balanced"></i>
+				<span class="m-mini-value">{marketProfit >= 0 ? '+' : '−'}{fmt(Math.abs(marketProfit))}</span>
+				<span class="m-mini-label">Realized P/L</span>
 			</div>
 		</div>
 	</div>

@@ -4286,7 +4286,7 @@
 	gap: 13px;
 	margin-bottom: 16px;
 	padding: 14px 18px;
-	min-height: 104px;
+	height: 104px;
 	box-sizing: border-box;
 	border-radius: 16px;
 	background: linear-gradient(135deg, #245f73, #173f4d);
@@ -4407,7 +4407,7 @@
 }
 
 .m-root .m-xp-amount--hidden {
-	visibility: hidden;
+	display: none;
 }
 
 .m-root .m-xp-unit {
@@ -4426,7 +4426,7 @@
 }
 
 .m-root .m-xp-bar--hidden {
-	visibility: hidden;
+	display: none;
 }
 
 .m-root .m-xp-bar-fill {

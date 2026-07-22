@@ -117,6 +117,9 @@
 			const landIndex = 32;
 			reel[landIndex] = won ? 'win' : 'lose';
 			reelAnimating = false;
+			reelOffset = 0;
+			await new Promise((r) => requestAnimationFrame(() => r(null)));
+			reelWrapEl?.offsetHeight;
 			centerCell(2);
 			await new Promise((r) => requestAnimationFrame(() => r(null)));
 			reelAnimating = true;
@@ -132,7 +135,6 @@
 					shake = true;
 					setTimeout(() => (shake = false), 500);
 				}
-				showToast(won ? `Won +${fmt(net)} XP` : `Lost ${fmt(bet)} XP`, won ? 'success' : 'error');
 				busy = false;
 				ctx.invalidateAll();
 			}, 7000);
@@ -234,7 +236,7 @@
 				<div class="m-gamble-again">
 					<button class="m-gamble-reset" onclick={resetGamble}><i class="fas fa-sliders"></i>Change bet</button>
 					<button class="m-gamble-play m-gamble-play--charged" disabled={wagerXp <= 0 || wagerXp > spendable} onclick={play}>
-						<i class="fas fa-rotate-right"></i>Spin again {multiplier.toFixed(2)}× · {fmt(wagerXp)}
+						<i class="fas fa-rotate-right"></i>Spin again
 					</button>
 				</div>
 			{:else}

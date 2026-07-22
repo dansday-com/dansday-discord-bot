@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { publicServerPath } from '$lib/url.js';
 
@@ -22,12 +23,22 @@
 	const accountHash = $derived((page.data as any)?.hash || pathNorm.match(/\/account\/(?:\w+\/)*([0-9a-f]{16})$/)?.[1] || '');
 	const accountHref = $derived(accountHash ? `${basePath}/account/overview/${accountHash}` : `${basePath}/account`);
 
+	let hasStoredCard = $state(false);
+	onMount(() => {
+		try {
+			hasStoredCard = !!sessionStorage.getItem(`items_card_${server.slug}`);
+		} catch {
+			hasStoredCard = false;
+		}
+	});
+	const isGuest = $derived(!accountHash && !hasStoredCard);
+
 	const tabs = $derived(
 		[
 			{ label: 'Statistics', icon: 'fa-chart-pie', href: basePath, active: isOverview, show: publicStatsEnabled },
 			{ label: 'Leaderboard', icon: 'fa-trophy', href: `${basePath}/leaderboard`, active: isLeaderboard, show: publicStatsEnabled },
 			{ label: 'Members', icon: 'fa-users', href: `${basePath}/members`, active: isMembers, show: publicStatsEnabled },
-			{ label: 'Account', icon: 'fa-user', href: accountHref, active: isAccount, show: accountEnabled }
+			{ label: 'Account', icon: 'fa-user', href: accountHref, active: isAccount, show: accountEnabled && !isGuest }
 		].filter((t) => t.show)
 	);
 </script>

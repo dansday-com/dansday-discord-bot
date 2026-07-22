@@ -2410,6 +2410,7 @@ export async function getServerEconomyStats(serverId: any, priceMap: Record<stri
 	return {
 		assets_invested: invested,
 		assets_market_value: marketValue,
+		assets_unrealized_net: marketValue - invested,
 		assets_open_positions: positions.length,
 		assets_traders: traders.size,
 		assets_buy_volume: Number(al.buy_volume) || 0,
@@ -2681,9 +2682,11 @@ export async function getMemberDashboard(memberId: any, priceMap: Record<string,
 	};
 }
 
-export async function getMemberInsights(memberId: any) {
+export async function getMemberInsights(memberId: any, serverId: any = null) {
 	await initializeDatabase();
 	const mid = Number(memberId);
+	const disguisedIds = serverId ? await getDisguisedMemberIds(serverId) : [];
+	const hideDisguised = disguisedIds.length > 0 ? sql`AND m.id NOT IN (${sql.join(disguisedIds, sql`, `)})` : sql``;
 
 	const nameExpr = sql`COALESCE(NULLIF(m.server_display_name, ''), NULLIF(m.display_name, ''), m.username)`;
 	const q = (query: any) => db.execute(query).catch(() => [[]] as any);
@@ -2695,7 +2698,7 @@ export async function getMemberInsights(memberId: any) {
 			SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp_amount), 0) AS xp
 			FROM server_member_item_logs il
 			INNER JOIN server_members m ON m.id = il.target_member_id
-			WHERE il.member_id = ${mid} AND il.action = ${action} ${successOnly ? sql`AND il.outcome = 'success'` : sql``}
+			WHERE il.member_id = ${mid} AND il.action = ${action} ${successOnly ? sql`AND il.outcome = 'success'` : sql``} ${hideDisguised}
 			GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY xp DESC, hits DESC LIMIT 3
 		`);
 	const incoming = (action: string, successOnly: boolean) =>
@@ -2703,7 +2706,7 @@ export async function getMemberInsights(memberId: any) {
 			SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp_amount), 0) AS xp
 			FROM server_member_item_logs il
 			INNER JOIN server_members m ON m.id = il.member_id
-			WHERE il.target_member_id = ${mid} AND il.action = ${action} ${successOnly ? sql`AND il.outcome = 'success'` : sql``} AND il.actor_disguised = 0
+			WHERE il.target_member_id = ${mid} AND il.action = ${action} ${successOnly ? sql`AND il.outcome = 'success'` : sql``} ${hideDisguised}
 			GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY xp DESC, hits DESC LIMIT 3
 		`);
 	const defendedFrom = (actions: string[], outcomes: string[]) =>
@@ -2712,7 +2715,7 @@ export async function getMemberInsights(memberId: any) {
 			FROM server_member_item_logs il
 			INNER JOIN server_members m ON m.id = il.member_id
 			WHERE il.target_member_id = ${mid} AND il.action IN (${sql.join(actions, sql`, `)})
-				AND il.outcome IN (${sql.join(outcomes, sql`, `)}) AND il.actor_disguised = 0
+				AND il.outcome IN (${sql.join(outcomes, sql`, `)}) ${hideDisguised}
 			GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY hits DESC LIMIT 3
 		`);
 
@@ -2733,14 +2736,14 @@ export async function getMemberInsights(memberId: any) {
 		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(b.amount), 0) AS xp
 		FROM server_member_item_bounties b
 		INNER JOIN server_members m ON m.id = b.target_member_id
-		WHERE b.placed_by_member_id = ${mid}
+		WHERE b.placed_by_member_id = ${mid} ${hideDisguised}
 		GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY xp DESC, hits DESC LIMIT 3
 	`);
 	const bountyIn = q(sql`
 		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(b.amount), 0) AS xp
 		FROM server_member_item_bounties b
 		INNER JOIN server_members m ON m.id = b.placed_by_member_id
-		WHERE b.target_member_id = ${mid}
+		WHERE b.target_member_id = ${mid} ${hideDisguised}
 		GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY xp DESC, hits DESC LIMIT 3
 	`);
 
@@ -2748,14 +2751,14 @@ export async function getMemberInsights(memberId: any) {
 		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp_amount), 0) AS xp
 		FROM server_member_item_logs il
 		INNER JOIN server_members m ON m.id = il.member_id
-		WHERE il.target_member_id = ${mid} AND il.action IN ('steal','bomb','leech') AND il.outcome = 'success' AND il.actor_disguised = 0
+		WHERE il.target_member_id = ${mid} AND il.action IN ('steal','bomb','leech') AND il.outcome = 'success' ${hideDisguised}
 		GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY hits DESC, xp DESC LIMIT 1
 	`);
 	const favoriteTarget = q(sql`
 		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp_amount), 0) AS xp
 		FROM server_member_item_logs il
 		INNER JOIN server_members m ON m.id = il.target_member_id
-		WHERE il.member_id = ${mid} AND il.action IN ('steal','bomb','leech') AND il.outcome = 'success'
+		WHERE il.member_id = ${mid} AND il.action IN ('steal','bomb','leech') AND il.outcome = 'success' ${hideDisguised}
 		GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY hits DESC, xp DESC LIMIT 1
 	`);
 	const bestAlly = q(sql`
@@ -2765,8 +2768,8 @@ export async function getMemberInsights(memberId: any) {
 			ON m.id = CASE WHEN il.member_id = ${mid} THEN il.target_member_id ELSE il.member_id END
 		WHERE il.action = 'gift' AND (
 			(il.member_id = ${mid} AND il.target_member_id IS NOT NULL)
-			OR (il.target_member_id = ${mid} AND il.actor_disguised = 0)
-		)
+			OR (il.target_member_id = ${mid})
+		) ${hideDisguised}
 		GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY xp DESC, hits DESC LIMIT 1
 	`);
 

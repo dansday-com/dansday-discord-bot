@@ -105,33 +105,6 @@
 		].filter((r) => r.row && r.row.name)
 	);
 
-	const hasMarket = $derived((d.assets_trade_count ?? 0) > 0 || (d.assets_market_value ?? 0) > 0);
-	const hasItems = $derived((d.items_buys ?? 0) > 0);
-	const hasMinigames = $derived((d.minigames_plays ?? 0) > 0);
-	const hasPvp = $derived(
-		(d.items_steals_landed ?? 0) > 0 ||
-			(d.items_steals_caught ?? 0) > 0 ||
-			(d.items_bombed ?? 0) > 0 ||
-			(d.items_gifted ?? 0) > 0 ||
-			(d.items_spies ?? 0) > 0 ||
-			(d.items_bounties_placed ?? 0) > 0 ||
-			(d.items_stolen_from ?? 0) > 0 ||
-			(d.items_bombed_by ?? 0) > 0 ||
-			(d.items_gifts_received ?? 0) > 0 ||
-			(d.bounty_on_me ?? 0) > 0 ||
-			(defense.spies_caught ?? 0) > 0 ||
-			(defense.blocked ?? 0) > 0 ||
-			(defense.reflected ?? 0) > 0 ||
-			(defense.insurance_covers ?? 0) > 0
-	);
-	const hasEngagement = $derived(
-		(d.giveaways_entered ?? 0) > 0 ||
-			(d.giveaways_hosted ?? 0) > 0 ||
-			(d.quests_enrolled ?? 0) > 0 ||
-			(d.streams_total ?? 0) > 0 ||
-			(d.feedback_submitted ?? 0) > 0
-	);
-
 	const INTERACTION_LISTS = [
 		{ key: 'steal', dir: 'out', group: 'offense', title: 'Robbed most', icon: 'fa-hand', fill: 'm-ov-bar-fill--steal' },
 		{ key: 'bomb', dir: 'out', group: 'offense', title: 'Bombed most', icon: 'fa-bomb', fill: 'm-ov-bar-fill--steal' },
@@ -154,7 +127,6 @@
 	const offenseLists = $derived(interactionLists.filter((l) => l.group === 'offense'));
 	const defenseLists = $derived(interactionLists.filter((l) => l.group === 'defense'));
 	const hasFavorites = $derived((ins.favorite_items ?? []).length > 0);
-	const hasHighlights = $derived(hasFavorites || interactionLists.length > 0 || relationCards.length > 0);
 
 	const positions = $derived(
 		(data.positions ?? []) as {
@@ -297,6 +269,40 @@
 		{/if}
 	</div>
 
+	{#if flowChart}
+		<div class="m-stat-card m-overview-card m-ov-full">
+			<div class="m-stat-card-head">
+				<div class="m-stat-card-icon m-chili-stat-2"><i class="fas fa-chart-line"></i></div>
+				<h2 class="m-stat-card-title">XP flow · last 14 days</h2>
+			</div>
+			<div class="m-line-meta">
+				<span class="m-line-cap">Cumulative net XP</span>
+				<span class="m-line-val" data-dir={flowChart.up ? 'up' : 'down'}>
+					<i class="fas fa-arrow-trend-{flowChart.up ? 'up' : 'down'}"></i>{flowChart.up ? '+' : '−'}{fmt(Math.abs(flowChart.last))}
+				</span>
+			</div>
+			<svg class="m-line" viewBox="0 0 {flowChart.W} {flowChart.H}" preserveAspectRatio="none" role="img" aria-label="XP flow over time">
+				<defs>
+					<linearGradient id="flowgrad" x1="0" y1="0" x2="0" y2="1">
+						<stop offset="0%" stop-color={flowChart.up ? 'rgba(31,138,76,0.35)' : 'rgba(178,59,59,0.35)'} />
+						<stop offset="100%" stop-color="rgba(255,255,255,0)" />
+					</linearGradient>
+				</defs>
+				<line x1="0" y1={flowChart.zeroY} x2={flowChart.W} y2={flowChart.zeroY} class="m-line-zero" />
+				<path d={flowChart.area} fill="url(#flowgrad)" />
+				<path
+					d={flowChart.line}
+					fill="none"
+					stroke={flowChart.up ? '#1f8a4c' : '#b23b3b'}
+					stroke-width="2"
+					stroke-linejoin="round"
+					stroke-linecap="round"
+					vector-effect="non-scaling-stroke"
+				/>
+			</svg>
+		</div>
+	{/if}
+
 	<div class="m-stat-card m-overview-card m-ov-full">
 		<div class="m-stat-card-head">
 			<div class="m-stat-card-icon m-chili-stat-5"><i class="fas fa-microphone-alt"></i></div>
@@ -309,10 +315,10 @@
 					<span class="m-bar-meta">{fmt(voiceMix.total)} min</span>
 				</div>
 				<div class="m-seg-bar m-seg-bar--3" title="Active · AFK · Video · Stream">
-					<div class="m-seg m-seg--text" style="width: {voiceMix.active * grow}%"></div>
-					<div class="m-seg m-seg--other" style="width: {voiceMix.afk * grow}%"></div>
-					<div class="m-seg m-seg--voice" style="width: {voiceMix.video * grow}%"></div>
-					<div class="m-seg m-seg--b" style="width: {voiceMix.stream * grow}%"></div>
+					<div class="m-seg" style="width: {voiceMix.active * grow}%; background: #1f8a4c;"></div>
+					<div class="m-seg" style="width: {voiceMix.afk * grow}%; background: #b23b3b;"></div>
+					<div class="m-seg" style="width: {voiceMix.video * grow}%; background: #6d5bd0;"></div>
+					<div class="m-seg" style="width: {voiceMix.stream * grow}%; background: #c8911a;"></div>
 				</div>
 			</div>
 		{/if}
@@ -329,53 +335,124 @@
 		</div>
 	</div>
 
-	{#if usagePie.total > 0}
+	{#if buddies.length > 0}
 		<div class="m-stat-card m-overview-card m-ov-full">
 			<div class="m-stat-card-head">
-				<div class="m-stat-card-icon m-chili-stat-3"><i class="fas fa-chart-pie"></i></div>
-				<h2 class="m-stat-card-title">Item usage by type</h2>
+				<div class="m-stat-card-icon m-chili-stat-5"><i class="fas fa-people-group"></i></div>
+				<h2 class="m-stat-card-title">Voice buddies</h2>
 			</div>
-			<p class="m-card-note">How often you've used each item effect — attacks, buffs and utility combined.</p>
-			<div class="m-chart-split">
-				<div class="m-pie-wrap">
-					<svg class="m-pie" viewBox="0 0 100 100" role="img" aria-label="Item usage by type">
-						{#if usagePie.segments.length === 1}
-							<circle cx="50" cy="50" r="48" fill={usagePie.segments[0].color} />
+			<p class="m-buddy-cap">Members you level up with most in voice</p>
+			<div class="m-buddy-list">
+				{#each buddies as b, i}
+					<div class="m-buddy">
+						<span class="m-buddy-rank">{i + 1}</span>
+						{#if b.avatar}
+							<img class="m-buddy-av" src={b.avatar} alt="" loading="lazy" onerror={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')} />
 						{:else}
-							{#each usagePie.segments as slice}
-								<path d={slice.d} fill={slice.color} stroke="rgba(255,255,255,0.85)" stroke-width="0.8" />
-							{/each}
+							<span class="m-buddy-av m-buddy-av--ph"><i class="fas fa-user"></i></span>
 						{/if}
-						<circle cx="50" cy="50" r="26" fill="#fff" />
-						<text x="50" y="47" text-anchor="middle" class="m-pie-total">{fmt(usagePie.total)}</text>
-						<text x="50" y="58" text-anchor="middle" class="m-pie-cap">uses</text>
-					</svg>
-					<div class="m-donut-legend">
-						{#each usagePie.segments as seg}
-							<div class="m-donut-leg">
-								<span class="m-donut-dot" style="background: {seg.color};"></span>
-								<i class="fas {seg.icon}" style="color: {seg.color};"></i>
-								<span class="m-donut-leg-name">{seg.label}</span>
-								<span class="m-donut-leg-val">{fmt(seg.value)}× · {seg.pct.toFixed(0)}%</span>
+						<div class="m-buddy-body">
+							<div class="m-buddy-head">
+								<span class="m-ov-list-name">{b.name}</span>
+								<span class="m-ov-list-val">{fmt(b.xp)} XP together</span>
 							</div>
-						{/each}
-					</div>
-				</div>
-
-				<div class="m-colchart">
-					{#each usagePie.segments as seg}
-						<div class="m-col">
-							<span class="m-col-val">{fmt(seg.value)}</span>
-							<div class="m-col-track">
-								<div class="m-col-fill" style="height: {Math.max(6, seg.pct) * grow}%; background: {seg.color};"></div>
+							<div class="m-ov-bar-track">
+								<div
+									class="m-ov-bar-fill m-ov-bar-fill--steal"
+									style="width: {barPct(
+										b.ticks,
+										buddies.map((x) => ({ ticks: x.ticks }))
+									) * grow}%;"
+								></div>
 							</div>
-							<i class="fas {seg.icon} m-col-ico" style="color: {seg.color};" title={seg.label}></i>
 						</div>
-					{/each}
-				</div>
+					</div>
+				{/each}
 			</div>
 		</div>
 	{/if}
+
+	<div class="m-econ3 m-ov-full">
+		<div class="m-stat-card m-overview-card">
+			<div class="m-stat-card-head">
+				<div class="m-stat-card-icon m-chili-stat-2"><i class="fas fa-chart-line"></i></div>
+				<h2 class="m-stat-card-title">Market</h2>
+			</div>
+			<div class="m-stat-hero">
+				<span class="m-stat-hero-val" use:countUp={d.assets_market_value}>{fmt(d.assets_market_value)}</span>
+				<span class="m-stat-hero-cap">assets value · XP</span>
+				<span class="m-stat-hero-chip" data-dir={assetsPnl >= 0 ? 'up' : 'down'}>
+					<i class="fas fa-arrow-trend-{assetsPnl >= 0 ? 'up' : 'down'}"></i>{assetsPnl >= 0 ? '+' : '−'}{fmt(Math.abs(assetsPnl))} open P/L
+				</span>
+			</div>
+			<div class="m-mini-grid">
+				<div class="m-mini">
+					<i class="fas fa-right-left"></i>
+					<span class="m-mini-value">{fmt(d.assets_trade_count)}</span>
+					<span class="m-mini-label">Trades</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-briefcase"></i>
+					<span class="m-mini-value">{fmt(d.assets_open_positions)}</span>
+					<span class="m-mini-label">Open assets</span>
+				</div>
+			</div>
+		</div>
+
+		<div class="m-stat-card m-overview-card">
+			<div class="m-stat-card-head">
+				<div class="m-stat-card-icon m-chili-stat-4"><i class="fas fa-bag-shopping"></i></div>
+				<h2 class="m-stat-card-title">Items</h2>
+			</div>
+			<div class="m-stat-hero">
+				<span class="m-stat-hero-val" use:countUp={d.items_buys}>{fmt(d.items_buys)}</span>
+				<span class="m-stat-hero-cap">items bought</span>
+			</div>
+			<div class="m-mini-grid">
+				<div class="m-mini">
+					<i class="fas fa-coins"></i>
+					<span class="m-mini-value">{fmt(d.items_buy_spend)}</span>
+					<span class="m-mini-label">XP spent</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-wand-magic-sparkles"></i>
+					<span class="m-mini-value">{fmt(d.items_activations)}</span>
+					<span class="m-mini-label">Activations</span>
+				</div>
+			</div>
+		</div>
+
+		<div class="m-stat-card m-overview-card">
+			<div class="m-stat-card-head">
+				<div class="m-stat-card-icon m-chili-stat-3"><i class="fas fa-dice"></i></div>
+				<h2 class="m-stat-card-title">Minigames</h2>
+			</div>
+			<div class="m-ring-row">
+				<div class="m-ring" style="--pct: {minigamesWinRate * grow}; --ring-color: {minigamesWinRate >= 50 ? '#1f8a4c' : '#c8911a'};">
+					<span class="m-ring-val"><span use:countUp={minigamesWinRate}>{minigamesWinRate}</span>%</span>
+					<span class="m-ring-cap">win rate</span>
+				</div>
+				<div class="m-ring-side">
+					<div class="m-ring-stat"><span>{fmt(d.minigames_plays)}</span><small>plays</small></div>
+					<div class="m-ring-stat" data-dir={minigamesNet >= 0 ? 'up' : 'down'}>
+						<span>{minigamesNet >= 0 ? '+' : '−'}{fmt(Math.abs(minigamesNet))}</span><small>net winnings</small>
+					</div>
+				</div>
+			</div>
+			<div class="m-mini-grid">
+				<div class="m-mini">
+					<i class="fas fa-coins"></i>
+					<span class="m-mini-value">{fmt(d.minigames_wagered)}</span>
+					<span class="m-mini-label">XP wagered</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-trophy"></i>
+					<span class="m-mini-value">{fmt(d.minigames_biggest_win)}</span>
+					<span class="m-mini-label">Biggest win</span>
+				</div>
+			</div>
+		</div>
+	</div>
 
 	{#if hasPortfolio}
 		<div class="m-stat-card m-overview-card m-ov-full">
@@ -430,7 +507,7 @@
 								</div>
 								<div class="m-hold-pnl" data-dir={pos.pnl > 0 ? 'up' : pos.pnl < 0 ? 'down' : 'flat'}>
 									<span class="m-hold-pnl-v"
-										><i class="fas fa-caret-{pos.pnl >= 0 ? 'up' : 'down'}"></i>{pos.pnlPercent >= 0 ? '+' : ''}{pos.pnlPercent.toFixed(1)}%</span
+										><i class="fas fa-caret-{pos.pnl >= 0 ? 'up' : 'down'}"></i>{pos.pnlPercent >= 0 ? '+' : ''}{pos.pnlPercent.toFixed(2)}%</span
 									>
 									<span class="m-hold-pnl-x">{pos.pnl >= 0 ? '+' : '−'}{fmtShort(Math.abs(pos.pnl))}</span>
 								</div>
@@ -442,266 +519,149 @@
 		</div>
 	{/if}
 
-	{#if flowChart}
-		<div class="m-stat-card m-overview-card m-ov-full">
-			<div class="m-stat-card-head">
-				<div class="m-stat-card-icon m-chili-stat-2"><i class="fas fa-chart-line"></i></div>
-				<h2 class="m-stat-card-title">XP flow · last 14 days</h2>
-			</div>
-			<div class="m-line-meta">
-				<span class="m-line-cap">Cumulative net XP</span>
-				<span class="m-line-val" data-dir={flowChart.up ? 'up' : 'down'}>
-					<i class="fas fa-arrow-trend-{flowChart.up ? 'up' : 'down'}"></i>{flowChart.up ? '+' : '−'}{fmt(Math.abs(flowChart.last))}
-				</span>
-			</div>
-			<svg class="m-line" viewBox="0 0 {flowChart.W} {flowChart.H}" preserveAspectRatio="none" role="img" aria-label="XP flow over time">
-				<defs>
-					<linearGradient id="flowgrad" x1="0" y1="0" x2="0" y2="1">
-						<stop offset="0%" stop-color={flowChart.up ? 'rgba(31,138,76,0.35)' : 'rgba(178,59,59,0.35)'} />
-						<stop offset="100%" stop-color="rgba(255,255,255,0)" />
-					</linearGradient>
-				</defs>
-				<line x1="0" y1={flowChart.zeroY} x2={flowChart.W} y2={flowChart.zeroY} class="m-line-zero" />
-				<path d={flowChart.area} fill="url(#flowgrad)" />
-				<path
-					d={flowChart.line}
-					fill="none"
-					stroke={flowChart.up ? '#1f8a4c' : '#b23b3b'}
-					stroke-width="2"
-					stroke-linejoin="round"
-					stroke-linecap="round"
-					vector-effect="non-scaling-stroke"
-				/>
-			</svg>
+	<div class="m-stat-card m-overview-card m-ov-full">
+		<div class="m-stat-card-head">
+			<div class="m-stat-card-icon m-chili-stat-1"><i class="fas fa-fire-flame-curved"></i></div>
+			<h2 class="m-stat-card-title">Highlights</h2>
 		</div>
-	{/if}
-
-	{#if buddies.length > 0}
-		<div class="m-stat-card m-overview-card m-ov-full">
-			<div class="m-stat-card-head">
-				<div class="m-stat-card-icon m-chili-stat-5"><i class="fas fa-people-group"></i></div>
-				<h2 class="m-stat-card-title">Voice buddies</h2>
-			</div>
-			<p class="m-buddy-cap">Members you level up with most in voice</p>
-			<div class="m-buddy-list">
-				{#each buddies as b, i}
-					<div class="m-buddy">
-						<span class="m-buddy-rank">{i + 1}</span>
-						{#if b.avatar}
-							<img class="m-buddy-av" src={b.avatar} alt="" loading="lazy" onerror={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')} />
-						{:else}
-							<span class="m-buddy-av m-buddy-av--ph"><i class="fas fa-user"></i></span>
-						{/if}
-						<div class="m-buddy-body">
-							<div class="m-buddy-head">
-								<span class="m-ov-list-name">{b.name}</span>
-								<span class="m-ov-list-val">{fmt(b.xp)} XP together</span>
-							</div>
-							<div class="m-ov-bar-track">
-								<div
-									class="m-ov-bar-fill m-ov-bar-fill--steal"
-									style="width: {barPct(
-										b.ticks,
-										buddies.map((x) => ({ ticks: x.ticks }))
-									) * grow}%;"
-								></div>
-							</div>
+		{#if relationCards.length > 0}
+			<div class="m-rel-row">
+				{#each relationCards as r}
+					<div class="m-rel" style="--rel: {r.accent};">
+						<span class="m-rel-ic"><i class="fas {r.icon}"></i></span>
+						<div class="m-rel-body">
+							<span class="m-rel-title">{r.title}</span>
+							<span class="m-rel-name">{r.row?.name}</span>
+							<span class="m-rel-sub">{r.sub} · {r.row && r.row.xp > 0 ? `${fmtShort(r.row.xp)} XP` : `${fmt(r.row?.hits ?? 0)}×`}</span>
 						</div>
 					</div>
 				{/each}
 			</div>
-		</div>
-	{/if}
+		{/if}
+		{#snippet listGroup(lists: any[])}
+			<div class="m-ov-lists">
+				{#each lists as list}
+					<div class="m-ov-list">
+						<span class="m-ov-list-title"><i class="fas {list.icon}"></i> {list.title}</span>
+						{#each list.rows as t}
+							<div class="m-ov-bar-row">
+								<div class="m-ov-bar-head">
+									<span class="m-ov-list-name">{t.name}</span>
+									<span class="m-ov-list-val">{t.xp > 0 ? `${fmt(t.xp)} XP` : `${fmt(t.hits)}×`}</span>
+								</div>
+								<div class="m-ov-bar-track">
+									<div
+										class="m-ov-bar-fill {list.fill}"
+										style="width: {barPct(
+											t.xp || t.hits,
+											list.rows.map((r) => ({ xp: r.xp || r.hits }))
+										) * grow}%;"
+									></div>
+								</div>
+							</div>
+						{/each}
+					</div>
+				{/each}
+			</div>
+		{/snippet}
 
-	{#if hasHighlights}
+		{#if hasFavorites}
+			{@const fav = ins.favorite_items[0]}
+			<div class="m-ov-fav-wrap">
+				<span class="m-ov-group-title"><i class="fas fa-star"></i> Favorite item</span>
+				<div class="m-fav" style="--fav: {fav.effect_type ? effectAccentHex(fav.effect_type) : 'var(--chili-hot)'};">
+					<span class="m-fav-ic"><i class="fas {fav.effect_type ? effectIcon(fav.effect_type) : 'fa-cube'}"></i></span>
+					<div class="m-fav-body">
+						<span class="m-fav-name">{fav.name}</span>
+						<span class="m-fav-sub">most used{fav.effect_type ? ` · ${effectLabel(fav.effect_type)}` : ''}</span>
+					</div>
+					<span class="m-fav-count">{fmt(fav.uses)}×</span>
+				</div>
+			</div>
+		{/if}
+
+		{#if offenseLists.length > 0}
+			<span class="m-ov-group-title m-ov-group-title--off"><i class="fas fa-crosshairs"></i> Offense · who you hit</span>
+			{@render listGroup(offenseLists)}
+		{/if}
+
+		{#if defenseLists.length > 0}
+			<span class="m-ov-group-title m-ov-group-title--def"><i class="fas fa-shield-halved"></i> Defense · done to you &amp; blocked</span>
+			{@render listGroup(defenseLists)}
+		{/if}
+	</div>
+
+	{#if usagePie.total > 0}
 		<div class="m-stat-card m-overview-card m-ov-full">
 			<div class="m-stat-card-head">
-				<div class="m-stat-card-icon m-chili-stat-1"><i class="fas fa-fire-flame-curved"></i></div>
-				<h2 class="m-stat-card-title">Highlights</h2>
+				<div class="m-stat-card-icon m-chili-stat-3"><i class="fas fa-chart-pie"></i></div>
+				<h2 class="m-stat-card-title">Item usage by type</h2>
 			</div>
-			{#if relationCards.length > 0}
-				<div class="m-rel-row">
-					{#each relationCards as r}
-						<div class="m-rel" style="--rel: {r.accent};">
-							<span class="m-rel-ic"><i class="fas {r.icon}"></i></span>
-							<div class="m-rel-body">
-								<span class="m-rel-title">{r.title}</span>
-								<span class="m-rel-name">{r.row?.name}</span>
-								<span class="m-rel-sub">{r.sub} · {r.row && r.row.xp > 0 ? `${fmtShort(r.row.xp)} XP` : `${fmt(r.row?.hits ?? 0)}×`}</span>
-							</div>
-						</div>
-					{/each}
-				</div>
-			{/if}
-			{#snippet listGroup(lists: any[])}
-				<div class="m-ov-lists">
-					{#each lists as list}
-						<div class="m-ov-list">
-							<span class="m-ov-list-title"><i class="fas {list.icon}"></i> {list.title}</span>
-							{#each list.rows as t}
-								<div class="m-ov-bar-row">
-									<div class="m-ov-bar-head">
-										<span class="m-ov-list-name">{t.name}</span>
-										<span class="m-ov-list-val">{t.xp > 0 ? `${fmt(t.xp)} XP` : `${fmt(t.hits)}×`}</span>
-									</div>
-									<div class="m-ov-bar-track">
-										<div
-											class="m-ov-bar-fill {list.fill}"
-											style="width: {barPct(
-												t.xp || t.hits,
-												list.rows.map((r) => ({ xp: r.xp || r.hits }))
-											) * grow}%;"
-										></div>
-									</div>
-								</div>
+			<p class="m-card-note">How often you've used each item effect — attacks, buffs and utility combined.</p>
+			<div class="m-chart-split">
+				<div class="m-pie-wrap">
+					<svg class="m-pie" viewBox="0 0 100 100" role="img" aria-label="Item usage by type">
+						{#if usagePie.segments.length === 1}
+							<circle cx="50" cy="50" r="48" fill={usagePie.segments[0].color} />
+						{:else}
+							{#each usagePie.segments as slice}
+								<path d={slice.d} fill={slice.color} stroke="rgba(255,255,255,0.85)" stroke-width="0.8" />
 							{/each}
+						{/if}
+						<circle cx="50" cy="50" r="26" fill="#fff" />
+						<text x="50" y="47" text-anchor="middle" class="m-pie-total">{fmt(usagePie.total)}</text>
+						<text x="50" y="58" text-anchor="middle" class="m-pie-cap">uses</text>
+					</svg>
+					<div class="m-donut-legend">
+						{#each usagePie.segments as seg}
+							<div class="m-donut-leg">
+								<span class="m-donut-dot" style="background: {seg.color};"></span>
+								<i class="fas {seg.icon}" style="color: {seg.color};"></i>
+								<span class="m-donut-leg-name">{seg.label}</span>
+								<span class="m-donut-leg-val">{fmt(seg.value)}× · {seg.pct.toFixed(0)}%</span>
+							</div>
+						{/each}
+					</div>
+				</div>
+
+				<div class="m-colchart">
+					{#each usagePie.segments as seg}
+						<div class="m-col">
+							<span class="m-col-val">{fmt(seg.value)}</span>
+							<div class="m-col-track">
+								<div class="m-col-fill" style="height: {Math.max(6, seg.pct) * grow}%; background: {seg.color};"></div>
+							</div>
+							<i class="fas {seg.icon} m-col-ico" style="color: {seg.color};" title={seg.label}></i>
 						</div>
 					{/each}
 				</div>
-			{/snippet}
-
-			{#if hasFavorites}
-				{@const fav = ins.favorite_items[0]}
-				<div class="m-ov-fav-wrap">
-					<span class="m-ov-group-title"><i class="fas fa-star"></i> Favorite item</span>
-					<div class="m-fav" style="--fav: {fav.effect_type ? effectAccentHex(fav.effect_type) : 'var(--chili-hot)'};">
-						<span class="m-fav-ic"><i class="fas {fav.effect_type ? effectIcon(fav.effect_type) : 'fa-cube'}"></i></span>
-						<div class="m-fav-body">
-							<span class="m-fav-name">{fav.name}</span>
-							<span class="m-fav-sub">most used{fav.effect_type ? ` · ${effectLabel(fav.effect_type)}` : ''}</span>
-						</div>
-						<span class="m-fav-count">{fmt(fav.uses)}×</span>
-					</div>
-				</div>
-			{/if}
-
-			{#if offenseLists.length > 0}
-				<span class="m-ov-group-title m-ov-group-title--off"><i class="fas fa-crosshairs"></i> Offense · who you hit</span>
-				{@render listGroup(offenseLists)}
-			{/if}
-
-			{#if defenseLists.length > 0}
-				<span class="m-ov-group-title m-ov-group-title--def"><i class="fas fa-shield-halved"></i> Defense · done to you &amp; blocked</span>
-				{@render listGroup(defenseLists)}
-			{/if}
+			</div>
 		</div>
 	{/if}
 
-	{#if hasMarket || hasItems || hasMinigames}
-		<div class="m-econ3 m-ov-full">
-			{#if hasMarket}
-				<div class="m-stat-card m-overview-card">
-					<div class="m-stat-card-head">
-						<div class="m-stat-card-icon m-chili-stat-2"><i class="fas fa-chart-line"></i></div>
-						<h2 class="m-stat-card-title">Market</h2>
-					</div>
-					<div class="m-stat-hero">
-						<span class="m-stat-hero-val" use:countUp={d.assets_market_value}>{fmt(d.assets_market_value)}</span>
-						<span class="m-stat-hero-cap">assets value · XP</span>
-						<span class="m-stat-hero-chip" data-dir={assetsPnl >= 0 ? 'up' : 'down'}>
-							<i class="fas fa-arrow-trend-{assetsPnl >= 0 ? 'up' : 'down'}"></i>{assetsPnl >= 0 ? '+' : '−'}{fmt(Math.abs(assetsPnl))} open P/L
-						</span>
-					</div>
-					<div class="m-mini-grid">
-						<div class="m-mini">
-							<i class="fas fa-right-left"></i>
-							<span class="m-mini-value">{fmt(d.assets_trade_count)}</span>
-							<span class="m-mini-label">Trades</span>
-						</div>
-						<div class="m-mini">
-							<i class="fas fa-briefcase"></i>
-							<span class="m-mini-value">{fmt(d.assets_open_positions)}</span>
-							<span class="m-mini-label">Open assets</span>
-						</div>
-					</div>
-				</div>
-			{/if}
-
-			{#if hasItems}
-				<div class="m-stat-card m-overview-card">
-					<div class="m-stat-card-head">
-						<div class="m-stat-card-icon m-chili-stat-4"><i class="fas fa-bag-shopping"></i></div>
-						<h2 class="m-stat-card-title">Items</h2>
-					</div>
-					<div class="m-stat-hero">
-						<span class="m-stat-hero-val" use:countUp={d.items_buys}>{fmt(d.items_buys)}</span>
-						<span class="m-stat-hero-cap">items bought</span>
-					</div>
-					<div class="m-mini-grid">
-						<div class="m-mini">
-							<i class="fas fa-coins"></i>
-							<span class="m-mini-value">{fmt(d.items_buy_spend)}</span>
-							<span class="m-mini-label">XP spent</span>
-						</div>
-						<div class="m-mini">
-							<i class="fas fa-wand-magic-sparkles"></i>
-							<span class="m-mini-value">{fmt(d.items_activations)}</span>
-							<span class="m-mini-label">Activations</span>
-						</div>
-					</div>
-				</div>
-			{/if}
-
-			{#if hasMinigames}
-				<div class="m-stat-card m-overview-card">
-					<div class="m-stat-card-head">
-						<div class="m-stat-card-icon m-chili-stat-3"><i class="fas fa-dice"></i></div>
-						<h2 class="m-stat-card-title">Minigames</h2>
-					</div>
-					<div class="m-ring-row">
-						<div class="m-ring" style="--pct: {minigamesWinRate * grow}; --ring-color: {minigamesWinRate >= 50 ? '#1f8a4c' : '#c8911a'};">
-							<span class="m-ring-val"><span use:countUp={minigamesWinRate}>{minigamesWinRate}</span>%</span>
-							<span class="m-ring-cap">win rate</span>
-						</div>
-						<div class="m-ring-side">
-							<div class="m-ring-stat"><span>{fmt(d.minigames_plays)}</span><small>plays</small></div>
-							<div class="m-ring-stat" data-dir={minigamesNet >= 0 ? 'up' : 'down'}>
-								<span>{minigamesNet >= 0 ? '+' : '−'}{fmt(Math.abs(minigamesNet))}</span><small>net winnings</small>
-							</div>
-						</div>
-					</div>
-					<div class="m-mini-grid">
-						<div class="m-mini">
-							<i class="fas fa-coins"></i>
-							<span class="m-mini-value">{fmt(d.minigames_wagered)}</span>
-							<span class="m-mini-label">XP wagered</span>
-						</div>
-						<div class="m-mini">
-							<i class="fas fa-trophy"></i>
-							<span class="m-mini-value">{fmt(d.minigames_biggest_win)}</span>
-							<span class="m-mini-label">Biggest win</span>
-						</div>
-					</div>
-				</div>
-			{/if}
-		</div>
-	{/if}
-
-	{#if hasPvp}
-		<div class="m-stat-card m-overview-card m-ov-full">
+	<div class="m-econ2 m-ov-full">
+		<div class="m-stat-card m-overview-card">
 			<div class="m-stat-card-head">
 				<div class="m-stat-card-icon m-chili-stat-3"><i class="fas fa-crosshairs"></i></div>
 				<h2 class="m-stat-card-title">Your PvP record</h2>
 			</div>
-			{#if d.items_stolen > 0 || d.items_stolen_from > 0}
-				<div class="m-duel">
-					<div class="m-duel-head">
-						<span class="m-duel-l">You stole {fmt(d.items_stolen)}</span>
-						<span class="m-duel-net" data-dir={stealNet >= 0 ? 'up' : 'down'}>{stealNet >= 0 ? 'net +' : 'net −'}{fmt(Math.abs(stealNet))}</span>
-						<span class="m-duel-r">{fmt(d.items_stolen_from)} lost</span>
-					</div>
-					<div class="m-duel-bar">
-						<div
-							class="m-duel-fill m-duel-fill--win"
-							style="width: {barPct(d.items_stolen, [{ xp: d.items_stolen }, { xp: d.items_stolen_from }]) * grow}%;"
-						></div>
-						<div
-							class="m-duel-fill m-duel-fill--lose"
-							style="width: {barPct(d.items_stolen_from, [{ xp: d.items_stolen }, { xp: d.items_stolen_from }]) * grow}%;"
-						></div>
-					</div>
+			<div class="m-duel">
+				<div class="m-duel-head">
+					<span class="m-duel-l">You stole {fmt(d.items_stolen)}</span>
+					<span class="m-duel-net" data-dir={stealNet >= 0 ? 'up' : 'down'}>{stealNet >= 0 ? 'net +' : 'net −'}{fmt(Math.abs(stealNet))}</span>
+					<span class="m-duel-r">{fmt(d.items_stolen_from)} lost</span>
 				</div>
-			{/if}
+				<div class="m-duel-bar">
+					<div
+						class="m-duel-fill m-duel-fill--win"
+						style="width: {barPct(d.items_stolen, [{ xp: d.items_stolen }, { xp: d.items_stolen_from }]) * grow}%;"
+					></div>
+					<div
+						class="m-duel-fill m-duel-fill--lose"
+						style="width: {barPct(d.items_stolen_from, [{ xp: d.items_stolen }, { xp: d.items_stolen_from }]) * grow}%;"
+					></div>
+				</div>
+			</div>
 			<div class="m-mini-grid">
 				<div class="m-mini">
 					<i class="fas fa-hand"></i>
@@ -743,118 +703,96 @@
 					<span class="m-mini-value">{fmt(d.items_bounties_placed)}</span>
 					<span class="m-mini-label">Bounties set</span>
 				</div>
-				{#if d.bounty_on_me > 0}
-					<div class="m-mini" data-dir="down">
-						<i class="fas fa-skull"></i>
-						<span class="m-mini-value">{fmt(d.bounty_on_me)}</span>
-						<span class="m-mini-label">Bounty on you</span>
-					</div>
-				{/if}
-				{#if defense.spies_caught > 0}
-					<div class="m-mini" data-dir="up">
-						<i class="fas fa-user-secret"></i>
-						<span class="m-mini-value">{fmt(defense.spies_caught)}</span>
-						<span class="m-mini-label">Spies caught</span>
-					</div>
-				{/if}
-				{#if defense.blocked > 0}
-					<div class="m-mini" data-dir="up">
-						<i class="fas fa-shield-halved"></i>
-						<span class="m-mini-value">{fmt(defense.blocked)}</span>
-						<span class="m-mini-label">Attacks blocked</span>
-					</div>
-				{/if}
-				{#if defense.reflected > 0}
-					<div class="m-mini" data-dir="up">
-						<i class="fas fa-arrows-rotate"></i>
-						<span class="m-mini-value">{fmt(defense.reflected)}</span>
-						<span class="m-mini-label">Attacks reflected</span>
-					</div>
-				{/if}
-				{#if defense.my_steals_caught > 0}
-					<div class="m-mini" data-dir="down">
-						<i class="fas fa-handcuffs"></i>
-						<span class="m-mini-value">{fmt(defense.my_steals_caught)}</span>
-						<span class="m-mini-label">Caught stealing</span>
-					</div>
-				{/if}
-				{#if defense.insurance_covers > 0}
-					<div class="m-mini" data-dir="up">
-						<i class="fas fa-umbrella"></i>
-						<span class="m-mini-value">{fmt(defense.insurance_covers)}</span>
-						<span class="m-mini-label">Insurance covers</span>
-					</div>
-					<div class="m-mini" data-dir="up">
-						<i class="fas fa-hand-holding-dollar"></i>
-						<span class="m-mini-value">{fmt(defense.insurance_xp)}</span>
-						<span class="m-mini-label">XP recovered</span>
-					</div>
-				{/if}
+				<div class="m-mini" data-dir="down">
+					<i class="fas fa-skull"></i>
+					<span class="m-mini-value">{fmt(d.bounty_on_me)}</span>
+					<span class="m-mini-label">Bounty on you</span>
+				</div>
+				<div class="m-mini" data-dir="up">
+					<i class="fas fa-user-secret"></i>
+					<span class="m-mini-value">{fmt(defense.spies_caught)}</span>
+					<span class="m-mini-label">Spies caught</span>
+				</div>
+				<div class="m-mini" data-dir="up">
+					<i class="fas fa-shield-halved"></i>
+					<span class="m-mini-value">{fmt(defense.blocked)}</span>
+					<span class="m-mini-label">Attacks blocked</span>
+				</div>
+				<div class="m-mini" data-dir="up">
+					<i class="fas fa-arrows-rotate"></i>
+					<span class="m-mini-value">{fmt(defense.reflected)}</span>
+					<span class="m-mini-label">Attacks reflected</span>
+				</div>
+				<div class="m-mini" data-dir="down">
+					<i class="fas fa-handcuffs"></i>
+					<span class="m-mini-value">{fmt(defense.my_steals_caught)}</span>
+					<span class="m-mini-label">Caught stealing</span>
+				</div>
+				<div class="m-mini" data-dir="up">
+					<i class="fas fa-umbrella"></i>
+					<span class="m-mini-value">{fmt(defense.insurance_covers)}</span>
+					<span class="m-mini-label">Insurance covers</span>
+				</div>
+				<div class="m-mini" data-dir="up">
+					<i class="fas fa-hand-holding-dollar"></i>
+					<span class="m-mini-value">{fmt(defense.insurance_xp)}</span>
+					<span class="m-mini-label">XP recovered</span>
+				</div>
 			</div>
 		</div>
-	{/if}
 
-	{#if hasEngagement}
 		<div class="m-stat-card m-overview-card">
 			<div class="m-stat-card-head">
 				<div class="m-stat-card-icon m-chili-stat-4"><i class="fas fa-fire"></i></div>
 				<h2 class="m-stat-card-title">Your engagement</h2>
 			</div>
 			<div class="m-mini-grid">
-				{#if d.giveaways_entered > 0 || d.giveaways_hosted > 0}
-					<div class="m-mini">
-						<i class="fas fa-ticket"></i>
-						<span class="m-mini-value">{fmt(d.giveaways_entered)}</span>
-						<span class="m-mini-label">Giveaways entered</span>
-					</div>
-					<div class="m-mini">
-						<i class="fas fa-medal"></i>
-						<span class="m-mini-value">{fmt(d.giveaways_won)}</span>
-						<span class="m-mini-label">Giveaways won</span>
-					</div>
-					<div class="m-mini">
-						<i class="fas fa-gift"></i>
-						<span class="m-mini-value">{fmt(d.giveaways_hosted)}</span>
-						<span class="m-mini-label">Hosted</span>
-					</div>
-				{/if}
-				{#if d.quests_enrolled > 0}
-					<div class="m-mini">
-						<i class="fas fa-scroll"></i>
-						<span class="m-mini-value">{fmt(d.quests_enrolled)}</span>
-						<span class="m-mini-label">Quests</span>
-					</div>
-					<div class="m-mini">
-						<i class="fas fa-award"></i>
-						<span class="m-mini-value">{fmt(d.quests_claimed)}</span>
-						<span class="m-mini-label">Rewards claimed</span>
-					</div>
-				{/if}
-				{#if d.streams_total > 0}
-					<div class="m-mini">
-						<i class="fas fa-tower-broadcast"></i>
-						<span class="m-mini-value">{fmt(d.streams_total)}</span>
-						<span class="m-mini-label">Streams</span>
-					</div>
-					<div class="m-mini">
-						<i class="fas fa-eye"></i>
-						<span class="m-mini-value">{fmt(d.streams_peak_viewers)}</span>
-						<span class="m-mini-label">Peak viewers</span>
-					</div>
-					<div class="m-mini">
-						<i class="fas fa-heart"></i>
-						<span class="m-mini-value">{fmt(d.streams_likes)}</span>
-						<span class="m-mini-label">Likes</span>
-					</div>
-				{/if}
-				{#if d.feedback_submitted > 0}
-					<div class="m-mini">
-						<i class="fas fa-comment-dots"></i>
-						<span class="m-mini-value">{fmt(d.feedback_submitted)}</span>
-						<span class="m-mini-label">Feedback given</span>
-					</div>
-				{/if}
+				<div class="m-mini">
+					<i class="fas fa-ticket"></i>
+					<span class="m-mini-value">{fmt(d.giveaways_entered)}</span>
+					<span class="m-mini-label">Giveaways entered</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-medal"></i>
+					<span class="m-mini-value">{fmt(d.giveaways_won)}</span>
+					<span class="m-mini-label">Giveaways won</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-gift"></i>
+					<span class="m-mini-value">{fmt(d.giveaways_hosted)}</span>
+					<span class="m-mini-label">Hosted</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-scroll"></i>
+					<span class="m-mini-value">{fmt(d.quests_enrolled)}</span>
+					<span class="m-mini-label">Quests</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-award"></i>
+					<span class="m-mini-value">{fmt(d.quests_claimed)}</span>
+					<span class="m-mini-label">Rewards claimed</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-tower-broadcast"></i>
+					<span class="m-mini-value">{fmt(d.streams_total)}</span>
+					<span class="m-mini-label">Streams</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-eye"></i>
+					<span class="m-mini-value">{fmt(d.streams_peak_viewers)}</span>
+					<span class="m-mini-label">Peak viewers</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-heart"></i>
+					<span class="m-mini-value">{fmt(d.streams_likes)}</span>
+					<span class="m-mini-label">Likes</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-comment-dots"></i>
+					<span class="m-mini-value">{fmt(d.feedback_submitted)}</span>
+					<span class="m-mini-label">Feedback given</span>
+				</div>
 			</div>
 		</div>
-	{/if}
+	</div>
 </div>

@@ -5,15 +5,15 @@ import { evaluateMemberLevelAndRank } from './leveling.js';
 import { getSpendableXp, spendXp } from './xp-economy.js';
 
 const COINGECKO_BASE = 'https://api.coingecko.com/api/v3';
-const POLL_INTERVAL_MS = 60_000;
-const MARKETS_TTL_MS = 5 * 60_000;
-const SEARCH_TTL_MS = 10 * 60_000;
+const POLL_INTERVAL_MS = 15 * 60_000;
+const MARKETS_TTL_MS = 15 * 60_000;
+const SEARCH_TTL_MS = 15 * 60_000;
 const POLL_LOCK_TTL_S = Math.ceil(POLL_INTERVAL_MS / 1000) + 20;
 const MARKETS_PER_PAGE = 50;
 const UNIVERSE_PER_PAGE = 250;
 const UNIVERSE_PAGES = 4;
 const MOVERS_COUNT = 50;
-export const MIN_BUY_XP = 1000;
+export const MIN_BUY_XP = 10_000;
 
 const MARKETS_KEY = 'assets:markets';
 const MOVERS_KEY = 'assets:movers';
@@ -29,8 +29,17 @@ function apiHeaders(): Record<string, string> {
 	return key ? { 'x-cg-demo-api-key': key } : {};
 }
 
+const RATE_LIMIT_COOLDOWN_MS = 60_000;
+let rateLimitedUntil = 0;
+
 async function cgFetch(path: string): Promise<any> {
+	if (Date.now() < rateLimitedUntil) throw new Error(`coingecko rate-limited, cooling down ${path}`);
 	const res = await fetch(`${COINGECKO_BASE}${path}`, { headers: apiHeaders() });
+	if (res.status === 429) {
+		const retryAfterS = Number(res.headers.get('retry-after')) || 0;
+		rateLimitedUntil = Date.now() + Math.max(RATE_LIMIT_COOLDOWN_MS, retryAfterS * 1000);
+		logger.warn(`coingecko 429 ${path}; backing off until ${new Date(rateLimitedUntil).toISOString()}`);
+	}
 	if (!res.ok) throw new Error(`coingecko ${res.status} ${path}`);
 	return res.json();
 }
@@ -405,14 +414,32 @@ export async function getMemberPortfolio(memberId: any): Promise<{
 	totalInvested: number;
 	totalValue: number;
 }> {
-	const rows = await db.getOpenAssetPositions(memberId).catch(() => []);
+	const rows = ((await db.getOpenAssetPositions(memberId).catch(() => [])) as any[]) || [];
+
+	const cachedPrices = (await cacheGet(PRICES_KEY))?.map ?? {};
+	const marketByKey = new Map<string, { price: number; change24h: number }>();
+	const needFetch = new Set<string>();
+	for (const p of rows) {
+		const key = `${p.asset_type}:${p.asset_id}`;
+		const hit = cachedPrices[key];
+		if (hit && Number(hit.price) > 0) {
+			marketByKey.set(key, { price: Number(hit.price), change24h: Number(hit.change24h) || 0 });
+		} else if (p.asset_type === 'crypto') {
+			needFetch.add(String(p.asset_id));
+		}
+	}
+	if (needFetch.size > 0) {
+		const prices = await fetchPricesFor([...needFetch]).catch(() => ({}));
+		for (const [id, p] of Object.entries(prices)) marketByKey.set(`crypto:${id}`, p);
+	}
+
 	const positions: any[] = [];
 	let totalInvested = 0;
 	let totalValue = 0;
-	for (const p of (rows as any[]) || []) {
+	for (const p of rows) {
 		const invested = Number(p.xp_invested) || 0;
 		const buyPrice = Number(p.buy_price) || 0;
-		const market = await getAssetPrice(p.asset_type, p.asset_id);
+		const market = marketByKey.get(`${p.asset_type}:${p.asset_id}`) ?? null;
 		const price = market?.price ?? buyPrice;
 		const value = buyPrice > 0 ? Math.round(invested * (price / buyPrice)) : invested;
 		totalInvested += invested;

@@ -25,98 +25,94 @@
 	const avgXP = $derived((s.members_with_levels ?? 0) > 0 ? Math.round((s.leveling_total_experience ?? 0) / s.members_with_levels).toLocaleString() : '0');
 	const minigamesWinRate = $derived((s.minigames_plays ?? 0) > 0 ? Math.round((Number(s.minigames_wins) / Number(s.minigames_plays)) * 100) : 0);
 
-	const featureCards = $derived(
-		[
-			{
-				title: 'Market',
-				icon: 'fa-chart-line',
-				accent: 'emerald',
-				rows: [
-					{ icon: 'fa-chart-line', label: 'XP in market', value: s.assets_market_value },
-					{ icon: 'fa-right-left', label: 'Trades', value: s.assets_trade_count },
-					{ icon: 'fa-users', label: 'Traders', value: s.assets_traders },
-					{ icon: 'fa-briefcase', label: 'Open assets', value: s.assets_open_positions },
-					{ icon: 'fa-arrow-up-from-bracket', label: 'XP bought in', value: s.assets_buy_volume },
-					{ icon: 'fa-download', label: 'XP cashed out', value: s.assets_sell_volume }
-				]
-			},
-			{
-				title: 'Items',
-				icon: 'fa-bag-shopping',
-				accent: 'yellow',
-				rows: [
-					{ icon: 'fa-cart-shopping', label: 'Items bought', value: s.items_buys },
-					{ icon: 'fa-coins', label: 'XP spent', value: s.items_buy_spend },
-					{ icon: 'fa-wand-magic-sparkles', label: 'Activations', value: s.items_activations },
-					{ icon: 'fa-hand', label: 'XP stolen', value: s.items_stolen },
-					{ icon: 'fa-bomb', label: 'XP bombed', value: s.items_bombed },
-					{ icon: 'fa-gift', label: 'XP gifted', value: s.items_gifted },
-					{ icon: 'fa-magnifying-glass', label: 'Spy reports', value: s.items_spies },
-					{ icon: 'fa-crown', label: 'Bounties set', value: s.items_bounties_placed }
-				]
-			},
-			{
-				title: 'Minigames',
-				icon: 'fa-dice',
-				accent: 'orange',
-				rows: [
-					{ icon: 'fa-coins', label: 'XP wagered', value: s.minigames_wagered },
-					{ icon: 'fa-gamepad', label: 'Plays', value: s.minigames_plays },
-					{ icon: 'fa-percent', label: 'Win rate', value: `${minigamesWinRate}%`, raw: s.minigames_plays },
-					{ icon: 'fa-trophy', label: 'Biggest win', value: s.minigames_biggest_win },
-					{ icon: 'fa-hand-holding-dollar', label: 'XP paid out', value: s.minigames_paid_out }
-				]
-			},
-			{
-				title: 'Giveaways',
-				icon: 'fa-gift',
-				accent: 'pink',
-				rows: [
-					{ icon: 'fa-gift', label: 'Hosted', value: s.giveaways_total },
-					{ icon: 'fa-medal', label: 'Winners', value: s.giveaways_winners },
-					{ icon: 'fa-ticket', label: 'Entries', value: s.giveaways_entries },
-					{ icon: 'fa-users', label: 'Entrants', value: s.giveaways_entrants },
-					{ icon: 'fa-hourglass-half', label: 'Running now', value: s.giveaways_active }
-				]
-			},
-			{
-				title: 'Content creators',
-				icon: 'fa-tower-broadcast',
-				accent: 'rose',
-				rows: [
-					{ icon: 'fa-tower-broadcast', label: 'Streams', value: s.streams_total },
-					{ icon: 'fa-video', label: 'Creators', value: s.streams_creators },
-					{ icon: 'fa-eye', label: 'Peak viewers', value: s.streams_peak_viewers },
-					{ icon: 'fa-heart', label: 'Likes', value: s.streams_likes },
-					{ icon: 'fa-comments', label: 'Chat msgs', value: s.streams_chat_messages },
-					{ icon: 'fa-gem', label: 'Gifts', value: s.streams_gifts }
-				]
-			},
-			{
-				title: 'Quests',
-				icon: 'fa-scroll',
-				accent: 'blue',
-				rows: [
-					{ icon: 'fa-scroll', label: 'Enrolled', value: s.quests_enrolled },
-					{ icon: 'fa-award', label: 'Rewards claimed', value: s.quests_claimed },
-					{ icon: 'fa-users', label: 'Participants', value: s.quests_participants }
-				]
-			},
-			{
-				title: 'Staff & feedback',
-				icon: 'fa-shield-halved',
-				accent: 'cyan',
-				rows: [
-					{ icon: 'fa-shield-halved', label: 'Staff reviews', value: s.staff_reviews },
-					{ icon: 'fa-star', label: 'Avg rating', value: s.staff_avg_rating, raw: s.staff_reviews },
-					{ icon: 'fa-comment-dots', label: 'Feedback', value: s.feedback_submissions },
-					{ icon: 'fa-moon', label: 'AFK now', value: s.afk_active }
-				]
-			}
-		]
-			.map((c) => ({ ...c, rows: c.rows.filter((r) => (Number((r as any).raw ?? r.value) || 0) > 0) }))
-			.filter((c) => c.rows.length > 0)
-	);
+	const featureCards = $derived([
+		{
+			title: 'Market',
+			icon: 'fa-chart-line',
+			accent: 'emerald',
+			rows: [
+				{ icon: 'fa-chart-line', label: 'XP in market', value: s.assets_market_value },
+				{ icon: 'fa-right-left', label: 'Trades', value: s.assets_trade_count },
+				{ icon: 'fa-users', label: 'Traders', value: s.assets_traders },
+				{ icon: 'fa-briefcase', label: 'Open assets', value: s.assets_open_positions },
+				{ icon: 'fa-arrow-up-from-bracket', label: 'XP bought in', value: s.assets_buy_volume },
+				{ icon: 'fa-download', label: 'XP cashed out', value: s.assets_sell_volume }
+			]
+		},
+		{
+			title: 'Items',
+			icon: 'fa-bag-shopping',
+			accent: 'yellow',
+			rows: [
+				{ icon: 'fa-cart-shopping', label: 'Items bought', value: s.items_buys },
+				{ icon: 'fa-coins', label: 'XP spent', value: s.items_buy_spend },
+				{ icon: 'fa-wand-magic-sparkles', label: 'Activations', value: s.items_activations },
+				{ icon: 'fa-hand', label: 'XP stolen', value: s.items_stolen },
+				{ icon: 'fa-bomb', label: 'XP bombed', value: s.items_bombed },
+				{ icon: 'fa-gift', label: 'XP gifted', value: s.items_gifted },
+				{ icon: 'fa-magnifying-glass', label: 'Spy reports', value: s.items_spies },
+				{ icon: 'fa-crown', label: 'Bounties set', value: s.items_bounties_placed }
+			]
+		},
+		{
+			title: 'Minigames',
+			icon: 'fa-dice',
+			accent: 'orange',
+			rows: [
+				{ icon: 'fa-coins', label: 'XP wagered', value: s.minigames_wagered },
+				{ icon: 'fa-gamepad', label: 'Plays', value: s.minigames_plays },
+				{ icon: 'fa-percent', label: 'Win rate', value: `${minigamesWinRate}%` },
+				{ icon: 'fa-trophy', label: 'Biggest win', value: s.minigames_biggest_win },
+				{ icon: 'fa-hand-holding-dollar', label: 'XP paid out', value: s.minigames_paid_out }
+			]
+		},
+		{
+			title: 'Giveaways',
+			icon: 'fa-gift',
+			accent: 'pink',
+			rows: [
+				{ icon: 'fa-gift', label: 'Hosted', value: s.giveaways_total },
+				{ icon: 'fa-medal', label: 'Winners', value: s.giveaways_winners },
+				{ icon: 'fa-ticket', label: 'Entries', value: s.giveaways_entries },
+				{ icon: 'fa-users', label: 'Entrants', value: s.giveaways_entrants },
+				{ icon: 'fa-hourglass-half', label: 'Running now', value: s.giveaways_active }
+			]
+		},
+		{
+			title: 'Content creators',
+			icon: 'fa-tower-broadcast',
+			accent: 'rose',
+			rows: [
+				{ icon: 'fa-tower-broadcast', label: 'Streams', value: s.streams_total },
+				{ icon: 'fa-video', label: 'Creators', value: s.streams_creators },
+				{ icon: 'fa-eye', label: 'Peak viewers', value: s.streams_peak_viewers },
+				{ icon: 'fa-heart', label: 'Likes', value: s.streams_likes },
+				{ icon: 'fa-comments', label: 'Chat msgs', value: s.streams_chat_messages },
+				{ icon: 'fa-gem', label: 'Gifts', value: s.streams_gifts }
+			]
+		},
+		{
+			title: 'Quests',
+			icon: 'fa-scroll',
+			accent: 'blue',
+			rows: [
+				{ icon: 'fa-scroll', label: 'Enrolled', value: s.quests_enrolled },
+				{ icon: 'fa-award', label: 'Rewards claimed', value: s.quests_claimed },
+				{ icon: 'fa-users', label: 'Participants', value: s.quests_participants }
+			]
+		},
+		{
+			title: 'Staff & feedback',
+			icon: 'fa-shield-halved',
+			accent: 'cyan',
+			rows: [
+				{ icon: 'fa-shield-halved', label: 'Staff reviews', value: s.staff_reviews },
+				{ icon: 'fa-star', label: 'Avg rating', value: s.staff_avg_rating },
+				{ icon: 'fa-comment-dots', label: 'Feedback', value: s.feedback_submissions },
+				{ icon: 'fa-moon', label: 'AFK now', value: s.afk_active }
+			]
+		}
+	]);
 
 	const accentClasses: Record<string, { bg: string; icon: string; row: string }> = {
 		emerald: { bg: 'bg-emerald-500/15', icon: 'text-emerald-400', row: 'text-emerald-400/90' },

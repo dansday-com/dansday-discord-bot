@@ -26,46 +26,6 @@ export async function loadMarketsBoard(): Promise<any[]> {
 	return cached?.rows ?? [];
 }
 
-type MarketSnapshot = { board: any[]; gainers: any[]; losers: any[] };
-type BoardListener = (snap: MarketSnapshot) => void;
-
-const boardListeners = new Set<BoardListener>();
-let boardTimer: ReturnType<typeof setInterval> | null = null;
-let boardLastJson = '';
-
-async function loadSnapshot(): Promise<MarketSnapshot> {
-	const [board, movers] = await Promise.all([loadMarketsBoard(), loadMovers()]);
-	return { board, gainers: movers.gainers, losers: movers.losers };
-}
-
-export function subscribeAssetsBoard(fn: BoardListener): () => void {
-	boardListeners.add(fn);
-	loadSnapshot().then((snap) => {
-		if (snap.board.length) fn(snap);
-	});
-
-	if (!boardTimer) {
-		boardTimer = setInterval(async () => {
-			if (boardListeners.size === 0) return;
-			const snap = await loadSnapshot();
-			const json = JSON.stringify(snap);
-			if (json === boardLastJson) return;
-			boardLastJson = json;
-			for (const l of boardListeners) l(snap);
-		}, 5_000);
-		boardTimer.unref?.();
-	}
-
-	return () => {
-		boardListeners.delete(fn);
-		if (boardListeners.size === 0 && boardTimer) {
-			clearInterval(boardTimer);
-			boardTimer = null;
-			boardLastJson = '';
-		}
-	};
-}
-
 export async function loadMovers(): Promise<{ gainers: any[]; losers: any[] }> {
 	const cached = await cacheGet(MOVERS_KEY);
 	return { gainers: cached?.gainers ?? [], losers: cached?.losers ?? [] };

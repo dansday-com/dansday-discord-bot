@@ -25,6 +25,7 @@ export type PublicPageStats = {
 	leveling_assets_value: number;
 	assets_invested: number;
 	assets_market_value: number;
+	assets_unrealized_net: number;
 	assets_open_positions: number;
 	assets_traders: number;
 	assets_buy_volume: number;
@@ -116,6 +117,7 @@ export function shapePublicStatisticsFromOverview(overview: Record<string, unkno
 			leveling_assets_value: Number(s.leveling_assets_value ?? 0),
 			assets_invested: Number(s.assets_invested ?? 0),
 			assets_market_value: Number(s.assets_market_value ?? 0),
+			assets_unrealized_net: Number(s.assets_unrealized_net ?? 0),
 			assets_open_positions: Number(s.assets_open_positions ?? 0),
 			assets_traders: Number(s.assets_traders ?? 0),
 			assets_buy_volume: Number(s.assets_buy_volume ?? 0),

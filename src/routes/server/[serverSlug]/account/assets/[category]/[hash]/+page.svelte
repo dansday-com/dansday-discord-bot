@@ -38,7 +38,6 @@
 	let gainers = $state<any[]>(data.gainers ?? []);
 	let losers = $state<any[]>(data.losers ?? []);
 	let positions = $state<any[]>(data.positions ?? []);
-	let lastSync = $state(Date.now());
 
 	$effect(() => {
 		board = data.board ?? [];
@@ -110,22 +109,6 @@
 		const step = w / (prices.length - 1);
 		return prices.map((p, i) => `${i === 0 ? 'M' : 'L'}${(i * step).toFixed(1)},${(h - ((p - min) / span) * h).toFixed(1)}`).join(' ');
 	}
-
-	$effect(() => {
-		if (typeof EventSource === 'undefined') return;
-		const es = new EventSource(`/api/assets/${encodeURIComponent(ctx.serverSlug)}/board-stream`);
-		es.onmessage = (e) => {
-			try {
-				const d = JSON.parse(e.data);
-				if (Array.isArray(d.board)) board = d.board;
-				if (Array.isArray(d.gainers)) gainers = d.gainers;
-				if (Array.isArray(d.losers)) losers = d.losers;
-				lastSync = Date.now();
-			} catch {}
-		};
-		es.onerror = () => {};
-		return () => es.close();
-	});
 
 	let searchQuery = $state('');
 	let searchResults = $state<any[]>([]);

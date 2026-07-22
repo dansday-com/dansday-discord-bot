@@ -62,7 +62,7 @@
 				rows: [
 					{ icon: 'fa-coins', label: 'XP wagered', value: s.minigames_wagered },
 					{ icon: 'fa-gamepad', label: 'Plays', value: s.minigames_plays },
-					{ icon: 'fa-percent', label: 'Win rate', value: `${minigamesWinRate}%`, raw: s.minigames_plays },
+					{ icon: 'fa-percent', label: 'Win rate', value: `${minigamesWinRate}%` },
 					{ icon: 'fa-trophy', label: 'Biggest win', value: s.minigames_biggest_win },
 					{ icon: 'fa-hand-holding-dollar', label: 'XP paid out', value: s.minigames_paid_out }
 				]
@@ -108,14 +108,12 @@
 				accent: 'cyan',
 				rows: [
 					{ icon: 'fa-shield-halved', label: 'Staff reviews', value: s.staff_reviews },
-					{ icon: 'fa-star', label: 'Avg rating', value: s.staff_avg_rating, raw: s.staff_reviews },
+					{ icon: 'fa-star', label: 'Avg rating', value: s.staff_avg_rating },
 					{ icon: 'fa-comment-dots', label: 'Feedback', value: s.feedback_submissions },
 					{ icon: 'fa-moon', label: 'AFK now', value: s.afk_active }
 				]
 			}
 		]
-			.map((c) => ({ ...c, rows: c.rows.filter((r) => (Number((r as any).raw ?? r.value) || 0) > 0) }))
-			.filter((c) => c.rows.length > 0)
 	);
 
 	const accentClasses: Record<string, { bg: string; icon: string; row: string }> = {

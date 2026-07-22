@@ -105,33 +105,6 @@
 		].filter((r) => r.row && r.row.name)
 	);
 
-	const hasMarket = $derived((d.assets_trade_count ?? 0) > 0 || (d.assets_market_value ?? 0) > 0);
-	const hasItems = $derived((d.items_buys ?? 0) > 0);
-	const hasMinigames = $derived((d.minigames_plays ?? 0) > 0);
-	const hasPvp = $derived(
-		(d.items_steals_landed ?? 0) > 0 ||
-			(d.items_steals_caught ?? 0) > 0 ||
-			(d.items_bombed ?? 0) > 0 ||
-			(d.items_gifted ?? 0) > 0 ||
-			(d.items_spies ?? 0) > 0 ||
-			(d.items_bounties_placed ?? 0) > 0 ||
-			(d.items_stolen_from ?? 0) > 0 ||
-			(d.items_bombed_by ?? 0) > 0 ||
-			(d.items_gifts_received ?? 0) > 0 ||
-			(d.bounty_on_me ?? 0) > 0 ||
-			(defense.spies_caught ?? 0) > 0 ||
-			(defense.blocked ?? 0) > 0 ||
-			(defense.reflected ?? 0) > 0 ||
-			(defense.insurance_covers ?? 0) > 0
-	);
-	const hasEngagement = $derived(
-		(d.giveaways_entered ?? 0) > 0 ||
-			(d.giveaways_hosted ?? 0) > 0 ||
-			(d.quests_enrolled ?? 0) > 0 ||
-			(d.streams_total ?? 0) > 0 ||
-			(d.feedback_submitted ?? 0) > 0
-	);
-
 	const INTERACTION_LISTS = [
 		{ key: 'steal', dir: 'out', group: 'offense', title: 'Robbed most', icon: 'fa-hand', fill: 'm-ov-bar-fill--steal' },
 		{ key: 'bomb', dir: 'out', group: 'offense', title: 'Bombed most', icon: 'fa-bomb', fill: 'm-ov-bar-fill--steal' },
@@ -154,7 +127,6 @@
 	const offenseLists = $derived(interactionLists.filter((l) => l.group === 'offense'));
 	const defenseLists = $derived(interactionLists.filter((l) => l.group === 'defense'));
 	const hasFavorites = $derived((ins.favorite_items ?? []).length > 0);
-	const hasHighlights = $derived(hasFavorites || interactionLists.length > 0 || relationCards.length > 0);
 
 	const positions = $derived(
 		(data.positions ?? []) as {
@@ -513,27 +485,26 @@
 		</div>
 	{/if}
 
-	{#if hasHighlights}
-		<div class="m-stat-card m-overview-card m-ov-full">
-			<div class="m-stat-card-head">
-				<div class="m-stat-card-icon m-chili-stat-1"><i class="fas fa-fire-flame-curved"></i></div>
-				<h2 class="m-stat-card-title">Highlights</h2>
-			</div>
-			{#if relationCards.length > 0}
-				<div class="m-rel-row">
-					{#each relationCards as r}
-						<div class="m-rel" style="--rel: {r.accent};">
-							<span class="m-rel-ic"><i class="fas {r.icon}"></i></span>
-							<div class="m-rel-body">
-								<span class="m-rel-title">{r.title}</span>
-								<span class="m-rel-name">{r.row?.name}</span>
-								<span class="m-rel-sub">{r.sub} · {r.row && r.row.xp > 0 ? `${fmtShort(r.row.xp)} XP` : `${fmt(r.row?.hits ?? 0)}×`}</span>
-							</div>
+	<div class="m-stat-card m-overview-card m-ov-full">
+		<div class="m-stat-card-head">
+			<div class="m-stat-card-icon m-chili-stat-1"><i class="fas fa-fire-flame-curved"></i></div>
+			<h2 class="m-stat-card-title">Highlights</h2>
+		</div>
+		{#if relationCards.length > 0}
+			<div class="m-rel-row">
+				{#each relationCards as r}
+					<div class="m-rel" style="--rel: {r.accent};">
+						<span class="m-rel-ic"><i class="fas {r.icon}"></i></span>
+						<div class="m-rel-body">
+							<span class="m-rel-title">{r.title}</span>
+							<span class="m-rel-name">{r.row?.name}</span>
+							<span class="m-rel-sub">{r.sub} · {r.row && r.row.xp > 0 ? `${fmtShort(r.row.xp)} XP` : `${fmt(r.row?.hits ?? 0)}×`}</span>
 						</div>
-					{/each}
-				</div>
-			{/if}
-			{#snippet listGroup(lists: any[])}
+					</div>
+				{/each}
+			</div>
+		{/if}
+		{#snippet listGroup(lists: any[])}
 				<div class="m-ov-lists">
 					{#each lists as list}
 						<div class="m-ov-list">
@@ -584,124 +555,112 @@
 				<span class="m-ov-group-title m-ov-group-title--def"><i class="fas fa-shield-halved"></i> Defense · done to you &amp; blocked</span>
 				{@render listGroup(defenseLists)}
 			{/if}
-		</div>
-	{/if}
+	</div>
 
-	{#if hasMarket || hasItems || hasMinigames}
-		<div class="m-econ3 m-ov-full">
-			{#if hasMarket}
-				<div class="m-stat-card m-overview-card">
-					<div class="m-stat-card-head">
-						<div class="m-stat-card-icon m-chili-stat-2"><i class="fas fa-chart-line"></i></div>
-						<h2 class="m-stat-card-title">Market</h2>
-					</div>
-					<div class="m-stat-hero">
-						<span class="m-stat-hero-val" use:countUp={d.assets_market_value}>{fmt(d.assets_market_value)}</span>
-						<span class="m-stat-hero-cap">assets value · XP</span>
-						<span class="m-stat-hero-chip" data-dir={assetsPnl >= 0 ? 'up' : 'down'}>
-							<i class="fas fa-arrow-trend-{assetsPnl >= 0 ? 'up' : 'down'}"></i>{assetsPnl >= 0 ? '+' : '−'}{fmt(Math.abs(assetsPnl))} open P/L
-						</span>
-					</div>
-					<div class="m-mini-grid">
-						<div class="m-mini">
-							<i class="fas fa-right-left"></i>
-							<span class="m-mini-value">{fmt(d.assets_trade_count)}</span>
-							<span class="m-mini-label">Trades</span>
-						</div>
-						<div class="m-mini">
-							<i class="fas fa-briefcase"></i>
-							<span class="m-mini-value">{fmt(d.assets_open_positions)}</span>
-							<span class="m-mini-label">Open assets</span>
-						</div>
-					</div>
-				</div>
-			{/if}
-
-			{#if hasItems}
-				<div class="m-stat-card m-overview-card">
-					<div class="m-stat-card-head">
-						<div class="m-stat-card-icon m-chili-stat-4"><i class="fas fa-bag-shopping"></i></div>
-						<h2 class="m-stat-card-title">Items</h2>
-					</div>
-					<div class="m-stat-hero">
-						<span class="m-stat-hero-val" use:countUp={d.items_buys}>{fmt(d.items_buys)}</span>
-						<span class="m-stat-hero-cap">items bought</span>
-					</div>
-					<div class="m-mini-grid">
-						<div class="m-mini">
-							<i class="fas fa-coins"></i>
-							<span class="m-mini-value">{fmt(d.items_buy_spend)}</span>
-							<span class="m-mini-label">XP spent</span>
-						</div>
-						<div class="m-mini">
-							<i class="fas fa-wand-magic-sparkles"></i>
-							<span class="m-mini-value">{fmt(d.items_activations)}</span>
-							<span class="m-mini-label">Activations</span>
-						</div>
-					</div>
-				</div>
-			{/if}
-
-			{#if hasMinigames}
-				<div class="m-stat-card m-overview-card">
-					<div class="m-stat-card-head">
-						<div class="m-stat-card-icon m-chili-stat-3"><i class="fas fa-dice"></i></div>
-						<h2 class="m-stat-card-title">Minigames</h2>
-					</div>
-					<div class="m-ring-row">
-						<div class="m-ring" style="--pct: {minigamesWinRate * grow}; --ring-color: {minigamesWinRate >= 50 ? '#1f8a4c' : '#c8911a'};">
-							<span class="m-ring-val"><span use:countUp={minigamesWinRate}>{minigamesWinRate}</span>%</span>
-							<span class="m-ring-cap">win rate</span>
-						</div>
-						<div class="m-ring-side">
-							<div class="m-ring-stat"><span>{fmt(d.minigames_plays)}</span><small>plays</small></div>
-							<div class="m-ring-stat" data-dir={minigamesNet >= 0 ? 'up' : 'down'}>
-								<span>{minigamesNet >= 0 ? '+' : '−'}{fmt(Math.abs(minigamesNet))}</span><small>net winnings</small>
-							</div>
-						</div>
-					</div>
-					<div class="m-mini-grid">
-						<div class="m-mini">
-							<i class="fas fa-coins"></i>
-							<span class="m-mini-value">{fmt(d.minigames_wagered)}</span>
-							<span class="m-mini-label">XP wagered</span>
-						</div>
-						<div class="m-mini">
-							<i class="fas fa-trophy"></i>
-							<span class="m-mini-value">{fmt(d.minigames_biggest_win)}</span>
-							<span class="m-mini-label">Biggest win</span>
-						</div>
-					</div>
-				</div>
-			{/if}
-		</div>
-	{/if}
-
-	{#if hasPvp}
-		<div class="m-stat-card m-overview-card m-ov-full">
+	<div class="m-econ3 m-ov-full">
+		<div class="m-stat-card m-overview-card">
 			<div class="m-stat-card-head">
-				<div class="m-stat-card-icon m-chili-stat-3"><i class="fas fa-crosshairs"></i></div>
-				<h2 class="m-stat-card-title">Your PvP record</h2>
+				<div class="m-stat-card-icon m-chili-stat-2"><i class="fas fa-chart-line"></i></div>
+				<h2 class="m-stat-card-title">Market</h2>
 			</div>
-			{#if d.items_stolen > 0 || d.items_stolen_from > 0}
-				<div class="m-duel">
-					<div class="m-duel-head">
-						<span class="m-duel-l">You stole {fmt(d.items_stolen)}</span>
-						<span class="m-duel-net" data-dir={stealNet >= 0 ? 'up' : 'down'}>{stealNet >= 0 ? 'net +' : 'net −'}{fmt(Math.abs(stealNet))}</span>
-						<span class="m-duel-r">{fmt(d.items_stolen_from)} lost</span>
-					</div>
-					<div class="m-duel-bar">
-						<div
-							class="m-duel-fill m-duel-fill--win"
-							style="width: {barPct(d.items_stolen, [{ xp: d.items_stolen }, { xp: d.items_stolen_from }]) * grow}%;"
-						></div>
-						<div
-							class="m-duel-fill m-duel-fill--lose"
-							style="width: {barPct(d.items_stolen_from, [{ xp: d.items_stolen }, { xp: d.items_stolen_from }]) * grow}%;"
-						></div>
+			<div class="m-stat-hero">
+				<span class="m-stat-hero-val" use:countUp={d.assets_market_value}>{fmt(d.assets_market_value)}</span>
+				<span class="m-stat-hero-cap">assets value · XP</span>
+				<span class="m-stat-hero-chip" data-dir={assetsPnl >= 0 ? 'up' : 'down'}>
+					<i class="fas fa-arrow-trend-{assetsPnl >= 0 ? 'up' : 'down'}"></i>{assetsPnl >= 0 ? '+' : '−'}{fmt(Math.abs(assetsPnl))} open P/L
+				</span>
+			</div>
+			<div class="m-mini-grid">
+				<div class="m-mini">
+					<i class="fas fa-right-left"></i>
+					<span class="m-mini-value">{fmt(d.assets_trade_count)}</span>
+					<span class="m-mini-label">Trades</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-briefcase"></i>
+					<span class="m-mini-value">{fmt(d.assets_open_positions)}</span>
+					<span class="m-mini-label">Open assets</span>
+				</div>
+			</div>
+		</div>
+
+		<div class="m-stat-card m-overview-card">
+			<div class="m-stat-card-head">
+				<div class="m-stat-card-icon m-chili-stat-4"><i class="fas fa-bag-shopping"></i></div>
+				<h2 class="m-stat-card-title">Items</h2>
+			</div>
+			<div class="m-stat-hero">
+				<span class="m-stat-hero-val" use:countUp={d.items_buys}>{fmt(d.items_buys)}</span>
+				<span class="m-stat-hero-cap">items bought</span>
+			</div>
+			<div class="m-mini-grid">
+				<div class="m-mini">
+					<i class="fas fa-coins"></i>
+					<span class="m-mini-value">{fmt(d.items_buy_spend)}</span>
+					<span class="m-mini-label">XP spent</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-wand-magic-sparkles"></i>
+					<span class="m-mini-value">{fmt(d.items_activations)}</span>
+					<span class="m-mini-label">Activations</span>
+				</div>
+			</div>
+		</div>
+
+		<div class="m-stat-card m-overview-card">
+			<div class="m-stat-card-head">
+				<div class="m-stat-card-icon m-chili-stat-3"><i class="fas fa-dice"></i></div>
+				<h2 class="m-stat-card-title">Minigames</h2>
+			</div>
+			<div class="m-ring-row">
+				<div class="m-ring" style="--pct: {minigamesWinRate * grow}; --ring-color: {minigamesWinRate >= 50 ? '#1f8a4c' : '#c8911a'};">
+					<span class="m-ring-val"><span use:countUp={minigamesWinRate}>{minigamesWinRate}</span>%</span>
+					<span class="m-ring-cap">win rate</span>
+				</div>
+				<div class="m-ring-side">
+					<div class="m-ring-stat"><span>{fmt(d.minigames_plays)}</span><small>plays</small></div>
+					<div class="m-ring-stat" data-dir={minigamesNet >= 0 ? 'up' : 'down'}>
+						<span>{minigamesNet >= 0 ? '+' : '−'}{fmt(Math.abs(minigamesNet))}</span><small>net winnings</small>
 					</div>
 				</div>
-			{/if}
+			</div>
+			<div class="m-mini-grid">
+				<div class="m-mini">
+					<i class="fas fa-coins"></i>
+					<span class="m-mini-value">{fmt(d.minigames_wagered)}</span>
+					<span class="m-mini-label">XP wagered</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-trophy"></i>
+					<span class="m-mini-value">{fmt(d.minigames_biggest_win)}</span>
+					<span class="m-mini-label">Biggest win</span>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="m-stat-card m-overview-card m-ov-full">
+		<div class="m-stat-card-head">
+			<div class="m-stat-card-icon m-chili-stat-3"><i class="fas fa-crosshairs"></i></div>
+			<h2 class="m-stat-card-title">Your PvP record</h2>
+		</div>
+		<div class="m-duel">
+			<div class="m-duel-head">
+				<span class="m-duel-l">You stole {fmt(d.items_stolen)}</span>
+				<span class="m-duel-net" data-dir={stealNet >= 0 ? 'up' : 'down'}>{stealNet >= 0 ? 'net +' : 'net −'}{fmt(Math.abs(stealNet))}</span>
+				<span class="m-duel-r">{fmt(d.items_stolen_from)} lost</span>
+			</div>
+			<div class="m-duel-bar">
+				<div
+					class="m-duel-fill m-duel-fill--win"
+					style="width: {barPct(d.items_stolen, [{ xp: d.items_stolen }, { xp: d.items_stolen_from }]) * grow}%;"
+				></div>
+				<div
+					class="m-duel-fill m-duel-fill--lose"
+					style="width: {barPct(d.items_stolen_from, [{ xp: d.items_stolen }, { xp: d.items_stolen_from }]) * grow}%;"
+				></div>
+			</div>
+		</div>
 			<div class="m-mini-grid">
 				<div class="m-mini">
 					<i class="fas fa-hand"></i>
@@ -743,43 +702,32 @@
 					<span class="m-mini-value">{fmt(d.items_bounties_placed)}</span>
 					<span class="m-mini-label">Bounties set</span>
 				</div>
-				{#if d.bounty_on_me > 0}
-					<div class="m-mini" data-dir="down">
+									<div class="m-mini" data-dir="down">
 						<i class="fas fa-skull"></i>
 						<span class="m-mini-value">{fmt(d.bounty_on_me)}</span>
 						<span class="m-mini-label">Bounty on you</span>
 					</div>
-				{/if}
-				{#if defense.spies_caught > 0}
-					<div class="m-mini" data-dir="up">
+									<div class="m-mini" data-dir="up">
 						<i class="fas fa-user-secret"></i>
 						<span class="m-mini-value">{fmt(defense.spies_caught)}</span>
 						<span class="m-mini-label">Spies caught</span>
 					</div>
-				{/if}
-				{#if defense.blocked > 0}
-					<div class="m-mini" data-dir="up">
+									<div class="m-mini" data-dir="up">
 						<i class="fas fa-shield-halved"></i>
 						<span class="m-mini-value">{fmt(defense.blocked)}</span>
 						<span class="m-mini-label">Attacks blocked</span>
 					</div>
-				{/if}
-				{#if defense.reflected > 0}
-					<div class="m-mini" data-dir="up">
+									<div class="m-mini" data-dir="up">
 						<i class="fas fa-arrows-rotate"></i>
 						<span class="m-mini-value">{fmt(defense.reflected)}</span>
 						<span class="m-mini-label">Attacks reflected</span>
 					</div>
-				{/if}
-				{#if defense.my_steals_caught > 0}
-					<div class="m-mini" data-dir="down">
+									<div class="m-mini" data-dir="down">
 						<i class="fas fa-handcuffs"></i>
 						<span class="m-mini-value">{fmt(defense.my_steals_caught)}</span>
 						<span class="m-mini-label">Caught stealing</span>
 					</div>
-				{/if}
-				{#if defense.insurance_covers > 0}
-					<div class="m-mini" data-dir="up">
+									<div class="m-mini" data-dir="up">
 						<i class="fas fa-umbrella"></i>
 						<span class="m-mini-value">{fmt(defense.insurance_covers)}</span>
 						<span class="m-mini-label">Insurance covers</span>
@@ -789,72 +737,60 @@
 						<span class="m-mini-value">{fmt(defense.insurance_xp)}</span>
 						<span class="m-mini-label">XP recovered</span>
 					</div>
-				{/if}
 			</div>
 		</div>
-	{/if}
 
-	{#if hasEngagement}
-		<div class="m-stat-card m-overview-card">
-			<div class="m-stat-card-head">
-				<div class="m-stat-card-icon m-chili-stat-4"><i class="fas fa-fire"></i></div>
-				<h2 class="m-stat-card-title">Your engagement</h2>
+	<div class="m-stat-card m-overview-card">
+		<div class="m-stat-card-head">
+			<div class="m-stat-card-icon m-chili-stat-4"><i class="fas fa-fire"></i></div>
+			<h2 class="m-stat-card-title">Your engagement</h2>
+		</div>
+		<div class="m-mini-grid">
+			<div class="m-mini">
+				<i class="fas fa-ticket"></i>
+				<span class="m-mini-value">{fmt(d.giveaways_entered)}</span>
+				<span class="m-mini-label">Giveaways entered</span>
 			</div>
-			<div class="m-mini-grid">
-				{#if d.giveaways_entered > 0 || d.giveaways_hosted > 0}
-					<div class="m-mini">
-						<i class="fas fa-ticket"></i>
-						<span class="m-mini-value">{fmt(d.giveaways_entered)}</span>
-						<span class="m-mini-label">Giveaways entered</span>
-					</div>
-					<div class="m-mini">
-						<i class="fas fa-medal"></i>
-						<span class="m-mini-value">{fmt(d.giveaways_won)}</span>
-						<span class="m-mini-label">Giveaways won</span>
-					</div>
-					<div class="m-mini">
-						<i class="fas fa-gift"></i>
-						<span class="m-mini-value">{fmt(d.giveaways_hosted)}</span>
-						<span class="m-mini-label">Hosted</span>
-					</div>
-				{/if}
-				{#if d.quests_enrolled > 0}
-					<div class="m-mini">
-						<i class="fas fa-scroll"></i>
-						<span class="m-mini-value">{fmt(d.quests_enrolled)}</span>
-						<span class="m-mini-label">Quests</span>
-					</div>
-					<div class="m-mini">
-						<i class="fas fa-award"></i>
-						<span class="m-mini-value">{fmt(d.quests_claimed)}</span>
-						<span class="m-mini-label">Rewards claimed</span>
-					</div>
-				{/if}
-				{#if d.streams_total > 0}
-					<div class="m-mini">
-						<i class="fas fa-tower-broadcast"></i>
-						<span class="m-mini-value">{fmt(d.streams_total)}</span>
-						<span class="m-mini-label">Streams</span>
-					</div>
-					<div class="m-mini">
-						<i class="fas fa-eye"></i>
-						<span class="m-mini-value">{fmt(d.streams_peak_viewers)}</span>
-						<span class="m-mini-label">Peak viewers</span>
-					</div>
-					<div class="m-mini">
-						<i class="fas fa-heart"></i>
-						<span class="m-mini-value">{fmt(d.streams_likes)}</span>
-						<span class="m-mini-label">Likes</span>
-					</div>
-				{/if}
-				{#if d.feedback_submitted > 0}
-					<div class="m-mini">
-						<i class="fas fa-comment-dots"></i>
-						<span class="m-mini-value">{fmt(d.feedback_submitted)}</span>
-						<span class="m-mini-label">Feedback given</span>
-					</div>
-				{/if}
+			<div class="m-mini">
+				<i class="fas fa-medal"></i>
+				<span class="m-mini-value">{fmt(d.giveaways_won)}</span>
+				<span class="m-mini-label">Giveaways won</span>
+			</div>
+			<div class="m-mini">
+				<i class="fas fa-gift"></i>
+				<span class="m-mini-value">{fmt(d.giveaways_hosted)}</span>
+				<span class="m-mini-label">Hosted</span>
+			</div>
+			<div class="m-mini">
+				<i class="fas fa-scroll"></i>
+				<span class="m-mini-value">{fmt(d.quests_enrolled)}</span>
+				<span class="m-mini-label">Quests</span>
+			</div>
+			<div class="m-mini">
+				<i class="fas fa-award"></i>
+				<span class="m-mini-value">{fmt(d.quests_claimed)}</span>
+				<span class="m-mini-label">Rewards claimed</span>
+			</div>
+			<div class="m-mini">
+				<i class="fas fa-tower-broadcast"></i>
+				<span class="m-mini-value">{fmt(d.streams_total)}</span>
+				<span class="m-mini-label">Streams</span>
+			</div>
+			<div class="m-mini">
+				<i class="fas fa-eye"></i>
+				<span class="m-mini-value">{fmt(d.streams_peak_viewers)}</span>
+				<span class="m-mini-label">Peak viewers</span>
+			</div>
+			<div class="m-mini">
+				<i class="fas fa-heart"></i>
+				<span class="m-mini-value">{fmt(d.streams_likes)}</span>
+				<span class="m-mini-label">Likes</span>
+			</div>
+			<div class="m-mini">
+				<i class="fas fa-comment-dots"></i>
+				<span class="m-mini-value">{fmt(d.feedback_submitted)}</span>
+				<span class="m-mini-label">Feedback given</span>
 			</div>
 		</div>
-	{/if}
+	</div>
 </div>

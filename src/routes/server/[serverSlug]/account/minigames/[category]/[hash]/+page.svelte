@@ -117,6 +117,9 @@
 			const landIndex = 32;
 			reel[landIndex] = won ? 'win' : 'lose';
 			reelAnimating = false;
+			reelOffset = 0;
+			await new Promise((r) => requestAnimationFrame(() => r(null)));
+			reelWrapEl?.offsetHeight;
 			centerCell(2);
 			await new Promise((r) => requestAnimationFrame(() => r(null)));
 			reelAnimating = true;
@@ -132,7 +135,6 @@
 					shake = true;
 					setTimeout(() => (shake = false), 500);
 				}
-				showToast(won ? `Won +${fmt(net)} XP` : `Lost ${fmt(bet)} XP`, won ? 'success' : 'error');
 				busy = false;
 				ctx.invalidateAll();
 			}, 7000);

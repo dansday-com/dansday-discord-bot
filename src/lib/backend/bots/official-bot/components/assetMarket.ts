@@ -114,12 +114,14 @@ async function distinctHeldCryptoIds(): Promise<string[]> {
 	return ((rows as any[]) || []).map((r) => String(r.asset_id)).filter(Boolean);
 }
 
-async function pollOnce(botId: string): Promise<void> {
+async function pollOnce(botId: string, force = false): Promise<void> {
 	const redis = await getRedisClient().catch(() => null);
 	if (redis) {
 		const token = `${process.pid}:${botId}`;
-		const got = await redis.set('assets:poll:lock', token, { NX: true, EX: POLL_LOCK_TTL_S }).catch(() => null);
-		if (got !== 'OK') return;
+		const got = force
+			? await redis.set('assets:poll:lock', token, { EX: POLL_LOCK_TTL_S }).catch(() => null)
+			: await redis.set('assets:poll:lock', token, { NX: true, EX: POLL_LOCK_TTL_S }).catch(() => null);
+		if (!force && got !== 'OK') return;
 	}
 
 	if (!apiKey()) {
@@ -158,7 +160,7 @@ async function pollOnce(botId: string): Promise<void> {
 
 export function startAssetMarketPoller(botId: string): void {
 	if (pollTimer) return;
-	void pollOnce(botId);
+	void pollOnce(botId, true);
 	pollTimer = setInterval(() => void pollOnce(botId), POLL_INTERVAL_MS);
 	pollTimer.unref?.();
 }

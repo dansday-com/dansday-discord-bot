@@ -88,6 +88,22 @@
 	const d = $derived((data.dashboard ?? {}) as Record<string, number>);
 	const ins = $derived(data.insights ?? { favorite_items: [], interactions: {}, effect_usage: [], asset_holdings: [] });
 	const interactions = $derived((ins.interactions ?? {}) as Record<string, { out: any[]; in: any[] }>);
+	const defense = $derived((ins.defense ?? {}) as Record<string, number>);
+	const relationships = $derived((ins.relationships ?? {}) as Record<string, { name: string; hits: number; xp: number } | null>);
+	const relationCards = $derived(
+		[
+			{ key: 'nemesis', title: 'Nemesis', sub: 'attacks you most', icon: 'fa-skull-crossbones', accent: '#b23b3b', row: relationships.nemesis },
+			{
+				key: 'favorite_target',
+				title: 'Favorite target',
+				sub: 'you attack most',
+				icon: 'fa-crosshairs',
+				accent: '#733e24',
+				row: relationships.favorite_target
+			},
+			{ key: 'best_ally', title: 'Best ally', sub: 'gifts exchanged', icon: 'fa-handshake', accent: '#1f8a4c', row: relationships.best_ally }
+		].filter((r) => r.row && r.row.name)
+	);
 
 	const hasMarket = $derived((d.assets_trade_count ?? 0) > 0 || (d.assets_market_value ?? 0) > 0);
 	const hasItems = $derived((d.items_buys ?? 0) > 0);
@@ -102,7 +118,11 @@
 			(d.items_stolen_from ?? 0) > 0 ||
 			(d.items_bombed_by ?? 0) > 0 ||
 			(d.items_gifts_received ?? 0) > 0 ||
-			(d.bounty_on_me ?? 0) > 0
+			(d.bounty_on_me ?? 0) > 0 ||
+			(defense.spies_caught ?? 0) > 0 ||
+			(defense.blocked ?? 0) > 0 ||
+			(defense.reflected ?? 0) > 0 ||
+			(defense.insurance_covers ?? 0) > 0
 	);
 	const hasEngagement = $derived(
 		(d.giveaways_entered ?? 0) > 0 ||
@@ -113,21 +133,28 @@
 	);
 
 	const INTERACTION_LISTS = [
-		{ key: 'steal', dir: 'out', title: 'Robbed most', icon: 'fa-hand', fill: 'm-ov-bar-fill--steal' },
-		{ key: 'steal', dir: 'in', title: 'Robbed by', icon: 'fa-skull-crossbones', fill: 'm-ov-bar-fill--danger' },
-		{ key: 'bomb', dir: 'out', title: 'Bombed most', icon: 'fa-bomb', fill: 'm-ov-bar-fill--steal' },
-		{ key: 'bomb', dir: 'in', title: 'Bombed by', icon: 'fa-burst', fill: 'm-ov-bar-fill--danger' },
-		{ key: 'leech', dir: 'out', title: 'Leeched most', icon: 'fa-droplet', fill: 'm-ov-bar-fill--steal' },
-		{ key: 'leech', dir: 'in', title: 'Leeched by', icon: 'fa-droplet', fill: 'm-ov-bar-fill--danger' },
-		{ key: 'gift', dir: 'out', title: 'Gifts to', icon: 'fa-gift', fill: 'm-ov-bar-fill--gift' },
-		{ key: 'gift', dir: 'in', title: 'Gifts from', icon: 'fa-hand-holding-heart', fill: 'm-ov-bar-fill--gift' },
-		{ key: 'spy', dir: 'out', title: 'Spied most', icon: 'fa-magnifying-glass', fill: 'm-ov-bar-fill--steal' }
+		{ key: 'steal', dir: 'out', group: 'offense', title: 'Robbed most', icon: 'fa-hand', fill: 'm-ov-bar-fill--steal' },
+		{ key: 'bomb', dir: 'out', group: 'offense', title: 'Bombed most', icon: 'fa-bomb', fill: 'm-ov-bar-fill--steal' },
+		{ key: 'leech', dir: 'out', group: 'offense', title: 'Leeched most', icon: 'fa-droplet', fill: 'm-ov-bar-fill--steal' },
+		{ key: 'spy', dir: 'out', group: 'offense', title: 'Spied on most', icon: 'fa-magnifying-glass', fill: 'm-ov-bar-fill--steal' },
+		{ key: 'gift', dir: 'out', group: 'offense', title: 'Gifted to most', icon: 'fa-gift', fill: 'm-ov-bar-fill--gift' },
+		{ key: 'bounty', dir: 'out', group: 'offense', title: 'Bounties placed on', icon: 'fa-crown', fill: 'm-ov-bar-fill--steal' },
+		{ key: 'steal', dir: 'in', group: 'defense', title: 'Robbed by', icon: 'fa-skull-crossbones', fill: 'm-ov-bar-fill--danger' },
+		{ key: 'bomb', dir: 'in', group: 'defense', title: 'Bombed by', icon: 'fa-burst', fill: 'm-ov-bar-fill--danger' },
+		{ key: 'leech', dir: 'in', group: 'defense', title: 'Leeched by', icon: 'fa-droplet', fill: 'm-ov-bar-fill--danger' },
+		{ key: 'gift', dir: 'in', group: 'defense', title: 'Gifted from', icon: 'fa-hand-holding-heart', fill: 'm-ov-bar-fill--gift' },
+		{ key: 'bounty', dir: 'in', group: 'defense', title: 'Bounties on you from', icon: 'fa-skull', fill: 'm-ov-bar-fill--danger' },
+		{ key: 'spy_caught', dir: 'out', group: 'defense', title: 'Caught spying on you', icon: 'fa-user-secret', fill: 'm-ov-bar-fill--gift' },
+		{ key: 'blocked', dir: 'out', group: 'defense', title: 'Blocked their attack', icon: 'fa-shield-halved', fill: 'm-ov-bar-fill--gift' },
+		{ key: 'reflected', dir: 'out', group: 'defense', title: 'Reflected back at', icon: 'fa-arrows-rotate', fill: 'm-ov-bar-fill--gift' }
 	];
 	const interactionLists = $derived(
 		INTERACTION_LISTS.map((l) => ({ ...l, rows: (interactions[l.key]?.[l.dir as 'out' | 'in'] ?? []) as any[] })).filter((l) => l.rows.length > 0)
 	);
+	const offenseLists = $derived(interactionLists.filter((l) => l.group === 'offense'));
+	const defenseLists = $derived(interactionLists.filter((l) => l.group === 'defense'));
 	const hasFavorites = $derived((ins.favorite_items ?? []).length > 0);
-	const hasHighlights = $derived(hasFavorites || interactionLists.length > 0);
+	const hasHighlights = $derived(hasFavorites || interactionLists.length > 0 || relationCards.length > 0);
 
 	const positions = $derived(
 		(data.positions ?? []) as {
@@ -306,8 +333,9 @@
 		<div class="m-stat-card m-overview-card m-ov-full">
 			<div class="m-stat-card-head">
 				<div class="m-stat-card-icon m-chili-stat-3"><i class="fas fa-chart-pie"></i></div>
-				<h2 class="m-stat-card-title">How you play</h2>
+				<h2 class="m-stat-card-title">Item usage by type</h2>
 			</div>
+			<p class="m-card-note">How often you've used each item effect — attacks, buffs and utility combined.</p>
 			<div class="m-chart-split">
 				<div class="m-pie-wrap">
 					<svg class="m-pie" viewBox="0 0 100 100" role="img" aria-label="Item usage by type">
@@ -491,44 +519,71 @@
 				<div class="m-stat-card-icon m-chili-stat-1"><i class="fas fa-fire-flame-curved"></i></div>
 				<h2 class="m-stat-card-title">Highlights</h2>
 			</div>
-			<div class="m-ov-lists">
-				{#if hasFavorites}
-					{@const fav = ins.favorite_items[0]}
-					<div class="m-ov-list">
-						<span class="m-ov-list-title"><i class="fas fa-star"></i> Favorite item</span>
-						<div class="m-fav" style="--fav: {fav.effect_type ? effectAccentHex(fav.effect_type) : 'var(--chili-hot)'};">
-							<span class="m-fav-ic"><i class="fas {fav.effect_type ? effectIcon(fav.effect_type) : 'fa-cube'}"></i></span>
-							<div class="m-fav-body">
-								<span class="m-fav-name">{fav.name}</span>
-								<span class="m-fav-sub">most used</span>
+			{#if relationCards.length > 0}
+				<div class="m-rel-row">
+					{#each relationCards as r}
+						<div class="m-rel" style="--rel: {r.accent};">
+							<span class="m-rel-ic"><i class="fas {r.icon}"></i></span>
+							<div class="m-rel-body">
+								<span class="m-rel-title">{r.title}</span>
+								<span class="m-rel-name">{r.row?.name}</span>
+								<span class="m-rel-sub">{r.sub} · {r.row && r.row.xp > 0 ? `${fmtShort(r.row.xp)} XP` : `${fmt(r.row?.hits ?? 0)}×`}</span>
 							</div>
-							<span class="m-fav-count">{fmt(fav.uses)}×</span>
 						</div>
-					</div>
-				{/if}
-				{#each interactionLists as list}
-					<div class="m-ov-list">
-						<span class="m-ov-list-title"><i class="fas {list.icon}"></i> {list.title}</span>
-						{#each list.rows as t}
-							<div class="m-ov-bar-row">
-								<div class="m-ov-bar-head">
-									<span class="m-ov-list-name">{t.name}</span>
-									<span class="m-ov-list-val">{t.xp > 0 ? `${fmt(t.xp)} XP` : `${fmt(t.hits)}×`}</span>
+					{/each}
+				</div>
+			{/if}
+			{#snippet listGroup(lists: any[])}
+				<div class="m-ov-lists">
+					{#each lists as list}
+						<div class="m-ov-list">
+							<span class="m-ov-list-title"><i class="fas {list.icon}"></i> {list.title}</span>
+							{#each list.rows as t}
+								<div class="m-ov-bar-row">
+									<div class="m-ov-bar-head">
+										<span class="m-ov-list-name">{t.name}</span>
+										<span class="m-ov-list-val">{t.xp > 0 ? `${fmt(t.xp)} XP` : `${fmt(t.hits)}×`}</span>
+									</div>
+									<div class="m-ov-bar-track">
+										<div
+											class="m-ov-bar-fill {list.fill}"
+											style="width: {barPct(
+												t.xp || t.hits,
+												list.rows.map((r) => ({ xp: r.xp || r.hits }))
+											) * grow}%;"
+										></div>
+									</div>
 								</div>
-								<div class="m-ov-bar-track">
-									<div
-										class="m-ov-bar-fill {list.fill}"
-										style="width: {barPct(
-											t.xp || t.hits,
-											list.rows.map((r) => ({ xp: r.xp || r.hits }))
-										) * grow}%;"
-									></div>
-								</div>
-							</div>
-						{/each}
+							{/each}
+						</div>
+					{/each}
+				</div>
+			{/snippet}
+
+			{#if hasFavorites}
+				{@const fav = ins.favorite_items[0]}
+				<div class="m-ov-fav-wrap">
+					<span class="m-ov-group-title"><i class="fas fa-star"></i> Favorite item</span>
+					<div class="m-fav" style="--fav: {fav.effect_type ? effectAccentHex(fav.effect_type) : 'var(--chili-hot)'};">
+						<span class="m-fav-ic"><i class="fas {fav.effect_type ? effectIcon(fav.effect_type) : 'fa-cube'}"></i></span>
+						<div class="m-fav-body">
+							<span class="m-fav-name">{fav.name}</span>
+							<span class="m-fav-sub">most used{fav.effect_type ? ` · ${effectLabel(fav.effect_type)}` : ''}</span>
+						</div>
+						<span class="m-fav-count">{fmt(fav.uses)}×</span>
 					</div>
-				{/each}
-			</div>
+				</div>
+			{/if}
+
+			{#if offenseLists.length > 0}
+				<span class="m-ov-group-title m-ov-group-title--off"><i class="fas fa-crosshairs"></i> Offense · who you hit</span>
+				{@render listGroup(offenseLists)}
+			{/if}
+
+			{#if defenseLists.length > 0}
+				<span class="m-ov-group-title m-ov-group-title--def"><i class="fas fa-shield-halved"></i> Defense · done to you &amp; blocked</span>
+				{@render listGroup(defenseLists)}
+			{/if}
 		</div>
 	{/if}
 
@@ -693,6 +748,46 @@
 						<i class="fas fa-skull"></i>
 						<span class="m-mini-value">{fmt(d.bounty_on_me)}</span>
 						<span class="m-mini-label">Bounty on you</span>
+					</div>
+				{/if}
+				{#if defense.spies_caught > 0}
+					<div class="m-mini" data-dir="up">
+						<i class="fas fa-user-secret"></i>
+						<span class="m-mini-value">{fmt(defense.spies_caught)}</span>
+						<span class="m-mini-label">Spies caught</span>
+					</div>
+				{/if}
+				{#if defense.blocked > 0}
+					<div class="m-mini" data-dir="up">
+						<i class="fas fa-shield-halved"></i>
+						<span class="m-mini-value">{fmt(defense.blocked)}</span>
+						<span class="m-mini-label">Attacks blocked</span>
+					</div>
+				{/if}
+				{#if defense.reflected > 0}
+					<div class="m-mini" data-dir="up">
+						<i class="fas fa-arrows-rotate"></i>
+						<span class="m-mini-value">{fmt(defense.reflected)}</span>
+						<span class="m-mini-label">Attacks reflected</span>
+					</div>
+				{/if}
+				{#if defense.my_steals_caught > 0}
+					<div class="m-mini" data-dir="down">
+						<i class="fas fa-handcuffs"></i>
+						<span class="m-mini-value">{fmt(defense.my_steals_caught)}</span>
+						<span class="m-mini-label">Caught stealing</span>
+					</div>
+				{/if}
+				{#if defense.insurance_covers > 0}
+					<div class="m-mini" data-dir="up">
+						<i class="fas fa-umbrella"></i>
+						<span class="m-mini-value">{fmt(defense.insurance_covers)}</span>
+						<span class="m-mini-label">Insurance covers</span>
+					</div>
+					<div class="m-mini" data-dir="up">
+						<i class="fas fa-hand-holding-dollar"></i>
+						<span class="m-mini-value">{fmt(defense.insurance_xp)}</span>
+						<span class="m-mini-label">XP recovered</span>
 					</div>
 				{/if}
 			</div>

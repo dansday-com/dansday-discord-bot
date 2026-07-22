@@ -4286,7 +4286,7 @@
 	gap: 13px;
 	margin-bottom: 16px;
 	padding: 12px 18px;
-	min-height: 94px;
+	height: 112px;
 	box-sizing: border-box;
 	border-radius: 16px;
 	background: linear-gradient(135deg, #245f73, #173f4d);
@@ -5512,6 +5512,7 @@
 @media (max-width: 400px) {
 	.m-root .m-xp {
 		padding: 12px 14px;
+		height: 122px;
 	}
 	.m-root .m-xp-amount {
 		font-size: 22px;
@@ -7308,4 +7309,99 @@
 .m-ov--in .m-econ3 > .m-stat-card {
 	opacity: 1;
 	transform: translateY(0);
+}
+.m-rel-row {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 10px;
+	margin-top: 14px;
+}
+@media (min-width: 560px) {
+	.m-rel-row {
+		grid-template-columns: repeat(3, 1fr);
+	}
+}
+.m-rel {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 12px;
+	border-radius: 14px;
+	background: color-mix(in srgb, var(--rel) 9%, transparent);
+	border: 1px solid color-mix(in srgb, var(--rel) 26%, transparent);
+	min-width: 0;
+}
+.m-rel-ic {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 38px;
+	height: 38px;
+	border-radius: 11px;
+	flex-shrink: 0;
+	background: var(--rel);
+	color: #fff;
+	font-size: 15px;
+}
+.m-rel-body {
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+}
+.m-rel-title {
+	font-size: 10px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.07em;
+	color: var(--rel);
+}
+.m-rel-name {
+	font-size: 15px;
+	font-weight: 800;
+	color: var(--lb-text);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.m-rel-sub {
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--lb-text-muted);
+	font-variant-numeric: tabular-nums;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.m-ov-group-title {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin: 18px 0 4px;
+	font-size: 12px;
+	font-weight: 800;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--lb-text);
+}
+.m-ov-group-title i {
+	font-size: 12px;
+	color: var(--lb-text-muted);
+}
+.m-ov-group-title--off i {
+	color: var(--chili-hot);
+}
+.m-ov-group-title--def i {
+	color: #b23b3b;
+}
+.m-ov-fav-wrap {
+	margin-top: 14px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+.m-card-note {
+	margin: 6px 0 0;
+	font-size: 12px;
+	line-height: 1.4;
+	color: var(--lb-text-muted);
 }

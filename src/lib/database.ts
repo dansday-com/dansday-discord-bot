@@ -2706,6 +2706,15 @@ export async function getMemberInsights(memberId: any) {
 			WHERE il.target_member_id = ${mid} AND il.action = ${action} ${successOnly ? sql`AND il.outcome = 'success'` : sql``} AND il.actor_disguised = 0
 			GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY xp DESC, hits DESC LIMIT 3
 		`);
+	const defendedFrom = (actions: string[], outcomes: string[]) =>
+		q(sql`
+			SELECT ${nameExpr} AS name, COUNT(*) AS hits, 0 AS xp
+			FROM server_member_item_logs il
+			INNER JOIN server_members m ON m.id = il.member_id
+			WHERE il.target_member_id = ${mid} AND il.action IN (${sql.join(actions, sql`, `)})
+				AND il.outcome IN (${sql.join(outcomes, sql`, `)}) AND il.actor_disguised = 0
+			GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY hits DESC LIMIT 3
+		`);
 
 	const INTERACTIONS = [
 		{ key: 'steal', out: true, in: true, success: true },
@@ -2720,12 +2729,83 @@ export async function getMemberInsights(memberId: any) {
 		...(it.in ? [{ key: it.key, dir: 'in', p: incoming(it.key, it.success) }] : [])
 	]);
 
-	const [topItems, effectUsage, xpFlow, holdings, ...interactionResults] = await Promise.all([
+	const bountyOut = q(sql`
+		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(b.amount), 0) AS xp
+		FROM server_member_item_bounties b
+		INNER JOIN server_members m ON m.id = b.target_member_id
+		WHERE b.placed_by_member_id = ${mid}
+		GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY xp DESC, hits DESC LIMIT 3
+	`);
+	const bountyIn = q(sql`
+		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(b.amount), 0) AS xp
+		FROM server_member_item_bounties b
+		INNER JOIN server_members m ON m.id = b.placed_by_member_id
+		WHERE b.target_member_id = ${mid}
+		GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY xp DESC, hits DESC LIMIT 3
+	`);
+
+	const nemesis = q(sql`
+		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp_amount), 0) AS xp
+		FROM server_member_item_logs il
+		INNER JOIN server_members m ON m.id = il.member_id
+		WHERE il.target_member_id = ${mid} AND il.action IN ('steal','bomb','leech') AND il.outcome = 'success' AND il.actor_disguised = 0
+		GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY hits DESC, xp DESC LIMIT 1
+	`);
+	const favoriteTarget = q(sql`
+		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp_amount), 0) AS xp
+		FROM server_member_item_logs il
+		INNER JOIN server_members m ON m.id = il.target_member_id
+		WHERE il.member_id = ${mid} AND il.action IN ('steal','bomb','leech') AND il.outcome = 'success'
+		GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY hits DESC, xp DESC LIMIT 1
+	`);
+	const bestAlly = q(sql`
+		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp_amount), 0) AS xp
+		FROM server_member_item_logs il
+		INNER JOIN server_members m
+			ON m.id = CASE WHEN il.member_id = ${mid} THEN il.target_member_id ELSE il.member_id END
+		WHERE il.action = 'gift' AND (
+			(il.member_id = ${mid} AND il.target_member_id IS NOT NULL)
+			OR (il.target_member_id = ${mid} AND il.actor_disguised = 0)
+		)
+		GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY xp DESC, hits DESC LIMIT 1
+	`);
+
+	const spyCaught = defendedFrom(['spy'], ['caught']);
+	const blocked = defendedFrom(['steal', 'bomb'], ['immune']);
+	const reflected = defendedFrom(['steal', 'bomb'], ['reflected']);
+	const defenseSummary = q(sql`
+		SELECT
+			COALESCE(SUM(CASE WHEN target_member_id = ${mid} AND action = 'spy' AND outcome = 'caught' THEN 1 ELSE 0 END), 0) AS spies_caught,
+			COALESCE(SUM(CASE WHEN target_member_id = ${mid} AND action IN ('steal','bomb') AND outcome = 'immune' THEN 1 ELSE 0 END), 0) AS blocked,
+			COALESCE(SUM(CASE WHEN target_member_id = ${mid} AND action IN ('steal','bomb') AND outcome = 'reflected' THEN 1 ELSE 0 END), 0) AS reflected,
+			COALESCE(SUM(CASE WHEN member_id = ${mid} AND action = 'steal' AND outcome = 'caught' THEN 1 ELSE 0 END), 0) AS my_steals_caught,
+			COALESCE(SUM(CASE WHEN member_id = ${mid} AND action = 'insurance' AND outcome = 'refunded' THEN 1 ELSE 0 END), 0) AS insurance_covers,
+			COALESCE(SUM(CASE WHEN member_id = ${mid} AND action = 'insurance' AND outcome = 'refunded' THEN il.xp_amount ELSE 0 END), 0) AS insurance_xp
+		FROM server_member_item_logs il
+		WHERE target_member_id = ${mid} OR member_id = ${mid}
+	`);
+
+	const [
+		topItems,
+		effectUsage,
+		xpFlow,
+		holdings,
+		bountyOutRows,
+		bountyInRows,
+		spyCaughtRows,
+		blockedRows,
+		reflectedRows,
+		defenseRows,
+		nemesisRows,
+		favoriteTargetRows,
+		bestAllyRows,
+		...interactionResults
+	] = await Promise.all([
 		q(sql`
 			SELECT bi.name AS name, bi.effect_type AS effect_type, COUNT(*) AS uses
 			FROM server_member_item_logs il
 			LEFT JOIN items bi ON bi.id = il.item_id
-			WHERE il.member_id = ${mid} AND il.item_id IS NOT NULL AND il.action NOT IN ('discard')
+			WHERE il.member_id = ${mid} AND il.item_id IS NOT NULL AND il.action NOT IN ('buy', 'discard', 'bounty_collected', 'insurance')
 			GROUP BY bi.id, bi.name, bi.effect_type
 			ORDER BY uses DESC LIMIT 1
 		`),
@@ -2733,7 +2813,7 @@ export async function getMemberInsights(memberId: any) {
 			SELECT COALESCE(bi.effect_type, il.action) AS effect_type, COUNT(*) AS uses
 			FROM server_member_item_logs il
 			LEFT JOIN items bi ON bi.id = il.item_id
-			WHERE il.member_id = ${mid} AND il.action NOT IN ('buy', 'discard')
+			WHERE il.member_id = ${mid} AND il.action NOT IN ('buy', 'discard', 'bounty_collected', 'insurance')
 			GROUP BY COALESCE(bi.effect_type, il.action)
 			ORDER BY uses DESC
 		`),
@@ -2757,6 +2837,15 @@ export async function getMemberInsights(memberId: any) {
 			GROUP BY asset_type, asset_id, symbol, asset_name, asset_image
 			ORDER BY invested DESC
 		`),
+		bountyOut,
+		bountyIn,
+		spyCaught,
+		blocked,
+		reflected,
+		defenseSummary,
+		nemesis,
+		favoriteTarget,
+		bestAlly,
 		...interactionQueries.map((iq) => iq.p)
 	]);
 
@@ -2765,6 +2854,27 @@ export async function getMemberInsights(memberId: any) {
 		if (!interactions[iq.key]) interactions[iq.key] = { out: [], in: [] };
 		interactions[iq.key][iq.dir as 'out' | 'in'] = mapName(interactionResults[i]);
 	});
+	interactions.bounty = { out: mapName(bountyOutRows), in: mapName(bountyInRows) };
+	interactions.spy_caught = { out: mapName(spyCaughtRows), in: [] };
+	interactions.blocked = { out: mapName(blockedRows), in: [] };
+	interactions.reflected = { out: mapName(reflectedRows), in: [] };
+
+	const defRow = (defenseRows[0] as unknown as any[])[0] || {};
+	const defense = {
+		spies_caught: Number(defRow.spies_caught) || 0,
+		blocked: Number(defRow.blocked) || 0,
+		reflected: Number(defRow.reflected) || 0,
+		my_steals_caught: Number(defRow.my_steals_caught) || 0,
+		insurance_covers: Number(defRow.insurance_covers) || 0,
+		insurance_xp: Number(defRow.insurance_xp) || 0
+	};
+
+	const one = (rows: any) => mapName(rows)[0] ?? null;
+	const relationships = {
+		nemesis: one(nemesisRows),
+		favorite_target: one(favoriteTargetRows),
+		best_ally: one(bestAllyRows)
+	};
 
 	const flowRows = ((xpFlow[0] as unknown as any[]) || []).map((r) => ({
 		day: r.day instanceof Date ? r.day.toISOString().split('T')[0] : String(r.day),
@@ -2789,6 +2899,8 @@ export async function getMemberInsights(memberId: any) {
 			uses: Number(r.uses) || 0
 		})),
 		interactions,
+		defense,
+		relationships,
 		effect_usage: ((effectUsage[0] as unknown as any[]) || [])
 			.map((r) => ({ effect_type: r.effect_type || 'unknown', uses: Number(r.uses) || 0 }))
 			.filter((r) => r.uses > 0),

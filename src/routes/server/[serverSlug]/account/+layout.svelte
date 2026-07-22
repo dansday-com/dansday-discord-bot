@@ -406,7 +406,7 @@
 			</div>
 		</div>
 
-		{#if !isOverview && activeChips.length > 0}
+		{#if activeChips.length > 0}
 			<div class="m-active">
 				{#each activeChips as chip (chip.key)}
 					<span class="m-active-chip" style="--chip-accent: {chip.accent}">

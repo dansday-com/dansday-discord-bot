@@ -348,40 +348,39 @@
 				<img src={memberAvatar} alt={pd.memberName ?? ''} loading="lazy" />
 			</div>
 			<div class="m-xp-figures">
-				{#if isOverview}
-					<span class="m-xp-wallet"><i class="fas fa-user"></i>Profile</span>
-					{#if pd.memberName}<span class="m-xp-name">{pd.memberName}</span>{/if}
-					<span class="m-xp-bar-meta">
+				<span class="m-xp-wallet"
+					><i class="fas {isOverview ? 'fa-user' : isAssets ? 'fa-chart-line' : 'fa-wallet'}"></i>{isOverview
+						? 'Profile'
+						: isAssets
+							? 'Invested in Assets'
+							: 'Wallet'}</span
+				>
+				{#if pd.memberName}<span class="m-xp-name">{pd.memberName}</span>{/if}
+				<span class="m-xp-amount" class:m-xp-amount--hidden={isOverview}>{fmt(isAssets ? assetSummary.invested : liveXp)}<span class="m-xp-unit">XP</span></span
+				>
+				<div class="m-xp-bar" class:m-xp-bar--hidden={isAssets || isOverview}>
+					<div class="m-xp-bar-fill" style="width: {levelInfo.pct}%"></div>
+				</div>
+				<span class="m-xp-bar-meta">
+					{#if isOverview}
 						<span>Joined {joinedDate ?? '—'}</span>
 						{#if pd.profile?.isBooster || pd.profile?.isAfk}
 							<span>{pd.profile?.isBooster ? 'Booster' : ''}{pd.profile?.isBooster && pd.profile?.isAfk ? ' · ' : ''}{pd.profile?.isAfk ? 'AFK' : ''}</span>
 						{/if}
-					</span>
-					{#if (pd.profile?.roles ?? []).length > 0}
-						<div class="m-xp-roles">
-							{#each pd.profile.roles as role}
-								<span class="m-xp-role" style={role.color ? `--role-color: ${role.color};` : ''}>
-									<i class="fas fa-circle"></i>{role.name || 'Role'}
-								</span>
-							{/each}
-						</div>
+					{:else if isAssets}
+						<span>{assetSummary.count} asset{assetSummary.count === 1 ? '' : 's'}</span>
+						<span>Worth {fmt(assetSummary.value)} XP</span>
+					{:else}
+						<span>Lvl {level}</span>
+						<span>{levelInfo.toNext > 0 ? `${fmt(levelInfo.toNext)} XP to Lvl ${level + 1}` : 'Max progress'}</span>
 					{/if}
-				{:else}
-					<span class="m-xp-wallet"><i class="fas {isAssets ? 'fa-chart-line' : 'fa-wallet'}"></i>{isAssets ? 'Invested in Assets' : 'Wallet'}</span>
-					{#if pd.memberName}<span class="m-xp-name">{pd.memberName}</span>{/if}
-					<span class="m-xp-amount">{fmt(isAssets ? assetSummary.invested : liveXp)}<span class="m-xp-unit">XP</span></span>
-					<div class="m-xp-bar" class:m-xp-bar--hidden={isAssets}>
-						<div class="m-xp-bar-fill" style="width: {levelInfo.pct}%"></div>
+				</span>
+				{#if isOverview && pd.profile?.roles?.[0]}
+					<div class="m-xp-roles">
+						<span class="m-xp-role" style={pd.profile.roles[0].color ? `--role-color: ${pd.profile.roles[0].color};` : ''}>
+							<i class="fas fa-circle"></i>{pd.profile.roles[0].name || 'Role'}
+						</span>
 					</div>
-					<span class="m-xp-bar-meta">
-						{#if isAssets}
-							<span>{assetSummary.count} asset{assetSummary.count === 1 ? '' : 's'}</span>
-							<span>Worth {fmt(assetSummary.value)} XP</span>
-						{:else}
-							<span>Lvl {level}</span>
-							<span>{levelInfo.toNext > 0 ? `${fmt(levelInfo.toNext)} XP to Lvl ${level + 1}` : 'Max progress'}</span>
-						{/if}
-					</span>
 				{/if}
 			</div>
 			<div class="m-xp-stats">

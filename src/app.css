@@ -4406,6 +4406,10 @@
 	font-variant-numeric: tabular-nums;
 }
 
+.m-root .m-xp-amount--hidden {
+	visibility: hidden;
+}
+
 .m-root .m-xp-unit {
 	font-size: 13px;
 	font-weight: 700;

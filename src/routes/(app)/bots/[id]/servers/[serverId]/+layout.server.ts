@@ -3,6 +3,7 @@ import type { LayoutServerLoad } from './$types';
 import db, { getOfficialBotIdForServer } from '$lib/database.js';
 import { webBotHome } from '$lib/frontend/redirect.js';
 import { accountOwnsServer } from '$lib/frontend/panelServer.js';
+import { loadAssetPriceMap } from '$lib/frontend/public/assets/index.js';
 
 export const load: LayoutServerLoad = async ({ locals, params, url }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
@@ -14,7 +15,8 @@ export const load: LayoutServerLoad = async ({ locals, params, url }) => {
 		redirect(302, webBotHome(url.pathname));
 	}
 
-	const overview = await db.getServerOverview(params.serverId);
+	const priceMap = await loadAssetPriceMap().catch(() => ({}));
+	const overview = await db.getServerOverview(params.serverId, { priceMap });
 	if (!overview) {
 		redirect(302, webBotHome(url.pathname));
 	}

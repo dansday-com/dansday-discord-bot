@@ -565,6 +565,31 @@ CREATE TABLE IF NOT EXISTS server_member_item_logs (
     FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE SET NULL
 );
 
+CREATE TABLE IF NOT EXISTS server_member_minigame_logs (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    member_id INT NOT NULL,
+    game VARCHAR(24) NOT NULL DEFAULT 'gamble',
+    multiplier DECIMAL(6,2) NOT NULL DEFAULT 2,
+    wager INT NOT NULL DEFAULT 0,
+    payout INT NOT NULL DEFAULT 0,
+    xp_amount INT NOT NULL DEFAULT 0,
+    outcome VARCHAR(16) NOT NULL,
+    created_at DATETIME NOT NULL,
+    FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS server_member_level_friends (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    member_a_id INT NOT NULL,
+    member_b_id INT NOT NULL,
+    ticks INT NOT NULL DEFAULT 0,
+    xp_together BIGINT NOT NULL DEFAULT 0,
+    updated_at DATETIME NOT NULL,
+    FOREIGN KEY (member_a_id) REFERENCES server_members(id) ON DELETE CASCADE,
+    FOREIGN KEY (member_b_id) REFERENCES server_members(id) ON DELETE CASCADE,
+    UNIQUE KEY uniq_level_friends_pair (member_a_id, member_b_id)
+);
+
 CREATE TABLE IF NOT EXISTS server_member_level_logs (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     member_id INT NOT NULL,
@@ -589,6 +614,38 @@ CREATE TABLE IF NOT EXISTS server_member_item_bounties (
     created_at DATETIME NOT NULL,
     FOREIGN KEY (target_member_id) REFERENCES server_members(id) ON DELETE CASCADE,
     FOREIGN KEY (placed_by_member_id) REFERENCES server_members(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS server_member_assets (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    member_id INT NOT NULL,
+    asset_type VARCHAR(24) NOT NULL DEFAULT 'crypto',
+    asset_id VARCHAR(96) NOT NULL,
+    symbol VARCHAR(32) NOT NULL,
+    asset_name VARCHAR(128) NOT NULL,
+    asset_image VARCHAR(255) NULL,
+    xp_invested INT NOT NULL DEFAULT 0,
+    buy_price DECIMAL(30, 12) NOT NULL,
+    opened_at DATETIME NOT NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS server_member_asset_logs (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    member_id INT NOT NULL,
+    action VARCHAR(8) NOT NULL,
+    asset_type VARCHAR(24) NOT NULL DEFAULT 'crypto',
+    asset_id VARCHAR(96) NOT NULL,
+    symbol VARCHAR(32) NOT NULL,
+    asset_name VARCHAR(128) NOT NULL,
+    asset_image VARCHAR(255) NULL,
+    xp_amount INT NOT NULL DEFAULT 0,
+    price DECIMAL(30, 12) NOT NULL DEFAULT 0,
+    net INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL,
+    FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_bots_panel_id ON bots(panel_id);
@@ -648,5 +705,18 @@ CREATE INDEX IF NOT EXISTS idx_server_member_item_actives_target ON server_membe
 CREATE INDEX IF NOT EXISTS idx_server_member_item_actives_sweep ON server_member_item_actives(expiry_notified, expires_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_item_logs_member ON server_member_item_logs(member_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_item_logs_target ON server_member_item_logs(target_member_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_server_member_item_logs_action_created ON server_member_item_logs(action, created_at);
+CREATE INDEX IF NOT EXISTS idx_server_member_item_logs_action_member ON server_member_item_logs(action, member_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_server_member_item_logs_action_target ON server_member_item_logs(action, target_member_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_server_member_minigame_logs_member ON server_member_minigame_logs(member_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_server_member_minigame_logs_created ON server_member_minigame_logs(created_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_item_bounties_target ON server_member_item_bounties(target_member_id, collected);
+CREATE INDEX IF NOT EXISTS idx_server_member_item_bounties_placed ON server_member_item_bounties(placed_by_member_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_server_member_item_bounties_created ON server_member_item_bounties(created_at);
+CREATE INDEX IF NOT EXISTS idx_server_member_assets_member ON server_member_assets(member_id);
+CREATE INDEX IF NOT EXISTS idx_server_member_assets_held ON server_member_assets(asset_type, asset_id);
+CREATE INDEX IF NOT EXISTS idx_server_member_asset_logs_member ON server_member_asset_logs(member_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_level_logs_member ON server_member_level_logs(member_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_server_member_level_logs_member_created_source ON server_member_level_logs(member_id, created_at, source);
+CREATE INDEX IF NOT EXISTS idx_level_friends_a ON server_member_level_friends(member_a_id, ticks);
+CREATE INDEX IF NOT EXISTS idx_level_friends_b ON server_member_level_friends(member_b_id, ticks);

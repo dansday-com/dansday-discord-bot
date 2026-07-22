@@ -22,7 +22,7 @@
 		{
 			icon: 'fa-toggle-on',
 			title: 'Enable Items',
-			desc: 'On the server Items config page, turn on the Items module. This shows the Items button in the bot menu and unlocks buy and use actions.'
+			desc: 'On the server Public statistics config page, turn on the Items toggle. This shows the account link in the bot menu and unlocks buy and use actions. Public statistics must be on.'
 		},
 		{
 			icon: 'fa-hashtag',
@@ -37,7 +37,7 @@
 		{
 			icon: 'fa-sliders',
 			title: 'Tune the effect',
-			desc: 'Each effect type has its own settings: percentages and cooldowns for steal/bomb, multiplier and scope for boost, win chance and payout for gamble, spy success chance, and so on.'
+			desc: 'Each effect type has its own settings: percentages and cooldowns for steal/bomb, multiplier and scope for boost, spy success chance, and so on.'
 		},
 		{
 			icon: 'fa-clock',
@@ -268,9 +268,9 @@
 			icon: 'fa-store',
 			accent: '#733e24',
 			title: 'Items & economy',
-			what: 'A per-server shop of PvP and utility items bought with XP. Items are created in the global admin Items page; each server enables the system and picks a channel.',
+			what: 'A per-server shop of PvP and utility items bought with XP. Items are created in the global admin Items page; each server enables the system from the Public statistics config page (Items toggle + channel). Requires Public statistics to be on.',
 			fields: [
-				{ label: 'Items module', desc: 'When off, the Items button and all buy/use actions are disabled for this server.' },
+				{ label: 'Items toggle (under Public statistics)', desc: 'When off, the Items tab and all buy/use actions are disabled for this server.' },
 				{
 					label: 'Item Events Channel',
 					desc: 'Where steal, bomb, leech, gift and other item announcements post. Keep it separate from the level channel. If unset, item events are not announced.'
@@ -281,7 +281,7 @@
 				},
 				{
 					label: 'Item: effect settings',
-					desc: 'Per effect type: Steal/Bomb use Min %, Max %, Cooldown, Victim immunity; Boost uses Multiplier, Duration, Scope (all/message/voice); Shield/Reflect/Disguise use Duration; Insurance uses Refund %, Duration, Cooldown; Gift uses Gift amount, Tax %; Leech uses Skim %, Duration; Gamble uses Win chance %, Payout multiplier; Bounty uses Bounty amount; Spy uses Spy success chance %.'
+					desc: 'Per effect type: Steal/Bomb use Min %, Max %, Cooldown, Victim immunity; Boost uses Multiplier, Duration, Scope (all/message/voice); Shield/Reflect/Disguise use Duration; Insurance uses Refund %, Duration, Cooldown; Gift uses Gift amount, Tax %; Leech uses Skim %, Duration; Bounty uses Bounty amount; Spy uses Spy success chance %.'
 				},
 				{
 					label: 'Item: Availability',
@@ -456,9 +456,13 @@
 			icon: 'fa-chart-pie',
 			accent: '#245f73',
 			title: 'Public statistics',
-			what: 'Publishes a shareable public page with member insights and leaderboards.',
+			what: 'The master switch for all public pages: server statistics, leaderboard, members, and the per-member account (Overview, History, Guide). Items, Minigames and Assets are enabled here as sub-toggles.',
 			fields: [
-				{ label: 'Public statistics module', desc: 'When off, the public stats pages and their in-Discord links are disabled.' },
+				{ label: 'Public statistics module', desc: 'Master switch. When off, every public page and the in-Discord account link are disabled.' },
+				{
+					label: 'Items / Minigames / Assets',
+					desc: 'Sub-toggles under public statistics. Each enables its account tab (and channel, for Items/Minigames). With all three off, the account still shows Overview and History; only Guide hides.'
+				},
 				{ label: 'Public URL', desc: 'The generated public address, shown when enabled. Derived from the server name.' }
 			]
 		}
@@ -475,7 +479,7 @@
 		{ label: '🔔 Notifications', desc: 'Opens a selector to subscribe to the notification channels you enabled.' },
 		{ label: '🌐 Select Language', desc: 'Switches the Discord interface language (English or Indonesian).' },
 		{ label: '🌐 Statistics', desc: 'Link to the public stats page (shown when Public statistics is on).' },
-		{ label: '🛒 Items', desc: 'Link to the items shop for the member (shown when Items is on).' }
+		{ label: '👤 Account', desc: 'Link to the member account (Overview, Items, Minigames, Assets, History, Guide) — shown when Public statistics is on.' }
 	];
 
 	function reveal(node: HTMLElement) {

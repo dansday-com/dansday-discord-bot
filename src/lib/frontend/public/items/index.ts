@@ -2,6 +2,7 @@ import { createHash } from 'crypto';
 import { request as httpRequest } from 'http';
 import db from '$lib/database.js';
 import { parseMySQLDateTimeUtc } from '$lib/utils/index.js';
+import { itemAvailability } from '$lib/items.js';
 
 export function computeCardToken(discordMemberId: string, memberSince: any): string {
 	const dt = parseMySQLDateTimeUtc(memberSince);
@@ -91,62 +92,66 @@ function itemAvailableNow(item: any): boolean {
 	return true;
 }
 
+function hasWindow(item: any): boolean {
+	return !!(item.available_from || item.available_to || hasRecurringSchedule(item));
+}
+
 export async function loadItemsCatalog(serverId: number): Promise<any[]> {
 	const panelId = await db.getServerPanelId(serverId).catch(() => null);
 	if (panelId == null) return [];
-	const all = await db.listItems(panelId, { enabledOnly: true }).catch(() => []);
-	return (all as any[])
-		.filter((i) => itemAvailableNow(i) || hasRecurringSchedule(i))
-		.map((i) => ({
+	const all = await db.listItems(panelId).catch(() => []);
+	const out: any[] = [];
+	for (const i of all as any[]) {
+		if (!(itemAvailableNow(i) || hasRecurringSchedule(i))) continue;
+
+		let enabled = i.enabled !== false && i.enabled !== 0;
+		if (hasWindow(i)) {
+			const shouldBeEnabled = itemAvailableNow(i);
+			if (shouldBeEnabled !== enabled) {
+				enabled = shouldBeEnabled;
+				db.setItemEnabled(i.id, shouldBeEnabled).catch(() => null);
+			}
+		}
+
+		const mapped = {
 			id: i.id,
 			name: i.name,
 			effect_type: i.effect_type,
 			category: i.category,
 			description: i.description,
 			cost: i.cost,
+			enabled,
+			usable: i.usable !== false && i.usable !== 0,
 			availableUntil: availableUntilMs(i),
 			available_from: i.available_from ? new Date(i.available_from).toISOString() : null,
 			available_to: i.available_to ? new Date(i.available_to).toISOString() : null,
 			recurring_schedule: typeof i.recurring_schedule === 'string' ? safeParse(i.recurring_schedule) : (i.recurring_schedule ?? null),
 			config: typeof i.config === 'string' ? safeParse(i.config) : i.config
-		}));
+		};
+		const state = itemAvailability(mapped, Date.now(), 0).state;
+		out.push({ ...mapped, live: state === 'active' || state === 'upcoming' });
+	}
+	return out;
 }
 
-export async function loadItemsShared(server: any, hash: string) {
+export async function loadItemsShared(server: any, hash: string, subKey?: 'items' | 'assets' | 'minigames' | null) {
 	const { SERVER_SETTINGS } = await import('$lib/frontend/panelServer.js');
 
-	const itemsRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.items).catch(() => null);
-	if ((itemsRow as any)?.settings?.enabled !== true) return { notFound: true } as const;
+	const psRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.public_statistics).catch(() => null);
+	const ps = (psRow as any)?.settings ?? {};
+	if (ps.enabled === false) return { notFound: true } as const;
+	if (subKey && ps[`${subKey}_enabled`] !== true) return { notFound: true } as const;
 
 	const levelingRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.leveling).catch(() => null);
 	const req = (levelingRow as any)?.settings?.REQUIREMENTS ?? {};
 	const levelReq = { baseXp: Number(req.BASE_XP) || 100, multiplier: Number(req.MULTIPLIER) || 1.2 };
 
 	const items = await loadItemsCatalog(server.id);
+	const enabledCategories = [...new Set((items as any[]).filter((i) => i.enabled !== false || i.live).map((i) => i.effect_type))];
 
 	const member = hash ? await resolveMemberByCardToken(server.id, hash) : null;
 
-	if (!member) {
-		return {
-			readOnly: true as const,
-			member: null,
-			items,
-			hash: '',
-			bagStock: 0,
-			categories: [...new Set((items as any[]).map((i) => i.effect_type))],
-			memberName: null,
-			memberDiscordId: null,
-			memberAvatar: null,
-			memberCard: null,
-			balance: { experience: 0, level: 1, rank: null },
-			activeEffects: [],
-			attackCooldowns: [],
-			immuneUntil: null,
-			insuranceCooldownUntil: null,
-			bountyTotal: 0,
-			levelReq
-		};
-	}
+	if (!member) return { guest: true as const };
 
 	const invRows = await db.getMemberInventory(member.id).catch(() => []);
 	const bagStock = (invRows as any[]).reduce((sum, r) => sum + (Number(r.quantity) || 0), 0);
@@ -223,7 +228,7 @@ export async function loadItemsShared(server: any, hash: string) {
 		items,
 		hash,
 		bagStock,
-		categories: [...new Set((items as any[]).map((i) => i.effect_type))],
+		categories: [...new Set([...enabledCategories, ...(invRows as any[]).map((r) => r.effect_type)])],
 		memberName: member.server_display_name || member.display_name || member.username,
 		memberDiscordId: String(member.discord_member_id),
 		memberAvatar: member.avatar ?? null,

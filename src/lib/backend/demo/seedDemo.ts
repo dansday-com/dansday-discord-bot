@@ -152,7 +152,7 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 			.then((r: any[]) => r[0] ?? null);
 		if (itemRow?.id) seededItems.push({ id: itemRow.id, effect: effect.id });
 	}
-	const ownableItems = seededItems.filter((it) => it.effect !== 'gamble');
+	const ownableItems = seededItems;
 
 	const base = Date.now();
 	const firstNames = [
@@ -215,29 +215,13 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 			.values({
 				server_id: serverRow.id,
 				component_name: SERVER_SETTINGS.component.public_statistics,
-				settings: { enabled: true, slug },
+				settings: { enabled: true, slug, items_enabled: true, minigames_enabled: true, assets_enabled: true },
 				created_at: nowDb,
 				updated_at: nowDb
 			})
 			.onDuplicateKeyUpdate({
 				set: {
-					settings: sql`JSON_SET(COALESCE(${schema.serverSettings.settings}, JSON_OBJECT()), '$.enabled', true, '$.slug', ${slug})`,
-					updated_at: nowDb
-				}
-			});
-
-		await db
-			.insert(schema.serverSettings)
-			.values({
-				server_id: serverRow.id,
-				component_name: SERVER_SETTINGS.component.items,
-				settings: { enabled: true },
-				created_at: nowDb,
-				updated_at: nowDb
-			})
-			.onDuplicateKeyUpdate({
-				set: {
-					settings: sql`JSON_SET(COALESCE(${schema.serverSettings.settings}, JSON_OBJECT()), '$.enabled', true)`,
+					settings: sql`JSON_SET(COALESCE(${schema.serverSettings.settings}, JSON_OBJECT()), '$.enabled', true, '$.slug', ${slug}, '$.items_enabled', true, '$.minigames_enabled', true, '$.assets_enabled', true)`,
 					updated_at: nowDb
 				}
 			});

@@ -1,9 +1,7 @@
 import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
 import { listPublicServerSlugs } from '$lib/frontend/public/server-slug/index.js';
-import { loadItemsCatalog } from '$lib/frontend/public/items/index.js';
 import { parseMySQLDateTimeUtc } from '$lib/utils/datetime.js';
-import { ITEM_EFFECTS } from '$lib/items.js';
 
 function escapeXml(unsafe: string): string {
 	return unsafe.replace(
@@ -39,17 +37,6 @@ export const GET: RequestHandler = async () => {
 
 	const visibleServers = servers.filter((s) => s.slug);
 
-	const categoriesByServer = new Map<number, string[]>();
-	await Promise.all(
-		visibleServers
-			.filter((s) => s.items_enabled)
-			.map(async (s) => {
-				const catalog = await loadItemsCatalog(Number(s.id)).catch(() => []);
-				const present = [...new Set((catalog as any[]).map((i) => i.effect_type))].filter((t) => ITEM_EFFECTS.some((e) => e.id === t));
-				categoriesByServer.set(Number(s.id), present);
-			})
-	);
-
 	const publicPageRows = visibleServers.flatMap((s) => {
 		const enc = encodeURIComponent(String(s.slug));
 		const lastmod = toLastmod(s.updated_at);
@@ -60,16 +47,6 @@ export const GET: RequestHandler = async () => {
 			{ loc: `${root}/${enc}/leaderboard`, ...base },
 			{ loc: `${root}/${enc}/members`, ...base }
 		];
-		const presentCategories = categoriesByServer.get(Number(s.id)) ?? [];
-		if (s.items_enabled && presentCategories.length > 0) {
-			const itemsBase = `${root}/${enc}/items`;
-			urls.push({ loc: itemsBase, ...base, priority: 0.7 });
-			urls.push({ loc: `${itemsBase}/guide/guest`, ...base, priority: 0.7 });
-			urls.push({ loc: `${itemsBase}/shop/all/guest`, ...base, priority: 0.6 });
-			for (const cat of presentCategories) {
-				urls.push({ loc: `${itemsBase}/shop/${cat}/guest`, ...base, priority: 0.6 });
-			}
-		}
 		return urls;
 	});
 

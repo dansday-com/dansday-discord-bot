@@ -124,23 +124,23 @@ function buildPeriodRows(entries: any[], metric: LeaderboardMetric, limit: numbe
 	}));
 }
 
-const GAMBLER_METRICS: LeaderboardMetric[] = ['items_gamble_net', 'items_gamble_ratio', 'items_gamble_big'];
+const MINIGAMES_METRICS: LeaderboardMetric[] = ['minigames_gamble_net', 'minigames_gamble_ratio', 'minigames_gamble_big'];
 
-function buildGamblerRows(entries: any[], metric: LeaderboardMetric, limit: number): LeaderboardRow[] {
+function buildMinigamesRows(entries: any[], metric: LeaderboardMetric, limit: number): LeaderboardRow[] {
 	const safe = Math.max(1, Math.min(100, limit));
 	const ratio = (e: any): number => {
-		const total = Number(e.gamble_total ?? 0);
+		const total = Number(e.minigame_total ?? 0);
 		if (total <= 0) return 0;
-		return (Number(e.gamble_wins ?? 0) / total) * 100;
+		return (Number(e.minigame_wins ?? 0) / total) * 100;
 	};
 	const value = (e: any): number => {
 		switch (metric) {
-			case 'items_gamble_ratio':
+			case 'minigames_gamble_ratio':
 				return ratio(e);
-			case 'items_gamble_big':
-				return Number(e.gamble_big_win ?? 0);
+			case 'minigames_gamble_big':
+				return Number(e.minigame_big_win ?? 0);
 			default:
-				return Number(e.gamble_net ?? 0);
+				return Number(e.minigame_net ?? 0);
 		}
 	};
 
@@ -167,11 +167,11 @@ function buildGamblerRows(entries: any[], metric: LeaderboardMetric, limit: numb
 		voice_minutes_afk: 0,
 		voice_minutes_video: 0,
 		voice_minutes_streaming: 0,
-		gamble_net: Number(e.gamble_net ?? 0),
-		gamble_wins: Number(e.gamble_wins ?? 0),
-		gamble_total: Number(e.gamble_total ?? 0),
-		gamble_big_win: Number(e.gamble_big_win ?? 0),
-		gamble_ratio: Math.round(ratio(e) * 10) / 10,
+		minigame_net: Number(e.minigame_net ?? 0),
+		minigame_wins: Number(e.minigame_wins ?? 0),
+		minigame_total: Number(e.minigame_total ?? 0),
+		minigame_big_win: Number(e.minigame_big_win ?? 0),
+		minigame_ratio: Math.round(ratio(e) * 10) / 10,
 		rank: null
 	}));
 }
@@ -321,9 +321,9 @@ const CACHE_FRESH_MS = 20_000;
 async function buildSnapshot(serverId: number, metric: LeaderboardMetric, period: LeaderboardPeriod, limit: number): Promise<LeaderboardSnapshot> {
 	let rows: LeaderboardRow[];
 	const since = periodSince(period);
-	if (GAMBLER_METRICS.includes(metric)) {
-		const entries = await db.getItemsGamblerLeaderboard(serverId, since).catch(() => []);
-		rows = buildGamblerRows(entries, metric, limit);
+	if (MINIGAMES_METRICS.includes(metric)) {
+		const entries = await db.getMinigamesLeaderboard(serverId, since).catch(() => []);
+		rows = buildMinigamesRows(entries, metric, limit);
 	} else if (BOUNTY_METRICS.includes(metric)) {
 		const entries = await db.getItemsBountyLeaderboard(serverId, since).catch(() => []);
 		rows = buildBountyRows(entries, metric, limit);

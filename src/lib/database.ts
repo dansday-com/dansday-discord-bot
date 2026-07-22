@@ -918,13 +918,10 @@ export async function listEnabledLeaderboardServers() {
 			sv.name,
 			sv.updated_at,
 			sv.server_icon,
-			ss.settings AS settings,
-			si.settings AS items_settings
+			ss.settings AS settings
 		FROM servers sv
 		INNER JOIN server_settings ss
 			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.public_statistics}
-		LEFT JOIN server_settings si
-			ON si.server_id = sv.id AND si.component_name = ${SERVER_SETTINGS.component.items}
 	`);
 	const list = (rows[0] as unknown as any[]) || [];
 	return list
@@ -933,13 +930,18 @@ export async function listEnabledLeaderboardServers() {
 			const s = parseLeaderboardSettingsColumn(r.settings);
 			return s.enabled !== false;
 		})
-		.map((r: any) => ({
-			id: Number(r.id),
-			name: r.name ?? null,
-			updated_at: r.updated_at,
-			server_icon: r.server_icon ?? null,
-			items_enabled: parseLeaderboardSettingsColumn(r.items_settings).enabled === true
-		}));
+		.map((r: any) => {
+			const s = parseLeaderboardSettingsColumn(r.settings);
+			return {
+				id: Number(r.id),
+				name: r.name ?? null,
+				updated_at: r.updated_at,
+				server_icon: r.server_icon ?? null,
+				items_enabled: s.items_enabled === true,
+				assets_enabled: s.assets_enabled === true,
+				minigames_enabled: s.minigames_enabled === true
+			};
+		});
 }
 
 export async function upsertCategory(serverId: any, categoryData: any) {
@@ -1221,8 +1223,9 @@ export async function searchPanelMembersForGift(panelId: any, queryText: string 
 		INNER JOIN servers sv ON sv.id = m.server_id
 		INNER JOIN bots b ON b.id = sv.bot_id AND b.panel_id = ${Number(panelId)}
 		INNER JOIN server_settings ss
-			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.items}
-			AND JSON_EXTRACT(ss.settings, '$.enabled') = true
+			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.public_statistics}
+			AND JSON_EXTRACT(ss.settings, '$.enabled') != false
+			AND JSON_EXTRACT(ss.settings, '$.items_enabled') = true
 		LEFT JOIN (
 			SELECT member_id, SUM(quantity) AS total
 			FROM server_member_items
@@ -1244,8 +1247,9 @@ export async function memberServerHasItemsEnabled(memberId: any, panelId: any) {
 		INNER JOIN servers sv ON sv.id = m.server_id
 		INNER JOIN bots b ON b.id = sv.bot_id AND b.panel_id = ${Number(panelId)}
 		INNER JOIN server_settings ss
-			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.items}
-			AND JSON_EXTRACT(ss.settings, '$.enabled') = true
+			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.public_statistics}
+			AND JSON_EXTRACT(ss.settings, '$.enabled') != false
+			AND JSON_EXTRACT(ss.settings, '$.items_enabled') = true
 		WHERE m.id = ${Number(memberId)}
 		LIMIT 1
 	`);
@@ -1566,6 +1570,15 @@ export async function getItem(itemId: any) {
 	return rows[0] || null;
 }
 
+export async function setItemEnabled(itemId: any, enabled: boolean) {
+	await initializeDatabase();
+	await db
+		.update(schema.items)
+		.set({ enabled: !!enabled })
+		.where(eq(schema.items.id, Number(itemId)));
+	return true;
+}
+
 export async function createItem(panelId: any, data: any = {}) {
 	await initializeDatabase();
 	if (!panelId) throw new Error('panelId is required');
@@ -1687,6 +1700,7 @@ export async function purgeDepletedMemberItems() {
 	const result: any = await db.execute(sql`
 		DELETE smi FROM server_member_items smi
 		WHERE smi.quantity <= 0
+		  AND smi.updated_at <= UTC_TIMESTAMP() - INTERVAL 60 SECOND
 		  AND NOT EXISTS (
 		    SELECT 1 FROM server_member_item_actives a
 		    WHERE a.member_item_id = smi.id AND a.expires_at > UTC_TIMESTAMP()
@@ -1920,6 +1934,137 @@ export async function logMemberItemAction(memberId: any, data: any = {}) {
 	return true;
 }
 
+export async function logMinigameAction(memberId: any, data: any = {}) {
+	await initializeDatabase();
+	if (!memberId) throw new Error('memberId is required');
+	await db.insert(schema.serverMemberMinigameLogs).values({
+		member_id: Number(memberId),
+		game: String(data.game ?? 'gamble'),
+		multiplier: String(data.multiplier ?? 2) as any,
+		wager: Number(data.wager ?? 0),
+		payout: Number(data.payout ?? 0),
+		xp_amount: Number(data.xp_amount ?? 0),
+		outcome: String(data.outcome ?? ''),
+		created_at: toMySQLDateTime() as any
+	});
+	return true;
+}
+
+export async function recordLevelFriends(actorMemberId: any, friendDiscordIds: string[], perFriendXp = 0) {
+	await initializeDatabase();
+	const actorId = Number(actorMemberId);
+	if (!actorId || !Array.isArray(friendDiscordIds) || friendDiscordIds.length === 0) return;
+
+	const ids = friendDiscordIds.map((x) => String(x)).filter(Boolean);
+	if (ids.length === 0) return;
+
+	const actorRow = await db.execute(sql`SELECT server_id FROM server_members WHERE id = ${actorId} LIMIT 1`);
+	const serverId = Number(((actorRow[0] as unknown as any[]) || [])[0]?.server_id);
+	if (!Number.isFinite(serverId)) return;
+
+	const rows = await db.execute(sql`
+		SELECT id FROM server_members WHERE server_id = ${serverId} AND discord_member_id IN (${sql.join(ids, sql`, `)})
+	`);
+	const friendIds = ((rows[0] as unknown as any[]) || []).map((r) => Number(r.id)).filter((n) => Number.isFinite(n) && n !== actorId);
+	if (friendIds.length === 0) return;
+
+	const xp = Math.max(0, Math.floor(Number(perFriendXp) || 0));
+	const now = toMySQLDateTime();
+	for (const fid of friendIds) {
+		const a = Math.min(actorId, fid);
+		const b = Math.max(actorId, fid);
+		await db
+			.execute(
+				sql`
+			INSERT INTO server_member_level_friends (member_a_id, member_b_id, ticks, xp_together, updated_at)
+			VALUES (${a}, ${b}, 1, ${xp}, ${now})
+			ON DUPLICATE KEY UPDATE ticks = ticks + 1, xp_together = xp_together + ${xp}, updated_at = ${now}
+		`
+			)
+			.catch(() => null);
+	}
+}
+
+export async function getMemberLevelFriends(memberId: any, limit = 5) {
+	await initializeDatabase();
+	const mid = Number(memberId);
+	if (!mid) return [] as any[];
+	const nameExpr = sql`COALESCE(NULLIF(m.server_display_name, ''), NULLIF(m.display_name, ''), m.username)`;
+	const rows = await db.execute(sql`
+		SELECT
+			CASE WHEN t.member_a_id = ${mid} THEN t.member_b_id ELSE t.member_a_id END AS buddy_id,
+			${nameExpr} AS name, m.avatar AS avatar, t.ticks AS ticks, t.xp_together AS xp
+		FROM server_member_level_friends t
+		INNER JOIN server_members m ON m.id = CASE WHEN t.member_a_id = ${mid} THEN t.member_b_id ELSE t.member_a_id END
+		WHERE t.member_a_id = ${mid} OR t.member_b_id = ${mid}
+		ORDER BY t.ticks DESC
+		LIMIT ${Number(limit) || 5}
+	`);
+	return ((rows[0] as unknown as any[]) || []).map((r) => ({
+		name: r.name || 'a member',
+		avatar: r.avatar ?? null,
+		ticks: Number(r.ticks) || 0,
+		xp: Number(r.xp) || 0
+	}));
+}
+
+export async function getMemberMinigameHistory(memberId: any, limit = 600) {
+	await initializeDatabase();
+	if (!memberId) return [] as any[];
+	const lim = Number(limit) > 0 ? sql`LIMIT ${Number(limit)}` : sql``;
+	const rows = await db.execute(sql`
+		SELECT id, game, multiplier, wager, payout, xp_amount, outcome, created_at
+		FROM server_member_minigame_logs
+		WHERE member_id = ${Number(memberId)}
+		ORDER BY created_at DESC
+		${lim}
+	`);
+	return (rows[0] as unknown as any[]) || [];
+}
+
+export async function getMinigamesLeaderboard(serverId: any, since: Date | null) {
+	await initializeDatabase();
+	if (!serverId) return [] as any[];
+
+	const disguisedIds = await getDisguisedMemberIds(serverId);
+	const hideDisguised = disguisedIds.length > 0 ? notInArray(schema.serverMembers.id, disguisedIds) : undefined;
+
+	const rows = await db
+		.select({
+			discord_member_id: schema.serverMembers.discord_member_id,
+			username: schema.serverMembers.username,
+			display_name: schema.serverMembers.display_name,
+			server_display_name: schema.serverMembers.server_display_name,
+			avatar: schema.serverMembers.avatar,
+			level: schema.serverMemberLevels.level,
+			minigame_net: sql<number>`COALESCE(SUM(${schema.serverMemberMinigameLogs.xp_amount}), 0)`,
+			minigame_wins: sql<number>`COALESCE(SUM(CASE WHEN ${schema.serverMemberMinigameLogs.outcome} = 'win' THEN 1 ELSE 0 END), 0)`,
+			minigame_total: sql<number>`COUNT(${schema.serverMemberMinigameLogs.id})`,
+			minigame_big_win: sql<number>`COALESCE(MAX(${schema.serverMemberMinigameLogs.xp_amount}), 0)`
+		})
+		.from(schema.serverMembers)
+		.leftJoin(
+			schema.serverMemberMinigameLogs,
+			and(
+				eq(schema.serverMemberMinigameLogs.member_id, schema.serverMembers.id),
+				...(since ? [sql`${schema.serverMemberMinigameLogs.created_at} >= ${toMySQLDateTime(since)}`] : [])
+			)
+		)
+		.leftJoin(schema.serverMemberLevels, eq(schema.serverMemberLevels.member_id, schema.serverMembers.id))
+		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), ...(hideDisguised ? [hideDisguised] : [])))
+		.groupBy(
+			schema.serverMembers.id,
+			schema.serverMembers.discord_member_id,
+			schema.serverMembers.username,
+			schema.serverMembers.display_name,
+			schema.serverMembers.server_display_name,
+			schema.serverMembers.avatar,
+			schema.serverMemberLevels.level
+		);
+
+	return rows as any[];
+}
+
 export async function logMemberLevelGain(memberId: any, data: any = {}) {
 	await initializeDatabase();
 	if (!memberId) return false;
@@ -1943,12 +2088,13 @@ export async function logMemberLevelGain(memberId: any, data: any = {}) {
 export async function getMemberLevelHistory(memberId: any, limit = 200) {
 	await initializeDatabase();
 	if (!memberId) return [] as any[];
+	const lim = Number(limit) > 0 ? sql`LIMIT ${Number(limit)}` : sql``;
 	const rows = await db.execute(sql`
 		SELECT id, source, amount, total_xp, level, \`rank\`, multiplier, skim_percent, friend_percent, created_at
 		FROM server_member_level_logs
 		WHERE member_id = ${Number(memberId)}
 		ORDER BY created_at DESC, id DESC
-		LIMIT ${Number(limit)}
+		${lim}
 	`);
 	return rows[0] as unknown as any[];
 }
@@ -1975,7 +2121,7 @@ export async function getMemberItemHistory(memberId: any, limit = 200) {
 			OR (sml.target_member_id = ${Number(memberId)} AND NOT (sml.action = 'spy' AND sml.outcome = 'success'))
 		)
 		ORDER BY sml.created_at DESC, sml.id DESC
-		LIMIT ${Number(limit)}
+		${Number(limit) > 0 ? sql`LIMIT ${Number(limit)}` : sql``}
 	`);
 	return rows[0] as unknown as any[];
 }
@@ -2075,6 +2221,717 @@ export async function collectBounties(targetMemberId: any) {
 	if (total <= 0) return 0;
 	await db.execute(sql`UPDATE server_member_item_bounties SET collected = TRUE WHERE target_member_id = ${Number(targetMemberId)} AND collected = FALSE`);
 	return total;
+}
+
+export async function getDistinctHeldAssetIds(assetType?: string) {
+	await initializeDatabase();
+	if (assetType) {
+		const rows = await db.execute(sql`SELECT DISTINCT asset_id FROM server_member_assets WHERE asset_type = ${String(assetType)}`);
+		return (rows[0] as unknown as any[]) || [];
+	}
+	const rows = await db.execute(sql`SELECT DISTINCT asset_type, asset_id FROM server_member_assets`);
+	return (rows[0] as unknown as any[]) || [];
+}
+
+export async function logAssetEvent(data: {
+	member_id: number;
+	action: 'buy' | 'sell';
+	asset_type: string;
+	asset_id: string;
+	symbol: string;
+	asset_name: string;
+	asset_image: string | null;
+	xp_amount: number;
+	price: number | string;
+	net?: number;
+}) {
+	await initializeDatabase();
+	await db.insert(schema.serverMemberAssetLogs).values({
+		member_id: Number(data.member_id),
+		action: data.action,
+		asset_type: String(data.asset_type),
+		asset_id: String(data.asset_id),
+		symbol: String(data.symbol),
+		asset_name: String(data.asset_name),
+		asset_image: data.asset_image != null ? String(data.asset_image) : null,
+		xp_amount: Number(data.xp_amount) || 0,
+		price: String(data.price ?? 0) as any,
+		net: Number(data.net) || 0,
+		created_at: toMySQLDateTime() as any
+	});
+	return true;
+}
+
+export async function openAssetPosition(data: {
+	member_id: number;
+	asset_type: string;
+	asset_id: string;
+	symbol: string;
+	asset_name: string;
+	asset_image: string | null;
+	xp_invested: number;
+	buy_price: number;
+}) {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	const [result] = await db.insert(schema.serverMemberAssets).values({
+		member_id: Number(data.member_id),
+		asset_type: String(data.asset_type),
+		asset_id: String(data.asset_id),
+		symbol: String(data.symbol),
+		asset_name: String(data.asset_name),
+		asset_image: data.asset_image != null ? String(data.asset_image) : null,
+		xp_invested: Number(data.xp_invested) || 0,
+		buy_price: String(data.buy_price) as any,
+		opened_at: now as any,
+		created_at: now as any,
+		updated_at: now as any
+	});
+	const id = (result as any)?.insertId ?? null;
+	return id ? getAssetPosition(id) : null;
+}
+
+export async function getAssetPosition(positionId: any) {
+	await initializeDatabase();
+	const rows = await db.execute(sql`SELECT * FROM server_member_assets WHERE id = ${Number(positionId)} LIMIT 1`);
+	return ((rows[0] as unknown as any[]) || [])[0] ?? null;
+}
+
+export async function getOpenAssetPositions(memberId: any) {
+	await initializeDatabase();
+	const rows = await db.execute(sql`SELECT * FROM server_member_assets WHERE member_id = ${Number(memberId)} ORDER BY opened_at DESC`);
+	return (rows[0] as unknown as any[]) || [];
+}
+
+export async function getOpenAssetPosition(memberId: any, assetType: string, assetId: string) {
+	await initializeDatabase();
+	const rows = await db.execute(sql`
+		SELECT * FROM server_member_assets
+		WHERE member_id = ${Number(memberId)} AND asset_type = ${String(assetType)} AND asset_id = ${String(assetId)}
+		LIMIT 1
+	`);
+	return ((rows[0] as unknown as any[]) || [])[0] ?? null;
+}
+
+export async function mergeAssetPosition(positionId: any, data: { xp_invested: number; buy_price: number }) {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	await db.execute(sql`
+		UPDATE server_member_assets
+		SET xp_invested = ${Number(data.xp_invested) || 0}, buy_price = ${String(data.buy_price)}, updated_at = ${now}
+		WHERE id = ${Number(positionId)}
+	`);
+	return true;
+}
+
+export async function getMemberAssetHistory(memberId: any, limit = 600) {
+	await initializeDatabase();
+	const rows = await db.execute(sql`
+		SELECT id, action, asset_type, asset_id, symbol, asset_name, asset_image, xp_amount, price, net, created_at
+		FROM server_member_asset_logs
+		WHERE member_id = ${Number(memberId)}
+		ORDER BY created_at DESC
+		${Number(limit) > 0 ? sql`LIMIT ${Number(limit)}` : sql``}
+	`);
+	return (rows[0] as unknown as any[]) || [];
+}
+
+export async function getServerEconomyStats(serverId: any, priceMap: Record<string, { price: number }> = {}) {
+	await initializeDatabase();
+	const sid = Number(serverId);
+
+	const [posRows, assetLogRows, minigameRows, itemRows] = await Promise.all([
+		db.execute(sql`
+			SELECT a.asset_type, a.asset_id, a.xp_invested, a.buy_price, a.member_id
+			FROM server_member_assets a INNER JOIN server_members sm ON sm.id = a.member_id
+			WHERE sm.server_id = ${sid}
+		`),
+		db.execute(sql`
+			SELECT
+				COALESCE(SUM(CASE WHEN al.action = 'buy' THEN al.xp_amount ELSE 0 END), 0) AS buy_volume,
+				COALESCE(SUM(CASE WHEN al.action = 'sell' THEN al.xp_amount ELSE 0 END), 0) AS sell_volume,
+				COALESCE(SUM(CASE WHEN al.action = 'sell' THEN al.net ELSE 0 END), 0) AS realized_net,
+				COUNT(*) AS trade_count
+			FROM server_member_asset_logs al INNER JOIN server_members sm ON sm.id = al.member_id
+			WHERE sm.server_id = ${sid}
+		`),
+		db.execute(sql`
+			SELECT
+				COALESCE(SUM(ml.wager), 0) AS wagered,
+				COALESCE(SUM(ml.payout), 0) AS paid_out,
+				COALESCE(SUM(ml.xp_amount), 0) AS net,
+				COALESCE(SUM(CASE WHEN ml.outcome = 'win' THEN 1 ELSE 0 END), 0) AS wins,
+				COUNT(*) AS plays,
+				COALESCE(MAX(CASE WHEN ml.outcome = 'win' THEN ml.payout ELSE 0 END), 0) AS biggest_win
+			FROM server_member_minigame_logs ml INNER JOIN server_members sm ON sm.id = ml.member_id
+			WHERE sm.server_id = ${sid}
+		`),
+		db.execute(sql`
+			SELECT
+				COALESCE(SUM(CASE WHEN il.action = 'steal' AND il.outcome = 'success' THEN il.xp_amount ELSE 0 END), 0) AS stolen,
+				COALESCE(SUM(CASE WHEN il.action = 'bomb' AND il.outcome = 'success' THEN il.xp_amount ELSE 0 END), 0) AS bombed,
+				COALESCE(SUM(CASE WHEN il.action = 'gift' THEN il.xp_amount ELSE 0 END), 0) AS gifted,
+				COALESCE(SUM(CASE WHEN il.action = 'steal' THEN 1 ELSE 0 END), 0) AS steal_attempts,
+				COALESCE(SUM(CASE WHEN il.action = 'bomb' THEN 1 ELSE 0 END), 0) AS bomb_attempts,
+				COALESCE(SUM(CASE WHEN il.action = 'spy' THEN 1 ELSE 0 END), 0) AS spies,
+				COALESCE(SUM(CASE WHEN il.action = 'bounty' THEN 1 ELSE 0 END), 0) AS bounties_placed,
+				COALESCE(MAX(CASE WHEN il.action = 'steal' AND il.outcome = 'success' THEN il.xp_amount ELSE 0 END), 0) AS biggest_steal,
+				COALESCE(SUM(CASE WHEN il.action = 'buy' THEN 1 ELSE 0 END), 0) AS buys,
+				COALESCE(SUM(CASE WHEN il.action = 'buy' THEN il.xp_amount ELSE 0 END), 0) AS buy_spend,
+				COALESCE(SUM(CASE WHEN il.action = 'gift' THEN 1 ELSE 0 END), 0) AS gifts,
+				COALESCE(SUM(CASE WHEN il.action = 'discard' THEN 1 ELSE 0 END), 0) AS discards,
+				COALESCE(SUM(CASE WHEN il.action NOT IN ('buy','discard','steal','bomb','gift','spy','bounty') THEN 1 ELSE 0 END), 0) AS activations,
+				COALESCE(SUM(CASE WHEN il.action = 'steal' AND il.outcome = 'caught' THEN 1 ELSE 0 END), 0) AS steals_caught,
+				COALESCE(SUM(CASE WHEN il.action = 'steal' AND il.outcome = 'success' THEN 1 ELSE 0 END), 0) AS steals_landed,
+				COUNT(DISTINCT CASE WHEN il.action = 'buy' THEN il.item_id END) AS distinct_items_bought
+			FROM server_member_item_logs il INNER JOIN server_members sm ON sm.id = il.member_id
+			WHERE sm.server_id = ${sid}
+		`)
+	]);
+
+	const positions = (posRows[0] as unknown as any[]) || [];
+	let invested = 0;
+	let marketValue = 0;
+	const traders = new Set<number>();
+	for (const p of positions) {
+		const xpInv = Number(p.xp_invested) || 0;
+		const buy = Number(p.buy_price) || 0;
+		const live = priceMap[`${p.asset_type}:${p.asset_id}`];
+		const price = Number(live?.price) > 0 ? Number(live.price) : buy;
+		invested += xpInv;
+		marketValue += buy > 0 ? Math.round(xpInv * (price / buy)) : xpInv;
+		traders.add(Number(p.member_id));
+	}
+
+	const al = (assetLogRows[0] as unknown as any[])[0] || {};
+	const mg = (minigameRows[0] as unknown as any[])[0] || {};
+	const it = (itemRows[0] as unknown as any[])[0] || {};
+
+	return {
+		assets_invested: invested,
+		assets_market_value: marketValue,
+		assets_open_positions: positions.length,
+		assets_traders: traders.size,
+		assets_buy_volume: Number(al.buy_volume) || 0,
+		assets_sell_volume: Number(al.sell_volume) || 0,
+		assets_realized_net: Number(al.realized_net) || 0,
+		assets_trade_count: Number(al.trade_count) || 0,
+		minigames_wagered: Number(mg.wagered) || 0,
+		minigames_paid_out: Number(mg.paid_out) || 0,
+		minigames_net: Number(mg.net) || 0,
+		minigames_wins: Number(mg.wins) || 0,
+		minigames_plays: Number(mg.plays) || 0,
+		minigames_biggest_win: Number(mg.biggest_win) || 0,
+		items_stolen: Number(it.stolen) || 0,
+		items_bombed: Number(it.bombed) || 0,
+		items_gifted: Number(it.gifted) || 0,
+		items_steal_attempts: Number(it.steal_attempts) || 0,
+		items_bomb_attempts: Number(it.bomb_attempts) || 0,
+		items_spies: Number(it.spies) || 0,
+		items_bounties_placed: Number(it.bounties_placed) || 0,
+		items_biggest_steal: Number(it.biggest_steal) || 0,
+		items_buys: Number(it.buys) || 0,
+		items_buy_spend: Number(it.buy_spend) || 0,
+		items_gifts: Number(it.gifts) || 0,
+		items_discards: Number(it.discards) || 0,
+		items_activations: Number(it.activations) || 0,
+		items_steals_caught: Number(it.steals_caught) || 0,
+		items_steals_landed: Number(it.steals_landed) || 0,
+		items_distinct_bought: Number(it.distinct_items_bought) || 0
+	};
+}
+
+export async function getServerFeatureStats(serverId: any) {
+	await initializeDatabase();
+	const sid = Number(serverId);
+
+	const [giveawayRows, entryRows, streamRows, questRows, bountyRows, staffReviewRows, feedbackRows, afkRows] = await Promise.all([
+		db.execute(sql`
+			SELECT
+				COUNT(*) AS total,
+				COALESCE(SUM(CASE WHEN g.status = 'active' THEN 1 ELSE 0 END), 0) AS active,
+				COALESCE(SUM(CASE WHEN g.winners_announced = 1 THEN g.winner_count ELSE 0 END), 0) AS winners
+			FROM server_member_giveaways g INNER JOIN server_members sm ON sm.id = g.member_id
+			WHERE sm.server_id = ${sid}
+		`),
+		db.execute(sql`
+			SELECT
+				COUNT(DISTINCT e.member_id) AS unique_entrants,
+				COALESCE(SUM(e.entry_count), 0) AS total_entries
+			FROM server_member_giveaway_entries e
+			INNER JOIN server_member_giveaways g ON g.id = e.giveaway_id
+			INNER JOIN server_members sm ON sm.id = g.member_id
+			WHERE sm.server_id = ${sid}
+		`),
+		db.execute(sql`
+			SELECT
+				COUNT(*) AS total_streams,
+				COUNT(DISTINCT s.member_id) AS creators,
+				COALESCE(SUM(CASE WHEN s.status = 'live' THEN 1 ELSE 0 END), 0) AS live_now,
+				COALESCE(MAX(s.peak_viewers), 0) AS peak_viewers,
+				COALESCE(SUM(s.total_likes), 0) AS likes,
+				COALESCE(SUM(s.total_chat_messages), 0) AS chat_messages,
+				COALESCE(SUM(s.total_gifts), 0) AS gifts,
+				COALESCE(SUM(s.total_follows), 0) AS follows,
+				COALESCE(SUM(s.total_shares), 0) AS shares,
+				COALESCE(SUM(s.unique_chatters), 0) AS unique_chatters
+			FROM server_member_content_creator_streams s INNER JOIN server_members sm ON sm.id = s.member_id
+			WHERE sm.server_id = ${sid}
+		`),
+		db.execute(sql`
+			SELECT
+				COUNT(*) AS enrolled,
+				COALESCE(SUM(CASE WHEN q.reward_claimed = 1 THEN 1 ELSE 0 END), 0) AS claimed,
+				COUNT(DISTINCT q.member_id) AS participants
+			FROM server_member_discord_quests q INNER JOIN server_members sm ON sm.id = q.member_id
+			WHERE sm.server_id = ${sid}
+		`),
+		db.execute(sql`
+			SELECT
+				COUNT(*) AS placed,
+				COALESCE(SUM(CASE WHEN b.collected = 1 THEN 1 ELSE 0 END), 0) AS collected,
+				COALESCE(SUM(b.amount), 0) AS pooled
+			FROM server_member_item_bounties b INNER JOIN server_members sm ON sm.id = b.placed_by_member_id
+			WHERE sm.server_id = ${sid}
+		`),
+		db.execute(sql`
+			SELECT
+				COUNT(*) AS reviews,
+				COALESCE(AVG(r.rating), 0) AS avg_rating
+			FROM server_member_staff_rating_reviews r INNER JOIN server_members sm ON sm.id = r.reporter_member_id
+			WHERE sm.server_id = ${sid}
+		`),
+		db.execute(sql`
+			SELECT COUNT(*) AS submissions
+			FROM server_member_feedbacks f INNER JOIN server_members sm ON sm.id = f.member_id
+			WHERE sm.server_id = ${sid}
+		`),
+		db.execute(sql`
+			SELECT COUNT(*) AS active
+			FROM server_member_afks a INNER JOIN server_members sm ON sm.id = a.member_id
+			WHERE sm.server_id = ${sid}
+		`)
+	]);
+
+	const gv = (giveawayRows[0] as unknown as any[])[0] || {};
+	const en = (entryRows[0] as unknown as any[])[0] || {};
+	const st = (streamRows[0] as unknown as any[])[0] || {};
+	const qs = (questRows[0] as unknown as any[])[0] || {};
+	const bn = (bountyRows[0] as unknown as any[])[0] || {};
+	const sr = (staffReviewRows[0] as unknown as any[])[0] || {};
+	const fb = (feedbackRows[0] as unknown as any[])[0] || {};
+	const af = (afkRows[0] as unknown as any[])[0] || {};
+
+	return {
+		giveaways_total: Number(gv.total) || 0,
+		giveaways_active: Number(gv.active) || 0,
+		giveaways_winners: Number(gv.winners) || 0,
+		giveaways_entrants: Number(en.unique_entrants) || 0,
+		giveaways_entries: Number(en.total_entries) || 0,
+		streams_total: Number(st.total_streams) || 0,
+		streams_creators: Number(st.creators) || 0,
+		streams_live_now: Number(st.live_now) || 0,
+		streams_peak_viewers: Number(st.peak_viewers) || 0,
+		streams_likes: Number(st.likes) || 0,
+		streams_chat_messages: Number(st.chat_messages) || 0,
+		streams_gifts: Number(st.gifts) || 0,
+		streams_follows: Number(st.follows) || 0,
+		streams_shares: Number(st.shares) || 0,
+		streams_unique_chatters: Number(st.unique_chatters) || 0,
+		quests_enrolled: Number(qs.enrolled) || 0,
+		quests_claimed: Number(qs.claimed) || 0,
+		quests_participants: Number(qs.participants) || 0,
+		bounties_placed: Number(bn.placed) || 0,
+		bounties_collected: Number(bn.collected) || 0,
+		bounties_pooled: Number(bn.pooled) || 0,
+		staff_reviews: Number(sr.reviews) || 0,
+		staff_avg_rating: Math.round((Number(sr.avg_rating) || 0) * 10) / 10,
+		feedback_submissions: Number(fb.submissions) || 0,
+		afk_active: Number(af.active) || 0
+	};
+}
+
+export async function getMemberDashboard(memberId: any, priceMap: Record<string, { price: number }> = {}) {
+	await initializeDatabase();
+	const mid = Number(memberId);
+
+	const [posRows, assetLogRows, minigameRows, outgoingRows, incomingRows, giveawayRows, questRows, streamRows, feedbackRows, bountyOnRows] = await Promise.all([
+		db.execute(sql`SELECT asset_type, asset_id, xp_invested, buy_price FROM server_member_assets WHERE member_id = ${mid}`),
+		db.execute(sql`
+				SELECT
+					COALESCE(SUM(CASE WHEN action = 'buy' THEN xp_amount ELSE 0 END), 0) AS buy_volume,
+					COALESCE(SUM(CASE WHEN action = 'sell' THEN xp_amount ELSE 0 END), 0) AS sell_volume,
+					COALESCE(SUM(CASE WHEN action = 'sell' THEN net ELSE 0 END), 0) AS realized_net,
+					COUNT(*) AS trade_count
+				FROM server_member_asset_logs WHERE member_id = ${mid}
+			`),
+		db.execute(sql`
+				SELECT
+					COALESCE(SUM(wager), 0) AS wagered,
+					COALESCE(SUM(xp_amount), 0) AS net,
+					COALESCE(SUM(CASE WHEN outcome = 'win' THEN 1 ELSE 0 END), 0) AS wins,
+					COUNT(*) AS plays,
+					COALESCE(MAX(CASE WHEN outcome = 'win' THEN payout ELSE 0 END), 0) AS biggest_win
+				FROM server_member_minigame_logs WHERE member_id = ${mid}
+			`),
+		db.execute(sql`
+				SELECT
+					COALESCE(SUM(CASE WHEN action = 'buy' THEN 1 ELSE 0 END), 0) AS buys,
+					COALESCE(SUM(CASE WHEN action = 'buy' THEN xp_amount ELSE 0 END), 0) AS buy_spend,
+					COALESCE(SUM(CASE WHEN action NOT IN ('buy','discard','steal','bomb','gift','spy','bounty') THEN 1 ELSE 0 END), 0) AS activations,
+					COALESCE(SUM(CASE WHEN action = 'steal' AND outcome = 'success' THEN xp_amount ELSE 0 END), 0) AS stolen,
+					COALESCE(SUM(CASE WHEN action = 'steal' AND outcome = 'success' THEN 1 ELSE 0 END), 0) AS steals_landed,
+					COALESCE(SUM(CASE WHEN action = 'steal' AND outcome = 'caught' THEN 1 ELSE 0 END), 0) AS steals_caught,
+					COALESCE(SUM(CASE WHEN action = 'bomb' AND outcome = 'success' THEN xp_amount ELSE 0 END), 0) AS bombed,
+					COALESCE(SUM(CASE WHEN action = 'gift' THEN xp_amount ELSE 0 END), 0) AS gifted,
+					COALESCE(SUM(CASE WHEN action = 'spy' THEN 1 ELSE 0 END), 0) AS spies,
+					COALESCE(SUM(CASE WHEN action = 'bounty' THEN 1 ELSE 0 END), 0) AS bounties_placed
+				FROM server_member_item_logs WHERE member_id = ${mid}
+			`),
+		db.execute(sql`
+				SELECT
+					COALESCE(SUM(CASE WHEN action = 'steal' AND outcome = 'success' THEN xp_amount ELSE 0 END), 0) AS stolen_from,
+					COALESCE(SUM(CASE WHEN action = 'bomb' AND outcome = 'success' THEN xp_amount ELSE 0 END), 0) AS bombed_by,
+					COALESCE(SUM(CASE WHEN action = 'gift' THEN xp_amount ELSE 0 END), 0) AS gifts_received
+				FROM server_member_item_logs WHERE target_member_id = ${mid}
+			`),
+		db.execute(sql`
+				SELECT
+					(SELECT COUNT(*) FROM server_member_giveaways WHERE member_id = ${mid}) AS hosted,
+					(SELECT COUNT(*) FROM server_member_giveaway_entries WHERE member_id = ${mid}) AS entered,
+					(SELECT COUNT(*) FROM server_member_giveaway_entries WHERE member_id = ${mid} AND is_winner = 1) AS won
+			`),
+		db.execute(sql`
+				SELECT COUNT(*) AS enrolled, COALESCE(SUM(CASE WHEN reward_claimed = 1 THEN 1 ELSE 0 END), 0) AS claimed
+				FROM server_member_discord_quests WHERE member_id = ${mid}
+			`),
+		db.execute(sql`
+				SELECT
+					COUNT(*) AS streams,
+					COALESCE(MAX(peak_viewers), 0) AS peak_viewers,
+					COALESCE(SUM(total_likes), 0) AS likes,
+					COALESCE(SUM(total_gifts), 0) AS gifts
+				FROM server_member_content_creator_streams WHERE member_id = ${mid}
+			`),
+		db.execute(sql`SELECT COUNT(*) AS submitted FROM server_member_feedbacks WHERE member_id = ${mid}`),
+		db.execute(
+			sql`SELECT COALESCE(SUM(amount), 0) AS pooled, COUNT(*) AS count FROM server_member_item_bounties WHERE target_member_id = ${mid} AND collected = 0`
+		)
+	]);
+
+	const positions = (posRows[0] as unknown as any[]) || [];
+	let invested = 0;
+	let marketValue = 0;
+	for (const p of positions) {
+		const xpInv = Number(p.xp_invested) || 0;
+		const buy = Number(p.buy_price) || 0;
+		const live = priceMap[`${p.asset_type}:${p.asset_id}`];
+		const price = Number(live?.price) > 0 ? Number(live.price) : buy;
+		invested += xpInv;
+		marketValue += buy > 0 ? Math.round(xpInv * (price / buy)) : xpInv;
+	}
+
+	const al = (assetLogRows[0] as unknown as any[])[0] || {};
+	const mg = (minigameRows[0] as unknown as any[])[0] || {};
+	const out = (outgoingRows[0] as unknown as any[])[0] || {};
+	const inc = (incomingRows[0] as unknown as any[])[0] || {};
+	const gv = (giveawayRows[0] as unknown as any[])[0] || {};
+	const qs = (questRows[0] as unknown as any[])[0] || {};
+	const st = (streamRows[0] as unknown as any[])[0] || {};
+	const fb = (feedbackRows[0] as unknown as any[])[0] || {};
+	const bn = (bountyOnRows[0] as unknown as any[])[0] || {};
+
+	return {
+		assets_invested: invested,
+		assets_market_value: marketValue,
+		assets_open_positions: positions.length,
+		assets_pnl: marketValue - invested,
+		assets_realized_net: Number(al.realized_net) || 0,
+		assets_trade_count: Number(al.trade_count) || 0,
+		minigames_wagered: Number(mg.wagered) || 0,
+		minigames_net: Number(mg.net) || 0,
+		minigames_wins: Number(mg.wins) || 0,
+		minigames_plays: Number(mg.plays) || 0,
+		minigames_biggest_win: Number(mg.biggest_win) || 0,
+		items_buys: Number(out.buys) || 0,
+		items_buy_spend: Number(out.buy_spend) || 0,
+		items_activations: Number(out.activations) || 0,
+		items_stolen: Number(out.stolen) || 0,
+		items_steals_landed: Number(out.steals_landed) || 0,
+		items_steals_caught: Number(out.steals_caught) || 0,
+		items_bombed: Number(out.bombed) || 0,
+		items_gifted: Number(out.gifted) || 0,
+		items_spies: Number(out.spies) || 0,
+		items_bounties_placed: Number(out.bounties_placed) || 0,
+		items_stolen_from: Number(inc.stolen_from) || 0,
+		items_bombed_by: Number(inc.bombed_by) || 0,
+		items_gifts_received: Number(inc.gifts_received) || 0,
+		giveaways_hosted: Number(gv.hosted) || 0,
+		giveaways_entered: Number(gv.entered) || 0,
+		giveaways_won: Number(gv.won) || 0,
+		quests_enrolled: Number(qs.enrolled) || 0,
+		quests_claimed: Number(qs.claimed) || 0,
+		streams_total: Number(st.streams) || 0,
+		streams_peak_viewers: Number(st.peak_viewers) || 0,
+		streams_likes: Number(st.likes) || 0,
+		streams_gifts: Number(st.gifts) || 0,
+		feedback_submitted: Number(fb.submitted) || 0,
+		bounty_on_me: Number(bn.pooled) || 0,
+		bounty_on_me_count: Number(bn.count) || 0
+	};
+}
+
+export async function getMemberInsights(memberId: any) {
+	await initializeDatabase();
+	const mid = Number(memberId);
+
+	const nameExpr = sql`COALESCE(NULLIF(m.server_display_name, ''), NULLIF(m.display_name, ''), m.username)`;
+	const q = (query: any) => db.execute(query).catch(() => [[]] as any);
+	const mapName = (rows: any) =>
+		((rows[0] as unknown as any[]) || []).map((r) => ({ name: r.name || 'a member', hits: Number(r.hits) || 0, xp: Number(r.xp) || 0 }));
+
+	const outgoing = (action: string, successOnly: boolean) =>
+		q(sql`
+			SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp_amount), 0) AS xp
+			FROM server_member_item_logs il
+			INNER JOIN server_members m ON m.id = il.target_member_id
+			WHERE il.member_id = ${mid} AND il.action = ${action} ${successOnly ? sql`AND il.outcome = 'success'` : sql``}
+			GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY xp DESC, hits DESC LIMIT 3
+		`);
+	const incoming = (action: string, successOnly: boolean) =>
+		q(sql`
+			SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp_amount), 0) AS xp
+			FROM server_member_item_logs il
+			INNER JOIN server_members m ON m.id = il.member_id
+			WHERE il.target_member_id = ${mid} AND il.action = ${action} ${successOnly ? sql`AND il.outcome = 'success'` : sql``} AND il.actor_disguised = 0
+			GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY xp DESC, hits DESC LIMIT 3
+		`);
+	const defendedFrom = (actions: string[], outcomes: string[]) =>
+		q(sql`
+			SELECT ${nameExpr} AS name, COUNT(*) AS hits, 0 AS xp
+			FROM server_member_item_logs il
+			INNER JOIN server_members m ON m.id = il.member_id
+			WHERE il.target_member_id = ${mid} AND il.action IN (${sql.join(actions, sql`, `)})
+				AND il.outcome IN (${sql.join(outcomes, sql`, `)}) AND il.actor_disguised = 0
+			GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY hits DESC LIMIT 3
+		`);
+
+	const INTERACTIONS = [
+		{ key: 'steal', out: true, in: true, success: true },
+		{ key: 'bomb', out: true, in: true, success: true },
+		{ key: 'leech', out: true, in: true, success: false },
+		{ key: 'gift', out: true, in: true, success: false },
+		{ key: 'spy', out: true, in: false, success: false }
+	];
+
+	const interactionQueries = INTERACTIONS.flatMap((it) => [
+		...(it.out ? [{ key: it.key, dir: 'out', p: outgoing(it.key, it.success) }] : []),
+		...(it.in ? [{ key: it.key, dir: 'in', p: incoming(it.key, it.success) }] : [])
+	]);
+
+	const bountyOut = q(sql`
+		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(b.amount), 0) AS xp
+		FROM server_member_item_bounties b
+		INNER JOIN server_members m ON m.id = b.target_member_id
+		WHERE b.placed_by_member_id = ${mid}
+		GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY xp DESC, hits DESC LIMIT 3
+	`);
+	const bountyIn = q(sql`
+		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(b.amount), 0) AS xp
+		FROM server_member_item_bounties b
+		INNER JOIN server_members m ON m.id = b.placed_by_member_id
+		WHERE b.target_member_id = ${mid}
+		GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY xp DESC, hits DESC LIMIT 3
+	`);
+
+	const nemesis = q(sql`
+		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp_amount), 0) AS xp
+		FROM server_member_item_logs il
+		INNER JOIN server_members m ON m.id = il.member_id
+		WHERE il.target_member_id = ${mid} AND il.action IN ('steal','bomb','leech') AND il.outcome = 'success' AND il.actor_disguised = 0
+		GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY hits DESC, xp DESC LIMIT 1
+	`);
+	const favoriteTarget = q(sql`
+		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp_amount), 0) AS xp
+		FROM server_member_item_logs il
+		INNER JOIN server_members m ON m.id = il.target_member_id
+		WHERE il.member_id = ${mid} AND il.action IN ('steal','bomb','leech') AND il.outcome = 'success'
+		GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY hits DESC, xp DESC LIMIT 1
+	`);
+	const bestAlly = q(sql`
+		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp_amount), 0) AS xp
+		FROM server_member_item_logs il
+		INNER JOIN server_members m
+			ON m.id = CASE WHEN il.member_id = ${mid} THEN il.target_member_id ELSE il.member_id END
+		WHERE il.action = 'gift' AND (
+			(il.member_id = ${mid} AND il.target_member_id IS NOT NULL)
+			OR (il.target_member_id = ${mid} AND il.actor_disguised = 0)
+		)
+		GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY xp DESC, hits DESC LIMIT 1
+	`);
+
+	const spyCaught = defendedFrom(['spy'], ['caught']);
+	const blocked = defendedFrom(['steal', 'bomb'], ['immune']);
+	const reflected = defendedFrom(['steal', 'bomb'], ['reflected']);
+	const defenseSummary = q(sql`
+		SELECT
+			COALESCE(SUM(CASE WHEN target_member_id = ${mid} AND action = 'spy' AND outcome = 'caught' THEN 1 ELSE 0 END), 0) AS spies_caught,
+			COALESCE(SUM(CASE WHEN target_member_id = ${mid} AND action IN ('steal','bomb') AND outcome = 'immune' THEN 1 ELSE 0 END), 0) AS blocked,
+			COALESCE(SUM(CASE WHEN target_member_id = ${mid} AND action IN ('steal','bomb') AND outcome = 'reflected' THEN 1 ELSE 0 END), 0) AS reflected,
+			COALESCE(SUM(CASE WHEN member_id = ${mid} AND action = 'steal' AND outcome = 'caught' THEN 1 ELSE 0 END), 0) AS my_steals_caught,
+			COALESCE(SUM(CASE WHEN member_id = ${mid} AND action = 'insurance' AND outcome = 'refunded' THEN 1 ELSE 0 END), 0) AS insurance_covers,
+			COALESCE(SUM(CASE WHEN member_id = ${mid} AND action = 'insurance' AND outcome = 'refunded' THEN il.xp_amount ELSE 0 END), 0) AS insurance_xp
+		FROM server_member_item_logs il
+		WHERE target_member_id = ${mid} OR member_id = ${mid}
+	`);
+
+	const [
+		topItems,
+		effectUsage,
+		xpFlow,
+		holdings,
+		bountyOutRows,
+		bountyInRows,
+		spyCaughtRows,
+		blockedRows,
+		reflectedRows,
+		defenseRows,
+		nemesisRows,
+		favoriteTargetRows,
+		bestAllyRows,
+		...interactionResults
+	] = await Promise.all([
+		q(sql`
+			SELECT bi.name AS name, bi.effect_type AS effect_type, COUNT(*) AS uses
+			FROM server_member_item_logs il
+			LEFT JOIN items bi ON bi.id = il.item_id
+			WHERE il.member_id = ${mid} AND il.item_id IS NOT NULL AND il.action NOT IN ('buy', 'discard', 'bounty_collected', 'insurance')
+			GROUP BY bi.id, bi.name, bi.effect_type
+			ORDER BY uses DESC LIMIT 1
+		`),
+		q(sql`
+			SELECT COALESCE(bi.effect_type, il.action) AS effect_type, COUNT(*) AS uses
+			FROM server_member_item_logs il
+			LEFT JOIN items bi ON bi.id = il.item_id
+			WHERE il.member_id = ${mid} AND il.action NOT IN ('buy', 'discard', 'bounty_collected', 'insurance')
+			GROUP BY COALESCE(bi.effect_type, il.action)
+			ORDER BY uses DESC
+		`),
+		q(sql`
+			SELECT d AS day, SUM(net) AS net FROM (
+				SELECT DATE(created_at) AS d, SUM(xp_amount) AS net FROM server_member_minigame_logs
+					WHERE member_id = ${mid} AND created_at >= UTC_TIMESTAMP() - INTERVAL 14 DAY GROUP BY DATE(created_at)
+				UNION ALL
+				SELECT DATE(created_at) AS d, SUM(net) AS net FROM server_member_asset_logs
+					WHERE member_id = ${mid} AND action = 'sell' AND created_at >= UTC_TIMESTAMP() - INTERVAL 14 DAY GROUP BY DATE(created_at)
+				UNION ALL
+				SELECT DATE(created_at) AS d,
+					SUM(CASE WHEN action IN ('steal','bomb') AND outcome = 'success' THEN xp_amount
+						WHEN action = 'gift' THEN -xp_amount WHEN action = 'buy' THEN -xp_amount ELSE 0 END) AS net
+					FROM server_member_item_logs WHERE member_id = ${mid} AND created_at >= UTC_TIMESTAMP() - INTERVAL 14 DAY GROUP BY DATE(created_at)
+			) t GROUP BY d ORDER BY d ASC
+		`),
+		q(sql`
+			SELECT asset_type, asset_id, symbol, asset_name, asset_image, SUM(xp_invested) AS invested
+			FROM server_member_assets WHERE member_id = ${mid}
+			GROUP BY asset_type, asset_id, symbol, asset_name, asset_image
+			ORDER BY invested DESC
+		`),
+		bountyOut,
+		bountyIn,
+		spyCaught,
+		blocked,
+		reflected,
+		defenseSummary,
+		nemesis,
+		favoriteTarget,
+		bestAlly,
+		...interactionQueries.map((iq) => iq.p)
+	]);
+
+	const interactions: Record<string, { out: any[]; in: any[] }> = {};
+	interactionQueries.forEach((iq, i) => {
+		if (!interactions[iq.key]) interactions[iq.key] = { out: [], in: [] };
+		interactions[iq.key][iq.dir as 'out' | 'in'] = mapName(interactionResults[i]);
+	});
+	interactions.bounty = { out: mapName(bountyOutRows), in: mapName(bountyInRows) };
+	interactions.spy_caught = { out: mapName(spyCaughtRows), in: [] };
+	interactions.blocked = { out: mapName(blockedRows), in: [] };
+	interactions.reflected = { out: mapName(reflectedRows), in: [] };
+
+	const defRow = (defenseRows[0] as unknown as any[])[0] || {};
+	const defense = {
+		spies_caught: Number(defRow.spies_caught) || 0,
+		blocked: Number(defRow.blocked) || 0,
+		reflected: Number(defRow.reflected) || 0,
+		my_steals_caught: Number(defRow.my_steals_caught) || 0,
+		insurance_covers: Number(defRow.insurance_covers) || 0,
+		insurance_xp: Number(defRow.insurance_xp) || 0
+	};
+
+	const one = (rows: any) => mapName(rows)[0] ?? null;
+	const relationships = {
+		nemesis: one(nemesisRows),
+		favorite_target: one(favoriteTargetRows),
+		best_ally: one(bestAllyRows)
+	};
+
+	const flowRows = ((xpFlow[0] as unknown as any[]) || []).map((r) => ({
+		day: r.day instanceof Date ? r.day.toISOString().split('T')[0] : String(r.day),
+		net: Number(r.net) || 0
+	}));
+
+	const assetHoldings = ((holdings[0] as unknown as any[]) || [])
+		.map((r) => ({
+			asset_type: r.asset_type,
+			asset_id: r.asset_id,
+			symbol: r.symbol || r.asset_name || 'Asset',
+			name: r.asset_name || r.symbol || 'Asset',
+			image: r.asset_image ?? null,
+			invested: Number(r.invested) || 0
+		}))
+		.filter((r) => r.invested > 0);
+
+	return {
+		favorite_items: ((topItems[0] as unknown as any[]) || []).map((r) => ({
+			name: r.name || 'Item',
+			effect_type: r.effect_type || null,
+			uses: Number(r.uses) || 0
+		})),
+		interactions,
+		defense,
+		relationships,
+		effect_usage: ((effectUsage[0] as unknown as any[]) || [])
+			.map((r) => ({ effect_type: r.effect_type || 'unknown', uses: Number(r.uses) || 0 }))
+			.filter((r) => r.uses > 0),
+		xp_flow: flowRows,
+		asset_holdings: assetHoldings
+	};
+}
+
+export async function closeAssetPosition(positionId: any) {
+	await initializeDatabase();
+	await db.execute(sql`DELETE FROM server_member_assets WHERE id = ${Number(positionId)}`);
+	return true;
+}
+
+export async function reduceAssetPosition(positionId: any, data: { sold_invested: number }) {
+	await initializeDatabase();
+	const position = await getAssetPosition(positionId);
+	if (!position) return false;
+	const now = toMySQLDateTime();
+	const sold = Math.max(0, Math.floor(Number(data.sold_invested) || 0));
+	const remaining = Math.max(0, (Number(position.xp_invested) || 0) - sold);
+	if (remaining <= 0) {
+		await db.execute(sql`DELETE FROM server_member_assets WHERE id = ${Number(positionId)}`);
+	} else {
+		await db.execute(sql`
+			UPDATE server_member_assets
+			SET xp_invested = ${remaining}, updated_at = ${now}
+			WHERE id = ${Number(positionId)}
+		`);
+	}
+	return true;
 }
 
 export async function getDisguisedMemberIds(serverId: any): Promise<number[]> {
@@ -2180,50 +3037,6 @@ export async function getLeaderboardPeriodCounts(serverId: any, since: Date) {
 		.leftJoin(
 			schema.serverMemberLevelLogs,
 			and(eq(schema.serverMemberLevelLogs.member_id, schema.serverMembers.id), sql`${schema.serverMemberLevelLogs.created_at} >= ${toMySQLDateTime(since)}`)
-		)
-		.leftJoin(schema.serverMemberLevels, eq(schema.serverMemberLevels.member_id, schema.serverMembers.id))
-		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), ...(hideDisguised ? [hideDisguised] : [])))
-		.groupBy(
-			schema.serverMembers.id,
-			schema.serverMembers.discord_member_id,
-			schema.serverMembers.username,
-			schema.serverMembers.display_name,
-			schema.serverMembers.server_display_name,
-			schema.serverMembers.avatar,
-			schema.serverMemberLevels.level
-		);
-
-	return rows as any[];
-}
-
-export async function getItemsGamblerLeaderboard(serverId: any, since: Date | null) {
-	await initializeDatabase();
-	if (!serverId) return [] as any[];
-
-	const disguisedIds = await getDisguisedMemberIds(serverId);
-	const hideDisguised = disguisedIds.length > 0 ? notInArray(schema.serverMembers.id, disguisedIds) : undefined;
-
-	const rows = await db
-		.select({
-			discord_member_id: schema.serverMembers.discord_member_id,
-			username: schema.serverMembers.username,
-			display_name: schema.serverMembers.display_name,
-			server_display_name: schema.serverMembers.server_display_name,
-			avatar: schema.serverMembers.avatar,
-			level: schema.serverMemberLevels.level,
-			gamble_net: sql<number>`COALESCE(SUM(${schema.serverMemberItemLogs.xp_amount}), 0)`,
-			gamble_wins: sql<number>`COALESCE(SUM(CASE WHEN ${schema.serverMemberItemLogs.outcome} = 'win' THEN 1 ELSE 0 END), 0)`,
-			gamble_total: sql<number>`COUNT(${schema.serverMemberItemLogs.id})`,
-			gamble_big_win: sql<number>`COALESCE(MAX(${schema.serverMemberItemLogs.xp_amount}), 0)`
-		})
-		.from(schema.serverMembers)
-		.leftJoin(
-			schema.serverMemberItemLogs,
-			and(
-				eq(schema.serverMemberItemLogs.member_id, schema.serverMembers.id),
-				eq(schema.serverMemberItemLogs.action, 'gamble'),
-				...(since ? [sql`${schema.serverMemberItemLogs.created_at} >= ${toMySQLDateTime(since)}`] : [])
-			)
 		)
 		.leftJoin(schema.serverMemberLevels, eq(schema.serverMemberLevels.member_id, schema.serverMembers.id))
 		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), ...(hideDisguised ? [hideDisguised] : [])))
@@ -2466,7 +3279,7 @@ export async function getPanelOverview(panelId: number) {
 	};
 }
 
-export async function getServerOverview(serverId: any, opts?: { forPublicPage?: boolean }) {
+export async function getServerOverview(serverId: any, opts?: { forPublicPage?: boolean; priceMap?: Record<string, { price: number }> }) {
 	await initializeDatabase();
 	if (serverId === undefined || serverId === null || serverId === '') return null;
 
@@ -2552,7 +3365,14 @@ export async function getServerOverview(serverId: any, opts?: { forPublicPage?: 
 		]);
 	}
 
+	const [economy, features] = await Promise.all([
+		getServerEconomyStats(serverId, opts?.priceMap ?? {}).catch(() => null),
+		getServerFeatureStats(serverId).catch(() => null)
+	]);
+
 	const r = (raw: any, idx = 0) => (raw[0] as unknown as any[])[idx] || {};
+
+	const walletXp = Math.round(r(levelingStats).total_experience || 0);
 
 	const stats = {
 		members_total: r(memberCounts).total || 0,
@@ -2568,7 +3388,9 @@ export async function getServerOverview(serverId: any, opts?: { forPublicPage?: 
 		channels_stage: r(channelCounts).stage_count || 0,
 		categories_total: r(categoriesCount).count || 0,
 		roles_total: r(rolesCount).count || 0,
-		leveling_total_experience: Math.round(r(levelingStats).total_experience || 0),
+		leveling_wallet_experience: walletXp,
+		leveling_assets_value: economy?.assets_market_value || 0,
+		leveling_total_experience: walletXp + (economy?.assets_market_value || 0),
 		leveling_avg_level: Math.round((r(levelingStats).avg_level || 0) * 100) / 100,
 		leveling_max_level: r(levelingStats).max_level || 0,
 		leveling_total_chat: r(levelingStats).total_chat || 0,
@@ -2576,7 +3398,9 @@ export async function getServerOverview(serverId: any, opts?: { forPublicPage?: 
 		leveling_total_voice_active: r(levelingStats).total_voice_active || 0,
 		leveling_total_voice_afk: r(levelingStats).total_voice_afk || 0,
 		leveling_total_voice_video: r(levelingStats).total_voice_video || 0,
-		leveling_total_voice_streaming: r(levelingStats).total_voice_streaming || 0
+		leveling_total_voice_streaming: r(levelingStats).total_voice_streaming || 0,
+		...(economy ?? {}),
+		...(features ?? {})
 	};
 
 	if (forPublic) {
@@ -4419,6 +5243,7 @@ export default {
 	getMembersWithInVoiceFlag,
 	listItems,
 	getItem,
+	setItemEnabled,
 	createItem,
 	updateItem,
 	deleteItem,
@@ -4441,6 +5266,9 @@ export default {
 	expireMemberItemActive,
 	endMemberItemActiveNow,
 	logMemberItemAction,
+	logMinigameAction,
+	getMemberMinigameHistory,
+	getMinigamesLeaderboard,
 	getMemberItemHistory,
 	logMemberLevelGain,
 	getMemberLevelHistory,
@@ -4451,9 +5279,18 @@ export default {
 	placeBounty,
 	getActiveBountyTotal,
 	collectBounties,
+	getDistinctHeldAssetIds,
+	openAssetPosition,
+	getAssetPosition,
+	getOpenAssetPositions,
+	getOpenAssetPosition,
+	mergeAssetPosition,
+	getMemberAssetHistory,
+	logAssetEvent,
+	closeAssetPosition,
+	reduceAssetPosition,
 	getServerLeaderboard,
 	getLeaderboardPeriodCounts,
-	getItemsGamblerLeaderboard,
 	getItemsAttackLeaderboard,
 	getItemsBountyLeaderboard,
 	getItemsGiftLeaderboard,
@@ -4461,6 +5298,12 @@ export default {
 	getServerMembersList,
 	getPanelOverview,
 	getServerOverview,
+	getServerEconomyStats,
+	getServerFeatureStats,
+	getMemberDashboard,
+	getMemberInsights,
+	recordLevelFriends,
+	getMemberLevelFriends,
 	updateCustomRoleFlags,
 	memberHasCustomSupporterRole,
 	getServerSettings,

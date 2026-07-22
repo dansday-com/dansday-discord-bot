@@ -237,7 +237,7 @@ async function handleMenuButton(interaction) {
 		} catch (_) {}
 	}
 
-	if (await isComponentFeatureEnabled(interaction.guild.id, serverSettingsComponent.items)) {
+	if (await isComponentFeatureEnabled(interaction.guild.id, serverSettingsComponent.public_statistics)) {
 		try {
 			const server = await getServerForCurrentBot(interaction.guild.id);
 			const slug = await computePublicServerSlugForServerId(Number(server.id));
@@ -245,16 +245,16 @@ async function handleMenuButton(interaction) {
 			if (base) {
 				const joinedDate = member.joinedAt ? member.joinedAt.toISOString().split('T')[0] : '';
 				const cardHash = createHash('sha256').update(`${interaction.user.id}_${joinedDate}`).digest('hex').substring(0, 16);
-				const itemsUrl = `${base}/items/shop/all/${cardHash}`;
+				const accountUrl = `${base}/account/overview/${cardHash}`;
 
-				const itemsLabel = await translate('menu.items', interaction.guild.id, interaction.user.id);
-				const itemsBtn = new ButtonBuilder().setLabel(itemsLabel).setURL(itemsUrl).setStyle(ButtonStyle.Link);
+				const accountLabel = await translate('menu.account', interaction.guild.id, interaction.user.id);
+				const accountBtn = new ButtonBuilder().setLabel(accountLabel).setURL(accountUrl).setStyle(ButtonStyle.Link);
 
 				const targetRow = rows[rows.length - 1];
 				if (targetRow.components.length < 5) {
-					targetRow.addComponents(itemsBtn);
+					targetRow.addComponents(accountBtn);
 				} else if (rows.length < 5) {
-					rows.push(new ActionRowBuilder().addComponents(itemsBtn));
+					rows.push(new ActionRowBuilder().addComponents(accountBtn));
 				}
 			}
 		} catch (_) {}

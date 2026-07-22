@@ -131,14 +131,6 @@ const REGISTRY = [
 		hrefSuffix: '/public-statistics',
 		icon: 'fa-chart-pie',
 		iconClass: 'text-amber-400'
-	},
-	{
-		id: 'items',
-		label: 'Items',
-		featureSwitch: true,
-		hrefSuffix: '/items',
-		icon: 'fa-store',
-		iconClass: 'text-teal-400'
 	}
 ] as const;
 
@@ -186,8 +178,7 @@ export const AUTO_ENABLED_COMPONENTS: Set<string> = new Set([
 	component.booster,
 	component.moderation,
 	component.afk,
-	component.notifications,
-	component.items
+	component.notifications
 ]);
 
 let dbCache: (typeof import('$lib/database.js'))['default'] | null = null;
@@ -368,7 +359,7 @@ const ROUTE_GUARDS: RouteGuard[] = [
 	}
 ];
 
-const PUBLIC_PREFIXES = ['/api/public-statistics/', '/api/uploads/', '/api/panel/', '/api/items/'];
+const PUBLIC_PREFIXES = ['/api/public-statistics/', '/api/uploads/', '/api/panel/', '/api/items/', '/api/assets/', '/api/minigames/'];
 
 const PUBLIC_EXACT = new Set([
 	'/api/panel/login',

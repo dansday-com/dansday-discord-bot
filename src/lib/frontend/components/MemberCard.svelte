@@ -18,14 +18,19 @@
 		roles?: MemberRole[];
 	};
 
+	type AssetsData = { invested: number; value: number; pnl: number; pnlPct: number; count: number };
+
 	type Props = {
 		member: MemberData;
 		serverName: string;
 		serverIcon?: string | null;
 		onclose: () => void;
+		mode?: 'level' | 'assets';
+		assets?: AssetsData | null;
 	};
 
-	let { member, serverName, serverIcon, onclose }: Props = $props();
+	let { member, serverName, serverIcon, onclose, mode = 'level', assets = null }: Props = $props();
+	const isAssets = $derived(mode === 'assets' && !!assets);
 
 	let visible = $state(false);
 	let cardEl: HTMLDivElement | undefined = $state();
@@ -215,6 +220,63 @@
 		ctx.restore();
 	}
 
+	function drawChartLine(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
+		ctx.save();
+		ctx.strokeStyle = ctx.fillStyle as string;
+		ctx.lineWidth = r * 0.28;
+		ctx.lineJoin = 'round';
+		ctx.lineCap = 'round';
+		ctx.beginPath();
+		ctx.moveTo(cx - r, cy + r * 0.55);
+		ctx.lineTo(cx - r * 0.3, cy - r * 0.15);
+		ctx.lineTo(cx + r * 0.2, cy + r * 0.3);
+		ctx.lineTo(cx + r, cy - r * 0.6);
+		ctx.stroke();
+		ctx.restore();
+	}
+
+	function drawCoin(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
+		ctx.beginPath();
+		ctx.arc(cx, cy, r, 0, Math.PI * 2);
+		ctx.fill();
+		ctx.save();
+		ctx.fillStyle = 'rgba(255,255,255,0.7)';
+		ctx.font = `900 ${r * 1.1}px -apple-system, 'Inter', sans-serif`;
+		ctx.textAlign = 'center';
+		ctx.textBaseline = 'middle';
+		ctx.fillText('$', cx, cy + r * 0.05);
+		ctx.restore();
+	}
+
+	function drawSack(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
+		ctx.beginPath();
+		ctx.moveTo(cx - r * 0.45, cy - r * 0.55);
+		ctx.lineTo(cx + r * 0.45, cy - r * 0.55);
+		ctx.lineTo(cx + r * 0.3, cy - r * 0.25);
+		ctx.lineTo(cx - r * 0.3, cy - r * 0.25);
+		ctx.closePath();
+		ctx.fill();
+		ctx.beginPath();
+		ctx.moveTo(cx - r * 0.3, cy - r * 0.25);
+		ctx.quadraticCurveTo(cx - r, cy + r * 0.2, cx - r * 0.7, cy + r * 0.7);
+		ctx.quadraticCurveTo(cx - r * 0.4, cy + r, cx, cy + r);
+		ctx.quadraticCurveTo(cx + r * 0.4, cy + r, cx + r * 0.7, cy + r * 0.7);
+		ctx.quadraticCurveTo(cx + r, cy + r * 0.2, cx + r * 0.3, cy - r * 0.25);
+		ctx.closePath();
+		ctx.fill();
+	}
+
+	function drawStack(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
+		for (let i = 0; i < 3; i++) {
+			const oy = cy + (i - 1) * r * 0.65;
+			ctx.beginPath();
+			ctx.ellipse(cx, oy, r, r * 0.42, 0, 0, Math.PI * 2);
+			ctx.globalAlpha = 1 - i * 0.22;
+			ctx.fill();
+		}
+		ctx.globalAlpha = 1;
+	}
+
 	function hexToRgb(hex: string): [number, number, number] {
 		const h = hex.replace('#', '');
 		return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
@@ -235,6 +297,22 @@
 		const voice = fmtNum(member.voice_minutes_active);
 		const joined = fmtJoined(member.member_since);
 		const rank = member.rank != null ? `#${member.rank}` : null;
+
+		const bigLabel = isAssets ? 'PORTFOLIO P/L' : 'LEVEL';
+		const bigValue = isAssets && assets ? `${assets.pnl >= 0 ? '+' : ''}${assets.pnlPct.toFixed(2)}%` : level;
+		const statItems =
+			isAssets && assets
+				? [
+						{ icon: 'coin', val: fmtNum(assets.invested), lbl: 'Invested' },
+						{ icon: 'sack', val: fmtNum(assets.value), lbl: 'Worth' },
+						{ icon: 'stack', val: String(assets.count), lbl: 'Assets' }
+					]
+				: [
+						{ icon: 'star', val: xp, lbl: 'XP' },
+						{ icon: 'comment', val: msgs, lbl: 'Messages' },
+						{ icon: 'mic', val: voice, lbl: 'Voice min' }
+					];
+		const bottomText = isAssets && assets ? `${assets.pnl >= 0 ? '+' : ''}${fmtNum(assets.pnl)} XP profit/loss` : `Joined ${joined}`;
 		const fontBase = "-apple-system, 'Inter', 'Segoe UI', sans-serif";
 
 		let avatarImg: HTMLImageElement | null = null;
@@ -449,26 +527,27 @@
 		ctx.fillStyle = C.textSubtle;
 		ctx.textAlign = 'center';
 		ctx.textBaseline = 'top';
-		ctx.fillText('LEVEL', cx, y);
+		ctx.fillText(bigLabel, cx, y);
 		y += levelLabelH + 2;
 
 		ctx.font = `900 36px ${fontBase}`;
 		const levelGrad = ctx.createLinearGradient(cx - 30, y, cx + 30, y + 36);
-		levelGrad.addColorStop(0, C.hot);
-		levelGrad.addColorStop(1, C.peach);
+		if (isAssets && assets) {
+			const c = assets.pnl >= 0 ? '#1a7f57' : '#b23b2e';
+			levelGrad.addColorStop(0, c);
+			levelGrad.addColorStop(1, c);
+		} else {
+			levelGrad.addColorStop(0, C.hot);
+			levelGrad.addColorStop(1, C.peach);
+		}
 		ctx.fillStyle = levelGrad;
 		ctx.textAlign = 'center';
 		ctx.textBaseline = 'top';
-		ctx.fillText(level, cx, y);
+		ctx.fillText(bigValue, cx, y);
 		y += levelValueH + 18;
 
 		const gap = 6;
 		const statW = (contentW - gap * 2) / 3;
-		const statItems = [
-			{ icon: 'star', val: xp, lbl: 'XP' },
-			{ icon: 'comment', val: msgs, lbl: 'Messages' },
-			{ icon: 'mic', val: voice, lbl: 'Voice min' }
-		];
 
 		for (let i = 0; i < 3; i++) {
 			const sx = PAD_X + i * (statW + gap);
@@ -489,6 +568,9 @@
 			if (si.icon === 'star') drawStar(ctx, iconCx, iconY, 6);
 			else if (si.icon === 'comment') drawComment(ctx, iconCx, iconY, 5);
 			else if (si.icon === 'mic') drawMic(ctx, iconCx, iconY, 6);
+			else if (si.icon === 'coin') drawCoin(ctx, iconCx, iconY, 6);
+			else if (si.icon === 'sack') drawSack(ctx, iconCx, iconY, 6);
+			else if (si.icon === 'stack') drawStack(ctx, iconCx, iconY, 5);
 
 			ctx.font = `800 14px ${fontBase}`;
 			ctx.fillStyle = C.text;
@@ -503,7 +585,7 @@
 
 		y += statBoxH + 6;
 
-		const joinedText = `Joined ${joined}`;
+		const joinedText = bottomText;
 		ctx.font = `600 11px ${fontBase}`;
 		const joinedTW = ctx.measureText(joinedText).width;
 		const iconSize = 12;
@@ -512,7 +594,8 @@
 		const joinedStartX = cx - joinedBlockW / 2;
 
 		ctx.fillStyle = C.peach;
-		drawCalendar(ctx, joinedStartX + iconSize / 2, y + joinedH / 2, 6);
+		if (isAssets) drawChartLine(ctx, joinedStartX + iconSize / 2, y + joinedH / 2, 6);
+		else drawCalendar(ctx, joinedStartX + iconSize / 2, y + joinedH / 2, 6);
 
 		ctx.fillStyle = C.textMuted;
 		ctx.textAlign = 'left';
@@ -640,33 +723,65 @@
 						</div>
 					{/if}
 
-					<div class="mc-level-block">
-						<span class="mc-level-label">Level</span>
-						<span class="mc-level-value">{member.level ?? 0}</span>
-					</div>
+					{#if isAssets && assets}
+						<div class="mc-level-block">
+							<span class="mc-level-label">Portfolio P/L</span>
+							<span class="mc-level-value" style="color: {assets.pnl >= 0 ? '#1a7f57' : '#b23b2e'}">
+								{assets.pnl >= 0 ? '+' : ''}{assets.pnlPct.toFixed(2)}%
+							</span>
+						</div>
 
-					<div class="mc-stats-row">
-						<div class="mc-stat">
-							<i class="fas fa-star"></i>
-							<span class="mc-stat-val">{fmtNum(member.experience)}</span>
-							<span class="mc-stat-lbl">XP</span>
+						<div class="mc-stats-row">
+							<div class="mc-stat">
+								<i class="fas fa-coins"></i>
+								<span class="mc-stat-val">{fmtNum(assets.invested)}</span>
+								<span class="mc-stat-lbl">Invested</span>
+							</div>
+							<div class="mc-stat">
+								<i class="fas fa-sack-dollar"></i>
+								<span class="mc-stat-val">{fmtNum(assets.value)}</span>
+								<span class="mc-stat-lbl">Worth</span>
+							</div>
+							<div class="mc-stat">
+								<i class="fas fa-layer-group"></i>
+								<span class="mc-stat-val">{assets.count}</span>
+								<span class="mc-stat-lbl">Assets</span>
+							</div>
 						</div>
-						<div class="mc-stat">
-							<i class="fas fa-comments"></i>
-							<span class="mc-stat-val">{fmtNum(member.chat_total)}</span>
-							<span class="mc-stat-lbl">Messages</span>
-						</div>
-						<div class="mc-stat">
-							<i class="fas fa-microphone"></i>
-							<span class="mc-stat-val">{fmtNum(member.voice_minutes_active)}</span>
-							<span class="mc-stat-lbl">Voice min</span>
-						</div>
-					</div>
 
-					<div class="mc-joined">
-						<i class="fas fa-calendar-check"></i>
-						<span>Joined {fmtJoined(member.member_since)}</span>
-					</div>
+						<div class="mc-joined">
+							<i class="fas fa-chart-line"></i>
+							<span>{assets.pnl >= 0 ? '+' : ''}{fmtNum(assets.pnl)} XP profit/loss</span>
+						</div>
+					{:else}
+						<div class="mc-level-block">
+							<span class="mc-level-label">Level</span>
+							<span class="mc-level-value">{member.level ?? 0}</span>
+						</div>
+
+						<div class="mc-stats-row">
+							<div class="mc-stat">
+								<i class="fas fa-star"></i>
+								<span class="mc-stat-val">{fmtNum(member.experience)}</span>
+								<span class="mc-stat-lbl">XP</span>
+							</div>
+							<div class="mc-stat">
+								<i class="fas fa-comments"></i>
+								<span class="mc-stat-val">{fmtNum(member.chat_total)}</span>
+								<span class="mc-stat-lbl">Messages</span>
+							</div>
+							<div class="mc-stat">
+								<i class="fas fa-microphone"></i>
+								<span class="mc-stat-val">{fmtNum(member.voice_minutes_active)}</span>
+								<span class="mc-stat-lbl">Voice min</span>
+							</div>
+						</div>
+
+						<div class="mc-joined">
+							<i class="fas fa-calendar-check"></i>
+							<span>Joined {fmtJoined(member.member_since)}</span>
+						</div>
+					{/if}
 				</div>
 			</div>
 		</div>

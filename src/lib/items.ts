@@ -1,17 +1,4 @@
-export type ItemEffectId =
-	| 'steal'
-	| 'bomb'
-	| 'boost'
-	| 'shield'
-	| 'leech'
-	| 'reflect'
-	| 'insurance'
-	| 'gamble'
-	| 'gift'
-	| 'bounty'
-	| 'spy'
-	| 'disguise'
-	| 'purifier';
+export type ItemEffectId = 'steal' | 'bomb' | 'boost' | 'shield' | 'leech' | 'reflect' | 'insurance' | 'gift' | 'bounty' | 'spy' | 'disguise' | 'purifier';
 
 export const BAG_CAPACITY = 50;
 
@@ -163,20 +150,6 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		summary: (c) => `Refund ${c.refund_percent ?? 100}% if robbed or bombed · ${formatDuration(c.effect_duration_minutes)}`
 	},
 	{
-		id: 'gamble',
-		label: 'Gamble',
-		icon: 'fa-dice',
-		accent: '#c8911a',
-		emoji: '🎲',
-		verb: 'Play',
-		targeted: false,
-		announced: true,
-		expiringBuff: false,
-		defaultCost: 0,
-		defaultConfig: { win_chance: 50, payout_multiplier: 2 },
-		summary: (c) => `${c.win_chance}% to win ${c.payout_multiplier}× your wager`
-	},
-	{
 		id: 'gift',
 		label: 'Gift',
 		icon: 'fa-gift',
@@ -262,12 +235,16 @@ export function getItemEffect(type: string): ItemEffect | undefined {
 	return EFFECT_BY_ID[type];
 }
 
+const ACTION_META: Record<string, { label: string; icon: string }> = {
+	bounty_collected: { label: 'Bounty claimed', icon: 'fa-sack-dollar' }
+};
+
 export function effectLabel(type: string): string {
-	return EFFECT_BY_ID[type]?.label ?? type;
+	return EFFECT_BY_ID[type]?.label ?? ACTION_META[type]?.label ?? type;
 }
 
 export function effectIcon(type: string): string {
-	return EFFECT_BY_ID[type]?.icon ?? 'fa-cube';
+	return EFFECT_BY_ID[type]?.icon ?? ACTION_META[type]?.icon ?? 'fa-cube';
 }
 
 export const EFFECT_ACCENT_DEFAULT = '#245f73';
@@ -334,10 +311,6 @@ export function effectMeta(item: { effect_type: string; config?: any }): EffectM
 			chips.push({ icon: 'fa-rotate-left', label: `${c.refund_percent ?? 100}%` });
 			chips.push({ icon: 'fa-hourglass-half', label: formatDuration(c.effect_duration_minutes) });
 			if (Number(c.cooldown_minutes) > 0) chips.push({ icon: 'fa-stopwatch', label: formatDuration(c.cooldown_minutes) });
-			break;
-		case 'gamble':
-			chips.push({ icon: 'fa-dice', label: `${c.win_chance ?? 0}%` });
-			chips.push({ icon: 'fa-coins', label: `${c.payout_multiplier ?? 0}×` });
 			break;
 		case 'gift':
 			chips.push({ icon: 'fa-coins', label: `${shortXp(c.gift_amount)} XP` });
@@ -406,11 +379,6 @@ const EFFECT_GUIDES: Record<string, EffectGuide> = {
 		how: 'Activate on yourself. If you get hit while it’s up, a percentage of the lost XP comes back.',
 		tip: 'Good when you can’t sit on a Shield but still want a safety net.'
 	},
-	gamble: {
-		what: 'Wager your XP for a chance to multiply it, or lose it all.',
-		how: 'Choose how much to risk. Win and your wager is multiplied; lose and it’s gone.',
-		tip: 'Only gamble what you can afford to drop on the leaderboard.'
-	},
 	gift: {
 		what: 'Send some of your XP to another member.',
 		how: 'Pick a recipient. They receive the XP (minus any tax). No way to steal it back.',
@@ -450,20 +418,27 @@ function scheduleMinutesLocal(hhmm: any, fallback: number): number {
 	return h * 60 + m;
 }
 
+export type ItemWindowState = 'active' | 'upcoming' | 'ended' | 'always';
+
 export function itemAvailability(
 	item: { available_from?: string | null; available_to?: string | null; recurring_schedule?: any; availableUntil?: number | null },
 	nowMs: number,
 	tzOffsetMin = 0
-): { visible: boolean; availableUntil: number | null } {
+): { visible: boolean; availableUntil: number | null; state: ItemWindowState; startsAt: number | null } {
 	const schedule = item.recurring_schedule;
 	const hasSchedule = !!(schedule && Array.isArray(schedule.days) && schedule.days.length > 0);
+	const fromMs = item.available_from ? new Date(item.available_from).getTime() : null;
+	const toMs = item.available_to ? new Date(item.available_to).getTime() : null;
 
 	if (!hasSchedule) {
-		return { visible: true, availableUntil: item.availableUntil ?? null };
+		if (fromMs && nowMs < fromMs) return { visible: true, availableUntil: null, state: 'upcoming', startsAt: fromMs };
+		if (toMs && nowMs > toMs) return { visible: false, availableUntil: null, state: 'ended', startsAt: null };
+		if (!fromMs && !toMs) return { visible: true, availableUntil: item.availableUntil ?? null, state: 'always', startsAt: null };
+		return { visible: true, availableUntil: toMs ?? item.availableUntil ?? null, state: 'active', startsAt: null };
 	}
 
-	if (item.available_from && nowMs < new Date(item.available_from).getTime()) return { visible: false, availableUntil: null };
-	if (item.available_to && nowMs > new Date(item.available_to).getTime()) return { visible: false, availableUntil: null };
+	if (fromMs && nowMs < fromMs) return { visible: true, availableUntil: null, state: 'upcoming', startsAt: fromMs };
+	if (toMs && nowMs > toMs) return { visible: false, availableUntil: null, state: 'ended', startsAt: null };
 
 	const offsetMs = (Number.isFinite(Number(tzOffsetMin)) ? Number(tzOffsetMin) : 0) * 60000;
 	const local = new Date(nowMs + offsetMs);
@@ -472,20 +447,29 @@ export function itemAvailability(
 	const fromMin = scheduleMinutesLocal(schedule.from, 0);
 	const toMin = scheduleMinutesLocal(schedule.to, 1439);
 	const minutes = local.getUTCHours() * 60 + local.getUTCMinutes();
+	const startOfLocalDay = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate()) - offsetMs;
+	const uniqueDays = new Set(days);
+
 	if (!days.includes(local.getUTCDay()) || minutes < fromMin || minutes > toMin) {
-		return { visible: false, availableUntil: null };
+		let startsAt: number | null = null;
+		for (let ahead = 0; ahead <= 7; ahead++) {
+			const day = (local.getUTCDay() + ahead) % 7;
+			if (!uniqueDays.has(day)) continue;
+			const candidate = startOfLocalDay + ahead * 86400000 + fromMin * 60000;
+			if (candidate > nowMs) {
+				startsAt = candidate;
+				break;
+			}
+		}
+		if (startsAt != null && (!toMs || startsAt <= toMs)) return { visible: true, availableUntil: null, state: 'upcoming', startsAt };
+		return { visible: false, availableUntil: null, state: 'ended', startsAt: null };
 	}
 
 	const ends: number[] = [];
-	if (item.available_to) {
-		const t = new Date(item.available_to).getTime();
-		if (Number.isFinite(t)) ends.push(t);
-	}
-	const startOfLocalDay = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate()) - offsetMs;
-	const uniqueDays = new Set(days);
+	if (toMs && Number.isFinite(toMs)) ends.push(toMs);
 	const isFullDay = fromMin <= 0 && toMin >= 1439;
 	if (isFullDay && uniqueDays.size >= 7) {
-		return { visible: true, availableUntil: ends.length ? Math.min(...ends) : null };
+		return { visible: true, availableUntil: ends.length ? Math.min(...ends) : null, state: 'active', startsAt: null };
 	}
 	let trailingDays = 0;
 	if (isFullDay) {
@@ -495,7 +479,7 @@ export function itemAvailability(
 	}
 	const endOfWindow = startOfLocalDay + trailingDays * 86400000 + (toMin * 60 + 59) * 1000;
 	ends.push(endOfWindow);
-	return { visible: true, availableUntil: ends.length ? Math.min(...ends) : null };
+	return { visible: true, availableUntil: ends.length ? Math.min(...ends) : null, state: 'active', startsAt: null };
 }
 
 export type SpyReportBagItem = { name: string; effect_type: string; quantity: number };
@@ -507,6 +491,15 @@ export type SpyReportEffect = {
 	leechWith: string | null;
 };
 export type SpyReportCooldown = { kind: 'steal' | 'bomb' | 'insurance' | 'immunity'; until: number };
+export type SpyReportAsset = {
+	symbol: string;
+	asset_name: string;
+	asset_image: string | null;
+	xp_invested: number;
+	value: number;
+	pnl: number;
+	pnl_percent: number;
+};
 export type SpyReport = {
 	targetName: string;
 	disguised?: boolean;
@@ -515,6 +508,9 @@ export type SpyReport = {
 	effects: SpyReportEffect[];
 	cooldowns: SpyReportCooldown[];
 	bounty?: number;
+	assets?: SpyReportAsset[];
+	assetsInvested?: number;
+	assetsValue?: number;
 };
 
 export type ItemOutcome = {
@@ -537,11 +533,6 @@ export function describeItemOutcome(effectType: string, result: any): ItemOutcom
 	const r = result ?? {};
 	const outcome = r.outcome;
 	const xp = Number(r.xp) || 0;
-
-	if (effectType === 'gamble') {
-		if (r.won) return { tone: 'win', icon: 'fa-trophy', title: 'You Won!', line: `Your wager paid off.`, deltaXp: Number(r.net) || 0, untilMs: null };
-		return { tone: 'lose', icon: 'fa-skull', title: 'You Lost', line: `Better luck next time.`, deltaXp: -(Number(r.wager) || 0), untilMs: null };
-	}
 
 	if (effectType === 'steal' || effectType === 'bomb') {
 		const verb = effectType === 'steal' ? 'Robbed' : 'Bombed';

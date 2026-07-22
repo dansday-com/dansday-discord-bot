@@ -844,6 +844,45 @@ export const serverMemberItemLogs = mysqlTable(
 	]
 );
 
+export const serverMemberMinigameLogs = mysqlTable(
+	'server_member_minigame_logs',
+	{
+		id: bigint('id', { mode: 'bigint' }).primaryKey().autoincrement(),
+		member_id: int('member_id')
+			.notNull()
+			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		game: varchar('game', { length: 24 }).notNull().default('gamble'),
+		multiplier: decimal('multiplier', { precision: 6, scale: 2 }).notNull().default('2'),
+		wager: int('wager').notNull().default(0),
+		payout: int('payout').notNull().default(0),
+		xp_amount: int('xp_amount').notNull().default(0),
+		outcome: varchar('outcome', { length: 16 }).notNull(),
+		created_at: datetime('created_at').notNull()
+	},
+	(t) => [index('idx_server_member_minigame_logs_member').on(t.member_id, t.created_at), index('idx_server_member_minigame_logs_created').on(t.created_at)]
+);
+
+export const serverMemberLevelFriends = mysqlTable(
+	'server_member_level_friends',
+	{
+		id: bigint('id', { mode: 'bigint' }).primaryKey().autoincrement(),
+		member_a_id: int('member_a_id')
+			.notNull()
+			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		member_b_id: int('member_b_id')
+			.notNull()
+			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		ticks: int('ticks').notNull().default(0),
+		xp_together: bigint('xp_together', { mode: 'number' }).notNull().default(0),
+		updated_at: datetime('updated_at').notNull()
+	},
+	(t) => [
+		uniqueIndex('uniq_level_friends_pair').on(t.member_a_id, t.member_b_id),
+		index('idx_level_friends_a').on(t.member_a_id, t.ticks),
+		index('idx_level_friends_b').on(t.member_b_id, t.ticks)
+	]
+);
+
 export const serverMemberLevelLogs = mysqlTable(
 	'server_member_level_logs',
 	{
@@ -891,4 +930,46 @@ export const serverMemberItemNotifications = mysqlTable(
 		created_at: datetime('created_at').notNull()
 	},
 	(t) => [uniqueIndex('unique_member_item_notification').on(t.member_id, t.notification_type, t.notified_for_at)]
+);
+
+export const serverMemberAssets = mysqlTable(
+	'server_member_assets',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		member_id: int('member_id')
+			.notNull()
+			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		asset_type: varchar('asset_type', { length: 24 }).notNull().default('crypto'),
+		asset_id: varchar('asset_id', { length: 96 }).notNull(),
+		symbol: varchar('symbol', { length: 32 }).notNull(),
+		asset_name: varchar('asset_name', { length: 128 }).notNull(),
+		asset_image: varchar('asset_image', { length: 255 }),
+		xp_invested: int('xp_invested').notNull().default(0),
+		buy_price: decimal('buy_price', { precision: 30, scale: 12 }).notNull(),
+		opened_at: datetime('opened_at').notNull(),
+		created_at: datetime('created_at').notNull(),
+		updated_at: datetime('updated_at').notNull()
+	},
+	(t) => [index('idx_server_member_assets_member').on(t.member_id), index('idx_server_member_assets_held').on(t.asset_type, t.asset_id)]
+);
+
+export const serverMemberAssetLogs = mysqlTable(
+	'server_member_asset_logs',
+	{
+		id: bigint('id', { mode: 'bigint' }).primaryKey().autoincrement(),
+		member_id: int('member_id')
+			.notNull()
+			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		action: varchar('action', { length: 8 }).notNull(),
+		asset_type: varchar('asset_type', { length: 24 }).notNull().default('crypto'),
+		asset_id: varchar('asset_id', { length: 96 }).notNull(),
+		symbol: varchar('symbol', { length: 32 }).notNull(),
+		asset_name: varchar('asset_name', { length: 128 }).notNull(),
+		asset_image: varchar('asset_image', { length: 255 }),
+		xp_amount: int('xp_amount').notNull().default(0),
+		price: decimal('price', { precision: 30, scale: 12 }).notNull().default('0'),
+		net: int('net').notNull().default(0),
+		created_at: datetime('created_at').notNull()
+	},
+	(t) => [index('idx_server_member_asset_logs_member').on(t.member_id, t.created_at)]
 );

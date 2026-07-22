@@ -608,16 +608,16 @@ async function handleWebhookRequest(req, res) {
 						res.writeHead(500, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify({ ok: false, error: 'discard_item failed', details: shopErr.message }));
 					}
-				} else if (payload.type === 'gamble') {
+				} else if (payload.type === 'minigame_play') {
 					try {
-						const { handleGamble } = await import('./items.js');
-						const result = await handleGamble(client, payload);
+						const { handleMinigamePlay } = await import('./minigames.js');
+						const result = await handleMinigamePlay(client, payload);
 						res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify(result));
 					} catch (shopErr: any) {
-						await logger.log(`❌ gamble failed: ${shopErr.message}`);
+						await logger.log(`❌ minigame_play failed: ${shopErr.message}`);
 						res.writeHead(500, { 'Content-Type': 'application/json' });
-						res.end(JSON.stringify({ ok: false, error: 'gamble failed', details: shopErr.message }));
+						res.end(JSON.stringify({ ok: false, error: 'minigame_play failed', details: shopErr.message }));
 					}
 				} else if (payload.type === 'gift_item_announce') {
 					try {
@@ -629,6 +629,39 @@ async function handleWebhookRequest(req, res) {
 						await logger.log(`❌ gift_item_announce failed: ${shopErr.message}`);
 						res.writeHead(500, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify({ ok: false, error: 'gift_item_announce failed', details: shopErr.message }));
+					}
+				} else if (payload.type === 'asset_buy') {
+					try {
+						const { handleAssetBuy } = await import('./assetMarket.js');
+						const result = await handleAssetBuy(client, payload);
+						res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify(result));
+					} catch (assetErr: any) {
+						await logger.log(`❌ asset_buy failed: ${assetErr.message}`);
+						res.writeHead(500, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify({ ok: false, error: 'asset_buy failed', details: assetErr.message }));
+					}
+				} else if (payload.type === 'asset_sell') {
+					try {
+						const { handleAssetSell } = await import('./assetMarket.js');
+						const result = await handleAssetSell(client, payload);
+						res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify(result));
+					} catch (assetErr: any) {
+						await logger.log(`❌ asset_sell failed: ${assetErr.message}`);
+						res.writeHead(500, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify({ ok: false, error: 'asset_sell failed', details: assetErr.message }));
+					}
+				} else if (payload.type === 'asset_search') {
+					try {
+						const { searchAssets } = await import('./assetMarket.js');
+						const results = await searchAssets(String(payload.query || ''));
+						res.writeHead(200, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify({ ok: true, results }));
+					} catch (assetErr: any) {
+						await logger.log(`❌ asset_search failed: ${assetErr.message}`);
+						res.writeHead(500, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify({ ok: false, error: 'asset_search failed', details: assetErr.message }));
 					}
 				} else {
 					await logger.log(`❌ Invalid payload format: ${JSON.stringify(payload)}`);

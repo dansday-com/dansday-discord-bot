@@ -256,14 +256,12 @@
 						<span class="m-members-xp-band-l"><i class="fas fa-star" aria-hidden="true"></i> Experience</span>
 						<span class="m-members-xp-band-v" title="Experience points">{fmtNum(member.experience ?? 0)}</span>
 					</div>
-					{#if member.roles?.length > 0}
+					{#if member.roles?.[0]}
 						<div class="m-members-roles">
-							{#each member.roles as role}
-								<span class="m-members-role" style={rolePillCssVars(role.color)}>
-									<i class="fas fa-circle" aria-hidden="true"></i>
-									{role.name || 'Role'}
-								</span>
-							{/each}
+							<span class="m-members-role" style={rolePillCssVars(member.roles[0].color)}>
+								<i class="fas fa-circle" aria-hidden="true"></i>
+								{member.roles[0].name || 'Role'}
+							</span>
 						</div>
 					{/if}
 				</li>

@@ -27,11 +27,12 @@ The project is open source under the MIT license.
   - 🪞 **Reflect** - bounce the next attack back at the attacker.
   - 💵 **Insurance** - refund your XP the next time you're robbed.
   - ⚡ **Boost** - multiply your XP earnings for a set duration.
-  - 🎲 **Gamble** - wager XP for a chance at a multiplied payout.
   - 🎁 **Gift** - send XP to another member (with optional tax).
   - 🔍 **Spy** - reveal a member's bag, active effects, cooldowns, and bounty.
   - 🎭 **Disguise** - go anonymous and drop off the leaderboard for a set duration.
   - 🧼 **Purifier** - wipe all of your own active effects at once.
+- **Assets market (XP paper-trading)** ⭐ _new_ - Members invest earned XP in real-world crypto at live prices (via CoinGecko). XP is locked into a position and tracks the real market; sell any time to realize gains or losses. Search thousands of coins, browse the top 50, gainers and losers, and watch a live portfolio with per-position and total profit/loss. No real money and no real coins — purely an XP game. Designed to extend to other asset types later.
+- **Minigames** ⭐ _new_ - Enabled as a sub-toggle under Public statistics (with its own channel), where members wager XP on games — no items or tickets, free to play. The first game is 🎲 **Gamble**: pick your own multiplier up to 10× and the win chance is set fairly from it (100 ÷ multiplier, so 2× = 50%, 4× = 25%). You can only wager XP earned above your current level, so a loss never drops your level. Wins and losses post to the minigames channel and feed a dedicated Minigames leaderboard. Built to add more games over time.
 - **Leveling & XP** - Message and voice activity feed a full XP system with levels, role rewards, and leaderboards.
 - **Welcomer** - Custom welcome messages and embeds for new members.
 - **Giveaways** - Entries, winner selection, and role-based eligibility.
@@ -55,7 +56,7 @@ The project is open source under the MIT license.
 
 ### Public web pages
 
-- **Public statistics** - Shareable pages with member insights, leaderboards, and live-oriented views for your community.
+- **Public statistics** - The master switch for all public pages: server statistics, leaderboard, members, and the per-member account (Overview, History, Guide). Items, Minigames and Assets are enabled as sub-toggles here — turn public statistics off and everything public goes dark; with the three sub-features off, the account still shows Overview and History.
 
 ### Advanced
 
@@ -101,4 +102,4 @@ Environment variables drive database credentials, sessions, captcha, mail, Redis
 
 ## License
 
-MIT · Author: Akbar Yudhanto · Version: 26.2.0
+MIT · Author: Akbar Yudhanto · Version: 26.3.0

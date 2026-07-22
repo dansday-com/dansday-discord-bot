@@ -4,11 +4,11 @@
 
 	let {
 		server,
-		itemsEnabled = false,
+		accountEnabled = false,
 		publicStatsEnabled = true
 	}: {
 		server: { slug: string; name?: string | null; server_icon?: string | null };
-		itemsEnabled?: boolean;
+		accountEnabled?: boolean;
 		publicStatsEnabled?: boolean;
 	} = $props();
 
@@ -16,15 +16,18 @@
 	const pathNorm = $derived(page.url.pathname.replace(/\/$/, ''));
 	const isLeaderboard = $derived(pathNorm.endsWith('/leaderboard'));
 	const isMembers = $derived(pathNorm.endsWith('/members'));
-	const isItems = $derived(/\/items(\/|$)/.test(pathNorm));
-	const isOverview = $derived(!isLeaderboard && !isMembers && !isItems);
+	const isAccount = $derived(/\/account(\/|$)/.test(pathNorm));
+	const isOverview = $derived(!isLeaderboard && !isMembers && !isAccount);
+
+	const accountHash = $derived((page.data as any)?.hash || pathNorm.match(/\/account\/(?:\w+\/)*([0-9a-f]{16})$/)?.[1] || '');
+	const accountHref = $derived(accountHash ? `${basePath}/account/overview/${accountHash}` : `${basePath}/account`);
 
 	const tabs = $derived(
 		[
 			{ label: 'Statistics', icon: 'fa-chart-pie', href: basePath, active: isOverview, show: publicStatsEnabled },
 			{ label: 'Leaderboard', icon: 'fa-trophy', href: `${basePath}/leaderboard`, active: isLeaderboard, show: publicStatsEnabled },
 			{ label: 'Members', icon: 'fa-users', href: `${basePath}/members`, active: isMembers, show: publicStatsEnabled },
-			{ label: 'Items', icon: 'fa-store', href: `${basePath}/items`, active: isItems, show: itemsEnabled }
+			{ label: 'Account', icon: 'fa-user', href: accountHref, active: isAccount, show: accountEnabled }
 		].filter((t) => t.show)
 	);
 </script>

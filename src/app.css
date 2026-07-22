@@ -706,6 +706,9 @@
 .m-seg--other {
 	background: linear-gradient(90deg, rgba(115, 62, 36, 0.55), rgba(187, 189, 188, 0.85));
 }
+.m-seg--stream {
+	background: linear-gradient(90deg, var(--chili-hot), #c8911a);
+}
 
 .m-legend {
 	display: flex;

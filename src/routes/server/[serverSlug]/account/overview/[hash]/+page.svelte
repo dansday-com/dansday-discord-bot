@@ -284,7 +284,7 @@
 					<div class="m-seg m-seg--text" style="width: {voiceMix.active * grow}%"></div>
 					<div class="m-seg m-seg--other" style="width: {voiceMix.afk * grow}%"></div>
 					<div class="m-seg m-seg--voice" style="width: {voiceMix.video * grow}%"></div>
-					<div class="m-seg m-seg--b" style="width: {voiceMix.stream * grow}%"></div>
+					<div class="m-seg m-seg--stream" style="width: {voiceMix.stream * grow}%"></div>
 				</div>
 			</div>
 		{/if}
@@ -402,7 +402,7 @@
 								</div>
 								<div class="m-hold-pnl" data-dir={pos.pnl > 0 ? 'up' : pos.pnl < 0 ? 'down' : 'flat'}>
 									<span class="m-hold-pnl-v"
-										><i class="fas fa-caret-{pos.pnl >= 0 ? 'up' : 'down'}"></i>{pos.pnlPercent >= 0 ? '+' : ''}{pos.pnlPercent.toFixed(1)}%</span
+										><i class="fas fa-caret-{pos.pnl >= 0 ? 'up' : 'down'}"></i>{pos.pnlPercent >= 0 ? '+' : ''}{pos.pnlPercent.toFixed(2)}%</span
 									>
 									<span class="m-hold-pnl-x">{pos.pnl >= 0 ? '+' : '−'}{fmtShort(Math.abs(pos.pnl))}</span>
 								</div>
@@ -505,56 +505,56 @@
 			</div>
 		{/if}
 		{#snippet listGroup(lists: any[])}
-				<div class="m-ov-lists">
-					{#each lists as list}
-						<div class="m-ov-list">
-							<span class="m-ov-list-title"><i class="fas {list.icon}"></i> {list.title}</span>
-							{#each list.rows as t}
-								<div class="m-ov-bar-row">
-									<div class="m-ov-bar-head">
-										<span class="m-ov-list-name">{t.name}</span>
-										<span class="m-ov-list-val">{t.xp > 0 ? `${fmt(t.xp)} XP` : `${fmt(t.hits)}×`}</span>
-									</div>
-									<div class="m-ov-bar-track">
-										<div
-											class="m-ov-bar-fill {list.fill}"
-											style="width: {barPct(
-												t.xp || t.hits,
-												list.rows.map((r) => ({ xp: r.xp || r.hits }))
-											) * grow}%;"
-										></div>
-									</div>
+			<div class="m-ov-lists">
+				{#each lists as list}
+					<div class="m-ov-list">
+						<span class="m-ov-list-title"><i class="fas {list.icon}"></i> {list.title}</span>
+						{#each list.rows as t}
+							<div class="m-ov-bar-row">
+								<div class="m-ov-bar-head">
+									<span class="m-ov-list-name">{t.name}</span>
+									<span class="m-ov-list-val">{t.xp > 0 ? `${fmt(t.xp)} XP` : `${fmt(t.hits)}×`}</span>
 								</div>
-							{/each}
-						</div>
-					{/each}
-				</div>
-			{/snippet}
-
-			{#if hasFavorites}
-				{@const fav = ins.favorite_items[0]}
-				<div class="m-ov-fav-wrap">
-					<span class="m-ov-group-title"><i class="fas fa-star"></i> Favorite item</span>
-					<div class="m-fav" style="--fav: {fav.effect_type ? effectAccentHex(fav.effect_type) : 'var(--chili-hot)'};">
-						<span class="m-fav-ic"><i class="fas {fav.effect_type ? effectIcon(fav.effect_type) : 'fa-cube'}"></i></span>
-						<div class="m-fav-body">
-							<span class="m-fav-name">{fav.name}</span>
-							<span class="m-fav-sub">most used{fav.effect_type ? ` · ${effectLabel(fav.effect_type)}` : ''}</span>
-						</div>
-						<span class="m-fav-count">{fmt(fav.uses)}×</span>
+								<div class="m-ov-bar-track">
+									<div
+										class="m-ov-bar-fill {list.fill}"
+										style="width: {barPct(
+											t.xp || t.hits,
+											list.rows.map((r) => ({ xp: r.xp || r.hits }))
+										) * grow}%;"
+									></div>
+								</div>
+							</div>
+						{/each}
 					</div>
+				{/each}
+			</div>
+		{/snippet}
+
+		{#if hasFavorites}
+			{@const fav = ins.favorite_items[0]}
+			<div class="m-ov-fav-wrap">
+				<span class="m-ov-group-title"><i class="fas fa-star"></i> Favorite item</span>
+				<div class="m-fav" style="--fav: {fav.effect_type ? effectAccentHex(fav.effect_type) : 'var(--chili-hot)'};">
+					<span class="m-fav-ic"><i class="fas {fav.effect_type ? effectIcon(fav.effect_type) : 'fa-cube'}"></i></span>
+					<div class="m-fav-body">
+						<span class="m-fav-name">{fav.name}</span>
+						<span class="m-fav-sub">most used{fav.effect_type ? ` · ${effectLabel(fav.effect_type)}` : ''}</span>
+					</div>
+					<span class="m-fav-count">{fmt(fav.uses)}×</span>
 				</div>
-			{/if}
+			</div>
+		{/if}
 
-			{#if offenseLists.length > 0}
-				<span class="m-ov-group-title m-ov-group-title--off"><i class="fas fa-crosshairs"></i> Offense · who you hit</span>
-				{@render listGroup(offenseLists)}
-			{/if}
+		{#if offenseLists.length > 0}
+			<span class="m-ov-group-title m-ov-group-title--off"><i class="fas fa-crosshairs"></i> Offense · who you hit</span>
+			{@render listGroup(offenseLists)}
+		{/if}
 
-			{#if defenseLists.length > 0}
-				<span class="m-ov-group-title m-ov-group-title--def"><i class="fas fa-shield-halved"></i> Defense · done to you &amp; blocked</span>
-				{@render listGroup(defenseLists)}
-			{/if}
+		{#if defenseLists.length > 0}
+			<span class="m-ov-group-title m-ov-group-title--def"><i class="fas fa-shield-halved"></i> Defense · done to you &amp; blocked</span>
+			{@render listGroup(defenseLists)}
+		{/if}
 	</div>
 
 	<div class="m-econ3 m-ov-full">
@@ -640,28 +640,28 @@
 	</div>
 
 	<div class="m-econ2 m-ov-full">
-	<div class="m-stat-card m-overview-card">
-		<div class="m-stat-card-head">
-			<div class="m-stat-card-icon m-chili-stat-3"><i class="fas fa-crosshairs"></i></div>
-			<h2 class="m-stat-card-title">Your PvP record</h2>
-		</div>
-		<div class="m-duel">
-			<div class="m-duel-head">
-				<span class="m-duel-l">You stole {fmt(d.items_stolen)}</span>
-				<span class="m-duel-net" data-dir={stealNet >= 0 ? 'up' : 'down'}>{stealNet >= 0 ? 'net +' : 'net −'}{fmt(Math.abs(stealNet))}</span>
-				<span class="m-duel-r">{fmt(d.items_stolen_from)} lost</span>
+		<div class="m-stat-card m-overview-card">
+			<div class="m-stat-card-head">
+				<div class="m-stat-card-icon m-chili-stat-3"><i class="fas fa-crosshairs"></i></div>
+				<h2 class="m-stat-card-title">Your PvP record</h2>
 			</div>
-			<div class="m-duel-bar">
-				<div
-					class="m-duel-fill m-duel-fill--win"
-					style="width: {barPct(d.items_stolen, [{ xp: d.items_stolen }, { xp: d.items_stolen_from }]) * grow}%;"
-				></div>
-				<div
-					class="m-duel-fill m-duel-fill--lose"
-					style="width: {barPct(d.items_stolen_from, [{ xp: d.items_stolen }, { xp: d.items_stolen_from }]) * grow}%;"
-				></div>
+			<div class="m-duel">
+				<div class="m-duel-head">
+					<span class="m-duel-l">You stole {fmt(d.items_stolen)}</span>
+					<span class="m-duel-net" data-dir={stealNet >= 0 ? 'up' : 'down'}>{stealNet >= 0 ? 'net +' : 'net −'}{fmt(Math.abs(stealNet))}</span>
+					<span class="m-duel-r">{fmt(d.items_stolen_from)} lost</span>
+				</div>
+				<div class="m-duel-bar">
+					<div
+						class="m-duel-fill m-duel-fill--win"
+						style="width: {barPct(d.items_stolen, [{ xp: d.items_stolen }, { xp: d.items_stolen_from }]) * grow}%;"
+					></div>
+					<div
+						class="m-duel-fill m-duel-fill--lose"
+						style="width: {barPct(d.items_stolen_from, [{ xp: d.items_stolen }, { xp: d.items_stolen_from }]) * grow}%;"
+					></div>
+				</div>
 			</div>
-		</div>
 			<div class="m-mini-grid">
 				<div class="m-mini">
 					<i class="fas fa-hand"></i>
@@ -703,96 +703,96 @@
 					<span class="m-mini-value">{fmt(d.items_bounties_placed)}</span>
 					<span class="m-mini-label">Bounties set</span>
 				</div>
-									<div class="m-mini" data-dir="down">
-						<i class="fas fa-skull"></i>
-						<span class="m-mini-value">{fmt(d.bounty_on_me)}</span>
-						<span class="m-mini-label">Bounty on you</span>
-					</div>
-									<div class="m-mini" data-dir="up">
-						<i class="fas fa-user-secret"></i>
-						<span class="m-mini-value">{fmt(defense.spies_caught)}</span>
-						<span class="m-mini-label">Spies caught</span>
-					</div>
-									<div class="m-mini" data-dir="up">
-						<i class="fas fa-shield-halved"></i>
-						<span class="m-mini-value">{fmt(defense.blocked)}</span>
-						<span class="m-mini-label">Attacks blocked</span>
-					</div>
-									<div class="m-mini" data-dir="up">
-						<i class="fas fa-arrows-rotate"></i>
-						<span class="m-mini-value">{fmt(defense.reflected)}</span>
-						<span class="m-mini-label">Attacks reflected</span>
-					</div>
-									<div class="m-mini" data-dir="down">
-						<i class="fas fa-handcuffs"></i>
-						<span class="m-mini-value">{fmt(defense.my_steals_caught)}</span>
-						<span class="m-mini-label">Caught stealing</span>
-					</div>
-									<div class="m-mini" data-dir="up">
-						<i class="fas fa-umbrella"></i>
-						<span class="m-mini-value">{fmt(defense.insurance_covers)}</span>
-						<span class="m-mini-label">Insurance covers</span>
-					</div>
-					<div class="m-mini" data-dir="up">
-						<i class="fas fa-hand-holding-dollar"></i>
-						<span class="m-mini-value">{fmt(defense.insurance_xp)}</span>
-						<span class="m-mini-label">XP recovered</span>
-					</div>
+				<div class="m-mini" data-dir="down">
+					<i class="fas fa-skull"></i>
+					<span class="m-mini-value">{fmt(d.bounty_on_me)}</span>
+					<span class="m-mini-label">Bounty on you</span>
+				</div>
+				<div class="m-mini" data-dir="up">
+					<i class="fas fa-user-secret"></i>
+					<span class="m-mini-value">{fmt(defense.spies_caught)}</span>
+					<span class="m-mini-label">Spies caught</span>
+				</div>
+				<div class="m-mini" data-dir="up">
+					<i class="fas fa-shield-halved"></i>
+					<span class="m-mini-value">{fmt(defense.blocked)}</span>
+					<span class="m-mini-label">Attacks blocked</span>
+				</div>
+				<div class="m-mini" data-dir="up">
+					<i class="fas fa-arrows-rotate"></i>
+					<span class="m-mini-value">{fmt(defense.reflected)}</span>
+					<span class="m-mini-label">Attacks reflected</span>
+				</div>
+				<div class="m-mini" data-dir="down">
+					<i class="fas fa-handcuffs"></i>
+					<span class="m-mini-value">{fmt(defense.my_steals_caught)}</span>
+					<span class="m-mini-label">Caught stealing</span>
+				</div>
+				<div class="m-mini" data-dir="up">
+					<i class="fas fa-umbrella"></i>
+					<span class="m-mini-value">{fmt(defense.insurance_covers)}</span>
+					<span class="m-mini-label">Insurance covers</span>
+				</div>
+				<div class="m-mini" data-dir="up">
+					<i class="fas fa-hand-holding-dollar"></i>
+					<span class="m-mini-value">{fmt(defense.insurance_xp)}</span>
+					<span class="m-mini-label">XP recovered</span>
+				</div>
 			</div>
 		</div>
 
-	<div class="m-stat-card m-overview-card">
-		<div class="m-stat-card-head">
-			<div class="m-stat-card-icon m-chili-stat-4"><i class="fas fa-fire"></i></div>
-			<h2 class="m-stat-card-title">Your engagement</h2>
+		<div class="m-stat-card m-overview-card">
+			<div class="m-stat-card-head">
+				<div class="m-stat-card-icon m-chili-stat-4"><i class="fas fa-fire"></i></div>
+				<h2 class="m-stat-card-title">Your engagement</h2>
+			</div>
+			<div class="m-mini-grid">
+				<div class="m-mini">
+					<i class="fas fa-ticket"></i>
+					<span class="m-mini-value">{fmt(d.giveaways_entered)}</span>
+					<span class="m-mini-label">Giveaways entered</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-medal"></i>
+					<span class="m-mini-value">{fmt(d.giveaways_won)}</span>
+					<span class="m-mini-label">Giveaways won</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-gift"></i>
+					<span class="m-mini-value">{fmt(d.giveaways_hosted)}</span>
+					<span class="m-mini-label">Hosted</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-scroll"></i>
+					<span class="m-mini-value">{fmt(d.quests_enrolled)}</span>
+					<span class="m-mini-label">Quests</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-award"></i>
+					<span class="m-mini-value">{fmt(d.quests_claimed)}</span>
+					<span class="m-mini-label">Rewards claimed</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-tower-broadcast"></i>
+					<span class="m-mini-value">{fmt(d.streams_total)}</span>
+					<span class="m-mini-label">Streams</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-eye"></i>
+					<span class="m-mini-value">{fmt(d.streams_peak_viewers)}</span>
+					<span class="m-mini-label">Peak viewers</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-heart"></i>
+					<span class="m-mini-value">{fmt(d.streams_likes)}</span>
+					<span class="m-mini-label">Likes</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-comment-dots"></i>
+					<span class="m-mini-value">{fmt(d.feedback_submitted)}</span>
+					<span class="m-mini-label">Feedback given</span>
+				</div>
+			</div>
 		</div>
-		<div class="m-mini-grid">
-			<div class="m-mini">
-				<i class="fas fa-ticket"></i>
-				<span class="m-mini-value">{fmt(d.giveaways_entered)}</span>
-				<span class="m-mini-label">Giveaways entered</span>
-			</div>
-			<div class="m-mini">
-				<i class="fas fa-medal"></i>
-				<span class="m-mini-value">{fmt(d.giveaways_won)}</span>
-				<span class="m-mini-label">Giveaways won</span>
-			</div>
-			<div class="m-mini">
-				<i class="fas fa-gift"></i>
-				<span class="m-mini-value">{fmt(d.giveaways_hosted)}</span>
-				<span class="m-mini-label">Hosted</span>
-			</div>
-			<div class="m-mini">
-				<i class="fas fa-scroll"></i>
-				<span class="m-mini-value">{fmt(d.quests_enrolled)}</span>
-				<span class="m-mini-label">Quests</span>
-			</div>
-			<div class="m-mini">
-				<i class="fas fa-award"></i>
-				<span class="m-mini-value">{fmt(d.quests_claimed)}</span>
-				<span class="m-mini-label">Rewards claimed</span>
-			</div>
-			<div class="m-mini">
-				<i class="fas fa-tower-broadcast"></i>
-				<span class="m-mini-value">{fmt(d.streams_total)}</span>
-				<span class="m-mini-label">Streams</span>
-			</div>
-			<div class="m-mini">
-				<i class="fas fa-eye"></i>
-				<span class="m-mini-value">{fmt(d.streams_peak_viewers)}</span>
-				<span class="m-mini-label">Peak viewers</span>
-			</div>
-			<div class="m-mini">
-				<i class="fas fa-heart"></i>
-				<span class="m-mini-value">{fmt(d.streams_likes)}</span>
-				<span class="m-mini-label">Likes</span>
-			</div>
-			<div class="m-mini">
-				<i class="fas fa-comment-dots"></i>
-				<span class="m-mini-value">{fmt(d.feedback_submitted)}</span>
-				<span class="m-mini-label">Feedback given</span>
-			</div>
-		</div>
-	</div>
 	</div>
 </div>

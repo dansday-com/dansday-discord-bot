@@ -236,7 +236,7 @@
 				<div class="m-gamble-again">
 					<button class="m-gamble-reset" onclick={resetGamble}><i class="fas fa-sliders"></i>Change bet</button>
 					<button class="m-gamble-play m-gamble-play--charged" disabled={wagerXp <= 0 || wagerXp > spendable} onclick={play}>
-						<i class="fas fa-rotate-right"></i>Spin again {multiplier.toFixed(2)}× · {fmt(wagerXp)}
+						<i class="fas fa-rotate-right"></i>Spin again
 					</button>
 				</div>
 			{:else}

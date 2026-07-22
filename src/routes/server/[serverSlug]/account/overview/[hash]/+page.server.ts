@@ -70,7 +70,7 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 	const priceMap = assetsEnabled ? await loadAssetPriceMap().catch(() => ({})) : {};
 	const [dashboard, insights, levelFriends, positionRows] = await Promise.all([
 		db.getMemberDashboard(shared.member.id, priceMap as any).catch(() => null),
-		db.getMemberInsights(shared.member.id).catch(() => null),
+		db.getMemberInsights(shared.member.id, server.id).catch(() => null),
 		db.getMemberLevelFriends(shared.member.id, 5).catch(() => []),
 		assetsEnabled ? db.getOpenAssetPositions(shared.member.id).catch(() => []) : []
 	]);
@@ -82,11 +82,13 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 		const buyPrice = Number(pos.buy_price) || 0;
 		const market = (priceMap as any)[key];
 		const price = Number(market?.price) > 0 ? Number(market.price) : buyPrice;
-		const value = buyPrice > 0 ? Math.round(invested * (price / buyPrice)) : invested;
+		const preciseValue = buyPrice > 0 ? invested * (price / buyPrice) : invested;
+		const value = Math.round(preciseValue);
 		const existing = holdingMap.get(key);
 		if (existing) {
 			existing.invested += invested;
 			existing.value += value;
+			existing.preciseValue += preciseValue;
 		} else {
 			holdingMap.set(key, {
 				symbol: pos.symbol || pos.asset_name || 'Asset',
@@ -94,12 +96,17 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 				image: pos.asset_image ?? null,
 				change24h: Number(market?.change24h) || 0,
 				invested,
-				value
+				value,
+				preciseValue
 			});
 		}
 	}
 	const positions = [...holdingMap.values()]
-		.map((h) => ({ ...h, pnl: h.value - h.invested, pnlPercent: h.invested > 0 ? ((h.value - h.invested) / h.invested) * 100 : 0 }))
+		.map(({ preciseValue, ...h }) => ({
+			...h,
+			pnl: h.value - h.invested,
+			pnlPercent: h.invested > 0 ? ((preciseValue - h.invested) / h.invested) * 100 : 0
+		}))
 		.sort((a, b) => b.value - a.value);
 
 	return { ...shared, profile, dashboard, insights, levelFriends, positions };

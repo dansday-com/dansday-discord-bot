@@ -142,7 +142,7 @@
 	let buyBusy = $state(false);
 
 	const BUY_PCTS = [25, 50, 75, 100];
-	const MIN_BUY = 1000;
+	const MIN_BUY = 10_000;
 	function setBuyPct(p: number) {
 		buyAmount = Math.floor((ctx.liveXp * p) / 100);
 	}

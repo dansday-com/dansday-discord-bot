@@ -53,7 +53,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
 			insufficient_xp: 'Not enough XP.',
 			price_unavailable: 'Price unavailable right now, try again shortly.',
 			invalid_amount: 'Enter a valid XP amount.',
-			below_minimum: `Minimum investment is ${webhookResult.body?.min ?? 1000} XP.`
+			below_minimum: `Minimum investment is ${webhookResult.body?.min ?? 10_000} XP.`
 		};
 		const err = friendly[code] || code || (webhookResult.status === 502 ? 'Could not reach the bot.' : 'Buy failed.');
 		return json({ success: false, error: err }, { status: webhookResult.status === 502 ? 502 : 400 });

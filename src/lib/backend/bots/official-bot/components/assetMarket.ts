@@ -13,7 +13,7 @@ const MARKETS_PER_PAGE = 50;
 const UNIVERSE_PER_PAGE = 250;
 const UNIVERSE_PAGES = 4;
 const MOVERS_COUNT = 50;
-export const MIN_BUY_XP = 1000;
+export const MIN_BUY_XP = 10_000;
 
 const MARKETS_KEY = 'assets:markets';
 const MOVERS_KEY = 'assets:movers';

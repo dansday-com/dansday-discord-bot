@@ -56,6 +56,7 @@
 	});
 
 	const marketProfit = $derived(Number(liveStats.assets_realized_net) || 0);
+	const marketUnrealized = $derived(Number(liveStats.assets_unrealized_net) || 0);
 
 	const heistMix = $derived.by(() => {
 		const landed = Math.max(0, Number(liveStats.items_steals_landed) || 0);
@@ -441,10 +442,16 @@
 		<div class="m-overview-hero">
 			<p class="m-overview-hero-label">XP in the market</p>
 			<p class="m-overview-hero-value">{fmt(liveStats.assets_market_value)}</p>
-			<p class="m-overview-hero-hint m-hero-trend" class:m-hero-trend--up={marketProfit >= 0} class:m-hero-trend--down={marketProfit < 0}>
-				<i class="fas {marketProfit >= 0 ? 'fa-arrow-trend-up' : 'fa-arrow-trend-down'}"></i>
-				{marketProfit >= 0 ? '+' : '−'}{fmt(Math.abs(marketProfit))} XP realized P/L
-			</p>
+			<div class="m-hero-trend-row">
+				<p class="m-overview-hero-hint m-hero-trend" class:m-hero-trend--up={marketUnrealized >= 0} class:m-hero-trend--down={marketUnrealized < 0}>
+					<i class="fas {marketUnrealized >= 0 ? 'fa-arrow-trend-up' : 'fa-arrow-trend-down'}"></i>
+					{marketUnrealized >= 0 ? '+' : '−'}{fmt(Math.abs(marketUnrealized))} XP unrealized P/L
+				</p>
+				<p class="m-overview-hero-hint m-hero-trend" class:m-hero-trend--up={marketProfit >= 0} class:m-hero-trend--down={marketProfit < 0}>
+					<i class="fas {marketProfit >= 0 ? 'fa-arrow-trend-up' : 'fa-arrow-trend-down'}"></i>
+					{marketProfit >= 0 ? '+' : '−'}{fmt(Math.abs(marketProfit))} XP realized P/L
+				</p>
+			</div>
 		</div>
 		<div class="m-bar-block">
 			<div class="m-bar-head">

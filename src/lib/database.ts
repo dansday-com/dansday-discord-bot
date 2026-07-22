@@ -2410,6 +2410,7 @@ export async function getServerEconomyStats(serverId: any, priceMap: Record<stri
 	return {
 		assets_invested: invested,
 		assets_market_value: marketValue,
+		assets_unrealized_net: marketValue - invested,
 		assets_open_positions: positions.length,
 		assets_traders: traders.size,
 		assets_buy_volume: Number(al.buy_volume) || 0,

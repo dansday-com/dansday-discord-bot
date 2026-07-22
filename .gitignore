@@ -3,3 +3,5 @@
 .svelte-kit
 /build
 /bots
+.claude
+/graphify-out

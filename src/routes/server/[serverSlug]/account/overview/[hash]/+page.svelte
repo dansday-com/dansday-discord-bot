@@ -400,10 +400,10 @@
 						</svg>
 						<div class="m-donut-legend">
 							{#each allocationPie.segments as seg}
-								<div class="m-donut-leg">
+								<div class="m-donut-leg m-donut-leg--tight">
 									<span class="m-donut-dot" style="background: {seg.color};"></span>
 									<span class="m-donut-leg-name">{seg.label}</span>
-									<span class="m-donut-leg-val">{seg.pct.toFixed(0)}%</span>
+									<span class="m-donut-leg-pct">{seg.pct.toFixed(0)}%</span>
 								</div>
 							{/each}
 						</div>

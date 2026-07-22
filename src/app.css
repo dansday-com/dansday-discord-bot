@@ -4285,8 +4285,8 @@
 	align-items: center;
 	gap: 13px;
 	margin-bottom: 16px;
-	padding: 12px 18px;
-	height: 112px;
+	padding: 14px 18px;
+	min-height: 104px;
 	box-sizing: border-box;
 	border-radius: 16px;
 	background: linear-gradient(135deg, #245f73, #173f4d);
@@ -5512,7 +5512,6 @@
 @media (max-width: 400px) {
 	.m-root .m-xp {
 		padding: 12px 14px;
-		height: 122px;
 	}
 	.m-root .m-xp-amount {
 		font-size: 22px;
@@ -7404,4 +7403,13 @@
 	font-size: 12px;
 	line-height: 1.4;
 	color: var(--lb-text-muted);
+}
+.m-donut-leg--tight .m-donut-leg-name {
+	flex: 0 1 auto;
+}
+.m-donut-leg-pct {
+	font-variant-numeric: tabular-nums;
+	color: var(--lb-text-muted);
+	font-weight: 700;
+	font-size: 12px;
 }

@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { publicServerPath } from '$lib/url.js';
 
@@ -24,7 +23,8 @@
 	const accountHref = $derived(accountHash ? `${basePath}/account/overview/${accountHash}` : `${basePath}/account`);
 
 	let hasStoredCard = $state(false);
-	onMount(() => {
+	$effect(() => {
+		pathNorm;
 		try {
 			hasStoredCard = !!sessionStorage.getItem(`items_card_${server.slug}`);
 		} catch {

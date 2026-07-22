@@ -1,4 +1,17 @@
-export type ItemEffectId = 'steal' | 'bomb' | 'boost' | 'shield' | 'leech' | 'reflect' | 'insurance' | 'gift' | 'bounty' | 'spy' | 'disguise' | 'purifier';
+export type ItemEffectId =
+	| 'steal'
+	| 'bomb'
+	| 'boost'
+	| 'shield'
+	| 'leech'
+	| 'reflect'
+	| 'insurance'
+	| 'gift'
+	| 'bounty'
+	| 'spy'
+	| 'disguise'
+	| 'purifier'
+	| 'luck';
 
 export const BAG_CAPACITY = 50;
 
@@ -9,6 +22,13 @@ export function effectiveBagStock(inventory: { quantity?: number; enabled?: bool
 		if (!enabled && !usable) return sum;
 		return sum + (Number(r.quantity) || 0);
 	}, 0);
+}
+
+export function discountedItemCost(cost: any, luckPercent: any): number {
+	const base = Math.max(0, Number(cost) || 0);
+	const luck = Math.max(0, Number(luckPercent) || 0);
+	if (luck <= 0) return base;
+	return Math.max(0, Math.floor(base * (1 - luck / 100)));
 }
 
 export function formatDuration(minutes: any): string {
@@ -231,6 +251,21 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		defaultCost: 600,
 		defaultConfig: {},
 		summary: () => `Wipe all your active effects: shields, leeches, immunity and more.`
+	},
+	{
+		id: 'luck',
+		label: 'Luck',
+		icon: 'fa-clover',
+		accent: '#3fa34d',
+		emoji: '🍀',
+		verb: 'Activate',
+		targeted: false,
+		announced: true,
+		expiringBuff: true,
+		defaultCost: 550,
+		defaultConfig: { luck_percent: 20, effect_duration_minutes: 60 },
+		buffExpiredText: (v) => `Your **+${v || 0}% Luck** has worn off.`,
+		summary: (c) => `+${c.luck_percent}% luck · ${formatDuration(c.effect_duration_minutes)}`
 	}
 ];
 
@@ -331,6 +366,10 @@ export function effectMeta(item: { effect_type: string; config?: any }): EffectM
 		case 'spy':
 			if (Number(c.spy_chance ?? 100) < 100) chips.push({ icon: 'fa-percent', label: `${c.spy_chance}%` });
 			break;
+		case 'luck':
+			chips.push({ icon: 'fa-percent', label: `+${c.luck_percent ?? 0}%` });
+			chips.push({ icon: 'fa-hourglass-half', label: formatDuration(c.effect_duration_minutes) });
+			break;
 	}
 	return chips;
 }
@@ -412,6 +451,11 @@ const EFFECT_GUIDES: Record<string, EffectGuide> = {
 		what: 'Wipe every active effect off yourself: shields, boosts, leeches, disguise and immunity.',
 		how: 'Activate on yourself. Each effect ends immediately. Your attack cooldowns are NOT cleared.',
 		tip: 'The fastest way to shake off a leech that’s draining you.'
+	},
+	luck: {
+		what: 'Boost your fortune across the board: better minigame odds, sharper spying, bigger leech skims, lower gift tax, bigger insurance refunds, a stronger friend boost, and discounted shop prices.',
+		how: 'Activate on yourself, no target needed. The percentage applies on top of every roll and rate you control while it lasts.',
+		tip: 'Pop it before a big minigame session or a shopping spree to stretch every bit of XP further.'
 	}
 };
 
@@ -658,6 +702,15 @@ export function describeItemOutcome(effectType: string, result: any): ItemOutcom
 			icon: effectIcon('boost'),
 			title: 'Boost Active',
 			line: `Your XP earnings are multiplied while it lasts.`,
+			deltaXp: null,
+			untilMs: toMs(r.expiresAt)
+		};
+	if (effectType === 'luck')
+		return {
+			tone: 'win',
+			icon: effectIcon('luck'),
+			title: 'Luck Active',
+			line: `+${r.luckPercent ?? 0}% luck on minigames, spy, leech, gift tax, insurance, friend boost and shop prices.`,
 			deltaXp: null,
 			untilMs: toMs(r.expiresAt)
 		};

@@ -2,6 +2,7 @@ import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 import { evaluateMemberLevelAndRank, determineLevel } from './leveling.js';
 import { getSpendableXp, spendXp } from './xp-economy.js';
+import { getActiveLuckPercent } from './items.js';
 
 const MIN_MULTIPLIER = 1.01;
 const MAX_MULTIPLIER = 10;
@@ -43,7 +44,9 @@ export async function handleMinigamePlay(client: any, payload: any) {
 	if (!actorMemberId) return { ok: false, error: 'member_not_found' };
 
 	const mult = clampMultiplier(multiplier);
-	const chance = winChanceFor(mult);
+	const luckPercent = await getActiveLuckPercent(actorMemberId);
+	const baseChance = winChanceFor(mult);
+	const chance = luckPercent > 0 ? Math.min(100, baseChance * (1 + luckPercent / 100)) : baseChance;
 
 	const balance = await getSpendableXp(actorMemberId, guild_id);
 	const wager = Math.max(0, Math.floor(Number(amount) || 0));
@@ -84,7 +87,7 @@ export async function handleMinigamePlay(client: any, payload: any) {
 
 	await evaluateMemberLevelAndRank(guild_id, actorMemberId, { reason: 'minigame' }).catch(() => null);
 
-	const result = { outcome: won ? 'win' : 'lose', won, wager, payout, net: netChange, multiplier: mult, chance };
+	const result = { outcome: won ? 'win' : 'lose', won, wager, payout, net: netChange, multiplier: mult, chance, luckPercent };
 	setTimeout(() => {
 		announceMinigame(client, { guildId: guild_id, actorDiscordId: actor_discord_id, result }).catch(() => null);
 	}, ANNOUNCE_DELAY_MS);

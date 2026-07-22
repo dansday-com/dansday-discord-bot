@@ -27,9 +27,12 @@
 	const MAX_MULT = 10;
 	const WAGER_PERCENTS = [25, 50, 75, 100];
 
+	const luckPercent = $derived(Number(ctx.luckPercent) || 0);
+
 	let playing = $state<string | null>(null);
 	let multiplier = $state(2);
-	const winChance = $derived(100 / multiplier);
+	const baseWinChance = $derived(100 / multiplier);
+	const winChance = $derived(luckPercent > 0 ? Math.min(100, baseWinChance * (1 + luckPercent / 100)) : baseWinChance);
 	let gamblePercent = $state<number | 'custom'>(25);
 	let gambleCustom = $state<number | null>(null);
 	let busy = $state(false);
@@ -226,7 +229,9 @@
 				<div class="m-mg-mult">
 					<div class="m-mg-mult-head">
 						<span>Multiplier <strong>{multiplier.toFixed(2)}×</strong></span>
-						<span class="m-mg-chance">Win chance {winChance.toFixed(1)}%</span>
+						<span class="m-mg-chance"
+							>Win chance {winChance.toFixed(1)}%{#if luckPercent > 0}<span class="m-mg-luck"> (+{luckPercent}% luck 🍀)</span>{/if}</span
+						>
 					</div>
 					<input type="range" class="m-mg-slider" min={MIN_MULT} max={MAX_MULT} step="0.05" bind:value={multiplier} disabled={busy} />
 				</div>

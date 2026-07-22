@@ -2,7 +2,7 @@ import { createHash } from 'crypto';
 import { request as httpRequest } from 'http';
 import db from '$lib/database.js';
 import { parseMySQLDateTimeUtc } from '$lib/utils/index.js';
-import { itemAvailability, effectiveBagStock } from '$lib/items.js';
+import { itemAvailability, effectiveBagStock, discountedItemCost } from '$lib/items.js';
 
 export function computeCardToken(discordMemberId: string, memberSince: any): string {
 	const dt = parseMySQLDateTimeUtc(memberSince);
@@ -170,6 +170,14 @@ export async function loadItemsShared(server: any, hash: string, subKey?: 'items
 		return base;
 	});
 
+	const luckEffect = (effectRows as any[]).find((e) => e.effect_type === 'luck');
+	const luckPercent = luckEffect ? Number(luckEffect.effect_value) || 0 : 0;
+	const pricedItems = (items as any[]).map((i) => {
+		const original = Number(i.cost) || 0;
+		const cost = discountedItemCost(original, luckPercent);
+		return cost !== original ? { ...i, cost, original_cost: original } : i;
+	});
+
 	const cooldownMinByAction: Record<'steal' | 'bomb', number> = { steal: 0, bomb: 0 };
 	const immunityMinByAction: Record<'steal' | 'bomb', number> = { steal: 0, bomb: 0 };
 	for (const it of items as any[]) {
@@ -219,7 +227,7 @@ export async function loadItemsShared(server: any, hash: string, subKey?: 'items
 	return {
 		readOnly: false as const,
 		member,
-		items,
+		items: pricedItems,
 		hash,
 		bagStock,
 		categories: [...new Set([...enabledCategories, ...(invRows as any[]).map((r) => r.effect_type)])],
@@ -250,7 +258,8 @@ export async function loadItemsShared(server: any, hash: string, subKey?: 'items
 		immuneUntil,
 		insuranceCooldownUntil,
 		bountyTotal,
-		levelReq
+		levelReq,
+		luckPercent
 	};
 }
 

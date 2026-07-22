@@ -14,7 +14,7 @@ import db from '../../../../database.js';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../utils/index.js';
 import { getRedisClient } from '../../../../redis.js';
-import { applyAwardEffects, creditLeechers } from './items.js';
+import { applyAwardEffects, creditLeechers, getActiveLuckPercent } from './items.js';
 
 const recentMessages = new Map();
 
@@ -718,7 +718,8 @@ async function awardVoiceXPLocked(server, dbMember, guildId, reason, previousSta
 	const { memberXp: baseAwardXp, leechCredits } = award;
 
 	const { count: friendCount, discordIds: friendDiscordIds } = await countVoiceFriends(guildId, dbMember.discord_member_id);
-	const friendPercent = friendCount * 10;
+	const luckPercent = await getActiveLuckPercent(dbMember.id);
+	const friendPercent = Math.round(friendCount * 10 * (1 + luckPercent / 100));
 	const friendBonus = Math.floor((baseAwardXp * friendPercent) / 100);
 	const xpGained = baseAwardXp + friendBonus;
 	(award as any).friendPercent = friendPercent;

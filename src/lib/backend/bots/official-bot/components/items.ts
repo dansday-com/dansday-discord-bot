@@ -12,7 +12,8 @@ import {
 	effectAccentInt,
 	formatDuration,
 	DISGUISED_MENTION,
-	disguisedText
+	disguisedText,
+	discountedItemCost
 } from '../../../../items.js';
 
 const EFFECT_CACHE_TTL_MS = 5000;
@@ -90,17 +91,22 @@ export async function computeAwardModifiers(memberId: any, source: any = 'all', 
 
 	const shielded = effects.some((e: any) => e.effect_type === 'shield');
 	const protectedFromLeech = shielded || (guildId != null && !!(await targetImmuneUntil(memberId, guildId)));
+	const victimLuck = effects.find((e: any) => e.effect_type === 'luck' && Number(e.owner_member_id) === Number(memberId));
+	const victimLuckPercent = victimLuck ? Math.max(0, Number(victimLuck.effect_value) || 0) : 0;
 
 	for (const effect of effects) {
 		if (effect.effect_type === 'boost' && effectScopeMatches(effect, source)) {
 			const m = Number(effect.effect_value) || 0;
 			if (m > 0) multiplier *= m;
 		} else if (effect.effect_type === 'leech' && !protectedFromLeech) {
-			const pct = Number(effect.effect_value) || 0;
+			const rawPct = Number(effect.effect_value) || 0;
 			const targetsThisMember = Number(effect.target_member_id) === Number(memberId);
-			if (pct > 0 && targetsThisMember && effect.beneficiary_member_id != null) {
-				skimPercent += pct;
-				leeches.push({ beneficiaryMemberId: Number(effect.beneficiary_member_id), percent: pct });
+			if (rawPct > 0 && targetsThisMember && effect.beneficiary_member_id != null) {
+				const pct = applyLuckReduction(rawPct, victimLuckPercent);
+				if (pct > 0) {
+					skimPercent += pct;
+					leeches.push({ beneficiaryMemberId: Number(effect.beneficiary_member_id), percent: pct });
+				}
 			}
 		}
 	}
@@ -203,6 +209,22 @@ function rollPercent(minPercent: any, maxPercent: any) {
 async function hasActiveShield(memberId: any) {
 	const effects = await getCachedActiveEffects(memberId);
 	return effects.some((e: any) => e.effect_type === 'shield');
+}
+
+export async function getActiveLuckPercent(memberId: any): Promise<number> {
+	const effects = await getCachedActiveEffects(memberId);
+	const luck = effects.find((e: any) => e.effect_type === 'luck' && Number(e.owner_member_id) === Number(memberId));
+	return luck ? Math.max(0, Number(luck.effect_value) || 0) : 0;
+}
+
+function applyLuckBoost(value: number, luckPercent: number, max = 100): number {
+	if (luckPercent <= 0) return value;
+	return Math.min(max, value * (1 + luckPercent / 100));
+}
+
+function applyLuckReduction(value: number, luckPercent: number): number {
+	if (luckPercent <= 0) return value;
+	return Math.max(0, value * (1 - luckPercent / 100));
 }
 
 async function attackCooldownUntil(actorMemberId: any, cooldownMinutes: any, action: 'steal' | 'bomb'): Promise<Date | null> {
@@ -424,9 +446,11 @@ export async function resolveLeech({ memberItemId, actorMemberId, targetMemberId
 		const who = beneficiary?.server_display_name || beneficiary?.display_name || beneficiary?.username || 'another member';
 		return { outcome: 'leeched', error: `This member is already being leeched by ${who}.` };
 	}
+	const luckPercent = await getActiveLuckPercent(actorMemberId);
+	const skimPercent = Math.round(applyLuckBoost(Math.max(0, Number(cfg.skim_percent ?? 10)), luckPercent));
 	const expiresAt = computeExpiry(cfg.effect_duration_minutes);
 	await db.addMemberItemActive(memberItemId, {
-		effect_value: Number(cfg.skim_percent ?? 10),
+		effect_value: skimPercent,
 		beneficiary_member_id: actorMemberId,
 		target_member_id: targetMemberId,
 		expires_at: expiresAt
@@ -490,7 +514,8 @@ export async function resolveInsurance({ memberItemId, ownerMemberId, config }: 
 	const cfg = parseConfig(config);
 	const cooldownUntil = await activationCooldownUntil(ownerMemberId, cfg.cooldown_minutes, 'insurance');
 	if (cooldownUntil) return { outcome: 'cooldown', error: `Insurance is on cooldown. Try again in ${humanizeUntil(cooldownUntil)}.` };
-	const refundPercent = Math.max(0, Math.min(100, Number(cfg.refund_percent ?? 100)));
+	const luckPercent = await getActiveLuckPercent(ownerMemberId);
+	const refundPercent = Math.round(applyLuckBoost(Math.max(0, Math.min(100, Number(cfg.refund_percent ?? 100))), luckPercent));
 	return runSelfBuff({
 		memberItemId,
 		ownerMemberId,
@@ -498,6 +523,19 @@ export async function resolveInsurance({ memberItemId, ownerMemberId, config }: 
 		effectValue: refundPercent,
 		durationMinutes: cfg.effect_duration_minutes,
 		extra: { refundPercent }
+	});
+}
+
+export async function resolveLuck({ memberItemId, ownerMemberId, config }: any) {
+	const cfg = parseConfig(config);
+	const luckPercent = Math.max(0, Number(cfg.luck_percent ?? 20));
+	return runSelfBuff({
+		memberItemId,
+		ownerMemberId,
+		action: 'luck',
+		effectValue: luckPercent,
+		durationMinutes: cfg.effect_duration_minutes,
+		extra: { luckPercent }
 	});
 }
 
@@ -509,7 +547,8 @@ export async function resolveGift({ actorMemberId, actorMemberItemId, targetMemb
 		await logAction(actorMemberId, { member_item_id: actorMemberItemId, target_member_id: targetMemberId, action: 'gift', actor_disguised: actorDisguised });
 		return { outcome: 'success', xp: 0, actorDisguised };
 	}
-	const taxPercent = Math.max(0, Math.min(100, Number(cfg.tax_percent) || 0));
+	const luckPercent = await getActiveLuckPercent(actorMemberId);
+	const taxPercent = applyLuckReduction(Math.max(0, Math.min(100, Number(cfg.tax_percent) || 0)), luckPercent);
 	const received = Math.max(0, amount - Math.floor((amount * taxPercent) / 100));
 
 	await db.ensureMemberLevel(targetMemberId);
@@ -546,7 +585,8 @@ export async function resolveBounty({ actorMemberId, actorMemberItemId, targetMe
 export async function resolveSpy({ actorMemberId, actorMemberItemId, targetMemberId, config, guildId }: any) {
 	const targetName = await spyTargetName(targetMemberId);
 	const cfg = parseConfig(config);
-	const chance = Math.max(0, Math.min(100, Number(cfg.spy_chance ?? 100)));
+	const luckPercent = await getActiveLuckPercent(actorMemberId);
+	const chance = Math.round(applyLuckBoost(Math.max(0, Math.min(100, Number(cfg.spy_chance ?? 100))), luckPercent));
 	const caught = chance < 100 && Math.floor(Math.random() * 100) + 1 > chance;
 
 	if (caught) {
@@ -758,7 +798,8 @@ const ITEM_HANDLERS: Record<string, ItemHandler> = {
 	reflect: { selfBuff: true, resolve: (c) => resolveReflect({ memberItemId: c.memberItemId, ownerMemberId: c.actorMemberId, config: c.config }) },
 	disguise: { selfBuff: true, resolve: (c) => resolveDisguise({ memberItemId: c.memberItemId, ownerMemberId: c.actorMemberId, config: c.config }) },
 	insurance: { selfBuff: true, resolve: (c) => resolveInsurance({ memberItemId: c.memberItemId, ownerMemberId: c.actorMemberId, config: c.config }) },
-	purifier: { resolve: (c) => resolvePurifier({ memberItemId: c.memberItemId, ownerMemberId: c.actorMemberId }) }
+	purifier: { resolve: (c) => resolvePurifier({ memberItemId: c.memberItemId, ownerMemberId: c.actorMemberId }) },
+	luck: { selfBuff: true, resolve: (c) => resolveLuck({ memberItemId: c.memberItemId, ownerMemberId: c.actorMemberId, config: c.config }) }
 };
 
 export async function handleItemUse(client: any, payload: any) {
@@ -955,7 +996,9 @@ export async function handleItemBuy(client: any, payload: any) {
 	if (!actorMemberId) return { ok: false, error: 'member_not_found' };
 
 	const qty = Math.max(1, Math.min(99, Number(quantity) || 1));
-	const totalCost = (Number(item.cost) || 0) * qty;
+	const luckPercent = await getActiveLuckPercent(actorMemberId);
+	const unitCost = discountedItemCost(item.cost, luckPercent);
+	const totalCost = unitCost * qty;
 
 	const inventory = await db.getMemberInventory(actorMemberId).catch(() => []);
 	const bagStock = effectiveBagStock(inventory as any[]);
@@ -1071,7 +1114,14 @@ const ITEM_EMBEDS: Record<string, (ctx: EmbedCtx) => any> = {
 		return ctx.embed
 			.setTitle('⚡ Boost Activated')
 			.setDescription(`${ctx.actorMention} activated a boost${untilRel ? ` (active until ${untilRel})` : ''}. Earnings are multiplied while it lasts.`);
-	}
+	},
+	luck: (ctx) =>
+		buffEmbed(
+			ctx,
+			'🍀',
+			'Luck Activated',
+			`is now running +${ctx.result?.luckPercent ?? 0}% luck across minigames, spy, leech, gift tax, insurance, friend boost and shop prices`
+		)
 };
 
 function attackEmbed(ctx: EmbedCtx) {

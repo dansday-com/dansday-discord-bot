@@ -128,6 +128,7 @@
 			return `Leeching ${e.leechWith} (${e.effect_value || 0}%)`;
 		}
 		if (e.effect_type === 'insurance') return `Insurance (${e.effect_value || 0}% refund)`;
+		if (e.effect_type === 'luck') return `+${e.effect_value || 0}% Luck`;
 		return effectLabel(e.effect_type);
 	}
 	const cooldownLabels: Record<string, string> = {
@@ -254,7 +255,12 @@
 		{/if}
 
 		<div class="m-card-foot">
-			<span class="m-card-price" class:m-card-price--short={!ctx.readOnly && !affordable}>{fmt(item.cost)}<span class="m-card-price-unit">XP</span></span>
+			<span class="m-card-price" class:m-card-price--short={!ctx.readOnly && !affordable}>
+				{#if item.original_cost != null && item.original_cost > item.cost}
+					<span class="m-card-price-strike">{fmt(item.original_cost)}</span>
+				{/if}
+				{fmt(item.cost)}<span class="m-card-price-unit">XP</span>
+			</span>
 
 			{#if ctx.readOnly}
 				<div class="m-card-actions">

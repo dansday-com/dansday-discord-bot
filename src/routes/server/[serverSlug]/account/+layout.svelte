@@ -283,10 +283,14 @@
 		burstId = id;
 	}
 
-	const SELF_BUFFS = new Set(['boost', 'shield', 'reflect', 'insurance', 'disguise']);
+	const SELF_BUFFS = new Set(['boost', 'shield', 'reflect', 'insurance', 'disguise', 'luck']);
 	function isBuffActive(effectType: string): boolean {
 		if (!SELF_BUFFS.has(effectType)) return false;
 		return ((pd.activeEffects ?? []) as any[]).some((e) => e.effect_type === effectType && e.expiresAt && e.expiresAt > now);
+	}
+	function activeLuckPercent(): number {
+		const luck = ((pd.activeEffects ?? []) as any[]).find((e) => e.effect_type === 'luck' && e.expiresAt && e.expiresAt > now);
+		return luck ? Number(luck.effect_value) || 0 : 0;
 	}
 
 	setContext('items', {
@@ -313,6 +317,9 @@
 		},
 		get liveXp() {
 			return liveXp;
+		},
+		get luckPercent() {
+			return activeLuckPercent();
 		},
 		bagCapacity: BAG_CAPACITY,
 		get bagStock() {

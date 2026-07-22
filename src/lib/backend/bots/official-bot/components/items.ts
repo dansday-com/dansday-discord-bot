@@ -457,7 +457,7 @@ export async function resolveLeech({ memberItemId, actorMemberId, targetMemberId
 	});
 	await logAction(actorMemberId, { member_item_id: memberItemId, target_member_id: targetMemberId, action: 'leech', actor_disguised: actorDisguised });
 	await invalidateEffectCache(targetMemberId);
-	return { outcome: 'success', expiresAt, actorDisguised };
+	return { outcome: 'success', expiresAt, skimPercent, luckPercent, actorDisguised };
 }
 
 export function resolveReflect({ memberItemId, ownerMemberId, config }: any) {
@@ -522,7 +522,7 @@ export async function resolveInsurance({ memberItemId, ownerMemberId, config }: 
 		action: 'insurance',
 		effectValue: refundPercent,
 		durationMinutes: cfg.effect_duration_minutes,
-		extra: { refundPercent }
+		extra: { refundPercent, luckPercent }
 	});
 }
 
@@ -562,7 +562,7 @@ export async function resolveGift({ actorMemberId, actorMemberItemId, targetMemb
 		xp_amount: received,
 		actor_disguised: actorDisguised
 	});
-	return { outcome: 'success', xp: received, actorDisguised };
+	return { outcome: 'success', xp: received, taxPercent, luckPercent, actorDisguised };
 }
 
 export async function resolveBounty({ actorMemberId, actorMemberItemId, targetMemberId, config, guildId }: any) {
@@ -1082,15 +1082,22 @@ const ITEM_EMBEDS: Record<string, (ctx: EmbedCtx) => any> = {
 	leech: (ctx) => {
 		const defended = attackDefendedEmbed(ctx, 'leech');
 		if (defended) return defended;
+		const skimNote = ctx.result?.luckPercent > 0 ? ` (+${ctx.result.luckPercent}% luck 🍀)` : '';
 		return ctx.embed
 			.setTitle('🩸 Leech Attached')
-			.setDescription(`${ctx.actorMention} attached a leech to ${ctx.targetMention}, siphoning a cut of their XP while active.`);
+			.setDescription(`${ctx.actorMention} attached a leech to ${ctx.targetMention}, siphoning a cut of their XP while active.`)
+			.addFields({ name: 'Skim rate', value: `${ctx.result?.skimPercent ?? 0}%${skimNote}`, inline: true });
 	},
-	gift: (ctx) =>
-		ctx.embed
+	gift: (ctx) => {
+		const luckNote = ctx.result?.luckPercent > 0 ? ` (−${ctx.result.luckPercent}% luck 🍀 on tax)` : '';
+		return ctx.embed
 			.setTitle('🎁 Gift Sent')
 			.setDescription(`${ctx.actorMention} sent a gift to ${ctx.targetMention}!`)
-			.addFields({ name: 'Received', value: fmtXp(ctx.result?.xp), inline: true }),
+			.addFields(
+				{ name: 'Received', value: fmtXp(ctx.result?.xp), inline: true },
+				...(ctx.result?.taxPercent > 0 || luckNote ? [{ name: 'Tax', value: `${(ctx.result?.taxPercent ?? 0).toFixed(1)}%${luckNote}`, inline: true }] : [])
+			);
+	},
 	bounty: (ctx) =>
 		ctx.embed
 			.setTitle('🎯 Bounty Placed')
@@ -1107,8 +1114,15 @@ const ITEM_EMBEDS: Record<string, (ctx: EmbedCtx) => any> = {
 	},
 	shield: (ctx) => buffEmbed(ctx, '🛡️', 'Shield Activated', 'is now protected, so incoming steals, bombs and leeches will be blocked'),
 	reflect: (ctx) => buffEmbed(ctx, '🪞', 'Reflect Activated', 'will bounce the next attack back at the attacker'),
-	insurance: (ctx) =>
-		buffEmbed(ctx, '💵', 'Insurance Activated', `will be refunded ${ctx.result?.refundPercent ?? 100}% of their loss the next time they are robbed or bombed`),
+	insurance: (ctx) => {
+		const luckNote = ctx.result?.luckPercent > 0 ? ` (+${ctx.result.luckPercent}% luck 🍀)` : '';
+		return buffEmbed(
+			ctx,
+			'💵',
+			'Insurance Activated',
+			`will be refunded ${ctx.result?.refundPercent ?? 100}%${luckNote} of their loss the next time they are robbed or bombed`
+		);
+	},
 	boost: (ctx) => {
 		const untilRel = discordRelative(ctx.result?.expiresAt);
 		return ctx.embed

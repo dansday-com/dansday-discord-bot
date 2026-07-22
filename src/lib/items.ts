@@ -628,8 +628,17 @@ export function describeItemOutcome(effectType: string, result: any): ItemOutcom
 		};
 	}
 
-	if (effectType === 'gift')
-		return { tone: 'neutral', icon: effectIcon('gift'), title: 'Gift Sent', line: `They received ${xp.toLocaleString()} XP.`, deltaXp: null, untilMs: null };
+	if (effectType === 'gift') {
+		const luckNote = r.luckPercent > 0 ? ` Your +${r.luckPercent}% luck 🍀 cut the tax.` : '';
+		return {
+			tone: 'neutral',
+			icon: effectIcon('gift'),
+			title: 'Gift Sent',
+			line: `They received ${xp.toLocaleString()} XP.${luckNote}`,
+			deltaXp: null,
+			untilMs: null
+		};
+	}
 	if (effectType === 'bounty')
 		return {
 			tone: 'neutral',
@@ -639,15 +648,17 @@ export function describeItemOutcome(effectType: string, result: any): ItemOutcom
 			deltaXp: -xp,
 			untilMs: null
 		};
-	if (effectType === 'leech')
+	if (effectType === 'leech') {
+		const luckNote = r.luckPercent > 0 ? ` (+${r.luckPercent}% luck 🍀)` : '';
 		return {
 			tone: 'neutral',
 			icon: effectIcon('leech'),
 			title: 'Leech Attached',
-			line: `You'll siphon a cut of their XP while active.`,
+			line: `You'll siphon ${r.skimPercent ?? 0}%${luckNote} of their XP while active.`,
 			deltaXp: null,
 			untilMs: toMs(r.expiresAt)
 		};
+	}
 
 	if (effectType === 'shield')
 		return {
@@ -687,15 +698,17 @@ export function describeItemOutcome(effectType: string, result: any): ItemOutcom
 			untilMs: null
 		};
 	}
-	if (effectType === 'insurance')
+	if (effectType === 'insurance') {
+		const luckNote = r.luckPercent > 0 ? ` (+${r.luckPercent}% luck 🍀)` : '';
 		return {
 			tone: 'win',
 			icon: effectIcon('insurance'),
 			title: 'Insurance Active',
-			line: `The next time you're robbed or bombed, ${r.refundPercent ?? 100}% of your loss is refunded.`,
+			line: `The next time you're robbed or bombed, ${r.refundPercent ?? 100}%${luckNote} of your loss is refunded.`,
 			deltaXp: null,
 			untilMs: toMs(r.expiresAt)
 		};
+	}
 	if (effectType === 'boost')
 		return {
 			tone: 'win',

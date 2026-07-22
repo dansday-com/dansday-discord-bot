@@ -2,7 +2,7 @@ import { createHash } from 'crypto';
 import { request as httpRequest } from 'http';
 import db from '$lib/database.js';
 import { parseMySQLDateTimeUtc } from '$lib/utils/index.js';
-import { itemAvailability, effectiveBagStock, discountedItemCost } from '$lib/items.js';
+import { itemAvailability, effectiveBagStock, discountedItemCost, DISGUISED_MENTION } from '$lib/items.js';
 
 export function computeCardToken(discordMemberId: string, memberSince: any): string {
 	const dt = parseMySQLDateTimeUtc(memberSince);
@@ -36,6 +36,11 @@ export async function resolveActiveBotForServer(server: any): Promise<any | null
 	if (officialBotId == null) return null;
 	const bot = await db.getBot(officialBotId).catch(() => null);
 	return bot ?? null;
+}
+
+async function isMemberDisguised(memberId: any): Promise<boolean> {
+	const effects = await db.getActiveEffectsForMember(memberId).catch(() => []);
+	return ((effects as any[]) || []).some((e) => e.effect_type === 'disguise' && Number(e.owner_member_id) === Number(memberId));
 }
 
 function safeParse(raw: any) {
@@ -152,23 +157,27 @@ export async function loadItemsShared(server: any, hash: string, subKey?: 'items
 
 	const effectRows = await db.getActiveEffectsForMember(member.id).catch(() => []);
 	const nameOf = (sdn: any, dn: any, un: any) => sdn || dn || un || 'a member';
-	const activeEffects = (effectRows as any[]).map((e) => {
-		const base = {
-			effect_type: e.effect_type,
-			effect_value: Number(e.effect_value) || 0,
-			expiresAt: e.expires_at ? new Date(e.expires_at).getTime() : null,
-			leechRole: null as 'attacker' | 'victim' | null,
-			leechWith: null as string | null
-		};
-		if (e.effect_type === 'leech') {
-			const isVictim = Number(e.target_member_id) === Number(member.id);
-			base.leechRole = isVictim ? 'victim' : 'attacker';
-			base.leechWith = isVictim
-				? nameOf(e.beneficiary_server_display_name, e.beneficiary_display_name, e.beneficiary_username)
-				: nameOf(e.target_server_display_name, e.target_display_name, e.target_username);
-		}
-		return base;
-	});
+	const activeEffects = await Promise.all(
+		(effectRows as any[]).map(async (e) => {
+			const base = {
+				effect_type: e.effect_type,
+				effect_value: Number(e.effect_value) || 0,
+				expiresAt: e.expires_at ? new Date(e.expires_at).getTime() : null,
+				leechRole: null as 'attacker' | 'victim' | null,
+				leechWith: null as string | null
+			};
+			if (e.effect_type === 'leech') {
+				const isVictim = Number(e.target_member_id) === Number(member.id);
+				base.leechRole = isVictim ? 'victim' : 'attacker';
+				base.leechWith = isVictim
+					? (await isMemberDisguised(e.beneficiary_member_id))
+						? DISGUISED_MENTION
+						: nameOf(e.beneficiary_server_display_name, e.beneficiary_display_name, e.beneficiary_username)
+					: nameOf(e.target_server_display_name, e.target_display_name, e.target_username);
+			}
+			return base;
+		})
+	);
 
 	const luckEffect = (effectRows as any[]).find((e) => e.effect_type === 'luck');
 	const luckPercent = luckEffect ? Number(luckEffect.effect_value) || 0 : 0;

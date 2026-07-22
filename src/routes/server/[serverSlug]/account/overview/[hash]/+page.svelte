@@ -281,10 +281,10 @@
 					<span class="m-bar-meta">{fmt(voiceMix.total)} min</span>
 				</div>
 				<div class="m-seg-bar m-seg-bar--3" title="Active · AFK · Video · Stream">
-					<div class="m-seg m-seg--text" style="width: {voiceMix.active * grow}%"></div>
-					<div class="m-seg m-seg--other" style="width: {voiceMix.afk * grow}%"></div>
-					<div class="m-seg m-seg--voice" style="width: {voiceMix.video * grow}%"></div>
-					<div class="m-seg m-seg--stream" style="width: {voiceMix.stream * grow}%"></div>
+					<div class="m-seg" style="width: {voiceMix.active * grow}%; background: #1f8a4c;"></div>
+					<div class="m-seg" style="width: {voiceMix.afk * grow}%; background: #b23b3b;"></div>
+					<div class="m-seg" style="width: {voiceMix.video * grow}%; background: #6d5bd0;"></div>
+					<div class="m-seg" style="width: {voiceMix.stream * grow}%; background: #c8911a;"></div>
 				</div>
 			</div>
 		{/if}

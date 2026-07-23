@@ -183,7 +183,7 @@ export async function loadItemsShared(server: any, hash: string, subKey?: 'items
 	const luckPercent = luckEffect ? Number(luckEffect.effect_value) || 0 : 0;
 	const pricedItems = (items as any[]).map((i) => {
 		const original = Number(i.cost) || 0;
-		const cost = discountedItemCost(original, luckPercent);
+		const cost = discountedItemCost(original, luckPercent, i.effect_type);
 		return cost !== original ? { ...i, cost, original_cost: original } : i;
 	});
 

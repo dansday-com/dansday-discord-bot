@@ -1023,7 +1023,7 @@ export async function handleItemBuy(client: any, payload: any) {
 
 	const qty = Math.max(1, Math.min(99, Number(quantity) || 1));
 	const luckPercent = await getActiveLuckPercent(actorMemberId);
-	const unitCost = discountedItemCost(item.cost, luckPercent);
+	const unitCost = discountedItemCost(item.cost, luckPercent, item.effect_type);
 	const totalCost = unitCost * qty;
 
 	const inventory = await db.getMemberInventory(actorMemberId).catch(() => []);

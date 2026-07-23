@@ -24,10 +24,10 @@ export function effectiveBagStock(inventory: { quantity?: number; enabled?: bool
 	}, 0);
 }
 
-export function discountedItemCost(cost: any, luckPercent: any): number {
+export function discountedItemCost(cost: any, luckPercent: any, effectType?: any): number {
 	const base = Math.max(0, Number(cost) || 0);
 	const luck = Math.max(0, Number(luckPercent) || 0);
-	if (luck <= 0) return base;
+	if (luck <= 0 || effectType === 'luck') return base;
 	return Math.max(0, Math.floor(base * (1 - luck / 100)));
 }
 

@@ -40,6 +40,7 @@
 	--color-lb-text-soft: rgba(26, 52, 63, 0.22);
 	--color-lb-border: rgba(187, 189, 188, 0.55);
 	--color-lb-border-light: rgba(187, 189, 188, 0.38);
+	--color-lb-shadow: rgba(26, 52, 63, 0.07);
 
 	--color-chili-dark: #5c331f;
 	--color-chili-brick: #733e24;
@@ -128,29 +129,29 @@
 }
 
 .m-root {
-	--yacht-sand: var(--chili-bg);
-	--yacht-stone: var(--yacht-stone);
-	--yacht-teal: var(--chili-hot);
-	--yacht-mahogany: var(--chili-brick);
-	--chili-dark: var(--chili-dark);
-	--chili-brick: var(--chili-brick);
-	--chili-hot: var(--chili-hot);
-	--chili-peach: var(--chili-peach);
-	--chili-bg: var(--chili-bg);
-	--chili-surface: var(--chili-surface);
-	--chili-surface-mid: var(--chili-surface-mid);
-	--chili-surface-elevated: #ffffff;
-	--lb-text: var(--lb-text);
-	--lb-text-muted: rgba(26, 52, 63, 0.58);
-	--lb-text-subtle: rgba(26, 52, 63, 0.45);
-	--lb-text-faint: rgba(26, 52, 63, 0.32);
-	--lb-text-soft: rgba(26, 52, 63, 0.22);
-	--lb-border: rgba(187, 189, 188, 0.55);
-	--lb-border-light: rgba(187, 189, 188, 0.38);
-	--lb-shadow: rgba(26, 52, 63, 0.07);
-	--asset-up: #1a7f57;
-	--asset-down: #b23b2e;
-	--asset-flat: var(--lb-text-muted);
+	--yacht-sand: var(--color-yacht-sand);
+	--yacht-stone: var(--color-yacht-stone);
+	--yacht-teal: var(--color-yacht-teal);
+	--yacht-mahogany: var(--color-yacht-mahogany);
+	--chili-dark: var(--color-chili-dark);
+	--chili-brick: var(--color-chili-brick);
+	--chili-hot: var(--color-chili-hot);
+	--chili-peach: var(--color-chili-peach);
+	--chili-bg: var(--color-chili-bg);
+	--chili-surface: var(--color-chili-surface);
+	--chili-surface-mid: var(--color-chili-surface-mid);
+	--chili-surface-elevated: var(--color-chili-surface-elevated);
+	--lb-text: var(--color-lb-text);
+	--lb-text-muted: var(--color-lb-text-muted);
+	--lb-text-subtle: var(--color-lb-text-subtle);
+	--lb-text-faint: var(--color-lb-text-faint);
+	--lb-text-soft: var(--color-lb-text-soft);
+	--lb-border: var(--color-lb-border);
+	--lb-border-light: var(--color-lb-border-light);
+	--lb-shadow: var(--color-lb-shadow);
+	--asset-up: var(--color-asset-up);
+	--asset-down: var(--color-asset-down);
+	--asset-flat: var(--color-lb-text-muted);
 	min-height: 100dvh;
 	background: var(--chili-bg);
 }

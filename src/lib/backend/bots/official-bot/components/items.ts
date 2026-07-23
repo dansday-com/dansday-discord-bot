@@ -200,9 +200,9 @@ async function finalizeXpChanges(guildId: any, snapshots: Map<number, { level: a
 	}
 }
 
-function rollPercent(minPercent: any, maxPercent: any) {
+function rollPercent(minPercent: any, maxPercent: any, luckPercent: any = 0) {
 	const min = Math.max(0, Math.min(100, Number(minPercent) || 0));
-	const max = Math.max(min, Math.min(100, Number(maxPercent) || min));
+	const max = applyLuckBoost(Math.max(min, Math.min(100, Number(maxPercent) || min)), Math.max(0, Number(luckPercent) || 0));
 	return min + Math.floor(Math.random() * (max - min + 1));
 }
 
@@ -217,7 +217,7 @@ export async function getActiveLuckPercent(memberId: any): Promise<number> {
 	return luck ? Math.max(0, Number(luck.effect_value) || 0) : 0;
 }
 
-function applyLuckBoost(value: number, luckPercent: number, max = 100): number {
+function applyLuckBoost(value: number, luckPercent: number, max = Infinity): number {
 	if (luckPercent <= 0) return value;
 	return Math.min(max, value + luckPercent);
 }
@@ -338,7 +338,8 @@ async function resolveAttack(
 	if (guarded) return guarded;
 
 	const target = await getSpendableXp(targetMemberId, guildId);
-	const pct = rollPercent(cfg.min_percent ?? 1, cfg.max_percent ?? defaultMaxPercent);
+	const luckPercent = await getActiveLuckPercent(actorMemberId);
+	const pct = rollPercent(cfg.min_percent ?? 1, cfg.max_percent ?? defaultMaxPercent, luckPercent);
 	const amount = Math.min(target.total, Math.floor((target.total * pct) / 100));
 
 	if (await consumeReactiveDefense(targetMemberId, 'reflect')) {
@@ -394,7 +395,9 @@ async function resolveAttack(
 		member_item_id: actorMemberItemId,
 		target_member_id: targetMemberId,
 		action,
-		xp_amount: amount
+		xp_amount: amount,
+		rate_percent: pct,
+		luck_percent: luckPercent || null
 	});
 	await invalidateEffectCache(targetMemberId);
 	const grantedImmunityUntil = newImmunityUntil(cfg.immunity_minutes);
@@ -520,7 +523,7 @@ export async function resolvePurifier({ memberItemId, ownerMemberId }: any) {
 
 function insuranceRefundAmount(lostAmount: any, refundPercent: any) {
 	const lost = Math.max(0, Math.floor(Number(lostAmount) || 0));
-	const pct = Math.max(0, Math.min(100, Number(refundPercent) || 0));
+	const pct = Math.max(0, Number(refundPercent) || 0);
 	return Math.floor((lost * pct) / 100);
 }
 

@@ -31,7 +31,7 @@ export function discountedItemCost(cost: any, luckPercent: any, effectType?: any
 	return Math.max(0, Math.floor(base * (1 - luck / 100)));
 }
 
-function applyLuckBoost(value: number, luckPercent: any, max = 100): number {
+function applyLuckBoost(value: number, luckPercent: any, max = Infinity): number {
 	const luck = Math.max(0, Number(luckPercent) || 0);
 	if (luck <= 0) return value;
 	return Math.min(max, value + luck);
@@ -50,7 +50,7 @@ function fmtPct(n: number): string {
 }
 
 export function luckBoostLabel(base: any, luckPercent: any, opts: { max?: number; unit?: string } = {}): string {
-	const { max = 100, unit = '%' } = opts;
+	const { max = Infinity, unit = '%' } = opts;
 	const b = Number(base) || 0;
 	const total = applyLuckBoost(b, luckPercent, max);
 	const bonus = total - b;
@@ -120,7 +120,7 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		expiringBuff: false,
 		defaultCost: 400,
 		defaultConfig: { min_percent: 1, max_percent: 25, cooldown_minutes: 30, immunity_minutes: 30 },
-		summary: (c) => `Steal ${c.min_percent}–${c.max_percent}% of their XP.`
+		summary: (c, luck) => `Steal ${c.min_percent}–${luckBoostLabel(c.max_percent, luck)} of their XP.`
 	},
 	{
 		id: 'bomb',
@@ -134,7 +134,7 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		expiringBuff: false,
 		defaultCost: 600,
 		defaultConfig: { min_percent: 1, max_percent: 50, cooldown_minutes: 45, immunity_minutes: 30 },
-		summary: (c) => `Destroy ${c.min_percent}–${c.max_percent}% of their XP.`
+		summary: (c, luck) => `Destroy ${c.min_percent}–${luckBoostLabel(c.max_percent, luck)} of their XP.`
 	},
 	{
 		id: 'boost',
@@ -367,14 +367,18 @@ export function effectMeta(item: { effect_type: string; config?: any }, luckPerc
 	if (!effect) return [];
 	const c = { ...effect.defaultConfig, ...(item.config ?? {}) } as Record<string, any>;
 	const chips: EffectMetaChip[] = [];
-	const pctRange = (min: any, max: any) => (Number(min) === Number(max) ? `${Number(max) || 0}%` : `${Number(min) || 0}–${Number(max) || 0}%`);
-	const boosted = (base: any, max = 100) => luckBoostLabel(base, luckPercent, { max });
+	const pctRangeBoosted = (min: any, max: any) => {
+		const lo = Number(min) || 0;
+		const hi = luckBoostLabel(max, luckPercent);
+		return lo === (Number(max) || 0) && !luckPercent ? hi : `${lo}–${hi}`;
+	};
+	const boosted = (base: any, max = Infinity) => luckBoostLabel(base, luckPercent, { max });
 	const reduced = (base: any) => luckReduceLabel(base, luckPercent);
 
 	switch (item.effect_type) {
 		case 'steal':
 		case 'bomb':
-			chips.push({ icon: 'fa-percent', label: pctRange(c.min_percent, c.max_percent) });
+			chips.push({ icon: 'fa-percent', label: pctRangeBoosted(c.min_percent, c.max_percent) });
 			if (Number(c.cooldown_minutes) > 0) chips.push({ icon: 'fa-stopwatch', label: formatDuration(c.cooldown_minutes) });
 			if (Number(c.immunity_minutes) > 0) chips.push({ icon: 'fa-shield-halved', label: formatDuration(c.immunity_minutes) });
 			break;

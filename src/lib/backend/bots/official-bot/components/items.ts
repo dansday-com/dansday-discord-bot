@@ -1430,8 +1430,8 @@ async function sweepDerivedEvents(client: any, botId: any, EmbedBuilder: any) {
 
 		const guild = client?.guilds?.cache?.get(String(atk.discord_server_id));
 		if (!guild) continue;
+		if (atk.member_id && (await isDisguised(atk.member_id).catch(() => false))) continue;
 		const member = await guild.members.fetch(String(atk.discord_member_id)).catch(() => null);
-		const hidden = atk.member_id ? await isDisguised(atk.member_id).catch(() => false) : false;
 		const embedConfig = await embedConfigFor(guild.id);
 		const label = action === 'bomb' ? 'Bomb' : 'Steal';
 		const verb = action === 'bomb' ? 'bomb' : 'steal';
@@ -1439,10 +1439,10 @@ async function sweepDerivedEvents(client: any, botId: any, EmbedBuilder: any) {
 		const embed = new EmbedBuilder()
 			.setColor(effectAccentInt(action))
 			.setTitle(`${getItemEffect(action)?.emoji ?? '✅'} ${label} Cooldown Ready`)
-			.setDescription(hidden ? disguisedText(text) : member ? `${member}, ${text}` : text)
+			.setDescription(member ? `${member}, ${text}` : text)
 			.setFooter({ text: embedConfig.FOOTER || 'Items' })
 			.setTimestamp();
-		await deliverToMemberAndChannel(guild, embed, hidden ? undefined : member ? `${member}` : undefined);
+		await deliverToMemberAndChannel(guild, embed, member ? `${member}` : undefined);
 	}
 
 	const insuranceActs = await db.getRecentInsuranceActivations(botId).catch(() => []);
@@ -1458,17 +1458,17 @@ async function sweepDerivedEvents(client: any, botId: any, EmbedBuilder: any) {
 
 		const guild = client?.guilds?.cache?.get(String(act.discord_server_id));
 		if (!guild) continue;
+		if (act.member_id && (await isDisguised(act.member_id).catch(() => false))) continue;
 		const member = await guild.members.fetch(String(act.discord_member_id)).catch(() => null);
-		const hidden = act.member_id ? await isDisguised(act.member_id).catch(() => false) : false;
 		const embedConfig = await embedConfigFor(guild.id);
 		const text = `Your insurance cooldown is up. You can activate insurance again!`;
 		const embed = new EmbedBuilder()
 			.setColor(effectAccentInt('insurance'))
 			.setTitle(`${getItemEffect('insurance')?.emoji ?? '✅'} Insurance Cooldown Ready`)
-			.setDescription(hidden ? disguisedText(text) : member ? `${member}, ${text}` : text)
+			.setDescription(member ? `${member}, ${text}` : text)
 			.setFooter({ text: embedConfig.FOOTER || 'Items' })
 			.setTimestamp();
-		await deliverToMemberAndChannel(guild, embed, hidden ? undefined : member ? `${member}` : undefined);
+		await deliverToMemberAndChannel(guild, embed, member ? `${member}` : undefined);
 	}
 }
 

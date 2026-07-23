@@ -595,15 +595,15 @@ async function sendXPLogToChannel(guild, dbMember, xpGained, xpType, award: any 
 			})
 			.catch(() => null);
 
+		if (await isMemberDisguised(guild, dbMember.id)) return;
+
 		const settings = await getLevelingSettings(guild.id);
 		if (!settings.PROGRESS_CHANNEL_ID) return;
 
 		const channel = await guild.channels.fetch(settings.PROGRESS_CHANNEL_ID).catch(() => null);
 		if (!channel) return;
 
-		const memberName = (await isMemberDisguised(guild, dbMember.id))
-			? 'A mysterious member 🎭'
-			: dbMember.server_display_name || dbMember.display_name || dbMember.username || 'Unknown';
+		const memberName = dbMember.server_display_name || dbMember.display_name || dbMember.username || 'Unknown';
 		const emoji = XP_LOG_EMOJI[xpType] ?? '⭐';
 		let luckNoteUsed = false;
 		const takeLuckNote = () => {
@@ -631,13 +631,14 @@ async function announceLeechCredits(guild, victim, credits) {
 		const channel = await guild.channels.fetch(settings.PROGRESS_CHANNEL_ID).catch(() => null);
 		if (!channel) return;
 
+		if (await isMemberDisguised(guild, victim?.id)) return;
+
 		const victimName = victim?.server_display_name || victim?.display_name || victim?.username || 'a member';
 		for (const credit of credits) {
 			if (!credit?.amount || credit.amount <= 0) continue;
 			const b = credit.beneficiary;
-			const attackerName = (await isMemberDisguised(guild, b?.id))
-				? 'A mysterious member 🎭'
-				: b?.server_display_name || b?.display_name || b?.username || 'A leecher';
+			if (await isMemberDisguised(guild, b?.id)) continue;
+			const attackerName = b?.server_display_name || b?.display_name || b?.username || 'A leecher';
 			const pct = credit.percent != null ? ` (${credit.percent}%)` : '';
 			await channel.send(`🩸 Leech: ${attackerName} siphoned +${credit.amount} XP from ${victimName}${pct}`).catch(() => null);
 		}

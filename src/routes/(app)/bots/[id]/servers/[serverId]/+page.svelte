@@ -138,7 +138,7 @@
 </svelte:head>
 
 <div class="space-y-4 lg:space-y-6">
-	<div class="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-6">
+	<div class="flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:gap-6 *:lg:flex-1 *:lg:basis-0">
 		<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-5 shadow-lg transition-all lg:p-6">
 			<div class="mb-4 flex items-center gap-3">
 				<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/15">

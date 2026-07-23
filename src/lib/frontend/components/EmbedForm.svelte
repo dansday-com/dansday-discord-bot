@@ -134,7 +134,7 @@
 	}
 </script>
 
-<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+<div class="flex flex-col gap-4 lg:flex-row lg:flex-wrap *:lg:flex-1 *:lg:basis-0">
 	<div class="space-y-4">
 		<div class="bg-ash-800 border-ash-700 rounded-xl border p-4 lg:p-5">
 			<h3 class="text-ash-300 mb-4 flex items-center gap-2 text-base font-semibold">

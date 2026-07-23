@@ -92,7 +92,7 @@
 		/>
 		<div class="bg-ash-900 border-ash-600 mt-2 rounded-lg border p-3">
 			<p class="text-ash-200 mb-2 text-xs font-medium">Available placeholders:</p>
-			<div class="grid grid-cols-2 gap-2 text-xs">
+			<div class="flex flex-col gap-2 text-xs lg:flex-row lg:flex-wrap *:lg:flex-1 *:lg:basis-0">
 				<div class="text-ash-300 flex items-center gap-2">
 					<code class="bg-ash-800 text-ash-200 rounded px-1.5 py-0.5">{'{server}'}</code>
 					<span>Server name</span>

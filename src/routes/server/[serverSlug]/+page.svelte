@@ -246,7 +246,7 @@
 				<span><i class="fas fa-circle"></i> Without</span>
 			</div>
 		</div>
-		<div class="m-mini-grid mt-4 grid gap-2">
+		<div class="m-mini-grid mt-4 gap-2">
 			<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 				<i class="fas fa-chart-line"></i>
 				<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(liveStats.members_with_levels)}</span>
@@ -329,7 +329,7 @@
 			</div>
 		</div>
 
-		<div class="m-leveling-tiles grid gap-2">
+		<div class="m-leveling-tiles gap-2">
 			<div class="m-level-tile flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 				<i class="fas fa-comments"></i>
 				<span class="m-level-tile-value text-lb-text text-base font-extrabold tabular-nums">{fmt(liveStats.leveling_total_chat)}</span>
@@ -359,7 +359,7 @@
 			<p class="m-overview-hero-label mx-0 mt-0 mb-1 text-xs font-semibold text-[rgba(36,95,115,0.72)] uppercase">Role catalog</p>
 			<p class="m-overview-hero-value text-lb-text font-extrabold tabular-nums">{fmt(liveStats.roles_total)}</p>
 		</div>
-		<div class="m-mini-grid mt-4 grid gap-2">
+		<div class="m-mini-grid mt-4 gap-2">
 			<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 				<i class="fas fa-rocket"></i>
 				<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(boostLevel)}</span>
@@ -406,7 +406,7 @@
 				<div class="m-level-meter-stack-afk h-full" style="width: {voiceMix.afkPct * grow}%"></div>
 			</div>
 		</div>
-		<div class="m-mini-grid mt-4 grid gap-2">
+		<div class="m-mini-grid mt-4 gap-2">
 			<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 				<i class="fas fa-check-circle"></i>
 				<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(liveStats.leveling_total_voice_active)}</span>
@@ -473,7 +473,7 @@
 				<span><i class="fas fa-circle"></i> Cashed out {fmt(liveStats.assets_sell_volume)}</span>
 			</div>
 		</div>
-		<div class="m-mini-grid mt-4 grid gap-2">
+		<div class="m-mini-grid mt-4 gap-2">
 			<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 				<i class="fas fa-right-left"></i>
 				<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(liveStats.assets_trade_count)}</span>
@@ -535,7 +535,7 @@
 				<span><i class="fas fa-circle"></i> Caught {fmt(liveStats.items_steals_caught)}</span>
 			</div>
 		</div>
-		<div class="m-mini-grid mt-4 grid gap-2">
+		<div class="m-mini-grid mt-4 gap-2">
 			<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 				<i class="fas fa-wand-magic-sparkles"></i>
 				<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(liveStats.items_activations)}</span>
@@ -590,7 +590,7 @@
 				<div class="m-level-meter-fill m-level-meter-fill--avg h-full rounded-[99px]" style="width: {Math.max(4, minigamesWinRate) * grow}%"></div>
 			</div>
 		</div>
-		<div class="m-mini-grid mt-4 grid gap-2">
+		<div class="m-mini-grid mt-4 gap-2">
 			<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 				<i class="fas fa-trophy"></i>
 				<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(liveStats.minigames_biggest_win)}</span>
@@ -627,7 +627,7 @@
 				<div class="m-level-meter-fill m-level-meter-fill--avg h-full rounded-[99px]" style="width: {Math.max(4, giveawayClaimPct) * grow}%"></div>
 			</div>
 		</div>
-		<div class="m-mini-grid mt-4 grid gap-2">
+		<div class="m-mini-grid mt-4 gap-2">
 			<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 				<i class="fas fa-medal"></i>
 				<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(liveStats.giveaways_winners)}</span>
@@ -672,7 +672,7 @@
 				<span><i class="fas fa-circle"></i> Gifts {fmt(liveStats.streams_gifts)}</span>
 			</div>
 		</div>
-		<div class="m-mini-grid mt-4 grid gap-2">
+		<div class="m-mini-grid mt-4 gap-2">
 			<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 				<i class="fas fa-user-plus"></i>
 				<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(liveStats.streams_follows)}</span>
@@ -711,7 +711,7 @@
 				<div class="m-level-meter-fill m-level-meter-fill--avg h-full rounded-[99px]" style="width: {Math.max(4, questClaimPct) * grow}%"></div>
 			</div>
 		</div>
-		<div class="m-mini-grid mt-4 grid gap-2">
+		<div class="m-mini-grid mt-4 gap-2">
 			<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 				<i class="fas fa-award"></i>
 				<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(liveStats.quests_claimed)}</span>
@@ -745,7 +745,7 @@
 				<div class="m-level-meter-fill m-level-meter-fill--avg h-full rounded-[99px]" style="width: {Math.max(4, staffRatingPct) * grow}%"></div>
 			</div>
 		</div>
-		<div class="m-mini-grid mt-4 grid gap-2">
+		<div class="m-mini-grid mt-4 gap-2">
 			<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 				<i class="fas fa-comment-dots"></i>
 				<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(liveStats.feedback_submissions)}</span>

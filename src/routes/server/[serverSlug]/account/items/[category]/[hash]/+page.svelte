@@ -223,14 +223,15 @@
 	>
 		<div class="m-card-glow pointer-events-none z-1 opacity-0"></div>
 		<div class="m-card-top flex items-start justify-between gap-2">
-			<span class="m-card-medallion relative grid h-14 w-14 place-items-center rounded-2xl text-xl">
+			<span class="m-card-medallion relative flex h-14 w-14 items-center justify-center rounded-2xl text-xl">
 				<i class="fas {effectIcon(item.effect_type)}"></i>
-				{#if owned > 0}<span class="m-card-qty grid h-5 min-w-5 place-items-center rounded-[999px] px-1 py-0 text-xs font-extrabold text-white">×{owned}</span
+				{#if owned > 0}<span class="m-card-qty flex h-5 min-w-5 items-center justify-center rounded-[999px] px-1 py-0 text-xs font-extrabold text-white"
+						>×{owned}</span
 					>{/if}
 			</span>
 			{#if owned > 0 && !ctx.readOnly}
 				<button
-					class="m-card-remove text-lb-text-muted relative z-4 ml-auto grid h-7 w-7 flex-none cursor-pointer place-items-center rounded-lg text-base"
+					class="m-card-remove text-lb-text-muted relative z-4 ml-auto flex h-7 w-7 flex-none cursor-pointer items-center justify-center rounded-lg text-base"
 					aria-label="Remove one"
 					title="Remove one"
 					disabled={discardingId === item.member_item_id || ctx.busy === item.member_item_id}
@@ -432,7 +433,7 @@
 			aria-label={outcome.title}
 			onclick={(e) => e.stopPropagation()}
 		>
-			<div class="m-out-icon text-yacht-teal mx-auto mt-0 mb-3 grid h-19 w-19 place-items-center rounded-full text-3xl">
+			<div class="m-out-icon text-yacht-teal mx-auto mt-0 mb-3 flex h-19 w-19 items-center justify-center rounded-full text-3xl">
 				<i class="fas {outcome.icon}"></i>
 			</div>
 			<div class="m-out-title text-lb-text text-xl font-extrabold">{outcome.title}</div>

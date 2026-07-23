@@ -158,7 +158,7 @@
 			<article class="m-card relative flex flex-col gap-2 overflow-hidden rounded-2xl px-4 pt-4 pb-4" data-cat={game.id} style="--cat: {game.accent}">
 				<div class="m-card-glow pointer-events-none z-1 opacity-0"></div>
 				<div class="m-card-top flex items-start justify-between gap-2">
-					<span class="m-card-medallion relative grid h-14 w-14 place-items-center rounded-2xl text-xl"><i class="fas {game.icon}"></i></span>
+					<span class="m-card-medallion relative flex h-14 w-14 items-center justify-center rounded-2xl text-xl"><i class="fas {game.icon}"></i></span>
 				</div>
 				<h3 class="m-card-name text-lb-text mx-0 mt-1 mb-0 text-base font-extrabold">{game.name}</h3>
 				<p class="m-card-desc text-lb-text-muted min-h-[2.9em] text-xs">{game.desc}</p>
@@ -224,7 +224,7 @@
 					style="transform: translateX({reelOffset}px); transition: {reelAnimating ? 'transform 6.8s cubic-bezier(0.06, 0.72, 0.06, 1)' : 'none'};"
 				>
 					{#each reel as cell, i (i)}
-						<div class="m-gamble-cell m-gamble-cell--{cell} grid h-19 h-[76px] flex-[0_0_84px] place-items-center rounded-[11px] text-2xl">
+						<div class="m-gamble-cell m-gamble-cell--{cell} flex h-19 h-[76px] flex-[0_0_84px] items-center justify-center rounded-[11px] text-2xl">
 							<i class="fas {cell === 'win' ? 'fa-sack-dollar' : 'fa-skull'}"></i>
 						</div>
 					{/each}

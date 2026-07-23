@@ -482,7 +482,7 @@
 					<i class="fas fa-arrow-trend-{assetsPnl >= 0 ? 'up' : 'down'}"></i>{assetsPnl >= 0 ? '+' : '−'}{fmt(Math.abs(assetsPnl))} open P/L
 				</span>
 			</div>
-			<div class="m-mini-grid mt-4 grid gap-2">
+			<div class="m-mini-grid mt-4 gap-2">
 				<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 					<i class="fas fa-right-left"></i>
 					<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(d.assets_trade_count)}</span>
@@ -518,7 +518,7 @@
 					</div>
 				</div>
 			</div>
-			<div class="m-mini-grid mt-4 grid gap-2">
+			<div class="m-mini-grid mt-4 gap-2">
 				<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 					<i class="fas fa-coins"></i>
 					<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(d.minigames_wagered)}</span>
@@ -543,7 +543,7 @@
 				<span class="m-stat-hero-val text-lb-text block font-extrabold tabular-nums" use:countUp={d.items_buys}>{fmt(d.items_buys)}</span>
 				<span class="m-stat-hero-cap text-lb-text-muted mt-0 block text-xs font-semibold uppercase">items bought</span>
 			</div>
-			<div class="m-mini-grid mt-4 grid gap-2">
+			<div class="m-mini-grid mt-4 gap-2">
 				<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 					<i class="fas fa-coins"></i>
 					<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(d.items_buy_spend)}</span>
@@ -566,7 +566,7 @@
 			<h2 class="m-stat-card-title text-lb-text text-base font-bold">Highlights</h2>
 		</div>
 		{#if relationCards.length > 0}
-			<div class="m-rel-row mt-4 grid gap-2">
+			<div class="m-rel-row mt-4 gap-2">
 				{#each relationCards as r}
 					<div class="m-rel flex min-w-0 items-center gap-3 rounded-[14px] p-3" style="--rel: {r.accent};">
 						<span class="m-rel-ic inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-base text-white"><i class="fas {r.icon}"></i></span
@@ -722,7 +722,7 @@
 					></div>
 				</div>
 			</div>
-			<div class="m-mini-grid mt-4 grid gap-2">
+			<div class="m-mini-grid mt-4 gap-2">
 				<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 					<i class="fas fa-hand"></i>
 					<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(d.items_stolen)}</span>
@@ -808,7 +808,7 @@
 				</div>
 				<h2 class="m-stat-card-title text-lb-text text-base font-bold">Your engagement</h2>
 			</div>
-			<div class="m-mini-grid mt-4 grid gap-2">
+			<div class="m-mini-grid mt-4 gap-2">
 				<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 					<i class="fas fa-ticket"></i>
 					<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(d.giveaways_entered)}</span>

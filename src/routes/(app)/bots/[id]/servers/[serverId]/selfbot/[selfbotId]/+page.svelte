@@ -283,7 +283,7 @@
 			{/if}
 		</div>
 
-		<div class="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+		<div class="mt-6 flex flex-col gap-3 lg:flex-row lg:flex-wrap *:lg:flex-1 *:lg:basis-0">
 			<div class="bg-ash-700 rounded-lg p-3">
 				<p class="text-ash-400 mb-1 text-xs">Status</p>
 				<div class="flex items-center gap-2">
@@ -317,7 +317,7 @@
 			<strong class="text-ash-300">YouTube</strong> URLs only.
 		</p>
 
-		<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+		<div class="flex flex-col gap-4 lg:flex-row lg:flex-wrap *:lg:flex-1 *:lg:basis-0">
 			<div class="min-w-0">
 				<LabeledSelect
 					id="sb-presence-discord-status"
@@ -435,7 +435,7 @@
 				<p class="text-ash-400 text-base">No servers yet</p>
 			</div>
 		{:else}
-			<div class="mb-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
+			<div class="mb-4 flex flex-col gap-3 lg:flex-row lg:flex-wrap *:lg:flex-1 *:lg:basis-0">
 				{#each pagedServers as server (server.id)}
 					<div class="bg-ash-700 border-ash-600 cursor-default rounded-lg border p-4" role="presentation">
 						<div class="mb-3 flex items-center gap-3">

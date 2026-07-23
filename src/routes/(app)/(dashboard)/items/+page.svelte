@@ -459,7 +459,7 @@
 						<i class="fas {group.icon}" style="color: var(--effect-{group.key}, var(--effect-default))"></i>{group.label}
 						<span class="bg-ash-700 text-ash-400 rounded-full px-2 py-0.5 text-xs font-semibold">{group.items.length}</span>
 					</h2>
-					<div class="grid gap-3 lg:grid-cols-3">
+					<div class="flex flex-col gap-3 lg:flex-row lg:flex-wrap *:lg:flex-1 *:lg:basis-0">
 						{#each group.items as item (item.id)}
 							{@render adminCard(item)}
 						{/each}
@@ -530,7 +530,7 @@
 				<div class="border-ash-700 bg-ash-900/40 space-y-3 rounded-xl border p-4">
 					<p class="text-ash-400 text-xs font-semibold tracking-wide uppercase">Effect settings</p>
 					{#if form.effect_type === 'steal' || form.effect_type === 'bomb'}
-						<div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
+						<div class="flex flex-col gap-3 lg:flex-row lg:flex-wrap *:lg:flex-1 *:lg:basis-0">
 							<label class="text-ash-300 text-xs"
 								>Min %<input
 									type="number"
@@ -564,7 +564,7 @@
 							{form.effect_type === 'steal' ? 'Steals a random % of XP to the buyer.' : 'Destroys a random % of XP (vanishes).'}
 						</p>
 					{:else if form.effect_type === 'boost'}
-						<div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
+						<div class="flex flex-col gap-3 lg:flex-row lg:flex-wrap *:lg:flex-1 *:lg:basis-0">
 							<label class="text-ash-300 text-xs"
 								>Multiplier<input
 									type="number"
@@ -603,7 +603,7 @@
 								messages, invisible to spies, and off the XP leaderboard while active.{:else}Blocks incoming attacks while active.{/if}
 						</p>
 					{:else if form.effect_type === 'insurance'}
-						<div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
+						<div class="flex flex-col gap-3 lg:flex-row lg:flex-wrap *:lg:flex-1 *:lg:basis-0">
 							<label class="text-ash-300 text-xs"
 								>Refund %<input
 									type="number"
@@ -630,7 +630,7 @@
 						</div>
 						<p class="text-ash-500 text-xs">Refunds that % of a loss once. Cooldown in minutes (1440 = 1 day).</p>
 					{:else if form.effect_type === 'gift'}
-						<div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
+						<div class="flex flex-col gap-3 lg:flex-row lg:flex-wrap *:lg:flex-1 *:lg:basis-0">
 							<label class="text-ash-300 text-xs"
 								>Gift amount (XP)<input
 									type="number"
@@ -648,7 +648,7 @@
 						</div>
 						<p class="text-ash-500 text-xs">Sends fixed XP to a member, minus the tax (burned).</p>
 					{:else if form.effect_type === 'leech'}
-						<div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
+						<div class="flex flex-col gap-3 lg:flex-row lg:flex-wrap *:lg:flex-1 *:lg:basis-0">
 							<label class="text-ash-300 text-xs"
 								>Skim %<input
 									type="number"
@@ -688,7 +688,7 @@
 							Chance the spy succeeds (sees through disguise too). On a miss, the target is publicly alerted and the spy is named — 100% means it always works.
 						</p>
 					{:else if form.effect_type === 'luck'}
-						<div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
+						<div class="flex flex-col gap-3 lg:flex-row lg:flex-wrap *:lg:flex-1 *:lg:basis-0">
 							<label class="text-ash-300 text-xs"
 								>Luck %<input
 									type="number"
@@ -716,7 +716,7 @@
 
 				<div class="border-ash-700 bg-ash-900/40 space-y-3 rounded-xl border p-4">
 					<p class="text-ash-400 text-xs font-semibold tracking-wide uppercase">Availability (optional, your timezone)</p>
-					<div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
+					<div class="flex flex-col gap-3 lg:flex-row lg:flex-wrap *:lg:flex-1 *:lg:basis-0">
 						<label class="text-ash-300 text-xs">
 							From
 							<div
@@ -767,7 +767,7 @@
 								>
 							{/each}
 						</div>
-						<div class="mt-2 grid grid-cols-1 gap-3 lg:grid-cols-2">
+						<div class="mt-2 flex flex-col gap-3 lg:flex-row lg:flex-wrap *:lg:flex-1 *:lg:basis-0">
 							<label class="text-ash-300 text-xs"
 								>From (HH:MM)<input
 									bind:value={form.cfg.recur_from}

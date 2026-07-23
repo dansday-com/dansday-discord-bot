@@ -225,7 +225,7 @@
 							{/if}
 						</div>
 
-						<div class="mb-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
+						<div class="mb-3 flex flex-col gap-2 lg:flex-row lg:flex-wrap *:lg:flex-1 *:lg:basis-0">
 							<div class="bg-ash-800 border-ash-600 flex items-center gap-2 rounded-lg border p-2">
 								<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/20">
 									<i class="fas fa-medal text-xs text-sky-400"></i>

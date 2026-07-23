@@ -204,7 +204,7 @@
 		<div class="g-earn grid gap-3">
 			{#each earnMethods as m, i}
 				<div class="g-earn-card flex items-center gap-3 rounded-2xl px-4 py-4" style="--ac: {m.accent}; --d: {i * 70}ms">
-					<span class="g-earn-ic grid h-10 w-10 flex-none place-items-center rounded-xl text-base"><i class="fas {m.icon}"></i></span>
+					<span class="g-earn-ic flex h-10 w-10 flex-none items-center justify-center rounded-xl text-base"><i class="fas {m.icon}"></i></span>
 					<div class="g-earn-body">
 						<h3>{m.title}</h3>
 						<p>{m.desc}</p>
@@ -214,7 +214,7 @@
 		</div>
 
 		<div class="g-friend gap-3 p-4" style="--ac: #2f8f4e">
-			<span class="g-friend-ic grid h-12 w-12 flex-none place-items-center rounded-[14px] text-lg"><i class="fas fa-handshake"></i></span>
+			<span class="g-friend-ic flex h-12 w-12 flex-none items-center justify-center rounded-[14px] text-lg"><i class="fas fa-handshake"></i></span>
 			<div class="g-friend-body">
 				<h3>🤝 Friend Boost</h3>
 				<p>
@@ -231,7 +231,7 @@
 		<div class="g-earn grid gap-3">
 			{#each concepts as c, i}
 				<div class="g-earn-card flex items-center gap-3 rounded-2xl px-4 py-4" style="--ac: {c.accent}; --d: {i * 60}ms">
-					<span class="g-earn-ic grid h-10 w-10 flex-none place-items-center rounded-xl text-base"><i class="fas {c.icon}"></i></span>
+					<span class="g-earn-ic flex h-10 w-10 flex-none items-center justify-center rounded-xl text-base"><i class="fas {c.icon}"></i></span>
 					<div class="g-earn-body">
 						<h3>{c.title}</h3>
 						<p>{c.desc}</p>
@@ -247,7 +247,8 @@
 			{#each steps as s, i}
 				<div class="g-step relative overflow-hidden rounded-2xl px-4 pt-4 pb-4" style="--d: {i * 80}ms">
 					<span class="g-step-num text-4xl">{i + 1}</span>
-					<span class="g-step-ic text-yacht-teal mb-2 inline-grid h-10 w-10 place-items-center rounded-xl text-base"><i class="fas {s.icon}"></i></span>
+					<span class="g-step-ic text-yacht-teal mb-2 inline-flex h-10 w-10 items-center justify-center rounded-xl text-base"><i class="fas {s.icon}"></i></span
+					>
 					<h3>{s.title}</h3>
 					<p>{s.desc}</p>
 				</div>
@@ -262,7 +263,7 @@
 				<article class="g-item p-4" class:g-item--soon={!it.available} style="--ac: {it.accent}; --d: {(i % 6) * 60}ms">
 					<div class="g-item-glow pointer-events-none h-[120%] w-[60%]"></div>
 					<div class="g-item-top mb-2 flex items-center gap-3">
-						<span class="g-item-emoji grid h-11 w-11 flex-none place-items-center rounded-[13px] text-lg">{it.emoji}</span>
+						<span class="g-item-emoji flex h-11 w-11 flex-none items-center justify-center rounded-[13px] text-lg">{it.emoji}</span>
 						<div class="g-item-titles min-w-0">
 							<h3 class="g-item-name m-0 text-base">{it.label}</h3>
 							{#if it.available && it.cost != null}
@@ -295,7 +296,8 @@
 			{#each minigameSteps as s, i}
 				<div class="g-step relative overflow-hidden rounded-2xl px-4 pt-4 pb-4" style="--d: {i * 80}ms">
 					<span class="g-step-num text-4xl">{i + 1}</span>
-					<span class="g-step-ic text-yacht-teal mb-2 inline-grid h-10 w-10 place-items-center rounded-xl text-base"><i class="fas {s.icon}"></i></span>
+					<span class="g-step-ic text-yacht-teal mb-2 inline-flex h-10 w-10 items-center justify-center rounded-xl text-base"><i class="fas {s.icon}"></i></span
+					>
 					<h3>{s.title}</h3>
 					<p>{s.desc}</p>
 				</div>
@@ -303,7 +305,7 @@
 		</div>
 
 		<div class="g-friend gap-3 p-4" style="--ac: #b23b2e">
-			<span class="g-friend-ic grid h-12 w-12 flex-none place-items-center rounded-[14px] text-lg"><i class="fas fa-triangle-exclamation"></i></span>
+			<span class="g-friend-ic flex h-12 w-12 flex-none items-center justify-center rounded-[14px] text-lg"><i class="fas fa-triangle-exclamation"></i></span>
 			<div class="g-friend-body">
 				<h3>⚠️ The house always has an edge over time</h3>
 				<p>
@@ -322,7 +324,7 @@
 		<div class="g-earn grid gap-3">
 			{#each assetConcepts as c, i}
 				<div class="g-earn-card flex items-center gap-3 rounded-2xl px-4 py-4" style="--ac: {c.accent}; --d: {i * 60}ms">
-					<span class="g-earn-ic grid h-10 w-10 flex-none place-items-center rounded-xl text-base"><i class="fas {c.icon}"></i></span>
+					<span class="g-earn-ic flex h-10 w-10 flex-none items-center justify-center rounded-xl text-base"><i class="fas {c.icon}"></i></span>
 					<div class="g-earn-body">
 						<h3>{c.title}</h3>
 						<p>{c.desc}</p>
@@ -332,7 +334,7 @@
 		</div>
 
 		<div class="g-friend gap-3 p-4" style="--ac: #b23b2e">
-			<span class="g-friend-ic grid h-12 w-12 flex-none place-items-center rounded-[14px] text-lg"><i class="fas fa-triangle-exclamation"></i></span>
+			<span class="g-friend-ic flex h-12 w-12 flex-none items-center justify-center rounded-[14px] text-lg"><i class="fas fa-triangle-exclamation"></i></span>
 			<div class="g-friend-body">
 				<h3>⚠️ Prices go down too</h3>
 				<p>
@@ -349,7 +351,8 @@
 			{#each assetSteps as s, i}
 				<div class="g-step relative overflow-hidden rounded-2xl px-4 pt-4 pb-4" style="--d: {i * 80}ms">
 					<span class="g-step-num text-4xl">{i + 1}</span>
-					<span class="g-step-ic text-yacht-teal mb-2 inline-grid h-10 w-10 place-items-center rounded-xl text-base"><i class="fas {s.icon}"></i></span>
+					<span class="g-step-ic text-yacht-teal mb-2 inline-flex h-10 w-10 items-center justify-center rounded-xl text-base"><i class="fas {s.icon}"></i></span
+					>
 					<h3>{s.title}</h3>
 					<p>{s.desc}</p>
 				</div>
@@ -362,7 +365,7 @@
 		<div class="g-tips grid gap-3">
 			{#each tips as t, i}
 				<div class="g-tip px-3 py-3" style="--ac: {t.accent}; --d: {i * 60}ms">
-					<span class="g-tip-ic grid h-9 w-9 flex-none place-items-center rounded-xl text-base"><i class="fas {t.icon}"></i></span>
+					<span class="g-tip-ic flex h-9 w-9 flex-none items-center justify-center rounded-xl text-base"><i class="fas {t.icon}"></i></span>
 					<p>{t.text}</p>
 				</div>
 			{/each}

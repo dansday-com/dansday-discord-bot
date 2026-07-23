@@ -391,7 +391,11 @@
 }
 
 .m-mini-grid {
-	grid-template-columns: repeat(2, 1fr);
+	display: flex;
+	flex-wrap: wrap;
+}
+.m-mini-grid > * {
+	flex: 1 1 100%;
 }
 .m-mini {
 	background: rgba(255, 255, 255, 0.75);
@@ -644,9 +648,12 @@
 }
 
 .m-stats-grid {
-	grid-template-columns: 1fr;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
 }
 .m-stats-grid > .m-stat-card {
+	flex: 1 1 100%;
 	opacity: 0;
 	transform: translateY(14px);
 	transition:
@@ -788,7 +795,11 @@
 }
 
 .m-leveling-tiles {
-	grid-template-columns: 1fr;
+	display: flex;
+	flex-wrap: wrap;
+}
+.m-leveling-tiles > * {
+	flex: 1 1 100%;
 }
 
 .m-level-tile {
@@ -1012,7 +1023,11 @@
 	}
 }
 .m-hero-actions-secondary {
-	grid-template-columns: 1fr 1fr;
+	display: flex;
+	flex-wrap: wrap;
+}
+.m-hero-actions-secondary > * {
+	flex: 1 1 100%;
 }
 
 .m-inner.m-landing-inner .m-cta-actions {
@@ -1029,7 +1044,12 @@
 }
 
 .m-features-grid {
-	grid-template-columns: 1fr;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 16px;
+}
+.m-features-grid > * {
+	flex: 1 1 100%;
 }
 
 .m-feature-card:hover {
@@ -1058,7 +1078,11 @@
 }
 
 .m-servers-list {
-	grid-template-columns: 1fr;
+	display: flex;
+	flex-wrap: wrap;
+}
+.m-servers-list > * {
+	flex: 1 1 100%;
 }
 .m-server-card {
 	background: var(--chili-surface-elevated);
@@ -2754,6 +2778,12 @@
 .g-docs-navlink:hover i {
 	color: #fff;
 }
+.g-modules {
+	gap: 12px;
+}
+.g-modules > * {
+	flex: 1 1 100%;
+}
 .g-mod {
 	background: var(--chili-surface-elevated);
 	border: 2px solid var(--lb-border);
@@ -3438,7 +3468,11 @@
 }
 
 .m-econ3 {
-	grid-template-columns: 1fr;
+	display: flex;
+	flex-wrap: wrap;
+}
+.m-econ3 > * {
+	flex: 1 1 100%;
 }
 
 .m-econ3 > .m-stat-card {
@@ -3449,7 +3483,11 @@
 	transform: translateY(0);
 }
 .m-econ2 {
-	grid-template-columns: 1fr;
+	display: flex;
+	flex-wrap: wrap;
+}
+.m-econ2 > * {
+	flex: 1 1 100%;
 }
 
 .m-econ2 > .m-stat-card {
@@ -3460,7 +3498,11 @@
 	transform: translateY(0);
 }
 .m-rel-row {
-	grid-template-columns: 1fr;
+	display: flex;
+	flex-wrap: wrap;
+}
+.m-rel-row > * {
+	flex: 1 1 100%;
 }
 
 .m-rel {
@@ -3491,17 +3533,17 @@
 	.m-nav-brand span {
 		font-size: var(--text-lg);
 	}
-	.m-stats-grid {
-		grid-template-columns: repeat(3, 1fr);
+	.m-stats-grid > .m-stat-card {
+		flex: 1 1 calc(33.333% - 8px);
 	}
-	.m-leveling-tiles {
-		grid-template-columns: repeat(3, 1fr);
+	.m-leveling-tiles > * {
+		flex: 1 1 calc(33.333% - 8px);
 	}
 	.m-root .m-members-grid {
 		grid-template-columns: repeat(2, 1fr);
 	}
-	.m-hero-actions-secondary {
-		grid-template-columns: repeat(4, 1fr);
+	.m-hero-actions-secondary > * {
+		flex: 1 1 calc(25% - 9px);
 	}
 	.m-inner.m-landing-inner .m-cta-actions {
 		flex-direction: row;
@@ -3513,9 +3555,6 @@
 		width: auto;
 		min-width: 11rem;
 	}
-	.m-features-grid--quad {
-		grid-template-columns: repeat(2, 1fr);
-	}
 	.m-hero h1 {
 		font-size: var(--text-4xl);
 	}
@@ -3525,21 +3564,17 @@
 	.m-section-header h2 {
 		font-size: var(--text-xl);
 	}
-	.m-servers-list {
-		grid-template-columns: 1fr;
-	}
 	.m-inner.m-landing-inner > .m-hero {
 		padding: 72px 0 48px;
 	}
 	.m-inner.m-landing-inner > .m-section {
 		padding: 56px 0;
 	}
-	.m-features-grid {
-		grid-template-columns: repeat(3, 1fr);
+	.m-features-grid > * {
+		flex: 1 1 calc(33.333% - 11px);
 	}
-	.m-features-grid.m-features-grid--quad {
-		grid-template-columns: repeat(4, 1fr);
-		gap: 16px;
+	.m-features-grid.m-features-grid--quad > * {
+		flex: 1 1 calc(25% - 12px);
 	}
 	.m-root .m-card-foot .m-card-owned {
 		display: inline-flex;
@@ -3553,8 +3588,8 @@
 	.m-root .m-cards {
 		grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
 	}
-	.g-modules {
-		grid-template-columns: repeat(2, 1fr);
+	.g-modules > * {
+		flex: 1 1 calc(50% - 6px);
 	}
 	.m-ov {
 		grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -3568,13 +3603,13 @@
 	.m-portfolio {
 		grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
 	}
-	.m-econ3 {
-		grid-template-columns: repeat(3, 1fr);
+	.m-econ3 > * {
+		flex: 1 1 calc(33.333% - 8px);
 	}
-	.m-econ2 {
-		grid-template-columns: repeat(2, 1fr);
+	.m-econ2 > * {
+		flex: 1 1 calc(50% - 6px);
 	}
-	.m-rel-row {
-		grid-template-columns: repeat(3, 1fr);
+	.m-rel-row > * {
+		flex: 1 1 calc(33.333% - 8px);
 	}
 }

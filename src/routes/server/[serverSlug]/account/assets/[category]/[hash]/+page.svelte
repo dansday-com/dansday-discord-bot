@@ -286,7 +286,7 @@
 	>
 		<div class="m-asset-id flex min-w-0 items-center gap-3">
 			{#if a.image}<img class="m-asset-logo h-9 w-9 shrink-0 rounded-full object-cover" src={a.image} alt="" loading="lazy" />{:else}<span
-					class="m-asset-logo m-asset-logo--ph grid h-9 w-9 shrink-0 place-items-center rounded-full object-cover text-base font-extrabold"
+					class="m-asset-logo m-asset-logo--ph flex h-9 w-9 shrink-0 items-center justify-center rounded-full object-cover text-base font-extrabold"
 					>{(a.symbol || '?').slice(0, 1)}</span
 				>{/if}
 			<div class="m-asset-name flex min-w-0 flex-col gap-1">
@@ -326,7 +326,7 @@
 				>
 					<div class="m-asset-id flex min-w-0 items-center gap-3">
 						{#if p.asset_image}<img class="m-asset-logo h-9 w-9 shrink-0 rounded-full object-cover" src={p.asset_image} alt="" loading="lazy" />{:else}<span
-								class="m-asset-logo m-asset-logo--ph grid h-9 w-9 shrink-0 place-items-center rounded-full object-cover text-base font-extrabold"
+								class="m-asset-logo m-asset-logo--ph flex h-9 w-9 shrink-0 items-center justify-center rounded-full object-cover text-base font-extrabold"
 								>{(p.symbol || '?').slice(0, 1)}</span
 							>{/if}
 						<div class="m-asset-name flex min-w-0 flex-col gap-1">
@@ -519,7 +519,7 @@
 {#if outcome}
 	<div class="m-out-overlay z-99999 flex items-center justify-center overflow-hidden p-4" role="presentation" onclick={dismissOutcome}>
 		<div class="m-out m-out--{outcome.tone} p-4" role="dialog" aria-modal="true" aria-label={outcome.title} onclick={(e) => e.stopPropagation()}>
-			<div class="m-out-icon text-yacht-teal mx-auto mt-0 mb-3 grid h-19 w-19 place-items-center rounded-full text-3xl">
+			<div class="m-out-icon text-yacht-teal mx-auto mt-0 mb-3 flex h-19 w-19 items-center justify-center rounded-full text-3xl">
 				<i class="fas {outcome.icon}"></i>
 			</div>
 			<div class="m-out-title text-lb-text text-xl font-extrabold">{outcome.title}</div>

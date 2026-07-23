@@ -552,7 +552,9 @@
 						{#each startSteps as s, i}
 							<div class="g-step relative overflow-hidden rounded-2xl px-4 pt-4 pb-4" style="--d: {i * 80}ms">
 								<span class="g-step-num text-4xl">{i + 1}</span>
-								<span class="g-step-ic text-yacht-teal mb-2 inline-grid h-10 w-10 place-items-center rounded-xl text-base"><i class="fas {s.icon}"></i></span>
+								<span class="g-step-ic text-yacht-teal mb-2 inline-flex h-10 w-10 items-center justify-center rounded-xl text-base"
+									><i class="fas {s.icon}"></i></span
+								>
 								<h3>{s.title}</h3>
 								<p>{s.desc}</p>
 							</div>
@@ -565,11 +567,11 @@
 					<p class="g-sec-lead text-lb-text-muted mx-0 mt-0 mb-4 text-base">
 						The official bot runs everything. A selfbot is optional and only needed for two features.
 					</p>
-					<div class="g-modules grid items-start">
+					<div class="g-modules flex flex-wrap items-start">
 						{#each botKinds as b, i}
 							<article class="g-mod relative rounded-2xl p-4" style="--ac: {b.accent}; --d: {i * 60}ms">
 								<div class="g-mod-head mb-4 flex items-start gap-3">
-									<span class="g-mod-ic inline-grid h-10 w-10 flex-none place-items-center rounded-xl text-base"><i class="fas {b.icon}"></i></span>
+									<span class="g-mod-ic inline-flex h-10 w-10 flex-none items-center justify-center rounded-xl text-base"><i class="fas {b.icon}"></i></span>
 									<div class="g-mod-titles">
 										<h3>{b.title}</h3>
 										<p>{b.what}</p>
@@ -625,11 +627,11 @@
 						Account tiers control who manages the panel. They are separate from the Discord permission roles below, which control who can use features in
 						Discord.
 					</p>
-					<div class="g-modules grid items-start">
+					<div class="g-modules flex flex-wrap items-start">
 						{#each tiers as t, i}
 							<article class="g-mod relative rounded-2xl p-4" style="--ac: {t.accent}; --d: {i * 60}ms">
 								<div class="g-mod-head mb-4 flex items-start gap-3">
-									<span class="g-mod-ic inline-grid h-10 w-10 flex-none place-items-center rounded-xl text-base"><i class="fas {t.icon}"></i></span>
+									<span class="g-mod-ic inline-flex h-10 w-10 flex-none items-center justify-center rounded-xl text-base"><i class="fas {t.icon}"></i></span>
 									<div class="g-mod-titles">
 										<h3>{t.title}</h3>
 										<p>{t.what}</p>
@@ -663,11 +665,11 @@
 					<p class="g-sec-lead text-lb-text-muted mx-0 mt-0 mb-4 text-base">
 						Each module has a master toggle plus its own settings. Turn on only what you need.
 					</p>
-					<div class="g-modules grid items-start">
+					<div class="g-modules flex flex-wrap items-start">
 						{#each modules as m, i}
 							<article id="mod-{m.id}" class="g-mod relative rounded-2xl p-4" style="--ac: {m.accent}; --d: {(i % 4) * 60}ms">
 								<div class="g-mod-head mb-4 flex items-start gap-3">
-									<span class="g-mod-ic inline-grid h-10 w-10 flex-none place-items-center rounded-xl text-base"><i class="fas {m.icon}"></i></span>
+									<span class="g-mod-ic inline-flex h-10 w-10 flex-none items-center justify-center rounded-xl text-base"><i class="fas {m.icon}"></i></span>
 									<div class="g-mod-titles">
 										<h3>{m.title}</h3>
 										<p>{m.what}</p>
@@ -695,7 +697,9 @@
 						{#each shopSteps as s, i}
 							<div class="g-step relative overflow-hidden rounded-2xl px-4 pt-4 pb-4" style="--d: {i * 80}ms">
 								<span class="g-step-num text-4xl">{i + 1}</span>
-								<span class="g-step-ic text-yacht-teal mb-2 inline-grid h-10 w-10 place-items-center rounded-xl text-base"><i class="fas {s.icon}"></i></span>
+								<span class="g-step-ic text-yacht-teal mb-2 inline-flex h-10 w-10 items-center justify-center rounded-xl text-base"
+									><i class="fas {s.icon}"></i></span
+								>
 								<h3>{s.title}</h3>
 								<p>{s.desc}</p>
 							</div>
@@ -727,7 +731,9 @@
 						{#each selfhostSteps as s, i}
 							<div class="g-step relative overflow-hidden rounded-2xl px-4 pt-4 pb-4" style="--d: {i * 80}ms">
 								<span class="g-step-num text-4xl">{i + 1}</span>
-								<span class="g-step-ic text-yacht-teal mb-2 inline-grid h-10 w-10 place-items-center rounded-xl text-base"><i class="fas {s.icon}"></i></span>
+								<span class="g-step-ic text-yacht-teal mb-2 inline-flex h-10 w-10 items-center justify-center rounded-xl text-base"
+									><i class="fas {s.icon}"></i></span
+								>
 								<h3>{s.title}</h3>
 								<p>{s.desc}</p>
 							</div>

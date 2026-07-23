@@ -250,7 +250,7 @@
 						<h2 class="text-lb-text mx-0 mt-0 mb-2 text-xl font-extrabold">Active Communities</h2>
 						<p class="text-lb-text-muted m-0 text-base">Servers using {APP_NAME} Bot with public statistics enabled.</p>
 					</div>
-					<div class="m-servers-list grid w-full max-w-none gap-2">
+					<div class="m-servers-list w-full max-w-none gap-2">
 						{#each data.featuredServers as server}
 							<a href={publicServerPath(server.slug)} class="m-server-card text-lb-text flex items-center gap-3 rounded-[14px] px-4 py-4 no-underline">
 								<div class="m-landing-server-icon flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl">

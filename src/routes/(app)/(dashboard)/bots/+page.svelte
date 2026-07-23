@@ -150,7 +150,7 @@
 		{/if}
 	</div>
 {:else}
-	<div class="grid grid-cols-1 gap-3 lg:grid-cols-4 lg:gap-4">
+	<div class="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:gap-4 *:lg:flex-1 *:lg:basis-0">
 		{#each sortedBots as bot (bot.id)}
 			<a
 				href="/bots/{bot.id}"

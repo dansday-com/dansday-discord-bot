@@ -1354,21 +1354,18 @@ async function sweepExpiredBuffs(client: any, botId: any, EmbedBuilder: any) {
 				const disguisedNow = row.member_id ? await isDisguised(row.member_id).catch(() => false) : false;
 				const disguisedAtActivation = Number(row.disguised_at_activation) === 1;
 				const hidden = row.effect_type === 'disguise' || disguisedNow || disguisedAtActivation || disguiseEndingMembers.has(String(row.discord_member_id));
-				const description =
-					row.effect_type === 'disguise'
-						? 'A member stepped out of disguise. They are visible again.'
-						: hidden
-							? disguisedText(text)
-							: member
-								? `${member}, ${text}`
-								: text;
+				if (row.effect_type !== 'disguise' && hidden) {
+					handledIds.push(Number(row.id));
+					continue;
+				}
+				const description = row.effect_type === 'disguise' ? 'A member stepped out of disguise. They are visible again.' : member ? `${member}, ${text}` : text;
 				const embed = new EmbedBuilder()
 					.setColor(effectAccentInt(row.effect_type))
 					.setTitle(`${meta.emoji} ${meta.label} Ended`)
 					.setDescription(description)
 					.setFooter({ text: embedConfig.FOOTER || 'Items' })
 					.setTimestamp();
-				await deliverToMemberAndChannel(guild, embed, hidden ? undefined : member ? `${member}` : undefined);
+				await deliverToMemberAndChannel(guild, embed, member ? `${member}` : undefined);
 			}
 		}
 		handledIds.push(Number(row.id));

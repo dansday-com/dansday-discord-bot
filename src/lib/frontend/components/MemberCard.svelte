@@ -699,7 +699,7 @@
 							<span class="mc-server-icon-ph text-chili-hot flex h-6 w-6 items-center justify-center rounded-lg text-xs"><i class="fas fa-shield-alt"></i></span
 							>
 						{/if}
-						<span class="mc-server-name text-lb-text-muted max-w-[180px] overflow-hidden text-xs font-bold text-ellipsis whitespace-nowrap uppercase"
+						<span class="mc-server-name text-lb-text-muted max-w-45 overflow-hidden text-xs font-bold text-ellipsis whitespace-nowrap uppercase"
 							>{serverName}</span
 						>
 					</div>
@@ -712,7 +712,7 @@
 					<div class="mc-avatar-wrap mb-4">
 						<div class="mc-avatar-ring rounded-full p-1" style="--mc-ring-color: {accentColor};">
 							<img
-								class="mc-avatar block h-[88px] w-[88px] rounded-full object-cover"
+								class="mc-avatar block h-22 w-22 rounded-full object-cover"
 								src={avatarUrl(member)}
 								alt=""
 								width="88"
@@ -728,14 +728,14 @@
 					</h2>
 
 					{#if highestRole}
-						<div class="mc-role-badge mb-4 inline-flex items-center gap-2 rounded-[100px] px-4 py-1 text-xs font-bold" style="--mc-role-c: {roleColor};">
+						<div class="mc-role-badge mb-4 inline-flex items-center gap-2 rounded-[99px] px-4 py-1 text-xs font-bold" style="--mc-role-c: {roleColor};">
 							<i class="fas fa-circle"></i>
 							{highestRole.name}
 						</div>
 					{/if}
 
 					{#if isAssets && assets}
-						<div class="mc-level-block mb-4 flex flex-col items-center gap-1">
+						<div class="mc-level-block mb-4 flex flex-col items-center gap-0">
 							<span class="mc-level-label text-lb-text-subtle text-xs font-bold uppercase">Portfolio P/L</span>
 							<span class="mc-level-value text-3xl font-black" style="color: {assets.pnl >= 0 ? '#1a7f57' : '#b23b2e'}">
 								{assets.pnl >= 0 ? '+' : ''}{assets.pnlPct.toFixed(2)}%
@@ -765,7 +765,7 @@
 							<span>{assets.pnl >= 0 ? '+' : ''}{fmtNum(assets.pnl)} XP profit/loss</span>
 						</div>
 					{:else}
-						<div class="mc-level-block mb-4 flex flex-col items-center gap-1">
+						<div class="mc-level-block mb-4 flex flex-col items-center gap-0">
 							<span class="mc-level-label text-lb-text-subtle text-xs font-bold uppercase">Level</span>
 							<span class="mc-level-value text-3xl font-black">{member.level ?? 0}</span>
 						</div>

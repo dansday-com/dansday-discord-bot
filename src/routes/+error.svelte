@@ -20,22 +20,20 @@
 </svelte:head>
 
 <div class="m-root text-lb-text relative flex flex-col overflow-x-hidden">
-	<div class="m-blob m-blob-1 pointer-events-none fixed z-0 h-[420px] w-[420px] rounded-full opacity-14"></div>
-	<div class="m-blob m-blob-2 pointer-events-none fixed z-0 h-[320px] w-[320px] rounded-full opacity-14"></div>
-	<div class="m-blob m-blob-3 pointer-events-none fixed z-0 h-[260px] w-[260px] rounded-full opacity-14"></div>
+	<div class="m-blob pointer-events-none fixed z-0 h-105 w-105 rounded-full opacity-14"></div>
+	<div class="m-blob pointer-events-none fixed z-0 h-80 w-80 rounded-full opacity-14"></div>
+	<div class="m-blob pointer-events-none fixed z-0 h-65 w-65 rounded-full opacity-14"></div>
 
 	<MainHeader />
 
 	<main class="m-main m-main--error flex min-h-0 flex-1 flex-col overflow-y-auto">
-		<div
-			class="m-inner m-err-wrap relative z-1 mx-auto my-0 box-border flex max-w-[1280px] flex-1 flex-col items-center justify-center px-0 px-8 pt-7 pt-8 pb-10 pb-16"
-		>
-			<div class="m-err-inner relative z-1 flex w-full max-w-[440px] flex-col items-center">
+		<div class="m-inner m-err-wrap relative z-1 mx-auto my-0 box-border flex max-w-[1280px] flex-1 flex-col items-center justify-center px-8 pt-8 pb-16">
+			<div class="m-err-inner relative z-1 flex w-full max-w-110 flex-col items-center">
 				<div class="m-err-card w-full rounded-[20px] px-7 py-8 text-center">
 					<div
 						class="m-err-icon-wrap {isServerError
 							? 'm-err-icon-wrap--server'
-							: 'm-err-icon-wrap--client'} mx-auto mt-0 mb-5 flex h-[68px] w-[68px] items-center justify-center rounded-[20px]"
+							: 'm-err-icon-wrap--client'} mx-auto mt-0 mb-5 flex h-17 w-17 items-center justify-center rounded-[20px]"
 						aria-hidden="true"
 					>
 						<i class="fas {isServerError ? 'fa-server' : 'fa-circle-exclamation'} m-err-icon text-2xl"></i>
@@ -43,9 +41,9 @@
 
 					<p class="m-err-code text-lb-text-subtle mx-0 mt-0 mb-2 text-xs font-semibold uppercase">Error {status}</p>
 					<h1 class="m-err-title text-lb-text mx-0 mt-0 mb-2 text-xl font-extrabold">{title}</h1>
-					<p class="m-err-subtitle text-lb-text-muted m-0 text-base">{subtitle}</p>
+					<p class="m-err-subtitle text-lb-text-muted text-base">{subtitle}</p>
 
-					<div class="m-err-divider mx-0 my-6 h-1 rounded-[1px]"></div>
+					<div class="m-err-divider mx-0 my-6 h-0 rounded-none"></div>
 
 					<div class="m-err-actions flex-row justify-center">
 						<Button onclick={() => goto(DASHBOARD_PATH)} variant="primary">

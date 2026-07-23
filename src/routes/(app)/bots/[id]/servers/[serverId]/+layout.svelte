@@ -107,8 +107,9 @@
 			{@const active = isActive(tab.href)}
 			<a
 				href={tab.href}
-				class="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-base font-medium whitespace-nowrap transition-all lg:px-4
-					{active ? 'bg-ash-600 text-ash-100' : 'text-ash-400 hover:text-ash-200 hover:bg-ash-700'}"
+				class="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-base font-medium whitespace-nowrap transition-all lg:px-4 {active
+					? 'bg-ash-600 text-ash-100'
+					: 'text-ash-400 hover:text-ash-200 hover:bg-ash-700'}"
 			>
 				<i class="fas {tab.icon} {tab.iconClass} {active ? '' : 'opacity-75'} text-xs"></i>
 				<span>{tab.label}</span>

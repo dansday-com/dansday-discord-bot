@@ -67,8 +67,9 @@
 					type="button"
 					onclick={onconfirm}
 					disabled={loading}
-					class="flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-base font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:transform-none disabled:cursor-not-allowed disabled:opacity-50 lg:py-3 lg:text-base
-						{dangerous ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-ash-400 hover:bg-ash-500 text-ash-100'}"
+					class="flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-base font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:transform-none disabled:cursor-not-allowed disabled:opacity-50 lg:py-3 lg:text-base {dangerous
+						? 'bg-red-600 text-white hover:bg-red-500'
+						: 'bg-ash-400 hover:bg-ash-500 text-ash-100'}"
 				>
 					{#if loading}<i class="fas fa-spinner fa-spin"></i>{/if}
 					{loading ? 'Please wait...' : confirmLabel}

@@ -8,9 +8,9 @@
 </script>
 
 <div class="m-root text-lb-text relative flex flex-col overflow-x-hidden">
-	<div class="m-blob m-blob-1 pointer-events-none fixed z-0 h-[420px] w-[420px] rounded-full opacity-14"></div>
-	<div class="m-blob m-blob-2 pointer-events-none fixed z-0 h-[320px] w-[320px] rounded-full opacity-14"></div>
-	<div class="m-blob m-blob-3 pointer-events-none fixed z-0 h-[260px] w-[260px] rounded-full opacity-14"></div>
+	<div class="m-blob pointer-events-none fixed z-0 h-105 w-105 rounded-full opacity-14"></div>
+	<div class="m-blob pointer-events-none fixed z-0 h-80 w-80 rounded-full opacity-14"></div>
+	<div class="m-blob pointer-events-none fixed z-0 h-65 w-65 rounded-full opacity-14"></div>
 
 	<MainHeader trailing="live" />
 

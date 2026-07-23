@@ -278,7 +278,7 @@
 	{@const change = live?.change24h ?? a.change24h ?? 0}
 	<button
 		type="button"
-		class="m-asset-row relative grid w-full cursor-pointer items-center gap-3 overflow-hidden rounded-2xl pt-3 pr-3 pr-4 pb-3 pl-4 text-left"
+		class="m-asset-row relative grid w-full cursor-pointer items-center gap-3 overflow-hidden rounded-2xl pt-3 pr-4 pb-3 pl-4 text-left"
 		data-dir={dir(change)}
 		disabled={ctx.readOnly}
 		onclick={() => !ctx.readOnly && openBuy(a)}
@@ -318,7 +318,7 @@
 			{#each livePositions as p (p.id)}
 				<button
 					type="button"
-					class="m-asset-row relative grid w-full cursor-pointer items-center gap-3 overflow-hidden rounded-2xl pt-3 pr-3 pr-4 pb-3 pl-4 text-left"
+					class="m-asset-row relative grid w-full cursor-pointer items-center gap-3 overflow-hidden rounded-2xl pt-3 pr-4 pb-3 pl-4 text-left"
 					data-dir={dir(p.pnl)}
 					disabled={ctx.readOnly}
 					onclick={() => !ctx.readOnly && openSell(p)}
@@ -400,14 +400,14 @@
 			<div class="m-gamble-picker mb-3 flex flex-wrap gap-2">
 				{#each BUY_PCTS as p}
 					<button
-						class="m-gamble-pct text-lb-text cursor-pointer rounded-[10px] px-0 py-2 text-base font-bold"
+						class="m-gamble-pct text-lb-text cursor-pointer rounded-lg px-0 py-2 text-base font-bold"
 						class:m-gamble-pct--active={buyPercent === p}
 						disabled={buyBusy}
 						onclick={() => (buyPercent = p)}>{p === 100 ? 'Max' : `${p}%`}</button
 					>
 				{/each}
 				<button
-					class="m-gamble-pct text-lb-text cursor-pointer rounded-[10px] px-0 py-2 text-base font-bold"
+					class="m-gamble-pct text-lb-text cursor-pointer rounded-lg px-0 py-2 text-base font-bold"
 					class:m-gamble-pct--active={buyPercent === 'custom'}
 					disabled={buyBusy}
 					onclick={() => (buyPercent = 'custom')}>Custom</button
@@ -415,7 +415,7 @@
 			</div>
 			{#if buyPercent === 'custom'}
 				<input
-					class="m-gamble-custom text-lb-text mb-3 box-border w-full rounded-[10px] px-3 py-3 text-center text-base font-bold tabular-nums"
+					class="m-gamble-custom text-lb-text mb-3 box-border w-full rounded-lg px-3 py-3 text-center text-base font-bold tabular-nums"
 					type="text"
 					inputmode="numeric"
 					placeholder="XP to invest (min {fmt(MIN_BUY)})"
@@ -431,7 +431,7 @@
 			</div>
 
 			<button
-				class="m-gamble-play m-gamble-play--charged relative inline-flex w-full cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-[13px] p-4 text-base font-black text-white"
+				class="m-gamble-play m-gamble-play--charged relative inline-flex w-full cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-xl p-4 text-base font-black text-white"
 				disabled={buyBusy || buyAmount < MIN_BUY || buyAmount > ctx.liveXp}
 				onclick={confirmBuy}
 			>
@@ -473,14 +473,14 @@
 			<div class="m-gamble-picker mb-3 flex flex-wrap gap-2">
 				{#each SELL_PCTS as p}
 					<button
-						class="m-gamble-pct text-lb-text cursor-pointer rounded-[10px] px-0 py-2 text-base font-bold"
+						class="m-gamble-pct text-lb-text cursor-pointer rounded-lg px-0 py-2 text-base font-bold"
 						class:m-gamble-pct--active={sellPercent === p}
 						disabled={sellBusy}
 						onclick={() => (sellPercent = p)}>{p === 100 ? 'All' : `${p}%`}</button
 					>
 				{/each}
 				<button
-					class="m-gamble-pct text-lb-text cursor-pointer rounded-[10px] px-0 py-2 text-base font-bold"
+					class="m-gamble-pct text-lb-text cursor-pointer rounded-lg px-0 py-2 text-base font-bold"
 					class:m-gamble-pct--active={sellPercent === 'custom'}
 					disabled={sellBusy}
 					onclick={() => (sellPercent = 'custom')}>Custom</button
@@ -488,7 +488,7 @@
 			</div>
 			{#if sellPercent === 'custom'}
 				<input
-					class="m-gamble-custom text-lb-text mb-3 box-border w-full rounded-[10px] px-3 py-3 text-center text-base font-bold tabular-nums"
+					class="m-gamble-custom text-lb-text mb-3 box-border w-full rounded-lg px-3 py-3 text-center text-base font-bold tabular-nums"
 					type="text"
 					inputmode="numeric"
 					placeholder="XP to cash out (max {fmt(value)})"
@@ -504,7 +504,7 @@
 			</div>
 
 			<button
-				class="m-gamble-play m-gamble-play--charged relative inline-flex w-full cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-[13px] p-4 text-base font-black text-white"
+				class="m-gamble-play m-gamble-play--charged relative inline-flex w-full cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-xl p-4 text-base font-black text-white"
 				disabled={sellBusy || payout <= 0}
 				onclick={confirmSell}
 			>
@@ -519,7 +519,7 @@
 {#if outcome}
 	<div class="m-out-overlay z-99999 flex items-center justify-center overflow-hidden p-4" role="presentation" onclick={dismissOutcome}>
 		<div class="m-out m-out--{outcome.tone} p-4" role="dialog" aria-modal="true" aria-label={outcome.title} onclick={(e) => e.stopPropagation()}>
-			<div class="m-out-icon text-yacht-teal mx-auto mt-0 mb-3 grid h-[76px] w-[76px] place-items-center rounded-full text-3xl">
+			<div class="m-out-icon text-yacht-teal mx-auto mt-0 mb-3 grid h-19 w-19 place-items-center rounded-full text-3xl">
 				<i class="fas {outcome.icon}"></i>
 			</div>
 			<div class="m-out-title text-lb-text text-xl font-extrabold">{outcome.title}</div>

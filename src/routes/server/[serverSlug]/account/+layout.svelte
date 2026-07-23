@@ -343,7 +343,7 @@
 
 <div class="m-items mt-4">
 	{#snippet walletHero()}
-		<div class="m-xp relative mb-4 box-border flex h-[140px] items-center gap-3 overflow-hidden rounded-2xl px-4 py-3 py-4">
+		<div class="m-xp relative mb-4 box-border flex h-[140px] items-center gap-3 overflow-hidden rounded-2xl px-4 py-4">
 			<div class="m-xp-glow pointer-events-none h-[220px] w-[220px] rounded-full"></div>
 			{#if pd.memberCard && !(isAssets && assetSummary.count === 0)}
 				<button

@@ -11,7 +11,7 @@
 </script>
 
 <footer class="m-footer relative z-1 shrink-0" class:m-footer--dark={palette === 'dark'}>
-	<div class="m-footer-inner pr-8 pl-8">
+	<div class="m-footer-inner mx-auto flex max-w-7xl flex-col items-center gap-2 px-3 py-5 text-center">
 		<p class="m-0 text-xs leading-normal lg:text-base {copy}">
 			Copyright © {new Date().getFullYear()}
 			<a class="no-underline transition-colors {copyLink}" href={APP_URL}>{APP_DOMAIN}</a>. All rights reserved.

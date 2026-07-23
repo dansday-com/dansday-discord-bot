@@ -184,11 +184,11 @@
 </svelte:head>
 
 <div class="m-members">
-	<div class="m-leaderboard-subhead m-stats-subhead mb-3 mb-4">
+	<div class="m-leaderboard-subhead m-stats-subhead mb-4">
 		<p>Members</p>
 	</div>
 
-	<div class="m-members-search-bar mb-4 flex flex-col flex-row items-center gap-2 gap-3 rounded-2xl px-4 py-3">
+	<div class="m-members-search-bar mb-4 flex flex-col flex-row items-center gap-3 rounded-2xl px-4 py-3">
 		<div class="m-members-search relative min-w-0 flex-1">
 			<i class="fas fa-search m-members-search-ic pointer-events-none text-base" aria-hidden="true"></i>
 			<input
@@ -202,7 +202,7 @@
 			/>
 		</div>
 		{#if sorted.length > PER_PAGE}
-			<p class="m-members-page-hint m-0 ml-auto shrink-0 text-right text-base font-bold whitespace-nowrap tabular-nums">Page {listPage} / {totalPages}</p>
+			<p class="m-members-page-hint ml-auto shrink-0 text-right text-base font-bold whitespace-nowrap tabular-nums">Page {listPage} / {totalPages}</p>
 		{/if}
 	</div>
 
@@ -212,12 +212,10 @@
 			<p>No members found</p>
 		</div>
 	{:else}
-		<ul class="m-members-grid m-0 grid gap-4 p-0">
+		<ul class="m-members-grid grid gap-4 p-0">
 			{#each paged as member, i (member.discord_member_id)}
 				<li
-					class="m-stat-card m-overview-card m-members-card {podiumCardClass(
-						member.rank
-					)} relative overflow-hidden rounded-2xl px-4 py-4 pt-4 pb-4 opacity-0 opacity-100"
+					class="m-stat-card m-overview-card m-members-card {podiumCardClass(member.rank)} relative overflow-hidden rounded-2xl px-4 py-4 pt-4 pb-4 opacity-100"
 					class:m-members-card--in={mounted}
 					style="--pubm-card-dly:{i * 32}ms"
 				>
@@ -251,7 +249,7 @@
 								<span class="m-members-dot text-[rgba(26,52,63,0.35)]">·</span>
 								<span title="Voice minutes">{fmtNum(member.voice_minutes_active ?? 0)}m act / {fmtNum(member.voice_minutes_afk ?? 0)}m AFK</span>
 							</p>
-							<p class="m-members-dates mx-0 mt-0 mb-0 mb-2 flex flex-wrap items-baseline gap-x-1 gap-y-1 text-xs font-semibold text-[rgba(26,52,63,0.72)]">
+							<p class="m-members-dates mx-0 mt-0 mb-2 flex flex-wrap items-baseline gap-x-1 gap-y-1 text-xs font-semibold text-[rgba(26,52,63,0.72)]">
 								<span
 									><span class="m-members-dk mr-1 text-xs font-bold text-[rgba(26,52,63,0.42)] uppercase">Joined</span>
 									<LocalTime value={member.member_since} fallback="N/A" /></span

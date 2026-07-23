@@ -223,7 +223,7 @@
 	>
 		<div class="m-card-glow pointer-events-none z-1 opacity-0"></div>
 		<div class="m-card-top flex items-start justify-between gap-2">
-			<span class="m-card-medallion relative grid h-12 h-14 w-12 w-14 place-items-center rounded-2xl text-lg text-xl">
+			<span class="m-card-medallion relative grid h-14 w-14 place-items-center rounded-2xl text-xl">
 				<i class="fas {effectIcon(item.effect_type)}"></i>
 				{#if owned > 0}<span class="m-card-qty grid h-5 min-w-5 place-items-center rounded-[999px] px-1 py-0 text-xs font-extrabold text-white">×{owned}</span
 					>{/if}
@@ -250,7 +250,7 @@
 			>
 		{/if}
 		<h3 class="m-card-name text-lb-text mx-0 mt-1 mb-0 text-base font-extrabold">{item.name}</h3>
-		<p class="m-card-desc text-lb-text-muted m-0 min-h-[2.9em] text-base text-xs">{item.description || effectSummary(item, ctx.luckPercent)}</p>
+		<p class="m-card-desc text-lb-text-muted min-h-[2.9em] text-xs">{item.description || effectSummary(item, ctx.luckPercent)}</p>
 		{#if effectMeta(item, ctx.luckPercent).length > 0}
 			<div class="m-card-meta mx-0 mt-2 mb-1 flex flex-wrap gap-1">
 				{#each effectMeta(item, ctx.luckPercent) as chip}
@@ -275,7 +275,7 @@
 			{#if ctx.readOnly}
 				<div class="m-card-actions ml-auto flex flex-[1_1_100%] items-center justify-end gap-2">
 					<button
-						class="m-card-btn m-card-btn--buy inline-flex flex-none cursor-pointer items-center justify-center gap-1 rounded-lg px-3 px-4 py-2 text-base font-bold whitespace-nowrap text-white"
+						class="m-card-btn m-card-btn--buy inline-flex flex-none cursor-pointer items-center justify-center gap-1 rounded-lg px-4 py-2 text-base font-bold whitespace-nowrap text-white"
 						disabled
 						title="Open your card to buy"><i class="fas fa-cart-plus"></i>Buy</button
 					>
@@ -283,7 +283,7 @@
 			{:else}
 				<div class="m-card-actions ml-auto flex flex-[1_1_100%] items-center justify-end gap-2">
 					<button
-						class="m-card-btn m-card-btn--buy inline-flex flex-none cursor-pointer items-center justify-center gap-1 rounded-lg px-3 px-4 py-2 text-base font-bold whitespace-nowrap text-white"
+						class="m-card-btn m-card-btn--buy inline-flex flex-none cursor-pointer items-center justify-center gap-1 rounded-lg px-4 py-2 text-base font-bold whitespace-nowrap text-white"
 						disabled={ctx.busy === item.id || !canBuy || !affordable || ctx.bagFull}
 						title={notStarted
 							? 'Not available yet'
@@ -303,13 +303,13 @@
 					{#if owned > 0}
 						{#if buffActive}
 							<button
-								class="m-card-btn m-card-btn--use inline-flex flex-none cursor-pointer items-center justify-center gap-1 rounded-lg px-3 px-4 py-2 text-base font-bold whitespace-nowrap text-white"
+								class="m-card-btn m-card-btn--use inline-flex flex-none cursor-pointer items-center justify-center gap-1 rounded-lg px-4 py-2 text-base font-bold whitespace-nowrap text-white"
 								disabled
 								title="Already active"><i class="fas fa-check"></i>Active</button
 							>
 						{:else}
 							<button
-								class="m-card-btn m-card-btn--use inline-flex flex-none cursor-pointer items-center justify-center gap-1 rounded-lg px-3 px-4 py-2 text-base font-bold whitespace-nowrap text-white"
+								class="m-card-btn m-card-btn--use inline-flex flex-none cursor-pointer items-center justify-center gap-1 rounded-lg px-4 py-2 text-base font-bold whitespace-nowrap text-white"
 								disabled={ctx.busy === item.member_item_id || !canUse}
 								title={!canUse ? 'Using is turned off' : actionVerb(item.effect_type).label}
 								onclick={() => onUse({ ...item, member_item_id: item.member_item_id, quantity: owned, usable: canUse })}
@@ -328,7 +328,7 @@
 {#if shopItems.length === 0}
 	<div class="m-members-empty px-4 py-12 text-center">No items in this category.</div>
 {:else if data.category !== 'all'}
-	<div class="m-cards grid gap-2 gap-4">
+	<div class="m-cards grid gap-4">
 		{#each shopItems.slice().sort(byCost) as item (item.id)}
 			{@render card(item)}
 		{/each}
@@ -343,7 +343,7 @@
 				<i class="fas {group.icon}"></i>{group.label}
 				<span class="m-group-count text-lb-text-muted rounded-[999px] px-2 py-1 text-xs font-bold tabular-nums">{group.items.length}</span>
 			</h2>
-			<div class="m-cards grid gap-2 gap-4">
+			<div class="m-cards grid gap-4">
 				{#each group.items as item (item.id)}
 					{@render card(item)}
 				{/each}
@@ -355,7 +355,7 @@
 {#if pickingTargetFor}
 	<div class="m-tgt-overlay z-60 flex items-center justify-center p-4" role="presentation" onclick={() => (pickingTargetFor = null)}>
 		<div
-			class="m-tgt-modal max-h-[85vh] w-full max-w-[440px] overflow-y-auto rounded-[18px] p-4"
+			class="m-tgt-modal max-h-[85vh] w-full max-w-110 overflow-y-auto rounded-[18px] p-4"
 			role="dialog"
 			aria-modal="true"
 			aria-label="Pick a target"
@@ -380,7 +380,7 @@
 				{#if visibleTargets.length === 0}
 					<div class="m-members-empty px-4 py-12 text-center">No members match “{targetSearch}”.</div>
 				{:else}
-					<ul class="m-tgt-list m-0 flex max-h-[440px] flex-col gap-2 overflow-x-hidden overflow-y-auto p-1">
+					<ul class="m-tgt-list flex max-h-[440px] flex-col gap-2 overflow-x-hidden overflow-y-auto p-1">
 						{#each visibleTargets as t (t.hash)}
 							<li>
 								<button
@@ -432,7 +432,7 @@
 			aria-label={outcome.title}
 			onclick={(e) => e.stopPropagation()}
 		>
-			<div class="m-out-icon text-yacht-teal mx-auto mt-0 mb-3 grid h-[76px] w-[76px] place-items-center rounded-full text-3xl">
+			<div class="m-out-icon text-yacht-teal mx-auto mt-0 mb-3 grid h-19 w-19 place-items-center rounded-full text-3xl">
 				<i class="fas {outcome.icon}"></i>
 			</div>
 			<div class="m-out-title text-lb-text text-xl font-extrabold">{outcome.title}</div>

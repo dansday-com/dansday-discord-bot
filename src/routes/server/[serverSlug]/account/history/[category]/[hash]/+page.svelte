@@ -246,7 +246,7 @@
 			item to start.{:else if data.tab === 'assets'}No asset trades yet. Invest XP from the Assets tab to start.{:else}No activity yet.{/if}
 	</div>
 {:else}
-	<ul class="m-hist m-0 flex flex-col gap-2 p-0">
+	<ul class="m-hist flex flex-col gap-2 p-0">
 		{#each data.pagedHistory as h (h.id)}
 			{@const l = h.kind === 'level' ? levelLine(h) : h.kind === 'asset' ? assetLine(h) : h.kind === 'minigame' ? minigameLine(h) : line(h)}
 			<li class="m-hist-row m-hist-row--{l.tone} flex items-center gap-3 rounded-xl px-3 py-2">

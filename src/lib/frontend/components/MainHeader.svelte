@@ -40,7 +40,7 @@
 					href="/"
 					class="m-btn border {palette === 'light'
 						? 'border-lb-border bg-chili-surface text-lb-text hover:bg-chili-surface-mid'
-						: 'border-ash-600 bg-ash-800/80 text-ash-200 hover:border-ash-500 hover:bg-ash-700 hover:text-ash-100'} inline-flex cursor-pointer items-center justify-center gap-2 rounded-[10px] px-4 py-2 text-base font-semibold no-underline"
+						: 'border-ash-600 bg-ash-800/80 text-ash-200 hover:border-ash-500 hover:bg-ash-700 hover:text-ash-100'} inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg px-4 py-2 text-base font-semibold no-underline"
 				>
 					<i class="fas fa-house"></i>
 					Home

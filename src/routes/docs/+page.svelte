@@ -514,9 +514,9 @@
 </svelte:head>
 
 <div class="m-root text-lb-text relative flex flex-col overflow-x-hidden">
-	<div class="m-blob m-blob-1 pointer-events-none fixed z-0 h-[420px] w-[420px] rounded-full opacity-14"></div>
-	<div class="m-blob m-blob-2 pointer-events-none fixed z-0 h-[320px] w-[320px] rounded-full opacity-14"></div>
-	<div class="m-blob m-blob-3 pointer-events-none fixed z-0 h-[260px] w-[260px] rounded-full opacity-14"></div>
+	<div class="m-blob pointer-events-none fixed z-0 h-105 w-105 rounded-full opacity-14"></div>
+	<div class="m-blob pointer-events-none fixed z-0 h-80 w-80 rounded-full opacity-14"></div>
+	<div class="m-blob pointer-events-none fixed z-0 h-65 w-65 rounded-full opacity-14"></div>
 
 	<MainHeader />
 
@@ -524,9 +524,9 @@
 		<div class="m-inner relative z-1 mx-auto my-0 max-w-[1280px] px-8 pt-8 pb-16">
 			<div class="g-wrap gap-8 px-0 pt-1 pb-9">
 				<header class="g-hero px-1 pt-3 pb-0 text-center" use:reveal>
-					<div class="g-hero-badge h-14 h-16 w-14 w-16 rounded-2xl text-xl"><i class="fas fa-book-open"></i></div>
+					<div class="g-hero-badge h-16 w-16 rounded-2xl text-xl"><i class="fas fa-book-open"></i></div>
 					<h1 class="g-hero-title text-lb-text mx-0 mt-0 mb-2 font-extrabold">Set up {APP_NAME} Bot</h1>
-					<p class="g-hero-sub text-lb-text-muted mx-auto my-0 max-w-[540px] text-base">
+					<p class="g-hero-sub text-lb-text-muted mx-auto my-0 max-w-135 text-base">
 						From adding the bot to configuring every module, field by field. Everything is set in the browser; members use it through the Discord menu.
 					</p>
 					<Button href={officialBotInviteUrl} variant="primary" class="g-docs-cta mt-4" target="_blank" rel="noopener noreferrer">
@@ -552,9 +552,7 @@
 						{#each startSteps as s, i}
 							<div class="g-step relative overflow-hidden rounded-2xl px-4 pt-4 pb-4" style="--d: {i * 80}ms">
 								<span class="g-step-num text-4xl">{i + 1}</span>
-								<span class="g-step-ic text-yacht-teal mb-2 inline-grid h-10 w-10 place-items-center rounded-[11px] text-base"
-									><i class="fas {s.icon}"></i></span
-								>
+								<span class="g-step-ic text-yacht-teal mb-2 inline-grid h-10 w-10 place-items-center rounded-xl text-base"><i class="fas {s.icon}"></i></span>
 								<h3>{s.title}</h3>
 								<p>{s.desc}</p>
 							</div>
@@ -571,7 +569,7 @@
 						{#each botKinds as b, i}
 							<article class="g-mod relative rounded-2xl p-4" style="--ac: {b.accent}; --d: {i * 60}ms">
 								<div class="g-mod-head mb-4 flex items-start gap-3">
-									<span class="g-mod-ic inline-grid h-10 w-10 flex-none place-items-center rounded-[11px] text-base"><i class="fas {b.icon}"></i></span>
+									<span class="g-mod-ic inline-grid h-10 w-10 flex-none place-items-center rounded-xl text-base"><i class="fas {b.icon}"></i></span>
 									<div class="g-mod-titles">
 										<h3>{b.title}</h3>
 										<p>{b.what}</p>
@@ -580,7 +578,7 @@
 								<div class="g-fieldlist flex flex-col gap-0 overflow-hidden rounded-xl">
 									{#each b.fields as f}
 										<div class="g-field flex-row gap-3">
-											<span class="g-field-key text-lb-text max-w-[240px] flex-[0_0_38%] text-base font-extrabold">{f.label}</span>
+											<span class="g-field-key text-lb-text max-w-60 flex-[0_0_38%] text-base font-extrabold">{f.label}</span>
 											<span class="g-field-val text-lb-text-muted flex-1 text-base">{f.desc}</span>
 										</div>
 									{/each}
@@ -599,7 +597,7 @@
 					<div class="g-fieldlist flex flex-col gap-0 overflow-hidden rounded-xl">
 						{#each setupChannels as c}
 							<div class="g-field flex-row gap-3">
-								<span class="g-field-key text-lb-text max-w-[240px] flex-[0_0_38%] text-base font-extrabold">{c.name}</span>
+								<span class="g-field-key text-lb-text max-w-60 flex-[0_0_38%] text-base font-extrabold">{c.name}</span>
 								<span class="g-field-val text-lb-text-muted flex-1 text-base">{c.desc}</span>
 							</div>
 						{/each}
@@ -614,7 +612,7 @@
 					<div class="g-fieldlist flex flex-col gap-0 overflow-hidden rounded-xl">
 						{#each accountFields as f}
 							<div class="g-field flex-row gap-3">
-								<span class="g-field-key text-lb-text max-w-[240px] flex-[0_0_38%] text-base font-extrabold">{f.label}</span>
+								<span class="g-field-key text-lb-text max-w-60 flex-[0_0_38%] text-base font-extrabold">{f.label}</span>
 								<span class="g-field-val text-lb-text-muted flex-1 text-base">{f.desc}</span>
 							</div>
 						{/each}
@@ -631,7 +629,7 @@
 						{#each tiers as t, i}
 							<article class="g-mod relative rounded-2xl p-4" style="--ac: {t.accent}; --d: {i * 60}ms">
 								<div class="g-mod-head mb-4 flex items-start gap-3">
-									<span class="g-mod-ic inline-grid h-10 w-10 flex-none place-items-center rounded-[11px] text-base"><i class="fas {t.icon}"></i></span>
+									<span class="g-mod-ic inline-grid h-10 w-10 flex-none place-items-center rounded-xl text-base"><i class="fas {t.icon}"></i></span>
 									<div class="g-mod-titles">
 										<h3>{t.title}</h3>
 										<p>{t.what}</p>
@@ -653,7 +651,7 @@
 					<div class="g-fieldlist flex flex-col gap-0 overflow-hidden rounded-xl">
 						{#each permissionRoles as r}
 							<div class="g-field flex-row gap-3">
-								<span class="g-field-key text-lb-text max-w-[240px] flex-[0_0_38%] text-base font-extrabold">{r.label}</span>
+								<span class="g-field-key text-lb-text max-w-60 flex-[0_0_38%] text-base font-extrabold">{r.label}</span>
 								<span class="g-field-val text-lb-text-muted flex-1 text-base">{r.desc}</span>
 							</div>
 						{/each}
@@ -669,7 +667,7 @@
 						{#each modules as m, i}
 							<article id="mod-{m.id}" class="g-mod relative rounded-2xl p-4" style="--ac: {m.accent}; --d: {(i % 4) * 60}ms">
 								<div class="g-mod-head mb-4 flex items-start gap-3">
-									<span class="g-mod-ic inline-grid h-10 w-10 flex-none place-items-center rounded-[11px] text-base"><i class="fas {m.icon}"></i></span>
+									<span class="g-mod-ic inline-grid h-10 w-10 flex-none place-items-center rounded-xl text-base"><i class="fas {m.icon}"></i></span>
 									<div class="g-mod-titles">
 										<h3>{m.title}</h3>
 										<p>{m.what}</p>
@@ -678,7 +676,7 @@
 								<div class="g-fieldlist flex flex-col gap-0 overflow-hidden rounded-xl">
 									{#each m.fields as f}
 										<div class="g-field flex-row gap-3">
-											<span class="g-field-key text-lb-text max-w-[240px] flex-[0_0_38%] text-base font-extrabold">{f.label}</span>
+											<span class="g-field-key text-lb-text max-w-60 flex-[0_0_38%] text-base font-extrabold">{f.label}</span>
 											<span class="g-field-val text-lb-text-muted flex-1 text-base">{f.desc}</span>
 										</div>
 									{/each}
@@ -697,9 +695,7 @@
 						{#each shopSteps as s, i}
 							<div class="g-step relative overflow-hidden rounded-2xl px-4 pt-4 pb-4" style="--d: {i * 80}ms">
 								<span class="g-step-num text-4xl">{i + 1}</span>
-								<span class="g-step-ic text-yacht-teal mb-2 inline-grid h-10 w-10 place-items-center rounded-[11px] text-base"
-									><i class="fas {s.icon}"></i></span
-								>
+								<span class="g-step-ic text-yacht-teal mb-2 inline-grid h-10 w-10 place-items-center rounded-xl text-base"><i class="fas {s.icon}"></i></span>
 								<h3>{s.title}</h3>
 								<p>{s.desc}</p>
 							</div>
@@ -715,7 +711,7 @@
 					<div class="g-fieldlist flex flex-col gap-0 overflow-hidden rounded-xl">
 						{#each discordMenu as d}
 							<div class="g-field flex-row gap-3">
-								<span class="g-field-key text-lb-text max-w-[240px] flex-[0_0_38%] text-base font-extrabold">{d.label}</span>
+								<span class="g-field-key text-lb-text max-w-60 flex-[0_0_38%] text-base font-extrabold">{d.label}</span>
 								<span class="g-field-val text-lb-text-muted flex-1 text-base">{d.desc}</span>
 							</div>
 						{/each}
@@ -731,9 +727,7 @@
 						{#each selfhostSteps as s, i}
 							<div class="g-step relative overflow-hidden rounded-2xl px-4 pt-4 pb-4" style="--d: {i * 80}ms">
 								<span class="g-step-num text-4xl">{i + 1}</span>
-								<span class="g-step-ic text-yacht-teal mb-2 inline-grid h-10 w-10 place-items-center rounded-[11px] text-base"
-									><i class="fas {s.icon}"></i></span
-								>
+								<span class="g-step-ic text-yacht-teal mb-2 inline-grid h-10 w-10 place-items-center rounded-xl text-base"><i class="fas {s.icon}"></i></span>
 								<h3>{s.title}</h3>
 								<p>{s.desc}</p>
 							</div>
@@ -744,7 +738,7 @@
 					<div class="g-fieldlist flex flex-col gap-0 overflow-hidden rounded-xl">
 						{#each envVars as e}
 							<div class="g-field flex-row gap-3">
-								<span class="g-field-key text-lb-text max-w-[240px] flex-[0_0_38%] text-base font-extrabold"
+								<span class="g-field-key text-lb-text max-w-60 flex-[0_0_38%] text-base font-extrabold"
 									>{e.label}<span
 										class="g-field-tag g-field-tag--{e.req === 'optional' ? 'opt' : 'req'} ml-2 rounded-full px-2 py-0 text-xs font-extrabold uppercase"
 										>{e.req}</span

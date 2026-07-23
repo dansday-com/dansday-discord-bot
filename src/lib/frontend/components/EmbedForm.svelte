@@ -207,15 +207,17 @@
 				<div class="mb-2 flex gap-2">
 					<button
 						onclick={() => (imageMode = 'url')}
-						class="flex-1 rounded-lg py-1.5 text-xs font-medium transition-colors
-							{imageMode === 'url' ? 'bg-ash-500 text-ash-100' : 'bg-ash-700 text-ash-400 hover:text-ash-200'}"
+						class="flex-1 rounded-lg py-1.5 text-xs font-medium transition-colors {imageMode === 'url'
+							? 'bg-ash-500 text-ash-100'
+							: 'bg-ash-700 text-ash-400 hover:text-ash-200'}"
 					>
 						URL
 					</button>
 					<button
 						onclick={() => (imageMode = 'upload')}
-						class="flex-1 rounded-lg py-1.5 text-xs font-medium transition-colors
-							{imageMode === 'upload' ? 'bg-ash-500 text-ash-100' : 'bg-ash-700 text-ash-400 hover:text-ash-200'}"
+						class="flex-1 rounded-lg py-1.5 text-xs font-medium transition-colors {imageMode === 'upload'
+							? 'bg-ash-500 text-ash-100'
+							: 'bg-ash-700 text-ash-400 hover:text-ash-200'}"
 					>
 						Upload
 					</button>

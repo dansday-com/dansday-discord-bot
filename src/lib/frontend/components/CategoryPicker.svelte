@@ -116,8 +116,9 @@
 						<button
 							type="button"
 							onclick={() => toggle(cat.discord_category_id)}
-							class="flex w-full items-center justify-between rounded-lg px-4 py-2.5 text-left text-base transition-colors
-								{isSelected ? 'bg-ash-900 border-ash-500 border' : 'bg-ash-700 hover:bg-ash-600'}"
+							class="flex w-full items-center justify-between rounded-lg px-4 py-2.5 text-left text-base transition-colors {isSelected
+								? 'bg-ash-900 border-ash-500 border'
+								: 'bg-ash-700 hover:bg-ash-600'}"
 						>
 							<div class="flex min-w-0 flex-1 items-center gap-3">
 								<i class="fas fa-folder {isSelected ? 'text-amber-300' : 'text-amber-400'} shrink-0"></i>

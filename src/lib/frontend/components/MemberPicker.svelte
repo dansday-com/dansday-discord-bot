@@ -217,8 +217,9 @@
 						<button
 							type="button"
 							onclick={() => (single ? pickSingle(m) : toggleMulti(m))}
-							class="flex w-full items-center justify-between rounded-lg px-4 py-2.5 text-left text-base transition-colors
-								{isRowSelected(m.discord_member_id) ? 'bg-ash-900 border-ash-500 border' : 'bg-ash-700 hover:bg-ash-600'}"
+							class="flex w-full items-center justify-between rounded-lg px-4 py-2.5 text-left text-base transition-colors {isRowSelected(m.discord_member_id)
+								? 'bg-ash-900 border-ash-500 border'
+								: 'bg-ash-700 hover:bg-ash-600'}"
 						>
 							<div class="flex min-w-0 flex-1 items-center gap-3">
 								{#if m.avatar}

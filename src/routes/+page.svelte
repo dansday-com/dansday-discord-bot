@@ -151,15 +151,15 @@
 </svelte:head>
 
 <div class="m-root text-lb-text relative flex flex-col overflow-x-hidden">
-	<div class="m-blob m-blob-1 pointer-events-none fixed z-0 h-[420px] w-[420px] rounded-full opacity-14"></div>
-	<div class="m-blob m-blob-2 pointer-events-none fixed z-0 h-[320px] w-[320px] rounded-full opacity-14"></div>
-	<div class="m-blob m-blob-3 pointer-events-none fixed z-0 h-[260px] w-[260px] rounded-full opacity-14"></div>
+	<div class="m-blob pointer-events-none fixed z-0 h-105 w-105 rounded-full opacity-14"></div>
+	<div class="m-blob pointer-events-none fixed z-0 h-80 w-80 rounded-full opacity-14"></div>
+	<div class="m-blob pointer-events-none fixed z-0 h-65 w-65 rounded-full opacity-14"></div>
 
 	<MainHeader />
 
 	<main class="m-main flex-1 overflow-y-auto">
 		<div class="m-inner m-landing-inner relative z-1 mx-auto my-0 max-w-[1280px] min-w-0 flex-1 px-8 pt-8 pb-16">
-			<section class="m-hero px-8 pt-[72px] pb-12 text-center">
+			<section class="m-hero px-8 pt-18 pb-12 text-center">
 				<h1 class="text-lb-text mx-0 mt-0 mb-3.5 text-2xl font-extrabold">
 					Supercharge Your<br />
 					<span class="from-chili-hot to-chili-peach bg-gradient-to-br bg-clip-text text-transparent">Discord Server</span>
@@ -250,7 +250,7 @@
 						<h2 class="text-lb-text mx-0 mt-0 mb-2 text-xl font-extrabold">Active Communities</h2>
 						<p class="text-lb-text-muted m-0 text-base">Servers using {APP_NAME} Bot with public statistics enabled.</p>
 					</div>
-					<div class="m-servers-list m-0 grid w-full max-w-none gap-2">
+					<div class="m-servers-list grid w-full max-w-none gap-2">
 						{#each data.featuredServers as server}
 							<a href={publicServerPath(server.slug)} class="m-server-card text-lb-text flex items-center gap-3 rounded-[14px] px-4 py-4 no-underline">
 								<div class="m-landing-server-icon flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl">

@@ -204,8 +204,9 @@
 													confirm();
 												}
 											}}
-											class="flex w-full items-center justify-between rounded-lg px-4 py-2.5 text-left text-base transition-colors
-												{(multi ? pending.includes(ch.discord_channel_id) : (value as string) === ch.discord_channel_id)
+											class="flex w-full items-center justify-between rounded-lg px-4 py-2.5 text-left text-base transition-colors {(
+												multi ? pending.includes(ch.discord_channel_id) : (value as string) === ch.discord_channel_id
+											)
 												? 'bg-ash-900 border-ash-500 border'
 												: 'bg-ash-700 hover:bg-ash-600'}"
 										>
@@ -248,8 +249,9 @@
 												confirm();
 											}
 										}}
-										class="flex w-full items-center justify-between rounded-lg px-4 py-2.5 text-left text-base transition-colors
-											{(multi ? pending.includes(ch.discord_channel_id) : (value as string) === ch.discord_channel_id)
+										class="flex w-full items-center justify-between rounded-lg px-4 py-2.5 text-left text-base transition-colors {(
+											multi ? pending.includes(ch.discord_channel_id) : (value as string) === ch.discord_channel_id
+										)
 											? 'bg-ash-900 border-ash-500 border'
 											: 'bg-ash-700 hover:bg-ash-600'}"
 									>

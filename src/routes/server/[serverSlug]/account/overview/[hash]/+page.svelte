@@ -236,8 +236,8 @@
 <div class="m-ov grid items-start gap-4" class:m-ov--in={mounted}>
 	<div class="m-stat-card m-overview-card m-ov-full rounded-2xl px-4 py-4">
 		<div class="m-stat-card-head mb-4 flex items-center gap-3">
-			<div class="m-stat-card-icon m-chili-stat-3 flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] text-lg"><i class="fas fa-star"></i></div>
-			<h2 class="m-stat-card-title text-lb-text m-0 text-base font-bold">Total XP</h2>
+			<div class="m-stat-card-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg"><i class="fas fa-star"></i></div>
+			<h2 class="m-stat-card-title text-lb-text text-base font-bold">Total XP</h2>
 		</div>
 		<div class="m-stat-hero mt-2 rounded-[14px] p-3 text-center">
 			<span class="m-stat-hero-val text-lb-text block font-extrabold tabular-nums" use:countUp={p.totalXp}>{fmt(p.totalXp)}</span>
@@ -249,7 +249,7 @@
 					<span>Where your XP came from</span>
 					<span class="m-bar-meta text-xs font-bold text-[rgba(36,95,115,0.88)] tabular-nums">{fmt(xpSourceTotal)} tracked</span>
 				</div>
-				<div class="m-seg-bar m-seg-bar--3 flex h-2 overflow-hidden rounded-[99px]" title="XP by source">
+				<div class="m-seg-bar flex h-2 overflow-hidden rounded-[99px]" title="XP by source">
 					{#each xpSourceBars as s}
 						<div class="m-seg h-full min-w-0" style="width: {s.share * grow}%; background: {s.color};"></div>
 					{/each}
@@ -274,10 +274,10 @@
 	{#if flowChart}
 		<div class="m-stat-card m-overview-card m-ov-full rounded-2xl px-4 py-4">
 			<div class="m-stat-card-head mb-4 flex items-center gap-3">
-				<div class="m-stat-card-icon m-chili-stat-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] text-lg">
+				<div class="m-stat-card-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg">
 					<i class="fas fa-chart-line"></i>
 				</div>
-				<h2 class="m-stat-card-title text-lb-text m-0 text-base font-bold">XP flow · last 14 days</h2>
+				<h2 class="m-stat-card-title text-lb-text text-base font-bold">XP flow · last 14 days</h2>
 			</div>
 			<div class="m-line-meta mx-0 mt-4 mb-2 flex items-baseline justify-between gap-2">
 				<span class="m-line-cap text-lb-text-muted text-base font-semibold">Cumulative net XP</span>
@@ -285,7 +285,7 @@
 					<i class="fas fa-arrow-trend-{flowChart.up ? 'up' : 'down'}"></i>{flowChart.up ? '+' : '−'}{fmt(Math.abs(flowChart.last))}
 				</span>
 			</div>
-			<svg class="m-line block h-[88px] w-full" viewBox="0 0 {flowChart.W} {flowChart.H}" preserveAspectRatio="none" role="img" aria-label="XP flow over time">
+			<svg class="m-line block h-22 w-full" viewBox="0 0 {flowChart.W} {flowChart.H}" preserveAspectRatio="none" role="img" aria-label="XP flow over time">
 				<defs>
 					<linearGradient id="flowgrad" x1="0" y1="0" x2="0" y2="1">
 						<stop offset="0%" stop-color={flowChart.up ? 'rgba(31,138,76,0.35)' : 'rgba(178,59,59,0.35)'} />
@@ -309,10 +309,10 @@
 
 	<div class="m-stat-card m-overview-card m-ov-full rounded-2xl px-4 py-4">
 		<div class="m-stat-card-head mb-4 flex items-center gap-3">
-			<div class="m-stat-card-icon m-chili-stat-5 flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] text-lg">
+			<div class="m-stat-card-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg">
 				<i class="fas fa-microphone-alt"></i>
 			</div>
-			<h2 class="m-stat-card-title text-lb-text m-0 text-base font-bold">Activity</h2>
+			<h2 class="m-stat-card-title text-lb-text text-base font-bold">Activity</h2>
 		</div>
 		{#if voiceMix}
 			<div class="m-bar-block mt-4">
@@ -320,7 +320,7 @@
 					<span>Voice time split</span>
 					<span class="m-bar-meta text-xs font-bold text-[rgba(36,95,115,0.88)] tabular-nums">{fmt(voiceMix.total)} min</span>
 				</div>
-				<div class="m-seg-bar m-seg-bar--3 flex h-2 overflow-hidden rounded-[99px]" title="Active · AFK · Video · Stream">
+				<div class="m-seg-bar flex h-2 overflow-hidden rounded-[99px]" title="Active · AFK · Video · Stream">
 					<div class="m-seg h-full min-w-0" style="width: {voiceMix.active * grow}%; background: #1f8a4c;"></div>
 					<div class="m-seg h-full min-w-0" style="width: {voiceMix.afk * grow}%; background: #b23b3b;"></div>
 					<div class="m-seg h-full min-w-0" style="width: {voiceMix.video * grow}%; background: #6d5bd0;"></div>
@@ -346,16 +346,16 @@
 	{#if buddies.length > 0}
 		<div class="m-stat-card m-overview-card m-ov-full rounded-2xl px-4 py-4">
 			<div class="m-stat-card-head mb-4 flex items-center gap-3">
-				<div class="m-stat-card-icon m-chili-stat-5 flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] text-lg">
+				<div class="m-stat-card-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg">
 					<i class="fas fa-people-group"></i>
 				</div>
-				<h2 class="m-stat-card-title text-lb-text m-0 text-base font-bold">Voice buddies</h2>
+				<h2 class="m-stat-card-title text-lb-text text-base font-bold">Voice buddies</h2>
 			</div>
 			<p class="m-buddy-cap text-lb-text-muted mx-0 mt-1 mb-0 text-base">Members you level up with most in voice</p>
 			<div class="m-buddy-list mt-4 flex flex-col gap-3">
 				{#each buddies as b, i}
 					<div class="m-buddy flex items-center gap-2">
-						<span class="m-buddy-rank inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-xs font-extrabold text-[rgba(36,95,115,0.9)]"
+						<span class="m-buddy-rank inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-lg text-xs font-extrabold text-[rgba(36,95,115,0.9)]"
 							>{i + 1}</span
 						>
 						{#if b.avatar}
@@ -396,10 +396,10 @@
 	{#if hasPortfolio}
 		<div class="m-stat-card m-overview-card m-ov-full rounded-2xl px-4 py-4">
 			<div class="m-stat-card-head mb-4 flex items-center gap-3">
-				<div class="m-stat-card-icon m-chili-stat-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] text-lg">
+				<div class="m-stat-card-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg">
 					<i class="fas fa-briefcase"></i>
 				</div>
-				<h2 class="m-stat-card-title text-lb-text m-0 text-base font-bold">Portfolio</h2>
+				<h2 class="m-stat-card-title text-lb-text text-base font-bold">Portfolio</h2>
 			</div>
 			<div class="m-portfolio gap-6">
 				{#if allocationPie.total > 0}
@@ -416,10 +416,10 @@
 							<text x="50" y="48" text-anchor="middle" class="m-pie-total text-base font-extrabold">{fmtShort(allocationPie.total)}</text>
 							<text x="50" y="58" text-anchor="middle" class="m-pie-cap text-xs font-semibold uppercase">invested</text>
 						</svg>
-						<div class="m-donut-legend flex min-w-[152px] flex-1 flex-col gap-2">
+						<div class="m-donut-legend flex min-w-38 flex-1 flex-col gap-2">
 							{#each allocationPie.segments as seg}
 								<div class="m-donut-leg m-donut-leg--tight text-lb-text flex items-center gap-2 text-base font-semibold">
-									<span class="m-donut-dot h-2 w-2 shrink-0 rounded-[3px]" style="background: {seg.color};"></span>
+									<span class="m-donut-dot h-2 w-2 shrink-0 rounded" style="background: {seg.color};"></span>
 									<span class="m-donut-leg-name min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">{seg.label}</span>
 									<span class="m-donut-leg-pct text-lb-text-muted text-base font-bold tabular-nums">{seg.pct.toFixed(0)}%</span>
 								</div>
@@ -470,10 +470,10 @@
 	<div class="m-econ3 m-ov-full items-stretch">
 		<div class="m-stat-card m-overview-card rounded-2xl px-4 py-4">
 			<div class="m-stat-card-head mb-4 flex items-center gap-3">
-				<div class="m-stat-card-icon m-chili-stat-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] text-lg">
+				<div class="m-stat-card-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg">
 					<i class="fas fa-chart-line"></i>
 				</div>
-				<h2 class="m-stat-card-title text-lb-text m-0 text-base font-bold">Market</h2>
+				<h2 class="m-stat-card-title text-lb-text text-base font-bold">Market</h2>
 			</div>
 			<div class="m-stat-hero mt-2 rounded-[14px] p-3 text-center">
 				<span class="m-stat-hero-val text-lb-text block font-extrabold tabular-nums" use:countUp={d.assets_market_value}>{fmt(d.assets_market_value)}</span>
@@ -498,10 +498,10 @@
 
 		<div class="m-stat-card m-overview-card rounded-2xl px-4 py-4">
 			<div class="m-stat-card-head mb-4 flex items-center gap-3">
-				<div class="m-stat-card-icon m-chili-stat-3 flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] text-lg">
+				<div class="m-stat-card-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg">
 					<i class="fas fa-dice"></i>
 				</div>
-				<h2 class="m-stat-card-title text-lb-text m-0 text-base font-bold">Minigames</h2>
+				<h2 class="m-stat-card-title text-lb-text text-base font-bold">Minigames</h2>
 			</div>
 			<div class="m-ring-row mt-3 flex items-center gap-4">
 				<div
@@ -534,10 +534,10 @@
 
 		<div class="m-stat-card m-overview-card rounded-2xl px-4 py-4">
 			<div class="m-stat-card-head mb-4 flex items-center gap-3">
-				<div class="m-stat-card-icon m-chili-stat-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] text-lg">
+				<div class="m-stat-card-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg">
 					<i class="fas fa-bag-shopping"></i>
 				</div>
-				<h2 class="m-stat-card-title text-lb-text m-0 text-base font-bold">Items</h2>
+				<h2 class="m-stat-card-title text-lb-text text-base font-bold">Items</h2>
 			</div>
 			<div class="m-stat-hero mt-2 rounded-[14px] p-3 text-center">
 				<span class="m-stat-hero-val text-lb-text block font-extrabold tabular-nums" use:countUp={d.items_buys}>{fmt(d.items_buys)}</span>
@@ -560,17 +560,16 @@
 
 	<div class="m-stat-card m-overview-card m-ov-full rounded-2xl px-4 py-4">
 		<div class="m-stat-card-head mb-4 flex items-center gap-3">
-			<div class="m-stat-card-icon m-chili-stat-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] text-lg">
+			<div class="m-stat-card-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg">
 				<i class="fas fa-fire-flame-curved"></i>
 			</div>
-			<h2 class="m-stat-card-title text-lb-text m-0 text-base font-bold">Highlights</h2>
+			<h2 class="m-stat-card-title text-lb-text text-base font-bold">Highlights</h2>
 		</div>
 		{#if relationCards.length > 0}
 			<div class="m-rel-row mt-4 grid gap-2">
 				{#each relationCards as r}
 					<div class="m-rel flex min-w-0 items-center gap-3 rounded-[14px] p-3" style="--rel: {r.accent};">
-						<span class="m-rel-ic inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[11px] text-base text-white"
-							><i class="fas {r.icon}"></i></span
+						<span class="m-rel-ic inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-base text-white"><i class="fas {r.icon}"></i></span
 						>
 						<div class="m-rel-body flex min-w-0 flex-col">
 							<span class="m-rel-title text-xs font-bold uppercase">{r.title}</span>
@@ -649,10 +648,10 @@
 	{#if usagePie.total > 0}
 		<div class="m-stat-card m-overview-card m-ov-full rounded-2xl px-4 py-4">
 			<div class="m-stat-card-head mb-4 flex items-center gap-3">
-				<div class="m-stat-card-icon m-chili-stat-3 flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] text-lg">
+				<div class="m-stat-card-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg">
 					<i class="fas fa-chart-pie"></i>
 				</div>
-				<h2 class="m-stat-card-title text-lb-text m-0 text-base font-bold">Item usage by type</h2>
+				<h2 class="m-stat-card-title text-lb-text text-base font-bold">Item usage by type</h2>
 			</div>
 			<p class="m-card-note text-lb-text-muted mx-0 mt-2 mb-0 text-base">How often you've used each item effect — attacks, buffs and utility combined.</p>
 			<div class="m-chart-split items-center">
@@ -669,10 +668,10 @@
 						<text x="50" y="47" text-anchor="middle" class="m-pie-total text-base font-extrabold">{fmt(usagePie.total)}</text>
 						<text x="50" y="58" text-anchor="middle" class="m-pie-cap text-xs font-semibold uppercase">uses</text>
 					</svg>
-					<div class="m-donut-legend flex min-w-[152px] flex-1 flex-col gap-2">
+					<div class="m-donut-legend flex min-w-38 flex-1 flex-col gap-2">
 						{#each usagePie.segments as seg}
 							<div class="m-donut-leg text-lb-text flex items-center gap-2 text-base font-semibold">
-								<span class="m-donut-dot h-2 w-2 shrink-0 rounded-[3px]" style="background: {seg.color};"></span>
+								<span class="m-donut-dot h-2 w-2 shrink-0 rounded" style="background: {seg.color};"></span>
 								<i class="fas {seg.icon}" style="color: {seg.color};"></i>
 								<span class="m-donut-leg-name min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">{seg.label}</span>
 								<span class="m-donut-leg-val text-lb-text-muted text-base font-bold tabular-nums">{fmt(seg.value)}× · {seg.pct.toFixed(0)}%</span>
@@ -681,7 +680,7 @@
 					</div>
 				</div>
 
-				<div class="m-colchart flex h-[152px] items-end justify-around gap-2 pt-2">
+				<div class="m-colchart flex h-38 items-end justify-around gap-2 pt-2">
 					{#each usagePie.segments as seg}
 						<div class="m-col flex h-full min-w-0 flex-1 flex-col items-center gap-2">
 							<span class="m-col-val text-lb-text text-xs font-bold tabular-nums">{fmt(seg.value)}</span>
@@ -699,10 +698,10 @@
 	<div class="m-econ2 m-ov-full items-stretch">
 		<div class="m-stat-card m-overview-card rounded-2xl px-4 py-4">
 			<div class="m-stat-card-head mb-4 flex items-center gap-3">
-				<div class="m-stat-card-icon m-chili-stat-3 flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] text-lg">
+				<div class="m-stat-card-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg">
 					<i class="fas fa-crosshairs"></i>
 				</div>
-				<h2 class="m-stat-card-title text-lb-text m-0 text-base font-bold">Your PvP record</h2>
+				<h2 class="m-stat-card-title text-lb-text text-base font-bold">Your PvP record</h2>
 			</div>
 			<div class="m-duel mt-4">
 				<div class="m-duel-head mb-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-base font-bold">
@@ -804,10 +803,10 @@
 
 		<div class="m-stat-card m-overview-card rounded-2xl px-4 py-4">
 			<div class="m-stat-card-head mb-4 flex items-center gap-3">
-				<div class="m-stat-card-icon m-chili-stat-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] text-lg">
+				<div class="m-stat-card-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg">
 					<i class="fas fa-fire"></i>
 				</div>
-				<h2 class="m-stat-card-title text-lb-text m-0 text-base font-bold">Your engagement</h2>
+				<h2 class="m-stat-card-title text-lb-text text-base font-bold">Your engagement</h2>
 			</div>
 			<div class="m-mini-grid mt-4 grid gap-2">
 				<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">

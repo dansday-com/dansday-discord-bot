@@ -202,14 +202,14 @@
 	<meta property="og:description" content="Members, channels, leveling, and voice activity for this community." />
 </svelte:head>
 
-<div class="m-leaderboard-subhead m-stats-subhead mb-3 mb-4">
+<div class="m-leaderboard-subhead m-stats-subhead mb-4">
 	<p>Statistics</p>
 </div>
 
-<section class="m-overview-strip mb-5 flex gap-2 overflow-x-auto px-1 pt-1 pb-2" class:m-overview-strip--in={mounted} aria-label="Key metrics">
+<section class="m-overview-strip mb-5 flex gap-2 overflow-x-auto px-0 pt-1 pb-2" class:m-overview-strip--in={mounted} aria-label="Key metrics">
 	{#each [{ icon: 'fa-users', label: 'Members', value: fmt(liveStats.members_total) }, { icon: 'fa-hashtag', label: 'Channels', value: fmt(liveStats.channels_total) }, { icon: 'fa-star', label: 'Total XP', value: heroXpDisplay.toLocaleString() }, { icon: 'fa-microphone', label: 'Voice min', value: fmt(liveStats.leveling_total_voice_minutes) }, { icon: 'fa-user-tag', label: 'Roles', value: fmt(liveStats.roles_total) }] as chip}
-		<div class="m-overview-strip-item flex max-w-full min-w-[132px] flex-none items-center gap-3 rounded-[14px] px-4 py-3">
-			<div class="m-overview-strip-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-[11px] text-base text-white">
+		<div class="m-overview-strip-item flex max-w-full min-w-33 flex-none items-center gap-3 rounded-[14px] px-4 py-3">
+			<div class="m-overview-strip-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-base text-white">
 				<i class="fas {chip.icon}"></i>
 			</div>
 			<div class="m-overview-strip-text flex min-w-0 flex-col gap-0">
@@ -223,14 +223,14 @@
 <div class="m-stats-grid gap-5" class:m-stats-grid--in={mounted}>
 	<div class="m-stat-card m-overview-card rounded-2xl px-4 py-4">
 		<div class="m-stat-card-head mb-4 flex items-center gap-3">
-			<div class="m-stat-card-icon m-chili-stat-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] text-lg">
+			<div class="m-stat-card-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg">
 				<i class="fas fa-users"></i>
 			</div>
-			<h2 class="m-stat-card-title text-lb-text m-0 text-base font-bold">Members</h2>
+			<h2 class="m-stat-card-title text-lb-text text-base font-bold">Members</h2>
 		</div>
 		<div class="m-overview-hero mb-1 rounded-[14px] px-3 pt-4 pb-4 text-center">
 			<p class="m-overview-hero-label mx-0 mt-0 mb-1 text-xs font-semibold text-[rgba(36,95,115,0.72)] uppercase">Community size</p>
-			<p class="m-overview-hero-value text-lb-text m-0 font-extrabold tabular-nums">{fmt(liveStats.members_total)}</p>
+			<p class="m-overview-hero-value text-lb-text font-extrabold tabular-nums">{fmt(liveStats.members_total)}</p>
 		</div>
 		<div class="m-bar-block mt-4">
 			<div class="m-bar-head text-lb-text-muted mb-2 flex items-baseline justify-between gap-2 text-base font-semibold">
@@ -272,26 +272,26 @@
 
 	<div class="m-stat-card m-overview-card rounded-2xl px-4 py-4">
 		<div class="m-stat-card-head mb-4 flex items-center gap-3">
-			<div class="m-stat-card-icon m-chili-stat-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] text-lg">
+			<div class="m-stat-card-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg">
 				<i class="fas fa-hashtag"></i>
 			</div>
-			<h2 class="m-stat-card-title text-lb-text m-0 text-base font-bold">Channels</h2>
+			<h2 class="m-stat-card-title text-lb-text text-base font-bold">Channels</h2>
 		</div>
 		<div class="m-overview-hero mb-1 rounded-[14px] px-3 pt-4 pb-4 text-center">
 			<p class="m-overview-hero-label mx-0 mt-0 mb-1 text-xs font-semibold text-[rgba(36,95,115,0.72)] uppercase">Server layout</p>
-			<p class="m-overview-hero-value text-lb-text m-0 font-extrabold tabular-nums">{fmt(liveStats.channels_total)}</p>
+			<p class="m-overview-hero-value text-lb-text font-extrabold tabular-nums">{fmt(liveStats.channels_total)}</p>
 		</div>
 		<div class="m-bar-block mt-4">
 			<div class="m-bar-head text-lb-text-muted mb-2 flex items-baseline justify-between gap-2 text-base font-semibold">
 				<span>Mix</span>
 				<span class="m-bar-meta text-xs font-bold text-[rgba(36,95,115,0.88)] tabular-nums">Text · Voice · Other</span>
 			</div>
-			<div class="m-seg-bar m-seg-bar--3 flex h-2 overflow-hidden rounded-[99px]" title="Channel types">
+			<div class="m-seg-bar flex h-2 overflow-hidden rounded-[99px]" title="Channel types">
 				<div class="m-seg m-seg--text h-full min-w-0" style="width: {channelMix.textPct * grow}%"></div>
 				<div class="m-seg m-seg--voice h-full min-w-0" style="width: {channelMix.voicePct * grow}%"></div>
 				<div class="m-seg m-seg--other h-full min-w-0" style="width: {channelMix.otherPct * grow}%"></div>
 			</div>
-			<div class="m-legend m-legend--3 text-lb-text-subtle mt-2 flex flex-wrap gap-x-4 gap-y-3 text-xs font-semibold">
+			<div class="m-legend text-lb-text-subtle mt-2 flex flex-wrap gap-x-4 gap-y-3 text-xs font-semibold">
 				<span><i class="fas fa-circle"></i> Text {fmt(liveStats.channels_text)}</span>
 				<span><i class="fas fa-circle"></i> Voice {fmt(liveStats.channels_voice)}</span>
 				<span><i class="fas fa-circle"></i> Ann. / stage {fmt(channelsOtherTotal)}</span>
@@ -301,15 +301,15 @@
 
 	<div class="m-stat-card m-stat-card--leveling m-overview-card rounded-2xl px-4 py-4">
 		<div class="m-stat-card-head mb-4 flex items-center gap-3">
-			<div class="m-stat-card-icon m-chili-stat-3 flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] text-lg">
+			<div class="m-stat-card-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg">
 				<i class="fas fa-star"></i>
 			</div>
-			<h2 class="m-stat-card-title text-lb-text m-0 text-base font-bold">Leveling</h2>
+			<h2 class="m-stat-card-title text-lb-text text-base font-bold">Leveling</h2>
 		</div>
 
 		<div class="m-leveling-hero mx-[-4px] mt-0 mb-2 rounded-[14px] px-3 pt-4 pb-5 text-center">
 			<p class="m-leveling-hero-label mx-0 mt-0 mb-1 text-xs font-semibold text-[rgba(36,95,115,0.75)] uppercase">Total experience</p>
-			<p class="m-leveling-hero-value m-0 font-extrabold text-transparent tabular-nums">{heroXpDisplay.toLocaleString()}</p>
+			<p class="m-leveling-hero-value font-extrabold text-transparent tabular-nums">{heroXpDisplay.toLocaleString()}</p>
 			<p class="m-leveling-hero-hint text-lb-text-subtle mx-0 mt-2 mb-0 text-base">
 				Wallet + XP invested in assets · {fmt(liveStats.leveling_wallet_experience)} wallet + {fmt(liveStats.leveling_assets_value)} in market
 			</p>
@@ -350,14 +350,14 @@
 
 	<div class="m-stat-card m-overview-card rounded-2xl px-4 py-4">
 		<div class="m-stat-card-head mb-4 flex items-center gap-3">
-			<div class="m-stat-card-icon m-chili-stat-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] text-lg">
+			<div class="m-stat-card-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg">
 				<i class="fas fa-user-tag"></i>
 			</div>
-			<h2 class="m-stat-card-title text-lb-text m-0 text-base font-bold">Roles &amp; structure</h2>
+			<h2 class="m-stat-card-title text-lb-text text-base font-bold">Roles &amp; structure</h2>
 		</div>
 		<div class="m-overview-hero mb-1 rounded-[14px] px-3 pt-4 pb-4 text-center">
 			<p class="m-overview-hero-label mx-0 mt-0 mb-1 text-xs font-semibold text-[rgba(36,95,115,0.72)] uppercase">Role catalog</p>
-			<p class="m-overview-hero-value text-lb-text m-0 font-extrabold tabular-nums">{fmt(liveStats.roles_total)}</p>
+			<p class="m-overview-hero-value text-lb-text font-extrabold tabular-nums">{fmt(liveStats.roles_total)}</p>
 		</div>
 		<div class="m-mini-grid mt-4 grid gap-2">
 			<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
@@ -385,14 +385,14 @@
 
 	<div class="m-stat-card m-overview-card rounded-2xl px-4 py-4">
 		<div class="m-stat-card-head mb-4 flex items-center gap-3">
-			<div class="m-stat-card-icon m-chili-stat-5 flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] text-lg">
+			<div class="m-stat-card-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg">
 				<i class="fas fa-microphone-alt"></i>
 			</div>
-			<h2 class="m-stat-card-title text-lb-text m-0 text-base font-bold">Voice activity</h2>
+			<h2 class="m-stat-card-title text-lb-text text-base font-bold">Voice activity</h2>
 		</div>
 		<div class="m-overview-hero mb-1 rounded-[14px] px-3 pt-4 pb-4 text-center">
 			<p class="m-overview-hero-label mx-0 mt-0 mb-1 text-xs font-semibold text-[rgba(36,95,115,0.72)] uppercase">Tracked minutes</p>
-			<p class="m-overview-hero-value text-lb-text m-0 font-extrabold tabular-nums">{fmt(liveStats.leveling_total_voice_minutes)}</p>
+			<p class="m-overview-hero-value text-lb-text font-extrabold tabular-nums">{fmt(liveStats.leveling_total_voice_minutes)}</p>
 		</div>
 		<div class="m-bar-block mt-4">
 			<div class="m-bar-head text-lb-text-muted mb-2 flex items-baseline justify-between gap-2 text-base font-semibold">
@@ -442,14 +442,14 @@
 
 	<div class="m-stat-card m-overview-card rounded-2xl px-4 py-4">
 		<div class="m-stat-card-head mb-4 flex items-center gap-3">
-			<div class="m-stat-card-icon m-chili-stat-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] text-lg">
+			<div class="m-stat-card-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg">
 				<i class="fas fa-chart-line"></i>
 			</div>
-			<h2 class="m-stat-card-title text-lb-text m-0 text-base font-bold">Market</h2>
+			<h2 class="m-stat-card-title text-lb-text text-base font-bold">Market</h2>
 		</div>
 		<div class="m-overview-hero mb-1 rounded-[14px] px-3 pt-4 pb-4 text-center">
 			<p class="m-overview-hero-label mx-0 mt-0 mb-1 text-xs font-semibold text-[rgba(36,95,115,0.72)] uppercase">XP in the market</p>
-			<p class="m-overview-hero-value text-lb-text m-0 font-extrabold tabular-nums">{fmt(liveStats.assets_market_value)}</p>
+			<p class="m-overview-hero-value text-lb-text font-extrabold tabular-nums">{fmt(liveStats.assets_market_value)}</p>
 			<p
 				class="m-overview-hero-hint m-hero-trend text-lb-text-muted mx-0 mt-2 mb-0 inline-flex items-center gap-1 rounded-[99px] px-2 py-1 text-xs font-semibold tabular-nums"
 				class:m-hero-trend--up={marketUnrealized >= 0}
@@ -509,14 +509,14 @@
 
 	<div class="m-stat-card m-overview-card rounded-2xl px-4 py-4">
 		<div class="m-stat-card-head mb-4 flex items-center gap-3">
-			<div class="m-stat-card-icon m-chili-stat-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] text-lg">
+			<div class="m-stat-card-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg">
 				<i class="fas fa-bag-shopping"></i>
 			</div>
-			<h2 class="m-stat-card-title text-lb-text m-0 text-base font-bold">Items</h2>
+			<h2 class="m-stat-card-title text-lb-text text-base font-bold">Items</h2>
 		</div>
 		<div class="m-overview-hero mb-1 rounded-[14px] px-3 pt-4 pb-4 text-center">
 			<p class="m-overview-hero-label mx-0 mt-0 mb-1 text-xs font-semibold text-[rgba(36,95,115,0.72)] uppercase">Items bought</p>
-			<p class="m-overview-hero-value text-lb-text m-0 font-extrabold tabular-nums">{fmt(liveStats.items_buys)}</p>
+			<p class="m-overview-hero-value text-lb-text font-extrabold tabular-nums">{fmt(liveStats.items_buys)}</p>
 			<p class="m-overview-hero-hint text-lb-text-muted mx-0 mt-2 mb-0 text-xs font-semibold tabular-nums">
 				{fmt(liveStats.items_buy_spend)} XP spent across {fmt(liveStats.items_distinct_bought)} unique items
 			</p>
@@ -571,12 +571,12 @@
 
 	<div class="m-stat-card m-overview-card rounded-2xl px-4 py-4">
 		<div class="m-stat-card-head mb-4 flex items-center gap-3">
-			<div class="m-stat-card-icon m-chili-stat-3 flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] text-lg"><i class="fas fa-dice"></i></div>
-			<h2 class="m-stat-card-title text-lb-text m-0 text-base font-bold">Minigames</h2>
+			<div class="m-stat-card-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg"><i class="fas fa-dice"></i></div>
+			<h2 class="m-stat-card-title text-lb-text text-base font-bold">Minigames</h2>
 		</div>
 		<div class="m-overview-hero mb-1 rounded-[14px] px-3 pt-4 pb-4 text-center">
 			<p class="m-overview-hero-label mx-0 mt-0 mb-1 text-xs font-semibold text-[rgba(36,95,115,0.72)] uppercase">XP wagered</p>
-			<p class="m-overview-hero-value text-lb-text m-0 font-extrabold tabular-nums">{fmt(liveStats.minigames_wagered)}</p>
+			<p class="m-overview-hero-value text-lb-text font-extrabold tabular-nums">{fmt(liveStats.minigames_wagered)}</p>
 			<p class="m-overview-hero-hint text-lb-text-muted mx-0 mt-2 mb-0 text-xs font-semibold tabular-nums">
 				{fmt(liveStats.minigames_plays)} plays · {fmt(liveStats.minigames_paid_out)} XP paid out
 			</p>
@@ -608,12 +608,12 @@
 
 	<div class="m-stat-card m-overview-card rounded-2xl px-4 py-4">
 		<div class="m-stat-card-head mb-4 flex items-center gap-3">
-			<div class="m-stat-card-icon m-chili-stat-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] text-lg"><i class="fas fa-gift"></i></div>
-			<h2 class="m-stat-card-title text-lb-text m-0 text-base font-bold">Giveaways</h2>
+			<div class="m-stat-card-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg"><i class="fas fa-gift"></i></div>
+			<h2 class="m-stat-card-title text-lb-text text-base font-bold">Giveaways</h2>
 		</div>
 		<div class="m-overview-hero mb-1 rounded-[14px] px-3 pt-4 pb-4 text-center">
 			<p class="m-overview-hero-label mx-0 mt-0 mb-1 text-xs font-semibold text-[rgba(36,95,115,0.72)] uppercase">Giveaways hosted</p>
-			<p class="m-overview-hero-value text-lb-text m-0 font-extrabold tabular-nums">{fmt(liveStats.giveaways_total)}</p>
+			<p class="m-overview-hero-value text-lb-text font-extrabold tabular-nums">{fmt(liveStats.giveaways_total)}</p>
 			<p class="m-overview-hero-hint text-lb-text-muted mx-0 mt-2 mb-0 text-xs font-semibold tabular-nums">
 				{fmt(liveStats.giveaways_entries)} entries from {fmt(liveStats.giveaways_entrants)} members
 			</p>
@@ -643,14 +643,14 @@
 
 	<div class="m-stat-card m-overview-card rounded-2xl px-4 py-4">
 		<div class="m-stat-card-head mb-4 flex items-center gap-3">
-			<div class="m-stat-card-icon m-chili-stat-5 flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] text-lg">
+			<div class="m-stat-card-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg">
 				<i class="fas fa-tower-broadcast"></i>
 			</div>
-			<h2 class="m-stat-card-title text-lb-text m-0 text-base font-bold">Content creators</h2>
+			<h2 class="m-stat-card-title text-lb-text text-base font-bold">Content creators</h2>
 		</div>
 		<div class="m-overview-hero mb-1 rounded-[14px] px-3 pt-4 pb-4 text-center">
 			<p class="m-overview-hero-label mx-0 mt-0 mb-1 text-xs font-semibold text-[rgba(36,95,115,0.72)] uppercase">Streams broadcast</p>
-			<p class="m-overview-hero-value text-lb-text m-0 font-extrabold tabular-nums">{fmt(liveStats.streams_total)}</p>
+			<p class="m-overview-hero-value text-lb-text font-extrabold tabular-nums">{fmt(liveStats.streams_total)}</p>
 			<p class="m-overview-hero-hint text-lb-text-muted mx-0 mt-2 mb-0 text-xs font-semibold tabular-nums">
 				{fmt(liveStats.streams_creators)} creators · {fmt(liveStats.streams_peak_viewers)} peak viewers
 			</p>
@@ -660,13 +660,13 @@
 				<span>Engagement mix</span>
 				<span class="m-bar-meta text-xs font-bold text-[rgba(36,95,115,0.88)] tabular-nums">Likes · Chat · Gifts · Shares</span>
 			</div>
-			<div class="m-seg-bar m-seg-bar--3 flex h-2 overflow-hidden rounded-[99px]" title="Stream engagement breakdown">
+			<div class="m-seg-bar flex h-2 overflow-hidden rounded-[99px]" title="Stream engagement breakdown">
 				<div class="m-seg m-seg--text h-full min-w-0" style="width: {streamEngage.likePct * grow}%"></div>
 				<div class="m-seg m-seg--voice h-full min-w-0" style="width: {streamEngage.chatPct * grow}%"></div>
 				<div class="m-seg m-seg--other h-full min-w-0" style="width: {streamEngage.giftPct * grow}%"></div>
 				<div class="m-seg m-seg--b h-full min-w-0" style="width: {streamEngage.sharePct * grow}%"></div>
 			</div>
-			<div class="m-legend m-legend--3 text-lb-text-subtle mt-2 flex flex-wrap gap-x-4 gap-y-3 text-xs font-semibold">
+			<div class="m-legend text-lb-text-subtle mt-2 flex flex-wrap gap-x-4 gap-y-3 text-xs font-semibold">
 				<span><i class="fas fa-circle"></i> Likes {fmt(liveStats.streams_likes)}</span>
 				<span><i class="fas fa-circle"></i> Chat {fmt(liveStats.streams_chat_messages)}</span>
 				<span><i class="fas fa-circle"></i> Gifts {fmt(liveStats.streams_gifts)}</span>
@@ -693,14 +693,14 @@
 
 	<div class="m-stat-card m-overview-card rounded-2xl px-4 py-4">
 		<div class="m-stat-card-head mb-4 flex items-center gap-3">
-			<div class="m-stat-card-icon m-chili-stat-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] text-lg">
+			<div class="m-stat-card-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg">
 				<i class="fas fa-scroll"></i>
 			</div>
-			<h2 class="m-stat-card-title text-lb-text m-0 text-base font-bold">Quests</h2>
+			<h2 class="m-stat-card-title text-lb-text text-base font-bold">Quests</h2>
 		</div>
 		<div class="m-overview-hero mb-1 rounded-[14px] px-3 pt-4 pb-4 text-center">
 			<p class="m-overview-hero-label mx-0 mt-0 mb-1 text-xs font-semibold text-[rgba(36,95,115,0.72)] uppercase">Quests enrolled</p>
-			<p class="m-overview-hero-value text-lb-text m-0 font-extrabold tabular-nums">{fmt(liveStats.quests_enrolled)}</p>
+			<p class="m-overview-hero-value text-lb-text font-extrabold tabular-nums">{fmt(liveStats.quests_enrolled)}</p>
 		</div>
 		<div class="m-bar-block mt-4">
 			<div class="m-bar-head text-lb-text-muted mb-2 flex items-baseline justify-between gap-2 text-base font-semibold">
@@ -727,14 +727,14 @@
 
 	<div class="m-stat-card m-overview-card rounded-2xl px-4 py-4">
 		<div class="m-stat-card-head mb-4 flex items-center gap-3">
-			<div class="m-stat-card-icon m-chili-stat-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] text-lg">
+			<div class="m-stat-card-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg">
 				<i class="fas fa-shield-halved"></i>
 			</div>
-			<h2 class="m-stat-card-title text-lb-text m-0 text-base font-bold">Staff &amp; feedback</h2>
+			<h2 class="m-stat-card-title text-lb-text text-base font-bold">Staff &amp; feedback</h2>
 		</div>
 		<div class="m-overview-hero mb-1 rounded-[14px] px-3 pt-4 pb-4 text-center">
 			<p class="m-overview-hero-label mx-0 mt-0 mb-1 text-xs font-semibold text-[rgba(36,95,115,0.72)] uppercase">Staff reviews</p>
-			<p class="m-overview-hero-value text-lb-text m-0 font-extrabold tabular-nums">{fmt(liveStats.staff_reviews)}</p>
+			<p class="m-overview-hero-value text-lb-text font-extrabold tabular-nums">{fmt(liveStats.staff_reviews)}</p>
 		</div>
 		<div class="m-bar-block mt-4">
 			<div class="m-bar-head text-lb-text-muted mb-2 flex items-baseline justify-between gap-2 text-base font-semibold">

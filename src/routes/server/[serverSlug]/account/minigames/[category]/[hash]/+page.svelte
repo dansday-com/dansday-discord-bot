@@ -153,30 +153,30 @@
 {#if games.length === 0}
 	<div class="m-members-empty px-4 py-12 text-center">No games in this category.</div>
 {:else}
-	<div class="m-cards grid gap-2 gap-4">
+	<div class="m-cards grid gap-4">
 		{#each games as game (game.id)}
 			<article class="m-card relative flex flex-col gap-2 overflow-hidden rounded-2xl px-4 pt-4 pb-4" data-cat={game.id} style="--cat: {game.accent}">
 				<div class="m-card-glow pointer-events-none z-1 opacity-0"></div>
 				<div class="m-card-top flex items-start justify-between gap-2">
-					<span class="m-card-medallion relative grid h-12 h-14 w-12 w-14 place-items-center rounded-2xl text-lg text-xl"><i class="fas {game.icon}"></i></span>
+					<span class="m-card-medallion relative grid h-14 w-14 place-items-center rounded-2xl text-xl"><i class="fas {game.icon}"></i></span>
 				</div>
 				<h3 class="m-card-name text-lb-text mx-0 mt-1 mb-0 text-base font-extrabold">{game.name}</h3>
-				<p class="m-card-desc text-lb-text-muted m-0 min-h-[2.9em] text-base text-xs">{game.desc}</p>
+				<p class="m-card-desc text-lb-text-muted min-h-[2.9em] text-xs">{game.desc}</p>
 
 				<div class="m-card-foot relative z-2 mt-auto flex flex-wrap items-center justify-between gap-2 pt-1">
 					<span
-						class="m-card-price m-card-price--wager text-warning inline-flex min-w-0 flex-auto items-baseline gap-1 text-base text-xs font-extrabold whitespace-nowrap text-[#d99a1c] uppercase"
+						class="m-card-price m-card-price--wager text-warning inline-flex min-w-0 flex-auto items-baseline gap-1 text-xs font-extrabold whitespace-nowrap text-[#d99a1c] uppercase"
 						><i class="fas fa-dice"></i>Wager</span
 					>
 					{#if ctx.readOnly}
 						<button
-							class="m-card-btn inline-flex flex-none cursor-pointer items-center justify-center gap-1 rounded-lg px-3 px-4 py-2 text-base font-bold whitespace-nowrap text-white"
+							class="m-card-btn inline-flex flex-none cursor-pointer items-center justify-center gap-1 rounded-lg px-4 py-2 text-base font-bold whitespace-nowrap text-white"
 							disabled
 							title="Open your card to play"><i class="fas fa-eye"></i>View only</button
 						>
 					{:else}
 						<button
-							class="m-card-btn m-card-btn--play inline-flex flex-none cursor-pointer items-center justify-center gap-1 rounded-lg px-3 px-4 py-2 text-base font-bold whitespace-nowrap text-white"
+							class="m-card-btn m-card-btn--play inline-flex flex-none cursor-pointer items-center justify-center gap-1 rounded-lg px-4 py-2 text-base font-bold whitespace-nowrap text-white"
 							title="Play"
 							onclick={() => openPlay(game.id)}
 						>
@@ -224,7 +224,7 @@
 					style="transform: translateX({reelOffset}px); transition: {reelAnimating ? 'transform 6.8s cubic-bezier(0.06, 0.72, 0.06, 1)' : 'none'};"
 				>
 					{#each reel as cell, i (i)}
-						<div class="m-gamble-cell m-gamble-cell--{cell} grid h-18 h-[76px] flex-[0_0_84px] place-items-center rounded-[11px] text-2xl">
+						<div class="m-gamble-cell m-gamble-cell--{cell} grid h-19 h-[76px] flex-[0_0_84px] place-items-center rounded-[11px] text-2xl">
 							<i class="fas {cell === 'win' ? 'fa-sack-dollar' : 'fa-skull'}"></i>
 						</div>
 					{/each}
@@ -263,11 +263,11 @@
 			{#if reelResult && !busy}
 				<div class="m-gamble-again flex gap-2">
 					<button
-						class="m-gamble-reset text-lb-text inline-flex flex-none cursor-pointer items-center gap-2 rounded-[13px] px-4 py-4 text-base font-bold"
+						class="m-gamble-reset text-lb-text inline-flex flex-none cursor-pointer items-center gap-2 rounded-xl px-4 py-4 text-base font-bold"
 						onclick={resetGamble}><i class="fas fa-sliders"></i>Change bet</button
 					>
 					<button
-						class="m-gamble-play m-gamble-play--charged relative inline-flex w-full cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-[13px] p-4 text-base font-black text-white"
+						class="m-gamble-play m-gamble-play--charged relative inline-flex w-full cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-xl p-4 text-base font-black text-white"
 						disabled={wagerXp <= 0 || wagerXp > spendable}
 						onclick={play}
 					>
@@ -278,14 +278,14 @@
 				<div class="m-gamble-picker mb-3 flex flex-wrap gap-2">
 					{#each WAGER_PERCENTS as p}
 						<button
-							class="m-gamble-pct text-lb-text cursor-pointer rounded-[10px] px-0 py-2 text-base font-bold"
+							class="m-gamble-pct text-lb-text cursor-pointer rounded-lg px-0 py-2 text-base font-bold"
 							class:m-gamble-pct--active={gamblePercent === p}
 							disabled={busy}
 							onclick={() => (gamblePercent = p)}>{p}%</button
 						>
 					{/each}
 					<button
-						class="m-gamble-pct text-lb-text cursor-pointer rounded-[10px] px-0 py-2 text-base font-bold"
+						class="m-gamble-pct text-lb-text cursor-pointer rounded-lg px-0 py-2 text-base font-bold"
 						class:m-gamble-pct--active={gamblePercent === 'custom'}
 						disabled={busy}
 						onclick={() => (gamblePercent = 'custom')}>Custom</button
@@ -293,7 +293,7 @@
 				</div>
 				{#if gamblePercent === 'custom'}
 					<input
-						class="m-gamble-custom text-lb-text mb-3 box-border w-full rounded-[10px] px-3 py-3 text-center text-base font-bold tabular-nums"
+						class="m-gamble-custom text-lb-text mb-3 box-border w-full rounded-lg px-3 py-3 text-center text-base font-bold tabular-nums"
 						type="number"
 						min="1"
 						max={spendable}
@@ -316,7 +316,7 @@
 				</div>
 
 				<button
-					class="m-gamble-play relative inline-flex w-full cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-[13px] p-4 text-base font-black text-white"
+					class="m-gamble-play relative inline-flex w-full cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-xl p-4 text-base font-black text-white"
 					class:m-gamble-play--charged={!busy && wagerXp > 0}
 					disabled={busy || wagerXp <= 0}
 					onclick={play}

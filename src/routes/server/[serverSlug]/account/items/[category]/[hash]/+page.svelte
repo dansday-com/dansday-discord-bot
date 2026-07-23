@@ -245,7 +245,7 @@
 			<span class="m-card-timer"><i class="fas fa-hourglass-half"></i>Ends in {ctx.remainingLabel(item.availableUntil)}</span>
 		{/if}
 		<h3 class="m-card-name">{item.name}</h3>
-		<p class="m-card-desc">{item.description || effectSummary(item)}</p>
+		<p class="m-card-desc">{item.description || effectSummary(item, ctx.luckPercent)}</p>
 		{#if effectMeta(item).length > 0}
 			<div class="m-card-meta">
 				{#each effectMeta(item) as chip}

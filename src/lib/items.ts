@@ -31,6 +31,18 @@ export function discountedItemCost(cost: any, luckPercent: any): number {
 	return Math.max(0, Math.floor(base * (1 - luck / 100)));
 }
 
+function applyLuckBoost(value: number, luckPercent: any, max = 100): number {
+	const luck = Math.max(0, Number(luckPercent) || 0);
+	if (luck <= 0) return value;
+	return Math.min(max, value + luck);
+}
+
+function applyLuckReduction(value: number, luckPercent: any): number {
+	const luck = Math.max(0, Number(luckPercent) || 0);
+	if (luck <= 0) return value;
+	return Math.max(0, value - luck);
+}
+
 export function formatDuration(minutes: any): string {
 	let m = Math.max(0, Math.round(Number(minutes) || 0));
 	if (m <= 0) return '0m';
@@ -71,7 +83,7 @@ export type ItemEffect = {
 	defaultCost: number;
 	defaultConfig: Record<string, any>;
 	buffExpiredText?: (effectValue: number) => string;
-	summary: (config: any) => string;
+	summary: (config: any, luckPercent?: number) => string;
 };
 
 export const ITEM_EFFECTS: ItemEffect[] = [
@@ -146,7 +158,7 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		defaultCost: 700,
 		defaultConfig: { skim_percent: 10, effect_duration_minutes: 120 },
 		buffExpiredText: (m) => `Your **${m || 0}% Leech** has ended.`,
-		summary: (c) => `Skim ${c.skim_percent}% of their XP · ${formatDuration(c.effect_duration_minutes)}`
+		summary: (c, luck) => `Skim ${applyLuckBoost(Number(c.skim_percent) || 0, luck)}% of their XP · ${formatDuration(c.effect_duration_minutes)}`
 	},
 	{
 		id: 'reflect',
@@ -176,7 +188,7 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		defaultCost: 450,
 		defaultConfig: { refund_percent: 50, effect_duration_minutes: 90, cooldown_minutes: 1440 },
 		buffExpiredText: () => `Your **Insurance** has expired.`,
-		summary: (c) => `Refund ${c.refund_percent ?? 100}% if robbed or bombed · ${formatDuration(c.effect_duration_minutes)}`
+		summary: (c, luck) => `Refund ${applyLuckBoost(Number(c.refund_percent ?? 100), luck)}% if robbed or bombed · ${formatDuration(c.effect_duration_minutes)}`
 	},
 	{
 		id: 'gift',
@@ -190,7 +202,10 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		expiringBuff: false,
 		defaultCost: 300,
 		defaultConfig: { gift_amount: 500, tax_percent: 10 },
-		summary: (c) => `Send ${shortXp(c.gift_amount)} XP${c.tax_percent ? ` · −${c.tax_percent}% tax` : ''}`
+		summary: (c, luck) => {
+			const tax = applyLuckReduction(Number(c.tax_percent) || 0, luck);
+			return `Send ${shortXp(c.gift_amount)} XP${tax ? ` · −${tax}% tax` : ''}`;
+		}
 	},
 	{
 		id: 'bounty',
@@ -218,10 +233,12 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		expiringBuff: false,
 		defaultCost: 300,
 		defaultConfig: { spy_chance: 100 },
-		summary: (c) =>
-			Number(c.spy_chance ?? 100) >= 100
+		summary: (c, luck) => {
+			const chance = applyLuckBoost(Number(c.spy_chance ?? 100), luck);
+			return chance >= 100
 				? `Reveal a member's bag, active effects and cooldowns.`
-				: `${c.spy_chance}% to reveal their bag, effects & cooldowns. Fail and they're alerted.`
+				: `${chance}% to reveal their bag, effects & cooldowns. Fail and they're alerted.`;
+		}
 	},
 	{
 		id: 'disguise',
@@ -265,7 +282,7 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		defaultCost: 550,
 		defaultConfig: { luck_percent: 20, effect_duration_minutes: 60 },
 		buffExpiredText: (v) => `Your **+${v || 0}% Luck** has worn off.`,
-		summary: (c) => `+${c.luck_percent}% luck · ${formatDuration(c.effect_duration_minutes)}`
+		summary: (c) => `+${c.luck_percent}% odds on spy, leech, insurance & minigames, cheaper prices · ${formatDuration(c.effect_duration_minutes)}`
 	}
 ];
 
@@ -316,10 +333,10 @@ export function effectDefaultCost(type: string): number {
 	return EFFECT_BY_ID[type]?.defaultCost ?? 0;
 }
 
-export function effectSummary(item: { effect_type: string; description?: string | null; config?: any }): string {
+export function effectSummary(item: { effect_type: string; description?: string | null; config?: any }, luckPercent = 0): string {
 	const effect = EFFECT_BY_ID[item.effect_type];
 	if (!effect) return item.description ?? '';
-	return effect.summary({ ...effect.defaultConfig, ...(item.config ?? {}) });
+	return effect.summary({ ...effect.defaultConfig, ...(item.config ?? {}) }, luckPercent);
 }
 
 export type EffectMetaChip = { icon: string; label: string };
@@ -414,8 +431,8 @@ const EFFECT_GUIDES: Record<string, EffectGuide> = {
 	},
 	leech: {
 		what: 'Attach to a target and quietly siphon a percentage of every XP they earn to you.',
-		how: 'Pick a target. A cut of their gains is redirected to you while active. You can leech several members at once, but each member can only be leeched by one person.',
-		tip: 'Spread leeches across active grinders and stay quiet.'
+		how: 'Pick a target. A cut of their gains is redirected to you while active. You can leech several members at once, but each member can only be leeched by one person. An active Luck buff boosts your skim percentage.',
+		tip: 'Spread leeches across active grinders and stay quiet. Pop Luck first to skim more.'
 	},
 	reflect: {
 		what: 'Bounce the next attack back at whoever hits you.',
@@ -424,13 +441,13 @@ const EFFECT_GUIDES: Record<string, EffectGuide> = {
 	},
 	insurance: {
 		what: 'Refund part of your loss the next time you’re robbed or bombed.',
-		how: 'Activate on yourself. If you get hit while it’s up, a percentage of the lost XP comes back.',
-		tip: 'Good when you can’t sit on a Shield but still want a safety net.'
+		how: 'Activate on yourself. If you get hit while it’s up, a percentage of the lost XP comes back. An active Luck buff raises the refund percentage.',
+		tip: 'Good when you can’t sit on a Shield but still want a safety net. Stack Luck for a bigger refund.'
 	},
 	gift: {
 		what: 'Send some of your XP to another member.',
-		how: 'Pick a recipient. They receive the XP (minus any tax). No way to steal it back.',
-		tip: 'Reward teammates, pay off a debt, or fund an alliance.'
+		how: 'Pick a recipient. They receive the XP (minus any tax). No way to steal it back. An active Luck buff lowers the tax, so more of your gift gets through.',
+		tip: 'Reward teammates, pay off a debt, or fund an alliance. Send big gifts while Luck is active to cut the tax.'
 	},
 	bounty: {
 		what: 'Put a price on a target’s head. Whoever steals or bombs them next collects it.',
@@ -439,8 +456,8 @@ const EFFECT_GUIDES: Record<string, EffectGuide> = {
 	},
 	spy: {
 		what: 'Secretly reveal a member’s bag, active effects, cooldowns and bounty.',
-		how: 'Pick a target. If the spy has a success chance and you fail, you’re caught and the target is alerted with your name.',
-		tip: 'Scout before a big attack, and skip a risky spy when you can’t afford to be seen.'
+		how: 'Pick a target. If the spy has a success chance and you fail, you’re caught and the target is alerted with your name. An active Luck buff raises your success chance.',
+		tip: 'Scout before a big attack, and skip a risky spy when you can’t afford to be seen. Luck makes risky spies safer.'
 	},
 	disguise: {
 		what: 'Go anonymous. Your attacks hide your name and you drop off the leaderboard.',
@@ -453,9 +470,9 @@ const EFFECT_GUIDES: Record<string, EffectGuide> = {
 		tip: 'The fastest way to shake off a leech that’s draining you.'
 	},
 	luck: {
-		what: 'Boost your fortune across the board: better minigame odds, sharper spying, bigger leech skims, lower gift tax, bigger insurance refunds, a stronger friend boost, and discounted shop prices.',
-		how: 'Activate on yourself, no target needed. The percentage applies on top of every roll and rate you control while it lasts.',
-		tip: 'Pop it before a big minigame session or a shopping spree to stretch every bit of XP further.'
+		what: 'Boost your fortune across the board: better minigame odds, sharper spying, bigger leech skims, lower gift tax, bigger insurance refunds, a stronger friend boost, discounted shop prices, and it shields you as a victim by reducing how much any leech on you can drain.',
+		how: 'Activate on yourself, no target needed. The percentage applies on top of every roll and rate you control while it lasts, and also softens leeches other members have on you.',
+		tip: 'Pop it before a big minigame session or a shopping spree to stretch every bit of XP further, and it quietly limits leech drain the whole time it runs.'
 	}
 };
 

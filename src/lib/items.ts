@@ -43,6 +43,27 @@ function applyLuckReduction(value: number, luckPercent: any): number {
 	return Math.max(0, value - luck);
 }
 
+export const LUCK_ICON = '🍀';
+
+function fmtPct(n: number): string {
+	return Number.isInteger(n) ? `${n}` : n.toFixed(1);
+}
+
+export function luckBoostLabel(base: any, luckPercent: any, opts: { max?: number; unit?: string } = {}): string {
+	const { max = 100, unit = '%' } = opts;
+	const b = Number(base) || 0;
+	const total = applyLuckBoost(b, luckPercent, max);
+	const bonus = total - b;
+	return bonus > 0 ? `${fmtPct(total)}${unit} (${fmtPct(b)} +${fmtPct(bonus)} ${LUCK_ICON})` : `${fmtPct(total)}${unit}`;
+}
+
+export function luckReduceLabel(base: any, luckPercent: any, unit = '%'): string {
+	const b = Number(base) || 0;
+	const total = applyLuckReduction(b, luckPercent);
+	const bonus = b - total;
+	return bonus > 0 ? `${fmtPct(total)}${unit} (${fmtPct(b)} −${fmtPct(bonus)} ${LUCK_ICON})` : `${fmtPct(total)}${unit}`;
+}
+
 export function formatDuration(minutes: any): string {
 	let m = Math.max(0, Math.round(Number(minutes) || 0));
 	if (m <= 0) return '0m';
@@ -158,7 +179,7 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		defaultCost: 700,
 		defaultConfig: { skim_percent: 10, effect_duration_minutes: 120 },
 		buffExpiredText: (m) => `Your **${m || 0}% Leech** has ended.`,
-		summary: (c, luck) => `Skim ${applyLuckBoost(Number(c.skim_percent) || 0, luck)}% of their XP · ${formatDuration(c.effect_duration_minutes)}`
+		summary: (c, luck) => `Skim ${luckBoostLabel(c.skim_percent ?? 0, luck)} of their XP · ${formatDuration(c.effect_duration_minutes)}`
 	},
 	{
 		id: 'reflect',
@@ -188,7 +209,7 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		defaultCost: 450,
 		defaultConfig: { refund_percent: 50, effect_duration_minutes: 90, cooldown_minutes: 1440 },
 		buffExpiredText: () => `Your **Insurance** has expired.`,
-		summary: (c, luck) => `Refund ${applyLuckBoost(Number(c.refund_percent ?? 100), luck)}% if robbed or bombed · ${formatDuration(c.effect_duration_minutes)}`
+		summary: (c, luck) => `Refund ${luckBoostLabel(c.refund_percent ?? 100, luck)} if robbed or bombed · ${formatDuration(c.effect_duration_minutes)}`
 	},
 	{
 		id: 'gift',
@@ -203,8 +224,8 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		defaultCost: 300,
 		defaultConfig: { gift_amount: 500, tax_percent: 10 },
 		summary: (c, luck) => {
-			const tax = applyLuckReduction(Number(c.tax_percent) || 0, luck);
-			return `Send ${shortXp(c.gift_amount)} XP${tax ? ` · −${tax}% tax` : ''}`;
+			const tax = Number(c.tax_percent) || 0;
+			return `Send ${shortXp(c.gift_amount)} XP${tax ? ` · ${luckReduceLabel(tax, luck)} tax` : ''}`;
 		}
 	},
 	{
@@ -237,7 +258,7 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 			const chance = applyLuckBoost(Number(c.spy_chance ?? 100), luck);
 			return chance >= 100
 				? `Reveal a member's bag, active effects and cooldowns.`
-				: `${chance}% to reveal their bag, effects & cooldowns. Fail and they're alerted.`;
+				: `${luckBoostLabel(c.spy_chance ?? 100, luck)} to reveal their bag, effects & cooldowns. Fail and they're alerted.`;
 		}
 	},
 	{
@@ -341,12 +362,14 @@ export function effectSummary(item: { effect_type: string; description?: string 
 
 export type EffectMetaChip = { icon: string; label: string };
 
-export function effectMeta(item: { effect_type: string; config?: any }): EffectMetaChip[] {
+export function effectMeta(item: { effect_type: string; config?: any }, luckPercent = 0): EffectMetaChip[] {
 	const effect = EFFECT_BY_ID[item.effect_type];
 	if (!effect) return [];
 	const c = { ...effect.defaultConfig, ...(item.config ?? {}) } as Record<string, any>;
 	const chips: EffectMetaChip[] = [];
 	const pctRange = (min: any, max: any) => (Number(min) === Number(max) ? `${Number(max) || 0}%` : `${Number(min) || 0}–${Number(max) || 0}%`);
+	const boosted = (base: any, max = 100) => luckBoostLabel(base, luckPercent, { max });
+	const reduced = (base: any) => luckReduceLabel(base, luckPercent);
 
 	switch (item.effect_type) {
 		case 'steal':
@@ -360,7 +383,7 @@ export function effectMeta(item: { effect_type: string; config?: any }): EffectM
 			chips.push({ icon: 'fa-hourglass-half', label: formatDuration(c.effect_duration_minutes) });
 			break;
 		case 'leech':
-			chips.push({ icon: 'fa-percent', label: `${c.skim_percent ?? 0}%` });
+			chips.push({ icon: 'fa-percent', label: boosted(c.skim_percent ?? 0) });
 			chips.push({ icon: 'fa-hourglass-half', label: formatDuration(c.effect_duration_minutes) });
 			break;
 		case 'shield':
@@ -369,19 +392,19 @@ export function effectMeta(item: { effect_type: string; config?: any }): EffectM
 			chips.push({ icon: 'fa-hourglass-half', label: formatDuration(c.effect_duration_minutes) });
 			break;
 		case 'insurance':
-			chips.push({ icon: 'fa-rotate-left', label: `${c.refund_percent ?? 100}%` });
+			chips.push({ icon: 'fa-rotate-left', label: boosted(c.refund_percent ?? 100) });
 			chips.push({ icon: 'fa-hourglass-half', label: formatDuration(c.effect_duration_minutes) });
 			if (Number(c.cooldown_minutes) > 0) chips.push({ icon: 'fa-stopwatch', label: formatDuration(c.cooldown_minutes) });
 			break;
 		case 'gift':
 			chips.push({ icon: 'fa-coins', label: `${shortXp(c.gift_amount)} XP` });
-			if (Number(c.tax_percent) > 0) chips.push({ icon: 'fa-receipt', label: `−${c.tax_percent}%` });
+			if (Number(c.tax_percent) > 0) chips.push({ icon: 'fa-receipt', label: reduced(c.tax_percent) });
 			break;
 		case 'bounty':
 			chips.push({ icon: 'fa-coins', label: `${shortXp(c.bounty_amount)} XP` });
 			break;
 		case 'spy':
-			if (Number(c.spy_chance ?? 100) < 100) chips.push({ icon: 'fa-percent', label: `${c.spy_chance}%` });
+			if (Number(c.spy_chance ?? 100) < 100) chips.push({ icon: 'fa-percent', label: boosted(c.spy_chance) });
 			break;
 		case 'luck':
 			chips.push({ icon: 'fa-percent', label: `+${c.luck_percent ?? 0}%` });

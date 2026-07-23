@@ -3,6 +3,7 @@ import { logger } from '../../../../utils/index.js';
 import { evaluateMemberLevelAndRank, determineLevel } from './leveling.js';
 import { getSpendableXp, spendXp } from './xp-economy.js';
 import { getActiveLuckPercent } from './items.js';
+import { luckBoostLabel } from '../../../../items.js';
 
 const MIN_MULTIPLIER = 1.01;
 const MAX_MULTIPLIER = 10;
@@ -121,7 +122,7 @@ async function announceMinigame(client: any, ctx: any) {
 		const actor = actorDiscordId ? await guild.members.fetch(String(actorDiscordId)).catch(() => null) : null;
 		const actorMention = actor ? `${actor}` : 'A member';
 		const multNote = ` at ${result.multiplier}×`;
-		const luckNote = result.luckPercent > 0 ? ` (+${result.luckPercent}% luck 🍀)` : '';
+		const winChanceLabel = luckBoostLabel(result.chance - (result.luckPercent || 0), result.luckPercent);
 
 		const embed = new EmbedBuilder()
 			.setColor(0xc8911a)
@@ -135,16 +136,13 @@ async function announceMinigame(client: any, ctx: any) {
 				.addFields(
 					{ name: 'Payout', value: fmtXp(result.payout), inline: true },
 					{ name: 'Net gain', value: `+${fmtXp(result.net)}`, inline: true },
-					{ name: 'Win chance', value: `${result.chance.toFixed(1)}%${luckNote}`, inline: true }
+					{ name: 'Win chance', value: winChanceLabel, inline: true }
 				);
 		} else {
 			embed
 				.setTitle('🎲 Minigame Lost')
 				.setDescription(`${actorMention} wagered ${fmtXp(result.wager)}${multNote} and **lost it all**.`)
-				.addFields(
-					{ name: 'XP lost', value: fmtXp(result.wager), inline: true },
-					{ name: 'Win chance', value: `${result.chance.toFixed(1)}%${luckNote}`, inline: true }
-				);
+				.addFields({ name: 'XP lost', value: fmtXp(result.wager), inline: true }, { name: 'Win chance', value: winChanceLabel, inline: true });
 		}
 
 		const content = actor ? `${actor}` : undefined;

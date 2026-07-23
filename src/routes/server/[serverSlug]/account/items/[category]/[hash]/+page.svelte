@@ -246,9 +246,9 @@
 		{/if}
 		<h3 class="m-card-name">{item.name}</h3>
 		<p class="m-card-desc">{item.description || effectSummary(item, ctx.luckPercent)}</p>
-		{#if effectMeta(item).length > 0}
+		{#if effectMeta(item, ctx.luckPercent).length > 0}
 			<div class="m-card-meta">
-				{#each effectMeta(item) as chip}
+				{#each effectMeta(item, ctx.luckPercent) as chip}
 					<span class="m-card-stat" title={chip.label}><i class="fas {chip.icon}"></i>{chip.label}</span>
 				{/each}
 			</div>

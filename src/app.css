@@ -6542,11 +6542,6 @@
 	color: #e0a52a;
 }
 
-.m-root .m-mg-luck {
-	font-weight: 700;
-	color: var(--effect-luck, #3fa34d);
-}
-
 .m-root .m-mg-slider {
 	width: 100%;
 	accent-color: #e0a52a;

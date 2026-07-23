@@ -2,6 +2,7 @@
 	import { getContext } from 'svelte';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
+	import { luckBoostLabel } from '$lib/items';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -32,7 +33,6 @@
 	let playing = $state<string | null>(null);
 	let multiplier = $state(2);
 	const baseWinChance = $derived(100 / multiplier);
-	const winChance = $derived(luckPercent > 0 ? Math.min(100, baseWinChance + luckPercent) : baseWinChance);
 	let gamblePercent = $state<number | 'custom'>(25);
 	let gambleCustom = $state<number | null>(null);
 	let busy = $state(false);
@@ -229,9 +229,7 @@
 				<div class="m-mg-mult">
 					<div class="m-mg-mult-head">
 						<span>Multiplier <strong>{multiplier.toFixed(2)}×</strong></span>
-						<span class="m-mg-chance"
-							>Win chance {winChance.toFixed(1)}%{#if luckPercent > 0}<span class="m-mg-luck"> (+{luckPercent}% luck 🍀)</span>{/if}</span
-						>
+						<span class="m-mg-chance">Win chance {luckBoostLabel(baseWinChance, luckPercent)}</span>
 					</div>
 					<input type="range" class="m-mg-slider" min={MIN_MULT} max={MAX_MULT} step="0.05" bind:value={multiplier} disabled={busy} />
 				</div>

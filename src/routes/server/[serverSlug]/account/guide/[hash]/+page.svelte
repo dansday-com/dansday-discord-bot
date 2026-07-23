@@ -149,7 +149,7 @@
 		{
 			icon: 'fa-clover',
 			accent: effectAccentHex('luck'),
-			text: 'Luck boosts everything at once: minigame odds, spy chance, leech skim, insurance refund, gift tax and shop prices. Pop it before a big session.'
+			text: 'Luck boosts everything at once: steal and bomb ceilings, minigame odds, spy chance, leech skim, insurance refund, gift tax and shop prices. Activate it before your buffs — they lock in your luck when you use them.'
 		},
 		{ icon: 'fa-crosshairs', accent: effectAccentHex('bounty'), text: 'Placed a Bounty? Land the kill yourself before someone else cashes in on your target.' },
 		{

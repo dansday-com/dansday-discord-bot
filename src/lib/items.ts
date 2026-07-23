@@ -303,7 +303,7 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		defaultCost: 550,
 		defaultConfig: { luck_percent: 20, effect_duration_minutes: 60 },
 		buffExpiredText: (v) => `Your **+${v || 0}% Luck** has worn off.`,
-		summary: (c) => `+${c.luck_percent}% odds on spy, leech, insurance & minigames, cheaper prices · ${formatDuration(c.effect_duration_minutes)}`
+		summary: (c) => `+${c.luck_percent}% odds on steal, bomb, spy, leech, insurance & minigames, cheaper prices · ${formatDuration(c.effect_duration_minutes)}`
 	}
 ];
 
@@ -497,9 +497,9 @@ const EFFECT_GUIDES: Record<string, EffectGuide> = {
 		tip: 'The fastest way to shake off a leech that’s draining you.'
 	},
 	luck: {
-		what: 'Boost your fortune across the board: better minigame odds, sharper spying, bigger leech skims, lower gift tax, bigger insurance refunds, a stronger friend boost, discounted shop prices, and it shields you as a victim by reducing how much any leech on you can drain.',
-		how: 'Activate on yourself, no target needed. The percentage applies on top of every roll and rate you control while it lasts, and also softens leeches other members have on you.',
-		tip: 'Pop it before a big minigame session or a shopping spree to stretch every bit of XP further, and it quietly limits leech drain the whole time it runs.'
+		what: 'Boost your fortune across the board: a higher ceiling on steal and bomb, better minigame odds, sharper spying, bigger leech skims, lower gift tax, bigger insurance refunds, a stronger friend boost, discounted shop prices, and it shields you as a victim by reducing how much any leech on you can drain.',
+		how: 'Activate on yourself, no target needed. The percentage applies on top of every roll and rate you control while it lasts, and also softens leeches other members have on you. On steal and bomb it lifts the top of the range, not the bottom, so your best hits get bigger. Buffs like insurance lock in your luck the moment you activate them, so activate luck first.',
+		tip: 'Pop it before a big minigame session, a raid or a shopping spree to stretch every bit of XP further, and it quietly limits leech drain the whole time it runs.'
 	}
 };
 
@@ -775,7 +775,7 @@ export function describeItemOutcome(effectType: string, result: any): ItemOutcom
 			tone: 'win',
 			icon: effectIcon('luck'),
 			title: 'Luck Active',
-			line: `+${r.luckPercent ?? 0}% luck on minigames, spy, leech, gift tax, insurance, friend boost and shop prices.`,
+			line: `+${r.luckPercent ?? 0}% luck on steal, bomb, minigames, spy, leech, gift tax, insurance, friend boost and shop prices.`,
 			deltaXp: null,
 			untilMs: toMs(r.expiresAt)
 		};

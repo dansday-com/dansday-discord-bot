@@ -706,8 +706,8 @@
 							>
 						</div>
 						<p class="text-ash-500 text-[11px]">
-							Boosts minigame odds, spy chance, leech skim, insurance refund and friend boost by this %, cuts gift tax by this %, and discounts every shop price
-							by this % while active.
+							Raises the steal and bomb max percent, and boosts minigame odds, spy chance, leech skim, insurance refund and friend boost by this %, cuts gift
+							tax by this %, and discounts every shop price by this % while active.
 						</p>
 					{:else}
 						<p class="text-ash-500 text-[11px]">No extra settings for this effect type yet.</p>

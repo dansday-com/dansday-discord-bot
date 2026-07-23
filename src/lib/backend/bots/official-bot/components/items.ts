@@ -1163,7 +1163,7 @@ const ITEM_EMBEDS: Record<string, (ctx: EmbedCtx) => any> = {
 			ctx,
 			'🍀',
 			'Luck Activated',
-			`is now running +${ctx.result?.luckPercent ?? 0}% luck across minigames, spy, leech, gift tax, insurance, friend boost and shop prices`
+			`is now running +${ctx.result?.luckPercent ?? 0}% luck across steal, bomb, minigames, spy, leech, gift tax, insurance, friend boost and shop prices`
 		)
 };
 

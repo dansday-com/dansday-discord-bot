@@ -2,7 +2,7 @@ import { createHash } from 'crypto';
 import { request as httpRequest } from 'http';
 import db from '$lib/database.js';
 import { parseMySQLDateTimeUtc } from '$lib/utils/index.js';
-import { itemAvailability, effectiveBagStock, discountedItemCost, DISGUISED_MENTION } from '$lib/items.js';
+import { itemAvailability, effectiveBagStock, discountedItemCost, DISGUISED_MENTION, floatingWallClockMs } from '$lib/items.js';
 
 export function computeCardToken(discordMemberId: string, memberSince: any): string {
 	const dt = parseMySQLDateTimeUtc(memberSince);
@@ -62,8 +62,8 @@ function scheduleMinutes(hhmm: any, fallback: number): number {
 function availableUntilMs(item: any): number | null {
 	const ends: number[] = [];
 	if (item.available_to) {
-		const t = new Date(item.available_to).getTime();
-		if (Number.isFinite(t)) ends.push(t);
+		const t = floatingWallClockMs(item.available_to, 0);
+		if (t != null) ends.push(t);
 	}
 	const schedule = typeof item.recurring_schedule === 'string' ? safeParse(item.recurring_schedule) : item.recurring_schedule;
 	if (schedule && Array.isArray(schedule.days) && schedule.days.length > 0) {

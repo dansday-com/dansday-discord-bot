@@ -1,5 +1,28 @@
 @import 'tailwindcss';
 
+@font-face {
+	font-family: 'monogram';
+	src: url('/fonts/monogram.ttf') format('truetype');
+	font-weight: normal;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: 'monogram-extended';
+	src: url('/fonts/monogram-extended.ttf') format('truetype');
+	font-weight: normal;
+	font-style: normal;
+	font-display: swap;
+}
+
+.font-pixel {
+	font-family: 'monogram', monospace;
+	-webkit-font-smoothing: none;
+	-moz-osx-font-smoothing: grayscale;
+	font-smooth: never;
+}
+
 @theme {
 	--color-ash-50: #f2f3f5;
 	--color-ash-100: #dbdee1;
@@ -76,7 +99,12 @@
 	background: var(--chili-bg);
 	position: relative;
 	overflow-x: hidden;
-	font-family: -apple-system, 'Inter', 'Segoe UI', sans-serif;
+	font-family:
+		'monogram',
+		-apple-system,
+		'Inter',
+		'Segoe UI',
+		sans-serif;
 	display: flex;
 	flex-direction: column;
 	color: var(--lb-text);

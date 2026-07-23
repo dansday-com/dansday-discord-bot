@@ -2,6 +2,8 @@ import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 import { evaluateMemberLevelAndRank, determineLevel } from './leveling.js';
 import { getSpendableXp, spendXp } from './xp-economy.js';
+import { getActiveLuckPercent } from './items.js';
+import { luckBoostLabel } from '../../../../items.js';
 
 const MIN_MULTIPLIER = 1.01;
 const MAX_MULTIPLIER = 10;
@@ -43,7 +45,9 @@ export async function handleMinigamePlay(client: any, payload: any) {
 	if (!actorMemberId) return { ok: false, error: 'member_not_found' };
 
 	const mult = clampMultiplier(multiplier);
-	const chance = winChanceFor(mult);
+	const luckPercent = await getActiveLuckPercent(actorMemberId);
+	const baseChance = winChanceFor(mult);
+	const chance = luckPercent > 0 ? Math.min(100, baseChance + luckPercent) : baseChance;
 
 	const balance = await getSpendableXp(actorMemberId, guild_id);
 	const wager = Math.max(0, Math.floor(Number(amount) || 0));
@@ -78,13 +82,15 @@ export async function handleMinigamePlay(client: any, payload: any) {
 			wager,
 			payout,
 			xp_amount: netChange,
-			outcome: won ? 'win' : 'lose'
+			outcome: won ? 'win' : 'lose',
+			chance,
+			luck_percent: luckPercent || null
 		})
 		.catch(() => null);
 
 	await evaluateMemberLevelAndRank(guild_id, actorMemberId, { reason: 'minigame' }).catch(() => null);
 
-	const result = { outcome: won ? 'win' : 'lose', won, wager, payout, net: netChange, multiplier: mult, chance };
+	const result = { outcome: won ? 'win' : 'lose', won, wager, payout, net: netChange, multiplier: mult, chance, luckPercent };
 	setTimeout(() => {
 		announceMinigame(client, { guildId: guild_id, actorDiscordId: actor_discord_id, result }).catch(() => null);
 	}, ANNOUNCE_DELAY_MS);
@@ -116,6 +122,7 @@ async function announceMinigame(client: any, ctx: any) {
 		const actor = actorDiscordId ? await guild.members.fetch(String(actorDiscordId)).catch(() => null) : null;
 		const actorMention = actor ? `${actor}` : 'A member';
 		const multNote = ` at ${result.multiplier}×`;
+		const winChanceLabel = luckBoostLabel(result.chance - (result.luckPercent || 0), result.luckPercent);
 
 		const embed = new EmbedBuilder()
 			.setColor(0xc8911a)
@@ -126,12 +133,16 @@ async function announceMinigame(client: any, ctx: any) {
 			embed
 				.setTitle('🎲 Minigame Win!')
 				.setDescription(`${actorMention} wagered ${fmtXp(result.wager)}${multNote} and **won**!`)
-				.addFields({ name: 'Payout', value: fmtXp(result.payout), inline: true }, { name: 'Net gain', value: `+${fmtXp(result.net)}`, inline: true });
+				.addFields(
+					{ name: 'Payout', value: fmtXp(result.payout), inline: true },
+					{ name: 'Net gain', value: `+${fmtXp(result.net)}`, inline: true },
+					{ name: 'Win chance', value: winChanceLabel, inline: true }
+				);
 		} else {
 			embed
 				.setTitle('🎲 Minigame Lost')
 				.setDescription(`${actorMention} wagered ${fmtXp(result.wager)}${multNote} and **lost it all**.`)
-				.addFields({ name: 'XP lost', value: fmtXp(result.wager), inline: true });
+				.addFields({ name: 'XP lost', value: fmtXp(result.wager), inline: true }, { name: 'Win chance', value: winChanceLabel, inline: true });
 		}
 
 		const content = actor ? `${actor}` : undefined;

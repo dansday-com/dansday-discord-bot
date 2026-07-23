@@ -372,88 +372,6 @@
 		</div>
 	{/if}
 
-	<div class="m-econ3 m-ov-full">
-		<div class="m-stat-card m-overview-card">
-			<div class="m-stat-card-head">
-				<div class="m-stat-card-icon m-chili-stat-2"><i class="fas fa-chart-line"></i></div>
-				<h2 class="m-stat-card-title">Market</h2>
-			</div>
-			<div class="m-stat-hero">
-				<span class="m-stat-hero-val" use:countUp={d.assets_market_value}>{fmt(d.assets_market_value)}</span>
-				<span class="m-stat-hero-cap">assets value · XP</span>
-				<span class="m-stat-hero-chip" data-dir={assetsPnl >= 0 ? 'up' : 'down'}>
-					<i class="fas fa-arrow-trend-{assetsPnl >= 0 ? 'up' : 'down'}"></i>{assetsPnl >= 0 ? '+' : '−'}{fmt(Math.abs(assetsPnl))} open P/L
-				</span>
-			</div>
-			<div class="m-mini-grid">
-				<div class="m-mini">
-					<i class="fas fa-right-left"></i>
-					<span class="m-mini-value">{fmt(d.assets_trade_count)}</span>
-					<span class="m-mini-label">Trades</span>
-				</div>
-				<div class="m-mini">
-					<i class="fas fa-briefcase"></i>
-					<span class="m-mini-value">{fmt(d.assets_open_positions)}</span>
-					<span class="m-mini-label">Open assets</span>
-				</div>
-			</div>
-		</div>
-
-		<div class="m-stat-card m-overview-card">
-			<div class="m-stat-card-head">
-				<div class="m-stat-card-icon m-chili-stat-4"><i class="fas fa-bag-shopping"></i></div>
-				<h2 class="m-stat-card-title">Items</h2>
-			</div>
-			<div class="m-stat-hero">
-				<span class="m-stat-hero-val" use:countUp={d.items_buys}>{fmt(d.items_buys)}</span>
-				<span class="m-stat-hero-cap">items bought</span>
-			</div>
-			<div class="m-mini-grid">
-				<div class="m-mini">
-					<i class="fas fa-coins"></i>
-					<span class="m-mini-value">{fmt(d.items_buy_spend)}</span>
-					<span class="m-mini-label">XP spent</span>
-				</div>
-				<div class="m-mini">
-					<i class="fas fa-wand-magic-sparkles"></i>
-					<span class="m-mini-value">{fmt(d.items_activations)}</span>
-					<span class="m-mini-label">Activations</span>
-				</div>
-			</div>
-		</div>
-
-		<div class="m-stat-card m-overview-card">
-			<div class="m-stat-card-head">
-				<div class="m-stat-card-icon m-chili-stat-3"><i class="fas fa-dice"></i></div>
-				<h2 class="m-stat-card-title">Minigames</h2>
-			</div>
-			<div class="m-ring-row">
-				<div class="m-ring" style="--pct: {minigamesWinRate * grow}; --ring-color: {minigamesWinRate >= 50 ? '#1f8a4c' : '#c8911a'};">
-					<span class="m-ring-val"><span use:countUp={minigamesWinRate}>{minigamesWinRate}</span>%</span>
-					<span class="m-ring-cap">win rate</span>
-				</div>
-				<div class="m-ring-side">
-					<div class="m-ring-stat"><span>{fmt(d.minigames_plays)}</span><small>plays</small></div>
-					<div class="m-ring-stat" data-dir={minigamesNet >= 0 ? 'up' : 'down'}>
-						<span>{minigamesNet >= 0 ? '+' : '−'}{fmt(Math.abs(minigamesNet))}</span><small>net winnings</small>
-					</div>
-				</div>
-			</div>
-			<div class="m-mini-grid">
-				<div class="m-mini">
-					<i class="fas fa-coins"></i>
-					<span class="m-mini-value">{fmt(d.minigames_wagered)}</span>
-					<span class="m-mini-label">XP wagered</span>
-				</div>
-				<div class="m-mini">
-					<i class="fas fa-trophy"></i>
-					<span class="m-mini-value">{fmt(d.minigames_biggest_win)}</span>
-					<span class="m-mini-label">Biggest win</span>
-				</div>
-			</div>
-		</div>
-	</div>
-
 	{#if hasPortfolio}
 		<div class="m-stat-card m-overview-card m-ov-full">
 			<div class="m-stat-card-head">
@@ -518,6 +436,88 @@
 			</div>
 		</div>
 	{/if}
+
+	<div class="m-econ3 m-ov-full">
+		<div class="m-stat-card m-overview-card">
+			<div class="m-stat-card-head">
+				<div class="m-stat-card-icon m-chili-stat-2"><i class="fas fa-chart-line"></i></div>
+				<h2 class="m-stat-card-title">Market</h2>
+			</div>
+			<div class="m-stat-hero">
+				<span class="m-stat-hero-val" use:countUp={d.assets_market_value}>{fmt(d.assets_market_value)}</span>
+				<span class="m-stat-hero-cap">assets value · XP</span>
+				<span class="m-stat-hero-chip" data-dir={assetsPnl >= 0 ? 'up' : 'down'}>
+					<i class="fas fa-arrow-trend-{assetsPnl >= 0 ? 'up' : 'down'}"></i>{assetsPnl >= 0 ? '+' : '−'}{fmt(Math.abs(assetsPnl))} open P/L
+				</span>
+			</div>
+			<div class="m-mini-grid">
+				<div class="m-mini">
+					<i class="fas fa-right-left"></i>
+					<span class="m-mini-value">{fmt(d.assets_trade_count)}</span>
+					<span class="m-mini-label">Trades</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-briefcase"></i>
+					<span class="m-mini-value">{fmt(d.assets_open_positions)}</span>
+					<span class="m-mini-label">Open assets</span>
+				</div>
+			</div>
+		</div>
+
+		<div class="m-stat-card m-overview-card">
+			<div class="m-stat-card-head">
+				<div class="m-stat-card-icon m-chili-stat-3"><i class="fas fa-dice"></i></div>
+				<h2 class="m-stat-card-title">Minigames</h2>
+			</div>
+			<div class="m-ring-row">
+				<div class="m-ring" style="--pct: {minigamesWinRate * grow}; --ring-color: {minigamesWinRate >= 50 ? '#1f8a4c' : '#c8911a'};">
+					<span class="m-ring-val"><span use:countUp={minigamesWinRate}>{minigamesWinRate}</span>%</span>
+					<span class="m-ring-cap">win rate</span>
+				</div>
+				<div class="m-ring-side">
+					<div class="m-ring-stat"><span>{fmt(d.minigames_plays)}</span><small>plays</small></div>
+					<div class="m-ring-stat" data-dir={minigamesNet >= 0 ? 'up' : 'down'}>
+						<span>{minigamesNet >= 0 ? '+' : '−'}{fmt(Math.abs(minigamesNet))}</span><small>net winnings</small>
+					</div>
+				</div>
+			</div>
+			<div class="m-mini-grid">
+				<div class="m-mini">
+					<i class="fas fa-coins"></i>
+					<span class="m-mini-value">{fmt(d.minigames_wagered)}</span>
+					<span class="m-mini-label">XP wagered</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-trophy"></i>
+					<span class="m-mini-value">{fmt(d.minigames_biggest_win)}</span>
+					<span class="m-mini-label">Biggest win</span>
+				</div>
+			</div>
+		</div>
+
+		<div class="m-stat-card m-overview-card">
+			<div class="m-stat-card-head">
+				<div class="m-stat-card-icon m-chili-stat-4"><i class="fas fa-bag-shopping"></i></div>
+				<h2 class="m-stat-card-title">Items</h2>
+			</div>
+			<div class="m-stat-hero">
+				<span class="m-stat-hero-val" use:countUp={d.items_buys}>{fmt(d.items_buys)}</span>
+				<span class="m-stat-hero-cap">items bought</span>
+			</div>
+			<div class="m-mini-grid">
+				<div class="m-mini">
+					<i class="fas fa-coins"></i>
+					<span class="m-mini-value">{fmt(d.items_buy_spend)}</span>
+					<span class="m-mini-label">XP spent</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-wand-magic-sparkles"></i>
+					<span class="m-mini-value">{fmt(d.items_activations)}</span>
+					<span class="m-mini-label">Activations</span>
+				</div>
+			</div>
+		</div>
+	</div>
 
 	<div class="m-stat-card m-overview-card m-ov-full">
 		<div class="m-stat-card-head">

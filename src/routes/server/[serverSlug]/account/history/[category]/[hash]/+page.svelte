@@ -31,7 +31,12 @@
 		if (h.totalXp != null) badges.push({ icon: 'fa-star', text: `${fmt(h.totalXp)} total` });
 		if (h.multiplier) badges.push({ icon: 'fa-bolt', text: `${h.multiplier}× Boost` });
 		if (h.friendPercent) badges.push({ icon: 'fa-handshake', text: `+${h.friendPercent}% Friend boost` });
-		if (h.skimPercent) badges.push({ icon: 'fa-droplet', text: h.source === 'leech' ? `${h.skimPercent}% Siphoned` : `−${h.skimPercent}% Leech` });
+		if (h.skimPercent) {
+			const total = Number(h.skimPercent) || 0;
+			const luck = Number(h.luckPercent) || 0;
+			const val = luck > 0 ? `${fmtRate(total)}% (${fmtRate(total - luck)} +${fmtRate(luck)} 🍀)` : `${fmtRate(total)}%`;
+			badges.push({ icon: 'fa-droplet', text: h.source === 'leech' ? `${val} Siphoned` : `−${val} Leech` });
+		}
 		return {
 			icon: src.icon,
 			title: `${src.label} XP`,
@@ -75,12 +80,19 @@
 	function minigameLine(h: any): { icon: string; title: string; tone: string; deltaLabel: string; badges: Badge[] } {
 		const won = h.outcome === 'win';
 		const net = Number(h.xpAmount) || 0;
+		const badges: Badge[] = [{ icon: 'fa-dice', text: `${Number(h.multiplier).toFixed(2)}×` }];
+		if (h.chance != null) {
+			const total = Number(h.chance) || 0;
+			const luck = Number(h.luckPercent) || 0;
+			const val = luck > 0 ? `${fmtRate(total)}% (${fmtRate(total - luck)} +${fmtRate(luck)} 🍀) chance` : `${fmtRate(total)}% chance`;
+			badges.push({ icon: luck > 0 ? 'fa-clover' : 'fa-percent', text: val });
+		}
 		return {
 			icon: won ? 'fa-sack-dollar' : 'fa-skull',
 			title: won ? 'Gamble — Won' : 'Gamble — Lost',
 			tone: won ? 'win' : 'lose',
 			deltaLabel: `${net >= 0 ? '+' : '−'}${fmt(Math.abs(net))} XP`,
-			badges: [{ icon: 'fa-dice', text: `${Number(h.multiplier).toFixed(2)}×` }]
+			badges
 		};
 	}
 
@@ -95,7 +107,19 @@
 		return `${s}s ago`;
 	}
 
-	function line(h: any): { icon: string; title: string; tone: string; deltaLabel: string } {
+	function luckBadges(h: any, suffix?: string): Badge[] {
+		if (h.ratePercent == null) return [];
+		const total = Number(h.ratePercent) || 0;
+		const luck = Number(h.luckPercent) || 0;
+		const base = total - luck;
+		const text = luck > 0 ? `${fmtRate(total)}% (${fmtRate(base)} +${fmtRate(luck)} 🍀)` : `${fmtRate(total)}%`;
+		return [{ icon: h.luckPercent ? 'fa-clover' : 'fa-percent', text: suffix ? `${text} ${suffix}` : text }];
+	}
+	function fmtRate(n: number): string {
+		return Number.isInteger(n) ? `${n}` : n.toFixed(1);
+	}
+
+	function line(h: any): { icon: string; title: string; tone: string; deltaLabel: string; badges?: Badge[] } {
 		if (h.action === 'gift' && h.outcome === 'admin')
 			return { icon: effectIcon('gift'), title: `Gift from admin — ${h.itemName ?? 'item'}`, tone: 'win', deltaLabel: 'Received' };
 		if (h.action === 'buy') return { icon: 'fa-cart-shopping', title: `Bought ${h.itemName ?? 'item'}`, tone: 'spend', deltaLabel: `−${fmt(h.xpAmount)} XP` };
@@ -120,16 +144,38 @@
 			boost: 'Boost activated',
 			shield: 'Shield activated',
 			reflect: 'Reflect activated',
-			insurance: 'Insurance activated'
+			insurance: 'Insurance activated',
+			luck: 'Luck activated'
 		};
 		if (h.action === 'insurance' && h.outcome === 'refunded') {
 			const from = h.targetName ? ` ← ${h.targetName}` : '';
 			return { icon: 'fa-money-bill-transfer', title: `Insurance refund${from}`, tone: 'win', deltaLabel: h.xpAmount > 0 ? `+${fmt(h.xpAmount)} XP` : '' };
 		}
+		if (h.action === 'insurance') {
+			return {
+				icon: effectIcon('insurance'),
+				title: 'Insurance activated',
+				tone: 'neutral',
+				deltaLabel: '',
+				badges: luckBadges(h, 'Refund')
+			};
+		}
+		if (h.action === 'luck') {
+			return {
+				icon: effectIcon('luck'),
+				title: 'Luck activated',
+				tone: 'win',
+				deltaLabel: '',
+				badges: [{ icon: 'fa-clover', text: `+${h.ratePercent ?? 0}%` }]
+			};
+		}
 		const target = h.targetName ? ` → ${h.targetName}` : '';
 		if (h.action === 'spy') {
 			if (h.outcome === 'caught') return { icon: 'fa-triangle-exclamation', title: `Spy caught${target}`, tone: 'lose', deltaLabel: 'Caught' };
-			return { icon: effectIcon('spy'), title: `Spied${target}`, tone: 'neutral', deltaLabel: '' };
+			return { icon: effectIcon('spy'), title: `Spied${target}`, tone: 'neutral', deltaLabel: '', badges: luckBadges(h, 'Chance') };
+		}
+		if (h.action === 'leech') {
+			return { icon: effectIcon('leech'), title: `Leeched${target}`, tone: 'neutral', deltaLabel: '', badges: luckBadges(h, 'Skim') };
 		}
 		const title = PAST_TITLE[h.action] ?? effectLabel(h.action);
 		let tone = 'neutral';
@@ -148,10 +194,13 @@
 			tone = 'spend';
 			deltaLabel = `−${fmt(h.xpAmount)} XP`;
 		}
+		if (h.action === 'gift' && (h.ratePercent || h.luckPercent)) {
+			return { icon: effectIcon(h.action), title: `${title}${target}`, tone, deltaLabel, badges: luckBadges(h, 'Tax') };
+		}
 		return { icon: effectIcon(h.action), title: `${title}${target}`, tone, deltaLabel };
 	}
 
-	function incomingLine(h: any): { icon: string; title: string; tone: string; deltaLabel: string } {
+	function incomingLine(h: any): { icon: string; title: string; tone: string; deltaLabel: string; badges?: Badge[] } {
 		const by = h.actorName ? ` ← ${h.actorName}` : h.actorDisguised ? ` ← an unknown member 🎭` : '';
 		const icon = effectIcon(h.action);
 
@@ -165,7 +214,13 @@
 		if (h.outcome === 'reflected') return { icon: 'fa-arrows-rotate', title: `Reflected ${h.action}${by}`, tone: 'win', deltaLabel: 'Reflected' };
 
 		if (h.action === 'gift') {
-			return { icon, title: `Received gift${by}`, tone: 'win', deltaLabel: h.xpAmount > 0 ? `+${fmt(h.xpAmount)} XP` : '' };
+			return {
+				icon,
+				title: `Received gift${by}`,
+				tone: 'win',
+				deltaLabel: h.xpAmount > 0 ? `+${fmt(h.xpAmount)} XP` : '',
+				badges: luckBadges(h, 'Tax')
+			};
 		}
 		if (h.action === 'steal') {
 			return { icon, title: `Robbed${by}`, tone: 'lose', deltaLabel: h.xpAmount > 0 ? `−${fmt(h.xpAmount)} XP` : '' };
@@ -174,7 +229,7 @@
 			return { icon, title: `Bombed${by}`, tone: 'lose', deltaLabel: h.xpAmount > 0 ? `−${fmt(h.xpAmount)} XP` : '' };
 		}
 		if (h.action === 'leech') {
-			return { icon, title: `Leeched${by}`, tone: 'lose', deltaLabel: '' };
+			return { icon, title: `Leeched${by}`, tone: 'lose', deltaLabel: '', badges: luckBadges(h, 'Skimmed') };
 		}
 		if (h.action === 'bounty') {
 			return { icon, title: `Bounty on you${by}`, tone: 'lose', deltaLabel: '' };

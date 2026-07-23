@@ -70,6 +70,12 @@
 			accent: '#4b6584',
 			title: 'History',
 			desc: 'The History tab logs everything you bought, used, earned, every attack for and against you, and every asset trade. Anonymous attackers (Disguise) stay hidden there forever.'
+		},
+		{
+			icon: 'fa-crosshairs',
+			accent: '#a8327d',
+			title: 'Bounty',
+			desc: 'Placing a Bounty puts a reward on someone’s head. Whoever lands the next successful steal or bomb on that target claims the XP automatically.'
 		}
 	];
 
@@ -89,7 +95,7 @@
 
 	const assetSteps = [
 		{ icon: 'fa-chart-line', title: 'Open Assets', desc: 'Tap the Assets tab. Browse the Top 50, Gainers, Losers, or Search any coin.' },
-		{ icon: 'fa-arrow-trend-up', title: 'Invest XP', desc: 'Pick a coin, choose how much XP to invest (minimum 1,000 XP), and buy at the live market price.' },
+		{ icon: 'fa-arrow-trend-up', title: 'Invest XP', desc: 'Pick a coin, choose how much XP to invest (minimum 10,000 XP), and buy at the live market price.' },
 		{
 			icon: 'fa-wallet',
 			title: 'Watch it move',
@@ -139,7 +145,18 @@
 		{ icon: 'fa-shield', accent: effectAccentHex('shield'), text: 'Raise a Shield before you log off so nobody farms you while away.' },
 		{ icon: 'fa-soap', accent: effectAccentHex('purifier'), text: 'Stuck with a leech draining you? A Purifier wipes it instantly.' },
 		{ icon: 'fa-handshake', accent: '#2f8f4e', text: 'Grind voice with friends. Friend Boost stacks +10% each.' },
-		{ icon: 'fa-arrows-rotate', accent: effectAccentHex('reflect'), text: 'Expecting a hit? Reflect turns their attack back on them.' }
+		{ icon: 'fa-arrows-rotate', accent: effectAccentHex('reflect'), text: 'Expecting a hit? Reflect turns their attack back on them.' },
+		{
+			icon: 'fa-clover',
+			accent: effectAccentHex('luck'),
+			text: 'Luck boosts everything at once: minigame odds, spy chance, leech skim, insurance refund, gift tax and shop prices. Pop it before a big session.'
+		},
+		{ icon: 'fa-crosshairs', accent: effectAccentHex('bounty'), text: 'Placed a Bounty? Land the kill yourself before someone else cashes in on your target.' },
+		{
+			icon: 'fa-shield-halved',
+			accent: effectAccentHex('insurance'),
+			text: 'Insurance only pays out on your next loss, so activate it right before you expect to get hit, not after.'
+		}
 	];
 
 	function fmtCost(n: number | null): string {

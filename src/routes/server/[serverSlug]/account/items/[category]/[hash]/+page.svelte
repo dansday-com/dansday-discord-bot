@@ -128,6 +128,7 @@
 			return `Leeching ${e.leechWith} (${e.effect_value || 0}%)`;
 		}
 		if (e.effect_type === 'insurance') return `Insurance (${e.effect_value || 0}% refund)`;
+		if (e.effect_type === 'luck') return `+${e.effect_value || 0}% Luck`;
 		return effectLabel(e.effect_type);
 	}
 	const cooldownLabels: Record<string, string> = {
@@ -244,17 +245,22 @@
 			<span class="m-card-timer"><i class="fas fa-hourglass-half"></i>Ends in {ctx.remainingLabel(item.availableUntil)}</span>
 		{/if}
 		<h3 class="m-card-name">{item.name}</h3>
-		<p class="m-card-desc">{item.description || effectSummary(item)}</p>
-		{#if effectMeta(item).length > 0}
+		<p class="m-card-desc">{item.description || effectSummary(item, ctx.luckPercent)}</p>
+		{#if effectMeta(item, ctx.luckPercent).length > 0}
 			<div class="m-card-meta">
-				{#each effectMeta(item) as chip}
+				{#each effectMeta(item, ctx.luckPercent) as chip}
 					<span class="m-card-stat" title={chip.label}><i class="fas {chip.icon}"></i>{chip.label}</span>
 				{/each}
 			</div>
 		{/if}
 
 		<div class="m-card-foot">
-			<span class="m-card-price" class:m-card-price--short={!ctx.readOnly && !affordable}>{fmt(item.cost)}<span class="m-card-price-unit">XP</span></span>
+			<span class="m-card-price" class:m-card-price--short={!ctx.readOnly && !affordable}>
+				{#if item.original_cost != null && item.original_cost > item.cost}
+					<span class="m-card-price-strike">{fmt(item.original_cost)}</span>
+				{/if}
+				{fmt(item.cost)}<span class="m-card-price-unit">XP</span>
+			</span>
 
 			{#if ctx.readOnly}
 				<div class="m-card-actions">

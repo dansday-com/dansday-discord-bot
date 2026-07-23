@@ -1,6 +1,68 @@
-export type ItemEffectId = 'steal' | 'bomb' | 'boost' | 'shield' | 'leech' | 'reflect' | 'insurance' | 'gift' | 'bounty' | 'spy' | 'disguise' | 'purifier';
+export type ItemEffectId =
+	| 'steal'
+	| 'bomb'
+	| 'boost'
+	| 'shield'
+	| 'leech'
+	| 'reflect'
+	| 'insurance'
+	| 'gift'
+	| 'bounty'
+	| 'spy'
+	| 'disguise'
+	| 'purifier'
+	| 'luck';
 
 export const BAG_CAPACITY = 50;
+
+export function effectiveBagStock(inventory: { quantity?: number; enabled?: boolean | number; usable?: boolean | number }[]): number {
+	return inventory.reduce((sum, r) => {
+		const enabled = r.enabled !== false && r.enabled !== 0;
+		const usable = r.usable !== false && r.usable !== 0;
+		if (!enabled && !usable) return sum;
+		return sum + (Number(r.quantity) || 0);
+	}, 0);
+}
+
+export function discountedItemCost(cost: any, luckPercent: any, effectType?: any): number {
+	const base = Math.max(0, Number(cost) || 0);
+	const luck = Math.max(0, Number(luckPercent) || 0);
+	if (luck <= 0 || effectType === 'luck') return base;
+	return Math.max(0, Math.floor(base * (1 - luck / 100)));
+}
+
+function applyLuckBoost(value: number, luckPercent: any, max = 100): number {
+	const luck = Math.max(0, Number(luckPercent) || 0);
+	if (luck <= 0) return value;
+	return Math.min(max, value + luck);
+}
+
+function applyLuckReduction(value: number, luckPercent: any): number {
+	const luck = Math.max(0, Number(luckPercent) || 0);
+	if (luck <= 0) return value;
+	return Math.max(0, value - luck);
+}
+
+export const LUCK_ICON = '🍀';
+
+function fmtPct(n: number): string {
+	return Number.isInteger(n) ? `${n}` : n.toFixed(1);
+}
+
+export function luckBoostLabel(base: any, luckPercent: any, opts: { max?: number; unit?: string } = {}): string {
+	const { max = 100, unit = '%' } = opts;
+	const b = Number(base) || 0;
+	const total = applyLuckBoost(b, luckPercent, max);
+	const bonus = total - b;
+	return bonus > 0 ? `${fmtPct(total)}${unit} (${fmtPct(b)} +${fmtPct(bonus)} ${LUCK_ICON})` : `${fmtPct(total)}${unit}`;
+}
+
+export function luckReduceLabel(base: any, luckPercent: any, unit = '%'): string {
+	const b = Number(base) || 0;
+	const total = applyLuckReduction(b, luckPercent);
+	const bonus = b - total;
+	return bonus > 0 ? `${fmtPct(total)}${unit} (${fmtPct(b)} −${fmtPct(bonus)} ${LUCK_ICON})` : `${fmtPct(total)}${unit}`;
+}
 
 export function formatDuration(minutes: any): string {
 	let m = Math.max(0, Math.round(Number(minutes) || 0));
@@ -42,7 +104,7 @@ export type ItemEffect = {
 	defaultCost: number;
 	defaultConfig: Record<string, any>;
 	buffExpiredText?: (effectValue: number) => string;
-	summary: (config: any) => string;
+	summary: (config: any, luckPercent?: number) => string;
 };
 
 export const ITEM_EFFECTS: ItemEffect[] = [
@@ -117,7 +179,7 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		defaultCost: 700,
 		defaultConfig: { skim_percent: 10, effect_duration_minutes: 120 },
 		buffExpiredText: (m) => `Your **${m || 0}% Leech** has ended.`,
-		summary: (c) => `Skim ${c.skim_percent}% of their XP · ${formatDuration(c.effect_duration_minutes)}`
+		summary: (c, luck) => `Skim ${luckBoostLabel(c.skim_percent ?? 0, luck)} of their XP · ${formatDuration(c.effect_duration_minutes)}`
 	},
 	{
 		id: 'reflect',
@@ -147,7 +209,7 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		defaultCost: 450,
 		defaultConfig: { refund_percent: 50, effect_duration_minutes: 90, cooldown_minutes: 1440 },
 		buffExpiredText: () => `Your **Insurance** has expired.`,
-		summary: (c) => `Refund ${c.refund_percent ?? 100}% if robbed or bombed · ${formatDuration(c.effect_duration_minutes)}`
+		summary: (c, luck) => `Refund ${luckBoostLabel(c.refund_percent ?? 100, luck)} if robbed or bombed · ${formatDuration(c.effect_duration_minutes)}`
 	},
 	{
 		id: 'gift',
@@ -161,7 +223,10 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		expiringBuff: false,
 		defaultCost: 300,
 		defaultConfig: { gift_amount: 500, tax_percent: 10 },
-		summary: (c) => `Send ${shortXp(c.gift_amount)} XP${c.tax_percent ? ` · −${c.tax_percent}% tax` : ''}`
+		summary: (c, luck) => {
+			const tax = Number(c.tax_percent) || 0;
+			return `Send ${shortXp(c.gift_amount)} XP${tax ? ` · ${luckReduceLabel(tax, luck)} tax` : ''}`;
+		}
 	},
 	{
 		id: 'bounty',
@@ -189,10 +254,12 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		expiringBuff: false,
 		defaultCost: 300,
 		defaultConfig: { spy_chance: 100 },
-		summary: (c) =>
-			Number(c.spy_chance ?? 100) >= 100
+		summary: (c, luck) => {
+			const chance = applyLuckBoost(Number(c.spy_chance ?? 100), luck);
+			return chance >= 100
 				? `Reveal a member's bag, active effects and cooldowns.`
-				: `${c.spy_chance}% to reveal their bag, effects & cooldowns. Fail and they're alerted.`
+				: `${luckBoostLabel(c.spy_chance ?? 100, luck)} to reveal their bag, effects & cooldowns. Fail and they're alerted.`;
+		}
 	},
 	{
 		id: 'disguise',
@@ -222,6 +289,21 @@ export const ITEM_EFFECTS: ItemEffect[] = [
 		defaultCost: 600,
 		defaultConfig: {},
 		summary: () => `Wipe all your active effects: shields, leeches, immunity and more.`
+	},
+	{
+		id: 'luck',
+		label: 'Luck',
+		icon: 'fa-clover',
+		accent: '#3fa34d',
+		emoji: '🍀',
+		verb: 'Activate',
+		targeted: false,
+		announced: true,
+		expiringBuff: true,
+		defaultCost: 550,
+		defaultConfig: { luck_percent: 20, effect_duration_minutes: 60 },
+		buffExpiredText: (v) => `Your **+${v || 0}% Luck** has worn off.`,
+		summary: (c) => `+${c.luck_percent}% odds on spy, leech, insurance & minigames, cheaper prices · ${formatDuration(c.effect_duration_minutes)}`
 	}
 ];
 
@@ -272,20 +354,22 @@ export function effectDefaultCost(type: string): number {
 	return EFFECT_BY_ID[type]?.defaultCost ?? 0;
 }
 
-export function effectSummary(item: { effect_type: string; description?: string | null; config?: any }): string {
+export function effectSummary(item: { effect_type: string; description?: string | null; config?: any }, luckPercent = 0): string {
 	const effect = EFFECT_BY_ID[item.effect_type];
 	if (!effect) return item.description ?? '';
-	return effect.summary({ ...effect.defaultConfig, ...(item.config ?? {}) });
+	return effect.summary({ ...effect.defaultConfig, ...(item.config ?? {}) }, luckPercent);
 }
 
 export type EffectMetaChip = { icon: string; label: string };
 
-export function effectMeta(item: { effect_type: string; config?: any }): EffectMetaChip[] {
+export function effectMeta(item: { effect_type: string; config?: any }, luckPercent = 0): EffectMetaChip[] {
 	const effect = EFFECT_BY_ID[item.effect_type];
 	if (!effect) return [];
 	const c = { ...effect.defaultConfig, ...(item.config ?? {}) } as Record<string, any>;
 	const chips: EffectMetaChip[] = [];
 	const pctRange = (min: any, max: any) => (Number(min) === Number(max) ? `${Number(max) || 0}%` : `${Number(min) || 0}–${Number(max) || 0}%`);
+	const boosted = (base: any, max = 100) => luckBoostLabel(base, luckPercent, { max });
+	const reduced = (base: any) => luckReduceLabel(base, luckPercent);
 
 	switch (item.effect_type) {
 		case 'steal':
@@ -299,7 +383,7 @@ export function effectMeta(item: { effect_type: string; config?: any }): EffectM
 			chips.push({ icon: 'fa-hourglass-half', label: formatDuration(c.effect_duration_minutes) });
 			break;
 		case 'leech':
-			chips.push({ icon: 'fa-percent', label: `${c.skim_percent ?? 0}%` });
+			chips.push({ icon: 'fa-percent', label: boosted(c.skim_percent ?? 0) });
 			chips.push({ icon: 'fa-hourglass-half', label: formatDuration(c.effect_duration_minutes) });
 			break;
 		case 'shield':
@@ -308,19 +392,23 @@ export function effectMeta(item: { effect_type: string; config?: any }): EffectM
 			chips.push({ icon: 'fa-hourglass-half', label: formatDuration(c.effect_duration_minutes) });
 			break;
 		case 'insurance':
-			chips.push({ icon: 'fa-rotate-left', label: `${c.refund_percent ?? 100}%` });
+			chips.push({ icon: 'fa-rotate-left', label: boosted(c.refund_percent ?? 100) });
 			chips.push({ icon: 'fa-hourglass-half', label: formatDuration(c.effect_duration_minutes) });
 			if (Number(c.cooldown_minutes) > 0) chips.push({ icon: 'fa-stopwatch', label: formatDuration(c.cooldown_minutes) });
 			break;
 		case 'gift':
 			chips.push({ icon: 'fa-coins', label: `${shortXp(c.gift_amount)} XP` });
-			if (Number(c.tax_percent) > 0) chips.push({ icon: 'fa-receipt', label: `−${c.tax_percent}%` });
+			if (Number(c.tax_percent) > 0) chips.push({ icon: 'fa-receipt', label: reduced(c.tax_percent) });
 			break;
 		case 'bounty':
 			chips.push({ icon: 'fa-coins', label: `${shortXp(c.bounty_amount)} XP` });
 			break;
 		case 'spy':
-			if (Number(c.spy_chance ?? 100) < 100) chips.push({ icon: 'fa-percent', label: `${c.spy_chance}%` });
+			if (Number(c.spy_chance ?? 100) < 100) chips.push({ icon: 'fa-percent', label: boosted(c.spy_chance) });
+			break;
+		case 'luck':
+			chips.push({ icon: 'fa-percent', label: `+${c.luck_percent ?? 0}%` });
+			chips.push({ icon: 'fa-hourglass-half', label: formatDuration(c.effect_duration_minutes) });
 			break;
 	}
 	return chips;
@@ -366,8 +454,8 @@ const EFFECT_GUIDES: Record<string, EffectGuide> = {
 	},
 	leech: {
 		what: 'Attach to a target and quietly siphon a percentage of every XP they earn to you.',
-		how: 'Pick a target. A cut of their gains is redirected to you while active. You can leech several members at once, but each member can only be leeched by one person.',
-		tip: 'Spread leeches across active grinders and stay quiet.'
+		how: 'Pick a target. A cut of their gains is redirected to you while active. You can leech several members at once, but each member can only be leeched by one person. An active Luck buff boosts your skim percentage.',
+		tip: 'Spread leeches across active grinders and stay quiet. Pop Luck first to skim more.'
 	},
 	reflect: {
 		what: 'Bounce the next attack back at whoever hits you.',
@@ -376,13 +464,13 @@ const EFFECT_GUIDES: Record<string, EffectGuide> = {
 	},
 	insurance: {
 		what: 'Refund part of your loss the next time you’re robbed or bombed.',
-		how: 'Activate on yourself. If you get hit while it’s up, a percentage of the lost XP comes back.',
-		tip: 'Good when you can’t sit on a Shield but still want a safety net.'
+		how: 'Activate on yourself. If you get hit while it’s up, a percentage of the lost XP comes back. An active Luck buff raises the refund percentage.',
+		tip: 'Good when you can’t sit on a Shield but still want a safety net. Stack Luck for a bigger refund.'
 	},
 	gift: {
 		what: 'Send some of your XP to another member.',
-		how: 'Pick a recipient. They receive the XP (minus any tax). No way to steal it back.',
-		tip: 'Reward teammates, pay off a debt, or fund an alliance.'
+		how: 'Pick a recipient. They receive the XP (minus any tax). No way to steal it back. An active Luck buff lowers the tax, so more of your gift gets through.',
+		tip: 'Reward teammates, pay off a debt, or fund an alliance. Send big gifts while Luck is active to cut the tax.'
 	},
 	bounty: {
 		what: 'Put a price on a target’s head. Whoever steals or bombs them next collects it.',
@@ -391,8 +479,8 @@ const EFFECT_GUIDES: Record<string, EffectGuide> = {
 	},
 	spy: {
 		what: 'Secretly reveal a member’s bag, active effects, cooldowns and bounty.',
-		how: 'Pick a target. If the spy has a success chance and you fail, you’re caught and the target is alerted with your name.',
-		tip: 'Scout before a big attack, and skip a risky spy when you can’t afford to be seen.'
+		how: 'Pick a target. If the spy has a success chance and you fail, you’re caught and the target is alerted with your name. An active Luck buff raises your success chance.',
+		tip: 'Scout before a big attack, and skip a risky spy when you can’t afford to be seen. Luck makes risky spies safer.'
 	},
 	disguise: {
 		what: 'Go anonymous. Your attacks hide your name and you drop off the leaderboard.',
@@ -403,6 +491,11 @@ const EFFECT_GUIDES: Record<string, EffectGuide> = {
 		what: 'Wipe every active effect off yourself: shields, boosts, leeches, disguise and immunity.',
 		how: 'Activate on yourself. Each effect ends immediately. Your attack cooldowns are NOT cleared.',
 		tip: 'The fastest way to shake off a leech that’s draining you.'
+	},
+	luck: {
+		what: 'Boost your fortune across the board: better minigame odds, sharper spying, bigger leech skims, lower gift tax, bigger insurance refunds, a stronger friend boost, discounted shop prices, and it shields you as a victim by reducing how much any leech on you can drain.',
+		how: 'Activate on yourself, no target needed. The percentage applies on top of every roll and rate you control while it lasts, and also softens leeches other members have on you.',
+		tip: 'Pop it before a big minigame session or a shopping spree to stretch every bit of XP further, and it quietly limits leech drain the whole time it runs.'
 	}
 };
 
@@ -575,8 +668,17 @@ export function describeItemOutcome(effectType: string, result: any): ItemOutcom
 		};
 	}
 
-	if (effectType === 'gift')
-		return { tone: 'neutral', icon: effectIcon('gift'), title: 'Gift Sent', line: `They received ${xp.toLocaleString()} XP.`, deltaXp: null, untilMs: null };
+	if (effectType === 'gift') {
+		const luckNote = r.luckPercent > 0 ? ` Your +${r.luckPercent}% luck 🍀 cut the tax.` : '';
+		return {
+			tone: 'neutral',
+			icon: effectIcon('gift'),
+			title: 'Gift Sent',
+			line: `They received ${xp.toLocaleString()} XP.${luckNote}`,
+			deltaXp: null,
+			untilMs: null
+		};
+	}
 	if (effectType === 'bounty')
 		return {
 			tone: 'neutral',
@@ -586,15 +688,17 @@ export function describeItemOutcome(effectType: string, result: any): ItemOutcom
 			deltaXp: -xp,
 			untilMs: null
 		};
-	if (effectType === 'leech')
+	if (effectType === 'leech') {
+		const luckNote = r.luckPercent > 0 ? ` (+${r.luckPercent}% luck 🍀)` : '';
 		return {
 			tone: 'neutral',
 			icon: effectIcon('leech'),
 			title: 'Leech Attached',
-			line: `You'll siphon a cut of their XP while active.`,
+			line: `You'll siphon ${r.skimPercent ?? 0}%${luckNote} of their XP while active.`,
 			deltaXp: null,
 			untilMs: toMs(r.expiresAt)
 		};
+	}
 
 	if (effectType === 'shield')
 		return {
@@ -634,21 +738,32 @@ export function describeItemOutcome(effectType: string, result: any): ItemOutcom
 			untilMs: null
 		};
 	}
-	if (effectType === 'insurance')
+	if (effectType === 'insurance') {
+		const luckNote = r.luckPercent > 0 ? ` (+${r.luckPercent}% luck 🍀)` : '';
 		return {
 			tone: 'win',
 			icon: effectIcon('insurance'),
 			title: 'Insurance Active',
-			line: `The next time you're robbed or bombed, ${r.refundPercent ?? 100}% of your loss is refunded.`,
+			line: `The next time you're robbed or bombed, ${r.refundPercent ?? 100}%${luckNote} of your loss is refunded.`,
 			deltaXp: null,
 			untilMs: toMs(r.expiresAt)
 		};
+	}
 	if (effectType === 'boost')
 		return {
 			tone: 'win',
 			icon: effectIcon('boost'),
 			title: 'Boost Active',
 			line: `Your XP earnings are multiplied while it lasts.`,
+			deltaXp: null,
+			untilMs: toMs(r.expiresAt)
+		};
+	if (effectType === 'luck')
+		return {
+			tone: 'win',
+			icon: effectIcon('luck'),
+			title: 'Luck Active',
+			line: `+${r.luckPercent ?? 0}% luck on minigames, spy, leech, gift tax, insurance, friend boost and shop prices.`,
 			deltaXp: null,
 			untilMs: toMs(r.expiresAt)
 		};

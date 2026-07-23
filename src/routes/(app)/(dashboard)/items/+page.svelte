@@ -688,6 +688,28 @@
 						<p class="text-ash-500 text-[11px]">
 							Chance the spy succeeds (sees through disguise too). On a miss, the target is publicly alerted and the spy is named — 100% means it always works.
 						</p>
+					{:else if form.effect_type === 'luck'}
+						<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+							<label class="text-ash-300 text-xs"
+								>Luck %<input
+									type="number"
+									min="0"
+									bind:value={form.cfg.luck_percent}
+									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+								/></label
+							>
+							<label class="text-ash-300 text-xs"
+								>Duration (min)<input
+									type="number"
+									bind:value={form.cfg.effect_duration_minutes}
+									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+								/></label
+							>
+						</div>
+						<p class="text-ash-500 text-[11px]">
+							Boosts minigame odds, spy chance, leech skim, insurance refund and friend boost by this %, cuts gift tax by this %, and discounts every shop price
+							by this % while active.
+						</p>
 					{:else}
 						<p class="text-ash-500 text-[11px]">No extra settings for this effect type yet.</p>
 					{/if}

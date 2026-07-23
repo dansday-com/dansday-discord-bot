@@ -138,18 +138,21 @@
 	}
 
 	let buyAsset = $state<any | null>(null);
-	let buyAmount = $state<number | null>(null);
+	let buyPercent = $state<number | 'custom'>(25);
+	let buyCustom = $state<number | null>(null);
 	let buyBusy = $state(false);
 
 	const BUY_PCTS = [25, 50, 75, 100];
 	const MIN_BUY = 10_000;
-	function setBuyPct(p: number) {
-		buyAmount = Math.floor((ctx.liveXp * p) / 100);
-	}
+
+	const buyAmount = $derived(
+		buyPercent === 'custom' ? Math.min(Math.max(0, Math.floor(Number(buyCustom) || 0)), ctx.liveXp) : Math.floor((ctx.liveXp * (buyPercent as number)) / 100)
+	);
 
 	function openBuy(asset: any) {
 		buyAsset = asset;
-		buyAmount = null;
+		buyPercent = 25;
+		buyCustom = null;
 	}
 
 	$effect(() => {
@@ -161,9 +164,9 @@
 	async function confirmBuy() {
 		const asset = buyAsset;
 		if (!asset || buyBusy) return;
-		const amount = Math.floor(Number(buyAmount) || 0);
-		if (amount <= 0) {
-			showToast('Enter an XP amount', 'error');
+		const amount = Math.floor(buyAmount || 0);
+		if (amount < MIN_BUY) {
+			showToast(`Minimum is ${fmt(MIN_BUY)} XP`, 'error');
 			return;
 		}
 		if (amount > ctx.liveXp) {
@@ -198,7 +201,8 @@
 	}
 
 	let sellPos = $state<any | null>(null);
-	let sellAmount = $state<number | null>(null);
+	let sellPercent = $state<number | 'custom'>(25);
+	let sellCustom = $state<number | null>(null);
 	let sellBusy = $state(false);
 
 	const SELL_PCTS = [25, 50, 75, 100];
@@ -209,14 +213,15 @@
 		return p.buy_price > 0 ? Math.round(p.xp_invested * (price / p.buy_price)) : p.xp_invested;
 	}
 
-	function setSellPct(pct: number) {
-		if (!sellPos) return;
-		sellAmount = Math.floor((sellPosValue(sellPos) * pct) / 100);
-	}
+	const sellMax = $derived(sellPos ? sellPosValue(sellPos) : 0);
+	const sellAmount = $derived(
+		sellPercent === 'custom' ? Math.min(Math.max(0, Math.floor(Number(sellCustom) || 0)), sellMax) : Math.floor((sellMax * (sellPercent as number)) / 100)
+	);
 
 	function openSell(p: any) {
 		sellPos = p;
-		sellAmount = null;
+		sellPercent = 25;
+		sellCustom = null;
 	}
 
 	$effect(() => {
@@ -228,7 +233,7 @@
 	async function confirmSell() {
 		const p = sellPos;
 		if (!p || sellBusy) return;
-		const amount = Math.floor(Number(sellAmount) || 0);
+		const amount = Math.floor(sellAmount || 0);
 		if (amount <= 0) {
 			showToast('Enter an XP amount', 'error');
 			return;
@@ -384,31 +389,34 @@
 
 			<div class="m-gamble-picker">
 				{#each BUY_PCTS as p}
-					<button class="m-gamble-pct" disabled={buyBusy} onclick={() => setBuyPct(p)}>{p === 100 ? 'Max' : `${p}%`}</button>
+					<button class="m-gamble-pct" class:m-gamble-pct--active={buyPercent === p} disabled={buyBusy} onclick={() => (buyPercent = p)}
+						>{p === 100 ? 'Max' : `${p}%`}</button
+					>
 				{/each}
+				<button class="m-gamble-pct" class:m-gamble-pct--active={buyPercent === 'custom'} disabled={buyBusy} onclick={() => (buyPercent = 'custom')}
+					>Custom</button
+				>
 			</div>
-			<input
-				class="m-gamble-custom"
-				type="text"
-				inputmode="numeric"
-				placeholder="XP to invest (min {fmt(MIN_BUY)})"
-				value={grp(buyAmount)}
-				oninput={(e) => onAmountInput(e, (v) => (buyAmount = v))}
-				disabled={buyBusy}
-			/>
+			{#if buyPercent === 'custom'}
+				<input
+					class="m-gamble-custom"
+					type="text"
+					inputmode="numeric"
+					placeholder="XP to invest (min {fmt(MIN_BUY)})"
+					value={grp(buyCustom)}
+					oninput={(e) => onAmountInput(e, (v) => (buyCustom = v))}
+					disabled={buyBusy}
+				/>
+			{/if}
 
 			<div class="m-asset-modal-meta">
 				<span>Balance: {fmt(ctx.liveXp)} XP</span>
-				<span>≈ {buyAmount && price > 0 ? fmtUnits(Number(buyAmount) / price) : '0'} {buyAsset.symbol}</span>
+				<span>≈ {buyAmount && price > 0 ? fmtUnits(buyAmount / price) : '0'} {buyAsset.symbol}</span>
 			</div>
 
-			<button
-				class="m-gamble-play m-gamble-play--charged"
-				disabled={buyBusy || !buyAmount || Number(buyAmount) < MIN_BUY || Number(buyAmount) > ctx.liveXp}
-				onclick={confirmBuy}
-			>
+			<button class="m-gamble-play m-gamble-play--charged" disabled={buyBusy || buyAmount < MIN_BUY || buyAmount > ctx.liveXp} onclick={confirmBuy}>
 				{#if buyBusy}<i class="fas fa-circle-notch fa-spin"></i>Buying…{:else}<i class="fas fa-arrow-trend-up"></i>Invest {buyAmount
-						? `${fmt(Number(buyAmount))} XP`
+						? `${fmt(buyAmount)} XP`
 						: ''}{/if}
 			</button>
 		</div>
@@ -419,7 +427,9 @@
 	{@const live = priceMap.get(`${sellPos.asset_type}:${sellPos.asset_id}`)}
 	{@const price = live?.price ?? sellPos.current_price ?? sellPos.buy_price ?? 0}
 	{@const value = sellPos.buy_price > 0 ? Math.round(sellPos.xp_invested * (price / sellPos.buy_price)) : sellPos.xp_invested}
-	{@const payout = Math.min(Math.max(0, Math.floor(Number(sellAmount) || 0)), value)}
+	{@const payout = Math.min(Math.max(0, Math.floor(sellAmount || 0)), value)}
+	{@const costBasis = value > 0 ? Math.round(sellPos.xp_invested * (payout / value)) : 0}
+	{@const realized = payout - costBasis}
 	<div class="m-gamble-overlay" role="presentation" onclick={() => (!sellBusy ? (sellPos = null) : null)}>
 		<div class="m-gamble" role="dialog" aria-modal="true" aria-label="Sell asset" onclick={(e) => e.stopPropagation()}>
 			<div class="m-gamble-head">
@@ -440,22 +450,29 @@
 
 			<div class="m-gamble-picker">
 				{#each SELL_PCTS as p}
-					<button class="m-gamble-pct" disabled={sellBusy} onclick={() => setSellPct(p)}>{p === 100 ? 'All' : `${p}%`}</button>
+					<button class="m-gamble-pct" class:m-gamble-pct--active={sellPercent === p} disabled={sellBusy} onclick={() => (sellPercent = p)}
+						>{p === 100 ? 'All' : `${p}%`}</button
+					>
 				{/each}
+				<button class="m-gamble-pct" class:m-gamble-pct--active={sellPercent === 'custom'} disabled={sellBusy} onclick={() => (sellPercent = 'custom')}
+					>Custom</button
+				>
 			</div>
-			<input
-				class="m-gamble-custom"
-				type="text"
-				inputmode="numeric"
-				placeholder="XP to cash out (max {fmt(value)})"
-				value={grp(sellAmount)}
-				oninput={(e) => onAmountInput(e, (v) => (sellAmount = v))}
-				disabled={sellBusy}
-			/>
+			{#if sellPercent === 'custom'}
+				<input
+					class="m-gamble-custom"
+					type="text"
+					inputmode="numeric"
+					placeholder="XP to cash out (max {fmt(value)})"
+					value={grp(sellCustom)}
+					oninput={(e) => onAmountInput(e, (v) => (sellCustom = v))}
+					disabled={sellBusy}
+				/>
+			{/if}
 
 			<div class="m-asset-modal-meta">
-				<span>Worth: {fmt(value)} XP</span>
-				<span>You receive {fmt(payout)} XP</span>
+				<span>Cost basis: {fmt(costBasis)} XP</span>
+				<span data-dir={dir(realized)}>{realized >= 0 ? 'Profit' : 'Loss'}: {realized >= 0 ? '+' : ''}{fmt(realized)} XP</span>
 			</div>
 
 			<button class="m-gamble-play m-gamble-play--charged" disabled={sellBusy || payout <= 0} onclick={confirmSell}>

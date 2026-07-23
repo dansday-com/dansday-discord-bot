@@ -14,7 +14,7 @@ import db from '../../../../database.js';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../utils/index.js';
 import { getRedisClient } from '../../../../redis.js';
-import { applyAwardEffects, creditLeechers } from './items.js';
+import { applyAwardEffects, creditLeechers, getActiveLuckPercent } from './items.js';
 
 const recentMessages = new Map();
 
@@ -590,9 +590,12 @@ async function sendXPLogToChannel(guild, dbMember, xpGained, xpType, award: any 
 				rank: stats?.rank != null ? Number(stats.rank) : null,
 				multiplier: award?.boosted ? award.multiplier : null,
 				skim_percent: award?.leeched ? award.skimPercent : null,
-				friend_percent: award?.friendBoosted ? award.friendPercent : null
+				friend_percent: award?.friendBoosted ? award.friendPercent : null,
+				luck_percent: award?.victimLuckPercent > 0 ? award.victimLuckPercent : null
 			})
 			.catch(() => null);
+
+		if (await isMemberDisguised(guild, dbMember.id)) return;
 
 		const settings = await getLevelingSettings(guild.id);
 		if (!settings.PROGRESS_CHANNEL_ID) return;
@@ -600,13 +603,17 @@ async function sendXPLogToChannel(guild, dbMember, xpGained, xpType, award: any 
 		const channel = await guild.channels.fetch(settings.PROGRESS_CHANNEL_ID).catch(() => null);
 		if (!channel) return;
 
-		const memberName = (await isMemberDisguised(guild, dbMember.id))
-			? 'A mysterious member 🎭'
-			: dbMember.server_display_name || dbMember.display_name || dbMember.username || 'Unknown';
+		const memberName = dbMember.server_display_name || dbMember.display_name || dbMember.username || 'Unknown';
 		const emoji = XP_LOG_EMOJI[xpType] ?? '⭐';
+		let luckNoteUsed = false;
+		const takeLuckNote = () => {
+			if (luckNoteUsed || !(award?.victimLuckPercent > 0)) return '';
+			luckNoteUsed = true;
+			return ` +${award.victimLuckPercent}% luck 🍀`;
+		};
 		const boostSuffix = award?.boosted ? ` (${award.multiplier}× Boost ⚡)` : '';
-		const friendSuffix = award?.friendBoosted ? ` (+${award.friendPercent}% Friend boost 🤝)` : '';
-		const leechSuffix = award?.leeched ? ` (−${award.skimPercent}% Leech 🩸)` : '';
+		const friendSuffix = award?.friendBoosted ? ` (+${award.friendPercent}% Friend boost 🤝${takeLuckNote()})` : '';
+		const leechSuffix = award?.leeched ? ` (−${award.skimPercent}% Leech 🩸${takeLuckNote()})` : '';
 		const logMessage = `${emoji} ${xpType} XP: ${memberName} gained +${xpGained} XP${boostSuffix}${friendSuffix}${leechSuffix}`;
 
 		await channel.send(logMessage);
@@ -624,13 +631,14 @@ async function announceLeechCredits(guild, victim, credits) {
 		const channel = await guild.channels.fetch(settings.PROGRESS_CHANNEL_ID).catch(() => null);
 		if (!channel) return;
 
+		if (await isMemberDisguised(guild, victim?.id)) return;
+
 		const victimName = victim?.server_display_name || victim?.display_name || victim?.username || 'a member';
 		for (const credit of credits) {
 			if (!credit?.amount || credit.amount <= 0) continue;
 			const b = credit.beneficiary;
-			const attackerName = (await isMemberDisguised(guild, b?.id))
-				? 'A mysterious member 🎭'
-				: b?.server_display_name || b?.display_name || b?.username || 'A leecher';
+			if (await isMemberDisguised(guild, b?.id)) continue;
+			const attackerName = b?.server_display_name || b?.display_name || b?.username || 'A leecher';
 			const pct = credit.percent != null ? ` (${credit.percent}%)` : '';
 			await channel.send(`🩸 Leech: ${attackerName} siphoned +${credit.amount} XP from ${victimName}${pct}`).catch(() => null);
 		}
@@ -718,7 +726,8 @@ async function awardVoiceXPLocked(server, dbMember, guildId, reason, previousSta
 	const { memberXp: baseAwardXp, leechCredits } = award;
 
 	const { count: friendCount, discordIds: friendDiscordIds } = await countVoiceFriends(guildId, dbMember.discord_member_id);
-	const friendPercent = friendCount * 10;
+	const luckPercent = await getActiveLuckPercent(dbMember.id);
+	const friendPercent = friendCount * 10 + luckPercent;
 	const friendBonus = Math.floor((baseAwardXp * friendPercent) / 100);
 	const xpGained = baseAwardXp + friendBonus;
 	(award as any).friendPercent = friendPercent;

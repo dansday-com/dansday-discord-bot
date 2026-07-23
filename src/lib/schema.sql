@@ -556,6 +556,8 @@ CREATE TABLE IF NOT EXISTS server_member_item_logs (
     action VARCHAR(32) NOT NULL,
     xp_amount INT NOT NULL DEFAULT 0,
     outcome VARCHAR(16) NOT NULL,
+    rate_percent DECIMAL(6,2) NULL,
+    luck_percent DECIMAL(6,2) NULL,
     actor_disguised TINYINT(1) NOT NULL DEFAULT 0,
     immunity_cleared TINYINT(1) NOT NULL DEFAULT 0,
     created_at DATETIME NOT NULL,
@@ -574,6 +576,8 @@ CREATE TABLE IF NOT EXISTS server_member_minigame_logs (
     payout INT NOT NULL DEFAULT 0,
     xp_amount INT NOT NULL DEFAULT 0,
     outcome VARCHAR(16) NOT NULL,
+    chance DECIMAL(6,2) NULL,
+    luck_percent DECIMAL(6,2) NULL,
     created_at DATETIME NOT NULL,
     FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE
 );
@@ -601,6 +605,7 @@ CREATE TABLE IF NOT EXISTS server_member_level_logs (
     multiplier DECIMAL(6,2) NULL,
     skim_percent INT NULL,
     friend_percent INT NULL,
+    luck_percent INT NULL,
     created_at DATETIME NOT NULL,
     FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE
 );

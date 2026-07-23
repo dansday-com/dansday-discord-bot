@@ -3437,6 +3437,9 @@
 .m-root .m-card[data-cat='purifier'] {
 	--cat: var(--effect-purifier);
 }
+.m-root .m-card[data-cat='luck'] {
+	--cat: var(--effect-luck);
+}
 
 .m-root .m-card-glow {
 	position: absolute;
@@ -3670,6 +3673,13 @@
 	font-weight: 700;
 	opacity: 0.7;
 	letter-spacing: 0.03em;
+}
+
+.m-root .m-card-price-strike {
+	font-size: 11px;
+	font-weight: 600;
+	color: color-mix(in srgb, currentColor 45%, transparent);
+	text-decoration: line-through;
 }
 
 .m-root .m-card-price--short {

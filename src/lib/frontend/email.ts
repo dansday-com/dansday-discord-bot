@@ -55,11 +55,11 @@ const baseStyles = `
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: var(--text); background-color: var(--bg); }
     .email-wrapper { max-width: 600px; margin: 0 auto; background-color: var(--wrapper-bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
     .header { background-color: var(--surface); padding: 32px 30px; text-align: center; border-bottom: 1px solid var(--border); }
-    .header h1 { font-size: 22px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
-    .header .app-name { font-size: 13px; color: var(--subtle); font-weight: 400; }
+    .header h1 { font-size: 24px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+    .header .app-name { font-size: 12px; color: var(--subtle); font-weight: 400; }
     .content { padding: 36px 30px; }
-    .content p { font-size: 15px; color: var(--muted); margin-bottom: 14px; }
-    .content p:first-child { font-size: 17px; color: var(--text); font-weight: 500; margin-bottom: 18px; }
+    .content p { font-size: 16px; color: var(--muted); margin-bottom: 14px; }
+    .content p:first-child { font-size: 16px; color: var(--text); font-weight: 500; margin-bottom: 18px; }
     .footer { text-align: center; padding: 24px 30px; background-color: var(--surface); border-top: 1px solid var(--border); }
     .footer p { font-size: 12px; color: var(--subtle); margin: 3px 0; }
     .footer a { color: var(--link); text-decoration: none; }
@@ -76,15 +76,15 @@ function emailLayout(title: string, accentColor: string, bodyContent: string, ye
             <style>
                 ${baseStyles}
                 .highlight-box { background-color: var(--surface); border: 1px solid ${accentColor}40; border-left: 3px solid ${accentColor}; padding: 20px 24px; margin: 24px 0; border-radius: 8px; }
-                .highlight-box p { margin: 0; font-size: 14px; color: var(--muted); line-height: 1.6; }
+                .highlight-box p { margin: 0; font-size: 16px; color: var(--muted); line-height: 1.6; }
                 .status-box { background-color: var(--surface); border: 1px solid ${accentColor}40; padding: 28px 24px; margin: 28px 0; border-radius: 10px; text-align: center; }
                 .status-box .icon { font-size: 40px; margin-bottom: 12px; }
                 .status-box p { margin: 0; font-size: 16px; color: ${accentColor}; font-weight: 600; }
                 .otp-container { margin: 28px 0; text-align: center; }
                 .otp-label { font-size: 12px; color: #6b6b80; margin-bottom: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 1.5px; }
-                .otp-code { background-color: var(--surface); color: ${accentColor}; font-size: 38px; font-weight: 700; padding: 22px 36px; border-radius: 10px; letter-spacing: 14px; display: inline-block; border: 1px solid ${accentColor}40; font-family: 'Courier New', monospace; }
+                .otp-code { background-color: var(--surface); color: ${accentColor}; font-size: 40px; font-weight: 700; padding: 22px 36px; border-radius: 10px; letter-spacing: 14px; display: inline-block; border: 1px solid ${accentColor}40; font-family: 'Courier New', monospace; }
                 .expiry-notice { background-color: var(--surface); border: 1px solid #f59e0b40; border-left: 3px solid #f59e0b; padding: 14px 18px; margin: 20px 0; border-radius: 8px; }
-                .expiry-notice p { margin: 0; font-size: 13px; color: #a07820; }
+                .expiry-notice p { margin: 0; font-size: 12px; color: #a07820; }
             </style>
         </head>
         <body style="background-color: var(--bg); padding: 24px 16px;">

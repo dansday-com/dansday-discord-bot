@@ -291,7 +291,7 @@
 						<i class="fas fa-check-circle text-emerald-400/90"></i>
 						<span class="font-medium">{cfg.label}</span>
 						{#if cfg.updated_at}
-							<span class="text-ash-500 text-[0.65rem] sm:text-xs">
+							<span class="text-ash-500 text-xs sm:text-xs">
 								Updated <LocalTime value={cfg.updated_at} includeSeconds class="inline" />
 							</span>
 						{/if}

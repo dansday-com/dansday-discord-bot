@@ -24,9 +24,9 @@
 }
 
 @theme {
-	--text-2xs: 8px;
-	--text-xs: 12px;
-	--text-sm: 12px;
+	--text-2xs: 16px;
+	--text-xs: 16px;
+	--text-sm: 16px;
 	--text-base: 16px;
 	--text-lg: 20px;
 	--text-xl: 24px;

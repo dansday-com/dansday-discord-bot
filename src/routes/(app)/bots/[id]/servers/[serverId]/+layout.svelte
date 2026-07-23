@@ -60,42 +60,42 @@
 				aria-label="Server shortcuts"
 			>
 				<span
-					class="bg-ash-800/80 border-ash-600 text-ash-400 inline-flex max-w-full items-center gap-1 rounded-md border px-2 py-0.5 font-mono text-[0.65rem] sm:text-xs"
+					class="bg-ash-800/80 border-ash-600 text-ash-400 inline-flex max-w-full items-center gap-1 rounded-md border px-2 py-0.5 text-xs sm:text-xs"
 					title="Discord server ID"
 				>
-					<i class="fas fa-id-card shrink-0 text-[0.6rem] text-cyan-300/90"></i>
+					<i class="fas fa-id-card shrink-0 text-xs text-cyan-300/90"></i>
 					<span class="truncate">{data.overview.discord_server_id}</span>
 				</span>
 				{#if (data.overview.boost_level ?? 0) > 0}
-					<span class="bg-ash-800/80 border-ash-600 text-ash-300 inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[0.65rem] sm:text-xs">
-						<i class="fas fa-gem text-[0.6rem] text-purple-400/90"></i>LV {data.overview.boost_level}
+					<span class="bg-ash-800/80 border-ash-600 text-ash-300 inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs sm:text-xs">
+						<i class="fas fa-gem text-xs text-purple-400/90"></i>LV {data.overview.boost_level}
 					</span>
 				{/if}
 				<a
 					href={discordServerLink((data.overview as any).discord_server_id)}
 					target="_blank"
 					rel="noreferrer"
-					class="bg-ash-800/80 border-ash-600 text-ash-300 hover:text-ash-100 hover:bg-ash-700 inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[0.65rem] transition-colors sm:text-xs"
+					class="bg-ash-800/80 border-ash-600 text-ash-300 hover:text-ash-100 hover:bg-ash-700 inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs transition-colors sm:text-xs"
 				>
-					<i class="fab fa-discord text-[0.7rem] text-indigo-300"></i>Discord
+					<i class="fab fa-discord text-xs text-indigo-300"></i>Discord
 				</a>
 				{#if (data.overview as any).vanity_url_code}
 					<a
 						href={inviteLink((data.overview as any).vanity_url_code)}
 						target="_blank"
 						rel="noreferrer"
-						class="bg-ash-800/80 border-ash-600 text-ash-300 hover:text-ash-100 hover:bg-ash-700 inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[0.65rem] transition-colors sm:text-xs"
+						class="bg-ash-800/80 border-ash-600 text-ash-300 hover:text-ash-100 hover:bg-ash-700 inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs transition-colors sm:text-xs"
 					>
-						<i class="fas fa-link text-[0.6rem] text-emerald-300"></i>Invite
+						<i class="fas fa-link text-xs text-emerald-300"></i>Invite
 					</a>
 				{:else if (data.overview as any).invite_code}
 					<a
 						href={inviteLink((data.overview as any).invite_code)}
 						target="_blank"
 						rel="noreferrer"
-						class="bg-ash-800/80 border-ash-600 text-ash-300 hover:text-ash-100 hover:bg-ash-700 inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[0.65rem] transition-colors sm:text-xs"
+						class="bg-ash-800/80 border-ash-600 text-ash-300 hover:text-ash-100 hover:bg-ash-700 inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs transition-colors sm:text-xs"
 					>
-						<i class="fas fa-link text-[0.6rem] text-emerald-300"></i>Invite
+						<i class="fas fa-link text-xs text-emerald-300"></i>Invite
 					</a>
 				{/if}
 			</nav>

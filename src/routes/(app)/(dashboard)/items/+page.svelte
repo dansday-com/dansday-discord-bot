@@ -386,7 +386,7 @@
 						</span>
 						<div class="min-w-0">
 							<div class="text-ash-100 truncate text-sm font-semibold">{item.name}</div>
-							<div class="text-ash-500 mt-1 flex flex-wrap gap-1 text-[10px]">
+							<div class="text-ash-500 mt-1 flex flex-wrap gap-1 text-xs">
 								<span class="bg-ash-700 rounded px-1.5 py-0.5">{effectLabel(item.effect_type)}</span>
 							</div>
 						</div>
@@ -411,7 +411,7 @@
 								class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {item.enabled !== false ? 'translate-x-6' : 'translate-x-1'}"
 							></span>
 						</button>
-						<span class="text-ash-400 text-[10px] leading-tight">Buy</span>
+						<span class="text-ash-400 text-xs leading-tight">Buy</span>
 					</div>
 					<div class="flex items-center gap-1.5" title="Allow members to use copies they already own">
 						<button
@@ -429,7 +429,7 @@
 								class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {item.usable !== false ? 'translate-x-6' : 'translate-x-1'}"
 							></span>
 						</button>
-						<span class="text-ash-400 text-[10px] leading-tight">Use</span>
+						<span class="text-ash-400 text-xs leading-tight">Use</span>
 					</div>
 					<button onclick={() => startEdit(item)} class="bg-ash-700 hover:bg-ash-600 text-ash-200 flex-1 rounded-lg py-1.5 text-xs">Edit</button>
 					<button
@@ -457,7 +457,7 @@
 				<div>
 					<h2 class="text-ash-300 mb-2.5 flex items-center gap-2 text-xs font-bold tracking-wide uppercase">
 						<i class="fas {group.icon}" style="color: var(--effect-{group.key}, var(--effect-default))"></i>{group.label}
-						<span class="bg-ash-700 text-ash-400 rounded-full px-2 py-0.5 text-[10px] font-semibold">{group.items.length}</span>
+						<span class="bg-ash-700 text-ash-400 rounded-full px-2 py-0.5 text-xs font-semibold">{group.items.length}</span>
 					</h2>
 					<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 						{#each group.items as item (item.id)}
@@ -528,7 +528,7 @@
 				</div>
 
 				<div class="border-ash-700 bg-ash-900/40 space-y-3 rounded-xl border p-4">
-					<p class="text-ash-400 text-[11px] font-semibold tracking-wide uppercase">Effect settings</p>
+					<p class="text-ash-400 text-xs font-semibold tracking-wide uppercase">Effect settings</p>
 					{#if form.effect_type === 'steal' || form.effect_type === 'bomb'}
 						<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 							<label class="text-ash-300 text-xs"
@@ -560,7 +560,7 @@
 								/></label
 							>
 						</div>
-						<p class="text-ash-500 text-[11px]">
+						<p class="text-ash-500 text-xs">
 							{form.effect_type === 'steal' ? 'Steals a random % of XP to the buyer.' : 'Destroys a random % of XP (vanishes).'}
 						</p>
 					{:else if form.effect_type === 'boost'}
@@ -589,7 +589,7 @@
 								</select>
 							</label>
 						</div>
-						<p class="text-ash-500 text-[11px]">Multiplies earned XP for the duration.</p>
+						<p class="text-ash-500 text-xs">Multiplies earned XP for the duration.</p>
 					{:else if form.effect_type === 'shield' || form.effect_type === 'reflect' || form.effect_type === 'disguise'}
 						<label class="text-ash-300 text-xs"
 							>Duration (min)<input
@@ -598,7 +598,7 @@
 								class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
 							/></label
 						>
-						<p class="text-ash-500 text-[11px]">
+						<p class="text-ash-500 text-xs">
 							{#if form.effect_type === 'reflect'}Bounces the next attack back at the attacker.{:else if form.effect_type === 'disguise'}Go anonymous in attack
 								messages, invisible to spies, and off the XP leaderboard while active.{:else}Blocks incoming attacks while active.{/if}
 						</p>
@@ -628,7 +628,7 @@
 								/></label
 							>
 						</div>
-						<p class="text-ash-500 text-[11px]">Refunds that % of a loss once. Cooldown in minutes (1440 = 1 day).</p>
+						<p class="text-ash-500 text-xs">Refunds that % of a loss once. Cooldown in minutes (1440 = 1 day).</p>
 					{:else if form.effect_type === 'gift'}
 						<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 							<label class="text-ash-300 text-xs"
@@ -646,7 +646,7 @@
 								/></label
 							>
 						</div>
-						<p class="text-ash-500 text-[11px]">Sends fixed XP to a member, minus the tax (burned).</p>
+						<p class="text-ash-500 text-xs">Sends fixed XP to a member, minus the tax (burned).</p>
 					{:else if form.effect_type === 'leech'}
 						<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 							<label class="text-ash-300 text-xs"
@@ -664,7 +664,7 @@
 								/></label
 							>
 						</div>
-						<p class="text-ash-500 text-[11px]">Skims a % of the target's XP while active.</p>
+						<p class="text-ash-500 text-xs">Skims a % of the target's XP while active.</p>
 					{:else if form.effect_type === 'bounty'}
 						<label class="text-ash-300 text-xs"
 							>Bounty amount (XP)<input
@@ -673,7 +673,7 @@
 								class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
 							/></label
 						>
-						<p class="text-ash-500 text-[11px]">XP on a member's head, claimed by whoever hits them next.</p>
+						<p class="text-ash-500 text-xs">XP on a member's head, claimed by whoever hits them next.</p>
 					{:else if form.effect_type === 'spy'}
 						<label class="text-ash-300 text-xs"
 							>Spy success chance %<input
@@ -684,7 +684,7 @@
 								class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
 							/></label
 						>
-						<p class="text-ash-500 text-[11px]">
+						<p class="text-ash-500 text-xs">
 							Chance the spy succeeds (sees through disguise too). On a miss, the target is publicly alerted and the spy is named — 100% means it always works.
 						</p>
 					{:else if form.effect_type === 'luck'}
@@ -705,17 +705,17 @@
 								/></label
 							>
 						</div>
-						<p class="text-ash-500 text-[11px]">
+						<p class="text-ash-500 text-xs">
 							Raises the steal and bomb max percent, and boosts minigame odds, spy chance, leech skim, insurance refund and friend boost by this %, cuts gift
 							tax by this %, and discounts every shop price by this % while active.
 						</p>
 					{:else}
-						<p class="text-ash-500 text-[11px]">No extra settings for this effect type yet.</p>
+						<p class="text-ash-500 text-xs">No extra settings for this effect type yet.</p>
 					{/if}
 				</div>
 
 				<div class="border-ash-700 bg-ash-900/40 space-y-3 rounded-xl border p-4">
-					<p class="text-ash-400 text-[11px] font-semibold tracking-wide uppercase">Availability (optional, your timezone)</p>
+					<p class="text-ash-400 text-xs font-semibold tracking-wide uppercase">Availability (optional, your timezone)</p>
 					<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 						<label class="text-ash-300 text-xs">
 							From
@@ -761,7 +761,7 @@
 								<button
 									type="button"
 									onclick={() => toggleDay(d.v)}
-									class="rounded-lg px-2.5 py-1 text-[11px] transition-colors {form.cfg.recur_days.includes(d.v)
+									class="rounded-lg px-2.5 py-1 text-xs transition-colors {form.cfg.recur_days.includes(d.v)
 										? 'bg-teal-600 text-white'
 										: 'bg-ash-700 text-ash-300 hover:bg-ash-600'}">{d.l}</button
 								>
@@ -801,7 +801,7 @@
 					/>
 				</div>
 
-				{#if isTargeted}<p class="text-ash-500 text-[11px]">
+				{#if isTargeted}<p class="text-ash-500 text-xs">
 						<i class="fas fa-crosshairs mr-1"></i>Targeted — members pick a target on use.
 					</p>{/if}
 			</div>
@@ -862,7 +862,7 @@
 						class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border py-2.5 pr-3 pl-9 text-sm focus:ring-2 focus:outline-none"
 					/>
 				</div>
-				<p class="text-ash-500 mt-2 text-[11px]">Only members in servers with the items module enabled are shown. Same person can appear per server.</p>
+				<p class="text-ash-500 mt-2 text-xs">Only members in servers with the items module enabled are shown. Same person can appear per server.</p>
 			</div>
 
 			<div class="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6">
@@ -873,7 +873,7 @@
 				{:else}
 					{#each giftGroups as group}
 						<div>
-							<div class="text-ash-400 mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold tracking-wide uppercase">
+							<div class="text-ash-400 mb-1.5 flex items-center gap-1.5 text-xs font-semibold tracking-wide uppercase">
 								<i class="fas fa-server text-ash-500"></i>{group.server}
 								<span class="text-ash-600 normal-case">· {group.members.length}</span>
 							</div>
@@ -883,7 +883,7 @@
 										<img src={giftAvatar(m)} alt={giftMemberName(m)} loading="lazy" class="h-9 w-9 shrink-0 rounded-full object-cover" />
 										<div class="min-w-0 flex-1">
 											<div class="text-ash-100 truncate text-sm font-medium">{giftMemberName(m)}</div>
-											<div class="text-ash-500 text-[11px]"><i class="fas fa-bag-shopping mr-1"></i>{Number(m.inventory_total || 0)} owned</div>
+											<div class="text-ash-500 text-xs"><i class="fas fa-bag-shopping mr-1"></i>{Number(m.inventory_total || 0)} owned</div>
 										</div>
 										<button
 											onclick={() => giveTo(m)}

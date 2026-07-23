@@ -80,7 +80,7 @@
 					<i class="fas fa-link mr-1 text-amber-400"></i>Public URL
 				</label>
 				<div class="bg-ash-900 border-ash-600 flex items-center gap-2 rounded-lg border px-3 py-2">
-					<input type="text" readonly value={publicStatsUrl} class="text-ash-100 w-full bg-transparent font-mono text-xs focus:outline-none" />
+					<input type="text" readonly value={publicStatsUrl} class="text-ash-100 w-full bg-transparent text-xs focus:outline-none" />
 					<a class="text-ash-200 hover:text-ash-100 text-xs font-medium underline" href={data.publicStatsPath || '#'} target="_blank" rel="noreferrer">
 						Open
 					</a>

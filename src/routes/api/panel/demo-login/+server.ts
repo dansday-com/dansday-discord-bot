@@ -38,7 +38,7 @@ function renderCaptchaSvg(answer: string): string {
 			const dy = -6 + Math.floor(Math.random() * 13);
 			const x = x0 + i * step + dx;
 			const yy = y + dy;
-			return `<text x="${x}" y="${yy}" fill="${fg}" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="34" font-weight="800" transform="rotate(${rot} ${x} ${yy})">${escapeXml(
+			return `<text x="${x}" y="${yy}" fill="${fg}" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="32" font-weight="800" transform="rotate(${rot} ${x} ${yy})">${escapeXml(
 				c
 			)}</text>`;
 		})

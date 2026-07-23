@@ -184,16 +184,16 @@
 </svelte:head>
 
 <div class="m-members">
-	<div class="m-leaderboard-subhead m-stats-subhead">
+	<div class="m-leaderboard-subhead m-stats-subhead mb-3 mb-4">
 		<p>Members</p>
 	</div>
 
-	<div class="m-members-search-bar">
-		<div class="m-members-search">
-			<i class="fas fa-search m-members-search-ic" aria-hidden="true"></i>
+	<div class="m-members-search-bar mb-4 flex flex-col flex-row items-center gap-2 gap-3 rounded-2xl px-4 py-3">
+		<div class="m-members-search relative min-w-0 flex-1">
+			<i class="fas fa-search m-members-search-ic pointer-events-none text-base" aria-hidden="true"></i>
 			<input
 				type="search"
-				class="m-members-search-inp"
+				class="m-members-search-inp box-border min-h-10 w-full rounded-lg pt-2 pr-2 pb-2 pl-8 text-base"
 				placeholder="Search name or ID"
 				aria-label="Search members by name or Discord ID"
 				bind:value={search}
@@ -202,29 +202,33 @@
 			/>
 		</div>
 		{#if sorted.length > PER_PAGE}
-			<p class="m-members-page-hint">Page {listPage} / {totalPages}</p>
+			<p class="m-members-page-hint m-0 ml-auto shrink-0 text-right text-base font-bold whitespace-nowrap tabular-nums">Page {listPage} / {totalPages}</p>
 		{/if}
 	</div>
 
 	{#if paged.length === 0}
-		<div class="m-members-empty">
+		<div class="m-members-empty px-4 py-12 text-center">
 			<i class="fas fa-users" aria-hidden="true"></i>
 			<p>No members found</p>
 		</div>
 	{:else}
-		<ul class="m-members-grid">
+		<ul class="m-members-grid m-0 grid gap-4 p-0">
 			{#each paged as member, i (member.discord_member_id)}
 				<li
-					class="m-stat-card m-overview-card m-members-card {podiumCardClass(member.rank)}"
+					class="m-stat-card m-overview-card m-members-card {podiumCardClass(
+						member.rank
+					)} relative overflow-hidden rounded-2xl px-4 py-4 pt-4 pb-4 opacity-0 opacity-100"
 					class:m-members-card--in={mounted}
 					style="--pubm-card-dly:{i * 32}ms"
 				>
-					<div class="m-members-top">
-						<div class="m-members-aside">
-							<span class="m-members-rank-pill" title="Leaderboard rank">{member.rank != null ? `#${member.rank}` : '—'}</span>
-							<div class="m-members-av-ring">
+					<div class="m-members-top flex items-start gap-4">
+						<div class="m-members-aside flex shrink-0 flex-col items-center gap-2">
+							<span class="m-members-rank-pill rounded-lg px-2 py-1 text-xs font-extrabold whitespace-nowrap text-white tabular-nums" title="Leaderboard rank"
+								>{member.rank != null ? `#${member.rank}` : '—'}</span
+							>
+							<div class="m-members-av-ring shrink-0 rounded-full p-1">
 								<img
-									class="m-members-av-lg"
+									class="m-members-av-lg block h-14 w-14 rounded-full object-cover"
 									src={avatarSrc(member)}
 									alt=""
 									width="56"
@@ -233,32 +237,47 @@
 								/>
 							</div>
 						</div>
-						<div class="m-members-main">
-							<div class="m-members-name-row">
-								<span class="m-members-name">{listDisplayName(member)}</span>
-								{#if member.is_afk}<span class="m-members-afk"><i class="fas fa-moon" aria-hidden="true"></i> AFK</span>{/if}
+						<div class="m-members-main min-w-0 flex-1">
+							<div class="m-members-name-row mb-2 flex flex-wrap items-center gap-x-2 gap-y-2">
+								<span class="m-members-name max-w-full overflow-hidden font-extrabold text-ellipsis whitespace-nowrap">{listDisplayName(member)}</span>
+								{#if member.is_afk}<span class="m-members-afk shrink-0 rounded-[100px] px-2 py-1 text-xs font-bold"
+										><i class="fas fa-moon" aria-hidden="true"></i> AFK</span
+									>{/if}
 							</div>
 							<p class="m-members-stats">
 								<span>Lv.{member.level ?? 0}</span>
-								<span class="m-members-dot">·</span>
+								<span class="m-members-dot text-[rgba(26,52,63,0.35)]">·</span>
 								<span title="Messages">{fmtNum(member.chat_total ?? 0)} msgs</span>
-								<span class="m-members-dot">·</span>
+								<span class="m-members-dot text-[rgba(26,52,63,0.35)]">·</span>
 								<span title="Voice minutes">{fmtNum(member.voice_minutes_active ?? 0)}m act / {fmtNum(member.voice_minutes_afk ?? 0)}m AFK</span>
 							</p>
-							<p class="m-members-dates">
-								<span><span class="m-members-dk">Joined</span> <LocalTime value={member.member_since} fallback="N/A" /></span>
-								<span class="m-members-dot">·</span>
-								<span><span class="m-members-dk">Discord since</span> <LocalTime value={member.profile_created_at} fallback="N/A" /></span>
+							<p class="m-members-dates mx-0 mt-0 mb-0 mb-2 flex flex-wrap items-baseline gap-x-1 gap-y-1 text-xs font-semibold text-[rgba(26,52,63,0.72)]">
+								<span
+									><span class="m-members-dk mr-1 text-xs font-bold text-[rgba(26,52,63,0.42)] uppercase">Joined</span>
+									<LocalTime value={member.member_since} fallback="N/A" /></span
+								>
+								<span class="m-members-dot text-[rgba(26,52,63,0.35)]">·</span>
+								<span
+									><span class="m-members-dk mr-1 text-xs font-bold text-[rgba(26,52,63,0.42)] uppercase">Discord since</span>
+									<LocalTime value={member.profile_created_at} fallback="N/A" /></span
+								>
 							</p>
 						</div>
 					</div>
-					<div class="m-members-xp-band">
-						<span class="m-members-xp-band-l"><i class="fas fa-star" aria-hidden="true"></i> Experience</span>
-						<span class="m-members-xp-band-v" title="Experience points">{fmtNum(member.experience ?? 0)}</span>
+					<div class="m-members-xp-band mt-3 flex items-center justify-between gap-2 rounded-xl px-3 py-2">
+						<span class="m-members-xp-band-l inline-flex items-center gap-2 text-xs font-bold text-[rgba(26,52,63,0.55)] uppercase"
+							><i class="fas fa-star" aria-hidden="true"></i> Experience</span
+						>
+						<span class="m-members-xp-band-v text-lb-text text-base font-extrabold tabular-nums" title="Experience points"
+							>{fmtNum(member.experience ?? 0)}</span
+						>
 					</div>
 					{#if member.roles?.[0]}
-						<div class="m-members-roles">
-							<span class="m-members-role" style={rolePillCssVars(member.roles[0].color)}>
+						<div class="m-members-roles mt-3 flex flex-wrap gap-2 pt-3">
+							<span
+								class="m-members-role inline-flex max-w-full items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold"
+								style={rolePillCssVars(member.roles[0].color)}
+							>
 								<i class="fas fa-circle" aria-hidden="true"></i>
 								{member.roles[0].name || 'Role'}
 							</span>
@@ -269,12 +288,22 @@
 		</ul>
 
 		{#if sorted.length > PER_PAGE}
-			<div class="m-members-pager">
-				<button type="button" class="m-members-btn" disabled={listPage === 1} onclick={() => (listPage = Math.max(1, listPage - 1))}>
+			<div class="m-members-pager mt-4 flex items-center justify-between gap-2">
+				<button
+					type="button"
+					class="m-members-btn inline-flex cursor-pointer items-center gap-2 rounded-xl px-4 py-2 text-base font-semibold"
+					disabled={listPage === 1}
+					onclick={() => (listPage = Math.max(1, listPage - 1))}
+				>
 					<i class="fas fa-chevron-left" aria-hidden="true"></i> Prev
 				</button>
-				<span class="m-members-pg-meta">Page {listPage} / {totalPages}</span>
-				<button type="button" class="m-members-btn" disabled={listPage === totalPages} onclick={() => (listPage = Math.min(totalPages, listPage + 1))}>
+				<span class="m-members-pg-meta text-base font-semibold">Page {listPage} / {totalPages}</span>
+				<button
+					type="button"
+					class="m-members-btn inline-flex cursor-pointer items-center gap-2 rounded-xl px-4 py-2 text-base font-semibold"
+					disabled={listPage === totalPages}
+					onclick={() => (listPage = Math.min(totalPages, listPage + 1))}
+				>
 					Next <i class="fas fa-chevron-right" aria-hidden="true"></i>
 				</button>
 			</div>

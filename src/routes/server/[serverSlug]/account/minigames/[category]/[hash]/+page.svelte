@@ -151,24 +151,35 @@
 <svelte:head><title>{data.server.name || data.server.slug} Minigames | {APP_NAME} Discord Bot</title></svelte:head>
 
 {#if games.length === 0}
-	<div class="m-members-empty">No games in this category.</div>
+	<div class="m-members-empty px-4 py-12 text-center">No games in this category.</div>
 {:else}
-	<div class="m-cards">
+	<div class="m-cards grid gap-2 gap-4">
 		{#each games as game (game.id)}
-			<article class="m-card" data-cat={game.id} style="--cat: {game.accent}">
-				<div class="m-card-glow"></div>
-				<div class="m-card-top">
-					<span class="m-card-medallion"><i class="fas {game.icon}"></i></span>
+			<article class="m-card relative flex flex-col gap-2 overflow-hidden rounded-2xl px-4 pt-4 pb-4" data-cat={game.id} style="--cat: {game.accent}">
+				<div class="m-card-glow pointer-events-none z-1 opacity-0"></div>
+				<div class="m-card-top flex items-start justify-between gap-2">
+					<span class="m-card-medallion relative grid h-12 h-14 w-12 w-14 place-items-center rounded-2xl text-lg text-xl"><i class="fas {game.icon}"></i></span>
 				</div>
-				<h3 class="m-card-name">{game.name}</h3>
-				<p class="m-card-desc">{game.desc}</p>
+				<h3 class="m-card-name text-lb-text mx-0 mt-1 mb-0 text-base font-extrabold">{game.name}</h3>
+				<p class="m-card-desc text-lb-text-muted m-0 min-h-[2.9em] text-base text-xs">{game.desc}</p>
 
-				<div class="m-card-foot">
-					<span class="m-card-price m-card-price--wager"><i class="fas fa-dice"></i>Wager</span>
+				<div class="m-card-foot relative z-2 mt-auto flex flex-wrap items-center justify-between gap-2 pt-1">
+					<span
+						class="m-card-price m-card-price--wager text-warning inline-flex min-w-0 flex-auto items-baseline gap-1 text-base text-xs font-extrabold whitespace-nowrap text-[#d99a1c] uppercase"
+						><i class="fas fa-dice"></i>Wager</span
+					>
 					{#if ctx.readOnly}
-						<button class="m-card-btn" disabled title="Open your card to play"><i class="fas fa-eye"></i>View only</button>
+						<button
+							class="m-card-btn inline-flex flex-none cursor-pointer items-center justify-center gap-1 rounded-lg px-3 px-4 py-2 text-base font-bold whitespace-nowrap text-white"
+							disabled
+							title="Open your card to play"><i class="fas fa-eye"></i>View only</button
+						>
 					{:else}
-						<button class="m-card-btn m-card-btn--play" title="Play" onclick={() => openPlay(game.id)}>
+						<button
+							class="m-card-btn m-card-btn--play inline-flex flex-none cursor-pointer items-center justify-center gap-1 rounded-lg px-3 px-4 py-2 text-base font-bold whitespace-nowrap text-white"
+							title="Play"
+							onclick={() => openPlay(game.id)}
+						>
 							<i class="fas fa-dice"></i>Play
 						</button>
 					{/if}
@@ -179,9 +190,9 @@
 {/if}
 
 {#if playing}
-	<div class="m-gamble-overlay" role="presentation" onclick={() => (!busy ? (playing = null) : null)}>
+	<div class="m-gamble-overlay z-60 flex items-center justify-center p-4" role="presentation" onclick={() => (!busy ? (playing = null) : null)}>
 		<div
-			class="m-gamble m-mg-play"
+			class="m-gamble m-mg-play relative p-5"
 			class:m-gamble--shake={shake}
 			class:m-gamble--won={reelResult === 'win'}
 			class:m-gamble--lost={reelResult === 'lose'}
@@ -190,84 +201,126 @@
 			aria-label="Play Gamble"
 			onclick={(e) => e.stopPropagation()}
 		>
-			<div class="m-gamble-aura"></div>
-			<div class="m-gamble-head">
-				<span class="m-gamble-title"><span class="m-gamble-ico"><i class="fas fa-dice"></i></span>Gamble</span>
-				{#if !busy}<button class="m-gamble-x" aria-label="Close" onclick={() => (playing = null)}><i class="fas fa-times"></i></button>{/if}
+			<div class="m-gamble-aura pointer-events-none -z-[1] opacity-50"></div>
+			<div class="m-gamble-head mb-4 flex items-center justify-between">
+				<span class="m-gamble-title text-lb-text inline-flex items-center gap-2 text-base font-extrabold"
+					><span class="m-gamble-ico text-warning text-lg"><i class="fas fa-dice"></i></span>Gamble</span
+				>
+				{#if !busy}<button class="m-gamble-x text-lb-text-muted cursor-pointer px-2 py-0 text-lg" aria-label="Close" onclick={() => (playing = null)}
+						><i class="fas fa-times"></i></button
+					>{/if}
 			</div>
 
 			<div
 				bind:this={reelWrapEl}
-				class="m-gamble-reelwrap"
+				class="m-gamble-reelwrap relative mb-4 overflow-hidden rounded-[14px] px-0 py-3"
 				class:m-gamble-reelwrap--win={reelResult === 'win'}
 				class:m-gamble-reelwrap--lose={reelResult === 'lose'}
 			>
-				<div class="m-gamble-frame"></div>
-				<div class="m-gamble-pointer"></div>
+				<div class="m-gamble-frame pointer-events-none z-3 w-24 w-[88px] rounded-[13px]"></div>
+				<div class="m-gamble-pointer z-4 h-0 w-0"></div>
 				<div
-					class="m-gamble-reel"
+					class="m-gamble-reel pl-25"
 					style="transform: translateX({reelOffset}px); transition: {reelAnimating ? 'transform 6.8s cubic-bezier(0.06, 0.72, 0.06, 1)' : 'none'};"
 				>
 					{#each reel as cell, i (i)}
-						<div class="m-gamble-cell m-gamble-cell--{cell}"><i class="fas {cell === 'win' ? 'fa-sack-dollar' : 'fa-skull'}"></i></div>
+						<div class="m-gamble-cell m-gamble-cell--{cell} grid h-18 h-[76px] flex-[0_0_84px] place-items-center rounded-[11px] text-2xl">
+							<i class="fas {cell === 'win' ? 'fa-sack-dollar' : 'fa-skull'}"></i>
+						</div>
 					{/each}
 				</div>
 				{#if reelResult}
-					<div class="m-gamble-verdict m-gamble-verdict--{reelResult}">
+					<div class="m-gamble-verdict m-gamble-verdict--{reelResult} pointer-events-none z-6 flex flex-col items-center justify-center gap-0">
 						{#if reelResult === 'win'}
-							<span class="m-gamble-verdict-label">WIN</span>
-							<span class="m-gamble-verdict-amt">+{fmt(winAmt)} XP</span>
+							<span class="m-gamble-verdict-label text-base font-black uppercase">WIN</span>
+							<span class="m-gamble-verdict-amt text-xl font-black tabular-nums">+{fmt(winAmt)} XP</span>
 						{:else}
-							<span class="m-gamble-verdict-label">BUST</span>
-							<span class="m-gamble-verdict-amt">−{fmt(lostAmt)} XP</span>
+							<span class="m-gamble-verdict-label text-base font-black uppercase">BUST</span>
+							<span class="m-gamble-verdict-amt text-xl font-black tabular-nums">−{fmt(lostAmt)} XP</span>
 						{/if}
 					</div>
 				{/if}
 			</div>
 
 			{#if !reelResult}
-				<div class="m-mg-mult">
-					<div class="m-mg-mult-head">
+				<div class="m-mg-mult mx-0 mt-1 mb-1">
+					<div class="m-mg-mult-head text-lb-text-muted mb-2 flex items-center justify-between text-base">
 						<span>Multiplier <strong>{multiplier.toFixed(2)}×</strong></span>
-						<span class="m-mg-chance">Win chance {luckBoostLabel(baseWinChance, luckPercent)}</span>
+						<span class="m-mg-chance font-bold text-[#e0a52a]">Win chance {luckBoostLabel(baseWinChance, luckPercent)}</span>
 					</div>
-					<input type="range" class="m-mg-slider" min={MIN_MULT} max={MAX_MULT} step="0.05" bind:value={multiplier} disabled={busy} />
+					<input
+						type="range"
+						class="m-mg-slider mb-2 w-full cursor-pointer"
+						min={MIN_MULT}
+						max={MAX_MULT}
+						step="0.05"
+						bind:value={multiplier}
+						disabled={busy}
+					/>
 				</div>
 			{/if}
 
 			{#if reelResult && !busy}
-				<div class="m-gamble-again">
-					<button class="m-gamble-reset" onclick={resetGamble}><i class="fas fa-sliders"></i>Change bet</button>
-					<button class="m-gamble-play m-gamble-play--charged" disabled={wagerXp <= 0 || wagerXp > spendable} onclick={play}>
+				<div class="m-gamble-again flex gap-2">
+					<button
+						class="m-gamble-reset text-lb-text inline-flex flex-none cursor-pointer items-center gap-2 rounded-[13px] px-4 py-4 text-base font-bold"
+						onclick={resetGamble}><i class="fas fa-sliders"></i>Change bet</button
+					>
+					<button
+						class="m-gamble-play m-gamble-play--charged relative inline-flex w-full cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-[13px] p-4 text-base font-black text-white"
+						disabled={wagerXp <= 0 || wagerXp > spendable}
+						onclick={play}
+					>
 						<i class="fas fa-rotate-right"></i>Spin again
 					</button>
 				</div>
 			{:else}
-				<div class="m-gamble-picker">
+				<div class="m-gamble-picker mb-3 flex flex-wrap gap-2">
 					{#each WAGER_PERCENTS as p}
-						<button class="m-gamble-pct" class:m-gamble-pct--active={gamblePercent === p} disabled={busy} onclick={() => (gamblePercent = p)}>{p}%</button>
+						<button
+							class="m-gamble-pct text-lb-text cursor-pointer rounded-[10px] px-0 py-2 text-base font-bold"
+							class:m-gamble-pct--active={gamblePercent === p}
+							disabled={busy}
+							onclick={() => (gamblePercent = p)}>{p}%</button
+						>
 					{/each}
-					<button class="m-gamble-pct" class:m-gamble-pct--active={gamblePercent === 'custom'} disabled={busy} onclick={() => (gamblePercent = 'custom')}
-						>Custom</button
+					<button
+						class="m-gamble-pct text-lb-text cursor-pointer rounded-[10px] px-0 py-2 text-base font-bold"
+						class:m-gamble-pct--active={gamblePercent === 'custom'}
+						disabled={busy}
+						onclick={() => (gamblePercent = 'custom')}>Custom</button
 					>
 				</div>
 				{#if gamblePercent === 'custom'}
-					<input class="m-gamble-custom" type="number" min="1" max={spendable} placeholder="Enter XP to wager" bind:value={gambleCustom} disabled={busy} />
+					<input
+						class="m-gamble-custom text-lb-text mb-3 box-border w-full rounded-[10px] px-3 py-3 text-center text-base font-bold tabular-nums"
+						type="number"
+						min="1"
+						max={spendable}
+						placeholder="Enter XP to wager"
+						bind:value={gambleCustom}
+						disabled={busy}
+					/>
 				{/if}
 
-				<div class="m-gamble-stakes">
-					<div class="m-gamble-stake">
-						<span class="m-gamble-stake-k">Wager</span>
-						<span class="m-gamble-stake-v m-gamble-stake-v--bet">{fmt(wagerXp)}</span>
+				<div class="m-gamble-stakes mb-3 flex items-center justify-center gap-4 rounded-xl px-3 py-2">
+					<div class="m-gamble-stake flex min-w-0 flex-col items-center gap-0">
+						<span class="m-gamble-stake-k text-lb-text-muted text-xs font-bold uppercase">Wager</span>
+						<span class="m-gamble-stake-v m-gamble-stake-v--bet text-lb-text text-base font-black tabular-nums">{fmt(wagerXp)}</span>
 					</div>
-					<i class="fas fa-arrow-right m-gamble-stake-arrow"></i>
-					<div class="m-gamble-stake">
-						<span class="m-gamble-stake-k">Win pays</span>
-						<span class="m-gamble-stake-v m-gamble-stake-v--win">{fmt(potentialWin)}</span>
+					<i class="fas fa-arrow-right m-gamble-stake-arrow text-lb-text-muted text-base"></i>
+					<div class="m-gamble-stake flex min-w-0 flex-col items-center gap-0">
+						<span class="m-gamble-stake-k text-lb-text-muted text-xs font-bold uppercase">Win pays</span>
+						<span class="m-gamble-stake-v m-gamble-stake-v--win text-success-soft text-base font-black tabular-nums">{fmt(potentialWin)}</span>
 					</div>
 				</div>
 
-				<button class="m-gamble-play" class:m-gamble-play--charged={!busy && wagerXp > 0} disabled={busy || wagerXp <= 0} onclick={play}>
+				<button
+					class="m-gamble-play relative inline-flex w-full cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-[13px] p-4 text-base font-black text-white"
+					class:m-gamble-play--charged={!busy && wagerXp > 0}
+					disabled={busy || wagerXp <= 0}
+					onclick={play}
+				>
 					{#if busy}<i class="fas fa-circle-notch fa-spin"></i>Rolling…{:else}<i class="fas fa-dice"></i>Spin {gamblePercent === 'custom'
 							? ''
 							: `${gamblePercent}%`}{/if}

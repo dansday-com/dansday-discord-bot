@@ -176,14 +176,14 @@
 </svelte:head>
 
 <div class="space-y-6">
-	<div class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-6">
+	<div class="bg-ash-800 border-ash-700 rounded-xl border p-4 lg:p-6">
 		<h2 class="text-ash-100 mb-6 flex items-center gap-2 text-xl font-bold">
 			<i class="fas fa-user-shield text-amber-400"></i>Server Accounts
 		</h2>
 
 		<div class="mb-8">
 			<h3 class="text-ash-100 mb-3 text-lg font-semibold">Send Invite</h3>
-			<div class="flex flex-col gap-2 sm:flex-row">
+			<div class="flex flex-col gap-2 lg:flex-row">
 				<LabeledSelect appearance="form-inline" options={inviteTypeOptions} bind:value={inviteType} ariaLabel="Invite account type" />
 				<MemberPicker
 					serverId={data.serverId}
@@ -282,7 +282,7 @@
 			{:else}
 				<div class="space-y-2">
 					{#each data.invites as invite (invite.id)}
-						<div class="bg-ash-700 flex flex-col gap-2 rounded-lg px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+						<div class="bg-ash-700 flex flex-col gap-2 rounded-lg px-4 py-3 lg:flex-row lg:items-center lg:justify-between lg:gap-3">
 							<div class="min-w-0 flex-1">
 								<p class="text-ash-100 text-base font-medium capitalize">{invite.account_type} invite</p>
 								<p class="text-ash-300 mt-1 text-xs">

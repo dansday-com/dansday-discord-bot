@@ -78,10 +78,10 @@
 </svelte:head>
 
 <div class="mb-4">
-	<h2 class="text-ash-100 mb-1 text-xl font-bold sm:text-2xl">
+	<h2 class="text-ash-100 mb-1 text-xl font-bold lg:text-2xl">
 		<i class="fas fa-bullhorn mr-2 text-rose-400"></i>Global Embed Builder
 	</h2>
-	<p class="text-ash-400 text-xs sm:text-base">
+	<p class="text-ash-400 text-xs lg:text-base">
 		Send an announcement to all servers across ALL of your bots. It will be posted in each server's configured <strong>Bot Updates Channel</strong>.
 	</p>
 </div>
@@ -101,7 +101,7 @@
 	</div>
 {/snippet}
 
-<div class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-6">
+<div class="bg-ash-800 border-ash-700 rounded-xl border p-4 lg:p-6">
 	<EmbedForm
 		bind:title={embedTitle}
 		bind:description={embedDescription}

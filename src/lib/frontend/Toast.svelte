@@ -17,15 +17,15 @@
 </script>
 
 <div
-	class="pointer-events-none fixed top-3 left-1/2 z-50 flex w-[calc(100%-1.5rem)] -translate-x-1/2 flex-col gap-2 sm:top-4 sm:right-4 sm:left-auto sm:w-auto sm:max-w-sm sm:translate-x-0"
+	class="pointer-events-none fixed top-3 left-1/2 z-50 flex w-[calc(100%-1.5rem)] -translate-x-1/2 flex-col gap-2 lg:top-4 lg:right-4 lg:left-auto lg:w-auto lg:max-w-sm lg:translate-x-0"
 >
 	{#each toasts as toast (toast.id)}
 		<div
-			class="flex items-center gap-2 rounded-lg border px-4 py-3 text-base shadow-lg backdrop-blur-sm sm:gap-3 sm:px-6 sm:py-4 sm:text-base {styles[
+			class="flex items-center gap-2 rounded-lg border px-4 py-3 text-base shadow-lg backdrop-blur-sm lg:gap-3 lg:px-6 lg:py-4 lg:text-base {styles[
 				toast.type
 			]} pointer-events-auto"
 		>
-			<i class="fas {icons[toast.type]} flex-shrink-0 text-lg sm:text-xl"></i>
+			<i class="fas {icons[toast.type]} shrink-0 text-lg lg:text-xl"></i>
 			<span class="text-ash-100 break-words">{toast.message}</span>
 		</div>
 	{/each}

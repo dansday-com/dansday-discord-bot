@@ -169,7 +169,7 @@
 	}
 </script>
 
-<div class="mb-4 flex flex-col gap-3 sm:flex-row">
+<div class="mb-4 flex flex-col gap-3 lg:flex-row">
 	<div class="relative flex-1">
 		<i class="fas fa-search absolute top-1/2 left-3 -translate-y-1/2 text-base text-cyan-300"></i>
 		<input
@@ -202,8 +202,8 @@
 {:else}
 	<div class="mb-4 space-y-3">
 		{#each paged as member (member.discord_member_id)}
-			<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-4 shadow-lg transition-all sm:p-5">
-				<div class="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
+			<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-4 shadow-lg transition-all lg:p-5">
+				<div class="flex flex-col items-center gap-4 lg:flex-row lg:items-start">
 					<div class="relative shrink-0">
 						<img
 							src={avatarSrc(member)}
@@ -213,9 +213,9 @@
 						/>
 					</div>
 
-					<div class="w-full min-w-0 flex-1 text-center sm:text-left">
-						<div class="mb-3 flex flex-col items-center gap-2 sm:flex-row sm:items-center">
-							<h4 class="text-ash-100 w-full truncate text-base font-bold sm:w-auto sm:text-lg">
+					<div class="w-full min-w-0 flex-1 text-center lg:text-left">
+						<div class="mb-3 flex flex-col items-center gap-2 lg:flex-row lg:items-center">
+							<h4 class="text-ash-100 w-full truncate text-base font-bold lg:w-auto lg:text-lg">
 								{listDisplayName(member)}
 							</h4>
 							{#if member.is_afk}
@@ -225,7 +225,7 @@
 							{/if}
 						</div>
 
-						<div class="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-4">
+						<div class="mb-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
 							<div class="bg-ash-800 border-ash-600 flex items-center gap-2 rounded-lg border p-2">
 								<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/20">
 									<i class="fas fa-medal text-xs text-sky-400"></i>

@@ -16,13 +16,13 @@
 	}
 </script>
 
-<div class="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6 lg:px-8 lg:py-8">
+<div class="mx-auto max-w-7xl px-3 py-4 lg:px-8 lg:py-8">
 	<div class="bg-ash-800 border-ash-700 mb-5 flex gap-1 overflow-x-auto rounded-xl border p-1">
 		{#each tabs as tab}
 			{@const active = isActive(tab.href)}
 			<a
 				href={tab.href}
-				class="flex flex-shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-base font-medium whitespace-nowrap transition-all sm:px-4
+				class="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-base font-medium whitespace-nowrap transition-all lg:px-4
 					{active ? 'bg-ash-600 text-ash-100' : 'text-ash-400 hover:text-ash-200 hover:bg-ash-700'}"
 			>
 				<i class="fas {tab.icon} {tab.iconClass} {active ? '' : 'opacity-75'} text-xs"></i>

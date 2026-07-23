@@ -121,13 +121,13 @@
 {/if}
 
 {#if open}
-	<div class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-3 sm:p-4" onclick={close}>
+	<div class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-3 lg:p-4" onclick={close}>
 		<div
-			class="bg-ash-800 border-ash-700 my-4 flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl border p-4 shadow-2xl sm:p-6"
+			class="bg-ash-800 border-ash-700 my-4 flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl border p-4 shadow-2xl lg:p-6"
 			onclick={(e) => e.stopPropagation()}
 		>
-			<div class="mb-4 flex items-center justify-between sm:mb-6">
-				<h3 class="text-ash-100 flex items-center gap-2 text-lg font-bold sm:text-xl">
+			<div class="mb-4 flex items-center justify-between lg:mb-6">
+				<h3 class="text-ash-100 flex items-center gap-2 text-lg font-bold lg:text-xl">
 					<i class="fas fa-user-shield text-blue-400"></i>
 					{single ? 'Select Role' : 'Select Roles'}
 				</h3>
@@ -140,7 +140,7 @@
 					type="text"
 					bind:value={search}
 					placeholder="Search roles..."
-					class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-4 py-2.5 pr-10 text-base transition-all focus:ring-2 focus:outline-none sm:py-3 sm:text-base"
+					class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-4 py-2.5 pr-10 text-base transition-all focus:ring-2 focus:outline-none lg:py-3 lg:text-base"
 				/>
 				<i class="{ROLE_PICKER_ACCENT.searchIcon} absolute top-1/2 right-3 -translate-y-1/2"></i>
 			</div>
@@ -177,7 +177,7 @@
 				<button
 					type="button"
 					onclick={confirm}
-					class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-base font-medium transition-all sm:py-3 sm:text-base"
+					class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-base font-medium transition-all lg:py-3 lg:text-base"
 				>
 					<i class="fas fa-check text-emerald-300"></i>Confirm Selection
 				</button>

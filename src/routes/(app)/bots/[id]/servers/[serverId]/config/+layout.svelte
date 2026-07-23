@@ -22,7 +22,7 @@
 </svelte:head>
 
 <div class="flex flex-col gap-4 lg:flex-row">
-	<nav class="flex-shrink-0 lg:w-60 xl:w-64">
+	<nav class="shrink-0 lg:w-64">
 		<div class="bg-ash-800 border-ash-700 flex flex-row gap-1 overflow-x-auto rounded-xl border p-2 lg:flex-col lg:overflow-x-visible">
 			{#each tabs as tab}
 				{@const active = isActive(tab.href)}
@@ -31,7 +31,7 @@
 					href={base + tab.href}
 					title={tab.label}
 					aria-label={featureOff ? `${tab.label} (module off)` : tab.label}
-					class="flex flex-shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-base transition-all lg:w-full lg:min-w-0
+					class="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-base transition-all lg:w-full lg:min-w-0
 						{active ? 'bg-ash-600 text-ash-100 font-medium' : 'text-ash-400 hover:text-ash-200 hover:bg-ash-700'}"
 				>
 					<i class="fas {tab.icon} w-4 shrink-0 text-center text-xs transition-colors {featureOff ? (active ? 'text-ash-400' : 'text-ash-500') : tab.iconClass}"

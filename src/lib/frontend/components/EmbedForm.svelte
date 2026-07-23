@@ -136,7 +136,7 @@
 
 <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
 	<div class="space-y-4">
-		<div class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-5">
+		<div class="bg-ash-800 border-ash-700 rounded-xl border p-4 lg:p-5">
 			<h3 class="text-ash-300 mb-4 flex items-center gap-2 text-base font-semibold">
 				<i class="fas fa-pen text-violet-400"></i>Embed Content
 			</h3>
@@ -267,7 +267,7 @@
 		{/if}
 	</div>
 
-	<div class="bg-ash-800 border-ash-700 self-start rounded-xl border p-4 sm:p-5 lg:sticky lg:top-4">
+	<div class="bg-ash-800 border-ash-700 self-start rounded-xl border p-4 lg:sticky lg:top-4 lg:p-5">
 		<h3 class="text-ash-300 mb-4 flex items-center gap-2 text-base font-semibold">
 			<i class="fas fa-eye text-cyan-400"></i>Preview
 		</h3>

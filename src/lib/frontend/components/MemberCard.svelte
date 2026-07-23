@@ -671,37 +671,48 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<div class="mc-overlay" class:mc-overlay--visible={visible} onclick={handleBackdrop}>
-	<div class="mc-modal" class:mc-modal--visible={visible}>
-		<button class="mc-close" onclick={closeModal} aria-label="Close member card">
+<div
+	class="mc-overlay pointer-events-none z-[99999] flex items-center justify-center overflow-hidden p-6"
+	class:mc-overlay--visible={visible}
+	onclick={handleBackdrop}
+>
+	<div class="mc-modal w-full max-w-[380px] opacity-0" class:mc-modal--visible={visible}>
+		<button
+			class="mc-close text-lb-text z-10 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-base"
+			onclick={closeModal}
+			aria-label="Close member card"
+		>
 			<i class="fas fa-times"></i>
 		</button>
 
-		<div class="mc-card" bind:this={cardEl}>
-			<div class="mc-card-bg">
-				<div class="mc-card-accent" style="background: linear-gradient(135deg, {accentColor}, #245f73);"></div>
+		<div class="mc-card z-2 overflow-hidden rounded-[20px]" bind:this={cardEl}>
+			<div class="mc-card-bg pointer-events-none overflow-hidden">
+				<div class="mc-card-accent h-[80%] w-[140%] rounded-full opacity-8" style="background: linear-gradient(135deg, {accentColor}, #245f73);"></div>
 			</div>
 
-			<div class="mc-card-inner">
-				<div class="mc-card-header">
-					<div class="mc-server-badge">
+			<div class="mc-card-inner px-6 pt-5 pb-4">
+				<div class="mc-card-header mb-4 flex items-center justify-between">
+					<div class="mc-server-badge flex items-center gap-2">
 						{#if serverIcon}
-							<img src={serverIcon} alt="" class="mc-server-icon" />
+							<img src={serverIcon} alt="" class="mc-server-icon h-6 w-6 rounded-lg object-cover" />
 						{:else}
-							<span class="mc-server-icon-ph"><i class="fas fa-shield-alt"></i></span>
+							<span class="mc-server-icon-ph text-chili-hot flex h-6 w-6 items-center justify-center rounded-lg text-xs"><i class="fas fa-shield-alt"></i></span
+							>
 						{/if}
-						<span class="mc-server-name">{serverName}</span>
+						<span class="mc-server-name text-lb-text-muted max-w-[180px] overflow-hidden text-xs font-bold text-ellipsis whitespace-nowrap uppercase"
+							>{serverName}</span
+						>
 					</div>
 					{#if member.rank != null}
-						<span class="mc-rank">#{member.rank}</span>
+						<span class="mc-rank rounded-lg px-2 py-1 text-base font-extrabold text-white">#{member.rank}</span>
 					{/if}
 				</div>
 
-				<div class="mc-card-body">
-					<div class="mc-avatar-wrap">
-						<div class="mc-avatar-ring" style="--mc-ring-color: {accentColor};">
+				<div class="mc-card-body flex flex-col items-center text-center">
+					<div class="mc-avatar-wrap mb-4">
+						<div class="mc-avatar-ring rounded-full p-1" style="--mc-ring-color: {accentColor};">
 							<img
-								class="mc-avatar"
+								class="mc-avatar block h-[88px] w-[88px] rounded-full object-cover"
 								src={avatarUrl(member)}
 								alt=""
 								width="88"
@@ -712,72 +723,72 @@
 						</div>
 					</div>
 
-					<h2 class="mc-name">
+					<h2 class="mc-name text-lb-text mx-0 mt-0 mb-2 max-w-full overflow-hidden text-lg font-extrabold text-ellipsis whitespace-nowrap">
 						{memberName(member)}
 					</h2>
 
 					{#if highestRole}
-						<div class="mc-role-badge" style="--mc-role-c: {roleColor};">
+						<div class="mc-role-badge mb-4 inline-flex items-center gap-2 rounded-[100px] px-4 py-1 text-xs font-bold" style="--mc-role-c: {roleColor};">
 							<i class="fas fa-circle"></i>
 							{highestRole.name}
 						</div>
 					{/if}
 
 					{#if isAssets && assets}
-						<div class="mc-level-block">
-							<span class="mc-level-label">Portfolio P/L</span>
-							<span class="mc-level-value" style="color: {assets.pnl >= 0 ? '#1a7f57' : '#b23b2e'}">
+						<div class="mc-level-block mb-4 flex flex-col items-center gap-1">
+							<span class="mc-level-label text-lb-text-subtle text-xs font-bold uppercase">Portfolio P/L</span>
+							<span class="mc-level-value text-3xl font-black" style="color: {assets.pnl >= 0 ? '#1a7f57' : '#b23b2e'}">
 								{assets.pnl >= 0 ? '+' : ''}{assets.pnlPct.toFixed(2)}%
 							</span>
 						</div>
 
-						<div class="mc-stats-row">
-							<div class="mc-stat">
+						<div class="mc-stats-row mb-2 flex w-full gap-2">
+							<div class="mc-stat flex flex-1 flex-col items-center gap-1 rounded-xl px-2 py-2">
 								<i class="fas fa-coins"></i>
-								<span class="mc-stat-val">{fmtNum(assets.invested)}</span>
-								<span class="mc-stat-lbl">Invested</span>
+								<span class="mc-stat-val text-lb-text text-base font-extrabold">{fmtNum(assets.invested)}</span>
+								<span class="mc-stat-lbl text-lb-text-subtle text-xs font-semibold uppercase">Invested</span>
 							</div>
-							<div class="mc-stat">
+							<div class="mc-stat flex flex-1 flex-col items-center gap-1 rounded-xl px-2 py-2">
 								<i class="fas fa-sack-dollar"></i>
-								<span class="mc-stat-val">{fmtNum(assets.value)}</span>
-								<span class="mc-stat-lbl">Worth</span>
+								<span class="mc-stat-val text-lb-text text-base font-extrabold">{fmtNum(assets.value)}</span>
+								<span class="mc-stat-lbl text-lb-text-subtle text-xs font-semibold uppercase">Worth</span>
 							</div>
-							<div class="mc-stat">
+							<div class="mc-stat flex flex-1 flex-col items-center gap-1 rounded-xl px-2 py-2">
 								<i class="fas fa-layer-group"></i>
-								<span class="mc-stat-val">{assets.count}</span>
-								<span class="mc-stat-lbl">Assets</span>
+								<span class="mc-stat-val text-lb-text text-base font-extrabold">{assets.count}</span>
+								<span class="mc-stat-lbl text-lb-text-subtle text-xs font-semibold uppercase">Assets</span>
 							</div>
 						</div>
 
-						<div class="mc-joined">
+						<div class="mc-joined text-lb-text-muted mt-2 flex items-center gap-2 text-xs font-semibold">
 							<i class="fas fa-chart-line"></i>
 							<span>{assets.pnl >= 0 ? '+' : ''}{fmtNum(assets.pnl)} XP profit/loss</span>
 						</div>
 					{:else}
-						<div class="mc-level-block">
-							<span class="mc-level-label">Level</span>
-							<span class="mc-level-value">{member.level ?? 0}</span>
+						<div class="mc-level-block mb-4 flex flex-col items-center gap-1">
+							<span class="mc-level-label text-lb-text-subtle text-xs font-bold uppercase">Level</span>
+							<span class="mc-level-value text-3xl font-black">{member.level ?? 0}</span>
 						</div>
 
-						<div class="mc-stats-row">
-							<div class="mc-stat">
+						<div class="mc-stats-row mb-2 flex w-full gap-2">
+							<div class="mc-stat flex flex-1 flex-col items-center gap-1 rounded-xl px-2 py-2">
 								<i class="fas fa-star"></i>
-								<span class="mc-stat-val">{fmtNum(member.experience)}</span>
-								<span class="mc-stat-lbl">XP</span>
+								<span class="mc-stat-val text-lb-text text-base font-extrabold">{fmtNum(member.experience)}</span>
+								<span class="mc-stat-lbl text-lb-text-subtle text-xs font-semibold uppercase">XP</span>
 							</div>
-							<div class="mc-stat">
+							<div class="mc-stat flex flex-1 flex-col items-center gap-1 rounded-xl px-2 py-2">
 								<i class="fas fa-comments"></i>
-								<span class="mc-stat-val">{fmtNum(member.chat_total)}</span>
-								<span class="mc-stat-lbl">Messages</span>
+								<span class="mc-stat-val text-lb-text text-base font-extrabold">{fmtNum(member.chat_total)}</span>
+								<span class="mc-stat-lbl text-lb-text-subtle text-xs font-semibold uppercase">Messages</span>
 							</div>
-							<div class="mc-stat">
+							<div class="mc-stat flex flex-1 flex-col items-center gap-1 rounded-xl px-2 py-2">
 								<i class="fas fa-microphone"></i>
-								<span class="mc-stat-val">{fmtNum(member.voice_minutes_active)}</span>
-								<span class="mc-stat-lbl">Voice min</span>
+								<span class="mc-stat-val text-lb-text text-base font-extrabold">{fmtNum(member.voice_minutes_active)}</span>
+								<span class="mc-stat-lbl text-lb-text-subtle text-xs font-semibold uppercase">Voice min</span>
 							</div>
 						</div>
 
-						<div class="mc-joined">
+						<div class="mc-joined text-lb-text-muted mt-2 flex items-center gap-2 text-xs font-semibold">
 							<i class="fas fa-calendar-check"></i>
 							<span>Joined {fmtJoined(member.member_since)}</span>
 						</div>
@@ -786,8 +797,12 @@
 			</div>
 		</div>
 
-		<div class="mc-actions">
-			<button class="mc-action-btn mc-action-btn--download" onclick={downloadCard} disabled={downloading}>
+		<div class="mc-actions z-2 mt-4 flex flex-col items-center gap-3">
+			<button
+				class="mc-action-btn mc-action-btn--download inline-flex cursor-pointer items-center gap-2 rounded-xl px-6 py-2 text-base font-bold text-white"
+				onclick={downloadCard}
+				disabled={downloading}
+			>
 				<i class="fas fa-download"></i>
 				{downloading ? 'Saving...' : 'Download'}
 			</button>

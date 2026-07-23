@@ -4,6 +4,7 @@
 	import { publicServerPath } from '$lib/url.js';
 	import MainHeader from '$lib/frontend/components/MainHeader.svelte';
 	import MainFooter from '$lib/frontend/components/MainFooter.svelte';
+	import Button from '$lib/frontend/components/Button.svelte';
 
 	let { data }: PageProps = $props();
 
@@ -149,73 +150,91 @@
 	/>
 </svelte:head>
 
-<div class="m-root">
-	<div class="m-blob m-blob-1"></div>
-	<div class="m-blob m-blob-2"></div>
-	<div class="m-blob m-blob-3"></div>
+<div class="m-root text-lb-text relative flex flex-col overflow-x-hidden">
+	<div class="m-blob m-blob-1 pointer-events-none fixed z-0 h-[420px] w-[420px] rounded-full opacity-14"></div>
+	<div class="m-blob m-blob-2 pointer-events-none fixed z-0 h-[320px] w-[320px] rounded-full opacity-14"></div>
+	<div class="m-blob m-blob-3 pointer-events-none fixed z-0 h-[260px] w-[260px] rounded-full opacity-14"></div>
 
 	<MainHeader />
 
-	<main class="m-main">
-		<div class="m-inner m-landing-inner">
-			<section class="m-hero">
-				<h1>
+	<main class="m-main flex-1 overflow-y-auto">
+		<div class="m-inner m-landing-inner relative z-1 mx-auto my-0 max-w-[1280px] min-w-0 flex-1 px-8 pt-8 pb-16">
+			<section class="m-hero px-8 pt-[72px] pb-12 text-center">
+				<h1 class="text-lb-text mx-0 mt-0 mb-3.5 text-2xl font-extrabold">
 					Supercharge Your<br />
-					<span class="m-gradient-text">Discord Server</span>
+					<span class="from-chili-hot to-chili-peach bg-gradient-to-br bg-clip-text text-transparent">Discord Server</span>
 				</h1>
-				<p>
+				<p class="text-lb-text-muted mx-auto mt-0 mb-6 w-full text-base">
 					Run leveling, moderation, an embed builder, Discord Quests, quest enroll, self-bot options, creator tools, live public statistics pages, Roblox
 					catalog alerts, and more from the free web panel in your browser. Configure in one place instead of flooding channels with slash commands. Free for
 					everyone. Self-host from
-					<a href={sourceRepoUrl} target="_blank" rel="noopener noreferrer">GitHub</a>
+					<a
+						href={sourceRepoUrl}
+						class="text-lb-text decoration-chili-hot/35 hover:text-chili-hot hover:decoration-chili-hot font-semibold underline underline-offset-[3px] transition-colors"
+						target="_blank"
+						rel="noopener noreferrer">GitHub</a
+					>
 					or add
-					<a href={officialBotInviteUrl} target="_blank" rel="noopener noreferrer">our hosted bot</a>
+					<a
+						href={officialBotInviteUrl}
+						class="text-lb-text decoration-chili-hot/35 hover:text-chili-hot hover:decoration-chili-hot font-semibold underline underline-offset-[3px] transition-colors"
+						target="_blank"
+						rel="noopener noreferrer">our hosted bot</a
+					>
 					if you do not run your own servers.
 				</p>
-				<div class="m-hero-actions">
-					<a href={officialBotInviteUrl} class="m-btn m-btn--primary m-hero-btn-primary" target="_blank" rel="noopener noreferrer">
+				<div class="m-hero-actions mx-auto my-0 box-border flex w-full max-w-none flex-col items-stretch gap-4">
+					<Button
+						href={officialBotInviteUrl}
+						variant="primary"
+						class="m-hero-btn-primary w-full justify-center px-6 py-3 text-base"
+						target="_blank"
+						rel="noopener noreferrer"
+					>
 						<i class="fab fa-discord"></i>
 						Get started
-					</a>
-					<div class="m-hero-actions-secondary" role="group" aria-label="More options">
-						<a href="/docs" class="m-btn m-btn--ghost m-btn--compact" title="Setup guide and documentation">
+					</Button>
+					<div class="m-hero-actions-secondary gap-2" role="group" aria-label="More options">
+						<Button href="/docs" variant="ghost" compact class="w-full" title="Setup guide and documentation">
 							<i class="fas fa-book-open"></i>
 							Docs
-						</a>
-						<a href="#features" class="m-btn m-btn--ghost m-btn--compact">
+						</Button>
+						<Button href="#features" variant="ghost" compact class="w-full">
 							<i class="fas fa-th-large"></i>
 							Features
-						</a>
-						<a
+						</Button>
+						<Button
 							href={communityDiscordUrl}
-							class="m-btn m-btn--ghost m-btn--compact"
+							variant="ghost"
+							compact
+							class="w-full"
 							target="_blank"
 							rel="noopener noreferrer"
 							title="Join our Discord for updates and testing"
 						>
 							<i class="fas fa-users"></i>
 							Discord
-						</a>
-						<a href={sourceRepoUrl} class="m-btn m-btn--ghost m-btn--compact" target="_blank" rel="noopener noreferrer" title="Source on GitHub (MIT)">
+						</Button>
+						<Button href={sourceRepoUrl} variant="ghost" compact class="w-full" target="_blank" rel="noopener noreferrer" title="Source on GitHub (MIT)">
 							<i class="fab fa-github"></i>
 							GitHub
-						</a>
+						</Button>
 					</div>
 				</div>
 			</section>
 
-			<section class="m-section" id="features">
-				<div class="m-section-header">
-					<h2>Everything your server needs</h2>
+			<section class="m-section px-8 py-14" id="features">
+				<div class="m-section-header mb-7 text-center">
+					<h2 class="text-lb-text mx-0 mt-0 mb-2 text-xl font-extrabold">Everything your server needs</h2>
 					<p>
 						Each module stands on its own. Turn on leveling, embed builder, Quest notifier, quest enroll, self-bot, forwarder, public statistics, or any mix you
 						need. Everything lives under the same server settings.
 					</p>
 				</div>
-				<div class="m-features-grid">
+				<div class="m-features-grid gap-4">
 					{#each features as feature}
-						<div class="m-feature-card">
-							<div class="m-feature-icon m-feature-icon--{feature.tone}">
+						<div class="m-feature-card p-6">
+							<div class="m-feature-icon m-feature-icon--{feature.tone} mb-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg">
 								<i class="fas {feature.icon}"></i>
 							</div>
 							<h3>{feature.title}</h3>
@@ -226,69 +245,69 @@
 			</section>
 
 			{#if data.featuredServers.length > 0}
-				<section class="m-section">
-					<div class="m-section-header">
-						<h2>Active Communities</h2>
-						<p>Servers using {APP_NAME} Bot with public statistics enabled.</p>
+				<section class="m-section px-8 py-14">
+					<div class="m-section-header mb-7 text-center">
+						<h2 class="text-lb-text mx-0 mt-0 mb-2 text-xl font-extrabold">Active Communities</h2>
+						<p class="text-lb-text-muted m-0 text-base">Servers using {APP_NAME} Bot with public statistics enabled.</p>
 					</div>
-					<div class="m-servers-list">
+					<div class="m-servers-list m-0 grid w-full max-w-none gap-2">
 						{#each data.featuredServers as server}
-							<a href={publicServerPath(server.slug)} class="m-server-card">
-								<div class="m-landing-server-icon">
+							<a href={publicServerPath(server.slug)} class="m-server-card text-lb-text flex items-center gap-3 rounded-[14px] px-4 py-4 no-underline">
+								<div class="m-landing-server-icon flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl">
 									{#if server.server_icon}
 										<img src={server.server_icon} alt={server.name} loading="lazy" width="42" height="42" />
 									{:else}
-										<i class="fas fa-server m-landing-server-icon-placeholder"></i>
+										<i class="fas fa-server m-landing-server-icon-placeholder text-lb-text-muted text-lg"></i>
 									{/if}
 								</div>
-								<div class="m-server-info">
-									<div class="m-server-name">{server.name}</div>
-									<div class="m-server-sub">
-										<span class="m-landing-server-live" title="Public page uses live data">
-											<span class="m-live-dot"></span>
+								<div class="m-server-info min-w-0 flex-1">
+									<div class="m-server-name text-lb-text overflow-hidden text-base font-bold text-ellipsis whitespace-nowrap">{server.name}</div>
+									<div class="m-server-sub text-lb-text-muted flex items-center gap-1 text-xs">
+										<span class="m-landing-server-live text-lb-text-muted inline-flex items-center gap-2 text-xs" title="Public page uses live data">
+											<span class="m-live-dot h-2 w-2 rounded-full"></span>
 											Live public statistics
 										</span>
 									</div>
 								</div>
-								<i class="fas fa-chevron-right m-server-arrow"></i>
+								<i class="fas fa-chevron-right m-server-arrow text-lb-text-faint shrink-0 text-base"></i>
 							</a>
 						{/each}
 					</div>
 				</section>
 			{/if}
 
-			<section class="m-section">
-				<div class="m-section-header">
-					<h2>Powerful web panel</h2>
-					<p>
+			<section class="m-section px-8 py-14">
+				<div class="m-section-header mb-7 text-center">
+					<h2 class="text-lb-text mx-0 mt-0 mb-2 text-xl font-extrabold">Powerful web panel</h2>
+					<p class="text-lb-text-muted m-0 text-base">
 						Change settings from your browser without building long slash command workflows. After you sign in you land in the panel. Where a module supports
 						it, you get live bot and server state right in the UI.
 					</p>
 				</div>
-				<div class="m-features-grid m-features-grid--quad">
-					<div class="m-feature-card">
-						<div class="m-feature-icon m-feature-icon--teal">
+				<div class="m-features-grid m-features-grid--quad max-w-none gap-4">
+					<div class="m-feature-card p-6">
+						<div class="m-feature-icon m-feature-icon--teal text-chili-hot mb-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg">
 							<i class="fas fa-toggle-on"></i>
 						</div>
 						<h3>Toggle Features</h3>
 						<p>Enable or disable any feature with a single click. Each module is independently configurable.</p>
 					</div>
-					<div class="m-feature-card">
-						<div class="m-feature-icon m-feature-icon--brick">
+					<div class="m-feature-card p-6">
+						<div class="m-feature-icon m-feature-icon--brick text-chili-brick mb-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg">
 							<i class="fas fa-users-gear"></i>
 						</div>
 						<h3>Team Access</h3>
 						<p>Invite staff members with role-based access. Owners and staff can manage the panel independently.</p>
 					</div>
-					<div class="m-feature-card">
-						<div class="m-feature-icon m-feature-icon--teal">
+					<div class="m-feature-card p-6">
+						<div class="m-feature-icon m-feature-icon--teal text-chili-hot mb-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg">
 							<i class="fas fa-eye"></i>
 						</div>
 						<h3>Live Monitoring</h3>
 						<p>Watch bot status, uptime, and server statistics in real-time with live streaming updates.</p>
 					</div>
-					<div class="m-feature-card">
-						<div class="m-feature-icon m-feature-icon--brick">
+					<div class="m-feature-card p-6">
+						<div class="m-feature-icon m-feature-icon--brick text-chili-brick mb-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg">
 							<i class="fas fa-mobile-screen"></i>
 						</div>
 						<h3>Mobile Ready</h3>
@@ -297,26 +316,26 @@
 				</div>
 			</section>
 
-			<section class="m-cta">
-				<div class="m-cta-card">
-					<h2>Ready to try it?</h2>
-					<p>
+			<section class="m-cta px-0 pt-9 pb-11 text-center">
+				<div class="m-cta-card px-8 py-10">
+					<h2 class="text-lb-text mx-0 mt-0 mb-3.5 text-lg font-extrabold">Ready to try it?</h2>
+					<p class="text-lb-text-muted mx-0 mt-0 mb-5.5 text-base">
 						Add {APP_NAME} Bot to your server first for free. Then sign in to the web panel to configure your server. The login screen also offers an optional free
 						<strong>ten minute demo</strong> with full panel access and no signup.
 					</p>
-					<div class="m-cta-actions">
-						<a href={officialBotInviteUrl} class="m-btn m-btn--primary" target="_blank" rel="noopener noreferrer">
+					<div class="m-cta-actions mt-1 flex flex-wrap justify-center gap-3">
+						<Button href={officialBotInviteUrl} variant="primary" target="_blank" rel="noopener noreferrer">
 							<i class="fab fa-discord"></i>
 							Add {APP_NAME} Bot
-						</a>
-						<a href="/login" class="m-btn m-btn--ghost">
+						</Button>
+						<Button href="/login" variant="ghost">
 							<i class="fas fa-sign-in-alt"></i>
 							Open login
-						</a>
-						<a href="/docs" class="m-btn m-btn--ghost">
+						</Button>
+						<Button href="/docs" variant="ghost">
 							<i class="fas fa-book-open"></i>
 							Read the docs
-						</a>
+						</Button>
 					</div>
 				</div>
 			</section>

@@ -27,7 +27,7 @@
 		type="button"
 		{disabled}
 		onclick={() => (enabled = !enabled)}
-		class="focus:ring-ash-500 relative mt-0.5 h-6 w-10 flex-shrink-0 rounded-full transition-colors focus:ring-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 {enabled
+		class="focus:ring-ash-500 relative mt-0.5 h-6 w-10 shrink-0 rounded-full transition-colors focus:ring-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 {enabled
 			? 'bg-ash-400'
 			: 'bg-ash-700'}"
 		aria-pressed={enabled}

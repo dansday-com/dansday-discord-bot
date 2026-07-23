@@ -48,7 +48,7 @@
 	}
 </script>
 
-<div class="bg-ash-800 border-ash-700 space-y-5 rounded-xl border p-4 sm:p-6">
+<div class="bg-ash-800 border-ash-700 space-y-5 rounded-xl border p-4 lg:p-6">
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
 		<i class="fas fa-gem text-purple-400"></i>Booster
 	</h3>

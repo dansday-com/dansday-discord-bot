@@ -44,15 +44,15 @@
 </svelte:head>
 
 <div class="mb-4">
-	<h2 class="text-ash-100 mb-1 text-xl font-bold sm:text-2xl">
+	<h2 class="text-ash-100 mb-1 text-xl font-bold lg:text-2xl">
 		<i class="fas fa-chart-pie mr-2 text-sky-400"></i>Panel Overview
 	</h2>
-	<p class="text-ash-400 text-xs sm:text-base">High-level statistics across all your bots and servers.</p>
+	<p class="text-ash-400 text-xs lg:text-base">High-level statistics across all your bots and servers.</p>
 </div>
 
-<div class="space-y-4 sm:space-y-6">
-	<div class="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2 xl:grid-cols-3">
-		<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-5 shadow-lg transition-all sm:p-6">
+<div class="space-y-4 lg:space-y-6">
+	<div class="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-6">
+		<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-5 shadow-lg transition-all lg:p-6">
 			<div class="mb-4 flex items-center gap-3">
 				<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-500/15">
 					<i class="fas fa-robot text-lg text-violet-400"></i>
@@ -71,7 +71,7 @@
 			</div>
 		</div>
 
-		<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-5 shadow-lg transition-all sm:p-6">
+		<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-5 shadow-lg transition-all lg:p-6">
 			<div class="mb-4 flex items-center gap-3">
 				<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/15">
 					<i class="fas fa-server text-lg text-emerald-400"></i>
@@ -90,7 +90,7 @@
 			</div>
 		</div>
 
-		<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-5 shadow-lg transition-all sm:p-6">
+		<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-5 shadow-lg transition-all lg:p-6">
 			<div class="mb-4 flex items-center gap-3">
 				<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/15">
 					<i class="fas fa-clock text-lg text-amber-400"></i>

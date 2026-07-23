@@ -341,34 +341,42 @@
 	});
 </script>
 
-<div class="m-items">
+<div class="m-items mt-4">
 	{#snippet walletHero()}
-		<div class="m-xp">
-			<div class="m-xp-glow"></div>
+		<div class="m-xp relative mb-4 box-border flex h-[140px] items-center gap-3 overflow-hidden rounded-2xl px-4 py-3 py-4">
+			<div class="m-xp-glow pointer-events-none h-[220px] w-[220px] rounded-full"></div>
 			{#if pd.memberCard && !(isAssets && assetSummary.count === 0)}
-				<button class="m-xp-card-btn" onclick={() => (showCard = true)} aria-label="Share your card" title="Share card">
+				<button
+					class="m-xp-card-btn z-2 inline-flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 py-0 text-base font-bold text-white"
+					onclick={() => (showCard = true)}
+					aria-label="Share your card"
+					title="Share card"
+				>
 					<i class="fas fa-share-nodes"></i>
 					<span class="m-xp-card-btn-label">Share</span>
 				</button>
 			{/if}
-			<div class="m-xp-avatar">
+			<div class="m-xp-avatar relative h-12 w-12 shrink-0 rounded-full p-1">
 				<img src={memberAvatar} alt={pd.memberName ?? ''} loading="lazy" />
 			</div>
-			<div class="m-xp-figures">
-				<span class="m-xp-wallet"
+			<div class="m-xp-figures relative min-w-0 flex-1">
+				<span class="m-xp-wallet inline-flex items-center gap-1 text-xs font-bold text-[rgba(255,255,255,0.6)] uppercase"
 					><i class="fas {isOverview ? 'fa-user' : isAssets ? 'fa-chart-line' : 'fa-wallet'}"></i>{isOverview
 						? 'Profile'
 						: isAssets
 							? 'Invested in Assets'
 							: 'Wallet'}</span
 				>
-				{#if pd.memberName}<span class="m-xp-name">{pd.memberName}</span>{/if}
-				<span class="m-xp-amount" class:m-xp-amount--hidden={isOverview}>{fmt(isAssets ? assetSummary.invested : liveXp)}<span class="m-xp-unit">XP</span></span
+				{#if pd.memberName}<span class="m-xp-name mt-1 block overflow-hidden text-base font-extrabold text-ellipsis whitespace-nowrap text-white"
+						>{pd.memberName}</span
+					>{/if}
+				<span class="m-xp-amount mt-1 flex items-baseline gap-2 text-xl font-extrabold text-white tabular-nums" class:m-xp-amount--hidden={isOverview}
+					>{fmt(isAssets ? assetSummary.invested : liveXp)}<span class="m-xp-unit text-base font-bold text-[rgba(255,255,255,0.7)]">XP</span></span
 				>
-				<div class="m-xp-bar" class:m-xp-bar--hidden={isAssets || isOverview}>
-					<div class="m-xp-bar-fill" style="width: {levelInfo.pct}%"></div>
+				<div class="m-xp-bar mt-2 h-2 overflow-hidden rounded-[999px]" class:m-xp-bar--hidden={isAssets || isOverview}>
+					<div class="m-xp-bar-fill h-full rounded-[999px]" style="width: {levelInfo.pct}%"></div>
 				</div>
-				<span class="m-xp-bar-meta">
+				<span class="m-xp-bar-meta mt-1 flex justify-between gap-2 text-xs font-semibold text-[rgba(255,255,255,0.65)]">
 					{#if isOverview}
 						<span>Joined {joinedDate ?? '—'}</span>
 						{#if pd.profile?.isBooster || pd.profile?.isAfk}
@@ -383,30 +391,35 @@
 					{/if}
 				</span>
 				{#if isOverview && pd.profile?.roles?.[0]}
-					<div class="m-xp-roles">
-						<span class="m-xp-role" style={pd.profile.roles[0].color ? `--role-color: ${pd.profile.roles[0].color};` : ''}>
+					<div class="m-xp-roles mt-2 flex flex-wrap gap-1">
+						<span
+							class="m-xp-role inline-flex items-center gap-1 rounded-[100px] px-2 py-1 text-xs font-semibold text-white"
+							style={pd.profile.roles[0].color ? `--role-color: ${pd.profile.roles[0].color};` : ''}
+						>
 							<i class="fas fa-circle"></i>{pd.profile.roles[0].name || 'Role'}
 						</span>
 					</div>
 				{/if}
 			</div>
-			<div class="m-xp-stats">
+			<div class="m-xp-stats relative flex shrink-0 items-center gap-4 pt-4 pl-4">
 				{#if isAssets}
-					<div class="m-xp-stat m-xp-stat--pnl" data-dir={assetSummary.pnl > 0 ? 'up' : assetSummary.pnl < 0 ? 'down' : 'flat'}>
-						<span class="m-xp-stat-val">
+					<div class="m-xp-stat m-xp-stat--pnl flex flex-col items-center" data-dir={assetSummary.pnl > 0 ? 'up' : assetSummary.pnl < 0 ? 'down' : 'flat'}>
+						<span class="m-xp-stat-val text-lg font-extrabold text-white tabular-nums">
 							<i class="fas fa-caret-{assetSummary.pnl >= 0 ? 'up' : 'down'}"></i>{assetSummary.pnlPct >= 0 ? '+' : ''}{assetSummary.pnlPct.toFixed(2)}%
 						</span>
-						<span class="m-xp-stat-lbl">{assetSummary.pnl >= 0 ? '+' : ''}{fmt(assetSummary.pnl)} XP</span>
+						<span class="m-xp-stat-lbl mt-1 text-xs font-bold text-[rgba(255,255,255,0.6)] uppercase"
+							>{assetSummary.pnl >= 0 ? '+' : ''}{fmt(assetSummary.pnl)} XP</span
+						>
 					</div>
 				{:else}
-					<div class="m-xp-stat">
-						<span class="m-xp-stat-val">{levelInfo.pct}%</span>
-						<span class="m-xp-stat-lbl">Level {level}</span>
+					<div class="m-xp-stat flex flex-col items-center">
+						<span class="m-xp-stat-val text-lg font-extrabold text-white tabular-nums">{levelInfo.pct}%</span>
+						<span class="m-xp-stat-lbl mt-1 text-xs font-bold text-[rgba(255,255,255,0.6)] uppercase">Level {level}</span>
 					</div>
 					{#if rank}
-						<div class="m-xp-stat">
-							<span class="m-xp-stat-val">#{rank}</span>
-							<span class="m-xp-stat-lbl">Rank</span>
+						<div class="m-xp-stat flex flex-col items-center">
+							<span class="m-xp-stat-val text-lg font-extrabold text-white tabular-nums">#{rank}</span>
+							<span class="m-xp-stat-lbl mt-1 text-xs font-bold text-[rgba(255,255,255,0.6)] uppercase">Rank</span>
 						</div>
 					{/if}
 				{/if}
@@ -414,49 +427,79 @@
 		</div>
 
 		{#if activeChips.length > 0}
-			<div class="m-active">
+			<div class="m-active mx-0 mt-[-8px] mb-4 flex flex-nowrap gap-2 overflow-x-auto">
 				{#each activeChips as chip (chip.key)}
-					<span class="m-active-chip" style="--chip-accent: {chip.accent}">
+					<span
+						class="m-active-chip inline-flex flex-none items-center gap-2 rounded-[999px] px-3 py-2 text-base font-bold whitespace-nowrap"
+						style="--chip-accent: {chip.accent}"
+					>
 						<i class="fas {chip.icon}"></i>
-						<span class="m-active-label">{chip.label}</span>
-						<span class="m-active-time">{chip.text ?? remainingLabel(chip.until)}</span>
+						<span class="m-active-label text-lb-text">{chip.label}</span>
+						<span class="m-active-time tabular-nums opacity-85">{chip.text ?? remainingLabel(chip.until)}</span>
 					</span>
 				{/each}
 			</div>
 		{/if}
 	{/snippet}
 
-	<div class="m-items-bar">
-		<div class="m-items-toggle">
-			<a class="m-items-seg" class:m-items-seg--active={isOverview} href="{accountBase}/overview/{navHash}" data-sveltekit-preload-data="hover">
+	<div class="m-items-bar mb-4 flex flex-wrap items-center justify-between gap-3">
+		<div class="m-items-toggle flex max-w-full min-w-0 gap-1 overflow-x-auto rounded-lg p-1">
+			<a
+				class="m-items-seg text-lb-text-muted inline-flex flex-none cursor-pointer items-center gap-2 rounded-lg px-4 py-2 text-base font-semibold whitespace-nowrap"
+				class:m-items-seg--active={isOverview}
+				href="{accountBase}/overview/{navHash}"
+				data-sveltekit-preload-data="hover"
+			>
 				<i class="fas fa-gauge-high"></i>Overview
 			</a>
 			{#if itemsEnabled}
 				<a
 					bind:this={bagTabEl}
-					class="m-items-seg"
+					class="m-items-seg text-lb-text-muted inline-flex flex-none cursor-pointer items-center gap-2 rounded-lg px-4 py-2 text-base font-semibold whitespace-nowrap"
 					class:m-items-seg--active={isItems}
 					class:m-items-seg--pulse={bagPulse}
 					href="{accountBase}/items/all/{navHash}"
 					data-sveltekit-preload-data="hover"
 				>
-					<i class="fas fa-store"></i>Items<span class="m-items-count" class:m-items-count--bump={bagPulse}>{pd.bagStock ?? 0}/{BAG_CAPACITY}</span>
+					<i class="fas fa-store"></i>Items<span class="m-items-count rounded-[999px] px-2 py-0 text-xs" class:m-items-count--bump={bagPulse}
+						>{pd.bagStock ?? 0}/{BAG_CAPACITY}</span
+					>
 				</a>
 			{/if}
 			{#if minigamesEnabled}
-				<a class="m-items-seg" class:m-items-seg--active={isMinigames} href="{accountBase}/minigames/all/{navHash}" data-sveltekit-preload-data="hover">
+				<a
+					class="m-items-seg text-lb-text-muted inline-flex flex-none cursor-pointer items-center gap-2 rounded-lg px-4 py-2 text-base font-semibold whitespace-nowrap"
+					class:m-items-seg--active={isMinigames}
+					href="{accountBase}/minigames/all/{navHash}"
+					data-sveltekit-preload-data="hover"
+				>
 					<i class="fas fa-dice"></i>Minigames
 				</a>
 			{/if}
 			{#if assetsEnabled}
-				<a class="m-items-seg" class:m-items-seg--active={isAssets} href="{accountBase}/assets/top/{navHash}" data-sveltekit-preload-data="hover">
+				<a
+					class="m-items-seg text-lb-text-muted inline-flex flex-none cursor-pointer items-center gap-2 rounded-lg px-4 py-2 text-base font-semibold whitespace-nowrap"
+					class:m-items-seg--active={isAssets}
+					href="{accountBase}/assets/top/{navHash}"
+					data-sveltekit-preload-data="hover"
+				>
 					<i class="fas fa-chart-line"></i>Assets
 				</a>
 			{/if}
-			<a class="m-items-seg" class:m-items-seg--active={isHistory} href="{accountBase}/history/all/{navHash}" data-sveltekit-preload-data="hover">
+			<a
+				class="m-items-seg text-lb-text-muted inline-flex flex-none cursor-pointer items-center gap-2 rounded-lg px-4 py-2 text-base font-semibold whitespace-nowrap"
+				class:m-items-seg--active={isHistory}
+				href="{accountBase}/history/all/{navHash}"
+				data-sveltekit-preload-data="hover"
+			>
 				<i class="fas fa-clock-rotate-left"></i>History
 			</a>
-			<a class="m-items-seg" class:m-items-seg--active={isGuide} href="{accountBase}/guide/{navHash}" data-sveltekit-preload-data="hover">
+			<a
+				class="m-items-seg text-lb-text-muted inline-flex flex-none cursor-pointer items-center gap-2 rounded-lg px-4 py-2 text-base font-semibold whitespace-nowrap"
+				class:m-items-seg--active={isGuide}
+				href="{accountBase}/guide/{navHash}"
+				data-sveltekit-preload-data="hover"
+			>
 				<i class="fas fa-circle-question"></i>Guide
 			</a>
 		</div>
@@ -467,10 +510,10 @@
 	{/if}
 
 	{#snippet tabStrip(tabs: { id: string; label: string; icon: string; href: string }[], activeId: string)}
-		<div class="m-items-tabswrap">
+		<div class="m-items-tabswrap relative mb-4">
 			<button
 				type="button"
-				class="m-items-arrow m-items-arrow--left"
+				class="m-items-arrow m-items-arrow--left text-lb-text pointer-events-none z-2 hidden inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full p-0 opacity-0"
 				class:m-items-arrow--show={canScrollLeft}
 				aria-label="Scroll categories left"
 				tabindex={canScrollLeft ? 0 : -1}
@@ -478,16 +521,21 @@
 			>
 				<i class="fas fa-chevron-left"></i>
 			</button>
-			<div bind:this={tabsEl} class="m-items-tabs" onscroll={updateTabScroll}>
+			<div bind:this={tabsEl} class="m-items-tabs flex gap-2 overflow-x-auto" onscroll={updateTabScroll}>
 				{#each tabs as cat}
-					<a class="m-items-tab" class:m-items-tab--active={activeId === cat.id} href={cat.href} data-sveltekit-preload-data="hover">
+					<a
+						class="m-items-tab text-lb-text-muted inline-flex flex-none cursor-pointer items-center gap-2 rounded-lg px-4 py-2 text-base font-semibold whitespace-nowrap"
+						class:m-items-tab--active={activeId === cat.id}
+						href={cat.href}
+						data-sveltekit-preload-data="hover"
+					>
 						<i class="fas {cat.icon}"></i>{cat.label}
 					</a>
 				{/each}
 			</div>
 			<button
 				type="button"
-				class="m-items-arrow m-items-arrow--right"
+				class="m-items-arrow m-items-arrow--right text-lb-text pointer-events-none z-2 hidden inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full p-0 opacity-0"
 				class:m-items-arrow--show={canScrollRight}
 				aria-label="Scroll categories right"
 				tabindex={canScrollRight ? 0 : -1}

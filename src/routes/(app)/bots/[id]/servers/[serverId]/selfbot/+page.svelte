@@ -157,10 +157,10 @@
 
 			<a
 				href={`/bots/${data.botId}/servers/${data.serverId}/selfbot/${bot.id}`}
-				class="bg-ash-800 border-ash-700 hover:border-ash-500 flex flex-col gap-3 rounded-xl border p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg sm:p-6"
+				class="bg-ash-800 border-ash-700 hover:border-ash-500 flex flex-col gap-3 rounded-xl border p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg lg:p-6"
 			>
 				<div class="flex items-center gap-3">
-					<div class="bg-ash-600 flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-full">
+					<div class="bg-ash-600 flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full">
 						{#if bot.bot_icon}
 							<img src={bot.bot_icon} alt="" class="h-full w-full object-cover" />
 						{:else}
@@ -168,7 +168,7 @@
 						{/if}
 					</div>
 					<div class="min-w-0">
-						<p class="text-ash-100 truncate text-base font-semibold sm:text-base">{bot.name || `Selfbot #${bot.id}`}</p>
+						<p class="text-ash-100 truncate text-base font-semibold lg:text-base">{bot.name || `Selfbot #${bot.id}`}</p>
 						<span class="text-ash-400 text-xs">Selfbot</span>
 					</div>
 				</div>

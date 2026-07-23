@@ -36,15 +36,15 @@
 
 	const rowClass: Record<Appearance, string> = {
 		dashboard:
-			'bg-ash-800 border-ash-600 hover:border-ash-500 flex min-w-0 flex-1 items-center justify-between gap-2 rounded-lg border px-2 py-1.5 transition-colors sm:px-4 sm:py-2',
+			'bg-ash-800 border-ash-600 hover:border-ash-500 flex min-w-0 flex-1 items-center justify-between gap-2 rounded-lg border px-2 py-1.5 transition-colors lg:px-4 lg:py-2',
 		'members-toolbar':
-			'bg-ash-800 border-ash-700 hover:border-ash-600 flex min-w-0 items-center justify-between gap-2 rounded-lg border px-3 py-2 transition-colors sm:min-w-[12rem]',
+			'bg-ash-800 border-ash-700 hover:border-ash-600 flex min-w-0 items-center justify-between gap-2 rounded-lg border px-3 py-2 transition-colors lg:min-w-[12rem]',
 		'form-inline':
-			'bg-ash-700 border-ash-600 hover:border-ash-500 flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2.5 transition-colors sm:w-36'
+			'bg-ash-700 border-ash-600 hover:border-ash-500 flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2.5 transition-colors lg:w-36'
 	};
 
 	const selectTextClass: Record<Appearance, string> = {
-		dashboard: 'text-xs sm:text-base',
+		dashboard: 'text-xs lg:text-base',
 		'members-toolbar': 'text-base',
 		'form-inline': 'text-base'
 	};
@@ -97,12 +97,12 @@
 </script>
 
 {#if label}
-	<div class="flex min-w-0 items-center gap-2 sm:gap-3">
-		<label for={id} class="{labelTextClass} flex shrink-0 items-center gap-1 text-xs whitespace-nowrap sm:gap-2 sm:text-base">
+	<div class="flex min-w-0 items-center gap-2 lg:gap-3">
+		<label for={id} class="{labelTextClass} flex shrink-0 items-center gap-1 text-xs whitespace-nowrap lg:gap-2 lg:text-base">
 			{#if labelIconClass}
 				<i class={labelIconClass}></i>
 			{/if}
-			<span class="sm:inline">{label}</span>
+			<span class="lg:inline">{label}</span>
 		</label>
 		<div class="{rowClass[appearance]} {disabled || options.length === 0 ? 'opacity-50' : ''}">
 			<button
@@ -121,7 +121,7 @@
 		</div>
 	</div>
 {:else}
-	<div class="w-full shrink-0 sm:w-auto {rowClass[appearance]} {disabled || options.length === 0 ? 'opacity-50' : ''}">
+	<div class="w-full shrink-0 lg:w-auto {rowClass[appearance]} {disabled || options.length === 0 ? 'opacity-50' : ''}">
 		<button
 			type="button"
 			{id}
@@ -139,17 +139,17 @@
 {/if}
 
 {#if open}
-	<div class="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/50 p-3 sm:p-4" onclick={close} role="presentation">
+	<div class="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/50 p-3 lg:p-4" onclick={close} role="presentation">
 		<div
-			class="bg-ash-800 border-ash-700 my-4 flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl border p-4 shadow-2xl sm:p-6"
+			class="bg-ash-800 border-ash-700 my-4 flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl border p-4 shadow-2xl lg:p-6"
 			onclick={(e) => e.stopPropagation()}
 			role="dialog"
 			aria-modal="true"
 			aria-label={titleId ? undefined : modalHeading}
 			aria-labelledby={titleId}
 		>
-			<div class="mb-4 flex items-center justify-between sm:mb-6">
-				<h3 id={titleId} class="text-ash-100 flex min-w-0 items-center gap-2 text-lg font-bold sm:text-xl">
+			<div class="mb-4 flex items-center justify-between lg:mb-6">
+				<h3 id={titleId} class="text-ash-100 flex min-w-0 items-center gap-2 text-lg font-bold lg:text-xl">
 					<i class="fas fa-list-ul shrink-0 text-emerald-400"></i>
 					<span class="truncate">{modalHeading}</span>
 				</h3>
@@ -163,7 +163,7 @@
 					type="text"
 					bind:value={search}
 					placeholder="Search…"
-					class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-4 py-2.5 pr-10 text-base transition-all focus:ring-2 focus:outline-none sm:py-3 sm:text-base"
+					class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-4 py-2.5 pr-10 text-base transition-all focus:ring-2 focus:outline-none lg:py-3 lg:text-base"
 				/>
 				<i class="fas fa-search absolute top-1/2 right-3 -translate-y-1/2 text-emerald-300/90"></i>
 			</div>

@@ -32,42 +32,42 @@
 	}
 </script>
 
-<div class="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6 lg:px-8 lg:py-8">
+<div class="mx-auto max-w-7xl px-3 py-4 lg:px-8 lg:py-8">
 	{#if !data.user.authenticated || data.user.account_source !== 'server_accounts'}
 		<a href="/bots/{data.botId}" class="text-ash-400 hover:text-ash-100 mb-5 inline-flex items-center gap-2 text-base transition-colors">
 			<i class="fas fa-arrow-left text-violet-300"></i>Back to Bot
 		</a>
 	{/if}
 
-	<header class="bg-ash-700 border-ash-600 mb-4 rounded-lg border px-3 py-3 sm:mb-5 sm:rounded-xl sm:px-4 sm:py-3.5">
-		<div class="flex flex-col items-center gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-			<div class="flex w-full max-w-full flex-col items-center gap-2 sm:w-auto sm:min-w-0 sm:flex-1 sm:flex-row sm:items-center sm:gap-3 sm:text-left">
-				<div class="bg-ash-600 ring-ash-500/40 flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full ring-1 sm:h-12 sm:w-12">
+	<header class="bg-ash-700 border-ash-600 mb-4 rounded-lg border px-3 py-3 lg:mb-5 lg:rounded-xl lg:px-4 lg:py-3.5">
+		<div class="flex flex-col items-center gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-4">
+			<div class="flex w-full max-w-full flex-col items-center gap-2 lg:w-auto lg:min-w-0 lg:flex-1 lg:flex-row lg:items-center lg:gap-3 lg:text-left">
+				<div class="bg-ash-600 ring-ash-500/40 flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full ring-1 lg:h-12 lg:w-12">
 					{#if data.overview.server_icon}
 						<img src={data.overview.server_icon} alt="" class="h-full w-full object-cover" />
 					{:else}
-						<i class="fas fa-server text-base text-violet-300 sm:text-lg"></i>
+						<i class="fas fa-server text-base text-violet-300 lg:text-lg"></i>
 					{/if}
 				</div>
 				<h2
-					class="text-ash-100 max-w-[min(100%,20rem)] truncate text-center text-base font-semibold tracking-tight sm:max-w-[min(100%,28rem)] sm:text-left sm:text-lg"
+					class="text-ash-100 max-w-[min(100%,20rem)] truncate text-center text-base font-semibold tracking-tight lg:max-w-[min(100%,28rem)] lg:text-left lg:text-lg"
 				>
 					{data.overview.name || 'Unnamed Server'}
 				</h2>
 			</div>
 			<nav
-				class="flex w-full max-w-md flex-wrap items-center justify-center gap-1.5 sm:w-auto sm:max-w-none sm:shrink-0 sm:justify-end"
+				class="flex w-full max-w-md flex-wrap items-center justify-center gap-1.5 lg:w-auto lg:max-w-none lg:shrink-0 lg:justify-end"
 				aria-label="Server shortcuts"
 			>
 				<span
-					class="bg-ash-800/80 border-ash-600 text-ash-400 inline-flex max-w-full items-center gap-1 rounded-md border px-2 py-0.5 text-xs sm:text-xs"
+					class="bg-ash-800/80 border-ash-600 text-ash-400 inline-flex max-w-full items-center gap-1 rounded-md border px-2 py-0.5 text-xs lg:text-xs"
 					title="Discord server ID"
 				>
 					<i class="fas fa-id-card shrink-0 text-xs text-cyan-300/90"></i>
 					<span class="truncate">{data.overview.discord_server_id}</span>
 				</span>
 				{#if (data.overview.boost_level ?? 0) > 0}
-					<span class="bg-ash-800/80 border-ash-600 text-ash-300 inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs sm:text-xs">
+					<span class="bg-ash-800/80 border-ash-600 text-ash-300 inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs lg:text-xs">
 						<i class="fas fa-gem text-xs text-purple-400/90"></i>LV {data.overview.boost_level}
 					</span>
 				{/if}
@@ -75,7 +75,7 @@
 					href={discordServerLink((data.overview as any).discord_server_id)}
 					target="_blank"
 					rel="noreferrer"
-					class="bg-ash-800/80 border-ash-600 text-ash-300 hover:text-ash-100 hover:bg-ash-700 inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs transition-colors sm:text-xs"
+					class="bg-ash-800/80 border-ash-600 text-ash-300 hover:text-ash-100 hover:bg-ash-700 inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs transition-colors lg:text-xs"
 				>
 					<i class="fab fa-discord text-xs text-indigo-300"></i>Discord
 				</a>
@@ -84,7 +84,7 @@
 						href={inviteLink((data.overview as any).vanity_url_code)}
 						target="_blank"
 						rel="noreferrer"
-						class="bg-ash-800/80 border-ash-600 text-ash-300 hover:text-ash-100 hover:bg-ash-700 inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs transition-colors sm:text-xs"
+						class="bg-ash-800/80 border-ash-600 text-ash-300 hover:text-ash-100 hover:bg-ash-700 inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs transition-colors lg:text-xs"
 					>
 						<i class="fas fa-link text-xs text-emerald-300"></i>Invite
 					</a>
@@ -93,7 +93,7 @@
 						href={inviteLink((data.overview as any).invite_code)}
 						target="_blank"
 						rel="noreferrer"
-						class="bg-ash-800/80 border-ash-600 text-ash-300 hover:text-ash-100 hover:bg-ash-700 inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs transition-colors sm:text-xs"
+						class="bg-ash-800/80 border-ash-600 text-ash-300 hover:text-ash-100 hover:bg-ash-700 inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs transition-colors lg:text-xs"
 					>
 						<i class="fas fa-link text-xs text-emerald-300"></i>Invite
 					</a>
@@ -107,7 +107,7 @@
 			{@const active = isActive(tab.href)}
 			<a
 				href={tab.href}
-				class="flex flex-shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-base font-medium whitespace-nowrap transition-all sm:px-4
+				class="flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-base font-medium whitespace-nowrap transition-all lg:px-4
 					{active ? 'bg-ash-600 text-ash-100' : 'text-ash-400 hover:text-ash-200 hover:bg-ash-700'}"
 			>
 				<i class="fas {tab.icon} {tab.iconClass} {active ? '' : 'opacity-75'} text-xs"></i>

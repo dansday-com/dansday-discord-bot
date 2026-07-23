@@ -241,43 +241,59 @@
 <svelte:head><title>{data.server.name || data.server.slug} Level History | {APP_NAME} Discord Bot</title></svelte:head>
 
 {#if data.historyTotal === 0}
-	<div class="m-members-empty">
+	<div class="m-members-empty px-4 py-12 text-center">
 		{#if data.tab === 'level'}No level XP earned yet. Chat or join voice to start earning.{:else if data.tab === 'items'}No item activity yet. Buy or use an
 			item to start.{:else if data.tab === 'assets'}No asset trades yet. Invest XP from the Assets tab to start.{:else}No activity yet.{/if}
 	</div>
 {:else}
-	<ul class="m-hist">
+	<ul class="m-hist m-0 flex flex-col gap-2 p-0">
 		{#each data.pagedHistory as h (h.id)}
 			{@const l = h.kind === 'level' ? levelLine(h) : h.kind === 'asset' ? assetLine(h) : h.kind === 'minigame' ? minigameLine(h) : line(h)}
-			<li class="m-hist-row m-hist-row--{l.tone}">
-				<span class="m-hist-icon"><i class="fas {l.icon}"></i></span>
-				<span class="m-hist-body">
-					<span class="m-hist-title">{l.title}</span>
+			<li class="m-hist-row m-hist-row--{l.tone} flex items-center gap-3 rounded-xl px-3 py-2">
+				<span class="m-hist-icon grid h-8 w-8 flex-none place-items-center rounded-lg text-base"><i class="fas {l.icon}"></i></span>
+				<span class="m-hist-body flex min-w-0 flex-auto flex-col gap-1">
+					<span class="m-hist-title text-lb-text overflow-hidden text-base font-semibold text-ellipsis whitespace-nowrap">{l.title}</span>
 					{#if (l as any).badges?.length}
-						<span class="m-hist-badges">
+						<span class="m-hist-badges mx-0 mt-1 mb-1 flex flex-wrap gap-1">
 							{#each (l as any).badges as b}
-								<span class="m-hist-badge"><i class="fas {b.icon}"></i>{b.text}</span>
+								<span class="m-hist-badge text-lb-text-muted inline-flex items-center gap-1 rounded-[999px] px-2 py-1 text-xs font-bold"
+									><i class="fas {b.icon}"></i>{b.text}</span
+								>
 							{/each}
 						</span>
 					{/if}
-					<span class="m-hist-time">{h.at ? ago(h.at) : ''}</span>
+					<span class="m-hist-time text-lb-text-muted text-xs">{h.at ? ago(h.at) : ''}</span>
 				</span>
-				{#if l.deltaLabel}<span class="m-hist-delta m-hist-delta--{l.tone}">{l.deltaLabel}</span>{/if}
+				{#if l.deltaLabel}<span class="m-hist-delta m-hist-delta--{l.tone} flex-none text-base font-extrabold whitespace-nowrap tabular-nums"
+						>{l.deltaLabel}</span
+					>{/if}
 			</li>
 		{/each}
 	</ul>
 	{#if data.totalPages > 1}
-		<div class="m-hist-pager">
+		<div class="m-hist-pager mt-4 flex items-center justify-center gap-4">
 			{#if data.historyPage > 1}
-				<a class="m-hist-page-btn" href="{base}?page={data.historyPage - 1}" data-sveltekit-preload-data="hover"><i class="fas fa-chevron-left"></i></a>
+				<a
+					class="m-hist-page-btn text-lb-text grid h-9 w-9 cursor-pointer place-items-center rounded-lg"
+					href="{base}?page={data.historyPage - 1}"
+					data-sveltekit-preload-data="hover"><i class="fas fa-chevron-left"></i></a
+				>
 			{:else}
-				<span class="m-hist-page-btn m-hist-page-btn--off"><i class="fas fa-chevron-left"></i></span>
+				<span class="m-hist-page-btn m-hist-page-btn--off text-lb-text grid h-9 w-9 cursor-pointer place-items-center rounded-lg"
+					><i class="fas fa-chevron-left"></i></span
+				>
 			{/if}
-			<span class="m-hist-page-info">{data.historyPage} / {data.totalPages}</span>
+			<span class="m-hist-page-info text-lb-text-muted text-base font-bold tabular-nums">{data.historyPage} / {data.totalPages}</span>
 			{#if data.historyPage < data.totalPages}
-				<a class="m-hist-page-btn" href="{base}?page={data.historyPage + 1}" data-sveltekit-preload-data="hover"><i class="fas fa-chevron-right"></i></a>
+				<a
+					class="m-hist-page-btn text-lb-text grid h-9 w-9 cursor-pointer place-items-center rounded-lg"
+					href="{base}?page={data.historyPage + 1}"
+					data-sveltekit-preload-data="hover"><i class="fas fa-chevron-right"></i></a
+				>
 			{:else}
-				<span class="m-hist-page-btn m-hist-page-btn--off"><i class="fas fa-chevron-right"></i></span>
+				<span class="m-hist-page-btn m-hist-page-btn--off text-lb-text grid h-9 w-9 cursor-pointer place-items-center rounded-lg"
+					><i class="fas fa-chevron-right"></i></span
+				>
 			{/if}
 		</div>
 	{/if}

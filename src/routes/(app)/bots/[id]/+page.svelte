@@ -210,23 +210,23 @@
 	<title>{data.bot.name || `Bot #${data.bot.id}`} | {APP_NAME} Discord Bot</title>
 </svelte:head>
 
-<div class="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6 lg:px-8 lg:py-8">
+<div class="mx-auto max-w-7xl px-3 py-4 lg:px-8 lg:py-8">
 	<a href={DASHBOARD_PATH} class="text-ash-400 hover:text-ash-100 mb-6 inline-flex items-center gap-2 text-base transition-colors">
 		<i class="fas fa-arrow-left text-violet-300"></i>Back to Dashboard
 	</a>
 
-	<div class="bg-ash-800 border-ash-700 mb-4 rounded-xl border p-4 sm:mb-6 sm:p-6">
-		<div class="flex flex-col gap-4 sm:flex-row sm:items-start">
+	<div class="bg-ash-800 border-ash-700 mb-4 rounded-xl border p-4 lg:mb-6 lg:p-6">
+		<div class="flex flex-col gap-4 lg:flex-row lg:items-start">
 			<div class="flex min-w-0 flex-1 items-center gap-4">
-				<div class="bg-ash-600 flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full sm:h-20 sm:w-20">
+				<div class="bg-ash-600 flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full lg:h-20 lg:w-20">
 					{#if data.bot.bot_icon}
 						<img src={data.bot.bot_icon} alt={data.bot.name} class="h-full w-full object-cover" />
 					{:else}
-						<i class="fas fa-robot text-2xl text-violet-300 sm:text-3xl"></i>
+						<i class="fas fa-robot text-2xl text-violet-300 lg:text-3xl"></i>
 					{/if}
 				</div>
 				<div class="min-w-0">
-					<h2 class="text-ash-100 truncate text-xl font-bold sm:text-2xl">
+					<h2 class="text-ash-100 truncate text-xl font-bold lg:text-2xl">
 						{data.bot.name || `Bot #${data.bot.id}`}
 					</h2>
 				</div>
@@ -237,40 +237,40 @@
 					{#if canStart}
 						<button
 							onclick={() => botAction('start')}
-							class="text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg bg-green-600 px-3 text-xs font-medium transition-all hover:scale-105 hover:bg-green-700 active:scale-95 sm:h-10 sm:px-4 sm:text-base"
+							class="text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg bg-green-600 px-3 text-xs font-medium transition-all hover:scale-105 hover:bg-green-700 active:scale-95 lg:h-10 lg:px-4 lg:text-base"
 						>
-							<i class="fas fa-play text-base text-green-200 sm:text-base"></i>
+							<i class="fas fa-play text-base text-green-200 lg:text-base"></i>
 							<span>Start</span>
 						</button>
 					{/if}
 					{#if canStop}
 						<button
 							onclick={() => botAction('stop')}
-							class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-all hover:scale-105 active:scale-95 sm:h-10 sm:px-4 sm:text-base"
+							class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-all hover:scale-105 active:scale-95 lg:h-10 lg:px-4 lg:text-base"
 						>
-							<i class="fas fa-stop text-base text-rose-200 sm:text-base"></i>
+							<i class="fas fa-stop text-base text-rose-200 lg:text-base"></i>
 							<span>Stop</span>
 						</button>
 						<button
 							onclick={() => botAction('restart')}
-							class="text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg bg-yellow-600 px-3 text-xs font-medium transition-all hover:scale-105 hover:bg-yellow-700 active:scale-95 sm:h-10 sm:px-4 sm:text-base"
+							class="text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg bg-yellow-600 px-3 text-xs font-medium transition-all hover:scale-105 hover:bg-yellow-700 active:scale-95 lg:h-10 lg:px-4 lg:text-base"
 						>
-							<i class="fas fa-redo text-base text-yellow-200 sm:text-base"></i>
+							<i class="fas fa-redo text-base text-yellow-200 lg:text-base"></i>
 							<span>Restart</span>
 						</button>
 					{/if}
 					<button
 						onclick={() => (showDeleteConfirm = true)}
-						class="text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg bg-red-700 px-3 text-xs font-medium transition-all hover:scale-105 hover:bg-red-800 active:scale-95 sm:h-10 sm:px-4 sm:text-base"
+						class="text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg bg-red-700 px-3 text-xs font-medium transition-all hover:scale-105 hover:bg-red-800 active:scale-95 lg:h-10 lg:px-4 lg:text-base"
 					>
-						<i class="fas fa-trash text-base text-red-300 sm:text-base"></i>
-						<span class="hidden sm:inline">Delete</span>
+						<i class="fas fa-trash text-base text-red-300 lg:text-base"></i>
+						<span class="hidden lg:inline">Delete</span>
 					</button>
 				</div>
 			{/if}
 		</div>
 
-		<div class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+		<div class="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
 			<div class="bg-ash-700 rounded-lg p-3">
 				<p class="text-ash-400 mb-1 text-xs">Status</p>
 				<div class="flex items-center gap-2">
@@ -302,7 +302,7 @@
 		</div>
 	</div>
 
-	<div class="bg-ash-800 border-ash-700 mb-4 rounded-xl border p-4 sm:mb-6 sm:p-6">
+	<div class="bg-ash-800 border-ash-700 mb-4 rounded-xl border p-4 lg:mb-6 lg:p-6">
 		<h3 class="text-ash-100 mb-1 text-lg font-semibold">
 			<i class="fas fa-circle-notch mr-2 text-violet-400"></i>Discord presence
 		</h3>
@@ -311,7 +311,7 @@
 			<strong class="text-ash-300">YouTube</strong> URLs only.
 		</p>
 
-		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+		<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
 			<div class="min-w-0">
 				<LabeledSelect
 					id="presence-discord-status"
@@ -337,7 +337,7 @@
 				/>
 			</div>
 			{#if presence.activity_type === 'custom'}
-				<div class="sm:col-span-2">
+				<div class="lg:col-span-2">
 					<label for="presence-activity-state" class="text-ash-400 mb-1 block text-xs">Custom status</label>
 					<input
 						id="presence-activity-state"
@@ -349,7 +349,7 @@
 					/>
 				</div>
 			{:else}
-				<div class="sm:col-span-2">
+				<div class="lg:col-span-2">
 					<label for="presence-activity-name" class="text-ash-400 mb-1 block text-xs">Activity name</label>
 					<input
 						id="presence-activity-name"
@@ -361,7 +361,7 @@
 					/>
 				</div>
 				{#if presence.activity_type === 'streaming'}
-					<div class="sm:col-span-2">
+					<div class="lg:col-span-2">
 						<label for="presence-activity-url" class="text-ash-400 mb-1 block text-xs">Stream URL</label>
 						<p class="text-ash-500 mb-1 text-xs">Must be a Twitch or YouTube watch URL. You can paste without https://.</p>
 						<input
@@ -375,7 +375,7 @@
 						/>
 					</div>
 				{/if}
-				<div class="sm:col-span-2">
+				<div class="lg:col-span-2">
 					<label for="presence-activity-state-noncustom" class="text-ash-400 mb-1 block text-xs">State</label>
 					<input
 						id="presence-activity-state-noncustom"
@@ -405,12 +405,12 @@
 		</div>
 	</div>
 
-	<div class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-6">
+	<div class="bg-ash-800 border-ash-700 rounded-xl border p-4 lg:p-6">
 		<div class="mb-4 flex items-center justify-between">
 			<h3 class="text-ash-100 text-lg font-semibold">
 				<i class="fas fa-server mr-2 text-violet-400"></i>Servers
 			</h3>
-			<span class="text-ash-400 text-xs sm:text-base">
+			<span class="text-ash-400 text-xs lg:text-base">
 				{data.servers.length} server{data.servers.length !== 1 ? 's' : ''}
 			</span>
 		</div>
@@ -421,7 +421,7 @@
 				<p class="text-ash-400 text-base">No servers yet</p>
 			</div>
 		{:else}
-			<div class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+			<div class="mb-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
 				{#each pagedServers as server (server.id)}
 					<a
 						href="/bots/{data.bot.id}/servers/{server.id}"
@@ -436,11 +436,11 @@
 								{/if}
 							</div>
 							<div class="min-w-0 flex-1">
-								<h4 class="text-ash-100 truncate text-base font-semibold sm:text-base" title={server.name}>{server.name || 'Unnamed Server'}</h4>
+								<h4 class="text-ash-100 truncate text-base font-semibold lg:text-base" title={server.name}>{server.name || 'Unnamed Server'}</h4>
 							</div>
 							<i class="fas fa-cog text-violet-300 transition-colors hover:text-violet-200"></i>
 						</div>
-						<div class="space-y-2 text-xs sm:text-base">
+						<div class="space-y-2 text-xs lg:text-base">
 							<div class="flex items-center justify-between">
 								<span class="text-ash-400 flex items-center gap-1.5"><i class="fas fa-users w-4 text-blue-400"></i>Members</span>
 								<span class="text-ash-100 font-medium">{(server.total_members ?? 0).toLocaleString()}</span>

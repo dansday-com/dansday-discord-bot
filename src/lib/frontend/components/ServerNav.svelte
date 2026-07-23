@@ -43,12 +43,12 @@
 	);
 </script>
 
-<header class="m-header">
-	<div class="m-server-icon">
+<header class="m-header mb-6 flex items-center gap-4">
+	<div class="m-server-icon flex h-13 w-13 shrink-0 items-center justify-center overflow-hidden rounded-2xl">
 		{#if server.server_icon}
 			<img src={server.server_icon} alt={server.name || ''} />
 		{:else}
-			<span class="m-icon-placeholder">🏆</span>
+			<span class="m-icon-placeholder text-xl">🏆</span>
 		{/if}
 	</div>
 	<div class="m-header-text">
@@ -57,9 +57,9 @@
 </header>
 
 {#if tabs.length > 1}
-	<div class="m-section-tabs">
+	<div class="m-section-tabs mb-6 gap-2 rounded-[14px] p-1">
 		{#each tabs as tab}
-			<a href={tab.href} class="m-section-tab" class:m-section-tab--active={tab.active} data-sveltekit-preload-data="hover">
+			<a href={tab.href} class="m-section-tab gap-2 px-2 py-2 text-base" class:m-section-tab--active={tab.active} data-sveltekit-preload-data="hover">
 				<i class="fas {tab.icon}"></i>
 				{tab.label}
 			</a>

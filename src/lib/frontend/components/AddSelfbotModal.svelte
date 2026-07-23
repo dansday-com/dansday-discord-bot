@@ -57,14 +57,14 @@
 
 {#if open}
 	<div
-		class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-3 sm:p-4"
+		class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-3 lg:p-4"
 		role="dialog"
 		aria-modal="true"
 		aria-label="Add Selfbot"
 	>
-		<div class="bg-ash-800 border-ash-700 my-4 w-full max-w-lg rounded-2xl border p-4 sm:p-6">
-			<div class="mb-4 flex items-center justify-between sm:mb-6">
-				<h3 class="text-ash-100 flex items-center gap-2 text-lg font-bold sm:text-xl">
+		<div class="bg-ash-800 border-ash-700 my-4 w-full max-w-lg rounded-2xl border p-4 lg:p-6">
+			<div class="mb-4 flex items-center justify-between lg:mb-6">
+				<h3 class="text-ash-100 flex items-center gap-2 text-lg font-bold lg:text-xl">
 					<i class="fas fa-plus-circle text-violet-400"></i>Add Selfbot
 				</h3>
 				<button onclick={close} aria-label="Close modal" class="text-ash-400 hover:text-ash-100 p-1 transition-colors">
@@ -77,10 +77,10 @@
 					e.preventDefault();
 					handleSubmit();
 				}}
-				class="space-y-4 sm:space-y-5"
+				class="space-y-4 lg:space-y-5"
 			>
 				<div>
-					<label for="selfbotToken" class="text-ash-300 mb-2 block text-xs font-medium sm:text-base">
+					<label for="selfbotToken" class="text-ash-300 mb-2 block text-xs font-medium lg:text-base">
 						<i class="fas fa-key mr-2 text-amber-300"></i>User Token <span class="text-ash-200">*</span>
 					</label>
 					<div class="relative">
@@ -89,7 +89,7 @@
 							type={showToken ? 'text' : 'password'}
 							bind:value={token}
 							placeholder="Enter user token"
-							class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 pr-10 text-base focus:ring-2 focus:outline-none sm:px-4 sm:py-3 sm:text-base"
+							class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 pr-10 text-base focus:ring-2 focus:outline-none lg:px-4 lg:py-3 lg:text-base"
 						/>
 						<button
 							type="button"
@@ -97,30 +97,30 @@
 							onclick={() => (showToken = !showToken)}
 							class="text-ash-400 hover:text-ash-300 absolute top-1/2 right-3 -translate-y-1/2"
 						>
-							<i class="fas {showToken ? 'fa-eye-slash' : 'fa-eye'} text-base sm:text-base"></i>
+							<i class="fas {showToken ? 'fa-eye-slash' : 'fa-eye'} text-base lg:text-base"></i>
 						</button>
 					</div>
 				</div>
 
-				<div class="bg-ash-900 border-ash-600 rounded-lg border p-3 sm:p-4">
-					<div class="flex items-start gap-2 sm:gap-3">
+				<div class="bg-ash-900 border-ash-600 rounded-lg border p-3 lg:p-4">
+					<div class="flex items-start gap-2 lg:gap-3">
 						<i class="fas fa-info-circle mt-0.5 shrink-0 text-base text-sky-300"></i>
-						<p class="text-ash-200 text-xs sm:text-base">Name will be automatically synced from Discord when the selfbot is running.</p>
+						<p class="text-ash-200 text-xs lg:text-base">Name will be automatically synced from Discord when the selfbot is running.</p>
 					</div>
 				</div>
 
-				<div class="flex gap-2 pt-2 sm:gap-3">
+				<div class="flex gap-2 pt-2 lg:gap-3">
 					<button
 						type="button"
 						onclick={close}
-						class="bg-ash-700 hover:bg-ash-600 text-ash-100 flex-1 rounded-lg py-2.5 text-base font-medium transition-colors sm:py-3 sm:text-base"
+						class="bg-ash-700 hover:bg-ash-600 text-ash-100 flex-1 rounded-lg py-2.5 text-base font-medium transition-colors lg:py-3 lg:text-base"
 					>
 						Cancel
 					</button>
 					<button
 						type="submit"
 						disabled={loading}
-						class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-base font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:transform-none disabled:cursor-not-allowed disabled:opacity-50 sm:py-3 sm:text-base"
+						class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-base font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:transform-none disabled:cursor-not-allowed disabled:opacity-50 lg:py-3 lg:text-base"
 					>
 						{#if loading}<i class="fas fa-spinner fa-spin text-violet-200"></i>{/if}
 						{loading ? 'Adding...' : 'Add Selfbot'}

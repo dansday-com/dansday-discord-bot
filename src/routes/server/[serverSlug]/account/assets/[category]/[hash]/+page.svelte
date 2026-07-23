@@ -278,31 +278,32 @@
 	{@const change = live?.change24h ?? a.change24h ?? 0}
 	<button
 		type="button"
-		class="m-asset-row"
+		class="m-asset-row relative grid w-full cursor-pointer items-center gap-3 overflow-hidden rounded-2xl pt-3 pr-3 pr-4 pb-3 pl-4 text-left"
 		data-dir={dir(change)}
 		disabled={ctx.readOnly}
 		onclick={() => !ctx.readOnly && openBuy(a)}
 		aria-label="Buy {a.symbol}"
 	>
-		<div class="m-asset-id">
-			{#if a.image}<img class="m-asset-logo" src={a.image} alt="" loading="lazy" />{:else}<span class="m-asset-logo m-asset-logo--ph"
+		<div class="m-asset-id flex min-w-0 items-center gap-3">
+			{#if a.image}<img class="m-asset-logo h-9 w-9 shrink-0 rounded-full object-cover" src={a.image} alt="" loading="lazy" />{:else}<span
+					class="m-asset-logo m-asset-logo--ph grid h-9 w-9 shrink-0 place-items-center rounded-full object-cover text-base font-extrabold"
 					>{(a.symbol || '?').slice(0, 1)}</span
 				>{/if}
-			<div class="m-asset-name">
-				<span class="m-asset-sym">{a.symbol}</span>
-				<span class="m-asset-full">{a.name}</span>
+			<div class="m-asset-name flex min-w-0 flex-col gap-1">
+				<span class="m-asset-sym text-lb-text text-base font-extrabold">{a.symbol}</span>
+				<span class="m-asset-full text-lb-text-muted max-w-[152px] overflow-hidden text-xs font-medium text-ellipsis whitespace-nowrap">{a.name}</span>
 			</div>
 		</div>
 
 		{#if a.sparkline?.length > 1}
-			<svg class="m-asset-spark" viewBox="0 0 72 24" preserveAspectRatio="none" aria-hidden="true">
+			<svg class="m-asset-spark hidden h-6 w-14 shrink-0" viewBox="0 0 72 24" preserveAspectRatio="none" aria-hidden="true">
 				<path d={sparkPath(a.sparkline)} fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
 			</svg>
 		{/if}
 
-		<div class="m-asset-fig">
-			<span class="m-asset-price">{fmtPrice(price)}</span>
-			<span class="m-asset-chg" data-dir={dir(change)}>
+		<div class="m-asset-fig relative z-2 flex shrink-0 flex-col items-end gap-1">
+			<span class="m-asset-price text-lb-text text-base font-extrabold whitespace-nowrap tabular-nums">{fmtPrice(price)}</span>
+			<span class="m-asset-chg inline-flex items-center gap-1 text-xs font-bold whitespace-nowrap tabular-nums" data-dir={dir(change)}>
 				<i class="fas fa-caret-{change >= 0 ? 'up' : 'down'}"></i>{pctText(change)}
 			</span>
 		</div>
@@ -311,30 +312,33 @@
 
 {#if data.category === 'mine'}
 	{#if livePositions.length === 0}
-		<div class="m-members-empty">You don't hold any assets yet. Open the Top or Search tab to invest XP.</div>
+		<div class="m-members-empty px-4 py-12 text-center">You don't hold any assets yet. Open the Top or Search tab to invest XP.</div>
 	{:else}
-		<div class="m-asset-list">
+		<div class="m-asset-list flex flex-col gap-2">
 			{#each livePositions as p (p.id)}
 				<button
 					type="button"
-					class="m-asset-row"
+					class="m-asset-row relative grid w-full cursor-pointer items-center gap-3 overflow-hidden rounded-2xl pt-3 pr-3 pr-4 pb-3 pl-4 text-left"
 					data-dir={dir(p.pnl)}
 					disabled={ctx.readOnly}
 					onclick={() => !ctx.readOnly && openSell(p)}
 					aria-label="Sell {p.symbol}"
 				>
-					<div class="m-asset-id">
-						{#if p.asset_image}<img class="m-asset-logo" src={p.asset_image} alt="" loading="lazy" />{:else}<span class="m-asset-logo m-asset-logo--ph"
+					<div class="m-asset-id flex min-w-0 items-center gap-3">
+						{#if p.asset_image}<img class="m-asset-logo h-9 w-9 shrink-0 rounded-full object-cover" src={p.asset_image} alt="" loading="lazy" />{:else}<span
+								class="m-asset-logo m-asset-logo--ph grid h-9 w-9 shrink-0 place-items-center rounded-full object-cover text-base font-extrabold"
 								>{(p.symbol || '?').slice(0, 1)}</span
 							>{/if}
-						<div class="m-asset-name">
-							<span class="m-asset-sym">{p.symbol}</span>
-							<span class="m-asset-full">{fmtUnits(p.buy_price > 0 ? p.xp_invested / p.buy_price : 0)} {p.symbol}</span>
+						<div class="m-asset-name flex min-w-0 flex-col gap-1">
+							<span class="m-asset-sym text-lb-text text-base font-extrabold">{p.symbol}</span>
+							<span class="m-asset-full text-lb-text-muted max-w-[152px] overflow-hidden text-xs font-medium text-ellipsis whitespace-nowrap"
+								>{fmtUnits(p.buy_price > 0 ? p.xp_invested / p.buy_price : 0)} {p.symbol}</span
+							>
 						</div>
 					</div>
-					<div class="m-asset-fig">
-						<span class="m-asset-price">{fmt(p.value)} XP</span>
-						<span class="m-asset-chg" data-dir={dir(p.pnl)}>
+					<div class="m-asset-fig relative z-2 flex shrink-0 flex-col items-end gap-1">
+						<span class="m-asset-price text-lb-text text-base font-extrabold whitespace-nowrap tabular-nums">{fmt(p.value)} XP</span>
+						<span class="m-asset-chg inline-flex items-center gap-1 text-xs font-bold whitespace-nowrap tabular-nums" data-dir={dir(p.pnl)}>
 							<i class="fas fa-caret-{p.pnl >= 0 ? 'up' : 'down'}"></i>{p.pnl >= 0 ? '+' : ''}{fmt(p.pnl)} ({pctText(p.pnl_percent)})
 						</span>
 					</div>
@@ -343,24 +347,26 @@
 		</div>
 	{/if}
 {:else if data.category === 'search'}
-	<div class="m-asset-search">
+	<div class="m-asset-search relative mb-3 flex h-12 items-center gap-2 rounded-xl px-3 py-0">
 		<i class="fas fa-magnifying-glass"></i>
 		<input type="text" placeholder="Search any coin (BTC, ETH, SOL…)" bind:value={searchQuery} oninput={onSearchInput} />
-		{#if searching}<i class="fas fa-spinner fa-spin m-asset-search-spin"></i>{/if}
+		{#if searching}<i class="fas fa-spinner fa-spin m-asset-search-spin text-yacht-teal"></i>{/if}
 	</div>
 	{#if searchResults.length === 0}
-		<div class="m-members-empty">{searchQuery.trim() ? (searching ? 'Searching…' : 'No coins found.') : 'Type to search thousands of coins.'}</div>
+		<div class="m-members-empty px-4 py-12 text-center">
+			{searchQuery.trim() ? (searching ? 'Searching…' : 'No coins found.') : 'Type to search thousands of coins.'}
+		</div>
 	{:else}
-		<div class="m-asset-list">
+		<div class="m-asset-list flex flex-col gap-2">
 			{#each searchResults as a (a.asset_id)}
 				{@render assetRow(a)}
 			{/each}
 		</div>
 	{/if}
 {:else if listForTab.length === 0}
-	<div class="m-members-empty">Market data is loading…</div>
+	<div class="m-members-empty px-4 py-12 text-center">Market data is loading…</div>
 {:else}
-	<div class="m-asset-list">
+	<div class="m-asset-list flex flex-col gap-2">
 		{#each listForTab as a (a.asset_id)}
 			{@render assetRow(a)}
 		{/each}
@@ -371,35 +377,45 @@
 	{@const live = priceMap.get(`${buyAsset.asset_type}:${buyAsset.asset_id}`)}
 	{@const price = live?.price ?? buyAsset.price ?? 0}
 	{@const change = live?.change24h ?? buyAsset.change24h ?? 0}
-	<div class="m-gamble-overlay" role="presentation" onclick={() => (!buyBusy ? (buyAsset = null) : null)}>
-		<div class="m-gamble" role="dialog" aria-modal="true" aria-label="Buy asset" onclick={(e) => e.stopPropagation()}>
-			<div class="m-gamble-head">
-				<span class="m-gamble-title">
-					<span class="m-gamble-ico m-gamble-ico--asset">
+	<div class="m-gamble-overlay z-60 flex items-center justify-center p-4" role="presentation" onclick={() => (!buyBusy ? (buyAsset = null) : null)}>
+		<div class="m-gamble p-5" role="dialog" aria-modal="true" aria-label="Buy asset" onclick={(e) => e.stopPropagation()}>
+			<div class="m-gamble-head mb-4 flex items-center justify-between">
+				<span class="m-gamble-title text-lb-text inline-flex items-center gap-2 text-base font-extrabold">
+					<span class="m-gamble-ico m-gamble-ico--asset text-lb-text text-warning inline-flex items-center text-lg">
 						{#if buyAsset.image}<img src={buyAsset.image} alt="" />{:else}{(buyAsset.symbol || '?').slice(0, 1)}{/if}
 					</span>{buyAsset.symbol}
 				</span>
-				{#if !buyBusy}<button class="m-gamble-x" aria-label="Close" onclick={() => (buyAsset = null)}><i class="fas fa-times"></i></button>{/if}
+				{#if !buyBusy}<button class="m-gamble-x text-lb-text-muted cursor-pointer px-2 py-0 text-lg" aria-label="Close" onclick={() => (buyAsset = null)}
+						><i class="fas fa-times"></i></button
+					>{/if}
 			</div>
 
-			<div class="m-asset-modal-price">
-				<span class="m-asset-modal-p">{fmtPrice(price)}</span>
-				<span class="m-asset-chg" data-dir={dir(change)}><i class="fas fa-caret-{change >= 0 ? 'up' : 'down'}"></i>{pctText(change)} · 24h</span>
+			<div class="m-asset-modal-price mb-3 flex items-baseline justify-between gap-2">
+				<span class="m-asset-modal-p text-lb-text text-xl font-extrabold tabular-nums">{fmtPrice(price)}</span>
+				<span class="m-asset-chg inline-flex items-center gap-1 text-xs font-bold whitespace-nowrap tabular-nums" data-dir={dir(change)}
+					><i class="fas fa-caret-{change >= 0 ? 'up' : 'down'}"></i>{pctText(change)} · 24h</span
+				>
 			</div>
 
-			<div class="m-gamble-picker">
+			<div class="m-gamble-picker mb-3 flex flex-wrap gap-2">
 				{#each BUY_PCTS as p}
-					<button class="m-gamble-pct" class:m-gamble-pct--active={buyPercent === p} disabled={buyBusy} onclick={() => (buyPercent = p)}
-						>{p === 100 ? 'Max' : `${p}%`}</button
+					<button
+						class="m-gamble-pct text-lb-text cursor-pointer rounded-[10px] px-0 py-2 text-base font-bold"
+						class:m-gamble-pct--active={buyPercent === p}
+						disabled={buyBusy}
+						onclick={() => (buyPercent = p)}>{p === 100 ? 'Max' : `${p}%`}</button
 					>
 				{/each}
-				<button class="m-gamble-pct" class:m-gamble-pct--active={buyPercent === 'custom'} disabled={buyBusy} onclick={() => (buyPercent = 'custom')}
-					>Custom</button
+				<button
+					class="m-gamble-pct text-lb-text cursor-pointer rounded-[10px] px-0 py-2 text-base font-bold"
+					class:m-gamble-pct--active={buyPercent === 'custom'}
+					disabled={buyBusy}
+					onclick={() => (buyPercent = 'custom')}>Custom</button
 				>
 			</div>
 			{#if buyPercent === 'custom'}
 				<input
-					class="m-gamble-custom"
+					class="m-gamble-custom text-lb-text mb-3 box-border w-full rounded-[10px] px-3 py-3 text-center text-base font-bold tabular-nums"
 					type="text"
 					inputmode="numeric"
 					placeholder="XP to invest (min {fmt(MIN_BUY)})"
@@ -409,12 +425,16 @@
 				/>
 			{/if}
 
-			<div class="m-asset-modal-meta">
+			<div class="m-asset-modal-meta text-lb-text-muted mb-3 flex justify-between gap-2 text-base tabular-nums">
 				<span>Balance: {fmt(ctx.liveXp)} XP</span>
 				<span>≈ {buyAmount && price > 0 ? fmtUnits(buyAmount / price) : '0'} {buyAsset.symbol}</span>
 			</div>
 
-			<button class="m-gamble-play m-gamble-play--charged" disabled={buyBusy || buyAmount < MIN_BUY || buyAmount > ctx.liveXp} onclick={confirmBuy}>
+			<button
+				class="m-gamble-play m-gamble-play--charged relative inline-flex w-full cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-[13px] p-4 text-base font-black text-white"
+				disabled={buyBusy || buyAmount < MIN_BUY || buyAmount > ctx.liveXp}
+				onclick={confirmBuy}
+			>
 				{#if buyBusy}<i class="fas fa-circle-notch fa-spin"></i>Buying…{:else}<i class="fas fa-arrow-trend-up"></i>Invest {buyAmount
 						? `${fmt(buyAmount)} XP`
 						: ''}{/if}
@@ -430,37 +450,45 @@
 	{@const payout = Math.min(Math.max(0, Math.floor(sellAmount || 0)), value)}
 	{@const costBasis = value > 0 ? Math.round(sellPos.xp_invested * (payout / value)) : 0}
 	{@const realized = payout - costBasis}
-	<div class="m-gamble-overlay" role="presentation" onclick={() => (!sellBusy ? (sellPos = null) : null)}>
-		<div class="m-gamble" role="dialog" aria-modal="true" aria-label="Sell asset" onclick={(e) => e.stopPropagation()}>
-			<div class="m-gamble-head">
-				<span class="m-gamble-title">
-					<span class="m-gamble-ico m-gamble-ico--asset">
+	<div class="m-gamble-overlay z-60 flex items-center justify-center p-4" role="presentation" onclick={() => (!sellBusy ? (sellPos = null) : null)}>
+		<div class="m-gamble p-5" role="dialog" aria-modal="true" aria-label="Sell asset" onclick={(e) => e.stopPropagation()}>
+			<div class="m-gamble-head mb-4 flex items-center justify-between">
+				<span class="m-gamble-title text-lb-text inline-flex items-center gap-2 text-base font-extrabold">
+					<span class="m-gamble-ico m-gamble-ico--asset text-lb-text text-warning inline-flex items-center text-lg">
 						{#if sellPos.asset_image}<img src={sellPos.asset_image} alt="" />{:else}{(sellPos.symbol || '?').slice(0, 1)}{/if}
 					</span>{sellPos.symbol}
 				</span>
-				{#if !sellBusy}<button class="m-gamble-x" aria-label="Close" onclick={() => (sellPos = null)}><i class="fas fa-times"></i></button>{/if}
+				{#if !sellBusy}<button class="m-gamble-x text-lb-text-muted cursor-pointer px-2 py-0 text-lg" aria-label="Close" onclick={() => (sellPos = null)}
+						><i class="fas fa-times"></i></button
+					>{/if}
 			</div>
 
-			<div class="m-asset-modal-price">
-				<span class="m-asset-modal-p">{fmt(value)} XP</span>
-				<span class="m-asset-chg" data-dir={dir(sellPos.pnl)}
+			<div class="m-asset-modal-price mb-3 flex items-baseline justify-between gap-2">
+				<span class="m-asset-modal-p text-lb-text text-xl font-extrabold tabular-nums">{fmt(value)} XP</span>
+				<span class="m-asset-chg inline-flex items-center gap-1 text-xs font-bold whitespace-nowrap tabular-nums" data-dir={dir(sellPos.pnl)}
 					><i class="fas fa-caret-{sellPos.pnl >= 0 ? 'up' : 'down'}"></i>{sellPos.pnl >= 0 ? '+' : ''}{fmt(sellPos.pnl)} XP</span
 				>
 			</div>
 
-			<div class="m-gamble-picker">
+			<div class="m-gamble-picker mb-3 flex flex-wrap gap-2">
 				{#each SELL_PCTS as p}
-					<button class="m-gamble-pct" class:m-gamble-pct--active={sellPercent === p} disabled={sellBusy} onclick={() => (sellPercent = p)}
-						>{p === 100 ? 'All' : `${p}%`}</button
+					<button
+						class="m-gamble-pct text-lb-text cursor-pointer rounded-[10px] px-0 py-2 text-base font-bold"
+						class:m-gamble-pct--active={sellPercent === p}
+						disabled={sellBusy}
+						onclick={() => (sellPercent = p)}>{p === 100 ? 'All' : `${p}%`}</button
 					>
 				{/each}
-				<button class="m-gamble-pct" class:m-gamble-pct--active={sellPercent === 'custom'} disabled={sellBusy} onclick={() => (sellPercent = 'custom')}
-					>Custom</button
+				<button
+					class="m-gamble-pct text-lb-text cursor-pointer rounded-[10px] px-0 py-2 text-base font-bold"
+					class:m-gamble-pct--active={sellPercent === 'custom'}
+					disabled={sellBusy}
+					onclick={() => (sellPercent = 'custom')}>Custom</button
 				>
 			</div>
 			{#if sellPercent === 'custom'}
 				<input
-					class="m-gamble-custom"
+					class="m-gamble-custom text-lb-text mb-3 box-border w-full rounded-[10px] px-3 py-3 text-center text-base font-bold tabular-nums"
 					type="text"
 					inputmode="numeric"
 					placeholder="XP to cash out (max {fmt(value)})"
@@ -470,12 +498,16 @@
 				/>
 			{/if}
 
-			<div class="m-asset-modal-meta">
+			<div class="m-asset-modal-meta text-lb-text-muted mb-3 flex justify-between gap-2 text-base tabular-nums">
 				<span>Cost basis: {fmt(costBasis)} XP</span>
 				<span data-dir={dir(realized)}>{realized >= 0 ? 'Profit' : 'Loss'}: {realized >= 0 ? '+' : ''}{fmt(realized)} XP</span>
 			</div>
 
-			<button class="m-gamble-play m-gamble-play--charged" disabled={sellBusy || payout <= 0} onclick={confirmSell}>
+			<button
+				class="m-gamble-play m-gamble-play--charged relative inline-flex w-full cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-[13px] p-4 text-base font-black text-white"
+				disabled={sellBusy || payout <= 0}
+				onclick={confirmSell}
+			>
 				{#if sellBusy}<i class="fas fa-circle-notch fa-spin"></i>Selling…{:else}<i class="fas fa-hand-holding-dollar"></i>Sell {payout >= value ? 'all' : ''} · {fmt(
 						payout
 					)} XP{/if}
@@ -485,16 +517,18 @@
 {/if}
 
 {#if outcome}
-	<div class="m-out-overlay" role="presentation" onclick={dismissOutcome}>
-		<div class="m-out m-out--{outcome.tone}" role="dialog" aria-modal="true" aria-label={outcome.title} onclick={(e) => e.stopPropagation()}>
-			<div class="m-out-icon"><i class="fas {outcome.icon}"></i></div>
-			<div class="m-out-title">{outcome.title}</div>
+	<div class="m-out-overlay z-99999 flex items-center justify-center overflow-hidden p-4" role="presentation" onclick={dismissOutcome}>
+		<div class="m-out m-out--{outcome.tone} p-4" role="dialog" aria-modal="true" aria-label={outcome.title} onclick={(e) => e.stopPropagation()}>
+			<div class="m-out-icon text-yacht-teal mx-auto mt-0 mb-3 grid h-[76px] w-[76px] place-items-center rounded-full text-3xl">
+				<i class="fas {outcome.icon}"></i>
+			</div>
+			<div class="m-out-title text-lb-text text-xl font-extrabold">{outcome.title}</div>
 			{#if outcome.deltaXp != null && outcome.deltaXp !== 0}
-				<div class="m-out-delta {outcome.deltaXp >= 0 ? 'm-out-delta--up' : 'm-out-delta--down'}">
+				<div class="m-out-delta {outcome.deltaXp >= 0 ? 'm-out-delta--up' : 'm-out-delta--down'} mt-2 text-xl font-extrabold tabular-nums">
 					{outcome.deltaXp >= 0 ? '+' : '−'}{fmt(Math.abs(outcome.deltaXp))} XP
 				</div>
 			{/if}
-			<p class="m-out-line">{outcome.line}</p>
+			<p class="m-out-line text-lb-text-muted mx-0 mt-2 mb-0 text-base">{outcome.line}</p>
 		</div>
 	</div>
 {/if}

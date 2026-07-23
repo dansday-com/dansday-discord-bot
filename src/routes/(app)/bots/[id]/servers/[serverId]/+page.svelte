@@ -137,9 +137,9 @@
 	<title>{o.name} — Overview | {APP_NAME} Discord Bot</title>
 </svelte:head>
 
-<div class="space-y-4 sm:space-y-6">
-	<div class="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2 xl:grid-cols-3">
-		<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-5 shadow-lg transition-all sm:p-6">
+<div class="space-y-4 lg:space-y-6">
+	<div class="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-6">
+		<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-5 shadow-lg transition-all lg:p-6">
 			<div class="mb-4 flex items-center gap-3">
 				<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/15">
 					<i class="fas fa-users text-lg text-blue-400"></i>
@@ -158,7 +158,7 @@
 			</div>
 		</div>
 
-		<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-5 shadow-lg transition-all sm:p-6">
+		<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-5 shadow-lg transition-all lg:p-6">
 			<div class="mb-4 flex items-center gap-3">
 				<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-500/15">
 					<i class="fas fa-hashtag text-lg text-violet-400"></i>
@@ -177,7 +177,7 @@
 			</div>
 		</div>
 
-		<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-5 shadow-lg transition-all sm:p-6">
+		<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-5 shadow-lg transition-all lg:p-6">
 			<div class="mb-4 flex items-center gap-3">
 				<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/15">
 					<i class="fas fa-trophy text-lg text-amber-400"></i>
@@ -196,7 +196,7 @@
 			</div>
 		</div>
 
-		<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-5 shadow-lg transition-all sm:p-6">
+		<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-5 shadow-lg transition-all lg:p-6">
 			<div class="mb-4 flex items-center gap-3">
 				<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-green-500/20">
 					<i class="fas fa-user-tag text-lg text-green-500"></i>
@@ -215,7 +215,7 @@
 			</div>
 		</div>
 
-		<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-5 shadow-lg transition-all sm:p-6">
+		<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-5 shadow-lg transition-all lg:p-6">
 			<div class="mb-4 flex items-center gap-3">
 				<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-yellow-500/20">
 					<i class="fas fa-microphone-alt text-lg text-yellow-500"></i>
@@ -234,7 +234,7 @@
 			</div>
 		</div>
 
-		<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-5 shadow-lg transition-all sm:p-6">
+		<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-5 shadow-lg transition-all lg:p-6">
 			<div class="mb-4 flex items-center gap-3">
 				<div class="flex h-10 w-10 items-center justify-center rounded-lg bg-cyan-500/15">
 					<i class="fas fa-database text-lg text-cyan-400"></i>
@@ -247,14 +247,14 @@
 						<span class="text-ash-300 flex items-center gap-2 text-base">
 							<i class="fas {row.icon} text-xs text-cyan-400/90"></i>{row.label}
 						</span>
-						<LocalTime value={row.at} includeSeconds class="text-ash-100 truncate text-right text-xs font-bold sm:text-base" />
+						<LocalTime value={row.at} includeSeconds class="text-ash-100 truncate text-right text-xs font-bold lg:text-base" />
 					</div>
 				{/each}
 			</div>
 		</div>
 
 		{#each featureCards as card}
-			<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-5 shadow-lg transition-all sm:p-6">
+			<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-5 shadow-lg transition-all lg:p-6">
 				<div class="mb-4 flex items-center gap-3">
 					<div class="flex h-10 w-10 items-center justify-center rounded-lg {accentClasses[card.accent].bg}">
 						<i class="fas {card.icon} text-lg {accentClasses[card.accent].icon}"></i>
@@ -275,8 +275,8 @@
 		{/each}
 	</div>
 
-	<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-4 shadow-lg transition-all sm:p-6">
-		<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold sm:text-base">
+	<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-4 shadow-lg transition-all lg:p-6">
+		<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold lg:text-base">
 			<i class="fas fa-toggle-on text-emerald-400"></i>Enabled features
 		</h3>
 		<p class="text-ash-300 mt-2 text-base">
@@ -287,11 +287,11 @@
 		{#if enabledFeatures.length > 0}
 			<div class="mt-3 flex flex-wrap gap-2">
 				{#each enabledFeatures as cfg}
-					<span class="bg-ash-800 border-ash-600 text-ash-200 flex items-center gap-2 rounded-lg border px-2.5 py-1 text-xs sm:text-base">
+					<span class="bg-ash-800 border-ash-600 text-ash-200 flex items-center gap-2 rounded-lg border px-2.5 py-1 text-xs lg:text-base">
 						<i class="fas fa-check-circle text-emerald-400/90"></i>
 						<span class="font-medium">{cfg.label}</span>
 						{#if cfg.updated_at}
-							<span class="text-ash-500 text-xs sm:text-xs">
+							<span class="text-ash-500 text-xs lg:text-xs">
 								Updated <LocalTime value={cfg.updated_at} includeSeconds class="inline" />
 							</span>
 						{/if}

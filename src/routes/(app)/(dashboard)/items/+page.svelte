@@ -350,7 +350,7 @@
 </svelte:head>
 
 <div class="space-y-5">
-	<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+	<div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
 		<div class="min-w-0">
 			<h2 class="text-ash-100 flex items-center gap-2 text-lg font-semibold"><i class="fas fa-store text-teal-400"></i>Items</h2>
 			<p class="text-ash-400 text-xs">Global catalog. Items appear in every server with the items module enabled.</p>
@@ -459,7 +459,7 @@
 						<i class="fas {group.icon}" style="color: var(--effect-{group.key}, var(--effect-default))"></i>{group.label}
 						<span class="bg-ash-700 text-ash-400 rounded-full px-2 py-0.5 text-xs font-semibold">{group.items.length}</span>
 					</h2>
-					<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+					<div class="grid gap-3 lg:grid-cols-3">
 						{#each group.items as item (item.id)}
 							{@render adminCard(item)}
 						{/each}
@@ -471,7 +471,7 @@
 </div>
 
 {#if editing}
-	<div class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-3 sm:p-4" onclick={() => (editing = null)} role="presentation">
+	<div class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-3 lg:p-4" onclick={() => (editing = null)} role="presentation">
 		<div
 			class="bg-ash-800 border-ash-700 my-4 flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl border shadow-2xl"
 			onclick={(e) => e.stopPropagation()}
@@ -479,8 +479,8 @@
 			aria-modal="true"
 			aria-label={form.id ? 'Edit item' : 'Add item'}
 		>
-			<div class="border-ash-700 flex items-center justify-between border-b px-4 py-4 sm:px-6">
-				<h3 class="text-ash-100 flex items-center gap-2 text-lg font-bold sm:text-xl">
+			<div class="border-ash-700 flex items-center justify-between border-b px-4 py-4 lg:px-6">
+				<h3 class="text-ash-100 flex items-center gap-2 text-lg font-bold lg:text-xl">
 					<i class="fas fa-store text-teal-400"></i>{form.id ? 'Edit Item' : 'Add Item'}
 				</h3>
 				<button type="button" onclick={() => (editing = null)} aria-label="Close" class="text-ash-400 hover:text-ash-100 p-1 transition-colors">
@@ -488,7 +488,7 @@
 				</button>
 			</div>
 
-			<div class="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-5 sm:px-6">
+			<div class="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-5 lg:px-6">
 				<div class="space-y-4">
 					<div>
 						<label for="item-name" class="text-ash-300 mb-1.5 block text-xs font-medium">Name</label>
@@ -530,7 +530,7 @@
 				<div class="border-ash-700 bg-ash-900/40 space-y-3 rounded-xl border p-4">
 					<p class="text-ash-400 text-xs font-semibold tracking-wide uppercase">Effect settings</p>
 					{#if form.effect_type === 'steal' || form.effect_type === 'bomb'}
-						<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+						<div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
 							<label class="text-ash-300 text-xs"
 								>Min %<input
 									type="number"
@@ -564,7 +564,7 @@
 							{form.effect_type === 'steal' ? 'Steals a random % of XP to the buyer.' : 'Destroys a random % of XP (vanishes).'}
 						</p>
 					{:else if form.effect_type === 'boost'}
-						<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+						<div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
 							<label class="text-ash-300 text-xs"
 								>Multiplier<input
 									type="number"
@@ -580,7 +580,7 @@
 									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-base"
 								/></label
 							>
-							<label class="text-ash-300 text-xs sm:col-span-2"
+							<label class="text-ash-300 text-xs lg:col-span-2"
 								>Scope
 								<select bind:value={form.cfg.scope} class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-base">
 									<option value="all">All XP</option>
@@ -603,7 +603,7 @@
 								messages, invisible to spies, and off the XP leaderboard while active.{:else}Blocks incoming attacks while active.{/if}
 						</p>
 					{:else if form.effect_type === 'insurance'}
-						<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+						<div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
 							<label class="text-ash-300 text-xs"
 								>Refund %<input
 									type="number"
@@ -620,7 +620,7 @@
 									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-base"
 								/></label
 							>
-							<label class="text-ash-300 text-xs sm:col-span-2"
+							<label class="text-ash-300 text-xs lg:col-span-2"
 								>Cooldown (min)<input
 									type="number"
 									bind:value={form.cfg.cooldown_minutes}
@@ -630,7 +630,7 @@
 						</div>
 						<p class="text-ash-500 text-xs">Refunds that % of a loss once. Cooldown in minutes (1440 = 1 day).</p>
 					{:else if form.effect_type === 'gift'}
-						<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+						<div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
 							<label class="text-ash-300 text-xs"
 								>Gift amount (XP)<input
 									type="number"
@@ -648,7 +648,7 @@
 						</div>
 						<p class="text-ash-500 text-xs">Sends fixed XP to a member, minus the tax (burned).</p>
 					{:else if form.effect_type === 'leech'}
-						<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+						<div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
 							<label class="text-ash-300 text-xs"
 								>Skim %<input
 									type="number"
@@ -688,7 +688,7 @@
 							Chance the spy succeeds (sees through disguise too). On a miss, the target is publicly alerted and the spy is named — 100% means it always works.
 						</p>
 					{:else if form.effect_type === 'luck'}
-						<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+						<div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
 							<label class="text-ash-300 text-xs"
 								>Luck %<input
 									type="number"
@@ -716,7 +716,7 @@
 
 				<div class="border-ash-700 bg-ash-900/40 space-y-3 rounded-xl border p-4">
 					<p class="text-ash-400 text-xs font-semibold tracking-wide uppercase">Availability (optional, your timezone)</p>
-					<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+					<div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
 						<label class="text-ash-300 text-xs">
 							From
 							<div
@@ -767,7 +767,7 @@
 								>
 							{/each}
 						</div>
-						<div class="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+						<div class="mt-2 grid grid-cols-1 gap-3 lg:grid-cols-2">
 							<label class="text-ash-300 text-xs"
 								>From (HH:MM)<input
 									bind:value={form.cfg.recur_from}
@@ -806,9 +806,10 @@
 					</p>{/if}
 			</div>
 
-			<div class="border-ash-700 flex gap-3 border-t px-4 py-4 sm:px-6">
-				<button onclick={() => (editing = null)} class="bg-ash-700 hover:bg-ash-600 text-ash-100 flex-1 rounded-lg py-2.5 text-base font-medium transition-colors"
-					>Cancel</button
+			<div class="border-ash-700 flex gap-3 border-t px-4 py-4 lg:px-6">
+				<button
+					onclick={() => (editing = null)}
+					class="bg-ash-700 hover:bg-ash-600 text-ash-100 flex-1 rounded-lg py-2.5 text-base font-medium transition-colors">Cancel</button
 				>
 				<button
 					onclick={save}
@@ -834,7 +835,7 @@
 />
 
 {#if giftItem}
-	<div class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-3 sm:p-4" onclick={() => (giftItem = null)} role="presentation">
+	<div class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-3 lg:p-4" onclick={() => (giftItem = null)} role="presentation">
 		<div
 			class="bg-ash-800 border-ash-700 my-4 flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl border shadow-2xl"
 			onclick={(e) => e.stopPropagation()}
@@ -842,8 +843,8 @@
 			aria-modal="true"
 			aria-label="Give item to a member"
 		>
-			<div class="border-ash-700 flex items-center justify-between border-b px-4 py-4 sm:px-6">
-				<h3 class="text-ash-100 flex min-w-0 items-center gap-2 text-lg font-bold sm:text-xl">
+			<div class="border-ash-700 flex items-center justify-between border-b px-4 py-4 lg:px-6">
+				<h3 class="text-ash-100 flex min-w-0 items-center gap-2 text-lg font-bold lg:text-xl">
 					<i class="fas fa-gift text-teal-400"></i><span class="truncate">Give “{giftItem.name}”</span>
 				</h3>
 				<button type="button" onclick={() => (giftItem = null)} aria-label="Close" class="text-ash-400 hover:text-ash-100 p-1 transition-colors">
@@ -851,7 +852,7 @@
 				</button>
 			</div>
 
-			<div class="border-ash-700 border-b px-4 py-3 sm:px-6">
+			<div class="border-ash-700 border-b px-4 py-3 lg:px-6">
 				<div class="relative">
 					<i class="fas fa-search text-ash-500 absolute top-1/2 left-3 -translate-y-1/2 text-xs"></i>
 					<input
@@ -865,7 +866,7 @@
 				<p class="text-ash-500 mt-2 text-xs">Only members in servers with the items module enabled are shown. Same person can appear per server.</p>
 			</div>
 
-			<div class="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6">
+			<div class="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 lg:px-6">
 				{#if giftLoading}
 					<p class="text-ash-400 text-base"><i class="fas fa-spinner fa-spin mr-1"></i>Loading…</p>
 				{:else if giftGroups.length === 0}

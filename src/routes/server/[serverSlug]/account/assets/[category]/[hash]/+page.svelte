@@ -428,6 +428,8 @@
 	{@const price = live?.price ?? sellPos.current_price ?? sellPos.buy_price ?? 0}
 	{@const value = sellPos.buy_price > 0 ? Math.round(sellPos.xp_invested * (price / sellPos.buy_price)) : sellPos.xp_invested}
 	{@const payout = Math.min(Math.max(0, Math.floor(sellAmount || 0)), value)}
+	{@const costBasis = value > 0 ? Math.round(sellPos.xp_invested * (payout / value)) : 0}
+	{@const realized = payout - costBasis}
 	<div class="m-gamble-overlay" role="presentation" onclick={() => (!sellBusy ? (sellPos = null) : null)}>
 		<div class="m-gamble" role="dialog" aria-modal="true" aria-label="Sell asset" onclick={(e) => e.stopPropagation()}>
 			<div class="m-gamble-head">
@@ -469,8 +471,8 @@
 			{/if}
 
 			<div class="m-asset-modal-meta">
-				<span>Worth: {fmt(value)} XP</span>
-				<span>You receive {fmt(payout)} XP</span>
+				<span>Cost basis: {fmt(costBasis)} XP</span>
+				<span data-dir={dir(realized)}>{realized >= 0 ? 'Profit' : 'Loss'}: {realized >= 0 ? '+' : ''}{fmt(realized)} XP</span>
 			</div>
 
 			<button class="m-gamble-play m-gamble-play--charged" disabled={sellBusy || payout <= 0} onclick={confirmSell}>

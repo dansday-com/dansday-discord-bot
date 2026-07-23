@@ -342,7 +342,7 @@
 		<button
 			type="button"
 			onclick={openAdd}
-			class="border-ash-600 text-ash-400 hover:text-ash-200 hover:border-ash-400 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed py-2 text-sm transition-colors"
+			class="border-ash-600 text-ash-400 hover:text-ash-200 hover:border-ash-400 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed py-2 text-base transition-colors"
 		>
 			<i class="fas fa-plus text-xs"></i>Add Forwarder
 		</button>
@@ -351,7 +351,7 @@
 	<button
 		onclick={save}
 		disabled={saving}
-		class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:opacity-50"
+		class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-base font-medium transition-all disabled:opacity-50"
 	>
 		{#if saving}<i class="fas fa-spinner fa-spin"></i>{/if}
 		{saving ? 'Saving...' : 'Save Configuration'}
@@ -379,7 +379,7 @@
 						id="fw-selfbot"
 						value={draft.selfbot_id}
 						onchange={onSelfbotChange}
-						class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none"
+						class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-base focus:ring-2 focus:outline-none"
 					>
 						<option value="">Select selfbot...</option>
 						{#each selfbots as bot}
@@ -398,7 +398,7 @@
 						value={draft.server_id}
 						onchange={onServerChange}
 						disabled={!draft.selfbot_id || loadingServers}
-						class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none disabled:opacity-50"
+						class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-base focus:ring-2 focus:outline-none disabled:opacity-50"
 					>
 						<option value="">{loadingServers ? 'Loading...' : 'Select server...'}</option>
 						{#each selfbotServers as server}
@@ -460,7 +460,7 @@
 							<div class="bg-ash-600 peer-checked:bg-ash-400 h-6 w-11 rounded-full transition-colors"></div>
 							<div class="absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5"></div>
 						</div>
-						<span class="text-ash-300 text-sm">{draft.only_forward_when_mentions_member ? 'Yes' : 'No'}</span>
+						<span class="text-ash-300 text-base">{draft.only_forward_when_mentions_member ? 'Yes' : 'No'}</span>
 					</label>
 				</div>
 
@@ -474,7 +474,7 @@
 						type="text"
 						bind:value={draft.tag}
 						placeholder="Enter tag..."
-						class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none"
+						class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-base focus:ring-2 focus:outline-none"
 					/>
 				</div>
 			</div>
@@ -483,14 +483,14 @@
 				<button
 					type="button"
 					onclick={() => (modalOpen = false)}
-					class="bg-ash-700 hover:bg-ash-600 text-ash-100 flex-1 rounded-lg py-2.5 text-sm font-medium transition-colors"
+					class="bg-ash-700 hover:bg-ash-600 text-ash-100 flex-1 rounded-lg py-2.5 text-base font-medium transition-colors"
 				>
 					Cancel
 				</button>
 				<button
 					type="button"
 					onclick={saveModal}
-					class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-colors"
+					class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-base font-medium transition-colors"
 				>
 					<i class="fas fa-check"></i>{editIndex !== null ? 'Save Changes' : 'Add Forwarder'}
 				</button>

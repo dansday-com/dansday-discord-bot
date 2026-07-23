@@ -97,7 +97,7 @@
 
 {#snippet sendToContent()}
 	<div class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-5">
-		<h3 class="text-ash-300 mb-4 flex items-center gap-2 text-sm font-semibold">
+		<h3 class="text-ash-300 mb-4 flex items-center gap-2 text-base font-semibold">
 			<i class="fas fa-paper-plane text-emerald-400"></i>Send To
 		</h3>
 
@@ -128,7 +128,7 @@
 		<button
 			onclick={sendEmbed}
 			disabled={sending}
-			class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:cursor-not-allowed disabled:opacity-50"
+			class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-base font-medium transition-all disabled:cursor-not-allowed disabled:opacity-50"
 		>
 			{#if sending}<i class="fas fa-spinner fa-spin text-emerald-300"></i>{:else}<i class="fas fa-paper-plane text-emerald-300"></i>{/if}
 			{sending ? 'Sending...' : 'Send Embed'}

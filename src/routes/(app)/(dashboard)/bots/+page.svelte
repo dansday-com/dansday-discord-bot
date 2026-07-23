@@ -107,7 +107,7 @@
 		<h2 class="text-ash-100 mb-1 text-xl font-bold sm:text-2xl">
 			<i class="fas fa-robot mr-2 text-violet-400"></i>Bots List
 		</h2>
-		<p class="text-ash-400 text-xs sm:text-sm">
+		<p class="text-ash-400 text-xs sm:text-base">
 			{data.bots.length === 0 ? 'No bots yet' : `${data.bots.length} bot${data.bots.length === 1 ? '' : 's'}`}
 		</p>
 	</div>
@@ -124,9 +124,9 @@
 		{#if data.user.authenticated && data.user.account_source === 'accounts'}
 			<button
 				onclick={() => (showAddBot = true)}
-				class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs transition-all duration-200 hover:scale-105 active:scale-95 sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
+				class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs transition-all duration-200 hover:scale-105 active:scale-95 sm:gap-2 sm:px-4 sm:py-2 sm:text-base"
 			>
-				<i class="fas fa-plus text-xs text-violet-300 sm:text-sm"></i>
+				<i class="fas fa-plus text-xs text-violet-300 sm:text-base"></i>
 				<span class="sm:inline">Add Bot</span>
 			</button>
 		{/if}
@@ -139,11 +139,11 @@
 			<i class="fas fa-robot text-3xl text-violet-300 sm:text-4xl"></i>
 		</div>
 		<h3 class="text-ash-100 mb-2 text-lg font-semibold sm:text-xl">No bots yet</h3>
-		<p class="text-ash-400 mb-4 text-sm sm:mb-6 sm:text-base">Get started by adding your first bot</p>
+		<p class="text-ash-400 mb-4 text-base sm:mb-6 sm:text-base">Get started by adding your first bot</p>
 		{#if data.user.authenticated && data.user.account_source === 'accounts'}
 			<button
 				onclick={() => (showAddBot = true)}
-				class="bg-ash-400 hover:bg-ash-500 text-ash-100 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm transition-all duration-200 hover:scale-105 active:scale-95 sm:px-6 sm:py-3 sm:text-base"
+				class="bg-ash-400 hover:bg-ash-500 text-ash-100 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-base transition-all duration-200 hover:scale-105 active:scale-95 sm:px-6 sm:py-3 sm:text-base"
 			>
 				<i class="fas fa-plus text-violet-300"></i>Add Your First Bot
 			</button>
@@ -165,7 +165,7 @@
 						{/if}
 					</div>
 					<div class="min-w-0">
-						<p class="text-ash-100 truncate text-sm font-semibold sm:text-base">{bot.name || `Bot #${bot.id}`}</p>
+						<p class="text-ash-100 truncate text-base font-semibold sm:text-base">{bot.name || `Bot #${bot.id}`}</p>
 						<span class="text-ash-400 text-xs">Official</span>
 					</div>
 				</div>

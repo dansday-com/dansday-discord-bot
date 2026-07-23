@@ -44,9 +44,9 @@
 	};
 
 	const selectTextClass: Record<Appearance, string> = {
-		dashboard: 'text-xs sm:text-sm',
-		'members-toolbar': 'text-sm',
-		'form-inline': 'text-sm'
+		dashboard: 'text-xs sm:text-base',
+		'members-toolbar': 'text-base',
+		'form-inline': 'text-base'
 	};
 
 	const mergedButtonText = $derived(`${selectTextClass[appearance]} ${selectClass}`.trim());
@@ -98,7 +98,7 @@
 
 {#if label}
 	<div class="flex min-w-0 items-center gap-2 sm:gap-3">
-		<label for={id} class="{labelTextClass} flex shrink-0 items-center gap-1 text-xs whitespace-nowrap sm:gap-2 sm:text-sm">
+		<label for={id} class="{labelTextClass} flex shrink-0 items-center gap-1 text-xs whitespace-nowrap sm:gap-2 sm:text-base">
 			{#if labelIconClass}
 				<i class={labelIconClass}></i>
 			{/if}
@@ -163,14 +163,14 @@
 					type="text"
 					bind:value={search}
 					placeholder="Search…"
-					class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-4 py-2.5 pr-10 text-sm transition-all focus:ring-2 focus:outline-none sm:py-3 sm:text-base"
+					class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-4 py-2.5 pr-10 text-base transition-all focus:ring-2 focus:outline-none sm:py-3 sm:text-base"
 				/>
 				<i class="fas fa-search absolute top-1/2 right-3 -translate-y-1/2 text-emerald-300/90"></i>
 			</div>
 
 			<div class="max-h-[min(50vh,24rem)] min-h-0 space-y-1 overflow-y-auto">
 				{#if filtered.length === 0}
-					<div class="text-ash-400 py-8 text-center text-sm">
+					<div class="text-ash-400 py-8 text-center text-base">
 						<i class="fas fa-inbox mb-2 text-3xl text-emerald-300/80"></i>
 						<p>No matching options</p>
 					</div>
@@ -180,15 +180,15 @@
 						<button
 							type="button"
 							onclick={() => pick(opt)}
-							class="flex w-full items-center justify-between rounded-lg px-4 py-2.5 text-left text-sm transition-colors {selected
+							class="flex w-full items-center justify-between rounded-lg px-4 py-2.5 text-left text-base transition-colors {selected
 								? 'bg-ash-900 border-ash-500 border'
 								: 'bg-ash-700 hover:bg-ash-600'}"
 						>
 							<span class="{selected ? 'text-ash-100' : 'text-ash-300'} font-medium">{opt.label}</span>
 							{#if selected}
-								<i class="fas fa-check text-sm text-emerald-300"></i>
+								<i class="fas fa-check text-base text-emerald-300"></i>
 							{:else}
-								<i class="fas fa-check text-sm text-transparent"></i>
+								<i class="fas fa-check text-base text-transparent"></i>
 							{/if}
 						</button>
 					{/each}

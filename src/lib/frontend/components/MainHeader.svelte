@@ -20,7 +20,7 @@
 <header class="sticky top-0 z-40 flex-shrink-0 border-b {shell}">
 	<div class="mx-auto flex h-14 w-full max-w-7xl items-center justify-between gap-3 px-3 sm:h-16 sm:px-4 lg:px-8">
 		<a href="/" class="flex min-w-0 flex-1 items-center gap-2 sm:gap-3 {brandText} no-underline">
-			<div class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-sm sm:h-10 sm:w-10 sm:text-base {iconWrap}">
+			<div class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-base sm:h-10 sm:w-10 sm:text-base {iconWrap}">
 				<i class="fas fa-bolt"></i>
 			</div>
 			<span class="truncate text-base font-bold sm:text-xl">{APP_NAME} Discord Bot</span>

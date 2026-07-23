@@ -81,7 +81,7 @@
 	<h2 class="text-ash-100 mb-1 text-xl font-bold sm:text-2xl">
 		<i class="fas fa-bullhorn mr-2 text-rose-400"></i>Global Embed Builder
 	</h2>
-	<p class="text-ash-400 text-xs sm:text-sm">
+	<p class="text-ash-400 text-xs sm:text-base">
 		Send an announcement to all servers across ALL of your bots. It will be posted in each server's configured <strong>Bot Updates Channel</strong>.
 	</p>
 </div>

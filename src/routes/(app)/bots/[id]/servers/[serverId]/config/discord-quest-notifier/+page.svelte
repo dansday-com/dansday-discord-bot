@@ -131,7 +131,7 @@
 				autocomplete="off"
 				bind:value={httpProxyUrl}
 				placeholder="http://user:pass@host:8080"
-				class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none"
+				class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-base focus:ring-2 focus:outline-none"
 			/>
 		</div>
 
@@ -147,7 +147,7 @@
 	<button
 		onclick={testNotifier}
 		disabled={testing || !channelId || !featureEnabled}
-		class="border-ash-600 text-ash-100 hover:bg-ash-700 flex w-full items-center justify-center gap-2 rounded-lg border py-2.5 text-sm font-medium transition-all disabled:opacity-50"
+		class="border-ash-600 text-ash-100 hover:bg-ash-700 flex w-full items-center justify-center gap-2 rounded-lg border py-2.5 text-base font-medium transition-all disabled:opacity-50"
 	>
 		{#if testing}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas fa-vial text-sky-400"></i>{/if}
 		{testing ? 'Testing…' : 'Test — latest quest'}
@@ -156,7 +156,7 @@
 	<button
 		onclick={save}
 		disabled={saving}
-		class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:opacity-50"
+		class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-base font-medium transition-all disabled:opacity-50"
 	>
 		{#if saving}<i class="fas fa-spinner fa-spin"></i>{/if}
 		{saving ? 'Saving...' : 'Save Configuration'}

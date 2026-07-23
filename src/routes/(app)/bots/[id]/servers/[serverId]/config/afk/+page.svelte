@@ -52,7 +52,7 @@
 	<button
 		onclick={save}
 		disabled={saving}
-		class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:opacity-50"
+		class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-base font-medium transition-all disabled:opacity-50"
 	>
 		{#if saving}<i class="fas fa-spinner fa-spin"></i>{/if}
 		{saving ? 'Saving...' : 'Save Configuration'}

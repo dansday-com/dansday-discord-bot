@@ -31,7 +31,7 @@
 					href={base + tab.href}
 					title={tab.label}
 					aria-label={featureOff ? `${tab.label} (module off)` : tab.label}
-					class="flex flex-shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm transition-all lg:w-full lg:min-w-0
+					class="flex flex-shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-base transition-all lg:w-full lg:min-w-0
 						{active ? 'bg-ash-600 text-ash-100 font-medium' : 'text-ash-400 hover:text-ash-200 hover:bg-ash-700'}"
 				>
 					<i class="fas {tab.icon} w-4 shrink-0 text-center text-xs transition-colors {featureOff ? (active ? 'text-ash-400' : 'text-ash-500') : tab.iconClass}"

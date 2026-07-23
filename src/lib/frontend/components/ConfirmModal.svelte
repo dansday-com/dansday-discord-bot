@@ -52,14 +52,14 @@
 				</button>
 			</div>
 
-			<p class="text-ash-200 mb-5 text-sm sm:text-base">{message}</p>
+			<p class="text-ash-200 mb-5 text-base sm:text-base">{message}</p>
 
 			<div class="flex gap-2 sm:gap-3">
 				<button
 					type="button"
 					onclick={oncancel}
 					disabled={loading}
-					class="bg-ash-700 hover:bg-ash-600 text-ash-100 flex-1 rounded-lg py-2.5 text-sm font-medium transition-colors disabled:opacity-50 sm:py-3 sm:text-base"
+					class="bg-ash-700 hover:bg-ash-600 text-ash-100 flex-1 rounded-lg py-2.5 text-base font-medium transition-colors disabled:opacity-50 sm:py-3 sm:text-base"
 				>
 					{cancelLabel}
 				</button>
@@ -67,7 +67,7 @@
 					type="button"
 					onclick={onconfirm}
 					disabled={loading}
-					class="flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:transform-none disabled:cursor-not-allowed disabled:opacity-50 sm:py-3 sm:text-base
+					class="flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-base font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:transform-none disabled:cursor-not-allowed disabled:opacity-50 sm:py-3 sm:text-base
 						{dangerous ? 'bg-red-600 text-white hover:bg-red-500' : 'bg-ash-400 hover:bg-ash-500 text-ash-100'}"
 				>
 					{#if loading}<i class="fas fa-spinner fa-spin"></i>{/if}

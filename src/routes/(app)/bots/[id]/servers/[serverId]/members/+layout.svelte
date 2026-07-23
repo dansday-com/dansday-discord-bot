@@ -31,7 +31,7 @@
 	{#each tabs as tab}
 		<a
 			href={base + tab.href}
-			class="flex-shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-all
+			class="flex-shrink-0 rounded-lg px-3 py-1.5 text-base font-medium whitespace-nowrap transition-all
 				{isActive(tab.href) ? 'bg-ash-600 text-ash-100' : 'text-ash-400 hover:text-ash-200 hover:bg-ash-700'}"
 		>
 			{tab.label}

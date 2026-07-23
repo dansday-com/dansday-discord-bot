@@ -149,7 +149,7 @@
 			<div class="space-y-2">
 				{#each [{ icon: 'fa-user-friends', label: 'Total', value: fmt(s.members_total) }, { icon: 'fa-chart-line', label: 'With Levels', value: fmt(s.members_with_levels) }, { icon: 'fa-gift', label: 'Boosting', value: fmt(s.members_unique_boosters ?? s.members_boosters) }, { icon: 'fa-moon', label: 'Active AFK', value: fmt(s.member_afk) }, { icon: 'fa-user-slash', label: 'Without Levels', value: fmt(membersWithoutLevels) }] as row}
 					<div class="bg-ash-800/50 flex items-center justify-between rounded-lg p-2">
-						<span class="text-ash-300 flex items-center gap-2 text-sm">
+						<span class="text-ash-300 flex items-center gap-2 text-base">
 							<i class="fas {row.icon} text-xs text-blue-400/90"></i>{row.label}
 						</span>
 						<span class="text-ash-100 text-lg font-bold">{row.value}</span>
@@ -168,7 +168,7 @@
 			<div class="space-y-2">
 				{#each [{ icon: 'fa-list', label: 'Total', value: fmt(s.channels_total) }, { icon: 'fa-comment', label: 'Text', value: fmt(s.channels_text) }, { icon: 'fa-microphone', label: 'Voice', value: fmt(s.channels_voice) }, { icon: 'fa-bullhorn', label: 'Announcement', value: fmt(s.channels_announcement) }, { icon: 'fa-video', label: 'Stage', value: fmt(s.channels_stage) }] as row}
 					<div class="bg-ash-800/50 flex items-center justify-between rounded-lg p-2">
-						<span class="text-ash-300 flex items-center gap-2 text-sm">
+						<span class="text-ash-300 flex items-center gap-2 text-base">
 							<i class="fas {row.icon} text-xs text-violet-400/90"></i>{row.label}
 						</span>
 						<span class="text-ash-100 text-lg font-bold">{row.value}</span>
@@ -187,7 +187,7 @@
 			<div class="space-y-2">
 				{#each [{ icon: 'fa-star', label: 'Total XP', value: fmt(s.leveling_total_experience) }, { icon: 'fa-chart-bar', label: 'Avg Level', value: fmtDec(s.leveling_avg_level) }, { icon: 'fa-crown', label: 'Max Level', value: fmt(s.leveling_max_level) }, { icon: 'fa-chart-line', label: 'Avg XP', value: avgXP }, { icon: 'fa-comments', label: 'Total Chat', value: fmt(s.leveling_total_chat) }] as row}
 					<div class="bg-ash-800/50 flex items-center justify-between rounded-lg p-2">
-						<span class="text-ash-300 flex items-center gap-2 text-sm">
+						<span class="text-ash-300 flex items-center gap-2 text-base">
 							<i class="fas {row.icon} text-xs text-amber-400/90"></i>{row.label}
 						</span>
 						<span class="text-ash-100 text-lg font-bold">{row.value}</span>
@@ -206,7 +206,7 @@
 			<div class="space-y-2">
 				{#each [{ icon: 'fa-shield-alt', label: 'Total Roles', value: fmt(s.roles_total) }, { icon: 'fa-rocket', label: 'Boost Level', value: fmt(o.boost_level ?? s.boost_level) }, { icon: 'fa-gift', label: 'Total Boosts', value: fmt(s.members_boosters) }, { icon: 'fa-folder', label: 'Categories', value: fmt(s.categories_total) }, { icon: 'fa-user-cog', label: 'Custom Roles', value: fmt(s.members_with_custom_roles) }] as row}
 					<div class="bg-ash-800/50 flex items-center justify-between rounded-lg p-2">
-						<span class="text-ash-300 flex items-center gap-2 text-sm">
+						<span class="text-ash-300 flex items-center gap-2 text-base">
 							<i class="fas {row.icon} text-xs text-green-400/90"></i>{row.label}
 						</span>
 						<span class="text-ash-100 text-lg font-bold">{row.value}</span>
@@ -225,7 +225,7 @@
 			<div class="space-y-2">
 				{#each [{ icon: 'fa-clock', label: 'Total Minutes', value: fmt(s.leveling_total_voice_minutes) }, { icon: 'fa-check-circle', label: 'Active', value: fmt(s.leveling_total_voice_active) }, { icon: 'fa-pause-circle', label: 'AFK', value: fmt(s.leveling_total_voice_afk) }, { icon: 'fa-video', label: 'Video', value: fmt(s.leveling_total_voice_video) }, { icon: 'fa-desktop', label: 'Streaming', value: fmt(s.leveling_total_voice_streaming) }] as row}
 					<div class="bg-ash-800/50 flex items-center justify-between rounded-lg p-2">
-						<span class="text-ash-300 flex items-center gap-2 text-sm">
+						<span class="text-ash-300 flex items-center gap-2 text-base">
 							<i class="fas {row.icon} text-xs text-yellow-400/90"></i>{row.label}
 						</span>
 						<span class="text-ash-100 text-lg font-bold">{row.value}</span>
@@ -244,10 +244,10 @@
 			<div class="space-y-2">
 				{#each [{ icon: 'fa-server', label: 'Server', at: o.updated_at }, { icon: 'fa-users', label: 'Members', at: sync.members_last_updated }, { icon: 'fa-star', label: 'Levels', at: sync.levels_last_updated }, { icon: 'fa-hashtag', label: 'Channels', at: sync.channels_last_updated }, { icon: 'fa-folder', label: 'Categories', at: sync.categories_last_updated }, { icon: 'fa-shield-alt', label: 'Roles', at: sync.roles_last_updated }] as row}
 					<div class="bg-ash-800/50 flex items-center justify-between rounded-lg p-2">
-						<span class="text-ash-300 flex items-center gap-2 text-sm">
+						<span class="text-ash-300 flex items-center gap-2 text-base">
 							<i class="fas {row.icon} text-xs text-cyan-400/90"></i>{row.label}
 						</span>
-						<LocalTime value={row.at} includeSeconds class="text-ash-100 truncate text-right text-xs font-bold sm:text-sm" />
+						<LocalTime value={row.at} includeSeconds class="text-ash-100 truncate text-right text-xs font-bold sm:text-base" />
 					</div>
 				{/each}
 			</div>
@@ -264,7 +264,7 @@
 				<div class="space-y-2">
 					{#each card.rows as row}
 						<div class="bg-ash-800/50 flex items-center justify-between rounded-lg p-2">
-							<span class="text-ash-300 flex items-center gap-2 text-sm">
+							<span class="text-ash-300 flex items-center gap-2 text-base">
 								<i class="fas {row.icon} text-xs {accentClasses[card.accent].row}"></i>{row.label}
 							</span>
 							<span class="text-ash-100 text-lg font-bold">{typeof row.value === 'string' ? row.value : fmt(row.value)}</span>
@@ -276,10 +276,10 @@
 	</div>
 
 	<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-4 shadow-lg transition-all sm:p-6">
-		<h3 class="text-ash-100 flex items-center gap-2 text-sm font-semibold sm:text-base">
+		<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold sm:text-base">
 			<i class="fas fa-toggle-on text-emerald-400"></i>Enabled features
 		</h3>
-		<p class="text-ash-300 mt-2 text-sm">
+		<p class="text-ash-300 mt-2 text-base">
 			{enabledFeatures.length
 				? `${enabledFeatures.length} optional feature${enabledFeatures.length === 1 ? '' : 's'} ${enabledFeatures.length === 1 ? 'is' : 'are'} on. Main and Permissions are always required.`
 				: 'No optional features are enabled. Main and Permissions are always on.'}
@@ -287,7 +287,7 @@
 		{#if enabledFeatures.length > 0}
 			<div class="mt-3 flex flex-wrap gap-2">
 				{#each enabledFeatures as cfg}
-					<span class="bg-ash-800 border-ash-600 text-ash-200 flex items-center gap-2 rounded-lg border px-2.5 py-1 text-xs sm:text-sm">
+					<span class="bg-ash-800 border-ash-600 text-ash-200 flex items-center gap-2 rounded-lg border px-2.5 py-1 text-xs sm:text-base">
 						<i class="fas fa-check-circle text-emerald-400/90"></i>
 						<span class="font-medium">{cfg.label}</span>
 						{#if cfg.updated_at}

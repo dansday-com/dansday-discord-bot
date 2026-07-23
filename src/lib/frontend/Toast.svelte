@@ -21,7 +21,7 @@
 >
 	{#each toasts as toast (toast.id)}
 		<div
-			class="flex items-center gap-2 rounded-lg border px-4 py-3 text-sm shadow-lg backdrop-blur-sm sm:gap-3 sm:px-6 sm:py-4 sm:text-base {styles[
+			class="flex items-center gap-2 rounded-lg border px-4 py-3 text-base shadow-lg backdrop-blur-sm sm:gap-3 sm:px-6 sm:py-4 sm:text-base {styles[
 				toast.type
 			]} pointer-events-auto"
 		>

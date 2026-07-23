@@ -216,13 +216,13 @@
 <div class="space-y-4">
 	<a
 		href={`/bots/${data.botId}/servers/${data.serverId}/selfbot`}
-		class="text-ash-400 hover:text-ash-100 mb-6 inline-flex items-center gap-2 text-sm transition-colors"
+		class="text-ash-400 hover:text-ash-100 mb-6 inline-flex items-center gap-2 text-base transition-colors"
 	>
 		<i class="fas fa-arrow-left text-violet-300"></i>Back to Selfbots
 	</a>
 
 	{#if data.selfbotViewOnly}
-		<div class="mb-4 flex items-start gap-2 rounded-lg border border-amber-800/60 bg-amber-950/40 px-3 py-2.5 text-sm text-amber-100/95" role="status">
+		<div class="mb-4 flex items-start gap-2 rounded-lg border border-amber-800/60 bg-amber-950/40 px-3 py-2.5 text-base text-amber-100/95" role="status">
 			<i class="fas fa-eye mt-0.5 shrink-0 text-amber-400" aria-hidden="true"></i>
 			<span><strong class="text-amber-50">View only.</strong> Status and uptime update live; start, stop, restart, and delete are owner-only.</span>
 		</div>
@@ -250,33 +250,33 @@
 					{#if canStart}
 						<button
 							onclick={() => botAction('start')}
-							class="text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg bg-green-600 px-3 text-xs font-medium transition-all hover:scale-105 hover:bg-green-700 active:scale-95 sm:h-10 sm:px-4 sm:text-sm"
+							class="text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg bg-green-600 px-3 text-xs font-medium transition-all hover:scale-105 hover:bg-green-700 active:scale-95 sm:h-10 sm:px-4 sm:text-base"
 						>
-							<i class="fas fa-play text-sm text-green-200 sm:text-base"></i>
+							<i class="fas fa-play text-base text-green-200 sm:text-base"></i>
 							<span>Start</span>
 						</button>
 					{/if}
 					{#if canStop}
 						<button
 							onclick={() => botAction('stop')}
-							class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-all hover:scale-105 active:scale-95 sm:h-10 sm:px-4 sm:text-sm"
+							class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-all hover:scale-105 active:scale-95 sm:h-10 sm:px-4 sm:text-base"
 						>
-							<i class="fas fa-stop text-sm text-rose-200 sm:text-base"></i>
+							<i class="fas fa-stop text-base text-rose-200 sm:text-base"></i>
 							<span>Stop</span>
 						</button>
 						<button
 							onclick={() => botAction('restart')}
-							class="text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg bg-yellow-600 px-3 text-xs font-medium transition-all hover:scale-105 hover:bg-yellow-700 active:scale-95 sm:h-10 sm:px-4 sm:text-sm"
+							class="text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg bg-yellow-600 px-3 text-xs font-medium transition-all hover:scale-105 hover:bg-yellow-700 active:scale-95 sm:h-10 sm:px-4 sm:text-base"
 						>
-							<i class="fas fa-redo text-sm text-yellow-200 sm:text-base"></i>
+							<i class="fas fa-redo text-base text-yellow-200 sm:text-base"></i>
 							<span>Restart</span>
 						</button>
 					{/if}
 					<button
 						onclick={() => (showDeleteConfirm = true)}
-						class="text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg bg-red-700 px-3 text-xs font-medium transition-all hover:scale-105 hover:bg-red-800 active:scale-95 sm:h-10 sm:px-4 sm:text-sm"
+						class="text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg bg-red-700 px-3 text-xs font-medium transition-all hover:scale-105 hover:bg-red-800 active:scale-95 sm:h-10 sm:px-4 sm:text-base"
 					>
-						<i class="fas fa-trash text-sm text-red-300 sm:text-base"></i>
+						<i class="fas fa-trash text-base text-red-300 sm:text-base"></i>
 						<span>Delete</span>
 					</button>
 				</div>
@@ -288,21 +288,21 @@
 				<p class="text-ash-400 mb-1 text-xs">Status</p>
 				<div class="flex items-center gap-2">
 					<span class="h-2 w-2 rounded-full {statusColor(liveBot.status)}"></span>
-					<span class="text-sm font-medium capitalize {statusTextColor(liveBot.status)}">{liveBot.status}</span>
+					<span class="text-base font-medium capitalize {statusTextColor(liveBot.status)}">{liveBot.status}</span>
 				</div>
 			</div>
 
 			{#if isRunning}
 				<div class="bg-ash-700 rounded-lg p-3">
 					<p class="text-ash-400 mb-1 text-xs">Uptime</p>
-					<p class="text-ash-100 text-sm font-medium">{formatUptime(displayUptime)}</p>
+					<p class="text-ash-100 text-base font-medium">{formatUptime(displayUptime)}</p>
 				</div>
 			{/if}
 
 			{#if liveBot.process_id}
 				<div class="bg-ash-700 rounded-lg p-3">
 					<p class="text-ash-400 mb-1 text-xs">Process ID</p>
-					<p class="text-ash-100 text-sm font-medium">{liveBot.process_id}</p>
+					<p class="text-ash-100 text-base font-medium">{liveBot.process_id}</p>
 				</div>
 			{/if}
 		</div>
@@ -312,7 +312,7 @@
 		<h3 class="text-ash-100 mb-1 text-lg font-semibold">
 			<i class="fas fa-circle-notch mr-2 text-violet-400"></i>Discord presence
 		</h3>
-		<p class="text-ash-400 mb-4 text-sm">
+		<p class="text-ash-400 mb-4 text-base">
 			Updates apply about every 30 seconds while running, or after restart. Streaming: <strong class="text-ash-300">Twitch</strong> or
 			<strong class="text-ash-300">YouTube</strong> URLs only.
 		</p>
@@ -354,7 +354,7 @@
 						bind:value={presence.activity_state}
 						placeholder="Text shown as custom status"
 						disabled={data.selfbotViewOnly}
-						class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none disabled:cursor-not-allowed"
+						class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 w-full rounded-lg border px-3 py-2 text-base focus:ring-2 focus:ring-violet-500 focus:outline-none disabled:cursor-not-allowed"
 					/>
 				</div>
 			{:else}
@@ -367,7 +367,7 @@
 						bind:value={presence.activity_name}
 						placeholder="e.g. your community name or track title"
 						disabled={data.selfbotViewOnly}
-						class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none disabled:cursor-not-allowed"
+						class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 w-full rounded-lg border px-3 py-2 text-base focus:ring-2 focus:ring-violet-500 focus:outline-none disabled:cursor-not-allowed"
 					/>
 				</div>
 				{#if presence.activity_type === 'streaming'}
@@ -382,7 +382,7 @@
 							bind:value={presence.activity_url}
 							placeholder="https://twitch.tv/yourchannel or https://youtube.com/watch?v=…"
 							disabled={data.selfbotViewOnly}
-							class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none disabled:cursor-not-allowed"
+							class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 w-full rounded-lg border px-3 py-2 text-base focus:ring-2 focus:ring-violet-500 focus:outline-none disabled:cursor-not-allowed"
 						/>
 					</div>
 				{/if}
@@ -395,7 +395,7 @@
 						bind:value={presence.activity_state}
 						placeholder="Extra line under the activity, if supported"
 						disabled={data.selfbotViewOnly}
-						class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none disabled:cursor-not-allowed"
+						class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 w-full rounded-lg border px-3 py-2 text-base focus:ring-2 focus:ring-violet-500 focus:outline-none disabled:cursor-not-allowed"
 					/>
 				</div>
 			{/if}
@@ -407,7 +407,7 @@
 					type="button"
 					onclick={savePresence}
 					disabled={savingPresence}
-					class="text-ash-100 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium transition-colors hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
+					class="text-ash-100 rounded-lg bg-violet-600 px-4 py-2 text-base font-medium transition-colors hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					{#if savingPresence}
 						<i class="fas fa-spinner fa-spin mr-2"></i>Saving…
@@ -424,7 +424,7 @@
 			<h3 class="text-ash-100 text-lg font-semibold">
 				<i class="fas fa-server mr-2 text-violet-400"></i>Servers
 			</h3>
-			<span class="text-ash-400 text-xs sm:text-sm">
+			<span class="text-ash-400 text-xs sm:text-base">
 				{data.servers.length} server{data.servers.length !== 1 ? 's' : ''}
 			</span>
 		</div>
@@ -432,7 +432,7 @@
 		{#if data.servers.length === 0}
 			<div class="py-8 text-center">
 				<i class="fas fa-server mb-3 text-3xl text-violet-300"></i>
-				<p class="text-ash-400 text-sm">No servers yet</p>
+				<p class="text-ash-400 text-base">No servers yet</p>
 			</div>
 		{:else}
 			<div class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -447,12 +447,12 @@
 								{/if}
 							</div>
 							<div class="min-w-0 flex-1">
-								<h4 class="text-ash-100 truncate text-sm font-semibold sm:text-base" title={server.name || ''}>
+								<h4 class="text-ash-100 truncate text-base font-semibold sm:text-base" title={server.name || ''}>
 									{server.name || 'Unnamed Server'}
 								</h4>
 							</div>
 						</div>
-						<div class="space-y-2 text-xs sm:text-sm">
+						<div class="space-y-2 text-xs sm:text-base">
 							<div class="flex items-center justify-between">
 								<span class="text-ash-400 flex items-center gap-1.5"><i class="fas fa-users w-4 text-blue-400"></i>Members</span>
 								<span class="text-ash-100 font-medium">{(server.total_members ?? 0).toLocaleString()}</span>
@@ -479,15 +479,15 @@
 					<button
 						onclick={() => (page = Math.max(1, page - 1))}
 						disabled={page === 1}
-						class="bg-ash-700 hover:bg-ash-600 text-ash-200 flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+						class="bg-ash-700 hover:bg-ash-600 text-ash-200 flex items-center gap-2 rounded-lg px-3 py-1.5 text-base transition-colors disabled:cursor-not-allowed disabled:opacity-40"
 					>
 						<i class="fas fa-chevron-left text-xs text-violet-300"></i>Previous
 					</button>
-					<span class="text-ash-400 text-sm">Page {page} of {totalPages}</span>
+					<span class="text-ash-400 text-base">Page {page} of {totalPages}</span>
 					<button
 						onclick={() => (page = Math.min(totalPages, page + 1))}
 						disabled={page === totalPages}
-						class="bg-ash-700 hover:bg-ash-600 text-ash-200 flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+						class="bg-ash-700 hover:bg-ash-600 text-ash-200 flex items-center gap-2 rounded-lg px-3 py-1.5 text-base transition-colors disabled:cursor-not-allowed disabled:opacity-40"
 					>
 						Next<i class="fas fa-chevron-right text-xs text-violet-300"></i>
 					</button>

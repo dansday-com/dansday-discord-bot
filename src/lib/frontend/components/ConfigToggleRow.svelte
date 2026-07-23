@@ -14,7 +14,7 @@
 <div class="flex items-start justify-between gap-4">
 	<div class="flex min-w-0 flex-1 items-start gap-2">
 		{#if labelIconClass}
-			<i class="{labelIconClass} mt-0.5 shrink-0 text-sm leading-5" aria-hidden="true"></i>
+			<i class="{labelIconClass} mt-0.5 shrink-0 text-base leading-5" aria-hidden="true"></i>
 		{/if}
 		<div class="min-w-0">
 			<p class="text-ash-300 text-xs font-medium">{label}</p>

@@ -127,7 +127,7 @@
 
 <div class="space-y-4">
 	{#if data.selfbotViewOnly}
-		<div class="flex items-start gap-2 rounded-lg border border-amber-800/60 bg-amber-950/40 px-3 py-2.5 text-sm text-amber-100/95" role="status">
+		<div class="flex items-start gap-2 rounded-lg border border-amber-800/60 bg-amber-950/40 px-3 py-2.5 text-base text-amber-100/95" role="status">
 			<i class="fas fa-eye mt-0.5 shrink-0 text-amber-400" aria-hidden="true"></i>
 			<span><strong class="text-amber-50">View only.</strong> You can see selfbot status; start, stop, restart, add, and delete are owner-only.</span>
 		</div>
@@ -139,7 +139,7 @@
 		{#if canControlSelfbot}
 			<button
 				onclick={() => (showAdd = true)}
-				class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-all hover:scale-105 active:scale-95"
+				class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex items-center gap-2 rounded-lg px-3 py-2 text-base transition-all hover:scale-105 active:scale-95"
 			>
 				<i class="fas fa-plus text-xs text-violet-300"></i>Add Selfbot
 			</button>
@@ -149,7 +149,7 @@
 	{#if data.selfbots.length === 0}
 		<div class="bg-ash-800 border-ash-700 rounded-xl border p-8 text-center">
 			<i class="fas fa-robot mb-3 text-3xl text-violet-300"></i>
-			<p class="text-ash-400 text-sm">No selfbots yet.</p>
+			<p class="text-ash-400 text-base">No selfbots yet.</p>
 		</div>
 	{:else}
 		{#each data.selfbots as bot (bot.id)}
@@ -168,7 +168,7 @@
 						{/if}
 					</div>
 					<div class="min-w-0">
-						<p class="text-ash-100 truncate text-sm font-semibold sm:text-base">{bot.name || `Selfbot #${bot.id}`}</p>
+						<p class="text-ash-100 truncate text-base font-semibold sm:text-base">{bot.name || `Selfbot #${bot.id}`}</p>
 						<span class="text-ash-400 text-xs">Selfbot</span>
 					</div>
 				</div>

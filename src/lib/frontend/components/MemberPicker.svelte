@@ -134,7 +134,7 @@
 	type="button"
 	{disabled}
 	onclick={openModal}
-	class="bg-ash-700 border-ash-600 hover:border-ash-500 flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+	class="bg-ash-700 border-ash-600 hover:border-ash-500 flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-left text-base transition-colors disabled:cursor-not-allowed disabled:opacity-60"
 >
 	{#if single}
 		<span class={(value as string) ? 'text-ash-100' : 'text-ash-300'}>
@@ -190,7 +190,7 @@
 					bind:value={search}
 					oninput={() => scheduleSearch()}
 					placeholder="Search members..."
-					class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-4 py-2.5 pr-10 text-sm transition-all focus:ring-2 focus:outline-none sm:py-3 sm:text-base"
+					class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-4 py-2.5 pr-10 text-base transition-all focus:ring-2 focus:outline-none sm:py-3 sm:text-base"
 				/>
 				{#if loading}
 					<i class="{MEMBER_PICKER_ACCENT.searchSpinner} absolute top-1/2 right-3 -translate-y-1/2"></i>
@@ -204,20 +204,20 @@
 					<button
 						type="button"
 						onclick={() => pickSingle(null)}
-						class="text-ash-400 hover:bg-ash-700 w-full rounded-lg px-4 py-2.5 text-left text-sm transition-colors {!value ? 'bg-ash-700' : ''}"
+						class="text-ash-400 hover:bg-ash-700 w-full rounded-lg px-4 py-2.5 text-left text-base transition-colors {!value ? 'bg-ash-700' : ''}"
 					>
 						— None —
 					</button>
 				{/if}
 
 				{#if results.length === 0}
-					<p class="text-ash-500 py-4 text-center text-sm">Type at least 2 characters to search</p>
+					<p class="text-ash-500 py-4 text-center text-base">Type at least 2 characters to search</p>
 				{:else}
 					{#each results as m (m.discord_member_id)}
 						<button
 							type="button"
 							onclick={() => (single ? pickSingle(m) : toggleMulti(m))}
-							class="flex w-full items-center justify-between rounded-lg px-4 py-2.5 text-left text-sm transition-colors
+							class="flex w-full items-center justify-between rounded-lg px-4 py-2.5 text-left text-base transition-colors
 								{isRowSelected(m.discord_member_id) ? 'bg-ash-900 border-ash-500 border' : 'bg-ash-700 hover:bg-ash-600'}"
 						>
 							<div class="flex min-w-0 flex-1 items-center gap-3">
@@ -227,16 +227,16 @@
 									<div class="bg-ash-600 h-7 w-7 shrink-0 rounded-full"></div>
 								{/if}
 								<div class="min-w-0 flex-1">
-									<p class="text-ash-100 truncate text-sm font-medium">{label(m)}</p>
+									<p class="text-ash-100 truncate text-base font-medium">{label(m)}</p>
 									<p class="text-ash-400 truncate text-xs">{m.discord_member_id}</p>
 								</div>
 							</div>
 							{#if isRowSelected(m.discord_member_id)}
-								<i class="fas fa-check text-sm text-emerald-300"></i>
+								<i class="fas fa-check text-base text-emerald-300"></i>
 							{:else if single}
 								<i class="fas fa-chevron-right text-xs {MEMBER_PICKER_ACCENT.listChevron}"></i>
 							{:else}
-								<i class="fas fa-check text-sm text-transparent"></i>
+								<i class="fas fa-check text-base text-transparent"></i>
 							{/if}
 						</button>
 					{/each}
@@ -248,7 +248,7 @@
 					<button
 						type="button"
 						onclick={confirmMulti}
-						class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all sm:py-3 sm:text-base"
+						class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-base font-medium transition-all sm:py-3 sm:text-base"
 					>
 						<i class="fas fa-check text-emerald-300"></i>Confirm Selection
 					</button>

@@ -71,7 +71,7 @@
 			<i class="fas fa-envelope-open-text text-xl text-sky-300 sm:text-2xl"></i>
 		</div>
 		<h1 class="text-ash-100 mb-2 text-2xl font-bold sm:text-3xl">Verify Email</h1>
-		<p class="text-ash-400 text-xs sm:text-sm">Enter the 6-digit code sent to your email</p>
+		<p class="text-ash-400 text-xs sm:text-base">Enter the 6-digit code sent to your email</p>
 	</div>
 
 	<form
@@ -82,7 +82,7 @@
 		class="space-y-4 sm:space-y-6"
 	>
 		<div>
-			<label for="otp_code" class="text-ash-300 mb-2 block text-xs font-medium sm:text-sm">
+			<label for="otp_code" class="text-ash-300 mb-2 block text-xs font-medium sm:text-base">
 				<i class="fas fa-key mr-2 text-amber-300"></i>Verification Code <span class="text-ash-200">*</span>
 			</label>
 			<input
@@ -107,14 +107,14 @@
 		<button
 			type="submit"
 			disabled={loading}
-			class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:transform-none disabled:cursor-not-allowed disabled:opacity-50 sm:py-3 sm:text-base"
+			class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-base font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:transform-none disabled:cursor-not-allowed disabled:opacity-50 sm:py-3 sm:text-base"
 		>
 			{#if loading}<i class="fas fa-spinner fa-spin text-amber-200"></i>{/if}
 			{loading ? 'Verifying...' : 'Verify'}
 		</button>
 
 		<div class="text-center">
-			<a href="/login" class="text-ash-400 hover:text-ash-300 text-xs sm:text-sm"> &larr; Back to login </a>
+			<a href="/login" class="text-ash-400 hover:text-ash-300 text-xs sm:text-base"> &larr; Back to login </a>
 		</div>
 	</form>
 </div>

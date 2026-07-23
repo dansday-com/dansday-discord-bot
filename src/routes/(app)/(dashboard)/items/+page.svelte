@@ -357,17 +357,17 @@
 		</div>
 		<button
 			onclick={startCreate}
-			class="flex shrink-0 items-center justify-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-500"
+			class="flex shrink-0 items-center justify-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-base font-medium text-white hover:bg-teal-500"
 		>
 			<i class="fas fa-plus"></i>Add Item
 		</button>
 	</div>
 
 	{#if loading}
-		<p class="text-ash-400 text-sm"><i class="fas fa-spinner fa-spin mr-1"></i>Loading...</p>
+		<p class="text-ash-400 text-base"><i class="fas fa-spinner fa-spin mr-1"></i>Loading...</p>
 	{:else if items.length === 0}
 		<div class="bg-ash-800 border-ash-700 rounded-xl border p-8 text-center">
-			<p class="text-ash-400 text-sm">No items yet. Click "Add Item" to create your first one.</p>
+			<p class="text-ash-400 text-base">No items yet. Click "Add Item" to create your first one.</p>
 		</div>
 	{:else}
 		{#snippet adminCard(item: any)}
@@ -379,19 +379,19 @@
 				<div class="flex items-start justify-between gap-2">
 					<div class="flex min-w-0 items-start gap-2.5">
 						<span
-							class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm"
+							class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-base"
 							style="color: var(--cat); background: color-mix(in srgb, var(--cat) 16%, transparent)"
 						>
 							<i class="fas {effectIcon(item.effect_type)}"></i>
 						</span>
 						<div class="min-w-0">
-							<div class="text-ash-100 truncate text-sm font-semibold">{item.name}</div>
+							<div class="text-ash-100 truncate text-base font-semibold">{item.name}</div>
 							<div class="text-ash-500 mt-1 flex flex-wrap gap-1 text-xs">
 								<span class="bg-ash-700 rounded px-1.5 py-0.5">{effectLabel(item.effect_type)}</span>
 							</div>
 						</div>
 					</div>
-					<div class="shrink-0 text-sm font-semibold text-teal-400">{item.cost} XP</div>
+					<div class="shrink-0 text-base font-semibold text-teal-400">{item.cost} XP</div>
 				</div>
 				{#if item.description}<p class="text-ash-400 mt-2 line-clamp-2 text-xs">{item.description}</p>{/if}
 				<div class="mt-3 flex flex-wrap items-center gap-2">
@@ -495,7 +495,7 @@
 						<input
 							id="item-name"
 							bind:value={form.name}
-							class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none"
+							class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-base focus:ring-2 focus:outline-none"
 							placeholder="Mega Bomb"
 						/>
 					</div>
@@ -511,7 +511,7 @@
 							id="item-desc"
 							bind:value={form.description}
 							rows="2"
-							class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none"
+							class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-base focus:ring-2 focus:outline-none"
 							placeholder="Shown on the item hover card"
 						></textarea>
 					</div>
@@ -522,7 +522,7 @@
 							id="item-cost"
 							type="number"
 							bind:value={form.cost}
-							class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none"
+							class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-base focus:ring-2 focus:outline-none"
 						/>
 					</div>
 				</div>
@@ -535,28 +535,28 @@
 								>Min %<input
 									type="number"
 									bind:value={form.cfg.min_percent}
-									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-base"
 								/></label
 							>
 							<label class="text-ash-300 text-xs"
 								>Max %<input
 									type="number"
 									bind:value={form.cfg.max_percent}
-									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-base"
 								/></label
 							>
 							<label class="text-ash-300 text-xs"
 								>Cooldown (min)<input
 									type="number"
 									bind:value={form.cfg.cooldown_minutes}
-									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-base"
 								/></label
 							>
 							<label class="text-ash-300 text-xs"
 								>Victim immunity (min)<input
 									type="number"
 									bind:value={form.cfg.immunity_minutes}
-									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-base"
 								/></label
 							>
 						</div>
@@ -570,19 +570,19 @@
 									type="number"
 									step="0.1"
 									bind:value={form.cfg.multiplier}
-									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-base"
 								/></label
 							>
 							<label class="text-ash-300 text-xs"
 								>Duration (min)<input
 									type="number"
 									bind:value={form.cfg.effect_duration_minutes}
-									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-base"
 								/></label
 							>
 							<label class="text-ash-300 text-xs sm:col-span-2"
 								>Scope
-								<select bind:value={form.cfg.scope} class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm">
+								<select bind:value={form.cfg.scope} class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-base">
 									<option value="all">All XP</option>
 									<option value="message">Message only</option>
 									<option value="voice">Voice only</option>
@@ -595,7 +595,7 @@
 							>Duration (min)<input
 								type="number"
 								bind:value={form.cfg.effect_duration_minutes}
-								class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+								class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-base"
 							/></label
 						>
 						<p class="text-ash-500 text-xs">
@@ -610,21 +610,21 @@
 									min="0"
 									max="100"
 									bind:value={form.cfg.refund_percent}
-									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-base"
 								/></label
 							>
 							<label class="text-ash-300 text-xs"
 								>Duration (min)<input
 									type="number"
 									bind:value={form.cfg.effect_duration_minutes}
-									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-base"
 								/></label
 							>
 							<label class="text-ash-300 text-xs sm:col-span-2"
 								>Cooldown (min)<input
 									type="number"
 									bind:value={form.cfg.cooldown_minutes}
-									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-base"
 								/></label
 							>
 						</div>
@@ -635,14 +635,14 @@
 								>Gift amount (XP)<input
 									type="number"
 									bind:value={form.cfg.gift_amount}
-									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-base"
 								/></label
 							>
 							<label class="text-ash-300 text-xs"
 								>Tax %<input
 									type="number"
 									bind:value={form.cfg.tax_percent}
-									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-base"
 								/></label
 							>
 						</div>
@@ -653,14 +653,14 @@
 								>Skim %<input
 									type="number"
 									bind:value={form.cfg.skim_percent}
-									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-base"
 								/></label
 							>
 							<label class="text-ash-300 text-xs"
 								>Duration (min)<input
 									type="number"
 									bind:value={form.cfg.effect_duration_minutes}
-									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-base"
 								/></label
 							>
 						</div>
@@ -670,7 +670,7 @@
 							>Bounty amount (XP)<input
 								type="number"
 								bind:value={form.cfg.bounty_amount}
-								class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+								class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-base"
 							/></label
 						>
 						<p class="text-ash-500 text-xs">XP on a member's head, claimed by whoever hits them next.</p>
@@ -681,7 +681,7 @@
 								min="1"
 								max="100"
 								bind:value={form.cfg.spy_chance}
-								class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+								class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-base"
 							/></label
 						>
 						<p class="text-ash-500 text-xs">
@@ -694,14 +694,14 @@
 									type="number"
 									min="0"
 									bind:value={form.cfg.luck_percent}
-									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-base"
 								/></label
 							>
 							<label class="text-ash-300 text-xs"
 								>Duration (min)<input
 									type="number"
 									bind:value={form.cfg.effect_duration_minutes}
-									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-base"
 								/></label
 							>
 						</div>
@@ -726,7 +726,7 @@
 								<input
 									type="datetime-local"
 									bind:value={form.available_from}
-									class="text-ash-100 m-date min-w-0 flex-1 bg-transparent text-sm focus:outline-none"
+									class="text-ash-100 m-date min-w-0 flex-1 bg-transparent text-base focus:outline-none"
 								/>
 								{#if form.available_from}
 									<button type="button" onclick={() => (form.available_from = '')} aria-label="Clear" class="text-ash-500 hover:text-ash-200 text-xs">
@@ -744,7 +744,7 @@
 								<input
 									type="datetime-local"
 									bind:value={form.available_to}
-									class="text-ash-100 m-date min-w-0 flex-1 bg-transparent text-sm focus:outline-none"
+									class="text-ash-100 m-date min-w-0 flex-1 bg-transparent text-base focus:outline-none"
 								/>
 								{#if form.available_to}
 									<button type="button" onclick={() => (form.available_to = '')} aria-label="Clear" class="text-ash-500 hover:text-ash-200 text-xs">
@@ -771,14 +771,14 @@
 							<label class="text-ash-300 text-xs"
 								>From (HH:MM)<input
 									bind:value={form.cfg.recur_from}
-									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-base"
 									placeholder="18:00"
 								/></label
 							>
 							<label class="text-ash-300 text-xs"
 								>To (HH:MM)<input
 									bind:value={form.cfg.recur_to}
-									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-sm"
+									class="bg-ash-700 border-ash-600 text-ash-100 mt-1 w-full rounded-lg border px-3 py-2 text-base"
 									placeholder="21:00"
 								/></label
 							>
@@ -807,13 +807,13 @@
 			</div>
 
 			<div class="border-ash-700 flex gap-3 border-t px-4 py-4 sm:px-6">
-				<button onclick={() => (editing = null)} class="bg-ash-700 hover:bg-ash-600 text-ash-100 flex-1 rounded-lg py-2.5 text-sm font-medium transition-colors"
+				<button onclick={() => (editing = null)} class="bg-ash-700 hover:bg-ash-600 text-ash-100 flex-1 rounded-lg py-2.5 text-base font-medium transition-colors"
 					>Cancel</button
 				>
 				<button
 					onclick={save}
 					disabled={saving}
-					class="flex flex-1 items-center justify-center gap-2 rounded-lg bg-teal-600 py-2.5 text-sm font-medium text-white transition-colors hover:bg-teal-500 disabled:opacity-50"
+					class="flex flex-1 items-center justify-center gap-2 rounded-lg bg-teal-600 py-2.5 text-base font-medium text-white transition-colors hover:bg-teal-500 disabled:opacity-50"
 				>
 					{#if saving}<i class="fas fa-spinner fa-spin"></i>{/if}{saving ? 'Saving...' : 'Save'}
 				</button>
@@ -859,7 +859,7 @@
 						bind:value={giftSearch}
 						oninput={onGiftSearchInput}
 						placeholder="Search members by name…"
-						class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border py-2.5 pr-3 pl-9 text-sm focus:ring-2 focus:outline-none"
+						class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border py-2.5 pr-3 pl-9 text-base focus:ring-2 focus:outline-none"
 					/>
 				</div>
 				<p class="text-ash-500 mt-2 text-xs">Only members in servers with the items module enabled are shown. Same person can appear per server.</p>
@@ -867,9 +867,9 @@
 
 			<div class="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6">
 				{#if giftLoading}
-					<p class="text-ash-400 text-sm"><i class="fas fa-spinner fa-spin mr-1"></i>Loading…</p>
+					<p class="text-ash-400 text-base"><i class="fas fa-spinner fa-spin mr-1"></i>Loading…</p>
 				{:else if giftGroups.length === 0}
-					<p class="text-ash-400 py-6 text-center text-sm">No members found.</p>
+					<p class="text-ash-400 py-6 text-center text-base">No members found.</p>
 				{:else}
 					{#each giftGroups as group}
 						<div>
@@ -882,7 +882,7 @@
 									<div class="bg-ash-700/50 flex items-center gap-3 rounded-lg p-2">
 										<img src={giftAvatar(m)} alt={giftMemberName(m)} loading="lazy" class="h-9 w-9 shrink-0 rounded-full object-cover" />
 										<div class="min-w-0 flex-1">
-											<div class="text-ash-100 truncate text-sm font-medium">{giftMemberName(m)}</div>
+											<div class="text-ash-100 truncate text-base font-medium">{giftMemberName(m)}</div>
 											<div class="text-ash-500 text-xs"><i class="fas fa-bag-shopping mr-1"></i>{Number(m.inventory_total || 0)} owned</div>
 										</div>
 										<button

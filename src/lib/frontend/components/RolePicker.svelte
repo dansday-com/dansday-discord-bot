@@ -81,7 +81,7 @@
 <button
 	type="button"
 	onclick={openModal}
-	class="bg-ash-700 border-ash-600 hover:border-ash-500 flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-left text-sm transition-colors"
+	class="bg-ash-700 border-ash-600 hover:border-ash-500 flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-left text-base transition-colors"
 >
 	{#if single}
 		{@const r = value ? roleById(value as string) : null}
@@ -140,13 +140,13 @@
 					type="text"
 					bind:value={search}
 					placeholder="Search roles..."
-					class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-4 py-2.5 pr-10 text-sm transition-all focus:ring-2 focus:outline-none sm:py-3 sm:text-base"
+					class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-4 py-2.5 pr-10 text-base transition-all focus:ring-2 focus:outline-none sm:py-3 sm:text-base"
 				/>
 				<i class="{ROLE_PICKER_ACCENT.searchIcon} absolute top-1/2 right-3 -translate-y-1/2"></i>
 			</div>
 			<div class="min-h-0 flex-1 space-y-1 overflow-y-auto">
 				{#if filtered.length === 0}
-					<div class="text-ash-400 py-8 text-center text-sm">
+					<div class="text-ash-400 py-8 text-center text-base">
 						<i class="fas fa-inbox {ROLE_PICKER_ACCENT.emptyStateIcon}"></i>
 						<p>No roles found</p>
 					</div>
@@ -156,17 +156,17 @@
 						<button
 							type="button"
 							onclick={() => toggle(role.discord_role_id)}
-							class="flex w-full items-center justify-between rounded-lg px-4 py-2.5 text-left text-sm transition-colors
+							class="flex w-full items-center justify-between rounded-lg px-4 py-2.5 text-left text-base transition-colors
 								{isSelected ? 'bg-ash-900 border-ash-500 border' : 'bg-ash-700 hover:bg-ash-600'}"
 						>
 							<div class="flex min-w-0 flex-1 items-center gap-3">
 								<span class="h-4 w-4 shrink-0 rounded-full" style="background:{roleColor(role.color)}"></span>
-								<p class="{isSelected ? 'text-ash-100' : 'text-ash-300'} truncate text-sm font-medium">{role.name}</p>
+								<p class="{isSelected ? 'text-ash-100' : 'text-ash-300'} truncate text-base font-medium">{role.name}</p>
 							</div>
 							{#if isSelected}
-								<i class="fas fa-check text-sm text-emerald-300"></i>
+								<i class="fas fa-check text-base text-emerald-300"></i>
 							{:else}
-								<i class="fas fa-check text-sm text-transparent"></i>
+								<i class="fas fa-check text-base text-transparent"></i>
 							{/if}
 						</button>
 					{/each}
@@ -177,7 +177,7 @@
 				<button
 					type="button"
 					onclick={confirm}
-					class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all sm:py-3 sm:text-base"
+					class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-base font-medium transition-all sm:py-3 sm:text-base"
 				>
 					<i class="fas fa-check text-emerald-300"></i>Confirm Selection
 				</button>

@@ -118,7 +118,7 @@
 			<i class="fas fa-bolt text-xl text-amber-300 sm:text-2xl"></i>
 		</div>
 		<h1 class="text-ash-100 mb-2 text-2xl font-bold sm:text-3xl">{APP_NAME}</h1>
-		<p class="text-ash-400 text-xs sm:text-sm">Discord Bot Panel</p>
+		<p class="text-ash-400 text-xs sm:text-base">Discord Bot Panel</p>
 	</div>
 
 	<form
@@ -129,7 +129,7 @@
 		class="space-y-4 sm:space-y-6"
 	>
 		<div>
-			<label for="username_or_email" class="text-ash-300 mb-2 block text-xs font-medium sm:text-sm">
+			<label for="username_or_email" class="text-ash-300 mb-2 block text-xs font-medium sm:text-base">
 				<i class="fas fa-user mr-2 text-cyan-300"></i>Username or Email <span class="text-ash-200">*</span>
 			</label>
 			<input
@@ -138,12 +138,12 @@
 				bind:value={usernameOrEmail}
 				placeholder="Enter username or email"
 				autocomplete="username"
-				class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm transition-all focus:border-transparent focus:ring-2 focus:outline-none sm:px-4 sm:py-3 sm:text-base"
+				class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-base transition-all focus:border-transparent focus:ring-2 focus:outline-none sm:px-4 sm:py-3 sm:text-base"
 			/>
 		</div>
 
 		<div>
-			<label for="password" class="text-ash-300 mb-2 block text-xs font-medium sm:text-sm">
+			<label for="password" class="text-ash-300 mb-2 block text-xs font-medium sm:text-base">
 				<i class="fas fa-lock mr-2 text-rose-300"></i>Password <span class="text-ash-200">*</span>
 			</label>
 			<div class="relative">
@@ -153,7 +153,7 @@
 					bind:value={password}
 					placeholder="Enter your password"
 					autocomplete="current-password"
-					class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 pr-10 text-sm transition-all focus:border-transparent focus:ring-2 focus:outline-none sm:px-4 sm:py-3 sm:text-base"
+					class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 pr-10 text-base transition-all focus:border-transparent focus:ring-2 focus:outline-none sm:px-4 sm:py-3 sm:text-base"
 				/>
 				<button
 					type="button"
@@ -161,7 +161,7 @@
 					onclick={() => (showPassword = !showPassword)}
 					class="text-ash-400 hover:text-ash-300 absolute top-1/2 right-3 -translate-y-1/2 transition-colors"
 				>
-					<i class="fas {showPassword ? 'fa-eye-slash' : 'fa-eye'} text-sm sm:text-base"></i>
+					<i class="fas {showPassword ? 'fa-eye-slash' : 'fa-eye'} text-base sm:text-base"></i>
 				</button>
 			</div>
 		</div>
@@ -169,7 +169,7 @@
 		<button
 			type="submit"
 			disabled={loading}
-			class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:transform-none disabled:cursor-not-allowed disabled:opacity-50 sm:py-3 sm:text-base"
+			class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-base font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:transform-none disabled:cursor-not-allowed disabled:opacity-50 sm:py-3 sm:text-base"
 		>
 			{#if loading}<i class="fas fa-spinner fa-spin text-amber-200"></i>{/if}
 			{loading ? 'Processing...' : 'Login'}
@@ -185,7 +185,7 @@
 			type="button"
 			disabled={loading || captchaLoading}
 			onclick={openDemoCaptcha}
-			class="bg-ash-700 border-ash-600 text-ash-100 hover:bg-ash-650 flex w-full items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-semibold transition-all duration-200 hover:scale-[1.01] active:scale-[0.98] disabled:transform-none disabled:cursor-not-allowed disabled:opacity-50 sm:py-3 sm:text-base"
+			class="bg-ash-700 border-ash-600 text-ash-100 hover:bg-ash-650 flex w-full items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-base font-semibold transition-all duration-200 hover:scale-[1.01] active:scale-[0.98] disabled:transform-none disabled:cursor-not-allowed disabled:opacity-50 sm:py-3 sm:text-base"
 		>
 			{#if captchaLoading}
 				<i class="fas fa-spinner fa-spin text-cyan-300"></i>
@@ -197,7 +197,7 @@
 
 		{#if data.canRegister}
 			<div class="text-center">
-				<p class="text-ash-400 text-xs sm:text-sm">
+				<p class="text-ash-400 text-xs sm:text-base">
 					Don't have an account?
 					<a href="/register" class="text-ash-200 hover:text-ash-300 ml-1">Register</a>
 				</p>
@@ -251,7 +251,7 @@
 				</div>
 			</div>
 
-			<p class="text-ash-400 mb-4 text-sm">Type the characters shown below exactly as displayed.</p>
+			<p class="text-ash-400 mb-4 text-base">Type the characters shown below exactly as displayed.</p>
 
 			<div class="bg-ash-950 border-ash-700/80 ring-ash-600/60 mb-4 overflow-hidden rounded-xl border p-3 shadow-inner ring-1 ring-inset">
 				<div class="flex items-center justify-center select-none" aria-hidden="true">
@@ -281,7 +281,7 @@
 						showCaptchaModal = false;
 						captchaInput = '';
 					}}
-					class="bg-ash-700 border-ash-600 text-ash-200 hover:bg-ash-600 flex-1 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all"
+					class="bg-ash-700 border-ash-600 text-ash-200 hover:bg-ash-600 flex-1 rounded-xl border px-4 py-2.5 text-base font-semibold transition-all"
 				>
 					Cancel
 				</button>
@@ -289,7 +289,7 @@
 					type="button"
 					disabled={captchaInput.length !== 6}
 					onclick={handleDemoLogin}
-					class="flex-1 rounded-xl bg-cyan-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-cyan-900/30 transition-all hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-50"
+					class="flex-1 rounded-xl bg-cyan-600 px-4 py-2.5 text-base font-semibold text-white shadow-lg shadow-cyan-900/30 transition-all hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					Continue
 				</button>

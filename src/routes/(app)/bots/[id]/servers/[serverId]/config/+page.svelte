@@ -55,7 +55,7 @@
 			type="text"
 			bind:value={botNickname}
 			placeholder="Leave empty for default"
-			class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
+			class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2 text-base focus:ring-2 focus:outline-none"
 			maxlength="32"
 		/>
 	</div>
@@ -76,7 +76,7 @@
 				type="text"
 				bind:value={defaultColor}
 				placeholder={DEFAULT_MAIN_EMBED_COLOR}
-				class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 flex-1 rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
+				class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 flex-1 rounded-lg border px-3 py-2 text-base focus:ring-2 focus:outline-none"
 			/>
 		</div>
 	</div>
@@ -88,7 +88,7 @@
 			type="text"
 			bind:value={defaultFooter}
 			placeholder={DEFAULT_MAIN_EMBED_FOOTER}
-			class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
+			class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2 text-base focus:ring-2 focus:outline-none"
 		/>
 		<div class="bg-ash-900 border-ash-600 mt-2 rounded-lg border p-3">
 			<p class="text-ash-200 mb-2 text-xs font-medium">Available placeholders:</p>
@@ -116,7 +116,7 @@
 	<button
 		onclick={save}
 		disabled={saving}
-		class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:opacity-50"
+		class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-base font-medium transition-all disabled:opacity-50"
 	>
 		{#if saving}<i class="fas fa-spinner fa-spin"></i>{/if}
 		{saving ? 'Saving...' : 'Save Configuration'}

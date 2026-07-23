@@ -106,7 +106,7 @@
 				class="space-y-4 sm:space-y-5"
 			>
 				<div>
-					<label for="botToken" class="text-ash-300 mb-2 block text-xs font-medium sm:text-sm">
+					<label for="botToken" class="text-ash-300 mb-2 block text-xs font-medium sm:text-base">
 						<i class="fas fa-key mr-2 text-amber-300"></i>Bot Token <span class="text-ash-200">*</span>
 					</label>
 					<div class="relative">
@@ -115,7 +115,7 @@
 							type={showToken ? 'text' : 'password'}
 							bind:value={botToken}
 							placeholder="Enter bot token"
-							class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 pr-10 text-sm focus:ring-2 focus:outline-none sm:px-4 sm:py-3 sm:text-base"
+							class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 pr-10 text-base focus:ring-2 focus:outline-none sm:px-4 sm:py-3 sm:text-base"
 						/>
 						<button
 							type="button"
@@ -123,13 +123,13 @@
 							onclick={() => (showToken = !showToken)}
 							class="text-ash-400 hover:text-ash-300 absolute top-1/2 right-3 -translate-y-1/2"
 						>
-							<i class="fas {showToken ? 'fa-eye-slash' : 'fa-eye'} text-sm sm:text-base"></i>
+							<i class="fas {showToken ? 'fa-eye-slash' : 'fa-eye'} text-base sm:text-base"></i>
 						</button>
 					</div>
 				</div>
 
 				<div>
-					<label for="appId" class="text-ash-300 mb-2 block text-xs font-medium sm:text-sm">
+					<label for="appId" class="text-ash-300 mb-2 block text-xs font-medium sm:text-base">
 						<i class="fas fa-id-card mr-2 text-cyan-300"></i>Application ID <span class="text-ash-200">*</span>
 					</label>
 					<input
@@ -137,11 +137,11 @@
 						type="text"
 						bind:value={applicationId}
 						placeholder="Enter application ID"
-						class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none sm:px-4 sm:py-3 sm:text-base"
+						class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-base focus:ring-2 focus:outline-none sm:px-4 sm:py-3 sm:text-base"
 					/>
 				</div>
 				<div>
-					<label for="botPort" class="text-ash-300 mb-2 block text-xs font-medium sm:text-sm">
+					<label for="botPort" class="text-ash-300 mb-2 block text-xs font-medium sm:text-base">
 						<i class="fas fa-network-wired mr-2 text-indigo-300"></i>Port <span class="text-ash-200">*</span>
 					</label>
 					<input
@@ -149,11 +149,11 @@
 						type="number"
 						bind:value={port}
 						placeholder="e.g. 7777"
-						class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none sm:px-4 sm:py-3 sm:text-base"
+						class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-base focus:ring-2 focus:outline-none sm:px-4 sm:py-3 sm:text-base"
 					/>
 				</div>
 				<div>
-					<label for="secretKey" class="text-ash-300 mb-2 block text-xs font-medium sm:text-sm">
+					<label for="secretKey" class="text-ash-300 mb-2 block text-xs font-medium sm:text-base">
 						<i class="fas fa-shield-alt mr-2 text-emerald-300"></i>Secret Key <span class="text-ash-200">*</span>
 					</label>
 					<div class="relative">
@@ -162,7 +162,7 @@
 							type={showSecret ? 'text' : 'password'}
 							bind:value={secretKey}
 							placeholder="Enter secret key"
-							class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 pr-10 text-sm focus:ring-2 focus:outline-none sm:px-4 sm:py-3 sm:text-base"
+							class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 pr-10 text-base focus:ring-2 focus:outline-none sm:px-4 sm:py-3 sm:text-base"
 						/>
 						<button
 							type="button"
@@ -170,7 +170,7 @@
 							onclick={() => (showSecret = !showSecret)}
 							class="text-ash-400 hover:text-ash-300 absolute top-1/2 right-3 -translate-y-1/2"
 						>
-							<i class="fas {showSecret ? 'fa-eye-slash' : 'fa-eye'} text-sm sm:text-base"></i>
+							<i class="fas {showSecret ? 'fa-eye-slash' : 'fa-eye'} text-base sm:text-base"></i>
 						</button>
 					</div>
 					<p class="text-ash-500 mt-1.5 text-xs">Used to authenticate incoming webhooks to this bot</p>
@@ -178,8 +178,8 @@
 
 				<div class="bg-ash-900 border-ash-600 rounded-lg border p-3 sm:p-4">
 					<div class="flex items-start gap-2 sm:gap-3">
-						<i class="fas fa-info-circle mt-0.5 flex-shrink-0 text-sm text-sky-300"></i>
-						<p class="text-ash-200 text-xs sm:text-sm">Bot name and icon will be automatically synced from Discord when the bot is running.</p>
+						<i class="fas fa-info-circle mt-0.5 flex-shrink-0 text-base text-sky-300"></i>
+						<p class="text-ash-200 text-xs sm:text-base">Bot name and icon will be automatically synced from Discord when the bot is running.</p>
 					</div>
 				</div>
 
@@ -187,14 +187,14 @@
 					<button
 						type="button"
 						onclick={close}
-						class="bg-ash-700 hover:bg-ash-600 text-ash-100 flex-1 rounded-lg py-2.5 text-sm font-medium transition-colors sm:py-3 sm:text-base"
+						class="bg-ash-700 hover:bg-ash-600 text-ash-100 flex-1 rounded-lg py-2.5 text-base font-medium transition-colors sm:py-3 sm:text-base"
 					>
 						Cancel
 					</button>
 					<button
 						type="submit"
 						disabled={loading}
-						class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:transform-none disabled:cursor-not-allowed disabled:opacity-50 sm:py-3 sm:text-base"
+						class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-base font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:transform-none disabled:cursor-not-allowed disabled:opacity-50 sm:py-3 sm:text-base"
 					>
 						{#if loading}<i class="fas fa-spinner fa-spin text-violet-200"></i>{/if}
 						{loading ? 'Adding...' : 'Add Bot'}

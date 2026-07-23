@@ -198,7 +198,7 @@
 					type="button"
 					disabled={!canInvite || inviting || selectedDiscordMemberIds.length === 0}
 					onclick={sendInvite}
-					class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex shrink-0 items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all disabled:cursor-not-allowed disabled:opacity-50"
+					class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex shrink-0 items-center gap-2 rounded-lg px-4 py-2.5 text-base font-medium transition-all disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					{#if inviting}<i class="fas fa-spinner fa-spin text-amber-300"></i>{:else}<i class="fas fa-paper-plane text-amber-300"></i>{/if}
 					Send DM
@@ -208,13 +208,13 @@
 
 			{#if generatedLink}
 				<div class="bg-ash-700 mt-3 rounded-lg p-3">
-					<p class="text-ash-300 mb-2 text-sm">Invite Link:</p>
+					<p class="text-ash-300 mb-2 text-base">Invite Link:</p>
 					<div class="flex items-center gap-2">
-						<input type="text" readonly value={generatedLink} class="bg-ash-800 border-ash-600 text-ash-100 flex-1 rounded border px-3 py-2 text-sm" />
+						<input type="text" readonly value={generatedLink} class="bg-ash-800 border-ash-600 text-ash-100 flex-1 rounded border px-3 py-2 text-base" />
 						<button
 							onclick={copyLink}
 							aria-label="Copy invite link"
-							class="bg-ash-600 hover:bg-ash-500 text-ash-100 rounded px-3 py-2 text-sm transition-colors"
+							class="bg-ash-600 hover:bg-ash-500 text-ash-100 rounded px-3 py-2 text-base transition-colors"
 						>
 							<i class="fas {copyIcon}"></i>
 						</button>
@@ -226,7 +226,7 @@
 		<div class="mb-8">
 			<h3 class="text-ash-100 mb-3 text-lg font-semibold">Accounts</h3>
 			{#if data.accounts.length === 0}
-				<p class="text-ash-400 text-sm">No accounts yet.</p>
+				<p class="text-ash-400 text-base">No accounts yet.</p>
 			{:else}
 				<div class="space-y-2">
 					{#each data.accounts as account (account.id)}
@@ -236,7 +236,7 @@
 									<i class="fas fa-user text-xs text-amber-400"></i>
 								</div>
 								<div class="min-w-0">
-									<p class="text-ash-100 truncate text-sm font-medium">{account.username}</p>
+									<p class="text-ash-100 truncate text-base font-medium">{account.username}</p>
 									<p class="text-ash-400 truncate text-xs">{isSuperadmin ? account.email : maskEmail(account.email)}</p>
 									{#if account.ip_address && isSuperadmin}
 										<p class="text-ash-500 truncate text-xs"><i class="fas fa-network-wired mr-1 text-cyan-400/80"></i>{account.ip_address}</p>
@@ -278,13 +278,13 @@
 		<div>
 			<h3 class="text-ash-100 mb-3 text-lg font-semibold">Invite Links</h3>
 			{#if data.invites.length === 0}
-				<p class="text-ash-400 text-sm">No invite links generated yet.</p>
+				<p class="text-ash-400 text-base">No invite links generated yet.</p>
 			{:else}
 				<div class="space-y-2">
 					{#each data.invites as invite (invite.id)}
 						<div class="bg-ash-700 flex flex-col gap-2 rounded-lg px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
 							<div class="min-w-0 flex-1">
-								<p class="text-ash-100 text-sm font-medium capitalize">{invite.account_type} invite</p>
+								<p class="text-ash-100 text-base font-medium capitalize">{invite.account_type} invite</p>
 								<p class="text-ash-300 mt-1 text-xs">
 									<i class="fas fa-clock mr-1 text-amber-400/80"></i>
 									{#if invite.used_by}

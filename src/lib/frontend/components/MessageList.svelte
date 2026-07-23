@@ -72,7 +72,7 @@
 		<div class="space-y-2">
 			{#each values as msg, i}
 				<div class="bg-ash-700 flex items-start justify-between gap-3 rounded-lg p-3">
-					<p class="text-ash-100 min-w-0 flex-1 text-sm break-words">{msg}</p>
+					<p class="text-ash-100 min-w-0 flex-1 text-base break-words">{msg}</p>
 					<div class="flex shrink-0 items-center gap-1.5">
 						<button
 							type="button"
@@ -117,7 +117,7 @@
 					bind:value={draftText}
 					rows={6}
 					{placeholder}
-					class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full resize-none rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none"
+					class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full resize-none rounded-lg border px-3 py-2.5 text-base focus:ring-2 focus:outline-none"
 				></textarea>
 			</div>
 
@@ -139,7 +139,7 @@
 				<button
 					type="button"
 					onclick={() => (modalOpen = false)}
-					class="bg-ash-700 hover:bg-ash-600 text-ash-100 flex-1 rounded-lg py-2.5 text-sm font-medium transition-colors"
+					class="bg-ash-700 hover:bg-ash-600 text-ash-100 flex-1 rounded-lg py-2.5 text-base font-medium transition-colors"
 				>
 					Cancel
 				</button>
@@ -147,7 +147,7 @@
 					type="button"
 					onclick={saveModal}
 					disabled={!draftText.trim()}
-					class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-colors disabled:opacity-50"
+					class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-base font-medium transition-colors disabled:opacity-50"
 				>
 					<i class="fas fa-check text-emerald-300"></i>Save Message
 				</button>

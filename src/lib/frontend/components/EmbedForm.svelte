@@ -137,7 +137,7 @@
 <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
 	<div class="space-y-4">
 		<div class="bg-ash-800 border-ash-700 rounded-xl border p-4 sm:p-5">
-			<h3 class="text-ash-300 mb-4 flex items-center gap-2 text-sm font-semibold">
+			<h3 class="text-ash-300 mb-4 flex items-center gap-2 text-base font-semibold">
 				<i class="fas fa-pen text-violet-400"></i>Embed Content
 			</h3>
 
@@ -151,7 +151,7 @@
 					bind:value={title}
 					maxlength={MAX_TITLE}
 					placeholder="Embed title..."
-					class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
+					class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2 text-base focus:ring-2 focus:outline-none"
 				/>
 			</div>
 
@@ -165,7 +165,7 @@
 					maxlength={MAX_DESC}
 					rows={4}
 					placeholder="Embed description..."
-					class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full resize-none rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
+					class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full resize-none rounded-lg border px-3 py-2 text-base focus:ring-2 focus:outline-none"
 				></textarea>
 			</div>
 
@@ -179,7 +179,7 @@
 					bind:value={footer}
 					maxlength={MAX_FOOTER}
 					placeholder={defaultFooter || 'Footer text...'}
-					class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
+					class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2 text-base focus:ring-2 focus:outline-none"
 				/>
 			</div>
 
@@ -197,7 +197,7 @@
 						value={colorHex}
 						oninput={(e) => syncColorHex((e.target as HTMLInputElement).value)}
 						placeholder={defaultColor || '#ff0000'}
-						class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 flex-1 rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
+						class="bg-ash-700 border-ash-600 text-ash-100 focus:ring-ash-500 flex-1 rounded-lg border px-3 py-2 text-base focus:ring-2 focus:outline-none"
 					/>
 				</div>
 			</div>
@@ -225,14 +225,14 @@
 						type="url"
 						bind:value={imageUrl}
 						placeholder="https://..."
-						class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
+						class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2 text-base focus:ring-2 focus:outline-none"
 					/>
 				{:else}
 					<input
 						type="file"
 						accept="image/*"
 						onchange={handleImageUpload}
-						class="text-ash-300 file:bg-ash-600 file:text-ash-100 hover:file:bg-ash-500 w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:px-3 file:py-1.5 file:text-xs"
+						class="text-ash-300 file:bg-ash-600 file:text-ash-100 hover:file:bg-ash-500 w-full text-base file:mr-3 file:rounded-lg file:border-0 file:px-3 file:py-1.5 file:text-xs"
 					/>
 					{#if imagePreview}
 						<div class="relative mt-2 inline-block">
@@ -259,7 +259,7 @@
 			<button
 				onclick={handleSubmit}
 				disabled={sending}
-				class="bg-ash-500 hover:bg-ash-400 text-ash-100 mt-4 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:cursor-not-allowed disabled:opacity-50"
+				class="bg-ash-500 hover:bg-ash-400 text-ash-100 mt-4 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-base font-medium transition-all disabled:cursor-not-allowed disabled:opacity-50"
 			>
 				{#if sending}<i class="fas fa-spinner fa-spin text-emerald-300"></i>{:else}<i class="fas fa-paper-plane text-emerald-300"></i>{/if}
 				{sending ? 'Sending...' : submitLabel}
@@ -268,16 +268,16 @@
 	</div>
 
 	<div class="bg-ash-800 border-ash-700 self-start rounded-xl border p-4 sm:p-5 lg:sticky lg:top-4">
-		<h3 class="text-ash-300 mb-4 flex items-center gap-2 text-sm font-semibold">
+		<h3 class="text-ash-300 mb-4 flex items-center gap-2 text-base font-semibold">
 			<i class="fas fa-eye text-cyan-400"></i>Preview
 		</h3>
 
 		<div class="mb-4 rounded-lg bg-[#313338] p-3">
 			<div class="rounded-r-lg border-l-4 bg-[#2b2d31] py-2 pl-3" style="border-color: {color}">
 				{#if title}
-					<p class="mb-1 text-sm font-semibold text-white">{title}</p>
+					<p class="mb-1 text-base font-semibold text-white">{title}</p>
 				{:else}
-					<p class="mb-1 text-sm text-[#6b7280] italic">No title yet...</p>
+					<p class="mb-1 text-base text-[#6b7280] italic">No title yet...</p>
 				{/if}
 				{#if description}
 					<p class="text-xs leading-relaxed whitespace-pre-wrap text-[#dbdee1]">{description}</p>
@@ -297,7 +297,7 @@
 			<button
 				onclick={handleSubmit}
 				disabled={sending}
-				class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:cursor-not-allowed disabled:opacity-50"
+				class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-base font-medium transition-all disabled:cursor-not-allowed disabled:opacity-50"
 			>
 				{#if sending}<i class="fas fa-spinner fa-spin text-emerald-300"></i>{:else}<i class="fas fa-paper-plane text-emerald-300"></i>{/if}
 				{sending ? 'Sending...' : submitLabel}

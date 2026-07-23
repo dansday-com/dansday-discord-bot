@@ -171,13 +171,13 @@
 
 <div class="mb-4 flex flex-col gap-3 sm:flex-row">
 	<div class="relative flex-1">
-		<i class="fas fa-search absolute top-1/2 left-3 -translate-y-1/2 text-sm text-cyan-300"></i>
+		<i class="fas fa-search absolute top-1/2 left-3 -translate-y-1/2 text-base text-cyan-300"></i>
 		<input
 			type="text"
 			placeholder="Search members by name or ID..."
 			bind:value={search}
 			oninput={onSearchInput}
-			class="bg-ash-800 border-ash-700 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border py-2.5 pr-4 pl-9 text-sm focus:ring-2 focus:outline-none"
+			class="bg-ash-800 border-ash-700 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border py-2.5 pr-4 pl-9 text-base focus:ring-2 focus:outline-none"
 		/>
 	</div>
 	<LabeledSelect appearance="members-toolbar" options={MEMBER_SORT_OPTIONS} bind:value={sortBy} ariaLabel="Sort members" />
@@ -188,7 +188,7 @@
 </p>
 
 {#if roleFilterUnset}
-	<div class="text-ash-400 border-ash-600 bg-ash-800/60 mb-4 rounded-lg border px-4 py-3 text-sm">
+	<div class="text-ash-400 border-ash-600 bg-ash-800/60 mb-4 rounded-lg border px-4 py-3 text-base">
 		<p class="text-ash-300 mb-1">No roles are set for this category in Permissions yet.</p>
 		<p class="text-ash-500 text-xs">Choose Discord roles under Configuration → Permissions so this list can filter members.</p>
 		{#if permissionsHref}
@@ -198,7 +198,7 @@
 		{/if}
 	</div>
 {:else if paged.length === 0}
-	<div class="text-ash-400 py-10 text-center text-sm">No members found</div>
+	<div class="text-ash-400 py-10 text-center text-base">No members found</div>
 {:else}
 	<div class="mb-4 space-y-3">
 		{#each paged as member (member.discord_member_id)}
@@ -232,7 +232,7 @@
 								</div>
 								<div class="min-w-0">
 									<div class="text-ash-400 text-xs tracking-wide uppercase">Rank</div>
-									<div class="text-ash-100 text-sm font-bold">{member.rank ? `#${member.rank}` : 'N/A'}</div>
+									<div class="text-ash-100 text-base font-bold">{member.rank ? `#${member.rank}` : 'N/A'}</div>
 								</div>
 							</div>
 							<div class="bg-ash-800 border-ash-600 flex items-center gap-2 rounded-lg border p-2">
@@ -241,7 +241,7 @@
 								</div>
 								<div class="min-w-0">
 									<div class="text-ash-400 text-xs tracking-wide uppercase">Level</div>
-									<div class="text-ash-100 text-sm font-bold">{member.level ?? 1}</div>
+									<div class="text-ash-100 text-base font-bold">{member.level ?? 1}</div>
 								</div>
 							</div>
 							<div class="bg-ash-800 border-ash-600 flex items-center gap-2 rounded-lg border p-2">
@@ -250,7 +250,7 @@
 								</div>
 								<div class="min-w-0">
 									<div class="text-ash-400 text-xs tracking-wide uppercase">XP</div>
-									<div class="text-ash-100 text-sm font-bold">{fmtNum(member.experience ?? 0)}</div>
+									<div class="text-ash-100 text-base font-bold">{fmtNum(member.experience ?? 0)}</div>
 								</div>
 							</div>
 							<div class="bg-ash-800 border-ash-600 flex items-center gap-2 rounded-lg border p-2">
@@ -259,7 +259,7 @@
 								</div>
 								<div class="min-w-0">
 									<div class="text-ash-400 text-xs tracking-wide uppercase">Chat</div>
-									<div class="text-ash-100 text-sm font-bold">{fmtNum(member.chat_total ?? 0)}</div>
+									<div class="text-ash-100 text-base font-bold">{fmtNum(member.chat_total ?? 0)}</div>
 								</div>
 							</div>
 							<div class="bg-ash-800 border-ash-600 flex items-center gap-2 rounded-lg border p-2">
@@ -268,7 +268,7 @@
 								</div>
 								<div class="min-w-0">
 									<div class="text-ash-400 text-xs tracking-wide uppercase">Voice Active</div>
-									<div class="text-ash-100 text-sm font-bold">{fmtNum(member.voice_minutes_active ?? 0)}m</div>
+									<div class="text-ash-100 text-base font-bold">{fmtNum(member.voice_minutes_active ?? 0)}m</div>
 								</div>
 							</div>
 							<div class="bg-ash-800 border-ash-600 flex items-center gap-2 rounded-lg border p-2">
@@ -277,7 +277,7 @@
 								</div>
 								<div class="min-w-0">
 									<div class="text-ash-400 text-xs tracking-wide uppercase">Voice AFK</div>
-									<div class="text-ash-100 text-sm font-bold">{fmtNum(member.voice_minutes_afk ?? 0)}m</div>
+									<div class="text-ash-100 text-base font-bold">{fmtNum(member.voice_minutes_afk ?? 0)}m</div>
 								</div>
 							</div>
 							<div class="bg-ash-800 border-ash-600 flex items-center gap-2 rounded-lg border p-2">
@@ -286,7 +286,7 @@
 								</div>
 								<div class="min-w-0">
 									<div class="text-ash-400 text-xs tracking-wide uppercase">Member Since</div>
-									<div class="text-ash-100 text-sm font-bold">
+									<div class="text-ash-100 text-base font-bold">
 										<LocalTime value={member.member_since} fallback="N/A" />
 									</div>
 								</div>
@@ -297,7 +297,7 @@
 								</div>
 								<div class="min-w-0">
 									<div class="text-ash-400 text-xs tracking-wide uppercase">Account Created</div>
-									<div class="text-ash-100 text-sm font-bold">
+									<div class="text-ash-100 text-base font-bold">
 										<LocalTime value={member.profile_created_at} fallback="N/A" />
 									</div>
 								</div>
@@ -317,7 +317,7 @@
 											class="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium"
 											style="background:{c}20;color:{c};border:1px solid {c}40"
 										>
-											<i class="fas fa-circle text-2xs" style="color:{c}"></i>
+											<i class="fas fa-circle text-xs" style="color:{c}"></i>
 											{role.name || 'Unknown Role'}
 										</span>
 									{/each}
@@ -335,15 +335,15 @@
 			<button
 				onclick={() => (page = Math.max(1, page - 1))}
 				disabled={page === 1}
-				class="bg-ash-800 border-ash-700 hover:bg-ash-700 text-ash-200 flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+				class="bg-ash-800 border-ash-700 hover:bg-ash-700 text-ash-200 flex items-center gap-2 rounded-lg border px-3 py-1.5 text-base transition-colors disabled:cursor-not-allowed disabled:opacity-40"
 			>
 				<i class="fas fa-chevron-left text-xs text-violet-300"></i>Previous
 			</button>
-			<span class="text-ash-400 text-sm">Page {page} of {totalPages}</span>
+			<span class="text-ash-400 text-base">Page {page} of {totalPages}</span>
 			<button
 				onclick={() => (page = Math.min(totalPages, page + 1))}
 				disabled={page === totalPages}
-				class="bg-ash-800 border-ash-700 hover:bg-ash-700 text-ash-200 flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+				class="bg-ash-800 border-ash-700 hover:bg-ash-700 text-ash-200 flex items-center gap-2 rounded-lg border px-3 py-1.5 text-base transition-colors disabled:cursor-not-allowed disabled:opacity-40"
 			>
 				Next<i class="fas fa-chevron-right text-xs text-violet-300"></i>
 			</button>

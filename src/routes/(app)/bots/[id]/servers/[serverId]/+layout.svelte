@@ -34,7 +34,7 @@
 
 <div class="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6 lg:px-8 lg:py-8">
 	{#if !data.user.authenticated || data.user.account_source !== 'server_accounts'}
-		<a href="/bots/{data.botId}" class="text-ash-400 hover:text-ash-100 mb-5 inline-flex items-center gap-2 text-sm transition-colors">
+		<a href="/bots/{data.botId}" class="text-ash-400 hover:text-ash-100 mb-5 inline-flex items-center gap-2 text-base transition-colors">
 			<i class="fas fa-arrow-left text-violet-300"></i>Back to Bot
 		</a>
 	{/if}
@@ -107,7 +107,7 @@
 			{@const active = isActive(tab.href)}
 			<a
 				href={tab.href}
-				class="flex flex-shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-all sm:px-4
+				class="flex flex-shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-base font-medium whitespace-nowrap transition-all sm:px-4
 					{active ? 'bg-ash-600 text-ash-100' : 'text-ash-400 hover:text-ash-200 hover:bg-ash-700'}"
 			>
 				<i class="fas {tab.icon} {tab.iconClass} {active ? '' : 'opacity-75'} text-xs"></i>

@@ -12,8 +12,8 @@ import {
 	effectAccentInt,
 	formatDuration,
 	DISGUISED_MENTION,
-	disguisedText,
-	discountedItemCost
+	discountedItemCost,
+	floatingWallClockMs
 } from '../../../../items.js';
 
 const EFFECT_CACHE_TTL_MS = 5000;
@@ -969,18 +969,18 @@ export async function handleItemDiscard(client: any, payload: any) {
 
 function isItemAvailableNow(item: any, tzOffsetMin = 0) {
 	const nowMs = Date.now();
+	const offsetMs = (Number.isFinite(Number(tzOffsetMin)) ? Number(tzOffsetMin) : 0) * 60000;
 	if (item.available_from) {
-		const from = new Date(item.available_from).getTime();
-		if (Number.isFinite(from) && nowMs < from) return false;
+		const from = floatingWallClockMs(item.available_from, offsetMs);
+		if (from != null && nowMs < from) return false;
 	}
 	if (item.available_to) {
-		const to = new Date(item.available_to).getTime();
-		if (Number.isFinite(to) && nowMs > to) return false;
+		const to = floatingWallClockMs(item.available_to, offsetMs);
+		if (to != null && nowMs > to) return false;
 	}
 	const schedule = parseConfig(item.recurring_schedule);
 	if (schedule && Array.isArray(schedule.days) && schedule.days.length > 0) {
-		const offset = Number.isFinite(Number(tzOffsetMin)) ? Number(tzOffsetMin) : 0;
-		const local = new Date(nowMs + offset * 60000);
+		const local = new Date(nowMs + offsetMs);
 		const day = local.getUTCDay();
 		if (!schedule.days.map(Number).includes(day)) return false;
 		const toMin = (hhmm: any, fallback: number) => {

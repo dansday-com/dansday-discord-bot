@@ -14,14 +14,13 @@
 
 	function toLocalInput(value: any): string {
 		if (!value) return '';
-		const d = value instanceof Date ? value : new Date(String(value).includes('T') ? value : String(value).replace(' ', 'T') + 'Z');
-		if (Number.isNaN(d.getTime())) return '';
-		return d.toISOString().slice(0, 16);
+		const m = String(value).match(/(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2})/);
+		return m ? `${m[1]}T${m[2]}` : '';
 	}
 
 	function fromLocalInput(value: string): string | null {
 		if (!value) return null;
-		return value.length === 16 ? `${value}:00Z` : `${value}Z`;
+		return `${value.slice(0, 16).replace('T', ' ')}:00`;
 	}
 
 	let items = $state<any[]>([]);
@@ -716,7 +715,7 @@
 				</div>
 
 				<div class="border-ash-700 bg-ash-900/40 space-y-3 rounded-xl border p-4">
-					<p class="text-ash-400 text-[11px] font-semibold tracking-wide uppercase">Availability (optional, UTC)</p>
+					<p class="text-ash-400 text-[11px] font-semibold tracking-wide uppercase">Availability (optional, your timezone)</p>
 					<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 						<label class="text-ash-300 text-xs">
 							From
@@ -756,7 +755,7 @@
 						</label>
 					</div>
 					<div>
-						<p class="text-ash-300 mb-1.5 text-xs">Recurring days (UTC)</p>
+						<p class="text-ash-300 mb-1.5 text-xs">Recurring days (your timezone)</p>
 						<div class="flex flex-wrap gap-1">
 							{#each DAYS as d}
 								<button

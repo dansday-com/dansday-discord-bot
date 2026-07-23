@@ -513,6 +513,14 @@ function scheduleMinutesLocal(hhmm: any, fallback: number): number {
 
 export type ItemWindowState = 'active' | 'upcoming' | 'ended' | 'always';
 
+export function floatingWallClockMs(value: any, offsetMs: number): number | null {
+	if (!value) return null;
+	const m = String(value).match(/(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+	if (!m) return null;
+	const utc = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]));
+	return utc - offsetMs;
+}
+
 export function itemAvailability(
 	item: { available_from?: string | null; available_to?: string | null; recurring_schedule?: any; availableUntil?: number | null },
 	nowMs: number,
@@ -520,8 +528,9 @@ export function itemAvailability(
 ): { visible: boolean; availableUntil: number | null; state: ItemWindowState; startsAt: number | null } {
 	const schedule = item.recurring_schedule;
 	const hasSchedule = !!(schedule && Array.isArray(schedule.days) && schedule.days.length > 0);
-	const fromMs = item.available_from ? new Date(item.available_from).getTime() : null;
-	const toMs = item.available_to ? new Date(item.available_to).getTime() : null;
+	const offsetMs = (Number.isFinite(Number(tzOffsetMin)) ? Number(tzOffsetMin) : 0) * 60000;
+	const fromMs = floatingWallClockMs(item.available_from, offsetMs);
+	const toMs = floatingWallClockMs(item.available_to, offsetMs);
 
 	if (!hasSchedule) {
 		if (fromMs && nowMs < fromMs) return { visible: true, availableUntil: null, state: 'upcoming', startsAt: fromMs };
@@ -533,7 +542,6 @@ export function itemAvailability(
 	if (fromMs && nowMs < fromMs) return { visible: true, availableUntil: null, state: 'upcoming', startsAt: fromMs };
 	if (toMs && nowMs > toMs) return { visible: false, availableUntil: null, state: 'ended', startsAt: null };
 
-	const offsetMs = (Number.isFinite(Number(tzOffsetMin)) ? Number(tzOffsetMin) : 0) * 60000;
 	const local = new Date(nowMs + offsetMs);
 
 	const days = schedule.days.map(Number);

@@ -59,11 +59,6 @@ function scheduleMinutes(hhmm: any, fallback: number): number {
 	return h * 60 + m;
 }
 
-function hasRecurringSchedule(item: any): boolean {
-	const schedule = typeof item.recurring_schedule === 'string' ? safeParse(item.recurring_schedule) : item.recurring_schedule;
-	return !!(schedule && Array.isArray(schedule.days) && schedule.days.length > 0);
-}
-
 function availableUntilMs(item: any): number | null {
 	const ends: number[] = [];
 	if (item.available_to) {
@@ -81,36 +76,13 @@ function availableUntilMs(item: any): number | null {
 	return Math.min(...ends);
 }
 
-function itemAvailableNow(item: any): boolean {
-	const nowMs = Date.now();
-	if (item.available_from && nowMs < new Date(item.available_from).getTime()) return false;
-	if (item.available_to && nowMs > new Date(item.available_to).getTime()) return false;
-	const schedule = typeof item.recurring_schedule === 'string' ? safeParse(item.recurring_schedule) : item.recurring_schedule;
-	if (schedule && Array.isArray(schedule.days) && schedule.days.length > 0) {
-		const now = new Date(nowMs);
-		if (!schedule.days.map(Number).includes(now.getUTCDay())) return false;
-		const minutes = now.getUTCHours() * 60 + now.getUTCMinutes();
-		const fromMin = scheduleMinutes(schedule.from, 0);
-		const toMin = scheduleMinutes(schedule.to, 1439);
-		if (minutes < fromMin || minutes > toMin) return false;
-	}
-	return true;
-}
-
-function hasWindow(item: any): boolean {
-	return !!(item.available_from || item.available_to || hasRecurringSchedule(item));
-}
-
 export async function loadItemsCatalog(serverId: number): Promise<any[]> {
 	const panelId = await db.getServerPanelId(serverId).catch(() => null);
 	if (panelId == null) return [];
 	const all = await db.listItems(panelId).catch(() => []);
 	const out: any[] = [];
 	for (const i of all as any[]) {
-		if (!(itemAvailableNow(i) || hasRecurringSchedule(i))) continue;
-
-		const allowBuy = i.enabled !== false && i.enabled !== 0;
-		const enabled = hasWindow(i) ? allowBuy && itemAvailableNow(i) : allowBuy;
+		const enabled = i.enabled !== false && i.enabled !== 0;
 
 		const mapped = {
 			id: i.id,
@@ -122,8 +94,8 @@ export async function loadItemsCatalog(serverId: number): Promise<any[]> {
 			enabled,
 			usable: i.usable !== false && i.usable !== 0,
 			availableUntil: availableUntilMs(i),
-			available_from: i.available_from ? new Date(i.available_from).toISOString() : null,
-			available_to: i.available_to ? new Date(i.available_to).toISOString() : null,
+			available_from: i.available_from ?? null,
+			available_to: i.available_to ?? null,
 			recurring_schedule: typeof i.recurring_schedule === 'string' ? safeParse(i.recurring_schedule) : (i.recurring_schedule ?? null),
 			config: typeof i.config === 'string' ? safeParse(i.config) : i.config
 		};
@@ -146,7 +118,7 @@ export async function loadItemsShared(server: any, hash: string, subKey?: 'items
 	const levelReq = { baseXp: Number(req.BASE_XP) || 100, multiplier: Number(req.MULTIPLIER) || 1.2 };
 
 	const items = await loadItemsCatalog(server.id);
-	const enabledCategories = [...new Set((items as any[]).filter((i) => i.enabled !== false || i.live).map((i) => i.effect_type))];
+	const enabledCategories = [...new Set((items as any[]).filter((i) => i.live).map((i) => i.effect_type))];
 
 	const member = hash ? await resolveMemberByCardToken(server.id, hash) : null;
 

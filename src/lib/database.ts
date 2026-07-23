@@ -1592,8 +1592,8 @@ export async function createItem(panelId: any, data: any = {}) {
 		config: data.config ?? {},
 		enabled: data.enabled === undefined ? true : !!data.enabled,
 		usable: data.usable === undefined ? true : !!data.usable,
-		available_from: data.available_from ? (toMySQLDateTime(data.available_from) as any) : null,
-		available_to: data.available_to ? (toMySQLDateTime(data.available_to) as any) : null,
+		available_from: data.available_from ?? null,
+		available_to: data.available_to ?? null,
 		recurring_schedule: data.recurring_schedule ?? null,
 		sort_order: Number(data.sort_order ?? 0),
 		created_at: now as any,
@@ -1614,8 +1614,8 @@ export async function updateItem(itemId: any, data: any = {}) {
 	if (data.config !== undefined) set.config = data.config ?? {};
 	if (data.enabled !== undefined) set.enabled = !!data.enabled;
 	if (data.usable !== undefined) set.usable = !!data.usable;
-	if (data.available_from !== undefined) set.available_from = data.available_from ? (toMySQLDateTime(data.available_from) as any) : null;
-	if (data.available_to !== undefined) set.available_to = data.available_to ? (toMySQLDateTime(data.available_to) as any) : null;
+	if (data.available_from !== undefined) set.available_from = data.available_from ?? null;
+	if (data.available_to !== undefined) set.available_to = data.available_to ?? null;
 	if (data.recurring_schedule !== undefined) set.recurring_schedule = data.recurring_schedule ?? null;
 	if (data.sort_order !== undefined) set.sort_order = Number(data.sort_order);
 	await db

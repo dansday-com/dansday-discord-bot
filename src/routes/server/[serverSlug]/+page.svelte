@@ -206,15 +206,15 @@
 	<p>Statistics</p>
 </div>
 
-<section class="m-overview-strip mb-5 flex gap-2 overflow-x-auto px-0 pt-1 pb-2" class:m-overview-strip--in={mounted} aria-label="Key metrics">
+<section class="m-overview-strip mb-5 flex gap-2 overflow-x-auto px-0.5 pt-1 pb-2" class:m-overview-strip--in={mounted} aria-label="Key metrics">
 	{#each [{ icon: 'fa-users', label: 'Members', value: fmt(liveStats.members_total) }, { icon: 'fa-hashtag', label: 'Channels', value: fmt(liveStats.channels_total) }, { icon: 'fa-star', label: 'Total XP', value: heroXpDisplay.toLocaleString() }, { icon: 'fa-microphone', label: 'Voice min', value: fmt(liveStats.leveling_total_voice_minutes) }, { icon: 'fa-user-tag', label: 'Roles', value: fmt(liveStats.roles_total) }] as chip}
-		<div class="m-overview-strip-item flex max-w-full min-w-33 flex-none items-center gap-3 rounded-[14px] px-4 py-3">
+		<div class="m-overview-strip-item flex max-w-full min-w-33 flex-none items-center gap-3 rounded-2xl px-4 py-3">
 			<div class="m-overview-strip-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-base text-white">
 				<i class="fas {chip.icon}"></i>
 			</div>
-			<div class="m-overview-strip-text flex min-w-0 flex-col gap-0">
+			<div class="flex min-w-0 flex-col gap-0.5">
 				<span class="m-overview-strip-value text-lb-text min-w-0 text-base font-extrabold tabular-nums">{chip.value}</span>
-				<span class="m-overview-strip-label text-xs font-semibold text-[rgba(26,52,63,0.52)] uppercase">{chip.label}</span>
+				<span class="text-lb-text/52 text-xs font-semibold uppercase">{chip.label}</span>
 			</div>
 		</div>
 	{/each}
@@ -228,16 +228,16 @@
 			</div>
 			<h2 class="m-stat-card-title text-lb-text text-base font-bold">Members</h2>
 		</div>
-		<div class="m-overview-hero mb-1 rounded-[14px] px-3 pt-4 pb-4 text-center">
-			<p class="m-overview-hero-label mx-0 mt-0 mb-1 text-xs font-semibold text-[rgba(36,95,115,0.72)] uppercase">Community size</p>
-			<p class="m-overview-hero-value text-lb-text font-extrabold tabular-nums">{fmt(liveStats.members_total)}</p>
+		<div class="m-overview-hero mb-1 rounded-2xl px-3 pt-4 pb-4 text-center">
+			<p class="text-chili-hot/72 mx-0 mt-0 mb-1 text-xs font-semibold uppercase">Community size</p>
+			<p class="m-overview-hero-value text-lb-text text-2xl font-extrabold tabular-nums lg:text-3xl">{fmt(liveStats.members_total)}</p>
 		</div>
 		<div class="m-bar-block mt-4">
 			<div class="m-bar-head text-lb-text-muted mb-2 flex items-baseline justify-between gap-2 text-base font-semibold">
 				<span>Leveling coverage</span>
-				<span class="m-bar-meta text-xs font-bold text-[rgba(36,95,115,0.88)] tabular-nums">{fmt(liveStats.members_with_levels)} with levels</span>
+				<span class="m-bar-meta text-chili-hot/88 text-xs font-bold tabular-nums">{fmt(liveStats.members_with_levels)} with levels</span>
 			</div>
-			<div class="m-seg-bar flex h-2 overflow-hidden rounded-[99px]" title="Share of members with leveling data">
+			<div class="m-seg-bar flex h-2 overflow-hidden rounded-full" title="Share of members with leveling data">
 				<div class="m-seg m-seg--a h-full min-w-0" style="width: {membersLevelShare.withPct * grow}%"></div>
 				<div class="m-seg m-seg--b h-full min-w-0" style="width: {membersLevelShare.withoutPct * grow}%"></div>
 			</div>
@@ -277,16 +277,16 @@
 			</div>
 			<h2 class="m-stat-card-title text-lb-text text-base font-bold">Channels</h2>
 		</div>
-		<div class="m-overview-hero mb-1 rounded-[14px] px-3 pt-4 pb-4 text-center">
-			<p class="m-overview-hero-label mx-0 mt-0 mb-1 text-xs font-semibold text-[rgba(36,95,115,0.72)] uppercase">Server layout</p>
-			<p class="m-overview-hero-value text-lb-text font-extrabold tabular-nums">{fmt(liveStats.channels_total)}</p>
+		<div class="m-overview-hero mb-1 rounded-2xl px-3 pt-4 pb-4 text-center">
+			<p class="text-chili-hot/72 mx-0 mt-0 mb-1 text-xs font-semibold uppercase">Server layout</p>
+			<p class="m-overview-hero-value text-lb-text text-2xl font-extrabold tabular-nums lg:text-3xl">{fmt(liveStats.channels_total)}</p>
 		</div>
 		<div class="m-bar-block mt-4">
 			<div class="m-bar-head text-lb-text-muted mb-2 flex items-baseline justify-between gap-2 text-base font-semibold">
 				<span>Mix</span>
-				<span class="m-bar-meta text-xs font-bold text-[rgba(36,95,115,0.88)] tabular-nums">Text · Voice · Other</span>
+				<span class="m-bar-meta text-chili-hot/88 text-xs font-bold tabular-nums">Text · Voice · Other</span>
 			</div>
-			<div class="m-seg-bar flex h-2 overflow-hidden rounded-[99px]" title="Channel types">
+			<div class="m-seg-bar flex h-2 overflow-hidden rounded-full" title="Channel types">
 				<div class="m-seg m-seg--text h-full min-w-0" style="width: {channelMix.textPct * grow}%"></div>
 				<div class="m-seg m-seg--voice h-full min-w-0" style="width: {channelMix.voicePct * grow}%"></div>
 				<div class="m-seg m-seg--other h-full min-w-0" style="width: {channelMix.otherPct * grow}%"></div>
@@ -299,7 +299,7 @@
 		</div>
 	</div>
 
-	<div class="m-stat-card m-stat-card--leveling m-overview-card rounded-2xl px-4 py-4">
+	<div class="m-stat-card m-overview-card rounded-2xl px-4 py-4">
 		<div class="m-stat-card-head mb-4 flex items-center gap-3">
 			<div class="m-stat-card-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg">
 				<i class="fas fa-star"></i>
@@ -307,24 +307,22 @@
 			<h2 class="m-stat-card-title text-lb-text text-base font-bold">Leveling</h2>
 		</div>
 
-		<div class="m-leveling-hero mx-[-4px] mt-0 mb-2 rounded-[14px] px-3 pt-4 pb-5 text-center">
-			<p class="m-leveling-hero-label mx-0 mt-0 mb-1 text-xs font-semibold text-[rgba(36,95,115,0.75)] uppercase">Total experience</p>
-			<p class="m-leveling-hero-value font-extrabold text-transparent tabular-nums">{heroXpDisplay.toLocaleString()}</p>
-			<p class="m-leveling-hero-hint text-lb-text-subtle mx-0 mt-2 mb-0 text-base">
+		<div class="m-leveling-hero -mx-1 mt-0 mb-2 rounded-2xl px-3 pt-4 pb-5 text-center">
+			<p class="text-chili-hot/75 mx-0 mt-0 mb-1 text-xs font-semibold uppercase">Total experience</p>
+			<p class="m-leveling-hero-value text-2xl font-extrabold text-transparent tabular-nums lg:text-3xl">{heroXpDisplay.toLocaleString()}</p>
+			<p class="text-lb-text-subtle mx-0 mt-2 mb-0 text-base">
 				Wallet + XP invested in assets · {fmt(liveStats.leveling_wallet_experience)} wallet + {fmt(liveStats.leveling_assets_value)} in market
 			</p>
 		</div>
 
-		<div class="m-leveling-meters mb-4 flex flex-col gap-4">
+		<div class="mb-4 flex flex-col gap-4">
 			<div class="m-level-meter">
-				<div class="m-level-meter-head mb-2 flex items-baseline justify-between gap-2">
-					<span class="m-level-meter-title text-lb-text-muted text-base font-semibold">Average vs peak level</span>
-					<span class="m-level-meter-meta text-base font-bold text-[rgba(36,95,115,0.92)] tabular-nums"
-						>{fmtDec(liveStats.leveling_avg_level)} / {fmt(liveStats.leveling_max_level)}</span
-					>
+				<div class="mb-2 flex items-baseline justify-between gap-2">
+					<span class="text-lb-text-muted text-base font-semibold">Average vs peak level</span>
+					<span class="text-chili-hot/92 text-base font-bold tabular-nums">{fmtDec(liveStats.leveling_avg_level)} / {fmt(liveStats.leveling_max_level)}</span>
 				</div>
-				<div class="m-level-meter-track h-2 overflow-hidden rounded-[99px]">
-					<div class="m-level-meter-fill m-level-meter-fill--avg h-full rounded-[99px]" style="width: {avgLevelBarPct * grow}%"></div>
+				<div class="m-level-meter-track h-2 overflow-hidden rounded-full">
+					<div class="m-level-meter-fill m-level-meter-fill--avg h-full rounded-full" style="width: {avgLevelBarPct * grow}%"></div>
 				</div>
 			</div>
 		</div>
@@ -332,18 +330,18 @@
 		<div class="m-leveling-tiles gap-2">
 			<div class="m-level-tile flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 				<i class="fas fa-comments"></i>
-				<span class="m-level-tile-value text-lb-text text-base font-extrabold tabular-nums">{fmt(liveStats.leveling_total_chat)}</span>
-				<span class="m-level-tile-label text-lb-text-faint text-xs font-semibold uppercase">Messages</span>
+				<span class="text-lb-text text-base font-extrabold tabular-nums">{fmt(liveStats.leveling_total_chat)}</span>
+				<span class="text-lb-text-faint text-xs font-semibold uppercase">Messages</span>
 			</div>
 			<div class="m-level-tile flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 				<i class="fas fa-chart-line"></i>
-				<span class="m-level-tile-value text-lb-text text-base font-extrabold tabular-nums">{avgXP}</span>
-				<span class="m-level-tile-label text-lb-text-faint text-xs font-semibold uppercase">Avg XP / member</span>
+				<span class="text-lb-text text-base font-extrabold tabular-nums">{avgXP}</span>
+				<span class="text-lb-text-faint text-xs font-semibold uppercase">Avg XP / member</span>
 			</div>
 			<div class="m-level-tile flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 				<i class="fas fa-crown"></i>
-				<span class="m-level-tile-value text-lb-text text-base font-extrabold tabular-nums">{fmt(liveStats.leveling_max_level)}</span>
-				<span class="m-level-tile-label text-lb-text-faint text-xs font-semibold uppercase">Highest level</span>
+				<span class="text-lb-text text-base font-extrabold tabular-nums">{fmt(liveStats.leveling_max_level)}</span>
+				<span class="text-lb-text-faint text-xs font-semibold uppercase">Highest level</span>
 			</div>
 		</div>
 	</div>
@@ -355,9 +353,9 @@
 			</div>
 			<h2 class="m-stat-card-title text-lb-text text-base font-bold">Roles &amp; structure</h2>
 		</div>
-		<div class="m-overview-hero mb-1 rounded-[14px] px-3 pt-4 pb-4 text-center">
-			<p class="m-overview-hero-label mx-0 mt-0 mb-1 text-xs font-semibold text-[rgba(36,95,115,0.72)] uppercase">Role catalog</p>
-			<p class="m-overview-hero-value text-lb-text font-extrabold tabular-nums">{fmt(liveStats.roles_total)}</p>
+		<div class="m-overview-hero mb-1 rounded-2xl px-3 pt-4 pb-4 text-center">
+			<p class="text-chili-hot/72 mx-0 mt-0 mb-1 text-xs font-semibold uppercase">Role catalog</p>
+			<p class="m-overview-hero-value text-lb-text text-2xl font-extrabold tabular-nums lg:text-3xl">{fmt(liveStats.roles_total)}</p>
 		</div>
 		<div class="m-mini-grid mt-4 gap-2">
 			<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
@@ -390,18 +388,18 @@
 			</div>
 			<h2 class="m-stat-card-title text-lb-text text-base font-bold">Voice activity</h2>
 		</div>
-		<div class="m-overview-hero mb-1 rounded-[14px] px-3 pt-4 pb-4 text-center">
-			<p class="m-overview-hero-label mx-0 mt-0 mb-1 text-xs font-semibold text-[rgba(36,95,115,0.72)] uppercase">Tracked minutes</p>
-			<p class="m-overview-hero-value text-lb-text font-extrabold tabular-nums">{fmt(liveStats.leveling_total_voice_minutes)}</p>
+		<div class="m-overview-hero mb-1 rounded-2xl px-3 pt-4 pb-4 text-center">
+			<p class="text-chili-hot/72 mx-0 mt-0 mb-1 text-xs font-semibold uppercase">Tracked minutes</p>
+			<p class="m-overview-hero-value text-lb-text text-2xl font-extrabold tabular-nums lg:text-3xl">{fmt(liveStats.leveling_total_voice_minutes)}</p>
 		</div>
 		<div class="m-bar-block mt-4">
 			<div class="m-bar-head text-lb-text-muted mb-2 flex items-baseline justify-between gap-2 text-base font-semibold">
 				<span>Active vs AFK</span>
-				<span class="m-bar-meta text-xs font-bold text-[rgba(36,95,115,0.88)] tabular-nums"
+				<span class="m-bar-meta text-chili-hot/88 text-xs font-bold tabular-nums"
 					>{fmt(liveStats.leveling_total_voice_active)} · {fmt(liveStats.leveling_total_voice_afk)}</span
 				>
 			</div>
-			<div class="m-level-meter-stack flex h-2 overflow-hidden rounded-[99px]" title="Share of voice minutes">
+			<div class="m-level-meter-stack flex h-2 overflow-hidden rounded-full" title="Share of voice minutes">
 				<div class="m-level-meter-stack-active h-full" style="width: {voiceMix.activePct * grow}%"></div>
 				<div class="m-level-meter-stack-afk h-full" style="width: {voiceMix.afkPct * grow}%"></div>
 			</div>
@@ -447,11 +445,11 @@
 			</div>
 			<h2 class="m-stat-card-title text-lb-text text-base font-bold">Market</h2>
 		</div>
-		<div class="m-overview-hero mb-1 rounded-[14px] px-3 pt-4 pb-4 text-center">
-			<p class="m-overview-hero-label mx-0 mt-0 mb-1 text-xs font-semibold text-[rgba(36,95,115,0.72)] uppercase">XP in the market</p>
-			<p class="m-overview-hero-value text-lb-text font-extrabold tabular-nums">{fmt(liveStats.assets_market_value)}</p>
+		<div class="m-overview-hero mb-1 rounded-2xl px-3 pt-4 pb-4 text-center">
+			<p class="text-chili-hot/72 mx-0 mt-0 mb-1 text-xs font-semibold uppercase">XP in the market</p>
+			<p class="m-overview-hero-value text-lb-text text-2xl font-extrabold tabular-nums lg:text-3xl">{fmt(liveStats.assets_market_value)}</p>
 			<p
-				class="m-overview-hero-hint m-hero-trend text-lb-text-muted mx-0 mt-2 mb-0 inline-flex items-center gap-1 rounded-[99px] px-2 py-1 text-xs font-semibold tabular-nums"
+				class="m-hero-trend text-lb-text-muted mx-0 mt-2 mb-0 inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold tabular-nums"
 				class:m-hero-trend--up={marketUnrealized >= 0}
 				class:m-hero-trend--down={marketUnrealized < 0}
 			>
@@ -462,9 +460,9 @@
 		<div class="m-bar-block mt-4">
 			<div class="m-bar-head text-lb-text-muted mb-2 flex items-baseline justify-between gap-2 text-base font-semibold">
 				<span>Capital flow</span>
-				<span class="m-bar-meta text-xs font-bold text-[rgba(36,95,115,0.88)] tabular-nums">In · Out</span>
+				<span class="m-bar-meta text-chili-hot/88 text-xs font-bold tabular-nums">In · Out</span>
 			</div>
-			<div class="m-seg-bar flex h-2 overflow-hidden rounded-[99px]" title="XP bought in vs cashed out">
+			<div class="m-seg-bar flex h-2 overflow-hidden rounded-full" title="XP bought in vs cashed out">
 				<div class="m-seg m-seg--a h-full min-w-0" style="width: {marketFlow.inPct * grow}%"></div>
 				<div class="m-seg m-seg--b h-full min-w-0" style="width: {marketFlow.outPct * grow}%"></div>
 			</div>
@@ -514,19 +512,19 @@
 			</div>
 			<h2 class="m-stat-card-title text-lb-text text-base font-bold">Items</h2>
 		</div>
-		<div class="m-overview-hero mb-1 rounded-[14px] px-3 pt-4 pb-4 text-center">
-			<p class="m-overview-hero-label mx-0 mt-0 mb-1 text-xs font-semibold text-[rgba(36,95,115,0.72)] uppercase">Items bought</p>
-			<p class="m-overview-hero-value text-lb-text font-extrabold tabular-nums">{fmt(liveStats.items_buys)}</p>
-			<p class="m-overview-hero-hint text-lb-text-muted mx-0 mt-2 mb-0 text-xs font-semibold tabular-nums">
+		<div class="m-overview-hero mb-1 rounded-2xl px-3 pt-4 pb-4 text-center">
+			<p class="text-chili-hot/72 mx-0 mt-0 mb-1 text-xs font-semibold uppercase">Items bought</p>
+			<p class="m-overview-hero-value text-lb-text text-2xl font-extrabold tabular-nums lg:text-3xl">{fmt(liveStats.items_buys)}</p>
+			<p class="text-lb-text-muted mx-0 mt-2 mb-0 text-xs font-semibold tabular-nums">
 				{fmt(liveStats.items_buy_spend)} XP spent across {fmt(liveStats.items_distinct_bought)} unique items
 			</p>
 		</div>
 		<div class="m-bar-block mt-4">
 			<div class="m-bar-head text-lb-text-muted mb-2 flex items-baseline justify-between gap-2 text-base font-semibold">
 				<span>Heist outcomes</span>
-				<span class="m-bar-meta text-xs font-bold text-[rgba(36,95,115,0.88)] tabular-nums">{stealHitRate}% success</span>
+				<span class="m-bar-meta text-chili-hot/88 text-xs font-bold tabular-nums">{stealHitRate}% success</span>
 			</div>
-			<div class="m-seg-bar flex h-2 overflow-hidden rounded-[99px]" title="Successful steals vs caught">
+			<div class="m-seg-bar flex h-2 overflow-hidden rounded-full" title="Successful steals vs caught">
 				<div class="m-seg m-seg--a h-full min-w-0" style="width: {heistMix.landedPct * grow}%"></div>
 				<div class="m-seg m-seg--b h-full min-w-0" style="width: {heistMix.caughtPct * grow}%"></div>
 			</div>
@@ -574,20 +572,20 @@
 			<div class="m-stat-card-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg"><i class="fas fa-dice"></i></div>
 			<h2 class="m-stat-card-title text-lb-text text-base font-bold">Minigames</h2>
 		</div>
-		<div class="m-overview-hero mb-1 rounded-[14px] px-3 pt-4 pb-4 text-center">
-			<p class="m-overview-hero-label mx-0 mt-0 mb-1 text-xs font-semibold text-[rgba(36,95,115,0.72)] uppercase">XP wagered</p>
-			<p class="m-overview-hero-value text-lb-text font-extrabold tabular-nums">{fmt(liveStats.minigames_wagered)}</p>
-			<p class="m-overview-hero-hint text-lb-text-muted mx-0 mt-2 mb-0 text-xs font-semibold tabular-nums">
+		<div class="m-overview-hero mb-1 rounded-2xl px-3 pt-4 pb-4 text-center">
+			<p class="text-chili-hot/72 mx-0 mt-0 mb-1 text-xs font-semibold uppercase">XP wagered</p>
+			<p class="m-overview-hero-value text-lb-text text-2xl font-extrabold tabular-nums lg:text-3xl">{fmt(liveStats.minigames_wagered)}</p>
+			<p class="text-lb-text-muted mx-0 mt-2 mb-0 text-xs font-semibold tabular-nums">
 				{fmt(liveStats.minigames_plays)} plays · {fmt(liveStats.minigames_paid_out)} XP paid out
 			</p>
 		</div>
 		<div class="m-bar-block mt-4">
 			<div class="m-bar-head text-lb-text-muted mb-2 flex items-baseline justify-between gap-2 text-base font-semibold">
 				<span>Player win rate</span>
-				<span class="m-bar-meta text-xs font-bold text-[rgba(36,95,115,0.88)] tabular-nums">{minigamesWinRate}%</span>
+				<span class="m-bar-meta text-chili-hot/88 text-xs font-bold tabular-nums">{minigamesWinRate}%</span>
 			</div>
-			<div class="m-level-meter-track h-2 overflow-hidden rounded-[99px]">
-				<div class="m-level-meter-fill m-level-meter-fill--avg h-full rounded-[99px]" style="width: {Math.max(4, minigamesWinRate) * grow}%"></div>
+			<div class="m-level-meter-track h-2 overflow-hidden rounded-full">
+				<div class="m-level-meter-fill m-level-meter-fill--avg h-full rounded-full" style="width: {Math.max(4, minigamesWinRate) * grow}%"></div>
 			</div>
 		</div>
 		<div class="m-mini-grid mt-4 gap-2">
@@ -611,20 +609,20 @@
 			<div class="m-stat-card-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg"><i class="fas fa-gift"></i></div>
 			<h2 class="m-stat-card-title text-lb-text text-base font-bold">Giveaways</h2>
 		</div>
-		<div class="m-overview-hero mb-1 rounded-[14px] px-3 pt-4 pb-4 text-center">
-			<p class="m-overview-hero-label mx-0 mt-0 mb-1 text-xs font-semibold text-[rgba(36,95,115,0.72)] uppercase">Giveaways hosted</p>
-			<p class="m-overview-hero-value text-lb-text font-extrabold tabular-nums">{fmt(liveStats.giveaways_total)}</p>
-			<p class="m-overview-hero-hint text-lb-text-muted mx-0 mt-2 mb-0 text-xs font-semibold tabular-nums">
+		<div class="m-overview-hero mb-1 rounded-2xl px-3 pt-4 pb-4 text-center">
+			<p class="text-chili-hot/72 mx-0 mt-0 mb-1 text-xs font-semibold uppercase">Giveaways hosted</p>
+			<p class="m-overview-hero-value text-lb-text text-2xl font-extrabold tabular-nums lg:text-3xl">{fmt(liveStats.giveaways_total)}</p>
+			<p class="text-lb-text-muted mx-0 mt-2 mb-0 text-xs font-semibold tabular-nums">
 				{fmt(liveStats.giveaways_entries)} entries from {fmt(liveStats.giveaways_entrants)} members
 			</p>
 		</div>
 		<div class="m-bar-block mt-4">
 			<div class="m-bar-head text-lb-text-muted mb-2 flex items-baseline justify-between gap-2 text-base font-semibold">
 				<span>Odds of winning</span>
-				<span class="m-bar-meta text-xs font-bold text-[rgba(36,95,115,0.88)] tabular-nums">{giveawayClaimPct.toFixed(1)}%</span>
+				<span class="m-bar-meta text-chili-hot/88 text-xs font-bold tabular-nums">{giveawayClaimPct.toFixed(1)}%</span>
 			</div>
-			<div class="m-level-meter-track h-2 overflow-hidden rounded-[99px]">
-				<div class="m-level-meter-fill m-level-meter-fill--avg h-full rounded-[99px]" style="width: {Math.max(4, giveawayClaimPct) * grow}%"></div>
+			<div class="m-level-meter-track h-2 overflow-hidden rounded-full">
+				<div class="m-level-meter-fill m-level-meter-fill--avg h-full rounded-full" style="width: {Math.max(4, giveawayClaimPct) * grow}%"></div>
 			</div>
 		</div>
 		<div class="m-mini-grid mt-4 gap-2">
@@ -648,19 +646,19 @@
 			</div>
 			<h2 class="m-stat-card-title text-lb-text text-base font-bold">Content creators</h2>
 		</div>
-		<div class="m-overview-hero mb-1 rounded-[14px] px-3 pt-4 pb-4 text-center">
-			<p class="m-overview-hero-label mx-0 mt-0 mb-1 text-xs font-semibold text-[rgba(36,95,115,0.72)] uppercase">Streams broadcast</p>
-			<p class="m-overview-hero-value text-lb-text font-extrabold tabular-nums">{fmt(liveStats.streams_total)}</p>
-			<p class="m-overview-hero-hint text-lb-text-muted mx-0 mt-2 mb-0 text-xs font-semibold tabular-nums">
+		<div class="m-overview-hero mb-1 rounded-2xl px-3 pt-4 pb-4 text-center">
+			<p class="text-chili-hot/72 mx-0 mt-0 mb-1 text-xs font-semibold uppercase">Streams broadcast</p>
+			<p class="m-overview-hero-value text-lb-text text-2xl font-extrabold tabular-nums lg:text-3xl">{fmt(liveStats.streams_total)}</p>
+			<p class="text-lb-text-muted mx-0 mt-2 mb-0 text-xs font-semibold tabular-nums">
 				{fmt(liveStats.streams_creators)} creators · {fmt(liveStats.streams_peak_viewers)} peak viewers
 			</p>
 		</div>
 		<div class="m-bar-block mt-4">
 			<div class="m-bar-head text-lb-text-muted mb-2 flex items-baseline justify-between gap-2 text-base font-semibold">
 				<span>Engagement mix</span>
-				<span class="m-bar-meta text-xs font-bold text-[rgba(36,95,115,0.88)] tabular-nums">Likes · Chat · Gifts · Shares</span>
+				<span class="m-bar-meta text-chili-hot/88 text-xs font-bold tabular-nums">Likes · Chat · Gifts · Shares</span>
 			</div>
-			<div class="m-seg-bar flex h-2 overflow-hidden rounded-[99px]" title="Stream engagement breakdown">
+			<div class="m-seg-bar flex h-2 overflow-hidden rounded-full" title="Stream engagement breakdown">
 				<div class="m-seg m-seg--text h-full min-w-0" style="width: {streamEngage.likePct * grow}%"></div>
 				<div class="m-seg m-seg--voice h-full min-w-0" style="width: {streamEngage.chatPct * grow}%"></div>
 				<div class="m-seg m-seg--other h-full min-w-0" style="width: {streamEngage.giftPct * grow}%"></div>
@@ -698,17 +696,17 @@
 			</div>
 			<h2 class="m-stat-card-title text-lb-text text-base font-bold">Quests</h2>
 		</div>
-		<div class="m-overview-hero mb-1 rounded-[14px] px-3 pt-4 pb-4 text-center">
-			<p class="m-overview-hero-label mx-0 mt-0 mb-1 text-xs font-semibold text-[rgba(36,95,115,0.72)] uppercase">Quests enrolled</p>
-			<p class="m-overview-hero-value text-lb-text font-extrabold tabular-nums">{fmt(liveStats.quests_enrolled)}</p>
+		<div class="m-overview-hero mb-1 rounded-2xl px-3 pt-4 pb-4 text-center">
+			<p class="text-chili-hot/72 mx-0 mt-0 mb-1 text-xs font-semibold uppercase">Quests enrolled</p>
+			<p class="m-overview-hero-value text-lb-text text-2xl font-extrabold tabular-nums lg:text-3xl">{fmt(liveStats.quests_enrolled)}</p>
 		</div>
 		<div class="m-bar-block mt-4">
 			<div class="m-bar-head text-lb-text-muted mb-2 flex items-baseline justify-between gap-2 text-base font-semibold">
 				<span>Rewards claimed</span>
-				<span class="m-bar-meta text-xs font-bold text-[rgba(36,95,115,0.88)] tabular-nums">{questClaimPct.toFixed(0)}%</span>
+				<span class="m-bar-meta text-chili-hot/88 text-xs font-bold tabular-nums">{questClaimPct.toFixed(0)}%</span>
 			</div>
-			<div class="m-level-meter-track h-2 overflow-hidden rounded-[99px]">
-				<div class="m-level-meter-fill m-level-meter-fill--avg h-full rounded-[99px]" style="width: {Math.max(4, questClaimPct) * grow}%"></div>
+			<div class="m-level-meter-track h-2 overflow-hidden rounded-full">
+				<div class="m-level-meter-fill m-level-meter-fill--avg h-full rounded-full" style="width: {Math.max(4, questClaimPct) * grow}%"></div>
 			</div>
 		</div>
 		<div class="m-mini-grid mt-4 gap-2">
@@ -732,17 +730,17 @@
 			</div>
 			<h2 class="m-stat-card-title text-lb-text text-base font-bold">Staff &amp; feedback</h2>
 		</div>
-		<div class="m-overview-hero mb-1 rounded-[14px] px-3 pt-4 pb-4 text-center">
-			<p class="m-overview-hero-label mx-0 mt-0 mb-1 text-xs font-semibold text-[rgba(36,95,115,0.72)] uppercase">Staff reviews</p>
-			<p class="m-overview-hero-value text-lb-text font-extrabold tabular-nums">{fmt(liveStats.staff_reviews)}</p>
+		<div class="m-overview-hero mb-1 rounded-2xl px-3 pt-4 pb-4 text-center">
+			<p class="text-chili-hot/72 mx-0 mt-0 mb-1 text-xs font-semibold uppercase">Staff reviews</p>
+			<p class="m-overview-hero-value text-lb-text text-2xl font-extrabold tabular-nums lg:text-3xl">{fmt(liveStats.staff_reviews)}</p>
 		</div>
 		<div class="m-bar-block mt-4">
 			<div class="m-bar-head text-lb-text-muted mb-2 flex items-baseline justify-between gap-2 text-base font-semibold">
 				<span>Average staff rating</span>
-				<span class="m-bar-meta text-xs font-bold text-[rgba(36,95,115,0.88)] tabular-nums">{liveStats.staff_avg_rating || '—'} / 5</span>
+				<span class="m-bar-meta text-chili-hot/88 text-xs font-bold tabular-nums">{liveStats.staff_avg_rating || '—'} / 5</span>
 			</div>
-			<div class="m-level-meter-track h-2 overflow-hidden rounded-[99px]">
-				<div class="m-level-meter-fill m-level-meter-fill--avg h-full rounded-[99px]" style="width: {Math.max(4, staffRatingPct) * grow}%"></div>
+			<div class="m-level-meter-track h-2 overflow-hidden rounded-full">
+				<div class="m-level-meter-fill m-level-meter-fill--avg h-full rounded-full" style="width: {Math.max(4, staffRatingPct) * grow}%"></div>
 			</div>
 		</div>
 		<div class="m-mini-grid mt-4 gap-2">

@@ -296,12 +296,12 @@
 <div class="m-leaderboard-subhead m-stats-subhead mb-4">
 	<p>
 		Leaderboard
-		<span class="m-metric-pill text-chili-peach rounded-[99px] px-2 py-0 text-xs font-semibold">{metricLabel(metric)}</span>
-		<span class="m-metric-pill text-chili-peach rounded-[99px] px-2 py-0 text-xs font-semibold"
+		<span class="m-metric-pill text-chili-peach rounded-full px-2 py-0.5 text-xs font-semibold">{metricLabel(metric)}</span>
+		<span class="m-metric-pill text-chili-peach rounded-full px-2 py-0.5 text-xs font-semibold"
 			>{PERIODS.find((p) => p.id === period)?.label ?? 'All time'}</span
 		>
 		{#if streamConnected}
-			<span class="m-metric-pill m-metric-pill--live text-chili-peach inline-flex items-center gap-1 rounded-[99px] px-2 py-0 text-xs font-semibold">
+			<span class="m-metric-pill text-chili-peach inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold">
 				<span class="m-live-dot h-2 w-2 rounded-full"></span>
 				Live
 			</span>
@@ -322,7 +322,7 @@
 	{/each}
 </div>
 
-<div class="m-tabs mb-7 flex gap-2 overflow-x-auto rounded-[14px] p-1">
+<div class="m-tabs mb-7 flex gap-2 overflow-x-auto rounded-2xl p-1">
 	<button
 		class="m-tab {metric === 'xp'
 			? 'm-tab--active'
@@ -382,9 +382,9 @@
 </div>
 
 {#if isItemsGroup}
-	<div class="m-tabs m-tabs--sub mb-7 flex gap-2 overflow-x-auto rounded-[14px] p-1">
+	<div class="m-tabs m-tabs--sub mb-7 flex gap-2 overflow-x-auto rounded-2xl p-1">
 		<button
-			class="m-tab m-tab--sm {isStealGroup
+			class="m-tab {isStealGroup
 				? 'm-tab--active'
 				: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
 			onclick={() => setMetric('items_steal_total')}
@@ -392,7 +392,7 @@
 			<i class="fas fa-hand"></i> Stealer
 		</button>
 		<button
-			class="m-tab m-tab--sm {isBombGroup
+			class="m-tab {isBombGroup
 				? 'm-tab--active'
 				: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
 			onclick={() => setMetric('items_bomb_total')}
@@ -400,7 +400,7 @@
 			<i class="fas fa-bomb"></i> Bomber
 		</button>
 		<button
-			class="m-tab m-tab--sm {isBountyGroup
+			class="m-tab {isBountyGroup
 				? 'm-tab--active'
 				: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
 			onclick={() => setMetric('items_bounty_total')}
@@ -408,7 +408,7 @@
 			<i class="fas fa-crosshairs"></i> Bounties
 		</button>
 		<button
-			class="m-tab m-tab--sm {isGiftGroup
+			class="m-tab {isGiftGroup
 				? 'm-tab--active'
 				: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
 			onclick={() => setMetric('items_gift_give')}
@@ -417,9 +417,9 @@
 		</button>
 	</div>
 	{#if isStealGroup}
-		<div class="m-tabs m-tabs--sub m-tabs--sub2 mb-7 flex gap-2 overflow-x-auto rounded-[14px] p-1">
+		<div class="m-tabs m-tabs--sub m-tabs--sub2 mb-7 flex gap-2 overflow-x-auto rounded-2xl p-1">
 			<button
-				class="m-tab m-tab--sm {metric === 'items_steal_total'
+				class="m-tab {metric === 'items_steal_total'
 					? 'm-tab--active'
 					: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
 				onclick={() => setMetric('items_steal_total')}
@@ -427,7 +427,7 @@
 				<i class="fas fa-coins"></i> XP stolen
 			</button>
 			<button
-				class="m-tab m-tab--sm {metric === 'items_steal_rate'
+				class="m-tab {metric === 'items_steal_rate'
 					? 'm-tab--active'
 					: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
 				onclick={() => setMetric('items_steal_rate')}
@@ -435,7 +435,7 @@
 				<i class="fas fa-percent"></i> Success rate
 			</button>
 			<button
-				class="m-tab m-tab--sm {metric === 'items_steal_big'
+				class="m-tab {metric === 'items_steal_big'
 					? 'm-tab--active'
 					: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
 				onclick={() => setMetric('items_steal_big')}
@@ -444,9 +444,9 @@
 			</button>
 		</div>
 	{:else if isBombGroup}
-		<div class="m-tabs m-tabs--sub m-tabs--sub2 mb-7 flex gap-2 overflow-x-auto rounded-[14px] p-1">
+		<div class="m-tabs m-tabs--sub m-tabs--sub2 mb-7 flex gap-2 overflow-x-auto rounded-2xl p-1">
 			<button
-				class="m-tab m-tab--sm {metric === 'items_bomb_total'
+				class="m-tab {metric === 'items_bomb_total'
 					? 'm-tab--active'
 					: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
 				onclick={() => setMetric('items_bomb_total')}
@@ -454,7 +454,7 @@
 				<i class="fas fa-coins"></i> XP destroyed
 			</button>
 			<button
-				class="m-tab m-tab--sm {metric === 'items_bomb_rate'
+				class="m-tab {metric === 'items_bomb_rate'
 					? 'm-tab--active'
 					: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
 				onclick={() => setMetric('items_bomb_rate')}
@@ -462,7 +462,7 @@
 				<i class="fas fa-percent"></i> Success rate
 			</button>
 			<button
-				class="m-tab m-tab--sm {metric === 'items_bomb_big'
+				class="m-tab {metric === 'items_bomb_big'
 					? 'm-tab--active'
 					: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
 				onclick={() => setMetric('items_bomb_big')}
@@ -471,9 +471,9 @@
 			</button>
 		</div>
 	{:else if isBountyGroup}
-		<div class="m-tabs m-tabs--sub m-tabs--sub2 mb-7 flex gap-2 overflow-x-auto rounded-[14px] p-1">
+		<div class="m-tabs m-tabs--sub m-tabs--sub2 mb-7 flex gap-2 overflow-x-auto rounded-2xl p-1">
 			<button
-				class="m-tab m-tab--sm {metric === 'items_bounty_total'
+				class="m-tab {metric === 'items_bounty_total'
 					? 'm-tab--active'
 					: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
 				onclick={() => setMetric('items_bounty_total')}
@@ -481,7 +481,7 @@
 				<i class="fas fa-skull"></i> Total bounties
 			</button>
 			<button
-				class="m-tab m-tab--sm {metric === 'items_bounty_claimer'
+				class="m-tab {metric === 'items_bounty_claimer'
 					? 'm-tab--active'
 					: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
 				onclick={() => setMetric('items_bounty_claimer')}
@@ -489,7 +489,7 @@
 				<i class="fas fa-coins"></i> Claimer
 			</button>
 			<button
-				class="m-tab m-tab--sm {metric === 'items_bounty_give'
+				class="m-tab {metric === 'items_bounty_give'
 					? 'm-tab--active'
 					: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
 				onclick={() => setMetric('items_bounty_give')}
@@ -498,9 +498,9 @@
 			</button>
 		</div>
 	{:else}
-		<div class="m-tabs m-tabs--sub m-tabs--sub2 mb-7 flex gap-2 overflow-x-auto rounded-[14px] p-1">
+		<div class="m-tabs m-tabs--sub m-tabs--sub2 mb-7 flex gap-2 overflow-x-auto rounded-2xl p-1">
 			<button
-				class="m-tab m-tab--sm {metric === 'items_gift_give'
+				class="m-tab {metric === 'items_gift_give'
 					? 'm-tab--active'
 					: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
 				onclick={() => setMetric('items_gift_give')}
@@ -508,7 +508,7 @@
 				<i class="fas fa-gift"></i> Given
 			</button>
 			<button
-				class="m-tab m-tab--sm {metric === 'items_gift_receive'
+				class="m-tab {metric === 'items_gift_receive'
 					? 'm-tab--active'
 					: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
 				onclick={() => setMetric('items_gift_receive')}
@@ -520,17 +520,17 @@
 {/if}
 
 {#if isMinigamesGroup}
-	<div class="m-tabs m-tabs--sub mb-7 flex gap-2 overflow-x-auto rounded-[14px] p-1">
+	<div class="m-tabs m-tabs--sub mb-7 flex gap-2 overflow-x-auto rounded-2xl p-1">
 		<button
-			class="m-tab m-tab--sm m-tab--active text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold text-white"
+			class="m-tab m-tab--active text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold text-white"
 			onclick={() => setMetric('minigames_gamble_net')}
 		>
 			<i class="fas fa-dice"></i> Gamble
 		</button>
 	</div>
-	<div class="m-tabs m-tabs--sub m-tabs--sub2 mb-7 flex gap-2 overflow-x-auto rounded-[14px] p-1">
+	<div class="m-tabs m-tabs--sub m-tabs--sub2 mb-7 flex gap-2 overflow-x-auto rounded-2xl p-1">
 		<button
-			class="m-tab m-tab--sm {metric === 'minigames_gamble_net'
+			class="m-tab {metric === 'minigames_gamble_net'
 				? 'm-tab--active'
 				: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
 			onclick={() => setMetric('minigames_gamble_net')}
@@ -538,7 +538,7 @@
 			<i class="fas fa-coins"></i> Net XP
 		</button>
 		<button
-			class="m-tab m-tab--sm {metric === 'minigames_gamble_ratio'
+			class="m-tab {metric === 'minigames_gamble_ratio'
 				? 'm-tab--active'
 				: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
 			onclick={() => setMetric('minigames_gamble_ratio')}
@@ -546,7 +546,7 @@
 			<i class="fas fa-percent"></i> Win ratio
 		</button>
 		<button
-			class="m-tab m-tab--sm {metric === 'minigames_gamble_big'
+			class="m-tab {metric === 'minigames_gamble_big'
 				? 'm-tab--active'
 				: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
 			onclick={() => setMetric('minigames_gamble_big')}
@@ -557,9 +557,9 @@
 {/if}
 
 {#if isVoiceGroup}
-	<div class="m-tabs m-tabs--sub mb-7 flex gap-2 overflow-x-auto rounded-[14px] p-1">
+	<div class="m-tabs m-tabs--sub mb-7 flex gap-2 overflow-x-auto rounded-2xl p-1">
 		<button
-			class="m-tab m-tab--sm {metric === 'voice_total'
+			class="m-tab {metric === 'voice_total'
 				? 'm-tab--active'
 				: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
 			onclick={() => setMetric('voice_total')}
@@ -567,7 +567,7 @@
 			<i class="fas fa-layer-group"></i> Total
 		</button>
 		<button
-			class="m-tab m-tab--sm {metric === 'voice_active'
+			class="m-tab {metric === 'voice_active'
 				? 'm-tab--active'
 				: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
 			onclick={() => setMetric('voice_active')}
@@ -575,7 +575,7 @@
 			<i class="fas fa-microphone-lines"></i> Active
 		</button>
 		<button
-			class="m-tab m-tab--sm {metric === 'voice_afk'
+			class="m-tab {metric === 'voice_afk'
 				? 'm-tab--active'
 				: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
 			onclick={() => setMetric('voice_afk')}
@@ -586,8 +586,8 @@
 {/if}
 
 {#if top3.length > 0}
-	<section class="m-podium-section mb-7">
-		<div class="m-podium-stage flex items-end justify-center gap-0">
+	<section class="mb-7">
+		<div class="flex items-end justify-center gap-0">
 			{#each podiumOrder as { r, rank }}
 				<div class="m-podium-col m-podium-col--{rank} relative flex min-w-0 flex-1 flex-col items-center opacity-0" class:m-mounted={mounted}>
 					{#if rank === 1}
@@ -608,7 +608,7 @@
 								{#if r.avatar}
 									<img src={r.avatar} alt={displayName(r)} />
 								{:else}
-									<div class="m-avatar-fallback flex h-full w-full items-center justify-center text-xl font-extrabold text-[rgba(36,95,115,0.9)]">
+									<div class="m-avatar-fallback text-chili-hot/90 flex h-full w-full items-center justify-center text-xl font-extrabold">
 										{displayName(r).charAt(0).toUpperCase()}
 									</div>
 								{/if}
@@ -622,11 +622,8 @@
 						</div>
 					</div>
 
-					<div class="m-podium-info mb-2 w-full min-w-0 overflow-hidden px-1 py-0 text-center">
-						<div
-							class="m-podium-name text-lb-text mb-1 max-w-full min-w-0 overflow-hidden text-base font-bold text-ellipsis whitespace-nowrap"
-							title={displayName(r)}
-						>
+					<div class="mb-2 w-full min-w-0 overflow-hidden px-1 py-0 text-center">
+						<div class="text-lb-text mb-1 max-w-full min-w-0 overflow-hidden text-base font-bold text-ellipsis whitespace-nowrap" title={displayName(r)}>
 							{displayName(r)}
 						</div>
 						<div
@@ -634,16 +631,16 @@
 							style="color: {rankColors[rank]};"
 						>
 							{metricValueAnimated(r, metric)}
-							<span class="m-podium-unit ml-0 text-xs font-semibold opacity-70">{metricUnit(metric)}</span>
+							<span class="ml-0.5 text-xs font-semibold opacity-70">{metricUnit(metric)}</span>
 						</div>
-						<div class="m-podium-level text-lb-text-faint mt-0 text-xs">{isItemsGroup || isMinigamesGroup ? itemsSub(r, metric) : `Level ${r.level ?? 0}`}</div>
+						<div class="text-lb-text-faint mt-0.5 text-xs">{isItemsGroup || isMinigamesGroup ? itemsSub(r, metric) : `Level ${r.level ?? 0}`}</div>
 					</div>
 
 					<div
 						class="m-podium-block relative flex w-full items-center justify-center overflow-hidden rounded-t-lg opacity-85"
 						style="height: {podiumHeights[rank]}; background: {rankGradients[rank]};"
 					>
-						<span class="m-podium-block-num relative z-1 text-xs font-black text-[rgba(0,0,0,0.5)]">#{rank}</span>
+						<span class="relative z-1 text-xs font-black text-black/50">#{rank}</span>
 					</div>
 				</div>
 			{/each}
@@ -652,39 +649,36 @@
 {/if}
 
 {#if rest.length > 0}
-	<section class="m-list-section overflow-hidden rounded-[20px]">
+	<section class="m-list-section overflow-hidden rounded-3xl">
 		<div class="m-list-header text-lb-text flex items-center justify-between px-4 pt-4 pb-3 text-base font-bold">
 			<span>Rankings</span>
-			<span class="m-list-count text-lb-text-soft text-xs font-medium">{rows.length.toLocaleString()} members</span>
+			<span class="text-lb-text-soft text-xs font-medium">{rows.length.toLocaleString()} members</span>
 		</div>
 		<div class="m-list">
 			{#each rest as r, i (r.discord_member_id)}
 				<div class="m-list-row flex items-center gap-3 px-4 py-3 opacity-0" class:m-mounted={mounted} style="animation-delay: {i * 40}ms">
-					<div class="m-list-rank text-lb-text-soft w-8 shrink-0 text-right text-xs font-bold">#{i + 4}</div>
+					<div class="text-lb-text-soft w-8 shrink-0 text-right text-xs font-bold">#{i + 4}</div>
 					<div class="m-list-avatar h-10 w-10 shrink-0 overflow-hidden rounded-full">
 						{#if r.avatar}
 							<img src={r.avatar} alt={displayName(r)} />
 						{:else}
-							<div class="m-list-avatar-fallback text-lb-text-muted flex h-full w-full items-center justify-center text-base font-extrabold">
+							<div class="text-lb-text-muted flex h-full w-full items-center justify-center text-base font-extrabold">
 								{displayName(r).charAt(0).toUpperCase()}
 							</div>
 						{/if}
 					</div>
-					<div class="m-list-info min-w-0 flex-1">
-						<div
-							class="m-list-name text-lb-text mb-0 max-w-full min-w-0 overflow-hidden text-base font-semibold text-ellipsis whitespace-nowrap"
-							title={displayName(r)}
-						>
+					<div class="min-w-0 flex-1">
+						<div class="text-lb-text mb-0.5 max-w-full min-w-0 overflow-hidden text-base font-semibold text-ellipsis whitespace-nowrap" title={displayName(r)}>
 							{displayName(r)}
 						</div>
-						<div class="m-list-sub text-lb-text-soft mb-1 text-xs">{isItemsGroup || isMinigamesGroup ? itemsSub(r, metric) : `Level ${r.level ?? 0}`}</div>
-						<div class="m-list-bar-track h-1 overflow-hidden rounded-[99px]">
-							<div class="m-list-bar-fill h-full rounded-[99px]" style="width: {barWidthPct(r, metric)}%"></div>
+						<div class="text-lb-text-soft mb-1 text-xs">{isItemsGroup || isMinigamesGroup ? itemsSub(r, metric) : `Level ${r.level ?? 0}`}</div>
+						<div class="m-list-bar-track h-1 overflow-hidden rounded-full">
+							<div class="m-list-bar-fill h-full rounded-full" style="width: {barWidthPct(r, metric)}%"></div>
 						</div>
 					</div>
-					<div class="m-list-score text-lb-text shrink-0 text-right text-base font-extrabold whitespace-nowrap tabular-nums">
+					<div class="text-lb-text shrink-0 text-right text-base font-extrabold whitespace-nowrap tabular-nums">
 						{metricValueAnimated(r, metric)}
-						<span class="m-list-unit text-lb-text-faint ml-0 text-xs font-semibold">{metricUnit(metric)}</span>
+						<span class="text-lb-text-faint ml-0.5 text-xs font-semibold">{metricUnit(metric)}</span>
 					</div>
 				</div>
 			{/each}

@@ -40,7 +40,7 @@
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
 		<i class="fas fa-gavel text-red-400"></i>Moderation
 	</h3>
-	<p class="text-ash-400 text-xs">Ban and kick log embeds posted to your chosen channel.</p>
+	<p class="text-ash-400 text-base">Ban and kick log embeds posted to your chosen channel.</p>
 
 	<ConfigToggleRow
 		label="Moderation module"
@@ -50,7 +50,7 @@
 		ariaLabel="Toggle moderation module"
 	/>
 	{#if !featureEnabled}
-		<p class="flex items-start gap-2 text-xs text-amber-200/90">
+		<p class="flex items-start gap-2 text-base text-amber-200/90">
 			<i class="fas fa-power-off mt-0.5 shrink-0 text-amber-400/90" aria-hidden="true"></i>
 			<span>Module is off. Save configuration to apply. Turn the module on to edit the options below.</span>
 		</p>
@@ -58,10 +58,10 @@
 
 	<div class="space-y-5 transition-opacity" class:pointer-events-none={!featureEnabled} class:opacity-50={!featureEnabled}>
 		<div>
-			<label class="text-ash-300 mb-1.5 block text-xs font-medium">
+			<label class="text-ash-300 mb-1.5 block text-base font-medium">
 				<i class="fas fa-hashtag mr-1 text-red-400"></i>Moderation Logs Channel
 			</label>
-			<p class="text-ash-500 mb-2 text-xs">Where moderation logs will be posted.</p>
+			<p class="text-ash-500 mb-2 text-base">Where moderation logs will be posted.</p>
 			<ChannelPicker channels={data.channels} categories={data.categories} value={logChannelId} onchange={(id) => (logChannelId = id)} />
 		</div>
 	</div>

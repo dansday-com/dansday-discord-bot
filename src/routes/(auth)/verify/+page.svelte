@@ -71,7 +71,7 @@
 			<i class="fas fa-envelope-open-text text-xl text-sky-300 lg:text-2xl"></i>
 		</div>
 		<h1 class="text-ash-100 mb-2 text-2xl font-bold lg:text-3xl">Verify Email</h1>
-		<p class="text-ash-400 text-xs lg:text-base">Enter the 6-digit code sent to your email</p>
+		<p class="text-ash-400 text-base lg:text-lg">Enter the 6-digit code sent to your email</p>
 	</div>
 
 	<form
@@ -82,7 +82,7 @@
 		class="space-y-4 lg:space-y-6"
 	>
 		<div>
-			<label for="otp_code" class="text-ash-300 mb-2 block text-xs font-medium lg:text-base">
+			<label for="otp_code" class="text-ash-300 mb-2 block text-base font-medium lg:text-lg">
 				<i class="fas fa-key mr-2 text-amber-300"></i>Verification Code <span class="text-ash-200">*</span>
 			</label>
 			<input
@@ -99,7 +99,7 @@
 				}}
 				class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-center text-2xl transition-all focus:border-transparent focus:ring-2 focus:outline-none lg:px-4 lg:py-3"
 			/>
-			<p class="text-ash-400 mt-2 text-center text-xs">
+			<p class="text-ash-400 mt-2 text-center text-base">
 				<button type="button" onclick={resendOtp} class="text-ash-200 hover:text-ash-300 underline"> Resend code </button>
 			</p>
 		</div>
@@ -114,7 +114,7 @@
 		</button>
 
 		<div class="text-center">
-			<a href="/login" class="text-ash-400 hover:text-ash-300 text-xs lg:text-base"> &larr; Back to login </a>
+			<a href="/login" class="text-ash-400 hover:text-ash-300 text-base lg:text-lg"> &larr; Back to login </a>
 		</div>
 	</form>
 </div>

@@ -47,7 +47,7 @@
 	<h2 class="text-ash-100 mb-1 text-xl font-bold lg:text-2xl">
 		<i class="fas fa-chart-pie mr-2 text-sky-400"></i>Panel Overview
 	</h2>
-	<p class="text-ash-400 text-xs lg:text-base">High-level statistics across all your bots and servers.</p>
+	<p class="text-ash-400 text-base lg:text-lg">High-level statistics across all your bots and servers.</p>
 </div>
 
 <div class="space-y-4 lg:space-y-6">
@@ -63,7 +63,7 @@
 				{#each [{ icon: 'fa-layer-group', label: 'Total Bots', value: fmt(stats.total_bots) }, { icon: 'fa-play', label: 'Running', value: fmt(stats.running_bots) }, { icon: 'fa-stop', label: 'Stopped', value: fmt(stats.stopped_bots) }] as row}
 					<div class="bg-ash-800/50 flex items-center justify-between rounded-lg p-2">
 						<span class="text-ash-300 flex items-center gap-2 text-base">
-							<i class="fas {row.icon} text-xs text-violet-400/90"></i>{row.label}
+							<i class="fas {row.icon} text-base text-violet-400/90"></i>{row.label}
 						</span>
 						<span class="text-ash-100 text-lg font-bold">{row.value}</span>
 					</div>
@@ -82,7 +82,7 @@
 				{#each [{ icon: 'fa-globe', label: 'Total Servers', value: fmt(stats.total_servers) }, { icon: 'fa-user-ninja', label: 'Total Selfbots', value: fmt(stats.total_selfbots) }, { icon: 'fa-play-circle', label: 'Active Selfbots', value: fmt(stats.running_selfbots) }, { icon: 'fa-pause-circle', label: 'Inactive Selfbots', value: fmt(stats.stopped_selfbots) }] as row}
 					<div class="bg-ash-800/50 flex items-center justify-between rounded-lg p-2">
 						<span class="text-ash-300 flex items-center gap-2 text-base">
-							<i class="fas {row.icon} text-xs text-emerald-400/90"></i>{row.label}
+							<i class="fas {row.icon} text-base text-emerald-400/90"></i>{row.label}
 						</span>
 						<span class="text-ash-100 text-lg font-bold">{row.value}</span>
 					</div>
@@ -101,7 +101,7 @@
 				{#each [{ icon: 'fa-tachometer-alt', label: 'Total Uptime', value: formatUptime(stats.total_uptime_ms) }, { icon: 'fa-balance-scale', label: 'Average Uptime', value: formatUptime(avgUptimeMs) }, { icon: 'fa-network-wired', label: 'Total Running', value: fmt(stats.running_bots + stats.running_selfbots) }] as row}
 					<div class="bg-ash-800/50 flex items-center justify-between rounded-lg p-2">
 						<span class="text-ash-300 flex items-center gap-2 text-base">
-							<i class="fas {row.icon} text-xs text-amber-400/90"></i>{row.label}
+							<i class="fas {row.icon} text-base text-amber-400/90"></i>{row.label}
 						</span>
 						<span class="text-ash-100 text-lg font-bold">{row.value}</span>
 					</div>

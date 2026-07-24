@@ -17,9 +17,9 @@
 			<i class="{labelIconClass} mt-0.5 shrink-0 text-base leading-5" aria-hidden="true"></i>
 		{/if}
 		<div class="min-w-0">
-			<p class="text-ash-300 text-xs font-medium">{label}</p>
+			<p class="text-ash-300 text-base font-medium">{label}</p>
 			{#if description}
-				<p class="text-ash-500 mt-0.5 text-xs">{description}</p>
+				<p class="text-ash-500 mt-0.5 text-base">{description}</p>
 			{/if}
 		</div>
 	</div>

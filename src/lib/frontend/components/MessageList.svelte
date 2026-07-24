@@ -53,20 +53,20 @@
 
 <div>
 	<div class="mb-2 flex items-center justify-between">
-		<label class="text-ash-300 text-xs font-medium"><i class="fas fa-comment-dots mr-1.5 {iconAccent}"></i>{label}</label>
+		<label class="text-ash-300 text-base font-medium"><i class="fas fa-comment-dots mr-1.5 {iconAccent}"></i>{label}</label>
 		<button
 			type="button"
 			onclick={openAdd}
-			class="bg-ash-600 hover:bg-ash-500 text-ash-100 flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs transition-colors"
+			class="bg-ash-600 hover:bg-ash-500 text-ash-100 flex items-center gap-1 rounded-lg px-2.5 py-1 text-base transition-colors"
 		>
-			<i class="fas fa-plus text-xs {iconAccent}"></i>Add Message
+			<i class="fas fa-plus text-base {iconAccent}"></i>Add Message
 		</button>
 	</div>
 
 	{#if values.length === 0}
 		<div class="bg-ash-700 rounded-lg p-4 text-center">
 			<i class="fas fa-inbox mb-2 text-2xl {iconAccentMuted}"></i>
-			<p class="text-ash-400 text-xs">No messages configured. Click Add Message to create one.</p>
+			<p class="text-ash-400 text-base">No messages configured. Click Add Message to create one.</p>
 		</div>
 	{:else}
 		<div class="space-y-2">
@@ -78,7 +78,7 @@
 							type="button"
 							aria-label="Edit message"
 							onclick={() => openEdit(i)}
-							class="bg-ash-600 hover:bg-ash-500 rounded-lg p-1.5 text-xs text-white transition-colors"
+							class="bg-ash-600 hover:bg-ash-500 rounded-lg p-1.5 text-base text-white transition-colors"
 						>
 							<i class="fas fa-edit"></i>
 						</button>
@@ -86,7 +86,7 @@
 							type="button"
 							aria-label="Delete message"
 							onclick={() => remove(i)}
-							class="rounded-lg bg-red-900 p-1.5 text-xs text-red-300 transition-colors hover:bg-red-800"
+							class="rounded-lg bg-red-900 p-1.5 text-base text-red-300 transition-colors hover:bg-red-800"
 						>
 							<i class="fas fa-trash"></i>
 						</button>
@@ -111,7 +111,7 @@
 			</div>
 
 			<div class="mb-3 flex-1">
-				<label for="message-input" class="text-ash-300 mb-1.5 block text-xs font-medium">Message</label>
+				<label for="message-input" class="text-ash-300 mb-1.5 block text-base font-medium">Message</label>
 				<textarea
 					id="message-input"
 					bind:value={draftText}
@@ -123,8 +123,8 @@
 
 			{#if placeholders && placeholders.length > 0}
 				<div class="bg-ash-900 border-ash-600 mb-4 rounded-lg border p-3">
-					<p class="text-ash-200 mb-2 text-xs font-medium">Available placeholders:</p>
-					<div class="flex flex-col gap-2 text-xs lg:flex-row lg:flex-wrap *:lg:flex-1 *:lg:basis-0">
+					<p class="text-ash-200 mb-2 text-base font-medium">Available placeholders:</p>
+					<div class="flex flex-col gap-2 text-base lg:flex-row lg:flex-wrap *:lg:flex-1 *:lg:basis-0">
 						{#each placeholders as p}
 							<div class="text-ash-300 flex items-center gap-2">
 								<code class="bg-ash-800 text-ash-200 rounded px-1.5 py-0.5">{'{' + p.code + '}'}</code>

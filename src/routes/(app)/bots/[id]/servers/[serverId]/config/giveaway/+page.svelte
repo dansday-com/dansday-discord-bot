@@ -42,7 +42,7 @@
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
 		<i class="fas fa-gift text-pink-400"></i>Giveaway
 	</h3>
-	<p class="text-ash-400 text-xs">Choose where giveaways are posted and how entries work.</p>
+	<p class="text-ash-400 text-base">Choose where giveaways are posted and how entries work.</p>
 
 	<ConfigToggleRow
 		label="Giveaway module"
@@ -52,17 +52,17 @@
 		ariaLabel="Toggle giveaway module"
 	/>
 	{#if !featureEnabled}
-		<p class="flex items-start gap-2 text-xs text-amber-200/90">
+		<p class="flex items-start gap-2 text-base text-amber-200/90">
 			<i class="fas fa-power-off mt-0.5 shrink-0 text-amber-400/90" aria-hidden="true"></i>
 			<span>Module is off. Save configuration to apply. Turn the module on to edit the options below.</span>
 		</p>
 	{/if}
 	<div class="space-y-5 transition-opacity" class:pointer-events-none={!featureEnabled} class:opacity-50={!featureEnabled}>
 		<div>
-			<label class="text-ash-300 mb-1.5 block text-xs font-medium">
+			<label class="text-ash-300 mb-1.5 block text-base font-medium">
 				<i class="fas fa-hashtag mr-1 text-pink-400"></i>Giveaway Channel
 			</label>
-			<p class="text-ash-500 mb-2 text-xs">Channel for giveaways and winner announcements.</p>
+			<p class="text-ash-500 mb-2 text-base">Channel for giveaways and winner announcements.</p>
 			<ChannelPicker channels={data.channels} categories={data.categories} value={giveawayChannel} onchange={(id) => (giveawayChannel = id)} />
 		</div>
 

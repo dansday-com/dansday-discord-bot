@@ -26,7 +26,7 @@
 					? 'bg-ash-600 text-ash-100'
 					: 'text-ash-400 hover:text-ash-200 hover:bg-ash-700'}"
 			>
-				<i class="fas {tab.icon} {tab.iconClass} {active ? '' : 'opacity-75'} text-xs"></i>
+				<i class="fas {tab.icon} {tab.iconClass} {active ? '' : 'opacity-75'} text-base"></i>
 				<span>{tab.label}</span>
 			</a>
 		{/each}

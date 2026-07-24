@@ -118,7 +118,7 @@
 			<i class="fas fa-bolt text-xl text-amber-300 lg:text-2xl"></i>
 		</div>
 		<h1 class="text-ash-100 mb-2 text-2xl font-bold lg:text-3xl">{APP_NAME}</h1>
-		<p class="text-ash-400 text-xs lg:text-base">Discord Bot Panel</p>
+		<p class="text-ash-400 text-base lg:text-lg">Discord Bot Panel</p>
 	</div>
 
 	<form
@@ -129,7 +129,7 @@
 		class="space-y-4 lg:space-y-6"
 	>
 		<div>
-			<label for="username_or_email" class="text-ash-300 mb-2 block text-xs font-medium lg:text-base">
+			<label for="username_or_email" class="text-ash-300 mb-2 block text-base font-medium lg:text-lg">
 				<i class="fas fa-user mr-2 text-cyan-300"></i>Username or Email <span class="text-ash-200">*</span>
 			</label>
 			<input
@@ -143,7 +143,7 @@
 		</div>
 
 		<div>
-			<label for="password" class="text-ash-300 mb-2 block text-xs font-medium lg:text-base">
+			<label for="password" class="text-ash-300 mb-2 block text-base font-medium lg:text-lg">
 				<i class="fas fa-lock mr-2 text-rose-300"></i>Password <span class="text-ash-200">*</span>
 			</label>
 			<div class="relative">
@@ -177,7 +177,7 @@
 
 		<div class="flex items-center gap-3">
 			<div class="bg-ash-700/70 h-px flex-1"></div>
-			<div class="text-ash-500 text-xs font-semibold">OR</div>
+			<div class="text-ash-500 text-base font-semibold">OR</div>
 			<div class="bg-ash-700/70 h-px flex-1"></div>
 		</div>
 
@@ -197,7 +197,7 @@
 
 		{#if data.canRegister}
 			<div class="text-center">
-				<p class="text-ash-400 text-xs lg:text-base">
+				<p class="text-ash-400 text-base lg:text-lg">
 					Don't have an account?
 					<a href="/register" class="text-ash-200 hover:text-ash-300 ml-1">Register</a>
 				</p>

@@ -43,7 +43,7 @@
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
 		<i class="fas fa-comment-dots text-cyan-400"></i>Feedback
 	</h3>
-	<p class="text-ash-400 text-xs">Send feedback submissions to a channel and optionally ping a role.</p>
+	<p class="text-ash-400 text-base">Send feedback submissions to a channel and optionally ping a role.</p>
 
 	<ConfigToggleRow
 		label="Feedback module"
@@ -53,25 +53,25 @@
 		ariaLabel="Toggle feedback module"
 	/>
 	{#if !featureEnabled}
-		<p class="flex items-start gap-2 text-xs text-amber-200/90">
+		<p class="flex items-start gap-2 text-base text-amber-200/90">
 			<i class="fas fa-power-off mt-0.5 shrink-0 text-amber-400/90" aria-hidden="true"></i>
 			<span>Module is off. Save configuration to apply. Turn the module on to edit the options below.</span>
 		</p>
 	{/if}
 	<div class="space-y-5 transition-opacity" class:pointer-events-none={!featureEnabled} class:opacity-50={!featureEnabled}>
 		<div>
-			<label class="text-ash-300 mb-1.5 block text-xs font-medium">
+			<label class="text-ash-300 mb-1.5 block text-base font-medium">
 				<i class="fas fa-hashtag mr-1 text-cyan-400"></i>Feedback Channel
 			</label>
-			<p class="text-ash-500 mb-2 text-xs">Channel for user feedback.</p>
+			<p class="text-ash-500 mb-2 text-base">Channel for user feedback.</p>
 			<ChannelPicker channels={data.channels} categories={data.categories} value={feedbackChannel} onchange={(id) => (feedbackChannel = id)} />
 		</div>
 
 		<div>
-			<label class="text-ash-300 mb-1.5 block text-xs font-medium">
+			<label class="text-ash-300 mb-1.5 block text-base font-medium">
 				<i class="fas fa-at mr-1 text-cyan-400"></i>Feedback Role (Optional)
 			</label>
-			<p class="text-ash-500 mb-2 text-xs">Role to mention when feedback is submitted. Optional.</p>
+			<p class="text-ash-500 mb-2 text-base">Role to mention when feedback is submitted. Optional.</p>
 			<RolePicker roles={data.roles} value={feedbackRole} single placeholder="None" onchange={(v) => (feedbackRole = v as string)} />
 		</div>
 	</div>

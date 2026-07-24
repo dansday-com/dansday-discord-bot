@@ -241,13 +241,13 @@
 		</div>
 		<div class="m-stat-hero mt-2 rounded-[14px] p-3 text-center">
 			<span class="m-stat-hero-val text-lb-text block font-extrabold tabular-nums" use:countUp={p.totalXp}>{fmt(p.totalXp)}</span>
-			<span class="m-stat-hero-cap text-lb-text-muted mt-0 block text-xs font-semibold uppercase">lifetime experience</span>
+			<span class="m-stat-hero-cap text-lb-text-muted mt-0 block text-base font-semibold uppercase">lifetime experience</span>
 		</div>
 		{#if xpSourceBars.length > 0}
 			<div class="m-bar-block mt-4">
 				<div class="m-bar-head text-lb-text-muted mb-2 flex items-baseline justify-between gap-2 text-base font-semibold">
 					<span>Where your XP came from</span>
-					<span class="m-bar-meta text-xs font-bold text-[rgba(36,95,115,0.88)] tabular-nums">{fmt(xpSourceTotal)} tracked</span>
+					<span class="m-bar-meta text-base font-bold text-[rgba(36,95,115,0.88)] tabular-nums">{fmt(xpSourceTotal)} tracked</span>
 				</div>
 				<div class="m-seg-bar flex h-2 overflow-hidden rounded-[99px]" title="XP by source">
 					{#each xpSourceBars as s}
@@ -318,7 +318,7 @@
 			<div class="m-bar-block mt-4">
 				<div class="m-bar-head text-lb-text-muted mb-2 flex items-baseline justify-between gap-2 text-base font-semibold">
 					<span>Voice time split</span>
-					<span class="m-bar-meta text-xs font-bold text-[rgba(36,95,115,0.88)] tabular-nums">{fmt(voiceMix.total)} min</span>
+					<span class="m-bar-meta text-base font-bold text-[rgba(36,95,115,0.88)] tabular-nums">{fmt(voiceMix.total)} min</span>
 				</div>
 				<div class="m-seg-bar flex h-2 overflow-hidden rounded-[99px]" title="Active · AFK · Video · Stream">
 					<div class="m-seg h-full min-w-0" style="width: {voiceMix.active * grow}%; background: #1f8a4c;"></div>
@@ -355,7 +355,7 @@
 			<div class="m-buddy-list mt-4 flex flex-col gap-3">
 				{#each buddies as b, i}
 					<div class="m-buddy flex items-center gap-2">
-						<span class="m-buddy-rank inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-lg text-xs font-extrabold text-[rgba(36,95,115,0.9)]"
+						<span class="m-buddy-rank inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-lg text-base font-extrabold text-[rgba(36,95,115,0.9)]"
 							>{i + 1}</span
 						>
 						{#if b.avatar}
@@ -414,7 +414,7 @@
 							{/if}
 							<circle cx="50" cy="50" r="27" fill="#fff" />
 							<text x="50" y="48" text-anchor="middle" class="m-pie-total text-base font-extrabold">{fmtShort(allocationPie.total)}</text>
-							<text x="50" y="58" text-anchor="middle" class="m-pie-cap text-xs font-semibold uppercase">invested</text>
+							<text x="50" y="58" text-anchor="middle" class="m-pie-cap text-base font-semibold uppercase">invested</text>
 						</svg>
 						<div class="m-donut-legend flex min-w-38 flex-1 flex-col gap-2">
 							{#each allocationPie.segments as seg}
@@ -447,7 +447,7 @@
 								{/if}
 								<div class="m-hold-id min-w-0 flex-1">
 									<span class="m-hold-sym text-lb-text block overflow-hidden text-base font-extrabold text-ellipsis whitespace-nowrap">{pos.symbol}</span>
-									<span class="m-hold-sub text-lb-text-muted block overflow-hidden text-xs font-semibold text-ellipsis whitespace-nowrap tabular-nums"
+									<span class="m-hold-sub text-lb-text-muted block overflow-hidden text-base font-semibold text-ellipsis whitespace-nowrap tabular-nums"
 										>{fmtShort(pos.value)} · from {fmtShort(pos.invested)}</span
 									>
 								</div>
@@ -455,7 +455,7 @@
 									<span class="m-hold-pnl-v block text-base font-extrabold whitespace-nowrap tabular-nums"
 										><i class="fas fa-caret-{pos.pnl >= 0 ? 'up' : 'down'}"></i>{pos.pnlPercent >= 0 ? '+' : ''}{pos.pnlPercent.toFixed(2)}%</span
 									>
-									<span class="m-hold-pnl-x text-lb-text-muted block text-xs font-semibold whitespace-nowrap tabular-nums"
+									<span class="m-hold-pnl-x text-lb-text-muted block text-base font-semibold whitespace-nowrap tabular-nums"
 										>{pos.pnl >= 0 ? '+' : '−'}{fmtShort(Math.abs(pos.pnl))}</span
 									>
 								</div>
@@ -477,8 +477,11 @@
 			</div>
 			<div class="m-stat-hero mt-2 rounded-[14px] p-3 text-center">
 				<span class="m-stat-hero-val text-lb-text block font-extrabold tabular-nums" use:countUp={d.assets_market_value}>{fmt(d.assets_market_value)}</span>
-				<span class="m-stat-hero-cap text-lb-text-muted mt-0 block text-xs font-semibold uppercase">assets value · XP</span>
-				<span class="m-stat-hero-chip mt-2 inline-flex items-center gap-1 rounded-[99px] px-2 py-1 text-xs font-bold" data-dir={assetsPnl >= 0 ? 'up' : 'down'}>
+				<span class="m-stat-hero-cap text-lb-text-muted mt-0 block text-base font-semibold uppercase">assets value · XP</span>
+				<span
+					class="m-stat-hero-chip mt-2 inline-flex items-center gap-1 rounded-[99px] px-2 py-1 text-base font-bold"
+					data-dir={assetsPnl >= 0 ? 'up' : 'down'}
+				>
 					<i class="fas fa-arrow-trend-{assetsPnl >= 0 ? 'up' : 'down'}"></i>{assetsPnl >= 0 ? '+' : '−'}{fmt(Math.abs(assetsPnl))} open P/L
 				</span>
 			</div>
@@ -486,12 +489,12 @@
 				<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 					<i class="fas fa-right-left"></i>
 					<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(d.assets_trade_count)}</span>
-					<span class="m-mini-label text-lb-text-subtle text-xs font-semibold uppercase">Trades</span>
+					<span class="m-mini-label text-lb-text-subtle text-base font-semibold uppercase">Trades</span>
 				</div>
 				<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 					<i class="fas fa-briefcase"></i>
 					<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(d.assets_open_positions)}</span>
-					<span class="m-mini-label text-lb-text-subtle text-xs font-semibold uppercase">Open assets</span>
+					<span class="m-mini-label text-lb-text-subtle text-base font-semibold uppercase">Open assets</span>
 				</div>
 			</div>
 		</div>
@@ -509,7 +512,7 @@
 					style="--pct: {minigamesWinRate * grow}; --ring-color: {minigamesWinRate >= 50 ? '#1f8a4c' : '#c8911a'};"
 				>
 					<span class="m-ring-val text-lb-text text-lg font-extrabold tabular-nums"><span use:countUp={minigamesWinRate}>{minigamesWinRate}</span>%</span>
-					<span class="m-ring-cap text-lb-text-muted text-xs font-semibold uppercase">win rate</span>
+					<span class="m-ring-cap text-lb-text-muted text-base font-semibold uppercase">win rate</span>
 				</div>
 				<div class="m-ring-side flex min-w-0 flex-1 flex-col gap-2">
 					<div class="m-ring-stat min-w-0"><span>{fmt(d.minigames_plays)}</span><small>plays</small></div>
@@ -522,12 +525,12 @@
 				<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 					<i class="fas fa-coins"></i>
 					<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(d.minigames_wagered)}</span>
-					<span class="m-mini-label text-lb-text-subtle text-xs font-semibold uppercase">XP wagered</span>
+					<span class="m-mini-label text-lb-text-subtle text-base font-semibold uppercase">XP wagered</span>
 				</div>
 				<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 					<i class="fas fa-trophy"></i>
 					<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(d.minigames_biggest_win)}</span>
-					<span class="m-mini-label text-lb-text-subtle text-xs font-semibold uppercase">Biggest win</span>
+					<span class="m-mini-label text-lb-text-subtle text-base font-semibold uppercase">Biggest win</span>
 				</div>
 			</div>
 		</div>
@@ -541,18 +544,18 @@
 			</div>
 			<div class="m-stat-hero mt-2 rounded-[14px] p-3 text-center">
 				<span class="m-stat-hero-val text-lb-text block font-extrabold tabular-nums" use:countUp={d.items_buys}>{fmt(d.items_buys)}</span>
-				<span class="m-stat-hero-cap text-lb-text-muted mt-0 block text-xs font-semibold uppercase">items bought</span>
+				<span class="m-stat-hero-cap text-lb-text-muted mt-0 block text-base font-semibold uppercase">items bought</span>
 			</div>
 			<div class="m-mini-grid mt-4 gap-2">
 				<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 					<i class="fas fa-coins"></i>
 					<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(d.items_buy_spend)}</span>
-					<span class="m-mini-label text-lb-text-subtle text-xs font-semibold uppercase">XP spent</span>
+					<span class="m-mini-label text-lb-text-subtle text-base font-semibold uppercase">XP spent</span>
 				</div>
 				<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 					<i class="fas fa-wand-magic-sparkles"></i>
 					<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(d.items_activations)}</span>
-					<span class="m-mini-label text-lb-text-subtle text-xs font-semibold uppercase">Activations</span>
+					<span class="m-mini-label text-lb-text-subtle text-base font-semibold uppercase">Activations</span>
 				</div>
 			</div>
 		</div>
@@ -572,9 +575,9 @@
 						<span class="m-rel-ic inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-base text-white"><i class="fas {r.icon}"></i></span
 						>
 						<div class="m-rel-body flex min-w-0 flex-col">
-							<span class="m-rel-title text-xs font-bold uppercase">{r.title}</span>
+							<span class="m-rel-title text-base font-bold uppercase">{r.title}</span>
 							<span class="m-rel-name text-lb-text overflow-hidden text-base font-extrabold text-ellipsis whitespace-nowrap">{r.row?.name}</span>
-							<span class="m-rel-sub text-lb-text-muted overflow-hidden text-xs font-semibold text-ellipsis whitespace-nowrap tabular-nums"
+							<span class="m-rel-sub text-lb-text-muted overflow-hidden text-base font-semibold text-ellipsis whitespace-nowrap tabular-nums"
 								>{r.sub} · {r.row && r.row.xp > 0 ? `${fmtShort(r.row.xp)} XP` : `${fmt(r.row?.hits ?? 0)}×`}</span
 							>
 						</div>
@@ -586,7 +589,7 @@
 			<div class="m-ov-lists mt-4 grid gap-4">
 				{#each lists as list}
 					<div class="m-ov-list flex flex-col gap-2">
-						<span class="m-ov-list-title text-lb-text-muted text-xs font-bold uppercase"><i class="fas {list.icon}"></i> {list.title}</span>
+						<span class="m-ov-list-title text-lb-text-muted text-base font-bold uppercase"><i class="fas {list.icon}"></i> {list.title}</span>
 						{#each list.rows as t}
 							<div class="m-ov-bar-row flex flex-col gap-1">
 								<div class="m-ov-bar-head text-lb-text flex items-center gap-2 text-base font-semibold">
@@ -621,7 +624,7 @@
 					>
 					<div class="m-fav-body min-w-0 flex-1">
 						<span class="m-fav-name text-lb-text block overflow-hidden text-base font-extrabold text-ellipsis whitespace-nowrap">{fav.name}</span>
-						<span class="m-fav-sub text-lb-text-muted block text-xs font-semibold uppercase"
+						<span class="m-fav-sub text-lb-text-muted block text-base font-semibold uppercase"
 							>most used{fav.effect_type ? ` · ${effectLabel(fav.effect_type)}` : ''}</span
 						>
 					</div>
@@ -666,7 +669,7 @@
 						{/if}
 						<circle cx="50" cy="50" r="26" fill="#fff" />
 						<text x="50" y="47" text-anchor="middle" class="m-pie-total text-base font-extrabold">{fmt(usagePie.total)}</text>
-						<text x="50" y="58" text-anchor="middle" class="m-pie-cap text-xs font-semibold uppercase">uses</text>
+						<text x="50" y="58" text-anchor="middle" class="m-pie-cap text-base font-semibold uppercase">uses</text>
 					</svg>
 					<div class="m-donut-legend flex min-w-38 flex-1 flex-col gap-2">
 						{#each usagePie.segments as seg}
@@ -683,7 +686,7 @@
 				<div class="m-colchart flex h-38 items-end justify-around gap-2 pt-2">
 					{#each usagePie.segments as seg}
 						<div class="m-col flex h-full min-w-0 flex-1 flex-col items-center gap-2">
-							<span class="m-col-val text-lb-text text-xs font-bold tabular-nums">{fmt(seg.value)}</span>
+							<span class="m-col-val text-lb-text text-base font-bold tabular-nums">{fmt(seg.value)}</span>
 							<div class="m-col-track flex w-[60%] max-w-6 flex-1 items-end overflow-hidden rounded-t-lg">
 								<div class="m-col-fill w-full rounded-t-lg" style="height: {Math.max(6, seg.pct) * grow}%; background: {seg.color};"></div>
 							</div>
@@ -706,7 +709,7 @@
 			<div class="m-duel mt-4">
 				<div class="m-duel-head mb-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-base font-bold">
 					<span class="m-duel-l whitespace-nowrap text-[rgba(36,95,115,0.9)]">You stole {fmt(d.items_stolen)}</span>
-					<span class="m-duel-net text-lb-text-muted rounded-[99px] px-2 py-0 text-center text-xs" data-dir={stealNet >= 0 ? 'up' : 'down'}
+					<span class="m-duel-net text-lb-text-muted rounded-[99px] px-2 py-0 text-center text-base" data-dir={stealNet >= 0 ? 'up' : 'down'}
 						>{stealNet >= 0 ? 'net +' : 'net −'}{fmt(Math.abs(stealNet))}</span
 					>
 					<span class="m-duel-r text-danger-soft whitespace-nowrap">{fmt(d.items_stolen_from)} lost</span>
@@ -726,77 +729,77 @@
 				<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 					<i class="fas fa-hand"></i>
 					<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(d.items_stolen)}</span>
-					<span class="m-mini-label text-lb-text-subtle text-xs font-semibold uppercase">XP stolen</span>
+					<span class="m-mini-label text-lb-text-subtle text-base font-semibold uppercase">XP stolen</span>
 				</div>
 				<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 					<i class="fas fa-shield-halved"></i>
 					<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(d.items_stolen_from)}</span>
-					<span class="m-mini-label text-lb-text-subtle text-xs font-semibold uppercase">Stolen from you</span>
+					<span class="m-mini-label text-lb-text-subtle text-base font-semibold uppercase">Stolen from you</span>
 				</div>
 				<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 					<i class="fas fa-bomb"></i>
 					<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(d.items_bombed)}</span>
-					<span class="m-mini-label text-lb-text-subtle text-xs font-semibold uppercase">XP bombed</span>
+					<span class="m-mini-label text-lb-text-subtle text-base font-semibold uppercase">XP bombed</span>
 				</div>
 				<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 					<i class="fas fa-burst"></i>
 					<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(d.items_bombed_by)}</span>
-					<span class="m-mini-label text-lb-text-subtle text-xs font-semibold uppercase">Bombed you</span>
+					<span class="m-mini-label text-lb-text-subtle text-base font-semibold uppercase">Bombed you</span>
 				</div>
 				<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 					<i class="fas fa-gift"></i>
 					<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(d.items_gifted)}</span>
-					<span class="m-mini-label text-lb-text-subtle text-xs font-semibold uppercase">Gifted out</span>
+					<span class="m-mini-label text-lb-text-subtle text-base font-semibold uppercase">Gifted out</span>
 				</div>
 				<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 					<i class="fas fa-hand-holding-heart"></i>
 					<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(d.items_gifts_received)}</span>
-					<span class="m-mini-label text-lb-text-subtle text-xs font-semibold uppercase">Received</span>
+					<span class="m-mini-label text-lb-text-subtle text-base font-semibold uppercase">Received</span>
 				</div>
 				<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 					<i class="fas fa-magnifying-glass"></i>
 					<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(d.items_spies)}</span>
-					<span class="m-mini-label text-lb-text-subtle text-xs font-semibold uppercase">Spy reports</span>
+					<span class="m-mini-label text-lb-text-subtle text-base font-semibold uppercase">Spy reports</span>
 				</div>
 				<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 					<i class="fas fa-crown"></i>
 					<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(d.items_bounties_placed)}</span>
-					<span class="m-mini-label text-lb-text-subtle text-xs font-semibold uppercase">Bounties set</span>
+					<span class="m-mini-label text-lb-text-subtle text-base font-semibold uppercase">Bounties set</span>
 				</div>
 				<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center" data-dir="down">
 					<i class="fas fa-skull"></i>
 					<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(d.bounty_on_me)}</span>
-					<span class="m-mini-label text-lb-text-subtle text-xs font-semibold uppercase">Bounty on you</span>
+					<span class="m-mini-label text-lb-text-subtle text-base font-semibold uppercase">Bounty on you</span>
 				</div>
 				<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center" data-dir="up">
 					<i class="fas fa-user-secret"></i>
 					<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(defense.spies_caught)}</span>
-					<span class="m-mini-label text-lb-text-subtle text-xs font-semibold uppercase">Spies caught</span>
+					<span class="m-mini-label text-lb-text-subtle text-base font-semibold uppercase">Spies caught</span>
 				</div>
 				<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center" data-dir="up">
 					<i class="fas fa-shield-halved"></i>
 					<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(defense.blocked)}</span>
-					<span class="m-mini-label text-lb-text-subtle text-xs font-semibold uppercase">Attacks blocked</span>
+					<span class="m-mini-label text-lb-text-subtle text-base font-semibold uppercase">Attacks blocked</span>
 				</div>
 				<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center" data-dir="up">
 					<i class="fas fa-arrows-rotate"></i>
 					<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(defense.reflected)}</span>
-					<span class="m-mini-label text-lb-text-subtle text-xs font-semibold uppercase">Attacks reflected</span>
+					<span class="m-mini-label text-lb-text-subtle text-base font-semibold uppercase">Attacks reflected</span>
 				</div>
 				<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center" data-dir="down">
 					<i class="fas fa-handcuffs"></i>
 					<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(defense.my_steals_caught)}</span>
-					<span class="m-mini-label text-lb-text-subtle text-xs font-semibold uppercase">Caught stealing</span>
+					<span class="m-mini-label text-lb-text-subtle text-base font-semibold uppercase">Caught stealing</span>
 				</div>
 				<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center" data-dir="up">
 					<i class="fas fa-umbrella"></i>
 					<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(defense.insurance_covers)}</span>
-					<span class="m-mini-label text-lb-text-subtle text-xs font-semibold uppercase">Insurance covers</span>
+					<span class="m-mini-label text-lb-text-subtle text-base font-semibold uppercase">Insurance covers</span>
 				</div>
 				<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center" data-dir="up">
 					<i class="fas fa-hand-holding-dollar"></i>
 					<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(defense.insurance_xp)}</span>
-					<span class="m-mini-label text-lb-text-subtle text-xs font-semibold uppercase">XP recovered</span>
+					<span class="m-mini-label text-lb-text-subtle text-base font-semibold uppercase">XP recovered</span>
 				</div>
 			</div>
 		</div>
@@ -812,47 +815,47 @@
 				<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 					<i class="fas fa-ticket"></i>
 					<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(d.giveaways_entered)}</span>
-					<span class="m-mini-label text-lb-text-subtle text-xs font-semibold uppercase">Giveaways entered</span>
+					<span class="m-mini-label text-lb-text-subtle text-base font-semibold uppercase">Giveaways entered</span>
 				</div>
 				<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 					<i class="fas fa-medal"></i>
 					<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(d.giveaways_won)}</span>
-					<span class="m-mini-label text-lb-text-subtle text-xs font-semibold uppercase">Giveaways won</span>
+					<span class="m-mini-label text-lb-text-subtle text-base font-semibold uppercase">Giveaways won</span>
 				</div>
 				<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 					<i class="fas fa-gift"></i>
 					<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(d.giveaways_hosted)}</span>
-					<span class="m-mini-label text-lb-text-subtle text-xs font-semibold uppercase">Hosted</span>
+					<span class="m-mini-label text-lb-text-subtle text-base font-semibold uppercase">Hosted</span>
 				</div>
 				<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 					<i class="fas fa-scroll"></i>
 					<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(d.quests_enrolled)}</span>
-					<span class="m-mini-label text-lb-text-subtle text-xs font-semibold uppercase">Quests</span>
+					<span class="m-mini-label text-lb-text-subtle text-base font-semibold uppercase">Quests</span>
 				</div>
 				<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 					<i class="fas fa-award"></i>
 					<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(d.quests_claimed)}</span>
-					<span class="m-mini-label text-lb-text-subtle text-xs font-semibold uppercase">Rewards claimed</span>
+					<span class="m-mini-label text-lb-text-subtle text-base font-semibold uppercase">Rewards claimed</span>
 				</div>
 				<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 					<i class="fas fa-tower-broadcast"></i>
 					<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(d.streams_total)}</span>
-					<span class="m-mini-label text-lb-text-subtle text-xs font-semibold uppercase">Streams</span>
+					<span class="m-mini-label text-lb-text-subtle text-base font-semibold uppercase">Streams</span>
 				</div>
 				<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 					<i class="fas fa-eye"></i>
 					<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(d.streams_peak_viewers)}</span>
-					<span class="m-mini-label text-lb-text-subtle text-xs font-semibold uppercase">Peak viewers</span>
+					<span class="m-mini-label text-lb-text-subtle text-base font-semibold uppercase">Peak viewers</span>
 				</div>
 				<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 					<i class="fas fa-heart"></i>
 					<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(d.streams_likes)}</span>
-					<span class="m-mini-label text-lb-text-subtle text-xs font-semibold uppercase">Likes</span>
+					<span class="m-mini-label text-lb-text-subtle text-base font-semibold uppercase">Likes</span>
 				</div>
 				<div class="m-mini flex flex-col items-center gap-1 rounded-xl px-2 py-3 text-center">
 					<i class="fas fa-comment-dots"></i>
 					<span class="m-mini-value text-lb-text text-base font-extrabold tabular-nums">{fmt(d.feedback_submitted)}</span>
-					<span class="m-mini-label text-lb-text-subtle text-xs font-semibold uppercase">Feedback given</span>
+					<span class="m-mini-label text-lb-text-subtle text-base font-semibold uppercase">Feedback given</span>
 				</div>
 			</div>
 		</div>

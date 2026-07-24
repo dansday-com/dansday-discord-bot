@@ -246,7 +246,7 @@
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
 		<i class="fas fa-forward text-violet-400"></i>Forwarder
 	</h3>
-	<p class="text-ash-400 text-xs">Forward messages from a selfbot's channel to a channel in this server.</p>
+	<p class="text-ash-400 text-base">Forward messages from a selfbot's channel to a channel in this server.</p>
 
 	<ConfigToggleRow
 		label="Forwarder module"
@@ -256,13 +256,13 @@
 		ariaLabel="Toggle forwarder module"
 	/>
 	{#if !featureEnabled}
-		<p class="flex items-start gap-2 text-xs text-amber-200/90">
+		<p class="flex items-start gap-2 text-base text-amber-200/90">
 			<i class="fas fa-power-off mt-0.5 shrink-0 text-amber-400/90" aria-hidden="true"></i>
 			<span>Module is off. Save configuration to apply. Turn the module on to edit forwarders below.</span>
 		</p>
 	{/if}
 	{#if featureEnabled && !data.hasRunningSelfbot}
-		<p class="flex items-start gap-2 rounded-lg border border-red-800/30 bg-red-900/20 p-3 text-xs text-red-200/90">
+		<p class="flex items-start gap-2 rounded-lg border border-red-800/30 bg-red-900/20 p-3 text-base text-red-200/90">
 			<i class="fas fa-exclamation-triangle mt-0.5 shrink-0 text-red-400" aria-hidden="true"></i>
 			<span>
 				{#if !data.hasSelfbots}
@@ -278,13 +278,13 @@
 			{#if forwarders.length === 0}
 				<div class="bg-ash-700 rounded-lg p-4 text-center">
 					<i class="fas fa-inbox mb-2 text-2xl text-violet-400/80"></i>
-					<p class="text-ash-400 text-xs">No forwarders yet. Click Add Forwarder to create one.</p>
+					<p class="text-ash-400 text-base">No forwarders yet. Click Add Forwarder to create one.</p>
 				</div>
 			{:else}
 				{#each forwarders as fw, i}
 					<div class="bg-ash-700 border-ash-600 rounded-lg border p-3">
 						<div class="flex items-start justify-between gap-3">
-							<div class="min-w-0 flex-1 space-y-1 text-xs">
+							<div class="min-w-0 flex-1 space-y-1 text-base">
 								{#if fw.selfbot_id}
 									<div class="text-ash-100 flex items-center gap-1.5 font-medium">
 										<i class="fas fa-robot text-violet-400"></i>{fw.selfbot_name || selfbotNameById(fw.selfbot_id) || `Selfbot #${fw.selfbot_id}`}
@@ -310,7 +310,7 @@
 									<div class="text-ash-400"><span class="text-ash-300 font-medium">Tag:</span> {fw.tag}</div>
 								{/if}
 								{#if fw.only_forward_when_mentions_member}
-									<div class="text-ash-400 text-xs">
+									<div class="text-ash-400 text-base">
 										<i class="fas fa-at mr-1 text-violet-400"></i>Only when mentions selfbot
 									</div>
 								{/if}
@@ -319,7 +319,7 @@
 								<button
 									type="button"
 									onclick={() => openEdit(i)}
-									class="bg-ash-600 hover:bg-ash-500 rounded-lg p-1.5 text-xs text-white transition-colors"
+									class="bg-ash-600 hover:bg-ash-500 rounded-lg p-1.5 text-base text-white transition-colors"
 									aria-label="Edit"
 								>
 									<i class="fas fa-edit"></i>
@@ -327,7 +327,7 @@
 								<button
 									type="button"
 									onclick={() => removeForwarder(i)}
-									class="rounded-lg bg-red-900 p-1.5 text-xs text-red-300 transition-colors hover:bg-red-800"
+									class="rounded-lg bg-red-900 p-1.5 text-base text-red-300 transition-colors hover:bg-red-800"
 									aria-label="Delete"
 								>
 									<i class="fas fa-trash"></i>
@@ -344,7 +344,7 @@
 			onclick={openAdd}
 			class="border-ash-600 text-ash-400 hover:text-ash-200 hover:border-ash-400 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed py-2 text-base transition-colors"
 		>
-			<i class="fas fa-plus text-xs"></i>Add Forwarder
+			<i class="fas fa-plus text-base"></i>Add Forwarder
 		</button>
 	</div>
 
@@ -373,8 +373,8 @@
 
 			<div class="flex-1 space-y-4 overflow-y-auto">
 				<div>
-					<label for="fw-selfbot" class="text-ash-300 mb-1.5 block text-xs font-medium"><i class="fas fa-robot mr-1.5 text-violet-400"></i>Selfbot</label>
-					<p class="text-ash-500 mb-2 text-xs">Pick the selfbot account that will forward messages.</p>
+					<label for="fw-selfbot" class="text-ash-300 mb-1.5 block text-base font-medium"><i class="fas fa-robot mr-1.5 text-violet-400"></i>Selfbot</label>
+					<p class="text-ash-500 mb-2 text-base">Pick the selfbot account that will forward messages.</p>
 					<select
 						id="fw-selfbot"
 						value={draft.selfbot_id}
@@ -389,10 +389,10 @@
 				</div>
 
 				<div>
-					<label for="fw-server" class="text-ash-300 mb-1.5 block text-xs font-medium"
+					<label for="fw-server" class="text-ash-300 mb-1.5 block text-base font-medium"
 						><i class="fas fa-server mr-1.5 text-violet-400"></i>Server (where selfbot is)</label
 					>
-					<p class="text-ash-500 mb-2 text-xs">Select the server the selfbot is connected to.</p>
+					<p class="text-ash-500 mb-2 text-base">Select the server the selfbot is connected to.</p>
 					<select
 						id="fw-server"
 						value={draft.server_id}
@@ -408,12 +408,12 @@
 				</div>
 
 				<div>
-					<p class="text-ash-300 mb-1.5 block text-xs font-medium"><i class="fas fa-hashtag mr-1.5 text-violet-400"></i>From Channels</p>
-					<p class="text-ash-500 mb-2 text-xs">Messages from these channels will be forwarded.</p>
+					<p class="text-ash-300 mb-1.5 block text-base font-medium"><i class="fas fa-hashtag mr-1.5 text-violet-400"></i>From Channels</p>
+					<p class="text-ash-500 mb-2 text-base">Messages from these channels will be forwarded.</p>
 					{#if loadingChannels}
-						<p class="text-ash-500 text-xs"><i class="fas fa-spinner fa-spin mr-1"></i>Loading channels...</p>
+						<p class="text-ash-500 text-base"><i class="fas fa-spinner fa-spin mr-1"></i>Loading channels...</p>
 					{:else if !draft.server_id}
-						<p class="text-ash-500 text-xs italic">Select a server first.</p>
+						<p class="text-ash-500 text-base italic">Select a server first.</p>
 					{:else}
 						<ChannelPicker
 							channels={selfbotChannels}
@@ -427,8 +427,8 @@
 				</div>
 
 				<div>
-					<p class="text-ash-300 mb-1.5 block text-xs font-medium"><i class="fas fa-bullseye mr-1.5 text-violet-400"></i>Target Channel</p>
-					<p class="text-ash-500 mb-2 text-xs">Where forwarded messages will be posted in this server.</p>
+					<p class="text-ash-300 mb-1.5 block text-base font-medium"><i class="fas fa-bullseye mr-1.5 text-violet-400"></i>Target Channel</p>
+					<p class="text-ash-500 mb-2 text-base">Where forwarded messages will be posted in this server.</p>
 					<ChannelPicker
 						channels={data.channels}
 						categories={data.categories}
@@ -439,8 +439,8 @@
 				</div>
 
 				<div>
-					<p class="text-ash-300 mb-1.5 block text-xs font-medium"><i class="fas fa-user-shield mr-1.5 text-violet-400"></i>Role Pings</p>
-					<p class="text-ash-500 mb-2 text-xs">Optional roles to mention on forwarded messages.</p>
+					<p class="text-ash-300 mb-1.5 block text-base font-medium"><i class="fas fa-user-shield mr-1.5 text-violet-400"></i>Role Pings</p>
+					<p class="text-ash-500 mb-2 text-base">Optional roles to mention on forwarded messages.</p>
 					<RolePicker
 						roles={data.roles}
 						value={draft.role_pings}
@@ -450,10 +450,10 @@
 				</div>
 
 				<div>
-					<p class="text-ash-300 mb-1.5 text-xs font-medium">
+					<p class="text-ash-300 mb-1.5 text-base font-medium">
 						<i class="fas fa-at mr-1.5 text-violet-400"></i>Mention filter
 					</p>
-					<p class="text-ash-500 mb-2 text-xs">Only forward messages that mention the selfbot.</p>
+					<p class="text-ash-500 mb-2 text-base">Only forward messages that mention the selfbot.</p>
 					<label class="flex cursor-pointer items-center gap-3">
 						<div class="relative">
 							<input type="checkbox" bind:checked={draft.only_forward_when_mentions_member} class="peer sr-only" />
@@ -465,10 +465,10 @@
 				</div>
 
 				<div>
-					<label for="fw-tag" class="text-ash-300 mb-1.5 block text-xs font-medium">
+					<label for="fw-tag" class="text-ash-300 mb-1.5 block text-base font-medium">
 						<i class="fas fa-tag mr-1.5 text-violet-400"></i>Tag <span class="text-ash-500">(optional)</span>
 					</label>
-					<p class="text-ash-500 mb-2 text-xs">Label this forwarder so it’s easier to recognize later.</p>
+					<p class="text-ash-500 mb-2 text-base">Label this forwarder so it’s easier to recognize later.</p>
 					<input
 						id="fw-tag"
 						type="text"

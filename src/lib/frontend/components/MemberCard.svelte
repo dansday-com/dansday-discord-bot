@@ -696,10 +696,11 @@
 						{#if serverIcon}
 							<img src={serverIcon} alt="" class="mc-server-icon h-6 w-6 rounded-lg object-cover" />
 						{:else}
-							<span class="mc-server-icon-ph text-chili-hot flex h-6 w-6 items-center justify-center rounded-lg text-xs"><i class="fas fa-shield-alt"></i></span
+							<span class="mc-server-icon-ph text-chili-hot flex h-6 w-6 items-center justify-center rounded-lg text-base"
+								><i class="fas fa-shield-alt"></i></span
 							>
 						{/if}
-						<span class="mc-server-name text-lb-text-muted max-w-45 overflow-hidden text-xs font-bold text-ellipsis whitespace-nowrap uppercase"
+						<span class="mc-server-name text-lb-text-muted max-w-45 overflow-hidden text-base font-bold text-ellipsis whitespace-nowrap uppercase"
 							>{serverName}</span
 						>
 					</div>
@@ -728,7 +729,7 @@
 					</h2>
 
 					{#if highestRole}
-						<div class="mc-role-badge mb-4 inline-flex items-center gap-2 rounded-[99px] px-4 py-1 text-xs font-bold" style="--mc-role-c: {roleColor};">
+						<div class="mc-role-badge mb-4 inline-flex items-center gap-2 rounded-[99px] px-4 py-1 text-base font-bold" style="--mc-role-c: {roleColor};">
 							<i class="fas fa-circle"></i>
 							{highestRole.name}
 						</div>
@@ -736,7 +737,7 @@
 
 					{#if isAssets && assets}
 						<div class="mc-level-block mb-4 flex flex-col items-center gap-0">
-							<span class="mc-level-label text-lb-text-subtle text-xs font-bold uppercase">Portfolio P/L</span>
+							<span class="mc-level-label text-lb-text-subtle text-base font-bold uppercase">Portfolio P/L</span>
 							<span class="mc-level-value text-3xl font-black" style="color: {assets.pnl >= 0 ? '#1a7f57' : '#b23b2e'}">
 								{assets.pnl >= 0 ? '+' : ''}{assets.pnlPct.toFixed(2)}%
 							</span>
@@ -746,27 +747,27 @@
 							<div class="mc-stat flex flex-1 flex-col items-center gap-1 rounded-xl px-2 py-2">
 								<i class="fas fa-coins"></i>
 								<span class="mc-stat-val text-lb-text text-base font-extrabold">{fmtNum(assets.invested)}</span>
-								<span class="mc-stat-lbl text-lb-text-subtle text-xs font-semibold uppercase">Invested</span>
+								<span class="mc-stat-lbl text-lb-text-subtle text-base font-semibold uppercase">Invested</span>
 							</div>
 							<div class="mc-stat flex flex-1 flex-col items-center gap-1 rounded-xl px-2 py-2">
 								<i class="fas fa-sack-dollar"></i>
 								<span class="mc-stat-val text-lb-text text-base font-extrabold">{fmtNum(assets.value)}</span>
-								<span class="mc-stat-lbl text-lb-text-subtle text-xs font-semibold uppercase">Worth</span>
+								<span class="mc-stat-lbl text-lb-text-subtle text-base font-semibold uppercase">Worth</span>
 							</div>
 							<div class="mc-stat flex flex-1 flex-col items-center gap-1 rounded-xl px-2 py-2">
 								<i class="fas fa-layer-group"></i>
 								<span class="mc-stat-val text-lb-text text-base font-extrabold">{assets.count}</span>
-								<span class="mc-stat-lbl text-lb-text-subtle text-xs font-semibold uppercase">Assets</span>
+								<span class="mc-stat-lbl text-lb-text-subtle text-base font-semibold uppercase">Assets</span>
 							</div>
 						</div>
 
-						<div class="mc-joined text-lb-text-muted mt-2 flex items-center gap-2 text-xs font-semibold">
+						<div class="mc-joined text-lb-text-muted mt-2 flex items-center gap-2 text-base font-semibold">
 							<i class="fas fa-chart-line"></i>
 							<span>{assets.pnl >= 0 ? '+' : ''}{fmtNum(assets.pnl)} XP profit/loss</span>
 						</div>
 					{:else}
 						<div class="mc-level-block mb-4 flex flex-col items-center gap-0">
-							<span class="mc-level-label text-lb-text-subtle text-xs font-bold uppercase">Level</span>
+							<span class="mc-level-label text-lb-text-subtle text-base font-bold uppercase">Level</span>
 							<span class="mc-level-value text-3xl font-black">{member.level ?? 0}</span>
 						</div>
 
@@ -774,21 +775,21 @@
 							<div class="mc-stat flex flex-1 flex-col items-center gap-1 rounded-xl px-2 py-2">
 								<i class="fas fa-star"></i>
 								<span class="mc-stat-val text-lb-text text-base font-extrabold">{fmtNum(member.experience)}</span>
-								<span class="mc-stat-lbl text-lb-text-subtle text-xs font-semibold uppercase">XP</span>
+								<span class="mc-stat-lbl text-lb-text-subtle text-base font-semibold uppercase">XP</span>
 							</div>
 							<div class="mc-stat flex flex-1 flex-col items-center gap-1 rounded-xl px-2 py-2">
 								<i class="fas fa-comments"></i>
 								<span class="mc-stat-val text-lb-text text-base font-extrabold">{fmtNum(member.chat_total)}</span>
-								<span class="mc-stat-lbl text-lb-text-subtle text-xs font-semibold uppercase">Messages</span>
+								<span class="mc-stat-lbl text-lb-text-subtle text-base font-semibold uppercase">Messages</span>
 							</div>
 							<div class="mc-stat flex flex-1 flex-col items-center gap-1 rounded-xl px-2 py-2">
 								<i class="fas fa-microphone"></i>
 								<span class="mc-stat-val text-lb-text text-base font-extrabold">{fmtNum(member.voice_minutes_active)}</span>
-								<span class="mc-stat-lbl text-lb-text-subtle text-xs font-semibold uppercase">Voice min</span>
+								<span class="mc-stat-lbl text-lb-text-subtle text-base font-semibold uppercase">Voice min</span>
 							</div>
 						</div>
 
-						<div class="mc-joined text-lb-text-muted mt-2 flex items-center gap-2 text-xs font-semibold">
+						<div class="mc-joined text-lb-text-muted mt-2 flex items-center gap-2 text-base font-semibold">
 							<i class="fas fa-calendar-check"></i>
 							<span>Joined {fmtJoined(member.member_since)}</span>
 						</div>

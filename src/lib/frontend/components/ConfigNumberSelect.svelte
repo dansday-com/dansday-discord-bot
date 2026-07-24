@@ -67,14 +67,14 @@
 </script>
 
 <div>
-	<label for={id} class="text-ash-300 mb-1.5 block text-xs font-medium">
+	<label for={id} class="text-ash-300 mb-1.5 block text-base font-medium">
 		{#if labelIconClass}
 			<i class={labelIconClass}></i>
 		{/if}
 		{label}
 	</label>
 	{#if description}
-		<p class="text-ash-500 mb-2 text-xs">{description}</p>
+		<p class="text-ash-500 mb-2 text-base">{description}</p>
 	{/if}
 	<button
 		type="button"

@@ -76,7 +76,7 @@
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
 		<i class="fas fa-gem text-sky-400"></i>Discord Quest notifier
 	</h3>
-	<p class="text-ash-400 text-xs">
+	<p class="text-ash-400 text-base">
 		Discord Quest alerts from this server’s selfbot (all reward types). Not the same as <strong class="text-ash-200">Channel notification</strong>.
 	</p>
 
@@ -88,13 +88,13 @@
 		ariaLabel="Toggle quest notifier module"
 	/>
 	{#if !featureEnabled}
-		<p class="flex items-start gap-2 text-xs text-amber-200/90">
+		<p class="flex items-start gap-2 text-base text-amber-200/90">
 			<i class="fas fa-power-off mt-0.5 shrink-0 text-amber-400/90" aria-hidden="true"></i>
 			<span>Module is off. Save configuration to apply. Turn the module on to edit channel and proxy below.</span>
 		</p>
 	{/if}
 	{#if featureEnabled && !data.hasRunningSelfbot}
-		<p class="flex items-start gap-2 rounded-lg border border-red-800/30 bg-red-900/20 p-3 text-xs text-red-200/90">
+		<p class="flex items-start gap-2 rounded-lg border border-red-800/30 bg-red-900/20 p-3 text-base text-red-200/90">
 			<i class="fas fa-exclamation-triangle mt-0.5 shrink-0 text-red-400" aria-hidden="true"></i>
 			<span>
 				{#if !data.hasSelfbots}
@@ -107,10 +107,10 @@
 	{/if}
 	<div class="space-y-5 transition-opacity" class:pointer-events-none={!featureEnabled} class:opacity-50={!featureEnabled}>
 		<div>
-			<label class="text-ash-300 mb-1.5 block text-xs font-medium">
+			<label class="text-ash-300 mb-1.5 block text-base font-medium">
 				<i class="fas fa-hashtag mr-1.5 text-sky-400"></i>Notification channel
 			</label>
-			<p class="text-ash-500 mb-2 text-xs">Where the official bot posts quest embeds.</p>
+			<p class="text-ash-500 mb-2 text-base">Where the official bot posts quest embeds.</p>
 			<ChannelPicker
 				channels={data.channels}
 				categories={data.categories}
@@ -121,10 +121,10 @@
 		</div>
 
 		<div>
-			<label for="questHttpProxy" class="text-ash-300 mb-1.5 block text-xs font-medium">
+			<label for="questHttpProxy" class="text-ash-300 mb-1.5 block text-base font-medium">
 				<i class="fas fa-network-wired mr-1.5 text-sky-400"></i>HTTP(S) proxy <span class="text-ash-500">(optional)</span>
 			</label>
-			<p class="text-ash-500 mb-2 text-xs">For <code class="text-ash-400">/quests/@me</code> only. Leave empty for direct connection.</p>
+			<p class="text-ash-500 mb-2 text-base">For <code class="text-ash-400">/quests/@me</code> only. Leave empty for direct connection.</p>
 			<input
 				id="questHttpProxy"
 				type="text"

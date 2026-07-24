@@ -126,10 +126,10 @@
 		{#each value as string[] as id}
 			{@const ch = channelById(id)}
 			{#if ch}
-				<span class="bg-ash-700 text-ash-200 flex items-center gap-1 rounded px-2 py-0.5 text-xs">
+				<span class="bg-ash-700 text-ash-200 flex items-center gap-1 rounded px-2 py-0.5 text-base">
 					<span class="text-ash-500">#</span>{ch.name}
 					<button type="button" onclick={() => remove(id)} class="text-ash-500 hover:text-ash-300 ml-0.5">
-						<i class="fas fa-times text-xs"></i>
+						<i class="fas fa-times text-base"></i>
 					</button>
 				</span>
 			{/if}
@@ -190,8 +190,8 @@
 						{#if catChannels.length > 0}
 							<div class="mb-3">
 								<div class="mb-2 flex items-center gap-2 px-2">
-									<i class="fas fa-folder text-xs text-amber-300"></i>
-									<span class="text-ash-400 text-xs font-semibold uppercase">{cat.name ?? 'Unnamed Category'}</span>
+									<i class="fas fa-folder text-base text-amber-300"></i>
+									<span class="text-ash-400 text-base font-semibold uppercase">{cat.name ?? 'Unnamed Category'}</span>
 								</div>
 								<div class="space-y-1">
 									{#each catChannels as ch}
@@ -214,13 +214,13 @@
 												<i class="fas fa-hashtag shrink-0 text-base text-violet-300"></i>
 												<div class="min-w-0 flex-1">
 													<p class="text-ash-100 truncate text-base font-medium">{ch.name}</p>
-													<p class="text-ash-400 text-xs">{channelType(ch.type)}</p>
+													<p class="text-ash-400 text-base">{channelType(ch.type)}</p>
 												</div>
 											</div>
 											{#if multi ? pending.includes(ch.discord_channel_id) : (value as string) === ch.discord_channel_id}
 												<i class="fas fa-check text-base text-emerald-300"></i>
 											{:else}
-												<i class="fas fa-chevron-right text-xs {CHANNEL_PICKER_ACCENT.listChevron}"></i>
+												<i class="fas fa-chevron-right text-base {CHANNEL_PICKER_ACCENT.listChevron}"></i>
 											{/if}
 										</button>
 									{/each}
@@ -235,8 +235,8 @@
 						{/if}
 						<div class="mb-3">
 							<div class="mb-2 flex items-center gap-2 px-2">
-								<i class="fas fa-hashtag text-xs text-violet-300"></i>
-								<span class="text-ash-400 text-xs font-semibold uppercase">No Category</span>
+								<i class="fas fa-hashtag text-base text-violet-300"></i>
+								<span class="text-ash-400 text-base font-semibold uppercase">No Category</span>
 							</div>
 							<div class="space-y-1">
 								{#each grouped.uncategorized as ch}
@@ -259,13 +259,13 @@
 											<i class="fas fa-hashtag shrink-0 text-base text-violet-300"></i>
 											<div class="min-w-0 flex-1">
 												<p class="text-ash-100 truncate text-base font-medium">{ch.name}</p>
-												<p class="text-ash-400 text-xs">{channelType(ch.type)}</p>
+												<p class="text-ash-400 text-base">{channelType(ch.type)}</p>
 											</div>
 										</div>
 										{#if multi ? pending.includes(ch.discord_channel_id) : (value as string) === ch.discord_channel_id}
 											<i class="fas fa-check text-base text-emerald-300"></i>
 										{:else}
-											<i class="fas fa-chevron-right text-xs {CHANNEL_PICKER_ACCENT.listChevron}"></i>
+											<i class="fas fa-chevron-right text-base {CHANNEL_PICKER_ACCENT.listChevron}"></i>
 										{/if}
 									</button>
 								{/each}

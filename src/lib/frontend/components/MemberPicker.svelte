@@ -152,7 +152,7 @@
 	<div class="mt-2 max-h-32 overflow-y-auto rounded-md">
 		<div class="flex flex-wrap gap-1">
 			{#each value as string[] as id (id)}
-				<span class="border-ash-600 bg-ash-800 text-ash-200 flex max-w-full min-w-0 items-center gap-1 rounded border px-2 py-0.5 text-xs">
+				<span class="border-ash-600 bg-ash-800 text-ash-200 flex max-w-full min-w-0 items-center gap-1 rounded border px-2 py-0.5 text-base">
 					<span class="truncate">{labelById[id] ?? id}</span>
 					<button
 						type="button"
@@ -161,7 +161,7 @@
 						class="text-ash-400 hover:text-ash-100 ml-0.5 shrink-0 disabled:opacity-40"
 						aria-label="Remove"
 					>
-						<i class="fas fa-times text-xs"></i>
+						<i class="fas fa-times text-base"></i>
 					</button>
 				</span>
 			{/each}
@@ -229,13 +229,13 @@
 								{/if}
 								<div class="min-w-0 flex-1">
 									<p class="text-ash-100 truncate text-base font-medium">{label(m)}</p>
-									<p class="text-ash-400 truncate text-xs">{m.discord_member_id}</p>
+									<p class="text-ash-400 truncate text-base">{m.discord_member_id}</p>
 								</div>
 							</div>
 							{#if isRowSelected(m.discord_member_id)}
 								<i class="fas fa-check text-base text-emerald-300"></i>
 							{:else if single}
-								<i class="fas fa-chevron-right text-xs {MEMBER_PICKER_ACCENT.listChevron}"></i>
+								<i class="fas fa-chevron-right text-base {MEMBER_PICKER_ACCENT.listChevron}"></i>
 							{:else}
 								<i class="fas fa-check text-base text-transparent"></i>
 							{/if}

@@ -250,7 +250,7 @@
 					{#if canStart}
 						<button
 							onclick={() => botAction('start')}
-							class="text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg bg-green-600 px-3 text-xs font-medium transition-all hover:scale-105 hover:bg-green-700 active:scale-95 lg:h-10 lg:px-4 lg:text-base"
+							class="text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg bg-green-600 px-3 text-base font-medium transition-all hover:scale-105 hover:bg-green-700 active:scale-95 lg:h-10 lg:px-4 lg:text-lg"
 						>
 							<i class="fas fa-play text-base text-green-200 lg:text-base"></i>
 							<span>Start</span>
@@ -259,14 +259,14 @@
 					{#if canStop}
 						<button
 							onclick={() => botAction('stop')}
-							class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg px-3 text-xs font-medium transition-all hover:scale-105 active:scale-95 lg:h-10 lg:px-4 lg:text-base"
+							class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg px-3 text-base font-medium transition-all hover:scale-105 active:scale-95 lg:h-10 lg:px-4 lg:text-lg"
 						>
 							<i class="fas fa-stop text-base text-rose-200 lg:text-base"></i>
 							<span>Stop</span>
 						</button>
 						<button
 							onclick={() => botAction('restart')}
-							class="text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg bg-yellow-600 px-3 text-xs font-medium transition-all hover:scale-105 hover:bg-yellow-700 active:scale-95 lg:h-10 lg:px-4 lg:text-base"
+							class="text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg bg-yellow-600 px-3 text-base font-medium transition-all hover:scale-105 hover:bg-yellow-700 active:scale-95 lg:h-10 lg:px-4 lg:text-lg"
 						>
 							<i class="fas fa-redo text-base text-yellow-200 lg:text-base"></i>
 							<span>Restart</span>
@@ -274,7 +274,7 @@
 					{/if}
 					<button
 						onclick={() => (showDeleteConfirm = true)}
-						class="text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg bg-red-700 px-3 text-xs font-medium transition-all hover:scale-105 hover:bg-red-800 active:scale-95 lg:h-10 lg:px-4 lg:text-base"
+						class="text-ash-100 flex h-10 items-center justify-center gap-1.5 rounded-lg bg-red-700 px-3 text-base font-medium transition-all hover:scale-105 hover:bg-red-800 active:scale-95 lg:h-10 lg:px-4 lg:text-lg"
 					>
 						<i class="fas fa-trash text-base text-red-300 lg:text-base"></i>
 						<span>Delete</span>
@@ -285,7 +285,7 @@
 
 		<div class="mt-6 flex flex-col gap-3 lg:flex-row lg:flex-wrap *:lg:flex-1 *:lg:basis-0">
 			<div class="bg-ash-700 rounded-lg p-3">
-				<p class="text-ash-400 mb-1 text-xs">Status</p>
+				<p class="text-ash-400 mb-1 text-base">Status</p>
 				<div class="flex items-center gap-2">
 					<span class="h-2 w-2 rounded-full {statusColor(liveBot.status)}"></span>
 					<span class="text-base font-medium capitalize {statusTextColor(liveBot.status)}">{liveBot.status}</span>
@@ -294,14 +294,14 @@
 
 			{#if isRunning}
 				<div class="bg-ash-700 rounded-lg p-3">
-					<p class="text-ash-400 mb-1 text-xs">Uptime</p>
+					<p class="text-ash-400 mb-1 text-base">Uptime</p>
 					<p class="text-ash-100 text-base font-medium">{formatUptime(displayUptime)}</p>
 				</div>
 			{/if}
 
 			{#if liveBot.process_id}
 				<div class="bg-ash-700 rounded-lg p-3">
-					<p class="text-ash-400 mb-1 text-xs">Process ID</p>
+					<p class="text-ash-400 mb-1 text-base">Process ID</p>
 					<p class="text-ash-100 text-base font-medium">{liveBot.process_id}</p>
 				</div>
 			{/if}
@@ -346,7 +346,7 @@
 			</div>
 			{#if presence.activity_type === 'custom'}
 				<div class="lg:col-span-2">
-					<label for="sb-presence-activity-state" class="text-ash-400 mb-1 block text-xs">Custom status</label>
+					<label for="sb-presence-activity-state" class="text-ash-400 mb-1 block text-base">Custom status</label>
 					<input
 						id="sb-presence-activity-state"
 						type="text"
@@ -359,7 +359,7 @@
 				</div>
 			{:else}
 				<div class="lg:col-span-2">
-					<label for="sb-presence-activity-name" class="text-ash-400 mb-1 block text-xs">Activity name</label>
+					<label for="sb-presence-activity-name" class="text-ash-400 mb-1 block text-base">Activity name</label>
 					<input
 						id="sb-presence-activity-name"
 						type="text"
@@ -372,8 +372,8 @@
 				</div>
 				{#if presence.activity_type === 'streaming'}
 					<div class="lg:col-span-2">
-						<label for="sb-presence-activity-url" class="text-ash-400 mb-1 block text-xs">Stream URL</label>
-						<p class="text-ash-500 mb-1 text-xs">Must be a Twitch or YouTube watch URL. You can paste without https://.</p>
+						<label for="sb-presence-activity-url" class="text-ash-400 mb-1 block text-base">Stream URL</label>
+						<p class="text-ash-500 mb-1 text-base">Must be a Twitch or YouTube watch URL. You can paste without https://.</p>
 						<input
 							id="sb-presence-activity-url"
 							type="text"
@@ -387,7 +387,7 @@
 					</div>
 				{/if}
 				<div class="lg:col-span-2">
-					<label for="sb-presence-activity-state-noncustom" class="text-ash-400 mb-1 block text-xs">State</label>
+					<label for="sb-presence-activity-state-noncustom" class="text-ash-400 mb-1 block text-base">State</label>
 					<input
 						id="sb-presence-activity-state-noncustom"
 						type="text"
@@ -424,7 +424,7 @@
 			<h3 class="text-ash-100 text-lg font-semibold">
 				<i class="fas fa-server mr-2 text-violet-400"></i>Servers
 			</h3>
-			<span class="text-ash-400 text-xs lg:text-base">
+			<span class="text-ash-400 text-base lg:text-lg">
 				{data.servers.length} server{data.servers.length !== 1 ? 's' : ''}
 			</span>
 		</div>
@@ -452,7 +452,7 @@
 								</h4>
 							</div>
 						</div>
-						<div class="space-y-2 text-xs lg:text-base">
+						<div class="space-y-2 text-base lg:text-lg">
 							<div class="flex items-center justify-between">
 								<span class="text-ash-400 flex items-center gap-1.5"><i class="fas fa-users w-4 text-blue-400"></i>Members</span>
 								<span class="text-ash-100 font-medium">{(server.total_members ?? 0).toLocaleString()}</span>
@@ -481,7 +481,7 @@
 						disabled={page === 1}
 						class="bg-ash-700 hover:bg-ash-600 text-ash-200 flex items-center gap-2 rounded-lg px-3 py-1.5 text-base transition-colors disabled:cursor-not-allowed disabled:opacity-40"
 					>
-						<i class="fas fa-chevron-left text-xs text-violet-300"></i>Previous
+						<i class="fas fa-chevron-left text-base text-violet-300"></i>Previous
 					</button>
 					<span class="text-ash-400 text-base">Page {page} of {totalPages}</span>
 					<button
@@ -489,7 +489,7 @@
 						disabled={page === totalPages}
 						class="bg-ash-700 hover:bg-ash-600 text-ash-200 flex items-center gap-2 rounded-lg px-3 py-1.5 text-base transition-colors disabled:cursor-not-allowed disabled:opacity-40"
 					>
-						Next<i class="fas fa-chevron-right text-xs text-violet-300"></i>
+						Next<i class="fas fa-chevron-right text-base text-violet-300"></i>
 					</button>
 				</div>
 			{/if}

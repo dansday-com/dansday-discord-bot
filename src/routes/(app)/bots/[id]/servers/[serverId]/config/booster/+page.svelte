@@ -52,7 +52,7 @@
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
 		<i class="fas fa-gem text-purple-400"></i>Booster
 	</h3>
-	<p class="text-ash-400 text-xs">Sent when a member boosts the server.</p>
+	<p class="text-ash-400 text-base">Sent when a member boosts the server.</p>
 
 	<ConfigToggleRow
 		label="Booster module"
@@ -62,26 +62,26 @@
 		ariaLabel="Toggle booster module"
 	/>
 	{#if !featureEnabled}
-		<p class="flex items-start gap-2 text-xs text-amber-200/90">
+		<p class="flex items-start gap-2 text-base text-amber-200/90">
 			<i class="fas fa-power-off mt-0.5 shrink-0 text-amber-400/90" aria-hidden="true"></i>
 			<span>Module is off. Save configuration to apply. Turn the module on to edit the options below.</span>
 		</p>
 	{/if}
 	<div class="space-y-5 transition-opacity" class:pointer-events-none={!featureEnabled} class:opacity-50={!featureEnabled}>
 		<div>
-			<label class="text-ash-300 mb-1.5 block text-xs font-medium">
+			<label class="text-ash-300 mb-1.5 block text-base font-medium">
 				<i class="fas fa-hashtag mr-1 text-purple-400"></i>Boost Channels
 			</label>
-			<p class="text-ash-500 mb-2 text-xs">Channels for boost messages. Multiple channels allowed.</p>
+			<p class="text-ash-500 mb-2 text-base">Channels for boost messages. Multiple channels allowed.</p>
 			<ChannelPicker channels={data.channels} categories={data.categories} value={channels[0] ?? ''} onchange={(id) => addChannel(id)} />
 			{#if channels.length > 0}
 				<div class="mt-2 flex flex-wrap gap-1.5">
 					{#each channels as id}
 						{@const ch = channelById(id)}
-						<span class="bg-ash-600 text-ash-100 flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs">
+						<span class="bg-ash-600 text-ash-100 flex items-center gap-1 rounded-lg px-2.5 py-1 text-base">
 							#{ch ? ch.name : id}
 							<button type="button" onclick={() => removeChannel(id)} class="hover:text-ash-300 ml-0.5 transition-colors">
-								<i class="fas fa-times text-xs"></i>
+								<i class="fas fa-times text-base"></i>
 							</button>
 						</span>
 					{/each}

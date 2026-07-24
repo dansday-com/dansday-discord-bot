@@ -670,7 +670,7 @@
 					<p class="g-sec-lead text-lb-text-muted m-0 mb-5 text-base">Copy <code>.env.example</code> to <code>.env</code> and fill these in.</p>
 					<FieldList fields={envVars}>
 						{#snippet tag(f)}
-							<span class="g-field-tag g-field-tag--{f.req === 'optional' ? 'opt' : 'req'} ml-2 rounded-full px-2 py-0.5 text-xs font-extrabold uppercase"
+							<span class="g-field-tag g-field-tag--{f.req === 'optional' ? 'opt' : 'req'} ml-2 rounded-full px-2 py-0.5 text-base font-extrabold uppercase"
 								>{f.req}</span
 							>
 						{/snippet}

@@ -291,7 +291,7 @@
 				>{/if}
 			<div class="m-asset-name flex min-w-0 flex-col gap-1">
 				<span class="m-asset-sym text-lb-text text-base font-extrabold">{a.symbol}</span>
-				<span class="m-asset-full text-lb-text-muted max-w-[152px] overflow-hidden text-xs font-medium text-ellipsis whitespace-nowrap">{a.name}</span>
+				<span class="m-asset-full text-lb-text-muted max-w-[152px] overflow-hidden text-base font-medium text-ellipsis whitespace-nowrap">{a.name}</span>
 			</div>
 		</div>
 
@@ -303,7 +303,7 @@
 
 		<div class="m-asset-fig relative z-2 flex shrink-0 flex-col items-end gap-1">
 			<span class="m-asset-price text-lb-text text-base font-extrabold whitespace-nowrap tabular-nums">{fmtPrice(price)}</span>
-			<span class="m-asset-chg inline-flex items-center gap-1 text-xs font-bold whitespace-nowrap tabular-nums" data-dir={dir(change)}>
+			<span class="m-asset-chg inline-flex items-center gap-1 text-base font-bold whitespace-nowrap tabular-nums" data-dir={dir(change)}>
 				<i class="fas fa-caret-{change >= 0 ? 'up' : 'down'}"></i>{pctText(change)}
 			</span>
 		</div>
@@ -331,14 +331,14 @@
 							>{/if}
 						<div class="m-asset-name flex min-w-0 flex-col gap-1">
 							<span class="m-asset-sym text-lb-text text-base font-extrabold">{p.symbol}</span>
-							<span class="m-asset-full text-lb-text-muted max-w-[152px] overflow-hidden text-xs font-medium text-ellipsis whitespace-nowrap"
+							<span class="m-asset-full text-lb-text-muted max-w-[152px] overflow-hidden text-base font-medium text-ellipsis whitespace-nowrap"
 								>{fmtUnits(p.buy_price > 0 ? p.xp_invested / p.buy_price : 0)} {p.symbol}</span
 							>
 						</div>
 					</div>
 					<div class="m-asset-fig relative z-2 flex shrink-0 flex-col items-end gap-1">
 						<span class="m-asset-price text-lb-text text-base font-extrabold whitespace-nowrap tabular-nums">{fmt(p.value)} XP</span>
-						<span class="m-asset-chg inline-flex items-center gap-1 text-xs font-bold whitespace-nowrap tabular-nums" data-dir={dir(p.pnl)}>
+						<span class="m-asset-chg inline-flex items-center gap-1 text-base font-bold whitespace-nowrap tabular-nums" data-dir={dir(p.pnl)}>
 							<i class="fas fa-caret-{p.pnl >= 0 ? 'up' : 'down'}"></i>{p.pnl >= 0 ? '+' : ''}{fmt(p.pnl)} ({pctText(p.pnl_percent)})
 						</span>
 					</div>
@@ -392,7 +392,7 @@
 
 			<div class="m-asset-modal-price mb-3 flex items-baseline justify-between gap-2">
 				<span class="m-asset-modal-p text-lb-text text-xl font-extrabold tabular-nums">{fmtPrice(price)}</span>
-				<span class="m-asset-chg inline-flex items-center gap-1 text-xs font-bold whitespace-nowrap tabular-nums" data-dir={dir(change)}
+				<span class="m-asset-chg inline-flex items-center gap-1 text-base font-bold whitespace-nowrap tabular-nums" data-dir={dir(change)}
 					><i class="fas fa-caret-{change >= 0 ? 'up' : 'down'}"></i>{pctText(change)} · 24h</span
 				>
 			</div>
@@ -465,7 +465,7 @@
 
 			<div class="m-asset-modal-price mb-3 flex items-baseline justify-between gap-2">
 				<span class="m-asset-modal-p text-lb-text text-xl font-extrabold tabular-nums">{fmt(value)} XP</span>
-				<span class="m-asset-chg inline-flex items-center gap-1 text-xs font-bold whitespace-nowrap tabular-nums" data-dir={dir(sellPos.pnl)}
+				<span class="m-asset-chg inline-flex items-center gap-1 text-base font-bold whitespace-nowrap tabular-nums" data-dir={dir(sellPos.pnl)}
 					><i class="fas fa-caret-{sellPos.pnl >= 0 ? 'up' : 'down'}"></i>{sellPos.pnl >= 0 ? '+' : ''}{fmt(sellPos.pnl)} XP</span
 				>
 			</div>

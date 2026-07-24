@@ -107,12 +107,12 @@
 			{@const role = roleById(id)}
 			{#if role}
 				<span
-					class="flex items-center gap-1 rounded border px-2 py-0.5 text-xs"
+					class="flex items-center gap-1 rounded border px-2 py-0.5 text-base"
 					style="color:{roleColor(role.color)};border-color:{roleColor(role.color)}44;background:{roleColor(role.color)}11"
 				>
 					{role.name}
 					<button type="button" onclick={() => remove(id)} class="ml-0.5 hover:opacity-70">
-						<i class="fas fa-times text-xs"></i>
+						<i class="fas fa-times text-base"></i>
 					</button>
 				</span>
 			{/if}

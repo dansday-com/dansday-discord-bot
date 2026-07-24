@@ -161,11 +161,11 @@
 					<span class="m-card-medallion relative flex h-14 w-14 items-center justify-center rounded-2xl text-xl"><i class="fas {game.icon}"></i></span>
 				</div>
 				<h3 class="m-card-name text-lb-text mx-0 mt-1 mb-0 text-base font-extrabold">{game.name}</h3>
-				<p class="m-card-desc text-lb-text-muted min-h-[2.9em] text-xs">{game.desc}</p>
+				<p class="m-card-desc text-lb-text-muted min-h-[2.9em] text-base">{game.desc}</p>
 
 				<div class="m-card-foot relative z-2 mt-auto flex flex-wrap items-center justify-between gap-2 pt-1">
 					<span
-						class="m-card-price m-card-price--wager text-warning inline-flex min-w-0 flex-auto items-baseline gap-1 text-xs font-extrabold whitespace-nowrap text-[#d99a1c] uppercase"
+						class="m-card-price m-card-price--wager text-warning inline-flex min-w-0 flex-auto items-baseline gap-1 text-base font-extrabold whitespace-nowrap text-[#d99a1c] uppercase"
 						><i class="fas fa-dice"></i>Wager</span
 					>
 					{#if ctx.readOnly}
@@ -305,12 +305,12 @@
 
 				<div class="m-gamble-stakes mb-3 flex items-center justify-center gap-4 rounded-xl px-3 py-2">
 					<div class="m-gamble-stake flex min-w-0 flex-col items-center gap-0">
-						<span class="m-gamble-stake-k text-lb-text-muted text-xs font-bold uppercase">Wager</span>
+						<span class="m-gamble-stake-k text-lb-text-muted text-base font-bold uppercase">Wager</span>
 						<span class="m-gamble-stake-v m-gamble-stake-v--bet text-lb-text text-base font-black tabular-nums">{fmt(wagerXp)}</span>
 					</div>
 					<i class="fas fa-arrow-right m-gamble-stake-arrow text-lb-text-muted text-base"></i>
 					<div class="m-gamble-stake flex min-w-0 flex-col items-center gap-0">
-						<span class="m-gamble-stake-k text-lb-text-muted text-xs font-bold uppercase">Win pays</span>
+						<span class="m-gamble-stake-k text-lb-text-muted text-base font-bold uppercase">Win pays</span>
 						<span class="m-gamble-stake-v m-gamble-stake-v--win text-success-soft text-base font-black tabular-nums">{fmt(potentialWin)}</span>
 					</div>
 				</div>

@@ -68,11 +68,11 @@
 	<div class="mt-2 flex flex-wrap gap-1.5">
 		{#each value as id}
 			{@const cat = categoryById(id)}
-			<span class="bg-ash-600 text-ash-100 flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs">
-				<i class="fas fa-folder text-xs text-amber-300"></i>
+			<span class="bg-ash-600 text-ash-100 flex items-center gap-1 rounded-lg px-2.5 py-1 text-base">
+				<i class="fas fa-folder text-base text-amber-300"></i>
 				{cat ? cat.name : `Category ${id}`}
 				<button type="button" onclick={() => remove(id)} class="hover:text-ash-300 ml-0.5 transition-colors">
-					<i class="fas fa-times text-xs"></i>
+					<i class="fas fa-times text-base"></i>
 				</button>
 			</span>
 		{/each}

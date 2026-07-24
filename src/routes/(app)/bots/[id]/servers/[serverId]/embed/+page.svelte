@@ -102,7 +102,7 @@
 		</h3>
 
 		<div class="mb-4">
-			<label class="text-ash-300 mb-2 block text-xs font-medium">Channels <span class="text-ash-200">*</span></label>
+			<label class="text-ash-300 mb-2 block text-base font-medium">Channels <span class="text-ash-200">*</span></label>
 			<ChannelPicker
 				channels={data.channels as any}
 				categories={data.categories as any}
@@ -115,7 +115,7 @@
 
 		{#if (data.roles as unknown[]).length > 0}
 			<div class="mb-4">
-				<label class="text-ash-300 mb-2 block text-xs font-medium">Role Mentions</label>
+				<label class="text-ash-300 mb-2 block text-base font-medium">Role Mentions</label>
 				<RolePicker
 					roles={data.roles as any}
 					value={selectedRoles}
@@ -136,7 +136,7 @@
 
 		{#if selectedRoles.length > 0}
 			<div class="mt-4 rounded-lg bg-[#313338] p-3">
-				<p class="text-xs text-[#949ba4]">
+				<p class="text-base text-[#949ba4]">
 					{selectedRoles
 						.map(roleName)
 						.map((n) => `@${n}`)
@@ -146,7 +146,7 @@
 		{/if}
 
 		{#if selectedChannels.length > 0}
-			<div class="text-ash-500 mt-3 text-xs">
+			<div class="text-ash-500 mt-3 text-base">
 				Sending to: {selectedChannels
 					.map(channelName)
 					.map((n) => `#${n}`)

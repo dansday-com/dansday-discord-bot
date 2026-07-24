@@ -60,21 +60,21 @@
 				</div>
 				<h1 class="text-ash-100 truncate text-base font-bold lg:text-xl">{APP_NAME} Discord Bot Panel</h1>
 				{#if isDemo}
-					<span class="rounded-full border border-cyan-300/30 bg-cyan-400/15 px-2 py-0.5 text-xs font-semibold text-cyan-200"> DEMO </span>
+					<span class="rounded-full border border-cyan-300/30 bg-cyan-400/15 px-2 py-0.5 text-base font-semibold text-cyan-200"> DEMO </span>
 				{/if}
 			</a>
 			<div class="flex shrink-0 items-center gap-2">
 				{#if isDemo && typeof demoRemainingMs === 'number'}
-					<span class="text-ash-300 text-xs">
+					<span class="text-ash-300 text-base">
 						<span class="text-ash-500">Demo ends in</span>
 						<span class="font-semibold text-cyan-200 tabular-nums">{fmtCountdown(demoRemainingMs)}</span>
 					</span>
 				{/if}
 				<button
 					onclick={handleLogout}
-					class="bg-ash-700 hover:bg-ash-600 text-ash-100 flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs transition-all duration-200 hover:scale-105 active:scale-95 lg:gap-2 lg:px-4 lg:py-2 lg:text-base"
+					class="bg-ash-700 hover:bg-ash-600 text-ash-100 flex items-center gap-1 rounded-lg px-2 py-1.5 text-base transition-all duration-200 hover:scale-105 active:scale-95 lg:gap-2 lg:px-4 lg:py-2 lg:text-lg"
 				>
-					<i class="fas fa-sign-out-alt text-xs lg:text-base"></i>
+					<i class="fas fa-sign-out-alt text-base lg:text-lg"></i>
 					<span class="hidden lg:inline">Logout</span>
 				</button>
 			</div>

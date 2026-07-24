@@ -360,7 +360,7 @@
 				<img src={memberAvatar} alt={pd.memberName ?? ''} loading="lazy" />
 			</div>
 			<div class="m-xp-figures relative min-w-0 flex-1">
-				<span class="m-xp-wallet inline-flex items-center gap-1 text-xs font-bold text-[rgba(255,255,255,0.6)] uppercase"
+				<span class="m-xp-wallet inline-flex items-center gap-1 text-base font-bold text-[rgba(255,255,255,0.6)] uppercase"
 					><i class="fas {isOverview ? 'fa-user' : isAssets ? 'fa-chart-line' : 'fa-wallet'}"></i>{isOverview
 						? 'Profile'
 						: isAssets
@@ -376,7 +376,7 @@
 				<div class="m-xp-bar mt-2 h-2 overflow-hidden rounded-[999px]" class:m-xp-bar--hidden={isAssets || isOverview}>
 					<div class="m-xp-bar-fill h-full rounded-[999px]" style="width: {levelInfo.pct}%"></div>
 				</div>
-				<span class="m-xp-bar-meta mt-1 flex justify-between gap-2 text-xs font-semibold text-[rgba(255,255,255,0.65)]">
+				<span class="m-xp-bar-meta mt-1 flex justify-between gap-2 text-base font-semibold text-[rgba(255,255,255,0.65)]">
 					{#if isOverview}
 						<span>Joined {joinedDate ?? '—'}</span>
 						{#if pd.profile?.isBooster || pd.profile?.isAfk}
@@ -393,7 +393,7 @@
 				{#if isOverview && pd.profile?.roles?.[0]}
 					<div class="m-xp-roles mt-2 flex flex-wrap gap-1">
 						<span
-							class="m-xp-role inline-flex items-center gap-1 rounded-[100px] px-2 py-1 text-xs font-semibold text-white"
+							class="m-xp-role inline-flex items-center gap-1 rounded-[100px] px-2 py-1 text-base font-semibold text-white"
 							style={pd.profile.roles[0].color ? `--role-color: ${pd.profile.roles[0].color};` : ''}
 						>
 							<i class="fas fa-circle"></i>{pd.profile.roles[0].name || 'Role'}
@@ -407,19 +407,19 @@
 						<span class="m-xp-stat-val text-lg font-extrabold text-white tabular-nums">
 							<i class="fas fa-caret-{assetSummary.pnl >= 0 ? 'up' : 'down'}"></i>{assetSummary.pnlPct >= 0 ? '+' : ''}{assetSummary.pnlPct.toFixed(2)}%
 						</span>
-						<span class="m-xp-stat-lbl mt-1 text-xs font-bold text-[rgba(255,255,255,0.6)] uppercase"
+						<span class="m-xp-stat-lbl mt-1 text-base font-bold text-[rgba(255,255,255,0.6)] uppercase"
 							>{assetSummary.pnl >= 0 ? '+' : ''}{fmt(assetSummary.pnl)} XP</span
 						>
 					</div>
 				{:else}
 					<div class="m-xp-stat flex flex-col items-center">
 						<span class="m-xp-stat-val text-lg font-extrabold text-white tabular-nums">{levelInfo.pct}%</span>
-						<span class="m-xp-stat-lbl mt-1 text-xs font-bold text-[rgba(255,255,255,0.6)] uppercase">Level {level}</span>
+						<span class="m-xp-stat-lbl mt-1 text-base font-bold text-[rgba(255,255,255,0.6)] uppercase">Level {level}</span>
 					</div>
 					{#if rank}
 						<div class="m-xp-stat flex flex-col items-center">
 							<span class="m-xp-stat-val text-lg font-extrabold text-white tabular-nums">#{rank}</span>
-							<span class="m-xp-stat-lbl mt-1 text-xs font-bold text-[rgba(255,255,255,0.6)] uppercase">Rank</span>
+							<span class="m-xp-stat-lbl mt-1 text-base font-bold text-[rgba(255,255,255,0.6)] uppercase">Rank</span>
 						</div>
 					{/if}
 				{/if}
@@ -461,7 +461,7 @@
 					href="{accountBase}/items/all/{navHash}"
 					data-sveltekit-preload-data="hover"
 				>
-					<i class="fas fa-store"></i>Items<span class="m-items-count rounded-[999px] px-2 py-0 text-xs" class:m-items-count--bump={bagPulse}
+					<i class="fas fa-store"></i>Items<span class="m-items-count rounded-[999px] px-2 py-0 text-base" class:m-items-count--bump={bagPulse}
 						>{pd.bagStock ?? 0}/{BAG_CAPACITY}</span
 					>
 				</a>

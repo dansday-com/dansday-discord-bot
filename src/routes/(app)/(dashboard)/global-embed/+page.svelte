@@ -81,21 +81,21 @@
 	<h2 class="text-ash-100 mb-1 text-xl font-bold lg:text-2xl">
 		<i class="fas fa-bullhorn mr-2 text-rose-400"></i>Global Embed Builder
 	</h2>
-	<p class="text-ash-400 text-xs lg:text-base">
+	<p class="text-ash-400 text-base lg:text-lg">
 		Send an announcement to all servers across ALL of your bots. It will be posted in each server's configured <strong>Bot Updates Channel</strong>.
 	</p>
 </div>
 
 {#snippet sendToContent()}
 	<div class="mb-4">
-		<span class="text-ash-300 mb-2 block text-xs font-medium">Mention role groups <span class="text-ash-500">(optional)</span></span>
+		<span class="text-ash-300 mb-2 block text-base font-medium">Mention role groups <span class="text-ash-500">(optional)</span></span>
 		<RolePicker
 			roles={MENTION_CATEGORIES as any}
 			value={mentionCategories}
 			placeholder="Select role groups to mention..."
 			onchange={(v) => (mentionCategories = v as string[])}
 		/>
-		<p class="text-ash-500 mt-2 text-xs">
+		<p class="text-ash-500 mt-2 text-base">
 			Each server pings its own roles configured under <strong>Permissions</strong> for the selected groups. Servers without matching roles are simply not pinged.
 		</p>
 	</div>

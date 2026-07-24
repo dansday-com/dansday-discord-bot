@@ -141,7 +141,7 @@
 				onclick={() => (showAdd = true)}
 				class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex items-center gap-2 rounded-lg px-3 py-2 text-base transition-all hover:scale-105 active:scale-95"
 			>
-				<i class="fas fa-plus text-xs text-violet-300"></i>Add Selfbot
+				<i class="fas fa-plus text-base text-violet-300"></i>Add Selfbot
 			</button>
 		{/if}
 	</div>
@@ -169,19 +169,19 @@
 					</div>
 					<div class="min-w-0">
 						<p class="text-ash-100 truncate text-base font-semibold lg:text-base">{bot.name || `Selfbot #${bot.id}`}</p>
-						<span class="text-ash-400 text-xs">Selfbot</span>
+						<span class="text-ash-400 text-base">Selfbot</span>
 					</div>
 				</div>
 
 				<div class="flex items-center justify-between">
 					<div class="flex items-center gap-2">
 						<span class="h-2 w-2 rounded-full {statusColor(live.status)}"></span>
-						<span class="text-ash-300 text-xs capitalize">{live.status}</span>
+						<span class="text-ash-300 text-base capitalize">{live.status}</span>
 					</div>
 					{#if live.status === 'running'}
 						{@const uptime = getDisplayUptime(bot.id)}
 						{#if uptime}
-							<span class="text-ash-500 text-xs">{formatUptime(uptime)}</span>
+							<span class="text-ash-500 text-base">{formatUptime(uptime)}</span>
 						{/if}
 					{/if}
 				</div>

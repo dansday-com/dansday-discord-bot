@@ -40,7 +40,7 @@
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
 		<i class="fas fa-cube text-emerald-400"></i>Roblox catalog notifier
 	</h3>
-	<p class="text-ash-400 text-xs">Posts alerts when new free, limited, or official Roblox catalog items are detected.</p>
+	<p class="text-ash-400 text-base">Posts alerts when new free, limited, or official Roblox catalog items are detected.</p>
 
 	<ConfigToggleRow
 		label="Roblox catalog module"
@@ -50,7 +50,7 @@
 		ariaLabel="Toggle Roblox catalog notifier module"
 	/>
 	{#if !featureEnabled}
-		<p class="flex items-start gap-2 text-xs text-amber-200/90">
+		<p class="flex items-start gap-2 text-base text-amber-200/90">
 			<i class="fas fa-power-off mt-0.5 shrink-0 text-amber-400/90" aria-hidden="true"></i>
 			<span>Module is off. Save configuration to apply.</span>
 		</p>
@@ -58,10 +58,10 @@
 
 	<div class="space-y-5 transition-opacity" class:pointer-events-none={!featureEnabled} class:opacity-50={!featureEnabled}>
 		<div>
-			<label class="text-ash-300 mb-1.5 block text-xs font-medium">
+			<label class="text-ash-300 mb-1.5 block text-base font-medium">
 				<i class="fas fa-hashtag mr-1.5 text-emerald-400"></i>Notification channel
 			</label>
-			<p class="text-ash-500 mb-2 text-xs">Where the bot posts Roblox catalog embeds.</p>
+			<p class="text-ash-500 mb-2 text-base">Where the bot posts Roblox catalog embeds.</p>
 			<ChannelPicker
 				channels={data.channels}
 				categories={data.categories}

@@ -106,7 +106,7 @@
 				class="space-y-4 lg:space-y-5"
 			>
 				<div>
-					<label for="botToken" class="text-ash-300 mb-2 block text-xs font-medium lg:text-base">
+					<label for="botToken" class="text-ash-300 mb-2 block text-base font-medium lg:text-lg">
 						<i class="fas fa-key mr-2 text-amber-300"></i>Bot Token <span class="text-ash-200">*</span>
 					</label>
 					<div class="relative">
@@ -129,7 +129,7 @@
 				</div>
 
 				<div>
-					<label for="appId" class="text-ash-300 mb-2 block text-xs font-medium lg:text-base">
+					<label for="appId" class="text-ash-300 mb-2 block text-base font-medium lg:text-lg">
 						<i class="fas fa-id-card mr-2 text-cyan-300"></i>Application ID <span class="text-ash-200">*</span>
 					</label>
 					<input
@@ -141,7 +141,7 @@
 					/>
 				</div>
 				<div>
-					<label for="botPort" class="text-ash-300 mb-2 block text-xs font-medium lg:text-base">
+					<label for="botPort" class="text-ash-300 mb-2 block text-base font-medium lg:text-lg">
 						<i class="fas fa-network-wired mr-2 text-indigo-300"></i>Port <span class="text-ash-200">*</span>
 					</label>
 					<input
@@ -153,7 +153,7 @@
 					/>
 				</div>
 				<div>
-					<label for="secretKey" class="text-ash-300 mb-2 block text-xs font-medium lg:text-base">
+					<label for="secretKey" class="text-ash-300 mb-2 block text-base font-medium lg:text-lg">
 						<i class="fas fa-shield-alt mr-2 text-emerald-300"></i>Secret Key <span class="text-ash-200">*</span>
 					</label>
 					<div class="relative">
@@ -173,13 +173,13 @@
 							<i class="fas {showSecret ? 'fa-eye-slash' : 'fa-eye'} text-base lg:text-base"></i>
 						</button>
 					</div>
-					<p class="text-ash-500 mt-1.5 text-xs">Used to authenticate incoming webhooks to this bot</p>
+					<p class="text-ash-500 mt-1.5 text-base">Used to authenticate incoming webhooks to this bot</p>
 				</div>
 
 				<div class="bg-ash-900 border-ash-600 rounded-lg border p-3 lg:p-4">
 					<div class="flex items-start gap-2 lg:gap-3">
 						<i class="fas fa-info-circle mt-0.5 shrink-0 text-base text-sky-300"></i>
-						<p class="text-ash-200 text-xs lg:text-base">Bot name and icon will be automatically synced from Discord when the bot is running.</p>
+						<p class="text-ash-200 text-base lg:text-lg">Bot name and icon will be automatically synced from Discord when the bot is running.</p>
 					</div>
 				</div>
 

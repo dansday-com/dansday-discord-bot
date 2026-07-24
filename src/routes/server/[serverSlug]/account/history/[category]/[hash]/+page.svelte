@@ -256,13 +256,13 @@
 					{#if (l as any).badges?.length}
 						<span class="m-hist-badges mx-0 mt-1 mb-1 flex flex-wrap gap-1">
 							{#each (l as any).badges as b}
-								<span class="m-hist-badge text-lb-text-muted inline-flex items-center gap-1 rounded-[999px] px-2 py-1 text-xs font-bold"
+								<span class="m-hist-badge text-lb-text-muted inline-flex items-center gap-1 rounded-[999px] px-2 py-1 text-base font-bold"
 									><i class="fas {b.icon}"></i>{b.text}</span
 								>
 							{/each}
 						</span>
 					{/if}
-					<span class="m-hist-time text-lb-text-muted text-xs">{h.at ? ago(h.at) : ''}</span>
+					<span class="m-hist-time text-lb-text-muted text-base">{h.at ? ago(h.at) : ''}</span>
 				</span>
 				{#if l.deltaLabel}<span class="m-hist-delta m-hist-delta--{l.tone} flex-none text-base font-extrabold whitespace-nowrap tabular-nums"
 						>{l.deltaLabel}</span

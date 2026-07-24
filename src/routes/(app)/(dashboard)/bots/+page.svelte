@@ -107,7 +107,7 @@
 		<h2 class="text-ash-100 mb-1 text-xl font-bold lg:text-2xl">
 			<i class="fas fa-robot mr-2 text-violet-400"></i>Bots List
 		</h2>
-		<p class="text-ash-400 text-xs lg:text-base">
+		<p class="text-ash-400 text-base lg:text-lg">
 			{data.bots.length === 0 ? 'No bots yet' : `${data.bots.length} bot${data.bots.length === 1 ? '' : 's'}`}
 		</p>
 	</div>
@@ -124,9 +124,9 @@
 		{#if data.user.authenticated && data.user.account_source === 'accounts'}
 			<button
 				onclick={() => (showAddBot = true)}
-				class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs transition-all duration-200 hover:scale-105 active:scale-95 lg:gap-2 lg:px-4 lg:py-2 lg:text-base"
+				class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex items-center gap-1 rounded-lg px-2 py-1.5 text-base transition-all duration-200 hover:scale-105 active:scale-95 lg:gap-2 lg:px-4 lg:py-2 lg:text-lg"
 			>
-				<i class="fas fa-plus text-xs text-violet-300 lg:text-base"></i>
+				<i class="fas fa-plus text-base text-violet-300 lg:text-lg"></i>
 				<span class="lg:inline">Add Bot</span>
 			</button>
 		{/if}
@@ -166,19 +166,19 @@
 					</div>
 					<div class="min-w-0">
 						<p class="text-ash-100 truncate text-base font-semibold lg:text-base">{bot.name || `Bot #${bot.id}`}</p>
-						<span class="text-ash-400 text-xs">Official</span>
+						<span class="text-ash-400 text-base">Official</span>
 					</div>
 				</div>
 
 				<div class="flex items-center justify-between">
 					<div class="flex items-center gap-2">
 						<span class="h-2 w-2 rounded-full {statusColor(getLiveStatus(bot.id, bot.status))}"></span>
-						<span class="text-ash-300 text-xs capitalize">{getLiveStatus(bot.id, bot.status)}</span>
+						<span class="text-ash-300 text-base capitalize">{getLiveStatus(bot.id, bot.status)}</span>
 					</div>
 					{#if getLiveStatus(bot.id, bot.status) === 'running'}
 						{@const uptime = getLiveUptime(bot.id, bot.uptime_ms ?? 0)}
 						{#if uptime}
-							<span class="text-ash-500 text-xs">{formatUptime(uptime)}</span>
+							<span class="text-ash-500 text-base">{formatUptime(uptime)}</span>
 						{/if}
 					{/if}
 				</div>

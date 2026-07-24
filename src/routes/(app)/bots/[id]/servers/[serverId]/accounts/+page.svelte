@@ -204,7 +204,7 @@
 					Send DM
 				</button>
 			</div>
-			<p class="text-ash-500 mt-2 text-xs">DM will be sent with the invite link. If DMs are closed, sending may fail.</p>
+			<p class="text-ash-500 mt-2 text-base">DM will be sent with the invite link. If DMs are closed, sending may fail.</p>
 
 			{#if generatedLink}
 				<div class="bg-ash-700 mt-3 rounded-lg p-3">
@@ -233,28 +233,28 @@
 						<div class="bg-ash-700 flex items-center justify-between gap-3 rounded-lg px-4 py-3 {account.is_frozen ? 'opacity-60' : ''}">
 							<div class="flex min-w-0 items-center gap-3">
 								<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-500/20">
-									<i class="fas fa-user text-xs text-amber-400"></i>
+									<i class="fas fa-user text-base text-amber-400"></i>
 								</div>
 								<div class="min-w-0">
 									<p class="text-ash-100 truncate text-base font-medium">{account.username}</p>
-									<p class="text-ash-400 truncate text-xs">{isSuperadmin ? account.email : maskEmail(account.email)}</p>
+									<p class="text-ash-400 truncate text-base">{isSuperadmin ? account.email : maskEmail(account.email)}</p>
 									{#if account.ip_address && isSuperadmin}
-										<p class="text-ash-500 truncate text-xs"><i class="fas fa-network-wired mr-1 text-cyan-400/80"></i>{account.ip_address}</p>
+										<p class="text-ash-500 truncate text-base"><i class="fas fa-network-wired mr-1 text-cyan-400/80"></i>{account.ip_address}</p>
 									{/if}
 								</div>
 							</div>
 							<div class="flex shrink-0 items-center gap-2">
-								<span class="rounded-full px-2 py-0.5 text-xs capitalize {typeBadgeClass(account.account_type)}">
+								<span class="rounded-full px-2 py-0.5 text-base capitalize {typeBadgeClass(account.account_type)}">
 									{account.account_type}
 								</span>
 								{#if account.is_frozen}
-									<span class="rounded-full bg-red-900 px-2 py-0.5 text-xs text-red-300">Frozen</span>
+									<span class="rounded-full bg-red-900 px-2 py-0.5 text-base text-red-300">Frozen</span>
 								{/if}
 								{#if isSuperadmin || (isOwner && account.account_type === 'staff' && account.id !== data.user.account_id)}
 									<button
 										onclick={() => confirmFreeze(account.id, account.is_frozen, account.username)}
 										title={account.is_frozen ? 'Unfreeze account' : 'Freeze account'}
-										class="rounded px-2 py-1 text-xs transition-colors {account.is_frozen
+										class="rounded px-2 py-1 text-base transition-colors {account.is_frozen
 											? 'bg-yellow-900 text-yellow-300 hover:bg-yellow-800'
 											: 'bg-ash-600 text-ash-300 hover:bg-ash-500'}"
 									>
@@ -263,7 +263,7 @@
 									<button
 										onclick={() => confirmDelete(account.id, account.username)}
 										title="Remove account"
-										class="rounded bg-red-900 px-2 py-1 text-xs text-red-300 transition-colors hover:bg-red-800"
+										class="rounded bg-red-900 px-2 py-1 text-base text-red-300 transition-colors hover:bg-red-800"
 									>
 										<i class="fas fa-trash text-red-300"></i>
 									</button>
@@ -285,7 +285,7 @@
 						<div class="bg-ash-700 flex flex-col gap-2 rounded-lg px-4 py-3 lg:flex-row lg:items-center lg:justify-between lg:gap-3">
 							<div class="min-w-0 flex-1">
 								<p class="text-ash-100 text-base font-medium capitalize">{invite.account_type} invite</p>
-								<p class="text-ash-300 mt-1 text-xs">
+								<p class="text-ash-300 mt-1 text-base">
 									<i class="fas fa-clock mr-1 text-amber-400/80"></i>
 									{#if invite.used_by}
 										Used — expiry was {#if invite.expires_at}<LocalTime value={invite.expires_at} includeSeconds class="inline" />{:else}no expiry{/if}
@@ -297,7 +297,7 @@
 								</p>
 							</div>
 							<div class="flex shrink-0 items-center gap-2">
-								<span class="rounded-full px-2 py-0.5 text-xs {inviteStatusClass(invite)}">
+								<span class="rounded-full px-2 py-0.5 text-base {inviteStatusClass(invite)}">
 									{inviteStatusLabel(invite)}
 								</span>
 								{#if canInvite && !invite.used_by && !isInviteExpired(invite)}
@@ -305,7 +305,7 @@
 										type="button"
 										title="Expire this link (it cannot be used to register)"
 										onclick={() => confirmExpireInvite(invite.id, `${invite.account_type} invite`)}
-										class="bg-ash-600 hover:bg-ash-500 text-ash-100 rounded px-2 py-1 text-xs transition-colors"
+										class="bg-ash-600 hover:bg-ash-500 text-ash-100 rounded px-2 py-1 text-base transition-colors"
 									>
 										<i class="fas fa-ban mr-1 text-amber-300"></i>Expire
 									</button>

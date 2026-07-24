@@ -143,8 +143,8 @@
 
 			<div class="mb-4">
 				<div class="mb-1 flex justify-between">
-					<label class="text-ash-300 text-xs font-medium">Title <span class="text-ash-200">*</span></label>
-					<span class="text-xs {charWarning(title.length, MAX_TITLE)}">{title.length}/{MAX_TITLE}</span>
+					<label class="text-ash-300 text-base font-medium">Title <span class="text-ash-200">*</span></label>
+					<span class="text-base {charWarning(title.length, MAX_TITLE)}">{title.length}/{MAX_TITLE}</span>
 				</div>
 				<input
 					type="text"
@@ -157,8 +157,8 @@
 
 			<div class="mb-4">
 				<div class="mb-1 flex justify-between">
-					<label class="text-ash-300 text-xs font-medium">Description</label>
-					<span class="text-xs {charWarning(description.length, MAX_DESC)}">{description.length}/{MAX_DESC}</span>
+					<label class="text-ash-300 text-base font-medium">Description</label>
+					<span class="text-base {charWarning(description.length, MAX_DESC)}">{description.length}/{MAX_DESC}</span>
 				</div>
 				<textarea
 					bind:value={description}
@@ -171,8 +171,8 @@
 
 			<div class="mb-4">
 				<div class="mb-1 flex justify-between">
-					<label class="text-ash-300 text-xs font-medium">Footer</label>
-					<span class="text-xs {charWarning(footer.length, MAX_FOOTER)}">{footer.length}/{MAX_FOOTER}</span>
+					<label class="text-ash-300 text-base font-medium">Footer</label>
+					<span class="text-base {charWarning(footer.length, MAX_FOOTER)}">{footer.length}/{MAX_FOOTER}</span>
 				</div>
 				<input
 					type="text"
@@ -184,7 +184,7 @@
 			</div>
 
 			<div class="mb-4">
-				<label class="text-ash-300 mb-1 block text-xs font-medium">Color</label>
+				<label class="text-ash-300 mb-1 block text-base font-medium">Color</label>
 				<div class="flex items-center gap-2">
 					<input
 						type="color"
@@ -203,11 +203,11 @@
 			</div>
 
 			<div class="mb-4">
-				<label class="text-ash-300 mb-2 block text-xs font-medium">Image</label>
+				<label class="text-ash-300 mb-2 block text-base font-medium">Image</label>
 				<div class="mb-2 flex gap-2">
 					<button
 						onclick={() => (imageMode = 'url')}
-						class="flex-1 rounded-lg py-1.5 text-xs font-medium transition-colors {imageMode === 'url'
+						class="flex-1 rounded-lg py-1.5 text-base font-medium transition-colors {imageMode === 'url'
 							? 'bg-ash-500 text-ash-100'
 							: 'bg-ash-700 text-ash-400 hover:text-ash-200'}"
 					>
@@ -215,7 +215,7 @@
 					</button>
 					<button
 						onclick={() => (imageMode = 'upload')}
-						class="flex-1 rounded-lg py-1.5 text-xs font-medium transition-colors {imageMode === 'upload'
+						class="flex-1 rounded-lg py-1.5 text-base font-medium transition-colors {imageMode === 'upload'
 							? 'bg-ash-500 text-ash-100'
 							: 'bg-ash-700 text-ash-400 hover:text-ash-200'}"
 					>
@@ -234,14 +234,14 @@
 						type="file"
 						accept="image/*"
 						onchange={handleImageUpload}
-						class="text-ash-300 file:bg-ash-600 file:text-ash-100 hover:file:bg-ash-500 w-full text-base file:mr-3 file:rounded-lg file:border-0 file:px-3 file:py-1.5 file:text-xs"
+						class="text-ash-300 file:bg-ash-600 file:text-ash-100 hover:file:bg-ash-500 w-full text-base file:mr-3 file:rounded-lg file:border-0 file:px-3 file:py-1.5 file:text-base"
 					/>
 					{#if imagePreview}
 						<div class="relative mt-2 inline-block">
 							<img src={imagePreview} alt="Preview" class="h-20 rounded-lg object-cover" />
 							<button
 								onclick={deleteUploadedImage}
-								class="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-900 text-xs text-red-300 hover:bg-red-800"
+								class="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-900 text-base text-red-300 hover:bg-red-800"
 							>
 								<i class="fas fa-times"></i>
 							</button>
@@ -250,7 +250,7 @@
 				{/if}
 			</div>
 
-			<p class="text-xs {totalWarning()} text-right">{totalChars}/{MAX_TOTAL} total</p>
+			<p class="text-base {totalWarning()} text-right">{totalChars}/{MAX_TOTAL} total</p>
 		</div>
 
 		{#if sendToSnippet}
@@ -282,7 +282,7 @@
 					<p class="mb-1 text-base text-[#6b7280] italic">No title yet...</p>
 				{/if}
 				{#if description}
-					<p class="text-xs whitespace-pre-wrap text-[#dbdee1]">{description}</p>
+					<p class="text-base whitespace-pre-wrap text-[#dbdee1]">{description}</p>
 				{/if}
 				{#if imageMode === 'url' && imageUrl}
 					<img src={imageUrl} alt="Embed" class="mt-2 max-w-full rounded" />
@@ -290,7 +290,7 @@
 					<img src={imagePreview} alt="Embed" class="mt-2 max-w-full rounded" />
 				{/if}
 				{#if footerPreview}
-					<p class="mt-2 border-t border-[#3d4045] pt-2 text-xs text-[#949ba4]">{footerPreview}</p>
+					<p class="mt-2 border-t border-[#3d4045] pt-2 text-base text-[#949ba4]">{footerPreview}</p>
 				{/if}
 			</div>
 		</div>

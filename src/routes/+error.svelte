@@ -39,7 +39,7 @@
 						<i class="fas {isServerError ? 'fa-server' : 'fa-circle-exclamation'} m-err-icon text-2xl"></i>
 					</div>
 
-					<p class="m-err-code text-lb-text-subtle mx-0 mt-0 mb-2 text-xs font-semibold uppercase">Error {status}</p>
+					<p class="m-err-code text-lb-text-subtle mx-0 mt-0 mb-2 text-base font-semibold uppercase">Error {status}</p>
 					<h1 class="m-err-title text-lb-text mx-0 mt-0 mb-2 text-xl font-extrabold">{title}</h1>
 					<p class="m-err-subtitle text-lb-text-muted text-base">{subtitle}</p>
 
@@ -59,7 +59,7 @@
 					</div>
 
 					{#if import.meta.env.DEV && page.error?.message}
-						<p class="m-err-dev-msg text-lb-text-faint mx-0 mt-5 mb-0 text-left text-xs">{page.error.message}</p>
+						<p class="m-err-dev-msg text-lb-text-faint mx-0 mt-5 mb-0 text-left text-base">{page.error.message}</p>
 					{/if}
 				</div>
 			</div>

@@ -44,13 +44,13 @@
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
 		<i class="fas fa-gear text-emerald-400"></i>Main
 	</h3>
-	<p class="text-ash-400 text-xs">Set the embed style used across the bot.</p>
+	<p class="text-ash-400 text-base">Set the embed style used across the bot.</p>
 
 	<div>
-		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
+		<label class="text-ash-300 mb-1.5 block text-base font-medium">
 			<i class="fas fa-robot mr-1.5 text-emerald-400"></i>Bot Nickname
 		</label>
-		<p class="text-ash-500 mb-2 text-xs">Custom nickname for the bot in this server. Leave empty to use the default name.</p>
+		<p class="text-ash-500 mb-2 text-base">Custom nickname for the bot in this server. Leave empty to use the default name.</p>
 		<input
 			type="text"
 			bind:value={botNickname}
@@ -61,10 +61,10 @@
 	</div>
 
 	<div>
-		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
+		<label class="text-ash-300 mb-1.5 block text-base font-medium">
 			<i class="fas fa-palette mr-1.5 text-emerald-400"></i>Default Color
 		</label>
-		<p class="text-ash-500 mb-2 text-xs">Embed accent color used by default (hex).</p>
+		<p class="text-ash-500 mb-2 text-base">Embed accent color used by default (hex).</p>
 		<div class="flex items-center gap-2">
 			<input
 				type="color"
@@ -82,8 +82,8 @@
 	</div>
 
 	<div>
-		<label class="text-ash-300 mb-1.5 block text-xs font-medium"><i class="fas fa-align-left mr-1.5 text-emerald-400"></i>Default Footer</label>
-		<p class="text-ash-500 mb-2 text-xs">Footer text shown on most bot embeds.</p>
+		<label class="text-ash-300 mb-1.5 block text-base font-medium"><i class="fas fa-align-left mr-1.5 text-emerald-400"></i>Default Footer</label>
+		<p class="text-ash-500 mb-2 text-base">Footer text shown on most bot embeds.</p>
 		<input
 			type="text"
 			bind:value={defaultFooter}
@@ -91,8 +91,8 @@
 			class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2 text-base focus:ring-2 focus:outline-none"
 		/>
 		<div class="bg-ash-900 border-ash-600 mt-2 rounded-lg border p-3">
-			<p class="text-ash-200 mb-2 text-xs font-medium">Available placeholders:</p>
-			<div class="flex flex-col gap-2 text-xs lg:flex-row lg:flex-wrap *:lg:flex-1 *:lg:basis-0">
+			<p class="text-ash-200 mb-2 text-base font-medium">Available placeholders:</p>
+			<div class="flex flex-col gap-2 text-base lg:flex-row lg:flex-wrap *:lg:flex-1 *:lg:basis-0">
 				<div class="text-ash-300 flex items-center gap-2">
 					<code class="bg-ash-800 text-ash-200 rounded px-1.5 py-0.5">{'{server}'}</code>
 					<span>Server name</span>
@@ -106,10 +106,10 @@
 	</div>
 
 	<div>
-		<label class="text-ash-300 mb-1.5 block text-xs font-medium">
+		<label class="text-ash-300 mb-1.5 block text-base font-medium">
 			<i class="fas fa-bullhorn mr-1.5 text-emerald-400"></i>Bot Updates Channel
 		</label>
-		<p class="text-ash-500 mb-2 text-xs">Channel to receive announcements and changelogs from the bot developers.</p>
+		<p class="text-ash-500 mb-2 text-base">Channel to receive announcements and changelogs from the bot developers.</p>
 		<ChannelPicker channels={data.channels} categories={data.categories} value={botUpdatesChannel} onchange={(id) => (botUpdatesChannel = id)} />
 	</div>
 

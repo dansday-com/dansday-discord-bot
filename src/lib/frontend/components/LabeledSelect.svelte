@@ -44,7 +44,7 @@
 	};
 
 	const selectTextClass: Record<Appearance, string> = {
-		dashboard: 'text-xs lg:text-base',
+		dashboard: 'text-base lg:text-base',
 		'members-toolbar': 'text-base',
 		'form-inline': 'text-base'
 	};
@@ -98,7 +98,7 @@
 
 {#if label}
 	<div class="flex min-w-0 items-center gap-2 lg:gap-3">
-		<label for={id} class="{labelTextClass} flex shrink-0 items-center gap-1 text-xs whitespace-nowrap lg:gap-2 lg:text-base">
+		<label for={id} class="{labelTextClass} flex shrink-0 items-center gap-1 text-base whitespace-nowrap lg:gap-2 lg:text-lg">
 			{#if labelIconClass}
 				<i class={labelIconClass}></i>
 			{/if}

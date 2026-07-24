@@ -75,7 +75,7 @@
 			<i class="fas fa-bolt text-xl text-amber-300 lg:text-2xl"></i>
 		</div>
 		<h1 class="text-ash-100 mb-2 text-2xl font-bold lg:text-3xl">{APP_NAME}</h1>
-		<p class="text-ash-400 text-xs lg:text-base">Create an account</p>
+		<p class="text-ash-400 text-base lg:text-lg">Create an account</p>
 	</div>
 
 	<form
@@ -86,7 +86,7 @@
 		class="space-y-4 lg:space-y-6"
 	>
 		<div>
-			<label for="username" class="text-ash-300 mb-2 block text-xs font-medium lg:text-base">
+			<label for="username" class="text-ash-300 mb-2 block text-base font-medium lg:text-lg">
 				<i class="fas fa-user mr-2 text-cyan-300"></i>Username <span class="text-ash-200">*</span>
 			</label>
 			<input
@@ -101,7 +101,7 @@
 		</div>
 
 		<div>
-			<label for="email" class="text-ash-300 mb-2 block text-xs font-medium lg:text-base">
+			<label for="email" class="text-ash-300 mb-2 block text-base font-medium lg:text-lg">
 				<i class="fas fa-envelope mr-2 text-sky-300"></i>Email <span class="text-ash-200">*</span>
 			</label>
 			<input
@@ -115,7 +115,7 @@
 		</div>
 
 		<div>
-			<label for="password" class="text-ash-300 mb-2 block text-xs font-medium lg:text-base">
+			<label for="password" class="text-ash-300 mb-2 block text-base font-medium lg:text-lg">
 				<i class="fas fa-lock mr-2 text-rose-300"></i>Password <span class="text-ash-200">*</span>
 			</label>
 			<div class="relative">
@@ -148,7 +148,7 @@
 		</button>
 
 		<div class="text-center">
-			<p class="text-ash-400 text-xs lg:text-base">
+			<p class="text-ash-400 text-base lg:text-lg">
 				Already have an account?
 				<a href="/login" class="text-ash-200 hover:text-ash-300 ml-1">Login</a>
 			</p>

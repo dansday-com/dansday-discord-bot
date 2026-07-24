@@ -276,7 +276,7 @@
 								</div>
 								<div class="min-w-0 flex-1">
 									<div class="text-lb-text overflow-hidden text-base font-bold text-ellipsis whitespace-nowrap">{server.name}</div>
-									<div class="text-lb-text-muted flex items-center gap-1 text-xs">
+									<div class="text-lb-text-muted flex items-center gap-1 text-base">
 										<span class="inline-flex items-center gap-2" title="Public page uses live data">
 											<span class="m-live-dot h-2 w-2 rounded-full"></span>
 											Live public statistics

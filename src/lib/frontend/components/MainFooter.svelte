@@ -12,11 +12,11 @@
 
 <footer class="m-footer relative z-1 shrink-0" class:m-footer--dark={palette === 'dark'}>
 	<div class="m-footer-inner mx-auto flex max-w-7xl flex-col items-center gap-2 px-3 py-5 text-center">
-		<p class="m-0 text-xs lg:text-base {copy}">
+		<p class="m-0 text-base lg:text-lg {copy}">
 			Copyright © {new Date().getFullYear()}
 			<a class="no-underline transition-colors {copyLink}" href={APP_URL}>{APP_DOMAIN}</a>. All rights reserved.
 		</p>
-		<p class="m-0 text-xs lg:text-base {open}">
+		<p class="m-0 text-base lg:text-lg {open}">
 			Free and open source on
 			<a class="font-semibold no-underline transition-colors {openLink}" href="https://github.com/dansday/dansday-discord-bot">GitHub</a>.
 		</p>

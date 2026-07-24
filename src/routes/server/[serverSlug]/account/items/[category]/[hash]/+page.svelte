@@ -226,7 +226,7 @@
 		<div class="m-card-top flex items-start justify-between gap-2">
 			<span class="m-card-medallion relative flex h-14 w-14 items-center justify-center rounded-2xl text-xl">
 				<i class="fas {effectIcon(item.effect_type)}"></i>
-				{#if owned > 0}<span class="m-card-qty flex h-5 min-w-5 items-center justify-center rounded-[999px] px-1 py-0 text-xs font-extrabold text-white"
+				{#if owned > 0}<span class="m-card-qty flex h-5 min-w-5 items-center justify-center rounded-[999px] px-1 py-0 text-base font-extrabold text-white"
 						>×{owned}</span
 					>{/if}
 			</span>
@@ -243,21 +243,22 @@
 			{/if}
 		</div>
 		{#if item._state === 'upcoming' && item._startsAt}
-			<span class="m-card-timer m-card-timer--soon text-warning-deep inline-flex items-center gap-1 rounded-[999px] px-2 py-1 text-xs font-bold tabular-nums"
+			<span class="m-card-timer m-card-timer--soon text-warning-deep inline-flex items-center gap-1 rounded-[999px] px-2 py-1 text-base font-bold tabular-nums"
 				><i class="fas fa-hourglass-start"></i>Starts in {ctx.remainingLabel(item._startsAt)}</span
 			>
 		{:else if item.availableUntil && item.availableUntil > ctx.now}
-			<span class="m-card-timer text-warning-deep inline-flex items-center gap-1 rounded-[999px] px-2 py-1 text-xs font-bold tabular-nums"
+			<span class="m-card-timer text-warning-deep inline-flex items-center gap-1 rounded-[999px] px-2 py-1 text-base font-bold tabular-nums"
 				><i class="fas fa-hourglass-half"></i>Ends in {ctx.remainingLabel(item.availableUntil)}</span
 			>
 		{/if}
 		<h3 class="m-card-name text-lb-text mx-0 mt-1 mb-0 text-base font-extrabold">{item.name}</h3>
-		<p class="m-card-desc text-lb-text-muted min-h-[2.9em] text-xs">{item.description || effectSummary(item, ctx.luckPercent)}</p>
+		<p class="m-card-desc text-lb-text-muted min-h-[2.9em] text-base">{item.description || effectSummary(item, ctx.luckPercent)}</p>
 		{#if effectMeta(item, ctx.luckPercent).length > 0}
 			<div class="m-card-meta mx-0 mt-2 mb-1 flex flex-wrap gap-1">
 				{#each effectMeta(item, ctx.luckPercent) as chip}
-					<span class="m-card-stat inline-flex items-center gap-1 rounded-[999px] px-2 py-1 text-xs font-bold whitespace-nowrap tabular-nums" title={chip.label}
-						><i class="fas {chip.icon}"></i>{chip.label}</span
+					<span
+						class="m-card-stat inline-flex items-center gap-1 rounded-[999px] px-2 py-1 text-base font-bold whitespace-nowrap tabular-nums"
+						title={chip.label}><i class="fas {chip.icon}"></i>{chip.label}</span
 					>
 				{/each}
 			</div>
@@ -269,9 +270,9 @@
 				class:m-card-price--short={!ctx.readOnly && !affordable}
 			>
 				{#if item.original_cost != null && item.original_cost > item.cost}
-					<span class="m-card-price-strike text-xs font-semibold">{fmt(item.original_cost)}</span>
+					<span class="m-card-price-strike text-base font-semibold">{fmt(item.original_cost)}</span>
 				{/if}
-				{fmt(item.cost)}<span class="m-card-price-unit text-xs font-bold opacity-70">XP</span>
+				{fmt(item.cost)}<span class="m-card-price-unit text-base font-bold opacity-70">XP</span>
 			</span>
 
 			{#if ctx.readOnly}
@@ -343,7 +344,7 @@
 				class:m-group-head--limited={group.key === 'limited'}
 			>
 				<i class="fas {group.icon}"></i>{group.label}
-				<span class="m-group-count text-lb-text-muted rounded-[999px] px-2 py-1 text-xs font-bold tabular-nums">{group.items.length}</span>
+				<span class="m-group-count text-lb-text-muted rounded-[999px] px-2 py-1 text-base font-bold tabular-nums">{group.items.length}</span>
 			</h2>
 			<div class="m-cards grid gap-4">
 				{#each group.items as item (item.id)}
@@ -400,13 +401,13 @@
 									/>
 									<span class="m-tgt-body flex min-w-0 flex-auto flex-col gap-1">
 										<span class="m-tgt-name overflow-hidden text-base font-semibold text-ellipsis whitespace-nowrap">{t.name}</span>
-										<span class="m-tgt-stats text-lb-text-muted flex items-center gap-2 text-xs"
+										<span class="m-tgt-stats text-lb-text-muted flex items-center gap-2 text-base"
 											><span>Lv.{t.level}</span><span class="m-tgt-dot opacity-60">·</span><span>{fmt(t.experience)} XP</span></span
 										>
 										{#if t.roles.length > 0}
 											<span class="m-tgt-roles mt-1 flex flex-wrap gap-1">
 												{#each t.roles.slice(0, 3) as role}
-													<span class="m-tgt-role rounded-[999px] px-2 py-1 text-xs font-semibold whitespace-nowrap" style="--rc: {role.color || '#888'}"
+													<span class="m-tgt-role rounded-[999px] px-2 py-1 text-base font-semibold whitespace-nowrap" style="--rc: {role.color || '#888'}"
 														>{role.name}</span
 													>
 												{/each}
@@ -448,7 +449,7 @@
 				{@const rep = outcome.spyReport}
 				<div class="m-spy mt-4 flex flex-col gap-3 text-left">
 					<div class="m-spy-sec rounded-[14px] px-4 py-3">
-						<div class="m-spy-head text-lb-text-muted mb-2 flex items-center gap-2 text-xs font-extrabold uppercase"><i class="fas fa-briefcase"></i>Bag</div>
+						<div class="m-spy-head text-lb-text-muted mb-2 flex items-center gap-2 text-base font-extrabold uppercase"><i class="fas fa-briefcase"></i>Bag</div>
 						{#if rep.bag.length === 0}
 							<div class="m-spy-empty text-lb-text-muted text-base">Their bag is empty.</div>
 						{:else}
@@ -462,7 +463,7 @@
 						{/if}
 					</div>
 					<div class="m-spy-sec rounded-[14px] px-4 py-3">
-						<div class="m-spy-head text-lb-text-muted mb-2 flex items-center gap-2 text-xs font-extrabold uppercase">
+						<div class="m-spy-head text-lb-text-muted mb-2 flex items-center gap-2 text-base font-extrabold uppercase">
 							<i class="fas fa-wand-magic-sparkles"></i>Active effects
 						</div>
 						{#if rep.effects.length === 0}
@@ -480,7 +481,7 @@
 						{/if}
 					</div>
 					<div class="m-spy-sec rounded-[14px] px-4 py-3">
-						<div class="m-spy-head text-lb-text-muted mb-2 flex items-center gap-2 text-xs font-extrabold uppercase">
+						<div class="m-spy-head text-lb-text-muted mb-2 flex items-center gap-2 text-base font-extrabold uppercase">
 							<i class="fas fa-stopwatch"></i>Cooldowns
 						</div>
 						{#if rep.cooldowns.length === 0}
@@ -501,7 +502,7 @@
 						{/if}
 					</div>
 					<div class="m-spy-sec rounded-[14px] px-4 py-3">
-						<div class="m-spy-head text-lb-text-muted mb-2 flex items-center gap-2 text-xs font-extrabold uppercase">
+						<div class="m-spy-head text-lb-text-muted mb-2 flex items-center gap-2 text-base font-extrabold uppercase">
 							<i class="fas fa-crosshairs"></i>Bounty
 						</div>
 						{#if (rep.bounty ?? 0) > 0}
@@ -516,10 +517,10 @@
 						{/if}
 					</div>
 					<div class="m-spy-sec rounded-[14px] px-4 py-3">
-						<div class="m-spy-head text-lb-text-muted mb-2 flex items-center gap-2 text-xs font-extrabold uppercase">
+						<div class="m-spy-head text-lb-text-muted mb-2 flex items-center gap-2 text-base font-extrabold uppercase">
 							<i class="fas fa-chart-line"></i>Assets
 							{#if (rep.assets?.length ?? 0) > 0}
-								<span class="m-spy-total text-lb-text ml-auto text-xs font-bold opacity-85"
+								<span class="m-spy-total text-lb-text ml-auto text-base font-bold opacity-85"
 									>{fmt(rep.assetsInvested)} XP invested · worth {fmt(rep.assetsValue)}</span
 								>
 							{/if}

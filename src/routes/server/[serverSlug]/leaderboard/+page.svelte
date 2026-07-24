@@ -296,12 +296,12 @@
 <div class="m-leaderboard-subhead mb-4">
 	<p>
 		Leaderboard
-		<span class="m-metric-pill text-chili-peach rounded-full px-2 py-0.5 text-xs font-semibold">{metricLabel(metric)}</span>
-		<span class="m-metric-pill text-chili-peach rounded-full px-2 py-0.5 text-xs font-semibold"
+		<span class="m-metric-pill text-chili-peach rounded-full px-2 py-0.5 text-base font-semibold">{metricLabel(metric)}</span>
+		<span class="m-metric-pill text-chili-peach rounded-full px-2 py-0.5 text-base font-semibold"
 			>{PERIODS.find((p) => p.id === period)?.label ?? 'All time'}</span
 		>
 		{#if streamConnected}
-			<span class="m-metric-pill text-chili-peach inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold">
+			<span class="m-metric-pill text-chili-peach inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-base font-semibold">
 				<span class="m-live-dot h-2 w-2 rounded-full"></span>
 				Live
 			</span>
@@ -314,7 +314,7 @@
 		<button
 			class="m-period-btn {period === p.id
 				? 'm-period-btn--active'
-				: ''} text-lb-text-faint cursor-pointer rounded-lg px-4 py-2 text-xs font-bold whitespace-nowrap"
+				: ''} text-lb-text-faint cursor-pointer rounded-lg px-4 py-2 text-base font-bold whitespace-nowrap"
 			onclick={() => setPeriod(p.id)}
 		>
 			{p.label}
@@ -326,7 +326,7 @@
 	<button
 		class="m-tab {metric === 'xp'
 			? 'm-tab--active'
-			: ''} text-lb-text-faint flex grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
+			: ''} text-lb-text-faint flex grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-base font-semibold"
 		onclick={() => setMetric('xp')}
 	>
 		<i class="fas fa-star"></i> XP
@@ -334,7 +334,7 @@
 	<button
 		class="m-tab {metric === 'chat'
 			? 'm-tab--active'
-			: ''} text-lb-text-faint flex grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
+			: ''} text-lb-text-faint flex grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-base font-semibold"
 		onclick={() => setMetric('chat')}
 	>
 		<i class="fas fa-message"></i> Chat
@@ -342,7 +342,7 @@
 	<button
 		class="m-tab {isVoiceGroup
 			? 'm-tab--active'
-			: ''} text-lb-text-faint flex grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
+			: ''} text-lb-text-faint flex grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-base font-semibold"
 		onclick={() => setMetric('voice_total')}
 	>
 		<i class="fas fa-microphone"></i> Voice
@@ -350,7 +350,7 @@
 	<button
 		class="m-tab {metric === 'video'
 			? 'm-tab--active'
-			: ''} text-lb-text-faint flex grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
+			: ''} text-lb-text-faint flex grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-base font-semibold"
 		onclick={() => setMetric('video')}
 	>
 		<i class="fas fa-video"></i> Video
@@ -358,7 +358,7 @@
 	<button
 		class="m-tab {metric === 'streaming'
 			? 'm-tab--active'
-			: ''} text-lb-text-faint flex grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
+			: ''} text-lb-text-faint flex grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-base font-semibold"
 		onclick={() => setMetric('streaming')}
 	>
 		<i class="fas fa-tv"></i> Streaming
@@ -366,7 +366,7 @@
 	<button
 		class="m-tab {isItemsGroup
 			? 'm-tab--active'
-			: ''} text-lb-text-faint flex grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
+			: ''} text-lb-text-faint flex grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-base font-semibold"
 		onclick={() => setMetric('items_bounty_total')}
 	>
 		<i class="fas fa-store"></i> Items
@@ -374,7 +374,7 @@
 	<button
 		class="m-tab {isMinigamesGroup
 			? 'm-tab--active'
-			: ''} text-lb-text-faint flex grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
+			: ''} text-lb-text-faint flex grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-base font-semibold"
 		onclick={() => setMetric('minigames_gamble_net')}
 	>
 		<i class="fas fa-dice"></i> Minigames
@@ -386,7 +386,7 @@
 		<button
 			class="m-tab {isStealGroup
 				? 'm-tab--active'
-				: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
+				: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-base font-semibold"
 			onclick={() => setMetric('items_steal_total')}
 		>
 			<i class="fas fa-hand"></i> Stealer
@@ -394,7 +394,7 @@
 		<button
 			class="m-tab {isBombGroup
 				? 'm-tab--active'
-				: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
+				: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-base font-semibold"
 			onclick={() => setMetric('items_bomb_total')}
 		>
 			<i class="fas fa-bomb"></i> Bomber
@@ -402,7 +402,7 @@
 		<button
 			class="m-tab {isBountyGroup
 				? 'm-tab--active'
-				: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
+				: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-base font-semibold"
 			onclick={() => setMetric('items_bounty_total')}
 		>
 			<i class="fas fa-crosshairs"></i> Bounties
@@ -410,7 +410,7 @@
 		<button
 			class="m-tab {isGiftGroup
 				? 'm-tab--active'
-				: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
+				: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-base font-semibold"
 			onclick={() => setMetric('items_gift_give')}
 		>
 			<i class="fas fa-gift"></i> Gifts
@@ -421,7 +421,7 @@
 			<button
 				class="m-tab {metric === 'items_steal_total'
 					? 'm-tab--active'
-					: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
+					: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-base font-semibold"
 				onclick={() => setMetric('items_steal_total')}
 			>
 				<i class="fas fa-coins"></i> XP stolen
@@ -429,7 +429,7 @@
 			<button
 				class="m-tab {metric === 'items_steal_rate'
 					? 'm-tab--active'
-					: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
+					: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-base font-semibold"
 				onclick={() => setMetric('items_steal_rate')}
 			>
 				<i class="fas fa-percent"></i> Success rate
@@ -437,7 +437,7 @@
 			<button
 				class="m-tab {metric === 'items_steal_big'
 					? 'm-tab--active'
-					: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
+					: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-base font-semibold"
 				onclick={() => setMetric('items_steal_big')}
 			>
 				<i class="fas fa-trophy"></i> Big steal
@@ -448,7 +448,7 @@
 			<button
 				class="m-tab {metric === 'items_bomb_total'
 					? 'm-tab--active'
-					: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
+					: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-base font-semibold"
 				onclick={() => setMetric('items_bomb_total')}
 			>
 				<i class="fas fa-coins"></i> XP destroyed
@@ -456,7 +456,7 @@
 			<button
 				class="m-tab {metric === 'items_bomb_rate'
 					? 'm-tab--active'
-					: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
+					: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-base font-semibold"
 				onclick={() => setMetric('items_bomb_rate')}
 			>
 				<i class="fas fa-percent"></i> Success rate
@@ -464,7 +464,7 @@
 			<button
 				class="m-tab {metric === 'items_bomb_big'
 					? 'm-tab--active'
-					: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
+					: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-base font-semibold"
 				onclick={() => setMetric('items_bomb_big')}
 			>
 				<i class="fas fa-trophy"></i> Big bomb
@@ -475,7 +475,7 @@
 			<button
 				class="m-tab {metric === 'items_bounty_total'
 					? 'm-tab--active'
-					: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
+					: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-base font-semibold"
 				onclick={() => setMetric('items_bounty_total')}
 			>
 				<i class="fas fa-skull"></i> Total bounties
@@ -483,7 +483,7 @@
 			<button
 				class="m-tab {metric === 'items_bounty_claimer'
 					? 'm-tab--active'
-					: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
+					: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-base font-semibold"
 				onclick={() => setMetric('items_bounty_claimer')}
 			>
 				<i class="fas fa-coins"></i> Claimer
@@ -491,7 +491,7 @@
 			<button
 				class="m-tab {metric === 'items_bounty_give'
 					? 'm-tab--active'
-					: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
+					: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-base font-semibold"
 				onclick={() => setMetric('items_bounty_give')}
 			>
 				<i class="fas fa-crosshairs"></i> Giver
@@ -502,7 +502,7 @@
 			<button
 				class="m-tab {metric === 'items_gift_give'
 					? 'm-tab--active'
-					: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
+					: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-base font-semibold"
 				onclick={() => setMetric('items_gift_give')}
 			>
 				<i class="fas fa-gift"></i> Given
@@ -510,7 +510,7 @@
 			<button
 				class="m-tab {metric === 'items_gift_receive'
 					? 'm-tab--active'
-					: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
+					: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-base font-semibold"
 				onclick={() => setMetric('items_gift_receive')}
 			>
 				<i class="fas fa-coins"></i> Received
@@ -522,7 +522,7 @@
 {#if isMinigamesGroup}
 	<div class="m-tabs m-tabs--sub mb-7 flex gap-2 overflow-x-auto rounded-2xl p-1">
 		<button
-			class="m-tab m-tab--active text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold text-white"
+			class="m-tab m-tab--active text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-base font-semibold text-white"
 			onclick={() => setMetric('minigames_gamble_net')}
 		>
 			<i class="fas fa-dice"></i> Gamble
@@ -532,7 +532,7 @@
 		<button
 			class="m-tab {metric === 'minigames_gamble_net'
 				? 'm-tab--active'
-				: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
+				: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-base font-semibold"
 			onclick={() => setMetric('minigames_gamble_net')}
 		>
 			<i class="fas fa-coins"></i> Net XP
@@ -540,7 +540,7 @@
 		<button
 			class="m-tab {metric === 'minigames_gamble_ratio'
 				? 'm-tab--active'
-				: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
+				: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-base font-semibold"
 			onclick={() => setMetric('minigames_gamble_ratio')}
 		>
 			<i class="fas fa-percent"></i> Win ratio
@@ -548,7 +548,7 @@
 		<button
 			class="m-tab {metric === 'minigames_gamble_big'
 				? 'm-tab--active'
-				: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
+				: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-base font-semibold"
 			onclick={() => setMetric('minigames_gamble_big')}
 		>
 			<i class="fas fa-trophy"></i> Big win
@@ -561,7 +561,7 @@
 		<button
 			class="m-tab {metric === 'voice_total'
 				? 'm-tab--active'
-				: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
+				: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-base font-semibold"
 			onclick={() => setMetric('voice_total')}
 		>
 			<i class="fas fa-layer-group"></i> Total
@@ -569,7 +569,7 @@
 		<button
 			class="m-tab {metric === 'voice_active'
 				? 'm-tab--active'
-				: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
+				: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-base font-semibold"
 			onclick={() => setMetric('voice_active')}
 		>
 			<i class="fas fa-microphone-lines"></i> Active
@@ -577,7 +577,7 @@
 		<button
 			class="m-tab {metric === 'voice_afk'
 				? 'm-tab--active'
-				: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"
+				: ''} text-lb-text-faint flex flex-initial grow cursor-pointer items-center justify-center gap-1 rounded-lg px-3 py-2 text-base font-semibold"
 			onclick={() => setMetric('voice_afk')}
 		>
 			<i class="fas fa-moon"></i> AFK
@@ -615,7 +615,7 @@
 							</div>
 						</div>
 						<div
-							class="m-rank-badge flex h-6 w-6 items-center justify-center rounded-full text-xs font-black"
+							class="m-rank-badge flex h-6 w-6 items-center justify-center rounded-full text-base font-black"
 							style="background: {rankGradients[rank]}; color: #111;"
 						>
 							{rank}
@@ -631,16 +631,16 @@
 							style="color: {rankColors[rank]};"
 						>
 							{metricValueAnimated(r, metric)}
-							<span class="ml-0.5 text-xs font-semibold opacity-70">{metricUnit(metric)}</span>
+							<span class="ml-0.5 text-base font-semibold opacity-70">{metricUnit(metric)}</span>
 						</div>
-						<div class="text-lb-text-faint mt-0.5 text-xs">{isItemsGroup || isMinigamesGroup ? itemsSub(r, metric) : `Level ${r.level ?? 0}`}</div>
+						<div class="text-lb-text-faint mt-0.5 text-base">{isItemsGroup || isMinigamesGroup ? itemsSub(r, metric) : `Level ${r.level ?? 0}`}</div>
 					</div>
 
 					<div
 						class="m-podium-block relative flex w-full items-center justify-center overflow-hidden rounded-t-lg opacity-85"
 						style="height: {podiumHeights[rank]}; background: {rankGradients[rank]};"
 					>
-						<span class="relative z-1 text-xs font-black text-black/50">#{rank}</span>
+						<span class="relative z-1 text-base font-black text-black/50">#{rank}</span>
 					</div>
 				</div>
 			{/each}
@@ -652,12 +652,12 @@
 	<section class="m-list-section overflow-hidden rounded-3xl">
 		<div class="m-list-header text-lb-text flex items-center justify-between px-4 pt-4 pb-3 text-base font-bold">
 			<span>Rankings</span>
-			<span class="text-lb-text-soft text-xs font-medium">{rows.length.toLocaleString()} members</span>
+			<span class="text-lb-text-soft text-base font-medium">{rows.length.toLocaleString()} members</span>
 		</div>
 		<div class="m-list">
 			{#each rest as r, i (r.discord_member_id)}
 				<div class="m-list-row flex items-center gap-3 px-4 py-3 opacity-0" class:m-mounted={mounted} style="animation-delay: {i * 40}ms">
-					<div class="text-lb-text-soft w-8 shrink-0 text-right text-xs font-bold">#{i + 4}</div>
+					<div class="text-lb-text-soft w-8 shrink-0 text-right text-base font-bold">#{i + 4}</div>
 					<div class="m-list-avatar h-10 w-10 shrink-0 overflow-hidden rounded-full">
 						{#if r.avatar}
 							<img src={r.avatar} alt={displayName(r)} />
@@ -671,14 +671,14 @@
 						<div class="text-lb-text mb-0.5 max-w-full min-w-0 overflow-hidden text-base font-semibold text-ellipsis whitespace-nowrap" title={displayName(r)}>
 							{displayName(r)}
 						</div>
-						<div class="text-lb-text-soft mb-1 text-xs">{isItemsGroup || isMinigamesGroup ? itemsSub(r, metric) : `Level ${r.level ?? 0}`}</div>
+						<div class="text-lb-text-soft mb-1 text-base">{isItemsGroup || isMinigamesGroup ? itemsSub(r, metric) : `Level ${r.level ?? 0}`}</div>
 						<div class="m-list-bar-track h-1 overflow-hidden rounded-full">
 							<div class="m-list-bar-fill h-full rounded-full" style="width: {barWidthPct(r, metric)}%"></div>
 						</div>
 					</div>
 					<div class="text-lb-text shrink-0 text-right text-base font-extrabold whitespace-nowrap tabular-nums">
 						{metricValueAnimated(r, metric)}
-						<span class="text-lb-text-faint ml-0.5 text-xs font-semibold">{metricUnit(metric)}</span>
+						<span class="text-lb-text-faint ml-0.5 text-base font-semibold">{metricUnit(metric)}</span>
 					</div>
 				</div>
 			{/each}

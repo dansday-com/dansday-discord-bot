@@ -35,7 +35,12 @@
 						? 'bg-ash-600 text-ash-100 font-medium'
 						: 'text-ash-400 hover:text-ash-200 hover:bg-ash-700'}"
 				>
-					<i class="fas {tab.icon} w-4 shrink-0 text-center text-xs transition-colors {featureOff ? (active ? 'text-ash-400' : 'text-ash-500') : tab.iconClass}"
+					<i
+						class="fas {tab.icon} w-4 shrink-0 text-center text-base transition-colors {featureOff
+							? active
+								? 'text-ash-400'
+								: 'text-ash-500'
+							: tab.iconClass}"
 					></i>
 					<span class="min-w-0 flex-1 whitespace-nowrap lg:truncate">{tab.label}</span>
 				</a>

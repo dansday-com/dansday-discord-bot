@@ -267,9 +267,9 @@
 						<div class="g-item-titles min-w-0">
 							<h3 class="g-item-name m-0 text-base">{it.label}</h3>
 							{#if it.available && it.cost != null}
-								<span class="g-item-cost mt-0 inline-flex items-center gap-1 text-xs font-bold"><i class="fas fa-coins"></i>{fmtCost(it.cost)}</span>
+								<span class="g-item-cost mt-0 inline-flex items-center gap-1 text-base font-bold"><i class="fas fa-coins"></i>{fmtCost(it.cost)}</span>
 							{:else}
-								<span class="g-item-cost g-item-cost--soon text-lb-text-muted mt-0 inline-flex items-center gap-1 text-xs font-bold font-semibold"
+								<span class="g-item-cost g-item-cost--soon text-lb-text-muted mt-0 inline-flex items-center gap-1 text-base font-bold font-semibold"
 									>Not in this shop yet</span
 								>
 							{/if}

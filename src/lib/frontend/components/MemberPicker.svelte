@@ -134,7 +134,7 @@
 	type="button"
 	{disabled}
 	onclick={openModal}
-	class="bg-ash-700 border-ash-600 hover:border-ash-500 flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+	class="bg-ash-700 border-ash-600 hover:border-ash-500 flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-left text-base transition-colors disabled:cursor-not-allowed disabled:opacity-60"
 >
 	{#if single}
 		<span class={(value as string) ? 'text-ash-100' : 'text-ash-300'}>
@@ -152,7 +152,7 @@
 	<div class="mt-2 max-h-32 overflow-y-auto rounded-md">
 		<div class="flex flex-wrap gap-1">
 			{#each value as string[] as id (id)}
-				<span class="border-ash-600 bg-ash-800 text-ash-200 flex max-w-full min-w-0 items-center gap-1 rounded border px-2 py-0.5 text-xs">
+				<span class="border-ash-600 bg-ash-800 text-ash-200 flex max-w-full min-w-0 items-center gap-1 rounded border px-2 py-0.5 text-base">
 					<span class="truncate">{labelById[id] ?? id}</span>
 					<button
 						type="button"
@@ -161,7 +161,7 @@
 						class="text-ash-400 hover:text-ash-100 ml-0.5 shrink-0 disabled:opacity-40"
 						aria-label="Remove"
 					>
-						<i class="fas fa-times text-xs"></i>
+						<i class="fas fa-times text-base"></i>
 					</button>
 				</span>
 			{/each}
@@ -170,13 +170,13 @@
 {/if}
 
 {#if open}
-	<div class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-3 sm:p-4" onclick={close}>
+	<div class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-3 lg:p-4" onclick={close}>
 		<div
-			class="bg-ash-800 border-ash-700 my-4 flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl border p-4 shadow-2xl sm:p-6"
+			class="bg-ash-800 border-ash-700 my-4 flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl border p-4 shadow-2xl lg:p-6"
 			onclick={(e) => e.stopPropagation()}
 		>
-			<div class="mb-4 flex items-center justify-between sm:mb-6">
-				<h3 class="text-ash-100 flex items-center gap-2 text-lg font-bold sm:text-xl">
+			<div class="mb-4 flex items-center justify-between lg:mb-6">
+				<h3 class="text-ash-100 flex items-center gap-2 text-lg font-bold lg:text-xl">
 					<i class={MEMBER_PICKER_ACCENT.modalTitleIcon}></i>{single ? 'Select Member' : 'Select Members'}
 				</h3>
 				<button type="button" onclick={close} aria-label="Close" class="text-ash-400 hover:text-ash-100 p-1 transition-colors">
@@ -190,7 +190,7 @@
 					bind:value={search}
 					oninput={() => scheduleSearch()}
 					placeholder="Search members..."
-					class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-4 py-2.5 pr-10 text-sm transition-all focus:ring-2 focus:outline-none sm:py-3 sm:text-base"
+					class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-4 py-2.5 pr-10 text-base transition-all focus:ring-2 focus:outline-none lg:py-3 lg:text-base"
 				/>
 				{#if loading}
 					<i class="{MEMBER_PICKER_ACCENT.searchSpinner} absolute top-1/2 right-3 -translate-y-1/2"></i>
@@ -204,21 +204,22 @@
 					<button
 						type="button"
 						onclick={() => pickSingle(null)}
-						class="text-ash-400 hover:bg-ash-700 w-full rounded-lg px-4 py-2.5 text-left text-sm transition-colors {!value ? 'bg-ash-700' : ''}"
+						class="text-ash-400 hover:bg-ash-700 w-full rounded-lg px-4 py-2.5 text-left text-base transition-colors {!value ? 'bg-ash-700' : ''}"
 					>
 						— None —
 					</button>
 				{/if}
 
 				{#if results.length === 0}
-					<p class="text-ash-500 py-4 text-center text-sm">Type at least 2 characters to search</p>
+					<p class="text-ash-500 py-4 text-center text-base">Type at least 2 characters to search</p>
 				{:else}
 					{#each results as m (m.discord_member_id)}
 						<button
 							type="button"
 							onclick={() => (single ? pickSingle(m) : toggleMulti(m))}
-							class="flex w-full items-center justify-between rounded-lg px-4 py-2.5 text-left text-sm transition-colors
-								{isRowSelected(m.discord_member_id) ? 'bg-ash-900 border-ash-500 border' : 'bg-ash-700 hover:bg-ash-600'}"
+							class="flex w-full items-center justify-between rounded-lg px-4 py-2.5 text-left text-base transition-colors {isRowSelected(m.discord_member_id)
+								? 'bg-ash-900 border-ash-500 border'
+								: 'bg-ash-700 hover:bg-ash-600'}"
 						>
 							<div class="flex min-w-0 flex-1 items-center gap-3">
 								{#if m.avatar}
@@ -227,16 +228,16 @@
 									<div class="bg-ash-600 h-7 w-7 shrink-0 rounded-full"></div>
 								{/if}
 								<div class="min-w-0 flex-1">
-									<p class="text-ash-100 truncate text-sm font-medium">{label(m)}</p>
-									<p class="text-ash-400 truncate text-xs">{m.discord_member_id}</p>
+									<p class="text-ash-100 truncate text-base font-medium">{label(m)}</p>
+									<p class="text-ash-400 truncate text-base">{m.discord_member_id}</p>
 								</div>
 							</div>
 							{#if isRowSelected(m.discord_member_id)}
-								<i class="fas fa-check text-sm text-emerald-300"></i>
+								<i class="fas fa-check text-base text-emerald-300"></i>
 							{:else if single}
-								<i class="fas fa-chevron-right text-xs {MEMBER_PICKER_ACCENT.listChevron}"></i>
+								<i class="fas fa-chevron-right text-base {MEMBER_PICKER_ACCENT.listChevron}"></i>
 							{:else}
-								<i class="fas fa-check text-sm text-transparent"></i>
+								<i class="fas fa-check text-base text-transparent"></i>
 							{/if}
 						</button>
 					{/each}
@@ -248,7 +249,7 @@
 					<button
 						type="button"
 						onclick={confirmMulti}
-						class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all sm:py-3 sm:text-base"
+						class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-base font-medium transition-all lg:py-3 lg:text-base"
 					>
 						<i class="fas fa-check text-emerald-300"></i>Confirm Selection
 					</button>

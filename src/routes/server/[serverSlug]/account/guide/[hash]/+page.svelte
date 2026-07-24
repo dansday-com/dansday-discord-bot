@@ -187,20 +187,24 @@
 
 <svelte:head><title>{data.server.name || data.server.slug} Items Guide | {APP_NAME} Discord Bot</title></svelte:head>
 
-<div class="g-wrap">
-	<header class="g-hero" use:reveal>
-		<div class="g-hero-badge"><i class="fas fa-book-open"></i></div>
-		<h1 class="g-hero-title">How the Item Game Works</h1>
-		<p class="g-hero-sub">Earn XP, spend it in the shop, and outplay everyone with steals, shields, spies and more.</p>
+<div class="g-wrap gap-8 px-0 pt-1 pb-9">
+	<header class="g-hero px-1 pt-3 pb-0 text-center" use:reveal>
+		<div class="g-hero-badge h-16 w-16 rounded-2xl text-xl"><i class="fas fa-book-open"></i></div>
+		<h1 class="g-hero-title text-lb-text mx-0 mt-0 mb-2 font-extrabold">How the Item Game Works</h1>
+		<p class="g-hero-sub text-lb-text-muted mx-auto my-0 max-w-135 text-base">
+			Earn XP, spend it in the shop, and outplay everyone with steals, shields, spies and more.
+		</p>
 	</header>
 
 	<section class="g-sec" use:reveal>
-		<h2 class="g-sec-head"><i class="fas fa-bolt"></i>How to earn XP</h2>
-		<p class="g-sec-lead">XP is the currency. The more you earn, the more you can buy, and the higher you climb the leaderboard.</p>
-		<div class="g-earn">
+		<h2 class="g-sec-head mx-0 mt-0 mb-2 flex items-center gap-2 text-base"><i class="fas fa-bolt"></i>How to earn XP</h2>
+		<p class="g-sec-lead text-lb-text-muted mx-0 mt-0 mb-4 text-base">
+			XP is the currency. The more you earn, the more you can buy, and the higher you climb the leaderboard.
+		</p>
+		<div class="g-earn grid gap-3">
 			{#each earnMethods as m, i}
-				<div class="g-earn-card" style="--ac: {m.accent}; --d: {i * 70}ms">
-					<span class="g-earn-ic"><i class="fas {m.icon}"></i></span>
+				<div class="g-earn-card flex items-center gap-3 rounded-2xl px-4 py-4" style="--ac: {m.accent}; --d: {i * 70}ms">
+					<span class="g-earn-ic flex h-10 w-10 flex-none items-center justify-center rounded-xl text-base"><i class="fas {m.icon}"></i></span>
 					<div class="g-earn-body">
 						<h3>{m.title}</h3>
 						<p>{m.desc}</p>
@@ -209,8 +213,8 @@
 			{/each}
 		</div>
 
-		<div class="g-friend" style="--ac: #2f8f4e">
-			<span class="g-friend-ic"><i class="fas fa-handshake"></i></span>
+		<div class="g-friend gap-3 p-4" style="--ac: #2f8f4e">
+			<span class="g-friend-ic flex h-12 w-12 flex-none items-center justify-center rounded-[14px] text-lg"><i class="fas fa-handshake"></i></span>
 			<div class="g-friend-body">
 				<h3>🤝 Friend Boost</h3>
 				<p>
@@ -222,12 +226,12 @@
 	</section>
 
 	<section class="g-sec" use:reveal>
-		<h2 class="g-sec-head"><i class="fas fa-circle-info"></i>Know the basics</h2>
-		<p class="g-sec-lead">A few things you’ll see around the items page and what they mean.</p>
-		<div class="g-earn">
+		<h2 class="g-sec-head mx-0 mt-0 mb-2 flex items-center gap-2 text-base"><i class="fas fa-circle-info"></i>Know the basics</h2>
+		<p class="g-sec-lead text-lb-text-muted mx-0 mt-0 mb-4 text-base">A few things you’ll see around the items page and what they mean.</p>
+		<div class="g-earn grid gap-3">
 			{#each concepts as c, i}
-				<div class="g-earn-card" style="--ac: {c.accent}; --d: {i * 60}ms">
-					<span class="g-earn-ic"><i class="fas {c.icon}"></i></span>
+				<div class="g-earn-card flex items-center gap-3 rounded-2xl px-4 py-4" style="--ac: {c.accent}; --d: {i * 60}ms">
+					<span class="g-earn-ic flex h-10 w-10 flex-none items-center justify-center rounded-xl text-base"><i class="fas {c.icon}"></i></span>
 					<div class="g-earn-body">
 						<h3>{c.title}</h3>
 						<p>{c.desc}</p>
@@ -238,12 +242,13 @@
 	</section>
 
 	<section class="g-sec" use:reveal>
-		<h2 class="g-sec-head"><i class="fas fa-cart-shopping"></i>How to buy &amp; use items</h2>
-		<div class="g-steps">
+		<h2 class="g-sec-head mx-0 mt-0 mb-2 flex items-center gap-2 text-base"><i class="fas fa-cart-shopping"></i>How to buy &amp; use items</h2>
+		<div class="g-steps grid gap-3">
 			{#each steps as s, i}
-				<div class="g-step" style="--d: {i * 80}ms">
-					<span class="g-step-num">{i + 1}</span>
-					<span class="g-step-ic"><i class="fas {s.icon}"></i></span>
+				<div class="g-step relative overflow-hidden rounded-2xl px-4 pt-4 pb-4" style="--d: {i * 80}ms">
+					<span class="g-step-num text-4xl">{i + 1}</span>
+					<span class="g-step-ic text-yacht-teal mb-2 inline-flex h-10 w-10 items-center justify-center rounded-xl text-base"><i class="fas {s.icon}"></i></span
+					>
 					<h3>{s.title}</h3>
 					<p>{s.desc}</p>
 				</div>
@@ -252,28 +257,30 @@
 	</section>
 
 	<section class="g-sec" use:reveal>
-		<h2 class="g-sec-head"><i class="fas fa-boxes-stacked"></i>Every item explained</h2>
-		<div class="g-items">
+		<h2 class="g-sec-head mx-0 mt-0 mb-2 flex items-center gap-2 text-base"><i class="fas fa-boxes-stacked"></i>Every item explained</h2>
+		<div class="g-items grid gap-4">
 			{#each guideItems as it, i}
-				<article class="g-item" class:g-item--soon={!it.available} style="--ac: {it.accent}; --d: {(i % 6) * 60}ms">
-					<div class="g-item-glow"></div>
-					<div class="g-item-top">
-						<span class="g-item-emoji">{it.emoji}</span>
-						<div class="g-item-titles">
-							<h3 class="g-item-name">{it.label}</h3>
+				<article class="g-item p-4" class:g-item--soon={!it.available} style="--ac: {it.accent}; --d: {(i % 6) * 60}ms">
+					<div class="g-item-glow pointer-events-none h-[120%] w-[60%]"></div>
+					<div class="g-item-top mb-2 flex items-center gap-3">
+						<span class="g-item-emoji flex h-11 w-11 flex-none items-center justify-center rounded-[13px] text-lg">{it.emoji}</span>
+						<div class="g-item-titles min-w-0">
+							<h3 class="g-item-name m-0 text-base">{it.label}</h3>
 							{#if it.available && it.cost != null}
-								<span class="g-item-cost"><i class="fas fa-coins"></i>{fmtCost(it.cost)}</span>
+								<span class="g-item-cost mt-0 inline-flex items-center gap-1 text-base font-bold"><i class="fas fa-coins"></i>{fmtCost(it.cost)}</span>
 							{:else}
-								<span class="g-item-cost g-item-cost--soon">Not in this shop yet</span>
+								<span class="g-item-cost g-item-cost--soon text-lb-text-muted mt-0 inline-flex items-center gap-1 text-base font-bold font-semibold"
+									>Not in this shop yet</span
+								>
 							{/if}
 						</div>
 					</div>
 					{#if it.guide}
-						<p class="g-item-what">{it.guide.what}</p>
-						<div class="g-item-row"><i class="fas fa-circle-play"></i><span>{it.guide.how}</span></div>
-						<div class="g-item-tip"><i class="fas fa-lightbulb"></i><span>{it.guide.tip}</span></div>
+						<p class="g-item-what text-lb-text mx-0 mt-0 mb-2 text-base">{it.guide.what}</p>
+						<div class="g-item-row mb-2"><i class="fas fa-circle-play"></i><span>{it.guide.how}</span></div>
+						<div class="g-item-tip text-lb-text-muted rounded-lg px-2 py-2 text-base"><i class="fas fa-lightbulb"></i><span>{it.guide.tip}</span></div>
 					{:else}
-						<p class="g-item-what">{it.summary}</p>
+						<p class="g-item-what text-lb-text mx-0 mt-0 mb-2 text-base">{it.summary}</p>
 					{/if}
 				</article>
 			{/each}
@@ -281,21 +288,24 @@
 	</section>
 
 	<section class="g-sec" use:reveal>
-		<h2 class="g-sec-head"><i class="fas fa-dice"></i>Minigames</h2>
-		<p class="g-sec-lead">Free-to-play games in the Minigames tab where you wager XP for a shot at more. More games are added over time.</p>
-		<div class="g-steps">
+		<h2 class="g-sec-head mx-0 mt-0 mb-2 flex items-center gap-2 text-base"><i class="fas fa-dice"></i>Minigames</h2>
+		<p class="g-sec-lead text-lb-text-muted mx-0 mt-0 mb-4 text-base">
+			Free-to-play games in the Minigames tab where you wager XP for a shot at more. More games are added over time.
+		</p>
+		<div class="g-steps grid gap-3">
 			{#each minigameSteps as s, i}
-				<div class="g-step" style="--d: {i * 80}ms">
-					<span class="g-step-num">{i + 1}</span>
-					<span class="g-step-ic"><i class="fas {s.icon}"></i></span>
+				<div class="g-step relative overflow-hidden rounded-2xl px-4 pt-4 pb-4" style="--d: {i * 80}ms">
+					<span class="g-step-num text-4xl">{i + 1}</span>
+					<span class="g-step-ic text-yacht-teal mb-2 inline-flex h-10 w-10 items-center justify-center rounded-xl text-base"><i class="fas {s.icon}"></i></span
+					>
 					<h3>{s.title}</h3>
 					<p>{s.desc}</p>
 				</div>
 			{/each}
 		</div>
 
-		<div class="g-friend" style="--ac: #b23b2e">
-			<span class="g-friend-ic"><i class="fas fa-triangle-exclamation"></i></span>
+		<div class="g-friend gap-3 p-4" style="--ac: #b23b2e">
+			<span class="g-friend-ic flex h-12 w-12 flex-none items-center justify-center rounded-[14px] text-lg"><i class="fas fa-triangle-exclamation"></i></span>
 			<div class="g-friend-body">
 				<h3>⚠️ The house always has an edge over time</h3>
 				<p>
@@ -307,14 +317,14 @@
 	</section>
 
 	<section class="g-sec" use:reveal>
-		<h2 class="g-sec-head"><i class="fas fa-chart-line"></i>Assets market</h2>
-		<p class="g-sec-lead">
+		<h2 class="g-sec-head mx-0 mt-0 mb-2 flex items-center gap-2 text-base"><i class="fas fa-chart-line"></i>Assets market</h2>
+		<p class="g-sec-lead text-lb-text-muted mx-0 mt-0 mb-4 text-base">
 			Invest your XP in real-world crypto at live prices. It behaves like a stock market, but you’re trading with XP, no real money and no real coins.
 		</p>
-		<div class="g-earn">
+		<div class="g-earn grid gap-3">
 			{#each assetConcepts as c, i}
-				<div class="g-earn-card" style="--ac: {c.accent}; --d: {i * 60}ms">
-					<span class="g-earn-ic"><i class="fas {c.icon}"></i></span>
+				<div class="g-earn-card flex items-center gap-3 rounded-2xl px-4 py-4" style="--ac: {c.accent}; --d: {i * 60}ms">
+					<span class="g-earn-ic flex h-10 w-10 flex-none items-center justify-center rounded-xl text-base"><i class="fas {c.icon}"></i></span>
 					<div class="g-earn-body">
 						<h3>{c.title}</h3>
 						<p>{c.desc}</p>
@@ -323,8 +333,8 @@
 			{/each}
 		</div>
 
-		<div class="g-friend" style="--ac: #b23b2e">
-			<span class="g-friend-ic"><i class="fas fa-triangle-exclamation"></i></span>
+		<div class="g-friend gap-3 p-4" style="--ac: #b23b2e">
+			<span class="g-friend-ic flex h-12 w-12 flex-none items-center justify-center rounded-[14px] text-lg"><i class="fas fa-triangle-exclamation"></i></span>
 			<div class="g-friend-body">
 				<h3>⚠️ Prices go down too</h3>
 				<p>
@@ -336,12 +346,13 @@
 	</section>
 
 	<section class="g-sec" use:reveal>
-		<h2 class="g-sec-head"><i class="fas fa-arrow-trend-up"></i>How to trade assets</h2>
-		<div class="g-steps">
+		<h2 class="g-sec-head mx-0 mt-0 mb-2 flex items-center gap-2 text-base"><i class="fas fa-arrow-trend-up"></i>How to trade assets</h2>
+		<div class="g-steps grid gap-3">
 			{#each assetSteps as s, i}
-				<div class="g-step" style="--d: {i * 80}ms">
-					<span class="g-step-num">{i + 1}</span>
-					<span class="g-step-ic"><i class="fas {s.icon}"></i></span>
+				<div class="g-step relative overflow-hidden rounded-2xl px-4 pt-4 pb-4" style="--d: {i * 80}ms">
+					<span class="g-step-num text-4xl">{i + 1}</span>
+					<span class="g-step-ic text-yacht-teal mb-2 inline-flex h-10 w-10 items-center justify-center rounded-xl text-base"><i class="fas {s.icon}"></i></span
+					>
 					<h3>{s.title}</h3>
 					<p>{s.desc}</p>
 				</div>
@@ -350,11 +361,11 @@
 	</section>
 
 	<section class="g-sec" use:reveal>
-		<h2 class="g-sec-head"><i class="fas fa-chess-knight"></i>Strategy &amp; combos</h2>
-		<div class="g-tips">
+		<h2 class="g-sec-head mx-0 mt-0 mb-2 flex items-center gap-2 text-base"><i class="fas fa-chess-knight"></i>Strategy &amp; combos</h2>
+		<div class="g-tips grid gap-3">
 			{#each tips as t, i}
-				<div class="g-tip" style="--ac: {t.accent}; --d: {i * 60}ms">
-					<span class="g-tip-ic"><i class="fas {t.icon}"></i></span>
+				<div class="g-tip px-3 py-3" style="--ac: {t.accent}; --d: {i * 60}ms">
+					<span class="g-tip-ic flex h-9 w-9 flex-none items-center justify-center rounded-xl text-base"><i class="fas {t.icon}"></i></span>
 					<p>{t.text}</p>
 				</div>
 			{/each}

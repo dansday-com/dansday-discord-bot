@@ -5,6 +5,7 @@
 	import { DASHBOARD_PATH } from '$lib/frontend/redirect.js';
 	import MainHeader from '$lib/frontend/components/MainHeader.svelte';
 	import MainFooter from '$lib/frontend/components/MainFooter.svelte';
+	import Button from '$lib/frontend/components/Button.svelte';
 
 	const status = $derived(page.status);
 	const isServerError = $derived(status >= 500 && status < 600);
@@ -18,42 +19,47 @@
 	<title>{title} | {APP_NAME} Discord Bot</title>
 </svelte:head>
 
-<div class="m-root">
-	<div class="m-blob m-blob-1"></div>
-	<div class="m-blob m-blob-2"></div>
-	<div class="m-blob m-blob-3"></div>
+<div class="m-root text-lb-text relative flex flex-col overflow-x-hidden">
+	<div class="m-blob pointer-events-none fixed z-0 h-105 w-105 rounded-full opacity-14"></div>
+	<div class="m-blob pointer-events-none fixed z-0 h-80 w-80 rounded-full opacity-14"></div>
+	<div class="m-blob pointer-events-none fixed z-0 h-65 w-65 rounded-full opacity-14"></div>
 
 	<MainHeader />
 
-	<main class="m-main m-main--error">
-		<div class="m-inner m-err-wrap">
-			<div class="m-err-inner">
-				<div class="m-err-card">
-					<div class="m-err-icon-wrap {isServerError ? 'm-err-icon-wrap--server' : 'm-err-icon-wrap--client'}" aria-hidden="true">
-						<i class="fas {isServerError ? 'fa-server' : 'fa-circle-exclamation'} m-err-icon"></i>
+	<main class="m-main m-main--error flex min-h-0 flex-1 flex-col overflow-y-auto">
+		<div class="m-inner m-err-wrap relative z-1 mx-auto my-0 box-border flex max-w-[1280px] flex-1 flex-col items-center justify-center px-8 pt-8 pb-16">
+			<div class="m-err-inner relative z-1 flex w-full max-w-110 flex-col items-center">
+				<div class="m-err-card w-full rounded-[20px] px-7 py-8 text-center">
+					<div
+						class="m-err-icon-wrap {isServerError
+							? 'm-err-icon-wrap--server'
+							: 'm-err-icon-wrap--client'} mx-auto mt-0 mb-5 flex h-17 w-17 items-center justify-center rounded-[20px]"
+						aria-hidden="true"
+					>
+						<i class="fas {isServerError ? 'fa-server' : 'fa-circle-exclamation'} m-err-icon text-2xl"></i>
 					</div>
 
-					<p class="m-err-code">Error {status}</p>
-					<h1 class="m-err-title">{title}</h1>
-					<p class="m-err-subtitle">{subtitle}</p>
+					<p class="m-err-code text-lb-text-subtle mx-0 mt-0 mb-2 text-base font-semibold uppercase">Error {status}</p>
+					<h1 class="m-err-title text-lb-text mx-0 mt-0 mb-2 text-xl font-extrabold">{title}</h1>
+					<p class="m-err-subtitle text-lb-text-muted text-base">{subtitle}</p>
 
-					<div class="m-err-divider"></div>
+					<div class="m-err-divider mx-0 my-6 h-0 rounded-none"></div>
 
-					<div class="m-err-actions">
-						<button type="button" onclick={() => goto(DASHBOARD_PATH)} class="m-btn m-btn--primary">
+					<div class="m-err-actions flex-row justify-center">
+						<Button onclick={() => goto(DASHBOARD_PATH)} variant="primary">
 							<i class="fas fa-house"></i>
 							Panel home
-						</button>
+						</Button>
 						{#if isServerError}
-							<button type="button" onclick={() => window.location.reload()} class="m-btn m-btn--ghost">
+							<Button onclick={() => window.location.reload()} variant="ghost">
 								<i class="fas fa-rotate-right"></i>
 								Try again
-							</button>
+							</Button>
 						{/if}
 					</div>
 
 					{#if import.meta.env.DEV && page.error?.message}
-						<p class="m-err-dev-msg">{page.error.message}</p>
+						<p class="m-err-dev-msg text-lb-text-faint mx-0 mt-5 mb-0 text-left text-base">{page.error.message}</p>
 					{/if}
 				</div>
 			</div>

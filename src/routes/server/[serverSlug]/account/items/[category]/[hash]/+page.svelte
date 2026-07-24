@@ -216,21 +216,23 @@
 	{@const canBuy = item._buyable}
 	{@const canUse = item.usable !== false}
 	<article
-		class="m-card"
+		class="m-card relative flex flex-col gap-2 overflow-hidden rounded-2xl px-4 pt-4 pb-4"
 		class:m-card--locked={!ctx.readOnly && !affordable && owned === 0}
 		class:m-card--owned={owned > 0}
 		class:m-card--burst={ctx.burstId === item.id}
 		data-cat={item.effect_type}
 	>
-		<div class="m-card-glow"></div>
-		<div class="m-card-top">
-			<span class="m-card-medallion">
+		<div class="m-card-glow pointer-events-none z-1 opacity-0"></div>
+		<div class="m-card-top flex items-start justify-between gap-2">
+			<span class="m-card-medallion relative flex h-14 w-14 items-center justify-center rounded-2xl text-xl">
 				<i class="fas {effectIcon(item.effect_type)}"></i>
-				{#if owned > 0}<span class="m-card-qty">×{owned}</span>{/if}
+				{#if owned > 0}<span class="m-card-qty flex h-5 min-w-5 items-center justify-center rounded-[999px] px-1 py-0 text-base font-extrabold text-white"
+						>×{owned}</span
+					>{/if}
 			</span>
 			{#if owned > 0 && !ctx.readOnly}
 				<button
-					class="m-card-remove"
+					class="m-card-remove text-lb-text-muted relative z-4 ml-auto flex h-7 w-7 flex-none cursor-pointer items-center justify-center rounded-lg text-base"
 					aria-label="Remove one"
 					title="Remove one"
 					disabled={discardingId === item.member_item_id || ctx.busy === item.member_item_id}
@@ -241,36 +243,50 @@
 			{/if}
 		</div>
 		{#if item._state === 'upcoming' && item._startsAt}
-			<span class="m-card-timer m-card-timer--soon"><i class="fas fa-hourglass-start"></i>Starts in {ctx.remainingLabel(item._startsAt)}</span>
+			<span class="m-card-timer m-card-timer--soon text-warning-deep inline-flex items-center gap-1 rounded-[999px] px-2 py-1 text-base font-bold tabular-nums"
+				><i class="fas fa-hourglass-start"></i>Starts in {ctx.remainingLabel(item._startsAt)}</span
+			>
 		{:else if item.availableUntil && item.availableUntil > ctx.now}
-			<span class="m-card-timer"><i class="fas fa-hourglass-half"></i>Ends in {ctx.remainingLabel(item.availableUntil)}</span>
+			<span class="m-card-timer text-warning-deep inline-flex items-center gap-1 rounded-[999px] px-2 py-1 text-base font-bold tabular-nums"
+				><i class="fas fa-hourglass-half"></i>Ends in {ctx.remainingLabel(item.availableUntil)}</span
+			>
 		{/if}
-		<h3 class="m-card-name">{item.name}</h3>
-		<p class="m-card-desc">{item.description || effectSummary(item, ctx.luckPercent)}</p>
+		<h3 class="m-card-name text-lb-text mx-0 mt-1 mb-0 text-base font-extrabold">{item.name}</h3>
+		<p class="m-card-desc text-lb-text-muted min-h-[2.9em] text-base">{item.description || effectSummary(item, ctx.luckPercent)}</p>
 		{#if effectMeta(item, ctx.luckPercent).length > 0}
-			<div class="m-card-meta">
+			<div class="m-card-meta mx-0 mt-2 mb-1 flex flex-wrap gap-1">
 				{#each effectMeta(item, ctx.luckPercent) as chip}
-					<span class="m-card-stat" title={chip.label}><i class="fas {chip.icon}"></i>{chip.label}</span>
+					<span
+						class="m-card-stat inline-flex items-center gap-1 rounded-[999px] px-2 py-1 text-base font-bold whitespace-nowrap tabular-nums"
+						title={chip.label}><i class="fas {chip.icon}"></i>{chip.label}</span
+					>
 				{/each}
 			</div>
 		{/if}
 
-		<div class="m-card-foot">
-			<span class="m-card-price" class:m-card-price--short={!ctx.readOnly && !affordable}>
+		<div class="m-card-foot relative z-2 mt-auto flex flex-wrap items-center justify-between gap-2 pt-1">
+			<span
+				class="m-card-price text-warning inline-flex min-w-0 flex-auto items-baseline gap-1 text-base font-extrabold whitespace-nowrap"
+				class:m-card-price--short={!ctx.readOnly && !affordable}
+			>
 				{#if item.original_cost != null && item.original_cost > item.cost}
-					<span class="m-card-price-strike">{fmt(item.original_cost)}</span>
+					<span class="m-card-price-strike text-base font-semibold">{fmt(item.original_cost)}</span>
 				{/if}
-				{fmt(item.cost)}<span class="m-card-price-unit">XP</span>
+				{fmt(item.cost)}<span class="m-card-price-unit text-base font-bold opacity-70">XP</span>
 			</span>
 
 			{#if ctx.readOnly}
-				<div class="m-card-actions">
-					<button class="m-card-btn m-card-btn--buy" disabled title="Open your card to buy"><i class="fas fa-cart-plus"></i>Buy</button>
+				<div class="m-card-actions ml-auto flex flex-[1_1_100%] items-center justify-end gap-2">
+					<button
+						class="m-card-btn m-card-btn--buy inline-flex flex-none cursor-pointer items-center justify-center gap-1 rounded-lg px-4 py-2 text-base font-bold whitespace-nowrap text-white"
+						disabled
+						title="Open your card to buy"><i class="fas fa-cart-plus"></i>Buy</button
+					>
 				</div>
 			{:else}
-				<div class="m-card-actions">
+				<div class="m-card-actions ml-auto flex flex-[1_1_100%] items-center justify-end gap-2">
 					<button
-						class="m-card-btn m-card-btn--buy"
+						class="m-card-btn m-card-btn--buy inline-flex flex-none cursor-pointer items-center justify-center gap-1 rounded-lg px-4 py-2 text-base font-bold whitespace-nowrap text-white"
 						disabled={ctx.busy === item.id || !canBuy || !affordable || ctx.bagFull}
 						title={notStarted
 							? 'Not available yet'
@@ -289,10 +305,14 @@
 
 					{#if owned > 0}
 						{#if buffActive}
-							<button class="m-card-btn m-card-btn--use" disabled title="Already active"><i class="fas fa-check"></i>Active</button>
+							<button
+								class="m-card-btn m-card-btn--use inline-flex flex-none cursor-pointer items-center justify-center gap-1 rounded-lg px-4 py-2 text-base font-bold whitespace-nowrap text-white"
+								disabled
+								title="Already active"><i class="fas fa-check"></i>Active</button
+							>
 						{:else}
 							<button
-								class="m-card-btn m-card-btn--use"
+								class="m-card-btn m-card-btn--use inline-flex flex-none cursor-pointer items-center justify-center gap-1 rounded-lg px-4 py-2 text-base font-bold whitespace-nowrap text-white"
 								disabled={ctx.busy === item.member_item_id || !canUse}
 								title={!canUse ? 'Using is turned off' : actionVerb(item.effect_type).label}
 								onclick={() => onUse({ ...item, member_item_id: item.member_item_id, quantity: owned, usable: canUse })}
@@ -309,21 +329,24 @@
 {/snippet}
 
 {#if shopItems.length === 0}
-	<div class="m-members-empty">No items in this category.</div>
+	<div class="m-members-empty px-4 py-12 text-center">No items in this category.</div>
 {:else if data.category !== 'all'}
-	<div class="m-cards">
+	<div class="m-cards grid gap-4">
 		{#each shopItems.slice().sort(byCost) as item (item.id)}
 			{@render card(item)}
 		{/each}
 	</div>
 {:else}
 	{#each groups as group (group.key)}
-		<div class="m-group">
-			<h2 class="m-group-head" class:m-group-head--limited={group.key === 'limited'}>
+		<div class="m-group mb-4">
+			<h2
+				class="m-group-head text-lb-text-muted mx-0 mt-0 mb-2 flex items-center gap-2 text-base font-extrabold uppercase"
+				class:m-group-head--limited={group.key === 'limited'}
+			>
 				<i class="fas {group.icon}"></i>{group.label}
-				<span class="m-group-count">{group.items.length}</span>
+				<span class="m-group-count text-lb-text-muted rounded-[999px] px-2 py-1 text-base font-bold tabular-nums">{group.items.length}</span>
 			</h2>
-			<div class="m-cards">
+			<div class="m-cards grid gap-4">
 				{#each group.items as item (item.id)}
 					{@render card(item)}
 				{/each}
@@ -333,49 +356,65 @@
 {/if}
 
 {#if pickingTargetFor}
-	<div class="m-tgt-overlay" role="presentation" onclick={() => (pickingTargetFor = null)}>
-		<div class="m-tgt-modal" role="dialog" aria-modal="true" aria-label="Pick a target" onclick={(e) => e.stopPropagation()}>
-			<button class="m-items-back" onclick={() => (pickingTargetFor = null)}><i class="fas fa-arrow-left"></i>Back</button>
-			<p class="m-items-pick-label">Pick a target for <strong>{pickingTargetFor.name}</strong>:</p>
+	<div class="m-tgt-overlay z-60 flex items-center justify-center p-4" role="presentation" onclick={() => (pickingTargetFor = null)}>
+		<div
+			class="m-tgt-modal max-h-[85vh] w-full max-w-110 overflow-y-auto rounded-[18px] p-4"
+			role="dialog"
+			aria-modal="true"
+			aria-label="Pick a target"
+			onclick={(e) => e.stopPropagation()}
+		>
+			<button class="m-items-back text-lb-text-muted mb-2 inline-flex cursor-pointer items-center gap-2 text-base" onclick={() => (pickingTargetFor = null)}
+				><i class="fas fa-arrow-left"></i>Back</button
+			>
+			<p class="m-items-pick-label text-lb-text mb-3 text-base">Pick a target for <strong>{pickingTargetFor.name}</strong>:</p>
 			{#if (data.targets ?? []).length === 0}
-				<div class="m-members-empty">No eligible targets in this server.</div>
+				<div class="m-members-empty px-4 py-12 text-center">No eligible targets in this server.</div>
 			{:else}
-				<div class="m-tgt-search">
-					<i class="fas fa-search m-tgt-search-ic" aria-hidden="true"></i>
+				<div class="m-tgt-search relative mb-2">
+					<i class="fas fa-search m-tgt-search-ic text-lb-text-muted pointer-events-none text-base" aria-hidden="true"></i>
 					<input
 						type="search"
-						class="m-tgt-search-inp"
+						class="m-tgt-search-inp text-lb-text w-full rounded-lg pt-2 pr-3 pb-2 pl-8 text-base"
 						placeholder="Search a member to {actionVerb(pickingTargetFor.effect_type).label.toLowerCase()}…"
 						bind:value={targetSearch}
 					/>
 				</div>
 				{#if visibleTargets.length === 0}
-					<div class="m-members-empty">No members match “{targetSearch}”.</div>
+					<div class="m-members-empty px-4 py-12 text-center">No members match “{targetSearch}”.</div>
 				{:else}
-					<ul class="m-tgt-list">
+					<ul class="m-tgt-list flex max-h-[440px] flex-col gap-2 overflow-x-hidden overflow-y-auto p-1">
 						{#each visibleTargets as t (t.hash)}
 							<li>
-								<button class="m-tgt" disabled={ctx.busy === pickingTargetFor.member_item_id} onclick={() => pickTarget(pickingTargetFor, t.hash)}>
-									<span class="m-tgt-rank">{t.rank != null ? `#${t.rank}` : '—'}</span>
+								<button
+									class="m-tgt text-lb-text flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2 text-left"
+									disabled={ctx.busy === pickingTargetFor.member_item_id}
+									onclick={() => pickTarget(pickingTargetFor, t.hash)}
+								>
+									<span class="m-tgt-rank text-lb-text-muted min-w-8 flex-none text-center text-base font-bold">{t.rank != null ? `#${t.rank}` : '—'}</span>
 									<img
-										class="m-tgt-av"
+										class="m-tgt-av h-10 w-10 flex-none rounded-full object-cover"
 										src={targetAvatar(t)}
 										alt={t.name}
 										loading="lazy"
 										onerror={(e) => ((e.currentTarget as HTMLImageElement).src = 'https://cdn.discordapp.com/embed/avatars/0.png')}
 									/>
-									<span class="m-tgt-body">
-										<span class="m-tgt-name">{t.name}</span>
-										<span class="m-tgt-stats"><span>Lv.{t.level}</span><span class="m-tgt-dot">·</span><span>{fmt(t.experience)} XP</span></span>
+									<span class="m-tgt-body flex min-w-0 flex-auto flex-col gap-1">
+										<span class="m-tgt-name overflow-hidden text-base font-semibold text-ellipsis whitespace-nowrap">{t.name}</span>
+										<span class="m-tgt-stats text-lb-text-muted flex items-center gap-2 text-base"
+											><span>Lv.{t.level}</span><span class="m-tgt-dot opacity-60">·</span><span>{fmt(t.experience)} XP</span></span
+										>
 										{#if t.roles.length > 0}
-											<span class="m-tgt-roles">
+											<span class="m-tgt-roles mt-1 flex flex-wrap gap-1">
 												{#each t.roles.slice(0, 3) as role}
-													<span class="m-tgt-role" style="--rc: {role.color || '#888'}">{role.name}</span>
+													<span class="m-tgt-role rounded-[999px] px-2 py-1 text-base font-semibold whitespace-nowrap" style="--rc: {role.color || '#888'}"
+														>{role.name}</span
+													>
 												{/each}
 											</span>
 										{/if}
 									</span>
-									<i class="fas fa-crosshairs m-tgt-aim"></i>
+									<i class="fas fa-crosshairs m-tgt-aim text-danger flex-none text-base opacity-70"></i>
 								</button>
 							</li>
 						{/each}
@@ -387,95 +426,119 @@
 {/if}
 
 {#if outcome}
-	<div class="m-out-overlay" role="presentation" onclick={dismissOutcome}>
+	<div class="m-out-overlay z-99999 flex items-center justify-center overflow-hidden p-4" role="presentation" onclick={dismissOutcome}>
 		<div
-			class="m-out m-out--{outcome.tone}"
+			class="m-out m-out--{outcome.tone} p-4"
 			class:m-out--spy={outcome.spyReport}
 			role="dialog"
 			aria-modal="true"
 			aria-label={outcome.title}
 			onclick={(e) => e.stopPropagation()}
 		>
-			<div class="m-out-icon"><i class="fas {outcome.icon}"></i></div>
-			<div class="m-out-title">{outcome.title}</div>
+			<div class="m-out-icon text-yacht-teal mx-auto mt-0 mb-3 flex h-19 w-19 items-center justify-center rounded-full text-3xl">
+				<i class="fas {outcome.icon}"></i>
+			</div>
+			<div class="m-out-title text-lb-text text-xl font-extrabold">{outcome.title}</div>
 			{#if outcome.deltaXp != null && outcome.deltaXp !== 0}
-				<div class="m-out-delta {outcome.deltaXp >= 0 ? 'm-out-delta--up' : 'm-out-delta--down'}">
+				<div class="m-out-delta {outcome.deltaXp >= 0 ? 'm-out-delta--up' : 'm-out-delta--down'} mt-2 text-xl font-extrabold tabular-nums">
 					{outcome.deltaXp >= 0 ? '+' : '−'}{fmt(Math.abs(outcome.deltaXp))} XP
 				</div>
 			{/if}
-			<p class="m-out-line">{outcome.line}</p>
+			<p class="m-out-line text-lb-text-muted mx-0 mt-2 mb-0 text-base">{outcome.line}</p>
 			{#if outcome.spyReport}
 				{@const rep = outcome.spyReport}
-				<div class="m-spy">
-					<div class="m-spy-sec">
-						<div class="m-spy-head"><i class="fas fa-briefcase"></i>Bag</div>
+				<div class="m-spy mt-4 flex flex-col gap-3 text-left">
+					<div class="m-spy-sec rounded-[14px] px-4 py-3">
+						<div class="m-spy-head text-lb-text-muted mb-2 flex items-center gap-2 text-base font-extrabold uppercase"><i class="fas fa-briefcase"></i>Bag</div>
 						{#if rep.bag.length === 0}
-							<div class="m-spy-empty">Their bag is empty.</div>
+							<div class="m-spy-empty text-lb-text-muted text-base">Their bag is empty.</div>
 						{:else}
-							<div class="m-spy-chips">
+							<div class="m-spy-chips flex flex-wrap gap-2">
 								{#each rep.bag as b}
-									<span class="m-spy-chip"><i class="fas {effectIcon(b.effect_type)}"></i>{b.name} ×{b.quantity}</span>
+									<span class="m-spy-chip text-lb-text inline-flex items-center gap-2 rounded-full px-2 py-1 text-base font-semibold"
+										><i class="fas {effectIcon(b.effect_type)}"></i>{b.name} ×{b.quantity}</span
+									>
 								{/each}
 							</div>
 						{/if}
 					</div>
-					<div class="m-spy-sec">
-						<div class="m-spy-head"><i class="fas fa-wand-magic-sparkles"></i>Active effects</div>
+					<div class="m-spy-sec rounded-[14px] px-4 py-3">
+						<div class="m-spy-head text-lb-text-muted mb-2 flex items-center gap-2 text-base font-extrabold uppercase">
+							<i class="fas fa-wand-magic-sparkles"></i>Active effects
+						</div>
 						{#if rep.effects.length === 0}
-							<div class="m-spy-empty">No active effects.</div>
+							<div class="m-spy-empty text-lb-text-muted text-base">No active effects.</div>
 						{:else}
-							<div class="m-spy-chips">
+							<div class="m-spy-chips flex flex-wrap gap-2">
 								{#each rep.effects as e}
-									<span class="m-spy-chip"
-										><i class="fas {effectIcon(e.effect_type)}"></i>{effectLine(e)}{#if e.expiresAt}<span class="m-spy-rel">· {relUntil(e.expiresAt)}</span
+									<span class="m-spy-chip text-lb-text inline-flex items-center gap-2 rounded-full px-2 py-1 text-base font-semibold"
+										><i class="fas {effectIcon(e.effect_type)}"></i>{effectLine(e)}{#if e.expiresAt}<span class="m-spy-rel font-medium opacity-65"
+												>· {relUntil(e.expiresAt)}</span
 											>{/if}</span
 									>
 								{/each}
 							</div>
 						{/if}
 					</div>
-					<div class="m-spy-sec">
-						<div class="m-spy-head"><i class="fas fa-stopwatch"></i>Cooldowns</div>
+					<div class="m-spy-sec rounded-[14px] px-4 py-3">
+						<div class="m-spy-head text-lb-text-muted mb-2 flex items-center gap-2 text-base font-extrabold uppercase">
+							<i class="fas fa-stopwatch"></i>Cooldowns
+						</div>
 						{#if rep.cooldowns.length === 0}
-							<div class="m-spy-empty">No active cooldowns.</div>
+							<div class="m-spy-empty text-lb-text-muted text-base">No active cooldowns.</div>
 						{:else}
-							<div class="m-spy-chips">
+							<div class="m-spy-chips flex flex-wrap gap-2">
 								{#each rep.cooldowns as c}
-									<span class="m-spy-chip" class:m-spy-chip--shield={c.kind === 'immunity'}>
-										<i class="fas {c.kind === 'immunity' ? 'fa-shield-halved' : 'fa-clock'}"></i>{cooldownLabels[c.kind] ?? c.kind}<span class="m-spy-rel"
-											>· {relUntil(c.until)}</span
+									<span
+										class="m-spy-chip text-lb-text inline-flex items-center gap-2 rounded-full px-2 py-1 text-base font-semibold"
+										class:m-spy-chip--shield={c.kind === 'immunity'}
+									>
+										<i class="fas {c.kind === 'immunity' ? 'fa-shield-halved' : 'fa-clock'}"></i>{cooldownLabels[c.kind] ?? c.kind}<span
+											class="m-spy-rel font-medium opacity-65">· {relUntil(c.until)}</span
 										>
 									</span>
 								{/each}
 							</div>
 						{/if}
 					</div>
-					<div class="m-spy-sec">
-						<div class="m-spy-head"><i class="fas fa-crosshairs"></i>Bounty</div>
+					<div class="m-spy-sec rounded-[14px] px-4 py-3">
+						<div class="m-spy-head text-lb-text-muted mb-2 flex items-center gap-2 text-base font-extrabold uppercase">
+							<i class="fas fa-crosshairs"></i>Bounty
+						</div>
 						{#if (rep.bounty ?? 0) > 0}
-							<div class="m-spy-chips">
-								<span class="m-spy-chip m-spy-chip--bounty"><i class="fas fa-crosshairs"></i>{fmt(rep.bounty)} XP on their head</span>
+							<div class="m-spy-chips flex flex-wrap gap-2">
+								<span
+									class="m-spy-chip m-spy-chip--bounty text-lb-text inline-flex items-center gap-2 rounded-full px-2 py-1 text-base font-semibold text-[#a8327d]"
+									><i class="fas fa-crosshairs"></i>{fmt(rep.bounty)} XP on their head</span
+								>
 							</div>
 						{:else}
-							<div class="m-spy-empty">No bounty on them.</div>
+							<div class="m-spy-empty text-lb-text-muted text-base">No bounty on them.</div>
 						{/if}
 					</div>
-					<div class="m-spy-sec">
-						<div class="m-spy-head">
+					<div class="m-spy-sec rounded-[14px] px-4 py-3">
+						<div class="m-spy-head text-lb-text-muted mb-2 flex items-center gap-2 text-base font-extrabold uppercase">
 							<i class="fas fa-chart-line"></i>Assets
 							{#if (rep.assets?.length ?? 0) > 0}
-								<span class="m-spy-total">{fmt(rep.assetsInvested)} XP invested · worth {fmt(rep.assetsValue)}</span>
+								<span class="m-spy-total text-lb-text ml-auto text-base font-bold opacity-85"
+									>{fmt(rep.assetsInvested)} XP invested · worth {fmt(rep.assetsValue)}</span
+								>
 							{/if}
 						</div>
 						{#if (rep.assets?.length ?? 0) === 0}
-							<div class="m-spy-empty">No assets held.</div>
+							<div class="m-spy-empty text-lb-text-muted text-base">No assets held.</div>
 						{:else}
-							<div class="m-spy-chips">
+							<div class="m-spy-chips flex flex-wrap gap-2">
 								{#each rep.assets as a}
-									<span class="m-spy-chip m-spy-chip--asset" data-dir={a.pnl > 0 ? 'up' : a.pnl < 0 ? 'down' : 'flat'}>
-										{#if a.asset_image}<img class="m-spy-asset-logo" src={a.asset_image} alt="" />{:else}<i class="fas fa-coins"></i>{/if}
+									<span
+										class="m-spy-chip m-spy-chip--asset text-lb-text inline-flex items-center gap-2 rounded-full px-2 py-1 text-base font-semibold"
+										data-dir={a.pnl > 0 ? 'up' : a.pnl < 0 ? 'down' : 'flat'}
+									>
+										{#if a.asset_image}<img class="m-spy-asset-logo h-4 w-4 shrink-0 rounded-full object-cover" src={a.asset_image} alt="" />{:else}<i
+												class="fas fa-coins"
+											></i>{/if}
 										{a.symbol}
-										<span class="m-spy-rel">· {fmt(a.xp_invested)} XP ({a.pnl >= 0 ? '+' : ''}{a.pnl_percent.toFixed(1)}%)</span>
+										<span class="m-spy-rel font-medium opacity-65">· {fmt(a.xp_invested)} XP ({a.pnl >= 0 ? '+' : ''}{a.pnl_percent.toFixed(1)}%)</span>
 									</span>
 								{/each}
 							</div>
@@ -484,10 +547,15 @@
 				</div>
 			{/if}
 			{#if outcome.untilMs}
-				<div class="m-out-until"><i class="fas fa-clock"></i>Active until {untilLabel(outcome.untilMs)}</div>
+				<div class="m-out-until text-yacht-teal mt-4 inline-flex items-center gap-2 rounded-full px-3 py-2 text-base font-bold">
+					<i class="fas fa-clock"></i>Active until {untilLabel(outcome.untilMs)}
+				</div>
 			{/if}
 			{#if outcome.spyReport}
-				<button class="m-out-close" onclick={dismissOutcome}><i class="fas fa-check"></i>Done</button>
+				<button
+					class="m-out-close mt-4 inline-flex cursor-pointer items-center gap-2 rounded-full px-6 py-2 text-base font-bold text-white"
+					onclick={dismissOutcome}><i class="fas fa-check"></i>Done</button
+				>
 			{/if}
 		</div>
 	</div>

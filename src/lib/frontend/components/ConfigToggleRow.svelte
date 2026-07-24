@@ -14,12 +14,12 @@
 <div class="flex items-start justify-between gap-4">
 	<div class="flex min-w-0 flex-1 items-start gap-2">
 		{#if labelIconClass}
-			<i class="{labelIconClass} mt-0.5 shrink-0 text-sm leading-5" aria-hidden="true"></i>
+			<i class="{labelIconClass} mt-0.5 shrink-0 text-base leading-5" aria-hidden="true"></i>
 		{/if}
 		<div class="min-w-0">
-			<p class="text-ash-300 text-xs font-medium">{label}</p>
+			<p class="text-ash-300 text-base font-medium">{label}</p>
 			{#if description}
-				<p class="text-ash-500 mt-0.5 text-xs">{description}</p>
+				<p class="text-ash-500 mt-0.5 text-base">{description}</p>
 			{/if}
 		</div>
 	</div>
@@ -27,7 +27,7 @@
 		type="button"
 		{disabled}
 		onclick={() => (enabled = !enabled)}
-		class="focus:ring-ash-500 relative mt-0.5 h-6 w-10 flex-shrink-0 rounded-full transition-colors focus:ring-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 {enabled
+		class="focus:ring-ash-500 relative mt-0.5 h-6 w-10 shrink-0 rounded-full transition-colors focus:ring-2 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 {enabled
 			? 'bg-ash-400'
 			: 'bg-ash-700'}"
 		aria-pressed={enabled}

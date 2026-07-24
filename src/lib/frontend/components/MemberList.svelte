@@ -169,41 +169,41 @@
 	}
 </script>
 
-<div class="mb-4 flex flex-col gap-3 sm:flex-row">
+<div class="mb-4 flex flex-col gap-3 lg:flex-row">
 	<div class="relative flex-1">
-		<i class="fas fa-search absolute top-1/2 left-3 -translate-y-1/2 text-sm text-cyan-300"></i>
+		<i class="fas fa-search absolute top-1/2 left-3 -translate-y-1/2 text-base text-cyan-300"></i>
 		<input
 			type="text"
 			placeholder="Search members by name or ID..."
 			bind:value={search}
 			oninput={onSearchInput}
-			class="bg-ash-800 border-ash-700 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border py-2.5 pr-4 pl-9 text-sm focus:ring-2 focus:outline-none"
+			class="bg-ash-800 border-ash-700 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border py-2.5 pr-4 pl-9 text-base focus:ring-2 focus:outline-none"
 		/>
 	</div>
 	<LabeledSelect appearance="members-toolbar" options={MEMBER_SORT_OPTIONS} bind:value={sortBy} ariaLabel="Sort members" />
 </div>
 
-<p class="text-ash-500 mb-3 text-xs">
+<p class="text-ash-500 mb-3 text-base">
 	{sorted.length} member{sorted.length !== 1 ? 's' : ''}{search ? ` matching "${search}"` : ''}
 </p>
 
 {#if roleFilterUnset}
-	<div class="text-ash-400 border-ash-600 bg-ash-800/60 mb-4 rounded-lg border px-4 py-3 text-sm">
+	<div class="text-ash-400 border-ash-600 bg-ash-800/60 mb-4 rounded-lg border px-4 py-3 text-base">
 		<p class="text-ash-300 mb-1">No roles are set for this category in Permissions yet.</p>
-		<p class="text-ash-500 text-xs">Choose Discord roles under Configuration → Permissions so this list can filter members.</p>
+		<p class="text-ash-500 text-base">Choose Discord roles under Configuration → Permissions so this list can filter members.</p>
 		{#if permissionsHref}
-			<a href={permissionsHref} class="text-ash-300 hover:text-ash-100 mt-2 inline-flex items-center gap-1.5 text-xs font-medium underline">
+			<a href={permissionsHref} class="text-ash-300 hover:text-ash-100 mt-2 inline-flex items-center gap-1.5 text-base font-medium underline">
 				<i class="fas fa-shield-halved text-blue-300"></i>Open Permissions
 			</a>
 		{/if}
 	</div>
 {:else if paged.length === 0}
-	<div class="text-ash-400 py-10 text-center text-sm">No members found</div>
+	<div class="text-ash-400 py-10 text-center text-base">No members found</div>
 {:else}
 	<div class="mb-4 space-y-3">
 		{#each paged as member (member.discord_member_id)}
-			<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-4 shadow-lg transition-all sm:p-5">
-				<div class="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
+			<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-4 shadow-lg transition-all lg:p-5">
+				<div class="flex flex-col items-center gap-4 lg:flex-row lg:items-start">
 					<div class="relative shrink-0">
 						<img
 							src={avatarSrc(member)}
@@ -213,91 +213,91 @@
 						/>
 					</div>
 
-					<div class="w-full min-w-0 flex-1 text-center sm:text-left">
-						<div class="mb-3 flex flex-col items-center gap-2 sm:flex-row sm:items-center">
-							<h4 class="text-ash-100 w-full truncate text-base font-bold sm:w-auto sm:text-lg">
+					<div class="w-full min-w-0 flex-1 text-center lg:text-left">
+						<div class="mb-3 flex flex-col items-center gap-2 lg:flex-row lg:items-center">
+							<h4 class="text-ash-100 w-full truncate text-base font-bold lg:w-auto lg:text-lg">
 								{listDisplayName(member)}
 							</h4>
 							{#if member.is_afk}
-								<span class="flex items-center gap-1 self-center rounded-full bg-yellow-900 px-2 py-1 text-xs font-medium text-yellow-200">
-									<i class="fas fa-moon text-xs"></i>AFK
+								<span class="flex items-center gap-1 self-center rounded-full bg-yellow-900 px-2 py-1 text-base font-medium text-yellow-200">
+									<i class="fas fa-moon text-base"></i>AFK
 								</span>
 							{/if}
 						</div>
 
-						<div class="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-4">
+						<div class="mb-3 flex flex-col gap-2 lg:flex-row lg:flex-wrap *:lg:flex-1 *:lg:basis-0">
 							<div class="bg-ash-800 border-ash-600 flex items-center gap-2 rounded-lg border p-2">
 								<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/20">
-									<i class="fas fa-medal text-xs text-sky-400"></i>
+									<i class="fas fa-medal text-base text-sky-400"></i>
 								</div>
 								<div class="min-w-0">
-									<div class="text-ash-400 text-[0.6rem] tracking-wide uppercase">Rank</div>
-									<div class="text-ash-100 text-sm font-bold">{member.rank ? `#${member.rank}` : 'N/A'}</div>
+									<div class="text-ash-400 text-base uppercase">Rank</div>
+									<div class="text-ash-100 text-base font-bold">{member.rank ? `#${member.rank}` : 'N/A'}</div>
 								</div>
 							</div>
 							<div class="bg-ash-800 border-ash-600 flex items-center gap-2 rounded-lg border p-2">
 								<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/20">
-									<i class="fas fa-trophy text-xs text-amber-400"></i>
+									<i class="fas fa-trophy text-base text-amber-400"></i>
 								</div>
 								<div class="min-w-0">
-									<div class="text-ash-400 text-[0.6rem] tracking-wide uppercase">Level</div>
-									<div class="text-ash-100 text-sm font-bold">{member.level ?? 1}</div>
+									<div class="text-ash-400 text-base uppercase">Level</div>
+									<div class="text-ash-100 text-base font-bold">{member.level ?? 1}</div>
 								</div>
 							</div>
 							<div class="bg-ash-800 border-ash-600 flex items-center gap-2 rounded-lg border p-2">
 								<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/20">
-									<i class="fas fa-star text-xs text-violet-400"></i>
+									<i class="fas fa-star text-base text-violet-400"></i>
 								</div>
 								<div class="min-w-0">
-									<div class="text-ash-400 text-[0.6rem] tracking-wide uppercase">XP</div>
-									<div class="text-ash-100 text-sm font-bold">{fmtNum(member.experience ?? 0)}</div>
+									<div class="text-ash-400 text-base uppercase">XP</div>
+									<div class="text-ash-100 text-base font-bold">{fmtNum(member.experience ?? 0)}</div>
 								</div>
 							</div>
 							<div class="bg-ash-800 border-ash-600 flex items-center gap-2 rounded-lg border p-2">
 								<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/20">
-									<i class="fas fa-comment text-xs text-emerald-400"></i>
+									<i class="fas fa-comment text-base text-emerald-400"></i>
 								</div>
 								<div class="min-w-0">
-									<div class="text-ash-400 text-[0.6rem] tracking-wide uppercase">Chat</div>
-									<div class="text-ash-100 text-sm font-bold">{fmtNum(member.chat_total ?? 0)}</div>
+									<div class="text-ash-400 text-base uppercase">Chat</div>
+									<div class="text-ash-100 text-base font-bold">{fmtNum(member.chat_total ?? 0)}</div>
 								</div>
 							</div>
 							<div class="bg-ash-800 border-ash-600 flex items-center gap-2 rounded-lg border p-2">
 								<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-cyan-500/20">
-									<i class="fas fa-microphone text-xs text-cyan-400"></i>
+									<i class="fas fa-microphone text-base text-cyan-400"></i>
 								</div>
 								<div class="min-w-0">
-									<div class="text-ash-400 text-[0.6rem] tracking-wide uppercase">Voice Active</div>
-									<div class="text-ash-100 text-sm font-bold">{fmtNum(member.voice_minutes_active ?? 0)}m</div>
+									<div class="text-ash-400 text-base uppercase">Voice Active</div>
+									<div class="text-ash-100 text-base font-bold">{fmtNum(member.voice_minutes_active ?? 0)}m</div>
 								</div>
 							</div>
 							<div class="bg-ash-800 border-ash-600 flex items-center gap-2 rounded-lg border p-2">
 								<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-orange-500/20">
-									<i class="fas fa-moon text-xs text-orange-400"></i>
+									<i class="fas fa-moon text-base text-orange-400"></i>
 								</div>
 								<div class="min-w-0">
-									<div class="text-ash-400 text-[0.6rem] tracking-wide uppercase">Voice AFK</div>
-									<div class="text-ash-100 text-sm font-bold">{fmtNum(member.voice_minutes_afk ?? 0)}m</div>
+									<div class="text-ash-400 text-base uppercase">Voice AFK</div>
+									<div class="text-ash-100 text-base font-bold">{fmtNum(member.voice_minutes_afk ?? 0)}m</div>
 								</div>
 							</div>
 							<div class="bg-ash-800 border-ash-600 flex items-center gap-2 rounded-lg border p-2">
 								<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-500/20">
-									<i class="fas fa-calendar-alt text-xs text-indigo-400"></i>
+									<i class="fas fa-calendar-alt text-base text-indigo-400"></i>
 								</div>
 								<div class="min-w-0">
-									<div class="text-ash-400 text-[0.6rem] tracking-wide uppercase">Member Since</div>
-									<div class="text-ash-100 text-sm font-bold">
+									<div class="text-ash-400 text-base uppercase">Member Since</div>
+									<div class="text-ash-100 text-base font-bold">
 										<LocalTime value={member.member_since} fallback="N/A" />
 									</div>
 								</div>
 							</div>
 							<div class="bg-ash-800 border-ash-600 flex items-center gap-2 rounded-lg border p-2">
 								<div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-500/20">
-									<i class="fas fa-user-plus text-xs text-rose-400"></i>
+									<i class="fas fa-user-plus text-base text-rose-400"></i>
 								</div>
 								<div class="min-w-0">
-									<div class="text-ash-400 text-[0.6rem] tracking-wide uppercase">Account Created</div>
-									<div class="text-ash-100 text-sm font-bold">
+									<div class="text-ash-400 text-base uppercase">Account Created</div>
+									<div class="text-ash-100 text-base font-bold">
 										<LocalTime value={member.profile_created_at} fallback="N/A" />
 									</div>
 								</div>
@@ -307,17 +307,17 @@
 						{#if member.roles?.length > 0}
 							<div class="border-ash-600 mt-2 border-t pt-2">
 								<div class="mb-1.5 flex items-center gap-1.5">
-									<i class="fas fa-user-tag text-xs text-green-300"></i>
-									<span class="text-ash-400 text-xs tracking-wide uppercase">Roles</span>
+									<i class="fas fa-user-tag text-base text-green-300"></i>
+									<span class="text-ash-400 text-base uppercase">Roles</span>
 								</div>
 								<div class="flex flex-wrap gap-1.5">
 									{#each member.roles as role}
 										{@const c = roleColor(role.color)}
 										<span
-											class="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium"
+											class="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-base font-medium"
 											style="background:{c}20;color:{c};border:1px solid {c}40"
 										>
-											<i class="fas fa-circle text-[0.4rem]" style="color:{c}"></i>
+											<i class="fas fa-circle text-base" style="color:{c}"></i>
 											{role.name || 'Unknown Role'}
 										</span>
 									{/each}
@@ -335,17 +335,17 @@
 			<button
 				onclick={() => (page = Math.max(1, page - 1))}
 				disabled={page === 1}
-				class="bg-ash-800 border-ash-700 hover:bg-ash-700 text-ash-200 flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+				class="bg-ash-800 border-ash-700 hover:bg-ash-700 text-ash-200 flex items-center gap-2 rounded-lg border px-3 py-1.5 text-base transition-colors disabled:cursor-not-allowed disabled:opacity-40"
 			>
-				<i class="fas fa-chevron-left text-xs text-violet-300"></i>Previous
+				<i class="fas fa-chevron-left text-base text-violet-300"></i>Previous
 			</button>
-			<span class="text-ash-400 text-sm">Page {page} of {totalPages}</span>
+			<span class="text-ash-400 text-base">Page {page} of {totalPages}</span>
 			<button
 				onclick={() => (page = Math.min(totalPages, page + 1))}
 				disabled={page === totalPages}
-				class="bg-ash-800 border-ash-700 hover:bg-ash-700 text-ash-200 flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+				class="bg-ash-800 border-ash-700 hover:bg-ash-700 text-ash-200 flex items-center gap-2 rounded-lg border px-3 py-1.5 text-base transition-colors disabled:cursor-not-allowed disabled:opacity-40"
 			>
-				Next<i class="fas fa-chevron-right text-xs text-violet-300"></i>
+				Next<i class="fas fa-chevron-right text-base text-violet-300"></i>
 			</button>
 		</div>
 	{/if}

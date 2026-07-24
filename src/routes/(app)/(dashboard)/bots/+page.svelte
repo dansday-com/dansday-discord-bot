@@ -102,16 +102,16 @@
 
 <AddBotModal open={showAddBot} onclose={() => (showAddBot = false)} onadded={() => invalidateAll()} />
 
-<div class="mb-4 flex flex-col gap-4 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
+<div class="mb-4 flex flex-col gap-4 lg:mb-6 lg:flex-row lg:items-center lg:justify-between">
 	<div class="min-w-0">
-		<h2 class="text-ash-100 mb-1 text-xl font-bold sm:text-2xl">
+		<h2 class="text-ash-100 mb-1 text-xl font-bold lg:text-2xl">
 			<i class="fas fa-robot mr-2 text-violet-400"></i>Bots List
 		</h2>
-		<p class="text-ash-400 text-xs sm:text-sm">
+		<p class="text-ash-400 text-base lg:text-lg">
 			{data.bots.length === 0 ? 'No bots yet' : `${data.bots.length} bot${data.bots.length === 1 ? '' : 's'}`}
 		</p>
 	</div>
-	<div class="flex items-center gap-2 sm:gap-3">
+	<div class="flex items-center gap-2 lg:gap-3">
 		<LabeledSelect
 			id="dashboard-bots-sort"
 			label="Sort by:"
@@ -124,40 +124,40 @@
 		{#if data.user.authenticated && data.user.account_source === 'accounts'}
 			<button
 				onclick={() => (showAddBot = true)}
-				class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs transition-all duration-200 hover:scale-105 active:scale-95 sm:gap-2 sm:px-4 sm:py-2 sm:text-sm"
+				class="bg-ash-400 hover:bg-ash-500 text-ash-100 flex items-center gap-1 rounded-lg px-2 py-1.5 text-base transition-all duration-200 hover:scale-105 active:scale-95 lg:gap-2 lg:px-4 lg:py-2 lg:text-lg"
 			>
-				<i class="fas fa-plus text-xs text-violet-300 sm:text-sm"></i>
-				<span class="sm:inline">Add Bot</span>
+				<i class="fas fa-plus text-base text-violet-300 lg:text-lg"></i>
+				<span class="lg:inline">Add Bot</span>
 			</button>
 		{/if}
 	</div>
 </div>
 
 {#if sortedBots.length === 0}
-	<div class="py-8 text-center sm:py-12">
-		<div class="bg-ash-800 mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full sm:h-20 sm:w-20">
-			<i class="fas fa-robot text-3xl text-violet-300 sm:text-4xl"></i>
+	<div class="py-8 text-center lg:py-12">
+		<div class="bg-ash-800 mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full lg:h-20 lg:w-20">
+			<i class="fas fa-robot text-3xl text-violet-300 lg:text-4xl"></i>
 		</div>
-		<h3 class="text-ash-100 mb-2 text-lg font-semibold sm:text-xl">No bots yet</h3>
-		<p class="text-ash-400 mb-4 text-sm sm:mb-6 sm:text-base">Get started by adding your first bot</p>
+		<h3 class="text-ash-100 mb-2 text-lg font-semibold lg:text-xl">No bots yet</h3>
+		<p class="text-ash-400 mb-4 text-base lg:mb-6 lg:text-base">Get started by adding your first bot</p>
 		{#if data.user.authenticated && data.user.account_source === 'accounts'}
 			<button
 				onclick={() => (showAddBot = true)}
-				class="bg-ash-400 hover:bg-ash-500 text-ash-100 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm transition-all duration-200 hover:scale-105 active:scale-95 sm:px-6 sm:py-3 sm:text-base"
+				class="bg-ash-400 hover:bg-ash-500 text-ash-100 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-base transition-all duration-200 hover:scale-105 active:scale-95 lg:px-6 lg:py-3 lg:text-base"
 			>
 				<i class="fas fa-plus text-violet-300"></i>Add Your First Bot
 			</button>
 		{/if}
 	</div>
 {:else}
-	<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+	<div class="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:gap-4 *:lg:flex-1 *:lg:basis-0">
 		{#each sortedBots as bot (bot.id)}
 			<a
 				href="/bots/{bot.id}"
 				class="bg-ash-800 border-ash-700 hover:border-ash-500 flex flex-col gap-3 rounded-xl border p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
 			>
 				<div class="flex items-center gap-3">
-					<div class="bg-ash-600 flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-full">
+					<div class="bg-ash-600 flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full">
 						{#if bot.bot_icon}
 							<img src={bot.bot_icon} alt={bot.name} class="h-full w-full object-cover" />
 						{:else}
@@ -165,20 +165,20 @@
 						{/if}
 					</div>
 					<div class="min-w-0">
-						<p class="text-ash-100 truncate text-sm font-semibold sm:text-base">{bot.name || `Bot #${bot.id}`}</p>
-						<span class="text-ash-400 text-xs">Official</span>
+						<p class="text-ash-100 truncate text-base font-semibold lg:text-base">{bot.name || `Bot #${bot.id}`}</p>
+						<span class="text-ash-400 text-base">Official</span>
 					</div>
 				</div>
 
 				<div class="flex items-center justify-between">
 					<div class="flex items-center gap-2">
 						<span class="h-2 w-2 rounded-full {statusColor(getLiveStatus(bot.id, bot.status))}"></span>
-						<span class="text-ash-300 text-xs capitalize">{getLiveStatus(bot.id, bot.status)}</span>
+						<span class="text-ash-300 text-base capitalize">{getLiveStatus(bot.id, bot.status)}</span>
 					</div>
 					{#if getLiveStatus(bot.id, bot.status) === 'running'}
 						{@const uptime = getLiveUptime(bot.id, bot.uptime_ms ?? 0)}
 						{#if uptime}
-							<span class="text-ash-500 text-xs">{formatUptime(uptime)}</span>
+							<span class="text-ash-500 text-base">{formatUptime(uptime)}</span>
 						{/if}
 					{/if}
 				</div>

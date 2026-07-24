@@ -62,11 +62,11 @@
 	}
 </script>
 
-<div class="bg-ash-800 border-ash-700 space-y-5 rounded-xl border p-4 sm:p-6">
+<div class="bg-ash-800 border-ash-700 space-y-5 rounded-xl border p-4 lg:p-6">
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
 		<i class="fas fa-chart-line text-lime-400"></i>Leveling
 	</h3>
-	<p class="text-ash-400 text-xs">Control XP gain, cooldowns, and where progress notifications are posted.</p>
+	<p class="text-ash-400 text-base">Control XP gain, cooldowns, and where progress notifications are posted.</p>
 
 	<ConfigToggleRow
 		label="Leveling module"
@@ -76,7 +76,7 @@
 		ariaLabel="Toggle leveling module"
 	/>
 	{#if !featureEnabled}
-		<p class="flex items-start gap-2 text-xs text-amber-200/90">
+		<p class="flex items-start gap-2 text-base text-amber-200/90">
 			<i class="fas fa-power-off mt-0.5 shrink-0 text-amber-400/90" aria-hidden="true"></i>
 			<span>Module is off. Save configuration to apply. Turn the module on to edit the options below.</span>
 		</p>
@@ -158,10 +158,10 @@
 		/>
 
 		<div>
-			<label class="text-ash-300 mb-1.5 block text-xs font-medium">
+			<label class="text-ash-300 mb-1.5 block text-base font-medium">
 				<i class="fas fa-hashtag mr-1 text-lime-400"></i>Level Progress Notification Channel
 			</label>
-			<p class="text-ash-500 mb-2 text-xs">Channel for level and rank notifications.</p>
+			<p class="text-ash-500 mb-2 text-base">Channel for level and rank notifications.</p>
 			<ChannelPicker channels={data.channels} categories={data.categories} value={progressChannel} onchange={(id) => (progressChannel = id)} />
 		</div>
 	</div>
@@ -169,7 +169,7 @@
 	<button
 		onclick={save}
 		disabled={saving}
-		class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:opacity-50"
+		class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-base font-medium transition-all disabled:opacity-50"
 	>
 		{#if saving}<i class="fas fa-spinner fa-spin"></i>{/if}
 		{saving ? 'Saving...' : 'Save Configuration'}

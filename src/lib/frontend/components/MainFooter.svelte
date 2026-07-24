@@ -3,17 +3,22 @@
 	type Palette = 'light' | 'dark';
 
 	let { palette = 'light' as Palette }: { palette?: Palette } = $props();
+
+	const copy = $derived(palette === 'dark' ? 'text-ash-400' : 'text-lb-text-soft');
+	const copyLink = $derived(palette === 'dark' ? 'text-ash-400 hover:text-ash-200' : 'text-lb-text-muted hover:text-lb-text');
+	const open = $derived(palette === 'dark' ? 'text-ash-500' : 'text-lb-text-muted');
+	const openLink = $derived(palette === 'dark' ? 'text-ash-400 hover:text-ash-200' : 'text-lb-text-muted hover:text-chili-hot');
 </script>
 
-<footer class="m-footer" class:m-footer--dark={palette === 'dark'}>
-	<div class="m-footer-inner">
-		<p class="m-footer-copy">
+<footer class="m-footer relative z-1 shrink-0" class:m-footer--dark={palette === 'dark'}>
+	<div class="m-footer-inner mx-auto flex max-w-7xl flex-col items-center gap-2 px-3 py-5 text-center">
+		<p class="m-0 text-base lg:text-lg {copy}">
 			Copyright © {new Date().getFullYear()}
-			<a href={APP_URL}>{APP_DOMAIN}</a>. All rights reserved.
+			<a class="no-underline transition-colors {copyLink}" href={APP_URL}>{APP_DOMAIN}</a>. All rights reserved.
 		</p>
-		<p class="m-footer-open">
+		<p class="m-0 text-base lg:text-lg {open}">
 			Free and open source on
-			<a href="https://github.com/dansday/dansday-discord-bot">GitHub</a>.
+			<a class="font-semibold no-underline transition-colors {openLink}" href="https://github.com/dansday/dansday-discord-bot">GitHub</a>.
 		</p>
 	</div>
 </footer>

@@ -30,11 +30,11 @@
 	}
 </script>
 
-<div class="bg-ash-800 border-ash-700 space-y-5 rounded-xl border p-4 sm:p-6">
+<div class="bg-ash-800 border-ash-700 space-y-5 rounded-xl border p-4 lg:p-6">
 	<h3 class="text-ash-100 flex items-center gap-2 text-base font-semibold">
 		<i class="fas fa-moon text-indigo-400"></i>AFK
 	</h3>
-	<p class="text-ash-400 text-xs">Menu button, nicknames, mention notices, and voice auto-clear.</p>
+	<p class="text-ash-400 text-base">Menu button, nicknames, mention notices, and voice auto-clear.</p>
 
 	<ConfigToggleRow
 		label="AFK module"
@@ -44,7 +44,7 @@
 		ariaLabel="Toggle AFK module"
 	/>
 	{#if !featureEnabled}
-		<p class="flex items-start gap-2 text-xs text-amber-200/90">
+		<p class="flex items-start gap-2 text-base text-amber-200/90">
 			<i class="fas fa-power-off mt-0.5 shrink-0 text-amber-400/90" aria-hidden="true"></i>
 			<span>Module is off. Save to apply, or turn it on to re-enable AFK.</span>
 		</p>
@@ -52,7 +52,7 @@
 	<button
 		onclick={save}
 		disabled={saving}
-		class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-all disabled:opacity-50"
+		class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex w-full items-center justify-center gap-2 rounded-lg py-2.5 text-base font-medium transition-all disabled:opacity-50"
 	>
 		{#if saving}<i class="fas fa-spinner fa-spin"></i>{/if}
 		{saving ? 'Saving...' : 'Save Configuration'}

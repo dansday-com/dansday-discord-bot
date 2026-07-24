@@ -33,6 +33,6 @@
 		justify-content: center;
 		padding: 60px 0;
 		color: var(--lb-text-muted, #888);
-		font-size: 22px;
+		font-size: var(--text-xl);
 	}
 </style>

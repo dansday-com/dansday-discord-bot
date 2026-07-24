@@ -67,21 +67,21 @@
 </script>
 
 <div>
-	<label for={id} class="text-ash-300 mb-1.5 block text-xs font-medium">
+	<label for={id} class="text-ash-300 mb-1.5 block text-base font-medium">
 		{#if labelIconClass}
 			<i class={labelIconClass}></i>
 		{/if}
 		{label}
 	</label>
 	{#if description}
-		<p class="text-ash-500 mb-2 text-xs">{description}</p>
+		<p class="text-ash-500 mb-2 text-base">{description}</p>
 	{/if}
 	<button
 		type="button"
 		{id}
 		disabled={disabled || values.length === 0}
 		onclick={openModal}
-		class="bg-ash-700 border-ash-600 hover:border-ash-500 flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2.5 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+		class="bg-ash-700 border-ash-600 hover:border-ash-500 flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2.5 text-left text-base transition-colors disabled:cursor-not-allowed disabled:opacity-50"
 		aria-haspopup="dialog"
 		aria-expanded={open}
 	>
@@ -91,17 +91,17 @@
 </div>
 
 {#if open}
-	<div class="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/50 p-3 sm:p-4" onclick={close} role="presentation">
+	<div class="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/50 p-3 lg:p-4" onclick={close} role="presentation">
 		<div
-			class="bg-ash-800 border-ash-700 my-4 flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl border p-4 shadow-2xl sm:p-6"
+			class="bg-ash-800 border-ash-700 my-4 flex max-h-[90vh] w-full max-w-lg flex-col rounded-2xl border p-4 shadow-2xl lg:p-6"
 			onclick={(e) => e.stopPropagation()}
 			role="dialog"
 			aria-modal="true"
 			aria-label={titleId ? undefined : label}
 			aria-labelledby={titleId}
 		>
-			<div class="mb-4 flex items-center justify-between sm:mb-6">
-				<h3 id={titleId} class="text-ash-100 flex items-center gap-2 text-lg font-bold sm:text-xl">
+			<div class="mb-4 flex items-center justify-between lg:mb-6">
+				<h3 id={titleId} class="text-ash-100 flex items-center gap-2 text-lg font-bold lg:text-xl">
 					<i class="fas fa-list-ol text-cyan-400"></i>
 					{label}
 				</h3>
@@ -115,14 +115,14 @@
 					type="text"
 					bind:value={search}
 					placeholder="Search…"
-					class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-4 py-2.5 pr-10 text-sm transition-all focus:ring-2 focus:outline-none sm:py-3 sm:text-base"
+					class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-4 py-2.5 pr-10 text-base transition-all focus:ring-2 focus:outline-none lg:py-3 lg:text-base"
 				/>
 				<i class="fas fa-search absolute top-1/2 right-3 -translate-y-1/2 text-cyan-300/90"></i>
 			</div>
 
 			<div class="max-h-[min(50vh,24rem)] min-h-0 space-y-1 overflow-y-auto">
 				{#if filtered.length === 0}
-					<div class="text-ash-400 py-8 text-center text-sm">
+					<div class="text-ash-400 py-8 text-center text-base">
 						<i class="fas fa-inbox mb-2 text-3xl text-cyan-300/80"></i>
 						<p>No matching options</p>
 					</div>
@@ -132,15 +132,15 @@
 						<button
 							type="button"
 							onclick={() => pick(val)}
-							class="flex w-full items-center justify-between rounded-lg px-4 py-2.5 text-left text-sm transition-colors {selected
+							class="flex w-full items-center justify-between rounded-lg px-4 py-2.5 text-left text-base transition-colors {selected
 								? 'bg-ash-900 border-ash-500 border'
 								: 'bg-ash-700 hover:bg-ash-600'}"
 						>
 							<span class="{selected ? 'text-ash-100' : 'text-ash-300'} font-medium">{formatOption(val)}</span>
 							{#if selected}
-								<i class="fas fa-check text-sm text-emerald-300"></i>
+								<i class="fas fa-check text-base text-emerald-300"></i>
 							{:else}
-								<i class="fas fa-check text-sm text-transparent"></i>
+								<i class="fas fa-check text-base text-transparent"></i>
 							{/if}
 						</button>
 					{/each}

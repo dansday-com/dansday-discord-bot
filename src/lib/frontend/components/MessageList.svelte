@@ -53,32 +53,32 @@
 
 <div>
 	<div class="mb-2 flex items-center justify-between">
-		<label class="text-ash-300 text-xs font-medium"><i class="fas fa-comment-dots mr-1.5 {iconAccent}"></i>{label}</label>
+		<label class="text-ash-300 text-base font-medium"><i class="fas fa-comment-dots mr-1.5 {iconAccent}"></i>{label}</label>
 		<button
 			type="button"
 			onclick={openAdd}
-			class="bg-ash-600 hover:bg-ash-500 text-ash-100 flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs transition-colors"
+			class="bg-ash-600 hover:bg-ash-500 text-ash-100 flex items-center gap-1 rounded-lg px-2.5 py-1 text-base transition-colors"
 		>
-			<i class="fas fa-plus text-xs {iconAccent}"></i>Add Message
+			<i class="fas fa-plus text-base {iconAccent}"></i>Add Message
 		</button>
 	</div>
 
 	{#if values.length === 0}
 		<div class="bg-ash-700 rounded-lg p-4 text-center">
 			<i class="fas fa-inbox mb-2 text-2xl {iconAccentMuted}"></i>
-			<p class="text-ash-400 text-xs">No messages configured. Click Add Message to create one.</p>
+			<p class="text-ash-400 text-base">No messages configured. Click Add Message to create one.</p>
 		</div>
 	{:else}
 		<div class="space-y-2">
 			{#each values as msg, i}
 				<div class="bg-ash-700 flex items-start justify-between gap-3 rounded-lg p-3">
-					<p class="text-ash-100 min-w-0 flex-1 text-sm break-words">{msg}</p>
+					<p class="text-ash-100 min-w-0 flex-1 text-base break-words">{msg}</p>
 					<div class="flex shrink-0 items-center gap-1.5">
 						<button
 							type="button"
 							aria-label="Edit message"
 							onclick={() => openEdit(i)}
-							class="bg-ash-600 hover:bg-ash-500 rounded-lg p-1.5 text-xs text-white transition-colors"
+							class="bg-ash-600 hover:bg-ash-500 rounded-lg p-1.5 text-base text-white transition-colors"
 						>
 							<i class="fas fa-edit"></i>
 						</button>
@@ -86,7 +86,7 @@
 							type="button"
 							aria-label="Delete message"
 							onclick={() => remove(i)}
-							class="rounded-lg bg-red-900 p-1.5 text-xs text-red-300 transition-colors hover:bg-red-800"
+							class="rounded-lg bg-red-900 p-1.5 text-base text-red-300 transition-colors hover:bg-red-800"
 						>
 							<i class="fas fa-trash"></i>
 						</button>
@@ -111,20 +111,20 @@
 			</div>
 
 			<div class="mb-3 flex-1">
-				<label for="message-input" class="text-ash-300 mb-1.5 block text-xs font-medium">Message</label>
+				<label for="message-input" class="text-ash-300 mb-1.5 block text-base font-medium">Message</label>
 				<textarea
 					id="message-input"
 					bind:value={draftText}
 					rows={6}
 					{placeholder}
-					class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full resize-none rounded-lg border px-3 py-2.5 text-sm focus:ring-2 focus:outline-none"
+					class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full resize-none rounded-lg border px-3 py-2.5 text-base focus:ring-2 focus:outline-none"
 				></textarea>
 			</div>
 
 			{#if placeholders && placeholders.length > 0}
 				<div class="bg-ash-900 border-ash-600 mb-4 rounded-lg border p-3">
-					<p class="text-ash-200 mb-2 text-xs font-medium">Available placeholders:</p>
-					<div class="grid grid-cols-2 gap-2 text-xs">
+					<p class="text-ash-200 mb-2 text-base font-medium">Available placeholders:</p>
+					<div class="flex flex-col gap-2 text-base lg:flex-row lg:flex-wrap *:lg:flex-1 *:lg:basis-0">
 						{#each placeholders as p}
 							<div class="text-ash-300 flex items-center gap-2">
 								<code class="bg-ash-800 text-ash-200 rounded px-1.5 py-0.5">{'{' + p.code + '}'}</code>
@@ -139,7 +139,7 @@
 				<button
 					type="button"
 					onclick={() => (modalOpen = false)}
-					class="bg-ash-700 hover:bg-ash-600 text-ash-100 flex-1 rounded-lg py-2.5 text-sm font-medium transition-colors"
+					class="bg-ash-700 hover:bg-ash-600 text-ash-100 flex-1 rounded-lg py-2.5 text-base font-medium transition-colors"
 				>
 					Cancel
 				</button>
@@ -147,7 +147,7 @@
 					type="button"
 					onclick={saveModal}
 					disabled={!draftText.trim()}
-					class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-colors disabled:opacity-50"
+					class="bg-ash-500 hover:bg-ash-400 text-ash-100 flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-base font-medium transition-colors disabled:opacity-50"
 				>
 					<i class="fas fa-check text-emerald-300"></i>Save Message
 				</button>

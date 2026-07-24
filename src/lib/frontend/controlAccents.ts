@@ -1,5 +1,5 @@
 export const CHANNEL_PICKER_ACCENT = {
-	chevron: 'fas fa-chevron-down text-xs text-violet-300',
+	chevron: 'fas fa-chevron-down text-base text-violet-300',
 	modalTitleIcon: 'fas fa-hashtag text-violet-400',
 	searchIcon: 'fas fa-search text-violet-300',
 	emptyStateIcon: 'mb-2 text-3xl text-violet-300/80',
@@ -9,7 +9,7 @@ export const CHANNEL_PICKER_ACCENT = {
 } as const;
 
 export const CATEGORY_PICKER_ACCENT = {
-	chevron: 'fas fa-chevron-down text-xs text-amber-300',
+	chevron: 'fas fa-chevron-down text-base text-amber-300',
 	modalTitleIcon: 'fas fa-folder text-amber-400',
 	searchIcon: 'fas fa-search text-amber-300',
 	emptyStateIcon: 'mb-2 text-3xl text-amber-300/80',
@@ -18,7 +18,7 @@ export const CATEGORY_PICKER_ACCENT = {
 } as const;
 
 export const ROLE_PICKER_ACCENT = {
-	chevron: 'fas fa-chevron-down text-xs text-blue-300',
+	chevron: 'fas fa-chevron-down text-base text-blue-300',
 	modalTitleIcon: 'fas fa-user-shield text-blue-400',
 	searchIcon: 'fas fa-search text-blue-300',
 	emptyStateIcon: 'mb-2 text-3xl text-blue-300/80',
@@ -27,7 +27,7 @@ export const ROLE_PICKER_ACCENT = {
 } as const;
 
 export const MEMBER_PICKER_ACCENT = {
-	chevron: 'fas fa-chevron-down text-xs text-sky-300',
+	chevron: 'fas fa-chevron-down text-base text-sky-300',
 	modalTitleIcon: 'fas fa-users text-sky-400',
 	searchIcon: 'fas fa-search text-sky-300',
 	searchSpinner: 'fas fa-spinner fa-spin text-sky-300',
@@ -37,10 +37,10 @@ export const MEMBER_PICKER_ACCENT = {
 } as const;
 
 export const NUMERIC_SELECT_ACCENT = {
-	chevron: 'fas fa-chevron-down text-xs text-cyan-300'
+	chevron: 'fas fa-chevron-down text-base text-cyan-300'
 } as const;
 
 export const LABELED_SELECT_ACCENT = {
 	label: 'text-cyan-200',
-	chevron: 'fas fa-chevron-down text-xs text-emerald-300'
+	chevron: 'fas fa-chevron-down text-base text-emerald-300'
 } as const;

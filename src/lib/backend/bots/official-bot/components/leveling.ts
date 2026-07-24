@@ -579,6 +579,17 @@ async function isMemberDisguised(guild: any, memberId: any): Promise<boolean> {
 	}
 }
 
+function fmtRate(n: any): string {
+	const v = Number(n) || 0;
+	return Number.isInteger(v) ? `${v}` : v.toFixed(1);
+}
+
+function luckRateLabel(total: any, luckPercent: any): string {
+	const t = Number(total) || 0;
+	const luck = Math.max(0, Number(luckPercent) || 0);
+	return luck > 0 ? `${fmtRate(t)}% (${fmtRate(t - luck)} +${fmtRate(luck)} 🍀)` : `${fmtRate(t)}%`;
+}
+
 async function sendXPLogToChannel(guild, dbMember, xpGained, xpType, award: any = null, stats: any = null) {
 	try {
 		await db
@@ -605,15 +616,9 @@ async function sendXPLogToChannel(guild, dbMember, xpGained, xpType, award: any 
 
 		const memberName = dbMember.server_display_name || dbMember.display_name || dbMember.username || 'Unknown';
 		const emoji = XP_LOG_EMOJI[xpType] ?? '⭐';
-		let luckNoteUsed = false;
-		const takeLuckNote = () => {
-			if (luckNoteUsed || !(award?.victimLuckPercent > 0)) return '';
-			luckNoteUsed = true;
-			return ` +${award.victimLuckPercent}% luck 🍀`;
-		};
 		const boostSuffix = award?.boosted ? ` (${award.multiplier}× Boost ⚡)` : '';
-		const friendSuffix = award?.friendBoosted ? ` (+${award.friendPercent}% Friend boost 🤝${takeLuckNote()})` : '';
-		const leechSuffix = award?.leeched ? ` (−${award.skimPercent}% Leech 🩸${takeLuckNote()})` : '';
+		const friendSuffix = award?.friendBoosted ? ` (+${luckRateLabel(award.friendPercent, award.luckPercent)} Friend boost 🤝)` : '';
+		const leechSuffix = award?.leeched ? ` (−${luckRateLabel(award.skimPercent, 0)} Leech 🩸)` : '';
 		const logMessage = `${emoji} ${xpType} XP: ${memberName} gained +${xpGained} XP${boostSuffix}${friendSuffix}${leechSuffix}`;
 
 		await channel.send(logMessage);
@@ -639,7 +644,8 @@ async function announceLeechCredits(guild, victim, credits) {
 			const b = credit.beneficiary;
 			if (await isMemberDisguised(guild, b?.id)) continue;
 			const attackerName = b?.server_display_name || b?.display_name || b?.username || 'A leecher';
-			const pct = credit.percent != null ? ` (${credit.percent}%)` : '';
+			const attackerLuck = await getActiveLuckPercent(credit.beneficiaryMemberId).catch(() => 0);
+			const pct = credit.percent != null ? ` (${luckRateLabel(credit.percent, attackerLuck)})` : '';
 			await channel.send(`🩸 Leech: ${attackerName} siphoned +${credit.amount} XP from ${victimName}${pct}`).catch(() => null);
 		}
 	} catch (error) {
@@ -732,6 +738,7 @@ async function awardVoiceXPLocked(server, dbMember, guildId, reason, previousSta
 	const xpGained = baseAwardXp + friendBonus;
 	(award as any).friendPercent = friendPercent;
 	(award as any).friendBoosted = friendPercent > 0;
+	(award as any).luckPercent = luckPercent;
 
 	if (friendDiscordIds.length > 0) {
 		const perFriendXp = Math.floor(friendBonus / friendDiscordIds.length);

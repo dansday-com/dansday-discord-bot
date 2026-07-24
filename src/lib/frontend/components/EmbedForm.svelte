@@ -282,7 +282,7 @@
 					<p class="mb-1 text-base text-[#6b7280] italic">No title yet...</p>
 				{/if}
 				{#if description}
-					<p class="text-xs leading-relaxed whitespace-pre-wrap text-[#dbdee1]">{description}</p>
+					<p class="text-xs whitespace-pre-wrap text-[#dbdee1]">{description}</p>
 				{/if}
 				{#if imageMode === 'url' && imageUrl}
 					<img src={imageUrl} alt="Embed" class="mt-2 max-w-full rounded" />

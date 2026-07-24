@@ -31,7 +31,7 @@
 					Log in
 				</Button>
 			{:else if trailing === 'live'}
-				<span class="m-nav-live px-4 py-2 text-base">
+				<span class="m-nav-live text-chili-peach border-chili-hot/28 bg-chili-hot/10 inline-flex items-center gap-1 rounded-lg border px-4 py-2 text-base">
 					<span class="m-nav-live-dot h-2 w-2 rounded-full"></span>
 					Live
 				</span>

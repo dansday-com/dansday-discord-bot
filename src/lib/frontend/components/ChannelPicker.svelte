@@ -191,7 +191,7 @@
 							<div class="mb-3">
 								<div class="mb-2 flex items-center gap-2 px-2">
 									<i class="fas fa-folder text-xs text-amber-300"></i>
-									<span class="text-ash-400 text-xs font-semibold tracking-wider uppercase">{cat.name ?? 'Unnamed Category'}</span>
+									<span class="text-ash-400 text-xs font-semibold uppercase">{cat.name ?? 'Unnamed Category'}</span>
 								</div>
 								<div class="space-y-1">
 									{#each catChannels as ch}
@@ -236,7 +236,7 @@
 						<div class="mb-3">
 							<div class="mb-2 flex items-center gap-2 px-2">
 								<i class="fas fa-hashtag text-xs text-violet-300"></i>
-								<span class="text-ash-400 text-xs font-semibold tracking-wider uppercase">No Category</span>
+								<span class="text-ash-400 text-xs font-semibold uppercase">No Category</span>
 							</div>
 							<div class="space-y-1">
 								{#each grouped.uncategorized as ch}

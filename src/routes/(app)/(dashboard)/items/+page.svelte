@@ -411,7 +411,7 @@
 								class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {item.enabled !== false ? 'translate-x-6' : 'translate-x-1'}"
 							></span>
 						</button>
-						<span class="text-ash-400 text-xs leading-tight">Buy</span>
+						<span class="text-ash-400 text-xs">Buy</span>
 					</div>
 					<div class="flex items-center gap-1.5" title="Allow members to use copies they already own">
 						<button
@@ -429,7 +429,7 @@
 								class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {item.usable !== false ? 'translate-x-6' : 'translate-x-1'}"
 							></span>
 						</button>
-						<span class="text-ash-400 text-xs leading-tight">Use</span>
+						<span class="text-ash-400 text-xs">Use</span>
 					</div>
 					<button onclick={() => startEdit(item)} class="bg-ash-700 hover:bg-ash-600 text-ash-200 flex-1 rounded-lg py-1.5 text-xs">Edit</button>
 					<button
@@ -455,7 +455,7 @@
 		<div class="space-y-6">
 			{#each adminGroups as group (group.key)}
 				<div>
-					<h2 class="text-ash-300 mb-2.5 flex items-center gap-2 text-xs font-bold tracking-wide uppercase">
+					<h2 class="text-ash-300 mb-2.5 flex items-center gap-2 text-xs font-bold uppercase">
 						<i class="fas {group.icon}" style="color: var(--effect-{group.key}, var(--effect-default))"></i>{group.label}
 						<span class="bg-ash-700 text-ash-400 rounded-full px-2 py-0.5 text-xs font-semibold">{group.items.length}</span>
 					</h2>
@@ -528,7 +528,7 @@
 				</div>
 
 				<div class="border-ash-700 bg-ash-900/40 space-y-3 rounded-xl border p-4">
-					<p class="text-ash-400 text-xs font-semibold tracking-wide uppercase">Effect settings</p>
+					<p class="text-ash-400 text-xs font-semibold uppercase">Effect settings</p>
 					{#if form.effect_type === 'steal' || form.effect_type === 'bomb'}
 						<div class="flex flex-col gap-3 lg:flex-row lg:flex-wrap *:lg:flex-1 *:lg:basis-0">
 							<label class="text-ash-300 text-xs"
@@ -715,7 +715,7 @@
 				</div>
 
 				<div class="border-ash-700 bg-ash-900/40 space-y-3 rounded-xl border p-4">
-					<p class="text-ash-400 text-xs font-semibold tracking-wide uppercase">Availability (optional, your timezone)</p>
+					<p class="text-ash-400 text-xs font-semibold uppercase">Availability (optional, your timezone)</p>
 					<div class="flex flex-col gap-3 lg:flex-row lg:flex-wrap *:lg:flex-1 *:lg:basis-0">
 						<label class="text-ash-300 text-xs">
 							From
@@ -874,7 +874,7 @@
 				{:else}
 					{#each giftGroups as group}
 						<div>
-							<div class="text-ash-400 mb-1.5 flex items-center gap-1.5 text-xs font-semibold tracking-wide uppercase">
+							<div class="text-ash-400 mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase">
 								<i class="fas fa-server text-ash-500"></i>{group.server}
 								<span class="text-ash-600 normal-case">· {group.members.length}</span>
 							</div>

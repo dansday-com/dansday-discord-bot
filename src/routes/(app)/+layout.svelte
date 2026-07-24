@@ -60,7 +60,7 @@
 				</div>
 				<h1 class="text-ash-100 truncate text-base font-bold lg:text-xl">{APP_NAME} Discord Bot Panel</h1>
 				{#if isDemo}
-					<span class="rounded-full border border-cyan-300/30 bg-cyan-400/15 px-2 py-0.5 text-xs font-semibold tracking-wide text-cyan-200"> DEMO </span>
+					<span class="rounded-full border border-cyan-300/30 bg-cyan-400/15 px-2 py-0.5 text-xs font-semibold text-cyan-200"> DEMO </span>
 				{/if}
 			</a>
 			<div class="flex shrink-0 items-center gap-2">

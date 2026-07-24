@@ -177,7 +177,7 @@
 
 		<div class="flex items-center gap-3">
 			<div class="bg-ash-700/70 h-px flex-1"></div>
-			<div class="text-ash-500 text-xs font-semibold tracking-widest">OR</div>
+			<div class="text-ash-500 text-xs font-semibold">OR</div>
 			<div class="bg-ash-700/70 h-px flex-1"></div>
 		</div>
 
@@ -268,7 +268,7 @@
 				autocomplete="off"
 				autocorrect="off"
 				spellcheck="false"
-				class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 mb-4 w-full rounded-xl border px-4 py-3 text-center text-lg tracking-wider transition-all placeholder:tracking-normal focus:border-cyan-300/40 focus:ring-4 focus:ring-cyan-400/40 focus:outline-none"
+				class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 mb-4 w-full rounded-xl border px-4 py-3 text-center text-lg transition-all placeholder:tracking-normal focus:border-cyan-300/40 focus:ring-4 focus:ring-cyan-400/40 focus:outline-none"
 				onkeydown={(e) => {
 					if (e.key === 'Enter') handleDemoLogin();
 				}}

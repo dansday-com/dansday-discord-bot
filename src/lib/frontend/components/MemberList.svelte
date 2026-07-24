@@ -231,7 +231,7 @@
 									<i class="fas fa-medal text-xs text-sky-400"></i>
 								</div>
 								<div class="min-w-0">
-									<div class="text-ash-400 text-xs tracking-wide uppercase">Rank</div>
+									<div class="text-ash-400 text-xs uppercase">Rank</div>
 									<div class="text-ash-100 text-base font-bold">{member.rank ? `#${member.rank}` : 'N/A'}</div>
 								</div>
 							</div>
@@ -240,7 +240,7 @@
 									<i class="fas fa-trophy text-xs text-amber-400"></i>
 								</div>
 								<div class="min-w-0">
-									<div class="text-ash-400 text-xs tracking-wide uppercase">Level</div>
+									<div class="text-ash-400 text-xs uppercase">Level</div>
 									<div class="text-ash-100 text-base font-bold">{member.level ?? 1}</div>
 								</div>
 							</div>
@@ -249,7 +249,7 @@
 									<i class="fas fa-star text-xs text-violet-400"></i>
 								</div>
 								<div class="min-w-0">
-									<div class="text-ash-400 text-xs tracking-wide uppercase">XP</div>
+									<div class="text-ash-400 text-xs uppercase">XP</div>
 									<div class="text-ash-100 text-base font-bold">{fmtNum(member.experience ?? 0)}</div>
 								</div>
 							</div>
@@ -258,7 +258,7 @@
 									<i class="fas fa-comment text-xs text-emerald-400"></i>
 								</div>
 								<div class="min-w-0">
-									<div class="text-ash-400 text-xs tracking-wide uppercase">Chat</div>
+									<div class="text-ash-400 text-xs uppercase">Chat</div>
 									<div class="text-ash-100 text-base font-bold">{fmtNum(member.chat_total ?? 0)}</div>
 								</div>
 							</div>
@@ -267,7 +267,7 @@
 									<i class="fas fa-microphone text-xs text-cyan-400"></i>
 								</div>
 								<div class="min-w-0">
-									<div class="text-ash-400 text-xs tracking-wide uppercase">Voice Active</div>
+									<div class="text-ash-400 text-xs uppercase">Voice Active</div>
 									<div class="text-ash-100 text-base font-bold">{fmtNum(member.voice_minutes_active ?? 0)}m</div>
 								</div>
 							</div>
@@ -276,7 +276,7 @@
 									<i class="fas fa-moon text-xs text-orange-400"></i>
 								</div>
 								<div class="min-w-0">
-									<div class="text-ash-400 text-xs tracking-wide uppercase">Voice AFK</div>
+									<div class="text-ash-400 text-xs uppercase">Voice AFK</div>
 									<div class="text-ash-100 text-base font-bold">{fmtNum(member.voice_minutes_afk ?? 0)}m</div>
 								</div>
 							</div>
@@ -285,7 +285,7 @@
 									<i class="fas fa-calendar-alt text-xs text-indigo-400"></i>
 								</div>
 								<div class="min-w-0">
-									<div class="text-ash-400 text-xs tracking-wide uppercase">Member Since</div>
+									<div class="text-ash-400 text-xs uppercase">Member Since</div>
 									<div class="text-ash-100 text-base font-bold">
 										<LocalTime value={member.member_since} fallback="N/A" />
 									</div>
@@ -296,7 +296,7 @@
 									<i class="fas fa-user-plus text-xs text-rose-400"></i>
 								</div>
 								<div class="min-w-0">
-									<div class="text-ash-400 text-xs tracking-wide uppercase">Account Created</div>
+									<div class="text-ash-400 text-xs uppercase">Account Created</div>
 									<div class="text-ash-100 text-base font-bold">
 										<LocalTime value={member.profile_created_at} fallback="N/A" />
 									</div>
@@ -308,7 +308,7 @@
 							<div class="border-ash-600 mt-2 border-t pt-2">
 								<div class="mb-1.5 flex items-center gap-1.5">
 									<i class="fas fa-user-tag text-xs text-green-300"></i>
-									<span class="text-ash-400 text-xs tracking-wide uppercase">Roles</span>
+									<span class="text-ash-400 text-xs uppercase">Roles</span>
 								</div>
 								<div class="flex flex-wrap gap-1.5">
 									{#each member.roles as role}

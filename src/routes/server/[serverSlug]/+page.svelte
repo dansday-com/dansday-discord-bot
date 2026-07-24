@@ -202,7 +202,7 @@
 	<meta property="og:description" content="Members, channels, leveling, and voice activity for this community." />
 </svelte:head>
 
-<div class="m-leaderboard-subhead m-stats-subhead mb-4">
+<div class="m-leaderboard-subhead mb-4">
 	<p>Statistics</p>
 </div>
 
@@ -237,7 +237,7 @@
 				<span>Leveling coverage</span>
 				<span class="m-bar-meta text-chili-hot/88 text-xs font-bold tabular-nums">{fmt(liveStats.members_with_levels)} with levels</span>
 			</div>
-			<div class="m-seg-bar flex h-2 overflow-hidden rounded-full" title="Share of members with leveling data">
+			<div class="m-seg-bar flex h-3 overflow-hidden rounded-full" title="Share of members with leveling data">
 				<div class="m-seg m-seg--a h-full min-w-0" style="width: {membersLevelShare.withPct * grow}%"></div>
 				<div class="m-seg m-seg--b h-full min-w-0" style="width: {membersLevelShare.withoutPct * grow}%"></div>
 			</div>
@@ -286,7 +286,7 @@
 				<span>Mix</span>
 				<span class="m-bar-meta text-chili-hot/88 text-xs font-bold tabular-nums">Text · Voice · Other</span>
 			</div>
-			<div class="m-seg-bar flex h-2 overflow-hidden rounded-full" title="Channel types">
+			<div class="m-seg-bar flex h-3 overflow-hidden rounded-full" title="Channel types">
 				<div class="m-seg m-seg--text h-full min-w-0" style="width: {channelMix.textPct * grow}%"></div>
 				<div class="m-seg m-seg--voice h-full min-w-0" style="width: {channelMix.voicePct * grow}%"></div>
 				<div class="m-seg m-seg--other h-full min-w-0" style="width: {channelMix.otherPct * grow}%"></div>
@@ -321,7 +321,7 @@
 					<span class="text-lb-text-muted text-base font-semibold">Average vs peak level</span>
 					<span class="text-chili-hot/92 text-base font-bold tabular-nums">{fmtDec(liveStats.leveling_avg_level)} / {fmt(liveStats.leveling_max_level)}</span>
 				</div>
-				<div class="m-level-meter-track h-2 overflow-hidden rounded-full">
+				<div class="m-level-meter-track h-3 overflow-hidden rounded-full">
 					<div class="m-level-meter-fill m-level-meter-fill--avg h-full rounded-full" style="width: {avgLevelBarPct * grow}%"></div>
 				</div>
 			</div>
@@ -399,7 +399,7 @@
 					>{fmt(liveStats.leveling_total_voice_active)} · {fmt(liveStats.leveling_total_voice_afk)}</span
 				>
 			</div>
-			<div class="m-level-meter-stack flex h-2 overflow-hidden rounded-full" title="Share of voice minutes">
+			<div class="m-level-meter-stack flex h-3 overflow-hidden rounded-full" title="Share of voice minutes">
 				<div class="m-level-meter-stack-active h-full" style="width: {voiceMix.activePct * grow}%"></div>
 				<div class="m-level-meter-stack-afk h-full" style="width: {voiceMix.afkPct * grow}%"></div>
 			</div>
@@ -462,7 +462,7 @@
 				<span>Capital flow</span>
 				<span class="m-bar-meta text-chili-hot/88 text-xs font-bold tabular-nums">In · Out</span>
 			</div>
-			<div class="m-seg-bar flex h-2 overflow-hidden rounded-full" title="XP bought in vs cashed out">
+			<div class="m-seg-bar flex h-3 overflow-hidden rounded-full" title="XP bought in vs cashed out">
 				<div class="m-seg m-seg--a h-full min-w-0" style="width: {marketFlow.inPct * grow}%"></div>
 				<div class="m-seg m-seg--b h-full min-w-0" style="width: {marketFlow.outPct * grow}%"></div>
 			</div>
@@ -524,7 +524,7 @@
 				<span>Heist outcomes</span>
 				<span class="m-bar-meta text-chili-hot/88 text-xs font-bold tabular-nums">{stealHitRate}% success</span>
 			</div>
-			<div class="m-seg-bar flex h-2 overflow-hidden rounded-full" title="Successful steals vs caught">
+			<div class="m-seg-bar flex h-3 overflow-hidden rounded-full" title="Successful steals vs caught">
 				<div class="m-seg m-seg--a h-full min-w-0" style="width: {heistMix.landedPct * grow}%"></div>
 				<div class="m-seg m-seg--b h-full min-w-0" style="width: {heistMix.caughtPct * grow}%"></div>
 			</div>
@@ -584,7 +584,7 @@
 				<span>Player win rate</span>
 				<span class="m-bar-meta text-chili-hot/88 text-xs font-bold tabular-nums">{minigamesWinRate}%</span>
 			</div>
-			<div class="m-level-meter-track h-2 overflow-hidden rounded-full">
+			<div class="m-level-meter-track h-3 overflow-hidden rounded-full">
 				<div class="m-level-meter-fill m-level-meter-fill--avg h-full rounded-full" style="width: {Math.max(4, minigamesWinRate) * grow}%"></div>
 			</div>
 		</div>
@@ -621,7 +621,7 @@
 				<span>Odds of winning</span>
 				<span class="m-bar-meta text-chili-hot/88 text-xs font-bold tabular-nums">{giveawayClaimPct.toFixed(1)}%</span>
 			</div>
-			<div class="m-level-meter-track h-2 overflow-hidden rounded-full">
+			<div class="m-level-meter-track h-3 overflow-hidden rounded-full">
 				<div class="m-level-meter-fill m-level-meter-fill--avg h-full rounded-full" style="width: {Math.max(4, giveawayClaimPct) * grow}%"></div>
 			</div>
 		</div>
@@ -658,7 +658,7 @@
 				<span>Engagement mix</span>
 				<span class="m-bar-meta text-chili-hot/88 text-xs font-bold tabular-nums">Likes · Chat · Gifts · Shares</span>
 			</div>
-			<div class="m-seg-bar flex h-2 overflow-hidden rounded-full" title="Stream engagement breakdown">
+			<div class="m-seg-bar flex h-3 overflow-hidden rounded-full" title="Stream engagement breakdown">
 				<div class="m-seg m-seg--text h-full min-w-0" style="width: {streamEngage.likePct * grow}%"></div>
 				<div class="m-seg m-seg--voice h-full min-w-0" style="width: {streamEngage.chatPct * grow}%"></div>
 				<div class="m-seg m-seg--other h-full min-w-0" style="width: {streamEngage.giftPct * grow}%"></div>
@@ -705,7 +705,7 @@
 				<span>Rewards claimed</span>
 				<span class="m-bar-meta text-chili-hot/88 text-xs font-bold tabular-nums">{questClaimPct.toFixed(0)}%</span>
 			</div>
-			<div class="m-level-meter-track h-2 overflow-hidden rounded-full">
+			<div class="m-level-meter-track h-3 overflow-hidden rounded-full">
 				<div class="m-level-meter-fill m-level-meter-fill--avg h-full rounded-full" style="width: {Math.max(4, questClaimPct) * grow}%"></div>
 			</div>
 		</div>
@@ -739,7 +739,7 @@
 				<span>Average staff rating</span>
 				<span class="m-bar-meta text-chili-hot/88 text-xs font-bold tabular-nums">{liveStats.staff_avg_rating || '—'} / 5</span>
 			</div>
-			<div class="m-level-meter-track h-2 overflow-hidden rounded-full">
+			<div class="m-level-meter-track h-3 overflow-hidden rounded-full">
 				<div class="m-level-meter-fill m-level-meter-fill--avg h-full rounded-full" style="width: {Math.max(4, staffRatingPct) * grow}%"></div>
 			</div>
 		</div>

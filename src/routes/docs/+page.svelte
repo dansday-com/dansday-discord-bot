@@ -516,9 +516,9 @@
 </svelte:head>
 
 <div class="m-root text-lb-text relative flex min-h-dvh flex-col overflow-x-hidden">
-	<div class="m-blob m-blob-1 pointer-events-none fixed z-0 h-104 w-104 rounded-full opacity-15"></div>
+	<div class="m-blob m-blob-1 pointer-events-none fixed z-0 h-105 w-105 rounded-full opacity-15"></div>
 	<div class="m-blob m-blob-2 pointer-events-none fixed z-0 h-80 w-80 rounded-full opacity-15"></div>
-	<div class="m-blob m-blob-3 pointer-events-none fixed z-0 h-64 w-64 rounded-full opacity-15"></div>
+	<div class="m-blob m-blob-3 pointer-events-none fixed z-0 h-65 w-65 rounded-full opacity-15"></div>
 
 	<MainHeader />
 
@@ -526,7 +526,7 @@
 		<div class="relative z-1 mx-auto w-full max-w-7xl px-4 pt-4 pb-12 lg:px-8">
 			<div class="flex flex-col gap-10 pt-2 pb-12">
 				<header class="g-hero pt-4 text-center" use:reveal>
-					<div class="g-hero-badge mx-auto mb-4 grid h-16 w-16 place-items-center rounded-2xl text-2xl"><i class="fas fa-book-open"></i></div>
+					<div class="g-hero-badge mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl text-2xl"><i class="fas fa-book-open"></i></div>
 					<h1 class="text-lb-text m-0 mb-2 text-2xl font-extrabold lg:text-3xl">Set up {APP_NAME} Bot</h1>
 					<p class="text-lb-text-muted mx-auto my-0 max-w-136 text-base">
 						From adding the bot to configuring every module, field by field. Everything is set in the browser; members use it through the Discord menu.
@@ -558,7 +558,7 @@
 					<p class="g-sec-lead text-lb-text-muted m-0 mb-5 text-base">
 						The official bot runs everything. A selfbot is optional and only needed for two features.
 					</p>
-					<div class="grid grid-cols-1 items-start gap-3 lg:grid-cols-2">
+					<div class="g-modules flex flex-wrap items-start gap-3">
 						{#each botKinds as b, i}
 							<article class="g-mod relative rounded-2xl p-4" style="--ac: {b.accent}; --d: {i * 60}ms">
 								<div class="mb-4 flex items-start gap-3">
@@ -597,7 +597,7 @@
 						Account tiers control who manages the panel. They are separate from the Discord permission roles below, which control who can use features in
 						Discord.
 					</p>
-					<div class="grid grid-cols-1 items-start gap-3 lg:grid-cols-2">
+					<div class="g-modules flex flex-wrap items-start gap-3">
 						{#each tiers as t, i}
 							<article class="g-mod relative rounded-2xl p-4" style="--ac: {t.accent}; --d: {i * 60}ms">
 								<div class="mb-4 flex items-start gap-3">
@@ -628,7 +628,7 @@
 						<i class="fas fa-toggle-on"></i>Modules, field by field
 					</h2>
 					<p class="g-sec-lead text-lb-text-muted m-0 mb-5 text-base">Each module has a master toggle plus its own settings. Turn on only what you need.</p>
-					<div class="grid grid-cols-1 items-start gap-3 lg:grid-cols-2">
+					<div class="g-modules flex flex-wrap items-start gap-3">
 						{#each modules as m, i}
 							<article id="mod-{m.id}" class="g-mod relative rounded-2xl p-4" style="--ac: {m.accent}; --d: {(i % 4) * 60}ms">
 								<div class="mb-4 flex items-start gap-3">

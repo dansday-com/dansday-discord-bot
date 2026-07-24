@@ -180,9 +180,9 @@
 </svelte:head>
 
 <div class="m-root text-lb-text relative flex min-h-dvh flex-col overflow-x-hidden">
-	<div class="m-blob m-blob-1 pointer-events-none fixed z-0 h-104 w-104 rounded-full opacity-15"></div>
+	<div class="m-blob m-blob-1 pointer-events-none fixed z-0 h-105 w-105 rounded-full opacity-15"></div>
 	<div class="m-blob m-blob-2 pointer-events-none fixed z-0 h-80 w-80 rounded-full opacity-15"></div>
-	<div class="m-blob m-blob-3 pointer-events-none fixed z-0 h-64 w-64 rounded-full opacity-15"></div>
+	<div class="m-blob m-blob-3 pointer-events-none fixed z-0 h-65 w-65 rounded-full opacity-15"></div>
 
 	<MainHeader />
 
@@ -217,7 +217,7 @@
 						<i class="fab fa-discord"></i>
 						Get started
 					</Button>
-					<div class="grid grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-3" role="group" aria-label="More options">
+					<div class="m-hero-actions-secondary flex flex-wrap gap-2 lg:gap-3" role="group" aria-label="More options">
 						<Button href="/docs" variant="ghost" compact class="w-full" title="Setup guide and documentation">
 							<i class="fas fa-book-open"></i>
 							Docs
@@ -251,7 +251,7 @@
 					Each module stands on its own. Turn on leveling, embed builder, Quest notifier, quest enroll, self-bot, forwarder, public statistics, or any mix you
 					need. Everything lives under the same server settings.
 				</SectionHeader>
-				<div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+				<div class="m-features-grid flex flex-wrap gap-4">
 					{#each features as feature}
 						<FeatureCard icon={feature.icon} tone={feature.tone as 'teal' | 'brick' | 'stone'} title={feature.title} desc={feature.desc} />
 					{/each}
@@ -261,7 +261,7 @@
 			{#if data.featuredServers.length > 0}
 				<section class="py-10 lg:py-14">
 					<SectionHeader title="Active Communities">Servers using {APP_NAME} Bot with public statistics enabled.</SectionHeader>
-					<div class="grid grid-cols-1 gap-3">
+					<div class="flex flex-col gap-3">
 						{#each data.featuredServers as server}
 							<a
 								href={publicServerPath(server.slug)}
@@ -295,7 +295,7 @@
 					Change settings from your browser without building long slash command workflows. After you sign in you land in the panel. Where a module supports it,
 					you get live bot and server state right in the UI.
 				</SectionHeader>
-				<div class="grid grid-cols-1 gap-4 lg:grid-cols-4">
+				<div class="m-features-grid m-features-grid--quad flex flex-wrap gap-4">
 					{#each panelFeatures as feature}
 						<FeatureCard icon={feature.icon} tone={feature.tone as 'teal' | 'brick'} title={feature.title} desc={feature.desc} />
 					{/each}

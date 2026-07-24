@@ -184,11 +184,11 @@
 </svelte:head>
 
 <div class="m-members">
-	<div class="m-leaderboard-subhead m-stats-subhead mb-4">
+	<div class="m-leaderboard-subhead mb-4">
 		<p>Members</p>
 	</div>
 
-	<div class="m-members-search-bar mb-4 flex flex-col flex-row items-center gap-3 rounded-2xl px-4 py-3">
+	<div class="m-members-search-bar mb-4 flex flex-col items-center gap-3 rounded-2xl px-4 py-3 lg:flex-row">
 		<div class="m-members-search relative min-w-0 flex-1">
 			<i class="fas fa-search m-members-search-ic pointer-events-none text-base" aria-hidden="true"></i>
 			<input
@@ -215,12 +215,12 @@
 		<ul class="m-members-grid grid gap-4 p-0">
 			{#each paged as member, i (member.discord_member_id)}
 				<li
-					class="m-stat-card m-overview-card m-members-card {podiumCardClass(member.rank)} relative overflow-hidden rounded-2xl px-4 py-4 pt-4 pb-4 opacity-100"
+					class="m-stat-card m-overview-card m-members-card {podiumCardClass(member.rank)} relative overflow-hidden rounded-2xl px-4 py-4 opacity-100"
 					class:m-members-card--in={mounted}
 					style="--pubm-card-dly:{i * 32}ms"
 				>
-					<div class="m-members-top flex items-start gap-4">
-						<div class="m-members-aside flex shrink-0 flex-col items-center gap-2">
+					<div class="flex items-start gap-4">
+						<div class="flex shrink-0 flex-col items-center gap-2">
 							<span class="m-members-rank-pill rounded-lg px-2 py-1 text-xs font-extrabold whitespace-nowrap text-white tabular-nums" title="Leaderboard rank"
 								>{member.rank != null ? `#${member.rank}` : '—'}</span
 							>
@@ -235,40 +235,38 @@
 								/>
 							</div>
 						</div>
-						<div class="m-members-main min-w-0 flex-1">
-							<div class="m-members-name-row mb-2 flex flex-wrap items-center gap-x-2 gap-y-2">
+						<div class="min-w-0 flex-1">
+							<div class="mb-2 flex flex-wrap items-center gap-x-2 gap-y-2">
 								<span class="m-members-name max-w-full overflow-hidden font-extrabold text-ellipsis whitespace-nowrap">{listDisplayName(member)}</span>
-								{#if member.is_afk}<span class="m-members-afk shrink-0 rounded-[100px] px-2 py-1 text-xs font-bold"
+								{#if member.is_afk}<span class="m-members-afk shrink-0 rounded-full px-2 py-0.5 text-xs font-bold"
 										><i class="fas fa-moon" aria-hidden="true"></i> AFK</span
 									>{/if}
 							</div>
-							<p class="m-members-stats">
+							<p class="text-lb-text/72 mx-0 mt-0 mb-2 flex flex-wrap items-baseline gap-x-1 gap-y-0.5 text-xs font-semibold">
 								<span>Lv.{member.level ?? 0}</span>
-								<span class="m-members-dot text-[rgba(26,52,63,0.35)]">·</span>
+								<span class="m-members-dot text-lb-text/35">·</span>
 								<span title="Messages">{fmtNum(member.chat_total ?? 0)} msgs</span>
-								<span class="m-members-dot text-[rgba(26,52,63,0.35)]">·</span>
+								<span class="m-members-dot text-lb-text/35">·</span>
 								<span title="Voice minutes">{fmtNum(member.voice_minutes_active ?? 0)}m act / {fmtNum(member.voice_minutes_afk ?? 0)}m AFK</span>
 							</p>
-							<p class="m-members-dates mx-0 mt-0 mb-2 flex flex-wrap items-baseline gap-x-1 gap-y-1 text-xs font-semibold text-[rgba(26,52,63,0.72)]">
+							<p class="text-lb-text/72 mx-0 mt-0 mb-2 flex flex-wrap items-baseline gap-x-1 gap-y-0.5 text-xs font-semibold">
 								<span
-									><span class="m-members-dk mr-1 text-xs font-bold text-[rgba(26,52,63,0.42)] uppercase">Joined</span>
+									><span class="text-lb-text/42 mr-1 text-xs font-bold uppercase">Joined</span>
 									<LocalTime value={member.member_since} fallback="N/A" /></span
 								>
-								<span class="m-members-dot text-[rgba(26,52,63,0.35)]">·</span>
+								<span class="m-members-dot text-lb-text/35">·</span>
 								<span
-									><span class="m-members-dk mr-1 text-xs font-bold text-[rgba(26,52,63,0.42)] uppercase">Discord since</span>
+									><span class="text-lb-text/42 mr-1 text-xs font-bold uppercase">Discord since</span>
 									<LocalTime value={member.profile_created_at} fallback="N/A" /></span
 								>
 							</p>
 						</div>
 					</div>
 					<div class="m-members-xp-band mt-3 flex items-center justify-between gap-2 rounded-xl px-3 py-2">
-						<span class="m-members-xp-band-l inline-flex items-center gap-2 text-xs font-bold text-[rgba(26,52,63,0.55)] uppercase"
+						<span class="m-members-xp-band-l text-lb-text/55 inline-flex items-center gap-2 text-xs font-bold uppercase"
 							><i class="fas fa-star" aria-hidden="true"></i> Experience</span
 						>
-						<span class="m-members-xp-band-v text-lb-text text-base font-extrabold tabular-nums" title="Experience points"
-							>{fmtNum(member.experience ?? 0)}</span
-						>
+						<span class="text-lb-text text-base font-extrabold tabular-nums" title="Experience points">{fmtNum(member.experience ?? 0)}</span>
 					</div>
 					{#if member.roles?.[0]}
 						<div class="m-members-roles mt-3 flex flex-wrap gap-2 pt-3">
@@ -286,7 +284,7 @@
 		</ul>
 
 		{#if sorted.length > PER_PAGE}
-			<div class="m-members-pager mt-4 flex items-center justify-between gap-2">
+			<div class="mt-4 flex items-center justify-between gap-2">
 				<button
 					type="button"
 					class="m-members-btn inline-flex cursor-pointer items-center gap-2 rounded-xl px-4 py-2 text-base font-semibold"

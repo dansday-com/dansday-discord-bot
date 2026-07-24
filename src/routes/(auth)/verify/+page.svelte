@@ -97,7 +97,7 @@
 					t.value = t.value.replace(/[^0-9]/g, '');
 					otpCode = t.value;
 				}}
-				class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-center text-2xl tracking-widest transition-all focus:border-transparent focus:ring-2 focus:outline-none lg:px-4 lg:py-3"
+				class="bg-ash-700 border-ash-600 text-ash-100 placeholder-ash-500 focus:ring-ash-500 w-full rounded-lg border px-3 py-2.5 text-center text-2xl transition-all focus:border-transparent focus:ring-2 focus:outline-none lg:px-4 lg:py-3"
 			/>
 			<p class="text-ash-400 mt-2 text-center text-xs">
 				<button type="button" onclick={resendOtp} class="text-ash-200 hover:text-ash-300 underline"> Resend code </button>

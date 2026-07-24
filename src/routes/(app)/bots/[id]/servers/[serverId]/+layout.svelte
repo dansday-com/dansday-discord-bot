@@ -49,9 +49,7 @@
 						<i class="fas fa-server text-base text-violet-300 lg:text-lg"></i>
 					{/if}
 				</div>
-				<h2
-					class="text-ash-100 max-w-[min(100%,20rem)] truncate text-center text-base font-semibold tracking-tight lg:max-w-[min(100%,28rem)] lg:text-left lg:text-lg"
-				>
+				<h2 class="text-ash-100 max-w-[min(100%,20rem)] truncate text-center text-base font-semibold lg:max-w-[min(100%,28rem)] lg:text-left lg:text-lg">
 					{data.overview.name || 'Unnamed Server'}
 				</h2>
 			</div>

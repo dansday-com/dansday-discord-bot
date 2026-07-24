@@ -100,7 +100,8 @@ export async function loadItemsCatalog(serverId: number): Promise<any[]> {
 			config: typeof i.config === 'string' ? safeParse(i.config) : i.config
 		};
 		const state = itemAvailability(mapped, Date.now(), 0).state;
-		out.push({ ...mapped, live: state === 'active' || state === 'upcoming' });
+		const listed = mapped.enabled || mapped.usable;
+		out.push({ ...mapped, live: listed && (state === 'active' || state === 'upcoming') });
 	}
 	return out;
 }
@@ -211,7 +212,12 @@ export async function loadItemsShared(server: any, hash: string, subKey?: 'items
 		items: pricedItems,
 		hash,
 		bagStock,
-		categories: [...new Set([...enabledCategories, ...(invRows as any[]).map((r) => r.effect_type)])],
+		categories: [
+			...new Set([
+				...enabledCategories,
+				...(invRows as any[]).filter((r) => (r.enabled !== false && r.enabled !== 0) || (r.usable !== false && r.usable !== 0)).map((r) => r.effect_type)
+			])
+		],
 		memberName: member.server_display_name || member.display_name || member.username,
 		memberDiscordId: String(member.discord_member_id),
 		memberAvatar: member.avatar ?? null,

@@ -32,7 +32,6 @@
 		return m ? m[1] : 'all';
 	});
 
-	const taskStreak = $derived(Number(taskSummary?.current) || 0);
 	const tasksEnabled = $derived(data.tasksEnabled === true);
 	const itemsEnabled = $derived(data.itemsEnabled === true);
 	const assetsEnabled = $derived(data.assetsEnabled === true);
@@ -471,7 +470,7 @@
 			</a>
 			{#if tasksEnabled}
 				<a class="m-items-seg" class:m-items-seg--active={isTask} href="{accountBase}/task/{navHash}" data-sveltekit-preload-data="hover">
-					<i class="fas fa-list-check"></i>Task{#if taskStreak > 0}<span class="m-items-count m-items-count--streak">🔥{taskStreak}</span>{/if}
+					<i class="fas fa-list-check"></i>Task
 				</a>
 			{/if}
 			{#if itemsEnabled}

@@ -3180,13 +3180,6 @@
 	font-size: 11px;
 }
 
-.m-root .m-items-count--streak {
-	background: linear-gradient(135deg, rgba(200, 145, 26, 0.95), rgba(192, 57, 43, 0.9));
-	color: #fff;
-	font-weight: 700;
-	letter-spacing: 0.2px;
-}
-
 .m-root .m-items-anon {
 	display: flex;
 	align-items: center;

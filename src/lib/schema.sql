@@ -593,6 +593,7 @@ CREATE TABLE IF NOT EXISTS server_member_tasks (
     difficulty VARCHAR(8) NOT NULL,
     goal INT NOT NULL DEFAULT 1,
     baseline INT NOT NULL DEFAULT 0,
+    target_item_id INT NULL,
     reward_kind VARCHAR(8) NOT NULL,
     reward_xp INT NOT NULL DEFAULT 0,
     reward_item_id INT NULL,
@@ -600,7 +601,8 @@ CREATE TABLE IF NOT EXISTS server_member_tasks (
     created_at DATETIME NOT NULL,
     UNIQUE KEY unique_server_member_task (member_id, period, day_key, slot),
     FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE,
-    FOREIGN KEY (reward_item_id) REFERENCES items(id) ON DELETE SET NULL
+    FOREIGN KEY (reward_item_id) REFERENCES items(id) ON DELETE SET NULL,
+    FOREIGN KEY (target_item_id) REFERENCES items(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS server_member_claims (

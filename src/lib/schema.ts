@@ -861,6 +861,7 @@ export const serverMemberTasks = mysqlTable(
 		difficulty: varchar('difficulty', { length: 8 }).notNull(),
 		goal: int('goal').notNull().default(1),
 		baseline: int('baseline').notNull().default(0),
+		target_item_id: int('target_item_id').references(() => items.id, { onDelete: 'set null' }),
 		reward_kind: varchar('reward_kind', { length: 8 }).notNull(),
 		reward_xp: int('reward_xp').notNull().default(0),
 		reward_item_id: int('reward_item_id').references(() => items.id, { onDelete: 'set null' }),

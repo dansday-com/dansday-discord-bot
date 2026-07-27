@@ -1520,6 +1520,7 @@ export async function persistMemberTasks(memberId: any, dayKey: number, rows: an
 				difficulty: String(r.difficulty),
 				goal: Number(r.goal) || 1,
 				baseline: Number(r.baseline) || 0,
+				target_item_id: r.targetItemId == null ? null : Number(r.targetItemId),
 				reward_kind: String(r.rewardKind),
 				reward_xp: Number(r.rewardXp) || 0,
 				reward_item_id: r.rewardItemId == null ? null : Number(r.rewardItemId),
@@ -1580,15 +1581,88 @@ export async function applyMemberClaim(memberId: any, dayKey: number, cycleDays:
 	return { changed: true, row: await getMemberClaim(memberId) };
 }
 
-export async function countMemberEventsSince(memberId: any, metric: string, sinceMs: number) {
+export async function countMemberEventsSince(memberId: any, metric: string, sinceMs: number, targetItemId: any = null) {
 	await initializeDatabase();
 	const since = toMySQLDateTime(new Date(sinceMs));
 	const id = Number(memberId);
 
-	if (metric === 'gamble_played' || metric === 'gamble_won') {
-		const onlyWins = metric === 'gamble_won' ? sql` AND outcome = 'win'` : sql``;
+	const GAMBLE_FILTERS: Record<string, any> = {
+		gamble_played: sql``,
+		gamble_won: sql` AND outcome = 'win'`,
+		gamble_highroll: sql` AND multiplier >= 5`,
+		gamble_purist: sql` AND multiplier >= 5 AND (luck_percent IS NULL OR luck_percent = 0)`,
+		gamble_bigwin: sql` AND outcome = 'win' AND multiplier >= 5`,
+		gamble_lucky: sql` AND luck_percent IS NOT NULL AND luck_percent > 0`,
+		gamble_lucky_win: sql` AND outcome = 'win' AND luck_percent IS NOT NULL AND luck_percent > 0`
+	};
+
+	if (GAMBLE_FILTERS[String(metric)] !== undefined) {
 		const rows: any = await db.execute(
-			sql`SELECT COUNT(*) AS c FROM server_member_minigame_logs WHERE member_id = ${id} AND created_at >= ${since}${onlyWins}`
+			sql`SELECT COUNT(*) AS c FROM server_member_minigame_logs WHERE member_id = ${id} AND created_at >= ${since}${GAMBLE_FILTERS[String(metric)]}`
+		);
+		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
+	}
+
+	if (metric === 'gamble_wagered') {
+		const rows: any = await db.execute(
+			sql`SELECT COALESCE(SUM(wager), 0) AS c FROM server_member_minigame_logs WHERE member_id = ${id} AND created_at >= ${since}`
+		);
+		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
+	}
+
+	const XP_SOURCE_FILTERS: Record<string, any> = {
+		xp_from_voice: sql` AND source IN ('voice', 'voice_afk')`,
+		xp_from_voice_active: sql` AND source = 'voice'`,
+		xp_from_voice_afk: sql` AND source = 'voice_afk'`,
+		xp_from_chat: sql` AND source = 'chat'`,
+		xp_from_media: sql` AND source IN ('video', 'stream')`
+	};
+
+	const LEVEL_METRICS: Record<
+		string,
+		{ agg: 'sum' | 'count' | 'peakFriends'; sources?: string[]; friends?: 'with' | 'without'; boost?: 'without'; leech?: 'without' }
+	> = {
+		xp_with_friends: { agg: 'sum', friends: 'with' },
+		friend_ticks: { agg: 'count', friends: 'with' },
+		friends_peak: { agg: 'peakFriends' },
+		friends_peak_voice: { agg: 'peakFriends', sources: ['voice', 'voice_afk'] },
+		xp_solo: { agg: 'sum', boost: 'without', friends: 'without' },
+		xp_solo_voice: { agg: 'sum', sources: ['voice', 'voice_afk'], boost: 'without', friends: 'without' },
+		xp_solo_media: { agg: 'sum', sources: ['video', 'stream'], boost: 'without', friends: 'without' },
+		xp_solo_chat: { agg: 'sum', sources: ['chat'], boost: 'without', friends: 'without' },
+		xp_unleeched: { agg: 'sum', leech: 'without' }
+	};
+
+	const lm = LEVEL_METRICS[String(metric)];
+	if (lm) {
+		const parts: any[] = [];
+		if (lm.sources)
+			parts.push(
+				sql`source IN (${sql.join(
+					lm.sources.map((s) => sql`${s}`),
+					sql`, `
+				)})`
+			);
+		if (lm.friends === 'with') parts.push(sql`friend_percent IS NOT NULL AND friend_percent > 0`);
+		if (lm.friends === 'without') parts.push(sql`(friend_percent IS NULL OR friend_percent = 0)`);
+		if (lm.boost === 'without') parts.push(sql`(multiplier IS NULL OR multiplier <= 1)`);
+		if (lm.leech === 'without') parts.push(sql`(skim_percent IS NULL OR skim_percent = 0)`);
+		const where = parts.length > 0 ? sql` AND ${sql.join(parts, sql` AND `)}` : sql``;
+		const select = lm.agg === 'sum' ? sql`COALESCE(SUM(amount), 0)` : lm.agg === 'count' ? sql`COUNT(*)` : sql`COALESCE(MAX(FLOOR(friend_percent / 10)), 0)`;
+		const rows: any = await db.execute(sql`SELECT ${select} AS c FROM server_member_level_logs WHERE member_id = ${id} AND created_at >= ${since}${where}`);
+		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
+	}
+
+	if (XP_SOURCE_FILTERS[String(metric)] !== undefined) {
+		const rows: any = await db.execute(
+			sql`SELECT COALESCE(SUM(amount), 0) AS c FROM server_member_level_logs WHERE member_id = ${id} AND created_at >= ${since}${XP_SOURCE_FILTERS[String(metric)]}`
+		);
+		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
+	}
+
+	if (metric === 'xp_stolen') {
+		const rows: any = await db.execute(
+			sql`SELECT COALESCE(SUM(xp_amount), 0) AS c FROM server_member_item_logs WHERE member_id = ${id} AND created_at >= ${since} AND action = 'steal' AND outcome = 'success'`
 		);
 		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
 	}
@@ -1623,15 +1697,83 @@ export async function countMemberEventsSince(memberId: any, metric: string, sinc
 	}
 
 	const effectMatch = /^use_([a-z]+)$/.exec(String(metric));
-	const actionFilter = effectMatch
-		? sql`action = ${effectMatch[1]}`
-		: metric === 'steal_success'
-			? sql`action = 'steal' AND outcome = 'success'`
-			: metric === 'item_used'
-				? sql`action NOT IN ('buy', 'discard', 'task_reward', 'bounty_collected') AND member_item_id IS NOT NULL`
-				: metric === 'item_bought'
-					? sql`action = 'buy'`
-					: null;
+	const targetId = Number(targetItemId) || 0;
+	if (metric === 'item_specific_used' || metric === 'item_specific_bought' || metric === 'discard_specific' || metric === 'item_specific_success') {
+		if (targetId <= 0) return 0;
+		const scope =
+			metric === 'item_specific_bought'
+				? sql`action = 'buy'`
+				: metric === 'discard_specific'
+					? sql`action = 'discard'`
+					: metric === 'item_specific_success'
+						? sql`action NOT IN ('buy', 'discard', 'task_reward', 'bounty_collected') AND member_item_id IS NOT NULL AND outcome = 'success'`
+						: sql`action NOT IN ('buy', 'discard', 'task_reward', 'bounty_collected') AND member_item_id IS NOT NULL`;
+		const rows: any = await db.execute(
+			sql`SELECT COUNT(*) AS c FROM server_member_item_logs WHERE member_id = ${id} AND created_at >= ${since} AND item_id = ${targetId} AND ${scope}`
+		);
+		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
+	}
+
+	const COMBO_METRICS: Record<string, { actions?: string[]; anyUse?: boolean; disguised?: boolean; lucky?: boolean; success?: boolean }> = {
+		bomb_masked: { actions: ['bomb'], disguised: true },
+		steal_masked: { actions: ['steal'], disguised: true, success: true },
+		attack_masked: { actions: ['steal', 'bomb', 'leech'], disguised: true },
+		buy_lucky: { actions: ['buy'], lucky: true },
+		use_lucky: { anyUse: true, lucky: true },
+		attack_lucky: { actions: ['steal', 'bomb', 'leech'], lucky: true, success: true },
+		bounty_claimed: { actions: ['bounty_collected'] }
+	};
+
+	const combo = COMBO_METRICS[String(metric)];
+	if (combo) {
+		const parts: any[] = [];
+		if (combo.actions)
+			parts.push(
+				sql`action IN (${sql.join(
+					combo.actions.map((a) => sql`${a}`),
+					sql`, `
+				)})`
+			);
+		if (combo.anyUse) parts.push(sql`action NOT IN ('buy', 'discard', 'task_reward', 'bounty_collected') AND member_item_id IS NOT NULL`);
+		if (combo.disguised) parts.push(sql`actor_disguised = 1`);
+		if (combo.lucky) parts.push(sql`luck_percent IS NOT NULL AND luck_percent > 0`);
+		if (combo.success) parts.push(sql`outcome = 'success'`);
+		const rows: any = await db.execute(
+			sql`SELECT COUNT(*) AS c FROM server_member_item_logs WHERE member_id = ${id} AND created_at >= ${since} AND ${sql.join(parts, sql` AND `)}`
+		);
+		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
+	}
+
+	const durationMatch = /^duration_([a-z]+)$/.exec(String(metric));
+	if (durationMatch) {
+		const rows: any = await db.execute(
+			sql`SELECT COALESCE(SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(i.config, '$.effect_duration_minutes')) AS UNSIGNED)), 0) AS c
+				FROM server_member_item_logs l
+				INNER JOIN items i ON i.id = l.item_id
+				WHERE l.member_id = ${id} AND l.created_at >= ${since} AND l.action = ${durationMatch[1]}`
+		);
+		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
+	}
+
+	const ATTACK_ACTIONS = sql`('steal', 'bomb', 'leech')`;
+	const successMatch = metric === 'attack_success' ? null : /^([a-z]+)_success$/.exec(String(metric));
+
+	const actionFilter =
+		metric === 'attack_any'
+			? sql`action IN ${ATTACK_ACTIONS}`
+			: metric === 'attack_success'
+				? sql`action IN ${ATTACK_ACTIONS} AND outcome = 'success'`
+				: effectMatch
+					? sql`action = ${effectMatch[1]}`
+					: successMatch
+						? sql`action = ${successMatch[1]} AND outcome = 'success'`
+						: metric === 'item_used'
+							? sql`action NOT IN ('buy', 'discard', 'task_reward', 'bounty_collected') AND member_item_id IS NOT NULL`
+							: metric === 'item_bought'
+								? sql`action = 'buy'`
+								: metric === 'discard_any'
+									? sql`action = 'discard'`
+									: null;
 
 	if (!actionFilter) return 0;
 

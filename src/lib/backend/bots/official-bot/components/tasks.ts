@@ -35,7 +35,7 @@ async function measureProgress(memberId: any, row: any, dayStartMs: number) {
 		const current = Number((levels as any)?.[def.metric]) || 0;
 		return Math.max(0, current - (Number(row.baseline) || 0));
 	}
-	return db.countMemberEventsSince(memberId, def.metric, dayStartMs).catch(() => 0);
+	return db.countMemberEventsSince(memberId, def.metric, dayStartMs, row.target_item_id ?? null).catch(() => 0);
 }
 
 async function grantXpTo(guildId: any, memberId: any, amount: number) {

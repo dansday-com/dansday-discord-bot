@@ -586,6 +586,17 @@ async function handleWebhookRequest(req, res) {
 						res.writeHead(500, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify({ ok: false, error: 'use_item failed', details: shopErr.message }));
 					}
+				} else if (payload.type === 'claim_task') {
+					try {
+						const { handleTaskClaim } = await import('./tasks.js');
+						const result = await handleTaskClaim(client, payload);
+						res.writeHead(result.ok ? 200 : 400, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify(result));
+					} catch (taskErr: any) {
+						await logger.log(`❌ claim_task failed: ${taskErr.message}`);
+						res.writeHead(500, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify({ ok: false, error: 'claim_task failed', details: taskErr.message }));
+					}
 				} else if (payload.type === 'buy_item') {
 					try {
 						const { handleItemBuy } = await import('./items.js');

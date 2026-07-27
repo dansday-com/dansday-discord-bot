@@ -1424,6 +1424,144 @@ export async function ensureMemberLevel(memberId: any) {
 	return getMemberLevel(memberId);
 }
 
+export async function getMemberStreak(memberId: any) {
+	await initializeDatabase();
+	const rows = await db
+		.select()
+		.from(schema.serverMemberStreaks)
+		.where(eq(schema.serverMemberStreaks.member_id, Number(memberId)))
+		.limit(1);
+	return rows[0] || null;
+}
+
+export async function ensureMemberStreak(memberId: any) {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	await db
+		.insert(schema.serverMemberStreaks)
+		.values({ member_id: Number(memberId), created_at: now as any, updated_at: now as any })
+		.onDuplicateKeyUpdate({ set: { member_id: Number(memberId) } });
+	return getMemberStreak(memberId);
+}
+
+export async function applyStreakClaim(memberId: any, dayKey: number, freezeMax: number, earnEvery: number) {
+	await initializeDatabase();
+	const existing = await ensureMemberStreak(memberId);
+	const last = existing?.last_claim_day_key == null ? null : Number(existing.last_claim_day_key);
+	if (last === dayKey) return { changed: false, streak: Number(existing?.current_streak) || 0, row: existing };
+
+	const gap = last == null ? null : dayKey - last;
+	let streak = Number(existing?.current_streak) || 0;
+	let freezes = Number(existing?.freezes_available) || 0;
+	let freezeUsed = 0;
+
+	if (gap == null || gap === 1) {
+		streak += 1;
+	} else {
+		const missed = (gap ?? 1) - 1;
+		if (missed > 0 && freezes >= missed) {
+			freezes -= missed;
+			freezeUsed = missed;
+			streak += 1;
+		} else {
+			streak = 1;
+		}
+	}
+
+	const totalClaims = (Number(existing?.total_claims) || 0) + 1;
+	if (earnEvery > 0 && totalClaims % earnEvery === 0) freezes = Math.min(freezeMax, freezes + 1);
+
+	const longest = Math.max(Number(existing?.longest_streak) || 0, streak);
+	const now = toMySQLDateTime();
+	await db
+		.update(schema.serverMemberStreaks)
+		.set({
+			current_streak: streak,
+			longest_streak: longest,
+			last_claim_day_key: dayKey,
+			freezes_available: freezes,
+			total_claims: totalClaims,
+			updated_at: now as any
+		})
+		.where(eq(schema.serverMemberStreaks.member_id, Number(memberId)));
+
+	return { changed: true, streak, freezeUsed, row: await getMemberStreak(memberId) };
+}
+
+export async function getMemberDailyTasks(memberId: any, dayKey: number) {
+	await initializeDatabase();
+	return db
+		.select()
+		.from(schema.serverMemberDailyTasks)
+		.where(and(eq(schema.serverMemberDailyTasks.member_id, Number(memberId)), eq(schema.serverMemberDailyTasks.day_key, Number(dayKey))))
+		.orderBy(schema.serverMemberDailyTasks.slot);
+}
+
+export async function persistMemberDailyTasks(memberId: any, dayKey: number, rows: any[]) {
+	await initializeDatabase();
+	if (!rows || rows.length === 0) return getMemberDailyTasks(memberId, dayKey);
+	const now = toMySQLDateTime();
+	await db
+		.insert(schema.serverMemberDailyTasks)
+		.values(
+			rows.map((r) => ({
+				member_id: Number(memberId),
+				day_key: Number(dayKey),
+				slot: Number(r.slot),
+				task_type: String(r.taskType),
+				difficulty: String(r.difficulty),
+				goal: Number(r.goal) || 1,
+				baseline: Number(r.baseline) || 0,
+				reward_kind: String(r.rewardKind),
+				reward_xp: Number(r.rewardXp) || 0,
+				reward_item_id: r.rewardItemId == null ? null : Number(r.rewardItemId),
+				created_at: now as any
+			})) as any
+		)
+		.onDuplicateKeyUpdate({ set: { day_key: sql`day_key` } });
+	return getMemberDailyTasks(memberId, dayKey);
+}
+
+export async function claimMemberDailyTask(memberId: any, dayKey: number, slot: number) {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	const result: any = await db.execute(
+		sql`UPDATE server_member_daily_tasks SET claimed_at = ${now} WHERE member_id = ${Number(memberId)} AND day_key = ${Number(dayKey)} AND slot = ${Number(slot)} AND claimed_at IS NULL`
+	);
+	const affected = result?.[0]?.affectedRows ?? result?.affectedRows ?? 0;
+	return affected > 0;
+}
+
+export async function countMemberEventsSince(memberId: any, metric: string, sinceMs: number) {
+	await initializeDatabase();
+	const since = toMySQLDateTime(new Date(sinceMs));
+	const id = Number(memberId);
+
+	if (metric === 'gamble_played' || metric === 'gamble_won') {
+		const onlyWins = metric === 'gamble_won' ? sql` AND outcome = 'win'` : sql``;
+		const rows: any = await db.execute(
+			sql`SELECT COUNT(*) AS c FROM server_member_minigame_logs WHERE member_id = ${id} AND created_at >= ${since}${onlyWins}`
+		);
+		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
+	}
+
+	const actionFilter =
+		metric === 'steal_success'
+			? sql`action = 'steal' AND outcome = 'success'`
+			: metric === 'item_used'
+				? sql`action = 'use'`
+				: metric === 'item_bought'
+					? sql`action = 'buy'`
+					: null;
+
+	if (!actionFilter) return 0;
+
+	const rows: any = await db.execute(
+		sql`SELECT COUNT(*) AS c FROM server_member_item_logs WHERE member_id = ${id} AND created_at >= ${since} AND ${actionFilter}`
+	);
+	return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
+}
+
 export async function updateMemberLevelStats(memberId: any, updates: any = {}) {
 	await initializeDatabase();
 	if (!memberId) throw new Error('memberId is required');
@@ -1431,6 +1569,8 @@ export async function updateMemberLevelStats(memberId: any, updates: any = {}) {
 	const clauses: any[] = [];
 
 	if (typeof updates.chatIncrement === 'number' && updates.chatIncrement !== 0) clauses.push(sql`chat_total = chat_total + ${updates.chatIncrement}`);
+	if (typeof updates.reactionsIncrement === 'number' && updates.reactionsIncrement !== 0)
+		clauses.push(sql`reactions_given = GREATEST(0, reactions_given + ${updates.reactionsIncrement})`);
 	if (typeof updates.voiceMinutesActiveIncrement === 'number' && updates.voiceMinutesActiveIncrement !== 0)
 		clauses.push(sql`voice_minutes_active = voice_minutes_active + ${updates.voiceMinutesActiveIncrement}`);
 	if (typeof updates.voiceMinutesAfkIncrement === 'number' && updates.voiceMinutesAfkIncrement !== 0)
@@ -5243,6 +5383,13 @@ export default {
 	getMemberLevel,
 	ensureMemberLevel,
 	updateMemberLevelStats,
+	getMemberStreak,
+	ensureMemberStreak,
+	applyStreakClaim,
+	getMemberDailyTasks,
+	persistMemberDailyTasks,
+	claimMemberDailyTask,
+	countMemberEventsSince,
 	claimVoiceRewardWindow,
 	setMemberLanguage,
 	getMemberLanguage,

@@ -21,7 +21,8 @@
 	const isGuide = $derived(/\/account\/guide\//.test(pathNorm));
 	const isAssets = $derived(/\/account\/assets\//.test(pathNorm));
 	const isMinigames = $derived(/\/account\/minigames\//.test(pathNorm));
-	const isItems = $derived(!isOverview && !isHistory && !isGuide && !isAssets && !isMinigames);
+	const isTask = $derived(/\/account\/task\//.test(pathNorm));
+	const isItems = $derived(!isOverview && !isHistory && !isGuide && !isAssets && !isMinigames && !isTask);
 	const activeCat = $derived.by(() => {
 		const m = pathNorm.match(/\/account\/(?:items|assets|minigames)\/([^/]+)\/[^/]+$/);
 		return m ? m[1] : 'all';
@@ -31,6 +32,8 @@
 		return m ? m[1] : 'all';
 	});
 
+	const taskStreak = $derived(Number(pd.tasks?.streak?.current) || 0);
+	const tasksEnabled = $derived(data.tasksEnabled === true);
 	const itemsEnabled = $derived(data.itemsEnabled === true);
 	const assetsEnabled = $derived(data.assetsEnabled === true);
 	const minigamesEnabled = $derived(data.minigamesEnabled === true);
@@ -431,6 +434,11 @@
 			<a class="m-items-seg" class:m-items-seg--active={isOverview} href="{accountBase}/overview/{navHash}" data-sveltekit-preload-data="hover">
 				<i class="fas fa-gauge-high"></i>Overview
 			</a>
+			{#if tasksEnabled}
+				<a class="m-items-seg" class:m-items-seg--active={isTask} href="{accountBase}/task/{navHash}" data-sveltekit-preload-data="hover">
+					<i class="fas fa-list-check"></i>Task{#if taskStreak > 0}<span class="m-items-count m-items-count--streak">🔥{taskStreak}</span>{/if}
+				</a>
+			{/if}
 			{#if itemsEnabled}
 				<a
 					bind:this={bagTabEl}

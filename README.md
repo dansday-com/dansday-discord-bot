@@ -34,7 +34,8 @@ The project is open source under the MIT license.
   - 🍀 **Luck** - a configurable % boost for a set duration that raises the top end of your steal and bomb rolls and improves your minigame odds, spy success, leech skim, friend boost, and insurance refund, cuts your gift tax, and discounts every shop price while active. Timed buffs lock in your luck when you activate them, so activate luck first.
 - **Assets market (XP paper-trading)** ⭐ _new_ - Members invest earned XP in real-world crypto at live prices (via CoinGecko). XP is locked into a position and tracks the real market; sell any time to realize gains or losses. Search thousands of coins, browse the top 50, gainers and losers, and watch a live portfolio with per-position and total profit/loss. No real money and no real coins — purely an XP game. Designed to extend to other asset types later.
 - **Minigames** ⭐ _new_ - Enabled as a sub-toggle under Public statistics (with its own channel), where members wager XP on games — no items or tickets, free to play. The first game is 🎲 **Gamble**: pick your own multiplier up to 10× and the win chance is set fairly from it (100 ÷ multiplier, so 2× = 50%, 4× = 25%). You can only wager XP earned above your current level, so a loss never drops your level. Wins and losses post to the minigames channel and feed a dedicated Minigames leaderboard. Built to add more games over time.
-- **Leveling & XP** - Message and voice activity feed a full XP system with levels, role rewards, and leaderboards.
+- **Daily tasks & streaks** ⭐ _new_ - Enabled as a sub-toggle under Public statistics. Every member gets 5 auto-generated daily tasks — no admin setup, and no two members get the same list. Tasks are drawn from the activity you already track (messages, reactions, voice, video, streaming, AFK, gambling, stealing, buying and using items), and each set mixes easy, medium and hard. Goals scale to that member's own habits rather than their level, so a quiet member gets a reachable target and a power user gets a real one — and a task never appears for a feature the server has turned off. Rewards are XP or a shop item, with item odds and price bracket rising with difficulty; item value is picked by percentile within your own shop, so a "hard" reward is genuinely a top-tier item no matter how you price things. Clearing all 5 in a day extends a 🔥 **streak** with milestones at 7, 30, 100 and 365 days, announced in the items channel. Two ❄️ **freezes** cover a missed day automatically and refill as you keep claiming. Tasks reset on your server's local clock, not UTC.
+- **Leveling & XP** - Message and voice activity feed a full XP system with levels, role rewards, and leaderboards. Reactions are tracked too, feeding the daily task system.
 - **Welcomer** - Custom welcome messages and embeds for new members.
 - **Giveaways** - Entries, winner selection, and role-based eligibility.
 - **AFK** - Members set AFK status and custom messages; the bot warns when someone is mentioned while away.
@@ -57,7 +58,7 @@ The project is open source under the MIT license.
 
 ### Public web pages
 
-- **Public statistics** - The master switch for all public pages: server statistics, leaderboard, members, and the per-member account (Overview, History, Guide). Items, Minigames and Assets are enabled as sub-toggles here — turn public statistics off and everything public goes dark; with the three sub-features off, the account still shows Overview and History.
+- **Public statistics** - The master switch for all public pages: server statistics, leaderboard, members, and the per-member account (Overview, History, Guide). Items, Minigames, Assets and Daily tasks are enabled as sub-toggles here — turn public statistics off and everything public goes dark; with the four sub-features off, the account still shows Overview and History.
 
 ### Advanced
 
@@ -99,8 +100,10 @@ Versions match `package.json` at release (caret ranges; run `npm ls` for the exa
 
 Environment variables drive database credentials, sessions, captcha, mail, Redis, and bot tokens. Copy **`.env.example`** to **`.env`** and adjust for your deployment.
 
+The official bot requests the Guilds, Message Content, Server Members, Moderation, Voice States and Message Reactions gateway intents. **Server Members** and **Message Content** are privileged — enable both on your application in the Discord Developer Portal or the bot will fail to start.
+
 ---
 
 ## License
 
-MIT · Author: Akbar Yudhanto · Version: 26.3.2
+MIT · Author: Akbar Yudhanto · Version: 26.4.0

@@ -654,6 +654,33 @@ async function announceLeechCredits(guild, victim, credits) {
 	}
 }
 
+async function handleReactionChange(reaction, user, delta) {
+	try {
+		if (!reaction || user?.bot) return;
+
+		if (reaction.partial) {
+			try {
+				reaction = await reaction.fetch();
+			} catch {
+				return;
+			}
+		}
+
+		const guild = reaction.message?.guild;
+		if (!guild) return;
+		if (!(await isComponentFeatureEnabled(guild.id, serverSettingsComponent.leveling))) return;
+
+		const { dbMember, guildMember } = await resolveServerAndMember(guild, { id: user.id, user });
+		if (!dbMember || !guildMember) return;
+		if (!(await isMemberEligible(guild.id, guildMember))) return;
+
+		await db.ensureMemberLevel(dbMember.id);
+		await db.updateMemberLevelStats(dbMember.id, { reactionsIncrement: delta });
+	} catch (error) {
+		await logger.log(`⚠️ Reaction tracking error: ${error.message}`);
+	}
+}
+
 async function handleMessageCreate(message) {
 	try {
 		if (!message?.guild || message.author?.bot) return;
@@ -1190,6 +1217,8 @@ async function resumeVoiceSessions(client) {
 function init(client) {
 	clientInstance = client;
 	client.on('messageCreate', handleMessageCreate);
+	client.on('messageReactionAdd', (reaction, user) => handleReactionChange(reaction, user, 1));
+	client.on('messageReactionRemove', (reaction, user) => handleReactionChange(reaction, user, -1));
 
 	if (client.isReady()) {
 		resumeVoiceSessions(client);

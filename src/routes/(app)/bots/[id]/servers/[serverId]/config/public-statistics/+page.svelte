@@ -14,6 +14,7 @@
 	let itemsEnabled = $state(data.settings?.items_enabled === true);
 	let minigamesEnabled = $state(data.settings?.minigames_enabled === true);
 	let assetsEnabled = $state(data.settings?.assets_enabled === true);
+	let tasksEnabled = $state(data.settings?.tasks_enabled === true);
 	let itemsChannel = $state<string>(data.settings?.ITEMS_CHANNEL_ID ?? '');
 	let minigamesChannel = $state<string>(data.settings?.MINIGAMES_CHANNEL_ID ?? '');
 
@@ -34,6 +35,7 @@
 					items_enabled: itemsEnabled,
 					minigames_enabled: minigamesEnabled,
 					assets_enabled: assetsEnabled,
+					tasks_enabled: tasksEnabled,
 					ITEMS_CHANNEL_ID: itemsChannel,
 					MINIGAMES_CHANNEL_ID: minigamesChannel
 				})
@@ -132,6 +134,16 @@
 					labelIconClass="fas fa-chart-line text-sky-400"
 					bind:enabled={assetsEnabled}
 					ariaLabel="Toggle assets"
+				/>
+			</div>
+
+			<div class="space-y-3">
+				<ConfigToggleRow
+					label="Daily tasks"
+					description="Auto-generated daily goals and streaks. Rewards XP or shop items. Milestone streaks post to the item events channel."
+					labelIconClass="fas fa-list-check text-emerald-400"
+					bind:enabled={tasksEnabled}
+					ariaLabel="Toggle daily tasks"
 				/>
 			</div>
 		</div>

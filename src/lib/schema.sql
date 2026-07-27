@@ -261,6 +261,7 @@ CREATE TABLE IF NOT EXISTS server_member_levels (
     id INT PRIMARY KEY AUTO_INCREMENT,
     member_id INT NOT NULL,
     chat_total INT DEFAULT 0,
+    reactions_given INT DEFAULT 0,
     voice_minutes_total INT DEFAULT 0,
     voice_minutes_active INT DEFAULT 0,
     voice_minutes_afk INT DEFAULT 0,
@@ -582,6 +583,39 @@ CREATE TABLE IF NOT EXISTS server_member_minigame_logs (
     FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS server_member_daily_tasks (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    member_id INT NOT NULL,
+    day_key INT NOT NULL,
+    slot TINYINT NOT NULL,
+    task_type VARCHAR(32) NOT NULL,
+    difficulty VARCHAR(8) NOT NULL,
+    goal INT NOT NULL DEFAULT 1,
+    baseline INT NOT NULL DEFAULT 0,
+    reward_kind VARCHAR(8) NOT NULL,
+    reward_xp INT NOT NULL DEFAULT 0,
+    reward_item_id INT NULL,
+    claimed_at DATETIME NULL,
+    created_at DATETIME NOT NULL,
+    UNIQUE KEY unique_server_member_daily_task (member_id, day_key, slot),
+    FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE,
+    FOREIGN KEY (reward_item_id) REFERENCES items(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS server_member_streaks (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    member_id INT NOT NULL,
+    current_streak INT NOT NULL DEFAULT 0,
+    longest_streak INT NOT NULL DEFAULT 0,
+    last_claim_day_key INT NULL,
+    freezes_available INT NOT NULL DEFAULT 2,
+    total_claims INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    UNIQUE KEY unique_member_streak (member_id),
+    FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS server_member_level_friends (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     member_a_id INT NOT NULL,
@@ -713,6 +747,8 @@ CREATE INDEX IF NOT EXISTS idx_server_member_item_logs_target ON server_member_i
 CREATE INDEX IF NOT EXISTS idx_server_member_item_logs_action_created ON server_member_item_logs(action, created_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_item_logs_action_member ON server_member_item_logs(action, member_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_item_logs_action_target ON server_member_item_logs(action, target_member_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_server_member_daily_tasks_member ON server_member_daily_tasks(member_id, day_key);
+CREATE INDEX IF NOT EXISTS idx_server_member_streaks_member ON server_member_streaks(member_id);
 CREATE INDEX IF NOT EXISTS idx_server_member_minigame_logs_member ON server_member_minigame_logs(member_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_minigame_logs_created ON server_member_minigame_logs(created_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_item_bounties_target ON server_member_item_bounties(target_member_id, collected);

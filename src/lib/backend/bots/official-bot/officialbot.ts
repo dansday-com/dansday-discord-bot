@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits } from 'discord.js';
+import { Client, GatewayIntentBits, Partials } from 'discord.js';
 import { getBotToken, initializeConfig } from '../../config.js';
 import { applyDiscordPresenceFromDb } from './applyDiscordPresence.js';
 import { logger } from '../../../utils/index.js';
@@ -41,8 +41,10 @@ const client = new Client({
 		GatewayIntentBits.MessageContent,
 		GatewayIntentBits.GuildMembers,
 		GatewayIntentBits.GuildModeration,
-		GatewayIntentBits.GuildVoiceStates
-	]
+		GatewayIntentBits.GuildVoiceStates,
+		GatewayIntentBits.GuildMessageReactions
+	],
+	partials: [Partials.Message, Partials.Channel, Partials.Reaction]
 });
 
 let initialized = false;

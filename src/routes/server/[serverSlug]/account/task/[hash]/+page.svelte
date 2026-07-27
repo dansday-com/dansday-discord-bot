@@ -60,6 +60,11 @@
 		resetAt = Date.now() + (Number(next.resetsInMs) || 0);
 		weeklyResetAt = Date.now() + (Number(next.weeklyResetsInMs) || 0);
 		ctx.setTaskSummary?.(next.streak ?? null);
+
+		if (next.streakEarned && next.streakMilestone) {
+			celebrate = { streak: next.streak.current, emoji: next.streakMilestone.emoji, label: next.streakMilestone.label };
+			setTimeout(() => (celebrate = null), 6000);
+		}
 	}
 
 	const dailyTasks = $derived((live?.daily ?? []) as any[]);

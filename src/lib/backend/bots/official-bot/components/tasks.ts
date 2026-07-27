@@ -164,6 +164,7 @@ export async function handleTaskClaim(client: any, payload: any) {
 	if (!memberId) return { ok: false, error: 'member_not_found' };
 
 	const tzOffsetMin = Number(tz_offset) || 0;
+	await db.ensureMemberStreak(memberId, tzOffsetMin).catch(() => null);
 	const nowMs = Date.now();
 	const dayKey = dayKeyFor(nowMs, tzOffsetMin);
 	const weekKey = weekKeyFor(nowMs, tzOffsetMin);
@@ -209,12 +210,10 @@ export async function handleTaskClaim(client: any, payload: any) {
 
 	let streakResult: any = null;
 	let milestone: any = null;
-	if (allClaimed && period === 'daily') {
-		streakResult = await db.applyStreakClaim(memberId, dayKey, STREAK_FREEZE_MAX, STREAK_FREEZE_EARN_EVERY).catch(() => null);
-		if (streakResult?.changed) {
-			milestone = streakMilestone(Number(streakResult.streak) || 0);
-			await announceStreak(client, guild_id, actor_discord_id, streakResult, milestone).catch(() => null);
-		}
+	streakResult = await db.applyStreakDay(memberId, dayKey, STREAK_FREEZE_MAX, STREAK_FREEZE_EARN_EVERY).catch(() => null);
+	if (streakResult?.changed) {
+		milestone = streakMilestone(Number(streakResult.streak) || 0);
+		await announceStreak(client, guild_id, actor_discord_id, streakResult, milestone).catch(() => null);
 	}
 
 	return {
@@ -234,7 +233,7 @@ export async function handleTaskClaim(client: any, payload: any) {
 	};
 }
 
-async function announceStreak(client: any, guildId: any, discordMemberId: any, streakResult: any, milestone: any) {
+export async function announceStreak(client: any, guildId: any, discordMemberId: any, streakResult: any, milestone: any) {
 	if (!milestone) return;
 
 	const { getItemsChannelId, getEmbedConfig } = await import('../../../config.js');
@@ -256,7 +255,7 @@ async function announceStreak(client: any, guildId: any, discordMemberId: any, s
 	const embed = new EmbedBuilder()
 		.setColor(effectAccentInt('luck'))
 		.setTitle(`${milestone.emoji} ${milestone.label} Streak`)
-		.setDescription(`${member} just hit a **${streak}-day** streak by clearing every daily task!`)
+		.setDescription(`${member} just hit a **${streak}-day** streak!`)
 		.setFooter({ text: embedConfig.FOOTER || 'Tasks' })
 		.setTimestamp();
 

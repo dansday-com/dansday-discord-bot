@@ -110,7 +110,7 @@
 				{ icon: 'fa-calendar-check', title: 'Check in', desc: 'Claim one day of the 7-day cycle. Day 7 is the jackpot.' },
 				{ icon: 'fa-bolt', title: 'Just play', desc: 'Chat, voice, gamble, trade or attack — progress tracks itself.' },
 				{ icon: 'fa-gift', title: 'Claim rewards', desc: 'Finished tasks pay XP or a shop item, and items need bag space.' },
-				{ icon: 'fa-fire', title: 'Keep the streak', desc: 'Clear all nine dailies for +2% task XP per streak day, up to +100%.' }
+				{ icon: 'fa-fire', title: 'Keep the streak', desc: 'Finish any one task — daily or weekly — to bank the day. +2% task XP per streak day, up to +100%.' }
 			],
 			cards: [
 				{ icon: 'fa-sun', accent: '#c8911a', title: '9 tasks every day', desc: 'Three easy, four medium, two hard, reset at midnight on your own clock.' },
@@ -183,7 +183,7 @@
 		{ icon: 'fa-crosshairs', accent: effectAccentHex('bounty'), text: 'Placed a Bounty? Land the hit yourself before someone else cashes in.' },
 		{ icon: 'fa-shield-halved', accent: effectAccentHex('insurance'), text: 'Insurance only pays on your next loss, so use it just before you expect a hit.' },
 		{ icon: 'fa-handshake', accent: '#2f8f4e', text: 'Grind voice with friends — every member in the channel adds +10% voice XP.' },
-		{ icon: 'fa-fire', accent: '#d35400', text: 'Check in and clear your dailies first — a longer streak grows every later reward.' },
+		{ icon: 'fa-fire', accent: '#d35400', text: 'Finish at least one task a day — a longer streak grows every later reward.' },
 		{ icon: 'fa-calendar-week', accent: '#7b5ea7', text: 'Aim your week at the weekly tasks; the same activity clears your dailies too.' },
 		{ icon: 'fa-list-check', accent: '#1a7f57', text: 'Tasks that ask you to buy or use items pay back more XP than they cost.' },
 		{ icon: 'fa-chart-line', accent: '#245f73', text: 'Park XP in an asset to hide it from attacks, but watch the price.' }

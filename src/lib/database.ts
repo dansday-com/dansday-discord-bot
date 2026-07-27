@@ -1435,17 +1435,34 @@ export async function getMemberStreak(memberId: any) {
 	return rows[0] || null;
 }
 
-export async function ensureMemberStreak(memberId: any) {
+export async function ensureMemberStreak(memberId: any, tzOffsetMin?: number) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
+	const tz = Number.isFinite(Number(tzOffsetMin)) ? Number(tzOffsetMin) : null;
 	await db
 		.insert(schema.serverMemberStreaks)
-		.values({ member_id: Number(memberId), created_at: now as any, updated_at: now as any })
-		.onDuplicateKeyUpdate({ set: { member_id: Number(memberId) } });
+		.values({ member_id: Number(memberId), tz_offset_min: tz ?? 0, created_at: now as any, updated_at: now as any })
+		.onDuplicateKeyUpdate({ set: tz == null ? { member_id: Number(memberId) } : { tz_offset_min: tz } });
 	return getMemberStreak(memberId);
 }
 
-export async function applyStreakClaim(memberId: any, dayKey: number, freezeMax: number, earnEvery: number) {
+let streakWatchDepth = 0;
+
+export function triggerStreakWatch(memberId: any) {
+	if (!memberId || streakWatchDepth > 0) return;
+	setImmediate(async () => {
+		streakWatchDepth++;
+		try {
+			const { bankStreakIfEarned } = await import('./backend/streak-watch.js');
+			await bankStreakIfEarned(memberId);
+		} catch {
+		} finally {
+			streakWatchDepth--;
+		}
+	});
+}
+
+export async function applyStreakDay(memberId: any, dayKey: number, freezeMax: number, earnEvery: number) {
 	await initializeDatabase();
 	const existing = await ensureMemberStreak(memberId);
 	const last = existing?.last_claim_day_key == null ? null : Number(existing.last_claim_day_key);
@@ -1828,6 +1845,16 @@ export async function updateMemberLevelStats(memberId: any, updates: any = {}) {
 	clauses.push(sql`updated_at = ${toMySQLDateTime()}`);
 
 	await db.execute(sql`UPDATE server_member_levels SET ${sql.join(clauses, sql`, `)} WHERE member_id = ${Number(memberId)}`);
+
+	const movedTaskMetric =
+		typeof updates.chatIncrement === 'number' ||
+		typeof updates.reactionsIncrement === 'number' ||
+		typeof updates.voiceMinutesActiveIncrement === 'number' ||
+		typeof updates.voiceMinutesAfkIncrement === 'number' ||
+		typeof updates.voiceMinutesVideoIncrement === 'number' ||
+		typeof updates.voiceMinutesStreamingIncrement === 'number';
+	if (movedTaskMetric) triggerStreakWatch(memberId);
+
 	return getMemberLevel(memberId);
 }
 
@@ -2294,6 +2321,7 @@ export async function logMemberItemAction(memberId: any, data: any = {}) {
 		actor_disguised: data.actor_disguised ? 1 : 0,
 		created_at: toMySQLDateTime() as any
 	});
+	triggerStreakWatch(memberId);
 	return true;
 }
 
@@ -2312,6 +2340,7 @@ export async function logMinigameAction(memberId: any, data: any = {}) {
 		luck_percent: data.luck_percent != null ? (String(data.luck_percent) as any) : null,
 		created_at: toMySQLDateTime() as any
 	});
+	triggerStreakWatch(memberId);
 	return true;
 }
 
@@ -2448,6 +2477,7 @@ export async function logMemberLevelGain(memberId: any, data: any = {}) {
 		luck_percent: data.luck_percent != null ? Number(data.luck_percent) : null,
 		created_at: toMySQLDateTime() as any
 	});
+	triggerStreakWatch(memberId);
 	return true;
 }
 
@@ -2625,6 +2655,7 @@ export async function logAssetEvent(data: {
 		net: Number(data.net) || 0,
 		created_at: toMySQLDateTime() as any
 	});
+	triggerStreakWatch(data.member_id);
 	return true;
 }
 
@@ -5606,7 +5637,8 @@ export default {
 	updateMemberLevelStats,
 	getMemberStreak,
 	ensureMemberStreak,
-	applyStreakClaim,
+	applyStreakDay,
+	triggerStreakWatch,
 	getMemberTasks,
 	persistMemberTasks,
 	claimMemberTask,

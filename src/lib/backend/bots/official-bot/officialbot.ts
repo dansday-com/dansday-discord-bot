@@ -18,6 +18,7 @@ import contentCreator from './components/interface/contentcreator.js';
 import questNotifier from './components/questNotifier.js';
 import { initRobloxCatalogNotifier, stopRobloxCatalogNotifier } from './components/robloxCatalogNotifier.js';
 import { initExpirySweeper, stopExpirySweeper } from './components/items.js';
+import { initStreakWatch } from '../../streak-watch.js';
 import { startAssetMarketPoller, stopAssetMarketPoller } from './components/assetMarket.js';
 import { acquireBotSingletonLock, type BotSingletonLock } from '../botSingletonLock.js';
 
@@ -90,6 +91,7 @@ client.on('clientReady', async () => {
 	questNotifier.initQuestNotifier(client, officialBotId);
 	initRobloxCatalogNotifier(client, officialBotId);
 	initExpirySweeper(client);
+	initStreakWatch(client);
 	startAssetMarketPoller(String(officialBotId));
 	webhook.startWebhookServer(client, officialBotId);
 });

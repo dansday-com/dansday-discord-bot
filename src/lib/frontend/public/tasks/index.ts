@@ -21,6 +21,7 @@ import {
 	RECENT_WINDOW_DAYS,
 	MEASURED_METRICS,
 	nextMilestone,
+	streakMilestone,
 	loginCyclePreview,
 	type TaskEligibility,
 	type TaskMetric,
@@ -223,7 +224,7 @@ export async function loadTasksShared(opts: {
 	const weekStartMs = weekStartDayKey(weekKey) * 86400000 + tzOffsetMin * 60000;
 
 	const levels = (await db.ensureMemberLevel(member.id).catch(() => null)) as any;
-	const streakRow = (await db.ensureMemberStreak(member.id).catch(() => null)) as any;
+	const streakRow = (await db.ensureMemberStreak(member.id, opts.tzKnown !== false ? tzOffsetMin : undefined).catch(() => null)) as any;
 	const loginRow = (await db.ensureMemberClaim(member.id).catch(() => null)) as any;
 
 	const baselines: Partial<Record<TaskMetric, number>> = {
@@ -261,6 +262,12 @@ export async function loadTasksShared(opts: {
 	const daily = await buildPeriod({ ...shared, period: 'daily', periodKey: dayKey, windowStartMs: dayStartMs });
 	const weekly = await buildPeriod({ ...shared, period: 'weekly', periodKey: weekKey, windowStartMs: weekStartMs });
 
+	const completedToday = daily.some((t) => t.complete) || weekly.some((t) => t.complete);
+	const earnedStreak =
+		completedToday && Number(streakRow?.last_claim_day_key) !== dayKey
+			? await db.applyStreakDay(member.id, dayKey, STREAK_FREEZE_MAX, STREAK_FREEZE_EARN_EVERY).catch(() => null)
+			: null;
+
 	return {
 		dayKey,
 		weekKey,
@@ -269,7 +276,9 @@ export async function loadTasksShared(opts: {
 		daily,
 		weekly,
 		tasks: daily,
-		streak: shapeStreak(streakRow),
+		streak: shapeStreak(earnedStreak?.row ?? streakRow),
+		streakEarned: !!earnedStreak?.changed,
+		streakMilestone: earnedStreak?.changed ? streakMilestone(Number(earnedStreak.streak) || 0) : null,
 		login: shapeLogin(loginRow, member, dayKey, catalog, await memberDailyEarn(member.id), opts.tzKnown !== false),
 		allClaimed: daily.length > 0 && daily.every((t) => t.claimed),
 		empty: daily.length === 0 && weekly.length === 0

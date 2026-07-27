@@ -59,18 +59,14 @@
 		synced = true;
 		resetAt = Date.now() + (Number(next.resetsInMs) || 0);
 		weeklyResetAt = Date.now() + (Number(next.weeklyResetsInMs) || 0);
+		ctx.setTaskSummary?.(next.streak ?? null);
 	}
 
 	const dailyTasks = $derived((live?.daily ?? []) as any[]);
 	const weeklyTasks = $derived((live?.weekly ?? []) as any[]);
 	const tasks = $derived(tab === 'weekly' ? weeklyTasks : dailyTasks);
 	const login = $derived(live?.login ?? { rewards: [], canClaim: false, nextDay: 1, cycleDays: 7 });
-	const streak = $derived(
-		live?.streak ?? { current: 0, longest: 0, freezes: 0, freezeMax: 2, nextMilestone: { at: 7, label: 'One week', emoji: '🔥' }, toNextMilestone: 7 }
-	);
 	const doneCount = $derived(dailyTasks.filter((t) => t.claimed).length);
-	const readyCount = $derived([...dailyTasks, ...weeklyTasks].filter((t) => t.complete && !t.claimed).length);
-	const allDone = $derived(dailyTasks.length > 0 && doneCount === dailyTasks.length);
 	const weeklyDone = $derived(weeklyTasks.filter((t) => t.claimed).length);
 
 	const countdown = $derived.by(() => {
@@ -87,21 +83,6 @@
 		const h = Math.floor((ms % 86400000) / 3600000);
 		const m = Math.floor((ms % 3600000) / 60000);
 		return d > 0 ? `${d}d ${h}h` : `${h}h ${m}m`;
-	});
-
-	const milestoneTrack = $derived.by(() => {
-		const marks = [7, 30, 100, 365];
-		const cur = Number(streak.current) || 0;
-		return marks.map((at) => ({ at, reached: cur >= at }));
-	});
-
-	const streakPct = $derived.by(() => {
-		const cur = Number(streak.current) || 0;
-		const next = Number(streak.nextMilestone?.at) || 7;
-		const prevMarks = [0, 7, 30, 100, 365].filter((m) => m < next);
-		const prev = prevMarks.length ? prevMarks[prevMarks.length - 1] : 0;
-		const span = Math.max(1, next - prev);
-		return Math.max(0, Math.min(100, ((cur - prev) / span) * 100));
 	});
 
 	function ringDash(t: any) {
@@ -186,58 +167,6 @@
 <svelte:head><title>Daily Tasks — {data.server.name}</title></svelte:head>
 
 <div class="m-task">
-	<section class="m-task-hero" class:m-task-hero--lit={Number(streak.current) > 0}>
-		<div class="m-task-flame">
-			<div class="m-task-flame-emoji">{Number(streak.current) > 0 ? '🔥' : '🌑'}</div>
-			<div class="m-task-flame-num">{streak.current}</div>
-			<div class="m-task-flame-lbl">day streak</div>
-		</div>
-
-		<div class="m-task-heroinfo">
-			<div class="m-task-herotop">
-				<div>
-					<h2>{allDone ? 'All tasks cleared today' : `${doneCount}/${tasks.length} tasks claimed`}</h2>
-					<p>
-						{#if allDone}
-							Come back tomorrow to keep the streak alive.
-						{:else if readyCount > 0}
-							{readyCount} reward{readyCount === 1 ? '' : 's'} waiting to be claimed.
-						{:else}
-							Finish your daily tasks to extend your streak.
-						{/if}
-					</p>
-				</div>
-				<div class="m-task-reset">
-					<span class="m-task-reset-lbl">Resets in</span>
-					<span class="m-task-reset-val">{countdown}</span>
-				</div>
-			</div>
-
-			<div class="m-task-milestone">
-				<div class="m-task-mbar">
-					<div class="m-task-mfill" style="width:{streakPct}%"></div>
-					{#each milestoneTrack as m}
-						<span class="m-task-mdot" class:m-task-mdot--hit={m.reached} style="left:{Math.min(100, (m.at / 365) * 100)}%" title="{m.at} days"></span>
-					{/each}
-				</div>
-				<div class="m-task-mmeta">
-					<span><strong>{streak.toNextMilestone}</strong> days to {streak.nextMilestone?.emoji} {streak.nextMilestone?.label}</span>
-					<span class="m-task-freeze" title="Freezes cover a missed day automatically">
-						{#each Array(streak.freezeMax) as _, i}
-							<i class="fas fa-snowflake" class:m-task-freeze--off={i >= streak.freezes}></i>
-						{/each}
-					</span>
-				</div>
-			</div>
-
-			<div class="m-task-stats">
-				<div><span>Longest</span><strong>{streak.longest} days</strong></div>
-				<div><span>Freezes</span><strong>{streak.freezes}/{streak.freezeMax}</strong></div>
-				<div><span>Today</span><strong>{doneCount}/{tasks.length}</strong></div>
-			</div>
-		</div>
-	</section>
-
 	<section class="m-task-login">
 		<div class="m-task-loginhead">
 			<div>

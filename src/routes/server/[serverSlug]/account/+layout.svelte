@@ -32,7 +32,7 @@
 		return m ? m[1] : 'all';
 	});
 
-	const taskStreak = $derived(Number(pd.tasks?.streak?.current) || 0);
+	const taskStreak = $derived(Number(taskSummary?.current) || 0);
 	const tasksEnabled = $derived(data.tasksEnabled === true);
 	const itemsEnabled = $derived(data.itemsEnabled === true);
 	const assetsEnabled = $derived(data.assetsEnabled === true);
@@ -63,6 +63,19 @@
 	function setAssetSummary(s: any) {
 		assetSummaryLive = s;
 	}
+
+	let taskSummaryLive = $state<any>(null);
+	function setTaskSummary(s: any) {
+		taskSummaryLive = s;
+	}
+	const taskSummary = $derived(taskSummaryLive ?? pd.tasks?.streak ?? null);
+	const streakPct = $derived.by(() => {
+		const cur = Number(taskSummary?.current) || 0;
+		const next = Number(taskSummary?.nextMilestone?.at) || 7;
+		const prevMarks = [0, 7, 30, 100, 365].filter((m) => m < next);
+		const prev = prevMarks.length ? prevMarks[prevMarks.length - 1] : 0;
+		return Math.max(0, Math.min(100, ((cur - prev) / Math.max(1, next - prev)) * 100));
+	});
 	const assetSummary = $derived.by(() => {
 		if (assetSummaryLive) return assetSummaryLive;
 		const invested = Number(pd.totalInvested) || 0;
@@ -308,6 +321,7 @@
 		setBusy,
 		setBurst,
 		setAssetSummary,
+		setTaskSummary,
 		invalidateAll,
 		get busy() {
 			return busy;
@@ -359,17 +373,24 @@
 			</div>
 			<div class="m-xp-figures">
 				<span class="m-xp-wallet"
-					><i class="fas {isOverview ? 'fa-user' : isAssets ? 'fa-chart-line' : 'fa-wallet'}"></i>{isOverview
+					><i class="fas {isOverview ? 'fa-user' : isAssets ? 'fa-chart-line' : isTask ? 'fa-fire' : 'fa-wallet'}"></i>{isOverview
 						? 'Profile'
 						: isAssets
 							? 'Invested in Assets'
-							: 'Wallet'}</span
+							: isTask
+								? 'Daily streak'
+								: 'Wallet'}</span
 				>
 				{#if pd.memberName}<span class="m-xp-name">{pd.memberName}</span>{/if}
-				<span class="m-xp-amount" class:m-xp-amount--hidden={isOverview}>{fmt(isAssets ? assetSummary.invested : liveXp)}<span class="m-xp-unit">XP</span></span
-				>
+				{#if isTask}
+					<span class="m-xp-amount">{taskSummary?.current ?? 0}<span class="m-xp-unit">{(taskSummary?.current ?? 0) === 1 ? 'DAY' : 'DAYS'}</span></span>
+				{:else}
+					<span class="m-xp-amount" class:m-xp-amount--hidden={isOverview}
+						>{fmt(isAssets ? assetSummary.invested : liveXp)}<span class="m-xp-unit">XP</span></span
+					>
+				{/if}
 				<div class="m-xp-bar" class:m-xp-bar--hidden={isAssets || isOverview}>
-					<div class="m-xp-bar-fill" style="width: {levelInfo.pct}%"></div>
+					<div class="m-xp-bar-fill" style="width: {isTask ? streakPct : levelInfo.pct}%"></div>
 				</div>
 				<span class="m-xp-bar-meta">
 					{#if isOverview}
@@ -380,6 +401,9 @@
 					{:else if isAssets}
 						<span>{assetSummary.count} asset{assetSummary.count === 1 ? '' : 's'}</span>
 						<span>Worth {fmt(assetSummary.value)} XP</span>
+					{:else if isTask}
+						<span>{taskSummary?.toNextMilestone ?? 0} to {taskSummary?.nextMilestone?.emoji ?? '🔥'} {taskSummary?.nextMilestone?.label ?? 'One week'}</span>
+						<span>Best {taskSummary?.longest ?? 0}d · {taskSummary?.freezes ?? 0}/{taskSummary?.freezeMax ?? 2} ❄</span>
 					{:else}
 						<span>Lvl {level}</span>
 						<span>{levelInfo.toNext > 0 ? `${fmt(levelInfo.toNext)} XP to Lvl ${level + 1}` : 'Max progress'}</span>

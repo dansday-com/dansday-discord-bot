@@ -1,10 +1,12 @@
 import db from '../database.js';
 import { TASK_BY_ID, STREAK_FREEZE_MAX, STREAK_FREEZE_EARN_EVERY, streakMilestone, dayKeyFor, weekKeyFor, weekStartDayKey, type TaskMetric } from '../tasks.js';
 
-let announceClient: any = null;
+type StreakAnnouncer = (guildId: string, discordMemberId: string, streakResult: any, milestone: any) => Promise<any>;
 
-export function initStreakWatch(client: any) {
-	announceClient = client;
+let announcer: StreakAnnouncer | null = null;
+
+export function initStreakWatch(fn: StreakAnnouncer) {
+	announcer = fn;
 }
 
 const COUNTER_METRICS = new Set<TaskMetric>([
@@ -70,12 +72,11 @@ export async function bankStreakIfEarned(memberId: any, opts: { tzOffsetMin?: nu
 		if (!result?.changed) return null;
 
 		const milestone = streakMilestone(Number(result.streak) || 0);
-		if (milestone && announceClient) {
+		if (milestone && announcer) {
 			const member = await db.getServerMemberById(id).catch(() => null);
 			const server = member ? await db.getServer(member.server_id).catch(() => null) : null;
 			if (server?.discord_server_id) {
-				const { announceStreak } = await import('./bots/official-bot/components/tasks.js');
-				await announceStreak(announceClient, server.discord_server_id, member.discord_member_id, result, milestone).catch(() => null);
+				await announcer(String(server.discord_server_id), String(member.discord_member_id), result, milestone).catch(() => null);
 			}
 		}
 

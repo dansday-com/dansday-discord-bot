@@ -1373,6 +1373,20 @@ export type TaskEligibility = {
 export const RECENT_WINDOW_DAYS = 7;
 export const ACHIEVABLE_SHARE = 0.9;
 
+export function taskCapacity(def: TaskDefinition, elig: TaskEligibility, period: TaskPeriod): number | null {
+	if (!def.baselineKey) return null;
+	const measured = elig.recentDaily?.[def.baselineKey];
+	if (measured == null || !Number.isFinite(measured) || measured <= 0) return null;
+	return Math.round(measured * (period === 'weekly' ? 7 : 1) * ACHIEVABLE_SHARE);
+}
+
+export function isViableFor(def: TaskDefinition, difficulty: TaskDifficulty, elig: TaskEligibility, period: TaskPeriod): boolean {
+	const capacity = taskCapacity(def, elig, period);
+	if (capacity == null) return true;
+	const scale = period === 'weekly' ? (def.weeklyScale ?? WEEKLY_GOAL_MULTIPLIER) : 1;
+	return capacity >= Math.round(def.minGoal[difficulty] * scale);
+}
+
 export const MEASURED_METRICS: TaskMetric[] = [
 	'xp_gained',
 	'xp_from_voice',
@@ -1514,14 +1528,8 @@ export function goalFor(
 
 	let goal = Math.max(min, Math.min(max, scaled || min));
 
-	if (def.baselineKey) {
-		const measured = elig.recentDaily?.[def.baselineKey];
-		if (measured != null && Number.isFinite(measured) && measured > 0) {
-			const days = period === 'weekly' ? 7 : 1;
-			const capacity = Math.round(measured * days * ACHIEVABLE_SHARE);
-			if (capacity >= 1) goal = Math.min(goal, capacity);
-		}
-	}
+	const capacity = taskCapacity(def, elig, period);
+	if (capacity != null && capacity >= min) goal = Math.min(goal, capacity);
 
 	const unitCost = def.costIsGoal
 		? (def.costFactor ?? 1)
@@ -1566,14 +1574,16 @@ export function generateDailyTasks(
 		const wanted = plan[slot];
 		const rand = mulberry32(hashSeed(period, memberId, serverId, periodKey, slot));
 
-		let candidates = pool.filter((d) => d.difficulties.includes(wanted) && !used.has(d.id));
+		let candidates = pool.filter((d) => d.difficulties.includes(wanted) && !used.has(d.id) && isViableFor(d, wanted, elig, period));
 		let difficulty = wanted;
 
 		if (candidates.length === 0) {
-			candidates = pool.filter((d) => !used.has(d.id));
-			if (candidates.length === 0) break;
-			const fb = candidates[Math.floor(rand() * candidates.length) % candidates.length];
-			difficulty = fb.difficulties.includes(wanted) ? wanted : fb.difficulties[fb.difficulties.length - 1];
+			const fallback = pool.filter((d) => !used.has(d.id) && d.difficulties.some((diff) => isViableFor(d, diff, elig, period)));
+			if (fallback.length === 0) break;
+			const fb = fallback[Math.floor(rand() * fallback.length) % fallback.length];
+			const options = fb.difficulties.filter((diff) => isViableFor(fb, diff, elig, period));
+			difficulty = options.includes(wanted) ? wanted : options[options.length - 1];
+			candidates = [fb];
 		}
 
 		const pick = candidates[Math.floor(rand() * candidates.length) % candidates.length];

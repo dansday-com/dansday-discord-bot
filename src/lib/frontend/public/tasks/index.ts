@@ -212,6 +212,7 @@ export async function loadTasksShared(opts: {
 	tzOffsetMin: number;
 	nowMs?: number;
 	generate?: boolean;
+	tzKnown?: boolean;
 }) {
 	const { server, member, itemsEnabled, minigamesEnabled, tzOffsetMin } = opts;
 	const assetsEnabled = opts.assetsEnabled === true;
@@ -269,7 +270,7 @@ export async function loadTasksShared(opts: {
 		weekly,
 		tasks: daily,
 		streak: shapeStreak(streakRow),
-		login: shapeLogin(loginRow, member, dayKey, catalog, await memberDailyEarn(member.id)),
+		login: shapeLogin(loginRow, member, dayKey, catalog, await memberDailyEarn(member.id), opts.tzKnown !== false),
 		allClaimed: daily.length > 0 && daily.every((t) => t.claimed),
 		empty: daily.length === 0 && weekly.length === 0
 	};
@@ -281,7 +282,7 @@ export async function memberDailyEarn(memberId: any): Promise<number> {
 	return Math.max(0, Number(total) || 0) / RECENT_WINDOW_DAYS;
 }
 
-function shapeLogin(row: any, member: any, dayKey: number, catalog: { id: number; cost: number }[], dailyEarn = 0) {
+function shapeLogin(row: any, member: any, dayKey: number, catalog: { id: number; cost: number }[], dailyEarn = 0, tzKnown = true) {
 	const cycleDay = Number(row?.cycle_day) || 0;
 	const last = row?.last_claim_day_key == null ? null : Number(row.last_claim_day_key);
 	const cyclesCompleted = Number(row?.cycles_completed) || 0;
@@ -289,18 +290,20 @@ function shapeLogin(row: any, member: any, dayKey: number, catalog: { id: number
 	const broken = last != null && last < dayKey - 1;
 	const nextDay = broken || cycleDay >= LOGIN_CYCLE_DAYS ? 1 : cycleDay + 1;
 	const claimedToday = last === dayKey;
+	const canClaim = tzKnown && !claimedToday;
 
 	const rewards = loginCyclePreview(Number(member.id), cyclesCompleted, catalog, dailyEarn).map((r) => ({
 		...r,
 		claimed: !claimedToday && r.day < nextDay ? true : claimedToday && r.day <= cycleDay,
-		current: !claimedToday && r.day === nextDay
+		current: canClaim && r.day === nextDay
 	}));
 
 	return {
 		cycleDay,
 		nextDay,
 		claimedToday,
-		canClaim: !claimedToday,
+		canClaim,
+		tzKnown,
 		cycleDays: LOGIN_CYCLE_DAYS,
 		cyclesCompleted,
 		rewards

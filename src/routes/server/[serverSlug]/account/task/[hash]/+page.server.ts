@@ -26,7 +26,8 @@ export const load: PageServerLoad = async ({ parent, params, cookies }) => {
 		minigamesEnabled: minigamesEnabled === true,
 		assetsEnabled: assetsEnabled === true,
 		tzOffsetMin,
-		generate: knownTz
+		generate: knownTz,
+		tzKnown: knownTz
 	});
 
 	return { ...shared, tasks };

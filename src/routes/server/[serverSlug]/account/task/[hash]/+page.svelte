@@ -166,20 +166,40 @@
 
 <svelte:head><title>Daily Tasks — {data.server.name}</title></svelte:head>
 
+{#snippet dayFace(r: any, busy: boolean)}
+	<span class="m-task-daynum">Day {r.day}</span>
+	<span class="m-task-dayicon">
+		{#if busy}
+			<i class="fas fa-spinner fa-spin"></i>
+		{:else if r.claimed}
+			<i class="fas fa-circle-check"></i>
+		{:else if r.kind === 'item'}
+			<i class="fas fa-gem"></i>
+		{:else}
+			<i class="fas fa-star"></i>
+		{/if}
+	</span>
+	<span class="m-task-dayval">
+		{#if r.kind === 'item'}Item{:else}{fmt(r.xp)}{/if}
+	</span>
+{/snippet}
+
 <div class="m-task">
 	<section class="m-task-login">
 		<div class="m-task-loginhead">
 			<div>
 				<h3><i class="fas fa-gift"></i> Daily check-in</h3>
 				<p>
-					{#if login.canClaim}
+					{#if login.tzKnown === false}
+						Checking today’s reward…
+					{:else if login.canClaim}
 						Tap day {login.nextDay} to claim — day {login.cycleDays} is the big one.
 					{:else}
 						Claimed today. Come back tomorrow for day {login.nextDay}.
 					{/if}
 				</p>
 			</div>
-			{#if !login.canClaim}
+			{#if !login.canClaim && login.tzKnown !== false}
 				<span class="m-task-claimed"><i class="fas fa-circle-check"></i> Claimed today</span>
 			{/if}
 		</div>
@@ -187,36 +207,23 @@
 		<div class="m-task-days">
 			{#each login.rewards as r (r.day)}
 				{@const claimable = r.current && login.canClaim && !ctx.readOnly}
-				<button
-					type="button"
-					class="m-task-day"
-					class:m-task-day--claimed={r.claimed}
-					class:m-task-day--current={r.current}
-					class:m-task-day--jackpot={r.jackpot}
-					class:m-task-day--claimable={claimable}
-					disabled={!claimable || claimingLogin}
-					aria-label={claimable ? `Claim day ${r.day} reward` : `Day ${r.day} reward`}
-					onclick={claimLogin}
-				>
-					<span class="m-task-daynum">Day {r.day}</span>
-					<span class="m-task-dayicon">
-						{#if claimingLogin && r.current}
-							<i class="fas fa-spinner fa-spin"></i>
-						{:else if r.claimed}
-							<i class="fas fa-circle-check"></i>
-						{:else if r.kind === 'item'}
-							<i class="fas fa-gem"></i>
-						{:else}
-							<i class="fas fa-star"></i>
-						{/if}
-					</span>
-					<span class="m-task-dayval">
-						{#if r.kind === 'item'}Item{:else}{fmt(r.xp)}{/if}
-					</span>
-					{#if claimable}
+				{#if claimable}
+					<button
+						type="button"
+						class="m-task-day m-task-day--current m-task-day--claimable"
+						class:m-task-day--jackpot={r.jackpot}
+						disabled={claimingLogin}
+						aria-label={`Claim day ${r.day} reward`}
+						onclick={claimLogin}
+					>
+						{@render dayFace(r, claimingLogin)}
 						<span class="m-task-daycta">Claim</span>
-					{/if}
-				</button>
+					</button>
+				{:else}
+					<div class="m-task-day" class:m-task-day--claimed={r.claimed} class:m-task-day--jackpot={r.jackpot}>
+						{@render dayFace(r, false)}
+					</div>
+				{/if}
 			{/each}
 		</div>
 	</section>

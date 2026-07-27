@@ -1469,19 +1469,24 @@ export async function applyStreakDay(memberId: any, dayKey: number, freezeMax: n
 	if (last === dayKey) return { changed: false, streak: Number(existing?.current_streak) || 0, row: existing };
 
 	const gap = last == null ? null : dayKey - last;
-	let streak = Number(existing?.current_streak) || 0;
+	const previousStreak = Number(existing?.current_streak) || 0;
+	let streak = previousStreak;
 	let freezes = Number(existing?.freezes_available) || 0;
 	let freezeUsed = 0;
+	let daysMissed = 0;
+	let reset = false;
 
 	if (gap == null || gap === 1) {
 		streak += 1;
 	} else {
 		const missed = (gap ?? 1) - 1;
+		daysMissed = missed;
 		if (missed > 0 && freezes >= missed) {
 			freezes -= missed;
 			freezeUsed = missed;
 			streak += 1;
 		} else {
+			reset = previousStreak > 0;
 			streak = 1;
 		}
 	}
@@ -1503,7 +1508,7 @@ export async function applyStreakDay(memberId: any, dayKey: number, freezeMax: n
 		})
 		.where(eq(schema.serverMemberStreaks.member_id, Number(memberId)));
 
-	return { changed: true, streak, freezeUsed, row: await getMemberStreak(memberId) };
+	return { changed: true, streak, previousStreak, freezeUsed, freezesLeft: freezes, daysMissed, reset, row: await getMemberStreak(memberId) };
 }
 
 export async function getMemberTasks(memberId: any, dayKey: number, period = 'daily') {

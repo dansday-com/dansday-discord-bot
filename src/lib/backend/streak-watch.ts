@@ -72,7 +72,7 @@ export async function bankStreakIfEarned(memberId: any, opts: { tzOffsetMin?: nu
 		if (!result?.changed) return null;
 
 		const milestone = streakMilestone(Number(result.streak) || 0);
-		if (milestone && announcer) {
+		if (announcer) {
 			const member = await db.getServerMemberById(id).catch(() => null);
 			const server = member ? await db.getServer(member.server_id).catch(() => null) : null;
 			if (server?.discord_server_id) {

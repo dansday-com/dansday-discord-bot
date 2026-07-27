@@ -233,9 +233,48 @@ export async function handleTaskClaim(client: any, payload: any) {
 	};
 }
 
-export async function announceStreak(client: any, guildId: any, discordMemberId: any, streakResult: any, milestone: any) {
-	if (!milestone) return;
+function streakAnnouncement(streakResult: any, milestone: any, member: any) {
+	const streak = Number(streakResult.streak) || 0;
+	const freezeUsed = Number(streakResult.freezeUsed) || 0;
+	const daysMissed = Number(streakResult.daysMissed) || 0;
+	const previous = Number(streakResult.previousStreak) || 0;
+	const dayWord = (n: number) => (n === 1 ? 'day' : 'days');
 
+	if (freezeUsed > 0) {
+		const left = Number(streakResult.freezesLeft) || 0;
+		return {
+			accent: 'shield',
+			title: '🧊 Streak Frozen',
+			description: `${member} missed **${daysMissed} ${dayWord(daysMissed)}** — a streak freeze kept the **${streak}-day** streak alive.`,
+			fields: [
+				{ name: 'Freezes used', value: `${freezeUsed}`, inline: true },
+				{ name: 'Freezes left', value: `${left}`, inline: true }
+			]
+		};
+	}
+
+	if (streakResult.reset) {
+		return {
+			accent: 'bomb',
+			title: '💔 Streak Reset',
+			description: `${member} missed **${daysMissed} ${dayWord(daysMissed)}** and lost a **${previous}-day** streak. Back to day 1.`,
+			fields: [{ name: 'Longest ever', value: `${Number(streakResult.row?.longest_streak) || previous} days`, inline: true }]
+		};
+	}
+
+	if (milestone) {
+		return {
+			accent: 'luck',
+			title: `${milestone.emoji} ${milestone.label} Streak`,
+			description: `${member} just hit a **${streak}-day** streak!`,
+			fields: []
+		};
+	}
+
+	return null;
+}
+
+export async function announceStreak(client: any, guildId: any, discordMemberId: any, streakResult: any, milestone: any) {
 	const { getItemsChannelId, getEmbedConfig } = await import('../../../config.js');
 	const channelId = await getItemsChannelId(guildId);
 	if (!channelId) return;
@@ -248,16 +287,20 @@ export async function announceStreak(client: any, guildId: any, discordMemberId:
 	const member = await guild.members.fetch(String(discordMemberId)).catch(() => null);
 	if (!member) return;
 
+	const plan = streakAnnouncement(streakResult, milestone, member);
+	if (!plan) return;
+
 	const { EmbedBuilder } = await import('discord.js');
 	const embedConfig = await getEmbedConfig(guildId).catch(() => ({ COLOR: 0x14b8a6, FOOTER: 'Tasks' }));
-	const streak = Number(streakResult.streak) || 0;
 
 	const embed = new EmbedBuilder()
-		.setColor(effectAccentInt('luck'))
-		.setTitle(`${milestone.emoji} ${milestone.label} Streak`)
-		.setDescription(`${member} just hit a **${streak}-day** streak!`)
+		.setColor(effectAccentInt(plan.accent))
+		.setTitle(plan.title)
+		.setDescription(plan.description)
 		.setFooter({ text: embedConfig.FOOTER || 'Tasks' })
 		.setTimestamp();
+
+	if (plan.fields.length > 0) embed.addFields(plan.fields);
 
 	await channel.send({ content: `${member}`, embeds: [embed] }).catch(() => null);
 }

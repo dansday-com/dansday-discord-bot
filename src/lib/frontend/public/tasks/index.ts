@@ -55,7 +55,10 @@ async function loadCatalog(serverId: any, itemsEnabled: boolean, tzOffsetMin = 0
 	const nowMs = Date.now();
 	return all
 		.filter((i) => i.enabled !== false && i.enabled !== 0 && (Number(i.cost) || 0) > 0)
-		.filter((i) => itemAvailability(i, nowMs, tzOffsetMin).state !== 'ended')
+		.filter((i) => {
+			const state = itemAvailability(i, nowMs, tzOffsetMin).state;
+			return state === 'active' || state === 'always';
+		})
 		.map((i) => {
 			const cfg = typeof i.config === 'string' ? safeConfig(i.config) : i.config || {};
 			return {
@@ -139,7 +142,7 @@ async function buildPeriod(opts: {
 			const draft = pickReward(Number(member.id), periodKey, g.slot, g.difficulty, value, catalog, period, spend);
 
 			const draftWorth = draft.kind === 'item' ? Number(catalog.find((c) => c.id === draft.itemId)?.cost) || 0 : draft.xp;
-			const goal = def ? goalForReward(def, g.goal, draftWorth, g.difficulty, eligibility, period, targetCost) : g.goal;
+			const goal = def ? goalForReward(def, g.goal, draftWorth, g.difficulty, eligibility, period, targetCost, g.targetItemId ?? null) : g.goal;
 
 			const finalSpend = def ? taskCostXp(def, goal, eligibility, targetCost) : 0;
 			const finalValue = def ? taskValueXp(def, goal, g.difficulty, currentStreak, eligibility, period, targetCost) : XP_REWARD_MIN;

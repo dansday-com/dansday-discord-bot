@@ -1365,7 +1365,7 @@ export type TaskEligibility = {
 	activeDays: number;
 	effectCosts?: Record<string, number>;
 	medianItemCost?: number;
-	catalog?: { id: number; cost: number; effectType: string }[];
+	catalog?: { id: number; cost: number; effectType: string; durationMinutes?: number }[];
 	effectDurations?: Record<string, number>;
 	recentDaily?: Partial<Record<TaskMetric, number>>;
 	levelingRates?: LevelingRates;
@@ -1410,10 +1410,21 @@ export function effectDuration(effect: string, elig: TaskEligibility): number {
 export function effectUnitCost(costEffect: string, elig: TaskEligibility): number {
 	const costs = elig.effectCosts ?? {};
 	if (costEffect === '*') return Number(elig.medianItemCost) || 0;
-	const options = costEffect
-		.split('|')
-		.map((e) => Number(costs[e]) || 0)
+
+	const effects = costEffect.split('|');
+	const catalog = elig.catalog ?? [];
+
+	const typical = effects
+		.map((e) => {
+			const priced = catalog.filter((c) => c.effectType === e && (Number(c.cost) || 0) > 0).map((c) => Number(c.cost));
+			if (priced.length === 0) return Number(costs[e]) || 0;
+			return costPercentile(priced, 50);
+		})
 		.filter((c) => c > 0);
+
+	if (typical.length > 0) return Math.min(...typical);
+
+	const options = effects.map((e) => Number(costs[e]) || 0).filter((c) => c > 0);
 	return options.length > 0 ? Math.min(...options) : 0;
 }
 
@@ -1502,10 +1513,27 @@ export function maxMinuteGoal(period: TaskPeriod): number {
 	return Math.floor(PERIOD_MINUTES[period] * MINUTE_GOAL_SHARE);
 }
 
-export function clampGoalToPeriod(def: TaskDefinition, goal: number, period: TaskPeriod): number {
+export function targetItemDurationFor(targetItemId: number | null | undefined, elig: TaskEligibility): number {
+	if (targetItemId == null) return 0;
+	const hit = (elig.catalog ?? []).find((c) => Number(c.id) === Number(targetItemId));
+	return Math.max(0, Number(hit?.durationMinutes) || 0);
+}
+
+export function maxUsesInPeriod(durationMinutes: number, period: TaskPeriod): number {
+	const per = Math.max(0, Number(durationMinutes) || 0);
+	if (per <= 0) return Infinity;
+	return Math.max(1, Math.floor(PERIOD_MINUTES[period] / per));
+}
+
+export function clampGoalToPeriod(def: TaskDefinition, goal: number, period: TaskPeriod, targetItemDuration = 0): number {
 	const g = Math.max(1, Math.round(Number(goal) || 1));
-	if (def.unit !== 'minutes') return g;
-	return Math.max(1, Math.min(g, maxMinuteGoal(period)));
+	if (def.unit === 'minutes') return Math.max(1, Math.min(g, maxMinuteGoal(period)));
+
+	if (def.targetsItem && targetItemDuration > 0) {
+		return Math.max(1, Math.min(g, maxUsesInPeriod(targetItemDuration, period)));
+	}
+
+	return g;
 }
 
 export function taskGrindXp(def: TaskDefinition, goal: number, elig: TaskEligibility, period: TaskPeriod): number {
@@ -1532,29 +1560,32 @@ export function goalForReward(
 	difficulty: TaskDifficulty,
 	elig: TaskEligibility,
 	period: TaskPeriod,
-	targetCost = 0
+	targetCost = 0,
+	targetItemId: number | null = null
 ): number {
 	const worth = Math.max(0, Number(rewardWorth) || 0);
 	const start = Math.max(1, Math.round(Number(baseGoal) || 1));
-	if (worth <= 0) return start;
+	if (worth <= 0) return clampGoalToPeriod(def, start, period, targetItemDurationFor(targetItemId, elig));
 
 	const earned = Math.round(worth / REWARD_MARGIN[difficulty]);
 
 	let unitEffort = taskEffortXp(def, start, elig, period, targetCost) / start;
 
+	const durCap = targetItemDurationFor(targetItemId, elig);
+
 	if (!Number.isFinite(unitEffort) || unitEffort <= 0) {
 		const rate = serverEarnRate(elig, period);
-		if (rate <= 0) return start;
+		if (rate <= 0) return clampGoalToPeriod(def, start, period, durCap);
 		unitEffort = (rate * EFFORT_BANDS[difficulty]) / Math.max(1, def.maxGoal[difficulty]);
 	}
-	if (unitEffort <= 0) return start;
+	if (unitEffort <= 0) return clampGoalToPeriod(def, start, period, durCap);
 
 	const needed = Math.ceil(earned / unitEffort);
 	const unitXp = metricUnitXp(def, elig);
 	const reachable = unitXp > 0 ? Math.ceil((serverEarnRate(elig, period) * GOAL_CAPACITY_STRETCH) / unitXp) : 0;
 	const ceiling = Math.max(start * GOAL_STRETCH_MAX, reachable);
 
-	return clampGoalToPeriod(def, Math.max(start, Math.min(needed, ceiling)), period);
+	return clampGoalToPeriod(def, Math.max(start, Math.min(needed, ceiling)), period, targetItemDurationFor(targetItemId, elig));
 }
 
 export function gradeDifficulty(effort: number, elig: TaskEligibility, period: TaskPeriod): TaskDifficulty {
@@ -1715,7 +1746,7 @@ export function generateDailyTasks(
 			}
 		}
 
-		const goal = goalFor(pick, difficulty, elig, rand, period, targetCost);
+		const goal = clampGoalToPeriod(pick, goalFor(pick, difficulty, elig, rand, period, targetCost), period, targetItemDurationFor(targetItemId, elig));
 
 		out.push({
 			slot,
@@ -1737,15 +1768,59 @@ function regradeByEffort(tasks: GeneratedTask[], elig: TaskEligibility, period: 
 	const ranked = [...tasks].sort((a, b) => (a.effort ?? 0) - (b.effort ?? 0));
 	const quota = plan.slice(0, tasks.length).sort((a, b) => DIFFICULTY_META[a].weight - DIFFICULTY_META[b].weight);
 
-	for (let i = 0; i < ranked.length; i++) {
-		const graded = gradeDifficulty(ranked[i].effort ?? 0, elig, period);
-		const slotted = quota[i] ?? graded;
-		const def = TASK_BY_ID.get(ranked[i].taskType);
-		const allowed = def?.difficulties ?? [slotted];
+	const allowedFor = (t: GeneratedTask): TaskDifficulty[] => TASK_BY_ID.get(t.taskType)?.difficulties ?? ['medium'];
 
-		const choice = allowed.includes(slotted) ? slotted : allowed.includes(graded) ? graded : allowed[allowed.length - 1];
-		ranked[i] = { ...ranked[i], difficulty: choice };
+	const assigned = new Array<TaskDifficulty | null>(ranked.length).fill(null);
+	const taken = new Set<number>();
+
+	const remaining = [...quota];
+	for (let i = 0; i < ranked.length; i++) {
+		const allowed = allowedFor(ranked[i]);
+		if (allowed.length !== 1) continue;
+		const only = allowed[0];
+		const at = remaining.indexOf(only);
+		if (at === -1) continue;
+		remaining.splice(at, 1);
+		assigned[i] = only;
+		taken.add(i);
 	}
+
+	const order = remaining
+		.map((want, q) => ({ want, q }))
+		.sort((a, b) => {
+			const supply = (d: TaskDifficulty) => ranked.filter((t, i) => !taken.has(i) && allowedFor(t).includes(d)).length;
+			return supply(a.want) - supply(b.want);
+		});
+
+	for (const { want, q } of order) {
+		const fromEnd = DIFFICULTY_META[want].weight >= DIFFICULTY_META.hard.weight;
+		let pick = -1;
+		for (let k = 0; k < ranked.length; k++) {
+			const i = fromEnd ? ranked.length - 1 - k : k;
+			if (taken.has(i) || !allowedFor(ranked[i]).includes(want)) continue;
+			pick = i;
+			break;
+		}
+		if (pick === -1) continue;
+		assigned[pick] = want;
+		taken.add(pick);
+	}
+
+	const deficit = (d: TaskDifficulty) => quota.filter((x) => x === d).length - assigned.filter((x) => x === d).length;
+
+	for (let i = 0; i < ranked.length; i++) {
+		if (assigned[i] != null) continue;
+		const allowed = allowedFor(ranked[i]);
+		const short = allowed.filter((d) => deficit(d) > 0).sort((a, b) => deficit(b) - deficit(a));
+		if (short.length > 0) {
+			assigned[i] = short[0];
+			continue;
+		}
+		const graded = gradeDifficulty(ranked[i].effort ?? 0, elig, period);
+		assigned[i] = allowed.includes(graded) ? graded : allowed[allowed.length - 1];
+	}
+
+	for (let i = 0; i < ranked.length; i++) ranked[i] = { ...ranked[i], difficulty: assigned[i] as TaskDifficulty };
 
 	const bySlot = new Map(ranked.map((t) => [t.slot, t]));
 	return tasks.map((t) => bySlot.get(t.slot) ?? t);

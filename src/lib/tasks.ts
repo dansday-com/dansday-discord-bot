@@ -1368,16 +1368,16 @@ export type TaskEligibility = {
 	catalog?: { id: number; cost: number; effectType: string }[];
 	effectDurations?: Record<string, number>;
 	recentDaily?: Partial<Record<TaskMetric, number>>;
+	levelingRates?: LevelingRates;
 };
 
 export const RECENT_WINDOW_DAYS = 7;
 export const ACHIEVABLE_SHARE = 0.9;
 
 export function taskCapacity(def: TaskDefinition, elig: TaskEligibility, period: TaskPeriod): number | null {
-	if (!def.baselineKey) return null;
-	const measured = elig.recentDaily?.[def.baselineKey];
-	if (measured == null || !Number.isFinite(measured) || measured <= 0) return null;
-	return Math.round(measured * (period === 'weekly' ? 7 : 1) * ACHIEVABLE_SHARE);
+	const unit = metricUnitXp(def, elig);
+	if (unit <= 0) return null;
+	return Math.round((serverEarnRate(elig, period) * ACHIEVABLE_SHARE) / unit);
 }
 
 export function isViableFor(def: TaskDefinition, difficulty: TaskDifficulty, elig: TaskEligibility, period: TaskPeriod): boolean {
@@ -1444,6 +1444,117 @@ export function taskCostXp(def: TaskDefinition, goal: number, elig: TaskEligibil
 	return Math.round(unit * units * (def.costFactor ?? 1)) + extra;
 }
 
+export type LevelingRates = {
+	messageXp: number;
+	messageCooldownSeconds: number;
+	voiceXpPerMinute: number;
+	videoXpPerMinute: number;
+	streamingXpPerMinute: number;
+};
+
+export const DEFAULT_LEVELING_RATES: LevelingRates = {
+	messageXp: 15,
+	messageCooldownSeconds: 15,
+	voiceXpPerMinute: 50,
+	videoXpPerMinute: 50,
+	streamingXpPerMinute: 50
+};
+
+export const REFERENCE_CHAT_MESSAGES = 60;
+export const REFERENCE_VOICE_MINUTES = 60;
+
+export function serverEarnRate(elig: TaskEligibility, period: TaskPeriod): number {
+	const r = elig.levelingRates ?? DEFAULT_LEVELING_RATES;
+	const chat = Math.max(0, Number(r.messageXp) || 0) * REFERENCE_CHAT_MESSAGES;
+	const voice = Math.max(0, Number(r.voiceXpPerMinute) || 0) * REFERENCE_VOICE_MINUTES;
+	const perDay = chat + voice;
+	return perDay * (period === 'weekly' ? 7 : 1);
+}
+
+export function metricUnitXp(def: TaskDefinition, elig: TaskEligibility): number {
+	const r = elig.levelingRates ?? DEFAULT_LEVELING_RATES;
+	const metric = def.metric;
+
+	if (def.unit === 'xp' || metric.startsWith('xp_')) return 1;
+
+	switch (metric) {
+		case 'chat_total':
+			return Math.max(0, Number(r.messageXp) || 0);
+		case 'voice_minutes_active':
+			return Math.max(0, Number(r.voiceXpPerMinute) || 0);
+		case 'voice_minutes_afk':
+			return Math.max(0, Number(r.voiceXpPerMinute) || 0) * AFK_XP_SHARE;
+		case 'voice_minutes_video':
+			return Math.max(0, Number(r.videoXpPerMinute) || 0);
+		case 'voice_minutes_streaming':
+			return Math.max(0, Number(r.streamingXpPerMinute) || 0);
+		default:
+			return 0;
+	}
+}
+
+export const AFK_XP_SHARE = 0.2;
+
+export function taskGrindXp(def: TaskDefinition, goal: number, elig: TaskEligibility, period: TaskPeriod): number {
+	const unit = metricUnitXp(def, elig);
+	if (unit <= 0) return 0;
+	return Math.round(Math.max(0, Number(goal) || 0) * unit);
+}
+
+export const EFFORT_GRIND_CAP = 60;
+
+export function taskEffortXp(def: TaskDefinition, goal: number, elig: TaskEligibility, period: TaskPeriod, targetCost = 0): number {
+	return taskCostXp(def, goal, elig, targetCost) + taskGrindXp(def, goal, elig, period);
+}
+
+export const EFFORT_BANDS: Record<TaskDifficulty, number> = { easy: 0.18, medium: 0.55, hard: 1 };
+
+export const GOAL_STRETCH_MAX = 40;
+export const GOAL_CAPACITY_STRETCH = 25;
+
+export function goalForReward(
+	def: TaskDefinition,
+	baseGoal: number,
+	rewardWorth: number,
+	difficulty: TaskDifficulty,
+	elig: TaskEligibility,
+	period: TaskPeriod,
+	targetCost = 0
+): number {
+	const worth = Math.max(0, Number(rewardWorth) || 0);
+	const start = Math.max(1, Math.round(Number(baseGoal) || 1));
+	if (worth <= 0) return start;
+
+	const earned = Math.round(worth / REWARD_MARGIN[difficulty]);
+
+	let unitEffort = taskEffortXp(def, start, elig, period, targetCost) / start;
+
+	if (!Number.isFinite(unitEffort) || unitEffort <= 0) {
+		const rate = serverEarnRate(elig, period);
+		if (rate <= 0) return start;
+		unitEffort = (rate * EFFORT_BANDS[difficulty]) / Math.max(1, def.maxGoal[difficulty]);
+	}
+	if (unitEffort <= 0) return start;
+
+	const needed = Math.ceil(earned / unitEffort);
+	const unitXp = metricUnitXp(def, elig);
+	const reachable = unitXp > 0 ? Math.ceil((serverEarnRate(elig, period) * GOAL_CAPACITY_STRETCH) / unitXp) : 0;
+	const ceiling = Math.max(start * GOAL_STRETCH_MAX, reachable);
+
+	return Math.max(start, Math.min(needed, ceiling));
+}
+
+export function gradeDifficulty(effort: number, elig: TaskEligibility, period: TaskPeriod): TaskDifficulty {
+	const rate = serverEarnRate(elig, period);
+	if (rate <= 0) return 'medium';
+	const share = Math.max(0, Number(effort) || 0) / rate;
+	if (share >= EFFORT_BANDS.hard) return 'hard';
+	if (share >= EFFORT_BANDS.medium) return 'medium';
+	return 'easy';
+}
+
+export const SPEND_XP_PAYOUT_SHARE = 0.3;
+
 export function taskValueXp(
 	def: TaskDefinition,
 	goal: number,
@@ -1453,14 +1564,17 @@ export function taskValueXp(
 	period: TaskPeriod = 'daily',
 	targetCost = 0
 ): number {
-	const median = Number(elig.medianItemCost) || 0;
-	let effort = xpRewardFor(difficulty, streak, median);
-	if (period === 'weekly') effort = Math.round(effort * WEEKLY_REWARD_MULTIPLIER);
+	const spend = taskCostXp(def, goal, elig, targetCost);
+	const grind = taskGrindXp(def, goal, elig, period);
+	const streakBonus = 1 + Math.min(1, Math.max(0, streak) * 0.02);
 
-	const cost = taskCostXp(def, goal, elig, targetCost);
-	const profitable = Math.round(cost * REWARD_MARGIN[difficulty]);
+	const rate = serverEarnRate(elig, period);
+	const payable = grind + spend * SPEND_XP_PAYOUT_SHARE;
+	let worth = Math.round(payable * REWARD_MARGIN[difficulty] * streakBonus);
 
-	return Math.max(XP_REWARD_MIN, Math.min(XP_REWARD_MAX, Math.max(effort, profitable)));
+	if (worth <= 0) worth = Math.round(rate * EFFORT_BANDS[difficulty] * REWARD_MARGIN[difficulty] * streakBonus);
+
+	return Math.max(XP_REWARD_MIN, Math.min(XP_REWARD_MAX, worth));
 }
 
 function isEligible(def: TaskDefinition, elig: TaskEligibility): boolean {
@@ -1476,11 +1590,6 @@ function isEligible(def: TaskDefinition, elig: TaskEligibility): boolean {
 
 	if (def.eligibilityKey && (Number(elig.baselines[def.eligibilityKey]) || 0) <= 0) return false;
 
-	if (def.baselineKey) {
-		const measured = elig.recentDaily?.[def.baselineKey];
-		const total = measured != null ? measured : Number(elig.baselines[def.baselineKey]) || 0;
-		if (total <= 0 && def.metric !== 'chat_total' && def.metric !== 'reactions_given') return false;
-	}
 	return true;
 }
 
@@ -1507,13 +1616,9 @@ export function goalFor(
 	const max = Math.round(def.maxGoal[difficulty] * scale);
 
 	let target = min;
-	if (def.baselineKey) {
-		const measured = elig.recentDaily?.[def.baselineKey];
-		const perDay =
-			measured != null && Number.isFinite(measured)
-				? Math.max(0, Number(measured))
-				: (Number(elig.baselines[def.baselineKey]) || 0) / Math.max(1, elig.activeDays);
-		target = perDay * def.baselineShare[difficulty] * scale;
+	const capacity = taskCapacity(def, elig, period);
+	if (capacity != null && capacity > 0) {
+		target = capacity * def.baselineShare[difficulty] * scale;
 	} else {
 		target = min + (max - min) * rand() * 0.6;
 	}
@@ -1528,7 +1633,6 @@ export function goalFor(
 
 	let goal = Math.max(min, Math.min(max, scaled || min));
 
-	const capacity = taskCapacity(def, elig, period);
 	if (capacity != null && capacity >= min) goal = Math.min(goal, capacity);
 
 	const unitCost = def.costIsGoal
@@ -1552,6 +1656,7 @@ export type GeneratedTask = {
 	difficulty: TaskDifficulty;
 	goal: number;
 	targetItemId?: number | null;
+	effort?: number;
 };
 
 export function generateDailyTasks(
@@ -1600,22 +1705,46 @@ export function generateDailyTasks(
 			}
 		}
 
+		const goal = goalFor(pick, difficulty, elig, rand, period, targetCost);
+
 		out.push({
 			slot,
 			taskType: pick.id,
 			difficulty,
-			goal: goalFor(pick, difficulty, elig, rand, period, targetCost),
-			targetItemId
+			goal,
+			targetItemId,
+			effort: taskEffortXp(pick, goal, elig, period, targetCost)
 		});
 	}
 
-	return out;
+	return regradeByEffort(out, elig, period);
+}
+
+function regradeByEffort(tasks: GeneratedTask[], elig: TaskEligibility, period: TaskPeriod): GeneratedTask[] {
+	if (tasks.length === 0) return tasks;
+
+	const plan = period === 'weekly' ? WEEKLY_DIFFICULTY_PLAN : DAILY_DIFFICULTY_PLAN;
+	const ranked = [...tasks].sort((a, b) => (a.effort ?? 0) - (b.effort ?? 0));
+	const quota = plan.slice(0, tasks.length).sort((a, b) => DIFFICULTY_META[a].weight - DIFFICULTY_META[b].weight);
+
+	for (let i = 0; i < ranked.length; i++) {
+		const graded = gradeDifficulty(ranked[i].effort ?? 0, elig, period);
+		const slotted = quota[i] ?? graded;
+		const def = TASK_BY_ID.get(ranked[i].taskType);
+		const allowed = def?.difficulties ?? [slotted];
+
+		const choice = allowed.includes(slotted) ? slotted : allowed.includes(graded) ? graded : allowed[allowed.length - 1];
+		ranked[i] = { ...ranked[i], difficulty: choice };
+	}
+
+	const bySlot = new Map(ranked.map((t) => [t.slot, t]));
+	return tasks.map((t) => bySlot.get(t.slot) ?? t);
 }
 
 export type RewardPlan = { kind: 'xp'; xp: number } | { kind: 'item'; itemId: number; xp: 0 };
 
 export const XP_REWARD_MIN = 1000;
-export const XP_REWARD_MAX = 1000000;
+export const XP_REWARD_MAX = 20000000;
 
 export const REWARD_MARGIN: Record<TaskDifficulty, number> = { easy: 1.35, medium: 1.5, hard: 1.75 };
 
@@ -1642,7 +1771,7 @@ export function costPercentile(costs: number[], percentile: number): number {
 }
 
 export const ITEM_VALUE_FLOOR = 0.85;
-export const ITEM_VALUE_CEILING = 2.5;
+export const ITEM_VALUE_CEILING = 1.25;
 
 export function pickReward(
 	memberId: number,
@@ -1661,7 +1790,7 @@ export function pickReward(
 	if (catalog.length > 0 && rand() < itemChance) {
 		const fair = catalog.filter((c) => {
 			const v = Number(c.cost) || 0;
-			return v >= worth * ITEM_VALUE_FLOOR && v <= worth * ITEM_VALUE_CEILING;
+			return v > 0 && v >= worth * ITEM_VALUE_FLOOR && v <= worth * ITEM_VALUE_CEILING;
 		});
 		if (fair.length > 0) {
 			const picked = fair[Math.floor(rand() * fair.length) % fair.length];

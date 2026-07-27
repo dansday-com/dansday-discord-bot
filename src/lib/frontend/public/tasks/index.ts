@@ -1,6 +1,6 @@
 import db from '$lib/database.js';
 import { parseMySQLDateTimeUtc } from '$lib/utils/index.js';
-import { effectIcon, effectAccentHex } from '$lib/items.js';
+import { effectIcon, effectAccentHex, itemAvailability } from '$lib/items.js';
 import {
 	TASK_BY_ID,
 	DAILY_TASK_SLOTS,
@@ -14,12 +14,14 @@ import {
 	msUntilNextDay,
 	msUntilNextWeek,
 	generateDailyTasks,
+	goalForReward,
+	DEFAULT_LEVELING_RATES,
+	type LevelingRates,
 	pickReward,
 	taskValueXp,
 	costPercentile,
 	XP_REWARD_MIN,
 	RECENT_WINDOW_DAYS,
-	MEASURED_METRICS,
 	nextMilestone,
 	streakMilestone,
 	loginCyclePreview,
@@ -44,13 +46,15 @@ function daysActive(memberSince: any): number {
 	return Math.max(1, days);
 }
 
-async function loadCatalog(serverId: any, itemsEnabled: boolean) {
+async function loadCatalog(serverId: any, itemsEnabled: boolean, tzOffsetMin = 0) {
 	if (!itemsEnabled) return [];
 	const panelId = await db.getServerPanelId(serverId).catch(() => null);
 	if (panelId == null) return [];
 	const all = (await db.listItems(panelId).catch(() => [])) as any[];
+	const nowMs = Date.now();
 	return all
 		.filter((i) => i.enabled !== false && i.enabled !== 0 && (Number(i.cost) || 0) > 0)
+		.filter((i) => itemAvailability(i, nowMs, tzOffsetMin).state !== 'ended')
 		.map((i) => {
 			const cfg = typeof i.config === 'string' ? safeConfig(i.config) : i.config || {};
 			return {
@@ -60,6 +64,22 @@ async function loadCatalog(serverId: any, itemsEnabled: boolean) {
 				durationMinutes: Math.max(0, Number(cfg?.effect_duration_minutes) || 0)
 			};
 		});
+}
+
+async function loadLevelingRates(serverId: any): Promise<LevelingRates> {
+	const rowOrRows = await db.getServerSettings(serverId, 'leveling').catch(() => null);
+	const row = Array.isArray(rowOrRows) ? (rowOrRows[0] ?? null) : rowOrRows;
+	const raw = (row as any)?.settings;
+	const cfg = (typeof raw === 'string' ? safeConfig(raw) : raw) || {};
+
+	const d = DEFAULT_LEVELING_RATES;
+	return {
+		messageXp: Number(cfg?.MESSAGE?.XP ?? d.messageXp) || 0,
+		messageCooldownSeconds: Number(cfg?.MESSAGE?.COOLDOWN_SECONDS ?? d.messageCooldownSeconds) || 0,
+		voiceXpPerMinute: Number(cfg?.VOICE?.XP_PER_MINUTE ?? d.voiceXpPerMinute) || 0,
+		videoXpPerMinute: Number(cfg?.VIDEO?.XP_PER_MINUTE ?? d.videoXpPerMinute) || 0,
+		streamingXpPerMinute: Number(cfg?.STREAMING?.XP_PER_MINUTE ?? d.streamingXpPerMinute) || 0
+	};
 }
 
 function safeConfig(raw: string) {
@@ -76,16 +96,6 @@ function longestByEffect(catalog: { effectType: string; durationMinutes: number 
 		if (!c.effectType || c.durationMinutes <= 0) continue;
 		const prev = out[c.effectType];
 		if (prev == null || c.durationMinutes > prev) out[c.effectType] = c.durationMinutes;
-	}
-	return out;
-}
-
-async function measureRecentDaily(memberId: any): Promise<Partial<Record<TaskMetric, number>>> {
-	const sinceMs = Date.now() - RECENT_WINDOW_DAYS * 86400000;
-	const out: Partial<Record<TaskMetric, number>> = {};
-	for (const metric of MEASURED_METRICS) {
-		const total = await db.countMemberEventsSince(memberId, metric, sinceMs).catch(() => 0);
-		out[metric] = Math.max(0, Number(total) || 0) / RECENT_WINDOW_DAYS;
 	}
 	return out;
 }
@@ -117,8 +127,7 @@ async function buildPeriod(opts: {
 	let rows = (await db.getMemberTasks(member.id, periodKey, period).catch(() => [])) as any[];
 
 	if ((!rows || rows.length === 0) && generate) {
-		const enriched = { ...eligibility, recentDaily: await measureRecentDaily(member.id) };
-		const generated = generateDailyTasks(Number(member.id), Number(serverId), periodKey, enriched, period);
+		const generated = generateDailyTasks(Number(member.id), Number(serverId), periodKey, eligibility, period);
 		if (generated.length === 0) return [];
 
 		const payload = generated.map((g) => {
@@ -126,13 +135,17 @@ async function buildPeriod(opts: {
 			const targetCost = g.targetItemId != null ? Number(catalog.find((c) => c.id === g.targetItemId)?.cost) || 0 : 0;
 			const value = def ? taskValueXp(def, g.goal, g.difficulty, currentStreak, eligibility, period, targetCost) : XP_REWARD_MIN;
 			const reward = pickReward(Number(member.id), periodKey, g.slot, g.difficulty, value, catalog, period);
+
+			const rewardWorth = reward.kind === 'item' ? Number(catalog.find((c) => c.id === reward.itemId)?.cost) || 0 : reward.xp;
+			const goal = def ? goalForReward(def, g.goal, rewardWorth, g.difficulty, eligibility, period, targetCost) : g.goal;
+
 			const metric = def?.metric as TaskMetric | undefined;
 			const baseline = metric && COUNTER_METRICS.has(metric) ? Number(baselines[metric]) || 0 : 0;
 			return {
 				slot: g.slot,
 				taskType: g.taskType,
 				difficulty: g.difficulty,
-				goal: g.goal,
+				goal,
 				baseline,
 				targetItemId: g.targetItemId ?? null,
 				rewardKind: reward.kind,
@@ -237,7 +250,7 @@ export async function loadTasksShared(opts: {
 		xp_gained: Number(levels?.experience) || 0
 	};
 
-	const catalog = await loadCatalog(server.id, itemsEnabled);
+	const catalog = await loadCatalog(server.id, itemsEnabled, tzOffsetMin);
 	const medianItemCost = costPercentile(
 		catalog.map((c) => c.cost).filter((c) => c > 0),
 		50
@@ -253,7 +266,8 @@ export async function loadTasksShared(opts: {
 		effectCosts: cheapestByEffect(catalog),
 		medianItemCost,
 		catalog,
-		effectDurations: longestByEffect(catalog)
+		effectDurations: longestByEffect(catalog),
+		levelingRates: await loadLevelingRates(server.id)
 	};
 
 	const currentStreak = Number(streakRow?.current_streak) || 0;

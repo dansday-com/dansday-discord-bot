@@ -73,6 +73,7 @@
 	--asset-flat: var(--lb-text-muted);
 
 	min-height: 100dvh;
+	height: 100dvh;
 	background: var(--chili-bg);
 	position: relative;
 	overflow-x: hidden;
@@ -83,6 +84,7 @@
 }
 .m-main {
 	flex: 1;
+	min-height: 0;
 	overflow-y: auto;
 }
 

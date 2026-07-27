@@ -240,25 +240,26 @@ function streakAnnouncement(streakResult: any, milestone: any, member: any) {
 	const previous = Number(streakResult.previousStreak) || 0;
 	const dayWord = (n: number) => (n === 1 ? 'day' : 'days');
 
+	if (streakResult.reset) {
+		const burned = freezeUsed > 0 ? ` Burned ${freezeUsed} ${freezeUsed === 1 ? 'freeze' : 'freezes'} trying to hold it.` : '';
+		return {
+			accent: 'bomb',
+			title: '💔 Streak Reset',
+			description: `${member} missed **${daysMissed} ${dayWord(daysMissed)}** and lost a **${previous}-day** streak.${burned} Back to day 1.`,
+			fields: [{ name: 'Longest ever', value: `${Number(streakResult.row?.longest_streak) || previous} days`, inline: true }]
+		};
+	}
+
 	if (freezeUsed > 0) {
 		const left = Number(streakResult.freezesLeft) || 0;
 		return {
 			accent: 'shield',
 			title: '🧊 Streak Frozen',
-			description: `${member} missed **${daysMissed} ${dayWord(daysMissed)}** — a streak freeze kept the **${streak}-day** streak alive.`,
+			description: `${member} missed **${daysMissed} ${dayWord(daysMissed)}** — ${freezeUsed === 1 ? 'a streak freeze' : `${freezeUsed} streak freezes`} kept the **${streak}-day** streak alive.`,
 			fields: [
 				{ name: 'Freezes used', value: `${freezeUsed}`, inline: true },
 				{ name: 'Freezes left', value: `${left}`, inline: true }
 			]
-		};
-	}
-
-	if (streakResult.reset) {
-		return {
-			accent: 'bomb',
-			title: '💔 Streak Reset',
-			description: `${member} missed **${daysMissed} ${dayWord(daysMissed)}** and lost a **${previous}-day** streak. Back to day 1.`,
-			fields: [{ name: 'Longest ever', value: `${Number(streakResult.row?.longest_streak) || previous} days`, inline: true }]
 		};
 	}
 
@@ -305,4 +306,44 @@ export async function announceStreak(client: any, guildId: any, discordMemberId:
 	await channel.send({ content: `${member}`, embeds: [embed] }).catch(() => null);
 }
 
-export default { handleTaskClaim, handleLoginClaim };
+export async function sweepBrokenStreaks(client: any) {
+	const stale = (await db.listStaleStreaks(500).catch(() => [])) as any[];
+
+	for (const row of stale) {
+		const tzOffsetMin = Number(row.tz_offset_min) || 0;
+		const today = dayKeyFor(Date.now(), tzOffsetMin);
+		const last = Number(row.last_claim_day_key);
+		const missed = today - last - 1;
+		if (missed < 1) continue;
+
+		const streak = Number(row.current_streak) || 0;
+		const freezes = Number(row.freezes_available) || 0;
+		const longest = Number(row.longest_streak) || streak;
+
+		if (freezes > 0) {
+			const settled = Math.min(freezes, missed);
+			await db.expireStreak(row.member_id, last + settled, freezes - settled, false).catch(() => null);
+			await announceStreak(
+				client,
+				row.discord_server_id,
+				row.discord_member_id,
+				{ streak, previousStreak: streak, freezeUsed: settled, freezesLeft: freezes - settled, daysMissed: settled, reset: false, row: { longest_streak: longest } },
+				null
+			).catch(() => null);
+			continue;
+		}
+
+		await db.expireStreak(row.member_id, today - 1, 0, true).catch(() => null);
+		await announceStreak(
+			client,
+			row.discord_server_id,
+			row.discord_member_id,
+			{ streak: 0, previousStreak: streak, freezeUsed: 0, freezesLeft: 0, daysMissed: missed, reset: true, row: { longest_streak: longest } },
+			null
+		).catch(() => null);
+	}
+
+	return stale.length;
+}
+
+export default { handleTaskClaim, handleLoginClaim, sweepBrokenStreaks };

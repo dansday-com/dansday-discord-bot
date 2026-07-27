@@ -1476,23 +1476,26 @@ export async function applyStreakDay(memberId: any, dayKey: number, freezeMax: n
 	let daysMissed = 0;
 	let reset = false;
 
-	if (gap == null || gap === 1) {
+	if (gap == null || gap === 1 || previousStreak === 0) {
 		streak += 1;
 	} else {
 		const missed = (gap ?? 1) - 1;
 		daysMissed = missed;
-		if (missed > 0 && freezes >= missed) {
-			freezes -= missed;
-			freezeUsed = missed;
+		freezeUsed = Math.min(freezes, missed);
+		freezes -= freezeUsed;
+
+		if (freezeUsed >= missed) {
 			streak += 1;
 		} else {
-			reset = previousStreak > 0;
+			reset = true;
 			streak = 1;
 		}
 	}
 
+	const freezesAfterSpend = freezes;
 	const totalClaims = (Number(existing?.total_claims) || 0) + 1;
 	if (earnEvery > 0 && totalClaims % earnEvery === 0) freezes = Math.min(freezeMax, freezes + 1);
+	const freezeEarned = freezes - freezesAfterSpend;
 
 	const longest = Math.max(Number(existing?.longest_streak) || 0, streak);
 	const now = toMySQLDateTime();
@@ -1508,7 +1511,17 @@ export async function applyStreakDay(memberId: any, dayKey: number, freezeMax: n
 		})
 		.where(eq(schema.serverMemberStreaks.member_id, Number(memberId)));
 
-	return { changed: true, streak, previousStreak, freezeUsed, freezesLeft: freezes, daysMissed, reset, row: await getMemberStreak(memberId) };
+	return {
+		changed: true,
+		streak,
+		previousStreak,
+		freezeUsed,
+		freezesLeft: freezesAfterSpend,
+		freezeEarned,
+		daysMissed,
+		reset,
+		row: await getMemberStreak(memberId)
+	};
 }
 
 export async function getMemberTasks(memberId: any, dayKey: number, period = 'daily') {
@@ -2086,6 +2099,37 @@ export async function backfillItemLogItemIds() {
 		WHERE sml.item_id IS NULL AND sml.member_item_id IS NOT NULL
 	`);
 	return result?.[0]?.affectedRows ?? result?.affectedRows ?? 0;
+}
+
+export async function listStaleStreaks(limit = 500) {
+	await initializeDatabase();
+	const rows: any = await db.execute(sql`
+		SELECT s.member_id, s.current_streak, s.longest_streak, s.freezes_available, s.last_claim_day_key, s.tz_offset_min,
+		       m.server_id, m.discord_member_id, sv.discord_server_id
+		FROM server_member_streaks s
+		INNER JOIN server_members m ON m.id = s.member_id
+		INNER JOIN servers sv ON sv.id = m.server_id
+		WHERE s.current_streak > 0
+		  AND s.last_claim_day_key IS NOT NULL
+		  AND s.last_claim_day_key < FLOOR((UNIX_TIMESTAMP() - (s.tz_offset_min * 60)) / 86400)
+		ORDER BY s.updated_at ASC
+		LIMIT ${Number(limit) || 500}
+	`);
+	return (rows?.[0] as any[]) ?? [];
+}
+
+export async function expireStreak(memberId: any, dayKey: number, freezesLeft: number, broke: boolean) {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	await db
+		.update(schema.serverMemberStreaks)
+		.set(
+			broke
+				? { current_streak: 0, freezes_available: freezesLeft, last_claim_day_key: dayKey, updated_at: now as any }
+				: { freezes_available: freezesLeft, last_claim_day_key: dayKey, updated_at: now as any }
+		)
+		.where(eq(schema.serverMemberStreaks.member_id, Number(memberId)));
+	return true;
 }
 
 export async function purgeDepletedMemberItems() {
@@ -5669,6 +5713,8 @@ export default {
 	consumeMemberItem,
 	backfillItemLogItemIds,
 	purgeDepletedMemberItems,
+	listStaleStreaks,
+	expireStreak,
 	addMemberItemActive,
 	getActiveEffectsForMember,
 	getActiveLeechByBeneficiary,

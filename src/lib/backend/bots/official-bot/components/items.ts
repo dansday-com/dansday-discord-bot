@@ -1513,6 +1513,8 @@ async function runExpirySweep(client: any) {
 		await sweepExpiredBuffs(client, botConfig.id, EmbedBuilder);
 		await sweepDerivedEvents(client, botConfig.id, EmbedBuilder);
 		await db.purgeDepletedMemberItems().catch(() => 0);
+		const { sweepBrokenStreaks } = await import('./tasks.js');
+		await sweepBrokenStreaks(client).catch(() => null);
 	} catch (err: any) {
 		await logger.log(`⚠️ Item expiry sweep failed: ${err.message}`);
 	}

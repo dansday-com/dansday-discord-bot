@@ -403,7 +403,7 @@
 						<span>Worth {fmt(assetSummary.value)} XP</span>
 					{:else if isTask}
 						<span>{taskSummary?.toNextMilestone ?? 0} to {taskSummary?.nextMilestone?.emoji ?? '🔥'} {taskSummary?.nextMilestone?.label ?? 'One week'}</span>
-						<span>Best {taskSummary?.longest ?? 0}d · {taskSummary?.freezes ?? 0}/{taskSummary?.freezeMax ?? 2} ❄</span>
+						<span>Best {taskSummary?.longest ?? 0} days</span>
 					{:else}
 						<span>Lvl {level}</span>
 						<span>{levelInfo.toNext > 0 ? `${fmt(levelInfo.toNext)} XP to Lvl ${level + 1}` : 'Max progress'}</span>
@@ -424,6 +424,11 @@
 							<i class="fas fa-caret-{assetSummary.pnl >= 0 ? 'up' : 'down'}"></i>{assetSummary.pnlPct >= 0 ? '+' : ''}{assetSummary.pnlPct.toFixed(2)}%
 						</span>
 						<span class="m-xp-stat-lbl">{assetSummary.pnl >= 0 ? '+' : ''}{fmt(assetSummary.pnl)} XP</span>
+					</div>
+				{:else if isTask}
+					<div class="m-xp-stat">
+						<span class="m-xp-stat-val">{taskSummary?.freezes ?? 0}/{taskSummary?.freezeMax ?? 2}</span>
+						<span class="m-xp-stat-lbl">Freezes</span>
 					</div>
 				{:else}
 					<div class="m-xp-stat">

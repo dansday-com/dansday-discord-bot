@@ -1495,6 +1495,19 @@ export function metricUnitXp(def: TaskDefinition, elig: TaskEligibility): number
 
 export const AFK_XP_SHARE = 0.2;
 
+export const PERIOD_MINUTES: Record<TaskPeriod, number> = { daily: 1440, weekly: 10080 };
+export const MINUTE_GOAL_SHARE = 0.5;
+
+export function maxMinuteGoal(period: TaskPeriod): number {
+	return Math.floor(PERIOD_MINUTES[period] * MINUTE_GOAL_SHARE);
+}
+
+export function clampGoalToPeriod(def: TaskDefinition, goal: number, period: TaskPeriod): number {
+	const g = Math.max(1, Math.round(Number(goal) || 1));
+	if (def.unit !== 'minutes') return g;
+	return Math.max(1, Math.min(g, maxMinuteGoal(period)));
+}
+
 export function taskGrindXp(def: TaskDefinition, goal: number, elig: TaskEligibility, period: TaskPeriod): number {
 	const unit = metricUnitXp(def, elig);
 	if (unit <= 0) return 0;
@@ -1541,7 +1554,7 @@ export function goalForReward(
 	const reachable = unitXp > 0 ? Math.ceil((serverEarnRate(elig, period) * GOAL_CAPACITY_STRETCH) / unitXp) : 0;
 	const ceiling = Math.max(start * GOAL_STRETCH_MAX, reachable);
 
-	return Math.max(start, Math.min(needed, ceiling));
+	return clampGoalToPeriod(def, Math.max(start, Math.min(needed, ceiling)), period);
 }
 
 export function gradeDifficulty(effort: number, elig: TaskEligibility, period: TaskPeriod): TaskDifficulty {
@@ -1552,8 +1565,6 @@ export function gradeDifficulty(effort: number, elig: TaskEligibility, period: T
 	if (share >= EFFORT_BANDS.medium) return 'medium';
 	return 'easy';
 }
-
-export const SPEND_XP_PAYOUT_SHARE = 0.3;
 
 export function taskValueXp(
 	def: TaskDefinition,
@@ -1569,12 +1580,11 @@ export function taskValueXp(
 	const streakBonus = 1 + Math.min(1, Math.max(0, streak) * 0.02);
 
 	const rate = serverEarnRate(elig, period);
-	const payable = grind + spend * SPEND_XP_PAYOUT_SHARE;
-	let worth = Math.round(payable * REWARD_MARGIN[difficulty] * streakBonus);
+	let worth = Math.round((grind + spend) * REWARD_MARGIN[difficulty] * streakBonus);
 
 	if (worth <= 0) worth = Math.round(rate * EFFORT_BANDS[difficulty] * REWARD_MARGIN[difficulty] * streakBonus);
 
-	return Math.max(XP_REWARD_MIN, Math.min(XP_REWARD_MAX, worth));
+	return Math.max(XP_REWARD_MIN, Math.min(XP_REWARD_MAX, Math.max(worth, spend)));
 }
 
 function isEligible(def: TaskDefinition, elig: TaskEligibility): boolean {
@@ -1609,7 +1619,7 @@ export function goalFor(
 		const lo = Math.max(1, Math.round(def.minGoal[difficulty] * scale));
 		const hi = Math.max(lo, Math.round(def.maxGoal[difficulty] * scale));
 		const units = lo + Math.floor(rand() * (hi - lo + 1));
-		return units * per;
+		return clampGoalToPeriod(def, units * per, period);
 	}
 
 	const min = Math.round(def.minGoal[difficulty] * scale);
@@ -1773,6 +1783,16 @@ export function costPercentile(costs: number[], percentile: number): number {
 export const ITEM_VALUE_FLOOR = 0.85;
 export const ITEM_VALUE_CEILING = 1.25;
 
+export function cheapestOf<T extends { cost: number }>(catalog: T[]): T[] {
+	if (catalog.length === 0) return [];
+	let best = Infinity;
+	for (const c of catalog) {
+		const v = Number(c.cost) || 0;
+		if (v < best) best = v;
+	}
+	return catalog.filter((c) => (Number(c.cost) || 0) === best);
+}
+
 export function pickReward(
 	memberId: number,
 	periodKey: number,
@@ -1780,26 +1800,28 @@ export function pickReward(
 	difficulty: TaskDifficulty,
 	value: number,
 	catalog: { id: number; cost: number }[],
-	period: TaskPeriod = 'daily'
+	period: TaskPeriod = 'daily',
+	minWorth = 0
 ): RewardPlan {
-	const worth = Math.max(XP_REWARD_MIN, Math.min(XP_REWARD_MAX, Math.round(Number(value) || 0)));
+	const floor = Math.max(0, Math.round(Number(minWorth) || 0));
+	const worth = Math.max(XP_REWARD_MIN, floor, Math.min(XP_REWARD_MAX, Math.round(Number(value) || 0)));
 	const rand = mulberry32(hashSeed('reward', period, memberId, periodKey, slot));
 
 	const itemChance = period === 'weekly' ? 0.85 : difficulty === 'hard' ? 0.7 : difficulty === 'medium' ? 0.45 : 0.25;
 
 	if (catalog.length > 0 && rand() < itemChance) {
-		const fair = catalog.filter((c) => {
-			const v = Number(c.cost) || 0;
-			return v > 0 && v >= worth * ITEM_VALUE_FLOOR && v <= worth * ITEM_VALUE_CEILING;
-		});
-		if (fair.length > 0) {
-			const picked = fair[Math.floor(rand() * fair.length) % fair.length];
+		const affordable = catalog.filter((c) => (Number(c.cost) || 0) >= Math.max(floor, worth * ITEM_VALUE_FLOOR));
+		const fair = affordable.filter((c) => (Number(c.cost) || 0) <= worth * ITEM_VALUE_CEILING);
+
+		const pool = fair.length > 0 ? fair : cheapestOf(affordable);
+		if (pool.length > 0) {
+			const picked = pool[Math.floor(rand() * pool.length) % pool.length];
 			if (picked) return { kind: 'item', itemId: picked.id, xp: 0 };
 		}
 	}
 
 	const varied = worth * (1 + rand() * 0.35);
-	const xp = Math.max(XP_REWARD_MIN, Math.min(XP_REWARD_MAX, Math.round(varied / 100) * 100));
+	const xp = Math.max(XP_REWARD_MIN, floor, Math.min(XP_REWARD_MAX, Math.round(varied / 100) * 100));
 	return { kind: 'xp', xp };
 }
 

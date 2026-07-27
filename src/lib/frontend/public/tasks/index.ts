@@ -19,6 +19,7 @@ import {
 	type LevelingRates,
 	pickReward,
 	taskValueXp,
+	taskCostXp,
 	costPercentile,
 	XP_REWARD_MIN,
 	RECENT_WINDOW_DAYS,
@@ -134,10 +135,15 @@ async function buildPeriod(opts: {
 			const def = TASK_BY_ID.get(g.taskType);
 			const targetCost = g.targetItemId != null ? Number(catalog.find((c) => c.id === g.targetItemId)?.cost) || 0 : 0;
 			const value = def ? taskValueXp(def, g.goal, g.difficulty, currentStreak, eligibility, period, targetCost) : XP_REWARD_MIN;
-			const reward = pickReward(Number(member.id), periodKey, g.slot, g.difficulty, value, catalog, period);
+			const spend = def ? taskCostXp(def, g.goal, eligibility, targetCost) : 0;
+			const draft = pickReward(Number(member.id), periodKey, g.slot, g.difficulty, value, catalog, period, spend);
 
-			const rewardWorth = reward.kind === 'item' ? Number(catalog.find((c) => c.id === reward.itemId)?.cost) || 0 : reward.xp;
-			const goal = def ? goalForReward(def, g.goal, rewardWorth, g.difficulty, eligibility, period, targetCost) : g.goal;
+			const draftWorth = draft.kind === 'item' ? Number(catalog.find((c) => c.id === draft.itemId)?.cost) || 0 : draft.xp;
+			const goal = def ? goalForReward(def, g.goal, draftWorth, g.difficulty, eligibility, period, targetCost) : g.goal;
+
+			const finalSpend = def ? taskCostXp(def, goal, eligibility, targetCost) : 0;
+			const finalValue = def ? taskValueXp(def, goal, g.difficulty, currentStreak, eligibility, period, targetCost) : XP_REWARD_MIN;
+			const reward = finalSpend > draftWorth ? pickReward(Number(member.id), periodKey, g.slot, g.difficulty, finalValue, catalog, period, finalSpend) : draft;
 
 			const metric = def?.metric as TaskMetric | undefined;
 			const baseline = metric && COUNTER_METRICS.has(metric) ? Number(baselines[metric]) || 0 : 0;

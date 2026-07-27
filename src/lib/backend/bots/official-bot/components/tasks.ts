@@ -6,9 +6,13 @@ import {
 	DAILY_TASK_SLOTS,
 	STREAK_FREEZE_MAX,
 	STREAK_FREEZE_EARN_EVERY,
+	LOGIN_CYCLE_DAYS,
 	dayKeyFor,
+	weekKeyFor,
+	weekStartDayKey,
 	streakMilestone,
 	xpRewardFor,
+	loginRewardFor,
 	type TaskMetric
 } from '../../../../tasks.js';
 import { snapshotMembers, finalizeXpChanges, resolveServerMemberId } from './items.js';
@@ -34,8 +38,109 @@ async function measureProgress(memberId: any, row: any, dayStartMs: number) {
 	return db.countMemberEventsSince(memberId, def.metric, dayStartMs).catch(() => 0);
 }
 
+async function grantXpTo(guildId: any, memberId: any, amount: number) {
+	const xp = Math.max(0, Math.round(amount) || 0);
+	await db.ensureMemberLevel(memberId);
+	const snaps = await snapshotMembers([memberId]);
+	if (xp > 0) await db.updateMemberLevelStats(memberId, { experienceIncrement: xp });
+	await finalizeXpChanges(guildId, snaps, 'task-claim');
+	return { kind: 'xp', xp };
+}
+
+async function deliverReward(guildId: any, memberId: any, plan: { wantsItem: boolean; itemId: any; fallbackXp: number }) {
+	const item = plan.wantsItem && plan.itemId != null ? await db.getItem(Number(plan.itemId)).catch(() => null) : null;
+	const itemUsable = !!item && (item.enabled as any) !== false && (item.enabled as any) !== 0;
+
+	if (plan.wantsItem && itemUsable) {
+		await db.ensureMemberLevel(memberId);
+		const owned = await db.grantMemberItem(memberId, Number(plan.itemId), 1);
+		await db.logMemberItemAction(memberId, {
+			member_item_id: owned?.id ?? null,
+			item_id: Number(plan.itemId),
+			action: 'task_reward',
+			xp_amount: 0,
+			outcome: 'success'
+		});
+		return { kind: 'item', itemId: Number(plan.itemId), name: item.name, effectType: item.effect_type };
+	}
+
+	if (plan.wantsItem || plan.itemId != null) {
+		const worth = Number(item?.cost) || 0;
+		return grantXpTo(guildId, memberId, worth > 0 ? worth : plan.fallbackXp);
+	}
+
+	return grantXpTo(guildId, memberId, plan.fallbackXp);
+}
+
+export async function handleLoginClaim(client: any, payload: any) {
+	const { guild_id, actor_discord_id, tz_offset } = payload || {};
+	if (!guild_id || !actor_discord_id) return { ok: false, error: 'missing_fields' };
+
+	const { getServerForCurrentBot, isPublicSubFeatureEnabled } = await import('../../../config.js');
+
+	let server: any;
+	try {
+		server = await getServerForCurrentBot(guild_id);
+	} catch {
+		return { ok: false, error: 'server_not_found' };
+	}
+
+	if (!(await isPublicSubFeatureEnabled(guild_id, 'tasks'))) return { ok: false, error: 'tasks_disabled' };
+
+	const memberId = await resolveServerMemberId(server.id, actor_discord_id);
+	if (!memberId) return { ok: false, error: 'member_not_found' };
+
+	const tzOffsetMin = Number(tz_offset) || 0;
+	const dayKey = dayKeyFor(Date.now(), tzOffsetMin);
+
+	const before = (await db.ensureMemberLoginClaim(memberId)) as any;
+	if (before?.last_claim_day_key != null && Number(before.last_claim_day_key) >= dayKey) {
+		return { ok: false, error: 'already_claimed' };
+	}
+
+	const itemsAllowed = await isPublicSubFeatureEnabled(guild_id, 'items');
+	const catalog = itemsAllowed ? await loadRewardCatalog(server.id) : [];
+
+	const applied = await db.applyLoginClaim(memberId, dayKey, LOGIN_CYCLE_DAYS);
+	if (!applied.changed) return { ok: false, error: 'already_claimed' };
+
+	const day = Number(applied.row?.cycle_day) || 1;
+	const cycleIndex = Number(applied.row?.cycles_completed) || 0;
+	const reward = loginRewardFor(memberId, cycleIndex, day, catalog);
+
+	if (reward.kind === 'item') {
+		const inventory = await db.getMemberInventory(memberId).catch(() => []);
+		if (effectiveBagStock(inventory as any[]) + 1 > BAG_CAPACITY) {
+			const fallback = await grantXpTo(guild_id, memberId, 200);
+			return { ok: true, granted: fallback, day, jackpot: reward.jackpot, bagWasFull: true };
+		}
+	}
+
+	let granted: any = null;
+	try {
+		granted = await deliverReward(guild_id, memberId, {
+			wantsItem: reward.kind === 'item',
+			itemId: reward.kind === 'item' ? reward.itemId : null,
+			fallbackXp: reward.kind === 'xp' ? reward.xp : 200
+		});
+	} catch (err: any) {
+		await logger.log(`❌ Login claim grant failed: ${err.message}`);
+		return { ok: false, error: 'grant_failed' };
+	}
+
+	return { ok: true, granted, day, jackpot: reward.jackpot, cycleDays: LOGIN_CYCLE_DAYS };
+}
+
+async function loadRewardCatalog(serverId: any) {
+	const panelId = await db.getServerPanelId(serverId).catch(() => null);
+	if (panelId == null) return [];
+	const all = (await db.listItems(panelId).catch(() => [])) as any[];
+	return all.filter((i) => i.enabled !== false && i.enabled !== 0 && (Number(i.cost) || 0) > 0).map((i) => ({ id: Number(i.id), cost: Number(i.cost) || 0 }));
+}
+
 export async function handleTaskClaim(client: any, payload: any) {
 	const { guild_id, actor_discord_id, slot, tz_offset } = payload || {};
+	const period: 'daily' | 'weekly' = payload?.period === 'weekly' ? 'weekly' : 'daily';
 	if (!guild_id || !actor_discord_id || slot == null) return { ok: false, error: 'missing_fields' };
 
 	const { getServerForCurrentBot, isPublicSubFeatureEnabled } = await import('../../../config.js');
@@ -57,15 +162,17 @@ export async function handleTaskClaim(client: any, payload: any) {
 	const tzOffsetMin = Number(tz_offset) || 0;
 	const nowMs = Date.now();
 	const dayKey = dayKeyFor(nowMs, tzOffsetMin);
-	const dayStartMs = dayKey * 86400000 + tzOffsetMin * 60000;
+	const weekKey = weekKeyFor(nowMs, tzOffsetMin);
+	const periodKey = period === 'weekly' ? weekKey : dayKey;
+	const windowStartMs = period === 'weekly' ? weekStartDayKey(weekKey) * 86400000 + tzOffsetMin * 60000 : dayKey * 86400000 + tzOffsetMin * 60000;
 
-	const rows = (await db.getMemberDailyTasks(memberId, dayKey).catch(() => [])) as any[];
+	const rows = (await db.getMemberDailyTasks(memberId, periodKey, period).catch(() => [])) as any[];
 	const row = rows.find((r) => Number(r.slot) === Number(slot));
 	if (!row) return { ok: false, error: 'task_not_found' };
 	if (row.claimed_at) return { ok: false, error: 'already_claimed' };
 
 	const goal = Number(row.goal) || 1;
-	const progress = await measureProgress(memberId, row, dayStartMs);
+	const progress = await measureProgress(memberId, row, windowStartMs);
 	if (progress < goal) return { ok: false, error: 'task_incomplete', progress, goal };
 
 	const itemsAllowed = await isPublicSubFeatureEnabled(guild_id, 'items');
@@ -78,51 +185,27 @@ export async function handleTaskClaim(client: any, payload: any) {
 		}
 	}
 
-	const claimed = await db.claimMemberDailyTask(memberId, dayKey, Number(slot));
+	const claimed = await db.claimMemberDailyTask(memberId, periodKey, Number(slot), period);
 	if (!claimed) return { ok: false, error: 'already_claimed' };
-
-	async function grantXp(amount: number) {
-		const xp = Math.max(0, Math.round(amount) || 0);
-		await db.ensureMemberLevel(memberId);
-		const snaps = await snapshotMembers([memberId]);
-		if (xp > 0) await db.updateMemberLevelStats(memberId, { experienceIncrement: xp });
-		await finalizeXpChanges(guild_id, snaps, 'task-claim');
-		return { kind: 'xp', xp };
-	}
 
 	let granted: any = null;
 	try {
-		const item = grantsItem ? await db.getItem(Number(row.reward_item_id)).catch(() => null) : null;
-		const itemUsable = !!item && (item.enabled as any) !== false && (item.enabled as any) !== 0;
-
-		if (grantsItem && itemUsable) {
-			await db.ensureMemberLevel(memberId);
-			const owned = await db.grantMemberItem(memberId, Number(row.reward_item_id), 1);
-			await db.logMemberItemAction(memberId, {
-				member_item_id: owned?.id ?? null,
-				item_id: Number(row.reward_item_id),
-				action: 'task_reward',
-				xp_amount: 0,
-				outcome: 'success'
-			});
-			granted = { kind: 'item', itemId: Number(row.reward_item_id), name: item.name, effectType: item.effect_type };
-		} else if (row.reward_kind === 'item') {
-			const worth = Number(item?.cost) || 0;
-			granted = await grantXp(worth > 0 ? worth : xpRewardFor(row.difficulty, 0, 500));
-		} else {
-			granted = await grantXp(Number(row.reward_xp) || 0);
-		}
+		granted = await deliverReward(guild_id, memberId, {
+			wantsItem: grantsItem,
+			itemId: row.reward_item_id,
+			fallbackXp: Number(row.reward_xp) || xpRewardFor(row.difficulty, 0, 500)
+		});
 	} catch (err: any) {
 		await logger.log(`❌ Task reward grant failed: ${err.message}`);
 		return { ok: false, error: 'grant_failed' };
 	}
 
-	const after = (await db.getMemberDailyTasks(memberId, dayKey).catch(() => [])) as any[];
+	const after = (await db.getMemberDailyTasks(memberId, dayKey, 'daily').catch(() => [])) as any[];
 	const allClaimed = after.length > 0 && after.every((r) => !!r.claimed_at);
 
 	let streakResult: any = null;
 	let milestone: any = null;
-	if (allClaimed) {
+	if (allClaimed && period === 'daily') {
 		streakResult = await db.applyStreakClaim(memberId, dayKey, STREAK_FREEZE_MAX, STREAK_FREEZE_EARN_EVERY).catch(() => null);
 		if (streakResult?.changed) {
 			milestone = streakMilestone(Number(streakResult.streak) || 0);
@@ -176,4 +259,4 @@ async function announceStreak(client: any, guildId: any, discordMemberId: any, s
 	await channel.send({ content: `${member}`, embeds: [embed] }).catch(() => null);
 }
 
-export default { handleTaskClaim };
+export default { handleTaskClaim, handleLoginClaim };

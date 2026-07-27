@@ -19,23 +19,12 @@ export const POST: RequestHandler = async ({ params, request }) => {
 	}
 
 	const body = await request.json().catch(() => null);
-	if (!body) return json({ success: false, error: 'Invalid body' }, { status: 400 });
-	const { card, slot, tz_offset } = body;
-	const period = body.period === 'weekly' ? 'weekly' : 'daily';
-	if (!card || slot == null) return json({ success: false, error: 'Missing fields' }, { status: 400 });
+	if (!body?.card) return json({ success: false, error: 'Missing fields' }, { status: 400 });
 
-	const actor = await resolveMemberByCardToken(server.id, String(card));
+	const actor = await resolveMemberByCardToken(server.id, String(body.card));
 	if (!actor) return json({ success: false, error: 'Member not found' }, { status: 404 });
 
-	const tzOffsetMin = Number(tz_offset) || 0;
-
-	await loadTasksShared({
-		server,
-		member: actor,
-		itemsEnabled: psSettings.items_enabled === true,
-		minigamesEnabled: psSettings.minigames_enabled === true,
-		tzOffsetMin
-	}).catch(() => null);
+	const tzOffsetMin = Number(body.tz_offset) || 0;
 
 	const fullServer = await db.getServer(server.id);
 	if (!fullServer?.discord_server_id) {
@@ -47,21 +36,16 @@ export const POST: RequestHandler = async ({ params, request }) => {
 	}
 
 	const webhookResult = await postBotWebhook(bot, {
-		type: 'claim_task',
+		type: 'claim_login',
 		guild_id: fullServer.discord_server_id,
 		actor_discord_id: actor.discord_member_id,
-		slot: Number(slot),
-		period,
 		tz_offset: tzOffsetMin
 	});
 
 	if (webhookResult.status !== 200 || !webhookResult.body?.ok) {
 		const code = webhookResult.body?.error;
 		const friendly: Record<string, string> = {
-			already_claimed: 'You already claimed this task.',
-			task_incomplete: 'This task is not finished yet.',
-			task_not_found: 'That task is no longer available.',
-			bag_full: `Your bag is full (max ${webhookResult.body?.capacity ?? 50} items).`,
+			already_claimed: 'You already claimed your reward today.',
 			grant_failed: 'Could not deliver the reward. Try again.'
 		};
 		const err = friendly[code] || code || (webhookResult.status === 502 ? 'Could not reach the bot.' : 'Claim failed.');
@@ -79,9 +63,9 @@ export const POST: RequestHandler = async ({ params, request }) => {
 	return json({
 		success: true,
 		granted: webhookResult.body.granted,
-		allClaimed: webhookResult.body.allClaimed,
-		streak: webhookResult.body.streak,
-		milestone: webhookResult.body.milestone,
+		day: webhookResult.body.day,
+		jackpot: webhookResult.body.jackpot,
+		bagWasFull: webhookResult.body.bagWasFull === true,
 		tasks: refreshed
 	});
 };

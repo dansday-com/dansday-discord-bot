@@ -854,6 +854,7 @@ export const serverMemberDailyTasks = mysqlTable(
 		member_id: int('member_id')
 			.notNull()
 			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		period: varchar('period', { length: 8 }).notNull().default('daily'),
 		day_key: int('day_key').notNull(),
 		slot: tinyint('slot').notNull(),
 		task_type: varchar('task_type', { length: 32 }).notNull(),
@@ -867,9 +868,26 @@ export const serverMemberDailyTasks = mysqlTable(
 		created_at: datetime('created_at').notNull()
 	},
 	(t) => [
-		uniqueIndex('unique_server_member_daily_task').on(t.member_id, t.day_key, t.slot),
-		index('idx_server_member_daily_tasks_member').on(t.member_id, t.day_key)
+		uniqueIndex('unique_server_member_daily_task').on(t.member_id, t.period, t.day_key, t.slot),
+		index('idx_server_member_daily_tasks_member').on(t.member_id, t.period, t.day_key)
 	]
+);
+
+export const serverMemberLoginClaims = mysqlTable(
+	'server_member_login_claims',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		member_id: int('member_id')
+			.notNull()
+			.unique()
+			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		cycle_day: tinyint('cycle_day').notNull().default(0),
+		last_claim_day_key: int('last_claim_day_key'),
+		cycles_completed: int('cycles_completed').notNull().default(0),
+		created_at: datetime('created_at').notNull(),
+		updated_at: datetime('updated_at').notNull()
+	},
+	(t) => [index('idx_server_member_login_claims_member').on(t.member_id)]
 );
 
 export const serverMemberStreaks = mysqlTable(

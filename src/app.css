@@ -8012,3 +8012,174 @@
 		grid-template-columns: 1fr;
 	}
 }
+
+.m-root .m-task-login {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	background: var(--chili-surface-elevated);
+	border: 1px solid var(--lb-border-light);
+	border-radius: 16px;
+	padding: 16px 18px;
+	box-shadow: 0 3px 12px var(--lb-shadow);
+}
+
+.m-root .m-task-loginhead {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	flex-wrap: wrap;
+}
+
+.m-root .m-task-loginhead h3 {
+	margin: 0 0 2px;
+	font-size: 15px;
+	font-weight: 800;
+	color: var(--lb-text);
+}
+
+.m-root .m-task-loginhead h3 i {
+	color: #c8911a;
+	margin-right: 6px;
+}
+
+.m-root .m-task-loginhead p {
+	margin: 0;
+	font-size: 12px;
+	color: var(--lb-text-muted);
+}
+
+.m-root .m-task-claim--login {
+	background: linear-gradient(135deg, #c8911a, #b5651d);
+	box-shadow: 0 3px 10px rgba(200, 145, 26, 0.32);
+}
+
+.m-root .m-task-days {
+	display: grid;
+	grid-template-columns: repeat(7, minmax(0, 1fr));
+	gap: 8px;
+}
+
+.m-root .m-task-day {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
+	padding: 10px 4px;
+	border-radius: 12px;
+	background: rgba(26, 52, 63, 0.04);
+	border: 1px solid var(--lb-border-light);
+	text-align: center;
+	transition: all 0.2s ease;
+}
+
+.m-root .m-task-day--claimed {
+	background: rgba(31, 138, 76, 0.1);
+	border-color: rgba(31, 138, 76, 0.32);
+}
+
+.m-root .m-task-day--claimed .m-task-dayicon {
+	color: #1f8a4c;
+}
+
+.m-root .m-task-day--current {
+	background: linear-gradient(135deg, rgba(200, 145, 26, 0.16), rgba(192, 57, 43, 0.12));
+	border-color: rgba(200, 145, 26, 0.5);
+	box-shadow: 0 0 0 2px rgba(200, 145, 26, 0.18);
+	transform: translateY(-2px);
+}
+
+.m-root .m-task-day--jackpot {
+	border-color: rgba(192, 57, 43, 0.45);
+	background: linear-gradient(135deg, rgba(200, 145, 26, 0.12), rgba(192, 57, 43, 0.14));
+}
+
+.m-root .m-task-day--jackpot .m-task-dayicon {
+	color: #c0392b;
+	font-size: 18px;
+}
+
+.m-root .m-task-daynum {
+	font-size: 9px;
+	font-weight: 800;
+	letter-spacing: 0.4px;
+	text-transform: uppercase;
+	color: var(--lb-text-faint);
+}
+
+.m-root .m-task-dayicon {
+	font-size: 15px;
+	color: #c8911a;
+	line-height: 1;
+}
+
+.m-root .m-task-dayval {
+	font-size: 10px;
+	font-weight: 700;
+	color: var(--lb-text-muted);
+	font-variant-numeric: tabular-nums;
+}
+
+.m-root .m-task-tabs {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.m-root .m-task-tab {
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
+	border: 1px solid var(--lb-border-light);
+	background: var(--chili-surface-elevated);
+	border-radius: 11px;
+	padding: 9px 15px;
+	font-size: 13px;
+	font-weight: 700;
+	color: var(--lb-text-muted);
+	cursor: pointer;
+	transition: all 0.15s;
+}
+
+.m-root .m-task-tab--active {
+	background: linear-gradient(135deg, rgba(115, 62, 36, 0.92), rgba(36, 95, 115, 0.95));
+	color: #fff;
+	border-color: transparent;
+	box-shadow: 0 2px 12px rgba(36, 95, 115, 0.35);
+}
+
+.m-root .m-task-tabcount {
+	background: rgba(255, 255, 255, 0.25);
+	border-radius: 999px;
+	padding: 1px 7px;
+	font-size: 11px;
+	font-variant-numeric: tabular-nums;
+}
+
+.m-root .m-task-tab:not(.m-task-tab--active) .m-task-tabcount {
+	background: rgba(26, 52, 63, 0.09);
+}
+
+.m-root .m-task-tabreset {
+	margin-left: auto;
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 12px;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+	color: var(--lb-text-faint);
+}
+
+@media (max-width: 680px) {
+	.m-root .m-task-days {
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+	}
+
+	.m-root .m-task-tabreset {
+		margin-left: 0;
+		width: 100%;
+	}
+}

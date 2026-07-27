@@ -670,7 +670,10 @@ async function handleReactionChange(reaction, user, delta) {
 		if (!guild) return;
 		if (!(await isComponentFeatureEnabled(guild.id, serverSettingsComponent.leveling))) return;
 
-		const { dbMember, guildMember } = await resolveServerAndMember(guild, { id: user.id, user });
+		const fetchedMember = await guild.members.fetch({ user: user.id, cache: true }).catch(() => null);
+		if (!fetchedMember) return;
+
+		const { dbMember, guildMember } = await resolveServerAndMember(guild, fetchedMember);
 		if (!dbMember || !guildMember) return;
 		if (!(await isMemberEligible(guild.id, guildMember))) return;
 

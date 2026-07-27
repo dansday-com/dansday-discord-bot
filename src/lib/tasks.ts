@@ -1,7 +1,10 @@
-export const DAILY_TASK_SLOTS = 5;
+export const DAILY_TASK_SLOTS = 6;
+export const WEEKLY_TASK_SLOTS = 6;
 export const STREAK_FREEZE_MAX = 2;
 export const STREAK_FREEZE_EARN_EVERY = 10;
+export const LOGIN_CYCLE_DAYS = 7;
 
+export type TaskPeriod = 'daily' | 'weekly';
 export type TaskDifficulty = 'easy' | 'medium' | 'hard';
 
 export type TaskMetric =
@@ -213,17 +216,36 @@ export const DIFFICULTY_META: Record<TaskDifficulty, { label: string; accent: st
 	hard: { label: 'Hard', accent: '#c0392b', weight: 4.5 }
 };
 
-export const DAILY_DIFFICULTY_PLAN: TaskDifficulty[] = ['easy', 'easy', 'medium', 'medium', 'hard'];
+export const DAILY_DIFFICULTY_PLAN: TaskDifficulty[] = ['easy', 'easy', 'medium', 'medium', 'medium', 'hard'];
+export const WEEKLY_DIFFICULTY_PLAN: TaskDifficulty[] = ['hard', 'hard', 'hard', 'hard', 'hard', 'hard'];
+
+export const WEEKLY_GOAL_MULTIPLIER = 5.5;
+export const WEEKLY_REWARD_MULTIPLIER = 6;
 
 export function dayKeyFor(nowMs: number, tzOffsetMin = 0): number {
 	const offsetMs = (Number.isFinite(Number(tzOffsetMin)) ? Number(tzOffsetMin) : 0) * 60000;
 	return Math.floor((nowMs - offsetMs) / 86400000);
 }
 
+export function weekKeyFor(nowMs: number, tzOffsetMin = 0): number {
+	return Math.floor((dayKeyFor(nowMs, tzOffsetMin) + 3) / 7);
+}
+
+export function weekStartDayKey(weekKey: number): number {
+	return weekKey * 7 - 3;
+}
+
 export function msUntilNextDay(nowMs: number, tzOffsetMin = 0): number {
 	const offsetMs = (Number.isFinite(Number(tzOffsetMin)) ? Number(tzOffsetMin) : 0) * 60000;
 	const local = nowMs - offsetMs;
 	return 86400000 - (((local % 86400000) + 86400000) % 86400000);
+}
+
+export function msUntilNextWeek(nowMs: number, tzOffsetMin = 0): number {
+	const offsetMs = (Number.isFinite(Number(tzOffsetMin)) ? Number(tzOffsetMin) : 0) * 60000;
+	const local = nowMs - offsetMs;
+	const nextWeekStartDay = weekStartDayKey(weekKeyFor(nowMs, tzOffsetMin) + 1);
+	return nextWeekStartDay * 86400000 - local;
 }
 
 function hashSeed(...parts: (string | number)[]): number {
@@ -266,16 +288,17 @@ function isEligible(def: TaskDefinition, elig: TaskEligibility): boolean {
 	return true;
 }
 
-export function goalFor(def: TaskDefinition, difficulty: TaskDifficulty, elig: TaskEligibility, rand: () => number): number {
-	const min = def.minGoal[difficulty];
-	const max = def.maxGoal[difficulty];
+export function goalFor(def: TaskDefinition, difficulty: TaskDifficulty, elig: TaskEligibility, rand: () => number, period: TaskPeriod = 'daily'): number {
+	const scale = period === 'weekly' ? WEEKLY_GOAL_MULTIPLIER : 1;
+	const min = Math.round(def.minGoal[difficulty] * scale);
+	const max = Math.round(def.maxGoal[difficulty] * scale);
 
 	let target = min;
 	if (def.baselineKey) {
 		const total = Number(elig.baselines[def.baselineKey]) || 0;
 		const days = Math.max(1, elig.activeDays);
 		const perDay = total / days;
-		target = perDay * def.baselineShare[difficulty];
+		target = perDay * def.baselineShare[difficulty] * scale;
 	} else {
 		target = min + (max - min) * rand() * 0.6;
 	}
@@ -292,16 +315,25 @@ export type GeneratedTask = {
 	goal: number;
 };
 
-export function generateDailyTasks(memberId: number, serverId: number, dayKey: number, elig: TaskEligibility): GeneratedTask[] {
+export function generateDailyTasks(
+	memberId: number,
+	serverId: number,
+	periodKey: number,
+	elig: TaskEligibility,
+	period: TaskPeriod = 'daily'
+): GeneratedTask[] {
 	const pool = TASK_DEFINITIONS.filter((d) => isEligible(d, elig));
 	if (pool.length === 0) return [];
+
+	const plan = period === 'weekly' ? WEEKLY_DIFFICULTY_PLAN : DAILY_DIFFICULTY_PLAN;
+	const slots = period === 'weekly' ? WEEKLY_TASK_SLOTS : DAILY_TASK_SLOTS;
 
 	const out: GeneratedTask[] = [];
 	const used = new Set<string>();
 
-	for (let slot = 0; slot < DAILY_TASK_SLOTS; slot++) {
-		const wanted = DAILY_DIFFICULTY_PLAN[slot];
-		const rand = mulberry32(hashSeed(memberId, serverId, dayKey, slot));
+	for (let slot = 0; slot < slots; slot++) {
+		const wanted = plan[slot];
+		const rand = mulberry32(hashSeed(period, memberId, serverId, periodKey, slot));
 
 		let candidates = pool.filter((d) => d.difficulties.includes(wanted) && !used.has(d.id));
 		let difficulty = wanted;
@@ -309,13 +341,14 @@ export function generateDailyTasks(memberId: number, serverId: number, dayKey: n
 		if (candidates.length === 0) {
 			candidates = pool.filter((d) => !used.has(d.id));
 			if (candidates.length === 0) break;
-			difficulty = candidates[0].difficulties.includes(wanted) ? wanted : candidates[0].difficulties[candidates[0].difficulties.length - 1];
+			const fb = candidates[Math.floor(rand() * candidates.length) % candidates.length];
+			difficulty = fb.difficulties.includes(wanted) ? wanted : fb.difficulties[fb.difficulties.length - 1];
 		}
 
 		const pick = candidates[Math.floor(rand() * candidates.length) % candidates.length];
 		used.add(pick.id);
 
-		out.push({ slot, taskType: pick.id, difficulty, goal: goalFor(pick, difficulty, elig, rand) });
+		out.push({ slot, taskType: pick.id, difficulty, goal: goalFor(pick, difficulty, elig, rand, period) });
 	}
 
 	return out;
@@ -343,20 +376,18 @@ export function pickReward(
 	slot: number,
 	difficulty: TaskDifficulty,
 	streak: number,
-	catalog: { id: number; cost: number }[]
+	catalog: { id: number; cost: number }[],
+	period: TaskPeriod = 'daily'
 ): RewardPlan {
 	const costs = catalog.map((c) => Number(c.cost) || 0).filter((c) => c > 0);
 	const median = costPercentile(costs, 50) || 500;
-	const rand = mulberry32(hashSeed('reward', memberId, dayKey, slot));
+	const rand = mulberry32(hashSeed('reward', period, memberId, dayKey, slot));
 
-	const itemChance = difficulty === 'hard' ? 0.6 : difficulty === 'medium' ? 0.25 : 0.08;
+	const itemChance = period === 'weekly' ? 0.85 : difficulty === 'hard' ? 0.6 : difficulty === 'medium' ? 0.25 : 0.08;
 
 	if (catalog.length > 0 && rand() < itemChance) {
-		const band: Record<TaskDifficulty, [number, number]> = {
-			easy: [0, 35],
-			medium: [30, 70],
-			hard: [65, 100]
-		};
+		const band: Record<TaskDifficulty, [number, number]> =
+			period === 'weekly' ? { easy: [60, 100], medium: [70, 100], hard: [80, 100] } : { easy: [0, 35], medium: [30, 70], hard: [65, 100] };
 		const [lo, hi] = band[difficulty];
 		const loCost = costPercentile(costs, lo);
 		const hiCost = costPercentile(costs, hi);
@@ -369,7 +400,42 @@ export function pickReward(
 		if (picked) return { kind: 'item', itemId: picked.id, xp: 0 };
 	}
 
-	return { kind: 'xp', xp: xpRewardFor(difficulty, streak, median) };
+	const xp = xpRewardFor(difficulty, streak, median);
+	return { kind: 'xp', xp: period === 'weekly' ? Math.round((xp * WEEKLY_REWARD_MULTIPLIER) / 10) * 10 : xp };
+}
+
+export const LOGIN_DAY_WEIGHTS = [1, 1.4, 1.9, 2.5, 3.2, 4.2, 12] as const;
+
+export type LoginReward = { day: number; kind: 'xp'; xp: number; jackpot: boolean } | { day: number; kind: 'item'; itemId: number; jackpot: boolean };
+
+export function loginRewardFor(memberId: number, cycleIndex: number, day: number, catalog: { id: number; cost: number }[]): LoginReward {
+	const costs = catalog.map((c) => Number(c.cost) || 0).filter((c) => c > 0);
+	const median = costPercentile(costs, 50) || 500;
+	const jackpot = day === LOGIN_CYCLE_DAYS;
+	const weight = LOGIN_DAY_WEIGHTS[Math.max(0, Math.min(LOGIN_CYCLE_DAYS - 1, day - 1))];
+	const rand = mulberry32(hashSeed('login', memberId, cycleIndex, day));
+
+	const itemChance = jackpot ? 0.75 : day >= 5 ? 0.2 : 0.05;
+
+	if (catalog.length > 0 && rand() < itemChance) {
+		const [lo, hi] = jackpot ? [80, 100] : [25, 65];
+		const loCost = costPercentile(costs, lo);
+		const hiCost = costPercentile(costs, hi);
+		const inBand = catalog.filter((c) => {
+			const v = Number(c.cost) || 0;
+			return v >= loCost && v <= hiCost;
+		});
+		const chooseFrom = inBand.length > 0 ? inBand : catalog;
+		const picked = chooseFrom[Math.floor(rand() * chooseFrom.length) % chooseFrom.length];
+		if (picked) return { day, kind: 'item', itemId: picked.id, jackpot };
+	}
+
+	const base = Math.max(40, Math.round(median * 0.15));
+	return { day, kind: 'xp', xp: Math.max(20, Math.round((base * weight) / 10) * 10), jackpot };
+}
+
+export function loginCyclePreview(memberId: number, cycleIndex: number, catalog: { id: number; cost: number }[]): LoginReward[] {
+	return Array.from({ length: LOGIN_CYCLE_DAYS }, (_, i) => loginRewardFor(memberId, cycleIndex, i + 1, catalog));
 }
 
 export function streakMilestone(streak: number): { at: number; label: string; emoji: string } | null {

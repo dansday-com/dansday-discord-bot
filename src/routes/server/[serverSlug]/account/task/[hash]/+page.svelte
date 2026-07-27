@@ -12,14 +12,19 @@
 	const tzOffset = () => -new Date().getTimezoneOffset();
 
 	let live = $state<any>(data.tasks);
-	let busySlot = $state<number | null>(null);
+	let busySlot = $state<string | null>(null);
+	let claimingLogin = $state(false);
+	let tab = $state<'daily' | 'weekly'>('daily');
 	let now = $state(Date.now());
 	let resetAt = $state(Date.now() + (Number(data.tasks?.resetsInMs) || 0));
+	let weeklyResetAt = $state(Date.now() + (Number(data.tasks?.weeklyResetsInMs) || 0));
 	let celebrate = $state<{ streak: number; emoji: string; label: string } | null>(null);
+	let loginWin = $state<{ day: number; jackpot: boolean; text: string } | null>(null);
 
 	$effect(() => {
 		live = data.tasks;
 		resetAt = Date.now() + (Number(data.tasks?.resetsInMs) || 0);
+		weeklyResetAt = Date.now() + (Number(data.tasks?.weeklyResetsInMs) || 0);
 	});
 
 	let ticker: any = null;
@@ -37,22 +42,29 @@
 				body: JSON.stringify({ card: ctx.hash, tz_offset: tzOffset() })
 			});
 			const body = await res.json();
-			if (body?.success && body.tasks) {
-				live = body.tasks;
-				resetAt = Date.now() + (Number(body.tasks.resetsInMs) || 0);
-			}
+			if (body?.success && body.tasks) applyState(body.tasks);
 		} catch {
 			/* keep server-rendered state */
 		}
 	}
 
-	const tasks = $derived((live?.tasks ?? []) as any[]);
+	function applyState(next: any) {
+		live = next;
+		resetAt = Date.now() + (Number(next.resetsInMs) || 0);
+		weeklyResetAt = Date.now() + (Number(next.weeklyResetsInMs) || 0);
+	}
+
+	const dailyTasks = $derived((live?.daily ?? []) as any[]);
+	const weeklyTasks = $derived((live?.weekly ?? []) as any[]);
+	const tasks = $derived(tab === 'weekly' ? weeklyTasks : dailyTasks);
+	const login = $derived(live?.login ?? { rewards: [], canClaim: false, nextDay: 1, cycleDays: 7 });
 	const streak = $derived(
 		live?.streak ?? { current: 0, longest: 0, freezes: 0, freezeMax: 2, nextMilestone: { at: 7, label: 'One week', emoji: '🔥' }, toNextMilestone: 7 }
 	);
-	const doneCount = $derived(tasks.filter((t) => t.claimed).length);
-	const readyCount = $derived(tasks.filter((t) => t.complete && !t.claimed).length);
-	const allDone = $derived(tasks.length > 0 && doneCount === tasks.length);
+	const doneCount = $derived(dailyTasks.filter((t) => t.claimed).length);
+	const readyCount = $derived([...dailyTasks, ...weeklyTasks].filter((t) => t.complete && !t.claimed).length);
+	const allDone = $derived(dailyTasks.length > 0 && doneCount === dailyTasks.length);
+	const weeklyDone = $derived(weeklyTasks.filter((t) => t.claimed).length);
 
 	const countdown = $derived.by(() => {
 		const ms = Math.max(0, resetAt - now);
@@ -60,6 +72,14 @@
 		const m = Math.floor((ms % 3600000) / 60000);
 		const s = Math.floor((ms % 60000) / 1000);
 		return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+	});
+
+	const weeklyCountdown = $derived.by(() => {
+		const ms = Math.max(0, weeklyResetAt - now);
+		const d = Math.floor(ms / 86400000);
+		const h = Math.floor((ms % 86400000) / 3600000);
+		const m = Math.floor((ms % 3600000) / 60000);
+		return d > 0 ? `${d}d ${h}h` : `${h}h ${m}m`;
 	});
 
 	const milestoneTrack = $derived.by(() => {
@@ -88,25 +108,23 @@
 	}
 
 	async function claim(t: any) {
+		const key = `${t.period}:${t.slot}`;
 		if (ctx.readOnly || busySlot != null || !t.complete || t.claimed) return;
-		busySlot = t.slot;
+		busySlot = key;
 		try {
 			const res = await fetch(`/api/tasks/${data.server.slug}/claim`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ card: ctx.hash, slot: t.slot, tz_offset: tzOffset() })
+				body: JSON.stringify({ card: ctx.hash, slot: t.slot, period: t.period, tz_offset: tzOffset() })
 			});
 			const body = await res.json();
 			if (!body?.success) {
 				showToast(body?.error || 'Claim failed.', 'error');
-				if (body?.tasks) live = body.tasks;
+				if (body?.tasks) applyState(body.tasks);
 				return;
 			}
 
-			if (body.tasks) {
-				live = body.tasks;
-				resetAt = Date.now() + (Number(body.tasks.resetsInMs) || 0);
-			}
+			if (body.tasks) applyState(body.tasks);
 
 			const g = body.granted;
 			if (g?.kind === 'item') showToast(`Claimed ${g.name}!`, 'success');
@@ -122,6 +140,38 @@
 			showToast('Could not reach the server.', 'error');
 		} finally {
 			busySlot = null;
+		}
+	}
+
+	async function claimLogin() {
+		if (ctx.readOnly || claimingLogin || !login.canClaim) return;
+		claimingLogin = true;
+		try {
+			const res = await fetch(`/api/tasks/${data.server.slug}/login`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ card: ctx.hash, tz_offset: tzOffset() })
+			});
+			const body = await res.json();
+			if (!body?.success) {
+				showToast(body?.error || 'Claim failed.', 'error');
+				if (body?.tasks) applyState(body.tasks);
+				return;
+			}
+
+			if (body.tasks) applyState(body.tasks);
+
+			const g = body.granted;
+			const text = g?.kind === 'item' ? g.name : `+${fmt(g?.xp ?? 0)} XP`;
+			if (body.bagWasFull) showToast(`Bag was full — received ${text} instead.`, 'info');
+			loginWin = { day: body.day, jackpot: !!body.jackpot, text };
+			setTimeout(() => (loginWin = null), body.jackpot ? 6000 : 3500);
+
+			ctx.invalidateAll?.();
+		} catch {
+			showToast('Could not reach the server.', 'error');
+		} finally {
+			claimingLogin = false;
 		}
 	}
 </script>
@@ -181,15 +231,67 @@
 		</div>
 	</section>
 
+	<section class="m-task-login">
+		<div class="m-task-loginhead">
+			<div>
+				<h3><i class="fas fa-gift"></i> Daily check-in</h3>
+				<p>Free reward every day — day {login.cycleDays} is the big one.</p>
+			</div>
+			{#if login.canClaim}
+				<button class="m-task-claim m-task-claim--login" onclick={claimLogin} disabled={claimingLogin || ctx.readOnly}>
+					{#if claimingLogin}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas fa-hand-sparkles"></i>{/if}
+					Claim day {login.nextDay}
+				</button>
+			{:else}
+				<span class="m-task-claimed"><i class="fas fa-circle-check"></i> Claimed today</span>
+			{/if}
+		</div>
+
+		<div class="m-task-days">
+			{#each login.rewards as r (r.day)}
+				<div class="m-task-day" class:m-task-day--claimed={r.claimed} class:m-task-day--current={r.current} class:m-task-day--jackpot={r.jackpot}>
+					<span class="m-task-daynum">Day {r.day}</span>
+					<span class="m-task-dayicon">
+						{#if r.claimed}
+							<i class="fas fa-circle-check"></i>
+						{:else if r.kind === 'item'}
+							<i class="fas fa-gem"></i>
+						{:else}
+							<i class="fas fa-star"></i>
+						{/if}
+					</span>
+					<span class="m-task-dayval">
+						{#if r.kind === 'item'}Item{:else}{fmt(r.xp)}{/if}
+					</span>
+				</div>
+			{/each}
+		</div>
+	</section>
+
+	<div class="m-task-tabs">
+		<button class="m-task-tab" class:m-task-tab--active={tab === 'daily'} onclick={() => (tab = 'daily')}>
+			<i class="fas fa-sun"></i> Daily
+			<span class="m-task-tabcount">{doneCount}/{dailyTasks.length}</span>
+		</button>
+		<button class="m-task-tab" class:m-task-tab--active={tab === 'weekly'} onclick={() => (tab = 'weekly')}>
+			<i class="fas fa-calendar-week"></i> Weekly
+			<span class="m-task-tabcount">{weeklyDone}/{weeklyTasks.length}</span>
+		</button>
+		<span class="m-task-tabreset">
+			<i class="fas fa-rotate"></i>
+			{tab === 'weekly' ? weeklyCountdown : countdown}
+		</span>
+	</div>
+
 	{#if tasks.length === 0}
 		<div class="m-task-empty">
 			<i class="fas fa-list-check"></i>
-			<h3>No tasks available</h3>
-			<p>Daily tasks need leveling, items, or minigames enabled on this server.</p>
+			<h3>No {tab} tasks available</h3>
+			<p>Tasks need leveling, items, or minigames enabled on this server.</p>
 		</div>
 	{:else}
 		<div class="m-task-grid">
-			{#each tasks as t (t.slot)}
+			{#each tasks as t (`${t.period}:${t.slot}`)}
 				<article class="m-task-card" class:m-task-card--done={t.claimed} class:m-task-card--ready={t.complete && !t.claimed} style="--accent:{t.accent}">
 					<header class="m-task-cardtop">
 						<div class="m-task-ring">
@@ -234,7 +336,7 @@
 							<span class="m-task-claimed"><i class="fas fa-circle-check"></i> Claimed</span>
 						{:else if t.complete}
 							<button class="m-task-claim" onclick={() => claim(t)} disabled={busySlot != null || ctx.readOnly}>
-								{#if busySlot === t.slot}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas fa-gift"></i>{/if}
+								{#if busySlot === `${t.period}:${t.slot}`}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas fa-gift"></i>{/if}
 								Claim
 							</button>
 						{:else}
@@ -253,6 +355,14 @@
 			<div class="m-task-celebrate-emoji">{celebrate.emoji}</div>
 			<h3>{celebrate.label} streak!</h3>
 			<p>{celebrate.streak} days in a row. Keep it burning.</p>
+		</div>
+	</div>
+{:else if loginWin}
+	<div class="m-task-celebrate" role="status">
+		<div class="m-task-celebrate-card">
+			<div class="m-task-celebrate-emoji">{loginWin.jackpot ? '🎁' : '✨'}</div>
+			<h3>{loginWin.jackpot ? 'Day 7 jackpot!' : `Day ${loginWin.day} claimed`}</h3>
+			<p>{loginWin.text}</p>
 		</div>
 	</div>
 {/if}

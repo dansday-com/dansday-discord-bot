@@ -3,15 +3,22 @@ import { parseMySQLDateTimeUtc } from '$lib/utils/index.js';
 import {
 	TASK_BY_ID,
 	DAILY_TASK_SLOTS,
+	WEEKLY_TASK_SLOTS,
 	STREAK_FREEZE_MAX,
 	STREAK_FREEZE_EARN_EVERY,
+	LOGIN_CYCLE_DAYS,
 	dayKeyFor,
+	weekKeyFor,
+	weekStartDayKey,
 	msUntilNextDay,
+	msUntilNextWeek,
 	generateDailyTasks,
 	pickReward,
 	nextMilestone,
+	loginCyclePreview,
 	type TaskEligibility,
-	type TaskMetric
+	type TaskMetric,
+	type TaskPeriod
 } from '$lib/tasks.js';
 
 const COUNTER_METRICS = new Set<TaskMetric>([
@@ -30,67 +37,35 @@ function daysActive(memberSince: any): number {
 	return Math.max(1, days);
 }
 
-export async function loadTasksShared(opts: {
-	server: any;
+async function loadCatalog(serverId: any, itemsEnabled: boolean) {
+	if (!itemsEnabled) return [];
+	const panelId = await db.getServerPanelId(serverId).catch(() => null);
+	if (panelId == null) return [];
+	const all = (await db.listItems(panelId).catch(() => [])) as any[];
+	return all.filter((i) => i.enabled !== false && i.enabled !== 0 && (Number(i.cost) || 0) > 0).map((i) => ({ id: Number(i.id), cost: Number(i.cost) || 0 }));
+}
+
+async function buildPeriod(opts: {
 	member: any;
-	itemsEnabled: boolean;
-	minigamesEnabled: boolean;
-	tzOffsetMin: number;
-	nowMs?: number;
+	serverId: any;
+	period: TaskPeriod;
+	periodKey: number;
+	windowStartMs: number;
+	eligibility: TaskEligibility;
+	baselines: Partial<Record<TaskMetric, number>>;
+	catalog: { id: number; cost: number }[];
+	currentStreak: number;
 }) {
-	const { server, member, itemsEnabled, minigamesEnabled, tzOffsetMin } = opts;
-	const nowMs = opts.nowMs ?? Date.now();
-	const dayKey = dayKeyFor(nowMs, tzOffsetMin);
-	const dayStartMs = dayKey * 86400000 + tzOffsetMin * 60000;
+	const { member, serverId, period, periodKey, windowStartMs, eligibility, baselines, catalog, currentStreak } = opts;
 
-	const levels = (await db.ensureMemberLevel(member.id).catch(() => null)) as any;
-	const streakRow = (await db.ensureMemberStreak(member.id).catch(() => null)) as any;
-
-	const baselines: Partial<Record<TaskMetric, number>> = {
-		chat_total: Number(levels?.chat_total) || 0,
-		reactions_given: Number(levels?.reactions_given) || 0,
-		voice_minutes_active: Number(levels?.voice_minutes_active) || 0,
-		voice_minutes_afk: Number(levels?.voice_minutes_afk) || 0,
-		voice_minutes_video: Number(levels?.voice_minutes_video) || 0,
-		voice_minutes_streaming: Number(levels?.voice_minutes_streaming) || 0
-	};
-
-	const eligibility: TaskEligibility = {
-		levelingEnabled: true,
-		minigamesEnabled,
-		itemsEnabled,
-		baselines,
-		activeDays: daysActive(member.member_since)
-	};
-
-	let rows = (await db.getMemberDailyTasks(member.id, dayKey).catch(() => [])) as any[];
+	let rows = (await db.getMemberDailyTasks(member.id, periodKey, period).catch(() => [])) as any[];
 
 	if (!rows || rows.length === 0) {
-		const generated = generateDailyTasks(Number(member.id), Number(server.id), dayKey, eligibility);
-		if (generated.length === 0) {
-			return {
-				dayKey,
-				resetsInMs: msUntilNextDay(nowMs, tzOffsetMin),
-				tasks: [],
-				streak: shapeStreak(streakRow),
-				empty: true as const
-			};
-		}
+		const generated = generateDailyTasks(Number(member.id), Number(serverId), periodKey, eligibility, period);
+		if (generated.length === 0) return [];
 
-		let catalog: { id: number; cost: number }[] = [];
-		if (itemsEnabled) {
-			const panelId = await db.getServerPanelId(server.id).catch(() => null);
-			if (panelId != null) {
-				const all = (await db.listItems(panelId).catch(() => [])) as any[];
-				catalog = all
-					.filter((i) => i.enabled !== false && i.enabled !== 0 && (Number(i.cost) || 0) > 0)
-					.map((i) => ({ id: Number(i.id), cost: Number(i.cost) || 0 }));
-			}
-		}
-
-		const currentStreak = Number(streakRow?.current_streak) || 0;
 		const payload = generated.map((g) => {
-			const reward = pickReward(Number(member.id), dayKey, g.slot, g.difficulty, currentStreak, catalog);
+			const reward = pickReward(Number(member.id), periodKey, g.slot, g.difficulty, currentStreak, catalog, period);
 			const def = TASK_BY_ID.get(g.taskType);
 			const metric = def?.metric as TaskMetric | undefined;
 			const baseline = metric && COUNTER_METRICS.has(metric) ? Number(baselines[metric]) || 0 : 0;
@@ -106,7 +81,7 @@ export async function loadTasksShared(opts: {
 			};
 		});
 
-		rows = (await db.persistMemberDailyTasks(member.id, dayKey, payload).catch(() => [])) as any[];
+		rows = (await db.persistMemberDailyTasks(member.id, periodKey, payload, period).catch(() => [])) as any[];
 	}
 
 	const itemIds = [...new Set(rows.map((r) => r.reward_item_id).filter((v: any) => v != null))].map(Number);
@@ -126,7 +101,7 @@ export async function loadTasksShared(opts: {
 			const current = Number(baselines[def.metric]) || 0;
 			progress = Math.max(0, current - (Number(row.baseline) || 0));
 		} else {
-			progress = await db.countMemberEventsSince(member.id, def.metric, dayStartMs).catch(() => 0);
+			progress = await db.countMemberEventsSince(member.id, def.metric, windowStartMs).catch(() => 0);
 		}
 
 		const goal = Number(row.goal) || 1;
@@ -134,6 +109,7 @@ export async function loadTasksShared(opts: {
 
 		tasks.push({
 			slot: Number(row.slot),
+			period,
 			id: def.id,
 			label: def.label,
 			icon: def.icon,
@@ -160,14 +136,90 @@ export async function loadTasksShared(opts: {
 	}
 
 	tasks.sort((a, b) => a.slot - b.slot);
+	return tasks;
+}
+
+export async function loadTasksShared(opts: {
+	server: any;
+	member: any;
+	itemsEnabled: boolean;
+	minigamesEnabled: boolean;
+	tzOffsetMin: number;
+	nowMs?: number;
+}) {
+	const { server, member, itemsEnabled, minigamesEnabled, tzOffsetMin } = opts;
+	const nowMs = opts.nowMs ?? Date.now();
+	const dayKey = dayKeyFor(nowMs, tzOffsetMin);
+	const weekKey = weekKeyFor(nowMs, tzOffsetMin);
+	const dayStartMs = dayKey * 86400000 + tzOffsetMin * 60000;
+	const weekStartMs = weekStartDayKey(weekKey) * 86400000 + tzOffsetMin * 60000;
+
+	const levels = (await db.ensureMemberLevel(member.id).catch(() => null)) as any;
+	const streakRow = (await db.ensureMemberStreak(member.id).catch(() => null)) as any;
+	const loginRow = (await db.ensureMemberLoginClaim(member.id).catch(() => null)) as any;
+
+	const baselines: Partial<Record<TaskMetric, number>> = {
+		chat_total: Number(levels?.chat_total) || 0,
+		reactions_given: Number(levels?.reactions_given) || 0,
+		voice_minutes_active: Number(levels?.voice_minutes_active) || 0,
+		voice_minutes_afk: Number(levels?.voice_minutes_afk) || 0,
+		voice_minutes_video: Number(levels?.voice_minutes_video) || 0,
+		voice_minutes_streaming: Number(levels?.voice_minutes_streaming) || 0
+	};
+
+	const eligibility: TaskEligibility = {
+		levelingEnabled: true,
+		minigamesEnabled,
+		itemsEnabled,
+		baselines,
+		activeDays: daysActive(member.member_since)
+	};
+
+	const catalog = await loadCatalog(server.id, itemsEnabled);
+	const currentStreak = Number(streakRow?.current_streak) || 0;
+
+	const shared = { member, serverId: server.id, eligibility, baselines, catalog, currentStreak };
+	const daily = await buildPeriod({ ...shared, period: 'daily', periodKey: dayKey, windowStartMs: dayStartMs });
+	const weekly = await buildPeriod({ ...shared, period: 'weekly', periodKey: weekKey, windowStartMs: weekStartMs });
 
 	return {
 		dayKey,
+		weekKey,
 		resetsInMs: msUntilNextDay(nowMs, tzOffsetMin),
-		tasks,
+		weeklyResetsInMs: msUntilNextWeek(nowMs, tzOffsetMin),
+		daily,
+		weekly,
+		tasks: daily,
 		streak: shapeStreak(streakRow),
-		allClaimed: tasks.length > 0 && tasks.every((t) => t.claimed),
-		empty: false as const
+		login: shapeLogin(loginRow, member, dayKey, catalog),
+		allClaimed: daily.length > 0 && daily.every((t) => t.claimed),
+		empty: daily.length === 0 && weekly.length === 0
+	};
+}
+
+function shapeLogin(row: any, member: any, dayKey: number, catalog: { id: number; cost: number }[]) {
+	const cycleDay = Number(row?.cycle_day) || 0;
+	const last = row?.last_claim_day_key == null ? null : Number(row.last_claim_day_key);
+	const cyclesCompleted = Number(row?.cycles_completed) || 0;
+
+	const broken = last != null && last < dayKey - 1;
+	const nextDay = broken || cycleDay >= LOGIN_CYCLE_DAYS ? 1 : cycleDay + 1;
+	const claimedToday = last === dayKey;
+
+	const rewards = loginCyclePreview(Number(member.id), cyclesCompleted, catalog).map((r) => ({
+		...r,
+		claimed: !claimedToday && r.day < nextDay ? true : claimedToday && r.day <= cycleDay,
+		current: !claimedToday && r.day === nextDay
+	}));
+
+	return {
+		cycleDay,
+		nextDay,
+		claimedToday,
+		canClaim: !claimedToday,
+		cycleDays: LOGIN_CYCLE_DAYS,
+		cyclesCompleted,
+		rewards
 	};
 }
 
@@ -183,6 +235,7 @@ function shapeStreak(row: any) {
 		lastClaimDayKey: row?.last_claim_day_key == null ? null : Number(row.last_claim_day_key),
 		nextMilestone: next,
 		toNextMilestone: Math.max(0, next.at - current),
-		slots: DAILY_TASK_SLOTS
+		slots: DAILY_TASK_SLOTS,
+		weeklySlots: WEEKLY_TASK_SLOTS
 	};
 }

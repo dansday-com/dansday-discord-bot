@@ -1106,7 +1106,8 @@ export async function upsertMember(serverId: any, memberData: any) {
 		ON DUPLICATE KEY UPDATE
 			username = VALUES(username), display_name = VALUES(display_name),
 			server_display_name = VALUES(server_display_name), avatar = VALUES(avatar),
-			profile_created_at = VALUES(profile_created_at), member_since = VALUES(member_since),
+			profile_created_at = COALESCE(VALUES(profile_created_at), profile_created_at),
+			member_since = COALESCE(VALUES(member_since), member_since),
 			is_booster = VALUES(is_booster), booster_since = VALUES(booster_since),
 			updated_at = VALUES(updated_at)
 	`);
@@ -1488,24 +1489,31 @@ export async function applyStreakClaim(memberId: any, dayKey: number, freezeMax:
 	return { changed: true, streak, freezeUsed, row: await getMemberStreak(memberId) };
 }
 
-export async function getMemberDailyTasks(memberId: any, dayKey: number) {
+export async function getMemberDailyTasks(memberId: any, dayKey: number, period = 'daily') {
 	await initializeDatabase();
 	return db
 		.select()
 		.from(schema.serverMemberDailyTasks)
-		.where(and(eq(schema.serverMemberDailyTasks.member_id, Number(memberId)), eq(schema.serverMemberDailyTasks.day_key, Number(dayKey))))
+		.where(
+			and(
+				eq(schema.serverMemberDailyTasks.member_id, Number(memberId)),
+				eq(schema.serverMemberDailyTasks.period, String(period)),
+				eq(schema.serverMemberDailyTasks.day_key, Number(dayKey))
+			)
+		)
 		.orderBy(schema.serverMemberDailyTasks.slot);
 }
 
-export async function persistMemberDailyTasks(memberId: any, dayKey: number, rows: any[]) {
+export async function persistMemberDailyTasks(memberId: any, dayKey: number, rows: any[], period = 'daily') {
 	await initializeDatabase();
-	if (!rows || rows.length === 0) return getMemberDailyTasks(memberId, dayKey);
+	if (!rows || rows.length === 0) return getMemberDailyTasks(memberId, dayKey, period);
 	const now = toMySQLDateTime();
 	await db
 		.insert(schema.serverMemberDailyTasks)
 		.values(
 			rows.map((r) => ({
 				member_id: Number(memberId),
+				period: String(period),
 				day_key: Number(dayKey),
 				slot: Number(r.slot),
 				task_type: String(r.taskType),
@@ -1519,17 +1527,57 @@ export async function persistMemberDailyTasks(memberId: any, dayKey: number, row
 			})) as any
 		)
 		.onDuplicateKeyUpdate({ set: { day_key: sql`day_key` } });
-	return getMemberDailyTasks(memberId, dayKey);
+	return getMemberDailyTasks(memberId, dayKey, period);
 }
 
-export async function claimMemberDailyTask(memberId: any, dayKey: number, slot: number) {
+export async function claimMemberDailyTask(memberId: any, dayKey: number, slot: number, period = 'daily') {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	const result: any = await db.execute(
-		sql`UPDATE server_member_daily_tasks SET claimed_at = ${now} WHERE member_id = ${Number(memberId)} AND day_key = ${Number(dayKey)} AND slot = ${Number(slot)} AND claimed_at IS NULL`
+		sql`UPDATE server_member_daily_tasks SET claimed_at = ${now} WHERE member_id = ${Number(memberId)} AND period = ${String(period)} AND day_key = ${Number(dayKey)} AND slot = ${Number(slot)} AND claimed_at IS NULL`
 	);
 	const affected = result?.[0]?.affectedRows ?? result?.affectedRows ?? 0;
 	return affected > 0;
+}
+
+export async function getMemberLoginClaim(memberId: any) {
+	await initializeDatabase();
+	const rows = await db
+		.select()
+		.from(schema.serverMemberLoginClaims)
+		.where(eq(schema.serverMemberLoginClaims.member_id, Number(memberId)))
+		.limit(1);
+	return rows[0] || null;
+}
+
+export async function ensureMemberLoginClaim(memberId: any) {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	await db
+		.insert(schema.serverMemberLoginClaims)
+		.values({ member_id: Number(memberId), created_at: now as any, updated_at: now as any })
+		.onDuplicateKeyUpdate({ set: { member_id: Number(memberId) } });
+	return getMemberLoginClaim(memberId);
+}
+
+export async function applyLoginClaim(memberId: any, dayKey: number, cycleDays: number) {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	const result: any = await db.execute(
+		sql`UPDATE server_member_login_claims
+			SET cycle_day = CASE
+					WHEN last_claim_day_key IS NULL OR last_claim_day_key < ${Number(dayKey)} - 1 THEN 1
+					WHEN cycle_day >= ${cycleDays} THEN 1
+					ELSE cycle_day + 1
+				END,
+				cycles_completed = cycles_completed + IF(cycle_day >= ${cycleDays} AND last_claim_day_key = ${Number(dayKey)} - 1, 1, 0),
+				last_claim_day_key = ${Number(dayKey)},
+				updated_at = ${now}
+			WHERE member_id = ${Number(memberId)} AND (last_claim_day_key IS NULL OR last_claim_day_key < ${Number(dayKey)})`
+	);
+	const affected = result?.[0]?.affectedRows ?? result?.affectedRows ?? 0;
+	if (affected === 0) return { changed: false, row: await getMemberLoginClaim(memberId) };
+	return { changed: true, row: await getMemberLoginClaim(memberId) };
 }
 
 export async function countMemberEventsSince(memberId: any, metric: string, sinceMs: number) {
@@ -1549,7 +1597,7 @@ export async function countMemberEventsSince(memberId: any, metric: string, sinc
 		metric === 'steal_success'
 			? sql`action = 'steal' AND outcome = 'success'`
 			: metric === 'item_used'
-				? sql`action = 'use'`
+				? sql`action NOT IN ('buy', 'discard', 'task_reward', 'bounty_collected') AND member_item_id IS NOT NULL`
 				: metric === 'item_bought'
 					? sql`action = 'buy'`
 					: null;
@@ -5389,6 +5437,9 @@ export default {
 	getMemberDailyTasks,
 	persistMemberDailyTasks,
 	claimMemberDailyTask,
+	getMemberLoginClaim,
+	ensureMemberLoginClaim,
+	applyLoginClaim,
 	countMemberEventsSince,
 	claimVoiceRewardWindow,
 	setMemberLanguage,

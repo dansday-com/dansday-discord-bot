@@ -79,6 +79,60 @@
 		}
 	];
 
+	const taskConcepts = [
+		{
+			icon: 'fa-sun',
+			accent: '#c8911a',
+			title: '9 tasks every day',
+			desc: 'Three easy, four medium and two hard goals, generated just for you and nobody else. They reset at midnight on your own clock, and the countdown on the Task tab shows exactly how long is left.'
+		},
+		{
+			icon: 'fa-calendar-week',
+			accent: '#7b5ea7',
+			title: '9 weekly tasks',
+			desc: 'All hard, with goals around 5.5× a daily one and rewards about 6× bigger. Weeks run Monday to Sunday. Everything you do counts toward your daily and weekly tasks at the same time.'
+		},
+		{
+			icon: 'fa-gauge-high',
+			accent: '#245f73',
+			title: 'Goals sized to you',
+			desc: 'Targets are built from your own last 7 days of activity, not your level, and never ask for more than 90% of what you actually managed. Quiet week? Smaller goals. A task you could never hit simply never appears.'
+		},
+		{
+			icon: 'fa-gift',
+			accent: '#1a7f57',
+			title: 'XP or an item',
+			desc: 'Each task shows its reward up front. Harder tasks are far more likely to pay an item, and a better one. Tasks that cost you XP to finish always pay back more than they cost.'
+		},
+		{
+			icon: 'fa-fire',
+			accent: '#d35400',
+			title: 'Streak',
+			desc: 'Claim all 9 daily tasks to extend your streak. Every day on the streak adds +2% to your task XP, up to +100%. Milestones at 7, 30, 100 and 365 days get announced in the server.'
+		},
+		{
+			icon: 'fa-snowflake',
+			accent: '#1d6f8a',
+			title: 'Freezes',
+			desc: 'You hold up to two freezes, and they spend themselves automatically to cover a day you missed so your streak survives. You earn one back every 10 daily claims.'
+		}
+	];
+
+	const taskSteps = [
+		{ icon: 'fa-calendar-check', title: 'Check in', desc: 'Open the Task tab and tap today’s check-in day. One claim per day, and day 7 is the jackpot.' },
+		{
+			icon: 'fa-bolt',
+			title: 'Just play',
+			desc: 'Chat, sit in voice, gamble, trade, attack, buy and use items. Progress tracks itself — nothing to start or accept.'
+		},
+		{
+			icon: 'fa-gift',
+			title: 'Claim rewards',
+			desc: 'A finished task turns into a Claim button. Item rewards need room in your bag, so clear space if it’s full.'
+		},
+		{ icon: 'fa-fire', title: 'Clear all 9', desc: 'Claim every daily task before reset to extend your streak and grow every future reward.' }
+	];
+
 	const minigameSteps = [
 		{ icon: 'fa-dice', title: 'Open Minigames', desc: 'Tap the Minigames tab and pick a game. Everything is free to play — no item or ticket needed.' },
 		{
@@ -156,6 +210,21 @@
 			icon: 'fa-shield-halved',
 			accent: effectAccentHex('insurance'),
 			text: 'Insurance only pays out on your next loss, so activate it right before you expect to get hit, not after.'
+		},
+		{
+			icon: 'fa-fire',
+			accent: '#d35400',
+			text: 'Check in and sweep your daily tasks before you do anything else — a longer streak makes every later reward bigger.'
+		},
+		{
+			icon: 'fa-calendar-week',
+			accent: '#7b5ea7',
+			text: 'Read your weekly tasks on Monday and aim your week at them. The same activity clears daily tasks along the way.'
+		},
+		{
+			icon: 'fa-list-check',
+			accent: '#1a7f57',
+			text: 'Tasks that ask you to buy or use items always reward more XP than the items cost, so they are free profit.'
 		}
 	];
 
@@ -191,7 +260,7 @@
 	<header class="g-hero" use:reveal>
 		<div class="g-hero-badge"><i class="fas fa-book-open"></i></div>
 		<h1 class="g-hero-title">How the Item Game Works</h1>
-		<p class="g-hero-sub">Earn XP, spend it in the shop, and outplay everyone with steals, shields, spies and more.</p>
+		<p class="g-hero-sub">Earn XP, clear daily tasks, spend it in the shop, and outplay everyone with steals, shields, spies and more.</p>
 	</header>
 
 	<section class="g-sec" use:reveal>
@@ -276,6 +345,51 @@
 						<p class="g-item-what">{it.summary}</p>
 					{/if}
 				</article>
+			{/each}
+		</div>
+	</section>
+
+	<section class="g-sec" use:reveal>
+		<h2 class="g-sec-head"><i class="fas fa-list-check"></i>Tasks &amp; streaks</h2>
+		<p class="g-sec-lead">
+			The Task tab hands you goals built from what you already do here, and pays XP or shop items for clearing them. Nothing to sign up for — the tasks are
+			waiting when you open it.
+		</p>
+		<div class="g-earn">
+			{#each taskConcepts as c, i}
+				<div class="g-earn-card" style="--ac: {c.accent}; --d: {i * 60}ms">
+					<span class="g-earn-ic"><i class="fas {c.icon}"></i></span>
+					<div class="g-earn-body">
+						<h3>{c.title}</h3>
+						<p>{c.desc}</p>
+					</div>
+				</div>
+			{/each}
+		</div>
+
+		<div class="g-friend" style="--ac: #c8911a">
+			<span class="g-friend-ic"><i class="fas fa-calendar-check"></i></span>
+			<div class="g-friend-body">
+				<h3>🎁 Daily check-in</h3>
+				<p>
+					Claim one day of a <strong>7-day cycle</strong> per day, straight from the top of the Task tab. Rewards scale to what you normally earn and get bigger
+					each day, and <strong>day 7 is a jackpot</strong> — a huge XP payout or, most of the time, a top item. Skip a day and the cycle
+					<strong>restarts at day 1</strong>, so check in even when you have no time to play.
+				</p>
+			</div>
+		</div>
+	</section>
+
+	<section class="g-sec" use:reveal>
+		<h2 class="g-sec-head"><i class="fas fa-clipboard-check"></i>How to clear tasks</h2>
+		<div class="g-steps">
+			{#each taskSteps as s, i}
+				<div class="g-step" style="--d: {i * 80}ms">
+					<span class="g-step-num">{i + 1}</span>
+					<span class="g-step-ic"><i class="fas {s.icon}"></i></span>
+					<h3>{s.title}</h3>
+					<p>{s.desc}</p>
+				</div>
 			{/each}
 		</div>
 	</section>

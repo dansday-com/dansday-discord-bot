@@ -1304,7 +1304,7 @@ export const DIFFICULTY_META: Record<TaskDifficulty, { label: string; accent: st
 	hard: { label: 'Hard', accent: '#c0392b', weight: 6 }
 };
 
-export const DAILY_DIFFICULTY_PLAN: TaskDifficulty[] = ['easy', 'easy', 'easy', 'medium', 'medium', 'medium', 'medium', 'hard', 'hard'];
+export const DAILY_DIFFICULTY_PLAN: TaskDifficulty[] = ['easy', 'easy', 'easy', 'medium', 'medium', 'medium', 'hard', 'hard', 'hard'];
 export const WEEKLY_DIFFICULTY_PLAN: TaskDifficulty[] = ['hard', 'hard', 'hard', 'hard', 'hard', 'hard', 'hard', 'hard', 'hard'];
 
 export const WEEKLY_GOAL_MULTIPLIER = 5.5;

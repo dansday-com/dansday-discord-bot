@@ -1106,7 +1106,8 @@ export async function upsertMember(serverId: any, memberData: any) {
 		ON DUPLICATE KEY UPDATE
 			username = VALUES(username), display_name = VALUES(display_name),
 			server_display_name = VALUES(server_display_name), avatar = VALUES(avatar),
-			profile_created_at = VALUES(profile_created_at), member_since = VALUES(member_since),
+			profile_created_at = COALESCE(VALUES(profile_created_at), profile_created_at),
+			member_since = COALESCE(VALUES(member_since), member_since),
 			is_booster = VALUES(is_booster), booster_since = VALUES(booster_since),
 			updated_at = VALUES(updated_at)
 	`);
@@ -1424,6 +1425,399 @@ export async function ensureMemberLevel(memberId: any) {
 	return getMemberLevel(memberId);
 }
 
+export async function getMemberStreak(memberId: any) {
+	await initializeDatabase();
+	const rows = await db
+		.select()
+		.from(schema.serverMemberStreaks)
+		.where(eq(schema.serverMemberStreaks.member_id, Number(memberId)))
+		.limit(1);
+	return rows[0] || null;
+}
+
+export async function ensureMemberStreak(memberId: any, tzOffsetMin?: number) {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	const tz = Number.isFinite(Number(tzOffsetMin)) ? Number(tzOffsetMin) : null;
+	await db
+		.insert(schema.serverMemberStreaks)
+		.values({ member_id: Number(memberId), tz_offset_min: tz ?? 0, created_at: now as any, updated_at: now as any })
+		.onDuplicateKeyUpdate({ set: tz == null ? { member_id: Number(memberId) } : { tz_offset_min: tz } });
+	return getMemberStreak(memberId);
+}
+
+let streakWatchDepth = 0;
+
+export function triggerStreakWatch(memberId: any) {
+	if (!memberId || streakWatchDepth > 0) return;
+	setImmediate(async () => {
+		streakWatchDepth++;
+		try {
+			const { bankStreakIfEarned } = await import('./backend/streak-watch.js');
+			await bankStreakIfEarned(memberId);
+		} catch {
+		} finally {
+			streakWatchDepth--;
+		}
+	});
+}
+
+export async function applyStreakDay(memberId: any, dayKey: number, freezeMax: number, earnEvery: number) {
+	await initializeDatabase();
+	const existing = await ensureMemberStreak(memberId);
+	const last = existing?.last_claim_day_key == null ? null : Number(existing.last_claim_day_key);
+	if (last === dayKey) return { changed: false, streak: Number(existing?.current_streak) || 0, row: existing };
+
+	const gap = last == null ? null : dayKey - last;
+	const previousStreak = Number(existing?.current_streak) || 0;
+	let streak = previousStreak;
+	let freezes = Number(existing?.freezes_available) || 0;
+	let freezeUsed = 0;
+	let daysMissed = 0;
+	let reset = false;
+
+	if (gap == null || gap === 1 || previousStreak === 0) {
+		streak += 1;
+	} else {
+		const missed = (gap ?? 1) - 1;
+		daysMissed = missed;
+		freezeUsed = Math.min(freezes, missed);
+		freezes -= freezeUsed;
+
+		if (freezeUsed >= missed) {
+			streak += 1;
+		} else {
+			reset = true;
+			streak = 1;
+		}
+	}
+
+	const freezesAfterSpend = freezes;
+	const totalClaims = (Number(existing?.total_claims) || 0) + 1;
+	if (earnEvery > 0 && totalClaims % earnEvery === 0) freezes = Math.min(freezeMax, freezes + 1);
+	const freezeEarned = freezes - freezesAfterSpend;
+
+	const longest = Math.max(Number(existing?.longest_streak) || 0, streak);
+	const now = toMySQLDateTime();
+	await db
+		.update(schema.serverMemberStreaks)
+		.set({
+			current_streak: streak,
+			longest_streak: longest,
+			last_claim_day_key: dayKey,
+			freezes_available: freezes,
+			total_claims: totalClaims,
+			updated_at: now as any
+		})
+		.where(eq(schema.serverMemberStreaks.member_id, Number(memberId)));
+
+	return {
+		changed: true,
+		streak,
+		previousStreak,
+		freezeUsed,
+		freezesLeft: freezesAfterSpend,
+		freezeEarned,
+		daysMissed,
+		reset,
+		row: await getMemberStreak(memberId)
+	};
+}
+
+export async function getMemberTasks(memberId: any, dayKey: number, period = 'daily') {
+	await initializeDatabase();
+	return db
+		.select()
+		.from(schema.serverMemberTasks)
+		.where(
+			and(
+				eq(schema.serverMemberTasks.member_id, Number(memberId)),
+				eq(schema.serverMemberTasks.period, String(period)),
+				eq(schema.serverMemberTasks.day_key, Number(dayKey))
+			)
+		)
+		.orderBy(schema.serverMemberTasks.slot);
+}
+
+export async function persistMemberTasks(memberId: any, dayKey: number, rows: any[], period = 'daily') {
+	await initializeDatabase();
+	if (!rows || rows.length === 0) return getMemberTasks(memberId, dayKey, period);
+	const now = toMySQLDateTime();
+	await db
+		.insert(schema.serverMemberTasks)
+		.values(
+			rows.map((r) => ({
+				member_id: Number(memberId),
+				period: String(period),
+				day_key: Number(dayKey),
+				slot: Number(r.slot),
+				task_type: String(r.taskType),
+				difficulty: String(r.difficulty),
+				goal: Number(r.goal) || 1,
+				baseline: Number(r.baseline) || 0,
+				target_item_id: r.targetItemId == null ? null : Number(r.targetItemId),
+				reward_kind: String(r.rewardKind),
+				reward_xp: Number(r.rewardXp) || 0,
+				reward_item_id: r.rewardItemId == null ? null : Number(r.rewardItemId),
+				created_at: now as any
+			})) as any
+		)
+		.onDuplicateKeyUpdate({ set: { day_key: sql`day_key` } });
+	return getMemberTasks(memberId, dayKey, period);
+}
+
+export async function claimMemberTask(memberId: any, dayKey: number, slot: number, period = 'daily') {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	const result: any = await db.execute(
+		sql`UPDATE server_member_tasks SET claimed_at = ${now} WHERE member_id = ${Number(memberId)} AND period = ${String(period)} AND day_key = ${Number(dayKey)} AND slot = ${Number(slot)} AND claimed_at IS NULL`
+	);
+	const affected = result?.[0]?.affectedRows ?? result?.affectedRows ?? 0;
+	return affected > 0;
+}
+
+export async function getMemberClaim(memberId: any) {
+	await initializeDatabase();
+	const rows = await db
+		.select()
+		.from(schema.serverMemberClaims)
+		.where(eq(schema.serverMemberClaims.member_id, Number(memberId)))
+		.limit(1);
+	return rows[0] || null;
+}
+
+export async function ensureMemberClaim(memberId: any) {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	await db
+		.insert(schema.serverMemberClaims)
+		.values({ member_id: Number(memberId), created_at: now as any, updated_at: now as any })
+		.onDuplicateKeyUpdate({ set: { member_id: Number(memberId) } });
+	return getMemberClaim(memberId);
+}
+
+export async function applyMemberClaim(memberId: any, dayKey: number, cycleDays: number) {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	const result: any = await db.execute(
+		sql`UPDATE server_member_claims
+			SET cycle_day = CASE
+					WHEN last_claim_day_key IS NULL OR last_claim_day_key < ${Number(dayKey)} - 1 THEN 1
+					WHEN cycle_day >= ${cycleDays} THEN 1
+					ELSE cycle_day + 1
+				END,
+				cycles_completed = cycles_completed + IF(cycle_day >= ${cycleDays} AND last_claim_day_key = ${Number(dayKey)} - 1, 1, 0),
+				last_claim_day_key = ${Number(dayKey)},
+				updated_at = ${now}
+			WHERE member_id = ${Number(memberId)} AND (last_claim_day_key IS NULL OR last_claim_day_key < ${Number(dayKey)})`
+	);
+	const affected = result?.[0]?.affectedRows ?? result?.affectedRows ?? 0;
+	if (affected === 0) return { changed: false, row: await getMemberClaim(memberId) };
+	return { changed: true, row: await getMemberClaim(memberId) };
+}
+
+export async function countMemberEventsSince(memberId: any, metric: string, sinceMs: number, targetItemId: any = null) {
+	await initializeDatabase();
+	const since = toMySQLDateTime(new Date(sinceMs));
+	const id = Number(memberId);
+
+	const GAMBLE_FILTERS: Record<string, any> = {
+		gamble_played: sql``,
+		gamble_won: sql` AND outcome = 'win'`,
+		gamble_highroll: sql` AND multiplier >= 5`,
+		gamble_purist: sql` AND multiplier >= 5 AND (luck_percent IS NULL OR luck_percent = 0)`,
+		gamble_bigwin: sql` AND outcome = 'win' AND multiplier >= 5`,
+		gamble_lucky: sql` AND luck_percent IS NOT NULL AND luck_percent > 0`,
+		gamble_lucky_win: sql` AND outcome = 'win' AND luck_percent IS NOT NULL AND luck_percent > 0`
+	};
+
+	if (GAMBLE_FILTERS[String(metric)] !== undefined) {
+		const rows: any = await db.execute(
+			sql`SELECT COUNT(*) AS c FROM server_member_minigame_logs WHERE member_id = ${id} AND created_at >= ${since}${GAMBLE_FILTERS[String(metric)]}`
+		);
+		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
+	}
+
+	if (metric === 'gamble_wagered') {
+		const rows: any = await db.execute(
+			sql`SELECT COALESCE(SUM(wager), 0) AS c FROM server_member_minigame_logs WHERE member_id = ${id} AND created_at >= ${since}`
+		);
+		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
+	}
+
+	const XP_SOURCE_FILTERS: Record<string, any> = {
+		xp_from_voice: sql` AND source IN ('voice', 'voice_afk')`,
+		xp_from_voice_active: sql` AND source = 'voice'`,
+		xp_from_voice_afk: sql` AND source = 'voice_afk'`,
+		xp_from_chat: sql` AND source = 'chat'`,
+		xp_from_media: sql` AND source IN ('video', 'stream')`
+	};
+
+	const LEVEL_METRICS: Record<
+		string,
+		{ agg: 'sum' | 'count' | 'peakFriends'; sources?: string[]; friends?: 'with' | 'without'; boost?: 'without'; leech?: 'without' }
+	> = {
+		xp_with_friends: { agg: 'sum', friends: 'with' },
+		friend_ticks: { agg: 'count', friends: 'with' },
+		friends_peak: { agg: 'peakFriends' },
+		friends_peak_voice: { agg: 'peakFriends', sources: ['voice', 'voice_afk'] },
+		xp_solo: { agg: 'sum', boost: 'without', friends: 'without' },
+		xp_solo_voice: { agg: 'sum', sources: ['voice', 'voice_afk'], boost: 'without', friends: 'without' },
+		xp_solo_media: { agg: 'sum', sources: ['video', 'stream'], boost: 'without', friends: 'without' },
+		xp_solo_chat: { agg: 'sum', sources: ['chat'], boost: 'without', friends: 'without' },
+		xp_unleeched: { agg: 'sum', leech: 'without' }
+	};
+
+	const lm = LEVEL_METRICS[String(metric)];
+	if (lm) {
+		const parts: any[] = [];
+		if (lm.sources)
+			parts.push(
+				sql`source IN (${sql.join(
+					lm.sources.map((s) => sql`${s}`),
+					sql`, `
+				)})`
+			);
+		if (lm.friends === 'with') parts.push(sql`friend_percent IS NOT NULL AND friend_percent > 0`);
+		if (lm.friends === 'without') parts.push(sql`(friend_percent IS NULL OR friend_percent = 0)`);
+		if (lm.boost === 'without') parts.push(sql`(multiplier IS NULL OR multiplier <= 1)`);
+		if (lm.leech === 'without') parts.push(sql`(skim_percent IS NULL OR skim_percent = 0)`);
+		const where = parts.length > 0 ? sql` AND ${sql.join(parts, sql` AND `)}` : sql``;
+		const select = lm.agg === 'sum' ? sql`COALESCE(SUM(amount), 0)` : lm.agg === 'count' ? sql`COUNT(*)` : sql`COALESCE(MAX(FLOOR(friend_percent / 10)), 0)`;
+		const rows: any = await db.execute(sql`SELECT ${select} AS c FROM server_member_level_logs WHERE member_id = ${id} AND created_at >= ${since}${where}`);
+		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
+	}
+
+	if (XP_SOURCE_FILTERS[String(metric)] !== undefined) {
+		const rows: any = await db.execute(
+			sql`SELECT COALESCE(SUM(amount), 0) AS c FROM server_member_level_logs WHERE member_id = ${id} AND created_at >= ${since}${XP_SOURCE_FILTERS[String(metric)]}`
+		);
+		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
+	}
+
+	if (metric === 'xp_stolen') {
+		const rows: any = await db.execute(
+			sql`SELECT COALESCE(SUM(xp_amount), 0) AS c FROM server_member_item_logs WHERE member_id = ${id} AND created_at >= ${since} AND action = 'steal' AND outcome = 'success'`
+		);
+		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
+	}
+
+	if (metric === 'xp_gained') {
+		const rows: any = await db.execute(
+			sql`SELECT COALESCE(SUM(amount), 0) AS c FROM server_member_level_logs WHERE member_id = ${id} AND created_at >= ${since}`
+		);
+		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
+	}
+
+	if (metric === 'xp_spent') {
+		const rows: any = await db.execute(
+			sql`SELECT COALESCE(SUM(xp_amount), 0) AS c FROM server_member_item_logs WHERE member_id = ${id} AND created_at >= ${since} AND action = 'buy'`
+		);
+		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
+	}
+
+	if (metric === 'asset_bought' || metric === 'asset_sold') {
+		const act = metric === 'asset_bought' ? 'buy' : 'sell';
+		const rows: any = await db.execute(
+			sql`SELECT COUNT(*) AS c FROM server_member_asset_logs WHERE member_id = ${id} AND created_at >= ${since} AND action = ${act}`
+		);
+		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
+	}
+
+	if (metric === 'asset_profit') {
+		const rows: any = await db.execute(
+			sql`SELECT COALESCE(SUM(GREATEST(net, 0)), 0) AS c FROM server_member_asset_logs WHERE member_id = ${id} AND created_at >= ${since} AND action = 'sell'`
+		);
+		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
+	}
+
+	const effectMatch = /^use_([a-z]+)$/.exec(String(metric));
+	const targetId = Number(targetItemId) || 0;
+	if (metric === 'item_specific_used' || metric === 'item_specific_bought' || metric === 'discard_specific' || metric === 'item_specific_success') {
+		if (targetId <= 0) return 0;
+		const scope =
+			metric === 'item_specific_bought'
+				? sql`action = 'buy'`
+				: metric === 'discard_specific'
+					? sql`action = 'discard'`
+					: metric === 'item_specific_success'
+						? sql`action NOT IN ('buy', 'discard', 'task_reward', 'bounty_collected') AND member_item_id IS NOT NULL AND outcome = 'success'`
+						: sql`action NOT IN ('buy', 'discard', 'task_reward', 'bounty_collected') AND member_item_id IS NOT NULL`;
+		const rows: any = await db.execute(
+			sql`SELECT COUNT(*) AS c FROM server_member_item_logs WHERE member_id = ${id} AND created_at >= ${since} AND item_id = ${targetId} AND ${scope}`
+		);
+		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
+	}
+
+	const COMBO_METRICS: Record<string, { actions?: string[]; anyUse?: boolean; disguised?: boolean; lucky?: boolean; success?: boolean }> = {
+		bomb_masked: { actions: ['bomb'], disguised: true },
+		steal_masked: { actions: ['steal'], disguised: true, success: true },
+		attack_masked: { actions: ['steal', 'bomb', 'leech'], disguised: true },
+		buy_lucky: { actions: ['buy'], lucky: true },
+		use_lucky: { anyUse: true, lucky: true },
+		attack_lucky: { actions: ['steal', 'bomb', 'leech'], lucky: true, success: true },
+		bounty_claimed: { actions: ['bounty_collected'] }
+	};
+
+	const combo = COMBO_METRICS[String(metric)];
+	if (combo) {
+		const parts: any[] = [];
+		if (combo.actions)
+			parts.push(
+				sql`action IN (${sql.join(
+					combo.actions.map((a) => sql`${a}`),
+					sql`, `
+				)})`
+			);
+		if (combo.anyUse) parts.push(sql`action NOT IN ('buy', 'discard', 'task_reward', 'bounty_collected') AND member_item_id IS NOT NULL`);
+		if (combo.disguised) parts.push(sql`actor_disguised = 1`);
+		if (combo.lucky) parts.push(sql`luck_percent IS NOT NULL AND luck_percent > 0`);
+		if (combo.success) parts.push(sql`outcome = 'success'`);
+		const rows: any = await db.execute(
+			sql`SELECT COUNT(*) AS c FROM server_member_item_logs WHERE member_id = ${id} AND created_at >= ${since} AND ${sql.join(parts, sql` AND `)}`
+		);
+		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
+	}
+
+	const durationMatch = /^duration_([a-z]+)$/.exec(String(metric));
+	if (durationMatch) {
+		const rows: any = await db.execute(
+			sql`SELECT COALESCE(SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(i.config, '$.effect_duration_minutes')) AS UNSIGNED)), 0) AS c
+				FROM server_member_item_logs l
+				INNER JOIN items i ON i.id = l.item_id
+				WHERE l.member_id = ${id} AND l.created_at >= ${since} AND l.action = ${durationMatch[1]}`
+		);
+		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
+	}
+
+	const ATTACK_ACTIONS = sql`('steal', 'bomb', 'leech')`;
+	const successMatch = metric === 'attack_success' ? null : /^([a-z]+)_success$/.exec(String(metric));
+
+	const actionFilter =
+		metric === 'attack_any'
+			? sql`action IN ${ATTACK_ACTIONS}`
+			: metric === 'attack_success'
+				? sql`action IN ${ATTACK_ACTIONS} AND outcome = 'success'`
+				: effectMatch
+					? sql`action = ${effectMatch[1]}`
+					: successMatch
+						? sql`action = ${successMatch[1]} AND outcome = 'success'`
+						: metric === 'item_used'
+							? sql`action NOT IN ('buy', 'discard', 'task_reward', 'bounty_collected') AND member_item_id IS NOT NULL`
+							: metric === 'item_bought'
+								? sql`action = 'buy'`
+								: metric === 'discard_any'
+									? sql`action = 'discard'`
+									: null;
+
+	if (!actionFilter) return 0;
+
+	const rows: any = await db.execute(
+		sql`SELECT COUNT(*) AS c FROM server_member_item_logs WHERE member_id = ${id} AND created_at >= ${since} AND ${actionFilter}`
+	);
+	return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
+}
+
 export async function updateMemberLevelStats(memberId: any, updates: any = {}) {
 	await initializeDatabase();
 	if (!memberId) throw new Error('memberId is required');
@@ -1431,6 +1825,8 @@ export async function updateMemberLevelStats(memberId: any, updates: any = {}) {
 	const clauses: any[] = [];
 
 	if (typeof updates.chatIncrement === 'number' && updates.chatIncrement !== 0) clauses.push(sql`chat_total = chat_total + ${updates.chatIncrement}`);
+	if (typeof updates.reactionsIncrement === 'number' && updates.reactionsIncrement !== 0)
+		clauses.push(sql`reactions_given = GREATEST(0, reactions_given + ${updates.reactionsIncrement})`);
 	if (typeof updates.voiceMinutesActiveIncrement === 'number' && updates.voiceMinutesActiveIncrement !== 0)
 		clauses.push(sql`voice_minutes_active = voice_minutes_active + ${updates.voiceMinutesActiveIncrement}`);
 	if (typeof updates.voiceMinutesAfkIncrement === 'number' && updates.voiceMinutesAfkIncrement !== 0)
@@ -1467,6 +1863,16 @@ export async function updateMemberLevelStats(memberId: any, updates: any = {}) {
 	clauses.push(sql`updated_at = ${toMySQLDateTime()}`);
 
 	await db.execute(sql`UPDATE server_member_levels SET ${sql.join(clauses, sql`, `)} WHERE member_id = ${Number(memberId)}`);
+
+	const movedTaskMetric =
+		typeof updates.chatIncrement === 'number' ||
+		typeof updates.reactionsIncrement === 'number' ||
+		typeof updates.voiceMinutesActiveIncrement === 'number' ||
+		typeof updates.voiceMinutesAfkIncrement === 'number' ||
+		typeof updates.voiceMinutesVideoIncrement === 'number' ||
+		typeof updates.voiceMinutesStreamingIncrement === 'number';
+	if (movedTaskMetric) triggerStreakWatch(memberId);
+
 	return getMemberLevel(memberId);
 }
 
@@ -1693,6 +2099,37 @@ export async function backfillItemLogItemIds() {
 		WHERE sml.item_id IS NULL AND sml.member_item_id IS NOT NULL
 	`);
 	return result?.[0]?.affectedRows ?? result?.affectedRows ?? 0;
+}
+
+export async function listStaleStreaks(limit = 500) {
+	await initializeDatabase();
+	const rows: any = await db.execute(sql`
+		SELECT s.member_id, s.current_streak, s.longest_streak, s.freezes_available, s.last_claim_day_key, s.tz_offset_min,
+		       m.server_id, m.discord_member_id, sv.discord_server_id
+		FROM server_member_streaks s
+		INNER JOIN server_members m ON m.id = s.member_id
+		INNER JOIN servers sv ON sv.id = m.server_id
+		WHERE s.current_streak > 0
+		  AND s.last_claim_day_key IS NOT NULL
+		  AND s.last_claim_day_key < FLOOR((UNIX_TIMESTAMP() - (s.tz_offset_min * 60)) / 86400)
+		ORDER BY s.updated_at ASC
+		LIMIT ${Number(limit) || 500}
+	`);
+	return (rows?.[0] as any[]) ?? [];
+}
+
+export async function expireStreak(memberId: any, dayKey: number, freezesLeft: number, broke: boolean) {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	await db
+		.update(schema.serverMemberStreaks)
+		.set(
+			broke
+				? { current_streak: 0, freezes_available: freezesLeft, last_claim_day_key: dayKey, updated_at: now as any }
+				: { freezes_available: freezesLeft, last_claim_day_key: dayKey, updated_at: now as any }
+		)
+		.where(eq(schema.serverMemberStreaks.member_id, Number(memberId)));
+	return true;
 }
 
 export async function purgeDepletedMemberItems() {
@@ -1933,6 +2370,7 @@ export async function logMemberItemAction(memberId: any, data: any = {}) {
 		actor_disguised: data.actor_disguised ? 1 : 0,
 		created_at: toMySQLDateTime() as any
 	});
+	triggerStreakWatch(memberId);
 	return true;
 }
 
@@ -1951,6 +2389,7 @@ export async function logMinigameAction(memberId: any, data: any = {}) {
 		luck_percent: data.luck_percent != null ? (String(data.luck_percent) as any) : null,
 		created_at: toMySQLDateTime() as any
 	});
+	triggerStreakWatch(memberId);
 	return true;
 }
 
@@ -2087,6 +2526,7 @@ export async function logMemberLevelGain(memberId: any, data: any = {}) {
 		luck_percent: data.luck_percent != null ? Number(data.luck_percent) : null,
 		created_at: toMySQLDateTime() as any
 	});
+	triggerStreakWatch(memberId);
 	return true;
 }
 
@@ -2264,6 +2704,7 @@ export async function logAssetEvent(data: {
 		net: Number(data.net) || 0,
 		created_at: toMySQLDateTime() as any
 	});
+	triggerStreakWatch(data.member_id);
 	return true;
 }
 
@@ -5243,6 +5684,17 @@ export default {
 	getMemberLevel,
 	ensureMemberLevel,
 	updateMemberLevelStats,
+	getMemberStreak,
+	ensureMemberStreak,
+	applyStreakDay,
+	triggerStreakWatch,
+	getMemberTasks,
+	persistMemberTasks,
+	claimMemberTask,
+	getMemberClaim,
+	ensureMemberClaim,
+	applyMemberClaim,
+	countMemberEventsSince,
 	claimVoiceRewardWindow,
 	setMemberLanguage,
 	getMemberLanguage,
@@ -5261,6 +5713,8 @@ export default {
 	consumeMemberItem,
 	backfillItemLogItemIds,
 	purgeDepletedMemberItems,
+	listStaleStreaks,
+	expireStreak,
 	addMemberItemActive,
 	getActiveEffectsForMember,
 	getActiveLeechByBeneficiary,

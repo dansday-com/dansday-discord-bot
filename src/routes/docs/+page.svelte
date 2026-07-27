@@ -53,6 +53,11 @@
 			icon: 'fa-bag-shopping',
 			title: 'Members play',
 			desc: 'Members open the shop from the Items button, spend XP, and use items from their bag (which holds up to 50). The Guide tab inside the shop explains every item to them.'
+		},
+		{
+			icon: 'fa-list-check',
+			title: 'Your prices drive tasks',
+			desc: 'With Daily tasks on, your shop sets the economy: the median item cost sizes XP rewards, and item rewards are drawn from items priced near the value of the task or check-in day that earned them. Hidden and disabled items are never handed out.'
 		}
 	];
 
@@ -456,12 +461,16 @@
 			icon: 'fa-chart-pie',
 			accent: '#245f73',
 			title: 'Public statistics',
-			what: 'The master switch for all public pages: server statistics, leaderboard, members, and the per-member account (Overview, History, Guide). Items, Minigames and Assets are enabled here as sub-toggles.',
+			what: 'The master switch for all public pages: server statistics, leaderboard, members, and the per-member account (Overview, History, Guide). Items, Minigames, Assets and Daily tasks are enabled here as sub-toggles.',
 			fields: [
 				{ label: 'Public statistics module', desc: 'Master switch. When off, every public page and the in-Discord account link are disabled.' },
 				{
 					label: 'Items / Minigames / Assets',
-					desc: 'Sub-toggles under public statistics. Each enables its account tab (and channel, for Items/Minigames). With all three off, the account still shows Overview and History; only Guide hides.'
+					desc: 'Sub-toggles under public statistics. Each enables its account tab (and channel, for Items/Minigames). With all four off, the account still shows Overview and History; only Guide hides.'
+				},
+				{
+					label: 'Daily tasks',
+					desc: 'Sub-toggle that adds the Task tab: 9 daily and 9 weekly auto-generated goals, a 7-day check-in, and streaks. Nothing to configure — goals are sized per member from their own recent activity, and tasks for a feature you turned off never appear. Item rewards come from your shop (needs Items on) and streak milestones post to the item events channel.'
 				},
 				{ label: 'Public URL', desc: 'The generated public address, shown when enabled. Derived from the server name.' }
 			]
@@ -479,7 +488,7 @@
 		{ label: '🔔 Notifications', desc: 'Opens a selector to subscribe to the notification channels you enabled.' },
 		{ label: '🌐 Select Language', desc: 'Switches the Discord interface language (English or Indonesian).' },
 		{ label: '🌐 Statistics', desc: 'Link to the public stats page (shown when Public statistics is on).' },
-		{ label: '👤 Account', desc: 'Link to the member account (Overview, Items, Minigames, Assets, History, Guide) — shown when Public statistics is on.' }
+		{ label: '👤 Account', desc: 'Link to the member account (Overview, Task, Items, Minigames, Assets, History, Guide) — shown when Public statistics is on.' }
 	];
 
 	function reveal(node: HTMLElement) {

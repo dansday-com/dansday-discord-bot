@@ -320,7 +320,7 @@ async function getPublicStatsSettings(guildId: string): Promise<Record<string, a
 	}
 }
 
-export async function isPublicSubFeatureEnabled(guildId: string, key: 'items' | 'assets' | 'minigames'): Promise<boolean> {
+export async function isPublicSubFeatureEnabled(guildId: string, key: 'items' | 'assets' | 'minigames' | 'tasks'): Promise<boolean> {
 	const settings = await getPublicStatsSettings(guildId);
 	if (!settings || settings.enabled === false) return false;
 	return settings[`${key}_enabled`] === true;

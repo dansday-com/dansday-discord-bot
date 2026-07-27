@@ -18,6 +18,7 @@ export const load: LayoutServerLoad = async ({ params }) => {
 	const itemsEnabled = settings.items_enabled === true;
 	const assetsEnabled = settings.assets_enabled === true;
 	const minigamesEnabled = settings.minigames_enabled === true;
+	const tasksEnabled = settings.tasks_enabled === true;
 	const accountEnabled = publicStatsEnabled;
 
 	const server = resolved.server;
@@ -26,6 +27,7 @@ export const load: LayoutServerLoad = async ({ params }) => {
 		itemsEnabled,
 		assetsEnabled,
 		minigamesEnabled,
+		tasksEnabled,
 		accountEnabled,
 		server: {
 			id: server.id,

@@ -34,7 +34,14 @@ The project is open source under the MIT license.
   - 🍀 **Luck** - a configurable % boost for a set duration that raises the top end of your steal and bomb rolls and improves your minigame odds, spy success, leech skim, friend boost, and insurance refund, cuts your gift tax, and discounts every shop price while active. Timed buffs lock in your luck when you activate them, so activate luck first.
 - **Assets market (XP paper-trading)** ⭐ _new_ - Members invest earned XP in real-world crypto at live prices (via CoinGecko). XP is locked into a position and tracks the real market; sell any time to realize gains or losses. Search thousands of coins, browse the top 50, gainers and losers, and watch a live portfolio with per-position and total profit/loss. No real money and no real coins — purely an XP game. Designed to extend to other asset types later.
 - **Minigames** ⭐ _new_ - Enabled as a sub-toggle under Public statistics (with its own channel), where members wager XP on games — no items or tickets, free to play. The first game is 🎲 **Gamble**: pick your own multiplier up to 10× and the win chance is set fairly from it (100 ÷ multiplier, so 2× = 50%, 4× = 25%). You can only wager XP earned above your current level, so a loss never drops your level. Wins and losses post to the minigames channel and feed a dedicated Minigames leaderboard. Built to add more games over time.
-- **Leveling & XP** - Message and voice activity feed a full XP system with levels, role rewards, and leaderboards.
+- **Tasks, streaks & check-in** ⭐ _new_ - Enabled as the Daily tasks sub-toggle under Public statistics, adding a Task tab to the member account. No admin setup at all — goals, difficulty and rewards are generated per member.
+  - ☀️ **Daily tasks** - 9 tasks a day (3 easy, 4 medium, 2 hard), drawn from a catalog of 69 goals built on activity you already track: messages, reactions, voice / video / streaming / AFK minutes, XP earned by source, gambling, steals, bombs, leeches, spying, item buys and uses, specific-item goals, asset trades, and social ones like grinding voice with friends or staying un-leeched. No two members get the same list.
+  - 📅 **Weekly tasks** - 9 hard tasks per week with goals around 5.5× the daily size and rewards 6× as large. Weeks start Monday on the member's local clock.
+  - 🎯 **Goals sized to the member** - Targets come from that member's own last 7 days of activity, not their level, and never exceed 90% of what they actually managed in that window. A task is dropped entirely if even its easy floor is out of reach, and never appears for a feature the server has turned off.
+  - 🎁 **Rewards** - XP or a shop item. Item odds rise with difficulty (25% easy, 45% medium, 70% hard, 85% weekly) and the item drawn is priced between 0.85× and 2.5× the task's XP value, so a hard reward is genuinely a better item. Tasks that cost XP to complete (buying or using items, gambling, gifting) always pay back more than they cost, with the margin rising by difficulty. Rewards run from 1,000 up to 1,000,000 XP.
+  - 🔥 **Streaks** - Clear all 9 daily tasks to extend a streak, worth +2% reward XP per day up to +100%. Milestones at 7, 30, 100 and 365 days are announced in the items channel. Two ❄️ **freezes** cover missed days automatically, and members earn one back every 10 daily claims.
+  - 📆 **Daily check-in** - A 7-day claim cycle in the Task tab, one claim per local day, scaled to 25% of the member's average daily XP earnings. Day 7 is a jackpot (25× weighted, 25,000 XP minimum, 90% chance of an item). Miss a day and the cycle restarts at day 1.
+- **Leveling & XP** - Message and voice activity feed a full XP system with levels, role rewards, and leaderboards. Reactions are tracked too, feeding the task system.
 - **Welcomer** - Custom welcome messages and embeds for new members.
 - **Giveaways** - Entries, winner selection, and role-based eligibility.
 - **AFK** - Members set AFK status and custom messages; the bot warns when someone is mentioned while away.
@@ -57,7 +64,7 @@ The project is open source under the MIT license.
 
 ### Public web pages
 
-- **Public statistics** - The master switch for all public pages: server statistics, leaderboard, members, and the per-member account (Overview, History, Guide). Items, Minigames and Assets are enabled as sub-toggles here — turn public statistics off and everything public goes dark; with the three sub-features off, the account still shows Overview and History.
+- **Public statistics** - The master switch for all public pages: server statistics, leaderboard, members, and the per-member account (Overview, History, Guide). Items, Minigames, Assets and Daily tasks are enabled as sub-toggles here — turn public statistics off and everything public goes dark; with the four sub-features off, the account still shows Overview and History.
 
 ### Advanced
 
@@ -99,8 +106,10 @@ Versions match `package.json` at release (caret ranges; run `npm ls` for the exa
 
 Environment variables drive database credentials, sessions, captcha, mail, Redis, and bot tokens. Copy **`.env.example`** to **`.env`** and adjust for your deployment.
 
+The official bot requests the Guilds, Message Content, Server Members, Moderation, Voice States and Message Reactions gateway intents. **Server Members** and **Message Content** are privileged — enable both on your application in the Discord Developer Portal or the bot will fail to start.
+
 ---
 
 ## License
 
-MIT · Author: Akbar Yudhanto · Version: 26.3.2
+MIT · Author: Akbar Yudhanto · Version: 26.4.0

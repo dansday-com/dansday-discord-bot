@@ -364,6 +364,7 @@ export const serverMemberLevels = mysqlTable(
 			.unique()
 			.references(() => serverMembers.id, { onDelete: 'cascade' }),
 		chat_total: int('chat_total').default(0),
+		reactions_given: int('reactions_given').default(0),
 		voice_minutes_total: int('voice_minutes_total').default(0),
 		voice_minutes_active: int('voice_minutes_active').default(0),
 		voice_minutes_afk: int('voice_minutes_afk').default(0),
@@ -844,6 +845,70 @@ export const serverMemberItemLogs = mysqlTable(
 		index('idx_server_member_item_logs_member').on(t.member_id, t.created_at),
 		index('idx_server_member_item_logs_target').on(t.target_member_id, t.created_at)
 	]
+);
+
+export const serverMemberTasks = mysqlTable(
+	'server_member_tasks',
+	{
+		id: bigint('id', { mode: 'bigint' }).primaryKey().autoincrement(),
+		member_id: int('member_id')
+			.notNull()
+			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		period: varchar('period', { length: 8 }).notNull().default('daily'),
+		day_key: int('day_key').notNull(),
+		slot: tinyint('slot').notNull(),
+		task_type: varchar('task_type', { length: 32 }).notNull(),
+		difficulty: varchar('difficulty', { length: 8 }).notNull(),
+		goal: int('goal').notNull().default(1),
+		baseline: int('baseline').notNull().default(0),
+		target_item_id: int('target_item_id').references(() => items.id, { onDelete: 'set null' }),
+		reward_kind: varchar('reward_kind', { length: 8 }).notNull(),
+		reward_xp: int('reward_xp').notNull().default(0),
+		reward_item_id: int('reward_item_id').references(() => items.id, { onDelete: 'set null' }),
+		claimed_at: datetime('claimed_at'),
+		created_at: datetime('created_at').notNull()
+	},
+	(t) => [
+		uniqueIndex('unique_server_member_task').on(t.member_id, t.period, t.day_key, t.slot),
+		index('idx_server_member_tasks_member').on(t.member_id, t.period, t.day_key)
+	]
+);
+
+export const serverMemberClaims = mysqlTable(
+	'server_member_claims',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		member_id: int('member_id')
+			.notNull()
+			.unique()
+			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		cycle_day: tinyint('cycle_day').notNull().default(0),
+		last_claim_day_key: int('last_claim_day_key'),
+		cycles_completed: int('cycles_completed').notNull().default(0),
+		created_at: datetime('created_at').notNull(),
+		updated_at: datetime('updated_at').notNull()
+	},
+	(t) => [index('idx_server_member_claims_member').on(t.member_id)]
+);
+
+export const serverMemberStreaks = mysqlTable(
+	'server_member_streaks',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		member_id: int('member_id')
+			.notNull()
+			.unique()
+			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		current_streak: int('current_streak').notNull().default(0),
+		longest_streak: int('longest_streak').notNull().default(0),
+		last_claim_day_key: int('last_claim_day_key'),
+		freezes_available: int('freezes_available').notNull().default(2),
+		total_claims: int('total_claims').notNull().default(0),
+		tz_offset_min: int('tz_offset_min').notNull().default(0),
+		created_at: datetime('created_at').notNull(),
+		updated_at: datetime('updated_at').notNull()
+	},
+	(t) => [index('idx_server_member_streaks_member').on(t.member_id)]
 );
 
 export const serverMemberMinigameLogs = mysqlTable(

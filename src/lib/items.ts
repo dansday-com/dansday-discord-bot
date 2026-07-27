@@ -437,69 +437,69 @@ export type EffectGuide = { what: string; how: string; tip: string };
 
 const EFFECT_GUIDES: Record<string, EffectGuide> = {
 	steal: {
-		what: 'Take a slice of another member’s XP and add it straight to your own balance.',
-		how: 'Pick a target. They keep playing, you just walk off with a cut. Blocked by their Shield, Reflect or active Immunity.',
-		tip: 'Spy first. Robbing a shielded target just wastes the item.'
+		what: 'Take a slice of a member’s XP straight into your own balance.',
+		how: 'Pick a target. Blocked by their Shield, Reflect or active Immunity.',
+		tip: 'Spy first — robbing a shielded target just wastes the item.'
 	},
 	bomb: {
-		what: 'Destroy a chunk of a target’s XP. Unlike Steal, the XP is gone for good.',
-		how: 'Pick a target. Pure sabotage, higher ceiling than Steal. Blocked by Shield, Reflect or Immunity.',
+		what: 'Destroy a chunk of a target’s XP. It is gone for good.',
+		how: 'Pick a target. Higher ceiling than Steal, stopped by the same defences.',
 		tip: 'Use it to knock a rival off the top of the leaderboard.'
 	},
 	boost: {
-		what: 'Multiply the XP you earn from chatting and voice for a limited time.',
-		how: 'Activate it on yourself, no target needed. Every XP gain is multiplied until it wears off.',
-		tip: 'Pop it right before a long voice session with friends to stack with the Friend Boost.'
+		what: 'Multiply the XP you earn from chat and voice for a set time.',
+		how: 'Activate on yourself. Every gain is multiplied until it wears off.',
+		tip: 'Pop it before a long voice session to stack with the Friend Boost.'
 	},
 	shield: {
 		what: 'Block every incoming Steal, Bomb and Leech while it lasts.',
-		how: 'Activate on yourself. Attackers who hit you get blocked and lose their item.',
-		tip: 'Raise it before you log off so nobody farms you while you’re away.'
+		how: 'Activate on yourself. Attackers get blocked and lose their item.',
+		tip: 'Raise it before you log off so nobody farms you while away.'
 	},
 	leech: {
-		what: 'Attach to a target and quietly siphon a percentage of every XP they earn to you.',
-		how: 'Pick a target. A cut of their gains is redirected to you while active. You can leech several members at once, but each member can only be leeched by one person. An active Luck buff boosts your skim percentage.',
-		tip: 'Spread leeches across active grinders and stay quiet. Pop Luck first to skim more.'
+		what: 'Siphon a percentage of everything a target earns over to you.',
+		how: 'Pick a target. Leech several members at once, but each can only be leeched by one person. Luck raises your skim.',
+		tip: 'Spread leeches across active grinders, and pop Luck first.'
 	},
 	reflect: {
 		what: 'Bounce the next attack back at whoever hits you.',
-		how: 'Activate on yourself. The next Steal or Bomb is reflected, so the attacker takes the loss instead.',
+		how: 'Activate on yourself. The next Steal or Bomb hits the attacker instead.',
 		tip: 'A nasty surprise for anyone who thinks you’re an easy target.'
 	},
 	insurance: {
 		what: 'Refund part of your loss the next time you’re robbed or bombed.',
-		how: 'Activate on yourself. If you get hit while it’s up, a percentage of the lost XP comes back. An active Luck buff raises the refund percentage.',
-		tip: 'Good when you can’t sit on a Shield but still want a safety net. Stack Luck for a bigger refund.'
+		how: 'Activate on yourself. A percentage comes back if you get hit, and Luck raises it.',
+		tip: 'Use it just before you expect a hit — it only pays on your next loss.'
 	},
 	gift: {
 		what: 'Send some of your XP to another member.',
-		how: 'Pick a recipient. They receive the XP (minus any tax). No way to steal it back. An active Luck buff lowers the tax, so more of your gift gets through.',
-		tip: 'Reward teammates, pay off a debt, or fund an alliance. Send big gifts while Luck is active to cut the tax.'
+		how: 'Pick a recipient. They keep it minus any tax, and Luck cuts the tax.',
+		tip: 'Send big gifts while Luck is active so more of it gets through.'
 	},
 	bounty: {
-		what: 'Put a price on a target’s head. Whoever steals or bombs them next collects it.',
-		how: 'Pick a target. The bounty sits on them until someone lands a hit and claims the reward.',
-		tip: 'Stack bounties on a rival to turn the whole server into their hunters.'
+		what: 'Put a price on a target’s head for whoever hits them next.',
+		how: 'Pick a target. It sits on them until someone steals or bombs them.',
+		tip: 'Stack bounties on a rival to turn the server into their hunters.'
 	},
 	spy: {
-		what: 'Secretly reveal a member’s bag, active effects, cooldowns and bounty.',
-		how: 'Pick a target. If the spy has a success chance and you fail, you’re caught and the target is alerted with your name. An active Luck buff raises your success chance.',
-		tip: 'Scout before a big attack, and skip a risky spy when you can’t afford to be seen. Luck makes risky spies safer.'
+		what: 'Reveal a member’s bag, active effects, cooldowns and bounty.',
+		how: 'Pick a target. Fail a risky spy and they are alerted with your name. Luck raises your chance.',
+		tip: 'Scout before a big attack, and skip risky spies you can’t afford.'
 	},
 	disguise: {
-		what: 'Go anonymous. Your attacks hide your name and you drop off the leaderboard.',
-		how: 'Activate on yourself. Victims only see “a mysterious member” in history, though a successful Spy can still unmask you.',
+		what: 'Go anonymous: attacks hide your name and you leave the rankings.',
+		how: 'Activate on yourself. Victims see “a mysterious member”, but a Spy can unmask you.',
 		tip: 'Strike rivals without painting a target on your own back.'
 	},
 	purifier: {
-		what: 'Wipe every active effect off yourself: shields, boosts, leeches, disguise and immunity.',
-		how: 'Activate on yourself. Each effect ends immediately. Your attack cooldowns are NOT cleared.',
+		what: 'Wipe every active effect off yourself, good or bad.',
+		how: 'Activate on yourself. Effects end at once, attack cooldowns are NOT cleared.',
 		tip: 'The fastest way to shake off a leech that’s draining you.'
 	},
 	luck: {
-		what: 'Boost your fortune across the board: a higher ceiling on steal and bomb, better minigame odds, sharper spying, bigger leech skims, lower gift tax, bigger insurance refunds, a stronger friend boost, discounted shop prices, and it shields you as a victim by reducing how much any leech on you can drain.',
-		how: 'Activate on yourself, no target needed. The percentage applies on top of every roll and rate you control while it lasts, and also softens leeches other members have on you. On steal and bomb it lifts the top of the range, not the bottom, so your best hits get bigger. Buffs like insurance lock in your luck the moment you activate them, so activate luck first.',
-		tip: 'Pop it before a big minigame session, a raid or a shopping spree to stretch every bit of XP further, and it quietly limits leech drain the whole time it runs.'
+		what: 'Raise your odds everywhere: attacks, minigames, spying, leeching, gifts, refunds and shop prices.',
+		how: 'Activate on yourself. It lifts the top of your steal and bomb rolls, softens leeches on you, and buffs lock in your luck when used — so activate it first.',
+		tip: 'Pop it before a raid, a minigame run or a shopping spree.'
 	}
 };
 

@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits } from 'discord.js';
+import { Client, GatewayIntentBits, Partials } from 'discord.js';
 import { getBotToken, initializeConfig } from '../../config.js';
 import { applyDiscordPresenceFromDb } from './applyDiscordPresence.js';
 import { logger } from '../../../utils/index.js';
@@ -18,6 +18,8 @@ import contentCreator from './components/interface/contentcreator.js';
 import questNotifier from './components/questNotifier.js';
 import { initRobloxCatalogNotifier, stopRobloxCatalogNotifier } from './components/robloxCatalogNotifier.js';
 import { initExpirySweeper, stopExpirySweeper } from './components/items.js';
+import { initStreakWatch } from '../../streak-watch.js';
+import { announceStreak } from './components/tasks.js';
 import { startAssetMarketPoller, stopAssetMarketPoller } from './components/assetMarket.js';
 import { acquireBotSingletonLock, type BotSingletonLock } from '../botSingletonLock.js';
 
@@ -41,8 +43,10 @@ const client = new Client({
 		GatewayIntentBits.MessageContent,
 		GatewayIntentBits.GuildMembers,
 		GatewayIntentBits.GuildModeration,
-		GatewayIntentBits.GuildVoiceStates
-	]
+		GatewayIntentBits.GuildVoiceStates,
+		GatewayIntentBits.GuildMessageReactions
+	],
+	partials: [Partials.Message, Partials.Channel, Partials.Reaction]
 });
 
 let initialized = false;
@@ -88,6 +92,7 @@ client.on('clientReady', async () => {
 	questNotifier.initQuestNotifier(client, officialBotId);
 	initRobloxCatalogNotifier(client, officialBotId);
 	initExpirySweeper(client);
+	initStreakWatch((guildId, discordMemberId, streakResult, milestone) => announceStreak(client, guildId, discordMemberId, streakResult, milestone));
 	startAssetMarketPoller(String(officialBotId));
 	webhook.startWebhookServer(client, officialBotId);
 });

@@ -175,7 +175,7 @@ export async function creditLeechers(leechCredits: any, guildId: any) {
 	return applied;
 }
 
-async function snapshotMembers(memberIds: any[]) {
+export async function snapshotMembers(memberIds: any[]) {
 	const ids = [...new Set(memberIds.filter((id) => id != null).map((id) => Number(id)))];
 	const snapshots = new Map<number, { level: any; rank: any; experience: any }>();
 	for (const id of ids) {
@@ -189,7 +189,7 @@ async function snapshotMembers(memberIds: any[]) {
 	return snapshots;
 }
 
-async function finalizeXpChanges(guildId: any, snapshots: Map<number, { level: any; rank: any; experience: any }>, reason: string) {
+export async function finalizeXpChanges(guildId: any, snapshots: Map<number, { level: any; rank: any; experience: any }>, reason: string) {
 	for (const [memberId, before] of snapshots) {
 		await evaluateMemberLevelAndRank(guildId, memberId, {
 			previousLevel: before.level != null ? Number(before.level) : null,
@@ -762,7 +762,7 @@ async function consumeReactiveDefense(memberId: any, kind: string) {
 	return match;
 }
 
-async function resolveServerMemberId(serverId: any, discordMemberId: any) {
+export async function resolveServerMemberId(serverId: any, discordMemberId: any) {
 	const member = await db.getMemberByDiscordId(serverId, String(discordMemberId)).catch(() => null);
 	return member?.id ?? null;
 }
@@ -1513,6 +1513,8 @@ async function runExpirySweep(client: any) {
 		await sweepExpiredBuffs(client, botConfig.id, EmbedBuilder);
 		await sweepDerivedEvents(client, botConfig.id, EmbedBuilder);
 		await db.purgeDepletedMemberItems().catch(() => 0);
+		const { sweepBrokenStreaks } = await import('./tasks.js');
+		await sweepBrokenStreaks(client).catch(() => null);
 	} catch (err: any) {
 		await logger.log(`⚠️ Item expiry sweep failed: ${err.message}`);
 	}

@@ -494,7 +494,7 @@
 		</div>
 	</div>
 
-	{#if isOverview || isItems || isMinigames || isAssets || isHistory}
+	{#if isOverview || isItems || isMinigames || isAssets || isHistory || isTask}
 		{@render walletHero()}
 	{/if}
 

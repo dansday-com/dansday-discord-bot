@@ -235,24 +235,38 @@
 		<div class="m-task-loginhead">
 			<div>
 				<h3><i class="fas fa-gift"></i> Daily check-in</h3>
-				<p>Free reward every day — day {login.cycleDays} is the big one.</p>
+				<p>
+					{#if login.canClaim}
+						Tap day {login.nextDay} to claim — day {login.cycleDays} is the big one.
+					{:else}
+						Claimed today. Come back tomorrow for day {login.nextDay}.
+					{/if}
+				</p>
 			</div>
-			{#if login.canClaim}
-				<button class="m-task-claim m-task-claim--login" onclick={claimLogin} disabled={claimingLogin || ctx.readOnly}>
-					{#if claimingLogin}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas fa-hand-sparkles"></i>{/if}
-					Claim day {login.nextDay}
-				</button>
-			{:else}
+			{#if !login.canClaim}
 				<span class="m-task-claimed"><i class="fas fa-circle-check"></i> Claimed today</span>
 			{/if}
 		</div>
 
 		<div class="m-task-days">
 			{#each login.rewards as r (r.day)}
-				<div class="m-task-day" class:m-task-day--claimed={r.claimed} class:m-task-day--current={r.current} class:m-task-day--jackpot={r.jackpot}>
+				{@const claimable = r.current && login.canClaim && !ctx.readOnly}
+				<button
+					type="button"
+					class="m-task-day"
+					class:m-task-day--claimed={r.claimed}
+					class:m-task-day--current={r.current}
+					class:m-task-day--jackpot={r.jackpot}
+					class:m-task-day--claimable={claimable}
+					disabled={!claimable || claimingLogin}
+					aria-label={claimable ? `Claim day ${r.day} reward` : `Day ${r.day} reward`}
+					onclick={claimLogin}
+				>
 					<span class="m-task-daynum">Day {r.day}</span>
 					<span class="m-task-dayicon">
-						{#if r.claimed}
+						{#if claimingLogin && r.current}
+							<i class="fas fa-spinner fa-spin"></i>
+						{:else if r.claimed}
 							<i class="fas fa-circle-check"></i>
 						{:else if r.kind === 'item'}
 							<i class="fas fa-gem"></i>
@@ -263,7 +277,10 @@
 					<span class="m-task-dayval">
 						{#if r.kind === 'item'}Item{:else}{fmt(r.xp)}{/if}
 					</span>
-				</div>
+					{#if claimable}
+						<span class="m-task-daycta">Claim</span>
+					{/if}
+				</button>
 			{/each}
 		</div>
 	</section>

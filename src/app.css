@@ -8050,11 +8050,6 @@
 	color: var(--lb-text-muted);
 }
 
-.m-root .m-task-claim--login {
-	background: linear-gradient(135deg, #c8911a, #b5651d);
-	box-shadow: 0 3px 10px rgba(200, 145, 26, 0.32);
-}
-
 .m-root .m-task-days {
 	display: grid;
 	grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -8062,6 +8057,7 @@
 }
 
 .m-root .m-task-day {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	align-items: center;
@@ -8071,7 +8067,57 @@
 	background: rgba(26, 52, 63, 0.04);
 	border: 1px solid var(--lb-border-light);
 	text-align: center;
+	font: inherit;
+	color: inherit;
+	cursor: default;
 	transition: all 0.2s ease;
+}
+
+.m-root .m-task-day--claimable {
+	cursor: pointer;
+	padding-bottom: 24px;
+	animation: m-task-daypulse 2s ease-in-out infinite;
+}
+
+.m-root .m-task-day--claimable:hover {
+	transform: translateY(-4px);
+	border-color: rgba(200, 145, 26, 0.75);
+	box-shadow: 0 8px 20px rgba(200, 145, 26, 0.28);
+}
+
+.m-root .m-task-day--claimable:active {
+	transform: translateY(-1px);
+}
+
+.m-root .m-task-day--claimable:focus-visible {
+	outline: 2px solid #c8911a;
+	outline-offset: 2px;
+}
+
+.m-root .m-task-daycta {
+	position: absolute;
+	left: 50%;
+	bottom: 6px;
+	transform: translateX(-50%);
+	font-size: 9px;
+	font-weight: 800;
+	letter-spacing: 0.5px;
+	text-transform: uppercase;
+	color: #fff;
+	background: linear-gradient(135deg, #c8911a, #b5651d);
+	border-radius: 999px;
+	padding: 2px 10px;
+	white-space: nowrap;
+}
+
+@keyframes m-task-daypulse {
+	0%,
+	100% {
+		box-shadow: 0 0 0 2px rgba(200, 145, 26, 0.18);
+	}
+	50% {
+		box-shadow: 0 0 0 4px rgba(200, 145, 26, 0.32);
+	}
 }
 
 .m-root .m-task-day--claimed {
@@ -8098,6 +8144,11 @@
 .m-root .m-task-day--jackpot .m-task-dayicon {
 	color: #c0392b;
 	font-size: 18px;
+}
+
+.m-root .m-task-day:disabled {
+	opacity: 1;
+	cursor: default;
 }
 
 .m-root .m-task-daynum {

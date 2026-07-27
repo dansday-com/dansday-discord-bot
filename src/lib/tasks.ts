@@ -473,8 +473,8 @@ export const TASK_BY_ID = new Map(TASK_DEFINITIONS.map((t) => [t.id, t]));
 
 export const DIFFICULTY_META: Record<TaskDifficulty, { label: string; accent: string; weight: number }> = {
 	easy: { label: 'Easy', accent: '#1f8a4c', weight: 1 },
-	medium: { label: 'Medium', accent: '#c8911a', weight: 2.2 },
-	hard: { label: 'Hard', accent: '#c0392b', weight: 4.5 }
+	medium: { label: 'Medium', accent: '#c8911a', weight: 2.5 },
+	hard: { label: 'Hard', accent: '#c0392b', weight: 6 }
 };
 
 export const DAILY_DIFFICULTY_PLAN: TaskDifficulty[] = ['easy', 'easy', 'easy', 'medium', 'medium', 'medium', 'medium', 'hard', 'hard'];
@@ -628,8 +628,15 @@ export type RewardPlan = { kind: 'xp'; xp: number } | { kind: 'item'; itemId: nu
 export const XP_REWARD_MIN = 1000;
 export const XP_REWARD_MAX = 100000;
 
+function scaledBase(medianCost: number, factor: number): number {
+	const median = Math.max(0, Number(medianCost) || 0);
+	const linear = median * factor;
+	if (linear <= 12000) return Math.max(XP_REWARD_MIN, Math.round(linear));
+	return Math.max(XP_REWARD_MIN, Math.round(12000 + Math.sqrt(linear - 12000) * 90));
+}
+
 export function xpRewardFor(difficulty: TaskDifficulty, streak: number, medianCost: number): number {
-	const base = Math.max(XP_REWARD_MIN, Math.round(medianCost * 0.5));
+	const base = scaledBase(medianCost, 1.5);
 	const scaled = base * DIFFICULTY_META[difficulty].weight;
 	const streakBonus = 1 + Math.min(1, Math.max(0, streak) * 0.02);
 	const rounded = Math.round((scaled * streakBonus) / 100) * 100;
@@ -656,11 +663,11 @@ export function pickReward(
 	const median = costPercentile(costs, 50) || 500;
 	const rand = mulberry32(hashSeed('reward', period, memberId, dayKey, slot));
 
-	const itemChance = period === 'weekly' ? 0.85 : difficulty === 'hard' ? 0.6 : difficulty === 'medium' ? 0.25 : 0.08;
+	const itemChance = period === 'weekly' ? 0.85 : difficulty === 'hard' ? 0.7 : difficulty === 'medium' ? 0.45 : 0.25;
 
 	if (catalog.length > 0 && rand() < itemChance) {
 		const band: Record<TaskDifficulty, [number, number]> =
-			period === 'weekly' ? { easy: [60, 100], medium: [70, 100], hard: [80, 100] } : { easy: [0, 35], medium: [30, 70], hard: [65, 100] };
+			period === 'weekly' ? { easy: [60, 100], medium: [70, 100], hard: [80, 100] } : { easy: [0, 45], medium: [35, 80], hard: [70, 100] };
 		const [lo, hi] = band[difficulty];
 		const loCost = costPercentile(costs, lo);
 		const hiCost = costPercentile(costs, hi);
@@ -679,7 +686,8 @@ export function pickReward(
 	return { kind: 'xp', xp: weekly };
 }
 
-export const LOGIN_DAY_WEIGHTS = [1, 1.4, 1.9, 2.5, 3.2, 4.2, 12] as const;
+export const LOGIN_DAY_WEIGHTS = [1, 1.5, 2.2, 3.2, 4.5, 6.5, 25] as const;
+export const LOGIN_JACKPOT_MIN_XP = 25000;
 
 export type LoginReward = { day: number; kind: 'xp'; xp: number; jackpot: boolean } | { day: number; kind: 'item'; itemId: number; jackpot: boolean };
 
@@ -705,9 +713,10 @@ export function loginRewardFor(memberId: number, cycleIndex: number, day: number
 		if (picked) return { day, kind: 'item', itemId: picked.id, jackpot };
 	}
 
-	const base = Math.max(XP_REWARD_MIN, Math.round(median * 0.4));
+	const base = scaledBase(median, 1.2);
 	const xp = Math.round((base * weight) / 100) * 100;
-	return { day, kind: 'xp', xp: Math.max(XP_REWARD_MIN, Math.min(XP_REWARD_MAX, xp)), jackpot };
+	const floor = jackpot ? LOGIN_JACKPOT_MIN_XP : XP_REWARD_MIN;
+	return { day, kind: 'xp', xp: Math.max(floor, Math.min(XP_REWARD_MAX, xp)), jackpot };
 }
 
 export function loginCyclePreview(memberId: number, cycleIndex: number, catalog: { id: number; cost: number }[]): LoginReward[] {

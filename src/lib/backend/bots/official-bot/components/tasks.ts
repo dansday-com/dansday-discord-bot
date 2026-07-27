@@ -327,7 +327,15 @@ export async function sweepBrokenStreaks(client: any) {
 				client,
 				row.discord_server_id,
 				row.discord_member_id,
-				{ streak, previousStreak: streak, freezeUsed: settled, freezesLeft: freezes - settled, daysMissed: settled, reset: false, row: { longest_streak: longest } },
+				{
+					streak,
+					previousStreak: streak,
+					freezeUsed: settled,
+					freezesLeft: freezes - settled,
+					daysMissed: settled,
+					reset: false,
+					row: { longest_streak: longest }
+				},
 				null
 			).catch(() => null);
 			continue;

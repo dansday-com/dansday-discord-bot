@@ -314,10 +314,10 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		unit: 'xp',
 		requires: 'items',
 		difficulties: ['medium', 'hard'],
-		baselineKey: null,
+		baselineKey: 'xp_gained',
 		minGoal: { easy: 500, medium: 2000, hard: 6000 },
 		maxGoal: { easy: 2000, medium: 8000, hard: 25000 },
-		baselineShare: RATIO,
+		baselineShare: { easy: 0.25, medium: 0.7, hard: 1.6 },
 		weeklyScale: 2.5,
 		costIsGoal: true,
 		describe: (g) => `Spend ${g.toLocaleString()} XP in the shop`
@@ -549,7 +549,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		unit: 'xp',
 		requires: 'leveling',
 		difficulties: ['easy', 'medium', 'hard'],
-		baselineKey: 'xp_gained',
+		baselineKey: 'xp_from_voice',
 		eligibilityKey: 'voice_minutes_active',
 		minGoal: { easy: 300, medium: 1000, hard: 4000 },
 		maxGoal: { easy: 1500, medium: 5000, hard: 20000 },
@@ -566,7 +566,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		unit: 'xp',
 		requires: 'leveling',
 		difficulties: ['easy', 'medium', 'hard'],
-		baselineKey: 'xp_gained',
+		baselineKey: 'xp_from_chat',
 		eligibilityKey: 'chat_total',
 		minGoal: { easy: 200, medium: 800, hard: 3000 },
 		maxGoal: { easy: 1200, medium: 4000, hard: 15000 },
@@ -583,7 +583,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		unit: 'xp',
 		requires: 'leveling',
 		difficulties: ['medium', 'hard'],
-		baselineKey: 'xp_gained',
+		baselineKey: 'xp_from_media',
 		eligibilityKey: 'voice_minutes_video',
 		minGoal: { easy: 200, medium: 800, hard: 3000 },
 		maxGoal: { easy: 1200, medium: 4000, hard: 12000 },
@@ -654,10 +654,10 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		unit: 'xp',
 		requires: 'minigames',
 		difficulties: ['medium', 'hard'],
-		baselineKey: null,
+		baselineKey: 'xp_gained',
 		minGoal: { easy: 500, medium: 2000, hard: 8000 },
 		maxGoal: { easy: 2000, medium: 10000, hard: 40000 },
-		baselineShare: RATIO,
+		baselineShare: { easy: 0.3, medium: 0.8, hard: 2 },
 		weeklyScale: 3,
 		costIsGoal: true,
 		costFactor: 0.2,
@@ -795,7 +795,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		unit: 'xp',
 		requires: 'leveling',
 		difficulties: ['easy', 'medium', 'hard'],
-		baselineKey: 'xp_gained',
+		baselineKey: 'xp_from_voice_active',
 		eligibilityKey: 'voice_minutes_active',
 		minGoal: { easy: 300, medium: 1000, hard: 4000 },
 		maxGoal: { easy: 1500, medium: 5000, hard: 20000 },
@@ -812,7 +812,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		unit: 'xp',
 		requires: 'leveling',
 		difficulties: ['easy', 'medium'],
-		baselineKey: 'xp_gained',
+		baselineKey: 'xp_from_voice_afk',
 		eligibilityKey: 'voice_minutes_afk',
 		minGoal: { easy: 200, medium: 800, hard: 3000 },
 		maxGoal: { easy: 1000, medium: 4000, hard: 12000 },
@@ -1186,7 +1186,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		unit: 'xp',
 		requires: 'leveling',
 		difficulties: ['easy', 'medium', 'hard'],
-		baselineKey: 'xp_gained',
+		baselineKey: 'xp_with_friends',
 		eligibilityKey: 'voice_minutes_active',
 		minGoal: { easy: 300, medium: 1200, hard: 4000 },
 		maxGoal: { easy: 1500, medium: 6000, hard: 20000 },
@@ -1203,7 +1203,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		unit: 'times',
 		requires: 'leveling',
 		difficulties: ['easy', 'medium'],
-		baselineKey: null,
+		baselineKey: 'friend_ticks',
 		eligibilityKey: 'voice_minutes_active',
 		minGoal: { easy: 3, medium: 10, hard: 25 },
 		maxGoal: { easy: 12, medium: 30, hard: 60 },
@@ -1220,7 +1220,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		unit: 'xp',
 		requires: 'leveling',
 		difficulties: ['medium', 'hard'],
-		baselineKey: 'xp_gained',
+		baselineKey: 'friend_ticks',
 		minGoal: { easy: 500, medium: 2000, hard: 6000 },
 		maxGoal: { easy: 2000, medium: 8000, hard: 25000 },
 		baselineShare: { easy: 0.1, medium: 0.25, hard: 0.55 },
@@ -1236,7 +1236,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		unit: 'xp',
 		requires: 'leveling',
 		difficulties: ['medium', 'hard'],
-		baselineKey: 'xp_gained',
+		baselineKey: 'xp_solo_voice',
 		eligibilityKey: 'voice_minutes_active',
 		minGoal: { easy: 300, medium: 1200, hard: 4000 },
 		maxGoal: { easy: 1500, medium: 5000, hard: 15000 },
@@ -1253,7 +1253,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		unit: 'xp',
 		requires: 'leveling',
 		difficulties: ['medium', 'hard'],
-		baselineKey: 'xp_gained',
+		baselineKey: 'xp_solo_media',
 		eligibilityKey: 'voice_minutes_video',
 		minGoal: { easy: 300, medium: 1000, hard: 3000 },
 		maxGoal: { easy: 1200, medium: 4000, hard: 12000 },
@@ -1270,7 +1270,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		unit: 'xp',
 		requires: 'leveling',
 		difficulties: ['easy', 'medium'],
-		baselineKey: 'xp_gained',
+		baselineKey: 'xp_solo_chat',
 		eligibilityKey: 'chat_total',
 		minGoal: { easy: 200, medium: 800, hard: 3000 },
 		maxGoal: { easy: 1000, medium: 3500, hard: 12000 },
@@ -1287,7 +1287,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		unit: 'xp',
 		requires: 'leveling',
 		difficulties: ['medium', 'hard'],
-		baselineKey: 'xp_gained',
+		baselineKey: 'xp_unleeched',
 		minGoal: { easy: 500, medium: 2000, hard: 6000 },
 		maxGoal: { easy: 2000, medium: 8000, hard: 25000 },
 		baselineShare: { easy: 0.1, medium: 0.28, hard: 0.6 },
@@ -1367,7 +1367,27 @@ export type TaskEligibility = {
 	medianItemCost?: number;
 	catalog?: { id: number; cost: number; effectType: string }[];
 	effectDurations?: Record<string, number>;
+	recentDaily?: Partial<Record<TaskMetric, number>>;
 };
+
+export const RECENT_WINDOW_DAYS = 7;
+export const ACHIEVABLE_SHARE = 0.9;
+
+export const MEASURED_METRICS: TaskMetric[] = [
+	'xp_gained',
+	'xp_from_voice',
+	'xp_from_voice_active',
+	'xp_from_voice_afk',
+	'xp_from_chat',
+	'xp_from_media',
+	'xp_with_friends',
+	'xp_solo',
+	'xp_solo_voice',
+	'xp_solo_media',
+	'xp_solo_chat',
+	'xp_unleeched',
+	'friend_ticks'
+];
 
 export function effectDuration(effect: string, elig: TaskEligibility): number {
 	return Math.max(0, Number((elig.effectDurations ?? {})[effect]) || 0);
@@ -1443,7 +1463,8 @@ function isEligible(def: TaskDefinition, elig: TaskEligibility): boolean {
 	if (def.eligibilityKey && (Number(elig.baselines[def.eligibilityKey]) || 0) <= 0) return false;
 
 	if (def.baselineKey) {
-		const total = Number(elig.baselines[def.baselineKey]) || 0;
+		const measured = elig.recentDaily?.[def.baselineKey];
+		const total = measured != null ? measured : Number(elig.baselines[def.baselineKey]) || 0;
 		if (total <= 0 && def.metric !== 'chat_total' && def.metric !== 'reactions_given') return false;
 	}
 	return true;
@@ -1473,9 +1494,11 @@ export function goalFor(
 
 	let target = min;
 	if (def.baselineKey) {
-		const total = Number(elig.baselines[def.baselineKey]) || 0;
-		const days = Math.max(1, elig.activeDays);
-		const perDay = total / days;
+		const measured = elig.recentDaily?.[def.baselineKey];
+		const perDay =
+			measured != null && Number.isFinite(measured)
+				? Math.max(0, Number(measured))
+				: (Number(elig.baselines[def.baselineKey]) || 0) / Math.max(1, elig.activeDays);
 		target = perDay * def.baselineShare[difficulty] * scale;
 	} else {
 		target = min + (max - min) * rand() * 0.6;
@@ -1490,6 +1513,15 @@ export function goalFor(
 	}
 
 	let goal = Math.max(min, Math.min(max, scaled || min));
+
+	if (def.baselineKey) {
+		const measured = elig.recentDaily?.[def.baselineKey];
+		if (measured != null && Number.isFinite(measured) && measured > 0) {
+			const days = period === 'weekly' ? 7 : 1;
+			const capacity = Math.round(measured * days * ACHIEVABLE_SHARE);
+			if (capacity >= 1) goal = Math.min(goal, capacity);
+		}
+	}
 
 	const unitCost = def.costIsGoal
 		? (def.costFactor ?? 1)
@@ -1634,39 +1666,40 @@ export function pickReward(
 
 export const LOGIN_DAY_WEIGHTS = [1, 1.5, 2.2, 3.2, 4.5, 6.5, 25] as const;
 export const LOGIN_JACKPOT_MIN_XP = 25000;
+export const LOGIN_DAILY_EARN_SHARE = 0.25;
 
 export type LoginReward = { day: number; kind: 'xp'; xp: number; jackpot: boolean } | { day: number; kind: 'item'; itemId: number; jackpot: boolean };
 
-export function loginRewardFor(memberId: number, cycleIndex: number, day: number, catalog: { id: number; cost: number }[]): LoginReward {
+export function loginRewardFor(memberId: number, cycleIndex: number, day: number, catalog: { id: number; cost: number }[], dailyEarn = 0): LoginReward {
 	const costs = catalog.map((c) => Number(c.cost) || 0).filter((c) => c > 0);
 	const median = costPercentile(costs, 50) || 500;
 	const jackpot = day === LOGIN_CYCLE_DAYS;
 	const weight = LOGIN_DAY_WEIGHTS[Math.max(0, Math.min(LOGIN_CYCLE_DAYS - 1, day - 1))];
 	const rand = mulberry32(hashSeed('login', memberId, cycleIndex, day));
 
-	const itemChance = jackpot ? 0.75 : day >= 5 ? 0.2 : 0.05;
+	const earn = Math.max(0, Number(dailyEarn) || 0);
+	const base = earn > 0 ? Math.max(XP_REWARD_MIN, Math.round(earn * LOGIN_DAILY_EARN_SHARE)) : scaledBase(median, 1.2);
+	const floor = jackpot ? LOGIN_JACKPOT_MIN_XP : XP_REWARD_MIN;
+	const worth = Math.max(floor, Math.min(XP_REWARD_MAX, Math.round((base * weight) / 100) * 100));
+
+	const itemChance = jackpot ? 0.9 : day >= 5 ? 0.45 : 0.25;
 
 	if (catalog.length > 0 && rand() < itemChance) {
-		const [lo, hi] = jackpot ? [80, 100] : [25, 65];
-		const loCost = costPercentile(costs, lo);
-		const hiCost = costPercentile(costs, hi);
-		const inBand = catalog.filter((c) => {
+		const fair = catalog.filter((c) => {
 			const v = Number(c.cost) || 0;
-			return v >= loCost && v <= hiCost;
+			return v >= worth * ITEM_VALUE_FLOOR && v <= worth * ITEM_VALUE_CEILING;
 		});
-		const chooseFrom = inBand.length > 0 ? inBand : catalog;
-		const picked = chooseFrom[Math.floor(rand() * chooseFrom.length) % chooseFrom.length];
-		if (picked) return { day, kind: 'item', itemId: picked.id, jackpot };
+		if (fair.length > 0) {
+			const picked = fair[Math.floor(rand() * fair.length) % fair.length];
+			if (picked) return { day, kind: 'item', itemId: picked.id, jackpot };
+		}
 	}
 
-	const base = scaledBase(median, 1.2);
-	const xp = Math.round((base * weight) / 100) * 100;
-	const floor = jackpot ? LOGIN_JACKPOT_MIN_XP : XP_REWARD_MIN;
-	return { day, kind: 'xp', xp: Math.max(floor, Math.min(XP_REWARD_MAX, xp)), jackpot };
+	return { day, kind: 'xp', xp: worth, jackpot };
 }
 
-export function loginCyclePreview(memberId: number, cycleIndex: number, catalog: { id: number; cost: number }[]): LoginReward[] {
-	return Array.from({ length: LOGIN_CYCLE_DAYS }, (_, i) => loginRewardFor(memberId, cycleIndex, i + 1, catalog));
+export function loginCyclePreview(memberId: number, cycleIndex: number, catalog: { id: number; cost: number }[], dailyEarn = 0): LoginReward[] {
+	return Array.from({ length: LOGIN_CYCLE_DAYS }, (_, i) => loginRewardFor(memberId, cycleIndex, i + 1, catalog, dailyEarn));
 }
 
 export function streakMilestone(streak: number): { at: number; label: string; emoji: string } | null {

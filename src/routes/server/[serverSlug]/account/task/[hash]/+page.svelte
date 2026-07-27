@@ -21,14 +21,20 @@
 	let celebrate = $state<{ streak: number; emoji: string; label: string } | null>(null);
 	let loginWin = $state<{ day: number; jackpot: boolean; text: string } | null>(null);
 
+	let synced = $state(false);
+
 	$effect(() => {
-		live = data.tasks;
-		resetAt = Date.now() + (Number(data.tasks?.resetsInMs) || 0);
-		weeklyResetAt = Date.now() + (Number(data.tasks?.weeklyResetsInMs) || 0);
+		const incoming = data.tasks;
+		if (synced) return;
+		if (!incoming) return;
+		live = incoming;
+		resetAt = Date.now() + (Number(incoming.resetsInMs) || 0);
+		weeklyResetAt = Date.now() + (Number(incoming.weeklyResetsInMs) || 0);
 	});
 
 	let ticker: any = null;
 	onMount(async () => {
+		document.cookie = `tz_offset=${tzOffset()}; path=/; max-age=31536000; SameSite=Lax`;
 		ticker = setInterval(() => (now = Date.now()), 1000);
 		await refresh();
 	});
@@ -44,12 +50,13 @@
 			const body = await res.json();
 			if (body?.success && body.tasks) applyState(body.tasks);
 		} catch {
-			/* keep server-rendered state */
+			synced = false;
 		}
 	}
 
 	function applyState(next: any) {
 		live = next;
+		synced = true;
 		resetAt = Date.now() + (Number(next.resetsInMs) || 0);
 		weeklyResetAt = Date.now() + (Number(next.weeklyResetsInMs) || 0);
 	}
@@ -300,7 +307,13 @@
 		</span>
 	</div>
 
-	{#if tasks.length === 0}
+	{#if tasks.length === 0 && !synced}
+		<div class="m-task-empty">
+			<i class="fas fa-spinner fa-spin"></i>
+			<h3>Loading your tasks…</h3>
+			<p>Lining up today's goals.</p>
+		</div>
+	{:else if tasks.length === 0}
 		<div class="m-task-empty">
 			<i class="fas fa-list-check"></i>
 			<h3>No {tab} tasks available</h3>

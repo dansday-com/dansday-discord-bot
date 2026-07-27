@@ -4,7 +4,7 @@ import { publicServerPath } from '$lib/url.js';
 import { loadItemsShared, itemsCardTokenFromUrl } from '$lib/frontend/public/items/index.js';
 import { loadTasksShared } from '$lib/frontend/public/tasks/index.js';
 
-export const load: PageServerLoad = async ({ parent, params }) => {
+export const load: PageServerLoad = async ({ parent, params, cookies }) => {
 	const { server, accountEnabled, itemsEnabled, minigamesEnabled, assetsEnabled, tasksEnabled } = await parent();
 
 	if (!accountEnabled) redirect(303, '/');
@@ -15,13 +15,18 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 	if ('notFound' in shared) redirect(303, '/');
 	if ('guest' in shared || !shared.member) redirect(303, publicServerPath(server.slug));
 
+	const rawTz = cookies.get('tz_offset');
+	const knownTz = rawTz != null && rawTz !== '' && Number.isFinite(Number(rawTz));
+	const tzOffsetMin = knownTz ? Math.max(-840, Math.min(840, Number(rawTz))) : 0;
+
 	const tasks = await loadTasksShared({
 		server,
 		member: shared.member,
 		itemsEnabled: itemsEnabled === true,
 		minigamesEnabled: minigamesEnabled === true,
 		assetsEnabled: assetsEnabled === true,
-		tzOffsetMin: 0
+		tzOffsetMin,
+		generate: knownTz
 	});
 
 	return { ...shared, tasks };

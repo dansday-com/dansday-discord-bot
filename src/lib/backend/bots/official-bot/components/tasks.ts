@@ -7,6 +7,7 @@ import {
 	STREAK_FREEZE_MAX,
 	STREAK_FREEZE_EARN_EVERY,
 	LOGIN_CYCLE_DAYS,
+	RECENT_WINDOW_DAYS,
 	dayKeyFor,
 	weekKeyFor,
 	weekStartDayKey,
@@ -106,7 +107,10 @@ export async function handleLoginClaim(client: any, payload: any) {
 
 	const day = Number(applied.row?.cycle_day) || 1;
 	const cycleIndex = Number(applied.row?.cycles_completed) || 0;
-	const reward = loginRewardFor(memberId, cycleIndex, day, catalog);
+	const sinceMs = Date.now() - RECENT_WINDOW_DAYS * 86400000;
+	const earned = await db.countMemberEventsSince(memberId, 'xp_gained', sinceMs).catch(() => 0);
+	const dailyEarn = Math.max(0, Number(earned) || 0) / RECENT_WINDOW_DAYS;
+	const reward = loginRewardFor(memberId, cycleIndex, day, catalog, dailyEarn);
 
 	if (reward.kind === 'item') {
 		const inventory = await db.getMemberInventory(memberId).catch(() => []);

@@ -18,6 +18,8 @@ import {
 	taskValueXp,
 	costPercentile,
 	XP_REWARD_MIN,
+	RECENT_WINDOW_DAYS,
+	MEASURED_METRICS,
 	nextMilestone,
 	loginCyclePreview,
 	type TaskEligibility,
@@ -77,6 +79,16 @@ function longestByEffect(catalog: { effectType: string; durationMinutes: number 
 	return out;
 }
 
+async function measureRecentDaily(memberId: any): Promise<Partial<Record<TaskMetric, number>>> {
+	const sinceMs = Date.now() - RECENT_WINDOW_DAYS * 86400000;
+	const out: Partial<Record<TaskMetric, number>> = {};
+	for (const metric of MEASURED_METRICS) {
+		const total = await db.countMemberEventsSince(memberId, metric, sinceMs).catch(() => 0);
+		out[metric] = Math.max(0, Number(total) || 0) / RECENT_WINDOW_DAYS;
+	}
+	return out;
+}
+
 function cheapestByEffect(catalog: { cost: number; effectType: string }[]): Record<string, number> {
 	const out: Record<string, number> = {};
 	for (const c of catalog) {
@@ -97,13 +109,15 @@ async function buildPeriod(opts: {
 	baselines: Partial<Record<TaskMetric, number>>;
 	catalog: { id: number; cost: number }[];
 	currentStreak: number;
+	generate: boolean;
 }) {
-	const { member, serverId, period, periodKey, windowStartMs, eligibility, baselines, catalog, currentStreak } = opts;
+	const { member, serverId, period, periodKey, windowStartMs, eligibility, baselines, catalog, currentStreak, generate } = opts;
 
 	let rows = (await db.getMemberTasks(member.id, periodKey, period).catch(() => [])) as any[];
 
-	if (!rows || rows.length === 0) {
-		const generated = generateDailyTasks(Number(member.id), Number(serverId), periodKey, eligibility, period);
+	if ((!rows || rows.length === 0) && generate) {
+		const enriched = { ...eligibility, recentDaily: await measureRecentDaily(member.id) };
+		const generated = generateDailyTasks(Number(member.id), Number(serverId), periodKey, enriched, period);
 		if (generated.length === 0) return [];
 
 		const payload = generated.map((g) => {
@@ -197,6 +211,7 @@ export async function loadTasksShared(opts: {
 	assetsEnabled?: boolean;
 	tzOffsetMin: number;
 	nowMs?: number;
+	generate?: boolean;
 }) {
 	const { server, member, itemsEnabled, minigamesEnabled, tzOffsetMin } = opts;
 	const assetsEnabled = opts.assetsEnabled === true;
@@ -241,7 +256,7 @@ export async function loadTasksShared(opts: {
 
 	const currentStreak = Number(streakRow?.current_streak) || 0;
 
-	const shared = { member, serverId: server.id, eligibility, baselines, catalog, currentStreak };
+	const shared = { member, serverId: server.id, eligibility, baselines, catalog, currentStreak, generate: opts.generate !== false };
 	const daily = await buildPeriod({ ...shared, period: 'daily', periodKey: dayKey, windowStartMs: dayStartMs });
 	const weekly = await buildPeriod({ ...shared, period: 'weekly', periodKey: weekKey, windowStartMs: weekStartMs });
 
@@ -254,13 +269,19 @@ export async function loadTasksShared(opts: {
 		weekly,
 		tasks: daily,
 		streak: shapeStreak(streakRow),
-		login: shapeLogin(loginRow, member, dayKey, catalog),
+		login: shapeLogin(loginRow, member, dayKey, catalog, await memberDailyEarn(member.id)),
 		allClaimed: daily.length > 0 && daily.every((t) => t.claimed),
 		empty: daily.length === 0 && weekly.length === 0
 	};
 }
 
-function shapeLogin(row: any, member: any, dayKey: number, catalog: { id: number; cost: number }[]) {
+export async function memberDailyEarn(memberId: any): Promise<number> {
+	const sinceMs = Date.now() - RECENT_WINDOW_DAYS * 86400000;
+	const total = await db.countMemberEventsSince(memberId, 'xp_gained', sinceMs).catch(() => 0);
+	return Math.max(0, Number(total) || 0) / RECENT_WINDOW_DAYS;
+}
+
+function shapeLogin(row: any, member: any, dayKey: number, catalog: { id: number; cost: number }[], dailyEarn = 0) {
 	const cycleDay = Number(row?.cycle_day) || 0;
 	const last = row?.last_claim_day_key == null ? null : Number(row.last_claim_day_key);
 	const cyclesCompleted = Number(row?.cycles_completed) || 0;
@@ -269,7 +290,7 @@ function shapeLogin(row: any, member: any, dayKey: number, catalog: { id: number
 	const nextDay = broken || cycleDay >= LOGIN_CYCLE_DAYS ? 1 : cycleDay + 1;
 	const claimedToday = last === dayKey;
 
-	const rewards = loginCyclePreview(Number(member.id), cyclesCompleted, catalog).map((r) => ({
+	const rewards = loginCyclePreview(Number(member.id), cyclesCompleted, catalog, dailyEarn).map((r) => ({
 		...r,
 		claimed: !claimedToday && r.day < nextDay ? true : claimedToday && r.day <= cycleDay,
 		current: !claimedToday && r.day === nextDay

@@ -430,6 +430,12 @@
 						<span class="m-xp-stat-val">{taskSummary?.freezes ?? 0}/{taskSummary?.freezeMax ?? 2}</span>
 						<span class="m-xp-stat-lbl">Freezes</span>
 					</div>
+					{#if rank}
+						<div class="m-xp-stat">
+							<span class="m-xp-stat-val">#{rank}</span>
+							<span class="m-xp-stat-lbl">Rank</span>
+						</div>
+					{/if}
 				{:else}
 					<div class="m-xp-stat">
 						<span class="m-xp-stat-val">{levelInfo.pct}%</span>

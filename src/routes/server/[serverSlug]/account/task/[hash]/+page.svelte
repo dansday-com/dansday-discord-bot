@@ -310,7 +310,7 @@
 
 					<div class="m-task-prog">
 						<div class="m-task-progbar"><div class="m-task-progfill" style="width:{Math.min(100, (t.progress / Math.max(1, t.goal)) * 100)}%"></div></div>
-						<span class="m-task-progtxt">{fmt(t.progress)}/{fmt(t.goal)} {t.unit}</span>
+						<span class="m-task-progtxt">{fmt(t.progress)}/{fmt(t.goal)} {t.unit === 'xp' ? 'XP' : t.unit}</span>
 					</div>
 
 					<footer class="m-task-cardfoot">

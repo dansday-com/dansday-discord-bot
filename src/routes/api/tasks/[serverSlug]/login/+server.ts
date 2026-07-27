@@ -57,6 +57,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		member: actor,
 		itemsEnabled: psSettings.items_enabled === true,
 		minigamesEnabled: psSettings.minigames_enabled === true,
+		assetsEnabled: psSettings.assets_enabled === true,
 		tzOffsetMin
 	}).catch(() => null);
 

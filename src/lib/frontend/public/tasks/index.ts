@@ -58,7 +58,7 @@ async function buildPeriod(opts: {
 }) {
 	const { member, serverId, period, periodKey, windowStartMs, eligibility, baselines, catalog, currentStreak } = opts;
 
-	let rows = (await db.getMemberDailyTasks(member.id, periodKey, period).catch(() => [])) as any[];
+	let rows = (await db.getMemberTasks(member.id, periodKey, period).catch(() => [])) as any[];
 
 	if (!rows || rows.length === 0) {
 		const generated = generateDailyTasks(Number(member.id), Number(serverId), periodKey, eligibility, period);
@@ -81,7 +81,7 @@ async function buildPeriod(opts: {
 			};
 		});
 
-		rows = (await db.persistMemberDailyTasks(member.id, periodKey, payload, period).catch(() => [])) as any[];
+		rows = (await db.persistMemberTasks(member.id, periodKey, payload, period).catch(() => [])) as any[];
 	}
 
 	const itemIds = [...new Set(rows.map((r) => r.reward_item_id).filter((v: any) => v != null))].map(Number);
@@ -144,10 +144,12 @@ export async function loadTasksShared(opts: {
 	member: any;
 	itemsEnabled: boolean;
 	minigamesEnabled: boolean;
+	assetsEnabled?: boolean;
 	tzOffsetMin: number;
 	nowMs?: number;
 }) {
 	const { server, member, itemsEnabled, minigamesEnabled, tzOffsetMin } = opts;
+	const assetsEnabled = opts.assetsEnabled === true;
 	const nowMs = opts.nowMs ?? Date.now();
 	const dayKey = dayKeyFor(nowMs, tzOffsetMin);
 	const weekKey = weekKeyFor(nowMs, tzOffsetMin);
@@ -156,7 +158,7 @@ export async function loadTasksShared(opts: {
 
 	const levels = (await db.ensureMemberLevel(member.id).catch(() => null)) as any;
 	const streakRow = (await db.ensureMemberStreak(member.id).catch(() => null)) as any;
-	const loginRow = (await db.ensureMemberLoginClaim(member.id).catch(() => null)) as any;
+	const loginRow = (await db.ensureMemberClaim(member.id).catch(() => null)) as any;
 
 	const baselines: Partial<Record<TaskMetric, number>> = {
 		chat_total: Number(levels?.chat_total) || 0,
@@ -164,13 +166,15 @@ export async function loadTasksShared(opts: {
 		voice_minutes_active: Number(levels?.voice_minutes_active) || 0,
 		voice_minutes_afk: Number(levels?.voice_minutes_afk) || 0,
 		voice_minutes_video: Number(levels?.voice_minutes_video) || 0,
-		voice_minutes_streaming: Number(levels?.voice_minutes_streaming) || 0
+		voice_minutes_streaming: Number(levels?.voice_minutes_streaming) || 0,
+		xp_gained: Number(levels?.experience) || 0
 	};
 
 	const eligibility: TaskEligibility = {
 		levelingEnabled: true,
 		minigamesEnabled,
 		itemsEnabled,
+		assetsEnabled,
 		baselines,
 		activeDays: daysActive(member.member_since)
 	};

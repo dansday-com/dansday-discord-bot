@@ -1489,27 +1489,27 @@ export async function applyStreakClaim(memberId: any, dayKey: number, freezeMax:
 	return { changed: true, streak, freezeUsed, row: await getMemberStreak(memberId) };
 }
 
-export async function getMemberDailyTasks(memberId: any, dayKey: number, period = 'daily') {
+export async function getMemberTasks(memberId: any, dayKey: number, period = 'daily') {
 	await initializeDatabase();
 	return db
 		.select()
-		.from(schema.serverMemberDailyTasks)
+		.from(schema.serverMemberTasks)
 		.where(
 			and(
-				eq(schema.serverMemberDailyTasks.member_id, Number(memberId)),
-				eq(schema.serverMemberDailyTasks.period, String(period)),
-				eq(schema.serverMemberDailyTasks.day_key, Number(dayKey))
+				eq(schema.serverMemberTasks.member_id, Number(memberId)),
+				eq(schema.serverMemberTasks.period, String(period)),
+				eq(schema.serverMemberTasks.day_key, Number(dayKey))
 			)
 		)
-		.orderBy(schema.serverMemberDailyTasks.slot);
+		.orderBy(schema.serverMemberTasks.slot);
 }
 
-export async function persistMemberDailyTasks(memberId: any, dayKey: number, rows: any[], period = 'daily') {
+export async function persistMemberTasks(memberId: any, dayKey: number, rows: any[], period = 'daily') {
 	await initializeDatabase();
-	if (!rows || rows.length === 0) return getMemberDailyTasks(memberId, dayKey, period);
+	if (!rows || rows.length === 0) return getMemberTasks(memberId, dayKey, period);
 	const now = toMySQLDateTime();
 	await db
-		.insert(schema.serverMemberDailyTasks)
+		.insert(schema.serverMemberTasks)
 		.values(
 			rows.map((r) => ({
 				member_id: Number(memberId),
@@ -1527,44 +1527,44 @@ export async function persistMemberDailyTasks(memberId: any, dayKey: number, row
 			})) as any
 		)
 		.onDuplicateKeyUpdate({ set: { day_key: sql`day_key` } });
-	return getMemberDailyTasks(memberId, dayKey, period);
+	return getMemberTasks(memberId, dayKey, period);
 }
 
-export async function claimMemberDailyTask(memberId: any, dayKey: number, slot: number, period = 'daily') {
+export async function claimMemberTask(memberId: any, dayKey: number, slot: number, period = 'daily') {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	const result: any = await db.execute(
-		sql`UPDATE server_member_daily_tasks SET claimed_at = ${now} WHERE member_id = ${Number(memberId)} AND period = ${String(period)} AND day_key = ${Number(dayKey)} AND slot = ${Number(slot)} AND claimed_at IS NULL`
+		sql`UPDATE server_member_tasks SET claimed_at = ${now} WHERE member_id = ${Number(memberId)} AND period = ${String(period)} AND day_key = ${Number(dayKey)} AND slot = ${Number(slot)} AND claimed_at IS NULL`
 	);
 	const affected = result?.[0]?.affectedRows ?? result?.affectedRows ?? 0;
 	return affected > 0;
 }
 
-export async function getMemberLoginClaim(memberId: any) {
+export async function getMemberClaim(memberId: any) {
 	await initializeDatabase();
 	const rows = await db
 		.select()
-		.from(schema.serverMemberLoginClaims)
-		.where(eq(schema.serverMemberLoginClaims.member_id, Number(memberId)))
+		.from(schema.serverMemberClaims)
+		.where(eq(schema.serverMemberClaims.member_id, Number(memberId)))
 		.limit(1);
 	return rows[0] || null;
 }
 
-export async function ensureMemberLoginClaim(memberId: any) {
+export async function ensureMemberClaim(memberId: any) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	await db
-		.insert(schema.serverMemberLoginClaims)
+		.insert(schema.serverMemberClaims)
 		.values({ member_id: Number(memberId), created_at: now as any, updated_at: now as any })
 		.onDuplicateKeyUpdate({ set: { member_id: Number(memberId) } });
-	return getMemberLoginClaim(memberId);
+	return getMemberClaim(memberId);
 }
 
-export async function applyLoginClaim(memberId: any, dayKey: number, cycleDays: number) {
+export async function applyMemberClaim(memberId: any, dayKey: number, cycleDays: number) {
 	await initializeDatabase();
 	const now = toMySQLDateTime();
 	const result: any = await db.execute(
-		sql`UPDATE server_member_login_claims
+		sql`UPDATE server_member_claims
 			SET cycle_day = CASE
 					WHEN last_claim_day_key IS NULL OR last_claim_day_key < ${Number(dayKey)} - 1 THEN 1
 					WHEN cycle_day >= ${cycleDays} THEN 1
@@ -1576,8 +1576,8 @@ export async function applyLoginClaim(memberId: any, dayKey: number, cycleDays: 
 			WHERE member_id = ${Number(memberId)} AND (last_claim_day_key IS NULL OR last_claim_day_key < ${Number(dayKey)})`
 	);
 	const affected = result?.[0]?.affectedRows ?? result?.affectedRows ?? 0;
-	if (affected === 0) return { changed: false, row: await getMemberLoginClaim(memberId) };
-	return { changed: true, row: await getMemberLoginClaim(memberId) };
+	if (affected === 0) return { changed: false, row: await getMemberClaim(memberId) };
+	return { changed: true, row: await getMemberClaim(memberId) };
 }
 
 export async function countMemberEventsSince(memberId: any, metric: string, sinceMs: number) {
@@ -1593,8 +1593,39 @@ export async function countMemberEventsSince(memberId: any, metric: string, sinc
 		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
 	}
 
-	const actionFilter =
-		metric === 'steal_success'
+	if (metric === 'xp_gained') {
+		const rows: any = await db.execute(
+			sql`SELECT COALESCE(SUM(amount), 0) AS c FROM server_member_level_logs WHERE member_id = ${id} AND created_at >= ${since}`
+		);
+		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
+	}
+
+	if (metric === 'xp_spent') {
+		const rows: any = await db.execute(
+			sql`SELECT COALESCE(SUM(xp_amount), 0) AS c FROM server_member_item_logs WHERE member_id = ${id} AND created_at >= ${since} AND action = 'buy'`
+		);
+		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
+	}
+
+	if (metric === 'asset_bought' || metric === 'asset_sold') {
+		const act = metric === 'asset_bought' ? 'buy' : 'sell';
+		const rows: any = await db.execute(
+			sql`SELECT COUNT(*) AS c FROM server_member_asset_logs WHERE member_id = ${id} AND created_at >= ${since} AND action = ${act}`
+		);
+		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
+	}
+
+	if (metric === 'asset_profit') {
+		const rows: any = await db.execute(
+			sql`SELECT COALESCE(SUM(GREATEST(net, 0)), 0) AS c FROM server_member_asset_logs WHERE member_id = ${id} AND created_at >= ${since} AND action = 'sell'`
+		);
+		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
+	}
+
+	const effectMatch = /^use_([a-z]+)$/.exec(String(metric));
+	const actionFilter = effectMatch
+		? sql`action = ${effectMatch[1]}`
+		: metric === 'steal_success'
 			? sql`action = 'steal' AND outcome = 'success'`
 			: metric === 'item_used'
 				? sql`action NOT IN ('buy', 'discard', 'task_reward', 'bounty_collected') AND member_item_id IS NOT NULL`
@@ -5434,12 +5465,12 @@ export default {
 	getMemberStreak,
 	ensureMemberStreak,
 	applyStreakClaim,
-	getMemberDailyTasks,
-	persistMemberDailyTasks,
-	claimMemberDailyTask,
-	getMemberLoginClaim,
-	ensureMemberLoginClaim,
-	applyLoginClaim,
+	getMemberTasks,
+	persistMemberTasks,
+	claimMemberTask,
+	getMemberClaim,
+	ensureMemberClaim,
+	applyMemberClaim,
 	countMemberEventsSince,
 	claimVoiceRewardWindow,
 	setMemberLanguage,

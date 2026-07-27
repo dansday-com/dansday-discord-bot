@@ -583,7 +583,7 @@ CREATE TABLE IF NOT EXISTS server_member_minigame_logs (
     FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS server_member_daily_tasks (
+CREATE TABLE IF NOT EXISTS server_member_tasks (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     member_id INT NOT NULL,
     period VARCHAR(8) NOT NULL DEFAULT 'daily',
@@ -598,12 +598,12 @@ CREATE TABLE IF NOT EXISTS server_member_daily_tasks (
     reward_item_id INT NULL,
     claimed_at DATETIME NULL,
     created_at DATETIME NOT NULL,
-    UNIQUE KEY unique_server_member_daily_task (member_id, period, day_key, slot),
+    UNIQUE KEY unique_server_member_task (member_id, period, day_key, slot),
     FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE,
     FOREIGN KEY (reward_item_id) REFERENCES items(id) ON DELETE SET NULL
 );
 
-CREATE TABLE IF NOT EXISTS server_member_login_claims (
+CREATE TABLE IF NOT EXISTS server_member_claims (
     id INT PRIMARY KEY AUTO_INCREMENT,
     member_id INT NOT NULL,
     cycle_day TINYINT NOT NULL DEFAULT 0,
@@ -611,7 +611,7 @@ CREATE TABLE IF NOT EXISTS server_member_login_claims (
     cycles_completed INT NOT NULL DEFAULT 0,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
-    UNIQUE KEY unique_member_login_claim (member_id),
+    UNIQUE KEY unique_member_claim (member_id),
     FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE
 );
 
@@ -760,8 +760,8 @@ CREATE INDEX IF NOT EXISTS idx_server_member_item_logs_target ON server_member_i
 CREATE INDEX IF NOT EXISTS idx_server_member_item_logs_action_created ON server_member_item_logs(action, created_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_item_logs_action_member ON server_member_item_logs(action, member_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_item_logs_action_target ON server_member_item_logs(action, target_member_id, created_at);
-CREATE INDEX IF NOT EXISTS idx_server_member_daily_tasks_member ON server_member_daily_tasks(member_id, period, day_key);
-CREATE INDEX IF NOT EXISTS idx_server_member_login_claims_member ON server_member_login_claims(member_id);
+CREATE INDEX IF NOT EXISTS idx_server_member_tasks_member ON server_member_tasks(member_id, period, day_key);
+CREATE INDEX IF NOT EXISTS idx_server_member_claims_member ON server_member_claims(member_id);
 CREATE INDEX IF NOT EXISTS idx_server_member_streaks_member ON server_member_streaks(member_id);
 CREATE INDEX IF NOT EXISTS idx_server_member_minigame_logs_member ON server_member_minigame_logs(member_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_server_member_minigame_logs_created ON server_member_minigame_logs(created_at);

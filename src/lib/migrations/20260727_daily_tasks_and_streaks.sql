@@ -4,7 +4,7 @@ PREPARE s FROM @stmt;
 EXECUTE s;
 DEALLOCATE PREPARE s;
 
-CREATE TABLE IF NOT EXISTS server_member_daily_tasks (
+CREATE TABLE IF NOT EXISTS server_member_tasks (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     member_id INT NOT NULL,
     day_key INT NOT NULL,
@@ -18,8 +18,8 @@ CREATE TABLE IF NOT EXISTS server_member_daily_tasks (
     reward_item_id INT NULL,
     claimed_at DATETIME NULL,
     created_at DATETIME NOT NULL,
-    UNIQUE KEY unique_server_member_daily_task (member_id, day_key, slot),
-    KEY idx_server_member_daily_tasks_member (member_id, day_key),
+    UNIQUE KEY unique_server_member_task (member_id, day_key, slot),
+    KEY idx_server_member_tasks_member (member_id, day_key),
     FOREIGN KEY (member_id) REFERENCES server_members(id) ON DELETE CASCADE,
     FOREIGN KEY (reward_item_id) REFERENCES items(id) ON DELETE SET NULL
 );

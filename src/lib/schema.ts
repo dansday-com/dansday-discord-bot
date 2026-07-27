@@ -847,8 +847,8 @@ export const serverMemberItemLogs = mysqlTable(
 	]
 );
 
-export const serverMemberDailyTasks = mysqlTable(
-	'server_member_daily_tasks',
+export const serverMemberTasks = mysqlTable(
+	'server_member_tasks',
 	{
 		id: bigint('id', { mode: 'bigint' }).primaryKey().autoincrement(),
 		member_id: int('member_id')
@@ -868,13 +868,13 @@ export const serverMemberDailyTasks = mysqlTable(
 		created_at: datetime('created_at').notNull()
 	},
 	(t) => [
-		uniqueIndex('unique_server_member_daily_task').on(t.member_id, t.period, t.day_key, t.slot),
-		index('idx_server_member_daily_tasks_member').on(t.member_id, t.period, t.day_key)
+		uniqueIndex('unique_server_member_task').on(t.member_id, t.period, t.day_key, t.slot),
+		index('idx_server_member_tasks_member').on(t.member_id, t.period, t.day_key)
 	]
 );
 
-export const serverMemberLoginClaims = mysqlTable(
-	'server_member_login_claims',
+export const serverMemberClaims = mysqlTable(
+	'server_member_claims',
 	{
 		id: int('id').primaryKey().autoincrement(),
 		member_id: int('member_id')
@@ -887,7 +887,7 @@ export const serverMemberLoginClaims = mysqlTable(
 		created_at: datetime('created_at').notNull(),
 		updated_at: datetime('updated_at').notNull()
 	},
-	(t) => [index('idx_server_member_login_claims_member').on(t.member_id)]
+	(t) => [index('idx_server_member_claims_member').on(t.member_id)]
 );
 
 export const serverMemberStreaks = mysqlTable(

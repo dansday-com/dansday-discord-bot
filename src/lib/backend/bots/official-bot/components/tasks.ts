@@ -93,7 +93,7 @@ export async function handleLoginClaim(client: any, payload: any) {
 	const tzOffsetMin = Number(tz_offset) || 0;
 	const dayKey = dayKeyFor(Date.now(), tzOffsetMin);
 
-	const before = (await db.ensureMemberLoginClaim(memberId)) as any;
+	const before = (await db.ensureMemberClaim(memberId)) as any;
 	if (before?.last_claim_day_key != null && Number(before.last_claim_day_key) >= dayKey) {
 		return { ok: false, error: 'already_claimed' };
 	}
@@ -101,7 +101,7 @@ export async function handleLoginClaim(client: any, payload: any) {
 	const itemsAllowed = await isPublicSubFeatureEnabled(guild_id, 'items');
 	const catalog = itemsAllowed ? await loadRewardCatalog(server.id) : [];
 
-	const applied = await db.applyLoginClaim(memberId, dayKey, LOGIN_CYCLE_DAYS);
+	const applied = await db.applyMemberClaim(memberId, dayKey, LOGIN_CYCLE_DAYS);
 	if (!applied.changed) return { ok: false, error: 'already_claimed' };
 
 	const day = Number(applied.row?.cycle_day) || 1;
@@ -166,7 +166,7 @@ export async function handleTaskClaim(client: any, payload: any) {
 	const periodKey = period === 'weekly' ? weekKey : dayKey;
 	const windowStartMs = period === 'weekly' ? weekStartDayKey(weekKey) * 86400000 + tzOffsetMin * 60000 : dayKey * 86400000 + tzOffsetMin * 60000;
 
-	const rows = (await db.getMemberDailyTasks(memberId, periodKey, period).catch(() => [])) as any[];
+	const rows = (await db.getMemberTasks(memberId, periodKey, period).catch(() => [])) as any[];
 	const row = rows.find((r) => Number(r.slot) === Number(slot));
 	if (!row) return { ok: false, error: 'task_not_found' };
 	if (row.claimed_at) return { ok: false, error: 'already_claimed' };
@@ -185,7 +185,7 @@ export async function handleTaskClaim(client: any, payload: any) {
 		}
 	}
 
-	const claimed = await db.claimMemberDailyTask(memberId, periodKey, Number(slot), period);
+	const claimed = await db.claimMemberTask(memberId, periodKey, Number(slot), period);
 	if (!claimed) return { ok: false, error: 'already_claimed' };
 
 	let granted: any = null;
@@ -200,7 +200,7 @@ export async function handleTaskClaim(client: any, payload: any) {
 		return { ok: false, error: 'grant_failed' };
 	}
 
-	const after = (await db.getMemberDailyTasks(memberId, dayKey, 'daily').catch(() => [])) as any[];
+	const after = (await db.getMemberTasks(memberId, dayKey, 'daily').catch(() => [])) as any[];
 	const allClaimed = after.length > 0 && after.every((r) => !!r.claimed_at);
 
 	let streakResult: any = null;

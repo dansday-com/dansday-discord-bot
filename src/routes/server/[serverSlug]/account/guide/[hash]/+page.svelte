@@ -93,6 +93,7 @@
 				{ icon: 'fa-bolt', title: 'Use it', desc: 'Hit Use on an owned card. Buffs apply instantly, Remove drops one.' },
 				{ icon: 'fa-crosshairs', title: 'Pick a target', desc: 'Steal, bomb, leech, spy, gift and bounty ask who to hit.' }
 			],
+			cards: [] as { icon: string; accent: string; title: string; desc: string }[],
 			note: {
 				icon: 'fa-triangle-exclamation',
 				accent: '#b23b2e',
@@ -111,11 +112,19 @@
 				{ icon: 'fa-gift', title: 'Claim rewards', desc: 'Finished tasks pay XP or a shop item, and items need bag space.' },
 				{ icon: 'fa-fire', title: 'Keep the streak', desc: 'Clear all nine dailies for +2% task XP per streak day, up to +100%.' }
 			],
+			cards: [
+				{ icon: 'fa-sun', accent: '#c8911a', title: '9 tasks every day', desc: 'Three easy, four medium, two hard, reset at midnight on your own clock.' },
+				{ icon: 'fa-calendar-week', accent: '#7b5ea7', title: '9 weekly tasks', desc: 'All hard, Monday to Sunday, paying around 6× a daily one.' },
+				{ icon: 'fa-gauge-high', accent: '#245f73', title: 'Goals sized to you', desc: 'Built from your own last seven days, never from your level.' },
+				{ icon: 'fa-gift', accent: '#1a7f57', title: 'XP or an item', desc: 'Item odds and item quality both rise with difficulty.' },
+				{ icon: 'fa-fire', accent: '#d35400', title: 'Streak', desc: 'Milestones at 7, 30, 100 and 365 days get announced in the server.' },
+				{ icon: 'fa-snowflake', accent: '#1d6f8a', title: 'Freezes', desc: 'Two cover a missed day by themselves, one back every 10 claims.' }
+			],
 			note: {
-				icon: 'fa-snowflake',
-				accent: '#1d6f8a',
-				title: '❄️ Built to be reachable',
-				text: 'Goals are sized to your own last seven days, never your level. Miss a day and one of your two freezes covers the streak, but the check-in cycle restarts at day 1.'
+				icon: 'fa-calendar-check',
+				accent: '#c8911a',
+				title: '🎁 Daily check-in',
+				text: 'Claim one day of a 7-day cycle per day, and day 7 is the jackpot. Miss a day and the cycle restarts at day 1, so check in even when you cannot play.'
 			}
 		},
 		{
@@ -129,6 +138,7 @@
 				{ icon: 'fa-coins', title: 'Wager XP', desc: 'Only XP earned above your level is at risk, so a loss never de-levels you.' },
 				{ icon: 'fa-bolt', title: 'Play & win', desc: 'Results post to the channel and feed the Minigames leaderboard.' }
 			],
+			cards: [] as { icon: string; accent: string; title: string; desc: string }[],
 			note: {
 				icon: 'fa-triangle-exclamation',
 				accent: '#b23b2e',
@@ -147,24 +157,36 @@
 				{ icon: 'fa-wallet', title: 'Watch it move', desc: 'Invested XP leaves your Wallet and your level until you sell.' },
 				{ icon: 'fa-hand-holding-dollar', title: 'Sell anytime', desc: 'No cooldown. XP comes back scaled by how the price moved.' }
 			],
+			cards: [
+				{ icon: 'fa-coins', accent: '#245f73', title: 'XP becomes the investment', desc: 'Invested XP leaves your Wallet and your level until you sell.' },
+				{ icon: 'fa-shield-halved', accent: '#1f9e8f', title: 'Safe from attacks', desc: 'XP inside an asset cannot be stolen, bombed or leeched.' },
+				{ icon: 'fa-arrow-trend-up', accent: '#1a7f57', title: 'Real market prices', desc: 'Live crypto prices in IDR, with no cooldown on selling.' },
+				{ icon: 'fa-clock-rotate-left', accent: '#4b6584', title: 'Tracked in History', desc: 'Every buy and sell is logged with what it earned or cost you.' }
+			],
 			note: {
 				icon: 'fa-triangle-exclamation',
 				accent: '#b23b2e',
-				title: '⚠️ Safe from players, not from the market',
-				text: 'Nobody can steal, bomb or leech XP parked in an asset, but prices are real. Sell after a drop and you get back less than you invested.'
+				title: '⚠️ Prices go down too',
+				text: 'The market is real and volatile. If a coin drops after you buy, selling returns less XP than you invested.'
 			}
 		}
 	];
 
 	const tips = [
-		{ icon: 'fa-fire', accent: '#d35400', text: 'Check in and clear your dailies first — a longer streak makes every later reward bigger.' },
-		{ icon: 'fa-list-check', accent: '#1a7f57', text: 'Tasks that ask you to buy or use items always pay back more XP than they cost.' },
-		{ icon: 'fa-calendar-week', accent: '#7b5ea7', text: 'Aim your week at the weekly tasks; the same activity clears your dailies on the way.' },
-		{ icon: 'fa-clover', accent: effectAccentHex('luck'), text: 'Activate Luck first. Timed buffs lock in whatever luck you had when you used them.' },
 		{ icon: 'fa-magnifying-glass', accent: effectAccentHex('spy'), text: 'Spy before you attack so you never waste an item on a shielded target.' },
+		{ icon: 'fa-triangle-exclamation', accent: effectAccentHex('spy'), text: 'A risky Spy can backfire — fail and the target is alerted with your name.' },
+		{ icon: 'fa-mask', accent: effectAccentHex('disguise'), text: 'Disguise hides your name, but a lucky Spy can still unmask you.' },
 		{ icon: 'fa-shield', accent: effectAccentHex('shield'), text: 'Raise a Shield before you log off so nobody farms you while away.' },
+		{ icon: 'fa-soap', accent: effectAccentHex('purifier'), text: 'Stuck with a leech draining you? A Purifier wipes it instantly.' },
+		{ icon: 'fa-arrows-rotate', accent: effectAccentHex('reflect'), text: 'Expecting a hit? Reflect turns their attack back on them.' },
+		{ icon: 'fa-clover', accent: effectAccentHex('luck'), text: 'Activate Luck first — timed buffs lock in the luck you had when you used them.' },
+		{ icon: 'fa-crosshairs', accent: effectAccentHex('bounty'), text: 'Placed a Bounty? Land the hit yourself before someone else cashes in.' },
+		{ icon: 'fa-shield-halved', accent: effectAccentHex('insurance'), text: 'Insurance only pays on your next loss, so use it just before you expect a hit.' },
 		{ icon: 'fa-handshake', accent: '#2f8f4e', text: 'Grind voice with friends — every member in the channel adds +10% voice XP.' },
-		{ icon: 'fa-chart-line', accent: '#245f73', text: 'Park XP in an asset to hide it from attacks, and only risk what you can lose.' }
+		{ icon: 'fa-fire', accent: '#d35400', text: 'Check in and clear your dailies first — a longer streak grows every later reward.' },
+		{ icon: 'fa-calendar-week', accent: '#7b5ea7', text: 'Aim your week at the weekly tasks; the same activity clears your dailies too.' },
+		{ icon: 'fa-list-check', accent: '#1a7f57', text: 'Tasks that ask you to buy or use items pay back more XP than they cost.' },
+		{ icon: 'fa-chart-line', accent: '#245f73', text: 'Park XP in an asset to hide it from attacks, but watch the price.' }
 	];
 
 	function fmtCost(n: number | null): string {
@@ -257,6 +279,9 @@
 			<h2 class="g-sec-head"><i class="fas {f.icon}"></i>{f.title}</h2>
 			<p class="g-sec-lead">{f.lead}</p>
 			{@render stepGrid(f.steps)}
+			{#if f.cards.length}
+				{@render cardGrid(f.cards)}
+			{/if}
 			{@render callout(f.note)}
 
 			{#if f.id === 'items'}

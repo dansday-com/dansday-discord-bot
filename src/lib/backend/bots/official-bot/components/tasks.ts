@@ -22,6 +22,8 @@ import {
 } from '../../../../tasks.js';
 import { snapshotMembers, finalizeXpChanges, resolveServerMemberId } from './items.js';
 
+const ANNOUNCE_DELAY_MS = 7000;
+
 const COUNTER_METRICS = new Set<TaskMetric>([
 	'chat_total',
 	'reactions_given',
@@ -149,7 +151,9 @@ export async function handleLoginClaim(client: any, payload: any) {
 			Number(granted.cost) || 0,
 			catalog.map((c) => c.cost)
 		);
-		await announceLoginItem(client, guild_id, actor_discord_id, { day, jackpot: reward.jackpot, item: granted, tier }).catch(() => null);
+		setTimeout(() => {
+			announceLoginItem(client, guild_id, actor_discord_id, { day, jackpot: reward.jackpot, item: granted, tier }).catch(() => null);
+		}, ANNOUNCE_DELAY_MS);
 	}
 
 	return { ok: true, granted, day, jackpot: reward.jackpot, cycleDays: LOGIN_CYCLE_DAYS };

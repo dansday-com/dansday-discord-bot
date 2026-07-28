@@ -450,7 +450,6 @@
 				<div class="m-task-reel-pointer"></div>
 				<div
 					class="m-task-reel"
-					class:m-task-reel--spin={reelAnimating && !reelSettled}
 					style="transform: translateX({reelOffset}px); transition: {reelAnimating ? 'transform 6.8s cubic-bezier(0.06, 0.72, 0.06, 1)' : 'none'};"
 				>
 					{#each reel as cell, i (i)}

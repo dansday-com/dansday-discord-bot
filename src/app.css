@@ -4755,10 +4755,6 @@
 	will-change: transform;
 }
 
-.m-gamble-reel--spin {
-	filter: blur(1px);
-}
-
 .m-gamble-cell {
 	flex: 0 0 84px;
 	height: 70px;
@@ -5131,9 +5127,6 @@
 	.m-gamble-play--charged,
 	.m-gamble-play--charged::after {
 		animation: none;
-	}
-	.m-gamble-reel--spin {
-		filter: none;
 	}
 }
 
@@ -8151,10 +8144,6 @@
 	will-change: transform;
 }
 
-.m-task-reel--spin {
-	filter: blur(1px);
-}
-
 .m-task-reel-cell {
 	flex: 0 0 112px;
 	height: 114px;
@@ -8279,10 +8268,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.m-task-reel--spin {
-		filter: none;
-	}
-
 	.m-task-roll-card,
 	.m-task-roll-verdict {
 		animation: none;

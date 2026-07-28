@@ -580,7 +580,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		requires: 'items',
 		baselineKey: null,
 		costEffect: 'steal|bomb|leech',
-		describe: (g) => `Have ${g} attack${g === 1 ? '' : 's'} fail on you`
+		describe: (g) => `Have ${g} of your attacks fail`
 	},
 	{
 		id: 'attack_bounced',
@@ -755,6 +755,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		unit: 'times',
 		requires: 'items',
 		baselineKey: null,
+		durationEffect: 'shield|reflect',
 		describe: (g) => `Survive ${g} attack${g === 1 ? '' : 's'}`
 	},
 	{
@@ -1452,12 +1453,20 @@ export function effectSuccessChance(effectKey: string | undefined, elig: TaskEli
 	return Math.max(1, Math.min(100, best));
 }
 
+export const DAILY_ACTION_CAP = 50;
+
 export function feasibleUsesInPeriod(def: TaskDefinition, elig: TaskEligibility, period: TaskPeriod): number {
 	const minutes = PERIOD_MINUTES[period];
 	const effectKey = def.costEffect && def.costEffect !== '*' ? def.costEffect : def.durationEffect;
 	const items = effectItems(effectKey, elig);
 
-	let cap = Infinity;
+	const days = Math.max(1, Math.round(minutes / PERIOD_MINUTES.daily));
+	let cap = DAILY_ACTION_CAP * days;
+
+	if (def.unit === 'items' && !def.targetsItem) {
+		const catalogSize = (elig.catalog ?? []).filter((c) => (Number(c.cost) || 0) > 0).length;
+		if (catalogSize > 0) cap = Math.min(cap, catalogSize * days);
+	}
 
 	for (const key of ['cooldownMinutes', 'durationMinutes'] as const) {
 		const gates = items.map((c) => Number(c[key]) || 0).filter((v) => v > 0);

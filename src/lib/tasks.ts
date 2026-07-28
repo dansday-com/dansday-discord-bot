@@ -1768,59 +1768,10 @@ function regradeByEffort(tasks: GeneratedTask[], elig: TaskEligibility, period: 
 	const ranked = [...tasks].sort((a, b) => (a.effort ?? 0) - (b.effort ?? 0));
 	const quota = plan.slice(0, tasks.length).sort((a, b) => DIFFICULTY_META[a].weight - DIFFICULTY_META[b].weight);
 
-	const allowedFor = (t: GeneratedTask): TaskDifficulty[] => TASK_BY_ID.get(t.taskType)?.difficulties ?? ['medium'];
-
-	const assigned = new Array<TaskDifficulty | null>(ranked.length).fill(null);
-	const taken = new Set<number>();
-
-	const remaining = [...quota];
 	for (let i = 0; i < ranked.length; i++) {
-		const allowed = allowedFor(ranked[i]);
-		if (allowed.length !== 1) continue;
-		const only = allowed[0];
-		const at = remaining.indexOf(only);
-		if (at === -1) continue;
-		remaining.splice(at, 1);
-		assigned[i] = only;
-		taken.add(i);
+		const slotted = quota[i] ?? gradeDifficulty(ranked[i].effort ?? 0, elig, period);
+		ranked[i] = { ...ranked[i], difficulty: slotted };
 	}
-
-	const order = remaining
-		.map((want, q) => ({ want, q }))
-		.sort((a, b) => {
-			const supply = (d: TaskDifficulty) => ranked.filter((t, i) => !taken.has(i) && allowedFor(t).includes(d)).length;
-			return supply(a.want) - supply(b.want);
-		});
-
-	for (const { want, q } of order) {
-		const fromEnd = DIFFICULTY_META[want].weight >= DIFFICULTY_META.hard.weight;
-		let pick = -1;
-		for (let k = 0; k < ranked.length; k++) {
-			const i = fromEnd ? ranked.length - 1 - k : k;
-			if (taken.has(i) || !allowedFor(ranked[i]).includes(want)) continue;
-			pick = i;
-			break;
-		}
-		if (pick === -1) continue;
-		assigned[pick] = want;
-		taken.add(pick);
-	}
-
-	const deficit = (d: TaskDifficulty) => quota.filter((x) => x === d).length - assigned.filter((x) => x === d).length;
-
-	for (let i = 0; i < ranked.length; i++) {
-		if (assigned[i] != null) continue;
-		const allowed = allowedFor(ranked[i]);
-		const short = allowed.filter((d) => deficit(d) > 0).sort((a, b) => deficit(b) - deficit(a));
-		if (short.length > 0) {
-			assigned[i] = short[0];
-			continue;
-		}
-		const graded = gradeDifficulty(ranked[i].effort ?? 0, elig, period);
-		assigned[i] = allowed.includes(graded) ? graded : allowed[allowed.length - 1];
-	}
-
-	for (let i = 0; i < ranked.length; i++) ranked[i] = { ...ranked[i], difficulty: assigned[i] as TaskDifficulty };
 
 	const bySlot = new Map(ranked.map((t) => [t.slot, t]));
 	return tasks.map((t) => bySlot.get(t.slot) ?? t);

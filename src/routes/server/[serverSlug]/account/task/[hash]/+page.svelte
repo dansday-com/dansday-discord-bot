@@ -69,7 +69,10 @@
 
 	const dailyTasks = $derived((live?.daily ?? []) as any[]);
 	const weeklyTasks = $derived((live?.weekly ?? []) as any[]);
-	const tasks = $derived(tab === 'weekly' ? weeklyTasks : dailyTasks);
+	const DIFF_ORDER: Record<string, number> = { easy: 0, medium: 1, hard: 2 };
+	const tasks = $derived(
+		[...(tab === 'weekly' ? weeklyTasks : dailyTasks)].sort((a, b) => (DIFF_ORDER[a.difficulty] ?? 1) - (DIFF_ORDER[b.difficulty] ?? 1) || a.slot - b.slot)
+	);
 	const login = $derived(live?.login ?? { rewards: [], canClaim: false, nextDay: 1, cycleDays: 7 });
 	const doneCount = $derived(dailyTasks.filter((t) => t.claimed).length);
 	const weeklyDone = $derived(weeklyTasks.filter((t) => t.claimed).length);

@@ -812,6 +812,7 @@ export const serverMemberItemActives = mysqlTable(
 		target_member_id: int('target_member_id').references(() => serverMembers.id, { onDelete: 'cascade' }),
 		expires_at: datetime('expires_at').notNull(),
 		expiry_notified: boolean('expiry_notified').notNull().default(false),
+		elapsed_minutes: int('elapsed_minutes').notNull().default(0),
 		created_at: datetime('created_at').notNull()
 	},
 	(t) => [

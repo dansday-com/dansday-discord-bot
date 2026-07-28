@@ -1782,12 +1782,17 @@ export async function countMemberEventsSince(memberId: any, metric: string, sinc
 	const durationMatch = /^duration_([a-z]+)$/.exec(String(metric));
 	if (durationMatch) {
 		const rows: any = await db.execute(
-			sql`SELECT COALESCE(SUM(CAST(JSON_UNQUOTE(JSON_EXTRACT(i.config, '$.effect_duration_minutes')) AS UNSIGNED)), 0) AS c
-				FROM server_member_item_logs l
-				INNER JOIN items i ON i.id = l.item_id
-				WHERE l.member_id = ${id} AND l.created_at >= ${since} AND l.action = ${durationMatch[1]}`
+			sql`SELECT COALESCE(SUM(TIMESTAMPDIFF(SECOND, GREATEST(a.created_at, ${since}), LEAST(a.expires_at, NOW()))), 0) AS c
+				FROM server_member_item_actives a
+				INNER JOIN server_member_items mi ON mi.id = a.member_item_id
+				INNER JOIN items i ON i.id = mi.item_id
+				WHERE mi.member_id = ${id}
+					AND i.effect_type = ${durationMatch[1]}
+					AND a.expires_at > ${since}
+					AND a.created_at <= NOW()`
 		);
-		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
+		const seconds = Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
+		return Math.floor(Math.max(0, seconds) / 60);
 	}
 
 	const ATTACK_ACTIONS = sql`('steal', 'bomb', 'leech')`;
@@ -2140,7 +2145,8 @@ export async function purgeDepletedMemberItems() {
 		  AND smi.updated_at <= UTC_TIMESTAMP() - INTERVAL 60 SECOND
 		  AND NOT EXISTS (
 		    SELECT 1 FROM server_member_item_actives a
-		    WHERE a.member_item_id = smi.id AND a.expires_at > UTC_TIMESTAMP()
+		    WHERE a.member_item_id = smi.id
+		      AND a.expires_at > UTC_TIMESTAMP() - INTERVAL 8 DAY
 		  )
 	`);
 	return result?.[0]?.affectedRows ?? result?.affectedRows ?? 0;
@@ -2341,10 +2347,12 @@ export async function expireMemberItemActive(activeId: any) {
 export async function endMemberItemActiveNow(activeId: any) {
 	await initializeDatabase();
 	if (!activeId) return false;
-	await db
-		.update(schema.serverMemberItemActives)
-		.set({ expires_at: toMySQLDateTime() as any })
-		.where(eq(schema.serverMemberItemActives.id, Number(activeId)));
+	await db.execute(
+		sql`UPDATE server_member_item_actives
+			SET elapsed_minutes = GREATEST(0, TIMESTAMPDIFF(MINUTE, created_at, LEAST(expires_at, NOW()))),
+				expires_at = NOW()
+			WHERE id = ${Number(activeId)}`
+	);
 	return true;
 }
 

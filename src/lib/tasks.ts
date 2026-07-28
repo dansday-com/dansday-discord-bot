@@ -1276,7 +1276,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		maxGoal: { easy: 1000, medium: 3500, hard: 12000 },
 		baselineShare: { easy: 0.06, medium: 0.16, hard: 0.35 },
 		weeklyScale: 3,
-		describe: (g) => `Earn ${g.toLocaleString()} XP from chat with no Boost or friend bonus`
+		describe: (g) => `Earn ${g.toLocaleString()} XP from chat with no Boost active`
 	},
 	{
 		id: 'unleeched',
@@ -1809,6 +1809,8 @@ export function costPercentile(costs: number[], percentile: number): number {
 export const ITEM_VALUE_FLOOR = 0.85;
 export const ITEM_VALUE_CEILING = 1.25;
 
+export const TASK_ITEM_REWARD_CHANCE = 0.3;
+
 export function cheapestOf<T extends { cost: number }>(catalog: T[]): T[] {
 	if (catalog.length === 0) return [];
 	let best = Infinity;
@@ -1833,9 +1835,7 @@ export function pickReward(
 	const worth = Math.max(XP_REWARD_MIN, floor, Math.min(XP_REWARD_MAX, Math.round(Number(value) || 0)));
 	const rand = mulberry32(hashSeed('reward', period, memberId, periodKey, slot));
 
-	const itemChance = period === 'weekly' ? 0.85 : difficulty === 'hard' ? 0.7 : difficulty === 'medium' ? 0.45 : 0.25;
-
-	if (catalog.length > 0 && rand() < itemChance) {
+	if (catalog.length > 0 && rand() < TASK_ITEM_REWARD_CHANCE) {
 		const affordable = catalog.filter((c) => (Number(c.cost) || 0) >= Math.max(floor, worth * ITEM_VALUE_FLOOR));
 		const fair = affordable.filter((c) => (Number(c.cost) || 0) <= worth * ITEM_VALUE_CEILING);
 

@@ -113,7 +113,6 @@ export type TaskDefinition = {
 	baselineKey: TaskMetric | null;
 	eligibilityKey?: TaskMetric;
 	costEffect?: string;
-	costFactor?: number;
 	costIsGoal?: boolean;
 	costFixedUnits?: number;
 	costExtraEffect?: string;
@@ -201,7 +200,6 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		requires: 'minigames',
 		baselineKey: null,
 		costEffect: '*',
-		costFactor: 0.15,
 		describe: (g) => (g === 1 ? 'Play a gamble round' : `Play ${g} gamble rounds`)
 	},
 	{
@@ -214,7 +212,6 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		requires: 'minigames',
 		baselineKey: null,
 		costEffect: '*',
-		costFactor: 0.4,
 		describe: (g) => (g === 1 ? 'Win a gamble round' : `Win ${g} gamble rounds`)
 	},
 	{
@@ -227,7 +224,6 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		requires: 'items',
 		baselineKey: null,
 		costEffect: 'steal',
-		costFactor: 1.6,
 		describe: (g) => (g === 1 ? 'Successfully steal from a member' : `Successfully steal from ${g} members`)
 	},
 	{
@@ -476,7 +472,6 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		requires: 'minigames',
 		baselineKey: null,
 		costEffect: '*',
-		costFactor: 0.15,
 		describe: (g) => (g === 1 ? 'Gamble once at 5× or higher' : `Gamble ${g} times at 5× or higher`)
 	},
 	{
@@ -489,7 +484,6 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		requires: 'minigames',
 		baselineKey: null,
 		costEffect: '*',
-		costFactor: 0.15,
 		describe: (g) => `Gamble ${g} time${g === 1 ? '' : 's'} at 5× or higher with no Luck active`
 	},
 	{
@@ -502,7 +496,6 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		requires: 'minigames',
 		baselineKey: null,
 		costEffect: '*',
-		costFactor: 0.8,
 		describe: (g) => (g === 1 ? 'Win a gamble at 5× or higher' : `Win ${g} gambles at 5× or higher`)
 	},
 	{
@@ -515,7 +508,6 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		requires: 'minigames',
 		baselineKey: 'xp_gained',
 		costIsGoal: true,
-		costFactor: 0.2,
 		describe: (g) => `Wager ${g.toLocaleString()} XP in total`
 	},
 	{
@@ -540,7 +532,6 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		requires: 'items',
 		baselineKey: null,
 		costEffect: 'steal|bomb|leech',
-		costFactor: 1.6,
 		describe: (g) => `Land ${g} successful attack${g === 1 ? '' : 's'}`
 	},
 	{
@@ -553,7 +544,6 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		requires: 'minigames',
 		baselineKey: 'xp_gained',
 		costIsGoal: true,
-		costFactor: 1,
 		describe: (g) => `Lose ${g.toLocaleString()} XP in gambles`
 	},
 	{
@@ -566,7 +556,6 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		requires: 'minigames',
 		baselineKey: null,
 		costEffect: '*',
-		costFactor: 0.15,
 		describe: (g) => (g === 1 ? 'Lose a gamble round' : `Lose ${g} gamble rounds`)
 	},
 	{
@@ -579,7 +568,6 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		requires: 'minigames',
 		baselineKey: null,
 		costEffect: '*',
-		costFactor: 0.4,
 		describe: (g) => `Lose ${g} gamble${g === 1 ? '' : 's'} at 5× or higher`
 	},
 	{
@@ -604,7 +592,6 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		requires: 'items',
 		baselineKey: null,
 		costEffect: 'steal|bomb|leech',
-		costFactor: 1.6,
 		describe: (g) => `Get reflected ${g} time${g === 1 ? '' : 's'}`
 	},
 	{
@@ -803,7 +790,6 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		requires: 'items',
 		baselineKey: null,
 		costEffect: 'bomb',
-		costFactor: 1.6,
 		describe: (g) => (g === 1 ? 'Successfully bomb a member' : `Successfully bomb ${g} members`)
 	},
 	{
@@ -816,7 +802,6 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		requires: 'items',
 		baselineKey: null,
 		costEffect: 'leech',
-		costFactor: 1.5,
 		describe: (g) => (g === 1 ? 'Successfully leech a member' : `Successfully leech ${g} members`)
 	},
 	{
@@ -890,7 +875,6 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		requires: 'items',
 		baselineKey: null,
 		costEffect: '*',
-		costFactor: 0.5,
 		describe: (g) => (g === 1 ? 'Discard an item from your bag' : `Discard ${g} items from your bag`)
 	},
 	{
@@ -903,7 +887,6 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		requires: 'items',
 		baselineKey: null,
 		targetsItem: true,
-		costFactor: 0.5,
 		describe: (g, c) => `Discard ${g}× ${c?.itemName ?? 'a specific item'}`
 	},
 	{
@@ -940,7 +923,6 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		requires: 'items',
 		baselineKey: null,
 		targetsItem: true,
-		costFactor: 1.5,
 		describe: (g, c) => `Successfully use ${g}× ${c?.itemName ?? 'a specific item'}`
 	},
 	{
@@ -953,7 +935,6 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		requires: 'items',
 		baselineKey: null,
 		costEffect: 'spy',
-		costFactor: 1.5,
 		describe: (g) => `Spy on ${g} member${g === 1 ? '' : 's'} without getting caught`
 	},
 	{
@@ -979,7 +960,6 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		requires: 'items',
 		baselineKey: null,
 		costEffect: 'steal',
-		costFactor: 1.6,
 		costExtraEffect: 'disguise',
 		describe: (g) => `Steal from ${g} member${g === 1 ? '' : 's'} while disguised`
 	},
@@ -1032,7 +1012,6 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		requires: 'items',
 		baselineKey: null,
 		costEffect: 'steal|bomb|leech',
-		costFactor: 1.4,
 		costExtraEffect: 'luck',
 		describe: (g) => `Land ${g} attack${g === 1 ? '' : 's'} while Luck is active`
 	},
@@ -1046,7 +1025,6 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		requires: 'minigames',
 		baselineKey: null,
 		costEffect: '*',
-		costFactor: 0.15,
 		costExtraEffect: 'luck',
 		describe: (g) => `Gamble ${g} time${g === 1 ? '' : 's'} with Luck active`
 	},
@@ -1060,7 +1038,6 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		requires: 'minigames',
 		baselineKey: null,
 		costEffect: '*',
-		costFactor: 0.4,
 		costExtraEffect: 'luck',
 		describe: (g) => `Win ${g} gamble${g === 1 ? '' : 's'} with Luck active`
 	},
@@ -1074,7 +1051,6 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		requires: 'items',
 		baselineKey: null,
 		costEffect: 'steal|bomb|leech',
-		costFactor: 1.6,
 		describe: (g) => `Collect ${g} bount${g === 1 ? 'y' : 'ies'} by robbing a wanted member`
 	},
 	{
@@ -1377,11 +1353,11 @@ export function taskCostXp(def: TaskDefinition, goal: number, elig: TaskEligibil
 		return Math.round(unit * Math.ceil(amount / per)) + extra;
 	}
 
-	if (def.costIsGoal) return Math.round(amount * (def.costFactor ?? 1)) + extra;
+	if (def.costIsGoal) return Math.round(amount) + extra;
 
 	if (def.targetsItem) {
 		const unit = Number(targetCost) || 0;
-		return (unit > 0 ? Math.round(unit * amount * (def.costFactor ?? 1)) : 0) + extra;
+		return (unit > 0 ? Math.round(unit * amount) : 0) + extra;
 	}
 
 	if (!def.costEffect) return extra;
@@ -1390,7 +1366,7 @@ export function taskCostXp(def: TaskDefinition, goal: number, elig: TaskEligibil
 	if (unit <= 0) return extra;
 
 	const units = def.costFixedUnits ?? amount;
-	return Math.round(unit * units * (def.costFactor ?? 1)) + extra;
+	return Math.round(unit * units) + extra;
 }
 
 export type LevelingRates = {
@@ -1550,7 +1526,9 @@ export function deriveGoal(def: TaskDefinition, difficulty: TaskDifficulty, elig
 	const weight = spends ? TIER_EFFORT_WEIGHT[taskItemTier(def, elig, targetCost)] : 1;
 	const floor = Math.max(1, Math.round(DIFFICULTY_STRETCH[difficulty] * weight));
 
-	return Math.max(1, Math.min(Math.max(Math.round(raw), floor), feasible));
+	const payable = Math.max(1, Math.floor(rewardCeiling(elig) / (unitEffort * EFFORT_REWARD_MARGIN)));
+
+	return Math.max(1, Math.min(Math.max(Math.round(raw), floor), feasible, payable));
 }
 
 export function clampGoalToPeriod(def: TaskDefinition, goal: number, period: TaskPeriod, targetItemDuration = 0): number {
@@ -1647,7 +1625,7 @@ export function taskValueXp(
 
 	if (effort <= 0) worth = Math.round(rate * EFFORT_BANDS[difficulty] * EFFORT_REWARD_MARGIN * streakBonus);
 
-	return Math.max(XP_REWARD_MIN, Math.min(XP_REWARD_MAX, Math.max(worth, spend)));
+	return Math.max(XP_REWARD_MIN, Math.min(rewardCeiling(elig), Math.max(worth, spend)));
 }
 
 function isEligible(def: TaskDefinition, elig: TaskEligibility): boolean {
@@ -1690,24 +1668,7 @@ export function goalFor(
 		scaled = Math.round(scaled / step) * step;
 	}
 
-	let goal = Math.max(1, Math.min(scaled || derived, feasibleUsesInPeriod(def, elig, period)));
-
-	const capacity = taskCapacity(def, elig, period);
-	if (capacity != null && capacity >= 1) goal = Math.min(goal, capacity);
-
-	const unitCost = def.costIsGoal
-		? (def.costFactor ?? 1)
-		: def.targetsItem
-			? (Number(targetCost) || 0) * (def.costFactor ?? 1)
-			: def.costEffect
-				? effectUnitCost(def.costEffect, elig) * (def.costFactor ?? 1)
-				: 0;
-	if (unitCost > 0 && !def.costFixedUnits) {
-		const affordable = Math.floor(XP_REWARD_MAX / (EFFORT_REWARD_MARGIN * unitCost));
-		if (affordable >= 1) goal = Math.min(goal, affordable);
-	}
-
-	return Math.max(1, goal);
+	return Math.max(1, Math.min(scaled || derived, feasibleUsesInPeriod(def, elig, period)));
 }
 
 export type GeneratedTask = {
@@ -1791,6 +1752,12 @@ export type RewardPlan = { kind: 'xp'; xp: number } | { kind: 'item'; itemId: nu
 
 export const XP_REWARD_MIN = 1000;
 export const XP_REWARD_MAX = 20000000;
+
+export function rewardCeiling(elig: TaskEligibility): number {
+	const priced = (elig.catalog ?? []).map((c) => Number(c.cost) || 0).filter((c) => c > 0);
+	if (priced.length === 0) return XP_REWARD_MAX;
+	return Math.min(XP_REWARD_MAX, Math.round(Math.max(...priced) * EFFORT_REWARD_MARGIN));
+}
 
 export const EFFORT_REWARD_MARGIN = 1.5;
 
@@ -1905,8 +1872,9 @@ export function pickReward(
 	period: TaskPeriod = 'daily',
 	minWorth = 0
 ): RewardPlan {
+	const ceiling = rewardCeiling({ catalog } as TaskEligibility);
 	const floor = Math.max(0, Math.round(Number(minWorth) || 0));
-	const worth = Math.max(XP_REWARD_MIN, floor, Math.min(XP_REWARD_MAX, Math.round(Number(value) || 0)));
+	const worth = Math.max(XP_REWARD_MIN, floor, Math.min(ceiling, Math.round(Number(value) || 0)));
 	const rand = mulberry32(hashSeed('reward', period, memberId, periodKey, slot));
 
 	if (catalog.length > 0 && rand() < TASK_ITEM_REWARD_CHANCE) {
@@ -1920,7 +1888,7 @@ export function pickReward(
 		}
 	}
 
-	const xp = Math.max(XP_REWARD_MIN, floor, Math.min(XP_REWARD_MAX, Math.round(worth / 100) * 100));
+	const xp = Math.max(XP_REWARD_MIN, floor, Math.min(ceiling, Math.round(worth / 100) * 100));
 	return { kind: 'xp', xp };
 }
 

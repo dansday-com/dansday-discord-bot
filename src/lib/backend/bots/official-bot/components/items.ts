@@ -1375,7 +1375,7 @@ async function sweepExpiredBuffs(client: any, botId: any, EmbedBuilder: any) {
 					.setDescription(description)
 					.setFooter({ text: embedConfig.FOOTER || 'Items' })
 					.setTimestamp();
-				await deliverToMemberAndChannel(guild, embed, member ? `${member}` : undefined);
+				await deliverToMemberAndChannel(guild, embed, row.effect_type === 'disguise' ? undefined : member ? `${member}` : undefined);
 			}
 		}
 		handledIds.push(Number(row.id));

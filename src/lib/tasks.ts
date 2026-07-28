@@ -1811,6 +1811,16 @@ export const ITEM_VALUE_CEILING = 1.25;
 
 export const TASK_ITEM_REWARD_CHANCE = 0.3;
 
+export function priciestOf<T extends { cost: number }>(catalog: T[]): T[] {
+	if (catalog.length === 0) return [];
+	let best = -Infinity;
+	for (const c of catalog) {
+		const v = Number(c.cost) || 0;
+		if (v > best) best = v;
+	}
+	return catalog.filter((c) => (Number(c.cost) || 0) === best);
+}
+
 export function cheapestOf<T extends { cost: number }>(catalog: T[]): T[] {
 	if (catalog.length === 0) return [];
 	let best = Infinity;
@@ -1853,6 +1863,7 @@ export function pickReward(
 
 export const LOGIN_DAY_WEIGHTS = [1, 1.5, 2.2, 3.2, 4.5, 6.5, 25] as const;
 export const LOGIN_JACKPOT_MIN_XP = 25000;
+export const LOGIN_ITEM_REWARD_CHANCE = 0.5;
 export const LOGIN_DAILY_EARN_SHARE = 0.25;
 
 export type LoginReward = { day: number; kind: 'xp'; xp: number; jackpot: boolean } | { day: number; kind: 'item'; itemId: number; jackpot: boolean };
@@ -1869,15 +1880,18 @@ export function loginRewardFor(memberId: number, cycleIndex: number, day: number
 	const floor = jackpot ? LOGIN_JACKPOT_MIN_XP : XP_REWARD_MIN;
 	const worth = Math.max(floor, Math.min(XP_REWARD_MAX, Math.round((base * weight) / 100) * 100));
 
-	const itemChance = jackpot ? 0.9 : day >= 5 ? 0.45 : 0.25;
-
-	if (catalog.length > 0 && rand() < itemChance) {
-		const fair = catalog.filter((c) => {
+	if (catalog.length > 0 && rand() < LOGIN_ITEM_REWARD_CHANCE) {
+		const priced = catalog.filter((c) => (Number(c.cost) || 0) > 0);
+		const fair = priced.filter((c) => {
 			const v = Number(c.cost) || 0;
 			return v >= worth * ITEM_VALUE_FLOOR && v <= worth * ITEM_VALUE_CEILING;
 		});
-		if (fair.length > 0) {
-			const picked = fair[Math.floor(rand() * fair.length) % fair.length];
+
+		const affordable = priced.filter((c) => (Number(c.cost) || 0) <= worth * ITEM_VALUE_CEILING);
+		const pool = fair.length > 0 ? fair : affordable.length > 0 ? priciestOf(affordable) : cheapestOf(priced);
+
+		if (pool.length > 0) {
+			const picked = pool[Math.floor(rand() * pool.length) % pool.length];
 			if (picked) return { day, kind: 'item', itemId: picked.id, jackpot };
 		}
 	}

@@ -39,7 +39,8 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		type: 'claim_login',
 		guild_id: fullServer.discord_server_id,
 		actor_discord_id: actor.discord_member_id,
-		tz_offset: tzOffsetMin
+		tz_offset: tzOffsetMin,
+		debug: body.debug === true
 	});
 
 	if (webhookResult.status !== 200 || !webhookResult.body?.ok) {

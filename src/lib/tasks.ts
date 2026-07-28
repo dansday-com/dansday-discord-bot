@@ -199,7 +199,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		minGoal: { easy: 10, medium: 25, hard: 60 },
 		maxGoal: { easy: 45, medium: 90, hard: 180 },
 		baselineShare: RATIO,
-		describe: (g) => `Idle ${g} minutes in the AFK channel`
+		describe: (g) => `Idle ${g} minutes muted or deafened in voice`
 	},
 	{
 		id: 'gamble_play',
@@ -818,7 +818,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		maxGoal: { easy: 1000, medium: 4000, hard: 12000 },
 		baselineShare: { easy: 0.06, medium: 0.15, hard: 0.35 },
 		weeklyScale: 3,
-		describe: (g) => `Gain ${g.toLocaleString()} XP from the AFK channel only`
+		describe: (g) => `Gain ${g.toLocaleString()} XP while muted or deafened in voice`
 	},
 	{
 		id: 'declutter',
@@ -1843,15 +1843,50 @@ export function cheapestOf<T extends { cost: number }>(catalog: T[]): T[] {
 }
 
 export const LOGIN_RARITY_EXPONENT = 1.15;
+export const LOGIN_RARITY_MIN_CHANCE = 0.01;
+
+export type RarityTier = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'mythic';
+
+export const RARITY_TIERS: { id: RarityTier; label: string; minRatio: number; accent: string }[] = [
+	{ id: 'mythic', label: 'Mythic', minRatio: 500, accent: '#c0392b' },
+	{ id: 'legendary', label: 'Legendary', minRatio: 100, accent: '#c8911a' },
+	{ id: 'epic', label: 'Epic', minRatio: 25, accent: '#8e44ad' },
+	{ id: 'rare', label: 'Rare', minRatio: 8, accent: '#2b6cb0' },
+	{ id: 'uncommon', label: 'Uncommon', minRatio: 3, accent: '#1f8a4c' },
+	{ id: 'common', label: 'Common', minRatio: 0, accent: '#6b7a82' }
+];
+
+export function rarityTierFor(cost: number, costs: number[]): RarityTier {
+	const value = Number(cost) || 0;
+	const priced = costs.map((c) => Number(c) || 0).filter((c) => c > 0);
+	if (value <= 0 || priced.length === 0) return 'common';
+
+	const cheapest = Math.min(...priced);
+	const ratio = cheapest > 0 ? value / cheapest : 1;
+
+	for (const tier of RARITY_TIERS) {
+		if (ratio >= tier.minRatio) return tier.id;
+	}
+	return 'common';
+}
+
+export function rarityMeta(tier: RarityTier) {
+	return RARITY_TIERS.find((t) => t.id === tier) ?? RARITY_TIERS[RARITY_TIERS.length - 1];
+}
 
 export function pickWeightedByRarity<T extends { cost: number }>(catalog: T[], roll: number): T | null {
 	const priced = catalog.filter((c) => (Number(c.cost) || 0) > 0);
 	if (priced.length === 0) return null;
 
 	const cheapest = Math.min(...priced.map((c) => Number(c.cost) || 0));
-	const weights = priced.map((c) => Math.pow(cheapest / (Number(c.cost) || cheapest), LOGIN_RARITY_EXPONENT));
+	const raw = priced.map((c) => Math.pow(cheapest / (Number(c.cost) || cheapest), LOGIN_RARITY_EXPONENT));
+	const rawTotal = raw.reduce((a, b) => a + b, 0);
+	if (!(rawTotal > 0)) return priced[0];
+
+	const floor = Math.min(LOGIN_RARITY_MIN_CHANCE, 1 / priced.length);
+	const headroom = 1 - floor * priced.length;
+	const weights = raw.map((w) => floor + (w / rawTotal) * headroom);
 	const total = weights.reduce((a, b) => a + b, 0);
-	if (!(total > 0)) return priced[0];
 
 	let cursor = Math.min(0.9999999, Math.max(0, roll)) * total;
 	for (let i = 0; i < priced.length; i++) {

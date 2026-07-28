@@ -14,6 +14,10 @@ import {
 	streakMilestone,
 	xpRewardFor,
 	loginRewardFor,
+	pickWeightedByRarity,
+	rarityTierFor,
+	rarityMeta,
+	type RarityTier,
 	type TaskMetric
 } from '../../../../tasks.js';
 import { snapshotMembers, finalizeXpChanges, resolveServerMemberId } from './items.js';
@@ -91,26 +95,34 @@ export async function handleLoginClaim(client: any, payload: any) {
 	const memberId = await resolveServerMemberId(server.id, actor_discord_id);
 	if (!memberId) return { ok: false, error: 'member_not_found' };
 
+	const debug = payload?.debug === true;
 	const tzOffsetMin = Number(tz_offset) || 0;
 	const dayKey = dayKeyFor(Date.now(), tzOffsetMin);
 
 	const before = (await db.ensureMemberClaim(memberId)) as any;
-	if (before?.last_claim_day_key != null && Number(before.last_claim_day_key) >= dayKey) {
+	if (!debug && before?.last_claim_day_key != null && Number(before.last_claim_day_key) >= dayKey) {
 		return { ok: false, error: 'already_claimed' };
 	}
 
 	const itemsAllowed = await isPublicSubFeatureEnabled(guild_id, 'items');
 	const catalog = itemsAllowed ? await loadRewardCatalog(server.id) : [];
 
-	const applied = await db.applyMemberClaim(memberId, dayKey, LOGIN_CYCLE_DAYS);
+	const applied = debug ? { changed: true, row: before } : await db.applyMemberClaim(memberId, dayKey, LOGIN_CYCLE_DAYS);
 	if (!applied.changed) return { ok: false, error: 'already_claimed' };
 
-	const day = Number(applied.row?.cycle_day) || 1;
+	const day = debug ? (Number(before?.cycle_day) || 0) + 1 : Number(applied.row?.cycle_day) || 1;
 	const cycleIndex = Number(applied.row?.cycles_completed) || 0;
 	const sinceMs = Date.now() - RECENT_WINDOW_DAYS * 86400000;
 	const earned = await db.countMemberEventsSince(memberId, 'xp_gained', sinceMs).catch(() => 0);
 	const dailyEarn = Math.max(0, Number(earned) || 0) / RECENT_WINDOW_DAYS;
-	const reward = loginRewardFor(memberId, cycleIndex, day, catalog, dailyEarn);
+	const reward = debug
+		? (() => {
+				const picked = pickWeightedByRarity(catalog, Math.random());
+				return picked
+					? ({ day, kind: 'item', itemId: picked.id, jackpot: day >= LOGIN_CYCLE_DAYS } as const)
+					: loginRewardFor(memberId, cycleIndex, day, catalog, dailyEarn);
+			})()
+		: loginRewardFor(memberId, cycleIndex, day, catalog, dailyEarn);
 
 	if (reward.kind === 'item') {
 		const inventory = await db.getMemberInventory(memberId).catch(() => []);
@@ -130,6 +142,14 @@ export async function handleLoginClaim(client: any, payload: any) {
 	} catch (err: any) {
 		await logger.log(`❌ Login claim grant failed: ${err.message}`);
 		return { ok: false, error: 'grant_failed' };
+	}
+
+	if (granted?.kind === 'item') {
+		const tier = rarityTierFor(
+			Number(granted.cost) || 0,
+			catalog.map((c) => c.cost)
+		);
+		await announceLoginItem(client, guild_id, actor_discord_id, { day, jackpot: reward.jackpot, item: granted, tier }).catch(() => null);
 	}
 
 	return { ok: true, granted, day, jackpot: reward.jackpot, cycleDays: LOGIN_CYCLE_DAYS };
@@ -273,6 +293,43 @@ function streakAnnouncement(streakResult: any, milestone: any, member: any) {
 	}
 
 	return null;
+}
+
+async function announceLoginItem(client: any, guildId: any, discordMemberId: any, ctx: { day: number; jackpot: boolean; item: any; tier: RarityTier }) {
+	try {
+		const { getItemsChannelId, getEmbedConfig } = await import('../../../config.js');
+		const channelId = await getItemsChannelId(guildId);
+		if (!channelId) return;
+
+		const guild = client?.guilds?.cache?.get(guildId);
+		if (!guild) return;
+		const channel = await guild.channels.fetch(channelId).catch(() => null);
+		if (!channel || !channel.isTextBased()) return;
+
+		const member = await guild.members.fetch(String(discordMemberId)).catch(() => null);
+		if (!member) return;
+
+		const { EmbedBuilder } = await import('discord.js');
+		const embedConfig = await getEmbedConfig(guildId).catch(() => ({ COLOR: 0xc8911a, FOOTER: 'Tasks' }));
+
+		const worth = Number(ctx.item?.cost) || 0;
+		const meta = rarityMeta(ctx.tier);
+		const embed = new EmbedBuilder()
+			.setColor(parseInt(meta.accent.slice(1), 16))
+			.setTitle(ctx.jackpot ? `🎁 Day ${ctx.day} jackpot — ${meta.label}!` : `✨ ${meta.label} drop!`)
+			.setDescription(`${member} rolled a **${meta.label}** item on day ${ctx.day}!`)
+			.addFields(
+				{ name: 'Item', value: String(ctx.item?.name || '—'), inline: true },
+				{ name: 'Rarity', value: meta.label, inline: true },
+				{ name: 'Worth', value: `${worth.toLocaleString()} XP`, inline: true }
+			)
+			.setFooter({ text: embedConfig.FOOTER || 'Tasks' })
+			.setTimestamp();
+
+		await channel.send({ content: `${member}`, embeds: [embed] }).catch(() => null);
+	} catch (err: any) {
+		await logger.log(`⚠️ Login item announce failed: ${err?.message || String(err)}`);
+	}
 }
 
 export async function announceStreak(client: any, guildId: any, discordMemberId: any, streakResult: any, milestone: any) {

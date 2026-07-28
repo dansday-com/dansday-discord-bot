@@ -26,6 +26,7 @@ import {
 	nextMilestone,
 	streakMilestone,
 	loginCyclePreview,
+	rarityTierFor,
 	type TaskEligibility,
 	type TaskMetric,
 	type TaskPeriod
@@ -304,7 +305,12 @@ export async function loadTasksShared(opts: {
 		streakEarned: !!earnedStreak?.changed,
 		streakMilestone: earnedStreak?.changed ? streakMilestone(Number(earnedStreak.streak) || 0) : null,
 		login: shapeLogin(loginRow, member, dayKey, catalog, await memberDailyEarn(member.id), opts.tzKnown !== false),
-		reelPool: [...catalog].sort((a, b) => a.cost - b.cost).map((c) => ({ name: c.name, cost: c.cost, effectType: c.effectType })),
+		reelPool: (() => {
+			const costs = catalog.map((c) => c.cost);
+			return [...catalog]
+				.sort((a, b) => a.cost - b.cost)
+				.map((c) => ({ name: c.name, cost: c.cost, effectType: c.effectType, tier: rarityTierFor(c.cost, costs) }));
+		})(),
 		allClaimed: daily.length > 0 && daily.every((t) => t.claimed),
 		empty: daily.length === 0 && weekly.length === 0
 	};

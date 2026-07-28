@@ -2,7 +2,7 @@
 	import { getContext, onMount, onDestroy } from 'svelte';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import { effectIcon, effectAccentHex, effectLabel } from '$lib/items.js';
-	import { pickWeightedByRarity } from '$lib/tasks.js';
+	import { rarityTierFor, rarityMeta, type RarityTier } from '$lib/tasks.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -23,7 +23,7 @@
 	let loginWin = $state<{ day: number; jackpot: boolean; text: string } | null>(null);
 	let taskWin = $state<{ title: string; text: string; item: boolean } | null>(null);
 
-	type ReelCell = { name: string; cost: number; effectType: string };
+	type ReelCell = { name: string; cost: number; effectType: string; tier: RarityTier };
 	let itemRoll = $state<{ day: number; jackpot: boolean; won: ReelCell } | null>(null);
 	let reel = $state<ReelCell[]>([]);
 	let reelOffset = $state(0);
@@ -40,13 +40,39 @@
 	});
 
 	async function debugRoll() {
-		const won = pickWeightedByRarity(reelPool, Math.random());
-		if (!won) {
-			showToast('No shop items available to roll.', 'error');
-			return;
+		try {
+			const res = await fetch(`/api/tasks/${data.server.slug}/login`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ card: ctx.hash, tz_offset: tzOffset(), debug: true })
+			});
+			const body = await res.json();
+			if (!body?.success) {
+				showToast(body?.error || 'Debug roll failed.', 'error');
+				return;
+			}
+
+			if (body.tasks) applyState(body.tasks);
+
+			const g = body.granted;
+			if (g?.kind === 'item') {
+				await runItemRoll(body.day, !!body.jackpot, {
+					name: g.name,
+					cost: Number(g.cost) || 0,
+					effectType: String(g.effectType || ''),
+					tier: rarityTierFor(
+						Number(g.cost) || 0,
+						reelPool.map((c) => c.cost)
+					)
+				});
+			} else {
+				showToast(`Rolled +${fmt(g?.xp ?? 0)} XP (no item).`, 'info');
+			}
+
+			ctx.invalidateAll?.();
+		} catch {
+			showToast('Could not reach the server.', 'error');
 		}
-		const day = login.nextDay || 1;
-		await runItemRoll(day, day === login.cycleDays, won);
 	}
 
 	function decoyCells(n: number): ReelCell[] {
@@ -87,7 +113,7 @@
 		reelAnimating = true;
 		centerCell(landIndex);
 
-		setTimeout(() => (reelSettled = true), 3400);
+		setTimeout(() => (reelSettled = true), 7000);
 	}
 
 	let synced = $state(false);
@@ -239,7 +265,11 @@
 				await runItemRoll(body.day, !!body.jackpot, {
 					name: g.name,
 					cost: Number(g.cost) || 0,
-					effectType: String(g.effectType || '')
+					effectType: String(g.effectType || ''),
+					tier: rarityTierFor(
+						Number(g.cost) || 0,
+						reelPool.map((c) => c.cost)
+					)
 				});
 			} else {
 				loginWin = { day: body.day, jackpot: !!body.jackpot, text };
@@ -421,10 +451,14 @@
 				<div
 					class="m-task-reel"
 					class:m-task-reel--spin={reelAnimating && !reelSettled}
-					style="transform: translateX({reelOffset}px); transition: {reelAnimating ? 'transform 3.2s cubic-bezier(0.06, 0.72, 0.06, 1)' : 'none'};"
+					style="transform: translateX({reelOffset}px); transition: {reelAnimating ? 'transform 6.8s cubic-bezier(0.06, 0.72, 0.06, 1)' : 'none'};"
 				>
 					{#each reel as cell, i (i)}
-						<div class="m-task-reel-cell" style="--accent:{effectAccentHex(cell.effectType)}">
+						<div
+							class="m-task-reel-cell m-task-reel-cell--{cell.tier}"
+							style="--accent:{effectAccentHex(cell.effectType)}; --tier:{rarityMeta(cell.tier).accent}"
+						>
+							<span class="m-task-reel-tier">{rarityMeta(cell.tier).label}</span>
 							<i class="fas {effectIcon(cell.effectType)}"></i>
 							<span class="m-task-reel-name">{cell.name}</span>
 							<span class="m-task-reel-cost">{fmt(cell.cost)} XP</span>
@@ -435,6 +469,7 @@
 
 			{#if reelSettled}
 				<div class="m-task-roll-verdict">
+					<span class="m-task-roll-tier" style="--tier:{rarityMeta(itemRoll.won.tier).accent}">{rarityMeta(itemRoll.won.tier).label}</span>
 					<span class="m-task-roll-name">{itemRoll.won.name}</span>
 					<span class="m-task-roll-worth">worth {fmt(itemRoll.won.cost)} XP</span>
 				</div>

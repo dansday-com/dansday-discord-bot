@@ -67,7 +67,10 @@ async function loadCatalog(serverId: any, itemsEnabled: boolean, tzOffsetMin = 0
 				cost: Number(i.cost) || 0,
 				name: String(i.name || ''),
 				effectType: String(i.effect_type || ''),
-				durationMinutes: Math.max(0, Number(cfg?.effect_duration_minutes) || 0)
+				durationMinutes: Math.max(0, Number(cfg?.effect_duration_minutes) || 0),
+				cooldownMinutes: Math.max(0, Number(cfg?.cooldown_minutes) || 0),
+				immunityMinutes: Math.max(0, Number(cfg?.immunity_minutes) || 0),
+				successChance: Math.max(0, Math.min(100, Number(cfg?.spy_chance ?? 100)))
 			};
 		});
 }
@@ -278,7 +281,8 @@ export async function loadTasksShared(opts: {
 		medianItemCost,
 		catalog,
 		effectDurations: longestByEffect(catalog),
-		levelingRates: await loadLevelingRates(server.id)
+		levelingRates: await loadLevelingRates(server.id),
+		memberCount: await db.countServerMembers(server.id).catch(() => 0)
 	};
 
 	const currentStreak = Number(streakRow?.current_streak) || 0;

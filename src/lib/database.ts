@@ -422,6 +422,12 @@ export async function getServerPanelId(serverId: number): Promise<number | null>
 	return rows[0]?.panel_id ?? null;
 }
 
+export async function countServerMembers(serverId: any): Promise<number> {
+	await initializeDatabase();
+	const rows = (await db.execute(sql`SELECT COUNT(*) AS total FROM server_members WHERE server_id = ${Number(serverId)}`)) as any;
+	return Number((rows[0] as any[])?.[0]?.total) || 0;
+}
+
 export async function getServer(serverId: any) {
 	await initializeDatabase();
 	const rows = await db
@@ -1628,7 +1634,9 @@ export async function countMemberEventsSince(memberId: any, metric: string, sinc
 		gamble_purist: sql` AND multiplier >= 5 AND (luck_percent IS NULL OR luck_percent = 0)`,
 		gamble_bigwin: sql` AND outcome = 'win' AND multiplier >= 5`,
 		gamble_lucky: sql` AND luck_percent IS NOT NULL AND luck_percent > 0`,
-		gamble_lucky_win: sql` AND outcome = 'win' AND luck_percent IS NOT NULL AND luck_percent > 0`
+		gamble_lucky_win: sql` AND outcome = 'win' AND luck_percent IS NOT NULL AND luck_percent > 0`,
+		gamble_lost: sql` AND outcome = 'lose'`,
+		gamble_lost_big: sql` AND outcome = 'lose' AND multiplier >= 5`
 	};
 
 	if (GAMBLE_FILTERS[String(metric)] !== undefined) {
@@ -1638,9 +1646,10 @@ export async function countMemberEventsSince(memberId: any, metric: string, sinc
 		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
 	}
 
-	if (metric === 'gamble_wagered') {
+	if (metric === 'gamble_wagered' || metric === 'gamble_wagered_lost') {
+		const lostOnly = metric === 'gamble_wagered_lost' ? sql` AND outcome = 'lose'` : sql``;
 		const rows: any = await db.execute(
-			sql`SELECT COALESCE(SUM(wager), 0) AS c FROM server_member_minigame_logs WHERE member_id = ${id} AND created_at >= ${since}`
+			sql`SELECT COALESCE(SUM(wager), 0) AS c FROM server_member_minigame_logs WHERE member_id = ${id} AND created_at >= ${since}${lostOnly}`
 		);
 		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
 	}
@@ -1796,6 +1805,25 @@ export async function countMemberEventsSince(memberId: any, metric: string, sinc
 	}
 
 	const ATTACK_ACTIONS = sql`('steal', 'bomb', 'leech')`;
+
+	const VICTIM_METRICS: Record<string, { agg: 'count' | 'sum'; where: any }> = {
+		attacked_by_any: { agg: 'count', where: sql`action IN ('steal', 'bomb', 'leech') AND outcome = 'success'` },
+		stolen_from: { agg: 'count', where: sql`action = 'steal' AND outcome = 'success'` },
+		bombed_by: { agg: 'count', where: sql`action = 'bomb' AND outcome = 'success'` },
+		leeched_by: { agg: 'count', where: sql`action = 'leech' AND outcome = 'success'` },
+		attacks_survived: { agg: 'count', where: sql`action IN ('steal', 'bomb', 'leech') AND outcome IN ('blocked', 'immune', 'reflected')` },
+		xp_lost_to_attacks: { agg: 'sum', where: sql`action IN ('steal', 'bomb') AND outcome = 'success'` },
+		xp_refunded: { agg: 'sum', where: sql`action = 'insurance' AND outcome = 'refunded'` }
+	};
+
+	const victim = VICTIM_METRICS[String(metric)];
+	if (victim) {
+		const column = victim.agg === 'sum' ? sql`COALESCE(SUM(xp_amount), 0)` : sql`COUNT(*)`;
+		const owner = metric === 'xp_refunded' ? sql`member_id = ${id}` : sql`target_member_id = ${id}`;
+		const rows: any = await db.execute(sql`SELECT ${column} AS c FROM server_member_item_logs WHERE ${owner} AND created_at >= ${since} AND ${victim.where}`);
+		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
+	}
+
 	const successMatch = metric === 'attack_success' ? null : /^([a-z]+)_success$/.exec(String(metric));
 
 	const actionFilter =
@@ -1803,17 +1831,39 @@ export async function countMemberEventsSince(memberId: any, metric: string, sinc
 			? sql`action IN ${ATTACK_ACTIONS}`
 			: metric === 'attack_success'
 				? sql`action IN ${ATTACK_ACTIONS} AND outcome = 'success'`
-				: effectMatch
-					? sql`action = ${effectMatch[1]}`
-					: successMatch
-						? sql`action = ${successMatch[1]} AND outcome = 'success'`
-						: metric === 'item_used'
-							? sql`action NOT IN ('buy', 'discard', 'task_reward', 'bounty_collected') AND member_item_id IS NOT NULL`
-							: metric === 'item_bought'
-								? sql`action = 'buy'`
-								: metric === 'discard_any'
-									? sql`action = 'discard'`
-									: null;
+				: metric === 'attack_failed'
+					? sql`action IN ${ATTACK_ACTIONS} AND outcome IS NOT NULL AND outcome <> 'success'`
+					: metric === 'attack_reflected'
+						? sql`action IN ${ATTACK_ACTIONS} AND outcome = 'reflected'`
+						: metric === 'attack_blocked'
+							? sql`action IN ${ATTACK_ACTIONS} AND outcome IN ('blocked', 'immune')`
+							: metric === 'spy_caught'
+								? sql`action = 'spy' AND outcome = 'caught'`
+								: metric === 'steal_failed'
+									? sql`action = 'steal' AND outcome IS NOT NULL AND outcome <> 'success'`
+									: metric === 'bomb_failed'
+										? sql`action = 'bomb' AND outcome IS NOT NULL AND outcome <> 'success'`
+										: metric === 'leech_landed'
+											? sql`action = 'leech' AND outcome = 'success'`
+											: metric === 'leech_occupied'
+												? sql`action = 'leech' AND outcome = 'occupied'`
+												: metric === 'leech_failed'
+													? sql`action = 'leech' AND outcome IS NOT NULL AND outcome <> 'success'`
+													: metric === 'bounty_paid_out'
+														? sql`action = 'bounty_collected'`
+														: metric === 'attack_on_cooldown'
+															? sql`action IN ${ATTACK_ACTIONS} AND outcome = 'cooldown'`
+															: effectMatch
+																? sql`action = ${effectMatch[1]}`
+																: successMatch
+																	? sql`action = ${successMatch[1]} AND outcome = 'success'`
+																	: metric === 'item_used'
+																		? sql`action NOT IN ('buy', 'discard', 'task_reward', 'bounty_collected') AND member_item_id IS NOT NULL`
+																		: metric === 'item_bought'
+																			? sql`action = 'buy'`
+																			: metric === 'discard_any'
+																				? sql`action = 'discard'`
+																				: null;
 
 	if (!actionFilter) return 0;
 
@@ -5644,6 +5694,7 @@ export default {
 	getBot,
 	getBotPanelId,
 	getServerPanelId,
+	countServerMembers,
 	createBot,
 	updateBot,
 	deleteBot,

@@ -423,7 +423,6 @@
 				<div class="m-task-roll-verdict">
 					<span class="m-task-roll-name">{itemRoll.won.name}</span>
 					<span class="m-task-roll-worth">worth {fmt(itemRoll.won.cost)} XP</span>
-					<span class="m-task-roll-effect">{effectLabel(itemRoll.won.effectType)}</span>
 				</div>
 				<button class="m-task-roll-close" onclick={() => (itemRoll = null)}>Nice</button>
 			{/if}

@@ -8199,14 +8199,6 @@
 	color: #c8911a;
 }
 
-.m-task-roll-effect {
-	font-size: 11px;
-	font-weight: 700;
-	letter-spacing: 0.06em;
-	text-transform: uppercase;
-	color: var(--lb-text-faint, #7b8a91);
-}
-
 .m-task-roll-close {
 	margin-top: 18px;
 	padding: 10px 30px;

@@ -1455,13 +1455,17 @@ export function effectSuccessChance(effectKey: string | undefined, elig: TaskEli
 
 export const DAILY_ACTION_CAP = 50;
 
+const COUNTED_ACTION_UNITS = new Set(['items', 'members', 'rounds', 'times', 'wins', 'trades']);
+
 export function feasibleUsesInPeriod(def: TaskDefinition, elig: TaskEligibility, period: TaskPeriod): number {
 	const minutes = PERIOD_MINUTES[period];
 	const effectKey = def.costEffect && def.costEffect !== '*' ? def.costEffect : def.durationEffect;
 	const items = effectItems(effectKey, elig);
 
 	const days = Math.max(1, Math.round(minutes / PERIOD_MINUTES.daily));
-	let cap = DAILY_ACTION_CAP * days;
+
+	let cap = Infinity;
+	if (COUNTED_ACTION_UNITS.has(def.unit)) cap = DAILY_ACTION_CAP * days;
 
 	if (def.unit === 'items' && !def.targetsItem) {
 		const catalogSize = (elig.catalog ?? []).filter((c) => (Number(c.cost) || 0) > 0).length;
@@ -1475,11 +1479,7 @@ export function feasibleUsesInPeriod(def: TaskDefinition, elig: TaskEligibility,
 
 	if (def.unit === 'members') {
 		const others = Math.max(0, (Number(elig.memberCount) || 0) - 1);
-		if (others > 0) {
-			const immunities = items.map((c) => Number(c.immunityMinutes) || 0).filter((v) => v > 0);
-			const perTarget = immunities.length > 0 ? Math.max(1, Math.floor(minutes / Math.min(...immunities))) : 1;
-			cap = Math.min(cap, others * perTarget);
-		}
+		if (others > 0) cap = Math.min(cap, others * days);
 	}
 
 	return cap;

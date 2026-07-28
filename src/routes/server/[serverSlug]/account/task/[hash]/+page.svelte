@@ -259,7 +259,6 @@
 
 			const g = body.granted;
 			const text = g?.kind === 'item' ? g.name : `+${fmt(g?.xp ?? 0)} XP`;
-			if (body.bagWasFull) showToast(`Bag was full — received ${text} instead.`, 'info');
 
 			if (g?.kind === 'item') {
 				await runItemRoll(body.day, !!body.jackpot, {

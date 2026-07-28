@@ -62,7 +62,6 @@ export const POST: RequestHandler = async ({ params, request }) => {
 			already_claimed: 'You already claimed this task.',
 			task_incomplete: 'This task is not finished yet.',
 			task_not_found: 'That task is no longer available.',
-			bag_full: `Your bag is full (max ${webhookResult.body?.capacity ?? 50} items).`,
 			grant_failed: 'Could not deliver the reward. Try again.'
 		};
 		const err = friendly[code] || code || (webhookResult.status === 502 ? 'Could not reach the bot.' : 'Claim failed.');

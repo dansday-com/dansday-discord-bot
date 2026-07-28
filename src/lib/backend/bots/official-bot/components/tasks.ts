@@ -1,6 +1,6 @@
 import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
-import { effectAccentInt, BAG_CAPACITY, effectiveBagStock } from '../../../../items.js';
+import { effectAccentInt } from '../../../../items.js';
 import {
 	TASK_BY_ID,
 	DAILY_TASK_SLOTS,
@@ -126,14 +126,6 @@ export async function handleLoginClaim(client: any, payload: any) {
 			})()
 		: loginRewardFor(memberId, cycleIndex, day, catalog, dailyEarn);
 
-	if (reward.kind === 'item') {
-		const inventory = await db.getMemberInventory(memberId).catch(() => []);
-		if (effectiveBagStock(inventory as any[]) + 1 > BAG_CAPACITY) {
-			const fallback = await grantXpTo(guild_id, memberId, 200);
-			return { ok: true, granted: fallback, day, jackpot: reward.jackpot, bagWasFull: true };
-		}
-	}
-
 	let granted: any = null;
 	try {
 		granted = await deliverReward(guild_id, memberId, {
@@ -206,13 +198,6 @@ export async function handleTaskClaim(client: any, payload: any) {
 
 	const itemsAllowed = await isPublicSubFeatureEnabled(guild_id, 'items');
 	const grantsItem = row.reward_kind === 'item' && row.reward_item_id != null && itemsAllowed;
-
-	if (grantsItem) {
-		const inventory = await db.getMemberInventory(memberId).catch(() => []);
-		if (effectiveBagStock(inventory as any[]) + 1 > BAG_CAPACITY) {
-			return { ok: false, error: 'bag_full', capacity: BAG_CAPACITY };
-		}
-	}
 
 	const claimed = await db.claimMemberTask(memberId, periodKey, Number(slot), period);
 	if (!claimed) return { ok: false, error: 'already_claimed' };

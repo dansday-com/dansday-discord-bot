@@ -1859,7 +1859,7 @@ export async function countMemberEventsSince(memberId: any, metric: string, sinc
 																: successMatch
 																	? sql`action = ${successMatch[1]} AND outcome = 'success'`
 																	: metric === 'item_used'
-																		? sql`action NOT IN ('buy', 'discard', 'task_reward', 'bounty_collected') AND member_item_id IS NOT NULL`
+																		? sql`action NOT IN ('buy', 'discard', 'task_reward', 'bounty_collected')`
 																		: metric === 'item_bought'
 																			? sql`action = 'buy'`
 																			: metric === 'discard_any'

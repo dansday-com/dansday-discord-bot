@@ -1316,8 +1316,15 @@ export function canReachDifficulty(def: TaskDefinition, difficulty: TaskDifficul
 	const feasible = feasibleUsesInPeriod(def, elig, period);
 	const ceiling = Number.isFinite(feasible) ? feasible : maxMinuteGoal(period) * PERIOD_MINUTES.daily;
 	const maxEffort = taskEffortXp(def, ceiling, elig, period, maxTargetCost(elig));
+	if (maxEffort / rate < EFFORT_BANDS[difficulty]) return false;
 
-	return maxEffort / rate >= EFFORT_BANDS[difficulty];
+	const minEffort = taskEffortXp(def, 1, elig, period, minTargetCost(elig));
+	return gradeDifficulty(minEffort, elig, period) === difficulty || minEffort / rate < EFFORT_BANDS[difficulty];
+}
+
+function minTargetCost(elig: TaskEligibility): number {
+	const costs = (elig.catalog ?? []).map((c) => Number(c.cost) || 0).filter((c) => c > 0);
+	return costs.length > 0 ? Math.min(...costs) : 0;
 }
 
 function maxTargetCost(elig: TaskEligibility): number {
@@ -1393,7 +1400,7 @@ export function taskCostXp(def: TaskDefinition, goal: number, elig: TaskEligibil
 	const unit = effectUnitCost(def.costEffect, elig);
 	if (unit <= 0) return extra;
 
-	const units = def.costFixedUnits ?? amount;
+	const units = def.costFixedUnits ?? (def.unit === 'xp' ? 1 : amount);
 	return Math.round(unit * units) + extra;
 }
 
@@ -1421,7 +1428,12 @@ export function serverEarnRate(elig: TaskEligibility, period: TaskPeriod): numbe
 	const chat = Math.max(0, Number(r.messageXp) || 0) * REFERENCE_CHAT_MESSAGES;
 	const voice = Math.max(0, Number(r.voiceXpPerMinute) || 0) * REFERENCE_VOICE_MINUTES;
 	const perDay = chat + voice;
-	return perDay * (period === 'weekly' ? 7 : 1);
+
+	const d = DEFAULT_LEVELING_RATES;
+	const fallback = d.messageXp * REFERENCE_CHAT_MESSAGES + d.voiceXpPerMinute * REFERENCE_VOICE_MINUTES;
+	const daily = perDay > 0 ? perDay : fallback;
+
+	return daily * (period === 'weekly' ? 7 : 1);
 }
 
 export function metricUnitXp(def: TaskDefinition, elig: TaskEligibility): number {
@@ -1686,9 +1698,19 @@ export const ACTION_EFFORT_MINUTES: Record<string, number> = {
 	members: 8
 };
 
-export function actionEffortXp(def: TaskDefinition, goal: number, elig: TaskEligibility): number {
+export function effortMinuteWorth(elig: TaskEligibility): number {
 	const r = elig.levelingRates ?? DEFAULT_LEVELING_RATES;
-	const minuteWorth = Math.max(0, Number(r.voiceXpPerMinute) || 0);
+	const voice = Math.max(0, Number(r.voiceXpPerMinute) || 0);
+	if (voice > 0) return voice;
+
+	const chatPerMinute = Math.max(0, Number(r.messageXp) || 0) * 4;
+	if (chatPerMinute > 0) return chatPerMinute;
+
+	return DEFAULT_LEVELING_RATES.voiceXpPerMinute;
+}
+
+export function actionEffortXp(def: TaskDefinition, goal: number, elig: TaskEligibility): number {
+	const minuteWorth = effortMinuteWorth(elig);
 	if (minuteWorth <= 0) return 0;
 
 	if (def.unit === 'minutes') {

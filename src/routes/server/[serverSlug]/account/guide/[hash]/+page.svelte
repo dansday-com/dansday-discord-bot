@@ -109,14 +109,25 @@
 			steps: [
 				{ icon: 'fa-calendar-check', title: 'Check in', desc: 'Claim one day of the 7-day cycle. Day 7 is the jackpot.' },
 				{ icon: 'fa-bolt', title: 'Just play', desc: 'Chat, voice, gamble, trade or attack — progress tracks itself.' },
-				{ icon: 'fa-gift', title: 'Claim rewards', desc: 'Finished tasks pay XP or a shop item, and items need bag space.' },
+				{ icon: 'fa-gift', title: 'Claim rewards', desc: 'Finished tasks pay XP or a shop item, delivered straight to your bag.' },
 				{ icon: 'fa-fire', title: 'Keep the streak', desc: 'Finish any one task — daily or weekly — to bank the day. +2% task XP per streak day, up to +100%.' }
 			],
 			cards: [
-				{ icon: 'fa-sun', accent: '#c8911a', title: '9 tasks every day', desc: 'Three easy, four medium, two hard, reset at midnight on your own clock.' },
-				{ icon: 'fa-calendar-week', accent: '#7b5ea7', title: '9 weekly tasks', desc: 'All hard, Monday to Sunday, paying around 6× a daily one.' },
-				{ icon: 'fa-gauge-high', accent: '#245f73', title: 'Goals sized to you', desc: 'Built from your own last seven days, never from your level.' },
-				{ icon: 'fa-gift', accent: '#1a7f57', title: 'XP or an item', desc: 'Item odds and item quality both rise with difficulty.' },
+				{ icon: 'fa-sun', accent: '#c8911a', title: '9 tasks every day', desc: 'Three easy, three medium, three hard, reset at midnight on your own clock.' },
+				{ icon: 'fa-calendar-week', accent: '#7b5ea7', title: '9 weekly tasks', desc: 'All hard, Monday to Sunday, sized against a full week of activity.' },
+				{
+					icon: 'fa-gauge-high',
+					accent: '#245f73',
+					title: 'Goals sized to you',
+					desc: 'Built from your own last seven days of that exact activity, never from your level.'
+				},
+				{
+					icon: 'fa-scale-balanced',
+					accent: '#8e44ad',
+					title: 'Honest difficulty',
+					desc: 'Easy really is easy — every goal is graded on the effort it actually takes.'
+				},
+				{ icon: 'fa-gift', accent: '#1a7f57', title: 'XP or an item', desc: 'Every task has a 30% chance of paying a shop item instead of XP.' },
 				{ icon: 'fa-fire', accent: '#d35400', title: 'Streak', desc: 'Milestones at 7, 30, 100 and 365 days get announced in the server.' },
 				{ icon: 'fa-snowflake', accent: '#1d6f8a', title: 'Freezes', desc: 'Two cover a missed day by themselves, one back every 10 claims.' }
 			],

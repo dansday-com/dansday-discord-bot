@@ -1409,16 +1409,20 @@ export function effectDuration(effect: string, elig: TaskEligibility): number {
 
 export function effectUnitCost(costEffect: string, elig: TaskEligibility): number {
 	const costs = elig.effectCosts ?? {};
-	if (costEffect === '*') return Number(elig.medianItemCost) || 0;
-
 	const effects = costEffect.split('|');
 	const catalog = elig.catalog ?? [];
+
+	if (costEffect === '*') {
+		const priced = catalog.map((c) => Number(c.cost) || 0).filter((c) => c > 0);
+		if (priced.length > 0) return Math.min(...priced);
+		return Number(elig.medianItemCost) || 0;
+	}
 
 	const typical = effects
 		.map((e) => {
 			const priced = catalog.filter((c) => c.effectType === e && (Number(c.cost) || 0) > 0).map((c) => Number(c.cost));
 			if (priced.length === 0) return Number(costs[e]) || 0;
-			return costPercentile(priced, 50);
+			return Math.min(...priced);
 		})
 		.filter((c) => c > 0);
 
@@ -1761,6 +1765,11 @@ export function generateDailyTasks(
 	return regradeByEffort(out, elig, period);
 }
 
+function nearestDifficulty(wanted: TaskDifficulty, allowed: TaskDifficulty[]): TaskDifficulty {
+	const target = DIFFICULTY_META[wanted].weight;
+	return [...allowed].sort((a, b) => Math.abs(DIFFICULTY_META[a].weight - target) - Math.abs(DIFFICULTY_META[b].weight - target))[0];
+}
+
 function regradeByEffort(tasks: GeneratedTask[], elig: TaskEligibility, period: TaskPeriod): GeneratedTask[] {
 	if (tasks.length === 0) return tasks;
 
@@ -1770,7 +1779,9 @@ function regradeByEffort(tasks: GeneratedTask[], elig: TaskEligibility, period: 
 
 	for (let i = 0; i < ranked.length; i++) {
 		const slotted = quota[i] ?? gradeDifficulty(ranked[i].effort ?? 0, elig, period);
-		ranked[i] = { ...ranked[i], difficulty: slotted };
+		const allowed = TASK_BY_ID.get(ranked[i].taskType)?.difficulties ?? [];
+		const difficulty = allowed.length === 0 || allowed.includes(slotted) ? slotted : nearestDifficulty(slotted, allowed);
+		ranked[i] = { ...ranked[i], difficulty };
 	}
 
 	const bySlot = new Map(ranked.map((t) => [t.slot, t]));

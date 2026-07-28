@@ -73,7 +73,6 @@
 	--asset-flat: var(--lb-text-muted);
 
 	min-height: 100dvh;
-	height: 100dvh;
 	background: var(--chili-bg);
 	position: relative;
 	overflow-x: hidden;
@@ -84,8 +83,6 @@
 }
 .m-main {
 	flex: 1;
-	min-height: 0;
-	overflow-y: auto;
 }
 
 .m-blob {
@@ -7606,6 +7603,7 @@
 	align-items: center;
 	gap: 9px;
 	min-width: 0;
+	flex: 1 1 auto;
 }
 
 .m-root .m-task-reward i {
@@ -7623,6 +7621,7 @@
 	display: flex;
 	flex-direction: column;
 	min-width: 0;
+	flex: 1 1 auto;
 }
 
 .m-root .m-task-reward strong {
@@ -7632,6 +7631,11 @@
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.m-root .m-task-reward--xp strong {
+	overflow: visible;
+	text-overflow: clip;
 }
 
 .m-root .m-task-reward span {

@@ -2,6 +2,7 @@
 	import { getContext, onMount, onDestroy } from 'svelte';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import { effectIcon, effectAccentHex, effectLabel } from '$lib/items.js';
+	import { pickWeightedByRarity } from '$lib/tasks.js';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -37,6 +38,16 @@
 		document.body.style.overflow = 'hidden';
 		return () => (document.body.style.overflow = '');
 	});
+
+	async function debugRoll() {
+		const won = pickWeightedByRarity(reelPool, Math.random());
+		if (!won) {
+			showToast('No shop items available to roll.', 'error');
+			return;
+		}
+		const day = login.nextDay || 1;
+		await runItemRoll(day, day === login.cycleDays, won);
+	}
 
 	function decoyCells(n: number): ReelCell[] {
 		const pool = reelPool;
@@ -282,6 +293,9 @@
 			{#if !login.canClaim && login.tzKnown !== false}
 				<span class="m-task-claimed"><i class="fas fa-circle-check"></i> Claimed today</span>
 			{/if}
+			<button type="button" class="m-task-debugroll" onclick={debugRoll}>
+				<i class="fas fa-dice"></i> Test roll
+			</button>
 		</div>
 
 		<div class="m-task-days">

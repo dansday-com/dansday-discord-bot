@@ -1277,6 +1277,7 @@ export type TaskEligibility = {
 	}[];
 	effectDurations?: Record<string, number>;
 	recentDaily?: Partial<Record<TaskMetric, number>>;
+	recentPeak?: Partial<Record<TaskMetric, number>>;
 	levelingRates?: LevelingRates;
 	memberCount?: number;
 };
@@ -1288,6 +1289,16 @@ export function taskCapacity(def: TaskDefinition, elig: TaskEligibility, period:
 	const unit = metricUnitXp(def, elig);
 	if (unit <= 0) return null;
 	return Math.round((serverEarnRate(elig, period) * ACHIEVABLE_SHARE) / unit);
+}
+
+export function historyMetricsFor(elig: TaskEligibility): TaskMetric[] {
+	const wanted = new Set<TaskMetric>();
+	for (const def of TASK_DEFINITIONS) {
+		if (!isEligible(def, elig)) continue;
+		if (def.targetsItem) continue;
+		wanted.add(def.metric);
+	}
+	return [...wanted];
 }
 
 export function isViableFor(def: TaskDefinition, elig: TaskEligibility, period: TaskPeriod): boolean {
@@ -1481,6 +1492,29 @@ export const GRADE_MATCH_ATTEMPTS = 12;
 
 export const PEAK_METRICS = new Set<TaskMetric>(['friends_peak_voice']);
 
+export const INFLICTED_METRICS = new Set<TaskMetric>([
+	'attacked_by_any',
+	'stolen_from',
+	'bombed_by',
+	'leeched_by',
+	'attacks_survived',
+	'xp_lost_to_attacks',
+	'xp_refunded',
+	'bounty_paid_out',
+	'attack_failed',
+	'leech_failed'
+]);
+
+export const UNMEASURED_INFLICTED_GOAL: Record<TaskDifficulty, number> = { easy: 1, medium: 2, hard: 3 };
+
+export const INFLICTED_XP_SHARE = 0.25;
+
+export const XP_YIELD_SHARE = 0.3;
+
+export function isInflicted(def: TaskDefinition): boolean {
+	return INFLICTED_METRICS.has(def.metric);
+}
+
 export function isPeakMetric(def: TaskDefinition): boolean {
 	return PEAK_METRICS.has(def.metric);
 }
@@ -1556,7 +1590,53 @@ export function spendBudget(def: TaskDefinition, elig: TaskEligibility, period: 
 
 export const SPEND_BUDGET_EARN_CAP = 3;
 
+export const DIFFICULTY_RATE_SHARE: Record<TaskDifficulty, number> = { easy: 0.35, medium: 0.8, hard: 1.35 };
+
+export const RATE_CONFIDENCE_MIN = 3;
+
+export function measuredRate(def: TaskDefinition, elig: TaskEligibility, period: TaskPeriod): number | null {
+	const observed = Number((elig.recentDaily ?? {})[def.metric]);
+	if (!Number.isFinite(observed) || observed <= 0) return null;
+
+	const days = Math.max(1, Math.round(PERIOD_MINUTES[period] / PERIOD_MINUTES.daily));
+	return observed * days;
+}
+
+export function goalFromHistory(def: TaskDefinition, difficulty: TaskDifficulty, elig: TaskEligibility, period: TaskPeriod): number | null {
+	if (isPeakMetric(def)) {
+		const peak = Number((elig.recentPeak ?? {})[def.metric]);
+		if (!Number.isFinite(peak) || peak <= 0) return null;
+		const stretch = difficulty === 'easy' ? 0 : difficulty === 'medium' ? 1 : 2;
+		return Math.max(1, Math.round(peak) + stretch);
+	}
+
+	const rate = measuredRate(def, elig, period);
+	if (rate === null) return null;
+
+	const target = rate * DIFFICULTY_RATE_SHARE[difficulty];
+	if (rate < RATE_CONFIDENCE_MIN && !COUNTED_ACTION_UNITS.has(def.unit)) return null;
+
+	return Math.max(1, Math.round(target));
+}
+
 export function deriveGoal(def: TaskDefinition, difficulty: TaskDifficulty, elig: TaskEligibility, period: TaskPeriod, targetCost = 0): number {
+	const fromHistory = goalFromHistory(def, difficulty, elig, period);
+	if (fromHistory !== null) {
+		const feasible = feasibleUsesInPeriod(def, elig, period);
+		const payableMax = Math.max(1, Math.floor(rewardCeiling(elig) / (Math.max(1, taskEffortXp(def, 1, elig, period, targetCost)) * EFFORT_REWARD_MARGIN)));
+		return Math.max(1, Math.min(fromHistory, feasible, payableMax));
+	}
+
+	if (isInflicted(def)) {
+		const ladder = UNMEASURED_INFLICTED_GOAL[difficulty];
+		if (def.unit === 'xp') return Math.max(1, Math.round(serverEarnRate(elig, period) * EFFORT_BANDS[difficulty] * INFLICTED_XP_SHARE) || 1);
+		return Math.max(1, Math.min(ladder, feasibleUsesInPeriod(def, elig, period)));
+	}
+
+	if (def.unit === 'xp' && !def.costIsGoal && (def.costFixedUnits ?? 0) > 0) {
+		return Math.max(1, Math.round(serverEarnRate(elig, period) * EFFORT_BANDS[difficulty] * XP_YIELD_SHARE) || 1);
+	}
+
 	const budget = spendBudget(def, elig, period) * EFFORT_BANDS[difficulty];
 	if (budget <= 0) return 1;
 
@@ -1607,12 +1687,18 @@ export const ACTION_EFFORT_MINUTES: Record<string, number> = {
 };
 
 export function actionEffortXp(def: TaskDefinition, goal: number, elig: TaskEligibility): number {
-	const perAction = ACTION_EFFORT_MINUTES[def.unit];
-	if (!perAction) return 0;
-
 	const r = elig.levelingRates ?? DEFAULT_LEVELING_RATES;
 	const minuteWorth = Math.max(0, Number(r.voiceXpPerMinute) || 0);
 	if (minuteWorth <= 0) return 0;
+
+	if (def.unit === 'minutes') {
+		const elapsed = Math.max(0, Number(goal) || 0);
+		const grind = taskGrindXp(def, elapsed, elig, 'daily');
+		return Math.max(0, Math.round(elapsed * minuteWorth) - grind);
+	}
+
+	const perAction = ACTION_EFFORT_MINUTES[def.unit];
+	if (!perAction) return 0;
 
 	const count = isPeakMetric(def) ? 1 : Math.max(0, Number(goal) || 0);
 	return Math.round(count * perAction * minuteWorth);

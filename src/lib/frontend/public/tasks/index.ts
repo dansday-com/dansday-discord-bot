@@ -23,6 +23,8 @@ import {
 	costPercentile,
 	XP_REWARD_MIN,
 	RECENT_WINDOW_DAYS,
+	historyMetricsFor,
+	PEAK_METRICS,
 	nextMilestone,
 	streakMilestone,
 	loginCyclePreview,
@@ -117,6 +119,37 @@ function cheapestByEffect(catalog: { cost: number; effectType: string }[]): Reco
 		if (prev == null || c.cost < prev) out[c.effectType] = c.cost;
 	}
 	return out;
+}
+
+async function needsGeneration(memberId: any, dayKey: number, weekKey: number): Promise<boolean> {
+	const daily = (await db.getMemberTasks(memberId, dayKey, 'daily').catch(() => [])) as any[];
+	if (!daily || daily.length === 0) return true;
+	const weekly = (await db.getMemberTasks(memberId, weekKey, 'weekly').catch(() => [])) as any[];
+	return !weekly || weekly.length === 0;
+}
+
+async function loadMemberHistory(memberId: any, elig: TaskEligibility, nowMs: number) {
+	const sinceMs = nowMs - RECENT_WINDOW_DAYS * 86400000;
+	const metrics = historyMetricsFor(elig);
+
+	const recentDaily: Partial<Record<TaskMetric, number>> = {};
+	const recentPeak: Partial<Record<TaskMetric, number>> = {};
+
+	const counted = await Promise.all(
+		metrics.map(async (metric) => ({
+			metric,
+			total: await db.countMemberEventsSince(memberId, metric, sinceMs).catch(() => 0)
+		}))
+	);
+
+	for (const { metric, total } of counted) {
+		const value = Number(total) || 0;
+		if (value <= 0) continue;
+		if (PEAK_METRICS.has(metric)) recentPeak[metric] = value;
+		else recentDaily[metric] = value / RECENT_WINDOW_DAYS;
+	}
+
+	return { recentDaily, recentPeak };
 }
 
 async function buildPeriod(opts: {
@@ -284,6 +317,12 @@ export async function loadTasksShared(opts: {
 		levelingRates: await loadLevelingRates(server.id),
 		memberCount: await db.countServerMembers(server.id).catch(() => 0)
 	};
+
+	if (opts.generate !== false && (await needsGeneration(member.id, dayKey, weekKey))) {
+		const history = await loadMemberHistory(member.id, eligibility, nowMs);
+		eligibility.recentDaily = history.recentDaily;
+		eligibility.recentPeak = history.recentPeak;
+	}
 
 	const currentStreak = Number(streakRow?.current_streak) || 0;
 

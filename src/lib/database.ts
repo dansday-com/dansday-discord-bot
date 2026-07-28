@@ -1664,17 +1664,17 @@ export async function countMemberEventsSince(memberId: any, metric: string, sinc
 
 	const LEVEL_METRICS: Record<
 		string,
-		{ agg: 'sum' | 'count' | 'peakFriends'; sources?: string[]; friends?: 'with' | 'without'; boost?: 'without'; leech?: 'without' }
+		{ agg: 'sum' | 'count' | 'peakFriends'; sources?: string[]; friends?: 'with' | 'without'; boost?: 'without'; leech?: 'without'; earnedOnly?: boolean }
 	> = {
 		xp_with_friends: { agg: 'sum', friends: 'with' },
 		friend_ticks: { agg: 'count', friends: 'with' },
 		friends_peak: { agg: 'peakFriends' },
 		friends_peak_voice: { agg: 'peakFriends', sources: ['voice', 'voice_afk'] },
-		xp_solo: { agg: 'sum', boost: 'without', friends: 'without' },
+		xp_solo: { agg: 'sum', boost: 'without', friends: 'without', earnedOnly: true },
 		xp_solo_voice: { agg: 'sum', sources: ['voice', 'voice_afk'], boost: 'without', friends: 'without' },
 		xp_solo_media: { agg: 'sum', sources: ['video', 'stream'], boost: 'without', friends: 'without' },
 		xp_solo_chat: { agg: 'sum', sources: ['chat'], boost: 'without', friends: 'without' },
-		xp_unleeched: { agg: 'sum', leech: 'without' }
+		xp_unleeched: { agg: 'sum', leech: 'without', earnedOnly: true }
 	};
 
 	const lm = LEVEL_METRICS[String(metric)];
@@ -1691,6 +1691,7 @@ export async function countMemberEventsSince(memberId: any, metric: string, sinc
 		if (lm.friends === 'without') parts.push(sql`(friend_percent IS NULL OR friend_percent = 0)`);
 		if (lm.boost === 'without') parts.push(sql`(multiplier IS NULL OR multiplier <= 1)`);
 		if (lm.leech === 'without') parts.push(sql`(skim_percent IS NULL OR skim_percent = 0)`);
+		if (lm.earnedOnly) parts.push(sql`source NOT IN ('task', 'daily')`);
 		const where = parts.length > 0 ? sql` AND ${sql.join(parts, sql` AND `)}` : sql``;
 		const select = lm.agg === 'sum' ? sql`COALESCE(SUM(amount), 0)` : lm.agg === 'count' ? sql`COUNT(*)` : sql`COALESCE(MAX(FLOOR(friend_percent / 10)), 0)`;
 		const rows: any = await db.execute(sql`SELECT ${select} AS c FROM server_member_level_logs WHERE member_id = ${id} AND created_at >= ${since}${where}`);
@@ -1713,7 +1714,7 @@ export async function countMemberEventsSince(memberId: any, metric: string, sinc
 
 	if (metric === 'xp_gained') {
 		const rows: any = await db.execute(
-			sql`SELECT COALESCE(SUM(amount), 0) AS c FROM server_member_level_logs WHERE member_id = ${id} AND created_at >= ${since}`
+			sql`SELECT COALESCE(SUM(amount), 0) AS c FROM server_member_level_logs WHERE member_id = ${id} AND created_at >= ${since} AND source NOT IN ('task', 'daily')`
 		);
 		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
 	}

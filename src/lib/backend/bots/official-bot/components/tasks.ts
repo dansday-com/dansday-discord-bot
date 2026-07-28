@@ -45,16 +45,28 @@ async function measureProgress(memberId: any, row: any, dayStartMs: number) {
 	return db.countMemberEventsSince(memberId, def.metric, dayStartMs, row.target_item_id ?? null).catch(() => 0);
 }
 
-async function grantXpTo(guildId: any, memberId: any, amount: number) {
+async function grantXpTo(guildId: any, memberId: any, amount: number, source: 'task' | 'daily' = 'task') {
 	const xp = Math.max(0, Math.round(amount) || 0);
 	await db.ensureMemberLevel(memberId);
 	const snaps = await snapshotMembers([memberId]);
-	if (xp > 0) await db.updateMemberLevelStats(memberId, { experienceIncrement: xp });
-	await finalizeXpChanges(guildId, snaps, 'task-claim');
+	if (xp > 0) {
+		const stats = await db.updateMemberLevelStats(memberId, { experienceIncrement: xp });
+		await db
+			.logMemberLevelGain(memberId, {
+				source,
+				amount: xp,
+				total_xp: stats?.experience != null ? Number(stats.experience) : null,
+				level: stats?.level != null ? Number(stats.level) : null,
+				rank: stats?.rank != null ? Number(stats.rank) : null
+			})
+			.catch(() => null);
+	}
+	await finalizeXpChanges(guildId, snaps, `${source}-claim`);
 	return { kind: 'xp', xp };
 }
 
-async function deliverReward(guildId: any, memberId: any, plan: { wantsItem: boolean; itemId: any; fallbackXp: number }) {
+async function deliverReward(guildId: any, memberId: any, plan: { wantsItem: boolean; itemId: any; fallbackXp: number; source?: 'task' | 'daily' }) {
+	const source = plan.source ?? 'task';
 	const item = plan.wantsItem && plan.itemId != null ? await db.getItem(Number(plan.itemId)).catch(() => null) : null;
 	const itemUsable = !!item && (item.enabled as any) !== false && (item.enabled as any) !== 0;
 
@@ -73,10 +85,10 @@ async function deliverReward(guildId: any, memberId: any, plan: { wantsItem: boo
 
 	if (plan.wantsItem || plan.itemId != null) {
 		const worth = Number(item?.cost) || 0;
-		return grantXpTo(guildId, memberId, worth > 0 ? worth : plan.fallbackXp);
+		return grantXpTo(guildId, memberId, worth > 0 ? worth : plan.fallbackXp, source);
 	}
 
-	return grantXpTo(guildId, memberId, plan.fallbackXp);
+	return grantXpTo(guildId, memberId, plan.fallbackXp, source);
 }
 
 export async function handleLoginClaim(client: any, payload: any) {
@@ -131,7 +143,8 @@ export async function handleLoginClaim(client: any, payload: any) {
 		granted = await deliverReward(guild_id, memberId, {
 			wantsItem: reward.kind === 'item',
 			itemId: reward.kind === 'item' ? reward.itemId : null,
-			fallbackXp: reward.kind === 'xp' ? reward.xp : 200
+			fallbackXp: reward.kind === 'xp' ? reward.xp : 200,
+			source: 'daily'
 		});
 	} catch (err: any) {
 		await logger.log(`❌ Login claim grant failed: ${err.message}`);

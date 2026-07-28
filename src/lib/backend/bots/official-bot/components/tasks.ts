@@ -14,7 +14,6 @@ import {
 	streakMilestone,
 	xpRewardFor,
 	loginRewardFor,
-	pickWeightedByRarity,
 	rarityTierFor,
 	rarityMeta,
 	type RarityTier,
@@ -109,34 +108,26 @@ export async function handleLoginClaim(client: any, payload: any) {
 	const memberId = await resolveServerMemberId(server.id, actor_discord_id);
 	if (!memberId) return { ok: false, error: 'member_not_found' };
 
-	const debug = payload?.debug === true;
 	const tzOffsetMin = Number(tz_offset) || 0;
 	const dayKey = dayKeyFor(Date.now(), tzOffsetMin);
 
 	const before = (await db.ensureMemberClaim(memberId)) as any;
-	if (!debug && before?.last_claim_day_key != null && Number(before.last_claim_day_key) >= dayKey) {
+	if (before?.last_claim_day_key != null && Number(before.last_claim_day_key) >= dayKey) {
 		return { ok: false, error: 'already_claimed' };
 	}
 
 	const itemsAllowed = await isPublicSubFeatureEnabled(guild_id, 'items');
 	const catalog = itemsAllowed ? await loadRewardCatalog(server.id) : [];
 
-	const applied = debug ? { changed: true, row: before } : await db.applyMemberClaim(memberId, dayKey, LOGIN_CYCLE_DAYS);
+	const applied = await db.applyMemberClaim(memberId, dayKey, LOGIN_CYCLE_DAYS);
 	if (!applied.changed) return { ok: false, error: 'already_claimed' };
 
-	const day = debug ? (Number(before?.cycle_day) || 0) + 1 : Number(applied.row?.cycle_day) || 1;
+	const day = Number(applied.row?.cycle_day) || 1;
 	const cycleIndex = Number(applied.row?.cycles_completed) || 0;
 	const sinceMs = Date.now() - RECENT_WINDOW_DAYS * 86400000;
 	const earned = await db.countMemberEventsSince(memberId, 'xp_gained', sinceMs).catch(() => 0);
 	const dailyEarn = Math.max(0, Number(earned) || 0) / RECENT_WINDOW_DAYS;
-	const reward = debug
-		? (() => {
-				const picked = pickWeightedByRarity(catalog, Math.random());
-				return picked
-					? ({ day, kind: 'item', itemId: picked.id, jackpot: day >= LOGIN_CYCLE_DAYS } as const)
-					: loginRewardFor(memberId, cycleIndex, day, catalog, dailyEarn);
-			})()
-		: loginRewardFor(memberId, cycleIndex, day, catalog, dailyEarn);
+	const reward = loginRewardFor(memberId, cycleIndex, day, catalog, dailyEarn);
 
 	let granted: any = null;
 	try {

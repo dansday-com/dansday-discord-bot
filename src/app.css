@@ -8009,25 +8009,6 @@
 	}
 }
 
-.m-root .m-task-debugroll {
-	display: inline-flex;
-	align-items: center;
-	gap: 6px;
-	padding: 7px 14px;
-	border-radius: 9px;
-	border: 1px dashed rgba(192, 57, 43, 0.6);
-	background: color-mix(in srgb, #c0392b 8%, transparent);
-	color: #c0392b;
-	font-size: 12px;
-	font-weight: 800;
-	cursor: pointer;
-	transition: background 0.15s ease;
-}
-
-.m-root .m-task-debugroll:hover {
-	background: color-mix(in srgb, #c0392b 16%, transparent);
-}
-
 .m-task-roll {
 	position: fixed;
 	inset: 0;

@@ -39,42 +39,6 @@
 		return () => (document.body.style.overflow = '');
 	});
 
-	async function debugRoll() {
-		try {
-			const res = await fetch(`/api/tasks/${data.server.slug}/login`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ card: ctx.hash, tz_offset: tzOffset(), debug: true })
-			});
-			const body = await res.json();
-			if (!body?.success) {
-				showToast(body?.error || 'Debug roll failed.', 'error');
-				return;
-			}
-
-			if (body.tasks) applyState(body.tasks);
-
-			const g = body.granted;
-			if (g?.kind === 'item') {
-				await runItemRoll(body.day, !!body.jackpot, {
-					name: g.name,
-					cost: Number(g.cost) || 0,
-					effectType: String(g.effectType || ''),
-					tier: rarityTierFor(
-						Number(g.cost) || 0,
-						reelPool.map((c) => c.cost)
-					)
-				});
-			} else {
-				showToast(`Rolled +${fmt(g?.xp ?? 0)} XP (no item).`, 'info');
-			}
-
-			ctx.invalidateAll?.();
-		} catch {
-			showToast('Could not reach the server.', 'error');
-		}
-	}
-
 	function decoyCells(n: number): ReelCell[] {
 		const pool = reelPool;
 		if (pool.length === 0) return [];
@@ -322,9 +286,6 @@
 			{#if !login.canClaim && login.tzKnown !== false}
 				<span class="m-task-claimed"><i class="fas fa-circle-check"></i> Claimed today</span>
 			{/if}
-			<button type="button" class="m-task-debugroll" onclick={debugRoll}>
-				<i class="fas fa-dice"></i> Test roll
-			</button>
 		</div>
 
 		<div class="m-task-days">

@@ -22,6 +22,63 @@
 	let loginWin = $state<{ day: number; jackpot: boolean; text: string } | null>(null);
 	let taskWin = $state<{ title: string; text: string; item: boolean } | null>(null);
 
+	type ReelCell = { name: string; cost: number; effectType: string };
+	let itemRoll = $state<{ day: number; jackpot: boolean; won: ReelCell } | null>(null);
+	let reel = $state<ReelCell[]>([]);
+	let reelOffset = $state(0);
+	let reelAnimating = $state(false);
+	let reelSettled = $state(false);
+	let reelWrapEl: HTMLDivElement | undefined = $state();
+
+	const reelPool = $derived<ReelCell[]>(live?.reelPool ?? []);
+
+	$effect(() => {
+		if (!itemRoll) return;
+		document.body.style.overflow = 'hidden';
+		return () => (document.body.style.overflow = '');
+	});
+
+	function decoyCells(n: number): ReelCell[] {
+		const pool = reelPool;
+		if (pool.length === 0) return [];
+		return Array.from({ length: n }, () => pool[Math.floor(Math.random() * pool.length)]);
+	}
+
+	function centerCell(index: number) {
+		requestAnimationFrame(() => {
+			const wrapW = reelWrapEl?.clientWidth ?? 360;
+			const cell = reelWrapEl?.querySelectorAll<HTMLElement>('.m-task-reel-cell')?.[index];
+			if (!cell) return;
+			reelOffset = wrapW / 2 - (cell.offsetLeft + cell.offsetWidth / 2);
+		});
+	}
+
+	async function runItemRoll(day: number, jackpot: boolean, won: ReelCell) {
+		const cells = decoyCells(40);
+		if (cells.length === 0) {
+			loginWin = { day, jackpot, text: won.name };
+			setTimeout(() => (loginWin = null), jackpot ? 6000 : 3500);
+			return;
+		}
+
+		const landIndex = 32;
+		cells[landIndex] = won;
+		reel = cells;
+		reelAnimating = false;
+		reelSettled = false;
+		reelOffset = 0;
+		itemRoll = { day, jackpot, won };
+
+		await new Promise((r) => requestAnimationFrame(() => r(null)));
+		reelWrapEl?.offsetHeight;
+		centerCell(2);
+		await new Promise((r) => requestAnimationFrame(() => r(null)));
+		reelAnimating = true;
+		centerCell(landIndex);
+
+		setTimeout(() => (reelSettled = true), 3400);
+	}
+
 	let synced = $state(false);
 
 	$effect(() => {
@@ -166,8 +223,17 @@
 			const g = body.granted;
 			const text = g?.kind === 'item' ? g.name : `+${fmt(g?.xp ?? 0)} XP`;
 			if (body.bagWasFull) showToast(`Bag was full — received ${text} instead.`, 'info');
-			loginWin = { day: body.day, jackpot: !!body.jackpot, text };
-			setTimeout(() => (loginWin = null), body.jackpot ? 6000 : 3500);
+
+			if (g?.kind === 'item') {
+				await runItemRoll(body.day, !!body.jackpot, {
+					name: g.name,
+					cost: Number(g.cost) || 0,
+					effectType: String(g.effectType || '')
+				});
+			} else {
+				loginWin = { day: body.day, jackpot: !!body.jackpot, text };
+				setTimeout(() => (loginWin = null), body.jackpot ? 6000 : 3500);
+			}
 
 			ctx.invalidateAll?.();
 		} catch {
@@ -329,7 +395,41 @@
 	{/if}
 </div>
 
-{#if celebrate}
+{#if itemRoll}
+	<div class="m-task-roll" role="status">
+		<div class="m-task-roll-card" class:m-task-roll-card--done={reelSettled} class:m-task-roll-card--jackpot={itemRoll.jackpot && reelSettled}>
+			<p class="m-task-roll-eyebrow">{itemRoll.jackpot ? `Day ${itemRoll.day} jackpot` : `Day ${itemRoll.day} reward`}</p>
+			<h3 class="m-task-roll-title">{reelSettled ? 'You got it!' : 'Rolling your item…'}</h3>
+
+			<div class="m-task-reelwrap" class:m-task-reelwrap--done={reelSettled} bind:this={reelWrapEl}>
+				<div class="m-task-reel-frame"></div>
+				<div class="m-task-reel-pointer"></div>
+				<div
+					class="m-task-reel"
+					class:m-task-reel--spin={reelAnimating && !reelSettled}
+					style="transform: translateX({reelOffset}px); transition: {reelAnimating ? 'transform 3.2s cubic-bezier(0.06, 0.72, 0.06, 1)' : 'none'};"
+				>
+					{#each reel as cell, i (i)}
+						<div class="m-task-reel-cell" style="--accent:{effectAccentHex(cell.effectType)}">
+							<i class="fas {effectIcon(cell.effectType)}"></i>
+							<span class="m-task-reel-name">{cell.name}</span>
+							<span class="m-task-reel-cost">{fmt(cell.cost)} XP</span>
+						</div>
+					{/each}
+				</div>
+			</div>
+
+			{#if reelSettled}
+				<div class="m-task-roll-verdict">
+					<span class="m-task-roll-name">{itemRoll.won.name}</span>
+					<span class="m-task-roll-worth">worth {fmt(itemRoll.won.cost)} XP</span>
+					<span class="m-task-roll-effect">{effectLabel(itemRoll.won.effectType)}</span>
+				</div>
+				<button class="m-task-roll-close" onclick={() => (itemRoll = null)}>Nice</button>
+			{/if}
+		</div>
+	</div>
+{:else if celebrate}
 	<div class="m-task-celebrate" role="status">
 		<div class="m-task-celebrate-card">
 			<div class="m-task-celebrate-emoji">{celebrate.emoji}</div>

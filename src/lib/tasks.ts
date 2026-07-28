@@ -1842,6 +1842,25 @@ export function cheapestOf<T extends { cost: number }>(catalog: T[]): T[] {
 	return catalog.filter((c) => (Number(c.cost) || 0) === best);
 }
 
+export const LOGIN_RARITY_EXPONENT = 1.15;
+
+export function pickWeightedByRarity<T extends { cost: number }>(catalog: T[], roll: number): T | null {
+	const priced = catalog.filter((c) => (Number(c.cost) || 0) > 0);
+	if (priced.length === 0) return null;
+
+	const cheapest = Math.min(...priced.map((c) => Number(c.cost) || 0));
+	const weights = priced.map((c) => Math.pow(cheapest / (Number(c.cost) || cheapest), LOGIN_RARITY_EXPONENT));
+	const total = weights.reduce((a, b) => a + b, 0);
+	if (!(total > 0)) return priced[0];
+
+	let cursor = Math.min(0.9999999, Math.max(0, roll)) * total;
+	for (let i = 0; i < priced.length; i++) {
+		cursor -= weights[i];
+		if (cursor < 0) return priced[i];
+	}
+	return priced[priced.length - 1];
+}
+
 export function pickReward(
 	memberId: number,
 	periodKey: number,
@@ -1892,19 +1911,8 @@ export function loginRewardFor(memberId: number, cycleIndex: number, day: number
 	const worth = Math.max(floor, Math.min(XP_REWARD_MAX, Math.round((base * weight) / 100) * 100));
 
 	if (catalog.length > 0 && rand() < LOGIN_ITEM_REWARD_CHANCE) {
-		const priced = catalog.filter((c) => (Number(c.cost) || 0) > 0);
-		const fair = priced.filter((c) => {
-			const v = Number(c.cost) || 0;
-			return v >= worth * ITEM_VALUE_FLOOR && v <= worth * ITEM_VALUE_CEILING;
-		});
-
-		const affordable = priced.filter((c) => (Number(c.cost) || 0) <= worth * ITEM_VALUE_CEILING);
-		const pool = fair.length > 0 ? fair : affordable.length > 0 ? priciestOf(affordable) : cheapestOf(priced);
-
-		if (pool.length > 0) {
-			const picked = pool[Math.floor(rand() * pool.length) % pool.length];
-			if (picked) return { day, kind: 'item', itemId: picked.id, jackpot };
-		}
+		const picked = pickWeightedByRarity(catalog, rand());
+		if (picked) return { day, kind: 'item', itemId: picked.id, jackpot };
 	}
 
 	return { day, kind: 'xp', xp: worth, jackpot };

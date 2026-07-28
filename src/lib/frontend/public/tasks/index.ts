@@ -64,6 +64,7 @@ async function loadCatalog(serverId: any, itemsEnabled: boolean, tzOffsetMin = 0
 			return {
 				id: Number(i.id),
 				cost: Number(i.cost) || 0,
+				name: String(i.name || ''),
 				effectType: String(i.effect_type || ''),
 				durationMinutes: Math.max(0, Number(cfg?.effect_duration_minutes) || 0)
 			};
@@ -303,6 +304,7 @@ export async function loadTasksShared(opts: {
 		streakEarned: !!earnedStreak?.changed,
 		streakMilestone: earnedStreak?.changed ? streakMilestone(Number(earnedStreak.streak) || 0) : null,
 		login: shapeLogin(loginRow, member, dayKey, catalog, await memberDailyEarn(member.id), opts.tzKnown !== false),
+		reelPool: [...catalog].sort((a, b) => a.cost - b.cost).map((c) => ({ name: c.name, cost: c.cost, effectType: c.effectType })),
 		allClaimed: daily.length > 0 && daily.every((t) => t.claimed),
 		empty: daily.length === 0 && weekly.length === 0
 	};

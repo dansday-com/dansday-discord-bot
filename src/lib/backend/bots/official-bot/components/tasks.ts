@@ -62,7 +62,7 @@ async function deliverReward(guildId: any, memberId: any, plan: { wantsItem: boo
 			xp_amount: 0,
 			outcome: 'success'
 		});
-		return { kind: 'item', itemId: Number(plan.itemId), name: item.name, effectType: item.effect_type };
+		return { kind: 'item', itemId: Number(plan.itemId), name: item.name, effectType: item.effect_type, cost: Number(item.cost) || 0 };
 	}
 
 	if (plan.wantsItem || plan.itemId != null) {

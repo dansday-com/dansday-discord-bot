@@ -20,6 +20,7 @@
 	let weeklyResetAt = $state(Date.now() + (Number(data.tasks?.weeklyResetsInMs) || 0));
 	let celebrate = $state<{ streak: number; emoji: string; label: string } | null>(null);
 	let loginWin = $state<{ day: number; jackpot: boolean; text: string } | null>(null);
+	let taskWin = $state<{ title: string; text: string; item: boolean } | null>(null);
 
 	let synced = $state(false);
 
@@ -123,8 +124,13 @@
 			if (body.tasks) applyState(body.tasks);
 
 			const g = body.granted;
-			if (g?.kind === 'item') showToast(`Claimed ${g.name}!`, 'success');
-			else showToast(`Claimed +${fmt(g?.xp ?? 0)} XP!`, 'success');
+			const item = g?.kind === 'item';
+			taskWin = {
+				title: t.period === 'weekly' ? 'Weekly task done' : 'Task complete',
+				text: item ? g.name : `+${fmt(g?.xp ?? 0)} XP`,
+				item
+			};
+			setTimeout(() => (taskWin = null), 3500);
 
 			if (body.milestone && body.streak) {
 				celebrate = { streak: body.streak.current, emoji: body.milestone.emoji, label: body.milestone.label };
@@ -337,6 +343,14 @@
 			<div class="m-task-celebrate-emoji">{loginWin.jackpot ? '🎁' : '✨'}</div>
 			<h3>{loginWin.jackpot ? 'Day 7 jackpot!' : `Day ${loginWin.day} claimed`}</h3>
 			<p>{loginWin.text}</p>
+		</div>
+	</div>
+{:else if taskWin}
+	<div class="m-task-celebrate" role="status">
+		<div class="m-task-celebrate-card">
+			<div class="m-task-celebrate-emoji">{taskWin.item ? '🎁' : '✨'}</div>
+			<h3>{taskWin.title}</h3>
+			<p>{taskWin.text}</p>
 		</div>
 	</div>
 {/if}

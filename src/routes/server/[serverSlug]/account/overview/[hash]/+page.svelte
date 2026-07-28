@@ -764,13 +764,8 @@
 				</div>
 				<div class="m-mini">
 					<i class="fas fa-scroll"></i>
-					<span class="m-mini-value">{fmt(d.quests_enrolled)}</span>
-					<span class="m-mini-label">Quests</span>
-				</div>
-				<div class="m-mini">
-					<i class="fas fa-award"></i>
 					<span class="m-mini-value">{fmt(d.quests_claimed)}</span>
-					<span class="m-mini-label">Rewards claimed</span>
+					<span class="m-mini-label">Quests</span>
 				</div>
 				<div class="m-mini">
 					<i class="fas fa-tower-broadcast"></i>

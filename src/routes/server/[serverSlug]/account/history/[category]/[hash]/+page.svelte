@@ -18,7 +18,9 @@
 		voice_afk: { label: 'AFK Voice', icon: 'fa-moon' },
 		video: { label: 'Video', icon: 'fa-video' },
 		stream: { label: 'Streaming', icon: 'fa-tower-broadcast' },
-		leech: { label: 'Leech', icon: 'fa-droplet' }
+		leech: { label: 'Leech', icon: 'fa-droplet' },
+		task: { label: 'Task Reward', icon: 'fa-list-check' },
+		daily: { label: 'Daily Reward', icon: 'fa-calendar-check' }
 	};
 
 	type Badge = { icon: string; text: string };
@@ -134,6 +136,10 @@
 		}
 
 		if (h.direction === 'incoming') return incomingLine(h);
+
+		if (h.action === 'task_reward') {
+			return { icon: 'fa-gift', title: `Earned ${h.itemName ?? 'item'}`, tone: 'win', deltaLabel: 'Reward' };
+		}
 
 		const PAST_TITLE: Record<string, string> = {
 			steal: 'Robbed',

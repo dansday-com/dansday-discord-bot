@@ -66,7 +66,6 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		granted: webhookResult.body.granted,
 		day: webhookResult.body.day,
 		jackpot: webhookResult.body.jackpot,
-		bagWasFull: webhookResult.body.bagWasFull === true,
 		tasks: refreshed
 	});
 };

@@ -454,6 +454,13 @@ export async function resolveLeech({ memberItemId, actorMemberId, targetMemberId
 	if (existing) {
 		const beneficiary = await db.getServerMemberById(existing.beneficiary_member_id).catch(() => null);
 		const who = beneficiary?.server_display_name || beneficiary?.display_name || beneficiary?.username || 'another member';
+		await logAction(actorMemberId, {
+			member_item_id: memberItemId,
+			target_member_id: targetMemberId,
+			action: 'leech',
+			outcome: 'occupied',
+			actor_disguised: actorDisguised
+		});
 		return { outcome: 'leeched', error: `This member is already being leeched by ${who}.` };
 	}
 	const luckPercent = await getActiveLuckPercent(actorMemberId);

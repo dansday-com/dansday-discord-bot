@@ -42,8 +42,29 @@ export type TaskMetric =
 	| 'gamble_purist'
 	| 'gamble_bigwin'
 	| 'gamble_wagered'
+	| 'gamble_wagered_lost'
+	| 'gamble_lost'
+	| 'gamble_lost_big'
 	| 'attack_any'
 	| 'attack_success'
+	| 'attack_failed'
+	| 'attack_reflected'
+	| 'attack_blocked'
+	| 'attack_on_cooldown'
+	| 'spy_caught'
+	| 'steal_failed'
+	| 'bomb_failed'
+	| 'leech_landed'
+	| 'leech_occupied'
+	| 'leech_failed'
+	| 'bounty_paid_out'
+	| 'attacked_by_any'
+	| 'stolen_from'
+	| 'bombed_by'
+	| 'leeched_by'
+	| 'attacks_survived'
+	| 'xp_lost_to_attacks'
+	| 'xp_refunded'
 	| 'bomb_success'
 	| 'leech_success'
 	| 'use_leech'
@@ -89,15 +110,9 @@ export type TaskDefinition = {
 	accent: string;
 	unit: 'messages' | 'reactions' | 'minutes' | 'rounds' | 'wins' | 'members' | 'items' | 'xp' | 'times' | 'trades';
 	requires: TaskRequirement;
-	difficulties: TaskDifficulty[];
 	baselineKey: TaskMetric | null;
 	eligibilityKey?: TaskMetric;
-	minGoal: Record<TaskDifficulty, number>;
-	maxGoal: Record<TaskDifficulty, number>;
-	baselineShare: Record<TaskDifficulty, number>;
-	weeklyScale?: number;
 	costEffect?: string;
-	costFactor?: number;
 	costIsGoal?: boolean;
 	costFixedUnits?: number;
 	costExtraEffect?: string;
@@ -108,8 +123,6 @@ export type TaskDefinition = {
 
 export type TaskDescribeContext = { itemName?: string | null };
 
-const RATIO = { easy: 0.35, medium: 0.75, hard: 1.35 } as const;
-
 export const TASK_DEFINITIONS: TaskDefinition[] = [
 	{
 		id: 'chat',
@@ -119,11 +132,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#245f73',
 		unit: 'messages',
 		requires: 'leveling',
-		difficulties: ['easy', 'medium', 'hard'],
 		baselineKey: 'chat_total',
-		minGoal: { easy: 5, medium: 15, hard: 35 },
-		maxGoal: { easy: 25, medium: 70, hard: 160 },
-		baselineShare: RATIO,
 		describe: (g) => `Send ${g} messages`
 	},
 	{
@@ -134,11 +143,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#c8911a',
 		unit: 'reactions',
 		requires: 'leveling',
-		difficulties: ['easy', 'medium'],
 		baselineKey: 'reactions_given',
-		minGoal: { easy: 3, medium: 8, hard: 20 },
-		maxGoal: { easy: 12, medium: 30, hard: 60 },
-		baselineShare: RATIO,
 		describe: (g) => `React to ${g} messages`
 	},
 	{
@@ -149,11 +154,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#1f8a4c',
 		unit: 'minutes',
 		requires: 'leveling',
-		difficulties: ['easy', 'medium', 'hard'],
 		baselineKey: 'voice_minutes_active',
-		minGoal: { easy: 5, medium: 20, hard: 45 },
-		maxGoal: { easy: 20, medium: 60, hard: 150 },
-		baselineShare: RATIO,
 		describe: (g) => `Spend ${g} minutes in voice`
 	},
 	{
@@ -164,11 +165,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#6d5bd0',
 		unit: 'minutes',
 		requires: 'leveling',
-		difficulties: ['medium', 'hard'],
 		baselineKey: 'voice_minutes_video',
-		minGoal: { easy: 3, medium: 10, hard: 25 },
-		maxGoal: { easy: 15, medium: 40, hard: 90 },
-		baselineShare: RATIO,
 		describe: (g) => `Stay on camera for ${g} minutes`
 	},
 	{
@@ -179,11 +176,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#b5651d',
 		unit: 'minutes',
 		requires: 'leveling',
-		difficulties: ['medium', 'hard'],
 		baselineKey: 'voice_minutes_streaming',
-		minGoal: { easy: 3, medium: 10, hard: 25 },
-		maxGoal: { easy: 15, medium: 40, hard: 90 },
-		baselineShare: RATIO,
 		describe: (g) => `Stream for ${g} minutes`
 	},
 	{
@@ -194,12 +187,8 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#7a7f87',
 		unit: 'minutes',
 		requires: 'leveling',
-		difficulties: ['easy'],
 		baselineKey: 'voice_minutes_afk',
-		minGoal: { easy: 10, medium: 25, hard: 60 },
-		maxGoal: { easy: 45, medium: 90, hard: 180 },
-		baselineShare: RATIO,
-		describe: (g) => `Idle ${g} minutes in the AFK channel`
+		describe: (g) => `Idle ${g} minutes muted or deafened in voice`
 	},
 	{
 		id: 'gamble_play',
@@ -209,14 +198,8 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#2f6f9f',
 		unit: 'rounds',
 		requires: 'minigames',
-		difficulties: ['easy', 'medium'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 3, hard: 6 },
-		maxGoal: { easy: 3, medium: 8, hard: 15 },
-		baselineShare: RATIO,
-		weeklyScale: 3,
 		costEffect: '*',
-		costFactor: 0.15,
 		describe: (g) => (g === 1 ? 'Play a gamble round' : `Play ${g} gamble rounds`)
 	},
 	{
@@ -227,14 +210,8 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#1f8a4c',
 		unit: 'wins',
 		requires: 'minigames',
-		difficulties: ['medium', 'hard'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 1, hard: 3 },
-		maxGoal: { easy: 2, medium: 3, hard: 6 },
-		baselineShare: RATIO,
-		weeklyScale: 2.5,
 		costEffect: '*',
-		costFactor: 0.4,
 		describe: (g) => (g === 1 ? 'Win a gamble round' : `Win ${g} gamble rounds`)
 	},
 	{
@@ -245,14 +222,8 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#c0392b',
 		unit: 'members',
 		requires: 'items',
-		difficulties: ['medium', 'hard'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 1, hard: 2 },
-		maxGoal: { easy: 1, medium: 2, hard: 4 },
-		baselineShare: RATIO,
-		weeklyScale: 2.5,
 		costEffect: 'steal',
-		costFactor: 1.6,
 		describe: (g) => (g === 1 ? 'Successfully steal from a member' : `Successfully steal from ${g} members`)
 	},
 	{
@@ -263,12 +234,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#8e44ad',
 		unit: 'items',
 		requires: 'items',
-		difficulties: ['easy', 'medium'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 2, hard: 4 },
-		maxGoal: { easy: 2, medium: 4, hard: 8 },
-		baselineShare: RATIO,
-		weeklyScale: 3,
 		costEffect: '*',
 		describe: (g) => (g === 1 ? 'Use an item' : `Use ${g} items`)
 	},
@@ -280,12 +246,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#245f73',
 		unit: 'items',
 		requires: 'items',
-		difficulties: ['easy', 'medium'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 2, hard: 3 },
-		maxGoal: { easy: 2, medium: 3, hard: 6 },
-		baselineShare: RATIO,
-		weeklyScale: 3,
 		costEffect: '*',
 		describe: (g) => (g === 1 ? 'Buy an item from the shop' : `Buy ${g} items from the shop`)
 	},
@@ -297,12 +258,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#c8911a',
 		unit: 'xp',
 		requires: 'leveling',
-		difficulties: ['easy', 'medium', 'hard'],
 		baselineKey: 'xp_gained',
-		minGoal: { easy: 500, medium: 2500, hard: 8000 },
-		maxGoal: { easy: 2000, medium: 8000, hard: 30000 },
-		baselineShare: RATIO,
-		weeklyScale: 3,
 		describe: (g) => `Earn ${g.toLocaleString()} XP`
 	},
 	{
@@ -313,12 +269,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#c0392b',
 		unit: 'xp',
 		requires: 'items',
-		difficulties: ['medium', 'hard'],
 		baselineKey: 'xp_gained',
-		minGoal: { easy: 500, medium: 2000, hard: 6000 },
-		maxGoal: { easy: 2000, medium: 8000, hard: 25000 },
-		baselineShare: { easy: 0.25, medium: 0.7, hard: 1.6 },
-		weeklyScale: 2.5,
 		costIsGoal: true,
 		describe: (g) => `Spend ${g.toLocaleString()} XP in the shop`
 	},
@@ -330,12 +281,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#5a9eb4',
 		unit: 'times',
 		requires: 'items',
-		difficulties: ['easy', 'medium'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 2, hard: 4 },
-		maxGoal: { easy: 2, medium: 4, hard: 7 },
-		baselineShare: RATIO,
-		weeklyScale: 2.5,
 		costEffect: 'spy',
 		describe: (g) => (g === 1 ? 'Spy on a member' : `Spy on ${g} members`)
 	},
@@ -347,12 +293,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#3a9e8f',
 		unit: 'times',
 		requires: 'items',
-		difficulties: ['easy', 'medium'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 2, hard: 3 },
-		maxGoal: { easy: 1, medium: 3, hard: 5 },
-		baselineShare: RATIO,
-		weeklyScale: 2.5,
 		costEffect: 'purifier',
 		describe: (g) => (g === 1 ? 'Cleanse your effects with a Purifier' : `Use ${g} Purifiers`)
 	},
@@ -364,12 +305,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#2f6f9f',
 		unit: 'times',
 		requires: 'items',
-		difficulties: ['easy', 'medium'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 2, hard: 3 },
-		maxGoal: { easy: 2, medium: 3, hard: 6 },
-		baselineShare: RATIO,
-		weeklyScale: 2.5,
 		costEffect: 'shield',
 		describe: (g) => (g === 1 ? 'Raise a Shield' : `Raise ${g} Shields`)
 	},
@@ -381,12 +317,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#8e44ad',
 		unit: 'times',
 		requires: 'items',
-		difficulties: ['easy', 'medium'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 2, hard: 3 },
-		maxGoal: { easy: 2, medium: 3, hard: 6 },
-		baselineShare: RATIO,
-		weeklyScale: 2.5,
 		costEffect: 'boost',
 		describe: (g) => (g === 1 ? 'Activate a Boost' : `Activate ${g} Boosts`)
 	},
@@ -398,12 +329,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#1f8a4c',
 		unit: 'times',
 		requires: 'items',
-		difficulties: ['easy', 'medium'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 2, hard: 3 },
-		maxGoal: { easy: 2, medium: 3, hard: 5 },
-		baselineShare: RATIO,
-		weeklyScale: 2.5,
 		costEffect: 'luck',
 		describe: (g) => (g === 1 ? 'Activate a Luck charm' : `Activate ${g} Luck charms`)
 	},
@@ -415,12 +341,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#d4649a',
 		unit: 'times',
 		requires: 'items',
-		difficulties: ['easy', 'medium'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 2, hard: 3 },
-		maxGoal: { easy: 1, medium: 3, hard: 5 },
-		baselineShare: RATIO,
-		weeklyScale: 2.5,
 		costEffect: 'gift',
 		describe: (g) => (g === 1 ? 'Gift XP to a member' : `Gift XP to ${g} members`)
 	},
@@ -432,12 +353,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#b5651d',
 		unit: 'times',
 		requires: 'items',
-		difficulties: ['medium', 'hard'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 1, hard: 2 },
-		maxGoal: { easy: 1, medium: 2, hard: 4 },
-		baselineShare: RATIO,
-		weeklyScale: 2,
 		costEffect: 'bounty',
 		describe: (g) => (g === 1 ? 'Place a Bounty on someone' : `Place ${g} Bounties`)
 	},
@@ -449,12 +365,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#d35400',
 		unit: 'times',
 		requires: 'items',
-		difficulties: ['medium', 'hard'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 1, hard: 2 },
-		maxGoal: { easy: 1, medium: 2, hard: 4 },
-		baselineShare: RATIO,
-		weeklyScale: 2,
 		costEffect: 'bomb',
 		describe: (g) => (g === 1 ? 'Bomb a member' : `Bomb ${g} members`)
 	},
@@ -466,12 +377,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#6d5bd0',
 		unit: 'times',
 		requires: 'items',
-		difficulties: ['easy', 'medium'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 2, hard: 3 },
-		maxGoal: { easy: 1, medium: 3, hard: 4 },
-		baselineShare: RATIO,
-		weeklyScale: 2,
 		costEffect: 'disguise',
 		describe: (g) => (g === 1 ? 'Go incognito with a Disguise' : `Use ${g} Disguises`)
 	},
@@ -483,12 +389,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#3a6d82',
 		unit: 'times',
 		requires: 'items',
-		difficulties: ['easy', 'medium'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 2, hard: 3 },
-		maxGoal: { easy: 2, medium: 3, hard: 5 },
-		baselineShare: RATIO,
-		weeklyScale: 2.5,
 		costEffect: 'insurance',
 		describe: (g) => (g === 1 ? 'Take out Insurance' : `Take out Insurance ${g} times`)
 	},
@@ -500,12 +401,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#1f8a4c',
 		unit: 'trades',
 		requires: 'assets',
-		difficulties: ['easy', 'medium'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 2, hard: 4 },
-		maxGoal: { easy: 2, medium: 4, hard: 8 },
-		baselineShare: RATIO,
-		weeklyScale: 3,
 		describe: (g) => (g === 1 ? 'Open an asset position' : `Open ${g} asset positions`)
 	},
 	{
@@ -516,12 +412,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#c8911a',
 		unit: 'trades',
 		requires: 'assets',
-		difficulties: ['easy', 'medium'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 2, hard: 4 },
-		maxGoal: { easy: 2, medium: 4, hard: 8 },
-		baselineShare: RATIO,
-		weeklyScale: 3,
 		describe: (g) => (g === 1 ? 'Close an asset position' : `Close ${g} asset positions`)
 	},
 	{
@@ -532,12 +423,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#1f8a4c',
 		unit: 'xp',
 		requires: 'assets',
-		difficulties: ['medium', 'hard'],
 		baselineKey: null,
-		minGoal: { easy: 100, medium: 500, hard: 2000 },
-		maxGoal: { easy: 500, medium: 2500, hard: 10000 },
-		baselineShare: RATIO,
-		weeklyScale: 4,
 		describe: (g) => `Make ${g.toLocaleString()} XP profit on trades`
 	},
 	{
@@ -548,13 +434,8 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#1f8a4c',
 		unit: 'xp',
 		requires: 'leveling',
-		difficulties: ['easy', 'medium', 'hard'],
 		baselineKey: 'xp_from_voice',
 		eligibilityKey: 'voice_minutes_active',
-		minGoal: { easy: 300, medium: 1000, hard: 4000 },
-		maxGoal: { easy: 1500, medium: 5000, hard: 20000 },
-		baselineShare: { easy: 0.1, medium: 0.28, hard: 0.6 },
-		weeklyScale: 3,
 		describe: (g) => `Gain ${g.toLocaleString()} XP from voice (active or AFK)`
 	},
 	{
@@ -565,13 +446,8 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#245f73',
 		unit: 'xp',
 		requires: 'leveling',
-		difficulties: ['easy', 'medium', 'hard'],
 		baselineKey: 'xp_from_chat',
 		eligibilityKey: 'chat_total',
-		minGoal: { easy: 200, medium: 800, hard: 3000 },
-		maxGoal: { easy: 1200, medium: 4000, hard: 15000 },
-		baselineShare: { easy: 0.08, medium: 0.22, hard: 0.5 },
-		weeklyScale: 3,
 		describe: (g) => `Gain ${g.toLocaleString()} XP from chatting`
 	},
 	{
@@ -582,13 +458,8 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#6d5bd0',
 		unit: 'xp',
 		requires: 'leveling',
-		difficulties: ['medium', 'hard'],
 		baselineKey: 'xp_from_media',
 		eligibilityKey: 'voice_minutes_video',
-		minGoal: { easy: 200, medium: 800, hard: 3000 },
-		maxGoal: { easy: 1200, medium: 4000, hard: 12000 },
-		baselineShare: { easy: 0.08, medium: 0.2, hard: 0.45 },
-		weeklyScale: 3,
 		describe: (g) => `Gain ${g.toLocaleString()} XP from camera or streaming`
 	},
 	{
@@ -599,14 +470,8 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#c8911a',
 		unit: 'rounds',
 		requires: 'minigames',
-		difficulties: ['easy', 'medium'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 3, hard: 6 },
-		maxGoal: { easy: 3, medium: 7, hard: 12 },
-		baselineShare: RATIO,
-		weeklyScale: 3,
 		costEffect: '*',
-		costFactor: 0.15,
 		describe: (g) => (g === 1 ? 'Gamble once at 5× or higher' : `Gamble ${g} times at 5× or higher`)
 	},
 	{
@@ -617,14 +482,8 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#c0392b',
 		unit: 'rounds',
 		requires: 'minigames',
-		difficulties: ['medium', 'hard'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 2, hard: 4 },
-		maxGoal: { easy: 2, medium: 5, hard: 9 },
-		baselineShare: RATIO,
-		weeklyScale: 3,
 		costEffect: '*',
-		costFactor: 0.15,
 		describe: (g) => `Gamble ${g} time${g === 1 ? '' : 's'} at 5× or higher with no Luck active`
 	},
 	{
@@ -635,14 +494,8 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#b5651d',
 		unit: 'wins',
 		requires: 'minigames',
-		difficulties: ['hard'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 1, hard: 1 },
-		maxGoal: { easy: 1, medium: 2, hard: 3 },
-		baselineShare: RATIO,
-		weeklyScale: 2,
 		costEffect: '*',
-		costFactor: 0.8,
 		describe: (g) => (g === 1 ? 'Win a gamble at 5× or higher' : `Win ${g} gambles at 5× or higher`)
 	},
 	{
@@ -653,14 +506,8 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#2f6f9f',
 		unit: 'xp',
 		requires: 'minigames',
-		difficulties: ['medium', 'hard'],
 		baselineKey: 'xp_gained',
-		minGoal: { easy: 500, medium: 2000, hard: 8000 },
-		maxGoal: { easy: 2000, medium: 10000, hard: 40000 },
-		baselineShare: { easy: 0.3, medium: 0.8, hard: 2 },
-		weeklyScale: 3,
 		costIsGoal: true,
-		costFactor: 0.2,
 		describe: (g) => `Wager ${g.toLocaleString()} XP in total`
 	},
 	{
@@ -671,12 +518,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#d35400',
 		unit: 'members',
 		requires: 'items',
-		difficulties: ['easy', 'medium'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 2, hard: 4 },
-		maxGoal: { easy: 2, medium: 4, hard: 7 },
-		baselineShare: RATIO,
-		weeklyScale: 2.5,
 		costEffect: 'steal|bomb|leech',
 		describe: (g) => `Attack ${g} member${g === 1 ? '' : 's'} — hit or miss`
 	},
@@ -688,15 +530,256 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#c0392b',
 		unit: 'members',
 		requires: 'items',
-		difficulties: ['medium', 'hard'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 1, hard: 3 },
-		maxGoal: { easy: 1, medium: 3, hard: 5 },
-		baselineShare: RATIO,
-		weeklyScale: 2.5,
 		costEffect: 'steal|bomb|leech',
-		costFactor: 1.6,
 		describe: (g) => `Land ${g} successful attack${g === 1 ? '' : 's'}`
+	},
+	{
+		id: 'gamble_burn',
+		metric: 'gamble_wagered_lost',
+		label: 'Bad beat',
+		icon: 'fa-fire',
+		accent: '#c0392b',
+		unit: 'xp',
+		requires: 'minigames',
+		baselineKey: 'xp_gained',
+		costIsGoal: true,
+		describe: (g) => `Lose ${g.toLocaleString()} XP in gambles`
+	},
+	{
+		id: 'gamble_bust',
+		metric: 'gamble_lost',
+		label: 'Cooler',
+		icon: 'fa-skull',
+		accent: '#8e44ad',
+		unit: 'rounds',
+		requires: 'minigames',
+		baselineKey: null,
+		costEffect: '*',
+		describe: (g) => (g === 1 ? 'Lose a gamble round' : `Lose ${g} gamble rounds`)
+	},
+	{
+		id: 'gamble_bust_big',
+		metric: 'gamble_lost_big',
+		label: 'High-stakes bust',
+		icon: 'fa-bomb',
+		accent: '#c0392b',
+		unit: 'rounds',
+		requires: 'minigames',
+		baselineKey: null,
+		costEffect: '*',
+		describe: (g) => `Lose ${g} gamble${g === 1 ? '' : 's'} at 5× or higher`
+	},
+	{
+		id: 'attack_miss',
+		metric: 'attack_failed',
+		label: 'Swing and a miss',
+		icon: 'fa-ban',
+		accent: '#7a7f87',
+		unit: 'members',
+		requires: 'items',
+		baselineKey: null,
+		costEffect: 'steal|bomb|leech',
+		describe: (g) => `Have ${g} of your attacks fail`
+	},
+	{
+		id: 'attack_bounced',
+		metric: 'attack_reflected',
+		label: 'Backfire',
+		icon: 'fa-arrows-turn-to-dots',
+		accent: '#2b6cb0',
+		unit: 'members',
+		requires: 'items',
+		baselineKey: null,
+		costEffect: 'steal|bomb|leech',
+		describe: (g) => `Get reflected ${g} time${g === 1 ? '' : 's'}`
+	},
+	{
+		id: 'attack_walled',
+		metric: 'attack_blocked',
+		label: 'Wall of shields',
+		icon: 'fa-shield-halved',
+		accent: '#1f8a4c',
+		unit: 'members',
+		requires: 'items',
+		baselineKey: null,
+		costEffect: 'steal|bomb|leech',
+		describe: (g) => `Hit ${g} shielded or immune target${g === 1 ? '' : 's'}`
+	},
+	{
+		id: 'spy_busted',
+		metric: 'spy_caught',
+		label: 'Blown cover',
+		icon: 'fa-user-secret',
+		accent: '#d35400',
+		unit: 'times',
+		requires: 'items',
+		baselineKey: null,
+		costEffect: 'spy',
+		describe: (g) => (g === 1 ? 'Get caught spying once' : `Get caught spying ${g} times`)
+	},
+	{
+		id: 'steal_miss',
+		metric: 'steal_failed',
+		label: 'Butterfingers',
+		icon: 'fa-hand',
+		accent: '#7a7f87',
+		unit: 'members',
+		requires: 'items',
+		baselineKey: null,
+		costEffect: 'steal',
+		describe: (g) => `Have ${g} steal${g === 1 ? '' : 's'} fail`
+	},
+	{
+		id: 'bomb_miss',
+		metric: 'bomb_failed',
+		label: 'Dud fuse',
+		icon: 'fa-bomb',
+		accent: '#7a7f87',
+		unit: 'members',
+		requires: 'items',
+		baselineKey: null,
+		costEffect: 'bomb',
+		describe: (g) => `Have ${g} bomb${g === 1 ? '' : 's'} fizzle`
+	},
+	{
+		id: 'leech_land',
+		metric: 'leech_landed',
+		label: 'Parasite',
+		icon: 'fa-worm',
+		accent: '#8e44ad',
+		unit: 'members',
+		requires: 'items',
+		baselineKey: null,
+		costEffect: 'leech',
+		describe: (g) => `Leech ${g} member${g === 1 ? '' : 's'}`
+	},
+	{
+		id: 'leech_taken',
+		metric: 'leech_occupied',
+		label: 'Already spoken for',
+		icon: 'fa-user-slash',
+		accent: '#7a7f87',
+		unit: 'members',
+		requires: 'items',
+		baselineKey: null,
+		costEffect: 'leech',
+		describe: (g) => `Try to leech ${g} member${g === 1 ? '' : 's'} someone else already has`
+	},
+	{
+		id: 'leech_miss',
+		metric: 'leech_failed',
+		label: 'Shaken off',
+		icon: 'fa-worm',
+		accent: '#7a7f87',
+		unit: 'members',
+		requires: 'items',
+		baselineKey: null,
+		costEffect: 'leech',
+		describe: (g) => `Have ${g} leech${g === 1 ? '' : 'es'} fail`
+	},
+	{
+		id: 'attack_stalled',
+		metric: 'attack_on_cooldown',
+		label: 'Trigger happy',
+		icon: 'fa-hourglass-half',
+		accent: '#c8911a',
+		unit: 'times',
+		requires: 'items',
+		baselineKey: null,
+		costEffect: 'steal|bomb|leech',
+		describe: (g) => `Hit your attack cooldown ${g} time${g === 1 ? '' : 's'}`
+	},
+	{
+		id: 'bounty_payout',
+		metric: 'bounty_paid_out',
+		label: 'Blood money',
+		icon: 'fa-sack-dollar',
+		accent: '#c8911a',
+		unit: 'times',
+		requires: 'items',
+		baselineKey: null,
+		costEffect: 'steal|bomb|leech',
+		describe: (g) => `Trigger ${g} bounty payout${g === 1 ? '' : 's'}`
+	},
+	{
+		id: 'took_a_hit',
+		metric: 'attacked_by_any',
+		label: 'Punching bag',
+		icon: 'fa-face-dizzy',
+		accent: '#c0392b',
+		unit: 'times',
+		requires: 'items',
+		baselineKey: null,
+		describe: (g) => `Get hit by ${g} attack${g === 1 ? '' : 's'}`
+	},
+	{
+		id: 'got_robbed',
+		metric: 'stolen_from',
+		label: 'Pickpocketed',
+		icon: 'fa-hand-holding-dollar',
+		accent: '#c0392b',
+		unit: 'times',
+		requires: 'items',
+		baselineKey: null,
+		describe: (g) => `Get robbed ${g} time${g === 1 ? '' : 's'}`
+	},
+	{
+		id: 'got_bombed',
+		metric: 'bombed_by',
+		label: 'Ground zero',
+		icon: 'fa-explosion',
+		accent: '#c0392b',
+		unit: 'times',
+		requires: 'items',
+		baselineKey: null,
+		describe: (g) => `Get bombed ${g} time${g === 1 ? '' : 's'}`
+	},
+	{
+		id: 'got_leeched',
+		metric: 'leeched_by',
+		label: 'Host body',
+		icon: 'fa-virus',
+		accent: '#8e44ad',
+		unit: 'times',
+		requires: 'items',
+		baselineKey: null,
+		describe: (g) => `Get leeched ${g} time${g === 1 ? '' : 's'}`
+	},
+	{
+		id: 'held_the_line',
+		metric: 'attacks_survived',
+		label: 'Unbreakable',
+		icon: 'fa-shield-heart',
+		accent: '#1f8a4c',
+		unit: 'times',
+		requires: 'items',
+		baselineKey: null,
+		durationEffect: 'shield|reflect',
+		describe: (g) => `Survive ${g} attack${g === 1 ? '' : 's'}`
+	},
+	{
+		id: 'bled_xp',
+		metric: 'xp_lost_to_attacks',
+		label: 'Bleeding out',
+		icon: 'fa-droplet',
+		accent: '#c0392b',
+		unit: 'xp',
+		requires: 'items',
+		baselineKey: null,
+		describe: (g) => `Lose ${g.toLocaleString()} XP to attackers`
+	},
+	{
+		id: 'clawed_back',
+		metric: 'xp_refunded',
+		label: 'Fully covered',
+		icon: 'fa-file-invoice-dollar',
+		accent: '#1f8a4c',
+		unit: 'xp',
+		requires: 'items',
+		baselineKey: null,
+		costEffect: 'insurance',
+		describe: (g) => `Recover ${g.toLocaleString()} XP through Insurance`
 	},
 	{
 		id: 'bomb_land',
@@ -706,14 +789,8 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#d35400',
 		unit: 'members',
 		requires: 'items',
-		difficulties: ['medium', 'hard'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 1, hard: 2 },
-		maxGoal: { easy: 1, medium: 2, hard: 4 },
-		baselineShare: RATIO,
-		weeklyScale: 2,
 		costEffect: 'bomb',
-		costFactor: 1.6,
 		describe: (g) => (g === 1 ? 'Successfully bomb a member' : `Successfully bomb ${g} members`)
 	},
 	{
@@ -724,14 +801,8 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#a1343c',
 		unit: 'members',
 		requires: 'items',
-		difficulties: ['medium', 'hard'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 1, hard: 2 },
-		maxGoal: { easy: 1, medium: 2, hard: 4 },
-		baselineShare: RATIO,
-		weeklyScale: 2,
 		costEffect: 'leech',
-		costFactor: 1.5,
 		describe: (g) => (g === 1 ? 'Successfully leech a member' : `Successfully leech ${g} members`)
 	},
 	{
@@ -742,12 +813,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#c0392b',
 		unit: 'xp',
 		requires: 'items',
-		difficulties: ['medium', 'hard'],
 		baselineKey: null,
-		minGoal: { easy: 500, medium: 2000, hard: 8000 },
-		maxGoal: { easy: 2000, medium: 10000, hard: 40000 },
-		baselineShare: RATIO,
-		weeklyScale: 2.5,
 		costEffect: 'steal',
 		costFixedUnits: 4,
 		describe: (g) => `Steal ${g.toLocaleString()} XP from other members`
@@ -760,12 +826,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#a1343c',
 		unit: 'times',
 		requires: 'items',
-		difficulties: ['easy', 'medium'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 2, hard: 3 },
-		maxGoal: { easy: 2, medium: 3, hard: 5 },
-		baselineShare: RATIO,
-		weeklyScale: 2.5,
 		costEffect: 'leech',
 		describe: (g) => (g === 1 ? 'Attach a Leech to someone' : `Attach ${g} Leeches`)
 	},
@@ -777,12 +838,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#5a9eb4',
 		unit: 'times',
 		requires: 'items',
-		difficulties: ['easy', 'medium'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 2, hard: 3 },
-		maxGoal: { easy: 2, medium: 3, hard: 5 },
-		baselineShare: RATIO,
-		weeklyScale: 2.5,
 		costEffect: 'reflect',
 		describe: (g) => (g === 1 ? 'Raise a Reflect' : `Raise ${g} Reflects`)
 	},
@@ -794,13 +850,8 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#1f8a4c',
 		unit: 'xp',
 		requires: 'leveling',
-		difficulties: ['easy', 'medium', 'hard'],
 		baselineKey: 'xp_from_voice_active',
 		eligibilityKey: 'voice_minutes_active',
-		minGoal: { easy: 300, medium: 1000, hard: 4000 },
-		maxGoal: { easy: 1500, medium: 5000, hard: 20000 },
-		baselineShare: { easy: 0.08, medium: 0.22, hard: 0.5 },
-		weeklyScale: 3,
 		describe: (g) => `Gain ${g.toLocaleString()} XP from active voice only`
 	},
 	{
@@ -811,14 +862,9 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#7a7f87',
 		unit: 'xp',
 		requires: 'leveling',
-		difficulties: ['easy', 'medium'],
 		baselineKey: 'xp_from_voice_afk',
 		eligibilityKey: 'voice_minutes_afk',
-		minGoal: { easy: 200, medium: 800, hard: 3000 },
-		maxGoal: { easy: 1000, medium: 4000, hard: 12000 },
-		baselineShare: { easy: 0.06, medium: 0.15, hard: 0.35 },
-		weeklyScale: 3,
-		describe: (g) => `Gain ${g.toLocaleString()} XP from the AFK channel only`
+		describe: (g) => `Gain ${g.toLocaleString()} XP while muted or deafened in voice`
 	},
 	{
 		id: 'declutter',
@@ -828,14 +874,8 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#7a7f87',
 		unit: 'items',
 		requires: 'items',
-		difficulties: ['easy', 'medium'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 3, hard: 6 },
-		maxGoal: { easy: 3, medium: 6, hard: 12 },
-		baselineShare: RATIO,
-		weeklyScale: 3,
 		costEffect: '*',
-		costFactor: 0.5,
 		describe: (g) => (g === 1 ? 'Discard an item from your bag' : `Discard ${g} items from your bag`)
 	},
 	{
@@ -846,14 +886,8 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#8a6f5c',
 		unit: 'items',
 		requires: 'items',
-		difficulties: ['easy', 'medium'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 2, hard: 4 },
-		maxGoal: { easy: 2, medium: 4, hard: 7 },
-		baselineShare: RATIO,
-		weeklyScale: 2.5,
 		targetsItem: true,
-		costFactor: 0.5,
 		describe: (g, c) => `Discard ${g}× ${c?.itemName ?? 'a specific item'}`
 	},
 	{
@@ -864,12 +898,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#8e44ad',
 		unit: 'times',
 		requires: 'items',
-		difficulties: ['easy', 'medium', 'hard'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 2, hard: 3 },
-		maxGoal: { easy: 2, medium: 3, hard: 6 },
-		baselineShare: RATIO,
-		weeklyScale: 2.5,
 		targetsItem: true,
 		describe: (g, c) => `Use ${g}× ${c?.itemName ?? 'a specific item'}`
 	},
@@ -881,12 +910,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#245f73',
 		unit: 'items',
 		requires: 'items',
-		difficulties: ['easy', 'medium', 'hard'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 2, hard: 3 },
-		maxGoal: { easy: 2, medium: 3, hard: 5 },
-		baselineShare: RATIO,
-		weeklyScale: 2.5,
 		targetsItem: true,
 		describe: (g, c) => `Buy ${g}× ${c?.itemName ?? 'a specific item'} from the shop`
 	},
@@ -898,14 +922,8 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#1f8a4c',
 		unit: 'times',
 		requires: 'items',
-		difficulties: ['medium', 'hard'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 1, hard: 3 },
-		maxGoal: { easy: 2, medium: 3, hard: 5 },
-		baselineShare: RATIO,
-		weeklyScale: 2.5,
 		targetsItem: true,
-		costFactor: 1.5,
 		describe: (g, c) => `Successfully use ${g}× ${c?.itemName ?? 'a specific item'}`
 	},
 	{
@@ -916,14 +934,8 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#5a9eb4',
 		unit: 'members',
 		requires: 'items',
-		difficulties: ['medium', 'hard'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 2, hard: 3 },
-		maxGoal: { easy: 2, medium: 3, hard: 6 },
-		baselineShare: RATIO,
-		weeklyScale: 2.5,
 		costEffect: 'spy',
-		costFactor: 1.5,
 		describe: (g) => `Spy on ${g} member${g === 1 ? '' : 's'} without getting caught`
 	},
 	{
@@ -934,12 +946,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#d35400',
 		unit: 'members',
 		requires: 'items',
-		difficulties: ['medium', 'hard'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 1, hard: 2 },
-		maxGoal: { easy: 1, medium: 2, hard: 3 },
-		baselineShare: RATIO,
-		weeklyScale: 2,
 		costEffect: 'bomb',
 		costExtraEffect: 'disguise',
 		describe: (g) => `Bomb ${g} member${g === 1 ? '' : 's'} while disguised`
@@ -952,14 +959,8 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#c0392b',
 		unit: 'members',
 		requires: 'items',
-		difficulties: ['medium', 'hard'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 1, hard: 2 },
-		maxGoal: { easy: 1, medium: 2, hard: 3 },
-		baselineShare: RATIO,
-		weeklyScale: 2,
 		costEffect: 'steal',
-		costFactor: 1.6,
 		costExtraEffect: 'disguise',
 		describe: (g) => `Steal from ${g} member${g === 1 ? '' : 's'} while disguised`
 	},
@@ -971,12 +972,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#6d5bd0',
 		unit: 'members',
 		requires: 'items',
-		difficulties: ['medium', 'hard'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 2, hard: 3 },
-		maxGoal: { easy: 2, medium: 3, hard: 5 },
-		baselineShare: RATIO,
-		weeklyScale: 2.5,
 		costEffect: 'steal|bomb|leech',
 		costExtraEffect: 'disguise',
 		describe: (g) => `Attack ${g} member${g === 1 ? '' : 's'} while disguised`
@@ -989,12 +985,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#1f8a4c',
 		unit: 'items',
 		requires: 'items',
-		difficulties: ['easy', 'medium'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 2, hard: 4 },
-		maxGoal: { easy: 2, medium: 4, hard: 6 },
-		baselineShare: RATIO,
-		weeklyScale: 3,
 		costEffect: '*',
 		costExtraEffect: 'luck',
 		describe: (g) => `Buy ${g} item${g === 1 ? '' : 's'} while Luck is active`
@@ -1007,12 +998,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#c8911a',
 		unit: 'items',
 		requires: 'items',
-		difficulties: ['easy', 'medium'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 2, hard: 4 },
-		maxGoal: { easy: 2, medium: 4, hard: 6 },
-		baselineShare: RATIO,
-		weeklyScale: 3,
 		costEffect: '*',
 		costExtraEffect: 'luck',
 		describe: (g) => `Use ${g} item${g === 1 ? '' : 's'} while Luck is active`
@@ -1025,14 +1011,8 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#b5651d',
 		unit: 'members',
 		requires: 'items',
-		difficulties: ['medium', 'hard'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 1, hard: 2 },
-		maxGoal: { easy: 1, medium: 2, hard: 4 },
-		baselineShare: RATIO,
-		weeklyScale: 2.5,
 		costEffect: 'steal|bomb|leech',
-		costFactor: 1.4,
 		costExtraEffect: 'luck',
 		describe: (g) => `Land ${g} attack${g === 1 ? '' : 's'} while Luck is active`
 	},
@@ -1044,14 +1024,8 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#1f8a4c',
 		unit: 'rounds',
 		requires: 'minigames',
-		difficulties: ['easy', 'medium'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 3, hard: 6 },
-		maxGoal: { easy: 3, medium: 6, hard: 12 },
-		baselineShare: RATIO,
-		weeklyScale: 3,
 		costEffect: '*',
-		costFactor: 0.15,
 		costExtraEffect: 'luck',
 		describe: (g) => `Gamble ${g} time${g === 1 ? '' : 's'} with Luck active`
 	},
@@ -1063,14 +1037,8 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#c8911a',
 		unit: 'wins',
 		requires: 'minigames',
-		difficulties: ['medium', 'hard'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 1, hard: 3 },
-		maxGoal: { easy: 2, medium: 3, hard: 5 },
-		baselineShare: RATIO,
-		weeklyScale: 2.5,
 		costEffect: '*',
-		costFactor: 0.4,
 		costExtraEffect: 'luck',
 		describe: (g) => `Win ${g} gamble${g === 1 ? '' : 's'} with Luck active`
 	},
@@ -1082,14 +1050,8 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#b5651d',
 		unit: 'members',
 		requires: 'items',
-		difficulties: ['medium', 'hard'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 1, hard: 2 },
-		maxGoal: { easy: 1, medium: 2, hard: 3 },
-		baselineShare: RATIO,
-		weeklyScale: 2,
 		costEffect: 'steal|bomb|leech',
-		costFactor: 1.6,
 		describe: (g) => `Collect ${g} bount${g === 1 ? 'y' : 'ies'} by robbing a wanted member`
 	},
 	{
@@ -1100,12 +1062,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#3d3d5c',
 		unit: 'minutes',
 		requires: 'items',
-		difficulties: ['easy', 'medium', 'hard'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 2, hard: 3 },
-		maxGoal: { easy: 1, medium: 3, hard: 5 },
-		baselineShare: RATIO,
-		weeklyScale: 2.5,
 		durationEffect: 'disguise',
 		describe: (g) => `Stay disguised for ${g.toLocaleString()} minutes in total`
 	},
@@ -1117,12 +1074,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#8e44ad',
 		unit: 'minutes',
 		requires: 'items',
-		difficulties: ['easy', 'medium', 'hard'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 2, hard: 3 },
-		maxGoal: { easy: 1, medium: 3, hard: 5 },
-		baselineShare: RATIO,
-		weeklyScale: 2.5,
 		durationEffect: 'boost',
 		describe: (g) => `Keep a Boost running for ${g.toLocaleString()} minutes in total`
 	},
@@ -1134,12 +1086,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#2f6f9f',
 		unit: 'minutes',
 		requires: 'items',
-		difficulties: ['easy', 'medium', 'hard'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 2, hard: 3 },
-		maxGoal: { easy: 1, medium: 3, hard: 5 },
-		baselineShare: RATIO,
-		weeklyScale: 2.5,
 		durationEffect: 'shield',
 		describe: (g) => `Stay shielded for ${g.toLocaleString()} minutes in total`
 	},
@@ -1151,12 +1098,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#1f8a4c',
 		unit: 'minutes',
 		requires: 'items',
-		difficulties: ['easy', 'medium', 'hard'],
 		baselineKey: null,
-		minGoal: { easy: 1, medium: 2, hard: 3 },
-		maxGoal: { easy: 1, medium: 3, hard: 5 },
-		baselineShare: RATIO,
-		weeklyScale: 2.5,
 		durationEffect: 'luck',
 		describe: (g) => `Keep Luck active for ${g.toLocaleString()} minutes in total`
 	},
@@ -1168,13 +1110,8 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#1f8a4c',
 		unit: 'members',
 		requires: 'leveling',
-		difficulties: ['easy', 'medium', 'hard'],
 		baselineKey: null,
 		eligibilityKey: 'voice_minutes_active',
-		minGoal: { easy: 1, medium: 2, hard: 4 },
-		maxGoal: { easy: 2, medium: 3, hard: 6 },
-		baselineShare: RATIO,
-		weeklyScale: 1.5,
 		describe: (g) => `Be in voice with ${g} friend${g === 1 ? '' : 's'} earning XP alongside you`
 	},
 	{
@@ -1185,13 +1122,8 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#3a9e8f',
 		unit: 'xp',
 		requires: 'leveling',
-		difficulties: ['easy', 'medium', 'hard'],
 		baselineKey: 'xp_with_friends',
 		eligibilityKey: 'voice_minutes_active',
-		minGoal: { easy: 300, medium: 1200, hard: 4000 },
-		maxGoal: { easy: 1500, medium: 6000, hard: 20000 },
-		baselineShare: { easy: 0.08, medium: 0.2, hard: 0.45 },
-		weeklyScale: 3,
 		describe: (g) => `Earn ${g.toLocaleString()} XP while friends are with you`
 	},
 	{
@@ -1202,13 +1134,8 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#5a9eb4',
 		unit: 'times',
 		requires: 'leveling',
-		difficulties: ['easy', 'medium'],
 		baselineKey: 'friend_ticks',
 		eligibilityKey: 'voice_minutes_active',
-		minGoal: { easy: 3, medium: 10, hard: 25 },
-		maxGoal: { easy: 12, medium: 30, hard: 60 },
-		baselineShare: RATIO,
-		weeklyScale: 3,
 		describe: (g) => `Pick up the friend bonus ${g} times`
 	},
 	{
@@ -1219,12 +1146,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#7a7f87',
 		unit: 'xp',
 		requires: 'leveling',
-		difficulties: ['medium', 'hard'],
 		baselineKey: 'friend_ticks',
-		minGoal: { easy: 500, medium: 2000, hard: 6000 },
-		maxGoal: { easy: 2000, medium: 8000, hard: 25000 },
-		baselineShare: { easy: 0.1, medium: 0.25, hard: 0.55 },
-		weeklyScale: 3,
 		describe: (g) => `Earn ${g.toLocaleString()} XP with no Boost and no friend bonus`
 	},
 	{
@@ -1235,13 +1157,8 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#5c6470',
 		unit: 'xp',
 		requires: 'leveling',
-		difficulties: ['medium', 'hard'],
 		baselineKey: 'xp_solo_voice',
 		eligibilityKey: 'voice_minutes_active',
-		minGoal: { easy: 300, medium: 1200, hard: 4000 },
-		maxGoal: { easy: 1500, medium: 5000, hard: 15000 },
-		baselineShare: { easy: 0.07, medium: 0.18, hard: 0.4 },
-		weeklyScale: 3,
 		describe: (g) => `Earn ${g.toLocaleString()} XP in voice with no Boost or friend bonus`
 	},
 	{
@@ -1252,13 +1169,8 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#6d5bd0',
 		unit: 'xp',
 		requires: 'leveling',
-		difficulties: ['medium', 'hard'],
 		baselineKey: 'xp_solo_media',
 		eligibilityKey: 'voice_minutes_video',
-		minGoal: { easy: 300, medium: 1000, hard: 3000 },
-		maxGoal: { easy: 1200, medium: 4000, hard: 12000 },
-		baselineShare: { easy: 0.06, medium: 0.15, hard: 0.35 },
-		weeklyScale: 3,
 		describe: (g) => `Earn ${g.toLocaleString()} XP on camera or stream with no Boost`
 	},
 	{
@@ -1269,13 +1181,8 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#245f73',
 		unit: 'xp',
 		requires: 'leveling',
-		difficulties: ['easy', 'medium'],
 		baselineKey: 'xp_solo_chat',
 		eligibilityKey: 'chat_total',
-		minGoal: { easy: 200, medium: 800, hard: 3000 },
-		maxGoal: { easy: 1000, medium: 3500, hard: 12000 },
-		baselineShare: { easy: 0.06, medium: 0.16, hard: 0.35 },
-		weeklyScale: 3,
 		describe: (g) => `Earn ${g.toLocaleString()} XP from chat with no Boost active`
 	},
 	{
@@ -1286,12 +1193,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		accent: '#a1343c',
 		unit: 'xp',
 		requires: 'leveling',
-		difficulties: ['medium', 'hard'],
 		baselineKey: 'xp_unleeched',
-		minGoal: { easy: 500, medium: 2000, hard: 6000 },
-		maxGoal: { easy: 2000, medium: 8000, hard: 25000 },
-		baselineShare: { easy: 0.1, medium: 0.28, hard: 0.6 },
-		weeklyScale: 3,
 		describe: (g) => `Earn ${g.toLocaleString()} XP without anyone leeching you`
 	}
 ];
@@ -1307,7 +1209,6 @@ export const DIFFICULTY_META: Record<TaskDifficulty, { label: string; accent: st
 export const DAILY_DIFFICULTY_PLAN: TaskDifficulty[] = ['easy', 'easy', 'easy', 'medium', 'medium', 'medium', 'hard', 'hard', 'hard'];
 export const WEEKLY_DIFFICULTY_PLAN: TaskDifficulty[] = ['hard', 'hard', 'hard', 'hard', 'hard', 'hard', 'hard', 'hard', 'hard'];
 
-export const WEEKLY_GOAL_MULTIPLIER = 5.5;
 export const WEEKLY_REWARD_MULTIPLIER = 6;
 
 export function dayKeyFor(nowMs: number, tzOffsetMin = 0): number {
@@ -1365,10 +1266,20 @@ export type TaskEligibility = {
 	activeDays: number;
 	effectCosts?: Record<string, number>;
 	medianItemCost?: number;
-	catalog?: { id: number; cost: number; effectType: string; durationMinutes?: number }[];
+	catalog?: {
+		id: number;
+		cost: number;
+		effectType: string;
+		durationMinutes?: number;
+		cooldownMinutes?: number;
+		immunityMinutes?: number;
+		successChance?: number;
+	}[];
 	effectDurations?: Record<string, number>;
 	recentDaily?: Partial<Record<TaskMetric, number>>;
+	recentPeak?: Partial<Record<TaskMetric, number>>;
 	levelingRates?: LevelingRates;
+	memberCount?: number;
 };
 
 export const RECENT_WINDOW_DAYS = 7;
@@ -1380,11 +1291,45 @@ export function taskCapacity(def: TaskDefinition, elig: TaskEligibility, period:
 	return Math.round((serverEarnRate(elig, period) * ACHIEVABLE_SHARE) / unit);
 }
 
-export function isViableFor(def: TaskDefinition, difficulty: TaskDifficulty, elig: TaskEligibility, period: TaskPeriod): boolean {
+export function historyMetricsFor(elig: TaskEligibility): TaskMetric[] {
+	const wanted = new Set<TaskMetric>();
+	for (const def of TASK_DEFINITIONS) {
+		if (!isEligible(def, elig)) continue;
+		if (def.targetsItem) continue;
+		wanted.add(def.metric);
+	}
+	return [...wanted];
+}
+
+export function isViableFor(def: TaskDefinition, elig: TaskEligibility, period: TaskPeriod): boolean {
+	if (feasibleUsesInPeriod(def, elig, period) < 1) return false;
+
 	const capacity = taskCapacity(def, elig, period);
 	if (capacity == null) return true;
-	const scale = period === 'weekly' ? (def.weeklyScale ?? WEEKLY_GOAL_MULTIPLIER) : 1;
-	return capacity >= Math.round(def.minGoal[difficulty] * scale);
+	return capacity >= 1;
+}
+
+export function canReachDifficulty(def: TaskDefinition, difficulty: TaskDifficulty, elig: TaskEligibility, period: TaskPeriod): boolean {
+	const rate = serverEarnRate(elig, period);
+	if (rate <= 0) return true;
+
+	const feasible = feasibleUsesInPeriod(def, elig, period);
+	const ceiling = Number.isFinite(feasible) ? feasible : maxMinuteGoal(period) * PERIOD_MINUTES.daily;
+	const maxEffort = taskEffortXp(def, ceiling, elig, period, maxTargetCost(elig));
+	if (maxEffort / rate < EFFORT_BANDS[difficulty]) return false;
+
+	const minEffort = taskEffortXp(def, 1, elig, period, minTargetCost(elig));
+	return gradeDifficulty(minEffort, elig, period) === difficulty || minEffort / rate < EFFORT_BANDS[difficulty];
+}
+
+function minTargetCost(elig: TaskEligibility): number {
+	const costs = (elig.catalog ?? []).map((c) => Number(c.cost) || 0).filter((c) => c > 0);
+	return costs.length > 0 ? Math.min(...costs) : 0;
+}
+
+function maxTargetCost(elig: TaskEligibility): number {
+	const costs = (elig.catalog ?? []).map((c) => Number(c.cost) || 0).filter((c) => c > 0);
+	return costs.length > 0 ? Math.max(...costs) : 0;
 }
 
 export const MEASURED_METRICS: TaskMetric[] = [
@@ -1443,11 +1388,11 @@ export function taskCostXp(def: TaskDefinition, goal: number, elig: TaskEligibil
 		return Math.round(unit * Math.ceil(amount / per)) + extra;
 	}
 
-	if (def.costIsGoal) return Math.round(amount * (def.costFactor ?? 1)) + extra;
+	if (def.costIsGoal) return Math.round(amount) + extra;
 
 	if (def.targetsItem) {
 		const unit = Number(targetCost) || 0;
-		return (unit > 0 ? Math.round(unit * amount * (def.costFactor ?? 1)) : 0) + extra;
+		return (unit > 0 ? Math.round(unit * amount) : 0) + extra;
 	}
 
 	if (!def.costEffect) return extra;
@@ -1455,8 +1400,8 @@ export function taskCostXp(def: TaskDefinition, goal: number, elig: TaskEligibil
 	const unit = effectUnitCost(def.costEffect, elig);
 	if (unit <= 0) return extra;
 
-	const units = def.costFixedUnits ?? amount;
-	return Math.round(unit * units * (def.costFactor ?? 1)) + extra;
+	const units = def.costFixedUnits ?? (def.unit === 'xp' ? 1 : amount);
+	return Math.round(unit * units) + extra;
 }
 
 export type LevelingRates = {
@@ -1483,7 +1428,12 @@ export function serverEarnRate(elig: TaskEligibility, period: TaskPeriod): numbe
 	const chat = Math.max(0, Number(r.messageXp) || 0) * REFERENCE_CHAT_MESSAGES;
 	const voice = Math.max(0, Number(r.voiceXpPerMinute) || 0) * REFERENCE_VOICE_MINUTES;
 	const perDay = chat + voice;
-	return perDay * (period === 'weekly' ? 7 : 1);
+
+	const d = DEFAULT_LEVELING_RATES;
+	const fallback = d.messageXp * REFERENCE_CHAT_MESSAGES + d.voiceXpPerMinute * REFERENCE_VOICE_MINUTES;
+	const daily = perDay > 0 ? perDay : fallback;
+
+	return daily * (period === 'weekly' ? 7 : 1);
 }
 
 export function metricUnitXp(def: TaskDefinition, elig: TaskEligibility): number {
@@ -1529,6 +1479,197 @@ export function maxUsesInPeriod(durationMinutes: number, period: TaskPeriod): nu
 	return Math.max(1, Math.floor(PERIOD_MINUTES[period] / per));
 }
 
+function effectItems(effectKey: string | undefined, elig: TaskEligibility) {
+	if (!effectKey) return [];
+	const wanted = effectKey.split('|');
+	return (elig.catalog ?? []).filter((c) => wanted.includes(c.effectType) && (Number(c.cost) || 0) > 0);
+}
+
+export function effectSuccessChance(effectKey: string | undefined, elig: TaskEligibility): number {
+	const items = effectItems(effectKey, elig);
+	if (items.length === 0) return 100;
+	const best = Math.max(...items.map((c) => Number(c.successChance ?? 100)));
+	return Math.max(1, Math.min(100, best));
+}
+
+export const DAILY_ACTION_CAP = 50;
+
+export const COUNTED_ACTION_UNITS = new Set(['items', 'members', 'rounds', 'times', 'wins', 'trades']);
+
+export const DISCARDABLE_CAP = 50;
+
+export const PEAK_CONCURRENCY_CAP = 5;
+
+export const GRADE_MATCH_ATTEMPTS = 12;
+
+export const PEAK_METRICS = new Set<TaskMetric>(['friends_peak_voice']);
+
+export const INFLICTED_METRICS = new Set<TaskMetric>([
+	'attacked_by_any',
+	'stolen_from',
+	'bombed_by',
+	'leeched_by',
+	'attacks_survived',
+	'xp_lost_to_attacks',
+	'xp_refunded',
+	'bounty_paid_out',
+	'attack_failed',
+	'leech_failed'
+]);
+
+export const UNMEASURED_INFLICTED_GOAL: Record<TaskDifficulty, number> = { easy: 1, medium: 2, hard: 3 };
+
+export const INFLICTED_XP_SHARE = 0.25;
+
+export const XP_YIELD_SHARE = 0.3;
+
+export function isInflicted(def: TaskDefinition): boolean {
+	return INFLICTED_METRICS.has(def.metric);
+}
+
+export function isPeakMetric(def: TaskDefinition): boolean {
+	return PEAK_METRICS.has(def.metric);
+}
+
+export function feasibleUsesInPeriod(def: TaskDefinition, elig: TaskEligibility, period: TaskPeriod): number {
+	const minutes = PERIOD_MINUTES[period];
+	const effectKey = def.costEffect && def.costEffect !== '*' ? def.costEffect : def.durationEffect;
+	const items = effectItems(effectKey, elig);
+
+	const days = Math.max(1, Math.round(minutes / PERIOD_MINUTES.daily));
+
+	let cap = Infinity;
+	if (COUNTED_ACTION_UNITS.has(def.unit)) cap = DAILY_ACTION_CAP * days;
+
+	if (def.unit === 'items' && !def.targetsItem) {
+		cap = Math.min(cap, DISCARDABLE_CAP);
+	}
+
+	for (const key of ['cooldownMinutes', 'durationMinutes'] as const) {
+		const gates = items.map((c) => Number(c[key]) || 0).filter((v) => v > 0);
+		if (gates.length > 0) cap = Math.min(cap, Math.max(1, Math.floor(minutes / Math.min(...gates))));
+	}
+
+	if (isPeakMetric(def)) {
+		const others = Math.max(0, (Number(elig.memberCount) || 0) - 1);
+		return Math.max(1, Math.min(cap, others, PEAK_CONCURRENCY_CAP));
+	}
+
+	if (def.unit === 'members') {
+		const others = Math.max(0, (Number(elig.memberCount) || 0) - 1);
+		if (others > 0) {
+			const immunities = items.map((c) => Number(c.immunityMinutes) || 0).filter((v) => v > 0);
+			const perTarget = immunities.length > 0 ? Math.max(1, Math.floor(minutes / Math.min(...immunities))) : days;
+			cap = Math.min(cap, others * perTarget);
+		}
+	}
+
+	return cap;
+}
+
+export const SPEND_BUDGET_SHARE = 0.35;
+export const DIFFICULTY_STRETCH: Record<TaskDifficulty, number> = { easy: 1, medium: 2, hard: 3 };
+
+export const TIER_EFFORT_WEIGHT: Record<RarityTier, number> = {
+	common: 1,
+	uncommon: 0.85,
+	rare: 0.7,
+	epic: 0.55,
+	legendary: 0.4,
+	mythic: 0.3
+};
+
+export function taskItemTier(def: TaskDefinition, elig: TaskEligibility, targetCost = 0): RarityTier {
+	const costs = (elig.catalog ?? []).map((c) => Number(c.cost) || 0).filter((c) => c > 0);
+	if (costs.length === 0) return 'common';
+
+	const cost = targetCost > 0 ? targetCost : effectUnitCost(def.costEffect || def.durationEffect || '*', elig);
+	if (!(cost > 0)) return 'common';
+
+	return rarityTierFor(cost, costs);
+}
+
+export function spendBudget(def: TaskDefinition, elig: TaskEligibility, period: TaskPeriod): number {
+	const earn = serverEarnRate(elig, period);
+	const spends = !!(def.costEffect || def.durationEffect || def.targetsItem || def.costIsGoal);
+	if (!spends) return earn;
+
+	const banked = Math.max(0, Number(elig.baselines?.xp_gained) || 0);
+	const share = banked * SPEND_BUDGET_SHARE * (period === 'weekly' ? 1 : 1 / 7);
+
+	return Math.min(Math.max(earn, share), earn * SPEND_BUDGET_EARN_CAP);
+}
+
+export const SPEND_BUDGET_EARN_CAP = 3;
+
+export const DIFFICULTY_RATE_SHARE: Record<TaskDifficulty, number> = { easy: 0.35, medium: 0.8, hard: 1.35 };
+
+export const RATE_CONFIDENCE_MIN = 3;
+
+export function measuredRate(def: TaskDefinition, elig: TaskEligibility, period: TaskPeriod): number | null {
+	const observed = Number((elig.recentDaily ?? {})[def.metric]);
+	if (!Number.isFinite(observed) || observed <= 0) return null;
+
+	const days = Math.max(1, Math.round(PERIOD_MINUTES[period] / PERIOD_MINUTES.daily));
+	return observed * days;
+}
+
+export function goalFromHistory(def: TaskDefinition, difficulty: TaskDifficulty, elig: TaskEligibility, period: TaskPeriod): number | null {
+	if (isPeakMetric(def)) {
+		const peak = Number((elig.recentPeak ?? {})[def.metric]);
+		if (!Number.isFinite(peak) || peak <= 0) return null;
+		const stretch = difficulty === 'easy' ? 0 : difficulty === 'medium' ? 1 : 2;
+		return Math.max(1, Math.round(peak) + stretch);
+	}
+
+	const rate = measuredRate(def, elig, period);
+	if (rate === null) return null;
+
+	const target = rate * DIFFICULTY_RATE_SHARE[difficulty];
+	if (rate < RATE_CONFIDENCE_MIN && !COUNTED_ACTION_UNITS.has(def.unit)) return null;
+
+	return Math.max(1, Math.round(target));
+}
+
+export function deriveGoal(def: TaskDefinition, difficulty: TaskDifficulty, elig: TaskEligibility, period: TaskPeriod, targetCost = 0): number {
+	const fromHistory = goalFromHistory(def, difficulty, elig, period);
+	if (fromHistory !== null) {
+		const feasible = feasibleUsesInPeriod(def, elig, period);
+		const payableMax = Math.max(1, Math.floor(rewardCeiling(elig) / (Math.max(1, taskEffortXp(def, 1, elig, period, targetCost)) * EFFORT_REWARD_MARGIN)));
+		return Math.max(1, Math.min(fromHistory, feasible, payableMax));
+	}
+
+	if (isInflicted(def)) {
+		const ladder = UNMEASURED_INFLICTED_GOAL[difficulty];
+		if (def.unit === 'xp') return Math.max(1, Math.round(serverEarnRate(elig, period) * EFFORT_BANDS[difficulty] * INFLICTED_XP_SHARE) || 1);
+		return Math.max(1, Math.min(ladder, feasibleUsesInPeriod(def, elig, period)));
+	}
+
+	if (def.unit === 'xp' && !def.costIsGoal && (def.costFixedUnits ?? 0) > 0) {
+		return Math.max(1, Math.round(serverEarnRate(elig, period) * EFFORT_BANDS[difficulty] * XP_YIELD_SHARE) || 1);
+	}
+
+	const budget = spendBudget(def, elig, period) * EFFORT_BANDS[difficulty];
+	if (budget <= 0) return 1;
+
+	const unitEffort = taskEffortXp(def, 1, elig, period, targetCost);
+	if (!(unitEffort > 0)) return 1;
+
+	const chance = def.costEffect ? effectSuccessChance(def.costEffect, elig) : 100;
+	const attemptsPerSuccess = 100 / chance;
+
+	const raw = budget / (unitEffort * attemptsPerSuccess);
+	const feasible = feasibleUsesInPeriod(def, elig, period);
+
+	const spends = !!(def.costEffect || def.durationEffect || def.targetsItem);
+	const weight = spends ? TIER_EFFORT_WEIGHT[taskItemTier(def, elig, targetCost)] : 1;
+	const floor = Math.max(1, Math.round(DIFFICULTY_STRETCH[difficulty] * weight));
+
+	const payable = Math.max(1, Math.floor(rewardCeiling(elig) / (unitEffort * EFFORT_REWARD_MARGIN)));
+
+	return Math.max(1, Math.min(Math.max(Math.round(raw), floor), feasible, payable));
+}
+
 export function clampGoalToPeriod(def: TaskDefinition, goal: number, period: TaskPeriod, targetItemDuration = 0): number {
 	const g = Math.max(1, Math.round(Number(goal) || 1));
 	if (def.unit === 'minutes') return Math.max(1, Math.min(g, maxMinuteGoal(period)));
@@ -1548,8 +1689,45 @@ export function taskGrindXp(def: TaskDefinition, goal: number, elig: TaskEligibi
 
 export const EFFORT_GRIND_CAP = 60;
 
+export const ACTION_EFFORT_MINUTES: Record<string, number> = {
+	items: 1,
+	rounds: 1,
+	trades: 3,
+	times: 5,
+	wins: 5,
+	members: 8
+};
+
+export function effortMinuteWorth(elig: TaskEligibility): number {
+	const r = elig.levelingRates ?? DEFAULT_LEVELING_RATES;
+	const voice = Math.max(0, Number(r.voiceXpPerMinute) || 0);
+	if (voice > 0) return voice;
+
+	const chatPerMinute = Math.max(0, Number(r.messageXp) || 0) * 4;
+	if (chatPerMinute > 0) return chatPerMinute;
+
+	return DEFAULT_LEVELING_RATES.voiceXpPerMinute;
+}
+
+export function actionEffortXp(def: TaskDefinition, goal: number, elig: TaskEligibility): number {
+	const minuteWorth = effortMinuteWorth(elig);
+	if (minuteWorth <= 0) return 0;
+
+	if (def.unit === 'minutes') {
+		const elapsed = Math.max(0, Number(goal) || 0);
+		const grind = taskGrindXp(def, elapsed, elig, 'daily');
+		return Math.max(0, Math.round(elapsed * minuteWorth) - grind);
+	}
+
+	const perAction = ACTION_EFFORT_MINUTES[def.unit];
+	if (!perAction) return 0;
+
+	const count = isPeakMetric(def) ? 1 : Math.max(0, Number(goal) || 0);
+	return Math.round(count * perAction * minuteWorth);
+}
+
 export function taskEffortXp(def: TaskDefinition, goal: number, elig: TaskEligibility, period: TaskPeriod, targetCost = 0): number {
-	return taskCostXp(def, goal, elig, targetCost) + taskGrindXp(def, goal, elig, period);
+	return taskCostXp(def, goal, elig, targetCost) + taskGrindXp(def, goal, elig, period) + actionEffortXp(def, goal, elig);
 }
 
 export const EFFORT_BANDS: Record<TaskDifficulty, number> = { easy: 0.18, medium: 0.55, hard: 1 };
@@ -1571,7 +1749,7 @@ export function goalForReward(
 	const start = Math.max(1, Math.round(Number(baseGoal) || 1));
 	if (worth <= 0) return clampGoalToPeriod(def, start, period, targetItemDurationFor(targetItemId, elig));
 
-	const earned = Math.round(worth / REWARD_MARGIN[difficulty]);
+	const earned = Math.round(worth / EFFORT_REWARD_MARGIN);
 
 	let unitEffort = taskEffortXp(def, start, elig, period, targetCost) / start;
 
@@ -1580,7 +1758,9 @@ export function goalForReward(
 	if (!Number.isFinite(unitEffort) || unitEffort <= 0) {
 		const rate = serverEarnRate(elig, period);
 		if (rate <= 0) return clampGoalToPeriod(def, start, period, durCap);
-		unitEffort = (rate * EFFORT_BANDS[difficulty]) / Math.max(1, def.maxGoal[difficulty]);
+		const feasible = feasibleUsesInPeriod(def, elig, period);
+		const spread = Number.isFinite(feasible) ? Math.max(1, feasible) : Math.max(1, start);
+		unitEffort = (rate * EFFORT_BANDS[difficulty]) / spread;
 	}
 	if (unitEffort <= 0) return clampGoalToPeriod(def, start, period, durCap);
 
@@ -1615,11 +1795,13 @@ export function taskValueXp(
 	const streakBonus = 1 + Math.min(1, Math.max(0, streak) * 0.02);
 
 	const rate = serverEarnRate(elig, period);
-	let worth = Math.round((grind + spend) * REWARD_MARGIN[difficulty] * streakBonus);
+	const effort = grind + spend;
 
-	if (worth <= 0) worth = Math.round(rate * EFFORT_BANDS[difficulty] * REWARD_MARGIN[difficulty] * streakBonus);
+	let worth = Math.round(effort * EFFORT_REWARD_MARGIN);
 
-	return Math.max(XP_REWARD_MIN, Math.min(XP_REWARD_MAX, Math.max(worth, spend)));
+	if (effort <= 0) worth = Math.round(rate * EFFORT_BANDS[difficulty] * EFFORT_REWARD_MARGIN * streakBonus);
+
+	return Math.max(XP_REWARD_MIN, Math.min(rewardCeiling(elig), Math.max(worth, spend)));
 }
 
 function isEligible(def: TaskDefinition, elig: TaskEligibility): boolean {
@@ -1646,53 +1828,24 @@ export function goalFor(
 	period: TaskPeriod = 'daily',
 	targetCost = 0
 ): number {
-	const scale = period === 'weekly' ? (def.weeklyScale ?? WEEKLY_GOAL_MULTIPLIER) : 1;
+	const derived = deriveGoal(def, difficulty, elig, period, targetCost);
 
 	if (def.durationEffect) {
 		const per = effectDuration(def.durationEffect, elig);
 		if (per <= 0) return 0;
-		const lo = Math.max(1, Math.round(def.minGoal[difficulty] * scale));
-		const hi = Math.max(lo, Math.round(def.maxGoal[difficulty] * scale));
-		const units = lo + Math.floor(rand() * (hi - lo + 1));
-		return clampGoalToPeriod(def, units * per, period);
-	}
-
-	const min = Math.round(def.minGoal[difficulty] * scale);
-	const max = Math.round(def.maxGoal[difficulty] * scale);
-
-	let target = min;
-	const capacity = taskCapacity(def, elig, period);
-	if (capacity != null && capacity > 0) {
-		target = capacity * def.baselineShare[difficulty] * scale;
-	} else {
-		target = min + (max - min) * rand() * 0.6;
+		const uses = Math.max(1, Math.min(derived, feasibleUsesInPeriod(def, elig, period)));
+		return clampGoalToPeriod(def, uses * per, period);
 	}
 
 	const jitter = 0.85 + rand() * 0.3;
-	let scaled = Math.round(target * jitter);
+	let scaled = Math.round(derived * jitter);
 
-	if (max >= 1000) {
-		const step = max >= 10000 ? 500 : 100;
+	if (derived >= 1000) {
+		const step = derived >= 10000 ? 500 : 100;
 		scaled = Math.round(scaled / step) * step;
 	}
 
-	let goal = Math.max(min, Math.min(max, scaled || min));
-
-	if (capacity != null && capacity >= min) goal = Math.min(goal, capacity);
-
-	const unitCost = def.costIsGoal
-		? (def.costFactor ?? 1)
-		: def.targetsItem
-			? (Number(targetCost) || 0) * (def.costFactor ?? 1)
-			: def.costEffect
-				? effectUnitCost(def.costEffect, elig) * (def.costFactor ?? 1)
-				: 0;
-	if (unitCost > 0 && !def.costFixedUnits) {
-		const affordable = Math.floor(XP_REWARD_MAX / (REWARD_MARGIN[difficulty] * unitCost));
-		if (affordable >= 1) goal = Math.min(goal, affordable);
-	}
-
-	return Math.max(1, goal);
+	return Math.max(1, Math.min(scaled || derived, feasibleUsesInPeriod(def, elig, period)));
 }
 
 export type GeneratedTask = {
@@ -1721,71 +1874,57 @@ export function generateDailyTasks(
 	const used = new Set<string>();
 
 	for (let slot = 0; slot < slots; slot++) {
-		const wanted = plan[slot];
+		const difficulty = plan[slot];
 		const rand = mulberry32(hashSeed(period, memberId, serverId, periodKey, slot));
 
-		let candidates = pool.filter((d) => d.difficulties.includes(wanted) && !used.has(d.id) && isViableFor(d, wanted, elig, period));
-		let difficulty = wanted;
+		const available = pool.filter((d) => !used.has(d.id) && isViableFor(d, elig, period));
+		if (available.length === 0) break;
 
-		if (candidates.length === 0) {
-			const fallback = pool.filter((d) => !used.has(d.id) && d.difficulties.some((diff) => isViableFor(d, diff, elig, period)));
-			if (fallback.length === 0) break;
-			const fb = fallback[Math.floor(rand() * fallback.length) % fallback.length];
-			const options = fb.difficulties.filter((diff) => isViableFor(fb, diff, elig, period));
-			difficulty = options.includes(wanted) ? wanted : options[options.length - 1];
-			candidates = [fb];
-		}
+		const gradeable = available.filter((d) => canReachDifficulty(d, difficulty, elig, period));
+		const candidates = gradeable.length > 0 ? gradeable : available;
 
-		const pick = candidates[Math.floor(rand() * candidates.length) % candidates.length];
-		used.add(pick.id);
+		const build = (pick: TaskDefinition) => {
+			let targetItemId: number | null = null;
+			let targetCost = 0;
+			if (pick.targetsItem) {
+				const shop = elig.catalog ?? [];
+				const chosen = shop[Math.floor(rand() * shop.length) % shop.length];
+				if (chosen) {
+					targetItemId = chosen.id;
+					targetCost = Number(chosen.cost) || 0;
+				}
+			}
 
-		let targetItemId: number | null = null;
-		let targetCost = 0;
-		if (pick.targetsItem) {
-			const shop = elig.catalog ?? [];
-			const chosen = shop[Math.floor(rand() * shop.length) % shop.length];
-			if (chosen) {
-				targetItemId = chosen.id;
-				targetCost = Number(chosen.cost) || 0;
+			const goal = clampGoalToPeriod(pick, goalFor(pick, difficulty, elig, rand, period, targetCost), period, targetItemDurationFor(targetItemId, elig));
+			const effort = taskEffortXp(pick, goal, elig, period, targetCost);
+
+			return { slot, taskType: pick.id, difficulty, goal, targetItemId, effort };
+		};
+
+		let chosenTask: GeneratedTask | null = null;
+		for (let attempt = 0; attempt < GRADE_MATCH_ATTEMPTS && chosenTask === null; attempt++) {
+			const pick = candidates[Math.floor(rand() * candidates.length) % candidates.length];
+			const built = build(pick);
+			if (gradeDifficulty(built.effort ?? 0, elig, period) === difficulty) {
+				used.add(pick.id);
+				chosenTask = built;
 			}
 		}
 
-		const goal = clampGoalToPeriod(pick, goalFor(pick, difficulty, elig, rand, period, targetCost), period, targetItemDurationFor(targetItemId, elig));
+		if (chosenTask === null) {
+			const pick = candidates[Math.floor(rand() * candidates.length) % candidates.length];
+			used.add(pick.id);
+			chosenTask = build(pick);
+		}
 
-		out.push({
-			slot,
-			taskType: pick.id,
-			difficulty,
-			goal,
-			targetItemId,
-			effort: taskEffortXp(pick, goal, elig, period, targetCost)
-		});
+		out.push(chosenTask);
 	}
 
 	return regradeByEffort(out, elig, period);
 }
 
-function nearestDifficulty(wanted: TaskDifficulty, allowed: TaskDifficulty[]): TaskDifficulty {
-	const target = DIFFICULTY_META[wanted].weight;
-	return [...allowed].sort((a, b) => Math.abs(DIFFICULTY_META[a].weight - target) - Math.abs(DIFFICULTY_META[b].weight - target))[0];
-}
-
 function regradeByEffort(tasks: GeneratedTask[], elig: TaskEligibility, period: TaskPeriod): GeneratedTask[] {
-	if (tasks.length === 0) return tasks;
-
-	const plan = period === 'weekly' ? WEEKLY_DIFFICULTY_PLAN : DAILY_DIFFICULTY_PLAN;
-	const ranked = [...tasks].sort((a, b) => (a.effort ?? 0) - (b.effort ?? 0));
-	const quota = plan.slice(0, tasks.length).sort((a, b) => DIFFICULTY_META[a].weight - DIFFICULTY_META[b].weight);
-
-	for (let i = 0; i < ranked.length; i++) {
-		const slotted = quota[i] ?? gradeDifficulty(ranked[i].effort ?? 0, elig, period);
-		const allowed = TASK_BY_ID.get(ranked[i].taskType)?.difficulties ?? [];
-		const difficulty = allowed.length === 0 || allowed.includes(slotted) ? slotted : nearestDifficulty(slotted, allowed);
-		ranked[i] = { ...ranked[i], difficulty };
-	}
-
-	const bySlot = new Map(ranked.map((t) => [t.slot, t]));
-	return tasks.map((t) => bySlot.get(t.slot) ?? t);
+	return tasks.map((t) => ({ ...t, difficulty: gradeDifficulty(t.effort ?? 0, elig, period) }));
 }
 
 export type RewardPlan = { kind: 'xp'; xp: number } | { kind: 'item'; itemId: number; xp: 0 };
@@ -1793,7 +1932,13 @@ export type RewardPlan = { kind: 'xp'; xp: number } | { kind: 'item'; itemId: nu
 export const XP_REWARD_MIN = 1000;
 export const XP_REWARD_MAX = 20000000;
 
-export const REWARD_MARGIN: Record<TaskDifficulty, number> = { easy: 1.35, medium: 1.5, hard: 1.75 };
+export function rewardCeiling(elig: TaskEligibility): number {
+	const priced = (elig.catalog ?? []).map((c) => Number(c.cost) || 0).filter((c) => c > 0);
+	if (priced.length === 0) return XP_REWARD_MAX;
+	return Math.min(XP_REWARD_MAX, Math.round(Math.max(...priced) * EFFORT_REWARD_MARGIN));
+}
+
+export const EFFORT_REWARD_MARGIN = 1.5;
 
 function scaledBase(medianCost: number, factor: number): number {
 	const median = Math.max(0, Number(medianCost) || 0);
@@ -1842,6 +1987,60 @@ export function cheapestOf<T extends { cost: number }>(catalog: T[]): T[] {
 	return catalog.filter((c) => (Number(c.cost) || 0) === best);
 }
 
+export const LOGIN_RARITY_EXPONENT = 1.15;
+export const LOGIN_RARITY_MIN_CHANCE = 0.01;
+
+export type RarityTier = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'mythic';
+
+export const RARITY_TIERS: { id: RarityTier; label: string; minRatio: number; accent: string }[] = [
+	{ id: 'mythic', label: 'Mythic', minRatio: 500, accent: '#c0392b' },
+	{ id: 'legendary', label: 'Legendary', minRatio: 100, accent: '#c8911a' },
+	{ id: 'epic', label: 'Epic', minRatio: 25, accent: '#8e44ad' },
+	{ id: 'rare', label: 'Rare', minRatio: 8, accent: '#2b6cb0' },
+	{ id: 'uncommon', label: 'Uncommon', minRatio: 3, accent: '#1f8a4c' },
+	{ id: 'common', label: 'Common', minRatio: 0, accent: '#6b7a82' }
+];
+
+export function rarityTierFor(cost: number, costs: number[]): RarityTier {
+	const value = Number(cost) || 0;
+	const priced = costs.map((c) => Number(c) || 0).filter((c) => c > 0);
+	if (value <= 0 || priced.length === 0) return 'common';
+
+	const cheapest = Math.min(...priced);
+	const ratio = cheapest > 0 ? value / cheapest : 1;
+
+	for (const tier of RARITY_TIERS) {
+		if (ratio >= tier.minRatio) return tier.id;
+	}
+	return 'common';
+}
+
+export function rarityMeta(tier: RarityTier) {
+	return RARITY_TIERS.find((t) => t.id === tier) ?? RARITY_TIERS[RARITY_TIERS.length - 1];
+}
+
+export function pickWeightedByRarity<T extends { cost: number }>(catalog: T[], roll: number): T | null {
+	const priced = catalog.filter((c) => (Number(c.cost) || 0) > 0);
+	if (priced.length === 0) return null;
+
+	const cheapest = Math.min(...priced.map((c) => Number(c.cost) || 0));
+	const raw = priced.map((c) => Math.pow(cheapest / (Number(c.cost) || cheapest), LOGIN_RARITY_EXPONENT));
+	const rawTotal = raw.reduce((a, b) => a + b, 0);
+	if (!(rawTotal > 0)) return priced[0];
+
+	const floor = Math.min(LOGIN_RARITY_MIN_CHANCE, 1 / priced.length);
+	const headroom = 1 - floor * priced.length;
+	const weights = raw.map((w) => floor + (w / rawTotal) * headroom);
+	const total = weights.reduce((a, b) => a + b, 0);
+
+	let cursor = Math.min(0.9999999, Math.max(0, roll)) * total;
+	for (let i = 0; i < priced.length; i++) {
+		cursor -= weights[i];
+		if (cursor < 0) return priced[i];
+	}
+	return priced[priced.length - 1];
+}
+
 export function pickReward(
 	memberId: number,
 	periodKey: number,
@@ -1852,13 +2051,14 @@ export function pickReward(
 	period: TaskPeriod = 'daily',
 	minWorth = 0
 ): RewardPlan {
+	const ceiling = rewardCeiling({ catalog } as TaskEligibility);
 	const floor = Math.max(0, Math.round(Number(minWorth) || 0));
-	const worth = Math.max(XP_REWARD_MIN, floor, Math.min(XP_REWARD_MAX, Math.round(Number(value) || 0)));
+	const worth = Math.max(XP_REWARD_MIN, floor, Math.min(ceiling, Math.round(Number(value) || 0)));
 	const rand = mulberry32(hashSeed('reward', period, memberId, periodKey, slot));
 
 	if (catalog.length > 0 && rand() < TASK_ITEM_REWARD_CHANCE) {
-		const affordable = catalog.filter((c) => (Number(c.cost) || 0) >= Math.max(floor, worth * ITEM_VALUE_FLOOR));
-		const fair = affordable.filter((c) => (Number(c.cost) || 0) <= worth * ITEM_VALUE_CEILING);
+		const affordable = catalog.filter((c) => (Number(c.cost) || 0) >= worth * ITEM_VALUE_FLOOR);
+		const fair = affordable.filter((c) => (Number(c.cost) || 0) <= worth);
 
 		const pool = fair.length > 0 ? fair : cheapestOf(affordable);
 		if (pool.length > 0) {
@@ -1867,8 +2067,7 @@ export function pickReward(
 		}
 	}
 
-	const varied = worth * (1 + rand() * 0.35);
-	const xp = Math.max(XP_REWARD_MIN, floor, Math.min(XP_REWARD_MAX, Math.round(varied / 100) * 100));
+	const xp = Math.max(XP_REWARD_MIN, floor, Math.min(ceiling, Math.round(worth / 100) * 100));
 	return { kind: 'xp', xp };
 }
 
@@ -1892,19 +2091,8 @@ export function loginRewardFor(memberId: number, cycleIndex: number, day: number
 	const worth = Math.max(floor, Math.min(XP_REWARD_MAX, Math.round((base * weight) / 100) * 100));
 
 	if (catalog.length > 0 && rand() < LOGIN_ITEM_REWARD_CHANCE) {
-		const priced = catalog.filter((c) => (Number(c.cost) || 0) > 0);
-		const fair = priced.filter((c) => {
-			const v = Number(c.cost) || 0;
-			return v >= worth * ITEM_VALUE_FLOOR && v <= worth * ITEM_VALUE_CEILING;
-		});
-
-		const affordable = priced.filter((c) => (Number(c.cost) || 0) <= worth * ITEM_VALUE_CEILING);
-		const pool = fair.length > 0 ? fair : affordable.length > 0 ? priciestOf(affordable) : cheapestOf(priced);
-
-		if (pool.length > 0) {
-			const picked = pool[Math.floor(rand() * pool.length) % pool.length];
-			if (picked) return { day, kind: 'item', itemId: picked.id, jackpot };
-		}
+		const picked = pickWeightedByRarity(catalog, rand());
+		if (picked) return { day, kind: 'item', itemId: picked.id, jackpot };
 	}
 
 	return { day, kind: 'xp', xp: worth, jackpot };

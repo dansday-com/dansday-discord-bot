@@ -1,6 +1,6 @@
 import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
-import { effectAccentInt, BAG_CAPACITY, effectiveBagStock } from '../../../../items.js';
+import { effectAccentInt } from '../../../../items.js';
 import {
 	TASK_BY_ID,
 	DAILY_TASK_SLOTS,
@@ -14,9 +14,14 @@ import {
 	streakMilestone,
 	xpRewardFor,
 	loginRewardFor,
+	rarityTierFor,
+	rarityMeta,
+	type RarityTier,
 	type TaskMetric
 } from '../../../../tasks.js';
 import { snapshotMembers, finalizeXpChanges, resolveServerMemberId } from './items.js';
+
+const ANNOUNCE_DELAY_MS = 7000;
 
 const COUNTER_METRICS = new Set<TaskMetric>([
 	'chat_total',
@@ -39,16 +44,28 @@ async function measureProgress(memberId: any, row: any, dayStartMs: number) {
 	return db.countMemberEventsSince(memberId, def.metric, dayStartMs, row.target_item_id ?? null).catch(() => 0);
 }
 
-async function grantXpTo(guildId: any, memberId: any, amount: number) {
+async function grantXpTo(guildId: any, memberId: any, amount: number, source: 'task' | 'daily' = 'task') {
 	const xp = Math.max(0, Math.round(amount) || 0);
 	await db.ensureMemberLevel(memberId);
 	const snaps = await snapshotMembers([memberId]);
-	if (xp > 0) await db.updateMemberLevelStats(memberId, { experienceIncrement: xp });
-	await finalizeXpChanges(guildId, snaps, 'task-claim');
+	if (xp > 0) {
+		const stats = await db.updateMemberLevelStats(memberId, { experienceIncrement: xp });
+		await db
+			.logMemberLevelGain(memberId, {
+				source,
+				amount: xp,
+				total_xp: stats?.experience != null ? Number(stats.experience) : null,
+				level: stats?.level != null ? Number(stats.level) : null,
+				rank: stats?.rank != null ? Number(stats.rank) : null
+			})
+			.catch(() => null);
+	}
+	await finalizeXpChanges(guildId, snaps, `${source}-claim`);
 	return { kind: 'xp', xp };
 }
 
-async function deliverReward(guildId: any, memberId: any, plan: { wantsItem: boolean; itemId: any; fallbackXp: number }) {
+async function deliverReward(guildId: any, memberId: any, plan: { wantsItem: boolean; itemId: any; fallbackXp: number; source?: 'task' | 'daily' }) {
+	const source = plan.source ?? 'task';
 	const item = plan.wantsItem && plan.itemId != null ? await db.getItem(Number(plan.itemId)).catch(() => null) : null;
 	const itemUsable = !!item && (item.enabled as any) !== false && (item.enabled as any) !== 0;
 
@@ -62,15 +79,15 @@ async function deliverReward(guildId: any, memberId: any, plan: { wantsItem: boo
 			xp_amount: 0,
 			outcome: 'success'
 		});
-		return { kind: 'item', itemId: Number(plan.itemId), name: item.name, effectType: item.effect_type };
+		return { kind: 'item', itemId: Number(plan.itemId), name: item.name, effectType: item.effect_type, cost: Number(item.cost) || 0 };
 	}
 
 	if (plan.wantsItem || plan.itemId != null) {
 		const worth = Number(item?.cost) || 0;
-		return grantXpTo(guildId, memberId, worth > 0 ? worth : plan.fallbackXp);
+		return grantXpTo(guildId, memberId, worth > 0 ? worth : plan.fallbackXp, source);
 	}
 
-	return grantXpTo(guildId, memberId, plan.fallbackXp);
+	return grantXpTo(guildId, memberId, plan.fallbackXp, source);
 }
 
 export async function handleLoginClaim(client: any, payload: any) {
@@ -112,24 +129,27 @@ export async function handleLoginClaim(client: any, payload: any) {
 	const dailyEarn = Math.max(0, Number(earned) || 0) / RECENT_WINDOW_DAYS;
 	const reward = loginRewardFor(memberId, cycleIndex, day, catalog, dailyEarn);
 
-	if (reward.kind === 'item') {
-		const inventory = await db.getMemberInventory(memberId).catch(() => []);
-		if (effectiveBagStock(inventory as any[]) + 1 > BAG_CAPACITY) {
-			const fallback = await grantXpTo(guild_id, memberId, 200);
-			return { ok: true, granted: fallback, day, jackpot: reward.jackpot, bagWasFull: true };
-		}
-	}
-
 	let granted: any = null;
 	try {
 		granted = await deliverReward(guild_id, memberId, {
 			wantsItem: reward.kind === 'item',
 			itemId: reward.kind === 'item' ? reward.itemId : null,
-			fallbackXp: reward.kind === 'xp' ? reward.xp : 200
+			fallbackXp: reward.kind === 'xp' ? reward.xp : 200,
+			source: 'daily'
 		});
 	} catch (err: any) {
 		await logger.log(`❌ Login claim grant failed: ${err.message}`);
 		return { ok: false, error: 'grant_failed' };
+	}
+
+	if (granted?.kind === 'item') {
+		const tier = rarityTierFor(
+			Number(granted.cost) || 0,
+			catalog.map((c) => c.cost)
+		);
+		setTimeout(() => {
+			announceLoginItem(client, guild_id, actor_discord_id, { day, jackpot: reward.jackpot, item: granted, tier }).catch(() => null);
+		}, ANNOUNCE_DELAY_MS);
 	}
 
 	return { ok: true, granted, day, jackpot: reward.jackpot, cycleDays: LOGIN_CYCLE_DAYS };
@@ -182,13 +202,6 @@ export async function handleTaskClaim(client: any, payload: any) {
 
 	const itemsAllowed = await isPublicSubFeatureEnabled(guild_id, 'items');
 	const grantsItem = row.reward_kind === 'item' && row.reward_item_id != null && itemsAllowed;
-
-	if (grantsItem) {
-		const inventory = await db.getMemberInventory(memberId).catch(() => []);
-		if (effectiveBagStock(inventory as any[]) + 1 > BAG_CAPACITY) {
-			return { ok: false, error: 'bag_full', capacity: BAG_CAPACITY };
-		}
-	}
 
 	const claimed = await db.claimMemberTask(memberId, periodKey, Number(slot), period);
 	if (!claimed) return { ok: false, error: 'already_claimed' };
@@ -273,6 +286,43 @@ function streakAnnouncement(streakResult: any, milestone: any, member: any) {
 	}
 
 	return null;
+}
+
+async function announceLoginItem(client: any, guildId: any, discordMemberId: any, ctx: { day: number; jackpot: boolean; item: any; tier: RarityTier }) {
+	try {
+		const { getItemsChannelId, getEmbedConfig } = await import('../../../config.js');
+		const channelId = await getItemsChannelId(guildId);
+		if (!channelId) return;
+
+		const guild = client?.guilds?.cache?.get(guildId);
+		if (!guild) return;
+		const channel = await guild.channels.fetch(channelId).catch(() => null);
+		if (!channel || !channel.isTextBased()) return;
+
+		const member = await guild.members.fetch(String(discordMemberId)).catch(() => null);
+		if (!member) return;
+
+		const { EmbedBuilder } = await import('discord.js');
+		const embedConfig = await getEmbedConfig(guildId).catch(() => ({ COLOR: 0xc8911a, FOOTER: 'Tasks' }));
+
+		const worth = Number(ctx.item?.cost) || 0;
+		const meta = rarityMeta(ctx.tier);
+		const embed = new EmbedBuilder()
+			.setColor(parseInt(meta.accent.slice(1), 16))
+			.setTitle(ctx.jackpot ? `🎁 Day ${ctx.day} jackpot — ${meta.label}!` : `✨ ${meta.label} drop!`)
+			.setDescription(`${member} rolled a **${meta.label}** item on day ${ctx.day}!`)
+			.addFields(
+				{ name: 'Item', value: String(ctx.item?.name || '—'), inline: true },
+				{ name: 'Rarity', value: meta.label, inline: true },
+				{ name: 'Worth', value: `${worth.toLocaleString()} XP`, inline: true }
+			)
+			.setFooter({ text: embedConfig.FOOTER || 'Tasks' })
+			.setTimestamp();
+
+		await channel.send({ content: `${member}`, embeds: [embed] }).catch(() => null);
+	} catch (err: any) {
+		await logger.log(`⚠️ Login item announce failed: ${err?.message || String(err)}`);
+	}
 }
 
 export async function announceStreak(client: any, guildId: any, discordMemberId: any, streakResult: any, milestone: any) {

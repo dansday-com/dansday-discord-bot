@@ -12,9 +12,38 @@ import {
 import { logger } from '../../../../utils/index.js';
 
 let tickTimeoutRef: ReturnType<typeof setTimeout> | null = null;
+let tickRunning = false;
 
-const POLL_MS = 60_000;
-const POLL_JITTER_MS = 15_000;
+async function runTickGuarded(client: Client, officialBotId: number) {
+	if (tickRunning) {
+		await logger.log('⏭️ Quest notifier: previous tick still running — skipping this run');
+		return;
+	}
+	tickRunning = true;
+	try {
+		await runTick(client, officialBotId);
+	} finally {
+		tickRunning = false;
+	}
+}
+
+const POLL_MS = 300_000;
+const POLL_JITTER_MS = 60_000;
+const QUEST_FETCH_CONCURRENCY = 4;
+
+async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T, index: number) => Promise<R>): Promise<R[]> {
+	const results = new Array<R>(items.length);
+	let cursor = 0;
+	const workers = new Array(Math.max(1, Math.min(limit, items.length))).fill(null).map(async () => {
+		for (;;) {
+			const i = cursor++;
+			if (i >= items.length) return;
+			results[i] = await fn(items[i], i);
+		}
+	});
+	await Promise.all(workers);
+	return results;
+}
 
 function discordTs(iso: string | undefined | null, style: 'R'): string {
 	if (!iso) return '—';
@@ -95,40 +124,103 @@ export async function sendQuestNotificationMessage(
 	}
 }
 
+async function prefetchBotWideQuests(officialBotId: number, httpProxyUrlByServerId: Map<number, string>): Promise<Map<string, string>> {
+	const sourceByQuestId = new Map<string, string>();
+	const selfbots = await db.getRunningSelfbotsForOfficialBot(officialBotId);
+	if (selfbots.length === 0) {
+		await logger.log(`⚠️ Quest notifier: bot ${officialBotId} has no running selfbot on any server — relying on stored quests only`);
+		return sourceByQuestId;
+	}
+
+	const fetched = await mapWithConcurrency(selfbots, QUEST_FETCH_CONCURRENCY, async (selfbot) => {
+		const httpProxyUrl = httpProxyUrlByServerId.get(selfbot.server_id) ?? '';
+		try {
+			return { selfbot, payload: await fetchQuestsMe(selfbot.token, { httpProxyUrl }), error: null as string | null };
+		} catch (accErr: any) {
+			return { selfbot, payload: null as unknown, error: String(accErr?.message || accErr) };
+		}
+	});
+
+	const mergedById = new Map<string, DiscordQuestSummary>();
+	let okAccounts = 0;
+
+	for (const { selfbot, payload, error } of fetched) {
+		if (error !== null) {
+			await logger.log(`⚠️ Quest notifier: selfbot "${selfbot.name}" (#${selfbot.id}) quest fetch failed: ${error}`);
+			continue;
+		}
+		okAccounts++;
+
+		for (const raw of (payload as any)?.quests ?? []) {
+			const assets = raw?.config?.assets;
+			await logger.log(
+				`🖼️ Quest ${raw?.id} via #${selfbot.id} assets=${assets ? JSON.stringify(assets) : 'MISSING'} configKeys=${Object.keys(raw?.config ?? {}).join(',')}`
+			);
+		}
+
+		for (const q of extractDiscordQuestSummaries(payload)) {
+			if (mergedById.has(q.id)) continue;
+			mergedById.set(q.id, q);
+			sourceByQuestId.set(q.id, `#${selfbot.id} ${selfbot.name}`);
+			await logger.log(`🖼️ Quest ${q.id} resolved banner=${q.bannerUrl ?? 'null'} thumb=${q.thumbnailUrl ?? 'null'} via #${selfbot.id} ${selfbot.name}`);
+		}
+	}
+
+	if (okAccounts === 0) {
+		await logger.log(`⚠️ Quest notifier: all ${selfbots.length} bot-wide selfbot(s) failed quest fetch — relying on stored quests only`);
+		return sourceByQuestId;
+	}
+
+	if (mergedById.size > 0) {
+		await db.syncBotDiscordQuestsFromApi(officialBotId, [...mergedById.values()]);
+	}
+
+	await logger.log(
+		`🔮 Quest notifier: prefetched ${mergedById.size} unique quest(s) from ${okAccounts}/${selfbots.length} bot-wide selfbot(s) for bot ${officialBotId}`
+	);
+
+	return sourceByQuestId;
+}
+
 async function runTick(client: Client, officialBotId: number) {
 	const servers = await db.getServersForBot(officialBotId);
+
+	const settingsByServerId = new Map<number, Record<string, unknown>>();
+	const httpProxyUrlByServerId = new Map<number, string>();
+	for (const server of servers) {
+		const settingsRow = await db.getServerSettings(server.id, serverSettingsComponent.discord_quest_notifier).catch(() => null);
+		const rawSettings = settingsRow && !Array.isArray(settingsRow) ? settingsRow.settings : null;
+		const parsed = rawSettings && typeof rawSettings === 'object' ? (rawSettings as Record<string, unknown>) : {};
+		settingsByServerId.set(server.id, parsed);
+		if (typeof parsed.http_proxy_url === 'string' && parsed.http_proxy_url.trim()) {
+			httpProxyUrlByServerId.set(server.id, parsed.http_proxy_url.trim());
+		}
+	}
+
+	const sourceByQuestId = await prefetchBotWideQuests(officialBotId, httpProxyUrlByServerId);
+	const questSummaries = await db.listActiveBotDiscordQuests(officialBotId);
 
 	for (const server of servers) {
 		const discordGuildId = server.discord_server_id;
 		if (!discordGuildId) continue;
 		if (!(await isComponentFeatureEnabled(discordGuildId, serverSettingsComponent.discord_quest_notifier))) continue;
 
-		const row = await db.getServerSettings(server.id, serverSettingsComponent.discord_quest_notifier).catch(() => null);
-		const rawSettings = row && !Array.isArray(row) ? row.settings : null;
-		const s = rawSettings && typeof rawSettings === 'object' ? (rawSettings as Record<string, unknown>) : {};
+		const s = settingsByServerId.get(server.id) ?? {};
 		const channelId = typeof s.channel_id === 'string' ? s.channel_id : '';
 		if (!channelId) continue;
 
-		const selfbot = await db.getFirstRunningSelfbotForServer(server.id);
-		if (!selfbot?.token) continue;
-
-		const httpProxyUrl = typeof s.http_proxy_url === 'string' ? s.http_proxy_url : '';
 		const autoQuestEnabled = s.auto_quest !== false;
 
+		if (questSummaries.length === 0) {
+			await logger.log(`⚠️ Quest notifier: bot ${officialBotId} has no stored active quests yet — nothing to post for server ${server.id} (${server.name})`);
+			continue;
+		}
+
 		try {
-			const payload = await fetchQuestsMe(selfbot.token, { httpProxyUrl });
-			const questSummaries = extractDiscordQuestSummaries(payload);
-			if (questSummaries.length === 0) continue;
-
-			for (const raw of (payload as any)?.quests ?? []) {
-				const assets = raw?.config?.assets;
-				await logger.log(`🖼️ Quest ${raw?.id} assets=${assets ? JSON.stringify(assets) : 'MISSING'} configKeys=${Object.keys(raw?.config ?? {}).join(',')}`);
-			}
-			for (const q of questSummaries) {
-				await logger.log(`🖼️ Quest ${q.id} resolved banner=${q.bannerUrl ?? 'null'} thumb=${q.thumbnailUrl ?? 'null'}`);
-			}
-
-			await db.syncServerDiscordQuestsFromApi(officialBotId, server.id, questSummaries);
+			await db.linkServerToBotDiscordQuests(
+				server.id,
+				questSummaries.map((q) => q.id)
+			);
 			const unpostedIds = new Set(
 				await db.listServerDiscordQuestUnpostedIds(
 					server.id,
@@ -138,11 +230,17 @@ async function runTick(client: Client, officialBotId: number) {
 
 			for (const q of questSummaries) {
 				if (!unpostedIds.has(q.id)) continue;
+				if (!(await db.claimServerDiscordQuestForPost(server.id, q.id))) {
+					await logger.log(`⏭️ Quest notifier: quest ${q.id} already claimed for server ${server.id} — skipping duplicate announce`);
+					continue;
+				}
 				try {
 					await sendQuestNotificationMessage(client, server.discord_server_id, channelId, q, { autoQuestEnabled });
-					await db.markServerDiscordQuestMessagePosted(server.id, q.id);
-					await logger.log(`🔮 Quest notifier: posted quest "${q.questName}" → channel ${channelId} (${server.name})`);
+					await logger.log(
+						`🔮 Quest notifier: posted quest "${q.questName}" → channel ${channelId} (${server.name}) discovered via ${sourceByQuestId.get(q.id) ?? 'bot-wide stored quest'}`
+					);
 				} catch (sendErr: any) {
+					await db.releaseServerDiscordQuestClaim(server.id, q.id).catch(() => null);
 					await logger.log(`❌ Quest notifier: failed to post quest ${q.id} for server ${server.id}: ${sendErr?.message || sendErr}`);
 				}
 			}
@@ -155,7 +253,7 @@ async function runTick(client: Client, officialBotId: number) {
 function scheduleNextQuestNotifierTick(client: Client, officialBotId: number) {
 	const delay = POLL_MS + Math.floor(Math.random() * POLL_JITTER_MS);
 	tickTimeoutRef = setTimeout(() => {
-		runTick(client, officialBotId)
+		runTickGuarded(client, officialBotId)
 			.catch((err) => logger.log(`❌ Quest notifier tick error: ${err?.message || err}`))
 			.finally(() => scheduleNextQuestNotifierTick(client, officialBotId));
 	}, delay);
@@ -170,7 +268,7 @@ export function initQuestNotifier(client: Client, officialBotId: number | null) 
 		logger.log('Quest notifier: no official bot id, skipping');
 		return;
 	}
-	runTick(client, officialBotId).catch((err) => logger.log(`❌ Quest notifier tick error: ${err?.message || err}`));
+	runTickGuarded(client, officialBotId).catch((err) => logger.log(`❌ Quest notifier tick error: ${err?.message || err}`));
 	scheduleNextQuestNotifierTick(client, officialBotId);
 }
 

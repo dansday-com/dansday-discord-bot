@@ -28,6 +28,7 @@ import {
 	nextMilestone,
 	streakMilestone,
 	loginCyclePreview,
+	loginTierOddsFor,
 	rarityTierFor,
 	type TaskEligibility,
 	type TaskMetric,
@@ -378,7 +379,8 @@ function shapeLogin(row: any, member: any, dayKey: number, catalog: { id: number
 	const rewards = loginCyclePreview(Number(member.id), cyclesCompleted, catalog, dailyEarn).map((r) => ({
 		...r,
 		claimed: !claimedToday && r.day < nextDay ? true : claimedToday && r.day <= cycleDay,
-		current: canClaim && r.day === nextDay
+		current: canClaim && r.day === nextDay,
+		odds: loginTierOddsFor(catalog, r.day)
 	}));
 
 	return {

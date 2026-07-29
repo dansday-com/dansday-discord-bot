@@ -1,8 +1,8 @@
 # &lt;/DANSDAY&gt; Discord Bot
 
-Run leveling, moderation, an embed builder, Discord Quests, quest enroll, self-bot options, creator tools, live public statistics pages, Roblox catalog alerts, and more from the free web panel in your browser. Configure in one place instead of flooding channels with slash commands. Free for everyone. Self-host from GitHub or add our hosted bot if you do not run your own servers.
+Leveling, moderation, an embed builder, Discord Quests, creator tools, public statistics pages, Roblox catalog alerts and more — all from a free web panel instead of slash commands. Self-host from GitHub or add the hosted bot.
 
-The project is open source under the MIT license.
+Open source under the MIT license.
 
 ---
 
@@ -10,15 +10,15 @@ The project is open source under the MIT license.
 
 ### Web control panel
 
-- **Granular permissions** - Control who can change which settings. Owners and staff tiers let helpers contribute without full control of the server or bot.
-- **Server accounts** - Invite owners and staff into the panel with roles separate from ordinary Discord chat/moderation permissions.
-- **Per-module toggles** - Enable or disable major features per server so you only run what you need.
-- **Multi-language UI (Discord flows)** - English and Indonesian strings for buttons, selects, and labels, with room to grow.
-- **Embed builder** - Design rich embeds with live preview, placeholders, and images; send to channels from the browser.
+- **Granular permissions** - Owner and staff tiers control who can change which settings.
+- **Server accounts** - Invite owners and staff into the panel, with roles separate from Discord permissions.
+- **Per-module toggles** - Enable or disable major features per server.
+- **Multi-language UI (Discord flows)** - English and Indonesian strings for buttons, selects and labels.
+- **Embed builder** - Rich embeds with live preview, placeholders and images, sent from the browser.
 
 ### Community & engagement
 
-- **Items & XP economy** ⭐ _new_ - Spend earned XP in a per-server shop on PvP and utility items, each with a configurable cost, effect, and optional timed/recurring availability. Members keep purchases in a bag (capacity 50) and use them through Discord flows; outcomes are announced in the progress channel. Effects:
+- **Items & XP economy** ⭐ _new_ - Spend earned XP in a per-server shop on PvP and utility items, each with its own cost, effect and optional timed availability. Purchases sit in a 50-slot bag and are used through Discord. Effects:
   - 💰 **Steal** - take a slice of another member's XP (with cooldown and post-hit immunity).
   - 💥 **Bomb** - destroy a slice of a member's XP outright.
   - 🩸 **Leech** - siphon a percentage of a target's XP for a set duration.
@@ -31,48 +31,50 @@ The project is open source under the MIT license.
   - 🔍 **Spy** - reveal a member's bag, active effects, cooldowns, and bounty.
   - 🎭 **Disguise** - go anonymous and drop off the leaderboard for a set duration.
   - 🧼 **Purifier** - wipe all of your own active effects at once.
-  - 🍀 **Luck** - a configurable % boost for a set duration that raises the top end of your steal and bomb rolls and improves your minigame odds, spy success, leech skim, friend boost, and insurance refund, cuts your gift tax, and discounts every shop price while active. Timed buffs lock in your luck when you activate them, so activate luck first.
-- **Assets market (XP paper-trading)** ⭐ _new_ - Members invest earned XP in real-world crypto at live prices (via CoinGecko). XP is locked into a position and tracks the real market; sell any time to realize gains or losses. Search thousands of coins, browse the top 50, gainers and losers, and watch a live portfolio with per-position and total profit/loss. No real money and no real coins — purely an XP game. Designed to extend to other asset types later.
-- **Minigames** ⭐ _new_ - Enabled as a sub-toggle under Public statistics (with its own channel), where members wager XP on games — no items or tickets, free to play. The first game is 🎲 **Gamble**: pick your own multiplier up to 10× and the win chance is set fairly from it (100 ÷ multiplier, so 2× = 50%, 4× = 25%). You can only wager XP earned above your current level, so a loss never drops your level. Wins and losses post to the minigames channel and feed a dedicated Minigames leaderboard. Built to add more games over time.
-- **Tasks, streaks & check-in** ⭐ _new_ - Enabled as the Daily tasks sub-toggle under Public statistics, adding a Task tab to the member account. No admin setup at all — goals, difficulty and rewards are generated per member.
-  - ☀️ **Daily tasks** - 9 tasks a day (3 easy, 3 medium, 3 hard), drawn from a catalog of 90 goals built on activity you already track: messages, reactions, voice / video / streaming / AFK minutes, XP earned by source, gambling, steals, bombs, leeches, spying, item buys and uses, specific-item goals, asset trades, and social ones like grinding voice with friends or staying un-leeched. No two members get the same list.
-  - 📅 **Weekly tasks** - 9 hard tasks per week, sized against a 7-day activity window so goals and rewards scale up with the longer period. Weeks start Monday on the member's local clock.
-  - 🎯 **Goals sized to the member** - Targets come from that member's own last 7 days of activity for the exact metric the task measures, not their level — someone who gambles twice a day gets a 1–3 round goal where a heavy player gets 14–50. Goals are also capped by what is physically possible in the period (bag size, item cooldowns and durations, other members present), and a task never appears for a feature the server has turned off.
-  - ⚖️ **Honest difficulty** - The Easy / Medium / Hard label is measured, not assigned by rank: every goal is priced as real effort (XP spent plus the time each repetition costs) and graded against the server's earn rate, so a 38-item discard can never be labelled Easy. Slots draw only from tasks that can genuinely reach their band. Events other players inflict on you — being robbed, bombed or leeched, bounty payouts — stay at small goals unless your own history shows they actually happen.
-  - 🎁 **Rewards** - XP or a shop item, with a 30% item chance per task; the item drawn is priced from 0.85× up to the task's XP value. Tasks that cost XP to complete (buying or using items, gambling, gifting) always pay back more than they cost. Rewards run from 1,000 XP up to a ceiling set by the priciest item in the shop.
-  - 🔥 **Streaks** - Clear all 9 daily tasks to extend a streak, worth +2% reward XP per day up to +100%. Milestones at 7, 30, 100 and 365 days are announced in the items channel. Two ❄️ **freezes** cover missed days automatically, and members earn one back every 10 daily claims.
-  - 📆 **Daily check-in** - A 7-day claim cycle in the Task tab, one claim per local day, scaled to 25% of the member's average daily XP earnings. Day 7 is a jackpot (25× weighted, 25,000 XP minimum) and every day has a 50% chance of drawing a rarity-weighted item instead of XP. Miss a day and the cycle restarts at day 1.
-  - 🧾 **Reward history** - Task and daily check-in payouts are recorded: XP lands in level history as **Task Reward** / **Daily Reward**, items in item history. Reward XP is deliberately excluded from the activity totals that size future goals, so claiming a reward never inflates your own targets.
-- **Leveling & XP** - Message and voice activity feed a full XP system with levels, role rewards, and leaderboards. Reactions are tracked too, feeding the task system.
+  - 🍀 **Luck** - a % boost that improves steal and bomb rolls, minigame odds, spy success, leech skim, friend boost and insurance refund, cuts gift tax and discounts shop prices. Timed buffs lock in your luck on activation, so use luck first.
+- **Assets market (XP paper-trading)** ⭐ _new_ - Members lock XP into real crypto positions at live CoinGecko prices and sell any time for gains or losses. Search thousands of coins, browse top 50, gainers and losers, track a live portfolio. No real money — purely an XP game.
+- **Minigames** ⭐ _new_ - Free-to-play games where members wager XP, under the Public statistics toggle with its own channel. First game is 🎲 **Gamble**: pick a multiplier up to 10×, win chance is 100 ÷ it. Only XP earned above your current level can be wagered, so a loss never drops your level. Feeds a Minigames leaderboard.
+- **Tasks, streaks & check-in** ⭐ _new_ - A Task tab on the member account, under the Daily tasks sub-toggle. No admin setup — goals, difficulty and rewards generate per member.
+  - ☀️ **Daily tasks** - 18 a day (6 easy, 6 medium, 6 hard) from a catalog of 96 goals. No two members get the same list.
+  - 📅 **Weekly tasks** - 18 hard tasks, Monday to Sunday on the member's local clock.
+  - 🎯 **Goals sized to the member** - Built from that member's own last 7 days of the exact metric, not their level, and capped by what the period physically allows.
+  - 💬 **Activity goals** - Chat, reactions and voice / video / streaming cap at 50 a day and 200 a week: 17 / 33 / 50 daily, 67 / 133 / 200 weekly.
+  - ⚖️ **Honest difficulty** - Every goal is priced as real effort and graded, never assigned by rank. Activity goals grade against their daily cap, everything else against the server's earn rate.
+  - 🎁 **Rewards** - XP or a shop item, 30% item chance, priced 0.85× to 1× the task value. Tasks that cost XP always pay back more than they cost.
+  - 🔥 **Streaks** - Clear all 18 daily tasks for +2% reward XP per day, up to +100%. Milestones at 7, 30, 100 and 365 days. Two ❄️ **freezes** cover missed days, one back every 10 claims.
+  - 📆 **Daily check-in** - 7-day cycle, one claim per local day: 1,000 → 2,500 → 5,000 → 9,000 → 15,000 → 25,000 → 50,000 XP, identical on every server. Miss a day, restart at day 1.
+  - 🎰 **Check-in gacha** - 50% chance of a shop item instead of XP, rolled by rarity tier. Day 1 is 50 / 24 / 14 / 8 / 3 / 1% common to mythic; every tier above common climbs 0.5 a day, reaching 4% mythic by day 7. Unstocked tiers redistribute to the ones the shop sells.
+  - 🧾 **Reward history** - XP lands in level history as **Task Reward** / **Daily Reward**, items in item history. Reward XP never counts toward the activity totals that size future goals.
+- **Leveling & XP** - Messages and voice feed levels, role rewards and leaderboards. Reactions are tracked for tasks.
 - **Welcomer** - Custom welcome messages and embeds for new members.
-- **Giveaways** - Entries, winner selection, and role-based eligibility.
-- **AFK** - Members set AFK status and custom messages; the bot warns when someone is mentioned while away.
-- **Feedback** - Collect and organize suggestions and feedback through Discord-facing flows.
-- **Staff rating** - Structured staff evaluation tied to your moderation workflow.
-- **Booster messages** - Thank Nitro boosters with configurable channels and templates (separate from custom supporter roles).
-- **Custom supporter roles** - Let supporters personalize role name and color within rules you set.
+- **Giveaways** - Entries, winner selection and role-based eligibility.
+- **AFK** - Members set an AFK status; the bot warns anyone who mentions them.
+- **Feedback** - Collect suggestions through Discord flows.
+- **Staff rating** - Structured staff evaluation tied to moderation.
+- **Booster messages** - Thank Nitro boosters with configurable channels and templates.
+- **Custom supporter roles** - Supporters personalize role name and color within your rules.
 
 ### Safety & operations
 
-- **Moderation** - Warnings, mutes, bans, and staff actions coordinated from the panel.
+- **Moderation** - Warnings, mutes, bans and staff actions from the panel.
 - **Channel notifications** - Alerts for important channel activity.
-- **Message forwarder** - Mirror or sync messages across channels (and related self-bot paths where configured).
+- **Message forwarder** - Mirror or sync messages across channels.
 
 ### Integrations & alerts
 
-- **Discord Quest notifier** - Surface Discord Quest activity in your server; optional quest enrollment automation tuned per server.
-- **Roblox catalog watch** - Post embeds when catalog items change, aimed at trading and UGC communities.
-- **Content creator / TikTok** - Creator applications and TikTok live session digests tied to server channels.
+- **Discord Quest notifier** - Surface Discord Quest activity, with optional per-server enrollment automation.
+- **Roblox catalog watch** - Post embeds when catalog items change, for trading and UGC communities.
+- **Content creator / TikTok** - Creator applications and TikTok live digests tied to server channels.
 
 ### Public web pages
 
-- **Public statistics** - The master switch for all public pages: server statistics, leaderboard, members, and the per-member account (Overview, History, Guide). Items, Minigames, Assets and Daily tasks are enabled as sub-toggles here — turn public statistics off and everything public goes dark; with the four sub-features off, the account still shows Overview and History.
+- **Public statistics** - Master switch for all public pages: server statistics, leaderboard, members and the member account (Overview, History, Guide). Items, Minigames, Assets and Daily tasks are sub-toggles here. Off means everything public goes dark.
 
 ### Advanced
 
-- **Official bot (discord.js)** - Core automation, slash `/setup`, buttons, and component interactions.
-- **Optional self-bot path** - Panel-managed tokens and user-context features where supported (e.g. forwarder and quest flows); use in line with Discord’s terms and your own risk assessment.
-- **Webhook server** - Incoming hooks for selected automation paths (see codebase for endpoints).
+- **Official bot (discord.js)** - Core automation, slash `/setup`, buttons and component interactions.
+- **Optional self-bot path** - Panel-managed tokens for forwarder and quest flows. Use in line with Discord's terms and your own risk assessment.
+- **Webhook server** - Incoming hooks for selected automation paths.
 
 ---
 
@@ -106,12 +108,12 @@ Versions match `package.json` at release (caret ranges; run `npm ls` for the exa
 
 ## Configuration
 
-Environment variables drive database credentials, sessions, captcha, mail, Redis, and bot tokens. Copy **`.env.example`** to **`.env`** and adjust for your deployment.
+Copy **`.env.example`** to **`.env`** and set database, session, captcha, mail, Redis and bot token values.
 
-The official bot requests the Guilds, Message Content, Server Members, Moderation, Voice States and Message Reactions gateway intents. **Server Members** and **Message Content** are privileged — enable both on your application in the Discord Developer Portal or the bot will fail to start.
+The bot requests the Guilds, Message Content, Server Members, Moderation, Voice States and Message Reactions intents. **Server Members** and **Message Content** are privileged — enable both in the Discord Developer Portal or the bot will not start.
 
 ---
 
 ## License
 
-MIT · Author: Akbar Yudhanto · Version: 26.4.1
+MIT · Author: Akbar Yudhanto · Version: 26.4.2

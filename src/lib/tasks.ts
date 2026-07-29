@@ -1,5 +1,5 @@
-export const DAILY_TASK_SLOTS = 9;
-export const WEEKLY_TASK_SLOTS = 9;
+export const DAILY_TASK_SLOTS = 18;
+export const WEEKLY_TASK_SLOTS = 18;
 export const STREAK_FREEZE_MAX = 2;
 export const STREAK_FREEZE_EARN_EVERY = 10;
 export const LOGIN_CYCLE_DAYS = 7;
@@ -1206,8 +1206,27 @@ export const DIFFICULTY_META: Record<TaskDifficulty, { label: string; accent: st
 	hard: { label: 'Hard', accent: '#c0392b', weight: 6 }
 };
 
-export const DAILY_DIFFICULTY_PLAN: TaskDifficulty[] = ['easy', 'easy', 'easy', 'medium', 'medium', 'medium', 'hard', 'hard', 'hard'];
-export const WEEKLY_DIFFICULTY_PLAN: TaskDifficulty[] = ['hard', 'hard', 'hard', 'hard', 'hard', 'hard', 'hard', 'hard', 'hard'];
+export const DAILY_DIFFICULTY_PLAN: TaskDifficulty[] = [
+	'easy',
+	'easy',
+	'easy',
+	'easy',
+	'easy',
+	'easy',
+	'medium',
+	'medium',
+	'medium',
+	'medium',
+	'medium',
+	'medium',
+	'hard',
+	'hard',
+	'hard',
+	'hard',
+	'hard',
+	'hard'
+];
+export const WEEKLY_DIFFICULTY_PLAN: TaskDifficulty[] = Array.from({ length: WEEKLY_TASK_SLOTS }, () => 'hard');
 
 export const WEEKLY_REWARD_MULTIPLIER = 6;
 
@@ -1286,7 +1305,7 @@ export const RECENT_WINDOW_DAYS = 7;
 export const ACHIEVABLE_SHARE = 0.9;
 
 export function taskCapacity(def: TaskDefinition, elig: TaskEligibility, period: TaskPeriod): number | null {
-	const unit = metricUnitXp(def, elig);
+	const unit = activityEffortUnitXp(def, elig);
 	if (unit <= 0) return null;
 	return Math.round((serverEarnRate(elig, period) * ACHIEVABLE_SHARE) / unit);
 }
@@ -1496,6 +1515,28 @@ export const DAILY_ACTION_CAP = 50;
 
 export const COUNTED_ACTION_UNITS = new Set(['items', 'members', 'rounds', 'times', 'wins', 'trades']);
 
+export const ACTIVITY_ACTION_UNITS = new Set(['messages', 'reactions', 'minutes']);
+
+export const ACTIVITY_EFFORT_XP = 200;
+
+export const ACTIVITY_ACTION_CAP: Record<TaskPeriod, number> = { daily: 50, weekly: 200 };
+
+export function isActivityAction(def: TaskDefinition): boolean {
+	return ACTIVITY_ACTION_UNITS.has(def.unit);
+}
+
+export function activityEffortUnitXp(def: TaskDefinition, elig: TaskEligibility): number {
+	if (!isActivityAction(def)) return metricUnitXp(def, elig);
+	return Math.max(ACTIVITY_EFFORT_XP, metricUnitXp(def, elig));
+}
+
+export const ACTIVITY_TIER_SHARE: Record<TaskDifficulty, number> = { easy: 1 / 3, medium: 2 / 3, hard: 1 };
+
+export function activityGoalFor(difficulty: TaskDifficulty, period: TaskPeriod): number {
+	const cap = ACTIVITY_ACTION_CAP[period];
+	return Math.max(1, Math.round(cap * ACTIVITY_TIER_SHARE[difficulty]));
+}
+
 export const DISCARDABLE_CAP = 50;
 
 export const PEAK_CONCURRENCY_CAP = 5;
@@ -1540,6 +1581,7 @@ export function feasibleUsesInPeriod(def: TaskDefinition, elig: TaskEligibility,
 
 	let cap = Infinity;
 	if (COUNTED_ACTION_UNITS.has(def.unit)) cap = DAILY_ACTION_CAP * days;
+	if (isActivityAction(def)) cap = Math.min(cap, ACTIVITY_ACTION_CAP[period]);
 
 	if (def.unit === 'items' && !def.targetsItem) {
 		cap = Math.min(cap, DISCARDABLE_CAP);
@@ -1632,6 +1674,8 @@ export function goalFromHistory(def: TaskDefinition, difficulty: TaskDifficulty,
 }
 
 export function deriveGoal(def: TaskDefinition, difficulty: TaskDifficulty, elig: TaskEligibility, period: TaskPeriod, targetCost = 0): number {
+	if (isActivityAction(def)) return activityGoalFor(difficulty, period);
+
 	const fromHistory = goalFromHistory(def, difficulty, elig, period);
 	if (fromHistory !== null) {
 		const feasible = feasibleUsesInPeriod(def, elig, period);
@@ -1672,7 +1716,9 @@ export function deriveGoal(def: TaskDefinition, difficulty: TaskDifficulty, elig
 
 export function clampGoalToPeriod(def: TaskDefinition, goal: number, period: TaskPeriod, targetItemDuration = 0): number {
 	const g = Math.max(1, Math.round(Number(goal) || 1));
-	if (def.unit === 'minutes') return Math.max(1, Math.min(g, maxMinuteGoal(period)));
+	if (def.unit === 'minutes') return Math.max(1, Math.min(g, maxMinuteGoal(period), ACTIVITY_ACTION_CAP[period]));
+
+	if (isActivityAction(def)) return Math.max(1, Math.min(g, ACTIVITY_ACTION_CAP[period]));
 
 	if (def.targetsItem && targetItemDuration > 0) {
 		return Math.max(1, Math.min(g, maxUsesInPeriod(targetItemDuration, period)));
@@ -1682,7 +1728,7 @@ export function clampGoalToPeriod(def: TaskDefinition, goal: number, period: Tas
 }
 
 export function taskGrindXp(def: TaskDefinition, goal: number, elig: TaskEligibility, period: TaskPeriod): number {
-	const unit = metricUnitXp(def, elig);
+	const unit = activityEffortUnitXp(def, elig);
 	if (unit <= 0) return 0;
 	return Math.round(Math.max(0, Number(goal) || 0) * unit);
 }
@@ -1747,6 +1793,8 @@ export function goalForReward(
 ): number {
 	const worth = Math.max(0, Number(rewardWorth) || 0);
 	const start = Math.max(1, Math.round(Number(baseGoal) || 1));
+
+	if (isActivityAction(def)) return clampGoalToPeriod(def, start, period);
 	if (worth <= 0) return clampGoalToPeriod(def, start, period, targetItemDurationFor(targetItemId, elig));
 
 	const earned = Math.round(worth / EFFORT_REWARD_MARGIN);
@@ -1765,15 +1813,15 @@ export function goalForReward(
 	if (unitEffort <= 0) return clampGoalToPeriod(def, start, period, durCap);
 
 	const needed = Math.ceil(earned / unitEffort);
-	const unitXp = metricUnitXp(def, elig);
+	const unitXp = activityEffortUnitXp(def, elig);
 	const reachable = unitXp > 0 ? Math.ceil((serverEarnRate(elig, period) * GOAL_CAPACITY_STRETCH) / unitXp) : 0;
 	const ceiling = Math.max(start * GOAL_STRETCH_MAX, reachable);
 
 	return clampGoalToPeriod(def, Math.max(start, Math.min(needed, ceiling)), period, targetItemDurationFor(targetItemId, elig));
 }
 
-export function gradeDifficulty(effort: number, elig: TaskEligibility, period: TaskPeriod): TaskDifficulty {
-	const rate = serverEarnRate(elig, period);
+export function gradeDifficulty(effort: number, elig: TaskEligibility, period: TaskPeriod, def?: TaskDefinition): TaskDifficulty {
+	const rate = def && isActivityAction(def) ? ACTIVITY_ACTION_CAP[period] * ACTIVITY_EFFORT_XP : serverEarnRate(elig, period);
 	if (rate <= 0) return 'medium';
 	const share = Math.max(0, Number(effort) || 0) / rate;
 	if (share >= EFFORT_BANDS.hard) return 'hard';
@@ -1905,7 +1953,7 @@ export function generateDailyTasks(
 		for (let attempt = 0; attempt < GRADE_MATCH_ATTEMPTS && chosenTask === null; attempt++) {
 			const pick = candidates[Math.floor(rand() * candidates.length) % candidates.length];
 			const built = build(pick);
-			if (gradeDifficulty(built.effort ?? 0, elig, period) === difficulty) {
+			if (gradeDifficulty(built.effort ?? 0, elig, period, pick) === difficulty) {
 				used.add(pick.id);
 				chosenTask = built;
 			}
@@ -1924,7 +1972,7 @@ export function generateDailyTasks(
 }
 
 function regradeByEffort(tasks: GeneratedTask[], elig: TaskEligibility, period: TaskPeriod): GeneratedTask[] {
-	return tasks.map((t) => ({ ...t, difficulty: gradeDifficulty(t.effort ?? 0, elig, period) }));
+	return tasks.map((t) => ({ ...t, difficulty: gradeDifficulty(t.effort ?? 0, elig, period, TASK_BY_ID.get(t.taskType)) }));
 }
 
 export type RewardPlan = { kind: 'xp'; xp: number } | { kind: 'item'; itemId: number; xp: 0 };
@@ -2019,6 +2067,86 @@ export function rarityMeta(tier: RarityTier) {
 	return RARITY_TIERS.find((t) => t.id === tier) ?? RARITY_TIERS[RARITY_TIERS.length - 1];
 }
 
+export const LOGIN_TIER_BASE_ODDS: Record<RarityTier, number> = {
+	common: 50,
+	uncommon: 24,
+	rare: 14,
+	epic: 8,
+	legendary: 3,
+	mythic: 1
+};
+
+export const LOGIN_TIER_DAY_GROWTH: Record<RarityTier, number> = {
+	common: 0,
+	uncommon: 0.5,
+	rare: 0.5,
+	epic: 0.5,
+	legendary: 0.5,
+	mythic: 0.5
+};
+
+export const LOGIN_TIER_DRAIN: RarityTier = 'common';
+
+export function loginTierOdds(day: number): Record<RarityTier, number> {
+	const steps = Math.max(0, Math.min(LOGIN_CYCLE_DAYS, Math.round(Number(day) || 1)) - 1);
+
+	const odds = { ...LOGIN_TIER_BASE_ODDS };
+	let drained = 0;
+
+	for (const tier of Object.keys(LOGIN_TIER_DAY_GROWTH) as RarityTier[]) {
+		const growth = LOGIN_TIER_DAY_GROWTH[tier] * steps;
+		if (growth <= 0) continue;
+		odds[tier] += growth;
+		drained += growth;
+	}
+
+	odds[LOGIN_TIER_DRAIN] = Math.max(0, odds[LOGIN_TIER_DRAIN] - drained);
+
+	return odds;
+}
+
+export function loginTierOddsFor<T extends { cost: number }>(catalog: T[], day: number): { tier: RarityTier; chance: number }[] {
+	const priced = catalog.filter((c) => (Number(c.cost) || 0) > 0);
+	if (priced.length === 0) return [];
+
+	const costs = priced.map((c) => Number(c.cost) || 0);
+	const stocked = new Set(priced.map((c) => rarityTierFor(Number(c.cost) || 0, costs)));
+
+	const odds = loginTierOdds(day);
+	const live = (Object.keys(odds) as RarityTier[]).filter((t) => stocked.has(t));
+
+	const total = live.reduce((sum, t) => sum + odds[t], 0);
+	if (!(total > 0)) return live.map((tier) => ({ tier, chance: 100 / live.length }));
+
+	return live.map((tier) => ({ tier, chance: (odds[tier] / total) * 100 }));
+}
+
+export function pickTierByDay<T extends { cost: number }>(catalog: T[], day: number, roll: number): RarityTier | null {
+	const table = loginTierOddsFor(catalog, day);
+	if (table.length === 0) return null;
+
+	let cursor = Math.min(0.9999999, Math.max(0, roll)) * 100;
+	for (const row of table) {
+		cursor -= row.chance;
+		if (cursor < 0) return row.tier;
+	}
+	return table[table.length - 1].tier;
+}
+
+export function pickGachaItem<T extends { id: number; cost: number }>(catalog: T[], day: number, tierRoll: number, itemRoll: number): T | null {
+	const priced = catalog.filter((c) => (Number(c.cost) || 0) > 0);
+	if (priced.length === 0) return null;
+
+	const tier = pickTierByDay(priced, day, tierRoll);
+	if (tier === null) return null;
+
+	const costs = priced.map((c) => Number(c.cost) || 0);
+	const pool = priced.filter((c) => rarityTierFor(Number(c.cost) || 0, costs) === tier);
+	if (pool.length === 0) return pickWeightedByRarity(priced, itemRoll);
+
+	return pool[Math.floor(Math.min(0.9999999, Math.max(0, itemRoll)) * pool.length) % pool.length];
+}
+
 export function pickWeightedByRarity<T extends { cost: number }>(catalog: T[], roll: number): T | null {
 	const priced = catalog.filter((c) => (Number(c.cost) || 0) > 0);
 	if (priced.length === 0) return null;
@@ -2071,27 +2199,19 @@ export function pickReward(
 	return { kind: 'xp', xp };
 }
 
-export const LOGIN_DAY_WEIGHTS = [1, 1.5, 2.2, 3.2, 4.5, 6.5, 25] as const;
-export const LOGIN_JACKPOT_MIN_XP = 25000;
+export const LOGIN_DAY_XP = [1000, 2500, 5000, 9000, 15000, 25000, 50000] as const;
 export const LOGIN_ITEM_REWARD_CHANCE = 0.5;
-export const LOGIN_DAILY_EARN_SHARE = 0.25;
 
 export type LoginReward = { day: number; kind: 'xp'; xp: number; jackpot: boolean } | { day: number; kind: 'item'; itemId: number; jackpot: boolean };
 
 export function loginRewardFor(memberId: number, cycleIndex: number, day: number, catalog: { id: number; cost: number }[], dailyEarn = 0): LoginReward {
-	const costs = catalog.map((c) => Number(c.cost) || 0).filter((c) => c > 0);
-	const median = costPercentile(costs, 50) || 500;
 	const jackpot = day === LOGIN_CYCLE_DAYS;
-	const weight = LOGIN_DAY_WEIGHTS[Math.max(0, Math.min(LOGIN_CYCLE_DAYS - 1, day - 1))];
 	const rand = mulberry32(hashSeed('login', memberId, cycleIndex, day));
 
-	const earn = Math.max(0, Number(dailyEarn) || 0);
-	const base = earn > 0 ? Math.max(XP_REWARD_MIN, Math.round(earn * LOGIN_DAILY_EARN_SHARE)) : scaledBase(median, 1.2);
-	const floor = jackpot ? LOGIN_JACKPOT_MIN_XP : XP_REWARD_MIN;
-	const worth = Math.max(floor, Math.min(XP_REWARD_MAX, Math.round((base * weight) / 100) * 100));
+	const worth = LOGIN_DAY_XP[Math.max(0, Math.min(LOGIN_CYCLE_DAYS - 1, day - 1))];
 
 	if (catalog.length > 0 && rand() < LOGIN_ITEM_REWARD_CHANCE) {
-		const picked = pickWeightedByRarity(catalog, rand());
+		const picked = pickGachaItem(catalog, day, rand(), rand());
 		if (picked) return { day, kind: 'item', itemId: picked.id, jackpot };
 	}
 

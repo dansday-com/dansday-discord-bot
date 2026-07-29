@@ -480,6 +480,8 @@ export const botDiscordQuest = mysqlTable(
 		quest_description: text('quest_description'),
 		reward: text('reward'),
 		task_detail_line: text('task_detail_line'),
+		thumbnail_url: varchar('thumbnail_url', { length: 512 }),
+		banner_url: varchar('banner_url', { length: 512 }),
 		starts_at: datetime('starts_at'),
 		expires_at: datetime('expires_at'),
 		created_at: datetime('created_at').notNull()

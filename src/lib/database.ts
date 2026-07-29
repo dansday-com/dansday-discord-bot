@@ -4545,6 +4545,12 @@ function questIsoToDbDate(iso: string | undefined | null): Date | null {
 	return toMySQLDateTime(iso.trim());
 }
 
+function questMediaUrlForDb(raw: string | null | undefined): string | null {
+	const s = raw?.trim() || '';
+	if (!s.startsWith('http') || s.length > 512) return null;
+	return s;
+}
+
 function snapshotFromDiscordQuestSummary(q: DiscordQuestSummary) {
 	return {
 		quest_name: q.questName?.trim() || null,
@@ -4553,6 +4559,8 @@ function snapshotFromDiscordQuestSummary(q: DiscordQuestSummary) {
 		quest_description: q.description?.trim() || null,
 		reward: q.reward?.trim() || null,
 		task_detail_line: q.taskDetailLine?.trim() || null,
+		thumbnail_url: questMediaUrlForDb(q.thumbnailUrl),
+		banner_url: questMediaUrlForDb(q.bannerUrl),
 		starts_at: questIsoToDbDate(q.startsAt),
 		expires_at: questIsoToDbDate(q.expiresAt)
 	};
@@ -4564,6 +4572,10 @@ async function syncServerDiscordQuestsFromApi(botId: number, serverId: number, q
 	const now = toMySQLDateTime();
 	for (const q of quests) {
 		const snap = snapshotFromDiscordQuestSummary(q);
+		const { thumbnail_url, banner_url, ...snapRest } = snap;
+		const mediaUpdate: Record<string, string> = {};
+		if (thumbnail_url) mediaUpdate.thumbnail_url = thumbnail_url;
+		if (banner_url) mediaUpdate.banner_url = banner_url;
 		await db
 			.insert(schema.botDiscordQuest)
 			.values({
@@ -4580,7 +4592,8 @@ async function syncServerDiscordQuestsFromApi(botId: number, serverId: number, q
 					quest_task_type: q.taskTypeKey || '',
 					quest_task_label: q.taskTypeLabel || '',
 					created_at: now as any,
-					...snap
+					...snapRest,
+					...mediaUpdate
 				} as any
 			});
 		const [questRow] = await db

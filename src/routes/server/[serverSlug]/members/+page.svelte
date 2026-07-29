@@ -253,8 +253,8 @@
 						</div>
 					</div>
 					<div class="m-members-xp-band">
-						<span class="m-members-xp-band-l"><i class="fas fa-star" aria-hidden="true"></i> Experience</span>
-						<span class="m-members-xp-band-v" title="Experience points">{fmtNum(member.experience ?? 0)}</span>
+						<span class="m-members-xp-band-l"><i class="fas fa-star" aria-hidden="true"></i> XP</span>
+						<span class="m-members-xp-band-v" title="XP">{fmtNum(member.xp ?? 0)}</span>
 					</div>
 					{#if member.roles?.[0]}
 						<div class="m-members-roles">

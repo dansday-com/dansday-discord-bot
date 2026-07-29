@@ -148,13 +148,13 @@ export async function creditLeechers(leechCredits: any, guildId: any) {
 		try {
 			await db.ensureMemberLevel(credit.beneficiaryMemberId);
 			const before = await db.getMemberLevel(credit.beneficiaryMemberId);
-			const after = await db.updateMemberLevelStats(credit.beneficiaryMemberId, { experienceIncrement: credit.amount });
+			const after = await db.updateMemberLevelStats(credit.beneficiaryMemberId, { xpIncrement: credit.amount });
 			const stats = (await reevaluateLevel(credit.beneficiaryMemberId, after ?? before, guildId)) ?? after ?? before;
 			await db
 				.logMemberLevelGain(credit.beneficiaryMemberId, {
 					source: 'leech',
-					amount: credit.amount,
-					total_xp: stats?.experience != null ? Number(stats.experience) : null,
+					xp: credit.amount,
+					xp_total: stats?.xp != null ? Number(stats.xp) : null,
 					level: stats?.level != null ? Number(stats.level) : null,
 					rank: stats?.rank != null ? Number(stats.rank) : null,
 					skim_percent: credit.percent ?? null
@@ -163,7 +163,7 @@ export async function creditLeechers(leechCredits: any, guildId: any) {
 			await evaluateMemberLevelAndRank(guildId, credit.beneficiaryMemberId, {
 				previousLevel: before?.level != null ? Number(before.level) : null,
 				previousRank: before?.rank != null ? Number(before.rank) : null,
-				previousExperience: before?.experience != null ? Number(before.experience) : null,
+				previousXp: before?.xp != null ? Number(before.xp) : null,
 				reason: 'item-leech-credit'
 			}).catch(() => null);
 			const beneficiary = await db.getServerMemberById(credit.beneficiaryMemberId).catch(() => null);
@@ -177,24 +177,24 @@ export async function creditLeechers(leechCredits: any, guildId: any) {
 
 export async function snapshotMembers(memberIds: any[]) {
 	const ids = [...new Set(memberIds.filter((id) => id != null).map((id) => Number(id)))];
-	const snapshots = new Map<number, { level: any; rank: any; experience: any }>();
+	const snapshots = new Map<number, { level: any; rank: any; xp: any }>();
 	for (const id of ids) {
 		const stats = await db.getMemberLevel(id).catch(() => null);
 		snapshots.set(id, {
 			level: stats?.level ?? null,
 			rank: stats?.rank ?? null,
-			experience: stats?.experience ?? null
+			xp: stats?.xp ?? null
 		});
 	}
 	return snapshots;
 }
 
-export async function finalizeXpChanges(guildId: any, snapshots: Map<number, { level: any; rank: any; experience: any }>, reason: string) {
+export async function finalizeXpChanges(guildId: any, snapshots: Map<number, { level: any; rank: any; xp: any }>, reason: string) {
 	for (const [memberId, before] of snapshots) {
 		await evaluateMemberLevelAndRank(guildId, memberId, {
 			previousLevel: before.level != null ? Number(before.level) : null,
 			previousRank: before.rank != null ? Number(before.rank) : null,
-			previousExperience: before.experience != null ? Number(before.experience) : null,
+			previousXp: before.xp != null ? Number(before.xp) : null,
 			reason
 		}).catch(() => null);
 	}
@@ -259,7 +259,7 @@ async function targetImmuneUntil(targetMemberId: any, guildId: any): Promise<Dat
 }
 
 function logAction(actorMemberId: any, fields: Record<string, any>) {
-	return db.logMemberItemAction(actorMemberId, { xp_amount: 0, outcome: 'success', ...fields });
+	return db.logMemberItemAction(actorMemberId, { xp: 0, outcome: 'success', ...fields });
 }
 
 async function runSelfBuff({
@@ -353,7 +353,7 @@ async function resolveAttack(
 			member_item_id: actorMemberItemId,
 			target_member_id: targetMemberId,
 			action,
-			xp_amount: reflected,
+			xp: reflected,
 			outcome: 'reflected'
 		});
 		return { outcome: 'reflected', xp: reflected, actorDisguised };
@@ -369,7 +369,7 @@ async function resolveAttack(
 
 	if (credit) {
 		await db.ensureMemberLevel(actorMemberId);
-		const actorStats = await db.updateMemberLevelStats(actorMemberId, { experienceIncrement: amount });
+		const actorStats = await db.updateMemberLevelStats(actorMemberId, { xpIncrement: amount });
 		await reevaluateLevel(actorMemberId, actorStats, guildId);
 	}
 
@@ -378,13 +378,13 @@ async function resolveAttack(
 	if (insurance) {
 		refunded = insuranceRefundAmount(amount, insurance.effect_value);
 		if (refunded > 0) {
-			const refundStats = await db.updateMemberLevelStats(targetMemberId, { experienceIncrement: refunded });
+			const refundStats = await db.updateMemberLevelStats(targetMemberId, { xpIncrement: refunded });
 			await reevaluateLevel(targetMemberId, refundStats, guildId);
 		}
 		await db.logMemberItemAction(targetMemberId, {
 			target_member_id: actorMemberId,
 			action: 'insurance',
-			xp_amount: refunded,
+			xp: refunded,
 			outcome: 'refunded'
 		});
 	}
@@ -395,7 +395,7 @@ async function resolveAttack(
 		member_item_id: actorMemberItemId,
 		target_member_id: targetMemberId,
 		action,
-		xp_amount: amount,
+		xp: amount,
 		rate_percent: pct,
 		luck_percent: luckPercent || null
 	});
@@ -578,14 +578,14 @@ export async function resolveGift({ actorMemberId, actorMemberItemId, targetMemb
 	const received = Math.max(0, amount - Math.floor((amount * taxPercent) / 100));
 
 	await db.ensureMemberLevel(targetMemberId);
-	const targetStats = await db.updateMemberLevelStats(targetMemberId, { experienceIncrement: received });
+	const targetStats = await db.updateMemberLevelStats(targetMemberId, { xpIncrement: received });
 	await reevaluateLevel(targetMemberId, targetStats, guildId);
 
 	await logAction(actorMemberId, {
 		member_item_id: actorMemberItemId,
 		target_member_id: targetMemberId,
 		action: 'gift',
-		xp_amount: received,
+		xp: received,
 		rate_percent: taxPercent || null,
 		luck_percent: luckPercent || null,
 		actor_disguised: actorDisguised
@@ -604,7 +604,7 @@ export async function resolveBounty({ actorMemberId, actorMemberItemId, targetMe
 		member_item_id: actorMemberItemId,
 		target_member_id: targetMemberId,
 		action: 'bounty',
-		xp_amount: amount,
+		xp: amount,
 		actor_disguised: actorDisguised
 	});
 	return { outcome: 'success', xp: amount, actorDisguised };
@@ -622,7 +622,7 @@ export async function resolveSpy({ actorMemberId, actorMemberItemId, targetMembe
 			member_item_id: actorMemberItemId,
 			target_member_id: targetMemberId,
 			action: 'spy',
-			xp_amount: 0,
+			xp: 0,
 			outcome: 'caught',
 			rate_percent: chance,
 			luck_percent: luckPercent || null
@@ -746,13 +746,13 @@ async function payoutBountyOnHit(targetMemberId: any, attackerMemberId: any, gui
 	if (!total || total <= 0) return 0;
 	const attackerDisguised = await isDisguised(attackerMemberId);
 	await db.ensureMemberLevel(attackerMemberId);
-	const stats = await db.updateMemberLevelStats(attackerMemberId, { experienceIncrement: total });
+	const stats = await db.updateMemberLevelStats(attackerMemberId, { xpIncrement: total });
 	await reevaluateLevel(attackerMemberId, stats, guildId);
 	await db
 		.logMemberItemAction(attackerMemberId, {
 			target_member_id: targetMemberId,
 			action: 'bounty_collected',
-			xp_amount: total,
+			xp: total,
 			outcome: 'success',
 			actor_disguised: attackerDisguised
 		})
@@ -970,7 +970,7 @@ export async function handleItemDiscard(client: any, payload: any) {
 		member_item_id,
 		item_id: memberItem.item_id,
 		action: 'discard',
-		xp_amount: 0,
+		xp: 0,
 		outcome: 'success'
 	});
 
@@ -1052,7 +1052,7 @@ export async function handleItemBuy(client: any, payload: any) {
 		member_item_id: owned?.id ?? null,
 		item_id,
 		action: 'buy',
-		xp_amount: totalCost,
+		xp: totalCost,
 		outcome: 'success'
 	});
 	await finalizeXpChanges(guild_id, snapshots, 'item-buy');

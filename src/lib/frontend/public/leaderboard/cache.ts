@@ -31,7 +31,7 @@ export type LeaderboardRow = {
 	display_name: string | null;
 	server_display_name: string | null;
 	avatar: string | null;
-	experience: number | null;
+	xp: number | null;
 	level: number | null;
 	chat_total: number | null;
 	voice_minutes_total: number | null;

@@ -46,7 +46,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			.logMemberItemAction(body.member_id, {
 				item_id: body.item_id,
 				action: 'gift',
-				xp_amount: 0,
+				xp: 0,
 				outcome: 'admin'
 			})
 			.catch(() => null);

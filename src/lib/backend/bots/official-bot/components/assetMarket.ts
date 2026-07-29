@@ -255,13 +255,13 @@ async function finalize(guildId: any, memberId: any, before: any, reason: string
 	await evaluateMemberLevelAndRank(guildId, memberId, {
 		previousLevel: before?.level != null ? Number(before.level) : null,
 		previousRank: before?.rank != null ? Number(before.rank) : null,
-		previousExperience: before?.experience != null ? Number(before.experience) : null,
+		previousXp: before?.xp != null ? Number(before.xp) : null,
 		reason
 	}).catch(() => null);
 }
 
 export async function handleAssetBuy(_client: any, payload: any) {
-	const { guild_id, actor_discord_id, asset_type, asset_id, xp_amount } = payload || {};
+	const { guild_id, actor_discord_id, asset_type, asset_id, xp } = payload || {};
 	if (!guild_id || !actor_discord_id || !asset_id) return { ok: false, error: 'missing_fields' };
 
 	const { getServerForCurrentBot } = await import('../../../config.js');
@@ -276,7 +276,7 @@ export async function handleAssetBuy(_client: any, payload: any) {
 	if (!memberId) return { ok: false, error: 'member_not_found' };
 
 	const type = String(asset_type || 'crypto');
-	const amount = Math.max(0, Math.floor(Number(xp_amount) || 0));
+	const amount = Math.max(0, Math.floor(Number(xp) || 0));
 	if (amount <= 0) return { ok: false, error: 'invalid_amount' };
 	if (amount < MIN_BUY_XP) return { ok: false, error: 'below_minimum', min: MIN_BUY_XP };
 
@@ -323,7 +323,7 @@ export async function handleAssetBuy(_client: any, payload: any) {
 			symbol: meta.symbol,
 			asset_name: meta.name,
 			asset_image: meta.image,
-			xp_amount: amount,
+			xp: amount,
 			price: market.price
 		})
 		.catch(() => null);
@@ -333,7 +333,7 @@ export async function handleAssetBuy(_client: any, payload: any) {
 }
 
 export async function handleAssetSell(_client: any, payload: any) {
-	const { guild_id, actor_discord_id, position_id, amount } = payload || {};
+	const { guild_id, actor_discord_id, position_id, xp: amount } = payload || {};
 	if (!guild_id || !actor_discord_id || !position_id) return { ok: false, error: 'missing_fields' };
 
 	const { getServerForCurrentBot } = await import('../../../config.js');
@@ -367,7 +367,7 @@ export async function handleAssetSell(_client: any, payload: any) {
 
 	const before = await db.getMemberLevel(memberId).catch(() => null);
 	await db.ensureMemberLevel(memberId);
-	await db.updateMemberLevelStats(memberId, { experienceIncrement: payout });
+	await db.updateMemberLevelStats(memberId, { xpIncrement: payout });
 	if (full) {
 		await db.closeAssetPosition(position_id);
 	} else {
@@ -382,7 +382,7 @@ export async function handleAssetSell(_client: any, payload: any) {
 			symbol: position.symbol,
 			asset_name: position.asset_name,
 			asset_image: position.asset_image ?? null,
-			xp_amount: payout,
+			xp: payout,
 			price: market.price,
 			net: payout - soldInvested
 		})

@@ -112,6 +112,10 @@
 		{ key: 'spy', dir: 'out', group: 'offense', title: 'Spied on most', icon: 'fa-magnifying-glass', fill: 'm-ov-bar-fill--steal' },
 		{ key: 'gift', dir: 'out', group: 'offense', title: 'Gifted to most', icon: 'fa-gift', fill: 'm-ov-bar-fill--gift' },
 		{ key: 'bounty', dir: 'out', group: 'offense', title: 'Bounties placed on', icon: 'fa-crown', fill: 'm-ov-bar-fill--steal' },
+		{ key: 'bounty_collected', dir: 'out', group: 'offense', title: 'Bounties collected on', icon: 'fa-sack-dollar', fill: 'm-ov-bar-fill--gift' },
+		{ key: 'my_spy_caught', dir: 'out', group: 'offense', title: 'Caught spying on them', icon: 'fa-user-secret', fill: 'm-ov-bar-fill--danger' },
+		{ key: 'my_blocked', dir: 'out', group: 'offense', title: 'They blocked you', icon: 'fa-shield-halved', fill: 'm-ov-bar-fill--danger' },
+		{ key: 'my_reflected', dir: 'out', group: 'offense', title: 'They reflected you', icon: 'fa-arrows-rotate', fill: 'm-ov-bar-fill--danger' },
 		{ key: 'steal', dir: 'in', group: 'defense', title: 'Robbed by', icon: 'fa-skull-crossbones', fill: 'm-ov-bar-fill--danger' },
 		{ key: 'bomb', dir: 'in', group: 'defense', title: 'Bombed by', icon: 'fa-burst', fill: 'm-ov-bar-fill--danger' },
 		{ key: 'leech', dir: 'in', group: 'defense', title: 'Leeched by', icon: 'fa-droplet', fill: 'm-ov-bar-fill--danger' },
@@ -119,11 +123,11 @@
 		{ key: 'bounty', dir: 'in', group: 'defense', title: 'Bounties on you from', icon: 'fa-skull', fill: 'm-ov-bar-fill--danger' },
 		{ key: 'spy_caught', dir: 'out', group: 'defense', title: 'Caught spying on you', icon: 'fa-user-secret', fill: 'm-ov-bar-fill--gift' },
 		{ key: 'blocked', dir: 'out', group: 'defense', title: 'Blocked their attack', icon: 'fa-shield-halved', fill: 'm-ov-bar-fill--gift' },
-		{ key: 'reflected', dir: 'out', group: 'defense', title: 'Reflected back at', icon: 'fa-arrows-rotate', fill: 'm-ov-bar-fill--gift' }
+		{ key: 'reflected', dir: 'out', group: 'defense', title: 'Reflected back at', icon: 'fa-arrows-rotate', fill: 'm-ov-bar-fill--gift' },
+		{ key: 'bounty_paid_out', dir: 'out', group: 'defense', title: 'Bounty claimed on you by', icon: 'fa-sack-dollar', fill: 'm-ov-bar-fill--danger' },
+		{ key: 'leech_blocked', dir: 'out', group: 'defense', title: 'Leech bounced off you', icon: 'fa-droplet', fill: 'm-ov-bar-fill--gift' }
 	];
-	const interactionLists = $derived(
-		INTERACTION_LISTS.map((l) => ({ ...l, rows: (interactions[l.key]?.[l.dir as 'out' | 'in'] ?? []) as any[] })).filter((l) => l.rows.length > 0)
-	);
+	const interactionLists = $derived(INTERACTION_LISTS.map((l) => ({ ...l, rows: (interactions[l.key]?.[l.dir as 'out' | 'in'] ?? []) as any[] })));
 	const offenseLists = $derived(interactionLists.filter((l) => l.group === 'offense'));
 	const defenseLists = $derived(interactionLists.filter((l) => l.group === 'defense'));
 	const hasFavorites = $derived((ins.favorite_items ?? []).length > 0);
@@ -228,7 +232,7 @@
 		return { W, H, line, area, zeroY, last: pts[pts.length - 1], up: pts[pts.length - 1] >= 0, coords };
 	});
 
-	const buddies = $derived((data.levelFriends ?? []) as { name: string; avatar: string | null; ticks: number; xp: number }[]);
+	const buddies = $derived((data.levelFriends ?? []) as { name: string; avatar: string | null; ticks: number; minutes: number; xp: number }[]);
 </script>
 
 <svelte:head><title>{data.server.name || data.server.slug} Account | {APP_NAME} Discord Bot</title></svelte:head>
@@ -241,7 +245,7 @@
 		</div>
 		<div class="m-stat-hero">
 			<span class="m-stat-hero-val" use:countUp={p.totalXp}>{fmt(p.totalXp)}</span>
-			<span class="m-stat-hero-cap">lifetime experience</span>
+			<span class="m-stat-hero-cap">lifetime XP</span>
 		</div>
 		{#if xpSourceBars.length > 0}
 			<div class="m-bar-block">
@@ -354,7 +358,7 @@
 						<div class="m-buddy-body">
 							<div class="m-buddy-head">
 								<span class="m-ov-list-name">{b.name}</span>
-								<span class="m-ov-list-val">{fmt(b.xp)} XP together</span>
+								<span class="m-ov-list-val">{fmt(b.minutes)}m · {fmt(b.xp)} XP together</span>
 							</div>
 							<div class="m-ov-bar-track">
 								<div
@@ -559,6 +563,8 @@
 									></div>
 								</div>
 							</div>
+						{:else}
+							<span class="m-ov-list-none">None yet</span>
 						{/each}
 					</div>
 				{/each}
@@ -684,6 +690,16 @@
 					<span class="m-mini-label">Bombed you</span>
 				</div>
 				<div class="m-mini">
+					<i class="fas fa-droplet"></i>
+					<span class="m-mini-value">{fmt(d.items_leeched)}</span>
+					<span class="m-mini-label">XP leeched</span>
+				</div>
+				<div class="m-mini">
+					<i class="fas fa-droplet"></i>
+					<span class="m-mini-value">{fmt(d.items_leeched_by)}</span>
+					<span class="m-mini-label">Leeched off you</span>
+				</div>
+				<div class="m-mini">
 					<i class="fas fa-gift"></i>
 					<span class="m-mini-value">{fmt(d.items_gifted)}</span>
 					<span class="m-mini-label">Gifted out</span>
@@ -707,6 +723,11 @@
 					<i class="fas fa-skull"></i>
 					<span class="m-mini-value">{fmt(d.bounty_on_me)}</span>
 					<span class="m-mini-label">Bounty on you</span>
+				</div>
+				<div class="m-mini" data-dir="up">
+					<i class="fas fa-sack-dollar"></i>
+					<span class="m-mini-value">{fmt(d.items_bounty_collected)}</span>
+					<span class="m-mini-label">Bounty collected</span>
 				</div>
 				<div class="m-mini" data-dir="up">
 					<i class="fas fa-user-secret"></i>

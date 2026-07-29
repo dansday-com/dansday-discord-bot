@@ -27,8 +27,8 @@ export const POST: RequestHandler = async ({ params, request }) => {
 
 	const body = await request.json().catch(() => null);
 	if (!body) return json({ success: false, error: 'Invalid body' }, { status: 400 });
-	const { card, asset_type, asset_id, xp_amount } = body;
-	if (!card || !asset_id || !xp_amount) return json({ success: false, error: 'Missing fields' }, { status: 400 });
+	const { card, asset_type, asset_id, xp } = body;
+	if (!card || !asset_id || !xp) return json({ success: false, error: 'Missing fields' }, { status: 400 });
 
 	const actor = await resolveMemberByCardToken(server.id, String(card));
 	if (!actor) return json({ success: false, error: 'Member not found' }, { status: 404 });
@@ -44,7 +44,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		actor_discord_id: actor.discord_member_id,
 		asset_type: String(asset_type || 'crypto'),
 		asset_id: String(asset_id),
-		xp_amount: Number(xp_amount) || 0
+		xp: Number(xp) || 0
 	});
 
 	if (webhookResult.status !== 200 || !webhookResult.body?.ok) {

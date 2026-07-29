@@ -228,7 +228,7 @@ export async function loadItemsShared(server: any, hash: string, subKey?: 'items
 			server_display_name: member.server_display_name ?? null,
 			avatar: member.avatar ?? null,
 			level: Number(member.level ?? 0) || 0,
-			experience: Number(member.experience ?? 0) || 0,
+			xp: Number(member.xp ?? 0) || 0,
 			rank: member.rank != null ? Number(member.rank) : null,
 			chat_total: Number(member.chat_total ?? 0) || 0,
 			voice_minutes_active: Number(member.voice_minutes_active ?? 0) || 0,
@@ -236,7 +236,7 @@ export async function loadItemsShared(server: any, hash: string, subKey?: 'items
 			roles: (member.roles ?? []).map((r: any) => ({ name: r.name, color: r.color, position: r.position }))
 		},
 		balance: {
-			experience: Number(member.experience ?? 0) || 0,
+			xp: Number(member.xp ?? 0) || 0,
 			level: Number(member.level ?? 1) || 1,
 			rank: member.rank != null ? Number(member.rank) : null
 		},

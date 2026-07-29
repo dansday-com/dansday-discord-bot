@@ -22,7 +22,7 @@
 
 	const membersWithoutLevels = $derived(Math.max(0, (s.members_total ?? 0) - (s.members_with_levels ?? 0)));
 
-	const avgXP = $derived((s.members_with_levels ?? 0) > 0 ? Math.round((s.leveling_total_experience ?? 0) / s.members_with_levels).toLocaleString() : '0');
+	const avgXP = $derived((s.members_with_levels ?? 0) > 0 ? Math.round((s.leveling_total_xp ?? 0) / s.members_with_levels).toLocaleString() : '0');
 	const minigamesWinRate = $derived((s.minigames_plays ?? 0) > 0 ? Math.round((Number(s.minigames_wins) / Number(s.minigames_plays)) * 100) : 0);
 
 	const featureCards = $derived([
@@ -185,7 +185,7 @@
 				<h3 class="text-ash-100 text-base font-bold">Leveling</h3>
 			</div>
 			<div class="space-y-2">
-				{#each [{ icon: 'fa-star', label: 'Total XP', value: fmt(s.leveling_total_experience) }, { icon: 'fa-chart-bar', label: 'Avg Level', value: fmtDec(s.leveling_avg_level) }, { icon: 'fa-crown', label: 'Max Level', value: fmt(s.leveling_max_level) }, { icon: 'fa-chart-line', label: 'Avg XP', value: avgXP }, { icon: 'fa-comments', label: 'Total Chat', value: fmt(s.leveling_total_chat) }] as row}
+				{#each [{ icon: 'fa-star', label: 'Total XP', value: fmt(s.leveling_total_xp) }, { icon: 'fa-chart-bar', label: 'Avg Level', value: fmtDec(s.leveling_avg_level) }, { icon: 'fa-crown', label: 'Max Level', value: fmt(s.leveling_max_level) }, { icon: 'fa-chart-line', label: 'Avg XP', value: avgXP }, { icon: 'fa-comments', label: 'Total Chat', value: fmt(s.leveling_total_chat) }] as row}
 					<div class="bg-ash-800/50 flex items-center justify-between rounded-lg p-2">
 						<span class="text-ash-300 flex items-center gap-2 text-sm">
 							<i class="fas {row.icon} text-xs text-amber-400/90"></i>{row.label}

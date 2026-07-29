@@ -10,7 +10,7 @@
 		server_display_name?: string | null;
 		avatar?: string | null;
 		level?: number | null;
-		experience?: number | null;
+		xp?: number | null;
 		rank?: number | null;
 		chat_total?: number | null;
 		voice_minutes_active?: number | null;
@@ -292,7 +292,7 @@
 		const name = memberName(member);
 		const role = highestRole;
 		const level = String(member.level ?? 0);
-		const xp = fmtNum(member.experience);
+		const xp = fmtNum(member.xp);
 		const msgs = fmtNum(member.chat_total);
 		const voice = fmtNum(member.voice_minutes_active);
 		const joined = fmtJoined(member.member_since);
@@ -762,7 +762,7 @@
 						<div class="mc-stats-row">
 							<div class="mc-stat">
 								<i class="fas fa-star"></i>
-								<span class="mc-stat-val">{fmtNum(member.experience)}</span>
+								<span class="mc-stat-val">{fmtNum(member.xp)}</span>
 								<span class="mc-stat-lbl">XP</span>
 							</div>
 							<div class="mc-stat">

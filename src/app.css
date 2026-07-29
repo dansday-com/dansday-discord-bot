@@ -4461,6 +4461,7 @@
 	padding: 3px 9px;
 	border-radius: 99px;
 	font-size: 10.5px;
+	line-height: 1.4;
 	font-weight: 600;
 	color: #fff;
 	background: rgba(255, 255, 255, 0.12);
@@ -4468,7 +4469,9 @@
 }
 
 .m-root .m-xp-role i {
+	display: block;
 	font-size: 7px;
+	line-height: 1;
 	color: var(--role-color, rgba(255, 255, 255, 0.6));
 }
 
@@ -6650,6 +6653,10 @@
 	margin-right: 6px;
 	color: var(--chili-hot);
 }
+.m-ov-list-none {
+	font-size: 12px;
+	color: var(--lb-text-faint);
+}
 .m-ov-list-name {
 	flex: 1;
 	min-width: 0;
@@ -7719,17 +7726,6 @@
 	color: var(--lb-text-muted);
 }
 
-.m-task-celebrate {
-	position: fixed;
-	inset: 0;
-	display: grid;
-	place-items: center;
-	background: rgba(26, 52, 63, 0.42);
-	backdrop-filter: blur(3px);
-	z-index: 9999;
-	animation: m-task-fade 0.25s ease;
-}
-
 .m-task-celebrate-card {
 	background: var(--chili-surface-elevated, #fff);
 	border-radius: 20px;
@@ -7759,15 +7755,6 @@
 	margin: 0;
 	font-size: 13px;
 	color: var(--lb-text-muted, #5b6b73);
-}
-
-@keyframes m-task-fade {
-	from {
-		opacity: 0;
-	}
-	to {
-		opacity: 1;
-	}
 }
 
 @keyframes m-task-pop {
@@ -8009,20 +7996,9 @@
 	}
 }
 
-.m-task-roll {
-	position: fixed;
-	inset: 0;
-	display: grid;
-	place-items: center;
-	padding: 18px;
-	background: rgba(26, 52, 63, 0.52);
-	backdrop-filter: blur(4px);
-	z-index: 9999;
-	animation: m-task-fade 0.25s ease;
-}
-
 .m-task-roll-card {
 	width: min(560px, 100%);
+	max-width: min(560px, 100%);
 	background: var(--chili-surface-elevated, #fff);
 	border: 1px solid var(--lb-border, rgba(0, 0, 0, 0.08));
 	border-radius: 20px;

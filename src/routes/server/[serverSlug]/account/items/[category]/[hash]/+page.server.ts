@@ -49,7 +49,7 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 				avatar: m.avatar ?? null,
 				discord_member_id: String(m.discord_member_id),
 				level: Number(m.level ?? 0) || 0,
-				experience: Number(m.experience ?? 0) || 0,
+				xp: Number(m.xp ?? 0) || 0,
 				rank: m.rank != null ? Number(m.rank) : null,
 				roles: (m.roles ?? []).map((r: any) => ({ name: r.name, color: r.color }))
 			}));

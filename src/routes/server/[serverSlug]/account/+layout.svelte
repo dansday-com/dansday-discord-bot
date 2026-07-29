@@ -86,12 +86,12 @@
 	let now = $state(Date.now());
 	let busy = $state<number | null>(null);
 
-	let liveXp = $state(pd.balance?.experience ?? 0);
+	let liveXp = $state(pd.balance?.xp ?? 0);
 	let level = $state(pd.balance?.level ?? 1);
 	let rank = $state(pd.balance?.rank ?? null);
 
 	$effect(() => {
-		liveXp = pd.balance?.experience ?? 0;
+		liveXp = pd.balance?.xp ?? 0;
 		level = pd.balance?.level ?? 1;
 		rank = pd.balance?.rank ?? null;
 	});
@@ -211,7 +211,7 @@
 					const payload = JSON.parse(e.data) as PublicMembersStreamPayload;
 					const me = payload?.members?.find((m: any) => String(m.discord_member_id) === pd.memberDiscordId);
 					if (me) {
-						if (me.experience != null) liveXp = Number(me.experience) || 0;
+						if (me.xp != null) liveXp = Number(me.xp) || 0;
 						if (me.level != null) level = Number(me.level) || 1;
 						if (me.rank != null) rank = Number(me.rank);
 					}
@@ -411,7 +411,7 @@
 				{#if isOverview && pd.profile?.roles?.[0]}
 					<div class="m-xp-roles">
 						<span class="m-xp-role" style={pd.profile.roles[0].color ? `--role-color: ${pd.profile.roles[0].color};` : ''}>
-							<i class="fas fa-circle"></i>{pd.profile.roles[0].name || 'Role'}
+							<i class="fas fa-circle"></i><span>{pd.profile.roles[0].name || 'Role'}</span>
 						</span>
 					</div>
 				{/if}
@@ -567,7 +567,7 @@
 
 {#if showCard && pd.memberCard}
 	<MemberCard
-		member={{ ...pd.memberCard, level, experience: liveXp, rank }}
+		member={{ ...pd.memberCard, level, xp: liveXp, rank }}
 		mode={isAssets ? 'assets' : 'level'}
 		assets={{ invested: assetSummary.invested, value: assetSummary.value, pnl: assetSummary.pnl, pnlPct: assetSummary.pnlPct, count: assetSummary.count }}
 		serverName={data.server.name || data.server.slug}

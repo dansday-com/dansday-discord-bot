@@ -44,17 +44,17 @@ async function measureProgress(memberId: any, row: any, dayStartMs: number) {
 	return db.countMemberEventsSince(memberId, def.metric, dayStartMs, row.target_item_id ?? null).catch(() => 0);
 }
 
-async function grantXpTo(guildId: any, memberId: any, amount: number, source: 'task' | 'daily' = 'task') {
-	const xp = Math.max(0, Math.round(amount) || 0);
+async function grantXpTo(guildId: any, memberId: any, rawXp: number, source: 'task' | 'daily' = 'task') {
+	const xp = Math.max(0, Math.round(rawXp) || 0);
 	await db.ensureMemberLevel(memberId);
 	const snaps = await snapshotMembers([memberId]);
 	if (xp > 0) {
-		const stats = await db.updateMemberLevelStats(memberId, { experienceIncrement: xp });
+		const stats = await db.updateMemberLevelStats(memberId, { xpIncrement: xp });
 		await db
 			.logMemberLevelGain(memberId, {
 				source,
-				amount: xp,
-				total_xp: stats?.experience != null ? Number(stats.experience) : null,
+				xp,
+				xp_total: stats?.xp != null ? Number(stats.xp) : null,
 				level: stats?.level != null ? Number(stats.level) : null,
 				rank: stats?.rank != null ? Number(stats.rank) : null
 			})
@@ -76,7 +76,7 @@ async function deliverReward(guildId: any, memberId: any, plan: { wantsItem: boo
 			member_item_id: owned?.id ?? null,
 			item_id: Number(plan.itemId),
 			action: 'task_reward',
-			xp_amount: 0,
+			xp: 0,
 			outcome: 'success'
 		});
 		return { kind: 'item', itemId: Number(plan.itemId), name: item.name, effectType: item.effect_type, cost: Number(item.cost) || 0 };
@@ -211,7 +211,7 @@ export async function handleTaskClaim(client: any, payload: any) {
 		granted = await deliverReward(guild_id, memberId, {
 			wantsItem: grantsItem,
 			itemId: row.reward_item_id,
-			fallbackXp: Number(row.reward_xp) || xpRewardFor(row.difficulty, 0, 500)
+			fallbackXp: Number(row.xp_reward) || xpRewardFor(row.difficulty, 0, 500)
 		});
 	} catch (err: any) {
 		await logger.log(`❌ Task reward grant failed: ${err.message}`);

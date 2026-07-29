@@ -105,16 +105,16 @@
 			id: 'tasks',
 			icon: 'fa-list-check',
 			title: 'Tasks & streaks',
-			lead: 'Nine daily goals plus nine harder weekly ones, generated from what you already do here.',
+			lead: 'Eighteen daily goals plus eighteen harder weekly ones, generated from what you already do here.',
 			steps: [
-				{ icon: 'fa-calendar-check', title: 'Check in', desc: 'Claim one day of the 7-day cycle. Day 7 is the jackpot.' },
+				{ icon: 'fa-calendar-check', title: 'Check in', desc: 'Claim one day of the 7-day cycle. Day 7 pays 50,000 XP.' },
 				{ icon: 'fa-bolt', title: 'Just play', desc: 'Chat, voice, gamble, trade or attack — progress tracks itself.' },
 				{ icon: 'fa-gift', title: 'Claim rewards', desc: 'Finished tasks pay XP or a shop item, delivered straight to your bag.' },
 				{ icon: 'fa-fire', title: 'Keep the streak', desc: 'Finish any one task — daily or weekly — to bank the day. +2% task XP per streak day, up to +100%.' }
 			],
 			cards: [
-				{ icon: 'fa-sun', accent: '#c8911a', title: '9 tasks every day', desc: 'Three easy, three medium, three hard, reset at midnight on your own clock.' },
-				{ icon: 'fa-calendar-week', accent: '#7b5ea7', title: '9 weekly tasks', desc: 'All hard, Monday to Sunday, sized against a full week of activity.' },
+				{ icon: 'fa-sun', accent: '#c8911a', title: '18 tasks every day', desc: 'Six easy, six medium, six hard, reset at midnight on your own clock.' },
+				{ icon: 'fa-calendar-week', accent: '#7b5ea7', title: '18 weekly tasks', desc: 'All hard, Monday to Sunday, sized against a full week of activity.' },
 				{
 					icon: 'fa-gauge-high',
 					accent: '#245f73',
@@ -135,7 +135,7 @@
 				icon: 'fa-calendar-check',
 				accent: '#c8911a',
 				title: '🎁 Daily check-in',
-				text: 'Claim one day of a 7-day cycle per day, and day 7 is the jackpot. Miss a day and the cycle restarts at day 1, so check in even when you cannot play.'
+				text: 'One claim a day. XP runs 1,000 up to 50,000 on day 7, and every day has a 50% shot at a shop item instead. Rare drops get likelier the deeper you go — mythic 1% on day 1, 4% on day 7. Miss a day and you restart at day 1.'
 			}
 		},
 		{

@@ -26,7 +26,7 @@ async function resolveServerMemberId(serverId: any, discordId: any) {
 }
 
 export async function handleMinigamePlay(client: any, payload: any) {
-	const { guild_id, actor_discord_id, multiplier, amount } = payload || {};
+	const { guild_id, actor_discord_id, multiplier, xp: amount } = payload || {};
 	if (!guild_id || !actor_discord_id) return { ok: false, error: 'missing_fields' };
 
 	const { getServerForCurrentBot, isPublicSubFeatureEnabled } = await import('../../../config.js');
@@ -65,8 +65,8 @@ export async function handleMinigamePlay(client: any, payload: any) {
 	if (won) {
 		payout = Math.floor(wager * mult);
 		await db.ensureMemberLevel(actorMemberId);
-		const after = await db.updateMemberLevelStats(actorMemberId, { experienceIncrement: payout });
-		const rawXp = after?.experience ?? 0;
+		const after = await db.updateMemberLevelStats(actorMemberId, { xpIncrement: payout });
+		const rawXp = after?.xp ?? 0;
 		const xp = typeof rawXp === 'bigint' ? Number(rawXp) : Number(rawXp) || 0;
 		const expectedLevel = await determineLevel(xp, guild_id);
 		let storedLevel = after?.level;
@@ -81,7 +81,7 @@ export async function handleMinigamePlay(client: any, payload: any) {
 			multiplier: mult,
 			wager,
 			payout,
-			xp_amount: netChange,
+			xp: netChange,
 			outcome: won ? 'win' : 'lose',
 			chance,
 			luck_percent: luckPercent || null

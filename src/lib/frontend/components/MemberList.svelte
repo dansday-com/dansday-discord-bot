@@ -11,7 +11,7 @@
 		server_display_name: string;
 		avatar: string | null;
 		level: number;
-		experience: number;
+		xp: number;
 		rank: number;
 		chat_total: number;
 		voice_minutes_active: number;
@@ -92,9 +92,9 @@
 				case 'level_asc':
 					return (a.level ?? 0) - (b.level ?? 0);
 				case 'xp_desc':
-					return (b.experience ?? 0) - (a.experience ?? 0);
+					return (b.xp ?? 0) - (a.xp ?? 0);
 				case 'xp_asc':
-					return (a.experience ?? 0) - (b.experience ?? 0);
+					return (a.xp ?? 0) - (b.xp ?? 0);
 				case 'chat_desc':
 					return (b.chat_total ?? 0) - (a.chat_total ?? 0);
 				case 'chat_asc':
@@ -250,7 +250,7 @@
 								</div>
 								<div class="min-w-0">
 									<div class="text-ash-400 text-[0.6rem] tracking-wide uppercase">XP</div>
-									<div class="text-ash-100 text-sm font-bold">{fmtNum(member.experience ?? 0)}</div>
+									<div class="text-ash-100 text-sm font-bold">{fmtNum(member.xp ?? 0)}</div>
 								</div>
 							</div>
 							<div class="bg-ash-800 border-ash-600 flex items-center gap-2 rounded-lg border p-2">

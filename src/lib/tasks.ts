@@ -2812,12 +2812,14 @@ export function pickReward(
 	minWorth = 0
 ): RewardPlan {
 	const ceiling = rewardCeiling({ catalog } as TaskEligibility);
-	const floor = Math.max(0, Math.round(Number(minWorth) || 0));
+	const spent = Math.max(0, Math.round(Number(minWorth) || 0));
+	const floor = spent > 0 ? Math.round(spent * EFFORT_REWARD_MARGIN) : 0;
 	const worth = Math.max(XP_REWARD_MIN, floor, Math.min(ceiling, Math.round(Number(value) || 0)));
 	const rand = mulberry32(hashSeed('reward', period, memberId, periodKey, slot));
 
 	if (catalog.length > 0 && rand() < TASK_ITEM_REWARD_CHANCE) {
-		const affordable = catalog.filter((c) => (Number(c.cost) || 0) >= worth * ITEM_VALUE_FLOOR);
+		const profitable = catalog.filter((c) => (Number(c.cost) || 0) > spent);
+		const affordable = profitable.filter((c) => (Number(c.cost) || 0) >= worth * ITEM_VALUE_FLOOR);
 		const fair = affordable.filter((c) => (Number(c.cost) || 0) <= worth);
 
 		const pool = fair.length > 0 ? fair : cheapestOf(affordable);

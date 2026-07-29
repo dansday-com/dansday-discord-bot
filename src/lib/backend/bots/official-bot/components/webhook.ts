@@ -430,6 +430,9 @@ async function handleWebhookRequest(req, res) {
 						const reward = typeof payload.reward === 'string' && payload.reward.trim() ? String(payload.reward).trim() : '• Quest reward';
 						const thumb = typeof payload.thumbnail_url === 'string' && payload.thumbnail_url.startsWith('http') ? payload.thumbnail_url : null;
 						const banner = typeof payload.banner_url === 'string' && payload.banner_url.startsWith('http') ? payload.banner_url : null;
+						await logger.log(
+							`🖼️ QUEST-EMBED quest=${payload.quest_id} raw_banner=${JSON.stringify(payload.banner_url)} raw_thumb=${JSON.stringify(payload.thumbnail_url)} -> banner=${banner ?? 'NULL'} thumb=${thumb ?? 'NULL'}`
+						);
 						await sendQuestNotificationMessage(
 							client,
 							guildId,

@@ -400,8 +400,16 @@
 </div>
 
 {#if itemRoll}
-	<div class="m-task-roll" role="status">
-		<div class="m-task-roll-card" class:m-task-roll-card--done={reelSettled} class:m-task-roll-card--jackpot={itemRoll.jackpot && reelSettled}>
+	<div class="m-gamble-overlay" role="presentation" onclick={() => (reelSettled ? (itemRoll = null) : null)}>
+		<div
+			class="m-gamble m-task-roll-card"
+			class:m-task-roll-card--done={reelSettled}
+			class:m-task-roll-card--jackpot={itemRoll.jackpot && reelSettled}
+			role="dialog"
+			aria-modal="true"
+			aria-label="Daily reward roll"
+			onclick={(e) => e.stopPropagation()}
+		>
 			<p class="m-task-roll-eyebrow">{itemRoll.jackpot ? `Day ${itemRoll.day} jackpot` : `Day ${itemRoll.day} reward`}</p>
 			<h3 class="m-task-roll-title">{reelSettled ? 'You got it!' : 'Rolling your item…'}</h3>
 
@@ -437,24 +445,24 @@
 		</div>
 	</div>
 {:else if celebrate}
-	<div class="m-task-celebrate" role="status">
-		<div class="m-task-celebrate-card">
+	<div class="m-gamble-overlay" role="presentation" onclick={() => (celebrate = null)}>
+		<div class="m-gamble m-task-celebrate-card" role="dialog" aria-modal="true" onclick={(e) => e.stopPropagation()}>
 			<div class="m-task-celebrate-emoji">{celebrate.emoji}</div>
 			<h3>{celebrate.label} streak!</h3>
 			<p>{celebrate.streak} days in a row. Keep it burning.</p>
 		</div>
 	</div>
 {:else if loginWin}
-	<div class="m-task-celebrate" role="status">
-		<div class="m-task-celebrate-card">
+	<div class="m-gamble-overlay" role="presentation" onclick={() => (loginWin = null)}>
+		<div class="m-gamble m-task-celebrate-card" role="dialog" aria-modal="true" onclick={(e) => e.stopPropagation()}>
 			<div class="m-task-celebrate-emoji">{loginWin.jackpot ? '🎁' : '✨'}</div>
 			<h3>{loginWin.jackpot ? 'Day 7 jackpot!' : `Day ${loginWin.day} claimed`}</h3>
 			<p>{loginWin.text}</p>
 		</div>
 	</div>
 {:else if taskWin}
-	<div class="m-task-celebrate" role="status">
-		<div class="m-task-celebrate-card">
+	<div class="m-gamble-overlay" role="presentation" onclick={() => (taskWin = null)}>
+		<div class="m-gamble m-task-celebrate-card" role="dialog" aria-modal="true" onclick={(e) => e.stopPropagation()}>
 			<div class="m-task-celebrate-emoji">{taskWin.item ? '🎁' : '✨'}</div>
 			<h3>{taskWin.title}</h3>
 			<p>{taskWin.text}</p>

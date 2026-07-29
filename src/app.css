@@ -7719,17 +7719,6 @@
 	color: var(--lb-text-muted);
 }
 
-.m-task-celebrate {
-	position: fixed;
-	inset: 0;
-	display: grid;
-	place-items: center;
-	background: rgba(26, 52, 63, 0.42);
-	backdrop-filter: blur(3px);
-	z-index: 9999;
-	animation: m-task-fade 0.25s ease;
-}
-
 .m-task-celebrate-card {
 	background: var(--chili-surface-elevated, #fff);
 	border-radius: 20px;
@@ -7759,15 +7748,6 @@
 	margin: 0;
 	font-size: 13px;
 	color: var(--lb-text-muted, #5b6b73);
-}
-
-@keyframes m-task-fade {
-	from {
-		opacity: 0;
-	}
-	to {
-		opacity: 1;
-	}
 }
 
 @keyframes m-task-pop {
@@ -8009,20 +7989,9 @@
 	}
 }
 
-.m-task-roll {
-	position: fixed;
-	inset: 0;
-	display: grid;
-	place-items: center;
-	padding: 18px;
-	background: rgba(26, 52, 63, 0.52);
-	backdrop-filter: blur(4px);
-	z-index: 9999;
-	animation: m-task-fade 0.25s ease;
-}
-
 .m-task-roll-card {
 	width: min(560px, 100%);
+	max-width: min(560px, 100%);
 	background: var(--chili-surface-elevated, #fff);
 	border: 1px solid var(--lb-border, rgba(0, 0, 0, 0.08));
 	border-radius: 20px;

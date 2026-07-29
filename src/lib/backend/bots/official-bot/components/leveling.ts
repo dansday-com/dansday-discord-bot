@@ -58,7 +58,7 @@ export async function getLevelRequirement(level, guildId) {
 	}
 }
 
-async function getExperienceForMessage(guildId) {
+async function getXpForMessage(guildId) {
 	if (!guildId) {
 		throw new Error('guildId is required for message XP');
 	}
@@ -84,7 +84,7 @@ function parseLevelRewardedAtMs(value) {
 	return parsed ? parsed.getTime() : null;
 }
 
-async function getExperienceForVoiceMinutes(minutes, isAFK = false, guildId) {
+async function getXpForVoiceMinutes(minutes, isAFK = false, guildId) {
 	if (!guildId) {
 		throw new Error('guildId is required for voice XP');
 	}
@@ -130,14 +130,14 @@ async function getVoiceCooldownMs(guildId) {
 	return settings.VOICE.COOLDOWN_SECONDS * 1000;
 }
 
-export async function determineLevel(experience = 0, guildId) {
+export async function determineLevel(xp = 0, guildId) {
 	if (!guildId) {
 		throw new Error('guildId is required for level determination');
 	}
-	if (experience <= 0) return 1;
+	if (xp <= 0) return 1;
 
 	let level = 1;
-	while (experience >= (await getLevelRequirement(level + 1, guildId))) {
+	while (xp >= (await getLevelRequirement(level + 1, guildId))) {
 		level += 1;
 	}
 	return level;
@@ -397,7 +397,7 @@ export async function sendLevelProgressNotification({
 				.setTitle('🎉 Level Up!')
 				.setDescription(`${member} has reached **Level ${snapshotLevel}**!`)
 				.addFields(
-					{ name: '📊 Total XP', value: `${(levelStats.experience ?? 0).toLocaleString()}`, inline: true },
+					{ name: '📊 Total XP', value: `${(levelStats.xp ?? 0).toLocaleString()}`, inline: true },
 					{ name: '🏆 Rank', value: currentRank ? `#${currentRank}` : 'Unranked', inline: true }
 				);
 		}
@@ -431,14 +431,14 @@ export async function sendLevelProgressNotification({
 	}
 }
 
-async function deriveBaselineLevel({ previousLevel, previousExperience, storedLevel }, guildId) {
+async function deriveBaselineLevel({ previousLevel, previousXp, storedLevel }, guildId) {
 	if (typeof previousLevel === 'number' && !Number.isNaN(previousLevel)) {
 		return previousLevel;
 	}
 
-	if (typeof previousExperience === 'number' && !Number.isNaN(previousExperience)) {
+	if (typeof previousXp === 'number' && !Number.isNaN(previousXp)) {
 		try {
-			return await determineLevel(previousExperience, guildId);
+			return await determineLevel(previousXp, guildId);
 		} catch (_) {}
 	}
 
@@ -454,10 +454,10 @@ async function handleLevelEvaluation(server, dbMember, currentStats, guildId, co
 		return currentStats;
 	}
 
-	const { previousLevel = null, previousExperience = null, previousRank: contextPreviousRank = null, reason = 'unknown' } = context;
-	const rawXp = currentStats.experience ?? 0;
-	const experienceForLevel = typeof rawXp === 'bigint' ? Number(rawXp) : typeof rawXp === 'string' ? parseFloat(rawXp) || 0 : Number(rawXp) || 0;
-	const expectedLevel = await determineLevel(experienceForLevel, guildId);
+	const { previousLevel = null, previousXp = null, previousRank: contextPreviousRank = null, reason = 'unknown' } = context;
+	const rawXp = currentStats.xp ?? 0;
+	const xpForLevel = typeof rawXp === 'bigint' ? Number(rawXp) : typeof rawXp === 'string' ? parseFloat(rawXp) || 0 : Number(rawXp) || 0;
+	const expectedLevel = await determineLevel(xpForLevel, guildId);
 
 	let storedLevel = currentStats.level;
 	if (typeof storedLevel === 'bigint') {
@@ -470,7 +470,7 @@ async function handleLevelEvaluation(server, dbMember, currentStats, guildId, co
 		storedLevel = null;
 	}
 
-	const baselineLevel = await deriveBaselineLevel({ previousLevel, previousExperience, storedLevel }, guildId);
+	const baselineLevel = await deriveBaselineLevel({ previousLevel, previousXp, storedLevel }, guildId);
 	const normalizedPreviousRank = normalizeRankValue(contextPreviousRank);
 
 	let finalStats = currentStats;
@@ -595,8 +595,8 @@ async function sendXPLogToChannel(guild, dbMember, xpGained, xpType, award: any 
 		await db
 			.logMemberLevelGain(dbMember.id, {
 				source: XP_LOG_SOURCE[xpType] ?? String(xpType).toLowerCase(),
-				amount: xpGained,
-				total_xp: stats?.experience != null ? Number(stats.experience) : null,
+				xp: xpGained,
+				xp_total: stats?.xp != null ? Number(stats.xp) : null,
 				level: stats?.level != null ? Number(stats.level) : null,
 				rank: stats?.rank != null ? Number(stats.rank) : null,
 				multiplier: award?.boosted ? award.multiplier : null,
@@ -711,12 +711,12 @@ async function handleMessageCreate(message) {
 
 		await db.ensureMemberLevel(dbMember.id);
 		const previousStats = await db.getMemberLevel(dbMember.id);
-		const baseXp = await getExperienceForMessage(guildId);
+		const baseXp = await getXpForMessage(guildId);
 		const award = await applyAwardEffects(dbMember.id, baseXp, 'message', guildId);
 		const { memberXp, leechCredits } = award;
 		const stats = await db.updateMemberLevelStats(dbMember.id, {
 			chatIncrement: 1,
-			experienceIncrement: memberXp,
+			xpIncrement: memberXp,
 			chatRewardedAt: message.createdAt ? new Date(message.createdAt) : new Date()
 		});
 		const leechApplied = await creditLeechers(leechCredits, guildId);
@@ -726,7 +726,7 @@ async function handleMessageCreate(message) {
 
 		await handleLevelEvaluation(server, dbMember, stats, message.guild.id, {
 			previousLevel: previousStats?.level ?? null,
-			previousExperience: previousStats?.experience ?? null,
+			previousXp: previousStats?.xp ?? null,
 			previousRank: previousStats?.rank ?? null,
 			reason: 'message'
 		});
@@ -754,7 +754,7 @@ async function awardVoiceXPLocked(server, dbMember, guildId, reason, previousSta
 	if (vm <= 0 && vid <= 0 && strm <= 0) return null;
 
 	const oldStats = previousStats || (await db.getMemberLevel(dbMember.id));
-	const baseXp = await getExperienceForVoiceMinutes(vm, isAFK, guildId);
+	const baseXp = await getXpForVoiceMinutes(vm, isAFK, guildId);
 	const videoXp = await getVideoXpForVoiceTick(vid, guildId);
 	const streamXp = await getStreamingXpForVoiceTick(strm, guildId);
 	const rawXpGained = baseXp + videoXp + streamXp;
@@ -776,7 +776,7 @@ async function awardVoiceXPLocked(server, dbMember, guildId, reason, previousSta
 	}
 
 	const stats = await db.updateMemberLevelStats(dbMember.id, {
-		experienceIncrement: xpGained,
+		xpIncrement: xpGained,
 		isInVoice: true,
 		isInVideo: !!mediaFlags?.selfVideo,
 		isInStream: !!mediaFlags?.streaming,
@@ -807,7 +807,7 @@ async function awardVoiceXPLocked(server, dbMember, guildId, reason, previousSta
 
 	return await handleLevelEvaluation(server, dbMember, stats, guildId, {
 		previousLevel: oldStats?.level ?? null,
-		previousExperience: oldStats?.experience ?? null,
+		previousXp: oldStats?.xp ?? null,
 		previousRank: oldStats?.rank ?? null,
 		reason
 	});
@@ -1093,7 +1093,7 @@ async function recalculateAllMemberLevels(client) {
 				let serverFixed = 0;
 
 				for (const member of members) {
-					if (!member.id || !member.experience) {
+					if (!member.id || !member.xp) {
 						continue;
 					}
 
@@ -1103,7 +1103,7 @@ async function recalculateAllMemberLevels(client) {
 					}
 
 					const currentLevel = levelData.level ?? 1;
-					const expectedLevel = await determineLevel(levelData.experience ?? 0, guild.id);
+					const expectedLevel = await determineLevel(levelData.xp ?? 0, guild.id);
 
 					if (currentLevel !== expectedLevel) {
 						await db.updateMemberLevelStats(member.id, { level: expectedLevel });

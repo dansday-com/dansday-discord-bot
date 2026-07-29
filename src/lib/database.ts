@@ -1563,7 +1563,7 @@ export async function persistMemberTasks(memberId: any, dayKey: number, rows: an
 				baseline: Number(r.baseline) || 0,
 				target_item_id: r.targetItemId == null ? null : Number(r.targetItemId),
 				reward_kind: String(r.rewardKind),
-				reward_xp: Number(r.rewardXp) || 0,
+				xp_reward: Number(r.rewardXp) || 0,
 				reward_item_id: r.rewardItemId == null ? null : Number(r.rewardItemId),
 				created_at: now as any
 			})) as any
@@ -1693,35 +1693,35 @@ export async function countMemberEventsSince(memberId: any, metric: string, sinc
 		if (lm.leech === 'without') parts.push(sql`(skim_percent IS NULL OR skim_percent = 0)`);
 		if (lm.earnedOnly) parts.push(sql`source NOT IN ('task', 'daily')`);
 		const where = parts.length > 0 ? sql` AND ${sql.join(parts, sql` AND `)}` : sql``;
-		const select = lm.agg === 'sum' ? sql`COALESCE(SUM(amount), 0)` : lm.agg === 'count' ? sql`COUNT(*)` : sql`COALESCE(MAX(FLOOR(friend_percent / 10)), 0)`;
+		const select = lm.agg === 'sum' ? sql`COALESCE(SUM(xp), 0)` : lm.agg === 'count' ? sql`COUNT(*)` : sql`COALESCE(MAX(FLOOR(friend_percent / 10)), 0)`;
 		const rows: any = await db.execute(sql`SELECT ${select} AS c FROM server_member_level_logs WHERE member_id = ${id} AND created_at >= ${since}${where}`);
 		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
 	}
 
 	if (XP_SOURCE_FILTERS[String(metric)] !== undefined) {
 		const rows: any = await db.execute(
-			sql`SELECT COALESCE(SUM(amount), 0) AS c FROM server_member_level_logs WHERE member_id = ${id} AND created_at >= ${since}${XP_SOURCE_FILTERS[String(metric)]}`
+			sql`SELECT COALESCE(SUM(xp), 0) AS c FROM server_member_level_logs WHERE member_id = ${id} AND created_at >= ${since}${XP_SOURCE_FILTERS[String(metric)]}`
 		);
 		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
 	}
 
 	if (metric === 'xp_stolen') {
 		const rows: any = await db.execute(
-			sql`SELECT COALESCE(SUM(xp_amount), 0) AS c FROM server_member_item_logs WHERE member_id = ${id} AND created_at >= ${since} AND action = 'steal' AND outcome = 'success'`
+			sql`SELECT COALESCE(SUM(xp), 0) AS c FROM server_member_item_logs WHERE member_id = ${id} AND created_at >= ${since} AND action = 'steal' AND outcome = 'success'`
 		);
 		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
 	}
 
 	if (metric === 'xp_gained') {
 		const rows: any = await db.execute(
-			sql`SELECT COALESCE(SUM(amount), 0) AS c FROM server_member_level_logs WHERE member_id = ${id} AND created_at >= ${since} AND source NOT IN ('task', 'daily')`
+			sql`SELECT COALESCE(SUM(xp), 0) AS c FROM server_member_level_logs WHERE member_id = ${id} AND created_at >= ${since} AND source NOT IN ('task', 'daily')`
 		);
 		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
 	}
 
 	if (metric === 'xp_spent') {
 		const rows: any = await db.execute(
-			sql`SELECT COALESCE(SUM(xp_amount), 0) AS c FROM server_member_item_logs WHERE member_id = ${id} AND created_at >= ${since} AND action = 'buy'`
+			sql`SELECT COALESCE(SUM(xp), 0) AS c FROM server_member_item_logs WHERE member_id = ${id} AND created_at >= ${since} AND action = 'buy'`
 		);
 		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
 	}
@@ -1819,7 +1819,7 @@ export async function countMemberEventsSince(memberId: any, metric: string, sinc
 
 	const victim = VICTIM_METRICS[String(metric)];
 	if (victim) {
-		const column = victim.agg === 'sum' ? sql`COALESCE(SUM(xp_amount), 0)` : sql`COUNT(*)`;
+		const column = victim.agg === 'sum' ? sql`COALESCE(SUM(xp), 0)` : sql`COUNT(*)`;
 		const owner = metric === 'xp_refunded' ? sql`member_id = ${id}` : sql`target_member_id = ${id}`;
 		const rows: any = await db.execute(sql`SELECT ${column} AS c FROM server_member_item_logs WHERE ${owner} AND created_at >= ${since} AND ${victim.where}`);
 		return Number(rows?.[0]?.[0]?.c ?? rows?.[0]?.c ?? 0) || 0;
@@ -1893,8 +1893,7 @@ export async function updateMemberLevelStats(memberId: any, updates: any = {}) {
 		clauses.push(sql`voice_minutes_streaming = voice_minutes_streaming + ${updates.voiceMinutesStreamingIncrement}`);
 	if (updates.voiceMinutesActiveIncrement !== undefined || updates.voiceMinutesAfkIncrement !== undefined)
 		clauses.push(sql`voice_minutes_total = voice_minutes_active + voice_minutes_afk`);
-	if (typeof updates.experienceIncrement === 'number' && updates.experienceIncrement !== 0)
-		clauses.push(sql`experience = experience + ${updates.experienceIncrement}`);
+	if (typeof updates.xpIncrement === 'number' && updates.xpIncrement !== 0) clauses.push(sql`xp = xp + ${updates.xpIncrement}`);
 	if (updates.level !== undefined && updates.level !== null) clauses.push(sql`level = ${updates.level}`);
 	if (updates.rank !== undefined) clauses.push(sql`rank = ${updates.rank}`);
 	if (typeof updates.isInVoice === 'boolean') clauses.push(sql`is_in_voice = ${updates.isInVoice ? 1 : 0}`);
@@ -1980,7 +1979,7 @@ export async function recalculateServerMemberRanks(serverId: any) {
 				FROM server_member_levels sml_inner
 				INNER JOIN server_members sm_inner ON sml_inner.member_id = sm_inner.id
 				WHERE sm_inner.server_id = ${Number(serverId)}
-				ORDER BY sml_inner.experience DESC, sml_inner.level DESC, sml_inner.created_at ASC
+				ORDER BY sml_inner.xp DESC, sml_inner.level DESC, sml_inner.created_at ASC
 			) AS ranked
 		) AS ranks ON ranks.id = sml.id
 		SET sml.rank = ranks.computed_rank
@@ -2422,7 +2421,7 @@ export async function logMemberItemAction(memberId: any, data: any = {}) {
 		target_member_id: data.target_member_id != null ? Number(data.target_member_id) : null,
 		item_id: itemId,
 		action: String(data.action ?? ''),
-		xp_amount: Number(data.xp_amount ?? 0),
+		xp: Number(data.xp ?? 0),
 		outcome: String(data.outcome ?? ''),
 		rate_percent: data.rate_percent != null ? (String(data.rate_percent) as any) : null,
 		luck_percent: data.luck_percent != null ? (String(data.luck_percent) as any) : null,
@@ -2442,7 +2441,7 @@ export async function logMinigameAction(memberId: any, data: any = {}) {
 		multiplier: String(data.multiplier ?? 2) as any,
 		wager: Number(data.wager ?? 0),
 		payout: Number(data.payout ?? 0),
-		xp_amount: Number(data.xp_amount ?? 0),
+		xp: Number(data.xp ?? 0),
 		outcome: String(data.outcome ?? ''),
 		chance: data.chance != null ? (String(data.chance) as any) : null,
 		luck_percent: data.luck_percent != null ? (String(data.luck_percent) as any) : null,
@@ -2517,7 +2516,7 @@ export async function getMemberMinigameHistory(memberId: any, limit = 600) {
 	if (!memberId) return [] as any[];
 	const lim = Number(limit) > 0 ? sql`LIMIT ${Number(limit)}` : sql``;
 	const rows = await db.execute(sql`
-		SELECT id, game, multiplier, wager, payout, xp_amount, outcome, chance, luck_percent, created_at
+		SELECT id, game, multiplier, wager, payout, xp, outcome, chance, luck_percent, created_at
 		FROM server_member_minigame_logs
 		WHERE member_id = ${Number(memberId)}
 		ORDER BY created_at DESC
@@ -2541,10 +2540,10 @@ export async function getMinigamesLeaderboard(serverId: any, since: Date | null)
 			server_display_name: schema.serverMembers.server_display_name,
 			avatar: schema.serverMembers.avatar,
 			level: schema.serverMemberLevels.level,
-			minigame_net: sql<number>`COALESCE(SUM(${schema.serverMemberMinigameLogs.xp_amount}), 0)`,
+			minigame_net: sql<number>`COALESCE(SUM(${schema.serverMemberMinigameLogs.xp}), 0)`,
 			minigame_wins: sql<number>`COALESCE(SUM(CASE WHEN ${schema.serverMemberMinigameLogs.outcome} = 'win' THEN 1 ELSE 0 END), 0)`,
 			minigame_total: sql<number>`COUNT(${schema.serverMemberMinigameLogs.id})`,
-			minigame_big_win: sql<number>`COALESCE(MAX(${schema.serverMemberMinigameLogs.xp_amount}), 0)`
+			minigame_big_win: sql<number>`COALESCE(MAX(${schema.serverMemberMinigameLogs.xp}), 0)`
 		})
 		.from(schema.serverMembers)
 		.leftJoin(
@@ -2572,13 +2571,13 @@ export async function getMinigamesLeaderboard(serverId: any, since: Date | null)
 export async function logMemberLevelGain(memberId: any, data: any = {}) {
 	await initializeDatabase();
 	if (!memberId) return false;
-	const amount = Math.floor(Number(data.amount) || 0);
-	if (amount <= 0) return false;
+	const xp = Math.floor(Number(data.xp) || 0);
+	if (xp <= 0) return false;
 	await db.insert(schema.serverMemberLevelLogs).values({
 		member_id: Number(memberId),
 		source: String(data.source ?? 'unknown').slice(0, 24),
-		amount,
-		total_xp: data.total_xp != null ? Number(data.total_xp) : null,
+		xp,
+		xp_total: data.xp_total != null ? Number(data.xp_total) : null,
 		level: data.level != null ? Number(data.level) : null,
 		rank: data.rank != null ? Number(data.rank) : null,
 		multiplier: data.multiplier != null ? (String(data.multiplier) as any) : null,
@@ -2596,7 +2595,7 @@ export async function getMemberLevelHistory(memberId: any, limit = 200) {
 	if (!memberId) return [] as any[];
 	const lim = Number(limit) > 0 ? sql`LIMIT ${Number(limit)}` : sql``;
 	const rows = await db.execute(sql`
-		SELECT id, source, amount, total_xp, level, \`rank\`, multiplier, skim_percent, friend_percent, luck_percent, created_at
+		SELECT id, source, xp, xp_total, level, \`rank\`, multiplier, skim_percent, friend_percent, luck_percent, created_at
 		FROM server_member_level_logs
 		WHERE member_id = ${Number(memberId)}
 		ORDER BY created_at DESC, id DESC
@@ -2610,7 +2609,7 @@ export async function getMemberItemHistory(memberId: any, limit = 200) {
 	if (!memberId) return [] as any[];
 	const rows = await db.execute(sql`
 		SELECT
-			sml.id, sml.action, sml.xp_amount, sml.outcome, sml.rate_percent, sml.luck_percent, sml.actor_disguised, sml.created_at,
+			sml.id, sml.action, sml.xp, sml.outcome, sml.rate_percent, sml.luck_percent, sml.actor_disguised, sml.created_at,
 			COALESCE(bi.name, bi2.name) AS item_name,
 			COALESCE(bi.effect_type, bi2.effect_type) AS effect_type,
 			CASE WHEN sml.member_id = ${Number(memberId)} THEN 'outgoing' ELSE 'incoming' END AS direction,
@@ -2698,13 +2697,13 @@ export async function clearImmunityForMember(targetMemberId: any) {
 	return Number(result?.[0]?.affectedRows ?? result?.affectedRows ?? 0) || 0;
 }
 
-export async function placeBounty(targetMemberId: any, placedByMemberId: any, amount: any) {
+export async function placeBounty(targetMemberId: any, placedByMemberId: any, xp: any) {
 	await initializeDatabase();
 	if (!targetMemberId) throw new Error('targetMemberId is required');
 	await db.insert(schema.serverMemberItemBounties).values({
 		target_member_id: Number(targetMemberId),
 		placed_by_member_id: placedByMemberId != null ? Number(placedByMemberId) : null,
-		amount: Number(amount) || 0,
+		xp: Number(xp) || 0,
 		collected: false,
 		created_at: toMySQLDateTime() as any
 	});
@@ -2714,7 +2713,7 @@ export async function placeBounty(targetMemberId: any, placedByMemberId: any, am
 export async function getActiveBountyTotal(targetMemberId: any) {
 	await initializeDatabase();
 	const rows = await db.execute(
-		sql`SELECT COALESCE(SUM(amount), 0) AS total FROM server_member_item_bounties WHERE target_member_id = ${Number(targetMemberId)} AND collected = FALSE`
+		sql`SELECT COALESCE(SUM(xp), 0) AS total FROM server_member_item_bounties WHERE target_member_id = ${Number(targetMemberId)} AND collected = FALSE`
 	);
 	const row = (rows[0] as unknown as any[])[0];
 	return Number(row?.total ?? 0) || 0;
@@ -2747,7 +2746,7 @@ export async function logAssetEvent(data: {
 	symbol: string;
 	asset_name: string;
 	asset_image: string | null;
-	xp_amount: number;
+	xp: number;
 	price: number | string;
 	net?: number;
 }) {
@@ -2760,7 +2759,7 @@ export async function logAssetEvent(data: {
 		symbol: String(data.symbol),
 		asset_name: String(data.asset_name),
 		asset_image: data.asset_image != null ? String(data.asset_image) : null,
-		xp_amount: Number(data.xp_amount) || 0,
+		xp: Number(data.xp) || 0,
 		price: String(data.price ?? 0) as any,
 		net: Number(data.net) || 0,
 		created_at: toMySQLDateTime() as any
@@ -2834,7 +2833,7 @@ export async function mergeAssetPosition(positionId: any, data: { xp_invested: n
 export async function getMemberAssetHistory(memberId: any, limit = 600) {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
-		SELECT id, action, asset_type, asset_id, symbol, asset_name, asset_image, xp_amount, price, net, created_at
+		SELECT id, action, asset_type, asset_id, symbol, asset_name, asset_image, xp, price, net, created_at
 		FROM server_member_asset_logs
 		WHERE member_id = ${Number(memberId)}
 		ORDER BY created_at DESC
@@ -2855,8 +2854,8 @@ export async function getServerEconomyStats(serverId: any, priceMap: Record<stri
 		`),
 		db.execute(sql`
 			SELECT
-				COALESCE(SUM(CASE WHEN al.action = 'buy' THEN al.xp_amount ELSE 0 END), 0) AS buy_volume,
-				COALESCE(SUM(CASE WHEN al.action = 'sell' THEN al.xp_amount ELSE 0 END), 0) AS sell_volume,
+				COALESCE(SUM(CASE WHEN al.action = 'buy' THEN al.xp ELSE 0 END), 0) AS buy_volume,
+				COALESCE(SUM(CASE WHEN al.action = 'sell' THEN al.xp ELSE 0 END), 0) AS sell_volume,
 				COALESCE(SUM(CASE WHEN al.action = 'sell' THEN al.net ELSE 0 END), 0) AS realized_net,
 				COUNT(*) AS trade_count
 			FROM server_member_asset_logs al INNER JOIN server_members sm ON sm.id = al.member_id
@@ -2866,7 +2865,7 @@ export async function getServerEconomyStats(serverId: any, priceMap: Record<stri
 			SELECT
 				COALESCE(SUM(ml.wager), 0) AS wagered,
 				COALESCE(SUM(ml.payout), 0) AS paid_out,
-				COALESCE(SUM(ml.xp_amount), 0) AS net,
+				COALESCE(SUM(ml.xp), 0) AS net,
 				COALESCE(SUM(CASE WHEN ml.outcome = 'win' THEN 1 ELSE 0 END), 0) AS wins,
 				COUNT(*) AS plays,
 				COALESCE(MAX(CASE WHEN ml.outcome = 'win' THEN ml.payout ELSE 0 END), 0) AS biggest_win
@@ -2875,16 +2874,16 @@ export async function getServerEconomyStats(serverId: any, priceMap: Record<stri
 		`),
 		db.execute(sql`
 			SELECT
-				COALESCE(SUM(CASE WHEN il.action = 'steal' AND il.outcome = 'success' THEN il.xp_amount ELSE 0 END), 0) AS stolen,
-				COALESCE(SUM(CASE WHEN il.action = 'bomb' AND il.outcome = 'success' THEN il.xp_amount ELSE 0 END), 0) AS bombed,
-				COALESCE(SUM(CASE WHEN il.action = 'gift' THEN il.xp_amount ELSE 0 END), 0) AS gifted,
+				COALESCE(SUM(CASE WHEN il.action = 'steal' AND il.outcome = 'success' THEN il.xp ELSE 0 END), 0) AS stolen,
+				COALESCE(SUM(CASE WHEN il.action = 'bomb' AND il.outcome = 'success' THEN il.xp ELSE 0 END), 0) AS bombed,
+				COALESCE(SUM(CASE WHEN il.action = 'gift' THEN il.xp ELSE 0 END), 0) AS gifted,
 				COALESCE(SUM(CASE WHEN il.action = 'steal' THEN 1 ELSE 0 END), 0) AS steal_attempts,
 				COALESCE(SUM(CASE WHEN il.action = 'bomb' THEN 1 ELSE 0 END), 0) AS bomb_attempts,
 				COALESCE(SUM(CASE WHEN il.action = 'spy' THEN 1 ELSE 0 END), 0) AS spies,
 				COALESCE(SUM(CASE WHEN il.action = 'bounty' THEN 1 ELSE 0 END), 0) AS bounties_placed,
-				COALESCE(MAX(CASE WHEN il.action = 'steal' AND il.outcome = 'success' THEN il.xp_amount ELSE 0 END), 0) AS biggest_steal,
+				COALESCE(MAX(CASE WHEN il.action = 'steal' AND il.outcome = 'success' THEN il.xp ELSE 0 END), 0) AS biggest_steal,
 				COALESCE(SUM(CASE WHEN il.action = 'buy' THEN 1 ELSE 0 END), 0) AS buys,
-				COALESCE(SUM(CASE WHEN il.action = 'buy' THEN il.xp_amount ELSE 0 END), 0) AS buy_spend,
+				COALESCE(SUM(CASE WHEN il.action = 'buy' THEN il.xp ELSE 0 END), 0) AS buy_spend,
 				COALESCE(SUM(CASE WHEN il.action = 'gift' THEN 1 ELSE 0 END), 0) AS gifts,
 				COALESCE(SUM(CASE WHEN il.action = 'discard' THEN 1 ELSE 0 END), 0) AS discards,
 				COALESCE(SUM(CASE WHEN il.action NOT IN ('buy','discard','steal','bomb','gift','spy','bounty') THEN 1 ELSE 0 END), 0) AS activations,
@@ -2998,7 +2997,7 @@ export async function getServerFeatureStats(serverId: any) {
 			SELECT
 				COUNT(*) AS placed,
 				COALESCE(SUM(CASE WHEN b.collected = 1 THEN 1 ELSE 0 END), 0) AS collected,
-				COALESCE(SUM(b.amount), 0) AS pooled
+				COALESCE(SUM(b.xp), 0) AS pooled
 			FROM server_member_item_bounties b INNER JOIN server_members sm ON sm.id = b.placed_by_member_id
 			WHERE sm.server_id = ${sid}
 		`),
@@ -3067,8 +3066,8 @@ export async function getMemberDashboard(memberId: any, priceMap: Record<string,
 		db.execute(sql`SELECT asset_type, asset_id, xp_invested, buy_price FROM server_member_assets WHERE member_id = ${mid}`),
 		db.execute(sql`
 				SELECT
-					COALESCE(SUM(CASE WHEN action = 'buy' THEN xp_amount ELSE 0 END), 0) AS buy_volume,
-					COALESCE(SUM(CASE WHEN action = 'sell' THEN xp_amount ELSE 0 END), 0) AS sell_volume,
+					COALESCE(SUM(CASE WHEN action = 'buy' THEN xp ELSE 0 END), 0) AS buy_volume,
+					COALESCE(SUM(CASE WHEN action = 'sell' THEN xp ELSE 0 END), 0) AS sell_volume,
 					COALESCE(SUM(CASE WHEN action = 'sell' THEN net ELSE 0 END), 0) AS realized_net,
 					COUNT(*) AS trade_count
 				FROM server_member_asset_logs WHERE member_id = ${mid}
@@ -3076,7 +3075,7 @@ export async function getMemberDashboard(memberId: any, priceMap: Record<string,
 		db.execute(sql`
 				SELECT
 					COALESCE(SUM(wager), 0) AS wagered,
-					COALESCE(SUM(xp_amount), 0) AS net,
+					COALESCE(SUM(xp), 0) AS net,
 					COALESCE(SUM(CASE WHEN outcome = 'win' THEN 1 ELSE 0 END), 0) AS wins,
 					COUNT(*) AS plays,
 					COALESCE(MAX(CASE WHEN outcome = 'win' THEN payout ELSE 0 END), 0) AS biggest_win
@@ -3085,25 +3084,25 @@ export async function getMemberDashboard(memberId: any, priceMap: Record<string,
 		db.execute(sql`
 				SELECT
 					COALESCE(SUM(CASE WHEN action = 'buy' THEN 1 ELSE 0 END), 0) AS buys,
-					COALESCE(SUM(CASE WHEN action = 'buy' THEN xp_amount ELSE 0 END), 0) AS buy_spend,
+					COALESCE(SUM(CASE WHEN action = 'buy' THEN xp ELSE 0 END), 0) AS buy_spend,
 					COALESCE(SUM(CASE WHEN action NOT IN ('buy','discard','steal','bomb','gift','spy','bounty') THEN 1 ELSE 0 END), 0) AS activations,
-					COALESCE(SUM(CASE WHEN action = 'steal' AND outcome = 'success' THEN xp_amount ELSE 0 END), 0) AS stolen,
+					COALESCE(SUM(CASE WHEN action = 'steal' AND outcome = 'success' THEN xp ELSE 0 END), 0) AS stolen,
 					COALESCE(SUM(CASE WHEN action = 'steal' AND outcome = 'success' THEN 1 ELSE 0 END), 0) AS steals_landed,
 					COALESCE(SUM(CASE WHEN action = 'steal' AND outcome = 'caught' THEN 1 ELSE 0 END), 0) AS steals_caught,
-					COALESCE(SUM(CASE WHEN action = 'bomb' AND outcome = 'success' THEN xp_amount ELSE 0 END), 0) AS bombed,
-					COALESCE(SUM(CASE WHEN action = 'leech' AND outcome = 'success' THEN xp_amount ELSE 0 END), 0) AS leeched,
-					COALESCE(SUM(CASE WHEN action = 'gift' THEN xp_amount ELSE 0 END), 0) AS gifted,
+					COALESCE(SUM(CASE WHEN action = 'bomb' AND outcome = 'success' THEN xp ELSE 0 END), 0) AS bombed,
+					COALESCE(SUM(CASE WHEN action = 'leech' AND outcome = 'success' THEN xp ELSE 0 END), 0) AS leeched,
+					COALESCE(SUM(CASE WHEN action = 'gift' THEN xp ELSE 0 END), 0) AS gifted,
 					COALESCE(SUM(CASE WHEN action = 'spy' THEN 1 ELSE 0 END), 0) AS spies,
 					COALESCE(SUM(CASE WHEN action = 'bounty' THEN 1 ELSE 0 END), 0) AS bounties_placed,
-					COALESCE(SUM(CASE WHEN action = 'bounty_collected' THEN xp_amount ELSE 0 END), 0) AS bounty_collected
+					COALESCE(SUM(CASE WHEN action = 'bounty_collected' THEN xp ELSE 0 END), 0) AS bounty_collected
 				FROM server_member_item_logs WHERE member_id = ${mid}
 			`),
 		db.execute(sql`
 				SELECT
-					COALESCE(SUM(CASE WHEN action = 'steal' AND outcome = 'success' THEN xp_amount ELSE 0 END), 0) AS stolen_from,
-					COALESCE(SUM(CASE WHEN action = 'bomb' AND outcome = 'success' THEN xp_amount ELSE 0 END), 0) AS bombed_by,
-					COALESCE(SUM(CASE WHEN action = 'leech' AND outcome = 'success' THEN xp_amount ELSE 0 END), 0) AS leeched_by,
-					COALESCE(SUM(CASE WHEN action = 'gift' THEN xp_amount ELSE 0 END), 0) AS gifts_received
+					COALESCE(SUM(CASE WHEN action = 'steal' AND outcome = 'success' THEN xp ELSE 0 END), 0) AS stolen_from,
+					COALESCE(SUM(CASE WHEN action = 'bomb' AND outcome = 'success' THEN xp ELSE 0 END), 0) AS bombed_by,
+					COALESCE(SUM(CASE WHEN action = 'leech' AND outcome = 'success' THEN xp ELSE 0 END), 0) AS leeched_by,
+					COALESCE(SUM(CASE WHEN action = 'gift' THEN xp ELSE 0 END), 0) AS gifts_received
 				FROM server_member_item_logs WHERE target_member_id = ${mid}
 			`),
 		db.execute(sql`
@@ -3125,9 +3124,7 @@ export async function getMemberDashboard(memberId: any, priceMap: Record<string,
 				FROM server_member_content_creator_streams WHERE member_id = ${mid}
 			`),
 		db.execute(sql`SELECT COUNT(*) AS submitted FROM server_member_feedbacks WHERE member_id = ${mid}`),
-		db.execute(
-			sql`SELECT COALESCE(SUM(amount), 0) AS pooled, COUNT(*) AS count FROM server_member_item_bounties WHERE target_member_id = ${mid} AND collected = 0`
-		)
+		db.execute(sql`SELECT COALESCE(SUM(xp), 0) AS pooled, COUNT(*) AS count FROM server_member_item_bounties WHERE target_member_id = ${mid} AND collected = 0`)
 	]);
 
 	const positions = (posRows[0] as unknown as any[]) || [];
@@ -3208,7 +3205,7 @@ export async function getMemberInsights(memberId: any, serverId: any = null) {
 
 	const outgoing = (action: string, successOnly: boolean) =>
 		q(sql`
-			SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp_amount), 0) AS xp
+			SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp), 0) AS xp
 			FROM server_member_item_logs il
 			INNER JOIN server_members m ON m.id = il.target_member_id
 			WHERE il.member_id = ${mid} AND il.action = ${action} ${successOnly ? sql`AND il.outcome = 'success'` : sql``} ${hideDisguised}
@@ -3216,7 +3213,7 @@ export async function getMemberInsights(memberId: any, serverId: any = null) {
 		`);
 	const incoming = (action: string, successOnly: boolean) =>
 		q(sql`
-			SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp_amount), 0) AS xp
+			SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp), 0) AS xp
 			FROM server_member_item_logs il
 			INNER JOIN server_members m ON m.id = il.member_id
 			WHERE il.target_member_id = ${mid} AND il.action = ${action} ${successOnly ? sql`AND il.outcome = 'success'` : sql``} ${hideDisguised}
@@ -3256,14 +3253,14 @@ export async function getMemberInsights(memberId: any, serverId: any = null) {
 	]);
 
 	const bountyOut = q(sql`
-		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(b.amount), 0) AS xp
+		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(b.xp), 0) AS xp
 		FROM server_member_item_bounties b
 		INNER JOIN server_members m ON m.id = b.target_member_id
 		WHERE b.placed_by_member_id = ${mid} ${hideDisguised}
 		GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY xp DESC, hits DESC LIMIT 3
 	`);
 	const bountyIn = q(sql`
-		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(b.amount), 0) AS xp
+		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(b.xp), 0) AS xp
 		FROM server_member_item_bounties b
 		INNER JOIN server_members m ON m.id = b.placed_by_member_id
 		WHERE b.target_member_id = ${mid} ${hideDisguised}
@@ -3271,21 +3268,21 @@ export async function getMemberInsights(memberId: any, serverId: any = null) {
 	`);
 
 	const nemesis = q(sql`
-		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp_amount), 0) AS xp
+		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp), 0) AS xp
 		FROM server_member_item_logs il
 		INNER JOIN server_members m ON m.id = il.member_id
 		WHERE il.target_member_id = ${mid} AND il.action IN ('steal','bomb','leech') AND il.outcome = 'success' ${hideDisguised}
 		GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY hits DESC, xp DESC LIMIT 1
 	`);
 	const favoriteTarget = q(sql`
-		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp_amount), 0) AS xp
+		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp), 0) AS xp
 		FROM server_member_item_logs il
 		INNER JOIN server_members m ON m.id = il.target_member_id
 		WHERE il.member_id = ${mid} AND il.action IN ('steal','bomb','leech') AND il.outcome = 'success' ${hideDisguised}
 		GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY hits DESC, xp DESC LIMIT 1
 	`);
 	const bestAlly = q(sql`
-		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp_amount), 0) AS xp
+		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp), 0) AS xp
 		FROM server_member_item_logs il
 		INNER JOIN server_members m
 			ON m.id = CASE WHEN il.member_id = ${mid} THEN il.target_member_id ELSE il.member_id END
@@ -3304,14 +3301,14 @@ export async function getMemberInsights(memberId: any, serverId: any = null) {
 	const myBlocked = attackedInto(['steal', 'bomb'], ['immune']);
 	const myReflected = attackedInto(['steal', 'bomb'], ['reflected']);
 	const bountyCollected = q(sql`
-		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp_amount), 0) AS xp
+		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp), 0) AS xp
 		FROM server_member_item_logs il
 		INNER JOIN server_members m ON m.id = il.target_member_id
 		WHERE il.member_id = ${mid} AND il.action = 'bounty_collected' ${hideDisguised}
 		GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY xp DESC, hits DESC LIMIT 3
 	`);
 	const bountyPaidOut = q(sql`
-		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp_amount), 0) AS xp
+		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp), 0) AS xp
 		FROM server_member_item_logs il
 		INNER JOIN server_members m ON m.id = il.member_id
 		WHERE il.target_member_id = ${mid} AND il.action = 'bounty_collected' ${hideDisguised}
@@ -3324,7 +3321,7 @@ export async function getMemberInsights(memberId: any, serverId: any = null) {
 			COALESCE(SUM(CASE WHEN target_member_id = ${mid} AND action IN ('steal','bomb') AND outcome = 'reflected' THEN 1 ELSE 0 END), 0) AS reflected,
 			COALESCE(SUM(CASE WHEN member_id = ${mid} AND action = 'steal' AND outcome = 'caught' THEN 1 ELSE 0 END), 0) AS my_steals_caught,
 			COALESCE(SUM(CASE WHEN member_id = ${mid} AND action = 'insurance' AND outcome = 'refunded' THEN 1 ELSE 0 END), 0) AS insurance_covers,
-			COALESCE(SUM(CASE WHEN member_id = ${mid} AND action = 'insurance' AND outcome = 'refunded' THEN il.xp_amount ELSE 0 END), 0) AS insurance_xp
+			COALESCE(SUM(CASE WHEN member_id = ${mid} AND action = 'insurance' AND outcome = 'refunded' THEN il.xp ELSE 0 END), 0) AS insurance_xp
 		FROM server_member_item_logs il
 		WHERE target_member_id = ${mid} OR member_id = ${mid}
 	`);
@@ -3369,15 +3366,15 @@ export async function getMemberInsights(memberId: any, serverId: any = null) {
 		`),
 		q(sql`
 			SELECT d AS day, SUM(net) AS net FROM (
-				SELECT DATE(created_at) AS d, SUM(xp_amount) AS net FROM server_member_minigame_logs
+				SELECT DATE(created_at) AS d, SUM(xp) AS net FROM server_member_minigame_logs
 					WHERE member_id = ${mid} AND created_at >= UTC_TIMESTAMP() - INTERVAL 14 DAY GROUP BY DATE(created_at)
 				UNION ALL
 				SELECT DATE(created_at) AS d, SUM(net) AS net FROM server_member_asset_logs
 					WHERE member_id = ${mid} AND action = 'sell' AND created_at >= UTC_TIMESTAMP() - INTERVAL 14 DAY GROUP BY DATE(created_at)
 				UNION ALL
 				SELECT DATE(created_at) AS d,
-					SUM(CASE WHEN action IN ('steal','bomb') AND outcome = 'success' THEN xp_amount
-						WHEN action = 'gift' THEN -xp_amount WHEN action = 'buy' THEN -xp_amount ELSE 0 END) AS net
+					SUM(CASE WHEN action IN ('steal','bomb') AND outcome = 'success' THEN xp
+						WHEN action = 'gift' THEN -xp WHEN action = 'buy' THEN -xp ELSE 0 END) AS net
 					FROM server_member_item_logs WHERE member_id = ${mid} AND created_at >= UTC_TIMESTAMP() - INTERVAL 14 DAY GROUP BY DATE(created_at)
 			) t GROUP BY d ORDER BY d ASC
 		`),
@@ -3528,7 +3525,7 @@ export async function getServerLeaderboard(serverId: any, limit = 3, sortType = 
 		video: [desc(schema.serverMemberLevels.voice_minutes_video), asc(schema.serverMemberLevels.updated_at), asc(schema.serverMemberLevels.created_at)],
 		streaming: [desc(schema.serverMemberLevels.voice_minutes_streaming), asc(schema.serverMemberLevels.updated_at), asc(schema.serverMemberLevels.created_at)],
 		chat: [desc(schema.serverMemberLevels.chat_total), asc(schema.serverMemberLevels.updated_at), asc(schema.serverMemberLevels.created_at)],
-		xp: [desc(schema.serverMemberLevels.experience), asc(schema.serverMemberLevels.updated_at), asc(schema.serverMemberLevels.created_at)]
+		xp: [desc(schema.serverMemberLevels.xp), asc(schema.serverMemberLevels.updated_at), asc(schema.serverMemberLevels.created_at)]
 	};
 	const orderBy = orderMap[sortType] || orderMap.xp;
 
@@ -3556,7 +3553,7 @@ export async function getServerLeaderboard(serverId: any, limit = 3, sortType = 
 			display_name: schema.serverMembers.display_name,
 			server_display_name: schema.serverMembers.server_display_name,
 			avatar: schema.serverMembers.avatar,
-			experience: schema.serverMemberLevels.experience,
+			xp: schema.serverMemberLevels.xp,
 			level: schema.serverMemberLevels.level,
 			chat_total: schema.serverMemberLevels.chat_total,
 			voice_minutes_total: schema.serverMemberLevels.voice_minutes_total,
@@ -3588,7 +3585,7 @@ export async function getLeaderboardPeriodCounts(serverId: any, since: Date) {
 			server_display_name: schema.serverMembers.server_display_name,
 			avatar: schema.serverMembers.avatar,
 			level: schema.serverMemberLevels.level,
-			xp_amount: sql<number>`COALESCE(SUM(${schema.serverMemberLevelLogs.amount}), 0)`,
+			xp: sql<number>`COALESCE(SUM(${schema.serverMemberLevelLogs.xp}), 0)`,
 			chat_count: sql<number>`COALESCE(SUM(CASE WHEN ${schema.serverMemberLevelLogs.source} = 'chat' THEN 1 ELSE 0 END), 0)`,
 			voice_active_count: sql<number>`COALESCE(SUM(CASE WHEN ${schema.serverMemberLevelLogs.source} = 'voice' THEN 1 ELSE 0 END), 0)`,
 			voice_afk_count: sql<number>`COALESCE(SUM(CASE WHEN ${schema.serverMemberLevelLogs.source} = 'voice_afk' THEN 1 ELSE 0 END), 0)`,
@@ -3630,10 +3627,10 @@ export async function getItemsAttackLeaderboard(serverId: any, action: 'steal' |
 			server_display_name: schema.serverMembers.server_display_name,
 			avatar: schema.serverMembers.avatar,
 			level: schema.serverMemberLevels.level,
-			attack_total: sql<number>`COALESCE(SUM(CASE WHEN ${schema.serverMemberItemLogs.outcome} = 'success' THEN ${schema.serverMemberItemLogs.xp_amount} ELSE 0 END), 0)`,
+			attack_total: sql<number>`COALESCE(SUM(CASE WHEN ${schema.serverMemberItemLogs.outcome} = 'success' THEN ${schema.serverMemberItemLogs.xp} ELSE 0 END), 0)`,
 			attack_success: sql<number>`COALESCE(SUM(CASE WHEN ${schema.serverMemberItemLogs.outcome} = 'success' THEN 1 ELSE 0 END), 0)`,
 			attack_attempts: sql<number>`COUNT(${schema.serverMemberItemLogs.id})`,
-			attack_big: sql<number>`COALESCE(MAX(CASE WHEN ${schema.serverMemberItemLogs.outcome} = 'success' THEN ${schema.serverMemberItemLogs.xp_amount} ELSE 0 END), 0)`
+			attack_big: sql<number>`COALESCE(MAX(CASE WHEN ${schema.serverMemberItemLogs.outcome} = 'success' THEN ${schema.serverMemberItemLogs.xp} ELSE 0 END), 0)`
 		})
 		.from(schema.serverMembers)
 		.leftJoin(
@@ -3678,19 +3675,19 @@ export async function getItemsBountyLeaderboard(serverId: any, since: Date | nul
 		FROM server_members sm
 		LEFT JOIN (
 			SELECT b.target_member_id AS member_id,
-				COALESCE(SUM(b.amount), 0) AS bounty_on_them, 0 AS bounty_collected, 0 AS bounty_given
+				COALESCE(SUM(b.xp), 0) AS bounty_on_them, 0 AS bounty_collected, 0 AS bounty_given
 			FROM server_member_item_bounties b
 			WHERE 1=1 ${sinceClause}
 			GROUP BY b.target_member_id
 			UNION ALL
 			SELECT b.placed_by_member_id AS member_id,
-				0 AS bounty_on_them, 0 AS bounty_collected, COALESCE(SUM(b.amount), 0) AS bounty_given
+				0 AS bounty_on_them, 0 AS bounty_collected, COALESCE(SUM(b.xp), 0) AS bounty_given
 			FROM server_member_item_bounties b
 			WHERE b.placed_by_member_id IS NOT NULL ${sinceClause}
 			GROUP BY b.placed_by_member_id
 			UNION ALL
 			SELECT l.member_id AS member_id,
-				0 AS bounty_on_them, COALESCE(SUM(l.xp_amount), 0) AS bounty_collected, 0 AS bounty_given
+				0 AS bounty_on_them, COALESCE(SUM(l.xp), 0) AS bounty_collected, 0 AS bounty_given
 			FROM server_member_item_logs l
 			WHERE l.action = 'bounty_collected' ${sinceLogClause}
 			GROUP BY l.member_id
@@ -3720,13 +3717,13 @@ export async function getItemsGiftLeaderboard(serverId: any, since: Date | null)
 		FROM server_members sm
 		LEFT JOIN (
 			SELECT l.member_id AS member_id,
-				COALESCE(SUM(l.xp_amount), 0) AS gift_given, 0 AS gift_received
+				COALESCE(SUM(l.xp), 0) AS gift_given, 0 AS gift_received
 			FROM server_member_item_logs l
 			WHERE l.action = 'gift' ${sinceClause}
 			GROUP BY l.member_id
 			UNION ALL
 			SELECT l.target_member_id AS member_id,
-				0 AS gift_given, COALESCE(SUM(l.xp_amount), 0) AS gift_received
+				0 AS gift_given, COALESCE(SUM(l.xp), 0) AS gift_received
 			FROM server_member_item_logs l
 			WHERE l.action = 'gift' AND l.target_member_id IS NOT NULL ${sinceClause}
 			GROUP BY l.target_member_id
@@ -3747,7 +3744,7 @@ export async function getServerMembersList(serverId: any) {
 		SELECT
 			sm.id, sm.discord_member_id, sm.username, sm.display_name, sm.server_display_name,
 			sm.avatar, sm.profile_created_at, sm.member_since, sm.is_booster, sm.booster_since,
-			sml.level, sml.experience, sml.chat_total, sml.voice_minutes_total, sml.voice_minutes_active, sml.voice_minutes_afk,
+			sml.level, sml.xp, sml.chat_total, sml.voice_minutes_total, sml.voice_minutes_active, sml.voice_minutes_afk,
 			sml.voice_minutes_video, sml.voice_minutes_streaming, sml.rank,
 			sma.message as afk_message, sma.created_at as afk_since,
 			GROUP_CONCAT(
@@ -3762,9 +3759,9 @@ export async function getServerMembersList(serverId: any) {
 		WHERE sm.server_id = ${Number(serverId)}
 		GROUP BY sm.id, sm.discord_member_id, sm.username, sm.display_name, sm.server_display_name,
 		         sm.avatar, sm.profile_created_at, sm.member_since, sm.is_booster, sm.booster_since,
-		         sml.level, sml.experience, sml.chat_total, sml.voice_minutes_total, sml.voice_minutes_active,
+		         sml.level, sml.xp, sml.chat_total, sml.voice_minutes_total, sml.voice_minutes_active,
 		         sml.voice_minutes_afk, sml.voice_minutes_video, sml.voice_minutes_streaming, sml.rank, sma.message, sma.created_at
-		ORDER BY sml.experience DESC, sml.level DESC, sm.created_at ASC
+		ORDER BY sml.xp DESC, sml.level DESC, sm.created_at ASC
 	`);
 
 	return (rows[0] as unknown as any[]).map((member: any) => ({
@@ -3870,7 +3867,7 @@ export async function getServerOverview(serverId: any, opts?: { forPublicPage?: 
 		db.execute(sql`SELECT COUNT(*) AS count FROM server_categories WHERE server_id = ${Number(serverId)}`),
 		db.execute(sql`SELECT COUNT(*) AS count FROM server_roles WHERE server_id = ${Number(serverId)}`),
 		db.execute(
-			sql`SELECT COALESCE(SUM(experience),0) AS total_experience, COALESCE(AVG(level),0) AS avg_level, COALESCE(MAX(level),0) AS max_level, COALESCE(SUM(chat_total),0) AS total_chat, COALESCE(SUM(voice_minutes_total),0) AS total_voice_minutes, COALESCE(SUM(voice_minutes_active),0) AS total_voice_active, COALESCE(SUM(voice_minutes_afk),0) AS total_voice_afk, COALESCE(SUM(voice_minutes_video),0) AS total_voice_video, COALESCE(SUM(voice_minutes_streaming),0) AS total_voice_streaming FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ${Number(serverId)}`
+			sql`SELECT COALESCE(SUM(xp),0) AS total_xp, COALESCE(AVG(level),0) AS avg_level, COALESCE(MAX(level),0) AS max_level, COALESCE(SUM(chat_total),0) AS total_chat, COALESCE(SUM(voice_minutes_total),0) AS total_voice_minutes, COALESCE(SUM(voice_minutes_active),0) AS total_voice_active, COALESCE(SUM(voice_minutes_afk),0) AS total_voice_afk, COALESCE(SUM(voice_minutes_video),0) AS total_voice_video, COALESCE(SUM(voice_minutes_streaming),0) AS total_voice_streaming FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ${Number(serverId)}`
 		),
 		db.execute(
 			sql`SELECT COUNT(DISTINCT smcsr.member_id) AS members_with_custom_roles FROM server_member_custom_supporter_roles smcsr INNER JOIN server_members sm ON sm.id = smcsr.member_id WHERE sm.server_id = ${Number(serverId)}`
@@ -3934,7 +3931,7 @@ export async function getServerOverview(serverId: any, opts?: { forPublicPage?: 
 
 	const r = (raw: any, idx = 0) => (raw[0] as unknown as any[])[idx] || {};
 
-	const walletXp = Math.round(r(levelingStats).total_experience || 0);
+	const walletXp = Math.round(r(levelingStats).total_xp || 0);
 
 	const stats = {
 		members_total: r(memberCounts).total || 0,
@@ -3950,9 +3947,9 @@ export async function getServerOverview(serverId: any, opts?: { forPublicPage?: 
 		channels_stage: r(channelCounts).stage_count || 0,
 		categories_total: r(categoriesCount).count || 0,
 		roles_total: r(rolesCount).count || 0,
-		leveling_wallet_experience: walletXp,
+		leveling_wallet_xp: walletXp,
 		leveling_assets_value: economy?.assets_market_value || 0,
-		leveling_total_experience: walletXp + (economy?.assets_market_value || 0),
+		leveling_total_xp: walletXp + (economy?.assets_market_value || 0),
 		leveling_avg_level: Math.round((r(levelingStats).avg_level || 0) * 100) / 100,
 		leveling_max_level: r(levelingStats).max_level || 0,
 		leveling_total_chat: r(levelingStats).total_chat || 0,

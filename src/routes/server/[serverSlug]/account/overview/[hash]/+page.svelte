@@ -245,7 +245,7 @@
 		</div>
 		<div class="m-stat-hero">
 			<span class="m-stat-hero-val" use:countUp={p.totalXp}>{fmt(p.totalXp)}</span>
-			<span class="m-stat-hero-cap">lifetime experience</span>
+			<span class="m-stat-hero-cap">lifetime XP</span>
 		</div>
 		{#if xpSourceBars.length > 0}
 			<div class="m-bar-block">

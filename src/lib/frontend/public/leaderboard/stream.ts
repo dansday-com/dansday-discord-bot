@@ -16,7 +16,7 @@ export type MembersListEntry = {
 	server_display_name: string | null;
 	avatar: string | null;
 	level?: number | null;
-	experience?: number | null;
+	xp?: number | null;
 	chat_total?: number | null;
 	voice_minutes_total?: number | null;
 	voice_minutes_active?: number | null;
@@ -41,7 +41,7 @@ function memberSortValue(m: MembersListEntry, metric: LeaderboardMetric): number
 		case 'streaming':
 			return Number(m.voice_minutes_streaming ?? 0);
 		default:
-			return Number(m.experience ?? 0);
+			return Number(m.xp ?? 0);
 	}
 }
 
@@ -60,7 +60,7 @@ export function buildLeaderboardRowsFromMembersList(members: MembersListEntry[],
 		display_name: m.display_name,
 		server_display_name: m.server_display_name,
 		avatar: m.avatar,
-		experience: m.experience ?? 0,
+		xp: m.xp ?? 0,
 		level: m.level ?? 0,
 		chat_total: m.chat_total ?? 0,
 		voice_minutes_total: m.voice_minutes_total ?? 0,
@@ -95,7 +95,7 @@ function buildPeriodRows(entries: any[], metric: LeaderboardMetric, limit: numbe
 			case 'streaming':
 				return Number(e.stream_count ?? 0);
 			default:
-				return Number(e.xp_amount ?? 0);
+				return Number(e.xp ?? 0);
 		}
 	};
 
@@ -112,7 +112,7 @@ function buildPeriodRows(entries: any[], metric: LeaderboardMetric, limit: numbe
 		display_name: e.display_name,
 		server_display_name: e.server_display_name,
 		avatar: e.avatar,
-		experience: Number(e.xp_amount ?? 0),
+		xp: Number(e.xp ?? 0),
 		level: e.level ?? 0,
 		chat_total: Number(e.chat_count ?? 0),
 		voice_minutes_total: Number(e.voice_active_count ?? 0) + Number(e.voice_afk_count ?? 0),
@@ -159,7 +159,7 @@ function buildMinigamesRows(entries: any[], metric: LeaderboardMetric, limit: nu
 		display_name: e.display_name,
 		server_display_name: e.server_display_name,
 		avatar: e.avatar,
-		experience: 0,
+		xp: 0,
 		level: e.level ?? 0,
 		chat_total: 0,
 		voice_minutes_total: 0,
@@ -204,7 +204,7 @@ function buildBountyRows(entries: any[], metric: LeaderboardMetric, limit: numbe
 		display_name: e.display_name,
 		server_display_name: e.server_display_name,
 		avatar: e.avatar,
-		experience: 0,
+		xp: 0,
 		level: e.level ?? 0,
 		chat_total: 0,
 		voice_minutes_total: 0,
@@ -250,7 +250,7 @@ function buildAttackRows(entries: any[], metric: LeaderboardMetric, limit: numbe
 		display_name: e.display_name,
 		server_display_name: e.server_display_name,
 		avatar: e.avatar,
-		experience: 0,
+		xp: 0,
 		level: e.level ?? 0,
 		chat_total: 0,
 		voice_minutes_total: 0,
@@ -286,7 +286,7 @@ function buildGiftRows(entries: any[], metric: LeaderboardMetric, limit: number)
 		display_name: e.display_name,
 		server_display_name: e.server_display_name,
 		avatar: e.avatar,
-		experience: 0,
+		xp: 0,
 		level: e.level ?? 0,
 		chat_total: 0,
 		voice_minutes_total: 0,

@@ -198,7 +198,7 @@
 	const visibleTargets = $derived.by(() => {
 		const q = targetSearch.trim().toLowerCase();
 		const list = q ? (data.targets ?? []).filter((t: any) => (t.name ?? '').toLowerCase().includes(q)) : (data.targets ?? []);
-		return [...list].sort((a: any, b: any) => (b.experience ?? 0) - (a.experience ?? 0));
+		return [...list].sort((a: any, b: any) => (b.xp ?? 0) - (a.xp ?? 0));
 	});
 
 	function targetAvatar(t: any): string {
@@ -366,7 +366,7 @@
 									/>
 									<span class="m-tgt-body">
 										<span class="m-tgt-name">{t.name}</span>
-										<span class="m-tgt-stats"><span>Lv.{t.level}</span><span class="m-tgt-dot">·</span><span>{fmt(t.experience)} XP</span></span>
+										<span class="m-tgt-stats"><span>Lv.{t.level}</span><span class="m-tgt-dot">·</span><span>{fmt(t.xp)} XP</span></span>
 										{#if t.roles.length > 0}
 											<span class="m-tgt-roles">
 												{#each t.roles.slice(0, 3) as role}

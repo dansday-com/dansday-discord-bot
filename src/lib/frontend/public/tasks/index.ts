@@ -257,7 +257,7 @@ async function buildPeriod(opts: {
 							effectType: rewardItem.effect_type,
 							cost: Number(rewardItem.cost) || 0
 						}
-					: { kind: 'xp' as const, xp: Number(row.reward_xp) || 0 }
+					: { kind: 'xp' as const, xp: Number(row.xp_reward) || 0 }
 		});
 	}
 
@@ -295,7 +295,7 @@ export async function loadTasksShared(opts: {
 		voice_minutes_afk: Number(levels?.voice_minutes_afk) || 0,
 		voice_minutes_video: Number(levels?.voice_minutes_video) || 0,
 		voice_minutes_streaming: Number(levels?.voice_minutes_streaming) || 0,
-		xp_gained: Number(levels?.experience) || 0
+		xp_gained: Number(levels?.xp) || 0
 	};
 
 	const catalog = await loadCatalog(server.id, itemsEnabled, tzOffsetMin);

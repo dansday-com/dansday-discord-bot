@@ -178,7 +178,7 @@
 			const res = await fetch(`/api/assets/${encodeURIComponent(ctx.serverSlug)}/buy`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ card: ctx.hash, asset_type: asset.asset_type || 'crypto', asset_id: asset.asset_id, xp_amount: amount })
+				body: JSON.stringify({ card: ctx.hash, asset_type: asset.asset_type || 'crypto', asset_id: asset.asset_id, xp: amount })
 			});
 			const d = await res.json();
 			if (d.success) {

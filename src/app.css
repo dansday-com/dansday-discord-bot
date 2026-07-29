@@ -4461,6 +4461,7 @@
 	padding: 3px 9px;
 	border-radius: 99px;
 	font-size: 10.5px;
+	line-height: 1.4;
 	font-weight: 600;
 	color: #fff;
 	background: rgba(255, 255, 255, 0.12);
@@ -4468,7 +4469,9 @@
 }
 
 .m-root .m-xp-role i {
+	display: block;
 	font-size: 7px;
+	line-height: 1;
 	color: var(--role-color, rgba(255, 255, 255, 0.6));
 }
 

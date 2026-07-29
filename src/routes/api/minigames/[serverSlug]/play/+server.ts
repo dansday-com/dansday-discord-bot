@@ -43,7 +43,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		guild_id: fullServer.discord_server_id,
 		actor_discord_id: actor.discord_member_id,
 		multiplier: Number(multiplier) || 0,
-		amount: Number(amount) || 0
+		xp: Number(amount) || 0
 	});
 
 	if (webhookResult.status !== 200 || !webhookResult.body?.ok) {

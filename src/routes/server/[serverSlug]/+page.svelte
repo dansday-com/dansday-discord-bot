@@ -28,9 +28,7 @@
 	const membersWithoutLevels = $derived(Math.max(0, (liveStats.members_total ?? 0) - (liveStats.members_with_levels ?? 0)));
 
 	const avgXP = $derived(
-		(liveStats.members_with_levels ?? 0) > 0
-			? Math.round((liveStats.leveling_total_experience ?? 0) / Number(liveStats.members_with_levels)).toLocaleString()
-			: '0'
+		(liveStats.members_with_levels ?? 0) > 0 ? Math.round((liveStats.leveling_total_xp ?? 0) / Number(liveStats.members_with_levels)).toLocaleString() : '0'
 	);
 
 	const stealHitRate = $derived(
@@ -152,7 +150,7 @@
 	}
 
 	$effect(() => {
-		const t = Number(liveStats.leveling_total_experience) || 0;
+		const t = Number(liveStats.leveling_total_xp) || 0;
 		if (lastXpForHero === null) {
 			lastXpForHero = t;
 			const reduce = typeof window !== 'undefined' && (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
@@ -306,10 +304,10 @@
 		</div>
 
 		<div class="m-leveling-hero">
-			<p class="m-leveling-hero-label">Total experience</p>
+			<p class="m-leveling-hero-label">Total XP</p>
 			<p class="m-leveling-hero-value">{heroXpDisplay.toLocaleString()}</p>
 			<p class="m-leveling-hero-hint">
-				Wallet + XP invested in assets · {fmt(liveStats.leveling_wallet_experience)} wallet + {fmt(liveStats.leveling_assets_value)} in market
+				Wallet + XP invested in assets · {fmt(liveStats.leveling_wallet_xp)} wallet + {fmt(liveStats.leveling_assets_value)} in market
 			</p>
 		</div>
 

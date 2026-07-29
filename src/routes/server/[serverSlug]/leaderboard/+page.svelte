@@ -100,7 +100,7 @@
 		if (m === 'items_steal_total' || m === 'items_bomb_total') return Number(r.attack_total || 0);
 		if (m === 'items_gift_give') return Number(r.gift_given || 0);
 		if (m === 'items_gift_receive') return Number(r.gift_received || 0);
-		return Number(r.experience || 0);
+		return Number(r.xp || 0);
 	}
 
 	function metricValueAnimated(r: any, m: string) {

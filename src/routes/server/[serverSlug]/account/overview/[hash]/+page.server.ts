@@ -38,7 +38,7 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 	const voiceAfk = Number(m.voice_minutes_afk) || 0;
 	const voiceVideo = Number(m.voice_minutes_video) || 0;
 	const voiceStreaming = Number(m.voice_minutes_streaming) || 0;
-	const totalXp = Number(m.experience) || 0;
+	const totalXp = Number(m.xp) || 0;
 
 	const xpSources = [
 		{ key: 'chat', label: 'Messages', icon: 'fa-comments', color: '#245f73', xp: chatTotal * rateMsg },

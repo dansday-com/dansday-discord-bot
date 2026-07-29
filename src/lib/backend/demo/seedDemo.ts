@@ -431,7 +431,7 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 					voice_minutes_afk: isZeroMember ? 0 : Math.max(0, 12_000 - i * 41 + (i % 8) * 23),
 					voice_minutes_video: isZeroMember ? 0 : Math.max(0, 3_200 - i * 9 + (i % 6) * 7),
 					voice_minutes_streaming: isZeroMember ? 0 : Math.max(0, 1_100 - i * 4 + (i % 9) * 5),
-					experience: exp,
+					xp: exp,
 					level: lvl,
 					is_in_voice: false,
 					is_in_video: false,
@@ -494,7 +494,7 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 						voice_minutes_total: m.level.voice_minutes_total as any,
 						voice_minutes_active: m.level.voice_minutes_active as any,
 						voice_minutes_afk: m.level.voice_minutes_afk as any,
-						experience: m.level.experience as any,
+						xp: m.level.xp as any,
 						level: m.level.level as any,
 						updated_at: nowDb
 					}
@@ -512,7 +512,7 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 			await db.delete(schema.serverMemberItemLogs).where(sql`${schema.serverMemberItemLogs.member_id} = ${memberRow.id}`);
 			await db.delete(schema.serverMemberLevelLogs).where(sql`${schema.serverMemberLevelLogs.member_id} = ${memberRow.id}`);
 
-			if (ownableItems.length > 0 && mi % 10 !== 3 && (m.level.experience as number) > 0) {
+			if (ownableItems.length > 0 && mi % 10 !== 3 && (m.level.xp as number) > 0) {
 				const bagSize = 1 + (mi % 4);
 				let bagTotal = 0;
 				for (let b = 0; b < bagSize; b++) {
@@ -532,14 +532,14 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 						target_member_id: null,
 						item_id: it.id,
 						action: 'buy',
-						xp_amount: 100 * qty,
+						xp: 100 * qty,
 						outcome: 'success',
 						created_at: acquiredAt
 					});
 				}
 			}
 
-			if ((m.level.experience as number) > 0) {
+			if ((m.level.xp as number) > 0) {
 				const sources = ['chat', 'voice', 'video'];
 				for (let h = 0; h < 4; h++) {
 					const amount = 50 + ((mi + h) % 6) * 25;
@@ -547,7 +547,7 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 						member_id: memberRow.id as any,
 						source: sources[(mi + h) % sources.length],
 						amount,
-						total_xp: Math.max(0, (m.level.experience as number) - (3 - h) * amount),
+						xp_total: Math.max(0, (m.level.xp as number) - (3 - h) * amount),
 						level: m.level.level as any,
 						rank: null,
 						multiplier: null,

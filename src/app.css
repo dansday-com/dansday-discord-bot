@@ -4439,12 +4439,25 @@
 
 .m-root .m-xp-bar-meta {
 	display: flex;
+	flex-wrap: nowrap;
+	align-items: baseline;
 	justify-content: space-between;
 	gap: 8px;
 	margin-top: 5px;
 	font-size: 10.5px;
 	font-weight: 600;
 	color: rgba(255, 255, 255, 0.65);
+}
+
+.m-root .m-xp-bar-meta > span {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.m-root .m-xp-bar-meta > span:last-child {
+	flex: none;
 }
 
 .m-root .m-xp-roles {

@@ -14,7 +14,6 @@ import {
 	msUntilNextDay,
 	msUntilNextWeek,
 	generateDailyTasks,
-	goalForReward,
 	DEFAULT_LEVELING_RATES,
 	type LevelingRates,
 	pickReward,
@@ -73,6 +72,7 @@ async function loadCatalog(serverId: any, itemsEnabled: boolean, tzOffsetMin = 0
 				durationMinutes: Math.max(0, Number(cfg?.effect_duration_minutes) || 0),
 				cooldownMinutes: Math.max(0, Number(cfg?.cooldown_minutes) || 0),
 				immunityMinutes: Math.max(0, Number(cfg?.immunity_minutes) || 0),
+				multiplier: Math.max(0, Number(cfg?.multiplier) || 0),
 				successChance: Math.max(0, Math.min(100, Number(cfg?.spy_chance ?? 100)))
 			};
 		});
@@ -176,16 +176,10 @@ async function buildPeriod(opts: {
 		const payload = generated.map((g) => {
 			const def = TASK_BY_ID.get(g.taskType);
 			const targetCost = g.targetItemId != null ? Number(catalog.find((c) => c.id === g.targetItemId)?.cost) || 0 : 0;
-			const value = def ? taskValueXp(def, g.goal, g.difficulty, currentStreak, eligibility, period, targetCost) : XP_REWARD_MIN;
-			const spend = def ? taskCostXp(def, g.goal, eligibility, targetCost) : 0;
-			const draft = pickReward(Number(member.id), periodKey, g.slot, g.difficulty, value, catalog, period, spend);
-
-			const draftWorth = draft.kind === 'item' ? Number(catalog.find((c) => c.id === draft.itemId)?.cost) || 0 : draft.xp;
-			const goal = def ? goalForReward(def, g.goal, draftWorth, g.difficulty, eligibility, period, targetCost, g.targetItemId ?? null) : g.goal;
-
-			const finalSpend = def ? taskCostXp(def, goal, eligibility, targetCost) : 0;
-			const finalValue = def ? taskValueXp(def, goal, g.difficulty, currentStreak, eligibility, period, targetCost) : XP_REWARD_MIN;
-			const reward = finalSpend > draftWorth ? pickReward(Number(member.id), periodKey, g.slot, g.difficulty, finalValue, catalog, period, finalSpend) : draft;
+			const goal = g.goal;
+			const spend = def ? taskCostXp(def, goal, eligibility, targetCost) : 0;
+			const value = def ? taskValueXp(def, goal, g.difficulty, currentStreak, eligibility, period, targetCost) : XP_REWARD_MIN;
+			const reward = pickReward(Number(member.id), periodKey, g.slot, g.difficulty, value, catalog, period, spend);
 
 			const metric = def?.metric as TaskMetric | undefined;
 			const baseline = metric && COUNTER_METRICS.has(metric) ? Number(baselines[metric]) || 0 : 0;
@@ -303,6 +297,7 @@ export async function loadTasksShared(opts: {
 		catalog.map((c) => c.cost).filter((c) => c > 0),
 		50
 	);
+	const measuredDailyEarn = await memberDailyEarn(member.id);
 
 	const eligibility: TaskEligibility = {
 		levelingEnabled: true,
@@ -316,7 +311,8 @@ export async function loadTasksShared(opts: {
 		catalog,
 		effectDurations: longestByEffect(catalog),
 		levelingRates: await loadLevelingRates(server.id),
-		memberCount: await db.countServerMembers(server.id).catch(() => 0)
+		memberCount: await db.countServerMembers(server.id).catch(() => 0),
+		measuredDailyEarn
 	};
 
 	if (opts.generate !== false && (await needsGeneration(member.id, dayKey, weekKey))) {
@@ -348,7 +344,7 @@ export async function loadTasksShared(opts: {
 		streak: shapeStreak(earnedStreak?.row ?? streakRow),
 		streakEarned: !!earnedStreak?.changed,
 		streakMilestone: earnedStreak?.changed ? streakMilestone(Number(earnedStreak.streak) || 0) : null,
-		login: shapeLogin(loginRow, member, dayKey, catalog, await memberDailyEarn(member.id), opts.tzKnown !== false),
+		login: shapeLogin(loginRow, member, dayKey, catalog, measuredDailyEarn, opts.tzKnown !== false),
 		reelPool: (() => {
 			const costs = catalog.map((c) => c.cost);
 			return [...catalog]

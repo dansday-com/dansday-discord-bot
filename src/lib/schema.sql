@@ -345,7 +345,6 @@ CREATE TABLE IF NOT EXISTS bot_discord_quests (
     quest_url VARCHAR(512) NULL,
     quest_description TEXT NULL,
     reward TEXT NULL,
-    task_detail_line TEXT NULL,
     thumbnail_url VARCHAR(512) NULL,
     banner_url VARCHAR(512) NULL,
     starts_at DATETIME NULL,

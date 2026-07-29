@@ -127,7 +127,6 @@ export type DiscordQuestSummary = {
 	id: string;
 	questName: string;
 	gameTitle: string;
-	description: string;
 	questUrl: string;
 	startsAt: string;
 	expiresAt: string;
@@ -136,7 +135,7 @@ export type DiscordQuestSummary = {
 	taskTypeLabel: string;
 	publisher: string;
 	gameSubtitle: string;
-	taskDetailLine: string;
+	questDescription: string;
 	thumbnailUrl: string | null;
 	bannerUrl: string | null;
 };
@@ -276,8 +275,35 @@ function messageMediaUrl(applicationId: string, raw: string, kind: 'thumb' | 'ba
 	return discordAppCoverUrl(applicationId, s);
 }
 
+function questAssetUrl(questId: string, raw: string): string | null {
+	const s = raw.trim();
+	if (!s) return null;
+	if (s.startsWith('http://') || s.startsWith('https://')) return s;
+	if (!questId || /\s/.test(s)) return null;
+	return `https://cdn.discordapp.com/quests/${questId}/${s}?size=1024`;
+}
+
+function mediaFromQuestAssets(questId: string, cfg: Record<string, unknown>): { thumb: string | null; banner: string | null } {
+	const raw = cfg.assets;
+	if (!raw || typeof raw !== 'object') return { thumb: null, banner: null };
+	const assets = raw as Record<string, unknown>;
+	const pick = (...keys: string[]) => {
+		for (const k of keys) {
+			const raw = asStr(assets[k]);
+			if (/\.(?:mp4|webm|mov)(?:\?|$)/i.test(raw)) continue;
+			const u = questAssetUrl(questId, raw);
+			if (u) return u;
+		}
+		return null;
+	};
+	return {
+		banner: pick('hero', 'quest_bar_hero', 'game_tile', 'bar_hero'),
+		thumb: pick('game_tile', 'logotype', 'gamelogo', 'game_logo', 'quest_bar_logo')
+	};
+}
+
 function resolveQuestBannerAndThumb(questId: string, cfg: Record<string, unknown>): { thumb: string | null; banner: string | null } {
-	void questId;
+	const fromAssets = mediaFromQuestAssets(questId, cfg);
 	const fromApp = mediaFromApplication(cfg);
 	const appId = resolveApplicationId(cfg);
 	const m = cfg.messages as Record<string, unknown> | undefined;
@@ -309,12 +335,12 @@ function resolveQuestBannerAndThumb(questId: string, cfg: Record<string, unknown
 		return s;
 	};
 
-	let bannerPick = explicitBanner || fromApp.banner || null;
+	let bannerPick = fromAssets.banner || explicitBanner || fromApp.banner || null;
 	if (!bannerPick && list.length) {
 		bannerPick = [...list].sort((a, b) => rankBanner(b) - rankBanner(a))[0] ?? null;
 	}
 
-	let thumbPick = explicitThumb || fromApp.thumb || null;
+	let thumbPick = fromAssets.thumb || explicitThumb || fromApp.thumb || null;
 	if (!thumbPick && list.length) {
 		const candidates = list.filter((u) => u !== bannerPick);
 		thumbPick = candidates.sort((a, b) => rankThumb(b) - rankThumb(a))[0] ?? null;
@@ -474,16 +500,14 @@ function toDiscordQuestSummary(quest: Record<string, unknown>): DiscordQuestSumm
 
 	const pt = primaryTaskObject(cfg);
 	const taskObj = pt?.obj ?? {};
-	const taskDetailLine = pt ? buildTaskDetailLine(pt.key, taskTypeLabel, taskObj) : taskTypeLabel;
+	const questDescription = pt ? buildTaskDetailLine(pt.key, taskTypeLabel, taskObj) : taskTypeLabel;
 
 	const { thumb, banner } = resolveQuestBannerAndThumb(id, cfg);
-	const desc = reward !== 'Quest reward' ? `**Reward:** ${reward}` : 'A quest is available in the Discord client.';
 
 	return {
 		id,
 		questName,
 		gameTitle,
-		description: desc,
 		questUrl: `https://discord.com/quests/${id}`,
 		startsAt,
 		expiresAt,
@@ -492,7 +516,7 @@ function toDiscordQuestSummary(quest: Record<string, unknown>): DiscordQuestSumm
 		taskTypeLabel,
 		publisher,
 		gameSubtitle,
-		taskDetailLine,
+		questDescription,
 		thumbnailUrl: thumb,
 		bannerUrl: banner
 	};

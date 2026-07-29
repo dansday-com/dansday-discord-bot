@@ -410,7 +410,6 @@ async function handleWebhookRequest(req, res) {
 						const channelId = payload.channel_id;
 						const questName = payload.quest_name;
 						const gameTitle = payload.game_title;
-						const description = payload.description;
 						const questUrl = payload.quest_url;
 						const isTest = payload.test === true;
 						const autoQuestEnabled = payload.auto_quest_enabled !== false;
@@ -439,7 +438,6 @@ async function handleWebhookRequest(req, res) {
 								id: String(payload.quest_id || ''),
 								questName: String(questName),
 								gameTitle: typeof gameTitle === 'string' ? gameTitle : 'Quest',
-								description: typeof description === 'string' ? description : '',
 								questUrl: String(questUrl),
 								startsAt: typeof payload.starts_at === 'string' ? payload.starts_at : '',
 								expiresAt: typeof payload.expires_at === 'string' ? payload.expires_at : '',
@@ -448,8 +446,12 @@ async function handleWebhookRequest(req, res) {
 								taskTypeLabel: taskLabel,
 								publisher: typeof payload.publisher === 'string' ? payload.publisher : '',
 								gameSubtitle: typeof payload.game_subtitle === 'string' ? payload.game_subtitle : '',
-								taskDetailLine:
-									typeof payload.task_detail_line === 'string' && payload.task_detail_line.trim() ? String(payload.task_detail_line).trim() : taskLabel,
+								questDescription:
+									typeof payload.quest_description === 'string' && payload.quest_description.trim()
+										? String(payload.quest_description).trim()
+										: typeof payload.task_detail_line === 'string' && payload.task_detail_line.trim()
+											? String(payload.task_detail_line).trim()
+											: taskLabel,
 								thumbnailUrl: thumb,
 								bannerUrl: banner
 							},

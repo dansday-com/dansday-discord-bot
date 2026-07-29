@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync, existsSync } from 'fs';
 import { join } from 'path';
 import mysql from 'mysql2/promise';
-import { eq, and, or, inArray, notInArray, sql, desc, asc, isNull, isNotNull, count, avg, like, ne } from 'drizzle-orm';
+import { eq, and, or, gt, inArray, notInArray, sql, desc, asc, isNull, isNotNull, count, avg, like, ne } from 'drizzle-orm';
 import { db } from './drizzle.js';
 import * as schema from './schema.js';
 import { SERVER_SETTINGS, AUTO_ENABLED_COMPONENTS } from './frontend/panelServer.js';
@@ -4515,11 +4515,27 @@ async function getSelfbotsForOfficialBot(officialBotId: number) {
 		.then((rows) => rows.map((r) => r.selfbot));
 }
 
-async function getFirstRunningSelfbotForServer(serverId: number) {
+async function getRunningSelfbotsForServer(serverId: number) {
 	await initializeDatabase();
 	const selfbots = await getServerBots(serverId);
 	const running = selfbots.filter((s) => s.status === 'running' && typeof s.token === 'string' && s.token.trim() !== '');
 	running.sort((a, b) => a.id - b.id);
+	return running;
+}
+
+async function getRunningSelfbotsForOfficialBot(officialBotId: number) {
+	await initializeDatabase();
+	const selfbots = await getSelfbotsForOfficialBot(officialBotId);
+	const byId = new Map<number, (typeof selfbots)[number]>();
+	for (const s of selfbots) {
+		if (s.status !== 'running' || typeof s.token !== 'string' || s.token.trim() === '') continue;
+		if (!byId.has(s.id)) byId.set(s.id, s);
+	}
+	return [...byId.values()].sort((a, b) => a.id - b.id);
+}
+
+async function getFirstRunningSelfbotForServer(serverId: number) {
+	const running = await getRunningSelfbotsForServer(serverId);
 	return running[0] ?? null;
 }
 
@@ -4616,7 +4632,7 @@ function snapshotFromDiscordQuestSummary(q: DiscordQuestSummary) {
 	};
 }
 
-async function syncServerDiscordQuestsFromApi(botId: number, serverId: number, quests: DiscordQuestSummary[]): Promise<void> {
+async function syncBotDiscordQuestsFromApi(botId: number, quests: DiscordQuestSummary[]): Promise<void> {
 	await initializeDatabase();
 	if (quests.length === 0) return;
 	const now = toMySQLDateTime();
@@ -4646,15 +4662,51 @@ async function syncServerDiscordQuestsFromApi(botId: number, serverId: number, q
 					...mediaUpdate
 				} as any
 			});
-		const [questRow] = await db
-			.select({ id: schema.botDiscordQuest.id })
-			.from(schema.botDiscordQuest)
-			.where(eq(schema.botDiscordQuest.quest_id, q.id))
-			.limit(1);
-		if (!questRow) continue;
+	}
+}
+
+async function syncServerDiscordQuestsFromApi(botId: number, serverId: number, quests: DiscordQuestSummary[]): Promise<void> {
+	if (quests.length === 0) return;
+	await syncBotDiscordQuestsFromApi(botId, quests);
+	await linkServerToBotDiscordQuests(
+		serverId,
+		quests.map((q) => q.id)
+	);
+}
+
+async function listActiveBotDiscordQuests(botId: number): Promise<DiscordQuestSummary[]> {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	const rows = await db
+		.select()
+		.from(schema.botDiscordQuest)
+		.where(and(eq(schema.botDiscordQuest.bot_id, botId), or(isNull(schema.botDiscordQuest.expires_at), gt(schema.botDiscordQuest.expires_at, now as any))));
+	return rows.map((r) => ({
+		id: r.quest_id,
+		questName: r.quest_name?.trim() || 'Discord Quest',
+		gameTitle: r.game_title?.trim() || 'Quest',
+		questUrl: r.quest_url?.trim() || `https://discord.com/quests/${r.quest_id}`,
+		startsAt: r.starts_at ? new Date(r.starts_at as any).toISOString() : '',
+		expiresAt: r.expires_at ? new Date(r.expires_at as any).toISOString() : '',
+		reward: r.reward?.trim() || 'Quest reward',
+		taskTypeKey: r.quest_task_type || '',
+		taskTypeLabel: r.quest_task_label || '',
+		publisher: '',
+		gameSubtitle: '',
+		questDescription: r.quest_description?.trim() || r.quest_task_label || '',
+		thumbnailUrl: r.thumbnail_url,
+		bannerUrl: r.banner_url
+	}));
+}
+
+async function linkServerToBotDiscordQuests(serverId: number, questIds: string[]): Promise<void> {
+	if (questIds.length === 0) return;
+	await initializeDatabase();
+	const rows = await db.select({ id: schema.botDiscordQuest.id }).from(schema.botDiscordQuest).where(inArray(schema.botDiscordQuest.quest_id, questIds));
+	for (const r of rows) {
 		await db
 			.insert(schema.serverDiscordQuest)
-			.values({ server_id: serverId, quest_id: questRow.id, message_posted_at: null })
+			.values({ server_id: serverId, quest_id: r.id, message_posted_at: null })
 			.onDuplicateKeyUpdate({ set: { server_id: serverId } as any });
 	}
 }
@@ -4674,6 +4726,43 @@ async function listServerDiscordQuestUnpostedIds(serverId: number, activeQuestId
 			)
 		);
 	return rows.map((r) => r.quest_id);
+}
+
+async function claimServerDiscordQuestForPost(serverId: number, questId: string): Promise<boolean> {
+	await initializeDatabase();
+	const posted = toMySQLDateTime();
+	const [questRow] = await db
+		.select({ id: schema.botDiscordQuest.id })
+		.from(schema.botDiscordQuest)
+		.where(eq(schema.botDiscordQuest.quest_id, questId))
+		.limit(1);
+	if (!questRow) return false;
+	const result = await db
+		.update(schema.serverDiscordQuest)
+		.set({ message_posted_at: posted as any })
+		.where(
+			and(
+				eq(schema.serverDiscordQuest.server_id, serverId),
+				eq(schema.serverDiscordQuest.quest_id, questRow.id),
+				isNull(schema.serverDiscordQuest.message_posted_at)
+			)
+		);
+	const affected = (result as any)?.[0]?.affectedRows ?? (result as any)?.affectedRows ?? 0;
+	return affected > 0;
+}
+
+async function releaseServerDiscordQuestClaim(serverId: number, questId: string): Promise<void> {
+	await initializeDatabase();
+	const [questRow] = await db
+		.select({ id: schema.botDiscordQuest.id })
+		.from(schema.botDiscordQuest)
+		.where(eq(schema.botDiscordQuest.quest_id, questId))
+		.limit(1);
+	if (!questRow) return;
+	await db
+		.update(schema.serverDiscordQuest)
+		.set({ message_posted_at: null as any })
+		.where(and(eq(schema.serverDiscordQuest.server_id, serverId), eq(schema.serverDiscordQuest.quest_id, questRow.id)));
 }
 
 async function markServerDiscordQuestMessagePosted(serverId: number, questId: string): Promise<void> {
@@ -5895,6 +5984,11 @@ export default {
 	upsertServerSettings,
 	syncServerDiscordQuestsFromApi,
 	listServerDiscordQuestUnpostedIds,
+	syncBotDiscordQuestsFromApi,
+	listActiveBotDiscordQuests,
+	linkServerToBotDiscordQuests,
+	claimServerDiscordQuestForPost,
+	releaseServerDiscordQuestClaim,
 	markServerDiscordQuestMessagePosted,
 	syncServerRobloxItemsFromApi,
 	isBotRobloxItemsEmpty,
@@ -5949,6 +6043,8 @@ export default {
 	getOfficialBotIdForServer,
 	getSelfbotsForOfficialBot,
 	getFirstRunningSelfbotForServer,
+	getRunningSelfbotsForServer,
+	getRunningSelfbotsForOfficialBot,
 	getChannelsForServer,
 	getCategoriesForServer,
 	serversNeedSync,

@@ -288,6 +288,55 @@ function questAssetUrl(questId: string, raw: string, kind: 'thumb' | 'banner'): 
 
 const QUEST_VIDEO_RE = /\.(?:mp4|webm|mov)(?:\?|$)/i;
 const QUEST_ASSET_FILE_RE = /(?:^|\/)[\w-]+\.(?:png|jpe?g|webp|gif)(?:\?|$)/i;
+const QUEST_REWARD_ASSET_FILE_RE = /(?:^|\/)[\w-]+\.(?:png|jpe?g|webp|gif|mp4|webm|mov)(?:\?|$)/i;
+
+function questRewardAssetUrl(questId: string, raw: string): string | null {
+	const s = raw.trim().replace(/^\/+/, '');
+	if (!s) return null;
+	if (s.startsWith('http://') || s.startsWith('https://')) return s;
+	if (!questId || /\s/.test(s)) return null;
+	const file = s.replace(/^(?:quests\/)?[0-9]{5,}\//, '').replace(/\?.*$/, '');
+	if (!file) return null;
+	return `https://cdn.discordapp.com/quests/${questId}/${file}?format=webp&width=256&height=256`;
+}
+
+function rewardTileFromQuest(questId: string, quest: Record<string, unknown>, cfg: Record<string, unknown>): string | null {
+	const candidates: string[] = [];
+
+	for (const r of rewardListFromQuest(quest)) {
+		const rec = r as Record<string, unknown>;
+		if (!rec || typeof rec !== 'object') continue;
+		for (const k of ['asset', 'image', 'icon', 'tile', 'asset_url', 'image_url']) {
+			const v = asStr(rec[k]);
+			if (v) candidates.push(v);
+		}
+		const msgs = rec.messages as Record<string, unknown> | undefined;
+		for (const k of ['asset', 'image', 'icon']) {
+			const v = asStr(msgs?.[k]);
+			if (v) candidates.push(v);
+		}
+	}
+
+	const rewardsCfg = (cfg.rewards_config ?? {}) as Record<string, unknown>;
+	for (const k of ['assets', 'asset', 'platforms_asset', 'reward_tile', 'hero']) {
+		const v = asStr(rewardsCfg[k]);
+		if (v) candidates.push(v);
+	}
+
+	const assets = (cfg.assets ?? {}) as Record<string, unknown>;
+	for (const [k, val] of Object.entries(assets)) {
+		if (!/reward/i.test(k)) continue;
+		const v = asStr(val);
+		if (v) candidates.push(v);
+	}
+
+	for (const c of candidates) {
+		if (!QUEST_REWARD_ASSET_FILE_RE.test(c) && !c.startsWith('http')) continue;
+		const u = questRewardAssetUrl(questId, c);
+		if (u) return u;
+	}
+	return null;
+}
 
 function mediaFromQuestAssets(questId: string, cfg: Record<string, unknown>): { thumb: string | null; banner: string | null } {
 	const raw = cfg.assets;
@@ -524,6 +573,7 @@ function toDiscordQuestSummary(quest: Record<string, unknown>): DiscordQuestSumm
 	const questDescription = pt ? buildTaskDetailLine(pt.key, taskTypeLabel, taskObj) : taskTypeLabel;
 
 	const { thumb, banner } = resolveQuestBannerAndThumb(id, cfg);
+	const rewardTile = rewardTileFromQuest(id, quest, cfg);
 
 	return {
 		id,
@@ -538,7 +588,7 @@ function toDiscordQuestSummary(quest: Record<string, unknown>): DiscordQuestSumm
 		publisher,
 		gameSubtitle,
 		questDescription,
-		thumbnailUrl: thumb,
+		thumbnailUrl: rewardTile ?? thumb,
 		bannerUrl: banner
 	};
 }

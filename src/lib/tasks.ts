@@ -1404,11 +1404,7 @@ export function effectUnitCost(costEffect: string, elig: TaskEligibility): numbe
 	const effects = costEffect.split('|');
 	const catalog = elig.catalog ?? [];
 
-	if (costEffect === '*') {
-		const priced = catalog.map((c) => Number(c.cost) || 0).filter((c) => c > 0);
-		if (priced.length > 0) return Math.min(...priced);
-		return Number(elig.medianItemCost) || 0;
-	}
+	if (costEffect === '*') return 0;
 
 	const typical = effects
 		.map((e) => {
@@ -1728,6 +1724,19 @@ export function isPeakMetric(def: TaskDefinition): boolean {
 	return PEAK_METRICS.has(def.metric);
 }
 
+export function effectRateLimit(def: TaskDefinition, elig: TaskEligibility, period: TaskPeriod): number {
+	const minutes = PERIOD_MINUTES[period];
+	const effectKey = def.costEffect && def.costEffect !== '*' ? def.costEffect : def.durationEffect;
+	const items = effectItems(effectKey, elig);
+	if (items.length === 0) return 0;
+
+	const gates = items.map((c) => Math.max(Number(c.cooldownMinutes) || 0, Number(c.immunityMinutes) || 0, Number(c.durationMinutes) || 0)).filter((v) => v > 0);
+
+	if (gates.length === 0) return 0;
+
+	return Math.max(1, Math.floor(minutes / Math.min(...gates)));
+}
+
 export function hardTierUnitCap(def: TaskDefinition, elig: TaskEligibility, period: TaskPeriod): number {
 	const perAction = def.unit === 'minutes' ? 1 : activityUnitMinutes(def, elig) || ACTION_EFFORT_MINUTES[def.unit] || 0;
 	if (!(perAction > 0)) return 0;
@@ -1746,7 +1755,7 @@ export function feasibleUsesInPeriod(def: TaskDefinition, elig: TaskEligibility,
 	const days = Math.max(1, Math.round(minutes / PERIOD_MINUTES.daily));
 
 	let cap = Infinity;
-	if (COUNTED_ACTION_UNITS.has(def.unit)) cap = Math.max(DAILY_ACTION_CAP * days, hardTierUnitCap(def, elig, period));
+	if (COUNTED_ACTION_UNITS.has(def.unit)) cap = DAILY_ACTION_CAP * days;
 	if (isActivityAction(def)) cap = Math.min(cap, Math.max(ACTIVITY_ACTION_CAP[period], hardTierUnitCap(def, elig, period)));
 
 	if (def.unit === 'items' && !def.targetsItem) {
@@ -1929,7 +1938,7 @@ export function goalAffordableMax(def: TaskDefinition, elig: TaskEligibility, pe
 	const budget = spendBudget(def, elig, period) - fixed;
 	if (!(budget > 0)) return 1;
 
-	return Math.max(1, Math.floor(budget / marginal));
+	return Math.max(MIN_TIER_SPREAD, Math.floor(budget / marginal));
 }
 
 export function goalCeiling(def: TaskDefinition, elig: TaskEligibility, period: TaskPeriod, targetCost = 0): number {
@@ -1939,42 +1948,11 @@ export function goalCeiling(def: TaskDefinition, elig: TaskEligibility, period: 
 	);
 }
 
-export const PACE_STRETCH_HARD = 2;
-
-export function paceGoalFor(def: TaskDefinition, elig: TaskEligibility, period: TaskPeriod): number {
-	const metric = def.baselineKey ?? def.metric;
-	const perDay = observedPerDay(elig, metric) || starterPacePerDay(def, elig);
-	if (!(perDay > 0)) return 0;
-
-	const days = period === 'weekly' ? 7 : 1;
-	return perDay * days * PACE_STRETCH_HARD;
-}
-
-export function starterPacePerDay(def: TaskDefinition, elig: TaskEligibility): number {
-	const r = elig.levelingRates ?? DEFAULT_LEVELING_RATES;
-
-	if (def.unit === 'messages') return REFERENCE_CHAT_MESSAGES * REALISTIC_CHAT_SHARE;
-	if (def.unit === 'reactions') return REFERENCE_CHAT_MESSAGES * REALISTIC_CHAT_SHARE;
-	if (def.unit === 'minutes') return REFERENCE_VOICE_MINUTES * REALISTIC_CHAT_SHARE;
-
-	if (def.unit === 'xp') {
-		const perMinute = metricXpPerMinute(def.metric, elig);
-		if (perMinute > 0) return perMinute * REFERENCE_VOICE_MINUTES * REALISTIC_CHAT_SHARE;
-		return Math.max(0, Number(r.messageXp) || 0) * REFERENCE_CHAT_MESSAGES * REALISTIC_CHAT_SHARE;
-	}
-
-	return 0;
-}
-
 export function hardTierReach(def: TaskDefinition, elig: TaskEligibility, period: TaskPeriod, targetCost = 0): number {
-	const ceiling = goalCeiling(def, elig, period, targetCost);
-	const perUnit = unitWorkMinutes(def, elig, targetCost);
-	const fromTime = perUnit > 0 ? tierTargetMinutes('hard', period) / perUnit : 0;
+	const worth = worthLimitedGoal(def, elig, period, targetCost);
+	const limit = effectRateLimit(def, elig, period);
 
-	const fromPace = paceGoalFor(def, elig, period);
-	const target = fromPace > 0 ? Math.min(fromTime > 0 ? fromTime : fromPace, fromPace) : fromTime;
-
-	return Math.max(1, Math.min(target > 0 ? target : ceiling, ceiling));
+	return Math.max(1, limit > 0 ? Math.min(worth, limit) : worth);
 }
 
 export function deriveGoal(def: TaskDefinition, difficulty: TaskDifficulty, elig: TaskEligibility, period: TaskPeriod, targetCost = 0): number {
@@ -2198,6 +2176,55 @@ export function goalForReward(
 
 export const TIER_GRADE_TOLERANCE = 0.9;
 
+export function taskCostWorth(def: TaskDefinition, goal: number, elig: TaskEligibility, period: TaskPeriod, targetCost = 0): number {
+	const spend = requiredSpendXp(def, goal, elig, period, targetCost);
+	const minutes = taskWorkMinutes(def, goal, elig, period, targetCost);
+	const timeWorth = minutes * effortMinuteWorth(elig);
+	const risk = riskPerUnitXp(def, elig, period) * Math.max(0, Number(goal) || 0);
+
+	return Math.max(0, spend + timeWorth + risk);
+}
+
+export const WAGER_RISK_SHARE = 0.05;
+
+export function riskPerUnitXp(def: TaskDefinition, elig: TaskEligibility, period: TaskPeriod): number {
+	if (def.requires !== 'minigames') return 0;
+
+	const bankroll = serverEarnRate(elig, period) * WORTH_BUDGET_SHARE;
+	if (!(bankroll > 0)) return 0;
+
+	return bankroll * WAGER_RISK_SHARE * taskAttemptsPerSuccess(def, elig);
+}
+
+export function worthBudget(elig: TaskEligibility, period: TaskPeriod, def?: TaskDefinition): number {
+	const income = serverEarnRate(elig, period) * WORTH_BUDGET_SHARE;
+	if (!def) return income;
+
+	const spends = !!((def.costEffect && def.costEffect !== '*') || def.durationEffect || def.targetsItem || def.costIsGoal);
+	if (!spends) return income;
+
+	return Math.max(income, spendBudget(def, elig, period) * WORTH_BUDGET_SHARE);
+}
+
+export const WORTH_BUDGET_SHARE = 0.35;
+
+export function worthLimitedGoal(def: TaskDefinition, elig: TaskEligibility, period: TaskPeriod, targetCost = 0): number {
+	const ceiling = goalCeiling(def, elig, period, targetCost);
+	const budget = worthBudget(elig, period, def);
+	if (!(budget > 0)) return ceiling;
+
+	const unit = taskCostWorth(def, 1, elig, period, targetCost);
+	if (!(unit > 0)) return ceiling;
+
+	const marginal = Math.max(unit, taskCostWorth(def, 2, elig, period, targetCost) - unit);
+	const fixed = Math.max(0, taskCostWorth(def, 1, elig, period, targetCost) - marginal);
+
+	const affordableSteps = Math.floor((budget - fixed) / marginal);
+	const viable = Math.max(affordableSteps, Math.min(MIN_TIER_SPREAD, ceiling));
+
+	return Math.max(1, Math.min(ceiling, viable));
+}
+
 export function gradeByMinutes(minutes: number, period: TaskPeriod): TaskDifficulty {
 	const budget = gradeBudgetMinutes(period);
 	if (budget <= 0) return 'medium';
@@ -2229,15 +2256,7 @@ export function gradeDifficulty(effort: number, elig: TaskEligibility, period: T
 }
 
 export function requiredSpendXp(def: TaskDefinition, goal: number, elig: TaskEligibility, period: TaskPeriod, targetCost = 0): number {
-	const full = taskCostXp(def, goal, elig, targetCost);
-	const fixedUnits = def.costFixedUnits ?? 0;
-	if (fixedUnits <= 0 || def.unit !== 'xp') return full;
-
-	const perUse = xpPerUseFor(def, elig);
-	if (!(perUse > 0)) return full;
-
-	const usesNeeded = Math.max(1, Math.ceil(Math.max(0, Number(goal) || 0) / perUse));
-	return Math.round((full * Math.min(usesNeeded, fixedUnits)) / fixedUnits);
+	return taskCostXp(def, goal, elig, targetCost);
 }
 
 export function taskValueXp(
@@ -2249,15 +2268,10 @@ export function taskValueXp(
 	period: TaskPeriod = 'daily',
 	targetCost = 0
 ): number {
-	const spend = requiredSpendXp(def, goal, elig, period, targetCost);
 	const streakBonus = 1 + Math.min(1, Math.max(0, streak) * 0.02);
+	const cost = taskCostWorth(def, goal, elig, period, targetCost);
 
-	const graded = gradeTask(def, goal, elig, period, targetCost);
-	const reach = hardTierReach(def, elig, period, targetCost);
-	const share = reach > 0 ? Math.min(1, Math.max(0, Number(goal) || 0) / reach) : EFFORT_BANDS[graded];
-
-	const pay = baseEarnRate(elig, period) * TASK_REWARD_SHARE * share;
-	const worth = Math.round((spend + pay) * EFFORT_REWARD_MARGIN * streakBonus);
+	const worth = Math.round(cost * EFFORT_REWARD_MARGIN * streakBonus);
 
 	return Math.max(XP_REWARD_MIN, Math.min(rewardCeiling(elig), worth));
 }

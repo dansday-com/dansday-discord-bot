@@ -116,4 +116,4 @@ The bot requests the Guilds, Message Content, Server Members, Moderation, Voice 
 
 ## License
 
-MIT · Author: Akbar Yudhanto · Version: 26.4.2
+MIT · Author: Akbar Yudhanto · Version: 26.4.3

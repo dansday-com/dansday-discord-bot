@@ -276,16 +276,18 @@ function messageMediaUrl(applicationId: string, raw: string, kind: 'thumb' | 'ba
 }
 
 function questAssetUrl(questId: string, raw: string, kind: 'thumb' | 'banner'): string | null {
-	const s = raw.trim();
+	const s = raw.trim().replace(/^\/+/, '');
 	if (!s) return null;
 	if (s.startsWith('http://') || s.startsWith('https://')) return s;
 	if (!questId || /\s/.test(s)) return null;
+	const file = s.replace(/^(?:quests\/)?[0-9]{5,}\//, '').replace(/\?.*$/, '');
+	if (!file) return null;
 	const query = kind === 'banner' ? '?format=webp&width=1320&height=370' : '?size=256';
-	return `https://cdn.discordapp.com/quests/${questId}/${s}${query}`;
+	return `https://cdn.discordapp.com/quests/${questId}/${file}${query}`;
 }
 
 const QUEST_VIDEO_RE = /\.(?:mp4|webm|mov)(?:\?|$)/i;
-const QUEST_ASSET_FILE_RE = /^[\w-]+\.(?:png|jpe?g|webp|gif)$/i;
+const QUEST_ASSET_FILE_RE = /(?:^|\/)[\w-]+\.(?:png|jpe?g|webp|gif)(?:\?|$)/i;
 
 function mediaFromQuestAssets(questId: string, cfg: Record<string, unknown>): { thumb: string | null; banner: string | null } {
 	const raw = cfg.assets;

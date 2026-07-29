@@ -944,7 +944,8 @@ export const serverMemberLevelFriends = mysqlTable(
 			.notNull()
 			.references(() => serverMembers.id, { onDelete: 'cascade' }),
 		ticks: int('ticks').notNull().default(0),
-		xp_together: bigint('xp_together', { mode: 'number' }).notNull().default(0),
+		minutes: int('minutes').notNull().default(0),
+		xp: bigint('xp', { mode: 'number' }).notNull().default(0),
 		updated_at: datetime('updated_at').notNull()
 	},
 	(t) => [

@@ -2452,7 +2452,7 @@ export async function logMinigameAction(memberId: any, data: any = {}) {
 	return true;
 }
 
-export async function recordLevelFriends(actorMemberId: any, friendDiscordIds: string[], perFriendXp = 0) {
+export async function recordLevelFriends(actorMemberId: any, friendDiscordIds: string[], perFriendXp = 0, minutes = 1) {
 	await initializeDatabase();
 	const actorId = Number(actorMemberId);
 	if (!actorId || !Array.isArray(friendDiscordIds) || friendDiscordIds.length === 0) return;
@@ -2471,6 +2471,7 @@ export async function recordLevelFriends(actorMemberId: any, friendDiscordIds: s
 	if (friendIds.length === 0) return;
 
 	const xp = Math.max(0, Math.floor(Number(perFriendXp) || 0));
+	const mins = Math.max(0, Math.floor(Number(minutes) || 0));
 	const now = toMySQLDateTime();
 	for (const fid of friendIds) {
 		const a = Math.min(actorId, fid);
@@ -2478,9 +2479,9 @@ export async function recordLevelFriends(actorMemberId: any, friendDiscordIds: s
 		await db
 			.execute(
 				sql`
-			INSERT INTO server_member_level_friends (member_a_id, member_b_id, ticks, xp_together, updated_at)
-			VALUES (${a}, ${b}, 1, ${xp}, ${now})
-			ON DUPLICATE KEY UPDATE ticks = ticks + 1, xp_together = xp_together + ${xp}, updated_at = ${now}
+			INSERT INTO server_member_level_friends (member_a_id, member_b_id, ticks, minutes, xp, updated_at)
+			VALUES (${a}, ${b}, 1, ${mins}, ${xp}, ${now})
+			ON DUPLICATE KEY UPDATE ticks = ticks + 1, minutes = minutes + ${mins}, xp = xp + ${xp}, updated_at = ${now}
 		`
 			)
 			.catch(() => null);
@@ -2495,7 +2496,7 @@ export async function getMemberLevelFriends(memberId: any, limit = 5) {
 	const rows = await db.execute(sql`
 		SELECT
 			CASE WHEN t.member_a_id = ${mid} THEN t.member_b_id ELSE t.member_a_id END AS buddy_id,
-			${nameExpr} AS name, m.avatar AS avatar, t.ticks AS ticks, t.xp_together AS xp
+			${nameExpr} AS name, m.avatar AS avatar, t.ticks AS ticks, t.minutes AS minutes, t.xp AS xp
 		FROM server_member_level_friends t
 		INNER JOIN server_members m ON m.id = CASE WHEN t.member_a_id = ${mid} THEN t.member_b_id ELSE t.member_a_id END
 		WHERE t.member_a_id = ${mid} OR t.member_b_id = ${mid}
@@ -2506,6 +2507,7 @@ export async function getMemberLevelFriends(memberId: any, limit = 5) {
 		name: r.name || 'a member',
 		avatar: r.avatar ?? null,
 		ticks: Number(r.ticks) || 0,
+		minutes: Number(r.minutes) || 0,
 		xp: Number(r.xp) || 0
 	}));
 }
@@ -3089,15 +3091,18 @@ export async function getMemberDashboard(memberId: any, priceMap: Record<string,
 					COALESCE(SUM(CASE WHEN action = 'steal' AND outcome = 'success' THEN 1 ELSE 0 END), 0) AS steals_landed,
 					COALESCE(SUM(CASE WHEN action = 'steal' AND outcome = 'caught' THEN 1 ELSE 0 END), 0) AS steals_caught,
 					COALESCE(SUM(CASE WHEN action = 'bomb' AND outcome = 'success' THEN xp_amount ELSE 0 END), 0) AS bombed,
+					COALESCE(SUM(CASE WHEN action = 'leech' AND outcome = 'success' THEN xp_amount ELSE 0 END), 0) AS leeched,
 					COALESCE(SUM(CASE WHEN action = 'gift' THEN xp_amount ELSE 0 END), 0) AS gifted,
 					COALESCE(SUM(CASE WHEN action = 'spy' THEN 1 ELSE 0 END), 0) AS spies,
-					COALESCE(SUM(CASE WHEN action = 'bounty' THEN 1 ELSE 0 END), 0) AS bounties_placed
+					COALESCE(SUM(CASE WHEN action = 'bounty' THEN 1 ELSE 0 END), 0) AS bounties_placed,
+					COALESCE(SUM(CASE WHEN action = 'bounty_collected' THEN xp_amount ELSE 0 END), 0) AS bounty_collected
 				FROM server_member_item_logs WHERE member_id = ${mid}
 			`),
 		db.execute(sql`
 				SELECT
 					COALESCE(SUM(CASE WHEN action = 'steal' AND outcome = 'success' THEN xp_amount ELSE 0 END), 0) AS stolen_from,
 					COALESCE(SUM(CASE WHEN action = 'bomb' AND outcome = 'success' THEN xp_amount ELSE 0 END), 0) AS bombed_by,
+					COALESCE(SUM(CASE WHEN action = 'leech' AND outcome = 'success' THEN xp_amount ELSE 0 END), 0) AS leeched_by,
 					COALESCE(SUM(CASE WHEN action = 'gift' THEN xp_amount ELSE 0 END), 0) AS gifts_received
 				FROM server_member_item_logs WHERE target_member_id = ${mid}
 			`),
@@ -3166,11 +3171,14 @@ export async function getMemberDashboard(memberId: any, priceMap: Record<string,
 		items_steals_landed: Number(out.steals_landed) || 0,
 		items_steals_caught: Number(out.steals_caught) || 0,
 		items_bombed: Number(out.bombed) || 0,
+		items_leeched: Number(out.leeched) || 0,
 		items_gifted: Number(out.gifted) || 0,
 		items_spies: Number(out.spies) || 0,
 		items_bounties_placed: Number(out.bounties_placed) || 0,
+		items_bounty_collected: Number(out.bounty_collected) || 0,
 		items_stolen_from: Number(inc.stolen_from) || 0,
 		items_bombed_by: Number(inc.bombed_by) || 0,
+		items_leeched_by: Number(inc.leeched_by) || 0,
 		items_gifts_received: Number(inc.gifts_received) || 0,
 		giveaways_hosted: Number(gv.hosted) || 0,
 		giveaways_entered: Number(gv.entered) || 0,
@@ -3220,6 +3228,16 @@ export async function getMemberInsights(memberId: any, serverId: any = null) {
 			FROM server_member_item_logs il
 			INNER JOIN server_members m ON m.id = il.member_id
 			WHERE il.target_member_id = ${mid} AND il.action IN (${sql.join(actions, sql`, `)})
+				AND il.outcome IN (${sql.join(outcomes, sql`, `)}) ${hideDisguised}
+			GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY hits DESC LIMIT 3
+		`);
+
+	const attackedInto = (actions: string[], outcomes: string[]) =>
+		q(sql`
+			SELECT ${nameExpr} AS name, COUNT(*) AS hits, 0 AS xp
+			FROM server_member_item_logs il
+			INNER JOIN server_members m ON m.id = il.target_member_id
+			WHERE il.member_id = ${mid} AND il.action IN (${sql.join(actions, sql`, `)})
 				AND il.outcome IN (${sql.join(outcomes, sql`, `)}) ${hideDisguised}
 			GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY hits DESC LIMIT 3
 		`);
@@ -3281,6 +3299,24 @@ export async function getMemberInsights(memberId: any, serverId: any = null) {
 	const spyCaught = defendedFrom(['spy'], ['caught']);
 	const blocked = defendedFrom(['steal', 'bomb'], ['immune']);
 	const reflected = defendedFrom(['steal', 'bomb'], ['reflected']);
+	const mySpyCaught = attackedInto(['spy'], ['caught']);
+	const leechBlocked = defendedFrom(['leech'], ['occupied']);
+	const myBlocked = attackedInto(['steal', 'bomb'], ['immune']);
+	const myReflected = attackedInto(['steal', 'bomb'], ['reflected']);
+	const bountyCollected = q(sql`
+		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp_amount), 0) AS xp
+		FROM server_member_item_logs il
+		INNER JOIN server_members m ON m.id = il.target_member_id
+		WHERE il.member_id = ${mid} AND il.action = 'bounty_collected' ${hideDisguised}
+		GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY xp DESC, hits DESC LIMIT 3
+	`);
+	const bountyPaidOut = q(sql`
+		SELECT ${nameExpr} AS name, COUNT(*) AS hits, COALESCE(SUM(il.xp_amount), 0) AS xp
+		FROM server_member_item_logs il
+		INNER JOIN server_members m ON m.id = il.member_id
+		WHERE il.target_member_id = ${mid} AND il.action = 'bounty_collected' ${hideDisguised}
+		GROUP BY m.id, m.server_display_name, m.display_name, m.username ORDER BY xp DESC, hits DESC LIMIT 3
+	`);
 	const defenseSummary = q(sql`
 		SELECT
 			COALESCE(SUM(CASE WHEN target_member_id = ${mid} AND action = 'spy' AND outcome = 'caught' THEN 1 ELSE 0 END), 0) AS spies_caught,
@@ -3303,6 +3339,12 @@ export async function getMemberInsights(memberId: any, serverId: any = null) {
 		spyCaughtRows,
 		blockedRows,
 		reflectedRows,
+		mySpyCaughtRows,
+		myBlockedRows,
+		myReflectedRows,
+		bountyCollectedRows,
+		bountyPaidOutRows,
+		leechBlockedRows,
 		defenseRows,
 		nemesisRows,
 		favoriteTargetRows,
@@ -3350,6 +3392,12 @@ export async function getMemberInsights(memberId: any, serverId: any = null) {
 		spyCaught,
 		blocked,
 		reflected,
+		mySpyCaught,
+		myBlocked,
+		myReflected,
+		bountyCollected,
+		bountyPaidOut,
+		leechBlocked,
 		defenseSummary,
 		nemesis,
 		favoriteTarget,
@@ -3366,6 +3414,12 @@ export async function getMemberInsights(memberId: any, serverId: any = null) {
 	interactions.spy_caught = { out: mapName(spyCaughtRows), in: [] };
 	interactions.blocked = { out: mapName(blockedRows), in: [] };
 	interactions.reflected = { out: mapName(reflectedRows), in: [] };
+	interactions.my_spy_caught = { out: mapName(mySpyCaughtRows), in: [] };
+	interactions.my_blocked = { out: mapName(myBlockedRows), in: [] };
+	interactions.my_reflected = { out: mapName(myReflectedRows), in: [] };
+	interactions.bounty_collected = { out: mapName(bountyCollectedRows), in: [] };
+	interactions.bounty_paid_out = { out: mapName(bountyPaidOutRows), in: [] };
+	interactions.leech_blocked = { out: mapName(leechBlockedRows), in: [] };
 
 	const defRow = (defenseRows[0] as unknown as any[])[0] || {};
 	const defense = {

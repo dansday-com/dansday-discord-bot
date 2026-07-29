@@ -6650,6 +6650,10 @@
 	margin-right: 6px;
 	color: var(--chili-hot);
 }
+.m-ov-list-none {
+	font-size: 12px;
+	color: var(--lb-text-faint);
+}
 .m-ov-list-name {
 	flex: 1;
 	min-width: 0;

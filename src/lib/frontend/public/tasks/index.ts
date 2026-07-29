@@ -73,6 +73,9 @@ async function loadCatalog(serverId: any, itemsEnabled: boolean, tzOffsetMin = 0
 				cooldownMinutes: Math.max(0, Number(cfg?.cooldown_minutes) || 0),
 				immunityMinutes: Math.max(0, Number(cfg?.immunity_minutes) || 0),
 				multiplier: Math.max(0, Number(cfg?.multiplier) || 0),
+				maxPercent: Math.max(0, Number(cfg?.max_percent) || 0),
+				skimPercent: Math.max(0, Number(cfg?.skim_percent) || 0),
+				refundPercent: Math.max(0, Number(cfg?.refund_percent) || 0),
 				successChance: Math.max(0, Math.min(100, Number(cfg?.spy_chance ?? 100)))
 			};
 		});

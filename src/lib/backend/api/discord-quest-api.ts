@@ -275,31 +275,50 @@ function messageMediaUrl(applicationId: string, raw: string, kind: 'thumb' | 'ba
 	return discordAppCoverUrl(applicationId, s);
 }
 
-function questAssetUrl(questId: string, raw: string): string | null {
+function questAssetUrl(questId: string, raw: string, kind: 'thumb' | 'banner'): string | null {
 	const s = raw.trim();
 	if (!s) return null;
 	if (s.startsWith('http://') || s.startsWith('https://')) return s;
 	if (!questId || /\s/.test(s)) return null;
-	return `https://cdn.discordapp.com/quests/${questId}/${s}?size=1024`;
+	const query = kind === 'banner' ? '?format=webp&width=1320&height=370' : '?size=256';
+	return `https://cdn.discordapp.com/quests/${questId}/${s}${query}`;
 }
+
+const QUEST_VIDEO_RE = /\.(?:mp4|webm|mov)(?:\?|$)/i;
+const QUEST_ASSET_FILE_RE = /^[\w-]+\.(?:png|jpe?g|webp|gif)$/i;
 
 function mediaFromQuestAssets(questId: string, cfg: Record<string, unknown>): { thumb: string | null; banner: string | null } {
 	const raw = cfg.assets;
 	if (!raw || typeof raw !== 'object') return { thumb: null, banner: null };
 	const assets = raw as Record<string, unknown>;
-	const pick = (...keys: string[]) => {
+
+	const usable = (v: string) => v && !QUEST_VIDEO_RE.test(v) && (QUEST_ASSET_FILE_RE.test(v) || v.startsWith('http'));
+	const pick = (kind: 'thumb' | 'banner', ...keys: string[]) => {
 		for (const k of keys) {
-			const raw = asStr(assets[k]);
-			if (/\.(?:mp4|webm|mov)(?:\?|$)/i.test(raw)) continue;
-			const u = questAssetUrl(questId, raw);
+			const v = asStr(assets[k]);
+			if (!usable(v)) continue;
+			const u = questAssetUrl(questId, v, kind);
 			if (u) return u;
 		}
 		return null;
 	};
-	return {
-		banner: pick('hero', 'quest_bar_hero', 'game_tile', 'bar_hero'),
-		thumb: pick('game_tile', 'logotype', 'gamelogo', 'game_logo', 'quest_bar_logo')
+
+	const byKey = (kind: 'thumb' | 'banner', re: RegExp, skip: string | null) => {
+		for (const [k, val] of Object.entries(assets)) {
+			if (!re.test(k)) continue;
+			const v = asStr(val);
+			if (!usable(v) || v === skip) continue;
+			const u = questAssetUrl(questId, v, kind);
+			if (u) return u;
+		}
+		return null;
 	};
+
+	const banner = pick('banner', 'hero', 'quest_bar_hero', 'bar_hero') || byKey('banner', /hero|banner|background|cover|tile/i, null);
+	const bannerFile = banner ? (banner.split('/').pop() ?? '').split('?')[0] : null;
+	const thumb = pick('thumb', 'logotype', 'gamelogo', 'game_logo', 'quest_bar_logo') || byKey('thumb', /logo|icon|tile|badge/i, bannerFile);
+
+	return { banner, thumb: thumb === banner ? null : thumb };
 }
 
 function resolveQuestBannerAndThumb(questId: string, cfg: Record<string, unknown>): { thumb: string | null; banner: string | null } {

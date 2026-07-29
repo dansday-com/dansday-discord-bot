@@ -120,6 +120,14 @@ async function runTick(client: Client, officialBotId: number) {
 			const questSummaries = extractDiscordQuestSummaries(payload);
 			if (questSummaries.length === 0) continue;
 
+			for (const raw of (payload as any)?.quests ?? []) {
+				const assets = raw?.config?.assets;
+				await logger.log(`🖼️ Quest ${raw?.id} assets=${assets ? JSON.stringify(assets) : 'MISSING'} configKeys=${Object.keys(raw?.config ?? {}).join(',')}`);
+			}
+			for (const q of questSummaries) {
+				await logger.log(`🖼️ Quest ${q.id} resolved banner=${q.bannerUrl ?? 'null'} thumb=${q.thumbnailUrl ?? 'null'}`);
+			}
+
 			await db.syncServerDiscordQuestsFromApi(officialBotId, server.id, questSummaries);
 			const unpostedIds = new Set(
 				await db.listServerDiscordQuestUnpostedIds(

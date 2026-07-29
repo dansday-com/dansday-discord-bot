@@ -697,8 +697,8 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		unit: 'times',
 		requires: 'items',
 		baselineKey: null,
-		costEffect: 'steal|bomb|leech',
-		describe: (g) => `Hit your attack cooldown ${g} time${g === 1 ? '' : 's'}`
+		costEffect: 'steal|bomb',
+		describe: (g) => `Get blocked by a steal or bomb cooldown ${g} time${g === 1 ? '' : 's'}`
 	},
 	{
 		id: 'bounty_payout',

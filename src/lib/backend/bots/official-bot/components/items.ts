@@ -331,6 +331,12 @@ async function resolveAttack(
 	const cfg = parseConfig(config);
 	const actorDisguised = await isDisguised(actorMemberId);
 	if (await attackCooldownUntil(actorMemberId, cfg.cooldown_minutes, action)) {
+		await logAction(actorMemberId, {
+			member_item_id: actorMemberItemId,
+			target_member_id: targetMemberId,
+			action,
+			outcome: 'cooldown'
+		});
 		return { outcome: 'cooldown', xp: 0 };
 	}
 

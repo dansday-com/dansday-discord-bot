@@ -62,6 +62,7 @@ Open source under the MIT license.
 
 ### Integrations & alerts
 
+- **AI chat** - Mention the bot to talk to it, or reply to one of its messages to continue without mentioning again. Every member keeps a private conversation per server, with older turns summarized as they age out. Configured per bot in the panel: API URL, key, model, reasoning effort and system prompt. Works with any OpenAI-compatible endpoint (Gemini, OpenAI, GLM, Qwen, DeepSeek, local models). Replies over Discord's limit are split across messages.
 - **Discord Quest notifier** - Surface Discord Quest activity, with optional per-server enrollment automation.
 - **Roblox catalog watch** - Post embeds when catalog items change, for trading and UGC communities.
 - **Content creator / TikTok** - Creator applications and TikTok live digests tied to server channels.
@@ -84,25 +85,26 @@ Versions match `package.json` at release (caret ranges; run `npm ls` for the exa
 
 | Area                       | Technologies                                                                                                                                                                                                             |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Language                   | [TypeScript](https://www.typescriptlang.org/) 5.9                                                                                                                                                                        |
-| App framework              | [SvelteKit](https://kit.svelte.dev/) 2.50, [Svelte](https://svelte.dev/) 5.54                                                                                                                                            |
+| Language                   | [TypeScript](https://www.typescriptlang.org/) 6.0                                                                                                                                                                        |
+| App framework              | [SvelteKit](https://kit.svelte.dev/) 2.57, [Svelte](https://svelte.dev/) 5.55                                                                                                                                            |
 | Build & dev                | [Vite](https://vitejs.dev/) 8.0, [`@sveltejs/vite-plugin-svelte`](https://github.com/sveltejs/vite-plugin-svelte) 7.0, [svelte-check](https://www.npmjs.com/package/svelte-check) 4.4                                    |
 | SSR / hosting              | [`@sveltejs/adapter-node`](https://svelte.dev/docs/kit/adapters#@sveltejs/adapter-node) 5.5 (Node server)                                                                                                                |
 | Styling                    | [Tailwind CSS](https://tailwindcss.com/) 4.2 ([`@tailwindcss/vite`](https://tailwindcss.com/docs/installation/framework-guides/sveltekit) 4.2)                                                                           |
 | Formatting (dev)           | [Prettier](https://prettier.io/) 3.8 + Svelte / Tailwind plugins                                                                                                                                                         |
 | Official bot               | [discord.js](https://discord.js.org/) 14.26, [discord-api-types](https://www.npmjs.com/package/discord-api-types) 0.38                                                                                                   |
 | User-token path (optional) | [discord.js-selfbot-v13](https://www.npmjs.com/package/discord.js-selfbot-v13) 3.7                                                                                                                                       |
-| HTTP client                | [axios](https://axios-http.com/) 1.14                                                                                                                                                                                    |
+| HTTP client                | [axios](https://axios-http.com/) 1.15                                                                                                                                                                                    |
+| AI chat                    | [openai](https://www.npmjs.com/package/openai) 7.1 SDK, pointed at any OpenAI-compatible endpoint (URL, key and model set per bot in the panel)                                                                          |
 | Roblox catalog API         | [rozod](https://www.npmjs.com/package/rozod) 6.6 (typed catalog fetch alongside axios thumbnails)                                                                                                                        |
-| Database                   | [MySQL](https://www.mysql.com/) via [mysql2](https://github.com/sidorares/node-mysql2) 3.20, [Drizzle ORM](https://orm.drizzle.team/) 0.45 + [Drizzle Kit](https://orm.drizzle.team/kit-docs/overview) 0.31 (migrations) |
+| Database                   | [MySQL](https://www.mysql.com/) via [mysql2](https://github.com/sidorares/node-mysql2) 3.22, [Drizzle ORM](https://orm.drizzle.team/) 0.45 + [Drizzle Kit](https://orm.drizzle.team/kit-docs/overview) 0.31 (migrations) |
 | Password hashing           | [bcryptjs](https://www.npmjs.com/package/bcryptjs) 3.0                                                                                                                                                                   |
 | Dates & time               | [Luxon](https://moment.github.io/luxon/) 3.7                                                                                                                                                                             |
-| Cache / sessions           | [Redis](https://redis.io/) client ([`redis`](https://www.npmjs.com/package/redis) 5.11 for Node), optional by configuration                                                                                              |
+| Cache / sessions           | [Redis](https://redis.io/) client ([`redis`](https://www.npmjs.com/package/redis) 5.12 for Node), optional by configuration                                                                                              |
 | Email                      | [Nodemailer](https://nodemailer.com/) 8.0, optional                                                                                                                                                                      |
 | Proxies                    | [proxy-agent](https://www.npmjs.com/package/proxy-agent) 8.0 (where outbound HTTP uses a proxy)                                                                                                                          |
 | Observability              | [OpenTelemetry](https://opentelemetry.io/) `@opentelemetry/api` 1.9, logs SDK & auto-instrumentations 0.214, OTLP HTTP log exporter (optional)                                                                           |
 | Integrations               | [TikTok Live Connector](https://www.npmjs.com/package/tiktok-live-connector) 2.1 (creator / live flows)                                                                                                                  |
-| Config                     | [dotenv](https://www.npmjs.com/package/dotenv) 17.3                                                                                                                                                                      |
+| Config                     | [dotenv](https://www.npmjs.com/package/dotenv) 17.4                                                                                                                                                                      |
 
 ---
 
@@ -112,8 +114,10 @@ Copy **`.env.example`** to **`.env`** and set database, session, captcha, mail, 
 
 The bot requests the Guilds, Message Content, Server Members, Moderation, Voice States and Message Reactions intents. **Server Members** and **Message Content** are privileged — enable both in the Discord Developer Portal or the bot will not start.
 
+AI chat is not configured through `.env`. Open the bot in the panel and set the API URL, key, model and reasoning effort there — the key is stored per bot and never sent back to the browser. Enabling AI chat requires the URL, key and model to all be set. Restart the bot after changing these values.
+
 ---
 
 ## License
 
-MIT · Author: Akbar Yudhanto · Version: 26.4.3
+MIT · Author: Akbar Yudhanto · Version: 26.5.0

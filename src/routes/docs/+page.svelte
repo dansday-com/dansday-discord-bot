@@ -13,6 +13,7 @@
 		{ id: 'roles', icon: 'fa-users-gear', label: 'Who can do what' },
 		{ id: 'permissions', icon: 'fa-user-shield', label: 'Permissions' },
 		{ id: 'modules', icon: 'fa-toggle-on', label: 'Modules' },
+		{ id: 'ai-chat', icon: 'fa-robot', label: 'AI chat' },
 		{ id: 'shop', icon: 'fa-store', label: 'Items shop' },
 		{ id: 'discord', icon: 'fa-discord', label: 'Discord menu' },
 		{ id: 'selfhost', icon: 'fa-server', label: 'Self-host' }
@@ -140,6 +141,15 @@
 				'Effectively unrestricted across the panel'
 			]
 		}
+	];
+
+	const aiChatFields = [
+		{ label: 'Enable AI chat', req: 'required', desc: 'When off, mentions are ignored. The URL, key and model must all be set before it can be turned on.' },
+		{ label: 'API URL', req: 'required', desc: 'Any OpenAI-compatible endpoint. A trailing slash or a full /chat/completions URL both work.' },
+		{ label: 'API key', req: 'required', desc: 'Stored per bot and never sent back to the browser. Leave blank when saving to keep the current key.' },
+		{ label: 'Model name', req: 'required', desc: 'The model id your endpoint expects, for example gemini-3.6-flash or gpt-4o.' },
+		{ label: 'Reasoning', req: 'optional', desc: 'Off, Low, Medium, High or Extra high. Thinking options are matched to the model you named.' },
+		{ label: 'System prompt', req: 'optional', desc: 'Sets the personality and rules. Use {{today}} to insert the current date.' }
 	];
 
 	const envVars = [
@@ -680,6 +690,23 @@
 									{/each}
 								</div>
 							</article>
+						{/each}
+					</div>
+				</section>
+
+				<section id="ai-chat" class="g-sec" use:reveal>
+					<h2 class="g-sec-head"><i class="fas fa-robot"></i>AI chat</h2>
+					<p class="g-sec-lead">
+						Members mention the bot to talk to it, or reply to one of its messages to keep going without mentioning again. Set this on the bot panel next to
+						Discord presence, not per server, so every server the bot is in shares one configuration. Each member keeps their own conversation in each server.
+						Restart the bot after saving.
+					</p>
+					<div class="g-fieldlist">
+						{#each aiChatFields as f}
+							<div class="g-field">
+								<span class="g-field-key">{f.label}<span class="g-field-tag g-field-tag--{f.req === 'optional' ? 'opt' : 'req'}">{f.req}</span></span>
+								<span class="g-field-val">{f.desc}</span>
+							</div>
 						{/each}
 					</div>
 				</section>

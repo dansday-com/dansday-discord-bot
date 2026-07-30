@@ -135,19 +135,39 @@ async function buildConversation(config, history) {
 		: recent;
 }
 
+async function isReplyToBot(message, botUserId) {
+	const referenceId = message.reference?.messageId;
+	if (!referenceId) return false;
+
+	const cached = message.channel.messages.cache.get(referenceId);
+	if (cached) return cached.author?.id === botUserId;
+
+	try {
+		const fetched = await message.fetchReference();
+		return fetched?.author?.id === botUserId;
+	} catch {
+		return false;
+	}
+}
+
 async function handleMessageCreate(message) {
 	try {
 		if (message.author?.bot || !message.guild) return;
+		if (message.mentions.everyone) return;
 
 		const botUserId = message.client.user?.id;
-		if (!botUserId || !message.mentions.users.has(botUserId)) return;
-		if (message.mentions.everyone) return;
+		if (!botUserId) return;
+
+		const mentioned = message.mentions.users.has(botUserId);
+		if (!mentioned && !message.reference?.messageId) return;
 
 		const botConfig = getBotConfig();
 		if (!botConfig?.id) return;
 
 		const config = db.botAiFromDbRow(await db.getBotAiByBotId(botConfig.id));
 		if (!config.enabled || !config.api_url || !config.api_key || !config.model) return;
+
+		if (!mentioned && !(await isReplyToBot(message, botUserId))) return;
 
 		const key = sessionKey(message.guild.id, message.author.id);
 		if (inFlight.has(key)) return;

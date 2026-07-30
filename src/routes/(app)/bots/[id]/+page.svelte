@@ -466,7 +466,7 @@
 			<i class="fas fa-robot mr-2 text-violet-400"></i>AI chat
 		</h3>
 		<p class="text-ash-400 mb-4 text-sm">
-			Members talk to the bot by mentioning it. Each member keeps their own conversation in every server. Requires an
+			Members talk to the bot by mentioning it, or by replying to its messages. Each member keeps their own conversation in every server. Requires an
 			<strong class="text-ash-300">OpenAI-compatible</strong> endpoint. Restart the bot to apply changes.
 		</p>
 

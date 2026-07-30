@@ -14,6 +14,7 @@ import afk from './components/interface/afk.js';
 import giveaway from './components/interface/giveaway.js';
 import sync from './components/sync.js';
 import leveling from './components/leveling.js';
+import ai from './components/ai.js';
 import contentCreator from './components/interface/contentcreator.js';
 import questNotifier from './components/questNotifier.js';
 import { initRobloxCatalogNotifier, stopRobloxCatalogNotifier } from './components/robloxCatalogNotifier.js';
@@ -77,6 +78,7 @@ client.on('clientReady', async () => {
 	afk.init(client);
 	giveaway.init(client);
 	leveling.init(client);
+	ai.init(client);
 	contentCreator.init(client);
 
 	await sync.init(client, BOT_TOKEN);

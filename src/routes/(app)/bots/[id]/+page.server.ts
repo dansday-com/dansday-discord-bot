@@ -1,6 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import db, { presenceFromDbRow, getOfficialBotIdForServer } from '$lib/database.js';
+import db, { presenceFromDbRow, botAiFromDbRow, getOfficialBotIdForServer } from '$lib/database.js';
 import { getBotUptimeMs } from '$lib/botProcesses.js';
 import { DASHBOARD_PATH, webRouteUp } from '$lib/frontend/redirect.js';
 import { accountOwnsBot } from '$lib/frontend/panelServer.js';
@@ -41,5 +41,8 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 	const statusRow = await db.getBotStatusByBotId(botId);
 	const botPresence = presenceFromDbRow(statusRow);
 
-	return { bot, servers, user: locals.user, botPresence };
+	const { api_key, ...botAiRest } = botAiFromDbRow(await db.getBotAiByBotId(botId));
+	const botAi = { ...botAiRest, has_api_key: Boolean(api_key) };
+
+	return { bot, servers, user: locals.user, botPresence, botAi };
 };

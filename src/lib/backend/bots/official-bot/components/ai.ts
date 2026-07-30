@@ -263,7 +263,7 @@ async function handleMessageCreate(message) {
 			const conversation = await buildConversation(config, history);
 
 			const today = new Date().toISOString().slice(0, 10);
-			const systemContent = config.system_prompt?.replaceAll('{{today}}', today) ?? '';
+			const systemContent = config.system_prompt?.replace(/\{\{today\}\}/g, today) ?? '';
 
 			const messages = [...(systemContent ? [{ role: 'system', content: systemContent }] : []), ...conversation, { role: 'user', content: userContent }];
 

@@ -55,7 +55,7 @@ function downmixAndResample(pcm, fromRate, toRate, fromChannels, toChannels) {
 export function createVoiceSession({ client, config, botId, guildId, channelId, channelName, inviterId, textChannelId, onEnded }) {
 	const speaking = new Map();
 	const genai = new GoogleGenAI({ apiKey: config.api_key });
-	const systemInstruction = (config.system_prompt ?? '').replaceAll('{{today}}', new Date().toISOString().slice(0, 10));
+	const systemInstruction = (config.system_prompt ?? '').replace(/\{\{today\}\}/g, new Date().toISOString().slice(0, 10));
 
 	let connection = null;
 	let player = null;

@@ -3,7 +3,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { page } from '$app/state';
 	import { goto, invalidateAll } from '$app/navigation';
-	import { DASHBOARD_PATH } from '$lib/frontend/redirect.js';
+	import { DASHBOARD_PATH, isBotSectionPath } from '$lib/frontend/redirect.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import ConfirmModal from '$lib/frontend/components/ConfirmModal.svelte';
 	import type { LayoutProps } from './$types';
@@ -22,6 +22,8 @@
 		if (href === base) return page.url.pathname.replace(/\/$/, '') === base;
 		return page.url.pathname.startsWith(href);
 	}
+
+	const isBotSection = $derived(isBotSectionPath(page.url.pathname));
 
 	let _liveBotOverride: typeof data.bot | null = $state(null);
 	const liveBot = $derived(_liveBotOverride ?? data.bot);
@@ -49,6 +51,8 @@
 	}
 
 	onMount(() => {
+		if (!isBotSection) return;
+
 		_liveBotOverride = { ...data.bot };
 		if (data.bot.status === 'running') {
 			uptimeBase = data.bot.uptime_ms ?? 0;
@@ -143,14 +147,17 @@
 	const isAdmin = $derived(data.user.authenticated && data.user.account_source === 'accounts');
 </script>
 
-<svelte:head>
-	<title>{data.bot.name || `Bot #${data.bot.id}`} | {APP_NAME} Discord Bot</title>
-</svelte:head>
+{#if !isBotSection}
+	{@render children()}
+{:else}
+	<svelte:head>
+		<title>{data.bot.name || `Bot #${data.bot.id}`} | {APP_NAME} Discord Bot</title>
+	</svelte:head>
 
-<div class="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6 lg:px-8 lg:py-8">
-	<a href={DASHBOARD_PATH} class="text-ash-400 hover:text-ash-100 mb-6 inline-flex items-center gap-2 text-sm transition-colors">
-		<i class="fas fa-arrow-left text-violet-300"></i>Back to Dashboard
-	</a>
+	<div class="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6 lg:px-8 lg:py-8">
+		<a href={DASHBOARD_PATH} class="text-ash-400 hover:text-ash-100 mb-6 inline-flex items-center gap-2 text-sm transition-colors">
+			<i class="fas fa-arrow-left text-violet-300"></i>Back to Dashboard
+		</a>
 
 	<div class="bg-ash-800 border-ash-700 mb-4 rounded-xl border p-4 sm:mb-6 sm:p-6">
 		<div class="flex flex-col gap-4 sm:flex-row sm:items-start">
@@ -255,15 +262,16 @@
 	</div>
 
 	{@render children()}
-</div>
+	</div>
 
-<ConfirmModal
-	open={showDeleteConfirm}
-	title="Delete Bot"
-	message="Delete &quot;{data.bot.name || `Bot #${data.bot.id}`}&quot;? This cannot be undone."
-	confirmLabel="Delete"
-	dangerous
-	loading={deleting}
-	onconfirm={deleteBot}
-	oncancel={() => (showDeleteConfirm = false)}
-/>
+	<ConfirmModal
+		open={showDeleteConfirm}
+		title="Delete Bot"
+		message="Delete &quot;{data.bot.name || `Bot #${data.bot.id}`}&quot;? This cannot be undone."
+		confirmLabel="Delete"
+		dangerous
+		loading={deleting}
+		onconfirm={deleteBot}
+		oncancel={() => (showDeleteConfirm = false)}
+	/>
+{/if}

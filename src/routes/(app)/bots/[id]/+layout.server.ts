@@ -2,14 +2,14 @@ import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 import db, { getOfficialBotIdForServer } from '$lib/database.js';
 import { getBotUptimeMs } from '$lib/botProcesses.js';
-import { DASHBOARD_PATH, webRouteUp } from '$lib/frontend/redirect.js';
+import { DASHBOARD_PATH, webRouteUp, isBotSectionPath } from '$lib/frontend/redirect.js';
 import { accountOwnsBot } from '$lib/frontend/panelServer.js';
 
 export const load: LayoutServerLoad = async ({ locals, params, url }) => {
 	if (!locals.user.authenticated) redirect(302, '/login');
 
 	const botId = Number(params.id);
-	const isBotSection = /^\/bots\/[^/]+(?:\/(?:presence|ai))?\/?$/.test(url.pathname);
+	const isBotSection = isBotSectionPath(url.pathname);
 
 	if (isBotSection) {
 		if (locals.user.account_source === 'server_accounts') {

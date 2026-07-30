@@ -198,14 +198,18 @@ async function handleMessageCreate(message) {
 			await db.appendBotAiMessage(botConfig.id, message.guild.id, message.author.id, 'user', userContent);
 			await db.appendBotAiMessage(botConfig.id, message.guild.id, message.author.id, 'assistant', reply);
 
-			const chunks = splitForDiscord(reply);
-			let replied = false;
-			for (const chunk of chunks) {
-				if (!replied) {
-					await message.reply({ content: chunk, allowedMentions: { repliedUser: true, parse: [] } });
-					replied = true;
+			const mention = `<@${message.author.id}>`;
+			const chunks = splitForDiscord(reply, DISCORD_MESSAGE_LIMIT - mention.length - 1);
+			const lastIndex = chunks.length - 1;
+
+			for (let i = 0; i < chunks.length; i++) {
+				const content = i === lastIndex ? `${chunks[i]} ${mention}` : chunks[i];
+				const allowedMentions = { parse: [], users: i === lastIndex ? [message.author.id] : [] };
+
+				if (i === 0) {
+					await message.reply({ content, allowedMentions: { ...allowedMentions, repliedUser: false } });
 				} else {
-					await message.channel.send({ content: chunk, allowedMentions: { parse: [] } });
+					await message.channel.send({ content, allowedMentions });
 				}
 			}
 		} finally {

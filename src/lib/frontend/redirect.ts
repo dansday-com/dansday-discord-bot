@@ -1,5 +1,11 @@
 export const DASHBOARD_PATH = '/overview' as const;
 
+const BOT_SECTION_RE = /^\/bots\/[^/]+(?:\/(?:presence|ai))?\/?$/;
+
+export function isBotSectionPath(pathname: string): boolean {
+	return BOT_SECTION_RE.test(pathname);
+}
+
 export function parentPathname(pathname: string): string {
 	const p = pathname.replace(/\/+$/, '') || '/';
 	if (p === '/') return '/';

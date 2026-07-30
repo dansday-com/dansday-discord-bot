@@ -1,4 +1,4 @@
-import { GoogleGenAI, Modality, StartSensitivity } from '@google/genai';
+import { GoogleGenAI, Modality } from '@google/genai';
 import {
 	joinVoiceChannel,
 	createAudioPlayer,
@@ -23,6 +23,10 @@ const DISCORD_RATE = 48000;
 const FRAME_MS = 20;
 const FRAME_BYTES = (DISCORD_RATE / 1000) * FRAME_MS * 2 * 2;
 const EMPTY = Buffer.alloc(0);
+
+const SPEAK_GUARD_MS = 400;
+const TURN_SILENCE_MS = 700;
+const CLOSE_WAIT_MS = 3000;
 
 const IDLE_TIMEOUT_MS = 3 * 60_000;
 const IDLE_WARN_MS = IDLE_TIMEOUT_MS - 15_000;
@@ -78,6 +82,11 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	const playbackQueue = [];
 	let pending = EMPTY;
 	let pendingOffset = 0;
+	let lastAudioAt = 0;
+	let turnOpen = false;
+	let turnTimer = null;
+	let reconnecting = false;
+	let closeWaiter = null;
 
 	const stats = {
 		chunksPlayed: 0,
@@ -89,11 +98,13 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		silenceOut: 0,
 		framesDropped: 0,
 		interrupts: 0,
-		reconnects: 0
+		reconnects: 0,
+		turns: 0
 	};
 
 	async function say(text) {
 		if (!session || goodbyePending) return;
+		closeTurn();
 		goodbyePending = true;
 		try {
 			session.sendRealtimeInput({ text });
@@ -104,7 +115,8 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	}
 
 	function clearTimers() {
-		for (const t of [idleTimer, idleWarnTimer, sessionTimer, sessionWarnTimer]) if (t) clearTimeout(t);
+		for (const t of [idleTimer, idleWarnTimer, sessionTimer, sessionWarnTimer, turnTimer]) if (t) clearTimeout(t);
+		turnTimer = null;
 		if (heartbeat) clearInterval(heartbeat);
 		idleTimer = idleWarnTimer = sessionTimer = sessionWarnTimer = heartbeat = null;
 	}
@@ -134,6 +146,38 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		if (/[.!?]\s*$/.test(fragment) || transcriptBuffer[role].length > 1500) flushTranscript(role);
 	}
 
+	function botIsSpeaking() {
+		return playbackQueue.length > 0 || pendingOffset < pending.length || Date.now() - lastAudioAt < SPEAK_GUARD_MS;
+	}
+
+	function openTurn() {
+		if (turnOpen) return;
+		turnOpen = true;
+		stats.turns++;
+		try {
+			session.sendRealtimeInput({ activityStart: {} });
+		} catch {}
+		logger.log(`🎙️ Voice AI turn start (#${stats.turns})`);
+	}
+
+	function closeTurn() {
+		if (!turnOpen || !session) return;
+		turnOpen = false;
+		if (turnTimer) {
+			clearTimeout(turnTimer);
+			turnTimer = null;
+		}
+		try {
+			session.sendRealtimeInput({ activityEnd: {} });
+		} catch {}
+		logger.log(`🎙️ Voice AI turn end (#${stats.turns} frames=${stats.framesIn})`);
+	}
+
+	function bumpTurn() {
+		if (turnTimer) clearTimeout(turnTimer);
+		turnTimer = setTimeout(closeTurn, TURN_SILENCE_MS);
+	}
+
 	function playChunk(pcm24k) {
 		if (closed) {
 			stats.chunksDropped++;
@@ -141,6 +185,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		}
 		playbackQueue.push(downmixAndResample(pcm24k, OUTPUT_RATE, DISCORD_RATE, 1, 2));
 		stats.chunksPlayed++;
+		lastAudioAt = Date.now();
 		touchIdle();
 	}
 
@@ -173,6 +218,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		stats.bytesOut += filled;
 		stats.framesOut++;
 		if (filled === 0) stats.silenceOut++;
+		else lastAudioAt = Date.now();
 		if (stats.framesOut % 500 === 0) {
 			logger.log(`🔈 Voice AI ticker frames=${stats.framesOut} silence=${stats.silenceOut} audioBytes=${stats.bytesOut} queued=${playbackQueue.length}`);
 		}
@@ -208,10 +254,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 				contextWindowCompression: { slidingWindow: {} },
 				sessionResumption: resumeHandle ? { handle: resumeHandle } : {},
 				realtimeInputConfig: {
-					automaticActivityDetection: {
-						silenceDurationMs: 600,
-						startOfSpeechSensitivity: StartSensitivity.START_SENSITIVITY_LOW
-					}
+					automaticActivityDetection: { disabled: true }
 				}
 			},
 			callbacks: {
@@ -241,6 +284,10 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 				onerror: (err) => logger.log(`❌ Voice AI session error: ${err?.message || String(err)}`),
 				onclose: (e) => {
 					logger.log(`🔊 Voice AI live session closed: ${e?.reason || 'no reason'} (closed=${closed} goodbye=${goodbyePending})`);
+					if (closeWaiter) {
+						closeWaiter();
+						return;
+					}
 					if (!closed && !goodbyePending) reconnect().catch(() => {});
 				}
 			}
@@ -248,17 +295,43 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	}
 
 	async function reconnect() {
-		if (closed || goodbyePending) return;
+		if (closed || goodbyePending || reconnecting) return;
+		reconnecting = true;
 		stats.reconnects++;
 		logger.log(`🔊 Voice AI reconnecting (attempt=${stats.reconnects} resume=${resumeHandle ? 'yes' : 'no'})`);
-		try {
-			session?.close();
-		} catch {}
+
+		turnOpen = false;
+		if (turnTimer) {
+			clearTimeout(turnTimer);
+			turnTimer = null;
+		}
+
+		const old = session;
+		session = null;
+		if (old) {
+			await new Promise((resolve) => {
+				const done = setTimeout(resolve, CLOSE_WAIT_MS);
+				closeWaiter = () => {
+					clearTimeout(done);
+					resolve(undefined);
+				};
+				try {
+					old.close();
+				} catch {
+					clearTimeout(done);
+					resolve(undefined);
+				}
+			});
+			closeWaiter = null;
+		}
+
 		try {
 			await connectLive();
 		} catch (err) {
 			logger.log(`❌ Voice AI reconnect failed: ${String(err)}`);
 			await stop('reconnect_failed');
+		} finally {
+			reconnecting = false;
 		}
 	}
 
@@ -269,15 +342,17 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		const decoder = new prism.opus.Decoder({ rate: DISCORD_RATE, channels: 2, frameSize: 960 });
 
 		decoder.on('data', (pcm) => {
-			if (closed || !session || goodbyePending) {
+			if (closed || !session || goodbyePending || botIsSpeaking()) {
 				stats.framesDropped++;
 				return;
 			}
 			const mono16k = downmixAndResample(pcm, DISCORD_RATE, INPUT_RATE, 2, 1);
 			try {
+				openTurn();
 				session.sendRealtimeInput({ audio: { data: mono16k.toString('base64'), mimeType: `audio/pcm;rate=${INPUT_RATE}` } });
 				stats.framesIn++;
 				stats.bytesIn += mono16k.length;
+				bumpTurn();
 				if (stats.framesIn % 250 === 0) {
 					logger.log(
 						`🎙️ Voice AI in=${stats.framesIn}f/${stats.bytesIn}b out=${stats.chunksPlayed}c/${stats.bytesOut}b dropped=${stats.framesDropped}/${stats.chunksDropped}`

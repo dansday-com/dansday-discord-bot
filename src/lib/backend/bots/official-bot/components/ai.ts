@@ -6,7 +6,6 @@ import { publishVoiceCommand, readVoiceState } from './voiceControl.js';
 
 const DISCORD_MESSAGE_LIMIT = 2000;
 const MAX_REPLY_LENGTH = 4000;
-const HISTORY_LIMIT = 40;
 const MAX_RECENT = 10;
 const REQUEST_TIMEOUT_MS = 120_000;
 
@@ -139,7 +138,7 @@ function getClient(config) {
 	if (cachedClient && cachedClient.baseURL === baseURL && cachedClient.apiKey === config.api_key) {
 		return cachedClient.client;
 	}
-	const client = new OpenAI({ baseURL, apiKey: config.api_key, timeout: REQUEST_TIMEOUT_MS, maxRetries: 2 });
+	const client = new OpenAI({ baseURL, apiKey: config.api_key, timeout: REQUEST_TIMEOUT_MS, maxRetries: 0 });
 	cachedClient = { baseURL, apiKey: config.api_key, client };
 	return client;
 }
@@ -172,47 +171,6 @@ async function callChatCompletions(config, messages, { tools = null, onToolCall 
 	}
 
 	return '';
-}
-
-async function summarizeOlderMessages(config, olderMessages) {
-	const conversationText = olderMessages
-		.filter((m) => (m.role === 'user' || m.role === 'assistant') && m.content)
-		.map((m) => `${m.role}: ${m.content}`)
-		.join('\n');
-
-	if (!conversationText.trim()) return null;
-
-	try {
-		const completion = await getClient(config).chat.completions.create({
-			model: config.model,
-			messages: [
-				{
-					role: 'system',
-					content:
-						'Summarize this conversation history in 2-4 concise sentences. Focus on what was discussed, what questions were asked, and what answers were given. Keep it factual and brief.'
-				},
-				{ role: 'user', content: conversationText }
-			]
-		});
-		return completion.choices?.[0]?.message?.content?.trim() || null;
-	} catch (error) {
-		await logger.log(`⚠️ AI chat summary failed, using recent messages only: ${error.message}`);
-		return null;
-	}
-}
-
-async function buildConversation(config, history) {
-	if (history.length <= MAX_RECENT) {
-		return history.map((row) => ({ role: row.role, content: row.content }));
-	}
-
-	const older = history.slice(0, -MAX_RECENT);
-	const recent = history.slice(-MAX_RECENT).map((row) => ({ role: row.role, content: row.content }));
-	const summary = await summarizeOlderMessages(config, older);
-
-	return summary
-		? [{ role: 'user', content: `[Previous conversation summary: ${summary}]` }, { role: 'assistant', content: 'Understood.' }, ...recent]
-		: recent;
 }
 
 async function isReplyToBot(message, botUserId) {
@@ -259,8 +217,8 @@ async function handleMessageCreate(message) {
 
 			await message.channel.sendTyping().catch(() => {});
 
-			const history = await db.getBotAiSession(botConfig.id, message.guild.id, message.author.id, HISTORY_LIMIT);
-			const conversation = await buildConversation(config, history);
+			const history = await db.getBotAiSession(botConfig.id, message.guild.id, message.author.id, MAX_RECENT);
+			const conversation = history.map((row) => ({ role: row.role, content: row.content }));
 
 			const today = new Date().toISOString().slice(0, 10);
 			const systemContent = config.system_prompt?.replace(/\{\{today\}\}/g, today) ?? '';

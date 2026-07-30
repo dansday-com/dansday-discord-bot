@@ -20,6 +20,10 @@ const INPUT_RATE = 16000;
 const OUTPUT_RATE = 24000;
 const DISCORD_RATE = 48000;
 
+const FRAME_MS = 20;
+const FRAME_BYTES = (DISCORD_RATE / 1000) * FRAME_MS * 2 * 2;
+const EMPTY = Buffer.alloc(0);
+
 const IDLE_TIMEOUT_MS = 3 * 60_000;
 const IDLE_WARN_MS = IDLE_TIMEOUT_MS - 15_000;
 const SESSION_MAX_MS = 15 * 60_000;
@@ -70,6 +74,11 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	let sessionTimer = null;
 	let sessionWarnTimer = null;
 	let heartbeat = null;
+	let ticker = null;
+
+	const playbackQueue = [];
+	let pending = EMPTY;
+	let pendingOffset = 0;
 
 	const stats = { chunksPlayed: 0, chunksDropped: 0, bytesOut: 0, bytesIn: 0, framesIn: 0, framesDropped: 0, interrupts: 0, reconnects: 0 };
 
@@ -85,8 +94,10 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	}
 
 	function clearTimers() {
-		for (const t of [idleTimer, idleWarnTimer, sessionTimer, sessionWarnTimer, heartbeat]) if (t) clearTimeout(t);
-		idleTimer = idleWarnTimer = sessionTimer = sessionWarnTimer = heartbeat = null;
+		for (const t of [idleTimer, idleWarnTimer, sessionTimer, sessionWarnTimer]) if (t) clearTimeout(t);
+		if (heartbeat) clearInterval(heartbeat);
+		if (ticker) clearInterval(ticker);
+		idleTimer = idleWarnTimer = sessionTimer = sessionWarnTimer = heartbeat = ticker = null;
 	}
 
 	function touchIdle() {
@@ -115,22 +126,43 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	}
 
 	function playChunk(pcm24k) {
-		if (!outputStream || outputStream.destroyed) {
+		if (closed) {
 			stats.chunksDropped++;
 			return;
 		}
-		const resampled = downmixAndResample(pcm24k, OUTPUT_RATE, DISCORD_RATE, 1, 2);
-		outputStream.write(resampled);
+		playbackQueue.push(downmixAndResample(pcm24k, OUTPUT_RATE, DISCORD_RATE, 1, 2));
 		stats.chunksPlayed++;
-		stats.bytesOut += resampled.length;
 		touchIdle();
 	}
 
 	function handleInterrupt() {
 		stats.interrupts++;
-		if (!outputStream || outputStream.destroyed) return;
-		while (outputStream.read() !== null) {}
-		logger.log(`🔊 Voice AI interrupted (played=${stats.chunksPlayed} dropped=${stats.chunksDropped})`);
+		const cleared = playbackQueue.length;
+		playbackQueue.length = 0;
+		pending = EMPTY;
+		pendingOffset = 0;
+		logger.log(`🔊 Voice AI interrupted (cleared=${cleared} played=${stats.chunksPlayed})`);
+	}
+
+	function nextFrame() {
+		const frame = Buffer.alloc(FRAME_BYTES);
+		let filled = 0;
+
+		while (filled < FRAME_BYTES) {
+			if (pendingOffset >= pending.length) {
+				const next = playbackQueue.shift();
+				if (!next) break;
+				pending = next;
+				pendingOffset = 0;
+			}
+			const take = Math.min(FRAME_BYTES - filled, pending.length - pendingOffset);
+			pending.copy(frame, filled, pendingOffset, pendingOffset + take);
+			pendingOffset += take;
+			filled += take;
+		}
+
+		stats.bytesOut += filled;
+		return frame;
 	}
 
 	function startOutput() {
@@ -138,6 +170,12 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		outputStream.on('error', (err) => logger.log(`❌ Voice AI output stream error: ${err?.message || err}`));
 		const resource = createAudioResource(outputStream, { inputType: StreamType.Raw });
 		player.play(resource);
+
+		ticker = setInterval(() => {
+			if (closed || !outputStream || outputStream.destroyed) return;
+			outputStream.write(nextFrame());
+		}, FRAME_MS);
+
 		logger.log('🔊 Voice AI output stream started');
 	}
 

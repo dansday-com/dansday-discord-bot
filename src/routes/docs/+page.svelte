@@ -697,9 +697,9 @@
 				<section id="ai-chat" class="g-sec" use:reveal>
 					<h2 class="g-sec-head"><i class="fas fa-robot"></i>AI chat</h2>
 					<p class="g-sec-lead">
-						Members mention the bot to talk to it, or reply to one of its messages to keep going without mentioning again. Set this on the bot panel next to
-						Discord presence, not per server, so every server the bot is in shares one configuration. Each member keeps their own conversation in each server.
-						Restart the bot after saving.
+						Members mention the bot to talk to it, or reply to one of its messages to keep going without mentioning again. Set this on the bot panel under the
+						AI tab, not per server, so every server the bot is in shares one configuration. Each member keeps their own conversation in each server. Restart the
+						bot after saving.
 					</p>
 					<div class="g-fieldlist">
 						{#each aiChatFields as f}

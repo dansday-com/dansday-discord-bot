@@ -11,7 +11,7 @@ import {
 	NoSubscriberBehavior
 } from '@discordjs/voice';
 import prism from 'prism-media';
-import { PassThrough } from 'node:stream';
+import { Readable } from 'node:stream';
 import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 import { writeVoiceState, clearVoiceState, VOICE_STATE_TTL_SEC } from './voiceControl.js';
@@ -74,13 +74,23 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	let sessionTimer = null;
 	let sessionWarnTimer = null;
 	let heartbeat = null;
-	let ticker = null;
 
 	const playbackQueue = [];
 	let pending = EMPTY;
 	let pendingOffset = 0;
 
-	const stats = { chunksPlayed: 0, chunksDropped: 0, bytesOut: 0, bytesIn: 0, framesIn: 0, framesDropped: 0, interrupts: 0, reconnects: 0 };
+	const stats = {
+		chunksPlayed: 0,
+		chunksDropped: 0,
+		bytesOut: 0,
+		bytesIn: 0,
+		framesIn: 0,
+		framesOut: 0,
+		silenceOut: 0,
+		framesDropped: 0,
+		interrupts: 0,
+		reconnects: 0
+	};
 
 	async function say(text) {
 		if (!session || goodbyePending) return;
@@ -96,8 +106,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	function clearTimers() {
 		for (const t of [idleTimer, idleWarnTimer, sessionTimer, sessionWarnTimer]) if (t) clearTimeout(t);
 		if (heartbeat) clearInterval(heartbeat);
-		if (ticker) clearInterval(ticker);
-		idleTimer = idleWarnTimer = sessionTimer = sessionWarnTimer = heartbeat = ticker = null;
+		idleTimer = idleWarnTimer = sessionTimer = sessionWarnTimer = heartbeat = null;
 	}
 
 	function touchIdle() {
@@ -162,20 +171,29 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		}
 
 		stats.bytesOut += filled;
+		stats.framesOut++;
+		if (filled === 0) stats.silenceOut++;
+		if (stats.framesOut % 500 === 0) {
+			logger.log(`🔈 Voice AI ticker frames=${stats.framesOut} silence=${stats.silenceOut} audioBytes=${stats.bytesOut} queued=${playbackQueue.length}`);
+		}
 		return frame;
 	}
 
 	function startOutput() {
-		outputStream = new PassThrough({ highWaterMark: 1 << 20 });
+		outputStream = new Readable({
+			highWaterMark: FRAME_BYTES * 8,
+			read() {
+				if (closed) {
+					this.push(null);
+					return;
+				}
+				this.push(nextFrame());
+			}
+		});
 		outputStream.on('error', (err) => logger.log(`❌ Voice AI output stream error: ${err?.message || err}`));
+
 		const resource = createAudioResource(outputStream, { inputType: StreamType.Raw });
 		player.play(resource);
-
-		ticker = setInterval(() => {
-			if (closed || !outputStream || outputStream.destroyed) return;
-			outputStream.write(nextFrame());
-		}, FRAME_MS);
-
 		logger.log('🔊 Voice AI output stream started');
 	}
 
@@ -327,11 +345,15 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		player = createAudioPlayer({ behaviors: { noSubscriber: NoSubscriberBehavior.Play } });
 		connection.subscribe(player);
 		player.on('error', (err) => logger.log(`❌ Voice AI player error: ${err?.message || err}`));
-		player.on(AudioPlayerStatus.Idle, () => {
-			if (!closed) logger.log(`🔊 Voice AI player idle (played=${stats.chunksPlayed} dropped=${stats.chunksDropped})`);
-		});
-		player.on(AudioPlayerStatus.Playing, () => {
-			if (!closed) logger.log('🔊 Voice AI player playing');
+		player.on('stateChange', (oldState, newState) => {
+			if (closed || oldState.status === newState.status) return;
+			logger.log(
+				`🔊 Voice AI player ${oldState.status} -> ${newState.status} (frames=${stats.framesOut} silence=${stats.silenceOut} queued=${playbackQueue.length})`
+			);
+			if (newState.status === AudioPlayerStatus.Idle && !goodbyePending) {
+				logger.log('⚠️ Voice AI player went idle unexpectedly, restarting output');
+				startOutput();
+			}
 		});
 		startOutput();
 

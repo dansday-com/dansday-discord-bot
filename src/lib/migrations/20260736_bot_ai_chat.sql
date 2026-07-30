@@ -7,6 +7,8 @@ CREATE TABLE IF NOT EXISTS bot_ai (
 	model VARCHAR(191) NULL,
 	system_prompt TEXT NULL,
 	reasoning ENUM('none', 'low', 'medium', 'high', 'xhigh') NOT NULL DEFAULT 'none',
+	voice_enabled TINYINT(1) NOT NULL DEFAULT 0,
+	voice_model VARCHAR(191) NULL,
 	created_at DATETIME NOT NULL,
 	updated_at DATETIME NOT NULL,
 	UNIQUE KEY uq_bot_ai_bot_id (bot_id),

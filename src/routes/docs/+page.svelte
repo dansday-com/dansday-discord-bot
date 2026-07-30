@@ -149,7 +149,26 @@
 		{ label: 'API key', req: 'required', desc: 'Stored per bot and never sent back to the browser. Leave blank when saving to keep the current key.' },
 		{ label: 'Model name', req: 'required', desc: 'The model id your endpoint expects, for example gemini-3.6-flash or gpt-4o.' },
 		{ label: 'Reasoning', req: 'optional', desc: 'Off, Low, Medium, High or Extra high. Thinking options are matched to the model you named.' },
-		{ label: 'System prompt', req: 'optional', desc: 'Sets the personality and rules. Use {{today}} to insert the current date.' }
+		{
+			label: 'System prompt',
+			req: 'optional',
+			desc: 'Sets the personality and rules for chat and voice alike. Use {{today}} to insert the current date.'
+		},
+		{
+			label: 'Enable voice AI',
+			req: 'optional',
+			desc: 'Lets members ask the bot in chat to join their voice channel and talk out loud. Needs AI chat on, a Google AI key, and a voice model. Requires Redis.'
+		},
+		{ label: 'Voice model', req: 'optional', desc: 'A Gemini Live model, for example gemini-3.1-flash-live-preview. Only needed when voice AI is on.' }
+	];
+
+	const aiVoiceRules = [
+		{ icon: 'fa-hand-point-right', title: 'Ask it to join', desc: 'A member says "join voice" to the bot in chat. It joins the channel that member is in.' },
+		{ icon: 'fa-user-slash', title: 'Not in a channel', desc: 'If the member is not in voice, the bot says so instead of joining.' },
+		{ icon: 'fa-ban', title: 'One call at a time', desc: 'If it is already in a call, it tells the next person it is busy and stays where it is.' },
+		{ icon: 'fa-door-open', title: 'Leaving', desc: 'Ask it to leave, or it leaves when the member who invited it leaves, or when the channel empties.' },
+		{ icon: 'fa-clock', title: 'Quiet for 3 minutes', desc: 'It says a short goodbye out loud, then disconnects.' },
+		{ icon: 'fa-hourglass-end', title: '15 minute limit', desc: 'Near the limit it excuses itself out loud and leaves. Members can invite it straight back.' }
 	];
 
 	const envVars = [
@@ -706,6 +725,22 @@
 							<div class="g-field">
 								<span class="g-field-key">{f.label}<span class="g-field-tag g-field-tag--{f.req === 'optional' ? 'opt' : 'req'}">{f.req}</span></span>
 								<span class="g-field-val">{f.desc}</span>
+							</div>
+						{/each}
+					</div>
+
+					<h3 class="g-sub-head">Voice: how it behaves</h3>
+					<p class="g-sec-lead">
+						Everyone in the channel is heard by one shared session. Audio goes to Google; on the free tier it is used to improve their products, so tell your
+						members before turning it on.
+					</p>
+					<div class="g-steps">
+						{#each aiVoiceRules as s, i}
+							<div class="g-step" style="--d: {i * 80}ms">
+								<span class="g-step-num">{i + 1}</span>
+								<span class="g-step-ic"><i class="fas {s.icon}"></i></span>
+								<h3>{s.title}</h3>
+								<p>{s.desc}</p>
 							</div>
 						{/each}
 					</div>

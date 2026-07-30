@@ -86,6 +86,8 @@ export const botAi = mysqlTable(
 		model: varchar('model', { length: 191 }),
 		system_prompt: text('system_prompt'),
 		reasoning: mysqlEnum('reasoning', ['none', 'low', 'medium', 'high', 'xhigh']).notNull().default('none'),
+		voice_enabled: boolean('voice_enabled').notNull().default(false),
+		voice_model: varchar('voice_model', { length: 191 }),
 		created_at: datetime('created_at').notNull(),
 		updated_at: datetime('updated_at').notNull()
 	},

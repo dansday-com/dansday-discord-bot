@@ -2,6 +2,7 @@ import OpenAI from 'openai';
 import { getBotConfig } from '../../../config.js';
 import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
+import { publishVoiceCommand, readVoiceState } from './voiceControl.js';
 
 const DISCORD_MESSAGE_LIMIT = 2000;
 const MAX_REPLY_LENGTH = 4000;
@@ -50,6 +51,63 @@ function buildCompletionParams(config) {
 	};
 }
 
+const VOICE_TOOLS = [
+	{
+		type: 'function',
+		function: {
+			name: 'join_voice',
+			description:
+				'Join the voice channel the user is currently in, so you can talk with them out loud. Only call this when the user asks you to join voice, join the call, or talk to them.',
+			parameters: { type: 'object', properties: {} }
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'leave_voice',
+			description: 'Leave the voice channel you are currently in. Only call this when the user asks you to leave, disconnect, or stop talking.',
+			parameters: { type: 'object', properties: {} }
+		}
+	}
+];
+
+async function executeVoiceTool(name, message, botId) {
+	const state = await readVoiceState(botId);
+
+	if (name === 'leave_voice') {
+		if (!state) return JSON.stringify({ ok: false, reason: 'not_in_voice_channel' });
+		await publishVoiceCommand(botId, { cmd: 'leave', reason: 'user_request' });
+		return JSON.stringify({ ok: true, left: true });
+	}
+
+	const channelId = message.member?.voice?.channelId ?? null;
+	if (!channelId) {
+		return JSON.stringify({ ok: false, reason: 'user_not_in_a_voice_channel' });
+	}
+
+	if (state) {
+		if (state.channelId === channelId) {
+			return JSON.stringify({ ok: false, reason: 'already_in_this_channel' });
+		}
+		return JSON.stringify({ ok: false, reason: 'busy_in_another_channel', busy_channel_name: state.channelName ?? 'another channel' });
+	}
+
+	const published = await publishVoiceCommand(botId, {
+		cmd: 'join',
+		guildId: message.guild.id,
+		channelId,
+		channelName: message.member.voice.channel?.name ?? '',
+		inviterId: message.author.id,
+		textChannelId: message.channel.id
+	});
+
+	if (!published) {
+		return JSON.stringify({ ok: false, reason: 'voice_worker_unavailable' });
+	}
+
+	return JSON.stringify({ ok: true, joining: true, channel_name: message.member.voice.channel?.name ?? '' });
+}
+
 function stripBotMention(content, botUserId) {
 	return content
 		.replace(new RegExp(`<@!?${botUserId}>`, 'g'), ' ')
@@ -86,12 +144,34 @@ function getClient(config) {
 	return client;
 }
 
-async function callChatCompletions(config, messages) {
-	const completion = await getClient(config).chat.completions.create({
-		...buildCompletionParams(config),
-		messages
-	});
-	return completion.choices?.[0]?.message?.content ?? '';
+async function callChatCompletions(config, messages, { tools = null, onToolCall = null } = {}) {
+	const client = getClient(config);
+	const params = buildCompletionParams(config);
+	const loop = [...messages];
+
+	for (let i = 0; i < 5; i++) {
+		const completion = await client.chat.completions.create({
+			...params,
+			...(tools ? { tools, tool_choice: 'auto' } : {}),
+			messages: loop
+		});
+
+		const choice = completion.choices?.[0]?.message;
+		if (!choice) return '';
+
+		if (!choice.tool_calls?.length || !onToolCall) {
+			return choice.content ?? '';
+		}
+
+		loop.push(choice);
+
+		for (const call of choice.tool_calls) {
+			const result = await onToolCall(call.function.name);
+			loop.push({ role: 'tool', tool_call_id: call.id, content: result });
+		}
+	}
+
+	return '';
 }
 
 async function summarizeOlderMessages(config, olderMessages) {
@@ -187,7 +267,11 @@ async function handleMessageCreate(message) {
 
 			const messages = [...(systemContent ? [{ role: 'system', content: systemContent }] : []), ...conversation, { role: 'user', content: userContent }];
 
-			const raw = await callChatCompletions(config, messages);
+			const voiceReady = config.voice_enabled && !!config.voice_model;
+			const raw = await callChatCompletions(config, messages, {
+				tools: voiceReady ? VOICE_TOOLS : null,
+				onToolCall: voiceReady ? (name) => executeVoiceTool(name, message, botConfig.id) : null
+			});
 			const reply = stripReasoning(typeof raw === 'string' ? raw : '').slice(0, MAX_REPLY_LENGTH);
 
 			if (!reply) {

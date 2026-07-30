@@ -372,6 +372,8 @@ export interface BotAiInput {
 	model: string | null;
 	system_prompt: string | null;
 	reasoning: BotAiReasoning;
+	voice_enabled: boolean;
+	voice_model: string | null;
 }
 
 export const DEFAULT_BOT_AI: BotAiInput = {
@@ -380,7 +382,9 @@ export const DEFAULT_BOT_AI: BotAiInput = {
 	api_key: null,
 	model: null,
 	system_prompt: null,
-	reasoning: 'none'
+	reasoning: 'none',
+	voice_enabled: false,
+	voice_model: null
 };
 
 export function botAiFromDbRow(row: any): BotAiInput {
@@ -391,7 +395,9 @@ export function botAiFromDbRow(row: any): BotAiInput {
 		api_key: row.api_key?.trim() ? row.api_key.trim() : null,
 		model: row.model?.trim() ? row.model.trim() : null,
 		system_prompt: row.system_prompt?.trim() ? row.system_prompt.trim() : null,
-		reasoning: BOT_AI_REASONING_LEVELS.includes(row.reasoning) ? row.reasoning : 'none'
+		reasoning: BOT_AI_REASONING_LEVELS.includes(row.reasoning) ? row.reasoning : 'none',
+		voice_enabled: row.voice_enabled === true || row.voice_enabled === 1,
+		voice_model: row.voice_model?.trim() ? row.voice_model.trim() : null
 	};
 }
 
@@ -414,7 +420,9 @@ export async function upsertBotAi(botId: number, data: BotAiInput) {
 		api_key: data.api_key?.trim() ? data.api_key.trim() : null,
 		model: data.model?.trim() ? data.model.trim() : null,
 		system_prompt: data.system_prompt?.trim() ? data.system_prompt.trim() : null,
-		reasoning: data.reasoning
+		reasoning: data.reasoning,
+		voice_enabled: data.voice_enabled,
+		voice_model: data.voice_model?.trim() ? data.voice_model.trim() : null
 	};
 	await db
 		.insert(schema.botAi)

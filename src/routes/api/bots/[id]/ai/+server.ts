@@ -68,6 +68,19 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 		return json({ success: false, error: 'Invalid reasoning level' }, { status: 400 });
 	}
 
+	const voice_enabled = body.voice_enabled === true;
+	const voice_model = body.voice_model === null || body.voice_model === undefined ? null : String(body.voice_model).trim() || null;
+
+	if (voice_model && voice_model.length > MAX_MODEL_LENGTH) {
+		return json({ success: false, error: `Voice model name must be at most ${MAX_MODEL_LENGTH} characters` }, { status: 400 });
+	}
+	if (voice_enabled && (!api_key || !voice_model)) {
+		return json({ success: false, error: 'API key and voice model are required to enable voice AI' }, { status: 400 });
+	}
+	if (voice_enabled && !enabled) {
+		return json({ success: false, error: 'Enable AI chat first — voice is triggered by asking the bot in chat' }, { status: 400 });
+	}
+
 	if (api_url && !/^https?:\/\//i.test(api_url)) {
 		return json({ success: false, error: 'API URL must start with http:// or https://' }, { status: 400 });
 	}
@@ -81,6 +94,6 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 		return json({ success: false, error: 'API URL, API key, and model are required to enable AI chat' }, { status: 400 });
 	}
 
-	const saved = await db.upsertBotAi(botId, { enabled, api_url, api_key, model, system_prompt, reasoning });
+	const saved = await db.upsertBotAi(botId, { enabled, api_url, api_key, model, system_prompt, reasoning, voice_enabled, voice_model });
 	return json({ success: true, ai: maskConfig(botAiFromDbRow(saved)) });
 };

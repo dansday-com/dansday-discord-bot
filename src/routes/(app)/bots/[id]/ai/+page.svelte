@@ -23,6 +23,8 @@
 			model: a.model ?? '',
 			system_prompt: a.system_prompt ?? '',
 			reasoning: a.reasoning,
+			voice_enabled: a.voice_enabled,
+			voice_model: a.voice_model ?? '',
 			has_api_key: a.has_api_key
 		};
 	}
@@ -49,7 +51,9 @@
 					api_key: aiKeyInput.trim() === '' ? null : aiKeyInput.trim(),
 					model: ai.model.trim() === '' ? null : ai.model.trim(),
 					system_prompt: ai.system_prompt.trim() === '' ? null : ai.system_prompt.trim(),
-					reasoning: ai.reasoning
+					reasoning: ai.reasoning,
+					voice_enabled: ai.voice_enabled,
+					voice_model: ai.voice_model.trim() === '' ? null : ai.voice_model.trim()
 				})
 			});
 			const d = await res.json();
@@ -132,7 +136,9 @@
 		</div>
 		<div class="sm:col-span-2">
 			<label for="ai-system-prompt" class="text-ash-400 mb-1 block text-xs">System prompt</label>
-			<p class="text-ash-500 mb-1 text-xs">Use <code class="text-ash-300">&#123;&#123;today&#125;&#125;</code> to insert the current date.</p>
+			<p class="text-ash-500 mb-1 text-xs">
+				Applies to both chat and voice. Use <code class="text-ash-300">&#123;&#123;today&#125;&#125;</code> to insert the current date.
+			</p>
 			<textarea
 				id="ai-system-prompt"
 				rows="4"
@@ -142,6 +148,47 @@
 				class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
 			></textarea>
 		</div>
+	</div>
+
+	<div class="border-ash-700 mt-6 border-t pt-5">
+		<h4 class="text-ash-100 mb-1 text-base font-semibold">
+			<i class="fas fa-microphone mr-2 text-violet-400"></i>Voice AI
+		</h4>
+		<p class="text-ash-400 mb-4 text-sm">
+			Members ask the bot in chat to join their voice channel, then talk to it out loud. Uses the
+			<strong class="text-ash-300">Gemini Live API</strong> with the API key above, so that key must be a Google AI key. One voice session at a time.
+		</p>
+
+		<ConfigToggleRow
+			label="Enable voice AI"
+			description="Lets members ask the bot to join voice. Needs AI chat on, plus an API key and voice model."
+			labelIconClass="fas fa-microphone text-violet-400"
+			bind:enabled={ai.voice_enabled}
+			ariaLabel="Toggle voice AI"
+		/>
+
+		<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+			<div class="min-w-0">
+				<label for="ai-voice-model" class="text-ash-400 mb-1 block text-xs">Voice model</label>
+				<input
+					id="ai-voice-model"
+					type="text"
+					maxlength="191"
+					autocomplete="off"
+					bind:value={ai.voice_model}
+					placeholder="gemini-3.1-flash-live-preview"
+					class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+				/>
+			</div>
+		</div>
+
+		<p class="mt-3 flex items-start gap-2 text-xs text-amber-200/90">
+			<i class="fas fa-triangle-exclamation mt-0.5 shrink-0 text-amber-400/90" aria-hidden="true"></i>
+			<span>
+				Voice sends everyone's audio in the channel to Google. On the free tier that audio is used to improve their products. Tell your members before turning
+				this on.
+			</span>
+		</p>
 	</div>
 
 	<div class="mt-4 flex flex-wrap items-center gap-3">

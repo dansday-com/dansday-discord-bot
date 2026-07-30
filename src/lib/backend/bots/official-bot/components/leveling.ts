@@ -67,7 +67,21 @@ async function getXpForMessage(guildId) {
 }
 
 function isVoiceStateAFK(voiceState) {
-	return !!(voiceState?.selfMute || voiceState?.selfDeaf);
+	return !!(voiceState?.selfMute || voiceState?.selfDeaf || voiceState?.serverMute || voiceState?.serverDeaf || voiceState?.mute || voiceState?.deaf);
+}
+
+async function hasAFKRecord(serverId, discordMemberId) {
+	if (!serverId || !discordMemberId) return false;
+	try {
+		return !!(await db.getAFKStatus(serverId, discordMemberId));
+	} catch {
+		return false;
+	}
+}
+
+async function resolveVoiceAFK(serverId, discordMemberId, voiceState) {
+	if (isVoiceStateAFK(voiceState)) return true;
+	return await hasAFKRecord(serverId, discordMemberId);
 }
 
 function resolveGuildVoiceState(guild, discordUserId) {
@@ -886,7 +900,7 @@ async function startVoiceSession(state, resumed = false) {
 		const now = Date.now();
 		const guildId = state.guild.id;
 		const voiceCooldownMs = await getVoiceCooldownMs(guildId);
-		const voiceAfkForXp = isVoiceStateAFK(state);
+		const voiceAfkForXp = await resolveVoiceAFK(server.id, guildMember.id, state);
 		const mediaFlags = { selfVideo: !!state.selfVideo, streaming: !!state.streaming };
 
 		let finalLastRewardedAt = lastVoiceMs || now;
@@ -1034,7 +1048,7 @@ async function handleVoiceTick(sessionKey) {
 
 		const guild = clientInstance?.guilds.cache.get(session.guildId);
 		const voiceState = resolveGuildVoiceState(guild, session.discordMemberId);
-		const voiceAfkForXp = isVoiceStateAFK(voiceState);
+		const voiceAfkForXp = await resolveVoiceAFK(server.id, session.discordMemberId, voiceState);
 
 		const levelSnapshot = await db.getMemberLevel(dbMember.id);
 		const serverInfo = { id: session.serverId, name: session.serverName };

@@ -1,4 +1,4 @@
-import { GoogleGenAI, Modality } from '@google/genai';
+import { GoogleGenAI, Modality, Type } from '@google/genai';
 import {
 	joinVoiceChannel,
 	createAudioPlayer,
@@ -27,9 +27,10 @@ const EMPTY = Buffer.alloc(0);
 const SPEAK_GUARD_MS = 400;
 const TURN_SILENCE_MS = 700;
 const CLOSE_WAIT_MS = 3000;
+const MAX_QUEUED_CHUNKS = 60;
 
-const IDLE_TIMEOUT_MS = 3 * 60_000;
-const IDLE_WARN_MS = IDLE_TIMEOUT_MS - 15_000;
+const IDLE_TIMEOUT_MS = 60_000;
+const IDLE_WARN_MS = IDLE_TIMEOUT_MS - 10_000;
 const SESSION_MAX_MS = 15 * 60_000;
 const SESSION_WARN_MS = 13.5 * 60_000;
 const GOODBYE_GRACE_MS = 12_000;
@@ -87,6 +88,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	let turnTimer = null;
 	let reconnecting = false;
 	let closeWaiter = null;
+	let leaveRequested = false;
 
 	const stats = {
 		chunksPlayed: 0,
@@ -99,7 +101,8 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		framesDropped: 0,
 		interrupts: 0,
 		reconnects: 0,
-		turns: 0
+		turns: 0,
+		queueHigh: 0
 	};
 
 	async function say(text) {
@@ -186,6 +189,14 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		playbackQueue.push(downmixAndResample(pcm24k, OUTPUT_RATE, DISCORD_RATE, 1, 2));
 		stats.chunksPlayed++;
 		lastAudioAt = Date.now();
+
+		if (playbackQueue.length > stats.queueHigh) stats.queueHigh = playbackQueue.length;
+		while (playbackQueue.length > MAX_QUEUED_CHUNKS) {
+			playbackQueue.shift();
+			stats.chunksDropped++;
+			if (stats.chunksDropped % 25 === 1) logger.log(`⚠️ Voice AI playback queue over ${MAX_QUEUED_CHUNKS}, dropping oldest (high=${stats.queueHigh})`);
+		}
+
 		touchIdle();
 	}
 
@@ -236,11 +247,31 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 				this.push(nextFrame());
 			}
 		});
-		outputStream.on('error', (err) => logger.log(`❌ Voice AI output stream error: ${err?.message || err}`));
+		outputStream.on('error', (err) => {
+			if (closed) return;
+			logger.log(`❌ Voice AI output stream error: ${err?.message || err}`);
+		});
 
 		const resource = createAudioResource(outputStream, { inputType: StreamType.Raw });
 		player.play(resource);
 		logger.log('🔊 Voice AI output stream started');
+	}
+
+	function handleToolCall(calls) {
+		const responses = calls.map((call) => ({ id: call.id, name: call.name, response: { ok: true } }));
+
+		try {
+			session.sendToolResponse({ functionResponses: responses });
+		} catch (err) {
+			logger.log(`⚠️ Voice AI tool response failed: ${String(err)}`);
+		}
+
+		if (calls.some((call) => call.name === 'leave_voice')) {
+			logger.log('🎙️ Voice AI leave requested by voice');
+			leaveRequested = true;
+			closeTurn();
+			setTimeout(() => stop('user_request_voice'), GOODBYE_GRACE_MS);
+		}
 	}
 
 	async function connectLive() {
@@ -255,7 +286,19 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 				sessionResumption: resumeHandle ? { handle: resumeHandle } : {},
 				realtimeInputConfig: {
 					automaticActivityDetection: { disabled: true }
-				}
+				},
+				tools: [
+					{
+						functionDeclarations: [
+							{
+								name: 'leave_voice',
+								description:
+									'Leave the voice channel and end the call. Call this when the user asks you to leave, disconnect, hang up, go away, or says goodbye.',
+								parameters: { type: Type.OBJECT, properties: {} }
+							}
+						]
+					}
+				]
 			},
 			callbacks: {
 				onopen: () => logger.log(`🔊 Voice AI live session open (model=${config.voice_model})`),
@@ -264,6 +307,11 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 					if (msg.goAway) {
 						logger.log(`⚠️ Voice AI goAway, timeLeft=${msg.goAway.timeLeft ?? '?'}`);
 						reconnect().catch(() => {});
+					}
+
+					if (msg.toolCall?.functionCalls?.length) {
+						handleToolCall(msg.toolCall.functionCalls);
+						return;
 					}
 
 					const sc = msg.serverContent;
@@ -342,7 +390,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		const decoder = new prism.opus.Decoder({ rate: DISCORD_RATE, channels: 2, frameSize: 960 });
 
 		decoder.on('data', (pcm) => {
-			if (closed || !session || goodbyePending || botIsSpeaking()) {
+			if (closed || !session || goodbyePending || leaveRequested || botIsSpeaking()) {
 				stats.framesDropped++;
 				return;
 			}
@@ -398,7 +446,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 		await clearVoiceState(botId);
 		await logger.log(
-			`🔇 Voice AI left ${channelName || channelId} (${reason}) in=${stats.framesIn}f out=${stats.chunksPlayed}c dropped=${stats.framesDropped}/${stats.chunksDropped} interrupts=${stats.interrupts} reconnects=${stats.reconnects}`
+			`🔇 Voice AI left ${channelName || channelId} (${reason}) turns=${stats.turns} in=${stats.framesIn}f out=${stats.chunksPlayed}c dropped=${stats.framesDropped}/${stats.chunksDropped} queueHigh=${stats.queueHigh} interrupts=${stats.interrupts} reconnects=${stats.reconnects}`
 		);
 		onEnded?.(reason);
 	}

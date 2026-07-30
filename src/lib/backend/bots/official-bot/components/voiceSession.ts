@@ -71,6 +71,8 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	let sessionWarnTimer = null;
 	let heartbeat = null;
 
+	const stats = { chunksPlayed: 0, chunksDropped: 0, bytesOut: 0, bytesIn: 0, framesIn: 0, framesDropped: 0, interrupts: 0, reconnects: 0 };
+
 	async function say(text) {
 		if (!session || goodbyePending) return;
 		goodbyePending = true;
@@ -113,20 +115,30 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	}
 
 	function playChunk(pcm24k) {
-		if (!outputStream || outputStream.destroyed) return;
-		outputStream.write(downmixAndResample(pcm24k, OUTPUT_RATE, DISCORD_RATE, 1, 2));
+		if (!outputStream || outputStream.destroyed) {
+			stats.chunksDropped++;
+			return;
+		}
+		const resampled = downmixAndResample(pcm24k, OUTPUT_RATE, DISCORD_RATE, 1, 2);
+		outputStream.write(resampled);
+		stats.chunksPlayed++;
+		stats.bytesOut += resampled.length;
 		touchIdle();
 	}
 
 	function handleInterrupt() {
+		stats.interrupts++;
 		if (!outputStream || outputStream.destroyed) return;
 		while (outputStream.read() !== null) {}
+		logger.log(`🔊 Voice AI interrupted (played=${stats.chunksPlayed} dropped=${stats.chunksDropped})`);
 	}
 
 	function startOutput() {
-		outputStream = new PassThrough();
+		outputStream = new PassThrough({ highWaterMark: 1 << 20 });
+		outputStream.on('error', (err) => logger.log(`❌ Voice AI output stream error: ${err?.message || err}`));
 		const resource = createAudioResource(outputStream, { inputType: StreamType.Raw });
 		player.play(resource);
+		logger.log('🔊 Voice AI output stream started');
 	}
 
 	async function connectLive() {
@@ -147,9 +159,13 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 				}
 			},
 			callbacks: {
+				onopen: () => logger.log(`🔊 Voice AI live session open (model=${config.voice_model})`),
 				onmessage: (msg) => {
 					if (msg.sessionResumptionUpdate?.newHandle) resumeHandle = msg.sessionResumptionUpdate.newHandle;
-					if (msg.goAway) reconnect().catch(() => {});
+					if (msg.goAway) {
+						logger.log(`⚠️ Voice AI goAway, timeLeft=${msg.goAway.timeLeft ?? '?'}`);
+						reconnect().catch(() => {});
+					}
 
 					const sc = msg.serverContent;
 					if (!sc) return;
@@ -166,8 +182,9 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 					if (sc.inputTranscription?.text) collectTranscript('user', sc.inputTranscription.text);
 					if (sc.outputTranscription?.text) collectTranscript('assistant', sc.outputTranscription.text);
 				},
-				onerror: (err) => logger.log(`❌ Voice AI session error: ${err?.message || err}`),
-				onclose: () => {
+				onerror: (err) => logger.log(`❌ Voice AI session error: ${err?.message || String(err)}`),
+				onclose: (e) => {
+					logger.log(`🔊 Voice AI live session closed: ${e?.reason || 'no reason'} (closed=${closed} goodbye=${goodbyePending})`);
 					if (!closed && !goodbyePending) reconnect().catch(() => {});
 				}
 			}
@@ -176,10 +193,17 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 	async function reconnect() {
 		if (closed || goodbyePending) return;
+		stats.reconnects++;
+		logger.log(`🔊 Voice AI reconnecting (attempt=${stats.reconnects} resume=${resumeHandle ? 'yes' : 'no'})`);
 		try {
 			session?.close();
 		} catch {}
-		await connectLive();
+		try {
+			await connectLive();
+		} catch (err) {
+			logger.log(`❌ Voice AI reconnect failed: ${String(err)}`);
+			await stop('reconnect_failed');
+		}
 	}
 
 	function subscribeUser(userId) {
@@ -189,12 +213,25 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		const decoder = new prism.opus.Decoder({ rate: DISCORD_RATE, channels: 2, frameSize: 960 });
 
 		decoder.on('data', (pcm) => {
-			if (closed || !session || goodbyePending) return;
+			if (closed || !session || goodbyePending) {
+				stats.framesDropped++;
+				return;
+			}
 			const mono16k = downmixAndResample(pcm, DISCORD_RATE, INPUT_RATE, 2, 1);
 			try {
 				session.sendRealtimeInput({ audio: { data: mono16k.toString('base64'), mimeType: `audio/pcm;rate=${INPUT_RATE}` } });
+				stats.framesIn++;
+				stats.bytesIn += mono16k.length;
+				if (stats.framesIn % 250 === 0) {
+					logger.log(
+						`🎙️ Voice AI in=${stats.framesIn}f/${stats.bytesIn}b out=${stats.chunksPlayed}c/${stats.bytesOut}b dropped=${stats.framesDropped}/${stats.chunksDropped}`
+					);
+				}
 				touchIdle();
-			} catch {}
+			} catch (err) {
+				stats.framesDropped++;
+				if (stats.framesDropped % 100 === 1) logger.log(`⚠️ Voice AI input dropped: ${String(err)}`);
+			}
 		});
 		decoder.on('error', () => {});
 
@@ -229,7 +266,9 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		} catch {}
 
 		await clearVoiceState(botId);
-		await logger.log(`🔇 Voice AI left ${channelName || channelId} (${reason})`);
+		await logger.log(
+			`🔇 Voice AI left ${channelName || channelId} (${reason}) in=${stats.framesIn}f out=${stats.chunksPlayed}c dropped=${stats.framesDropped}/${stats.chunksDropped} interrupts=${stats.interrupts} reconnects=${stats.reconnects}`
+		);
 		onEnded?.(reason);
 	}
 
@@ -251,7 +290,10 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		connection.subscribe(player);
 		player.on('error', (err) => logger.log(`❌ Voice AI player error: ${err?.message || err}`));
 		player.on(AudioPlayerStatus.Idle, () => {
-			if (!closed && !goodbyePending) startOutput();
+			if (!closed) logger.log(`🔊 Voice AI player idle (played=${stats.chunksPlayed} dropped=${stats.chunksDropped})`);
+		});
+		player.on(AudioPlayerStatus.Playing, () => {
+			if (!closed) logger.log('🔊 Voice AI player playing');
 		});
 		startOutput();
 

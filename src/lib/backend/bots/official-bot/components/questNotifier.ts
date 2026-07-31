@@ -200,6 +200,8 @@ async function runTick(client: Client, officialBotId: number) {
 	const sourceByQuestId = await prefetchBotWideQuests(officialBotId, httpProxyUrlByServerId);
 	const questSummaries = await db.listActiveBotDiscordQuests(officialBotId);
 
+	const postedTargets = new Set<string>();
+
 	for (const server of servers) {
 		const discordGuildId = server.discord_server_id;
 		if (!discordGuildId) continue;
@@ -230,16 +232,26 @@ async function runTick(client: Client, officialBotId: number) {
 
 			for (const q of questSummaries) {
 				if (!unpostedIds.has(q.id)) continue;
+				const targetKey = `${discordGuildId}:${channelId}:${q.id}`;
+				if (postedTargets.has(targetKey)) {
+					await db.claimServerDiscordQuestForPost(server.id, q.id).catch(() => null);
+					await logger.log(
+						`⏭️ Quest notifier: quest ${q.id} already posted to channel ${channelId} in guild ${discordGuildId} this tick — skipping duplicate server row ${server.id}`
+					);
+					continue;
+				}
 				if (!(await db.claimServerDiscordQuestForPost(server.id, q.id))) {
 					await logger.log(`⏭️ Quest notifier: quest ${q.id} already claimed for server ${server.id} — skipping duplicate announce`);
 					continue;
 				}
+				postedTargets.add(targetKey);
 				try {
 					await sendQuestNotificationMessage(client, server.discord_server_id, channelId, q, { autoQuestEnabled });
 					await logger.log(
 						`🔮 Quest notifier: posted quest "${q.questName}" → channel ${channelId} (${server.name}) discovered via ${sourceByQuestId.get(q.id) ?? 'bot-wide stored quest'}`
 					);
 				} catch (sendErr: any) {
+					postedTargets.delete(targetKey);
 					await db.releaseServerDiscordQuestClaim(server.id, q.id).catch(() => null);
 					await logger.log(`❌ Quest notifier: failed to post quest ${q.id} for server ${server.id}: ${sendErr?.message || sendErr}`);
 				}

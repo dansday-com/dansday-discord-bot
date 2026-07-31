@@ -33,6 +33,8 @@ const VOICE_HANG_MS = 500;
 const NOISE_FLOOR_ALPHA = 0.02;
 const NOISE_FLOOR_MARGIN = 2.2;
 const MAX_TURN_MS = 20_000;
+const WAKE_TURN_MS = 2_500;
+const WAKE_TURN_GAP_MS = 400;
 const CLOSE_WAIT_MS = 3000;
 const MAX_QUEUED_CHUNKS = 60;
 
@@ -109,11 +111,13 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	let lastAudioAt = 0;
 	let turnOpen = false;
 	let turnOpenedAt = 0;
+	let turnCooldownUntil = 0;
 	let turnTimer = null;
 	let reconnecting = false;
 	let closeWaiter = null;
 	let leaveRequested = false;
 	let lastSpeakerId = '';
+	let lockedSpeakerId = '';
 	let addressedUntil = 0;
 	let selfMuted = false;
 	let muteTimer: ReturnType<typeof setTimeout> | null = null;
@@ -212,7 +216,14 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 	function markAddressed() {
 		const wasAddressed = isAddressed();
+
+		if (!wasAddressed && lastSpeakerId) {
+			lockedSpeakerId = lastSpeakerId;
+			logger.log(`🔒 Voice AI locked onto ${nameOf(lockedSpeakerId)} for this conversation`);
+		}
+
 		addressedUntil = Date.now() + ADDRESSED_WINDOW_MS;
+		turnCooldownUntil = 0;
 		muteAnnounced = false;
 		setSelfMute(false);
 		if (muteTimer) clearTimeout(muteTimer);
@@ -220,10 +231,23 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		return wasAddressed;
 	}
 
+	function releaseSpeakerLock() {
+		if (!lockedSpeakerId) return;
+		logger.log(`🔓 Voice AI released lock on ${nameOf(lockedSpeakerId)}, open to anyone`);
+		lockedSpeakerId = '';
+	}
+
+	function micIsOpenFor(userId) {
+		if (!lockedSpeakerId) return true;
+		if (userId === lockedSpeakerId) return true;
+		return !isAddressed();
+	}
+
 	function announceMute() {
 		muteTimer = null;
 		if (closed || goodbyePending || isAddressed() || selfMuted || muteAnnounced) return;
 
+		releaseSpeakerLock();
 		muteAnnounced = true;
 		logger.log('🔕 Voice AI announcing mute before going quiet');
 		sendSystemNote(
@@ -276,7 +300,8 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		turns: 0,
 		queueHigh: 0,
 		repliesSuppressed: 0,
-		framesNoise: 0
+		framesNoise: 0,
+		framesOffTurn: 0
 	};
 
 	async function say(text) {
@@ -343,6 +368,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		if (!turnOpen || !session) return;
 		turnOpen = false;
 		wakeBuffer = '';
+		if (!isAddressed()) turnCooldownUntil = Date.now() + WAKE_TURN_GAP_MS;
 		if (turnTimer) {
 			clearTimeout(turnTimer);
 			turnTimer = null;
@@ -361,11 +387,12 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	function bumpTurn() {
 		if (turnTimer) clearTimeout(turnTimer);
 		turnTimer = setTimeout(function settle() {
-			if (anyoneSpeaking() && Date.now() - turnOpenedAt < MAX_TURN_MS) {
+			const cap = isAddressed() ? MAX_TURN_MS : WAKE_TURN_MS;
+			if (anyoneSpeaking() && Date.now() - turnOpenedAt < cap) {
 				turnTimer = setTimeout(settle, TURN_SILENCE_MS);
 				return;
 			}
-			if (anyoneSpeaking()) {
+			if (anyoneSpeaking() && isAddressed()) {
 				logger.log(`⚠️ Voice AI forcing turn end after ${MAX_TURN_MS / 1000}s of continuous audio`);
 				for (const vad of voiceState.values()) {
 					vad.active = false;
@@ -469,6 +496,14 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		}
 
 		if (calls.some((call) => call.name === 'leave_voice')) {
+			if (lastSpeakerId && lastSpeakerId !== inviterId) {
+				logger.log(`🚫 Voice AI ignoring leave request from ${nameOf(lastSpeakerId)} (only ${nameOf(inviterId)} can)`);
+				sendSystemNote(
+					`[System] ${nameOf(lastSpeakerId)} asked you to leave, but only ${nameOf(inviterId)} who invited you can end this call. Say one short line telling them that, and stay in the channel.`
+				);
+				return;
+			}
+
 			logger.log('🎙️ Voice AI leave requested by voice');
 			leaveRequested = true;
 			closeTurn();
@@ -673,6 +708,19 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 				return;
 			}
 
+			if (!micIsOpenFor(userId)) {
+				stats.framesOffTurn++;
+				if (stats.framesOffTurn % 250 === 1) {
+					logger.log(`🙉 Voice AI ignoring ${nameOf(userId)} while talking with ${nameOf(lockedSpeakerId)}`);
+				}
+				return;
+			}
+
+			if (!turnOpen && now < turnCooldownUntil) {
+				stats.framesNoise++;
+				return;
+			}
+
 			try {
 				if (userId !== lastSpeakerId) {
 					lastSpeakerId = userId;
@@ -729,7 +777,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 		await clearVoiceState(botId);
 		await logger.log(
-			`🔇 Voice AI left ${channelName || channelId} (${reason}) turns=${stats.turns} in=${stats.framesIn}f out=${stats.chunksPlayed}c dropped=${stats.framesDropped}/${stats.chunksDropped} noise=${stats.framesNoise} suppressed=${stats.repliesSuppressed} queueHigh=${stats.queueHigh} interrupts=${stats.interrupts} reconnects=${stats.reconnects}`
+			`🔇 Voice AI left ${channelName || channelId} (${reason}) turns=${stats.turns} in=${stats.framesIn}f out=${stats.chunksPlayed}c dropped=${stats.framesDropped}/${stats.chunksDropped} noise=${stats.framesNoise} offTurn=${stats.framesOffTurn} suppressed=${stats.repliesSuppressed} queueHigh=${stats.queueHigh} interrupts=${stats.interrupts} reconnects=${stats.reconnects}`
 		);
 		onEnded?.(reason);
 	}
@@ -845,6 +893,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 		await ensureUnmuted();
 		refreshWakeWords();
+		if (lockedSpeakerId && !speaking.has(lockedSpeakerId)) releaseSpeakerLock();
 		announceRoster();
 		logger.log(`🔊 Voice AI followed inviter back to ${channelName}`);
 	}
@@ -860,6 +909,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		const name = nameOf(userId);
 		names.delete(userId);
 		if (lastSpeakerId === userId) lastSpeakerId = '';
+		if (lockedSpeakerId === userId) releaseSpeakerLock();
 		sendSystemNote(`[System] ${name} left the voice channel.`);
 	}
 

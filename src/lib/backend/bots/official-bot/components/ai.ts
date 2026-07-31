@@ -82,6 +82,15 @@ async function executeVoiceTool(name, message, botId) {
 
 	if (name === 'leave_voice') {
 		if (!state) return finalToolResult({ ok: false, reason: 'not_in_voice_channel' });
+
+		if (state.inviterId && message.author.id !== state.inviterId) {
+			return finalToolResult({
+				ok: false,
+				reason: 'only_the_member_who_invited_you_can_make_you_leave',
+				inviter_id: state.inviterId
+			});
+		}
+
 		await publishVoiceCommand(botId, { cmd: 'leave', reason: 'user_request' });
 		return finalToolResult({ ok: true, left: true });
 	}

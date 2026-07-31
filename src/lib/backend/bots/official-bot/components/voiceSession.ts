@@ -515,10 +515,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 					const sc = msg.serverContent;
 					if (!sc) return;
 
-					if (sc.interrupted) {
-						handleInterrupt();
-						return;
-					}
+					if (sc.interrupted) handleInterrupt();
 
 					if (sc.inputTranscription?.text) {
 						const text = sc.inputTranscription.text;
@@ -529,6 +526,8 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 							}
 							wakeBuffer = '';
 							markAddressed();
+						} else if (!isAddressed()) {
+							logger.log(`👂 Voice AI heard "${normalizeSpeech(wakeBuffer).slice(-80)}" (no wake word, listening for ${wakeWords.join('/')})`);
 						}
 						collectTranscript('user', text);
 					}

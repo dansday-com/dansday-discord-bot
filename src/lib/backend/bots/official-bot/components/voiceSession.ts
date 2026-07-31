@@ -45,6 +45,8 @@ const GOODBYE_GRACE_MS = 12_000;
 const ADDRESSED_WINDOW_MS = 15_000;
 const WAKE_BUFFER_CHARS = 160;
 const MUTE_NOTICE_GRACE_MS = 6_000;
+const MUTE_NOTICE_MAX_WAIT_MS = 15_000;
+const NAME_CORROBORATE_MS = 8_000;
 const GENERIC_NAME_WORDS = new Set(['bot', 'ai', 'the', 'official', 'assistant', 'discord']);
 const UNSPACED_SCRIPT = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Thai}]/u;
 const HEARTBEAT_MS = (VOICE_STATE_TTL_SEC / 2) * 1000;
@@ -120,6 +122,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	let muteTimer: ReturnType<typeof setTimeout> | null = null;
 	let wakeWords: string[] = [];
 	let wakeBuffer = '';
+	let lastNameHeardAt = 0;
 	let muteAnnounced = false;
 
 	const names = new Map();
@@ -211,12 +214,23 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		return Date.now() < addressedUntil;
 	}
 
-	function markAddressed() {
+	function markAddressed({ verified = false } = {}) {
 		const wasAddressed = isAddressed();
 
-		if (!wasAddressed && lastSpeakerId) {
-			lockedSpeakerId = lastSpeakerId;
+		if (muteAnnounced && !verified) {
+			logger.log('🚦 Voice AI ignoring un-named wake during mute announcement');
+			return wasAddressed;
+		}
+
+		const speaker = lastSpeakerId || loudestActiveSpeaker();
+		if (!lockedSpeakerId && speaker) {
+			lockedSpeakerId = speaker;
 			logger.log(`🔒 Voice AI locked onto ${nameOf(lockedSpeakerId)} for this conversation`);
+		} else if (!lockedSpeakerId) {
+			logger.log('⚠️ Voice AI addressed but no speaker identified yet, staying open to anyone');
+		} else if (speaker && speaker !== lockedSpeakerId && !wasAddressed) {
+			logger.log(`🔄 Voice AI re-locking from ${nameOf(lockedSpeakerId)} to ${nameOf(speaker)}`);
+			lockedSpeakerId = speaker;
 		}
 
 		addressedUntil = Date.now() + ADDRESSED_WINDOW_MS;
@@ -229,14 +243,59 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		return wasAddressed;
 	}
 
+	function finishConversation() {
+		if (closed || goodbyePending) return;
+
+		addressedUntil = 0;
+		muteAnnounced = true;
+		if (muteTimer) clearTimeout(muteTimer);
+
+		const startedAt = Date.now();
+		const chunksAtStart = stats.chunksPlayed;
+
+		muteTimer = setTimeout(function settleDone() {
+			muteTimer = null;
+			if (closed || selfMuted) return;
+
+			if (isAddressed()) {
+				logger.log('↩️ Voice AI called again before muting, staying open');
+				return;
+			}
+
+			const spoke = stats.chunksPlayed > chunksAtStart;
+			const waited = Date.now() - startedAt;
+
+			if (botIsSpeaking() || (!spoke && waited < MUTE_NOTICE_MAX_WAIT_MS)) {
+				muteTimer = setTimeout(settleDone, SPEAK_GUARD_MS);
+				return;
+			}
+
+			releaseSpeakerLock();
+			setSelfMute(true);
+		}, SPEAK_GUARD_MS);
+	}
+
+	function loudestActiveSpeaker() {
+		let best = '';
+		let bestAt = 0;
+		for (const [userId, vad] of voiceState) {
+			if (!vad.active || isBotUser(userId)) continue;
+			if (vad.startedAt >= bestAt) {
+				bestAt = vad.startedAt;
+				best = userId;
+			}
+		}
+		return best;
+	}
+
 	function keepAliveFromLockedSpeaker() {
-		if (!lockedSpeakerId || goodbyePending) return;
+		if (!lockedSpeakerId || goodbyePending || muteAnnounced) return;
 		if (!isAddressed()) logger.log(`🔁 Voice AI re-opening window, ${nameOf(lockedSpeakerId)} is still talking`);
 		extendAddressedWindow();
 	}
 
 	function extendWhileReplying() {
-		if (!isAddressed() || goodbyePending) return;
+		if (!isAddressed() || goodbyePending || muteAnnounced) return;
 		extendAddressedWindow();
 	}
 
@@ -275,6 +334,8 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		}
 
 		muteAnnounced = true;
+		const announcedAt = Date.now();
+		const chunksAtAnnounce = stats.chunksPlayed;
 		logger.log('🔕 Voice AI announcing mute before going quiet');
 		sendSystemNote(
 			`Say one short sentence out loud now: it has gone quiet, so you are muting yourself, and they just need to call your name (${displayName()}) whenever they want you again. One sentence, casual, no explanation.`
@@ -282,10 +343,15 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		muteTimer = setTimeout(function settleMute() {
 			muteTimer = null;
 			if (closed || selfMuted) return;
-			if (botIsSpeaking() || isAddressed()) {
+
+			const spoke = stats.chunksPlayed > chunksAtAnnounce;
+			const waited = Date.now() - announcedAt;
+
+			if (botIsSpeaking() || (!spoke && waited < MUTE_NOTICE_MAX_WAIT_MS)) {
 				muteTimer = setTimeout(settleMute, SPEAK_GUARD_MS);
 				return;
 			}
+
 			releaseSpeakerLock();
 			setSelfMute(true);
 		}, MUTE_NOTICE_GRACE_MS);
@@ -555,7 +621,17 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 		if (calls.some((call) => call.name === 'i_was_addressed')) {
 			if (!isAddressed()) logger.log(`👋 Voice AI addressed by ${nameOf(lastSpeakerId) || 'someone'} (model)`);
-			markAddressed();
+			const nameJustHeard = heardWakeWord(wakeBuffer) || Date.now() - lastNameHeardAt < NAME_CORROBORATE_MS;
+			markAddressed({ verified: !muteAnnounced || nameJustHeard });
+		}
+
+		if (calls.some((call) => call.name === 'conversation_done')) {
+			if (lockedSpeakerId && lastSpeakerId && lastSpeakerId !== lockedSpeakerId) {
+				logger.log(`🚫 Voice AI ignoring done request from ${nameOf(lastSpeakerId)} (talking with ${nameOf(lockedSpeakerId)})`);
+			} else {
+				logger.log(`✅ Voice AI done with ${nameOf(lockedSpeakerId) || 'this turn'}, releasing lock and muting`);
+				finishConversation();
+			}
 		}
 
 		if (calls.some((call) => call.name === 'leave_voice')) {
@@ -598,6 +674,12 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 								parameters: { type: Type.OBJECT, properties: {} }
 							},
 							{
+								name: 'conversation_done',
+								description:
+									'Stop listening and mute yourself, while STAYING in the voice channel. Call this when the person you are currently talking with signals they are finished with you: "that is all", "done", "thanks, that is it", "mute yourself", "you can rest now", "okay that is enough". Say one very short acknowledgement out loud first, then call this. Do NOT call it for a mid-conversation "ok" or "thanks" that is just filler while they keep talking to you, and do NOT use it when they want you to leave the channel entirely — that is leave_voice.',
+								parameters: { type: Type.OBJECT, properties: {} }
+							},
+							{
 								name: 'leave_voice',
 								description:
 									'Leave the voice channel and end the call. Call this when someone asks you to leave, disconnect or hang up, or says a real farewell meant to end the conversation ("goodbye", "see you later", "bye, talk to you tomorrow"). Say your own short goodbye out loud first, then call this. Do NOT call it for filler like "ok", "thanks", "alright", "hmm", for a pause in conversation, or when people say bye to each other rather than to you.',
@@ -634,7 +716,8 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 								logger.log(`👋 Voice AI addressed by ${nameOf(lastSpeakerId) || 'someone'} ("${normalizeSpeech(wakeBuffer).slice(-60)}")`);
 							}
 							wakeBuffer = '';
-							markAddressed();
+							lastNameHeardAt = Date.now();
+							markAddressed({ verified: true });
 						}
 						collectTranscript('user', text);
 					}

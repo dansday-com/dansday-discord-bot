@@ -228,7 +228,15 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 	function keepAliveFromLockedSpeaker() {
 		if (!lockedSpeakerId || !isAddressed() || goodbyePending) return;
+		extendAddressedWindow();
+	}
 
+	function extendWhileReplying() {
+		if (!isAddressed() || goodbyePending) return;
+		extendAddressedWindow();
+	}
+
+	function extendAddressedWindow() {
 		addressedUntil = Date.now() + ADDRESSED_WINDOW_MS;
 		muteAnnounced = false;
 		touchIdle();
@@ -252,15 +260,25 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		muteTimer = null;
 		if (closed || goodbyePending || isAddressed() || selfMuted || muteAnnounced) return;
 
+		if (botIsSpeaking()) {
+			muteTimer = setTimeout(announceMute, SPEAK_GUARD_MS);
+			return;
+		}
+
 		releaseSpeakerLock();
 		muteAnnounced = true;
 		logger.log('🔕 Voice AI announcing mute before going quiet');
 		sendSystemNote(
 			`Say one short sentence out loud now: it has gone quiet, so you are muting yourself, and they just need to call your name (${displayName()}) whenever they want you again. One sentence, casual, no explanation.`
 		);
-		muteTimer = setTimeout(() => {
+		muteTimer = setTimeout(function settleMute() {
 			muteTimer = null;
-			if (!isAddressed()) setSelfMute(true);
+			if (isAddressed()) return;
+			if (botIsSpeaking()) {
+				muteTimer = setTimeout(settleMute, SPEAK_GUARD_MS);
+				return;
+			}
+			setSelfMute(true);
 		}, MUTE_NOTICE_GRACE_MS);
 	}
 
@@ -385,7 +403,9 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	}
 
 	function anyoneSpeaking() {
-		for (const vad of voiceState.values()) if (vad.active) return true;
+		for (const [userId, vad] of voiceState) {
+			if (vad.active && micIsOpenFor(userId)) return true;
+		}
 		return false;
 	}
 
@@ -399,7 +419,8 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 			}
 			if (anyoneSpeaking() && isAddressed()) {
 				logger.log(`⚠️ Voice AI forcing turn end after ${MAX_TURN_MS / 1000}s of continuous audio`);
-				for (const vad of voiceState.values()) {
+				for (const [userId, vad] of voiceState) {
+					if (!micIsOpenFor(userId)) continue;
 					vad.active = false;
 					vad.onset = 0;
 				}
@@ -424,6 +445,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 			if (stats.chunksDropped % 25 === 1) logger.log(`⚠️ Voice AI playback queue over ${MAX_QUEUED_CHUNKS}, dropping oldest (high=${stats.queueHigh})`);
 		}
 
+		extendWhileReplying();
 		touchIdle();
 	}
 

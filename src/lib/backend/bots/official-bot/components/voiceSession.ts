@@ -279,6 +279,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 			model: config.voice_model,
 			config: {
 				responseModalities: [Modality.AUDIO],
+				...(config.voice_name ? { speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: config.voice_name } } } } : {}),
 				...(systemInstruction ? { systemInstruction } : {}),
 				inputAudioTranscription: {},
 				outputAudioTranscription: {},

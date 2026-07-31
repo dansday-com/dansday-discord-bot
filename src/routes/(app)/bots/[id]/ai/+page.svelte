@@ -4,7 +4,13 @@
 	import LabeledSelect from '$lib/frontend/components/LabeledSelect.svelte';
 	import ConfigToggleRow from '$lib/frontend/components/ConfigToggleRow.svelte';
 	import type { LabeledSelectOption } from '$lib/frontend/components/labeledSelect.js';
+	import { GEMINI_VOICES } from '$lib/geminiVoices.js';
 	import type { PageProps } from './$types';
+
+	const AI_VOICE_OPTIONS: LabeledSelectOption[] = [
+		{ value: '', label: 'Default' },
+		...GEMINI_VOICES.map((v) => ({ value: v.name, label: `${v.name} — ${v.tone}` }))
+	];
 
 	const AI_REASONING_OPTIONS: LabeledSelectOption[] = [
 		{ value: 'none', label: 'Off' },
@@ -25,6 +31,7 @@
 			reasoning: a.reasoning,
 			voice_enabled: a.voice_enabled,
 			voice_model: a.voice_model ?? '',
+			voice_name: a.voice_name ?? '',
 			has_api_key: a.has_api_key
 		};
 	}
@@ -53,7 +60,8 @@
 					system_prompt: ai.system_prompt.trim() === '' ? null : ai.system_prompt.trim(),
 					reasoning: ai.reasoning,
 					voice_enabled: ai.voice_enabled,
-					voice_model: ai.voice_model.trim() === '' ? null : ai.voice_model.trim()
+					voice_model: ai.voice_model.trim() === '' ? null : ai.voice_model.trim(),
+					voice_name: ai.voice_name.trim() === '' ? null : ai.voice_name.trim()
 				})
 			});
 			const d = await res.json();
@@ -179,6 +187,19 @@
 					placeholder="gemini-3.1-flash-live-preview"
 					class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
 				/>
+			</div>
+			<div class="min-w-0">
+				<LabeledSelect
+					id="ai-voice-name"
+					label="Voice"
+					labelIconClass="fas fa-user-astronaut text-violet-400"
+					labelTone="cyan"
+					appearance="dashboard"
+					options={AI_VOICE_OPTIONS}
+					bind:value={ai.voice_name}
+					ariaLabel="AI voice"
+				/>
+				<p class="text-ash-500 mt-1 text-xs">Preview every voice in Google AI Studio before picking.</p>
 			</div>
 		</div>
 

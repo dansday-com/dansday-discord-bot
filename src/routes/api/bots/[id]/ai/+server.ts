@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db, { botAiFromDbRow, BOT_AI_REASONING_LEVELS, type BotAiInput, type BotAiReasoning } from '$lib/database.js';
 import { accountOwnsBot } from '$lib/frontend/panelServer.js';
+import { GEMINI_VOICE_NAMES } from '$lib/geminiVoices.js';
 
 const MAX_MODEL_LENGTH = 191;
 const MAX_SYSTEM_PROMPT_LENGTH = 8000;
@@ -70,9 +71,13 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 
 	const voice_enabled = body.voice_enabled === true;
 	const voice_model = body.voice_model === null || body.voice_model === undefined ? null : String(body.voice_model).trim() || null;
+	const voice_name = body.voice_name === null || body.voice_name === undefined ? null : String(body.voice_name).trim() || null;
 
 	if (voice_model && voice_model.length > MAX_MODEL_LENGTH) {
 		return json({ success: false, error: `Voice model name must be at most ${MAX_MODEL_LENGTH} characters` }, { status: 400 });
+	}
+	if (voice_name && !GEMINI_VOICE_NAMES.includes(voice_name)) {
+		return json({ success: false, error: 'Unknown voice name' }, { status: 400 });
 	}
 	if (voice_enabled && (!api_key || !voice_model)) {
 		return json({ success: false, error: 'API key and voice model are required to enable voice AI' }, { status: 400 });
@@ -94,6 +99,6 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 		return json({ success: false, error: 'API URL, API key, and model are required to enable AI chat' }, { status: 400 });
 	}
 
-	const saved = await db.upsertBotAi(botId, { enabled, api_url, api_key, model, system_prompt, reasoning, voice_enabled, voice_model });
+	const saved = await db.upsertBotAi(botId, { enabled, api_url, api_key, model, system_prompt, reasoning, voice_enabled, voice_model, voice_name });
 	return json({ success: true, ai: maskConfig(botAiFromDbRow(saved)) });
 };

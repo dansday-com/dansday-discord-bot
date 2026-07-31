@@ -159,7 +159,12 @@
 			req: 'optional',
 			desc: 'Lets members ask the bot in chat to join their voice channel and talk out loud. Needs AI chat on, a Google AI key, and a voice model. Requires Redis.'
 		},
-		{ label: 'Voice model', req: 'optional', desc: 'A Gemini Live model, for example gemini-3.1-flash-live-preview. Only needed when voice AI is on.' }
+		{ label: 'Voice model', req: 'optional', desc: 'A Gemini Live model, for example gemini-3.1-flash-live-preview. Only needed when voice AI is on.' },
+		{
+			label: 'Voice',
+			req: 'optional',
+			desc: 'Which of the 30 Gemini voices the bot speaks with. Listen to them in Google AI Studio first. Leave on Default to use the model default.'
+		}
 	];
 
 	const aiVoiceRules = [

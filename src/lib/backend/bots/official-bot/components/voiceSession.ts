@@ -30,11 +30,12 @@ const VOICE_RMS_THRESHOLD = 900;
 const VOICE_RMS_RELEASE = 550;
 const VOICE_ONSET_FRAMES = 3;
 const VOICE_HANG_MS = 500;
+const SPEECH_RECENT_MS = 3_000;
 const NOISE_FLOOR_ALPHA = 0.02;
 const NOISE_FLOOR_MARGIN = 2.2;
 const MAX_TURN_MS = 20_000;
-const WAKE_TURN_MS = 2_500;
-const WAKE_TURN_GAP_MS = 400;
+const WAKE_TURN_MS = 4_000;
+const WAKE_TURN_GAP_MS = 250;
 const CLOSE_WAIT_MS = 3000;
 const MAX_QUEUED_CHUNKS = 60;
 
@@ -87,7 +88,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	const genai = new GoogleGenAI({ apiKey: config.api_key });
 	const systemInstruction = (config.system_prompt ?? '').replace(/\{\{today\}\}/g, new Date().toISOString().slice(0, 10));
 
-	let connection = null;
+	let connection: any = null;
 	let player = null;
 	let outputStream = null;
 	let session = null;
@@ -103,6 +104,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	let pending = EMPTY;
 	let pendingOffset = 0;
 	let lastAudioAt = 0;
+	let wasPlaying = false;
 	let turnOpen = false;
 	let turnOpenedAt = 0;
 	let turnCooldownUntil = 0;
@@ -112,6 +114,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	let leaveRequested = false;
 	let lastSpeakerId = '';
 	let lockedSpeakerId = '';
+	let turnOwnerId = '';
 	let addressedUntil = 0;
 	let selfMuted = false;
 	let muteTimer: ReturnType<typeof setTimeout> | null = null;
@@ -227,7 +230,8 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	}
 
 	function keepAliveFromLockedSpeaker() {
-		if (!lockedSpeakerId || !isAddressed() || goodbyePending) return;
+		if (!lockedSpeakerId || goodbyePending) return;
+		if (!isAddressed()) logger.log(`🔁 Voice AI re-opening window, ${nameOf(lockedSpeakerId)} is still talking`);
 		extendAddressedWindow();
 	}
 
@@ -258,14 +262,18 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 	function announceMute() {
 		muteTimer = null;
-		if (closed || goodbyePending || isAddressed() || selfMuted || muteAnnounced) return;
+		if (closed || goodbyePending || selfMuted || muteAnnounced) return;
 
 		if (botIsSpeaking()) {
-			muteTimer = setTimeout(announceMute, SPEAK_GUARD_MS);
+			extendAddressedWindow();
 			return;
 		}
 
-		releaseSpeakerLock();
+		if (isAddressed()) {
+			muteTimer = setTimeout(announceMute, Math.max(SPEAK_GUARD_MS, addressedUntil - Date.now()));
+			return;
+		}
+
 		muteAnnounced = true;
 		logger.log('🔕 Voice AI announcing mute before going quiet');
 		sendSystemNote(
@@ -273,11 +281,12 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		);
 		muteTimer = setTimeout(function settleMute() {
 			muteTimer = null;
-			if (isAddressed()) return;
-			if (botIsSpeaking()) {
+			if (closed || selfMuted) return;
+			if (botIsSpeaking() || isAddressed()) {
 				muteTimer = setTimeout(settleMute, SPEAK_GUARD_MS);
 				return;
 			}
+			releaseSpeakerLock();
 			setSelfMute(true);
 		}, MUTE_NOTICE_GRACE_MS);
 	}
@@ -390,6 +399,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	function closeTurn() {
 		if (!turnOpen || !session) return;
 		turnOpen = false;
+		turnOwnerId = '';
 		wakeBuffer = '';
 		if (!isAddressed()) turnCooldownUntil = Date.now() + WAKE_TURN_GAP_MS;
 		if (turnTimer) {
@@ -404,7 +414,21 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 	function anyoneSpeaking() {
 		for (const [userId, vad] of voiceState) {
-			if (vad.active && micIsOpenFor(userId)) return true;
+			if (vad.active && micIsOpenFor(userId) && (!turnOwnerId || userId === turnOwnerId)) return true;
+		}
+		return false;
+	}
+
+	function claimTurnFor(userId) {
+		if (!isAddressed()) return true;
+		if (!turnOwnerId || turnOwnerId === userId) {
+			turnOwnerId = userId;
+			return true;
+		}
+		const owner = voiceState.get(turnOwnerId);
+		if (!owner?.active) {
+			turnOwnerId = userId;
+			return true;
 		}
 		return false;
 	}
@@ -412,13 +436,17 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	function bumpTurn() {
 		if (turnTimer) clearTimeout(turnTimer);
 		turnTimer = setTimeout(function settle() {
-			const cap = isAddressed() ? MAX_TURN_MS : WAKE_TURN_MS;
-			if (anyoneSpeaking() && Date.now() - turnOpenedAt < cap) {
+			const addressed = isAddressed();
+			const cap = addressed ? MAX_TURN_MS : WAKE_TURN_MS;
+			const elapsed = Date.now() - turnOpenedAt;
+
+			if (anyoneSpeaking() && elapsed < cap) {
 				turnTimer = setTimeout(settle, TURN_SILENCE_MS);
 				return;
 			}
-			if (anyoneSpeaking() && isAddressed()) {
-				logger.log(`⚠️ Voice AI forcing turn end after ${MAX_TURN_MS / 1000}s of continuous audio`);
+
+			if (anyoneSpeaking()) {
+				if (addressed) logger.log(`⚠️ Voice AI forcing turn end after ${MAX_TURN_MS / 1000}s of continuous audio`);
 				for (const [userId, vad] of voiceState) {
 					if (!micIsOpenFor(userId)) continue;
 					vad.active = false;
@@ -477,8 +505,16 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 		stats.bytesOut += filled;
 		stats.framesOut++;
-		if (filled === 0) stats.silenceOut++;
-		else lastAudioAt = Date.now();
+		if (filled === 0) {
+			stats.silenceOut++;
+			if (wasPlaying) {
+				wasPlaying = false;
+				extendWhileReplying();
+			}
+		} else {
+			lastAudioAt = Date.now();
+			wasPlaying = true;
+		}
 		if (stats.framesOut % 500 === 0) {
 			logger.log(
 				`🔈 Voice AI ticker frames=${stats.framesOut} silence=${stats.silenceOut} noise=${stats.framesNoise} audioBytes=${stats.bytesOut} queued=${playbackQueue.length}`
@@ -558,7 +594,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 							{
 								name: 'i_was_addressed',
 								description:
-									'Call this the moment someone in the voice channel speaks TO YOU: says your name, greets you, asks you a question, or replies to something you said. Speech-to-text often mangles your name into similar-sounding real words, so judge by sound and intent, not exact spelling. If it plausibly sounds like your name, call this. Call it BEFORE answering. Do not call it when people are only talking to each other.',
+									'Call this the moment someone in the voice channel speaks TO YOU: says your name, greets you, asks you a question, or replies to something you said. Several people often talk at once and their voices arrive mixed together — scan the WHOLE audio for your name even when it is faint or overlapped by louder speakers, and ignore the rest of the crosstalk. Speech-to-text often mangles your name into similar-sounding real words, so judge by sound and intent, not exact spelling. If any part of it plausibly sounds like your name, call this. Call it BEFORE answering. Do not call it when people are only talking to each other.',
 								parameters: { type: Type.OBJECT, properties: {} }
 							},
 							{
@@ -639,6 +675,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		logger.log(`🔊 Voice AI reconnecting (attempt=${stats.reconnects} resume=${resumeHandle ? 'yes' : 'no'})`);
 
 		turnOpen = false;
+		turnOwnerId = '';
 		if (turnTimer) {
 			clearTimeout(turnTimer);
 			turnTimer = null;
@@ -693,11 +730,11 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		const opus = connection.receiver.subscribe(userId, { end: { behavior: EndBehaviorType.Manual } });
 		const decoder = new prism.opus.Decoder({ rate: DISCORD_RATE, channels: 2, frameSize: 960 });
 
-		const vad = { active: false, onset: 0, lastVoiceAt: 0, floor: 0, frames: 0 };
+		const vad = { active: false, onset: 0, lastVoiceAt: 0, floor: 0, frames: 0, startedAt: 0 };
 		voiceState.set(userId, vad);
 
 		decoder.on('data', (pcm) => {
-			if (closed || !session || goodbyePending || leaveRequested || botIsSpeaking()) {
+			if (closed || !session || goodbyePending || leaveRequested) {
 				stats.framesDropped++;
 				return;
 			}
@@ -705,13 +742,21 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 			const mono16k = downmixAndResample(pcm, DISCORD_RATE, INPUT_RATE, 2, 1);
 			const rms = rmsOf(mono16k);
 
+			if (botIsSpeaking()) {
+				stats.framesDropped++;
+				if (userId === lockedSpeakerId && rms >= VOICE_RMS_THRESHOLD) keepAliveFromLockedSpeaker();
+				return;
+			}
+
 			vad.frames++;
 			if (!vad.active) vad.floor = vad.floor ? vad.floor + NOISE_FLOOR_ALPHA * (rms - vad.floor) : rms;
 
 			const openAt = Math.max(VOICE_RMS_THRESHOLD, vad.floor * NOISE_FLOOR_MARGIN);
 			const now = Date.now();
 
-			if (rms >= openAt) {
+			const discordSpeaking = connection.receiver.speaking.users.has(userId);
+
+			if (rms >= openAt && discordSpeaking) {
 				vad.onset++;
 				vad.lastVoiceAt = now;
 			} else if (vad.active && rms >= VOICE_RMS_RELEASE) {
@@ -722,6 +767,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 			if (!vad.active && vad.onset >= VOICE_ONSET_FRAMES) {
 				vad.active = true;
+				vad.startedAt = now;
 				logger.log(`🗣️ Voice AI speech from ${nameOf(userId)} (rms=${Math.round(rms)} floor=${Math.round(vad.floor)})`);
 			}
 
@@ -729,6 +775,8 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 				vad.active = false;
 				vad.onset = 0;
 			}
+
+			if (userId === lockedSpeakerId && now - vad.lastVoiceAt < SPEECH_RECENT_MS) keepAliveFromLockedSpeaker();
 
 			if (!vad.active) {
 				stats.framesNoise++;
@@ -743,17 +791,23 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 				return;
 			}
 
-			if (userId === lockedSpeakerId) keepAliveFromLockedSpeaker();
-
 			if (!turnOpen && now < turnCooldownUntil) {
 				stats.framesNoise++;
+				return;
+			}
+
+			if (!claimTurnFor(userId)) {
+				stats.framesOffTurn++;
+				if (stats.framesOffTurn % 250 === 1) {
+					logger.log(`⏳ Voice AI deferring ${nameOf(userId)} until ${nameOf(turnOwnerId)} finishes this turn`);
+				}
 				return;
 			}
 
 			try {
 				if (userId !== lastSpeakerId) {
 					lastSpeakerId = userId;
-					sendSystemNote(`[System] ${nameOf(userId)} is now speaking.`);
+					if (isAddressed()) sendSystemNote(`[System] ${nameOf(userId)} is now speaking.`);
 				}
 				openTurn();
 				session.sendRealtimeInput({ audio: { data: mono16k.toString('base64'), mimeType: `audio/pcm;rate=${INPUT_RATE}` } });
@@ -778,6 +832,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 	function unsubscribeUser(userId) {
 		voiceState.delete(userId);
+		if (turnOwnerId === userId) turnOwnerId = '';
 		const entry = speaking.get(userId);
 		if (!entry) return;
 		entry.opus.destroy();

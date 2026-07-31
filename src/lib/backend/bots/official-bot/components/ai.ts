@@ -84,10 +84,15 @@ async function executeVoiceTool(name, message, botId) {
 		if (!state) return finalToolResult({ ok: false, reason: 'not_in_voice_channel' });
 
 		if (state.inviterId && message.author.id !== state.inviterId) {
+			const inviter = message.guild?.members?.cache?.get(state.inviterId);
+			const inviterName = inviter?.displayName ?? inviter?.user?.username ?? null;
+
 			return finalToolResult({
 				ok: false,
-				reason: 'only_the_member_who_invited_you_can_make_you_leave',
-				inviter_id: state.inviterId
+				reason: 'not_the_inviter',
+				inviter_id: state.inviterId,
+				inviter_name: inviterName,
+				tell_the_user: `You are staying in the voice channel. Tell them plainly that they are not the one who invited you, so they cannot make you leave — only ${inviterName ? inviterName : 'the member who invited you'} can. Keep it to one short, friendly sentence.`
 			});
 		}
 

@@ -49,29 +49,8 @@ const WAKE_BUFFER_CHARS = 160;
 const MUTE_NOTICE_GRACE_MS = 6_000;
 const MUTE_NOTICE_MAX_WAIT_MS = 15_000;
 const NAME_CORROBORATE_MS = 8_000;
-const UNSPACED_SCRIPT = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Thai}]/u;
-const ADDRESS_LEAD_WORDS = new Set([
-	'hi',
-	'hey',
-	'hai',
-	'halo',
-	'hello',
-	'helo',
-	'yo',
-	'ok',
-	'okay',
-	'oke',
-	'okey',
-	'eh',
-	'woi',
-	'oi',
-	'hoi',
-	'bang',
-	'kak',
-	'mas',
-	'tanya',
-	'coba'
-]);
+const WAKE_LEADS = ['hi', 'hai', 'hey', 'hei', 'hello', 'helo', 'halo', 'hallo', 'yo', 'oi', 'woi', 'hoi'];
+const WAKE_TARGETS = ['ai', 'bot', 'a i', 'ay', 'bott', 'bod'];
 const HEARTBEAT_MS = (VOICE_STATE_TTL_SEC / 2) * 1000;
 
 const IDLE_GOODBYE_PROMPT =
@@ -161,95 +140,14 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 			.trim();
 	}
 
-	function displayName() {
-		const guild = client.guilds.cache.get(guildId);
-		return guild?.members?.me?.displayName || client.user?.username || 'me';
-	}
-
 	function refreshWakeWords() {
-		const guild = client.guilds.cache.get(guildId);
-		const raw = [guild?.members?.me?.displayName, client.user?.username, client.user?.globalName];
-
 		const out = new Set();
-		for (const entry of raw) {
-			const name = normalizeSpeech(String(entry ?? '').replace(/[<>@!&#]/g, ' '));
-			if (!name) continue;
-
-			out.add(name);
-			out.add(name.replace(/\s+/g, ''));
-		}
-
-		wakeWords = [...out].filter((w) => w.length >= 2).sort((a, b) => b.length - a.length);
-	}
-
-	function editDistance(a, b) {
-		if (a === b) return 0;
-		if (!a.length || !b.length) return Math.max(a.length, b.length);
-
-		let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
-		for (let i = 1; i <= a.length; i++) {
-			const row = [i];
-			for (let j = 1; j <= b.length; j++) {
-				const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-				row[j] = Math.min(prev[j] + 1, row[j - 1] + 1, prev[j - 1] + cost);
-			}
-			prev = row;
-		}
-		return prev[b.length];
-	}
-
-	function allowedSlack(len) {
-		if (len <= 6) return 0;
-		if (len <= 10) return 1;
-		return 2;
-	}
-
-	function fuzzyHit(tokens, needle) {
-		const target = needle.replace(/\s+/g, '');
-		if (!target) return false;
-
-		const span = needle.trim().split(' ').length;
-		const slack = allowedSlack(target.length);
-
-		for (let i = 0; i < tokens.length; i++) {
-			for (let take = 1; take <= span + 1 && i + take <= tokens.length; take++) {
-				const candidate = tokens.slice(i, i + take).join('');
-				if (candidate === target) return true;
-				if (!slack || take > span) continue;
-				if (Math.abs(candidate.length - target.length) > slack) continue;
-				if (editDistance(candidate, target) <= slack) return true;
+		for (const lead of WAKE_LEADS) {
+			for (const target of WAKE_TARGETS) {
+				out.add(`${lead} ${target}`);
 			}
 		}
-		return false;
-	}
-
-	function nameIndexIn(tokens, word) {
-		if (UNSPACED_SCRIPT.test(word)) {
-			const joined = tokens.join(' ');
-			return joined.includes(word) ? 0 : -1;
-		}
-
-		const target = word.replace(/\s+/g, '');
-		const span = word.trim().split(' ').length;
-		const slack = allowedSlack(target.length);
-
-		for (let i = 0; i < tokens.length; i++) {
-			for (let take = 1; take <= span && i + take <= tokens.length; take++) {
-				const candidate = tokens.slice(i, i + take).join('');
-				if (candidate === target) return i;
-				if (!slack) continue;
-				if (Math.abs(candidate.length - target.length) > slack) continue;
-				if (editDistance(candidate, target) <= slack) return i;
-			}
-		}
-		return -1;
-	}
-
-	function nameAppearsIn(text) {
-		const clean = normalizeSpeech(text);
-		if (!clean) return false;
-		const tokens = clean.split(' ');
-		return wakeWords.some((word) => nameIndexIn(tokens, word) !== -1);
+		wakeWords = [...out];
 	}
 
 	function heardWakeWord(text) {
@@ -257,13 +155,16 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		if (!clean) return false;
 		const tokens = clean.split(' ');
 
-		for (const word of wakeWords) {
-			const at = nameIndexIn(tokens, word);
-			if (at === -1) continue;
-			if (at === 0) return true;
-			if (ADDRESS_LEAD_WORDS.has(tokens[at - 1])) return true;
+		for (let i = 0; i < tokens.length - 1; i++) {
+			if (!WAKE_LEADS.includes(tokens[i])) continue;
+			if (WAKE_TARGETS.includes(tokens[i + 1])) return true;
+			if (WAKE_TARGETS.includes(`${tokens[i + 1]} ${tokens[i + 2] ?? ''}`.trim())) return true;
 		}
 		return false;
+	}
+
+	function nameAppearsIn(text) {
+		return heardWakeWord(text);
 	}
 
 	function isAddressed() {
@@ -384,7 +285,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		goodbyeAllowedUntil = announcedAt + MUTE_NOTICE_MAX_WAIT_MS;
 		logger.log('🔕 Voice AI announcing mute before going quiet');
 		sendSystemNote(
-			`Say one short sentence out loud now: it has gone quiet, so you are muting yourself, and they just need to call your name (${displayName()}) whenever they want you again. One sentence, casual, no explanation.`
+			`Say one short sentence out loud now: it has gone quiet, so you are muting yourself, and they just need to say "hi AI" or "hi bot" whenever they want you again. One sentence, casual, no explanation.`
 		);
 		muteTimer = setTimeout(function settleMute() {
 			muteTimer = null;
@@ -736,7 +637,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 							{
 								name: 'i_was_addressed',
 								description:
-									'Call this ONLY when someone clearly calls you by name to get your attention, like "hi <your name>" or "<your name>, can you ...". Your name must actually be spoken. Speech-to-text may mangle it slightly, so a close-sounding version of your name still counts — but a word that merely rhymes with it does not. Do NOT call this for: people talking to each other, someone saying your name while discussing you in third person, general chatter, greetings with no name, or a question thrown into the room with no name attached. When in doubt, do NOT call it and stay silent. Call it BEFORE answering.',
+									'Call this ONLY when someone says a greeting immediately followed by "AI" or "bot" — for example "hi AI", "hi bot", "hello AI", "hello bot", "hey bot", "halo AI". Those exact wake phrases are the only thing that wakes you. Do NOT call this for: a greeting on its own, the word "AI" or "bot" on its own, people talking to each other, general chatter, or any question with no wake phrase in front of it. When in doubt, do NOT call it and stay silent. Call it BEFORE answering.',
 								parameters: { type: Type.OBJECT, properties: {} }
 							},
 							{
@@ -1072,7 +973,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		setSelfMute(true);
 		announceRoster();
 		sendSystemNote(
-			`[System] Your name here is "${displayName()}". You only wake up when someone actually calls you by that name, for example "hi ${displayName()}" or "${displayName()}, ...". Speech-to-text may mangle the name slightly and that still counts, but a merely similar-sounding word does not. Everything else in this channel — people chatting with each other, questions with no name attached, music from other bots — you ignore completely and call nothing. When unsure, stay silent. Do not read this note aloud.`
+			`[System] You only wake up when someone says "hi AI", "hi bot", "hello AI", "hello bot" or a close variant — a greeting immediately followed by "AI" or "bot". Nothing else counts. Everything else in this channel — people chatting with each other, questions with no greeting attached, your name being mentioned, music from other bots — you ignore completely and call nothing. When unsure, stay silent. Do not read this note aloud.`
 		);
 		logger.log(`👥 Voice AI participants: ${rosterText()} | wake=${wakeWords.join('/') || 'none'}`);
 

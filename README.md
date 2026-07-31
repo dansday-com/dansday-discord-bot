@@ -64,7 +64,7 @@ Open source under the MIT license.
 
 - **AI chat** - Mention the bot to talk to it, or reply to one of its messages to continue without mentioning again. Every member keeps a private conversation per server, with older turns summarized as they age out. Configured per bot in the panel: API URL, key, model, reasoning effort and system prompt. Works with any OpenAI-compatible endpoint (Gemini, OpenAI, GLM, Qwen, DeepSeek, local models). Replies over Discord's limit are split across messages.
 - **Voice AI** - Members ask the bot in chat to join their voice channel, then talk to it out loud via the Gemini Live API. One call at a time; it excuses itself and leaves when nobody has called it for a few minutes, or when the member who invited it leaves. Requires Redis.
-  - 🗣️ **Say "hi AI" or "hi bot"** - A greeting followed by **AI** or **bot** is the only thing that wakes it, so a busy channel never sets it off. Common variants ("hello bot", "hey AI", "halo bot") all work.
+  - 🗣️ **Say "hello AI" or "hello bot"** - That exact wake phrase is the only thing that wakes it, so a busy channel never sets it off. "Halo" works too, for Indonesian speakers.
   - 🔒 **One speaker at a time** - Whoever wakes it holds the conversation; everyone else's audio is dropped so crosstalk cannot derail the answer. Saying you are done releases it immediately for the next person.
   - 🔇 **Mutes when idle** - It says one short line, then mutes itself, so the mute icon shows at a glance whether it is listening.
   - 🎚️ **Noise filtering** - Per-speaker voice detection calibrates to each member's mic, so background noise, keyboards and open mics do not hold the conversation open.

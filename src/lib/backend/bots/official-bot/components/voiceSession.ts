@@ -49,7 +49,7 @@ const WAKE_BUFFER_CHARS = 160;
 const MUTE_NOTICE_GRACE_MS = 6_000;
 const MUTE_NOTICE_MAX_WAIT_MS = 15_000;
 const NAME_CORROBORATE_MS = 8_000;
-const WAKE_LEADS = ['hi', 'hai', 'hey', 'hei', 'hello', 'helo', 'halo', 'hallo', 'yo', 'oi', 'woi', 'hoi'];
+const WAKE_LEADS = ['hello', 'helo', 'hallo', 'halo'];
 const WAKE_TARGETS = ['ai', 'bot', 'a i', 'ay', 'bott', 'bod'];
 const HEARTBEAT_MS = (VOICE_STATE_TTL_SEC / 2) * 1000;
 
@@ -285,7 +285,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		goodbyeAllowedUntil = announcedAt + MUTE_NOTICE_MAX_WAIT_MS;
 		logger.log('🔕 Voice AI announcing mute before going quiet');
 		sendSystemNote(
-			`Say one short sentence out loud now: it has gone quiet, so you are muting yourself, and they just need to say "hi AI" or "hi bot" whenever they want you again. One sentence, casual, no explanation.`
+			`Say one short sentence out loud now: it has gone quiet, so you are muting yourself, and they just need to say "hello AI" or "hello bot" whenever they want you again. One sentence, casual, no explanation.`
 		);
 		muteTimer = setTimeout(function settleMute() {
 			muteTimer = null;
@@ -593,6 +593,11 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		}
 
 		if (calls.some((call) => call.name === 'conversation_done')) {
+			if (!isAddressed()) {
+				logger.log('🚫 Voice AI ignoring done request while asleep');
+				return;
+			}
+
 			if (lockedSpeakerId && lastSpeakerId && lastSpeakerId !== lockedSpeakerId) {
 				logger.log(`🚫 Voice AI ignoring done request from ${nameOf(lastSpeakerId)} (talking with ${nameOf(lockedSpeakerId)})`);
 			} else {
@@ -602,6 +607,11 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		}
 
 		if (calls.some((call) => call.name === 'leave_voice')) {
+			if (!isAddressed()) {
+				logger.log('🚫 Voice AI ignoring leave request while asleep (nobody said the wake phrase)');
+				return;
+			}
+
 			if (lastSpeakerId && lastSpeakerId !== inviterId) {
 				logger.log(`🚫 Voice AI ignoring leave request from ${nameOf(lastSpeakerId)} (only ${nameOf(inviterId)} can)`);
 				sendSystemNote(
@@ -637,7 +647,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 							{
 								name: 'i_was_addressed',
 								description:
-									'Call this ONLY when someone says a greeting immediately followed by "AI" or "bot" — for example "hi AI", "hi bot", "hello AI", "hello bot", "hey bot", "halo AI". Those exact wake phrases are the only thing that wakes you. Do NOT call this for: a greeting on its own, the word "AI" or "bot" on its own, people talking to each other, general chatter, or any question with no wake phrase in front of it. When in doubt, do NOT call it and stay silent. Call it BEFORE answering.',
+									'Call this ONLY when someone says "hello AI" or "hello bot" — the word "hello" (or "halo") immediately followed by "AI" or "bot". That exact wake phrase is the only thing that wakes you. Do NOT call this for other greetings like "hi", "hey" or "yo", for "hello" on its own, for the word "AI" or "bot" on its own, for people talking to each other, for general chatter, or for any question with no wake phrase in front of it. When in doubt, do NOT call it and stay silent. Call it BEFORE answering.',
 								parameters: { type: Type.OBJECT, properties: {} }
 							},
 							{
@@ -649,7 +659,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 							{
 								name: 'leave_voice',
 								description:
-									'Leave the voice channel and end the call. Call this when someone asks you to leave, disconnect or hang up, or says a real farewell meant to end the conversation ("goodbye", "see you later", "bye, talk to you tomorrow"). Say your own short goodbye out loud first, then call this. Do NOT call it for filler like "ok", "thanks", "alright", "hmm", for a pause in conversation, or when people say bye to each other rather than to you.',
+									'Leave the voice channel and end the call. Only usable while you are awake — if nobody has said the wake phrase, you are asleep and must never call this. Call it when the person talking to you asks you to leave, disconnect or hang up, or says a real farewell meant to end the conversation ("goodbye", "see you later", "bye, talk to you tomorrow"). Say your own short goodbye out loud first, then call this. Do NOT call it for filler like "ok", "thanks", "alright", "hmm", for a pause in conversation, or when people say bye to each other rather than to you.',
 								parameters: { type: Type.OBJECT, properties: {} }
 							}
 						]
@@ -973,7 +983,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		setSelfMute(true);
 		announceRoster();
 		sendSystemNote(
-			`[System] You only wake up when someone says "hi AI", "hi bot", "hello AI", "hello bot" or a close variant — a greeting immediately followed by "AI" or "bot". Nothing else counts. Everything else in this channel — people chatting with each other, questions with no greeting attached, your name being mentioned, music from other bots — you ignore completely and call nothing. When unsure, stay silent. Do not read this note aloud.`
+			`[System] You only wake up when someone says "hello AI" or "hello bot" — the word "hello" (or "halo") immediately followed by "AI" or "bot". Nothing else counts, not "hi", not "hey", not your name. Everything else in this channel — people chatting with each other, questions with no wake phrase attached, music from other bots — you ignore completely and call nothing. When unsure, stay silent. Do not read this note aloud.`
 		);
 		logger.log(`👥 Voice AI participants: ${rosterText()} | wake=${wakeWords.join('/') || 'none'}`);
 

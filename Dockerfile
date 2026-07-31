@@ -4,6 +4,8 @@ WORKDIR /app
 
 ENV NODE_OPTIONS=""
 
+RUN apk add --no-cache python3 make g++ libtool automake autoconf
+
 COPY package.json package-lock.json ./
 RUN npm ci --include=dev
 
@@ -19,7 +21,7 @@ FROM node:25.8.1-alpine AS runner
 
 WORKDIR /app
 
-RUN apk add --no-cache curl
+RUN apk add --no-cache curl ffmpeg opus libstdc++
 
 COPY --from=builder /app .
 

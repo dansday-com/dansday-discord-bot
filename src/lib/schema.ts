@@ -73,6 +73,44 @@ export const botStatus = mysqlTable(
 	(t) => [uniqueIndex('uq_bot_status_bot_id').on(t.bot_id)]
 );
 
+export const botAi = mysqlTable(
+	'bot_ai',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		bot_id: int('bot_id')
+			.notNull()
+			.references(() => bots.id, { onDelete: 'cascade' }),
+		enabled: boolean('enabled').notNull().default(false),
+		api_url: text('api_url'),
+		api_key: text('api_key'),
+		model: varchar('model', { length: 191 }),
+		system_prompt: text('system_prompt'),
+		reasoning: mysqlEnum('reasoning', ['none', 'low', 'medium', 'high', 'xhigh']).notNull().default('none'),
+		voice_enabled: boolean('voice_enabled').notNull().default(false),
+		voice_model: varchar('voice_model', { length: 191 }),
+		voice_name: varchar('voice_name', { length: 64 }),
+		created_at: datetime('created_at').notNull(),
+		updated_at: datetime('updated_at').notNull()
+	},
+	(t) => [uniqueIndex('uq_bot_ai_bot_id').on(t.bot_id)]
+);
+
+export const botAiMessages = mysqlTable(
+	'bot_ai_messages',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		bot_id: int('bot_id')
+			.notNull()
+			.references(() => bots.id, { onDelete: 'cascade' }),
+		guild_discord_id: varchar('guild_discord_id', { length: 32 }).notNull(),
+		member_discord_id: varchar('member_discord_id', { length: 32 }).notNull(),
+		role: mysqlEnum('role', ['user', 'assistant']).notNull(),
+		content: text('content').notNull(),
+		created_at: datetime('created_at').notNull()
+	},
+	(t) => [index('idx_bot_ai_messages_session').on(t.bot_id, t.guild_discord_id, t.member_discord_id, t.id)]
+);
+
 export const servers = mysqlTable(
 	'servers',
 	{

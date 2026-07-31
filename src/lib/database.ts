@@ -362,6 +362,122 @@ export async function upsertBotStatus(botId: number, data: BotStatusInput) {
 	return getBotStatusByBotId(botId);
 }
 
+export const BOT_AI_REASONING_LEVELS = ['none', 'low', 'medium', 'high', 'xhigh'] as const;
+export type BotAiReasoning = (typeof BOT_AI_REASONING_LEVELS)[number];
+
+export interface BotAiInput {
+	enabled: boolean;
+	api_url: string | null;
+	api_key: string | null;
+	model: string | null;
+	system_prompt: string | null;
+	reasoning: BotAiReasoning;
+	voice_enabled: boolean;
+	voice_model: string | null;
+	voice_name: string | null;
+}
+
+export const DEFAULT_BOT_AI: BotAiInput = {
+	enabled: false,
+	api_url: null,
+	api_key: null,
+	model: null,
+	system_prompt: null,
+	reasoning: 'none',
+	voice_enabled: false,
+	voice_model: null,
+	voice_name: null
+};
+
+export function botAiFromDbRow(row: any): BotAiInput {
+	if (!row) return { ...DEFAULT_BOT_AI };
+	return {
+		enabled: row.enabled === true || row.enabled === 1,
+		api_url: row.api_url?.trim() ? row.api_url.trim() : null,
+		api_key: row.api_key?.trim() ? row.api_key.trim() : null,
+		model: row.model?.trim() ? row.model.trim() : null,
+		system_prompt: row.system_prompt?.trim() ? row.system_prompt.trim() : null,
+		reasoning: BOT_AI_REASONING_LEVELS.includes(row.reasoning) ? row.reasoning : 'none',
+		voice_enabled: row.voice_enabled === true || row.voice_enabled === 1,
+		voice_model: row.voice_model?.trim() ? row.voice_model.trim() : null,
+		voice_name: row.voice_name?.trim() ? row.voice_name.trim() : null
+	};
+}
+
+export async function getBotAiByBotId(botId: number) {
+	await initializeDatabase();
+	const rows = await db
+		.select()
+		.from(schema.botAi)
+		.where(eq(schema.botAi.bot_id, Number(botId)))
+		.limit(1);
+	return rows[0] ?? null;
+}
+
+export async function upsertBotAi(botId: number, data: BotAiInput) {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	const values = {
+		enabled: data.enabled,
+		api_url: data.api_url?.trim() ? data.api_url.trim() : null,
+		api_key: data.api_key?.trim() ? data.api_key.trim() : null,
+		model: data.model?.trim() ? data.model.trim() : null,
+		system_prompt: data.system_prompt?.trim() ? data.system_prompt.trim() : null,
+		reasoning: data.reasoning,
+		voice_enabled: data.voice_enabled,
+		voice_model: data.voice_model?.trim() ? data.voice_model.trim() : null,
+		voice_name: data.voice_name?.trim() ? data.voice_name.trim() : null
+	};
+	await db
+		.insert(schema.botAi)
+		.values({ bot_id: botId, ...values, created_at: now as any, updated_at: now as any })
+		.onDuplicateKeyUpdate({ set: { ...values, updated_at: now as any } });
+	return getBotAiByBotId(botId);
+}
+
+export async function getBotAiSession(botId: number, guildDiscordId: string, memberDiscordId: string, limit = 20) {
+	await initializeDatabase();
+	const rows = await db
+		.select()
+		.from(schema.botAiMessages)
+		.where(
+			and(
+				eq(schema.botAiMessages.bot_id, Number(botId)),
+				eq(schema.botAiMessages.guild_discord_id, String(guildDiscordId)),
+				eq(schema.botAiMessages.member_discord_id, String(memberDiscordId))
+			)
+		)
+		.orderBy(desc(schema.botAiMessages.id))
+		.limit(limit);
+	return rows.reverse();
+}
+
+export async function appendBotAiMessage(botId: number, guildDiscordId: string, memberDiscordId: string, role: 'user' | 'assistant', content: string) {
+	await initializeDatabase();
+	await db.insert(schema.botAiMessages).values({
+		bot_id: Number(botId),
+		guild_discord_id: String(guildDiscordId),
+		member_discord_id: String(memberDiscordId),
+		role,
+		content,
+		created_at: toMySQLDateTime() as any
+	});
+}
+
+export async function clearBotAiSession(botId: number, guildDiscordId: string, memberDiscordId: string) {
+	await initializeDatabase();
+	await db
+		.delete(schema.botAiMessages)
+		.where(
+			and(
+				eq(schema.botAiMessages.bot_id, Number(botId)),
+				eq(schema.botAiMessages.guild_discord_id, String(guildDiscordId)),
+				eq(schema.botAiMessages.member_discord_id, String(memberDiscordId))
+			)
+		);
+	return true;
+}
+
 export type ServerBotStatusInput = BotStatusInput;
 
 export const DEFAULT_SERVER_BOT_PRESENCE: ServerBotStatusInput = DEFAULT_BOT_PRESENCE;
@@ -5853,6 +5969,12 @@ export default {
 	deleteBot,
 	getBotStatusByBotId,
 	upsertBotStatus,
+	getBotAiByBotId,
+	upsertBotAi,
+	botAiFromDbRow,
+	getBotAiSession,
+	appendBotAiMessage,
+	clearBotAiSession,
 	getServerBotStatusByServerBotId,
 	upsertServerBotStatus,
 	getServer,

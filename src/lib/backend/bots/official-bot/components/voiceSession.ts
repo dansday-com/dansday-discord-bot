@@ -48,7 +48,6 @@ const WAKE_BUFFER_CHARS = 160;
 const MUTE_NOTICE_GRACE_MS = 6_000;
 const MUTE_NOTICE_MAX_WAIT_MS = 15_000;
 const NAME_CORROBORATE_MS = 8_000;
-const DONE_ACK_MAX_WAIT_MS = 3_000;
 const GENERIC_NAME_WORDS = new Set(['bot', 'ai', 'the', 'official', 'assistant', 'discord']);
 const UNSPACED_SCRIPT = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Thai}]/u;
 const HEARTBEAT_MS = (VOICE_STATE_TTL_SEC / 2) * 1000;
@@ -251,30 +250,14 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		addressedUntil = 0;
 		muteAnnounced = true;
 		if (muteTimer) clearTimeout(muteTimer);
+		muteTimer = null;
 
-		const startedAt = Date.now();
-		const chunksAtStart = stats.chunksPlayed;
+		playbackQueue.length = 0;
+		pending = EMPTY;
+		pendingOffset = 0;
 
-		muteTimer = setTimeout(function settleDone() {
-			muteTimer = null;
-			if (closed || selfMuted) return;
-
-			if (isAddressed()) {
-				logger.log('↩️ Voice AI called again before muting, staying open');
-				return;
-			}
-
-			const spoke = stats.chunksPlayed > chunksAtStart;
-			const waited = Date.now() - startedAt;
-
-			if (botIsSpeaking() || (!spoke && waited < DONE_ACK_MAX_WAIT_MS)) {
-				muteTimer = setTimeout(settleDone, SPEAK_GUARD_MS);
-				return;
-			}
-
-			releaseSpeakerLock();
-			setSelfMute(true);
-		}, SPEAK_GUARD_MS);
+		releaseSpeakerLock();
+		setSelfMute(true);
 	}
 
 	function loudestActiveSpeaker() {
@@ -678,7 +661,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 							{
 								name: 'conversation_done',
 								description:
-									'Stop listening and mute yourself, while STAYING in the voice channel. Call this when the person you are currently talking with signals they are finished with you: "that is all", "done", "thanks, that is it", "mute yourself", "you can rest now", "okay that is enough". Say one very short acknowledgement out loud first, then call this. Do NOT call it for a mid-conversation "ok" or "thanks" that is just filler while they keep talking to you, and do NOT use it when they want you to leave the channel entirely — that is leave_voice.',
+									'Stop listening and mute yourself immediately, while STAYING in the voice channel. Call this when the person you are currently talking with signals they are finished with you: "that is all", "done", "thanks, that is it", "mute yourself", "you can rest now", "okay that is enough". Call it straight away without saying anything back — you go silent the instant you call it, so any words would be cut off. Do NOT call it for a mid-conversation "ok" or "thanks" that is just filler while they keep talking to you, and do NOT use it when they want you to leave the channel entirely — that is leave_voice.',
 								parameters: { type: Type.OBJECT, properties: {} }
 							},
 							{

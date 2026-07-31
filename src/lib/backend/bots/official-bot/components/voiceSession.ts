@@ -27,6 +27,7 @@ const EMPTY = Buffer.alloc(0);
 const SPEAK_GUARD_MS = 400;
 const TURN_SILENCE_MS = 700;
 const VOICE_RMS_THRESHOLD = 900;
+const VOICE_RMS_CEILING = 2_200;
 const VOICE_RMS_RELEASE = 550;
 const VOICE_ONSET_FRAMES = 3;
 const VOICE_HANG_MS = 500;
@@ -831,18 +832,20 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 				return;
 			}
 
-			vad.frames++;
-			if (!vad.active) vad.floor = vad.floor ? vad.floor + NOISE_FLOOR_ALPHA * (rms - vad.floor) : rms;
-
-			const openAt = Math.max(VOICE_RMS_THRESHOLD, vad.floor * NOISE_FLOOR_MARGIN);
 			const now = Date.now();
-
 			const discordSpeaking = connection.receiver.speaking.users.has(userId);
 
-			if (rms >= openAt && discordSpeaking) {
+			vad.frames++;
+			if (!vad.active && !discordSpeaking) {
+				vad.floor = vad.floor ? vad.floor + NOISE_FLOOR_ALPHA * (rms - vad.floor) : rms;
+			}
+
+			const openAt = Math.min(VOICE_RMS_CEILING, Math.max(VOICE_RMS_THRESHOLD, vad.floor * NOISE_FLOOR_MARGIN));
+
+			if (rms >= openAt) {
 				vad.onset++;
 				vad.lastVoiceAt = now;
-			} else if (vad.active && rms >= VOICE_RMS_RELEASE) {
+			} else if (vad.active && rms >= Math.min(VOICE_RMS_RELEASE, openAt * 0.6)) {
 				vad.lastVoiceAt = now;
 			} else {
 				vad.onset = 0;

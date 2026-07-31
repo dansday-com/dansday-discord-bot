@@ -34,6 +34,7 @@ const IDLE_WARN_MS = IDLE_TIMEOUT_MS - 10_000;
 const SESSION_MAX_MS = 15 * 60_000;
 const SESSION_WARN_MS = 13.5 * 60_000;
 const GOODBYE_GRACE_MS = 12_000;
+const ADDRESSED_WINDOW_MS = 45_000;
 const HEARTBEAT_MS = (VOICE_STATE_TTL_SEC / 2) * 1000;
 
 const IDLE_GOODBYE_PROMPT =
@@ -89,6 +90,61 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	let reconnecting = false;
 	let closeWaiter = null;
 	let leaveRequested = false;
+	let lastSpeakerId = '';
+	let addressedUntil = 0;
+	let wakeWords: string[] = [];
+
+	const names = new Map();
+	const ignoredBots = new Set();
+
+	function refreshWakeWords() {
+		const guild = client.guilds.cache.get(guildId);
+		const raw = [guild?.members?.me?.displayName, client.user?.username, client.user?.globalName];
+		wakeWords = [
+			...new Set(
+				raw
+					.filter(Boolean)
+					.map((n) => n.toLowerCase().trim())
+					.filter((n) => n.length >= 2)
+			)
+		];
+	}
+
+	function heardWakeWord(text) {
+		const clean = text.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ');
+		return wakeWords.some((word) => new RegExp(`(^|\\s)${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\s|$)`, 'u').test(clean));
+	}
+
+	function isAddressed() {
+		return Date.now() < addressedUntil;
+	}
+
+	function nameOf(userId) {
+		if (names.has(userId)) return names.get(userId);
+		const member = client.guilds.cache.get(guildId)?.members?.cache?.get(userId);
+		const name = member?.displayName || member?.user?.username || 'Unknown';
+		names.set(userId, name);
+		return name;
+	}
+
+	function rosterText() {
+		const channel = client.guilds.cache.get(guildId)?.channels?.cache?.get(channelId);
+		const people = [...(channel?.members ?? [])]
+			.filter(([id, m]) => !m.user.bot && id !== client.user?.id)
+			.map(([id]) => (id === inviterId ? `${nameOf(id)} (invited you)` : nameOf(id)));
+		return people.length ? people.join(', ') : 'nobody';
+	}
+
+	function sendSystemNote(text) {
+		if (!session || closed || goodbyePending) return;
+		try {
+			session.sendRealtimeInput({ text });
+		} catch {}
+	}
+
+	function announceRoster() {
+		sendSystemNote(`[System] People currently in the voice channel: ${rosterText()}. Address them by name when it feels natural. Do not read this note aloud.`);
+	}
 
 	const stats = {
 		chunksPlayed: 0,
@@ -102,7 +158,8 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		interrupts: 0,
 		reconnects: 0,
 		turns: 0,
-		queueHigh: 0
+		queueHigh: 0,
+		repliesSuppressed: 0
 	};
 
 	async function say(text) {
@@ -323,11 +380,29 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 						return;
 					}
 
+					if (sc.inputTranscription?.text) {
+						const text = sc.inputTranscription.text;
+						if (heardWakeWord(text)) {
+							if (!isAddressed()) logger.log(`👋 Voice AI addressed by ${nameOf(lastSpeakerId) || 'someone'}`);
+							addressedUntil = Date.now() + ADDRESSED_WINDOW_MS;
+						}
+						collectTranscript('user', text);
+					}
+
+					if (!isAddressed()) {
+						if (sc.modelTurn?.parts?.some((p) => p.inlineData?.data)) {
+							stats.repliesSuppressed++;
+							if (stats.repliesSuppressed % 10 === 1) {
+								logger.log(`🙊 Voice AI staying silent, not addressed (suppressed=${stats.repliesSuppressed})`);
+							}
+						}
+						return;
+					}
+
 					for (const part of sc.modelTurn?.parts ?? []) {
 						if (part.inlineData?.data) playChunk(Buffer.from(part.inlineData.data, 'base64'));
 					}
 
-					if (sc.inputTranscription?.text) collectTranscript('user', sc.inputTranscription.text);
 					if (sc.outputTranscription?.text) collectTranscript('assistant', sc.outputTranscription.text);
 				},
 				onerror: (err) => logger.log(`❌ Voice AI session error: ${err?.message || String(err)}`),
@@ -384,8 +459,22 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		}
 	}
 
+	function isBotUser(userId) {
+		if (userId === client.user?.id) return true;
+		const member = client.guilds.cache.get(guildId)?.members?.cache?.get(userId);
+		if (member) return Boolean(member.user?.bot);
+		return Boolean(client.users.cache.get(userId)?.bot);
+	}
+
 	function subscribeUser(userId) {
 		if (speaking.has(userId)) return;
+		if (isBotUser(userId)) {
+			if (!ignoredBots.has(userId)) {
+				ignoredBots.add(userId);
+				logger.log(`🤖 Voice AI ignoring bot audio from ${nameOf(userId)}`);
+			}
+			return;
+		}
 
 		const opus = connection.receiver.subscribe(userId, { end: { behavior: EndBehaviorType.Manual } });
 		const decoder = new prism.opus.Decoder({ rate: DISCORD_RATE, channels: 2, frameSize: 960 });
@@ -397,6 +486,10 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 			}
 			const mono16k = downmixAndResample(pcm, DISCORD_RATE, INPUT_RATE, 2, 1);
 			try {
+				if (userId !== lastSpeakerId) {
+					lastSpeakerId = userId;
+					sendSystemNote(`[System] ${nameOf(userId)} is now speaking.`);
+				}
 				openTurn();
 				session.sendRealtimeInput({ audio: { data: mono16k.toString('base64'), mimeType: `audio/pcm;rate=${INPUT_RATE}` } });
 				stats.framesIn++;
@@ -493,17 +586,79 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 			if (!member.user.bot && memberId !== client.user?.id) subscribeUser(memberId);
 		}
 
+		await ensureUnmuted();
+		refreshWakeWords();
+		announceRoster();
+		sendSystemNote(
+			`[System] Your name here is "${wakeWords[0] ?? 'Assistant'}". Other bots may play music or talk in this channel; ignore all of it. Only reply when someone speaks to you by name. If a message is not addressed to you, stay completely silent. Do not read this note aloud.`
+		);
+		logger.log(`👥 Voice AI participants: ${rosterText()} | wake=${wakeWords.join('/') || 'none'}`);
+
 		touchIdle();
 		sessionWarnTimer = setTimeout(() => say(TIMEUP_GOODBYE_PROMPT), SESSION_WARN_MS);
 		sessionTimer = setTimeout(() => stop('session_limit'), SESSION_MAX_MS);
 
-		const state = { guildId, channelId, channelName, inviterId, textChannelId, startedAt: Date.now() };
-		await writeVoiceState(botId, state);
+		const startedAt = Date.now();
+		await writeVoiceState(botId, { guildId, channelId, channelName, inviterId, textChannelId, startedAt });
 		heartbeat = setInterval(() => {
-			if (!closed) writeVoiceState(botId, state).catch(() => {});
+			if (!closed) writeVoiceState(botId, { guildId, channelId, channelName, inviterId, textChannelId, startedAt }).catch(() => {});
 		}, HEARTBEAT_MS);
 
 		await logger.log(`🔊 Voice AI joined ${channelName || channelId}`);
+	}
+
+	async function ensureUnmuted() {
+		if (closed) return;
+		const me = client.guilds.cache.get(guildId)?.members?.me;
+		if (!me?.voice?.serverMute) return;
+
+		try {
+			await me.voice.setMute(false, 'Voice AI needs to speak');
+			logger.log('🔊 Voice AI self-unmuted after server mute');
+		} catch (err) {
+			logger.log(`⚠️ Voice AI is server muted and cannot unmute itself (needs Mute Members): ${err?.message || err}`);
+		}
+	}
+
+	async function moveTo(nextChannelId, nextChannelName) {
+		if (closed || nextChannelId === channelId) return;
+
+		channelId = nextChannelId;
+		channelName = nextChannelName || nextChannelId;
+
+		try {
+			connection.rejoin({ channelId: nextChannelId, selfDeaf: false, selfMute: false });
+			await entersState(connection, VoiceConnectionStatus.Ready, 20_000);
+		} catch (err) {
+			logger.log(`❌ Voice AI failed to return to inviter: ${err?.message || err}`);
+			await stop('rejoin_failed');
+			return;
+		}
+
+		for (const userId of [...speaking.keys()]) unsubscribeUser(userId);
+		const channel = client.guilds.cache.get(guildId)?.channels?.cache?.get(nextChannelId);
+		for (const [memberId, member] of channel?.members ?? []) {
+			if (!member.user.bot && memberId !== client.user?.id) subscribeUser(memberId);
+		}
+
+		await ensureUnmuted();
+		refreshWakeWords();
+		announceRoster();
+		logger.log(`🔊 Voice AI followed inviter back to ${channelName}`);
+	}
+
+	function noteJoined(userId) {
+		if (closed || isBotUser(userId)) return;
+		names.delete(userId);
+		sendSystemNote(`[System] ${nameOf(userId)} joined the voice channel.`);
+	}
+
+	function noteLeft(userId) {
+		if (closed || isBotUser(userId)) return;
+		const name = nameOf(userId);
+		names.delete(userId);
+		if (lastSpeakerId === userId) lastSpeakerId = '';
+		sendSystemNote(`[System] ${name} left the voice channel.`);
 	}
 
 	return {
@@ -511,6 +666,10 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		stop,
 		subscribeUser,
 		unsubscribeUser,
+		ensureUnmuted,
+		moveTo,
+		noteJoined,
+		noteLeft,
 		get inviterId() {
 			return inviterId;
 		},

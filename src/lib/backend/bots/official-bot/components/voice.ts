@@ -45,19 +45,56 @@ async function handleVoiceStateUpdate(oldState, newState) {
 	if (!active) return;
 
 	const userId = oldState.id ?? newState.id;
+
+	if (userId === clientInstance.user?.id) {
+		if (!newState.channelId) {
+			await active.stop('disconnected');
+			return;
+		}
+
+		if (newState.channelId !== active.channelId) {
+			const inviter = newState.guild?.members?.cache?.get(active.inviterId);
+			const target = inviter?.voice?.channelId;
+
+			if (!target) {
+				await active.stop('moved_inviter_gone');
+				return;
+			}
+
+			if (target !== newState.channelId) {
+				await logger.log(`🔀 Voice AI was moved, returning to inviter`);
+				await active.moveTo(target, inviter.voice.channel?.name);
+				return;
+			}
+
+			await active.moveTo(newState.channelId, newState.channel?.name);
+			return;
+		}
+
+		if (newState.serverMute && !oldState.serverMute) await active.ensureUnmuted();
+		return;
+	}
+
 	const left = oldState.channelId === active.channelId && newState.channelId !== active.channelId;
 	const joined = newState.channelId === active.channelId && oldState.channelId !== active.channelId;
 
-	if (joined && userId !== clientInstance.user?.id && !newState.member?.user?.bot) {
+	if (joined && !newState.member?.user?.bot) {
 		active.subscribeUser(userId);
+		active.noteJoined(userId);
 		return;
 	}
 
 	if (!left) return;
 
 	active.unsubscribeUser(userId);
+	if (!oldState.member?.user?.bot) active.noteLeft(userId);
 
 	if (userId === active.inviterId) {
+		if (newState.channelId) {
+			await logger.log('🔀 Voice AI following inviter to new channel');
+			await active.moveTo(newState.channelId, newState.channel?.name);
+			return;
+		}
 		await active.stop('inviter_left');
 		return;
 	}

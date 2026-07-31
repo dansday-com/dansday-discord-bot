@@ -245,6 +245,13 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		return -1;
 	}
 
+	function nameAppearsIn(text) {
+		const clean = normalizeSpeech(text);
+		if (!clean) return false;
+		const tokens = clean.split(' ');
+		return wakeWords.some((word) => nameIndexIn(tokens, word) !== -1);
+	}
+
 	function heardWakeWord(text) {
 		const clean = normalizeSpeech(text);
 		if (!clean) return false;
@@ -296,7 +303,12 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		if (closed || goodbyePending) return;
 
 		addressedUntil = 0;
-		muteAnnounced = true;
+
+		if (muteAnnounced && Date.now() <= goodbyeAllowedUntil) {
+			logger.log('🔕 Voice AI already saying goodbye, letting it finish before muting');
+			return;
+		}
+
 		if (muteTimer) clearTimeout(muteTimer);
 		muteTimer = null;
 
@@ -440,6 +452,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		turns: 0,
 		queueHigh: 0,
 		repliesSuppressed: 0,
+		wakesRejected: 0,
 		framesNoise: 0,
 		framesOffTurn: 0
 	};
@@ -662,9 +675,20 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		}
 
 		if (calls.some((call) => call.name === 'i_was_addressed')) {
+			const nameJustHeard = nameAppearsIn(wakeBuffer) || Date.now() - lastNameHeardAt < NAME_CORROBORATE_MS;
+
+			if (!nameJustHeard && !isAddressed()) {
+				stats.wakesRejected++;
+				if (stats.wakesRejected % 5 === 1) {
+					logger.log(
+						`🙅 Voice AI rejected wake from ${nameOf(lastSpeakerId) || 'someone'}: no name in "${normalizeSpeech(wakeBuffer).slice(-70)}" (rejected=${stats.wakesRejected})`
+					);
+				}
+				return;
+			}
+
 			if (!isAddressed()) logger.log(`👋 Voice AI addressed by ${nameOf(lastSpeakerId) || 'someone'} (model)`);
-			const nameJustHeard = heardWakeWord(wakeBuffer) || Date.now() - lastNameHeardAt < NAME_CORROBORATE_MS;
-			markAddressed({ verified: !muteAnnounced || nameJustHeard });
+			markAddressed({ verified: true });
 		}
 
 		if (calls.some((call) => call.name === 'conversation_done')) {
@@ -753,12 +777,14 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 					if (sc.inputTranscription?.text) {
 						const text = sc.inputTranscription.text;
 						wakeBuffer = `${wakeBuffer} ${text}`.slice(-WAKE_BUFFER_CHARS);
+
+						if (nameAppearsIn(wakeBuffer)) lastNameHeardAt = Date.now();
+
 						if (heardWakeWord(wakeBuffer)) {
 							if (!isAddressed()) {
 								logger.log(`👋 Voice AI addressed by ${nameOf(lastSpeakerId) || 'someone'} ("${normalizeSpeech(wakeBuffer).slice(-60)}")`);
 							}
 							wakeBuffer = '';
-							lastNameHeardAt = Date.now();
 							markAddressed({ verified: true });
 						}
 						collectTranscript('user', text);

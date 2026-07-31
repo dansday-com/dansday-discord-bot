@@ -72,6 +72,7 @@ async function handleVoiceStateUpdate(oldState, newState) {
 		}
 
 		if (newState.serverMute && !oldState.serverMute) await active.ensureUnmuted();
+		if (newState.serverDeaf && !oldState.serverDeaf) await active.ensureUndeafened();
 		return;
 	}
 

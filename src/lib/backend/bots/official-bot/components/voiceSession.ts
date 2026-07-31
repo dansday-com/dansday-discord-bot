@@ -32,9 +32,10 @@ const VOICE_RMS_RELEASE = 550;
 const VOICE_ONSET_FRAMES = 3;
 const VOICE_HANG_MS = 500;
 const SPEECH_RECENT_MS = 3_000;
-const NOISE_FLOOR_ALPHA = 0.02;
+const NOISE_FLOOR_ALPHA = 0.002;
+const NOISE_FLOOR_FALL_ALPHA = 0.05;
 const NOISE_FLOOR_MARGIN = 2.2;
-const MAX_TURN_MS = 20_000;
+const MAX_TURN_MS = 10_000;
 const WAKE_TURN_MS = 4_000;
 const WAKE_TURN_GAP_MS = 250;
 const CLOSE_WAIT_MS = 3000;
@@ -48,8 +49,29 @@ const WAKE_BUFFER_CHARS = 160;
 const MUTE_NOTICE_GRACE_MS = 6_000;
 const MUTE_NOTICE_MAX_WAIT_MS = 15_000;
 const NAME_CORROBORATE_MS = 8_000;
-const GENERIC_NAME_WORDS = new Set(['bot', 'ai', 'the', 'official', 'assistant', 'discord']);
 const UNSPACED_SCRIPT = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Thai}]/u;
+const ADDRESS_LEAD_WORDS = new Set([
+	'hi',
+	'hey',
+	'hai',
+	'halo',
+	'hello',
+	'helo',
+	'yo',
+	'ok',
+	'okay',
+	'oke',
+	'okey',
+	'eh',
+	'woi',
+	'oi',
+	'hoi',
+	'bang',
+	'kak',
+	'mas',
+	'tanya',
+	'coba'
+]);
 const HEARTBEAT_MS = (VOICE_STATE_TTL_SEC / 2) * 1000;
 
 const IDLE_GOODBYE_PROMPT =
@@ -125,6 +147,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	let wakeBuffer = '';
 	let lastNameHeardAt = 0;
 	let muteAnnounced = false;
+	let goodbyeAllowedUntil = 0;
 
 	const names = new Map();
 	const ignoredBots = new Set();
@@ -154,10 +177,6 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 			out.add(name);
 			out.add(name.replace(/\s+/g, ''));
-
-			const words = name.split(' ');
-			const lead = words[0];
-			if (words.length > 1 && lead.length >= 4 && !GENERIC_NAME_WORDS.has(lead)) out.add(lead);
 		}
 
 		wakeWords = [...out].filter((w) => w.length >= 2).sort((a, b) => b.length - a.length);
@@ -204,11 +223,40 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		return false;
 	}
 
+	function nameIndexIn(tokens, word) {
+		if (UNSPACED_SCRIPT.test(word)) {
+			const joined = tokens.join(' ');
+			return joined.includes(word) ? 0 : -1;
+		}
+
+		const target = word.replace(/\s+/g, '');
+		const span = word.trim().split(' ').length;
+		const slack = allowedSlack(target.length);
+
+		for (let i = 0; i < tokens.length; i++) {
+			for (let take = 1; take <= span && i + take <= tokens.length; take++) {
+				const candidate = tokens.slice(i, i + take).join('');
+				if (candidate === target) return i;
+				if (!slack) continue;
+				if (Math.abs(candidate.length - target.length) > slack) continue;
+				if (editDistance(candidate, target) <= slack) return i;
+			}
+		}
+		return -1;
+	}
+
 	function heardWakeWord(text) {
 		const clean = normalizeSpeech(text);
 		if (!clean) return false;
 		const tokens = clean.split(' ');
-		return wakeWords.some((word) => (UNSPACED_SCRIPT.test(word) ? clean.includes(word) : fuzzyHit(tokens, word)));
+
+		for (const word of wakeWords) {
+			const at = nameIndexIn(tokens, word);
+			if (at === -1) continue;
+			if (at === 0) return true;
+			if (ADDRESS_LEAD_WORDS.has(tokens[at - 1])) return true;
+		}
+		return false;
 	}
 
 	function isAddressed() {
@@ -301,7 +349,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	function micIsOpenFor(userId) {
 		if (!lockedSpeakerId) return true;
 		if (userId === lockedSpeakerId) return true;
-		return !isAddressed();
+		return !isAddressed() && !muteAnnounced;
 	}
 
 	function announceMute() {
@@ -321,6 +369,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		muteAnnounced = true;
 		const announcedAt = Date.now();
 		const chunksAtAnnounce = stats.chunksPlayed;
+		goodbyeAllowedUntil = announcedAt + MUTE_NOTICE_MAX_WAIT_MS;
 		logger.log('🔕 Voice AI announcing mute before going quiet');
 		sendSystemNote(
 			`Say one short sentence out loud now: it has gone quiet, so you are muting yourself, and they just need to call your name (${displayName()}) whenever they want you again. One sentence, casual, no explanation.`
@@ -331,10 +380,18 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 			const spoke = stats.chunksPlayed > chunksAtAnnounce;
 			const waited = Date.now() - announcedAt;
+			const expired = waited >= MUTE_NOTICE_MAX_WAIT_MS;
 
-			if (botIsSpeaking() || (!spoke && waited < MUTE_NOTICE_MAX_WAIT_MS)) {
+			if (!expired && (botIsSpeaking() || !spoke)) {
 				muteTimer = setTimeout(settleMute, SPEAK_GUARD_MS);
 				return;
+			}
+
+			if (expired && botIsSpeaking()) {
+				logger.log('⚠️ Voice AI cutting off playback to finish muting');
+				playbackQueue.length = 0;
+				pending = EMPTY;
+				pendingOffset = 0;
 			}
 
 			releaseSpeakerLock();
@@ -655,7 +712,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 							{
 								name: 'i_was_addressed',
 								description:
-									'Call this the moment someone in the voice channel speaks TO YOU: says your name, greets you, asks you a question, or replies to something you said. Several people often talk at once and their voices arrive mixed together — scan the WHOLE audio for your name even when it is faint or overlapped by louder speakers, and ignore the rest of the crosstalk. Speech-to-text often mangles your name into similar-sounding real words, so judge by sound and intent, not exact spelling. If any part of it plausibly sounds like your name, call this. Call it BEFORE answering. Do not call it when people are only talking to each other.',
+									'Call this ONLY when someone clearly calls you by name to get your attention, like "hi <your name>" or "<your name>, can you ...". Your name must actually be spoken. Speech-to-text may mangle it slightly, so a close-sounding version of your name still counts — but a word that merely rhymes with it does not. Do NOT call this for: people talking to each other, someone saying your name while discussing you in third person, general chatter, greetings with no name, or a question thrown into the room with no name attached. When in doubt, do NOT call it and stay silent. Call it BEFORE answering.',
 								parameters: { type: Type.OBJECT, properties: {} }
 							},
 							{
@@ -707,7 +764,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 						collectTranscript('user', text);
 					}
 
-					if (!isAddressed() && !muteAnnounced) {
+					if (!isAddressed() && Date.now() > goodbyeAllowedUntil) {
 						if (sc.modelTurn?.parts?.some((p) => p.inlineData?.data)) {
 							stats.repliesSuppressed++;
 							if (stats.repliesSuppressed % 10 === 1) {
@@ -744,6 +801,12 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 		turnOpen = false;
 		turnOwnerId = '';
+		wakeBuffer = '';
+		turnCooldownUntil = Date.now() + WAKE_TURN_GAP_MS;
+		for (const vad of voiceState.values()) {
+			vad.active = false;
+			vad.onset = 0;
+		}
 		if (turnTimer) {
 			clearTimeout(turnTimer);
 			turnTimer = null;
@@ -820,13 +883,15 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 			const discordSpeaking = connection.receiver.speaking.users.has(userId);
 
 			vad.frames++;
-			if (!vad.active && !discordSpeaking) {
-				vad.floor = vad.floor ? vad.floor + NOISE_FLOOR_ALPHA * (rms - vad.floor) : rms;
+			if (!vad.active) {
+				if (!vad.floor) vad.floor = rms;
+				else if (rms < vad.floor) vad.floor += NOISE_FLOOR_FALL_ALPHA * (rms - vad.floor);
+				else vad.floor += NOISE_FLOOR_ALPHA * (rms - vad.floor);
 			}
 
 			const openAt = Math.min(VOICE_RMS_CEILING, Math.max(VOICE_RMS_THRESHOLD, vad.floor * NOISE_FLOOR_MARGIN));
 
-			if (rms >= openAt) {
+			if (rms >= openAt && discordSpeaking) {
 				vad.onset++;
 				vad.lastVoiceAt = now;
 			} else if (vad.active && rms >= Math.min(VOICE_RMS_RELEASE, openAt * 0.6)) {
@@ -976,11 +1041,12 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		}
 
 		await ensureUnmuted();
+		await ensureUndeafened();
 		refreshWakeWords();
 		setSelfMute(true);
 		announceRoster();
 		sendSystemNote(
-			`[System] Your name here is "${displayName()}". Speech-to-text will often mangle it into similar-sounding real words, so if something sounds like your name, treat it as your name. The moment anyone speaks to you — says your name, greets you, asks you something, or replies to you — call the i_was_addressed tool first, then answer. While people are only talking to each other, stay completely silent and call nothing. Other bots may play music here; ignore them. Do not read this note aloud.`
+			`[System] Your name here is "${displayName()}". You only wake up when someone actually calls you by that name, for example "hi ${displayName()}" or "${displayName()}, ...". Speech-to-text may mangle the name slightly and that still counts, but a merely similar-sounding word does not. Everything else in this channel — people chatting with each other, questions with no name attached, music from other bots — you ignore completely and call nothing. When unsure, stay silent. Do not read this note aloud.`
 		);
 		logger.log(`👥 Voice AI participants: ${rosterText()} | wake=${wakeWords.join('/') || 'none'}`);
 
@@ -1008,9 +1074,25 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		}
 	}
 
+	async function ensureUndeafened() {
+		if (closed) return;
+		const me = client.guilds.cache.get(guildId)?.members?.me;
+		if (!me?.voice?.serverDeaf) return;
+
+		try {
+			await me.voice.setDeaf(false, 'Voice AI needs to hear');
+			logger.log('👂 Voice AI self-undeafened after server deafen');
+		} catch (err) {
+			logger.log(`⚠️ Voice AI is server deafened and cannot undeafen itself (needs Deafen Members): ${err?.message || err}`);
+		}
+	}
+
 	function setSelfMute(muted) {
 		if (closed || selfMuted === muted) return;
-		if (muted) muteAnnounced = false;
+		if (muted) {
+			muteAnnounced = false;
+			goodbyeAllowedUntil = 0;
+		}
 		try {
 			connection.rejoin({ channelId, selfDeaf: false, selfMute: muted });
 			selfMuted = muted;
@@ -1042,6 +1124,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		}
 
 		await ensureUnmuted();
+		await ensureUndeafened();
 		refreshWakeWords();
 		if (lockedSpeakerId && !speaking.has(lockedSpeakerId)) releaseSpeakerLock();
 		announceRoster();
@@ -1069,6 +1152,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		subscribeUser,
 		unsubscribeUser,
 		ensureUnmuted,
+		ensureUndeafened,
 		moveTo,
 		noteJoined,
 		noteLeft,

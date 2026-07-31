@@ -42,6 +42,10 @@ const SESSION_MAX_MS = 15 * 60_000;
 const SESSION_WARN_MS = 13.5 * 60_000;
 const GOODBYE_GRACE_MS = 12_000;
 const ADDRESSED_WINDOW_MS = 30_000;
+const WAKE_BUFFER_CHARS = 160;
+const MUTE_NOTICE_GRACE_MS = 6_000;
+const GENERIC_NAME_WORDS = new Set(['bot', 'ai', 'the', 'official', 'assistant', 'discord']);
+const UNSPACED_SCRIPT = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Thai}]/u;
 const HEARTBEAT_MS = (VOICE_STATE_TTL_SEC / 2) * 1000;
 
 const IDLE_GOODBYE_PROMPT =
@@ -114,27 +118,92 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	let selfMuted = false;
 	let muteTimer: ReturnType<typeof setTimeout> | null = null;
 	let wakeWords: string[] = [];
+	let wakeBuffer = '';
+	let muteAnnounced = false;
 
 	const names = new Map();
 	const ignoredBots = new Set();
 	const voiceState = new Map();
 
+	function normalizeSpeech(text) {
+		return text
+			.toLowerCase()
+			.replace(/[^\p{L}\p{N}\s]/gu, ' ')
+			.replace(/\s+/g, ' ')
+			.trim();
+	}
+
+	function displayName() {
+		const guild = client.guilds.cache.get(guildId);
+		return guild?.members?.me?.displayName || client.user?.username || 'me';
+	}
+
 	function refreshWakeWords() {
 		const guild = client.guilds.cache.get(guildId);
 		const raw = [guild?.members?.me?.displayName, client.user?.username, client.user?.globalName];
-		wakeWords = [
-			...new Set(
-				raw
-					.filter(Boolean)
-					.map((n) => n.toLowerCase().trim())
-					.filter((n) => n.length >= 2)
-			)
-		];
+
+		const out = new Set();
+		for (const entry of raw) {
+			const name = normalizeSpeech(String(entry ?? '').replace(/[<>@!&#]/g, ' '));
+			if (!name) continue;
+
+			out.add(name);
+			out.add(name.replace(/\s+/g, ''));
+
+			const words = name.split(' ');
+			const lead = words[0];
+			if (words.length > 1 && lead.length >= 4 && !GENERIC_NAME_WORDS.has(lead)) out.add(lead);
+		}
+
+		wakeWords = [...out].filter((w) => w.length >= 2).sort((a, b) => b.length - a.length);
+	}
+
+	function editDistance(a, b) {
+		if (a === b) return 0;
+		if (!a.length || !b.length) return Math.max(a.length, b.length);
+
+		let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+		for (let i = 1; i <= a.length; i++) {
+			const row = [i];
+			for (let j = 1; j <= b.length; j++) {
+				const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+				row[j] = Math.min(prev[j] + 1, row[j - 1] + 1, prev[j - 1] + cost);
+			}
+			prev = row;
+		}
+		return prev[b.length];
+	}
+
+	function allowedSlack(len) {
+		if (len <= 6) return 0;
+		if (len <= 10) return 1;
+		return 2;
+	}
+
+	function fuzzyHit(tokens, needle) {
+		const target = needle.replace(/\s+/g, '');
+		if (!target) return false;
+
+		const span = needle.trim().split(' ').length;
+		const slack = allowedSlack(target.length);
+
+		for (let i = 0; i < tokens.length; i++) {
+			for (let take = 1; take <= span + 1 && i + take <= tokens.length; take++) {
+				const candidate = tokens.slice(i, i + take).join('');
+				if (candidate === target) return true;
+				if (!slack || take > span) continue;
+				if (Math.abs(candidate.length - target.length) > slack) continue;
+				if (editDistance(candidate, target) <= slack) return true;
+			}
+		}
+		return false;
 	}
 
 	function heardWakeWord(text) {
-		const clean = text.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ');
-		return wakeWords.some((word) => new RegExp(`(^|\\s)${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\s|$)`, 'u').test(clean));
+		const clean = normalizeSpeech(text);
+		if (!clean) return false;
+		const tokens = clean.split(' ');
+		return wakeWords.some((word) => (UNSPACED_SCRIPT.test(word) ? clean.includes(word) : fuzzyHit(tokens, word)));
 	}
 
 	function isAddressed() {
@@ -142,13 +211,28 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	}
 
 	function markAddressed() {
+		const wasAddressed = isAddressed();
 		addressedUntil = Date.now() + ADDRESSED_WINDOW_MS;
+		muteAnnounced = false;
 		setSelfMute(false);
 		if (muteTimer) clearTimeout(muteTimer);
+		muteTimer = setTimeout(announceMute, ADDRESSED_WINDOW_MS);
+		return wasAddressed;
+	}
+
+	function announceMute() {
+		muteTimer = null;
+		if (closed || goodbyePending || isAddressed() || selfMuted || muteAnnounced) return;
+
+		muteAnnounced = true;
+		logger.log('🔕 Voice AI announcing mute before going quiet');
+		sendSystemNote(
+			`Say one short sentence out loud now: it has gone quiet, so you are muting yourself, and they just need to call your name (${displayName()}) whenever they want you again. One sentence, casual, no explanation.`
+		);
 		muteTimer = setTimeout(() => {
 			muteTimer = null;
 			if (!isAddressed()) setSelfMute(true);
-		}, ADDRESSED_WINDOW_MS);
+		}, MUTE_NOTICE_GRACE_MS);
 	}
 
 	function nameOf(userId) {
@@ -258,6 +342,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	function closeTurn() {
 		if (!turnOpen || !session) return;
 		turnOpen = false;
+		wakeBuffer = '';
 		if (turnTimer) {
 			clearTimeout(turnTimer);
 			turnTimer = null;
@@ -437,14 +522,18 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 					if (sc.inputTranscription?.text) {
 						const text = sc.inputTranscription.text;
-						if (heardWakeWord(text)) {
-							if (!isAddressed()) logger.log(`👋 Voice AI addressed by ${nameOf(lastSpeakerId) || 'someone'}`);
+						wakeBuffer = `${wakeBuffer} ${text}`.slice(-WAKE_BUFFER_CHARS);
+						if (heardWakeWord(wakeBuffer)) {
+							if (!isAddressed()) {
+								logger.log(`👋 Voice AI addressed by ${nameOf(lastSpeakerId) || 'someone'} ("${normalizeSpeech(wakeBuffer).slice(-60)}")`);
+							}
+							wakeBuffer = '';
 							markAddressed();
 						}
 						collectTranscript('user', text);
 					}
 
-					if (!isAddressed()) {
+					if (!isAddressed() && !muteAnnounced) {
 						if (sc.modelTurn?.parts?.some((p) => p.inlineData?.data)) {
 							stats.repliesSuppressed++;
 							if (stats.repliesSuppressed % 10 === 1) {
@@ -715,6 +804,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 	function setSelfMute(muted) {
 		if (closed || selfMuted === muted) return;
+		if (muted) muteAnnounced = false;
 		try {
 			connection.rejoin({ channelId, selfDeaf: false, selfMute: muted });
 			selfMuted = muted;

@@ -48,6 +48,7 @@ const WAKE_BUFFER_CHARS = 160;
 const MUTE_NOTICE_GRACE_MS = 6_000;
 const MUTE_NOTICE_MAX_WAIT_MS = 15_000;
 const NAME_CORROBORATE_MS = 8_000;
+const DONE_ACK_MAX_WAIT_MS = 3_000;
 const GENERIC_NAME_WORDS = new Set(['bot', 'ai', 'the', 'official', 'assistant', 'discord']);
 const UNSPACED_SCRIPT = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Thai}]/u;
 const HEARTBEAT_MS = (VOICE_STATE_TTL_SEC / 2) * 1000;
@@ -266,7 +267,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 			const spoke = stats.chunksPlayed > chunksAtStart;
 			const waited = Date.now() - startedAt;
 
-			if (botIsSpeaking() || (!spoke && waited < MUTE_NOTICE_MAX_WAIT_MS)) {
+			if (botIsSpeaking() || (!spoke && waited < DONE_ACK_MAX_WAIT_MS)) {
 				muteTimer = setTimeout(settleDone, SPEAK_GUARD_MS);
 				return;
 			}

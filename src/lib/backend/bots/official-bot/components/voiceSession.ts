@@ -43,7 +43,7 @@ const IDLE_WARN_MS = IDLE_TIMEOUT_MS - 10_000;
 const SESSION_MAX_MS = 15 * 60_000;
 const SESSION_WARN_MS = 13.5 * 60_000;
 const GOODBYE_GRACE_MS = 12_000;
-const ADDRESSED_WINDOW_MS = 30_000;
+const ADDRESSED_WINDOW_MS = 15_000;
 const WAKE_BUFFER_CHARS = 160;
 const MUTE_NOTICE_GRACE_MS = 6_000;
 const GENERIC_NAME_WORDS = new Set(['bot', 'ai', 'the', 'official', 'assistant', 'discord']);
@@ -229,6 +229,15 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		if (muteTimer) clearTimeout(muteTimer);
 		muteTimer = setTimeout(announceMute, ADDRESSED_WINDOW_MS);
 		return wasAddressed;
+	}
+
+	function keepAliveFromLockedSpeaker() {
+		if (!lockedSpeakerId || !isAddressed() || goodbyePending) return;
+
+		addressedUntil = Date.now() + ADDRESSED_WINDOW_MS;
+		muteAnnounced = false;
+		if (muteTimer) clearTimeout(muteTimer);
+		muteTimer = setTimeout(announceMute, ADDRESSED_WINDOW_MS);
 	}
 
 	function releaseSpeakerLock() {
@@ -715,6 +724,8 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 				}
 				return;
 			}
+
+			if (userId === lockedSpeakerId) keepAliveFromLockedSpeaker();
 
 			if (!turnOpen && now < turnCooldownUntil) {
 				stats.framesNoise++;

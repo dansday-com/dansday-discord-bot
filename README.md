@@ -64,6 +64,12 @@ Open source under the MIT license.
 
 - **AI chat** - Mention the bot to talk to it, or reply to one of its messages to continue without mentioning again. Every member keeps a private conversation per server, with older turns summarized as they age out. Configured per bot in the panel: API URL, key, model, reasoning effort and system prompt. Works with any OpenAI-compatible endpoint (Gemini, OpenAI, GLM, Qwen, DeepSeek, local models). Replies over Discord's limit are split across messages.
 - **Voice AI** - Members ask the bot in chat to join their voice channel, then talk to it out loud via the Gemini Live API. One call at a time; it excuses itself and leaves when the channel goes quiet, when the member who invited it leaves, or when it hits the session limit. Requires Redis.
+  - 🗣️ **Call it by name** - It only answers when someone says its server display name, so a busy channel does not set it off. Matching tolerates accents and near-misses, and stays open for 30 seconds so follow-ups need no repeat.
+  - 🔇 **Mutes when idle** - After 30 quiet seconds it says one line, then mutes itself, so the icon shows at a glance whether it is listening for a reply.
+  - 🎚️ **Noise filtering** - Per-speaker voice detection calibrates to each member's mic, so background noise, keyboards and open mics do not hold the conversation open.
+  - 🤖 **Ignores other bots** - Music and other bots in the same channel are never listened to.
+  - 👥 **Knows the room** - Reads members by display name and tracks who joins, leaves and is speaking, so it can address people directly.
+  - 🚶 **Follows the inviter** - Dragged to another channel, it returns to whoever invited it, and follows if they are moved.
 - **Discord Quest notifier** - Surface Discord Quest activity, with optional per-server enrollment automation.
 - **Roblox catalog watch** - Post embeds when catalog items change, for trading and UGC communities.
 - **Content creator / TikTok** - Creator applications and TikTok live digests tied to server channels.
@@ -122,4 +128,4 @@ AI chat is not configured through `.env`. Open the bot in the panel and set the 
 
 ## License
 
-MIT · Author: Akbar Yudhanto · Version: 26.5.0
+MIT · Author: Akbar Yudhanto · Version: 26.5.1

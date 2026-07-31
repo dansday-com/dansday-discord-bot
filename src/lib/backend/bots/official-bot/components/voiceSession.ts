@@ -26,6 +26,13 @@ const EMPTY = Buffer.alloc(0);
 
 const SPEAK_GUARD_MS = 400;
 const TURN_SILENCE_MS = 700;
+const VOICE_RMS_THRESHOLD = 900;
+const VOICE_RMS_RELEASE = 550;
+const VOICE_ONSET_FRAMES = 3;
+const VOICE_HANG_MS = 500;
+const NOISE_FLOOR_ALPHA = 0.02;
+const NOISE_FLOOR_MARGIN = 2.2;
+const MAX_TURN_MS = 20_000;
 const CLOSE_WAIT_MS = 3000;
 const MAX_QUEUED_CHUNKS = 60;
 
@@ -41,6 +48,17 @@ const IDLE_GOODBYE_PROMPT =
 	"Nobody has spoken for a while. Say a short, natural goodbye out loud — you're heading off since it's quiet, and they can call you back anytime. One sentence.";
 const TIMEUP_GOODBYE_PROMPT =
 	"Your time in this call is up. Say a short, natural goodbye out loud — you have to go, you're busy, you'll talk later. One sentence. Do not explain why.";
+
+function rmsOf(pcm) {
+	const samples = Math.floor(pcm.length / 2);
+	if (!samples) return 0;
+	let sum = 0;
+	for (let i = 0; i < samples; i++) {
+		const s = pcm.readInt16LE(i * 2);
+		sum += s * s;
+	}
+	return Math.sqrt(sum / samples);
+}
 
 function downmixAndResample(pcm, fromRate, toRate, fromChannels, toChannels) {
 	const inSamples = pcm.length / 2 / fromChannels;
@@ -86,6 +104,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	let pendingOffset = 0;
 	let lastAudioAt = 0;
 	let turnOpen = false;
+	let turnOpenedAt = 0;
 	let turnTimer = null;
 	let reconnecting = false;
 	let closeWaiter = null;
@@ -96,6 +115,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 	const names = new Map();
 	const ignoredBots = new Set();
+	const voiceState = new Map();
 
 	function refreshWakeWords() {
 		const guild = client.guilds.cache.get(guildId);
@@ -159,7 +179,8 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		reconnects: 0,
 		turns: 0,
 		queueHigh: 0,
-		repliesSuppressed: 0
+		repliesSuppressed: 0,
+		framesNoise: 0
 	};
 
 	async function say(text) {
@@ -213,6 +234,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	function openTurn() {
 		if (turnOpen) return;
 		turnOpen = true;
+		turnOpenedAt = Date.now();
 		stats.turns++;
 		try {
 			session.sendRealtimeInput({ activityStart: {} });
@@ -233,9 +255,27 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		logger.log(`🎙️ Voice AI turn end (#${stats.turns} frames=${stats.framesIn})`);
 	}
 
+	function anyoneSpeaking() {
+		for (const vad of voiceState.values()) if (vad.active) return true;
+		return false;
+	}
+
 	function bumpTurn() {
 		if (turnTimer) clearTimeout(turnTimer);
-		turnTimer = setTimeout(closeTurn, TURN_SILENCE_MS);
+		turnTimer = setTimeout(function settle() {
+			if (anyoneSpeaking() && Date.now() - turnOpenedAt < MAX_TURN_MS) {
+				turnTimer = setTimeout(settle, TURN_SILENCE_MS);
+				return;
+			}
+			if (anyoneSpeaking()) {
+				logger.log(`⚠️ Voice AI forcing turn end after ${MAX_TURN_MS / 1000}s of continuous audio`);
+				for (const vad of voiceState.values()) {
+					vad.active = false;
+					vad.onset = 0;
+				}
+			}
+			closeTurn();
+		}, TURN_SILENCE_MS);
 	}
 
 	function playChunk(pcm24k) {
@@ -288,7 +328,9 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		if (filled === 0) stats.silenceOut++;
 		else lastAudioAt = Date.now();
 		if (stats.framesOut % 500 === 0) {
-			logger.log(`🔈 Voice AI ticker frames=${stats.framesOut} silence=${stats.silenceOut} audioBytes=${stats.bytesOut} queued=${playbackQueue.length}`);
+			logger.log(
+				`🔈 Voice AI ticker frames=${stats.framesOut} silence=${stats.silenceOut} noise=${stats.framesNoise} audioBytes=${stats.bytesOut} queued=${playbackQueue.length}`
+			);
 		}
 		return frame;
 	}
@@ -479,12 +521,48 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		const opus = connection.receiver.subscribe(userId, { end: { behavior: EndBehaviorType.Manual } });
 		const decoder = new prism.opus.Decoder({ rate: DISCORD_RATE, channels: 2, frameSize: 960 });
 
+		const vad = { active: false, onset: 0, lastVoiceAt: 0, floor: 0, frames: 0 };
+		voiceState.set(userId, vad);
+
 		decoder.on('data', (pcm) => {
 			if (closed || !session || goodbyePending || leaveRequested || botIsSpeaking()) {
 				stats.framesDropped++;
 				return;
 			}
+
 			const mono16k = downmixAndResample(pcm, DISCORD_RATE, INPUT_RATE, 2, 1);
+			const rms = rmsOf(mono16k);
+
+			vad.frames++;
+			if (!vad.active) vad.floor = vad.floor ? vad.floor + NOISE_FLOOR_ALPHA * (rms - vad.floor) : rms;
+
+			const openAt = Math.max(VOICE_RMS_THRESHOLD, vad.floor * NOISE_FLOOR_MARGIN);
+			const now = Date.now();
+
+			if (rms >= openAt) {
+				vad.onset++;
+				vad.lastVoiceAt = now;
+			} else if (vad.active && rms >= VOICE_RMS_RELEASE) {
+				vad.lastVoiceAt = now;
+			} else {
+				vad.onset = 0;
+			}
+
+			if (!vad.active && vad.onset >= VOICE_ONSET_FRAMES) {
+				vad.active = true;
+				logger.log(`🗣️ Voice AI speech from ${nameOf(userId)} (rms=${Math.round(rms)} floor=${Math.round(vad.floor)})`);
+			}
+
+			if (vad.active && now - vad.lastVoiceAt > VOICE_HANG_MS) {
+				vad.active = false;
+				vad.onset = 0;
+			}
+
+			if (!vad.active) {
+				stats.framesNoise++;
+				return;
+			}
+
 			try {
 				if (userId !== lastSpeakerId) {
 					lastSpeakerId = userId;
@@ -513,6 +591,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	}
 
 	function unsubscribeUser(userId) {
+		voiceState.delete(userId);
 		const entry = speaking.get(userId);
 		if (!entry) return;
 		entry.opus.destroy();
@@ -540,7 +619,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 		await clearVoiceState(botId);
 		await logger.log(
-			`🔇 Voice AI left ${channelName || channelId} (${reason}) turns=${stats.turns} in=${stats.framesIn}f out=${stats.chunksPlayed}c dropped=${stats.framesDropped}/${stats.chunksDropped} queueHigh=${stats.queueHigh} interrupts=${stats.interrupts} reconnects=${stats.reconnects}`
+			`🔇 Voice AI left ${channelName || channelId} (${reason}) turns=${stats.turns} in=${stats.framesIn}f out=${stats.chunksPlayed}c dropped=${stats.framesDropped}/${stats.chunksDropped} noise=${stats.framesNoise} suppressed=${stats.repliesSuppressed} queueHigh=${stats.queueHigh} interrupts=${stats.interrupts} reconnects=${stats.reconnects}`
 		);
 		onEnded?.(reason);
 	}

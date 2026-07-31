@@ -300,37 +300,54 @@ function questRewardAssetUrl(questId: string, raw: string): string | null {
 	return `https://cdn.discordapp.com/quests/${questId}/${file}?format=webp&width=256&height=256`;
 }
 
+const REWARD_ASSET_KEY_RE = /^(?:asset|assets|image|images|icon|tile|hero|art|artwork|thumbnail|asset_url|image_url|reward_tile|platforms_asset)$/i;
+
+function collectRewardAssetStrings(value: unknown, depth: number, out: string[]): void {
+	if (depth > 4 || value == null) return;
+	if (typeof value === 'string') {
+		const v = value.trim();
+		if (v) out.push(v);
+		return;
+	}
+	if (Array.isArray(value)) {
+		for (const item of value) collectRewardAssetStrings(item, depth + 1, out);
+		return;
+	}
+	if (typeof value !== 'object') return;
+	for (const [k, val] of Object.entries(value as Record<string, unknown>)) {
+		if (typeof val === 'string') {
+			if (REWARD_ASSET_KEY_RE.test(k)) collectRewardAssetStrings(val, depth + 1, out);
+			continue;
+		}
+		collectRewardAssetStrings(val, depth + 1, out);
+	}
+}
+
 function rewardTileFromQuest(questId: string, quest: Record<string, unknown>, cfg: Record<string, unknown>): string | null {
 	const candidates: string[] = [];
 
 	for (const r of rewardListFromQuest(quest)) {
 		const rec = r as Record<string, unknown>;
 		if (!rec || typeof rec !== 'object') continue;
-		for (const k of ['asset', 'image', 'icon', 'tile', 'asset_url', 'image_url']) {
-			const v = asStr(rec[k]);
-			if (v) candidates.push(v);
+		for (const k of ['asset', 'assets', 'image', 'icon', 'tile', 'asset_url', 'image_url']) {
+			collectRewardAssetStrings(rec[k], 0, candidates);
 		}
-		const msgs = rec.messages as Record<string, unknown> | undefined;
-		for (const k of ['asset', 'image', 'icon']) {
-			const v = asStr(msgs?.[k]);
-			if (v) candidates.push(v);
-		}
+		collectRewardAssetStrings(rec.messages, 0, candidates);
 	}
 
 	const rewardsCfg = (cfg.rewards_config ?? {}) as Record<string, unknown>;
 	for (const k of ['assets', 'asset', 'platforms_asset', 'reward_tile', 'hero']) {
-		const v = asStr(rewardsCfg[k]);
-		if (v) candidates.push(v);
+		collectRewardAssetStrings(rewardsCfg[k], 0, candidates);
 	}
 
 	const assets = (cfg.assets ?? {}) as Record<string, unknown>;
 	for (const [k, val] of Object.entries(assets)) {
 		if (!/reward/i.test(k)) continue;
-		const v = asStr(val);
-		if (v) candidates.push(v);
+		collectRewardAssetStrings(val, 0, candidates);
 	}
 
 	for (const c of candidates) {
+		if (QUEST_VIDEO_RE.test(c)) continue;
 		if (!QUEST_REWARD_ASSET_FILE_RE.test(c) && !c.startsWith('http')) continue;
 		const u = questRewardAssetUrl(questId, c);
 		if (u) return u;

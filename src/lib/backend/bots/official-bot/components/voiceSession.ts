@@ -463,6 +463,11 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 			logger.log(`⚠️ Voice AI tool response failed: ${String(err)}`);
 		}
 
+		if (calls.some((call) => call.name === 'i_was_addressed')) {
+			if (!isAddressed()) logger.log(`👋 Voice AI addressed by ${nameOf(lastSpeakerId) || 'someone'} (model)`);
+			markAddressed();
+		}
+
 		if (calls.some((call) => call.name === 'leave_voice')) {
 			logger.log('🎙️ Voice AI leave requested by voice');
 			leaveRequested = true;
@@ -489,9 +494,15 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 					{
 						functionDeclarations: [
 							{
+								name: 'i_was_addressed',
+								description:
+									'Call this the moment someone in the voice channel speaks TO YOU: says your name, greets you, asks you a question, or replies to something you said. Speech-to-text often mangles your name into similar-sounding real words, so judge by sound and intent, not exact spelling. If it plausibly sounds like your name, call this. Call it BEFORE answering. Do not call it when people are only talking to each other.',
+								parameters: { type: Type.OBJECT, properties: {} }
+							},
+							{
 								name: 'leave_voice',
 								description:
-									'Leave the voice channel and end the call. Call this when the user asks you to leave, disconnect, hang up, go away, or says goodbye.',
+									'Leave the voice channel and end the call. Only call this when the user explicitly asks you to leave, disconnect, or hang up. Do NOT call it for "bye", "thanks", "ok", or a pause in conversation.',
 								parameters: { type: Type.OBJECT, properties: {} }
 							}
 						]
@@ -526,8 +537,6 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 							}
 							wakeBuffer = '';
 							markAddressed();
-						} else if (!isAddressed()) {
-							logger.log(`👂 Voice AI heard "${normalizeSpeech(wakeBuffer).slice(-80)}" (no wake word, listening for ${wakeWords.join('/')})`);
 						}
 						collectTranscript('user', text);
 					}
@@ -771,7 +780,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		setSelfMute(true);
 		announceRoster();
 		sendSystemNote(
-			`[System] Your name here is "${wakeWords[0] ?? 'Assistant'}". Other bots may play music or talk in this channel; ignore all of it. Only reply when someone speaks to you by name. If a message is not addressed to you, stay completely silent. Do not read this note aloud.`
+			`[System] Your name here is "${displayName()}". Speech-to-text will often mangle it into similar-sounding real words, so if something sounds like your name, treat it as your name. The moment anyone speaks to you — says your name, greets you, asks you something, or replies to you — call the i_was_addressed tool first, then answer. While people are only talking to each other, stay completely silent and call nothing. Other bots may play music here; ignore them. Do not read this note aloud.`
 		);
 		logger.log(`👥 Voice AI participants: ${rosterText()} | wake=${wakeWords.join('/') || 'none'}`);
 

@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
 	import { showToast } from '$lib/frontend/toast.svelte';
-	import LabeledSelect from '$lib/frontend/components/LabeledSelect.svelte';
 	import ConfigToggleRow from '$lib/frontend/components/ConfigToggleRow.svelte';
 	import type { LabeledSelectOption } from '$lib/frontend/components/labeledSelect.js';
 	import { GEMINI_VOICES } from '$lib/geminiVoices.js';
@@ -94,9 +93,9 @@
 		ariaLabel="Toggle AI chat"
 	/>
 
-	<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-		<div class="min-w-0 sm:col-span-2">
-			<label for="ai-api-url" class="text-ash-400 mb-1 block text-xs">API URL</label>
+	<div class="mt-5 space-y-4">
+		<div class="min-w-0">
+			<label for="ai-api-url" class="text-ash-400 mb-1.5 block text-xs font-medium">API URL</label>
 			<input
 				id="ai-api-url"
 				type="text"
@@ -104,57 +103,62 @@
 				autocomplete="off"
 				bind:value={ai.api_url}
 				placeholder="https://generativelanguage.googleapis.com/v1beta/openai"
-				class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+				class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 h-10 w-full rounded-lg border px-3 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
 			/>
 		</div>
-		<div class="min-w-0">
-			<label for="ai-model" class="text-ash-400 mb-1 block text-xs">Model name</label>
-			<input
-				id="ai-model"
-				type="text"
-				maxlength="191"
-				autocomplete="off"
-				bind:value={ai.model}
-				placeholder="gemini-3.6-flash"
-				class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
-			/>
+
+		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+			<div class="min-w-0">
+				<label for="ai-model" class="text-ash-400 mb-1.5 block text-xs font-medium">Model name</label>
+				<input
+					id="ai-model"
+					type="text"
+					maxlength="191"
+					autocomplete="off"
+					bind:value={ai.model}
+					placeholder="gemini-3.6-flash"
+					class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 h-10 w-full rounded-lg border px-3 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+				/>
+			</div>
+			<div class="min-w-0">
+				<label for="ai-api-key" class="text-ash-400 mb-1.5 block text-xs font-medium">API key</label>
+				<input
+					id="ai-api-key"
+					type="password"
+					autocomplete="new-password"
+					bind:value={aiKeyInput}
+					placeholder={ai.has_api_key ? 'Saved — type to replace' : 'Paste your API key'}
+					class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 h-10 w-full rounded-lg border px-3 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+				/>
+			</div>
 		</div>
-		<div class="min-w-0">
-			<LabeledSelect
+
+		<div class="min-w-0 sm:max-w-xs">
+			<label for="ai-reasoning" class="text-ash-400 mb-1.5 block text-xs font-medium">Reasoning</label>
+			<select
 				id="ai-reasoning"
-				label="Reasoning"
-				labelIconClass="fas fa-brain text-violet-400"
-				labelTone="cyan"
-				appearance="dashboard"
-				options={AI_REASONING_OPTIONS}
 				bind:value={ai.reasoning}
-				ariaLabel="AI reasoning effort"
-			/>
+				class="bg-ash-700 border-ash-600 text-ash-100 h-10 w-full rounded-lg border px-3 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+			>
+				{#each AI_REASONING_OPTIONS as option}
+					<option value={option.value}>{option.label}</option>
+				{/each}
+			</select>
 		</div>
+
 		<div class="min-w-0">
-			<label for="ai-api-key" class="text-ash-400 mb-1 block text-xs">API key</label>
-			<input
-				id="ai-api-key"
-				type="password"
-				autocomplete="new-password"
-				bind:value={aiKeyInput}
-				placeholder={ai.has_api_key ? 'Saved — type to replace' : 'Paste your API key'}
-				class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
-			/>
-		</div>
-		<div class="sm:col-span-2">
-			<label for="ai-system-prompt" class="text-ash-400 mb-1 block text-xs">System prompt</label>
-			<p class="text-ash-500 mb-1 text-xs">
-				Applies to both chat and voice. Use <code class="text-ash-300">&#123;&#123;today&#125;&#125;</code> to insert the current date.
-			</p>
+			<label for="ai-system-prompt" class="text-ash-400 mb-1.5 block text-xs font-medium">System prompt</label>
 			<textarea
 				id="ai-system-prompt"
-				rows="4"
+				rows="5"
 				maxlength="8000"
 				bind:value={ai.system_prompt}
 				placeholder="Describe how the bot should behave and reply"
 				class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
 			></textarea>
+			<p class="text-ash-500 mt-1.5 text-xs">
+				Applies to both chat and voice. Use <code class="text-ash-300">&#123;&#123;today&#125;&#125;</code> to insert the current date.
+			</p>
 		</div>
 	</div>
 
@@ -175,9 +179,9 @@
 			ariaLabel="Toggle voice AI"
 		/>
 
-		<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+		<div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
 			<div class="min-w-0">
-				<label for="ai-voice-model" class="text-ash-400 mb-1 block text-xs">Voice model</label>
+				<label for="ai-voice-model" class="text-ash-400 mb-1.5 block text-xs font-medium">Voice model</label>
 				<input
 					id="ai-voice-model"
 					type="text"
@@ -185,25 +189,25 @@
 					autocomplete="off"
 					bind:value={ai.voice_model}
 					placeholder="gemini-3.1-flash-live-preview"
-					class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+					class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 h-10 w-full rounded-lg border px-3 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
 				/>
 			</div>
 			<div class="min-w-0">
-				<LabeledSelect
+				<label for="ai-voice-name" class="text-ash-400 mb-1.5 block text-xs font-medium">Voice</label>
+				<select
 					id="ai-voice-name"
-					label="Voice"
-					labelIconClass="fas fa-user-astronaut text-violet-400"
-					labelTone="cyan"
-					appearance="dashboard"
-					options={AI_VOICE_OPTIONS}
 					bind:value={ai.voice_name}
-					ariaLabel="AI voice"
-				/>
-				<p class="text-ash-500 mt-1 text-xs">Preview every voice in Google AI Studio before picking.</p>
+					class="bg-ash-700 border-ash-600 text-ash-100 h-10 w-full rounded-lg border px-3 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+				>
+					{#each AI_VOICE_OPTIONS as option}
+						<option value={option.value}>{option.label}</option>
+					{/each}
+				</select>
 			</div>
+			<p class="text-ash-500 -mt-1 text-xs sm:col-span-2">Preview every voice in Google AI Studio before picking.</p>
 		</div>
 
-		<p class="mt-3 flex items-start gap-2 text-xs text-amber-200/90">
+		<p class="mt-4 flex items-start gap-2 text-xs text-amber-200/90">
 			<i class="fas fa-triangle-exclamation mt-0.5 shrink-0 text-amber-400/90" aria-hidden="true"></i>
 			<span>
 				Voice sends everyone's audio in the channel to Google. On the free tier that audio is used to improve their products. Tell your members before turning

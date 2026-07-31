@@ -8,6 +8,7 @@ const DISCORD_MESSAGE_LIMIT = 2000;
 const MAX_REPLY_LENGTH = 4000;
 const MAX_RECENT = 10;
 const REQUEST_TIMEOUT_MS = 120_000;
+const MAX_TOOL_ITERATIONS = 3;
 
 const inFlight = new Set();
 
@@ -70,25 +71,31 @@ const VOICE_TOOLS = [
 	}
 ];
 
+const TOOL_RETRY_HINT = 'This is the final result for this tool. Do not call it again — reply to the user in words.';
+
+function finalToolResult(payload) {
+	return JSON.stringify({ ...payload, final: true, next_step: TOOL_RETRY_HINT });
+}
+
 async function executeVoiceTool(name, message, botId) {
 	const state = await readVoiceState(botId);
 
 	if (name === 'leave_voice') {
-		if (!state) return JSON.stringify({ ok: false, reason: 'not_in_voice_channel' });
+		if (!state) return finalToolResult({ ok: false, reason: 'not_in_voice_channel' });
 		await publishVoiceCommand(botId, { cmd: 'leave', reason: 'user_request' });
-		return JSON.stringify({ ok: true, left: true });
+		return finalToolResult({ ok: true, left: true });
 	}
 
 	const channelId = message.member?.voice?.channelId ?? null;
 	if (!channelId) {
-		return JSON.stringify({ ok: false, reason: 'user_not_in_a_voice_channel' });
+		return finalToolResult({ ok: false, reason: 'user_not_in_a_voice_channel' });
 	}
 
 	if (state) {
 		if (state.channelId === channelId) {
-			return JSON.stringify({ ok: false, reason: 'already_in_this_channel' });
+			return finalToolResult({ ok: false, reason: 'already_in_this_channel' });
 		}
-		return JSON.stringify({ ok: false, reason: 'busy_in_another_channel', busy_channel_name: state.channelName ?? 'another channel' });
+		return finalToolResult({ ok: false, reason: 'busy_in_another_channel', busy_channel_name: state.channelName ?? 'another channel' });
 	}
 
 	const published = await publishVoiceCommand(botId, {
@@ -101,10 +108,10 @@ async function executeVoiceTool(name, message, botId) {
 	});
 
 	if (!published) {
-		return JSON.stringify({ ok: false, reason: 'voice_worker_unavailable' });
+		return finalToolResult({ ok: false, reason: 'voice_worker_unavailable' });
 	}
 
-	return JSON.stringify({ ok: true, joining: true, channel_name: message.member.voice.channel?.name ?? '' });
+	return finalToolResult({ ok: true, joining: true, channel_name: message.member.voice.channel?.name ?? '' });
 }
 
 function stripBotMention(content, botUserId) {
@@ -147,11 +154,15 @@ async function callChatCompletions(config, messages, { tools = null, onToolCall 
 	const client = getClient(config);
 	const params = buildCompletionParams(config);
 	const loop = [...messages];
+	const toolResultCache = new Map();
 
-	for (let i = 0; i < 5; i++) {
+	for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
+		const lastIteration = i === MAX_TOOL_ITERATIONS - 1;
+		const offerTools = tools && onToolCall && !lastIteration;
+
 		const completion = await client.chat.completions.create({
 			...params,
-			...(tools ? { tools, tool_choice: 'auto' } : {}),
+			...(offerTools ? { tools, tool_choice: 'auto' } : {}),
 			messages: loop
 		});
 
@@ -165,8 +176,11 @@ async function callChatCompletions(config, messages, { tools = null, onToolCall 
 		loop.push(choice);
 
 		for (const call of choice.tool_calls) {
-			const result = await onToolCall(call.function.name);
-			loop.push({ role: 'tool', tool_call_id: call.id, content: result });
+			const cacheKey = `${call.function.name}:${call.function.arguments ?? ''}`;
+			if (!toolResultCache.has(cacheKey)) {
+				toolResultCache.set(cacheKey, await onToolCall(call.function.name));
+			}
+			loop.push({ role: 'tool', tool_call_id: call.id, content: toolResultCache.get(cacheKey) });
 		}
 	}
 

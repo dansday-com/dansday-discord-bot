@@ -38,7 +38,7 @@ const WAKE_TURN_GAP_MS = 400;
 const CLOSE_WAIT_MS = 3000;
 const MAX_QUEUED_CHUNKS = 60;
 
-const IDLE_TIMEOUT_MS = 60_000;
+const IDLE_TIMEOUT_MS = 3 * 60_000;
 const IDLE_WARN_MS = IDLE_TIMEOUT_MS - 10_000;
 const SESSION_MAX_MS = 15 * 60_000;
 const SESSION_WARN_MS = 13.5 * 60_000;
@@ -225,6 +225,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		addressedUntil = Date.now() + ADDRESSED_WINDOW_MS;
 		turnCooldownUntil = 0;
 		muteAnnounced = false;
+		touchIdle();
 		setSelfMute(false);
 		if (muteTimer) clearTimeout(muteTimer);
 		muteTimer = setTimeout(announceMute, ADDRESSED_WINDOW_MS);
@@ -236,6 +237,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 		addressedUntil = Date.now() + ADDRESSED_WINDOW_MS;
 		muteAnnounced = false;
+		touchIdle();
 		if (muteTimer) clearTimeout(muteTimer);
 		muteTimer = setTimeout(announceMute, ADDRESSED_WINDOW_MS);
 	}
@@ -747,7 +749,6 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 						`🎙️ Voice AI in=${stats.framesIn}f/${stats.bytesIn}b out=${stats.chunksPlayed}c/${stats.bytesOut}b dropped=${stats.framesDropped}/${stats.chunksDropped}`
 					);
 				}
-				touchIdle();
 			} catch (err) {
 				stats.framesDropped++;
 				if (stats.framesDropped % 100 === 1) logger.log(`⚠️ Voice AI input dropped: ${String(err)}`);
@@ -827,7 +828,6 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		connection.receiver.speaking.on('start', (userId) => {
 			if (userId !== client.user?.id) subscribeUser(userId);
 		});
-		connection.receiver.speaking.on('end', () => touchIdle());
 
 		const channel = guild.channels.cache.get(channelId);
 		for (const [memberId, member] of channel?.members ?? []) {

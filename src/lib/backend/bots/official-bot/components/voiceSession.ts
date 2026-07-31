@@ -40,8 +40,6 @@ const MAX_QUEUED_CHUNKS = 60;
 
 const IDLE_TIMEOUT_MS = 3 * 60_000;
 const IDLE_WARN_MS = IDLE_TIMEOUT_MS - 10_000;
-const SESSION_MAX_MS = 15 * 60_000;
-const SESSION_WARN_MS = 13.5 * 60_000;
 const GOODBYE_GRACE_MS = 12_000;
 const ADDRESSED_WINDOW_MS = 15_000;
 const WAKE_BUFFER_CHARS = 160;
@@ -52,8 +50,6 @@ const HEARTBEAT_MS = (VOICE_STATE_TTL_SEC / 2) * 1000;
 
 const IDLE_GOODBYE_PROMPT =
 	"Nobody has spoken for a while. Say a short, natural goodbye out loud — you're heading off since it's quiet, and they can call you back anytime. One sentence.";
-const TIMEUP_GOODBYE_PROMPT =
-	"Your time in this call is up. Say a short, natural goodbye out loud — you have to go, you're busy, you'll talk later. One sentence. Do not explain why.";
 
 function rmsOf(pcm) {
 	const samples = Math.floor(pcm.length / 2);
@@ -101,8 +97,6 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 	let idleTimer = null;
 	let idleWarnTimer = null;
-	let sessionTimer = null;
-	let sessionWarnTimer = null;
 	let heartbeat = null;
 
 	const playbackQueue = [];
@@ -112,7 +106,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	let turnOpen = false;
 	let turnOpenedAt = 0;
 	let turnCooldownUntil = 0;
-	let turnTimer = null;
+	let turnTimer: ReturnType<typeof setTimeout> | null = null;
 	let reconnecting = false;
 	let closeWaiter = null;
 	let leaveRequested = false;
@@ -329,10 +323,10 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	}
 
 	function clearTimers() {
-		for (const t of [idleTimer, idleWarnTimer, sessionTimer, sessionWarnTimer, turnTimer, muteTimer]) if (t) clearTimeout(t);
+		for (const t of [idleTimer, idleWarnTimer, turnTimer, muteTimer]) if (t) clearTimeout(t);
 		turnTimer = muteTimer = null;
 		if (heartbeat) clearInterval(heartbeat);
-		idleTimer = idleWarnTimer = sessionTimer = sessionWarnTimer = heartbeat = null;
+		idleTimer = idleWarnTimer = heartbeat = null;
 	}
 
 	function touchIdle() {
@@ -548,7 +542,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 							{
 								name: 'leave_voice',
 								description:
-									'Leave the voice channel and end the call. Only call this when the user explicitly asks you to leave, disconnect, or hang up. Do NOT call it for "bye", "thanks", "ok", or a pause in conversation.',
+									'Leave the voice channel and end the call. Call this when someone asks you to leave, disconnect or hang up, or says a real farewell meant to end the conversation ("goodbye", "see you later", "bye, talk to you tomorrow"). Say your own short goodbye out loud first, then call this. Do NOT call it for filler like "ok", "thanks", "alright", "hmm", for a pause in conversation, or when people say bye to each other rather than to you.',
 								parameters: { type: Type.OBJECT, properties: {} }
 							}
 						]
@@ -844,8 +838,6 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		logger.log(`👥 Voice AI participants: ${rosterText()} | wake=${wakeWords.join('/') || 'none'}`);
 
 		touchIdle();
-		sessionWarnTimer = setTimeout(() => say(TIMEUP_GOODBYE_PROMPT), SESSION_WARN_MS);
-		sessionTimer = setTimeout(() => stop('session_limit'), SESSION_MAX_MS);
 
 		const startedAt = Date.now();
 		await writeVoiceState(botId, { guildId, channelId, channelName, inviterId, textChannelId, startedAt });

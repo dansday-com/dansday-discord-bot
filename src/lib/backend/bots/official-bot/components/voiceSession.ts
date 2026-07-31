@@ -41,7 +41,7 @@ const IDLE_WARN_MS = IDLE_TIMEOUT_MS - 10_000;
 const SESSION_MAX_MS = 15 * 60_000;
 const SESSION_WARN_MS = 13.5 * 60_000;
 const GOODBYE_GRACE_MS = 12_000;
-const ADDRESSED_WINDOW_MS = 45_000;
+const ADDRESSED_WINDOW_MS = 30_000;
 const HEARTBEAT_MS = (VOICE_STATE_TTL_SEC / 2) * 1000;
 
 const IDLE_GOODBYE_PROMPT =
@@ -111,6 +111,8 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	let leaveRequested = false;
 	let lastSpeakerId = '';
 	let addressedUntil = 0;
+	let selfMuted = false;
+	let muteTimer: ReturnType<typeof setTimeout> | null = null;
 	let wakeWords: string[] = [];
 
 	const names = new Map();
@@ -137,6 +139,16 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 	function isAddressed() {
 		return Date.now() < addressedUntil;
+	}
+
+	function markAddressed() {
+		addressedUntil = Date.now() + ADDRESSED_WINDOW_MS;
+		setSelfMute(false);
+		if (muteTimer) clearTimeout(muteTimer);
+		muteTimer = setTimeout(() => {
+			muteTimer = null;
+			if (!isAddressed()) setSelfMute(true);
+		}, ADDRESSED_WINDOW_MS);
 	}
 
 	function nameOf(userId) {
@@ -187,6 +199,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		if (!session || goodbyePending) return;
 		closeTurn();
 		goodbyePending = true;
+		setSelfMute(false);
 		try {
 			session.sendRealtimeInput({ text });
 			setTimeout(() => stop('goodbye_finished'), GOODBYE_GRACE_MS);
@@ -196,8 +209,8 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	}
 
 	function clearTimers() {
-		for (const t of [idleTimer, idleWarnTimer, sessionTimer, sessionWarnTimer, turnTimer]) if (t) clearTimeout(t);
-		turnTimer = null;
+		for (const t of [idleTimer, idleWarnTimer, sessionTimer, sessionWarnTimer, turnTimer, muteTimer]) if (t) clearTimeout(t);
+		turnTimer = muteTimer = null;
 		if (heartbeat) clearInterval(heartbeat);
 		idleTimer = idleWarnTimer = sessionTimer = sessionWarnTimer = heartbeat = null;
 	}
@@ -426,7 +439,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 						const text = sc.inputTranscription.text;
 						if (heardWakeWord(text)) {
 							if (!isAddressed()) logger.log(`👋 Voice AI addressed by ${nameOf(lastSpeakerId) || 'someone'}`);
-							addressedUntil = Date.now() + ADDRESSED_WINDOW_MS;
+							markAddressed();
 						}
 						collectTranscript('user', text);
 					}
@@ -667,6 +680,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 		await ensureUnmuted();
 		refreshWakeWords();
+		setSelfMute(true);
 		announceRoster();
 		sendSystemNote(
 			`[System] Your name here is "${wakeWords[0] ?? 'Assistant'}". Other bots may play music or talk in this channel; ignore all of it. Only reply when someone speaks to you by name. If a message is not addressed to you, stay completely silent. Do not read this note aloud.`
@@ -699,6 +713,17 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		}
 	}
 
+	function setSelfMute(muted) {
+		if (closed || selfMuted === muted) return;
+		try {
+			connection.rejoin({ channelId, selfDeaf: false, selfMute: muted });
+			selfMuted = muted;
+			logger.log(muted ? '🔇 Voice AI muted (not addressed)' : '🎤 Voice AI unmuted (listening)');
+		} catch (err) {
+			logger.log(`⚠️ Voice AI could not toggle mute: ${err?.message || err}`);
+		}
+	}
+
 	async function moveTo(nextChannelId, nextChannelName) {
 		if (closed || nextChannelId === channelId) return;
 
@@ -706,7 +731,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		channelName = nextChannelName || nextChannelId;
 
 		try {
-			connection.rejoin({ channelId: nextChannelId, selfDeaf: false, selfMute: false });
+			connection.rejoin({ channelId: nextChannelId, selfDeaf: false, selfMute: selfMuted });
 			await entersState(connection, VoiceConnectionStatus.Ready, 20_000);
 		} catch (err) {
 			logger.log(`❌ Voice AI failed to return to inviter: ${err?.message || err}`);

@@ -9,6 +9,7 @@ const MEL_FRAMES_PER_EMBEDDING = 76;
 const EMBEDDING_DIM = 96;
 const EMBEDDING_WINDOW = 16;
 const MEL_STRIDE = 8;
+const MEL_CONTEXT_SAMPLES = 480;
 const AUDIO_BUFFER_SAMPLES = SAMPLE_RATE * 3;
 const MEL_BUFFER_FRAMES = 400;
 const MAX_PENDING_SAMPLES = CHUNK_SAMPLES * 12;
@@ -220,7 +221,12 @@ function ingest(userId: string, incomingSamples: Float32Array) {
 async function processUser(active: NonNullable<typeof sessions>, userId: string, state: Detector) {
 	while (state.pending >= CHUNK_SAMPLES) {
 		const end = state.audioFilled - state.pending + CHUNK_SAMPLES;
-		const chunk = state.audio.slice(end - CHUNK_SAMPLES, end);
+		const start = end - CHUNK_SAMPLES - MEL_CONTEXT_SAMPLES;
+		if (start < 0) {
+			state.pending -= CHUNK_SAMPLES;
+			continue;
+		}
+		const chunk = state.audio.slice(start, end);
 		state.pending -= CHUNK_SAMPLES;
 
 		const before = state.mels.length;

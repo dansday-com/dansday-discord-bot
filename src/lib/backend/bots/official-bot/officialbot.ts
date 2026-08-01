@@ -16,6 +16,7 @@ import sync from './components/sync.js';
 import leveling from './components/leveling.js';
 import ai from './components/ai.js';
 import voice from './components/voice.js';
+import { wakeModelAvailable, warmWakeModel } from './components/wakeWord.js';
 import contentCreator from './components/interface/contentcreator.js';
 import questNotifier from './components/questNotifier.js';
 import { initRobloxCatalogNotifier, stopRobloxCatalogNotifier } from './components/robloxCatalogNotifier.js';
@@ -82,6 +83,17 @@ client.on('clientReady', async () => {
 	ai.init(client);
 	voice.init(client).catch(() => {});
 	contentCreator.init(client);
+
+	if (wakeModelAvailable()) {
+		const wakeWarmStartedAt = Date.now();
+		warmWakeModel()
+			.then((ready) => {
+				logger.info(
+					ready ? `Wake word model preloaded in ${Date.now() - wakeWarmStartedAt}ms` : 'Wake word model failed to preload; voice sessions will retry on join'
+				);
+			})
+			.catch(() => {});
+	}
 
 	await sync.init(client, BOT_TOKEN);
 	const officialBotId = sync.getBotId();

@@ -1,10 +1,12 @@
-FROM node:25.8.1-alpine AS builder
+FROM node:25.8.1-slim AS builder
 
 WORKDIR /app
 
 ENV NODE_OPTIONS=""
 
-RUN apk add --no-cache python3 make g++ libtool automake autoconf
+RUN apt-get update && apt-get install -y --no-install-recommends \
+	python3 make g++ libtool automake autoconf pkg-config libopus-dev ca-certificates \
+	&& rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json ./
 RUN npm ci --include=dev
@@ -17,11 +19,13 @@ RUN npx tsc -p tsconfig.bots.json || true
 
 RUN npm prune --production
 
-FROM node:25.8.1-alpine AS runner
+FROM node:25.8.1-slim AS runner
 
 WORKDIR /app
 
-RUN apk add --no-cache curl ffmpeg opus libstdc++ gcompat
+RUN apt-get update && apt-get install -y --no-install-recommends \
+	curl ffmpeg libopus0 ca-certificates \
+	&& rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app .
 

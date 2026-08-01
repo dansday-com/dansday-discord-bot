@@ -32,8 +32,8 @@ function cacheSet(key, value) {
 	cache.set(key, { value, expires: Date.now() + CACHE_TTL_MS });
 }
 
-async function apiGet(apiUrl, params) {
-	const url = new URL(apiUrl);
+async function apiGet(wiki, params) {
+	const url = new URL(wiki.api_url);
 	for (const [key, value] of Object.entries({ ...params, format: 'json', formatversion: '2' })) {
 		url.searchParams.set(key, String(value));
 	}
@@ -41,10 +41,30 @@ async function apiGet(apiUrl, params) {
 	const controller = new AbortController();
 	const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
+	const request = wiki.relay_url
+		? [
+				wiki.relay_url,
+				{
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						Accept: 'application/json',
+						'User-Agent': USER_AGENT,
+						...(wiki.relay_key ? { 'X-Relay-Key': wiki.relay_key } : {})
+					},
+					body: JSON.stringify({ url: url.toString() }),
+					signal: controller.signal
+				}
+			]
+		: [url, { headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' }, signal: controller.signal }];
+
 	try {
-		const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' }, signal: controller.signal });
-		if (!res.ok) throw new Error(`HTTP ${res.status}`);
-		return await res.json();
+		const res = await fetch(request[0], request[1]);
+		if (!res.ok) throw new Error(`HTTP ${res.status}${wiki.relay_url ? ' (via relay)' : ''}`);
+
+		const data = await res.json();
+		if (data?.relay_error) throw new Error(`Relay: ${data.relay_error}`);
+		return data;
 	} finally {
 		clearTimeout(timer);
 	}
@@ -246,7 +266,7 @@ function simplifyQuery(query) {
 }
 
 async function rawSearch(wiki, query) {
-	const data = await apiGet(wiki.api_url, {
+	const data = await apiGet(wiki, {
 		action: 'query',
 		list: 'search',
 		srsearch: query,
@@ -300,7 +320,7 @@ async function exactTitle(wiki, query) {
 	const trimmed = trimAttributes(query);
 	const candidates = [...new Set([query, titleCase(query), trimmed, titleCase(trimmed)].filter(Boolean))];
 
-	const data = await apiGet(wiki.api_url, { action: 'query', titles: candidates.join('|'), redirects: '1' }).catch(() => null);
+	const data = await apiGet(wiki, { action: 'query', titles: candidates.join('|'), redirects: '1' }).catch(() => null);
 	const pages = data?.query?.pages ?? [];
 
 	for (const candidate of candidates) {
@@ -340,7 +360,7 @@ async function searchTitles(wiki, query) {
 
 async function readPage(wiki, title) {
 	const [summary, source] = await Promise.all([
-		apiGet(wiki.api_url, {
+		apiGet(wiki, {
 			action: 'query',
 			prop: 'extracts|info',
 			explaintext: '1',
@@ -348,7 +368,7 @@ async function readPage(wiki, title) {
 			redirects: '1',
 			titles: title
 		}).catch(() => null),
-		apiGet(wiki.api_url, { action: 'parse', page: title, prop: 'wikitext' }).catch(() => null)
+		apiGet(wiki, { action: 'parse', page: title, prop: 'wikitext' }).catch(() => null)
 	]);
 
 	const page = summary?.query?.pages?.[0];

@@ -122,6 +122,8 @@ export const botWikis = mysqlTable(
 		name: varchar('name', { length: 64 }).notNull(),
 		api_url: varchar('api_url', { length: 512 }).notNull(),
 		site_url: varchar('site_url', { length: 512 }),
+		relay_url: varchar('relay_url', { length: 512 }),
+		relay_key: varchar('relay_key', { length: 191 }),
 		description: varchar('description', { length: 255 }),
 		created_at: datetime('created_at').notNull(),
 		updated_at: datetime('updated_at').notNull()

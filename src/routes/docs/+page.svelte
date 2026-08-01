@@ -189,6 +189,12 @@
 		{ label: 'Name', req: 'required', desc: 'What the AI calls this wiki when it picks one. Keep it short, for example Fisch.' },
 		{ label: 'Description', req: 'optional', desc: 'What the wiki covers. This is how the AI chooses the right one when a bot has several.' },
 		{ label: 'Site URL', req: 'optional', desc: 'The wiki home page, used when the bot links a page it read.' },
+		{
+			label: 'Relay URL',
+			req: 'optional',
+			desc: 'Only needed when a wiki blocks your server. Points at a relay.php you host somewhere the wiki does accept. Leave blank to connect straight to the wiki.'
+		},
+		{ label: 'Relay key', req: 'optional', desc: 'The secret set inside relay.php. Required whenever a relay URL is filled in.' },
 		{ label: 'Enabled', req: 'optional', desc: 'Turn a wiki off without deleting it. Disabled wikis are ignored by chat and voice.' }
 	];
 
@@ -198,7 +204,32 @@
 		{ icon: 'fa-comments', title: 'Ask normally', desc: 'Members just ask. Full questions work, not only exact page names.' },
 		{ icon: 'fa-list', title: 'Real numbers', desc: 'Prices, weights and drop rates come from the wiki infobox, so stat answers are exact.' },
 		{ icon: 'fa-bolt', title: 'Cached 10 minutes', desc: 'Repeat questions answer instantly and the wiki is not hammered.' },
-		{ icon: 'fa-rotate', title: 'Restart to apply', desc: 'Wiki changes take effect after a bot restart, like the AI settings.' }
+		{
+			icon: 'fa-check',
+			title: 'Applies right away',
+			desc: 'Chat picks up a new wiki on the next message. Voice picks it up on the next call. No restart needed.'
+		}
+	];
+
+	const aiWikiRelaySteps = [
+		{ icon: 'fa-ban', title: 'When you need it', desc: 'Some wikis refuse requests from server IPs. Test says the wiki refused, not that your URL is wrong.' },
+		{
+			icon: 'fa-plus',
+			title: 'Put relay.php online',
+			desc: 'Copy scripts/relay.php to any hosting the wiki does accept, often cheap shared hosting, and open it over https.'
+		},
+		{
+			icon: 'fa-lock',
+			title: 'Set a secret',
+			desc: 'Edit RELAY_KEY in the file to a long random string. The relay refuses to run while the key is still the default.'
+		},
+		{ icon: 'fa-book', title: 'Fill both fields', desc: 'Paste the relay address into Relay URL and the same secret into Relay key, then press Test.' },
+		{ icon: 'fa-check', title: 'Test goes through it', desc: 'With a relay set, Test uses the relay too, so a green result means the whole path works.' },
+		{
+			icon: 'fa-rotate',
+			title: 'One relay, many wikis',
+			desc: 'The same relay serves any wiki. Set the fields per wiki, and leave them blank for wikis that work directly.'
+		}
 	];
 
 	const envVars = [
@@ -794,6 +825,22 @@
 					<h3 class="g-sub-head">How it works</h3>
 					<div class="g-steps">
 						{#each aiWikiRules as s, i}
+							<div class="g-step" style="--d: {i * 80}ms">
+								<span class="g-step-num">{i + 1}</span>
+								<span class="g-step-ic"><i class="fas {s.icon}"></i></span>
+								<h3>{s.title}</h3>
+								<p>{s.desc}</p>
+							</div>
+						{/each}
+					</div>
+
+					<h3 class="g-sub-head">When a wiki blocks your server</h3>
+					<p class="g-sec-lead">
+						A few wiki hosts refuse traffic coming from servers, so the bot gets turned away even though the address is right. A relay fixes this: it forwards
+						the lookup from somewhere the wiki does accept. Only the wikis you point at it are affected, everything else keeps connecting directly.
+					</p>
+					<div class="g-steps">
+						{#each aiWikiRelaySteps as s, i}
 							<div class="g-step" style="--d: {i * 80}ms">
 								<span class="g-step-num">{i + 1}</span>
 								<span class="g-step-ic"><i class="fas {s.icon}"></i></span>

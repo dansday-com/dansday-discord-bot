@@ -34,6 +34,8 @@ function parseBody(body: Record<string, unknown>): { error: string } | { value: 
 	const name = String(body.name ?? '').trim();
 	const api_url = String(body.api_url ?? '').trim();
 	const site_url = String(body.site_url ?? '').trim();
+	const relay_url = String(body.relay_url ?? '').trim();
+	const relay_key = String(body.relay_key ?? '').trim();
 	const description = String(body.description ?? '').trim();
 
 	if (!name) return { error: 'Wiki name is required' };
@@ -44,6 +46,10 @@ function parseBody(body: Record<string, unknown>): { error: string } | { value: 
 	if (!/api\.php/i.test(api_url)) return { error: 'API URL must point at the MediaWiki api.php endpoint, e.g. https://fischipedia.org/w/api.php' };
 	if (site_url && !/^https?:\/\//i.test(site_url)) return { error: 'Site URL must start with http:// or https://' };
 	if (site_url.length > MAX_URL_LENGTH) return { error: `Site URL must be at most ${MAX_URL_LENGTH} characters` };
+	if (relay_url && !/^https?:\/\//i.test(relay_url)) return { error: 'Relay URL must start with http:// or https://' };
+	if (relay_url.length > MAX_URL_LENGTH) return { error: `Relay URL must be at most ${MAX_URL_LENGTH} characters` };
+	if (relay_url && !relay_key) return { error: 'A relay key is required when using a relay URL' };
+	if (relay_key.length > 191) return { error: 'Relay key must be at most 191 characters' };
 	if (description.length > MAX_DESCRIPTION_LENGTH) return { error: `Description must be at most ${MAX_DESCRIPTION_LENGTH} characters` };
 
 	return {
@@ -52,6 +58,8 @@ function parseBody(body: Record<string, unknown>): { error: string } | { value: 
 			name,
 			api_url,
 			site_url: site_url || null,
+			relay_url: relay_url || null,
+			relay_key: relay_key || null,
 			description: description || null
 		}
 	};

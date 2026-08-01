@@ -7,7 +7,7 @@
 	let { data }: PageProps = $props();
 
 	function blankDraft() {
-		return { id: null as number | null, name: '', api_url: '', site_url: '', description: '' };
+		return { id: null as number | null, name: '', api_url: '', site_url: '', relay_url: '', relay_key: '', description: '' };
 	}
 
 	let draft = $state(blankDraft());
@@ -24,6 +24,8 @@
 			name: wiki.name,
 			api_url: wiki.api_url,
 			site_url: wiki.site_url ?? '',
+			relay_url: wiki.relay_url ?? '',
+			relay_key: wiki.relay_key ?? '',
 			description: wiki.description ?? ''
 		};
 	}
@@ -39,7 +41,7 @@
 				method: 'POST',
 				credentials: 'include',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ api_url: draft.api_url.trim() })
+				body: JSON.stringify({ api_url: draft.api_url.trim(), relay_url: draft.relay_url.trim(), relay_key: draft.relay_key.trim() })
 			});
 			const d = await res.json();
 			if (!res.ok) {
@@ -48,7 +50,7 @@
 			}
 			if (!draft.name.trim() && d.sitename) draft.name = String(d.sitename).slice(0, 64);
 			if (!draft.site_url.trim() && d.site_url) draft.site_url = new URL(d.site_url).origin;
-			showToast(`Connected to ${d.sitename}`, 'success');
+			showToast(d.via_relay ? `Connected to ${d.sitename} through the relay` : `Connected to ${d.sitename}`, 'success');
 		} finally {
 			testing = false;
 		}
@@ -67,6 +69,8 @@
 					name: draft.name.trim(),
 					api_url: draft.api_url.trim(),
 					site_url: draft.site_url.trim(),
+					relay_url: draft.relay_url.trim(),
+					relay_key: draft.relay_key.trim(),
 					description: draft.description.trim()
 				})
 			});
@@ -94,6 +98,8 @@
 				name: wiki.name,
 				api_url: wiki.api_url,
 				site_url: wiki.site_url ?? '',
+				relay_url: wiki.relay_url ?? '',
+				relay_key: wiki.relay_key ?? '',
 				description: wiki.description ?? ''
 			})
 		});
@@ -136,7 +142,7 @@
 	</h3>
 	<p class="text-ash-400 mb-4 text-sm">
 		Game wikis the AI looks things up in instead of guessing. Works in chat and voice. Any <strong class="text-ash-300">MediaWiki</strong> site works, including Fandom.
-		Restart the bot to apply changes.
+		Changes apply right away — chat on the next message, voice on the next call.
 	</p>
 
 	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -192,6 +198,35 @@
 				autocomplete="off"
 				bind:value={draft.site_url}
 				placeholder="https://fischipedia.org"
+				class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+			/>
+		</div>
+
+		<div class="min-w-0">
+			<label for="wiki-relay-url" class="text-ash-400 mb-1 block text-xs">Relay URL</label>
+			<p class="text-ash-500 mb-1 text-xs">Only if the wiki blocks this server. Leave blank to connect directly.</p>
+			<input
+				id="wiki-relay-url"
+				type="text"
+				inputmode="url"
+				maxlength="512"
+				autocomplete="off"
+				bind:value={draft.relay_url}
+				placeholder="https://proxy.example.com/relay.php"
+				class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+			/>
+		</div>
+
+		<div class="min-w-0">
+			<label for="wiki-relay-key" class="text-ash-400 mb-1 block text-xs">Relay key</label>
+			<p class="text-ash-500 mb-1 text-xs">The secret set in the relay script. Required when a relay URL is set.</p>
+			<input
+				id="wiki-relay-key"
+				type="password"
+				maxlength="191"
+				autocomplete="new-password"
+				bind:value={draft.relay_key}
+				placeholder="Shared secret"
 				class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
 			/>
 		</div>

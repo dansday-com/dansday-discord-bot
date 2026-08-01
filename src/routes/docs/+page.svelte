@@ -14,6 +14,7 @@
 		{ id: 'permissions', icon: 'fa-user-shield', label: 'Permissions' },
 		{ id: 'modules', icon: 'fa-toggle-on', label: 'Modules' },
 		{ id: 'ai-chat', icon: 'fa-robot', label: 'AI chat' },
+		{ id: 'ai-wikis', icon: 'fa-book', label: 'Wiki knowledge' },
 		{ id: 'shop', icon: 'fa-store', label: 'Items shop' },
 		{ id: 'discord', icon: 'fa-discord', label: 'Discord menu' },
 		{ id: 'selfhost', icon: 'fa-server', label: 'Self-host' }
@@ -171,9 +172,33 @@
 		{ icon: 'fa-hand-point-right', title: 'Ask it to join', desc: 'A member says "join voice" to the bot in chat. It joins the channel that member is in.' },
 		{ icon: 'fa-user-slash', title: 'Not in a channel', desc: 'If the member is not in voice, the bot says so instead of joining.' },
 		{ icon: 'fa-ban', title: 'One call at a time', desc: 'If it is already in a call, it tells the next person it is busy and stays where it is.' },
+		{
+			icon: 'fa-comment-dots',
+			title: 'Say "hello AI"',
+			desc: 'That wake phrase is the only thing that wakes it, so a busy channel never sets it off. "Halo" works too.'
+		},
+		{ icon: 'fa-lock', title: 'One speaker at a time', desc: 'Whoever wakes it holds the conversation. Say you are done to release it for the next person.' },
+		{ icon: 'fa-microphone', title: 'Mutes when idle', desc: 'It answers, then mutes itself. The mute icon shows whether it is listening.' },
+		{ icon: 'fa-users', title: 'Follows the inviter', desc: 'Moved to another channel, it goes back to whoever invited it. Only they can send it away.' },
 		{ icon: 'fa-door-open', title: 'Leaving', desc: 'Ask it to leave, or it leaves when the member who invited it leaves, or when the channel empties.' },
-		{ icon: 'fa-clock', title: 'Quiet for 3 minutes', desc: 'It says a short goodbye out loud, then disconnects.' },
-		{ icon: 'fa-hourglass-end', title: '15 minute limit', desc: 'Near the limit it excuses itself out loud and leaves. Members can invite it straight back.' }
+		{ icon: 'fa-clock', title: 'Quiet for 3 minutes', desc: 'It says a short goodbye out loud, then disconnects. There is no fixed call length limit.' }
+	];
+
+	const aiWikiFields = [
+		{ label: 'API URL', req: 'required', desc: 'The wiki api.php endpoint, usually /w/api.php or /api.php. Press Test to check it and fill in the name.' },
+		{ label: 'Name', req: 'required', desc: 'What the AI calls this wiki when it picks one. Keep it short, for example Fisch.' },
+		{ label: 'Description', req: 'optional', desc: 'What the wiki covers. This is how the AI chooses the right one when a bot has several.' },
+		{ label: 'Site URL', req: 'optional', desc: 'The wiki home page, used when the bot links a page it read.' },
+		{ label: 'Enabled', req: 'optional', desc: 'Turn a wiki off without deleting it. Disabled wikis are ignored by chat and voice.' }
+	];
+
+	const aiWikiRules = [
+		{ icon: 'fa-plus', title: 'Add a wiki', desc: 'Open the bot, go to the Wikis tab and paste the api.php URL. Any MediaWiki site works, including Fandom.' },
+		{ icon: 'fa-check', title: 'Test it', desc: 'Test confirms the endpoint answers and is really a wiki, then fills in the name for you.' },
+		{ icon: 'fa-comments', title: 'Ask normally', desc: 'Members just ask. Full questions work, not only exact page names.' },
+		{ icon: 'fa-list', title: 'Real numbers', desc: 'Prices, weights and drop rates come from the wiki infobox, so stat answers are exact.' },
+		{ icon: 'fa-bolt', title: 'Cached 10 minutes', desc: 'Repeat questions answer instantly and the wiki is not hammered.' },
+		{ icon: 'fa-rotate', title: 'Restart to apply', desc: 'Wiki changes take effect after a bot restart, like the AI settings.' }
 	];
 
 	const envVars = [
@@ -741,6 +766,34 @@
 					</p>
 					<div class="g-steps">
 						{#each aiVoiceRules as s, i}
+							<div class="g-step" style="--d: {i * 80}ms">
+								<span class="g-step-num">{i + 1}</span>
+								<span class="g-step-ic"><i class="fas {s.icon}"></i></span>
+								<h3>{s.title}</h3>
+								<p>{s.desc}</p>
+							</div>
+						{/each}
+					</div>
+				</section>
+
+				<section id="ai-wikis" class="g-sec" use:reveal>
+					<h2 class="g-sec-head"><i class="fas fa-book"></i>Wiki knowledge</h2>
+					<p class="g-sec-lead">
+						Without this, the AI answers game questions from memory and gets them wrong. Add a wiki and it looks the answer up first instead. Set this on the
+						bot panel under the Wikis tab. It applies to chat and voice alike, and to every server the bot is in.
+					</p>
+					<div class="g-fieldlist">
+						{#each aiWikiFields as f}
+							<div class="g-field">
+								<span class="g-field-key">{f.label}<span class="g-field-tag g-field-tag--{f.req === 'optional' ? 'opt' : 'req'}">{f.req}</span></span>
+								<span class="g-field-val">{f.desc}</span>
+							</div>
+						{/each}
+					</div>
+
+					<h3 class="g-sub-head">How it works</h3>
+					<div class="g-steps">
+						{#each aiWikiRules as s, i}
 							<div class="g-step" style="--d: {i * 80}ms">
 								<span class="g-step-num">{i + 1}</span>
 								<span class="g-step-ic"><i class="fas {s.icon}"></i></span>

@@ -72,6 +72,13 @@ Open source under the MIT license.
   - 👥 **Knows the room** - Reads members by display name and tracks who joins, leaves and is speaking, so it can address people directly.
   - 🚶 **Follows the inviter** - Dragged to another channel, it returns to whoever invited it, and follows if they are moved. Only the member who invited it can send it away.
   - 🔊 **Un-mutes and un-deafens itself** - If a moderator server-mutes or server-deafens it mid-call, it clears that so it can keep hearing and answering.
+- **Wiki knowledge** - Give the AI real game knowledge instead of letting it guess. Ask about an item, boss, map or mechanic and it looks the answer up on a wiki you choose, in both chat and voice. Managed per bot in the panel under **Wikis**; any MediaWiki site works, including Fandom.
+  - 🔎 **Test before you save** - Paste a wiki's `api.php` URL and hit Test. It confirms the endpoint is reachable and fills in the name for you.
+  - 📚 **Many wikis per bot** - Add one per game. A short description tells the AI which wiki covers what, so it picks the right one on servers that play several games.
+  - 💬 **Questions, not keywords** - "how do i get enchant relic" finds the right page, not three unrelated ones.
+  - 📊 **Real numbers** - Prices, weights, rarity and drop rates are read from wiki infoboxes, so stat questions get exact figures instead of a vague summary.
+  - 🧩 **Works on plain wikis too** - Wikis without the optional search-extracts extension still return full answers, read from the page source directly.
+  - ⚡ **Cached** - Results are held for 10 minutes, so repeat questions are instant and the wiki is not hammered.
 - **Discord Quest notifier** - Surface Discord Quest activity, with optional per-server enrollment automation.
 - **Roblox catalog watch** - Post embeds when catalog items change, for trading and UGC communities.
 - **Content creator / TikTok** - Creator applications and TikTok live digests tied to server channels.
@@ -105,6 +112,7 @@ Versions match `package.json` at release (caret ranges; run `npm ls` for the exa
 | HTTP client                | [axios](https://axios-http.com/) 1.15                                                                                                                                                                                                                                                                                                                                       |
 | AI chat                    | [openai](https://www.npmjs.com/package/openai) 7.1 SDK, pointed at any OpenAI-compatible endpoint (URL, key and model set per bot in the panel)                                                                                                                                                                                                                             |
 | Voice AI                   | [@google/genai](https://www.npmjs.com/package/@google/genai) 2.15 (Gemini Live API), [@discordjs/voice](https://www.npmjs.com/package/@discordjs/voice) 0.19, [@discordjs/opus](https://www.npmjs.com/package/@discordjs/opus) 0.10, [sodium-native](https://www.npmjs.com/package/sodium-native) 5.1, [prism-media](https://www.npmjs.com/package/prism-media) 1.3, ffmpeg |
+| Wiki knowledge             | [MediaWiki Action API](https://www.mediawiki.org/wiki/API:Main_page) over native `fetch` (no extra dependency); wiki list stored per bot in MySQL                                                                                                                                                                                                                           |
 | Roblox catalog API         | [rozod](https://www.npmjs.com/package/rozod) 6.6 (typed catalog fetch alongside axios thumbnails)                                                                                                                                                                                                                                                                           |
 | Database                   | [MySQL](https://www.mysql.com/) via [mysql2](https://github.com/sidorares/node-mysql2) 3.22, [Drizzle ORM](https://orm.drizzle.team/) 0.45 + [Drizzle Kit](https://orm.drizzle.team/kit-docs/overview) 0.31 (migrations)                                                                                                                                                    |
 | Password hashing           | [bcryptjs](https://www.npmjs.com/package/bcryptjs) 3.0                                                                                                                                                                                                                                                                                                                      |
@@ -126,8 +134,12 @@ The bot requests the Guilds, Message Content, Server Members, Moderation, Voice 
 
 AI chat is not configured through `.env`. Open the bot in the panel and set the API URL, key, model and reasoning effort there — the key is stored per bot and never sent back to the browser. Enabling AI chat requires the URL, key and model to all be set. Restart the bot after changing these values.
 
+Voice AI lives on the same panel page. It needs AI chat enabled first, plus a voice model, and it uses the Gemini Live API — so the API key above must be a Google AI key. Redis is required, since one voice session is coordinated across processes. Voice sends everyone's audio in the channel to Google; on the free tier that audio is used to improve their products, so tell your members before turning it on.
+
+Wikis are managed on the bot's **Wikis** tab, not in `.env`. Add a wiki's `api.php` endpoint (for example `https://fischipedia.org/w/api.php`), optionally with a description of what game it covers. Wikis apply to both chat and voice, can be disabled individually without losing them, and take effect after a bot restart.
+
 ---
 
 ## License
 
-MIT · Author: Akbar Yudhanto · Version: 26.5.1
+MIT · Author: Akbar Yudhanto · Version: 26.5.2

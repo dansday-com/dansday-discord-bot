@@ -16,7 +16,7 @@ import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 import { writeVoiceState, clearVoiceState, VOICE_STATE_TTL_SEC } from './voiceControl.js';
 import { getEnabledWikis, buildWikiDeclaration, runWikiTool } from './wiki.js';
-import { createWakeDetector, wakeModelAvailable } from './wakeWord.js';
+import { createWakeDetector, wakeModelAvailable, warmWakeModel } from './wakeWord.js';
 
 const INPUT_RATE = 16000;
 const OUTPUT_RATE = 24000;
@@ -537,7 +537,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		}
 		if (stats.framesOut % 500 === 0) {
 			logger.log(
-				`🔈 Voice AI ticker frames=${stats.framesOut} silence=${stats.silenceOut} noise=${stats.framesNoise} audioBytes=${stats.bytesOut} queued=${playbackQueue.length}`
+				`🔈 Voice AI ticker out=${stats.framesOut} silence=${stats.silenceOut} audioBytes=${stats.bytesOut} queued=${playbackQueue.length} | in=${stats.framesIn} asleep=${stats.framesAsleep} noise=${stats.framesNoise} subscribed=${voiceState.size} awake=${isAddressed()}`
 			);
 		}
 		return frame;
@@ -829,7 +829,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		const vad = { active: false, onset: 0, lastVoiceAt: 0, floor: 0, frames: 0, startedAt: 0 };
 		voiceState.set(userId, vad);
 
-		const wakeDetector = wakeModelAvailable() ? createWakeDetector() : null;
+		const wakeDetector = createWakeDetector();
 
 		decoder.on('data', (pcm) => {
 			if (closed || !session || goodbyePending || leaveRequested) {
@@ -1017,7 +1017,9 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		await ensureUndeafened();
 		announceRoster();
 		announceWakePhrase();
-		logger.log(`👥 Voice AI participants: ${rosterText()} | wake=${wakeModelAvailable() ? 'hey stupid (model)' : 'none'}`);
+
+		const wakeLoaded = wakeModelAvailable() ? await warmWakeModel().catch(() => false) : false;
+		logger.log(`👥 Voice AI participants: ${rosterText()} | wake=${wakeLoaded ? 'hey stupid (model ready)' : 'none — bot cannot be woken'}`);
 
 		const startedAt = Date.now();
 		await writeVoiceState(botId, { guildId, channelId, channelName, inviterId, textChannelId, startedAt });

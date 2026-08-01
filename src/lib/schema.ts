@@ -111,6 +111,24 @@ export const botAiMessages = mysqlTable(
 	(t) => [index('idx_bot_ai_messages_session').on(t.bot_id, t.guild_discord_id, t.member_discord_id, t.id)]
 );
 
+export const botWikis = mysqlTable(
+	'bot_wikis',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		bot_id: int('bot_id')
+			.notNull()
+			.references(() => bots.id, { onDelete: 'cascade' }),
+		enabled: boolean('enabled').notNull().default(true),
+		name: varchar('name', { length: 64 }).notNull(),
+		api_url: varchar('api_url', { length: 512 }).notNull(),
+		site_url: varchar('site_url', { length: 512 }),
+		description: varchar('description', { length: 255 }),
+		created_at: datetime('created_at').notNull(),
+		updated_at: datetime('updated_at').notNull()
+	},
+	(t) => [uniqueIndex('uq_bot_wikis_bot_name').on(t.bot_id, t.name), index('idx_bot_wikis_bot').on(t.bot_id)]
+);
+
 export const servers = mysqlTable(
 	'servers',
 	{

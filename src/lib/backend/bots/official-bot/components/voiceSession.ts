@@ -15,6 +15,7 @@ import { Readable } from 'node:stream';
 import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 import { writeVoiceState, clearVoiceState, VOICE_STATE_TTL_SEC } from './voiceControl.js';
+import { getEnabledWikis, buildWikiDeclaration, runWikiTool } from './wiki.js';
 
 const INPUT_RATE = 16000;
 const OUTPUT_RATE = 24000;
@@ -91,6 +92,8 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	const speaking = new Map();
 	const genai = new GoogleGenAI({ apiKey: config.api_key });
 	const systemInstruction = (config.system_prompt ?? '').replace(/\{\{today\}\}/g, new Date().toISOString().slice(0, 10));
+
+	let wikis: any[] = [];
 
 	let connection: any = null;
 	let player = null;
@@ -566,13 +569,41 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		logger.log('🔊 Voice AI output stream started');
 	}
 
-	function handleToolCall(calls) {
-		const responses = calls.map((call) => ({ id: call.id, name: call.name, response: { ok: true } }));
-
+	function sendToolResponses(responses) {
+		if (!responses.length || !session || closed) return;
 		try {
 			session.sendToolResponse({ functionResponses: responses });
 		} catch (err) {
 			logger.log(`⚠️ Voice AI tool response failed: ${String(err)}`);
+		}
+	}
+
+	function handleToolCall(calls) {
+		const wikiCalls = calls.filter((call) => call.name === 'search_wiki');
+		const responses = calls.filter((call) => call.name !== 'search_wiki').map((call) => ({ id: call.id, name: call.name, response: { ok: true } }));
+
+		sendToolResponses(responses);
+
+		for (const call of wikiCalls) {
+			if (!isAddressed()) {
+				logger.log('🚫 Voice AI ignoring wiki lookup while asleep');
+				sendToolResponses([{ id: call.id, name: call.name, response: { ok: false, reason: 'not_addressed' } }]);
+				continue;
+			}
+
+			const query = call.args?.query ?? '';
+			logger.log(`📖 Voice AI wiki lookup: "${query}" (${call.args?.wiki ?? 'default'})`);
+			touchIdle();
+
+			runWikiTool(wikis, call.args ?? {})
+				.then((result) => {
+					touchIdle();
+					sendToolResponses([{ id: call.id, name: call.name, response: result }]);
+				})
+				.catch((err) => {
+					logger.log(`❌ Voice AI wiki lookup failed: ${String(err)}`);
+					sendToolResponses([{ id: call.id, name: call.name, response: { ok: false, reason: 'lookup_failed' } }]);
+				});
 		}
 
 		if (calls.some((call) => call.name === 'i_was_addressed')) {
@@ -628,6 +659,10 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	}
 
 	async function connectLive() {
+		wikis = await getEnabledWikis(botId).catch(() => []);
+		const wikiDeclaration = buildWikiDeclaration(wikis);
+		if (wikiDeclaration) logger.log(`📚 Voice AI wiki lookup available: ${wikis.map((w) => w.name).join(', ')}`);
+
 		session = await genai.live.connect({
 			model: config.voice_model,
 			config: {
@@ -661,7 +696,23 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 								description:
 									'Leave the voice channel and end the call. Only usable while you are awake — if nobody has said the wake phrase, you are asleep and must never call this. Call it when the person talking to you asks you to leave, disconnect or hang up, or says a real farewell meant to end the conversation ("goodbye", "see you later", "bye, talk to you tomorrow"). Say your own short goodbye out loud first, then call this. Do NOT call it for filler like "ok", "thanks", "alright", "hmm", for a pause in conversation, or when people say bye to each other rather than to you.',
 								parameters: { type: Type.OBJECT, properties: {} }
-							}
+							},
+							...(wikiDeclaration
+								? [
+										{
+											name: wikiDeclaration.name,
+											description: wikiDeclaration.description,
+											parameters: {
+												type: Type.OBJECT,
+												properties: {
+													wiki: { type: Type.STRING, enum: wikis.map((w) => w.name), description: 'Which wiki to search.' },
+													query: { type: Type.STRING, description: 'The item, fish, place or mechanic to look up. Keep it short.' }
+												},
+												required: ['wiki', 'query']
+											}
+										}
+									]
+								: [])
 						]
 					}
 				]

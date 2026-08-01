@@ -478,6 +478,83 @@ export async function clearBotAiSession(botId: number, guildDiscordId: string, m
 	return true;
 }
 
+export interface BotWikiInput {
+	enabled: boolean;
+	name: string;
+	api_url: string;
+	site_url: string | null;
+	description: string | null;
+}
+
+export function botWikiFromDbRow(row: any) {
+	return {
+		id: Number(row.id),
+		enabled: row.enabled === true || row.enabled === 1,
+		name: String(row.name ?? ''),
+		api_url: String(row.api_url ?? ''),
+		site_url: row.site_url?.trim() ? row.site_url.trim() : null,
+		description: row.description?.trim() ? row.description.trim() : null
+	};
+}
+
+export async function getBotWikis(botId: number) {
+	await initializeDatabase();
+	const rows = await db
+		.select()
+		.from(schema.botWikis)
+		.where(eq(schema.botWikis.bot_id, Number(botId)))
+		.orderBy(schema.botWikis.name);
+	return rows.map(botWikiFromDbRow);
+}
+
+export async function getBotWiki(botId: number, wikiId: number) {
+	await initializeDatabase();
+	const rows = await db
+		.select()
+		.from(schema.botWikis)
+		.where(and(eq(schema.botWikis.bot_id, Number(botId)), eq(schema.botWikis.id, Number(wikiId))))
+		.limit(1);
+	return rows[0] ? botWikiFromDbRow(rows[0]) : null;
+}
+
+export async function createBotWiki(botId: number, data: BotWikiInput) {
+	await initializeDatabase();
+	const now = toMySQLDateTime();
+	const [result] = await db.insert(schema.botWikis).values({
+		bot_id: Number(botId),
+		enabled: data.enabled,
+		name: data.name,
+		api_url: data.api_url,
+		site_url: data.site_url,
+		description: data.description,
+		created_at: now as any,
+		updated_at: now as any
+	});
+	return getBotWiki(botId, Number((result as any).insertId));
+}
+
+export async function updateBotWiki(botId: number, wikiId: number, data: BotWikiInput) {
+	await initializeDatabase();
+	await db
+		.update(schema.botWikis)
+		.set({
+			enabled: data.enabled,
+			name: data.name,
+			api_url: data.api_url,
+			site_url: data.site_url,
+			description: data.description,
+			updated_at: toMySQLDateTime() as any
+		})
+		.where(and(eq(schema.botWikis.bot_id, Number(botId)), eq(schema.botWikis.id, Number(wikiId))));
+	return getBotWiki(botId, wikiId);
+}
+
+export async function deleteBotWiki(botId: number, wikiId: number) {
+	await initializeDatabase();
+	await db.delete(schema.botWikis).where(and(eq(schema.botWikis.bot_id, Number(botId)), eq(schema.botWikis.id, Number(wikiId))));
+	return true;
+}
+
 export type ServerBotStatusInput = BotStatusInput;
 
 export const DEFAULT_SERVER_BOT_PRESENCE: ServerBotStatusInput = DEFAULT_BOT_PRESENCE;
@@ -5975,6 +6052,12 @@ export default {
 	getBotAiSession,
 	appendBotAiMessage,
 	clearBotAiSession,
+	getBotWikis,
+	getBotWiki,
+	createBotWiki,
+	updateBotWiki,
+	deleteBotWiki,
+	botWikiFromDbRow,
 	getServerBotStatusByServerBotId,
 	upsertServerBotStatus,
 	getServer,

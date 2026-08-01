@@ -339,7 +339,38 @@ function promote(hits, title) {
 	return [{ title, snippet: '' }, ...rest];
 }
 
+const LATEST_VERSION_RE =
+	/\b(latest|newest|current|recent|last)\b.*\b(version|update|patch|release)\b|\b(version|update|patch|release)\b.*\b(latest|newest|current|recent|last)\b/i;
+
+function compareVersions(a, b) {
+	const left = a.split('.').map(Number);
+	const right = b.split('.').map(Number);
+	for (let i = 0; i < Math.max(left.length, right.length); i++) {
+		const diff = (left[i] ?? 0) - (right[i] ?? 0);
+		if (diff) return diff;
+	}
+	return 0;
+}
+
+async function latestVersionTitle(wiki) {
+	const data = await apiGet(wiki, {
+		action: 'query',
+		list: 'categorymembers',
+		cmtitle: 'Category:Versions',
+		cmlimit: 500
+	}).catch(() => null);
+
+	const versions = (data?.query?.categorymembers ?? []).map((entry) => entry.title).filter((title) => /^\d+(\.\d+)+$/.test(title));
+
+	return versions.sort(compareVersions).pop() ?? null;
+}
+
 async function searchTitles(wiki, query) {
+	if (LATEST_VERSION_RE.test(query)) {
+		const newest = await latestVersionTitle(wiki);
+		if (newest) return [{ title: newest, snippet: '' }];
+	}
+
 	const simplified = simplifyQuery(query);
 
 	const [first, exact] = await Promise.all([rawSearch(wiki, query), exactTitle(wiki, simplified ?? query)]);
@@ -449,7 +480,7 @@ export function buildWikiTool(wikis) {
 		type: 'function',
 		function: {
 			name: 'search_wiki',
-			description: `Look up factual information on a game wiki. Use this whenever someone asks about anything covered by these wikis — items, rods, fish, bait, NPCs, locations, quests, events, mechanics, prices, stats or how something works. Never answer such questions from memory, and never guess numbers: search first, then answer from what comes back. Available wikis:\n${describeWikis(wikis)}`,
+			description: `Look up factual information on a game wiki. Use this whenever someone asks about anything covered by these wikis — items, rods, fish, bait, NPCs, locations, quests, events, mechanics, prices, stats, versions or how something works. Never answer such questions from memory, and never guess numbers: search first, then answer from what comes back. The search itself is English-only, but always reply in the language the user wrote in. If the search comes back with nothing, say plainly that you could not find it on the wiki — never tell them to go look it up themselves. Available wikis:\n${describeWikis(wikis)}`,
 			parameters: {
 				type: 'object',
 				properties: {
@@ -460,7 +491,8 @@ export function buildWikiTool(wikis) {
 					},
 					query: {
 						type: 'string',
-						description: 'The thing to look up — usually the item, fish or place name on its own, e.g. "Steady Rod". Keep it short.'
+						description:
+							'The thing to look up, written in English no matter what language the user spoke — these wikis only have English page titles, so a non-English query finds nothing. Translate their words first, then search the name on its own, e.g. "Steady Rod". Indonesian examples: "versi terbaru" → "latest version", "ikan langka" → "rare fish", "harga joran" → "fishing rod price". Keep it short — the page name, not a sentence or a question.'
 					}
 				},
 				required: ['wiki', 'query']

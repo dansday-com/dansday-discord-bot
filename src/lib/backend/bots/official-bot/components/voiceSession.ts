@@ -42,8 +42,6 @@ const WAKE_TURN_GAP_MS = 250;
 const CLOSE_WAIT_MS = 3000;
 const MAX_QUEUED_CHUNKS = 60;
 
-const IDLE_TIMEOUT_MS = 3 * 60_000;
-const IDLE_WARN_MS = IDLE_TIMEOUT_MS - 10_000;
 const GOODBYE_GRACE_MS = 12_000;
 const ADDRESSED_WINDOW_MS = 15_000;
 const WAKE_BUFFER_CHARS = 160;
@@ -51,11 +49,8 @@ const MUTE_NOTICE_GRACE_MS = 6_000;
 const MUTE_NOTICE_MAX_WAIT_MS = 15_000;
 const NAME_CORROBORATE_MS = 8_000;
 const WAKE_LEADS = ['hello', 'helo', 'hallo', 'halo'];
-const WAKE_TARGETS = ['ai', 'bot', 'a i', 'ay', 'bott', 'bod'];
+const WAKE_TARGETS = ['dans'];
 const HEARTBEAT_MS = (VOICE_STATE_TTL_SEC / 2) * 1000;
-
-const IDLE_GOODBYE_PROMPT =
-	"Nobody has spoken for a while. Say a short, natural goodbye out loud — you're heading off since it's quiet, and they can call you back anytime. One sentence.";
 
 const WIKI_STALL_MS = 600;
 
@@ -108,8 +103,6 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	let closed = false;
 	let goodbyePending = false;
 
-	let idleTimer = null;
-	let idleWarnTimer = null;
 	let heartbeat = null;
 
 	const playbackQueue = [];
@@ -201,7 +194,6 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		addressedUntil = Date.now() + ADDRESSED_WINDOW_MS;
 		turnCooldownUntil = 0;
 		muteAnnounced = false;
-		touchIdle();
 		setSelfMute(false);
 		if (muteTimer) clearTimeout(muteTimer);
 		muteTimer = setTimeout(announceMute, ADDRESSED_WINDOW_MS);
@@ -256,7 +248,6 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	function extendAddressedWindow() {
 		addressedUntil = Date.now() + ADDRESSED_WINDOW_MS;
 		muteAnnounced = false;
-		touchIdle();
 		if (muteTimer) clearTimeout(muteTimer);
 		muteTimer = setTimeout(announceMute, ADDRESSED_WINDOW_MS);
 	}
@@ -293,7 +284,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		goodbyeAllowedUntil = announcedAt + MUTE_NOTICE_MAX_WAIT_MS;
 		logger.log('🔕 Voice AI announcing mute before going quiet');
 		sendSystemNote(
-			`Say one short sentence out loud now: it has gone quiet, so you are muting yourself, and they just need to say "hello AI" or "hello bot" whenever they want you again. One sentence, casual, no explanation.`
+			`Say one short sentence out loud now: it has gone quiet, so you are muting yourself, and they just need to say "hello Dans" whenever they want you again. One sentence, casual, no explanation.`
 		);
 		muteTimer = setTimeout(function settleMute() {
 			muteTimer = null;
@@ -380,18 +371,10 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	}
 
 	function clearTimers() {
-		for (const t of [idleTimer, idleWarnTimer, turnTimer, muteTimer]) if (t) clearTimeout(t);
+		for (const t of [turnTimer, muteTimer]) if (t) clearTimeout(t);
 		turnTimer = muteTimer = null;
 		if (heartbeat) clearInterval(heartbeat);
-		idleTimer = idleWarnTimer = heartbeat = null;
-	}
-
-	function touchIdle() {
-		if (goodbyePending) return;
-		if (idleTimer) clearTimeout(idleTimer);
-		if (idleWarnTimer) clearTimeout(idleWarnTimer);
-		idleWarnTimer = setTimeout(() => say(IDLE_GOODBYE_PROMPT), IDLE_WARN_MS);
-		idleTimer = setTimeout(() => stop('idle_timeout'), IDLE_TIMEOUT_MS);
+		heartbeat = null;
 	}
 
 	const transcriptBuffer = { user: '', assistant: '' };
@@ -504,7 +487,6 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		}
 
 		extendWhileReplying();
-		touchIdle();
 	}
 
 	function handleInterrupt() {
@@ -598,7 +580,6 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 			const query = call.args?.query ?? '';
 			logger.log(`📖 Voice AI wiki lookup: "${query}" (${call.args?.wiki ?? 'default'})`);
-			touchIdle();
 
 			let settled = false;
 			const stallTimer = setTimeout(() => {
@@ -611,7 +592,6 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 			const finish = (response) => {
 				settled = true;
 				clearTimeout(stallTimer);
-				touchIdle();
 				extendAddressedWindow();
 				sendToolResponses([{ id: call.id, name: call.name, response }]);
 			};
@@ -700,7 +680,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 							{
 								name: 'i_was_addressed',
 								description:
-									'Call this ONLY when someone says "hello AI" or "hello bot" — the word "hello" (or "halo") immediately followed by "AI" or "bot". That exact wake phrase is the only thing that wakes you. Do NOT call this for other greetings like "hi", "hey" or "yo", for "hello" on its own, for the word "AI" or "bot" on its own, for people talking to each other, for general chatter, or for any question with no wake phrase in front of it. When in doubt, do NOT call it and stay silent. Call it BEFORE answering.',
+									'Call this ONLY when someone says "hello Dans" — the word "hello" (or "halo") immediately followed by "Dans". That exact wake phrase is the only thing that wakes you. Do NOT call this for other greetings like "hi", "hey" or "yo", for "hello" on its own, for the name "Dans" on its own, for people talking to each other, for general chatter, or for any question with no wake phrase in front of it. When in doubt, do NOT call it and stay silent. Call it BEFORE answering.',
 								parameters: { type: Type.OBJECT, properties: {} }
 							},
 							{
@@ -1052,11 +1032,9 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		setSelfMute(true);
 		announceRoster();
 		sendSystemNote(
-			`[System] You only wake up when someone says "hello AI" or "hello bot" — the word "hello" (or "halo") immediately followed by "AI" or "bot". Nothing else counts, not "hi", not "hey", not your name. Everything else in this channel — people chatting with each other, questions with no wake phrase attached, music from other bots — you ignore completely and call nothing. When unsure, stay silent. Do not read this note aloud.`
+			`[System] You only wake up when someone says "hello Dans" — the word "hello" (or "halo") immediately followed by "Dans". Nothing else counts, not "hi", not "hey", not "hello" alone. Everything else in this channel — people chatting with each other, questions with no wake phrase attached, music from other bots — you ignore completely and call nothing. When unsure, stay silent. Do not read this note aloud.`
 		);
 		logger.log(`👥 Voice AI participants: ${rosterText()} | wake=${wakeWords.join('/') || 'none'}`);
-
-		touchIdle();
 
 		const startedAt = Date.now();
 		await writeVoiceState(botId, { guildId, channelId, channelName, inviterId, textChannelId, startedAt });

@@ -2,7 +2,7 @@ import { load } from 'cheerio';
 import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 
-const REQUEST_TIMEOUT_MS = 15_000;
+const REQUEST_TIMEOUT_MS = 30_000;
 export const WIKI_USER_AGENT = 'DansdayBot/1.0 (https://github.com/dansday-com/dansday-discord-bot) MediaWiki-search';
 const USER_AGENT = WIKI_USER_AGENT;
 const SEARCH_LIMIT = 4;
@@ -56,6 +56,8 @@ async function apiGet(wiki, params) {
 			]
 		: [url, { headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' }, signal: controller.signal }];
 
+	const startedAt = Date.now();
+
 	try {
 		const res = await fetch(request[0], request[1]);
 		if (!res.ok) throw new Error(`HTTP ${res.status}${wiki.relay_url ? ' (via relay)' : ''}`);
@@ -63,6 +65,13 @@ async function apiGet(wiki, params) {
 		const data = await res.json();
 		if (data?.relay_error) throw new Error(`Relay: ${data.relay_error}`);
 		return data;
+	} catch (error) {
+		const elapsed = Date.now() - startedAt;
+		const via = wiki.relay_url ? `relay ${wiki.relay_url}` : 'direct';
+		if (error.name === 'AbortError') {
+			throw new Error(`timed out after ${elapsed}ms via ${via} (action=${params.action ?? '?'})`);
+		}
+		throw new Error(`${error.message} after ${elapsed}ms via ${via}`);
 	} finally {
 		clearTimeout(timer);
 	}
@@ -322,6 +331,11 @@ function promote(hits, title) {
 	return [{ title, snippet: '' }, ...rest];
 }
 
+async function mainPageTitle(wiki) {
+	const data = await apiGet(wiki, { action: 'query', meta: 'siteinfo', siprop: 'general' }).catch(() => null);
+	return data?.query?.general?.mainpage ?? null;
+}
+
 async function searchTitles(wiki, query, page) {
 	if (page) {
 		const named = await exactTitle(wiki, page, { strict: true });
@@ -374,18 +388,24 @@ async function readPage(wiki, title) {
 	};
 }
 
-export async function searchWiki(wiki, query, page) {
+export async function searchWiki(wiki, query, page, mainPage = false) {
 	const trimmed = String(query ?? '').trim();
 	const requestedPage = String(page ?? '').trim();
-	if (!trimmed && !requestedPage) return { ok: false, reason: 'empty_query' };
+	if (!trimmed && !requestedPage && !mainPage) return { ok: false, reason: 'empty_query' };
 
-	const cacheKey = `${wiki.api_url}::${requestedPage.toLowerCase()}::${trimmed.toLowerCase()}`;
+	const cacheKey = `${wiki.api_url}::${mainPage ? 'MAIN' : ''}::${requestedPage.toLowerCase()}::${trimmed.toLowerCase()}`;
 	const cached = cacheGet(cacheKey);
 	if (cached) return cached;
 
 	let hits;
 	try {
-		hits = await searchTitles(wiki, trimmed || requestedPage, requestedPage);
+		if (mainPage) {
+			const front = await mainPageTitle(wiki);
+			hits = front ? [{ title: front, snippet: '' }] : [];
+			if (!hits.length) throw new Error('main page title unavailable');
+		} else {
+			hits = await searchTitles(wiki, trimmed || requestedPage, requestedPage);
+		}
 	} catch (error) {
 		await logger.log(`❌ Wiki search failed (${wiki.name}): ${error.message}`);
 		return { ok: false, reason: 'wiki_unreachable', wiki: wiki.name };
@@ -433,7 +453,9 @@ export function buildWikiTool(wikis) {
 		type: 'function',
 		function: {
 			name: 'search_wiki',
-			description: `Look up factual information on a game wiki. Use this whenever someone asks about anything covered by these wikis — items, rods, fish, bait, NPCs, locations, quests, events, mechanics, prices, stats, versions or how something works. Never answer such questions from memory, and never guess numbers: search first, then answer from what comes back.
+			description: `Look up factual information on a game wiki. Use this whenever someone asks a QUESTION about anything covered by these wikis — items, rods, fish, bait, NPCs, locations, quests, events, mechanics, prices, stats, versions or how something works. Never answer such a question from memory, and never guess numbers: search first, then answer from what comes back.
+
+Do NOT call this when there is no question to look up. Chatting, greetings, jokes, thanks, opinions, and anything about you rather than a game are all answered in your own words with no lookup. Commands aimed at you are not lookups either — "keluar", "keluar lu", "leave", "get out", "pergi", "diam", "stop", "join", "masuk" mean the user wants you to leave or join voice or be quiet: use the voice tool or just reply, and never search the wiki for them. A message being short or in Indonesian does not make it a lookup. If nothing in the message names a game thing to look up, do not call this tool.
 
 Read the entire result before answering: the answer is usually under a heading such as "Obtainment", "Skins", "Location" or "Change History" rather than in the opening line, and infobox values arrive in "stats". Answer only with facts present in the result — never add an item, price, chance or mechanic that is not there, and never fill a gap from memory. If the result already contains the answer, never claim the wiki has not documented it yet, and never speculate about why something is missing. Live values such as countdowns, current spawn timers and active events are not on the wiki: say you cannot see live timers and give the conditions the wiki does list instead.
 
@@ -455,6 +477,11 @@ The search itself is English-only, but always reply in the language the user wro
 						type: 'string',
 						description:
 							'Optional. The exact wiki page title to open, when you already know it — this skips searching and reads that page directly. Use it when the user names a specific page, or when a previous result pointed at one (e.g. a version number like "1.94.0" for the newest patch, or a title listed in "other_matches"). Leave this out if you are unsure the page exists, and just use query instead.'
+					},
+					main_page: {
+						type: 'boolean',
+						description:
+							'Set true to read the wiki\'s front page instead of searching. ALWAYS use this for anything current or newest — "latest version", "current update", "versi terbaru", "what patch is live", "active event", "what season is it". Searching for those words ranks by keyword match and returns an old page, so it gives the wrong answer; the front page states the live version and lists recent updates. Read the newest entry there, then optionally open that version page with "page" for detail. When you use this, ignore any version you remember and trust only the front page.'
 					}
 				},
 				required: ['wiki', 'query']
@@ -488,7 +515,7 @@ export async function runWikiTool(wikis, args) {
 		return { ok: false, reason: 'unknown_wiki', available: wikis.map((wiki) => wiki.name) };
 	}
 
-	return searchWiki(match, args?.query, args?.page);
+	return searchWiki(match, args?.query, args?.page, args?.main_page === true || args?.main_page === 'true');
 }
 
 export default { searchWiki, getEnabledWikis, buildWikiTool, buildWikiDeclaration, runWikiTool, describeWikis };

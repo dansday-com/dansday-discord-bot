@@ -699,7 +699,13 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 												type: Type.OBJECT,
 												properties: {
 													wiki: { type: Type.STRING, enum: wikis.map((w) => w.name), description: 'Which wiki to search.' },
-													query: { type: Type.STRING, description: 'The item, fish, place or mechanic to look up. Keep it short.' }
+													query: { type: Type.STRING, description: 'The item, fish, place or mechanic to look up. Keep it short.' },
+													page: { type: Type.STRING, description: 'Optional exact page title to open directly, when you already know it.' },
+													main_page: {
+														type: Type.BOOLEAN,
+														description:
+															'Set true for anything current or newest — latest version, current update, versi terbaru, active event, current season. Searching those words returns an old page; the front page states the live version.'
+													}
 												},
 												required: ['wiki', 'query']
 											}
@@ -1015,11 +1021,12 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 		await ensureUnmuted();
 		await ensureUndeafened();
-		announceRoster();
-		announceWakePhrase();
 
 		const wakeLoaded = wakeModelAvailable() ? await warmWakeModel().catch(() => false) : false;
 		logger.log(`👥 Voice AI participants: ${rosterText()} | wake=${wakeLoaded ? 'hey stupid (model ready)' : 'none — bot cannot be woken'}`);
+
+		announceRoster();
+		announceWakePhrase();
 
 		const startedAt = Date.now();
 		await writeVoiceState(botId, { guildId, channelId, channelName, inviterId, textChannelId, startedAt });

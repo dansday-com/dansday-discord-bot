@@ -72,17 +72,108 @@ const VOICE_TOOLS = [
 	}
 ];
 
+const MAX_ATTACHMENTS = 4;
+const MAX_ATTACHMENT_BYTES = 12 * 1024 * 1024;
+const ATTACHMENT_FETCH_TIMEOUT_MS = 20_000;
+
+const ATTACHMENT_KINDS = [
+	{ kind: 'image', test: (type, name) => type.startsWith('image/') || /\.(png|jpe?g|webp|gif|heic|heif)$/i.test(name) },
+	{ kind: 'pdf', test: (type, name) => type === 'application/pdf' || /\.pdf$/i.test(name) },
+	{ kind: 'audio', test: (type, name) => type.startsWith('audio/') || /\.(mp3|wav|ogg|oga|m4a|aac|flac)$/i.test(name) },
+	{ kind: 'video', test: (type, name) => type.startsWith('video/') || /\.(mp4|mov|webm|mkv|avi)$/i.test(name) }
+];
+
+function classifyAttachment(attachment) {
+	const type = (attachment.contentType ?? '').split(';')[0].trim().toLowerCase();
+	const name = attachment.name ?? '';
+	return ATTACHMENT_KINDS.find((entry) => entry.test(type, name))?.kind ?? null;
+}
+
+function mimeFor(attachment, kind) {
+	const declared = (attachment.contentType ?? '').split(';')[0].trim().toLowerCase();
+	if (declared) return declared;
+
+	const ext = (attachment.name ?? '').split('.').pop()?.toLowerCase() ?? '';
+	const fallback = {
+		png: 'image/png',
+		jpg: 'image/jpeg',
+		jpeg: 'image/jpeg',
+		webp: 'image/webp',
+		gif: 'image/gif',
+		pdf: 'application/pdf',
+		mp3: 'audio/mpeg',
+		wav: 'audio/wav',
+		ogg: 'audio/ogg',
+		oga: 'audio/ogg',
+		m4a: 'audio/mp4',
+		mp4: 'video/mp4',
+		mov: 'video/quicktime',
+		webm: 'video/webm'
+	}[ext];
+
+	return fallback ?? (kind === 'image' ? 'image/png' : 'application/octet-stream');
+}
+
+async function fetchAttachmentPart(attachment) {
+	const kind = classifyAttachment(attachment);
+	if (!kind) return null;
+	if (attachment.size && attachment.size > MAX_ATTACHMENT_BYTES) {
+		await logger.log(`📎 AI skipping ${attachment.name ?? 'attachment'} (${attachment.size} bytes over limit)`);
+		return null;
+	}
+
+	const controller = new AbortController();
+	const timer = setTimeout(() => controller.abort(), ATTACHMENT_FETCH_TIMEOUT_MS);
+
+	try {
+		const res = await fetch(attachment.url, { signal: controller.signal });
+		if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+		const buffer = Buffer.from(await res.arrayBuffer());
+		if (buffer.byteLength > MAX_ATTACHMENT_BYTES) throw new Error(`${buffer.byteLength} bytes over limit`);
+
+		const mime = mimeFor(attachment, kind);
+		const dataUrl = `data:${mime};base64,${buffer.toString('base64')}`;
+
+		if (kind === 'image') return { type: 'image_url', image_url: { url: dataUrl } };
+		return { type: 'input_file', input_file: { filename: attachment.name ?? `file.${mime.split('/')[1] ?? 'bin'}`, file_data: dataUrl } };
+	} catch (error) {
+		await logger.log(`📎 AI could not read ${attachment.name ?? 'attachment'}: ${error.message}`);
+		return null;
+	} finally {
+		clearTimeout(timer);
+	}
+}
+
+async function buildAttachmentParts(message) {
+	const attachments = [...(message.attachments?.values?.() ?? [])];
+	if (!attachments.length) return { parts: [], kinds: [] };
+
+	const supported = attachments.filter((attachment) => classifyAttachment(attachment)).slice(0, MAX_ATTACHMENTS);
+	if (!supported.length) return { parts: [], kinds: [] };
+
+	const settled = await Promise.all(supported.map((attachment) => fetchAttachmentPart(attachment)));
+	const parts = settled.filter(Boolean);
+	const kinds = supported.filter((attachment, index) => settled[index]).map((attachment) => classifyAttachment(attachment));
+
+	return { parts, kinds };
+}
+
 const SMALL_TALK_RE =
 	/^(?:h(?:i|ey|ello|alo)|yo|sup|thanks?|thank you|thx|makasih|terima kasih|ok(?:ay)?|oke|sip|lol|wkwk|bye|good (?:morning|night)|pagi|malam|selamat \w+)[\s!.?]*$/i;
 
 const VOICE_INTENT_RE =
 	/\b(join|leave|masuk|keluar|disconnect)\b.*\b(voice|vc|call|channel)\b|\b(voice|vc|call|channel)\b.*\b(join|leave|masuk|keluar|disconnect)\b/i;
 
+const COMMAND_RE =
+	/^(?:(?:tolong|please|bot|ai|lu|kamu|kau)\s+)*(?:join|leave|out|exit|quit|disconnect|dc|come|stay|stop|wait|mute|unmute|shut\s*up|silent|keluar|masuk|pergi|pulang|balik|sini|diam|diem|berhenti|udahan|cukup|sudah|jangan)\b/i;
+
 function shouldForceWikiSearch(prompt) {
 	const text = String(prompt ?? '').trim();
 	if (!text || text.length < 3) return false;
 	if (SMALL_TALK_RE.test(text)) return false;
 	if (VOICE_INTENT_RE.test(text)) return false;
+	if (COMMAND_RE.test(text)) return false;
 	return true;
 }
 
@@ -265,9 +356,11 @@ async function handleMessageCreate(message) {
 
 		try {
 			const prompt = stripBotMention(message.content ?? '', botUserId);
-			const userContent = prompt || 'Hello!';
 
 			await message.channel.sendTyping().catch(() => {});
+
+			const { parts: attachmentParts, kinds: attachmentKinds } = await buildAttachmentParts(message);
+			const userContent = prompt || (attachmentParts.length ? `(${attachmentKinds.join(', ')} attached, no message text)` : 'Hello!');
 
 			const history = await db.getBotAiSession(botConfig.id, message.guild.id, message.author.id, MAX_RECENT);
 			const conversation = history.map((row) => ({ role: row.role, content: row.content }));
@@ -275,7 +368,11 @@ async function handleMessageCreate(message) {
 			const today = new Date().toISOString().slice(0, 10);
 			const systemContent = config.system_prompt?.replace(/\{\{today\}\}/g, today) ?? '';
 
-			const messages = [...(systemContent ? [{ role: 'system', content: systemContent }] : []), ...conversation, { role: 'user', content: userContent }];
+			const userMessage = attachmentParts.length
+				? { role: 'user', content: [{ type: 'text', text: userContent }, ...attachmentParts] }
+				: { role: 'user', content: userContent };
+
+			const messages = [...(systemContent ? [{ role: 'system', content: systemContent }] : []), ...conversation, userMessage];
 
 			const voiceReady = config.voice_enabled && !!config.voice_model;
 			const wikis = await getEnabledWikis(botConfig.id).catch(() => []);
@@ -292,7 +389,7 @@ async function handleMessageCreate(message) {
 			const raw = await callChatCompletions(config, messages, {
 				tools: tools.length ? tools : null,
 				onToolCall: tools.length ? onToolCall : null,
-				forceTool: wikiTool && shouldForceWikiSearch(userContent) ? 'search_wiki' : null
+				forceTool: wikiTool && !attachmentParts.length && shouldForceWikiSearch(userContent) ? 'search_wiki' : null
 			});
 			const reply = stripReasoning(typeof raw === 'string' ? raw : '').slice(0, MAX_REPLY_LENGTH);
 
@@ -301,7 +398,8 @@ async function handleMessageCreate(message) {
 				return;
 			}
 
-			await db.appendBotAiMessage(botConfig.id, message.guild.id, message.author.id, 'user', userContent);
+			const storedContent = attachmentParts.length && prompt ? `${userContent} [${attachmentKinds.join(', ')} attached]` : userContent;
+			await db.appendBotAiMessage(botConfig.id, message.guild.id, message.author.id, 'user', storedContent);
 			await db.appendBotAiMessage(botConfig.id, message.guild.id, message.author.id, 'assistant', reply);
 
 			const mention = `<@${message.author.id}>`;

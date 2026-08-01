@@ -34,7 +34,7 @@ const MEL_STRIDE = 8;
 const AUDIO_BUFFER_SAMPLES = SAMPLE_RATE * 3;
 const MEL_BUFFER_FRAMES = 400;
 
-const DETECT_THRESHOLD = 0.5;
+const DETECT_THRESHOLD = Number(process.env.WAKE_THRESHOLD ?? 0.3);
 const REFRACTORY_MS = 2000;
 const DEBUG_WAKE = process.env.WAKE_DEBUG === '1';
 const DEBUG_INTERVAL_MS = 2000;
@@ -202,7 +202,7 @@ export function createWakeDetector() {
 				const now = Date.now();
 				if (score >= DETECT_THRESHOLD && now - lastDetectionAt > REFRACTORY_MS) {
 					lastDetectionAt = now;
-					embeddings.length = 0;
+					reset();
 					detected = score;
 					break;
 				}

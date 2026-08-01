@@ -15,7 +15,8 @@
 	const tabs = $derived([
 		{ label: 'Servers', icon: 'fa-server', iconClass: 'text-violet-400', href: base },
 		{ label: 'Presence', icon: 'fa-circle-notch', iconClass: 'text-sky-400', href: `${base}/presence` },
-		{ label: 'AI', icon: 'fa-robot', iconClass: 'text-emerald-400', href: `${base}/ai` }
+		{ label: 'AI', icon: 'fa-robot', iconClass: 'text-emerald-400', href: `${base}/ai` },
+		{ label: 'Wikis', icon: 'fa-book', iconClass: 'text-sky-400', href: `${base}/wikis` }
 	]);
 
 	function isActive(href: string) {

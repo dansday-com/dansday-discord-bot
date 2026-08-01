@@ -3,12 +3,13 @@ import { getBotConfig } from '../../../config.js';
 import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 import { publishVoiceCommand, readVoiceState } from './voiceControl.js';
+import { getEnabledWikis, buildWikiTool, runWikiTool } from './wiki.js';
 
 const DISCORD_MESSAGE_LIMIT = 2000;
 const MAX_REPLY_LENGTH = 4000;
 const MAX_RECENT = 10;
 const REQUEST_TIMEOUT_MS = 120_000;
-const MAX_TOOL_ITERATIONS = 3;
+const MAX_TOOL_ITERATIONS = 5;
 
 const inFlight = new Set();
 
@@ -192,7 +193,13 @@ async function callChatCompletions(config, messages, { tools = null, onToolCall 
 		for (const call of choice.tool_calls) {
 			const cacheKey = `${call.function.name}:${call.function.arguments ?? ''}`;
 			if (!toolResultCache.has(cacheKey)) {
-				toolResultCache.set(cacheKey, await onToolCall(call.function.name));
+				let args = {};
+				try {
+					args = call.function.arguments ? JSON.parse(call.function.arguments) : {};
+				} catch {
+					args = {};
+				}
+				toolResultCache.set(cacheKey, await onToolCall(call.function.name, args));
 			}
 			loop.push({ role: 'tool', tool_call_id: call.id, content: toolResultCache.get(cacheKey) });
 		}
@@ -254,9 +261,19 @@ async function handleMessageCreate(message) {
 			const messages = [...(systemContent ? [{ role: 'system', content: systemContent }] : []), ...conversation, { role: 'user', content: userContent }];
 
 			const voiceReady = config.voice_enabled && !!config.voice_model;
+			const wikis = await getEnabledWikis(botConfig.id).catch(() => []);
+			const wikiTool = buildWikiTool(wikis);
+
+			const tools = [...(voiceReady ? VOICE_TOOLS : []), ...(wikiTool ? [wikiTool] : [])];
+
+			const onToolCall = (name, args) => {
+				if (name === 'search_wiki') return runWikiTool(wikis, args).then((result) => JSON.stringify(result));
+				return executeVoiceTool(name, message, botConfig.id);
+			};
+
 			const raw = await callChatCompletions(config, messages, {
-				tools: voiceReady ? VOICE_TOOLS : null,
-				onToolCall: voiceReady ? (name) => executeVoiceTool(name, message, botConfig.id) : null
+				tools: tools.length ? tools : null,
+				onToolCall: tools.length ? onToolCall : null
 			});
 			const reply = stripReasoning(typeof raw === 'string' ? raw : '').slice(0, MAX_REPLY_LENGTH);
 

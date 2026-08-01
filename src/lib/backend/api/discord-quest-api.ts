@@ -290,19 +290,40 @@ const QUEST_VIDEO_RE = /\.(?:mp4|webm|mov)(?:\?|$)/i;
 const QUEST_ASSET_FILE_RE = /(?:^|\/)[\w-]+\.(?:png|jpe?g|webp|gif)(?:\?|$)/i;
 const QUEST_REWARD_ASSET_FILE_RE = /(?:^|\/)[\w-]+\.(?:png|jpe?g|webp|gif|mp4|webm|mov)(?:\?|$)/i;
 
+const DISCORD_CONTENT_ASSET_RE = /^[0-9a-f]{32,}$/i;
+
 function questRewardAssetUrl(questId: string, raw: string): string | null {
 	const s = raw.trim().replace(/^\/+/, '');
 	if (!s) return null;
-	if (s.startsWith('http://') || s.startsWith('https://')) return s;
-	if (!questId || /\s/.test(s)) return null;
-	const file = s.replace(/^(?:quests\/)?[0-9]{5,}\//, '').replace(/\?.*$/, '');
+	if (s.startsWith('http://') || s.startsWith('https://')) return rewardMediaAsImage(s);
+	if (/\s/.test(s)) return null;
+
+	const bare = s.replace(/\?.*$/, '');
+	const stem = bare.replace(/\.[a-z0-9]+$/i, '');
+	if (DISCORD_CONTENT_ASSET_RE.test(stem)) {
+		const ext = bare.slice(stem.length) || '.png';
+		return `https://cdn.discordapp.com/assets/content/${stem}${ext}?format=webp&width=256&height=256`;
+	}
+
+	if (!questId) return null;
+	const file = bare.replace(/^(?:quests\/)?[0-9]{5,}\//, '');
 	if (!file) return null;
 	return `https://cdn.discordapp.com/quests/${questId}/${file}?format=webp&width=256&height=256`;
 }
 
+function rewardMediaAsImage(url: string): string {
+	if (!QUEST_VIDEO_RE.test(url)) return url;
+	const [path, query = ''] = url.split('?');
+	const params = new URLSearchParams(query);
+	params.set('format', 'webp');
+	if (!params.has('width')) params.set('width', '256');
+	if (!params.has('height')) params.set('height', '256');
+	return `${path}?${params.toString()}`;
+}
+
 const REWARD_ASSET_KEY_RE = /^(?:asset|assets|image|images|icon|tile|hero|art|artwork|thumbnail|asset_url|image_url|reward_tile|platforms_asset)$/i;
 
-function collectRewardAssetStrings(value: unknown, depth: number, out: string[]): void {
+function collectRewardAssetStrings(value: unknown, depth: number, out: string[], keyed = false): void {
 	if (depth > 4 || value == null) return;
 	if (typeof value === 'string') {
 		const v = value.trim();
@@ -310,16 +331,16 @@ function collectRewardAssetStrings(value: unknown, depth: number, out: string[])
 		return;
 	}
 	if (Array.isArray(value)) {
-		for (const item of value) collectRewardAssetStrings(item, depth + 1, out);
+		for (const item of value) collectRewardAssetStrings(item, depth + 1, out, keyed);
 		return;
 	}
 	if (typeof value !== 'object') return;
 	for (const [k, val] of Object.entries(value as Record<string, unknown>)) {
 		if (typeof val === 'string') {
-			if (REWARD_ASSET_KEY_RE.test(k)) collectRewardAssetStrings(val, depth + 1, out);
+			if (keyed || REWARD_ASSET_KEY_RE.test(k)) collectRewardAssetStrings(val, depth + 1, out, keyed);
 			continue;
 		}
-		collectRewardAssetStrings(val, depth + 1, out);
+		collectRewardAssetStrings(val, depth + 1, out, keyed);
 	}
 }
 
@@ -329,26 +350,26 @@ function rewardTileFromQuest(questId: string, quest: Record<string, unknown>, cf
 	for (const r of rewardListFromQuest(quest)) {
 		const rec = r as Record<string, unknown>;
 		if (!rec || typeof rec !== 'object') continue;
-		for (const k of ['asset', 'assets', 'image', 'icon', 'tile', 'asset_url', 'image_url']) {
-			collectRewardAssetStrings(rec[k], 0, candidates);
+		for (const k of ['asset', 'assets', 'image', 'icon', 'tile', 'asset_url', 'image_url', 'orb_asset', 'reward_asset', 'tile_asset']) {
+			collectRewardAssetStrings(rec[k], 0, candidates, true);
 		}
 		collectRewardAssetStrings(rec.messages, 0, candidates);
 	}
 
 	const rewardsCfg = (cfg.rewards_config ?? {}) as Record<string, unknown>;
 	for (const k of ['assets', 'asset', 'platforms_asset', 'reward_tile', 'hero']) {
-		collectRewardAssetStrings(rewardsCfg[k], 0, candidates);
+		collectRewardAssetStrings(rewardsCfg[k], 0, candidates, true);
 	}
 
 	const assets = (cfg.assets ?? {}) as Record<string, unknown>;
 	for (const [k, val] of Object.entries(assets)) {
 		if (!/reward/i.test(k)) continue;
-		collectRewardAssetStrings(val, 0, candidates);
+		collectRewardAssetStrings(val, 0, candidates, true);
 	}
 
 	for (const c of candidates) {
-		if (QUEST_VIDEO_RE.test(c)) continue;
-		if (!QUEST_REWARD_ASSET_FILE_RE.test(c) && !c.startsWith('http')) continue;
+		const bare = c.replace(/\?.*$/, '').replace(/\.[a-z0-9]+$/i, '');
+		if (!QUEST_REWARD_ASSET_FILE_RE.test(c) && !c.startsWith('http') && !DISCORD_CONTENT_ASSET_RE.test(bare)) continue;
 		const u = questRewardAssetUrl(questId, c);
 		if (u) return u;
 	}
@@ -589,7 +610,7 @@ function toDiscordQuestSummary(quest: Record<string, unknown>): DiscordQuestSumm
 	const taskObj = pt?.obj ?? {};
 	const questDescription = pt ? buildTaskDetailLine(pt.key, taskTypeLabel, taskObj) : taskTypeLabel;
 
-	const { thumb, banner } = resolveQuestBannerAndThumb(id, cfg);
+	const { banner } = resolveQuestBannerAndThumb(id, cfg);
 	const rewardTile = rewardTileFromQuest(id, quest, cfg);
 
 	return {
@@ -605,7 +626,7 @@ function toDiscordQuestSummary(quest: Record<string, unknown>): DiscordQuestSumm
 		publisher,
 		gameSubtitle,
 		questDescription,
-		thumbnailUrl: rewardTile ?? thumb,
+		thumbnailUrl: rewardTile,
 		bannerUrl: banner
 	};
 }

@@ -79,6 +79,8 @@ Open source under the MIT license.
   - 📊 **Real numbers** - Prices, weights, rarity and drop rates are read from wiki infoboxes, so stat questions get exact figures instead of a vague summary.
   - 🧩 **Works on plain wikis too** - Wikis without the optional search-extracts extension still return full answers, read from the page source directly.
   - ⚡ **Cached** - Results are held for 10 minutes, so repeat questions are instant and the wiki is not hammered.
+  - 🔁 **Relay for blocked wikis** - Some hosts (Miraheze behind Cloudflare) refuse traffic from server IPs. Drop [`scripts/relay.php`](scripts/relay.php) on hosting the wiki does accept, set a secret, and point that wiki at it. Per wiki, so everything else still connects directly.
+  - ✅ **No restart** - Chat picks up a new wiki on the next message, voice on the next call.
 - **Discord Quest notifier** - Surface Discord Quest activity, with optional per-server enrollment automation.
 - **Roblox catalog watch** - Post embeds when catalog items change, for trading and UGC communities.
 - **Content creator / TikTok** - Creator applications and TikTok live digests tied to server channels.
@@ -136,7 +138,9 @@ AI chat is not configured through `.env`. Open the bot in the panel and set the 
 
 Voice AI lives on the same panel page. It needs AI chat enabled first, plus a voice model, and it uses the Gemini Live API — so the API key above must be a Google AI key. Redis is required, since one voice session is coordinated across processes. Voice sends everyone's audio in the channel to Google; on the free tier that audio is used to improve their products, so tell your members before turning it on.
 
-Wikis are managed on the bot's **Wikis** tab, not in `.env`. Add a wiki's `api.php` endpoint (for example `https://fischipedia.org/w/api.php`), optionally with a description of what game it covers. Wikis apply to both chat and voice, can be disabled individually without losing them, and take effect after a bot restart.
+Wikis are managed on the bot's **Wikis** tab, not in `.env`. Add a wiki's `api.php` endpoint (for example `https://fischipedia.org/w/api.php`), optionally with a description of what game it covers. Wikis apply to both chat and voice, can be disabled individually without losing them, and take effect immediately — chat on the next message, voice on the next call.
+
+If a wiki refuses your server (Miraheze sits behind a Cloudflare check that rejects most datacenter IPs), use a relay. Copy [`scripts/relay.php`](scripts/relay.php) to hosting the wiki does accept, replace `RELAY_KEY` with a long random string, then fill in **Relay URL** and **Relay key** for that wiki. Pressing **Test** with a relay set checks the whole path through the relay, so a green result means it genuinely works. The relay only forwards read-only MediaWiki `api.php` and `rest.php` requests over HTTPS, refuses private and reserved addresses, and requires the key — one relay serves any number of wikis, and wikis without those fields keep connecting directly.
 
 ---
 

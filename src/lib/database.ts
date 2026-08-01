@@ -483,6 +483,8 @@ export interface BotWikiInput {
 	name: string;
 	api_url: string;
 	site_url: string | null;
+	relay_url: string | null;
+	relay_key: string | null;
 	description: string | null;
 }
 
@@ -493,6 +495,8 @@ export function botWikiFromDbRow(row: any) {
 		name: String(row.name ?? ''),
 		api_url: String(row.api_url ?? ''),
 		site_url: row.site_url?.trim() ? row.site_url.trim() : null,
+		relay_url: row.relay_url?.trim() ? row.relay_url.trim() : null,
+		relay_key: row.relay_key?.trim() ? row.relay_key.trim() : null,
 		description: row.description?.trim() ? row.description.trim() : null
 	};
 }
@@ -526,6 +530,8 @@ export async function createBotWiki(botId: number, data: BotWikiInput) {
 		name: data.name,
 		api_url: data.api_url,
 		site_url: data.site_url,
+		relay_url: data.relay_url,
+		relay_key: data.relay_key,
 		description: data.description,
 		created_at: now as any,
 		updated_at: now as any
@@ -542,6 +548,8 @@ export async function updateBotWiki(botId: number, wikiId: number, data: BotWiki
 			name: data.name,
 			api_url: data.api_url,
 			site_url: data.site_url,
+			relay_url: data.relay_url,
+			relay_key: data.relay_key,
 			description: data.description,
 			updated_at: toMySQLDateTime() as any
 		})

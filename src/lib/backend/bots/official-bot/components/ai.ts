@@ -145,16 +145,26 @@ async function fetchAttachmentPart(attachment) {
 	}
 }
 
-async function buildAttachmentParts(message) {
-	const attachments = [...(message.attachments?.values?.() ?? [])];
-	if (!attachments.length) return { parts: [], kinds: [] };
+async function buildAttachmentParts(messages) {
+	const list = (Array.isArray(messages) ? messages : [messages]).filter(Boolean);
 
-	const supported = attachments.filter((attachment) => classifyAttachment(attachment)).slice(0, MAX_ATTACHMENTS);
-	if (!supported.length) return { parts: [], kinds: [] };
+	const supported = [];
+	for (const entry of list) {
+		for (const attachment of entry.attachments?.values?.() ?? []) {
+			if (classifyAttachment(attachment)) supported.push(attachment);
+		}
+	}
 
-	const settled = await Promise.all(supported.map((attachment) => fetchAttachmentPart(attachment)));
+	const capped = supported.slice(0, MAX_ATTACHMENTS);
+	if (!capped.length) return { parts: [], kinds: [] };
+
+	const settled = await Promise.all(capped.map((attachment) => fetchAttachmentPart(attachment)));
 	const parts = settled.filter(Boolean);
-	const kinds = supported.filter((attachment, index) => settled[index]).map((attachment) => classifyAttachment(attachment));
+	const kinds = capped.filter((attachment, index) => settled[index]).map((attachment) => classifyAttachment(attachment));
+
+	if (supported.length > capped.length) {
+		await logger.log(`📎 AI ignoring ${supported.length - capped.length} extra attachment(s) over the ${MAX_ATTACHMENTS} limit`);
+	}
 
 	return { parts, kinds };
 }
@@ -232,6 +242,24 @@ async function executeVoiceTool(name, message, botId) {
 	}
 
 	return finalToolResult({ ok: true, joining: true, channel_name: message.member.voice.channel?.name ?? '' });
+}
+
+const MENTION_RE = /<@!?(\d{17,20})>/g;
+const MAX_PINGS_PER_MESSAGE = 5;
+
+async function resolveMentionedMembers(guild, content) {
+	if (!guild) return [];
+
+	const ids = [...new Set([...String(content).matchAll(MENTION_RE)].map((match) => match[1]))].slice(0, MAX_PINGS_PER_MESSAGE);
+	if (!ids.length) return [];
+
+	const allowed = [];
+	for (const id of ids) {
+		const member = guild.members.cache.get(id) ?? (await guild.members.fetch(id).catch(() => null));
+		if (member && !member.user?.bot) allowed.push(id);
+	}
+
+	return allowed;
 }
 
 function stripBotMention(content, botUserId) {
@@ -316,19 +344,14 @@ async function callChatCompletions(config, messages, { tools = null, onToolCall 
 	return '';
 }
 
-async function isReplyToBot(message, botUserId) {
+async function fetchRepliedMessage(message) {
 	const referenceId = message.reference?.messageId;
-	if (!referenceId) return false;
+	if (!referenceId) return null;
 
 	const cached = message.channel.messages.cache.get(referenceId);
-	if (cached) return cached.author?.id === botUserId;
+	if (cached) return cached;
 
-	try {
-		const fetched = await message.fetchReference();
-		return fetched?.author?.id === botUserId;
-	} catch {
-		return false;
-	}
+	return message.fetchReference().catch(() => null);
 }
 
 async function handleMessageCreate(message) {
@@ -348,7 +371,8 @@ async function handleMessageCreate(message) {
 		const config = db.botAiFromDbRow(await db.getBotAiByBotId(botConfig.id));
 		if (!config.enabled || !config.api_url || !config.api_key || !config.model) return;
 
-		if (!mentioned && !(await isReplyToBot(message, botUserId))) return;
+		const replied = await fetchRepliedMessage(message);
+		if (!mentioned && replied?.author?.id !== botUserId) return;
 
 		const key = sessionKey(message.guild.id, message.author.id);
 		if (inFlight.has(key)) return;
@@ -359,14 +383,26 @@ async function handleMessageCreate(message) {
 
 			await message.channel.sendTyping().catch(() => {});
 
-			const { parts: attachmentParts, kinds: attachmentKinds } = await buildAttachmentParts(message);
-			const userContent = prompt || (attachmentParts.length ? `(${attachmentKinds.join(', ')} attached, no message text)` : 'Hello!');
+			const quoted = replied && replied.author?.id !== botUserId ? replied : null;
+			const { parts: attachmentParts, kinds: attachmentKinds } = await buildAttachmentParts([quoted, message]);
+
+			const quotedText = quoted ? stripBotMention(quoted.content ?? '', botUserId).trim() : '';
+			const quotedName = quoted ? (quoted.member?.displayName ?? quoted.author?.username ?? 'someone') : '';
+			const quotedKinds = quoted ? [...(quoted.attachments?.values?.() ?? [])].map(classifyAttachment).filter(Boolean) : [];
+			const quotedNote = quoted
+				? `[Replying to ${quotedName}${quotedKinds.length ? ` who attached ${quotedKinds.join(', ')}` : ''}]${quotedText ? ` ${quotedName} said: "${quotedText}"` : ''}\n\n`
+				: '';
+
+			const ownText = prompt || (attachmentParts.length ? `(${attachmentKinds.join(', ')} attached, no message text)` : 'Hello!');
+			const userContent = `${quotedNote}${ownText}`;
 
 			const history = await db.getBotAiSession(botConfig.id, message.guild.id, message.author.id, MAX_RECENT);
 			const conversation = history.map((row) => ({ role: row.role, content: row.content }));
 
 			const today = new Date().toISOString().slice(0, 10);
-			const systemContent = config.system_prompt?.replace(/\{\{today\}\}/g, today) ?? '';
+			const speakerName = message.member?.displayName ?? message.author.username;
+			const identityNote = `[System] You are talking with ${speakerName}, whose mention tag is <@${message.author.id}>. To ping someone, write their tag in that exact <@id> form — a plain name or a bare number does not ping. Only use an id you have actually been given here or in this conversation; never invent one.`;
+			const systemContent = [config.system_prompt?.replace(/\{\{today\}\}/g, today) ?? '', identityNote].filter(Boolean).join('\n\n');
 
 			const userMessage = attachmentParts.length
 				? { role: 'user', content: [{ type: 'text', text: userContent }, ...attachmentParts] }
@@ -389,7 +425,7 @@ async function handleMessageCreate(message) {
 			const raw = await callChatCompletions(config, messages, {
 				tools: tools.length ? tools : null,
 				onToolCall: tools.length ? onToolCall : null,
-				forceTool: wikiTool && !attachmentParts.length && shouldForceWikiSearch(userContent) ? 'search_wiki' : null
+				forceTool: wikiTool && !attachmentParts.length && shouldForceWikiSearch(prompt) ? 'search_wiki' : null
 			});
 			const reply = stripReasoning(typeof raw === 'string' ? raw : '').slice(0, MAX_REPLY_LENGTH);
 
@@ -408,7 +444,8 @@ async function handleMessageCreate(message) {
 
 			for (let i = 0; i < chunks.length; i++) {
 				const content = i === lastIndex ? `${chunks[i]} ${mention}` : chunks[i];
-				const allowedMentions = { parse: [], users: i === lastIndex ? [message.author.id] : [] };
+				const named = await resolveMentionedMembers(message.guild, content);
+				const allowedMentions = { parse: [], users: [...new Set([...named, ...(i === lastIndex ? [message.author.id] : [])])] };
 
 				if (i === 0) {
 					await message.reply({ content, allowedMentions: { ...allowedMentions, repliedUser: false } });

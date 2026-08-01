@@ -15,6 +15,12 @@ const MAX_PENDING_SAMPLES = CHUNK_SAMPLES * 12;
 const DEBUG_INTERVAL_MS = 2000;
 const IDLE_EVICT_MS = 60_000;
 
+const AGC_TARGET_RMS = 2000;
+const AGC_SILENCE_RMS = 60;
+const AGC_ALPHA = 0.05;
+const AGC_MIN_GAIN = 0.5;
+const AGC_MAX_GAIN = 12;
+
 let sessions: {
 	mel: InferenceSession;
 	emb: InferenceSession;
@@ -52,12 +58,31 @@ type Detector = {
 	peakScore: number;
 	lastScore: number;
 	inferences: number;
+	levelRms: number;
 };
 
 const detectors = new Map<string, Detector>();
 let queue: Array<{ userId: string; samples: Float32Array }> = [];
 let draining = false;
 let lastDebugAt = 0;
+let framesReceived = 0;
+let chunksProcessed = 0;
+
+function reportStats() {
+	const parts = [...detectors.entries()].map(
+		([userId, state]) =>
+			`${userId.slice(-4)}:last=${state.lastScore.toFixed(2)}/peak=${state.peakScore.toFixed(2)}/emb=${state.embeddings.length}/inf=${state.inferences}/rms=${Math.round(state.levelRms)}/gain=${(state.levelRms ? Math.min(AGC_MAX_GAIN, Math.max(AGC_MIN_GAIN, AGC_TARGET_RMS / state.levelRms)) : 1).toFixed(1)}`
+	);
+	post({
+		type: 'debug',
+		text: `threshold=${threshold} users=${detectors.size} frames=${framesReceived} chunks=${chunksProcessed} queued=${queue.length} ${parts.join(' ')}`
+	});
+	for (const state of detectors.values()) state.peakScore = 0;
+}
+
+setInterval(() => {
+	if (detectors.size || framesReceived) reportStats();
+}, 10_000).unref();
 
 function createDetector(): Detector {
 	return {
@@ -71,7 +96,8 @@ function createDetector(): Detector {
 		lastSeenAt: Date.now(),
 		peakScore: 0,
 		lastScore: 0,
-		inferences: 0
+		inferences: 0,
+		levelRms: 0
 	};
 }
 
@@ -127,7 +153,24 @@ async function classify(active: NonNullable<typeof sessions>, state: Detector) {
 	return (out[active.wake.outputNames[0]].data as Float32Array)[0];
 }
 
-function ingest(userId: string, samples: Float32Array) {
+function applyGain(state: Detector, samples: Float32Array) {
+	let sum = 0;
+	for (let i = 0; i < samples.length; i++) sum += samples[i] * samples[i];
+	const rms = Math.sqrt(sum / Math.max(1, samples.length));
+
+	if (rms < AGC_SILENCE_RMS) return samples;
+
+	state.levelRms = state.levelRms ? state.levelRms + AGC_ALPHA * (rms - state.levelRms) : rms;
+
+	const gain = Math.min(AGC_MAX_GAIN, Math.max(AGC_MIN_GAIN, AGC_TARGET_RMS / state.levelRms));
+	if (Math.abs(gain - 1) < 0.05) return samples;
+
+	const out = new Float32Array(samples.length);
+	for (let i = 0; i < samples.length; i++) out[i] = Math.max(-32768, Math.min(32767, samples[i] * gain));
+	return out;
+}
+
+function ingest(userId: string, incomingSamples: Float32Array) {
 	let state = detectors.get(userId);
 	if (!state) {
 		state = createDetector();
@@ -136,6 +179,7 @@ function ingest(userId: string, samples: Float32Array) {
 
 	state.lastSeenAt = Date.now();
 
+	const samples = applyGain(state, incomingSamples);
 	const incoming = samples.length;
 	if (state.audioFilled + incoming > AUDIO_BUFFER_SAMPLES) {
 		const keep = Math.max(0, AUDIO_BUFFER_SAMPLES - incoming);
@@ -166,6 +210,7 @@ async function processUser(active: NonNullable<typeof sessions>, userId: string,
 
 		if (state.embeddings.length < EMBEDDING_WINDOW) continue;
 
+		chunksProcessed++;
 		const score = await classify(active, state);
 		state.inferences++;
 		state.lastScore = score;
@@ -210,11 +255,7 @@ async function drain() {
 			const now = Date.now();
 			if (now - lastDebugAt >= DEBUG_INTERVAL_MS) {
 				lastDebugAt = now;
-				const parts = [...detectors.entries()].map(
-					([userId, state]) => `${userId.slice(-4)}:last=${state.lastScore.toFixed(2)}/peak=${state.peakScore.toFixed(2)}/emb=${state.embeddings.length}`
-				);
-				post({ type: 'debug', text: `threshold=${threshold} users=${detectors.size} ${parts.join(' ')}` });
-				for (const state of detectors.values()) state.peakScore = 0;
+				reportStats();
 			}
 		}
 
@@ -230,6 +271,7 @@ async function drain() {
 
 parentPort?.on('message', (msg) => {
 	if (msg?.type === 'audio') {
+		framesReceived++;
 		queue.push({ userId: msg.userId, samples: new Float32Array(msg.samples) });
 		void drain();
 		return;

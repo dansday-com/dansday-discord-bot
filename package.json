@@ -1,7 +1,7 @@
 {
 	"name": "dansday-discord-bot",
 	"private": true,
-	"version": "26.5.2",
+	"version": "26.5.3",
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
@@ -23,6 +23,7 @@
 		"@opentelemetry/semantic-conventions": "^1.40.0",
 		"axios": "^1.15.0",
 		"bcryptjs": "^3.0.3",
+		"cheerio": "^1.2.0",
 		"discord-api-types": "^0.38.47",
 		"discord.js": "^14.26.3",
 		"discord.js-selfbot-v13": "^3.7.1",

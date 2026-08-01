@@ -16,7 +16,7 @@ import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 import { writeVoiceState, clearVoiceState, VOICE_STATE_TTL_SEC } from './voiceControl.js';
 import { getEnabledWikis, buildWikiDeclaration, runWikiTool } from './wiki.js';
-import { createWakeDetector, wakeModelAvailable, warmWakeModel } from './wakeWord.js';
+import { wakeModelAvailable, warmWakeModel, onWakeDetected, pushWakeAudio, dropWakeUser } from './wakeWord.js';
 
 const INPUT_RATE = 16000;
 const OUTPUT_RATE = 24000;
@@ -121,6 +121,8 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	let muteTimer: ReturnType<typeof setTimeout> | null = null;
 	let muteAnnounced = false;
 	let goodbyeAllowedUntil = 0;
+	let speakAllowedUntil = 0;
+	let offWakeDetected: (() => void) | null = null;
 
 	const names = new Map();
 	const ignoredBots = new Set();
@@ -277,6 +279,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 		const announcedAt = Date.now();
 		const chunksAtAnnounce = stats.chunksPlayed;
+		speakAllowedUntil = announcedAt + MUTE_NOTICE_MAX_WAIT_MS;
 		logger.log('👋 Voice AI greeting the channel with the wake phrase');
 		sendSystemNote(
 			`Say one short sentence out loud right now to greet the channel: you have joined, you are going quiet, and anyone can wake you by saying "hey stupid". Say the wake phrase clearly so they hear exactly what to say. One casual sentence in the language this server speaks, no explanation, and do not read this note aloud.`
@@ -737,7 +740,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 					if (sc.inputTranscription?.text) collectTranscript('user', sc.inputTranscription.text);
 
-					if (!isAddressed() && Date.now() > goodbyeAllowedUntil) {
+					if (!isAddressed() && Date.now() > goodbyeAllowedUntil && Date.now() > speakAllowedUntil) {
 						if (sc.modelTurn?.parts?.some((p) => p.inlineData?.data)) {
 							stats.repliesSuppressed++;
 							if (stats.repliesSuppressed % 10 === 1) {
@@ -835,8 +838,6 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		const vad = { active: false, onset: 0, lastVoiceAt: 0, floor: 0, frames: 0, startedAt: 0 };
 		voiceState.set(userId, vad);
 
-		const wakeDetector = createWakeDetector();
-
 		decoder.on('data', (pcm) => {
 			if (closed || !session || goodbyePending || leaveRequested) {
 				stats.framesDropped++;
@@ -857,12 +858,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 			if (!isAddressed()) {
 				stats.framesAsleep++;
-				wakeDetector?.push(mono16k).then((score) => {
-					if (!score || closed || isAddressed()) return;
-					lastSpeakerId = userId;
-					logger.log(`👋 Voice AI woken by ${nameOf(userId)} ("hey stupid" ${score.toFixed(2)})`);
-					markAddressed({ verified: true });
-				});
+				pushWakeAudio(userId, mono16k);
 				return;
 			}
 
@@ -946,6 +942,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 	function unsubscribeUser(userId) {
 		voiceState.delete(userId);
+		dropWakeUser(userId);
 		if (turnOwnerId === userId) turnOwnerId = '';
 		const entry = speaking.get(userId);
 		if (!entry) return;
@@ -961,6 +958,9 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 		flushTranscript('user');
 		flushTranscript('assistant');
+
+		offWakeDetected?.();
+		offWakeDetected = null;
 
 		for (const userId of [...speaking.keys()]) unsubscribeUser(userId);
 
@@ -1021,6 +1021,13 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 		await ensureUnmuted();
 		await ensureUndeafened();
+
+		offWakeDetected = onWakeDetected((userId, score) => {
+			if (closed || isAddressed() || !voiceState.has(userId)) return;
+			lastSpeakerId = userId;
+			logger.log(`👋 Voice AI woken by ${nameOf(userId)} ("hey stupid" ${score.toFixed(2)})`);
+			markAddressed({ verified: true });
+		});
 
 		const wakeLoaded = wakeModelAvailable() ? await warmWakeModel().catch(() => false) : false;
 		logger.log(`👥 Voice AI participants: ${rosterText()} | wake=${wakeLoaded ? 'hey stupid (model ready)' : 'none — bot cannot be woken'}`);

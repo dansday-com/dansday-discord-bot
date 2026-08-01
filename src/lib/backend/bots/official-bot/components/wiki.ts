@@ -2,7 +2,8 @@ import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 
 const REQUEST_TIMEOUT_MS = 15_000;
-const USER_AGENT = 'DansdayBot/1.0 (Discord bot; MediaWiki search)';
+export const WIKI_USER_AGENT = 'DansdayBot/1.0 (https://github.com/dansday-com/dansday-discord-bot) MediaWiki-search';
+const USER_AGENT = WIKI_USER_AGENT;
 const SEARCH_LIMIT = 4;
 const PAGES_TO_READ = 2;
 const MAX_EXTRACT_CHARS = 1500;

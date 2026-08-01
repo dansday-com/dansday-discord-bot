@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { accountOwnsBot } from '$lib/frontend/panelServer.js';
+import { WIKI_USER_AGENT } from '$lib/backend/bots/official-bot/components/wiki.js';
 
 const TIMEOUT_MS = 12_000;
 
@@ -40,9 +41,13 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 	const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
 	try {
-		const res = await fetch(url, { headers: { 'User-Agent': 'DansdayBot/1.0', Accept: 'application/json' }, signal: controller.signal });
+		const res = await fetch(url, { headers: { 'User-Agent': WIKI_USER_AGENT, Accept: 'application/json' }, signal: controller.signal });
 		if (!res.ok) {
-			return json({ success: false, error: `The wiki responded with HTTP ${res.status}` }, { status: 400 });
+			const blocked = res.status === 403 || res.status === 429;
+			const error = blocked
+				? `The wiki refused the request (HTTP ${res.status}). It is not your URL — the wiki is blocking this server's IP, which hosts like Miraheze and Fandom often do behind Cloudflare. Try a different wiki, or contact the wiki about allowing your server.`
+				: `The wiki responded with HTTP ${res.status}`;
+			return json({ success: false, error }, { status: 400 });
 		}
 
 		const data = await res.json();

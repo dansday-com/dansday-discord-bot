@@ -174,8 +174,8 @@
 		{ icon: 'fa-ban', title: 'One call at a time', desc: 'If it is already in a call, it tells the next person it is busy and stays where it is.' },
 		{
 			icon: 'fa-comment-dots',
-			title: 'Say "hello Dans"',
-			desc: 'That wake phrase is the only thing that wakes it, so a busy channel never sets it off. "Halo" works too.'
+			title: 'Say "hey stupid"',
+			desc: 'A trained wake-word model listens for that exact phrase, so a busy channel never sets it off.'
 		},
 		{ icon: 'fa-lock', title: 'One speaker at a time', desc: 'Whoever wakes it holds the conversation. Say you are done to release it for the next person.' },
 		{ icon: 'fa-microphone', title: 'Mutes when idle', desc: 'It answers, then mutes itself. The mute icon shows whether it is listening.' },

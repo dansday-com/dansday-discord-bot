@@ -153,8 +153,9 @@ async function prefetchBotWideQuests(officialBotId: number, httpProxyUrlByServer
 
 		for (const raw of (payload as any)?.quests ?? []) {
 			const assets = raw?.config?.assets;
+			const rewards = raw?.config?.rewards_config?.rewards ?? raw?.rewards_config?.rewards ?? raw?.config?.rewards;
 			await logger.log(
-				`🖼️ Quest ${raw?.id} via #${selfbot.id} assets=${assets ? JSON.stringify(assets) : 'MISSING'} configKeys=${Object.keys(raw?.config ?? {}).join(',')}`
+				`🖼️ Quest ${raw?.id} via #${selfbot.id} assets=${assets ? JSON.stringify(assets) : 'MISSING'} rewards=${rewards ? JSON.stringify(rewards).slice(0, 900) : 'MISSING'} configKeys=${Object.keys(raw?.config ?? {}).join(',')}`
 			);
 		}
 
@@ -162,7 +163,7 @@ async function prefetchBotWideQuests(officialBotId: number, httpProxyUrlByServer
 			if (mergedById.has(q.id)) continue;
 			mergedById.set(q.id, q);
 			sourceByQuestId.set(q.id, `#${selfbot.id} ${selfbot.name}`);
-			await logger.log(`🖼️ Quest ${q.id} resolved banner=${q.bannerUrl ?? 'null'} thumb=${q.thumbnailUrl ?? 'null'} via #${selfbot.id} ${selfbot.name}`);
+			await logger.log(`🖼️ Quest ${q.id} resolved banner=${q.bannerUrl ?? 'null'} rewardThumb=${q.thumbnailUrl ?? 'MISS'} via #${selfbot.id} ${selfbot.name}`);
 		}
 	}
 

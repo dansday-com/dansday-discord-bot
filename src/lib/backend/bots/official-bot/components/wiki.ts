@@ -1,3 +1,4 @@
+import { load } from 'cheerio';
 import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 
@@ -6,9 +7,6 @@ export const WIKI_USER_AGENT = 'DansdayBot/1.0 (https://github.com/dansday-com/d
 const USER_AGENT = WIKI_USER_AGENT;
 const SEARCH_LIMIT = 4;
 const PAGES_TO_READ = 2;
-const MAX_EXTRACT_CHARS = 1500;
-const MAX_INFOBOX_FIELDS = 24;
-const MAX_RESULT_CHARS = 6000;
 const CACHE_TTL_MS = 10 * 60 * 1000;
 const CACHE_MAX_ENTRIES = 200;
 
@@ -83,11 +81,27 @@ function stripHtml(text) {
 }
 
 function cleanWikiValue(value) {
-	return String(value ?? '')
+	let out = String(value ?? '')
 		.replace(/\[\[[^\]|]*\|([^\]]*)\]\]/g, '$1')
-		.replace(/\[\[([^\]]*)\]\]/g, '$1')
-		.replace(/\{\{[Cc]\$\|([^}]*)\}\}/g, '$1 C$')
-		.replace(/\{\{[^}]*\}\}/g, '')
+		.replace(/\[\[([^\]]*)\]\]/g, '$1');
+
+	let previous;
+	let guard = 0;
+	do {
+		previous = out;
+		out = out.replace(/\{\{([^{}|]*)\|?([^{}]*)\}\}/g, (match, name, args) => {
+			const label = String(name).trim();
+			const values = String(args)
+				.split('|')
+				.map((part) => part.replace(/^\s*[A-Za-z][A-Za-z0-9 _-]*\s*=\s*/, '').trim())
+				.filter(Boolean);
+
+			if (!values.length) return label && !/[=:]/.test(label) ? label : '';
+			return /^[^A-Za-z0-9]+$/.test(label) ? `${values.join(' ')} ${label}` : values.join(' ');
+		});
+	} while (out !== previous && ++guard < 8);
+
+	return out
 		.replace(/'''?/g, '')
 		.replace(/<[^>]*>/g, '')
 		.replace(/\s+/g, ' ')
@@ -143,21 +157,25 @@ function pushField(fields, chunk) {
 
 	const key = chunk.slice(0, eq).trim().toLowerCase();
 	const value = cleanWikiValue(chunk.slice(eq + 1));
-	if (!key || !value || key.includes('\n') || /^(image|icon|menu_color|bobber_color\d*|imagecaption)$/.test(key)) return;
-	if (Object.keys(fields).length >= MAX_INFOBOX_FIELDS) return;
+	if (!key || !value || key.includes('\n')) return;
+	if (/(?:^|_)(?:image|img|icon|file|logo|sprite|thumb|caption|color|colour|css|style|width|height|align|px)\d*(?:$|_)/.test(key)) return;
+	if (/^#?[0-9a-f]{3,8}(?:;#?[0-9a-f]{3,8})*$/i.test(value)) return;
 
 	fields[key] = value;
 }
 
+function contentScore(text) {
+	return String(text ?? '')
+		.split('\n')
+		.filter((line) => line.trim() && !/^=+[^=]+=+$/.test(line.trim()))
+		.join(' ').length;
+}
+
 function tidyExtract(extract) {
 	return String(extract ?? '')
-		.split('\n')
-		.filter((line) => !/^=+\s*(Navigation|Change History|Gallery|Trivia|References)\s*=+$/i.test(line.trim()))
-		.join('\n')
 		.replace(/\n{3,}/g, '\n\n')
 		.replace(/\n==+\s*[^\n=]+\s*=+\n(?=\s*(\n==|$))/g, '\n')
-		.trim()
-		.slice(0, MAX_EXTRACT_CHARS);
+		.trim();
 }
 
 function stripTemplates(text) {
@@ -178,18 +196,80 @@ function stripTemplates(text) {
 	return out;
 }
 
+const NOISE_SELECTOR = [
+	'style',
+	'script',
+	'aside',
+	'figure',
+	'sup.reference',
+	'.portable-infobox',
+	'.infobox',
+	'.navbox',
+	'.nav-box',
+	'.toc',
+	'#toc',
+	'.mw-editsection',
+	'.hatnote',
+	'.dablink',
+	'.noprint',
+	'.reference',
+	'.reflist',
+	'.references',
+	'.thumbcaption',
+	'.navigation-not-searchable',
+	'.mw-empty-elt',
+	'.mw-jump-link',
+	'.printfooter',
+	'.ambox',
+	'.notice'
+].join(', ');
+
+function htmlToPlain(html) {
+	const $ = load(String(html ?? ''), null, false);
+
+	$(NOISE_SELECTOR).remove();
+
+	$('h1, h2, h3, h4, h5, h6').each((index, element) => {
+		const heading = $(element).text().trim();
+		$(element).replaceWith(heading ? `\n\n== ${heading} ==\n` : '\n');
+	});
+
+	$('li').each((index, element) => {
+		const item = $(element).text().trim();
+		$(element).replaceWith(item ? `\n* ${item}` : '');
+	});
+
+	$('td, th').each((index, element) => {
+		$(element).replaceWith(` ${$(element).text().trim()}`);
+	});
+	$('tr').each((index, element) => {
+		$(element).replaceWith(`\n${$(element).text().trim()}`);
+	});
+	$('p, div, blockquote, dd, dt').each((index, element) => {
+		$(element).replaceWith(`\n${$(element).text()}\n`);
+	});
+	$('br, hr').replaceWith('\n');
+
+	return $.text()
+		.replace(/ /g, ' ')
+		.replace(/[ \t]+/g, ' ')
+		.replace(/ *\n */g, '\n')
+		.replace(/\n\*\s*(?=\n)/g, '')
+		.replace(/\n{3,}/g, '\n\n')
+		.trim();
+}
+
 function wikitextToPlain(wikitext) {
 	return stripTemplates(String(wikitext ?? ''))
 		.replace(/<ref[^>]*\/>/gi, '')
 		.replace(/<ref[^>]*>[\s\S]*?<\/ref>/gi, '')
 		.replace(/<!--[\s\S]*?-->/g, '')
-		.replace(/<gallery[\s\S]*?<\/gallery>/gi, '')
 		.replace(/^\s*\[\[(?:File|Image|Category):[^\]]*\]\]\s*$/gim, '')
 		.replace(/\[\[(?:File|Image|Category):[^\]]*\]\]/gi, '')
 		.replace(/\[\[[^\]|]*\|([^\]]*)\]\]/g, '$1')
 		.replace(/\[\[([^\]]*)\]\]/g, '$1')
 		.replace(/\[(?:https?:)?\/\/\S+\s+([^\]]*)\]/g, '$1')
-		.replace(/^\s*\{\|[\s\S]*?\|\}\s*$/gim, '')
+		.replace(/<br\s*\/?>/gi, ' ')
 		.replace(/<[^>]+>/g, '')
 		.replace(/'''?/g, '')
 		.replace(/^[*#:;]+\s*/gm, '')
@@ -197,72 +277,6 @@ function wikitextToPlain(wikitext) {
 		.replace(/ +\n/g, '\n')
 		.replace(/\n{3,}/g, '\n\n')
 		.trim();
-}
-
-const STOPWORDS = new Set([
-	'a',
-	'an',
-	'the',
-	'is',
-	'are',
-	'was',
-	'were',
-	'be',
-	'do',
-	'does',
-	'did',
-	'can',
-	'could',
-	'should',
-	'would',
-	'will',
-	'what',
-	'whats',
-	'which',
-	'who',
-	'how',
-	'where',
-	'when',
-	'why',
-	'i',
-	'me',
-	'my',
-	'you',
-	'your',
-	'it',
-	'its',
-	'to',
-	'of',
-	'in',
-	'on',
-	'at',
-	'for',
-	'from',
-	'with',
-	'about',
-	'and',
-	'or',
-	'get',
-	'got',
-	'tell',
-	'know',
-	'much',
-	'many',
-	'there',
-	'that',
-	'this',
-	'please',
-	'thanks'
-]);
-
-function simplifyQuery(query) {
-	const words = query
-		.replace(/[?!.,]/g, ' ')
-		.split(/\s+/)
-		.filter((word) => word && !STOPWORDS.has(word.toLowerCase()));
-
-	const simplified = words.join(' ').trim();
-	return simplified && simplified.toLowerCase() !== query.trim().toLowerCase() ? simplified : null;
 }
 
 async function rawSearch(wiki, query) {
@@ -280,45 +294,12 @@ async function rawSearch(wiki, query) {
 	};
 }
 
-const ATTRIBUTE_WORDS = new Set([
-	'price',
-	'cost',
-	'value',
-	'weight',
-	'stats',
-	'stat',
-	'luck',
-	'chance',
-	'rarity',
-	'location',
-	'locations',
-	'bait',
-	'season',
-	'weather',
-	'xp',
-	'level',
-	'requirement',
-	'requirements',
-	'recipe',
-	'drop',
-	'drops',
-	'worth'
-]);
-
 function titleCase(text) {
 	return text.replace(/\b[a-z]/g, (char) => char.toUpperCase());
 }
 
-function trimAttributes(text) {
-	const words = text.split(/\s+/);
-	while (words.length > 1 && ATTRIBUTE_WORDS.has(words[words.length - 1].toLowerCase())) words.pop();
-	while (words.length > 1 && ATTRIBUTE_WORDS.has(words[0].toLowerCase())) words.shift();
-	return words.join(' ');
-}
-
-async function exactTitle(wiki, query) {
-	const trimmed = trimAttributes(query);
-	const candidates = [...new Set([query, titleCase(query), trimmed, titleCase(trimmed)].filter(Boolean))];
+async function exactTitle(wiki, query, { strict = false } = {}) {
+	const candidates = [...new Set([query, titleCase(query)].filter(Boolean))];
 
 	const data = await apiGet(wiki, { action: 'query', titles: candidates.join('|'), redirects: '1' }).catch(() => null);
 	const pages = data?.query?.pages ?? [];
@@ -328,9 +309,11 @@ async function exactTitle(wiki, query) {
 		if (hit) return hit.title;
 	}
 
-	const normalized = (data?.query?.normalized ?? []).map((entry) => entry.to.toLowerCase());
-	const fallback = pages.find((entry) => !entry.missing && normalized.includes(entry.title.toLowerCase()));
-	return fallback?.title ?? pages.find((entry) => !entry.missing)?.title ?? null;
+	const redirected = [...(data?.query?.normalized ?? []), ...(data?.query?.redirects ?? [])].map((entry) => entry.to.toLowerCase());
+	const followed = pages.find((entry) => !entry.missing && redirected.includes(entry.title.toLowerCase()));
+	if (followed) return followed.title;
+
+	return strict ? null : (pages.find((entry) => !entry.missing)?.title ?? null);
 }
 
 function promote(hits, title) {
@@ -339,47 +322,18 @@ function promote(hits, title) {
 	return [{ title, snippet: '' }, ...rest];
 }
 
-const LATEST_VERSION_RE =
-	/\b(latest|newest|current|recent|last)\b.*\b(version|update|patch|release)\b|\b(version|update|patch|release)\b.*\b(latest|newest|current|recent|last)\b/i;
+async function searchTitles(wiki, query, page) {
+	if (page) {
+		const named = await exactTitle(wiki, page, { strict: true });
+		if (named) return [{ title: named, snippet: '' }];
 
-function compareVersions(a, b) {
-	const left = a.split('.').map(Number);
-	const right = b.split('.').map(Number);
-	for (let i = 0; i < Math.max(left.length, right.length); i++) {
-		const diff = (left[i] ?? 0) - (right[i] ?? 0);
-		if (diff) return diff;
-	}
-	return 0;
-}
-
-async function latestVersionTitle(wiki) {
-	const data = await apiGet(wiki, {
-		action: 'query',
-		list: 'categorymembers',
-		cmtitle: 'Category:Versions',
-		cmlimit: 500
-	}).catch(() => null);
-
-	const versions = (data?.query?.categorymembers ?? []).map((entry) => entry.title).filter((title) => /^\d+(\.\d+)+$/.test(title));
-
-	return versions.sort(compareVersions).pop() ?? null;
-}
-
-async function searchTitles(wiki, query) {
-	if (LATEST_VERSION_RE.test(query)) {
-		const newest = await latestVersionTitle(wiki);
-		if (newest) return [{ title: newest, snippet: '' }];
+		const direct = await rawSearch(wiki, page).catch(() => ({ hits: [] }));
+		const sameTitle = direct.hits.find((hit) => hit.title.toLowerCase() === String(page).toLowerCase());
+		if (sameTitle) return [sameTitle];
 	}
 
-	const simplified = simplifyQuery(query);
-
-	const [first, exact] = await Promise.all([rawSearch(wiki, query), exactTitle(wiki, simplified ?? query)]);
+	const [first, exact] = await Promise.all([rawSearch(wiki, query), exactTitle(wiki, query)]);
 	if (first.hits.length || exact) return promote(first.hits, exact);
-
-	if (simplified) {
-		const retry = await rawSearch(wiki, simplified);
-		if (retry.hits.length) return retry.hits;
-	}
 
 	if (first.suggestion) {
 		const suggested = await rawSearch(wiki, first.suggestion);
@@ -391,15 +345,15 @@ async function searchTitles(wiki, query) {
 
 async function readPage(wiki, title) {
 	const [summary, source] = await Promise.all([
+		apiGet(wiki, { action: 'query', prop: 'info', inprop: 'url', redirects: '1', titles: title }).catch(() => null),
 		apiGet(wiki, {
-			action: 'query',
-			prop: 'extracts|info',
-			explaintext: '1',
-			inprop: 'url',
+			action: 'parse',
+			page: title,
+			prop: 'text|wikitext',
 			redirects: '1',
-			titles: title
-		}).catch(() => null),
-		apiGet(wiki, { action: 'parse', page: title, prop: 'wikitext' }).catch(() => null)
+			disableeditsection: '1',
+			disabletoc: '1'
+		}).catch(() => null)
 	]);
 
 	const page = summary?.query?.pages?.[0];
@@ -408,7 +362,9 @@ async function readPage(wiki, title) {
 	const wikitext = source?.parse?.wikitext ?? '';
 	const infobox = wikitext ? extractInfobox(wikitext) : {};
 
-	const extract = tidyExtract(page.extract) || (wikitext ? tidyExtract(wikitextToPlain(wikitext)) : '');
+	const rendered = tidyExtract(htmlToPlain(source?.parse?.text ?? ''));
+	const fromSource = wikitext ? tidyExtract(wikitextToPlain(wikitext)) : '';
+	const extract = contentScore(rendered) >= contentScore(fromSource) ? rendered : fromSource;
 
 	return {
 		title: page.title,
@@ -418,47 +374,44 @@ async function readPage(wiki, title) {
 	};
 }
 
-export async function searchWiki(wiki, query) {
+export async function searchWiki(wiki, query, page) {
 	const trimmed = String(query ?? '').trim();
-	if (!trimmed) return { ok: false, reason: 'empty_query' };
+	const requestedPage = String(page ?? '').trim();
+	if (!trimmed && !requestedPage) return { ok: false, reason: 'empty_query' };
 
-	const cacheKey = `${wiki.api_url}::${trimmed.toLowerCase()}`;
+	const cacheKey = `${wiki.api_url}::${requestedPage.toLowerCase()}::${trimmed.toLowerCase()}`;
 	const cached = cacheGet(cacheKey);
 	if (cached) return cached;
 
 	let hits;
 	try {
-		hits = await searchTitles(wiki, trimmed);
+		hits = await searchTitles(wiki, trimmed || requestedPage, requestedPage);
 	} catch (error) {
 		await logger.log(`❌ Wiki search failed (${wiki.name}): ${error.message}`);
 		return { ok: false, reason: 'wiki_unreachable', wiki: wiki.name };
 	}
 
 	if (!hits.length) {
-		const miss = { ok: true, wiki: wiki.name, query: trimmed, pages: [], note: 'No page on this wiki matches that query.' };
+		const miss = { ok: true, wiki: wiki.name, query: trimmed || requestedPage, pages: [], note: 'No page on this wiki matches that query.' };
 		cacheSet(cacheKey, miss);
 		return miss;
 	}
 
 	const pages = (await Promise.all(hits.slice(0, PAGES_TO_READ).map((hit) => readPage(wiki, hit.title).catch(() => null)))).filter(Boolean);
 
+	const missedPage = requestedPage && !pages.some((entry) => entry.title.toLowerCase() === requestedPage.toLowerCase());
+
 	const result = {
 		ok: true,
 		wiki: wiki.name,
 		wiki_url: wiki.site_url,
-		query: trimmed,
+		query: trimmed || requestedPage,
 		pages,
-		other_matches: hits.slice(PAGES_TO_READ).map((hit) => hit.title)
+		other_matches: hits.slice(PAGES_TO_READ).map((hit) => hit.title),
+		...(missedPage
+			? { note: `There is no page titled "${requestedPage}" on this wiki. These are search results for it instead — check the titles before using them.` }
+			: {})
 	};
-
-	let payload = JSON.stringify(result);
-	while (payload.length > MAX_RESULT_CHARS && result.pages.length > 1) {
-		result.pages.pop();
-		payload = JSON.stringify(result);
-	}
-	if (payload.length > MAX_RESULT_CHARS && result.pages[0]) {
-		result.pages[0].extract = result.pages[0].extract.slice(0, 700);
-	}
 
 	cacheSet(cacheKey, result);
 	return result;
@@ -480,7 +433,11 @@ export function buildWikiTool(wikis) {
 		type: 'function',
 		function: {
 			name: 'search_wiki',
-			description: `Look up factual information on a game wiki. Use this whenever someone asks about anything covered by these wikis — items, rods, fish, bait, NPCs, locations, quests, events, mechanics, prices, stats, versions or how something works. Never answer such questions from memory, and never guess numbers: search first, then answer from what comes back. The search itself is English-only, but always reply in the language the user wrote in. If the search comes back with nothing, say plainly that you could not find it on the wiki — never tell them to go look it up themselves. Available wikis:\n${describeWikis(wikis)}`,
+			description: `Look up factual information on a game wiki. Use this whenever someone asks about anything covered by these wikis — items, rods, fish, bait, NPCs, locations, quests, events, mechanics, prices, stats, versions or how something works. Never answer such questions from memory, and never guess numbers: search first, then answer from what comes back.
+
+Read the entire result before answering: the answer is usually under a heading such as "Obtainment", "Skins", "Location" or "Change History" rather than in the opening line, and infobox values arrive in "stats". Answer only with facts present in the result — never add an item, price, chance or mechanic that is not there, and never fill a gap from memory. If the result already contains the answer, never claim the wiki has not documented it yet, and never speculate about why something is missing. Live values such as countdowns, current spawn timers and active events are not on the wiki: say you cannot see live timers and give the conditions the wiki does list instead.
+
+The search itself is English-only, but always reply in the language the user wrote in. If the search comes back with nothing, say plainly that you could not find it on the wiki — never tell them to go look it up themselves. Available wikis:\n${describeWikis(wikis)}`,
 			parameters: {
 				type: 'object',
 				properties: {
@@ -493,6 +450,11 @@ export function buildWikiTool(wikis) {
 						type: 'string',
 						description:
 							'The thing to look up, written in English no matter what language the user spoke — these wikis only have English page titles, so a non-English query finds nothing. Translate their words first, then search the name on its own, e.g. "Steady Rod". Indonesian examples: "versi terbaru" → "latest version", "ikan langka" → "rare fish", "harga joran" → "fishing rod price". Keep it short — the page name, not a sentence or a question.'
+					},
+					page: {
+						type: 'string',
+						description:
+							'Optional. The exact wiki page title to open, when you already know it — this skips searching and reads that page directly. Use it when the user names a specific page, or when a previous result pointed at one (e.g. a version number like "1.94.0" for the newest patch, or a title listed in "other_matches"). Leave this out if you are unsure the page exists, and just use query instead.'
 					}
 				},
 				required: ['wiki', 'query']
@@ -522,7 +484,7 @@ export async function runWikiTool(wikis, args) {
 		return { ok: false, reason: 'unknown_wiki', available: wikis.map((wiki) => wiki.name) };
 	}
 
-	return searchWiki(match, args?.query);
+	return searchWiki(match, args?.query, args?.page);
 }
 
 export default { searchWiki, getEnabledWikis, buildWikiTool, buildWikiDeclaration, runWikiTool, describeWikis };

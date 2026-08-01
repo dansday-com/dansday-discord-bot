@@ -16,6 +16,7 @@ import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 import { writeVoiceState, clearVoiceState, VOICE_STATE_TTL_SEC } from './voiceControl.js';
 import { getEnabledWikis, buildWikiDeclaration, runWikiTool } from './wiki.js';
+import { createWakeDetector, wakeModelAvailable } from './wakeWord.js';
 
 const INPUT_RATE = 16000;
 const OUTPUT_RATE = 24000;
@@ -37,22 +38,18 @@ const NOISE_FLOOR_ALPHA = 0.002;
 const NOISE_FLOOR_FALL_ALPHA = 0.05;
 const NOISE_FLOOR_MARGIN = 2.2;
 const MAX_TURN_MS = 10_000;
-const WAKE_TURN_MS = 4_000;
-const WAKE_TURN_GAP_MS = 250;
 const CLOSE_WAIT_MS = 3000;
 const MAX_QUEUED_CHUNKS = 60;
 
 const GOODBYE_GRACE_MS = 12_000;
 const ADDRESSED_WINDOW_MS = 15_000;
-const WAKE_BUFFER_CHARS = 160;
 const MUTE_NOTICE_GRACE_MS = 6_000;
 const MUTE_NOTICE_MAX_WAIT_MS = 15_000;
-const NAME_CORROBORATE_MS = 8_000;
-const WAKE_LEADS = ['hello', 'helo', 'hallo', 'halo'];
-const WAKE_TARGETS = ['dans'];
 const HEARTBEAT_MS = (VOICE_STATE_TTL_SEC / 2) * 1000;
 
 const WIKI_STALL_MS = 600;
+const WIKI_STALL_GRACE_MS = 2_500;
+const SPEECH_DRAIN_MAX_MS = 20_000;
 
 const WIKI_STALL_PROMPT =
 	'[System] You are still looking that up. Say one short, natural line out loud right now to let them know you are checking, in the same language they are speaking — something like "let me check that" or "one sec". Say nothing else, do not guess the answer, and do not read this note aloud. The result arrives in a moment and you will answer properly then.';
@@ -112,7 +109,6 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	let wasPlaying = false;
 	let turnOpen = false;
 	let turnOpenedAt = 0;
-	let turnCooldownUntil = 0;
 	let turnTimer: ReturnType<typeof setTimeout> | null = null;
 	let reconnecting = false;
 	let closeWaiter = null;
@@ -123,50 +119,12 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	let addressedUntil = 0;
 	let selfMuted = false;
 	let muteTimer: ReturnType<typeof setTimeout> | null = null;
-	let wakeWords: string[] = [];
-	let wakeBuffer = '';
-	let lastNameHeardAt = 0;
 	let muteAnnounced = false;
 	let goodbyeAllowedUntil = 0;
 
 	const names = new Map();
 	const ignoredBots = new Set();
 	const voiceState = new Map();
-
-	function normalizeSpeech(text) {
-		return text
-			.toLowerCase()
-			.replace(/[^\p{L}\p{N}\s]/gu, ' ')
-			.replace(/\s+/g, ' ')
-			.trim();
-	}
-
-	function refreshWakeWords() {
-		const out = new Set();
-		for (const lead of WAKE_LEADS) {
-			for (const target of WAKE_TARGETS) {
-				out.add(`${lead} ${target}`);
-			}
-		}
-		wakeWords = [...out];
-	}
-
-	function heardWakeWord(text) {
-		const clean = normalizeSpeech(text);
-		if (!clean) return false;
-		const tokens = clean.split(' ');
-
-		for (let i = 0; i < tokens.length - 1; i++) {
-			if (!WAKE_LEADS.includes(tokens[i])) continue;
-			if (WAKE_TARGETS.includes(tokens[i + 1])) return true;
-			if (WAKE_TARGETS.includes(`${tokens[i + 1]} ${tokens[i + 2] ?? ''}`.trim())) return true;
-		}
-		return false;
-	}
-
-	function nameAppearsIn(text) {
-		return heardWakeWord(text);
-	}
 
 	function isAddressed() {
 		return Date.now() < addressedUntil;
@@ -192,7 +150,6 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		}
 
 		addressedUntil = Date.now() + ADDRESSED_WINDOW_MS;
-		turnCooldownUntil = 0;
 		muteAnnounced = false;
 		setSelfMute(false);
 		if (muteTimer) clearTimeout(muteTimer);
@@ -213,12 +170,16 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		if (muteTimer) clearTimeout(muteTimer);
 		muteTimer = null;
 
-		playbackQueue.length = 0;
-		pending = EMPTY;
-		pendingOffset = 0;
+		afterSpeaking('muting', () => {
+			if (closed || isAddressed()) return;
+			logger.log('🔇 Voice AI finished speaking, muting now');
+			playbackQueue.length = 0;
+			pending = EMPTY;
+			pendingOffset = 0;
 
-		releaseSpeakerLock();
-		setSelfMute(true);
+			releaseSpeakerLock();
+			setSelfMute(true);
+		});
 	}
 
 	function loudestActiveSpeaker() {
@@ -284,7 +245,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		goodbyeAllowedUntil = announcedAt + MUTE_NOTICE_MAX_WAIT_MS;
 		logger.log('🔕 Voice AI announcing mute before going quiet');
 		sendSystemNote(
-			`Say one short sentence out loud now: it has gone quiet, so you are muting yourself, and they just need to say "hello Dans" whenever they want you again. One sentence, casual, no explanation.`
+			`Say one short sentence out loud now: it has gone quiet, so you are muting yourself, and they just need to say "hey stupid" whenever they want you again. One sentence, casual, no explanation.`
 		);
 		muteTimer = setTimeout(function settleMute() {
 			muteTimer = null;
@@ -307,6 +268,34 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 			}
 
 			releaseSpeakerLock();
+			setSelfMute(true);
+		}, MUTE_NOTICE_GRACE_MS);
+	}
+
+	function announceWakePhrase() {
+		if (closed || goodbyePending) return;
+
+		const announcedAt = Date.now();
+		const chunksAtAnnounce = stats.chunksPlayed;
+		logger.log('👋 Voice AI greeting the channel with the wake phrase');
+		sendSystemNote(
+			`Say one short sentence out loud right now to greet the channel: you have joined, you are going quiet, and anyone can wake you by saying "hey stupid". Say the wake phrase clearly so they hear exactly what to say. One casual sentence in the language this server speaks, no explanation, and do not read this note aloud.`
+		);
+
+		muteTimer = setTimeout(function settleGreeting() {
+			muteTimer = null;
+			if (closed || selfMuted || isAddressed()) return;
+
+			const spoke = stats.chunksPlayed > chunksAtAnnounce;
+			const waited = Date.now() - announcedAt;
+			const expired = waited >= MUTE_NOTICE_MAX_WAIT_MS;
+
+			if (!expired && (botIsSpeaking() || !spoke)) {
+				muteTimer = setTimeout(settleGreeting, SPEAK_GUARD_MS);
+				return;
+			}
+
+			if (expired && !spoke) logger.log('⚠️ Voice AI never spoke its greeting, muting anyway');
 			setSelfMute(true);
 		}, MUTE_NOTICE_GRACE_MS);
 	}
@@ -352,7 +341,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		turns: 0,
 		queueHigh: 0,
 		repliesSuppressed: 0,
-		wakesRejected: 0,
+		framesAsleep: 0,
 		framesNoise: 0,
 		framesOffTurn: 0
 	};
@@ -398,6 +387,29 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		return playbackQueue.length > 0 || pendingOffset < pending.length || Date.now() - lastAudioAt < SPEAK_GUARD_MS;
 	}
 
+	function afterSpeaking(label, run, { graceMs = 0, maxWaitMs = SPEECH_DRAIN_MAX_MS } = {}) {
+		const startedAt = Date.now();
+		const chunksAtStart = stats.chunksPlayed;
+
+		(function wait() {
+			if (closed) return;
+
+			const elapsed = Date.now() - startedAt;
+			const spoke = stats.chunksPlayed > chunksAtStart;
+
+			if ((botIsSpeaking() || (!spoke && elapsed < graceMs)) && elapsed < maxWaitMs) {
+				setTimeout(wait, SPEAK_GUARD_MS);
+				return;
+			}
+
+			if (elapsed >= maxWaitMs && botIsSpeaking()) {
+				logger.log(`⚠️ Voice AI still speaking after ${Math.round(maxWaitMs / 1000)}s, continuing with ${label}`);
+			}
+
+			run();
+		})();
+	}
+
 	function openTurn() {
 		if (turnOpen) return;
 		turnOpen = true;
@@ -413,8 +425,6 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		if (!turnOpen || !session) return;
 		turnOpen = false;
 		turnOwnerId = '';
-		wakeBuffer = '';
-		if (!isAddressed()) turnCooldownUntil = Date.now() + WAKE_TURN_GAP_MS;
 		if (turnTimer) {
 			clearTimeout(turnTimer);
 			turnTimer = null;
@@ -449,17 +459,15 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	function bumpTurn() {
 		if (turnTimer) clearTimeout(turnTimer);
 		turnTimer = setTimeout(function settle() {
-			const addressed = isAddressed();
-			const cap = addressed ? MAX_TURN_MS : WAKE_TURN_MS;
 			const elapsed = Date.now() - turnOpenedAt;
 
-			if (anyoneSpeaking() && elapsed < cap) {
+			if (anyoneSpeaking() && elapsed < MAX_TURN_MS) {
 				turnTimer = setTimeout(settle, TURN_SILENCE_MS);
 				return;
 			}
 
 			if (anyoneSpeaking()) {
-				if (addressed) logger.log(`⚠️ Voice AI forcing turn end after ${MAX_TURN_MS / 1000}s of continuous audio`);
+				logger.log(`⚠️ Voice AI forcing turn end after ${MAX_TURN_MS / 1000}s of continuous audio`);
 				for (const [userId, vad] of voiceState) {
 					if (!micIsOpenFor(userId)) continue;
 					vad.active = false;
@@ -582,9 +590,11 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 			logger.log(`📖 Voice AI wiki lookup: "${query}" (${call.args?.wiki ?? 'default'})`);
 
 			let settled = false;
+			let stalled = false;
 			const stallTimer = setTimeout(() => {
 				if (settled || closed || goodbyePending || !isAddressed()) return;
 				logger.log('⏳ Voice AI stalling out loud while the wiki lookup runs');
+				stalled = true;
 				extendAddressedWindow();
 				sendSystemNote(WIKI_STALL_PROMPT);
 			}, WIKI_STALL_MS);
@@ -593,7 +603,15 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 				settled = true;
 				clearTimeout(stallTimer);
 				extendAddressedWindow();
-				sendToolResponses([{ id: call.id, name: call.name, response }]);
+
+				const send = () => {
+					if (closed) return;
+					extendAddressedWindow();
+					sendToolResponses([{ id: call.id, name: call.name, response }]);
+				};
+
+				if (stalled) afterSpeaking('the wiki answer', send, { graceMs: WIKI_STALL_GRACE_MS });
+				else send();
 			};
 
 			runWikiTool(wikis, call.args ?? {})
@@ -602,23 +620,6 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 					logger.log(`❌ Voice AI wiki lookup failed: ${String(err)}`);
 					finish({ ok: false, reason: 'lookup_failed' });
 				});
-		}
-
-		if (calls.some((call) => call.name === 'i_was_addressed')) {
-			const nameJustHeard = nameAppearsIn(wakeBuffer) || Date.now() - lastNameHeardAt < NAME_CORROBORATE_MS;
-
-			if (!nameJustHeard && !isAddressed()) {
-				stats.wakesRejected++;
-				if (stats.wakesRejected % 5 === 1) {
-					logger.log(
-						`🙅 Voice AI rejected wake from ${nameOf(lastSpeakerId) || 'someone'}: no name in "${normalizeSpeech(wakeBuffer).slice(-70)}" (rejected=${stats.wakesRejected})`
-					);
-				}
-				return;
-			}
-
-			if (!isAddressed()) logger.log(`👋 Voice AI addressed by ${nameOf(lastSpeakerId) || 'someone'} (model)`);
-			markAddressed({ verified: true });
 		}
 
 		if (calls.some((call) => call.name === 'conversation_done')) {
@@ -652,7 +653,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 			logger.log('🎙️ Voice AI leave requested by voice');
 			leaveRequested = true;
 			closeTurn();
-			setTimeout(() => stop('user_request_voice'), GOODBYE_GRACE_MS);
+			afterSpeaking('leaving', () => stop('user_request_voice'), { graceMs: GOODBYE_GRACE_MS });
 		}
 	}
 
@@ -677,12 +678,6 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 				tools: [
 					{
 						functionDeclarations: [
-							{
-								name: 'i_was_addressed',
-								description:
-									'Call this ONLY when someone says "hello Dans" — the word "hello" (or "halo") immediately followed by "Dans". That exact wake phrase is the only thing that wakes you. Do NOT call this for other greetings like "hi", "hey" or "yo", for "hello" on its own, for the name "Dans" on its own, for people talking to each other, for general chatter, or for any question with no wake phrase in front of it. When in doubt, do NOT call it and stay silent. Call it BEFORE answering.',
-								parameters: { type: Type.OBJECT, properties: {} }
-							},
 							{
 								name: 'conversation_done',
 								description:
@@ -734,21 +729,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 					if (sc.interrupted) handleInterrupt();
 
-					if (sc.inputTranscription?.text) {
-						const text = sc.inputTranscription.text;
-						wakeBuffer = `${wakeBuffer} ${text}`.slice(-WAKE_BUFFER_CHARS);
-
-						if (nameAppearsIn(wakeBuffer)) lastNameHeardAt = Date.now();
-
-						if (heardWakeWord(wakeBuffer)) {
-							if (!isAddressed()) {
-								logger.log(`👋 Voice AI addressed by ${nameOf(lastSpeakerId) || 'someone'} ("${normalizeSpeech(wakeBuffer).slice(-60)}")`);
-							}
-							wakeBuffer = '';
-							markAddressed({ verified: true });
-						}
-						collectTranscript('user', text);
-					}
+					if (sc.inputTranscription?.text) collectTranscript('user', sc.inputTranscription.text);
 
 					if (!isAddressed() && Date.now() > goodbyeAllowedUntil) {
 						if (sc.modelTurn?.parts?.some((p) => p.inlineData?.data)) {
@@ -787,8 +768,6 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 		turnOpen = false;
 		turnOwnerId = '';
-		wakeBuffer = '';
-		turnCooldownUntil = Date.now() + WAKE_TURN_GAP_MS;
 		for (const vad of voiceState.values()) {
 			vad.active = false;
 			vad.onset = 0;
@@ -850,6 +829,8 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		const vad = { active: false, onset: 0, lastVoiceAt: 0, floor: 0, frames: 0, startedAt: 0 };
 		voiceState.set(userId, vad);
 
+		const wakeDetector = wakeModelAvailable() ? createWakeDetector() : null;
+
 		decoder.on('data', (pcm) => {
 			if (closed || !session || goodbyePending || leaveRequested) {
 				stats.framesDropped++;
@@ -867,6 +848,17 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 			const now = Date.now();
 			const discordSpeaking = connection.receiver.speaking.users.has(userId);
+
+			if (!isAddressed()) {
+				stats.framesAsleep++;
+				wakeDetector?.push(mono16k).then((score) => {
+					if (!score || closed || isAddressed()) return;
+					lastSpeakerId = userId;
+					logger.log(`👋 Voice AI woken by ${nameOf(userId)} ("hey stupid" ${score.toFixed(2)})`);
+					markAddressed({ verified: true });
+				});
+				return;
+			}
 
 			vad.frames++;
 			if (!vad.active) {
@@ -909,11 +901,6 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 				if (stats.framesOffTurn % 250 === 1) {
 					logger.log(`🙉 Voice AI ignoring ${nameOf(userId)} while talking with ${nameOf(lockedSpeakerId)}`);
 				}
-				return;
-			}
-
-			if (!turnOpen && now < turnCooldownUntil) {
-				stats.framesNoise++;
 				return;
 			}
 
@@ -981,7 +968,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 		await clearVoiceState(botId);
 		await logger.log(
-			`🔇 Voice AI left ${channelName || channelId} (${reason}) turns=${stats.turns} in=${stats.framesIn}f out=${stats.chunksPlayed}c dropped=${stats.framesDropped}/${stats.chunksDropped} noise=${stats.framesNoise} offTurn=${stats.framesOffTurn} suppressed=${stats.repliesSuppressed} queueHigh=${stats.queueHigh} interrupts=${stats.interrupts} reconnects=${stats.reconnects}`
+			`🔇 Voice AI left ${channelName || channelId} (${reason}) turns=${stats.turns} in=${stats.framesIn}f out=${stats.chunksPlayed}c dropped=${stats.framesDropped}/${stats.chunksDropped} noise=${stats.framesNoise} asleep=${stats.framesAsleep} offTurn=${stats.framesOffTurn} suppressed=${stats.repliesSuppressed} queueHigh=${stats.queueHigh} interrupts=${stats.interrupts} reconnects=${stats.reconnects}`
 		);
 		onEnded?.(reason);
 	}
@@ -1028,13 +1015,9 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 		await ensureUnmuted();
 		await ensureUndeafened();
-		refreshWakeWords();
-		setSelfMute(true);
 		announceRoster();
-		sendSystemNote(
-			`[System] You only wake up when someone says "hello Dans" — the word "hello" (or "halo") immediately followed by "Dans". Nothing else counts, not "hi", not "hey", not "hello" alone. Everything else in this channel — people chatting with each other, questions with no wake phrase attached, music from other bots — you ignore completely and call nothing. When unsure, stay silent. Do not read this note aloud.`
-		);
-		logger.log(`👥 Voice AI participants: ${rosterText()} | wake=${wakeWords.join('/') || 'none'}`);
+		announceWakePhrase();
+		logger.log(`👥 Voice AI participants: ${rosterText()} | wake=${wakeModelAvailable() ? 'hey stupid (model)' : 'none'}`);
 
 		const startedAt = Date.now();
 		await writeVoiceState(botId, { guildId, channelId, channelName, inviterId, textChannelId, startedAt });
@@ -1109,7 +1092,6 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 		await ensureUnmuted();
 		await ensureUndeafened();
-		refreshWakeWords();
 		if (lockedSpeakerId && !speaking.has(lockedSpeakerId)) releaseSpeakerLock();
 		announceRoster();
 		logger.log(`🔊 Voice AI followed inviter back to ${channelName}`);

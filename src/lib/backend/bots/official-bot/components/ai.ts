@@ -72,6 +72,20 @@ const VOICE_TOOLS = [
 	}
 ];
 
+const SMALL_TALK_RE =
+	/^(?:h(?:i|ey|ello|alo)|yo|sup|thanks?|thank you|thx|makasih|terima kasih|ok(?:ay)?|oke|sip|lol|wkwk|bye|good (?:morning|night)|pagi|malam|selamat \w+)[\s!.?]*$/i;
+
+const VOICE_INTENT_RE =
+	/\b(join|leave|masuk|keluar|disconnect)\b.*\b(voice|vc|call|channel)\b|\b(voice|vc|call|channel)\b.*\b(join|leave|masuk|keluar|disconnect)\b/i;
+
+function shouldForceWikiSearch(prompt) {
+	const text = String(prompt ?? '').trim();
+	if (!text || text.length < 3) return false;
+	if (SMALL_TALK_RE.test(text)) return false;
+	if (VOICE_INTENT_RE.test(text)) return false;
+	return true;
+}
+
 const TOOL_RETRY_HINT = 'This is the final result for this tool. Do not call it again — reply to the user in words.';
 
 function finalToolResult(payload) {
@@ -165,19 +179,22 @@ function getClient(config) {
 	return client;
 }
 
-async function callChatCompletions(config, messages, { tools = null, onToolCall = null } = {}) {
+async function callChatCompletions(config, messages, { tools = null, onToolCall = null, forceTool = null } = {}) {
 	const client = getClient(config);
 	const params = buildCompletionParams(config);
 	const loop = [...messages];
 	const toolResultCache = new Map();
+	let forced = false;
 
 	for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
 		const lastIteration = i === MAX_TOOL_ITERATIONS - 1;
 		const offerTools = tools && onToolCall && !lastIteration;
+		const forceNow = offerTools && forceTool && !forced && tools.some((tool) => tool.function?.name === forceTool);
+		if (forceNow) forced = true;
 
 		const completion = await client.chat.completions.create({
 			...params,
-			...(offerTools ? { tools, tool_choice: 'auto' } : {}),
+			...(offerTools ? { tools, tool_choice: forceNow ? { type: 'function', function: { name: forceTool } } : 'auto' } : {}),
 			messages: loop
 		});
 
@@ -274,7 +291,8 @@ async function handleMessageCreate(message) {
 
 			const raw = await callChatCompletions(config, messages, {
 				tools: tools.length ? tools : null,
-				onToolCall: tools.length ? onToolCall : null
+				onToolCall: tools.length ? onToolCall : null,
+				forceTool: wikiTool && shouldForceWikiSearch(userContent) ? 'search_wiki' : null
 			});
 			const reply = stripReasoning(typeof raw === 'string' ? raw : '').slice(0, MAX_REPLY_LENGTH);
 

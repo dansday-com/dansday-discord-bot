@@ -19,6 +19,8 @@ const MEL_BUFFER_FRAMES = 400;
 
 const DETECT_THRESHOLD = 0.5;
 const REFRACTORY_MS = 2000;
+const DEBUG_WAKE = process.env.WAKE_DEBUG === '1';
+const DEBUG_INTERVAL_MS = 2000;
 
 let sessions: {
 	mel: InferenceSession;
@@ -68,12 +70,19 @@ export function createWakeDetector() {
 	let melFramesSinceEmbedding = 0;
 	let lastDetectionAt = 0;
 	let busy = false;
+	let pending = 0;
+	let peakScore = 0;
+	let lastScore = 0;
+	let inferences = 0;
+	let framesPushed = 0;
+	let lastDebugAt = 0;
 
 	function reset() {
 		audioFilled = 0;
 		mels.length = 0;
 		embeddings.length = 0;
 		melFramesSinceEmbedding = 0;
+		pending = 0;
 	}
 
 	async function computeMels(active: NonNullable<typeof sessions>, samples: Float32Array) {
@@ -116,42 +125,68 @@ export function createWakeDetector() {
 
 	async function push(pcm: Buffer) {
 		const active = await loadSessions();
-		if (!active || busy) return 0;
+		if (!active) return 0;
 
 		const incoming = pcm.length / 2;
 		if (audioFilled + incoming > AUDIO_BUFFER_SAMPLES) {
-			const keep = AUDIO_BUFFER_SAMPLES - incoming;
-			audio.copyWithin(0, audioFilled - keep, audioFilled);
+			const keep = Math.max(0, AUDIO_BUFFER_SAMPLES - incoming);
+			const drop = audioFilled - keep;
+			audio.copyWithin(0, drop, audioFilled);
 			audioFilled = keep;
 		}
 		for (let i = 0; i < incoming; i++) audio[audioFilled + i] = pcm.readInt16LE(i * 2);
 		audioFilled += incoming;
+		pending = Math.min(pending + incoming, audioFilled);
+		framesPushed++;
 
-		if (audioFilled < CHUNK_SAMPLES) return 0;
+		if (busy || pending < CHUNK_SAMPLES) return 0;
 
 		busy = true;
 		try {
-			const chunk = audio.slice(audioFilled - CHUNK_SAMPLES, audioFilled);
-			const before = mels.length;
-			await computeMels(active, chunk);
-			melFramesSinceEmbedding += mels.length - before;
+			let detected = 0;
 
-			while (mels.length >= MEL_FRAMES_PER_EMBEDDING && melFramesSinceEmbedding >= MEL_STRIDE) {
-				melFramesSinceEmbedding -= MEL_STRIDE;
-				await computeEmbedding(active);
+			while (pending >= CHUNK_SAMPLES) {
+				const end = audioFilled - pending + CHUNK_SAMPLES;
+				const chunk = audio.slice(end - CHUNK_SAMPLES, end);
+				pending -= CHUNK_SAMPLES;
+
+				const before = mels.length;
+				await computeMels(active, chunk);
+				melFramesSinceEmbedding += mels.length - before;
+
+				while (mels.length >= MEL_FRAMES_PER_EMBEDDING && melFramesSinceEmbedding >= MEL_STRIDE) {
+					melFramesSinceEmbedding -= MEL_STRIDE;
+					await computeEmbedding(active);
+				}
+
+				if (embeddings.length < EMBEDDING_WINDOW) continue;
+
+				const score = await classify(active);
+				inferences++;
+				lastScore = score;
+				if (score > peakScore) peakScore = score;
+
+				const now = Date.now();
+				if (score >= DETECT_THRESHOLD && now - lastDetectionAt > REFRACTORY_MS) {
+					lastDetectionAt = now;
+					embeddings.length = 0;
+					detected = score;
+					break;
+				}
 			}
 
-			if (embeddings.length < EMBEDDING_WINDOW) return 0;
-
-			const score = await classify(active);
-			const now = Date.now();
-
-			if (score >= DETECT_THRESHOLD && now - lastDetectionAt > REFRACTORY_MS) {
-				lastDetectionAt = now;
-				embeddings.length = 0;
-				return score;
+			if (DEBUG_WAKE) {
+				const now = Date.now();
+				if (now - lastDebugAt >= DEBUG_INTERVAL_MS) {
+					lastDebugAt = now;
+					logger.log(
+						`🎚️ Wake debug: frames=${framesPushed} inferences=${inferences} last=${lastScore.toFixed(3)} peak=${peakScore.toFixed(3)} threshold=${DETECT_THRESHOLD} mels=${mels.length} embeddings=${embeddings.length}/${EMBEDDING_WINDOW}`
+					);
+					peakScore = 0;
+				}
 			}
-			return 0;
+
+			return detected;
 		} catch (error) {
 			logger.log(`❌ Wake word inference failed: ${error.message}`);
 			return 0;

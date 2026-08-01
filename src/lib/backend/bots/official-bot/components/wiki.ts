@@ -469,7 +469,11 @@ export function buildWikiDeclaration(wikis) {
 
 	return {
 		name: tool.function.name,
-		description: `${tool.function.description}\n\nRead the answer out loud in one or two short spoken sentences. Do not read URLs aloud.`,
+		description: `${tool.function.description}
+
+You do not know these games. Your own memory of them is unreliable and usually wrong, so treat every question about a game as something you must look up before you can answer it. Call this tool first and wait for the result — do not say the answer, a guess, or a partial answer before the result arrives. If you catch yourself about to state a fact you did not read in a result, stop and call this tool instead. Say a short filler line like "let me check" only if you need to fill the silence while it runs.
+
+Read the answer out loud in one or two short spoken sentences. Do not read URLs aloud.`,
 		parameters: tool.function.parameters
 	};
 }

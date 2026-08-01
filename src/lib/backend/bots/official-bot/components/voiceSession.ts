@@ -57,6 +57,11 @@ const HEARTBEAT_MS = (VOICE_STATE_TTL_SEC / 2) * 1000;
 const IDLE_GOODBYE_PROMPT =
 	"Nobody has spoken for a while. Say a short, natural goodbye out loud — you're heading off since it's quiet, and they can call you back anytime. One sentence.";
 
+const WIKI_STALL_MS = 600;
+
+const WIKI_STALL_PROMPT =
+	'[System] You are still looking that up. Say one short, natural line out loud right now to let them know you are checking, in the same language they are speaking — something like "let me check that" or "one sec". Say nothing else, do not guess the answer, and do not read this note aloud. The result arrives in a moment and you will answer properly then.';
+
 function rmsOf(pcm) {
 	const samples = Math.floor(pcm.length / 2);
 	if (!samples) return 0;
@@ -595,14 +600,27 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 			logger.log(`📖 Voice AI wiki lookup: "${query}" (${call.args?.wiki ?? 'default'})`);
 			touchIdle();
 
+			let settled = false;
+			const stallTimer = setTimeout(() => {
+				if (settled || closed || goodbyePending || !isAddressed()) return;
+				logger.log('⏳ Voice AI stalling out loud while the wiki lookup runs');
+				extendAddressedWindow();
+				sendSystemNote(WIKI_STALL_PROMPT);
+			}, WIKI_STALL_MS);
+
+			const finish = (response) => {
+				settled = true;
+				clearTimeout(stallTimer);
+				touchIdle();
+				extendAddressedWindow();
+				sendToolResponses([{ id: call.id, name: call.name, response }]);
+			};
+
 			runWikiTool(wikis, call.args ?? {})
-				.then((result) => {
-					touchIdle();
-					sendToolResponses([{ id: call.id, name: call.name, response: result }]);
-				})
+				.then(finish)
 				.catch((err) => {
 					logger.log(`❌ Voice AI wiki lookup failed: ${String(err)}`);
-					sendToolResponses([{ id: call.id, name: call.name, response: { ok: false, reason: 'lookup_failed' } }]);
+					finish({ ok: false, reason: 'lookup_failed' });
 				});
 		}
 

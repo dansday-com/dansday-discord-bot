@@ -267,6 +267,7 @@ async function handleMessageCreate(message) {
 			const tools = [...(voiceReady ? VOICE_TOOLS : []), ...(wikiTool ? [wikiTool] : [])];
 
 			const onToolCall = (name, args) => {
+				message.channel.sendTyping().catch(() => {});
 				if (name === 'search_wiki') return runWikiTool(wikis, args).then((result) => JSON.stringify(result));
 				return executeVoiceTool(name, message, botConfig.id);
 			};

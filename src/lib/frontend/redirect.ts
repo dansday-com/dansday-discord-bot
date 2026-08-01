@@ -1,6 +1,6 @@
 export const DASHBOARD_PATH = '/overview' as const;
 
-const BOT_SECTION_RE = /^\/bots\/[^/]+(?:\/(?:presence|ai))?\/?$/;
+const BOT_SECTION_RE = /^\/bots\/[^/]+(?:\/(?:presence|ai|wikis))?\/?$/;
 
 export function isBotSectionPath(pathname: string): boolean {
 	return BOT_SECTION_RE.test(pathname);

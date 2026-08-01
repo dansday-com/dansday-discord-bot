@@ -56,9 +56,13 @@ type Detector = {
 	lastDetectionAt: number;
 	lastSeenAt: number;
 	peakScore: number;
+	allTimePeak: number;
 	lastScore: number;
 	inferences: number;
 	levelRms: number;
+	melMin: number;
+	melMax: number;
+	embAbsMean: number;
 };
 
 const detectors = new Map<string, Detector>();
@@ -71,7 +75,7 @@ let chunksProcessed = 0;
 function reportStats() {
 	const parts = [...detectors.entries()].map(
 		([userId, state]) =>
-			`${userId.slice(-4)}:last=${state.lastScore.toFixed(2)}/peak=${state.peakScore.toFixed(2)}/emb=${state.embeddings.length}/inf=${state.inferences}/rms=${Math.round(state.levelRms)}/gain=${(state.levelRms ? Math.min(AGC_MAX_GAIN, Math.max(AGC_MIN_GAIN, AGC_TARGET_RMS / state.levelRms)) : 1).toFixed(1)}`
+			`${userId.slice(-4)}:last=${state.lastScore.toFixed(5)}/peak=${state.peakScore.toFixed(5)}/allpeak=${state.allTimePeak.toFixed(5)}/melmin=${state.melMin.toFixed(2)}/melmax=${state.melMax.toFixed(2)}/embabs=${state.embAbsMean.toFixed(3)}/emb=${state.embeddings.length}/inf=${state.inferences}/rms=${Math.round(state.levelRms)}/gain=${(state.levelRms ? Math.min(AGC_MAX_GAIN, Math.max(AGC_MIN_GAIN, AGC_TARGET_RMS / state.levelRms)) : 1).toFixed(1)}`
 	);
 	post({
 		type: 'debug',
@@ -95,9 +99,13 @@ function createDetector(): Detector {
 		lastDetectionAt: 0,
 		lastSeenAt: Date.now(),
 		peakScore: 0,
+		allTimePeak: 0,
 		lastScore: 0,
 		inferences: 0,
-		levelRms: 0
+		levelRms: 0,
+		melMin: 0,
+		melMax: 0,
+		embAbsMean: 0
 	};
 }
 
@@ -121,10 +129,21 @@ async function computeMels(active: NonNullable<typeof sessions>, state: Detector
 	const data = out[active.mel.outputNames[0]].data as Float32Array;
 	const frames = data.length / 32;
 
+	let lo = Infinity;
+	let hi = -Infinity;
 	for (let i = 0; i < frames; i++) {
 		const frame = new Float32Array(32);
-		for (let j = 0; j < 32; j++) frame[j] = data[i * 32 + j] / 10 + 2;
+		for (let j = 0; j < 32; j++) {
+			const v = data[i * 32 + j] / 10 + 2;
+			frame[j] = v;
+			if (v < lo) lo = v;
+			if (v > hi) hi = v;
+		}
 		state.mels.push(frame);
+	}
+	if (frames) {
+		state.melMin = lo;
+		state.melMax = hi;
 	}
 	if (state.mels.length > MEL_BUFFER_FRAMES) state.mels.splice(0, state.mels.length - MEL_BUFFER_FRAMES);
 }
@@ -138,7 +157,12 @@ async function computeEmbedding(active: NonNullable<typeof sessions>, state: Det
 		input_1: new active.Tensor('float32', flat, [1, MEL_FRAMES_PER_EMBEDDING, 32, 1])
 	});
 
-	state.embeddings.push(out[active.emb.outputNames[0]].data as Float32Array);
+	const vector = out[active.emb.outputNames[0]].data as Float32Array;
+	let abs = 0;
+	for (let i = 0; i < vector.length; i++) abs += Math.abs(vector[i]);
+	state.embAbsMean = vector.length ? abs / vector.length : 0;
+
+	state.embeddings.push(vector);
 	if (state.embeddings.length > EMBEDDING_WINDOW) state.embeddings.splice(0, state.embeddings.length - EMBEDDING_WINDOW);
 }
 
@@ -215,6 +239,7 @@ async function processUser(active: NonNullable<typeof sessions>, userId: string,
 		state.inferences++;
 		state.lastScore = score;
 		if (score > state.peakScore) state.peakScore = score;
+		if (score > state.allTimePeak) state.allTimePeak = score;
 
 		const now = Date.now();
 		if (score >= threshold && now - state.lastDetectionAt > refractoryMs) {

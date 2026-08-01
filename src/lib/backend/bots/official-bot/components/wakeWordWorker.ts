@@ -4,28 +4,24 @@ import { parentPort, workerData } from 'node:worker_threads';
 const { melPath, embPath, wakePath, threshold, refractoryMs, debug } = workerData;
 
 const SAMPLE_RATE = 16000;
-const CHUNK_SAMPLES = 1280;
-const MEL_FRAMES_PER_EMBEDDING = 76;
+const STEP_SAMPLES = 1280;
+const MEL_LOOKBACK_SAMPLES = 480;
+const MEL_BINS = 32;
+const MEL_WINDOW_FRAMES = 76;
+const MEL_STRIDE_FRAMES = 8;
+const MEL_BUFFER_MAX_FRAMES = 970;
 const EMBEDDING_DIM = 96;
-const EMBEDDING_WINDOW = 16;
-const MEL_STRIDE = 8;
-const MEL_CONTEXT_SAMPLES = 480;
-const AUDIO_BUFFER_SAMPLES = SAMPLE_RATE * 3;
-const MEL_BUFFER_FRAMES = 400;
-const MAX_PENDING_SAMPLES = CHUNK_SAMPLES * 12;
+const FEATURE_BUFFER_MAX_ROWS = 120;
+const RAW_BUFFER_MAX_SAMPLES = SAMPLE_RATE * 10;
+const PREDICTION_WARMUP = 5;
 const DEBUG_INTERVAL_MS = 2000;
 const IDLE_EVICT_MS = 60_000;
-
-const AGC_TARGET_RMS = 2000;
-const AGC_SILENCE_RMS = 60;
-const AGC_ALPHA = 0.05;
-const AGC_MIN_GAIN = 0.5;
-const AGC_MAX_GAIN = 12;
 
 let sessions: {
 	mel: InferenceSession;
 	emb: InferenceSession;
 	wake: InferenceSession;
+	wakeInputRows: number;
 	Tensor: typeof import('onnxruntime-node').Tensor;
 } | null = null;
 
@@ -43,17 +39,21 @@ async function loadSessions() {
 		ort.InferenceSession.create(wakePath)
 	]);
 
-	sessions = { mel, emb, wake, Tensor: ort.Tensor };
+	const shape = (wake as any).inputMetadata?.[wake.inputNames[0]]?.dimensions;
+	const wakeInputRows = Array.isArray(shape) && typeof shape[1] === 'number' && shape[1] > 0 ? shape[1] : 16;
+
+	sessions = { mel, emb, wake, wakeInputRows, Tensor: ort.Tensor };
 	return sessions;
 }
 
 type Detector = {
-	audio: Float32Array;
-	audioFilled: number;
-	pending: number;
+	raw: Float32Array;
+	rawFilled: number;
+	remainder: Float32Array;
+	accumulated: number;
 	mels: Float32Array[];
-	embeddings: Float32Array[];
-	melFramesSinceEmbedding: number;
+	features: Float32Array[];
+	predictions: number[];
 	lastDetectionAt: number;
 	lastSeenAt: number;
 	peakScore: number;
@@ -63,7 +63,6 @@ type Detector = {
 	levelRms: number;
 	melMin: number;
 	melMax: number;
-	embAbsMean: number;
 };
 
 const detectors = new Map<string, Detector>();
@@ -71,16 +70,16 @@ let queue: Array<{ userId: string; samples: Float32Array }> = [];
 let draining = false;
 let lastDebugAt = 0;
 let framesReceived = 0;
-let chunksProcessed = 0;
+let stepsProcessed = 0;
 
 function reportStats() {
 	const parts = [...detectors.entries()].map(
 		([userId, state]) =>
-			`${userId.slice(-4)}:last=${state.lastScore.toFixed(5)}/peak=${state.peakScore.toFixed(5)}/allpeak=${state.allTimePeak.toFixed(5)}/melmin=${state.melMin.toFixed(2)}/melmax=${state.melMax.toFixed(2)}/embabs=${state.embAbsMean.toFixed(3)}/emb=${state.embeddings.length}/inf=${state.inferences}/rms=${Math.round(state.levelRms)}/gain=${(state.levelRms ? Math.min(AGC_MAX_GAIN, Math.max(AGC_MIN_GAIN, AGC_TARGET_RMS / state.levelRms)) : 1).toFixed(1)}`
+			`${userId.slice(-4)}:last=${state.lastScore.toFixed(5)}/peak=${state.peakScore.toFixed(5)}/allpeak=${state.allTimePeak.toFixed(5)}/melmin=${state.melMin.toFixed(2)}/melmax=${state.melMax.toFixed(2)}/feat=${state.features.length}/inf=${state.inferences}/rms=${Math.round(state.levelRms)}`
 	);
 	post({
 		type: 'debug',
-		text: `threshold=${threshold} users=${detectors.size} frames=${framesReceived} chunks=${chunksProcessed} queued=${queue.length} ${parts.join(' ')}`
+		text: `threshold=${threshold} users=${detectors.size} frames=${framesReceived} steps=${stepsProcessed} queued=${queue.length} ${parts.join(' ')}`
 	});
 	for (const state of detectors.values()) state.peakScore = 0;
 }
@@ -90,13 +89,17 @@ setInterval(() => {
 }, 10_000).unref();
 
 function createDetector(): Detector {
+	const mels: Float32Array[] = [];
+	for (let i = 0; i < MEL_WINDOW_FRAMES; i++) mels.push(new Float32Array(MEL_BINS).fill(1));
+
 	return {
-		audio: new Float32Array(AUDIO_BUFFER_SAMPLES),
-		audioFilled: 0,
-		pending: 0,
-		mels: [],
-		embeddings: [],
-		melFramesSinceEmbedding: 0,
+		raw: new Float32Array(RAW_BUFFER_MAX_SAMPLES),
+		rawFilled: 0,
+		remainder: new Float32Array(0),
+		accumulated: 0,
+		mels,
+		features: [],
+		predictions: [],
 		lastDetectionAt: 0,
 		lastSeenAt: Date.now(),
 		peakScore: 0,
@@ -105,17 +108,18 @@ function createDetector(): Detector {
 		inferences: 0,
 		levelRms: 0,
 		melMin: 0,
-		melMax: 0,
-		embAbsMean: 0
+		melMax: 0
 	};
 }
 
 function resetDetector(state: Detector) {
-	state.audioFilled = 0;
-	state.pending = 0;
+	state.rawFilled = 0;
+	state.remainder = new Float32Array(0);
+	state.accumulated = 0;
 	state.mels.length = 0;
-	state.embeddings.length = 0;
-	state.melFramesSinceEmbedding = 0;
+	for (let i = 0; i < MEL_WINDOW_FRAMES; i++) state.mels.push(new Float32Array(MEL_BINS).fill(1));
+	state.features.length = 0;
+	state.predictions.length = 0;
 }
 
 function evictIdle() {
@@ -125,17 +129,43 @@ function evictIdle() {
 	}
 }
 
-async function computeMels(active: NonNullable<typeof sessions>, state: Detector, samples: Float32Array) {
-	const out = await active.mel.run({ input: new active.Tensor('float32', samples, [1, samples.length]) });
+function appendRaw(state: Detector, samples: Float32Array) {
+	const incoming = samples.length;
+	if (incoming >= RAW_BUFFER_MAX_SAMPLES) {
+		state.raw.set(samples.subarray(incoming - RAW_BUFFER_MAX_SAMPLES));
+		state.rawFilled = RAW_BUFFER_MAX_SAMPLES;
+		return;
+	}
+	if (state.rawFilled + incoming > RAW_BUFFER_MAX_SAMPLES) {
+		const drop = state.rawFilled + incoming - RAW_BUFFER_MAX_SAMPLES;
+		state.raw.copyWithin(0, drop, state.rawFilled);
+		state.rawFilled -= drop;
+	}
+	state.raw.set(samples, state.rawFilled);
+	state.rawFilled += incoming;
+}
+
+function trackLevel(state: Detector, samples: Float32Array) {
+	let sum = 0;
+	for (let i = 0; i < samples.length; i++) sum += samples[i] * samples[i];
+	const rms = Math.sqrt(sum / Math.max(1, samples.length));
+	state.levelRms = state.levelRms ? state.levelRms + 0.05 * (rms - state.levelRms) : rms;
+}
+
+async function computeMelFrames(active: NonNullable<typeof sessions>, state: Detector, nSamples: number) {
+	const take = Math.min(state.rawFilled, nSamples + MEL_LOOKBACK_SAMPLES);
+	const audio = state.raw.slice(state.rawFilled - take, state.rawFilled);
+
+	const out = await active.mel.run({ input: new active.Tensor('float32', audio, [1, audio.length]) });
 	const data = out[active.mel.outputNames[0]].data as Float32Array;
-	const frames = data.length / 32;
+	const frames = Math.floor(data.length / MEL_BINS);
 
 	let lo = Infinity;
 	let hi = -Infinity;
 	for (let i = 0; i < frames; i++) {
-		const frame = new Float32Array(32);
-		for (let j = 0; j < 32; j++) {
-			const v = data[i * 32 + j] / 10 + 2;
+		const frame = new Float32Array(MEL_BINS);
+		for (let j = 0; j < MEL_BINS; j++) {
+			const v = data[i * MEL_BINS + j] / 10 + 2;
 			frame[j] = v;
 			if (v < lo) lo = v;
 			if (v > hi) hi = v;
@@ -146,53 +176,41 @@ async function computeMels(active: NonNullable<typeof sessions>, state: Detector
 		state.melMin = lo;
 		state.melMax = hi;
 	}
-	if (state.mels.length > MEL_BUFFER_FRAMES) state.mels.splice(0, state.mels.length - MEL_BUFFER_FRAMES);
+
+	if (state.mels.length > MEL_BUFFER_MAX_FRAMES) {
+		state.mels.splice(0, state.mels.length - MEL_BUFFER_MAX_FRAMES);
+	}
 }
 
-async function computeEmbedding(active: NonNullable<typeof sessions>, state: Detector) {
-	const window = state.mels.slice(-MEL_FRAMES_PER_EMBEDDING);
-	const flat = new Float32Array(MEL_FRAMES_PER_EMBEDDING * 32);
-	for (let i = 0; i < MEL_FRAMES_PER_EMBEDDING; i++) flat.set(window[i], i * 32);
+async function computeFeatures(active: NonNullable<typeof sessions>, state: Detector, steps: number) {
+	for (let i = steps - 1; i >= 0; i--) {
+		const end = i === 0 ? state.mels.length : state.mels.length - MEL_STRIDE_FRAMES * i;
+		const start = end - MEL_WINDOW_FRAMES;
+		if (start < 0) continue;
 
-	const out = await active.emb.run({
-		input_1: new active.Tensor('float32', flat, [1, MEL_FRAMES_PER_EMBEDDING, 32, 1])
-	});
+		const flat = new Float32Array(MEL_WINDOW_FRAMES * MEL_BINS);
+		for (let f = 0; f < MEL_WINDOW_FRAMES; f++) flat.set(state.mels[start + f], f * MEL_BINS);
 
-	const vector = out[active.emb.outputNames[0]].data as Float32Array;
-	let abs = 0;
-	for (let i = 0; i < vector.length; i++) abs += Math.abs(vector[i]);
-	state.embAbsMean = vector.length ? abs / vector.length : 0;
-
-	state.embeddings.push(vector);
-	if (state.embeddings.length > EMBEDDING_WINDOW) state.embeddings.splice(0, state.embeddings.length - EMBEDDING_WINDOW);
+		const out = await active.emb.run({
+			input_1: new active.Tensor('float32', flat, [1, MEL_WINDOW_FRAMES, MEL_BINS, 1])
+		});
+		state.features.push(out[active.emb.outputNames[0]].data as Float32Array);
+	}
 }
 
-async function classify(active: NonNullable<typeof sessions>, state: Detector) {
-	const flat = new Float32Array(EMBEDDING_WINDOW * EMBEDDING_DIM);
-	for (let i = 0; i < EMBEDDING_WINDOW; i++) flat.set(state.embeddings[i], i * EMBEDDING_DIM);
+async function classify(active: NonNullable<typeof sessions>, state: Detector, offset: number) {
+	const rows = active.wakeInputRows;
+	const end = state.features.length - offset;
+	const start = end - rows;
+	if (start < 0) return null;
+
+	const flat = new Float32Array(rows * EMBEDDING_DIM);
+	for (let i = 0; i < rows; i++) flat.set(state.features[start + i], i * EMBEDDING_DIM);
 
 	const out = await active.wake.run({
-		[active.wake.inputNames[0]]: new active.Tensor('float32', flat, [1, EMBEDDING_WINDOW, EMBEDDING_DIM])
+		[active.wake.inputNames[0]]: new active.Tensor('float32', flat, [1, rows, EMBEDDING_DIM])
 	});
-
 	return (out[active.wake.outputNames[0]].data as Float32Array)[0];
-}
-
-function applyGain(state: Detector, samples: Float32Array) {
-	let sum = 0;
-	for (let i = 0; i < samples.length; i++) sum += samples[i] * samples[i];
-	const rms = Math.sqrt(sum / Math.max(1, samples.length));
-
-	if (rms < AGC_SILENCE_RMS) return samples;
-
-	state.levelRms = state.levelRms ? state.levelRms + AGC_ALPHA * (rms - state.levelRms) : rms;
-
-	const gain = Math.min(AGC_MAX_GAIN, Math.max(AGC_MIN_GAIN, AGC_TARGET_RMS / state.levelRms));
-	if (Math.abs(gain - 1) < 0.05) return samples;
-
-	const out = new Float32Array(samples.length);
-	for (let i = 0; i < samples.length; i++) out[i] = Math.max(-32768, Math.min(32767, samples[i] * gain));
-	return out;
 }
 
 function ingest(userId: string, incomingSamples: Float32Array) {
@@ -203,57 +221,75 @@ function ingest(userId: string, incomingSamples: Float32Array) {
 	}
 
 	state.lastSeenAt = Date.now();
+	trackLevel(state, incomingSamples);
 
-	const samples = applyGain(state, incomingSamples);
-	const incoming = samples.length;
-	if (state.audioFilled + incoming > AUDIO_BUFFER_SAMPLES) {
-		const keep = Math.max(0, AUDIO_BUFFER_SAMPLES - incoming);
-		state.audio.copyWithin(0, state.audioFilled - keep, state.audioFilled);
-		state.audioFilled = keep;
+	let x = incomingSamples;
+	if (state.remainder.length) {
+		const merged = new Float32Array(state.remainder.length + x.length);
+		merged.set(state.remainder, 0);
+		merged.set(x, state.remainder.length);
+		x = merged;
+		state.remainder = new Float32Array(0);
 	}
-	state.audio.set(samples, state.audioFilled);
-	state.audioFilled += incoming;
-	state.pending = Math.min(state.pending + incoming, state.audioFilled, MAX_PENDING_SAMPLES);
+
+	if (state.accumulated + x.length >= STEP_SAMPLES) {
+		const remainder = (state.accumulated + x.length) % STEP_SAMPLES;
+		if (remainder !== 0) {
+			const head = x.subarray(0, x.length - remainder);
+			appendRaw(state, head);
+			state.accumulated += head.length;
+			state.remainder = x.slice(x.length - remainder);
+		} else {
+			appendRaw(state, x);
+			state.accumulated += x.length;
+		}
+	} else {
+		state.accumulated += x.length;
+		appendRaw(state, x);
+	}
 
 	return state;
 }
 
 async function processUser(active: NonNullable<typeof sessions>, userId: string, state: Detector) {
-	while (state.pending >= CHUNK_SAMPLES) {
-		const end = state.audioFilled - state.pending + CHUNK_SAMPLES;
-		const start = end - CHUNK_SAMPLES - MEL_CONTEXT_SAMPLES;
-		if (start < 0) {
-			state.pending -= CHUNK_SAMPLES;
-			continue;
-		}
-		const chunk = state.audio.slice(start, end);
-		state.pending -= CHUNK_SAMPLES;
+	if (state.accumulated < STEP_SAMPLES || state.accumulated % STEP_SAMPLES !== 0) return;
 
-		const before = state.mels.length;
-		await computeMels(active, state, chunk);
-		state.melFramesSinceEmbedding += state.mels.length - before;
+	const prepared = state.accumulated;
+	const steps = prepared / STEP_SAMPLES;
 
-		while (state.mels.length >= MEL_FRAMES_PER_EMBEDDING && state.melFramesSinceEmbedding >= MEL_STRIDE) {
-			state.melFramesSinceEmbedding -= MEL_STRIDE;
-			await computeEmbedding(active, state);
-		}
+	await computeMelFrames(active, state, prepared);
+	await computeFeatures(active, state, steps);
+	state.accumulated = 0;
 
-		if (state.embeddings.length < EMBEDDING_WINDOW) continue;
+	if (state.features.length > FEATURE_BUFFER_MAX_ROWS) {
+		state.features.splice(0, state.features.length - FEATURE_BUFFER_MAX_ROWS);
+	}
 
-		chunksProcessed++;
-		const score = await classify(active, state);
-		state.inferences++;
-		state.lastScore = score;
-		if (score > state.peakScore) state.peakScore = score;
-		if (score > state.allTimePeak) state.allTimePeak = score;
+	let best: number | null = null;
+	for (let i = steps - 1; i >= 0; i--) {
+		const score = await classify(active, state, i);
+		if (score === null) continue;
+		if (best === null || score > best) best = score;
+	}
+	if (best === null) return;
 
-		const now = Date.now();
-		if (score >= threshold && now - state.lastDetectionAt > refractoryMs) {
-			state.lastDetectionAt = now;
-			resetDetector(state);
-			post({ type: 'detected', userId, score });
-			return;
-		}
+	stepsProcessed += steps;
+	state.inferences++;
+
+	let score = best;
+	if (state.predictions.length < PREDICTION_WARMUP) score = 0;
+	state.predictions.push(score);
+	if (state.predictions.length > 30) state.predictions.shift();
+
+	state.lastScore = score;
+	if (score > state.peakScore) state.peakScore = score;
+	if (score > state.allTimePeak) state.allTimePeak = score;
+
+	const now = Date.now();
+	if (score >= threshold && now - state.lastDetectionAt > refractoryMs) {
+		state.lastDetectionAt = now;
+		resetDetector(state);
+		post({ type: 'detected', userId, score });
 	}
 }
 

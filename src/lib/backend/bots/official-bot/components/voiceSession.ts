@@ -37,7 +37,7 @@ const SPEECH_RECENT_MS = 3_000;
 const NOISE_FLOOR_ALPHA = 0.002;
 const NOISE_FLOOR_FALL_ALPHA = 0.05;
 const NOISE_FLOOR_MARGIN = 2.2;
-const MAX_TURN_MS = 10_000;
+const MAX_TURN_MS = 60_000;
 const CLOSE_WAIT_MS = 3000;
 const MAX_QUEUED_CHUNKS = 60;
 
@@ -49,10 +49,17 @@ const HEARTBEAT_MS = (VOICE_STATE_TTL_SEC / 2) * 1000;
 
 const WIKI_STALL_MS = 600;
 const WIKI_STALL_GRACE_MS = 2_500;
+const WIKI_TIMEOUT_MS = 12_000;
 const SPEECH_DRAIN_MAX_MS = 20_000;
 
 const WIKI_STALL_PROMPT =
 	'[System] You are still looking that up. Say one short, natural line out loud right now to let them know you are checking, in the same language they are speaking — something like "let me check that" or "one sec". Say nothing else, do not guess the answer, and do not read this note aloud. The result arrives in a moment and you will answer properly then.';
+
+const WIKI_FAILED_PROMPT =
+	'[System] The wiki lookup failed and you have no result. Say one short line out loud right now telling them you could not reach the wiki and cannot check that at the moment, in the same language they are speaking. Do not guess, do not state any fact about the game, and do not read this note aloud.';
+
+const WAKE_ACK_PROMPT =
+	'[System] Someone just said the wake phrase and you are now listening. Say one very short acknowledgement out loud right now — just "yes?" or the equivalent in the language this server speaks. Two words at most. Do not answer anything yet, do not ask what they need, and do not read this note aloud.';
 
 function rmsOf(pcm) {
 	const samples = Math.floor(pcm.length / 2);
@@ -470,7 +477,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 			}
 
 			if (anyoneSpeaking()) {
-				logger.log(`⚠️ Voice AI forcing turn end after ${MAX_TURN_MS / 1000}s of continuous audio`);
+				logger.log(`⚠️ Voice AI turn stuck open past ${MAX_TURN_MS / 1000}s, forcing it closed`);
 				for (const [userId, vad] of voiceState) {
 					if (!micIsOpenFor(userId)) continue;
 					vad.active = false;
@@ -482,7 +489,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	}
 
 	function playChunk(pcm24k) {
-		if (closed) {
+		if (closed || selfMuted) {
 			stats.chunksDropped++;
 			return;
 		}
@@ -512,6 +519,19 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	function nextFrame() {
 		const frame = Buffer.alloc(FRAME_BYTES);
 		let filled = 0;
+
+		if (selfMuted) {
+			if (playbackQueue.length || pendingOffset < pending.length) {
+				playbackQueue.length = 0;
+				pending = EMPTY;
+				pendingOffset = 0;
+				stats.chunksDropped++;
+				logger.log('🔇 Voice AI dropped playback that arrived while muted');
+			}
+			stats.framesOut++;
+			stats.silenceOut++;
+			return frame;
+		}
 
 		while (filled < FRAME_BYTES) {
 			if (pendingOffset >= pending.length) {
@@ -602,24 +622,47 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 				sendSystemNote(WIKI_STALL_PROMPT);
 			}, WIKI_STALL_MS);
 
+			const keepAwake = setInterval(() => {
+				if (settled || closed || goodbyePending) {
+					clearInterval(keepAwake);
+					return;
+				}
+				extendAddressedWindow();
+			}, ADDRESSED_WINDOW_MS / 3);
+
 			const finish = (response) => {
+				if (settled) return;
 				settled = true;
 				clearTimeout(stallTimer);
+				clearInterval(keepAwake);
 				extendAddressedWindow();
+
+				if (response?.ok === false) logger.log(`❌ Voice AI wiki lookup unusable: ${response.reason}`);
 
 				const send = () => {
 					if (closed) return;
 					extendAddressedWindow();
 					sendToolResponses([{ id: call.id, name: call.name, response }]);
+					if (response?.ok === false) sendSystemNote(WIKI_FAILED_PROMPT);
 				};
 
 				if (stalled) afterSpeaking('the wiki answer', send, { graceMs: WIKI_STALL_GRACE_MS });
 				else send();
 			};
 
+			const timeoutTimer = setTimeout(() => {
+				if (settled) return;
+				logger.log(`⏱️ Voice AI wiki lookup timed out after ${WIKI_TIMEOUT_MS / 1000}s`);
+				finish({ ok: false, reason: 'timeout' });
+			}, WIKI_TIMEOUT_MS);
+
 			runWikiTool(wikis, call.args ?? {})
-				.then(finish)
+				.then((response) => {
+					clearTimeout(timeoutTimer);
+					finish(response);
+				})
 				.catch((err) => {
+					clearTimeout(timeoutTimer);
 					logger.log(`❌ Voice AI wiki lookup failed: ${String(err)}`);
 					finish({ ok: false, reason: 'lookup_failed' });
 				});
@@ -856,9 +899,10 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 			const now = Date.now();
 			const discordSpeaking = connection.receiver.speaking.users.has(userId);
 
+			pushWakeAudio(userId, mono16k);
+
 			if (!isAddressed()) {
 				stats.framesAsleep++;
-				pushWakeAudio(userId, mono16k);
 				return;
 			}
 
@@ -1008,6 +1052,16 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		});
 		startOutput();
 
+		const wakePending = wakeModelAvailable() ? warmWakeModel().catch(() => false) : Promise.resolve(false);
+
+		offWakeDetected = onWakeDetected((userId, score) => {
+			if (closed || isAddressed() || isBotUser(userId)) return;
+			lastSpeakerId = userId;
+			logger.log(`👋 Voice AI woken by ${nameOf(userId)} ("hey stupid" ${score.toFixed(2)})`);
+			markAddressed({ verified: true });
+			sendSystemNote(WAKE_ACK_PROMPT);
+		});
+
 		await connectLive();
 
 		connection.receiver.speaking.on('start', (userId) => {
@@ -1022,14 +1076,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		await ensureUnmuted();
 		await ensureUndeafened();
 
-		offWakeDetected = onWakeDetected((userId, score) => {
-			if (closed || isAddressed() || !voiceState.has(userId)) return;
-			lastSpeakerId = userId;
-			logger.log(`👋 Voice AI woken by ${nameOf(userId)} ("hey stupid" ${score.toFixed(2)})`);
-			markAddressed({ verified: true });
-		});
-
-		const wakeLoaded = wakeModelAvailable() ? await warmWakeModel().catch(() => false) : false;
+		const wakeLoaded = await wakePending;
 		logger.log(`👥 Voice AI participants: ${rosterText()} | wake=${wakeLoaded ? 'hey stupid (model ready)' : 'none — bot cannot be woken'}`);
 
 		announceRoster();
@@ -1075,6 +1122,9 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		if (muted) {
 			muteAnnounced = false;
 			goodbyeAllowedUntil = 0;
+			playbackQueue.length = 0;
+			pending = EMPTY;
+			pendingOffset = 0;
 		}
 		try {
 			connection.rejoin({ channelId, selfDeaf: false, selfMute: muted });

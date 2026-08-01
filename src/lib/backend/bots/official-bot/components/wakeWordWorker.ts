@@ -288,7 +288,8 @@ async function processUser(active: NonNullable<typeof sessions>, userId: string,
 	const now = Date.now();
 	if (score >= threshold && now - state.lastDetectionAt > refractoryMs) {
 		state.lastDetectionAt = now;
-		resetDetector(state);
+		state.predictions.length = 0;
+		for (let i = 0; i < PREDICTION_WARMUP; i++) state.predictions.push(0);
 		post({ type: 'detected', userId, score });
 	}
 }

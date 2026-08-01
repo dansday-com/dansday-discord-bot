@@ -25,7 +25,7 @@ function findModelDir() {
 const MODEL_DIR = findModelDir();
 const [MEL_PATH, EMB_PATH, WAKE_PATH] = MODEL_FILES.map((file) => path.join(MODEL_DIR, file));
 
-const DETECT_THRESHOLD = Number(process.env.WAKE_THRESHOLD ?? 0.3);
+const DETECT_THRESHOLD = Number(process.env.WAKE_THRESHOLD ?? 0.2);
 const REFRACTORY_MS = 2000;
 const DEBUG_WAKE = process.env.WAKE_DEBUG === '1';
 

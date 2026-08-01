@@ -50,6 +50,8 @@ const HEARTBEAT_MS = (VOICE_STATE_TTL_SEC / 2) * 1000;
 
 const WIKI_STALL_MS = 600;
 const WIKI_STALL_GRACE_MS = 2_500;
+const WIKI_STALL_COOLDOWN_MS = 10_000;
+const WIKI_FAILED_MAX_WAIT_MS = 8_000;
 const WIKI_TIMEOUT_MS = 12_000;
 const SPEECH_DRAIN_MAX_MS = 20_000;
 
@@ -135,6 +137,8 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	const names = new Map();
 	const ignoredBots = new Set();
 	const voiceState = new Map();
+	const wikiInflight = new Map();
+	const wikiStallAt = new Map();
 
 	function isAddressed() {
 		return Date.now() < addressedUntil;
@@ -238,6 +242,12 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	function announceMute() {
 		muteTimer = null;
 		if (closed || goodbyePending || selfMuted || muteAnnounced) return;
+
+		if (wikiInflight.size) {
+			logger.log('🔎 Voice AI staying awake, a wiki lookup is still running');
+			extendAddressedWindow();
+			return;
+		}
 
 		if (botIsSpeaking()) {
 			extendAddressedWindow();
@@ -610,19 +620,46 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		sendToolResponses(responses);
 
 		for (const call of wikiCalls) {
-			if (!isAddressed()) {
-				logger.log('🚫 Voice AI ignoring wiki lookup while asleep');
-				sendToolResponses([{ id: call.id, name: call.name, response: { ok: false, reason: 'not_addressed' } }]);
+			const query = call.args?.query ?? '';
+			const dedupeKey = `${call.args?.wiki ?? ''}::${query}`.toLowerCase();
+
+			const inflight = wikiInflight.get(dedupeKey);
+			if (inflight) {
+				logger.log(`📖 Voice AI reusing in-flight wiki lookup: "${query}"`);
+				inflight.then((response) => sendToolResponses([{ id: call.id, name: call.name, response }])).catch(() => {});
 				continue;
 			}
 
-			const query = call.args?.query ?? '';
 			logger.log(`📖 Voice AI wiki lookup: "${query}" (${call.args?.wiki ?? 'default'})`);
 
 			let settled = false;
 			let stalled = false;
-			const stallTimer = setTimeout(() => {
+			let settledFailureSpoken = false;
+			let resolveInflight;
+			wikiInflight.set(
+				dedupeKey,
+				new Promise((resolve) => {
+					resolveInflight = resolve;
+				})
+			);
+
+			const stallDeadline = Date.now() + WIKI_STALL_MS + WIKI_STALL_GRACE_MS;
+			const stallTimer = setTimeout(function stall() {
 				if (settled || closed || goodbyePending) return;
+
+				const lastAt = wikiStallAt.get(dedupeKey) ?? 0;
+				if (Date.now() - lastAt < WIKI_STALL_COOLDOWN_MS) return;
+
+				if (botIsSpeaking()) {
+					if (Date.now() < stallDeadline) {
+						setTimeout(stall, SPEAK_GUARD_MS);
+						return;
+					}
+					logger.log('⏳ Voice AI skipped the wiki stall line, it was still speaking');
+					return;
+				}
+
+				wikiStallAt.set(dedupeKey, Date.now());
 				logger.log('⏳ Voice AI stalling out loud while the wiki lookup runs');
 				stalled = true;
 				extendAddressedWindow();
@@ -642,6 +679,8 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 				settled = true;
 				clearTimeout(stallTimer);
 				clearInterval(keepAwake);
+				wikiInflight.delete(dedupeKey);
+				resolveInflight?.(response);
 				extendAddressedWindow();
 
 				if (response?.ok === false) logger.log(`❌ Voice AI wiki lookup unusable: ${response.reason}`);
@@ -650,7 +689,27 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 					if (closed) return;
 					extendAddressedWindow();
 					sendToolResponses([{ id: call.id, name: call.name, response }]);
-					if (response?.ok === false) sendSystemNote(WIKI_FAILED_PROMPT);
+
+					if (response?.ok !== false) return;
+
+					const failedAt = Date.now();
+					const chunksAtFailure = stats.chunksPlayed;
+					setTimeout(function nudgeFailure() {
+						if (closed || goodbyePending || settledFailureSpoken) return;
+						if (stats.chunksPlayed > chunksAtFailure) return;
+						if (Date.now() - failedAt >= WIKI_FAILED_MAX_WAIT_MS) {
+							logger.log('❌ Voice AI never spoke the wiki failure, giving up');
+							return;
+						}
+						if (botIsSpeaking()) {
+							setTimeout(nudgeFailure, SPEAK_GUARD_MS);
+							return;
+						}
+						settledFailureSpoken = true;
+						logger.log('❌ Voice AI nudging the wiki failure out loud');
+						extendAddressedWindow();
+						sendSystemNote(WIKI_FAILED_PROMPT);
+					}, SPEAK_GUARD_MS);
 				};
 
 				if (stalled) afterSpeaking('the wiki answer', send, { graceMs: WIKI_STALL_GRACE_MS });
@@ -827,6 +886,10 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 		turnOpen = false;
 		turnOwnerId = '';
+		if (wikiInflight.size) {
+			logger.log(`🔎 Voice AI dropping ${wikiInflight.size} in-flight wiki lookup(s) across reconnect`);
+			wikiInflight.clear();
+		}
 		for (const vad of voiceState.values()) {
 			vad.active = false;
 			vad.onset = 0;
@@ -1014,6 +1077,8 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 		offWakeDetected?.();
 		offWakeDetected = null;
+		wikiInflight.clear();
+		wikiStallAt.clear();
 
 		for (const userId of [...speaking.keys()]) unsubscribeUser(userId);
 

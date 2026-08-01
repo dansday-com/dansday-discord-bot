@@ -1,27 +1,12 @@
 import type { InferenceSession } from 'onnxruntime-node';
 import path from 'node:path';
 import fs from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import { logger } from '../../../../utils/index.js';
 
-const MODEL_FILES = ['melspectrogram.onnx', 'embedding_model.onnx', 'hey_stupid.onnx'];
-
-const MODEL_DIR = (() => {
-	const here = path.dirname(fileURLToPath(import.meta.url));
-	const candidates = [
-		process.env.WAKEWORD_DIR,
-		path.resolve('static/wakeword'),
-		path.resolve(here, '../../../../../../static/wakeword'),
-		path.resolve(here, '../../../../../static/wakeword'),
-		path.resolve('/app/static/wakeword')
-	].filter(Boolean);
-
-	const found = candidates.find((dir) => MODEL_FILES.every((f) => fs.existsSync(path.join(dir, f))));
-	if (!found) logger.log(`🔇 Wake word model dir not found. Looked in: ${candidates.join(', ')} (cwd=${process.cwd()})`);
-	return found ?? candidates[1];
-})();
-
-const [MEL_PATH, EMB_PATH, WAKE_PATH] = MODEL_FILES.map((f) => path.join(MODEL_DIR, f));
+const MODEL_DIR = path.resolve('static/wakeword');
+const MEL_PATH = path.join(MODEL_DIR, 'melspectrogram.onnx');
+const EMB_PATH = path.join(MODEL_DIR, 'embedding_model.onnx');
+const WAKE_PATH = path.join(MODEL_DIR, 'hey_stupid.onnx');
 
 const SAMPLE_RATE = 16000;
 const CHUNK_SAMPLES = 1280;

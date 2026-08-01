@@ -21,7 +21,7 @@ FROM node:25.8.1-alpine AS runner
 
 WORKDIR /app
 
-RUN apk add --no-cache curl ffmpeg opus libstdc++
+RUN apk add --no-cache curl ffmpeg opus libstdc++ gcompat
 
 COPY --from=builder /app .
 

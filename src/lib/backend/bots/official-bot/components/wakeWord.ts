@@ -1,4 +1,4 @@
-import { InferenceSession, Tensor } from 'onnxruntime-node';
+import type { InferenceSession } from 'onnxruntime-node';
 import path from 'node:path';
 import fs from 'node:fs';
 import { logger } from '../../../../utils/index.js';
@@ -20,7 +20,12 @@ const MEL_BUFFER_FRAMES = 400;
 const DETECT_THRESHOLD = 0.5;
 const REFRACTORY_MS = 2000;
 
-let sessions: { mel: InferenceSession; emb: InferenceSession; wake: InferenceSession } | null = null;
+let sessions: {
+	mel: InferenceSession;
+	emb: InferenceSession;
+	wake: InferenceSession;
+	Tensor: typeof import('onnxruntime-node').Tensor;
+} | null = null;
 let loadFailed = false;
 
 export function wakeModelAvailable() {
@@ -37,8 +42,13 @@ async function loadSessions() {
 	}
 
 	try {
-		const [mel, emb, wake] = await Promise.all([InferenceSession.create(MEL_PATH), InferenceSession.create(EMB_PATH), InferenceSession.create(WAKE_PATH)]);
-		sessions = { mel, emb, wake };
+		const ort = await import('onnxruntime-node');
+		const [mel, emb, wake] = await Promise.all([
+			ort.InferenceSession.create(MEL_PATH),
+			ort.InferenceSession.create(EMB_PATH),
+			ort.InferenceSession.create(WAKE_PATH)
+		]);
+		sessions = { mel, emb, wake, Tensor: ort.Tensor };
 		logger.log('🧠 Wake word model loaded (hey stupid)');
 	} catch (error) {
 		loadFailed = true;
@@ -67,7 +77,7 @@ export function createWakeDetector() {
 	}
 
 	async function computeMels(active: NonNullable<typeof sessions>, samples: Float32Array) {
-		const out = await active.mel.run({ input: new Tensor('float32', samples, [1, samples.length]) });
+		const out = await active.mel.run({ input: new active.Tensor('float32', samples, [1, samples.length]) });
 		const raw = out[active.mel.outputNames[0]];
 		const data = raw.data as Float32Array;
 		const frames = data.length / 32;
@@ -86,7 +96,7 @@ export function createWakeDetector() {
 		for (let i = 0; i < MEL_FRAMES_PER_EMBEDDING; i++) flat.set(window[i], i * 32);
 
 		const out = await active.emb.run({
-			input_1: new Tensor('float32', flat, [1, MEL_FRAMES_PER_EMBEDDING, 32, 1])
+			input_1: new active.Tensor('float32', flat, [1, MEL_FRAMES_PER_EMBEDDING, 32, 1])
 		});
 
 		embeddings.push(out[active.emb.outputNames[0]].data as Float32Array);
@@ -98,7 +108,7 @@ export function createWakeDetector() {
 		for (let i = 0; i < EMBEDDING_WINDOW; i++) flat.set(embeddings[i], i * EMBEDDING_DIM);
 
 		const out = await active.wake.run({
-			[active.wake.inputNames[0]]: new Tensor('float32', flat, [1, EMBEDDING_WINDOW, EMBEDDING_DIM])
+			[active.wake.inputNames[0]]: new active.Tensor('float32', flat, [1, EMBEDDING_WINDOW, EMBEDDING_DIM])
 		});
 
 		return (out[active.wake.outputNames[0]].data as Float32Array)[0];

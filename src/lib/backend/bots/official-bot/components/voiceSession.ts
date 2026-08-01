@@ -37,6 +37,7 @@ const SPEECH_RECENT_MS = 3_000;
 const NOISE_FLOOR_ALPHA = 0.002;
 const NOISE_FLOOR_FALL_ALPHA = 0.05;
 const NOISE_FLOOR_MARGIN = 2.2;
+const NOISE_FLOOR_MAX = 400;
 const MAX_TURN_MS = 60_000;
 const CLOSE_WAIT_MS = 3000;
 const MAX_QUEUED_CHUNKS = 60;
@@ -559,8 +560,14 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 			wasPlaying = true;
 		}
 		if (stats.framesOut % 500 === 0) {
+			const gates = [...voiceState.entries()]
+				.map(
+					([userId, vad]) =>
+						`${userId.slice(-4)}:floor=${Math.round(vad.floor)}/openAt=${Math.round(Math.min(VOICE_RMS_CEILING, Math.max(VOICE_RMS_THRESHOLD, vad.floor * NOISE_FLOOR_MARGIN)))}/active=${vad.active ? 1 : 0}`
+				)
+				.join(' ');
 			logger.log(
-				`🔈 Voice AI ticker out=${stats.framesOut} silence=${stats.silenceOut} audioBytes=${stats.bytesOut} queued=${playbackQueue.length} | in=${stats.framesIn} asleep=${stats.framesAsleep} noise=${stats.framesNoise} subscribed=${voiceState.size} awake=${isAddressed()}`
+				`🔈 Voice AI ticker out=${stats.framesOut} silence=${stats.silenceOut} audioBytes=${stats.bytesOut} queued=${playbackQueue.length} | in=${stats.framesIn} asleep=${stats.framesAsleep} noise=${stats.framesNoise} subscribed=${voiceState.size} awake=${isAddressed()}${gates ? ` | ${gates}` : ''}`
 			);
 		}
 		return frame;
@@ -615,7 +622,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 			let settled = false;
 			let stalled = false;
 			const stallTimer = setTimeout(() => {
-				if (settled || closed || goodbyePending || !isAddressed()) return;
+				if (settled || closed || goodbyePending) return;
 				logger.log('⏳ Voice AI stalling out loud while the wiki lookup runs');
 				stalled = true;
 				extendAddressedWindow();
@@ -901,21 +908,23 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 			pushWakeAudio(userId, mono16k);
 
+			if (!vad.active && !discordSpeaking) {
+				if (!vad.floor) vad.floor = Math.min(rms, NOISE_FLOOR_MAX);
+				else if (rms < vad.floor) vad.floor += NOISE_FLOOR_FALL_ALPHA * (rms - vad.floor);
+				else if (rms < NOISE_FLOOR_MAX) vad.floor += NOISE_FLOOR_ALPHA * (rms - vad.floor);
+				if (vad.floor > NOISE_FLOOR_MAX) vad.floor = NOISE_FLOOR_MAX;
+			}
+
 			if (!isAddressed()) {
 				stats.framesAsleep++;
 				return;
 			}
 
 			vad.frames++;
-			if (!vad.active) {
-				if (!vad.floor) vad.floor = rms;
-				else if (rms < vad.floor) vad.floor += NOISE_FLOOR_FALL_ALPHA * (rms - vad.floor);
-				else vad.floor += NOISE_FLOOR_ALPHA * (rms - vad.floor);
-			}
 
 			const openAt = Math.min(VOICE_RMS_CEILING, Math.max(VOICE_RMS_THRESHOLD, vad.floor * NOISE_FLOOR_MARGIN));
 
-			if (rms >= openAt && discordSpeaking) {
+			if (rms >= openAt) {
 				vad.onset++;
 				vad.lastVoiceAt = now;
 			} else if (vad.active && rms >= Math.min(VOICE_RMS_RELEASE, openAt * 0.6)) {

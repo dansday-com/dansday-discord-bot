@@ -453,13 +453,17 @@ export function buildWikiTool(wikis) {
 		type: 'function',
 		function: {
 			name: 'search_wiki',
-			description: `Look up factual information on a game wiki. Use this whenever someone asks a QUESTION about anything covered by these wikis — items, rods, fish, bait, NPCs, locations, quests, events, mechanics, prices, stats, versions or how something works. Never answer such a question from memory, and never guess numbers: search first, then answer from what comes back.
+			description: `Read a page on a game wiki. This is a specialist source for the few games listed below — items, rods, fish, bait, NPCs, locations, quests, mechanics, prices, stats and patch notes. It is NOT your general search: search_web is, and you should use search_web for every other subject, and alongside this one for anything about these games that changes over time, because wiki pages go stale.
+
+Never answer a game question from memory and never guess numbers: look it up, then answer from what comes back.
 
 Do NOT call this when there is no question to look up. Chatting, greetings, jokes, thanks, opinions, and anything about you rather than a game are all answered in your own words with no lookup. Commands aimed at you are not lookups either — "keluar", "keluar lu", "leave", "get out", "pergi", "diam", "stop", "join", "masuk" mean the user wants you to leave or join voice or be quiet: use the voice tool or just reply, and never search the wiki for them. A message being short or in Indonesian does not make it a lookup. If nothing in the message names a game thing to look up, do not call this tool.
 
-Read the entire result before answering: the answer is usually under a heading such as "Obtainment", "Skins", "Location" or "Change History" rather than in the opening line, and infobox values arrive in "stats". Answer only with facts present in the result — never add an item, price, chance or mechanic that is not there, and never fill a gap from memory. If the result already contains the answer, never claim the wiki has not documented it yet, and never speculate about why something is missing. Live values such as countdowns, current spawn timers and active events are not on the wiki: say you cannot see live timers and give the conditions the wiki does list instead.
+Read the entire result before answering: the answer is usually under a heading such as "Obtainment", "Skins", "Location" or "Change History" rather than in the opening line, and infobox values arrive in "stats". Answer only with facts present in the result — never add an item, price, chance or mechanic that is not there, and never fill a gap from memory. If the result already contains the answer, never claim the wiki has not documented it yet, and never speculate about why something is missing.
 
-The search itself is English-only, but always reply in the language the user wrote in. If the search comes back with nothing, say plainly that you could not find it on the wiki — never tell them to go look it up themselves. Available wikis:\n${describeWikis(wikis)}`,
+Keep going when the page does not answer it. An empty, thin or off-target result is not an answer and is not something to report to the user — follow it with search_web, and open the best hit with fetch_web_page. Live values such as countdowns, current spawn timers and active events are not on the wiki at all, so search the web for those instead of saying you cannot see them. Only after a web search has also come up empty may you say you could not find it — and never tell them to go look it up themselves.
+
+The search itself is English-only, but always reply in the language the user wrote in. Available wikis:\n${describeWikis(wikis)}`,
 			parameters: {
 				type: 'object',
 				properties: {
@@ -498,12 +502,20 @@ export function buildWikiDeclaration(wikis) {
 		name: tool.function.name,
 		description: `${tool.function.description}
 
-You do not know these games. Your own memory of them is unreliable and usually wrong, so treat every question about a game as something you must look up before you can answer it. Call this tool first and wait for the result — do not say the answer, a guess, or a partial answer before the result arrives. If you catch yourself about to state a fact you did not read in a result, stop and call this tool instead. Say a short filler line like "let me check" only if you need to fill the silence while it runs.
+You do not know these games. Your own memory of them is unreliable and usually wrong, so treat every question about a game as something you must look up before you can answer it. Look it up and wait for the result — do not say the answer, a guess, or a partial answer before the result arrives. If you catch yourself about to state a fact you did not read in a result, stop and look it up instead.
+
+Chain your lookups out loud. A thin or empty wiki result means you search the web next, not that you give up: say "let me check" or "still checking" at most once to fill the silence, then keep calling tools until you have the real answer.
 
 Read the answer out loud in one or two short spoken sentences. Do not read URLs aloud.`,
 		parameters: tool.function.parameters
 	};
 }
+
+const WIKI_MISS_HINT =
+	'The wiki does not have this. Do not tell the user you could not find it — call search_web for it now, and open the best result with fetch_web_page if the snippet is thin.';
+
+const WIKI_OFF_TARGET_HINT =
+	'These pages may not be what was asked for. If none of them actually answers it, call search_web for it rather than answering from the closest page.';
 
 export async function runWikiTool(wikis, args) {
 	const requested = String(args?.wiki ?? '')
@@ -512,10 +524,15 @@ export async function runWikiTool(wikis, args) {
 	const match = wikis.find((wiki) => wiki.name.toLowerCase() === requested) ?? (wikis.length === 1 ? wikis[0] : null);
 
 	if (!match) {
-		return { ok: false, reason: 'unknown_wiki', available: wikis.map((wiki) => wiki.name) };
+		return { ok: false, reason: 'unknown_wiki', available: wikis.map((wiki) => wiki.name), next_step: WIKI_MISS_HINT };
 	}
 
-	return searchWiki(match, args?.query, args?.page, args?.main_page === true || args?.main_page === 'true');
+	const result = await searchWiki(match, args?.query, args?.page, args?.main_page === true || args?.main_page === 'true');
+
+	if (result?.ok === false || !result?.pages?.length) return { ...result, next_step: WIKI_MISS_HINT };
+	if (result.note) return { ...result, next_step: WIKI_OFF_TARGET_HINT };
+
+	return result;
 }
 
 export default { searchWiki, getEnabledWikis, buildWikiTool, buildWikiDeclaration, runWikiTool, describeWikis };

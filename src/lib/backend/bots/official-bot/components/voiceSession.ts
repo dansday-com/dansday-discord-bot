@@ -56,14 +56,19 @@ const WIKI_STALL_GRACE_MS = 2_500;
 const WIKI_STALL_COOLDOWN_MS = 10_000;
 const WIKI_FAILED_MAX_WAIT_MS = 8_000;
 const WIKI_TIMEOUT_MS = 12_000;
+const FETCH_LOOKUP_TIMEOUT_MS = 16_000;
 const IMAGE_LOOKUP_TIMEOUT_MS = 125_000;
 const SPEECH_DRAIN_MAX_MS = 20_000;
+const TOOL_ANSWER_GRACE_MS = 10_000;
 
 const WIKI_STALL_PROMPT =
 	'[System] You are still looking that up. Say one short, natural line out loud right now to let them know you are checking, in the same language they are speaking — something like "let me check that" or "one sec". Say nothing else, do not guess the answer, and do not read this note aloud. The result arrives in a moment and you will answer properly then.';
 
 const WIKI_FAILED_PROMPT =
-	'[System] The lookup failed and you have no result. Say one short line out loud right now telling them you could not check that at the moment, in the same language they are speaking. Do not guess, do not state any fact you did not read in a result, and do not read this note aloud.';
+	'[System] That lookup came back with nothing usable. Do not tell them you could not find it yet, and do not guess. Try again a different way right now — search_web with different English keywords, or fetch_web_page on a likely page. Say at most one very short line like "still checking" in the language they are speaking while you do it. Only once a web search has also come up empty may you tell them you could not find it. Do not read this note aloud.';
+
+const LOOKUP_TIMEOUT_HINT =
+	'That lookup took too long and was dropped. Try search_web with shorter English keywords instead of waiting on it again, and only say you could not find it once that has also failed.';
 
 const WAKE_ACK_PROMPT =
 	'[System] Someone just said the wake phrase and you are now listening. Say one very short acknowledgement out loud right now — just "yes?" or the equivalent in the language this server speaks. Two words at most. Do not answer anything yet, do not ask what they need, and do not read this note aloud.';
@@ -144,6 +149,8 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	const voiceState = new Map();
 	const wikiInflight = new Map();
 	const wikiStallAt = new Map();
+	const activeLookups = new Set();
+	let toolBusyUntil = 0;
 
 	function isAddressed() {
 		return Date.now() < addressedUntil;
@@ -179,6 +186,12 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	function finishConversation() {
 		if (closed || goodbyePending) return;
 
+		if (toolBusy()) {
+			logger.log('🔎 Voice AI ignoring done request, a lookup is still running');
+			keepAwakeForTool();
+			return;
+		}
+
 		addressedUntil = 0;
 
 		if (muteAnnounced && Date.now() <= goodbyeAllowedUntil) {
@@ -191,6 +204,11 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 		afterSpeaking('muting', () => {
 			if (closed || isAddressed()) return;
+			if (toolBusy()) {
+				logger.log('🔎 Voice AI cancelled muting, a lookup is still running');
+				keepAwakeForTool();
+				return;
+			}
 			logger.log('🔇 Voice AI finished speaking, muting now');
 			playbackQueue.length = 0;
 			pending = EMPTY;
@@ -232,6 +250,15 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		muteTimer = setTimeout(announceMute, ADDRESSED_WINDOW_MS);
 	}
 
+	function toolBusy() {
+		return activeLookups.size > 0 || Date.now() < toolBusyUntil;
+	}
+
+	function keepAwakeForTool() {
+		extendAddressedWindow();
+		setSelfMute(false);
+	}
+
 	function releaseSpeakerLock() {
 		if (!lockedSpeakerId) return;
 		logger.log(`🔓 Voice AI released lock on ${nameOf(lockedSpeakerId)}, open to anyone`);
@@ -248,9 +275,9 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		muteTimer = null;
 		if (closed || goodbyePending || selfMuted || muteAnnounced) return;
 
-		if (wikiInflight.size) {
-			logger.log('🔎 Voice AI staying awake, a wiki lookup is still running');
-			extendAddressedWindow();
+		if (toolBusy()) {
+			logger.log('🔎 Voice AI staying awake, a lookup is still running');
+			keepAwakeForTool();
 			return;
 		}
 
@@ -275,6 +302,12 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		muteTimer = setTimeout(function settleMute() {
 			muteTimer = null;
 			if (closed || selfMuted) return;
+
+			if (toolBusy()) {
+				logger.log('🔎 Voice AI holding off the mute, a lookup started');
+				keepAwakeForTool();
+				return;
+			}
 
 			const spoke = stats.chunksPlayed > chunksAtAnnounce;
 			const waited = Date.now() - announcedAt;
@@ -311,6 +344,11 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		muteTimer = setTimeout(function settleGreeting() {
 			muteTimer = null;
 			if (closed || selfMuted || isAddressed()) return;
+
+			if (toolBusy()) {
+				muteTimer = setTimeout(settleGreeting, SPEAK_GUARD_MS);
+				return;
+			}
 
 			const spoke = stats.chunksPlayed > chunksAtAnnounce;
 			const waited = Date.now() - announcedAt;
@@ -684,7 +722,13 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 			const inflight = wikiInflight.get(dedupeKey);
 			if (inflight) {
 				logger.log(`📖 Voice AI reusing in-flight ${lookupLabel(call)}`);
-				inflight.then((response) => sendToolResponses([{ id: call.id, name: call.name, response }])).catch(() => {});
+				keepAwakeForTool();
+				inflight
+					.then((response) => {
+						keepAwakeForTool();
+						sendToolResponses([{ id: call.id, name: call.name, response }]);
+					})
+					.catch(() => {});
 				continue;
 			}
 
@@ -700,6 +744,10 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 					resolveInflight = resolve;
 				})
 			);
+
+			const lookupId = `${call.id ?? ''}::${dedupeKey}`;
+			activeLookups.add(lookupId);
+			keepAwakeForTool();
 
 			const stallDeadline = Date.now() + WIKI_STALL_MS + WIKI_STALL_GRACE_MS;
 			const stallTimer = setTimeout(function stall() {
@@ -720,7 +768,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 				wikiStallAt.set(dedupeKey, Date.now());
 				logger.log('⏳ Voice AI stalling out loud while the wiki lookup runs');
 				stalled = true;
-				extendAddressedWindow();
+				keepAwakeForTool();
 				sendSystemNote(WIKI_STALL_PROMPT);
 			}, WIKI_STALL_MS);
 
@@ -729,8 +777,8 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 					clearInterval(keepAwake);
 					return;
 				}
-				extendAddressedWindow();
-			}, ADDRESSED_WINDOW_MS / 3);
+				keepAwakeForTool();
+			}, SPEAK_GUARD_MS * 2);
 
 			const finish = (response) => {
 				if (settled) return;
@@ -738,14 +786,16 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 				clearTimeout(stallTimer);
 				clearInterval(keepAwake);
 				wikiInflight.delete(dedupeKey);
+				activeLookups.delete(lookupId);
+				toolBusyUntil = Date.now() + TOOL_ANSWER_GRACE_MS;
 				resolveInflight?.(response);
-				extendAddressedWindow();
+				keepAwakeForTool();
 
 				if (response?.ok === false) logger.log(`❌ Voice AI ${lookupLabel(call)} unusable: ${response.reason}`);
 
 				const send = () => {
 					if (closed) return;
-					extendAddressedWindow();
+					keepAwakeForTool();
 					sendToolResponses([{ id: call.id, name: call.name, response }]);
 
 					if (response?.ok !== false) return;
@@ -765,7 +815,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 						}
 						settledFailureSpoken = true;
 						logger.log('❌ Voice AI nudging the wiki failure out loud');
-						extendAddressedWindow();
+						keepAwakeForTool();
 						sendSystemNote(WIKI_FAILED_PROMPT);
 					}, SPEAK_GUARD_MS);
 				};
@@ -774,11 +824,12 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 				else send();
 			};
 
-			const lookupTimeoutMs = call.name === 'generate_image' ? IMAGE_LOOKUP_TIMEOUT_MS : WIKI_TIMEOUT_MS;
+			const lookupTimeoutMs =
+				call.name === 'generate_image' ? IMAGE_LOOKUP_TIMEOUT_MS : call.name === 'fetch_web_page' ? FETCH_LOOKUP_TIMEOUT_MS : WIKI_TIMEOUT_MS;
 			const timeoutTimer = setTimeout(() => {
 				if (settled) return;
 				logger.log(`⏱️ Voice AI ${lookupLabel(call)} timed out after ${lookupTimeoutMs / 1000}s`);
-				finish({ ok: false, reason: 'timeout' });
+				finish({ ok: false, reason: 'timeout', next_step: LOOKUP_TIMEOUT_HINT });
 			}, lookupTimeoutMs);
 
 			runLookup(call)
@@ -918,7 +969,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 					if (sc.inputTranscription?.text) collectTranscript('user', sc.inputTranscription.text);
 
-					if (!isAddressed() && Date.now() > goodbyeAllowedUntil && Date.now() > speakAllowedUntil) {
+					if (!isAddressed() && !toolBusy() && Date.now() > goodbyeAllowedUntil && Date.now() > speakAllowedUntil) {
 						if (sc.modelTurn?.parts?.some((p) => p.inlineData?.data)) {
 							stats.repliesSuppressed++;
 							if (stats.repliesSuppressed % 10 === 1) {
@@ -956,7 +1007,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		turnOpen = false;
 		turnOwnerId = '';
 		if (wikiInflight.size) {
-			logger.log(`🔎 Voice AI dropping ${wikiInflight.size} in-flight wiki lookup(s) across reconnect`);
+			logger.log(`🔎 Voice AI dropping ${wikiInflight.size} in-flight wiki lookup(s) across reconnect, staying unmuted until they settle`);
 			wikiInflight.clear();
 		}
 		for (const vad of voiceState.values()) {
@@ -1148,6 +1199,8 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		offWakeDetected = null;
 		wikiInflight.clear();
 		wikiStallAt.clear();
+		activeLookups.clear();
+		toolBusyUntil = 0;
 
 		for (const userId of [...speaking.keys()]) unsubscribeUser(userId);
 

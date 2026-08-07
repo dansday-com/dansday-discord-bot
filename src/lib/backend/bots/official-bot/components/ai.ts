@@ -12,7 +12,7 @@ const DISCORD_MESSAGE_LIMIT = 2000;
 const MAX_REPLY_LENGTH = 4000;
 const MAX_RECENT = 10;
 const REQUEST_TIMEOUT_MS = 120_000;
-const MAX_TOOL_ITERATIONS = 5;
+const MAX_TOOL_ITERATIONS = 9;
 const MAX_GENERATED_IMAGES = 2;
 
 const inFlight = new Set();
@@ -289,6 +289,7 @@ async function callChatCompletions(config, messages, { tools = null, onToolCall 
 	const params = buildCompletionParams(config);
 	const loop = [...messages];
 	const toolResultCache = new Map();
+	let lastContent = '';
 
 	for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
 		const lastIteration = i === MAX_TOOL_ITERATIONS - 1;
@@ -301,10 +302,12 @@ async function callChatCompletions(config, messages, { tools = null, onToolCall 
 		});
 
 		const choice = completion.choices?.[0]?.message;
-		if (!choice) return '';
+		if (!choice) return lastContent;
+
+		if (typeof choice.content === 'string' && choice.content.trim()) lastContent = choice.content;
 
 		if (!choice.tool_calls?.length || !onToolCall) {
-			return choice.content ?? '';
+			return choice.content ?? lastContent;
 		}
 
 		loop.push(choice);
@@ -324,7 +327,7 @@ async function callChatCompletions(config, messages, { tools = null, onToolCall 
 		}
 	}
 
-	return '';
+	return lastContent;
 }
 
 async function fetchRepliedMessage(message) {

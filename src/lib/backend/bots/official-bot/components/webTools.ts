@@ -10,16 +10,30 @@ const MAX_RESULTS = 5;
 const MAX_RESULTS_CAP = 10;
 const MAX_SNIPPET_LENGTH = 400;
 const MAX_FETCH_CHARACTERS = 6000;
+const THIN_SNIPPET_LENGTH = 160;
 
-const SEARCH_DESCRIPTION = `Search the live web. Use this for anything the wikis do not cover and anything that changes over time — news, current events, prices outside the games, release dates, who someone is, whether something is real, or any question where your own memory could be out of date.
+const SEARCH_DESCRIPTION = `Search the live web. This is your default lookup for any factual question — news, current events, prices, release dates, versions, who someone is, whether something is real, games, how something works, or any claim where your own memory could be out of date. Reach for this first.
 
-Prefer search_wiki for questions about a game covered by the wikis. Use this when there is no wiki for the subject, when the wiki came back empty, or when the user explicitly asks you to search the web or asks what is happening right now.
+search_wiki is a specialist source for the few games it covers, not your main search. Use the wiki for a specific game page, and use this for everything else — including anything about those games that changes over time, since wiki pages go stale.
+
+Keep going until you actually have the answer. If the results are thin, contradict each other, or only half answer the question, do not answer yet: open the most promising result with fetch_web_page, or search again with different keywords. Only say you could not find something after you have really tried.
 
 Do not call this for chatting, greetings, jokes, opinions, or questions about you. Answer only with facts present in the results, never fill a gap from memory, and say plainly when nothing useful came back. Write the query in English even when the user wrote another language, then reply in their language.`;
 
-const FETCH_DESCRIPTION = `Read the full text of one web page by its URL. Use this when the user gives you a link and asks what it says, or when a search result looks like the answer but its snippet is too short to answer from.
+const FETCH_DESCRIPTION = `Read the full text of one web page by its URL. Use this whenever a search snippet looks like the answer but is too short to answer from confidently, whenever you need an exact number, price, date or version, and whenever the user gives you a link and asks what it says. Reading the page beats answering from a snippet.
 
-You must already have the exact URL — from the user's message or from a search_web result. Never invent or guess a URL. One page per call. Answer only from the text that comes back.`;
+You must already have the exact URL — from the user's message or from a search_web result. Never invent or guess a URL. One page per call. Answer only from the text that comes back; if the page turns out not to have it, go back to search_web and try the next result rather than giving up.`;
+
+const SEARCH_EMPTY_HINT =
+	'Nothing came back for this query. Do not tell the user you could not find it yet — search again with different or broader English keywords, or try search_wiki if this is a game it covers.';
+
+const SEARCH_THIN_HINT = 'These snippets are too short to answer from confidently. Open the most relevant result with fetch_web_page before you answer.';
+
+const SEARCH_FAILED_HINT =
+	'This search did not go through. Try search_web once more, or search_wiki if this is a game it covers, before you tell the user anything.';
+
+const FETCH_FAILED_HINT =
+	'This page could not be read. Go back to your search_web results and open a different one, or search again — do not answer from memory.';
 
 export function searchConfigured(config) {
 	const endpoint = botAiSearchEndpoint(config);
@@ -55,22 +69,28 @@ export async function runSearchTool(config, args) {
 		});
 
 		const results = Array.isArray(payload?.results) ? payload.results : [];
-		if (!results.length) return { ok: false, reason: 'no_results', query };
+		if (!results.length) return { ok: false, reason: 'no_results', query, next_step: SEARCH_EMPTY_HINT };
+
+		const mapped = results.slice(0, MAX_RESULTS_CAP).map((entry) => ({
+			title: entry?.title ?? null,
+			url: entry?.url ?? null,
+			snippet: typeof entry?.snippet === 'string' ? entry.snippet.slice(0, MAX_SNIPPET_LENGTH) : null,
+			published_at: entry?.published_at ?? null
+		}));
+
+		const answer = payload?.answer ?? null;
+		const thin = !answer && mapped.every((entry) => (entry.snippet ?? '').trim().length < THIN_SNIPPET_LENGTH);
 
 		return {
 			ok: true,
 			query,
-			answer: payload?.answer ?? null,
-			results: results.slice(0, MAX_RESULTS_CAP).map((entry) => ({
-				title: entry?.title ?? null,
-				url: entry?.url ?? null,
-				snippet: typeof entry?.snippet === 'string' ? entry.snippet.slice(0, MAX_SNIPPET_LENGTH) : null,
-				published_at: entry?.published_at ?? null
-			}))
+			answer,
+			results: mapped,
+			...(thin ? { next_step: SEARCH_THIN_HINT } : {})
 		};
 	} catch (error) {
 		await logger.log(`❌ Web search failed: ${error.message}`);
-		return { ok: false, reason: error.name === 'AbortError' ? 'timeout' : 'search_failed' };
+		return { ok: false, reason: error.name === 'AbortError' ? 'timeout' : 'search_failed', next_step: SEARCH_FAILED_HINT };
 	}
 }
 
@@ -79,7 +99,7 @@ export async function runFetchTool(config, args) {
 	if (!endpoint.api_url || !endpoint.api_key || !endpoint.model) return { ok: false, reason: 'web_fetch_not_configured' };
 
 	const url = String(args?.url ?? '').trim();
-	if (!/^https?:\/\//i.test(url)) return { ok: false, reason: 'invalid_url' };
+	if (!/^https?:\/\//i.test(url)) return { ok: false, reason: 'invalid_url', next_step: FETCH_FAILED_HINT };
 
 	try {
 		const payload = await postJson(resolveToolUrl(endpoint.api_url, FETCH_PATH), endpoint.api_key, {
@@ -90,7 +110,7 @@ export async function runFetchTool(config, args) {
 		});
 
 		const text = payload?.content?.text ?? '';
-		if (!text) return { ok: false, reason: 'empty_page', url };
+		if (!text) return { ok: false, reason: 'empty_page', url, next_step: FETCH_FAILED_HINT };
 
 		return {
 			ok: true,
@@ -101,7 +121,7 @@ export async function runFetchTool(config, args) {
 		};
 	} catch (error) {
 		await logger.log(`❌ Web fetch failed: ${error.message}`);
-		return { ok: false, reason: error.name === 'AbortError' ? 'timeout' : 'fetch_failed' };
+		return { ok: false, reason: error.name === 'AbortError' ? 'timeout' : 'fetch_failed', next_step: FETCH_FAILED_HINT };
 	}
 }
 
@@ -158,7 +178,7 @@ export function buildFetchTool(config) {
 	};
 }
 
-const VOICE_SEARCH_NOTE = `Say a short filler line like "let me check" only if you need to fill the silence while this runs. Read the answer out loud in one or two short spoken sentences. Never read URLs aloud.`;
+const VOICE_SEARCH_NOTE = `Say a short filler line like "let me check" only if you need to fill the silence while this runs. If the result does not answer it, chain another call — say "still checking" at most once and keep going rather than answering half a fact. Read the answer out loud in one or two short spoken sentences. Never read URLs aloud.`;
 
 export function buildSearchDeclaration(config) {
 	if (!searchConfigured(config)) return null;

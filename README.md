@@ -64,7 +64,7 @@ Open source under the MIT license.
 
 - **AI chat** - Mention the bot to talk to it, or reply to one of its messages to continue without mentioning again. Every member keeps a private conversation per server, with older turns summarized as they age out. Configured per bot in the panel: API URL, key, model, reasoning effort and system prompt. Works with any OpenAI-compatible endpoint (Gemini, OpenAI, GLM, Qwen, DeepSeek, local models). Replies over Discord's limit are split across messages.
 - **Voice AI** - Members ask the bot in chat to join their voice channel, then talk to it out loud via the Gemini Live API. One call at a time; it excuses itself and leaves when nobody has called it for a few minutes, or when the member who invited it leaves. Requires Redis.
-  - 🔑 **Its own endpoint** - Voice has a separate API URL, key and system prompt from chat, so the personality it speaks with and the provider it bills to are both independent.
+  - 🔑 **Its own key and prompt** - Voice has a separate Google AI key and system prompt from chat, so the personality it speaks with and the key it bills to are independent. It always talks to the Gemini Live API, so there is no endpoint to configure.
   - 🗣️ **Say "hey stupid"** - An on-device wake-word model (openWakeWord ONNX, no extra API cost) listens for that exact phrase, so a busy channel never sets it off. Falls back to transcript matching if the model files are missing.
   - 🔒 **One speaker at a time** - Whoever wakes it holds the conversation; everyone else's audio is dropped so crosstalk cannot derail the answer. Saying you are done releases it immediately for the next person.
   - 🔇 **Mutes when idle** - It says one short line, then mutes itself, so the mute icon shows at a glance whether it is listening.
@@ -144,7 +144,7 @@ The bot requests the Guilds, Message Content, Server Members, Moderation, Voice 
 
 AI chat is not configured through `.env`. Open the bot in the panel and set the API URL, key, model and reasoning effort there — the key is stored per bot and never sent back to the browser. Enabling AI chat requires the URL, key and model to all be set. Restart the bot after changing these values.
 
-Voice AI lives on the same panel page. It needs AI chat enabled first, plus its own API URL, key, voice model and system prompt — none of these fall back to the chat values. It uses the Gemini Live API, so the voice key must be a Google AI key. Redis is required, since one voice session is coordinated across processes.
+Voice AI lives on the same panel page. It needs AI chat enabled first, plus its own key, voice model and system prompt — none of these fall back to the chat values. It always uses the Gemini Live API, so the voice key must be a Google AI key and there is no endpoint to set. Redis is required, since one voice session is coordinated across processes.
 
 Web search, web fetch and image generation are configured on the same page, one URL, model and key each. A tool is only offered to the model once all three of its fields are set, so a half-filled section is simply inactive rather than failing at runtime. The AI chooses when to use them — nothing is forced — and wikis remain the first stop for game questions. Generated images are uploaded to Discord as files rather than linked, and in voice they are posted to the voice channel's own chat.
 
@@ -156,4 +156,4 @@ If a wiki refuses your server (Miraheze sits behind a Cloudflare check that reje
 
 ## License
 
-MIT · Author: Akbar Yudhanto · Version: 26.5.4
+MIT · Author: Akbar Yudhanto · Version: 26.5.5

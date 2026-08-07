@@ -79,7 +79,6 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 	const voice_enabled = body.voice_enabled === true;
 	const voice_model = body.voice_model === null || body.voice_model === undefined ? null : String(body.voice_model).trim() || null;
 	const voice_name = body.voice_name === null || body.voice_name === undefined ? null : String(body.voice_name).trim() || null;
-	const voice_api_url = body.voice_api_url === null || body.voice_api_url === undefined ? null : String(body.voice_api_url).trim() || null;
 	const voice_system_prompt =
 		body.voice_system_prompt === null || body.voice_system_prompt === undefined ? null : String(body.voice_system_prompt).trim() || null;
 
@@ -107,8 +106,8 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 	if (voice_name && !GEMINI_VOICE_NAMES.includes(voice_name)) {
 		return json({ success: false, error: 'Unknown voice name' }, { status: 400 });
 	}
-	if (voice_enabled && (!voice_api_url || !voice_api_key || !voice_model)) {
-		return json({ success: false, error: 'Voice API URL, API key, and voice model are required to enable voice AI' }, { status: 400 });
+	if (voice_enabled && (!voice_api_key || !voice_model)) {
+		return json({ success: false, error: 'Voice API key and voice model are required to enable voice AI' }, { status: 400 });
 	}
 	if (voice_enabled && !enabled) {
 		return json({ success: false, error: 'Enable AI chat first — voice is triggered by asking the bot in chat' }, { status: 400 });
@@ -116,7 +115,6 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 
 	for (const [label, url] of [
 		['API URL', api_url],
-		['Voice API URL', voice_api_url],
 		['Web search API URL', search_api_url],
 		['Web fetch API URL', fetch_api_url],
 		['Image API URL', image_api_url]
@@ -160,7 +158,6 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 		voice_enabled,
 		voice_model,
 		voice_name,
-		voice_api_url,
 		voice_api_key,
 		voice_system_prompt,
 		search_api_url,

@@ -102,10 +102,7 @@ function downmixAndResample(pcm, fromRate, toRate, fromChannels, toChannels) {
 export function createVoiceSession({ client, config, botId, guildId, channelId, channelName, inviterId, textChannelId, onEnded }) {
 	const speaking = new Map();
 	const endpoint = botAiVoiceEndpoint(config);
-	const genai = new GoogleGenAI({
-		apiKey: endpoint.api_key,
-		...(endpoint.api_url ? { httpOptions: { baseUrl: endpoint.api_url.replace(/\/+$/, '') } } : {})
-	});
+	const genai = new GoogleGenAI({ apiKey: endpoint.api_key });
 	const systemInstruction = (endpoint.system_prompt ?? '').replace(/\{\{today\}\}/g, new Date().toISOString().slice(0, 10));
 
 	let wikis: any[] = [];

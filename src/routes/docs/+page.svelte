@@ -159,7 +159,7 @@
 		{
 			label: 'Enable voice AI',
 			req: 'optional',
-			desc: 'Lets members ask the bot in chat to join their voice channel and talk out loud. Needs AI chat on, plus its own URL, Google AI key and voice model. Requires Redis.'
+			desc: 'Lets members ask the bot in chat to join their voice channel and talk out loud. Needs AI chat on, plus its own Google AI key and voice model. Requires Redis.'
 		},
 		{ label: 'Voice model', req: 'optional', desc: 'A Gemini Live model, for example gemini-3.1-flash-live-preview. Only needed when voice AI is on.' },
 		{
@@ -170,7 +170,7 @@
 		{
 			label: 'Voice API URL, key and system prompt',
 			req: 'optional',
-			desc: 'Voice has its own endpoint, key and personality, separate from chat. All three are required to turn voice on.'
+			desc: 'Voice has its own Google AI key and personality, separate from chat. Both are required to turn voice on. Always Gemini Live, so no endpoint to set.'
 		}
 	];
 

@@ -1,11 +1,5 @@
-SET @c := (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bot_ai' AND COLUMN_NAME = 'voice_api_url');
-SET @stmt := IF(@c = 0, 'ALTER TABLE bot_ai ADD COLUMN voice_api_url TEXT NULL AFTER voice_name', 'SELECT 1');
-PREPARE s FROM @stmt;
-EXECUTE s;
-DEALLOCATE PREPARE s;
-
 SET @c := (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'bot_ai' AND COLUMN_NAME = 'voice_api_key');
-SET @stmt := IF(@c = 0, 'ALTER TABLE bot_ai ADD COLUMN voice_api_key TEXT NULL AFTER voice_api_url', 'SELECT 1');
+SET @stmt := IF(@c = 0, 'ALTER TABLE bot_ai ADD COLUMN voice_api_key TEXT NULL AFTER voice_name', 'SELECT 1');
 PREPARE s FROM @stmt;
 EXECUTE s;
 DEALLOCATE PREPARE s;

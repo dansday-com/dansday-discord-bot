@@ -1,5 +1,13 @@
 export const DEFAULT_TOOL_TIMEOUT_MS = 20_000;
 
+export function resolveToolUrl(rawUrl, path) {
+	const trimmed = String(rawUrl ?? '')
+		.trim()
+		.replace(/\/+$/, '');
+	if (!trimmed) return '';
+	return trimmed.endsWith(path) ? trimmed : `${trimmed}${path}`;
+}
+
 export async function postJson(url, apiKey, body, timeoutMs = DEFAULT_TOOL_TIMEOUT_MS) {
 	const controller = new AbortController();
 	const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -23,4 +31,4 @@ export async function postJson(url, apiKey, body, timeoutMs = DEFAULT_TOOL_TIMEO
 	}
 }
 
-export default { postJson, DEFAULT_TOOL_TIMEOUT_MS };
+export default { postJson, resolveToolUrl, DEFAULT_TOOL_TIMEOUT_MS };

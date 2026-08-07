@@ -422,10 +422,10 @@ export interface BotAiEndpoint {
 
 export function botAiVoiceEndpoint(config: BotAiInput): BotAiEndpoint {
 	return {
-		api_url: config.voice_api_url ?? config.api_url,
-		api_key: config.voice_api_key ?? config.api_key,
+		api_url: config.voice_api_url,
+		api_key: config.voice_api_key,
 		model: config.voice_model,
-		system_prompt: config.voice_system_prompt ?? config.system_prompt
+		system_prompt: config.voice_system_prompt
 	};
 }
 

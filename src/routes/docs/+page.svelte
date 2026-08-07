@@ -159,7 +159,7 @@
 		{
 			label: 'Enable voice AI',
 			req: 'optional',
-			desc: 'Lets members ask the bot in chat to join their voice channel and talk out loud. Needs AI chat on, a Google AI key, and a voice model. Requires Redis.'
+			desc: 'Lets members ask the bot in chat to join their voice channel and talk out loud. Needs AI chat on, plus its own URL, Google AI key and voice model. Requires Redis.'
 		},
 		{ label: 'Voice model', req: 'optional', desc: 'A Gemini Live model, for example gemini-3.1-flash-live-preview. Only needed when voice AI is on.' },
 		{
@@ -170,7 +170,7 @@
 		{
 			label: 'Voice API URL, key and system prompt',
 			req: 'optional',
-			desc: 'Voice can run on its own endpoint, key and personality. Leave any of them blank and voice reuses the AI chat value instead.'
+			desc: 'Voice has its own endpoint, key and personality, separate from chat. All three are required to turn voice on.'
 		}
 	];
 
@@ -178,17 +178,17 @@
 		{
 			label: 'Web search URL, model and key',
 			req: 'optional',
-			desc: 'Fill all three and the bot can search the live web. For 9Router that is /v1/search with a model such as searxng.'
+			desc: 'Fill all three and the bot can search the live web. Give the base URL, including any version segment — /search is appended for you.'
 		},
 		{
 			label: 'Web fetch URL, model and key',
 			req: 'optional',
-			desc: 'Fill all three and the bot can read a page it was linked to. For 9Router that is /v1/web/fetch with a model such as jina-reader.'
+			desc: 'Fill all three and the bot can read a page it was linked to. Base URL again — /web/fetch is appended for you.'
 		},
 		{
 			label: 'Image URL, model and key',
 			req: 'optional',
-			desc: 'Fill all three and the bot can draw pictures. For 9Router that is /v1/images/generations. Images come back at 512x512.'
+			desc: 'Fill all three and the bot can draw pictures. Base URL again — /images/generations is appended for you. Images come back at 512x512.'
 		}
 	];
 
@@ -227,7 +227,7 @@
 
 	const aiWikiFields = [
 		{ label: 'API URL', req: 'required', desc: 'The wiki api.php endpoint, usually /w/api.php or /api.php. Press Test to check it and fill in the name.' },
-		{ label: 'Name', req: 'required', desc: 'What the AI calls this wiki when it picks one. Keep it short, for example Fisch.' },
+		{ label: 'Name', req: 'required', desc: 'What the AI calls this wiki when it picks one. Keep it short.' },
 		{ label: 'Description', req: 'optional', desc: 'What the wiki covers. This is how the AI chooses the right one when a bot has several.' },
 		{ label: 'Site URL', req: 'optional', desc: 'The wiki home page, used when the bot links a page it read.' },
 		{
@@ -834,10 +834,7 @@
 					</div>
 
 					<h3 class="g-sub-head">Voice: how it behaves</h3>
-					<p class="g-sec-lead">
-						Everyone in the channel is heard by one shared session. Audio goes to Google; on the free tier it is used to improve their products, so tell your
-						members before turning it on.
-					</p>
+					<p class="g-sec-lead">Everyone in the channel is heard by one shared session.</p>
 					<div class="g-steps">
 						{#each aiVoiceRules as s, i}
 							<div class="g-step" style="--d: {i * 80}ms">
@@ -854,8 +851,8 @@
 					<h2 class="g-sec-head"><i class="fas fa-toolbox"></i>Web search, fetch and images</h2>
 					<p class="g-sec-lead">
 						Three optional tools the AI reaches for on its own: searching the live web, reading a page it was linked to, and drawing a picture. Each is a
-						separate URL, model and key on the bot panel under the AI tab, so they can point at different providers. Any OpenAI-compatible gateway works;
-						9Router exposes all three. Restart the bot after saving.
+						separate URL, model and key on the bot panel under the AI tab, so they can point at different providers. Any OpenAI-compatible gateway works.
+						Restart the bot after saving.
 					</p>
 					<div class="g-fieldlist">
 						{#each aiToolFields as f}

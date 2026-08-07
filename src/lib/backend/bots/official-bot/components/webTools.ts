@@ -1,7 +1,10 @@
 import { Type } from '@google/genai';
 import { botAiSearchEndpoint, botAiFetchEndpoint } from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
-import { postJson } from './aiToolHttp.js';
+import { postJson, resolveToolUrl } from './aiToolHttp.js';
+
+const SEARCH_PATH = '/search';
+const FETCH_PATH = '/web/fetch';
 
 const MAX_RESULTS = 5;
 const MAX_RESULTS_CAP = 10;
@@ -44,7 +47,7 @@ export async function runSearchTool(config, args) {
 	const searchType = args?.search_type === 'news' ? 'news' : 'web';
 
 	try {
-		const payload = await postJson(endpoint.api_url, endpoint.api_key, {
+		const payload = await postJson(resolveToolUrl(endpoint.api_url, SEARCH_PATH), endpoint.api_key, {
 			model: endpoint.model,
 			query,
 			search_type: searchType,
@@ -79,7 +82,7 @@ export async function runFetchTool(config, args) {
 	if (!/^https?:\/\//i.test(url)) return { ok: false, reason: 'invalid_url' };
 
 	try {
-		const payload = await postJson(endpoint.api_url, endpoint.api_key, {
+		const payload = await postJson(resolveToolUrl(endpoint.api_url, FETCH_PATH), endpoint.api_key, {
 			model: endpoint.model,
 			url,
 			format: 'markdown',

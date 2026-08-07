@@ -222,7 +222,7 @@
 					inputmode="url"
 					autocomplete="off"
 					bind:value={ai.voice_api_url}
-					placeholder="Blank — reuse the AI chat API URL"
+					placeholder="https://generativelanguage.googleapis.com"
 					class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 h-10 w-full rounded-lg border px-3 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
 				/>
 			</div>
@@ -247,7 +247,7 @@
 						type="password"
 						autocomplete="new-password"
 						bind:value={voiceKeyInput}
-						placeholder={ai.has_voice_api_key ? 'Saved — type to replace' : 'Blank — reuse the AI chat key'}
+						placeholder={ai.has_voice_api_key ? 'Saved — type to replace' : 'Paste your Google AI key'}
 						class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 h-10 w-full rounded-lg border px-3 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
 					/>
 				</div>
@@ -274,7 +274,7 @@
 					rows="5"
 					maxlength="8000"
 					bind:value={ai.voice_system_prompt}
-					placeholder="Blank — reuse the AI chat system prompt"
+					placeholder="Describe how the bot should behave and reply out loud"
 					class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
 				></textarea>
 				<p class="text-ash-500 mt-1.5 text-xs">
@@ -282,14 +282,54 @@
 				</p>
 			</div>
 		</div>
+	</div>
 
-		<p class="mt-4 flex items-start gap-2 text-xs text-amber-200/90">
-			<i class="fas fa-triangle-exclamation mt-0.5 shrink-0 text-amber-400/90" aria-hidden="true"></i>
-			<span>
-				Voice sends everyone's audio in the channel to Google. On the free tier that audio is used to improve their products. Tell your members before turning
-				this on.
-			</span>
-		</p>
+	<div class="border-ash-700 mt-6 border-t pt-5">
+		<h4 class="text-ash-100 mb-1 text-base font-semibold">
+			<i class="fas fa-image mr-2 text-violet-400"></i>Image generation
+		</h4>
+		<p class="text-ash-400 mb-4 text-sm">Lets the bot draw a picture when a member asks for one. Fill all three to enable it.</p>
+
+		<div class="space-y-4">
+			<div class="min-w-0">
+				<label for="ai-image-api-url" class="text-ash-400 mb-1.5 block text-xs font-medium">API URL</label>
+				<input
+					id="ai-image-api-url"
+					type="text"
+					inputmode="url"
+					autocomplete="off"
+					bind:value={ai.image_api_url}
+					placeholder="https://your-gateway.example.com/v1"
+					class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 h-10 w-full rounded-lg border px-3 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+				/>
+			</div>
+
+			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+				<div class="min-w-0">
+					<label for="ai-image-model" class="text-ash-400 mb-1.5 block text-xs font-medium">Model name</label>
+					<input
+						id="ai-image-model"
+						type="text"
+						maxlength="191"
+						autocomplete="off"
+						bind:value={ai.image_model}
+						placeholder="gemini/gemini-3-pro-image-preview"
+						class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 h-10 w-full rounded-lg border px-3 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+					/>
+				</div>
+				<div class="min-w-0">
+					<label for="ai-image-api-key" class="text-ash-400 mb-1.5 block text-xs font-medium">API key</label>
+					<input
+						id="ai-image-api-key"
+						type="password"
+						autocomplete="new-password"
+						bind:value={imageKeyInput}
+						placeholder={ai.has_image_api_key ? 'Saved — type to replace' : 'Paste your API key'}
+						class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 h-10 w-full rounded-lg border px-3 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
+					/>
+				</div>
+			</div>
+		</div>
 	</div>
 
 	<div class="border-ash-700 mt-6 border-t pt-5">
@@ -307,7 +347,7 @@
 					inputmode="url"
 					autocomplete="off"
 					bind:value={ai.search_api_url}
-					placeholder="https://router.dansday.com/v1/search"
+					placeholder="https://your-gateway.example.com/v1"
 					class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 h-10 w-full rounded-lg border px-3 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
 				/>
 			</div>
@@ -355,7 +395,7 @@
 					inputmode="url"
 					autocomplete="off"
 					bind:value={ai.fetch_api_url}
-					placeholder="https://router.dansday.com/v1/web/fetch"
+					placeholder="https://your-gateway.example.com/v1"
 					class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 h-10 w-full rounded-lg border px-3 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
 				/>
 			</div>
@@ -381,54 +421,6 @@
 						autocomplete="new-password"
 						bind:value={fetchKeyInput}
 						placeholder={ai.has_fetch_api_key ? 'Saved — type to replace' : 'Paste your API key'}
-						class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 h-10 w-full rounded-lg border px-3 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
-					/>
-				</div>
-			</div>
-		</div>
-	</div>
-
-	<div class="border-ash-700 mt-6 border-t pt-5">
-		<h4 class="text-ash-100 mb-1 text-base font-semibold">
-			<i class="fas fa-image mr-2 text-violet-400"></i>Image generation
-		</h4>
-		<p class="text-ash-400 mb-4 text-sm">Lets the bot draw a picture when a member asks for one. Fill all three to enable it.</p>
-
-		<div class="space-y-4">
-			<div class="min-w-0">
-				<label for="ai-image-api-url" class="text-ash-400 mb-1.5 block text-xs font-medium">API URL</label>
-				<input
-					id="ai-image-api-url"
-					type="text"
-					inputmode="url"
-					autocomplete="off"
-					bind:value={ai.image_api_url}
-					placeholder="https://router.dansday.com/v1/images/generations"
-					class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 h-10 w-full rounded-lg border px-3 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
-				/>
-			</div>
-
-			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-				<div class="min-w-0">
-					<label for="ai-image-model" class="text-ash-400 mb-1.5 block text-xs font-medium">Model name</label>
-					<input
-						id="ai-image-model"
-						type="text"
-						maxlength="191"
-						autocomplete="off"
-						bind:value={ai.image_model}
-						placeholder="gemini/gemini-3-pro-image-preview"
-						class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 h-10 w-full rounded-lg border px-3 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
-					/>
-				</div>
-				<div class="min-w-0">
-					<label for="ai-image-api-key" class="text-ash-400 mb-1.5 block text-xs font-medium">API key</label>
-					<input
-						id="ai-image-api-key"
-						type="password"
-						autocomplete="new-password"
-						bind:value={imageKeyInput}
-						placeholder={ai.has_image_api_key ? 'Saved — type to replace' : 'Paste your API key'}
 						class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 h-10 w-full rounded-lg border px-3 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
 					/>
 				</div>

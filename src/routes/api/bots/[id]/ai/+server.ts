@@ -107,14 +107,8 @@ export const PATCH: RequestHandler = async ({ locals, params, request }) => {
 	if (voice_name && !GEMINI_VOICE_NAMES.includes(voice_name)) {
 		return json({ success: false, error: 'Unknown voice name' }, { status: 400 });
 	}
-	if (voice_enabled && !(voice_api_key ?? api_key)) {
-		return json(
-			{ success: false, error: 'A voice API key is required to enable voice AI — set one, or leave it blank to reuse the chat key' },
-			{ status: 400 }
-		);
-	}
-	if (voice_enabled && !voice_model) {
-		return json({ success: false, error: 'A voice model is required to enable voice AI' }, { status: 400 });
+	if (voice_enabled && (!voice_api_url || !voice_api_key || !voice_model)) {
+		return json({ success: false, error: 'Voice API URL, API key, and voice model are required to enable voice AI' }, { status: 400 });
 	}
 	if (voice_enabled && !enabled) {
 		return json({ success: false, error: 'Enable AI chat first — voice is triggered by asking the bot in chat' }, { status: 400 });

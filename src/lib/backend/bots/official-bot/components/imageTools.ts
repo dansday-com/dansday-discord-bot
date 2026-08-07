@@ -1,7 +1,9 @@
 import { Type } from '@google/genai';
 import { botAiImageEndpoint } from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
-import { postJson } from './aiToolHttp.js';
+import { postJson, resolveToolUrl } from './aiToolHttp.js';
+
+const IMAGE_PATH = '/images/generations';
 
 const IMAGE_TIMEOUT_MS = 120_000;
 const IMAGE_SIZE = '512x512';
@@ -27,7 +29,7 @@ export async function runImageTool(config, args) {
 
 	try {
 		const payload = await postJson(
-			endpoint.api_url,
+			resolveToolUrl(endpoint.api_url, IMAGE_PATH),
 			endpoint.api_key,
 			{ model: endpoint.model, prompt, size: IMAGE_SIZE, n: 1, response_format: 'b64_json' },
 			IMAGE_TIMEOUT_MS

@@ -375,7 +375,6 @@ export interface BotAiInput {
 	voice_enabled: boolean;
 	voice_model: string | null;
 	voice_name: string | null;
-	voice_api_url: string | null;
 	voice_api_key: string | null;
 	voice_system_prompt: string | null;
 	search_api_url: string | null;
@@ -399,7 +398,6 @@ export const DEFAULT_BOT_AI: BotAiInput = {
 	voice_enabled: false,
 	voice_model: null,
 	voice_name: null,
-	voice_api_url: null,
 	voice_api_key: null,
 	voice_system_prompt: null,
 	search_api_url: null,
@@ -420,9 +418,8 @@ export interface BotAiEndpoint {
 	system_prompt: string | null;
 }
 
-export function botAiVoiceEndpoint(config: BotAiInput): BotAiEndpoint {
+export function botAiVoiceEndpoint(config: BotAiInput): Omit<BotAiEndpoint, 'api_url'> {
 	return {
-		api_url: config.voice_api_url,
 		api_key: config.voice_api_key,
 		model: config.voice_model,
 		system_prompt: config.voice_system_prompt
@@ -453,7 +450,6 @@ export function botAiFromDbRow(row: any): BotAiInput {
 		voice_enabled: row.voice_enabled === true || row.voice_enabled === 1,
 		voice_model: row.voice_model?.trim() ? row.voice_model.trim() : null,
 		voice_name: row.voice_name?.trim() ? row.voice_name.trim() : null,
-		voice_api_url: row.voice_api_url?.trim() ? row.voice_api_url.trim() : null,
 		voice_api_key: row.voice_api_key?.trim() ? row.voice_api_key.trim() : null,
 		voice_system_prompt: row.voice_system_prompt?.trim() ? row.voice_system_prompt.trim() : null,
 		search_api_url: row.search_api_url?.trim() ? row.search_api_url.trim() : null,
@@ -491,7 +487,6 @@ export async function upsertBotAi(botId: number, data: BotAiInput) {
 		voice_enabled: data.voice_enabled,
 		voice_model: data.voice_model?.trim() ? data.voice_model.trim() : null,
 		voice_name: data.voice_name?.trim() ? data.voice_name.trim() : null,
-		voice_api_url: data.voice_api_url?.trim() ? data.voice_api_url.trim() : null,
 		voice_api_key: data.voice_api_key?.trim() ? data.voice_api_key.trim() : null,
 		voice_system_prompt: data.voice_system_prompt?.trim() ? data.voice_system_prompt.trim() : null,
 		search_api_url: data.search_api_url?.trim() ? data.search_api_url.trim() : null,

@@ -89,7 +89,6 @@ export const botAi = mysqlTable(
 		voice_enabled: boolean('voice_enabled').notNull().default(false),
 		voice_model: varchar('voice_model', { length: 191 }),
 		voice_name: varchar('voice_name', { length: 64 }),
-		voice_api_url: text('voice_api_url'),
 		voice_api_key: text('voice_api_key'),
 		voice_system_prompt: text('voice_system_prompt'),
 		search_api_url: text('search_api_url'),

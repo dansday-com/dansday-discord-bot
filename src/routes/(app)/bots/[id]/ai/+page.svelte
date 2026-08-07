@@ -31,7 +31,6 @@
 			voice_enabled: a.voice_enabled,
 			voice_model: a.voice_model ?? '',
 			voice_name: a.voice_name ?? '',
-			voice_api_url: a.voice_api_url ?? '',
 			voice_system_prompt: a.voice_system_prompt ?? '',
 			search_api_url: a.search_api_url ?? '',
 			search_model: a.search_model ?? '',
@@ -83,7 +82,6 @@
 					voice_enabled: ai.voice_enabled,
 					voice_model: blankToNull(ai.voice_model),
 					voice_name: blankToNull(ai.voice_name),
-					voice_api_url: blankToNull(ai.voice_api_url),
 					voice_api_key: blankToNull(voiceKeyInput),
 					voice_system_prompt: blankToNull(ai.voice_system_prompt),
 					search_api_url: blankToNull(ai.search_api_url),
@@ -214,19 +212,6 @@
 		/>
 
 		<div class="mt-5 space-y-4">
-			<div class="min-w-0">
-				<label for="ai-voice-api-url" class="text-ash-400 mb-1.5 block text-xs font-medium">API URL</label>
-				<input
-					id="ai-voice-api-url"
-					type="text"
-					inputmode="url"
-					autocomplete="off"
-					bind:value={ai.voice_api_url}
-					placeholder="https://generativelanguage.googleapis.com"
-					class="bg-ash-700 border-ash-600 text-ash-100 placeholder:text-ash-500 h-10 w-full rounded-lg border px-3 text-sm focus:ring-2 focus:ring-violet-500 focus:outline-none"
-				/>
-			</div>
-
 			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 				<div class="min-w-0">
 					<label for="ai-voice-model" class="text-ash-400 mb-1.5 block text-xs font-medium">Voice model</label>

@@ -1,15 +1,19 @@
 import OpenAI from 'openai';
+import { AttachmentBuilder } from 'discord.js';
 import { getBotConfig } from '../../../config.js';
 import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 import { publishVoiceCommand, readVoiceState } from './voiceControl.js';
 import { getEnabledWikis, buildWikiTool, runWikiTool } from './wiki.js';
+import { buildSearchTool, buildFetchTool, runSearchTool, runFetchTool } from './webTools.js';
+import { buildImageTool, runImageTool } from './imageTools.js';
 
 const DISCORD_MESSAGE_LIMIT = 2000;
 const MAX_REPLY_LENGTH = 4000;
 const MAX_RECENT = 10;
 const REQUEST_TIMEOUT_MS = 120_000;
 const MAX_TOOL_ITERATIONS = 5;
+const MAX_GENERATED_IMAGES = 2;
 
 const inFlight = new Set();
 
@@ -169,24 +173,6 @@ async function buildAttachmentParts(messages) {
 	return { parts, kinds };
 }
 
-const SMALL_TALK_RE =
-	/^(?:h(?:i|ey|ello|alo)|yo|sup|thanks?|thank you|thx|makasih|terima kasih|ok(?:ay)?|oke|sip|lol|wkwk|bye|good (?:morning|night)|pagi|malam|selamat \w+)[\s!.?]*$/i;
-
-const VOICE_INTENT_RE =
-	/\b(join|leave|masuk|keluar|disconnect)\b.*\b(voice|vc|call|channel)\b|\b(voice|vc|call|channel)\b.*\b(join|leave|masuk|keluar|disconnect)\b/i;
-
-const COMMAND_RE =
-	/^(?:(?:tolong|please|bot|ai|lu|kamu|kau)\s+)*(?:join|leave|out|exit|quit|disconnect|dc|come|stay|stop|wait|mute|unmute|shut\s*up|silent|keluar|masuk|pergi|pulang|balik|sini|diam|diem|berhenti|udahan|cukup|sudah|jangan)\b/i;
-
-function shouldForceWikiSearch(prompt) {
-	const text = String(prompt ?? '').trim();
-	if (!text || text.length < 3) return false;
-	if (SMALL_TALK_RE.test(text)) return false;
-	if (VOICE_INTENT_RE.test(text)) return false;
-	if (COMMAND_RE.test(text)) return false;
-	return true;
-}
-
 const TOOL_RETRY_HINT = 'This is the final result for this tool. Do not call it again — reply to the user in words.';
 
 function finalToolResult(payload) {
@@ -298,22 +284,19 @@ function getClient(config) {
 	return client;
 }
 
-async function callChatCompletions(config, messages, { tools = null, onToolCall = null, forceTool = null } = {}) {
+async function callChatCompletions(config, messages, { tools = null, onToolCall = null } = {}) {
 	const client = getClient(config);
 	const params = buildCompletionParams(config);
 	const loop = [...messages];
 	const toolResultCache = new Map();
-	let forced = false;
 
 	for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
 		const lastIteration = i === MAX_TOOL_ITERATIONS - 1;
 		const offerTools = tools && onToolCall && !lastIteration;
-		const forceNow = offerTools && forceTool && !forced && tools.some((tool) => tool.function?.name === forceTool);
-		if (forceNow) forced = true;
 
 		const completion = await client.chat.completions.create({
 			...params,
-			...(offerTools ? { tools, tool_choice: forceNow ? { type: 'function', function: { name: forceTool } } : 'auto' } : {}),
+			...(offerTools ? { tools, tool_choice: 'auto' } : {}),
 			messages: loop
 		});
 
@@ -413,23 +396,50 @@ async function handleMessageCreate(message) {
 			const voiceReady = config.voice_enabled && !!config.voice_model;
 			const wikis = await getEnabledWikis(botConfig.id).catch(() => []);
 			const wikiTool = buildWikiTool(wikis);
+			const searchTool = buildSearchTool(config);
+			const fetchTool = buildFetchTool(config);
+			const imageTool = buildImageTool(config);
 
-			const tools = [...(voiceReady ? VOICE_TOOLS : []), ...(wikiTool ? [wikiTool] : [])];
+			const tools = [
+				...(voiceReady ? VOICE_TOOLS : []),
+				...(wikiTool ? [wikiTool] : []),
+				...(searchTool ? [searchTool] : []),
+				...(fetchTool ? [fetchTool] : []),
+				...(imageTool ? [imageTool] : [])
+			];
+
+			const generatedImages = [];
 
 			const onToolCall = (name, args) => {
 				message.channel.sendTyping().catch(() => {});
 				if (name === 'search_wiki') return runWikiTool(wikis, args).then((result) => JSON.stringify(result));
+				if (name === 'search_web') return runSearchTool(config, args).then((result) => JSON.stringify(result));
+				if (name === 'fetch_web_page') return runFetchTool(config, args).then((result) => JSON.stringify(result));
+				if (name === 'generate_image') {
+					return runImageTool(config, args).then((result) => {
+						if (result.ok && generatedImages.length < MAX_GENERATED_IMAGES) generatedImages.push(result);
+						const { buffer, ...summary } = result;
+						return finalToolResult(summary.ok ? { ...summary, sent_to_channel: true } : summary);
+					});
+				}
 				return executeVoiceTool(name, message, botConfig.id);
 			};
 
 			const raw = await callChatCompletions(config, messages, {
 				tools: tools.length ? tools : null,
-				onToolCall: tools.length ? onToolCall : null,
-				forceTool: wikiTool && !attachmentParts.length && shouldForceWikiSearch(prompt) ? 'search_wiki' : null
+				onToolCall: tools.length ? onToolCall : null
 			});
 			const reply = stripReasoning(typeof raw === 'string' ? raw : '').slice(0, MAX_REPLY_LENGTH);
 
+			const imageFiles = generatedImages
+				.map((image, index) => (image.buffer ? new AttachmentBuilder(image.buffer, { name: `image-${index + 1}.png` }) : null))
+				.filter(Boolean);
+
 			if (!reply) {
+				if (imageFiles.length) {
+					await message.reply({ files: imageFiles, allowedMentions: { parse: [], repliedUser: false } }).catch(() => {});
+					return;
+				}
 				await message.reply({ content: 'I could not generate a response right now. Please try again.' }).catch(() => {});
 				return;
 			}
@@ -448,7 +458,11 @@ async function handleMessageCreate(message) {
 				const allowedMentions = { parse: [], users: [...new Set([...named, ...(i === lastIndex ? [message.author.id] : [])])] };
 
 				if (i === 0) {
-					await message.reply({ content, allowedMentions: { ...allowedMentions, repliedUser: false } });
+					await message.reply({
+						content,
+						...(imageFiles.length ? { files: imageFiles } : {}),
+						allowedMentions: { ...allowedMentions, repliedUser: false }
+					});
 				} else {
 					await message.channel.send({ content, allowedMentions });
 				}

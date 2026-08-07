@@ -14,7 +14,8 @@ async function handleJoin(command) {
 	if (!botConfig?.id) return;
 
 	const config = db.botAiFromDbRow(await db.getBotAiByBotId(botConfig.id));
-	if (!config.enabled || !config.voice_enabled || !config.api_key || !config.voice_model) return;
+	const endpoint = db.botAiVoiceEndpoint(config);
+	if (!config.enabled || !config.voice_enabled || !endpoint.api_key || !endpoint.model) return;
 
 	const session = createVoiceSession({
 		client: clientInstance,

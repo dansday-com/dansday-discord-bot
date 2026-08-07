@@ -375,6 +375,18 @@ export interface BotAiInput {
 	voice_enabled: boolean;
 	voice_model: string | null;
 	voice_name: string | null;
+	voice_api_url: string | null;
+	voice_api_key: string | null;
+	voice_system_prompt: string | null;
+	search_api_url: string | null;
+	search_api_key: string | null;
+	search_model: string | null;
+	fetch_api_url: string | null;
+	fetch_api_key: string | null;
+	fetch_model: string | null;
+	image_api_url: string | null;
+	image_api_key: string | null;
+	image_model: string | null;
 }
 
 export const DEFAULT_BOT_AI: BotAiInput = {
@@ -386,8 +398,48 @@ export const DEFAULT_BOT_AI: BotAiInput = {
 	reasoning: 'none',
 	voice_enabled: false,
 	voice_model: null,
-	voice_name: null
+	voice_name: null,
+	voice_api_url: null,
+	voice_api_key: null,
+	voice_system_prompt: null,
+	search_api_url: null,
+	search_api_key: null,
+	search_model: null,
+	fetch_api_url: null,
+	fetch_api_key: null,
+	fetch_model: null,
+	image_api_url: null,
+	image_api_key: null,
+	image_model: null
 };
+
+export interface BotAiEndpoint {
+	api_url: string | null;
+	api_key: string | null;
+	model: string | null;
+	system_prompt: string | null;
+}
+
+export function botAiVoiceEndpoint(config: BotAiInput): BotAiEndpoint {
+	return {
+		api_url: config.voice_api_url ?? config.api_url,
+		api_key: config.voice_api_key ?? config.api_key,
+		model: config.voice_model,
+		system_prompt: config.voice_system_prompt ?? config.system_prompt
+	};
+}
+
+export function botAiSearchEndpoint(config: BotAiInput): BotAiEndpoint {
+	return { api_url: config.search_api_url, api_key: config.search_api_key, model: config.search_model, system_prompt: null };
+}
+
+export function botAiFetchEndpoint(config: BotAiInput): BotAiEndpoint {
+	return { api_url: config.fetch_api_url, api_key: config.fetch_api_key, model: config.fetch_model, system_prompt: null };
+}
+
+export function botAiImageEndpoint(config: BotAiInput): BotAiEndpoint {
+	return { api_url: config.image_api_url, api_key: config.image_api_key, model: config.image_model, system_prompt: null };
+}
 
 export function botAiFromDbRow(row: any): BotAiInput {
 	if (!row) return { ...DEFAULT_BOT_AI };
@@ -400,7 +452,19 @@ export function botAiFromDbRow(row: any): BotAiInput {
 		reasoning: BOT_AI_REASONING_LEVELS.includes(row.reasoning) ? row.reasoning : 'none',
 		voice_enabled: row.voice_enabled === true || row.voice_enabled === 1,
 		voice_model: row.voice_model?.trim() ? row.voice_model.trim() : null,
-		voice_name: row.voice_name?.trim() ? row.voice_name.trim() : null
+		voice_name: row.voice_name?.trim() ? row.voice_name.trim() : null,
+		voice_api_url: row.voice_api_url?.trim() ? row.voice_api_url.trim() : null,
+		voice_api_key: row.voice_api_key?.trim() ? row.voice_api_key.trim() : null,
+		voice_system_prompt: row.voice_system_prompt?.trim() ? row.voice_system_prompt.trim() : null,
+		search_api_url: row.search_api_url?.trim() ? row.search_api_url.trim() : null,
+		search_api_key: row.search_api_key?.trim() ? row.search_api_key.trim() : null,
+		search_model: row.search_model?.trim() ? row.search_model.trim() : null,
+		fetch_api_url: row.fetch_api_url?.trim() ? row.fetch_api_url.trim() : null,
+		fetch_api_key: row.fetch_api_key?.trim() ? row.fetch_api_key.trim() : null,
+		fetch_model: row.fetch_model?.trim() ? row.fetch_model.trim() : null,
+		image_api_url: row.image_api_url?.trim() ? row.image_api_url.trim() : null,
+		image_api_key: row.image_api_key?.trim() ? row.image_api_key.trim() : null,
+		image_model: row.image_model?.trim() ? row.image_model.trim() : null
 	};
 }
 
@@ -426,7 +490,19 @@ export async function upsertBotAi(botId: number, data: BotAiInput) {
 		reasoning: data.reasoning,
 		voice_enabled: data.voice_enabled,
 		voice_model: data.voice_model?.trim() ? data.voice_model.trim() : null,
-		voice_name: data.voice_name?.trim() ? data.voice_name.trim() : null
+		voice_name: data.voice_name?.trim() ? data.voice_name.trim() : null,
+		voice_api_url: data.voice_api_url?.trim() ? data.voice_api_url.trim() : null,
+		voice_api_key: data.voice_api_key?.trim() ? data.voice_api_key.trim() : null,
+		voice_system_prompt: data.voice_system_prompt?.trim() ? data.voice_system_prompt.trim() : null,
+		search_api_url: data.search_api_url?.trim() ? data.search_api_url.trim() : null,
+		search_api_key: data.search_api_key?.trim() ? data.search_api_key.trim() : null,
+		search_model: data.search_model?.trim() ? data.search_model.trim() : null,
+		fetch_api_url: data.fetch_api_url?.trim() ? data.fetch_api_url.trim() : null,
+		fetch_api_key: data.fetch_api_key?.trim() ? data.fetch_api_key.trim() : null,
+		fetch_model: data.fetch_model?.trim() ? data.fetch_model.trim() : null,
+		image_api_url: data.image_api_url?.trim() ? data.image_api_url.trim() : null,
+		image_api_key: data.image_api_key?.trim() ? data.image_api_key.trim() : null,
+		image_model: data.image_model?.trim() ? data.image_model.trim() : null
 	};
 	await db
 		.insert(schema.botAi)
@@ -6057,6 +6133,10 @@ export default {
 	getBotAiByBotId,
 	upsertBotAi,
 	botAiFromDbRow,
+	botAiVoiceEndpoint,
+	botAiSearchEndpoint,
+	botAiFetchEndpoint,
+	botAiImageEndpoint,
 	getBotAiSession,
 	appendBotAiMessage,
 	clearBotAiSession,

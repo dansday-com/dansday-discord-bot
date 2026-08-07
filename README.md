@@ -156,4 +156,4 @@ If a wiki refuses your server (Miraheze sits behind a Cloudflare check that reje
 
 ## License
 
-MIT · Author: Akbar Yudhanto · Version: 26.5.4
+MIT · Author: Akbar Yudhanto · Version: 26.5.5

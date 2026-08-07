@@ -14,6 +14,7 @@
 		{ id: 'permissions', icon: 'fa-user-shield', label: 'Permissions' },
 		{ id: 'modules', icon: 'fa-toggle-on', label: 'Modules' },
 		{ id: 'ai-chat', icon: 'fa-robot', label: 'AI chat' },
+		{ id: 'ai-tools', icon: 'fa-toolbox', label: 'Search, fetch, images' },
 		{ id: 'ai-wikis', icon: 'fa-book', label: 'Wiki knowledge' },
 		{ id: 'shop', icon: 'fa-store', label: 'Items shop' },
 		{ id: 'discord', icon: 'fa-discord', label: 'Discord menu' },
@@ -153,7 +154,7 @@
 		{
 			label: 'System prompt',
 			req: 'optional',
-			desc: 'Sets the personality and rules for chat and voice alike. Use {{today}} to insert the current date.'
+			desc: 'Sets the personality and rules for chat. Voice has its own prompt. Use {{today}} to insert the current date.'
 		},
 		{
 			label: 'Enable voice AI',
@@ -165,7 +166,47 @@
 			label: 'Voice',
 			req: 'optional',
 			desc: 'Which of the 30 Gemini voices the bot speaks with. Listen to them in Google AI Studio first. Leave on Default to use the model default.'
+		},
+		{
+			label: 'Voice API URL, key and system prompt',
+			req: 'optional',
+			desc: 'Voice can run on its own endpoint, key and personality. Leave any of them blank and voice reuses the AI chat value instead.'
 		}
+	];
+
+	const aiToolFields = [
+		{
+			label: 'Web search URL, model and key',
+			req: 'optional',
+			desc: 'Fill all three and the bot can search the live web. For 9Router that is /v1/search with a model such as searxng.'
+		},
+		{
+			label: 'Web fetch URL, model and key',
+			req: 'optional',
+			desc: 'Fill all three and the bot can read a page it was linked to. For 9Router that is /v1/web/fetch with a model such as jina-reader.'
+		},
+		{
+			label: 'Image URL, model and key',
+			req: 'optional',
+			desc: 'Fill all three and the bot can draw pictures. For 9Router that is /v1/images/generations. Images come back at 512x512.'
+		}
+	];
+
+	const aiToolRules = [
+		{
+			icon: 'fa-toggle-off',
+			title: 'Off until filled',
+			desc: 'Each tool needs its URL, model and key. Until all three are set the bot is never offered that tool.'
+		},
+		{ icon: 'fa-brain', title: 'The AI decides', desc: 'Nothing is forced. It searches, reads or draws only when the question calls for it.' },
+		{ icon: 'fa-book', title: 'Wikis come first', desc: 'Game questions go to your wikis. Web search is for what the wikis do not cover.' },
+		{ icon: 'fa-link', title: 'Real links only', desc: 'Web fetch only opens a URL a member sent or a search result returned, never an invented one.' },
+		{
+			icon: 'fa-image',
+			title: 'Pictures post themselves',
+			desc: 'A generated image is uploaded straight to the channel. In voice it lands in the voice channel chat.'
+		},
+		{ icon: 'fa-key', title: 'Keys stay server side', desc: 'Every key is write-only. Save with the box blank to keep the key you already have.' }
 	];
 
 	const aiVoiceRules = [
@@ -809,11 +850,40 @@
 					</div>
 				</section>
 
+				<section id="ai-tools" class="g-sec" use:reveal>
+					<h2 class="g-sec-head"><i class="fas fa-toolbox"></i>Web search, fetch and images</h2>
+					<p class="g-sec-lead">
+						Three optional tools the AI reaches for on its own: searching the live web, reading a page it was linked to, and drawing a picture. Each is a
+						separate URL, model and key on the bot panel under the AI tab, so they can point at different providers. Any OpenAI-compatible gateway works;
+						9Router exposes all three. Restart the bot after saving.
+					</p>
+					<div class="g-fieldlist">
+						{#each aiToolFields as f}
+							<div class="g-field">
+								<span class="g-field-key">{f.label}<span class="g-field-tag g-field-tag--{f.req === 'optional' ? 'opt' : 'req'}">{f.req}</span></span>
+								<span class="g-field-val">{f.desc}</span>
+							</div>
+						{/each}
+					</div>
+
+					<h3 class="g-sub-head">How it works</h3>
+					<div class="g-steps">
+						{#each aiToolRules as s, i}
+							<div class="g-step" style="--d: {i * 80}ms">
+								<span class="g-step-num">{i + 1}</span>
+								<span class="g-step-ic"><i class="fas {s.icon}"></i></span>
+								<h3>{s.title}</h3>
+								<p>{s.desc}</p>
+							</div>
+						{/each}
+					</div>
+				</section>
+
 				<section id="ai-wikis" class="g-sec" use:reveal>
 					<h2 class="g-sec-head"><i class="fas fa-book"></i>Wiki knowledge</h2>
 					<p class="g-sec-lead">
-						Without this, the AI answers game questions from memory and gets them wrong. Add a wiki and it looks the answer up first instead. Set this on the
-						bot panel under the Wikis tab. It applies to chat and voice alike, and to every server the bot is in.
+						Without this, the AI answers game questions from memory and gets them wrong. Add a wiki and it looks the answer up instead. Set this on the bot
+						panel under the Wikis tab. It applies to chat and voice alike, and to every server the bot is in.
 					</p>
 					<div class="g-fieldlist">
 						{#each aiWikiFields as f}

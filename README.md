@@ -64,6 +64,7 @@ Open source under the MIT license.
 
 - **AI chat** - Mention the bot to talk to it, or reply to one of its messages to continue without mentioning again. Every member keeps a private conversation per server, with older turns summarized as they age out. Configured per bot in the panel: API URL, key, model, reasoning effort and system prompt. Works with any OpenAI-compatible endpoint (Gemini, OpenAI, GLM, Qwen, DeepSeek, local models). Replies over Discord's limit are split across messages.
 - **Voice AI** - Members ask the bot in chat to join their voice channel, then talk to it out loud via the Gemini Live API. One call at a time; it excuses itself and leaves when nobody has called it for a few minutes, or when the member who invited it leaves. Requires Redis.
+  - 🔑 **Its own endpoint** - Voice can run on a separate API URL, key and system prompt from chat, so the personality it speaks with and the provider it bills to are both independent. Leave any of the three blank and it falls back to the chat value.
   - 🗣️ **Say "hey stupid"** - An on-device wake-word model (openWakeWord ONNX, no extra API cost) listens for that exact phrase, so a busy channel never sets it off. Falls back to transcript matching if the model files are missing.
   - 🔒 **One speaker at a time** - Whoever wakes it holds the conversation; everyone else's audio is dropped so crosstalk cannot derail the answer. Saying you are done releases it immediately for the next person.
   - 🔇 **Mutes when idle** - It says one short line, then mutes itself, so the mute icon shows at a glance whether it is listening.
@@ -82,6 +83,11 @@ Open source under the MIT license.
   - ⚡ **Cached** - Results are held for 10 minutes, so repeat questions are instant and the wiki is not hammered.
   - 🔁 **Relay for blocked wikis** - Some hosts (Miraheze behind Cloudflare) refuse traffic from server IPs. Drop [`scripts/relay.php`](scripts/relay.php) on hosting the wiki does accept, set a secret, and point that wiki at it. Per wiki, so everything else still connects directly.
   - ✅ **No restart** - Chat picks up a new wiki on the next message, voice on the next call.
+- **Web search, fetch and images** - Three optional tools the AI decides to use on its own, in chat and voice alike. Each has its own API URL, model and key in the panel under **AI**, so they can point at different providers; any OpenAI-compatible gateway works, and [9Router](https://github.com/decolua/9router) exposes all three behind one key.
+  - 🔍 **Web search** - For anything the wikis do not cover and anything that changes: news, release dates, whether something is real. Wikis stay first for game questions.
+  - 📄 **Web fetch** - Reads a page a member linked, or a search result whose snippet was too short to answer from. Only URLs it was actually given, never invented ones.
+  - 🖼️ **Image generation** - Draws a picture when asked and uploads it straight to the channel as a file, so nothing breaks when the provider's URL expires. In voice the picture lands in the voice channel's own chat.
+  - 🎛️ **Off until configured** - Each tool needs its URL, model and key before it is offered to the model at all, so an unconfigured tool is invisible rather than broken.
 - **Discord Quest notifier** - Surface Discord Quest activity, with optional per-server enrollment automation.
 - **Roblox catalog watch** - Post embeds when catalog items change, for trading and UGC communities.
 - **Content creator / TikTok** - Creator applications and TikTok live digests tied to server channels.
@@ -116,6 +122,7 @@ Versions match `package.json` at release (caret ranges; run `npm ls` for the exa
 | AI chat                    | [openai](https://www.npmjs.com/package/openai) 7.1 SDK, pointed at any OpenAI-compatible endpoint (URL, key and model set per bot in the panel)                                                                                                                                                                                                                             |
 | Voice AI                   | [@google/genai](https://www.npmjs.com/package/@google/genai) 2.15 (Gemini Live API), [@discordjs/voice](https://www.npmjs.com/package/@discordjs/voice) 0.19, [@discordjs/opus](https://www.npmjs.com/package/@discordjs/opus) 0.10, [sodium-native](https://www.npmjs.com/package/sodium-native) 5.1, [prism-media](https://www.npmjs.com/package/prism-media) 1.3, ffmpeg |
 | Wiki knowledge             | [MediaWiki Action API](https://www.mediawiki.org/wiki/API:Main_page) over native `fetch`, [cheerio](https://cheerio.js.org/) 1.2 to read the rendered page; wiki list stored per bot in MySQL                                                                                                                                                                               |
+| Web search, fetch, images  | Native `fetch` against any OpenAI-compatible gateway ([9Router](https://github.com/decolua/9router) `/v1/search`, `/v1/web/fetch`, `/v1/images/generations`); URL, model and key set per tool per bot in the panel                                                                                                                                                          |
 | Roblox catalog API         | [rozod](https://www.npmjs.com/package/rozod) 6.6 (typed catalog fetch alongside axios thumbnails)                                                                                                                                                                                                                                                                           |
 | Database                   | [MySQL](https://www.mysql.com/) via [mysql2](https://github.com/sidorares/node-mysql2) 3.22, [Drizzle ORM](https://orm.drizzle.team/) 0.45 + [Drizzle Kit](https://orm.drizzle.team/kit-docs/overview) 0.31 (migrations)                                                                                                                                                    |
 | Password hashing           | [bcryptjs](https://www.npmjs.com/package/bcryptjs) 3.0                                                                                                                                                                                                                                                                                                                      |
@@ -137,7 +144,9 @@ The bot requests the Guilds, Message Content, Server Members, Moderation, Voice 
 
 AI chat is not configured through `.env`. Open the bot in the panel and set the API URL, key, model and reasoning effort there — the key is stored per bot and never sent back to the browser. Enabling AI chat requires the URL, key and model to all be set. Restart the bot after changing these values.
 
-Voice AI lives on the same panel page. It needs AI chat enabled first, plus a voice model, and it uses the Gemini Live API — so the API key above must be a Google AI key. Redis is required, since one voice session is coordinated across processes. Voice sends everyone's audio in the channel to Google; on the free tier that audio is used to improve their products, so tell your members before turning it on.
+Voice AI lives on the same panel page. It needs AI chat enabled first, plus a voice model, and it uses the Gemini Live API — so whichever key it ends up using must be a Google AI key. Voice has its own API URL, key and system prompt: fill them to run voice on a different provider or give it a different personality, or leave any of them blank to reuse the AI chat value. Redis is required, since one voice session is coordinated across processes. Voice sends everyone's audio in the channel to Google; on the free tier that audio is used to improve their products, so tell your members before turning it on.
+
+Web search, web fetch and image generation are configured on the same page, one URL, model and key each. A tool is only offered to the model once all three of its fields are set, so a half-filled section is simply inactive rather than failing at runtime. The AI chooses when to use them — nothing is forced — and wikis remain the first stop for game questions. Generated images are uploaded to Discord as files rather than linked, and in voice they are posted to the voice channel's own chat.
 
 Wikis are managed on the bot's **Wikis** tab, not in `.env`. Add a wiki's `api.php` endpoint (for example `https://fischipedia.org/w/api.php`), optionally with a description of what game it covers. Wikis apply to both chat and voice, can be disabled individually without losing them, and take effect immediately — chat on the next message, voice on the next call.
 
@@ -147,4 +156,4 @@ If a wiki refuses your server (Miraheze sits behind a Cloudflare check that reje
 
 ## License
 
-MIT · Author: Akbar Yudhanto · Version: 26.5.3
+MIT · Author: Akbar Yudhanto · Version: 26.5.4

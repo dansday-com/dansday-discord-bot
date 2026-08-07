@@ -10,12 +10,15 @@ import {
 	StreamType,
 	NoSubscriberBehavior
 } from '@discordjs/voice';
+import { AttachmentBuilder } from 'discord.js';
 import prism from 'prism-media';
 import { Readable } from 'node:stream';
-import db from '../../../../database.js';
+import db, { botAiVoiceEndpoint } from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 import { writeVoiceState, clearVoiceState, VOICE_STATE_TTL_SEC } from './voiceControl.js';
 import { getEnabledWikis, buildWikiDeclaration, runWikiTool } from './wiki.js';
+import { buildSearchDeclaration, buildFetchDeclaration, runSearchTool, runFetchTool } from './webTools.js';
+import { buildImageDeclaration, runImageTool } from './imageTools.js';
 import { wakeModelAvailable, warmWakeModel, onWakeDetected, pushWakeAudio, dropWakeUser } from './wakeWord.js';
 
 const INPUT_RATE = 16000;
@@ -53,13 +56,14 @@ const WIKI_STALL_GRACE_MS = 2_500;
 const WIKI_STALL_COOLDOWN_MS = 10_000;
 const WIKI_FAILED_MAX_WAIT_MS = 8_000;
 const WIKI_TIMEOUT_MS = 12_000;
+const IMAGE_LOOKUP_TIMEOUT_MS = 125_000;
 const SPEECH_DRAIN_MAX_MS = 20_000;
 
 const WIKI_STALL_PROMPT =
 	'[System] You are still looking that up. Say one short, natural line out loud right now to let them know you are checking, in the same language they are speaking — something like "let me check that" or "one sec". Say nothing else, do not guess the answer, and do not read this note aloud. The result arrives in a moment and you will answer properly then.';
 
 const WIKI_FAILED_PROMPT =
-	'[System] The wiki lookup failed and you have no result. Say one short line out loud right now telling them you could not reach the wiki and cannot check that at the moment, in the same language they are speaking. Do not guess, do not state any fact about the game, and do not read this note aloud.';
+	'[System] The lookup failed and you have no result. Say one short line out loud right now telling them you could not check that at the moment, in the same language they are speaking. Do not guess, do not state any fact you did not read in a result, and do not read this note aloud.';
 
 const WAKE_ACK_PROMPT =
 	'[System] Someone just said the wake phrase and you are now listening. Say one very short acknowledgement out loud right now — just "yes?" or the equivalent in the language this server speaks. Two words at most. Do not answer anything yet, do not ask what they need, and do not read this note aloud.';
@@ -97,8 +101,12 @@ function downmixAndResample(pcm, fromRate, toRate, fromChannels, toChannels) {
 
 export function createVoiceSession({ client, config, botId, guildId, channelId, channelName, inviterId, textChannelId, onEnded }) {
 	const speaking = new Map();
-	const genai = new GoogleGenAI({ apiKey: config.api_key });
-	const systemInstruction = (config.system_prompt ?? '').replace(/\{\{today\}\}/g, new Date().toISOString().slice(0, 10));
+	const endpoint = botAiVoiceEndpoint(config);
+	const genai = new GoogleGenAI({
+		apiKey: endpoint.api_key,
+		...(endpoint.api_url ? { httpOptions: { baseUrl: endpoint.api_url.replace(/\/+$/, '') } } : {})
+	});
+	const systemInstruction = (endpoint.system_prompt ?? '').replace(/\{\{today\}\}/g, new Date().toISOString().slice(0, 10));
 
 	let wikis: any[] = [];
 
@@ -613,24 +621,77 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		}
 	}
 
+	const LOOKUP_TOOLS = new Set(['search_wiki', 'search_web', 'fetch_web_page', 'generate_image']);
+
+	async function sendImageTo(targetChannelId, buffer) {
+		if (!targetChannelId) return false;
+
+		const channel = await client.channels.fetch(targetChannelId).catch(() => null);
+		if (!channel?.isTextBased?.()) return false;
+
+		await channel.send({ files: [new AttachmentBuilder(buffer, { name: 'image-1.png' })] });
+		return true;
+	}
+
+	async function postGeneratedImage(result) {
+		if (!result?.ok || !result.buffer) return false;
+
+		for (const [label, target] of [
+			['voice channel chat', channelId],
+			['invite text channel', textChannelId]
+		]) {
+			try {
+				if (await sendImageTo(target, result.buffer)) {
+					logger.log(`🖼️ Voice AI posted a generated image to the ${label}`);
+					return true;
+				}
+			} catch (err) {
+				logger.log(`⚠️ Voice AI could not post the image to the ${label}: ${String(err)}`);
+			}
+		}
+
+		return false;
+	}
+
+	function runLookup(call) {
+		if (call.name === 'search_web') return runSearchTool(config, call.args ?? {});
+		if (call.name === 'fetch_web_page') return runFetchTool(config, call.args ?? {});
+		if (call.name === 'generate_image') {
+			return runImageTool(config, call.args ?? {}).then(async (result) => {
+				const posted = await postGeneratedImage(result);
+				const { buffer, ...summary } = result;
+				if (!summary.ok) return summary;
+				return posted ? { ...summary, posted_to_chat: true } : { ok: false, reason: 'could_not_post_image' };
+			});
+		}
+		return runWikiTool(wikis, call.args ?? {});
+	}
+
+	function lookupLabel(call) {
+		if (call.name === 'search_web') return `web search "${call.args?.query ?? ''}"`;
+		if (call.name === 'fetch_web_page') return `web fetch ${call.args?.url ?? ''}`;
+		if (call.name === 'generate_image') return `image generation "${call.args?.prompt ?? ''}"`;
+		return `wiki lookup "${call.args?.query ?? ''}" (${call.args?.wiki ?? 'default'})`;
+	}
+
 	function handleToolCall(calls) {
-		const wikiCalls = calls.filter((call) => call.name === 'search_wiki');
-		const responses = calls.filter((call) => call.name !== 'search_wiki').map((call) => ({ id: call.id, name: call.name, response: { ok: true } }));
+		const lookupCalls = calls.filter((call) => LOOKUP_TOOLS.has(call.name));
+		const responses = calls.filter((call) => !LOOKUP_TOOLS.has(call.name)).map((call) => ({ id: call.id, name: call.name, response: { ok: true } }));
 
 		sendToolResponses(responses);
 
-		for (const call of wikiCalls) {
-			const query = call.args?.query ?? '';
-			const dedupeKey = `${call.args?.wiki ?? ''}::${query}`.toLowerCase();
+		for (const call of lookupCalls) {
+			const query = call.args?.query ?? call.args?.url ?? '';
+			const dedupeKey = `${call.name}::${call.args?.wiki ?? ''}::${query}`.toLowerCase();
 
 			const inflight = wikiInflight.get(dedupeKey);
 			if (inflight) {
-				logger.log(`📖 Voice AI reusing in-flight wiki lookup: "${query}"`);
+				logger.log(`📖 Voice AI reusing in-flight ${lookupLabel(call)}`);
 				inflight.then((response) => sendToolResponses([{ id: call.id, name: call.name, response }])).catch(() => {});
 				continue;
 			}
 
-			logger.log(`📖 Voice AI wiki lookup: "${query}" (${call.args?.wiki ?? 'default'})`);
+			logger.log(`📖 Voice AI ${lookupLabel(call)}`);
 
 			let settled = false;
 			let stalled = false;
@@ -683,7 +744,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 				resolveInflight?.(response);
 				extendAddressedWindow();
 
-				if (response?.ok === false) logger.log(`❌ Voice AI wiki lookup unusable: ${response.reason}`);
+				if (response?.ok === false) logger.log(`❌ Voice AI ${lookupLabel(call)} unusable: ${response.reason}`);
 
 				const send = () => {
 					if (closed) return;
@@ -698,7 +759,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 						if (closed || goodbyePending || settledFailureSpoken) return;
 						if (stats.chunksPlayed > chunksAtFailure) return;
 						if (Date.now() - failedAt >= WIKI_FAILED_MAX_WAIT_MS) {
-							logger.log('❌ Voice AI never spoke the wiki failure, giving up');
+							logger.log('❌ Voice AI never spoke the lookup failure, giving up');
 							return;
 						}
 						if (botIsSpeaking()) {
@@ -712,24 +773,25 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 					}, SPEAK_GUARD_MS);
 				};
 
-				if (stalled) afterSpeaking('the wiki answer', send, { graceMs: WIKI_STALL_GRACE_MS });
+				if (stalled) afterSpeaking('the lookup answer', send, { graceMs: WIKI_STALL_GRACE_MS });
 				else send();
 			};
 
+			const lookupTimeoutMs = call.name === 'generate_image' ? IMAGE_LOOKUP_TIMEOUT_MS : WIKI_TIMEOUT_MS;
 			const timeoutTimer = setTimeout(() => {
 				if (settled) return;
-				logger.log(`⏱️ Voice AI wiki lookup timed out after ${WIKI_TIMEOUT_MS / 1000}s`);
+				logger.log(`⏱️ Voice AI ${lookupLabel(call)} timed out after ${lookupTimeoutMs / 1000}s`);
 				finish({ ok: false, reason: 'timeout' });
-			}, WIKI_TIMEOUT_MS);
+			}, lookupTimeoutMs);
 
-			runWikiTool(wikis, call.args ?? {})
+			runLookup(call)
 				.then((response) => {
 					clearTimeout(timeoutTimer);
 					finish(response);
 				})
 				.catch((err) => {
 					clearTimeout(timeoutTimer);
-					logger.log(`❌ Voice AI wiki lookup failed: ${String(err)}`);
+					logger.log(`❌ Voice AI ${lookupLabel(call)} failed: ${String(err)}`);
 					finish({ ok: false, reason: 'lookup_failed' });
 				});
 		}
@@ -773,6 +835,13 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		wikis = await getEnabledWikis(botId).catch(() => []);
 		const wikiDeclaration = buildWikiDeclaration(wikis);
 		if (wikiDeclaration) logger.log(`📚 Voice AI wiki lookup available: ${wikis.map((w) => w.name).join(', ')}`);
+
+		const searchDeclaration = buildSearchDeclaration(config);
+		const fetchDeclaration = buildFetchDeclaration(config);
+		const imageDeclaration = buildImageDeclaration(config);
+		if (searchDeclaration) logger.log('🌐 Voice AI web search available');
+		if (fetchDeclaration) logger.log('🌐 Voice AI web fetch available');
+		if (imageDeclaration) logger.log('🖼️ Voice AI image generation available');
 
 		session = await genai.live.connect({
 			model: config.voice_model,
@@ -823,7 +892,10 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 											}
 										}
 									]
-								: [])
+								: []),
+							...(searchDeclaration ? [searchDeclaration] : []),
+							...(fetchDeclaration ? [fetchDeclaration] : []),
+							...(imageDeclaration ? [imageDeclaration] : [])
 						]
 					}
 				]

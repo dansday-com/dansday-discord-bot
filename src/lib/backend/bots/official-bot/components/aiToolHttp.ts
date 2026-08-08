@@ -22,7 +22,10 @@ export async function postJson(url, apiKey, body, timeoutMs = DEFAULT_TOOL_TIMEO
 
 		if (!res.ok) {
 			const detail = await res.text().catch(() => '');
-			throw new Error(`HTTP ${res.status}${detail ? ` ${detail.slice(0, 200)}` : ''}`);
+			const error: any = new Error(`HTTP ${res.status}${detail ? ` ${detail.slice(0, 200)}` : ''}`);
+			error.status = res.status;
+			error.body = detail;
+			throw error;
 		}
 
 		return await res.json();

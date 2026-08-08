@@ -9,6 +9,13 @@ const IMAGE_TIMEOUT_MS = 120_000;
 const IMAGE_SIZE = '512x512';
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 
+const FLAGGED_RE = /flagged|moderation|safety|nsfw|content[\s_-]?polic|prohibited|not[\s_-]allowed/i;
+
+const FLAGGED_ADVICE =
+	'The image filter rejected this description, so retrying the same thing will fail again. Tell them the picture was blocked by the filter and ask them to describe it differently — something less violent or graphic. Do not offer to retry it as-is, and do not call it a technical error.';
+
+const RETRY_ADVICE = 'This looks temporary rather than a rejected description. You may offer to try again.';
+
 const IMAGE_DESCRIPTION = `Draw a picture from a description and send it to the channel. Use this when a member asks you to draw, generate, make, create or render an image, picture, art, drawing, wallpaper, logo or edit of something.
 
 Do not use this to look something up — search_web finds real photos and pages, while this invents a new picture. Do not use it when the user only wants a written answer or is talking about an image they already sent you.
@@ -48,9 +55,16 @@ export async function runImageTool(config, args) {
 		if (entry.url) return { ok: true, prompt, url: entry.url };
 
 		return { ok: false, reason: 'no_image_returned' };
-	} catch (error) {
+	} catch (error: any) {
 		await logger.log(`❌ Image generation failed: ${error.message}`);
-		return { ok: false, reason: error.name === 'AbortError' ? 'timeout' : 'image_generation_failed' };
+
+		if (error.name === 'AbortError') return { ok: false, reason: 'timeout', tell_the_user: RETRY_ADVICE };
+
+		if (FLAGGED_RE.test(String(error.body ?? '')) || FLAGGED_RE.test(String(error.message ?? ''))) {
+			return { ok: false, reason: 'content_flagged', tell_the_user: FLAGGED_ADVICE };
+		}
+
+		return { ok: false, reason: 'image_generation_failed', tell_the_user: RETRY_ADVICE };
 	}
 }
 
@@ -63,7 +77,9 @@ export function buildImageTool(config) {
 			name: 'generate_image',
 			description: `${IMAGE_DESCRIPTION}
 
-After it succeeds the picture is posted automatically, so just say one short line about it — never describe the image in detail, never claim you cannot send images, and never paste a URL.`,
+After it succeeds the picture is posted automatically, so just say one short line about it — never describe the image in detail, never claim you cannot send images, and never paste a URL.
+
+If it comes back not ok, read "reason" and "tell_the_user" and say what actually went wrong. "content_flagged" means the filter rejected the description, so ask them to describe it differently and never offer to retry it unchanged. Only call it an error and offer another go when the reason really is a technical one.`,
 			parameters: {
 				type: 'object',
 				properties: {
@@ -85,7 +101,9 @@ export function buildImageDeclaration(config) {
 		name: 'generate_image',
 		description: `${IMAGE_DESCRIPTION}
 
-Say one short line out loud like "drawing that now" before it runs, because it takes a while. When it succeeds the picture is posted into this voice channel's chat automatically — say one short spoken line telling them to look at the chat. If it comes back not ok, say plainly out loud that you could not send the picture. Never try to describe the picture in detail out loud, and never read a URL aloud.`,
+Say one short line out loud like "drawing that now" before it runs, because it takes a while. When it succeeds the picture is posted into this voice channel's chat automatically — say one short spoken line telling them to look at the chat.
+
+If it comes back not ok, read "reason" and "tell_the_user" and say out loud what actually went wrong. "content_flagged" means the filter rejected the description, so ask them out loud to describe it differently and never offer to retry it unchanged. Never try to describe the picture in detail out loud, and never read a URL aloud.`,
 		parameters: {
 			type: Type.OBJECT,
 			properties: {

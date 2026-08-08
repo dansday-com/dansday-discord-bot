@@ -7,6 +7,7 @@ import { publishVoiceCommand, readVoiceState } from './voiceControl.js';
 import { getEnabledWikis, buildWikiTool, runWikiTool } from './wiki.js';
 import { buildSearchTool, buildFetchTool, runSearchTool, runFetchTool } from './webTools.js';
 import { buildImageTool, runImageTool } from './imageTools.js';
+import { readAiSession, appendAiMessage, claimAiMessageLocal, claimAiMessageShared } from './aiSession.js';
 
 const DISCORD_MESSAGE_LIMIT = 2000;
 const MAX_REPLY_LENGTH = 4000;
@@ -354,17 +355,26 @@ async function handleMessageCreate(message) {
 		const botConfig = getBotConfig();
 		if (!botConfig?.id) return;
 
-		const config = db.botAiFromDbRow(await db.getBotAiByBotId(botConfig.id));
-		if (!config.enabled || !config.api_url || !config.api_key || !config.model) return;
-
-		const replied = await fetchRepliedMessage(message);
-		if (!mentioned && replied?.author?.id !== botUserId) return;
-
 		const key = sessionKey(message.guild.id, message.author.id);
 		if (inFlight.has(key)) return;
+		if (!claimAiMessageLocal(botConfig.id, message.id)) {
+			await logger.log(`🔁 AI ignoring a duplicate delivery of message ${message.id}`);
+			return;
+		}
 		inFlight.add(key);
 
 		try {
+			if (!(await claimAiMessageShared(botConfig.id, message.id))) {
+				await logger.log(`🔁 AI ignoring message ${message.id}, another process claimed it first`);
+				return;
+			}
+
+			const config = db.botAiFromDbRow(await db.getBotAiByBotId(botConfig.id));
+			if (!config.enabled || !config.api_url || !config.api_key || !config.model) return;
+
+			const replied = await fetchRepliedMessage(message);
+			if (!mentioned && replied?.author?.id !== botUserId) return;
+
 			const prompt = stripBotMention(message.content ?? '', botUserId);
 
 			await message.channel.sendTyping().catch(() => {});
@@ -382,8 +392,7 @@ async function handleMessageCreate(message) {
 			const ownText = prompt || (attachmentParts.length ? `(${attachmentKinds.join(', ')} attached, no message text)` : 'Hello!');
 			const userContent = `${quotedNote}${ownText}`;
 
-			const history = await db.getBotAiSession(botConfig.id, message.guild.id, message.author.id, MAX_RECENT);
-			const conversation = history.map((row) => ({ role: row.role, content: row.content }));
+			const conversation = await readAiSession(botConfig.id, message.guild.id, message.author.id, MAX_RECENT);
 
 			const today = new Date().toISOString().slice(0, 10);
 			const speakerName = message.member?.displayName ?? message.author.username;
@@ -448,8 +457,8 @@ async function handleMessageCreate(message) {
 			}
 
 			const storedContent = attachmentParts.length && prompt ? `${userContent} [${attachmentKinds.join(', ')} attached]` : userContent;
-			await db.appendBotAiMessage(botConfig.id, message.guild.id, message.author.id, 'user', storedContent);
-			await db.appendBotAiMessage(botConfig.id, message.guild.id, message.author.id, 'assistant', reply);
+			await appendAiMessage(botConfig.id, message.guild.id, message.author.id, 'user', storedContent);
+			await appendAiMessage(botConfig.id, message.guild.id, message.author.id, 'assistant', reply);
 
 			const mention = `<@${message.author.id}>`;
 			const chunks = splitForDiscord(reply, DISCORD_MESSAGE_LIMIT - mention.length - 1);

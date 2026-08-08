@@ -1,58 +1,39 @@
 # &lt;/DANSDAY&gt; Discord Bot
 
-Leveling, moderation, an embed builder, Discord Quests, creator tools, public statistics pages, Roblox catalog alerts and more — all from a free web panel instead of slash commands. Self-host from GitHub or add the hosted bot.
-
-Open source under the MIT license.
+Leveling, moderation, embed builder, Discord Quests, creator tools, public statistics pages and Roblox catalog alerts — all from a free web panel instead of slash commands. Self-host from GitHub or add the hosted bot. MIT licensed.
 
 ---
 
 ## Features
 
-### Web control panel
+### Panel
 
-- **Granular permissions** - Owner and staff tiers control who can change which settings.
-- **Server accounts** - Invite owners and staff into the panel, with roles separate from Discord permissions.
-- **Per-module toggles** - Enable or disable major features per server.
-- **Multi-language UI (Discord flows)** - English and Indonesian strings for buttons, selects and labels.
-- **Embed builder** - Rich embeds with live preview, placeholders and images, sent from the browser.
+- **Granular permissions** - Owner and staff tiers control who changes what.
+- **Server accounts** - Invite owners and staff, with roles separate from Discord permissions.
+- **Per-module toggles** - Enable or disable each feature per server.
+- **Embed builder** - Rich embeds with live preview, placeholders and images.
+- **Multi-language** - English and Indonesian for Discord buttons, selects and labels.
 
 ### Community & engagement
 
-- **Items & XP economy** ⭐ _new_ - Spend earned XP in a per-server shop on PvP and utility items, each with its own cost, effect and optional timed availability. Purchases sit in a 50-slot bag and are used through Discord. Effects:
-  - 💰 **Steal** - take a slice of another member's XP (with cooldown and post-hit immunity).
-  - 💥 **Bomb** - destroy a slice of a member's XP outright.
-  - 🩸 **Leech** - siphon a percentage of a target's XP for a set duration.
-  - 🎯 **Bounty** - put XP on a member's head; whoever robs them next collects it.
-  - 🛡️ **Shield** - block incoming steals, bombs, and leeches while active.
-  - 🪞 **Reflect** - bounce the next attack back at the attacker.
-  - 💵 **Insurance** - refund your XP the next time you're robbed.
-  - ⚡ **Boost** - multiply your XP earnings for a set duration.
-  - 🎁 **Gift** - send XP to another member (with optional tax).
-  - 🔍 **Spy** - reveal a member's bag, active effects, cooldowns, and bounty.
-  - 🎭 **Disguise** - go anonymous and drop off the leaderboard for a set duration.
-  - 🧼 **Purifier** - wipe all of your own active effects at once.
-  - 🍀 **Luck** - a % boost that improves steal and bomb rolls, minigame odds, spy success, leech skim, friend boost and insurance refund, cuts gift tax and discounts shop prices. Timed buffs lock in your luck on activation, so use luck first.
-- **Assets market (XP paper-trading)** ⭐ _new_ - Members lock XP into real crypto positions at live CoinGecko prices and sell any time for gains or losses. Search thousands of coins, browse top 50, gainers and losers, track a live portfolio. No real money — purely an XP game.
-- **Minigames** ⭐ _new_ - Free-to-play games where members wager XP, under the Public statistics toggle with its own channel. First game is 🎲 **Gamble**: pick a multiplier up to 10×, win chance is 100 ÷ it. Only XP earned above your current level can be wagered, so a loss never drops your level. Feeds a Minigames leaderboard.
-- **Tasks, streaks & check-in** ⭐ _new_ - A Task tab on the member account, under the Daily tasks sub-toggle. No admin setup — goals, difficulty and rewards generate per member.
-  - ☀️ **Daily tasks** - 18 a day (6 easy, 6 medium, 6 hard) from a catalog of 96 goals. No two members get the same list.
-  - 📅 **Weekly tasks** - 18 hard tasks, Monday to Sunday on the member's local clock.
-  - 🎯 **Goals sized to the member** - Built from that member's own last 7 days of the exact metric, not their level, and capped by what the period physically allows.
-  - 💬 **Activity goals** - Chat, reactions and voice / video / streaming cap at 50 a day and 200 a week: 17 / 33 / 50 daily, 67 / 133 / 200 weekly.
-  - ⚖️ **Honest difficulty** - Every goal is priced as real effort and graded, never assigned by rank. Activity goals grade against their daily cap, everything else against the server's earn rate.
-  - 🎁 **Rewards** - XP or a shop item, 30% item chance, priced 0.85× to 1× the task value. Tasks that cost XP always pay back more than they cost.
-  - 🔥 **Streaks** - Clear all 18 daily tasks for +2% reward XP per day, up to +100%. Milestones at 7, 30, 100 and 365 days. Two ❄️ **freezes** cover missed days, one back every 10 claims.
-  - 📆 **Daily check-in** - 7-day cycle, one claim per local day: 1,000 → 2,500 → 5,000 → 9,000 → 15,000 → 25,000 → 50,000 XP, identical on every server. Miss a day, restart at day 1.
-  - 🎰 **Check-in gacha** - 50% chance of a shop item instead of XP, rolled by rarity tier. Day 1 is 50 / 24 / 14 / 8 / 3 / 1% common to mythic; every tier above common climbs 0.5 a day, reaching 4% mythic by day 7. Unstocked tiers redistribute to the ones the shop sells.
-  - 🧾 **Reward history** - XP lands in level history as **Task Reward** / **Daily Reward**, items in item history. Reward XP never counts toward the activity totals that size future goals.
+- **Items & XP economy** ⭐ _new_ - Per-server shop priced in XP, 50-slot bag, optional timed availability. Effects: 💰 steal, 💥 bomb, 🩸 leech, 🎯 bounty, 🛡️ shield, 🪞 reflect, 💵 insurance, ⚡ boost, 🎁 gift, 🔍 spy, 🎭 disguise, 🧼 purifier, 🍀 luck.
+  - 🍀 **Luck** raises steal and bomb rolls, minigame odds, spy success, leech skim, friend boost and insurance refund, cuts gift tax and discounts prices. Timed buffs lock luck in on activation, so use luck first.
+- **Assets market** ⭐ _new_ - Lock XP into real crypto positions at live CoinGecko prices and sell any time. Thousands of coins, top 50, gainers and losers, live portfolio. No real money.
+- **Minigames** ⭐ _new_ - Wager XP. 🎲 **Gamble**: pick a multiplier up to 10×, win chance is 100 ÷ it. Only XP above your current level can be wagered, so a loss never costs a level.
+- **Tasks, streaks & check-in** ⭐ _new_ - No admin setup; goals, difficulty and rewards generate per member.
+  - 18 daily tasks (6 easy, 6 medium, 6 hard from a 96-goal catalog) and 18 weekly, on the member's local clock. No two members get the same list.
+  - Goals are sized from that member's own last 7 days of the exact metric, capped by what the period physically allows, and graded as real effort rather than by rank.
+  - Rewards are XP or a shop item at a 30% item chance. Tasks that cost XP always pay back more than they cost.
+  - 🔥 **Streaks** - Clear all 18 daily for +2% reward XP per day up to +100%, milestones at 7 / 30 / 100 / 365. Two ❄️ freezes cover missed days, one back every 10 claims.
+  - 📆 **Check-in** - 7-day cycle, one claim per local day, 1,000 → 50,000 XP, identical on every server. 50% chance of a shop item instead, rolled by rarity tier.
 - **Leveling & XP** - Messages and voice feed levels, role rewards and leaderboards. Reactions are tracked for tasks.
-- **Welcomer** - Custom welcome messages and embeds for new members.
+- **Welcomer** - Custom welcome messages and embeds.
 - **Giveaways** - Entries, winner selection and role-based eligibility.
-- **AFK** - Members set an AFK status; the bot warns anyone who mentions them.
-- **Feedback** - Collect suggestions through Discord flows.
+- **AFK** - Members set a status; the bot warns anyone who mentions them.
 - **Staff rating** - Structured staff evaluation tied to moderation.
 - **Booster messages** - Thank Nitro boosters with configurable channels and templates.
 - **Custom supporter roles** - Supporters personalize role name and color within your rules.
+- **Feedback** - Collect suggestions through Discord flows.
 
 ### Safety & operations
 
@@ -60,41 +41,31 @@ Open source under the MIT license.
 - **Channel notifications** - Alerts for important channel activity.
 - **Message forwarder** - Mirror or sync messages across channels.
 
-### Integrations & alerts
+### AI
 
-- **AI chat** - Mention the bot to talk to it, or reply to one of its messages to continue without mentioning again. Every member keeps a private conversation per server, with older turns summarized as they age out. Configured per bot in the panel: API URL, key, model, reasoning effort and system prompt. Works with any OpenAI-compatible endpoint (Gemini, OpenAI, GLM, Qwen, DeepSeek, local models). Replies over Discord's limit are split across messages.
-- **Voice AI** - Members ask the bot in chat to join their voice channel, then talk to it out loud via the Gemini Live API. One call at a time; it excuses itself and leaves when nobody has called it for a few minutes, or when the member who invited it leaves. Requires Redis.
-  - 🔑 **Its own key and prompt** - Voice has a separate Google AI key and system prompt from chat, so the personality it speaks with and the key it bills to are independent. It always talks to the Gemini Live API, so there is no endpoint to configure.
-  - 🗣️ **Say "hey stupid"** - An on-device wake-word model (openWakeWord ONNX, no extra API cost) listens for that exact phrase, so a busy channel never sets it off. Falls back to transcript matching if the model files are missing.
-  - 🔒 **One speaker at a time** - Whoever wakes it holds the conversation; everyone else's audio is dropped so crosstalk cannot derail the answer. Saying you are done releases it immediately for the next person.
-  - 🔇 **Mutes when idle** - It says one short line, then mutes itself, so the mute icon shows at a glance whether it is listening.
-  - 🎚️ **Noise filtering** - Per-speaker voice detection calibrates to each member's mic, so background noise, keyboards and open mics do not hold the conversation open.
-  - 🤖 **Ignores other bots** - Music and other bots in the same channel are never listened to.
-  - 👥 **Knows the room** - Reads members by display name and tracks who joins, leaves and is speaking, so it can address people directly.
-  - 🚶 **Follows the inviter** - Dragged to another channel, it returns to whoever invited it, and follows if they are moved. Only the member who invited it can send it away.
-  - 🔊 **Un-mutes and un-deafens itself** - If a moderator server-mutes or server-deafens it mid-call, it clears that so it can keep hearing and answering.
-- **Wiki knowledge** - Give the AI real game knowledge instead of letting it guess. Ask about an item, boss, map or mechanic and it looks the answer up on a wiki you choose, in both chat and voice. Managed per bot in the panel under **Wikis**; any MediaWiki site works, including Fandom.
-  - 🔎 **Test before you save** - Paste a wiki's `api.php` URL and hit Test. It confirms the endpoint is reachable and fills in the name for you.
-  - 📚 **Many wikis per bot** - Add one per game. A short description tells the AI which wiki covers what, so it picks the right one on servers that play several games.
-  - 💬 **Questions, not keywords** - A full question finds the right page, not three unrelated ones.
-  - 📊 **Real numbers** - Prices, weights, rarity and drop rates are read from wiki infoboxes, so stat questions get exact figures instead of a vague summary.
-  - 📄 **Whole page, nothing trimmed** - Reads the page as the wiki renders it, so skin lists, tables, galleries and changelogs come through in full. Nothing is cut to save tokens.
-  - 🌍 **Any wiki, any language** - No per-wiki or per-game rules in the code, so a new wiki works the moment you add it. Ask in Indonesian or Malay and it still finds the English page.
-  - ⚡ **Cached** - Results are held for 10 minutes, so repeat questions are instant and the wiki is not hammered.
-  - 🔁 **Relay for blocked wikis** - Some hosts (Miraheze behind Cloudflare) refuse traffic from server IPs. Drop [`scripts/relay.php`](scripts/relay.php) on hosting the wiki does accept, set a secret, and point that wiki at it. Per wiki, so everything else still connects directly.
-  - ✅ **No restart** - Chat picks up a new wiki on the next message, voice on the next call.
-- **Web search, fetch and images** - Three optional tools the AI decides to use on its own, in chat and voice alike. Each has its own API URL, model and key in the panel under **AI**, so they can point at different providers; any OpenAI-compatible gateway works.
-  - 🔍 **Web search** - For anything the wikis do not cover and anything that changes: news, release dates, whether something is real. Wikis stay first for game questions.
-  - 📄 **Web fetch** - Reads a page a member linked, or a search result whose snippet was too short to answer from. Only URLs it was actually given, never invented ones.
-  - 🖼️ **Image generation** - Draws a picture when asked and uploads it straight to the channel as a file, so nothing breaks when the provider's URL expires. In voice the picture lands in the voice channel's own chat.
-  - 🎛️ **Off until configured** - Each tool needs its URL, model and key before it is offered to the model at all, so an unconfigured tool is invisible rather than broken.
-- **Discord Quest notifier** - Surface Discord Quest activity, with optional per-server enrollment automation.
+- **Chat** - Mention the bot, or reply to one of its messages to continue without mentioning again. Private conversation per member per server, kept in a session that expires 30 minutes after they stop talking. Works with any OpenAI-compatible endpoint (Gemini, OpenAI, GLM, Qwen, DeepSeek, local models). Long replies are split across messages.
+- **Voice** - Ask it in chat to join your voice channel, then talk out loud via the Gemini Live API. One call at a time; it leaves when nobody has called it for a few minutes or when the member who invited it leaves. Requires Redis.
+  - Wakes on "hey stupid" via an on-device openWakeWord model, so a busy channel never sets it off and there is no extra API cost.
+  - One speaker holds the conversation at a time; crosstalk, background noise and other bots are ignored.
+  - Mutes itself when idle, stays unmuted while a lookup is still running, and clears a moderator's server mute or deafen.
+  - Follows the inviter between channels, and only they can send it away.
+  - Its own Google AI key, voice model and system prompt, none of them shared with chat.
+- **Tools** - The model decides when to use these, in chat and voice alike. Each takes its own URL, model and key, and stays invisible until all three are set.
+  - 🔍 **Web search** - The default lookup for any factual question: news, prices, versions, whether something is real.
+  - 📄 **Web fetch** - Reads a page a member linked, or a search result whose snippet was too thin to answer from. Never invented URLs.
+  - 🖼️ **Images** - Drawn on request and uploaded to Discord as files rather than linked, so nothing breaks when the provider's URL expires.
+  - 📚 **Wikis** - Any MediaWiki site including Fandom, many per bot, managed in the panel. Reads the full rendered page with infoboxes, tables and changelogs, in any language, cached 10 minutes. Applies to chat and voice with no restart.
+  - 🔗 **Chains instead of giving up** - A thin, empty or off-target result moves on to the next tool rather than reporting failure. Live values like timers and active events go straight to the web.
+
+### Integrations
+
+- **Discord Quest notifier** - Quest activity, with optional per-server enrollment automation.
 - **Roblox catalog watch** - Post embeds when catalog items change, for trading and UGC communities.
 - **Content creator / TikTok** - Creator applications and TikTok live digests tied to server channels.
 
 ### Public web pages
 
-- **Public statistics** - Master switch for all public pages: server statistics, leaderboard, members and the member account (Overview, History, Guide). Items, Minigames, Assets and Daily tasks are sub-toggles here. Off means everything public goes dark.
+- **Public statistics** - Master switch for server statistics, leaderboard, members and the member account. Items, Minigames, Assets and Daily tasks are sub-toggles. Off means everything public goes dark.
 
 ### Advanced
 
@@ -108,52 +79,28 @@ Open source under the MIT license.
 
 Versions match `package.json` at release (caret ranges; run `npm ls` for the exact tree).
 
-| Area                       | Technologies                                                                                                                                                                                                                                                                                                                                                                |
-| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Language                   | [TypeScript](https://www.typescriptlang.org/) 6.0                                                                                                                                                                                                                                                                                                                           |
-| App framework              | [SvelteKit](https://kit.svelte.dev/) 2.57, [Svelte](https://svelte.dev/) 5.55                                                                                                                                                                                                                                                                                               |
-| Build & dev                | [Vite](https://vitejs.dev/) 8.0, [`@sveltejs/vite-plugin-svelte`](https://github.com/sveltejs/vite-plugin-svelte) 7.0, [svelte-check](https://www.npmjs.com/package/svelte-check) 4.4                                                                                                                                                                                       |
-| SSR / hosting              | [`@sveltejs/adapter-node`](https://svelte.dev/docs/kit/adapters#@sveltejs/adapter-node) 5.5 (Node server)                                                                                                                                                                                                                                                                   |
-| Styling                    | [Tailwind CSS](https://tailwindcss.com/) 4.2 ([`@tailwindcss/vite`](https://tailwindcss.com/docs/installation/framework-guides/sveltekit) 4.2)                                                                                                                                                                                                                              |
-| Formatting (dev)           | [Prettier](https://prettier.io/) 3.8 + Svelte / Tailwind plugins                                                                                                                                                                                                                                                                                                            |
-| Official bot               | [discord.js](https://discord.js.org/) 14.26, [discord-api-types](https://www.npmjs.com/package/discord-api-types) 0.38                                                                                                                                                                                                                                                      |
-| User-token path (optional) | [discord.js-selfbot-v13](https://www.npmjs.com/package/discord.js-selfbot-v13) 3.7                                                                                                                                                                                                                                                                                          |
-| HTTP client                | [axios](https://axios-http.com/) 1.15                                                                                                                                                                                                                                                                                                                                       |
-| AI chat                    | [openai](https://www.npmjs.com/package/openai) 7.1 SDK, pointed at any OpenAI-compatible endpoint (URL, key and model set per bot in the panel)                                                                                                                                                                                                                             |
-| Voice AI                   | [@google/genai](https://www.npmjs.com/package/@google/genai) 2.15 (Gemini Live API), [@discordjs/voice](https://www.npmjs.com/package/@discordjs/voice) 0.19, [@discordjs/opus](https://www.npmjs.com/package/@discordjs/opus) 0.10, [sodium-native](https://www.npmjs.com/package/sodium-native) 5.1, [prism-media](https://www.npmjs.com/package/prism-media) 1.3, ffmpeg |
-| Wiki knowledge             | [MediaWiki Action API](https://www.mediawiki.org/wiki/API:Main_page) over native `fetch`, [cheerio](https://cheerio.js.org/) 1.2 to read the rendered page; wiki list stored per bot in MySQL                                                                                                                                                                               |
-| Web search, fetch, images  | Native `fetch` against any OpenAI-compatible gateway (`/search`, `/web/fetch`, `/images/generations` appended to the base URL you set); URL, model and key set per tool per bot in the panel                                                                                                                                                                                |
-| Roblox catalog API         | [rozod](https://www.npmjs.com/package/rozod) 6.6 (typed catalog fetch alongside axios thumbnails)                                                                                                                                                                                                                                                                           |
-| Database                   | [MySQL](https://www.mysql.com/) via [mysql2](https://github.com/sidorares/node-mysql2) 3.22, [Drizzle ORM](https://orm.drizzle.team/) 0.45 + [Drizzle Kit](https://orm.drizzle.team/kit-docs/overview) 0.31 (migrations)                                                                                                                                                    |
-| Password hashing           | [bcryptjs](https://www.npmjs.com/package/bcryptjs) 3.0                                                                                                                                                                                                                                                                                                                      |
-| Dates & time               | [Luxon](https://moment.github.io/luxon/) 3.7                                                                                                                                                                                                                                                                                                                                |
-| Cache / sessions           | [Redis](https://redis.io/) client ([`redis`](https://www.npmjs.com/package/redis) 5.12 for Node), optional by configuration                                                                                                                                                                                                                                                 |
-| Email                      | [Nodemailer](https://nodemailer.com/) 8.0, optional                                                                                                                                                                                                                                                                                                                         |
-| Proxies                    | [proxy-agent](https://www.npmjs.com/package/proxy-agent) 8.0 (where outbound HTTP uses a proxy)                                                                                                                                                                                                                                                                             |
-| Observability              | [OpenTelemetry](https://opentelemetry.io/) `@opentelemetry/api` 1.9, logs SDK & auto-instrumentations 0.214, OTLP HTTP log exporter (optional)                                                                                                                                                                                                                              |
-| Integrations               | [TikTok Live Connector](https://www.npmjs.com/package/tiktok-live-connector) 2.1 (creator / live flows)                                                                                                                                                                                                                                                                     |
-| Config                     | [dotenv](https://www.npmjs.com/package/dotenv) 17.4                                                                                                                                                                                                                                                                                                                         |
+| Area                 | Technologies                                                                                                                                                                                |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Language & framework | [TypeScript](https://www.typescriptlang.org/) 6.0, [SvelteKit](https://kit.svelte.dev/) 2.57, [Svelte](https://svelte.dev/) 5.55, [Vite](https://vitejs.dev/) 8.0, adapter-node 5.5         |
+| Styling              | [Tailwind CSS](https://tailwindcss.com/) 4.2, Prettier 3.8 with Svelte and Tailwind plugins                                                                                                 |
+| Discord              | [discord.js](https://discord.js.org/) 14.26, discord-api-types 0.38; discord.js-selfbot-v13 3.7 on the optional user-token path                                                             |
+| AI chat              | [openai](https://www.npmjs.com/package/openai) 7.1 SDK against any OpenAI-compatible endpoint, set per bot in the panel                                                                     |
+| Voice AI             | [@google/genai](https://www.npmjs.com/package/@google/genai) 2.15 (Gemini Live API), @discordjs/voice 0.19, @discordjs/opus 0.10, sodium-native 5.1, prism-media 1.3, ffmpeg                |
+| AI tools             | Native `fetch` to `/search`, `/web/fetch` and `/images/generations` on any OpenAI-compatible gateway; [MediaWiki Action API](https://www.mediawiki.org/wiki/API:Main_page) with cheerio 1.2 |
+| Data                 | [MySQL](https://www.mysql.com/) via mysql2 3.22, [Drizzle ORM](https://orm.drizzle.team/) 0.45 and Drizzle Kit 0.31                                                                         |
+| Cache & sessions     | [Redis](https://redis.io/) 5.12 for sessions, voice coordination and AI chat memory; optional, with an in-process fallback                                                                  |
+| Everything else      | axios 1.15, bcryptjs 3.0, Luxon 3.7, Nodemailer 8.0, proxy-agent 8.0, rozod 6.6, tiktok-live-connector 2.1, dotenv 17.4, OpenTelemetry 1.9                                                  |
 
 ---
 
 ## Configuration
 
-Copy **`.env.example`** to **`.env`** and set database, session, captcha, mail, Redis and bot token values.
-
-The bot requests the Guilds, Message Content, Server Members, Moderation, Voice States and Message Reactions intents. **Server Members** and **Message Content** are privileged — enable both in the Discord Developer Portal or the bot will not start.
-
-AI chat is not configured through `.env`. Open the bot in the panel and set the API URL, key, model and reasoning effort there — the key is stored per bot and never sent back to the browser. Enabling AI chat requires the URL, key and model to all be set. Restart the bot after changing these values.
-
-Voice AI lives on the same panel page. It needs AI chat enabled first, plus its own key, voice model and system prompt — none of these fall back to the chat values. It always uses the Gemini Live API, so the voice key must be a Google AI key and there is no endpoint to set. Redis is required, since one voice session is coordinated across processes.
-
-Web search, web fetch and image generation are configured on the same page, one URL, model and key each. A tool is only offered to the model once all three of its fields are set, so a half-filled section is simply inactive rather than failing at runtime. The AI chooses when to use them — nothing is forced — and wikis remain the first stop for game questions. Generated images are uploaded to Discord as files rather than linked, and in voice they are posted to the voice channel's own chat.
-
-Wikis are managed on the bot's **Wikis** tab, not in `.env`. Add a wiki's `api.php` endpoint, optionally with a description of what game it covers. Wikis apply to both chat and voice, can be disabled individually without losing them, and take effect immediately — chat on the next message, voice on the next call.
-
-If a wiki refuses your server (Miraheze sits behind a Cloudflare check that rejects most datacenter IPs), use a relay. Copy [`scripts/relay.php`](scripts/relay.php) to hosting the wiki does accept, replace `RELAY_KEY` with a long random string, then fill in **Relay URL** and **Relay key** for that wiki. Pressing **Test** with a relay set checks the whole path through the relay, so a green result means it genuinely works. The relay only forwards read-only MediaWiki `api.php` and `rest.php` requests over HTTPS, refuses private and reserved addresses, and requires the key — one relay serves any number of wikis, and wikis without those fields keep connecting directly.
+- Copy **`.env.example`** to **`.env`** and set the database, session, captcha, mail, Redis and bot token values.
+- Enable the **Server Members** and **Message Content** privileged intents in the Discord Developer Portal, or the bot will not start.
+- **AI, voice and the tools** are configured in the panel, not `.env`. Each needs its URL, model and key before it switches on, so a half-filled section is inactive rather than broken. Keys are stored per bot and never sent back to the browser. Restart the bot after changing them.
+- **Voice** needs AI chat enabled first, plus its own Google AI key and voice model, plus Redis.
+- **Wikis** live on the bot's **Wikis** tab. Add an `api.php` endpoint, press Test, done — no restart. If a wiki refuses your server (Miraheze sits behind a Cloudflare check that rejects most datacenter IPs), copy [`scripts/relay.php`](scripts/relay.php) to hosting it does accept, replace `RELAY_KEY` with a long random string, and fill in **Relay URL** and **Relay key** for that wiki.
 
 ---
-
-## License
 
 MIT · Author: Akbar Yudhanto · Version: 26.5.5

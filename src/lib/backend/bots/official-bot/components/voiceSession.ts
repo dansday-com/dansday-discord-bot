@@ -19,6 +19,7 @@ import { writeVoiceState, clearVoiceState, VOICE_STATE_TTL_SEC } from './voiceCo
 import { getEnabledWikis, buildWikiDeclaration, runWikiTool } from './wiki.js';
 import { buildSearchDeclaration, buildFetchDeclaration, runSearchTool, runFetchTool } from './webTools.js';
 import { buildImageDeclaration, runImageTool } from './imageTools.js';
+import { appendAiMessage } from './aiSession.js';
 import { wakeModelAvailable, warmWakeModel, onWakeDetected, pushWakeAudio, dropWakeUser } from './wakeWord.js';
 
 const INPUT_RATE = 16000;
@@ -66,6 +67,9 @@ const WIKI_STALL_PROMPT =
 
 const WIKI_FAILED_PROMPT =
 	'[System] That lookup came back with nothing usable. Do not tell them you could not find it yet, and do not guess. Try again a different way right now — search_web with different English keywords, or fetch_web_page on a likely page. Say at most one very short line like "still checking" in the language they are speaking while you do it. Only once a web search has also come up empty may you tell them you could not find it. Do not read this note aloud.';
+
+const IMAGE_FAILED_PROMPT =
+	'[System] The picture could not be made. Say one short line out loud telling them what actually went wrong, based on the "reason" and "tell_the_user" you were given. If the description was flagged by the filter, ask them to describe it differently instead of offering to retry the same thing, and do not call it a technical error. Do not read this note aloud.';
 
 const LOOKUP_TIMEOUT_HINT =
 	'That lookup took too long and was dropped. Try search_web with shorter English keywords instead of waiting on it again, and only say you could not find it once that has also failed.';
@@ -436,7 +440,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		const text = transcriptBuffer[role].trim();
 		transcriptBuffer[role] = '';
 		if (text.length < 2) return;
-		db.appendBotAiMessage(botId, guildId, inviterId, role, text).catch(() => {});
+		appendAiMessage(botId, guildId, inviterId, role, text).catch(() => {});
 	}
 
 	function collectTranscript(role, fragment) {
@@ -814,9 +818,9 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 							return;
 						}
 						settledFailureSpoken = true;
-						logger.log('❌ Voice AI nudging the wiki failure out loud');
+						logger.log(`❌ Voice AI nudging the ${call.name} failure out loud`);
 						keepAwakeForTool();
-						sendSystemNote(WIKI_FAILED_PROMPT);
+						sendSystemNote(call.name === 'generate_image' ? IMAGE_FAILED_PROMPT : WIKI_FAILED_PROMPT);
 					}, SPEAK_GUARD_MS);
 				};
 

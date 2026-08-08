@@ -506,49 +506,6 @@ export async function upsertBotAi(botId: number, data: BotAiInput) {
 	return getBotAiByBotId(botId);
 }
 
-export async function getBotAiSession(botId: number, guildDiscordId: string, memberDiscordId: string, limit = 20) {
-	await initializeDatabase();
-	const rows = await db
-		.select()
-		.from(schema.botAiMessages)
-		.where(
-			and(
-				eq(schema.botAiMessages.bot_id, Number(botId)),
-				eq(schema.botAiMessages.guild_discord_id, String(guildDiscordId)),
-				eq(schema.botAiMessages.member_discord_id, String(memberDiscordId))
-			)
-		)
-		.orderBy(desc(schema.botAiMessages.id))
-		.limit(limit);
-	return rows.reverse();
-}
-
-export async function appendBotAiMessage(botId: number, guildDiscordId: string, memberDiscordId: string, role: 'user' | 'assistant', content: string) {
-	await initializeDatabase();
-	await db.insert(schema.botAiMessages).values({
-		bot_id: Number(botId),
-		guild_discord_id: String(guildDiscordId),
-		member_discord_id: String(memberDiscordId),
-		role,
-		content,
-		created_at: toMySQLDateTime() as any
-	});
-}
-
-export async function clearBotAiSession(botId: number, guildDiscordId: string, memberDiscordId: string) {
-	await initializeDatabase();
-	await db
-		.delete(schema.botAiMessages)
-		.where(
-			and(
-				eq(schema.botAiMessages.bot_id, Number(botId)),
-				eq(schema.botAiMessages.guild_discord_id, String(guildDiscordId)),
-				eq(schema.botAiMessages.member_discord_id, String(memberDiscordId))
-			)
-		);
-	return true;
-}
-
 export interface BotWikiInput {
 	enabled: boolean;
 	name: string;
@@ -6132,9 +6089,6 @@ export default {
 	botAiSearchEndpoint,
 	botAiFetchEndpoint,
 	botAiImageEndpoint,
-	getBotAiSession,
-	appendBotAiMessage,
-	clearBotAiSession,
 	getBotWikis,
 	getBotWiki,
 	createBotWiki,

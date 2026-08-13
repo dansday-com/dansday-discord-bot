@@ -903,20 +903,50 @@ export const SETUP_MENU_CATEGORY_NAME = '{botName} Menu';
 export const SETUP_INFO_CATEGORY_NAME = '{botName} Information';
 
 export const SETUP_CHANNEL_DEFS = [
-	{ name: '「💻」menu', settingsKey: 'menu' },
-	{ name: '「⚙️」bot-updates', settingsKey: 'bot_updates' },
-	{ name: '「🚪」welcome', settingsKey: 'welcomer' },
-	{ name: '「🚀」booster', settingsKey: 'booster' },
-	{ name: '「🔨」moderation', settingsKey: 'moderation' },
-	{ name: '「🆙」level', settingsKey: 'leveling' },
-	{ name: '「🎁」giveaway', settingsKey: 'giveaway' },
-	{ name: '「⭐」staff-rating', settingsKey: 'staff_rating' },
-	{ name: '「📜」discord-quest', settingsKey: 'discord_quest_notifier' },
-	{ name: '「📽️」content-creator', settingsKey: 'content_creator' },
-	{ name: '「👗」roblox-catalog', settingsKey: 'roblox_catalog_notifier' },
-	{ name: '「🛍️」items', settingsKey: 'items' },
-	{ name: '「🎲」minigames', settingsKey: 'minigames' }
+	{ name: '「💻」menu', settingsKey: 'menu', moduleId: 'core' },
+	{ name: '「⚙️」bot-updates', settingsKey: 'bot_updates', moduleId: 'core' },
+	{ name: '「🚪」welcome', settingsKey: 'welcomer', moduleId: 'welcomer' },
+	{ name: '「🚀」booster', settingsKey: 'booster', moduleId: 'booster' },
+	{ name: '「🔨」moderation', settingsKey: 'moderation', moduleId: 'moderation' },
+	{ name: '「🆙」level', settingsKey: 'leveling', moduleId: 'leveling' },
+	{ name: '「🎁」giveaway', settingsKey: 'giveaway', moduleId: 'giveaway' },
+	{ name: '「⭐」staff-rating', settingsKey: 'staff_rating', moduleId: 'staff_rating' },
+	{ name: '「📜」discord-quest', settingsKey: 'discord_quest_notifier', moduleId: 'discord_quest_notifier' },
+	{ name: '「📽️」content-creator', settingsKey: 'content_creator', moduleId: 'content_creator' },
+	{ name: '「👗」roblox-catalog', settingsKey: 'roblox_catalog_notifier', moduleId: 'roblox_catalog_notifier' },
+	{ name: '「🛍️」items', settingsKey: 'items', moduleId: 'public_statistics' },
+	{ name: '「🎲」minigames', settingsKey: 'minigames', moduleId: 'public_statistics' }
 ] as const;
+
+export const SETUP_MODULES = [
+	{ id: 'core', label: 'Core', emoji: '💻', required: true, recommended: true },
+	{ id: 'welcomer', label: 'Welcomer', emoji: '🚪', required: false, recommended: true },
+	{ id: 'booster', label: 'Booster', emoji: '🚀', required: false, recommended: true },
+	{ id: 'moderation', label: 'Moderation', emoji: '🔨', required: false, recommended: true },
+	{ id: 'leveling', label: 'Leveling', emoji: '🆙', required: false, recommended: true },
+	{ id: 'giveaway', label: 'Giveaway', emoji: '🎁', required: false, recommended: true },
+	{ id: 'public_statistics', label: 'Public statistics', emoji: '🛍️', required: false, recommended: true },
+	{ id: 'roblox_catalog_notifier', label: 'Roblox Catalog', emoji: '👗', required: false, recommended: true },
+	{ id: 'staff_rating', label: 'Staff Rating', emoji: '⭐', required: false, recommended: false },
+	{ id: 'discord_quest_notifier', label: 'Discord Quest', emoji: '📜', required: false, recommended: false },
+	{ id: 'content_creator', label: 'Content Creator', emoji: '📽️', required: false, recommended: false }
+] as const;
+
+export const SETUP_RECORD_VERSION = 2;
+export const SETUP_OWNER_INVITE_TTL_MINUTES = 1440;
+export const DISCORD_GUILD_CHANNEL_LIMIT = 500;
+export const DISCORD_GUILD_CATEGORY_LIMIT = 50;
+
+export type SetupModuleId = (typeof SETUP_MODULES)[number]['id'];
+
+export function setupChannelDefsForModules(moduleIds: readonly string[]) {
+	const wanted = new Set<string>([...moduleIds, 'core']);
+	return SETUP_CHANNEL_DEFS.filter((def) => wanted.has(def.moduleId));
+}
+
+export function recommendedSetupModuleIds(): string[] {
+	return SETUP_MODULES.filter((m) => m.recommended).map((m) => m.id);
+}
 
 export { AUTO_ENABLED_COMPONENTS } from '../frontend/panelServer.js';
 

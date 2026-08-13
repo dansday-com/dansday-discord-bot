@@ -52,6 +52,7 @@ import {
 	handleContentCreatorDecisionModal
 } from './interface/contentcreator.js';
 import { isQuestEnrollButtonId, isQuestEnrollModalId, handleQuestEnrollButton, handleQuestEnrollModalSubmit } from './questEnroll.js';
+import { handleSetupButton, handleSetupSelect, isSetupInteractionId } from './setupFlow.js';
 import { translate } from '../i18n.js';
 import { createHash } from 'crypto';
 
@@ -430,30 +431,6 @@ export async function createInterfaceButtons(guildId: string | null = null, user
 	return [new ActionRowBuilder().addComponents(menuButton)];
 }
 
-export async function sendInterfaceToChannel(targetChannel, interaction, client) {
-	try {
-		const interfaceEmbed = await createInterfaceEmbed(client, interaction.guild.id, interaction.user.id);
-		const buttonRow = await createInterfaceButtons(interaction.guild.id, interaction.user.id);
-
-		await targetChannel.send({
-			embeds: [interfaceEmbed],
-			components: Array.isArray(buttonRow) ? buttonRow : [buttonRow]
-		});
-
-		await logger.log(`🎮 Bot interface sent to ${targetChannel.name} by ${interaction.user.tag} (${interaction.user.id})`);
-	} catch (error) {
-		const errorMsg = await translate('interface.panel.error', interaction.guild.id, interaction.user.id, {
-			error: error.message
-		});
-
-		await interaction.reply({
-			content: errorMsg,
-			flags: 64
-		});
-		await logger.log(`❌ Interface send failed: ${error.message}`);
-	}
-}
-
 async function createMenuRow(guildId = null, userId = null) {
 	const menuLabel = await translate('menu.button', guildId, userId);
 	const menuButton = new ButtonBuilder().setCustomId('bot_menu').setLabel(menuLabel).setStyle(ButtonStyle.Secondary);
@@ -465,6 +442,11 @@ function init(client) {
 	client.on('interactionCreate', async (interaction) => {
 		if (interaction.isButton()) {
 			if (!interaction.guild) {
+				return;
+			}
+
+			if (isSetupInteractionId(interaction.customId)) {
+				await handleSetupButton(interaction, client);
 				return;
 			}
 
@@ -555,6 +537,11 @@ function init(client) {
 			}
 		} else if (interaction.isStringSelectMenu()) {
 			if (!interaction.guild) {
+				return;
+			}
+
+			if (isSetupInteractionId(interaction.customId)) {
+				await handleSetupSelect(interaction);
 				return;
 			}
 

@@ -4,6 +4,20 @@ import { logger, separateChannelsAndCategories, mapCategoriesForSync, mapChannel
 let client = null;
 let botId = null;
 
+const suspendedGuilds = new Set();
+
+export function suspendGuildSync(guildId) {
+	if (guildId) suspendedGuilds.add(String(guildId));
+}
+
+export function resumeGuildSync(guildId) {
+	if (guildId) suspendedGuilds.delete(String(guildId));
+}
+
+export function isGuildSyncSuspended(guildId) {
+	return suspendedGuilds.has(String(guildId));
+}
+
 async function findBotByToken(token) {
 	try {
 		if (process.env.BOT_ID) {
@@ -26,6 +40,10 @@ async function syncGuildData(guild) {
 	try {
 		if (!botId) {
 			logger.log(`⚠️  Bot ID not set, skipping sync for guild: ${guild.name}`);
+			return;
+		}
+
+		if (suspendedGuilds.has(String(guild.id))) {
 			return;
 		}
 
@@ -285,4 +303,4 @@ export function getBotId() {
 	return botId;
 }
 
-export default { init, syncGuildData, syncAllGuilds, getBotId };
+export default { init, syncGuildData, syncAllGuilds, getBotId, suspendGuildSync, resumeGuildSync, isGuildSyncSuspended };

@@ -4624,10 +4624,11 @@ async function getServerAccountsByServer(serverId: number) {
 
 const SERVER_ACCOUNT_INVITE_TTL_MINUTES = 10;
 
-async function createServerAccountInvite(data: { token: string; server_id: number; account_type: 'owner' | 'staff' }) {
+async function createServerAccountInvite(data: { token: string; server_id: number; account_type: 'owner' | 'staff'; ttl_minutes?: number }) {
 	const now = getNowUtc();
 	const createdAt = now.toJSDate();
-	const expiresAt = now.plus({ minutes: SERVER_ACCOUNT_INVITE_TTL_MINUTES }).toJSDate();
+	const ttlMinutes = Number.isFinite(data.ttl_minutes) && (data.ttl_minutes as number) > 0 ? (data.ttl_minutes as number) : SERVER_ACCOUNT_INVITE_TTL_MINUTES;
+	const expiresAt = now.plus({ minutes: ttlMinutes }).toJSDate();
 	await db.insert(schema.serverAccountInvites).values({
 		token: data.token,
 		server_id: data.server_id,

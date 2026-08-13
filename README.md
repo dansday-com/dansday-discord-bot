@@ -89,7 +89,7 @@ Versions match `package.json` at release (caret ranges; run `npm ls` for the exa
 | AI tools             | Native `fetch` to `/search`, `/web/fetch` and `/images/generations` on any OpenAI-compatible gateway; [MediaWiki Action API](https://www.mediawiki.org/wiki/API:Main_page) with cheerio 1.2 |
 | Data                 | [MySQL](https://www.mysql.com/) via mysql2 3.22, [Drizzle ORM](https://orm.drizzle.team/) 0.45 and Drizzle Kit 0.31                                                                         |
 | Cache & sessions     | [Redis](https://redis.io/) 5.12 for sessions, voice coordination and AI chat memory; optional, with an in-process fallback                                                                  |
-| Everything else      | axios 1.15, bcryptjs 3.0, Luxon 3.7, Nodemailer 8.0, proxy-agent 8.0, rozod 6.6, tiktok-live-connector 2.1, dotenv 17.4, OpenTelemetry 1.9                                                  |
+| Everything else      | axios 1.15, bcryptjs 3.0, Luxon 3.7, Nodemailer 8.0, proxy-agent 8.0, rozod 6.6, tiktok-live-connector 2.1, dotenv 17.4                                                                     |
 
 ---
 

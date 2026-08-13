@@ -35,4 +35,4 @@ ENV HOST=0.0.0.0
 ENV PORT=80
 ENV NODE_ENV=production
 
-CMD ["node", "--import", "./otel/console-instrumentation.js", "build/index.js"]
+CMD ["node", "build/index.js"]

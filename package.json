@@ -6,7 +6,6 @@
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
-		"build:otel": "tsc -p tsconfig.otel.json",
 		"build:format": "prettier --write . && prettier --check .",
 		"build:sync": "svelte-kit sync"
 	},
@@ -14,13 +13,6 @@
 		"@discordjs/opus": "^0.10.0",
 		"@discordjs/voice": "^0.19.2",
 		"@google/genai": "^2.15.0",
-		"@opentelemetry/api": "^1.9.1",
-		"@opentelemetry/api-logs": "^0.214.0",
-		"@opentelemetry/auto-instrumentations-node": "^0.72.0",
-		"@opentelemetry/exporter-logs-otlp-http": "^0.214.0",
-		"@opentelemetry/resources": "^2.6.1",
-		"@opentelemetry/sdk-logs": "^0.214.0",
-		"@opentelemetry/semantic-conventions": "^1.40.0",
 		"axios": "^1.15.0",
 		"bcryptjs": "^3.0.3",
 		"cheerio": "^1.2.0",

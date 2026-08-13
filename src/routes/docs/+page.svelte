@@ -285,12 +285,7 @@
 		{ label: 'MAIL_HOST / MAIL_USERNAME / MAIL_PASSWORD', req: 'required', desc: 'SMTP for account emails and OTP. MAIL_PORT is optional (defaults to 587).' },
 		{ label: 'CAPTCHA_SECRET', req: 'required', desc: 'A long random secret used by the demo login captcha.' },
 		{ label: 'REDIS_URL', req: 'optional', desc: 'Redis for sessions and caching, e.g. redis://default:pass@localhost:6379/0.' },
-		{ label: 'BOT_ID', req: 'per bot process', desc: 'The database id of the bot this process runs. The token lives in the database, not in env.' },
-		{
-			label: 'OTEL_EXPORTER_OTLP_ENDPOINT / OTEL_SERVICE_NAME',
-			req: 'optional',
-			desc: 'OpenTelemetry log export. Telemetry only turns on when the endpoint is set.'
-		}
+		{ label: 'BOT_ID', req: 'per bot process', desc: 'The database id of the bot this process runs. The token lives in the database, not in env.' }
 	];
 
 	const selfhostSteps = [

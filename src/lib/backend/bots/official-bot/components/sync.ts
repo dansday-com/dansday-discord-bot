@@ -183,6 +183,8 @@ async function init(discordClient, botToken) {
 	client.on('guildCreate', async (guild) => {
 		logger.log(`🆕 Bot joined new guild: ${guild.name}`);
 		await syncGuildData(guild);
+		const { sendJoinWelcome } = await import('./setupFlow.js');
+		await sendJoinWelcome(guild);
 	});
 
 	client.on('channelCreate', async (channel) => {

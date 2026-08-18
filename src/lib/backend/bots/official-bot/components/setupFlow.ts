@@ -404,9 +404,8 @@ function categoryNameFor(botName: string) {
 	return SETUP_MENU_CATEGORY_NAME.replace('{botName}', botName);
 }
 
-async function runPreflight(interaction: any, guild: any, neededChannelCount: number): Promise<PreflightResult> {
+async function runPreflight(uid: string, guild: any, neededChannelCount: number): Promise<PreflightResult> {
 	const gid = guild.id;
-	const uid = interaction.user?.id ?? '';
 	const checks: PreflightCheck[] = [];
 
 	const botConfig = getBotConfig();
@@ -479,9 +478,8 @@ function renderChecks(checks: PreflightCheck[]) {
 	return checks.map((c) => (c.ok ? `✅ ${c.label}` : `❌ ${c.label}${c.detail ? ` — ${c.detail}` : ''}`)).join('\n');
 }
 
-async function buildPreflightEmbed(interaction: any, guild: any, botName: string, defs: readonly ChannelDef[], preflight: PreflightResult) {
+async function buildPreflightEmbed(uid: string, guild: any, botName: string, defs: readonly ChannelDef[], preflight: PreflightResult) {
 	const gid = guild.id;
-	const uid = interaction.user.id;
 
 	const embed = new EmbedBuilder()
 		.setColor(preflight.ok ? COLOR_INFO : COLOR_ERR)
@@ -527,8 +525,62 @@ async function buildPreflightComponents(gid: string, uid: string) {
 				.setCustomId('setup_cancel')
 				.setStyle(ButtonStyle.Secondary)
 				.setLabel((await translate('interface.setup.btnCancel', gid, uid)).slice(0, 80))
+		),
+		...(await buildDocsComponents(gid, uid))
+	];
+}
+
+async function buildDocsComponents(gid: string, uid: string) {
+	const origin = publicSiteOrigin();
+	if (!origin) return [];
+	return [
+		new ActionRowBuilder<ButtonBuilder>().addComponents(
+			new ButtonBuilder()
+				.setStyle(ButtonStyle.Link)
+				.setURL(`${origin}/docs`)
+				.setLabel((await translate('interface.setup.btnDocs', gid, uid)).slice(0, 80))
 		)
 	];
+}
+
+async function buildWelcomePayload(guild: any, botName: string) {
+	const gid = guild.id;
+	const embed = new EmbedBuilder()
+		.setColor(COLOR_INFO)
+		.setTitle(await translate('interface.setup.welcomeTitle', gid, '', { botName }))
+		.setDescription(await translate('interface.setup.welcomeBody', gid, ''));
+
+	return { embeds: [embed], components: await buildDocsComponents(gid, '') };
+}
+
+function findWelcomeChannel(guild: any) {
+	const me = guild.members?.me;
+	if (!me) return null;
+	const canPost = (ch: any) => {
+		if (!ch || ch.type !== ChannelType.GuildText) return false;
+		const perms = ch.permissionsFor(me);
+		return !!perms?.has(PermissionFlagsBits.ViewChannel) && !!perms?.has(PermissionFlagsBits.SendMessages);
+	};
+
+	if (canPost(guild.systemChannel)) return guild.systemChannel;
+
+	const channels = [...(guild.channels?.cache?.values() ?? [])].filter(canPost);
+	channels.sort((a: any, b: any) => (a.rawPosition ?? 0) - (b.rawPosition ?? 0));
+	return channels[0] ?? null;
+}
+
+export async function sendJoinWelcome(guild: any) {
+	try {
+		const channel = findWelcomeChannel(guild);
+		if (!channel) {
+			await logger.log(`ℹ️  Joined ${guild.name} (${guild.id}) but found no channel I can post the welcome in`);
+			return;
+		}
+		const botName = await resolveBotName(guild.id);
+		await channel.send(await buildWelcomePayload(guild, botName));
+	} catch (error: any) {
+		await logger.log(`❌ Join welcome failed in ${guild?.name} (${guild?.id}): ${error.message}`);
+	}
 }
 
 async function buildModuleChooserPayload(interaction: any, selected: string[]) {
@@ -807,10 +859,10 @@ async function performSetup(interaction: any, client: any, moduleIds: string[]) 
 	await showBuilding(interaction, gid, uid, 0, defs.length);
 	const botName = await resolveBotName(gid);
 
-	const preflight = await runPreflight(interaction, guild, defs.length);
+	const preflight = await runPreflight(uid, guild, defs.length);
 	if (!preflight.ok || !preflight.server || !preflight.origin) {
 		inFlightGuilds.delete(gid);
-		const embed = await buildPreflightEmbed(interaction, guild, botName, defs, { ...preflight, ok: false });
+		const embed = await buildPreflightEmbed(uid, guild, botName, defs, { ...preflight, ok: false });
 		await interaction.editReply({ embeds: [embed], components: [] });
 		return;
 	}
@@ -883,10 +935,10 @@ async function performRepair(interaction: any, client: any, inspection: SetupIns
 	await showBuilding(interaction, gid, uid, 0, inspection.missing.length);
 	const botName = await resolveBotName(gid);
 
-	const preflight = await runPreflight(interaction, guild, inspection.missing.length);
+	const preflight = await runPreflight(uid, guild, inspection.missing.length);
 	if (!preflight.ok || !preflight.server || !preflight.origin) {
 		inFlightGuilds.delete(gid);
-		const embed = await buildPreflightEmbed(interaction, guild, botName, defs, { ...preflight, ok: false });
+		const embed = await buildPreflightEmbed(uid, guild, botName, defs, { ...preflight, ok: false });
 		await interaction.editReply({ embeds: [embed], components: [] });
 		return;
 	}
@@ -1025,7 +1077,7 @@ async function buildStatusPayload(interaction: any, inspection: SetupInspection,
 			.setLabel((await translate('interface.setup.btnRecreate', gid, uid)).slice(0, 80))
 	);
 
-	return { embeds: [embed], components: [row] };
+	return { embeds: [embed], components: [row, ...(await buildDocsComponents(gid, uid))] };
 }
 
 async function resolveServerForSetup(guild: any) {
@@ -1064,8 +1116,8 @@ export async function runSetupCommand(interaction: any, client: any) {
 
 		const modules = recommendedSetupModuleIds();
 		const defs = setupChannelDefsForModules(modules);
-		const preflight = await runPreflight(interaction, guild, defs.length);
-		const embed = await buildPreflightEmbed(interaction, guild, botName, defs, preflight);
+		const preflight = await runPreflight(uid, guild, defs.length);
+		const embed = await buildPreflightEmbed(uid, guild, botName, defs, preflight);
 
 		await interaction.editReply({
 			embeds: [embed],

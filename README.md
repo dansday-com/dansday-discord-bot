@@ -103,4 +103,4 @@ Versions match `package.json` at release (caret ranges; run `npm ls` for the exa
 
 ---
 
-MIT · Author: Akbar Yudhanto · Version: 26.5.5
+MIT · Author: Akbar Yudhanto · Version: 26.5.6

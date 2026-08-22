@@ -1,5 +1,8 @@
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, EmbedBuilder, PermissionFlagsBits } from 'discord.js';
 import db from '../../../../database.js';
 import { logger, separateChannelsAndCategories, mapCategoriesForSync, mapChannelsForSync } from '../../../../utils/index.js';
+import { COMMUNITY_DISCORD_URL, DEFAULT_BOT_NICKNAME, getEmbedConfig, publicSiteOrigin } from '../../../config.js';
+import { translate } from '../i18n.js';
 
 let client = null;
 let botId = null;
@@ -127,6 +130,67 @@ async function updateBotInfo() {
 	}
 }
 
+async function findGreetingChannel(guild) {
+	const me = guild.members.me ?? (await guild.members.fetchMe().catch(() => null));
+	if (!me) return null;
+
+	const canSend = (channel) => {
+		if (!channel || channel.type !== ChannelType.GuildText) return false;
+		const perms = channel.permissionsFor(me);
+		return Boolean(perms?.has(PermissionFlagsBits.ViewChannel) && perms?.has(PermissionFlagsBits.SendMessages));
+	};
+
+	if (canSend(guild.systemChannel)) return guild.systemChannel;
+
+	const channels = await guild.channels.fetch().catch(() => null);
+	if (!channels) return null;
+
+	return [...channels.values()].filter(canSend).sort((a, b) => a.position - b.position)[0] || null;
+}
+
+async function sendJoinGreeting(guild) {
+	try {
+		const channel = await findGreetingChannel(guild);
+		if (!channel) {
+			logger.log(`⚠️  No channel available to greet in guild: ${guild.name}`);
+			return;
+		}
+
+		const embedConfig = await getEmbedConfig(guild.id).catch(() => ({ NICKNAME: DEFAULT_BOT_NICKNAME }));
+		const botName = embedConfig.NICKNAME;
+
+		const embed = new EmbedBuilder()
+			.setColor(0x57f287)
+			.setTitle(await translate('interface.panel.joinTitle', guild.id, '', { botName }))
+			.setDescription(await translate('interface.panel.joinBody', guild.id, '', { botName }));
+
+		const buttons = [];
+		const origin = publicSiteOrigin();
+		if (origin) {
+			buttons.push(
+				new ButtonBuilder()
+					.setStyle(ButtonStyle.Link)
+					.setURL(`${origin}/docs`)
+					.setLabel((await translate('interface.panel.joinDocsButton', guild.id, '')).slice(0, 80))
+			);
+		}
+		buttons.push(
+			new ButtonBuilder()
+				.setStyle(ButtonStyle.Link)
+				.setURL(COMMUNITY_DISCORD_URL)
+				.setLabel((await translate('interface.panel.joinSupportButton', guild.id, '')).slice(0, 80))
+		);
+
+		await channel.send({
+			embeds: [embed],
+			components: [new ActionRowBuilder().addComponents(...buttons)]
+		});
+		logger.log(`👋 Sent join greeting in ${guild.name} (#${channel.name})`);
+	} catch (error) {
+		logger.log(`⚠️  Failed to send join greeting: ${error.message}`);
+	}
+}
+
 async function init(discordClient, botToken) {
 	client = discordClient;
 
@@ -165,6 +229,7 @@ async function init(discordClient, botToken) {
 	client.on('guildCreate', async (guild) => {
 		logger.log(`🆕 Bot joined new guild: ${guild.name}`);
 		await syncGuildData(guild);
+		await sendJoinGreeting(guild);
 	});
 
 	client.on('channelCreate', async (channel) => {

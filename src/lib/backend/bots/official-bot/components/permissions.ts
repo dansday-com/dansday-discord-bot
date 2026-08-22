@@ -2,6 +2,8 @@ import { PERMISSIONS, getServerForCurrentBot } from '../../../config.js';
 import { translate } from '../i18n.js';
 import db from '../../../../database.js';
 
+const OPEN_ACTIONS = ['menu', 'feedback', 'afk', 'leveling', 'giveaway', 'settings', 'staff_rating', 'notifications', 'quest_enroll', 'content_creator'];
+
 async function getGuildPermissions(guildId: string) {
 	try {
 		return await PERMISSIONS.getPermissions(guildId);
@@ -20,11 +22,6 @@ async function isStaff(member: any) {
 	return await PERMISSIONS.hasAnyRole(member, perms.STAFF_ROLES);
 }
 
-async function isMember(member: any) {
-	const perms = await getGuildPermissions(member.guild.id);
-	return await PERMISSIONS.hasAnyRole(member, perms.MEMBER_ROLES);
-}
-
 async function isSupporter(member: any) {
 	const perms = await getGuildPermissions(member.guild.id);
 	return await PERMISSIONS.hasAnyRole(member, perms.SUPPORTER_ROLES);
@@ -36,21 +33,12 @@ async function isContentCreator(member: any) {
 }
 
 export async function hasPermission(member: any, action: string) {
-	const isAdminMember = await isAdmin(member);
-	const isStaffMember = await isStaff(member);
-	const isSupporterMember = await isSupporter(member);
-	const isMemberRole = await isMember(member);
-	const isContentCreatorRole = await isContentCreator(member);
-	const isEffectiveSupporter = isSupporterMember || isContentCreatorRole;
+	if (member?.user?.bot ?? member?.bot ?? false) return false;
+	if (OPEN_ACTIONS.includes(action)) return true;
 
-	if (isAdminMember) return true;
-	if (isStaffMember) return action !== 'setup';
-	if (action === 'staff_only') return isStaffMember || isAdminMember;
-	if (action === 'custom_supporter_role') return isEffectiveSupporter || isStaffMember || isAdminMember;
-	if (action === 'content_creator') return isMemberRole || isEffectiveSupporter || isStaffMember || isAdminMember;
-	if (['feedback', 'afk', 'leveling', 'giveaway', 'settings', 'staff_rating', 'notifications', 'menu', 'quest_enroll'].includes(action)) {
-		return isMemberRole || isEffectiveSupporter || isStaffMember || isAdminMember;
-	}
+	if (await isAdmin(member)) return true;
+	if (await isStaff(member)) return action !== 'setup';
+	if (action === 'custom_supporter_role') return (await isSupporter(member)) || (await isContentCreator(member));
 	return false;
 }
 

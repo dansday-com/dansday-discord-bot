@@ -4622,7 +4622,7 @@ async function getServerAccountsByServer(serverId: number) {
 		.orderBy(asc(schema.serverAccounts.account_type), asc(schema.serverAccounts.created_at));
 }
 
-const SERVER_ACCOUNT_INVITE_TTL_MINUTES = 10;
+const SERVER_ACCOUNT_INVITE_TTL_MINUTES = 24 * 60;
 
 async function createServerAccountInvite(data: { token: string; server_id: number; account_type: 'owner' | 'staff' }) {
 	const now = getNowUtc();

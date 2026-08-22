@@ -1,6 +1,5 @@
 import {
 	getLevelingSettings,
-	PERMISSIONS,
 	getBotConfig,
 	getEmbedConfig,
 	getServerForCurrentBot,
@@ -216,31 +215,12 @@ async function resolveServerAndMember(guild, memberLike) {
 	}
 }
 
-async function getMemberRoleIds(guildId) {
-	try {
-		const permissions = await PERMISSIONS.getPermissions(guildId);
-		const roles = permissions?.MEMBER_ROLES || [];
-		return roles;
-	} catch {
-		return [];
-	}
-}
-
 async function isMemberEligible(guildId, guildMember) {
 	if (!guildId || !guildMember) {
 		return false;
 	}
 
-	const memberRoles = await getMemberRoleIds(guildId);
-	if (!memberRoles || memberRoles.length === 0) {
-		return false;
-	}
-
-	try {
-		return await PERMISSIONS.hasAnyRole(guildMember, memberRoles);
-	} catch {
-		return false;
-	}
+	return !(guildMember.user?.bot ?? guildMember.bot ?? false);
 }
 
 async function countVoiceFriends(guildId, discordMemberId) {
@@ -251,20 +231,13 @@ async function countVoiceFriends(guildId, discordMemberId) {
 	const channelId = self?.channelId;
 	if (!channelId) return { count: 0, discordIds: [] };
 
-	const memberRoles = await getMemberRoleIds(guildId);
-	if (!memberRoles || memberRoles.length === 0) return { count: 0, discordIds: [] };
-
 	const discordIds: string[] = [];
 	for (const [, vs] of guild.voiceStates.cache) {
 		if (vs.channelId !== channelId) continue;
 		if (vs.id === discordMemberId) continue;
 		const otherMember = vs.member ?? guild.members.cache.get(vs.id);
 		if (!otherMember || otherMember.user?.bot) continue;
-		try {
-			if (await PERMISSIONS.hasAnyRole(otherMember, memberRoles)) discordIds.push(vs.id);
-		} catch {
-			void 0;
-		}
+		discordIds.push(vs.id);
 	}
 	return { count: discordIds.length, discordIds };
 }

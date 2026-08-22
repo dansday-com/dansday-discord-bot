@@ -1,3 +1,5 @@
+export const COMMUNITY_DISCORD_URL = 'https://discord.gg/7fEqEDSur3';
+
 export function publicSiteOrigin(): string | null {
 	const o = process.env.BASE_URL?.replace(/\/$/, '');
 	return o || null;

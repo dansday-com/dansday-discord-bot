@@ -1,14 +1,14 @@
 <script lang="ts">
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import type { PageProps } from './$types';
-	import { publicServerPath } from '$lib/url.js';
+	import { publicServerPath, COMMUNITY_DISCORD_URL } from '$lib/url.js';
 	import MainHeader from '$lib/frontend/components/MainHeader.svelte';
 	import MainFooter from '$lib/frontend/components/MainFooter.svelte';
 
 	let { data }: PageProps = $props();
 
 	const officialBotInviteUrl = 'https://discord.com/oauth2/authorize?client_id=1446572985849876640';
-	const communityDiscordUrl = 'https://discord.gg/7fEqEDSur3';
+	const communityDiscordUrl = COMMUNITY_DISCORD_URL;
 	const sourceRepoUrl = 'https://github.com/dansday-com/dansday-discord-bot';
 
 	const features = [

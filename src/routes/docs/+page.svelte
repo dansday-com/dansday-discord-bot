@@ -318,11 +318,11 @@
 	];
 
 	const startSteps = [
-		{ icon: 'fa-discord', title: 'Add the bot', desc: 'Invite the bot to your server. It joins instantly and is ready to run /setup.' },
+		{ icon: 'fa-discord', title: 'Add the bot', desc: 'It joins instantly and posts a short guide with the docs and support links.' },
 		{
 			icon: 'fa-terminal',
 			title: 'Run /setup',
-			desc: 'In Discord, run /setup. It builds a menu category of channels and posts the bot interface. Owner or Administrator only.'
+			desc: 'Builds the menu category and posts the interface. Safe to re-run: only missing channels are created. Owner or Administrator only.'
 		},
 		{
 			icon: 'fa-right-to-bracket',
@@ -357,7 +357,7 @@
 		},
 		{
 			label: 'Send Invite',
-			desc: 'Pick an invite type (Owner or Staff), choose Discord members, and the bot DMs them a registration link that expires 10 minutes after creation.'
+			desc: 'Pick an invite type (Owner or Staff), choose Discord members, and the bot DMs them a registration link that expires 24 hours after creation.'
 		},
 		{
 			label: 'Accounts list',

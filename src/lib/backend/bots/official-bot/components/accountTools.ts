@@ -242,6 +242,8 @@ async function accountHistory(ctx, member, args) {
 }
 
 async function accountTasks(ctx, member) {
+	if (ctx.tasksEnabled === false) return fail('tasks_not_enabled_for_this_server');
+
 	const tzOffsetMin = await memberTzOffset(member.id);
 
 	const tasks = await loadTasksShared({
@@ -386,7 +388,17 @@ function chatTool(name, description, properties = {}) {
 	return { type: 'function', function: { name, description, parameters: { type: 'object', properties } } };
 }
 
-export function buildAccountTools() {
+function allowedAccountTool(name, features) {
+	if (!features) return true;
+	if (!features.publicData) return false;
+	if (name === 'get_my_items') return features.items === true;
+	if (name === 'get_my_assets') return features.assets === true;
+	if (name === 'get_my_minigames') return features.minigames === true;
+	if (name === 'get_my_tasks') return features.tasks === true;
+	return true;
+}
+
+export function buildAccountTools(features = null) {
 	return [
 		chatTool('get_my_overview', OVERVIEW_DESCRIPTION),
 		chatTool('get_my_items', ITEMS_DESCRIPTION),
@@ -394,10 +406,10 @@ export function buildAccountTools() {
 		chatTool('get_my_minigames', MINIGAMES_DESCRIPTION),
 		chatTool('get_my_history', HISTORY_DESCRIPTION, { history_type: HISTORY_ARG }),
 		chatTool('get_my_tasks', TASKS_DESCRIPTION)
-	];
+	].filter((t) => allowedAccountTool(t.function.name, features));
 }
 
-export function buildAccountDeclarations() {
+export function buildAccountDeclarations(features = null) {
 	const voice = (name, description, properties = {}) => ({
 		name,
 		description: `${description}\n\n${VOICE_NOTE} In voice this always means the person who is speaking to you.`,
@@ -413,7 +425,7 @@ export function buildAccountDeclarations() {
 			history_type: { type: Type.STRING, enum: ['all', 'items', 'level'], description: 'Narrow to item events or XP events. Leave out for everything.' }
 		}),
 		voice('get_my_tasks', TASKS_DESCRIPTION)
-	];
+	].filter((d) => allowedAccountTool(d.name, features));
 }
 
 export const ACCOUNT_TOOL_NAMES = new Set(['get_my_overview', 'get_my_items', 'get_my_assets', 'get_my_minigames', 'get_my_history', 'get_my_tasks']);

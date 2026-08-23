@@ -5,6 +5,7 @@ import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 import { resolvePublicServerBySlug } from '$lib/frontend/public/server-slug/index.js';
 import { resolveMemberByCardToken, resolveActiveBotForServer, postBotWebhook } from '$lib/frontend/public/items/index.js';
 import { loadTasksShared } from '$lib/frontend/public/tasks/index.js';
+import { publicSubfeatureEnabled } from '$lib/frontend/panelServer.js';
 
 export const POST: RequestHandler = async ({ params, request }) => {
 	const serverSlug = String(params.serverSlug || '').trim();
@@ -14,7 +15,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
 
 	const psRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.public_statistics).catch(() => null);
 	const psSettings = (psRow as any)?.settings || {};
-	if (psSettings.enabled === false || psSettings.tasks_enabled !== true) {
+	if (psSettings.enabled === false || !publicSubfeatureEnabled(psSettings, 'tasks')) {
 		return json({ success: false, error: 'Tasks are disabled for this server.' }, { status: 403 });
 	}
 
@@ -32,9 +33,9 @@ export const POST: RequestHandler = async ({ params, request }) => {
 	await loadTasksShared({
 		server,
 		member: actor,
-		itemsEnabled: psSettings.items_enabled === true,
-		minigamesEnabled: psSettings.minigames_enabled === true,
-		assetsEnabled: psSettings.assets_enabled === true,
+		itemsEnabled: publicSubfeatureEnabled(psSettings, 'items'),
+		minigamesEnabled: publicSubfeatureEnabled(psSettings, 'minigames'),
+		assetsEnabled: publicSubfeatureEnabled(psSettings, 'assets'),
 		tzOffsetMin
 	}).catch(() => null);
 
@@ -71,9 +72,9 @@ export const POST: RequestHandler = async ({ params, request }) => {
 	const refreshed = await loadTasksShared({
 		server,
 		member: actor,
-		itemsEnabled: psSettings.items_enabled === true,
-		minigamesEnabled: psSettings.minigames_enabled === true,
-		assetsEnabled: psSettings.assets_enabled === true,
+		itemsEnabled: publicSubfeatureEnabled(psSettings, 'items'),
+		minigamesEnabled: publicSubfeatureEnabled(psSettings, 'minigames'),
+		assetsEnabled: publicSubfeatureEnabled(psSettings, 'assets'),
 		tzOffsetMin
 	}).catch(() => null);
 

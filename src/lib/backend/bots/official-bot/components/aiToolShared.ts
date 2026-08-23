@@ -1,6 +1,7 @@
 import db from '../../../../database.js';
 import { formatDuration } from '../../../../items.js';
-import { SERVER_SETTINGS } from '../../../../frontend/panelServer.js';
+import { SERVER_SETTINGS, publicSubfeatureEnabled } from '../../../../frontend/panelServer.js';
+import { isComponentFeatureEnabled } from '../../../config.js';
 
 export function fail(reason, extra = {}) {
 	return { ok: false, reason, ...extra };
@@ -48,9 +49,10 @@ export async function publicServer(botId, guildId) {
 
 	return {
 		server,
-		itemsEnabled: settings.items_enabled === true,
-		assetsEnabled: settings.assets_enabled === true,
-		minigamesEnabled: settings.minigames_enabled === true
+		itemsEnabled: publicSubfeatureEnabled(settings, 'items'),
+		assetsEnabled: publicSubfeatureEnabled(settings, 'assets'),
+		minigamesEnabled: publicSubfeatureEnabled(settings, 'minigames'),
+		tasksEnabled: publicSubfeatureEnabled(settings, 'tasks')
 	};
 }
 
@@ -63,6 +65,36 @@ export async function memberTzOffset(memberId) {
 	const streak = await db.getMemberStreak(memberId).catch(() => null);
 	const raw = Number(streak?.tz_offset_min);
 	return Number.isFinite(raw) ? raw : 0;
+}
+
+export async function resolveToolFeatures(botId, guildId) {
+	const off = { publicData: false, items: false, assets: false, minigames: false, tasks: false, giveaway: false, staffRating: false, quests: false };
+	if (!botId || !guildId) return off;
+
+	const server = await serverFor(botId, guildId);
+	if (!server) return off;
+
+	const settings = await publicSettings(server.id);
+	if (settings.enabled === false) return off;
+
+	const componentOn = (component) => isComponentFeatureEnabled(guildId, component).catch(() => false);
+
+	const [giveaway, staffRating, quests] = await Promise.all([
+		componentOn(SERVER_SETTINGS.component.giveaway),
+		componentOn(SERVER_SETTINGS.component.staff_rating),
+		componentOn(SERVER_SETTINGS.component.discord_quest_notifier)
+	]);
+
+	return {
+		publicData: true,
+		items: publicSubfeatureEnabled(settings, 'items'),
+		assets: publicSubfeatureEnabled(settings, 'assets'),
+		minigames: publicSubfeatureEnabled(settings, 'minigames'),
+		tasks: publicSubfeatureEnabled(settings, 'tasks'),
+		giveaway,
+		staffRating,
+		quests
+	};
 }
 
 export const VOICE_NOTE =

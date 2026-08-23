@@ -8,6 +8,7 @@ import { getEnabledWikis, buildWikiTool, runWikiTool } from './wiki.js';
 import { buildSearchTool, buildFetchTool, runSearchTool, runFetchTool } from './webTools.js';
 import { buildImageTool, runImageTool } from './imageTools.js';
 import { buildServerTools, runServerTool, SERVER_TOOL_NAMES } from './serverTools.js';
+import { resolveToolFeatures } from './aiToolShared.js';
 import { buildAccountTools, runAccountTool, ACCOUNT_TOOL_NAMES } from './accountTools.js';
 import { readAiSession, appendAiMessage, claimAiMessageLocal, claimAiMessageShared } from './aiSession.js';
 
@@ -418,10 +419,12 @@ async function handleMessageCreate(message) {
 			const fetchTool = buildFetchTool(config);
 			const imageTool = buildImageTool(config);
 
+			const toolFeatures = await resolveToolFeatures(botConfig.id, message.guild.id).catch(() => null);
+
 			const tools = [
 				...(voiceReady ? VOICE_TOOLS : []),
-				...buildServerTools(),
-				...buildAccountTools(),
+				...buildServerTools(toolFeatures),
+				...buildAccountTools(toolFeatures),
 				...(wikiTool ? [wikiTool] : []),
 				...(searchTool ? [searchTool] : []),
 				...(fetchTool ? [fetchTool] : []),

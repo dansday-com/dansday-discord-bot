@@ -4,7 +4,7 @@ import mysql from 'mysql2/promise';
 import { eq, and, or, gt, inArray, notInArray, sql, desc, asc, isNull, isNotNull, count, avg, like, ne } from 'drizzle-orm';
 import { db } from './drizzle.js';
 import * as schema from './schema.js';
-import { SERVER_SETTINGS, AUTO_ENABLED_COMPONENTS } from './frontend/panelServer.js';
+import { SERVER_SETTINGS, AUTO_ENABLED_COMPONENTS, publicSubfeatureEnabled } from './frontend/panelServer.js';
 import { logger, toMySQLDateTime, parseMySQLDateTimeUtc, getNowUtc } from './utils/index.js';
 import { DEFAULT_MAIN_EMBED_COLOR, DEFAULT_MAIN_EMBED_FOOTER, DEFAULT_BOT_NICKNAME } from './utils/mainConfigSettings.js';
 import { DEFAULT_LEVELING_SETTINGS, DEFAULT_WELCOMER_MESSAGES, DEFAULT_BOOSTER_MESSAGES } from './backend/config.js';
@@ -1183,9 +1183,9 @@ export async function listEnabledLeaderboardServers() {
 				name: r.name ?? null,
 				updated_at: r.updated_at,
 				server_icon: r.server_icon ?? null,
-				items_enabled: s.items_enabled === true,
-				assets_enabled: s.assets_enabled === true,
-				minigames_enabled: s.minigames_enabled === true
+				items_enabled: publicSubfeatureEnabled(s, 'items'),
+				assets_enabled: publicSubfeatureEnabled(s, 'assets'),
+				minigames_enabled: publicSubfeatureEnabled(s, 'minigames')
 			};
 		});
 }
@@ -1472,7 +1472,7 @@ export async function searchPanelMembersForGift(panelId: any, queryText: string 
 		INNER JOIN server_settings ss
 			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.public_statistics}
 			AND JSON_EXTRACT(ss.settings, '$.enabled') != false
-			AND JSON_EXTRACT(ss.settings, '$.items_enabled') = true
+			AND COALESCE(JSON_EXTRACT(ss.settings, '$.items_enabled'), true) != false
 		LEFT JOIN (
 			SELECT member_id, SUM(quantity) AS total
 			FROM server_member_items
@@ -1496,7 +1496,7 @@ export async function memberServerHasItemsEnabled(memberId: any, panelId: any) {
 		INNER JOIN server_settings ss
 			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.public_statistics}
 			AND JSON_EXTRACT(ss.settings, '$.enabled') != false
-			AND JSON_EXTRACT(ss.settings, '$.items_enabled') = true
+			AND COALESCE(JSON_EXTRACT(ss.settings, '$.items_enabled'), true) != false
 		WHERE m.id = ${Number(memberId)}
 		LIMIT 1
 	`);

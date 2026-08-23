@@ -2,6 +2,7 @@ import { BOOSTER, getEmbedConfig, getBotConfig, isComponentFeatureEnabled, serve
 import { EmbedBuilder } from 'discord.js';
 import db from '../../../../database.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../utils/index.js';
+import { aiGreetingMessages } from './aiGreeting.js';
 
 function replaceBoosterPlaceholders(message, memberId, serverName, boostLevel, totalBoosts) {
 	return message
@@ -53,12 +54,18 @@ async function thankBooster(member, client) {
 			return;
 		}
 
-		const messages = await BOOSTER.getMessages(member.guild.id);
+		const configured = await BOOSTER.getMessages(member.guild.id);
 
-		if (!messages || messages.length === 0) {
+		if (!configured || configured.length === 0) {
 			await logger.log(`⚠️ No booster messages configured for ${member.guild.id}, skipping booster message`);
 			return;
 		}
+
+		const custom = await BOOSTER.hasCustomMessages(member.guild.id).catch(() => true);
+		const generated = custom
+			? null
+			: await aiGreetingMessages('boost', { botId: botConfig.id, serverId: serverData.id, serverName: member.guild?.name || serverData.name });
+		const messages = generated?.length ? generated : configured;
 
 		const guildBoostCount = member.guild?.premiumSubscriptionCount ?? (serverData?.total_boosters || 0);
 		let guildBoostLevel = 0;

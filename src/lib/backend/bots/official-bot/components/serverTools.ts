@@ -5,7 +5,7 @@ import { BASICS, EARN_METHODS, FEATURES, FRIEND_BOOST, GUIDE_TITLE, TIPS, buildG
 import { loadItemsCatalog } from '../../../../frontend/public/items/index.js';
 import { resolveLeaderboardSnapshot } from '../../../../frontend/public/leaderboard/stream.js';
 import { resolvePublicStatisticsSnapshot } from '../../../../frontend/public/statistics/stream.js';
-import { VOICE_NOTE, fail, formatMs, memberByDiscordId, memberTzOffset, nameOfMember, num, publicServer } from './aiToolShared.js';
+import { VOICE_NOTE, fail, formatMs, memberByDiscordId, memberTzOffset, nameOfMember, num, publicServer, resolveToolFeatures } from './aiToolShared.js';
 
 const MAX_LEADERBOARD_ROWS = 25;
 const MAX_MEMBER_MATCHES = 8;
@@ -380,7 +380,20 @@ const SHOP_DESCRIPTION =
 const GUIDE_DESCRIPTION =
 	'The official "How the XP Game Works" guide for this server — how XP is earned, what the wallet, cooldown, immunity and bounty mean, and how items, tasks and streaks, minigames and the assets market work, plus the tips. Use this for any "how does X work", "how do I earn XP", "what is a streak", "how do tasks work", "explain the game" question. Answer from this rather than guessing, because these rules are specific to this server.';
 
-export function buildServerTools() {
+const ALWAYS_ON = new Set(['get_server_stats', 'get_leaderboard', 'get_member_info', 'get_guide']);
+
+function allowedServerTool(name, features) {
+	if (!features) return true;
+	if (!features.publicData) return false;
+	if (ALWAYS_ON.has(name)) return true;
+	if (name === 'get_shop') return features.items === true;
+	if (name === 'get_giveaways') return features.giveaway === true;
+	if (name === 'get_quests') return features.quests === true;
+	if (name === 'get_staff_ratings') return features.staffRating === true;
+	return true;
+}
+
+export function buildServerTools(features = null) {
 	return [
 		{
 			type: 'function',
@@ -458,10 +471,10 @@ export function buildServerTools() {
 				}
 			}
 		}
-	];
+	].filter((t) => allowedServerTool(t.function.name, features));
 }
 
-export function buildServerDeclarations() {
+export function buildServerDeclarations(features = null) {
 	return [
 		{ name: 'get_server_stats', description: `${STATS_DESCRIPTION}\n\n${VOICE_NOTE}`, parameters: { type: Type.OBJECT, properties: {} } },
 		{
@@ -506,7 +519,7 @@ export function buildServerDeclarations() {
 				properties: { topic: { type: Type.STRING, enum: GUIDE_TOPICS, description: 'Narrow to one area. Leave out for everything.' } }
 			}
 		}
-	];
+	].filter((d) => allowedServerTool(d.name, features));
 }
 
 export const SERVER_TOOL_NAMES = new Set([

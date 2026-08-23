@@ -20,6 +20,7 @@ import { getEnabledWikis, buildWikiDeclaration, runWikiTool } from './wiki.js';
 import { buildSearchDeclaration, buildFetchDeclaration, runSearchTool, runFetchTool } from './webTools.js';
 import { buildImageDeclaration, runImageTool } from './imageTools.js';
 import { buildServerDeclarations, runServerTool, SERVER_TOOL_NAMES } from './serverTools.js';
+import { resolveToolFeatures } from './aiToolShared.js';
 import { buildAccountDeclarations, runAccountTool, ACCOUNT_TOOL_NAMES } from './accountTools.js';
 import { appendAiMessage } from './aiSession.js';
 import { wakeModelAvailable, warmWakeModel, onWakeDetected, pushWakeAudio, dropWakeUser } from './wakeWord.js';
@@ -905,6 +906,8 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		const wikiDeclaration = buildWikiDeclaration(wikis);
 		if (wikiDeclaration) logger.log(`📚 Voice AI wiki lookup available: ${wikis.map((w) => w.name).join(', ')}`);
 
+		const toolFeatures = await resolveToolFeatures(botId, guildId).catch(() => null);
+
 		const searchDeclaration = buildSearchDeclaration(config);
 		const fetchDeclaration = buildFetchDeclaration(config);
 		const imageDeclaration = buildImageDeclaration(config);
@@ -962,8 +965,8 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 										}
 									]
 								: []),
-							...buildServerDeclarations(),
-							...buildAccountDeclarations(),
+							...buildServerDeclarations(toolFeatures),
+							...buildAccountDeclarations(toolFeatures),
 							...(searchDeclaration ? [searchDeclaration] : []),
 							...(fetchDeclaration ? [fetchDeclaration] : []),
 							...(imageDeclaration ? [imageDeclaration] : [])

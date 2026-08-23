@@ -1,3 +1,4 @@
+import { publicSubfeatureEnabled } from '../../panelServer.js';
 import db from '../../../database.js';
 import { computeIndexedSlugForItemId, listIndexedSlugsForItems, resolveIndexedSlugToItem } from '../../../utils/index.js';
 
@@ -30,9 +31,9 @@ export async function listPublicServerSlugs(): Promise<
 		id: Number(row.item.id),
 		slug: row.slug,
 		updated_at: row.updated_at,
-		items_enabled: row.item.items_enabled === true,
-		assets_enabled: (row.item as any).assets_enabled === true,
-		minigames_enabled: (row.item as any).minigames_enabled === true
+		items_enabled: publicSubfeatureEnabled(row.item, 'items'),
+		assets_enabled: publicSubfeatureEnabled(row.item, 'assets'),
+		minigames_enabled: publicSubfeatureEnabled(row.item, 'minigames')
 	}));
 }
 

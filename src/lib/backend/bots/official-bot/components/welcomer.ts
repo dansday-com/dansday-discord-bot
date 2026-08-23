@@ -2,6 +2,7 @@ import { WELCOMER, getEmbedConfig, getBotConfig, isComponentFeatureEnabled, serv
 import { EmbedBuilder } from 'discord.js';
 import db from '../../../../database.js';
 import { logger, parseMySQLDateTimeUtc } from '../../../../utils/index.js';
+import { aiGreetingMessages } from './aiGreeting.js';
 function replacePlaceholders(message, memberId, serverData, memberData, memberCount) {
 	const now = new Date();
 	let profileCreatedAt = null;
@@ -59,12 +60,18 @@ async function welcomeUser(member, client) {
 			return;
 		}
 
-		const messages = await WELCOMER.getMessages(member.guild.id);
+		const configured = await WELCOMER.getMessages(member.guild.id);
 
-		if (!messages || messages.length === 0) {
+		if (!configured || configured.length === 0) {
 			await logger.log(`⚠️ No welcome messages configured for ${member.guild.id}, skipping welcome message`);
 			return;
 		}
+
+		const custom = await WELCOMER.hasCustomMessages(member.guild.id).catch(() => true);
+		const generated = custom
+			? null
+			: await aiGreetingMessages('welcome', { botId: botConfig.id, serverId: serverData.id, serverName: member.guild?.name || serverData.name });
+		const messages = generated?.length ? generated : configured;
 
 		const guildMemberCount = member.guild?.memberCount ?? (serverData?.total_members || 0);
 		const randomMessage = messages[Math.floor(Math.random() * messages.length)];

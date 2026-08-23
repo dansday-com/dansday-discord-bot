@@ -169,6 +169,14 @@ export const SERVER_SETTINGS = {
 
 export type ServerSettingsComponentName = keyof typeof SERVER_SETTINGS.component;
 
+export const PUBLIC_STATISTICS_SUBFEATURES = ['items', 'assets', 'minigames', 'tasks'] as const;
+
+export type PublicStatisticsSubfeature = (typeof PUBLIC_STATISTICS_SUBFEATURES)[number];
+
+export function publicSubfeatureEnabled(settings: any, subfeature: PublicStatisticsSubfeature): boolean {
+	return settings?.[`${subfeature}_enabled`] !== false;
+}
+
 export const AUTO_ENABLED_COMPONENTS: Set<string> = new Set([
 	component.public_statistics,
 	component.roblox_catalog_notifier,

@@ -57,12 +57,14 @@
 </header>
 
 {#if tabs.length > 1}
-	<div class="m-section-tabs">
-		{#each tabs as tab}
-			<a href={tab.href} class="m-section-tab" class:m-section-tab--active={tab.active} data-sveltekit-preload-data="hover">
-				<i class="fas {tab.icon}"></i>
-				{tab.label}
-			</a>
-		{/each}
+	<div class="m-section-tabs-bar">
+		<div class="m-section-tabs">
+			{#each tabs as tab}
+				<a href={tab.href} class="m-section-tab" class:m-section-tab--active={tab.active} data-sveltekit-preload-data="hover">
+					<i class="fas {tab.icon}"></i>
+					{tab.label}
+				</a>
+			{/each}
+		</div>
 	</div>
 {/if}

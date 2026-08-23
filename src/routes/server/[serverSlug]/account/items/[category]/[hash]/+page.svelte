@@ -464,7 +464,7 @@
 						<div class="m-spy-head">
 							<i class="fas fa-chart-line"></i>Assets
 							{#if (rep.assets?.length ?? 0) > 0}
-								<span class="m-spy-total">{fmt(rep.assetsInvested)} XP invested · worth {fmt(rep.assetsValue)}</span>
+								<span class="m-spy-total">{fmt(rep.assetsInvested)} XP invested · value {fmt(rep.assetsValue)}</span>
 							{/if}
 						</div>
 						{#if (rep.assets?.length ?? 0) === 0}

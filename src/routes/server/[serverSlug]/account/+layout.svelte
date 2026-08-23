@@ -385,7 +385,7 @@
 					><i class="fas {isOverview ? 'fa-user' : isAssets ? 'fa-chart-line' : isTask ? 'fa-fire' : 'fa-wallet'}"></i>{isOverview
 						? 'Profile'
 						: isAssets
-							? 'Invested in Assets'
+							? 'Assets Value'
 							: isTask
 								? 'Daily streak'
 								: 'Wallet'}</span
@@ -394,9 +394,7 @@
 				{#if isTask}
 					<span class="m-xp-amount">{taskSummary?.current ?? 0}<span class="m-xp-unit">{(taskSummary?.current ?? 0) === 1 ? 'DAY' : 'DAYS'}</span></span>
 				{:else}
-					<span class="m-xp-amount" class:m-xp-amount--hidden={isOverview}
-						>{fmt(isAssets ? assetSummary.invested : liveXp)}<span class="m-xp-unit">XP</span></span
-					>
+					<span class="m-xp-amount" class:m-xp-amount--hidden={isOverview}>{fmt(isAssets ? assetSummary.value : liveXp)}<span class="m-xp-unit">XP</span></span>
 				{/if}
 				<div class="m-xp-bar" class:m-xp-bar--hidden={isAssets || isOverview}>
 					<div class="m-xp-bar-fill" style="width: {isTask ? streakPct : levelInfo.pct}%"></div>
@@ -409,7 +407,7 @@
 						{/if}
 					{:else if isAssets}
 						<span>{assetSummary.count} asset{assetSummary.count === 1 ? '' : 's'}</span>
-						<span>Worth {fmt(assetSummary.value)} XP</span>
+						<span>Invested {fmt(assetSummary.invested)} XP</span>
 					{:else if isTask}
 						<span>{taskSummary?.toNextMilestone ?? 0} to {taskSummary?.nextMilestone?.emoji ?? '🔥'} {taskSummary?.nextMilestone?.label ?? 'One week'}</span>
 						<span>Best {taskSummary?.longest ?? 0} days</span>

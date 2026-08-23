@@ -2838,22 +2838,22 @@ export const LOGIN_ITEM_REWARD_CHANCE = 0.5;
 
 export type LoginReward = { day: number; kind: 'xp'; xp: number; jackpot: boolean } | { day: number; kind: 'item'; itemId: number; jackpot: boolean };
 
+export type LoginCycleSlot = { day: number; jackpot: boolean; revealed: false };
+
 export function loginRewardFor(memberId: number, cycleIndex: number, day: number, catalog: { id: number; cost: number }[], dailyEarn = 0): LoginReward {
 	const jackpot = day === LOGIN_CYCLE_DAYS;
-	const rand = mulberry32(hashSeed('login', memberId, cycleIndex, day));
-
 	const worth = LOGIN_DAY_XP[Math.max(0, Math.min(LOGIN_CYCLE_DAYS - 1, day - 1))];
 
-	if (catalog.length > 0 && rand() < LOGIN_ITEM_REWARD_CHANCE) {
-		const picked = pickGachaItem(catalog, day, rand(), rand());
+	if (catalog.length > 0 && Math.random() < LOGIN_ITEM_REWARD_CHANCE) {
+		const picked = pickGachaItem(catalog, day, Math.random(), Math.random());
 		if (picked) return { day, kind: 'item', itemId: picked.id, jackpot };
 	}
 
 	return { day, kind: 'xp', xp: worth, jackpot };
 }
 
-export function loginCyclePreview(memberId: number, cycleIndex: number, catalog: { id: number; cost: number }[], dailyEarn = 0): LoginReward[] {
-	return Array.from({ length: LOGIN_CYCLE_DAYS }, (_, i) => loginRewardFor(memberId, cycleIndex, i + 1, catalog, dailyEarn));
+export function loginCyclePreview(): LoginCycleSlot[] {
+	return Array.from({ length: LOGIN_CYCLE_DAYS }, (_, i) => ({ day: i + 1, jackpot: i + 1 === LOGIN_CYCLE_DAYS, revealed: false as const }));
 }
 
 export function streakMilestone(streak: number): { at: number; label: string; emoji: string } | null {

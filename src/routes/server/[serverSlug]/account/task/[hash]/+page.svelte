@@ -266,14 +266,14 @@
 				<i class="fas fa-spinner fa-spin"></i>
 			{:else if r.claimed}
 				<i class="fas fa-circle-check"></i>
-			{:else if r.kind === 'item'}
-				<i class="fas fa-gem"></i>
+			{:else if r.jackpot}
+				<i class="fas fa-crown"></i>
 			{:else}
-				<i class="fas fa-star"></i>
+				<i class="fas fa-gift"></i>
 			{/if}
 		</span>
 		<span class="m-task-dayval">
-			{#if r.kind === 'item'}Item{:else}{fmt(r.xp)}{/if}
+			{#if r.claimed}Claimed{:else}?{/if}
 		</span>
 	{/snippet}
 

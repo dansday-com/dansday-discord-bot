@@ -375,7 +375,7 @@ function shapeLogin(row: any, member: any, dayKey: number, catalog: { id: number
 	const claimedToday = last === dayKey;
 	const canClaim = tzKnown && !claimedToday;
 
-	const rewards = loginCyclePreview(Number(member.id), cyclesCompleted, catalog, dailyEarn).map((r) => ({
+	const rewards = loginCyclePreview().map((r) => ({
 		...r,
 		claimed: !claimedToday && r.day < nextDay ? true : claimedToday && r.day <= cycleDay,
 		current: canClaim && r.day === nextDay,

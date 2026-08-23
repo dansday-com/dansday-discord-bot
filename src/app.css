@@ -1282,6 +1282,7 @@
 	border: 1px solid var(--lb-border-light);
 	border-radius: 12px;
 	padding: 4px;
+	flex: 1 1 auto;
 	max-width: 100%;
 	min-width: 0;
 	overflow-x: auto;
@@ -1292,7 +1293,7 @@
 	display: none;
 }
 .m-section-tab {
-	flex: 0 0 auto;
+	flex: 1 0 auto;
 	min-width: 0;
 	display: flex;
 	align-items: center;
@@ -3142,6 +3143,7 @@
 	border-radius: 10px;
 	padding: 3px;
 	gap: 3px;
+	flex: 1 1 auto;
 	max-width: 100%;
 	min-width: 0;
 	overflow-x: auto;
@@ -3154,7 +3156,8 @@
 }
 
 .m-root .m-items-seg {
-	flex: 0 0 auto;
+	flex: 1 0 auto;
+	justify-content: center;
 	white-space: nowrap;
 }
 

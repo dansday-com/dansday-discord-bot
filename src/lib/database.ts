@@ -1687,7 +1687,7 @@ export async function ensureMemberStreak(memberId: any, tzOffsetMin?: number) {
 	const tz = Number.isFinite(Number(tzOffsetMin)) ? Number(tzOffsetMin) : null;
 	await db
 		.insert(schema.serverMemberStreaks)
-		.values({ member_id: Number(memberId), tz_offset_min: tz ?? 0, created_at: now as any, updated_at: now as any })
+		.values({ member_id: Number(memberId), tz_offset_min: tz, created_at: now as any, updated_at: now as any })
 		.onDuplicateKeyUpdate({ set: tz == null ? { member_id: Number(memberId) } : { tz_offset_min: tz } });
 	return getMemberStreak(memberId);
 }
@@ -2406,7 +2406,7 @@ export async function listStaleStreaks(limit = 500) {
 		INNER JOIN servers sv ON sv.id = m.server_id
 		WHERE s.current_streak > 0
 		  AND s.last_claim_day_key IS NOT NULL
-		  AND s.last_claim_day_key < FLOOR((UNIX_TIMESTAMP() - (s.tz_offset_min * 60)) / 86400)
+		  AND s.last_claim_day_key < FLOOR((UNIX_TIMESTAMP() - (COALESCE(s.tz_offset_min, 0) * 60)) / 86400)
 		ORDER BY s.updated_at ASC
 		LIMIT ${Number(limit) || 500}
 	`);

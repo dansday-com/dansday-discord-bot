@@ -5,7 +5,7 @@ import { BAG_CAPACITY, effectSummary, formatDuration, getItemEffect } from '../.
 import { computeCardToken, loadItemsShared } from '../../../../frontend/public/items/index.js';
 import { loadTasksShared } from '../../../../frontend/public/tasks/index.js';
 import { SERVER_SETTINGS } from '../../../../frontend/panelServer.js';
-import { VOICE_NOTE, fail, formatMs, memberByDiscordId, memberTzOffset, nameOfMember, num, publicServer, safeConfig } from './aiToolShared.js';
+import { VOICE_NOTE, fail, formatMs, memberByDiscordId, memberTzKnown, memberTzOffset, nameOfMember, num, publicServer, safeConfig } from './aiToolShared.js';
 
 const MAX_HISTORY_ROWS = 20;
 
@@ -244,7 +244,7 @@ async function accountHistory(ctx, member, args) {
 async function accountTasks(ctx, member) {
 	if (ctx.tasksEnabled === false) return fail('tasks_not_enabled_for_this_server');
 
-	const tzOffsetMin = await memberTzOffset(member.id);
+	const [tzOffsetMin, tzKnown] = await Promise.all([memberTzOffset(member.id), memberTzKnown(member.id)]);
 
 	const tasks = await loadTasksShared({
 		server: ctx.server,
@@ -253,7 +253,8 @@ async function accountTasks(ctx, member) {
 		minigamesEnabled: ctx.minigamesEnabled,
 		assetsEnabled: ctx.assetsEnabled,
 		tzOffsetMin,
-		generate: false
+		tzKnown,
+		generate: tzKnown
 	}).catch((error) => {
 		logger.log(`❌ AI task lookup failed: ${error.message}`);
 		return null;
@@ -276,14 +277,14 @@ async function accountTasks(ctx, member) {
 	const streak = tasks.streak ?? {};
 	const login = tasks.login ?? {};
 
-	const rewardName = async (reward) => {
-		if (!reward) return null;
-		if (reward.kind === 'xp') return `${num(reward.xp)} XP`;
-		const item = await db.getItem(reward.itemId).catch(() => null);
-		return item?.name ? `item: ${item.name}` : 'a shop item';
-	};
-
-	const nextLoginReward = (login.rewards ?? []).find((r) => r.current) ?? null;
+	if (!tzKnown && daily.length === 0 && weekly.length === 0) {
+		return {
+			tasks_not_ready: true,
+			reason: 'timezone_unknown',
+			tell_the_user:
+				'Their tasks have not been created yet because the bot does not know their timezone. Tell them to open their account page on the website once — tasks reset at midnight on their own clock, so it needs to know where they are before it can generate them.'
+		};
+	}
 
 	return {
 		daily_resets_in: formatMs(num(tasks.resetsInMs)),
@@ -319,8 +320,8 @@ async function accountTasks(ctx, member) {
 			claimed_today: login.claimedToday === true,
 			can_claim_now: login.canClaim === true,
 			cycles_completed: num(login.cyclesCompleted),
-			next_reward: nextLoginReward ? await rewardName(nextLoginReward) : null,
-			how_it_works: 'One claim a day. Day 7 is the jackpot. Miss a day and the cycle restarts at day 1.'
+			how_it_works:
+				'One claim a day. Day 7 is the jackpot. Miss a day and the cycle restarts at day 1. Each reward is rolled when they claim it, so nobody knows what a day gives until it is opened — never guess or promise a reward.'
 		}
 	};
 }
@@ -380,7 +381,7 @@ const MINIGAMES_DESCRIPTION = `The asker's own minigame record: how many times t
 
 const HISTORY_DESCRIPTION = `The asker's own recent activity — buys, uses, attacks they made or took, gifts, trades and XP changes, newest first. Use it for "what happened to me", "who robbed me", "what did I buy", "where did my XP go". Attackers who were disguised stay anonymous. ${OWN_ONLY}`;
 
-const TASKS_DESCRIPTION = `The asker's own tasks, streak and daily check-in — all three live here. Tasks: how many daily and weekly are done, which are finished but not claimed yet, what is still left with the progress and reward on each, and when the day and week reset. Streak: how many days they are on, their longest ever, whether today is already banked, how many freezes they have left, and how far to the next milestone. Daily check-in: which day of the 7 day cycle they are on, whether they can claim right now, and what the next reward is. Use it for "what are my tasks", "what do I have left today", "anything to claim", "what is my streak", "did I lose my streak", "how many freezes do I have", "can I check in", "what do I get tomorrow". ${OWN_ONLY}`;
+const TASKS_DESCRIPTION = `The asker's own tasks, streak and daily check-in — all three live here. Tasks: how many daily and weekly are done, which are finished but not claimed yet, what is still left with the progress and reward on each, and when the day and week reset. Streak: how many days they are on, their longest ever, whether today is already banked, how many freezes they have left, and how far to the next milestone. Daily check-in: which day of the 7 day cycle they are on and whether they can claim right now. Rewards are rolled at the moment of claiming, so you never know what a day holds — say that plainly instead of guessing. Use it for "what are my tasks", "what do I have left today", "anything to claim", "what is my streak", "did I lose my streak", "how many freezes do I have", "can I check in". ${OWN_ONLY}`;
 
 const HISTORY_ARG = { type: 'string', enum: ['all', 'items', 'level'], description: 'Narrow to item events or XP/level events. Leave out for everything.' };
 

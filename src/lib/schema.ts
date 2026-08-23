@@ -953,7 +953,7 @@ export const serverMemberStreaks = mysqlTable(
 		last_claim_day_key: int('last_claim_day_key'),
 		freezes_available: int('freezes_available').notNull().default(2),
 		total_claims: int('total_claims').notNull().default(0),
-		tz_offset_min: int('tz_offset_min').notNull().default(0),
+		tz_offset_min: int('tz_offset_min'),
 		created_at: datetime('created_at').notNull(),
 		updated_at: datetime('updated_at').notNull()
 	},

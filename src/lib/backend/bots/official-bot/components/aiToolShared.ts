@@ -67,6 +67,12 @@ export async function memberTzOffset(memberId) {
 	return Number.isFinite(raw) ? raw : 0;
 }
 
+export async function memberTzKnown(memberId) {
+	const streak = await db.getMemberStreak(memberId).catch(() => null);
+	const raw = streak?.tz_offset_min;
+	return raw != null && Number.isFinite(Number(raw));
+}
+
 export async function resolveToolFeatures(botId, guildId) {
 	const off = { publicData: false, items: false, assets: false, minigames: false, tasks: false, giveaway: false, staffRating: false, quests: false };
 	if (!botId || !guildId) return off;

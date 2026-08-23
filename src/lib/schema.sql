@@ -620,7 +620,7 @@ CREATE TABLE IF NOT EXISTS server_member_streaks (
     last_claim_day_key INT NULL,
     freezes_available INT NOT NULL DEFAULT 2,
     total_claims INT NOT NULL DEFAULT 0,
-    tz_offset_min INT NOT NULL DEFAULT 0,
+    tz_offset_min INT NULL DEFAULT NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
     UNIQUE KEY unique_member_streak (member_id),

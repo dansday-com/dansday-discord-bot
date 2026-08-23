@@ -15,6 +15,53 @@ Leveling, moderation, embed builder, Discord Quests, creator tools, public stati
 </tr>
 </table>
 
+### Public server pages
+
+No login needed. Every server gets its own live pages at `/server/<slug>`.
+
+<table>
+<tr>
+<td width="33%"><img src=".github/screenshots/public-statistics.png" alt="Public statistics with members, channels, leveling, voice activity, market, items, minigames and giveaways"></td>
+<td width="33%"><img src=".github/screenshots/leaderboard.png" alt="Leaderboard podium and rankings, filterable by XP, chat, voice, video, streaming, items and minigames"></td>
+<td width="33%"><img src=".github/screenshots/members.png" alt="Members directory with per-member level, messages, activity and XP"></td>
+</tr>
+<tr>
+<td><strong>Statistics</strong> — live server totals across every module.</td>
+<td><strong>Leaderboard</strong> — all time, month or week, on any metric.</td>
+<td><strong>Members</strong> — searchable directory with levels and roles.</td>
+</tr>
+</table>
+
+### Member accounts
+
+Each member signs in to their own account on those same pages.
+
+<table>
+<tr>
+<td width="33%"><img src=".github/screenshots/account-overview.png" alt="Account overview with lifetime XP sources, 14-day XP flow, activity split, voice buddies and asset portfolio"></td>
+<td width="33%"><img src=".github/screenshots/tasks-streaks.png" alt="Daily and weekly tasks with streak counter and seven-day check-in"></td>
+<td width="33%"><img src=".github/screenshots/shop-items.png" alt="XP shop with steal, bomb, boost and shield items, prices and timed availability"></td>
+</tr>
+<tr>
+<td><strong>Overview</strong> — where their XP came from, and who they earn it with.</td>
+<td><strong>Tasks & streaks</strong> — 18 daily and 18 weekly, plus check-in.</td>
+<td><strong>Shop</strong> — buy and activate items priced in XP.</td>
+</tr>
+</table>
+
+<table>
+<tr>
+<td width="33%"><img src=".github/screenshots/assets-market.png" alt="Assets market listing top 50 coins at live prices with sparklines"></td>
+<td width="33%"><img src=".github/screenshots/minigames.png" alt="Minigames tab with the Gamble wager game"></td>
+<td width="33%"><img src=".github/screenshots/history.png" alt="History feed of task rewards, chat and voice XP, gambles and item activations"></td>
+</tr>
+<tr>
+<td><strong>Assets</strong> — live CoinGecko prices, no real money.</td>
+<td><strong>Minigames</strong> — wager XP above your current level.</td>
+<td><strong>History</strong> — every XP event, filterable by source.</td>
+</tr>
+</table>
+
 ---
 
 ## Features

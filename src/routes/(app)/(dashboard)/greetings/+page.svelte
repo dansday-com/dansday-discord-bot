@@ -83,10 +83,7 @@
 	<h2 class="text-ash-100 mb-1 text-xl font-bold sm:text-2xl">
 		<i class="fas fa-hands-clapping mr-2 text-amber-400"></i>Greetings
 	</h2>
-	<p class="text-ash-400 text-xs sm:text-sm">
-		The join greeting is sent automatically the first time one of your bots joins a server. When several bots share a server, only the first one greets. Send it
-		manually here if it was missed, or resend it if it landed in the wrong channel.
-	</p>
+	<p class="text-ash-400 text-xs sm:text-sm">Sent automatically when a bot joins. Only the first bot greets a shared server.</p>
 </div>
 
 {#if data.servers.length === 0}
@@ -99,7 +96,7 @@
 			<i class="fas fa-circle-exclamation text-amber-400"></i>Not greeted yet
 			<span class="text-ash-500 text-xs font-normal">({pending.length})</span>
 		</h3>
-		<p class="text-ash-400 mb-4 text-xs">Servers where no bot has posted the join greeting — usually because there was no channel it could write in.</p>
+		<p class="text-ash-400 mb-4 text-xs">No bot has greeted these yet.</p>
 
 		{#if pending.length === 0}
 			<p class="text-ash-400 py-4 text-center text-sm">Every server has been greeted.</p>

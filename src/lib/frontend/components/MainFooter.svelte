@@ -13,7 +13,7 @@
 		</p>
 		<p class="m-footer-open">
 			Free and open source on
-			<a href="https://github.com/dansday/dansday-discord-bot">GitHub</a>.
+			<a href="https://github.com/dansday-com/dansday-discord-bot">GitHub</a>.
 		</p>
 	</div>
 </footer>

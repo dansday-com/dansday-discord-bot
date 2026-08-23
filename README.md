@@ -68,9 +68,11 @@ Each member signs in to their own account on those same pages.
 
 ### Panel
 
+- **One-command setup** - `/setup` creates every channel and wires it to its module. Nothing to pick by hand.
 - **Granular permissions** - Owner and staff tiers control who changes what.
 - **Server accounts** - Invite owners and staff, with roles separate from Discord permissions.
 - **Per-module toggles** - Enable or disable each feature per server.
+- **Greetings** - The join greeting sends itself. Only the first of your bots greets a shared server; resend from the panel.
 - **Embed builder** - Rich embeds with live preview, placeholders and images.
 - **Multi-language** - English and Indonesian for Discord buttons, selects and labels.
 

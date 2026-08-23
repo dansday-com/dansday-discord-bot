@@ -50,12 +50,14 @@ Leveling, moderation, embed builder, Discord Quests, creator tools, public stati
   - Mutes itself when idle, stays unmuted while a lookup is still running, and clears a moderator's server mute or deafen.
   - Follows the inviter between channels, and only they can send it away.
   - Its own Google AI key, voice model and system prompt, none of them shared with chat.
-- **Tools** - The model decides when to use these, in chat and voice alike. Each takes its own URL, model and key, and stays invisible until all three are set.
+- **Tools** - The model decides when to use these, in chat and voice alike. Web search, fetch and images each take their own URL, model and key, and stay invisible until all three are set.
   - 🔍 **Web search** - The default lookup for any factual question: news, prices, versions, whether something is real.
   - 📄 **Web fetch** - Reads a page a member linked, or a search result whose snippet was too thin to answer from. Never invented URLs.
   - 🖼️ **Images** - Drawn on request and uploaded to Discord as files rather than linked, so nothing breaks when the provider's URL expires.
   - 📚 **Wikis** - Any MediaWiki site including Fandom, many per bot, managed in the panel. Reads the full rendered page with infoboxes, tables and changelogs, in any language, cached 10 minutes. Applies to chat and voice with no restart.
   - 🔗 **Chains instead of giving up** - A thin, empty or off-target result moves on to the next tool rather than reporting failure. Live values like timers and active events go straight to the web.
+  - 📊 **Server knowledge** - Reads this server's own live data with no extra key: statistics, leaderboards on any metric, a member's public profile, staff ratings, running giveaways, active quests, the shop with prices and timings, and the XP guide. Follows your module toggles, so anything you switch off disappears from the AI too.
+  - 🎒 **Their own account** - Level, bag, assets, minigames, history, tasks and streak — always the asker's own and never anyone else's, so "what is in my bag" works and "what is in theirs" does not.
 
 ### Integrations
 
@@ -65,7 +67,7 @@ Leveling, moderation, embed builder, Discord Quests, creator tools, public stati
 
 ### Public web pages
 
-- **Public statistics** - Master switch for server statistics, leaderboard, members and the member account. Items, Minigames, Assets and Daily tasks are sub-toggles. Off means everything public goes dark.
+- **Public statistics** - Master switch for server statistics, leaderboard, members and the member account. Items, Minigames, Assets and Daily tasks are sub-toggles, all on by default. Off means everything public goes dark.
 
 ### Advanced
 

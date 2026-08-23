@@ -1,7 +1,6 @@
 import { Type } from '@google/genai';
 import db from '../../../../database.js';
 import { itemAvailability, effectSummary, formatDuration, getItemEffect } from '../../../../items.js';
-import { BASICS, EARN_METHODS, FEATURES, FRIEND_BOOST, GUIDE_TITLE, TIPS, buildGuideItems } from '../../../../guide.js';
 import { loadItemsCatalog } from '../../../../frontend/public/items/index.js';
 import { resolveLeaderboardSnapshot } from '../../../../frontend/public/leaderboard/stream.js';
 import { resolvePublicStatisticsSnapshot } from '../../../../frontend/public/statistics/stream.js';
@@ -37,8 +36,6 @@ const LEADERBOARD_METRICS = [
 ];
 
 const LEADERBOARD_PERIODS = ['all', 'month', 'week'];
-
-const GUIDE_TOPICS = ['all', 'earning', 'basics', 'items', 'tasks', 'minigames', 'assets', 'tips'];
 
 function shapeItem(item, tzOffsetMin, nowMs) {
 	const window = itemAvailability(item, nowMs, tzOffsetMin);
@@ -296,66 +293,6 @@ export async function runShopTool(botId, guildId, args) {
 	};
 }
 
-export async function runGuideTool(botId, guildId, args) {
-	const ctx = await publicServer(botId, guildId);
-	const topic = GUIDE_TOPICS.includes(args?.topic) ? args.topic : 'all';
-
-	const catalog = ctx.error ? [] : await loadItemsCatalog(ctx.server.id).catch(() => []);
-	const liveItems = catalog.filter((i) => i.live);
-
-	const feature = (id) => {
-		const f = FEATURES.find((x) => x.id === id);
-		if (!f) return null;
-		return {
-			title: f.title,
-			summary: f.lead,
-			steps: f.steps.map((s) => `${s.title}: ${s.desc}`),
-			facts: f.cards.map((c) => `${c.title}: ${c.desc}`),
-			important: `${f.note.title} — ${f.note.text}`
-		};
-	};
-
-	const sections = {
-		earning: {
-			title: 'How to earn XP',
-			summary: 'XP is the currency for everything here, and your rank on the leaderboard.',
-			facts: EARN_METHODS.map((c) => `${c.title}: ${c.desc}`).concat(`${FRIEND_BOOST.title} — ${FRIEND_BOOST.text}`)
-		},
-		basics: { title: 'Know the basics', facts: BASICS.map((c) => `${c.title}: ${c.desc}`) },
-		items: feature('items'),
-		tasks: feature('tasks'),
-		minigames: feature('minigames'),
-		assets: feature('assets'),
-		tips: { title: 'Tips', facts: TIPS.map((t) => t.text) }
-	};
-
-	if (topic !== 'all') {
-		const picked = sections[topic];
-		if (!picked) return fail('unknown_topic', { topics: GUIDE_TOPICS });
-		return {
-			ok: true,
-			guide: GUIDE_TITLE,
-			topic,
-			...picked,
-			...(topic === 'items'
-				? {
-						every_item: buildGuideItems(liveItems)
-							.filter((i) => i.available)
-							.map((i) => ({ name: i.label, cost_xp: i.cost, what_it_does: i.summary }))
-					}
-				: {})
-		};
-	}
-
-	return {
-		ok: true,
-		guide: GUIDE_TITLE,
-		topic: 'all',
-		sections,
-		next_step: 'Answer from these sections. For the full detail of one area, call this again with that topic.'
-	};
-}
-
 const STATS_DESCRIPTION =
 	'Public statistics for this Discord server: how many members, total XP, messages, voice minutes, and totals for items, minigames, assets, giveaways, quests and staff reviews. Use this for any "how many", "how big", "server total" or "how active is this server" question. This is server-wide data, not about one person.';
 
@@ -377,10 +314,7 @@ const QUESTS_DESCRIPTION =
 const SHOP_DESCRIPTION =
 	'The XP item shop for this server. Returns each item with its price in XP, what it actually does, whether it is usable, whether it needs a target, how many minutes it lasts, its cooldown and immunity minutes, and whether it is on sale now or coming later. Use it for "what is in the shop", "how much does X cost", "what does X do", "what is coming soon", "how long does X last". Prices already include the asker\'s Luck discount.';
 
-const GUIDE_DESCRIPTION =
-	'The official "How the XP Game Works" guide for this server — how XP is earned, what the wallet, cooldown, immunity and bounty mean, and how items, tasks and streaks, minigames and the assets market work, plus the tips. Use this for any "how does X work", "how do I earn XP", "what is a streak", "how do tasks work", "explain the game" question. Answer from this rather than guessing, because these rules are specific to this server.';
-
-const ALWAYS_ON = new Set(['get_server_stats', 'get_leaderboard', 'get_member_info', 'get_guide']);
+const ALWAYS_ON = new Set(['get_server_stats', 'get_leaderboard', 'get_member_info']);
 
 function allowedServerTool(name, features) {
 	if (!features) return true;
@@ -459,17 +393,6 @@ export function buildServerTools(features = null) {
 					}
 				}
 			}
-		},
-		{
-			type: 'function',
-			function: {
-				name: 'get_guide',
-				description: GUIDE_DESCRIPTION,
-				parameters: {
-					type: 'object',
-					properties: { topic: { type: 'string', enum: GUIDE_TOPICS, description: 'Narrow to one area. Leave out to get every section at once.' } }
-				}
-			}
 		}
 	].filter((t) => allowedServerTool(t.function.name, features));
 }
@@ -510,14 +433,6 @@ export function buildServerDeclarations(features = null) {
 					type: { type: Type.STRING, description: 'Filter to one item type such as steal, shield or luck.' }
 				}
 			}
-		},
-		{
-			name: 'get_guide',
-			description: `${GUIDE_DESCRIPTION}\n\n${VOICE_NOTE} Explain it in your own words, do not recite the whole guide.`,
-			parameters: {
-				type: Type.OBJECT,
-				properties: { topic: { type: Type.STRING, enum: GUIDE_TOPICS, description: 'Narrow to one area. Leave out for everything.' } }
-			}
 		}
 	].filter((d) => allowedServerTool(d.name, features));
 }
@@ -529,8 +444,7 @@ export const SERVER_TOOL_NAMES = new Set([
 	'get_staff_ratings',
 	'get_giveaways',
 	'get_quests',
-	'get_shop',
-	'get_guide'
+	'get_shop'
 ]);
 
 export function runServerTool(name, args, { botId, guildId, callerDiscordId, voice = false }) {
@@ -543,7 +457,6 @@ export function runServerTool(name, args, { botId, guildId, callerDiscordId, voi
 	if (name === 'get_giveaways') return runGiveawaysTool(botId, guildId);
 	if (name === 'get_quests') return runQuestsTool(botId, guildId);
 	if (name === 'get_shop') return runShopTool(botId, guildId, { ...args, viewerDiscordId: callerDiscordId });
-	if (name === 'get_guide') return runGuideTool(botId, guildId, args);
 	return Promise.resolve(fail('unknown_tool'));
 }
 

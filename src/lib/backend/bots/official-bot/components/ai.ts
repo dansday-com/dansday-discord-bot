@@ -10,6 +10,7 @@ import { buildImageTool, runImageTool } from './imageTools.js';
 import { buildServerTools, runServerTool, SERVER_TOOL_NAMES } from './serverTools.js';
 import { resolveToolFeatures } from './aiToolShared.js';
 import { buildAccountTools, runAccountTool, ACCOUNT_TOOL_NAMES } from './accountTools.js';
+import { buildKnowledgeTools, runKnowledgeTool, KNOWLEDGE_TOOL_NAMES } from './knowledgeTools.js';
 import { readAiSession, appendAiMessage, claimAiMessageLocal, claimAiMessageShared } from './aiSession.js';
 
 const DISCORD_MESSAGE_LIMIT = 2000;
@@ -425,6 +426,7 @@ async function handleMessageCreate(message) {
 				...(voiceReady ? VOICE_TOOLS : []),
 				...buildServerTools(toolFeatures),
 				...buildAccountTools(toolFeatures),
+				...buildKnowledgeTools(),
 				...(wikiTool ? [wikiTool] : []),
 				...(searchTool ? [searchTool] : []),
 				...(fetchTool ? [fetchTool] : []),
@@ -438,6 +440,7 @@ async function handleMessageCreate(message) {
 				const toolContext = { botId: botConfig.id, guildId: message.guild.id, callerDiscordId: message.author.id };
 				if (SERVER_TOOL_NAMES.has(name)) return runServerTool(name, args, toolContext).then((result) => JSON.stringify(result));
 				if (ACCOUNT_TOOL_NAMES.has(name)) return runAccountTool(name, args, toolContext).then((result) => JSON.stringify(result));
+				if (KNOWLEDGE_TOOL_NAMES.has(name)) return runKnowledgeTool(name, args, toolContext).then((result) => JSON.stringify(result));
 				if (name === 'search_wiki') return runWikiTool(wikis, args).then((result) => JSON.stringify(result));
 				if (name === 'search_web') return runSearchTool(config, args).then((result) => JSON.stringify(result));
 				if (name === 'fetch_web_page') return runFetchTool(config, args).then((result) => JSON.stringify(result));

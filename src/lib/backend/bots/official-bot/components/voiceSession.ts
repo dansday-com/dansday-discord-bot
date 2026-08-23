@@ -22,6 +22,7 @@ import { buildImageDeclaration, runImageTool } from './imageTools.js';
 import { buildServerDeclarations, runServerTool, SERVER_TOOL_NAMES } from './serverTools.js';
 import { resolveToolFeatures } from './aiToolShared.js';
 import { buildAccountDeclarations, runAccountTool, ACCOUNT_TOOL_NAMES } from './accountTools.js';
+import { buildKnowledgeDeclarations, runKnowledgeTool, KNOWLEDGE_TOOL_NAMES } from './knowledgeTools.js';
 import { appendAiMessage } from './aiSession.js';
 import { wakeModelAvailable, warmWakeModel, onWakeDetected, pushWakeAudio, dropWakeUser } from './wakeWord.js';
 
@@ -671,7 +672,15 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		}
 	}
 
-	const LOOKUP_TOOLS = new Set(['search_wiki', 'search_web', 'fetch_web_page', 'generate_image', ...SERVER_TOOL_NAMES, ...ACCOUNT_TOOL_NAMES]);
+	const LOOKUP_TOOLS = new Set([
+		'search_wiki',
+		'search_web',
+		'fetch_web_page',
+		'generate_image',
+		...SERVER_TOOL_NAMES,
+		...ACCOUNT_TOOL_NAMES,
+		...KNOWLEDGE_TOOL_NAMES
+	]);
 
 	async function sendImageTo(targetChannelId, buffer) {
 		if (!targetChannelId) return false;
@@ -707,6 +716,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		const toolContext = { botId, guildId, callerDiscordId: lockedSpeakerId || lastSpeakerId || inviterId, voice: true };
 		if (SERVER_TOOL_NAMES.has(call.name)) return runServerTool(call.name, call.args ?? {}, toolContext);
 		if (ACCOUNT_TOOL_NAMES.has(call.name)) return runAccountTool(call.name, call.args ?? {}, toolContext);
+		if (KNOWLEDGE_TOOL_NAMES.has(call.name)) return runKnowledgeTool(call.name, call.args ?? {}, toolContext);
 		if (call.name === 'search_web') return runSearchTool(config, call.args ?? {});
 		if (call.name === 'fetch_web_page') return runFetchTool(config, call.args ?? {});
 		if (call.name === 'generate_image') {
@@ -721,7 +731,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	}
 
 	function lookupLabel(call) {
-		if (SERVER_TOOL_NAMES.has(call.name) || ACCOUNT_TOOL_NAMES.has(call.name)) return `server lookup ${call.name}`;
+		if (SERVER_TOOL_NAMES.has(call.name) || ACCOUNT_TOOL_NAMES.has(call.name) || KNOWLEDGE_TOOL_NAMES.has(call.name)) return `server lookup ${call.name}`;
 		if (call.name === 'search_web') return `web search "${call.args?.query ?? ''}"`;
 		if (call.name === 'fetch_web_page') return `web fetch ${call.args?.url ?? ''}`;
 		if (call.name === 'generate_image') return `image generation "${call.args?.prompt ?? ''}"`;
@@ -967,6 +977,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 								: []),
 							...buildServerDeclarations(toolFeatures),
 							...buildAccountDeclarations(toolFeatures),
+							...buildKnowledgeDeclarations(),
 							...(searchDeclaration ? [searchDeclaration] : []),
 							...(fetchDeclaration ? [fetchDeclaration] : []),
 							...(imageDeclaration ? [imageDeclaration] : [])

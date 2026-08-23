@@ -4487,9 +4487,6 @@ async function createAccount(accountData: any) {
 		email: accountData.email,
 		password_hash: accountData.password_hash,
 		account_type: accountData.account_type || 'superadmin',
-		email_verified: accountData.email_verified || false,
-		otp_code: accountData.otp_code || null,
-		otp_expires_at: accountData.otp_expires_at ? (toMySQLDateTime(accountData.otp_expires_at) as any) : null,
 		ip_address: accountData.ip_address || null,
 		created_at: now as any,
 		updated_at: now as any
@@ -4499,7 +4496,6 @@ async function createAccount(accountData: any) {
 
 async function updateAccount(accountId: any, updateData: any) {
 	const data: any = { ...updateData, updated_at: toMySQLDateTime() };
-	if (data.otp_expires_at) data.otp_expires_at = toMySQLDateTime(data.otp_expires_at);
 	await db
 		.update(schema.accounts)
 		.set(data)
@@ -4518,7 +4514,6 @@ async function getAllAccounts() {
 			username: schema.accounts.username,
 			email: schema.accounts.email,
 			account_type: schema.accounts.account_type,
-			email_verified: schema.accounts.email_verified,
 			created_at: schema.accounts.created_at,
 			updated_at: schema.accounts.updated_at
 		})
@@ -4665,9 +4660,6 @@ async function createServerAccount(data: {
 	email: string;
 	password_hash: string;
 	account_type: 'owner' | 'staff';
-	email_verified?: boolean;
-	otp_code?: string | null;
-	otp_expires_at?: string | null;
 	ip_address?: string | null;
 	is_frozen?: boolean;
 }) {
@@ -4678,9 +4670,6 @@ async function createServerAccount(data: {
 		email: data.email,
 		password_hash: data.password_hash,
 		account_type: data.account_type,
-		email_verified: data.email_verified ?? false,
-		otp_code: data.otp_code ?? null,
-		otp_expires_at: data.otp_expires_at ?? (null as any),
 		ip_address: data.ip_address ?? null,
 		is_frozen: data.is_frozen ?? false,
 		created_at: now as any,
@@ -4696,9 +4685,6 @@ async function updateServerAccount(
 		email: string;
 		password_hash: string;
 		account_type: 'owner' | 'staff';
-		email_verified: boolean;
-		otp_code: string | null;
-		otp_expires_at: string | null;
 		ip_address: string | null;
 		is_frozen: boolean;
 	}>

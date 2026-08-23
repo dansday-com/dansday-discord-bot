@@ -80,11 +80,6 @@ function emailLayout(title: string, accentColor: string, bodyContent: string, ye
                 .status-box { background-color: var(--surface); border: 1px solid ${accentColor}40; padding: 28px 24px; margin: 28px 0; border-radius: 10px; text-align: center; }
                 .status-box .icon { font-size: 40px; margin-bottom: 12px; }
                 .status-box p { margin: 0; font-size: 16px; color: ${accentColor}; font-weight: 600; }
-                .otp-container { margin: 28px 0; text-align: center; }
-                .otp-label { font-size: 12px; color: #6b6b80; margin-bottom: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 1.5px; }
-                .otp-code { background-color: var(--surface); color: ${accentColor}; font-size: 38px; font-weight: 700; padding: 22px 36px; border-radius: 10px; letter-spacing: 14px; display: inline-block; border: 1px solid ${accentColor}40; font-family: 'Courier New', monospace; }
-                .expiry-notice { background-color: var(--surface); border: 1px solid #f59e0b40; border-left: 3px solid #f59e0b; padding: 14px 18px; margin: 20px 0; border-radius: 8px; }
-                .expiry-notice p { margin: 0; font-size: 13px; color: #a07820; }
             </style>
         </head>
         <body style="background-color: var(--bg); padding: 24px 16px;">
@@ -104,73 +99,6 @@ function emailLayout(title: string, accentColor: string, bodyContent: string, ye
         </body>
         </html>
     `;
-}
-
-export async function sendOTPEmail(email: string, otpCode: string) {
-	const transporter = getTransporter();
-	const subject = 'Your Verification Code';
-	const year = new Date().getFullYear();
-
-	const body = `
-        <p>Hello,</p>
-        <p>You've requested a verification code to access your account. Use the code below to complete your login:</p>
-        <div class="otp-container">
-            <div class="otp-label">Verification Code</div>
-            <div class="otp-code">${otpCode}</div>
-        </div>
-        <div class="expiry-notice">
-            <p>⏰ This code will expire in <strong>10 minutes</strong>.</p>
-        </div>
-        <div class="highlight-box">
-            <p>🔒 If you didn't request this code, you can safely ignore this email. Your account remains secure.</p>
-        </div>
-    `;
-
-	const mailOptions = {
-		from: `"${APP_NAME_TEXT}" <${process.env.MAIL_USERNAME}>`,
-		to: email,
-		subject,
-		html: emailLayout(subject, '#818cf8', body, year)
-	};
-
-	try {
-		const info = await transporter.sendMail(mailOptions);
-		return { success: true, messageId: info.messageId };
-	} catch (error: any) {
-		throw new Error(`Failed to send email: ${error.message}`);
-	}
-}
-
-export async function sendVerificationSuccessEmail(email: string, username: string) {
-	const transporter = getTransporter();
-	const subject = 'Email Verified Successfully';
-	const year = new Date().getFullYear();
-
-	const body = `
-        <p>Hello ${username},</p>
-        <p>Your email has been successfully verified!</p>
-        <div class="status-box">
-            <div class="icon">🎉</div>
-            <p>Your account is now active and ready to use.</p>
-        </div>
-        <div class="highlight-box">
-            <p><strong>What's next?</strong><br>You can now log in and access the dashboard to manage your bots. If you have any questions, feel free to reach out to an administrator.</p>
-        </div>
-    `;
-
-	const mailOptions = {
-		from: `"${APP_NAME_TEXT}" <${process.env.MAIL_USERNAME}>`,
-		to: email,
-		subject,
-		html: emailLayout(subject, '#34d399', body, year)
-	};
-
-	try {
-		const info = await transporter.sendMail(mailOptions);
-		return { success: true, messageId: info.messageId };
-	} catch (error: any) {
-		throw new Error(`Failed to send email: ${error.message}`);
-	}
 }
 
 export async function sendAccountFrozenEmail(email: string, username: string) {
@@ -270,8 +198,6 @@ export async function sendAccountDeletedEmail(email: string, username: string) {
 }
 
 export default {
-	sendOTPEmail,
-	sendVerificationSuccessEmail,
 	sendAccountFrozenEmail,
 	sendAccountUnfrozenEmail,
 	sendAccountDeletedEmail

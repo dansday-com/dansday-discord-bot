@@ -364,8 +364,6 @@ const PUBLIC_PREFIXES = ['/api/public-statistics/', '/api/uploads/', '/api/panel
 const PUBLIC_EXACT = new Set([
 	'/api/panel/login',
 	'/api/panel/register',
-	'/api/panel/verify-otp',
-	'/api/panel/resend-otp',
 	'/api/panel/logout',
 	'/api/panel/auth',
 	'/api/panel/invite-link',

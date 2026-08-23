@@ -61,6 +61,30 @@
 		}
 	}
 
+	async function generateLink() {
+		inviting = true;
+		try {
+			const res = await fetch(`/api/servers/${data.serverId}/accounts`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				credentials: 'include',
+				body: JSON.stringify({ account_type: inviteType })
+			});
+			const d = await res.json();
+			if (d.success) {
+				generatedLink = d.invite_link ?? null;
+				showToast('Invite link generated', 'success');
+				invalidateAll();
+			} else {
+				showToast(d.error || 'Failed to generate link', 'error');
+			}
+		} catch {
+			showToast('Failed to generate link', 'error');
+		} finally {
+			inviting = false;
+		}
+	}
+
 	async function copyLink() {
 		if (!generatedLink) return;
 		await navigator.clipboard.writeText(generatedLink);
@@ -203,8 +227,20 @@
 					{#if inviting}<i class="fas fa-spinner fa-spin text-amber-300"></i>{:else}<i class="fas fa-paper-plane text-amber-300"></i>{/if}
 					Send DM
 				</button>
+				<button
+					type="button"
+					disabled={!canInvite || inviting}
+					onclick={generateLink}
+					class="bg-ash-600 hover:bg-ash-500 text-ash-100 flex shrink-0 items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all disabled:cursor-not-allowed disabled:opacity-50"
+				>
+					<i class="fas fa-link text-amber-300"></i>
+					Generate Link
+				</button>
 			</div>
-			<p class="text-ash-500 mt-2 text-xs">DM will be sent with the invite link. If DMs are closed, sending may fail.</p>
+			<p class="text-ash-500 mt-2 text-xs">
+				Send DM delivers the invite link to the selected members. Generate Link creates a link you share yourself — useful when DMs are closed or the bot is
+				offline.
+			</p>
 
 			{#if generatedLink}
 				<div class="bg-ash-700 mt-3 rounded-lg p-3">

@@ -25,7 +25,7 @@
 		{
 			icon: 'fa-toggle-on',
 			title: 'Enable Items',
-			desc: 'On the server Public statistics config page, turn on the Items toggle. This shows the account link in the bot menu and unlocks buy and use actions. Public statistics must be on.'
+			desc: 'On the server Public statistics config page, turn on the Items toggle. This unlocks buy and use actions. Public statistics must be on.'
 		},
 		{
 			icon: 'fa-hashtag',
@@ -282,7 +282,11 @@
 			req: 'required',
 			desc: 'MySQL connection. Or provide a single DATABASE_URL instead (mysql://user:pass@host:port/db).'
 		},
-		{ label: 'MAIL_HOST / MAIL_USERNAME / MAIL_PASSWORD', req: 'required', desc: 'SMTP for account emails and OTP. MAIL_PORT is optional (defaults to 587).' },
+		{
+			label: 'MAIL_HOST / MAIL_USERNAME / MAIL_PASSWORD',
+			req: 'required',
+			desc: 'SMTP for account notification emails. MAIL_PORT is optional (defaults to 587).'
+		},
 		{ label: 'CAPTCHA_SECRET', req: 'required', desc: 'A long random secret used by the demo login captcha.' },
 		{ label: 'REDIS_URL', req: 'optional', desc: 'Redis for sessions and caching, e.g. redis://default:pass@localhost:6379/0.' },
 		{ label: 'BOT_ID', req: 'per bot process', desc: 'The database id of the bot this process runs. The token lives in the database, not in env.' },
@@ -374,7 +378,7 @@
 		{ label: 'Staff Roles', desc: 'Used for staff features and staff-related filtering.' },
 		{ label: 'Content Creator Roles', desc: 'Roles treated as content creators in permissions and member filtering.' },
 		{ label: 'Supporter Roles', desc: 'Marks members as supporters for supporter-only features.' },
-		{ label: 'Member Roles', desc: 'Only members with these roles are eligible to earn leveling XP.' }
+		{ label: 'Member Roles', desc: 'Required to apply as a content creator, and used for role mentions and member filtering.' }
 	];
 
 	const modules = [
@@ -390,7 +394,7 @@
 				{ label: 'Multiplier', desc: 'Exponential multiplier for level requirements (1.0 to 2.0). Higher makes each level progressively harder.' },
 				{
 					label: 'XP Per Message',
-					desc: 'XP awarded per eligible message (5 to 100). The message must pass the cooldown and the member must have a member role.'
+					desc: 'XP awarded per eligible message (5 to 100). The message must pass the cooldown. Every human member earns XP; bots never do.'
 				},
 				{ label: 'Message Cooldown (seconds)', desc: 'Minimum gap between messages that earn XP (0 to 180). Messages sent too fast award nothing.' },
 				{ label: 'Active Voice XP', desc: 'XP granted each interval while active in voice (5 to 100).' },
@@ -470,7 +474,7 @@
 			accent: '#4b6584',
 			title: 'AFK',
 			what: 'Lets members flag themselves AFK; the bot adjusts their nickname and warns anyone who mentions them.',
-			fields: [{ label: 'AFK module', desc: 'When off, the AFK button is hidden and all AFK behavior is disabled.' }]
+			fields: [{ label: 'AFK module', desc: 'When off, the AFK button still shows but says the feature is turned off, and all AFK behavior stops.' }]
 		},
 		{
 			id: 'feedback',
@@ -596,10 +600,13 @@
 			title: 'Public statistics',
 			what: 'The master switch for all public pages: server statistics, leaderboard, members, and the per-member account (Overview, History, Guide). Items, Minigames, Assets and Daily tasks are enabled here as sub-toggles.',
 			fields: [
-				{ label: 'Public statistics module', desc: 'Master switch. When off, every public page and the in-Discord account link are disabled.' },
+				{
+					label: 'Public statistics module',
+					desc: 'Master switch. When off, the public pages still load but show a "turned off" notice instead of data.'
+				},
 				{
 					label: 'Items / Minigames / Assets',
-					desc: 'Sub-toggles under public statistics. Each enables its account tab (and channel, for Items/Minigames). With all four off, the account still shows Overview and History; only Guide hides.'
+					desc: 'Sub-toggles under public statistics. Each unlocks its account tab (and channel, for Items/Minigames). Tabs stay visible when off and explain that the feature is disabled.'
 				},
 				{
 					label: 'Daily tasks',
@@ -611,7 +618,7 @@
 	];
 
 	const discordMenu = [
-		{ label: '📋 Menu', desc: 'The main button in the menu channel. Opens the feature menu, showing only what a member has permission for.' },
+		{ label: '📋 Menu', desc: 'The main button in the menu channel. Open to every member; every feature button is always listed.' },
 		{ label: '💎 Custom Supporter Role', desc: 'Opens a modal to create or edit a personal role (name, color, icon).' },
 		{ label: '🎉 Create Giveaway', desc: 'Starts the giveaway flow: pick an eligibility role, then fill the details form.' },
 		{ label: '⏸️ Set AFK Status', desc: 'Opens the AFK modal, or shows your current AFK status with a Remove AFK button.' },
@@ -620,8 +627,8 @@
 		{ label: '🎬 Content Creator', desc: 'Shows the creator list and an Apply button (TikTok username plus reason).' },
 		{ label: '🔔 Notifications', desc: 'Opens a selector to subscribe to the notification channels you enabled.' },
 		{ label: '🌐 Select Language', desc: 'Switches the Discord interface language (English or Indonesian).' },
-		{ label: '🌐 Statistics', desc: 'Link to the public stats page (shown when Public statistics is on).' },
-		{ label: '👤 Account', desc: 'Link to the member account (Overview, Task, Items, Minigames, Assets, History, Guide) — shown when Public statistics is on.' }
+		{ label: '🌐 Statistics', desc: 'Link to the public stats page.' },
+		{ label: '👤 Account', desc: 'Link to the member account (Overview, Task, Items, Minigames, Assets, History, Guide).' }
 	];
 
 	function reveal(node: HTMLElement) {
@@ -939,7 +946,9 @@
 
 				<section id="discord" class="g-sec" use:reveal>
 					<h2 class="g-sec-head"><i class="fab fa-discord"></i>The Discord menu</h2>
-					<p class="g-sec-lead">Members click the Menu button in the menu channel. It shows only the features they have permission for.</p>
+					<p class="g-sec-lead">
+						Members click the Menu button in the menu channel. Every button is always shown — if a feature is off or needs a role, clicking it explains why.
+					</p>
 					<div class="g-fieldlist">
 						{#each discordMenu as d}
 							<div class="g-field">

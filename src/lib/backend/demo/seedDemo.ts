@@ -63,14 +63,11 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 			email: sessionEmail,
 			password_hash: pwHash,
 			account_type: 'superadmin',
-			email_verified: true,
-			otp_code: null,
-			otp_expires_at: null,
 			ip_address: null,
 			created_at: nowDb,
 			updated_at: nowDb
 		})
-		.onDuplicateKeyUpdate({ set: { email_verified: true as any, updated_at: nowDb } });
+		.onDuplicateKeyUpdate({ set: { updated_at: nowDb } });
 
 	const demoAdmin = await db
 		.select()
@@ -364,9 +361,6 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 				email: ownerEmail,
 				password_hash: ownerPw,
 				account_type: 'owner',
-				email_verified: true,
-				otp_code: null,
-				otp_expires_at: null,
 				ip_address: null,
 				is_frozen: false,
 				created_at: nowDb,
@@ -387,9 +381,6 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 					email: e,
 					password_hash: pw,
 					account_type: 'staff',
-					email_verified: true,
-					otp_code: null,
-					otp_expires_at: null,
 					ip_address: null,
 					is_frozen: false,
 					created_at: nowDb,

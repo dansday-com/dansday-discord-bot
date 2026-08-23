@@ -93,10 +93,6 @@
 			if (data.success) {
 				showToast(data.message || 'Login successful!', 'success');
 				setTimeout(() => goto(DASHBOARD_PATH), 500);
-			} else if (data.requires_verification) {
-				showToast('Please verify your email first. Redirecting...', 'error');
-				const source = data.account_source === 'server_accounts' ? '&source=server_accounts' : '';
-				setTimeout(() => goto(`/verify?token=${data.verify_token}${source}`), 1000);
 			} else {
 				showToast(data.error || 'Login failed', 'error');
 			}

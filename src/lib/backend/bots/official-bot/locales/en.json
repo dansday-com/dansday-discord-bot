@@ -24,6 +24,7 @@
 			"setupNotTextChannelBody": "Please select a **text channel**.",
 			"joinTitle": "Thanks for adding {botName}!",
 			"joinBody": "Run `/setup` to create the channels and finish setup.",
+			"joinAskAi": "Not sure where to start? Mention {botMention} and just ask — it reads the documentation and can walk you through setup.",
 			"joinDocsButton": "Documentation",
 			"joinSupportButton": "Support server",
 			"setupChannelsCreated": "Created **{count}** new channel(s).",

@@ -24,6 +24,7 @@
 			"setupNotTextChannelBody": "Pilih **saluran teks**.",
 			"joinTitle": "Terima kasih telah menambahkan {botName}!",
 			"joinBody": "Jalankan `/setup` untuk membuat saluran dan menyelesaikan pengaturan.",
+			"joinAskAi": "Belum tahu harus mulai dari mana? Sebut {botMention} dan tanya saja — bot membaca dokumentasi dan bisa memandu pengaturannya.",
 			"joinDocsButton": "Dokumentasi",
 			"joinSupportButton": "Server dukungan",
 			"setupChannelsCreated": "Membuat **{count}** saluran baru.",

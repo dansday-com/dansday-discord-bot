@@ -148,6 +148,16 @@ async function findGreetingChannel(guild) {
 	return [...channels.values()].filter(canSend).sort((a, b) => a.position - b.position)[0] || null;
 }
 
+async function isAiChatReady() {
+	if (!botId) return false;
+	try {
+		const config = db.botAiFromDbRow(await db.getBotAiByBotId(botId));
+		return !!(config.enabled && config.api_url && config.api_key && config.model);
+	} catch {
+		return false;
+	}
+}
+
 async function sendJoinGreeting(guild) {
 	try {
 		const channel = await findGreetingChannel(guild);
@@ -159,10 +169,16 @@ async function sendJoinGreeting(guild) {
 		const embedConfig = await getEmbedConfig(guild.id).catch(() => ({ NICKNAME: DEFAULT_BOT_NICKNAME }));
 		const botName = embedConfig.NICKNAME;
 
+		let description = await translate('interface.panel.joinBody', guild.id, '', { botName });
+		if (await isAiChatReady()) {
+			const botMention = client?.user ? `<@${client.user.id}>` : botName;
+			description += `\n\n${await translate('interface.panel.joinAskAi', guild.id, '', { botMention })}`;
+		}
+
 		const embed = new EmbedBuilder()
 			.setColor(0x57f287)
 			.setTitle(await translate('interface.panel.joinTitle', guild.id, '', { botName }))
-			.setDescription(await translate('interface.panel.joinBody', guild.id, '', { botName }));
+			.setDescription(description);
 
 		const buttons = [];
 		const origin = publicSiteOrigin();

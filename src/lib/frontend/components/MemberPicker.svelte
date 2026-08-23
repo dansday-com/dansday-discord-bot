@@ -52,10 +52,6 @@
 
 	async function runSearch() {
 		const q = search.trim();
-		if (q.length < 2) {
-			results = [];
-			return;
-		}
 		loading = true;
 		try {
 			const res = await fetch(`/api/servers/${serverId}/members?q=${encodeURIComponent(q)}&limit=25`, { credentials: 'include' });
@@ -74,6 +70,7 @@
 		}
 		open = true;
 		search = '';
+		void runSearch();
 	}
 
 	function pickSingle(m: Member | null) {
@@ -211,7 +208,7 @@
 				{/if}
 
 				{#if results.length === 0}
-					<p class="text-ash-500 py-4 text-center text-sm">Type at least 2 characters to search</p>
+					<p class="text-ash-500 py-4 text-center text-sm">{loading ? 'Loading members...' : 'No members found'}</p>
 				{:else}
 					{#each results as m (m.discord_member_id)}
 						<button

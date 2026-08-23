@@ -10,12 +10,15 @@ import {
 	getCurrentDateTime,
 	toMySQLDateTime,
 	getClientIp,
+	checkRateLimit,
 	newSessionId,
 	setSession,
 	makeSessionCookie,
 	logger
 } from '$lib/utils/index.js';
 import bcrypt from 'bcryptjs';
+
+const MAX_REGISTER_ATTEMPTS = 5;
 
 async function validateRegistrationInputs(username: string, email: string, password: string) {
 	const errors: string[] = [];
@@ -51,6 +54,14 @@ async function validateRegistrationInputs(username: string, email: string, passw
 export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const ip = getClientIp(request);
+		const rateLimit = await checkRateLimit(ip, 'register-with-token', MAX_REGISTER_ATTEMPTS);
+		if (!rateLimit.allowed) {
+			return json(
+				{ success: false, error: 'Too many registration attempts. Please try again later.', resetTime: new Date(rateLimit.resetTime).toISOString() },
+				{ status: 429 }
+			);
+		}
+
 		const body = await request.json();
 		const { token, username, email, password } = body;
 

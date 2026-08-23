@@ -51,6 +51,16 @@
 		}
 	},
 	"permissions": {
+		"supporterRoleDenied": {
+			"title": "🔒 **Keuntungan Supporter**",
+			"description": "Role kustom dengan nama dan warna sendiri adalah keuntungan supporter. Memerlukan salah satu role ini:\\n{roles}",
+			"footer": "Tanya administrator server cara menjadi supporter."
+		},
+		"creatorApplyDenied": {
+			"title": "🔒 **Pendaftaran Belum Terbuka Untukmu**",
+			"description": "Mendaftar menjadi content creator memerlukan salah satu role ini:\\n{roles}",
+			"footer": "Kamu tetap bisa melihat daftar creator. Tanya administrator server cara mendapatkan role member."
+		},
 		"denied": {
 			"title": "❌ **Izin Ditolak**",
 			"description": "Kamu memerlukan salah satu role berikut untuk menggunakan **{action}**:\\n{roles}",

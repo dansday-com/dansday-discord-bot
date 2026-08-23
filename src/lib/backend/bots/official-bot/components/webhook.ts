@@ -53,26 +53,28 @@ function parseColor(colorInput) {
 
 const PERMISSION_CATEGORY_KEYS: Record<string, string> = {
 	admin: 'admin_roles',
-	staff: 'staff_roles',
-	content_creator: 'content_creator_roles',
-	supporter: 'supporter_roles',
-	member: 'member_roles'
+	staff: 'staff_roles'
 };
 
 async function resolveCategoryRoleMentions(serverId: any, categories: string[]): Promise<string> {
 	if (!Array.isArray(categories) || categories.length === 0) return '';
+	const mentions: string[] = [];
+	if (categories.includes('everyone')) mentions.push('@everyone');
+
 	const permRow = await db.getServerSettings(serverId, 'permissions').catch(() => null);
 	const permSettings = permRow && Array.isArray(permRow) ? permRow[0]?.settings : permRow?.settings;
-	if (!permSettings) return '';
-	const roleIds = new Set<string>();
-	for (const cat of categories) {
-		const key = PERMISSION_CATEGORY_KEYS[cat];
-		if (!key) continue;
-		for (const id of permSettings[key] || []) {
-			if (id) roleIds.add(String(id));
+	if (permSettings) {
+		const roleIds = new Set<string>();
+		for (const cat of categories) {
+			const key = PERMISSION_CATEGORY_KEYS[cat];
+			if (!key) continue;
+			for (const id of permSettings[key] || []) {
+				if (id) roleIds.add(String(id));
+			}
 		}
+		mentions.push(...[...roleIds].map((id) => `<@&${id}>`));
 	}
-	return [...roleIds].map((id) => `<@&${id}>`).join(' ');
+	return mentions.join(' ');
 }
 
 async function handleSendGlobalEmbed(payload) {

@@ -9,11 +9,9 @@
 	let { data }: PageProps = $props();
 
 	const MENTION_CATEGORIES = [
-		{ discord_role_id: 'admin', name: 'Admin Roles', color: '#ef4444', position: 5 },
-		{ discord_role_id: 'staff', name: 'Staff Roles', color: '#f59e0b', position: 4 },
-		{ discord_role_id: 'content_creator', name: 'Content Creator Roles', color: '#8b5cf6', position: 3 },
-		{ discord_role_id: 'supporter', name: 'Supporter Roles', color: '#22c55e', position: 2 },
-		{ discord_role_id: 'member', name: 'Member Roles', color: '#3b82f6', position: 1 }
+		{ discord_role_id: 'everyone', name: 'Everyone', color: '#3b82f6', position: 3 },
+		{ discord_role_id: 'admin', name: 'Admin Roles', color: '#ef4444', position: 2 },
+		{ discord_role_id: 'staff', name: 'Staff Roles', color: '#f59e0b', position: 1 }
 	];
 	let mentionCategories = $state<string[]>([]);
 

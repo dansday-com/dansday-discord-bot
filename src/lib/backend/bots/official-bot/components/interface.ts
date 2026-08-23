@@ -1,5 +1,4 @@
 import {
-	AFK_CONFIG,
 	computePublicServerSlugForServerId,
 	getEmbedConfig,
 	getServerForCurrentBot,
@@ -103,71 +102,54 @@ async function handleMenuButton(interaction) {
 
 	const buttons = [];
 
-	if (
-		(await hasPermission(member, 'custom_supporter_role')) &&
-		(await isComponentFeatureEnabled(interaction.guild.id, serverSettingsComponent.custom_supporter_role))
-	) {
-		buttons.push(
-			new ButtonBuilder()
-				.setCustomId('bot_custom_supporter_role')
-				.setLabel(await translate('customSupporterRole.existing.title', interaction.guild.id, interaction.user.id))
-				.setStyle(ButtonStyle.Success)
-		);
-	}
+	buttons.push(
+		new ButtonBuilder()
+			.setCustomId('bot_custom_supporter_role')
+			.setLabel(await translate('customSupporterRole.existing.title', interaction.guild.id, interaction.user.id))
+			.setStyle(ButtonStyle.Success)
+	);
 
-	if ((await hasPermission(member, 'giveaway')) && (await isComponentFeatureEnabled(interaction.guild.id, serverSettingsComponent.giveaway))) {
-		buttons.push(
-			new ButtonBuilder()
-				.setCustomId('bot_giveaway')
-				.setLabel(await translate('giveaway.create.title', interaction.guild.id, interaction.user.id))
-				.setStyle(ButtonStyle.Success)
-		);
-	}
+	buttons.push(
+		new ButtonBuilder()
+			.setCustomId('bot_giveaway')
+			.setLabel(await translate('giveaway.create.title', interaction.guild.id, interaction.user.id))
+			.setStyle(ButtonStyle.Success)
+	);
 
-	if ((await hasPermission(member, 'afk')) && (await AFK_CONFIG.isEnabled(interaction.guild.id))) {
-		buttons.push(
-			new ButtonBuilder()
-				.setCustomId('bot_afk')
-				.setLabel(await translate('afk.title', interaction.guild.id, interaction.user.id))
-				.setStyle(ButtonStyle.Success)
-		);
-	}
+	buttons.push(
+		new ButtonBuilder()
+			.setCustomId('bot_afk')
+			.setLabel(await translate('afk.title', interaction.guild.id, interaction.user.id))
+			.setStyle(ButtonStyle.Success)
+	);
 
-	if ((await hasPermission(member, 'feedback')) && (await isComponentFeatureEnabled(interaction.guild.id, serverSettingsComponent.feedback))) {
-		buttons.push(
-			new ButtonBuilder()
-				.setCustomId('bot_feedback')
-				.setLabel(await translate('feedback.modal.title', interaction.guild.id, interaction.user.id))
-				.setStyle(ButtonStyle.Success)
-		);
-	}
+	buttons.push(
+		new ButtonBuilder()
+			.setCustomId('bot_feedback')
+			.setLabel(await translate('feedback.modal.title', interaction.guild.id, interaction.user.id))
+			.setStyle(ButtonStyle.Success)
+	);
 
-	if ((await hasPermission(member, 'staff_rating')) && (await isComponentFeatureEnabled(interaction.guild.id, serverSettingsComponent.staff_rating))) {
-		buttons.push(
-			new ButtonBuilder()
-				.setCustomId('bot_staff_rating')
-				.setLabel(await translate('staffRating.button', interaction.guild.id, interaction.user.id))
-				.setStyle(ButtonStyle.Success)
-		);
-	}
+	buttons.push(
+		new ButtonBuilder()
+			.setCustomId('bot_staff_rating')
+			.setLabel(await translate('staffRating.button', interaction.guild.id, interaction.user.id))
+			.setStyle(ButtonStyle.Success)
+	);
 
-	if ((await hasPermission(member, 'content_creator')) && (await isComponentFeatureEnabled(interaction.guild.id, serverSettingsComponent.content_creator))) {
-		buttons.push(
-			new ButtonBuilder()
-				.setCustomId('bot_content_creator')
-				.setLabel(await translate('contentCreator.button', interaction.guild.id, interaction.user.id))
-				.setStyle(ButtonStyle.Success)
-		);
-	}
+	buttons.push(
+		new ButtonBuilder()
+			.setCustomId('bot_content_creator')
+			.setLabel(await translate('contentCreator.button', interaction.guild.id, interaction.user.id))
+			.setStyle(ButtonStyle.Success)
+	);
 
-	if ((await hasPermission(member, 'notifications')) && (await isComponentFeatureEnabled(interaction.guild.id, serverSettingsComponent.notifications))) {
-		buttons.push(
-			new ButtonBuilder()
-				.setCustomId('bot_notifications')
-				.setLabel(await translate('notifications.button', interaction.guild.id, interaction.user.id))
-				.setStyle(ButtonStyle.Success)
-		);
-	}
+	buttons.push(
+		new ButtonBuilder()
+			.setCustomId('bot_notifications')
+			.setLabel(await translate('notifications.button', interaction.guild.id, interaction.user.id))
+			.setStyle(ButtonStyle.Success)
+	);
 
 	if (buttons.length === 0) {
 		const noAccessMsg = await translate('menu.noAccess', interaction.guild.id, interaction.user.id);
@@ -343,6 +325,7 @@ export async function handleButtonInteraction(interaction) {
 			await handleContentCreatorDismissNo(interaction);
 			break;
 		case 'bot_afk':
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.afk)) break;
 			await handleAFKButton(interaction);
 			break;
 		case 'afk_remove':

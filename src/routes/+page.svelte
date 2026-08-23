@@ -11,6 +11,11 @@
 	const communityDiscordUrl = COMMUNITY_DISCORD_URL;
 	const sourceRepoUrl = 'https://github.com/dansday-com/dansday-discord-bot';
 
+	const SERVERS_PER_PAGE = 5;
+	let shownServers = $state(SERVERS_PER_PAGE);
+	const visibleServers = $derived(data.featuredServers.slice(0, shownServers));
+	const remainingServers = $derived(data.featuredServers.length - visibleServers.length);
+
 	const features = [
 		{
 			icon: 'fa-shield-halved',
@@ -229,10 +234,10 @@
 				<section class="m-section">
 					<div class="m-section-header">
 						<h2>Active Communities</h2>
-						<p>Servers using {APP_NAME} Bot with public statistics enabled.</p>
+						<p>Servers using {APP_NAME} Bot, each with its own live public pages.</p>
 					</div>
 					<div class="m-servers-list">
-						{#each data.featuredServers as server}
+						{#each visibleServers as server}
 							<a href={publicServerPath(server.slug)} class="m-server-card">
 								<div class="m-landing-server-icon">
 									{#if server.server_icon}
@@ -254,6 +259,12 @@
 							</a>
 						{/each}
 					</div>
+					{#if remainingServers > 0}
+						<button type="button" class="m-servers-more" onclick={() => (shownServers += SERVERS_PER_PAGE)}>
+							<i class="fas fa-chevron-down"></i>
+							Show more ({remainingServers} left)
+						</button>
+					{/if}
 				</section>
 			{/if}
 

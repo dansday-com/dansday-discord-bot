@@ -2,6 +2,8 @@ import type { PageServerLoad } from './$types';
 import { listPublicServers } from '$lib/database.js';
 import { slugifyDisplayName, formatIndexedSlug } from '$lib/utils/slug.js';
 
+const MAX_FEATURED_SERVERS = 50;
+
 export const load: PageServerLoad = async () => {
 	let featuredServers: { name: string; slug: string; server_icon: string | null }[] = [];
 
@@ -25,7 +27,7 @@ export const load: PageServerLoad = async () => {
 				const j = Math.floor(Math.random() * (i + 1));
 				[all[i], all[j]] = [all[j], all[i]];
 			}
-			featuredServers = all.slice(0, 5).map((e) => ({
+			featuredServers = all.slice(0, MAX_FEATURED_SERVERS).map((e) => ({
 				name: e.server.name || e.slug,
 				slug: e.slug,
 				server_icon: e.server.server_icon ?? null

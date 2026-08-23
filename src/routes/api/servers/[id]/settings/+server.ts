@@ -3,6 +3,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 import { logger } from '$lib/utils/index.js';
+import { isValidQuestHttpProxyUrl } from '$lib/utils/questHttpProxyUrl.js';
 
 export const GET: RequestHandler = async ({ params, url }) => {
 	try {
@@ -58,6 +59,13 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		const { component, ...settings } = body;
 		if (!component) {
 			return json({ error: 'component is required' }, { status: 400 });
+		}
+
+		if (component === SERVER_SETTINGS.component.discord_quest_notifier) {
+			const proxyUrl = (settings as { http_proxy_url?: unknown }).http_proxy_url;
+			if (typeof proxyUrl === 'string' && !isValidQuestHttpProxyUrl(proxyUrl)) {
+				return json({ error: 'HTTP proxy must be a public http:// or https:// URL' }, { status: 400 });
+			}
 		}
 
 		let targetServerId = panelServerId;

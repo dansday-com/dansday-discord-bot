@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { ProxyAgent } from 'proxy-agent';
 import { discordQuestHttp } from '../config.js';
+import { isValidQuestHttpProxyUrl } from '$lib/utils/questHttpProxyUrl.js';
 
 const CLIENT_USER_AGENT =
 	'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) discord/1.0.9044 Chrome/120.0.6099.291 Electron/28.2.10 Safari/537.36';
@@ -9,6 +10,9 @@ const questProxyAgentCache = new Map<string, ProxyAgent>();
 const QUEST_PROXY_AGENT_CACHE_MAX = 32;
 
 function getQuestProxyAgent(proxyUrl: string): ProxyAgent {
+	if (!isValidQuestHttpProxyUrl(proxyUrl)) {
+		throw new Error('HTTP proxy must be a public http:// or https:// URL');
+	}
 	let ag = questProxyAgentCache.get(proxyUrl);
 	if (!ag) {
 		ag = new ProxyAgent({

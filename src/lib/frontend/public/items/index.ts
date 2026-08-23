@@ -111,7 +111,6 @@ export async function loadItemsShared(server: any, hash: string, subKey?: 'items
 
 	const psRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.public_statistics).catch(() => null);
 	const ps = (psRow as any)?.settings ?? {};
-	if (ps.enabled === false) return { notFound: true } as const;
 	if (subKey && !publicSubfeatureEnabled(ps, subKey)) return { notFound: true } as const;
 
 	const levelingRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.leveling).catch(() => null);

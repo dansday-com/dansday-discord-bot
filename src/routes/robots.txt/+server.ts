@@ -9,6 +9,8 @@ export const GET: RequestHandler = async () => {
 	return new Response(
 		`User-Agent: *
 Allow: /
+Disallow: /server/*/account
+Disallow: /api/
 
 Host: ${baseUrl}
 Sitemap: ${baseUrl}/sitemap.xml`,

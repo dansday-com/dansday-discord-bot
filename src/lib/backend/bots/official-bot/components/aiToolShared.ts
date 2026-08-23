@@ -45,7 +45,6 @@ export async function publicServer(botId, guildId) {
 	if (!server) return { error: fail('server_not_found') };
 
 	const settings = await publicSettings(server.id);
-	if (settings.enabled === false) return { error: fail('public_data_disabled') };
 
 	return {
 		server,
@@ -81,7 +80,6 @@ export async function resolveToolFeatures(botId, guildId) {
 	if (!server) return off;
 
 	const settings = await publicSettings(server.id);
-	if (settings.enabled === false) return off;
 
 	const componentOn = (component) => isComponentFeatureEnabled(guildId, component).catch(() => false);
 

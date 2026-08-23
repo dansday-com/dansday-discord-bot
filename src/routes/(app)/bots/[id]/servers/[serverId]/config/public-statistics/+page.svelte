@@ -10,7 +10,6 @@
 	let { data }: PageProps = $props();
 
 	let saving = $state(false);
-	let enabled = $state(data.enabled);
 	let itemsEnabled = $state(data.settings?.items_enabled !== false);
 	let minigamesEnabled = $state(data.settings?.minigames_enabled !== false);
 	let assetsEnabled = $state(data.settings?.assets_enabled !== false);
@@ -18,7 +17,7 @@
 	let itemsChannel = $state<string>(data.settings?.ITEMS_CHANNEL_ID ?? '');
 	let minigamesChannel = $state<string>(data.settings?.MINIGAMES_CHANNEL_ID ?? '');
 
-	const publicStatsUrl = $derived(enabled && data.publicStatsPath ? `${page.url.origin}${data.publicStatsPath}` : '');
+	const publicStatsUrl = $derived(data.publicStatsPath ? `${page.url.origin}${data.publicStatsPath}` : '');
 
 	async function save() {
 		saving = true;
@@ -31,7 +30,6 @@
 				body: JSON.stringify({
 					component: SERVER_SETTINGS.component.public_statistics,
 					...base,
-					enabled,
 					items_enabled: itemsEnabled,
 					minigames_enabled: minigamesEnabled,
 					assets_enabled: assetsEnabled,
@@ -56,27 +54,11 @@
 		<i class="fas fa-chart-pie text-amber-400"></i>Public statistics
 	</h3>
 	<p class="text-ash-400 text-xs">
-		The public server pages (statistics, leaderboard, members, member account) all live under this module. When off, none of them are reachable and the
-		in-Discord link is hidden.
+		The public server pages (statistics, leaderboard, members, member account) are always on. Use the toggles below to choose which account features appear.
 	</p>
 
-	<ConfigToggleRow
-		label="Public statistics module"
-		description="Master switch. When off, the public pages and in-Discord link to this site are disabled."
-		labelIconClass="fas fa-chart-pie text-amber-400"
-		bind:enabled
-		ariaLabel="Toggle public statistics module"
-	/>
-
-	{#if !enabled}
-		<p class="flex items-start gap-2 text-xs text-amber-200/90">
-			<i class="fas fa-power-off mt-0.5 shrink-0 text-amber-400/90" aria-hidden="true"></i>
-			<span>Module is off. Save configuration to apply. Turn the module on to see the public URLs and account features.</span>
-		</p>
-	{/if}
-
-	<div class="space-y-5 transition-opacity" class:pointer-events-none={!enabled} class:opacity-50={!enabled}>
-		{#if enabled && data.publicStatsPath}
+	<div class="space-y-5">
+		{#if data.publicStatsPath}
 			<div>
 				<label class="text-ash-300 mb-1.5 block text-xs font-medium">
 					<i class="fas fa-link mr-1 text-amber-400"></i>Public URL

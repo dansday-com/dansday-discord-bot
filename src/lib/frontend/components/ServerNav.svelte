@@ -3,13 +3,9 @@
 	import { publicServerPath } from '$lib/url.js';
 
 	let {
-		server,
-		accountEnabled = false,
-		publicStatsEnabled = true
+		server
 	}: {
 		server: { slug: string; name?: string | null; server_icon?: string | null };
-		accountEnabled?: boolean;
-		publicStatsEnabled?: boolean;
 	} = $props();
 
 	const basePath = $derived(publicServerPath(server.slug));
@@ -35,10 +31,10 @@
 
 	const tabs = $derived(
 		[
-			{ label: 'Statistics', icon: 'fa-chart-pie', href: basePath, active: isOverview, show: publicStatsEnabled },
-			{ label: 'Leaderboard', icon: 'fa-trophy', href: `${basePath}/leaderboard`, active: isLeaderboard, show: publicStatsEnabled },
-			{ label: 'Members', icon: 'fa-users', href: `${basePath}/members`, active: isMembers, show: publicStatsEnabled },
-			{ label: 'Account', icon: 'fa-user', href: accountHref, active: isAccount, show: accountEnabled && !isGuest }
+			{ label: 'Statistics', icon: 'fa-chart-pie', href: basePath, active: isOverview, show: true },
+			{ label: 'Leaderboard', icon: 'fa-trophy', href: `${basePath}/leaderboard`, active: isLeaderboard, show: true },
+			{ label: 'Members', icon: 'fa-users', href: `${basePath}/members`, active: isMembers, show: true },
+			{ label: 'Account', icon: 'fa-user', href: accountHref, active: isAccount, show: !isGuest }
 		].filter((t) => t.show)
 	);
 </script>

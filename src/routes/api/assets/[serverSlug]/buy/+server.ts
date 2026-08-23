@@ -22,7 +22,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
 
 	const psRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.public_statistics).catch(() => null);
 	const psSettings = (psRow as any)?.settings || {};
-	if (psSettings.enabled === false || !publicSubfeatureEnabled(psSettings, 'assets')) {
+	if (!publicSubfeatureEnabled(psSettings, 'assets')) {
 		return json({ success: false, error: 'Assets are disabled for this server.' }, { status: 403 });
 	}
 

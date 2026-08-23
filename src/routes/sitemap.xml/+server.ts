@@ -35,19 +35,16 @@ export const GET: RequestHandler = async () => {
 		}
 	};
 
-	const visibleServers = servers.filter((s) => s.slug);
+	const root = `${baseUrl.replace(/\/$/, '')}/server`;
 
-	const publicPageRows = visibleServers.flatMap((s) => {
+	const publicPageRows = servers.flatMap((s) => {
 		const enc = encodeURIComponent(String(s.slug));
-		const lastmod = toLastmod(s.updated_at);
-		const base = { lastmod, changefreq: 'hourly' as const, priority: 0.8 };
-		const root = `${baseUrl.replace(/\/$/, '')}/server`;
-		const urls: { loc: string; lastmod: string | undefined; changefreq: 'hourly'; priority: number }[] = [
+		const base = { lastmod: toLastmod(s.updated_at), changefreq: 'hourly' as const, priority: 0.8 };
+		return [
 			{ loc: `${root}/${enc}`, ...base },
 			{ loc: `${root}/${enc}/leaderboard`, ...base },
 			{ loc: `${root}/${enc}/members`, ...base }
 		];
-		return urls;
 	});
 
 	const staticPages = [

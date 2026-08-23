@@ -14,6 +14,7 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'disc
 import { logger, parseMySQLDateTimeUtc } from '../../../../utils/index.js';
 import { getRedisClient } from '../../../../redis.js';
 import { applyAwardEffects, creditLeechers, getActiveLuckPercent } from './items.js';
+import { translate } from '../i18n.js';
 
 const recentMessages = new Map();
 
@@ -295,7 +296,8 @@ export async function sendLevelProgressNotification({
 	previousRank = null,
 	eventType = 'level',
 	memberLevelSnapshot = null,
-	contextLabel = 'level-change'
+	contextLabel = 'level-change',
+	fallbackChannelId = null
 } = {}) {
 	if (!clientInstance || !guildId || !discordMemberId) {
 		return false;
@@ -313,14 +315,17 @@ export async function sendLevelProgressNotification({
 		}
 
 		const settings = await getLevelingSettings(guildId);
-		const progressChannelId = settings.PROGRESS_CHANNEL_ID;
+		const progressChannelId = settings.PROGRESS_CHANNEL_ID || fallbackChannelId;
 
 		if (!progressChannelId) {
 			return false;
 		}
 
-		const channel = await guild.channels.fetch(progressChannelId);
+		const channel = await guild.channels.fetch(progressChannelId).catch(() => null);
 		if (!channel || !channel.isTextBased()) {
+			return false;
+		}
+		if (!channel.permissionsFor(guild.members.me)?.has(['ViewChannel', 'SendMessages'])) {
 			return false;
 		}
 
@@ -389,11 +394,15 @@ export async function sendLevelProgressNotification({
 		const notificationMentions = await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(guildId, progressChannelId).catch(() => null);
 		const content = notificationMentions && notificationMentions.length > 0 ? notificationMentions[0] : undefined;
 
-		const progressRow = leaderboardUrl
-			? new ActionRowBuilder<ButtonBuilder>().addComponents(
-					new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(leaderboardUrl).setLabel('Leaderboard').setEmoji('🌐')
-				)
-			: null;
+		const progressButtons: ButtonBuilder[] = [];
+		if (slug) {
+			const accountLabel = await translate('menu.account', guildId, discordMemberId).catch(() => '👤 Account');
+			progressButtons.push(new ButtonBuilder().setStyle(ButtonStyle.Secondary).setCustomId('level_my_account').setLabel(accountLabel));
+		}
+		if (leaderboardUrl) {
+			progressButtons.push(new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(leaderboardUrl).setLabel('Leaderboard').setEmoji('🌐'));
+		}
+		const progressRow = progressButtons.length > 0 ? new ActionRowBuilder<ButtonBuilder>().addComponents(...progressButtons) : null;
 
 		await channel.send({
 			content,
@@ -438,7 +447,7 @@ async function handleLevelEvaluation(server, dbMember, currentStats, guildId, co
 		return currentStats;
 	}
 
-	const { previousLevel = null, previousXp = null, previousRank: contextPreviousRank = null, reason = 'unknown' } = context;
+	const { previousLevel = null, previousXp = null, previousRank: contextPreviousRank = null, reason = 'unknown', sourceChannelId = null } = context;
 	const rawXp = currentStats.xp ?? 0;
 	const xpForLevel = typeof rawXp === 'bigint' ? Number(rawXp) : typeof rawXp === 'string' ? parseFloat(rawXp) || 0 : Number(rawXp) || 0;
 	const expectedLevel = await determineLevel(xpForLevel, guildId);
@@ -488,7 +497,8 @@ async function handleLevelEvaluation(server, dbMember, currentStats, guildId, co
 				newLevel: expectedLevel,
 				previousRank: normalizedPreviousRank,
 				memberLevelSnapshot,
-				contextLabel: `level-eval:${reason}`
+				contextLabel: `level-eval:${reason}`,
+				fallbackChannelId: sourceChannelId
 			});
 		}
 	} else if (dbMember.discord_member_id && rankImproved) {
@@ -499,7 +509,8 @@ async function handleLevelEvaluation(server, dbMember, currentStats, guildId, co
 			previousRank: normalizedPreviousRank,
 			memberLevelSnapshot,
 			eventType: 'rank',
-			contextLabel: `rank-eval:${reason}`
+			contextLabel: `rank-eval:${reason}`,
+			fallbackChannelId: sourceChannelId
 		});
 	}
 
@@ -712,25 +723,26 @@ async function handleMessageCreate(message) {
 			previousLevel: previousStats?.level ?? null,
 			previousXp: previousStats?.xp ?? null,
 			previousRank: previousStats?.rank ?? null,
-			reason: 'message'
+			reason: 'message',
+			sourceChannelId: message.channel?.id ?? null
 		});
 	} catch (error) {
 		await logger.log(`❌ Leveling message handler error: ${error.message}`);
 	}
 }
 
-async function awardVoiceXP(server, dbMember, guildId, reason, previousStats, buckets, mediaFlags) {
+async function awardVoiceXP(server, dbMember, guildId, reason, previousStats, buckets, mediaFlags, voiceChannelId = null) {
 	const lockKey = `${guildId}:${dbMember.id}`;
 	if (voiceAwardLocks.has(lockKey)) return null;
 	voiceAwardLocks.add(lockKey);
 	try {
-		return await awardVoiceXPLocked(server, dbMember, guildId, reason, previousStats, buckets, mediaFlags);
+		return await awardVoiceXPLocked(server, dbMember, guildId, reason, previousStats, buckets, mediaFlags, voiceChannelId);
 	} finally {
 		voiceAwardLocks.delete(lockKey);
 	}
 }
 
-async function awardVoiceXPLocked(server, dbMember, guildId, reason, previousStats, buckets, mediaFlags) {
+async function awardVoiceXPLocked(server, dbMember, guildId, reason, previousStats, buckets, mediaFlags, voiceChannelId = null) {
 	const { isAFK, voiceMinutes, videoMinutes, streamMinutes } = buckets;
 	const vm = Math.max(0, Math.floor(Number(voiceMinutes) || 0));
 	const vid = Math.max(0, Math.floor(Number(videoMinutes) || 0));
@@ -793,7 +805,8 @@ async function awardVoiceXPLocked(server, dbMember, guildId, reason, previousSta
 		previousLevel: oldStats?.level ?? null,
 		previousXp: oldStats?.xp ?? null,
 		previousRank: oldStats?.rank ?? null,
-		reason
+		reason,
+		sourceChannelId: voiceChannelId
 	});
 }
 
@@ -908,7 +921,8 @@ async function startVoiceSession(state, resumed = false) {
 						videoMinutes: mVideo,
 						streamMinutes: mStream
 					},
-					mediaFlags
+					mediaFlags,
+					state.channelId
 				);
 				finalLastRewardedAt = now;
 			}
@@ -925,7 +939,8 @@ async function startVoiceSession(state, resumed = false) {
 					videoMinutes: state.selfVideo ? 1 : 0,
 					streamMinutes: state.streaming ? 1 : 0
 				},
-				mediaFlags
+				mediaFlags,
+				state.channelId
 			);
 			finalLastRewardedAt = now;
 		}
@@ -1036,7 +1051,8 @@ async function handleVoiceTick(sessionKey) {
 				videoMinutes: mf.selfVideo ? 1 : 0,
 				streamMinutes: mf.streaming ? 1 : 0
 			},
-			mf
+			mf,
+			voiceState?.channelId ?? session.channelId ?? null
 		);
 	} catch (error) {
 		await logger.log(`❌ Leveling voice tick error: ${error.message}`);

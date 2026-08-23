@@ -22,7 +22,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
 
 	const row = await db.getServerSettings(server.id, SERVER_SETTINGS.component.public_statistics).catch(() => null);
 	const ps = (row as any)?.settings ?? {};
-	if (ps.enabled === false || !publicSubfeatureEnabled(ps, 'minigames')) {
+	if (!publicSubfeatureEnabled(ps, 'minigames')) {
 		return json({ success: false, error: 'Minigames are disabled for this server.' }, { status: 403 });
 	}
 

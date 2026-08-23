@@ -1,12 +1,12 @@
 import type { PageServerLoad } from './$types';
-import { listEnabledLeaderboardServers } from '$lib/database.js';
+import { listPublicServers } from '$lib/database.js';
 import { slugifyDisplayName, formatIndexedSlug } from '$lib/utils/slug.js';
 
 export const load: PageServerLoad = async () => {
 	let featuredServers: { name: string; slug: string; server_icon: string | null }[] = [];
 
 	try {
-		const servers = await listEnabledLeaderboardServers();
+		const servers = await listPublicServers();
 		if (Array.isArray(servers) && servers.length > 0) {
 			const groups = new Map<string, typeof servers>();
 			for (const s of servers) {

@@ -86,6 +86,11 @@
 		}
 	},
 	"leveling": {
+		"account": {
+			"link": "👤 Halaman akun kamu: {url}",
+			"noMember": "⚠️ Kamu belum tercatat di server ini. Kirim pesan atau masuk voice dulu.",
+			"unavailable": "⚠️ Halaman publik tidak tersedia untuk server ini."
+		},
 		"errors": {
 			"notRegistered": "⚠️ Server ini tidak terdaftar dengan bot. Silakan jalankan sync terlebih dahulu.",
 			"createRecordFailed": "❌ Gagal membuat catatan anggota. Silakan coba lagi."

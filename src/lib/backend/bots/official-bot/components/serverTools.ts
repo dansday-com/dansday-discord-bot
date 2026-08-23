@@ -4,6 +4,7 @@ import { itemAvailability, effectSummary, formatDuration, getItemEffect } from '
 import { loadItemsCatalog } from '../../../../frontend/public/items/index.js';
 import { resolveLeaderboardSnapshot } from '../../../../frontend/public/leaderboard/stream.js';
 import { resolvePublicStatisticsSnapshot } from '../../../../frontend/public/statistics/stream.js';
+import { getLevelingSettings } from '../../../config.js';
 import { VOICE_NOTE, fail, formatMs, memberByDiscordId, memberTzOffset, nameOfMember, num, publicServer, resolveToolFeatures } from './aiToolShared.js';
 
 const MAX_LEADERBOARD_ROWS = 25;
@@ -100,6 +101,79 @@ export async function runServerStatsTool(botId, guildId) {
 		giveaways: { total: s.giveaways_total, active: s.giveaways_active, entrants: s.giveaways_entrants },
 		quests: { enrolled: s.quests_enrolled, claimed: s.quests_claimed, participants: s.quests_participants },
 		staff: { reviews: s.staff_reviews, average_rating: s.staff_avg_rating }
+	};
+}
+
+function levelRequirementXp(level, baseXp, multiplier) {
+	if (level <= 1) return 0;
+	if (multiplier === 1) return baseXp * (level - 1);
+	return (baseXp * (Math.pow(multiplier, level - 1) - 1)) / (multiplier - 1);
+}
+
+export async function runLevelingRulesTool(botId, guildId, args) {
+	const ctx = await publicServer(botId, guildId);
+	if (ctx.error) return ctx.error;
+
+	let settings;
+	try {
+		settings = await getLevelingSettings(guildId);
+	} catch {
+		return fail('leveling_not_configured');
+	}
+
+	const msgXp = num(settings.MESSAGE.XP);
+	const msgCooldown = num(settings.MESSAGE.COOLDOWN_SECONDS);
+	const voiceXp = num(settings.VOICE.XP_PER_MINUTE);
+	const afkXp = num(settings.VOICE.AFK_XP_PER_MINUTE);
+	const videoXp = num(settings.VIDEO.XP_PER_MINUTE);
+	const streamXp = num(settings.STREAMING.XP_PER_MINUTE);
+	const baseXp = num(settings.REQUIREMENTS.BASE_XP);
+	const multiplier = Number(settings.REQUIREMENTS.MULTIPLIER) || 1;
+
+	const minutes = Math.max(0, Math.floor(num(args?.minutes))) || 60;
+	const messages = Math.max(0, Math.floor(num(args?.messages))) || 10;
+
+	const levelTable = [];
+	for (let lv = 2; lv <= 11; lv++) {
+		const total = Math.round(levelRequirementXp(lv, baseXp, multiplier));
+		levelTable.push({ level: lv, total_xp_needed: total, from_previous_level: total - Math.round(levelRequirementXp(lv - 1, baseXp, multiplier)) });
+	}
+
+	return {
+		ok: true,
+		server_name: ctx.server.name ?? null,
+		chat: {
+			xp_per_message: msgXp,
+			cooldown_seconds: msgCooldown,
+			note: msgCooldown > 0 ? `Only one message every ${msgCooldown}s earns XP. Faster messages earn nothing.` : 'Every message earns XP.'
+		},
+		voice: {
+			xp_per_minute_active: voiceXp,
+			xp_per_minute_afk: afkXp,
+			xp_per_minute_video: videoXp,
+			xp_per_minute_streaming: streamXp,
+			note: 'Video and streaming XP stack on top of the voice rate for the same minute. Muted or deafened counts as AFK.'
+		},
+		bonuses: {
+			voice_friend_bonus_percent_each: 10,
+			note: 'Each other member in the same voice channel adds 10% to that voice XP, and an active luck buff adds its own percent on top. Both apply to voice only, not chat.'
+		},
+		levels: {
+			base_xp: baseXp,
+			multiplier,
+			formula: multiplier === 1 ? 'total XP for level N = base_xp * (N - 1)' : 'total XP for level N = base_xp * (multiplier^(N-1) - 1) / (multiplier - 1)',
+			first_levels: levelTable
+		},
+		examples: {
+			voice_minutes: minutes,
+			voice_xp_active: voiceXp * minutes,
+			voice_xp_afk: afkXp * minutes,
+			voice_xp_with_video: (voiceXp + videoXp) * minutes,
+			voice_xp_with_streaming: (voiceXp + streamXp) * minutes,
+			messages_counted: messages,
+			chat_xp: msgXp * messages,
+			note: `${minutes} minutes of active voice is ${voiceXp * minutes} XP. ${messages} messages past the cooldown is ${msgXp * messages} XP.`
+		}
 	};
 }
 
@@ -314,7 +388,10 @@ const QUESTS_DESCRIPTION =
 const SHOP_DESCRIPTION =
 	'The XP item shop for this server. Returns each item with its price in XP, what it actually does, whether it is usable, whether it needs a target, how many minutes it lasts, its cooldown and immunity minutes, and whether it is on sale now or coming later. Use it for "what is in the shop", "how much does X cost", "what does X do", "what is coming soon", "how long does X last". Prices already include the asker\'s Luck discount.';
 
-const ALWAYS_ON = new Set(['get_server_stats', 'get_leaderboard', 'get_member_info']);
+const LEVELING_RULES_DESCRIPTION =
+	'How XP and levels actually work on this server: XP per message and its cooldown, XP per minute for voice, AFK voice, video and streaming, the friend and luck bonuses, the level-up formula with the XP needed for the first levels, and worked examples. Use it for "how much XP do I get for an hour in voice", "how do I level up fastest", "how much XP per message", "how much XP to reach level 10", "does streaming give more XP". Pass minutes or messages to have the example done for that exact amount. These are this server\'s own settings, not general advice.';
+
+const ALWAYS_ON = new Set(['get_server_stats', 'get_leaderboard', 'get_member_info', 'get_leveling_rules']);
 
 function allowedServerTool(name, features) {
 	if (!features) return true;
@@ -361,6 +438,20 @@ export function buildServerTools(features = null) {
 					type: 'object',
 					properties: { name: { type: 'string', description: "The member's name or their <@id> mention, exactly as the user wrote it." } },
 					required: ['name']
+				}
+			}
+		},
+		{
+			type: 'function',
+			function: {
+				name: 'get_leveling_rules',
+				description: LEVELING_RULES_DESCRIPTION,
+				parameters: {
+					type: 'object',
+					properties: {
+						minutes: { type: 'integer', description: 'Voice minutes to work the example for, e.g. 60 for one hour. Leave out for 60.' },
+						messages: { type: 'integer', description: 'Number of messages to work the chat example for. Leave out for 10.' }
+					}
 				}
 			}
 		},
@@ -420,6 +511,17 @@ export function buildServerDeclarations(features = null) {
 				required: ['name']
 			}
 		},
+		{
+			name: 'get_leveling_rules',
+			description: `${LEVELING_RULES_DESCRIPTION}\n\n${VOICE_NOTE} Give the rate and the worked example, not the whole level table.`,
+			parameters: {
+				type: Type.OBJECT,
+				properties: {
+					minutes: { type: Type.INTEGER, description: 'Voice minutes to work the example for, e.g. 60 for one hour.' },
+					messages: { type: Type.INTEGER, description: 'Number of messages to work the chat example for.' }
+				}
+			}
+		},
 		{ name: 'get_staff_ratings', description: `${STAFF_DESCRIPTION}\n\n${VOICE_NOTE}`, parameters: { type: Type.OBJECT, properties: {} } },
 		{ name: 'get_giveaways', description: `${GIVEAWAYS_DESCRIPTION}\n\n${VOICE_NOTE}`, parameters: { type: Type.OBJECT, properties: {} } },
 		{ name: 'get_quests', description: `${QUESTS_DESCRIPTION}\n\n${VOICE_NOTE}`, parameters: { type: Type.OBJECT, properties: {} } },
@@ -441,6 +543,7 @@ export const SERVER_TOOL_NAMES = new Set([
 	'get_server_stats',
 	'get_leaderboard',
 	'get_member_info',
+	'get_leveling_rules',
 	'get_staff_ratings',
 	'get_giveaways',
 	'get_quests',
@@ -453,6 +556,7 @@ export function runServerTool(name, args, { botId, guildId, callerDiscordId, voi
 	if (name === 'get_server_stats') return runServerStatsTool(botId, guildId);
 	if (name === 'get_leaderboard') return runLeaderboardTool(botId, guildId, args, opts);
 	if (name === 'get_member_info') return runMemberInfoTool(botId, guildId, args);
+	if (name === 'get_leveling_rules') return runLevelingRulesTool(botId, guildId, args);
 	if (name === 'get_staff_ratings') return runStaffRatingTool(botId, guildId);
 	if (name === 'get_giveaways') return runGiveawaysTool(botId, guildId);
 	if (name === 'get_quests') return runQuestsTool(botId, guildId);

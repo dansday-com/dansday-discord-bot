@@ -158,6 +158,7 @@ export const aiServerTopics = [
 	{ icon: 'fa-chart-pie', title: 'Server stats', desc: 'Members, XP, messages, voice minutes and every module total.' },
 	{ icon: 'fa-ranking-star', title: 'Leaderboards', desc: 'Any metric, any period — XP, chat, voice, steals, gambling.' },
 	{ icon: 'fa-store', title: 'Shop', desc: 'Prices, what each item does, how long it lasts, what is coming.' },
+	{ icon: 'fa-star', title: 'XP rates', desc: 'This server\'s own rates, so "how much XP for an hour in voice" is exact.' },
 	{ icon: 'fa-gift', title: 'Giveaways & quests', desc: 'What is running, the prize and how long is left.' },
 	{ icon: 'fa-book-open', title: 'How the game works', desc: 'The same guide members read, so answers match the site.' },
 	{ icon: 'fa-user', title: 'Their account', desc: 'Level, bag, assets, minigames, history, tasks and streak.' }

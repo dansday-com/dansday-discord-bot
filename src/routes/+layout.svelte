@@ -12,7 +12,7 @@
 <svelte:head>
 	<title>{APP_NAME} Discord Bot</title>
 	<link rel="preload" href="/fa/webfonts/fa-solid-900.woff2" as="font" type="font/woff2" crossorigin="anonymous" />
-	<link rel="stylesheet" href="/fa/css/all.min.css" media="print" onload="this.media='all';this.onload=null" />
+	{@html `<link rel="stylesheet" href="/fa/css/all.min.css" media="print" onload="this.media='all';this.onload=null" />`}
 	<noscript><link rel="stylesheet" href="/fa/css/all.min.css" /></noscript>
 	{@html `<style>${effectAccentStyle}</style>`}
 </svelte:head>

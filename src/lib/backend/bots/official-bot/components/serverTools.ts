@@ -5,6 +5,7 @@ import { loadItemsCatalog } from '../../../../frontend/public/items/index.js';
 import { resolveLeaderboardSnapshot } from '../../../../frontend/public/leaderboard/stream.js';
 import { resolvePublicStatisticsSnapshot } from '../../../../frontend/public/statistics/stream.js';
 import { getLevelingSettings } from '../../../config.js';
+import { parseMySQLDateTimeUtc } from '../../../../utils/index.js';
 import { VOICE_NOTE, fail, formatMs, memberByDiscordId, memberTzOffset, nameOfMember, num, publicServer, resolveToolFeatures } from './aiToolShared.js';
 
 const MAX_LEADERBOARD_ROWS = 25;
@@ -71,9 +72,26 @@ export async function runServerStatsTool(botId, guildId) {
 	if (!snapshot?.stats) return fail('no_statistics_yet');
 
 	const s = snapshot.stats;
+	const rawCreated = ctx.server.discord_created_at;
+	const createdAt = rawCreated instanceof Date ? rawCreated : rawCreated ? parseMySQLDateTimeUtc(rawCreated) : null;
+	const createdValid = createdAt && !Number.isNaN(createdAt.getTime()) ? createdAt : null;
+
 	return {
 		ok: true,
 		server_name: ctx.server.name ?? null,
+		server: {
+			name: ctx.server.name ?? null,
+			discord_server_id: ctx.server.discord_server_id ?? null,
+			discord_created_at: createdValid ? createdValid.toISOString() : null,
+			discord_created_note: createdValid
+				? 'This is when the Discord server itself was created, straight from Discord. It is the only correct answer for "when was this server made / founded / how old is it". Never substitute a member join date, an account creation date, or when the bot was added.'
+				: 'Discord has not reported a creation date for this server yet. Say that plainly instead of guessing from member join dates or when the bot was added.',
+			total_members: num(ctx.server.total_members),
+			total_channels: num(ctx.server.total_channels),
+			boosters: num(ctx.server.total_boosters),
+			boost_level: num(ctx.server.boost_level),
+			...(ctx.server.vanity_url_code ? { vanity_url: `discord.gg/${ctx.server.vanity_url_code}` } : {})
+		},
 		members: {
 			total: s.members_total,
 			with_levels: s.members_with_levels,
@@ -323,19 +341,77 @@ export async function runMemberInfoTool(botId, guildId, args) {
 	const rating = await db.getStaffRatingAggregate(ctx.server.id, m.id).catch(() => null);
 	const reviews = Number(rating?.total_reports) || 0;
 
+	const toDate = (raw) => {
+		if (!raw) return null;
+		const d = raw instanceof Date ? raw : parseMySQLDateTimeUtc(raw);
+		return d && !Number.isNaN(d.getTime()) ? d : null;
+	};
+
 	return {
 		ok: true,
+		...publicMemberShape(m, toDate),
+		...(reviews > 0 ? { staff_rating: Number(rating.average_rating) || 0, staff_reviews: reviews } : {}),
+		note: "These are public profile fields. joined_server is when they joined this server; account_created is how old their Discord account is. This member's bag, assets, minigames, history and tasks are private and must not be requested."
+	};
+}
+
+function publicMemberShape(m, toDate) {
+	const afkSince = toDate(m.afk_since);
+	return {
 		name: nameOfMember(m),
+		username: m.username ?? null,
 		level: num(m.level),
 		xp: num(m.xp),
 		rank: m.rank != null ? num(m.rank) : null,
 		messages: num(m.chat_total),
+		voice_minutes_total: num(m.voice_minutes_total),
 		voice_minutes_active: num(m.voice_minutes_active),
+		voice_minutes_afk: num(m.voice_minutes_afk),
+		voice_minutes_video: num(m.voice_minutes_video),
+		voice_minutes_streaming: num(m.voice_minutes_streaming),
+		joined_server: toDate(m.member_since)?.toISOString() ?? null,
+		account_created: toDate(m.profile_created_at)?.toISOString() ?? null,
 		is_booster: !!m.is_booster,
-		member_since: m.member_since ? new Date(m.member_since).toISOString() : null,
+		boosting_since: toDate(m.booster_since)?.toISOString() ?? null,
 		roles: (m.roles ?? []).map((r) => r.name),
-		...(reviews > 0 ? { staff_rating: Number(rating.average_rating) || 0, staff_reviews: reviews } : {}),
-		note: "These are public profile fields. This member's bag, assets, minigames, history and tasks are private and must not be requested."
+		...(m.afk_message ? { afk: true, afk_message: m.afk_message, afk_since: afkSince ? afkSince.toISOString() : null } : {})
+	};
+}
+
+const ROSTER_SORTS = ['joined_oldest', 'joined_newest', 'account_oldest', 'account_newest'];
+
+export async function runMemberRosterTool(botId, guildId, args) {
+	const ctx = await publicServer(botId, guildId);
+	if (ctx.error) return ctx.error;
+
+	const sort = ROSTER_SORTS.includes(args?.sort) ? args.sort : 'joined_oldest';
+	const limit = Math.max(1, Math.min(num(args?.limit) || 5, MAX_MEMBER_MATCHES));
+
+	const disguised = new Set((await db.getDisguisedMemberIds(ctx.server.id).catch(() => [])).map((n) => Number(n)));
+	const members = (await db.getServerMembersList(ctx.server.id).catch(() => [])).filter((m) => !disguised.has(Number(m.id)));
+
+	const byAccount = sort.startsWith('account');
+	const toDate = (raw) => {
+		if (!raw) return null;
+		const d = raw instanceof Date ? raw : parseMySQLDateTimeUtc(raw);
+		return d && !Number.isNaN(d.getTime()) ? d : null;
+	};
+
+	const dated = members.map((m) => ({ m, at: toDate(byAccount ? m.profile_created_at : m.member_since) })).filter((e) => e.at);
+	if (!dated.length) return fail('no_dates_synced', { sort });
+
+	const newest = sort.endsWith('newest');
+	dated.sort((a, b) => (newest ? b.at.getTime() - a.at.getTime() : a.at.getTime() - b.at.getTime()));
+
+	return {
+		ok: true,
+		sort,
+		total_members: members.length,
+		members_with_date: dated.length,
+		note: byAccount
+			? 'Sorted by when each Discord account itself was created. This is not when they joined this server.'
+			: 'Sorted by when each member joined THIS server. The first entry is the longest-standing member — do not confuse it with the server creation date or with account age.',
+		rows: dated.slice(0, limit).map((e, i) => ({ position: i + 1, ...publicMemberShape(e.m, toDate) }))
 	};
 }
 
@@ -446,7 +522,7 @@ export async function runShopTool(botId, guildId, args) {
 }
 
 const STATS_DESCRIPTION =
-	'Public statistics for this Discord server: how many members, total XP, messages, voice minutes, and totals for items, minigames, assets, giveaways, quests and staff reviews. Use this for any "how many", "how big", "server total" or "how active is this server" question. This is server-wide data, not about one person.';
+	'Everything about this Discord server itself plus its public statistics: when the server was created, its member and channel counts, boost level and booster count, vanity invite, and totals for XP, messages, voice minutes, items, minigames, assets, giveaways, quests and staff reviews. Use this for any "how many", "how big", "how active is this server" question and for "when was this server created / made / founded / how old is it" — answer that only from server.discord_created_at, which comes straight from Discord, and never infer it from a member join date, an account creation date or the oldest member. This is server-wide data, not about one person.';
 
 const LEADERBOARD_DESCRIPTION =
 	'The public leaderboard for this server. Use it for "who is number one", "top players", "who has the most XP / messages / voice time", "who steals the most", "biggest gambler", or where a ranking stands. Pick the metric that matches what they asked and leave it out for XP. Every ranked member is covered, including negative and zero scores, so losses are tracked too: for "who lost the most", "biggest loser", "who is down the most XP", "worst at gambling" pass order "worst" with the matching metric — do not say losses are untracked. Each row returns the metric value plus its detail, so for gambling you get net XP, plays, wins, losses, win rate and biggest win. Members who are disguised never appear.';
@@ -469,7 +545,10 @@ const SHOP_DESCRIPTION =
 const LEVELING_RULES_DESCRIPTION =
 	'How XP and levels actually work on this server: XP per message and its cooldown, XP per minute for voice, AFK voice, video and streaming, the friend and luck bonuses, the level-up formula with the XP needed for the first levels, and worked examples. Use it for "how much XP do I get for an hour in voice", "how do I level up fastest", "how much XP per message", "how much XP to reach level 10", "does streaming give more XP". Pass minutes or messages to have the example done for that exact amount. These are this server\'s own settings, not general advice.';
 
-const ALWAYS_ON = new Set(['get_server_stats', 'get_leaderboard', 'get_member_info', 'get_leveling_rules']);
+const ROSTER_DESCRIPTION =
+	'Members of this server with their full public profile — level, XP, rank, messages, voice/video/streaming minutes, when they joined this server, how old their Discord account is, booster status and since when, their roles, and their AFK status. Order it with sort: "joined_oldest" for "who joined first", "oldest member", "member paling lama / paling sepuh", the founder or longest-standing member; "joined_newest" for the newest members; "account_oldest" or "account_newest" for how old the Discord accounts themselves are. Every answer about who joined when must come from this tool — never guess it from a leaderboard, an XP total or a rank, and never confuse joining this server with when the account was made or when the server was created.';
+
+const ALWAYS_ON = new Set(['get_server_stats', 'get_leaderboard', 'get_member_info', 'get_leveling_rules', 'get_member_roster']);
 
 function allowedServerTool(name, features) {
 	if (!features) return true;
@@ -521,6 +600,20 @@ export function buildServerTools(features = null) {
 					type: 'object',
 					properties: { name: { type: 'string', description: "The member's name or their <@id> mention, exactly as the user wrote it." } },
 					required: ['name']
+				}
+			}
+		},
+		{
+			type: 'function',
+			function: {
+				name: 'get_member_roster',
+				description: ROSTER_DESCRIPTION,
+				parameters: {
+					type: 'object',
+					properties: {
+						sort: { type: 'string', enum: ROSTER_SORTS, description: 'Which order to read. Leave out for the members who joined this server earliest.' },
+						limit: { type: 'integer', description: `How many members to read, 1 to ${MAX_MEMBER_MATCHES}. Leave out for 5.` }
+					}
 				}
 			}
 		},
@@ -596,6 +689,16 @@ export function buildServerDeclarations(features = null) {
 			}
 		},
 		{
+			name: 'get_member_roster',
+			description: `${ROSTER_DESCRIPTION}\n\n${VOICE_NOTE} Name just the first one or two, with the date.`,
+			parameters: {
+				type: Type.OBJECT,
+				properties: {
+					sort: { type: Type.STRING, enum: ROSTER_SORTS, description: 'Which order to read. Leave out for who joined this server earliest.' }
+				}
+			}
+		},
+		{
 			name: 'get_leveling_rules',
 			description: `${LEVELING_RULES_DESCRIPTION}\n\n${VOICE_NOTE} Give the rate and the worked example, not the whole level table.`,
 			parameters: {
@@ -628,6 +731,7 @@ export const SERVER_TOOL_NAMES = new Set([
 	'get_leaderboard',
 	'get_member_info',
 	'get_leveling_rules',
+	'get_member_roster',
 	'get_staff_ratings',
 	'get_giveaways',
 	'get_quests',
@@ -641,6 +745,7 @@ export function runServerTool(name, args, { botId, guildId, callerDiscordId, voi
 	if (name === 'get_leaderboard') return runLeaderboardTool(botId, guildId, args, opts);
 	if (name === 'get_member_info') return runMemberInfoTool(botId, guildId, args);
 	if (name === 'get_leveling_rules') return runLevelingRulesTool(botId, guildId, args);
+	if (name === 'get_member_roster') return runMemberRosterTool(botId, guildId, args);
 	if (name === 'get_staff_ratings') return runStaffRatingTool(botId, guildId);
 	if (name === 'get_giveaways') return runGiveawaysTool(botId, guildId);
 	if (name === 'get_quests') return runQuestsTool(botId, guildId);

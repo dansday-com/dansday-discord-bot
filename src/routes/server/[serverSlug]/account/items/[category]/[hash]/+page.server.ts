@@ -13,7 +13,9 @@ function safeParse(raw: any) {
 }
 
 export const load: PageServerLoad = async ({ parent, params }) => {
-	const { server } = await parent();
+	const { server, itemsEnabled } = await parent();
+
+	if (!itemsEnabled) return { featureDisabled: true, server, category: 'all' };
 
 	const hash = itemsCardTokenFromUrl(params.hash);
 	const shared = await loadItemsShared(server, hash, 'items');

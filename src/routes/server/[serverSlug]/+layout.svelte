@@ -2,6 +2,7 @@
 	import MainHeader from '$lib/frontend/components/MainHeader.svelte';
 	import MainFooter from '$lib/frontend/components/MainFooter.svelte';
 	import ServerNav from '$lib/frontend/components/ServerNav.svelte';
+	import FeatureDisabled from '$lib/frontend/components/FeatureDisabled.svelte';
 	import type { LayoutProps } from './$types';
 
 	let { data, children }: LayoutProps = $props();
@@ -18,7 +19,14 @@
 		<div class="m-inner">
 			<ServerNav server={data.server} accountEnabled={data.accountEnabled} publicStatsEnabled={data.publicStatsEnabled} />
 
-			{@render children()}
+			{#if data.publicStatsEnabled}
+				{@render children()}
+			{:else}
+				<FeatureDisabled
+					title="Public pages are turned off"
+					message="This server has not enabled its public statistics pages. An administrator can turn them on in the bot configuration panel."
+				/>
+			{/if}
 		</div>
 	</main>
 

@@ -7,9 +7,7 @@ import { loadItemsShared, itemsCardTokenFromUrl } from '$lib/frontend/public/ite
 const PER_PAGE = 50;
 
 export const load: PageServerLoad = async ({ parent, params, url }) => {
-	const { server, accountEnabled, itemsEnabled, assetsEnabled, minigamesEnabled } = await parent();
-
-	if (!accountEnabled) redirect(303, '/');
+	const { server, itemsEnabled, assetsEnabled, minigamesEnabled } = await parent();
 
 	const hash = itemsCardTokenFromUrl(params.hash);
 	const shared = await loadItemsShared(server, hash, null);

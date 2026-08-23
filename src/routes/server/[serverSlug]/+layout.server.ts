@@ -13,8 +13,6 @@ export const load: LayoutServerLoad = async ({ params }) => {
 	const settings = (settingsRow as any)?.settings || {};
 	const publicStatsEnabled = settings.enabled !== false;
 
-	if (!publicStatsEnabled) redirect(303, '/');
-
 	const itemsEnabled = settings.items_enabled === true;
 	const assetsEnabled = settings.assets_enabled === true;
 	const minigamesEnabled = settings.minigames_enabled === true;

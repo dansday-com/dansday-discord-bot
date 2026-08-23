@@ -200,47 +200,30 @@ async function handleMenuButton(interaction) {
 		}
 	}
 
-	if (await isComponentFeatureEnabled(interaction.guild.id, serverSettingsComponent.public_statistics)) {
-		try {
-			const server = await getServerForCurrentBot(interaction.guild.id);
-			const slug = await computePublicServerSlugForServerId(Number(server.id));
-			const url = slug ? publicServerUrl(slug) : null;
+	try {
+		const server = await getServerForCurrentBot(interaction.guild.id);
+		const slug = await computePublicServerSlugForServerId(Number(server.id));
+		const base = slug ? publicServerUrl(slug) : null;
 
-			if (url) {
-				const statisticsLabel = await translate('menu.statistics', interaction.guild.id, interaction.user.id);
-				const statisticsBtn = new ButtonBuilder().setLabel(statisticsLabel).setURL(url).setStyle(ButtonStyle.Link);
-				const settingsRow = rows[rows.length - 1];
-				if (settingsRow.components.length < 5) {
-					settingsRow.addComponents(statisticsBtn);
-				} else if (rows.length < 5) {
-					rows.push(new ActionRowBuilder().addComponents(statisticsBtn));
-				}
-			}
-		} catch (_) {}
-	}
-
-	if (await isComponentFeatureEnabled(interaction.guild.id, serverSettingsComponent.public_statistics)) {
-		try {
-			const server = await getServerForCurrentBot(interaction.guild.id);
-			const slug = await computePublicServerSlugForServerId(Number(server.id));
-			const base = slug ? publicServerUrl(slug) : null;
-			if (base) {
-				const joinedDate = member.joinedAt ? member.joinedAt.toISOString().split('T')[0] : '';
-				const cardHash = createHash('sha256').update(`${interaction.user.id}_${joinedDate}`).digest('hex').substring(0, 16);
-				const accountUrl = `${base}/account/overview/${cardHash}`;
-
-				const accountLabel = await translate('menu.account', interaction.guild.id, interaction.user.id);
-				const accountBtn = new ButtonBuilder().setLabel(accountLabel).setURL(accountUrl).setStyle(ButtonStyle.Link);
-
+		if (base) {
+			const addLinkButton = (btn: ButtonBuilder) => {
 				const targetRow = rows[rows.length - 1];
 				if (targetRow.components.length < 5) {
-					targetRow.addComponents(accountBtn);
+					targetRow.addComponents(btn);
 				} else if (rows.length < 5) {
-					rows.push(new ActionRowBuilder().addComponents(accountBtn));
+					rows.push(new ActionRowBuilder().addComponents(btn));
 				}
-			}
-		} catch (_) {}
-	}
+			};
+
+			const statisticsLabel = await translate('menu.statistics', interaction.guild.id, interaction.user.id);
+			addLinkButton(new ButtonBuilder().setLabel(statisticsLabel).setURL(base).setStyle(ButtonStyle.Link));
+
+			const joinedDate = member.joinedAt ? member.joinedAt.toISOString().split('T')[0] : '';
+			const cardHash = createHash('sha256').update(`${interaction.user.id}_${joinedDate}`).digest('hex').substring(0, 16);
+			const accountLabel = await translate('menu.account', interaction.guild.id, interaction.user.id);
+			addLinkButton(new ButtonBuilder().setLabel(accountLabel).setURL(`${base}/account/overview/${cardHash}`).setStyle(ButtonStyle.Link));
+		}
+	} catch (_) {}
 
 	const isFromEphemeral = interaction.message?.flags?.has(64) || interaction.replied || interaction.deferred;
 

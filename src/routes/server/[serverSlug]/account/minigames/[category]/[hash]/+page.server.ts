@@ -5,7 +5,9 @@ import { itemsCardTokenFromUrl } from '$lib/frontend/public/items/index.js';
 import { loadMinigamesShared, MINIGAME_CATEGORIES } from '$lib/frontend/public/minigames/index.js';
 
 export const load: PageServerLoad = async ({ parent, params }) => {
-	const { server } = await parent();
+	const { server, minigamesEnabled } = await parent();
+
+	if (!minigamesEnabled) return { featureDisabled: true, server, category: 'all' };
 
 	const hash = itemsCardTokenFromUrl(params.hash);
 	const shared = await loadMinigamesShared(server, hash);

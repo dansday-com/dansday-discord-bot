@@ -7,7 +7,9 @@ import { loadAssetsShared } from '$lib/frontend/public/assets/index.js';
 const VALID = new Set(['top', 'gainers', 'losers', 'search', 'mine']);
 
 export const load: PageServerLoad = async ({ parent, params }) => {
-	const { server } = await parent();
+	const { server, assetsEnabled } = await parent();
+
+	if (!assetsEnabled) return { featureDisabled: true, server, category: 'top' };
 
 	const hash = itemsCardTokenFromUrl(params.hash);
 	const shared = await loadAssetsShared(server, hash);

@@ -355,11 +355,8 @@ export async function sendLevelProgressNotification({
 			return false;
 		}
 
-		let leaderboardUrl: string | null = null;
-		if (await isComponentFeatureEnabled(guildId, serverSettingsComponent.public_statistics)) {
-			const slug = await computePublicServerSlugForServerId(Number(server.id));
-			if (slug) leaderboardUrl = publicServerUrl(slug, 'leaderboard');
-		}
+		const slug = await computePublicServerSlugForServerId(Number(server.id));
+		const leaderboardUrl = slug ? publicServerUrl(slug, 'leaderboard') : null;
 
 		const embedConfig = await getEmbedConfig(guildId);
 		const embed = new EmbedBuilder()

@@ -2,6 +2,19 @@
 
 Leveling, moderation, embed builder, Discord Quests, creator tools, public statistics pages and Roblox catalog alerts — all from a free web panel instead of slash commands. Self-host from GitHub or add the hosted bot. MIT licensed.
 
+![The web panel's landing page, listing every module](.github/screenshots/landing.png)
+
+<table>
+<tr>
+<td width="50%"><img src=".github/screenshots/panel-overview.png" alt="Panel overview with live totals for members, XP, shop, PvP, market and minigames"></td>
+<td width="50%"><img src=".github/screenshots/bot-configuration.png" alt="Per-bot configuration with one tab per module"></td>
+</tr>
+<tr>
+<td><strong>Overview</strong> — every bot and server at a glance: members, XP, voice hours, shop, PvP, market, minigames.</td>
+<td><strong>Configuration</strong> — one tab per module. Set embed style, colors and channels without slash commands.</td>
+</tr>
+</table>
+
 ---
 
 ## Features
@@ -102,6 +115,10 @@ Versions match `package.json` at release (caret ranges; run `npm ls` for the exa
 - **AI, voice and the tools** are configured in the panel, not `.env`. Each needs its URL, model and key before it switches on, so a half-filled section is inactive rather than broken. Keys are stored per bot and never sent back to the browser. Restart the bot after changing them.
 - **Voice** needs AI chat enabled first, plus its own Google AI key and voice model, plus Redis.
 - **Wikis** live on the bot's **Wikis** tab. Add an `api.php` endpoint, press Test, done — no restart. If a wiki refuses your server (Miraheze sits behind a Cloudflare check that rejects most datacenter IPs), copy [`scripts/relay.php`](scripts/relay.php) to hosting it does accept, replace `RELAY_KEY` with a long random string, and fill in **Relay URL** and **Relay key** for that wiki.
+
+## Security
+
+Found a vulnerability? Email **security@dansday.com** instead of opening an issue. See [SECURITY.md](SECURITY.md).
 
 ---
 

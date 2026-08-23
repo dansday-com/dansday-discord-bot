@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { ProxyAgent } from 'proxy-agent';
 import { discordQuestHttp } from '../config.js';
-import { isValidQuestHttpProxyUrl } from '$lib/utils/questHttpProxyUrl.js';
+import { isValidQuestHttpProxyUrl } from '../../utils/questHttpProxyUrl.js';
 
 const CLIENT_USER_AGENT =
 	'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) discord/1.0.9044 Chrome/120.0.6099.291 Electron/28.2.10 Safari/537.36';

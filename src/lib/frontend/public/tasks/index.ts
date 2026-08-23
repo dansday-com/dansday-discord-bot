@@ -1,6 +1,6 @@
-import db from '$lib/database.js';
-import { parseMySQLDateTimeUtc } from '$lib/utils/index.js';
-import { effectIcon, effectAccentHex, itemAvailability } from '$lib/items.js';
+import db from '../../../database.js';
+import { parseMySQLDateTimeUtc } from '../../../utils/index.js';
+import { effectIcon, effectAccentHex, itemAvailability } from '../../../items.js';
 import {
 	TASK_BY_ID,
 	DAILY_TASK_SLOTS,
@@ -32,7 +32,7 @@ import {
 	type TaskEligibility,
 	type TaskMetric,
 	type TaskPeriod
-} from '$lib/tasks.js';
+} from '../../../tasks.js';
 
 const COUNTER_METRICS = new Set<TaskMetric>([
 	'chat_total',

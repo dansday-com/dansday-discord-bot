@@ -181,9 +181,9 @@ export const AUTO_ENABLED_COMPONENTS: Set<string> = new Set([
 	component.notifications
 ]);
 
-let dbCache: (typeof import('$lib/database.js'))['default'] | null = null;
+let dbCache: (typeof import('../database.js'))['default'] | null = null;
 async function getDb() {
-	if (!dbCache) dbCache = (await import('$lib/database.js')).default;
+	if (!dbCache) dbCache = (await import('../database.js')).default;
 	return dbCache;
 }
 

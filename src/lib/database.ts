@@ -5526,6 +5526,51 @@ export async function getEndedGiveaways() {
 		});
 }
 
+export async function listActiveGiveawaysForServer(serverId: any) {
+	await initializeDatabase();
+	const rows = await db
+		.select({ giveaway: schema.serverMemberGiveaways, host_id: schema.serverMembers.discord_member_id })
+		.from(schema.serverMemberGiveaways)
+		.innerJoin(schema.serverMembers, eq(schema.serverMemberGiveaways.member_id, schema.serverMembers.id))
+		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), eq(schema.serverMemberGiveaways.status, 'active')))
+		.orderBy(asc(schema.serverMemberGiveaways.ends_at));
+
+	const now = Date.now();
+	return rows
+		.map((r) => {
+			const endsAt = parseMySQLDateTimeUtc(r.giveaway.ends_at as any);
+			return {
+				id: r.giveaway.id,
+				title: r.giveaway.title,
+				prize: r.giveaway.prize,
+				winner_count: Number(r.giveaway.winner_count) || 1,
+				multiple_entries_allowed: r.giveaway.multiple_entries_allowed === true,
+				allowed_roles: (() => {
+					const raw = r.giveaway.allowed_roles;
+					if (!raw) return [];
+					try {
+						return typeof raw === 'string' ? JSON.parse(raw) : raw;
+					} catch {
+						return [];
+					}
+				})(),
+				host_discord_id: r.host_id ? String(r.host_id) : null,
+				ends_at: endsAt ? endsAt.toISOString() : null,
+				ends_at_ms: endsAt ? endsAt.getTime() : null
+			};
+		})
+		.filter((g) => g.ends_at_ms == null || g.ends_at_ms > now);
+}
+
+export async function countGiveawayEntrants(giveawayId: any) {
+	await initializeDatabase();
+	const rows = await db
+		.select({ n: sql<number>`COUNT(DISTINCT ${schema.serverMemberGiveawayEntries.member_id})` })
+		.from(schema.serverMemberGiveawayEntries)
+		.where(eq(schema.serverMemberGiveawayEntries.giveaway_id, Number(giveawayId)));
+	return Number(rows[0]?.n) || 0;
+}
+
 export async function getGiveawayById(giveawayId: any) {
 	await initializeDatabase();
 	const rows = await db
@@ -6382,6 +6427,8 @@ export default {
 	createGiveaway,
 	updateGiveawayMessageId,
 	getEndedGiveaways,
+	listActiveGiveawaysForServer,
+	countGiveawayEntrants,
 	getGiveawayById,
 	getActiveGiveawayByMember,
 	addGiveawayEntry,

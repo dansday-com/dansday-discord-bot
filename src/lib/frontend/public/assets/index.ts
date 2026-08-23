@@ -1,6 +1,6 @@
-import db from '$lib/database.js';
-import { getRedisClient } from '$lib/redis.js';
-import { loadItemsShared } from '$lib/frontend/public/items/index.js';
+import db from '../../../database.js';
+import { getRedisClient } from '../../../redis.js';
+import { loadItemsShared } from '../items/index.js';
 
 const MARKETS_KEY = 'assets:markets';
 const MOVERS_KEY = 'assets:movers';

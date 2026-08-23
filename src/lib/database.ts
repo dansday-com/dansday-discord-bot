@@ -671,6 +671,17 @@ export async function getServersForBot(officialBotId: number) {
 	return db.select().from(schema.servers).where(eq(schema.servers.bot_id, officialBotId)).orderBy(asc(schema.servers.name));
 }
 
+export async function getServerIdsForPanel(panelId: number): Promise<number[]> {
+	await initializeDatabase();
+	if (!panelId) return [];
+	const rows = await db
+		.select({ id: schema.servers.id })
+		.from(schema.servers)
+		.innerJoin(schema.bots, eq(schema.servers.bot_id, schema.bots.id))
+		.where(eq(schema.bots.panel_id, Number(panelId)));
+	return rows.map((r) => Number(r.id)).filter((n) => Number.isFinite(n));
+}
+
 export async function getServersForSelfbot(selfbotId: number) {
 	await initializeDatabase();
 	return db.select().from(schema.serverBotServers).where(eq(schema.serverBotServers.server_bot_id, selfbotId)).orderBy(asc(schema.serverBotServers.name));
@@ -4059,11 +4070,99 @@ export async function getPanelOverview(panelId: number) {
 		console.error('Error fetching panel overview', e);
 	}
 
+	const community = {
+		total_members: 0,
+		total_boosters: 0,
+		total_channels: 0,
+		largest_server_members: 0,
+		tracked_members: 0,
+		total_xp: 0,
+		total_messages: 0,
+		total_voice_minutes: 0,
+		members_in_voice: 0,
+		total_panel_accounts: 0,
+		shop_items_total: 0,
+		shop_items_enabled: 0,
+		shop_items_scheduled: 0,
+		shop_avg_cost: 0
+	};
+
+	try {
+		const guildRes = await db.execute(sql`
+            SELECT
+                COALESCE(SUM(s.total_members), 0) AS total_members,
+                COALESCE(SUM(s.total_boosters), 0) AS total_boosters,
+                COALESCE(SUM(s.total_channels), 0) AS total_channels,
+                COALESCE(MAX(s.total_members), 0) AS largest_server_members
+            FROM servers s
+            JOIN bots b ON s.bot_id = b.id
+            WHERE b.panel_id = ${Number(panelId)}
+        `);
+		const gRow = (guildRes[0] as any[])?.[0];
+		if (gRow) {
+			community.total_members = Number(gRow.total_members) || 0;
+			community.total_boosters = Number(gRow.total_boosters) || 0;
+			community.total_channels = Number(gRow.total_channels) || 0;
+			community.largest_server_members = Number(gRow.largest_server_members) || 0;
+		}
+
+		const engagementRes = await db.execute(sql`
+            SELECT
+                COUNT(sm.id) AS tracked_members,
+                COALESCE(SUM(sml.xp), 0) AS total_xp,
+                COALESCE(SUM(sml.chat_total), 0) AS total_messages,
+                COALESCE(SUM(sml.voice_minutes_total), 0) AS total_voice_minutes,
+                COALESCE(SUM(CASE WHEN sml.is_in_voice = 1 THEN 1 ELSE 0 END), 0) AS members_in_voice
+            FROM server_members sm
+            JOIN servers s ON sm.server_id = s.id
+            JOIN bots b ON s.bot_id = b.id
+            LEFT JOIN server_member_levels sml ON sml.member_id = sm.id
+            WHERE b.panel_id = ${Number(panelId)}
+        `);
+		const eRow = (engagementRes[0] as any[])?.[0];
+		if (eRow) {
+			community.tracked_members = Number(eRow.tracked_members) || 0;
+			community.total_xp = Number(eRow.total_xp) || 0;
+			community.total_messages = Number(eRow.total_messages) || 0;
+			community.total_voice_minutes = Number(eRow.total_voice_minutes) || 0;
+			community.members_in_voice = Number(eRow.members_in_voice) || 0;
+		}
+
+		const accountsRes = await db.execute(sql`
+            SELECT COUNT(*) AS count
+            FROM server_accounts sa
+            JOIN servers s ON sa.server_id = s.id
+            JOIN bots b ON s.bot_id = b.id
+            WHERE b.panel_id = ${Number(panelId)}
+        `);
+		community.total_panel_accounts = Number((accountsRes[0] as any[])?.[0]?.count) || 0;
+
+		const shopRes = await db.execute(sql`
+            SELECT
+                COUNT(*) AS total,
+                COALESCE(SUM(CASE WHEN i.enabled = 1 THEN 1 ELSE 0 END), 0) AS enabled_count,
+                COALESCE(SUM(CASE WHEN i.available_from IS NOT NULL OR i.available_to IS NOT NULL OR i.recurring_schedule IS NOT NULL THEN 1 ELSE 0 END), 0) AS scheduled_count,
+                COALESCE(ROUND(AVG(i.cost)), 0) AS avg_cost
+            FROM items i
+            WHERE i.panel_id = ${Number(panelId)}
+        `);
+		const shopRow = (shopRes[0] as any[])?.[0];
+		if (shopRow) {
+			community.shop_items_total = Number(shopRow.total) || 0;
+			community.shop_items_enabled = Number(shopRow.enabled_count) || 0;
+			community.shop_items_scheduled = Number(shopRow.scheduled_count) || 0;
+			community.shop_avg_cost = Number(shopRow.avg_cost) || 0;
+		}
+	} catch (e) {
+		console.error('Error fetching panel community stats', e);
+	}
+
 	return {
 		total_servers,
 		total_selfbots,
 		running_selfbots,
-		selfbot_uptime_ms
+		selfbot_uptime_ms,
+		...community
 	};
 }
 
@@ -6099,6 +6198,7 @@ export default {
 	upsertServerBotStatus,
 	getServer,
 	getServersForBot,
+	getServerIdsForPanel,
 	getServersForSelfbot,
 	getServerBotServerForSelfbot,
 	getOfficialServerByDiscordId,

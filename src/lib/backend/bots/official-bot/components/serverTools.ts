@@ -177,6 +177,79 @@ export async function runLevelingRulesTool(botId, guildId, args) {
 	};
 }
 
+function metricValue(metric, r) {
+	switch (metric) {
+		case 'chat':
+			return num(r.chat_total);
+		case 'voice_total':
+			return num(r.voice_minutes_total);
+		case 'voice_active':
+			return num(r.voice_minutes_active);
+		case 'voice_afk':
+			return num(r.voice_minutes_afk);
+		case 'video':
+			return num(r.voice_minutes_video);
+		case 'streaming':
+			return num(r.voice_minutes_streaming);
+		case 'minigames_gamble_net':
+			return num(r.minigame_net);
+		case 'minigames_gamble_ratio':
+			return num(r.minigame_ratio);
+		case 'minigames_gamble_big':
+			return num(r.minigame_big_win);
+		case 'items_bounty_total':
+			return num(r.bounty_on_them);
+		case 'items_bounty_claimer':
+			return num(r.bounty_collected);
+		case 'items_bounty_give':
+			return num(r.bounty_given);
+		case 'items_steal_total':
+		case 'items_bomb_total':
+			return num(r.attack_total);
+		case 'items_steal_rate':
+		case 'items_bomb_rate':
+			return num(r.attack_rate);
+		case 'items_steal_big':
+		case 'items_bomb_big':
+			return num(r.attack_big);
+		case 'items_gift_give':
+			return num(r.gift_given);
+		case 'items_gift_receive':
+			return num(r.gift_received);
+		default:
+			return num(r.xp);
+	}
+}
+
+function metricDetail(metric, r) {
+	if (metric.startsWith('minigames_')) {
+		const total = num(r.minigame_total);
+		const wins = num(r.minigame_wins);
+		return {
+			net_xp: num(r.minigame_net),
+			plays: total,
+			wins,
+			losses: Math.max(0, total - wins),
+			win_rate_percent: num(r.minigame_ratio),
+			biggest_win: num(r.minigame_big_win)
+		};
+	}
+	if (metric.startsWith('items_steal') || metric.startsWith('items_bomb')) {
+		return {
+			xp_total: num(r.attack_total),
+			attempts: num(r.attack_attempts),
+			successes: num(r.attack_success),
+			success_rate_percent: num(r.attack_rate),
+			biggest_hit: num(r.attack_big)
+		};
+	}
+	if (metric.startsWith('items_bounty')) {
+		return { bounty_on_them: num(r.bounty_on_them), bounty_collected: num(r.bounty_collected), bounty_given: num(r.bounty_given) };
+	}
+	if (metric.startsWith('items_gift')) return { gift_given: num(r.gift_given), gift_received: num(r.gift_received) };
+	return { xp: num(r.xp), messages: num(r.chat_total), voice_minutes: num(r.voice_minutes_total) };
+}
+
 export async function runLeaderboardTool(botId, guildId, args, { maxRows = MAX_LEADERBOARD_ROWS } = {}) {
 	const ctx = await publicServer(botId, guildId);
 	if (ctx.error) return ctx.error;
@@ -184,8 +257,9 @@ export async function runLeaderboardTool(botId, guildId, args, { maxRows = MAX_L
 	const metric = LEADERBOARD_METRICS.includes(args?.metric) ? args.metric : 'xp';
 	const period = LEADERBOARD_PERIODS.includes(args?.period) ? args.period : 'all';
 	const limit = Math.max(1, Math.min(num(args?.limit) || 10, maxRows));
+	const worst = args?.order === 'worst';
 
-	const snapshot = await resolveLeaderboardSnapshot(ctx.server.id, metric, period, Math.max(limit, 10)).catch(() => null);
+	const snapshot = await resolveLeaderboardSnapshot(ctx.server.id, metric, period, 100).catch(() => null);
 	const rows = snapshot?.rows ?? [];
 	if (!rows.length) return fail('leaderboard_empty', { metric, period });
 
@@ -193,21 +267,25 @@ export async function runLeaderboardTool(botId, guildId, args, { maxRows = MAX_L
 	const members = await db.getServerMembersList(ctx.server.id).catch(() => []);
 	const disguisedDiscordIds = new Set(members.filter((m) => disguised.has(String(m.id))).map((m) => String(m.discord_member_id)));
 
+	const visible = rows.filter((r) => !disguisedDiscordIds.has(String(r.discord_member_id)));
+	const picked = worst ? visible.slice(-limit).reverse() : visible.slice(0, limit);
+
 	return {
 		ok: true,
 		metric,
 		period,
-		rows: rows
-			.filter((r) => !disguisedDiscordIds.has(String(r.discord_member_id)))
-			.slice(0, limit)
-			.map((r) => ({
-				rank: r.rank,
-				name: r.server_display_name || r.display_name || r.username || 'a member',
-				level: r.level,
-				xp: r.xp,
-				messages: r.chat_total,
-				voice_minutes: r.voice_minutes_total
-			}))
+		order: worst ? 'worst' : 'best',
+		ranked_members: visible.length,
+		note: worst
+			? 'These are the bottom places on this metric, worst first. A negative value means they are down overall.'
+			: 'These are the top places on this metric. Ask with order "worst" for the biggest losers.',
+		rows: picked.map((r) => ({
+			rank: r.rank,
+			name: r.server_display_name || r.display_name || r.username || 'a member',
+			level: r.level,
+			value: metricValue(metric, r),
+			...metricDetail(metric, r)
+		}))
 	};
 }
 
@@ -371,7 +449,7 @@ const STATS_DESCRIPTION =
 	'Public statistics for this Discord server: how many members, total XP, messages, voice minutes, and totals for items, minigames, assets, giveaways, quests and staff reviews. Use this for any "how many", "how big", "server total" or "how active is this server" question. This is server-wide data, not about one person.';
 
 const LEADERBOARD_DESCRIPTION =
-	'The public leaderboard for this server. Use it for "who is number one", "top players", "who has the most XP / messages / voice time", "who steals the most", "biggest gambler", or where a ranking stands. Pick the metric that matches what they asked and leave it out for XP. Members who are disguised never appear.';
+	'The public leaderboard for this server. Use it for "who is number one", "top players", "who has the most XP / messages / voice time", "who steals the most", "biggest gambler", or where a ranking stands. Pick the metric that matches what they asked and leave it out for XP. Every ranked member is covered, including negative and zero scores, so losses are tracked too: for "who lost the most", "biggest loser", "who is down the most XP", "worst at gambling" pass order "worst" with the matching metric — do not say losses are untracked. Each row returns the metric value plus its detail, so for gambling you get net XP, plays, wins, losses, win rate and biggest win. Members who are disguised never appear.';
 
 const MEMBER_DESCRIPTION =
 	"Look up ONE named member's PUBLIC profile in this server: their level, XP, rank, messages, voice minutes, roles, join date and staff rating. Use it when someone asks about another member by name or mention. It only returns public profile fields — a member's bag, assets, minigames, history and tasks are private, so never use this to try to read those.";
@@ -424,6 +502,11 @@ export function buildServerTools(features = null) {
 					properties: {
 						metric: { type: 'string', enum: LEADERBOARD_METRICS, description: 'Which ranking to read. Leave out for overall XP.' },
 						period: { type: 'string', enum: LEADERBOARD_PERIODS, description: 'Time range. Leave out for all time.' },
+						order: {
+							type: 'string',
+							enum: ['best', 'worst'],
+							description: 'Use "worst" for the bottom of the table — biggest losers, most XP lost, worst win rate. Leave out for the top.'
+						},
 						limit: { type: 'integer', description: `How many places to read, 1 to ${MAX_LEADERBOARD_ROWS}. Leave out for 10.` }
 					}
 				}
@@ -498,7 +581,8 @@ export function buildServerDeclarations(features = null) {
 				type: Type.OBJECT,
 				properties: {
 					metric: { type: Type.STRING, enum: LEADERBOARD_METRICS, description: 'Which ranking to read. Leave out for overall XP.' },
-					period: { type: Type.STRING, enum: LEADERBOARD_PERIODS, description: 'Time range. Leave out for all time.' }
+					period: { type: Type.STRING, enum: LEADERBOARD_PERIODS, description: 'Time range. Leave out for all time.' },
+					order: { type: Type.STRING, enum: ['best', 'worst'], description: 'Use "worst" for the biggest losers at the bottom of the table.' }
 				}
 			}
 		},

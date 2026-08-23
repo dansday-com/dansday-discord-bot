@@ -12,22 +12,18 @@ export const load: LayoutServerLoad = async ({ params }) => {
 
 	const settingsRow = await db.getServerSettings(resolved.server.id, SERVER_SETTINGS.component.public_statistics);
 	const settings = (settingsRow as any)?.settings || {};
-	const publicStatsEnabled = settings.enabled !== false;
 
 	const itemsEnabled = publicSubfeatureEnabled(settings, 'items');
 	const assetsEnabled = publicSubfeatureEnabled(settings, 'assets');
 	const minigamesEnabled = publicSubfeatureEnabled(settings, 'minigames');
 	const tasksEnabled = publicSubfeatureEnabled(settings, 'tasks');
-	const accountEnabled = publicStatsEnabled;
 
 	const server = resolved.server;
 	return {
-		publicStatsEnabled,
 		itemsEnabled,
 		assetsEnabled,
 		minigamesEnabled,
 		tasksEnabled,
-		accountEnabled,
 		server: {
 			id: server.id,
 			name: server.name,

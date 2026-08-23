@@ -24,6 +24,7 @@
 			"setupNotTextChannelBody": "Please select a **text channel**.",
 			"joinTitle": "Thanks for adding {botName}!",
 			"joinBody": "Run `/setup` to create the channels and finish setup.",
+			"joinAskAi": "Not sure where to start? Mention {botMention} and just ask — it reads the documentation and can walk you through setup.",
 			"joinDocsButton": "Documentation",
 			"joinSupportButton": "Support server",
 			"setupChannelsCreated": "Created **{count}** new channel(s).",
@@ -86,6 +87,11 @@
 		}
 	},
 	"leveling": {
+		"account": {
+			"link": "👤 Your account page: {url}",
+			"noMember": "⚠️ You are not tracked on this server yet. Send a message or join voice first.",
+			"unavailable": "⚠️ Public pages are not available for this server."
+		},
 		"errors": {
 			"notRegistered": "⚠️ This server is not registered with the bot. Please run a sync first.",
 			"createRecordFailed": "❌ Failed to create member record. Please try again."

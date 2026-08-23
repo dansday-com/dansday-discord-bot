@@ -212,13 +212,13 @@ export async function seedDemoSession(sessionSlug: string): Promise<EnsureDemoRe
 			.values({
 				server_id: serverRow.id,
 				component_name: SERVER_SETTINGS.component.public_statistics,
-				settings: { enabled: true, slug, items_enabled: true, minigames_enabled: true, assets_enabled: true },
+				settings: { slug, items_enabled: true, minigames_enabled: true, assets_enabled: true },
 				created_at: nowDb,
 				updated_at: nowDb
 			})
 			.onDuplicateKeyUpdate({
 				set: {
-					settings: sql`JSON_SET(COALESCE(${schema.serverSettings.settings}, JSON_OBJECT()), '$.enabled', true, '$.slug', ${slug}, '$.items_enabled', true, '$.minigames_enabled', true, '$.assets_enabled', true)`,
+					settings: sql`JSON_SET(COALESCE(${schema.serverSettings.settings}, JSON_OBJECT()), '$.slug', ${slug}, '$.items_enabled', true, '$.minigames_enabled', true, '$.assets_enabled', true)`,
 					updated_at: nowDb
 				}
 			});

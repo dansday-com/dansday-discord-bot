@@ -4,7 +4,7 @@ import mysql from 'mysql2/promise';
 import { eq, and, or, gt, inArray, notInArray, sql, desc, asc, isNull, isNotNull, count, avg, like, ne } from 'drizzle-orm';
 import { db } from './drizzle.js';
 import * as schema from './schema.js';
-import { SERVER_SETTINGS, AUTO_ENABLED_COMPONENTS, publicSubfeatureEnabled } from './frontend/panelServer.js';
+import { SERVER_SETTINGS, AUTO_ENABLED_COMPONENTS } from './frontend/panelServer.js';
 import { logger, toMySQLDateTime, parseMySQLDateTimeUtc, getNowUtc } from './utils/index.js';
 import { DEFAULT_MAIN_EMBED_COLOR, DEFAULT_MAIN_EMBED_FOOTER, DEFAULT_BOT_NICKNAME } from './utils/mainConfigSettings.js';
 import { DEFAULT_LEVELING_SETTINGS, DEFAULT_WELCOMER_MESSAGES, DEFAULT_BOOSTER_MESSAGES } from './backend/config.js';
@@ -728,6 +728,30 @@ export async function getOfficialBotServerIdForServer(serverId: any) {
 	return server.id;
 }
 
+export async function claimGuildGreeting(botId: number, discordServerId: string) {
+	await initializeDatabase();
+	const guildId = String(discordServerId || '').trim();
+	if (!botId || !guildId) return false;
+	const [res] = await db.execute(sql`
+		UPDATE servers sv
+		LEFT JOIN servers greeted
+			ON greeted.discord_server_id = sv.discord_server_id AND greeted.greeted_at IS NOT NULL
+		SET sv.greeted_at = UTC_TIMESTAMP()
+		WHERE sv.bot_id = ${Number(botId)}
+		  AND sv.discord_server_id = ${guildId}
+		  AND greeted.id IS NULL
+	`);
+	return ((res as unknown as { affectedRows?: number })?.affectedRows ?? 0) > 0;
+}
+
+export async function resetGuildGreeting(discordServerId: string) {
+	await initializeDatabase();
+	const guildId = String(discordServerId || '').trim();
+	if (!guildId) return false;
+	await db.execute(sql`UPDATE servers SET greeted_at = NULL WHERE discord_server_id = ${guildId}`);
+	return true;
+}
+
 async function getServerIdsInSameGuild(serverId: any) {
 	const sub = db
 		.select({ discord_server_id: schema.servers.discord_server_id })
@@ -1073,7 +1097,6 @@ async function ensureLeaderboardSettingsHaveSlug(serverId: number, serverName: s
 	if (settings?.slug) return true;
 	const slug = await generateUniqueLeaderboardSlug(serverName);
 	const next: Record<string, unknown> = { ...settings, slug };
-	if (!('enabled' in next)) next.enabled = true;
 	await upsertServerSettings(serverId, SERVER_SETTINGS.component.public_statistics, next);
 	return true;
 }
@@ -1102,92 +1125,27 @@ async function seedNewServerSettings(serverId: number) {
 	await upsertServerSettings(serverId, SERVER_SETTINGS.component.permissions, {});
 }
 
-export async function getServerByLeaderboardSlug(slug: string) {
-	await initializeDatabase();
-	const s = (slug || '').trim();
-	if (!s) return null;
-	const rows = await db.execute(sql`
-		SELECT sv.*
-		FROM servers sv
-		INNER JOIN server_settings ss
-			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.public_statistics}
-		WHERE JSON_UNQUOTE(JSON_EXTRACT(ss.settings, '$.slug')) = ${s}
-		LIMIT 1
-	`);
-	return ((rows[0] as unknown as any[]) || [])[0] || null;
-}
-
-function parseLeaderboardSettingsColumn(raw: unknown): Record<string, unknown> {
-	if (raw && typeof raw === 'object') return raw as Record<string, unknown>;
-	if (typeof raw === 'string') {
-		try {
-			const v = JSON.parse(raw);
-			return v && typeof v === 'object' ? (v as Record<string, unknown>) : {};
-		} catch {
-			return {};
-		}
-	}
-	return {};
-}
-
-function leaderboardModuleEnabledFromSettings(s: Record<string, unknown>): boolean {
-	return s.enabled !== false;
-}
-
-export async function listPublicLeaderboardSlugs() {
-	await initializeDatabase();
-	const rows = await db.execute(sql`
-		SELECT sv.updated_at, ss.settings AS settings
-		FROM servers sv
-		INNER JOIN server_settings ss
-			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.public_statistics}
-		WHERE JSON_EXTRACT(ss.settings, '$.slug') IS NOT NULL
-	`);
-	const list = (rows[0] as unknown as any[]) || [];
-	return list
-		.filter((r: any) => {
-			const s = parseLeaderboardSettingsColumn(r?.settings);
-			const slug = typeof s.slug === 'string' ? s.slug.trim() : '';
-			return Boolean(slug) && leaderboardModuleEnabledFromSettings(s);
-		})
-		.map((r: any) => {
-			const s = parseLeaderboardSettingsColumn(r?.settings);
-			return { slug: String(s.slug || '').trim(), updated_at: r.updated_at };
-		});
-}
-
-export async function listEnabledLeaderboardServers() {
+export async function listPublicServers() {
 	await initializeDatabase();
 	const rows = await db.execute(sql`
 		SELECT
 			sv.id,
 			sv.name,
 			sv.updated_at,
-			sv.server_icon,
-			ss.settings AS settings
+			sv.server_icon
 		FROM servers sv
 		INNER JOIN server_settings ss
 			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.public_statistics}
 	`);
 	const list = (rows[0] as unknown as any[]) || [];
 	return list
-		.filter((r: any) => {
-			if (!r) return false;
-			const s = parseLeaderboardSettingsColumn(r.settings);
-			return s.enabled !== false;
-		})
-		.map((r: any) => {
-			const s = parseLeaderboardSettingsColumn(r.settings);
-			return {
-				id: Number(r.id),
-				name: r.name ?? null,
-				updated_at: r.updated_at,
-				server_icon: r.server_icon ?? null,
-				items_enabled: publicSubfeatureEnabled(s, 'items'),
-				assets_enabled: publicSubfeatureEnabled(s, 'assets'),
-				minigames_enabled: publicSubfeatureEnabled(s, 'minigames')
-			};
-		});
+		.filter((r: any) => !!r)
+		.map((r: any) => ({
+			id: Number(r.id),
+			name: r.name ?? null,
+			updated_at: r.updated_at,
+			server_icon: r.server_icon ?? null
+		}));
 }
 
 export async function upsertCategory(serverId: any, categoryData: any) {
@@ -1471,7 +1429,6 @@ export async function searchPanelMembersForGift(panelId: any, queryText: string 
 		INNER JOIN bots b ON b.id = sv.bot_id AND b.panel_id = ${Number(panelId)}
 		INNER JOIN server_settings ss
 			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.public_statistics}
-			AND JSON_EXTRACT(ss.settings, '$.enabled') != false
 			AND COALESCE(JSON_EXTRACT(ss.settings, '$.items_enabled'), true) != false
 		LEFT JOIN (
 			SELECT member_id, SUM(quantity) AS total
@@ -1495,7 +1452,6 @@ export async function memberServerHasItemsEnabled(memberId: any, panelId: any) {
 		INNER JOIN bots b ON b.id = sv.bot_id AND b.panel_id = ${Number(panelId)}
 		INNER JOIN server_settings ss
 			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.public_statistics}
-			AND JSON_EXTRACT(ss.settings, '$.enabled') != false
 			AND COALESCE(JSON_EXTRACT(ss.settings, '$.items_enabled'), true) != false
 		WHERE m.id = ${Number(memberId)}
 		LIMIT 1
@@ -6236,6 +6192,8 @@ export default {
 	getSelfbotServerByDiscordId,
 	getServerByDiscordId,
 	getOfficialBotServerIdForServer,
+	claimGuildGreeting,
+	resetGuildGreeting,
 	getNotificationChannels,
 	getMemberNotificationChannelIds,
 	getNotifiedMemberDiscordIds,
@@ -6248,9 +6206,7 @@ export default {
 	syncServerBotChannels,
 	getServerBotCategoriesForServer,
 	getServerBotChannelsForServer,
-	getServerByLeaderboardSlug,
-	listPublicLeaderboardSlugs,
-	listEnabledLeaderboardServers,
+	listPublicServers,
 	upsertCategory,
 	syncCategories,
 	upsertChannel,

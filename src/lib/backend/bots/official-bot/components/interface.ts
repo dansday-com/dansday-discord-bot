@@ -53,6 +53,8 @@ import {
 import { isQuestEnrollButtonId, isQuestEnrollModalId, handleQuestEnrollButton, handleQuestEnrollModalSubmit } from './questEnroll.js';
 import { translate } from '../i18n.js';
 import { createHash } from 'crypto';
+import db from '../../../../database.js';
+import { computeCardToken } from '../../../../frontend/public/items/index.js';
 
 async function replyIfFeatureDisabled(interaction: any, component: string): Promise<boolean> {
 	if (!interaction.guild) return false;
@@ -248,6 +250,31 @@ async function handleMenuButton(interaction) {
 	}
 }
 
+async function handleMyAccountLinkButton(interaction) {
+	const guildId = interaction.guild.id;
+	const userId = interaction.user.id;
+
+	const server = await getServerForCurrentBot(guildId);
+	const slug = await computePublicServerSlugForServerId(Number(server.id));
+	const base = slug ? publicServerUrl(slug) : null;
+	if (!base) {
+		const msg = await translate('leveling.account.unavailable', guildId, userId);
+		await interaction.reply({ content: msg, flags: 64 }).catch(() => null);
+		return;
+	}
+
+	const dbMember = await db.getMemberByDiscordId(server.id, userId).catch(() => null);
+	if (!dbMember?.discord_member_id) {
+		const msg = await translate('leveling.account.noMember', guildId, userId);
+		await interaction.reply({ content: msg, flags: 64 }).catch(() => null);
+		return;
+	}
+
+	const hash = computeCardToken(String(dbMember.discord_member_id), dbMember.member_since);
+	const msg = await translate('leveling.account.link', guildId, userId, { url: `${base}/account/overview/${hash}` });
+	await interaction.reply({ content: msg, flags: 64 }).catch(() => null);
+}
+
 export async function handleButtonInteraction(interaction) {
 	const { customId } = interaction;
 	const user = interaction.user;
@@ -313,6 +340,10 @@ export async function handleButtonInteraction(interaction) {
 			break;
 		case 'afk_remove':
 			await handleRemoveAFKButton(interaction);
+			break;
+		case 'level_my_account':
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.leveling)) break;
+			await handleMyAccountLinkButton(interaction);
 			break;
 		case 'settings_language':
 			await handleLanguageButton(interaction);

@@ -3,6 +3,13 @@ import { ITEM_EFFECTS, effectAccentHex, effectGuide, effectSummary } from './ite
 export const GUIDE_TITLE = 'How the XP Game Works';
 export const GUIDE_SUBTITLE = 'Earn XP, clear tasks, shop for items, and outplay everyone.';
 
+export const GUIDE_SECTIONS = {
+	earn: { icon: 'fas fa-bolt', heading: 'How to earn XP', lead: 'XP is the currency for everything here, and your rank on the leaderboard.' },
+	basics: { icon: 'fas fa-circle-info', heading: 'Know the basics', lead: 'The words you will see around your account, and what each one means.' },
+	items: { subHeading: 'Every item explained', notInShop: 'Not in this shop yet' },
+	tips: { icon: 'fas fa-chess-knight', heading: 'Strategy & combos' }
+};
+
 export type GuideCard = { icon: string; accent: string; title: string; desc: string };
 export type GuideStep = { icon: string; title: string; desc: string };
 export type GuideNote = { icon: string; accent: string; title: string; text: string };

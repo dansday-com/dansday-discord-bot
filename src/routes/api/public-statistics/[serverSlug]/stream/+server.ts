@@ -1,6 +1,4 @@
 import type { RequestHandler } from '@sveltejs/kit';
-import db from '$lib/database.js';
-import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 import { type LeaderboardMetric, type LeaderboardPeriod, subscribeLeaderboard } from '$lib/frontend/public/leaderboard/index.js';
 import { resolvePublicServerBySlug } from '$lib/frontend/public/server-slug/index.js';
 
@@ -41,10 +39,6 @@ export const GET: RequestHandler = async ({ params, url }) => {
 	const resolved = await resolvePublicServerBySlug(serverSlug);
 	if (!resolved) return new Response('Not found', { status: 404 });
 	const server = resolved.server;
-
-	const settingsRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.public_statistics);
-	const settings = (settingsRow as any)?.settings || {};
-	if (settings.enabled === false) return new Response('Not found', { status: 404 });
 
 	const metric = parseMetric(url.searchParams.get('metric'));
 	const period = parsePeriod(url.searchParams.get('period'));

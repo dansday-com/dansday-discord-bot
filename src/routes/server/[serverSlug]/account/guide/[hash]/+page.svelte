@@ -6,6 +6,9 @@
 		EARN_METHODS as earnMethods,
 		FEATURES as features,
 		FRIEND_BOOST as friendBoost,
+		GUIDE_SECTIONS,
+		GUIDE_SUBTITLE,
+		GUIDE_TITLE,
 		TIPS as tips,
 		buildGuideItems
 	} from '$lib/guide.js';
@@ -85,20 +88,20 @@
 <div class="g-wrap">
 	<header class="g-hero" use:reveal>
 		<div class="g-hero-badge"><i class="fas fa-book-open"></i></div>
-		<h1 class="g-hero-title">How the XP Game Works</h1>
-		<p class="g-hero-sub">Earn XP, clear tasks, shop for items, and outplay everyone.</p>
+		<h1 class="g-hero-title">{GUIDE_TITLE}</h1>
+		<p class="g-hero-sub">{GUIDE_SUBTITLE}</p>
 	</header>
 
 	<section class="g-sec" use:reveal>
-		<h2 class="g-sec-head"><i class="fas fa-bolt"></i>How to earn XP</h2>
-		<p class="g-sec-lead">XP is the currency for everything here, and your rank on the leaderboard.</p>
+		<h2 class="g-sec-head"><i class={GUIDE_SECTIONS.earn.icon}></i>{GUIDE_SECTIONS.earn.heading}</h2>
+		<p class="g-sec-lead">{GUIDE_SECTIONS.earn.lead}</p>
 		{@render cardGrid(earnMethods)}
 		{@render callout(friendBoost)}
 	</section>
 
 	<section class="g-sec" use:reveal>
-		<h2 class="g-sec-head"><i class="fas fa-circle-info"></i>Know the basics</h2>
-		<p class="g-sec-lead">The words you will see around your account, and what each one means.</p>
+		<h2 class="g-sec-head"><i class={GUIDE_SECTIONS.basics.icon}></i>{GUIDE_SECTIONS.basics.heading}</h2>
+		<p class="g-sec-lead">{GUIDE_SECTIONS.basics.lead}</p>
 		{@render cardGrid(basics)}
 	</section>
 
@@ -113,7 +116,7 @@
 			{@render callout(f.note)}
 
 			{#if f.id === 'items'}
-				<h3 class="g-sub-head">Every item explained</h3>
+				<h3 class="g-sub-head">{GUIDE_SECTIONS.items.subHeading}</h3>
 				<div class="g-items">
 					{#each guideItems as it, i}
 						<article class="g-item" class:g-item--soon={!it.available} style="--ac: {it.accent}; --d: {(i % 6) * 60}ms">
@@ -125,7 +128,7 @@
 									{#if it.available && it.cost != null}
 										<span class="g-item-cost"><i class="fas fa-coins"></i>{fmtCost(it.cost)}</span>
 									{:else}
-										<span class="g-item-cost g-item-cost--soon">Not in this shop yet</span>
+										<span class="g-item-cost g-item-cost--soon">{GUIDE_SECTIONS.items.notInShop}</span>
 									{/if}
 								</div>
 							</div>
@@ -144,7 +147,7 @@
 	{/each}
 
 	<section class="g-sec" use:reveal>
-		<h2 class="g-sec-head"><i class="fas fa-chess-knight"></i>Strategy &amp; combos</h2>
+		<h2 class="g-sec-head"><i class={GUIDE_SECTIONS.tips.icon}></i>{GUIDE_SECTIONS.tips.heading}</h2>
 		<div class="g-tips">
 			{#each tips as t, i}
 				<div class="g-tip" style="--ac: {t.accent}; --d: {i * 60}ms">

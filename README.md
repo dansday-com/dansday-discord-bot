@@ -68,19 +68,21 @@ Each member signs in to their own account on those same pages.
 
 ### Panel
 
+- **One-command setup** - `/setup` creates every channel and wires it to its module. Nothing to pick by hand.
 - **Granular permissions** - Owner and staff tiers control who changes what.
 - **Server accounts** - Invite owners and staff, with roles separate from Discord permissions.
 - **Per-module toggles** - Enable or disable each feature per server.
+- **Greetings** - The join greeting sends itself. Only the first of your bots greets a shared server; resend from the panel.
 - **Embed builder** - Rich embeds with live preview, placeholders and images.
 - **Multi-language** - English and Indonesian for Discord buttons, selects and labels.
 
 ### Community & engagement
 
-- **Items & XP economy** ⭐ _new_ - Per-server shop priced in XP, 50-slot bag, optional timed availability. Effects: 💰 steal, 💥 bomb, 🩸 leech, 🎯 bounty, 🛡️ shield, 🪞 reflect, 💵 insurance, ⚡ boost, 🎁 gift, 🔍 spy, 🎭 disguise, 🧼 purifier, 🍀 luck.
+- **Items & XP economy** - Per-server shop priced in XP, 50-slot bag, optional timed availability. Effects: 💰 steal, 💥 bomb, 🩸 leech, 🎯 bounty, 🛡️ shield, 🪞 reflect, 💵 insurance, ⚡ boost, 🎁 gift, 🔍 spy, 🎭 disguise, 🧼 purifier, 🍀 luck.
   - 🍀 **Luck** raises steal and bomb rolls, minigame odds, spy success, leech skim, friend boost and insurance refund, cuts gift tax and discounts prices. Timed buffs lock luck in on activation, so use luck first.
-- **Assets market** ⭐ _new_ - Lock XP into real crypto positions at live CoinGecko prices and sell any time. Thousands of coins, top 50, gainers and losers, live portfolio. No real money.
-- **Minigames** ⭐ _new_ - Wager XP. 🎲 **Gamble**: pick a multiplier up to 10×, win chance is 100 ÷ it. Only XP above your current level can be wagered, so a loss never costs a level.
-- **Tasks, streaks & check-in** ⭐ _new_ - No admin setup; goals, difficulty and rewards generate per member.
+- **Assets market** - Lock XP into real crypto positions at live CoinGecko prices and sell any time. Thousands of coins, top 50, gainers and losers, live portfolio. No real money.
+- **Minigames** - Wager XP. 🎲 **Gamble**: pick a multiplier up to 10×, win chance is 100 ÷ it. Only XP above your current level can be wagered, so a loss never costs a level.
+- **Tasks, streaks & check-in** - No admin setup; goals, difficulty and rewards generate per member.
   - 18 daily tasks (6 easy, 6 medium, 6 hard from a 96-goal catalog) and 18 weekly, on the member's local clock. No two members get the same list.
   - Goals are sized from that member's own last 7 days of the exact metric, capped by what the period physically allows, and graded as real effort rather than by rank.
   - Rewards are XP or a shop item at a 30% item chance. Tasks that cost XP always pay back more than they cost.
@@ -117,6 +119,7 @@ Each member signs in to their own account on those same pages.
   - 📚 **Wikis** - Any MediaWiki site including Fandom, many per bot, managed in the panel. Reads the full rendered page with infoboxes, tables and changelogs, in any language, cached 10 minutes. Applies to chat and voice with no restart.
   - 🔗 **Chains instead of giving up** - A thin, empty or off-target result moves on to the next tool rather than reporting failure. Live values like timers and active events go straight to the web.
   - 📊 **Server knowledge** - Reads this server's own live data with no extra key: statistics, leaderboards on any metric, a member's public profile, staff ratings, running giveaways, active quests, the shop with prices and timings, and the XP guide. Follows your module toggles, so anything you switch off disappears from the AI too.
+  - ⭐ **XP rates** - Reads your server's own leveling configuration, so "how much XP for an hour in voice", "how much per message" and "how much XP to reach level 10" get exact answers off your settings, not guesses. Covers voice, AFK voice, video, streaming and chat rates, the message cooldown, the friend and luck bonuses, and the level-up formula.
   - 🎒 **Their own account** - Level, bag, assets, minigames, history, tasks and streak — always the asker's own and never anyone else's, so "what is in my bag" works and "what is in theirs" does not.
 
 ### Integrations

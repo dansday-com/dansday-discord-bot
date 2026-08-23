@@ -127,7 +127,7 @@ const REGISTRY = [
 	{
 		id: 'public_statistics',
 		label: 'Public statistics',
-		featureSwitch: true,
+		featureSwitch: false,
 		hrefSuffix: '/public-statistics',
 		icon: 'fa-chart-pie',
 		iconClass: 'text-amber-400'
@@ -178,7 +178,6 @@ export function publicSubfeatureEnabled(settings: any, subfeature: PublicStatist
 }
 
 export const AUTO_ENABLED_COMPONENTS: Set<string> = new Set([
-	component.public_statistics,
 	component.roblox_catalog_notifier,
 	component.giveaway,
 	component.leveling,

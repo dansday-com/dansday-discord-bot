@@ -1,15 +1,16 @@
 <script lang="ts">
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import type { PageProps } from './$types';
-	import { publicServerPath, COMMUNITY_DISCORD_URL } from '$lib/url.js';
+	import { publicServerPath, COMMUNITY_DISCORD_URL, OFFICIAL_BOT_INVITE_URL, SOURCE_REPO_URL } from '$lib/url.js';
 	import MainHeader from '$lib/frontend/components/MainHeader.svelte';
 	import MainFooter from '$lib/frontend/components/MainFooter.svelte';
 
 	let { data }: PageProps = $props();
 
-	const officialBotInviteUrl = 'https://discord.com/oauth2/authorize?client_id=1446572985849876640';
-	const communityDiscordUrl = COMMUNITY_DISCORD_URL;
-	const sourceRepoUrl = 'https://github.com/dansday-com/dansday-discord-bot';
+	const SERVERS_PER_PAGE = 5;
+	let shownServers = $state(SERVERS_PER_PAGE);
+	const visibleServers = $derived(data.featuredServers.slice(0, shownServers));
+	const remainingServers = $derived(data.featuredServers.length - visibleServers.length);
 
 	const features = [
 		{
@@ -167,13 +168,13 @@
 					Run leveling, moderation, an embed builder, Discord Quests, quest enroll, self-bot options, creator tools, live public statistics pages, Roblox
 					catalog alerts, and more from the free web panel in your browser. Configure in one place instead of flooding channels with slash commands. Free for
 					everyone. Self-host from
-					<a href={sourceRepoUrl} target="_blank" rel="noopener noreferrer">GitHub</a>
+					<a href={SOURCE_REPO_URL} target="_blank" rel="noopener noreferrer">GitHub</a>
 					or add
-					<a href={officialBotInviteUrl} target="_blank" rel="noopener noreferrer">our hosted bot</a>
+					<a href={OFFICIAL_BOT_INVITE_URL} target="_blank" rel="noopener noreferrer">our hosted bot</a>
 					if you do not run your own servers.
 				</p>
 				<div class="m-hero-actions">
-					<a href={officialBotInviteUrl} class="m-btn m-btn--primary m-hero-btn-primary" target="_blank" rel="noopener noreferrer">
+					<a href={OFFICIAL_BOT_INVITE_URL} class="m-btn m-btn--primary m-hero-btn-primary" target="_blank" rel="noopener noreferrer">
 						<i class="fab fa-discord"></i>
 						Get started
 					</a>
@@ -187,7 +188,7 @@
 							Features
 						</a>
 						<a
-							href={communityDiscordUrl}
+							href={COMMUNITY_DISCORD_URL}
 							class="m-btn m-btn--ghost m-btn--compact"
 							target="_blank"
 							rel="noopener noreferrer"
@@ -196,7 +197,7 @@
 							<i class="fas fa-users"></i>
 							Discord
 						</a>
-						<a href={sourceRepoUrl} class="m-btn m-btn--ghost m-btn--compact" target="_blank" rel="noopener noreferrer" title="Source on GitHub (MIT)">
+						<a href={SOURCE_REPO_URL} class="m-btn m-btn--ghost m-btn--compact" target="_blank" rel="noopener noreferrer" title="Source on GitHub (MIT)">
 							<i class="fab fa-github"></i>
 							GitHub
 						</a>
@@ -229,10 +230,10 @@
 				<section class="m-section">
 					<div class="m-section-header">
 						<h2>Active Communities</h2>
-						<p>Servers using {APP_NAME} Bot with public statistics enabled.</p>
+						<p>Servers using {APP_NAME} Bot, each with its own live public pages.</p>
 					</div>
 					<div class="m-servers-list">
-						{#each data.featuredServers as server}
+						{#each visibleServers as server}
 							<a href={publicServerPath(server.slug)} class="m-server-card">
 								<div class="m-landing-server-icon">
 									{#if server.server_icon}
@@ -254,6 +255,12 @@
 							</a>
 						{/each}
 					</div>
+					{#if remainingServers > 0}
+						<button type="button" class="m-servers-more" onclick={() => (shownServers += SERVERS_PER_PAGE)}>
+							<i class="fas fa-chevron-down"></i>
+							Show more ({remainingServers} left)
+						</button>
+					{/if}
 				</section>
 			{/if}
 
@@ -305,7 +312,7 @@
 						<strong>ten minute demo</strong> with full panel access and no signup.
 					</p>
 					<div class="m-cta-actions">
-						<a href={officialBotInviteUrl} class="m-btn m-btn--primary" target="_blank" rel="noopener noreferrer">
+						<a href={OFFICIAL_BOT_INVITE_URL} class="m-btn m-btn--primary" target="_blank" rel="noopener noreferrer">
 							<i class="fab fa-discord"></i>
 							Add {APP_NAME} Bot
 						</a>

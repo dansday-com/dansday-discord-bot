@@ -43,6 +43,11 @@ function detectOs(ua: string): string {
 	return 'unknown';
 }
 
+function isFileLikePath(pathname: string): boolean {
+	const last = pathname.slice(pathname.lastIndexOf('/') + 1);
+	return last.includes('.') || pathname.startsWith('/.well-known/');
+}
+
 export const handle: Handle = async ({ event, resolve }) => {
 	const start = Date.now();
 
@@ -114,7 +119,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 		preload: ({ type }) => type === 'js' || type === 'css' || type === 'font'
 	});
 
-	if (event.url.pathname !== '/' && !event.url.pathname.startsWith('/api/')) {
+	if (event.url.pathname !== '/' && !event.url.pathname.startsWith('/api/') && !isFileLikePath(event.url.pathname)) {
 		const contentType = response.headers.get('content-type') ?? '';
 		const accept = event.request.headers.get('accept') ?? '';
 		const secDest = event.request.headers.get('sec-fetch-dest');

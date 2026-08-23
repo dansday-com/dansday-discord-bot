@@ -8,33 +8,37 @@ import {
 	aiToolRules,
 	aiVoiceRules,
 	aiWikiRules,
+	botKinds,
 	envVars,
 	permissionRoles,
 	selfhostSteps,
 	setupChannels,
 	shopSteps,
-	startSteps
+	startSteps,
+	tiers
 } from '../../../../docs.js';
 import { loadItemsCatalog } from '../../../../frontend/public/items/index.js';
 import { VOICE_NOTE, fail, publicServer } from './aiToolShared.js';
 
 const GUIDE_TOPICS = ['all', 'earning', 'basics', 'items', 'tasks', 'minigames', 'assets', 'tips'];
 
-const DOCS_TOPICS = ['all', 'start', 'setup', 'accounts', 'permissions', 'modules', 'ai', 'wikis', 'shop', 'selfhost'];
+const DOCS_TOPICS = ['all', 'start', 'bots', 'setup', 'accounts', 'roles', 'permissions', 'modules', 'ai', 'wikis', 'shop', 'selfhost'];
 
 const line = (e) => `${e.title ?? e.label ?? e.name}: ${e.desc}`;
 
 const DOCS_SECTIONS = {
 	start: { title: 'Getting started', points: () => startSteps.map(line) },
+	bots: { title: 'Official bot vs selfbot', points: () => botKinds.flatMap((b) => [`${b.title}: ${b.what}`, ...b.fields.map(line)]) },
 	setup: { title: 'The /setup command', points: () => setupChannels.map(line) },
 	accounts: { title: 'Accounts & staff', points: () => accountFields.map(line) },
+	roles: { title: 'Who can do what', points: () => tiers.flatMap((t) => [`${t.title}: ${t.what}`, ...t.can.map((c) => `${t.title} can: ${c}`)]) },
 	permissions: { title: 'Permissions', points: () => permissionRoles.map(line) },
 	modules: {
 		title: 'Modules',
 		points: () => [
-			'On by default: Welcomer, Booster, Channel notification, Leveling, Giveaway, AFK, Moderation, Roblox Catalog and Public statistics.',
+			'On by default: Welcomer, Booster, Channel notification, Leveling, Giveaway, AFK, Moderation and Roblox Catalog.',
 			'Off until enabled: Forwarder, Custom Supporter Role, Feedback, Staff Rating, Content Creator and Discord Quest.',
-			'Always on: Main settings and Permissions cannot be switched off.',
+			'Always on: Main settings, Permissions and Public statistics cannot be switched off.',
 			'Items, Assets, Minigames and Daily tasks are sub-toggles of Public statistics, all on by default.'
 		]
 	},

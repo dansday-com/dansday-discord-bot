@@ -3,6 +3,7 @@ import { resolveEmbedFooterPlaceholders } from '../../../../utils/embedFooter.js
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, AttachmentBuilder } from 'discord.js';
 import { logger } from '../../../../utils/index.js';
 import db from '../../../../database.js';
+import { resendJoinGreeting } from './sync.js';
 
 let webhookServer = null;
 let client = null;
@@ -526,6 +527,30 @@ async function handleWebhookRequest(req, res) {
 						await logger.log(`❌ Failed to send DM via webhook: ${dmErr.message}`);
 						res.writeHead(500, { 'Content-Type': 'application/json' });
 						res.end(JSON.stringify({ error: 'Failed to send DM', details: dmErr.message }));
+					}
+				} else if (payload.type === 'resend_greeting') {
+					try {
+						const guildId = payload.guild_id;
+						if (!guildId) {
+							res.writeHead(400, { 'Content-Type': 'application/json' });
+							res.end(JSON.stringify({ error: 'Missing guild_id' }));
+							return;
+						}
+
+						const result = await resendJoinGreeting(String(guildId));
+						if (!result.success) {
+							res.writeHead(result.error === 'guild_not_found' ? 404 : 500, { 'Content-Type': 'application/json' });
+							res.end(JSON.stringify(result));
+							return;
+						}
+
+						await logger.log(`👋 Resent join greeting for guild ${guildId}`);
+						res.writeHead(200, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify(result));
+					} catch (err) {
+						await logger.log(`❌ Failed to resend greeting: ${err.message}`);
+						res.writeHead(500, { 'Content-Type': 'application/json' });
+						res.end(JSON.stringify({ error: 'Failed to resend greeting', details: err.message }));
 					}
 				} else if (payload.type === 'sync_bot_nickname') {
 					try {

@@ -1,17 +1,11 @@
 import type { RequestHandler } from '@sveltejs/kit';
-import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 import { resolvePublicServerBySlug } from '$lib/frontend/public/server-slug/index.js';
-import db from '$lib/database.js';
 import { subscribePublicServerStatistics } from '$lib/frontend/public/statistics/index.js';
 
 export const GET: RequestHandler = async ({ params }) => {
 	const serverSlug = String(params.serverSlug || '').trim();
 	const resolved = await resolvePublicServerBySlug(serverSlug);
 	if (!resolved) return new Response('Not found', { status: 404 });
-
-	const settingsRow = await db.getServerSettings(resolved.server.id, SERVER_SETTINGS.component.public_statistics);
-	const settings = (settingsRow as any)?.settings || {};
-	if (settings.enabled === false) return new Response('Not found', { status: 404 });
 
 	const serverId = resolved.server.id;
 

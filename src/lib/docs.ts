@@ -1,26 +1,148 @@
-// Single source of truth for the /docs page content.
-// Both src/routes/docs/+page.svelte and the AI's get_docs tool read from here,
-// so the documentation members see and the answers the bot gives can never drift apart.
-
 export const DOCS_TITLE = 'Bot documentation';
 export const DOCS_URL = 'https://dansday.com/docs';
 
+export const DOCS_HERO = {
+	heading: 'Set up {app} Bot',
+	lead: 'From adding the bot to configuring every module, field by field. Everything is set in the browser; members use it through the Discord menu.',
+	cta: 'Add the bot to start'
+};
+
 export const sections = [
-	{ id: 'start', icon: 'fa-flag-checkered', label: 'Get started' },
-	{ id: 'bots', icon: 'fa-robot', label: 'Bot vs selfbot' },
-	{ id: 'setup-command', icon: 'fa-terminal', label: '/setup' },
-	{ id: 'accounts', icon: 'fa-user-plus', label: 'Accounts & staff' },
-	{ id: 'roles', icon: 'fa-users-gear', label: 'Who can do what' },
-	{ id: 'permissions', icon: 'fa-user-shield', label: 'Permissions' },
-	{ id: 'modules', icon: 'fa-toggle-on', label: 'Modules' },
-	{ id: 'ai-chat', icon: 'fa-robot', label: 'AI chat' },
-	{ id: 'ai-tools', icon: 'fa-toolbox', label: 'Search, fetch, images' },
-	{ id: 'ai-wikis', icon: 'fa-book', label: 'Wiki knowledge' },
-	{ id: 'ai-server', icon: 'fa-database', label: 'Server knowledge' },
-	{ id: 'shop', icon: 'fa-store', label: 'Items shop' },
-	{ id: 'discord', icon: 'fa-discord', label: 'Discord menu' },
-	{ id: 'selfhost', icon: 'fa-server', label: 'Self-host' }
+	{
+		id: 'start',
+		icon: 'fa-flag-checkered',
+		label: 'Get started',
+		heading: 'Get started',
+		iconClass: 'fas fa-flag-checkered',
+		lead: 'Three steps take you from nothing to a configurable server.'
+	},
+	{
+		id: 'bots',
+		icon: 'fa-robot',
+		label: 'Bot vs selfbot',
+		heading: 'Official bot vs selfbot',
+		iconClass: 'fas fa-robot',
+		lead: 'The official bot runs everything. A selfbot is optional and only needed for two features.'
+	},
+	{
+		id: 'setup-command',
+		icon: 'fa-terminal',
+		label: '/setup',
+		heading: 'The /setup command',
+		iconClass: 'fas fa-terminal',
+		lead: 'Run /setup in Discord (owner or Administrator only). It creates a menu category with these channels, wires each one to its module and posts the bot interface. If no owner account exists yet, it hands you a registration link to claim ownership.'
+	},
+	{
+		id: 'accounts',
+		icon: 'fa-user-plus',
+		label: 'Accounts & staff',
+		heading: 'Accounts & staff',
+		iconClass: 'fas fa-user-plus',
+		lead: 'Sign in with Discord. The person who claims the first invite is the owner; they bring in helpers from the Accounts page.'
+	},
+	{
+		id: 'roles',
+		icon: 'fa-users-gear',
+		label: 'Who can do what',
+		heading: 'Who can do what',
+		iconClass: 'fas fa-users-gear',
+		lead: 'Account tiers control who manages the panel. They are separate from the Discord permission roles below, which control who can use features in Discord.'
+	},
+	{
+		id: 'permissions',
+		icon: 'fa-user-shield',
+		label: 'Permissions',
+		heading: 'Permissions',
+		iconClass: 'fas fa-user-shield',
+		lead: 'Map Discord roles to what they unlock. Set these on the Permissions page.'
+	},
+	{
+		id: 'modules',
+		icon: 'fa-toggle-on',
+		label: 'Modules',
+		heading: 'Modules, field by field',
+		iconClass: 'fas fa-toggle-on',
+		lead: 'Each module has a master toggle plus its own settings. Turn on only what you need.'
+	},
+	{
+		id: 'ai-chat',
+		icon: 'fa-robot',
+		label: 'AI chat',
+		heading: 'AI chat',
+		iconClass: 'fas fa-robot',
+		lead: 'Members mention the bot to talk to it, or reply to one of its messages to keep going without mentioning again. Set this on the bot panel under the AI tab, not per server, so every server the bot is in shares one configuration. Each member keeps their own conversation in each server. Restart the bot after saving.'
+	},
+	{
+		id: 'ai-tools',
+		icon: 'fa-toolbox',
+		label: 'Search, fetch, images',
+		heading: 'Web search, fetch and images',
+		iconClass: 'fas fa-toolbox',
+		lead: 'Three optional tools the AI reaches for on its own: searching the live web, reading a page it was linked to, and drawing a picture. Server data needs none of these. Each is a separate URL, model and key on the bot panel under the AI tab, so they can point at different providers. Any OpenAI-compatible gateway works. Restart the bot after saving.'
+	},
+	{
+		id: 'ai-wikis',
+		icon: 'fa-book',
+		label: 'Wiki knowledge',
+		heading: 'Wiki knowledge',
+		iconClass: 'fas fa-book',
+		lead: 'Without this, the AI answers game questions from memory and gets them wrong. Add a wiki and it looks the answer up instead. Set this on the bot panel under the Wikis tab. It applies to chat and voice alike, and to every server the bot is in.'
+	},
+	{
+		id: 'ai-server',
+		icon: 'fa-database',
+		label: 'Server knowledge',
+		heading: 'Server knowledge',
+		iconClass: 'fas fa-database',
+		lead: 'The AI can read this server\'s own live data, so "what is in the shop", "who is number one" and "what are my tasks" get real answers instead of guesses. It works as soon as AI chat is on — there is nothing extra to configure.'
+	},
+	{
+		id: 'shop',
+		icon: 'fa-store',
+		label: 'Items shop',
+		heading: 'Set up the items shop',
+		iconClass: 'fas fa-store',
+		lead: 'Two parts: enable the module per server, then create items in the admin catalog. Items are shared across every server that turns Items on.'
+	},
+	{
+		id: 'discord',
+		icon: 'fa-discord',
+		label: 'Discord menu',
+		heading: 'The Discord menu',
+		iconClass: 'fab fa-discord',
+		lead: 'Members click the Menu button in the menu channel. Every button is always shown — if a feature is off or needs a role, clicking it explains why.'
+	},
+	{
+		id: 'selfhost',
+		icon: 'fa-server',
+		label: 'Self-host',
+		heading: 'Self-host setup',
+		iconClass: 'fas fa-server',
+		lead: 'The project is open source under MIT. Run your own instance with Node, MySQL and optional Redis.'
+	}
 ];
+
+export const sectionLead = (id: string): string => sections.find((s) => s.id === id)?.lead ?? '';
+
+export const sectionHeading = (id: string): string => sections.find((s) => s.id === id)?.heading ?? '';
+
+export const sectionIcon = (id: string): string => sections.find((s) => s.id === id)?.iconClass ?? '';
+
+export const subSections: Record<string, { heading: string; lead?: string }> = {
+	'ai-voice': { heading: 'Voice: how it behaves', lead: 'Everyone in the channel is heard by one shared session.' },
+	'ai-tools-how': { heading: 'How it works' },
+	'ai-server-how': { heading: 'How it works' },
+	'ai-wiki-how': { heading: 'How it works' },
+	'ai-wiki-relay': {
+		heading: 'When a wiki blocks your server',
+		lead: 'A few wiki hosts refuse traffic coming from servers, so the bot gets turned away even though the address is right. A relay fixes this: it forwards the lookup from somewhere the wiki does accept. Only the wikis you point at it are affected, everything else keeps connecting directly.'
+	},
+	'selfhost-env': { heading: 'Environment variables', lead: 'Copy .env.example to .env and fill these in.' }
+};
+
+export const subHeading = (id: string): string => subSections[id]?.heading ?? '';
+
+export const subLead = (id: string): string => subSections[id]?.lead ?? '';
 
 export const shopSteps = [
 	{
@@ -158,6 +280,7 @@ export const aiServerTopics = [
 	{ icon: 'fa-chart-pie', title: 'Server stats', desc: 'Members, XP, messages, voice minutes and every module total.' },
 	{ icon: 'fa-ranking-star', title: 'Leaderboards', desc: 'Any metric, any period — XP, chat, voice, steals, gambling.' },
 	{ icon: 'fa-store', title: 'Shop', desc: 'Prices, what each item does, how long it lasts, what is coming.' },
+	{ icon: 'fa-star', title: 'XP rates', desc: 'This server\'s own rates, so "how much XP for an hour in voice" is exact.' },
 	{ icon: 'fa-gift', title: 'Giveaways & quests', desc: 'What is running, the prize and how long is left.' },
 	{ icon: 'fa-book-open', title: 'How the game works', desc: 'The same guide members read, so answers match the site.' },
 	{ icon: 'fa-user', title: 'Their account', desc: 'Level, bag, assets, minigames, history, tasks and streak.' }
@@ -260,11 +383,11 @@ export const selfhostSteps = [
 ];
 
 export const startSteps = [
-	{ icon: 'fa-discord', title: 'Add the bot', desc: 'It joins instantly and posts a short guide with the docs and support links.' },
+	{ icon: 'fa-discord', title: 'Add the bot', desc: 'It joins and greets the server with the docs and support links.' },
 	{
 		icon: 'fa-terminal',
-		title: 'Run /setup',
-		desc: 'Builds the menu category and posts the interface. Safe to re-run: only missing channels are created. Owner or Administrator only.'
+		title: 'Run /setup once',
+		desc: 'Creates every channel, wires it to its module and posts the menu. Owner or Administrator only.'
 	},
 	{
 		icon: 'fa-right-to-bracket',
@@ -308,6 +431,87 @@ export const accountFields = [
 	{
 		label: 'Invite Links',
 		desc: 'All generated invites with their status (Pending, Used, Expired) and a countdown. Expire a pending invite to revoke it before use.'
+	}
+];
+
+export const botKinds = [
+	{
+		icon: 'fa-robot',
+		accent: '#5865f2',
+		title: 'Official bot',
+		what: 'The real Discord bot application you invite with an OAuth link. It runs almost everything: leveling, items, moderation, welcomer, booster, giveaways, AFK, feedback, staff rating, custom supporter roles, the /setup command, and every menu button.',
+		fields: [
+			{
+				label: 'How to add',
+				desc: 'Invite it with the OAuth link (the "Add the bot" button). It joins as a normal bot user with the permissions the features need.'
+			},
+			{
+				label: 'Token',
+				desc: 'For the hosted bot this is handled for you. Self-hosters store the bot token in the database bots table, not in Discord, and point the process at it with BOT_ID.'
+			},
+			{ label: 'Runs', desc: 'All standard features and slash/button interactions.' }
+		]
+	},
+	{
+		icon: 'fa-user-secret',
+		accent: '#c0392b',
+		title: 'Selfbot (optional)',
+		what: 'An optional user-token client for features that need a real user account. Only two features require it: the Discord Quest notifier and the message Forwarder. Everything else uses the official bot.',
+		fields: [
+			{
+				label: 'Requires a selfbot',
+				desc: 'Discord Quest notifier and Message forwarder. Their config pages warn you if no selfbot is running for the server.'
+			},
+			{
+				label: 'How to add',
+				desc: 'Add a selfbot under the Selfbots page for the server and paste a user token. It is stored encrypted. Adding, starting, stopping, restarting and deleting are owner-only; staff see it read-only.'
+			},
+			{
+				label: 'Risk',
+				desc: 'A selfbot uses a user account token. Use it in line with Discord’s terms and your own risk assessment. It is entirely optional.'
+			}
+		]
+	}
+];
+
+export const tiers = [
+	{
+		icon: 'fa-crown',
+		accent: '#d9a528',
+		title: 'Owner',
+		what: 'Full control of one server in the panel. The first owner claims the link from /setup.',
+		can: [
+			'Configure every module and permission for the server',
+			'Invite, freeze and delete staff accounts (not other owners)',
+			'Create and expire invite links',
+			'Add, start, stop, restart and delete selfbots',
+			'Invite more owners'
+		]
+	},
+	{
+		icon: 'fa-user-tie',
+		accent: '#245f73',
+		title: 'Staff',
+		what: 'Helper access invited by an owner. What they can change depends on the permission roles.',
+		can: [
+			'View and change settings allowed by their permission roles',
+			'Use staff features like the rating review queue',
+			'View selfbots read-only (cannot start or manage them)',
+			'Cannot invite, freeze or delete any account',
+			'Cannot run /setup'
+		]
+	},
+	{
+		icon: 'fa-shield-halved',
+		accent: '#c0392b',
+		title: 'Superadmin',
+		what: 'Global panel administrator (mainly relevant to self-hosters who run the whole instance).',
+		can: [
+			'Access every bot and server on the instance',
+			'Manage and freeze any account, including owners',
+			'Delete any account and expire any invite',
+			'Effectively unrestricted across the panel'
+		]
 	}
 ];
 
@@ -536,12 +740,8 @@ export const modules = [
 		icon: 'fa-chart-pie',
 		accent: '#245f73',
 		title: 'Public statistics',
-		what: 'The master switch for all public pages: server statistics, leaderboard, members, and the per-member account (Overview, History, Guide). Items, Minigames, Assets and Daily tasks are enabled here as sub-toggles.',
+		what: 'The public pages — server statistics, leaderboard, members, and the per-member account (Overview, History, Guide) — are always on. Items, Minigames, Assets and Daily tasks are enabled here as sub-toggles.',
 		fields: [
-			{
-				label: 'Public statistics module',
-				desc: 'Master switch. When off, the public pages still load but show a "turned off" notice instead of data.'
-			},
 			{
 				label: 'Items / Minigames / Assets',
 				desc: 'Sub-toggles under public statistics. Each unlocks its account tab (and channel, for Items/Minigames). Tabs stay visible when off and explain that the feature is disabled.'
@@ -550,7 +750,7 @@ export const modules = [
 				label: 'Daily tasks',
 				desc: 'Sub-toggle that adds the Task tab: 9 daily and 9 weekly auto-generated goals, a 7-day check-in, and streaks. Nothing to configure — goals are sized per member from their own recent activity, and tasks for a feature you turned off never appear. Item rewards come from your shop (needs Items on) and streak milestones post to the item events channel.'
 			},
-			{ label: 'Public URL', desc: 'The generated public address, shown when enabled. Derived from the server name.' }
+			{ label: 'Public URL', desc: 'The generated public address, derived from the server name.' }
 		]
 	}
 ];

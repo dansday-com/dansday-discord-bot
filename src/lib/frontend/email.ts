@@ -93,7 +93,7 @@ function emailLayout(title: string, accentColor: string, bodyContent: string, ye
                 </div>
                 <div class="footer">
                     <p>Copyright © ${year} <a href="${APP_URL}">${APP_DOMAIN}</a>. All rights reserved.</p>
-                    <p>Free and open source on <a href="https://github.com/dansday/dansday-discord-bot">GitHub</a>.</p>
+                    <p>Free and open source on <a href="https://github.com/dansday-com/dansday-discord-bot">GitHub</a>.</p>
                 </div>
             </div>
         </body>

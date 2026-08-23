@@ -19,6 +19,10 @@ import { writeVoiceState, clearVoiceState, VOICE_STATE_TTL_SEC } from './voiceCo
 import { getEnabledWikis, buildWikiDeclaration, runWikiTool } from './wiki.js';
 import { buildSearchDeclaration, buildFetchDeclaration, runSearchTool, runFetchTool } from './webTools.js';
 import { buildImageDeclaration, runImageTool } from './imageTools.js';
+import { buildServerDeclarations, runServerTool, SERVER_TOOL_NAMES } from './serverTools.js';
+import { resolveToolFeatures } from './aiToolShared.js';
+import { buildAccountDeclarations, runAccountTool, ACCOUNT_TOOL_NAMES } from './accountTools.js';
+import { buildKnowledgeDeclarations, runKnowledgeTool, KNOWLEDGE_TOOL_NAMES } from './knowledgeTools.js';
 import { appendAiMessage } from './aiSession.js';
 import { wakeModelAvailable, warmWakeModel, onWakeDetected, pushWakeAudio, dropWakeUser } from './wakeWord.js';
 
@@ -108,11 +112,19 @@ function downmixAndResample(pcm, fromRate, toRate, fromChannels, toChannels) {
 	return out;
 }
 
+const VOICE_SERVER_DATA_NOTE = `You can look up this server's own live data while you talk: its public statistics, leaderboards, a member's public profile, staff ratings, running giveaways, active Discord Quests, the XP item shop with prices and timings, the "How the XP Game Works" guide, and the account of the person speaking to you. Use those tools instead of guessing whenever someone asks about this server, the game, the shop, their level, their bag or their tasks.
+
+Everything you get back has to be said out loud, so keep it to one or two short spoken sentences. Give the few numbers or names that answer the question, round big numbers, and never read out a hash, a URL or a long list — offer to go through the rest if they want it.
+
+The get_my_* tools only ever read the account of the person talking to you. Never call one to answer a question about somebody else. If they ask what another member has in their bag, their history or their tasks, say plainly that it is private to that member, and offer their public level, rank and roles instead.`;
+
 export function createVoiceSession({ client, config, botId, guildId, channelId, channelName, inviterId, textChannelId, onEnded }) {
 	const speaking = new Map();
 	const endpoint = botAiVoiceEndpoint(config);
 	const genai = new GoogleGenAI({ apiKey: endpoint.api_key });
-	const systemInstruction = (endpoint.system_prompt ?? '').replace(/\{\{today\}\}/g, new Date().toISOString().slice(0, 10));
+	const systemInstruction = [(endpoint.system_prompt ?? '').replace(/\{\{today\}\}/g, new Date().toISOString().slice(0, 10)), VOICE_SERVER_DATA_NOTE]
+		.filter(Boolean)
+		.join('\n\n');
 
 	let wikis: any[] = [];
 
@@ -660,7 +672,15 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		}
 	}
 
-	const LOOKUP_TOOLS = new Set(['search_wiki', 'search_web', 'fetch_web_page', 'generate_image']);
+	const LOOKUP_TOOLS = new Set([
+		'search_wiki',
+		'search_web',
+		'fetch_web_page',
+		'generate_image',
+		...SERVER_TOOL_NAMES,
+		...ACCOUNT_TOOL_NAMES,
+		...KNOWLEDGE_TOOL_NAMES
+	]);
 
 	async function sendImageTo(targetChannelId, buffer) {
 		if (!targetChannelId) return false;
@@ -693,6 +713,10 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	}
 
 	function runLookup(call) {
+		const toolContext = { botId, guildId, callerDiscordId: lockedSpeakerId || lastSpeakerId || inviterId, voice: true };
+		if (SERVER_TOOL_NAMES.has(call.name)) return runServerTool(call.name, call.args ?? {}, toolContext);
+		if (ACCOUNT_TOOL_NAMES.has(call.name)) return runAccountTool(call.name, call.args ?? {}, toolContext);
+		if (KNOWLEDGE_TOOL_NAMES.has(call.name)) return runKnowledgeTool(call.name, call.args ?? {}, toolContext);
 		if (call.name === 'search_web') return runSearchTool(config, call.args ?? {});
 		if (call.name === 'fetch_web_page') return runFetchTool(config, call.args ?? {});
 		if (call.name === 'generate_image') {
@@ -707,6 +731,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	}
 
 	function lookupLabel(call) {
+		if (SERVER_TOOL_NAMES.has(call.name) || ACCOUNT_TOOL_NAMES.has(call.name) || KNOWLEDGE_TOOL_NAMES.has(call.name)) return `server lookup ${call.name}`;
 		if (call.name === 'search_web') return `web search "${call.args?.query ?? ''}"`;
 		if (call.name === 'fetch_web_page') return `web fetch ${call.args?.url ?? ''}`;
 		if (call.name === 'generate_image') return `image generation "${call.args?.prompt ?? ''}"`;
@@ -721,7 +746,10 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 		for (const call of lookupCalls) {
 			const query = call.args?.query ?? call.args?.url ?? '';
-			const dedupeKey = `${call.name}::${call.args?.wiki ?? ''}::${query}`.toLowerCase();
+			const dedupeKey =
+				SERVER_TOOL_NAMES.has(call.name) || ACCOUNT_TOOL_NAMES.has(call.name)
+					? `${call.name}::${JSON.stringify(call.args ?? {})}`.toLowerCase()
+					: `${call.name}::${call.args?.wiki ?? ''}::${query}`.toLowerCase();
 
 			const inflight = wikiInflight.get(dedupeKey);
 			if (inflight) {
@@ -888,6 +916,8 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		const wikiDeclaration = buildWikiDeclaration(wikis);
 		if (wikiDeclaration) logger.log(`📚 Voice AI wiki lookup available: ${wikis.map((w) => w.name).join(', ')}`);
 
+		const toolFeatures = await resolveToolFeatures(botId, guildId).catch(() => null);
+
 		const searchDeclaration = buildSearchDeclaration(config);
 		const fetchDeclaration = buildFetchDeclaration(config);
 		const imageDeclaration = buildImageDeclaration(config);
@@ -945,6 +975,9 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 										}
 									]
 								: []),
+							...buildServerDeclarations(toolFeatures),
+							...buildAccountDeclarations(toolFeatures),
+							...buildKnowledgeDeclarations(),
 							...(searchDeclaration ? [searchDeclaration] : []),
 							...(fetchDeclaration ? [fetchDeclaration] : []),
 							...(imageDeclaration ? [imageDeclaration] : [])

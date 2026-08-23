@@ -3,6 +3,7 @@
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import { effectIcon, effectAccentHex, effectLabel } from '$lib/items.js';
 	import { rarityTierFor, rarityMeta, type RarityTier } from '$lib/tasks.js';
+	import FeatureDisabled from '$lib/frontend/components/FeatureDisabled.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -93,6 +94,7 @@
 
 	let ticker: any = null;
 	onMount(async () => {
+		if (data.featureDisabled) return;
 		document.cookie = `tz_offset=${tzOffset()}; path=/; max-age=31536000; SameSite=Lax`;
 		ticker = setInterval(() => (now = Date.now()), 1000);
 		await refresh();
@@ -250,222 +252,230 @@
 
 <svelte:head><title>Daily Tasks — {data.server.name}</title></svelte:head>
 
-{#snippet dayFace(r: any, busy: boolean)}
-	<span class="m-task-daynum">Day {r.day}</span>
-	<span class="m-task-dayicon">
-		{#if busy}
-			<i class="fas fa-spinner fa-spin"></i>
-		{:else if r.claimed}
-			<i class="fas fa-circle-check"></i>
-		{:else if r.kind === 'item'}
-			<i class="fas fa-gem"></i>
-		{:else}
-			<i class="fas fa-star"></i>
-		{/if}
-	</span>
-	<span class="m-task-dayval">
-		{#if r.kind === 'item'}Item{:else}{fmt(r.xp)}{/if}
-	</span>
-{/snippet}
-
-<div class="m-task">
-	<section class="m-task-login">
-		<div class="m-task-loginhead">
-			<div>
-				<h3><i class="fas fa-gift"></i> Daily check-in</h3>
-				<p>
-					{#if login.tzKnown === false}
-						Checking today’s reward…
-					{:else if login.canClaim}
-						Tap day {login.nextDay} to claim — day {login.cycleDays} is the big one.
-					{:else}
-						Claimed today. Come back tomorrow for day {login.nextDay}.
-					{/if}
-				</p>
-			</div>
-			{#if !login.canClaim && login.tzKnown !== false}
-				<span class="m-task-claimed"><i class="fas fa-circle-check"></i> Claimed today</span>
+{#if data.featureDisabled}
+	<FeatureDisabled
+		title="Tasks are turned off"
+		message="This server has not enabled daily and weekly tasks. An administrator can turn them on in the bot configuration panel."
+		icon="fa-list-check"
+	/>
+{:else}
+	{#snippet dayFace(r: any, busy: boolean)}
+		<span class="m-task-daynum">Day {r.day}</span>
+		<span class="m-task-dayicon">
+			{#if busy}
+				<i class="fas fa-spinner fa-spin"></i>
+			{:else if r.claimed}
+				<i class="fas fa-circle-check"></i>
+			{:else if r.kind === 'item'}
+				<i class="fas fa-gem"></i>
+			{:else}
+				<i class="fas fa-star"></i>
 			{/if}
-		</div>
-
-		<div class="m-task-days">
-			{#each login.rewards as r (r.day)}
-				{@const claimable = r.current && login.canClaim && !ctx.readOnly}
-				{#if claimable}
-					<button
-						type="button"
-						class="m-task-day m-task-day--current m-task-day--claimable"
-						class:m-task-day--jackpot={r.jackpot}
-						disabled={claimingLogin}
-						aria-label={`Claim day ${r.day} reward`}
-						onclick={claimLogin}
-					>
-						{@render dayFace(r, claimingLogin)}
-						<span class="m-task-daycta">Claim</span>
-					</button>
-				{:else}
-					<div class="m-task-day" class:m-task-day--claimed={r.claimed} class:m-task-day--jackpot={r.jackpot}>
-						{@render dayFace(r, false)}
-					</div>
-				{/if}
-			{/each}
-		</div>
-	</section>
-
-	<div class="m-task-tabs">
-		<button class="m-task-tab" class:m-task-tab--active={tab === 'daily'} onclick={() => (tab = 'daily')}>
-			<i class="fas fa-sun"></i> Daily
-			<span class="m-task-tabcount">{doneCount}/{dailyTasks.length}</span>
-		</button>
-		<button class="m-task-tab" class:m-task-tab--active={tab === 'weekly'} onclick={() => (tab = 'weekly')}>
-			<i class="fas fa-calendar-week"></i> Weekly
-			<span class="m-task-tabcount">{weeklyDone}/{weeklyTasks.length}</span>
-		</button>
-		<span class="m-task-tabreset">
-			<i class="fas fa-rotate"></i>
-			{tab === 'weekly' ? weeklyCountdown : countdown}
 		</span>
+		<span class="m-task-dayval">
+			{#if r.kind === 'item'}Item{:else}{fmt(r.xp)}{/if}
+		</span>
+	{/snippet}
+
+	<div class="m-task">
+		<section class="m-task-login">
+			<div class="m-task-loginhead">
+				<div>
+					<h3><i class="fas fa-gift"></i> Daily check-in</h3>
+					<p>
+						{#if login.tzKnown === false}
+							Checking today’s reward…
+						{:else if login.canClaim}
+							Tap day {login.nextDay} to claim — day {login.cycleDays} is the big one.
+						{:else}
+							Claimed today. Come back tomorrow for day {login.nextDay}.
+						{/if}
+					</p>
+				</div>
+				{#if !login.canClaim && login.tzKnown !== false}
+					<span class="m-task-claimed"><i class="fas fa-circle-check"></i> Claimed today</span>
+				{/if}
+			</div>
+
+			<div class="m-task-days">
+				{#each login.rewards as r (r.day)}
+					{@const claimable = r.current && login.canClaim && !ctx.readOnly}
+					{#if claimable}
+						<button
+							type="button"
+							class="m-task-day m-task-day--current m-task-day--claimable"
+							class:m-task-day--jackpot={r.jackpot}
+							disabled={claimingLogin}
+							aria-label={`Claim day ${r.day} reward`}
+							onclick={claimLogin}
+						>
+							{@render dayFace(r, claimingLogin)}
+							<span class="m-task-daycta">Claim</span>
+						</button>
+					{:else}
+						<div class="m-task-day" class:m-task-day--claimed={r.claimed} class:m-task-day--jackpot={r.jackpot}>
+							{@render dayFace(r, false)}
+						</div>
+					{/if}
+				{/each}
+			</div>
+		</section>
+
+		<div class="m-task-tabs">
+			<button class="m-task-tab" class:m-task-tab--active={tab === 'daily'} onclick={() => (tab = 'daily')}>
+				<i class="fas fa-sun"></i> Daily
+				<span class="m-task-tabcount">{doneCount}/{dailyTasks.length}</span>
+			</button>
+			<button class="m-task-tab" class:m-task-tab--active={tab === 'weekly'} onclick={() => (tab = 'weekly')}>
+				<i class="fas fa-calendar-week"></i> Weekly
+				<span class="m-task-tabcount">{weeklyDone}/{weeklyTasks.length}</span>
+			</button>
+			<span class="m-task-tabreset">
+				<i class="fas fa-rotate"></i>
+				{tab === 'weekly' ? weeklyCountdown : countdown}
+			</span>
+		</div>
+
+		{#if tasks.length === 0 && !synced}
+			<div class="m-task-empty">
+				<i class="fas fa-spinner fa-spin"></i>
+				<h3>Loading your tasks…</h3>
+				<p>Lining up today's goals.</p>
+			</div>
+		{:else if tasks.length === 0}
+			<div class="m-task-empty">
+				<i class="fas fa-list-check"></i>
+				<h3>No {tab} tasks available</h3>
+				<p>Tasks need leveling, items, or minigames enabled on this server.</p>
+			</div>
+		{:else}
+			<div class="m-task-grid">
+				{#each tasks as t (`${t.period}:${t.slot}`)}
+					<article class="m-task-card" class:m-task-card--done={t.claimed} class:m-task-card--ready={t.complete && !t.claimed} style="--accent:{t.accent}">
+						<header class="m-task-cardtop">
+							<div class="m-task-ring">
+								<svg viewBox="0 0 60 60" aria-hidden="true">
+									<circle cx="30" cy="30" r="26" class="m-task-ringbg" />
+									<circle cx="30" cy="30" r="26" class="m-task-ringfg" stroke-dasharray={ringDash(t)} />
+								</svg>
+								<i class="fas {t.icon}"></i>
+							</div>
+							<div class="m-task-cardhead">
+								<span class="m-task-diff" style="--d:{diffAccent(t.difficulty)}">{t.difficulty}</span>
+								<h3>{t.description}</h3>
+								<span class="m-task-label">{t.label}</span>
+							</div>
+						</header>
+
+						<div class="m-task-prog">
+							<div class="m-task-progbar"><div class="m-task-progfill" style="width:{Math.min(100, (t.progress / Math.max(1, t.goal)) * 100)}%"></div></div>
+							<span class="m-task-progtxt">{fmt(t.progress)}/{fmt(t.goal)} {t.unit === 'xp' ? 'XP' : t.unit}</span>
+						</div>
+
+						<footer class="m-task-cardfoot">
+							{#if t.reward.kind === 'item'}
+								<div class="m-task-reward" style="--rw:{effectAccentHex(t.reward.effectType)}">
+									<i class="fas {effectIcon(t.reward.effectType)}"></i>
+									<div>
+										<strong>{t.reward.name}</strong>
+										<span>{effectLabel(t.reward.effectType)} · worth {fmt(t.reward.cost)} XP</span>
+									</div>
+								</div>
+							{:else}
+								<div class="m-task-reward m-task-reward--xp">
+									<i class="fas fa-star"></i>
+									<div>
+										<strong>+{fmt(t.reward.xp)} XP</strong>
+										<span>Reward</span>
+									</div>
+								</div>
+							{/if}
+
+							{#if t.claimed}
+								<span class="m-task-claimed"><i class="fas fa-circle-check"></i> Claimed</span>
+							{:else if t.complete}
+								<button class="m-task-claim" onclick={() => claim(t)} disabled={busySlot != null || ctx.readOnly}>
+									{#if busySlot === `${t.period}:${t.slot}`}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas fa-gift"></i>{/if}
+									Claim
+								</button>
+							{:else}
+								<span class="m-task-remain">{fmt(Math.max(0, t.goal - t.progress))} to go</span>
+							{/if}
+						</footer>
+					</article>
+				{/each}
+			</div>
+		{/if}
 	</div>
 
-	{#if tasks.length === 0 && !synced}
-		<div class="m-task-empty">
-			<i class="fas fa-spinner fa-spin"></i>
-			<h3>Loading your tasks…</h3>
-			<p>Lining up today's goals.</p>
-		</div>
-	{:else if tasks.length === 0}
-		<div class="m-task-empty">
-			<i class="fas fa-list-check"></i>
-			<h3>No {tab} tasks available</h3>
-			<p>Tasks need leveling, items, or minigames enabled on this server.</p>
-		</div>
-	{:else}
-		<div class="m-task-grid">
-			{#each tasks as t (`${t.period}:${t.slot}`)}
-				<article class="m-task-card" class:m-task-card--done={t.claimed} class:m-task-card--ready={t.complete && !t.claimed} style="--accent:{t.accent}">
-					<header class="m-task-cardtop">
-						<div class="m-task-ring">
-							<svg viewBox="0 0 60 60" aria-hidden="true">
-								<circle cx="30" cy="30" r="26" class="m-task-ringbg" />
-								<circle cx="30" cy="30" r="26" class="m-task-ringfg" stroke-dasharray={ringDash(t)} />
-							</svg>
-							<i class="fas {t.icon}"></i>
-						</div>
-						<div class="m-task-cardhead">
-							<span class="m-task-diff" style="--d:{diffAccent(t.difficulty)}">{t.difficulty}</span>
-							<h3>{t.description}</h3>
-							<span class="m-task-label">{t.label}</span>
-						</div>
-					</header>
+	{#if itemRoll}
+		<div class="m-gamble-overlay" role="presentation" onclick={() => (reelSettled ? (itemRoll = null) : null)}>
+			<div
+				class="m-gamble m-task-roll-card"
+				class:m-task-roll-card--done={reelSettled}
+				class:m-task-roll-card--jackpot={itemRoll.jackpot && reelSettled}
+				role="dialog"
+				aria-modal="true"
+				aria-label="Daily reward roll"
+				onclick={(e) => e.stopPropagation()}
+			>
+				<p class="m-task-roll-eyebrow">{itemRoll.jackpot ? `Day ${itemRoll.day} jackpot` : `Day ${itemRoll.day} reward`}</p>
+				<h3 class="m-task-roll-title">{reelSettled ? 'You got it!' : 'Rolling your item…'}</h3>
 
-					<div class="m-task-prog">
-						<div class="m-task-progbar"><div class="m-task-progfill" style="width:{Math.min(100, (t.progress / Math.max(1, t.goal)) * 100)}%"></div></div>
-						<span class="m-task-progtxt">{fmt(t.progress)}/{fmt(t.goal)} {t.unit === 'xp' ? 'XP' : t.unit}</span>
+				<div class="m-task-reelwrap" class:m-task-reelwrap--done={reelSettled} bind:this={reelWrapEl}>
+					<div class="m-task-reel-frame"></div>
+					<div class="m-task-reel-pointer"></div>
+					<div
+						class="m-task-reel"
+						style="transform: translateX({reelOffset}px); transition: {reelAnimating ? 'transform 6.8s cubic-bezier(0.06, 0.72, 0.06, 1)' : 'none'};"
+					>
+						{#each reel as cell, i (i)}
+							<div
+								class="m-task-reel-cell m-task-reel-cell--{cell.tier}"
+								style="--accent:{effectAccentHex(cell.effectType)}; --tier:{rarityMeta(cell.tier).accent}"
+							>
+								<span class="m-task-reel-tier">{rarityMeta(cell.tier).label}</span>
+								<i class="fas {effectIcon(cell.effectType)}"></i>
+								<span class="m-task-reel-name">{cell.name}</span>
+								<span class="m-task-reel-cost">{fmt(cell.cost)} XP</span>
+							</div>
+						{/each}
 					</div>
+				</div>
 
-					<footer class="m-task-cardfoot">
-						{#if t.reward.kind === 'item'}
-							<div class="m-task-reward" style="--rw:{effectAccentHex(t.reward.effectType)}">
-								<i class="fas {effectIcon(t.reward.effectType)}"></i>
-								<div>
-									<strong>{t.reward.name}</strong>
-									<span>{effectLabel(t.reward.effectType)} · worth {fmt(t.reward.cost)} XP</span>
-								</div>
-							</div>
-						{:else}
-							<div class="m-task-reward m-task-reward--xp">
-								<i class="fas fa-star"></i>
-								<div>
-									<strong>+{fmt(t.reward.xp)} XP</strong>
-									<span>Reward</span>
-								</div>
-							</div>
-						{/if}
-
-						{#if t.claimed}
-							<span class="m-task-claimed"><i class="fas fa-circle-check"></i> Claimed</span>
-						{:else if t.complete}
-							<button class="m-task-claim" onclick={() => claim(t)} disabled={busySlot != null || ctx.readOnly}>
-								{#if busySlot === `${t.period}:${t.slot}`}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas fa-gift"></i>{/if}
-								Claim
-							</button>
-						{:else}
-							<span class="m-task-remain">{fmt(Math.max(0, t.goal - t.progress))} to go</span>
-						{/if}
-					</footer>
-				</article>
-			{/each}
+				{#if reelSettled}
+					<div class="m-task-roll-verdict">
+						<span class="m-task-roll-tier" style="--tier:{rarityMeta(itemRoll.won.tier).accent}">{rarityMeta(itemRoll.won.tier).label}</span>
+						<span class="m-task-roll-name">{itemRoll.won.name}</span>
+						<span class="m-task-roll-worth">worth {fmt(itemRoll.won.cost)} XP</span>
+					</div>
+					<button class="m-task-roll-close" onclick={() => (itemRoll = null)}>Nice</button>
+				{/if}
+			</div>
+		</div>
+	{:else if celebrate}
+		<div class="m-gamble-overlay" role="presentation" onclick={() => (celebrate = null)}>
+			<div class="m-gamble m-task-celebrate-card" role="dialog" aria-modal="true" onclick={(e) => e.stopPropagation()}>
+				<div class="m-task-celebrate-emoji">{celebrate.emoji}</div>
+				<h3>{celebrate.label} streak!</h3>
+				<p>{celebrate.streak} days in a row. Keep it burning.</p>
+			</div>
+		</div>
+	{:else if loginWin}
+		<div class="m-gamble-overlay" role="presentation" onclick={() => (loginWin = null)}>
+			<div class="m-gamble m-task-celebrate-card" role="dialog" aria-modal="true" onclick={(e) => e.stopPropagation()}>
+				<div class="m-task-celebrate-emoji">{loginWin.jackpot ? '🎁' : '✨'}</div>
+				<h3>{loginWin.jackpot ? 'Day 7 jackpot!' : `Day ${loginWin.day} claimed`}</h3>
+				<p>{loginWin.text}</p>
+			</div>
+		</div>
+	{:else if taskWin}
+		<div class="m-gamble-overlay" role="presentation" onclick={() => (taskWin = null)}>
+			<div class="m-gamble m-task-celebrate-card" role="dialog" aria-modal="true" onclick={(e) => e.stopPropagation()}>
+				<div class="m-task-celebrate-emoji">{taskWin.item ? '🎁' : '✨'}</div>
+				<h3>{taskWin.title}</h3>
+				<p>{taskWin.text}</p>
+			</div>
 		</div>
 	{/if}
-</div>
-
-{#if itemRoll}
-	<div class="m-gamble-overlay" role="presentation" onclick={() => (reelSettled ? (itemRoll = null) : null)}>
-		<div
-			class="m-gamble m-task-roll-card"
-			class:m-task-roll-card--done={reelSettled}
-			class:m-task-roll-card--jackpot={itemRoll.jackpot && reelSettled}
-			role="dialog"
-			aria-modal="true"
-			aria-label="Daily reward roll"
-			onclick={(e) => e.stopPropagation()}
-		>
-			<p class="m-task-roll-eyebrow">{itemRoll.jackpot ? `Day ${itemRoll.day} jackpot` : `Day ${itemRoll.day} reward`}</p>
-			<h3 class="m-task-roll-title">{reelSettled ? 'You got it!' : 'Rolling your item…'}</h3>
-
-			<div class="m-task-reelwrap" class:m-task-reelwrap--done={reelSettled} bind:this={reelWrapEl}>
-				<div class="m-task-reel-frame"></div>
-				<div class="m-task-reel-pointer"></div>
-				<div
-					class="m-task-reel"
-					style="transform: translateX({reelOffset}px); transition: {reelAnimating ? 'transform 6.8s cubic-bezier(0.06, 0.72, 0.06, 1)' : 'none'};"
-				>
-					{#each reel as cell, i (i)}
-						<div
-							class="m-task-reel-cell m-task-reel-cell--{cell.tier}"
-							style="--accent:{effectAccentHex(cell.effectType)}; --tier:{rarityMeta(cell.tier).accent}"
-						>
-							<span class="m-task-reel-tier">{rarityMeta(cell.tier).label}</span>
-							<i class="fas {effectIcon(cell.effectType)}"></i>
-							<span class="m-task-reel-name">{cell.name}</span>
-							<span class="m-task-reel-cost">{fmt(cell.cost)} XP</span>
-						</div>
-					{/each}
-				</div>
-			</div>
-
-			{#if reelSettled}
-				<div class="m-task-roll-verdict">
-					<span class="m-task-roll-tier" style="--tier:{rarityMeta(itemRoll.won.tier).accent}">{rarityMeta(itemRoll.won.tier).label}</span>
-					<span class="m-task-roll-name">{itemRoll.won.name}</span>
-					<span class="m-task-roll-worth">worth {fmt(itemRoll.won.cost)} XP</span>
-				</div>
-				<button class="m-task-roll-close" onclick={() => (itemRoll = null)}>Nice</button>
-			{/if}
-		</div>
-	</div>
-{:else if celebrate}
-	<div class="m-gamble-overlay" role="presentation" onclick={() => (celebrate = null)}>
-		<div class="m-gamble m-task-celebrate-card" role="dialog" aria-modal="true" onclick={(e) => e.stopPropagation()}>
-			<div class="m-task-celebrate-emoji">{celebrate.emoji}</div>
-			<h3>{celebrate.label} streak!</h3>
-			<p>{celebrate.streak} days in a row. Keep it burning.</p>
-		</div>
-	</div>
-{:else if loginWin}
-	<div class="m-gamble-overlay" role="presentation" onclick={() => (loginWin = null)}>
-		<div class="m-gamble m-task-celebrate-card" role="dialog" aria-modal="true" onclick={(e) => e.stopPropagation()}>
-			<div class="m-task-celebrate-emoji">{loginWin.jackpot ? '🎁' : '✨'}</div>
-			<h3>{loginWin.jackpot ? 'Day 7 jackpot!' : `Day ${loginWin.day} claimed`}</h3>
-			<p>{loginWin.text}</p>
-		</div>
-	</div>
-{:else if taskWin}
-	<div class="m-gamble-overlay" role="presentation" onclick={() => (taskWin = null)}>
-		<div class="m-gamble m-task-celebrate-card" role="dialog" aria-modal="true" onclick={(e) => e.stopPropagation()}>
-			<div class="m-task-celebrate-emoji">{taskWin.item ? '🎁' : '✨'}</div>
-			<h3>{taskWin.title}</h3>
-			<p>{taskWin.text}</p>
-		</div>
-	</div>
 {/if}

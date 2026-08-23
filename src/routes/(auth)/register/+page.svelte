@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { goto } from '$app/navigation';
+	import { DASHBOARD_PATH } from '$lib/frontend/redirect.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import type { PageProps } from './$types';
 
@@ -51,9 +52,8 @@
 
 			const d = await res.json();
 			if (d.success) {
-				showToast(d.message || 'Registration successful! Check your email for the verification code.', 'success');
-				const source = d.account_source === 'server_accounts' ? '&source=server_accounts' : '';
-				goto(`/verify?token=${d.verify_token}${source}`);
+				showToast(d.message || 'Registration successful!', 'success');
+				setTimeout(() => goto(DASHBOARD_PATH), 500);
 			} else {
 				showToast(d.error || 'Registration failed', 'error');
 			}

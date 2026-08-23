@@ -5,7 +5,6 @@ import {
 	newSessionId,
 	setSession,
 	makeSessionCookie,
-	createVerifyToken,
 	checkRateLimit,
 	getClientIp,
 	sanitizeString,
@@ -75,20 +74,6 @@ export const POST: RequestHandler = async ({ request }) => {
 		if (!account) {
 			logger.log(`Failed login attempt: Account not found (IP: ${ip})`);
 			return json({ success: false, error: 'Invalid credentials' }, { status: 401 });
-		}
-
-		if (!account.email_verified) {
-			const verifyToken = await createVerifyToken(account.id);
-			return json(
-				{
-					success: false,
-					error: 'Email not verified. Please verify your email first.',
-					requires_verification: true,
-					verify_token: verifyToken,
-					account_source: accountSource
-				},
-				{ status: 401 }
-			);
 		}
 
 		if (accountSource === 'server_accounts' && account.is_frozen) {

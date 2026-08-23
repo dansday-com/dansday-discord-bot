@@ -5,9 +5,9 @@ import { evaluateMemberLevelAndRank } from './leveling.js';
 import { getSpendableXp, spendXp } from './xp-economy.js';
 
 const COINGECKO_BASE = 'https://api.coingecko.com/api/v3';
-const POLL_INTERVAL_MS = 15 * 60_000;
-const MARKETS_TTL_MS = 15 * 60_000;
-const SEARCH_TTL_MS = 15 * 60_000;
+const POLL_INTERVAL_MS = 30 * 60_000;
+const MARKETS_TTL_MS = 30 * 60_000;
+const SEARCH_TTL_MS = 30 * 60_000;
 const POLL_LOCK_TTL_S = Math.ceil(POLL_INTERVAL_MS / 1000) - 60;
 const MARKETS_PER_PAGE = 50;
 const UNIVERSE_PER_PAGE = 250;

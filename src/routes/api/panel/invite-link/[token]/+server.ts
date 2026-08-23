@@ -1,10 +1,21 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
-import { sanitizeString, isUtcSqlExpired } from '$lib/utils/index.js';
+import { sanitizeString, isUtcSqlExpired, getClientIp, checkRateLimit } from '$lib/utils/index.js';
 
-export const GET: RequestHandler = async ({ params }) => {
+const MAX_LOOKUPS = 20;
+
+export const GET: RequestHandler = async ({ params, request }) => {
 	try {
+		const ip = getClientIp(request);
+		const rateLimit = await checkRateLimit(ip, 'invite-link-lookup', MAX_LOOKUPS);
+		if (!rateLimit.allowed) {
+			return json(
+				{ success: false, error: 'Too many attempts. Please try again later.', resetTime: new Date(rateLimit.resetTime).toISOString() },
+				{ status: 429 }
+			);
+		}
+
 		const sanitizedToken = sanitizeString(params.token, 255);
 		if (!sanitizedToken || sanitizedToken.length < 32) {
 			return json({ success: false, error: 'Invalid token format' }, { status: 400 });

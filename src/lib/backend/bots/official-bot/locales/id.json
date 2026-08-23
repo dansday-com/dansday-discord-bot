@@ -15,13 +15,19 @@
 			"setupHasOwnerAccount": "✅ Antarmuka bot dikirim ke {channel}. Server ini sudah punya akun owner — login di panel web. Tidak ada undangan baru.",
 			"setupSignInLinkLine": "[**Klik di sini untuk membuka panel**]({url})",
 			"setupOpenPanelButton": "Buka panel",
-			"setupOwnerInviteReady": "✅ Antarmuka bot dikirim ke {channel}.\n\nHanya kamu yang melihat ini. Undangan owner yang belum dipakai kedaluwarsa **10 menit** setelah dibuat.\n\n[**Klik di sini untuk daftar sebagai owner**]({url})",
+			"setupOwnerInviteReady": "✅ Antarmuka bot dikirim ke {channel}.\n\nHanya kamu yang melihat ini. Undangan owner yang belum dipakai kedaluwarsa **24 jam** setelah dibuat.\n\n[**Klik di sini untuk daftar sebagai owner**]({url})",
 			"setupOwnerInviteButton": "Buka pendaftaran",
 			"setupOwnerInviteEmbedTitle": "Pendaftaran owner",
 			"setupNotOwnerTitle": "Akses ditolak",
 			"setupNotOwnerBody": "Hanya **pemilik server** yang bisa memakai `/setup`.",
 			"setupNotTextChannelTitle": "Saluran tidak valid",
 			"setupNotTextChannelBody": "Pilih **saluran teks**.",
+			"joinTitle": "Terima kasih telah menambahkan {botName}!",
+			"joinBody": "Jalankan `/setup` untuk membuat saluran dan menyelesaikan pengaturan.",
+			"joinDocsButton": "Dokumentasi",
+			"joinSupportButton": "Server dukungan",
+			"setupChannelsCreated": "Membuat **{count}** saluran baru.",
+			"setupChannelsAllPresent": "Semua saluran sudah ada — tidak ada yang perlu dibuat.",
 			"setupWarnNoBotConfig": "⚠️ Antarmuka terkirim, tetapi konfigurasi bot tidak tersedia.",
 			"setupWarnNoServer": "⚠️ Antarmuka terkirim, tetapi catatan server tidak ditemukan untuk membuat undangan.",
 			"setupWarnNoBaseUrl": "⚠️ Antarmuka terkirim, tetapi BASE_URL belum dikonfigurasi — tidak bisa membuat tautan undangan.",
@@ -45,6 +51,16 @@
 		}
 	},
 	"permissions": {
+		"supporterRoleDenied": {
+			"title": "🔒 **Keuntungan Supporter**",
+			"description": "Role kustom dengan nama dan warna sendiri adalah keuntungan supporter. Memerlukan salah satu role ini:\\n{roles}",
+			"footer": "Tanya administrator server cara menjadi supporter."
+		},
+		"creatorApplyDenied": {
+			"title": "🔒 **Pendaftaran Belum Terbuka Untukmu**",
+			"description": "Mendaftar menjadi content creator memerlukan salah satu role ini:\\n{roles}",
+			"footer": "Kamu tetap bisa melihat daftar creator. Tanya administrator server cara mendapatkan role member."
+		},
 		"denied": {
 			"title": "❌ **Izin Ditolak**",
 			"description": "Kamu memerlukan salah satu role berikut untuk menggunakan **{action}**:\\n{roles}",

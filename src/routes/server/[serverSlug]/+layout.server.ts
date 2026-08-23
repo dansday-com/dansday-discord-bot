@@ -3,6 +3,7 @@ import { redirect } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 import { resolvePublicServerBySlug } from '$lib/frontend/public/server-slug/index.js';
+import { publicSubfeatureEnabled } from '$lib/frontend/panelServer.js';
 
 export const load: LayoutServerLoad = async ({ params }) => {
 	const slug = String(params.serverSlug || '').trim();
@@ -13,12 +14,10 @@ export const load: LayoutServerLoad = async ({ params }) => {
 	const settings = (settingsRow as any)?.settings || {};
 	const publicStatsEnabled = settings.enabled !== false;
 
-	if (!publicStatsEnabled) redirect(303, '/');
-
-	const itemsEnabled = settings.items_enabled === true;
-	const assetsEnabled = settings.assets_enabled === true;
-	const minigamesEnabled = settings.minigames_enabled === true;
-	const tasksEnabled = settings.tasks_enabled === true;
+	const itemsEnabled = publicSubfeatureEnabled(settings, 'items');
+	const assetsEnabled = publicSubfeatureEnabled(settings, 'assets');
+	const minigamesEnabled = publicSubfeatureEnabled(settings, 'minigames');
+	const tasksEnabled = publicSubfeatureEnabled(settings, 'tasks');
 	const accountEnabled = publicStatsEnabled;
 
 	const server = resolved.server;

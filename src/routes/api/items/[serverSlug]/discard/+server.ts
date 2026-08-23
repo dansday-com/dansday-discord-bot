@@ -4,6 +4,7 @@ import db from '$lib/database.js';
 import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 import { resolvePublicServerBySlug } from '$lib/frontend/public/server-slug/index.js';
 import { resolveMemberByCardToken, resolveActiveBotForServer, postBotWebhook } from '$lib/frontend/public/items/index.js';
+import { publicSubfeatureEnabled } from '$lib/frontend/panelServer.js';
 
 export const POST: RequestHandler = async ({ params, request }) => {
 	const serverSlug = String(params.serverSlug || '').trim();
@@ -13,7 +14,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
 
 	const psRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.public_statistics).catch(() => null);
 	const psSettings = (psRow as any)?.settings || {};
-	if (psSettings.enabled === false || psSettings.items_enabled !== true) {
+	if (psSettings.enabled === false || !publicSubfeatureEnabled(psSettings, 'items')) {
 		return json({ success: false, error: 'The items shop is disabled for this server.' }, { status: 403 });
 	}
 

@@ -1,8 +1,8 @@
 import { createHash } from 'crypto';
 import { request as httpRequest } from 'http';
-import db from '$lib/database.js';
-import { parseMySQLDateTimeUtc } from '$lib/utils/index.js';
-import { itemAvailability, effectiveBagStock, discountedItemCost, DISGUISED_MENTION, floatingWallClockMs } from '$lib/items.js';
+import db from '../../../database.js';
+import { parseMySQLDateTimeUtc } from '../../../utils/index.js';
+import { itemAvailability, effectiveBagStock, discountedItemCost, DISGUISED_MENTION, floatingWallClockMs } from '../../../items.js';
 
 export function computeCardToken(discordMemberId: string, memberSince: any): string {
 	const dt = parseMySQLDateTimeUtc(memberSince);
@@ -107,12 +107,12 @@ export async function loadItemsCatalog(serverId: number): Promise<any[]> {
 }
 
 export async function loadItemsShared(server: any, hash: string, subKey?: 'items' | 'assets' | 'minigames' | null) {
-	const { SERVER_SETTINGS } = await import('$lib/frontend/panelServer.js');
+	const { SERVER_SETTINGS, publicSubfeatureEnabled } = await import('../../panelServer.js');
 
 	const psRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.public_statistics).catch(() => null);
 	const ps = (psRow as any)?.settings ?? {};
 	if (ps.enabled === false) return { notFound: true } as const;
-	if (subKey && ps[`${subKey}_enabled`] !== true) return { notFound: true } as const;
+	if (subKey && !publicSubfeatureEnabled(ps, subKey)) return { notFound: true } as const;
 
 	const levelingRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.leveling).catch(() => null);
 	const req = (levelingRow as any)?.settings?.REQUIREMENTS ?? {};

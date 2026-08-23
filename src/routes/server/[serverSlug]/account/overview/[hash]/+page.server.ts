@@ -6,10 +6,8 @@ import { loadItemsShared, itemsCardTokenFromUrl } from '$lib/frontend/public/ite
 import { loadAssetPriceMap } from '$lib/frontend/public/assets/index.js';
 
 export const load: PageServerLoad = async ({ parent, params }) => {
-	const { server, accountEnabled, assetsEnabled } = await parent();
+	const { server, assetsEnabled } = await parent();
 	const { SERVER_SETTINGS } = await import('$lib/frontend/panelServer.js');
-
-	if (!accountEnabled) redirect(303, '/');
 
 	const hash = itemsCardTokenFromUrl(params.hash);
 	const shared = await loadItemsShared(server, hash, null);

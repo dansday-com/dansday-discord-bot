@@ -5,10 +5,9 @@ import { loadItemsShared, itemsCardTokenFromUrl } from '$lib/frontend/public/ite
 import { loadTasksShared } from '$lib/frontend/public/tasks/index.js';
 
 export const load: PageServerLoad = async ({ parent, params, cookies }) => {
-	const { server, accountEnabled, itemsEnabled, minigamesEnabled, assetsEnabled, tasksEnabled } = await parent();
+	const { server, itemsEnabled, minigamesEnabled, assetsEnabled, tasksEnabled } = await parent();
 
-	if (!accountEnabled) redirect(303, '/');
-	if (!tasksEnabled) redirect(303, `${publicServerPath(server.slug)}/account/overview/${params.hash}`);
+	if (!tasksEnabled) return { featureDisabled: true, server, hash: itemsCardTokenFromUrl(params.hash), tasks: null };
 
 	const hash = itemsCardTokenFromUrl(params.hash);
 	const shared = await loadItemsShared(server, hash, null);

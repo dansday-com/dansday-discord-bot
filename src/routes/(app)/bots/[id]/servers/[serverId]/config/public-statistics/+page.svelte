@@ -11,10 +11,10 @@
 
 	let saving = $state(false);
 	let enabled = $state(data.enabled);
-	let itemsEnabled = $state(data.settings?.items_enabled === true);
-	let minigamesEnabled = $state(data.settings?.minigames_enabled === true);
-	let assetsEnabled = $state(data.settings?.assets_enabled === true);
-	let tasksEnabled = $state(data.settings?.tasks_enabled === true);
+	let itemsEnabled = $state(data.settings?.items_enabled !== false);
+	let minigamesEnabled = $state(data.settings?.minigames_enabled !== false);
+	let assetsEnabled = $state(data.settings?.assets_enabled !== false);
+	let tasksEnabled = $state(data.settings?.tasks_enabled !== false);
 	let itemsChannel = $state<string>(data.settings?.ITEMS_CHANNEL_ID ?? '');
 	let minigamesChannel = $state<string>(data.settings?.MINIGAMES_CHANNEL_ID ?? '');
 

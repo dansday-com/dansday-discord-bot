@@ -32,13 +32,11 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 
 	const [rawAccounts, invites] = await Promise.all([db.getServerAccountsByServer(serverId), db.getServerAccountInvitesByServer(serverId)]);
 	const isSuperadmin = locals.user.authenticated && locals.user.account_source === 'accounts';
-	const accounts = isSuperadmin
-		? rawAccounts
-		: rawAccounts.map((a: any) => ({
-				...a,
-				email: typeof a.email === 'string' ? maskEmail(a.email) : a.email,
-				ip_address: null
-			}));
+
+	const accounts = rawAccounts.map((a: any) => {
+		if (isSuperadmin) return a;
+		return { ...a, email: typeof a.email === 'string' ? maskEmail(a.email) : a.email, ip_address: null, password_hash: undefined };
+	});
 
 	return json({ success: true, accounts, invites });
 };

@@ -143,8 +143,8 @@ function isLive(guildId: string, discordMemberId: string) {
 
 async function showContentCreatorApplyModal(interaction: any) {
 	const member = interaction.member || (await interaction.guild.members.fetch(interaction.user.id).catch(() => null));
-	if (!(await hasPermission(member, 'content_creator'))) {
-		const errorMessage = await getPermissionDeniedMessage(interaction.guild, 'content_creator', interaction.user.id);
+	if (!(await hasPermission(member, 'content_creator_apply'))) {
+		const errorMessage = await getPermissionDeniedMessage(interaction.guild, 'content_creator_apply', interaction.user.id);
 		await interaction.reply({ content: errorMessage, flags: 64 }).catch(() => null);
 		return;
 	}
@@ -797,8 +797,8 @@ export async function handleContentCreatorModal(interaction: any) {
 		const guild = interaction.guild;
 		const member = interaction.member || (await guild.members.fetch(interaction.user.id).catch(() => null));
 
-		if (!(await hasPermission(member, 'content_creator'))) {
-			const errorMessage = await getPermissionDeniedMessage(interaction.guild, 'content_creator', interaction.user.id);
+		if (!(await hasPermission(member, 'content_creator_apply'))) {
+			const errorMessage = await getPermissionDeniedMessage(interaction.guild, 'content_creator_apply', interaction.user.id);
 			await interaction.editReply({ content: errorMessage }).catch(() => null);
 			return;
 		}

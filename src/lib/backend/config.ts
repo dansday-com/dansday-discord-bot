@@ -498,6 +498,15 @@ export const WELCOMER = {
 		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.welcomer);
 		if (settings?.settings?.messages?.length > 0) return settings.settings.messages;
 		return DEFAULT_WELCOMER_MESSAGES;
+	},
+
+	async hasCustomMessages(guildId: string) {
+		requireBotConfig();
+		requireGuildId(guildId, 'checking welcomer messages');
+		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.welcomer);
+		const messages = settings?.settings?.messages;
+		if (!Array.isArray(messages) || messages.length === 0) return false;
+		return !messages.every((m: string) => DEFAULT_WELCOMER_MESSAGES.includes(m));
 	}
 };
 
@@ -523,6 +532,15 @@ export const BOOSTER = {
 		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.booster);
 		if (settings?.settings?.messages?.length > 0) return settings.settings.messages;
 		return DEFAULT_BOOSTER_MESSAGES;
+	},
+
+	async hasCustomMessages(guildId: string) {
+		requireBotConfig();
+		requireGuildId(guildId, 'checking booster messages');
+		const settings = await getServerSettingsRow((await getOfficialBotServer(guildId)).id, serverSettingsComponent.booster);
+		const messages = settings?.settings?.messages;
+		if (!Array.isArray(messages) || messages.length === 0) return false;
+		return !messages.every((m: string) => DEFAULT_BOOSTER_MESSAGES.includes(m));
 	}
 };
 
@@ -896,7 +914,7 @@ export { SERVER_SETTINGS, type ServerSettingsComponentName };
 export { serverSettingsComponent };
 export const SERVER_SETTINGS_COMPONENTS_WITH_FEATURE_SWITCH = SERVER_SETTINGS.withFeatureSwitch;
 export { computePublicServerSlugForServerId } from '../frontend/public/server-slug/index.js';
-export { publicSiteOrigin, publicServerPath, publicServerUrl } from '../url.js';
+export { publicSiteOrigin, publicServerPath, publicServerUrl, COMMUNITY_DISCORD_URL } from '../url.js';
 export { DEFAULT_BOT_NICKNAME } from '../utils/mainConfigSettings.js';
 
 export const SETUP_MENU_CATEGORY_NAME = '{botName} Menu';

@@ -304,7 +304,7 @@
 			isAssets && assets
 				? [
 						{ icon: 'coin', val: fmtNum(assets.invested), lbl: 'Invested' },
-						{ icon: 'sack', val: fmtNum(assets.value), lbl: 'Worth' },
+						{ icon: 'sack', val: fmtNum(assets.value), lbl: 'Value' },
 						{ icon: 'stack', val: String(assets.count), lbl: 'Assets' }
 					]
 				: [
@@ -740,7 +740,7 @@
 							<div class="mc-stat">
 								<i class="fas fa-sack-dollar"></i>
 								<span class="mc-stat-val">{fmtNum(assets.value)}</span>
-								<span class="mc-stat-lbl">Worth</span>
+								<span class="mc-stat-lbl">Value</span>
 							</div>
 							<div class="mc-stat">
 								<i class="fas fa-layer-group"></i>

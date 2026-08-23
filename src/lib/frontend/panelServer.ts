@@ -169,6 +169,14 @@ export const SERVER_SETTINGS = {
 
 export type ServerSettingsComponentName = keyof typeof SERVER_SETTINGS.component;
 
+export const PUBLIC_STATISTICS_SUBFEATURES = ['items', 'assets', 'minigames', 'tasks'] as const;
+
+export type PublicStatisticsSubfeature = (typeof PUBLIC_STATISTICS_SUBFEATURES)[number];
+
+export function publicSubfeatureEnabled(settings: any, subfeature: PublicStatisticsSubfeature): boolean {
+	return settings?.[`${subfeature}_enabled`] !== false;
+}
+
 export const AUTO_ENABLED_COMPONENTS: Set<string> = new Set([
 	component.public_statistics,
 	component.roblox_catalog_notifier,
@@ -181,9 +189,9 @@ export const AUTO_ENABLED_COMPONENTS: Set<string> = new Set([
 	component.notifications
 ]);
 
-let dbCache: (typeof import('$lib/database.js'))['default'] | null = null;
+let dbCache: (typeof import('../database.js'))['default'] | null = null;
 async function getDb() {
-	if (!dbCache) dbCache = (await import('$lib/database.js')).default;
+	if (!dbCache) dbCache = (await import('../database.js')).default;
 	return dbCache;
 }
 
@@ -364,8 +372,6 @@ const PUBLIC_PREFIXES = ['/api/public-statistics/', '/api/uploads/', '/api/panel
 const PUBLIC_EXACT = new Set([
 	'/api/panel/login',
 	'/api/panel/register',
-	'/api/panel/verify-otp',
-	'/api/panel/resend-otp',
 	'/api/panel/logout',
 	'/api/panel/auth',
 	'/api/panel/invite-link',

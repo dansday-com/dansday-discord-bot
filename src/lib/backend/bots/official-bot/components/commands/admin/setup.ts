@@ -81,31 +81,6 @@ export async function execute(interaction: any, client: any) {
 		const embedConfig = await getEmbedConfig(gid).catch(() => ({ NICKNAME: DEFAULT_BOT_NICKNAME }));
 		const botName = embedConfig.NICKNAME;
 
-		const menuCategory = await guild.channels.create({
-			name: SETUP_MENU_CATEGORY_NAME.replace('{botName}', botName),
-			type: ChannelType.GuildCategory,
-			permissionOverwrites: [
-				{
-					id: guild.id,
-					deny: [PermissionFlagsBits.SendMessages]
-				}
-			]
-		});
-
-		const channelMap: Record<string, string> = {};
-
-		for (const def of SETUP_CHANNEL_DEFS) {
-			const ch = await guild.channels.create({
-				name: def.name,
-				type: ChannelType.GuildText,
-				parent: menuCategory.id
-			});
-			channelMap[def.settingsKey] = ch.id;
-		}
-
-		const menuChannel = await guild.channels.fetch(channelMap['menu']);
-		await sendInterfaceToChannel(menuChannel, interaction, client);
-
 		const botConfig = getBotConfig();
 		if (!botConfig) {
 			await interaction.editReply({
@@ -120,6 +95,68 @@ export async function execute(interaction: any, client: any) {
 				embeds: [new EmbedBuilder().setColor(COLOR_WARN).setDescription(await translate('interface.panel.setupWarnNoServer', gid, uid))]
 			});
 			return;
+		}
+
+		const categoryName = SETUP_MENU_CATEGORY_NAME.replace('{botName}', botName);
+		const storedCategories = await db.getCategoriesForServer(server.id).catch(() => []);
+		const storedChannels = await db.getChannelsForServer(server.id).catch(() => []);
+
+		const liveChannel = async (discordId: string) => {
+			if (!discordId) return null;
+			return guild.channels.fetch(discordId).catch(() => null);
+		};
+
+		const storedCategory = storedCategories.find((c: { name: string | null }) => c.name === categoryName);
+		let menuCategory = storedCategory ? await liveChannel(storedCategory.discord_category_id) : null;
+		if (!menuCategory) {
+			menuCategory = guild.channels.cache.find((c: any) => c.type === ChannelType.GuildCategory && c.name === categoryName) ?? null;
+		}
+
+		if (!menuCategory) {
+			menuCategory = await guild.channels.create({
+				name: categoryName,
+				type: ChannelType.GuildCategory,
+				permissionOverwrites: [
+					{
+						id: guild.id,
+						deny: [PermissionFlagsBits.SendMessages]
+					}
+				]
+			});
+		}
+
+		const storedCategoryRowId = storedCategories.find((c: { discord_category_id: string }) => c.discord_category_id === menuCategory.id)?.id;
+
+		const channelMap: Record<string, string> = {};
+		const createdKeys: string[] = [];
+		let menuChannel: any = null;
+
+		for (const def of SETUP_CHANNEL_DEFS) {
+			const storedRow =
+				storedCategoryRowId == null
+					? null
+					: storedChannels.find((c: { name: string | null; category_id: number | null }) => c.name === def.name && c.category_id === storedCategoryRowId);
+
+			let ch = storedRow ? await liveChannel(storedRow.discord_channel_id) : null;
+			if (!ch) {
+				ch = guild.channels.cache.find((c: any) => c.type === ChannelType.GuildText && c.name === def.name && c.parentId === menuCategory.id) ?? null;
+			}
+
+			if (!ch) {
+				ch = await guild.channels.create({
+					name: def.name,
+					type: ChannelType.GuildText,
+					parent: menuCategory.id
+				});
+				createdKeys.push(def.settingsKey);
+			}
+
+			channelMap[def.settingsKey] = ch.id;
+			if (def.settingsKey === 'menu') menuChannel = ch;
+		}
+
+		if (createdKeys.includes('menu')) {
+			await sendInterfaceToChannel(menuChannel, interaction, client);
 		}
 
 		const getSettings = async (comp: string) => {
@@ -221,12 +258,19 @@ export async function execute(interaction: any, client: any) {
 			channel_ids: notifChannelIds
 		});
 
+		const channelSummary = createdKeys.length
+			? await translate('interface.panel.setupChannelsCreated', gid, uid, { count: createdKeys.length })
+			: await translate('interface.panel.setupChannelsAllPresent', gid, uid);
+
 		const accounts = await db.getServerAccountsByServer(server.id);
 		const hasOwner = accounts.some((a: { account_type: string }) => a.account_type === 'owner');
 		if (hasOwner) {
-			let description = await translate('interface.panel.setupHasOwnerAccount', gid, uid, {
-				channel: menuChannel.toString()
-			});
+			let description =
+				channelSummary +
+				'\n\n' +
+				(await translate('interface.panel.setupHasOwnerAccount', gid, uid, {
+					channel: menuChannel.toString()
+				}));
 			const origin = publicSiteOrigin();
 			let linkUrl: string | undefined;
 			let linkLabel: string | undefined;
@@ -277,10 +321,12 @@ export async function execute(interaction: any, client: any) {
 					.setColor(COLOR_OK)
 					.setTitle(await translate('interface.panel.setupOwnerInviteEmbedTitle', gid, uid))
 					.setDescription(
-						await translate('interface.panel.setupOwnerInviteReady', gid, uid, {
-							channel: menuChannel.toString(),
-							url: inviteUrl
-						})
+						channelSummary +
+							'\n\n' +
+							(await translate('interface.panel.setupOwnerInviteReady', gid, uid, {
+								channel: menuChannel.toString(),
+								url: inviteUrl
+							}))
 					)
 			],
 			components: [

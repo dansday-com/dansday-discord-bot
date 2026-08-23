@@ -5,6 +5,7 @@ import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 import { resolvePublicServerBySlug } from '$lib/frontend/public/server-slug/index.js';
 import { resolveMemberByCardToken, resolveActiveBotForServer, postBotWebhook } from '$lib/frontend/public/items/index.js';
 import { getClientIp, checkRateLimit } from '$lib/utils/index.js';
+import { publicSubfeatureEnabled } from '$lib/frontend/panelServer.js';
 
 const RATE_WINDOW_MS = 60 * 1000;
 const MAX_PLAYS = 30;
@@ -21,7 +22,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
 
 	const row = await db.getServerSettings(server.id, SERVER_SETTINGS.component.public_statistics).catch(() => null);
 	const ps = (row as any)?.settings ?? {};
-	if (ps.enabled === false || ps.minigames_enabled !== true) {
+	if (ps.enabled === false || !publicSubfeatureEnabled(ps, 'minigames')) {
 		return json({ success: false, error: 'Minigames are disabled for this server.' }, { status: 403 });
 	}
 

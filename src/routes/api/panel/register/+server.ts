@@ -4,16 +4,16 @@ import db from '$lib/database.js';
 import {
 	checkRateLimit,
 	getClientIp,
-	addMinutesToNow,
 	sanitizeString,
 	sanitizeUsername,
 	sanitizeEmail,
 	validateInputLength,
-	createVerifyToken
+	newSessionId,
+	setSession,
+	makeSessionCookie,
+	logger
 } from '$lib/utils/index.js';
-import { sendOTPEmail } from '$lib/frontend/email.js';
 import bcrypt from 'bcryptjs';
-import { randomInt } from 'crypto';
 
 const MAX_REGISTER_ATTEMPTS = 3;
 
@@ -73,62 +73,40 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		const existingUsername = await db.getAccountByUsername(validation.sanitizedUsername);
 		if (existingUsername) {
-			if (!existingUsername.email_verified) {
-				const otpCode = randomInt(100000, 999999).toString();
-				const otpExpiresAt = addMinutesToNow(10);
-				await db.updateAccount(existingUsername.id, { otp_code: otpCode, otp_expires_at: otpExpiresAt });
-				try {
-					await sendOTPEmail(existingUsername.email, otpCode);
-				} catch (_) {}
-				const verifyToken = await createVerifyToken(existingUsername.id);
-				return json({ success: true, message: 'Account already exists. A new verification code has been sent to your email.', verify_token: verifyToken });
-			}
 			return json({ success: false, error: 'Username already taken. Please choose another.' }, { status: 400 });
 		}
 
 		const existingAccount = await db.getAccountByNormalizedEmail(validation.sanitizedEmail);
 		if (existingAccount) {
-			if (!existingAccount.email_verified) {
-				const otpCode = randomInt(100000, 999999).toString();
-				const otpExpiresAt = addMinutesToNow(10);
-				await db.updateAccount(existingAccount.id, { otp_code: otpCode, otp_expires_at: otpExpiresAt });
-				try {
-					await sendOTPEmail(existingAccount.email, otpCode);
-				} catch (_) {}
-				const verifyToken = await createVerifyToken(existingAccount.id);
-				return json({ success: true, message: 'Account already exists. A new verification code has been sent to your email.', verify_token: verifyToken });
-			}
 			return json({ success: false, error: 'Email already registered. Please login instead.', redirect_to: '/login' }, { status: 400 });
 		}
 
 		const passwordHash = await bcrypt.hash(password, 12);
-		const otpCode = randomInt(100000, 999999).toString();
-		const otpExpiresAt = addMinutesToNow(10);
 
 		const account = await db.createAccount({
 			username: validation.sanitizedUsername,
 			email: validation.sanitizedEmail,
 			password_hash: passwordHash,
 			account_type: 'superadmin',
-			email_verified: false,
-			otp_code: otpCode,
-			otp_expires_at: otpExpiresAt,
 			ip_address: ip
 		});
 
 		await db.createPanel(account.id);
 
-		try {
-			await sendOTPEmail(validation.sanitizedEmail, otpCode);
-		} catch (emailError: any) {
-			return json(
-				{ success: false, error: `Failed to send verification email: ${emailError.message}. Please check your email configuration.` },
-				{ status: 500 }
-			);
-		}
+		const sessionId = newSessionId();
+		await setSession(sessionId, {
+			authenticated: true,
+			account_id: account.id,
+			account_type: account.account_type,
+			account_source: 'accounts'
+		});
 
-		const verifyToken = await createVerifyToken(account.id);
-		return json({ success: true, message: 'Registration successful. Please check your email for verification code.', verify_token: verifyToken });
+		logger.log(`Registered and logged in: ${account.username} (superadmin, IP: ${ip})`);
+
+		return json(
+			{ success: true, message: 'Registration successful.', account_type: account.account_type, account_source: 'accounts' },
+			{ headers: { 'Set-Cookie': makeSessionCookie(sessionId) } }
+		);
 	} catch (error: any) {
 		return json({ success: false, error: error.message }, { status: 500 });
 	}

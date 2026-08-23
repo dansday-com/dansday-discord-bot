@@ -7,6 +7,10 @@ import { publishVoiceCommand, readVoiceState } from './voiceControl.js';
 import { getEnabledWikis, buildWikiTool, runWikiTool } from './wiki.js';
 import { buildSearchTool, buildFetchTool, runSearchTool, runFetchTool } from './webTools.js';
 import { buildImageTool, runImageTool } from './imageTools.js';
+import { buildServerTools, runServerTool, SERVER_TOOL_NAMES } from './serverTools.js';
+import { resolveToolFeatures } from './aiToolShared.js';
+import { buildAccountTools, runAccountTool, ACCOUNT_TOOL_NAMES } from './accountTools.js';
+import { buildKnowledgeTools, runKnowledgeTool, KNOWLEDGE_TOOL_NAMES } from './knowledgeTools.js';
 import { readAiSession, appendAiMessage, claimAiMessageLocal, claimAiMessageShared } from './aiSession.js';
 
 const DISCORD_MESSAGE_LIMIT = 2000;
@@ -231,6 +235,10 @@ async function executeVoiceTool(name, message, botId) {
 	return finalToolResult({ ok: true, joining: true, channel_name: message.member.voice.channel?.name ?? '' });
 }
 
+const SERVER_DATA_NOTE = `[System] You can read this server's own live data with your tools: its public statistics, leaderboards, a member's public profile, staff ratings, running giveaways, active Discord Quests, the XP item shop with prices and timings, the "How the XP Game Works" guide, and the account of the person you are talking to. Use them instead of guessing or answering from memory whenever someone asks about this server, this game, the shop, their level, their bag or their tasks — the numbers change constantly and only the tools are current.
+
+Every get_my_* tool (get_my_overview, get_my_items, get_my_assets, get_my_minigames, get_my_history, get_my_tasks) reads the account of whoever is talking to you right now. None of them can read anyone else's, so never call one to answer a question about another person. If someone asks what another member has in their bag, what they are invested in, their history, their minigames or their tasks, tell them plainly that this is private to that member, and offer get_member_info for the public parts — level, XP, rank, roles and staff rating — instead.`;
+
 const MENTION_RE = /<@!?(\d{17,20})>/g;
 const MAX_PINGS_PER_MESSAGE = 5;
 
@@ -397,7 +405,7 @@ async function handleMessageCreate(message) {
 			const today = new Date().toISOString().slice(0, 10);
 			const speakerName = message.member?.displayName ?? message.author.username;
 			const identityNote = `[System] You are talking with ${speakerName}, whose mention tag is <@${message.author.id}>. To ping someone, write their tag in that exact <@id> form — a plain name or a bare number does not ping. Only use an id you have actually been given here or in this conversation; never invent one.`;
-			const systemContent = [config.system_prompt?.replace(/\{\{today\}\}/g, today) ?? '', identityNote].filter(Boolean).join('\n\n');
+			const systemContent = [config.system_prompt?.replace(/\{\{today\}\}/g, today) ?? '', identityNote, SERVER_DATA_NOTE].filter(Boolean).join('\n\n');
 
 			const userMessage = attachmentParts.length
 				? { role: 'user', content: [{ type: 'text', text: userContent }, ...attachmentParts] }
@@ -412,8 +420,13 @@ async function handleMessageCreate(message) {
 			const fetchTool = buildFetchTool(config);
 			const imageTool = buildImageTool(config);
 
+			const toolFeatures = await resolveToolFeatures(botConfig.id, message.guild.id).catch(() => null);
+
 			const tools = [
 				...(voiceReady ? VOICE_TOOLS : []),
+				...buildServerTools(toolFeatures),
+				...buildAccountTools(toolFeatures),
+				...buildKnowledgeTools(),
 				...(wikiTool ? [wikiTool] : []),
 				...(searchTool ? [searchTool] : []),
 				...(fetchTool ? [fetchTool] : []),
@@ -424,6 +437,10 @@ async function handleMessageCreate(message) {
 
 			const onToolCall = (name, args) => {
 				message.channel.sendTyping().catch(() => {});
+				const toolContext = { botId: botConfig.id, guildId: message.guild.id, callerDiscordId: message.author.id };
+				if (SERVER_TOOL_NAMES.has(name)) return runServerTool(name, args, toolContext).then((result) => JSON.stringify(result));
+				if (ACCOUNT_TOOL_NAMES.has(name)) return runAccountTool(name, args, toolContext).then((result) => JSON.stringify(result));
+				if (KNOWLEDGE_TOOL_NAMES.has(name)) return runKnowledgeTool(name, args, toolContext).then((result) => JSON.stringify(result));
 				if (name === 'search_wiki') return runWikiTool(wikis, args).then((result) => JSON.stringify(result));
 				if (name === 'search_web') return runSearchTool(config, args).then((result) => JSON.stringify(result));
 				if (name === 'fetch_web_page') return runFetchTool(config, args).then((result) => JSON.stringify(result));

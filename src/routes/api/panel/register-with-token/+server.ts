@@ -6,17 +6,19 @@ import {
 	sanitizeUsername,
 	sanitizeEmail,
 	validateInputLength,
-	addMinutesToNow,
 	isUtcSqlExpired,
 	getCurrentDateTime,
 	toMySQLDateTime,
 	getClientIp,
-	createVerifyToken,
+	checkRateLimit,
+	newSessionId,
+	setSession,
+	makeSessionCookie,
 	logger
 } from '$lib/utils/index.js';
-import { sendOTPEmail } from '$lib/frontend/email.js';
 import bcrypt from 'bcryptjs';
-import { randomInt } from 'crypto';
+
+const MAX_REGISTER_ATTEMPTS = 5;
 
 async function validateRegistrationInputs(username: string, email: string, password: string) {
 	const errors: string[] = [];
@@ -52,6 +54,14 @@ async function validateRegistrationInputs(username: string, email: string, passw
 export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const ip = getClientIp(request);
+		const rateLimit = await checkRateLimit(ip, 'register-with-token', MAX_REGISTER_ATTEMPTS);
+		if (!rateLimit.allowed) {
+			return json(
+				{ success: false, error: 'Too many registration attempts. Please try again later.', resetTime: new Date(rateLimit.resetTime).toISOString() },
+				{ status: 429 }
+			);
+		}
+
 		const body = await request.json();
 		const { token, username, email, password } = body;
 
@@ -88,8 +98,6 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		const passwordHash = await bcrypt.hash(password, 12);
-		const otpCode = randomInt(100000, 999999).toString();
-		const otpExpiresAt = toMySQLDateTime(addMinutesToNow(10));
 
 		const account = await db.createServerAccount({
 			server_id: inviteLink.server_id,
@@ -97,28 +105,30 @@ export const POST: RequestHandler = async ({ request }) => {
 			email: validation.sanitizedEmail,
 			password_hash: passwordHash,
 			account_type: inviteLink.account_type,
-			email_verified: false,
-			otp_code: otpCode,
-			otp_expires_at: otpExpiresAt,
 			ip_address: ip
 		});
 
 		await db.updateServerAccountInvite(inviteLink.id, { used_by: account.id, used_at: toMySQLDateTime(getCurrentDateTime()) ?? undefined });
 
-		try {
-			await sendOTPEmail(validation.sanitizedEmail, otpCode);
-		} catch (emailError: any) {
-			logger.log(`❌ Failed to send OTP email: ${emailError.message}`);
-			return json({ success: false, error: `Failed to send verification email: ${emailError.message}.` }, { status: 500 });
-		}
-
-		const verifyToken = await createVerifyToken(account.id);
-		return json({
-			success: true,
-			message: 'Registration successful. Please check your email for verification code.',
-			verify_token: verifyToken,
+		const sessionId = newSessionId();
+		await setSession(sessionId, {
+			authenticated: true,
+			account_id: account.id,
+			account_type: account.account_type,
 			account_source: 'server_accounts'
 		});
+
+		logger.log(`Registered and logged in: ${account.username} (${account.account_type}, IP: ${ip})`);
+
+		return json(
+			{
+				success: true,
+				message: 'Registration successful.',
+				account_type: account.account_type,
+				account_source: 'server_accounts'
+			},
+			{ headers: { 'Set-Cookie': makeSessionCookie(sessionId) } }
+		);
 	} catch (error: any) {
 		return json({ success: false, error: error.message }, { status: 500 });
 	}

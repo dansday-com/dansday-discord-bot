@@ -28,13 +28,12 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 
 	const [rawAccounts, invites] = await Promise.all([db.getServerAccountsByServer(serverId), db.getServerAccountInvitesByServer(serverId)]);
 	const isSuperadmin = locals.user.account_source === 'accounts';
-	const accounts = isSuperadmin
-		? rawAccounts
-		: rawAccounts.map((a: any) => ({
-				...a,
-				email: typeof a.email === 'string' ? maskEmail(a.email) : a.email,
-				ip_address: null
-			}));
+
+	const accounts = rawAccounts.map((a: any) => {
+		const base = { ...a, password_hash: undefined };
+		if (isSuperadmin) return base;
+		return { ...base, email: typeof a.email === 'string' ? maskEmail(a.email) : a.email, ip_address: null };
+	});
 
 	return { accounts, invites, serverId, botId: params.id, user: locals.user };
 };

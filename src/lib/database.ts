@@ -4,7 +4,7 @@ import mysql from 'mysql2/promise';
 import { eq, and, or, gt, inArray, notInArray, sql, desc, asc, isNull, isNotNull, count, avg, like, ne } from 'drizzle-orm';
 import { db } from './drizzle.js';
 import * as schema from './schema.js';
-import { SERVER_SETTINGS, AUTO_ENABLED_COMPONENTS } from './frontend/panelServer.js';
+import { SERVER_SETTINGS, AUTO_ENABLED_COMPONENTS, publicSubfeatureEnabled } from './frontend/panelServer.js';
 import { logger, toMySQLDateTime, parseMySQLDateTimeUtc, getNowUtc } from './utils/index.js';
 import { DEFAULT_MAIN_EMBED_COLOR, DEFAULT_MAIN_EMBED_FOOTER, DEFAULT_BOT_NICKNAME } from './utils/mainConfigSettings.js';
 import { DEFAULT_LEVELING_SETTINGS, DEFAULT_WELCOMER_MESSAGES, DEFAULT_BOOSTER_MESSAGES } from './backend/config.js';
@@ -671,6 +671,17 @@ export async function getServersForBot(officialBotId: number) {
 	return db.select().from(schema.servers).where(eq(schema.servers.bot_id, officialBotId)).orderBy(asc(schema.servers.name));
 }
 
+export async function getServerIdsForPanel(panelId: number): Promise<number[]> {
+	await initializeDatabase();
+	if (!panelId) return [];
+	const rows = await db
+		.select({ id: schema.servers.id })
+		.from(schema.servers)
+		.innerJoin(schema.bots, eq(schema.servers.bot_id, schema.bots.id))
+		.where(eq(schema.bots.panel_id, Number(panelId)));
+	return rows.map((r) => Number(r.id)).filter((n) => Number.isFinite(n));
+}
+
 export async function getServersForSelfbot(selfbotId: number) {
 	await initializeDatabase();
 	return db.select().from(schema.serverBotServers).where(eq(schema.serverBotServers.server_bot_id, selfbotId)).orderBy(asc(schema.serverBotServers.name));
@@ -1172,9 +1183,9 @@ export async function listEnabledLeaderboardServers() {
 				name: r.name ?? null,
 				updated_at: r.updated_at,
 				server_icon: r.server_icon ?? null,
-				items_enabled: s.items_enabled === true,
-				assets_enabled: s.assets_enabled === true,
-				minigames_enabled: s.minigames_enabled === true
+				items_enabled: publicSubfeatureEnabled(s, 'items'),
+				assets_enabled: publicSubfeatureEnabled(s, 'assets'),
+				minigames_enabled: publicSubfeatureEnabled(s, 'minigames')
 			};
 		});
 }
@@ -1461,7 +1472,7 @@ export async function searchPanelMembersForGift(panelId: any, queryText: string 
 		INNER JOIN server_settings ss
 			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.public_statistics}
 			AND JSON_EXTRACT(ss.settings, '$.enabled') != false
-			AND JSON_EXTRACT(ss.settings, '$.items_enabled') = true
+			AND COALESCE(JSON_EXTRACT(ss.settings, '$.items_enabled'), true) != false
 		LEFT JOIN (
 			SELECT member_id, SUM(quantity) AS total
 			FROM server_member_items
@@ -1485,7 +1496,7 @@ export async function memberServerHasItemsEnabled(memberId: any, panelId: any) {
 		INNER JOIN server_settings ss
 			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.public_statistics}
 			AND JSON_EXTRACT(ss.settings, '$.enabled') != false
-			AND JSON_EXTRACT(ss.settings, '$.items_enabled') = true
+			AND COALESCE(JSON_EXTRACT(ss.settings, '$.items_enabled'), true) != false
 		WHERE m.id = ${Number(memberId)}
 		LIMIT 1
 	`);
@@ -4059,11 +4070,99 @@ export async function getPanelOverview(panelId: number) {
 		console.error('Error fetching panel overview', e);
 	}
 
+	const community = {
+		total_members: 0,
+		total_boosters: 0,
+		total_channels: 0,
+		largest_server_members: 0,
+		tracked_members: 0,
+		total_xp: 0,
+		total_messages: 0,
+		total_voice_minutes: 0,
+		members_in_voice: 0,
+		total_panel_accounts: 0,
+		shop_items_total: 0,
+		shop_items_enabled: 0,
+		shop_items_scheduled: 0,
+		shop_avg_cost: 0
+	};
+
+	try {
+		const guildRes = await db.execute(sql`
+            SELECT
+                COALESCE(SUM(s.total_members), 0) AS total_members,
+                COALESCE(SUM(s.total_boosters), 0) AS total_boosters,
+                COALESCE(SUM(s.total_channels), 0) AS total_channels,
+                COALESCE(MAX(s.total_members), 0) AS largest_server_members
+            FROM servers s
+            JOIN bots b ON s.bot_id = b.id
+            WHERE b.panel_id = ${Number(panelId)}
+        `);
+		const gRow = (guildRes[0] as any[])?.[0];
+		if (gRow) {
+			community.total_members = Number(gRow.total_members) || 0;
+			community.total_boosters = Number(gRow.total_boosters) || 0;
+			community.total_channels = Number(gRow.total_channels) || 0;
+			community.largest_server_members = Number(gRow.largest_server_members) || 0;
+		}
+
+		const engagementRes = await db.execute(sql`
+            SELECT
+                COUNT(sm.id) AS tracked_members,
+                COALESCE(SUM(sml.xp), 0) AS total_xp,
+                COALESCE(SUM(sml.chat_total), 0) AS total_messages,
+                COALESCE(SUM(sml.voice_minutes_total), 0) AS total_voice_minutes,
+                COALESCE(SUM(CASE WHEN sml.is_in_voice = 1 THEN 1 ELSE 0 END), 0) AS members_in_voice
+            FROM server_members sm
+            JOIN servers s ON sm.server_id = s.id
+            JOIN bots b ON s.bot_id = b.id
+            LEFT JOIN server_member_levels sml ON sml.member_id = sm.id
+            WHERE b.panel_id = ${Number(panelId)}
+        `);
+		const eRow = (engagementRes[0] as any[])?.[0];
+		if (eRow) {
+			community.tracked_members = Number(eRow.tracked_members) || 0;
+			community.total_xp = Number(eRow.total_xp) || 0;
+			community.total_messages = Number(eRow.total_messages) || 0;
+			community.total_voice_minutes = Number(eRow.total_voice_minutes) || 0;
+			community.members_in_voice = Number(eRow.members_in_voice) || 0;
+		}
+
+		const accountsRes = await db.execute(sql`
+            SELECT COUNT(*) AS count
+            FROM server_accounts sa
+            JOIN servers s ON sa.server_id = s.id
+            JOIN bots b ON s.bot_id = b.id
+            WHERE b.panel_id = ${Number(panelId)}
+        `);
+		community.total_panel_accounts = Number((accountsRes[0] as any[])?.[0]?.count) || 0;
+
+		const shopRes = await db.execute(sql`
+            SELECT
+                COUNT(*) AS total,
+                COALESCE(SUM(CASE WHEN i.enabled = 1 THEN 1 ELSE 0 END), 0) AS enabled_count,
+                COALESCE(SUM(CASE WHEN i.available_from IS NOT NULL OR i.available_to IS NOT NULL OR i.recurring_schedule IS NOT NULL THEN 1 ELSE 0 END), 0) AS scheduled_count,
+                COALESCE(ROUND(AVG(i.cost)), 0) AS avg_cost
+            FROM items i
+            WHERE i.panel_id = ${Number(panelId)}
+        `);
+		const shopRow = (shopRes[0] as any[])?.[0];
+		if (shopRow) {
+			community.shop_items_total = Number(shopRow.total) || 0;
+			community.shop_items_enabled = Number(shopRow.enabled_count) || 0;
+			community.shop_items_scheduled = Number(shopRow.scheduled_count) || 0;
+			community.shop_avg_cost = Number(shopRow.avg_cost) || 0;
+		}
+	} catch (e) {
+		console.error('Error fetching panel community stats', e);
+	}
+
 	return {
 		total_servers,
 		total_selfbots,
 		running_selfbots,
-		selfbot_uptime_ms
+		selfbot_uptime_ms,
+		...community
 	};
 }
 
@@ -4388,9 +4487,6 @@ async function createAccount(accountData: any) {
 		email: accountData.email,
 		password_hash: accountData.password_hash,
 		account_type: accountData.account_type || 'superadmin',
-		email_verified: accountData.email_verified || false,
-		otp_code: accountData.otp_code || null,
-		otp_expires_at: accountData.otp_expires_at ? (toMySQLDateTime(accountData.otp_expires_at) as any) : null,
 		ip_address: accountData.ip_address || null,
 		created_at: now as any,
 		updated_at: now as any
@@ -4400,7 +4496,6 @@ async function createAccount(accountData: any) {
 
 async function updateAccount(accountId: any, updateData: any) {
 	const data: any = { ...updateData, updated_at: toMySQLDateTime() };
-	if (data.otp_expires_at) data.otp_expires_at = toMySQLDateTime(data.otp_expires_at);
 	await db
 		.update(schema.accounts)
 		.set(data)
@@ -4419,7 +4514,6 @@ async function getAllAccounts() {
 			username: schema.accounts.username,
 			email: schema.accounts.email,
 			account_type: schema.accounts.account_type,
-			email_verified: schema.accounts.email_verified,
 			created_at: schema.accounts.created_at,
 			updated_at: schema.accounts.updated_at
 		})
@@ -4566,9 +4660,6 @@ async function createServerAccount(data: {
 	email: string;
 	password_hash: string;
 	account_type: 'owner' | 'staff';
-	email_verified?: boolean;
-	otp_code?: string | null;
-	otp_expires_at?: string | null;
 	ip_address?: string | null;
 	is_frozen?: boolean;
 }) {
@@ -4579,9 +4670,6 @@ async function createServerAccount(data: {
 		email: data.email,
 		password_hash: data.password_hash,
 		account_type: data.account_type,
-		email_verified: data.email_verified ?? false,
-		otp_code: data.otp_code ?? null,
-		otp_expires_at: data.otp_expires_at ?? (null as any),
 		ip_address: data.ip_address ?? null,
 		is_frozen: data.is_frozen ?? false,
 		created_at: now as any,
@@ -4597,9 +4685,6 @@ async function updateServerAccount(
 		email: string;
 		password_hash: string;
 		account_type: 'owner' | 'staff';
-		email_verified: boolean;
-		otp_code: string | null;
-		otp_expires_at: string | null;
 		ip_address: string | null;
 		is_frozen: boolean;
 	}>
@@ -4622,7 +4707,7 @@ async function getServerAccountsByServer(serverId: number) {
 		.orderBy(asc(schema.serverAccounts.account_type), asc(schema.serverAccounts.created_at));
 }
 
-const SERVER_ACCOUNT_INVITE_TTL_MINUTES = 10;
+const SERVER_ACCOUNT_INVITE_TTL_MINUTES = 24 * 60;
 
 async function createServerAccountInvite(data: { token: string; server_id: number; account_type: 'owner' | 'staff' }) {
 	const now = getNowUtc();
@@ -5441,6 +5526,51 @@ export async function getEndedGiveaways() {
 		});
 }
 
+export async function listActiveGiveawaysForServer(serverId: any) {
+	await initializeDatabase();
+	const rows = await db
+		.select({ giveaway: schema.serverMemberGiveaways, host_id: schema.serverMembers.discord_member_id })
+		.from(schema.serverMemberGiveaways)
+		.innerJoin(schema.serverMembers, eq(schema.serverMemberGiveaways.member_id, schema.serverMembers.id))
+		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), eq(schema.serverMemberGiveaways.status, 'active')))
+		.orderBy(asc(schema.serverMemberGiveaways.ends_at));
+
+	const now = Date.now();
+	return rows
+		.map((r) => {
+			const endsAt = parseMySQLDateTimeUtc(r.giveaway.ends_at as any);
+			return {
+				id: r.giveaway.id,
+				title: r.giveaway.title,
+				prize: r.giveaway.prize,
+				winner_count: Number(r.giveaway.winner_count) || 1,
+				multiple_entries_allowed: r.giveaway.multiple_entries_allowed === true,
+				allowed_roles: (() => {
+					const raw = r.giveaway.allowed_roles;
+					if (!raw) return [];
+					try {
+						return typeof raw === 'string' ? JSON.parse(raw) : raw;
+					} catch {
+						return [];
+					}
+				})(),
+				host_discord_id: r.host_id ? String(r.host_id) : null,
+				ends_at: endsAt ? endsAt.toISOString() : null,
+				ends_at_ms: endsAt ? endsAt.getTime() : null
+			};
+		})
+		.filter((g) => g.ends_at_ms == null || g.ends_at_ms > now);
+}
+
+export async function countGiveawayEntrants(giveawayId: any) {
+	await initializeDatabase();
+	const rows = await db
+		.select({ n: sql<number>`COUNT(DISTINCT ${schema.serverMemberGiveawayEntries.member_id})` })
+		.from(schema.serverMemberGiveawayEntries)
+		.where(eq(schema.serverMemberGiveawayEntries.giveaway_id, Number(giveawayId)));
+	return Number(rows[0]?.n) || 0;
+}
+
 export async function getGiveawayById(giveawayId: any) {
 	await initializeDatabase();
 	const rows = await db
@@ -6099,6 +6229,7 @@ export default {
 	upsertServerBotStatus,
 	getServer,
 	getServersForBot,
+	getServerIdsForPanel,
 	getServersForSelfbot,
 	getServerBotServerForSelfbot,
 	getOfficialServerByDiscordId,
@@ -6296,6 +6427,8 @@ export default {
 	createGiveaway,
 	updateGiveawayMessageId,
 	getEndedGiveaways,
+	listActiveGiveawaysForServer,
+	countGiveawayEntrants,
 	getGiveawayById,
 	getActiveGiveawayByMember,
 	addGiveawayEntry,

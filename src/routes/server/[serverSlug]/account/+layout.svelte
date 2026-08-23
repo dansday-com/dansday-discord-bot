@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { invalidateAll } from '$app/navigation';
 	import MemberCard from '$lib/frontend/components/MemberCard.svelte';
+	import FeatureDisabled from '$lib/frontend/components/FeatureDisabled.svelte';
 	import { publicServerPath } from '$lib/url.js';
 	import { ITEM_EFFECTS, effectLabel, effectIcon, effectAccentHex, actionVerb, BAG_CAPACITY, formatDuration } from '$lib/items.js';
 	import type { PublicMembersStreamPayload } from '$lib/frontend/public/members/index.js';
@@ -36,6 +37,15 @@
 	const itemsEnabled = $derived(data.itemsEnabled === true);
 	const assetsEnabled = $derived(data.assetsEnabled === true);
 	const minigamesEnabled = $derived(data.minigamesEnabled === true);
+
+	const disabledFeature = $derived.by(() => {
+		if (isTask && !tasksEnabled)
+			return { title: 'Tasks are turned off', message: 'This server has not enabled daily and weekly tasks.', icon: 'fa-list-check' };
+		if (isItems && !itemsEnabled) return { title: 'Items are turned off', message: 'This server has not enabled the item shop and bag.', icon: 'fa-store' };
+		if (isMinigames && !minigamesEnabled) return { title: 'Minigames are turned off', message: 'This server has not enabled minigames.', icon: 'fa-dice' };
+		if (isAssets && !assetsEnabled) return { title: 'Assets are turned off', message: 'This server has not enabled the assets market.', icon: 'fa-chart-line' };
+		return null;
+	});
 
 	const historyTabs = $derived([
 		{ id: 'all', label: 'All', icon: 'fa-grip' },
@@ -375,7 +385,7 @@
 					><i class="fas {isOverview ? 'fa-user' : isAssets ? 'fa-chart-line' : isTask ? 'fa-fire' : 'fa-wallet'}"></i>{isOverview
 						? 'Profile'
 						: isAssets
-							? 'Invested in Assets'
+							? 'Assets Value'
 							: isTask
 								? 'Daily streak'
 								: 'Wallet'}</span
@@ -384,9 +394,7 @@
 				{#if isTask}
 					<span class="m-xp-amount">{taskSummary?.current ?? 0}<span class="m-xp-unit">{(taskSummary?.current ?? 0) === 1 ? 'DAY' : 'DAYS'}</span></span>
 				{:else}
-					<span class="m-xp-amount" class:m-xp-amount--hidden={isOverview}
-						>{fmt(isAssets ? assetSummary.invested : liveXp)}<span class="m-xp-unit">XP</span></span
-					>
+					<span class="m-xp-amount" class:m-xp-amount--hidden={isOverview}>{fmt(isAssets ? assetSummary.value : liveXp)}<span class="m-xp-unit">XP</span></span>
 				{/if}
 				<div class="m-xp-bar" class:m-xp-bar--hidden={isAssets || isOverview}>
 					<div class="m-xp-bar-fill" style="width: {isTask ? streakPct : levelInfo.pct}%"></div>
@@ -399,7 +407,7 @@
 						{/if}
 					{:else if isAssets}
 						<span>{assetSummary.count} asset{assetSummary.count === 1 ? '' : 's'}</span>
-						<span>Worth {fmt(assetSummary.value)} XP</span>
+						<span>Invested {fmt(assetSummary.invested)} XP</span>
 					{:else if isTask}
 						<span>{taskSummary?.toNextMilestone ?? 0} to {taskSummary?.nextMilestone?.emoji ?? '🔥'} {taskSummary?.nextMilestone?.label ?? 'One week'}</span>
 						<span>Best {taskSummary?.longest ?? 0} days</span>
@@ -468,33 +476,27 @@
 			<a class="m-items-seg" class:m-items-seg--active={isOverview} href="{accountBase}/overview/{navHash}" data-sveltekit-preload-data="hover">
 				<i class="fas fa-gauge-high"></i>Overview
 			</a>
-			{#if tasksEnabled}
-				<a class="m-items-seg" class:m-items-seg--active={isTask} href="{accountBase}/task/{navHash}" data-sveltekit-preload-data="hover">
-					<i class="fas fa-list-check"></i>Task
-				</a>
-			{/if}
-			{#if itemsEnabled}
-				<a
-					bind:this={bagTabEl}
-					class="m-items-seg"
-					class:m-items-seg--active={isItems}
-					class:m-items-seg--pulse={bagPulse}
-					href="{accountBase}/items/all/{navHash}"
-					data-sveltekit-preload-data="hover"
-				>
-					<i class="fas fa-store"></i>Items<span class="m-items-count" class:m-items-count--bump={bagPulse}>{pd.bagStock ?? 0}/{BAG_CAPACITY}</span>
-				</a>
-			{/if}
-			{#if minigamesEnabled}
-				<a class="m-items-seg" class:m-items-seg--active={isMinigames} href="{accountBase}/minigames/all/{navHash}" data-sveltekit-preload-data="hover">
-					<i class="fas fa-dice"></i>Minigames
-				</a>
-			{/if}
-			{#if assetsEnabled}
-				<a class="m-items-seg" class:m-items-seg--active={isAssets} href="{accountBase}/assets/top/{navHash}" data-sveltekit-preload-data="hover">
-					<i class="fas fa-chart-line"></i>Assets
-				</a>
-			{/if}
+			<a class="m-items-seg" class:m-items-seg--active={isTask} href="{accountBase}/task/{navHash}" data-sveltekit-preload-data="hover">
+				<i class="fas fa-list-check"></i>Task
+			</a>
+			<a
+				bind:this={bagTabEl}
+				class="m-items-seg"
+				class:m-items-seg--active={isItems}
+				class:m-items-seg--pulse={bagPulse}
+				href="{accountBase}/items/all/{navHash}"
+				data-sveltekit-preload-data="hover"
+			>
+				<i class="fas fa-store"></i>Items{#if itemsEnabled}<span class="m-items-count" class:m-items-count--bump={bagPulse}
+						>{pd.bagStock ?? 0}/{BAG_CAPACITY}</span
+					>{/if}
+			</a>
+			<a class="m-items-seg" class:m-items-seg--active={isMinigames} href="{accountBase}/minigames/all/{navHash}" data-sveltekit-preload-data="hover">
+				<i class="fas fa-dice"></i>Minigames
+			</a>
+			<a class="m-items-seg" class:m-items-seg--active={isAssets} href="{accountBase}/assets/top/{navHash}" data-sveltekit-preload-data="hover">
+				<i class="fas fa-chart-line"></i>Assets
+			</a>
 			<a class="m-items-seg" class:m-items-seg--active={isHistory} href="{accountBase}/history/all/{navHash}" data-sveltekit-preload-data="hover">
 				<i class="fas fa-clock-rotate-left"></i>History
 			</a>
@@ -540,7 +542,9 @@
 		</div>
 	{/snippet}
 
-	{#if isHistory}
+	{#if disabledFeature}
+		{''}
+	{:else if isHistory}
 		{@render tabStrip(
 			historyTabs.map((t) => ({ ...t, href: `${accountBase}/history/${t.id}/${navHash}` })),
 			historyCat
@@ -562,7 +566,11 @@
 		)}
 	{/if}
 
-	{@render children()}
+	{#if disabledFeature}
+		<FeatureDisabled title={disabledFeature.title} message={disabledFeature.message} icon={disabledFeature.icon} />
+	{:else}
+		{@render children()}
+	{/if}
 </div>
 
 {#if showCard && pd.memberCard}

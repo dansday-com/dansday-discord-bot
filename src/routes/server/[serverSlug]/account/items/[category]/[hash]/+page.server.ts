@@ -1,6 +1,5 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 import { publicServerPath } from '$lib/url.js';
 import db from '$lib/database.js';
 import { loadItemsShared, computeCardToken, itemsCardTokenFromUrl } from '$lib/frontend/public/items/index.js';
@@ -14,7 +13,9 @@ function safeParse(raw: any) {
 }
 
 export const load: PageServerLoad = async ({ parent, params }) => {
-	const { server } = await parent();
+	const { server, itemsEnabled } = await parent();
+
+	if (!itemsEnabled) return { featureDisabled: true, server, category: 'all' };
 
 	const hash = itemsCardTokenFromUrl(params.hash);
 	const shared = await loadItemsShared(server, hash, 'items');
@@ -37,12 +38,9 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 			};
 		}
 
-		const permissionsRow = await db.getServerSettings(server.id, SERVER_SETTINGS.component.permissions).catch(() => null);
-		const memberRoleIds: string[] = (permissionsRow as any)?.settings?.member_roles ?? [];
 		const list = await db.getServerMembersList(server.id).catch(() => []);
 		targets = (list as any[])
 			.filter((m) => m.discord_member_id && Number(m.id) !== Number(shared.member.id))
-			.filter((m) => (m.roles ?? []).some((r: any) => memberRoleIds.includes(r.id)))
 			.map((m) => ({
 				hash: computeCardToken(m.discord_member_id, m.member_since),
 				name: m.server_display_name || m.display_name || m.username,

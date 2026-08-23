@@ -138,6 +138,7 @@ export const servers = mysqlTable(
 		discord_created_at: datetime('discord_created_at'),
 		vanity_url_code: varchar('vanity_url_code', { length: 255 }),
 		invite_code: varchar('invite_code', { length: 255 }),
+		greeted_at: datetime('greeted_at'),
 		created_at: datetime('created_at').notNull(),
 		updated_at: datetime('updated_at').notNull()
 	},

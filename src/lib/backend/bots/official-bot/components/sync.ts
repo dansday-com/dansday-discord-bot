@@ -160,9 +160,15 @@ async function isAiChatReady() {
 
 async function sendJoinGreeting(guild) {
 	try {
+		if (!(await db.claimGuildGreeting(botId, guild.id))) {
+			logger.log(`↩️  Greeting already sent for ${guild.name} by another bot, skipping`);
+			return;
+		}
+
 		const channel = await findGreetingChannel(guild);
 		if (!channel) {
 			logger.log(`⚠️  No channel available to greet in guild: ${guild.name}`);
+			await db.resetGuildGreeting(guild.id).catch(() => null);
 			return;
 		}
 
@@ -204,6 +210,7 @@ async function sendJoinGreeting(guild) {
 		logger.log(`👋 Sent join greeting in ${guild.name} (#${channel.name})`);
 	} catch (error) {
 		logger.log(`⚠️  Failed to send join greeting: ${error.message}`);
+		await db.resetGuildGreeting(guild.id).catch(() => null);
 	}
 }
 
@@ -366,4 +373,14 @@ export function getBotId() {
 	return botId;
 }
 
-export default { init, syncGuildData, syncAllGuilds, getBotId };
+export async function resendJoinGreeting(discordServerId) {
+	const guild = client?.guilds?.cache?.get(String(discordServerId));
+	if (!guild) return { success: false, error: 'guild_not_found' };
+	await db.resetGuildGreeting(guild.id);
+	await sendJoinGreeting(guild);
+	const server = await db.getServerByDiscordId(botId, guild.id).catch(() => null);
+	if (!server?.greeted_at) return { success: false, error: 'greeting_failed' };
+	return { success: true, guild_name: guild.name };
+}
+
+export default { init, syncGuildData, syncAllGuilds, getBotId, resendJoinGreeting };

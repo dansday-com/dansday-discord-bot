@@ -728,6 +728,30 @@ export async function getOfficialBotServerIdForServer(serverId: any) {
 	return server.id;
 }
 
+export async function claimGuildGreeting(botId: number, discordServerId: string) {
+	await initializeDatabase();
+	const guildId = String(discordServerId || '').trim();
+	if (!botId || !guildId) return false;
+	const [res] = await db.execute(sql`
+		UPDATE servers sv
+		LEFT JOIN servers greeted
+			ON greeted.discord_server_id = sv.discord_server_id AND greeted.greeted_at IS NOT NULL
+		SET sv.greeted_at = UTC_TIMESTAMP()
+		WHERE sv.bot_id = ${Number(botId)}
+		  AND sv.discord_server_id = ${guildId}
+		  AND greeted.id IS NULL
+	`);
+	return ((res as unknown as { affectedRows?: number })?.affectedRows ?? 0) > 0;
+}
+
+export async function resetGuildGreeting(discordServerId: string) {
+	await initializeDatabase();
+	const guildId = String(discordServerId || '').trim();
+	if (!guildId) return false;
+	await db.execute(sql`UPDATE servers SET greeted_at = NULL WHERE discord_server_id = ${guildId}`);
+	return true;
+}
+
 async function getServerIdsInSameGuild(serverId: any) {
 	const sub = db
 		.select({ discord_server_id: schema.servers.discord_server_id })
@@ -6168,6 +6192,8 @@ export default {
 	getSelfbotServerByDiscordId,
 	getServerByDiscordId,
 	getOfficialBotServerIdForServer,
+	claimGuildGreeting,
+	resetGuildGreeting,
 	getNotificationChannels,
 	getMemberNotificationChannelIds,
 	getNotifiedMemberDiscordIds,

@@ -317,7 +317,10 @@ async function init(discordClient, botToken) {
 		logger.log('ℹ️  Note: Booster status (is_booster, booster_since) will be updated automatically when member events occur');
 	}, 2000);
 
-	setInterval(runRetentionPurge, RETENTION_PURGE_INTERVAL_MS);
+	setInterval(() => {
+		if (!botId) return;
+		runRetentionPurge();
+	}, RETENTION_PURGE_INTERVAL_MS);
 
 	client.on('guildCreate', async (guild) => {
 		logger.log(`🆕 Bot joined new guild: ${guild.name}`);
@@ -326,11 +329,11 @@ async function init(discordClient, botToken) {
 	});
 
 	client.on('guildDelete', async (guild) => {
-		if (guild.available === false) {
+		if (!botId) return;
+		if (guild.available === false || guild.unavailable === true) {
 			logger.log(`⏸️  Guild unavailable (Discord outage), keeping data: ${guild.name || guild.id}`);
 			return;
 		}
-		if (!botId) return;
 
 		try {
 			const marked = await db.markOfficialServerDeletedByDiscordId(botId, guild.id);
@@ -428,6 +431,11 @@ async function init(discordClient, botToken) {
 
 	client.on('guildMemberRemove', async (member) => {
 		if (member.guild && botId) {
+			if (member.guild.available === false) {
+				logger.log(`⏸️  Guild unavailable, not marking member ${member.id} deleted`);
+				return;
+			}
+
 			await syncGuildData(member.guild);
 
 			if (!member.user?.bot) {
@@ -435,6 +443,17 @@ async function init(discordClient, botToken) {
 				const memberTag = member.user?.tag || member.id;
 				setTimeout(async () => {
 					try {
+						if (member.guild.members.cache.has(member.id)) {
+							logger.log(`↩️  Member ${memberTag} rejoined ${guildName} before the grace delay, keeping data`);
+							return;
+						}
+
+						const stillGone = await member.guild.members.fetch(member.id).catch(() => null);
+						if (stillGone) {
+							logger.log(`↩️  Member ${memberTag} is still in ${guildName}, keeping data`);
+							return;
+						}
+
 						const serverData = await db.getServerByDiscordId(botId, member.guild.id);
 						if (!serverData) return;
 						const marked = await db.markMemberDeletedByDiscordId(serverData.id, member.id);

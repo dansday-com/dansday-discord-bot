@@ -1,0 +1,492 @@
+{
+	"menu": {
+		"title": "📋 {botName} Bot-Menü",
+		"description": "Wähle unten eine Funktion aus:",
+		"noAccess": "❌ Du hast keinen Zugriff auf Funktionen.",
+		"button": "📋 Menü",
+		"statistics": "🌐 Statistiken",
+		"account": "👤 Konto"
+	},
+	"interface": {
+		"panel": {
+			"title": "{botName} Bot-Panel",
+			"description": "Klicke auf **Menü**, um die Bot-Funktionen entsprechend deinen Rollenberechtigungen zu öffnen.",
+			"sent": "✅ Bot-Interface an {channel} gesendet!",
+			"setupHasOwnerAccount": "✅ Bot-Interface an {channel} gesendet. Dieser Server hat bereits ein Inhaberkonto — melde dich im Web-Panel an. Es wurde keine neue Einladung erstellt.",
+			"setupSignInLinkLine": "[**Hier klicken, um das Panel zu öffnen**]({url})",
+			"setupOpenPanelButton": "Panel öffnen",
+			"setupOwnerInviteReady": "✅ Bot-Interface an {channel} gesendet.\n\nNur du kannst das sehen. Nicht genutzte Inhaber-Einladungslinks verfallen **24 Stunden** nach ihrer Erstellung.\n\n[**Hier klicken, um dich als Inhaber zu registrieren**]({url})",
+			"setupOwnerInviteButton": "Registrierung öffnen",
+			"setupOwnerInviteEmbedTitle": "Inhaber-Registrierung",
+			"setupNotOwnerTitle": "Zugriff verweigert",
+			"setupNotOwnerBody": "Nur der **Serverinhaber** kann `/setup` verwenden.",
+			"setupNotTextChannelTitle": "Ungültiger Kanal",
+			"setupNotTextChannelBody": "Bitte wähle einen **Textkanal** aus.",
+			"joinTitle": "Danke, dass du {botName} hinzugefügt hast!",
+			"joinBody": "Führe `/setup` aus, um die Kanäle zu erstellen und die Einrichtung abzuschließen.",
+			"joinAskAi": "Du weißt nicht, wo du anfangen sollst? Erwähne {botMention} und frag einfach — der Bot liest die Dokumentation und führt dich durch die Einrichtung.",
+			"joinDocsButton": "Dokumentation",
+			"joinSupportButton": "Support-Server",
+			"setupChannelsCreated": "**{count}** neue(n) Kanal/Kanäle erstellt.",
+			"setupChannelsAllPresent": "Alle Kanäle existieren bereits — es gibt nichts Neues zu erstellen.",
+			"setupWarnNoBotConfig": "⚠️ Interface gesendet, aber die Bot-Konfiguration ist nicht verfügbar.",
+			"setupWarnNoServer": "⚠️ Interface gesendet, aber der Servereintrag zum Erstellen der Einladung wurde nicht gefunden.",
+			"setupWarnNoBaseUrl": "⚠️ Interface gesendet, aber BASE_URL ist nicht konfiguriert — es kann kein Einladungslink erstellt werden.",
+			"error": "❌ Interface konnte nicht gesendet werden: {error}"
+		}
+	},
+	"common": {
+		"errors": {
+			"featureDisabled": "❌ Diese Funktion ist für diesen Server deaktiviert. Ein Administrator kann sie im Bot-Konfigurationspanel aktivieren.",
+			"memberNotFound": "❌ Mitgliedsinformationen konnten nicht abgerufen werden.",
+			"unknownButton": "❌ Unbekannte Schaltflächen-Interaktion.",
+			"buttonError": "❌ **Schaltflächenfehler**: Beim Verarbeiten deines Klicks ist ein Fehler aufgetreten.\\n\\nBitte versuche es erneut oder wende dich an einen Administrator.",
+			"modalError": "❌ **Formularfehler**: Beim Verarbeiten deiner Eingabe ist ein Fehler aufgetreten.\\n\\nBitte versuche es erneut oder wende dich an einen Administrator.",
+			"selectionError": "❌ **Auswahlfehler**: Beim Verarbeiten deiner Auswahl ist ein Fehler aufgetreten.\\n\\nBitte versuche es erneut oder wende dich an einen Administrator."
+		},
+		"timeUnits": {
+			"hour": "Stunde",
+			"hours": "Stunden",
+			"day": "Tag",
+			"days": "Tage"
+		}
+	},
+	"permissions": {
+		"supporterRoleDenied": {
+			"title": "🔒 **Supporter-Vorteil**",
+			"description": "Eine eigene Rolle mit Namen und Farbe ist ein Supporter-Vorteil. Dafür wird eine dieser Rollen benötigt:\\n{roles}",
+			"footer": "Frage einen Serveradministrator, wie du Supporter werden kannst."
+		},
+		"creatorApplyDenied": {
+			"title": "🔒 **Bewerbung noch nicht für dich offen**",
+			"description": "Für eine Bewerbung als Content Creator wird eine dieser Rollen benötigt:\\n{roles}",
+			"footer": "Du kannst die Creator-Liste weiterhin ansehen. Frage einen Serveradministrator, wie du eine Mitgliedsrolle bekommst."
+		},
+		"denied": {
+			"title": "❌ **Zugriff verweigert**",
+			"description": "Du benötigst eine der folgenden Rollen, um **{action}** zu verwenden:\\n{roles}",
+			"footer": "Wende dich an einen Serveradministrator, wenn du glaubst, dass dies ein Fehler ist."
+		},
+		"ownerRequired": {
+			"title": "❌ **Inhaber-Registrierung erforderlich**",
+			"description": "Der Serverinhaber muss ein Konto im Web-Panel registrieren, bevor die Funktion **{action}** genutzt werden kann."
+		},
+		"notConfigured": {
+			"title": "❌ **Berechtigungen nicht konfiguriert**",
+			"description": "Der Serverinhaber oder ein Administrator muss die Rollenberechtigungen konfigurieren, bevor die Funktion **{action}** genutzt werden kann."
+		}
+	},
+	"settings": {
+		"language": {
+			"title": "🌐 Spracheinstellungen",
+			"description": "Wähle deine bevorzugte Sprache:",
+			"current": "Aktuelle Sprache",
+			"select": "Sprache auswählen",
+			"updated": "✅ Sprache erfolgreich aktualisiert!",
+			"failed": "❌ Sprache konnte nicht aktualisiert werden: {error}"
+		}
+	},
+	"leveling": {
+		"account": {
+			"link": "👤 Deine Kontoseite: {url}",
+			"noMember": "⚠️ Du wirst auf diesem Server noch nicht erfasst. Schreibe zuerst eine Nachricht oder betrete einen Sprachkanal.",
+			"unavailable": "⚠️ Öffentliche Seiten sind für diesen Server nicht verfügbar."
+		},
+		"errors": {
+			"notRegistered": "⚠️ Dieser Server ist nicht beim Bot registriert. Bitte führe zuerst eine Synchronisierung durch.",
+			"createRecordFailed": "❌ Mitgliedseintrag konnte nicht erstellt werden. Bitte versuche es erneut."
+		}
+	},
+	"afk": {
+		"title": "⏸️ AFK-Status setzen",
+		"current": {
+			"title": "⏸️ Du bist derzeit AFK",
+			"description": "**Status:** {message}\\n**Dauer:** {duration}",
+			"howToRemove": "💡 So entfernst du ihn",
+			"howToRemoveValue": "• Klicke auf die Schaltfläche unten, um AFK zu entfernen\\n• Schreibe eine Nachricht (entfernt AFK automatisch und hebt die Stummschaltung auf)\\n• Beim Entfernen von AFK wird die Stummschaltung aufgehoben, wenn der Bot dich stummgeschaltet hat"
+		},
+		"set": {
+			"title": "✅ AFK-Status gesetzt!",
+			"description": "Du bist jetzt als AFK markiert: **{message}**{voiceInfo}",
+			"howToRemove": "💡 So entfernst du ihn",
+			"howToRemoveValue": "• Schreibe eine Nachricht (entfernt AFK automatisch und hebt die Stummschaltung auf)\\n• Klicke auf die AFK-Schaltfläche und entferne den Status (hebt die Stummschaltung auf, wenn der Bot dich stummgeschaltet hat)\\n• Das Entfernen von AFK hebt die Stummschaltung automatisch auf, wenn der Bot dich stummgeschaltet hat",
+			"voiceMutedDeafened": "\\n\\nDu wirst im Sprachkanal stummgeschaltet und dein Ton wird deaktiviert.",
+			"voiceMutedOnly": "\\n\\nDu wirst im Sprachkanal stummgeschaltet (Ton bleibt aktiv)."
+		},
+		"removed": {
+			"title": "✅ AFK-Status entfernt!",
+			"description": "Willkommen zurück! Dein AFK-Status wurde entfernt."
+		},
+		"modal": {
+			"messageLabel": "AFK-Nachricht (optional)",
+			"messagePlaceholder": "z. B. Mache Pause, Lerne usw.",
+			"deafenLabel": "Ton im Sprachkanal deaktivieren? (ja/nein, Standard: ja)",
+			"deafenPlaceholder": "ja oder nein (leer lassen für ja)"
+		},
+		"buttons": {
+			"remove": "🔄 AFK entfernen"
+		},
+		"errors": {
+			"disabledOnServer": "❌ AFK ist für diesen Server deaktiviert. Ein Administrator kann es im Bot-Konfigurationspanel aktivieren.",
+			"notAFK": "❌ Du bist derzeit nicht AFK.",
+			"failed": "❌ AFK-Formular konnte nicht geöffnet werden: {error}",
+			"setFailed": "❌ **AFK konnte nicht gesetzt werden**\\n\\nFehler: {error}\\n\\nBitte versuche es später erneut.",
+			"removeFailed": "❌ **AFK konnte nicht entfernt werden**\\n\\nFehler: {error}\\n\\nBitte versuche es später erneut."
+		},
+		"messages": {
+			"welcomeBack": "✅ Willkommen zurück, {member}! Dein AFK-Status wurde entfernt.",
+			"dmEmbedTitle": "📬 Du wurdest erwähnt",
+			"dmMentioned": "{sender} hat dich in **{server}** · #{channel} erwähnt\\n\\n**Nachricht:** {message}"
+		}
+	},
+	"giveaway": {
+		"create": {
+			"title": "🎉 Gewinnspiel erstellen",
+			"step1Title": "**Schritt 1 von 2: Rollen auswählen (optional)**",
+			"step1Description": "Wähle unten die Rollen aus, die an diesem Gewinnspiel teilnehmen dürfen. Lasse die Auswahl leer oder klicke auf \"Weiter zum Formular\", um alle Rollen zuzulassen.",
+			"roleSelectPlaceholder": "Rollen auswählen, die teilnehmen dürfen (optional)...",
+			"continueButton": "Weiter zum Formular"
+		},
+		"active": {
+			"title": "🎉 Aktives Gewinnspiel gefunden",
+			"description": "Du hast bereits ein aktives Gewinnspiel:\\n\\n**{title}**\\n**Preis:** {prize}\\n\\nWas möchtest du tun?",
+			"ends": "⏰ Endet"
+		},
+		"modal": {
+			"titleLabel": "Titel",
+			"titlePlaceholder": "Gewinnspieltitel eingeben...",
+			"prizeLabel": "Preis",
+			"prizePlaceholder": "Was ist der Preis?",
+			"durationLabel": "Dauer (Minuten)",
+			"durationPlaceholder": "z. B. 60 für 1 Stunde, 1440 für 1 Tag",
+			"winnerCountLabel": "Anzahl der Gewinner",
+			"winnerCountPlaceholder": "Wie viele Gewinner? (Standard: 1)",
+			"multipleEntriesLabel": "Mehrfachteilnahme erlaubt? (ja/nein)",
+			"multipleEntriesPlaceholder": "ja oder nein (Standard: nein)"
+		},
+		"created": {
+			"title": "✅ Gewinnspiel erstellt!",
+			"description": "Dein Gewinnspiel wurde erstellt und in {channel} veröffentlicht!"
+		},
+		"entered": {
+			"title": "✅ Teilnahme bestätigt!",
+			"description": "Du nimmst jetzt am Gewinnspiel teil! Viel Glück! 🍀"
+		},
+		"buttons": {
+			"finish": "🏁 Gewinnspiel beenden"
+		},
+		"errors": {
+			"memberNotFound": "❌ Mitgliedsinformationen konnten nicht abgerufen werden.",
+			"activeExists": "❌ Du hast bereits ein aktives Gewinnspiel. Bitte beende es zuerst.",
+			"invalidTitle": "❌ **Ungültiges Gewinnspiel**\\n\\nDer Titel darf nicht leer sein.",
+			"invalidPrize": "❌ **Ungültiges Gewinnspiel**\\n\\nDer Preis darf nicht leer sein.",
+			"invalidDuration": "❌ **Ungültiges Gewinnspiel**\\n\\nDie Dauer muss eine positive Zahl sein (in Minuten).",
+			"invalidWinnerCount": "❌ **Ungültiges Gewinnspiel**\\n\\nDie Anzahl der Gewinner muss eine positive Zahl sein.",
+			"channelNotConfigured": "❌ Gewinnspiel konnte nicht erstellt werden: Gewinnspielkanal ist nicht konfiguriert. Bitte konfiguriere ihn im Panel.",
+			"channelNotFound": "❌ Gewinnspiel konnte nicht erstellt werden: Gewinnspielkanal nicht gefunden.",
+			"channelError": "❌ Gewinnspiel konnte nicht erstellt werden: Fehler beim Abrufen der Gewinnspielkanal-Konfiguration.",
+			"createFailed": "❌ **Gewinnspiel konnte nicht erstellt werden**\\n\\nFehler: {error}\\n\\nBitte versuche es später erneut.",
+			"invalidMessage": "❌ Ungültige Gewinnspielnachricht.",
+			"invalidId": "❌ Ungültige Gewinnspiel-ID.",
+			"notFound": "❌ Gewinnspiel nicht gefunden oder bereits beendet.",
+			"ended": "❌ Dieses Gewinnspiel ist bereits beendet.",
+			"roleRestriction": "❌ **Rollenbeschränkung**\\n\\nDieses Gewinnspiel ist auf die folgenden Rollen beschränkt:\\n{roles}\\n\\nDu benötigst alle diese Rollen für eine Teilnahme.",
+			"memberNotFoundDB": "❌ Mitglied nicht in der Datenbank gefunden. Bitte versuche es später erneut.",
+			"cannotEnterOwn": "❌ Du kannst nicht an deinem eigenen Gewinnspiel teilnehmen!",
+			"alreadyEntered": "❌ Du nimmst an diesem Gewinnspiel bereits teil!",
+			"finishOwnOnly": "❌ Du kannst nur deine eigenen Gewinnspiele beenden.",
+			"finishNotActive": "❌ Dieses Gewinnspiel ist nicht aktiv.",
+			"finishChannelError": "❌ Gewinnspielkanal konnte nicht abgerufen werden.",
+			"finishChannelNotConfigured": "❌ Gewinnspielkanal ist nicht konfiguriert.",
+			"finishChannelNotFound": "❌ Gewinnspielkanal nicht gefunden.",
+			"failed": "❌ Gewinnspielformular konnte nicht geöffnet werden: {error}"
+		}
+	},
+	"feedback": {
+		"modal": {
+			"title": "💬 Feedback senden",
+			"label": "Dein Feedback",
+			"placeholder": "Teile uns dein Feedback, deine Vorschläge oder Anliegen mit...",
+			"maxLength": 2000,
+			"anonymousLabel": "Anonym senden? (ja/nein)",
+			"anonymousPlaceholder": "ja oder nein (Standard: nein)"
+		},
+		"submitted": {
+			"title": "✅ Feedback gesendet!",
+			"description": "Danke für dein Feedback! Es wurde erfolgreich übermittelt.",
+			"anonymous": "\\n\\n🔒 Dein Feedback wurde anonym gesendet."
+		},
+		"errors": {
+			"invalid": "❌ **Ungültiges Feedback**\\n\\nDie Feedback-Nachricht darf nicht leer sein.",
+			"channelError": "❌ Feedback konnte nicht gesendet werden: Fehler beim Abrufen der Feedback-Kanal-Konfiguration.",
+			"channelNotConfigured": "❌ Feedback konnte nicht gesendet werden: Feedback-Kanal ist nicht konfiguriert.",
+			"channelNotFound": "❌ Feedback konnte nicht gesendet werden: Feedback-Kanal nicht gefunden.",
+			"failed": "❌ Feedback-Formular konnte nicht geöffnet werden: {error}",
+			"submitFailed": "❌ **Feedback konnte nicht gesendet werden**\\n\\nFehler: {error}\\n\\nBitte versuche es später erneut."
+		}
+	},
+	"staffRating": {
+		"title": "📋 Teammitglied melden",
+		"selectStaff": "Teammitglied auswählen",
+		"selectStaffPlaceholder": "Wähle ein Teammitglied zum Melden aus...",
+		"button": "🛡️ Team-Bewertung",
+		"selectRatingPrompt": "Bewertung auswählen",
+		"selectCategoryPrompt": "Kategorie auswählen",
+		"status": {
+			"staff": "Teammitglied: {staff}",
+			"ratingPending": "Bewertung: Nicht ausgewählt",
+			"ratingSelected": "Bewertung: {rating}/5",
+			"categoryPending": "Kategorie: Nicht ausgewählt",
+			"categorySelected": "Kategorie: {category}"
+		},
+		"buttons": {
+			"continue": "Weiter",
+			"changeStaff": "Teammitglied wechseln"
+		},
+		"reviewModal": {
+			"titleApprove": "Team-Meldung genehmigen",
+			"titleReject": "Team-Meldung ablehnen",
+			"reasonLabel": "Begründung (erforderlich)",
+			"reasonPlaceholder": "Erkläre der meldenden Person deine Entscheidung…"
+		},
+		"embed": {
+			"staffDecision": "Team-Entscheidung",
+			"reviewedBy": "Geprüft von",
+			"statusApproved": "Genehmigt",
+			"statusRejected": "Abgelehnt"
+		},
+		"channelEmbed": {
+			"fieldStaffMember": "Teammitglied",
+			"fieldRating": "Bewertung",
+			"fieldCategory": "Kategorie",
+			"fieldReporter": "Meldende Person",
+			"fieldStatus": "Status",
+			"fieldDescription": "Beschreibung",
+			"anonymousReporter": "Anonym",
+			"pendingTitle": "🕒 Ausstehende Team-Meldung",
+			"pendingStatus": "Warten auf Admin-Freigabe",
+			"approveButton": "Meldung genehmigen",
+			"rejectButton": "Meldung ablehnen",
+			"titleApproved": "✅ Team-Meldung genehmigt",
+			"titleRejected": "❌ Team-Meldung abgelehnt",
+			"footerReportSuffix": "• Melde-ID: #{reportId}"
+		},
+		"modal": {
+			"title": "Teammitglied melden",
+			"ratingLabel": "Bewertung (1-5 Sterne)",
+			"ratingPlaceholder": "1 = Sehr schlecht, 5 = Ausgezeichnet",
+			"categoryLabel": "Kategorie",
+			"categoryPlaceholder": "helpful, unhelpful, abuse, slow_response, excellent, rude",
+			"descriptionLabel": "Beschreibung",
+			"descriptionPlaceholder": "Beschreibe bitte deine Erfahrung mit diesem Teammitglied...",
+			"anonymousLabel": "Anonym senden? (ja/nein)",
+			"anonymousPlaceholder": "ja oder nein (Standard: nein)"
+		},
+		"submitted": {
+			"title": "✅ Meldung gesendet",
+			"description": "Deine Meldung wurde erfolgreich gesendet und wartet nun auf die Admin-Freigabe. Wir benachrichtigen dich, sobald sie geprüft wurde.",
+			"anonymous": "\\n\\n🔒 Deine Meldung wurde anonym gesendet.",
+			"roleUpdated": "\\n\\n⭐ **Team-Bewertung aktualisiert**\\n{roleName}\\nBewertung: {rating}/5.00 ({totalReports} Meldungen)"
+		},
+		"dm": {
+			"approved": "Deine Meldung über {staff} in **{server}** wurde genehmigt.\\n\\n**Bewertung:** {rating}/5\\n**Kategorie:** {category}\\n**Feedback:** {description}\\n\\n**Anmerkung des Teams:** {reason}\\n\\nDanke, dass du dazu beiträgst, das Team verantwortlich zu halten.",
+			"rejected": "Deine Meldung über {staff} in **{server}** wurde nicht genehmigt.\\n\\n**Begründung:** {reason}\\n\\nDu kannst dich an das Admin-Team wenden, wenn du weitere Informationen hast.",
+			"embedTitleApproved": "✅ Meldung genehmigt",
+			"embedTitleRejected": "❌ Meldung nicht genehmigt"
+		},
+		"categories": {
+			"helpful": "👍 Hilfreich",
+			"unhelpful": "👎 Nicht hilfreich",
+			"abuse": "⚠️ Machtmissbrauch",
+			"slow_response": "⏰ Langsame Reaktion",
+			"excellent": "⭐ Ausgezeichneter Service",
+			"rude": "😠 Unhöfliches Verhalten"
+		},
+		"errors": {
+			"noStaffSelected": "❌ Bitte wähle ein Teammitglied zum Melden aus.",
+			"invalidRating": "❌ **Ungültige Bewertung**\\n\\nDie Bewertung muss eine Zahl zwischen 1 und 5 sein.",
+			"invalidCategory": "❌ **Ungültige Kategorie**\\n\\nBitte verwende eine davon: helpful, unhelpful, abuse, slow_response, excellent, rude",
+			"emptyDescription": "❌ **Beschreibung erforderlich**\\n\\nBitte beschreibe deine Erfahrung.",
+			"cannotReportSelf": "❌ Du kannst dich nicht selbst melden!",
+			"notStaff": "❌ Das ausgewählte Mitglied ist kein Teammitglied.",
+			"onCooldown": "❌ **Bewertungs-Abklingzeit**\\n\\nDu musst {time} {unit} warten, bevor du dieses Teammitglied erneut bewerten kannst.\\n\\nZuletzt bewertet: {lastRated}",
+			"submitFailed": "❌ **Meldung konnte nicht gesendet werden**\\n\\nFehler: {error}\\n\\nBitte versuche es später erneut.",
+			"notConfigured": "❌ Das Team-Bewertungssystem ist für diesen Server nicht konfiguriert.",
+			"noStaffConfigured": "❌ Die Teamrollen sind für diesen Server nicht konfiguriert. Bitte einen Admin, zuerst die Teamberechtigungen einzurichten.",
+			"noStaffAvailable": "❌ Derzeit konnten keine Teammitglieder gefunden werden. Bitte versuche es später erneut oder wende dich an einen Server-Admin.",
+			"missingRating": "❌ Bitte wähle vor dem Fortfahren eine Bewertung aus.",
+			"missingCategory": "❌ Bitte wähle vor dem Fortfahren eine Kategorie aus.",
+			"permissionDenied": "❌ **Zugriff verweigert**\\n\\nDu benötigst Admin-Berechtigungen, um Team-Meldungen zu genehmigen oder abzulehnen.",
+			"reviewReasonRequired": "❌ Bitte gib eine Begründung für deine Entscheidung ein."
+		}
+	},
+	"contentCreator": {
+		"button": "🎬 Content Creator",
+		"list": {
+			"title": "🎬 Content Creator",
+			"description": "Bestätigte Content Creator dieses Servers:",
+			"none": "Noch keine bestätigten Content Creator.",
+			"applyButton": "Bewerben"
+		},
+		"dismiss": {
+			"button": "Content Creator verlassen",
+			"confirmTitle": "⚠️ Content-Creator-Rolle entfernen?",
+			"confirmDescription": "Du verlierst die Content-Creator-Rolle auf diesem Server. Du kannst dich später erneut bewerben, wenn das Team es erlaubt.\n\n**Bist du sicher?**",
+			"yes": "Ja, Rolle entfernen",
+			"no": "Nein, abbrechen",
+			"removed": "✅ Deine Content-Creator-Rolle wurde entfernt."
+		},
+		"reviewModal": {
+			"titleApprove": "Bewerbung genehmigen",
+			"titleReject": "Bewerbung ablehnen",
+			"reasonLabel": "Begründung (erforderlich)",
+			"reasonPlaceholder": "Erkläre der bewerbenden Person deine Entscheidung…"
+		},
+		"embed": {
+			"staffDecision": "Team-Entscheidung",
+			"reviewedBy": "Geprüft von",
+			"reviewedBySystem": "Automatisch (doppeltes TikTok)",
+			"statusApproved": "Genehmigt",
+			"statusRejected": "Abgelehnt"
+		},
+		"channelEmbed": {
+			"pendingTitle": "🕒 Content-Creator-Bewerbung ausstehend",
+			"pendingDescription": "{user} hat Content-Creator-Zugriff angefragt.",
+			"pendingStatus": "Warten auf Admin-Freigabe",
+			"fieldTiktok": "TikTok-Benutzername",
+			"fieldStatus": "Status",
+			"fieldApplicantReason": "Begründung",
+			"buttonApprove": "Genehmigen",
+			"buttonReject": "Ablehnen",
+			"titleApproved": "✅ Content-Creator-Bewerbung genehmigt",
+			"titleRejected": "❌ Content-Creator-Bewerbung abgelehnt",
+			"descriptionReviewed": "{mention} • TikTok: @{tiktok}",
+			"footerAppSuffix": "• Bewerbungs-ID: #{appId}",
+			"liveTitle": "🔴 Content Creator ist LIVE",
+			"liveDescription": "{mention} ist jetzt live auf TikTok!",
+			"liveWatchButton": "LIVE auf TikTok ansehen",
+			"autoRejectTitle": "⛔ Content-Creator-Bewerbung automatisch abgelehnt",
+			"autoRejectDescription": "{mention} • TikTok: @{tiktok}",
+			"autoRejectStatus": "Automatisch abgelehnt (Duplikat / Identitätsmissbrauch)",
+			"autoRejectReviewReason": "Duplikat oder Identitätsmissbrauch: Dieser TikTok-Benutzername ist bereits mit einem anderen Discord-Konto verknüpft.",
+			"fieldConflictingMember": "TikTok bereits verknüpft mit",
+			"autoRejectConflictPending": "Dieses Konto hat eine **ausstehende** Bewerbung für diesen TikTok-Namen.",
+			"autoRejectConflictApproved": "Dieses Konto ist ein **bestätigter** Content Creator mit diesem TikTok-Namen."
+		},
+		"modal": {
+			"title": "Als Content Creator bewerben",
+			"usernameLabel": "TikTok-Benutzername",
+			"usernamePlaceholder": "Beispiel: dansday",
+			"reasonLabel": "Warum möchtest du Content Creator werden?",
+			"reasonPlaceholder": "Erzähl uns kurz, warum du angenommen werden solltest..."
+		},
+		"submitted": "✅ Deine Content-Creator-Bewerbung für **{username}** wurde gesendet und wartet auf die Freigabe durch das Team.",
+		"dm": {
+			"approved": "Deine Bewerbung in **{server}** wurde genehmigt.\\n\\nTikTok: **{username}**\\nDeine Content-Creator-Rolle wurde zugewiesen.",
+			"rejected": "Deine Bewerbung in **{server}** wurde dieses Mal nicht genehmigt.\\n\\nTikTok: **{username}**\\n\\n**Begründung:** {reason}\\n\\nDu kannst dich nach der Abklingzeit erneut bewerben (falls dein Server eine verwendet).",
+			"embedTitleApproved": "✅ Content Creator genehmigt",
+			"embedTitleRejected": "❌ Content Creator nicht genehmigt"
+		},
+		"autoRejectApplicantReason": "Duplikat oder Identitätsmissbrauch: Dieser TikTok-Benutzername ist bereits mit einem anderen Discord-Konto verknüpft.",
+		"errors": {
+			"notConfigured": "❌ Die Aufnahme von Content Creators ist für diesen Server nicht konfiguriert.",
+			"alreadyCreator": "✅ Du hast die Content-Creator-Rolle auf diesem Server bereits.",
+			"invalidUsername": "❌ Der TikTok-Benutzername ist ungültig. Verwende nur Buchstaben, Zahlen, Punkte und Unterstriche.",
+			"reasonRequired": "❌ Bitte gib deine Begründung an, warum du Content Creator werden möchtest.",
+			"pendingExists": "❌ Du hast bereits eine ausstehende Content-Creator-Bewerbung.",
+			"cooldown": "❌ Du musst **{days} Tag(e)** warten, bevor du eine weitere Content-Creator-Bewerbung senden kannst.",
+			"submitFailed": "❌ Content-Creator-Bewerbung konnte nicht gesendet werden: {error}",
+			"permissionDenied": "❌ Du benötigst Admin-Berechtigungen, um Content-Creator-Bewerbungen zu genehmigen oder abzulehnen.",
+			"reviewReasonRequired": "❌ Bitte gib eine Begründung für deine Entscheidung ein."
+		}
+	},
+	"notifications": {
+		"button": "🔔 Benachrichtigungen",
+		"title": "🔔 Benachrichtigungseinstellungen",
+		"description": "Wähle aus, für welche Kanäle du Benachrichtigungen erhalten möchtest. Du wirst bei einer Benachrichtigung einzeln markiert.",
+		"selectPlaceholder": "Benachrichtigungskanäle auswählen...",
+		"updated": "✅ Deine Benachrichtigungseinstellungen wurden aktualisiert.",
+		"errors": {
+			"notConfigured": "❌ Benachrichtigungen sind für diesen Server nicht konfiguriert.",
+			"noRoles": "❌ Es sind noch keine Benachrichtigungskanäle eingerichtet. Bitte einen Admin, Benachrichtigungen im Dashboard zu konfigurieren."
+		}
+	},
+	"customSupporterRole": {
+		"create": {
+			"title": "💎 Eigene Supporter-Rolle erstellen",
+			"editTitle": "💎 Eigene Supporter-Rolle bearbeiten",
+			"nameLabel": "Rollenname",
+			"namePlaceholder": "Gib deinen eigenen Rollennamen ein...",
+			"colorLabel": "Rollenfarbe (Hex/Dezimal/Name)",
+			"colorPlaceholder": "#FF5733 oder 16729395 oder red (optional)",
+			"iconLabel": "Rollensymbol (Emoji oder Bild-URL)",
+			"iconPlaceholder": "🔥 oder https://example.com/icon.png (optional)"
+		},
+		"existing": {
+			"title": "💎 Eigene Supporter-Rolle",
+			"description": "Du hast bereits eine eigene Rolle: **{roleName}**\\n\\nWähle eine Aktion:",
+			"currentRole": "📋 Aktuelle Rolle"
+		},
+		"created": {
+			"title": "✅ Eigene Supporter-Rolle erstellt!",
+			"description": "Deine eigene Rolle **{roleName}** wurde erstellt und dir zugewiesen!{iconWarning}",
+			"iconWarningBoost": "\\n\\n⚠️ **Eigenes Symbol nicht verfügbar:** Dieser Server benötigt Server-Boost Level 2 für eigene Rollensymbole (Bilder). Du kannst stattdessen ein Emoji verwenden!",
+			"iconWarningGeneric": "\\n\\n⚠️ **Hinweis:** Das Symbol konnte nicht gesetzt werden, die Rolle wurde aber erfolgreich erstellt.",
+			"roleDetails": "🎨 Rollendetails",
+			"roleDetailsValue": "**Name:** {name}\\n**Farbe:** {color}\\n**Symbol:** {icon}",
+			"role": "💎 Rolle",
+			"iconStatusSet": "Gesetzt",
+			"iconStatusNone": "Keines",
+			"iconStatusFailed": "Fehlgeschlagen (Rolle ohne Symbol erstellt)",
+			"iconStatusInvalid": "Ungültiges Format (Rolle ohne Symbol erstellt)"
+		},
+		"updated": {
+			"title": "✅ Eigene Supporter-Rolle aktualisiert!",
+			"description": "Deine eigene Rolle **{roleName}** wurde aktualisiert!{iconWarning}",
+			"iconWarningBoost": "\\n\\n⚠️ **Eigenes Symbol nicht verfügbar:** Dieser Server benötigt Server-Boost Level 2 für eigene Rollensymbole (Bilder). Du kannst stattdessen ein Emoji verwenden!",
+			"iconWarningGeneric": "\\n\\n⚠️ **Hinweis:** Das Symbol konnte nicht gesetzt werden, die Rolle wurde aber erfolgreich aktualisiert.",
+			"roleDetails": "🎨 Rollendetails",
+			"roleDetailsValue": "**Name:** {name}\\n**Farbe:** {color}\\n**Symbol:** {icon}",
+			"role": "💎 Rolle",
+			"iconStatusUnchanged": "Unverändert",
+			"iconStatusUpdated": "Aktualisiert",
+			"iconStatusRemoved": "Entfernt",
+			"iconStatusFailed": "Fehlgeschlagen (Rolle ohne Symbol aktualisiert)",
+			"iconStatusInvalid": "Ungültiges Format (Rolle ohne Symbol aktualisiert)"
+		},
+		"deleted": {
+			"title": "✅ Eigene Supporter-Rolle gelöscht",
+			"description": "Deine eigene Rolle **{roleName}** wurde gelöscht."
+		},
+		"buttons": {
+			"edit": "✏️ Rolle bearbeiten",
+			"delete": "🗑️ Rolle löschen"
+		},
+		"errors": {
+			"noRole": "❌ Du hast keine eigene Rolle zum Bearbeiten.",
+			"noRoleDelete": "❌ Du hast keine eigene Rolle zum Löschen.",
+			"invalidName": "❌ **Ungültiger Rollenname**\\n\\nDer Rollenname muss zwischen 1 und 100 Zeichen lang sein.",
+			"boostRequired": "❌ **Eigenes Symbol nicht verfügbar**\\n\\nDieser Server benötigt **Server-Boost Level 2** für eigene Rollensymbole (Bilder).\\n\\n💡 **Tipp:** Du kannst stattdessen ein **Emoji** verwenden (wie 🔥, ⭐ oder ein beliebiges eigenes Emoji), das keine Server-Boosts erfordert.",
+			"boostRequiredCreate": "❌ **Server-Boost erforderlich**\\n\\nDieser Server benötigt **Server-Boost Level 2**, um eigene Supporter-Rollen mit bestimmten Funktionen zu erstellen.\\n\\n💡 **Was du tun kannst:**\\n- Bitte die Serveradministratoren, den Server auf Level 2 zu boosten\\n- Oder wende dich an das Serverteam\\n\\n**Fehlerdetails:** {error}",
+			"createFailed": "❌ **Rolle konnte nicht erstellt werden**\\n\\nFehler: {error}\\n\\nStelle bitte sicher, dass:\\n- der Bot Rollen erstellen darf\\n- der Bot Rollen verwalten darf\\n- die Rollenpositions-Vorgaben gültig sind",
+			"updateFailed": "❌ **Rolle konnte nicht aktualisiert werden**\\n\\nFehler: {error}\\n\\nStelle bitte sicher, dass:\\n- der Bot Rollen verwalten darf\\n- die Rollenvorgaben gültig sind",
+			"deleteFailed": "❌ Rolle konnte nicht gelöscht werden: {error}",
+			"failed": "❌ Formular zum Erstellen der Rolle konnte nicht geöffnet werden: {error}",
+			"editFailed": "❌ Bearbeitungsformular konnte nicht geöffnet werden: {error}"
+		}
+	},
+	"questEnroll": {
+		"alreadyClaimed": "Bereits eingelöst",
+		"alreadyClaimedDescription": "Du hast dich bereits früher für **{questName}** angemeldet und deine Belohnung wurde schon eingelöst. Jede Quest kann pro Mitglied nur einmal eingelöst werden.",
+		"pendingTitle": "⏳ Läuft im Hintergrund",
+		"pendingDescription": "Ein Ergebnis-Embed wird in Kürze in diesem Kanal veröffentlicht.\n\nDein Token wird **nicht** in unserer Datenbank gespeichert.\n\n**Risiko:** Discord kann das mit diesem Token verknüpfte **Benutzerkonto** einschränken oder sperren; in einigen Fällen können auch der **Bot oder Server** betroffen sein. Das ist kein offizielles Discord-Verhalten — du hast entschieden, fortzufahren.",
+		"precheckNotFoundTitle": "Quest nicht auf diesem Konto",
+		"precheckNotFoundDescription": "Diese Quest ist für das mit deinem Token verknüpfte Discord-Konto nicht aufgeführt. Öffne **Discord → Quests**, nimm die Quest gegebenenfalls an und versuche es dann erneut.",
+		"precheckExpiredTitle": "Quest abgelaufen",
+		"precheckExpiredDescription": "Diese Quest ist für dieses Discord-Konto abgelaufen.",
+		"precheckRewardClaimedTitle": "Belohnung bereits eingelöst",
+		"precheckRewardClaimedDescription": "Die Belohnung für diese Quest wurde auf diesem **Discord-Konto** bereits eingelöst (zum Beispiel nach dem Abschluss auf einem anderen Server oder im Discord-Client). Auto-Enroll kann sie nicht erneut einlösen.",
+		"precheckCompletedTitle": "Quest bereits abgeschlossen",
+		"precheckCompletedDescription": "Die Quest-Ziele sind auf diesem **Discord-Konto** bereits abgeschlossen. Löse eine noch offene Belohnung unter **Discord → Quests** ein, falls du das noch nicht getan hast — Auto-Enroll kann keinen weiteren Fortschritt hinzufügen."
+	}
+}

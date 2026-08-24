@@ -23,7 +23,7 @@
 			icon: 'fa-language',
 			tone: 'brick',
 			title: 'Multi-language interface',
-			desc: 'Discord flows use buttons, selects, and clear labels. Pick English (en) or Indonesian (id) for the interface strings, with room to add more languages over time.'
+			desc: 'Discord flows use buttons, selects, and clear labels. Pick English (en), Indonesian (id), German (de) or Spanish (es) for the interface strings, with room to add more languages over time.'
 		},
 		{
 			icon: 'fa-chart-line',

@@ -74,7 +74,7 @@ Each member signs in to their own account on those same pages.
 - **Per-module toggles** - Enable or disable each feature per server.
 - **Greetings** - The join greeting sends itself. Only the first of your bots greets a shared server; resend from the panel.
 - **Embed builder** - Rich embeds with live preview, placeholders and images.
-- **Multi-language** - English and Indonesian for Discord buttons, selects and labels.
+- **Multi-language** - English, Indonesian, German and Spanish for Discord buttons, selects and labels.
 
 ### Community & engagement
 

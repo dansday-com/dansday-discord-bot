@@ -55,6 +55,11 @@ async function syncGuildData(guild) {
 			}
 		}
 
+		if (membersFetched && guild.available === false) {
+			membersFetched = false;
+			logger.log(`⚠️  Guild ${guild.name} is unavailable; treating member list as unreliable.`);
+		}
+
 		await guild.channels.fetch();
 		await guild.roles.fetch();
 

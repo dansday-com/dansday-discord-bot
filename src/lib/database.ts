@@ -750,7 +750,9 @@ export async function purgeExpiredDeletions(retentionDays: number = DELETION_RET
 		.where(sql`${schema.servers.deleted_at} IS NOT NULL AND ${schema.servers.deleted_at} <= UTC_TIMESTAMP() - INTERVAL ${sql.raw(String(days))} DAY`);
 
 	if (staleServers.length > PURGE_MAX_SERVERS_PER_RUN) {
-		logger.log(`⚠️  Retention purge found ${staleServers.length} expired server(s), over the ${PURGE_MAX_SERVERS_PER_RUN} cap; skipping and needs review`);
+		logger.log(
+			`⚠️  Retention purge found ${staleServers.length} expired server(s), over the ${PURGE_MAX_SERVERS_PER_RUN} cap; skipping server purge for manual review. Raise the cap or clear deleted_at to proceed.`
+		);
 		return { servers: 0, members: 0, skipped: true as const };
 	}
 
@@ -765,16 +767,16 @@ export async function purgeExpiredDeletions(retentionDays: number = DELETION_RET
 			sql`${schema.serverMembers.deleted_at} IS NOT NULL AND ${schema.serverMembers.deleted_at} <= UTC_TIMESTAMP() - INTERVAL ${sql.raw(String(days))} DAY`
 		);
 
-	if (staleMembers.length > PURGE_MAX_MEMBERS_PER_RUN) {
-		logger.log(`⚠️  Retention purge found ${staleMembers.length} expired member(s), over the ${PURGE_MAX_MEMBERS_PER_RUN} cap; skipping and needs review`);
-		return { servers: staleServers.length, members: 0, skipped: true as const };
+	const membersBatch = staleMembers.slice(0, PURGE_MAX_MEMBERS_PER_RUN);
+	if (staleMembers.length > membersBatch.length) {
+		logger.log(`ℹ️  Retention purge found ${staleMembers.length} expired member(s); purging ${membersBatch.length} this run, the rest follow next cycle.`);
 	}
 
-	for (const row of staleMembers) {
+	for (const row of membersBatch) {
 		await db.delete(schema.serverMembers).where(eq(schema.serverMembers.id, Number(row.id)));
 	}
 
-	return { servers: staleServers.length, members: staleMembers.length, skipped: false as const };
+	return { servers: staleServers.length, members: membersBatch.length, skipped: false as const };
 }
 
 export async function getServerIdsForPanel(panelId: number): Promise<number[]> {

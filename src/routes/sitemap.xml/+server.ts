@@ -2,6 +2,7 @@ import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
 import { listPublicServerSlugs } from '$lib/frontend/public/server-slug/index.js';
 import { parseMySQLDateTimeUtc } from '$lib/utils/datetime.js';
+import { TERMS_URL, PRIVACY_URL } from '$lib/legal.js';
 
 function escapeXml(unsafe: string): string {
 	return unsafe.replace(
@@ -49,7 +50,9 @@ export const GET: RequestHandler = async () => {
 
 	const staticPages = [
 		{ loc: `${baseUrl}/`, changefreq: 'weekly' as const, priority: 1.0, lastmod: new Date().toISOString() },
-		{ loc: `${baseUrl.replace(/\/$/, '')}/docs`, changefreq: 'monthly' as const, priority: 0.7, lastmod: new Date().toISOString() }
+		{ loc: `${baseUrl.replace(/\/$/, '')}/docs`, changefreq: 'monthly' as const, priority: 0.7, lastmod: new Date().toISOString() },
+		{ loc: TERMS_URL, changefreq: 'monthly' as const, priority: 0.5, lastmod: new Date().toISOString() },
+		{ loc: PRIVACY_URL, changefreq: 'monthly' as const, priority: 0.5, lastmod: new Date().toISOString() }
 	];
 
 	const allUrlData = [...staticPages, ...publicPageRows];

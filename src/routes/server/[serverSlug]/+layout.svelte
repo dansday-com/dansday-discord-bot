@@ -7,7 +7,7 @@
 	let { data, children }: LayoutProps = $props();
 </script>
 
-<div class="m-root">
+<div class="m-root" data-theme="dansday">
 	<div class="m-blob m-blob-1"></div>
 	<div class="m-blob m-blob-2"></div>
 	<div class="m-blob m-blob-3"></div>

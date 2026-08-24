@@ -7,14 +7,16 @@
 		state = 'idle',
 		shake = false,
 		closable = true,
+		leading,
 		onclose,
 		children
 	}: {
-		icon: string;
+		icon?: string;
 		title: string;
 		state?: 'idle' | 'win' | 'lose';
 		shake?: boolean;
 		closable?: boolean;
+		leading?: Snippet;
 		onclose: () => void;
 		children: Snippet;
 	} = $props();
@@ -28,7 +30,11 @@
 
 		<div class="mb-3.5 flex items-center justify-between">
 			<span class="text-base-content inline-flex items-center gap-2 text-[15px] font-extrabold">
-				<span class="animate-game-wobble text-[19px] text-[#d9a528]"><i class="fas {icon}"></i></span>{title}
+				{#if leading}
+					{@render leading()}
+				{:else if icon}
+					<span class="animate-game-wobble text-[19px] text-[#d9a528]"><i class="fas {icon}"></i></span>
+				{/if}{title}
 			</span>
 			{#if closable}
 				<button type="button" class="btn btn-ghost btn-sm btn-circle text-base-content/60" aria-label="Close" onclick={onclose}>

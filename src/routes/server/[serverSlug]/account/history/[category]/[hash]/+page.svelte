@@ -3,7 +3,15 @@
 	import { effectLabel, effectIcon } from '$lib/items.js';
 	import { publicServerPath } from '$lib/url.js';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
+	import { EmptyState } from '$lib/frontend/components/public';
 	import type { PageProps } from './$types';
+
+	const TONE: Record<string, string> = {
+		win: '#2f8f4e',
+		lose: '#c0392b',
+		spend: '#d9a528',
+		neutral: 'var(--color-primary)'
+	};
 
 	let { data }: PageProps = $props();
 
@@ -247,43 +255,82 @@
 <svelte:head><title>{data.server.name || data.server.slug} Level History | {APP_NAME} Discord Bot</title></svelte:head>
 
 {#if data.historyTotal === 0}
-	<div class="m-members-empty">
-		{#if data.tab === 'level'}No level XP earned yet. Chat or join voice to start earning.{:else if data.tab === 'items'}No item activity yet. Buy or use an
-			item to start.{:else if data.tab === 'assets'}No asset trades yet. Invest XP from the Assets tab to start.{:else}No activity yet.{/if}
-	</div>
+	<EmptyState
+		icon="fa-clock-rotate-left"
+		message="No activity yet"
+		hint={data.tab === 'level'
+			? 'No level XP earned yet. Chat or join voice to start earning.'
+			: data.tab === 'items'
+				? 'No item activity yet. Buy or use an item to start.'
+				: data.tab === 'assets'
+					? 'No asset trades yet. Invest XP from the Assets tab to start.'
+					: undefined}
+		boxed
+	/>
 {:else}
-	<ul class="m-hist">
+	<ul class="flex list-none flex-col gap-[7px] p-0">
 		{#each data.pagedHistory as h (h.id)}
 			{@const l = h.kind === 'level' ? levelLine(h) : h.kind === 'asset' ? assetLine(h) : h.kind === 'minigame' ? minigameLine(h) : line(h)}
-			<li class="m-hist-row m-hist-row--{l.tone}">
-				<span class="m-hist-icon"><i class="fas {l.icon}"></i></span>
-				<span class="m-hist-body">
-					<span class="m-hist-title">{l.title}</span>
+			<li
+				class="border-base-300 bg-base-100 flex items-center gap-2.5 rounded-xl border border-l-[3px] px-3 py-2.5"
+				style="--tone: {TONE[l.tone] ?? TONE.neutral}; border-left-color: var(--tone);"
+			>
+				<span
+					class="grid size-[34px] shrink-0 place-items-center rounded-[9px] border text-[15px] text-(--tone)"
+					style="background: color-mix(in srgb, var(--tone) 14%, transparent); border-color: color-mix(in srgb, var(--tone) 32%, transparent);"
+				>
+					<i class="fas {l.icon}"></i>
+				</span>
+
+				<span class="flex min-w-0 flex-auto flex-col gap-px">
+					<span class="text-base-content truncate text-[13px] font-semibold">{l.title}</span>
 					{#if (l as any).badges?.length}
-						<span class="m-hist-badges">
+						<span class="mt-[3px] mb-px flex flex-wrap gap-[5px]">
 							{#each (l as any).badges as b}
-								<span class="m-hist-badge"><i class="fas {b.icon}"></i>{b.text}</span>
+								<span
+									class="border-base-300 bg-base-200 text-base-content/60 inline-flex items-center gap-1 rounded-full border px-[7px] py-[3px] text-[10px] leading-none font-bold"
+								>
+									<i class="fas {b.icon}"></i>{b.text}
+								</span>
 							{/each}
 						</span>
 					{/if}
-					<span class="m-hist-time">{h.at ? ago(h.at) : ''}</span>
+					<span class="text-base-content/60 text-[11px]">{h.at ? ago(h.at) : ''}</span>
 				</span>
-				{#if l.deltaLabel}<span class="m-hist-delta m-hist-delta--{l.tone}">{l.deltaLabel}</span>{/if}
+
+				{#if l.deltaLabel}
+					<span class="shrink-0 text-xs font-extrabold whitespace-nowrap text-(--tone) tabular-nums">{l.deltaLabel}</span>
+				{/if}
 			</li>
 		{/each}
 	</ul>
+
 	{#if data.totalPages > 1}
-		<div class="m-hist-pager">
+		<div class="mt-3.5 flex items-center justify-center gap-3.5">
 			{#if data.historyPage > 1}
-				<a class="m-hist-page-btn" href="{base}?page={data.historyPage - 1}" data-sveltekit-preload-data="hover"><i class="fas fa-chevron-left"></i></a>
+				<a
+					class="btn btn-sm btn-square border-base-300 bg-base-200 size-9"
+					href="{base}?page={data.historyPage - 1}"
+					data-sveltekit-preload-data="hover"
+					aria-label="Previous page"
+				>
+					<i class="fas fa-chevron-left"></i>
+				</a>
 			{:else}
-				<span class="m-hist-page-btn m-hist-page-btn--off"><i class="fas fa-chevron-left"></i></span>
+				<span class="btn btn-sm btn-square border-base-300 bg-base-200 btn-disabled size-9" aria-hidden="true"><i class="fas fa-chevron-left"></i></span>
 			{/if}
-			<span class="m-hist-page-info">{data.historyPage} / {data.totalPages}</span>
+			<span class="text-base-content/60 text-[13px] font-bold tabular-nums">{data.historyPage} / {data.totalPages}</span>
 			{#if data.historyPage < data.totalPages}
-				<a class="m-hist-page-btn" href="{base}?page={data.historyPage + 1}" data-sveltekit-preload-data="hover"><i class="fas fa-chevron-right"></i></a>
+				<a
+					class="btn btn-sm btn-square border-base-300 bg-base-200 size-9"
+					href="{base}?page={data.historyPage + 1}"
+					data-sveltekit-preload-data="hover"
+					aria-label="Next page"
+				>
+					<i class="fas fa-chevron-right"></i>
+				</a>
 			{:else}
-				<span class="m-hist-page-btn m-hist-page-btn--off"><i class="fas fa-chevron-right"></i></span>
+				<span class="btn btn-sm btn-square border-base-300 bg-base-200 btn-disabled size-9" aria-hidden="true"><i class="fas fa-chevron-right"></i></span>
 			{/if}
 		</div>
 	{/if}

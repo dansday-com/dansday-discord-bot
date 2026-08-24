@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { onDestroy, onMount } from 'svelte';
+	import { EmptyState, MetricTabs, PODIUM_HEIGHT, RankAvatar, RANK_STYLES } from '$lib/frontend/components/public';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -140,11 +141,14 @@
 		return '';
 	}
 
+	function rowSub(r: any) {
+		return isItemsGroup || isMinigamesGroup ? itemsSub(r, metric) : `Level ${r.level ?? 0}`;
+	}
+
 	function barWidthPct(r: any, m: string) {
 		const v = metricValueNumber(r, m);
 		if (v <= 0) return 0;
-		const pct = Math.round((v / maxValue) * 100);
-		return Math.max(1, pct);
+		return Math.max(1, Math.round((v / maxValue) * 100));
 	}
 
 	function animateToCurrentValues(fromZero = false) {
@@ -238,17 +242,73 @@
 		} catch (_) {}
 	}
 
-	async function setMetric(m: Metric) {
+	async function setMetric(m: string) {
 		if (m === metric) return;
-		metric = m;
+		metric = m as Metric;
 		await loadCurrent();
 	}
 
-	async function setPeriod(p: Period) {
+	async function setPeriod(p: string) {
 		if (p === period) return;
-		period = p;
+		period = p as Period;
 		await loadCurrent();
 	}
+
+	const periodTabs = $derived(PERIODS.map((p) => ({ id: p.id as string, label: p.label, active: period === p.id })));
+
+	const metricTabs = $derived([
+		{ id: 'xp', label: 'XP', icon: 'fa-star', active: metric === 'xp' },
+		{ id: 'chat', label: 'Chat', icon: 'fa-message', active: metric === 'chat' },
+		{ id: 'voice_total', label: 'Voice', icon: 'fa-microphone', active: isVoiceGroup },
+		{ id: 'video', label: 'Video', icon: 'fa-video', active: metric === 'video' },
+		{ id: 'streaming', label: 'Streaming', icon: 'fa-tv', active: metric === 'streaming' },
+		{ id: 'items_bounty_total', label: 'Items', icon: 'fa-store', active: isItemsGroup },
+		{ id: 'minigames_gamble_net', label: 'Minigames', icon: 'fa-dice', active: isMinigamesGroup }
+	]);
+
+	const itemsGroupTabs = $derived([
+		{ id: 'items_steal_total', label: 'Stealer', icon: 'fa-hand', active: isStealGroup },
+		{ id: 'items_bomb_total', label: 'Bomber', icon: 'fa-bomb', active: isBombGroup },
+		{ id: 'items_bounty_total', label: 'Bounties', icon: 'fa-crosshairs', active: isBountyGroup },
+		{ id: 'items_gift_give', label: 'Gifts', icon: 'fa-gift', active: isGiftGroup }
+	]);
+
+	const itemsLeafTabs = $derived.by(() => {
+		if (isStealGroup)
+			return [
+				{ id: 'items_steal_total', label: 'XP stolen', icon: 'fa-coins', active: metric === 'items_steal_total' },
+				{ id: 'items_steal_rate', label: 'Success rate', icon: 'fa-percent', active: metric === 'items_steal_rate' },
+				{ id: 'items_steal_big', label: 'Big steal', icon: 'fa-trophy', active: metric === 'items_steal_big' }
+			];
+		if (isBombGroup)
+			return [
+				{ id: 'items_bomb_total', label: 'XP destroyed', icon: 'fa-coins', active: metric === 'items_bomb_total' },
+				{ id: 'items_bomb_rate', label: 'Success rate', icon: 'fa-percent', active: metric === 'items_bomb_rate' },
+				{ id: 'items_bomb_big', label: 'Big bomb', icon: 'fa-trophy', active: metric === 'items_bomb_big' }
+			];
+		if (isBountyGroup)
+			return [
+				{ id: 'items_bounty_total', label: 'Total bounties', icon: 'fa-skull', active: metric === 'items_bounty_total' },
+				{ id: 'items_bounty_claimer', label: 'Claimer', icon: 'fa-coins', active: metric === 'items_bounty_claimer' },
+				{ id: 'items_bounty_give', label: 'Giver', icon: 'fa-crosshairs', active: metric === 'items_bounty_give' }
+			];
+		return [
+			{ id: 'items_gift_give', label: 'Given', icon: 'fa-gift', active: metric === 'items_gift_give' },
+			{ id: 'items_gift_receive', label: 'Received', icon: 'fa-coins', active: metric === 'items_gift_receive' }
+		];
+	});
+
+	const minigamesLeafTabs = $derived([
+		{ id: 'minigames_gamble_net', label: 'Net XP', icon: 'fa-coins', active: metric === 'minigames_gamble_net' },
+		{ id: 'minigames_gamble_ratio', label: 'Win ratio', icon: 'fa-percent', active: metric === 'minigames_gamble_ratio' },
+		{ id: 'minigames_gamble_big', label: 'Big win', icon: 'fa-trophy', active: metric === 'minigames_gamble_big' }
+	]);
+
+	const voiceTabs = $derived([
+		{ id: 'voice_total', label: 'Total', icon: 'fa-layer-group', active: metric === 'voice_total' },
+		{ id: 'voice_active', label: 'Active', icon: 'fa-microphone-lines', active: metric === 'voice_active' },
+		{ id: 'voice_afk', label: 'AFK', icon: 'fa-moon', active: metric === 'voice_afk' }
+	]);
 
 	const podiumOrder = $derived(
 		top3.length >= 3
@@ -259,30 +319,6 @@
 				]
 			: top3.map((r: any, i: number) => ({ r, rank: i + 1 }))
 	);
-
-	const rankColors: Record<number, string> = {
-		1: '#FFD700',
-		2: '#C0C0C0',
-		3: '#CD7F32'
-	};
-
-	const rankGlow: Record<number, string> = {
-		1: 'rgba(255,215,0,0.45)',
-		2: 'rgba(192,192,192,0.3)',
-		3: 'rgba(205,127,50,0.3)'
-	};
-
-	const rankGradients: Record<number, string> = {
-		1: 'linear-gradient(135deg, #f6d365 0%, #fda085 100%)',
-		2: 'linear-gradient(135deg, #e0e0e0 0%, #a0aec0 100%)',
-		3: 'linear-gradient(135deg, #f093fb 0%, #cd7f32 100%)'
-	};
-
-	const podiumHeights: Record<number, string> = {
-		1: '88px',
-		2: '60px',
-		3: '44px'
-	};
 </script>
 
 <svelte:head>
@@ -296,152 +332,53 @@
 <div class="m-leaderboard-subhead m-stats-subhead">
 	<p>
 		Leaderboard
-		<span class="m-metric-pill">{metricLabel(metric)}</span>
-		<span class="m-metric-pill">{PERIODS.find((p) => p.id === period)?.label ?? 'All time'}</span>
+		<span class="badge badge-sm bg-primary/20 border-primary/35 text-accent font-semibold">{metricLabel(metric)}</span>
+		<span class="badge badge-sm bg-primary/20 border-primary/35 text-accent font-semibold">
+			{PERIODS.find((p) => p.id === period)?.label ?? 'All time'}
+		</span>
 		{#if streamConnected}
-			<span class="m-metric-pill m-metric-pill--live">
-				<span class="m-live-dot"></span>
+			<span class="badge badge-sm bg-primary/20 border-primary/35 text-accent gap-1.5 font-semibold">
+				<span class="bg-primary size-1.5 animate-pulse rounded-full" aria-hidden="true"></span>
 				Live
 			</span>
 		{/if}
 	</p>
 </div>
 
-<div class="m-period">
-	{#each PERIODS as p}
-		<button class="m-period-btn {period === p.id ? 'm-period-btn--active' : ''}" onclick={() => setPeriod(p.id)}>
-			{p.label}
-		</button>
-	{/each}
-</div>
-
-<div class="m-tabs">
-	<button class="m-tab {metric === 'xp' ? 'm-tab--active' : ''}" onclick={() => setMetric('xp')}>
-		<i class="fas fa-star"></i> XP
-	</button>
-	<button class="m-tab {metric === 'chat' ? 'm-tab--active' : ''}" onclick={() => setMetric('chat')}>
-		<i class="fas fa-message"></i> Chat
-	</button>
-	<button class="m-tab {isVoiceGroup ? 'm-tab--active' : ''}" onclick={() => setMetric('voice_total')}>
-		<i class="fas fa-microphone"></i> Voice
-	</button>
-	<button class="m-tab {metric === 'video' ? 'm-tab--active' : ''}" onclick={() => setMetric('video')}>
-		<i class="fas fa-video"></i> Video
-	</button>
-	<button class="m-tab {metric === 'streaming' ? 'm-tab--active' : ''}" onclick={() => setMetric('streaming')}>
-		<i class="fas fa-tv"></i> Streaming
-	</button>
-	<button class="m-tab {isItemsGroup ? 'm-tab--active' : ''}" onclick={() => setMetric('items_bounty_total')}>
-		<i class="fas fa-store"></i> Items
-	</button>
-	<button class="m-tab {isMinigamesGroup ? 'm-tab--active' : ''}" onclick={() => setMetric('minigames_gamble_net')}>
-		<i class="fas fa-dice"></i> Minigames
-	</button>
-</div>
+<MetricTabs tabs={periodTabs} label="Time period" onselect={setPeriod} />
+<MetricTabs tabs={metricTabs} label="Metric" onselect={setMetric} />
 
 {#if isItemsGroup}
-	<div class="m-tabs m-tabs--sub">
-		<button class="m-tab m-tab--sm {isStealGroup ? 'm-tab--active' : ''}" onclick={() => setMetric('items_steal_total')}>
-			<i class="fas fa-hand"></i> Stealer
-		</button>
-		<button class="m-tab m-tab--sm {isBombGroup ? 'm-tab--active' : ''}" onclick={() => setMetric('items_bomb_total')}>
-			<i class="fas fa-bomb"></i> Bomber
-		</button>
-		<button class="m-tab m-tab--sm {isBountyGroup ? 'm-tab--active' : ''}" onclick={() => setMetric('items_bounty_total')}>
-			<i class="fas fa-crosshairs"></i> Bounties
-		</button>
-		<button class="m-tab m-tab--sm {isGiftGroup ? 'm-tab--active' : ''}" onclick={() => setMetric('items_gift_give')}>
-			<i class="fas fa-gift"></i> Gifts
-		</button>
-	</div>
-	{#if isStealGroup}
-		<div class="m-tabs m-tabs--sub m-tabs--sub2">
-			<button class="m-tab m-tab--sm {metric === 'items_steal_total' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_steal_total')}>
-				<i class="fas fa-coins"></i> XP stolen
-			</button>
-			<button class="m-tab m-tab--sm {metric === 'items_steal_rate' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_steal_rate')}>
-				<i class="fas fa-percent"></i> Success rate
-			</button>
-			<button class="m-tab m-tab--sm {metric === 'items_steal_big' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_steal_big')}>
-				<i class="fas fa-trophy"></i> Big steal
-			</button>
-		</div>
-	{:else if isBombGroup}
-		<div class="m-tabs m-tabs--sub m-tabs--sub2">
-			<button class="m-tab m-tab--sm {metric === 'items_bomb_total' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_bomb_total')}>
-				<i class="fas fa-coins"></i> XP destroyed
-			</button>
-			<button class="m-tab m-tab--sm {metric === 'items_bomb_rate' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_bomb_rate')}>
-				<i class="fas fa-percent"></i> Success rate
-			</button>
-			<button class="m-tab m-tab--sm {metric === 'items_bomb_big' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_bomb_big')}>
-				<i class="fas fa-trophy"></i> Big bomb
-			</button>
-		</div>
-	{:else if isBountyGroup}
-		<div class="m-tabs m-tabs--sub m-tabs--sub2">
-			<button class="m-tab m-tab--sm {metric === 'items_bounty_total' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_bounty_total')}>
-				<i class="fas fa-skull"></i> Total bounties
-			</button>
-			<button class="m-tab m-tab--sm {metric === 'items_bounty_claimer' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_bounty_claimer')}>
-				<i class="fas fa-coins"></i> Claimer
-			</button>
-			<button class="m-tab m-tab--sm {metric === 'items_bounty_give' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_bounty_give')}>
-				<i class="fas fa-crosshairs"></i> Giver
-			</button>
-		</div>
-	{:else}
-		<div class="m-tabs m-tabs--sub m-tabs--sub2">
-			<button class="m-tab m-tab--sm {metric === 'items_gift_give' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_gift_give')}>
-				<i class="fas fa-gift"></i> Given
-			</button>
-			<button class="m-tab m-tab--sm {metric === 'items_gift_receive' ? 'm-tab--active' : ''}" onclick={() => setMetric('items_gift_receive')}>
-				<i class="fas fa-coins"></i> Received
-			</button>
-		</div>
-	{/if}
+	<MetricTabs tabs={itemsGroupTabs} size="sm" depth={1} label="Item category" onselect={setMetric} />
+	<MetricTabs tabs={itemsLeafTabs} size="sm" depth={2} label="Item metric" onselect={setMetric} />
 {/if}
 
 {#if isMinigamesGroup}
-	<div class="m-tabs m-tabs--sub">
-		<button class="m-tab m-tab--sm m-tab--active" onclick={() => setMetric('minigames_gamble_net')}>
-			<i class="fas fa-dice"></i> Gamble
-		</button>
-	</div>
-	<div class="m-tabs m-tabs--sub m-tabs--sub2">
-		<button class="m-tab m-tab--sm {metric === 'minigames_gamble_net' ? 'm-tab--active' : ''}" onclick={() => setMetric('minigames_gamble_net')}>
-			<i class="fas fa-coins"></i> Net XP
-		</button>
-		<button class="m-tab m-tab--sm {metric === 'minigames_gamble_ratio' ? 'm-tab--active' : ''}" onclick={() => setMetric('minigames_gamble_ratio')}>
-			<i class="fas fa-percent"></i> Win ratio
-		</button>
-		<button class="m-tab m-tab--sm {metric === 'minigames_gamble_big' ? 'm-tab--active' : ''}" onclick={() => setMetric('minigames_gamble_big')}>
-			<i class="fas fa-trophy"></i> Big win
-		</button>
-	</div>
+	<MetricTabs
+		tabs={[{ id: 'minigames_gamble_net', label: 'Gamble', icon: 'fa-dice', active: true }]}
+		size="sm"
+		depth={1}
+		label="Minigame"
+		onselect={setMetric}
+	/>
+	<MetricTabs tabs={minigamesLeafTabs} size="sm" depth={2} label="Minigame metric" onselect={setMetric} />
 {/if}
 
 {#if isVoiceGroup}
-	<div class="m-tabs m-tabs--sub">
-		<button class="m-tab m-tab--sm {metric === 'voice_total' ? 'm-tab--active' : ''}" onclick={() => setMetric('voice_total')}>
-			<i class="fas fa-layer-group"></i> Total
-		</button>
-		<button class="m-tab m-tab--sm {metric === 'voice_active' ? 'm-tab--active' : ''}" onclick={() => setMetric('voice_active')}>
-			<i class="fas fa-microphone-lines"></i> Active
-		</button>
-		<button class="m-tab m-tab--sm {metric === 'voice_afk' ? 'm-tab--active' : ''}" onclick={() => setMetric('voice_afk')}>
-			<i class="fas fa-moon"></i> AFK
-		</button>
-	</div>
+	<MetricTabs tabs={voiceTabs} size="sm" depth={1} label="Voice metric" onselect={setMetric} />
 {/if}
 
 {#if top3.length > 0}
-	<section class="m-podium-section">
-		<div class="m-podium-stage">
+	<section class="mb-7">
+		<div class="flex items-end justify-center">
 			{#each podiumOrder as { r, rank }}
-				<div class="m-podium-col m-podium-col--{rank}" class:m-mounted={mounted}>
+				<div
+					class="relative flex min-w-0 flex-1 flex-col items-center transition-all duration-500 ease-out {mounted
+						? 'translate-y-0 opacity-100'
+						: 'translate-y-6 opacity-0'}"
+				>
 					{#if rank === 1}
-						<div class="m-crown">
+						<div class="animate-crown-float relative z-10 -mb-1.5 w-11 drop-shadow-[0_2px_8px_rgba(255,215,0,0.6)]">
 							<svg viewBox="0 0 48 32" fill="none" xmlns="http://www.w3.org/2000/svg">
 								<path d="M4 28L10 10L18 20L24 4L30 20L38 10L44 28H4Z" fill="#FFD700" stroke="#FFA500" stroke-width="1.5" stroke-linejoin="round" />
 								<circle cx="4" cy="28" r="3" fill="#FFD700" />
@@ -452,32 +389,27 @@
 						</div>
 					{/if}
 
-					<div class="m-avatar-wrap m-avatar-wrap--{rank}">
-						<div class="m-avatar-ring" style="--ring-color: {rankColors[rank]}; --ring-glow: {rankGlow[rank]};">
-							<div class="m-avatar-img">
-								{#if r.avatar}
-									<img src={r.avatar} alt={displayName(r)} />
-								{:else}
-									<div class="m-avatar-fallback">{displayName(r).charAt(0).toUpperCase()}</div>
-								{/if}
-							</div>
-						</div>
-						<div class="m-rank-badge" style="background: {rankGradients[rank]}; color: #111;">
-							{rank}
-						</div>
+					<div class="mb-2.5">
+						<RankAvatar src={r.avatar} name={displayName(r)} size={rank === 1 ? 84 : 66} {rank} badge />
 					</div>
 
-					<div class="m-podium-info">
-						<div class="m-podium-name" title={displayName(r)}>{displayName(r)}</div>
-						<div class="m-podium-score" style="color: {rankColors[rank]};">
+					<div class="mb-2 w-full min-w-0 overflow-hidden px-1 text-center">
+						<div class="text-base-content mb-0.5 truncate text-xs font-bold" title={displayName(r)}>{displayName(r)}</div>
+						<div
+							class="flex items-baseline justify-center gap-[3px] text-lg font-black whitespace-nowrap tabular-nums"
+							style="color: {RANK_STYLES[rank].color};"
+						>
 							{metricValueAnimated(r, metric)}
-							<span class="m-podium-unit">{metricUnit(metric)}</span>
+							<span class="text-[10px] font-semibold opacity-70">{metricUnit(metric)}</span>
 						</div>
-						<div class="m-podium-level">{isItemsGroup || isMinigamesGroup ? itemsSub(r, metric) : `Level ${r.level ?? 0}`}</div>
+						<div class="text-base-content/40 mt-0.5 text-[10px]">{rowSub(r)}</div>
 					</div>
 
-					<div class="m-podium-block" style="height: {podiumHeights[rank]}; background: {rankGradients[rank]};">
-						<span class="m-podium-block-num">#{rank}</span>
+					<div
+						class="flex w-full items-center justify-center rounded-t-[10px] opacity-85"
+						style="height: {PODIUM_HEIGHT[rank]}; background: {RANK_STYLES[rank].gradient};"
+					>
+						<span class="text-[11px] font-black text-black/50">#{rank}</span>
 					</div>
 				</div>
 			{/each}
@@ -486,42 +418,47 @@
 {/if}
 
 {#if rest.length > 0}
-	<section class="m-list-section">
-		<div class="m-list-header">
+	<section class="card border-base-300 bg-base-100/85 overflow-hidden border shadow-sm">
+		<div class="border-base-300 text-base-content flex items-center justify-between border-b px-4 py-3 text-[13px] font-bold sm:px-5">
 			<span>Rankings</span>
-			<span class="m-list-count">{rows.length.toLocaleString()} members</span>
+			<span class="text-base-content/45 text-[11px] font-medium">{rows.length.toLocaleString()} members</span>
 		</div>
-		<div class="m-list">
+		<ul class="list">
 			{#each rest as r, i (r.discord_member_id)}
-				<div class="m-list-row" class:m-mounted={mounted} style="animation-delay: {i * 40}ms">
-					<div class="m-list-rank">#{i + 4}</div>
-					<div class="m-list-avatar">
+				<li class="list-row border-base-300 items-center gap-3 rounded-none border-b px-3 py-2.5 sm:px-4">
+					<span class="text-base-content/45 w-8 shrink-0 text-right text-[11px] font-bold tabular-nums">#{i + 4}</span>
+
+					<div class="border-base-300 bg-base-300 size-10 shrink-0 overflow-hidden rounded-full border">
 						{#if r.avatar}
-							<img src={r.avatar} alt={displayName(r)} />
+							<img src={r.avatar} alt={displayName(r)} class="size-full object-cover" loading="lazy" />
 						{:else}
-							<div class="m-list-avatar-fallback">{displayName(r).charAt(0).toUpperCase()}</div>
+							<div class="text-base-content/55 grid size-full place-items-center text-[15px] font-extrabold">
+								{displayName(r).charAt(0).toUpperCase()}
+							</div>
 						{/if}
 					</div>
-					<div class="m-list-info">
-						<div class="m-list-name" title={displayName(r)}>{displayName(r)}</div>
-						<div class="m-list-sub">{isItemsGroup || isMinigamesGroup ? itemsSub(r, metric) : `Level ${r.level ?? 0}`}</div>
-						<div class="m-list-bar-track">
-							<div class="m-list-bar-fill" style="width: {barWidthPct(r, metric)}%"></div>
+
+					<div class="list-col-grow min-w-0">
+						<div class="text-base-content truncate text-[13px] font-semibold" title={displayName(r)}>{displayName(r)}</div>
+						<div class="text-base-content/45 mb-1.5 text-[10px]">{rowSub(r)}</div>
+						<div class="bg-base-content/15 h-[3px] overflow-hidden rounded-full">
+							<div
+								class="from-secondary to-primary h-full rounded-full bg-linear-to-r transition-[width] duration-700 ease-out"
+								style="width: {barWidthPct(r, metric)}%"
+							></div>
 						</div>
 					</div>
-					<div class="m-list-score">
+
+					<span class="text-base-content shrink-0 text-right text-sm font-extrabold tabular-nums">
 						{metricValueAnimated(r, metric)}
-						<span class="m-list-unit">{metricUnit(metric)}</span>
-					</div>
-				</div>
+						<span class="text-base-content/40 text-[9px] font-semibold">{metricUnit(metric)}</span>
+					</span>
+				</li>
 			{/each}
-		</div>
+		</ul>
 	</section>
 {/if}
 
 {#if rows.length === 0}
-	<div class="m-empty">
-		<i class="fas fa-trophy" style="font-size: 48px; opacity: 0.2;"></i>
-		<p>No data yet</p>
-	</div>
+	<EmptyState icon="fa-trophy" message="No data yet" />
 {/if}

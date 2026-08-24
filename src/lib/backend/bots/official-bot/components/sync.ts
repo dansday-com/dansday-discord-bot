@@ -7,6 +7,10 @@ import { translate } from '../i18n.js';
 let client = null;
 let botId = null;
 
+const MEMBER_LEAVE_DELETE_DELAY_MS = 30000;
+const RETENTION_PURGE_INTERVAL_MS = 6 * 60 * 60 * 1000;
+const MEMBER_FETCH_MIN_RATIO = 0.9;
+
 async function findBotByToken(token) {
 	try {
 		if (process.env.BOT_ID) {
@@ -29,15 +33,31 @@ async function syncGuildData(guild) {
 	try {
 		if (!botId) {
 			logger.log(`⚠️  Bot ID not set, skipping sync for guild: ${guild.name}`);
-			return;
+			return false;
 		}
 
 		await guild.fetch();
 
+		let membersFetched = true;
 		try {
 			await guild.members.fetch();
 		} catch (memberFetchError) {
+			membersFetched = false;
 			logger.log(`⚠️  Could not fetch all members for ${guild.name}: ${memberFetchError.message}. Continuing with member count: ${guild.memberCount}`);
+		}
+
+		if (membersFetched) {
+			const expected = Number(guild.memberCount) || 0;
+			const cached = guild.members.cache.size;
+			if (expected > 0 && cached < expected * MEMBER_FETCH_MIN_RATIO) {
+				membersFetched = false;
+				logger.log(`⚠️  Member fetch looks incomplete for ${guild.name}: cached ${cached} of ${expected}. Treating as unreliable.`);
+			}
+		}
+
+		if (membersFetched && guild.available === false) {
+			membersFetched = false;
+			logger.log(`⚠️  Guild ${guild.name} is unavailable; treating member list as unreliable.`);
 		}
 
 		await guild.channels.fetch();
@@ -47,7 +67,7 @@ async function syncGuildData(guild) {
 
 		if (!serverData) {
 			logger.log(`⚠️  Failed to sync server info for ${guild.name}`);
-			return;
+			return false;
 		}
 
 		const serverId = serverData.id;
@@ -82,13 +102,19 @@ async function syncGuildData(guild) {
 		} catch (error) {}
 
 		const members = Array.from(guild.members.cache.values()).filter((member) => !member.user.bot);
-		await db.syncMembers(serverId, members);
+		if (membersFetched) {
+			await db.syncMembers(serverId, members);
+		} else {
+			logger.log(`⏸️  Skipped member sync for ${guild.name}: member list incomplete, keeping stored members`);
+		}
 
 		logger.log(
 			`✅ Synced server: ${guild.name} (${guild.memberCount} members, ${categories.length} categories, ${channels.length} channels, ${roles.length} roles)`
 		);
+		return true;
 	} catch (error) {
 		logger.log(`❌ Error syncing guild data for ${guild.name}: ${error.message}`);
+		return false;
 	}
 }
 
@@ -100,14 +126,61 @@ async function syncAllGuilds() {
 		logger.log(`🔄 Official bot sync started: ${guilds.size} server(s)`);
 
 		let completed = 0;
+		let failed = 0;
 		for (const [, guild] of guilds) {
-			await syncGuildData(guild);
-			completed++;
+			const ok = await syncGuildData(guild);
+			if (ok) completed++;
+			else failed++;
 		}
 
 		logger.log(`✅ Official bot sync completed: ${completed}/${guilds.size} server(s)`);
+
+		if (failed > 0) {
+			logger.log(`⏸️  ${failed} guild(s) failed to sync, skipping stale server cleanup this cycle`);
+		} else {
+			await reapDepartedGuilds(guilds);
+		}
+
+		await runRetentionPurge();
 	} catch (error) {
 		logger.log(`❌ Error syncing all guilds: ${error.message}`);
+	}
+}
+
+async function reapDepartedGuilds(guilds) {
+	if (!botId) return;
+
+	if (guilds.size === 0) {
+		logger.log('⏸️  No guilds in cache, skipping stale server cleanup to avoid deleting live data');
+		return;
+	}
+
+	const unavailable = Array.from(guilds.values()).filter((g) => g.available === false);
+	if (unavailable.length > 0) {
+		logger.log(`⏸️  ${unavailable.length} guild(s) unavailable, skipping stale server cleanup this cycle`);
+		return;
+	}
+
+	try {
+		const stale = await db.markServersDeletedForBotExcept(botId, Array.from(guilds.keys()));
+		if (stale.length > 0) {
+			logger.log(
+				`🕗 ${stale.length} server(s) the bot is no longer in, scheduled for deletion in ${db.DELETION_RETENTION_DAYS} days: ${stale.map((s) => s.name || s.discord_server_id).join(', ')}`
+			);
+		}
+	} catch (error) {
+		logger.log(`❌ Error scheduling stale server deletion: ${error.message}`);
+	}
+}
+
+async function runRetentionPurge() {
+	try {
+		const purged = await db.purgeExpiredDeletions();
+		if (purged.servers > 0 || purged.members > 0) {
+			logger.log(`🗑️  Retention purge: removed ${purged.servers} server(s) and ${purged.members} member(s) past ${db.DELETION_RETENTION_DAYS} days`);
+		}
+	} catch (error) {
+		logger.log(`❌ Error running retention purge: ${error.message}`);
 	}
 }
 
@@ -249,10 +322,32 @@ async function init(discordClient, botToken) {
 		logger.log('ℹ️  Note: Booster status (is_booster, booster_since) will be updated automatically when member events occur');
 	}, 2000);
 
+	setInterval(() => {
+		if (!botId) return;
+		runRetentionPurge();
+	}, RETENTION_PURGE_INTERVAL_MS);
+
 	client.on('guildCreate', async (guild) => {
 		logger.log(`🆕 Bot joined new guild: ${guild.name}`);
 		await syncGuildData(guild);
 		await sendJoinGreeting(guild);
+	});
+
+	client.on('guildDelete', async (guild) => {
+		if (!botId) return;
+		if (guild.available === false || guild.unavailable === true) {
+			logger.log(`⏸️  Guild unavailable (Discord outage), keeping data: ${guild.name || guild.id}`);
+			return;
+		}
+
+		try {
+			const marked = await db.markOfficialServerDeletedByDiscordId(botId, guild.id);
+			if (marked) {
+				logger.log(`🕗 Bot removed from guild, data scheduled for deletion in ${db.DELETION_RETENTION_DAYS} days: ${guild.name || guild.id}`);
+			}
+		} catch (error) {
+			logger.log(`❌ Failed to schedule deletion for ${guild.name || guild.id}: ${error.message}`);
+		}
 	});
 
 	client.on('channelCreate', async (channel) => {
@@ -341,7 +436,40 @@ async function init(discordClient, botToken) {
 
 	client.on('guildMemberRemove', async (member) => {
 		if (member.guild && botId) {
+			if (member.guild.available === false) {
+				logger.log(`⏸️  Guild unavailable, not marking member ${member.id} deleted`);
+				return;
+			}
+
 			await syncGuildData(member.guild);
+
+			if (!member.user?.bot) {
+				const guildName = member.guild.name;
+				const memberTag = member.user?.tag || member.id;
+				setTimeout(async () => {
+					try {
+						if (member.guild.members.cache.has(member.id)) {
+							logger.log(`↩️  Member ${memberTag} rejoined ${guildName} before the grace delay, keeping data`);
+							return;
+						}
+
+						const stillGone = await member.guild.members.fetch(member.id).catch(() => null);
+						if (stillGone) {
+							logger.log(`↩️  Member ${memberTag} is still in ${guildName}, keeping data`);
+							return;
+						}
+
+						const serverData = await db.getServerByDiscordId(botId, member.guild.id);
+						if (!serverData) return;
+						const marked = await db.markMemberDeletedByDiscordId(serverData.id, member.id);
+						if (marked) {
+							logger.log(`🕗 Member left, data scheduled for deletion in ${db.DELETION_RETENTION_DAYS} days: ${memberTag} in ${guildName}`);
+						}
+					} catch (error) {
+						await logger.log(`⚠️ Failed to delete member ${member.id} on leave: ${error.message}`);
+					}
+				}, MEMBER_LEAVE_DELETE_DELAY_MS);
+			}
 		}
 	});
 

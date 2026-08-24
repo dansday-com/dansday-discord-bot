@@ -68,9 +68,11 @@ CREATE TABLE IF NOT EXISTS servers (
     discord_created_at DATETIME NULL,
     vanity_url_code VARCHAR(255) NULL,
     invite_code VARCHAR(255) NULL,
+    deleted_at DATETIME NULL DEFAULT NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
     UNIQUE KEY uq_servers_bot_discord (bot_id, discord_server_id),
+    INDEX idx_servers_deleted_at (deleted_at),
     INDEX idx_servers_bot_id (bot_id),
     FOREIGN KEY (bot_id) REFERENCES bots(id) ON DELETE CASCADE
 );
@@ -237,9 +239,11 @@ CREATE TABLE IF NOT EXISTS server_members (
     is_booster BOOLEAN DEFAULT FALSE,
     booster_since DATETIME NULL,
     language VARCHAR(10) DEFAULT 'en',
+    deleted_at DATETIME NULL DEFAULT NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
     UNIQUE KEY unique_server_member (server_id, discord_member_id),
+    INDEX idx_server_members_deleted_at (deleted_at),
     FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE
 );
 

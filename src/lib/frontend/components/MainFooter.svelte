@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { APP_DOMAIN, APP_URL } from '$lib/frontend/panelServer.js';
+	import { legalNav } from '$lib/legal.js';
 	type Palette = 'light' | 'dark';
 
 	let { palette = 'light' as Palette }: { palette?: Palette } = $props();
@@ -10,6 +11,14 @@
 		<p class="m-footer-copy">
 			Copyright © {new Date().getFullYear()}
 			<a href={APP_URL}>{APP_DOMAIN}</a>. All rights reserved.
+		</p>
+		<p class="m-footer-legal">
+			{#each legalNav as link, i (link.href)}
+				{#if i > 0}
+					<span class="m-footer-legal-sep" aria-hidden="true">·</span>
+				{/if}
+				<a href={link.href}>{link.label}</a>
+			{/each}
 		</p>
 		<p class="m-footer-open">
 			Free and open source on

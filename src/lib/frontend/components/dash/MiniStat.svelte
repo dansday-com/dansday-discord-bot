@@ -15,9 +15,9 @@
 </script>
 
 <div
-	class="border-base-300 bg-base-200/50 flex flex-col items-center gap-1 rounded-xl border px-2 py-3 text-center transition-colors hover:border-[var(--tone)]"
+	class="border-base-300 bg-base-200/50 flex min-w-0 flex-col items-center gap-0.5 rounded-xl border px-1.5 py-2.5 text-center transition-colors hover:border-(--tone) sm:gap-1 sm:px-2 sm:py-3"
 >
-	<i class="fas {icon} text-sm text-[var(--tone)]"></i>
-	<span class="text-[0.95rem] font-extrabold tabular-nums {valueTone}">{value}</span>
-	<span class="text-base-content/45 text-[9px] leading-tight font-semibold tracking-[0.06em] uppercase">{label}</span>
+	<i class="fas {icon} text-xs text-(--tone) sm:text-sm"></i>
+	<span class="w-full text-sm font-extrabold break-all tabular-nums sm:text-[0.95rem] {valueTone}">{value}</span>
+	<span class="text-base-content/45 w-full text-[9px] leading-tight font-semibold tracking-[0.04em] uppercase">{label}</span>
 </div>

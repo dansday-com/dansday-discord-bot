@@ -238,7 +238,7 @@
 <svelte:head><title>{data.server.name || data.server.slug} Account | {APP_NAME} Discord Bot</title></svelte:head>
 
 {#snippet listGroup(lists: typeof offenseLists)}
-	<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+	<div class="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
 		{#each lists as list}
 			<div class="flex flex-col gap-2">
 				<span class="text-base-content/70 inline-flex items-center gap-2 text-xs font-bold">
@@ -250,7 +250,7 @@
 	</div>
 {/snippet}
 
-<div class="flex flex-col gap-4 sm:gap-5">
+<div class="flex flex-col gap-3 sm:gap-4 lg:gap-5">
 	<StatCard icon="fa-star" title="Total XP" tone="amber">
 		<StatHero label="lifetime XP" value={fmt(p.totalXp)} countTo={p.totalXp} />
 		{#if xpSourceBars.length > 0}
@@ -414,7 +414,7 @@
 		</StatCard>
 	{/if}
 
-	<DashGrid cols={2}>
+	<DashGrid cols={2} align="start">
 		<StatCard icon="fa-crosshairs" title="Your PvP record" tone="rose">
 			<div>
 				<div class="text-base-content/60 mb-2 flex items-baseline justify-between gap-2 text-xs font-semibold">

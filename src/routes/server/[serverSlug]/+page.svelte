@@ -185,7 +185,7 @@
 	<p>Statistics</p>
 </div>
 
-<div class="mb-5">
+<div class="mb-3 sm:mb-4 lg:mb-5">
 	<StatStrip items={strip} />
 </div>
 

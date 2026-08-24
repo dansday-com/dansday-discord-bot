@@ -253,7 +253,7 @@
 	</p>
 </div>
 
-<div class="space-y-4 sm:space-y-6">
+<div class="space-y-3 sm:space-y-4 lg:space-y-5">
 	<DashGrid cols={4}>
 		{#each headline as tile}
 			<KpiTile icon={tile.icon} label={tile.label} value={tile.value} tone={tile.tone} />

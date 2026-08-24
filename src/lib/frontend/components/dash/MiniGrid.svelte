@@ -16,6 +16,6 @@
 	} as const;
 </script>
 
-<div class="grid gap-2.5 {COLS[cols]}">
+<div class="grid gap-2 sm:gap-2.5 {COLS[cols]}">
 	{@render children()}
 </div>

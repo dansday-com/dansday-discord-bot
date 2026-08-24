@@ -3,9 +3,11 @@
 
 	let {
 		cols = 'auto',
+		align = 'stretch',
 		children
 	}: {
 		cols?: 'auto' | 1 | 2 | 3 | 4;
+		align?: 'stretch' | 'start';
 		children: Snippet;
 	} = $props();
 
@@ -18,6 +20,6 @@
 	} as const;
 </script>
 
-<div class="grid items-start gap-4 sm:gap-5 {COLS[cols]}">
+<div class="grid gap-3 sm:gap-4 lg:gap-5 {COLS[cols]} {align === 'start' ? 'items-start' : 'items-stretch'}">
 	{@render children()}
 </div>

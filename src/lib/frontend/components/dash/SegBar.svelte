@@ -22,9 +22,9 @@
 
 <div>
 	{#if head}
-		<div class="text-base-content/60 mb-2 flex items-baseline justify-between gap-2.5 text-xs font-semibold">
-			<span>{head}</span>
-			{#if meta}<span class="text-primary/85 text-[11px] font-bold tabular-nums">{meta}</span>{/if}
+		<div class="text-base-content/60 mb-1.5 flex items-baseline justify-between gap-2 text-xs font-semibold">
+			<span class="min-w-0 truncate">{head}</span>
+			{#if meta}<span class="text-primary/85 shrink-0 text-[11px] font-bold tabular-nums">{meta}</span>{/if}
 		</div>
 	{/if}
 
@@ -38,9 +38,9 @@
 	</div>
 
 	{#if legend.length > 0}
-		<div class="text-base-content/55 mt-2 flex flex-wrap gap-x-4 gap-y-1.5 text-[10px] font-semibold">
+		<div class="text-base-content/55 mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[10px] font-semibold">
 			{#each legend as seg}
-				<span class="inline-flex items-center gap-1.5">
+				<span class="inline-flex min-w-0 items-center gap-1.5">
 					<span class="size-2 shrink-0 rounded-sm" style="background: {seg.color};"></span>{seg.label}
 				</span>
 			{/each}

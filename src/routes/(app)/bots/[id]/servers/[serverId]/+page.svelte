@@ -199,7 +199,7 @@
 	<title>{o.name} — Overview | {APP_NAME} Discord Bot</title>
 </svelte:head>
 
-<div class="space-y-4 sm:space-y-6">
+<div class="space-y-3 sm:space-y-4 lg:space-y-5">
 	<DashGrid>
 		{#each cards as card}
 			<StatCard icon={card.icon} title={card.title} tone={card.tone}>

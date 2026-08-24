@@ -302,7 +302,7 @@ export const terms: LegalDoc = {
 			blocks: [
 				{
 					kind: 'text',
-					text: 'You may stop using the Service at any time by removing the bot from your server, which deletes that server’s stored configuration and member records. We may suspend or terminate access if you breach these terms, create risk, or if required by law or Discord. Provisions that should survive, such as disclaimers, limitations, and indemnity, will survive termination.'
+					text: 'You may stop using the Service at any time by removing the bot from your server, which stops all further collection. Data already stored is not erased by that alone; see the Privacy Policy for how deletion works and how to request it. We may suspend or terminate access if you breach these terms, create risk, or if required by law or Discord. Provisions that should survive, such as disclaimers, limitations, and indemnity, will survive termination.'
 				}
 			]
 		},
@@ -362,9 +362,13 @@ export const privacy: LegalDoc = {
 					items: [
 						'Your username and email address, used to identify you and to send account email.',
 						'A bcrypt hash of your password. We never store the password itself.',
-						'The IP address used to register, kept to detect abuse and duplicate accounts.',
+						'Your most recent IP address, recorded at registration and overwritten on each successful sign-in, kept to detect abuse and duplicate accounts. Only the latest one is stored, and it is visible to the superadmin who operates the bot.',
 						'Which servers you own or were invited to, and your staff tier in each.'
 					]
+				},
+				{
+					kind: 'text',
+					text: 'Sign-in activity, including failed attempts, is written to the operational log with the username and IP address so that abuse and brute-force attempts can be spotted. Public endpoints are rate limited by IP, which is held only briefly for that purpose and is not written to the database.'
 				},
 				{
 					kind: 'text',
@@ -534,7 +538,15 @@ export const privacy: LegalDoc = {
 			blocks: [
 				{
 					kind: 'text',
-					text: 'Records are tied to the server they belong to. Removing the bot from a server, or deleting that server from the panel, cascades through the database and removes its members, levels, items, tasks, assets, logs and settings. Deleting a panel account removes the account and everything owned by it.'
+					text: 'Removing the bot from a Discord server stops it collecting anything further, but it does not by itself erase what was already stored. That server’s configuration and member records stay in the database until they are deleted explicitly.'
+				},
+				{
+					kind: 'text',
+					text: 'Deleting a bot from the panel does erase them. Records are chained to the bot by database constraints, so removing it cascades through every server under it and takes their members, levels, items, tasks, assets, logs and settings with it. Deleting a panel account likewise removes the account and what is owned by it.'
+				},
+				{
+					kind: 'text',
+					text: 'If you want a server’s stored data removed without deleting the bot, or your own member record removed after leaving a server, contact us and we will delete it.'
 				},
 				{
 					kind: 'list',
@@ -543,7 +555,7 @@ export const privacy: LegalDoc = {
 						'Wiki page reads are cached for about 10 minutes.',
 						'Sessions expire on sign-out or after inactivity.',
 						'Depleted items are purged automatically.',
-						'A member who leaves a server can be removed from that server’s records on request.'
+						'A member who leaves a Discord server keeps their stored record until it is deleted on request.'
 					]
 				},
 				{
@@ -574,7 +586,7 @@ export const privacy: LegalDoc = {
 			blocks: [
 				{
 					kind: 'text',
-					text: 'Depending on where you live, you may have rights to access, correct, delete, or export your personal data, or to object to certain processing. Contact us to exercise them. For data tied to a specific server, the server owner controls the module that collects it, so asking them to disable it or to remove your record is often the fastest route.'
+					text: 'Depending on where you live, you may have rights to access, correct, delete, or export your personal data, or to object to certain processing. Contact us to exercise them; deletion of an individual member record is handled by us on request rather than through a panel control. A server owner can switch off the modules that collect data, and can take public pages dark, which stops further collection and hides existing records from public view.'
 				}
 			]
 		},

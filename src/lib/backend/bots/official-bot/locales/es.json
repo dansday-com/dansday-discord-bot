@@ -1,0 +1,492 @@
+{
+	"menu": {
+		"title": "📋 Menú del bot {botName}",
+		"description": "Selecciona una función con los botones de abajo:",
+		"noAccess": "❌ No tienes acceso a ninguna función.",
+		"button": "📋 Menú",
+		"statistics": "🌐 Estadísticas",
+		"account": "👤 Cuenta"
+	},
+	"interface": {
+		"panel": {
+			"title": "Panel del bot {botName}",
+			"description": "Haz clic en **Menú** para acceder a las funciones del bot según los permisos de tu rol.",
+			"sent": "✅ ¡Interfaz del bot enviada a {channel}!",
+			"setupHasOwnerAccount": "✅ Interfaz del bot enviada a {channel}. Este servidor ya tiene una cuenta de propietario: inicia sesión en el panel web. No se creó ninguna invitación nueva.",
+			"setupSignInLinkLine": "[**Haz clic aquí para abrir el panel**]({url})",
+			"setupOpenPanelButton": "Abrir panel",
+			"setupOwnerInviteReady": "✅ Interfaz del bot enviada a {channel}.\n\nSolo tú puedes ver esto. Los enlaces de invitación de propietario sin usar caducan **24 horas** después de crearse.\n\n[**Haz clic aquí para registrarte como propietario**]({url})",
+			"setupOwnerInviteButton": "Abrir registro",
+			"setupOwnerInviteEmbedTitle": "Registro de propietario",
+			"setupNotOwnerTitle": "Permiso denegado",
+			"setupNotOwnerBody": "Solo el **propietario del servidor** puede usar `/setup`.",
+			"setupNotTextChannelTitle": "Canal no válido",
+			"setupNotTextChannelBody": "Selecciona un **canal de texto**.",
+			"joinTitle": "¡Gracias por añadir {botName}!",
+			"joinBody": "Ejecuta `/setup` para crear los canales y terminar la configuración.",
+			"joinAskAi": "¿No sabes por dónde empezar? Menciona a {botMention} y pregunta sin más: lee la documentación y puede guiarte en la configuración.",
+			"joinDocsButton": "Documentación",
+			"joinSupportButton": "Servidor de soporte",
+			"setupChannelsCreated": "Se crearon **{count}** canal(es) nuevo(s).",
+			"setupChannelsAllPresent": "Todos los canales ya existen; no hay nada nuevo que crear.",
+			"setupWarnNoBotConfig": "⚠️ Interfaz enviada, pero la configuración del bot no está disponible.",
+			"setupWarnNoServer": "⚠️ Interfaz enviada, pero no se encontró el registro del servidor para generar la invitación.",
+			"setupWarnNoBaseUrl": "⚠️ Interfaz enviada, pero BASE_URL no está configurada: no se puede generar el enlace de invitación.",
+			"error": "❌ No se pudo enviar la interfaz: {error}"
+		}
+	},
+	"common": {
+		"errors": {
+			"featureDisabled": "❌ Esta función está desactivada en este servidor. Un administrador puede activarla en el panel de configuración del bot.",
+			"memberNotFound": "❌ No se pudo obtener la información del miembro.",
+			"unknownButton": "❌ Interacción de botón desconocida.",
+			"buttonError": "❌ **Error de botón**: Se produjo un error al procesar tu clic.\\n\\nInténtalo de nuevo o contacta con un administrador.",
+			"modalError": "❌ **Error de formulario**: Se produjo un error al procesar tu envío.\\n\\nInténtalo de nuevo o contacta con un administrador.",
+			"selectionError": "❌ **Error de selección**: Se produjo un error al procesar tu selección.\\n\\nInténtalo de nuevo o contacta con un administrador."
+		},
+		"timeUnits": {
+			"hour": "hora",
+			"hours": "horas",
+			"day": "día",
+			"days": "días"
+		}
+	},
+	"permissions": {
+		"supporterRoleDenied": {
+			"title": "🔒 **Ventaja para colaboradores**",
+			"description": "Tener tu propio rol personalizado con nombre y color es una ventaja para colaboradores. Necesita uno de estos roles:\\n{roles}",
+			"footer": "Pregunta a un administrador del servidor cómo convertirte en colaborador."
+		},
+		"creatorApplyDenied": {
+			"title": "🔒 **La solicitud aún no está abierta para ti**",
+			"description": "Para solicitar ser creador de contenido necesitas uno de estos roles:\\n{roles}",
+			"footer": "Aún puedes consultar la lista de creadores. Pregunta a un administrador del servidor cómo obtener un rol de miembro."
+		},
+		"denied": {
+			"title": "❌ **Permiso denegado**",
+			"description": "Necesitas uno de los siguientes roles para usar **{action}**:\\n{roles}",
+			"footer": "Contacta con un administrador del servidor si crees que se trata de un error."
+		},
+		"ownerRequired": {
+			"title": "❌ **Se requiere el registro del propietario**",
+			"description": "El propietario del servidor debe registrar una cuenta en el panel web antes de que alguien pueda usar la función **{action}**."
+		},
+		"notConfigured": {
+			"title": "❌ **Permisos no configurados**",
+			"description": "El propietario o un administrador del servidor debe configurar los permisos de rol antes de que alguien pueda usar la función **{action}**."
+		}
+	},
+	"settings": {
+		"language": {
+			"title": "🌐 Configuración de idioma",
+			"description": "Selecciona tu idioma preferido:",
+			"current": "Idioma actual",
+			"select": "Seleccionar idioma",
+			"updated": "✅ ¡Idioma actualizado correctamente!",
+			"failed": "❌ No se pudo actualizar el idioma: {error}"
+		}
+	},
+	"leveling": {
+		"account": {
+			"link": "👤 Tu página de cuenta: {url}",
+			"noMember": "⚠️ Todavía no se te registra en este servidor. Envía un mensaje o entra en un canal de voz primero.",
+			"unavailable": "⚠️ Las páginas públicas no están disponibles para este servidor."
+		},
+		"errors": {
+			"notRegistered": "⚠️ Este servidor no está registrado en el bot. Realiza primero una sincronización.",
+			"createRecordFailed": "❌ No se pudo crear el registro del miembro. Inténtalo de nuevo."
+		}
+	},
+	"afk": {
+		"title": "⏸️ Establecer estado AFK",
+		"current": {
+			"title": "⏸️ Actualmente estás AFK",
+			"description": "**Estado:** {message}\\n**Duración:** {duration}",
+			"howToRemove": "💡 Cómo quitarlo",
+			"howToRemoveValue": "• Haz clic en el botón de abajo para quitar el AFK\\n• Envía cualquier mensaje (quita el AFK y te desilencia automáticamente)\\n• Al quitar el AFK se te desilenciará si el bot te había silenciado"
+		},
+		"set": {
+			"title": "✅ ¡Estado AFK establecido!",
+			"description": "Ahora estás marcado como AFK: **{message}**{voiceInfo}",
+			"howToRemove": "💡 Cómo quitarlo",
+			"howToRemoveValue": "• Envía cualquier mensaje (quita el AFK y te desilencia automáticamente)\\n• Haz clic en el botón AFK y quítalo (te desilenciará si el bot te había silenciado)\\n• Quitar el AFK te desilencia automáticamente si el bot te había silenciado",
+			"voiceMutedDeafened": "\\n\\nSe te silenciará y ensordecerá en voz.",
+			"voiceMutedOnly": "\\n\\nSe te silenciará en voz (sin ensordecer)."
+		},
+		"removed": {
+			"title": "✅ ¡Estado AFK quitado!",
+			"description": "¡Bienvenido de nuevo! Se ha quitado tu estado AFK."
+		},
+		"modal": {
+			"messageLabel": "Mensaje de AFK (opcional)",
+			"messagePlaceholder": "p. ej., Tomando un descanso, Estudiando, etc.",
+			"deafenLabel": "¿Ensordecer en voz? (sí/no, predeterminado: sí)",
+			"deafenPlaceholder": "sí o no (déjalo vacío para sí)"
+		},
+		"buttons": {
+			"remove": "🔄 Quitar AFK"
+		},
+		"errors": {
+			"disabledOnServer": "❌ El AFK está desactivado en este servidor. Un administrador puede activarlo en el panel de configuración del bot.",
+			"notAFK": "❌ Actualmente no estás AFK.",
+			"failed": "❌ No se pudo abrir el formulario de AFK: {error}",
+			"setFailed": "❌ **No se pudo establecer el AFK**\\n\\nError: {error}\\n\\nInténtalo de nuevo más tarde.",
+			"removeFailed": "❌ **No se pudo quitar el AFK**\\n\\nError: {error}\\n\\nInténtalo de nuevo más tarde."
+		},
+		"messages": {
+			"welcomeBack": "✅ ¡Bienvenido de nuevo, {member}! Se ha quitado tu estado AFK.",
+			"dmEmbedTitle": "📬 Te han mencionado",
+			"dmMentioned": "{sender} te mencionó en **{server}** · #{channel}\\n\\n**Mensaje:** {message}"
+		}
+	},
+	"giveaway": {
+		"create": {
+			"title": "🎉 Crear sorteo",
+			"step1Title": "**Paso 1 de 2: Seleccionar roles (opcional)**",
+			"step1Description": "Selecciona en el menú de abajo los roles que pueden participar en este sorteo. Déjalo vacío o haz clic en \"Continuar al formulario\" para permitir todos los roles.",
+			"roleSelectPlaceholder": "Selecciona los roles que pueden participar (opcional)...",
+			"continueButton": "Continuar al formulario"
+		},
+		"active": {
+			"title": "🎉 Sorteo activo encontrado",
+			"description": "Ya tienes un sorteo activo:\\n\\n**{title}**\\n**Premio:** {prize}\\n\\n¿Qué quieres hacer?",
+			"ends": "⏰ Termina"
+		},
+		"modal": {
+			"titleLabel": "Título",
+			"titlePlaceholder": "Introduce el título del sorteo...",
+			"prizeLabel": "Premio",
+			"prizePlaceholder": "¿Cuál es el premio?",
+			"durationLabel": "Duración (minutos)",
+			"durationPlaceholder": "p. ej., 60 para 1 hora, 1440 para 1 día",
+			"winnerCountLabel": "Número de ganadores",
+			"winnerCountPlaceholder": "¿Cuántos ganadores? (predeterminado: 1)",
+			"multipleEntriesLabel": "¿Se permiten varias participaciones? (sí/no)",
+			"multipleEntriesPlaceholder": "sí o no (predeterminado: no)"
+		},
+		"created": {
+			"title": "✅ ¡Sorteo creado!",
+			"description": "¡Tu sorteo se ha creado y publicado en {channel}!"
+		},
+		"entered": {
+			"title": "✅ ¡Participación registrada!",
+			"description": "¡Has entrado en el sorteo correctamente! ¡Mucha suerte! 🍀"
+		},
+		"buttons": {
+			"finish": "🏁 Finalizar sorteo"
+		},
+		"errors": {
+			"memberNotFound": "❌ No se pudo obtener la información del miembro.",
+			"activeExists": "❌ Ya tienes un sorteo activo. Finalízalo primero.",
+			"invalidTitle": "❌ **Sorteo no válido**\\n\\nEl título no puede estar vacío.",
+			"invalidPrize": "❌ **Sorteo no válido**\\n\\nEl premio no puede estar vacío.",
+			"invalidDuration": "❌ **Sorteo no válido**\\n\\nLa duración debe ser un número positivo (en minutos).",
+			"invalidWinnerCount": "❌ **Sorteo no válido**\\n\\nEl número de ganadores debe ser un número positivo.",
+			"channelNotConfigured": "❌ No se pudo crear el sorteo: el canal de sorteos no está configurado. Configúralo en el panel.",
+			"channelNotFound": "❌ No se pudo crear el sorteo: no se encontró el canal de sorteos.",
+			"channelError": "❌ No se pudo crear el sorteo: error al obtener la configuración del canal de sorteos.",
+			"createFailed": "❌ **No se pudo crear el sorteo**\\n\\nError: {error}\\n\\nInténtalo de nuevo más tarde.",
+			"invalidMessage": "❌ Mensaje de sorteo no válido.",
+			"invalidId": "❌ ID de sorteo no válido.",
+			"notFound": "❌ Sorteo no encontrado o ya finalizado.",
+			"ended": "❌ Este sorteo ya ha finalizado.",
+			"roleRestriction": "❌ **Restricción de roles**\\n\\nEste sorteo está restringido a los siguientes roles:\\n{roles}\\n\\nNecesitas todos estos roles para participar.",
+			"memberNotFoundDB": "❌ Miembro no encontrado en la base de datos. Inténtalo de nuevo más tarde.",
+			"cannotEnterOwn": "❌ ¡No puedes participar en tu propio sorteo!",
+			"alreadyEntered": "❌ ¡Ya has participado en este sorteo!",
+			"finishOwnOnly": "❌ Solo puedes finalizar tus propios sorteos.",
+			"finishNotActive": "❌ Este sorteo no está activo.",
+			"finishChannelError": "❌ No se pudo obtener el canal de sorteos.",
+			"finishChannelNotConfigured": "❌ El canal de sorteos no está configurado.",
+			"finishChannelNotFound": "❌ No se encontró el canal de sorteos.",
+			"failed": "❌ No se pudo abrir el formulario de sorteo: {error}"
+		}
+	},
+	"feedback": {
+		"modal": {
+			"title": "💬 Enviar comentarios",
+			"label": "Tus comentarios",
+			"placeholder": "Comparte tus comentarios, sugerencias o inquietudes...",
+			"maxLength": 2000,
+			"anonymousLabel": "¿Enviar de forma anónima? (sí/no)",
+			"anonymousPlaceholder": "sí o no (predeterminado: no)"
+		},
+		"submitted": {
+			"title": "✅ ¡Comentarios enviados!",
+			"description": "¡Gracias por tus comentarios! Se han enviado correctamente.",
+			"anonymous": "\\n\\n🔒 Tus comentarios se enviaron de forma anónima."
+		},
+		"errors": {
+			"invalid": "❌ **Comentarios no válidos**\\n\\nEl mensaje no puede estar vacío.",
+			"channelError": "❌ No se pudieron enviar los comentarios: error al obtener la configuración del canal de comentarios.",
+			"channelNotConfigured": "❌ No se pudieron enviar los comentarios: el canal de comentarios no está configurado.",
+			"channelNotFound": "❌ No se pudieron enviar los comentarios: no se encontró el canal de comentarios.",
+			"failed": "❌ No se pudo abrir el formulario de comentarios: {error}",
+			"submitFailed": "❌ **No se pudieron enviar los comentarios**\\n\\nError: {error}\\n\\nInténtalo de nuevo más tarde."
+		}
+	},
+	"staffRating": {
+		"title": "📋 Reportar a un miembro del staff",
+		"selectStaff": "Seleccionar miembro del staff",
+		"selectStaffPlaceholder": "Elige a un miembro del staff para reportar...",
+		"button": "🛡️ Valoración del staff",
+		"selectRatingPrompt": "Selecciona una valoración",
+		"selectCategoryPrompt": "Selecciona una categoría",
+		"status": {
+			"staff": "Staff: {staff}",
+			"ratingPending": "Valoración: sin seleccionar",
+			"ratingSelected": "Valoración: {rating}/5",
+			"categoryPending": "Categoría: sin seleccionar",
+			"categorySelected": "Categoría: {category}"
+		},
+		"buttons": {
+			"continue": "Continuar",
+			"changeStaff": "Cambiar de staff"
+		},
+		"reviewModal": {
+			"titleApprove": "Aprobar reporte de staff",
+			"titleReject": "Rechazar reporte de staff",
+			"reasonLabel": "Motivo (obligatorio)",
+			"reasonPlaceholder": "Explica tu decisión a quien lo reportó…"
+		},
+		"embed": {
+			"staffDecision": "Decisión del staff",
+			"reviewedBy": "Revisado por",
+			"statusApproved": "Aprobado",
+			"statusRejected": "Rechazado"
+		},
+		"channelEmbed": {
+			"fieldStaffMember": "Miembro del staff",
+			"fieldRating": "Valoración",
+			"fieldCategory": "Categoría",
+			"fieldReporter": "Autor del reporte",
+			"fieldStatus": "Estado",
+			"fieldDescription": "Descripción",
+			"anonymousReporter": "Anónimo",
+			"pendingTitle": "🕒 Reporte de staff pendiente",
+			"pendingStatus": "Pendiente de aprobación de un administrador",
+			"approveButton": "Aprobar reporte",
+			"rejectButton": "Rechazar reporte",
+			"titleApproved": "✅ Reporte de staff aprobado",
+			"titleRejected": "❌ Reporte de staff rechazado",
+			"footerReportSuffix": "• ID del reporte: #{reportId}"
+		},
+		"modal": {
+			"title": "Reportar a un miembro del staff",
+			"ratingLabel": "Valoración (1-5 estrellas)",
+			"ratingPlaceholder": "1 = Muy mala, 5 = Excelente",
+			"categoryLabel": "Categoría",
+			"categoryPlaceholder": "helpful, unhelpful, abuse, slow_response, excellent, rude",
+			"descriptionLabel": "Descripción",
+			"descriptionPlaceholder": "Describe tu experiencia con este miembro del staff...",
+			"anonymousLabel": "¿Enviar de forma anónima? (sí/no)",
+			"anonymousPlaceholder": "sí o no (predeterminado: no)"
+		},
+		"submitted": {
+			"title": "✅ Reporte enviado",
+			"description": "Tu reporte se ha enviado correctamente y está esperando la aprobación de un administrador. Te avisaremos cuando se haya revisado.",
+			"anonymous": "\\n\\n🔒 Tu reporte se envió de forma anónima.",
+			"roleUpdated": "\\n\\n⭐ **Valoración del staff actualizada**\\n{roleName}\\nValoración: {rating}/5.00 ({totalReports} reportes)"
+		},
+		"dm": {
+			"approved": "Tu reporte sobre {staff} en **{server}** fue aprobado.\\n\\n**Valoración:** {rating}/5\\n**Categoría:** {category}\\n**Comentarios:** {description}\\n\\n**Nota del staff:** {reason}\\n\\nGracias por ayudarnos a mantener al equipo a la altura.",
+			"rejected": "Tu reporte sobre {staff} en **{server}** no fue aprobado.\\n\\n**Motivo:** {reason}\\n\\nPuedes contactar con el equipo de administración si tienes más contexto que aportar.",
+			"embedTitleApproved": "✅ Reporte aprobado",
+			"embedTitleRejected": "❌ Reporte no aprobado"
+		},
+		"categories": {
+			"helpful": "👍 Útil",
+			"unhelpful": "👎 Poco útil",
+			"abuse": "⚠️ Abuso de poder",
+			"slow_response": "⏰ Respuesta lenta",
+			"excellent": "⭐ Servicio excelente",
+			"rude": "😠 Comportamiento grosero"
+		},
+		"errors": {
+			"noStaffSelected": "❌ Selecciona a un miembro del staff para reportar.",
+			"invalidRating": "❌ **Valoración no válida**\\n\\nLa valoración debe ser un número entre 1 y 5.",
+			"invalidCategory": "❌ **Categoría no válida**\\n\\nUsa una de estas: helpful, unhelpful, abuse, slow_response, excellent, rude",
+			"emptyDescription": "❌ **Descripción obligatoria**\\n\\nDescribe tu experiencia.",
+			"cannotReportSelf": "❌ ¡No puedes reportarte a ti mismo!",
+			"notStaff": "❌ El miembro seleccionado no forma parte del staff.",
+			"onCooldown": "❌ **Tiempo de espera de valoración**\\n\\nDebes esperar {time} {unit} antes de volver a valorar a este miembro del staff.\\n\\nÚltima valoración: {lastRated}",
+			"submitFailed": "❌ **No se pudo enviar el reporte**\\n\\nError: {error}\\n\\nInténtalo de nuevo más tarde.",
+			"notConfigured": "❌ El sistema de valoración del staff no está configurado en este servidor.",
+			"noStaffConfigured": "❌ Los roles del staff no están configurados en este servidor. Pide a un administrador que configure primero los permisos del staff.",
+			"noStaffAvailable": "❌ Ahora mismo no se pudo encontrar ningún miembro del staff. Inténtalo de nuevo más tarde o contacta con un administrador del servidor.",
+			"missingRating": "❌ Selecciona una valoración antes de continuar.",
+			"missingCategory": "❌ Selecciona una categoría antes de continuar.",
+			"permissionDenied": "❌ **Permiso denegado**\\n\\nNecesitas permisos de administrador para aprobar o rechazar reportes de staff.",
+			"reviewReasonRequired": "❌ Introduce un motivo para tu decisión."
+		}
+	},
+	"contentCreator": {
+		"button": "🎬 Creador de contenido",
+		"list": {
+			"title": "🎬 Creadores de contenido",
+			"description": "Creadores de contenido aprobados de este servidor:",
+			"none": "Todavía no hay creadores de contenido aprobados.",
+			"applyButton": "Solicitar"
+		},
+		"dismiss": {
+			"button": "Dejar de ser creador de contenido",
+			"confirmTitle": "⚠️ ¿Quitar el rol de creador de contenido?",
+			"confirmDescription": "Perderás el rol de creador de contenido en este servidor. Puedes volver a solicitarlo más adelante si el staff lo permite.\n\n**¿Seguro que quieres continuar?**",
+			"yes": "Sí, quitar el rol",
+			"no": "No, cancelar",
+			"removed": "✅ Se ha quitado tu rol de creador de contenido."
+		},
+		"reviewModal": {
+			"titleApprove": "Aprobar solicitud",
+			"titleReject": "Rechazar solicitud",
+			"reasonLabel": "Motivo (obligatorio)",
+			"reasonPlaceholder": "Explica tu decisión a quien lo solicitó…"
+		},
+		"embed": {
+			"staffDecision": "Decisión del staff",
+			"reviewedBy": "Revisado por",
+			"reviewedBySystem": "Automático (TikTok duplicado)",
+			"statusApproved": "Aprobada",
+			"statusRejected": "Rechazada"
+		},
+		"channelEmbed": {
+			"pendingTitle": "🕒 Solicitud de creador de contenido pendiente",
+			"pendingDescription": "{user} solicitó acceso como creador de contenido.",
+			"pendingStatus": "Pendiente de aprobación de un administrador",
+			"fieldTiktok": "Usuario de TikTok",
+			"fieldStatus": "Estado",
+			"fieldApplicantReason": "Motivo",
+			"buttonApprove": "Aprobar",
+			"buttonReject": "Rechazar",
+			"titleApproved": "✅ Solicitud de creador de contenido aprobada",
+			"titleRejected": "❌ Solicitud de creador de contenido rechazada",
+			"descriptionReviewed": "{mention} • TikTok: @{tiktok}",
+			"footerAppSuffix": "• ID de solicitud: #{appId}",
+			"liveTitle": "🔴 El creador de contenido está EN DIRECTO",
+			"liveDescription": "¡{mention} está en directo en TikTok!",
+			"liveWatchButton": "Ver EN DIRECTO en TikTok",
+			"autoRejectTitle": "⛔ Solicitud de creador de contenido rechazada automáticamente",
+			"autoRejectDescription": "{mention} • TikTok: @{tiktok}",
+			"autoRejectStatus": "Rechazada automáticamente (duplicado / suplantación)",
+			"autoRejectReviewReason": "Duplicado o suplantación: este usuario de TikTok ya está vinculado a otra cuenta de Discord.",
+			"fieldConflictingMember": "TikTok ya vinculado a",
+			"autoRejectConflictPending": "Esa cuenta tiene una solicitud **pendiente** con este usuario de TikTok.",
+			"autoRejectConflictApproved": "Esa cuenta es un creador de contenido **aprobado** que usa este usuario de TikTok."
+		},
+		"modal": {
+			"title": "Solicitar ser creador de contenido",
+			"usernameLabel": "Usuario de TikTok",
+			"usernamePlaceholder": "ejemplo: dansday",
+			"reasonLabel": "¿Por qué quieres ser creador de contenido?",
+			"reasonPlaceholder": "Cuéntanos brevemente por qué deberíamos aceptarte..."
+		},
+		"submitted": "✅ Tu solicitud de creador de contenido para **{username}** se envió y está esperando la aprobación del staff.",
+		"dm": {
+			"approved": "Tu solicitud en **{server}** fue aprobada.\\n\\nTikTok: **{username}**\\nSe te ha asignado el rol de creador de contenido.",
+			"rejected": "Tu solicitud en **{server}** no fue aprobada esta vez.\\n\\nTikTok: **{username}**\\n\\n**Motivo:** {reason}\\n\\nPuedes volver a solicitarlo después del periodo de espera (si tu servidor usa uno).",
+			"embedTitleApproved": "✅ Creador de contenido aprobado",
+			"embedTitleRejected": "❌ Creador de contenido no aprobado"
+		},
+		"autoRejectApplicantReason": "Duplicado o suplantación: este usuario de TikTok ya está vinculado a otra cuenta de Discord.",
+		"errors": {
+			"notConfigured": "❌ La admisión de creadores de contenido no está configurada en este servidor.",
+			"alreadyCreator": "✅ Ya tienes el rol de creador de contenido en este servidor.",
+			"invalidUsername": "❌ El usuario de TikTok no es válido. Usa solo letras, números, puntos y guiones bajos.",
+			"reasonRequired": "❌ Indica tu motivo para convertirte en creador de contenido.",
+			"pendingExists": "❌ Ya tienes una solicitud de creador de contenido pendiente.",
+			"cooldown": "❌ Debes esperar **{days} día(s)** antes de enviar otra solicitud de creador de contenido.",
+			"submitFailed": "❌ No se pudo enviar la solicitud de creador de contenido: {error}",
+			"permissionDenied": "❌ Necesitas permisos de administrador para aprobar o rechazar solicitudes de creador de contenido.",
+			"reviewReasonRequired": "❌ Introduce un motivo para tu decisión."
+		}
+	},
+	"notifications": {
+		"button": "🔔 Notificaciones",
+		"title": "🔔 Preferencias de notificación",
+		"description": "Selecciona los canales de los que quieres recibir notificaciones. Se te etiquetará individualmente cuando se produzca una notificación.",
+		"selectPlaceholder": "Selecciona canales de notificación...",
+		"updated": "✅ Se han actualizado tus preferencias de notificación.",
+		"errors": {
+			"notConfigured": "❌ Las notificaciones no están configuradas en este servidor.",
+			"noRoles": "❌ Todavía no hay canales de notificación configurados. Pide a un administrador que configure las notificaciones en el panel."
+		}
+	},
+	"customSupporterRole": {
+		"create": {
+			"title": "💎 Crear rol de colaborador personalizado",
+			"editTitle": "💎 Editar rol de colaborador personalizado",
+			"nameLabel": "Nombre del rol",
+			"namePlaceholder": "Introduce el nombre de tu rol personalizado...",
+			"colorLabel": "Color del rol (hex/decimal/nombre)",
+			"colorPlaceholder": "#FF5733 o 16729395 o red (opcional)",
+			"iconLabel": "Icono del rol (emoji o URL de imagen)",
+			"iconPlaceholder": "🔥 o https://example.com/icon.png (opcional)"
+		},
+		"existing": {
+			"title": "💎 Rol de colaborador personalizado",
+			"description": "Ya tienes un rol personalizado: **{roleName}**\\n\\nElige una acción:",
+			"currentRole": "📋 Rol actual"
+		},
+		"created": {
+			"title": "✅ ¡Rol de colaborador personalizado creado!",
+			"description": "¡Tu rol personalizado **{roleName}** se ha creado y asignado!{iconWarning}",
+			"iconWarningBoost": "\\n\\n⚠️ **Icono personalizado no disponible:** Este servidor necesita el nivel 2 de mejora de servidor para usar iconos de rol personalizados (imágenes). ¡Puedes usar un emoji en su lugar!",
+			"iconWarningGeneric": "\\n\\n⚠️ **Nota:** No se pudo establecer el icono, pero el rol se creó correctamente.",
+			"roleDetails": "🎨 Detalles del rol",
+			"roleDetailsValue": "**Nombre:** {name}\\n**Color:** {color}\\n**Icono:** {icon}",
+			"role": "💎 Rol",
+			"iconStatusSet": "Establecido",
+			"iconStatusNone": "Ninguno",
+			"iconStatusFailed": "Fallido (rol creado sin icono)",
+			"iconStatusInvalid": "Formato no válido (rol creado sin icono)"
+		},
+		"updated": {
+			"title": "✅ ¡Rol de colaborador personalizado actualizado!",
+			"description": "¡Tu rol personalizado **{roleName}** se ha actualizado!{iconWarning}",
+			"iconWarningBoost": "\\n\\n⚠️ **Icono personalizado no disponible:** Este servidor necesita el nivel 2 de mejora de servidor para usar iconos de rol personalizados (imágenes). ¡Puedes usar un emoji en su lugar!",
+			"iconWarningGeneric": "\\n\\n⚠️ **Nota:** No se pudo establecer el icono, pero el rol se actualizó correctamente.",
+			"roleDetails": "🎨 Detalles del rol",
+			"roleDetailsValue": "**Nombre:** {name}\\n**Color:** {color}\\n**Icono:** {icon}",
+			"role": "💎 Rol",
+			"iconStatusUnchanged": "Sin cambios",
+			"iconStatusUpdated": "Actualizado",
+			"iconStatusRemoved": "Eliminado",
+			"iconStatusFailed": "Fallido (rol actualizado sin icono)",
+			"iconStatusInvalid": "Formato no válido (rol actualizado sin icono)"
+		},
+		"deleted": {
+			"title": "✅ Rol de colaborador personalizado eliminado",
+			"description": "Tu rol personalizado **{roleName}** se ha eliminado."
+		},
+		"buttons": {
+			"edit": "✏️ Editar rol",
+			"delete": "🗑️ Eliminar rol"
+		},
+		"errors": {
+			"noRole": "❌ No tienes un rol personalizado que editar.",
+			"noRoleDelete": "❌ No tienes un rol personalizado que eliminar.",
+			"invalidName": "❌ **Nombre de rol no válido**\\n\\nEl nombre del rol debe tener entre 1 y 100 caracteres.",
+			"boostRequired": "❌ **Icono personalizado no disponible**\\n\\nEste servidor necesita el **nivel 2 de mejora de servidor** para usar iconos de rol personalizados (imágenes).\\n\\n💡 **Consejo:** Puedes usar un **emoji** en su lugar (como 🔥, ⭐ o cualquier emoji personalizado), que no requiere mejoras del servidor.",
+			"boostRequiredCreate": "❌ **Se requiere mejora de servidor**\\n\\nEste servidor necesita el **nivel 2 de mejora de servidor** para crear roles de colaborador personalizados con ciertas funciones.\\n\\n💡 **Qué puedes hacer:**\\n- Pedir a los administradores del servidor que lo mejoren al nivel 2\\n- O contactar con el staff del servidor para pedir ayuda\\n\\n**Detalles del error:** {error}",
+			"createFailed": "❌ **No se pudo crear el rol**\\n\\nError: {error}\\n\\nAsegúrate de que:\\n- el bot tiene permiso para crear roles\\n- el bot tiene permiso para gestionar roles\\n- las restricciones de posición del rol son válidas",
+			"updateFailed": "❌ **No se pudo actualizar el rol**\\n\\nError: {error}\\n\\nAsegúrate de que:\\n- el bot tiene permiso para gestionar roles\\n- las restricciones del rol son válidas",
+			"deleteFailed": "❌ No se pudo eliminar el rol: {error}",
+			"failed": "❌ No se pudo abrir el formulario de creación de rol: {error}",
+			"editFailed": "❌ No se pudo abrir el formulario de edición: {error}"
+		}
+	},
+	"questEnroll": {
+		"alreadyClaimed": "Ya reclamada",
+		"alreadyClaimedDescription": "Ya te inscribiste antes en **{questName}** y tu recompensa ya se reclamó. Cada misión solo puede reclamarse una vez por miembro.",
+		"pendingTitle": "⏳ Ejecutándose en segundo plano",
+		"pendingDescription": "En breve se publicará en este canal un mensaje con el resultado.\n\nTu token **no** se guarda en nuestra base de datos.\n\n**Riesgo:** Discord puede restringir o suspender la **cuenta de usuario** vinculada a ese token; en algunos casos también podrían verse afectados el **bot o el servidor**. Este no es un comportamiento oficial de Discord: has elegido continuar.",
+		"precheckNotFoundTitle": "La misión no está en esta cuenta",
+		"precheckNotFoundDescription": "Esta misión no aparece en la cuenta de Discord vinculada a tu token. Abre **Discord → Misiones**, acepta la misión si es necesario y vuelve a intentarlo.",
+		"precheckExpiredTitle": "Misión caducada",
+		"precheckExpiredDescription": "Esta misión ha caducado para esa cuenta de Discord.",
+		"precheckRewardClaimedTitle": "Recompensa ya reclamada",
+		"precheckRewardClaimedDescription": "La recompensa de esta misión ya se reclamó en esta **cuenta de Discord** (por ejemplo, al completarla en otro servidor o en el cliente de Discord). La inscripción automática no puede volver a reclamarla.",
+		"precheckCompletedTitle": "Misión ya completada",
+		"precheckCompletedDescription": "Los objetivos de la misión ya están completados en esta **cuenta de Discord**. Reclama cualquier recompensa pendiente en **Discord → Misiones** si aún no lo has hecho: la inscripción automática no puede añadir más progreso."
+	}
+}

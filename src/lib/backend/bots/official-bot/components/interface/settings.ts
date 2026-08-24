@@ -7,7 +7,9 @@ import { translate, getAvailableLanguages, getUserLanguage } from '../../i18n.js
 
 const languageNames = {
 	en: 'English',
-	id: 'Bahasa Indonesia'
+	id: 'Bahasa Indonesia',
+	de: 'Deutsch',
+	es: 'Español'
 };
 
 export async function handleLanguageButton(interaction) {

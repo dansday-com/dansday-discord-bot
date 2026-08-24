@@ -457,7 +457,7 @@ export function buildWikiTool(wikis) {
 
 Never answer a game question from memory and never guess numbers: look it up, then answer from what comes back.
 
-Do NOT call this when there is no question to look up. Chatting, greetings, jokes, thanks, opinions, and anything about you rather than a game are all answered in your own words with no lookup. Commands aimed at you are not lookups either — "keluar", "keluar lu", "leave", "get out", "pergi", "diam", "stop", "join", "masuk" mean the user wants you to leave or join voice or be quiet: use the voice tool or just reply, and never search the wiki for them. A message being short or in Indonesian does not make it a lookup. If nothing in the message names a game thing to look up, do not call this tool.
+Do NOT call this when there is no question to look up. Chatting, greetings, jokes, thanks, opinions, and anything about you rather than a game are all answered in your own words with no lookup. Commands aimed at you are not lookups either — "leave", "get out", "stop", "join", plus their equivalents in any language ("keluar", "keluar lu", "pergi", "diam", "masuk"; "geh raus", "verschwinde", "sei still", "komm rein"; "sal", "vete", "cállate", "entra") mean the user wants you to leave or join voice or be quiet: use the voice tool or just reply, and never search the wiki for them. A message being short or in a language other than English does not make it a lookup. If nothing in the message names a game thing to look up, do not call this tool.
 
 Read the entire result before answering: the answer is usually under a heading such as "Obtainment", "Skins", "Location" or "Change History" rather than in the opening line, and infobox values arrive in "stats". Answer only with facts present in the result — never add an item, price, chance or mechanic that is not there, and never fill a gap from memory. If the result already contains the answer, never claim the wiki has not documented it yet, and never speculate about why something is missing.
 
@@ -475,7 +475,7 @@ The search itself is English-only, but always reply in the language the user wro
 					query: {
 						type: 'string',
 						description:
-							'The thing to look up, written in English no matter what language the user spoke — these wikis only have English page titles, so a non-English query finds nothing. Translate their words first, then search the name on its own, e.g. "Steady Rod". Indonesian examples: "versi terbaru" → "latest version", "ikan langka" → "rare fish", "harga joran" → "fishing rod price". Keep it short — the page name, not a sentence or a question.'
+							'The thing to look up, written in English no matter what language the user spoke — these wikis only have English page titles, so a non-English query finds nothing. Translate their words first, then search the name on its own, e.g. "Steady Rod". Examples: "versi terbaru" / "neueste Version" / "última versión" → "latest version"; "ikan langka" / "seltener Fisch" / "pez raro" → "rare fish"; "harga joran" / "Angelrutenpreis" / "precio de la caña" → "fishing rod price". Keep it short — the page name, not a sentence or a question.'
 					},
 					page: {
 						type: 'string',

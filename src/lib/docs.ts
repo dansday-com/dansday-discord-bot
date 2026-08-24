@@ -306,7 +306,11 @@ export const aiWikiRules = [
 	{ icon: 'fa-comments', title: 'Ask normally', desc: 'Members just ask. Full questions work, not only exact page names.' },
 	{ icon: 'fa-list', title: 'Real numbers', desc: 'Prices, weights and drop rates come from the wiki infobox, so stat answers are exact.' },
 	{ icon: 'fa-file-lines', title: 'Reads the whole page', desc: 'Skin lists, tables and changelogs come through in full. Nothing is trimmed.' },
-	{ icon: 'fa-globe', title: 'Any wiki, any language', desc: 'No per-game rules. Ask in Indonesian and it still finds the English page.' },
+	{
+		icon: 'fa-globe',
+		title: 'Any wiki, any language',
+		desc: 'No per-game rules. Ask in any language and it still finds the English page, then answers back in yours.'
+	},
 	{ icon: 'fa-bolt', title: 'Cached 10 minutes', desc: 'Repeat questions answer instantly and the wiki is not hammered.' },
 	{
 		icon: 'fa-check',
@@ -764,7 +768,7 @@ export const discordMenu = [
 	{ label: '🛡️ Staff Rating', desc: 'Pick a staff member, choose a 1 to 5 score and category, and submit a rating.' },
 	{ label: '🎬 Content Creator', desc: 'Shows the creator list and an Apply button (TikTok username plus reason).' },
 	{ label: '🔔 Notifications', desc: 'Opens a selector to subscribe to the notification channels you enabled.' },
-	{ label: '🌐 Select Language', desc: 'Switches the Discord interface language (English or Indonesian).' },
+	{ label: '🌐 Select Language', desc: 'Switches the Discord interface language (English, Indonesian, German or Spanish).' },
 	{ label: '🌐 Statistics', desc: 'Link to the public stats page.' },
 	{ label: '👤 Account', desc: 'Link to the member account (Overview, Task, Items, Minigames, Assets, History, Guide).' }
 ];

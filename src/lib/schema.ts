@@ -139,10 +139,12 @@ export const servers = mysqlTable(
 		vanity_url_code: varchar('vanity_url_code', { length: 255 }),
 		invite_code: varchar('invite_code', { length: 255 }),
 		greeted_at: datetime('greeted_at'),
+		deleted_at: datetime('deleted_at'),
 		created_at: datetime('created_at').notNull(),
 		updated_at: datetime('updated_at').notNull()
 	},
 	(t) => [
+		index('idx_servers_deleted_at').on(t.deleted_at),
 		index('idx_servers_bot_id').on(t.bot_id),
 		index('idx_servers_discord_id').on(t.discord_server_id),
 		index('idx_servers_discord_created_at').on(t.discord_created_at),
@@ -380,10 +382,12 @@ export const serverMembers = mysqlTable(
 		is_booster: boolean('is_booster').default(false),
 		booster_since: datetime('booster_since'),
 		language: varchar('language', { length: 10 }).default('en'),
+		deleted_at: datetime('deleted_at'),
 		created_at: datetime('created_at').notNull(),
 		updated_at: datetime('updated_at').notNull()
 	},
 	(t) => [
+		index('idx_server_members_deleted_at').on(t.deleted_at),
 		uniqueIndex('unique_server_member').on(t.server_id, t.discord_member_id),
 		index('idx_server_members_server_id').on(t.server_id),
 		index('idx_server_members_discord_id').on(t.discord_member_id),

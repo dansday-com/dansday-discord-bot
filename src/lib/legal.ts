@@ -9,6 +9,7 @@ export const TERMS_URL = `${LEGAL_BASE_URL}${TERMS_PATH}`;
 export const PRIVACY_URL = `${LEGAL_BASE_URL}${PRIVACY_PATH}`;
 
 export const LEGAL_LAST_UPDATED = 'August 24, 2026';
+export const LEGAL_RETENTION_DAYS = 7;
 export const SECURITY_EMAIL = 'security@dansday.com';
 
 export const DISCORD_LINKS = {
@@ -302,7 +303,7 @@ export const terms: LegalDoc = {
 			blocks: [
 				{
 					kind: 'text',
-					text: 'You may stop using the Service at any time by removing the bot from your server, which stops all further collection. Data already stored is not erased by that alone; see the Privacy Policy for how deletion works and how to request it. We may suspend or terminate access if you breach these terms, create risk, or if required by law or Discord. Provisions that should survive, such as disclaimers, limitations, and indemnity, will survive termination.'
+					text: `You may stop using the Service at any time by removing the bot from your server. That stops all further collection, hides the server’s data immediately, and permanently deletes its configuration and member records after ${LEGAL_RETENTION_DAYS} days. Re-adding the bot inside that window restores it. We may suspend or terminate access if you breach these terms, create risk, or if required by law or Discord. Provisions that should survive, such as disclaimers, limitations, and indemnity, will survive termination.`
 				}
 			]
 		},
@@ -538,15 +539,19 @@ export const privacy: LegalDoc = {
 			blocks: [
 				{
 					kind: 'text',
-					text: 'Removing the bot from a Discord server stops it collecting anything further, but it does not by itself erase what was already stored. That server’s configuration and member records stay in the database until they are deleted explicitly.'
+					text: `Removing the bot from a Discord server, or a member leaving one, marks that data for deletion and hides it right away. It stops appearing on leaderboards, the members directory and every public page immediately. After a ${LEGAL_RETENTION_DAYS}-day grace period the records are permanently deleted, and because everything is chained together by database constraints, the members, levels, items, tasks, assets, logs and settings go with them. If the bot was offline at the time, it catches up the next time it starts.`
 				},
 				{
 					kind: 'text',
-					text: 'Deleting a bot from the panel does erase them. Records are chained to the bot by database constraints, so removing it cascades through every server under it and takes their members, levels, items, tasks, assets, logs and settings with it. Deleting a panel account likewise removes the account and what is owned by it.'
+					text: `The grace period is there so accidents are recoverable. Re-adding the bot within those ${LEGAL_RETENTION_DAYS} days restores the server, and a member who rejoins gets their XP, level, items and history back as they were. Once the ${LEGAL_RETENTION_DAYS} days pass, the deletion is final and nothing can be restored.`
 				},
 				{
 					kind: 'text',
-					text: 'If you want a server’s stored data removed without deleting the bot, or your own member record removed after leaving a server, contact us and we will delete it.'
+					text: 'Deleting a bot from the panel removes every server under it at once, with no grace period, and deleting a panel account removes the account and what it owns.'
+				},
+				{
+					kind: 'text',
+					text: 'If you want your own member record removed sooner, or removed while the bot stays in the server, contact us and we will delete it.'
 				},
 				{
 					kind: 'list',
@@ -555,7 +560,7 @@ export const privacy: LegalDoc = {
 						'Wiki page reads are cached for about 10 minutes.',
 						'Sessions expire on sign-out or after inactivity.',
 						'Depleted items are purged automatically.',
-						'A member who leaves a Discord server keeps their stored record until it is deleted on request.'
+						`Data marked for deletion is hidden immediately and permanently removed after ${LEGAL_RETENTION_DAYS} days.`
 					]
 				},
 				{

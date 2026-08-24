@@ -653,7 +653,7 @@ export async function getServerPanelId(serverId: number): Promise<number | null>
 
 export async function countServerMembers(serverId: any): Promise<number> {
 	await initializeDatabase();
-	const rows = (await db.execute(sql`SELECT COUNT(*) AS total FROM server_members WHERE server_id = ${Number(serverId)}`)) as any;
+	const rows = (await db.execute(sql`SELECT COUNT(*) AS total FROM server_members WHERE server_id = ${Number(serverId)} AND deleted_at IS NULL`)) as any;
 	return Number((rows[0] as any[])?.[0]?.total) || 0;
 }
 
@@ -668,7 +668,113 @@ export async function getServer(serverId: any) {
 }
 
 export async function getServersForBot(officialBotId: number) {
-	return db.select().from(schema.servers).where(eq(schema.servers.bot_id, officialBotId)).orderBy(asc(schema.servers.name));
+	return db
+		.select()
+		.from(schema.servers)
+		.where(and(eq(schema.servers.bot_id, officialBotId), isNull(schema.servers.deleted_at)))
+		.orderBy(asc(schema.servers.name));
+}
+
+export const DELETION_RETENTION_DAYS = 7;
+const SYNC_MARK_MAX_RATIO = 0.5;
+const SYNC_MARK_GUARD_MIN_ACTIVE = 10;
+const PURGE_MAX_SERVERS_PER_RUN = 50;
+const PURGE_MAX_MEMBERS_PER_RUN = 5000;
+
+export async function deleteServer(serverId: number) {
+	await initializeDatabase();
+	await db.delete(schema.servers).where(eq(schema.servers.id, Number(serverId)));
+	return true;
+}
+
+export async function markServerDeleted(serverId: number) {
+	await initializeDatabase();
+	if (!Number.isFinite(Number(serverId)) || Number(serverId) <= 0) return false;
+	await db
+		.update(schema.servers)
+		.set({ deleted_at: toMySQLDateTime() as any })
+		.where(and(eq(schema.servers.id, Number(serverId)), isNull(schema.servers.deleted_at)));
+	return true;
+}
+
+export async function restoreServer(serverId: number) {
+	await initializeDatabase();
+	await db
+		.update(schema.servers)
+		.set({ deleted_at: null })
+		.where(eq(schema.servers.id, Number(serverId)));
+	return true;
+}
+
+export async function markOfficialServerDeletedByDiscordId(officialBotId: number, discordServerId: string) {
+	await initializeDatabase();
+	const server = await getOfficialServerByDiscordId(Number(officialBotId), String(discordServerId));
+	if (!server || server.deleted_at) return null;
+	await markServerDeleted(Number(server.id));
+	return server;
+}
+
+export async function markServersDeletedForBotExcept(officialBotId: number, keepDiscordServerIds: string[]) {
+	await initializeDatabase();
+	const rows = await db
+		.select({ id: schema.servers.id, discord_server_id: schema.servers.discord_server_id, name: schema.servers.name })
+		.from(schema.servers)
+		.where(and(eq(schema.servers.bot_id, Number(officialBotId)), isNull(schema.servers.deleted_at)));
+
+	if (!Array.isArray(keepDiscordServerIds) || keepDiscordServerIds.length === 0) {
+		logger.log('⚠️  markServersDeletedForBotExcept called with an empty keep list; refusing to mark every server deleted');
+		return [];
+	}
+
+	const keep = new Set(keepDiscordServerIds.map((id) => String(id)));
+	const stale = rows.filter((r) => !keep.has(String(r.discord_server_id)));
+
+	if (rows.length > 0 && stale.length === rows.length) {
+		logger.log(`⚠️  markServersDeletedForBotExcept would mark all ${rows.length} server(s) deleted; refusing as a safety guard`);
+		return [];
+	}
+
+	for (const row of stale) {
+		await markServerDeleted(Number(row.id));
+	}
+	return stale;
+}
+
+export async function purgeExpiredDeletions(retentionDays: number = DELETION_RETENTION_DAYS) {
+	await initializeDatabase();
+	const days = Number(retentionDays) > 0 ? Number(retentionDays) : DELETION_RETENTION_DAYS;
+
+	const staleServers = await db
+		.select({ id: schema.servers.id, name: schema.servers.name, discord_server_id: schema.servers.discord_server_id })
+		.from(schema.servers)
+		.where(sql`${schema.servers.deleted_at} IS NOT NULL AND ${schema.servers.deleted_at} <= UTC_TIMESTAMP() - INTERVAL ${sql.raw(String(days))} DAY`);
+
+	if (staleServers.length > PURGE_MAX_SERVERS_PER_RUN) {
+		logger.log(`⚠️  Retention purge found ${staleServers.length} expired server(s), over the ${PURGE_MAX_SERVERS_PER_RUN} cap; skipping and needs review`);
+		return { servers: 0, members: 0, skipped: true as const };
+	}
+
+	for (const row of staleServers) {
+		await db.delete(schema.servers).where(eq(schema.servers.id, Number(row.id)));
+	}
+
+	const staleMembers = await db
+		.select({ id: schema.serverMembers.id, discord_member_id: schema.serverMembers.discord_member_id })
+		.from(schema.serverMembers)
+		.where(
+			sql`${schema.serverMembers.deleted_at} IS NOT NULL AND ${schema.serverMembers.deleted_at} <= UTC_TIMESTAMP() - INTERVAL ${sql.raw(String(days))} DAY`
+		);
+
+	if (staleMembers.length > PURGE_MAX_MEMBERS_PER_RUN) {
+		logger.log(`⚠️  Retention purge found ${staleMembers.length} expired member(s), over the ${PURGE_MAX_MEMBERS_PER_RUN} cap; skipping and needs review`);
+		return { servers: staleServers.length, members: 0, skipped: true as const };
+	}
+
+	for (const row of staleMembers) {
+		await db.delete(schema.serverMembers).where(eq(schema.serverMembers.id, Number(row.id)));
+	}
+
+	return { servers: staleServers.length, members: staleMembers.length, skipped: false as const };
 }
 
 export async function getServerIdsForPanel(panelId: number): Promise<number[]> {
@@ -903,6 +1009,7 @@ export async function upsertOfficialServer(officialBotId: number, guild: any) {
 			vanity_url_code = VALUES(vanity_url_code),
 			invite_code = COALESCE(VALUES(invite_code), servers.invite_code),
 			bot_id = VALUES(bot_id),
+			deleted_at = NULL,
 			updated_at = VALUES(updated_at)
 	`);
 
@@ -1313,6 +1420,7 @@ export async function upsertMember(serverId: any, memberData: any) {
 			profile_created_at = COALESCE(VALUES(profile_created_at), profile_created_at),
 			member_since = COALESCE(VALUES(member_since), member_since),
 			is_booster = VALUES(is_booster), booster_since = VALUES(booster_since),
+			deleted_at = NULL,
 			updated_at = VALUES(updated_at)
 	`);
 
@@ -1324,12 +1432,14 @@ export async function upsertMember(serverId: any, memberData: any) {
 	return rows[0];
 }
 
-export async function getMemberByDiscordId(serverId: any, discordMemberId: string) {
+export async function getMemberByDiscordId(serverId: any, discordMemberId: string, opts?: { includeDeleted?: boolean }) {
 	await initializeDatabase();
+	const conditions = [eq(schema.serverMembers.server_id, Number(serverId)), eq(schema.serverMembers.discord_member_id, discordMemberId)];
+	if (!opts?.includeDeleted) conditions.push(isNull(schema.serverMembers.deleted_at));
 	const rows = await db
 		.select()
 		.from(schema.serverMembers)
-		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), eq(schema.serverMembers.discord_member_id, discordMemberId)))
+		.where(and(...conditions))
 		.limit(1);
 	if (!rows[0]) return null;
 	const member = { ...rows[0] };
@@ -1562,18 +1672,6 @@ export async function syncMemberRoles(memberId: any, discordRoleIds: string[], s
 
 export async function syncMembers(serverId: any, members: any[]) {
 	if (!members || members.length === 0) {
-		const dbMembers = await db
-			.select({ id: schema.serverMembers.id })
-			.from(schema.serverMembers)
-			.where(eq(schema.serverMembers.server_id, Number(serverId)));
-		if (dbMembers.length > 0) {
-			await db.delete(schema.serverMembers).where(
-				inArray(
-					schema.serverMembers.id,
-					dbMembers.map((m) => m.id)
-				)
-			);
-		}
 		return true;
 	}
 
@@ -1589,16 +1687,72 @@ export async function syncMembers(serverId: any, members: any[]) {
 
 	const discordIds = new Set(members.map((m) => (m.user || m)?.id || m.id));
 	const dbMembers = await db
-		.select({ id: schema.serverMembers.id, discord_member_id: schema.serverMembers.discord_member_id })
+		.select({ id: schema.serverMembers.id, discord_member_id: schema.serverMembers.discord_member_id, deleted_at: schema.serverMembers.deleted_at })
 		.from(schema.serverMembers)
 		.where(eq(schema.serverMembers.server_id, Number(serverId)));
 
-	const toDelete = dbMembers.filter((m) => !discordIds.has(m.discord_member_id)).map((m) => m.id);
-	if (toDelete.length > 0) {
-		await db.delete(schema.serverMembers).where(and(eq(schema.serverMembers.server_id, Number(serverId)), inArray(schema.serverMembers.id, toDelete)));
+	const active = dbMembers.filter((m) => !m.deleted_at);
+	const toMark = active.filter((m) => !discordIds.has(m.discord_member_id)).map((m) => m.id);
+
+	const marksEveryone = active.length > 0 && toMark.length === active.length;
+	const marksTooMany = active.length >= SYNC_MARK_GUARD_MIN_ACTIVE && toMark.length > active.length * SYNC_MARK_MAX_RATIO;
+
+	if (marksEveryone || marksTooMany) {
+		logger.log(
+			`⚠️  syncMembers for server ${serverId} would mark ${toMark.length} of ${active.length} member(s) deleted; refusing as a safety guard (Discord list had ${discordIds.size})`
+		);
+	} else if (toMark.length > 0) {
+		await db
+			.update(schema.serverMembers)
+			.set({ deleted_at: toMySQLDateTime() as any })
+			.where(and(eq(schema.serverMembers.server_id, Number(serverId)), inArray(schema.serverMembers.id, toMark)));
+	}
+
+	const toRestore = dbMembers.filter((m) => discordIds.has(m.discord_member_id) && m.deleted_at).map((m) => m.id);
+	if (toRestore.length > 0) {
+		await db
+			.update(schema.serverMembers)
+			.set({ deleted_at: null })
+			.where(and(eq(schema.serverMembers.server_id, Number(serverId)), inArray(schema.serverMembers.id, toRestore)));
 	}
 
 	return true;
+}
+
+export async function markMemberDeletedByDiscordId(serverId: any, discordMemberId: string) {
+	await initializeDatabase();
+	const rows = await db
+		.select({ id: schema.serverMembers.id, deleted_at: schema.serverMembers.deleted_at })
+		.from(schema.serverMembers)
+		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), eq(schema.serverMembers.discord_member_id, String(discordMemberId))))
+		.limit(1);
+
+	const member = rows[0];
+	if (!member || member.deleted_at) return null;
+
+	await db
+		.update(schema.serverMembers)
+		.set({ deleted_at: toMySQLDateTime() as any })
+		.where(eq(schema.serverMembers.id, Number(member.id)));
+	return member;
+}
+
+export async function restoreMemberByDiscordId(serverId: any, discordMemberId: string) {
+	await initializeDatabase();
+	const rows = await db
+		.select({ id: schema.serverMembers.id, deleted_at: schema.serverMembers.deleted_at })
+		.from(schema.serverMembers)
+		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), eq(schema.serverMembers.discord_member_id, String(discordMemberId))))
+		.limit(1);
+
+	const member = rows[0];
+	if (!member || !member.deleted_at) return null;
+
+	await db
+		.update(schema.serverMembers)
+		.set({ deleted_at: null })
+		.where(eq(schema.serverMembers.id, Number(member.id)));
+	return member;
 }
 
 export async function getMemberLevel(memberId: any) {
@@ -3889,7 +4043,7 @@ export async function getItemsBountyLeaderboard(serverId: any, since: Date | nul
 			GROUP BY l.member_id
 		) agg ON agg.member_id = sm.id
 		LEFT JOIN server_member_levels sml ON sml.member_id = sm.id
-		WHERE sm.server_id = ${Number(serverId)} ${hideClause}
+		WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL ${hideClause}
 		GROUP BY sm.id, sm.discord_member_id, sm.username, sm.display_name, sm.server_display_name, sm.avatar, sml.level
 	`);
 
@@ -3925,7 +4079,7 @@ export async function getItemsGiftLeaderboard(serverId: any, since: Date | null)
 			GROUP BY l.target_member_id
 		) agg ON agg.member_id = sm.id
 		LEFT JOIN server_member_levels sml ON sml.member_id = sm.id
-		WHERE sm.server_id = ${Number(serverId)} ${hideClause}
+		WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL ${hideClause}
 		GROUP BY sm.id, sm.discord_member_id, sm.username, sm.display_name, sm.server_display_name, sm.avatar, sml.level
 	`);
 
@@ -3952,7 +4106,7 @@ export async function getServerMembersList(serverId: any) {
 		LEFT JOIN server_member_afks sma ON sm.id = sma.member_id
 		LEFT JOIN server_member_roles smr ON sm.id = smr.member_id
 		LEFT JOIN server_roles sr ON smr.role_id = sr.id
-		WHERE sm.server_id = ${Number(serverId)}
+		WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL
 		GROUP BY sm.id, sm.discord_member_id, sm.username, sm.display_name, sm.server_display_name,
 		         sm.avatar, sm.profile_created_at, sm.member_since, sm.is_booster, sm.booster_since,
 		         sml.level, sml.xp, sml.chat_total, sml.voice_minutes_total, sml.voice_minutes_active,
@@ -4137,13 +4291,13 @@ export async function getServerOverview(serverId: any, opts?: { forPublicPage?: 
 
 	const statsPromises = [
 		db.execute(
-			sql`SELECT COUNT(*) AS total, SUM(CASE WHEN is_booster = 1 THEN 1 ELSE 0 END) AS unique_boosters FROM server_members WHERE server_id = ${Number(serverId)}`
+			sql`SELECT COUNT(*) AS total, SUM(CASE WHEN is_booster = 1 THEN 1 ELSE 0 END) AS unique_boosters FROM server_members WHERE server_id = ${Number(serverId)} AND deleted_at IS NULL`
 		),
 		db.execute(
-			sql`SELECT COUNT(*) AS leveled FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ${Number(serverId)}`
+			sql`SELECT COUNT(*) AS leveled FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL`
 		),
 		db.execute(
-			sql`SELECT COUNT(*) AS afk FROM server_member_afks sma INNER JOIN server_members sm ON sm.id = sma.member_id WHERE sm.server_id = ${Number(serverId)}`
+			sql`SELECT COUNT(*) AS afk FROM server_member_afks sma INNER JOIN server_members sm ON sm.id = sma.member_id WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL`
 		),
 		db.execute(
 			sql`SELECT COUNT(*) AS total, SUM(CASE WHEN LOWER(COALESCE(type,'')) IN ('guild_text','text') THEN 1 ELSE 0 END) AS text_count, SUM(CASE WHEN LOWER(COALESCE(type,'')) IN ('guild_news','news','guild_announcement','announcement') THEN 1 ELSE 0 END) AS announcement_count, SUM(CASE WHEN LOWER(COALESCE(type,'')) IN ('guild_voice','voice') THEN 1 ELSE 0 END) AS voice_count, SUM(CASE WHEN LOWER(COALESCE(type,'')) IN ('guild_stage_voice','stage','stage_voice') THEN 1 ELSE 0 END) AS stage_count FROM server_channels WHERE server_id = ${Number(serverId)}`
@@ -6185,6 +6339,13 @@ export default {
 	upsertServerBotStatus,
 	getServer,
 	getServersForBot,
+	deleteServer,
+	markServerDeleted,
+	restoreServer,
+	markOfficialServerDeletedByDiscordId,
+	markServersDeletedForBotExcept,
+	purgeExpiredDeletions,
+	DELETION_RETENTION_DAYS,
 	getServerIdsForPanel,
 	getServersForSelfbot,
 	getServerBotServerForSelfbot,
@@ -6221,6 +6382,8 @@ export default {
 	searchPanelMembersForGift,
 	memberServerHasItemsEnabled,
 	syncMembers,
+	markMemberDeletedByDiscordId,
+	restoreMemberByDiscordId,
 	syncMemberRoles,
 	getMemberLevel,
 	ensureMemberLevel,

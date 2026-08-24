@@ -2330,7 +2330,7 @@ export async function recalculateServerMemberRanks(serverId: any) {
 				SELECT sml_inner.id
 				FROM server_member_levels sml_inner
 				INNER JOIN server_members sm_inner ON sml_inner.member_id = sm_inner.id
-				WHERE sm_inner.server_id = ${Number(serverId)}
+				WHERE sm_inner.server_id = ${Number(serverId)} AND sm_inner.deleted_at IS NULL
 				ORDER BY sml_inner.xp DESC, sml_inner.level DESC, sml_inner.created_at ASC
 			) AS ranked
 		) AS ranks ON ranks.id = sml.id
@@ -3202,7 +3202,7 @@ export async function getServerEconomyStats(serverId: any, priceMap: Record<stri
 		db.execute(sql`
 			SELECT a.asset_type, a.asset_id, a.xp_invested, a.buy_price, a.member_id
 			FROM server_member_assets a INNER JOIN server_members sm ON sm.id = a.member_id
-			WHERE sm.server_id = ${sid}
+			WHERE sm.server_id = ${sid} AND sm.deleted_at IS NULL
 		`),
 		db.execute(sql`
 			SELECT
@@ -3211,7 +3211,7 @@ export async function getServerEconomyStats(serverId: any, priceMap: Record<stri
 				COALESCE(SUM(CASE WHEN al.action = 'sell' THEN al.net ELSE 0 END), 0) AS realized_net,
 				COUNT(*) AS trade_count
 			FROM server_member_asset_logs al INNER JOIN server_members sm ON sm.id = al.member_id
-			WHERE sm.server_id = ${sid}
+			WHERE sm.server_id = ${sid} AND sm.deleted_at IS NULL
 		`),
 		db.execute(sql`
 			SELECT
@@ -3222,7 +3222,7 @@ export async function getServerEconomyStats(serverId: any, priceMap: Record<stri
 				COUNT(*) AS plays,
 				COALESCE(MAX(CASE WHEN ml.outcome = 'win' THEN ml.payout ELSE 0 END), 0) AS biggest_win
 			FROM server_member_minigame_logs ml INNER JOIN server_members sm ON sm.id = ml.member_id
-			WHERE sm.server_id = ${sid}
+			WHERE sm.server_id = ${sid} AND sm.deleted_at IS NULL
 		`),
 		db.execute(sql`
 			SELECT
@@ -3243,7 +3243,7 @@ export async function getServerEconomyStats(serverId: any, priceMap: Record<stri
 				COALESCE(SUM(CASE WHEN il.action = 'steal' AND il.outcome = 'success' THEN 1 ELSE 0 END), 0) AS steals_landed,
 				COUNT(DISTINCT CASE WHEN il.action = 'buy' THEN il.item_id END) AS distinct_items_bought
 			FROM server_member_item_logs il INNER JOIN server_members sm ON sm.id = il.member_id
-			WHERE sm.server_id = ${sid}
+			WHERE sm.server_id = ${sid} AND sm.deleted_at IS NULL
 		`)
 	]);
 
@@ -3311,7 +3311,7 @@ export async function getServerFeatureStats(serverId: any) {
 				COALESCE(SUM(CASE WHEN g.status = 'active' THEN 1 ELSE 0 END), 0) AS active,
 				COALESCE(SUM(CASE WHEN g.winners_announced = 1 THEN g.winner_count ELSE 0 END), 0) AS winners
 			FROM server_member_giveaways g INNER JOIN server_members sm ON sm.id = g.member_id
-			WHERE sm.server_id = ${sid}
+			WHERE sm.server_id = ${sid} AND sm.deleted_at IS NULL
 		`),
 		db.execute(sql`
 			SELECT
@@ -3320,7 +3320,7 @@ export async function getServerFeatureStats(serverId: any) {
 			FROM server_member_giveaway_entries e
 			INNER JOIN server_member_giveaways g ON g.id = e.giveaway_id
 			INNER JOIN server_members sm ON sm.id = g.member_id
-			WHERE sm.server_id = ${sid}
+			WHERE sm.server_id = ${sid} AND sm.deleted_at IS NULL
 		`),
 		db.execute(sql`
 			SELECT
@@ -3335,7 +3335,7 @@ export async function getServerFeatureStats(serverId: any) {
 				COALESCE(SUM(s.total_shares), 0) AS shares,
 				COALESCE(SUM(s.unique_chatters), 0) AS unique_chatters
 			FROM server_member_content_creator_streams s INNER JOIN server_members sm ON sm.id = s.member_id
-			WHERE sm.server_id = ${sid}
+			WHERE sm.server_id = ${sid} AND sm.deleted_at IS NULL
 		`),
 		db.execute(sql`
 			SELECT
@@ -3343,7 +3343,7 @@ export async function getServerFeatureStats(serverId: any) {
 				COALESCE(SUM(CASE WHEN q.reward_claimed = 1 THEN 1 ELSE 0 END), 0) AS claimed,
 				COUNT(DISTINCT q.member_id) AS participants
 			FROM server_member_discord_quests q INNER JOIN server_members sm ON sm.id = q.member_id
-			WHERE sm.server_id = ${sid}
+			WHERE sm.server_id = ${sid} AND sm.deleted_at IS NULL
 		`),
 		db.execute(sql`
 			SELECT
@@ -3351,24 +3351,24 @@ export async function getServerFeatureStats(serverId: any) {
 				COALESCE(SUM(CASE WHEN b.collected = 1 THEN 1 ELSE 0 END), 0) AS collected,
 				COALESCE(SUM(b.xp), 0) AS pooled
 			FROM server_member_item_bounties b INNER JOIN server_members sm ON sm.id = b.placed_by_member_id
-			WHERE sm.server_id = ${sid}
+			WHERE sm.server_id = ${sid} AND sm.deleted_at IS NULL
 		`),
 		db.execute(sql`
 			SELECT
 				COUNT(*) AS reviews,
 				COALESCE(AVG(r.rating), 0) AS avg_rating
 			FROM server_member_staff_rating_reviews r INNER JOIN server_members sm ON sm.id = r.reporter_member_id
-			WHERE sm.server_id = ${sid}
+			WHERE sm.server_id = ${sid} AND sm.deleted_at IS NULL
 		`),
 		db.execute(sql`
 			SELECT COUNT(*) AS submissions
 			FROM server_member_feedbacks f INNER JOIN server_members sm ON sm.id = f.member_id
-			WHERE sm.server_id = ${sid}
+			WHERE sm.server_id = ${sid} AND sm.deleted_at IS NULL
 		`),
 		db.execute(sql`
 			SELECT COUNT(*) AS active
 			FROM server_member_afks a INNER JOIN server_members sm ON sm.id = a.member_id
-			WHERE sm.server_id = ${sid}
+			WHERE sm.server_id = ${sid} AND sm.deleted_at IS NULL
 		`)
 	]);
 
@@ -4142,10 +4142,10 @@ export async function getPanelOverview(panelId: number) {
 
 	try {
 		const serversResult = await db.execute(sql`
-            SELECT COUNT(*) as count 
+            SELECT COUNT(*) as count
             FROM servers s
             JOIN bots b ON s.bot_id = b.id
-            WHERE b.panel_id = ${Number(panelId)}
+            WHERE b.panel_id = ${Number(panelId)} AND s.deleted_at IS NULL
         `);
 		const sRows = serversResult[0] as any[];
 		if (sRows && sRows.length > 0) {
@@ -4159,7 +4159,7 @@ export async function getPanelOverview(panelId: number) {
             FROM server_bots sb
             JOIN servers s ON sb.server_id = s.id
             JOIN bots b ON s.bot_id = b.id
-            WHERE b.panel_id = ${Number(panelId)}
+            WHERE b.panel_id = ${Number(panelId)} AND s.deleted_at IS NULL
         `);
 		const sbRows = selfbotsResult[0] as any[];
 		if (sbRows && sbRows.length > 0) {
@@ -4172,7 +4172,7 @@ export async function getPanelOverview(panelId: number) {
             FROM server_bots sb
             JOIN servers s ON sb.server_id = s.id
             JOIN bots b ON s.bot_id = b.id
-            WHERE b.panel_id = ${Number(panelId)} AND sb.status = 'running' AND sb.uptime_started_at IS NOT NULL
+            WHERE b.panel_id = ${Number(panelId)} AND s.deleted_at IS NULL AND sb.status = 'running' AND sb.uptime_started_at IS NOT NULL
         `);
 		const upRows = uptimeResult[0] as any[];
 		if (upRows && upRows.length > 0) {
@@ -4208,7 +4208,7 @@ export async function getPanelOverview(panelId: number) {
                 COALESCE(MAX(s.total_members), 0) AS largest_server_members
             FROM servers s
             JOIN bots b ON s.bot_id = b.id
-            WHERE b.panel_id = ${Number(panelId)}
+            WHERE b.panel_id = ${Number(panelId)} AND s.deleted_at IS NULL
         `);
 		const gRow = (guildRes[0] as any[])?.[0];
 		if (gRow) {
@@ -4229,7 +4229,7 @@ export async function getPanelOverview(panelId: number) {
             JOIN servers s ON sm.server_id = s.id
             JOIN bots b ON s.bot_id = b.id
             LEFT JOIN server_member_levels sml ON sml.member_id = sm.id
-            WHERE b.panel_id = ${Number(panelId)}
+            WHERE b.panel_id = ${Number(panelId)} AND s.deleted_at IS NULL AND sm.deleted_at IS NULL
         `);
 		const eRow = (engagementRes[0] as any[])?.[0];
 		if (eRow) {
@@ -4245,7 +4245,7 @@ export async function getPanelOverview(panelId: number) {
             FROM server_accounts sa
             JOIN servers s ON sa.server_id = s.id
             JOIN bots b ON s.bot_id = b.id
-            WHERE b.panel_id = ${Number(panelId)}
+            WHERE b.panel_id = ${Number(panelId)} AND s.deleted_at IS NULL
         `);
 		community.total_panel_accounts = Number((accountsRes[0] as any[])?.[0]?.count) || 0;
 
@@ -4307,10 +4307,10 @@ export async function getServerOverview(serverId: any, opts?: { forPublicPage?: 
 		db.execute(sql`SELECT COUNT(*) AS count FROM server_categories WHERE server_id = ${Number(serverId)}`),
 		db.execute(sql`SELECT COUNT(*) AS count FROM server_roles WHERE server_id = ${Number(serverId)}`),
 		db.execute(
-			sql`SELECT COALESCE(SUM(xp),0) AS total_xp, COALESCE(AVG(level),0) AS avg_level, COALESCE(MAX(level),0) AS max_level, COALESCE(SUM(chat_total),0) AS total_chat, COALESCE(SUM(voice_minutes_total),0) AS total_voice_minutes, COALESCE(SUM(voice_minutes_active),0) AS total_voice_active, COALESCE(SUM(voice_minutes_afk),0) AS total_voice_afk, COALESCE(SUM(voice_minutes_video),0) AS total_voice_video, COALESCE(SUM(voice_minutes_streaming),0) AS total_voice_streaming FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ${Number(serverId)}`
+			sql`SELECT COALESCE(SUM(xp),0) AS total_xp, COALESCE(AVG(level),0) AS avg_level, COALESCE(MAX(level),0) AS max_level, COALESCE(SUM(chat_total),0) AS total_chat, COALESCE(SUM(voice_minutes_total),0) AS total_voice_minutes, COALESCE(SUM(voice_minutes_active),0) AS total_voice_active, COALESCE(SUM(voice_minutes_afk),0) AS total_voice_afk, COALESCE(SUM(voice_minutes_video),0) AS total_voice_video, COALESCE(SUM(voice_minutes_streaming),0) AS total_voice_streaming FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL`
 		),
 		db.execute(
-			sql`SELECT COUNT(DISTINCT smcsr.member_id) AS members_with_custom_roles FROM server_member_custom_supporter_roles smcsr INNER JOIN server_members sm ON sm.id = smcsr.member_id WHERE sm.server_id = ${Number(serverId)}`
+			sql`SELECT COUNT(DISTINCT smcsr.member_id) AS members_with_custom_roles FROM server_member_custom_supporter_roles smcsr INNER JOIN server_members sm ON sm.id = smcsr.member_id WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL`
 		)
 	];
 
@@ -4349,12 +4349,12 @@ export async function getServerOverview(serverId: any, opts?: { forPublicPage?: 
 			settingsRows
 		] = await Promise.all([
 			...statsPromises,
-			db.execute(sql`SELECT MAX(updated_at) AS last_updated FROM server_members WHERE server_id = ${Number(serverId)}`),
+			db.execute(sql`SELECT MAX(updated_at) AS last_updated FROM server_members WHERE server_id = ${Number(serverId)} AND deleted_at IS NULL`),
 			db.execute(sql`SELECT MAX(updated_at) AS last_updated FROM server_channels WHERE server_id = ${Number(serverId)}`),
 			db.execute(sql`SELECT MAX(updated_at) AS last_updated FROM server_categories WHERE server_id = ${Number(serverId)}`),
 			db.execute(sql`SELECT MAX(updated_at) AS last_updated FROM server_roles WHERE server_id = ${Number(serverId)}`),
 			db.execute(
-				sql`SELECT MAX(sml.updated_at) AS last_updated FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ${Number(serverId)}`
+				sql`SELECT MAX(sml.updated_at) AS last_updated FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL`
 			),
 			db
 				.select({ component_name: schema.serverSettings.component_name, updated_at: schema.serverSettings.updated_at })

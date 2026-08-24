@@ -1,16 +1,18 @@
 <script lang="ts">
-	type Tab = { id: string; label: string; icon?: string; active: boolean };
+	type Tab = { id: string; label: string; icon?: string; count?: string; active: boolean };
 
 	let {
 		tabs,
 		size = 'md',
 		depth = 0,
+		margin = true,
 		label,
 		onselect
 	}: {
 		tabs: Tab[];
 		size?: 'md' | 'sm';
 		depth?: 0 | 1 | 2;
+		margin?: boolean;
 		label: string;
 		onselect: (id: string) => void;
 	} = $props();
@@ -21,7 +23,7 @@
 <div
 	role="tablist"
 	aria-label={label}
-	class="tabs tabs-box border-base-300 mb-3 flex-nowrap overflow-x-auto border p-1.5 {DEPTH_BG[depth]} {size === 'sm' ? 'tabs-sm' : ''}"
+	class="tabs tabs-box border-base-300 flex-nowrap overflow-x-auto border p-1.5 {DEPTH_BG[depth]} {size === 'sm' ? 'tabs-sm' : ''} {margin ? 'mb-3' : ''}"
 >
 	{#each tabs as tab}
 		<button
@@ -34,6 +36,9 @@
 		>
 			{#if tab.icon}<i class="fas {tab.icon}"></i>{/if}
 			{tab.label}
+			{#if tab.count}
+				<span class="badge badge-xs h-auto border-none bg-current/15 px-1.5 py-0.5 text-[11px] font-bold tabular-nums">{tab.count}</span>
+			{/if}
 		</button>
 	{/each}
 </div>

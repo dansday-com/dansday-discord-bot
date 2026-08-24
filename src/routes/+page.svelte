@@ -2,9 +2,8 @@
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import type { PageProps } from './$types';
 	import { publicServerPath, COMMUNITY_DISCORD_URL, OFFICIAL_BOT_INVITE_URL, SOURCE_REPO_URL } from '$lib/url.js';
-	import MainHeader from '$lib/frontend/components/MainHeader.svelte';
-	import MainFooter from '$lib/frontend/components/MainFooter.svelte';
 	import { FeatureCard, SectionHeader, ServerCard, type BrandTone } from '$lib/frontend/components/landing';
+	import { PageShell } from '$lib/frontend/components/shell';
 
 	let { data }: PageProps = $props();
 
@@ -185,130 +184,118 @@
 	/>
 </svelte:head>
 
-<div class="m-root" data-theme="dansday">
-	<div class="m-blob m-blob-1"></div>
-	<div class="m-blob m-blob-2"></div>
-	<div class="m-blob m-blob-3"></div>
+<PageShell width="flush">
+	<section class="pt-10 pb-8 text-center min-[420px]:pt-12 min-[420px]:pb-9 sm:pt-14 sm:pb-10 lg:pt-18 lg:pb-12">
+		<h1 class="text-base-content m-0 mb-3.5 text-[28px] leading-tight font-extrabold tracking-tight min-[420px]:text-[32px] sm:text-[38px] lg:text-[46px]">
+			Supercharge Your<br />
+			<span class="from-primary to-accent bg-linear-to-br bg-clip-text text-transparent">Discord Server</span>
+		</h1>
+		<p class="text-base-content/60 mx-auto mb-6 text-[15px] leading-relaxed sm:text-base">
+			Run leveling, moderation, an embed builder, Discord Quests, quest enroll, self-bot options, creator tools, live public statistics pages, Roblox catalog
+			alerts, and more from the free web panel in your browser. Configure in one place instead of flooding channels with slash commands. Free for everyone.
+			Self-host from
+			<a
+				href={SOURCE_REPO_URL}
+				target="_blank"
+				rel="noopener noreferrer"
+				class="link text-base-content decoration-primary/35 hover:text-primary font-semibold underline-offset-[3px]">GitHub</a
+			>
+			or add
+			<a
+				href={OFFICIAL_BOT_INVITE_URL}
+				target="_blank"
+				rel="noopener noreferrer"
+				class="link text-base-content decoration-primary/35 hover:text-primary font-semibold underline-offset-[3px]">our hosted bot</a
+			>
+			if you do not run your own servers.
+		</p>
 
-	<MainHeader />
-
-	<main class="m-main">
-		<div class="m-inner m-landing-inner">
-			<section class="pt-10 pb-8 text-center min-[420px]:pt-12 min-[420px]:pb-9 sm:pt-14 sm:pb-10 lg:pt-18 lg:pb-12">
-				<h1 class="text-base-content m-0 mb-3.5 text-[28px] leading-tight font-extrabold tracking-tight min-[420px]:text-[32px] sm:text-[38px] lg:text-[46px]">
-					Supercharge Your<br />
-					<span class="from-primary to-accent bg-linear-to-br bg-clip-text text-transparent">Discord Server</span>
-				</h1>
-				<p class="text-base-content/60 mx-auto mb-6 text-[15px] leading-relaxed sm:text-base">
-					Run leveling, moderation, an embed builder, Discord Quests, quest enroll, self-bot options, creator tools, live public statistics pages, Roblox
-					catalog alerts, and more from the free web panel in your browser. Configure in one place instead of flooding channels with slash commands. Free for
-					everyone. Self-host from
+		<div class="flex flex-col items-stretch gap-3.5">
+			<a href={OFFICIAL_BOT_INVITE_URL} class="btn btn-primary btn-block" target="_blank" rel="noopener noreferrer">
+				<i class="fab fa-discord"></i>
+				Get started
+			</a>
+			<div class="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-2.5" role="group" aria-label="More options">
+				{#each heroLinks as link}
 					<a
-						href={SOURCE_REPO_URL}
-						target="_blank"
-						rel="noopener noreferrer"
-						class="link text-base-content decoration-primary/35 hover:text-primary font-semibold underline-offset-[3px]">GitHub</a
+						href={link.href}
+						class="btn"
+						title={link.title}
+						target={link.external ? '_blank' : undefined}
+						rel={link.external ? 'noopener noreferrer' : undefined}
 					>
-					or add
-					<a
-						href={OFFICIAL_BOT_INVITE_URL}
-						target="_blank"
-						rel="noopener noreferrer"
-						class="link text-base-content decoration-primary/35 hover:text-primary font-semibold underline-offset-[3px]">our hosted bot</a
-					>
-					if you do not run your own servers.
-				</p>
-
-				<div class="flex flex-col items-stretch gap-3.5">
-					<a href={OFFICIAL_BOT_INVITE_URL} class="btn btn-primary btn-block" target="_blank" rel="noopener noreferrer">
-						<i class="fab fa-discord"></i>
-						Get started
+						<i class={link.icon}></i>
+						{link.label}
 					</a>
-					<div class="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-2.5" role="group" aria-label="More options">
-						{#each heroLinks as link}
-							<a
-								href={link.href}
-								class="btn"
-								title={link.title}
-								target={link.external ? '_blank' : undefined}
-								rel={link.external ? 'noopener noreferrer' : undefined}
-							>
-								<i class={link.icon}></i>
-								{link.label}
-							</a>
-						{/each}
-					</div>
-				</div>
-			</section>
-
-			<section class="py-9 sm:py-11 lg:py-14" id="features">
-				<SectionHeader
-					title="Everything your server needs"
-					desc="Each module stands on its own. Turn on leveling, embed builder, Quest notifier, quest enroll, self-bot, forwarder, public statistics, or any mix you need. Everything lives under the same server settings."
-				/>
-				<div class="grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
-					{#each features as feature}
-						<FeatureCard icon={feature.icon} title={feature.title} desc={feature.desc} tone={feature.tone} />
-					{/each}
-				</div>
-			</section>
-
-			{#if data.featuredServers.length > 0}
-				<section class="py-9 sm:py-11 lg:py-14">
-					<SectionHeader title="Active Communities" desc="Servers using {APP_NAME} Bot, each with its own live public pages." />
-					<div class="grid grid-cols-1 gap-2.5">
-						{#each visibleServers as server}
-							<ServerCard href={publicServerPath(server.slug)} name={server.name} icon={server.server_icon} />
-						{/each}
-					</div>
-					{#if remainingServers > 0}
-						<button type="button" class="btn btn-block text-base-content/60 mt-2.5 font-medium" onclick={() => (shownServers += SERVERS_PER_PAGE)}>
-							<i class="fas fa-chevron-down"></i>
-							Show more ({remainingServers} left)
-						</button>
-					{/if}
-				</section>
-			{/if}
-
-			<section class="py-9 sm:py-11 lg:py-14">
-				<SectionHeader
-					title="Powerful web panel"
-					desc="Change settings from your browser without building long slash command workflows. After you sign in you land in the panel. Where a module supports it, you get live bot and server state right in the UI."
-				/>
-				<div class="grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
-					{#each panelCards as card}
-						<FeatureCard icon={card.icon} title={card.title} desc={card.desc} tone={card.tone} />
-					{/each}
-				</div>
-			</section>
-
-			<section class="pt-9 pb-11">
-				<div class="card from-primary/8 to-secondary/6 border-base-300 border bg-linear-to-br shadow-sm">
-					<div class="card-body items-center gap-0 p-7 text-center sm:p-10">
-						<h2 class="text-base-content mb-3.5 text-xl font-extrabold tracking-tight">Ready to try it?</h2>
-						<p class="text-base-content/60 mb-5 text-sm leading-relaxed">
-							Add {APP_NAME} Bot to your server first for free. Then sign in to the web panel to configure your server. The login screen also offers an optional free
-							<strong class="text-base-content font-semibold">ten minute demo</strong> with full panel access and no signup.
-						</p>
-						<div class="flex flex-wrap justify-center gap-3">
-							<a href={OFFICIAL_BOT_INVITE_URL} class="btn btn-primary" target="_blank" rel="noopener noreferrer">
-								<i class="fab fa-discord"></i>
-								Add {APP_NAME} Bot
-							</a>
-							<a href="/login" class="btn">
-								<i class="fas fa-sign-in-alt"></i>
-								Open login
-							</a>
-							<a href="/docs" class="btn">
-								<i class="fas fa-book-open"></i>
-								Read the docs
-							</a>
-						</div>
-					</div>
-				</div>
-			</section>
+				{/each}
+			</div>
 		</div>
-	</main>
+	</section>
 
-	<MainFooter />
-</div>
+	<section class="py-9 sm:py-11 lg:py-14" id="features">
+		<SectionHeader
+			title="Everything your server needs"
+			desc="Each module stands on its own. Turn on leveling, embed builder, Quest notifier, quest enroll, self-bot, forwarder, public statistics, or any mix you need. Everything lives under the same server settings."
+		/>
+		<div class="grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
+			{#each features as feature}
+				<FeatureCard icon={feature.icon} title={feature.title} desc={feature.desc} tone={feature.tone} />
+			{/each}
+		</div>
+	</section>
+
+	{#if data.featuredServers.length > 0}
+		<section class="py-9 sm:py-11 lg:py-14">
+			<SectionHeader title="Active Communities" desc="Servers using {APP_NAME} Bot, each with its own live public pages." />
+			<div class="grid grid-cols-1 gap-2.5">
+				{#each visibleServers as server}
+					<ServerCard href={publicServerPath(server.slug)} name={server.name} icon={server.server_icon} />
+				{/each}
+			</div>
+			{#if remainingServers > 0}
+				<button type="button" class="btn btn-block text-base-content/60 mt-2.5 font-medium" onclick={() => (shownServers += SERVERS_PER_PAGE)}>
+					<i class="fas fa-chevron-down"></i>
+					Show more ({remainingServers} left)
+				</button>
+			{/if}
+		</section>
+	{/if}
+
+	<section class="py-9 sm:py-11 lg:py-14">
+		<SectionHeader
+			title="Powerful web panel"
+			desc="Change settings from your browser without building long slash command workflows. After you sign in you land in the panel. Where a module supports it, you get live bot and server state right in the UI."
+		/>
+		<div class="grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
+			{#each panelCards as card}
+				<FeatureCard icon={card.icon} title={card.title} desc={card.desc} tone={card.tone} />
+			{/each}
+		</div>
+	</section>
+
+	<section class="pt-9 pb-11">
+		<div class="card from-primary/8 to-secondary/6 border-base-300 border bg-linear-to-br shadow-sm">
+			<div class="card-body items-center gap-0 p-7 text-center sm:p-10">
+				<h2 class="text-base-content mb-3.5 text-xl font-extrabold tracking-tight">Ready to try it?</h2>
+				<p class="text-base-content/60 mb-5 text-sm leading-relaxed">
+					Add {APP_NAME} Bot to your server first for free. Then sign in to the web panel to configure your server. The login screen also offers an optional free
+					<strong class="text-base-content font-semibold">ten minute demo</strong> with full panel access and no signup.
+				</p>
+				<div class="flex flex-wrap justify-center gap-3">
+					<a href={OFFICIAL_BOT_INVITE_URL} class="btn btn-primary" target="_blank" rel="noopener noreferrer">
+						<i class="fab fa-discord"></i>
+						Add {APP_NAME} Bot
+					</a>
+					<a href="/login" class="btn">
+						<i class="fas fa-sign-in-alt"></i>
+						Open login
+					</a>
+					<a href="/docs" class="btn">
+						<i class="fas fa-book-open"></i>
+						Read the docs
+					</a>
+				</div>
+			</div>
+		</div>
+	</section>
+</PageShell>

@@ -4,6 +4,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import MemberCard from '$lib/frontend/components/MemberCard.svelte';
 	import FeatureDisabled from '$lib/frontend/components/FeatureDisabled.svelte';
+	import { NavTabs, type NavTab } from '$lib/frontend/components/shell';
 	import { publicServerPath } from '$lib/url.js';
 	import { ITEM_EFFECTS, effectLabel, effectIcon, effectAccentHex, actionVerb, BAG_CAPACITY, formatDuration } from '$lib/items.js';
 	import type { PublicMembersStreamPayload } from '$lib/frontend/public/members/index.js';
@@ -200,6 +201,34 @@
 		return [{ id: 'all', label: 'All', icon: 'fa-grip' }, ...ordered.map((e) => ({ id: e.id, label: e.label, icon: e.icon }))];
 	});
 
+	const sectionTabs: NavTab[] = $derived([
+		{ label: 'Overview', icon: 'fa-gauge-high', href: `${accountBase}/overview/${navHash}`, active: isOverview },
+		{ label: 'Task', icon: 'fa-list-check', href: `${accountBase}/task/${navHash}`, active: isTask },
+		{
+			id: 'items',
+			label: 'Items',
+			icon: 'fa-store',
+			href: `${accountBase}/items/all/${navHash}`,
+			active: isItems,
+			badge: itemsEnabled ? `${pd.bagStock ?? 0}/${BAG_CAPACITY}` : undefined,
+			badgeBump: bagPulse
+		},
+		{ label: 'Minigames', icon: 'fa-dice', href: `${accountBase}/minigames/all/${navHash}`, active: isMinigames },
+		{ label: 'Assets', icon: 'fa-chart-line', href: `${accountBase}/assets/top/${navHash}`, active: isAssets },
+		{ label: 'History', icon: 'fa-clock-rotate-left', href: `${accountBase}/history/all/${navHash}`, active: isHistory },
+		{ label: 'Guide', icon: 'fa-circle-question', href: `${accountBase}/guide/${navHash}`, active: isGuide }
+	]);
+
+	const catTabs: NavTab[] | null = $derived.by(() => {
+		const build = (kind: string, tabs: { id: string; label: string; icon: string }[], activeId: string) =>
+			tabs.map((t) => ({ label: t.label, icon: t.icon, href: `${accountBase}/${kind}/${t.id}/${navHash}`, active: activeId === t.id }));
+		if (isHistory) return build('history', historyTabs, historyCat);
+		if (isItems) return build('items', typeTabs, activeCat);
+		if (isAssets) return build('assets', assetTabs, activeCat);
+		if (isMinigames) return build('minigames', minigameTabs, activeCat);
+		return null;
+	});
+
 	const sessionKey = $derived(`items_card_${data.server.slug}`);
 
 	function syncTabSession() {
@@ -235,41 +264,17 @@
 
 	let showCard = $state(false);
 
-	let tabsEl: HTMLDivElement | undefined = $state();
-	let canScrollLeft = $state(false);
-	let canScrollRight = $state(false);
-
-	function updateTabScroll() {
-		const el = tabsEl;
-		if (!el) return;
-		canScrollLeft = el.scrollLeft > 1;
-		canScrollRight = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
-	}
-
-	function scrollTabs(dir: -1 | 1) {
-		const el = tabsEl;
-		if (!el) return;
-		el.scrollBy({ left: dir * Math.max(160, el.clientWidth * 0.7), behavior: 'smooth' });
-	}
-
-	$effect(() => {
-		typeTabs;
-		isItems;
-		isHistory;
-		isAssets;
-		requestAnimationFrame(updateTabScroll);
-	});
-
-	let bagTabEl: HTMLAnchorElement | undefined = $state();
 	let bagPulse = $state(false);
 	let burstId = $state<number | null>(null);
 
 	function flyToBag(fromEl: HTMLElement | null, iconClass: string) {
-		if (!fromEl || !bagTabEl || typeof document === 'undefined') return;
+		if (!fromEl || typeof document === 'undefined') return;
+		const bagTab = document.querySelector('[data-tab-id="items"]');
+		if (!bagTab) return;
 		const start = fromEl.getBoundingClientRect();
-		const end = bagTabEl.getBoundingClientRect();
+		const end = bagTab.getBoundingClientRect();
 		const clone = document.createElement('div');
-		clone.className = 'm-fly';
+		clone.className = 'fixed z-9999 text-[26px] leading-none text-[#d9a528] pointer-events-none drop-shadow-[0_4px_8px_rgba(0,0,0,0.35)]';
 		const ic = document.createElement('i');
 		ic.className = `fas ${iconClass || 'fa-cube'}`;
 		clone.appendChild(ic);
@@ -372,39 +377,66 @@
 	<meta name="googlebot" content="noindex, nofollow, noarchive" />
 </svelte:head>
 
-<div class="m-items">
+<div class="mt-4.5">
 	{#snippet walletHero()}
-		<div class="m-xp">
-			<div class="m-xp-glow"></div>
+		<div
+			class="relative isolate mb-4 flex h-35 items-center gap-3.5 overflow-hidden rounded-2xl bg-linear-to-br from-[#245f73] to-[#173f4d] px-4.5 py-3.5 shadow-[0_10px_26px_-16px_rgba(36,95,115,0.8)]"
+		>
+			<div
+				class="pointer-events-none absolute -top-[60%] -right-[10%] size-55 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.16),transparent_70%)]"
+			></div>
+
 			{#if pd.memberCard && !(isAssets && assetSummary.count === 0)}
-				<button class="m-xp-card-btn" onclick={() => (showCard = true)} aria-label="Share your card" title="Share card">
+				<button
+					class="absolute top-2.5 right-3 z-2 inline-flex h-8 items-center gap-1.5 rounded-lg border border-white/30 bg-white/15 px-2.75 text-[13px] font-bold text-white transition-colors hover:bg-white/25"
+					onclick={() => (showCard = true)}
+					aria-label="Share your card"
+					title="Share card"
+				>
 					<i class="fas fa-share-nodes"></i>
-					<span class="m-xp-card-btn-label">Share</span>
+					<span class="hidden sm:inline">Share</span>
 				</button>
 			{/if}
-			<div class="m-xp-avatar">
-				<img src={memberAvatar} alt={pd.memberName ?? ''} loading="lazy" />
+
+			<div class="relative size-11.5 shrink-0 rounded-full bg-linear-to-br from-white/90 to-white/35 p-0.5 shadow-[0_4px_14px_-4px_rgba(0,0,0,0.4)]">
+				<img class="size-full rounded-full object-cover" src={memberAvatar} alt={pd.memberName ?? ''} loading="lazy" />
 			</div>
-			<div class="m-xp-figures">
-				<span class="m-xp-wallet"
-					><i class="fas {isOverview ? 'fa-user' : isAssets ? 'fa-chart-line' : isTask ? 'fa-fire' : 'fa-wallet'}"></i>{isOverview
+
+			<div class="relative min-w-0 flex-1">
+				<span class="inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.08em] text-white/60 uppercase">
+					<i class="fas {isOverview ? 'fa-user' : isAssets ? 'fa-chart-line' : isTask ? 'fa-fire' : 'fa-wallet'}"></i>{isOverview
 						? 'Profile'
 						: isAssets
 							? 'Assets Value'
 							: isTask
 								? 'Daily streak'
-								: 'Wallet'}</span
-				>
-				{#if pd.memberName}<span class="m-xp-name">{pd.memberName}</span>{/if}
+								: 'Wallet'}
+				</span>
+
+				{#if pd.memberName}<span class="mt-px block truncate text-[15px] font-extrabold tracking-tight text-white">{pd.memberName}</span>{/if}
+
 				{#if isTask}
-					<span class="m-xp-amount">{taskSummary?.current ?? 0}<span class="m-xp-unit">{(taskSummary?.current ?? 0) === 1 ? 'DAY' : 'DAYS'}</span></span>
-				{:else}
-					<span class="m-xp-amount" class:m-xp-amount--hidden={isOverview}>{fmt(isAssets ? assetSummary.value : liveXp)}<span class="m-xp-unit">XP</span></span>
+					<span class="mt-0.5 flex items-baseline gap-1.5 text-2xl leading-tight font-extrabold tracking-tight text-white tabular-nums">
+						{taskSummary?.current ?? 0}<span class="text-[13px] font-bold tracking-[0.04em] text-white/70"
+							>{(taskSummary?.current ?? 0) === 1 ? 'DAY' : 'DAYS'}</span
+						>
+					</span>
+				{:else if !isOverview}
+					<span class="mt-0.5 flex items-baseline gap-1.5 text-2xl leading-tight font-extrabold tracking-tight text-white tabular-nums">
+						{fmt(isAssets ? assetSummary.value : liveXp)}<span class="text-[13px] font-bold tracking-[0.04em] text-white/70">XP</span>
+					</span>
 				{/if}
-				<div class="m-xp-bar" class:m-xp-bar--hidden={isAssets || isOverview}>
-					<div class="m-xp-bar-fill" style="width: {isTask ? streakPct : levelInfo.pct}%"></div>
-				</div>
-				<span class="m-xp-bar-meta">
+
+				{#if !isAssets && !isOverview}
+					<div class="mt-2 h-1.5 overflow-hidden rounded-full bg-white/20">
+						<div
+							class="h-full rounded-full bg-linear-to-r from-[#5eead4] to-[#fbbf24] shadow-[0_0_10px_-1px_rgba(94,234,212,0.6)] transition-[width] duration-500"
+							style="width: {isTask ? streakPct : levelInfo.pct}%"
+						></div>
+					</div>
+				{/if}
+
+				<span class="mt-1.5 flex flex-nowrap items-baseline justify-between gap-2 text-[10.5px] font-semibold text-white/65">
 					{#if isOverview}
 						<span>Joined {joinedDate ?? '—'}</span>
 						{#if pd.profile?.isBooster || pd.profile?.isAfk}
@@ -421,42 +453,49 @@
 						<span>{levelInfo.toNext > 0 ? `${fmt(levelInfo.toNext)} XP to Lvl ${level + 1}` : 'Max progress'}</span>
 					{/if}
 				</span>
+
 				{#if isOverview && pd.profile?.roles?.[0]}
-					<div class="m-xp-roles">
-						<span class="m-xp-role" style={pd.profile.roles[0].color ? `--role-color: ${pd.profile.roles[0].color};` : ''}>
-							<i class="fas fa-circle"></i><span>{pd.profile.roles[0].name || 'Role'}</span>
+					<div class="mt-2 flex flex-wrap gap-1.5">
+						<span
+							class="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/12 px-2.25 py-[3px] text-[10.5px] font-semibold text-white"
+						>
+							<i class="fas fa-circle text-[6px]" style={pd.profile.roles[0].color ? `color: ${pd.profile.roles[0].color};` : undefined}></i>
+							<span>{pd.profile.roles[0].name || 'Role'}</span>
 						</span>
 					</div>
 				{/if}
 			</div>
-			<div class="m-xp-stats">
+
+			<div class="relative flex shrink-0 items-center gap-4.5 border-l border-white/15 pt-4.5 pl-4.5">
 				{#if isAssets}
-					<div class="m-xp-stat m-xp-stat--pnl" data-dir={assetSummary.pnl > 0 ? 'up' : assetSummary.pnl < 0 ? 'down' : 'flat'}>
-						<span class="m-xp-stat-val">
+					<div class="flex flex-col items-center leading-tight">
+						<span class="text-lg font-extrabold text-white tabular-nums">
 							<i class="fas fa-caret-{assetSummary.pnl >= 0 ? 'up' : 'down'}"></i>{assetSummary.pnlPct >= 0 ? '+' : ''}{assetSummary.pnlPct.toFixed(2)}%
 						</span>
-						<span class="m-xp-stat-lbl">{assetSummary.pnl >= 0 ? '+' : ''}{fmt(assetSummary.pnl)} XP</span>
+						<span class="mt-0.5 text-[10px] font-bold tracking-[0.06em] text-white/60 uppercase">
+							{assetSummary.pnl >= 0 ? '+' : ''}{fmt(assetSummary.pnl)} XP
+						</span>
 					</div>
 				{:else if isTask}
-					<div class="m-xp-stat">
-						<span class="m-xp-stat-val">{taskSummary?.freezes ?? 0}/{taskSummary?.freezeMax ?? 2}</span>
-						<span class="m-xp-stat-lbl">Freezes</span>
+					<div class="flex flex-col items-center leading-tight">
+						<span class="text-lg font-extrabold text-white tabular-nums">{taskSummary?.freezes ?? 0}/{taskSummary?.freezeMax ?? 2}</span>
+						<span class="mt-0.5 text-[10px] font-bold tracking-[0.06em] text-white/60 uppercase">Freezes</span>
 					</div>
 					{#if rank}
-						<div class="m-xp-stat">
-							<span class="m-xp-stat-val">#{rank}</span>
-							<span class="m-xp-stat-lbl">Rank</span>
+						<div class="flex flex-col items-center leading-tight">
+							<span class="text-lg font-extrabold text-white tabular-nums">#{rank}</span>
+							<span class="mt-0.5 text-[10px] font-bold tracking-[0.06em] text-white/60 uppercase">Rank</span>
 						</div>
 					{/if}
 				{:else}
-					<div class="m-xp-stat">
-						<span class="m-xp-stat-val">{levelInfo.pct}%</span>
-						<span class="m-xp-stat-lbl">Level {level}</span>
+					<div class="flex flex-col items-center leading-tight">
+						<span class="text-lg font-extrabold text-white tabular-nums">{levelInfo.pct}%</span>
+						<span class="mt-0.5 text-[10px] font-bold tracking-[0.06em] text-white/60 uppercase">Level {level}</span>
 					</div>
 					{#if rank}
-						<div class="m-xp-stat">
-							<span class="m-xp-stat-val">#{rank}</span>
-							<span class="m-xp-stat-lbl">Rank</span>
+						<div class="flex flex-col items-center leading-tight">
+							<span class="text-lg font-extrabold text-white tabular-nums">#{rank}</span>
+							<span class="mt-0.5 text-[10px] font-bold tracking-[0.06em] text-white/60 uppercase">Rank</span>
 						</div>
 					{/if}
 				{/if}
@@ -464,111 +503,35 @@
 		</div>
 
 		{#if activeChips.length > 0}
-			<div class="m-active">
+			<div class="-mt-1.5 mb-4 flex flex-nowrap gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 				{#each activeChips as chip (chip.key)}
-					<span class="m-active-chip" style="--chip-accent: {chip.accent}">
+					<span
+						class="inline-flex shrink-0 items-center gap-[7px] rounded-full border px-2.75 py-1.5 text-xs font-bold whitespace-nowrap text-(--chip)"
+						style="--chip: {chip.accent}; background: color-mix(in srgb, var(--chip) 11%, transparent); border-color: color-mix(in srgb, var(--chip) 30%, transparent);"
+					>
 						<i class="fas {chip.icon}"></i>
-						<span class="m-active-label">{chip.label}</span>
-						<span class="m-active-time">{chip.text ?? remainingLabel(chip.until)}</span>
+						<span class="text-base-content">{chip.label}</span>
+						<span class="tabular-nums opacity-85">{chip.text ?? remainingLabel(chip.until)}</span>
 					</span>
 				{/each}
 			</div>
 		{/if}
 	{/snippet}
 
-	<div class="m-items-bar">
-		<div class="m-items-toggle">
-			<a class="m-items-seg" class:m-items-seg--active={isOverview} href="{accountBase}/overview/{navHash}" data-sveltekit-preload-data="hover">
-				<i class="fas fa-gauge-high"></i>Overview
-			</a>
-			<a class="m-items-seg" class:m-items-seg--active={isTask} href="{accountBase}/task/{navHash}" data-sveltekit-preload-data="hover">
-				<i class="fas fa-list-check"></i>Task
-			</a>
-			<a
-				bind:this={bagTabEl}
-				class="m-items-seg"
-				class:m-items-seg--active={isItems}
-				class:m-items-seg--pulse={bagPulse}
-				href="{accountBase}/items/all/{navHash}"
-				data-sveltekit-preload-data="hover"
-			>
-				<i class="fas fa-store"></i>Items{#if itemsEnabled}<span class="m-items-count" class:m-items-count--bump={bagPulse}
-						>{pd.bagStock ?? 0}/{BAG_CAPACITY}</span
-					>{/if}
-			</a>
-			<a class="m-items-seg" class:m-items-seg--active={isMinigames} href="{accountBase}/minigames/all/{navHash}" data-sveltekit-preload-data="hover">
-				<i class="fas fa-dice"></i>Minigames
-			</a>
-			<a class="m-items-seg" class:m-items-seg--active={isAssets} href="{accountBase}/assets/top/{navHash}" data-sveltekit-preload-data="hover">
-				<i class="fas fa-chart-line"></i>Assets
-			</a>
-			<a class="m-items-seg" class:m-items-seg--active={isHistory} href="{accountBase}/history/all/{navHash}" data-sveltekit-preload-data="hover">
-				<i class="fas fa-clock-rotate-left"></i>History
-			</a>
-			<a class="m-items-seg" class:m-items-seg--active={isGuide} href="{accountBase}/guide/{navHash}" data-sveltekit-preload-data="hover">
-				<i class="fas fa-circle-question"></i>Guide
-			</a>
-		</div>
+	<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+		<NavTabs variant="segment" tabs={sectionTabs} />
 	</div>
 
 	{#if isOverview || isItems || isMinigames || isAssets || isHistory || isTask}
 		{@render walletHero()}
 	{/if}
 
-	{#snippet tabStrip(tabs: { id: string; label: string; icon: string; href: string }[], activeId: string)}
-		<div class="m-items-tabswrap">
-			<button
-				type="button"
-				class="m-items-arrow m-items-arrow--left"
-				class:m-items-arrow--show={canScrollLeft}
-				aria-label="Scroll categories left"
-				tabindex={canScrollLeft ? 0 : -1}
-				onclick={() => scrollTabs(-1)}
-			>
-				<i class="fas fa-chevron-left"></i>
-			</button>
-			<div bind:this={tabsEl} class="m-items-tabs" onscroll={updateTabScroll}>
-				{#each tabs as cat}
-					<a class="m-items-tab" class:m-items-tab--active={activeId === cat.id} href={cat.href} data-sveltekit-preload-data="hover">
-						<i class="fas {cat.icon}"></i>{cat.label}
-					</a>
-				{/each}
-			</div>
-			<button
-				type="button"
-				class="m-items-arrow m-items-arrow--right"
-				class:m-items-arrow--show={canScrollRight}
-				aria-label="Scroll categories right"
-				tabindex={canScrollRight ? 0 : -1}
-				onclick={() => scrollTabs(1)}
-			>
-				<i class="fas fa-chevron-right"></i>
-			</button>
-		</div>
-	{/snippet}
-
 	{#if disabledFeature}
 		{''}
-	{:else if isHistory}
-		{@render tabStrip(
-			historyTabs.map((t) => ({ ...t, href: `${accountBase}/history/${t.id}/${navHash}` })),
-			historyCat
-		)}
-	{:else if isItems}
-		{@render tabStrip(
-			typeTabs.map((t) => ({ ...t, href: `${accountBase}/items/${t.id}/${navHash}` })),
-			activeCat
-		)}
-	{:else if isAssets}
-		{@render tabStrip(
-			assetTabs.map((t) => ({ ...t, href: `${accountBase}/assets/${t.id}/${navHash}` })),
-			activeCat
-		)}
-	{:else if isMinigames}
-		{@render tabStrip(
-			minigameTabs.map((t) => ({ ...t, href: `${accountBase}/minigames/${t.id}/${navHash}` })),
-			activeCat
-		)}
+	{:else if catTabs}
+		<div class="mb-4">
+			<NavTabs tabs={catTabs} arrows />
+		</div>
 	{/if}
 
 	{#if disabledFeature}

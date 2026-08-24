@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { publicServerPath } from '$lib/url.js';
+	import { NavTabs, type NavTab } from '$lib/frontend/components/shell';
 
 	let {
 		server
@@ -29,38 +30,31 @@
 	});
 	const isGuest = $derived(!accountHash && !hasStoredCard);
 
-	const tabs = $derived(
+	const tabs: NavTab[] = $derived(
 		[
 			{ label: 'Statistics', icon: 'fa-chart-pie', href: basePath, active: isOverview, show: true },
 			{ label: 'Leaderboard', icon: 'fa-trophy', href: `${basePath}/leaderboard`, active: isLeaderboard, show: true },
 			{ label: 'Members', icon: 'fa-users', href: `${basePath}/members`, active: isMembers, show: true },
 			{ label: 'Account', icon: 'fa-user', href: accountHref, active: isAccount, show: !isGuest }
-		].filter((t) => t.show)
+		]
+			.filter((t) => t.show)
+			.map(({ show, ...t }) => t)
 	);
 </script>
 
-<header class="m-header">
-	<div class="m-server-icon">
+<header class="mb-4 flex items-center gap-3">
+	<div class="border-base-300 bg-base-100 grid size-11 shrink-0 place-items-center overflow-hidden rounded-xl border">
 		{#if server.server_icon}
-			<img src={server.server_icon} alt={server.name || ''} />
+			<img class="size-full object-cover" src={server.server_icon} alt={server.name || ''} />
 		{:else}
-			<span class="m-icon-placeholder">🏆</span>
+			<span class="text-lg">🏆</span>
 		{/if}
 	</div>
-	<div class="m-header-text">
-		<h1>{server.name || server.slug}</h1>
-	</div>
+	<h1 class="text-base-content min-w-0 truncate text-lg font-extrabold tracking-tight sm:text-xl">{server.name || server.slug}</h1>
 </header>
 
 {#if tabs.length > 1}
-	<div class="m-section-tabs-bar">
-		<div class="m-section-tabs">
-			{#each tabs as tab}
-				<a href={tab.href} class="m-section-tab" class:m-section-tab--active={tab.active} data-sveltekit-preload-data="hover">
-					<i class="fas {tab.icon}"></i>
-					{tab.label}
-				</a>
-			{/each}
-		</div>
+	<div class="mb-4">
+		<NavTabs variant="segment" {tabs} />
 	</div>
 {/if}

@@ -181,8 +181,8 @@
 	<meta property="og:description" content="Members, channels, leveling, and voice activity for this community." />
 </svelte:head>
 
-<div class="m-leaderboard-subhead m-stats-subhead">
-	<p>Statistics</p>
+<div class="text-base-content/60 mb-3 flex flex-wrap items-center gap-1.5 text-xs">
+	<p class="m-0 flex flex-wrap items-center gap-1.5">Statistics</p>
 </div>
 
 <div class="mb-3 sm:mb-4 lg:mb-5">

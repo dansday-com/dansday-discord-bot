@@ -168,8 +168,8 @@
 	<meta property="og:description" content="Explore members, ranks, XP, and voice activity for this community." />
 </svelte:head>
 
-<div class="m-leaderboard-subhead m-stats-subhead">
-	<p>Members</p>
+<div class="text-base-content/60 mb-3 flex flex-wrap items-center gap-1.5 text-xs">
+	<p class="m-0 flex flex-wrap items-center gap-1.5">Members</p>
 </div>
 
 <div class="mb-4 flex flex-wrap items-center justify-between gap-3">

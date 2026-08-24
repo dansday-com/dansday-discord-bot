@@ -22,17 +22,6 @@
 	});
 </script>
 
-<div class="m-ov-redirect">
+<div class="text-base-content/60 flex items-center justify-center py-15 text-[22px]">
 	<i class="fas fa-circle-notch fa-spin"></i>
 </div>
-
-<style>
-	.m-ov-redirect {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		padding: 60px 0;
-		color: var(--lb-text-muted, #888);
-		font-size: 22px;
-	}
-</style>

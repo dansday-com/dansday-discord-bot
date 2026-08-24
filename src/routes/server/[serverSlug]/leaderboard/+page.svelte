@@ -329,8 +329,8 @@
 	<meta property="og:description" content="See who's on top in {data.server.name || data.server.slug}." />
 </svelte:head>
 
-<div class="m-leaderboard-subhead m-stats-subhead">
-	<p>
+<div class="text-base-content/60 mb-3 flex flex-wrap items-center gap-1.5 text-xs">
+	<p class="m-0 flex flex-wrap items-center gap-1.5">
 		Leaderboard
 		<span class="badge badge-sm bg-primary/20 border-primary/35 text-accent font-semibold">{metricLabel(metric)}</span>
 		<span class="badge badge-sm bg-primary/20 border-primary/35 text-accent font-semibold">

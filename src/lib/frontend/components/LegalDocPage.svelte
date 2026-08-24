@@ -49,12 +49,19 @@
 										<li>{item}</li>
 									{/each}
 								</ul>
+							{:else if block.kind === 'defs'}
+								<ul>
+									{#each block.items as item}
+										<li><strong>{item.term}</strong> — {item.desc}</li>
+									{/each}
+								</ul>
 							{:else if block.kind === 'links'}
 								<p>
-									{block.text}{#each block.links as link, i}{#if i > 0}{i === block.links.length - 1 ? ', and ' : ', '}{/if}<a
-											href={link.href}
-											target="_blank"
-											rel="noopener noreferrer">{link.label}</a
+									{block.text}{#each block.links as link, i}{#if i > 0}{i === block.links.length - 1
+												? block.links.length === 2
+													? ' and '
+													: ', and '
+												: ', '}{/if}<a href={link.href} target="_blank" rel="noopener noreferrer">{link.label}</a
 										>{/each}.{#if block.tail}&nbsp;{block.tail}{/if}
 								</p>
 							{/if}

@@ -9,11 +9,23 @@ export const TERMS_URL = `${LEGAL_BASE_URL}${TERMS_PATH}`;
 export const PRIVACY_URL = `${LEGAL_BASE_URL}${PRIVACY_PATH}`;
 
 export const LEGAL_LAST_UPDATED = 'August 24, 2026';
+export const SECURITY_EMAIL = 'security@dansday.com';
 
 export const DISCORD_LINKS = {
 	terms: 'https://discord.com/terms',
 	privacy: 'https://discord.com/privacy',
 	developerPolicy: 'https://discord.com/developers/docs/policy'
+};
+
+export const THIRD_PARTY_LINKS = {
+	coingecko: 'https://www.coingecko.com/en/privacy',
+	google: 'https://policies.google.com/privacy',
+	openai: 'https://openai.com/policies/privacy-policy',
+	roblox: 'https://en.help.roblox.com/hc/en-us/articles/115004630823',
+	tiktok: 'https://www.tiktok.com/legal/privacy-policy',
+	mediawiki: 'https://www.mediawiki.org/wiki/API:Main_page',
+	license: 'https://github.com/dansday-com/dansday-discord-bot/blob/master/LICENSE',
+	repo: 'https://github.com/dansday-com/dansday-discord-bot'
 };
 
 export const legalNav = [
@@ -24,6 +36,7 @@ export const legalNav = [
 export type LegalBlock =
 	| { kind: 'text'; text: string }
 	| { kind: 'list'; items: string[] }
+	| { kind: 'defs'; items: { term: string; desc: string }[] }
 	| { kind: 'links'; text: string; links: { label: string; href: string }[]; tail?: string };
 
 export type LegalSection = {
@@ -54,17 +67,84 @@ export const terms: LegalDoc = {
 			blocks: [
 				{
 					kind: 'text',
-					text: `By adding ${APP_NAME} Discord Bot to a Discord server, using the web panel, or otherwise using the Service, you agree to these Terms of Service and to Discord's rules. If you do not agree, do not use the Service.`
+					text: `By adding ${APP_NAME} Discord Bot to a Discord server, signing in to the web panel, using a public server page, or otherwise using the Service, you agree to these Terms of Service and to Discord's rules. If you do not agree, do not use the Service.`
 				}
 			]
 		},
 		{
 			id: 'service',
-			heading: 'The Service',
+			heading: 'What the Service does',
 			blocks: [
 				{
 					kind: 'text',
-					text: `${APP_NAME} Discord Bot provides Discord bot features and a web-based configuration panel. Features, availability, and limits may change. We may suspend or discontinue parts of the Service with reasonable notice where practicable.`
+					text: `${APP_NAME} Discord Bot is a Discord bot with a web configuration panel. Server owners run /setup once, then configure everything from the browser rather than through slash commands.`
+				},
+				{
+					kind: 'defs',
+					items: [
+						{
+							term: 'Leveling and XP',
+							desc: 'Messages, voice, video and streaming time earn XP, which drives levels, role rewards and leaderboards. Reactions are tracked for tasks.'
+						},
+						{
+							term: 'Items and XP economy',
+							desc: 'A per-server shop priced in XP with a 50-slot bag and optional timed availability. Effects include steal, bomb, leech, bounty, shield, reflect, insurance, boost, gift, spy, disguise, purifier and luck.'
+						},
+						{
+							term: 'Tasks, streaks and check-in',
+							desc: 'Daily and weekly tasks generated per member from their own recent activity, with streak bonuses and a 7-day check-in cycle.'
+						},
+						{
+							term: 'Minigames',
+							desc: 'Members wager XP. Only XP above the current level can be wagered, so a loss never costs a level.'
+						},
+						{
+							term: 'Assets market',
+							desc: 'Members lock XP into simulated crypto positions priced from live market data. This is a game score only, described further below.'
+						},
+						{
+							term: 'Moderation and operations',
+							desc: 'Warnings, mutes, bans, staff ratings, channel notifications and a message forwarder.'
+						},
+						{
+							term: 'AI chat, voice and tools',
+							desc: 'Optional AI conversation in text and voice, with web search, page fetch, image generation, wiki reading and read-only access to the server’s own public data.'
+						},
+						{
+							term: 'Integrations',
+							desc: 'Discord Quest notifications, Roblox catalog watching, and creator or TikTok live digests.'
+						},
+						{
+							term: 'Public server pages',
+							desc: 'Each server can expose live statistics, a leaderboard, a members directory and member accounts at a public URL.'
+						}
+					]
+				},
+				{
+					kind: 'text',
+					text: 'Every module has a toggle. Features, availability and limits may change, and we may suspend or discontinue parts of the Service with reasonable notice where practicable.'
+				}
+			]
+		},
+		{
+			id: 'no-real-money',
+			heading: 'XP, items and the assets market are not real money',
+			blocks: [
+				{
+					kind: 'text',
+					text: 'XP, shop items, bag contents, minigame wagers and asset positions are in-game scores with no monetary value. They cannot be bought with, redeemed for, or exchanged into real currency by us.'
+				},
+				{
+					kind: 'text',
+					text: 'The assets market is a simulation. It reads live public market prices to move a score up and down. No cryptocurrency is ever bought, held, sold or transferred on your behalf, no funds are custodied, and nothing here is financial advice or an investment product.'
+				},
+				{
+					kind: 'text',
+					text: 'Minigames wager XP only. They are not gambling for money and no purchase is possible. Server owners can disable minigames, items, assets and tasks independently.'
+				},
+				{
+					kind: 'text',
+					text: 'Scores may be adjusted, reset or removed to correct bugs, abuse or exploits. We do not compensate for lost XP, items or positions.'
 				}
 			]
 		},
@@ -80,7 +160,30 @@ export const terms: LegalDoc = {
 						{ label: "Discord's Privacy Policy", href: DISCORD_LINKS.privacy },
 						{ label: 'Discord Developer Policy', href: DISCORD_LINKS.developerPolicy }
 					],
-					tail: "You are responsible for your server's rules and for how you configure the bot."
+					tail: 'You must also meet the minimum age Discord requires in your country. You are responsible for your server’s rules and for how you configure the bot.'
+				}
+			]
+		},
+		{
+			id: 'server-owner',
+			heading: 'If you run a server',
+			blocks: [
+				{
+					kind: 'text',
+					text: 'Adding the bot and enabling modules is your decision, and it determines what data the Service processes about your members. You are the one who decides whether public pages are on, whether AI features are on, and which channels the bot reads or posts in.'
+				},
+				{
+					kind: 'list',
+					items: [
+						'Tell your members which features you have enabled, particularly public pages and AI.',
+						'Turn on the Server Members and Message Content privileged intents only for the features you actually want.',
+						'Keep panel accounts and staff tiers limited to people you trust; staff can change settings and moderate members.',
+						'Make sure your own server rules and any local law that applies to your community are followed.'
+					]
+				},
+				{
+					kind: 'text',
+					text: 'Public pages are a master switch with sub-toggles for items, minigames, assets and daily tasks. Turning the master switch off takes every public page dark immediately.'
 				}
 			]
 		},
@@ -94,8 +197,11 @@ export const terms: LegalDoc = {
 					items: [
 						'Violate law or third-party rights.',
 						'Harass, abuse, spam, or distribute malware.',
-						"Attempt to disrupt, overload, or gain unauthorized access to the Service or others' data.",
-						'Scrape, resell, or misrepresent the bot or website without permission.'
+						"Attempt to disrupt, overload, or gain unauthorized access to the Service or other people's data.",
+						'Exploit bugs in XP, items, tasks, minigames or the assets market, or automate interactions to farm rewards.',
+						'Use the AI features to generate content that is illegal, or that breaks Discord’s rules or your AI provider’s terms.',
+						'Scrape, resell, or misrepresent the bot or website without permission.',
+						'Circumvent rate limits, module toggles, or a server owner’s configuration.'
 					]
 				},
 				{
@@ -105,12 +211,30 @@ export const terms: LegalDoc = {
 			]
 		},
 		{
+			id: 'ai',
+			heading: 'AI features',
+			blocks: [
+				{
+					kind: 'text',
+					text: 'AI chat, voice and tools are off until a server or bot operator supplies an endpoint, model and key. When enabled, prompts and the context needed to answer are sent to whichever provider that operator configured, and the provider’s own terms and privacy policy apply to that processing.'
+				},
+				{
+					kind: 'text',
+					text: 'AI output is generated automatically and can be wrong. Do not rely on it for factual, legal, financial, medical or safety decisions. Voice features record and transcribe speech in a voice channel only while the bot has been invited into it.'
+				},
+				{
+					kind: 'text',
+					text: 'The AI can read the server’s own public data and the asking member’s own account. It follows your module toggles, and it will not disclose another member’s private account data.'
+				}
+			]
+		},
+		{
 			id: 'accounts',
 			heading: 'Accounts and servers',
 			blocks: [
 				{
 					kind: 'text',
-					text: 'You are responsible for activity under panel accounts you control and for bot permissions you grant in Discord. Keep credentials secure and revoke access when appropriate.'
+					text: 'You are responsible for activity under panel accounts you control and for bot permissions you grant in Discord. Keep credentials secure and revoke access when appropriate. Member accounts on public pages are reached with a per-member link; treat that link as private, since anyone holding it can view that member’s account page.'
 				}
 			]
 		},
@@ -119,8 +243,26 @@ export const terms: LegalDoc = {
 			heading: 'Self-hosting and open source',
 			blocks: [
 				{
+					kind: 'links',
+					text: 'The project is free and open source under the MIT license. If you run your own deployment from source, you are the operator of that deployment: you control its database, its keys and its data, and these terms cover only the hosted Service we run. See the ',
+					links: [
+						{ label: 'license', href: THIRD_PARTY_LINKS.license },
+						{ label: 'source repository', href: THIRD_PARTY_LINKS.repo }
+					]
+				},
+				{
 					kind: 'text',
-					text: 'The project is free and open source. If you run your own deployment from source, your use of that software is governed by the project license in addition to any hosting terms you accept. Hosted and self-hosted deployments may differ in availability and data handling.'
+					text: 'The optional selfbot path uses a user token and is not supported by Discord. If you choose to enable it, you do so on your own risk assessment and remain responsible for any consequences to the account involved.'
+				}
+			]
+		},
+		{
+			id: 'availability',
+			heading: 'Availability',
+			blocks: [
+				{
+					kind: 'text',
+					text: 'The Service is provided free of charge with no uptime commitment. Maintenance, Discord outages, rate limits from upstream providers and bugs can all interrupt it. Rate limits apply to public endpoints to keep the Service stable.'
 				}
 			]
 		},
@@ -160,7 +302,7 @@ export const terms: LegalDoc = {
 			blocks: [
 				{
 					kind: 'text',
-					text: 'You may stop using the Service at any time by removing the bot from your server. We may suspend or terminate access if you breach these terms, create risk, or if required by law or Discord. Provisions that should survive, such as disclaimers, limitations, and indemnity, will survive termination.'
+					text: 'You may stop using the Service at any time by removing the bot from your server, which deletes that server’s stored configuration and member records. We may suspend or terminate access if you breach these terms, create risk, or if required by law or Discord. Provisions that should survive, such as disclaimers, limitations, and indemnity, will survive termination.'
 				}
 			]
 		},
@@ -181,7 +323,8 @@ export const terms: LegalDoc = {
 				{
 					kind: 'links',
 					text: 'For questions about these terms, reach us through the support channel listed at ',
-					links: [{ label: APP_URL.replace(/^https?:\/\//, ''), href: APP_URL }]
+					links: [{ label: APP_URL.replace(/^https?:\/\//, ''), href: APP_URL }],
+					tail: `To report a security vulnerability, email ${SECURITY_EMAIL} instead of opening a public issue.`
 				}
 			]
 		}
@@ -201,32 +344,84 @@ export const privacy: LegalDoc = {
 			blocks: [
 				{
 					kind: 'text',
-					text: `This policy describes how information is collected and used when you use ${APP_NAME} Discord Bot (the "Service"), including the web panel, Discord interactions, and related features.`
+					text: `This policy describes what ${APP_NAME} Discord Bot (the "Service") stores and why, covering the web panel, the Discord bot, the public server pages and the optional AI features.`
+				},
+				{
+					kind: 'text',
+					text: 'Two roles matter throughout. A server owner decides which modules are on, and that decision determines what is processed about their members. We operate the hosted Service and the database behind it. Anyone self-hosting from source operates their own deployment, and this policy does not cover it.'
 				}
 			]
 		},
 		{
-			id: 'information-you-provide',
-			heading: 'Information you provide',
+			id: 'panel-accounts',
+			heading: 'Panel accounts',
 			blocks: [
-				{ kind: 'text', text: 'Data you or your server members may provide through the Service includes:' },
+				{ kind: 'text', text: 'When you register a panel account to configure a bot or server, we store:' },
 				{
 					kind: 'list',
 					items: [
-						'Panel account details used only for authentication, such as an email address and password hash.',
-						'Configuration you save in the panel, including server settings, module options, messages, and role mappings.',
-						'Content sent through Discord that the bot processes to provide the features you enable.'
+						'Your username and email address, used to identify you and to send account email.',
+						'A bcrypt hash of your password. We never store the password itself.',
+						'The IP address used to register, kept to detect abuse and duplicate accounts.',
+						'Which servers you own or were invited to, and your staff tier in each.'
 					]
+				},
+				{
+					kind: 'text',
+					text: 'Sessions are held in Redis where configured, or in process memory otherwise, and expire on sign-out or after inactivity. A session cookie keeps you signed in; the demo login is protected by a self-hosted captcha, with no third-party captcha service involved.'
 				}
 			]
 		},
 		{
-			id: 'discord-data',
-			heading: 'Data from Discord',
+			id: 'server-config',
+			heading: 'Server configuration',
 			blocks: [
 				{
 					kind: 'text',
-					text: 'When the bot is added to a server or when members interact with it, Discord shares the identifiers and event data needed to run the features you enable. This can include user IDs, channel IDs, message content where a feature requires it, and voice or activity signals for the modules you turn on.'
+					text: 'For each server the bot joins we store the Discord server ID and name, its categories, channels and roles, your per-module settings, embed styles and templates, and the channel assignments made by /setup. Bot tokens and AI provider keys are stored per bot and are never sent back to the browser.'
+				}
+			]
+		},
+		{
+			id: 'member-data',
+			heading: 'Member data from Discord',
+			blocks: [
+				{
+					kind: 'text',
+					text: 'When a member interacts with an enabled module, we store the record that module needs. Nothing here is collected for its own sake; each item exists to make a feature work.'
+				},
+				{
+					kind: 'defs',
+					items: [
+						{
+							term: 'Identity',
+							desc: 'Discord user ID, username, display name, server nickname, avatar, account creation date, server join date, booster status and preferred language.'
+						},
+						{
+							term: 'Activity and XP',
+							desc: 'Message counts, voice, video, streaming and AFK minutes, reaction counts, level, XP totals and a log of XP events with their source.'
+						},
+						{
+							term: 'Economy',
+							desc: 'Bag contents, purchases, item activations and their effects, bounties, gifts, and logs of item use for cooldowns and history.'
+						},
+						{
+							term: 'Tasks and streaks',
+							desc: 'Generated daily and weekly tasks, progress, claims, streak count, freezes and check-in cycle, plus the timezone offset needed to run them on your local day.'
+						},
+						{
+							term: 'Minigames and assets',
+							desc: 'Wagers, outcomes, simulated asset positions and their transaction logs.'
+						},
+						{
+							term: 'Roles and moderation',
+							desc: 'Role assignments, custom supporter roles, AFK status, warnings and moderation actions, staff ratings and reviews, feedback submissions, giveaway entries, quest progress and creator applications.'
+						},
+						{
+							term: 'Message content',
+							desc: 'Read only where a feature requires it, such as the message forwarder, moderation and AI chat. It is used to perform the action and is not retained as a general message archive.'
+						}
+					]
 				},
 				{
 					kind: 'links',
@@ -239,12 +434,87 @@ export const privacy: LegalDoc = {
 			]
 		},
 		{
+			id: 'public-pages',
+			heading: 'Public pages and visibility',
+			blocks: [
+				{
+					kind: 'text',
+					text: 'If a server owner enables public statistics, that server gets pages at a public URL showing server totals, a leaderboard, a members directory with levels and roles, and per-member account pages. These pages need no login and can be indexed by search engines.'
+				},
+				{
+					kind: 'text',
+					text: 'A member account page is reached through a link derived from that member’s Discord ID and join date. Anyone with the link can open that page, so it should be treated as private. Members using the disguise item are hidden from public leaderboards and the members directory.'
+				},
+				{
+					kind: 'text',
+					text: 'Turning off public statistics removes every public page for that server, and the sub-toggles for items, minigames, assets and daily tasks control those sections individually.'
+				}
+			]
+		},
+		{
+			id: 'ai-data',
+			heading: 'AI features',
+			blocks: [
+				{
+					kind: 'text',
+					text: 'AI is off until an operator configures an endpoint, model and key. When it is on, the member’s message and the context needed to answer are sent to that provider. Chat history is kept per member per server in a session that expires 30 minutes after the last message. Voice audio is streamed to the configured provider while the bot is in the channel and is not stored by us afterwards.'
+				},
+				{
+					kind: 'links',
+					text: 'Depending on what the operator configured, that provider may be ',
+					links: [
+						{ label: 'Google', href: THIRD_PARTY_LINKS.google },
+						{ label: 'OpenAI', href: THIRD_PARTY_LINKS.openai }
+					],
+					tail: 'or any other OpenAI-compatible endpoint, including a local model. Their policies govern that processing. Web search, page fetch, image generation and wiki reading send only the query or URL needed for the lookup.'
+				}
+			]
+		},
+		{
+			id: 'third-parties',
+			heading: 'Third-party services',
+			blocks: [
+				{
+					kind: 'text',
+					text: 'Beyond Discord and any AI provider, the Service contacts these only for the modules that use them:'
+				},
+				{
+					kind: 'links',
+					text: 'Live market prices for the assets market come from ',
+					links: [{ label: 'CoinGecko', href: THIRD_PARTY_LINKS.coingecko }],
+					tail: 'Requests carry no member data.'
+				},
+				{
+					kind: 'links',
+					text: 'Catalog watching reads public listings from ',
+					links: [{ label: 'Roblox', href: THIRD_PARTY_LINKS.roblox }],
+					tail: 'for the catalog items a server chooses to watch.'
+				},
+				{
+					kind: 'links',
+					text: 'Creator digests read public live data from ',
+					links: [{ label: 'TikTok', href: THIRD_PARTY_LINKS.tiktok }],
+					tail: 'for the accounts a server configures, and never a member’s private TikTok data.'
+				},
+				{
+					kind: 'links',
+					text: 'Wiki lookups query the ',
+					links: [{ label: 'MediaWiki Action API', href: THIRD_PARTY_LINKS.mediawiki }],
+					tail: 'of the wikis an operator adds, sending only the search term or page title.'
+				},
+				{
+					kind: 'text',
+					text: 'We also rely on the infrastructure needed to run the Service: hosting, a MySQL database, Redis for sessions and caching, and an email provider for account mail. We do not sell personal data, and there is no advertising or third-party analytics on the site.'
+				}
+			]
+		},
+		{
 			id: 'cookies',
 			heading: 'Cookies and similar technologies',
 			blocks: [
 				{
 					kind: 'text',
-					text: 'The website uses cookies and local storage for sessions, preferences, and security, such as keeping you signed in to the panel. We do not use advertising cookies.'
+					text: 'The website uses a session cookie to keep you signed in to the panel, and local storage for preferences such as language and theme. There are no advertising or tracking cookies.'
 				}
 			]
 		},
@@ -254,27 +524,31 @@ export const privacy: LegalDoc = {
 			blocks: [
 				{
 					kind: 'text',
-					text: 'We use information to operate, secure, and improve the Service, to respond to support requests, and to comply with law. We do not sell personal data.'
+					text: 'We use information to run the modules a server has enabled, to keep the Service secure and within rate limits, to respond to support requests, and to comply with law. We do not use member data to train AI models.'
 				}
 			]
 		},
 		{
 			id: 'retention',
-			heading: 'Retention',
+			heading: 'Retention and deletion',
 			blocks: [
 				{
 					kind: 'text',
-					text: 'Panel and server configuration is kept while the bot remains in your server and your account exists. Removing the bot or deleting your account removes the associated configuration. Operational logs are kept only as long as needed to run and secure the Service.'
-				}
-			]
-		},
-		{
-			id: 'sharing',
-			heading: 'Sharing',
-			blocks: [
+					text: 'Records are tied to the server they belong to. Removing the bot from a server, or deleting that server from the panel, cascades through the database and removes its members, levels, items, tasks, assets, logs and settings. Deleting a panel account removes the account and everything owned by it.'
+				},
+				{
+					kind: 'list',
+					items: [
+						'AI chat sessions expire 30 minutes after the last message.',
+						'Wiki page reads are cached for about 10 minutes.',
+						'Sessions expire on sign-out or after inactivity.',
+						'Depleted items are purged automatically.',
+						'A member who leaves a server can be removed from that server’s records on request.'
+					]
+				},
 				{
 					kind: 'text',
-					text: 'We share data only with the infrastructure providers needed to run the Service, such as hosting, database, and email delivery. Providers process data on our instructions. Self-hosted deployments are operated entirely by whoever runs them.'
+					text: 'Operational logs are kept only as long as needed to run and secure the Service. Backups may hold removed data for a short period before rotating out.'
 				}
 			]
 		},
@@ -284,7 +558,13 @@ export const privacy: LegalDoc = {
 			blocks: [
 				{
 					kind: 'text',
-					text: 'We take reasonable measures to protect information, including encrypted transport and hashed credentials. No method of transmission or storage is completely secure.'
+					text: 'Passwords are hashed with bcrypt. Traffic is served over HTTPS. Bot tokens and provider keys are stored server-side and never returned to the browser. Public endpoints are rate limited. Panel access is bounded by owner and staff tiers, and permissions map Discord roles to what they unlock.'
+				},
+				{
+					kind: 'links',
+					text: 'No method of transmission or storage is completely secure. If you find a vulnerability, email ',
+					links: [{ label: SECURITY_EMAIL, href: `mailto:${SECURITY_EMAIL}` }],
+					tail: 'rather than opening a public issue.'
 				}
 			]
 		},
@@ -294,7 +574,7 @@ export const privacy: LegalDoc = {
 			blocks: [
 				{
 					kind: 'text',
-					text: 'Depending on where you live, you may have rights to access, correct, delete, or export personal data, or to object to certain processing. Contact us to exercise those rights.'
+					text: 'Depending on where you live, you may have rights to access, correct, delete, or export your personal data, or to object to certain processing. Contact us to exercise them. For data tied to a specific server, the server owner controls the module that collects it, so asking them to disable it or to remove your record is often the fastest route.'
 				}
 			]
 		},
@@ -304,7 +584,17 @@ export const privacy: LegalDoc = {
 			blocks: [
 				{
 					kind: 'text',
-					text: 'The Service is not directed at children under the minimum age required by Discord or applicable law. If you believe we have collected data from a child, contact us so we can delete it.'
+					text: 'The Service is not directed at children under the minimum age Discord requires in their country. If you believe we hold data from a child below that age, contact us so we can delete it.'
+				}
+			]
+		},
+		{
+			id: 'international',
+			heading: 'Where data is processed',
+			blocks: [
+				{
+					kind: 'text',
+					text: 'The Service runs on hosted infrastructure that may be located outside your country, and the third parties listed above may process requests in their own regions. Using the Service means data may be transferred across borders for these purposes.'
 				}
 			]
 		},
@@ -325,7 +615,8 @@ export const privacy: LegalDoc = {
 				{
 					kind: 'links',
 					text: 'For privacy questions, reach us through the support channel listed at ',
-					links: [{ label: APP_URL.replace(/^https?:\/\//, ''), href: APP_URL }]
+					links: [{ label: APP_URL.replace(/^https?:\/\//, ''), href: APP_URL }],
+					tail: `For security reports, email ${SECURITY_EMAIL}.`
 				}
 			]
 		}

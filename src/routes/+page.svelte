@@ -224,11 +224,11 @@
 						<i class="fab fa-discord"></i>
 						Get started
 					</a>
-					<div class="grid grid-cols-2 gap-2" role="group" aria-label="More options">
+					<div class="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-2.5" role="group" aria-label="More options">
 						{#each heroLinks as link}
 							<a
 								href={link.href}
-								class="btn btn-sm"
+								class="btn"
 								title={link.title}
 								target={link.external ? '_blank' : undefined}
 								rel={link.external ? 'noopener noreferrer' : undefined}

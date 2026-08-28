@@ -3,7 +3,6 @@ import type { RequestHandler } from '@sveltejs/kit';
 import { request as httpRequest } from 'http';
 import db from '$lib/database.js';
 import { SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
-import { extractDiscordQuestSummaries, fetchQuestsMe, questPayloadRewardDiagnostics } from '$lib/backend/api/discord-quest-api.js';
 import { mainAppearanceBlockingMessage, messageFromBotWebhookPayload } from '$lib/utils/configPrerequisiteErrors.js';
 
 export const POST: RequestHandler = async ({ params }) => {
@@ -41,34 +40,14 @@ export const POST: RequestHandler = async ({ params }) => {
 		return json({ success: false, error: 'Could not resolve official bot for this server.' }, { status: 500 });
 	}
 
-	const selfbot = await db.getFirstRunningSelfbotForServer(Number(serverIdParam));
-	if (!selfbot?.token) {
-		return json({ success: false, error: 'No running selfbot for this server. Add and start a selfbot under Selfbots for this guild.' }, { status: 400 });
-	}
-
-	const httpProxyUrl = typeof s.http_proxy_url === 'string' ? s.http_proxy_url : '';
 	const autoQuestEnabled = s.auto_quest !== false;
 
-	let payload: unknown;
-	try {
-		payload = await fetchQuestsMe(selfbot.token, { httpProxyUrl });
-	} catch (e: any) {
-		return json({ success: false, error: e?.message || 'Failed to fetch quests from Discord.' }, { status: 502 });
-	}
-
-	const questSummaries = extractDiscordQuestSummaries(payload);
+	const questSummaries = await db.listActiveBotDiscordQuests(officialBotId).catch(() => []);
 	if (questSummaries.length === 0) {
-		const d = questPayloadRewardDiagnostics(payload);
-		const detail =
-			d.questCount === 0
-				? 'Discord returned no quests in the payload (empty list or unexpected shape).'
-				: d.afterPreviewExpired === 0
-					? `Discord returned ${d.questCount} quest(s); all are preview or expired.`
-					: `Discord returned ${d.questCount} quest(s), ${d.afterPreviewExpired} active — none match the reward heuristics we use for testing.`;
-		return json({ success: false, error: `No suitable quests to test with. ${detail}` });
+		return json({ success: false, error: 'No Discord quests found yet. Nothing to test with until quests are picked up.' }, { status: 400 });
 	}
 
-	const latest = questSummaries[0];
+	const latest = [...questSummaries].sort((a, b) => Date.parse(b.startsAt || '') - Date.parse(a.startsAt || ''))[0];
 	const bot = await db.getBot(officialBotId);
 	if (!bot?.port || !bot.secret_key) {
 		return json({ success: false, error: 'Official bot port or secret not configured.' }, { status: 500 });

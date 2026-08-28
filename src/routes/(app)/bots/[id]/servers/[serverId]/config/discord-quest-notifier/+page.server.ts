@@ -9,8 +9,9 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	const raw = row && !Array.isArray(row) ? row.settings : null;
 	const s = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
 
-	const selfbots = await db.getServerBots(Number(params.serverId));
-	const runningSelfbot = selfbots.find((sb) => sb.status === 'running' && typeof sb.token === 'string' && sb.token.trim() !== '');
+	const officialBotId = await db.getOfficialBotIdForServer(Number(params.serverId)).catch(() => null);
+	const quests = officialBotId == null ? [] : await db.listActiveBotDiscordQuests(officialBotId).catch(() => []);
+	const selfbots = await db.getServerBots(Number(params.serverId)).catch(() => []);
 
 	return {
 		settings: {
@@ -19,7 +20,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 			http_proxy_url: typeof s.http_proxy_url === 'string' ? s.http_proxy_url : '',
 			auto_quest: s.auto_quest !== false
 		},
-		hasSelfbots: selfbots.length > 0,
-		hasRunningSelfbot: !!runningSelfbot
+		hasQuests: quests.length > 0,
+		hasSelfbots: selfbots.length > 0
 	};
 };

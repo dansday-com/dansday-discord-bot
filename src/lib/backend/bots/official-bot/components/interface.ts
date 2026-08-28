@@ -254,25 +254,41 @@ async function handleMyAccountLinkButton(interaction) {
 	const guildId = interaction.guild.id;
 	const userId = interaction.user.id;
 
+	const embedConfig = await getEmbedConfig(guildId).catch(() => null);
+	const accountLabel = await translate('menu.account', guildId, userId).catch(() => '👤 Account');
+
+	const replyEmbed = async (description: string, components: ActionRowBuilder<ButtonBuilder>[] = []) => {
+		const embed = new EmbedBuilder().setTitle(accountLabel).setDescription(description).setTimestamp();
+		if (embedConfig) embed.setColor(embedConfig.COLOR);
+		if (embedConfig?.FOOTER) embed.setFooter({ text: embedConfig.FOOTER });
+		const avatar = interaction.user.displayAvatarURL?.({ size: 128 });
+		if (avatar) embed.setThumbnail(avatar);
+		await interaction.reply({ embeds: [embed], components, flags: 64 }).catch(() => null);
+	};
+
 	const server = await getServerForCurrentBot(guildId);
 	const slug = await computePublicServerSlugForServerId(Number(server.id));
 	const base = slug ? publicServerUrl(slug) : null;
 	if (!base) {
-		const msg = await translate('leveling.account.unavailable', guildId, userId);
-		await interaction.reply({ content: msg, flags: 64 }).catch(() => null);
+		await replyEmbed(await translate('leveling.account.unavailable', guildId, userId));
 		return;
 	}
 
 	const dbMember = await db.getMemberByDiscordId(server.id, userId).catch(() => null);
 	if (!dbMember?.discord_member_id) {
-		const msg = await translate('leveling.account.noMember', guildId, userId);
-		await interaction.reply({ content: msg, flags: 64 }).catch(() => null);
+		await replyEmbed(await translate('leveling.account.noMember', guildId, userId));
 		return;
 	}
 
 	const hash = computeCardToken(String(dbMember.discord_member_id), dbMember.member_since);
-	const msg = await translate('leveling.account.link', guildId, userId, { url: `${base}/account/overview/${hash}` });
-	await interaction.reply({ content: msg, flags: 64 }).catch(() => null);
+	const url = `${base}/account/overview/${hash}`;
+	let linkText = url;
+	try {
+		linkText = `[${new URL(url).host}](${url})`;
+	} catch (_) {}
+	const description = await translate('leveling.account.link', guildId, userId, { url: linkText });
+	const row = new ActionRowBuilder<ButtonBuilder>().addComponents(new ButtonBuilder().setLabel(accountLabel).setURL(url).setStyle(ButtonStyle.Link));
+	await replyEmbed(description, [row]);
 }
 
 export async function handleButtonInteraction(interaction) {

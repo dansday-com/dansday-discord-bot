@@ -1241,7 +1241,8 @@ export async function listPublicServers() {
 			sv.id,
 			sv.name,
 			sv.updated_at,
-			sv.server_icon
+			sv.server_icon,
+			sv.deleted_at
 		FROM servers sv
 		INNER JOIN server_settings ss
 			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.public_statistics}
@@ -1253,7 +1254,8 @@ export async function listPublicServers() {
 			id: Number(r.id),
 			name: r.name ?? null,
 			updated_at: r.updated_at,
-			server_icon: r.server_icon ?? null
+			server_icon: r.server_icon ?? null,
+			deleted_at: r.deleted_at ?? null
 		}));
 }
 

@@ -185,7 +185,8 @@ export const AUTO_ENABLED_COMPONENTS: Set<string> = new Set([
 	component.booster,
 	component.moderation,
 	component.afk,
-	component.notifications
+	component.notifications,
+	component.discord_quest_notifier
 ]);
 
 let dbCache: (typeof import('../database.js'))['default'] | null = null;

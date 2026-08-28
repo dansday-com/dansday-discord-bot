@@ -254,11 +254,7 @@
 	<h2 class="text-ash-100 mb-1 text-xl font-bold sm:text-2xl">
 		<i class="fas fa-chart-pie mr-2 text-sky-400"></i>Panel Overview
 	</h2>
-	<p class="text-ash-400 text-xs sm:text-sm">
-		Everything across all your bots and servers{n(g.servers_counted) > 0
-			? ` · ${fmt(g.servers_counted)} server${n(g.servers_counted) === 1 ? '' : 's'} counted`
-			: ''}.
-	</p>
+	<p class="text-ash-400 text-xs sm:text-sm">Everything across all your bots and servers.</p>
 </div>
 
 <div class="space-y-4 sm:space-y-6">

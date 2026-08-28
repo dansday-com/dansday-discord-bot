@@ -23,11 +23,12 @@ export const load: PageServerLoad = async () => {
 					all.push({ server: list[i], slug: formatIndexedSlug(base, i + 1) });
 				}
 			}
-			for (let i = all.length - 1; i > 0; i--) {
+			const live = all.filter((e) => !e.server.deleted_at);
+			for (let i = live.length - 1; i > 0; i--) {
 				const j = Math.floor(Math.random() * (i + 1));
-				[all[i], all[j]] = [all[j], all[i]];
+				[live[i], live[j]] = [live[j], live[i]];
 			}
-			featuredServers = all.slice(0, MAX_FEATURED_SERVERS).map((e) => ({
+			featuredServers = live.slice(0, MAX_FEATURED_SERVERS).map((e) => ({
 				name: e.server.name || e.slug,
 				slug: e.slug,
 				server_icon: e.server.server_icon ?? null

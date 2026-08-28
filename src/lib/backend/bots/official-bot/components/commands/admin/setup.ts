@@ -234,7 +234,7 @@ export async function execute(interaction: any, client: any) {
 
 		const questRaw = (await getSettings(SERVER_SETTINGS.component.discord_quest_notifier)) || {};
 		await db.upsertServerSettings(server.id, SERVER_SETTINGS.component.discord_quest_notifier, {
-			enabled: false,
+			enabled: true,
 			...questRaw,
 			channel_id: channelMap['discord_quest_notifier']
 		});

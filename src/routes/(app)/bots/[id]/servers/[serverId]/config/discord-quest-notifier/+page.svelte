@@ -93,7 +93,7 @@
 			<span>Module is off. Save configuration to apply. Turn the module on to edit channel and proxy below.</span>
 		</p>
 	{/if}
-	{#if featureEnabled && !data.hasRunningSelfbot}
+	{#if featureEnabled && !data.hasQuests}
 		<p class="flex items-start gap-2 rounded-lg border border-red-800/30 bg-red-900/20 p-3 text-xs text-red-200/90">
 			<i class="fas fa-exclamation-triangle mt-0.5 shrink-0 text-red-400" aria-hidden="true"></i>
 			<span>
@@ -146,7 +146,7 @@
 
 	<button
 		onclick={testNotifier}
-		disabled={testing || !channelId || !featureEnabled}
+		disabled={testing || !channelId || !featureEnabled || !data.hasQuests}
 		class="border-ash-600 text-ash-100 hover:bg-ash-700 flex w-full items-center justify-center gap-2 rounded-lg border py-2.5 text-sm font-medium transition-all disabled:opacity-50"
 	>
 		{#if testing}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas fa-vial text-sky-400"></i>{/if}

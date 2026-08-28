@@ -412,6 +412,7 @@
 		"errors": {
 			"noRole": "❌ Kamu tidak memiliki role kustom untuk diedit.",
 			"noRoleDelete": "❌ Kamu tidak memiliki role kustom untuk dihapus.",
+			"alreadyHasRole": "❌ **Kamu Sudah Punya Role Kustom**\\n\\nKamu hanya bisa memiliki satu role supporter kustom dalam satu waktu.\\n\\n💡 Gunakan **✏️ Edit Role** untuk mengubahnya, atau **🗑️ Hapus Role** dulu jika ingin yang baru.",
 			"invalidName": "❌ **Nama Role Tidak Valid**\\n\\nNama role harus antara 1 dan 100 karakter.",
 			"boostRequired": "❌ **Ikon Kustom Tidak Tersedia**\\n\\nServer ini memerlukan **Level 2 Server Boost** untuk menggunakan ikon role kustom (gambar).\\n\\n💡 **Tip:** Kamu dapat menggunakan **emoji** sebagai gantinya (seperti 🔥, ⭐, atau emoji kustom apa pun) yang tidak memerlukan server boost.",
 			"boostRequiredCreate": "❌ **Server Boost Diperlukan**\\n\\nServer ini memerlukan **Level 2 Server Boost** untuk membuat role supporter kustom dengan fitur tertentu.\\n\\n💡 **Yang dapat kamu lakukan:**\\n- Minta administrator server untuk boost server ke Level 2\\n- Atau hubungi staf server untuk bantuan\\n\\n**Detail error:** {error}",

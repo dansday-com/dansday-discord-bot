@@ -365,11 +365,7 @@
 			"liveTitle": "🔴 Content Creator is LIVE",
 			"liveDescription": "{mention} is now live on TikTok!",
 			"liveWatchButton": "Watch LIVE on TikTok",
-			"autoRejectTitle": "⛔ Content Creator Application Auto-Rejected",
-			"autoRejectDescription": "{mention} • TikTok: @{tiktok}",
-			"autoRejectStatus": "Auto-rejected (duplicate / impersonation)",
 			"autoRejectReviewReason": "Duplicate or impersonation: this TikTok username is already linked to another Discord account.",
-			"fieldConflictingMember": "TikTok already linked to",
 			"autoRejectConflictPending": "That account has a **pending** application for this TikTok handle.",
 			"autoRejectConflictApproved": "That account is an **approved** content creator using this TikTok handle."
 		},
@@ -465,6 +461,7 @@
 		"errors": {
 			"noRole": "❌ You don't have a custom role to edit.",
 			"noRoleDelete": "❌ You don't have a custom role to delete.",
+			"alreadyHasRole": "❌ **You Already Have a Custom Role**\\n\\nYou can only have one custom supporter role at a time.\\n\\n💡 Use **✏️ Edit Role** to change it, or **🗑️ Delete Role** first if you want a new one.",
 			"invalidName": "❌ **Invalid Role Name**\\n\\nRole name must be between 1 and 100 characters.",
 			"boostRequired": "❌ **Custom Icon Not Available**\\n\\nThis server needs **Level 2 Server Boost** to use custom role icons (images).\\n\\n💡 **Tip:** You can use an **emoji** instead (like 🔥, ⭐, or any custom emoji) which doesn't require server boosts.",
 			"boostRequiredCreate": "❌ **Server Boost Required**\\n\\nThis server needs **Level 2 Server Boost** to create custom supporter roles with certain features.\\n\\n💡 **What you can do:**\\n- Ask server administrators to boost the server to Level 2\\n- Or contact server staff for assistance\\n\\n**Error details:** {error}",

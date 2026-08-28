@@ -249,28 +249,6 @@
 			"reasonLabel": "Motivo (obligatorio)",
 			"reasonPlaceholder": "Explica tu decisión a quien lo reportó…"
 		},
-		"embed": {
-			"staffDecision": "Decisión del staff",
-			"reviewedBy": "Revisado por",
-			"statusApproved": "Aprobado",
-			"statusRejected": "Rechazado"
-		},
-		"channelEmbed": {
-			"fieldStaffMember": "Miembro del staff",
-			"fieldRating": "Valoración",
-			"fieldCategory": "Categoría",
-			"fieldReporter": "Autor del reporte",
-			"fieldStatus": "Estado",
-			"fieldDescription": "Descripción",
-			"anonymousReporter": "Anónimo",
-			"pendingTitle": "🕒 Reporte de staff pendiente",
-			"pendingStatus": "Pendiente de aprobación de un administrador",
-			"approveButton": "Aprobar reporte",
-			"rejectButton": "Rechazar reporte",
-			"titleApproved": "✅ Reporte de staff aprobado",
-			"titleRejected": "❌ Reporte de staff rechazado",
-			"footerReportSuffix": "• ID del reporte: #{reportId}"
-		},
 		"modal": {
 			"title": "Reportar a un miembro del staff",
 			"ratingLabel": "Valoración (1-5 estrellas)",
@@ -341,37 +319,6 @@
 			"titleReject": "Rechazar solicitud",
 			"reasonLabel": "Motivo (obligatorio)",
 			"reasonPlaceholder": "Explica tu decisión a quien lo solicitó…"
-		},
-		"embed": {
-			"staffDecision": "Decisión del staff",
-			"reviewedBy": "Revisado por",
-			"reviewedBySystem": "Automático (TikTok duplicado)",
-			"statusApproved": "Aprobada",
-			"statusRejected": "Rechazada"
-		},
-		"channelEmbed": {
-			"pendingTitle": "🕒 Solicitud de creador de contenido pendiente",
-			"pendingDescription": "{user} solicitó acceso como creador de contenido.",
-			"pendingStatus": "Pendiente de aprobación de un administrador",
-			"fieldTiktok": "Usuario de TikTok",
-			"fieldStatus": "Estado",
-			"fieldApplicantReason": "Motivo",
-			"buttonApprove": "Aprobar",
-			"buttonReject": "Rechazar",
-			"titleApproved": "✅ Solicitud de creador de contenido aprobada",
-			"titleRejected": "❌ Solicitud de creador de contenido rechazada",
-			"descriptionReviewed": "{mention} • TikTok: @{tiktok}",
-			"footerAppSuffix": "• ID de solicitud: #{appId}",
-			"liveTitle": "🔴 El creador de contenido está EN DIRECTO",
-			"liveDescription": "¡{mention} está en directo en TikTok!",
-			"liveWatchButton": "Ver EN DIRECTO en TikTok",
-			"autoRejectTitle": "⛔ Solicitud de creador de contenido rechazada automáticamente",
-			"autoRejectDescription": "{mention} • TikTok: @{tiktok}",
-			"autoRejectStatus": "Rechazada automáticamente (duplicado / suplantación)",
-			"autoRejectReviewReason": "Duplicado o suplantación: este usuario de TikTok ya está vinculado a otra cuenta de Discord.",
-			"fieldConflictingMember": "TikTok ya vinculado a",
-			"autoRejectConflictPending": "Esa cuenta tiene una solicitud **pendiente** con este usuario de TikTok.",
-			"autoRejectConflictApproved": "Esa cuenta es un creador de contenido **aprobado** que usa este usuario de TikTok."
 		},
 		"modal": {
 			"title": "Solicitar ser creador de contenido",
@@ -465,6 +412,7 @@
 		"errors": {
 			"noRole": "❌ No tienes un rol personalizado que editar.",
 			"noRoleDelete": "❌ No tienes un rol personalizado que eliminar.",
+			"alreadyHasRole": "❌ **Ya tienes un rol personalizado**\\n\\nSolo puedes tener un rol de colaborador personalizado a la vez.\\n\\n💡 Usa **✏️ Editar rol** para cambiarlo, o **🗑️ Eliminar rol** primero si quieres uno nuevo.",
 			"invalidName": "❌ **Nombre de rol no válido**\\n\\nEl nombre del rol debe tener entre 1 y 100 caracteres.",
 			"boostRequired": "❌ **Icono personalizado no disponible**\\n\\nEste servidor necesita el **nivel 2 de mejora de servidor** para usar iconos de rol personalizados (imágenes).\\n\\n💡 **Consejo:** Puedes usar un **emoji** en su lugar (como 🔥, ⭐ o cualquier emoji personalizado), que no requiere mejoras del servidor.",
 			"boostRequiredCreate": "❌ **Se requiere mejora de servidor**\\n\\nEste servidor necesita el **nivel 2 de mejora de servidor** para crear roles de colaborador personalizados con ciertas funciones.\\n\\n💡 **Qué puedes hacer:**\\n- Pedir a los administradores del servidor que lo mejoren al nivel 2\\n- O contactar con el staff del servidor para pedir ayuda\\n\\n**Detalles del error:** {error}",

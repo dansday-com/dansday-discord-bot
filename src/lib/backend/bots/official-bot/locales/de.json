@@ -249,28 +249,6 @@
 			"reasonLabel": "Begründung (erforderlich)",
 			"reasonPlaceholder": "Erkläre der meldenden Person deine Entscheidung…"
 		},
-		"embed": {
-			"staffDecision": "Team-Entscheidung",
-			"reviewedBy": "Geprüft von",
-			"statusApproved": "Genehmigt",
-			"statusRejected": "Abgelehnt"
-		},
-		"channelEmbed": {
-			"fieldStaffMember": "Teammitglied",
-			"fieldRating": "Bewertung",
-			"fieldCategory": "Kategorie",
-			"fieldReporter": "Meldende Person",
-			"fieldStatus": "Status",
-			"fieldDescription": "Beschreibung",
-			"anonymousReporter": "Anonym",
-			"pendingTitle": "🕒 Ausstehende Team-Meldung",
-			"pendingStatus": "Warten auf Admin-Freigabe",
-			"approveButton": "Meldung genehmigen",
-			"rejectButton": "Meldung ablehnen",
-			"titleApproved": "✅ Team-Meldung genehmigt",
-			"titleRejected": "❌ Team-Meldung abgelehnt",
-			"footerReportSuffix": "• Melde-ID: #{reportId}"
-		},
 		"modal": {
 			"title": "Teammitglied melden",
 			"ratingLabel": "Bewertung (1-5 Sterne)",
@@ -341,37 +319,6 @@
 			"titleReject": "Bewerbung ablehnen",
 			"reasonLabel": "Begründung (erforderlich)",
 			"reasonPlaceholder": "Erkläre der bewerbenden Person deine Entscheidung…"
-		},
-		"embed": {
-			"staffDecision": "Team-Entscheidung",
-			"reviewedBy": "Geprüft von",
-			"reviewedBySystem": "Automatisch (doppeltes TikTok)",
-			"statusApproved": "Genehmigt",
-			"statusRejected": "Abgelehnt"
-		},
-		"channelEmbed": {
-			"pendingTitle": "🕒 Content-Creator-Bewerbung ausstehend",
-			"pendingDescription": "{user} hat Content-Creator-Zugriff angefragt.",
-			"pendingStatus": "Warten auf Admin-Freigabe",
-			"fieldTiktok": "TikTok-Benutzername",
-			"fieldStatus": "Status",
-			"fieldApplicantReason": "Begründung",
-			"buttonApprove": "Genehmigen",
-			"buttonReject": "Ablehnen",
-			"titleApproved": "✅ Content-Creator-Bewerbung genehmigt",
-			"titleRejected": "❌ Content-Creator-Bewerbung abgelehnt",
-			"descriptionReviewed": "{mention} • TikTok: @{tiktok}",
-			"footerAppSuffix": "• Bewerbungs-ID: #{appId}",
-			"liveTitle": "🔴 Content Creator ist LIVE",
-			"liveDescription": "{mention} ist jetzt live auf TikTok!",
-			"liveWatchButton": "LIVE auf TikTok ansehen",
-			"autoRejectTitle": "⛔ Content-Creator-Bewerbung automatisch abgelehnt",
-			"autoRejectDescription": "{mention} • TikTok: @{tiktok}",
-			"autoRejectStatus": "Automatisch abgelehnt (Duplikat / Identitätsmissbrauch)",
-			"autoRejectReviewReason": "Duplikat oder Identitätsmissbrauch: Dieser TikTok-Benutzername ist bereits mit einem anderen Discord-Konto verknüpft.",
-			"fieldConflictingMember": "TikTok bereits verknüpft mit",
-			"autoRejectConflictPending": "Dieses Konto hat eine **ausstehende** Bewerbung für diesen TikTok-Namen.",
-			"autoRejectConflictApproved": "Dieses Konto ist ein **bestätigter** Content Creator mit diesem TikTok-Namen."
 		},
 		"modal": {
 			"title": "Als Content Creator bewerben",
@@ -465,6 +412,7 @@
 		"errors": {
 			"noRole": "❌ Du hast keine eigene Rolle zum Bearbeiten.",
 			"noRoleDelete": "❌ Du hast keine eigene Rolle zum Löschen.",
+			"alreadyHasRole": "❌ **Du hast bereits eine eigene Rolle**\\n\\nDu kannst immer nur eine eigene Supporter-Rolle haben.\\n\\n💡 Nutze **✏️ Rolle bearbeiten**, um sie zu ändern, oder **🗑️ Rolle löschen**, wenn du eine neue möchtest.",
 			"invalidName": "❌ **Ungültiger Rollenname**\\n\\nDer Rollenname muss zwischen 1 und 100 Zeichen lang sein.",
 			"boostRequired": "❌ **Eigenes Symbol nicht verfügbar**\\n\\nDieser Server benötigt **Server-Boost Level 2** für eigene Rollensymbole (Bilder).\\n\\n💡 **Tipp:** Du kannst stattdessen ein **Emoji** verwenden (wie 🔥, ⭐ oder ein beliebiges eigenes Emoji), das keine Server-Boosts erfordert.",
 			"boostRequiredCreate": "❌ **Server-Boost erforderlich**\\n\\nDieser Server benötigt **Server-Boost Level 2**, um eigene Supporter-Rollen mit bestimmten Funktionen zu erstellen.\\n\\n💡 **Was du tun kannst:**\\n- Bitte die Serveradministratoren, den Server auf Level 2 zu boosten\\n- Oder wende dich an das Serverteam\\n\\n**Fehlerdetails:** {error}",

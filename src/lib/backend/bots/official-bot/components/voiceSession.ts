@@ -35,7 +35,7 @@ const FRAME_BYTES = (DISCORD_RATE / 1000) * FRAME_MS * 2 * 2;
 const EMPTY = Buffer.alloc(0);
 
 const SPEAK_GUARD_MS = 400;
-const TURN_SILENCE_MS = 700;
+const TURN_SILENCE_MS = 500;
 const VOICE_RMS_THRESHOLD = 900;
 const VOICE_RMS_CEILING = 2_200;
 const VOICE_RMS_RELEASE = 550;

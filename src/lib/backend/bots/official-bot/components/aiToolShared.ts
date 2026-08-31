@@ -2,6 +2,9 @@ import db from '../../../../database.js';
 import { formatDuration } from '../../../../items.js';
 import { SERVER_SETTINGS, publicSubfeatureEnabled } from '../../../../frontend/panelServer.js';
 import { isComponentFeatureEnabled } from '../../../config.js';
+import { cachedLookup, invalidateCached } from './aiCache.js';
+
+const TOOL_FEATURES_TTL_SEC = 30;
 
 export function fail(reason, extra = {}) {
 	return { ok: false, reason, ...extra };
@@ -76,6 +79,14 @@ export async function resolveToolFeatures(botId, guildId) {
 	const off = { publicData: false, items: false, assets: false, minigames: false, tasks: false, giveaway: false, staffRating: false, quests: false };
 	if (!botId || !guildId) return off;
 
+	return cachedLookup(`botai:toolfeatures:${botId}:${guildId}`, TOOL_FEATURES_TTL_SEC, () => loadToolFeatures(botId, guildId, off));
+}
+
+export async function invalidateToolFeatures(botId, guildId) {
+	await invalidateCached(`botai:toolfeatures:${botId}:${guildId}`);
+}
+
+async function loadToolFeatures(botId, guildId, off) {
 	const server = await serverFor(botId, guildId);
 	if (!server) return off;
 

@@ -1,5 +1,6 @@
 import { load } from 'cheerio';
 import db from '../../../../database.js';
+import { cachedLookup, invalidateCached } from './aiCache.js';
 import { logger } from '../../../../utils/index.js';
 
 const REQUEST_TIMEOUT_MS = 30_000;
@@ -8,6 +9,7 @@ const USER_AGENT = WIKI_USER_AGENT;
 const SEARCH_LIMIT = 4;
 const PAGES_TO_READ = 2;
 const CACHE_TTL_MS = 10 * 60 * 1000;
+const ENABLED_WIKIS_TTL_SEC = 30;
 const CACHE_MAX_ENTRIES = 200;
 
 const cache = new Map();
@@ -438,8 +440,14 @@ export async function searchWiki(wiki, query, page, mainPage = false) {
 }
 
 export async function getEnabledWikis(botId) {
-	const rows = await db.getBotWikis(botId);
-	return rows.filter((row) => row.enabled && row.api_url);
+	return cachedLookup(`botai:wikis:${botId}`, ENABLED_WIKIS_TTL_SEC, async () => {
+		const rows = await db.getBotWikis(botId);
+		return rows.filter((row) => row.enabled && row.api_url);
+	});
+}
+
+export async function invalidateEnabledWikis(botId) {
+	await invalidateCached(`botai:wikis:${botId}`);
 }
 
 export function describeWikis(wikis) {

@@ -17,7 +17,7 @@ const DISCORD_MESSAGE_LIMIT = 2000;
 const MAX_REPLY_LENGTH = 4000;
 const MAX_RECENT = 10;
 const REQUEST_TIMEOUT_MS = 120_000;
-const MAX_TOOL_ITERATIONS = 9;
+const MAX_TOOL_ITERATIONS = 5;
 const MAX_GENERATED_IMAGES = 2;
 
 const inFlight = new Set();
@@ -321,17 +321,26 @@ async function callChatCompletions(config, messages, { tools = null, onToolCall 
 
 		loop.push(choice);
 
+		const pending = new Map();
+
 		for (const call of choice.tool_calls) {
 			const cacheKey = `${call.function.name}:${call.function.arguments ?? ''}`;
-			if (!toolResultCache.has(cacheKey)) {
-				let args = {};
-				try {
-					args = call.function.arguments ? JSON.parse(call.function.arguments) : {};
-				} catch {
-					args = {};
-				}
-				toolResultCache.set(cacheKey, await onToolCall(call.function.name, args));
+			if (toolResultCache.has(cacheKey) || pending.has(cacheKey)) continue;
+			let args = {};
+			try {
+				args = call.function.arguments ? JSON.parse(call.function.arguments) : {};
+			} catch {
+				args = {};
 			}
+			pending.set(cacheKey, onToolCall(call.function.name, args));
+		}
+
+		const keys = [...pending.keys()];
+		const settled = await Promise.all(pending.values());
+		keys.forEach((key, index) => toolResultCache.set(key, settled[index]));
+
+		for (const call of choice.tool_calls) {
+			const cacheKey = `${call.function.name}:${call.function.arguments ?? ''}`;
 			loop.push({ role: 'tool', tool_call_id: call.id, content: toolResultCache.get(cacheKey) });
 		}
 	}
@@ -377,10 +386,11 @@ async function handleMessageCreate(message) {
 				return;
 			}
 
-			const config = db.botAiFromDbRow(await db.getBotAiByBotId(botConfig.id));
+			const [configRow, replied] = await Promise.all([db.getBotAiByBotId(botConfig.id), fetchRepliedMessage(message)]);
+
+			const config = db.botAiFromDbRow(configRow);
 			if (!config.enabled || !config.api_url || !config.api_key || !config.model) return;
 
-			const replied = await fetchRepliedMessage(message);
 			if (!mentioned && replied?.author?.id !== botUserId) return;
 
 			const prompt = stripBotMention(message.content ?? '', botUserId);
@@ -400,7 +410,11 @@ async function handleMessageCreate(message) {
 			const ownText = prompt || (attachmentParts.length ? `(${attachmentKinds.join(', ')} attached, no message text)` : 'Hello!');
 			const userContent = `${quotedNote}${ownText}`;
 
-			const conversation = await readAiSession(botConfig.id, message.guild.id, message.author.id, MAX_RECENT);
+			const [conversation, wikis, toolFeatures] = await Promise.all([
+				readAiSession(botConfig.id, message.guild.id, message.author.id, MAX_RECENT),
+				getEnabledWikis(botConfig.id).catch(() => []),
+				resolveToolFeatures(botConfig.id, message.guild.id).catch(() => null)
+			]);
 
 			const today = new Date().toISOString().slice(0, 10);
 			const speakerName = message.member?.displayName ?? message.author.username;
@@ -414,13 +428,10 @@ async function handleMessageCreate(message) {
 			const messages = [...(systemContent ? [{ role: 'system', content: systemContent }] : []), ...conversation, userMessage];
 
 			const voiceReady = config.voice_enabled && !!config.voice_model;
-			const wikis = await getEnabledWikis(botConfig.id).catch(() => []);
 			const wikiTool = buildWikiTool(wikis);
 			const searchTool = buildSearchTool(config);
 			const fetchTool = buildFetchTool(config);
 			const imageTool = buildImageTool(config);
-
-			const toolFeatures = await resolveToolFeatures(botConfig.id, message.guild.id).catch(() => null);
 
 			const tools = [
 				...(voiceReady ? VOICE_TOOLS : []),

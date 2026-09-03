@@ -144,7 +144,7 @@ function downmixAndResample(pcm, fromRate, toRate, fromChannels, toChannels) {
 	return out;
 }
 
-const VOICE_SERVER_DATA_NOTE = `You can look up this server's own live data while you talk: its public statistics, leaderboards, a member's public profile, staff ratings, running giveaways, active Discord Quests, the XP item shop with prices and timings, the "How the XP Game Works" guide, and the account of the person speaking to you. Use those tools instead of guessing whenever someone asks about this server, the game, the shop, their level, their bag or their tasks.
+const VOICE_SERVER_DATA_NOTE = `Your tools read this server's own live data. Use them instead of guessing whenever someone asks about this server, the game, the shop, their level, their bag or their tasks.
 
 Everything you get back has to be said out loud, so keep it to one or two short spoken sentences. Give the few numbers or names that answer the question, round big numbers, and never read out a hash, a URL or a long list — offer to go through the rest if they want it.
 
@@ -573,13 +573,24 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		return false;
 	}
 
+	function voiceSilenceMs() {
+		let latest = 0;
+		for (const [userId, vad] of voiceState) {
+			if (!micIsOpenFor(userId)) continue;
+			if (turnOwnerId && userId !== turnOwnerId) continue;
+			if (vad.lastVoiceAt > latest) latest = vad.lastVoiceAt;
+		}
+		return latest ? Date.now() - latest : TURN_SILENCE_MS;
+	}
+
 	function bumpTurn() {
 		if (turnTimer) clearTimeout(turnTimer);
 		turnTimer = setTimeout(function settle() {
 			const elapsed = Date.now() - turnOpenedAt;
+			const silence = voiceSilenceMs();
 
-			if (anyoneSpeaking() && elapsed < MAX_TURN_MS) {
-				turnTimer = setTimeout(settle, TURN_SILENCE_MS);
+			if (silence < TURN_SILENCE_MS && elapsed < MAX_TURN_MS) {
+				turnTimer = setTimeout(settle, Math.max(50, TURN_SILENCE_MS - silence));
 				return;
 			}
 

@@ -469,7 +469,7 @@ Do NOT call this when there is no question to look up. Chatting, greetings, joke
 
 Read the entire result before answering: the answer is usually under a heading such as "Obtainment", "Skins", "Location" or "Change History" rather than in the opening line, and infobox values arrive in "stats". Answer only with facts present in the result — never add an item, price, chance or mechanic that is not there, and never fill a gap from memory. If the result already contains the answer, never claim the wiki has not documented it yet, and never speculate about why something is missing.
 
-Keep going when the page does not answer it. An empty, thin or off-target result is not an answer and is not something to report to the user — follow it with search_web, and open the best hit with fetch_web_page. Live values such as countdowns, current spawn timers and active events are not on the wiki at all, so search the web for those instead of saying you cannot see them. Only after a web search has also come up empty may you say you could not find it — and never tell them to go look it up themselves.
+Live values such as countdowns, current spawn timers and active events are not on the wiki at all — search the web for those.
 
 The search itself is English-only, but always reply in the language the user wrote in. Available wikis:\n${describeWikis(wikis)}`,
 			parameters: {
@@ -510,9 +510,7 @@ export function buildWikiDeclaration(wikis) {
 		name: tool.function.name,
 		description: `${tool.function.description}
 
-You do not know these games. Your own memory of them is unreliable and usually wrong, so treat every question about a game as something you must look up before you can answer it. Look it up and wait for the result — do not say the answer, a guess, or a partial answer before the result arrives. If you catch yourself about to state a fact you did not read in a result, stop and look it up instead.
-
-Chain your lookups out loud. A thin or empty wiki result means you search the web next, not that you give up: say "let me check" or "still checking" at most once to fill the silence, then keep calling tools until you have the real answer.
+You do not know these games, so look every game question up and wait for the result — never say the answer, a guess or a partial answer before the result arrives.
 
 Read the answer out loud in one or two short spoken sentences. Do not read URLs aloud.`,
 		parameters: tool.function.parameters

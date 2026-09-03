@@ -53,6 +53,9 @@ const NOISE_FLOOR_MAX = 400;
 const MAX_TURN_MS = 60_000;
 const CLOSE_WAIT_MS = 3000;
 const MAX_QUEUED_CHUNKS = 300;
+const OUTPUT_BUFFER_FRAMES = 3;
+const OUTPUT_ENCODER_FRAMES = 3;
+const MAX_MISSED_FRAMES = 50;
 
 const GOODBYE_GRACE_MS = 12_000;
 const ADDRESSED_WINDOW_MS = 15_000;
@@ -101,21 +104,42 @@ function rmsOf(pcm) {
 }
 
 function downmixAndResample(pcm, fromRate, toRate, fromChannels, toChannels) {
-	const inSamples = pcm.length / 2 / fromChannels;
+	const inSamples = Math.floor(pcm.length / 2 / fromChannels);
 	const outSamples = Math.floor((inSamples * toRate) / fromRate);
 	const out = Buffer.alloc(outSamples * 2 * toChannels);
+	if (!outSamples) return out;
+
+	const monoAt = (index) => {
+		let sample = 0;
+		for (let c = 0; c < fromChannels; c++) sample += pcm.readInt16LE((index * fromChannels + c) * 2);
+		return sample / fromChannels;
+	};
+
+	const ratio = fromRate / toRate;
+	const window = ratio > 1 ? Math.round(ratio) : 1;
 
 	for (let i = 0; i < outSamples; i++) {
-		const srcIndex = Math.floor((i * fromRate) / toRate);
-		let sample = 0;
-		for (let c = 0; c < fromChannels; c++) {
-			const offset = (srcIndex * fromChannels + c) * 2;
-			if (offset + 1 < pcm.length) sample += pcm.readInt16LE(offset);
+		const position = i * ratio;
+		let value;
+
+		if (window > 1) {
+			const start = Math.min(inSamples - 1, Math.round(position));
+			let sum = 0;
+			let taken = 0;
+			for (let k = 0; k < window && start + k < inSamples; k++) {
+				sum += monoAt(start + k);
+				taken++;
+			}
+			value = sum / taken;
+		} else {
+			const index = Math.floor(position);
+			const next = Math.min(inSamples - 1, index + 1);
+			const frac = position - index;
+			value = monoAt(index) * (1 - frac) + monoAt(next) * frac;
 		}
-		sample = Math.max(-32768, Math.min(32767, Math.round(sample / fromChannels)));
-		for (let c = 0; c < toChannels; c++) {
-			out.writeInt16LE(sample, (i * toChannels + c) * 2);
-		}
+
+		const sample = Math.max(-32768, Math.min(32767, Math.round(value)));
+		for (let c = 0; c < toChannels; c++) out.writeInt16LE(sample, (i * toChannels + c) * 2);
 	}
 	return out;
 }
@@ -142,6 +166,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	let connection: any = null;
 	let player = null;
 	let outputStream = null;
+	let outputEncoder = null;
 	let session = null;
 	let resumeHandle = null;
 	let closed = false;
@@ -686,8 +711,11 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	}
 
 	function startOutput() {
+		const previousStream = outputStream;
+		const previousEncoder = outputEncoder;
+
 		outputStream = new Readable({
-			highWaterMark: FRAME_BYTES * 8,
+			highWaterMark: FRAME_BYTES * OUTPUT_BUFFER_FRAMES,
 			read() {
 				if (closed) {
 					this.push(null);
@@ -701,9 +729,29 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 			logger.log(`❌ Voice AI output stream error: ${err?.message || err}`);
 		});
 
-		const resource = createAudioResource(outputStream, { inputType: StreamType.Raw });
-		player.play(resource);
-		logger.log('🔊 Voice AI output stream started');
+		outputEncoder = new prism.opus.Encoder({
+			rate: DISCORD_RATE,
+			channels: 2,
+			frameSize: 960,
+			readableHighWaterMark: OUTPUT_ENCODER_FRAMES,
+			writableHighWaterMark: FRAME_BYTES
+		});
+		outputEncoder.on('error', (err) => {
+			if (closed) return;
+			logger.log(`❌ Voice AI output encoder error: ${err?.message || err}`);
+		});
+
+		outputStream.pipe(outputEncoder);
+		player.play(createAudioResource(outputEncoder, { inputType: StreamType.Opus }));
+
+		if (previousStream) {
+			previousStream.unpipe(previousEncoder ?? undefined);
+			previousStream.destroy();
+		}
+		previousEncoder?.destroy();
+
+		const pipelineMs = (OUTPUT_BUFFER_FRAMES + OUTPUT_ENCODER_FRAMES + 1) * FRAME_MS;
+		logger.log(`🔊 Voice AI output stream started (pipeline=${pipelineMs}ms)`);
 	}
 
 	function sendToolResponses(responses) {
@@ -1303,6 +1351,8 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		} catch {}
 		try {
 			player?.stop();
+			outputStream?.destroy();
+			outputEncoder?.destroy();
 			connection?.destroy();
 		} catch {}
 
@@ -1327,7 +1377,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 		await entersState(connection, VoiceConnectionStatus.Ready, 20_000);
 
-		player = createAudioPlayer({ behaviors: { noSubscriber: NoSubscriberBehavior.Play } });
+		player = createAudioPlayer({ behaviors: { noSubscriber: NoSubscriberBehavior.Play, maxMissedFrames: MAX_MISSED_FRAMES } });
 		connection.subscribe(player);
 		player.on('error', (err) => logger.log(`❌ Voice AI player error: ${err?.message || err}`));
 		player.on('stateChange', (oldState, newState) => {

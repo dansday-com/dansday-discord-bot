@@ -1,4 +1,4 @@
-import { GoogleGenAI, Modality, Type } from '@google/genai';
+import { GoogleGenAI, Modality, Type, Behavior, FunctionResponseScheduling } from '@google/genai';
 import {
 	joinVoiceChannel,
 	createAudioPlayer,
@@ -42,13 +42,17 @@ const VOICE_RMS_RELEASE = 550;
 const VOICE_ONSET_FRAMES = 3;
 const VOICE_HANG_MS = 500;
 const SPEECH_RECENT_MS = 3_000;
+const BARGE_IN_RMS_MIN = 1_800;
+const BARGE_IN_RMS_MARGIN = 1.8;
+const BARGE_IN_FRAMES = 6;
+const BARGE_IN_DEAF_MS = 700;
 const NOISE_FLOOR_ALPHA = 0.002;
 const NOISE_FLOOR_FALL_ALPHA = 0.05;
 const NOISE_FLOOR_MARGIN = 2.2;
 const NOISE_FLOOR_MAX = 400;
 const MAX_TURN_MS = 60_000;
 const CLOSE_WAIT_MS = 3000;
-const MAX_QUEUED_CHUNKS = 60;
+const MAX_QUEUED_CHUNKS = 300;
 
 const GOODBYE_GRACE_MS = 12_000;
 const ADDRESSED_WINDOW_MS = 15_000;
@@ -56,9 +60,9 @@ const MUTE_NOTICE_GRACE_MS = 6_000;
 const MUTE_NOTICE_MAX_WAIT_MS = 15_000;
 const HEARTBEAT_MS = (VOICE_STATE_TTL_SEC / 2) * 1000;
 
-const WIKI_STALL_MS = 600;
+const WIKI_STALL_MS = 1_800;
 const WIKI_STALL_GRACE_MS = 2_500;
-const WIKI_STALL_COOLDOWN_MS = 10_000;
+const WIKI_STALL_COOLDOWN_MS = 25_000;
 const WIKI_FAILED_MAX_WAIT_MS = 8_000;
 const WIKI_TIMEOUT_MS = 12_000;
 const FETCH_LOOKUP_TIMEOUT_MS = 16_000;
@@ -80,6 +84,10 @@ const LOOKUP_TIMEOUT_HINT =
 
 const WAKE_ACK_PROMPT =
 	'[System] Someone just said the wake phrase and you are now listening. Say one very short acknowledgement out loud right now — just "yes?" or the equivalent in the language this server speaks. Two words at most. Do not answer anything yet, do not ask what they need, and do not read this note aloud.';
+
+function supportsAsyncTools(model) {
+	return (model ?? '').toLowerCase().includes('2.5');
+}
 
 function rmsOf(pcm) {
 	const samples = Math.floor(pcm.length / 2);
@@ -116,12 +124,15 @@ const VOICE_SERVER_DATA_NOTE = `You can look up this server's own live data whil
 
 Everything you get back has to be said out loud, so keep it to one or two short spoken sentences. Give the few numbers or names that answer the question, round big numbers, and never read out a hash, a URL or a long list — offer to go through the rest if they want it.
 
+When a lookup is running, say at most one short line about it, and only if you have not already said one — never repeat "let me check" or "one second". Keep the conversation going normally instead of going quiet, and answer properly the moment the result reaches you.
+
 The get_my_* tools only ever read the account of the person talking to you. Never call one to answer a question about somebody else. If they ask what another member has in their bag, their history or their tasks, say plainly that it is private to that member, and offer their public level, rank and roles instead.`;
 
 export function createVoiceSession({ client, config, botId, guildId, channelId, channelName, inviterId, textChannelId, onEnded }) {
 	const speaking = new Map();
 	const endpoint = botAiVoiceEndpoint(config);
 	const genai = new GoogleGenAI({ apiKey: endpoint.api_key });
+	const asyncTools = supportsAsyncTools(config.voice_model);
 	const systemInstruction = [(endpoint.system_prompt ?? '').replace(/\{\{today\}\}/g, new Date().toISOString().slice(0, 10)), VOICE_SERVER_DATA_NOTE]
 		.filter(Boolean)
 		.join('\n\n');
@@ -158,15 +169,16 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	let muteAnnounced = false;
 	let goodbyeAllowedUntil = 0;
 	let speakAllowedUntil = 0;
+	let bargeInDeafUntil = 0;
 	let offWakeDetected: (() => void) | null = null;
 
 	const names = new Map();
 	const ignoredBots = new Set();
 	const voiceState = new Map();
 	const wikiInflight = new Map();
-	const wikiStallAt = new Map();
 	const activeLookups = new Set();
 	let toolBusyUntil = 0;
+	let lastStallAt = 0;
 
 	function isAddressed() {
 		return Date.now() < addressedUntil;
@@ -559,20 +571,22 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	}
 
 	function playChunk(pcm24k) {
-		if (closed || selfMuted) {
+		if (closed || selfMuted || Date.now() < bargeInDeafUntil) {
 			stats.chunksDropped++;
 			return;
 		}
+		if (playbackQueue.length >= MAX_QUEUED_CHUNKS) {
+			stats.chunksDropped++;
+			if (stats.chunksDropped % 25 === 1)
+				logger.log(`⚠️ Voice AI playback queue full at ${MAX_QUEUED_CHUNKS}, dropping the newest audio (high=${stats.queueHigh})`);
+			return;
+		}
+
 		playbackQueue.push(downmixAndResample(pcm24k, OUTPUT_RATE, DISCORD_RATE, 1, 2));
 		stats.chunksPlayed++;
 		lastAudioAt = Date.now();
 
 		if (playbackQueue.length > stats.queueHigh) stats.queueHigh = playbackQueue.length;
-		while (playbackQueue.length > MAX_QUEUED_CHUNKS) {
-			playbackQueue.shift();
-			stats.chunksDropped++;
-			if (stats.chunksDropped % 25 === 1) logger.log(`⚠️ Voice AI playback queue over ${MAX_QUEUED_CHUNKS}, dropping oldest (high=${stats.queueHigh})`);
-		}
 
 		extendWhileReplying();
 	}
@@ -584,6 +598,35 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		pending = EMPTY;
 		pendingOffset = 0;
 		logger.log(`🔊 Voice AI interrupted (cleared=${cleared} played=${stats.chunksPlayed})`);
+	}
+
+	function bargeInAllowed(userId) {
+		if (!isAddressed() || goodbyePending || muteAnnounced || selfMuted) return false;
+		if (Date.now() < speakAllowedUntil || Date.now() < goodbyeAllowedUntil) return false;
+		return micIsOpenFor(userId);
+	}
+
+	function tryBargeIn(userId, vad, rms) {
+		const openAt = Math.min(VOICE_RMS_CEILING, Math.max(VOICE_RMS_THRESHOLD, vad.floor * NOISE_FLOOR_MARGIN));
+		const bargeAt = Math.max(BARGE_IN_RMS_MIN, openAt * BARGE_IN_RMS_MARGIN);
+
+		if (rms < bargeAt || !bargeInAllowed(userId)) {
+			vad.barge = 0;
+			return false;
+		}
+
+		if (++vad.barge < BARGE_IN_FRAMES) return false;
+
+		const now = Date.now();
+		vad.barge = 0;
+		vad.active = true;
+		vad.onset = VOICE_ONSET_FRAMES;
+		vad.startedAt = now;
+		vad.lastVoiceAt = now;
+		bargeInDeafUntil = now + BARGE_IN_DEAF_MS;
+		logger.log(`✋ Voice AI cut off by ${nameOf(userId)} (rms=${Math.round(rms)} gate=${Math.round(bargeAt)})`);
+		handleInterrupt();
+		return true;
 	}
 
 	function nextFrame() {
@@ -672,6 +715,19 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		}
 	}
 
+	const FAST_TOOLS = new Set([...SERVER_TOOL_NAMES, ...ACCOUNT_TOOL_NAMES, ...KNOWLEDGE_TOOL_NAMES]);
+	const SLOW_TOOLS = new Set(['search_wiki', 'search_web', 'fetch_web_page', 'generate_image']);
+
+	function withToolBehavior(declaration) {
+		if (!asyncTools || !SLOW_TOOLS.has(declaration.name)) return declaration;
+		return { ...declaration, behavior: Behavior.NON_BLOCKING };
+	}
+
+	function toolResponse(call, response) {
+		if (!asyncTools || !SLOW_TOOLS.has(call.name)) return { id: call.id, name: call.name, response };
+		return { id: call.id, name: call.name, response: { ...response, scheduling: FunctionResponseScheduling.INTERRUPT } };
+	}
+
 	const LOOKUP_TOOLS = new Set([
 		'search_wiki',
 		'search_web',
@@ -758,7 +814,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 				inflight
 					.then((response) => {
 						keepAwakeForTool();
-						sendToolResponses([{ id: call.id, name: call.name, response }]);
+						sendToolResponses([toolResponse(call, response)]);
 					})
 					.catch(() => {});
 				continue;
@@ -784,9 +840,9 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 			const stallDeadline = Date.now() + WIKI_STALL_MS + WIKI_STALL_GRACE_MS;
 			const stallTimer = setTimeout(function stall() {
 				if (settled || closed || goodbyePending) return;
+				if (asyncTools || FAST_TOOLS.has(call.name)) return;
 
-				const lastAt = wikiStallAt.get(dedupeKey) ?? 0;
-				if (Date.now() - lastAt < WIKI_STALL_COOLDOWN_MS) return;
+				if (Date.now() - lastStallAt < WIKI_STALL_COOLDOWN_MS) return;
 
 				if (botIsSpeaking()) {
 					if (Date.now() < stallDeadline) {
@@ -797,7 +853,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 					return;
 				}
 
-				wikiStallAt.set(dedupeKey, Date.now());
+				lastStallAt = Date.now();
 				logger.log('⏳ Voice AI stalling out loud while the wiki lookup runs');
 				stalled = true;
 				keepAwakeForTool();
@@ -828,7 +884,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 				const send = () => {
 					if (closed) return;
 					keepAwakeForTool();
-					sendToolResponses([{ id: call.id, name: call.name, response }]);
+					sendToolResponses([toolResponse(call, response)]);
 
 					if (response?.ok !== false) return;
 
@@ -981,12 +1037,12 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 							...(searchDeclaration ? [searchDeclaration] : []),
 							...(fetchDeclaration ? [fetchDeclaration] : []),
 							...(imageDeclaration ? [imageDeclaration] : [])
-						]
+						].map(withToolBehavior)
 					}
 				]
 			},
 			callbacks: {
-				onopen: () => logger.log(`🔊 Voice AI live session open (model=${config.voice_model})`),
+				onopen: () => logger.log(`🔊 Voice AI live session open (model=${config.voice_model} tools=${asyncTools ? 'async' : 'blocking'})`),
 				onmessage: (msg) => {
 					if (msg.sessionResumptionUpdate?.newHandle) resumeHandle = msg.sessionResumptionUpdate.newHandle;
 					if (msg.goAway) {
@@ -1105,7 +1161,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		const opus = connection.receiver.subscribe(userId, { end: { behavior: EndBehaviorType.Manual } });
 		const decoder = new prism.opus.Decoder({ rate: DISCORD_RATE, channels: 2, frameSize: 960 });
 
-		const vad = { active: false, onset: 0, lastVoiceAt: 0, floor: 0, frames: 0, startedAt: 0 };
+		const vad = { active: false, onset: 0, lastVoiceAt: 0, floor: 0, frames: 0, startedAt: 0, barge: 0 };
 		voiceState.set(userId, vad);
 
 		decoder.on('data', (pcm) => {
@@ -1117,7 +1173,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 			const mono16k = downmixAndResample(pcm, DISCORD_RATE, INPUT_RATE, 2, 1);
 			const rms = rmsOf(mono16k);
 
-			if (botIsSpeaking()) {
+			if (botIsSpeaking() && !tryBargeIn(userId, vad, rms)) {
 				stats.framesDropped++;
 				if (userId === lockedSpeakerId && rms >= VOICE_RMS_THRESHOLD) keepAliveFromLockedSpeaker();
 				return;
@@ -1235,7 +1291,8 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		offWakeDetected?.();
 		offWakeDetected = null;
 		wikiInflight.clear();
-		wikiStallAt.clear();
+		lastStallAt = 0;
+		bargeInDeafUntil = 0;
 		activeLookups.clear();
 		toolBusyUntil = 0;
 

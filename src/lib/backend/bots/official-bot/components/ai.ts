@@ -56,7 +56,7 @@ function buildCompletionParams(config) {
 	return {
 		model: config.model,
 		...(useThinking ? { reasoning_effort: isGemini && config.reasoning === 'xhigh' ? 'high' : config.reasoning } : {}),
-		...(!isGemini ? { frequency_penalty: 1.2 } : {}),
+		...(!isGemini ? { frequency_penalty: 0.3 } : {}),
 		...thinkingKwargs
 	};
 }
@@ -416,10 +416,14 @@ async function handleMessageCreate(message) {
 				resolveToolFeatures(botConfig.id, message.guild.id).catch(() => null)
 			]);
 
+			const serverTools = buildServerTools(toolFeatures);
+			const accountTools = buildAccountTools(toolFeatures);
+
 			const today = new Date().toISOString().slice(0, 10);
 			const speakerName = message.member?.displayName ?? message.author.username;
 			const identityNote = `[System] You are talking with ${speakerName}, whose mention tag is <@${message.author.id}>. To ping someone, write their tag in that exact <@id> form — a plain name or a bare number does not ping. Only use an id you have actually been given here or in this conversation; never invent one.`;
-			const systemContent = [config.system_prompt?.replace(/\{\{today\}\}/g, today) ?? '', identityNote, SERVER_DATA_NOTE].filter(Boolean).join('\n\n');
+			const serverDataNote = serverTools.length || accountTools.length ? SERVER_DATA_NOTE : '';
+			const systemContent = [config.system_prompt?.replace(/\{\{today\}\}/g, today) ?? '', identityNote, serverDataNote].filter(Boolean).join('\n\n');
 
 			const userMessage = attachmentParts.length
 				? { role: 'user', content: [{ type: 'text', text: userContent }, ...attachmentParts] }
@@ -435,8 +439,8 @@ async function handleMessageCreate(message) {
 
 			const tools = [
 				...(voiceReady ? VOICE_TOOLS : []),
-				...buildServerTools(toolFeatures),
-				...buildAccountTools(toolFeatures),
+				...serverTools,
+				...accountTools,
 				...buildKnowledgeTools(),
 				...(wikiTool ? [wikiTool] : []),
 				...(searchTool ? [searchTool] : []),

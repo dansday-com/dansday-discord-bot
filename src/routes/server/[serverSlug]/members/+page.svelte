@@ -57,10 +57,10 @@
 
 	function rolePillCssVars(color: string | null | undefined): Record<string, string> {
 		const fb = {
-			fg: '#1a343f',
-			bg: 'rgba(36, 95, 115, 0.1)',
-			bd: 'rgba(36, 95, 115, 0.38)',
-			dot: '#245f73'
+			fg: '#2e211b',
+			bg: 'rgba(228, 61, 18, 0.1)',
+			bd: 'rgba(228, 61, 18, 0.38)',
+			dot: '#e43d12'
 		};
 		const rgb = parseRoleColorRaw(color);
 		if (!rgb) {
@@ -74,7 +74,7 @@
 		}
 		const softText = L > 0.52;
 		return {
-			'--role-fg': softText ? '#1a343f' : hex,
+			'--role-fg': softText ? '#2e211b' : hex,
 			'--role-bg': `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.13)`,
 			'--role-bd': `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.45)`,
 			'--role-dot': hex
@@ -178,7 +178,7 @@
 <svelte:head>
 	<title>{data.server.name || data.server.slug} Members | {APP_NAME} Discord Bot</title>
 	<meta name="description" content="Members, ranks, XP, and voice stats for {data.server.name || data.server.slug}." />
-	<meta name="theme-color" content="#245f73" />
+	<meta name="theme-color" content="#e43d12" />
 	<meta property="og:title" content="{data.server.name || data.server.slug} Members | {APP_NAME} Discord Bot" />
 	<meta property="og:description" content="Explore members, ranks, XP, and voice activity for this community." />
 </svelte:head>

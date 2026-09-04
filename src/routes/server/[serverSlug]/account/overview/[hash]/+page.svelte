@@ -75,7 +75,7 @@
 
 	const activityBars = $derived.by(() => {
 		const rows = [
-			{ label: 'Messages', value: Math.max(0, p.chatTotal || 0), icon: 'fa-comments', color: '#245f73' },
+			{ label: 'Messages', value: Math.max(0, p.chatTotal || 0), icon: 'fa-comments', color: '#e43d12' },
 			{ label: 'Voice', value: Math.max(0, p.voiceActive || 0), icon: 'fa-microphone', color: '#1f8a4c' },
 			{ label: 'Video', value: Math.max(0, p.voiceVideo || 0), icon: 'fa-video', color: '#6d5bd0' },
 			{ label: 'Stream', value: Math.max(0, p.voiceStreaming || 0), icon: 'fa-desktop', color: '#c8911a' },
@@ -98,7 +98,7 @@
 				title: 'Favorite target',
 				sub: 'you attack most',
 				icon: 'fa-crosshairs',
-				accent: '#733e24',
+				accent: '#d6536d',
 				row: relationships.favorite_target
 			},
 			{ key: 'best_ally', title: 'Best ally', sub: 'gifts exchanged', icon: 'fa-handshake', accent: '#1f8a4c', row: relationships.best_ally }
@@ -149,7 +149,7 @@
 	const minigamesNet = $derived(Number(d.minigames_net) || 0);
 	const minigamesWinRate = $derived((d.minigames_plays ?? 0) > 0 ? Math.round((Number(d.minigames_wins) / Number(d.minigames_plays)) * 100) : 0);
 
-	const PALETTE = ['#245f73', '#733e24', '#c8911a', '#1f8a4c', '#b23b3b', '#6d5bd0', '#e07a5f', '#2a9d8f', '#9b2c6f', '#457b9d'];
+	const PALETTE = ['#e43d12', '#d6536d', '#c8911a', '#1f8a4c', '#b23b3b', '#6d5bd0', '#e07a5f', '#2a9d8f', '#9b2c6f', '#457b9d'];
 
 	function polar(cx: number, cy: number, r: number, pctPoint: number) {
 		const a = (pctPoint / 100) * 2 * Math.PI - Math.PI / 2;
@@ -183,7 +183,7 @@
 			const accent = effectAccentHex(r.effect_type);
 			return {
 				value: Number(r.uses) || 0,
-				color: accent === '#245f73' && i > 0 ? PALETTE[i % PALETTE.length] : accent,
+				color: accent === '#e43d12' && i > 0 ? PALETTE[i % PALETTE.length] : accent,
 				label: effectLabel(r.effect_type),
 				icon: effectIcon(r.effect_type)
 			};

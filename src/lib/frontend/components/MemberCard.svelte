@@ -68,16 +68,16 @@
 	});
 
 	function parseRoleHex(color: string | null | undefined): string {
-		if (!color) return '#245f73';
+		if (!color) return '#e43d12';
 		const s = String(color).trim();
-		if (s === '' || s === '0' || s.toLowerCase() === 'null') return '#245f73';
+		if (s === '' || s === '0' || s.toLowerCase() === 'null') return '#e43d12';
 		if (s.startsWith('#')) return s;
 		if (/^[0-9A-Fa-f]{6}$/.test(s)) return `#${s}`;
 		const n = Number.parseInt(s, 10);
 		if (Number.isFinite(n) && n > 0 && n <= 0xffffff) {
 			return `#${n.toString(16).padStart(6, '0')}`;
 		}
-		return '#245f73';
+		return '#e43d12';
 	}
 
 	const roleColor = $derived(parseRoleHex(highestRole?.color));
@@ -120,19 +120,19 @@
 	const RADIUS = 20;
 
 	const C = {
-		text: '#1a343f',
-		textMuted: 'rgba(26,52,63,0.58)',
-		textSubtle: 'rgba(26,52,63,0.45)',
-		textFaint: 'rgba(26,52,63,0.32)',
-		brick: '#733e24',
-		hot: '#245f73',
-		peach: '#3a6d82',
+		text: '#2e211b',
+		textMuted: 'rgba(46,33,27,0.58)',
+		textSubtle: 'rgba(46,33,27,0.45)',
+		textFaint: 'rgba(46,33,27,0.32)',
+		brick: '#d6536d',
+		hot: '#e43d12',
+		peach: '#b8324e',
 		cardBg1: 'rgba(255,255,255,0.97)',
-		cardBg2: 'rgba(242,240,239,0.95)',
-		statBg: 'rgba(36,95,115,0.06)',
-		statBorder: 'rgba(36,95,115,0.1)',
-		border: 'rgba(187,189,188,0.55)',
-		footerLine: 'rgba(187,189,188,0.35)'
+		cardBg2: 'rgba(235,233,225,0.95)',
+		statBg: 'rgba(228,61,18,0.06)',
+		statBorder: 'rgba(228,61,18,0.1)',
+		border: 'rgba(196,189,174,0.55)',
+		footerLine: 'rgba(196,189,174,0.35)'
 	};
 
 	function loadImg(src: string): Promise<HTMLImageElement> {
@@ -391,12 +391,12 @@
 			ctx.clip();
 			ctx.drawImage(serverImg, PAD_X, y, 24, 24);
 			ctx.restore();
-			ctx.strokeStyle = 'rgba(187,189,188,0.4)';
+			ctx.strokeStyle = 'rgba(196,189,174,0.4)';
 			ctx.lineWidth = 1;
 			roundRect(ctx, PAD_X, y, 24, 24, 6);
 			ctx.stroke();
 		} else {
-			ctx.fillStyle = 'rgba(36,95,115,0.12)';
+			ctx.fillStyle = 'rgba(228,61,18,0.12)';
 			roundRect(ctx, PAD_X, y, 24, 24, 6);
 			ctx.fill();
 			ctx.fillStyle = C.hot;
@@ -440,7 +440,7 @@
 		const ringR = (avatarSize + ringPad * 2) / 2;
 		const avatarR = avatarSize / 2;
 
-		const ringColors = [rc, C.hot, '#5a9eb4', rc];
+		const ringColors = [rc, C.hot, '#ffa2b6', rc];
 		const segCount = 60;
 		for (let i = 0; i < segCount; i++) {
 			const t = i / segCount;
@@ -679,7 +679,7 @@
 
 		<div class="mc-card" bind:this={cardEl}>
 			<div class="mc-card-bg">
-				<div class="mc-card-accent" style="background: linear-gradient(135deg, {accentColor}, #245f73);"></div>
+				<div class="mc-card-accent" style="background: linear-gradient(135deg, {accentColor}, #e43d12);"></div>
 			</div>
 
 			<div class="mc-card-inner">

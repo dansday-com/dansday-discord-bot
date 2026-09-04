@@ -7,13 +7,13 @@
 
 	const shell = $derived(
 		palette === 'light'
-			? 'border-[rgba(187,189,188,0.55)] bg-[rgba(242,240,239,0.92)] backdrop-blur-[18px] [-webkit-backdrop-filter:blur(18px)]'
+			? 'border-[rgba(196,189,174,0.55)] bg-[rgba(235,233,225,0.92)] backdrop-blur-[18px] [-webkit-backdrop-filter:blur(18px)]'
 			: 'border-ash-700 bg-ash-800'
 	);
 
-	const brandText = $derived(palette === 'light' ? 'text-[#1a343f]' : 'text-ash-100');
+	const brandText = $derived(palette === 'light' ? 'text-[#2e211b]' : 'text-ash-100');
 	const iconWrap = $derived(
-		palette === 'light' ? 'bg-gradient-to-br from-[#733e24] to-[#245f73] text-white shadow-[0_2px_12px_rgba(26,52,63,0.07)]' : 'bg-ash-400 text-ash-100'
+		palette === 'light' ? 'bg-gradient-to-br from-[#d6536d] to-[#e43d12] text-white shadow-[0_2px_12px_rgba(46,33,27,0.07)]' : 'bg-ash-400 text-ash-100'
 	);
 </script>
 
@@ -40,7 +40,7 @@
 				<a
 					href="/"
 					class="m-btn border {palette === 'light'
-						? 'border-[rgba(187,189,188,0.55)] bg-[#e8e6e3] text-[#1a343f] hover:bg-[#dedcd8]'
+						? 'border-[rgba(196,189,174,0.55)] bg-[#e3e0d6] text-[#2e211b] hover:bg-[#d8d4c7]'
 						: 'border-ash-600 bg-ash-800/80 text-ash-200 hover:border-ash-500 hover:bg-ash-700 hover:text-ash-100'}"
 				>
 					<i class="fas fa-house"></i>

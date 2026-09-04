@@ -329,7 +329,7 @@ export function effectIcon(type: string): string {
 	return EFFECT_BY_ID[type]?.icon ?? ACTION_META[type]?.icon ?? 'fa-cube';
 }
 
-export const EFFECT_ACCENT_DEFAULT = '#245f73';
+export const EFFECT_ACCENT_DEFAULT = '#e43d12';
 
 export const EFFECT_ACCENT_HEX: Record<string, string> = Object.fromEntries(ITEM_EFFECTS.map((e) => [e.id, e.accent]));
 

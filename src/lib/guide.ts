@@ -16,7 +16,7 @@ export type GuideNote = { icon: string; accent: string; title: string; text: str
 
 export const EARN_METHODS: GuideCard[] = [
 	{ icon: 'fa-comments', accent: '#5a8a1f', title: 'Chat', desc: 'Messages in enabled channels earn XP.' },
-	{ icon: 'fa-microphone', accent: '#1d6f8a', title: 'Voice', desc: 'Active minutes in voice earn XP, AFK minutes earn less.' },
+	{ icon: 'fa-microphone', accent: '#a52a0b', title: 'Voice', desc: 'Active minutes in voice earn XP, AFK minutes earn less.' },
 	{ icon: 'fa-video', accent: '#7b5ea7', title: 'Video', desc: 'Camera on in voice pays bonus XP per minute.' },
 	{ icon: 'fa-tower-broadcast', accent: '#c8911a', title: 'Streaming', desc: 'Going live or screen-sharing pays extra per minute.' }
 ];
@@ -31,7 +31,7 @@ export const FRIEND_BOOST: GuideNote = {
 export const BASICS: GuideCard[] = [
 	{
 		icon: 'fa-wallet',
-		accent: '#245f73',
+		accent: '#e43d12',
 		title: 'Wallet XP',
 		desc: 'Your XP is both level progress and shop currency, so spending or losing it drops your rank.'
 	},
@@ -108,7 +108,7 @@ export const FEATURES: GuideFeature[] = [
 			{ icon: 'fa-calendar-week', accent: '#7b5ea7', title: '18 weekly tasks', desc: 'All hard, Monday to Sunday, sized against a full week of activity.' },
 			{
 				icon: 'fa-gauge-high',
-				accent: '#245f73',
+				accent: '#e43d12',
 				title: 'Goals sized to you',
 				desc: 'Built from your own last seven days of that exact activity, never from your level.'
 			},
@@ -120,7 +120,7 @@ export const FEATURES: GuideFeature[] = [
 			},
 			{ icon: 'fa-gift', accent: '#1a7f57', title: 'XP or an item', desc: 'Every task has a 30% chance of paying a shop item instead of XP.' },
 			{ icon: 'fa-fire', accent: '#d35400', title: 'Streak', desc: 'Milestones at 7, 30, 100 and 365 days get announced in the server.' },
-			{ icon: 'fa-snowflake', accent: '#1d6f8a', title: 'Freezes', desc: 'Two cover a missed day by themselves, one back every 10 claims.' }
+			{ icon: 'fa-snowflake', accent: '#a52a0b', title: 'Freezes', desc: 'Two cover a missed day by themselves, one back every 10 claims.' }
 		],
 		note: {
 			icon: 'fa-calendar-check',
@@ -160,7 +160,7 @@ export const FEATURES: GuideFeature[] = [
 			{ icon: 'fa-hand-holding-dollar', title: 'Sell anytime', desc: 'No cooldown. XP comes back scaled by how the price moved.' }
 		],
 		cards: [
-			{ icon: 'fa-coins', accent: '#245f73', title: 'XP becomes the investment', desc: 'Invested XP leaves your Wallet and your level until you sell.' },
+			{ icon: 'fa-coins', accent: '#e43d12', title: 'XP becomes the investment', desc: 'Invested XP leaves your Wallet and your level until you sell.' },
 			{ icon: 'fa-shield-halved', accent: '#1f9e8f', title: 'Safe from attacks', desc: 'XP inside an asset cannot be stolen, bombed or leeched.' },
 			{ icon: 'fa-arrow-trend-up', accent: '#1a7f57', title: 'Real market prices', desc: 'Live crypto prices in IDR, with no cooldown on selling.' },
 			{ icon: 'fa-clock-rotate-left', accent: '#4b6584', title: 'Tracked in History', desc: 'Every buy and sell is logged with what it earned or cost you.' }
@@ -188,7 +188,7 @@ export const TIPS: { icon: string; accent: string; text: string }[] = [
 	{ icon: 'fa-fire', accent: '#d35400', text: 'Finish at least one task a day — a longer streak grows every later reward.' },
 	{ icon: 'fa-calendar-week', accent: '#7b5ea7', text: 'Aim your week at the weekly tasks; the same activity clears your dailies too.' },
 	{ icon: 'fa-list-check', accent: '#1a7f57', text: 'Tasks that ask you to buy or use items pay back more XP than they cost.' },
-	{ icon: 'fa-chart-line', accent: '#245f73', text: 'Park XP in an asset to hide it from attacks, but watch the price.' }
+	{ icon: 'fa-chart-line', accent: '#e43d12', text: 'Park XP in an asset to hide it from attacks, but watch the price.' }
 ];
 
 export function buildGuideItems(items: { effect_type: string; cost?: number | null; config?: any }[]) {

@@ -61,7 +61,7 @@
 		name="description"
 		content="Set up {APP_NAME} Bot from scratch: run /setup, register, invite staff, set permissions, and configure every module field by field."
 	/>
-	<meta name="theme-color" content="#245f73" />
+	<meta name="theme-color" content="#e43d12" />
 </svelte:head>
 
 <div class="m-root">
@@ -275,7 +275,7 @@
 					<p class="g-sec-lead">{sectionLead('ai-server')}</p>
 					<div class="g-earn">
 						{#each aiServerTopics as c, i}
-							<div class="g-earn-card" style="--ac: #245f73; --d: {i * 60}ms">
+							<div class="g-earn-card" style="--ac: #e43d12; --d: {i * 60}ms">
 								<span class="g-earn-ic"><i class="fas {c.icon}"></i></span>
 								<div class="g-earn-body">
 									<h3>{c.title}</h3>

@@ -56,9 +56,8 @@ export async function readAiSession(botId, guildId, memberId, limit = 20) {
 	if (!redis) return readLocal(key, limit);
 
 	try {
-		const raw = await redis.lRange(key, -limit, -1);
-		if (raw.length) await redis.expire(key, SESSION_TTL_SEC);
-		return parseMessages(raw);
+		const [raw] = await redis.multi().lRange(key, -limit, -1).expire(key, SESSION_TTL_SEC).exec();
+		return parseMessages(Array.isArray(raw) ? raw : []);
 	} catch {
 		return readLocal(key, limit);
 	}
@@ -75,9 +74,7 @@ export async function appendAiMessage(botId, guildId, memberId, role, content) {
 	}
 
 	try {
-		await redis.rPush(key, JSON.stringify(message));
-		await redis.lTrim(key, -MAX_STORED, -1);
-		await redis.expire(key, SESSION_TTL_SEC);
+		await redis.multi().rPush(key, JSON.stringify(message)).lTrim(key, -MAX_STORED, -1).expire(key, SESSION_TTL_SEC).exec();
 	} catch {
 		appendLocal(key, message);
 	}

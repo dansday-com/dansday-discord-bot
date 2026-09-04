@@ -239,6 +239,9 @@ const SERVER_DATA_NOTE = `[System] You can read this server's own live data with
 
 Every get_my_* tool (get_my_overview, get_my_items, get_my_assets, get_my_minigames, get_my_history, get_my_tasks) reads the account of whoever is talking to you right now. None of them can read anyone else's, so never call one to answer a question about another person. If someone asks what another member has in their bag, what they are invested in, their history, their minigames or their tasks, tell them plainly that this is private to that member, and offer get_member_info for the public parts — level, XP, rank, roles and staff rating — instead.`;
 
+const PING_NOTE =
+	'[System] To ping someone, write their tag in that exact <@id> form — a plain name or a bare number does not ping. Only use an id you have actually been given in this conversation; never invent one.';
+
 const MENTION_RE = /<@!?(\d{17,20})>/g;
 const MAX_PINGS_PER_MESSAGE = 5;
 
@@ -408,7 +411,9 @@ async function handleMessageCreate(message) {
 				: '';
 
 			const ownText = prompt || (attachmentParts.length ? `(${attachmentKinds.join(', ')} attached, no message text)` : 'Hello!');
-			const userContent = `${quotedNote}${ownText}`;
+			const speakerName = message.member?.displayName ?? message.author.username;
+			const speakerNote = `[System] You are talking with ${speakerName}, whose mention tag is <@${message.author.id}>.`;
+			const userContent = `${speakerNote}\n\n${quotedNote}${ownText}`;
 
 			const [conversation, wikis, toolFeatures] = await Promise.all([
 				readAiSession(botConfig.id, message.guild.id, message.author.id, MAX_RECENT),
@@ -420,10 +425,8 @@ async function handleMessageCreate(message) {
 			const accountTools = buildAccountTools(toolFeatures);
 
 			const today = new Date().toISOString().slice(0, 10);
-			const speakerName = message.member?.displayName ?? message.author.username;
-			const identityNote = `[System] You are talking with ${speakerName}, whose mention tag is <@${message.author.id}>. To ping someone, write their tag in that exact <@id> form — a plain name or a bare number does not ping. Only use an id you have actually been given here or in this conversation; never invent one.`;
 			const serverDataNote = serverTools.length || accountTools.length ? SERVER_DATA_NOTE : '';
-			const systemContent = [config.system_prompt?.replace(/\{\{today\}\}/g, today) ?? '', identityNote, serverDataNote].filter(Boolean).join('\n\n');
+			const systemContent = [config.system_prompt?.replace(/\{\{today\}\}/g, today) ?? '', PING_NOTE, serverDataNote].filter(Boolean).join('\n\n');
 
 			const userMessage = attachmentParts.length
 				? { role: 'user', content: [{ type: 'text', text: userContent }, ...attachmentParts] }
@@ -489,8 +492,9 @@ async function handleMessageCreate(message) {
 			}
 
 			const storedContent = attachmentParts.length && prompt ? `${userContent} [${attachmentKinds.join(', ')} attached]` : userContent;
-			await appendAiMessage(botConfig.id, message.guild.id, message.author.id, 'user', storedContent);
-			await appendAiMessage(botConfig.id, message.guild.id, message.author.id, 'assistant', reply);
+			const persisted = appendAiMessage(botConfig.id, message.guild.id, message.author.id, 'user', storedContent)
+				.then(() => appendAiMessage(botConfig.id, message.guild.id, message.author.id, 'assistant', reply))
+				.catch(() => {});
 
 			const mention = `<@${message.author.id}>`;
 			const chunks = splitForDiscord(reply, DISCORD_MESSAGE_LIMIT - mention.length - 1);
@@ -511,6 +515,8 @@ async function handleMessageCreate(message) {
 					await message.channel.send({ content, allowedMentions });
 				}
 			}
+
+			await persisted;
 		} finally {
 			inFlight.delete(key);
 		}

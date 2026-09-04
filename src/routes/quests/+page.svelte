@@ -10,6 +10,7 @@
 
 	let query = $state('');
 	let liveOnly = $state(false);
+	let broken = $state<Record<string, boolean>>({});
 
 	const filtered = $derived(
 		data.quests.filter((q) => {
@@ -66,12 +67,13 @@
 							class="{REVEAL_CLASS} border-base-300 bg-base-100 flex flex-col overflow-hidden rounded-sm border"
 							style="transition-delay: {Math.min(i, 8) * 60}ms"
 						>
-							{#if quest.banner_url || quest.thumbnail_url}
+							{#if (quest.banner_url || quest.thumbnail_url) && !broken[quest.quest_id]}
 								<img
 									src={quest.banner_url || quest.thumbnail_url}
 									alt={quest.quest_name}
 									loading="lazy"
 									class="bg-base-200 aspect-[16/7] w-full object-cover"
+									onerror={() => (broken[quest.quest_id] = true)}
 								/>
 							{/if}
 							<div class="flex flex-1 flex-col p-4">

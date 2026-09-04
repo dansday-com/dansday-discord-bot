@@ -10,6 +10,17 @@
 
 	let query = $state('');
 	let limitedOnly = $state(false);
+	let broken = $state<Record<string, boolean>>({});
+
+	const initials = (n: string) =>
+		n
+			.replace(/[^a-zA-Z0-9 ]/g, ' ')
+			.split(/\s+/)
+			.filter(Boolean)
+			.slice(0, 2)
+			.map((w) => w[0])
+			.join('')
+			.toUpperCase() || '?';
 
 	const categories = $derived([...new Set(data.items.map((i) => i.category).filter(Boolean))].sort() as string[]);
 	let category = $state('');
@@ -79,11 +90,20 @@
 							class="{REVEAL_CLASS} group border-base-300 bg-base-100 hover:border-primary/40 flex flex-col overflow-hidden rounded-sm border transition-colors"
 							style="transition-delay: {Math.min(i, 8) * 60}ms"
 						>
-							{#if item.thumbnail_url}
-								<img src={item.thumbnail_url} alt={item.name} loading="lazy" class="bg-base-200 aspect-square w-full object-cover" />
+							{#if item.thumbnail_url && !broken[item.asset_id]}
+								<img
+									src={item.thumbnail_url}
+									alt={item.name}
+									loading="lazy"
+									class="bg-base-200 aspect-square w-full object-cover"
+									onerror={() => (broken[item.asset_id] = true)}
+								/>
 							{:else}
-								<span class="bg-base-200 text-base-content/25 grid aspect-square w-full place-items-center text-[24px]">
-									<i class="fas fa-cube"></i>
+								<span class="bg-base-200 grid aspect-square w-full place-items-center">
+									<span class="flex flex-col items-center gap-1.5">
+										<i class="fas fa-cube text-base-content/20 text-[22px]"></i>
+										<span class="text-base-content/35 text-[13px] font-black tracking-[0.1em] uppercase">{initials(item.name)}</span>
+									</span>
 								</span>
 							{/if}
 							<div class="flex flex-1 flex-col p-3">

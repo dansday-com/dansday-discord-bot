@@ -16,7 +16,7 @@
 	} = $props();
 </script>
 
-<div class="bg-canvas text-base-content relative isolate flex min-h-dvh flex-col overflow-x-hidden" data-theme="dansday">
+<div class="bg-canvas text-base-content relative isolate flex min-h-dvh flex-col overflow-x-clip" data-theme="dansday">
 	<div
 		class="bg-primary animate-blob-drift pointer-events-none fixed -top-16 -left-16 -z-10 size-56 rounded-full opacity-10 blur-[60px] sm:-top-25 sm:-left-25 sm:size-80 sm:blur-[80px] lg:size-[420px]"
 	></div>

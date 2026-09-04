@@ -16,11 +16,59 @@
 
 	const hasLive = $derived((data.totals?.servers_counted ?? 0) > 0);
 
+	let broken = $state<Record<string, boolean>>({});
+
+	const initials = (n: string) =>
+		n
+			.replace(/[^a-zA-Z0-9 ]/g, ' ')
+			.split(/\s+/)
+			.filter(Boolean)
+			.slice(0, 2)
+			.map((w) => w[0])
+			.join('')
+			.toUpperCase() || '?';
+
+	let scrolled = $state(false);
+	$effect(() => {
+		const onScroll = () => (scrolled = window.scrollY > 40);
+		onScroll();
+		window.addEventListener('scroll', onScroll, { passive: true });
+		return () => window.removeEventListener('scroll', onScroll);
+	});
+
+	function countUp(node: HTMLElement, target: number) {
+		if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+		const final = node.textContent ?? '';
+		let raf = 0;
+		const io = new IntersectionObserver(
+			(entries) => {
+				if (!entries.some((e) => e.isIntersecting)) return;
+				io.disconnect();
+				const started = performance.now();
+				const tick = (now: number) => {
+					const t = Math.min(1, (now - started) / 900);
+					node.textContent = fmt(target * (1 - Math.pow(1 - t, 3)));
+					if (t < 1) raf = requestAnimationFrame(tick);
+					else node.textContent = final;
+				};
+				raf = requestAnimationFrame(tick);
+			},
+			{ threshold: 0.4 }
+		);
+		io.observe(node);
+		return {
+			destroy: () => {
+				io.disconnect();
+				cancelAnimationFrame(raf);
+			}
+		};
+	}
+
 	const heroStats = $derived([
-		{ label: 'Servers', value: fmt(data.totals.servers_counted) },
-		{ label: 'Members', value: fmt(data.totals.members_total) },
-		{ label: 'XP tracked', value: fmt(data.totals.leveling_total_xp) },
-		{ label: 'Voice hours', value: fmt(data.totals.leveling_total_voice_minutes / 60) }
+		{ label: 'Servers', raw: data.totals.servers_counted },
+		{ label: 'Members', raw: data.totals.members_total },
+		{ label: 'XP tracked', raw: data.totals.leveling_total_xp },
+		{ label: 'Voice hours', raw: data.totals.leveling_total_voice_minutes / 60 }
 	]);
 
 	const ICON_TONES = ['text-primary', 'text-secondary', 'text-brand-gold-deep'];
@@ -467,11 +515,11 @@
 
 			<div>
 				<h1 class="relative font-black">
-					<span class="display-line text-primary block whitespace-nowrap uppercase" style="--ch: 9">One panel</span>
-					<span class="display-line text-primary block whitespace-nowrap uppercase" style="--ch: 12">Every module</span>
+					<span class="display-line animate-rise text-primary block whitespace-nowrap uppercase" style="--ch: 9; --rise-delay: 80ms">One panel</span>
+					<span class="display-line animate-rise text-primary block whitespace-nowrap uppercase" style="--ch: 12; --rise-delay: 200ms">Every module</span>
 				</h1>
 
-				<div class="mt-7 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+				<div class="animate-rise mt-7 flex flex-col gap-2 sm:flex-row sm:flex-wrap" style="--rise-delay: 320ms">
 					<a href={OFFICIAL_BOT_INVITE_URL} class="{BTN} btn-primary w-full sm:w-auto" target="_blank" rel="noopener noreferrer">
 						<i class="fa-brands fa-discord"></i>
 						Get started
@@ -494,7 +542,7 @@
 					<div class="border-base-300 grid grid-cols-2 gap-x-6 gap-y-4 border-t pt-5 sm:grid-cols-4">
 						{#each heroStats as stat, i}
 							<div use:reveal class={REVEAL_CLASS} style="transition-delay: {i * 70}ms">
-								<p class="text-primary text-[clamp(20px,3.4vw,34px)] leading-none font-black tabular-nums">{stat.value}</p>
+								<p use:countUp={stat.raw} class="text-primary text-[clamp(20px,3.4vw,34px)] leading-none font-black tabular-nums">{fmt(stat.raw)}</p>
 								<p class="text-base-content/45 mt-1.5 text-[10px] font-bold tracking-[0.14em] uppercase">{stat.label}</p>
 							</div>
 						{/each}
@@ -508,10 +556,23 @@
 						<span class="whitespace-nowrap">{item}</span>
 					{/each}
 				</p>
+
+				<a
+					href="#features"
+					aria-label="Scroll to the modules"
+					class="text-primary hover:text-accent inline-flex w-fit items-center gap-2.5 text-[10px] font-extrabold tracking-[0.16em] uppercase transition-all duration-300 {scrolled
+						? 'pointer-events-none translate-y-1 opacity-0'
+						: 'opacity-100'}"
+				>
+					<span class="border-primary/40 grid size-7 place-items-center rounded-full border">
+						<i class="fas fa-arrow-down text-[10px] motion-safe:animate-bounce"></i>
+					</span>
+					More below
+				</a>
 			</div>
 		</section>
 
-		<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16" id="features">
+		<section class="border-base-300 scroll-mt-20 border-t py-10 sm:py-13 lg:py-16" id="features">
 			<div class="mb-7">
 				<p class={EYEBROW}>01 — Modules</p>
 				<h2 class={H2}>Everything your server needs</h2>
@@ -645,8 +706,14 @@
 							style="transition-delay: {i * 60}ms"
 						>
 							<span class="bg-base-200 text-primary grid h-[30px] w-[44px] place-items-center overflow-hidden rounded-sm text-[12px]">
-								{#if quest.thumbnail_url || quest.banner_url}
-									<img src={quest.thumbnail_url || quest.banner_url} alt={quest.quest_name} loading="lazy" class="size-full object-cover" />
+								{#if (quest.thumbnail_url || quest.banner_url) && !broken[quest.quest_id]}
+									<img
+										src={quest.thumbnail_url || quest.banner_url}
+										alt={quest.quest_name}
+										loading="lazy"
+										class="size-full object-cover"
+										onerror={() => (broken[quest.quest_id] = true)}
+									/>
 								{:else}
 									<i class="fas fa-scroll"></i>
 								{/if}
@@ -700,11 +767,20 @@
 							class="{REVEAL_CLASS} group border-base-300 bg-base-100 hover:border-primary/40 flex flex-col overflow-hidden rounded-sm border transition-colors"
 							style="transition-delay: {i * 60}ms"
 						>
-							{#if item.thumbnail_url}
-								<img src={item.thumbnail_url} alt={item.name} loading="lazy" class="bg-base-200 aspect-square w-full object-cover" />
+							{#if item.thumbnail_url && !broken[item.asset_id]}
+								<img
+									src={item.thumbnail_url}
+									alt={item.name}
+									loading="lazy"
+									class="bg-base-200 aspect-square w-full object-cover"
+									onerror={() => (broken[item.asset_id] = true)}
+								/>
 							{:else}
-								<span class="bg-base-200 text-base-content/25 grid aspect-square w-full place-items-center text-[22px]">
-									<i class="fas fa-cube"></i>
+								<span class="bg-base-200 grid aspect-square w-full place-items-center">
+									<span class="flex flex-col items-center gap-1.5">
+										<i class="fas fa-cube text-base-content/20 text-[22px]"></i>
+										<span class="text-base-content/35 text-[13px] font-black tracking-[0.1em] uppercase">{initials(item.name)}</span>
+									</span>
 								</span>
 							{/if}
 							<span class="flex flex-1 flex-col p-3">

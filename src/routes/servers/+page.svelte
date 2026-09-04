@@ -65,7 +65,7 @@
 								{/if}
 								{entry.rank}
 							</span>
-							<span class="bg-base-200 text-primary grid size-[38px] place-items-center overflow-hidden rounded-sm text-[14px]">
+							<span class="bg-base-200 text-primary grid size-[38px] place-items-center overflow-hidden rounded-sm text-[14px] leading-none">
 								{#if entry.server_icon}
 									<img src={entry.server_icon} alt={entry.name} loading="lazy" decoding="async" width="38" height="38" class="size-full object-cover" />
 								{:else}

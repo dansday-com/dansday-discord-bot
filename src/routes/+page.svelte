@@ -464,10 +464,10 @@
 
 	const META = ['Free forever', 'AGPL-3.0 licensed', 'Hosted or self-hosted', 'Ten minute demo, no signup'];
 
-	const EYEBROW = 'text-primary mb-3.5 text-[10.5px] font-extrabold tracking-[0.2em] uppercase';
+	const EYEBROW = 'text-primary mb-3.5 text-[10.5px] font-extrabold tracking-[0.2em] uppercase 2xl:text-[13px]';
 	const H2 = 'text-base-content mb-2.5 text-[clamp(21px,6.2cqw,58px)] leading-[0.98] font-black tracking-[-0.035em] uppercase';
-	const LEAD = 'text-base-content/60 text-[13.5px] leading-[1.55] sm:max-w-[54ch]';
-	const BTN = 'btn rounded-sm text-[11.5px] font-extrabold tracking-[0.1em] uppercase';
+	const LEAD = 'text-base-content/60 text-[13.5px] leading-[1.55] sm:max-w-[54ch] 2xl:text-[16px]';
+	const BTN = 'btn rounded-sm text-[11.5px] font-extrabold tracking-[0.1em] uppercase 2xl:btn-lg 2xl:text-[13px]';
 	const CARD = 'border-base-300 bg-base-100 w-[78vw] shrink-0 rounded-sm border p-4 sm:w-[330px] sm:p-5';
 	const FULLBLEED = 'w-screen ml-[calc(50%-50vw)]';
 </script>
@@ -491,14 +491,14 @@
 					<span class="bg-primary size-2.5 shrink-0 rounded-full"></span>
 				</p>
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-6">
-					<p class="text-primary text-[12.5px] leading-[1.5] sm:max-w-[36ch]">
+					<p class="text-primary text-[12.5px] leading-[1.5] sm:max-w-[36ch] 2xl:text-[15px]">
 						{APP_NAME} is a free, open source Discord bot with a web panel — built for servers that outgrew slash commands.
 					</p>
-					<p class="text-primary hidden text-[12.5px] leading-[1.5] sm:block sm:max-w-[36ch]">
+					<p class="text-primary hidden text-[12.5px] leading-[1.5] sm:block sm:max-w-[36ch] 2xl:text-[15px]">
 						Leveling, an XP economy, moderation, embeds, giveaways, live public pages and integrations. Every module switches on by itself, all under one
 						server's settings.
 					</p>
-					<p class="text-primary flex flex-col gap-1.5 text-[12.5px] leading-[1.5] sm:max-w-[36ch]">
+					<p class="text-primary flex flex-col gap-1.5 text-[12.5px] leading-[1.5] sm:max-w-[36ch] 2xl:gap-2 2xl:text-[15px]">
 						<a href={OFFICIAL_BOT_INVITE_URL} target="_blank" rel="noopener noreferrer" class="hover:text-accent w-fit underline underline-offset-[3px]">
 							Add the hosted bot
 						</a>
@@ -548,7 +548,7 @@
 						{/each}
 					</div>
 				{/if}
-				<p class="text-base-content/45 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-bold tracking-[0.14em] uppercase">
+				<p class="text-base-content/45 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-bold tracking-[0.14em] uppercase 2xl:text-[12.5px]">
 					{#each META as item, i}
 						{#if i > 0}
 							<span aria-hidden="true" class="opacity-50">·</span>
@@ -560,14 +560,14 @@
 				<a
 					href="#features"
 					aria-label="Scroll to the modules"
-					class="text-primary hover:text-accent inline-flex w-fit items-center gap-2.5 text-[10px] font-extrabold tracking-[0.16em] uppercase transition-all duration-300 {scrolled
+					class="text-primary hover:text-accent inline-flex w-fit items-center gap-3 text-[11.5px] font-extrabold tracking-[0.16em] uppercase transition-all duration-300 2xl:gap-4 2xl:text-[14px] {scrolled
 						? 'pointer-events-none translate-y-1 opacity-0'
 						: 'opacity-100'}"
 				>
-					<span class="border-primary/40 grid size-7 place-items-center rounded-full border">
-						<i class="fas fa-arrow-down text-[10px] motion-safe:animate-bounce"></i>
+					<span class="border-primary/45 grid size-10 shrink-0 place-items-center rounded-full border-2 motion-safe:animate-bounce 2xl:size-13">
+						<i class="fas fa-arrow-down block text-[13px] leading-none 2xl:text-[16px]"></i>
 					</span>
-					More below
+					Keep scrolling
 				</a>
 			</div>
 		</section>
@@ -658,7 +658,7 @@
 							style="transition-delay: {i * 60}ms"
 						>
 							<span class="text-primary/70 text-[13px] font-black tabular-nums">{server.rank}</span>
-							<span class="bg-base-200 text-primary grid size-[34px] place-items-center overflow-hidden rounded-sm text-[13px]">
+							<span class="bg-base-200 text-primary grid size-[34px] place-items-center overflow-hidden rounded-sm text-[13px] leading-none">
 								{#if server.server_icon}
 									<img src={server.server_icon} alt={server.name} loading="lazy" decoding="async" width="34" height="34" class="size-full object-cover" />
 								{:else}
@@ -705,7 +705,7 @@
 							class="{REVEAL_CLASS} group border-base-300 grid grid-cols-[44px_1fr_auto] items-center gap-3 border-b px-0.5 py-3"
 							style="transition-delay: {i * 60}ms"
 						>
-							<span class="bg-base-200 text-primary grid h-[30px] w-[44px] place-items-center overflow-hidden rounded-sm text-[12px]">
+							<span class="bg-base-200 text-primary grid h-[30px] w-[44px] place-items-center overflow-hidden rounded-sm text-[12px] leading-none">
 								{#if (quest.thumbnail_url || quest.banner_url) && !broken[quest.quest_id]}
 									<img
 										src={quest.thumbnail_url || quest.banner_url}

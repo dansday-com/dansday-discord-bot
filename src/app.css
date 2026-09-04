@@ -337,8 +337,8 @@
 }
 
 @utility display-line {
-	font-size: calc(min(92vw, 1256px) / var(--ch) * 1);
-	font-size: min(calc(100cqw / var(--ch) * 1), 9rem);
+	font-size: calc(min(92vw, 1536px) / var(--ch) * 1);
+	font-size: min(calc(100cqw / var(--ch) * 1), 12rem);
 	line-height: 0.86;
 	letter-spacing: -0.045em;
 }

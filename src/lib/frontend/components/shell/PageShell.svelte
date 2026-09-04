@@ -31,7 +31,7 @@
 
 	<main class="flex min-h-0 flex-1 flex-col">
 		<div
-			class="relative z-1 mx-auto w-full max-w-7xl px-3 pt-4 pb-10 {width === 'flush' ? 'flex min-w-0 flex-1 flex-col' : ''} {center
+			class="relative z-1 mx-auto w-full max-w-7xl px-3 pt-4 pb-10 2xl:max-w-[100rem] 2xl:px-8 {width === 'flush' ? 'flex min-w-0 flex-1 flex-col' : ''} {center
 				? 'flex flex-1 flex-col items-center justify-center'
 				: ''}"
 		>

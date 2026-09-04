@@ -1,8 +1,17 @@
 <script lang="ts">
+	import { onDestroy, onMount } from 'svelte';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import type { PageProps } from './$types';
 	import { publicServerPath, COMMUNITY_DISCORD_URL, OFFICIAL_BOT_INVITE_URL, SOURCE_REPO_URL } from '$lib/url.js';
-	import { PageShell } from '$lib/frontend/components/shell';
+	import type { AggregatedPanelStats } from '$lib/frontend/public/statistics/aggregate.js';
+	import MainHeader from '$lib/frontend/components/MainHeader.svelte';
+	import MainFooter from '$lib/frontend/components/MainFooter.svelte';
+	import { reveal, REVEAL_CLASS } from '$lib/frontend/components/shell';
+	import 'fullpage.js/dist/fullpage.css';
+
+	type Totals = AggregatedPanelStats;
+	type Live = { label: string; value: string; live?: boolean };
+	type Feature = { icon: string; title: string; desc: string; more: string; stat?: (s: Totals) => Live[] };
 
 	let { data }: PageProps = $props();
 
@@ -11,39 +20,400 @@
 	const visibleServers = $derived(data.featuredServers.slice(0, shownServers));
 	const remainingServers = $derived(data.featuredServers.length - visibleServers.length);
 
+	const compact = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 });
+	const fmt = (n: number) => compact.format(Math.max(0, Math.round(n || 0)));
+
+	const hasLive = $derived((data.totals?.servers_counted ?? 0) > 0);
+
+	const heroStats = $derived([
+		{ label: 'Servers', value: fmt(data.totals.servers_counted) },
+		{ label: 'Members', value: fmt(data.totals.members_total) },
+		{ label: 'XP tracked', value: fmt(data.totals.leveling_total_xp) },
+		{ label: 'Voice hours', value: fmt(data.totals.leveling_total_voice_minutes / 60) }
+	]);
+
 	const ICON_TONES = ['text-primary', 'text-secondary', 'text-brand-gold-deep'];
 
-	const features = [
-		{ icon: 'fa-terminal', title: 'One-command setup', desc: '/setup builds every channel and wires each module to it.' },
-		{ icon: 'fa-sliders', title: 'Web panel', desc: 'Every module configured in the browser. No slash command trees.' },
-		{ icon: 'fa-shield-halved', title: 'Panel permissions', desc: 'Owner and staff tiers decide who can change what.' },
-		{ icon: 'fa-id-card', title: 'Server accounts', desc: "Invite your team with roles separate from Discord's." },
-		{ icon: 'fa-chart-line', title: 'Leveling & XP', desc: 'Messages and voice feed levels, role rewards and leaderboards.' },
-		{ icon: 'fa-store', title: 'Items & XP economy', desc: 'A shop priced in XP, a 50-slot bag, thirteen effects from steal to luck.' },
-		{ icon: 'fa-coins', title: 'Assets market', desc: 'Park XP in live crypto prices and sell any time. No real money.' },
-		{ icon: 'fa-dice', title: 'Minigames', desc: 'Wager XP above your level, so a loss never costs a level.' },
-		{ icon: 'fa-list-check', title: 'Tasks & streaks', desc: 'Eighteen daily and eighteen weekly, sized per member. No admin setup.' },
-		{ icon: 'fa-calendar-check', title: 'Check-in', desc: 'A seven-day cycle, one claim a local day, up to 50,000 XP.' },
-		{ icon: 'fa-chart-pie', title: 'Public pages', desc: 'Statistics, leaderboard and members, live and open to everyone.' },
-		{ icon: 'fa-user', title: 'Member accounts', desc: 'Each member gets their own page, history and shareable card.' },
-		{ icon: 'fa-palette', title: 'Embed builder', desc: 'Live preview, placeholders and images. Send from the browser.' },
-		{ icon: 'fa-hand', title: 'Welcomer', desc: 'Custom join messages and embeds for every newcomer.' },
-		{ icon: 'fa-gift', title: 'Giveaways', desc: 'Entries, winner picking and role-based eligibility.' },
-		{ icon: 'fa-gavel', title: 'Moderation', desc: 'Warnings, mutes, bans and staff actions from one panel.' },
-		{ icon: 'fa-clipboard-check', title: 'Staff rating', desc: 'Structured staff evaluation tied to moderation.' },
-		{ icon: 'fa-moon', title: 'AFK', desc: 'Members set a status; the bot warns whoever mentions them.' },
-		{ icon: 'fa-gem', title: 'Boost messages', desc: 'Thank Nitro boosters with your own channels and templates.' },
-		{ icon: 'fa-star', title: 'Custom supporter roles', desc: 'Supporters name and color their own role, inside your rules.' },
-		{ icon: 'fa-comment-dots', title: 'Feedback', desc: 'Collect suggestions and requests through Discord flows.' },
-		{ icon: 'fa-forward', title: 'Message forwarder', desc: 'Mirror or sync messages across channels and servers.' },
-		{ icon: 'fa-bell', title: 'Channel notifications', desc: 'Alerts for the channel activity that actually matters.' },
-		{ icon: 'fa-scroll', title: 'Discord Quest', desc: 'Quest alerts, with optional per-server enrollment automation.' },
-		{ icon: 'fa-cube', title: 'Roblox catalog watch', desc: 'Embeds when catalog items change. Built for trading and UGC.' },
-		{ icon: 'fa-video', title: 'Content creator', desc: 'Creator applications, approvals and TikTok live digests.' },
-		{ icon: 'fa-language', title: 'Multi-language', desc: 'English, Indonesian, German and Spanish across Discord flows.' },
-		{ icon: 'fa-user-astronaut', title: 'Self-bot path', desc: 'Optional, panel-managed tokens for forwarder and quest flows.' },
-		{ icon: 'fa-wand-magic-sparkles', title: 'AI assistant', desc: 'Optional. Bring your own endpoint and key, or leave it switched off.' }
+	const features: Feature[] = [
+		{
+			icon: 'fa-terminal',
+			title: 'One-command setup',
+			desc: '/setup creates every channel and wires it to the module that uses it.',
+			more: 'Nothing to name or pick by hand.',
+			stat: (s: Totals): Live[] => [{ label: 'Channels wired', value: fmt(s.channels_total) }]
+		},
+		{
+			icon: 'fa-sliders',
+			title: 'Web panel',
+			desc: 'Every module configured in the browser, with live bot and server state where it applies.',
+			more: 'No slash command trees to memorise.',
+			stat: (s: Totals): Live[] => [{ label: 'Servers configured', value: fmt(s.servers_counted) }]
+		},
+		{
+			icon: 'fa-toggle-on',
+			title: 'Per-module toggles',
+			desc: 'Every feature has its own switch, per server.',
+			more: 'Turn a module off and it disappears everywhere, including from the AI.'
+		},
+		{
+			icon: 'fa-shield-halved',
+			title: 'Panel permissions',
+			desc: 'Owner and staff tiers control who can change what.',
+			more: 'Helpers contribute without full control of the server.',
+			stat: (s: Totals): Live[] => [{ label: 'Roles mapped', value: fmt(s.roles_total) }]
+		},
+		{
+			icon: 'fa-id-card',
+			title: 'Server accounts',
+			desc: 'Invite owners and staff into the panel with roles that fit your team.',
+			more: 'Separate from who can chat or moderate in Discord.'
+		},
+		{
+			icon: 'fa-robot',
+			title: 'Multiple bots',
+			desc: 'Run as many bots as you like from one panel, each with its own token and servers.',
+			more: 'Start, stop and restart any of them from the browser.'
+		},
+		{
+			icon: 'fa-circle-dot',
+			title: 'Bot presence',
+			desc: "Set each bot's status and activity from the panel.",
+			more: 'Applies live, no restart.'
+		},
+		{
+			icon: 'fa-hand-wave',
+			title: 'Join greeting',
+			desc: 'The bot introduces itself when it joins, with your docs and support links.',
+			more: 'Only the first of your bots greets a shared server. Resend it any time.'
+		},
+		{
+			icon: 'fa-chart-line',
+			title: 'Leveling & XP',
+			desc: 'Messages, voice, video and streaming time all earn XP.',
+			more: 'Drives levels, role rewards and leaderboards. Reactions are tracked for tasks.',
+			stat: (s: Totals): Live[] => [
+				{ label: 'XP earned', value: fmt(s.leveling_total_xp) },
+				{ label: 'Top level', value: fmt(s.leveling_max_level) },
+				{ label: 'Voice hours', value: fmt(s.leveling_total_voice_minutes / 60) }
+			]
+		},
+		{
+			icon: 'fa-trophy',
+			title: 'Role rewards',
+			desc: 'Hand out roles automatically as members hit the levels you set.',
+			more: 'No manual role assignment.'
+		},
+		{
+			icon: 'fa-store',
+			title: 'Items & XP economy',
+			desc: 'A per-server shop priced in XP, a 50-slot bag and optional timed availability.',
+			more: 'Thirteen effects: steal, bomb, leech, bounty, shield, reflect, insurance, boost, gift, spy, disguise, purifier and luck.',
+			stat: (s: Totals): Live[] => [
+				{ label: 'Activations', value: fmt(s.items_activations) },
+				{ label: 'XP stolen', value: fmt(s.items_stolen) },
+				{ label: 'Biggest steal', value: fmt(s.items_biggest_steal) }
+			]
+		},
+		{
+			icon: 'fa-clover',
+			title: 'Luck',
+			desc: 'Raises steal and bomb rolls, minigame odds, spy success, leech skim and insurance refunds.',
+			more: 'Cuts gift tax and discounts prices. Timed buffs lock luck in on activation, so use luck first.'
+		},
+		{
+			icon: 'fa-user-secret',
+			title: 'Spy & disguise',
+			desc: 'Scout a target before you attack, or hide your own name from every public list.',
+			more: 'A lucky spy can still unmask a disguise.',
+			stat: (s: Totals): Live[] => [{ label: 'Spies', value: fmt(s.items_spies) }]
+		},
+		{
+			icon: 'fa-crosshairs',
+			title: 'Bounties',
+			desc: "Put XP on a member's head and let the server come collect.",
+			more: 'Land the hit yourself before someone else cashes in.',
+			stat: (s: Totals): Live[] => [
+				{ label: 'Placed', value: fmt(s.bounties_placed) },
+				{ label: 'Collected', value: fmt(s.bounties_collected) },
+				{ label: 'XP pooled', value: fmt(s.bounties_pooled) }
+			]
+		},
+		{
+			icon: 'fa-coins',
+			title: 'Assets market',
+			desc: 'Lock XP into positions priced from live market data and sell any time.',
+			more: 'Thousands of coins, top 50, gainers and losers, live portfolio. No real money.',
+			stat: (s: Totals): Live[] => [
+				{ label: 'Open positions', value: fmt(s.assets_open_positions), live: true },
+				{ label: 'Traders', value: fmt(s.assets_traders) },
+				{ label: 'Trades', value: fmt(s.assets_trade_count) }
+			]
+		},
+		{
+			icon: 'fa-dice',
+			title: 'Minigames',
+			desc: 'Gamble picks a multiplier up to 10x, and the win chance is 100 divided by it.',
+			more: 'Only XP above your current level can be wagered, so a loss never costs a level.',
+			stat: (s: Totals): Live[] => [
+				{ label: 'Plays', value: fmt(s.minigames_plays) },
+				{ label: 'Wins', value: fmt(s.minigames_wins) },
+				{ label: 'Biggest win', value: fmt(s.minigames_biggest_win) }
+			]
+		},
+		{
+			icon: 'fa-list-check',
+			title: 'Daily & weekly tasks',
+			desc: 'Eighteen daily and eighteen weekly, generated per member from a 96-goal catalog.',
+			more: "Sized from that member's own last seven days, so no two lists match. No admin setup."
+		},
+		{
+			icon: 'fa-fire',
+			title: 'Streaks',
+			desc: 'Clear all eighteen daily for two percent more reward XP a day, up to double.',
+			more: 'Milestones at 7, 30, 100 and 365. Two freezes cover missed days.'
+		},
+		{
+			icon: 'fa-calendar-check',
+			title: 'Daily check-in',
+			desc: 'A seven-day cycle, one claim per local day, up to 50,000 XP.',
+			more: 'Fifty percent chance of a shop item instead, rolled by rarity tier.'
+		},
+		{
+			icon: 'fa-boxes-stacked',
+			title: 'Global item catalog',
+			desc: 'Build items once and push them to every server you run.',
+			more: 'Per-server pricing and availability on top.'
+		},
+		{
+			icon: 'fa-chart-pie',
+			title: 'Public statistics',
+			desc: 'Live server totals across every module, at a public URL.',
+			more: 'No login. Search engines can index it.',
+			stat: (s: Totals): Live[] => [
+				{ label: 'Live pages', value: fmt(s.servers_counted), live: true },
+				{ label: 'Members listed', value: fmt(s.members_total) },
+				{ label: 'Channels', value: fmt(s.channels_total) }
+			]
+		},
+		{
+			icon: 'fa-ranking-star',
+			title: 'Leaderboard',
+			desc: 'All time, month or week, on any metric.',
+			more: 'XP, chat, voice, video, streaming, items, minigames.'
+		},
+		{
+			icon: 'fa-users',
+			title: 'Members directory',
+			desc: 'A searchable directory with levels, roles and activity.',
+			more: 'Disguised members stay off it.',
+			stat: (s: Totals): Live[] => [
+				{ label: 'Tracked members', value: fmt(s.members_with_levels) },
+				{ label: 'Messages', value: fmt(s.leveling_total_chat) }
+			]
+		},
+		{
+			icon: 'fa-user',
+			title: 'Member accounts',
+			desc: 'Members sign in to their own page for XP sources, history and portfolio.',
+			more: 'Reached by a per-member link.'
+		},
+		{
+			icon: 'fa-id-badge',
+			title: 'Shareable member card',
+			desc: 'Members render their own card and download it as an image.',
+			more: 'Straight to Instagram, X, Facebook or Discord.'
+		},
+		{
+			icon: 'fa-palette',
+			title: 'Embed builder',
+			desc: 'Rich embeds with live preview, placeholders and images.',
+			more: 'Send them to channels from the browser instead of spamming slash commands.'
+		},
+		{
+			icon: 'fa-tower-broadcast',
+			title: 'Global embed',
+			desc: 'Write one embed and send it to every server at once.',
+			more: 'For announcements and downtime notices.'
+		},
+		{
+			icon: 'fa-hand',
+			title: 'Welcomer',
+			desc: 'Greet new members with your own message and a rich embed.',
+			more: 'Placeholders for the member, the server, the member count and account age.'
+		},
+		{
+			icon: 'fa-gift',
+			title: 'Giveaways',
+			desc: 'Entry tracking, winner selection and role-based eligibility.',
+			more: 'Requirements are checked for you when you draw.',
+			stat: (s: Totals): Live[] => [
+				{ label: 'Running now', value: fmt(s.giveaways_active), live: true },
+				{ label: 'Entrants', value: fmt(s.giveaways_entrants) },
+				{ label: 'Winners drawn', value: fmt(s.giveaways_winners) }
+			]
+		},
+		{
+			icon: 'fa-gavel',
+			title: 'Moderation',
+			desc: 'Warnings, mutes, bans and staff actions, all from the panel.',
+			more: 'Every action stays recorded against the member.'
+		},
+		{
+			icon: 'fa-clipboard-check',
+			title: 'Staff rating',
+			desc: 'Structured staff evaluation tied to moderation.',
+			more: 'Ratings and reviews stay with the staff member.',
+			stat: (s: Totals): Live[] => [
+				{ label: 'Reviews', value: fmt(s.staff_reviews) },
+				{ label: 'Average', value: s.staff_avg_rating > 0 ? s.staff_avg_rating.toFixed(1) : '—' }
+			]
+		},
+		{
+			icon: 'fa-moon',
+			title: 'AFK',
+			desc: 'Members set an AFK status with their own message.',
+			more: 'The bot warns anyone who mentions them.',
+			stat: (s: Totals): Live[] => [{ label: 'Away now', value: fmt(s.afk_active), live: true }]
+		},
+		{
+			icon: 'fa-gem',
+			title: 'Boost messages',
+			desc: 'Thank Nitro boosters in a channel you choose.',
+			more: 'Placeholders for the member, the boost tier and the boost count.',
+			stat: (s: Totals): Live[] => [{ label: 'Boosters', value: fmt(s.members_unique_boosters) }]
+		},
+		{
+			icon: 'fa-star',
+			title: 'Custom supporter roles',
+			desc: 'Supporters create and personalise their own role.',
+			more: 'They pick the name and colour, inside the rules you set.',
+			stat: (s: Totals): Live[] => [{ label: 'Custom roles', value: fmt(s.members_with_custom_roles) }]
+		},
+		{
+			icon: 'fa-comment-dots',
+			title: 'Feedback',
+			desc: 'Collect suggestions and feature requests through Discord flows.',
+			more: 'Everything lands in one place instead of scattered threads.',
+			stat: (s: Totals): Live[] => [{ label: 'Submissions', value: fmt(s.feedback_submissions) }]
+		},
+		{
+			icon: 'fa-bell',
+			title: 'Channel notifications',
+			desc: 'Alerts for the channel activity that actually matters.',
+			more: 'Pick the events and the channel they post to.'
+		},
+		{
+			icon: 'fa-forward',
+			title: 'Message forwarder',
+			desc: 'Mirror or sync messages across channels and servers.',
+			more: 'Keeps announcements aligned across communities.'
+		},
+		{
+			icon: 'fa-language',
+			title: 'Multi-language',
+			desc: 'English, Indonesian, German and Spanish across Discord flows.',
+			more: 'Buttons, selects and labels all follow the choice.'
+		},
+		{
+			icon: 'fa-scroll',
+			title: 'Discord Quest notifier',
+			desc: 'Quest activity brought into your server as it appears, with banner and thumbnail.',
+			more: 'Enough context to know what to run next.',
+			stat: (s: Totals): Live[] => [
+				{ label: 'Live quests', value: fmt(s.quests_active), live: true },
+				{ label: 'Posted', value: fmt(s.quests_posted) },
+				{ label: 'Enrolled', value: fmt(s.quests_enrolled) },
+				{ label: 'Claimed', value: fmt(s.quests_claimed) },
+				{ label: 'Participants', value: fmt(s.quests_participants) }
+			]
+		},
+		{
+			icon: 'fa-wand-magic-sparkles',
+			title: 'Quest enroll',
+			desc: 'Optional per-server automation that enrolls members in quests.',
+			more: 'Game items, Nitro trials, in-game currency, whatever the quest pays.'
+		},
+		{
+			icon: 'fa-cube',
+			title: 'Roblox catalog watch',
+			desc: 'Watch the catalog and post rich embeds when items change.',
+			more: 'Built for trading groups and UGC-focused servers.',
+			stat: (s: Totals): Live[] => [
+				{ label: 'Items watched', value: fmt(s.roblox_items_watched), live: true },
+				{ label: 'Embeds posted', value: fmt(s.roblox_items_posted) }
+			]
+		},
+		{
+			icon: 'fa-video',
+			title: 'Content creator',
+			desc: 'Creator applications, approvals and TikTok live session digests.',
+			more: 'Tied to the channels you nominate.',
+			stat: (s: Totals): Live[] => [
+				{ label: 'Live now', value: fmt(s.streams_live_now), live: true },
+				{ label: 'Creators', value: fmt(s.streams_creators) },
+				{ label: 'Peak viewers', value: fmt(s.streams_peak_viewers) }
+			]
+		},
+		{
+			icon: 'fa-comments',
+			title: 'AI chat',
+			desc: 'Optional. Mention the bot, or reply to keep going without mentioning again.',
+			more: 'Any OpenAI-compatible endpoint. Off until you supply URL, model and key.'
+		},
+		{
+			icon: 'fa-microphone',
+			title: 'Voice AI',
+			desc: 'Optional. Ask it into a voice channel and talk out loud.',
+			more: 'Wakes on a phrase, one speaker at a time, mutes itself when idle.'
+		},
+		{
+			icon: 'fa-book',
+			title: 'Wiki knowledge',
+			desc: 'Point the bot at any MediaWiki or Fandom site from the panel.',
+			more: 'Reads the rendered page with infoboxes and tables, in any language.'
+		},
+		{
+			icon: 'fa-magnifying-glass',
+			title: 'Search, fetch & images',
+			desc: 'Web search, page reading and image generation, each on its own key.',
+			more: 'Invisible until configured. The model decides when to use them.'
+		},
+		{
+			icon: 'fa-database',
+			title: 'Server knowledge',
+			desc: "The AI reads your server's own live data with no extra key.",
+			more: "Statistics, leaderboards, the shop, XP rates and the asker's own account only."
+		},
+		{
+			icon: 'fa-code-branch',
+			title: 'Self-host',
+			desc: 'AGPL-3.0 on GitHub, with Docker Compose and a Node adapter.',
+			more: 'Or use the hosted bot and skip the infrastructure.'
+		},
+		{
+			icon: 'fa-user-astronaut',
+			title: 'Self-bot path',
+			desc: 'An optional self-bot path with panel-managed tokens.',
+			more: "Use it in line with Discord's terms and your own risk assessment."
+		},
+		{
+			icon: 'fa-plug',
+			title: 'Webhook server',
+			desc: 'Incoming hooks for selected automation paths.',
+			more: 'For wiring the bot into what you already run.'
+		}
 	];
+
+	const cards = $derived(features.map((f) => ({ ...f, live: hasLive && f.stat ? f.stat(data.totals) : [] })));
+
+	const PER_SLIDE = 6;
+	const modulePages = $derived(
+		cards.reduce<(typeof cards)[]>((acc, c, i) => {
+			if (i % PER_SLIDE === 0) acc.push([]);
+			acc[acc.length - 1].push(c);
+			return acc;
+		}, [])
+	);
 
 	const panel = [
 		{ title: 'Toggle features', desc: 'Every module sits on its own switch, per server.' },
@@ -52,10 +422,43 @@
 		{ title: 'Mobile ready', desc: 'Phone, tablet or desktop. The same panel.' }
 	];
 
-	const EYEBROW = 'text-primary mb-3.5 text-[10.5px] font-extrabold tracking-[0.2em] uppercase';
-	const H2 = 'text-base-content mb-2.5 text-[clamp(26px,6.2cqw,58px)] leading-[0.98] font-black tracking-[-0.035em] uppercase';
-	const LEAD = 'text-base-content/60 max-w-[54ch] text-[13.5px] leading-[1.55]';
+	const META = ['Free forever', 'AGPL-3.0 licensed', 'Hosted or self-hosted', 'Ten minute demo, no signup'];
+
+	const INNER = 'mx-auto w-full max-w-7xl px-3';
+	const EYEBROW = 'text-primary mb-3 text-[10.5px] font-extrabold tracking-[0.2em] uppercase';
+	const H2 = 'text-base-content mb-2.5 text-[clamp(21px,5.6vw,54px)] leading-[0.98] font-black tracking-[-0.035em] uppercase';
+	const LEAD = 'text-base-content/60 text-[13.5px] leading-[1.55] sm:max-w-[54ch]';
 	const BTN = 'btn rounded-sm text-[11.5px] font-extrabold tracking-[0.1em] uppercase';
+
+	let fp: { destroy: (type?: string) => void } | null = null;
+
+	onMount(async () => {
+		const { default: fullpage } = await import('fullpage.js');
+		fp = new fullpage('#fullpage', {
+			licenseKey: 'gplv3-license',
+			autoScrolling: true,
+			scrollOverflow: true,
+			scrollHorizontally: true,
+			controlArrows: false,
+			slidesNavigation: true,
+			slidesNavPosition: 'bottom',
+			navigation: true,
+			navigationPosition: 'right',
+			navigationTooltips: ['Top', 'Modules', 'Communities', 'Panel', 'Start'],
+			showActiveTooltip: false,
+			anchors: ['top', 'features', 'communities', 'panel', 'start'],
+			animateAnchors: false,
+			paddingTop: '4rem',
+			fitToSection: true,
+			keyboardScrolling: true,
+			scrollingSpeed: 620
+		});
+	});
+
+	onDestroy(() => {
+		fp?.destroy('all');
+		fp = null;
+	});
 </script>
 
 <svelte:head>
@@ -67,175 +470,264 @@
 	<meta name="theme-color" content="#e43d12" />
 </svelte:head>
 
-<PageShell>
-	<div class="@container">
-		<section class="pt-1.5 pb-9 sm:pt-2.5 sm:pb-11 lg:pt-3.5 lg:pb-14">
-			<p class="bg-base-300 mb-6 flex h-px items-center justify-between" aria-hidden="true">
-				<span class="bg-primary size-2.5 shrink-0 rounded-full"></span>
-				<span class="bg-primary size-2.5 shrink-0 rounded-full"></span>
-				<span class="bg-primary size-2.5 shrink-0 rounded-full"></span>
-			</p>
+<div class="bg-canvas text-base-content relative isolate" data-theme="dansday">
+	<div
+		class="bg-primary animate-blob-drift pointer-events-none fixed -top-16 -left-16 -z-10 size-56 rounded-full opacity-10 blur-[60px] sm:-top-25 sm:-left-25 sm:size-80 sm:blur-[80px] lg:size-[420px]"
+	></div>
+	<div
+		class="bg-secondary animate-blob-drift pointer-events-none fixed -right-14 bottom-[10%] -z-10 size-48 rounded-full opacity-10 blur-[60px] [animation-delay:-6s] sm:-right-20 sm:size-80 sm:blur-[80px]"
+	></div>
 
-			<div class="mb-8 grid grid-cols-1 gap-4.5 sm:grid-cols-3 sm:gap-6">
-				<p class="text-primary max-w-[36ch] text-[12.5px] leading-[1.5]">
-					{APP_NAME} is a free, open source Discord bot with a web panel — built for servers that outgrew slash commands.
-				</p>
-				<p class="text-primary max-w-[36ch] text-[12.5px] leading-[1.5]">
-					Leveling, an XP economy, moderation, embeds, giveaways, live public pages and integrations. Every module switches on by itself, all under one server's
-					settings.
-				</p>
-				<p class="text-primary flex max-w-[36ch] flex-col gap-1.5 text-[12.5px] leading-[1.5]">
-					<a href={OFFICIAL_BOT_INVITE_URL} target="_blank" rel="noopener noreferrer" class="hover:text-accent w-fit underline underline-offset-[3px]">
-						Add the hosted bot
+	<div id="site-header" class="fixed inset-x-0 top-0 z-40">
+		<MainHeader />
+	</div>
+
+	<div id="fullpage">
+		<section class="section">
+			<div class="{INNER} flex flex-col gap-6 py-5 sm:gap-9">
+				<div>
+					<p class="bg-base-300 mb-5 flex h-px items-center justify-between" aria-hidden="true">
+						<span class="bg-primary size-2.5 shrink-0 rounded-full"></span>
+						<span class="bg-primary size-2.5 shrink-0 rounded-full"></span>
+						<span class="bg-primary size-2.5 shrink-0 rounded-full"></span>
+					</p>
+					<div class="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-6">
+						<p class="text-primary text-[12.5px] leading-[1.5] sm:max-w-[36ch]">
+							{APP_NAME} is a free, open source Discord bot with a web panel — built for servers that outgrew slash commands.
+						</p>
+						<p class="text-primary hidden text-[12.5px] leading-[1.5] sm:block sm:max-w-[36ch]">
+							Leveling, an XP economy, moderation, embeds, giveaways, live public pages and integrations. Every module switches on by itself, all under one
+							server's settings.
+						</p>
+						<p class="text-primary flex flex-col gap-1.5 text-[12.5px] leading-[1.5] sm:max-w-[36ch]">
+							<a href={OFFICIAL_BOT_INVITE_URL} target="_blank" rel="noopener noreferrer" class="hover:text-accent w-fit underline underline-offset-[3px]">
+								Add the hosted bot
+							</a>
+							<a href={SOURCE_REPO_URL} target="_blank" rel="noopener noreferrer" class="hover:text-accent w-fit underline underline-offset-[3px]">
+								Self-host from GitHub
+							</a>
+							<a href="/docs" class="hover:text-accent w-fit underline underline-offset-[3px]">Read the docs</a>
+							<a href={COMMUNITY_DISCORD_URL} target="_blank" rel="noopener noreferrer" class="hover:text-accent w-fit underline underline-offset-[3px]">
+								Join the Discord
+							</a>
+						</p>
+					</div>
+				</div>
+
+				<h1 class="relative font-black">
+					<span class="display-line text-primary block whitespace-nowrap uppercase" style="--ch: 9">One panel</span>
+					<span class="display-line text-primary block whitespace-nowrap uppercase" style="--ch: 12">Every module</span>
+				</h1>
+
+				<div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+					<a href={OFFICIAL_BOT_INVITE_URL} class="{BTN} btn-primary w-full sm:w-auto" target="_blank" rel="noopener noreferrer">
+						<i class="fab fa-discord"></i>
+						Get started
 					</a>
-					<a href={SOURCE_REPO_URL} target="_blank" rel="noopener noreferrer" class="hover:text-accent w-fit underline underline-offset-[3px]">
-						Self-host from GitHub
-					</a>
-					<a href="/docs" class="hover:text-accent w-fit underline underline-offset-[3px]">Read the docs</a>
-					<a href={COMMUNITY_DISCORD_URL} target="_blank" rel="noopener noreferrer" class="hover:text-accent w-fit underline underline-offset-[3px]">
-						Join the Discord
-					</a>
+					<div class="grid grid-cols-2 gap-2 sm:contents">
+						<a href="/login" class="{BTN} btn-outline btn-primary">
+							<i class="fas fa-arrow-right-to-bracket"></i>
+							Open the panel
+						</a>
+						<a href="#features" class="{BTN} btn-outline btn-primary">
+							<i class="fas fa-arrow-down"></i>
+							All modules
+						</a>
+					</div>
+				</div>
+
+				{#if hasLive}
+					<div class="border-base-300 grid grid-cols-2 gap-x-6 gap-y-4 border-t pt-5 sm:grid-cols-4">
+						{#each heroStats as stat, i}
+							<div use:reveal class={REVEAL_CLASS} style="transition-delay: {i * 70}ms">
+								<p class="text-primary text-[clamp(20px,3.4vw,34px)] leading-none font-black tabular-nums">{stat.value}</p>
+								<p class="text-base-content/45 mt-1.5 text-[10px] font-bold tracking-[0.14em] uppercase">{stat.label}</p>
+							</div>
+						{/each}
+					</div>
+				{/if}
+
+				<p class="text-base-content/45 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-bold tracking-[0.14em] uppercase">
+					{#each META as item, i}
+						{#if i > 0}
+							<span aria-hidden="true" class="opacity-50">·</span>
+						{/if}
+						<span class="whitespace-nowrap">{item}</span>
+					{/each}
 				</p>
 			</div>
-
-			<h1 class="font-black">
-				<span class="display-line text-primary block whitespace-nowrap uppercase" style="--ch: 9">One panel</span>
-				<span class="display-line text-primary block whitespace-nowrap uppercase" style="--ch: 12">Every module</span>
-			</h1>
-
-			<div class="mt-7 flex flex-wrap gap-2">
-				<a href={OFFICIAL_BOT_INVITE_URL} class="{BTN} btn-primary" target="_blank" rel="noopener noreferrer">
-					<i class="fab fa-discord"></i>
-					Get started
-				</a>
-				<a href="/login" class="{BTN} btn-outline btn-primary">
-					<i class="fas fa-arrow-right-to-bracket"></i>
-					Open the panel
-				</a>
-				<a href="#features" class="{BTN} btn-outline btn-primary">
-					<i class="fas fa-arrow-down"></i>
-					All modules
-				</a>
-			</div>
-
-			<p class="text-base-content/45 mt-5.5 text-[10px] font-bold tracking-[0.14em] uppercase">
-				Free forever · MIT licensed · Hosted or self-hosted · Ten minute demo, no signup
-			</p>
 		</section>
 
-		<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16" id="features">
-			<div class="mb-6">
-				<p class={EYEBROW}>01 — Modules</p>
-				<h2 class={H2}>Everything your server needs</h2>
-				<p class={LEAD}>Each one stands on its own. Turn on what you need and ignore the rest.</p>
-			</div>
-			<ol class="border-base-300 grid grid-cols-1 border-t lg:grid-cols-2 lg:gap-x-11">
-				{#each features as feature, i}
-					<li class="border-base-300 grid grid-cols-[2.2rem_1fr] items-start gap-3 border-b px-0.5 py-3.5">
-						<span class="text-primary/70 text-[10.5px] leading-[1.32] font-extrabold tracking-[0.08em] tabular-nums">
-							{String(i + 1).padStart(2, '0')}
-						</span>
-						<span class="min-w-0">
-							<span class="text-base-content flex items-center gap-2 text-[13px] leading-[1.32] font-extrabold tracking-[0.02em] uppercase">
-								<i class="fas {feature.icon} text-[11px] {ICON_TONES[i % ICON_TONES.length]}"></i>
-								{feature.title}
-							</span>
-							<span class="text-base-content/60 mt-1 block text-[12.5px] leading-[1.5]">{feature.desc}</span>
-						</span>
-					</li>
-				{/each}
-			</ol>
+		<section class="section">
+			{#each modulePages as page, pi}
+				<div class="slide">
+					<div class="{INNER} py-5">
+						<div class="mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
+							<div class="min-w-0">
+								<p class={EYEBROW}>01 — Modules</p>
+								<h2 class={H2}>Everything your server needs</h2>
+								<p class="{LEAD} hidden sm:block">
+									{#if hasLive}
+										Every number below is live, aggregated across {fmt(data.totals.servers_counted)} public servers.
+									{:else}
+										Each one stands on its own. Turn on what you need and ignore the rest.
+									{/if}
+								</p>
+							</div>
+							<p class="text-base-content/45 shrink-0 text-[10px] font-bold tracking-[0.14em] whitespace-nowrap uppercase">
+								{String(pi + 1).padStart(2, '0')} / {String(modulePages.length).padStart(2, '0')} · swipe
+							</p>
+						</div>
+
+						<div class="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
+							{#each page as feature, ci}
+								{@const index = pi * PER_SLIDE + ci}
+								<article
+									use:reveal
+									class="{REVEAL_CLASS} border-base-300 bg-base-100 hover:border-primary/40 flex flex-col rounded-sm border p-4 sm:p-5"
+									style="transition-delay: {ci * 80}ms"
+								>
+									<div class="mb-3 flex items-start justify-between gap-3">
+										<i class="fas {feature.icon} text-[18px] {ICON_TONES[index % ICON_TONES.length]}"></i>
+										<span class="text-base-content/20 text-[22px] leading-none font-black tabular-nums">
+											{String(index + 1).padStart(2, '0')}
+										</span>
+									</div>
+									<h3 class="text-base-content mb-1.5 text-[13px] leading-[1.32] font-extrabold tracking-[0.02em] uppercase">{feature.title}</h3>
+									<p class="text-base-content/70 text-[12.5px] leading-[1.5]">{feature.desc}</p>
+									<p class="text-base-content/45 mt-1.5 hidden text-[12px] leading-[1.5] sm:block">{feature.more}</p>
+									{#if feature.live.length > 0}
+										<dl class="border-base-300 mt-4 flex flex-wrap gap-x-5 gap-y-2.5 border-t pt-3">
+											{#each feature.live as stat}
+												<div>
+													<dt class="text-base-content/45 text-[9.5px] font-bold tracking-[0.12em] uppercase">{stat.label}</dt>
+													<dd class="text-primary mt-1 flex items-center gap-1.5 text-[15px] leading-none font-black tabular-nums">
+														{#if stat.live}
+															<span class="bg-primary size-1.5 shrink-0 rounded-full motion-safe:animate-pulse"></span>
+														{/if}
+														{stat.value}
+													</dd>
+												</div>
+											{/each}
+										</dl>
+									{/if}
+								</article>
+							{/each}
+						</div>
+					</div>
+				</div>
+			{/each}
 		</section>
 
-		{#if data.featuredServers.length > 0}
-			<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
-				<div class="mb-6">
+		<section class="section">
+			<div class="{INNER} py-5">
+				<div class="mb-5">
 					<p class={EYEBROW}>02 — Communities</p>
 					<h2 class={H2}>Servers running it now</h2>
 					<p class={LEAD}>Each one with its own live public pages. No login needed.</p>
 				</div>
-				<div class="border-base-300 grid grid-cols-1 border-t">
-					{#each visibleServers as server}
-						<a href={publicServerPath(server.slug)} class="group border-base-300 grid grid-cols-[34px_1fr_auto] items-center gap-3 border-b px-0.5 py-3">
-							<span class="bg-base-200 text-primary grid size-[34px] place-items-center overflow-hidden rounded-sm text-[13px]">
-								{#if server.server_icon}
-									<img src={server.server_icon} alt={server.name} loading="lazy" width="34" height="34" class="size-full object-cover" />
-								{:else}
-									<i class="fas fa-server"></i>
-								{/if}
-							</span>
-							<span class="min-w-0">
-								<span
-									class="text-base-content group-hover:text-primary block truncate text-[13px] leading-[1.32] font-extrabold tracking-[0.02em] uppercase transition-colors"
-								>
-									{server.name}
+				{#if data.featuredServers.length > 0}
+					<div class="border-base-300 grid grid-cols-1 border-t">
+						{#each visibleServers as server, i}
+							<a
+								href={publicServerPath(server.slug)}
+								use:reveal
+								class="{REVEAL_CLASS} group border-base-300 grid grid-cols-[34px_1fr_auto] items-center gap-3 border-b px-0.5 py-3"
+								style="transition-delay: {i * 60}ms"
+							>
+								<span class="bg-base-200 text-primary grid size-[34px] place-items-center overflow-hidden rounded-sm text-[13px]">
+									{#if server.server_icon}
+										<img src={server.server_icon} alt={server.name} loading="lazy" width="34" height="34" class="size-full object-cover" />
+									{:else}
+										<i class="fas fa-server"></i>
+									{/if}
 								</span>
-								<span class="text-base-content/60 mt-1 flex items-center gap-1.5 text-[12.5px] leading-[1.5]">
-									<span class="bg-primary size-1.5 rounded-full"></span>
-									Live public statistics
+								<span class="min-w-0">
+									<span
+										class="text-base-content group-hover:text-primary block truncate text-[13px] leading-[1.32] font-extrabold tracking-[0.02em] uppercase transition-colors"
+									>
+										{server.name}
+									</span>
+									<span class="text-base-content/60 mt-1 flex items-center gap-1.5 text-[12.5px] leading-[1.5]">
+										<span class="bg-primary size-1.5 rounded-full"></span>
+										Live public statistics
+									</span>
 								</span>
-							</span>
-							<i class="fas fa-arrow-right text-primary text-[12px] transition-transform group-hover:translate-x-0.5"></i>
-						</a>
-					{/each}
-				</div>
-				{#if remainingServers > 0}
-					<button
-						type="button"
-						class="text-primary hover:text-accent mt-4 inline-flex items-center gap-2 py-1 text-[10.5px] font-extrabold tracking-[0.14em] uppercase underline underline-offset-4"
-						onclick={() => (shownServers += SERVERS_PER_PAGE)}
-					>
-						Show more ({remainingServers} left)
-						<i class="fas fa-arrow-down"></i>
-					</button>
+								<i class="fas fa-arrow-right text-primary text-[12px] transition-transform group-hover:translate-x-0.5"></i>
+							</a>
+						{/each}
+					</div>
+					{#if remainingServers > 0}
+						<button
+							type="button"
+							class="text-primary hover:text-accent mt-4 inline-flex items-center gap-2 py-1 text-[10.5px] font-extrabold tracking-[0.14em] uppercase underline underline-offset-4"
+							onclick={() => (shownServers += SERVERS_PER_PAGE)}
+						>
+							Show more ({remainingServers} left)
+							<i class="fas fa-arrow-down"></i>
+						</button>
+					{/if}
+				{:else}
+					<p class="text-base-content/45 text-[12.5px]">No servers have switched their public pages on yet.</p>
 				{/if}
-			</section>
-		{/if}
-
-		<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
-			<div class="mb-6">
-				<p class={EYEBROW}>03 — The panel</p>
-				<h2 class={H2}>Configured in a browser</h2>
-				<p class={LEAD}>Sign in and you land in the panel. Where a module supports it, you see live bot and server state as it happens.</p>
-			</div>
-			<div class="grid grid-cols-1 gap-4.5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
-				{#each panel as item}
-					<p class="text-base-content/60 max-w-[30ch] text-[12.5px] leading-[1.5]">
-						<strong class="text-base-content mb-0.5 block text-[12px] font-extrabold tracking-[0.08em] uppercase">{item.title}</strong>
-						{item.desc}
-					</p>
-				{/each}
 			</div>
 		</section>
 
-		<section class="bleed bg-primary text-primary-content mt-10 -mb-10 py-12 sm:mt-13 sm:py-15 lg:mt-16 lg:py-19">
-			<p class="text-primary-content mb-3.5 text-[10.5px] font-extrabold tracking-[0.2em] uppercase">04 — Start</p>
-			<p class="font-black">
-				<span class="display-line text-primary-content block whitespace-nowrap uppercase" style="--ch: 10">Ready to go</span>
-			</p>
-			<p class="text-primary-content/90 mt-4.5 max-w-[48ch] text-[13.5px] leading-[1.6]">
-				Add {APP_NAME} Bot to your server first, then sign in to configure it. The login screen also offers a free
-				<strong class="text-primary-content font-bold">ten minute demo</strong> with full panel access and no signup.
-			</p>
-			<div class="mt-7 flex flex-wrap gap-2">
-				<a
-					href={OFFICIAL_BOT_INVITE_URL}
-					class="{BTN} border-primary-content bg-primary-content text-primary hover:border-primary-content hover:bg-primary-content/90"
-					target="_blank"
-					rel="noopener noreferrer"
-				>
-					<i class="fab fa-discord"></i>
-					Add {APP_NAME} Bot
-				</a>
-				<a href="/login" class="{BTN} btn-outline border-primary-content/55 text-primary-content hover:bg-primary-content hover:text-primary">
-					<i class="fas fa-arrow-right-to-bracket"></i>
-					Open login
-				</a>
-				<a href="/docs" class="{BTN} btn-outline border-primary-content/55 text-primary-content hover:bg-primary-content hover:text-primary">
-					<i class="fas fa-book-open"></i>
-					Read the docs
-				</a>
+		<section class="section">
+			<div class="{INNER} py-5">
+				<div class="mb-5">
+					<p class={EYEBROW}>03 — The panel</p>
+					<h2 class={H2}>Configured in a browser</h2>
+					<p class={LEAD}>Sign in and you land in the panel. Where a module supports it, you see live bot and server state as it happens.</p>
+				</div>
+				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
+					{#each panel as item, i}
+						<p use:reveal class="{REVEAL_CLASS} text-base-content/60 text-[12.5px] leading-[1.5] sm:max-w-[30ch]" style="transition-delay: {i * 70}ms">
+							<strong class="text-base-content mb-0.5 block text-[12px] font-extrabold tracking-[0.08em] uppercase">{item.title}</strong>
+							{item.desc}
+						</p>
+					{/each}
+				</div>
+			</div>
+		</section>
+
+		<section class="section">
+			<div class="bg-primary text-primary-content flex h-full flex-col justify-between">
+				<div class="{INNER} flex flex-1 flex-col justify-center py-9">
+					<p class="text-primary-content mb-3 text-[10.5px] font-extrabold tracking-[0.2em] uppercase">04 — Start</p>
+					<p class="font-black">
+						<span class="display-line text-primary-content block whitespace-nowrap uppercase" style="--ch: 10">Ready to go</span>
+					</p>
+					<p class="text-primary-content/90 mt-4 text-[13.5px] leading-[1.6] sm:max-w-[48ch]">
+						Add {APP_NAME} Bot to your server first, then sign in to configure it. The login screen also offers a free
+						<strong class="text-primary-content font-bold">ten minute demo</strong> with full panel access and no signup.
+					</p>
+					<div class="mt-6 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+						<a
+							href={OFFICIAL_BOT_INVITE_URL}
+							class="{BTN} border-primary-content bg-primary-content text-primary hover:border-primary-content hover:bg-primary-content/90 w-full sm:w-auto"
+							target="_blank"
+							rel="noopener noreferrer"
+						>
+							<i class="fab fa-discord"></i>
+							Add {APP_NAME} Bot
+						</a>
+						<div class="grid grid-cols-2 gap-2 sm:contents">
+							<a href="/login" class="{BTN} btn-outline border-primary-content/55 text-primary-content hover:bg-primary-content hover:text-primary">
+								<i class="fas fa-arrow-right-to-bracket"></i>
+								Open login
+							</a>
+							<a href="/docs" class="{BTN} btn-outline border-primary-content/55 text-primary-content hover:bg-primary-content hover:text-primary">
+								<i class="fas fa-book-open"></i>
+								Read the docs
+							</a>
+						</div>
+					</div>
+				</div>
+				<div class="bg-canvas text-base-content">
+					<MainFooter />
+				</div>
 			</div>
 		</section>
 	</div>
-</PageShell>
+</div>

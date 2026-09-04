@@ -31,4 +31,9 @@ declare global {
 	}
 }
 
+declare module 'fullpage.js' {
+	const fullpage: new (selector: string | HTMLElement, options: Record<string, unknown>) => { destroy: (type?: string) => void };
+	export default fullpage;
+}
+
 export {};

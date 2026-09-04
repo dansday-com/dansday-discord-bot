@@ -337,8 +337,8 @@
 }
 
 @utility display-line {
-	font-size: calc(min(92vw, 1256px) / var(--ch) * 1.55);
-	font-size: min(calc(100cqw / var(--ch) * 1.55), 14rem);
+	font-size: calc(min(92vw, 1256px) / var(--ch) * 1);
+	font-size: min(calc(100cqw / var(--ch) * 1), 9rem);
 	line-height: 0.86;
 	letter-spacing: -0.045em;
 }
@@ -347,4 +347,28 @@
 	width: 100vw;
 	margin-inline: calc(50% - 50vw);
 	padding-inline: max(0.75rem, calc(50vw - 39.25rem));
+}
+
+#fp-nav ul li a span,
+.fp-slidesNav ul li a span {
+	background: color-mix(in srgb, var(--color-primary) 45%, transparent);
+}
+#fp-nav ul li a.active span,
+.fp-slidesNav ul li a.active span,
+#fp-nav ul li:hover a.active span,
+.fp-slidesNav ul li:hover a.active span {
+	background: var(--color-primary);
+}
+#fp-nav ul li .fp-tooltip {
+	color: var(--color-primary);
+	font-size: 10px;
+	font-weight: 800;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+}
+
+@media (max-width: 639px) {
+	#fp-nav {
+		display: none;
+	}
 }

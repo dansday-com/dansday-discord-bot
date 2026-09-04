@@ -1,11 +1,13 @@
 import type { PageServerLoad } from './$types';
 import { listPublicServers } from '$lib/database.js';
 import { slugifyDisplayName, formatIndexedSlug } from '$lib/utils/slug.js';
+import { resolveLandingTotals, EMPTY_LANDING_TOTALS, type LandingTotals } from '$lib/frontend/public/statistics/landing.js';
 
 const MAX_FEATURED_SERVERS = 50;
 
 export const load: PageServerLoad = async () => {
 	let featuredServers: { name: string; slug: string; server_icon: string | null }[] = [];
+	let publicServerIds: number[] = [];
 
 	try {
 		const servers = await listPublicServers();
@@ -33,8 +35,14 @@ export const load: PageServerLoad = async () => {
 				slug: e.slug,
 				server_icon: e.server.server_icon ?? null
 			}));
+			publicServerIds = live.map((e) => e.server.id);
 		}
 	} catch (_) {}
 
-	return { featuredServers };
+	let totals: LandingTotals = EMPTY_LANDING_TOTALS;
+	try {
+		totals = await resolveLandingTotals(publicServerIds);
+	} catch (_) {}
+
+	return { featuredServers, totals };
 };

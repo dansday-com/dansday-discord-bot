@@ -1,6 +1,6 @@
 # &lt;/DANSDAY&gt; Discord Bot
 
-Leveling, moderation, embed builder, Discord Quests, creator tools, public statistics pages and Roblox catalog alerts — all from a free web panel instead of slash commands. Self-host from GitHub or add the hosted bot. MIT licensed.
+Leveling, moderation, embed builder, Discord Quests, creator tools, public statistics pages and Roblox catalog alerts — all from a free web panel instead of slash commands. Self-host from GitHub or add the hosted bot. AGPL-3.0 licensed.
 
 ![The web panel's landing page, listing every module](.github/screenshots/landing.png)
 
@@ -172,4 +172,4 @@ Found a vulnerability? Email **security@dansday.com** instead of opening an issu
 
 ---
 
-MIT · Author: Akbar Yudhanto · Version: 26.6.0
+AGPL-3.0 · Author: Akbar Yudhanto · Version: 26.6.0

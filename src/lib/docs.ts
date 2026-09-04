@@ -118,7 +118,7 @@ export const sections = [
 		label: 'Self-host',
 		heading: 'Self-host setup',
 		iconClass: 'fas fa-server',
-		lead: 'The project is open source under MIT. Run your own instance with Node, MySQL and optional Redis.'
+		lead: 'The project is open source under the GNU AGPL-3.0. Run your own instance with Node, MySQL and optional Redis.'
 	}
 ];
 

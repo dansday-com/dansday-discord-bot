@@ -72,6 +72,10 @@ export type PublicPageStats = {
 	quests_enrolled: number;
 	quests_claimed: number;
 	quests_participants: number;
+	quests_active: number;
+	quests_posted: number;
+	roblox_items_watched: number;
+	roblox_items_posted: number;
 	bounties_placed: number;
 	bounties_collected: number;
 	bounties_pooled: number;
@@ -164,6 +168,10 @@ export function shapePublicStatisticsFromOverview(overview: Record<string, unkno
 			quests_enrolled: Number(s.quests_enrolled ?? 0),
 			quests_claimed: Number(s.quests_claimed ?? 0),
 			quests_participants: Number(s.quests_participants ?? 0),
+			quests_active: Number(s.quests_active ?? 0),
+			quests_posted: Number(s.quests_posted ?? 0),
+			roblox_items_watched: Number(s.roblox_items_watched ?? 0),
+			roblox_items_posted: Number(s.roblox_items_posted ?? 0),
 			bounties_placed: Number(s.bounties_placed ?? 0),
 			bounties_collected: Number(s.bounties_collected ?? 0),
 			bounties_pooled: Number(s.bounties_pooled ?? 0),

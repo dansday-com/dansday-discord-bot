@@ -3306,7 +3306,7 @@ export async function getServerFeatureStats(serverId: any) {
 	await initializeDatabase();
 	const sid = Number(serverId);
 
-	const [giveawayRows, entryRows, streamRows, questRows, bountyRows, staffReviewRows, feedbackRows, afkRows] = await Promise.all([
+	const [giveawayRows, entryRows, streamRows, questRows, bountyRows, staffReviewRows, feedbackRows, afkRows, catalogRows] = await Promise.all([
 		db.execute(sql`
 			SELECT
 				COUNT(*) AS total,
@@ -3371,6 +3371,21 @@ export async function getServerFeatureStats(serverId: any) {
 			SELECT COUNT(*) AS active
 			FROM server_member_afks a INNER JOIN server_members sm ON sm.id = a.member_id
 			WHERE sm.server_id = ${sid} AND sm.deleted_at IS NULL
+		`),
+		db.execute(sql`
+			SELECT
+				(
+					SELECT COUNT(*) FROM bot_discord_quests bq
+					WHERE bq.bot_id = (SELECT bot_id FROM servers WHERE id = ${sid})
+						AND (bq.starts_at IS NULL OR bq.starts_at <= UTC_TIMESTAMP())
+						AND (bq.expires_at IS NULL OR bq.expires_at > UTC_TIMESTAMP())
+				) AS quests_active,
+				(SELECT COUNT(*) FROM server_discord_quests WHERE server_id = ${sid}) AS quests_posted,
+				(
+					SELECT COUNT(*) FROM bot_roblox_items br
+					WHERE br.bot_id = (SELECT bot_id FROM servers WHERE id = ${sid})
+				) AS roblox_items_watched,
+				(SELECT COUNT(*) FROM server_roblox_items WHERE server_id = ${sid}) AS roblox_items_posted
 		`)
 	]);
 
@@ -3382,6 +3397,7 @@ export async function getServerFeatureStats(serverId: any) {
 	const sr = (staffReviewRows[0] as unknown as any[])[0] || {};
 	const fb = (feedbackRows[0] as unknown as any[])[0] || {};
 	const af = (afkRows[0] as unknown as any[])[0] || {};
+	const ct = (catalogRows[0] as unknown as any[])[0] || {};
 
 	return {
 		giveaways_total: Number(gv.total) || 0,
@@ -3402,6 +3418,10 @@ export async function getServerFeatureStats(serverId: any) {
 		quests_enrolled: Number(qs.enrolled) || 0,
 		quests_claimed: Number(qs.claimed) || 0,
 		quests_participants: Number(qs.participants) || 0,
+		quests_active: Number(ct.quests_active) || 0,
+		quests_posted: Number(ct.quests_posted) || 0,
+		roblox_items_watched: Number(ct.roblox_items_watched) || 0,
+		roblox_items_posted: Number(ct.roblox_items_posted) || 0,
 		bounties_placed: Number(bn.placed) || 0,
 		bounties_collected: Number(bn.collected) || 0,
 		bounties_pooled: Number(bn.pooled) || 0,

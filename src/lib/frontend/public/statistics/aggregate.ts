@@ -1,6 +1,13 @@
 import type { PublicPageStats } from './shape.js';
 
-const MAX_FIELDS = ['leveling_max_level', 'items_biggest_steal', 'minigames_biggest_win', 'streams_peak_viewers'] as const;
+const MAX_FIELDS = [
+	'leveling_max_level',
+	'items_biggest_steal',
+	'minigames_biggest_win',
+	'streams_peak_viewers',
+	'quests_active',
+	'roblox_items_watched'
+] as const;
 const AVG_FIELDS = ['leveling_avg_level', 'staff_avg_rating'] as const;
 
 export type AggregatedPanelStats = PublicPageStats & { servers_counted: number };

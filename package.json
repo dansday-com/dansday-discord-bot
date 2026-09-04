@@ -2,6 +2,7 @@
 	"name": "dansday-discord-bot",
 	"private": true,
 	"version": "26.6.0",
+	"license": "AGPL-3.0-only",
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
@@ -29,6 +30,7 @@
 		"discord.js-selfbot-v13": "^3.7.1",
 		"dotenv": "^17.4.2",
 		"drizzle-orm": "^0.45.2",
+		"fullpage.js": "^4.0.41",
 		"luxon": "^3.7.2",
 		"mysql2": "^3.22.0",
 		"nodemailer": "^9.0.5",

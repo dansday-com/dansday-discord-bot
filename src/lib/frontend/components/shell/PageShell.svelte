@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import MainHeader from '../MainHeader.svelte';
 	import MainFooter from '../MainFooter.svelte';
 
@@ -14,6 +15,39 @@
 		center?: boolean;
 		children: Snippet;
 	} = $props();
+
+	let lenis: { destroy: () => void; raf: (t: number) => void; scrollTo: (t: unknown) => void } | null = null;
+	let frame = 0;
+
+	onMount(async () => {
+		if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+		const { default: Lenis } = await import('lenis');
+		lenis = new Lenis({ duration: 1.05, smoothWheel: true, touchMultiplier: 1.6, autoRaf: false });
+
+		const tick = (time: number) => {
+			lenis?.raf(time);
+			frame = requestAnimationFrame(tick);
+		};
+		frame = requestAnimationFrame(tick);
+
+		const onAnchor = (e: MouseEvent) => {
+			const link = (e.target as HTMLElement | null)?.closest('a[href^="#"]') as HTMLAnchorElement | null;
+			if (!link) return;
+			const target = document.querySelector(link.hash);
+			if (!target) return;
+			e.preventDefault();
+			lenis?.scrollTo(target, { offset: -80 });
+		};
+		document.addEventListener('click', onAnchor);
+		return () => document.removeEventListener('click', onAnchor);
+	});
+
+	onDestroy(() => {
+		cancelAnimationFrame(frame);
+		lenis?.destroy();
+		lenis = null;
+	});
 </script>
 
 <div class="bg-canvas text-base-content relative isolate flex min-h-dvh flex-col overflow-x-clip" data-theme="dansday">

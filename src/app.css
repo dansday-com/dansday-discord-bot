@@ -396,8 +396,27 @@
 	}
 }
 
-@media (prefers-reduced-motion: no-preference) {
+html.lenis,
+html.lenis body {
+	height: auto;
+}
+
+.lenis.lenis-smooth {
+	scroll-behavior: auto !important;
+}
+
+.lenis.lenis-stopped {
+	overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
 	html {
+		scroll-behavior: auto;
+	}
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	html:not(.lenis) {
 		scroll-behavior: smooth;
 	}
 }

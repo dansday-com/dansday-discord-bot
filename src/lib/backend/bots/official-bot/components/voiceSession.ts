@@ -56,6 +56,8 @@ const NOISE_FLOOR_MAX = 400;
 const MAX_TURN_MS = 60_000;
 const CLOSE_WAIT_MS = 3000;
 const MAX_QUEUED_CHUNKS = 300;
+const CHAT_MESSAGE_LIMIT = 2000;
+const MAX_CHAT_MESSAGE_CHARS = 4000;
 const OUTPUT_BUFFER_FRAMES = 2;
 const OUTPUT_ENCODER_FRAMES = 2;
 const MAX_MISSED_FRAMES = 50;
@@ -90,6 +92,23 @@ const LOOKUP_TIMEOUT_HINT =
 
 const WAKE_ACK_PROMPT =
 	'[System] Someone just said the wake phrase and you are now listening. Say one very short acknowledgement out loud right now — just "yes?" or the equivalent in the language this server speaks. Two words at most. Do not answer anything yet, do not ask what they need, and do not read this note aloud.';
+
+function splitForChat(text) {
+	const chunks = [];
+	let remaining = text;
+
+	while (remaining.length > CHAT_MESSAGE_LIMIT) {
+		let cut = remaining.lastIndexOf('\n', CHAT_MESSAGE_LIMIT);
+		if (cut < CHAT_MESSAGE_LIMIT * 0.5) cut = remaining.lastIndexOf(' ', CHAT_MESSAGE_LIMIT);
+		if (cut < CHAT_MESSAGE_LIMIT * 0.5) cut = CHAT_MESSAGE_LIMIT;
+
+		chunks.push(remaining.slice(0, cut).trim());
+		remaining = remaining.slice(cut).trim();
+	}
+
+	if (remaining) chunks.push(remaining);
+	return chunks;
+}
 
 function supportsAsyncTools(model) {
 	return (model ?? '').toLowerCase().includes('2.5');
@@ -149,7 +168,7 @@ function downmixAndResample(pcm, fromRate, toRate, fromChannels, toChannels) {
 
 const VOICE_SERVER_DATA_NOTE = `Your tools read this server's own live data. Use them instead of guessing whenever someone asks about this server, the game, the shop, their level, their bag or their tasks.
 
-Everything you get back has to be said out loud, so keep it to one or two short spoken sentences. Give the few numbers or names that answer the question, round big numbers, and never read out a hash, a URL or a long list — offer to go through the rest if they want it.
+Everything you get back has to be said out loud, so keep it to one or two short spoken sentences. Give the few numbers or names that answer the question, round big numbers, and never read out a hash, a URL or a long list — send those to the text chat with send_to_chat and say one short line about it.
 
 When a lookup is running, say at most one short line about it, and only if you have not already said one — never repeat "let me check" or "one second". Keep the conversation going normally instead of going quiet, and answer properly the moment the result reaches you.
 
@@ -779,7 +798,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		}
 	}
 
-	const FAST_TOOLS = new Set([...SERVER_TOOL_NAMES, ...ACCOUNT_TOOL_NAMES, ...KNOWLEDGE_TOOL_NAMES]);
+	const FAST_TOOLS = new Set(['send_to_chat', ...SERVER_TOOL_NAMES, ...ACCOUNT_TOOL_NAMES, ...KNOWLEDGE_TOOL_NAMES]);
 	const SLOW_TOOLS = new Set(['search_wiki', 'search_web', 'fetch_web_page', 'generate_image']);
 
 	function withToolBehavior(declaration) {
@@ -793,6 +812,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	}
 
 	const LOOKUP_TOOLS = new Set([
+		'send_to_chat',
 		'search_wiki',
 		'search_web',
 		'fetch_web_page',
@@ -801,6 +821,39 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		...ACCOUNT_TOOL_NAMES,
 		...KNOWLEDGE_TOOL_NAMES
 	]);
+
+	function chatTargets() {
+		return [
+			['voice channel chat', channelId],
+			['invite text channel', textChannelId]
+		];
+	}
+
+	async function sendChatMessage(text) {
+		const body = String(text ?? '')
+			.trim()
+			.slice(0, MAX_CHAT_MESSAGE_CHARS);
+		if (!body) return { ok: false, reason: 'nothing_to_send' };
+
+		for (const [label, target] of chatTargets()) {
+			if (!target) continue;
+			try {
+				const channel = await client.channels.fetch(target).catch(() => null);
+				if (!channel?.isTextBased?.()) continue;
+
+				for (const chunk of splitForChat(body)) {
+					await channel.send({ content: chunk, allowedMentions: { parse: [] } });
+				}
+
+				logger.log(`💬 Voice AI wrote to the ${label} (${body.length} chars)`);
+				return { ok: true, posted_to: label };
+			} catch (err) {
+				logger.log(`⚠️ Voice AI could not write to the ${label}: ${String(err)}`);
+			}
+		}
+
+		return { ok: false, reason: 'could_not_post' };
+	}
 
 	async function sendImageTo(targetChannelId, buffer) {
 		if (!targetChannelId) return false;
@@ -815,10 +868,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	async function postGeneratedImage(result) {
 		if (!result?.ok || !result.buffer) return false;
 
-		for (const [label, target] of [
-			['voice channel chat', channelId],
-			['invite text channel', textChannelId]
-		]) {
+		for (const [label, target] of chatTargets()) {
 			try {
 				if (await sendImageTo(target, result.buffer)) {
 					logger.log(`🖼️ Voice AI posted a generated image to the ${label}`);
@@ -837,6 +887,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		if (SERVER_TOOL_NAMES.has(call.name)) return runServerTool(call.name, call.args ?? {}, toolContext);
 		if (ACCOUNT_TOOL_NAMES.has(call.name)) return runAccountTool(call.name, call.args ?? {}, toolContext);
 		if (KNOWLEDGE_TOOL_NAMES.has(call.name)) return runKnowledgeTool(call.name, call.args ?? {}, toolContext);
+		if (call.name === 'send_to_chat') return sendChatMessage(call.args?.text);
 		if (call.name === 'search_web') return runSearchTool(config, call.args ?? {});
 		if (call.name === 'fetch_web_page') return runFetchTool(config, call.args ?? {});
 		if (call.name === 'generate_image') {
@@ -851,6 +902,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	}
 
 	function lookupLabel(call) {
+		if (call.name === 'send_to_chat') return 'chat message';
 		if (SERVER_TOOL_NAMES.has(call.name) || ACCOUNT_TOOL_NAMES.has(call.name) || KNOWLEDGE_TOOL_NAMES.has(call.name)) return `server lookup ${call.name}`;
 		if (call.name === 'search_web') return `web search "${call.args?.query ?? ''}"`;
 		if (call.name === 'fetch_web_page') return `web fetch ${call.args?.url ?? ''}`;
@@ -866,10 +918,9 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 		for (const call of lookupCalls) {
 			const query = call.args?.query ?? call.args?.url ?? '';
-			const dedupeKey =
-				SERVER_TOOL_NAMES.has(call.name) || ACCOUNT_TOOL_NAMES.has(call.name)
-					? `${call.name}::${JSON.stringify(call.args ?? {})}`.toLowerCase()
-					: `${call.name}::${call.args?.wiki ?? ''}::${query}`.toLowerCase();
+			const dedupeKey = FAST_TOOLS.has(call.name)
+				? `${call.name}::${JSON.stringify(call.args ?? {})}`.toLowerCase()
+				: `${call.name}::${call.args?.wiki ?? ''}::${query}`.toLowerCase();
 
 			const inflight = wikiInflight.get(dedupeKey);
 			if (inflight) {
@@ -1066,6 +1117,21 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 								description:
 									'Stop listening and mute yourself immediately, while STAYING in the voice channel. Call this when the person you are currently talking with signals they are finished with you: "that is all", "done", "thanks, that is it", "mute yourself", "you can rest now", "okay that is enough". Call it straight away without saying anything back — you go silent the instant you call it, so any words would be cut off. Do NOT call it for a mid-conversation "ok" or "thanks" that is just filler while they keep talking to you, and do NOT use it when they want you to leave the channel entirely — that is leave_voice.',
 								parameters: { type: Type.OBJECT, properties: {} }
+							},
+							{
+								name: 'send_to_chat',
+								description:
+									"Write a message into this voice channel's text chat, for the people who are in the call with you. Use it whenever the answer does not belong in speech: a list, several numbers, steps to follow, a link, a hash, a code snippet, or anything that would take more than two spoken sentences. Put the detail in the chat, then say one short line out loud telling them you have written it there. Never read the same content aloud as well.",
+								parameters: {
+									type: Type.OBJECT,
+									properties: {
+										text: {
+											type: Type.STRING,
+											description: 'The message to write. Discord markdown works — use short lines or bullets so it is easy to read.'
+										}
+									},
+									required: ['text']
+								}
 							},
 							{
 								name: 'leave_voice',

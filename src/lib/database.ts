@@ -3302,6 +3302,38 @@ export async function getServerEconomyStats(serverId: any, priceMap: Record<stri
 	};
 }
 
+export async function listPublicDiscordQuests(limit = 300) {
+	await initializeDatabase();
+	const rows = await db.execute(sql`
+		SELECT
+			q.quest_id, q.quest_name, q.game_title, q.quest_url, q.quest_description,
+			q.quest_task_label, q.reward, q.thumbnail_url, q.banner_url, q.starts_at, q.expires_at
+		FROM bot_discord_quests q
+		INNER JOIN (
+			SELECT quest_id, MAX(id) AS id FROM bot_discord_quests GROUP BY quest_id
+		) latest ON latest.id = q.id
+		ORDER BY (q.expires_at IS NOT NULL AND q.expires_at > UTC_TIMESTAMP()) DESC, q.expires_at DESC, q.id DESC
+		LIMIT ${Number(limit) || 300}
+	`);
+	return (rows[0] as unknown as any[]) || [];
+}
+
+export async function listPublicRobloxItems(limit = 300) {
+	await initializeDatabase();
+	const rows = await db.execute(sql`
+		SELECT
+			r.asset_id, r.name, r.category, r.creator_name, r.description, r.thumbnail_url,
+			r.price, r.lowest_resale_price, r.favorite_count, r.units_available, r.total_quantity, r.last_price
+		FROM bot_roblox_items r
+		INNER JOIN (
+			SELECT asset_id, MAX(id) AS id FROM bot_roblox_items GROUP BY asset_id
+		) latest ON latest.id = r.id
+		ORDER BY r.favorite_count DESC, r.id DESC
+		LIMIT ${Number(limit) || 300}
+	`);
+	return (rows[0] as unknown as any[]) || [];
+}
+
 export async function getServerFeatureStats(serverId: any) {
 	await initializeDatabase();
 	const sid = Number(serverId);
@@ -6490,6 +6522,8 @@ export default {
 	getServerOverview,
 	getServerEconomyStats,
 	getServerFeatureStats,
+	listPublicDiscordQuests,
+	listPublicRobloxItems,
 	getMemberDashboard,
 	getMemberInsights,
 	recordLevelFriends,

@@ -1,48 +1,24 @@
 import type { PageServerLoad } from './$types';
-import { listPublicServers } from '$lib/database.js';
-import { slugifyDisplayName, formatIndexedSlug } from '$lib/utils/slug.js';
-import { resolveLandingTotals, EMPTY_LANDING_TOTALS, type LandingTotals } from '$lib/frontend/public/statistics/landing.js';
+import { resolveServerDirectory, EMPTY_DIRECTORY } from '$lib/frontend/public/statistics/directory.js';
+import { resolveQuestDirectory, resolveRobloxDirectory, EMPTY_QUESTS, EMPTY_ROBLOX } from '$lib/frontend/public/catalog/index.js';
 
-const MAX_FEATURED_SERVERS = 50;
+const PREVIEW = 5;
 
 export const load: PageServerLoad = async () => {
-	let featuredServers: { name: string; slug: string; server_icon: string | null }[] = [];
-	let publicServerIds: number[] = [];
+	const [directory, quests, roblox] = await Promise.all([
+		resolveServerDirectory().catch(() => EMPTY_DIRECTORY),
+		resolveQuestDirectory().catch(() => EMPTY_QUESTS),
+		resolveRobloxDirectory().catch(() => EMPTY_ROBLOX)
+	]);
 
-	try {
-		const servers = await listPublicServers();
-		if (Array.isArray(servers) && servers.length > 0) {
-			const groups = new Map<string, typeof servers>();
-			for (const s of servers) {
-				const base = slugifyDisplayName(s.name || 'server', 'server');
-				if (!groups.has(base)) groups.set(base, []);
-				groups.get(base)!.push(s);
-			}
-			const all: { server: (typeof servers)[number]; slug: string }[] = [];
-			for (const [base, list] of groups) {
-				list.sort((a, b) => a.id - b.id);
-				for (let i = 0; i < list.length; i++) {
-					all.push({ server: list[i], slug: formatIndexedSlug(base, i + 1) });
-				}
-			}
-			const live = all.filter((e) => !e.server.deleted_at);
-			for (let i = live.length - 1; i > 0; i--) {
-				const j = Math.floor(Math.random() * (i + 1));
-				[live[i], live[j]] = [live[j], live[i]];
-			}
-			featuredServers = live.slice(0, MAX_FEATURED_SERVERS).map((e) => ({
-				name: e.server.name || e.slug,
-				slug: e.slug,
-				server_icon: e.server.server_icon ?? null
-			}));
-			publicServerIds = live.map((e) => e.server.id);
-		}
-	} catch (_) {}
-
-	let totals: LandingTotals = EMPTY_LANDING_TOTALS;
-	try {
-		totals = await resolveLandingTotals(publicServerIds);
-	} catch (_) {}
-
-	return { featuredServers, totals };
+	return {
+		topServers: directory.entries.slice(0, PREVIEW),
+		serverCount: directory.entries.length,
+		totals: directory.totals,
+		topQuests: quests.slice(0, PREVIEW),
+		questCount: quests.length,
+		liveQuestCount: quests.filter((q) => q.live).length,
+		topRoblox: roblox.slice(0, PREVIEW),
+		robloxCount: roblox.length
+	};
 };

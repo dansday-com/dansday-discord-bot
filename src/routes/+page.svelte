@@ -11,11 +11,6 @@
 
 	let { data }: PageProps = $props();
 
-	const SERVERS_PER_PAGE = 5;
-	let shownServers = $state(SERVERS_PER_PAGE);
-	const visibleServers = $derived(data.featuredServers.slice(0, shownServers));
-	const remainingServers = $derived(data.featuredServers.length - visibleServers.length);
-
 	const compact = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 });
 	const fmt = (n: number) => compact.format(Math.max(0, Math.round(n || 0)));
 
@@ -440,15 +435,12 @@
 
 <PageShell>
 	<div class="@container">
-		<section class="flex min-h-[calc(100dvh-8rem)] flex-col justify-between gap-8 pb-9">
+		<section class="flex min-h-[calc(100dvh-8rem)] flex-col justify-center gap-8 pb-9 sm:gap-10">
 			<div class="relative z-10">
 				<p class="bg-base-300 mb-6 flex h-px items-center justify-between sm:grid sm:grid-cols-3 sm:justify-normal sm:gap-6" aria-hidden="true">
 					<span class="bg-primary size-2.5 shrink-0 rounded-full"></span>
 					<span class="bg-primary size-2.5 shrink-0 rounded-full"></span>
-					<span class="flex items-center justify-between">
-						<span class="bg-primary size-2.5 shrink-0 rounded-full"></span>
-						<span class="bg-primary hidden size-2.5 shrink-0 rounded-full sm:block"></span>
-					</span>
+					<span class="bg-primary size-2.5 shrink-0 rounded-full"></span>
 				</p>
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-6">
 					<p class="text-primary text-[12.5px] leading-[1.5] sm:max-w-[36ch]">
@@ -484,7 +476,7 @@
 						<i class="fab fa-discord"></i>
 						Get started
 					</a>
-					<div class="grid grid-cols-2 gap-2 sm:contents">
+					<div class="grid grid-cols-1 gap-2 min-[420px]:grid-cols-2 sm:contents">
 						<a href="/login" class="{BTN} btn-outline btn-primary">
 							<i class="fas fa-arrow-right-to-bracket"></i>
 							Open the panel
@@ -583,21 +575,28 @@
 			</ul>
 		</section>
 
-		{#if data.featuredServers.length > 0}
+		{#if data.topServers.length > 0}
 			<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
-				<div class="mb-6">
-					<p class={EYEBROW}>02 — Communities</p>
-					<h2 class={H2}>Servers running it now</h2>
-					<p class={LEAD}>Each one with its own live public pages. No login needed.</p>
+				<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
+					<div class="min-w-0">
+						<p class={EYEBROW}>02 — Communities</p>
+						<h2 class={H2}>Top servers by XP</h2>
+						<p class={LEAD}>The five busiest communities running it right now. Each has its own live public pages, no login needed.</p>
+					</div>
+					<a href="/servers" class="{BTN} btn-outline btn-primary shrink-0">
+						All {data.serverCount} servers
+						<i class="fas fa-arrow-right"></i>
+					</a>
 				</div>
 				<div class="border-base-300 grid grid-cols-1 border-t">
-					{#each visibleServers as server, i}
+					{#each data.topServers as server, i (server.slug)}
 						<a
 							href={publicServerPath(server.slug)}
 							use:reveal
-							class="{REVEAL_CLASS} group border-base-300 grid grid-cols-[34px_1fr_auto] items-center gap-3 border-b px-0.5 py-3"
+							class="{REVEAL_CLASS} group border-base-300 grid grid-cols-[1.6rem_34px_1fr_auto] items-center gap-3 border-b px-0.5 py-3"
 							style="transition-delay: {i * 60}ms"
 						>
+							<span class="text-primary/70 text-[13px] font-black tabular-nums">{server.rank}</span>
 							<span class="bg-base-200 text-primary grid size-[34px] place-items-center overflow-hidden rounded-sm text-[13px]">
 								{#if server.server_icon}
 									<img src={server.server_icon} alt={server.name} loading="lazy" width="34" height="34" class="size-full object-cover" />
@@ -611,31 +610,120 @@
 								>
 									{server.name}
 								</span>
-								<span class="text-base-content/60 mt-1 flex items-center gap-1.5 text-[12.5px] leading-[1.5]">
-									<span class="bg-primary size-1.5 rounded-full"></span>
-									Live public statistics
+								<span class="text-base-content/55 mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[12px] tabular-nums">
+									<span>{fmt(server.xp)} XP</span>
+									<span class="opacity-40" aria-hidden="true">·</span>
+									<span>{fmt(server.members)} members</span>
 								</span>
 							</span>
 							<i class="fas fa-arrow-right text-primary text-[12px] transition-transform group-hover:translate-x-0.5"></i>
 						</a>
 					{/each}
 				</div>
-				{#if remainingServers > 0}
-					<button
-						type="button"
-						class="text-primary hover:text-accent mt-4 inline-flex items-center gap-2 py-1 text-[10.5px] font-extrabold tracking-[0.14em] uppercase underline underline-offset-4"
-						onclick={() => (shownServers += SERVERS_PER_PAGE)}
-					>
-						Show more ({remainingServers} left)
-						<i class="fas fa-arrow-down"></i>
-					</button>
-				{/if}
+			</section>
+		{/if}
+
+		{#if data.topQuests.length > 0}
+			<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
+				<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
+					<div class="min-w-0">
+						<p class={EYEBROW}>03 — Discord Quests</p>
+						<h2 class={H2}>Quests worth running</h2>
+						<p class={LEAD}>{data.liveQuestCount} live of {data.questCount} tracked, with the game, the task and the reward.</p>
+					</div>
+					<a href="/quests" class="{BTN} btn-outline btn-primary shrink-0">
+						All {data.questCount} quests
+						<i class="fas fa-arrow-right"></i>
+					</a>
+				</div>
+				<div class="border-base-300 grid grid-cols-1 border-t">
+					{#each data.topQuests as quest, i (quest.quest_id)}
+						<a
+							href="/quests"
+							use:reveal
+							class="{REVEAL_CLASS} group border-base-300 grid grid-cols-[44px_1fr_auto] items-center gap-3 border-b px-0.5 py-3"
+							style="transition-delay: {i * 60}ms"
+						>
+							<span class="bg-base-200 text-primary grid h-[30px] w-[44px] place-items-center overflow-hidden rounded-sm text-[12px]">
+								{#if quest.thumbnail_url || quest.banner_url}
+									<img src={quest.thumbnail_url || quest.banner_url} alt={quest.quest_name} loading="lazy" class="size-full object-cover" />
+								{:else}
+									<i class="fas fa-scroll"></i>
+								{/if}
+							</span>
+							<span class="min-w-0">
+								<span
+									class="text-base-content group-hover:text-primary block truncate text-[13px] leading-[1.32] font-extrabold tracking-[0.02em] uppercase transition-colors"
+								>
+									{quest.quest_name}
+								</span>
+								<span class="text-base-content/55 mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[12px]">
+									<span class="truncate">{quest.game_title}</span>
+									{#if quest.reward}
+										<span class="opacity-40" aria-hidden="true">·</span>
+										<span class="truncate">{quest.reward}</span>
+									{/if}
+								</span>
+							</span>
+							{#if quest.live}
+								<span class="text-primary flex shrink-0 items-center gap-1.5 text-[10px] font-extrabold tracking-[0.12em] uppercase">
+									<span class="bg-primary size-1.5 rounded-full motion-safe:animate-pulse"></span>
+									Live
+								</span>
+							{:else}
+								<span class="text-base-content/30 shrink-0 text-[10px] font-bold tracking-[0.12em] uppercase">Ended</span>
+							{/if}
+						</a>
+					{/each}
+				</div>
+			</section>
+		{/if}
+
+		{#if data.topRoblox.length > 0}
+			<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
+				<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
+					<div class="min-w-0">
+						<p class={EYEBROW}>04 — Roblox catalog</p>
+						<h2 class={H2}>Items under watch</h2>
+						<p class={LEAD}>The most favourited of {data.robloxCount} catalog items the notifier tracks for price and stock changes.</p>
+					</div>
+					<a href="/roblox" class="{BTN} btn-outline btn-primary shrink-0">
+						All {data.robloxCount} items
+						<i class="fas fa-arrow-right"></i>
+					</a>
+				</div>
+				<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+					{#each data.topRoblox as item, i (item.asset_id)}
+						<a
+							href="/roblox"
+							use:reveal
+							class="{REVEAL_CLASS} group border-base-300 bg-base-100 hover:border-primary/40 flex flex-col overflow-hidden rounded-sm border transition-colors"
+							style="transition-delay: {i * 60}ms"
+						>
+							{#if item.thumbnail_url}
+								<img src={item.thumbnail_url} alt={item.name} loading="lazy" class="bg-base-200 aspect-square w-full object-cover" />
+							{:else}
+								<span class="bg-base-200 text-base-content/25 grid aspect-square w-full place-items-center text-[22px]">
+									<i class="fas fa-cube"></i>
+								</span>
+							{/if}
+							<span class="flex flex-1 flex-col p-3">
+								<span class="text-base-content group-hover:text-primary mb-1 line-clamp-2 text-[12px] leading-[1.35] font-extrabold transition-colors">
+									{item.name}
+								</span>
+								<span class="text-primary mt-auto text-[11.5px] font-black tabular-nums">
+									{item.price > 0 ? `${fmt(item.price)} R$` : 'Free'}
+								</span>
+							</span>
+						</a>
+					{/each}
+				</div>
 			</section>
 		{/if}
 
 		<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
 			<div class="mb-6">
-				<p class={EYEBROW}>03 — The panel</p>
+				<p class={EYEBROW}>05 — The panel</p>
 				<h2 class={H2}>Configured in a browser</h2>
 				<p class={LEAD}>Sign in and you land in the panel. Where a module supports it, you see live bot and server state as it happens.</p>
 			</div>
@@ -650,7 +738,7 @@
 		</section>
 
 		<section class="bleed bg-primary text-primary-content mt-10 -mb-10 py-12 sm:mt-13 sm:py-15 lg:mt-16 lg:py-19">
-			<p class="text-primary-content mb-3.5 text-[10.5px] font-extrabold tracking-[0.2em] uppercase">04 — Start</p>
+			<p class="text-primary-content mb-3.5 text-[10.5px] font-extrabold tracking-[0.2em] uppercase">06 — Start</p>
 			<p class="font-black">
 				<span class="display-line text-primary-content block whitespace-nowrap uppercase" style="--ch: 10">Ready to go</span>
 			</p>
@@ -668,7 +756,7 @@
 					<i class="fab fa-discord"></i>
 					Add {APP_NAME} Bot
 				</a>
-				<div class="grid grid-cols-2 gap-2 sm:contents">
+				<div class="grid grid-cols-1 gap-2 min-[420px]:grid-cols-2 sm:contents">
 					<a href="/login" class="{BTN} btn-outline border-primary-content/55 text-primary-content hover:bg-primary-content hover:text-primary">
 						<i class="fas fa-arrow-right-to-bracket"></i>
 						Open login

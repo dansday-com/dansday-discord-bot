@@ -95,6 +95,7 @@
 									src={item.thumbnail_url}
 									alt={item.name}
 									loading="lazy"
+									decoding="async"
 									class="bg-base-200 aspect-square w-full object-cover"
 									onerror={() => (broken[item.asset_id] = true)}
 								/>

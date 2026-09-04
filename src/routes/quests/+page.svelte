@@ -72,6 +72,7 @@
 									src={quest.banner_url || quest.thumbnail_url}
 									alt={quest.quest_name}
 									loading="lazy"
+									decoding="async"
 									class="bg-base-200 aspect-[16/7] w-full object-cover"
 									onerror={() => (broken[quest.quest_id] = true)}
 								/>

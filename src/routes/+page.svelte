@@ -660,7 +660,7 @@
 							<span class="text-primary/70 text-[13px] font-black tabular-nums">{server.rank}</span>
 							<span class="bg-base-200 text-primary grid size-[34px] place-items-center overflow-hidden rounded-sm text-[13px]">
 								{#if server.server_icon}
-									<img src={server.server_icon} alt={server.name} loading="lazy" width="34" height="34" class="size-full object-cover" />
+									<img src={server.server_icon} alt={server.name} loading="lazy" decoding="async" width="34" height="34" class="size-full object-cover" />
 								{:else}
 									<i class="fas fa-server"></i>
 								{/if}
@@ -711,6 +711,7 @@
 										src={quest.thumbnail_url || quest.banner_url}
 										alt={quest.quest_name}
 										loading="lazy"
+										decoding="async"
 										class="size-full object-cover"
 										onerror={() => (broken[quest.quest_id] = true)}
 									/>
@@ -772,6 +773,7 @@
 									src={item.thumbnail_url}
 									alt={item.name}
 									loading="lazy"
+									decoding="async"
 									class="bg-base-200 aspect-square w-full object-cover"
 									onerror={() => (broken[item.asset_id] = true)}
 								/>

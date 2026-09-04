@@ -55,7 +55,7 @@
 		<DocHero icon="fa-book-open" title={DOCS_HERO.heading.replace('{app}', APP_NAME)} lead={DOCS_HERO.lead}>
 			{#snippet actions()}
 				<a href={OFFICIAL_BOT_INVITE_URL} class="btn btn-primary" target="_blank" rel="noopener noreferrer">
-					<i class="fab fa-discord"></i>
+					<i class="fa-brands fa-discord"></i>
 					{DOCS_HERO.cta}
 				</a>
 			{/snippet}

@@ -109,7 +109,7 @@ export const sections = [
 		icon: 'fa-discord',
 		label: 'Discord menu',
 		heading: 'The Discord menu',
-		iconClass: 'fab fa-discord',
+		iconClass: 'fa-brands fa-discord',
 		lead: 'Members click the Menu button in the menu channel. Every button is always shown — if a feature is off or needs a role, clicking it explains why.'
 	},
 	{

@@ -473,7 +473,7 @@
 
 				<div class="mt-7 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
 					<a href={OFFICIAL_BOT_INVITE_URL} class="{BTN} btn-primary w-full sm:w-auto" target="_blank" rel="noopener noreferrer">
-						<i class="fab fa-discord"></i>
+						<i class="fa-brands fa-discord"></i>
 						Get started
 					</a>
 					<div class="grid grid-cols-1 gap-2 min-[420px]:grid-cols-2 sm:contents">
@@ -753,7 +753,7 @@
 					target="_blank"
 					rel="noopener noreferrer"
 				>
-					<i class="fab fa-discord"></i>
+					<i class="fa-brands fa-discord"></i>
 					Add {APP_NAME} Bot
 				</a>
 				<div class="grid grid-cols-1 gap-2 min-[420px]:grid-cols-2 sm:contents">

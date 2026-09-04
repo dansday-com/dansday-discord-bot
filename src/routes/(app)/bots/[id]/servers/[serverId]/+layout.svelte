@@ -77,7 +77,7 @@
 					rel="noreferrer"
 					class="bg-ash-800/80 border-ash-600 text-ash-300 hover:text-ash-100 hover:bg-ash-700 inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[0.65rem] transition-colors sm:text-xs"
 				>
-					<i class="fab fa-discord text-[0.7rem] text-indigo-300"></i>Discord
+					<i class="fa-brands fa-discord text-[0.7rem] text-indigo-300"></i>Discord
 				</a>
 				{#if (data.overview as any).vanity_url_code}
 					<a

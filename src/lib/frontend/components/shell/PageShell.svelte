@@ -1,6 +1,5 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { onDestroy, onMount } from 'svelte';
 	import MainHeader from '../MainHeader.svelte';
 	import MainFooter from '../MainFooter.svelte';
 
@@ -16,37 +15,40 @@
 		children: Snippet;
 	} = $props();
 
-	let lenis: { destroy: () => void; raf: (t: number) => void; scrollTo: (t: unknown) => void } | null = null;
-	let frame = 0;
-
-	onMount(async () => {
+	$effect(() => {
 		if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-		const { default: Lenis } = await import('lenis');
-		lenis = new Lenis({ duration: 1.05, smoothWheel: true, touchMultiplier: 1.6, autoRaf: false });
-
-		const tick = (time: number) => {
-			lenis?.raf(time);
-			frame = requestAnimationFrame(tick);
-		};
-		frame = requestAnimationFrame(tick);
+		let lenis: { destroy: () => void; raf: (t: number) => void; scrollTo: (t: unknown, o?: unknown) => void } | null = null;
+		let frame = 0;
+		let stopped = false;
 
 		const onAnchor = (e: MouseEvent) => {
 			const link = (e.target as HTMLElement | null)?.closest('a[href^="#"]') as HTMLAnchorElement | null;
-			if (!link) return;
+			if (!link || !link.hash || link.hash === '#') return;
 			const target = document.querySelector(link.hash);
 			if (!target) return;
 			e.preventDefault();
 			lenis?.scrollTo(target, { offset: -80 });
 		};
-		document.addEventListener('click', onAnchor);
-		return () => document.removeEventListener('click', onAnchor);
-	});
 
-	onDestroy(() => {
-		cancelAnimationFrame(frame);
-		lenis?.destroy();
-		lenis = null;
+		import('lenis').then(({ default: Lenis }) => {
+			if (stopped) return;
+			lenis = new Lenis({ duration: 1.05, smoothWheel: true, touchMultiplier: 1.6, autoRaf: false });
+			const tick = (time: number) => {
+				lenis?.raf(time);
+				frame = requestAnimationFrame(tick);
+			};
+			frame = requestAnimationFrame(tick);
+			document.addEventListener('click', onAnchor);
+		});
+
+		return () => {
+			stopped = true;
+			if (frame) cancelAnimationFrame(frame);
+			document.removeEventListener('click', onAnchor);
+			lenis?.destroy();
+			lenis = null;
+		};
 	});
 </script>
 

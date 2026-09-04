@@ -6,43 +6,34 @@
 	let { palette = 'light' as Palette, trailing = 'login' as Trailing }: { palette?: Palette; trailing?: Trailing } = $props();
 
 	const shell = $derived(
-		palette === 'light'
-			? 'border-[rgba(196,189,174,0.55)] bg-[rgba(235,233,225,0.92)] backdrop-blur-[18px] [-webkit-backdrop-filter:blur(18px)]'
-			: 'border-ash-700 bg-ash-800'
+		palette === 'light' ? 'border-base-300 bg-canvas/92 backdrop-blur-[18px] [-webkit-backdrop-filter:blur(18px)]' : 'border-ash-700 bg-ash-800'
 	);
 
-	const brandText = $derived(palette === 'light' ? 'text-[#2e211b]' : 'text-ash-100');
-	const iconWrap = $derived(
-		palette === 'light' ? 'bg-gradient-to-br from-[#d6536d] to-[#e43d12] text-white shadow-[0_2px_12px_rgba(46,33,27,0.07)]' : 'bg-ash-400 text-ash-100'
-	);
+	const brandText = $derived(palette === 'light' ? 'text-base-content' : 'text-ash-100');
+	const iconWrap = $derived(palette === 'light' ? 'from-secondary to-primary bg-linear-to-br text-white shadow-sm' : 'bg-ash-400 text-ash-100');
 </script>
 
-<header class="sticky top-0 z-40 flex-shrink-0 border-b {shell}">
+<header class="sticky top-0 z-40 shrink-0 border-b {shell}">
 	<div class="mx-auto flex h-14 w-full max-w-7xl items-center justify-between gap-3 px-3 sm:h-16 sm:px-4 lg:px-8">
-		<a href="/" class="flex min-w-0 flex-1 items-center gap-2 sm:gap-3 {brandText} no-underline">
-			<div class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-sm sm:h-10 sm:w-10 sm:text-base {iconWrap}">
+		<a href="/" class="flex min-w-0 flex-1 items-center gap-2 no-underline sm:gap-3 {brandText}">
+			<div class="flex size-8 shrink-0 items-center justify-center rounded-full text-sm sm:size-10 sm:text-base {iconWrap}">
 				<i class="fas fa-bolt"></i>
 			</div>
 			<span class="truncate text-base font-bold sm:text-xl">{APP_NAME} Discord Bot</span>
 		</a>
-		<div class="flex flex-shrink-0 items-center gap-2 sm:gap-2.5">
+		<div class="flex shrink-0 items-center gap-2 sm:gap-2.5">
 			{#if trailing === 'login'}
-				<a href="/login" class="m-btn m-btn--primary">
+				<a href="/login" class="btn btn-sm btn-primary">
 					<i class="fas fa-sign-in-alt"></i>
 					Log in
 				</a>
 			{:else if trailing === 'live'}
-				<span class="m-nav-live">
-					<span class="m-nav-live-dot"></span>
+				<span class="badge badge-sm border-primary/35 bg-primary/20 text-primary gap-1.5 font-semibold">
+					<span class="bg-primary size-1.5 animate-pulse rounded-full" aria-hidden="true"></span>
 					Live
 				</span>
 			{:else}
-				<a
-					href="/"
-					class="m-btn border {palette === 'light'
-						? 'border-[rgba(196,189,174,0.55)] bg-[#e3e0d6] text-[#2e211b] hover:bg-[#d8d4c7]'
-						: 'border-ash-600 bg-ash-800/80 text-ash-200 hover:border-ash-500 hover:bg-ash-700 hover:text-ash-100'}"
-				>
+				<a href="/" class="btn btn-sm {palette === 'dark' ? 'border-ash-600 bg-ash-800/80 text-ash-200 hover:bg-ash-700' : ''}">
 					<i class="fas fa-house"></i>
 					Home
 				</a>

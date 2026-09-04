@@ -2,8 +2,7 @@
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import type { PageProps } from './$types';
 	import { publicServerPath, COMMUNITY_DISCORD_URL, OFFICIAL_BOT_INVITE_URL, SOURCE_REPO_URL } from '$lib/url.js';
-	import MainHeader from '$lib/frontend/components/MainHeader.svelte';
-	import MainFooter from '$lib/frontend/components/MainFooter.svelte';
+	import { PageShell } from '$lib/frontend/components/shell';
 
 	let { data }: PageProps = $props();
 
@@ -11,6 +10,8 @@
 	let shownServers = $state(SERVERS_PER_PAGE);
 	const visibleServers = $derived(data.featuredServers.slice(0, shownServers));
 	const remainingServers = $derived(data.featuredServers.length - visibleServers.length);
+
+	const ICON_TONES = ['text-primary', 'text-secondary', 'text-brand-gold-deep'];
 
 	const features = [
 		{ icon: 'fa-terminal', title: 'One-command setup', desc: '/setup builds every channel and wires each module to it.' },
@@ -50,6 +51,11 @@
 		{ title: 'Live monitoring', desc: 'Bot status, uptime and server totals, streaming live.' },
 		{ title: 'Mobile ready', desc: 'Phone, tablet or desktop. The same panel.' }
 	];
+
+	const EYEBROW = 'text-primary mb-3.5 text-[10.5px] font-extrabold tracking-[0.2em] uppercase';
+	const H2 = 'text-base-content mb-2.5 text-[clamp(26px,6.2cqw,58px)] leading-[0.98] font-black tracking-[-0.035em] uppercase';
+	const LEAD = 'text-base-content/60 max-w-[54ch] text-[13.5px] leading-[1.55]';
+	const BTN = 'btn rounded-sm text-[11.5px] font-extrabold tracking-[0.1em] uppercase';
 </script>
 
 <svelte:head>
@@ -58,160 +64,178 @@
 		name="description"
 		content="Free and open source {APP_NAME} Discord Bot. Add our hosted bot to your server at no cost, or self host from GitHub. Free web panel for leveling, an XP economy, moderation, embed builder, giveaways, public stats, Discord Quest, TikTok tools, Roblox catalog watch, and more. Free ten minute demo on login."
 	/>
+	<meta name="theme-color" content="#e43d12" />
 </svelte:head>
 
-<div class="m-root">
-	<div class="m-blob m-blob-1"></div>
-	<div class="m-blob m-blob-2"></div>
-	<div class="m-blob m-blob-3"></div>
+<PageShell>
+	<div class="@container">
+		<section class="pt-1.5 pb-9 sm:pt-2.5 sm:pb-11 lg:pt-3.5 lg:pb-14">
+			<p class="bg-base-300 mb-6 flex h-px items-center justify-between" aria-hidden="true">
+				<span class="bg-primary size-2.5 shrink-0 rounded-full"></span>
+				<span class="bg-primary size-2.5 shrink-0 rounded-full"></span>
+				<span class="bg-primary size-2.5 shrink-0 rounded-full"></span>
+			</p>
 
-	<MainHeader />
-
-	<main class="m-main">
-		<div class="m-inner m-landing-inner m-lp">
-			<section class="m-lp-hero">
-				<p class="m-lp-rule" aria-hidden="true"><span></span><span></span><span></span></p>
-
-				<div class="m-lp-cols">
-					<p>
-						{APP_NAME} is a free, open source Discord bot with a web panel — built for servers that outgrew slash commands.
-					</p>
-					<p>
-						Leveling, an XP economy, moderation, embeds, giveaways, live public pages and integrations. Every module switches on by itself, all under one
-						server's settings.
-					</p>
-					<p class="m-lp-cols-links">
-						<a href={OFFICIAL_BOT_INVITE_URL} target="_blank" rel="noopener noreferrer">Add the hosted bot</a>
-						<a href={SOURCE_REPO_URL} target="_blank" rel="noopener noreferrer">Self-host from GitHub</a>
-						<a href="/docs">Read the docs</a>
-						<a href={COMMUNITY_DISCORD_URL} target="_blank" rel="noopener noreferrer">Join the Discord</a>
-					</p>
-				</div>
-
-				<h1 class="m-lp-display">
-					<span class="m-lp-display-line" style="--ch: 9">One panel</span>
-					<span class="m-lp-display-line" style="--ch: 12">Every module</span>
-				</h1>
-
-				<div class="m-lp-actions">
-					<a href={OFFICIAL_BOT_INVITE_URL} class="m-lp-btn m-lp-btn--solid" target="_blank" rel="noopener noreferrer">
-						<i class="fab fa-discord"></i>
-						Get started
+			<div class="mb-8 grid grid-cols-1 gap-4.5 sm:grid-cols-3 sm:gap-6">
+				<p class="text-primary max-w-[36ch] text-[12.5px] leading-[1.5]">
+					{APP_NAME} is a free, open source Discord bot with a web panel — built for servers that outgrew slash commands.
+				</p>
+				<p class="text-primary max-w-[36ch] text-[12.5px] leading-[1.5]">
+					Leveling, an XP economy, moderation, embeds, giveaways, live public pages and integrations. Every module switches on by itself, all under one server's
+					settings.
+				</p>
+				<p class="text-primary flex max-w-[36ch] flex-col gap-1.5 text-[12.5px] leading-[1.5]">
+					<a href={OFFICIAL_BOT_INVITE_URL} target="_blank" rel="noopener noreferrer" class="hover:text-accent w-fit underline underline-offset-[3px]">
+						Add the hosted bot
 					</a>
-					<a href="/login" class="m-lp-btn">
-						<i class="fas fa-arrow-right-to-bracket"></i>
-						Open the panel
+					<a href={SOURCE_REPO_URL} target="_blank" rel="noopener noreferrer" class="hover:text-accent w-fit underline underline-offset-[3px]">
+						Self-host from GitHub
 					</a>
-					<a href="#features" class="m-lp-btn">
-						<i class="fas fa-arrow-down"></i>
-						All modules
+					<a href="/docs" class="hover:text-accent w-fit underline underline-offset-[3px]">Read the docs</a>
+					<a href={COMMUNITY_DISCORD_URL} target="_blank" rel="noopener noreferrer" class="hover:text-accent w-fit underline underline-offset-[3px]">
+						Join the Discord
 					</a>
-				</div>
+				</p>
+			</div>
 
-				<p class="m-lp-meta">Free forever · MIT licensed · Hosted or self-hosted · Ten minute demo, no signup</p>
-			</section>
+			<h1 class="font-black">
+				<span class="display-line text-primary block whitespace-nowrap uppercase" style="--ch: 9">One panel</span>
+				<span class="display-line text-primary block whitespace-nowrap uppercase" style="--ch: 12">Every module</span>
+			</h1>
 
-			<section class="m-lp-sec" id="features">
-				<div class="m-lp-sec-head">
-					<p class="m-lp-eyebrow">01 — Modules</p>
-					<h2>Everything your server needs</h2>
-					<p class="m-lp-lead">Each one stands on its own. Turn on what you need and ignore the rest.</p>
-				</div>
-				<ol class="m-lp-list">
-					{#each features as feature, i}
-						<li class="m-lp-row">
-							<span class="m-lp-row-num">{String(i + 1).padStart(2, '0')}</span>
-							<span class="m-lp-row-body">
-								<span class="m-lp-row-title">
-									<i class="fas {feature.icon}"></i>
-									{feature.title}
-								</span>
-								<span class="m-lp-row-desc">{feature.desc}</span>
+			<div class="mt-7 flex flex-wrap gap-2">
+				<a href={OFFICIAL_BOT_INVITE_URL} class="{BTN} btn-primary" target="_blank" rel="noopener noreferrer">
+					<i class="fab fa-discord"></i>
+					Get started
+				</a>
+				<a href="/login" class="{BTN} btn-outline btn-primary">
+					<i class="fas fa-arrow-right-to-bracket"></i>
+					Open the panel
+				</a>
+				<a href="#features" class="{BTN} btn-outline btn-primary">
+					<i class="fas fa-arrow-down"></i>
+					All modules
+				</a>
+			</div>
+
+			<p class="text-base-content/45 mt-5.5 text-[10px] font-bold tracking-[0.14em] uppercase">
+				Free forever · MIT licensed · Hosted or self-hosted · Ten minute demo, no signup
+			</p>
+		</section>
+
+		<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16" id="features">
+			<div class="mb-6">
+				<p class={EYEBROW}>01 — Modules</p>
+				<h2 class={H2}>Everything your server needs</h2>
+				<p class={LEAD}>Each one stands on its own. Turn on what you need and ignore the rest.</p>
+			</div>
+			<ol class="border-base-300 grid grid-cols-1 border-t lg:grid-cols-2 lg:gap-x-11">
+				{#each features as feature, i}
+					<li class="border-base-300 grid grid-cols-[2.2rem_1fr] items-start gap-3 border-b px-0.5 py-3.5">
+						<span class="text-primary/70 text-[10.5px] leading-[1.32] font-extrabold tracking-[0.08em] tabular-nums">
+							{String(i + 1).padStart(2, '0')}
+						</span>
+						<span class="min-w-0">
+							<span class="text-base-content flex items-center gap-2 text-[13px] leading-[1.32] font-extrabold tracking-[0.02em] uppercase">
+								<i class="fas {feature.icon} text-[11px] {ICON_TONES[i % ICON_TONES.length]}"></i>
+								{feature.title}
 							</span>
-						</li>
-					{/each}
-				</ol>
-			</section>
+							<span class="text-base-content/60 mt-1 block text-[12.5px] leading-[1.5]">{feature.desc}</span>
+						</span>
+					</li>
+				{/each}
+			</ol>
+		</section>
 
-			{#if data.featuredServers.length > 0}
-				<section class="m-lp-sec">
-					<div class="m-lp-sec-head">
-						<p class="m-lp-eyebrow">02 — Communities</p>
-						<h2>Servers running it now</h2>
-						<p class="m-lp-lead">Each one with its own live public pages. No login needed.</p>
-					</div>
-					<div class="m-lp-list">
-						{#each visibleServers as server}
-							<a href={publicServerPath(server.slug)} class="m-lp-row m-lp-row--link">
-								<span class="m-lp-row-icon">
-									{#if server.server_icon}
-										<img src={server.server_icon} alt={server.name} loading="lazy" width="34" height="34" />
-									{:else}
-										<i class="fas fa-server"></i>
-									{/if}
-								</span>
-								<span class="m-lp-row-body">
-									<span class="m-lp-row-title">{server.name}</span>
-									<span class="m-lp-row-desc">
-										<span class="m-live-dot"></span>
-										Live public statistics
-									</span>
-								</span>
-								<i class="fas fa-arrow-right m-lp-row-go"></i>
-							</a>
-						{/each}
-					</div>
-					{#if remainingServers > 0}
-						<button type="button" class="m-lp-more" onclick={() => (shownServers += SERVERS_PER_PAGE)}>
-							Show more ({remainingServers} left)
-							<i class="fas fa-arrow-down"></i>
-						</button>
-					{/if}
-				</section>
-			{/if}
-
-			<section class="m-lp-sec">
-				<div class="m-lp-sec-head">
-					<p class="m-lp-eyebrow">03 — The panel</p>
-					<h2>Configured in a browser</h2>
-					<p class="m-lp-lead">Sign in and you land in the panel. Where a module supports it, you see live bot and server state as it happens.</p>
+		{#if data.featuredServers.length > 0}
+			<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
+				<div class="mb-6">
+					<p class={EYEBROW}>02 — Communities</p>
+					<h2 class={H2}>Servers running it now</h2>
+					<p class={LEAD}>Each one with its own live public pages. No login needed.</p>
 				</div>
-				<div class="m-lp-cols m-lp-cols--quad">
-					{#each panel as item}
-						<p>
-							<strong>{item.title}</strong>
-							{item.desc}
-						</p>
+				<div class="border-base-300 grid grid-cols-1 border-t">
+					{#each visibleServers as server}
+						<a href={publicServerPath(server.slug)} class="group border-base-300 grid grid-cols-[34px_1fr_auto] items-center gap-3 border-b px-0.5 py-3">
+							<span class="bg-base-200 text-primary grid size-[34px] place-items-center overflow-hidden rounded-sm text-[13px]">
+								{#if server.server_icon}
+									<img src={server.server_icon} alt={server.name} loading="lazy" width="34" height="34" class="size-full object-cover" />
+								{:else}
+									<i class="fas fa-server"></i>
+								{/if}
+							</span>
+							<span class="min-w-0">
+								<span
+									class="text-base-content group-hover:text-primary block truncate text-[13px] leading-[1.32] font-extrabold tracking-[0.02em] uppercase transition-colors"
+								>
+									{server.name}
+								</span>
+								<span class="text-base-content/60 mt-1 flex items-center gap-1.5 text-[12.5px] leading-[1.5]">
+									<span class="bg-primary size-1.5 rounded-full"></span>
+									Live public statistics
+								</span>
+							</span>
+							<i class="fas fa-arrow-right text-primary text-[12px] transition-transform group-hover:translate-x-0.5"></i>
+						</a>
 					{/each}
 				</div>
+				{#if remainingServers > 0}
+					<button
+						type="button"
+						class="text-primary hover:text-accent mt-4 inline-flex items-center gap-2 py-1 text-[10.5px] font-extrabold tracking-[0.14em] uppercase underline underline-offset-4"
+						onclick={() => (shownServers += SERVERS_PER_PAGE)}
+					>
+						Show more ({remainingServers} left)
+						<i class="fas fa-arrow-down"></i>
+					</button>
+				{/if}
 			</section>
+		{/if}
 
-			<section class="m-lp-band">
-				<p class="m-lp-eyebrow">04 — Start</p>
-				<p class="m-lp-display">
-					<span class="m-lp-display-line" style="--ch: 10">Ready to go</span>
-				</p>
-				<p class="m-lp-band-copy">
-					Add {APP_NAME} Bot to your server first, then sign in to configure it. The login screen also offers a free
-					<strong>ten minute demo</strong> with full panel access and no signup.
-				</p>
-				<div class="m-lp-actions">
-					<a href={OFFICIAL_BOT_INVITE_URL} class="m-lp-btn m-lp-btn--invert" target="_blank" rel="noopener noreferrer">
-						<i class="fab fa-discord"></i>
-						Add {APP_NAME} Bot
-					</a>
-					<a href="/login" class="m-lp-btn m-lp-btn--onband">
-						<i class="fas fa-arrow-right-to-bracket"></i>
-						Open login
-					</a>
-					<a href="/docs" class="m-lp-btn m-lp-btn--onband">
-						<i class="fas fa-book-open"></i>
-						Read the docs
-					</a>
-				</div>
-			</section>
-		</div>
-	</main>
+		<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
+			<div class="mb-6">
+				<p class={EYEBROW}>03 — The panel</p>
+				<h2 class={H2}>Configured in a browser</h2>
+				<p class={LEAD}>Sign in and you land in the panel. Where a module supports it, you see live bot and server state as it happens.</p>
+			</div>
+			<div class="grid grid-cols-1 gap-4.5 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
+				{#each panel as item}
+					<p class="text-base-content/60 max-w-[30ch] text-[12.5px] leading-[1.5]">
+						<strong class="text-base-content mb-0.5 block text-[12px] font-extrabold tracking-[0.08em] uppercase">{item.title}</strong>
+						{item.desc}
+					</p>
+				{/each}
+			</div>
+		</section>
 
-	<MainFooter />
-</div>
+		<section class="bleed bg-primary text-primary-content mt-10 -mb-10 py-12 sm:mt-13 sm:py-15 lg:mt-16 lg:py-19">
+			<p class="text-primary-content mb-3.5 text-[10.5px] font-extrabold tracking-[0.2em] uppercase">04 — Start</p>
+			<p class="font-black">
+				<span class="display-line text-primary-content block whitespace-nowrap uppercase" style="--ch: 10">Ready to go</span>
+			</p>
+			<p class="text-primary-content/90 mt-4.5 max-w-[48ch] text-[13.5px] leading-[1.6]">
+				Add {APP_NAME} Bot to your server first, then sign in to configure it. The login screen also offers a free
+				<strong class="text-primary-content font-bold">ten minute demo</strong> with full panel access and no signup.
+			</p>
+			<div class="mt-7 flex flex-wrap gap-2">
+				<a
+					href={OFFICIAL_BOT_INVITE_URL}
+					class="{BTN} border-primary-content bg-primary-content text-primary hover:border-primary-content hover:bg-primary-content/90"
+					target="_blank"
+					rel="noopener noreferrer"
+				>
+					<i class="fab fa-discord"></i>
+					Add {APP_NAME} Bot
+				</a>
+				<a href="/login" class="{BTN} btn-outline border-primary-content/55 text-primary-content hover:bg-primary-content hover:text-primary">
+					<i class="fas fa-arrow-right-to-bracket"></i>
+					Open login
+				</a>
+				<a href="/docs" class="{BTN} btn-outline border-primary-content/55 text-primary-content hover:bg-primary-content hover:text-primary">
+					<i class="fas fa-book-open"></i>
+					Read the docs
+				</a>
+			</div>
+		</section>
+	</div>
+</PageShell>

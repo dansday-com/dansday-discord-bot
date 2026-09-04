@@ -3,6 +3,7 @@
 	import { onDestroy, onMount } from 'svelte';
 	import type { PageProps } from './$types';
 	import LocalTime from '$lib/frontend/components/LocalTime.svelte';
+	import { EmptyState, RankAvatar, rankStyle } from '$lib/frontend/components/public';
 	import type { PublicMembersStreamPayload } from '$lib/frontend/public/members/index.js';
 
 	let { data }: PageProps = $props();
@@ -55,30 +56,21 @@
 		return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
 	}
 
-	function rolePillCssVars(color: string | null | undefined): Record<string, string> {
-		const fb = {
-			fg: '#2e211b',
-			bg: 'rgba(228, 61, 18, 0.1)',
-			bd: 'rgba(228, 61, 18, 0.38)',
-			dot: '#e43d12'
-		};
+	function rolePillStyle(color: string | null | undefined): string {
 		const rgb = parseRoleColorRaw(color);
-		if (!rgb) {
-			return { '--role-fg': fb.fg, '--role-bg': fb.bg, '--role-bd': fb.bd, '--role-dot': fb.dot };
-		}
+		const fallback = `--role-fg: #2e211b; --role-bg: rgba(228, 61, 18, 0.1); --role-bd: rgba(228, 61, 18, 0.38); --role-dot: #e43d12;`;
+		if (!rgb) return fallback;
 		const L = roleColorLuminance(rgb);
-		const hex = rgbToHex(rgb);
 		const nearWhite = L >= 0.78 || (rgb.r >= 248 && rgb.g >= 248 && rgb.b >= 248);
-		if (nearWhite) {
-			return { '--role-fg': fb.fg, '--role-bg': fb.bg, '--role-bd': fb.bd, '--role-dot': fb.dot };
-		}
+		if (nearWhite) return fallback;
+		const hex = rgbToHex(rgb);
 		const softText = L > 0.52;
-		return {
-			'--role-fg': softText ? '#2e211b' : hex,
-			'--role-bg': `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.13)`,
-			'--role-bd': `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.45)`,
-			'--role-dot': hex
-		};
+		return [
+			`--role-fg: ${softText ? '#2e211b' : hex}`,
+			`--role-bg: rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.13)`,
+			`--role-bd: rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.45)`,
+			`--role-dot: ${hex}`
+		].join('; ');
 	}
 
 	let liveMembers = $state([...(data.members ?? [])]);
@@ -166,13 +158,6 @@
 	function avatarSrc(m: (typeof members)[number]): string {
 		return m.avatar ?? `https://cdn.discordapp.com/embed/avatars/${Number(m.discord_member_id) % 5 || 0}.png`;
 	}
-
-	function podiumCardClass(rank: number | null | undefined): string {
-		if (rank === 1) return 'm-members-card--p1';
-		if (rank === 2) return 'm-members-card--p2';
-		if (rank === 3) return 'm-members-card--p3';
-		return '';
-	}
 </script>
 
 <svelte:head>
@@ -183,101 +168,121 @@
 	<meta property="og:description" content="Explore members, ranks, XP, and voice activity for this community." />
 </svelte:head>
 
-<div class="m-members">
-	<div class="m-leaderboard-subhead m-stats-subhead">
-		<p>Members</p>
-	</div>
+<div class="text-base-content/60 mb-3 flex flex-wrap items-center gap-1.5 text-xs">
+	<p class="m-0 flex flex-wrap items-center gap-1.5">Members</p>
+</div>
 
-	<div class="m-members-search-bar">
-		<div class="m-members-search">
-			<i class="fas fa-search m-members-search-ic" aria-hidden="true"></i>
-			<input
-				type="search"
-				class="m-members-search-inp"
-				placeholder="Search name or ID"
-				aria-label="Search members by name or Discord ID"
-				bind:value={search}
-				oninput={onSearchInput}
-				autocomplete="off"
-			/>
-		</div>
-		{#if sorted.length > PER_PAGE}
-			<p class="m-members-page-hint">Page {listPage} / {totalPages}</p>
-		{/if}
-	</div>
+<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+	<label class="input border-base-300 bg-base-100 flex w-full max-w-sm items-center gap-2">
+		<i class="fas fa-search text-base-content/40 text-sm" aria-hidden="true"></i>
+		<input
+			type="search"
+			class="grow"
+			placeholder="Search name or ID"
+			aria-label="Search members by name or Discord ID"
+			bind:value={search}
+			oninput={onSearchInput}
+			autocomplete="off"
+		/>
+	</label>
+	{#if sorted.length > PER_PAGE}
+		<p class="text-base-content/50 text-xs font-semibold">Page {listPage} / {totalPages}</p>
+	{/if}
+</div>
 
-	{#if paged.length === 0}
-		<div class="m-members-empty">
-			<i class="fas fa-users" aria-hidden="true"></i>
-			<p>No members found</p>
-		</div>
-	{:else}
-		<ul class="m-members-grid">
-			{#each paged as member, i (member.discord_member_id)}
-				<li
-					class="m-stat-card m-overview-card m-members-card {podiumCardClass(member.rank)}"
-					class:m-members-card--in={mounted}
-					style="--pubm-card-dly:{i * 32}ms"
-				>
-					<div class="m-members-top">
-						<div class="m-members-aside">
-							<span class="m-members-rank-pill" title="Leaderboard rank">{member.rank != null ? `#${member.rank}` : '—'}</span>
-							<div class="m-members-av-ring">
-								<img
-									class="m-members-av-lg"
-									src={avatarSrc(member)}
-									alt=""
-									width="56"
-									height="56"
-									onerror={(e) => ((e.currentTarget as HTMLImageElement).src = 'https://cdn.discordapp.com/embed/avatars/0.png')}
-								/>
-							</div>
+{#if paged.length === 0}
+	<EmptyState icon="fa-users" message="No members found" />
+{:else}
+	<ul class="grid list-none grid-cols-1 gap-3.5 p-0 min-[600px]:grid-cols-2 min-[600px]:gap-4">
+		{#each paged as member, i (member.discord_member_id)}
+			{@const rs = rankStyle(member.rank)}
+			<li
+				class="card border-base-300 bg-base-100 overflow-hidden border shadow-sm transition-all duration-500 ease-out {mounted
+					? 'translate-y-0 opacity-100'
+					: 'translate-y-3 opacity-0'} {rs ? 'border-l-4' : ''}"
+				style="transition-delay: {i * 32}ms;{rs ? ` border-left-color: ${rs.bar};` : ''}"
+			>
+				<div class="card-body gap-0 p-4">
+					<div class="flex items-start gap-3.5">
+						<div class="flex shrink-0 flex-col items-center gap-2">
+							<span
+								class="badge badge-sm border-base-content/20 h-auto px-2.5 py-[3px] text-[11px] font-extrabold tabular-nums shadow-sm"
+								title="Leaderboard rank"
+								style={rs
+									? `background: ${rs.pill}; color: ${rs.pillText};`
+									: 'background: linear-gradient(135deg, var(--color-secondary), var(--color-primary)); color: #fff;'}
+							>
+								{member.rank != null ? `#${member.rank}` : '—'}
+							</span>
+							<RankAvatar src={avatarSrc(member)} name={listDisplayName(member)} size={56} />
 						</div>
-						<div class="m-members-main">
-							<div class="m-members-name-row">
-								<span class="m-members-name">{listDisplayName(member)}</span>
-								{#if member.is_afk}<span class="m-members-afk"><i class="fas fa-moon" aria-hidden="true"></i> AFK</span>{/if}
+
+						<div class="min-w-0 flex-1">
+							<div class="mb-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+								<span class="text-base-content truncate text-[clamp(15px,3.8vw,17px)] font-extrabold tracking-tight">{listDisplayName(member)}</span>
+								{#if member.is_afk}
+									<span class="badge badge-sm bg-secondary/12 border-secondary/22 text-secondary shrink-0 gap-1 text-[10px] font-bold">
+										<i class="fas fa-moon" aria-hidden="true"></i> AFK
+									</span>
+								{/if}
 							</div>
-							<p class="m-members-stats">
+
+							<p class="text-base-content/70 m-0 mb-1.5 flex flex-wrap items-baseline gap-x-1 gap-y-0.5 text-[11px] font-semibold">
 								<span>Lv.{member.level ?? 0}</span>
-								<span class="m-members-dot">·</span>
+								<span class="text-base-content/35 select-none">·</span>
 								<span title="Messages">{fmtNum(member.chat_total ?? 0)} msgs</span>
-								<span class="m-members-dot">·</span>
+								<span class="text-base-content/35 select-none">·</span>
 								<span title="Voice minutes">{fmtNum(member.voice_minutes_active ?? 0)}m act / {fmtNum(member.voice_minutes_afk ?? 0)}m AFK</span>
 							</p>
-							<p class="m-members-dates">
-								<span><span class="m-members-dk">Joined</span> <LocalTime value={member.member_since} fallback="N/A" /></span>
-								<span class="m-members-dot">·</span>
-								<span><span class="m-members-dk">Discord since</span> <LocalTime value={member.profile_created_at} fallback="N/A" /></span>
+
+							<p class="text-base-content/45 m-0 flex flex-wrap items-baseline gap-x-1 gap-y-0.5 text-[10px] font-semibold">
+								<span>
+									<span class="text-base-content/40 mr-0.5 text-[9px] font-bold tracking-[0.05em] uppercase">Joined</span>
+									<LocalTime value={member.member_since} fallback="N/A" />
+								</span>
+								<span class="text-base-content/35 select-none">·</span>
+								<span>
+									<span class="text-base-content/40 mr-0.5 text-[9px] font-bold tracking-[0.05em] uppercase">Discord since</span>
+									<LocalTime value={member.profile_created_at} fallback="N/A" />
+								</span>
 							</p>
 						</div>
 					</div>
-					<div class="m-members-xp-band">
-						<span class="m-members-xp-band-l"><i class="fas fa-star" aria-hidden="true"></i> XP</span>
-						<span class="m-members-xp-band-v" title="XP">{fmtNum(member.xp ?? 0)}</span>
+
+					<div
+						class="from-primary/10 to-secondary/6 border-primary/15 mt-3 flex items-center justify-between gap-2.5 rounded-xl border bg-linear-to-br px-3 py-2.5"
+					>
+						<span class="text-base-content/55 inline-flex items-center gap-1.5 text-[10px] font-bold tracking-[0.07em] uppercase">
+							<i class="fas fa-star text-accent text-[11px]" aria-hidden="true"></i> XP
+						</span>
+						<span class="text-base-content text-[17px] font-extrabold tracking-tight tabular-nums" title="XP">{fmtNum(member.xp ?? 0)}</span>
 					</div>
+
 					{#if member.roles?.[0]}
-						<div class="m-members-roles">
-							<span class="m-members-role" style={rolePillCssVars(member.roles[0].color)}>
-								<i class="fas fa-circle" aria-hidden="true"></i>
+						<div class="border-base-300 mt-3 flex flex-wrap gap-1.5 border-t pt-3">
+							<span
+								class="badge badge-sm h-auto max-w-full gap-1.5 px-2.5 py-[3px] text-[10px] font-semibold"
+								style="{rolePillStyle(member.roles[0].color)}; border-color: var(--role-bd); background: var(--role-bg); color: var(--role-fg);"
+							>
+								<i class="fas fa-circle text-[5px]" style="color: var(--role-dot);" aria-hidden="true"></i>
 								{member.roles[0].name || 'Role'}
 							</span>
 						</div>
 					{/if}
-				</li>
-			{/each}
-		</ul>
+				</div>
+			</li>
+		{/each}
+	</ul>
 
-		{#if sorted.length > PER_PAGE}
-			<div class="m-members-pager">
-				<button type="button" class="m-members-btn" disabled={listPage === 1} onclick={() => (listPage = Math.max(1, listPage - 1))}>
-					<i class="fas fa-chevron-left" aria-hidden="true"></i> Prev
-				</button>
-				<span class="m-members-pg-meta">Page {listPage} / {totalPages}</span>
-				<button type="button" class="m-members-btn" disabled={listPage === totalPages} onclick={() => (listPage = Math.min(totalPages, listPage + 1))}>
-					Next <i class="fas fa-chevron-right" aria-hidden="true"></i>
-				</button>
-			</div>
-		{/if}
+	{#if sorted.length > PER_PAGE}
+		<div class="mt-4 flex items-center justify-between gap-2.5">
+			<button type="button" class="btn btn-sm sm:btn-md" disabled={listPage === 1} onclick={() => (listPage = Math.max(1, listPage - 1))}>
+				<i class="fas fa-chevron-left" aria-hidden="true"></i> Prev
+			</button>
+			<span class="text-base-content/60 text-xs font-semibold">Page {listPage} / {totalPages}</span>
+			<button type="button" class="btn btn-sm sm:btn-md" disabled={listPage === totalPages} onclick={() => (listPage = Math.min(totalPages, listPage + 1))}>
+				Next <i class="fas fa-chevron-right" aria-hidden="true"></i>
+			</button>
+		</div>
 	{/if}
-</div>
+{/if}

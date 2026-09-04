@@ -35,7 +35,9 @@ const FRAME_BYTES = (DISCORD_RATE / 1000) * FRAME_MS * 2 * 2;
 const EMPTY = Buffer.alloc(0);
 
 const SPEAK_GUARD_MS = 400;
+const SPEECH_TAIL_MS = 250;
 const TURN_SILENCE_MS = 500;
+const TURN_SETTLE_MIN_MS = 40;
 const VOICE_RMS_THRESHOLD = 900;
 const VOICE_RMS_CEILING = 2_200;
 const VOICE_RMS_RELEASE = 550;
@@ -49,12 +51,13 @@ const BARGE_IN_DEAF_MS = 700;
 const NOISE_FLOOR_ALPHA = 0.002;
 const NOISE_FLOOR_FALL_ALPHA = 0.05;
 const NOISE_FLOOR_MARGIN = 2.2;
+const NOISE_FLOOR_HOLD = 1.4;
 const NOISE_FLOOR_MAX = 400;
 const MAX_TURN_MS = 60_000;
 const CLOSE_WAIT_MS = 3000;
 const MAX_QUEUED_CHUNKS = 300;
-const OUTPUT_BUFFER_FRAMES = 3;
-const OUTPUT_ENCODER_FRAMES = 3;
+const OUTPUT_BUFFER_FRAMES = 2;
+const OUTPUT_ENCODER_FRAMES = 2;
 const MAX_MISSED_FRAMES = 50;
 
 const GOODBYE_GRACE_MS = 12_000;
@@ -501,7 +504,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	}
 
 	function botIsSpeaking() {
-		return playbackQueue.length > 0 || pendingOffset < pending.length || Date.now() - lastAudioAt < SPEAK_GUARD_MS;
+		return playbackQueue.length > 0 || pendingOffset < pending.length || Date.now() - lastAudioAt < SPEECH_TAIL_MS;
 	}
 
 	function afterSpeaking(label, run, { graceMs = 0, maxWaitMs = SPEECH_DRAIN_MAX_MS } = {}) {
@@ -583,27 +586,29 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		return latest ? Date.now() - latest : TURN_SILENCE_MS;
 	}
 
+	function settleTurn() {
+		const elapsed = Date.now() - turnOpenedAt;
+		const silence = voiceSilenceMs();
+
+		if (silence < TURN_SILENCE_MS && elapsed < MAX_TURN_MS) {
+			turnTimer = setTimeout(settleTurn, Math.max(TURN_SETTLE_MIN_MS, TURN_SILENCE_MS - silence));
+			return;
+		}
+
+		if (anyoneSpeaking()) {
+			logger.log(`⚠️ Voice AI turn stuck open past ${MAX_TURN_MS / 1000}s, forcing it closed`);
+			for (const [userId, vad] of voiceState) {
+				if (!micIsOpenFor(userId)) continue;
+				vad.active = false;
+				vad.onset = 0;
+			}
+		}
+		closeTurn();
+	}
+
 	function bumpTurn() {
 		if (turnTimer) clearTimeout(turnTimer);
-		turnTimer = setTimeout(function settle() {
-			const elapsed = Date.now() - turnOpenedAt;
-			const silence = voiceSilenceMs();
-
-			if (silence < TURN_SILENCE_MS && elapsed < MAX_TURN_MS) {
-				turnTimer = setTimeout(settle, Math.max(50, TURN_SILENCE_MS - silence));
-				return;
-			}
-
-			if (anyoneSpeaking()) {
-				logger.log(`⚠️ Voice AI turn stuck open past ${MAX_TURN_MS / 1000}s, forcing it closed`);
-				for (const [userId, vad] of voiceState) {
-					if (!micIsOpenFor(userId)) continue;
-					vad.active = false;
-					vad.onset = 0;
-				}
-			}
-			closeTurn();
-		}, TURN_SILENCE_MS);
+		turnTimer = setTimeout(settleTurn, Math.max(TURN_SETTLE_MIN_MS, TURN_SILENCE_MS - voiceSilenceMs()));
 	}
 
 	function playChunk(pcm24k) {
@@ -1262,7 +1267,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 			if (rms >= openAt) {
 				vad.onset++;
 				vad.lastVoiceAt = now;
-			} else if (vad.active && rms >= Math.min(VOICE_RMS_RELEASE, openAt * 0.6)) {
+			} else if (vad.active && rms >= Math.max(Math.min(VOICE_RMS_RELEASE, openAt * 0.6), vad.floor * NOISE_FLOOR_HOLD)) {
 				vad.lastVoiceAt = now;
 			} else {
 				vad.onset = 0;

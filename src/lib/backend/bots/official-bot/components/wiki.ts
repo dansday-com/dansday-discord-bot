@@ -469,7 +469,7 @@ Do NOT call this when there is no question to look up. Chatting, greetings, joke
 
 Read the entire result before answering: the answer is usually under a heading such as "Obtainment", "Skins", "Location" or "Change History" rather than in the opening line, and infobox values arrive in "stats". Answer only with facts present in the result — never add an item, price, chance or mechanic that is not there, and never fill a gap from memory. If the result already contains the answer, never claim the wiki has not documented it yet, and never speculate about why something is missing.
 
-Live values such as countdowns, current spawn timers and active events are not on the wiki at all — search the web for those.
+A weak result is not an answer. When a lookup comes back empty or bare, chain to search_web and then fetch_web_page before you reply, and never hand the question back to the user. Live values — countdowns, spawn timers, active events — are not on the wiki at all, so go straight to the web for those.
 
 The search itself is English-only, but always reply in the language the user wrote in. Available wikis:\n${describeWikis(wikis)}`,
 			parameters: {
@@ -510,7 +510,7 @@ export function buildWikiDeclaration(wikis) {
 		name: tool.function.name,
 		description: `${tool.function.description}
 
-You do not know these games, so look every game question up and wait for the result — never say the answer, a guess or a partial answer before the result arrives.
+You do not know these games. Look up every game question and wait for the result — never voice an answer, a guess or a half-answer before it lands. If you are about to state a fact you did not read in a result, look it up instead.
 
 Read the answer out loud in one or two short spoken sentences. Do not read URLs aloud.`,
 		parameters: tool.function.parameters
@@ -518,10 +518,22 @@ Read the answer out loud in one or two short spoken sentences. Do not read URLs 
 }
 
 const WIKI_MISS_HINT =
-	'The wiki does not have this. Do not tell the user you could not find it — call search_web for it now, and open the best result with fetch_web_page if the snippet is thin.';
+	'Nothing on this wiki. Your next move is search_web with the same thing in English, then fetch_web_page on the best hit. Do not say it could not be found until that has also failed, and never tell them to look it up themselves.';
 
 const WIKI_OFF_TARGET_HINT =
-	'These pages may not be what was asked for. If none of them actually answers it, call search_web for it rather than answering from the closest page.';
+	'These titles may not be what was asked for. If none of them answers it, treat this as nothing found and call search_web — do not answer from the closest page.';
+
+const WIKI_THIN_HINT =
+	'This page exists but carries almost no detail, so it is not an answer yet. Call search_web for the same thing before you reply, and use only what you actually read.';
+
+const THIN_EXTRACT_CHARS = 400;
+
+function resultIsThin(result) {
+	const pages = result?.pages ?? [];
+	if (!pages.length) return false;
+	if (pages.some((page) => page.stats && Object.keys(page.stats).length)) return false;
+	return pages.reduce((sum, page) => sum + (page.extract?.length ?? 0), 0) < THIN_EXTRACT_CHARS;
+}
 
 export async function runWikiTool(wikis, args) {
 	const requested = String(args?.wiki ?? '')
@@ -537,6 +549,7 @@ export async function runWikiTool(wikis, args) {
 
 	if (result?.ok === false || !result?.pages?.length) return { ...result, next_step: WIKI_MISS_HINT };
 	if (result.note) return { ...result, next_step: WIKI_OFF_TARGET_HINT };
+	if (resultIsThin(result)) return { ...result, next_step: WIKI_THIN_HINT };
 
 	return result;
 }

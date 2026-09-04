@@ -4,6 +4,7 @@
 	import { publicServerPath, COMMUNITY_DISCORD_URL, OFFICIAL_BOT_INVITE_URL, SOURCE_REPO_URL } from '$lib/url.js';
 	import type { AggregatedPanelStats } from '$lib/frontend/public/statistics/aggregate.js';
 	import { PageShell, reveal, REVEAL_CLASS } from '$lib/frontend/components/shell';
+	import HeroScene from '$lib/frontend/components/landing/HeroScene.svelte';
 
 	type Totals = AggregatedPanelStats;
 	type Live = { label: string; value: string; live?: boolean };
@@ -483,92 +484,71 @@
 
 <PageShell>
 	<div class="@container">
-		<section class="flex min-h-[calc(100dvh-8rem)] flex-col justify-center gap-8 pb-9 sm:gap-10">
-			<div class="relative z-10">
-				<p class="bg-base-300 mb-6 flex h-px items-center justify-between sm:grid sm:grid-cols-3 sm:justify-normal sm:gap-6" aria-hidden="true">
-					<span class="bg-primary size-2.5 shrink-0 rounded-full"></span>
-					<span class="bg-primary size-2.5 shrink-0 rounded-full"></span>
-					<span class="bg-primary size-2.5 shrink-0 rounded-full"></span>
-				</p>
-				<div class="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-6">
-					<p class="text-primary text-[12.5px] leading-[1.5] sm:max-w-[36ch] 2xl:text-[15px]">
-						{APP_NAME} is a free, open source Discord bot with a web panel — built for servers that outgrew slash commands.
-					</p>
-					<p class="text-primary hidden text-[12.5px] leading-[1.5] sm:block sm:max-w-[36ch] 2xl:text-[15px]">
-						Leveling, an XP economy, moderation, embeds, giveaways, live public pages and integrations. Every module switches on by itself, all under one
-						server's settings.
-					</p>
-					<p class="text-primary flex flex-col gap-1.5 text-[12.5px] leading-[1.5] sm:max-w-[36ch] 2xl:gap-2 2xl:text-[15px]">
-						<a href={OFFICIAL_BOT_INVITE_URL} target="_blank" rel="noopener noreferrer" class="hover:text-accent w-fit underline underline-offset-[3px]">
-							Add the hosted bot
-						</a>
-						<a href={SOURCE_REPO_URL} target="_blank" rel="noopener noreferrer" class="hover:text-accent w-fit underline underline-offset-[3px]">
-							Self-host from GitHub
-						</a>
-						<a href="/docs" class="hover:text-accent w-fit underline underline-offset-[3px]">Read the docs</a>
-						<a href={COMMUNITY_DISCORD_URL} target="_blank" rel="noopener noreferrer" class="hover:text-accent w-fit underline underline-offset-[3px]">
-							Join the Discord
-						</a>
-					</p>
-				</div>
-			</div>
+		<section class="relative isolate flex min-h-[calc(100dvh-6rem)] flex-col justify-between gap-10 pb-8">
+			<HeroScene />
+
+			<p class="bg-base-300 flex h-px items-center justify-between sm:grid sm:grid-cols-3 sm:justify-normal sm:gap-6" aria-hidden="true">
+				<span class="bg-primary size-2.5 shrink-0 rounded-full"></span>
+				<span class="bg-primary size-2.5 shrink-0 rounded-full"></span>
+				<span class="bg-primary size-2.5 shrink-0 rounded-full"></span>
+			</p>
 
 			<div>
-				<h1 class="relative font-black">
-					<span class="display-line animate-rise text-primary block whitespace-nowrap uppercase" style="--ch: 9; --rise-delay: 80ms">One panel</span>
-					<span class="display-line animate-rise text-primary block whitespace-nowrap uppercase" style="--ch: 12; --rise-delay: 200ms">Every module</span>
+				<p class="display-line animate-rise text-primary block whitespace-nowrap uppercase" style="--ch: 9; --rise-delay: 80ms">One panel</p>
+				<p class="display-line animate-rise text-primary block whitespace-nowrap uppercase" style="--ch: 12; --rise-delay: 200ms">Every module</p>
+				<h1 class="animate-rise text-base-content/70 mt-6 text-[14px] leading-[1.55] sm:max-w-[44ch] 2xl:text-[17px]" style="--rise-delay: 380ms">
+					Leveling, an XP economy, moderation, embeds, giveaways and live public pages — every module configured from one free web panel instead of slash
+					commands.
 				</h1>
-
-				<div class="animate-rise mt-7 flex flex-col gap-2 sm:flex-row sm:flex-wrap" style="--rise-delay: 320ms">
-					<a href={OFFICIAL_BOT_INVITE_URL} class="{BTN} btn-primary w-full sm:w-auto" target="_blank" rel="noopener noreferrer">
-						<i class="fa-brands fa-discord"></i>
-						Get started
-					</a>
-					<div class="grid grid-cols-1 gap-2 min-[420px]:grid-cols-2 sm:contents">
-						<a href="/login" class="{BTN} btn-outline btn-primary">
-							<i class="fas fa-arrow-right-to-bracket"></i>
-							Open the panel
-						</a>
-						<a href="#features" class="{BTN} btn-outline btn-primary">
-							<i class="fas fa-arrow-down"></i>
-							All modules
-						</a>
-					</div>
-				</div>
 			</div>
 
-			<div class="flex flex-col gap-5">
+			<div class="flex flex-col gap-8">
 				{#if hasLive}
 					<div class="border-base-300 grid grid-cols-2 gap-x-6 gap-y-4 border-t pt-5 sm:grid-cols-4">
 						{#each heroStats as stat, i}
 							<div use:reveal class={REVEAL_CLASS} style="transition-delay: {i * 70}ms">
 								<p use:countUp={stat.raw} class="text-primary text-[clamp(20px,3.4vw,34px)] leading-none font-black tabular-nums">{fmt(stat.raw)}</p>
-								<p class="text-base-content/45 mt-1.5 text-[10px] font-bold tracking-[0.14em] uppercase">{stat.label}</p>
+								<p class="text-base-content/45 mt-1.5 text-[10px] font-bold tracking-[0.14em] uppercase 2xl:text-[12.5px]">{stat.label}</p>
 							</div>
 						{/each}
 					</div>
 				{/if}
-				<p class="text-base-content/45 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-bold tracking-[0.14em] uppercase 2xl:text-[12.5px]">
-					{#each META as item, i}
-						{#if i > 0}
-							<span aria-hidden="true" class="opacity-50">·</span>
-						{/if}
-						<span class="whitespace-nowrap">{item}</span>
-					{/each}
-				</p>
 
-				<a
-					href="#features"
-					aria-label="Scroll to the modules"
-					class="text-primary hover:text-accent inline-flex w-fit items-center gap-3 text-[11.5px] font-extrabold tracking-[0.16em] uppercase transition-all duration-300 2xl:gap-4 2xl:text-[14px] {scrolled
-						? 'pointer-events-none translate-y-1 opacity-0'
-						: 'opacity-100'}"
-				>
-					<span class="border-primary/45 grid size-10 shrink-0 place-items-center rounded-full border-2 motion-safe:animate-bounce 2xl:size-13">
-						<i class="fas fa-arrow-down block text-[13px] leading-none 2xl:text-[16px]"></i>
-					</span>
-					Keep scrolling
-				</a>
+				<div class="grid grid-cols-1 items-end gap-6 sm:grid-cols-3">
+					<a
+						href="#features"
+						aria-label="Scroll to the modules"
+						class="text-primary hover:text-accent flex w-fit items-center gap-3 text-[11.5px] font-extrabold tracking-[0.16em] uppercase transition-all duration-300 2xl:text-[14px] {scrolled
+							? 'pointer-events-none translate-y-1 opacity-0'
+							: 'opacity-100'}"
+					>
+						<span class="border-primary/45 grid size-10 shrink-0 place-items-center rounded-full border-2 motion-safe:animate-bounce 2xl:size-13">
+							<i class="fas fa-arrow-down block text-[13px] leading-none 2xl:text-[16px]"></i>
+						</span>
+						<span class="leading-[1.25]">Scroll<br />to explore</span>
+					</a>
+
+					<p class="text-base-content/45 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-bold tracking-[0.14em] uppercase 2xl:text-[12.5px]">
+						{#each META as item, i}
+							{#if i > 0}
+								<span aria-hidden="true" class="opacity-50">·</span>
+							{/if}
+							<span class="whitespace-nowrap">{item}</span>
+						{/each}
+					</p>
+
+					<div class="flex flex-col gap-2 sm:items-end">
+						<a href={OFFICIAL_BOT_INVITE_URL} class="{BTN} btn-primary w-full sm:w-auto" target="_blank" rel="noopener noreferrer">
+							<i class="fa-brands fa-discord"></i>
+							Add the bot — free
+						</a>
+						<p class="text-primary flex flex-wrap gap-x-4 gap-y-1 text-[12.5px] sm:justify-end 2xl:text-[14px]">
+							<a href="/login" class="hover:text-accent underline underline-offset-[3px]">Open the panel</a>
+							<a href={SOURCE_REPO_URL} target="_blank" rel="noopener noreferrer" class="hover:text-accent underline underline-offset-[3px]">GitHub</a>
+							<a href="/docs" class="hover:text-accent underline underline-offset-[3px]">Docs</a>
+						</p>
+					</div>
+				</div>
 			</div>
 		</section>
 

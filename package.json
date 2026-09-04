@@ -41,6 +41,7 @@
 		"redis": "^5.12.1",
 		"rozod": "^6.6.0",
 		"sodium-native": "^5.1.0",
+		"three": "^0.185.1",
 		"tiktok-live-connector": "^2.1.1-beta1"
 	},
 	"devDependencies": {
@@ -49,6 +50,7 @@
 		"@sveltejs/vite-plugin-svelte": "^7.0.0",
 		"@tailwindcss/vite": "^4.2.2",
 		"@types/luxon": "^3.7.1",
+		"@types/three": "^0.185.4",
 		"daisyui": "^5.7.22",
 		"drizzle-kit": "^0.31.10",
 		"prettier": "^3.8.3",

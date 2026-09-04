@@ -442,10 +442,13 @@
 	<div class="@container">
 		<section class="flex min-h-[calc(100dvh-8rem)] flex-col justify-between gap-8 pb-9">
 			<div class="relative z-10">
-				<p class="bg-base-300 mb-6 flex h-px items-center justify-between" aria-hidden="true">
+				<p class="bg-base-300 mb-6 flex h-px items-center justify-between sm:grid sm:grid-cols-3 sm:justify-normal sm:gap-6" aria-hidden="true">
 					<span class="bg-primary size-2.5 shrink-0 rounded-full"></span>
 					<span class="bg-primary size-2.5 shrink-0 rounded-full"></span>
-					<span class="bg-primary size-2.5 shrink-0 rounded-full"></span>
+					<span class="flex items-center justify-between">
+						<span class="bg-primary size-2.5 shrink-0 rounded-full"></span>
+						<span class="bg-primary hidden size-2.5 shrink-0 rounded-full sm:block"></span>
+					</span>
 				</p>
 				<div class="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-6">
 					<p class="text-primary text-[12.5px] leading-[1.5] sm:max-w-[36ch]">

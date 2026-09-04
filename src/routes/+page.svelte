@@ -1,13 +1,9 @@
 <script lang="ts">
-	import { onDestroy, onMount } from 'svelte';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import type { PageProps } from './$types';
 	import { publicServerPath, COMMUNITY_DISCORD_URL, OFFICIAL_BOT_INVITE_URL, SOURCE_REPO_URL } from '$lib/url.js';
 	import type { AggregatedPanelStats } from '$lib/frontend/public/statistics/aggregate.js';
-	import MainHeader from '$lib/frontend/components/MainHeader.svelte';
-	import MainFooter from '$lib/frontend/components/MainFooter.svelte';
-	import { reveal, REVEAL_CLASS } from '$lib/frontend/components/shell';
-	import 'fullpage.js/dist/fullpage.css';
+	import { PageShell, reveal, REVEAL_CLASS } from '$lib/frontend/components/shell';
 
 	type Totals = AggregatedPanelStats;
 	type Live = { label: string; value: string; live?: boolean };
@@ -404,16 +400,17 @@
 		}
 	];
 
-	const cards = $derived(features.map((f) => ({ ...f, live: hasLive && f.stat ? f.stat(data.totals) : [] })));
-
-	const PER_SLIDE = 6;
-	const modulePages = $derived(
-		cards.reduce<(typeof cards)[]>((acc, c, i) => {
-			if (i % PER_SLIDE === 0) acc.push([]);
-			acc[acc.length - 1].push(c);
-			return acc;
-		}, [])
+	const cards = $derived(
+		features.map((f, i) => ({
+			...f,
+			n: String(i + 1).padStart(2, '0'),
+			tone: ICON_TONES[i % ICON_TONES.length],
+			live: hasLive && f.stat ? f.stat(data.totals) : []
+		}))
 	);
+
+	const rowA = $derived(cards.slice(0, Math.ceil(cards.length / 2)));
+	const rowB = $derived(cards.slice(Math.ceil(cards.length / 2)));
 
 	const panel = [
 		{ title: 'Toggle features', desc: 'Every module sits on its own switch, per server.' },
@@ -424,41 +421,12 @@
 
 	const META = ['Free forever', 'AGPL-3.0 licensed', 'Hosted or self-hosted', 'Ten minute demo, no signup'];
 
-	const INNER = 'mx-auto w-full max-w-7xl px-3';
-	const EYEBROW = 'text-primary mb-3 text-[10.5px] font-extrabold tracking-[0.2em] uppercase';
-	const H2 = 'text-base-content mb-2.5 text-[clamp(21px,5.6vw,54px)] leading-[0.98] font-black tracking-[-0.035em] uppercase';
+	const EYEBROW = 'text-primary mb-3.5 text-[10.5px] font-extrabold tracking-[0.2em] uppercase';
+	const H2 = 'text-base-content mb-2.5 text-[clamp(21px,6.2cqw,58px)] leading-[0.98] font-black tracking-[-0.035em] uppercase';
 	const LEAD = 'text-base-content/60 text-[13.5px] leading-[1.55] sm:max-w-[54ch]';
 	const BTN = 'btn rounded-sm text-[11.5px] font-extrabold tracking-[0.1em] uppercase';
-
-	let fp: { destroy: (type?: string) => void } | null = null;
-
-	onMount(async () => {
-		const { default: fullpage } = await import('fullpage.js');
-		fp = new fullpage('#fullpage', {
-			licenseKey: 'gplv3-license',
-			autoScrolling: true,
-			scrollOverflow: true,
-			scrollHorizontally: true,
-			controlArrows: false,
-			slidesNavigation: true,
-			slidesNavPosition: 'bottom',
-			navigation: true,
-			navigationPosition: 'right',
-			navigationTooltips: ['Top', 'Modules', 'Communities', 'Panel', 'Start'],
-			showActiveTooltip: false,
-			anchors: ['top', 'features', 'communities', 'panel', 'start'],
-			animateAnchors: false,
-			paddingTop: '4rem',
-			fitToSection: true,
-			keyboardScrolling: true,
-			scrollingSpeed: 620
-		});
-	});
-
-	onDestroy(() => {
-		fp?.destroy('all');
-		fp = null;
-	});
+	const CARD = 'border-base-300 bg-base-100 w-[78vw] shrink-0 rounded-sm border p-4 sm:w-[330px] sm:p-5';
+	const FULLBLEED = 'w-screen ml-[calc(50%-50vw)]';
 </script>
 
 <svelte:head>
@@ -470,56 +438,45 @@
 	<meta name="theme-color" content="#e43d12" />
 </svelte:head>
 
-<div class="bg-canvas text-base-content relative isolate" data-theme="dansday">
-	<div
-		class="bg-primary animate-blob-drift pointer-events-none fixed -top-16 -left-16 -z-10 size-56 rounded-full opacity-10 blur-[60px] sm:-top-25 sm:-left-25 sm:size-80 sm:blur-[80px] lg:size-[420px]"
-	></div>
-	<div
-		class="bg-secondary animate-blob-drift pointer-events-none fixed -right-14 bottom-[10%] -z-10 size-48 rounded-full opacity-10 blur-[60px] [animation-delay:-6s] sm:-right-20 sm:size-80 sm:blur-[80px]"
-	></div>
-
-	<div id="site-header" class="fixed inset-x-0 top-0 z-40">
-		<MainHeader />
-	</div>
-
-	<div id="fullpage">
-		<section class="section">
-			<div class="{INNER} flex flex-col gap-6 py-5 sm:gap-9">
-				<div>
-					<p class="bg-base-300 mb-5 flex h-px items-center justify-between" aria-hidden="true">
-						<span class="bg-primary size-2.5 shrink-0 rounded-full"></span>
-						<span class="bg-primary size-2.5 shrink-0 rounded-full"></span>
-						<span class="bg-primary size-2.5 shrink-0 rounded-full"></span>
+<PageShell>
+	<div class="@container">
+		<section class="flex min-h-[calc(100dvh-8rem)] flex-col justify-between gap-8 pb-9">
+			<div class="relative z-10">
+				<p class="bg-base-300 mb-6 flex h-px items-center justify-between" aria-hidden="true">
+					<span class="bg-primary size-2.5 shrink-0 rounded-full"></span>
+					<span class="bg-primary size-2.5 shrink-0 rounded-full"></span>
+					<span class="bg-primary size-2.5 shrink-0 rounded-full"></span>
+				</p>
+				<div class="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-6">
+					<p class="text-primary text-[12.5px] leading-[1.5] sm:max-w-[36ch]">
+						{APP_NAME} is a free, open source Discord bot with a web panel — built for servers that outgrew slash commands.
 					</p>
-					<div class="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-6">
-						<p class="text-primary text-[12.5px] leading-[1.5] sm:max-w-[36ch]">
-							{APP_NAME} is a free, open source Discord bot with a web panel — built for servers that outgrew slash commands.
-						</p>
-						<p class="text-primary hidden text-[12.5px] leading-[1.5] sm:block sm:max-w-[36ch]">
-							Leveling, an XP economy, moderation, embeds, giveaways, live public pages and integrations. Every module switches on by itself, all under one
-							server's settings.
-						</p>
-						<p class="text-primary flex flex-col gap-1.5 text-[12.5px] leading-[1.5] sm:max-w-[36ch]">
-							<a href={OFFICIAL_BOT_INVITE_URL} target="_blank" rel="noopener noreferrer" class="hover:text-accent w-fit underline underline-offset-[3px]">
-								Add the hosted bot
-							</a>
-							<a href={SOURCE_REPO_URL} target="_blank" rel="noopener noreferrer" class="hover:text-accent w-fit underline underline-offset-[3px]">
-								Self-host from GitHub
-							</a>
-							<a href="/docs" class="hover:text-accent w-fit underline underline-offset-[3px]">Read the docs</a>
-							<a href={COMMUNITY_DISCORD_URL} target="_blank" rel="noopener noreferrer" class="hover:text-accent w-fit underline underline-offset-[3px]">
-								Join the Discord
-							</a>
-						</p>
-					</div>
+					<p class="text-primary hidden text-[12.5px] leading-[1.5] sm:block sm:max-w-[36ch]">
+						Leveling, an XP economy, moderation, embeds, giveaways, live public pages and integrations. Every module switches on by itself, all under one
+						server's settings.
+					</p>
+					<p class="text-primary flex flex-col gap-1.5 text-[12.5px] leading-[1.5] sm:max-w-[36ch]">
+						<a href={OFFICIAL_BOT_INVITE_URL} target="_blank" rel="noopener noreferrer" class="hover:text-accent w-fit underline underline-offset-[3px]">
+							Add the hosted bot
+						</a>
+						<a href={SOURCE_REPO_URL} target="_blank" rel="noopener noreferrer" class="hover:text-accent w-fit underline underline-offset-[3px]">
+							Self-host from GitHub
+						</a>
+						<a href="/docs" class="hover:text-accent w-fit underline underline-offset-[3px]">Read the docs</a>
+						<a href={COMMUNITY_DISCORD_URL} target="_blank" rel="noopener noreferrer" class="hover:text-accent w-fit underline underline-offset-[3px]">
+							Join the Discord
+						</a>
+					</p>
 				</div>
+			</div>
 
+			<div>
 				<h1 class="relative font-black">
 					<span class="display-line text-primary block whitespace-nowrap uppercase" style="--ch: 9">One panel</span>
 					<span class="display-line text-primary block whitespace-nowrap uppercase" style="--ch: 12">Every module</span>
 				</h1>
 
-				<div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+				<div class="mt-7 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
 					<a href={OFFICIAL_BOT_INVITE_URL} class="{BTN} btn-primary w-full sm:w-auto" target="_blank" rel="noopener noreferrer">
 						<i class="fab fa-discord"></i>
 						Get started
@@ -535,7 +492,9 @@
 						</a>
 					</div>
 				</div>
+			</div>
 
+			<div class="flex flex-col gap-5">
 				{#if hasLive}
 					<div class="border-base-300 grid grid-cols-2 gap-x-6 gap-y-4 border-t pt-5 sm:grid-cols-4">
 						{#each heroStats as stat, i}
@@ -546,7 +505,6 @@
 						{/each}
 					</div>
 				{/if}
-
 				<p class="text-base-content/45 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-bold tracking-[0.14em] uppercase">
 					{#each META as item, i}
 						{#if i > 0}
@@ -558,176 +516,166 @@
 			</div>
 		</section>
 
-		<section class="section">
-			{#each modulePages as page, pi}
-				<div class="slide">
-					<div class="{INNER} py-5">
-						<div class="mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
-							<div class="min-w-0">
-								<p class={EYEBROW}>01 — Modules</p>
-								<h2 class={H2}>Everything your server needs</h2>
-								<p class="{LEAD} hidden sm:block">
-									{#if hasLive}
-										Every number below is live, aggregated across {fmt(data.totals.servers_counted)} public servers.
-									{:else}
-										Each one stands on its own. Turn on what you need and ignore the rest.
-									{/if}
-								</p>
-							</div>
-							<p class="text-base-content/45 shrink-0 text-[10px] font-bold tracking-[0.14em] whitespace-nowrap uppercase">
-								{String(pi + 1).padStart(2, '0')} / {String(modulePages.length).padStart(2, '0')} · swipe
-							</p>
-						</div>
+		<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16" id="features">
+			<div class="mb-7">
+				<p class={EYEBROW}>01 — Modules</p>
+				<h2 class={H2}>Everything your server needs</h2>
+				<p class={LEAD}>
+					All {features.length} of them, drifting past on their own.
+					{#if hasLive}
+						Every number is live, aggregated across {fmt(data.totals.servers_counted)} public servers.
+					{:else}
+						Each one stands on its own. Turn on what you need and ignore the rest.
+					{/if}
+					Hover to stop.
+				</p>
+			</div>
 
-						<div class="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
-							{#each page as feature, ci}
-								{@const index = pi * PER_SLIDE + ci}
-								<article
-									use:reveal
-									class="{REVEAL_CLASS} border-base-300 bg-base-100 hover:border-primary/40 flex flex-col rounded-sm border p-4 sm:p-5"
-									style="transition-delay: {ci * 80}ms"
-								>
-									<div class="mb-3 flex items-start justify-between gap-3">
-										<i class="fas {feature.icon} text-[18px] {ICON_TONES[index % ICON_TONES.length]}"></i>
-										<span class="text-base-content/20 text-[22px] leading-none font-black tabular-nums">
-											{String(index + 1).padStart(2, '0')}
-										</span>
-									</div>
-									<h3 class="text-base-content mb-1.5 text-[13px] leading-[1.32] font-extrabold tracking-[0.02em] uppercase">{feature.title}</h3>
-									<p class="text-base-content/70 text-[12.5px] leading-[1.5]">{feature.desc}</p>
-									<p class="text-base-content/45 mt-1.5 hidden text-[12px] leading-[1.5] sm:block">{feature.more}</p>
-									{#if feature.live.length > 0}
-										<dl class="border-base-300 mt-4 flex flex-wrap gap-x-5 gap-y-2.5 border-t pt-3">
-											{#each feature.live as stat}
-												<div>
-													<dt class="text-base-content/45 text-[9.5px] font-bold tracking-[0.12em] uppercase">{stat.label}</dt>
-													<dd class="text-primary mt-1 flex items-center gap-1.5 text-[15px] leading-none font-black tabular-nums">
-														{#if stat.live}
-															<span class="bg-primary size-1.5 shrink-0 rounded-full motion-safe:animate-pulse"></span>
-														{/if}
-														{stat.value}
-													</dd>
-												</div>
-											{/each}
-										</dl>
-									{/if}
-								</article>
-							{/each}
-						</div>
+			{#snippet moduleCard(card: (typeof cards)[number])}
+				<article class="{CARD} hover:border-primary/40 flex flex-col transition-colors">
+					<div class="mb-3 flex items-start justify-between gap-3">
+						<i class="fas {card.icon} text-[18px] {card.tone}"></i>
+						<span class="text-base-content/20 text-[22px] leading-none font-black tabular-nums">{card.n}</span>
 					</div>
+					<h3 class="text-base-content mb-1.5 text-[13px] leading-[1.32] font-extrabold tracking-[0.02em] uppercase">{card.title}</h3>
+					<p class="text-base-content/70 text-[12.5px] leading-[1.5]">{card.desc}</p>
+					<p class="text-base-content/45 mt-1.5 hidden text-[12px] leading-[1.5] sm:block">{card.more}</p>
+					{#if card.live.length > 0}
+						<dl class="border-base-300 mt-4 flex flex-wrap gap-x-5 gap-y-2.5 border-t pt-3">
+							{#each card.live as stat}
+								<div>
+									<dt class="text-base-content/45 text-[9.5px] font-bold tracking-[0.12em] uppercase">{stat.label}</dt>
+									<dd class="text-primary mt-1 flex items-center gap-1.5 text-[15px] leading-none font-black tabular-nums">
+										{#if stat.live}
+											<span class="bg-primary size-1.5 shrink-0 rounded-full motion-safe:animate-pulse"></span>
+										{/if}
+										{stat.value}
+									</dd>
+								</div>
+							{/each}
+						</dl>
+					{/if}
+				</article>
+			{/snippet}
+
+			<div class="{FULLBLEED} marquee" style="--marquee-duration: 120s" aria-hidden="true">
+				<div class="marquee-row gap-3 px-1.5">
+					{#each [...rowA, ...rowA] as card}
+						{@render moduleCard(card)}
+					{/each}
 				</div>
-			{/each}
+			</div>
+			<div class="{FULLBLEED} marquee mt-3" style="--marquee-duration: 140s" aria-hidden="true">
+				<div class="marquee-row marquee-row--reverse gap-3 px-1.5">
+					{#each [...rowB, ...rowB] as card}
+						{@render moduleCard(card)}
+					{/each}
+				</div>
+			</div>
+
+			<ul class="sr-only">
+				{#each cards as card}
+					<li>{card.title} — {card.desc} {card.more}</li>
+				{/each}
+			</ul>
 		</section>
 
-		<section class="section">
-			<div class="{INNER} py-5">
-				<div class="mb-5">
+		{#if data.featuredServers.length > 0}
+			<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
+				<div class="mb-6">
 					<p class={EYEBROW}>02 — Communities</p>
 					<h2 class={H2}>Servers running it now</h2>
 					<p class={LEAD}>Each one with its own live public pages. No login needed.</p>
 				</div>
-				{#if data.featuredServers.length > 0}
-					<div class="border-base-300 grid grid-cols-1 border-t">
-						{#each visibleServers as server, i}
-							<a
-								href={publicServerPath(server.slug)}
-								use:reveal
-								class="{REVEAL_CLASS} group border-base-300 grid grid-cols-[34px_1fr_auto] items-center gap-3 border-b px-0.5 py-3"
-								style="transition-delay: {i * 60}ms"
-							>
-								<span class="bg-base-200 text-primary grid size-[34px] place-items-center overflow-hidden rounded-sm text-[13px]">
-									{#if server.server_icon}
-										<img src={server.server_icon} alt={server.name} loading="lazy" width="34" height="34" class="size-full object-cover" />
-									{:else}
-										<i class="fas fa-server"></i>
-									{/if}
-								</span>
-								<span class="min-w-0">
-									<span
-										class="text-base-content group-hover:text-primary block truncate text-[13px] leading-[1.32] font-extrabold tracking-[0.02em] uppercase transition-colors"
-									>
-										{server.name}
-									</span>
-									<span class="text-base-content/60 mt-1 flex items-center gap-1.5 text-[12.5px] leading-[1.5]">
-										<span class="bg-primary size-1.5 rounded-full"></span>
-										Live public statistics
-									</span>
-								</span>
-								<i class="fas fa-arrow-right text-primary text-[12px] transition-transform group-hover:translate-x-0.5"></i>
-							</a>
-						{/each}
-					</div>
-					{#if remainingServers > 0}
-						<button
-							type="button"
-							class="text-primary hover:text-accent mt-4 inline-flex items-center gap-2 py-1 text-[10.5px] font-extrabold tracking-[0.14em] uppercase underline underline-offset-4"
-							onclick={() => (shownServers += SERVERS_PER_PAGE)}
+				<div class="border-base-300 grid grid-cols-1 border-t">
+					{#each visibleServers as server, i}
+						<a
+							href={publicServerPath(server.slug)}
+							use:reveal
+							class="{REVEAL_CLASS} group border-base-300 grid grid-cols-[34px_1fr_auto] items-center gap-3 border-b px-0.5 py-3"
+							style="transition-delay: {i * 60}ms"
 						>
-							Show more ({remainingServers} left)
-							<i class="fas fa-arrow-down"></i>
-						</button>
-					{/if}
-				{:else}
-					<p class="text-base-content/45 text-[12.5px]">No servers have switched their public pages on yet.</p>
-				{/if}
-			</div>
-		</section>
-
-		<section class="section">
-			<div class="{INNER} py-5">
-				<div class="mb-5">
-					<p class={EYEBROW}>03 — The panel</p>
-					<h2 class={H2}>Configured in a browser</h2>
-					<p class={LEAD}>Sign in and you land in the panel. Where a module supports it, you see live bot and server state as it happens.</p>
-				</div>
-				<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
-					{#each panel as item, i}
-						<p use:reveal class="{REVEAL_CLASS} text-base-content/60 text-[12.5px] leading-[1.5] sm:max-w-[30ch]" style="transition-delay: {i * 70}ms">
-							<strong class="text-base-content mb-0.5 block text-[12px] font-extrabold tracking-[0.08em] uppercase">{item.title}</strong>
-							{item.desc}
-						</p>
+							<span class="bg-base-200 text-primary grid size-[34px] place-items-center overflow-hidden rounded-sm text-[13px]">
+								{#if server.server_icon}
+									<img src={server.server_icon} alt={server.name} loading="lazy" width="34" height="34" class="size-full object-cover" />
+								{:else}
+									<i class="fas fa-server"></i>
+								{/if}
+							</span>
+							<span class="min-w-0">
+								<span
+									class="text-base-content group-hover:text-primary block truncate text-[13px] leading-[1.32] font-extrabold tracking-[0.02em] uppercase transition-colors"
+								>
+									{server.name}
+								</span>
+								<span class="text-base-content/60 mt-1 flex items-center gap-1.5 text-[12.5px] leading-[1.5]">
+									<span class="bg-primary size-1.5 rounded-full"></span>
+									Live public statistics
+								</span>
+							</span>
+							<i class="fas fa-arrow-right text-primary text-[12px] transition-transform group-hover:translate-x-0.5"></i>
+						</a>
 					{/each}
 				</div>
+				{#if remainingServers > 0}
+					<button
+						type="button"
+						class="text-primary hover:text-accent mt-4 inline-flex items-center gap-2 py-1 text-[10.5px] font-extrabold tracking-[0.14em] uppercase underline underline-offset-4"
+						onclick={() => (shownServers += SERVERS_PER_PAGE)}
+					>
+						Show more ({remainingServers} left)
+						<i class="fas fa-arrow-down"></i>
+					</button>
+				{/if}
+			</section>
+		{/if}
+
+		<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
+			<div class="mb-6">
+				<p class={EYEBROW}>03 — The panel</p>
+				<h2 class={H2}>Configured in a browser</h2>
+				<p class={LEAD}>Sign in and you land in the panel. Where a module supports it, you see live bot and server state as it happens.</p>
+			</div>
+			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
+				{#each panel as item, i}
+					<p use:reveal class="{REVEAL_CLASS} text-base-content/60 text-[12.5px] leading-[1.5] sm:max-w-[30ch]" style="transition-delay: {i * 70}ms">
+						<strong class="text-base-content mb-0.5 block text-[12px] font-extrabold tracking-[0.08em] uppercase">{item.title}</strong>
+						{item.desc}
+					</p>
+				{/each}
 			</div>
 		</section>
 
-		<section class="section">
-			<div class="bg-primary text-primary-content flex h-full flex-col justify-between">
-				<div class="{INNER} flex flex-1 flex-col justify-center py-9">
-					<p class="text-primary-content mb-3 text-[10.5px] font-extrabold tracking-[0.2em] uppercase">04 — Start</p>
-					<p class="font-black">
-						<span class="display-line text-primary-content block whitespace-nowrap uppercase" style="--ch: 10">Ready to go</span>
-					</p>
-					<p class="text-primary-content/90 mt-4 text-[13.5px] leading-[1.6] sm:max-w-[48ch]">
-						Add {APP_NAME} Bot to your server first, then sign in to configure it. The login screen also offers a free
-						<strong class="text-primary-content font-bold">ten minute demo</strong> with full panel access and no signup.
-					</p>
-					<div class="mt-6 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-						<a
-							href={OFFICIAL_BOT_INVITE_URL}
-							class="{BTN} border-primary-content bg-primary-content text-primary hover:border-primary-content hover:bg-primary-content/90 w-full sm:w-auto"
-							target="_blank"
-							rel="noopener noreferrer"
-						>
-							<i class="fab fa-discord"></i>
-							Add {APP_NAME} Bot
-						</a>
-						<div class="grid grid-cols-2 gap-2 sm:contents">
-							<a href="/login" class="{BTN} btn-outline border-primary-content/55 text-primary-content hover:bg-primary-content hover:text-primary">
-								<i class="fas fa-arrow-right-to-bracket"></i>
-								Open login
-							</a>
-							<a href="/docs" class="{BTN} btn-outline border-primary-content/55 text-primary-content hover:bg-primary-content hover:text-primary">
-								<i class="fas fa-book-open"></i>
-								Read the docs
-							</a>
-						</div>
-					</div>
-				</div>
-				<div class="bg-canvas text-base-content">
-					<MainFooter />
+		<section class="bleed bg-primary text-primary-content mt-10 -mb-10 py-12 sm:mt-13 sm:py-15 lg:mt-16 lg:py-19">
+			<p class="text-primary-content mb-3.5 text-[10.5px] font-extrabold tracking-[0.2em] uppercase">04 — Start</p>
+			<p class="font-black">
+				<span class="display-line text-primary-content block whitespace-nowrap uppercase" style="--ch: 10">Ready to go</span>
+			</p>
+			<p class="text-primary-content/90 mt-4.5 text-[13.5px] leading-[1.6] sm:max-w-[48ch]">
+				Add {APP_NAME} Bot to your server first, then sign in to configure it. The login screen also offers a free
+				<strong class="text-primary-content font-bold">ten minute demo</strong> with full panel access and no signup.
+			</p>
+			<div class="mt-7 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+				<a
+					href={OFFICIAL_BOT_INVITE_URL}
+					class="{BTN} border-primary-content bg-primary-content text-primary hover:border-primary-content hover:bg-primary-content/90 w-full sm:w-auto"
+					target="_blank"
+					rel="noopener noreferrer"
+				>
+					<i class="fab fa-discord"></i>
+					Add {APP_NAME} Bot
+				</a>
+				<div class="grid grid-cols-2 gap-2 sm:contents">
+					<a href="/login" class="{BTN} btn-outline border-primary-content/55 text-primary-content hover:bg-primary-content hover:text-primary">
+						<i class="fas fa-arrow-right-to-bracket"></i>
+						Open login
+					</a>
+					<a href="/docs" class="{BTN} btn-outline border-primary-content/55 text-primary-content hover:bg-primary-content hover:text-primary">
+						<i class="fas fa-book-open"></i>
+						Read the docs
+					</a>
 				</div>
 			</div>
 		</section>
 	</div>
-</div>
+</PageShell>

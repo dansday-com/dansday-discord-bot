@@ -670,84 +670,65 @@
 				<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
 					<div class="min-w-0">
 						<p class={EYEBROW}>03 — Tasks</p>
-						<h2 class={H2}>Every task on the card</h2>
-						<p class={LEAD}>All {data.taskCount} tasks that can come out on a daily or weekly card. Goals scale to each member.</p>
+						<h2 class={H2}>A pool of {data.taskCount} tasks</h2>
+						<p class={LEAD}>Daily and weekly cards deal from this pool. Goals scale to each member, so nobody gets the same card.</p>
 					</div>
 					<a href="/tasks" class="{BTN} btn-outline btn-primary shrink-0">
 						All {data.taskCount} tasks
 						<i class="fas fa-arrow-right"></i>
 					</a>
 				</div>
-				<div class="border-base-300 grid grid-cols-1 border-t">
-					{#each data.topTasks as task, i (task.id)}
+				<div use:reveal class="{REVEAL_CLASS} border-base-300 flex flex-wrap gap-2 border-t pt-6">
+					{#each data.topTasks as task (task.id)}
+						<span class="border-base-300 bg-base-100 flex items-center gap-2 rounded-sm border px-2.5 py-1.5">
+							<i class="fas {task.icon} text-[11px] leading-none" style="color: {task.accent}"></i>
+							<span class="text-base-content/75 text-[11.5px] leading-none font-bold tracking-[0.04em] uppercase">{task.label}</span>
+						</span>
+					{/each}
+					{#if data.taskCount > data.topTasks.length}
 						<a
 							href="/tasks"
-							use:reveal
-							class="{REVEAL_CLASS} group border-base-300 grid grid-cols-[34px_1fr_auto] items-center gap-3 border-b px-0.5 py-3"
-							style="transition-delay: {i * 60}ms"
+							class="border-primary/40 text-primary hover:bg-primary hover:text-primary-content flex items-center rounded-sm border px-2.5 py-1.5 text-[11.5px] leading-none font-extrabold tracking-[0.1em] uppercase transition-colors"
 						>
-							<span class="bg-base-200 grid size-[34px] place-items-center rounded-sm text-[13px] leading-none" style="color: {task.accent}">
-								<i class="fas {task.icon}"></i>
-							</span>
-							<span class="min-w-0">
-								<span
-									class="text-base-content group-hover:text-primary block truncate text-[13px] leading-[1.32] font-extrabold tracking-[0.02em] uppercase transition-colors"
-								>
-									{task.label}
-								</span>
-								<span class="text-base-content/55 mt-1 block truncate text-[12px]">{task.example}</span>
-							</span>
-							<span class="text-base-content/35 shrink-0 text-[10px] font-bold tracking-[0.12em] uppercase">{task.requires_label}</span>
+							+{data.taskCount - data.topTasks.length} more
 						</a>
-					{/each}
+					{/if}
 				</div>
 			</section>
 		{/if}
 
 		{#if data.topItems.length > 0}
 			<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
-				<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
+				<div class="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
 					<div class="min-w-0">
 						<p class={EYEBROW}>04 — Items</p>
 						<h2 class={H2}>The shop catalog</h2>
-						<p class={LEAD}>{data.buyableItemCount} of {data.itemCount} items on sale right now. The rest stay usable once owned.</p>
+						<p class={LEAD}>{data.buyableItemCount} of {data.itemCount} items on sale right now. The rest stay usable once they are in a bag.</p>
 					</div>
 					<a href="/shop" class="{BTN} btn-outline btn-primary shrink-0">
 						All {data.itemCount} items
 						<i class="fas fa-arrow-right"></i>
 					</a>
 				</div>
-				<div class="border-base-300 grid grid-cols-1 border-t">
+				<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
 					{#each data.topItems as item, i (item.id)}
 						<a
 							href="/shop"
 							use:reveal
-							class="{REVEAL_CLASS} group border-base-300 grid grid-cols-[34px_1fr_auto] items-center gap-3 border-b px-0.5 py-3"
+							class="{REVEAL_CLASS} border-base-300 bg-base-100 hover:border-primary/40 flex flex-col rounded-sm border p-4 transition-colors sm:p-5"
 							style="transition-delay: {i * 60}ms"
 						>
-							<span
-								class="bg-base-200 grid size-[34px] place-items-center rounded-sm text-[13px] leading-none"
-								style="color: {effectAccentHex(item.effect_type)}"
-							>
-								<i class="fas {effectIcon(item.effect_type)}"></i>
-							</span>
-							<span class="min-w-0">
-								<span
-									class="text-base-content group-hover:text-primary block truncate text-[13px] leading-[1.32] font-extrabold tracking-[0.02em] uppercase transition-colors"
-								>
-									{item.name}
-								</span>
-								<span class="text-base-content/55 mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[12px] tabular-nums">
-									<span>{effectLabel(item.effect_type)}</span>
-									<span class="opacity-40" aria-hidden="true">·</span>
-									<span>{fmt(item.cost)} XP</span>
-								</span>
-							</span>
-							{#if item.buyable}
-								<span class="text-primary shrink-0 text-[10px] font-extrabold tracking-[0.12em] uppercase">Can buy</span>
-							{:else}
-								<span class="text-base-content/30 shrink-0 text-[10px] font-bold tracking-[0.12em] uppercase">Can't buy</span>
-							{/if}
+							<div class="mb-3 flex items-start justify-between gap-3">
+								<i class="fas {effectIcon(item.effect_type)} text-[18px] leading-none" style="color: {effectAccentHex(item.effect_type)}"></i>
+								{#if item.buyable}
+									<span class="text-primary text-[9.5px] font-extrabold tracking-[0.12em] uppercase">Can buy</span>
+								{:else}
+									<span class="text-base-content/30 text-[9.5px] font-bold tracking-[0.12em] uppercase">Can't buy</span>
+								{/if}
+							</div>
+							<h3 class="text-base-content mb-1.5 text-[13px] leading-[1.32] font-extrabold tracking-[0.02em] uppercase">{item.name}</h3>
+							<p class="text-base-content/45 text-[10px] font-bold tracking-[0.14em] uppercase">{effectLabel(item.effect_type)}</p>
+							<p class="text-primary mt-4 text-[15px] leading-none font-black tabular-nums">{fmt(item.cost)} XP</p>
 						</a>
 					{/each}
 				</div>

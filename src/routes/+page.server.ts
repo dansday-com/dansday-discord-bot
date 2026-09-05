@@ -12,6 +12,8 @@ import {
 } from '$lib/frontend/public/catalog/index.js';
 
 const PREVIEW = 5;
+const TASK_PREVIEW = 24;
+const ITEM_PREVIEW = 6;
 
 export const load: PageServerLoad = async () => {
 	const [directory, quests, roblox, items] = await Promise.all([
@@ -30,9 +32,9 @@ export const load: PageServerLoad = async () => {
 		topServers: directory.entries.slice(0, PREVIEW),
 		serverCount: directory.entries.length,
 		totals: directory.totals,
-		topTasks: tasks.slice(0, PREVIEW),
+		topTasks: tasks.slice(0, TASK_PREVIEW),
 		taskCount: tasks.length,
-		topItems: items.slice(0, PREVIEW),
+		topItems: items.slice(0, ITEM_PREVIEW),
 		itemCount: items.length,
 		buyableItemCount: items.filter((i) => i.buyable).length,
 		topQuests: quests.slice(0, PREVIEW),

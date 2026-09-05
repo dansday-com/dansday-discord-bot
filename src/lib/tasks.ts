@@ -653,7 +653,7 @@ export const TASK_DEFINITIONS: TaskDefinition[] = [
 		describe: (g) => `Have ${g} bomb${g === 1 ? '' : 's'} fizzle`
 	},
 	{
-		id: 'leech_land',
+		id: 'leech_attach',
 		metric: 'leech_landed',
 		label: 'Parasite',
 		icon: 'fa-worm',

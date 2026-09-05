@@ -449,5 +449,15 @@
 		"alreadyRunning": "Ya tienes una misión automática en curso. Espera a que termine antes de iniciar otra.",
 		"announceInChannel": "Cada resultado se publica en {channel}.",
 		"announceDisabled": "No hay canal de misiones configurado, así que no se publica nada: las misiones reclamadas solo se marcan en la lista."
+	},
+	"robloxCatalog": {
+		"notifications": {
+			"added": "🔔 Se te mencionará en {channel} cada vez que **{item}** cambie. {count} lo siguen.",
+			"removed": "🔕 Ya no se te mencionará por **{item}**.",
+			"errors": {
+				"invalidItem": "❌ No se pudo leer el artículo del catálogo de este botón.",
+				"memberNotFound": "❌ Tu perfil de miembro aún no está sincronizado. Inténtalo en un momento."
+			}
+		}
 	}
 }

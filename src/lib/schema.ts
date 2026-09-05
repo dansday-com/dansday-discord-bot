@@ -615,6 +615,24 @@ export const serverRobloxItems = mysqlTable(
 	(t) => [uniqueIndex('unique_server_roblox_items').on(t.server_id, t.item_id), index('idx_server_roblox_items_server_id').on(t.server_id)]
 );
 
+export const serverMemberRobloxItemNotifications = mysqlTable(
+	'server_member_roblox_item_notifications',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		member_id: int('member_id')
+			.notNull()
+			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		item_id: int('item_id')
+			.notNull()
+			.references(() => botRobloxItems.id, { onDelete: 'cascade' }),
+		created_at: datetime('created_at').notNull()
+	},
+	(t) => [
+		uniqueIndex('unique_member_roblox_item_notification').on(t.member_id, t.item_id),
+		index('idx_server_member_roblox_item_notifications_item').on(t.item_id)
+	]
+);
+
 export const serverMemberGiveaways = mysqlTable(
 	'server_member_giveaways',
 	{

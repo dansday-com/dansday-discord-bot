@@ -454,13 +454,22 @@ export const robloxCatalogStreamPollOrder: RobloxCatalogStreamKey[] = [
 export const ROBLOX_CATALOG_POLL_MS = 10_000;
 export const ROBLOX_CATALOG_NEXT_PAGE_MS = 5_000;
 export const ROBLOX_CATALOG_ABORT_MS = 10_000;
+export const ROBLOX_CATALOG_NOTIFICATION_MAX_ASSETS = 240;
+export const ROBLOX_CATALOG_NOTIFICATION_INTERVAL_MS = 30_000;
 
 export const robloxCatalogEmbedColors = {
 	fromOfficialQuery: 0x57f287,
 	itemUpdated: 0xffc107
 } as const;
 
-export { fetchCatalogFirstPage, robloxCatalogItemUrl, streamCatalogPages, type RobloxCatalogItem } from './api/roblox-catalog-api.js';
+export {
+	fetchCatalogFirstPage,
+	fetchCatalogItemsByRefs,
+	robloxCatalogItemUrl,
+	streamCatalogPages,
+	type RobloxCatalogItem,
+	type RobloxCatalogItemRef
+} from './api/roblox-catalog-api.js';
 
 export async function getEmbedConfig(guildId: string) {
 	requireBotConfig();

@@ -1,22 +1,31 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, Client, EmbedBuilder } from 'discord.js';
+import type { ButtonInteraction } from 'discord.js';
 import { randomInt } from 'node:crypto';
 import db, { snapshotBigIntOrNull, type RobloxItemChange } from '../../../../database.js';
 import {
 	fetchCatalogFirstPage,
+	fetchCatalogItemsByRefs,
 	getEmbedConfig,
+	getServerForCurrentBot,
 	isComponentFeatureEnabled,
 	PERMISSIONS,
 	robloxCatalogEmbedColors,
 	robloxCatalogItemUrl,
 	robloxCatalogStreams,
 	robloxCatalogStreamPollOrder,
+	ROBLOX_CATALOG_NOTIFICATION_INTERVAL_MS,
+	ROBLOX_CATALOG_NOTIFICATION_MAX_ASSETS,
 	ROBLOX_CATALOG_POLL_MS,
 	serverSettingsComponent,
 	streamCatalogPages,
 	NOTIFICATIONS,
-	type RobloxCatalogItem
+	type RobloxCatalogItem,
+	type RobloxCatalogItemRef
 } from '../../../config.js';
+import { translate } from '../i18n.js';
 import { logger } from '../../../../utils/index.js';
+
+export const ROBLOX_ITEM_NOTIFICATION_BUTTON_PREFIX = 'roblox_item_notification:';
 
 let tickTimeoutRef: ReturnType<typeof setTimeout> | null = null;
 let tickRunning = false;
@@ -72,6 +81,22 @@ function formatQuantityRatio(item: RobloxCatalogItem): string {
 	if (u != null) return `${formatCount(u)}/—`;
 	if (t != null) return `—/${formatCount(t)}`;
 	return '—';
+}
+
+function mentionChunks(discordIds: string[]): string[] {
+	const chunks: string[] = [];
+	let current = '';
+	for (const id of discordIds) {
+		const mention = `<@${id}> `;
+		if (current.length + mention.length > 1950) {
+			chunks.push(current.trim());
+			current = mention;
+		} else {
+			current += mention;
+		}
+	}
+	if (current.trim()) chunks.push(current.trim());
+	return chunks;
 }
 
 type ServerTarget = {
@@ -201,6 +226,8 @@ async function sendItemEmbed(
 
 	const title = isNew ? (item.name || `Item #${item.id}`).slice(0, 256) : `[Updated] ${item.name || `Item #${item.id}`}`.slice(0, 256);
 
+	const notificationDiscordIds = await db.listServerRobloxItemNotificationDiscordIds(target.serverId, catalogAssetBi(item)).catch(() => [] as string[]);
+
 	const embed = new EmbedBuilder()
 		.setColor(
 			isNewOfficial
@@ -219,7 +246,8 @@ async function sendItemEmbed(
 			{ name: 'Quantity', value: quantity, inline: true },
 			{ name: 'Favorites', value: favorites, inline: true },
 			...resaleOrSaleFields,
-			{ name: 'Created', value: createdAt, inline: true }
+			{ name: 'Created', value: createdAt, inline: true },
+			...(notificationDiscordIds.length > 0 ? [{ name: 'Notifications', value: `🔔 ${formatCount(notificationDiscordIds.length)}`, inline: true }] : [])
 		)
 		.setFooter({ text: target.embedConfig.FOOTER });
 
@@ -231,22 +259,19 @@ async function sendItemEmbed(
 	if (item.thumbnailUrl?.startsWith('http')) embed.setThumbnail(item.thumbnailUrl);
 
 	const btnRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-		new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(url).setLabel('Open on Roblox').setEmoji('🛍️')
+		new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(url).setLabel('Open on Roblox').setEmoji('🛍️'),
+		new ButtonBuilder().setStyle(ButtonStyle.Secondary).setCustomId(`${ROBLOX_ITEM_NOTIFICATION_BUTTON_PREFIX}${item.id}`).setLabel('Notify me').setEmoji('🔔')
 	);
 
-	const parts: string[] = [];
+	const channelMentions = (await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(target.guildId, target.channel.id).catch(() => null)) ?? [];
+	const alreadyMentioned = channelMentions.join(' ');
+	const notificationDirectMentions = mentionChunks(notificationDiscordIds.filter((id) => !alreadyMentioned.includes(`<@${id}>`)));
+	const mentionParts = [...channelMentions, ...notificationDirectMentions];
 
-	const notificationMentions = await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(target.guildId, target.channel.id).catch(() => null);
-	if (notificationMentions && notificationMentions.length > 0) parts.push(notificationMentions[0]);
+	await target.channel.send({ content: mentionParts[0], embeds: [embed], components: [btnRow] });
 
-	const content = parts.length > 0 ? parts.join(' ') : undefined;
-
-	await target.channel.send({ content, embeds: [embed], components: [btnRow] });
-
-	if (notificationMentions && notificationMentions.length > 1) {
-		for (let i = 1; i < notificationMentions.length; i++) {
-			await target.channel.send({ content: notificationMentions[i] }).catch(() => null);
-		}
+	for (let i = 1; i < mentionParts.length; i++) {
+		await target.channel.send({ content: mentionParts[i] }).catch(() => null);
 	}
 }
 
@@ -312,11 +337,12 @@ async function processPage(
 	items: RobloxCatalogItem[],
 	seen: Set<bigint>,
 	fromOfficialRobloxCatalogQuery: boolean,
-	allowCatalogFirstMessage: boolean
+	allowCatalogFirstMessage: boolean,
+	logLabel?: string
 ) {
 	const newItems = items.filter((x) => !seen.has(catalogAssetBi(x)));
 	for (const x of newItems) seen.add(catalogAssetBi(x));
-	const logKey = fromOfficialRobloxCatalogQuery ? 'official' : 'limited';
+	const logKey = logLabel ?? (fromOfficialRobloxCatalogQuery ? 'official' : 'limited');
 	processPageCount[logKey] = (processPageCount[logKey] ?? 0) + 1;
 	const pageNum = processPageCount[logKey];
 	if (newItems.length === 0) {
@@ -398,6 +424,36 @@ async function processPage(
 	}
 }
 
+let lastNotificationPassAt = 0;
+
+async function runNotificationPriorityPass(officialBotId: number, targets: ServerTarget[]) {
+	const watched = await db.listNotifiedRobloxItemsForBot(officialBotId, ROBLOX_CATALOG_NOTIFICATION_MAX_ASSETS).catch(() => []);
+	if (watched.length === 0) return;
+
+	const refs: RobloxCatalogItemRef[] = [];
+	const knownThumbnails = new Map<number, string | null>();
+	for (const row of watched) {
+		const id = Number(row.assetId);
+		if (!Number.isSafeInteger(id)) continue;
+		refs.push({ id, itemType: row.assetType == null ? 'Bundle' : 'Asset' });
+		knownThumbnails.set(id, row.thumbnailUrl);
+	}
+	if (refs.length === 0) return;
+
+	const items = await fetchCatalogItemsByRefs(refs, knownThumbnails);
+	if (items.length === 0) return;
+
+	await processPage(officialBotId, targets, items, new Set<bigint>(), false, false, 'notification');
+}
+
+async function maybeRunNotificationPriorityPass(officialBotId: number, targets: ServerTarget[], force = false) {
+	if (!force && Date.now() - lastNotificationPassAt < ROBLOX_CATALOG_NOTIFICATION_INTERVAL_MS) return;
+	lastNotificationPassAt = Date.now();
+	await runNotificationPriorityPass(officialBotId, targets).catch((err) =>
+		logger.log(`⚠️ Roblox catalog: notification priority pass error: ${err?.message || err}`)
+	);
+}
+
 async function backgroundSync(officialBotId: number, targets: ServerTarget[], seen: Set<bigint>) {
 	await logger.log('🛍️ Roblox catalog: starting background sync...');
 
@@ -406,6 +462,7 @@ async function backgroundSync(officialBotId: number, targets: ServerTarget[], se
 		if (i > 0) await new Promise((r) => setTimeout(r, ROBLOX_CATALOG_POLL_MS));
 		const stream = robloxCatalogStreams[pollOrder[i]];
 		await streamCatalogPages(stream.params, async (items) => {
+			await maybeRunNotificationPriorityPass(officialBotId, targets);
 			await processPage(officialBotId, targets, items, seen, stream.useOfficialCatalogEmbedStyle, false);
 		});
 	}
@@ -429,11 +486,14 @@ async function runTick(client: Client, officialBotId: number) {
 		const seen = new Set<bigint>();
 		processPageCount = {};
 
+		await maybeRunNotificationPriorityPass(officialBotId, targets, true);
+
 		const pollOrder = shuffledCatalogPollOrder();
 		for (let i = 0; i < pollOrder.length; i++) {
 			if (i > 0) await new Promise((r) => setTimeout(r, ROBLOX_CATALOG_POLL_MS));
 			const stream = robloxCatalogStreams[pollOrder[i]];
 			await streamCatalogPages(stream.params, async (items) => {
+				await maybeRunNotificationPriorityPass(officialBotId, targets);
 				await processPage(officialBotId, targets, items, seen, stream.useOfficialCatalogEmbedStyle, true);
 			});
 		}
@@ -468,4 +528,65 @@ export function stopRobloxCatalogNotifier() {
 		clearTimeout(tickTimeoutRef);
 		tickTimeoutRef = null;
 	}
+}
+
+export function isRobloxItemNotificationButtonId(customId: string): boolean {
+	return customId.startsWith(ROBLOX_ITEM_NOTIFICATION_BUTTON_PREFIX);
+}
+
+function assetIdFromItemNotificationButtonId(customId: string): bigint | null {
+	const raw = customId.slice(ROBLOX_ITEM_NOTIFICATION_BUTTON_PREFIX.length).trim();
+	if (!/^\d+$/.test(raw)) return null;
+	try {
+		return BigInt(raw);
+	} catch {
+		return null;
+	}
+}
+
+export async function handleRobloxItemNotificationButton(interaction: ButtonInteraction): Promise<void> {
+	const guildId = interaction.guild?.id;
+	if (!guildId) return;
+
+	const assetId = assetIdFromItemNotificationButtonId(interaction.customId);
+	if (assetId == null) {
+		const message = await translate('robloxCatalog.notifications.errors.invalidItem', guildId, interaction.user.id);
+		await interaction.reply({ content: message, flags: 64 }).catch(() => null);
+		return;
+	}
+
+	await interaction.deferReply({ flags: 64 });
+
+	const server = await getServerForCurrentBot(guildId).catch(() => null);
+	const member = server ? await db.getMemberByDiscordId(server.id, interaction.user.id).catch(() => null) : null;
+	if (!server || !member) {
+		const message = await translate('robloxCatalog.notifications.errors.memberNotFound', guildId, interaction.user.id);
+		await interaction.editReply({ content: message }).catch(() => null);
+		return;
+	}
+
+	const item = await db.getBotRobloxItemByAssetId(assetId).catch(() => null);
+	if (!item) {
+		const message = await translate('robloxCatalog.notifications.errors.invalidItem', guildId, interaction.user.id);
+		await interaction.editReply({ content: message }).catch(() => null);
+		return;
+	}
+
+	const itemName = item.name?.trim() || `Item #${assetId.toString()}`;
+	const action = await db.toggleServerMemberRobloxItemNotification(member.id, item.id);
+	const watchers = await db.countServerRobloxItemNotifications(server.id, item.id).catch(() => 0);
+
+	const message = await translate(
+		action === 'added' ? 'robloxCatalog.notifications.added' : 'robloxCatalog.notifications.removed',
+		guildId,
+		interaction.user.id,
+		{
+			item: itemName,
+			channel: `<#${interaction.channelId}>`,
+			count: formatCount(watchers)
+		}
+	);
+	await interaction.editReply({ content: message }).catch(() => null);
+
+	await logger.log(`🔔 Roblox catalog: ${interaction.user.tag} ${action} notification for asset ${assetId.toString()} (${watchers} watching)`);
 }

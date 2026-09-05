@@ -175,6 +175,64 @@ async function fetchWithRetry(url: string, params: Record<string, unknown>): Pro
 	}
 }
 
+export type RobloxCatalogItemRef = {
+	id: number;
+	itemType: 'Asset' | 'Bundle';
+};
+
+let catalogCsrfToken: string | null = null;
+
+async function postCatalogItemDetails(refs: RobloxCatalogItemRef[]): Promise<Record<string, unknown>[]> {
+	const body = { items: refs.map((r) => ({ itemType: r.itemType, id: r.id })) };
+
+	for (let attempt = 0; attempt < 3; attempt++) {
+		try {
+			const res = await axios.post('https://catalog.roblox.com/v1/catalog/items/details', body, {
+				headers: { ...ROBLOX_HEADERS, 'Content-Type': 'application/json', ...(catalogCsrfToken ? { 'x-csrf-token': catalogCsrfToken } : {}) },
+				timeout: ROBLOX_CATALOG_ABORT_MS
+			});
+			return Array.isArray(res.data?.data) ? (res.data.data as Record<string, unknown>[]) : [];
+		} catch (err: any) {
+			const status = err?.response?.status;
+			const freshToken = err?.response?.headers?.['x-csrf-token'];
+			if (status === 403 && typeof freshToken === 'string' && freshToken && freshToken !== catalogCsrfToken) {
+				catalogCsrfToken = freshToken;
+				continue;
+			}
+			if ((status === 429 || status === 503) && attempt < 2) {
+				await new Promise((r) => setTimeout(r, ROBLOX_CATALOG_POLL_MS * (attempt + 1)));
+				continue;
+			}
+			logger.log(`⚠️ [roblox-api] item details fetch failed ${status ?? '?'} — ${err?.message || err}`);
+			return [];
+		}
+	}
+
+	return [];
+}
+
+export async function fetchCatalogItemsByRefs(refs: RobloxCatalogItemRef[], knownThumbnails?: Map<number, string | null>): Promise<RobloxCatalogItem[]> {
+	const out: RobloxCatalogItem[] = [];
+
+	for (let i = 0; i < refs.length; i += 100) {
+		const rows = await postCatalogItemDetails(refs.slice(i, i + 100));
+		const items = filterVerifiedCreators(rows.map((row) => mapCatalogRow(row)).filter((x): x is RobloxCatalogItem => x != null));
+		if (items.length === 0) continue;
+
+		for (const item of items) item.thumbnailUrl = knownThumbnails?.get(item.id) ?? null;
+
+		const missingThumbnails = items.filter((x) => !x.thumbnailUrl);
+		if (missingThumbnails.length > 0) {
+			const thumbMap = await fetchThumbnailUrls(missingThumbnails);
+			for (const item of missingThumbnails) item.thumbnailUrl = thumbMap.get(item.id) ?? null;
+		}
+
+		out.push(...items);
+	}
+
+	return out;
+}
+
 export function robloxCatalogItemUrl(id: number): string {
 	return `https://www.roblox.com/catalog/${id}`;
 }

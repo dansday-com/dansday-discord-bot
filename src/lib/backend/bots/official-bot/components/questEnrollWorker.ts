@@ -1,4 +1,4 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, type Client } from 'discord.js';
+import { EmbedBuilder, type Client } from 'discord.js';
 import { getEmbedConfig, runQuestUserAutomation, type QuestAutomationResult } from '../../../config.js';
 import { logger } from '../../../../utils/index.js';
 import db from '../../../../database.js';
@@ -53,17 +53,11 @@ async function postQuestResult(job: QuestEnrollJob | QuestClaimAllJob, result: Q
 	const embed = new EmbedBuilder()
 		.setColor(result.ok ? embedConfig.COLOR : 0xed4245)
 		.setTitle(result.title)
-		.setDescription(result.description)
-		.addFields(
-			{ name: 'Member', value: `<@${job.requesterId}>`, inline: false },
-			{ name: 'Reward', value: (result.rewardLine || '—').slice(0, 1024), inline: false }
-		)
+		.setDescription(`${result.description}\n\n[🖥️ Open in Discord](${result.questUrl})`.slice(0, 4096))
+		.addFields({ name: 'Reward', value: (result.rewardLine || '—').slice(0, 1024), inline: false })
 		.setFooter({ text: embedConfig.FOOTER })
 		.setTimestamp();
-	const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-		new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(result.questUrl).setLabel('Open in Discord').setEmoji('🖥️')
-	);
-	await channel.send({ embeds: [embed], components: [row] });
+	await channel.send({ content: `<@${job.requesterId}>`, embeds: [embed] });
 }
 
 async function postQuestError(job: QuestEnrollJob | QuestClaimAllJob, questId: string, message: string): Promise<void> {

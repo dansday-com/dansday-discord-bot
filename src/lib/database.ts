@@ -786,7 +786,7 @@ export async function getServerIdsForPanel(panelId: number): Promise<number[]> {
 		.select({ id: schema.servers.id })
 		.from(schema.servers)
 		.innerJoin(schema.bots, eq(schema.servers.bot_id, schema.bots.id))
-		.where(eq(schema.bots.panel_id, Number(panelId)));
+		.where(and(eq(schema.bots.panel_id, Number(panelId)), isNull(schema.servers.deleted_at)));
 	return rows.map((r) => Number(r.id)).filter((n) => Number.isFinite(n));
 }
 

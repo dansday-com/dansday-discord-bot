@@ -1,4 +1,5 @@
-import db, { getMaxPublicXpEventId, listPublicXpEventsAfter } from '../../../database.js';
+import { getMaxPublicXpEventId, listPublicXpEventsAfter } from '../../../database.js';
+import { listLivePublicServers } from '../server-slug/index.js';
 import { resolvePublicStatisticsSnapshot } from './stream.js';
 import { aggregatePanelStatistics, type AggregatedPanelStats } from './aggregate.js';
 import type { PublicPageStats } from './shape.js';
@@ -29,18 +30,14 @@ let lastEventId = 0;
 async function listServers() {
 	if (serverList.length && Date.now() - serverListAt < SERVER_LIST_TTL_MS) return serverList;
 
-	let rows: any[] = [];
+	let rows: Awaited<ReturnType<typeof listLivePublicServers>> = [];
 	try {
-		rows = await (db as any).listPublicServers();
+		rows = await listLivePublicServers();
 	} catch (_) {
 		return serverList;
 	}
-	if (!Array.isArray(rows)) return serverList;
 
-	serverList = rows
-		.filter((r: any) => !r?.deleted_at)
-		.slice(0, MAX_SERVERS)
-		.map((r: any) => ({ id: Number(r.id), name: String(r.name || 'Server') }));
+	serverList = rows.slice(0, MAX_SERVERS).map((r) => ({ id: Number(r.item.id), name: String(r.item.name || 'Server') }));
 	serverListAt = Date.now();
 
 	const ids = new Set(serverList.map((s) => s.id));

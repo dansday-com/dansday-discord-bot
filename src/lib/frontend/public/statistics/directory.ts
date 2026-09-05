@@ -1,6 +1,5 @@
-import db from '../../../database.js';
 import { getRedisClient } from '../../../redis.js';
-import { listIndexedSlugsForItems } from '../../../utils/index.js';
+import { listLivePublicServers } from '../server-slug/index.js';
 import { resolvePublicStatisticsSnapshot } from './stream.js';
 import { aggregatePanelStatistics, type AggregatedPanelStats } from './aggregate.js';
 
@@ -37,17 +36,13 @@ export async function resolveServerDirectory(): Promise<ServerDirectory> {
 		} catch (_) {}
 	}
 
-	let rows: any[] = [];
+	let slugged: Awaited<ReturnType<typeof listLivePublicServers>> = [];
 	try {
-		rows = await (db as any).listPublicServers();
+		slugged = (await listLivePublicServers()).slice(0, MAX_SERVERS);
 	} catch (_) {
 		return EMPTY_DIRECTORY;
 	}
-	if (!Array.isArray(rows) || rows.length === 0) return EMPTY_DIRECTORY;
-
-	const slugged = listIndexedSlugsForItems(rows, (s: any) => s.name || 'server')
-		.filter((r: any) => !r.item.deleted_at)
-		.slice(0, MAX_SERVERS);
+	if (slugged.length === 0) return EMPTY_DIRECTORY;
 
 	const snapshots = await Promise.all(
 		slugged.map((r: any) =>

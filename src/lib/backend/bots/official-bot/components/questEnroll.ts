@@ -68,14 +68,20 @@ function tokenFromModal(interaction: ModalSubmitInteraction): string {
 	return interaction.fields.getTextInputValue(TOKEN_FIELD_ID)?.trim() || interaction.fields.getTextInputValue(LEGACY_TOKEN_FIELD_ID)?.trim() || '';
 }
 
-async function readQuestNotifierSettings(serverId: number): Promise<{ autoQuest: boolean; httpProxyUrl: string | null }> {
+async function readQuestNotifierSettings(serverId: number): Promise<{ autoQuest: boolean; httpProxyUrl: string | null; channelId: string | null }> {
 	const row = await db.getServerSettings(serverId, serverSettingsComponent.discord_quest_notifier).catch(() => null);
 	const rawSettings = row && !Array.isArray(row) ? row.settings : null;
 	const s = rawSettings && typeof rawSettings === 'object' ? (rawSettings as Record<string, unknown>) : {};
 	return {
 		autoQuest: s.auto_quest !== false,
-		httpProxyUrl: typeof s.http_proxy_url === 'string' && s.http_proxy_url.trim() ? s.http_proxy_url.trim() : null
+		httpProxyUrl: typeof s.http_proxy_url === 'string' && s.http_proxy_url.trim() ? s.http_proxy_url.trim() : null,
+		channelId: typeof s.channel_id === 'string' && s.channel_id.trim() ? s.channel_id.trim() : null
 	};
+}
+
+async function announceTargetLine(guildId: string, userId: string, channelId: string | null): Promise<string> {
+	if (!channelId) return translate('questEnroll.announceDisabled', guildId, userId);
+	return translate('questEnroll.announceInChannel', guildId, userId, { channel: `<#${channelId}>` });
 }
 
 function buildTokenModal(customId: string, title: string): ModalBuilder {
@@ -229,11 +235,6 @@ export async function handleQuestClaimAllModalSubmit(interaction: ModalSubmitInt
 		return;
 	}
 
-	if (!interaction.channelId) {
-		await interaction.reply({ content: 'Unable to determine the channel. Please try again.', flags: 64 }).catch(() => null);
-		return;
-	}
-
 	if (isUserEnrollRunning(interaction.user.id)) {
 		await interaction.reply({ content: await translate('questEnroll.alreadyRunning', guildId, interaction.user.id), flags: 64 }).catch(() => null);
 		return;
@@ -300,14 +301,16 @@ export async function handleQuestClaimAllModalSubmit(interaction: ModalSubmitInt
 	const pendingEmbed = new EmbedBuilder()
 		.setColor(embedConfig.COLOR)
 		.setTitle(await translate('questEnroll.claimAllPendingTitle', guildId, interaction.user.id))
-		.setDescription(`${await translate('questEnroll.claimAllPendingDescription', guildId, interaction.user.id, { count: queued.length })}${skippedBlock}`)
+		.setDescription(
+			`${await announceTargetLine(guildId, interaction.user.id, settings.channelId)}\n\n${await translate('questEnroll.claimAllPendingDescription', guildId, interaction.user.id, { count: queued.length })}${skippedBlock}`
+		)
 		.setFooter({ text: embedConfig.FOOTER })
 		.setTimestamp();
 	await interaction.editReply({ embeds: [pendingEmbed] });
 
 	queueQuestClaimAllJob({
 		client: interaction.client,
-		channelId: interaction.channelId,
+		channelId: settings.channelId,
 		guildId,
 		questIds: queued.map((q) => q.id),
 		requesterTag: interaction.user.tag,
@@ -379,11 +382,6 @@ export async function handleQuestEnrollModalSubmit(interaction: ModalSubmitInter
 		return;
 	}
 
-	if (!interaction.channelId) {
-		await interaction.reply({ content: 'Unable to determine the channel. Please try again.', flags: 64 }).catch(() => null);
-		return;
-	}
-
 	if (isUserEnrollRunning(interaction.user.id)) {
 		await interaction
 			.reply({ content: await translate('questEnroll.alreadyRunning', interaction.guild!.id, interaction.user.id), flags: 64 })
@@ -435,7 +433,9 @@ export async function handleQuestEnrollModalSubmit(interaction: ModalSubmitInter
 	const pendingEmbed = new EmbedBuilder()
 		.setColor(embedConfig.COLOR)
 		.setTitle(await translate('questEnroll.pendingTitle', interaction.guild!.id, interaction.user.id))
-		.setDescription(await translate('questEnroll.pendingDescription', interaction.guild!.id, interaction.user.id))
+		.setDescription(
+			`${await announceTargetLine(interaction.guild!.id, interaction.user.id, settings.channelId)}\n\n${await translate('questEnroll.pendingDescription', interaction.guild!.id, interaction.user.id)}`
+		)
 		.setFooter({ text: embedConfig.FOOTER })
 		.setTimestamp();
 	await interaction.editReply({ embeds: [pendingEmbed] });
@@ -444,7 +444,7 @@ export async function handleQuestEnrollModalSubmit(interaction: ModalSubmitInter
 
 	queueQuestEnrollJob({
 		client: interaction.client,
-		channelId: interaction.channelId,
+		channelId: settings.channelId,
 		guildId: interaction.guild!.id,
 		questId,
 		requesterTag: interaction.user.tag,

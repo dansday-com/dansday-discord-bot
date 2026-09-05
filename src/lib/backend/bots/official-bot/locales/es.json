@@ -432,7 +432,7 @@
 		"alreadyClaimed": "Ya reclamada",
 		"alreadyClaimedDescription": "Ya te inscribiste antes en **{questName}** y tu recompensa ya se reclamó. Cada misión solo puede reclamarse una vez por miembro.",
 		"pendingTitle": "⏳ Ejecutándose en segundo plano",
-		"pendingDescription": "En breve se publicará en este canal un mensaje con el resultado.\n\nTu token **no** se guarda en nuestra base de datos.\n\n**Riesgo:** Discord puede restringir o suspender la **cuenta de usuario** vinculada a ese token; en algunos casos también podrían verse afectados el **bot o el servidor**. Este no es un comportamiento oficial de Discord: has elegido continuar.",
+		"pendingDescription": "Tu token **no** se guarda en nuestra base de datos.\n\n**Riesgo:** Discord puede restringir o suspender la **cuenta de usuario** vinculada a ese token; en algunos casos también podrían verse afectados el **bot o el servidor**. Este no es un comportamiento oficial de Discord: has elegido continuar.",
 		"precheckNotFoundTitle": "La misión no está en esta cuenta",
 		"precheckNotFoundDescription": "Esta misión no aparece en la cuenta de Discord vinculada a tu token. Abre **Discord → Misiones**, acepta la misión si es necesario y vuelve a intentarlo.",
 		"precheckExpiredTitle": "Misión caducada",
@@ -442,10 +442,12 @@
 		"precheckCompletedTitle": "Misión ya completada",
 		"precheckCompletedDescription": "Los objetivos de la misión ya están completados en esta **cuenta de Discord**. Reclama cualquier recompensa pendiente en **Discord → Misiones** si aún no lo has hecho: la inscripción automática no puede añadir más progreso.",
 		"claimAllPendingTitle": "⏳ Reclamando todas las misiones",
-		"claimAllPendingDescription": "Inscribiendo **{count}** misión(es) una por una. Cada resultado se publica en este canal.\n\nTu token **no** se guarda en nuestra base de datos.\n\n**Riesgo:** Discord puede restringir o suspender la **cuenta de usuario** vinculada a ese token; en algunos casos también podrían verse afectados el **bot o el servidor**. Este no es un comportamiento oficial de Discord: has elegido continuar.",
+		"claimAllPendingDescription": "Inscribiendo **{count}** misión(es) una por una.\n\nTu token **no** se guarda en nuestra base de datos.\n\n**Riesgo:** Discord puede restringir o suspender la **cuenta de usuario** vinculada a ese token; en algunos casos también podrían verse afectados el **bot o el servidor**. Este no es un comportamiento oficial de Discord: has elegido continuar.",
 		"claimAllNothingTitle": "Nada que reclamar",
 		"claimAllNothingDescription": "Ninguna misión activa se puede inscribir en esta cuenta de Discord ahora mismo.",
 		"autoQuestDisabled": "La inscripción automática de misiones está desactivada. Contacta con la administración del servidor.",
-		"alreadyRunning": "Ya tienes una misión automática en curso. Espera a que termine antes de iniciar otra."
+		"alreadyRunning": "Ya tienes una misión automática en curso. Espera a que termine antes de iniciar otra.",
+		"announceInChannel": "Cada resultado se publica en {channel}.",
+		"announceDisabled": "No hay canal de misiones configurado, así que no se publica nada: las misiones reclamadas solo se marcan en la lista."
 	}
 }

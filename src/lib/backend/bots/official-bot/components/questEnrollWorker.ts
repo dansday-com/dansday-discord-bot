@@ -13,7 +13,7 @@ export function isUserEnrollRunning(requesterId: string): boolean {
 
 export type QuestEnrollJob = {
 	client: Client;
-	channelId: string;
+	channelId: string | null;
 	guildId: string;
 	questId: string;
 	requesterTag: string;
@@ -36,7 +36,8 @@ export function queueQuestClaimAllJob(job: QuestClaimAllJob): void {
 	void runQuestClaimAllJob(job).finally(() => activeEnrollUsers.delete(job.requesterId));
 }
 
-async function textChannelForJob(client: Client, channelId: string) {
+async function textChannelForJob(client: Client, channelId: string | null) {
+	if (!channelId) return null;
 	const channel = await client.channels.fetch(channelId).catch(() => null);
 	if (!channel || !channel.isTextBased()) {
 		await logger.log(`⚠️ Quest enroll: channel ${channelId} missing for result embed`);

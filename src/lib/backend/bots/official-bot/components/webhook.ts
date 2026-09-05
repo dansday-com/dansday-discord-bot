@@ -61,6 +61,7 @@ async function resolveCategoryRoleMentions(serverId: any, categories: string[]):
 	if (!Array.isArray(categories) || categories.length === 0) return '';
 	const mentions: string[] = [];
 	if (categories.includes('everyone')) mentions.push('@everyone');
+	if (categories.includes('here')) mentions.push('@here');
 
 	const permRow = await db.getServerSettings(serverId, 'permissions').catch(() => null);
 	const permSettings = permRow && Array.isArray(permRow) ? permRow[0]?.settings : permRow?.settings;
@@ -245,6 +246,14 @@ async function handleSendEmbed(payload) {
 		if (roleIds && roleIds.length > 0) {
 			const mentions = [];
 			for (const roleId of roleIds) {
+				if (roleId === 'everyone') {
+					mentions.push('@everyone');
+					continue;
+				}
+				if (roleId === 'here') {
+					mentions.push('@here');
+					continue;
+				}
 				const role = guild.roles.cache.get(roleId);
 				if (role) {
 					mentions.push(`<@&${roleId}>`);

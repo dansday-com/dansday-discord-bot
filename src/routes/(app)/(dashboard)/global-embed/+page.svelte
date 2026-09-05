@@ -9,7 +9,8 @@
 	let { data }: PageProps = $props();
 
 	const MENTION_CATEGORIES = [
-		{ discord_role_id: 'everyone', name: 'Everyone', color: '#3b82f6', position: 3 },
+		{ discord_role_id: 'everyone', name: '@everyone', color: '#3b82f6', position: 4 },
+		{ discord_role_id: 'here', name: '@here', color: '#8b5cf6', position: 3 },
 		{ discord_role_id: 'admin', name: 'Admin Roles', color: '#ef4444', position: 2 },
 		{ discord_role_id: 'staff', name: 'Staff Roles', color: '#f59e0b', position: 1 }
 	];

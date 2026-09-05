@@ -11,6 +11,15 @@
 
 	let { data }: PageProps = $props();
 
+	type MentionRole = { discord_role_id: string; name: string; color: string; position: number | null };
+
+	const GLOBAL_MENTIONS: MentionRole[] = [
+		{ discord_role_id: 'everyone', name: '@everyone', color: '#3b82f6', position: Number.MAX_SAFE_INTEGER },
+		{ discord_role_id: 'here', name: '@here', color: '#8b5cf6', position: Number.MAX_SAFE_INTEGER - 1 }
+	];
+
+	const mentionRoles = $derived<MentionRole[]>([...GLOBAL_MENTIONS, ...((data.roles as MentionRole[]) ?? [])]);
+
 	let title = $state('');
 	let description = $state('');
 	let footer = $state(data.mainConfig?.footer ?? DEFAULT_MAIN_EMBED_FOOTER);
@@ -41,8 +50,9 @@
 		return data.channels.find((c) => c.discord_channel_id === id)?.name ?? id;
 	}
 
-	function roleName(id: string) {
-		return (data.roles as { discord_role_id: string; name: string }[]).find((r) => r.discord_role_id === id)?.name ?? id;
+	function mentionLabel(id: string) {
+		const name = mentionRoles.find((r) => r.discord_role_id === id)?.name ?? id;
+		return name.startsWith('@') ? name : `@${name}`;
 	}
 
 	async function sendEmbed() {
@@ -113,17 +123,15 @@
 			/>
 		</div>
 
-		{#if (data.roles as unknown[]).length > 0}
-			<div class="mb-4">
-				<label class="text-ash-300 mb-2 block text-xs font-medium">Role Mentions</label>
-				<RolePicker
-					roles={data.roles as any}
-					value={selectedRoles}
-					placeholder="Select roles to mention..."
-					onchange={(v) => (selectedRoles = v as string[])}
-				/>
-			</div>
-		{/if}
+		<div class="mb-4">
+			<label class="text-ash-300 mb-2 block text-xs font-medium">Role Mentions</label>
+			<RolePicker
+				roles={mentionRoles as any}
+				value={selectedRoles}
+				placeholder="Select roles to mention..."
+				onchange={(v) => (selectedRoles = v as string[])}
+			/>
+		</div>
 
 		<button
 			onclick={sendEmbed}
@@ -137,10 +145,7 @@
 		{#if selectedRoles.length > 0}
 			<div class="mt-4 rounded-lg bg-[#313338] p-3">
 				<p class="text-xs text-[#949ba4]">
-					{selectedRoles
-						.map(roleName)
-						.map((n) => `@${n}`)
-						.join(' ')}
+					{selectedRoles.map(mentionLabel).join(' ')}
 				</p>
 			</div>
 		{/if}

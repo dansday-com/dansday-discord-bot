@@ -27,7 +27,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 
 		const { title, description, image_url, uploaded_image_path, color, footer, mention_categories } = bodyObj;
 
-		const VALID_CATEGORIES = ['everyone', 'admin', 'staff'];
+		const VALID_CATEGORIES = ['everyone', 'here', 'admin', 'staff'];
 		const mentionCategories = Array.isArray(mention_categories) ? mention_categories.filter((c: unknown) => VALID_CATEGORIES.includes(c as string)) : [];
 
 		if (!title) {

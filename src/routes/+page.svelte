@@ -4,7 +4,8 @@
 	import { publicServerPath, COMMUNITY_DISCORD_URL, OFFICIAL_BOT_INVITE_URL, SOURCE_REPO_URL } from '$lib/url.js';
 	import type { AggregatedPanelStats } from '$lib/frontend/public/statistics/aggregate.js';
 	import { PageShell, reveal, REVEAL_CLASS } from '$lib/frontend/components/shell';
-	import HeroScene from '$lib/frontend/components/landing/HeroScene.svelte';
+	import GlobeScene from '$lib/frontend/components/landing/GlobeScene.svelte';
+	import { createLiveGlobalStatistics } from '$lib/frontend/public/statistics/liveGlobal.svelte.js';
 
 	type Totals = AggregatedPanelStats;
 	type Live = { label: string; value: string; live?: boolean };
@@ -15,7 +16,10 @@
 	const compact = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 });
 	const fmt = (n: number) => compact.format(Math.max(0, Math.round(n || 0)));
 
-	const hasLive = $derived((data.totals?.servers_counted ?? 0) > 0);
+	const feed = createLiveGlobalStatistics(data.totals);
+	$effect(() => feed.connect());
+
+	const hasLive = $derived((feed.totals?.servers_counted ?? 0) > 0);
 
 	let broken = $state<Record<string, boolean>>({});
 
@@ -66,10 +70,10 @@
 	}
 
 	const heroStats = $derived([
-		{ label: 'Servers', raw: data.totals.servers_counted },
-		{ label: 'Members', raw: data.totals.members_total },
-		{ label: 'XP tracked', raw: data.totals.leveling_total_xp },
-		{ label: 'Voice hours', raw: data.totals.leveling_total_voice_minutes / 60 }
+		{ label: 'Servers', raw: feed.totals.servers_counted },
+		{ label: 'Members', raw: feed.totals.members_total },
+		{ label: 'XP tracked', raw: feed.totals.leveling_total_xp },
+		{ label: 'Voice hours', raw: feed.totals.leveling_total_voice_minutes / 60 }
 	]);
 
 	const ICON_TONES = ['text-primary', 'text-secondary', 'text-brand-gold-deep'];
@@ -484,16 +488,20 @@
 
 <PageShell>
 	<div class="@container">
-		<section class="relative isolate flex min-h-[calc(100dvh-6rem)] flex-col justify-between gap-10 pb-8">
-			<HeroScene />
+		<section class="relative isolate flex min-h-[calc(100dvh-6rem)] flex-col justify-between gap-6 pb-8 sm:gap-10">
+			<div class="grid items-center gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,40%)] lg:gap-12">
+				<div class="@container">
+					<p class="display-line animate-rise text-primary block whitespace-nowrap uppercase" style="--ch: 9; --rise-delay: 80ms">One panel</p>
+					<p class="display-line animate-rise text-primary block whitespace-nowrap uppercase" style="--ch: 12; --rise-delay: 200ms">Every module</p>
+					<h1 class="animate-rise text-base-content/70 mt-6 text-[14px] leading-[1.55] sm:max-w-[44ch] 2xl:text-[17px]" style="--rise-delay: 380ms">
+						Leveling, an XP economy, moderation, embeds, giveaways and live public pages — every module configured from one free web panel instead of slash
+						commands.
+					</h1>
+				</div>
 
-			<div>
-				<p class="display-line animate-rise text-primary block whitespace-nowrap uppercase" style="--ch: 9; --rise-delay: 80ms">One panel</p>
-				<p class="display-line animate-rise text-primary block whitespace-nowrap uppercase" style="--ch: 12; --rise-delay: 200ms">Every module</p>
-				<h1 class="animate-rise text-base-content/70 mt-6 text-[14px] leading-[1.55] sm:max-w-[44ch] 2xl:text-[17px]" style="--rise-delay: 380ms">
-					Leveling, an XP economy, moderation, embeds, giveaways and live public pages — every module configured from one free web panel instead of slash
-					commands.
-				</h1>
+				<div class="animate-rise" style="--rise-delay: 480ms">
+					<GlobeScene gain={feed.gain} servers={feed.servers} live={feed.live} />
+				</div>
 			</div>
 
 			<div class="flex flex-col gap-8">

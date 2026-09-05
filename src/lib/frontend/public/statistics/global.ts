@@ -1,0 +1,152 @@
+import db from '../../../database.js';
+import { resolvePublicStatisticsSnapshot } from './stream.js';
+import { aggregatePanelStatistics, type AggregatedPanelStats } from './aggregate.js';
+import type { PublicPageStats } from './shape.js';
+
+export type GlobalServerSample = { name: string; xp: number };
+
+export type GlobalStatisticsSnapshot = {
+	totals: AggregatedPanelStats;
+	servers: GlobalServerSample[];
+	updated_at: number;
+};
+
+type Listener = (snapshot: GlobalStatisticsSnapshot) => void;
+
+const POLL_MS = 10_000;
+const SERVER_LIST_TTL_MS = 60_000;
+const SNAPSHOT_FRESH_MS = 20_000;
+const REFRESH_PER_POLL = 25;
+const MAX_SERVERS = 200;
+const MAX_SAMPLES = 12;
+
+const latest = new Map<number, PublicPageStats>();
+const stamps = new Map<number, number>();
+
+let serverList: { id: number; name: string }[] = [];
+let serverListAt = 0;
+let cursor = 0;
+
+async function listServers() {
+	if (serverList.length && Date.now() - serverListAt < SERVER_LIST_TTL_MS) return serverList;
+
+	let rows: any[] = [];
+	try {
+		rows = await (db as any).listPublicServers();
+	} catch (_) {
+		return serverList;
+	}
+	if (!Array.isArray(rows)) return serverList;
+
+	serverList = rows
+		.filter((r: any) => !r?.deleted_at)
+		.slice(0, MAX_SERVERS)
+		.map((r: any) => ({ id: Number(r.id), name: String(r.name || 'Server') }));
+	serverListAt = Date.now();
+
+	const ids = new Set(serverList.map((s) => s.id));
+	for (const id of [...latest.keys()]) {
+		if (!ids.has(id)) {
+			latest.delete(id);
+			stamps.delete(id);
+		}
+	}
+
+	return serverList;
+}
+
+async function refresh(ids: number[]) {
+	await Promise.all(
+		ids.map(async (id) => {
+			try {
+				const snapshot = await resolvePublicStatisticsSnapshot(id);
+				if (!snapshot?.stats) return;
+				latest.set(id, snapshot.stats);
+				stamps.set(id, Date.now());
+			} catch (_) {}
+		})
+	);
+}
+
+export async function resolveGlobalStatistics(): Promise<GlobalStatisticsSnapshot> {
+	const servers = await listServers();
+
+	const unseen = servers.filter((s) => !latest.has(s.id)).map((s) => s.id);
+	if (unseen.length) {
+		await refresh(unseen);
+	} else if (servers.length) {
+		const due: number[] = [];
+		for (let n = 0; n < servers.length && due.length < REFRESH_PER_POLL; n++) {
+			const server = servers[(cursor + n) % servers.length];
+			if (Date.now() - (stamps.get(server.id) || 0) >= SNAPSHOT_FRESH_MS) due.push(server.id);
+		}
+		cursor = (cursor + Math.max(1, due.length)) % servers.length;
+		if (due.length) await refresh(due);
+	}
+
+	const stats = servers.map((s) => latest.get(s.id) ?? null);
+
+	const samples = servers
+		.map((s, i) => ({ name: s.name, xp: Number(stats[i]?.leveling_total_xp) || 0 }))
+		.filter((s) => s.xp > 0)
+		.sort((a, b) => b.xp - a.xp)
+		.slice(0, MAX_SAMPLES);
+
+	return { totals: aggregatePanelStatistics(stats), servers: samples, updated_at: Date.now() };
+}
+
+const listeners = new Set<Listener>();
+let timer: ReturnType<typeof setInterval> | null = null;
+let lastSnapshot: GlobalStatisticsSnapshot | null = null;
+let lastJson: string | null = null;
+
+function emit(snapshot: GlobalStatisticsSnapshot) {
+	for (const fn of listeners) {
+		try {
+			fn(snapshot);
+		} catch (_) {}
+	}
+}
+
+async function poll() {
+	if (listeners.size === 0) return;
+	let snapshot: GlobalStatisticsSnapshot;
+	try {
+		snapshot = await resolveGlobalStatistics();
+	} catch (_) {
+		return;
+	}
+	const json = JSON.stringify({ totals: snapshot.totals, servers: snapshot.servers });
+	lastSnapshot = snapshot;
+	if (json === lastJson) return;
+	lastJson = json;
+	emit(snapshot);
+}
+
+export function subscribeGlobalStatistics(fn: Listener): () => void {
+	listeners.add(fn);
+
+	if (lastSnapshot && Date.now() - lastSnapshot.updated_at < POLL_MS * 2) {
+		try {
+			fn(lastSnapshot);
+		} catch (_) {}
+	} else {
+		resolveGlobalStatistics()
+			.then((snapshot) => {
+				lastSnapshot = snapshot;
+				lastJson = JSON.stringify({ totals: snapshot.totals, servers: snapshot.servers });
+				emit(snapshot);
+			})
+			.catch(() => {});
+	}
+
+	if (!timer) timer = setInterval(() => void poll(), POLL_MS);
+
+	return () => {
+		listeners.delete(fn);
+		if (listeners.size === 0 && timer) {
+			clearInterval(timer);
+			timer = null;
+		}
+	};
+}

@@ -52,7 +52,7 @@ export const GET: RequestHandler = async () => {
 		{ loc: `${baseUrl}/`, changefreq: 'weekly' as const, priority: 1.0, lastmod: new Date().toISOString() },
 		{ loc: `${baseUrl.replace(/\/$/, '')}/servers`, changefreq: 'daily' as const, priority: 0.9, lastmod: new Date().toISOString() },
 		{ loc: `${baseUrl.replace(/\/$/, '')}/tasks`, changefreq: 'weekly' as const, priority: 0.8, lastmod: new Date().toISOString() },
-		{ loc: `${baseUrl.replace(/\/$/, '')}/items`, changefreq: 'daily' as const, priority: 0.8, lastmod: new Date().toISOString() },
+		{ loc: `${baseUrl.replace(/\/$/, '')}/shop`, changefreq: 'daily' as const, priority: 0.8, lastmod: new Date().toISOString() },
 		{ loc: `${baseUrl.replace(/\/$/, '')}/quests`, changefreq: 'daily' as const, priority: 0.9, lastmod: new Date().toISOString() },
 		{ loc: `${baseUrl.replace(/\/$/, '')}/roblox`, changefreq: 'daily' as const, priority: 0.9, lastmod: new Date().toISOString() },
 		{ loc: `${baseUrl.replace(/\/$/, '')}/docs`, changefreq: 'monthly' as const, priority: 0.7, lastmod: new Date().toISOString() },

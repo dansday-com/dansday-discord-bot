@@ -712,7 +712,7 @@
 						<h2 class={H2}>The shop catalog</h2>
 						<p class={LEAD}>{data.buyableItemCount} of {data.itemCount} items on sale right now. The rest stay usable once owned.</p>
 					</div>
-					<a href="/items" class="{BTN} btn-outline btn-primary shrink-0">
+					<a href="/shop" class="{BTN} btn-outline btn-primary shrink-0">
 						All {data.itemCount} items
 						<i class="fas fa-arrow-right"></i>
 					</a>
@@ -720,7 +720,7 @@
 				<div class="border-base-300 grid grid-cols-1 border-t">
 					{#each data.topItems as item, i (item.id)}
 						<a
-							href="/items"
+							href="/shop"
 							use:reveal
 							class="{REVEAL_CLASS} group border-base-300 grid grid-cols-[34px_1fr_auto] items-center gap-3 border-b px-0.5 py-3"
 							style="transition-delay: {i * 60}ms"

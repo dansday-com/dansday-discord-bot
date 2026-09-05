@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
+	import { lockScroll } from '$lib/frontend/scrollLock.js';
 
 	type MemberRole = { name: string; color: string | null; position?: number };
 
@@ -33,6 +34,11 @@
 	const isAssets = $derived(mode === 'assets' && !!assets);
 
 	let visible = $state(false);
+
+	$effect(() => {
+		if (!visible) return;
+		return lockScroll();
+	});
 	let cardEl: HTMLDivElement | undefined = $state();
 	let downloading = $state(false);
 	function memberName(m: MemberData): string {
@@ -68,16 +74,16 @@
 	});
 
 	function parseRoleHex(color: string | null | undefined): string {
-		if (!color) return '#245f73';
+		if (!color) return '#e43d12';
 		const s = String(color).trim();
-		if (s === '' || s === '0' || s.toLowerCase() === 'null') return '#245f73';
+		if (s === '' || s === '0' || s.toLowerCase() === 'null') return '#e43d12';
 		if (s.startsWith('#')) return s;
 		if (/^[0-9A-Fa-f]{6}$/.test(s)) return `#${s}`;
 		const n = Number.parseInt(s, 10);
 		if (Number.isFinite(n) && n > 0 && n <= 0xffffff) {
 			return `#${n.toString(16).padStart(6, '0')}`;
 		}
-		return '#245f73';
+		return '#e43d12';
 	}
 
 	const roleColor = $derived(parseRoleHex(highestRole?.color));
@@ -120,19 +126,19 @@
 	const RADIUS = 20;
 
 	const C = {
-		text: '#1a343f',
-		textMuted: 'rgba(26,52,63,0.58)',
-		textSubtle: 'rgba(26,52,63,0.45)',
-		textFaint: 'rgba(26,52,63,0.32)',
-		brick: '#733e24',
-		hot: '#245f73',
-		peach: '#3a6d82',
+		text: '#2e211b',
+		textMuted: 'rgba(46,33,27,0.58)',
+		textSubtle: 'rgba(46,33,27,0.45)',
+		textFaint: 'rgba(46,33,27,0.32)',
+		brick: '#d6536d',
+		hot: '#e43d12',
+		peach: '#b8324e',
 		cardBg1: 'rgba(255,255,255,0.97)',
-		cardBg2: 'rgba(242,240,239,0.95)',
-		statBg: 'rgba(36,95,115,0.06)',
-		statBorder: 'rgba(36,95,115,0.1)',
-		border: 'rgba(187,189,188,0.55)',
-		footerLine: 'rgba(187,189,188,0.35)'
+		cardBg2: 'rgba(235,233,225,0.95)',
+		statBg: 'rgba(228,61,18,0.06)',
+		statBorder: 'rgba(228,61,18,0.1)',
+		border: 'rgba(196,189,174,0.55)',
+		footerLine: 'rgba(196,189,174,0.35)'
 	};
 
 	function loadImg(src: string): Promise<HTMLImageElement> {
@@ -391,12 +397,12 @@
 			ctx.clip();
 			ctx.drawImage(serverImg, PAD_X, y, 24, 24);
 			ctx.restore();
-			ctx.strokeStyle = 'rgba(187,189,188,0.4)';
+			ctx.strokeStyle = 'rgba(196,189,174,0.4)';
 			ctx.lineWidth = 1;
 			roundRect(ctx, PAD_X, y, 24, 24, 6);
 			ctx.stroke();
 		} else {
-			ctx.fillStyle = 'rgba(36,95,115,0.12)';
+			ctx.fillStyle = 'rgba(228,61,18,0.12)';
 			roundRect(ctx, PAD_X, y, 24, 24, 6);
 			ctx.fill();
 			ctx.fillStyle = C.hot;
@@ -440,7 +446,7 @@
 		const ringR = (avatarSize + ringPad * 2) / 2;
 		const avatarR = avatarSize / 2;
 
-		const ringColors = [rc, C.hot, '#5a9eb4', rc];
+		const ringColors = [rc, C.hot, '#ffa2b6', rc];
 		const segCount = 60;
 		for (let i = 0; i < segCount; i++) {
 			const t = i / segCount;
@@ -671,37 +677,63 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<div class="mc-overlay" class:mc-overlay--visible={visible} onclick={handleBackdrop}>
-	<div class="mc-modal" class:mc-modal--visible={visible}>
-		<button class="mc-close" onclick={closeModal} aria-label="Close member card">
+<div
+	class="fixed inset-0 z-[99999] flex touch-none items-center justify-center overflow-hidden [overscroll-behavior:contain] p-6 transition-[background-color,backdrop-filter] duration-300 {visible
+		? 'bg-base-content/55 pointer-events-auto backdrop-blur-lg'
+		: 'pointer-events-none bg-transparent backdrop-blur-none'}"
+	onclick={handleBackdrop}
+>
+	<div
+		class="relative w-full max-w-[380px] transition-all duration-300 ease-out {visible
+			? 'translate-y-0 scale-100 opacity-100'
+			: 'translate-y-6 scale-90 opacity-0'}"
+	>
+		<button
+			class="border-base-300 bg-base-100/95 text-base-content absolute -top-3 -right-3 z-10 flex size-9 items-center justify-center rounded-full border text-sm shadow-lg transition-transform hover:scale-105"
+			onclick={closeModal}
+			aria-label="Close member card"
+		>
 			<i class="fas fa-times"></i>
 		</button>
 
-		<div class="mc-card" bind:this={cardEl}>
-			<div class="mc-card-bg">
-				<div class="mc-card-accent" style="background: linear-gradient(135deg, {accentColor}, #245f73);"></div>
+		<div
+			class="border-base-300 relative z-2 overflow-hidden rounded-[20px] border bg-linear-[165deg] from-white/97 to-[#ebe9e1]/95 shadow-[0_8px_40px_rgba(46,33,27,0.14)]"
+			bind:this={cardEl}
+		>
+			<div class="pointer-events-none absolute inset-0 overflow-hidden rounded-[20px]">
+				<div
+					class="absolute -top-[40%] -left-[20%] h-[80%] w-[140%] opacity-10"
+					style="background: radial-gradient(closest-side at 42% 62%, {accentColor}, color-mix(in srgb, #e43d12 65%, transparent) 55%, transparent 78%);"
+				></div>
 			</div>
 
-			<div class="mc-card-inner">
-				<div class="mc-card-header">
-					<div class="mc-server-badge">
+			<div class="relative px-5.5 pt-5 pb-4">
+				<div class="mb-4.5 flex items-center justify-between">
+					<div class="flex items-center gap-2">
 						{#if serverIcon}
-							<img src={serverIcon} alt="" class="mc-server-icon" />
+							<img src={serverIcon} alt="" class="border-base-300 size-6 rounded-md border object-cover" />
 						{:else}
-							<span class="mc-server-icon-ph"><i class="fas fa-shield-alt"></i></span>
+							<span class="bg-primary/12 text-primary flex size-6 items-center justify-center rounded-md text-[11px]"><i class="fas fa-shield-alt"></i></span>
 						{/if}
-						<span class="mc-server-name">{serverName}</span>
+						<span class="text-base-content/60 max-w-45 truncate text-[11px] font-bold tracking-[0.06em] uppercase">{serverName}</span>
 					</div>
 					{#if member.rank != null}
-						<span class="mc-rank">#{member.rank}</span>
+						<span
+							class="from-secondary to-primary border-base-content/15 rounded-lg border bg-linear-to-br px-2.5 py-[3px] text-xs font-extrabold text-white tabular-nums shadow-sm"
+						>
+							#{member.rank}
+						</span>
 					{/if}
 				</div>
 
-				<div class="mc-card-body">
-					<div class="mc-avatar-wrap">
-						<div class="mc-avatar-ring" style="--mc-ring-color: {accentColor};">
+				<div class="flex flex-col items-center text-center">
+					<div class="mb-3.5">
+						<div
+							class="rounded-full p-1 shadow-[0_4px_20px_rgba(228,61,18,0.18)]"
+							style="background: conic-gradient(from 220deg, {accentColor}, var(--color-primary), #ffa2b6, {accentColor});"
+						>
 							<img
-								class="mc-avatar"
+								class="block size-22 rounded-full border-[3px] border-white/97 object-cover"
 								src={avatarUrl(member)}
 								alt=""
 								width="88"
@@ -712,72 +744,59 @@
 						</div>
 					</div>
 
-					<h2 class="mc-name">
-						{memberName(member)}
-					</h2>
+					<h2 class="text-base-content mb-2 max-w-full truncate text-xl font-extrabold tracking-tight">{memberName(member)}</h2>
 
 					{#if highestRole}
-						<div class="mc-role-badge" style="--mc-role-c: {roleColor};">
-							<i class="fas fa-circle"></i>
+						<div
+							class="mb-4 inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1 text-[11px] font-bold text-(--rc)"
+							style="--rc: {roleColor}; background: color-mix(in srgb, var(--rc) 10%, transparent); border-color: color-mix(in srgb, var(--rc) 35%, transparent);"
+						>
+							<i class="fas fa-circle text-[6px]"></i>
 							{highestRole.name}
 						</div>
 					{/if}
 
 					{#if isAssets && assets}
-						<div class="mc-level-block">
-							<span class="mc-level-label">Portfolio P/L</span>
-							<span class="mc-level-value" style="color: {assets.pnl >= 0 ? '#1a7f57' : '#b23b2e'}">
+						<div class="mb-4.5 flex flex-col items-center gap-0.5">
+							<span class="text-base-content/45 text-[9px] font-bold tracking-widest uppercase">Portfolio P/L</span>
+							<span class="text-4xl leading-none font-black tracking-tight" style="color: {assets.pnl >= 0 ? '#1a7f57' : '#b23b2e'}">
 								{assets.pnl >= 0 ? '+' : ''}{assets.pnlPct.toFixed(2)}%
 							</span>
 						</div>
 
-						<div class="mc-stats-row">
-							<div class="mc-stat">
-								<i class="fas fa-coins"></i>
-								<span class="mc-stat-val">{fmtNum(assets.invested)}</span>
-								<span class="mc-stat-lbl">Invested</span>
-							</div>
-							<div class="mc-stat">
-								<i class="fas fa-sack-dollar"></i>
-								<span class="mc-stat-val">{fmtNum(assets.value)}</span>
-								<span class="mc-stat-lbl">Value</span>
-							</div>
-							<div class="mc-stat">
-								<i class="fas fa-layer-group"></i>
-								<span class="mc-stat-val">{assets.count}</span>
-								<span class="mc-stat-lbl">Assets</span>
-							</div>
+						<div class="mb-1.5 flex w-full gap-1.5">
+							{#each [{ icon: 'fa-coins', val: fmtNum(assets.invested), lbl: 'Invested' }, { icon: 'fa-sack-dollar', val: fmtNum(assets.value), lbl: 'Value' }, { icon: 'fa-layer-group', val: String(assets.count), lbl: 'Assets' }] as st}
+								<div class="border-primary/10 bg-primary/6 flex flex-1 flex-col items-center gap-0.75 rounded-xl border px-1.5 py-2.5">
+									<i class="fas {st.icon} text-primary text-xs"></i>
+									<span class="text-base-content text-sm font-extrabold tracking-tight tabular-nums">{st.val}</span>
+									<span class="text-base-content/45 text-[9px] font-semibold tracking-[0.04em] uppercase">{st.lbl}</span>
+								</div>
+							{/each}
 						</div>
 
-						<div class="mc-joined">
+						<div class="text-base-content/60 mt-2.5 flex items-center gap-1.5 text-[11px] font-semibold">
 							<i class="fas fa-chart-line"></i>
 							<span>{assets.pnl >= 0 ? '+' : ''}{fmtNum(assets.pnl)} XP profit/loss</span>
 						</div>
 					{:else}
-						<div class="mc-level-block">
-							<span class="mc-level-label">Level</span>
-							<span class="mc-level-value">{member.level ?? 0}</span>
+						<div class="mb-4.5 flex flex-col items-center gap-0.5">
+							<span class="text-base-content/45 text-[9px] font-bold tracking-widest uppercase">Level</span>
+							<span class="from-primary to-accent bg-linear-to-br bg-clip-text text-4xl leading-none font-black tracking-tight text-transparent">
+								{member.level ?? 0}
+							</span>
 						</div>
 
-						<div class="mc-stats-row">
-							<div class="mc-stat">
-								<i class="fas fa-star"></i>
-								<span class="mc-stat-val">{fmtNum(member.xp)}</span>
-								<span class="mc-stat-lbl">XP</span>
-							</div>
-							<div class="mc-stat">
-								<i class="fas fa-comments"></i>
-								<span class="mc-stat-val">{fmtNum(member.chat_total)}</span>
-								<span class="mc-stat-lbl">Messages</span>
-							</div>
-							<div class="mc-stat">
-								<i class="fas fa-microphone"></i>
-								<span class="mc-stat-val">{fmtNum(member.voice_minutes_active)}</span>
-								<span class="mc-stat-lbl">Voice min</span>
-							</div>
+						<div class="mb-1.5 flex w-full gap-1.5">
+							{#each [{ icon: 'fa-star', val: fmtNum(member.xp), lbl: 'XP' }, { icon: 'fa-comments', val: fmtNum(member.chat_total), lbl: 'Messages' }, { icon: 'fa-microphone', val: fmtNum(member.voice_minutes_active), lbl: 'Voice min' }] as st}
+								<div class="border-primary/10 bg-primary/6 flex flex-1 flex-col items-center gap-0.75 rounded-xl border px-1.5 py-2.5">
+									<i class="fas {st.icon} text-primary text-xs"></i>
+									<span class="text-base-content text-sm font-extrabold tracking-tight tabular-nums">{st.val}</span>
+									<span class="text-base-content/45 text-[9px] font-semibold tracking-[0.04em] uppercase">{st.lbl}</span>
+								</div>
+							{/each}
 						</div>
 
-						<div class="mc-joined">
+						<div class="text-base-content/60 mt-2.5 flex items-center gap-1.5 text-[11px] font-semibold">
 							<i class="fas fa-calendar-check"></i>
 							<span>Joined {fmtJoined(member.member_since)}</span>
 						</div>
@@ -786,8 +805,12 @@
 			</div>
 		</div>
 
-		<div class="mc-actions">
-			<button class="mc-action-btn mc-action-btn--download" onclick={downloadCard} disabled={downloading}>
+		<div class="relative z-2 mt-4 flex flex-col items-center gap-3">
+			<button
+				class="from-secondary to-primary border-base-content/20 inline-flex items-center gap-2 rounded-xl border bg-linear-to-br px-6 py-2.5 text-[13px] font-bold text-white shadow-lg transition-transform hover:scale-[1.02] disabled:opacity-60"
+				onclick={downloadCard}
+				disabled={downloading}
+			>
 				<i class="fas fa-download"></i>
 				{downloading ? 'Saving...' : 'Download'}
 			</button>

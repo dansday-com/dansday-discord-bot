@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
+	import { DashGrid, KpiTile, RowStat, StatCard, type Tone } from '$lib/frontend/components/dash';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -56,13 +57,13 @@
 	const minigamesNet = $derived(n(g.minigames_wagered) - n(g.minigames_paid_out));
 
 	const headline = $derived([
-		{ icon: 'fa-users', label: 'Members reached', value: compact(stats.total_members), tone: 'text-sky-400', bg: 'bg-sky-500/15' },
-		{ icon: 'fa-globe', label: 'Servers', value: fmt(stats.total_servers), tone: 'text-emerald-400', bg: 'bg-emerald-500/15' },
-		{ icon: 'fa-star', label: 'XP awarded', value: compact(g.leveling_total_xp), tone: 'text-amber-400', bg: 'bg-amber-500/15' },
-		{ icon: 'fa-robot', label: 'Bots running', value: `${fmt(stats.running_bots)}/${fmt(stats.total_bots)}`, tone: 'text-violet-400', bg: 'bg-violet-500/15' }
+		{ icon: 'fa-users', label: 'Members reached', value: compact(stats.total_members), tone: 'sky' as Tone },
+		{ icon: 'fa-globe', label: 'Servers', value: fmt(stats.total_servers), tone: 'emerald' as Tone },
+		{ icon: 'fa-star', label: 'XP awarded', value: compact(g.leveling_total_xp), tone: 'amber' as Tone },
+		{ icon: 'fa-robot', label: 'Bots running', value: `${fmt(stats.running_bots)}/${fmt(stats.total_bots)}`, tone: 'violet' as Tone }
 	]);
 
-	const sections = $derived([
+	const sections: { title: string; icon: string; tone: Tone; rows: { icon: string; label: string; value: string }[] }[] = $derived([
 		{
 			title: 'Official Bots',
 			icon: 'fa-robot',
@@ -235,15 +236,6 @@
 			]
 		}
 	]);
-
-	const TONES: Record<string, { bg: string; text: string; row: string }> = {
-		violet: { bg: 'bg-violet-500/15', text: 'text-violet-400', row: 'text-violet-400/90' },
-		emerald: { bg: 'bg-emerald-500/15', text: 'text-emerald-400', row: 'text-emerald-400/90' },
-		amber: { bg: 'bg-amber-500/15', text: 'text-amber-400', row: 'text-amber-400/90' },
-		sky: { bg: 'bg-sky-500/15', text: 'text-sky-400', row: 'text-sky-400/90' },
-		rose: { bg: 'bg-rose-500/15', text: 'text-rose-400', row: 'text-rose-400/90' },
-		teal: { bg: 'bg-teal-500/15', text: 'text-teal-400', row: 'text-teal-400/90' }
-	};
 </script>
 
 <svelte:head>
@@ -251,47 +243,28 @@
 </svelte:head>
 
 <div class="mb-4">
-	<h2 class="text-ash-100 mb-1 text-xl font-bold sm:text-2xl">
-		<i class="fas fa-chart-pie mr-2 text-sky-400"></i>Panel Overview
+	<h2 class="text-base-content mb-1 text-xl font-bold sm:text-2xl">
+		<i class="fas fa-chart-pie text-primary mr-2"></i>Panel Overview
 	</h2>
-	<p class="text-ash-400 text-xs sm:text-sm">Everything across all your bots and servers.</p>
+	<p class="text-base-content/55 text-xs sm:text-sm">Everything across all your bots and servers.</p>
 </div>
 
-<div class="space-y-4 sm:space-y-6">
-	<div class="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+<div class="space-y-3 sm:space-y-4 lg:space-y-5">
+	<DashGrid cols={4}>
 		{#each headline as tile}
-			<div class="bg-ash-700 border-ash-600 rounded-xl border p-4 shadow-lg sm:p-5">
-				<div class="mb-2 flex items-center gap-2">
-					<div class="flex h-8 w-8 items-center justify-center rounded-lg {tile.bg}">
-						<i class="fas {tile.icon} text-sm {tile.tone}"></i>
-					</div>
-					<span class="text-ash-400 text-xs font-medium">{tile.label}</span>
-				</div>
-				<div class="text-ash-100 text-2xl font-bold sm:text-3xl">{tile.value}</div>
-			</div>
+			<KpiTile icon={tile.icon} label={tile.label} value={tile.value} tone={tile.tone} />
 		{/each}
-	</div>
+	</DashGrid>
 
-	<div class="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2 xl:grid-cols-3">
+	<DashGrid>
 		{#each sections as section}
-			<div class="bg-ash-700 border-ash-600 hover:border-ash-500 rounded-xl border p-5 shadow-lg transition-all sm:p-6">
-				<div class="mb-4 flex items-center gap-3">
-					<div class="flex h-10 w-10 items-center justify-center rounded-lg {TONES[section.tone].bg}">
-						<i class="fas {section.icon} text-lg {TONES[section.tone].text}"></i>
-					</div>
-					<h3 class="text-ash-100 text-base font-bold">{section.title}</h3>
-				</div>
-				<div class="space-y-2">
+			<StatCard icon={section.icon} title={section.title} tone={section.tone}>
+				<div class="flex flex-col gap-2">
 					{#each section.rows as row}
-						<div class="bg-ash-800/50 flex items-center justify-between rounded-lg p-2">
-							<span class="text-ash-300 flex items-center gap-2 text-sm">
-								<i class="fas {row.icon} text-xs {TONES[section.tone].row}"></i>{row.label}
-							</span>
-							<span class="text-ash-100 text-lg font-bold">{row.value}</span>
-						</div>
+						<RowStat icon={row.icon} label={row.label} value={row.value} />
 					{/each}
 				</div>
-			</div>
+			</StatCard>
 		{/each}
-	</div>
+	</DashGrid>
 </div>

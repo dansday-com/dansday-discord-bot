@@ -1259,6 +1259,72 @@ export async function listPublicServers() {
 		}));
 }
 
+export async function listPublicPanelIds(): Promise<number[]> {
+	await initializeDatabase();
+	const rows = await db
+		.selectDistinct({ panel_id: schema.bots.panel_id })
+		.from(schema.servers)
+		.innerJoin(schema.bots, eq(schema.bots.id, schema.servers.bot_id))
+		.innerJoin(
+			schema.serverSettings,
+			and(eq(schema.serverSettings.server_id, schema.servers.id), eq(schema.serverSettings.component_name, SERVER_SETTINGS.component.public_statistics))
+		)
+		.where(isNull(schema.servers.deleted_at));
+	return rows.map((r) => Number(r.panel_id)).filter((n) => Number.isFinite(n));
+}
+
+export async function listPublicItems(limit = 300) {
+	await initializeDatabase();
+	const panelIds = await listPublicPanelIds();
+	if (!panelIds.length) return [];
+	return db
+		.select()
+		.from(schema.items)
+		.where(inArray(schema.items.panel_id, panelIds))
+		.orderBy(asc(schema.items.sort_order), asc(schema.items.id))
+		.limit(Math.max(1, Math.min(500, Number(limit) || 300)));
+}
+
+export async function getMaxPublicXpEventId(): Promise<number> {
+	await initializeDatabase();
+	const rows = await db.execute(sql`SELECT MAX(id) as max_id FROM server_member_level_logs`);
+	const row = ((rows[0] as unknown as any[]) || [])[0];
+	return Number(row?.max_id) || 0;
+}
+
+export async function listPublicXpEventsAfter(afterId: any, limit = 40) {
+	await initializeDatabase();
+	const safeAfter = Number(afterId) || 0;
+	if (safeAfter <= 0) return [] as { id: number; xp: number }[];
+	const safeLimit = Math.max(1, Math.min(100, Number(limit) || 40));
+
+	const rows = await db.execute(sql`
+		SELECT sll.id, sll.xp
+		FROM server_member_level_logs sll
+		INNER JOIN server_members sm ON sm.id = sll.member_id
+		INNER JOIN servers sv ON sv.id = sm.server_id
+		INNER JOIN server_settings ss
+			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.public_statistics}
+		WHERE sll.id > ${safeAfter}
+		  AND sll.xp > 0
+		  AND sm.deleted_at IS NULL
+		  AND sv.deleted_at IS NULL
+		  AND NOT EXISTS (
+			SELECT 1
+			FROM server_member_item_actives sma
+			INNER JOIN server_member_items smi ON smi.id = sma.member_item_id
+			INNER JOIN items bi ON bi.id = smi.item_id
+			WHERE smi.member_id = sm.id
+			  AND bi.effect_type = 'disguise'
+			  AND sma.expires_at > UTC_TIMESTAMP()
+		  )
+		ORDER BY sll.id ASC
+		LIMIT ${safeLimit}
+	`);
+
+	return ((rows[0] as unknown as any[]) || []).map((r: any) => ({ id: Number(r.id), xp: Number(r.xp) || 0 })).filter((r) => Number.isFinite(r.id) && r.xp > 0);
+}
+
 export async function upsertCategory(serverId: any, categoryData: any) {
 	const now = toMySQLDateTime();
 	await db.execute(sql`
@@ -3302,11 +3368,43 @@ export async function getServerEconomyStats(serverId: any, priceMap: Record<stri
 	};
 }
 
+export async function listPublicDiscordQuests(limit = 300) {
+	await initializeDatabase();
+	const rows = await db.execute(sql`
+		SELECT
+			q.quest_id, q.quest_name, q.game_title, q.quest_url, q.quest_description,
+			q.quest_task_label, q.reward, q.thumbnail_url, q.banner_url, q.starts_at, q.expires_at
+		FROM bot_discord_quests q
+		INNER JOIN (
+			SELECT quest_id, MAX(id) AS id FROM bot_discord_quests GROUP BY quest_id
+		) latest ON latest.id = q.id
+		ORDER BY (q.expires_at IS NOT NULL AND q.expires_at > UTC_TIMESTAMP()) DESC, q.expires_at DESC, q.id DESC
+		LIMIT ${Number(limit) || 300}
+	`);
+	return (rows[0] as unknown as any[]) || [];
+}
+
+export async function listPublicRobloxItems(limit = 300) {
+	await initializeDatabase();
+	const rows = await db.execute(sql`
+		SELECT
+			r.asset_id, r.name, r.category, r.creator_name, r.description, r.thumbnail_url,
+			r.price, r.lowest_resale_price, r.favorite_count, r.units_available, r.total_quantity, r.last_price
+		FROM bot_roblox_items r
+		INNER JOIN (
+			SELECT asset_id, MAX(id) AS id FROM bot_roblox_items GROUP BY asset_id
+		) latest ON latest.id = r.id
+		ORDER BY r.favorite_count DESC, r.id DESC
+		LIMIT ${Number(limit) || 300}
+	`);
+	return (rows[0] as unknown as any[]) || [];
+}
+
 export async function getServerFeatureStats(serverId: any) {
 	await initializeDatabase();
 	const sid = Number(serverId);
 
-	const [giveawayRows, entryRows, streamRows, questRows, bountyRows, staffReviewRows, feedbackRows, afkRows] = await Promise.all([
+	const [giveawayRows, entryRows, streamRows, questRows, bountyRows, staffReviewRows, feedbackRows, afkRows, catalogRows] = await Promise.all([
 		db.execute(sql`
 			SELECT
 				COUNT(*) AS total,
@@ -3371,6 +3469,21 @@ export async function getServerFeatureStats(serverId: any) {
 			SELECT COUNT(*) AS active
 			FROM server_member_afks a INNER JOIN server_members sm ON sm.id = a.member_id
 			WHERE sm.server_id = ${sid} AND sm.deleted_at IS NULL
+		`),
+		db.execute(sql`
+			SELECT
+				(
+					SELECT COUNT(*) FROM bot_discord_quests bq
+					WHERE bq.bot_id = (SELECT bot_id FROM servers WHERE id = ${sid})
+						AND (bq.starts_at IS NULL OR bq.starts_at <= UTC_TIMESTAMP())
+						AND (bq.expires_at IS NULL OR bq.expires_at > UTC_TIMESTAMP())
+				) AS quests_active,
+				(SELECT COUNT(*) FROM server_discord_quests WHERE server_id = ${sid}) AS quests_posted,
+				(
+					SELECT COUNT(*) FROM bot_roblox_items br
+					WHERE br.bot_id = (SELECT bot_id FROM servers WHERE id = ${sid})
+				) AS roblox_items_watched,
+				(SELECT COUNT(*) FROM server_roblox_items WHERE server_id = ${sid}) AS roblox_items_posted
 		`)
 	]);
 
@@ -3382,6 +3495,7 @@ export async function getServerFeatureStats(serverId: any) {
 	const sr = (staffReviewRows[0] as unknown as any[])[0] || {};
 	const fb = (feedbackRows[0] as unknown as any[])[0] || {};
 	const af = (afkRows[0] as unknown as any[])[0] || {};
+	const ct = (catalogRows[0] as unknown as any[])[0] || {};
 
 	return {
 		giveaways_total: Number(gv.total) || 0,
@@ -3402,6 +3516,10 @@ export async function getServerFeatureStats(serverId: any) {
 		quests_enrolled: Number(qs.enrolled) || 0,
 		quests_claimed: Number(qs.claimed) || 0,
 		quests_participants: Number(qs.participants) || 0,
+		quests_active: Number(ct.quests_active) || 0,
+		quests_posted: Number(ct.quests_posted) || 0,
+		roblox_items_watched: Number(ct.roblox_items_watched) || 0,
+		roblox_items_posted: Number(ct.roblox_items_posted) || 0,
 		bounties_placed: Number(bn.placed) || 0,
 		bounties_collected: Number(bn.collected) || 0,
 		bounties_pooled: Number(bn.pooled) || 0,
@@ -6465,11 +6583,17 @@ export default {
 	getItemsBountyLeaderboard,
 	getItemsGiftLeaderboard,
 	getDisguisedMemberIds,
+	getMaxPublicXpEventId,
+	listPublicXpEventsAfter,
+	listPublicPanelIds,
+	listPublicItems,
 	getServerMembersList,
 	getPanelOverview,
 	getServerOverview,
 	getServerEconomyStats,
 	getServerFeatureStats,
+	listPublicDiscordQuests,
+	listPublicRobloxItems,
 	getMemberDashboard,
 	getMemberInsights,
 	recordLevelFriends,

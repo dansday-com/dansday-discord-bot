@@ -39,7 +39,7 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 	const totalXp = Number(m.xp) || 0;
 
 	const xpSources = [
-		{ key: 'chat', label: 'Messages', icon: 'fa-comments', color: '#245f73', xp: chatTotal * rateMsg },
+		{ key: 'chat', label: 'Messages', icon: 'fa-comments', color: '#e43d12', xp: chatTotal * rateMsg },
 		{ key: 'voice', label: 'Voice', icon: 'fa-microphone', color: '#1f8a4c', xp: voiceActive * rateVoice },
 		{ key: 'video', label: 'Video', icon: 'fa-video', color: '#6d5bd0', xp: voiceVideo * rateVideo },
 		{ key: 'stream', label: 'Streaming', icon: 'fa-desktop', color: '#c8911a', xp: voiceStreaming * rateStream },

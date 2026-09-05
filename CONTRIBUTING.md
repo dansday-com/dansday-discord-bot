@@ -2,7 +2,7 @@
 
 Thanks for taking the time to help. This project is a SvelteKit panel plus the Discord bot processes it spawns, and contributions of every size are welcome — a typo fix in the panel copy counts.
 
-By taking part you agree to the [Code of Conduct](CODE_OF_CONDUCT.md). Contributions are accepted under the [MIT License](LICENSE).
+By taking part you agree to the [Code of Conduct](CODE_OF_CONDUCT.md). Contributions are accepted under the [GNU AGPL-3.0](LICENSE).
 
 ## Before you start
 

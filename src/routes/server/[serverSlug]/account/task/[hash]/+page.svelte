@@ -1,9 +1,11 @@
 <script lang="ts">
+	import { lockScroll } from '$lib/frontend/scrollLock.js';
 	import { getContext, onMount, onDestroy } from 'svelte';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import { effectIcon, effectAccentHex, effectLabel } from '$lib/items.js';
 	import { rarityTierFor, rarityMeta, type RarityTier } from '$lib/tasks.js';
 	import FeatureDisabled from '$lib/frontend/components/FeatureDisabled.svelte';
+	import { EmptyState, MetricTabs, ReelStrip } from '$lib/frontend/components/public';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -36,8 +38,7 @@
 
 	$effect(() => {
 		if (!itemRoll) return;
-		document.body.style.overflow = 'hidden';
-		return () => (document.body.style.overflow = '');
+		return lockScroll();
 	});
 
 	function decoyCells(n: number): ReelCell[] {
@@ -49,7 +50,7 @@
 	function centerCell(index: number) {
 		requestAnimationFrame(() => {
 			const wrapW = reelWrapEl?.clientWidth ?? 360;
-			const cell = reelWrapEl?.querySelectorAll<HTMLElement>('.m-task-reel-cell')?.[index];
+			const cell = reelWrapEl?.querySelectorAll<HTMLElement>('[data-reel-cell]')?.[index];
 			if (!cell) return;
 			reelOffset = wrapW / 2 - (cell.offsetLeft + cell.offsetWidth / 2);
 		});
@@ -153,6 +154,11 @@
 		const m = Math.floor((ms % 3600000) / 60000);
 		return d > 0 ? `${d}d ${h}h` : `${h}h ${m}m`;
 	});
+
+	const periodTabs = $derived([
+		{ id: 'daily', label: 'Daily', icon: 'fa-sun', count: `${doneCount}/${dailyTasks.length}`, active: tab === 'daily' },
+		{ id: 'weekly', label: 'Weekly', icon: 'fa-calendar-week', count: `${weeklyDone}/${weeklyTasks.length}`, active: tab === 'weekly' }
+	]);
 
 	function ringDash(t: any) {
 		const pct = Math.max(0, Math.min(1, (Number(t.progress) || 0) / Math.max(1, Number(t.goal) || 1)));
@@ -260,8 +266,10 @@
 	/>
 {:else}
 	{#snippet dayFace(r: any, busy: boolean)}
-		<span class="m-task-daynum">Day {r.day}</span>
-		<span class="m-task-dayicon">
+		<span class="text-base-content/40 text-[9px] font-extrabold tracking-[0.4px] uppercase">Day {r.day}</span>
+		<span
+			class="leading-none {r.claimed && !r.jackpot ? 'text-success' : r.jackpot ? 'text-error' : 'text-warning'} {r.jackpot ? 'text-[18px]' : 'text-[15px]'}"
+		>
 			{#if busy}
 				<i class="fas fa-spinner fa-spin"></i>
 			{:else if r.claimed}
@@ -272,136 +280,189 @@
 				<i class="fas fa-gift"></i>
 			{/if}
 		</span>
-		<span class="m-task-dayval">
+		<span class="text-base-content/55 text-[10px] font-bold tabular-nums">
 			{#if r.claimed}Claimed{:else}?{/if}
 		</span>
 	{/snippet}
 
-	<div class="m-task">
-		<section class="m-task-login">
-			<div class="m-task-loginhead">
-				<div>
-					<h3><i class="fas fa-gift"></i> Daily check-in</h3>
-					<p>
-						{#if login.tzKnown === false}
-							Checking today’s reward…
-						{:else if login.canClaim}
-							Tap day {login.nextDay} to claim — day {login.cycleDays} is the big one.
-						{:else}
-							Claimed today. Come back tomorrow for day {login.nextDay}.
-						{/if}
-					</p>
-				</div>
-				{#if !login.canClaim && login.tzKnown !== false}
-					<span class="m-task-claimed"><i class="fas fa-circle-check"></i> Claimed today</span>
-				{/if}
+	{#snippet celebrationModal(emoji: string, title: string, body: string, close: () => void)}
+		<div class="modal modal-open" role="dialog" aria-modal="true">
+			<div class="modal-box border-base-300 max-w-sm border text-center">
+				<div class="mb-2 text-[58px] leading-none">{emoji}</div>
+				<h3 class="text-base-content text-lg font-extrabold">{title}</h3>
+				<p class="text-base-content/60 mt-1 text-sm">{body}</p>
 			</div>
+			<button type="button" class="modal-backdrop bg-base-content/55 backdrop-blur-[5px]" onclick={close}>close</button>
+		</div>
+	{/snippet}
 
-			<div class="m-task-days">
-				{#each login.rewards as r (r.day)}
-					{@const claimable = r.current && login.canClaim && !ctx.readOnly}
-					{#if claimable}
-						<button
-							type="button"
-							class="m-task-day m-task-day--current m-task-day--claimable"
-							class:m-task-day--jackpot={r.jackpot}
-							disabled={claimingLogin}
-							aria-label={`Claim day ${r.day} reward`}
-							onclick={claimLogin}
-						>
-							{@render dayFace(r, claimingLogin)}
-							<span class="m-task-daycta">Claim</span>
-						</button>
-					{:else}
-						<div class="m-task-day" class:m-task-day--claimed={r.claimed} class:m-task-day--jackpot={r.jackpot}>
-							{@render dayFace(r, false)}
-						</div>
+	<div class="flex flex-col gap-4 sm:gap-[18px]">
+		<section class="card border-base-300 bg-base-100 border shadow-sm">
+			<div class="card-body gap-3 px-[18px] py-4">
+				<div class="flex flex-wrap items-center justify-between gap-3">
+					<div>
+						<h3 class="text-base-content flex items-center gap-2 text-[15px] font-extrabold">
+							<i class="fas fa-gift text-warning"></i> Daily check-in
+						</h3>
+						<p class="text-base-content/60 mt-1 text-xs">
+							{#if login.tzKnown === false}
+								Checking today’s reward…
+							{:else if login.canClaim}
+								Tap day {login.nextDay} to claim — day {login.cycleDays} is the big one.
+							{:else}
+								Claimed today. Come back tomorrow for day {login.nextDay}.
+							{/if}
+						</p>
+					</div>
+					{#if !login.canClaim && login.tzKnown !== false}
+						<span class="text-success inline-flex items-center gap-1.5 text-xs font-bold">
+							<i class="fas fa-circle-check"></i> Claimed today
+						</span>
 					{/if}
-				{/each}
+				</div>
+
+				<div class="grid grid-cols-4 gap-2 min-[681px]:grid-cols-7">
+					{#each login.rewards as r (r.day)}
+						{@const claimable = r.current && login.canClaim && !ctx.readOnly}
+						{@const jackpot = r.jackpot
+							? 'border-error/45 bg-linear-to-br from-warning/12 to-error/14'
+							: r.current
+								? 'border-warning/50 bg-linear-to-br from-warning/16 to-error/12'
+								: r.claimed
+									? 'border-success/32 bg-success/10'
+									: 'border-base-300 bg-base-content/4'}
+						{@const lift = r.current ? '-translate-y-0.5 shadow-[0_0_0_2px_rgba(200,145,26,0.18)]' : ''}
+						{#if claimable}
+							<button
+								type="button"
+								class="animate-task-daypulse border-warning/50 from-warning/16 to-error/12 relative flex -translate-y-0.5 cursor-pointer flex-col items-center gap-1 rounded-xl border bg-linear-to-br px-1 pt-2.5 pb-6 text-center transition-all"
+								disabled={claimingLogin}
+								aria-label={`Claim day ${r.day} reward`}
+								onclick={claimLogin}
+							>
+								{@render dayFace(r, claimingLogin)}
+								<span
+									class="from-warning to-secondary absolute bottom-1.5 left-1/2 -translate-x-1/2 rounded-full bg-linear-to-br px-2.5 py-0.5 text-[9px] font-extrabold tracking-[0.5px] whitespace-nowrap text-white uppercase"
+								>
+									Claim
+								</span>
+							</button>
+						{:else}
+							<div class="relative flex flex-col items-center gap-1 rounded-xl border px-1 py-2.5 text-center transition-all {jackpot} {lift}">
+								{@render dayFace(r, false)}
+							</div>
+						{/if}
+					{/each}
+				</div>
 			</div>
 		</section>
 
-		<div class="m-task-tabs">
-			<button class="m-task-tab" class:m-task-tab--active={tab === 'daily'} onclick={() => (tab = 'daily')}>
-				<i class="fas fa-sun"></i> Daily
-				<span class="m-task-tabcount">{doneCount}/{dailyTasks.length}</span>
-			</button>
-			<button class="m-task-tab" class:m-task-tab--active={tab === 'weekly'} onclick={() => (tab = 'weekly')}>
-				<i class="fas fa-calendar-week"></i> Weekly
-				<span class="m-task-tabcount">{weeklyDone}/{weeklyTasks.length}</span>
-			</button>
-			<span class="m-task-tabreset">
+		<div class="flex flex-wrap items-center gap-2">
+			<MetricTabs tabs={periodTabs} label="Task period" margin={false} onselect={(id) => (tab = id as 'daily' | 'weekly')} />
+			<span class="text-base-content/40 ml-auto inline-flex items-center gap-1.5 text-xs font-bold tabular-nums">
 				<i class="fas fa-rotate"></i>
 				{tab === 'weekly' ? weeklyCountdown : countdown}
 			</span>
 		</div>
 
 		{#if tasks.length === 0 && !synced}
-			<div class="m-task-empty">
-				<i class="fas fa-spinner fa-spin"></i>
-				<h3>Loading your tasks…</h3>
-				<p>Lining up today's goals.</p>
-			</div>
+			<EmptyState icon="fa-spinner fa-spin" message="Loading your tasks…" hint="Lining up today's goals." boxed />
 		{:else if tasks.length === 0}
-			<div class="m-task-empty">
-				<i class="fas fa-list-check"></i>
-				<h3>No {tab} tasks available</h3>
-				<p>Tasks need leveling, items, or minigames enabled on this server.</p>
-			</div>
+			<EmptyState icon="fa-list-check" message="No {tab} tasks available" hint="Tasks need leveling, items, or minigames enabled on this server." boxed />
 		{:else}
-			<div class="m-task-grid">
+			<div class="grid grid-cols-1 gap-3.5 min-[680px]:grid-cols-[repeat(auto-fill,minmax(310px,1fr))]">
 				{#each tasks as t (`${t.period}:${t.slot}`)}
-					<article class="m-task-card" class:m-task-card--done={t.claimed} class:m-task-card--ready={t.complete && !t.claimed} style="--accent:{t.accent}">
-						<header class="m-task-cardtop">
-							<div class="m-task-ring">
-								<svg viewBox="0 0 60 60" aria-hidden="true">
-									<circle cx="30" cy="30" r="26" class="m-task-ringbg" />
-									<circle cx="30" cy="30" r="26" class="m-task-ringfg" stroke-dasharray={ringDash(t)} />
-								</svg>
-								<i class="fas {t.icon}"></i>
-							</div>
-							<div class="m-task-cardhead">
-								<span class="m-task-diff" style="--d:{diffAccent(t.difficulty)}">{t.difficulty}</span>
-								<h3>{t.description}</h3>
-								<span class="m-task-label">{t.label}</span>
-							</div>
-						</header>
+					<article
+						class="card border-base-300 bg-base-100 border border-l-[3px] shadow-sm transition-all {t.claimed ? 'opacity-60' : ''} {t.complete && !t.claimed
+							? 'ring-success/30 ring-2'
+							: ''}"
+						style="--accent:{t.accent}; border-left-color: {t.accent};"
+					>
+						<div class="card-body gap-3 p-4">
+							<header class="flex items-center gap-3">
+								<div class="relative grid size-15 shrink-0 place-items-center">
+									<svg viewBox="0 0 60 60" class="absolute inset-0 size-full" aria-hidden="true">
+										<circle cx="30" cy="30" r="26" fill="none" stroke="var(--color-base-content)" stroke-opacity="0.1" stroke-width="5" />
+										<circle
+											cx="30"
+											cy="30"
+											r="26"
+											fill="none"
+											stroke="var(--accent)"
+											stroke-width="5"
+											stroke-linecap="round"
+											stroke-dasharray={ringDash(t)}
+											class="transition-[stroke-dasharray] duration-500 ease-out"
+										/>
+									</svg>
+									<i class="fas {t.icon} text-base-content/70 relative text-sm"></i>
+								</div>
+								<div class="flex min-w-0 flex-col items-start gap-1">
+									<span
+										class="rounded-full border px-2 py-0.5 text-[9px] font-extrabold tracking-[0.7px] uppercase"
+										style="--d:{diffAccent(
+											t.difficulty
+										)}; color: var(--d); background: color-mix(in srgb, var(--d) 12%, transparent); border-color: color-mix(in srgb, var(--d) 30%, transparent);"
+									>
+										{t.difficulty}
+									</span>
+									<h3 class="text-base-content text-sm font-bold">{t.description}</h3>
+									<span class="text-base-content/40 text-[11px] font-semibold">{t.label}</span>
+								</div>
+							</header>
 
-						<div class="m-task-prog">
-							<div class="m-task-progbar"><div class="m-task-progfill" style="width:{Math.min(100, (t.progress / Math.max(1, t.goal)) * 100)}%"></div></div>
-							<span class="m-task-progtxt">{fmt(t.progress)}/{fmt(t.goal)} {t.unit === 'xp' ? 'XP' : t.unit}</span>
+							<div class="flex items-center gap-2.5">
+								<div class="bg-base-content/10 h-1.5 flex-1 overflow-hidden rounded-full">
+									<div
+										class="h-full rounded-full transition-[width] duration-500 ease-out"
+										style="width:{Math.min(100, (t.progress / Math.max(1, t.goal)) * 100)}%; background: var(--accent);"
+									></div>
+								</div>
+								<span class="text-base-content/55 text-[11px] font-bold whitespace-nowrap tabular-nums">
+									{fmt(t.progress)}/{fmt(t.goal)}
+									{t.unit === 'xp' ? 'XP' : t.unit}
+								</span>
+							</div>
+
+							<footer class="border-base-300 flex items-center justify-between gap-2.5 border-t border-dashed pt-3">
+								{#if t.reward.kind === 'item'}
+									<div class="flex min-w-0 flex-1 items-center gap-2.5">
+										<i class="fas {effectIcon(t.reward.effectType)} shrink-0 text-lg" style="color: {effectAccentHex(t.reward.effectType)};"></i>
+										<div class="min-w-0">
+											<strong class="text-base-content block truncate text-xs font-bold">{t.reward.name}</strong>
+											<span class="text-base-content/50 block truncate text-[10px] font-semibold">
+												{effectLabel(t.reward.effectType)} · worth {fmt(t.reward.cost)} XP
+											</span>
+										</div>
+									</div>
+								{:else}
+									<div class="flex min-w-0 flex-1 items-center gap-2.5">
+										<i class="fas fa-star text-warning shrink-0 text-lg"></i>
+										<div class="min-w-0">
+											<strong class="text-base-content block text-xs font-bold">+{fmt(t.reward.xp)} XP</strong>
+											<span class="text-base-content/50 block text-[10px] font-semibold">Reward</span>
+										</div>
+									</div>
+								{/if}
+
+								{#if t.claimed}
+									<span class="text-success inline-flex shrink-0 items-center gap-1.5 text-xs font-bold">
+										<i class="fas fa-circle-check"></i> Claimed
+									</span>
+								{:else if t.complete}
+									<button
+										class="btn btn-sm btn-success animate-task-pulse shrink-0 font-extrabold"
+										onclick={() => claim(t)}
+										disabled={busySlot != null || ctx.readOnly}
+									>
+										{#if busySlot === `${t.period}:${t.slot}`}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas fa-gift"></i>{/if}
+										Claim
+									</button>
+								{:else}
+									<span class="text-base-content/40 shrink-0 text-[11px] font-bold whitespace-nowrap">{fmt(Math.max(0, t.goal - t.progress))} to go</span>
+								{/if}
+							</footer>
 						</div>
-
-						<footer class="m-task-cardfoot">
-							{#if t.reward.kind === 'item'}
-								<div class="m-task-reward" style="--rw:{effectAccentHex(t.reward.effectType)}">
-									<i class="fas {effectIcon(t.reward.effectType)}"></i>
-									<div>
-										<strong>{t.reward.name}</strong>
-										<span>{effectLabel(t.reward.effectType)} · worth {fmt(t.reward.cost)} XP</span>
-									</div>
-								</div>
-							{:else}
-								<div class="m-task-reward m-task-reward--xp">
-									<i class="fas fa-star"></i>
-									<div>
-										<strong>+{fmt(t.reward.xp)} XP</strong>
-										<span>Reward</span>
-									</div>
-								</div>
-							{/if}
-
-							{#if t.claimed}
-								<span class="m-task-claimed"><i class="fas fa-circle-check"></i> Claimed</span>
-							{:else if t.complete}
-								<button class="m-task-claim" onclick={() => claim(t)} disabled={busySlot != null || ctx.readOnly}>
-									{#if busySlot === `${t.period}:${t.slot}`}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas fa-gift"></i>{/if}
-									Claim
-								</button>
-							{:else}
-								<span class="m-task-remain">{fmt(Math.max(0, t.goal - t.progress))} to go</span>
-							{/if}
-						</footer>
 					</article>
 				{/each}
 			</div>
@@ -409,73 +470,80 @@
 	</div>
 
 	{#if itemRoll}
-		<div class="m-gamble-overlay" role="presentation" onclick={() => (reelSettled ? (itemRoll = null) : null)}>
+		<div class="modal modal-open" role="dialog" aria-modal="true" aria-label="Daily reward roll">
 			<div
-				class="m-gamble m-task-roll-card"
-				class:m-task-roll-card--done={reelSettled}
-				class:m-task-roll-card--jackpot={itemRoll.jackpot && reelSettled}
-				role="dialog"
-				aria-modal="true"
-				aria-label="Daily reward roll"
-				onclick={(e) => e.stopPropagation()}
+				class="modal-box w-full max-w-[560px] border text-center transition-colors {itemRoll.jackpot && reelSettled
+					? 'border-error/60 shadow-error/50 shadow-2xl'
+					: 'border-base-300'}"
 			>
-				<p class="m-task-roll-eyebrow">{itemRoll.jackpot ? `Day ${itemRoll.day} jackpot` : `Day ${itemRoll.day} reward`}</p>
-				<h3 class="m-task-roll-title">{reelSettled ? 'You got it!' : 'Rolling your item…'}</h3>
+				<p class="text-base-content/40 mb-0.5 text-[11px] font-extrabold tracking-[0.09em] uppercase">
+					{itemRoll.jackpot ? `Day ${itemRoll.day} jackpot` : `Day ${itemRoll.day} reward`}
+				</p>
+				<h3 class="from-warning to-error mb-4 bg-linear-to-br bg-clip-text text-xl font-extrabold text-transparent">
+					{reelSettled ? 'You got it!' : 'Rolling your item…'}
+				</h3>
 
-				<div class="m-task-reelwrap" class:m-task-reelwrap--done={reelSettled} bind:this={reelWrapEl}>
-					<div class="m-task-reel-frame"></div>
-					<div class="m-task-reel-pointer"></div>
-					<div
-						class="m-task-reel"
-						style="transform: translateX({reelOffset}px); transition: {reelAnimating ? 'transform 6.8s cubic-bezier(0.06, 0.72, 0.06, 1)' : 'none'};"
-					>
-						{#each reel as cell, i (i)}
-							<div
-								class="m-task-reel-cell m-task-reel-cell--{cell.tier}"
-								style="--accent:{effectAccentHex(cell.effectType)}; --tier:{rarityMeta(cell.tier).accent}"
+				<ReelStrip
+					bind:wrap={reelWrapEl}
+					items={reel}
+					offset={reelOffset}
+					animating={reelAnimating}
+					frameWidth={116}
+					frameWidthSm={100}
+					cellClass="basis-28 h-[114px] max-[680px]:basis-24 max-[680px]:h-[106px]"
+					glow={reelSettled}
+				>
+					{#snippet cell(c)}
+						<div
+							class="border-base-300 from-base-100 to-base-200 flex size-full flex-col items-center justify-center gap-1 rounded-xl border bg-linear-[160deg] px-2 py-1.5"
+							style="--tier:{rarityMeta(c.tier).accent}"
+						>
+							<span
+								class="rounded-full px-1.5 py-px text-[8px] font-extrabold tracking-[0.09em] uppercase"
+								style="color: var(--tier); background: color-mix(in srgb, var(--tier) 14%, transparent);"
 							>
-								<span class="m-task-reel-tier">{rarityMeta(cell.tier).label}</span>
-								<i class="fas {effectIcon(cell.effectType)}"></i>
-								<span class="m-task-reel-name">{cell.name}</span>
-								<span class="m-task-reel-cost">{fmt(cell.cost)} XP</span>
-							</div>
-						{/each}
-					</div>
-				</div>
+								{rarityMeta(c.tier).label}
+							</span>
+							<i class="fas {effectIcon(c.effectType)}" style="color: {effectAccentHex(c.effectType)};"></i>
+							<span class="text-base-content line-clamp-2 text-[11px] leading-tight font-bold">{c.name}</span>
+							<span class="text-base-content/40 text-[10px] font-bold tabular-nums">{fmt(c.cost)} XP</span>
+						</div>
+					{/snippet}
+				</ReelStrip>
 
 				{#if reelSettled}
-					<div class="m-task-roll-verdict">
-						<span class="m-task-roll-tier" style="--tier:{rarityMeta(itemRoll.won.tier).accent}">{rarityMeta(itemRoll.won.tier).label}</span>
-						<span class="m-task-roll-name">{itemRoll.won.name}</span>
-						<span class="m-task-roll-worth">worth {fmt(itemRoll.won.cost)} XP</span>
+					<div class="mt-4 flex flex-col gap-0.5">
+						<span
+							class="mb-1 self-center rounded-full border px-3 py-0.5 text-[10px] font-extrabold tracking-widest uppercase"
+							style="--tier:{rarityMeta(itemRoll.won.tier)
+								.accent}; color: var(--tier); background: color-mix(in srgb, var(--tier) 14%, transparent); border-color: color-mix(in srgb, var(--tier) 45%, transparent);"
+						>
+							{rarityMeta(itemRoll.won.tier).label}
+						</span>
+						<span class="text-base-content text-[17px] font-extrabold">{itemRoll.won.name}</span>
+						<span class="text-base-content/50 text-xs font-semibold">worth {fmt(itemRoll.won.cost)} XP</span>
 					</div>
-					<button class="m-task-roll-close" onclick={() => (itemRoll = null)}>Nice</button>
+					<div class="modal-action justify-center">
+						<button class="btn from-warning to-error border-none bg-linear-to-br px-8 font-extrabold text-white" onclick={() => (itemRoll = null)}>
+							Nice
+						</button>
+					</div>
 				{/if}
 			</div>
+			<button type="button" class="modal-backdrop bg-base-content/55 backdrop-blur-[5px]" onclick={() => (reelSettled ? (itemRoll = null) : null)}>
+				close
+			</button>
 		</div>
 	{:else if celebrate}
-		<div class="m-gamble-overlay" role="presentation" onclick={() => (celebrate = null)}>
-			<div class="m-gamble m-task-celebrate-card" role="dialog" aria-modal="true" onclick={(e) => e.stopPropagation()}>
-				<div class="m-task-celebrate-emoji">{celebrate.emoji}</div>
-				<h3>{celebrate.label} streak!</h3>
-				<p>{celebrate.streak} days in a row. Keep it burning.</p>
-			</div>
-		</div>
+		{@render celebrationModal(celebrate.emoji, `${celebrate.label} streak!`, `${celebrate.streak} days in a row. Keep it burning.`, () => (celebrate = null))}
 	{:else if loginWin}
-		<div class="m-gamble-overlay" role="presentation" onclick={() => (loginWin = null)}>
-			<div class="m-gamble m-task-celebrate-card" role="dialog" aria-modal="true" onclick={(e) => e.stopPropagation()}>
-				<div class="m-task-celebrate-emoji">{loginWin.jackpot ? '🎁' : '✨'}</div>
-				<h3>{loginWin.jackpot ? 'Day 7 jackpot!' : `Day ${loginWin.day} claimed`}</h3>
-				<p>{loginWin.text}</p>
-			</div>
-		</div>
+		{@render celebrationModal(
+			loginWin.jackpot ? '🎁' : '✨',
+			loginWin.jackpot ? 'Day 7 jackpot!' : `Day ${loginWin.day} claimed`,
+			loginWin.text,
+			() => (loginWin = null)
+		)}
 	{:else if taskWin}
-		<div class="m-gamble-overlay" role="presentation" onclick={() => (taskWin = null)}>
-			<div class="m-gamble m-task-celebrate-card" role="dialog" aria-modal="true" onclick={(e) => e.stopPropagation()}>
-				<div class="m-task-celebrate-emoji">{taskWin.item ? '🎁' : '✨'}</div>
-				<h3>{taskWin.title}</h3>
-				<p>{taskWin.text}</p>
-			</div>
-		</div>
+		{@render celebrationModal(taskWin.item ? '🎁' : '✨', taskWin.title, taskWin.text, () => (taskWin = null))}
 	{/if}
 {/if}

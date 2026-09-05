@@ -109,7 +109,7 @@ export const sections = [
 		icon: 'fa-discord',
 		label: 'Discord menu',
 		heading: 'The Discord menu',
-		iconClass: 'fab fa-discord',
+		iconClass: 'fa-brands fa-discord',
 		lead: 'Members click the Menu button in the menu channel. Every button is always shown — if a feature is off or needs a role, clicking it explains why.'
 	},
 	{
@@ -118,7 +118,7 @@ export const sections = [
 		label: 'Self-host',
 		heading: 'Self-host setup',
 		iconClass: 'fas fa-server',
-		lead: 'The project is open source under MIT. Run your own instance with Node, MySQL and optional Redis.'
+		lead: 'The project is open source under the GNU AGPL-3.0. Run your own instance with Node, MySQL and optional Redis.'
 	}
 ];
 
@@ -494,7 +494,7 @@ export const tiers = [
 	},
 	{
 		icon: 'fa-user-tie',
-		accent: '#245f73',
+		accent: '#e43d12',
 		title: 'Staff',
 		what: 'Helper access invited by an owner. What they can change depends on the permission roles.',
 		can: [
@@ -554,7 +554,7 @@ export const modules = [
 	{
 		id: 'items',
 		icon: 'fa-store',
-		accent: '#733e24',
+		accent: '#d6536d',
 		title: 'Items & economy',
 		what: 'A per-server shop of PvP and utility items bought with XP. Items are created in the global admin Items page; each server enables the system from the Public statistics config page (Items toggle + channel). Requires Public statistics to be on.',
 		fields: [
@@ -625,7 +625,7 @@ export const modules = [
 	{
 		id: 'feedback',
 		icon: 'fa-comment-dots',
-		accent: '#1d6f8a',
+		accent: '#a52a0b',
 		title: 'Feedback',
 		what: 'Routes member feedback into a channel, optionally pinging a role.',
 		fields: [
@@ -742,7 +742,7 @@ export const modules = [
 	{
 		id: 'public-statistics',
 		icon: 'fa-chart-pie',
-		accent: '#245f73',
+		accent: '#e43d12',
 		title: 'Public statistics',
 		what: 'The public pages — server statistics, leaderboard, members, and the per-member account (Overview, History, Guide) — are always on. Items, Minigames, Assets and Daily tasks are enabled here as sub-toggles.',
 		fields: [

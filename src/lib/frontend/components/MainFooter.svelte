@@ -6,23 +6,23 @@
 	let { palette = 'light' as Palette }: { palette?: Palette } = $props();
 </script>
 
-<footer class="m-footer" class:m-footer--dark={palette === 'dark'}>
-	<div class="m-footer-inner">
-		<p class="m-footer-copy">
+<footer class="relative z-1 shrink-0 border-t {palette === 'dark' ? 'border-ash-700 bg-ash-900/50' : 'border-base-300 bg-base-200/50'}">
+	<div class="mx-auto flex w-full max-w-7xl flex-col items-center gap-2.5 px-3 py-5 text-center sm:px-4 lg:px-8">
+		<p class="text-base-content/45 text-xs">
 			Copyright © {new Date().getFullYear()}
-			<a href={APP_URL}>{APP_DOMAIN}</a>. All rights reserved.
+			<a class="link link-hover" href={APP_URL}>{APP_DOMAIN}</a>. All rights reserved.
 		</p>
-		<p class="m-footer-legal">
+		<p class="text-base-content/45 text-xs">
 			{#each legalNav as link, i (link.href)}
 				{#if i > 0}
-					<span class="m-footer-legal-sep" aria-hidden="true">·</span>
+					<span class="mx-1.5 opacity-45" aria-hidden="true">·</span>
 				{/if}
-				<a href={link.href}>{link.label}</a>
+				<a class="link link-hover" href={link.href}>{link.label}</a>
 			{/each}
 		</p>
-		<p class="m-footer-open">
+		<p class="text-base-content/45 text-xs leading-relaxed">
 			Free and open source on
-			<a href="https://github.com/dansday-com/dansday-discord-bot">GitHub</a>.
+			<a class="link link-hover" href="https://github.com/dansday-com/dansday-discord-bot">GitHub</a>.
 		</p>
 	</div>
 </footer>

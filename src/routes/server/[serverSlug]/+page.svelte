@@ -1,6 +1,20 @@
 <script lang="ts">
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { onDestroy, onMount } from 'svelte';
+	import {
+		DashGrid,
+		FILL,
+		MeterBar,
+		MiniGrid,
+		MiniStat,
+		SegBar,
+		StatCard,
+		StatHero,
+		StatStrip,
+		TrendChip,
+		growOnMount,
+		prefersReducedMotion
+	} from '$lib/frontend/components/dash';
 	import type { PageProps } from './$types';
 	import type { PublicPageStats } from '$lib/frontend/public/statistics/index.js';
 
@@ -10,8 +24,8 @@
 	let liveBoost = $state(data.boost_level);
 	let es: EventSource | null = null;
 
-	let mounted = $state(false);
-	const grow = $derived(mounted ? 1 : 0);
+	const growth = growOnMount();
+	const grow = $derived(growth.value);
 
 	const boostLevel = $derived(liveBoost);
 
@@ -45,38 +59,19 @@
 		return Math.min(100, Math.max(0, (Number(part) / w) * 100));
 	}
 
-	const marketFlow = $derived.by(() => {
-		const inn = Math.max(0, Number(liveStats.assets_buy_volume) || 0);
-		const out = Math.max(0, Number(liveStats.assets_sell_volume) || 0);
-		const t = inn + out;
-		if (t <= 0) return { inPct: 0, outPct: 0 };
-		return { inPct: (inn / t) * 100, outPct: (out / t) * 100 };
-	});
+	function split(parts: number[]): number[] {
+		const clean = parts.map((p) => Math.max(0, Number(p) || 0));
+		const total = clean.reduce((s, x) => s + x, 0);
+		if (total <= 0) return clean.map(() => 0);
+		return clean.map((p) => (p / total) * 100);
+	}
 
 	const marketProfit = $derived(Number(liveStats.assets_realized_net) || 0);
 	const marketUnrealized = $derived(Number(liveStats.assets_unrealized_net) || 0);
 
-	const heistMix = $derived.by(() => {
-		const landed = Math.max(0, Number(liveStats.items_steals_landed) || 0);
-		const caught = Math.max(0, Number(liveStats.items_steals_caught) || 0);
-		const t = landed + caught;
-		if (t <= 0) return { landedPct: 0, caughtPct: 0 };
-		return { landedPct: (landed / t) * 100, caughtPct: (caught / t) * 100 };
-	});
-
 	const giveawayClaimPct = $derived(pct(liveStats.giveaways_winners, liveStats.giveaways_entrants));
 	const questClaimPct = $derived(pct(liveStats.quests_claimed, liveStats.quests_enrolled));
 	const staffRatingPct = $derived(pct(liveStats.staff_avg_rating, 5));
-
-	const streamEngage = $derived.by(() => {
-		const likes = Math.max(0, Number(liveStats.streams_likes) || 0);
-		const chat = Math.max(0, Number(liveStats.streams_chat_messages) || 0);
-		const gifts = Math.max(0, Number(liveStats.streams_gifts) || 0);
-		const shares = Math.max(0, Number(liveStats.streams_shares) || 0);
-		const t = likes + chat + gifts + shares;
-		if (t <= 0) return { likePct: 0, chatPct: 0, giftPct: 0, sharePct: 0 };
-		return { likePct: (likes / t) * 100, chatPct: (chat / t) * 100, giftPct: (gifts / t) * 100, sharePct: (shares / t) * 100 };
-	});
 
 	const avgVoiceMinutes = $derived(
 		(liveStats.members_with_levels ?? 0) > 0
@@ -97,38 +92,21 @@
 		return Math.min(100, Math.max(4, (avgL / maxL) * 100));
 	});
 
-	const voiceMix = $derived.by(() => {
-		const a = Math.max(0, Number(liveStats.leveling_total_voice_active) || 0);
-		const k = Math.max(0, Number(liveStats.leveling_total_voice_afk) || 0);
-		const t = a + k;
-		if (t <= 0) return { activePct: 0, afkPct: 0 };
-		return { activePct: (a / t) * 100, afkPct: (k / t) * 100 };
-	});
-
-	const membersLevelShare = $derived.by(() => {
-		const total = Math.max(0, Number(liveStats.members_total) || 0);
-		const withL = Math.max(0, Number(liveStats.members_with_levels) || 0);
-		if (total <= 0) return { withPct: 0, withoutPct: 0 };
-		const withPct = (withL / total) * 100;
-		return { withPct, withoutPct: 100 - withPct };
-	});
-
-	const channelMix = $derived.by(() => {
-		const t = Math.max(0, Number(liveStats.channels_total) || 0);
-		const text = Math.max(0, Number(liveStats.channels_text) || 0);
-		const voice = Math.max(0, Number(liveStats.channels_voice) || 0);
-		const other = Math.max(0, (Number(liveStats.channels_announcement) || 0) + (Number(liveStats.channels_stage) || 0));
-		if (t <= 0) return { textPct: 0, voicePct: 0, otherPct: 0 };
-		return {
-			textPct: (text / t) * 100,
-			voicePct: (voice / t) * 100,
-			otherPct: (other / t) * 100
-		};
-	});
-
 	const boostersCount = $derived(Number(liveStats.members_unique_boosters ?? liveStats.members_boosters) || 0);
-
 	const channelsOtherTotal = $derived((Number(liveStats.channels_announcement) || 0) + (Number(liveStats.channels_stage) || 0));
+
+	const memberSplit = $derived(split([liveStats.members_with_levels ?? 0, membersWithoutLevels]));
+	const channelSplit = $derived([
+		pct(liveStats.channels_text, liveStats.channels_total),
+		pct(liveStats.channels_voice, liveStats.channels_total),
+		pct(channelsOtherTotal, liveStats.channels_total)
+	]);
+	const voiceSplit = $derived(split([liveStats.leveling_total_voice_active ?? 0, liveStats.leveling_total_voice_afk ?? 0]));
+	const marketSplit = $derived(split([liveStats.assets_buy_volume ?? 0, liveStats.assets_sell_volume ?? 0]));
+	const heistSplit = $derived(split([liveStats.items_steals_landed ?? 0, liveStats.items_steals_caught ?? 0]));
+	const streamSplit = $derived(
+		split([liveStats.streams_likes ?? 0, liveStats.streams_chat_messages ?? 0, liveStats.streams_gifts ?? 0, liveStats.streams_shares ?? 0])
+	);
 
 	let heroXpDisplay = $state(0);
 	let rafXp: number | null = null;
@@ -153,8 +131,7 @@
 		const t = Number(liveStats.leveling_total_xp) || 0;
 		if (lastXpForHero === null) {
 			lastXpForHero = t;
-			const reduce = typeof window !== 'undefined' && (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
-			if (reduce) heroXpDisplay = t;
+			if (prefersReducedMotion()) heroXpDisplay = t;
 			else animateHeroXp(t);
 			return;
 		}
@@ -164,16 +141,20 @@
 		}
 	});
 
+	const strip = $derived([
+		{ icon: 'fa-users', label: 'Members', value: fmt(liveStats.members_total) },
+		{ icon: 'fa-hashtag', label: 'Channels', value: fmt(liveStats.channels_total) },
+		{ icon: 'fa-star', label: 'Total XP', value: heroXpDisplay.toLocaleString() },
+		{ icon: 'fa-microphone', label: 'Voice min', value: fmt(liveStats.leveling_total_voice_minutes) },
+		{ icon: 'fa-user-tag', label: 'Roles', value: fmt(liveStats.roles_total) }
+	]);
+
 	function applyPayload(payload: { stats: PublicPageStats; boost_level: number }) {
 		liveStats = { ...payload.stats };
 		liveBoost = payload.boost_level;
 	}
 
 	onMount(() => {
-		const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
-		if (reduce) mounted = true;
-		else requestAnimationFrame(() => requestAnimationFrame(() => (mounted = true)));
-
 		const url = `/api/public-statistics/${encodeURIComponent(data.server.slug)}/overview-stream`;
 		const source = new EventSource(url);
 		es = source;
@@ -195,535 +176,224 @@
 <svelte:head>
 	<title>{data.server.name || data.server.slug} Statistics | {APP_NAME} Discord Bot</title>
 	<meta name="description" content="Public statistics for {data.server.name || data.server.slug}." />
-	<meta name="theme-color" content="#245f73" />
+	<meta name="theme-color" content="#e43d12" />
 	<meta property="og:title" content="{data.server.name || data.server.slug} Statistics | {APP_NAME} Discord Bot" />
 	<meta property="og:description" content="Members, channels, leveling, and voice activity for this community." />
 </svelte:head>
 
-<div class="m-leaderboard-subhead m-stats-subhead">
-	<p>Statistics</p>
+<div class="text-base-content/60 mb-3 flex flex-wrap items-center gap-1.5 text-xs">
+	<p class="m-0 flex flex-wrap items-center gap-1.5">Statistics</p>
 </div>
 
-<section class="m-overview-strip" class:m-overview-strip--in={mounted} aria-label="Key metrics">
-	{#each [{ icon: 'fa-users', label: 'Members', value: fmt(liveStats.members_total) }, { icon: 'fa-hashtag', label: 'Channels', value: fmt(liveStats.channels_total) }, { icon: 'fa-star', label: 'Total XP', value: heroXpDisplay.toLocaleString() }, { icon: 'fa-microphone', label: 'Voice min', value: fmt(liveStats.leveling_total_voice_minutes) }, { icon: 'fa-user-tag', label: 'Roles', value: fmt(liveStats.roles_total) }] as chip}
-		<div class="m-overview-strip-item">
-			<div class="m-overview-strip-icon"><i class="fas {chip.icon}"></i></div>
-			<div class="m-overview-strip-text">
-				<span class="m-overview-strip-value">{chip.value}</span>
-				<span class="m-overview-strip-label">{chip.label}</span>
-			</div>
-		</div>
-	{/each}
-</section>
-
-<div class="m-stats-grid" class:m-stats-grid--in={mounted}>
-	<div class="m-stat-card m-overview-card">
-		<div class="m-stat-card-head">
-			<div class="m-stat-card-icon m-chili-stat-1">
-				<i class="fas fa-users"></i>
-			</div>
-			<h2 class="m-stat-card-title">Members</h2>
-		</div>
-		<div class="m-overview-hero">
-			<p class="m-overview-hero-label">Community size</p>
-			<p class="m-overview-hero-value">{fmt(liveStats.members_total)}</p>
-		</div>
-		<div class="m-bar-block">
-			<div class="m-bar-head">
-				<span>Leveling coverage</span>
-				<span class="m-bar-meta">{fmt(liveStats.members_with_levels)} with levels</span>
-			</div>
-			<div class="m-seg-bar" title="Share of members with leveling data">
-				<div class="m-seg m-seg--a" style="width: {membersLevelShare.withPct * grow}%"></div>
-				<div class="m-seg m-seg--b" style="width: {membersLevelShare.withoutPct * grow}%"></div>
-			</div>
-			<div class="m-legend">
-				<span><i class="fas fa-circle"></i> With levels</span>
-				<span><i class="fas fa-circle"></i> Without</span>
-			</div>
-		</div>
-		<div class="m-mini-grid">
-			<div class="m-mini">
-				<i class="fas fa-chart-line"></i>
-				<span class="m-mini-value">{fmt(liveStats.members_with_levels)}</span>
-				<span class="m-mini-label">With levels</span>
-			</div>
-			<div class="m-mini">
-				<i class="fas fa-gift"></i>
-				<span class="m-mini-value">{fmt(boostersCount)}</span>
-				<span class="m-mini-label">Boosting</span>
-			</div>
-			<div class="m-mini">
-				<i class="fas fa-moon"></i>
-				<span class="m-mini-value">{fmt(liveStats.member_afk)}</span>
-				<span class="m-mini-label">Active AFK</span>
-			</div>
-			<div class="m-mini">
-				<i class="fas fa-user-slash"></i>
-				<span class="m-mini-value">{fmt(membersWithoutLevels)}</span>
-				<span class="m-mini-label">No levels</span>
-			</div>
-		</div>
-	</div>
-
-	<div class="m-stat-card m-overview-card">
-		<div class="m-stat-card-head">
-			<div class="m-stat-card-icon m-chili-stat-2">
-				<i class="fas fa-hashtag"></i>
-			</div>
-			<h2 class="m-stat-card-title">Channels</h2>
-		</div>
-		<div class="m-overview-hero">
-			<p class="m-overview-hero-label">Server layout</p>
-			<p class="m-overview-hero-value">{fmt(liveStats.channels_total)}</p>
-		</div>
-		<div class="m-bar-block">
-			<div class="m-bar-head">
-				<span>Mix</span>
-				<span class="m-bar-meta">Text · Voice · Other</span>
-			</div>
-			<div class="m-seg-bar m-seg-bar--3" title="Channel types">
-				<div class="m-seg m-seg--text" style="width: {channelMix.textPct * grow}%"></div>
-				<div class="m-seg m-seg--voice" style="width: {channelMix.voicePct * grow}%"></div>
-				<div class="m-seg m-seg--other" style="width: {channelMix.otherPct * grow}%"></div>
-			</div>
-			<div class="m-legend m-legend--3">
-				<span><i class="fas fa-circle"></i> Text {fmt(liveStats.channels_text)}</span>
-				<span><i class="fas fa-circle"></i> Voice {fmt(liveStats.channels_voice)}</span>
-				<span><i class="fas fa-circle"></i> Ann. / stage {fmt(channelsOtherTotal)}</span>
-			</div>
-		</div>
-	</div>
-
-	<div class="m-stat-card m-stat-card--leveling m-overview-card">
-		<div class="m-stat-card-head">
-			<div class="m-stat-card-icon m-chili-stat-3">
-				<i class="fas fa-star"></i>
-			</div>
-			<h2 class="m-stat-card-title">Leveling</h2>
-		</div>
-
-		<div class="m-leveling-hero">
-			<p class="m-leveling-hero-label">Total XP</p>
-			<p class="m-leveling-hero-value">{heroXpDisplay.toLocaleString()}</p>
-			<p class="m-leveling-hero-hint">
-				Wallet + XP invested in assets · {fmt(liveStats.leveling_wallet_xp)} wallet + {fmt(liveStats.leveling_assets_value)} in market
-			</p>
-		</div>
-
-		<div class="m-leveling-meters">
-			<div class="m-level-meter">
-				<div class="m-level-meter-head">
-					<span class="m-level-meter-title">Average vs peak level</span>
-					<span class="m-level-meter-meta">{fmtDec(liveStats.leveling_avg_level)} / {fmt(liveStats.leveling_max_level)}</span>
-				</div>
-				<div class="m-level-meter-track">
-					<div class="m-level-meter-fill m-level-meter-fill--avg" style="width: {avgLevelBarPct * grow}%"></div>
-				</div>
-			</div>
-		</div>
-
-		<div class="m-leveling-tiles">
-			<div class="m-level-tile">
-				<i class="fas fa-comments"></i>
-				<span class="m-level-tile-value">{fmt(liveStats.leveling_total_chat)}</span>
-				<span class="m-level-tile-label">Messages</span>
-			</div>
-			<div class="m-level-tile">
-				<i class="fas fa-chart-line"></i>
-				<span class="m-level-tile-value">{avgXP}</span>
-				<span class="m-level-tile-label">Avg XP / member</span>
-			</div>
-			<div class="m-level-tile">
-				<i class="fas fa-crown"></i>
-				<span class="m-level-tile-value">{fmt(liveStats.leveling_max_level)}</span>
-				<span class="m-level-tile-label">Highest level</span>
-			</div>
-		</div>
-	</div>
-
-	<div class="m-stat-card m-overview-card">
-		<div class="m-stat-card-head">
-			<div class="m-stat-card-icon m-chili-stat-4">
-				<i class="fas fa-user-tag"></i>
-			</div>
-			<h2 class="m-stat-card-title">Roles &amp; structure</h2>
-		</div>
-		<div class="m-overview-hero">
-			<p class="m-overview-hero-label">Role catalog</p>
-			<p class="m-overview-hero-value">{fmt(liveStats.roles_total)}</p>
-		</div>
-		<div class="m-mini-grid">
-			<div class="m-mini">
-				<i class="fas fa-rocket"></i>
-				<span class="m-mini-value">{fmt(boostLevel)}</span>
-				<span class="m-mini-label">Boost tier</span>
-			</div>
-			<div class="m-mini">
-				<i class="fas fa-gift"></i>
-				<span class="m-mini-value">{fmt(liveStats.members_boosters)}</span>
-				<span class="m-mini-label">Boosts</span>
-			</div>
-			<div class="m-mini">
-				<i class="fas fa-folder"></i>
-				<span class="m-mini-value">{fmt(liveStats.categories_total)}</span>
-				<span class="m-mini-label">Categories</span>
-			</div>
-			<div class="m-mini">
-				<i class="fas fa-user-cog"></i>
-				<span class="m-mini-value">{fmt(liveStats.members_with_custom_roles)}</span>
-				<span class="m-mini-label">Custom roles</span>
-			</div>
-		</div>
-	</div>
-
-	<div class="m-stat-card m-overview-card">
-		<div class="m-stat-card-head">
-			<div class="m-stat-card-icon m-chili-stat-5">
-				<i class="fas fa-microphone-alt"></i>
-			</div>
-			<h2 class="m-stat-card-title">Voice activity</h2>
-		</div>
-		<div class="m-overview-hero">
-			<p class="m-overview-hero-label">Tracked minutes</p>
-			<p class="m-overview-hero-value">{fmt(liveStats.leveling_total_voice_minutes)}</p>
-		</div>
-		<div class="m-bar-block">
-			<div class="m-bar-head">
-				<span>Active vs AFK</span>
-				<span class="m-bar-meta">{fmt(liveStats.leveling_total_voice_active)} · {fmt(liveStats.leveling_total_voice_afk)}</span>
-			</div>
-			<div class="m-level-meter-stack" title="Share of voice minutes">
-				<div class="m-level-meter-stack-active" style="width: {voiceMix.activePct * grow}%"></div>
-				<div class="m-level-meter-stack-afk" style="width: {voiceMix.afkPct * grow}%"></div>
-			</div>
-		</div>
-		<div class="m-mini-grid">
-			<div class="m-mini">
-				<i class="fas fa-check-circle"></i>
-				<span class="m-mini-value">{fmt(liveStats.leveling_total_voice_active)}</span>
-				<span class="m-mini-label">Active min</span>
-			</div>
-			<div class="m-mini">
-				<i class="fas fa-chart-line"></i>
-				<span class="m-mini-value">{avgVoiceMinutes}</span>
-				<span class="m-mini-label">Avg / member</span>
-			</div>
-			<div class="m-mini">
-				<i class="fas fa-chart-bar"></i>
-				<span class="m-mini-value">{avgVoiceActive}</span>
-				<span class="m-mini-label">Avg active</span>
-			</div>
-			<div class="m-mini">
-				<i class="fas fa-pause-circle"></i>
-				<span class="m-mini-value">{fmt(liveStats.leveling_total_voice_afk)}</span>
-				<span class="m-mini-label">AFK min</span>
-			</div>
-			<div class="m-mini">
-				<i class="fas fa-video"></i>
-				<span class="m-mini-value">{fmt(liveStats.leveling_total_voice_video)}</span>
-				<span class="m-mini-label">Video min</span>
-			</div>
-			<div class="m-mini">
-				<i class="fas fa-desktop"></i>
-				<span class="m-mini-value">{fmt(liveStats.leveling_total_voice_streaming)}</span>
-				<span class="m-mini-label">Stream min</span>
-			</div>
-		</div>
-	</div>
-
-	<div class="m-stat-card m-overview-card">
-		<div class="m-stat-card-head">
-			<div class="m-stat-card-icon m-chili-stat-1"><i class="fas fa-chart-line"></i></div>
-			<h2 class="m-stat-card-title">Market</h2>
-		</div>
-		<div class="m-overview-hero">
-			<p class="m-overview-hero-label">XP in the market</p>
-			<p class="m-overview-hero-value">{fmt(liveStats.assets_market_value)}</p>
-			<p class="m-overview-hero-hint m-hero-trend" class:m-hero-trend--up={marketUnrealized >= 0} class:m-hero-trend--down={marketUnrealized < 0}>
-				<i class="fas {marketUnrealized >= 0 ? 'fa-arrow-trend-up' : 'fa-arrow-trend-down'}"></i>
-				{marketUnrealized >= 0 ? '+' : '−'}{fmt(Math.abs(marketUnrealized))} XP unrealized P/L
-			</p>
-		</div>
-		<div class="m-bar-block">
-			<div class="m-bar-head">
-				<span>Capital flow</span>
-				<span class="m-bar-meta">In · Out</span>
-			</div>
-			<div class="m-seg-bar" title="XP bought in vs cashed out">
-				<div class="m-seg m-seg--a" style="width: {marketFlow.inPct * grow}%"></div>
-				<div class="m-seg m-seg--b" style="width: {marketFlow.outPct * grow}%"></div>
-			</div>
-			<div class="m-legend">
-				<span><i class="fas fa-circle"></i> Bought in {fmt(liveStats.assets_buy_volume)}</span>
-				<span><i class="fas fa-circle"></i> Cashed out {fmt(liveStats.assets_sell_volume)}</span>
-			</div>
-		</div>
-		<div class="m-mini-grid">
-			<div class="m-mini">
-				<i class="fas fa-right-left"></i>
-				<span class="m-mini-value">{fmt(liveStats.assets_trade_count)}</span>
-				<span class="m-mini-label">Trades</span>
-			</div>
-			<div class="m-mini">
-				<i class="fas fa-users"></i>
-				<span class="m-mini-value">{fmt(liveStats.assets_traders)}</span>
-				<span class="m-mini-label">Traders</span>
-			</div>
-			<div class="m-mini">
-				<i class="fas fa-briefcase"></i>
-				<span class="m-mini-value">{fmt(liveStats.assets_open_positions)}</span>
-				<span class="m-mini-label">Open assets</span>
-			</div>
-			<div class="m-mini">
-				<i class="fas fa-arrow-up-from-bracket"></i>
-				<span class="m-mini-value">{fmt(liveStats.assets_buy_volume)}</span>
-				<span class="m-mini-label">XP bought in</span>
-			</div>
-			<div class="m-mini">
-				<i class="fas fa-download"></i>
-				<span class="m-mini-value">{fmt(liveStats.assets_sell_volume)}</span>
-				<span class="m-mini-label">XP cashed out</span>
-			</div>
-			<div class="m-mini" data-dir={marketProfit >= 0 ? 'up' : 'down'}>
-				<i class="fas fa-scale-balanced"></i>
-				<span class="m-mini-value">{marketProfit >= 0 ? '+' : '−'}{fmt(Math.abs(marketProfit))}</span>
-				<span class="m-mini-label">Realized P/L</span>
-			</div>
-		</div>
-	</div>
-
-	<div class="m-stat-card m-overview-card">
-		<div class="m-stat-card-head">
-			<div class="m-stat-card-icon m-chili-stat-2"><i class="fas fa-bag-shopping"></i></div>
-			<h2 class="m-stat-card-title">Items</h2>
-		</div>
-		<div class="m-overview-hero">
-			<p class="m-overview-hero-label">Items bought</p>
-			<p class="m-overview-hero-value">{fmt(liveStats.items_buys)}</p>
-			<p class="m-overview-hero-hint">{fmt(liveStats.items_buy_spend)} XP spent across {fmt(liveStats.items_distinct_bought)} unique items</p>
-		</div>
-		<div class="m-bar-block">
-			<div class="m-bar-head">
-				<span>Heist outcomes</span>
-				<span class="m-bar-meta">{stealHitRate}% success</span>
-			</div>
-			<div class="m-seg-bar" title="Successful steals vs caught">
-				<div class="m-seg m-seg--a" style="width: {heistMix.landedPct * grow}%"></div>
-				<div class="m-seg m-seg--b" style="width: {heistMix.caughtPct * grow}%"></div>
-			</div>
-			<div class="m-legend">
-				<span><i class="fas fa-circle"></i> Landed {fmt(liveStats.items_steals_landed)}</span>
-				<span><i class="fas fa-circle"></i> Caught {fmt(liveStats.items_steals_caught)}</span>
-			</div>
-		</div>
-		<div class="m-mini-grid">
-			<div class="m-mini">
-				<i class="fas fa-wand-magic-sparkles"></i>
-				<span class="m-mini-value">{fmt(liveStats.items_activations)}</span>
-				<span class="m-mini-label">Activations</span>
-			</div>
-			<div class="m-mini">
-				<i class="fas fa-hand"></i>
-				<span class="m-mini-value">{fmt(liveStats.items_stolen)}</span>
-				<span class="m-mini-label">XP stolen</span>
-			</div>
-			<div class="m-mini">
-				<i class="fas fa-bomb"></i>
-				<span class="m-mini-value">{fmt(liveStats.items_bombed)}</span>
-				<span class="m-mini-label">XP bombed</span>
-			</div>
-			<div class="m-mini">
-				<i class="fas fa-gift"></i>
-				<span class="m-mini-value">{fmt(liveStats.items_gifted)}</span>
-				<span class="m-mini-label">XP gifted</span>
-			</div>
-			<div class="m-mini">
-				<i class="fas fa-magnifying-glass"></i>
-				<span class="m-mini-value">{fmt(liveStats.items_spies)}</span>
-				<span class="m-mini-label">Spy reports</span>
-			</div>
-			<div class="m-mini">
-				<i class="fas fa-crown"></i>
-				<span class="m-mini-value">{fmt(liveStats.items_bounties_placed)}</span>
-				<span class="m-mini-label">Bounties set</span>
-			</div>
-		</div>
-	</div>
-
-	<div class="m-stat-card m-overview-card">
-		<div class="m-stat-card-head">
-			<div class="m-stat-card-icon m-chili-stat-3"><i class="fas fa-dice"></i></div>
-			<h2 class="m-stat-card-title">Minigames</h2>
-		</div>
-		<div class="m-overview-hero">
-			<p class="m-overview-hero-label">XP wagered</p>
-			<p class="m-overview-hero-value">{fmt(liveStats.minigames_wagered)}</p>
-			<p class="m-overview-hero-hint">{fmt(liveStats.minigames_plays)} plays · {fmt(liveStats.minigames_paid_out)} XP paid out</p>
-		</div>
-		<div class="m-bar-block">
-			<div class="m-bar-head">
-				<span>Player win rate</span>
-				<span class="m-bar-meta">{minigamesWinRate}%</span>
-			</div>
-			<div class="m-level-meter-track">
-				<div class="m-level-meter-fill m-level-meter-fill--avg" style="width: {Math.max(4, minigamesWinRate) * grow}%"></div>
-			</div>
-		</div>
-		<div class="m-mini-grid">
-			<div class="m-mini">
-				<i class="fas fa-trophy"></i>
-				<span class="m-mini-value">{fmt(liveStats.minigames_biggest_win)}</span>
-				<span class="m-mini-label">Biggest win</span>
-			</div>
-			<div class="m-mini">
-				<i class="fas fa-scale-balanced"></i>
-				<span class="m-mini-value">{liveStats.minigames_net <= 0 ? '+' : '−'}{fmt(Math.abs(liveStats.minigames_net))}</span>
-				<span class="m-mini-label">House edge</span>
-			</div>
-		</div>
-	</div>
-
-	<div class="m-stat-card m-overview-card">
-		<div class="m-stat-card-head">
-			<div class="m-stat-card-icon m-chili-stat-4"><i class="fas fa-gift"></i></div>
-			<h2 class="m-stat-card-title">Giveaways</h2>
-		</div>
-		<div class="m-overview-hero">
-			<p class="m-overview-hero-label">Giveaways hosted</p>
-			<p class="m-overview-hero-value">{fmt(liveStats.giveaways_total)}</p>
-			<p class="m-overview-hero-hint">{fmt(liveStats.giveaways_entries)} entries from {fmt(liveStats.giveaways_entrants)} members</p>
-		</div>
-		<div class="m-bar-block">
-			<div class="m-bar-head">
-				<span>Odds of winning</span>
-				<span class="m-bar-meta">{giveawayClaimPct.toFixed(1)}%</span>
-			</div>
-			<div class="m-level-meter-track">
-				<div class="m-level-meter-fill m-level-meter-fill--avg" style="width: {Math.max(4, giveawayClaimPct) * grow}%"></div>
-			</div>
-		</div>
-		<div class="m-mini-grid">
-			<div class="m-mini">
-				<i class="fas fa-medal"></i>
-				<span class="m-mini-value">{fmt(liveStats.giveaways_winners)}</span>
-				<span class="m-mini-label">Winners drawn</span>
-			</div>
-			<div class="m-mini">
-				<i class="fas fa-hourglass-half"></i>
-				<span class="m-mini-value">{fmt(liveStats.giveaways_active)}</span>
-				<span class="m-mini-label">Running now</span>
-			</div>
-		</div>
-	</div>
-
-	<div class="m-stat-card m-overview-card">
-		<div class="m-stat-card-head">
-			<div class="m-stat-card-icon m-chili-stat-5"><i class="fas fa-tower-broadcast"></i></div>
-			<h2 class="m-stat-card-title">Content creators</h2>
-		</div>
-		<div class="m-overview-hero">
-			<p class="m-overview-hero-label">Streams broadcast</p>
-			<p class="m-overview-hero-value">{fmt(liveStats.streams_total)}</p>
-			<p class="m-overview-hero-hint">{fmt(liveStats.streams_creators)} creators · {fmt(liveStats.streams_peak_viewers)} peak viewers</p>
-		</div>
-		<div class="m-bar-block">
-			<div class="m-bar-head">
-				<span>Engagement mix</span>
-				<span class="m-bar-meta">Likes · Chat · Gifts · Shares</span>
-			</div>
-			<div class="m-seg-bar m-seg-bar--3" title="Stream engagement breakdown">
-				<div class="m-seg m-seg--text" style="width: {streamEngage.likePct * grow}%"></div>
-				<div class="m-seg m-seg--voice" style="width: {streamEngage.chatPct * grow}%"></div>
-				<div class="m-seg m-seg--other" style="width: {streamEngage.giftPct * grow}%"></div>
-				<div class="m-seg m-seg--b" style="width: {streamEngage.sharePct * grow}%"></div>
-			</div>
-			<div class="m-legend m-legend--3">
-				<span><i class="fas fa-circle"></i> Likes {fmt(liveStats.streams_likes)}</span>
-				<span><i class="fas fa-circle"></i> Chat {fmt(liveStats.streams_chat_messages)}</span>
-				<span><i class="fas fa-circle"></i> Gifts {fmt(liveStats.streams_gifts)}</span>
-			</div>
-		</div>
-		<div class="m-mini-grid">
-			<div class="m-mini">
-				<i class="fas fa-user-plus"></i>
-				<span class="m-mini-value">{fmt(liveStats.streams_follows)}</span>
-				<span class="m-mini-label">Follows</span>
-			</div>
-			<div class="m-mini">
-				<i class="fas fa-share-nodes"></i>
-				<span class="m-mini-value">{fmt(liveStats.streams_shares)}</span>
-				<span class="m-mini-label">Shares</span>
-			</div>
-			<div class="m-mini">
-				<i class="fas fa-user-group"></i>
-				<span class="m-mini-value">{fmt(liveStats.streams_unique_chatters)}</span>
-				<span class="m-mini-label">Chatters</span>
-			</div>
-		</div>
-	</div>
-
-	<div class="m-stat-card m-overview-card">
-		<div class="m-stat-card-head">
-			<div class="m-stat-card-icon m-chili-stat-1"><i class="fas fa-scroll"></i></div>
-			<h2 class="m-stat-card-title">Quests</h2>
-		</div>
-		<div class="m-overview-hero">
-			<p class="m-overview-hero-label">Quests enrolled</p>
-			<p class="m-overview-hero-value">{fmt(liveStats.quests_enrolled)}</p>
-		</div>
-		<div class="m-bar-block">
-			<div class="m-bar-head">
-				<span>Rewards claimed</span>
-				<span class="m-bar-meta">{questClaimPct.toFixed(0)}%</span>
-			</div>
-			<div class="m-level-meter-track">
-				<div class="m-level-meter-fill m-level-meter-fill--avg" style="width: {Math.max(4, questClaimPct) * grow}%"></div>
-			</div>
-		</div>
-		<div class="m-mini-grid">
-			<div class="m-mini">
-				<i class="fas fa-award"></i>
-				<span class="m-mini-value">{fmt(liveStats.quests_claimed)}</span>
-				<span class="m-mini-label">Rewards claimed</span>
-			</div>
-			<div class="m-mini">
-				<i class="fas fa-users"></i>
-				<span class="m-mini-value">{fmt(liveStats.quests_participants)}</span>
-				<span class="m-mini-label">Participants</span>
-			</div>
-		</div>
-	</div>
-
-	<div class="m-stat-card m-overview-card">
-		<div class="m-stat-card-head">
-			<div class="m-stat-card-icon m-chili-stat-2"><i class="fas fa-shield-halved"></i></div>
-			<h2 class="m-stat-card-title">Staff &amp; feedback</h2>
-		</div>
-		<div class="m-overview-hero">
-			<p class="m-overview-hero-label">Staff reviews</p>
-			<p class="m-overview-hero-value">{fmt(liveStats.staff_reviews)}</p>
-		</div>
-		<div class="m-bar-block">
-			<div class="m-bar-head">
-				<span>Average staff rating</span>
-				<span class="m-bar-meta">{liveStats.staff_avg_rating || '—'} / 5</span>
-			</div>
-			<div class="m-level-meter-track">
-				<div class="m-level-meter-fill m-level-meter-fill--avg" style="width: {Math.max(4, staffRatingPct) * grow}%"></div>
-			</div>
-		</div>
-		<div class="m-mini-grid">
-			<div class="m-mini">
-				<i class="fas fa-comment-dots"></i>
-				<span class="m-mini-value">{fmt(liveStats.feedback_submissions)}</span>
-				<span class="m-mini-label">Feedback</span>
-			</div>
-			<div class="m-mini">
-				<i class="fas fa-moon"></i>
-				<span class="m-mini-value">{fmt(liveStats.afk_active)}</span>
-				<span class="m-mini-label">AFK now</span>
-			</div>
-		</div>
-	</div>
+<div class="mb-3 sm:mb-4 lg:mb-5">
+	<StatStrip items={strip} />
 </div>
+
+<DashGrid>
+	<StatCard icon="fa-users" title="Members" tone="sky">
+		<StatHero label="Community size" value={fmt(liveStats.members_total)} />
+		<SegBar
+			head="Leveling coverage"
+			meta="{fmt(liveStats.members_with_levels)} with levels"
+			title="Share of members with leveling data"
+			{grow}
+			segments={[
+				{ label: 'With levels', pct: memberSplit[0], color: FILL.primary },
+				{ label: 'Without', pct: memberSplit[1], color: FILL.muted }
+			]}
+		/>
+		<MiniGrid cols={2}>
+			<MiniStat icon="fa-chart-line" value={fmt(liveStats.members_with_levels)} label="With levels" />
+			<MiniStat icon="fa-gift" value={fmt(boostersCount)} label="Boosting" />
+			<MiniStat icon="fa-moon" value={fmt(liveStats.member_afk)} label="Active AFK" />
+			<MiniStat icon="fa-user-slash" value={fmt(membersWithoutLevels)} label="No levels" />
+		</MiniGrid>
+	</StatCard>
+
+	<StatCard icon="fa-hashtag" title="Channels" tone="violet">
+		<StatHero label="Server layout" value={fmt(liveStats.channels_total)} />
+		<SegBar
+			head="Mix"
+			meta="Text · Voice · Other"
+			title="Channel types"
+			{grow}
+			segments={[
+				{ label: `Text ${fmt(liveStats.channels_text)}`, pct: channelSplit[0], color: FILL.primary },
+				{ label: `Voice ${fmt(liveStats.channels_voice)}`, pct: channelSplit[1], color: FILL.accent },
+				{ label: `Ann. / stage ${fmt(channelsOtherTotal)}`, pct: channelSplit[2], color: FILL.neutral }
+			]}
+		/>
+	</StatCard>
+
+	<StatCard icon="fa-star" title="Leveling" tone="amber">
+		<StatHero
+			label="Total XP"
+			value={heroXpDisplay.toLocaleString()}
+			hint="Wallet + XP invested in assets · {fmt(liveStats.leveling_wallet_xp)} wallet + {fmt(liveStats.leveling_assets_value)} in market"
+		/>
+		<MeterBar head="Average vs peak level" meta="{fmtDec(liveStats.leveling_avg_level)} / {fmt(liveStats.leveling_max_level)}" pct={avgLevelBarPct} {grow} />
+		<MiniGrid cols={3}>
+			<MiniStat icon="fa-comments" value={fmt(liveStats.leveling_total_chat)} label="Messages" />
+			<MiniStat icon="fa-chart-line" value={avgXP} label="Avg XP / member" />
+			<MiniStat icon="fa-crown" value={fmt(liveStats.leveling_max_level)} label="Highest level" />
+		</MiniGrid>
+	</StatCard>
+
+	<StatCard icon="fa-user-tag" title="Roles & structure" tone="emerald">
+		<StatHero label="Role catalog" value={fmt(liveStats.roles_total)} />
+		<MiniGrid cols={2}>
+			<MiniStat icon="fa-rocket" value={fmt(boostLevel)} label="Boost tier" />
+			<MiniStat icon="fa-gift" value={fmt(liveStats.members_boosters)} label="Boosts" />
+			<MiniStat icon="fa-folder" value={fmt(liveStats.categories_total)} label="Categories" />
+			<MiniStat icon="fa-user-cog" value={fmt(liveStats.members_with_custom_roles)} label="Custom roles" />
+		</MiniGrid>
+	</StatCard>
+
+	<StatCard icon="fa-microphone-alt" title="Voice activity" tone="lime">
+		<StatHero label="Tracked minutes" value={fmt(liveStats.leveling_total_voice_minutes)} />
+		<SegBar
+			head="Active vs AFK"
+			meta="{fmt(liveStats.leveling_total_voice_active)} · {fmt(liveStats.leveling_total_voice_afk)}"
+			title="Share of voice minutes"
+			{grow}
+			segments={[
+				{ label: 'Active', pct: voiceSplit[0], color: FILL.accent },
+				{ label: 'AFK', pct: voiceSplit[1], color: FILL.neutral }
+			]}
+		/>
+		<MiniGrid cols={3}>
+			<MiniStat icon="fa-check-circle" value={fmt(liveStats.leveling_total_voice_active)} label="Active min" />
+			<MiniStat icon="fa-chart-line" value={avgVoiceMinutes} label="Avg / member" />
+			<MiniStat icon="fa-chart-bar" value={avgVoiceActive} label="Avg active" />
+			<MiniStat icon="fa-pause-circle" value={fmt(liveStats.leveling_total_voice_afk)} label="AFK min" />
+			<MiniStat icon="fa-video" value={fmt(liveStats.leveling_total_voice_video)} label="Video min" />
+			<MiniStat icon="fa-desktop" value={fmt(liveStats.leveling_total_voice_streaming)} label="Stream min" />
+		</MiniGrid>
+	</StatCard>
+
+	<StatCard icon="fa-chart-line" title="Market" tone="teal">
+		<StatHero label="XP in the market" value={fmt(liveStats.assets_market_value)}>
+			{#snippet trailing()}
+				<TrendChip value={marketUnrealized} text="{marketUnrealized >= 0 ? '+' : '−'}{fmt(Math.abs(marketUnrealized))}" label="XP unrealized P/L" />
+			{/snippet}
+		</StatHero>
+		<SegBar
+			head="Capital flow"
+			meta="In · Out"
+			title="XP bought in vs cashed out"
+			{grow}
+			segments={[
+				{ label: `Bought in ${fmt(liveStats.assets_buy_volume)}`, pct: marketSplit[0], color: FILL.primary },
+				{ label: `Cashed out ${fmt(liveStats.assets_sell_volume)}`, pct: marketSplit[1], color: FILL.muted }
+			]}
+		/>
+		<MiniGrid cols={3}>
+			<MiniStat icon="fa-right-left" value={fmt(liveStats.assets_trade_count)} label="Trades" />
+			<MiniStat icon="fa-users" value={fmt(liveStats.assets_traders)} label="Traders" />
+			<MiniStat icon="fa-briefcase" value={fmt(liveStats.assets_open_positions)} label="Open assets" />
+			<MiniStat icon="fa-arrow-up-from-bracket" value={fmt(liveStats.assets_buy_volume)} label="XP bought in" />
+			<MiniStat icon="fa-download" value={fmt(liveStats.assets_sell_volume)} label="XP cashed out" />
+			<MiniStat
+				icon="fa-scale-balanced"
+				value="{marketProfit >= 0 ? '+' : '−'}{fmt(Math.abs(marketProfit))}"
+				label="Realized P/L"
+				dir={marketProfit >= 0 ? 'up' : 'down'}
+			/>
+		</MiniGrid>
+	</StatCard>
+
+	<StatCard icon="fa-bag-shopping" title="Items" tone="orange">
+		<StatHero
+			label="Items bought"
+			value={fmt(liveStats.items_buys)}
+			hint="{fmt(liveStats.items_buy_spend)} XP spent across {fmt(liveStats.items_distinct_bought)} unique items"
+		/>
+		<SegBar
+			head="Heist outcomes"
+			meta="{stealHitRate}% success"
+			title="Successful steals vs caught"
+			{grow}
+			segments={[
+				{ label: `Landed ${fmt(liveStats.items_steals_landed)}`, pct: heistSplit[0], color: FILL.primary },
+				{ label: `Caught ${fmt(liveStats.items_steals_caught)}`, pct: heistSplit[1], color: FILL.muted }
+			]}
+		/>
+		<MiniGrid cols={3}>
+			<MiniStat icon="fa-wand-magic-sparkles" value={fmt(liveStats.items_activations)} label="Activations" />
+			<MiniStat icon="fa-hand" value={fmt(liveStats.items_stolen)} label="XP stolen" />
+			<MiniStat icon="fa-bomb" value={fmt(liveStats.items_bombed)} label="XP bombed" />
+			<MiniStat icon="fa-gift" value={fmt(liveStats.items_gifted)} label="XP gifted" />
+			<MiniStat icon="fa-magnifying-glass" value={fmt(liveStats.items_spies)} label="Spy reports" />
+			<MiniStat icon="fa-crown" value={fmt(liveStats.items_bounties_placed)} label="Bounties set" />
+		</MiniGrid>
+	</StatCard>
+
+	<StatCard icon="fa-dice" title="Minigames" tone="pink">
+		<StatHero
+			label="XP wagered"
+			value={fmt(liveStats.minigames_wagered)}
+			hint="{fmt(liveStats.minigames_plays)} plays · {fmt(liveStats.minigames_paid_out)} XP paid out"
+		/>
+		<MeterBar head="Player win rate" meta="{minigamesWinRate}%" pct={Math.max(4, minigamesWinRate)} {grow} />
+		<MiniGrid cols={2}>
+			<MiniStat icon="fa-trophy" value={fmt(liveStats.minigames_biggest_win)} label="Biggest win" />
+			<MiniStat icon="fa-scale-balanced" value="{liveStats.minigames_net <= 0 ? '+' : '−'}{fmt(Math.abs(liveStats.minigames_net))}" label="House edge" />
+		</MiniGrid>
+	</StatCard>
+
+	<StatCard icon="fa-gift" title="Giveaways" tone="rose">
+		<StatHero
+			label="Giveaways hosted"
+			value={fmt(liveStats.giveaways_total)}
+			hint="{fmt(liveStats.giveaways_entries)} entries from {fmt(liveStats.giveaways_entrants)} members"
+		/>
+		<MeterBar head="Odds of winning" meta="{giveawayClaimPct.toFixed(1)}%" pct={Math.max(4, giveawayClaimPct)} {grow} />
+		<MiniGrid cols={2}>
+			<MiniStat icon="fa-medal" value={fmt(liveStats.giveaways_winners)} label="Winners drawn" />
+			<MiniStat icon="fa-hourglass-half" value={fmt(liveStats.giveaways_active)} label="Running now" />
+		</MiniGrid>
+	</StatCard>
+
+	<StatCard icon="fa-tower-broadcast" title="Content creators" tone="cyan">
+		<StatHero
+			label="Streams broadcast"
+			value={fmt(liveStats.streams_total)}
+			hint="{fmt(liveStats.streams_creators)} creators · {fmt(liveStats.streams_peak_viewers)} peak viewers"
+		/>
+		<SegBar
+			head="Engagement mix"
+			meta="Likes · Chat · Gifts · Shares"
+			title="Stream engagement breakdown"
+			{grow}
+			segments={[
+				{ label: `Likes ${fmt(liveStats.streams_likes)}`, pct: streamSplit[0], color: FILL.primary },
+				{ label: `Chat ${fmt(liveStats.streams_chat_messages)}`, pct: streamSplit[1], color: FILL.accent },
+				{ label: `Gifts ${fmt(liveStats.streams_gifts)}`, pct: streamSplit[2], color: FILL.neutral },
+				{ label: `Shares ${fmt(liveStats.streams_shares)}`, pct: streamSplit[3], color: FILL.muted }
+			]}
+		/>
+		<MiniGrid cols={3}>
+			<MiniStat icon="fa-user-plus" value={fmt(liveStats.streams_follows)} label="Follows" />
+			<MiniStat icon="fa-share-nodes" value={fmt(liveStats.streams_shares)} label="Shares" />
+			<MiniStat icon="fa-user-group" value={fmt(liveStats.streams_unique_chatters)} label="Chatters" />
+		</MiniGrid>
+	</StatCard>
+
+	<StatCard icon="fa-scroll" title="Quests" tone="sky">
+		<StatHero label="Quests enrolled" value={fmt(liveStats.quests_enrolled)} />
+		<MeterBar head="Rewards claimed" meta="{questClaimPct.toFixed(0)}%" pct={Math.max(4, questClaimPct)} {grow} />
+		<MiniGrid cols={2}>
+			<MiniStat icon="fa-award" value={fmt(liveStats.quests_claimed)} label="Rewards claimed" />
+			<MiniStat icon="fa-users" value={fmt(liveStats.quests_participants)} label="Participants" />
+		</MiniGrid>
+	</StatCard>
+
+	<StatCard icon="fa-shield-halved" title="Staff & feedback" tone="violet">
+		<StatHero label="Staff reviews" value={fmt(liveStats.staff_reviews)} />
+		<MeterBar head="Average staff rating" meta="{liveStats.staff_avg_rating || '—'} / 5" pct={Math.max(4, staffRatingPct)} {grow} />
+		<MiniGrid cols={2}>
+			<MiniStat icon="fa-comment-dots" value={fmt(liveStats.feedback_submissions)} label="Feedback" />
+			<MiniStat icon="fa-moon" value={fmt(liveStats.afk_active)} label="AFK now" />
+		</MiniGrid>
+	</StatCard>
+</DashGrid>

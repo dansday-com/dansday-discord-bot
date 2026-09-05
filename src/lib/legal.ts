@@ -245,7 +245,7 @@ export const terms: LegalDoc = {
 			blocks: [
 				{
 					kind: 'links',
-					text: 'The project is free and open source under the MIT license. If you run your own deployment from source, you are the operator of that deployment: you control its database, its keys and its data, and these terms cover only the hosted Service we run. See the ',
+					text: 'The project is free and open source under the GNU Affero General Public License v3. If you run your own deployment from source, you are the operator of that deployment: you control its database, its keys and its data, and these terms cover only the hosted Service we run. See the ',
 					links: [
 						{ label: 'license', href: THIRD_PARTY_LINKS.license },
 						{ label: 'source repository', href: THIRD_PARTY_LINKS.repo }

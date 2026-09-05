@@ -473,6 +473,11 @@
 		}
 	},
 	"questEnroll": {
+		"menuButton": "🔮 Discord Quest",
+		"listTitle": "🔮 Discord Quests",
+		"listEmpty": "No active Discord quest right now.",
+		"listClaimedTag": "claimed",
+		"claimAllButton": "Claim all",
 		"alreadyClaimed": "Already Claimed",
 		"alreadyClaimedDescription": "You enrolled in **{questName}** previously and your reward has already been claimed. Each quest can only be claimed once per member.",
 		"pendingTitle": "⏳ Running in the background",
@@ -484,6 +489,12 @@
 		"precheckRewardClaimedTitle": "Reward already claimed",
 		"precheckRewardClaimedDescription": "The reward for this quest was already claimed on this **Discord account** (for example after finishing in another server or in the Discord client). Auto-enroll cannot claim it again.",
 		"precheckCompletedTitle": "Quest already finished",
-		"precheckCompletedDescription": "Quest objectives are already completed on this **Discord account**. Claim any remaining reward under **Discord → Quests** if you have not yet — auto-enroll cannot add more progress."
+		"precheckCompletedDescription": "Quest objectives are already completed on this **Discord account**. Claim any remaining reward under **Discord → Quests** if you have not yet — auto-enroll cannot add more progress.",
+		"claimAllPendingTitle": "⏳ Claiming all quests",
+		"claimAllPendingDescription": "Enrolling **{count}** quest(s) one by one. Each result is posted in this channel.\n\nYour token is **not** saved in our database.\n\n**Risk:** Discord may restrict or ban the **user account** tied to that token; in some cases the **bot or server** could also be affected. This is not official Discord behaviour — you chose to proceed.",
+		"claimAllNothingTitle": "Nothing to claim",
+		"claimAllNothingDescription": "No active quest can be enrolled on this Discord account right now.",
+		"autoQuestDisabled": "Auto quest enrollment is currently disabled. Please contact a server administrator.",
+		"alreadyRunning": "You already have an auto quest running. Please wait for it to finish before starting another."
 	}
 }

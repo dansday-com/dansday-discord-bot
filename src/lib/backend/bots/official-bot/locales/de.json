@@ -424,6 +424,11 @@
 		}
 	},
 	"questEnroll": {
+		"menuButton": "🔮 Discord Quest",
+		"listTitle": "🔮 Discord Quests",
+		"listEmpty": "Derzeit keine aktive Discord-Quest.",
+		"listClaimedTag": "eingelöst",
+		"claimAllButton": "Alle einlösen",
 		"alreadyClaimed": "Bereits eingelöst",
 		"alreadyClaimedDescription": "Du hast dich bereits früher für **{questName}** angemeldet und deine Belohnung wurde schon eingelöst. Jede Quest kann pro Mitglied nur einmal eingelöst werden.",
 		"pendingTitle": "⏳ Läuft im Hintergrund",
@@ -435,6 +440,12 @@
 		"precheckRewardClaimedTitle": "Belohnung bereits eingelöst",
 		"precheckRewardClaimedDescription": "Die Belohnung für diese Quest wurde auf diesem **Discord-Konto** bereits eingelöst (zum Beispiel nach dem Abschluss auf einem anderen Server oder im Discord-Client). Auto-Enroll kann sie nicht erneut einlösen.",
 		"precheckCompletedTitle": "Quest bereits abgeschlossen",
-		"precheckCompletedDescription": "Die Quest-Ziele sind auf diesem **Discord-Konto** bereits abgeschlossen. Löse eine noch offene Belohnung unter **Discord → Quests** ein, falls du das noch nicht getan hast — Auto-Enroll kann keinen weiteren Fortschritt hinzufügen."
+		"precheckCompletedDescription": "Die Quest-Ziele sind auf diesem **Discord-Konto** bereits abgeschlossen. Löse eine noch offene Belohnung unter **Discord → Quests** ein, falls du das noch nicht getan hast — Auto-Enroll kann keinen weiteren Fortschritt hinzufügen.",
+		"claimAllPendingTitle": "⏳ Alle Quests werden eingelöst",
+		"claimAllPendingDescription": "**{count}** Quest(s) werden eine nach der anderen angemeldet. Jedes Ergebnis wird in diesem Kanal veröffentlicht.\n\nDein Token wird **nicht** in unserer Datenbank gespeichert.\n\n**Risiko:** Discord kann das mit diesem Token verknüpfte **Benutzerkonto** einschränken oder sperren; in einigen Fällen können auch der **Bot oder Server** betroffen sein. Das ist kein offizielles Discord-Verhalten — du hast entschieden, fortzufahren.",
+		"claimAllNothingTitle": "Nichts einzulösen",
+		"claimAllNothingDescription": "Für dieses Discord-Konto kann derzeit keine aktive Quest angemeldet werden.",
+		"autoQuestDisabled": "Die automatische Quest-Anmeldung ist derzeit deaktiviert. Bitte wende dich an eine Serveradministration.",
+		"alreadyRunning": "Für dich läuft bereits eine automatische Quest. Warte, bis sie fertig ist, bevor du eine neue startest."
 	}
 }

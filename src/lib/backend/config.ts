@@ -369,7 +369,8 @@ export {
 	fetchQuestsMe,
 	precheckQuestPayloadForEnrollment,
 	runQuestUserAutomation,
-	type DiscordQuestSummary
+	type DiscordQuestSummary,
+	type QuestAutomationResult
 } from './api/discord-quest-api.js';
 
 export const robloxCatalogStreams = {

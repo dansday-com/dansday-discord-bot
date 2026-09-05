@@ -50,7 +50,18 @@ import {
 	handleContentCreatorReject,
 	handleContentCreatorDecisionModal
 } from './interface/contentcreator.js';
-import { isQuestEnrollButtonId, isQuestEnrollModalId, handleQuestEnrollButton, handleQuestEnrollModalSubmit } from './questEnroll.js';
+import {
+	isQuestEnrollButtonId,
+	isQuestEnrollModalId,
+	handleQuestEnrollButton,
+	handleQuestEnrollModalSubmit,
+	handleDiscordQuestButton,
+	handleQuestClaimAllButton,
+	handleQuestClaimAllModalSubmit,
+	DISCORD_QUEST_BUTTON_ID,
+	QUEST_CLAIM_ALL_BUTTON_ID,
+	QUEST_CLAIM_ALL_MODAL_ID
+} from './questEnroll.js';
 import { translate } from '../i18n.js';
 import { getLevelRequirement } from './leveling.js';
 import { createHash } from 'crypto';
@@ -153,6 +164,15 @@ async function handleMenuButton(interaction) {
 			.setLabel(await translate('notifications.button', interaction.guild.id, interaction.user.id))
 			.setStyle(ButtonStyle.Success)
 	);
+
+	if (await isComponentFeatureEnabled(interaction.guild.id, serverSettingsComponent.discord_quest_notifier)) {
+		buttons.push(
+			new ButtonBuilder()
+				.setCustomId(DISCORD_QUEST_BUTTON_ID)
+				.setLabel(await translate('questEnroll.menuButton', interaction.guild.id, interaction.user.id))
+				.setStyle(ButtonStyle.Success)
+		);
+	}
 
 	if (buttons.length === 0) {
 		const noAccessMsg = await translate('menu.noAccess', interaction.guild.id, interaction.user.id);
@@ -434,6 +454,12 @@ export async function handleButtonInteraction(interaction) {
 			} else if (customId.startsWith('giveaway_finish_')) {
 				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.giveaway)) break;
 				await handleGiveawayFinish(interaction);
+			} else if (customId === DISCORD_QUEST_BUTTON_ID) {
+				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.discord_quest_notifier)) break;
+				await handleDiscordQuestButton(interaction);
+			} else if (customId === QUEST_CLAIM_ALL_BUTTON_ID) {
+				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.discord_quest_notifier)) break;
+				await handleQuestClaimAllButton(interaction);
 			} else if (isQuestEnrollButtonId(customId)) {
 				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.discord_quest_notifier)) break;
 				await handleQuestEnrollButton(interaction);
@@ -587,6 +613,9 @@ function init(client) {
 				} else if (interaction.customId.startsWith('giveaway_create')) {
 					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.giveaway)) return;
 					await handleGiveawayModal(interaction);
+				} else if (interaction.customId === QUEST_CLAIM_ALL_MODAL_ID) {
+					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.discord_quest_notifier)) return;
+					await handleQuestClaimAllModalSubmit(interaction);
 				} else if (isQuestEnrollModalId(interaction.customId)) {
 					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.discord_quest_notifier)) return;
 					await handleQuestEnrollModalSubmit(interaction);

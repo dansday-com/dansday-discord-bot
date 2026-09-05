@@ -52,13 +52,7 @@ function discordTs(iso: string | undefined | null, style: 'R'): string {
 	return `<t:${Math.floor(t / 1000)}:${style}>`;
 }
 
-export async function sendQuestNotificationMessage(
-	client: Client,
-	guildId: string,
-	channelId: string,
-	quest: DiscordQuestSummary,
-	opts?: { test?: boolean; autoQuestEnabled?: boolean }
-) {
+export async function sendQuestNotificationMessage(client: Client, guildId: string, channelId: string, quest: DiscordQuestSummary, opts?: { test?: boolean }) {
 	const guild = await client.guilds.fetch(guildId).catch(() => null);
 	if (!guild) throw new Error('Guild not found');
 	const channel = await guild.channels.fetch(channelId).catch(() => null);
@@ -101,14 +95,9 @@ export async function sendQuestNotificationMessage(
 		embed.setDescription('_Test notification — notifier is working._');
 	}
 
-	const buttons = [new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(quest.questUrl).setLabel('Open in Discord').setEmoji('🖥️')];
-
-	if (opts?.autoQuestEnabled !== false) {
-		const enrollCustomId = `quest_enroll:${quest.id}`.slice(0, 100);
-		buttons.push(new ButtonBuilder().setCustomId(enrollCustomId).setStyle(ButtonStyle.Primary).setLabel('Enroll').setEmoji('⚠️'));
-	}
-
-	const row = new ActionRowBuilder<ButtonBuilder>().addComponents(...buttons);
+	const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+		new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(quest.questUrl).setLabel('Open in Discord').setEmoji('🖥️')
+	);
 
 	const notificationMentions = await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(channel.guild.id, channel.id).catch(() => null);
 	await channel.send({
@@ -212,8 +201,6 @@ async function runTick(client: Client, officialBotId: number) {
 		const channelId = typeof s.channel_id === 'string' ? s.channel_id : '';
 		if (!channelId) continue;
 
-		const autoQuestEnabled = s.auto_quest !== false;
-
 		if (questSummaries.length === 0) {
 			await logger.log(`⚠️ Quest notifier: bot ${officialBotId} has no stored active quests yet — nothing to post for server ${server.id} (${server.name})`);
 			continue;
@@ -247,7 +234,7 @@ async function runTick(client: Client, officialBotId: number) {
 				}
 				postedTargets.add(targetKey);
 				try {
-					await sendQuestNotificationMessage(client, server.discord_server_id, channelId, q, { autoQuestEnabled });
+					await sendQuestNotificationMessage(client, server.discord_server_id, channelId, q);
 					await logger.log(
 						`🔮 Quest notifier: posted quest "${q.questName}" → channel ${channelId} (${server.name}) discovered via ${sourceByQuestId.get(q.id) ?? 'bot-wide stored quest'}`
 					);

@@ -484,7 +484,8 @@
 					offset={reelOffset}
 					animating={reelAnimating}
 					frameWidth={116}
-					cellClass="basis-28 h-[114px]"
+					frameWidthSm={100}
+					cellClass="basis-28 h-[114px] max-[680px]:basis-24 max-[680px]:h-[106px]"
 					glow={reelSettled}
 				>
 					{#snippet cell(c)}

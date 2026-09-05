@@ -8,6 +8,7 @@
 		cellClass,
 		frameWidth,
 		frameWidthLg,
+		frameWidthSm,
 		padLeft = '50%',
 		padLeftLg,
 		tone = 'idle',
@@ -22,6 +23,7 @@
 		cellClass: string;
 		frameWidth: number;
 		frameWidthLg?: number;
+		frameWidthSm?: number;
 		padLeft?: string;
 		padLeftLg?: string;
 		tone?: 'idle' | 'win' | 'lose';
@@ -30,6 +32,8 @@
 		cell: Snippet<[T, number]>;
 		overlay?: Snippet;
 	} = $props();
+
+	const frameCls = $derived([frameWidthLg ? 'min-[600px]:w-(--fw-lg)' : '', frameWidthSm ? 'max-[680px]:w-(--fw-sm)' : ''].filter(Boolean).join(' '));
 
 	const border = $derived(tone === 'win' ? 'border-success/60' : tone === 'lose' ? 'border-error/60' : 'border-base-300');
 </script>
@@ -41,8 +45,8 @@
 		: ''}"
 >
 	<div
-		class="pointer-events-none absolute top-1.5 bottom-1.5 left-1/2 z-3 w-(--fw) -translate-x-1/2 rounded-[13px] border-2 border-[rgba(184,134,11,0.55)] shadow-[0_0_18px_2px_rgba(184,134,11,0.35)] min-[600px]:w-(--fw-lg)"
-		style="--fw: {frameWidth}px; --fw-lg: {frameWidthLg ?? frameWidth}px"
+		class="pointer-events-none absolute top-1.5 bottom-1.5 left-1/2 z-3 w-(--fw) -translate-x-1/2 rounded-[13px] border-2 border-[rgba(184,134,11,0.55)] shadow-[0_0_18px_2px_rgba(184,134,11,0.35)] {frameCls}"
+		style="--fw: {frameWidth}px; --fw-lg: {frameWidthLg ?? frameWidth}px; --fw-sm: {frameWidthSm ?? frameWidth}px"
 	></div>
 	<div
 		class="pointer-events-none absolute -top-0.5 left-1/2 z-4 size-0 -translate-x-1/2 border-x-[7px] border-t-[9px] border-x-transparent border-t-[#d9a528] drop-shadow-[0_0_6px_rgba(184,134,11,0.9)]"

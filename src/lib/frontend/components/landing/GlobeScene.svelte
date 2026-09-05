@@ -367,8 +367,9 @@
 					const floor = size.h + 4;
 					const ceiling = Math.max(floor, height - 4);
 					let slot = -1;
-					for (const offset of [0, -step, step, -2 * step, 2 * step, -3 * step, 3 * step]) {
+					for (const offset of [0, -step, step]) {
 						const candidate = Math.min(Math.max(y + offset, floor), ceiling);
+						if (Math.abs(candidate - y) > step) continue;
 						if (!clashes(left, stageRect.top + candidate - size.h, size.w, size.h)) {
 							slot = candidate;
 							break;

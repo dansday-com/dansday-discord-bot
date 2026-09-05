@@ -1259,6 +1259,32 @@ export async function listPublicServers() {
 		}));
 }
 
+export async function listPublicPanelIds(): Promise<number[]> {
+	await initializeDatabase();
+	const rows = await db
+		.selectDistinct({ panel_id: schema.bots.panel_id })
+		.from(schema.servers)
+		.innerJoin(schema.bots, eq(schema.bots.id, schema.servers.bot_id))
+		.innerJoin(
+			schema.serverSettings,
+			and(eq(schema.serverSettings.server_id, schema.servers.id), eq(schema.serverSettings.component_name, SERVER_SETTINGS.component.public_statistics))
+		)
+		.where(isNull(schema.servers.deleted_at));
+	return rows.map((r) => Number(r.panel_id)).filter((n) => Number.isFinite(n));
+}
+
+export async function listPublicItems(limit = 300) {
+	await initializeDatabase();
+	const panelIds = await listPublicPanelIds();
+	if (!panelIds.length) return [];
+	return db
+		.select()
+		.from(schema.items)
+		.where(inArray(schema.items.panel_id, panelIds))
+		.orderBy(asc(schema.items.sort_order), asc(schema.items.id))
+		.limit(Math.max(1, Math.min(500, Number(limit) || 300)));
+}
+
 export async function getMaxPublicXpEventId(): Promise<number> {
 	await initializeDatabase();
 	const rows = await db.execute(sql`SELECT MAX(id) as max_id FROM server_member_level_logs`);
@@ -6559,6 +6585,8 @@ export default {
 	getDisguisedMemberIds,
 	getMaxPublicXpEventId,
 	listPublicXpEventsAfter,
+	listPublicPanelIds,
+	listPublicItems,
 	getServerMembersList,
 	getPanelOverview,
 	getServerOverview,

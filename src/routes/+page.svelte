@@ -5,6 +5,7 @@
 	import type { AggregatedPanelStats } from '$lib/frontend/public/statistics/aggregate.js';
 	import { PageShell, reveal, REVEAL_CLASS } from '$lib/frontend/components/shell';
 	import GlobeScene from '$lib/frontend/components/landing/GlobeScene.svelte';
+	import { effectIcon, effectLabel, effectAccentHex } from '$lib/items.js';
 	import { createLiveGlobalStatistics } from '$lib/frontend/public/statistics/liveGlobal.svelte.js';
 
 	type Totals = AggregatedPanelStats;
@@ -664,11 +665,100 @@
 			</section>
 		{/if}
 
+		{#if data.topTasks.length > 0}
+			<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
+				<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
+					<div class="min-w-0">
+						<p class={EYEBROW}>03 — Tasks</p>
+						<h2 class={H2}>Every task on the card</h2>
+						<p class={LEAD}>All {data.taskCount} tasks that can come out on a daily or weekly card. Goals scale to each member.</p>
+					</div>
+					<a href="/tasks" class="{BTN} btn-outline btn-primary shrink-0">
+						All {data.taskCount} tasks
+						<i class="fas fa-arrow-right"></i>
+					</a>
+				</div>
+				<div class="border-base-300 grid grid-cols-1 border-t">
+					{#each data.topTasks as task, i (task.id)}
+						<a
+							href="/tasks"
+							use:reveal
+							class="{REVEAL_CLASS} group border-base-300 grid grid-cols-[34px_1fr_auto] items-center gap-3 border-b px-0.5 py-3"
+							style="transition-delay: {i * 60}ms"
+						>
+							<span class="bg-base-200 grid size-[34px] place-items-center rounded-sm text-[13px] leading-none" style="color: {task.accent}">
+								<i class="fas {task.icon}"></i>
+							</span>
+							<span class="min-w-0">
+								<span
+									class="text-base-content group-hover:text-primary block truncate text-[13px] leading-[1.32] font-extrabold tracking-[0.02em] uppercase transition-colors"
+								>
+									{task.label}
+								</span>
+								<span class="text-base-content/55 mt-1 block truncate text-[12px]">{task.example}</span>
+							</span>
+							<span class="text-base-content/35 shrink-0 text-[10px] font-bold tracking-[0.12em] uppercase">{task.requires_label}</span>
+						</a>
+					{/each}
+				</div>
+			</section>
+		{/if}
+
+		{#if data.topItems.length > 0}
+			<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
+				<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
+					<div class="min-w-0">
+						<p class={EYEBROW}>04 — Items</p>
+						<h2 class={H2}>The shop catalog</h2>
+						<p class={LEAD}>{data.buyableItemCount} of {data.itemCount} items on sale right now. The rest stay usable once owned.</p>
+					</div>
+					<a href="/items" class="{BTN} btn-outline btn-primary shrink-0">
+						All {data.itemCount} items
+						<i class="fas fa-arrow-right"></i>
+					</a>
+				</div>
+				<div class="border-base-300 grid grid-cols-1 border-t">
+					{#each data.topItems as item, i (item.id)}
+						<a
+							href="/items"
+							use:reveal
+							class="{REVEAL_CLASS} group border-base-300 grid grid-cols-[34px_1fr_auto] items-center gap-3 border-b px-0.5 py-3"
+							style="transition-delay: {i * 60}ms"
+						>
+							<span
+								class="bg-base-200 grid size-[34px] place-items-center rounded-sm text-[13px] leading-none"
+								style="color: {effectAccentHex(item.effect_type)}"
+							>
+								<i class="fas {effectIcon(item.effect_type)}"></i>
+							</span>
+							<span class="min-w-0">
+								<span
+									class="text-base-content group-hover:text-primary block truncate text-[13px] leading-[1.32] font-extrabold tracking-[0.02em] uppercase transition-colors"
+								>
+									{item.name}
+								</span>
+								<span class="text-base-content/55 mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[12px] tabular-nums">
+									<span>{effectLabel(item.effect_type)}</span>
+									<span class="opacity-40" aria-hidden="true">·</span>
+									<span>{fmt(item.cost)} XP</span>
+								</span>
+							</span>
+							{#if item.buyable}
+								<span class="text-primary shrink-0 text-[10px] font-extrabold tracking-[0.12em] uppercase">Can buy</span>
+							{:else}
+								<span class="text-base-content/30 shrink-0 text-[10px] font-bold tracking-[0.12em] uppercase">Can't buy</span>
+							{/if}
+						</a>
+					{/each}
+				</div>
+			</section>
+		{/if}
+
 		{#if data.topQuests.length > 0}
 			<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
 				<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
 					<div class="min-w-0">
-						<p class={EYEBROW}>03 — Discord Quests</p>
+						<p class={EYEBROW}>05 — Discord Quests</p>
 						<h2 class={H2}>Quests worth running</h2>
 						<p class={LEAD}>{data.liveQuestCount} live of {data.questCount} tracked, with the game, the task and the reward.</p>
 					</div>
@@ -731,7 +821,7 @@
 			<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
 				<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
 					<div class="min-w-0">
-						<p class={EYEBROW}>04 — Roblox catalog</p>
+						<p class={EYEBROW}>06 — Roblox catalog</p>
 						<h2 class={H2}>Items under watch</h2>
 						<p class={LEAD}>The most favourited of {data.robloxCount} catalog items the notifier tracks for price and stock changes.</p>
 					</div>
@@ -781,7 +871,7 @@
 
 		<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
 			<div class="mb-6">
-				<p class={EYEBROW}>05 — The panel</p>
+				<p class={EYEBROW}>07 — The panel</p>
 				<h2 class={H2}>Configured in a browser</h2>
 				<p class={LEAD}>Sign in and you land in the panel. Where a module supports it, you see live bot and server state as it happens.</p>
 			</div>

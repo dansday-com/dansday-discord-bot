@@ -1,5 +1,6 @@
 import db from '../../../database.js';
 import { getRedisClient } from '../../../redis.js';
+import { TASK_DEFINITIONS, type TaskRequirement } from '../../../tasks.js';
 
 const TTL_SECONDS = 300;
 const MAX_ROWS = 300;
@@ -35,8 +36,58 @@ export type RobloxEntry = {
 	limited: boolean;
 };
 
+export type TaskEntry = {
+	id: string;
+	label: string;
+	icon: string;
+	accent: string;
+	unit: string;
+	requires: TaskRequirement;
+	requires_label: string;
+	goal: number;
+	example: string;
+	targets_item: boolean;
+	success_chance: number | null;
+};
+
+export type ItemEntry = {
+	id: number;
+	name: string;
+	effect_type: string;
+	description: string | null;
+	cost: number;
+	buyable: boolean;
+	usable: boolean;
+	available_from: string | null;
+	available_to: string | null;
+	recurring_schedule: any;
+	config: Record<string, any>;
+};
+
 export const EMPTY_QUESTS: QuestEntry[] = [];
 export const EMPTY_ROBLOX: RobloxEntry[] = [];
+export const EMPTY_TASKS: TaskEntry[] = [];
+export const EMPTY_ITEMS: ItemEntry[] = [];
+
+const TASK_REQUIREMENT_LABEL: Record<TaskRequirement, string> = {
+	leveling: 'Leveling',
+	minigames: 'Minigames',
+	items: 'Items',
+	assets: 'Assets'
+};
+
+const SAMPLE_GOAL: Record<string, number> = {
+	messages: 40,
+	reactions: 25,
+	minutes: 60,
+	rounds: 10,
+	wins: 5,
+	members: 3,
+	items: 5,
+	xp: 5000,
+	times: 5,
+	trades: 3
+};
 
 async function cached<T>(key: string, build: () => Promise<T>, fallback: T): Promise<T> {
 	const redis = await getRedisClient();
@@ -125,5 +176,47 @@ export function resolveRobloxDirectory(): Promise<RobloxEntry[]> {
 			});
 		},
 		EMPTY_ROBLOX
+	);
+}
+
+export function resolveTaskDirectory(): TaskEntry[] {
+	return TASK_DEFINITIONS.map((def) => {
+		const goal = SAMPLE_GOAL[def.unit] ?? 10;
+		return {
+			id: def.id,
+			label: def.label,
+			icon: def.icon,
+			accent: def.accent,
+			unit: def.unit,
+			requires: def.requires,
+			requires_label: TASK_REQUIREMENT_LABEL[def.requires] ?? def.requires,
+			goal,
+			example: def.describe(goal),
+			targets_item: !!def.targetsItem,
+			success_chance: typeof def.successChance === 'number' ? def.successChance : null
+		};
+	});
+}
+
+export function resolveItemDirectory(): Promise<ItemEntry[]> {
+	return cached(
+		'dansday:item_directory',
+		async () => {
+			const rows: any[] = await (db as any).listPublicItems(MAX_ROWS);
+			return rows.map((r) => ({
+				id: Number(r.id),
+				name: r.name || `Item ${r.id}`,
+				effect_type: String(r.effect_type || ''),
+				description: r.description || null,
+				cost: num(r.cost),
+				buyable: r.enabled !== false && r.enabled !== 0,
+				usable: r.usable !== false && r.usable !== 0,
+				available_from: r.available_from ? String(r.available_from) : null,
+				available_to: r.available_to ? String(r.available_to) : null,
+				recurring_schedule: r.recurring_schedule ?? null,
+				config: (r.config as Record<string, any>) ?? {}
+			}));
+		},
+		EMPTY_ITEMS
 	);
 }

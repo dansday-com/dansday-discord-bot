@@ -67,6 +67,9 @@ async function postQuestError(job: QuestEnrollJob | QuestClaimAllJob, questId: s
 	const channel = await textChannelForJob(job.client, job.channelId);
 	if (!channel) return;
 	const embedConfig = await getEmbedConfig(job.guildId);
+	const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+		new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(`https://discord.com/quests/${questId}`).setLabel('Open in Discord').setEmoji('🖥️')
+	);
 	await channel.send({
 		content: `<@${job.requesterId}>`,
 		embeds: [
@@ -76,7 +79,8 @@ async function postQuestError(job: QuestEnrollJob | QuestClaimAllJob, questId: s
 				.setDescription(`<@${job.requesterId}> (${job.requesterTag})\nQuest \`${questId}\`\n${message.slice(0, 3400)}`)
 				.setFooter({ text: embedConfig.FOOTER })
 				.setTimestamp()
-		]
+		],
+		components: [row]
 	});
 }
 

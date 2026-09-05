@@ -7,7 +7,7 @@
 </script>
 
 <footer class="relative z-1 shrink-0 border-t {palette === 'dark' ? 'border-ash-700 bg-ash-900/50' : 'border-base-300 bg-base-200/50'}">
-	<div class="mx-auto flex max-w-7xl flex-col items-center gap-2.5 px-3 py-5 text-center">
+	<div class="mx-auto flex w-full max-w-7xl flex-col items-center gap-2.5 px-3 py-5 text-center sm:px-4 lg:px-8">
 		<p class="text-base-content/45 text-xs">
 			Copyright © {new Date().getFullYear()}
 			<a class="link link-hover" href={APP_URL}>{APP_DOMAIN}</a>. All rights reserved.

@@ -91,7 +91,7 @@
 			col = mix(col, uGold, smoothstep(0.0, 0.18, 1.0 - m) * 0.55);
 			float fres = pow(1.0 - clamp(dot(normalize(vNormalW), normalize(vViewDir)), 0.0, 1.0), 2.2);
 			col += fres * 0.5;
-			gl_FragColor = vec4(col, 0.9);
+			gl_FragColor = vec4(col, 0.3);
 		}
 	`;
 
@@ -120,7 +120,7 @@
 			uGold: { value: new THREE.Color('#efb11d') }
 		};
 
-		const geometry = new THREE.IcosahedronGeometry(1.7, 48);
+		const geometry = new THREE.IcosahedronGeometry(1.35, 44);
 		const material = new THREE.ShaderMaterial({
 			vertexShader: VERTEX,
 			fragmentShader: FRAGMENT,
@@ -132,8 +132,8 @@
 		scene.add(blob);
 
 		const wire = new THREE.Mesh(
-			new THREE.IcosahedronGeometry(2.45, 3),
-			new THREE.MeshBasicMaterial({ color: new THREE.Color('#e43d12'), wireframe: true, transparent: true, opacity: 0.1 })
+			new THREE.IcosahedronGeometry(1.5, 3),
+			new THREE.MeshBasicMaterial({ color: new THREE.Color('#e43d12'), wireframe: true, transparent: true, opacity: 0.07 })
 		);
 		scene.add(wire);
 
@@ -204,4 +204,4 @@
 	});
 </script>
 
-<div bind:this={host} class="pointer-events-none absolute inset-0 -z-10" aria-hidden="true"></div>
+<div bind:this={host} class="pointer-events-none absolute inset-y-0 left-1/2 -z-10 w-screen -translate-x-1/2" aria-hidden="true"></div>

@@ -302,7 +302,7 @@
 	{@const change = live?.change24h ?? a.change24h ?? 0}
 	<button
 		type="button"
-		class="relative isolate grid w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 overflow-hidden rounded-[15px] border py-3.5 pr-4 pl-4 text-left transition-transform duration-200 not-disabled:cursor-pointer disabled:opacity-70"
+		class="relative isolate grid w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 overflow-hidden rounded-[15px] border py-[13px] pr-4 pl-[17px] text-left transition-transform duration-200 not-disabled:cursor-pointer disabled:opacity-70"
 		style="--dir: {dirColor(change)}; {ROW_STYLE}"
 		disabled={ctx.readOnly}
 		onclick={() => !ctx.readOnly && openBuy(a)}
@@ -362,7 +362,7 @@
 			{#each livePositions as p (p.id)}
 				<button
 					type="button"
-					class="relative isolate grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 overflow-hidden rounded-[15px] border py-3.5 pr-4 pl-4 text-left transition-transform duration-200 not-disabled:cursor-pointer disabled:opacity-70"
+					class="relative isolate grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 overflow-hidden rounded-[15px] border py-[13px] pr-4 pl-[17px] text-left transition-transform duration-200 not-disabled:cursor-pointer disabled:opacity-70"
 					style="--dir: {dirColor(p.pnl)}; {ROW_STYLE}"
 					disabled={ctx.readOnly}
 					onclick={() => !ctx.readOnly && openSell(p)}

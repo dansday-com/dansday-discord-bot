@@ -383,10 +383,11 @@
 			icon: 'fa-cube',
 			title: 'Roblox catalog watch',
 			desc: 'Watch the catalog and post rich embeds when items change.',
-			more: 'Built for trading groups and UGC-focused servers.',
+			more: 'Members tap Notify on an item to get tagged the moment it moves.',
 			stat: (s: Totals): Live[] => [
 				{ label: 'Items watched', value: fmt(s.roblox_items_watched), live: true },
-				{ label: 'Embeds posted', value: fmt(s.roblox_items_posted) }
+				{ label: 'Embeds posted', value: fmt(s.roblox_items_posted) },
+				{ label: 'Notifications', value: fmt(s.roblox_notifications) }
 			]
 		},
 		{
@@ -807,7 +808,9 @@
 					<div class="min-w-0">
 						<p class={EYEBROW}>06 — Roblox catalog</p>
 						<h2 class={H2}>Items under watch</h2>
-						<p class={LEAD}>The most favourited of {data.robloxCount} catalog items the notifier tracks for price and stock changes.</p>
+						<p class={LEAD}>
+							The most notified, then the most favourited, of {data.robloxCount} catalog items the notifier tracks for price and stock changes.
+						</p>
 					</div>
 					<a href="/roblox" class="{BTN} btn-outline btn-primary shrink-0">
 						Browse all
@@ -842,8 +845,16 @@
 									<span class="text-base-content group-hover:text-primary mb-1 line-clamp-2 text-[12px] leading-[1.35] font-extrabold transition-colors">
 										{item.name}
 									</span>
-									<span class="text-primary mt-auto text-[11.5px] font-black tabular-nums">
-										{item.price > 0 ? `${fmt(item.price)} R$` : 'Free'}
+									<span class="mt-auto flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+										<span class="text-primary text-[11.5px] font-black tabular-nums">
+											{item.price > 0 ? `${fmt(item.price)} R$` : 'Free'}
+										</span>
+										{#if item.notification_count > 0}
+											<span class="text-base-content/45 text-[10.5px] font-bold tabular-nums">
+												<i class="fas fa-bell text-[9px]"></i>
+												{fmt(item.notification_count)}
+											</span>
+										{/if}
 									</span>
 								</span>
 							</a>

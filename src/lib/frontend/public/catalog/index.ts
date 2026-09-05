@@ -25,15 +25,14 @@ export type RobloxEntry = {
 	name: string;
 	category: string | null;
 	creator_name: string | null;
-	description: string | null;
 	thumbnail_url: string | null;
 	price: number;
-	lowest_resale_price: number;
 	favorite_count: number;
 	units_available: number;
 	total_quantity: number;
 	price_delta: number;
 	limited: boolean;
+	notification_count: number;
 };
 
 export type TaskEntry = {
@@ -171,11 +170,11 @@ export function resolveQuestDirectory(): Promise<QuestEntry[]> {
 	);
 }
 
-export function resolveRobloxDirectory(): Promise<RobloxEntry[]> {
+export function resolveRobloxDirectory(limit: number | null = null, offset = 0): Promise<RobloxEntry[]> {
 	return cached(
-		'dansday:roblox_directory',
+		`dansday:roblox_directory:${limit ?? 'all'}:${offset}`,
 		async () => {
-			const rows: any[] = await (db as any).listPublicRobloxItems(MAX_ROWS);
+			const rows: any[] = await (db as any).listPublicRobloxItems(limit, offset);
 			return rows.map((r) => {
 				const price = num(r.price);
 				return {
@@ -183,15 +182,41 @@ export function resolveRobloxDirectory(): Promise<RobloxEntry[]> {
 					name: r.name || `Asset ${r.asset_id}`,
 					category: r.category || null,
 					creator_name: r.creator_name || null,
-					description: r.description || null,
 					thumbnail_url: r.thumbnail_url || null,
 					price,
-					lowest_resale_price: num(r.lowest_resale_price),
 					favorite_count: num(r.favorite_count),
 					units_available: num(r.units_available),
 					total_quantity: num(r.total_quantity),
 					price_delta: price - num(r.last_price),
-					limited: num(r.total_quantity) > 0
+					limited: num(r.total_quantity) > 0,
+					notification_count: num(r.notification_count)
+				};
+			});
+		},
+		EMPTY_ROBLOX
+	);
+}
+
+export function resolveRobloxMostNotified(limit = 6): Promise<RobloxEntry[]> {
+	return cached(
+		`dansday:roblox_most_notified:${limit}`,
+		async () => {
+			const rows: any[] = await (db as any).listPublicRobloxItemsByNotifications(limit);
+			return rows.map((r) => {
+				const price = num(r.price);
+				return {
+					asset_id: String(r.asset_id),
+					name: r.name || `Asset ${r.asset_id}`,
+					category: r.category || null,
+					creator_name: r.creator_name || null,
+					thumbnail_url: r.thumbnail_url || null,
+					price,
+					favorite_count: num(r.favorite_count),
+					units_available: num(r.units_available),
+					total_quantity: num(r.total_quantity),
+					price_delta: price - num(r.last_price),
+					limited: num(r.total_quantity) > 0,
+					notification_count: num(r.notification_count)
 				};
 			});
 		},

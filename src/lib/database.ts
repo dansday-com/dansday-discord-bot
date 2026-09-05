@@ -3407,18 +3407,44 @@ export async function listPublicDiscordQuests(limit = 300) {
 	return (rows[0] as unknown as any[]) || [];
 }
 
-export async function listPublicRobloxItems(limit = 300) {
+export async function listPublicRobloxItems(limit: number | null = 300, offset = 0) {
 	await initializeDatabase();
+	const cap = Number(limit);
+	const capped = Number.isFinite(cap) && cap > 0;
+	const skip = Math.max(0, Math.trunc(Number(offset) || 0));
 	const rows = await db.execute(sql`
 		SELECT
-			r.asset_id, r.name, r.category, r.creator_name, r.description, r.thumbnail_url,
-			r.price, r.lowest_resale_price, r.favorite_count, r.units_available, r.total_quantity, r.last_price
+			r.asset_id, r.name, r.category, r.creator_name, r.thumbnail_url,
+			r.price, r.favorite_count, r.units_available, r.total_quantity, r.last_price,
+			(
+				SELECT COUNT(*) FROM server_member_roblox_item_notifications n
+				INNER JOIN server_members m ON m.id = n.member_id
+				WHERE n.item_id = r.id AND m.deleted_at IS NULL
+			) AS notification_count
 		FROM bot_roblox_items r
 		INNER JOIN (
 			SELECT asset_id, MAX(id) AS id FROM bot_roblox_items GROUP BY asset_id
 		) latest ON latest.id = r.id
 		ORDER BY r.favorite_count DESC, r.id DESC
-		LIMIT ${Number(limit) || 300}
+		${capped ? sql`LIMIT ${cap} OFFSET ${skip}` : sql``}
+	`);
+	return (rows[0] as unknown as any[]) || [];
+}
+
+export async function listPublicRobloxItemsByNotifications(limit = 6) {
+	await initializeDatabase();
+	const rows = await db.execute(sql`
+		SELECT
+			r.asset_id, r.name, r.category, r.creator_name, r.description, r.thumbnail_url,
+			r.price, r.favorite_count, r.units_available, r.total_quantity, r.last_price,
+			COUNT(*) AS notification_count
+		FROM server_member_roblox_item_notifications n
+		INNER JOIN server_members m ON m.id = n.member_id
+		INNER JOIN bot_roblox_items r ON r.id = n.item_id
+		WHERE m.deleted_at IS NULL
+		GROUP BY r.id
+		ORDER BY notification_count DESC, r.favorite_count DESC, r.id DESC
+		LIMIT ${Number(limit) || 6}
 	`);
 	return (rows[0] as unknown as any[]) || [];
 }
@@ -3512,7 +3538,12 @@ export async function getServerFeatureStats(serverId: any) {
 					SELECT COUNT(*) FROM bot_roblox_items br
 					WHERE br.bot_id = (SELECT bot_id FROM servers WHERE id = ${sid})
 				) AS roblox_items_watched,
-				(SELECT COUNT(*) FROM server_roblox_items WHERE server_id = ${sid}) AS roblox_items_posted
+				(SELECT COUNT(*) FROM server_roblox_items WHERE server_id = ${sid}) AS roblox_items_posted,
+				(
+					SELECT COUNT(*) FROM server_member_roblox_item_notifications n
+					INNER JOIN server_members m ON m.id = n.member_id
+					WHERE m.server_id = ${sid} AND m.deleted_at IS NULL
+				) AS roblox_notifications
 		`)
 	]);
 
@@ -3548,6 +3579,7 @@ export async function getServerFeatureStats(serverId: any) {
 		quests_posted: Number(ct.quests_posted) || 0,
 		roblox_items_watched: Number(ct.roblox_items_watched) || 0,
 		roblox_items_posted: Number(ct.roblox_items_posted) || 0,
+		roblox_notifications: Number(ct.roblox_notifications) || 0,
 		bounties_placed: Number(bn.placed) || 0,
 		bounties_collected: Number(bn.collected) || 0,
 		bounties_pooled: Number(bn.pooled) || 0,
@@ -6649,6 +6681,7 @@ export default {
 	listPublicDiscordQuests,
 	listPublicRobloxItems,
 	countPublicRobloxItems,
+	listPublicRobloxItemsByNotifications,
 	listPublicWikis,
 	getMemberDashboard,
 	getMemberInsights,

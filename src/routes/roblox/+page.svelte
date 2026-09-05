@@ -1,15 +1,48 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import type { PageProps } from './$types';
+	import type { RobloxEntry } from '$lib/frontend/public/catalog/index.js';
 	import { PageShell, reveal, REVEAL_CLASS } from '$lib/frontend/components/shell';
 
 	let { data }: PageProps = $props();
 
-	const watchSummary = $derived(
-		data.tracked > data.items.length
-			? `${data.tracked} items under watch, showing the ${data.items.length} most favourited`
-			: `${data.items.length} items under watch, ordered by favourites`
-	);
+	let loaded = $state<RobloxEntry[]>([...data.items]);
+	let loading = $state(false);
+	let exhausted = $state(data.items.length >= data.tracked);
+	let sentinel: HTMLDivElement | null = $state(null);
+
+	async function loadMore() {
+		if (loading || exhausted) return;
+		loading = true;
+		try {
+			const res = await fetch(`/api/public-catalog/roblox?offset=${loaded.length}`);
+			const payload = (await res.json()) as { items?: RobloxEntry[]; limit?: number };
+			const batch = Array.isArray(payload.items) ? payload.items : [];
+			const seen = new Set(loaded.map((item) => item.asset_id));
+			const fresh = batch.filter((item) => !seen.has(item.asset_id));
+			loaded = [...loaded, ...fresh];
+			if (fresh.length === 0 || batch.length < (payload.limit ?? batch.length)) exhausted = true;
+		} catch (_) {
+			exhausted = true;
+		} finally {
+			loading = false;
+		}
+	}
+
+	$effect(() => {
+		const node = sentinel;
+		if (!node || exhausted) return;
+		const io = new IntersectionObserver((entries) => {
+			if (entries.some((entry) => entry.isIntersecting)) loadMore();
+		});
+		io.observe(node);
+		return () => io.disconnect();
+	});
+
+	onDestroy(() => {
+		loaded = [];
+	});
 
 	const compact = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 });
 	const fmt = (n: number) => compact.format(Math.max(0, Math.round(n || 0)));
@@ -28,11 +61,11 @@
 			.join('')
 			.toUpperCase() || '?';
 
-	const categories = $derived([...new Set(data.items.map((i) => i.category).filter(Boolean))].sort() as string[]);
+	const categories = $derived([...new Set(loaded.map((i) => i.category).filter(Boolean))].sort() as string[]);
 	let category = $state('');
 
 	const filtered = $derived(
-		data.items.filter((item) => {
+		loaded.filter((item) => {
 			if (limitedOnly && !item.limited) return false;
 			if (category && item.category !== category) return false;
 			const needle = query.trim().toLowerCase();
@@ -57,11 +90,11 @@
 			<p class="text-primary mb-3.5 text-[10.5px] font-extrabold tracking-[0.2em] uppercase">Directory</p>
 			<h1 class="text-base-content mb-2.5 text-[clamp(21px,6.2cqw,58px)] leading-[0.98] font-black tracking-[-0.035em] uppercase">Roblox catalog</h1>
 			<p class="text-base-content/60 text-[13.5px] leading-[1.55] sm:max-w-[54ch]">
-				{watchSummary}. Prices and stock refresh as the notifier polls the catalog.
+				{fmt(data.tracked)} items under watch, ordered by favourites. Prices and stock refresh as the notifier polls the catalog.
 			</p>
 		</section>
 
-		{#if data.items.length > 0}
+		{#if data.tracked > 0}
 			<section class="border-base-300 border-t py-8">
 				<div class="mb-5 flex flex-wrap items-center gap-2.5">
 					<label class="input input-sm border-base-300 bg-base-100 w-full rounded-sm sm:max-w-xs">
@@ -132,6 +165,12 @@
 										{#if item.limited}
 											<span class="text-base-content/45">{fmt(item.units_available)} / {fmt(item.total_quantity)} left</span>
 										{/if}
+										{#if item.notification_count > 0}
+											<span class="text-base-content/60 font-bold">
+												<i class="fas fa-bell text-[9px]"></i>
+												{fmt(item.notification_count)}
+											</span>
+										{/if}
 										{#if item.favorite_count > 0}
 											<span class="text-base-content/45 ml-auto">
 												<i class="fas fa-heart text-[9px]"></i>
@@ -148,6 +187,27 @@
 				{#if filtered.length === 0}
 					<p class="text-base-content/45 py-8 text-[12.5px]">Nothing matches that filter.</p>
 				{/if}
+
+				<div bind:this={sentinel} class="pt-8">
+					{#if loading}
+						<p class="text-base-content/45 text-[12px] font-bold tracking-[0.12em] uppercase">
+							<i class="fas fa-spinner fa-spin text-[11px]"></i>
+							Loading more
+						</p>
+					{:else if !exhausted}
+						<button
+							type="button"
+							class="btn btn-sm btn-outline btn-primary rounded-sm text-[10.5px] font-extrabold tracking-[0.12em] uppercase"
+							onclick={loadMore}
+						>
+							Load more
+						</button>
+					{/if}
+					<p class="text-base-content/35 mt-3 text-[11.5px] tabular-nums">
+						{fmt(loaded.length)} of {fmt(data.tracked)} loaded{#if !exhausted}
+							&nbsp;· filters search what is loaded{/if}
+					</p>
+				</div>
 			</section>
 		{:else}
 			<section class="border-base-300 border-t py-10">

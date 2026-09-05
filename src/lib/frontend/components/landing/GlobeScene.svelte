@@ -12,7 +12,6 @@
 	let stage: HTMLDivElement | null = $state(null);
 	let webgl = $state(true);
 	let pulses = $state<Pulse[]>([]);
-	let compactView = $state(false);
 
 	const labelEls: Record<number, HTMLElement | undefined> = {};
 	const labelSizes = new Map<number, { w: number; h: number }>();
@@ -64,13 +63,9 @@
 	onMount(async () => {
 		const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
 		const narrow = window.matchMedia('(max-width: 640px)');
-		compactView = narrow.matches;
-		const onNarrow = () => (compactView = narrow.matches);
-		narrow.addEventListener('change', onNarrow);
 
 		const startFallback = () => {
 			webgl = false;
-			narrow.removeEventListener('change', onNarrow);
 		};
 
 		let THREE: typeof import('three');
@@ -329,10 +324,12 @@
 			if (stage) {
 				const width = renderer.domElement.clientWidth;
 				const height = renderer.domElement.clientHeight;
-				const maxLabels = compactView ? 1 : 3;
 				const stageRect = stage.getBoundingClientRect();
-				const blocked = avoid.filter(Boolean).map((el) => (el as HTMLElement).getBoundingClientRect());
-				let shown = 0;
+				const blocked: { left: number; top: number; right: number; bottom: number }[] = avoid
+					.filter(Boolean)
+					.map((el) => (el as HTMLElement).getBoundingClientRect());
+				const clashes = (left: number, top: number, w: number, h: number) =>
+					blocked.some((rect) => left < rect.right + 8 && left + w > rect.left - 8 && top < rect.bottom + 8 && top + h > rect.top - 8);
 
 				for (let i = active.length - 1; i >= 0; i--) {
 					const pulse = active[i];
@@ -355,7 +352,7 @@
 					const facing = normal.dot(toCamera);
 					const life = reduced ? 0.32 : (now - pulse.born) / PULSE_MS;
 
-					if (!size || facing <= 0.14 || shown >= maxLabels || life < 0 || life >= 1) {
+					if (!size || facing <= 0.14 || life < 0 || life >= 1) {
 						hidden.push(el);
 						continue;
 					}
@@ -365,17 +362,27 @@
 					const y = Math.min(Math.max((-world.y * 0.5 + 0.5) * height - 10, size.h + 4), Math.max(size.h + 4, height - 4));
 
 					const left = stageRect.left + x;
-					const top = stageRect.top + y - size.h;
-					const clash = blocked.some((rect) => left < rect.right + 8 && left + size.w > rect.left - 8 && top < rect.bottom + 8 && top + size.h > rect.top - 8);
-					if (clash) {
+					const step = size.h + 6;
+					const floor = size.h + 4;
+					const ceiling = Math.max(floor, height - 4);
+					let slot = -1;
+					for (const offset of [0, -step, step, -2 * step, 2 * step, -3 * step, 3 * step]) {
+						const candidate = Math.min(Math.max(y + offset, floor), ceiling);
+						if (!clashes(left, stageRect.top + candidate - size.h, size.w, size.h)) {
+							slot = candidate;
+							break;
+						}
+					}
+					if (slot < 0) {
 						hidden.push(el);
 						continue;
 					}
 
-					shown++;
+					const top = stageRect.top + slot - size.h;
+					blocked.push({ left, top, right: left + size.w, bottom: top + size.h });
 					const enter = Math.min(1, life / 0.12);
 					const exit = Math.min(1, (1 - life) / 0.25);
-					placements.push({ el, x, y, opacity: Math.min(enter, exit) * Math.min(1, (facing - 0.14) / 0.22) });
+					placements.push({ el, x, y: slot, opacity: Math.min(enter, exit) * Math.min(1, (facing - 0.14) / 0.22) });
 				}
 			} else {
 				for (const pulse of active) {
@@ -435,7 +442,6 @@
 		}
 
 		function teardown() {
-			narrow.removeEventListener('change', onNarrow);
 			window.removeEventListener('pointermove', onPointer);
 			ro.disconnect();
 			io.disconnect();

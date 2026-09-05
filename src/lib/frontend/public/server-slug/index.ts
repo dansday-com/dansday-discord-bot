@@ -3,6 +3,7 @@ import { computeIndexedSlugForItemId, listIndexedSlugsForItems, resolveIndexedSl
 
 export type PublicSlugServerRow = {
 	id: number;
+	bot_id?: number | null;
 	name: string | null;
 	updated_at: any;
 	server_icon?: string | null;

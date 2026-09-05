@@ -1,5 +1,6 @@
 import db from '../../../database.js';
 import { getRedisClient } from '../../../redis.js';
+import { listLivePublicServers } from '../server-slug/index.js';
 import { TASK_DEFINITIONS, type TaskRequirement } from '../../../tasks.js';
 
 const TTL_SECONDS = 300;
@@ -64,10 +65,26 @@ export type ItemEntry = {
 	config: Record<string, any>;
 };
 
+export type WikiServerLink = {
+	name: string;
+	slug: string;
+};
+
+export type WikiEntry = {
+	id: number;
+	name: string;
+	description: string | null;
+	site_url: string | null;
+	site_host: string | null;
+	active: boolean;
+	servers: WikiServerLink[];
+};
+
 export const EMPTY_QUESTS: QuestEntry[] = [];
 export const EMPTY_ROBLOX: RobloxEntry[] = [];
 export const EMPTY_TASKS: TaskEntry[] = [];
 export const EMPTY_ITEMS: ItemEntry[] = [];
+export const EMPTY_WIKIS: WikiEntry[] = [];
 
 const TASK_REQUIREMENT_LABEL: Record<TaskRequirement, string> = {
 	leveling: 'Leveling',
@@ -120,6 +137,16 @@ function iso(d: unknown): string | null {
 function num(v: unknown): number {
 	const n = Number(v);
 	return Number.isFinite(n) ? n : 0;
+}
+
+function hostOf(url: unknown): string | null {
+	const raw = typeof url === 'string' ? url.trim() : '';
+	if (!raw) return null;
+	try {
+		return new URL(raw).host.replace(/^www\./, '') || null;
+	} catch (_) {
+		return null;
+	}
 }
 
 export function resolveQuestDirectory(): Promise<QuestEntry[]> {
@@ -218,5 +245,37 @@ export function resolveItemDirectory(): Promise<ItemEntry[]> {
 			}));
 		},
 		EMPTY_ITEMS
+	);
+}
+
+export function resolveWikiDirectory(): Promise<WikiEntry[]> {
+	return cached(
+		'dansday:wiki_directory',
+		async () => {
+			const [rows, servers] = await Promise.all([(db as any).listPublicWikis(MAX_ROWS) as Promise<any[]>, listLivePublicServers()]);
+			const serversByBot = new Map<number, WikiServerLink[]>();
+			for (const row of servers) {
+				const botId = Number(row.item.bot_id);
+				if (!Number.isFinite(botId)) continue;
+				const list = serversByBot.get(botId) ?? [];
+				list.push({ name: row.item.name || row.slug, slug: row.slug });
+				serversByBot.set(botId, list);
+			}
+			for (const list of serversByBot.values()) list.sort((a, b) => a.name.localeCompare(b.name));
+
+			return rows.map((r) => {
+				const site = typeof r.site_url === 'string' && r.site_url.trim() ? r.site_url.trim() : null;
+				return {
+					id: Number(r.id),
+					name: r.name || `Wiki ${r.id}`,
+					description: r.description || null,
+					site_url: site,
+					site_host: hostOf(site),
+					active: r.enabled === true || r.enabled === 1,
+					servers: serversByBot.get(Number(r.bot_id)) ?? []
+				};
+			});
+		},
+		EMPTY_WIKIS
 	);
 }

@@ -1239,6 +1239,7 @@ export async function listPublicServers() {
 	const rows = await db.execute(sql`
 		SELECT
 			sv.id,
+			sv.bot_id,
 			sv.name,
 			sv.updated_at,
 			sv.server_icon,
@@ -1252,6 +1253,7 @@ export async function listPublicServers() {
 		.filter((r: any) => !!r)
 		.map((r: any) => ({
 			id: Number(r.id),
+			bot_id: r.bot_id == null ? null : Number(r.bot_id),
 			name: r.name ?? null,
 			updated_at: r.updated_at,
 			server_icon: r.server_icon ?? null,
@@ -1282,6 +1284,27 @@ export async function listPublicItems(limit = 300) {
 		.from(schema.items)
 		.where(inArray(schema.items.panel_id, panelIds))
 		.orderBy(asc(schema.items.sort_order), asc(schema.items.id))
+		.limit(Math.max(1, Math.min(500, Number(limit) || 300)));
+}
+
+export async function listPublicWikis(limit = 300) {
+	await initializeDatabase();
+	const panelIds = await listPublicPanelIds();
+	if (!panelIds.length) return [];
+	return db
+		.select({
+			id: schema.botWikis.id,
+			bot_id: schema.botWikis.bot_id,
+			enabled: schema.botWikis.enabled,
+			name: schema.botWikis.name,
+			site_url: schema.botWikis.site_url,
+			description: schema.botWikis.description,
+			updated_at: schema.botWikis.updated_at
+		})
+		.from(schema.botWikis)
+		.innerJoin(schema.bots, eq(schema.bots.id, schema.botWikis.bot_id))
+		.where(inArray(schema.bots.panel_id, panelIds))
+		.orderBy(desc(schema.botWikis.enabled), asc(schema.botWikis.name))
 		.limit(Math.max(1, Math.min(500, Number(limit) || 300)));
 }
 
@@ -6535,6 +6558,7 @@ export default {
 	getServerFeatureStats,
 	listPublicDiscordQuests,
 	listPublicRobloxItems,
+	listPublicWikis,
 	getMemberDashboard,
 	getMemberInsights,
 	recordLevelFriends,

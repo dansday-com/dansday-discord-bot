@@ -809,7 +809,7 @@
 						<i class="fas fa-arrow-right"></i>
 					</a>
 				</div>
-				<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+				<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
 					{#each data.topRoblox as item, i (item.asset_id)}
 						<div use:reveal class={REVEAL_CLASS} style="transition-delay: {i * 60}ms">
 							<a
@@ -848,9 +848,61 @@
 			</section>
 		{/if}
 
+		{#if data.topWikis.length > 0}
+			<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
+				<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
+					<div class="min-w-0">
+						<p class={EYEBROW}>07 — Wiki knowledge</p>
+						<h2 class={H2}>What it can look up</h2>
+						<p class={LEAD}>
+							{data.activeWikiCount} of {data.wikiCount} connected wikis answer questions right now. Each one is bound to the servers listed beside it.
+						</p>
+					</div>
+					<a href="/wikis" class="{BTN} btn-outline btn-primary shrink-0">
+						All {data.wikiCount} wikis
+						<i class="fas fa-arrow-right"></i>
+					</a>
+				</div>
+				<dl class="border-base-300 border-t">
+					{#each data.topWikis as wiki, i (wiki.id)}
+						<div
+							use:reveal
+							class="{REVEAL_CLASS} border-base-300 grid grid-cols-1 gap-x-6 gap-y-2 border-b py-4 sm:grid-cols-[1fr_1.15fr] sm:items-baseline"
+							style="transition-delay: {i * 60}ms"
+						>
+							<dt class="min-w-0">
+								<span class="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+									<span class="text-base-content text-[clamp(15px,2.4cqw,24px)] leading-[1.05] font-black tracking-[-0.02em] uppercase">{wiki.name}</span>
+									<span class="text-base-content/35 text-[11px] tracking-[0.04em] lowercase">{wiki.site_host ?? 'no public site'}</span>
+								</span>
+								<span class="mt-1.5 flex items-center gap-1.5">
+									<span class="size-1.5 {wiki.active ? 'bg-primary' : 'bg-base-content/20'}"></span>
+									<span class="text-[9.5px] font-extrabold tracking-[0.16em] uppercase {wiki.active ? 'text-primary' : 'text-base-content/35'}">
+										{wiki.active ? 'Active' : 'Disabled'}
+									</span>
+								</span>
+							</dt>
+							<dd class="text-base-content/60 min-w-0 text-[12.5px] leading-[1.5]">
+								{#if wiki.servers.length > 0}
+									<span class="text-base-content/30 mr-1.5 text-[9.5px] font-bold tracking-[0.14em] uppercase">Answers in</span>
+									{#each wiki.servers as server, j (server.slug)}
+										{#if j > 0}<span class="text-base-content/20" aria-hidden="true">·</span>{/if}
+										<a href={publicServerPath(server.slug)} class="hover:text-primary font-bold underline underline-offset-4 transition-colors">{server.name}</a
+										>
+									{/each}
+								{:else}
+									<span class="text-base-content/35">No public server bound yet.</span>
+								{/if}
+							</dd>
+						</div>
+					{/each}
+				</dl>
+			</section>
+		{/if}
+
 		<section class="border-base-300 border-t py-10 sm:py-13 lg:py-16">
 			<div class="mb-6">
-				<p class={EYEBROW}>07 — The panel</p>
+				<p class={EYEBROW}>08 — The panel</p>
 				<h2 class={H2}>Configured in a browser</h2>
 				<p class={LEAD}>Sign in and you land in the panel. Where a module supports it, you see live bot and server state as it happens.</p>
 			</div>
@@ -865,7 +917,7 @@
 		</section>
 
 		<section class="bleed bg-primary text-primary-content mt-10 -mb-10 py-12 sm:mt-13 sm:py-15 lg:mt-16 lg:py-19">
-			<p class="text-primary-content mb-3.5 text-[10.5px] font-extrabold tracking-[0.2em] uppercase">06 — Start</p>
+			<p class="text-primary-content mb-3.5 text-[10.5px] font-extrabold tracking-[0.2em] uppercase">09 — Start</p>
 			<p class="font-black">
 				<span class="display-line text-primary-content block whitespace-nowrap uppercase" style="--ch: 10">Ready to go</span>
 			</p>

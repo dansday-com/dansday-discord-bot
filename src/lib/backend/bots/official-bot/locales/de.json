@@ -449,5 +449,15 @@
 		"alreadyRunning": "Für dich läuft bereits eine automatische Quest. Warte, bis sie fertig ist, bevor du eine neue startest.",
 		"announceInChannel": "Jedes Ergebnis wird in {channel} veröffentlicht.",
 		"announceDisabled": "Es ist kein Quest-Kanal festgelegt, daher wird nichts veröffentlicht — eingelöste Quests werden nur in der Quest-Liste markiert."
+	},
+	"robloxCatalog": {
+		"notifications": {
+			"added": "🔔 Du wirst in {channel} markiert, sobald sich **{item}** ändert. {count} beobachten es.",
+			"removed": "🔕 Du wirst für **{item}** nicht mehr markiert.",
+			"errors": {
+				"invalidItem": "❌ Der Katalogartikel dieses Buttons konnte nicht gelesen werden.",
+				"memberNotFound": "❌ Dein Mitgliedsprofil ist noch nicht synchronisiert. Versuche es gleich erneut."
+			}
+		}
 	}
 }

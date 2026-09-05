@@ -5521,6 +5521,89 @@ async function updateBotRobloxItemLastValues(items: RobloxCatalogItemSnapshot[])
 	}
 }
 
+async function toggleServerMemberRobloxItemNotification(memberId: number, itemId: number): Promise<'added' | 'removed'> {
+	await initializeDatabase();
+	const [existing] = await db
+		.select({ id: schema.serverMemberRobloxItemNotifications.id })
+		.from(schema.serverMemberRobloxItemNotifications)
+		.where(and(eq(schema.serverMemberRobloxItemNotifications.member_id, memberId), eq(schema.serverMemberRobloxItemNotifications.item_id, itemId)))
+		.limit(1);
+
+	if (existing) {
+		await db.delete(schema.serverMemberRobloxItemNotifications).where(eq(schema.serverMemberRobloxItemNotifications.id, existing.id));
+		return 'removed';
+	}
+
+	await db
+		.insert(schema.serverMemberRobloxItemNotifications)
+		.values({ member_id: memberId, item_id: itemId, created_at: toMySQLDateTime() as any })
+		.onDuplicateKeyUpdate({ set: { member_id: memberId } as any });
+	return 'added';
+}
+
+async function countServerRobloxItemNotifications(serverId: number, itemId: number): Promise<number> {
+	await initializeDatabase();
+	const rows = await db.execute(sql`
+		SELECT COUNT(*) AS total
+		FROM server_member_roblox_item_notifications n
+		INNER JOIN server_members m ON m.id = n.member_id
+		WHERE m.server_id = ${Number(serverId)} AND m.deleted_at IS NULL AND n.item_id = ${Number(itemId)}
+	`);
+	const row = ((rows[0] as unknown as any[]) || [])[0];
+	return Number(row?.total) || 0;
+}
+
+async function listServerRobloxItemNotificationDiscordIds(serverId: number, assetId: number | bigint): Promise<string[]> {
+	await initializeDatabase();
+	const rows = await db
+		.select({ discord_member_id: schema.serverMembers.discord_member_id })
+		.from(schema.serverMemberRobloxItemNotifications)
+		.innerJoin(schema.serverMembers, eq(schema.serverMembers.id, schema.serverMemberRobloxItemNotifications.member_id))
+		.innerJoin(schema.botRobloxItems, eq(schema.botRobloxItems.id, schema.serverMemberRobloxItemNotifications.item_id))
+		.where(
+			and(
+				eq(schema.serverMembers.server_id, serverId),
+				isNull(schema.serverMembers.deleted_at),
+				eq(schema.botRobloxItems.asset_id, snapshotAssetIdBigInt(assetId))
+			)
+		)
+		.orderBy(schema.serverMemberRobloxItemNotifications.id);
+	return rows.map((r) => r.discord_member_id);
+}
+
+async function listNotifiedRobloxItemsForBot(
+	botId: number,
+	limit = 240
+): Promise<{ assetId: bigint; assetType: number | null; thumbnailUrl: string | null }[]> {
+	await initializeDatabase();
+	const rows = await db.execute(sql`
+		SELECT i.asset_id, i.asset_type, i.thumbnail_url, COUNT(*) AS watchers
+		FROM server_member_roblox_item_notifications n
+		INNER JOIN server_members m ON m.id = n.member_id
+		INNER JOIN servers s ON s.id = m.server_id
+		INNER JOIN bot_roblox_items i ON i.id = n.item_id
+		WHERE s.bot_id = ${Number(botId)} AND s.deleted_at IS NULL AND m.deleted_at IS NULL
+		GROUP BY i.id, i.asset_id, i.asset_type, i.thumbnail_url
+		ORDER BY watchers DESC, i.asset_id ASC
+		LIMIT ${Number(limit)}
+	`);
+	return ((rows[0] as unknown as any[]) || []).map((r) => ({
+		assetId: BigInt(String(r.asset_id)),
+		assetType: r.asset_type == null ? null : Number(r.asset_type),
+		thumbnailUrl: typeof r.thumbnail_url === 'string' && r.thumbnail_url ? r.thumbnail_url : null
+	}));
+}
+
+async function getBotRobloxItemByAssetId(assetId: number | bigint) {
+	await initializeDatabase();
+	const [row] = await db
+		.select()
+		.from(schema.botRobloxItems)
+		.where(eq(schema.botRobloxItems.asset_id, snapshotAssetIdBigInt(assetId)))
+		.limit(1);
+	return row ?? null;
+}
+
 async function getBotDiscordQuestByQuestId(questId: string) {
 	await initializeDatabase();
 	const [row] = await db.select().from(schema.botDiscordQuest).where(eq(schema.botDiscordQuest.quest_id, questId)).limit(1);
@@ -6581,6 +6664,11 @@ export default {
 	markServerRobloxItemMessagePosted,
 	detectAndUpdateServerRobloxItemChanges,
 	updateBotRobloxItemLastValues,
+	toggleServerMemberRobloxItemNotification,
+	countServerRobloxItemNotifications,
+	listServerRobloxItemNotificationDiscordIds,
+	listNotifiedRobloxItemsForBot,
+	getBotRobloxItemByAssetId,
 	getBotDiscordQuestByQuestId,
 	hasServerMemberClaimedDiscordQuest,
 	markServerMemberDiscordQuestClaimed,

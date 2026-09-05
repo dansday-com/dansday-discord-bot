@@ -449,5 +449,15 @@
 		"alreadyRunning": "Kamu sudah punya quest otomatis yang sedang berjalan. Tunggu sampai selesai sebelum memulai lagi.",
 		"announceInChannel": "Setiap hasil diposting di {channel}.",
 		"announceDisabled": "Channel quest belum diatur, jadi tidak ada yang diposting — quest yang diklaim hanya ditandai di daftar quest."
+	},
+	"robloxCatalog": {
+		"notifications": {
+			"added": "🔔 Kamu akan ditandai di {channel} setiap kali **{item}** berubah. {count} sedang memantau.",
+			"removed": "🔕 Kamu tidak akan ditandai lagi untuk **{item}**.",
+			"errors": {
+				"invalidItem": "❌ Item katalog dari tombol ini tidak bisa dibaca.",
+				"memberNotFound": "❌ Profil member kamu belum tersinkron. Coba lagi sebentar."
+			}
+		}
 	}
 }

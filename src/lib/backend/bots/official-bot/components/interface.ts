@@ -62,6 +62,7 @@ import {
 	QUEST_CLAIM_ALL_BUTTON_ID,
 	QUEST_CLAIM_ALL_MODAL_ID
 } from './questEnroll.js';
+import { handleRobloxItemNotificationButton, isRobloxItemNotificationButtonId } from './robloxCatalogNotifier.js';
 import { translate } from '../i18n.js';
 import { getLevelRequirement } from './leveling.js';
 import { createHash } from 'crypto';
@@ -463,6 +464,9 @@ export async function handleButtonInteraction(interaction) {
 			} else if (isQuestEnrollButtonId(customId)) {
 				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.discord_quest_notifier)) break;
 				await handleQuestEnrollButton(interaction);
+			} else if (isRobloxItemNotificationButtonId(customId)) {
+				if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.roblox_catalog_notifier)) break;
+				await handleRobloxItemNotificationButton(interaction);
 			} else {
 				await logger.log(`🔍 Unknown button interaction: ${customId}`);
 				const errorMsg = await translate('common.errors.unknownButton', interaction.guild?.id, interaction.user?.id);

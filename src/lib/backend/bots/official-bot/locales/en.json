@@ -498,5 +498,15 @@
 		"alreadyRunning": "You already have an auto quest running. Please wait for it to finish before starting another.",
 		"announceInChannel": "Each result is posted in {channel}.",
 		"announceDisabled": "No quest channel is set, so nothing is announced — claimed quests are just marked in the quest list."
+	},
+	"robloxCatalog": {
+		"notifications": {
+			"added": "🔔 You will be tagged in {channel} whenever **{item}** changes. {count} watching.",
+			"removed": "🔕 You will no longer be tagged for **{item}**.",
+			"errors": {
+				"invalidItem": "❌ That catalog item could not be read from this button.",
+				"memberNotFound": "❌ Your member profile is not synced yet. Try again in a moment."
+			}
+		}
 	}
 }

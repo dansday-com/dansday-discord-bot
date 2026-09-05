@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { onDestroy, onMount, untrack } from 'svelte';
 	import { GLOBE_PLACES, type GlobePlace } from './countries.js';
-	import type { LiveGain, LiveServerSample } from '$lib/frontend/public/statistics/liveGlobal.svelte.js';
+	import type { LiveGainBatch, LiveServerSample } from '$lib/frontend/public/statistics/liveGlobal.svelte.js';
 
-	type Props = { gain: LiveGain | null; servers: LiveServerSample[]; live: boolean };
+	type Props = { gains: LiveGainBatch | null; servers: LiveServerSample[]; avoid?: (HTMLElement | null)[] };
 	type Pulse = { id: number; place: GlobePlace; xp: number; kind: 'gain' | 'total'; born: number };
 
-	let { gain, servers, live }: Props = $props();
+	let { gains, servers, avoid = [] }: Props = $props();
 
 	let canvasHost: HTMLDivElement | null = $state(null);
 	let stage: HTMLDivElement | null = $state(null);
@@ -15,17 +15,22 @@
 	let compactView = $state(false);
 
 	const labelEls: Record<number, HTMLElement | undefined> = {};
+	const labelSizes = new Map<number, { w: number; h: number }>();
 
 	const compact = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 });
 	const fmt = (n: number) => compact.format(Math.max(0, Math.round(n || 0)));
+	const amount = (pulse: Pulse) => `${pulse.kind === 'gain' ? '+' : ''}${fmt(pulse.xp)} XP`;
 
 	const PULSE_MS = 5600;
-	const AMBIENT_MS = 2800;
-	const MAX_RIGS = 6;
+	const AMBIENT_MS = 3200;
+	const AMBIENT_IDLE_MS = 12_000;
+	const MAX_RIGS = 8;
+	const MAX_PER_BATCH = 5;
 
 	let seq = 0;
 	const recent: string[] = [];
 	let lastSpawn = 0;
+	let lastGain = 0;
 	let dispose: (() => void) | null = null;
 	let requestFrame: (() => void) | null = null;
 
@@ -41,23 +46,26 @@
 		return GLOBE_PLACES[Math.floor(Math.random() * GLOBE_PLACES.length)];
 	}
 
-	function spawn(xp: number, kind: 'gain' | 'total') {
+	function spawn(xp: number, kind: 'gain' | 'total', delay = 0) {
 		if (!(xp > 0)) return;
-		const limit = compactView ? 3 : MAX_RIGS;
 		lastSpawn = performance.now();
-		pulses = [...pulses, { id: ++seq, place: pickPlace(), xp, kind, born: lastSpawn }].slice(-limit);
+		pulses = [...pulses, { id: ++seq, place: pickPlace(), xp, kind, born: lastSpawn + delay }].slice(-MAX_RIGS);
 		requestFrame?.();
 	}
 
 	function ambient() {
 		if (!servers.length) return;
+		if (performance.now() - lastGain < AMBIENT_IDLE_MS) return;
 		spawn(servers[Math.floor(Math.random() * servers.length)].xp, 'total');
 	}
 
 	$effect(() => {
-		const next = gain;
-		if (!next) return;
-		untrack(() => spawn(next.xp, 'gain'));
+		const batch = gains;
+		if (!batch?.items.length) return;
+		untrack(() => {
+			lastGain = performance.now();
+			batch.items.slice(-MAX_PER_BATCH).forEach((xp, index) => spawn(xp, 'gain', index * 260 + Math.random() * 180));
+		});
 	});
 
 	onMount(async () => {
@@ -69,15 +77,7 @@
 
 		const startFallback = () => {
 			webgl = false;
-			const timer = setInterval(() => {
-				const now = performance.now();
-				pulses = pulses.filter((pulse) => now - pulse.born <= PULSE_MS);
-				if (now - lastSpawn > AMBIENT_MS) ambient();
-			}, 2000);
-			dispose = () => {
-				clearInterval(timer);
-				narrow.removeEventListener('change', onNarrow);
-			};
+			narrow.removeEventListener('change', onNarrow);
 		};
 
 		let THREE: typeof import('three');
@@ -117,13 +117,14 @@
 		globe.rotation.z = -0.41;
 		scene.add(globe);
 
-		const bodyMat = new THREE.MeshBasicMaterial();
+		const bodyMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.5, depthWrite: true });
 		const body = new THREE.Mesh(new THREE.SphereGeometry(0.992, 48, 32), bodyMat);
+		body.renderOrder = -1;
 		globe.add(body);
 
-		const gridMat = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.1 });
-		const rimMat = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.22 });
-		const landMat = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.55 });
+		const gridMat = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.07 });
+		const rimMat = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.16 });
+		const landMat = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.38 });
 
 		const toVec = (lat: number, lon: number, r = 1) => {
 			const phi = ((90 - lat) * Math.PI) / 180;
@@ -158,8 +159,7 @@
 		}
 		const rimGeo = new THREE.BufferGeometry();
 		rimGeo.setAttribute('position', new THREE.Float32BufferAttribute(rimPoints, 3));
-		const rim = new THREE.LineSegments(rimGeo, rimMat);
-		scene.add(rim);
+		scene.add(new THREE.LineSegments(rimGeo, rimMat));
 
 		let landGeo: import('three').BufferGeometry | null = null;
 
@@ -221,14 +221,10 @@
 		const target = { x: 0, y: 0 };
 		const smooth = { x: 0, y: 0 };
 		const onPointer = (event: PointerEvent) => {
-			if (!stage) return;
-			const rect = stage.getBoundingClientRect();
-			target.x = ((event.clientX - rect.left) / Math.max(1, rect.width) - 0.5) * 2;
-			target.y = ((event.clientY - rect.top) / Math.max(1, rect.height) - 0.5) * 2;
+			target.x = (event.clientX / Math.max(1, window.innerWidth) - 0.5) * 2;
+			target.y = (event.clientY / Math.max(1, window.innerHeight) - 0.5) * 2;
 		};
-		const onLeave = () => ((target.x = 0), (target.y = 0));
-		stage?.addEventListener('pointermove', onPointer, { passive: true });
-		stage?.addEventListener('pointerleave', onLeave, { passive: true });
+		window.addEventListener('pointermove', onPointer, { passive: true });
 
 		const resize = () => {
 			if (!canvasHost) return;
@@ -237,7 +233,7 @@
 			renderer.setSize(w, h, false);
 			camera.aspect = w / h;
 			const half = Math.tan((camera.fov * Math.PI) / 360);
-			const fit = 1.16;
+			const fit = 1.12;
 			camera.position.z = Math.max(fit / half, fit / (half * camera.aspect));
 			camera.updateProjectionMatrix();
 			requestFrame?.();
@@ -267,6 +263,8 @@
 		const normal = new THREE.Vector3();
 		const axisZ = new THREE.Vector3(0, 0, 1);
 
+		type Placement = { el: HTMLElement; x: number; y: number; opacity: number };
+
 		const frame = (now: number) => {
 			const active = pulses;
 
@@ -293,8 +291,8 @@
 			if (!reduced) {
 				smooth.x += (target.x - smooth.x) * 0.05;
 				smooth.y += (target.y - smooth.y) * 0.05;
-				globe.rotation.y = now * 0.000055 + smooth.x * 0.22;
-				globe.rotation.x = smooth.y * 0.14;
+				globe.rotation.y = now * 0.000055 + smooth.x * 0.18;
+				globe.rotation.x = smooth.y * 0.12;
 			}
 
 			for (const rig of rigs) {
@@ -306,55 +304,90 @@
 					expired.push(pulse.id);
 					continue;
 				}
+				rig.group.visible = life >= 0;
+				if (life < 0) continue;
 				const fade = Math.pow(1 - life, 1.5);
 				const gainKind = pulse.kind === 'gain';
 				rig.ring.scale.setScalar(0.4 + life * 1.5);
-				rig.ringMat.opacity = fade * (gainKind ? 0.7 : 0.4);
-				rig.dotMat.opacity = gainKind ? 0.95 : 0.5;
+				rig.ringMat.opacity = fade * (gainKind ? 0.65 : 0.35);
+				rig.dotMat.opacity = gainKind ? 0.9 : 0.45;
 				rig.beam.scale.z = (gainKind ? 0.2 : 0.12) * Math.min(1, life * 4);
-				rig.beamMat.opacity = fade * (gainKind ? 0.55 : 0.3);
+				rig.beamMat.opacity = fade * (gainKind ? 0.5 : 0.28);
 			}
 
 			renderer.render(scene, camera);
 
-			const width = renderer.domElement.clientWidth;
-			const height = renderer.domElement.clientHeight;
-			const maxLabels = compactView ? 1 : 3;
-			let shown = 0;
+			const placements: Placement[] = [];
+			const hidden: HTMLElement[] = [];
 
-			for (let i = active.length - 1; i >= 0; i--) {
-				const pulse = active[i];
-				const el = labelEls[pulse.id];
-				const rig = rigs.find((item) => item.pulseId === pulse.id);
-				if (!el || !rig) continue;
+			if (stage) {
+				const width = renderer.domElement.clientWidth;
+				const height = renderer.domElement.clientHeight;
+				const maxLabels = compactView ? 1 : 3;
+				const stageRect = stage.getBoundingClientRect();
+				const blocked = avoid.filter(Boolean).map((el) => (el as HTMLElement).getBoundingClientRect());
+				let shown = 0;
 
-				rig.group.getWorldPosition(world);
-				normal.copy(world).normalize();
-				toCamera.copy(camera.position).sub(world).normalize();
-				const facing = normal.dot(toCamera);
-				const life = reduced ? 0.32 : (now - pulse.born) / PULSE_MS;
-				const enter = Math.min(1, life / 0.12);
-				const exit = Math.min(1, (1 - life) / 0.25);
-				const visible = facing > 0.14 && shown < maxLabels && life < 1;
+				for (let i = active.length - 1; i >= 0; i--) {
+					const pulse = active[i];
+					const el = labelEls[pulse.id];
+					const rig = rigs.find((item) => item.pulseId === pulse.id);
+					if (!el) continue;
+					if (!rig) {
+						hidden.push(el);
+						continue;
+					}
 
-				if (!visible) {
-					el.style.opacity = '0';
-					continue;
+					if (!labelSizes.has(pulse.id) && el.offsetWidth > 0) {
+						labelSizes.set(pulse.id, { w: el.offsetWidth, h: el.offsetHeight });
+					}
+					const size = labelSizes.get(pulse.id);
+
+					rig.group.getWorldPosition(world);
+					normal.copy(world).normalize();
+					toCamera.copy(camera.position).sub(world).normalize();
+					const facing = normal.dot(toCamera);
+					const life = reduced ? 0.32 : (now - pulse.born) / PULSE_MS;
+
+					if (!size || facing <= 0.14 || shown >= maxLabels || life < 0 || life >= 1) {
+						hidden.push(el);
+						continue;
+					}
+
+					world.project(camera);
+					const x = Math.min(Math.max((world.x * 0.5 + 0.5) * width + 12, 4), Math.max(4, width - size.w - 4));
+					const y = Math.min(Math.max((-world.y * 0.5 + 0.5) * height - 10, size.h + 4), Math.max(size.h + 4, height - 4));
+
+					const left = stageRect.left + x;
+					const top = stageRect.top + y - size.h;
+					const clash = blocked.some((rect) => left < rect.right + 8 && left + size.w > rect.left - 8 && top < rect.bottom + 8 && top + size.h > rect.top - 8);
+					if (clash) {
+						hidden.push(el);
+						continue;
+					}
+
+					shown++;
+					const enter = Math.min(1, life / 0.12);
+					const exit = Math.min(1, (1 - life) / 0.25);
+					placements.push({ el, x, y, opacity: Math.min(enter, exit) * Math.min(1, (facing - 0.14) / 0.22) });
 				}
-				shown++;
-
-				world.project(camera);
-				const x = (world.x * 0.5 + 0.5) * width;
-				const y = (-world.y * 0.5 + 0.5) * height;
-				const w = el.offsetWidth;
-				const h = el.offsetHeight;
-				const cx = Math.min(Math.max(x + 12, 4), Math.max(4, width - w - 4));
-				const cy = Math.min(Math.max(y - 10, h + 4), Math.max(h + 4, height - 4));
-				el.style.transform = `translate(${Math.round(cx)}px, ${Math.round(cy)}px) translateY(-100%)`;
-				el.style.opacity = String(Math.min(enter, exit) * Math.min(1, (facing - 0.14) / 0.22));
+			} else {
+				for (const pulse of active) {
+					const el = labelEls[pulse.id];
+					if (el) hidden.push(el);
+				}
 			}
 
-			if (expired.length) pulses = pulses.filter((pulse) => !expired.includes(pulse.id));
+			for (const el of hidden) el.style.opacity = '0';
+			for (const place of placements) {
+				place.el.style.transform = `translate(${Math.round(place.x)}px, ${Math.round(place.y)}px) translateY(-100%)`;
+				place.el.style.opacity = String(place.opacity);
+			}
+
+			if (expired.length) {
+				for (const id of expired) labelSizes.delete(id);
+				pulses = pulses.filter((pulse) => !expired.includes(pulse.id));
+			}
 			if (!reduced && now - lastSpawn > AMBIENT_MS) ambient();
 		};
 
@@ -372,8 +405,9 @@
 			};
 			const slow = setInterval(() => {
 				const now = performance.now();
-				const stale = pulses.filter((pulse) => now - pulse.born > PULSE_MS);
-				if (stale.length) pulses = pulses.filter((pulse) => now - pulse.born <= PULSE_MS);
+				if (pulses.some((pulse) => now - pulse.born > PULSE_MS)) {
+					pulses = pulses.filter((pulse) => now - pulse.born <= PULSE_MS);
+				}
 				if (now - lastSpawn > AMBIENT_MS * 2) ambient();
 				requestFrame?.();
 			}, 1400);
@@ -398,8 +432,7 @@
 
 		function teardown() {
 			narrow.removeEventListener('change', onNarrow);
-			stage?.removeEventListener('pointermove', onPointer);
-			stage?.removeEventListener('pointerleave', onLeave);
+			window.removeEventListener('pointermove', onPointer);
 			ro.disconnect();
 			io.disconnect();
 			themeWatch.disconnect();
@@ -431,10 +464,13 @@
 	});
 </script>
 
-<div class="flex w-full flex-col">
-	<div bind:this={stage} class="relative h-[min(30dvh,220px)] w-full sm:h-[min(42dvh,360px)] lg:h-[min(56dvh,520px)]" aria-hidden="true">
-		{#if webgl}
-			<div bind:this={canvasHost} class="absolute inset-0 overflow-hidden"></div>
+{#if webgl}
+	<div class="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden="true">
+		<div
+			bind:this={stage}
+			class="absolute top-1/2 left-1/2 aspect-square w-[min(160vw,560px)] -translate-x-1/2 -translate-y-1/2 sm:left-[58%] sm:w-[min(90vh,760px)] lg:left-[68%] lg:w-[min(94vh,900px)]"
+		>
+			<div bind:this={canvasHost} class="absolute inset-0"></div>
 			{#each pulses as pulse (pulse.id)}
 				<div
 					bind:this={labelEls[pulse.id]}
@@ -449,34 +485,11 @@
 								? 'text-primary'
 								: 'text-base-content/55'}"
 						>
-							{pulse.kind === 'gain' ? '+' : ''}{fmt(pulse.xp)} XP
+							{amount(pulse)}
 						</p>
 					</div>
 				</div>
 			{/each}
-		{:else}
-			<div class="flex h-full flex-col justify-center gap-2">
-				{#each pulses.slice(-3) as pulse (pulse.id)}
-					<div class="border-base-300 flex items-baseline justify-between gap-4 border-b pb-1.5">
-						<span class="text-base-content/55 text-[9.5px] font-bold tracking-[0.14em] uppercase">{pulse.place.name}</span>
-						<span class="text-primary text-[13px] font-black tabular-nums">{pulse.kind === 'gain' ? '+' : ''}{fmt(pulse.xp)} XP</span>
-					</div>
-				{/each}
-			</div>
-		{/if}
+		</div>
 	</div>
-
-	<p class="text-base-content/45 mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-bold tracking-[0.14em] uppercase 2xl:text-[12.5px]">
-		<span class="inline-flex items-center gap-1.5">
-			<span class="relative grid size-1.5 place-items-center">
-				{#if live}
-					<span class="bg-primary absolute inset-0 rounded-full motion-safe:animate-ping"></span>
-				{/if}
-				<span class="relative size-1.5 rounded-full {live ? 'bg-primary' : 'bg-base-content/30'}"></span>
-			</span>
-			{live ? 'Live global XP' : 'Global XP'}
-		</span>
-		<span aria-hidden="true" class="opacity-50">·</span>
-		<span>Countries shown at random</span>
-	</p>
-</div>
+{/if}

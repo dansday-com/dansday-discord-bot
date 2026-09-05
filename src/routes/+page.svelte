@@ -22,6 +22,8 @@
 	const hasLive = $derived((feed.totals?.servers_counted ?? 0) > 0);
 
 	let broken = $state<Record<string, boolean>>({});
+	let heroText = $state<HTMLElement | null>(null);
+	let heroFoot = $state<HTMLElement | null>(null);
 
 	const initials = (n: string) =>
 		n
@@ -489,22 +491,18 @@
 <PageShell>
 	<div class="@container">
 		<section class="relative isolate flex min-h-[calc(100dvh-6rem)] flex-col justify-between gap-6 pb-8 sm:gap-10">
-			<div class="grid items-center gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,40%)] lg:gap-12">
-				<div class="@container">
-					<p class="display-line animate-rise text-primary block whitespace-nowrap uppercase" style="--ch: 9; --rise-delay: 80ms">One panel</p>
-					<p class="display-line animate-rise text-primary block whitespace-nowrap uppercase" style="--ch: 12; --rise-delay: 200ms">Every module</p>
-					<h1 class="animate-rise text-base-content/70 mt-6 text-[14px] leading-[1.55] sm:max-w-[44ch] 2xl:text-[17px]" style="--rise-delay: 380ms">
-						Leveling, an XP economy, moderation, embeds, giveaways and live public pages — every module configured from one free web panel instead of slash
-						commands.
-					</h1>
-				</div>
+			<GlobeScene gains={feed.gains} servers={feed.servers} avoid={[heroText, heroFoot]} />
 
-				<div class="animate-rise" style="--rise-delay: 480ms">
-					<GlobeScene gain={feed.gain} servers={feed.servers} live={feed.live} />
-				</div>
+			<div bind:this={heroText}>
+				<p class="display-line animate-rise text-primary block whitespace-nowrap uppercase" style="--ch: 9; --rise-delay: 80ms">One panel</p>
+				<p class="display-line animate-rise text-primary block whitespace-nowrap uppercase" style="--ch: 12; --rise-delay: 200ms">Every module</p>
+				<h1 class="animate-rise text-base-content/70 mt-6 text-[14px] leading-[1.55] sm:max-w-[44ch] 2xl:text-[17px]" style="--rise-delay: 380ms">
+					Leveling, an XP economy, moderation, embeds, giveaways and live public pages — every module configured from one free web panel instead of slash
+					commands.
+				</h1>
 			</div>
 
-			<div class="flex flex-col gap-8">
+			<div bind:this={heroFoot} class="flex flex-col gap-8">
 				{#if hasLive}
 					<div class="border-base-300 grid grid-cols-2 gap-x-6 gap-y-4 border-t pt-5 sm:grid-cols-4">
 						{#each heroStats as stat, i}

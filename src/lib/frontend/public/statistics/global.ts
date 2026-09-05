@@ -1,4 +1,4 @@
-import db from '../../../database.js';
+import db, { getMaxPublicXpEventId, listPublicXpEventsAfter } from '../../../database.js';
 import { resolvePublicStatisticsSnapshot } from './stream.js';
 import { aggregatePanelStatistics, type AggregatedPanelStats } from './aggregate.js';
 import type { PublicPageStats } from './shape.js';
@@ -8,17 +8,19 @@ export type GlobalServerSample = { name: string; xp: number };
 export type GlobalStatisticsSnapshot = {
 	totals: AggregatedPanelStats;
 	servers: GlobalServerSample[];
+	gains: number[];
 	updated_at: number;
 };
 
 type Listener = (snapshot: GlobalStatisticsSnapshot) => void;
 
-const POLL_MS = 10_000;
+const POLL_MS = 5_000;
 const SERVER_LIST_TTL_MS = 60_000;
 const SNAPSHOT_FRESH_MS = 20_000;
 const REFRESH_PER_POLL = 25;
 const MAX_SERVERS = 200;
 const MAX_SAMPLES = 12;
+const MAX_GAINS = 40;
 
 const latest = new Map<number, PublicPageStats>();
 const stamps = new Map<number, number>();
@@ -26,6 +28,7 @@ const stamps = new Map<number, number>();
 let serverList: { id: number; name: string }[] = [];
 let serverListAt = 0;
 let cursor = 0;
+let lastEventId = 0;
 
 async function listServers() {
 	if (serverList.length && Date.now() - serverListAt < SERVER_LIST_TTL_MS) return serverList;
@@ -68,8 +71,23 @@ async function refresh(ids: number[]) {
 	);
 }
 
+async function collectGains(): Promise<number[]> {
+	try {
+		if (lastEventId <= 0) {
+			lastEventId = await getMaxPublicXpEventId();
+			return [];
+		}
+		const events = await listPublicXpEventsAfter(lastEventId, MAX_GAINS);
+		if (!events.length) return [];
+		lastEventId = events[events.length - 1].id;
+		return events.map((event) => event.xp);
+	} catch (_) {
+		return [];
+	}
+}
+
 export async function resolveGlobalStatistics(): Promise<GlobalStatisticsSnapshot> {
-	const servers = await listServers();
+	const [servers, gains] = await Promise.all([listServers(), collectGains()]);
 
 	const unseen = servers.filter((s) => !latest.has(s.id)).map((s) => s.id);
 	if (unseen.length) {
@@ -92,7 +110,7 @@ export async function resolveGlobalStatistics(): Promise<GlobalStatisticsSnapsho
 		.sort((a, b) => b.xp - a.xp)
 		.slice(0, MAX_SAMPLES);
 
-	return { totals: aggregatePanelStatistics(stats), servers: samples, updated_at: Date.now() };
+	return { totals: aggregatePanelStatistics(stats), servers: samples, gains, updated_at: Date.now() };
 }
 
 const listeners = new Set<Listener>();
@@ -118,7 +136,7 @@ async function poll() {
 	}
 	const json = JSON.stringify({ totals: snapshot.totals, servers: snapshot.servers });
 	lastSnapshot = snapshot;
-	if (json === lastJson) return;
+	if (json === lastJson && snapshot.gains.length === 0) return;
 	lastJson = json;
 	emit(snapshot);
 }
@@ -128,7 +146,7 @@ export function subscribeGlobalStatistics(fn: Listener): () => void {
 
 	if (lastSnapshot && Date.now() - lastSnapshot.updated_at < POLL_MS * 2) {
 		try {
-			fn(lastSnapshot);
+			fn({ ...lastSnapshot, gains: [] });
 		} catch (_) {}
 	} else {
 		resolveGlobalStatistics()

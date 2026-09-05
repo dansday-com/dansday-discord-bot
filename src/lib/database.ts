@@ -1259,6 +1259,48 @@ export async function listPublicServers() {
 		}));
 }
 
+export async function getMaxPublicXpEventId(): Promise<number> {
+	await initializeDatabase();
+	const rows = await db.execute(sql`SELECT MAX(id) as max_id FROM server_member_level_logs`);
+	const row = ((rows[0] as unknown as any[]) || [])[0];
+	return Number(row?.max_id) || 0;
+}
+
+export async function listPublicXpEventsAfter(afterId: any, limit = 40) {
+	await initializeDatabase();
+	const safeAfter = Number(afterId) || 0;
+	if (safeAfter <= 0) return [] as { id: number; xp: number }[];
+	const safeLimit = Math.max(1, Math.min(100, Number(limit) || 40));
+
+	const rows = await db.execute(sql`
+		SELECT sll.id, sll.xp
+		FROM server_member_level_logs sll
+		INNER JOIN server_members sm ON sm.id = sll.member_id
+		INNER JOIN servers sv ON sv.id = sm.server_id
+		INNER JOIN server_settings ss
+			ON ss.server_id = sv.id AND ss.component_name = ${SERVER_SETTINGS.component.public_statistics}
+		WHERE sll.id > ${safeAfter}
+		  AND sll.xp > 0
+		  AND sm.deleted_at IS NULL
+		  AND sv.deleted_at IS NULL
+		  AND NOT EXISTS (
+			SELECT 1
+			FROM server_member_item_actives sma
+			INNER JOIN server_member_items smi ON smi.id = sma.member_item_id
+			INNER JOIN items bi ON bi.id = smi.item_id
+			WHERE smi.member_id = sm.id
+			  AND bi.effect_type = 'disguise'
+			  AND sma.expires_at > UTC_TIMESTAMP()
+		  )
+		ORDER BY sll.id ASC
+		LIMIT ${safeLimit}
+	`);
+
+	return ((rows[0] as unknown as any[]) || [])
+		.map((r: any) => ({ id: Number(r.id), xp: Number(r.xp) || 0 }))
+		.filter((r) => Number.isFinite(r.id) && r.xp > 0);
+}
+
 export async function upsertCategory(serverId: any, categoryData: any) {
 	const now = toMySQLDateTime();
 	await db.execute(sql`
@@ -6517,6 +6559,8 @@ export default {
 	getItemsBountyLeaderboard,
 	getItemsGiftLeaderboard,
 	getDisguisedMemberIds,
+	getMaxPublicXpEventId,
+	listPublicXpEventsAfter,
 	getServerMembersList,
 	getPanelOverview,
 	getServerOverview,

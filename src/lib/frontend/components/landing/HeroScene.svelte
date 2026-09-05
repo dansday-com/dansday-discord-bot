@@ -2,23 +2,15 @@
 	import { onDestroy, onMount } from 'svelte';
 
 	let host: HTMLDivElement | null = $state(null);
-	let live = $state(false);
 	let dispose: (() => void) | null = null;
 
-	const VERTEX = `
-		uniform float uTime;
-		uniform float uScroll;
-		uniform float uPointer;
-		varying float vNoise;
-		varying vec3 vNormalW;
-		varying vec3 vViewDir;
+	const NOISE = `
+		vec3 hn_mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+		vec4 hn_mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+		vec4 hn_permute(vec4 x) { return hn_mod289(((x * 34.0) + 10.0) * x); }
+		vec4 hn_taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
 
-		vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-		vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-		vec4 permute(vec4 x) { return mod289(((x * 34.0) + 10.0) * x); }
-		vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
-
-		float snoise(vec3 v) {
+		float hn_snoise(vec3 v) {
 			const vec2 C = vec2(1.0 / 6.0, 1.0 / 3.0);
 			const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
 			vec3 i = floor(v + dot(v, C.yyy));
@@ -30,8 +22,8 @@
 			vec3 x1 = x0 - i1 + C.xxx;
 			vec3 x2 = x0 - i2 + C.yyy;
 			vec3 x3 = x0 - D.yyy;
-			i = mod289(i);
-			vec4 p = permute(permute(permute(
+			i = hn_mod289(i);
+			vec4 p = hn_permute(hn_permute(hn_permute(
 				i.z + vec4(0.0, i1.z, i2.z, 1.0)) +
 				i.y + vec4(0.0, i1.y, i2.y, 1.0)) +
 				i.x + vec4(0.0, i1.x, i2.x, 1.0));
@@ -54,44 +46,34 @@
 			vec3 p1 = vec3(a0.zw, h.y);
 			vec3 p2 = vec3(a1.xy, h.z);
 			vec3 p3 = vec3(a1.zw, h.w);
-			vec4 norm = taylorInvSqrt(vec4(dot(p0, p0), dot(p1, p1), dot(p2, p2), dot(p3, p3)));
+			vec4 norm = hn_taylorInvSqrt(vec4(dot(p0, p0), dot(p1, p1), dot(p2, p2), dot(p3, p3)));
 			p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
 			vec4 m = max(0.5 - vec4(dot(x0, x0), dot(x1, x1), dot(x2, x2), dot(x3, x3)), 0.0);
 			m = m * m;
 			return 42.0 * dot(m * m, vec4(dot(p0, x0), dot(p1, x1), dot(p2, x2), dot(p3, x3)));
 		}
 
-		void main() {
-			float t = uTime * 0.22;
-			float n = snoise(normal * 1.5 + vec3(t, t * 0.7, -t * 0.5));
-			n += 0.5 * snoise(normal * 3.4 + vec3(-t * 1.3, t, t * 0.9));
-			float amp = 0.34 + uScroll * 0.5 + abs(uPointer) * 0.12;
-			vNoise = n;
-			vec3 displaced = position + normal * n * amp;
-			vNormalW = normalize(normalMatrix * normal);
-			vec4 mv = modelViewMatrix * vec4(displaced, 1.0);
-			vViewDir = normalize(-mv.xyz);
-			gl_Position = projectionMatrix * mv;
+		float hn_fbm(vec3 d) {
+			float t = uTime * 0.16;
+			float n = hn_snoise(d * 1.35 + vec3(t, t * 0.7, -t * 0.55));
+			n += 0.45 * hn_snoise(d * 3.1 + vec3(-t * 1.25, t * 0.9, t));
+			return n;
 		}
-	`;
 
-	const FRAGMENT = `
-		uniform vec3 uPrimary;
-		uniform vec3 uSecondary;
-		uniform vec3 uPink;
-		uniform vec3 uGold;
-		varying float vNoise;
-		varying vec3 vNormalW;
-		varying vec3 vViewDir;
+		vec3 hn_displace(vec3 pos, vec3 nor) {
+			return pos + nor * hn_fbm(nor) * uAmp;
+		}
 
-		void main() {
-			float m = clamp(vNoise * 0.5 + 0.5, 0.0, 1.0);
-			vec3 col = mix(uPrimary, uSecondary, smoothstep(0.15, 0.6, m));
-			col = mix(col, uPink, smoothstep(0.62, 0.9, m));
-			col = mix(col, uGold, smoothstep(0.0, 0.18, 1.0 - m) * 0.55);
-			float fres = pow(1.0 - clamp(dot(normalize(vNormalW), normalize(vViewDir)), 0.0, 1.0), 2.2);
-			col += fres * 0.5;
-			gl_FragColor = vec4(col, 0.3);
+		vec3 hn_normal(vec3 pos, vec3 nor) {
+			vec3 up = abs(nor.y) < 0.98 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+			vec3 t = normalize(cross(up, nor));
+			vec3 b = normalize(cross(nor, t));
+			float e = 0.035;
+			vec3 c = hn_displace(pos, nor);
+			vec3 a = hn_displace(pos + t * e, normalize(nor + t * e));
+			vec3 d = hn_displace(pos + b * e, normalize(nor + b * e));
+			vec3 n = normalize(cross(a - c, d - c));
+			return dot(n, nor) < 0.0 ? -n : n;
 		}
 	`;
 
@@ -99,43 +81,69 @@
 		if (!host || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
 		const THREE = await import('three');
-
-		const scene = new THREE.Scene();
-		const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
-		camera.position.z = 5.2;
+		const { RoomEnvironment } = await import('three/examples/jsm/environments/RoomEnvironment.js');
 
 		const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: 'high-performance' });
-		renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+		renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 		renderer.setClearAlpha(0);
+		renderer.toneMapping = THREE.ACESFilmicToneMapping;
+		renderer.toneMappingExposure = 1.15;
 		host.appendChild(renderer.domElement);
 		renderer.domElement.style.cssText = 'width:100%;height:100%;display:block';
 
-		const uniforms = {
-			uTime: { value: 0 },
-			uScroll: { value: 0 },
-			uPointer: { value: 0 },
-			uPrimary: { value: new THREE.Color('#e43d12') },
-			uSecondary: { value: new THREE.Color('#d6536d') },
-			uPink: { value: new THREE.Color('#ffa2b6') },
-			uGold: { value: new THREE.Color('#efb11d') }
-		};
+		const scene = new THREE.Scene();
+		const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
+		camera.position.z = 5.4;
 
-		const geometry = new THREE.IcosahedronGeometry(1.35, 44);
-		const material = new THREE.ShaderMaterial({
-			vertexShader: VERTEX,
-			fragmentShader: FRAGMENT,
-			uniforms,
+		const pmrem = new THREE.PMREMGenerator(renderer);
+		const envRT = pmrem.fromScene(new RoomEnvironment(), 0.04);
+		scene.environment = envRT.texture;
+		scene.environmentIntensity = 1.25;
+
+		const uniforms = { uTime: { value: 0 }, uAmp: { value: 0.3 } };
+
+		const glass = new THREE.MeshPhysicalMaterial({
+			color: new THREE.Color('#ffb59c'),
+			transmission: 1,
+			thickness: 2.1,
+			ior: 1.58,
+			dispersion: 9,
+			roughness: 0.09,
+			metalness: 0,
+			iridescence: 1,
+			iridescenceIOR: 1.32,
+			iridescenceThicknessRange: [120, 520],
+			attenuationColor: new THREE.Color('#e43d12'),
+			attenuationDistance: 2.4,
+			clearcoat: 1,
+			clearcoatRoughness: 0.12,
 			transparent: true,
-			side: THREE.DoubleSide
+			opacity: 0.92
 		});
-		const blob = new THREE.Mesh(geometry, material);
+
+		glass.onBeforeCompile = (shader) => {
+			shader.uniforms.uTime = uniforms.uTime;
+			shader.uniforms.uAmp = uniforms.uAmp;
+			shader.vertexShader = shader.vertexShader
+				.replace('#include <common>', `#include <common>\nuniform float uTime;\nuniform float uAmp;\n${NOISE}`)
+				.replace('#include <beginnormal_vertex>', 'vec3 objectNormal = hn_normal(position, normal);')
+				.replace('#include <begin_vertex>', 'vec3 transformed = hn_displace(position, normal);');
+		};
+		glass.customProgramCacheKey = () => 'hero-glass';
+
+		const blob = new THREE.Mesh(new THREE.IcosahedronGeometry(1.35, 26), glass);
 		scene.add(blob);
 
-		const wire = new THREE.Mesh(
-			new THREE.IcosahedronGeometry(1.5, 3),
-			new THREE.MeshBasicMaterial({ color: new THREE.Color('#e43d12'), wireframe: true, transparent: true, opacity: 0.07 })
-		);
-		scene.add(wire);
+		const shellMat = new THREE.MeshBasicMaterial({ color: new THREE.Color('#e43d12'), wireframe: true, transparent: true, opacity: 0.06 });
+		const shell = new THREE.Mesh(new THREE.IcosahedronGeometry(1.95, 4), shellMat);
+		scene.add(shell);
+
+		const key = new THREE.DirectionalLight(0xffffff, 2.2);
+		key.position.set(2.5, 3, 4);
+		scene.add(key);
+		const rim = new THREE.DirectionalLight(0xffc7a8, 1.4);
+		rim.position.set(-3, -1.5, -2);
+		scene.add(rim);
 
 		const target = { x: 0, y: 0 };
 		const smooth = { x: 0, y: 0 };
@@ -145,7 +153,8 @@
 		};
 		window.addEventListener('pointermove', onPointer, { passive: true });
 
-		const onScroll = () => (uniforms.uScroll.value = Math.min(1, window.scrollY / Math.max(1, window.innerHeight)));
+		let scrollN = 0;
+		const onScroll = () => (scrollN = Math.min(1, window.scrollY / Math.max(1, window.innerHeight)));
 		window.addEventListener('scroll', onScroll, { passive: true });
 
 		const resize = () => {
@@ -161,7 +170,7 @@
 		resize();
 
 		let visible = true;
-		const io = new IntersectionObserver((entries) => (visible = entries.some((e) => e.isIntersecting)), { threshold: 0 });
+		const io = new IntersectionObserver((e) => (visible = e.some((x) => x.isIntersecting)), { threshold: 0 });
 		io.observe(host);
 
 		let frame = 0;
@@ -169,18 +178,27 @@
 		const tick = () => {
 			frame = requestAnimationFrame(tick);
 			if (!visible) return;
-			smooth.x += (target.x - smooth.x) * 0.05;
-			smooth.y += (target.y - smooth.y) * 0.05;
-			uniforms.uTime.value = clock.getElapsedTime();
-			uniforms.uPointer.value = smooth.x;
-			blob.rotation.y = clock.getElapsedTime() * 0.08 + smooth.x * 0.4;
+			const t = clock.getElapsedTime();
+			smooth.x += (target.x - smooth.x) * 0.045;
+			smooth.y += (target.y - smooth.y) * 0.045;
+
+			uniforms.uTime.value = t;
+			uniforms.uAmp.value = 0.3 + scrollN * 0.45 + Math.abs(smooth.x) * 0.08;
+
+			blob.rotation.y = t * 0.07 + smooth.x * 0.42;
 			blob.rotation.x = smooth.y * 0.3;
-			wire.rotation.y = -clock.getElapsedTime() * 0.05 - smooth.x * 0.2;
-			wire.rotation.z = clock.getElapsedTime() * 0.03;
+			blob.position.y = Math.sin(t * 0.42) * 0.09;
+
+			shell.rotation.y = -t * 0.045 - smooth.x * 0.2;
+			shell.rotation.z = t * 0.028;
+
+			camera.position.x = smooth.x * 0.32;
+			camera.position.y = -smooth.y * 0.22;
+			camera.lookAt(0, 0, 0);
+
 			renderer.render(scene, camera);
 		};
 		tick();
-		live = true;
 
 		dispose = () => {
 			cancelAnimationFrame(frame);
@@ -188,13 +206,14 @@
 			window.removeEventListener('scroll', onScroll);
 			ro.disconnect();
 			io.disconnect();
-			geometry.dispose();
-			material.dispose();
-			wire.geometry.dispose();
-			(wire.material as THREE.Material).dispose();
+			blob.geometry.dispose();
+			glass.dispose();
+			shell.geometry.dispose();
+			shellMat.dispose();
+			envRT.dispose();
+			pmrem.dispose();
 			renderer.dispose();
 			renderer.domElement.remove();
-			live = false;
 		};
 	});
 

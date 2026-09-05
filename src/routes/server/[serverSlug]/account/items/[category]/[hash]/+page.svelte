@@ -222,7 +222,7 @@
 	{@const canUse = item.usable !== false}
 	<article
 		data-item-card
-		class="card relative isolate flex flex-col gap-[7px] overflow-hidden border p-[13px] pb-3 transition-transform duration-200 {!ctx.readOnly &&
+		class="card relative isolate flex flex-col gap-[7px] overflow-hidden border p-[13px] pb-3 transition-transform duration-200 min-[600px]:gap-[9px] min-[600px]:rounded-[18px] min-[600px]:p-4 min-[600px]:pb-3.5 {!ctx.readOnly &&
 		!affordable &&
 		owned === 0
 			? 'opacity-75'
@@ -234,7 +234,7 @@
 		<div class="flex items-start justify-between gap-1.5">
 			<span
 				data-item-medallion
-				class="relative grid size-[46px] place-items-center rounded-2xl border text-[21px] leading-none text-(--cat)"
+				class="relative grid size-[46px] place-items-center rounded-[14px] border text-[21px] leading-none text-(--cat) min-[600px]:rounded-2xl min-[600px]:text-[24px]"
 				style="background: radial-gradient(circle at 32% 26%, rgba(255,255,255,0.28), transparent 55%), linear-gradient(150deg, color-mix(in srgb, var(--cat) 38%, transparent), color-mix(in srgb, var(--cat) 14%, transparent)); border-color: color-mix(in srgb, var(--cat) 42%, transparent);"
 			>
 				<i class="fas {effectIcon(item.effect_type)}"></i>
@@ -273,8 +273,8 @@
 			</span>
 		{/if}
 
-		<h3 class="text-base-content mt-px text-sm leading-tight font-extrabold">{item.name}</h3>
-		<p class="text-base-content/60 min-h-[2.8em] text-[11.5px] leading-snug [overflow-wrap:anywhere]">
+		<h3 class="text-base-content mt-px text-sm leading-tight font-extrabold min-[600px]:text-[15.5px]">{item.name}</h3>
+		<p class="text-base-content/60 min-h-[2.8em] text-[11.5px] leading-snug [overflow-wrap:anywhere] min-[600px]:text-[12.5px]">
 			{item.description || effectSummary(item, ctx.luckPercent)}
 		</p>
 
@@ -293,7 +293,9 @@
 		{/if}
 
 		<div class="relative z-2 mt-auto flex flex-wrap items-center gap-1.5">
-			<span class="inline-flex min-w-0 flex-auto items-baseline gap-1 text-sm leading-none font-extrabold whitespace-nowrap text-[#d9a528]">
+			<span
+				class="inline-flex min-w-0 flex-auto items-baseline gap-1 text-sm leading-none font-extrabold whitespace-nowrap text-[#d9a528] min-[600px]:text-[15px]"
+			>
 				{#if item.original_cost != null && item.original_cost > item.cost}
 					<span class="text-[11px] font-semibold text-current/45 line-through">{fmt(item.original_cost)}</span>
 				{/if}
@@ -361,7 +363,7 @@
 {#if shopItems.length === 0}
 	<EmptyState icon="fa-box-open" message="No items in this category." boxed />
 {:else if data.category !== 'all'}
-	<div class="grid grid-cols-2 gap-2.5">
+	<div class="grid grid-cols-2 gap-2.5 min-[600px]:grid-cols-[repeat(auto-fill,minmax(220px,1fr))] min-[600px]:gap-3.5">
 		{#each shopItems.slice().sort(byCost) as item (item.id)}
 			{@render card(item)}
 		{/each}
@@ -377,7 +379,7 @@
 				<i class="fas {group.icon}"></i>{group.label}
 				<span class="bg-base-content/14 text-base-content/60 rounded-full px-[7px] py-px text-[10.5px] font-bold tabular-nums">{group.items.length}</span>
 			</h2>
-			<div class="grid grid-cols-2 gap-2.5">
+			<div class="grid grid-cols-2 gap-2.5 min-[600px]:grid-cols-[repeat(auto-fill,minmax(220px,1fr))] min-[600px]:gap-3.5">
 				{#each group.items as item (item.id)}
 					{@render card(item)}
 				{/each}

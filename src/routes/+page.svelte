@@ -713,24 +713,21 @@
 				</div>
 				<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
 					{#each data.topItems as item, i (item.id)}
-						<a
-							href="/shop"
-							use:reveal
-							class="{REVEAL_CLASS} border-base-300 bg-base-100 hover:border-primary/40 flex flex-col rounded-sm border p-4 transition-colors sm:p-5"
-							style="transition-delay: {i * 60}ms"
-						>
-							<div class="mb-3 flex items-start justify-between gap-3">
-								<i class="fas {effectIcon(item.effect_type)} text-[18px] leading-none" style="color: {effectAccentHex(item.effect_type)}"></i>
-								{#if item.buyable}
-									<span class="text-primary text-[9.5px] font-extrabold tracking-[0.12em] uppercase">Can buy</span>
-								{:else}
-									<span class="text-base-content/30 text-[9.5px] font-bold tracking-[0.12em] uppercase">Can't buy</span>
-								{/if}
-							</div>
-							<h3 class="text-base-content mb-1.5 text-[13px] leading-[1.32] font-extrabold tracking-[0.02em] uppercase">{item.name}</h3>
-							<p class="text-base-content/45 text-[10px] font-bold tracking-[0.14em] uppercase">{effectLabel(item.effect_type)}</p>
-							<p class="text-primary mt-4 text-[15px] leading-none font-black tabular-nums">{fmt(item.cost)} XP</p>
-						</a>
+						<div use:reveal class={REVEAL_CLASS} style="transition-delay: {i * 60}ms">
+							<a href="/shop" class="border-base-300 bg-base-100 hover:border-primary/40 flex h-full flex-col rounded-sm border p-4 transition-colors sm:p-5">
+								<div class="mb-3 flex items-start justify-between gap-3">
+									<i class="fas {effectIcon(item.effect_type)} text-[18px] leading-none" style="color: {effectAccentHex(item.effect_type)}"></i>
+									{#if item.buyable}
+										<span class="text-primary text-[9.5px] font-extrabold tracking-[0.12em] uppercase">Can buy</span>
+									{:else}
+										<span class="text-base-content/30 text-[9.5px] font-bold tracking-[0.12em] uppercase">Can't buy</span>
+									{/if}
+								</div>
+								<h3 class="text-base-content mb-1.5 text-[13px] leading-[1.32] font-extrabold tracking-[0.02em] uppercase">{item.name}</h3>
+								<p class="text-base-content/45 text-[10px] font-bold tracking-[0.14em] uppercase">{effectLabel(item.effect_type)}</p>
+								<p class="text-primary mt-4 text-[15px] leading-none font-black tabular-nums">{fmt(item.cost)} XP</p>
+							</a>
+						</div>
 					{/each}
 				</div>
 			</section>
@@ -814,38 +811,38 @@
 				</div>
 				<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
 					{#each data.topRoblox as item, i (item.asset_id)}
-						<a
-							href="/roblox"
-							use:reveal
-							class="{REVEAL_CLASS} group border-base-300 bg-base-100 hover:border-primary/40 flex flex-col overflow-hidden rounded-sm border transition-colors"
-							style="transition-delay: {i * 60}ms"
-						>
-							{#if item.thumbnail_url && !broken[item.asset_id]}
-								<img
-									src={item.thumbnail_url}
-									alt={item.name}
-									loading="lazy"
-									decoding="async"
-									class="bg-base-200 aspect-square w-full object-cover"
-									onerror={() => (broken[item.asset_id] = true)}
-								/>
-							{:else}
-								<span class="bg-base-200 grid aspect-square w-full place-items-center">
-									<span class="flex flex-col items-center gap-1.5">
-										<i class="fas fa-cube text-base-content/20 text-[22px]"></i>
-										<span class="text-base-content/35 text-[13px] font-black tracking-[0.1em] uppercase">{initials(item.name)}</span>
+						<div use:reveal class={REVEAL_CLASS} style="transition-delay: {i * 60}ms">
+							<a
+								href="/roblox"
+								class="group border-base-300 bg-base-100 hover:border-primary/40 flex h-full flex-col overflow-hidden rounded-sm border transition-colors"
+							>
+								{#if item.thumbnail_url && !broken[item.asset_id]}
+									<img
+										src={item.thumbnail_url}
+										alt={item.name}
+										loading="lazy"
+										decoding="async"
+										class="bg-base-200 aspect-square w-full object-cover"
+										onerror={() => (broken[item.asset_id] = true)}
+									/>
+								{:else}
+									<span class="bg-base-200 grid aspect-square w-full place-items-center">
+										<span class="flex flex-col items-center gap-1.5">
+											<i class="fas fa-cube text-base-content/20 text-[22px]"></i>
+											<span class="text-base-content/35 text-[13px] font-black tracking-[0.1em] uppercase">{initials(item.name)}</span>
+										</span>
+									</span>
+								{/if}
+								<span class="flex flex-1 flex-col p-3">
+									<span class="text-base-content group-hover:text-primary mb-1 line-clamp-2 text-[12px] leading-[1.35] font-extrabold transition-colors">
+										{item.name}
+									</span>
+									<span class="text-primary mt-auto text-[11.5px] font-black tabular-nums">
+										{item.price > 0 ? `${fmt(item.price)} R$` : 'Free'}
 									</span>
 								</span>
-							{/if}
-							<span class="flex flex-1 flex-col p-3">
-								<span class="text-base-content group-hover:text-primary mb-1 line-clamp-2 text-[12px] leading-[1.35] font-extrabold transition-colors">
-									{item.name}
-								</span>
-								<span class="text-primary mt-auto text-[11.5px] font-black tabular-nums">
-									{item.price > 0 ? `${fmt(item.price)} R$` : 'Free'}
-								</span>
-							</span>
-						</a>
+							</a>
+						</div>
 					{/each}
 				</div>
 			</section>

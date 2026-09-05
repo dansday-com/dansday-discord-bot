@@ -82,60 +82,60 @@
 
 				<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
 					{#each filtered as item, i (item.asset_id)}
-						<a
-							href={`https://www.roblox.com/catalog/${item.asset_id}`}
-							target="_blank"
-							rel="noopener noreferrer"
-							use:reveal
-							class="{REVEAL_CLASS} group border-base-300 bg-base-100 hover:border-primary/40 flex flex-col overflow-hidden rounded-sm border transition-colors"
-							style="transition-delay: {Math.min(i, 8) * 60}ms"
-						>
-							{#if item.thumbnail_url && !broken[item.asset_id]}
-								<img
-									src={item.thumbnail_url}
-									alt={item.name}
-									loading="lazy"
-									decoding="async"
-									class="bg-base-200 aspect-square w-full object-cover"
-									onerror={() => (broken[item.asset_id] = true)}
-								/>
-							{:else}
-								<span class="bg-base-200 grid aspect-square w-full place-items-center">
-									<span class="flex flex-col items-center gap-1.5">
-										<i class="fas fa-cube text-base-content/20 text-[22px]"></i>
-										<span class="text-base-content/35 text-[13px] font-black tracking-[0.1em] uppercase">{initials(item.name)}</span>
+						<div use:reveal class={REVEAL_CLASS} style="transition-delay: {Math.min(i, 8) * 60}ms">
+							<a
+								href={`https://www.roblox.com/catalog/${item.asset_id}`}
+								target="_blank"
+								rel="noopener noreferrer"
+								class="group border-base-300 bg-base-100 hover:border-primary/40 flex h-full flex-col overflow-hidden rounded-sm border transition-colors"
+							>
+								{#if item.thumbnail_url && !broken[item.asset_id]}
+									<img
+										src={item.thumbnail_url}
+										alt={item.name}
+										loading="lazy"
+										decoding="async"
+										class="bg-base-200 aspect-square w-full object-cover"
+										onerror={() => (broken[item.asset_id] = true)}
+									/>
+								{:else}
+									<span class="bg-base-200 grid aspect-square w-full place-items-center">
+										<span class="flex flex-col items-center gap-1.5">
+											<i class="fas fa-cube text-base-content/20 text-[22px]"></i>
+											<span class="text-base-content/35 text-[13px] font-black tracking-[0.1em] uppercase">{initials(item.name)}</span>
+										</span>
 									</span>
-								</span>
-							{/if}
-							<div class="flex flex-1 flex-col p-3">
-								{#if item.category}
-									<p class="text-base-content/40 mb-1 truncate text-[9.5px] font-bold tracking-[0.14em] uppercase">{item.category}</p>
 								{/if}
-								<h2 class="text-base-content group-hover:text-primary mb-1 line-clamp-2 text-[12px] leading-[1.35] font-extrabold transition-colors">
-									{item.name}
-								</h2>
-								{#if item.creator_name}
-									<p class="text-base-content/45 mb-2 truncate text-[11px]">by {item.creator_name}</p>
-								{/if}
-								<div class="border-base-300 mt-auto flex flex-wrap items-center gap-x-2.5 gap-y-1 border-t pt-2 text-[11px] tabular-nums">
-									<span class="text-primary font-black">{item.price > 0 ? `${fmt(item.price)} R$` : 'Free'}</span>
-									{#if item.price_delta !== 0}
-										<span class={item.price_delta > 0 ? 'text-error font-bold' : 'text-success font-bold'}>
-											{item.price_delta > 0 ? '+' : '−'}{fmt(Math.abs(item.price_delta))}
-										</span>
+								<div class="flex flex-1 flex-col p-3">
+									{#if item.category}
+										<p class="text-base-content/40 mb-1 truncate text-[9.5px] font-bold tracking-[0.14em] uppercase">{item.category}</p>
 									{/if}
-									{#if item.limited}
-										<span class="text-base-content/45">{fmt(item.units_available)} / {fmt(item.total_quantity)} left</span>
+									<h2 class="text-base-content group-hover:text-primary mb-1 line-clamp-2 text-[12px] leading-[1.35] font-extrabold transition-colors">
+										{item.name}
+									</h2>
+									{#if item.creator_name}
+										<p class="text-base-content/45 mb-2 truncate text-[11px]">by {item.creator_name}</p>
 									{/if}
-									{#if item.favorite_count > 0}
-										<span class="text-base-content/45 ml-auto">
-											<i class="fas fa-heart text-[9px]"></i>
-											{fmt(item.favorite_count)}
-										</span>
-									{/if}
+									<div class="border-base-300 mt-auto flex flex-wrap items-center gap-x-2.5 gap-y-1 border-t pt-2 text-[11px] tabular-nums">
+										<span class="text-primary font-black">{item.price > 0 ? `${fmt(item.price)} R$` : 'Free'}</span>
+										{#if item.price_delta !== 0}
+											<span class={item.price_delta > 0 ? 'text-error font-bold' : 'text-success font-bold'}>
+												{item.price_delta > 0 ? '+' : '−'}{fmt(Math.abs(item.price_delta))}
+											</span>
+										{/if}
+										{#if item.limited}
+											<span class="text-base-content/45">{fmt(item.units_available)} / {fmt(item.total_quantity)} left</span>
+										{/if}
+										{#if item.favorite_count > 0}
+											<span class="text-base-content/45 ml-auto">
+												<i class="fas fa-heart text-[9px]"></i>
+												{fmt(item.favorite_count)}
+											</span>
+										{/if}
+									</div>
 								</div>
-							</div>
-						</a>
+							</a>
+						</div>
 					{/each}
 				</div>
 

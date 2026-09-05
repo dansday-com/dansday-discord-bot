@@ -1296,9 +1296,7 @@ export async function listPublicXpEventsAfter(afterId: any, limit = 40) {
 		LIMIT ${safeLimit}
 	`);
 
-	return ((rows[0] as unknown as any[]) || [])
-		.map((r: any) => ({ id: Number(r.id), xp: Number(r.xp) || 0 }))
-		.filter((r) => Number.isFinite(r.id) && r.xp > 0);
+	return ((rows[0] as unknown as any[]) || []).map((r: any) => ({ id: Number(r.id), xp: Number(r.xp) || 0 })).filter((r) => Number.isFinite(r.id) && r.xp > 0);
 }
 
 export async function upsertCategory(serverId: any, categoryData: any) {

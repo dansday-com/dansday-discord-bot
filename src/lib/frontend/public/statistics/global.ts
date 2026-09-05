@@ -3,11 +3,8 @@ import { resolvePublicStatisticsSnapshot } from './stream.js';
 import { aggregatePanelStatistics, type AggregatedPanelStats } from './aggregate.js';
 import type { PublicPageStats } from './shape.js';
 
-export type GlobalServerSample = { name: string; xp: number };
-
 export type GlobalStatisticsSnapshot = {
 	totals: AggregatedPanelStats;
-	servers: GlobalServerSample[];
 	gains: number[];
 	updated_at: number;
 };
@@ -19,7 +16,6 @@ const SERVER_LIST_TTL_MS = 60_000;
 const SNAPSHOT_FRESH_MS = 20_000;
 const REFRESH_PER_POLL = 25;
 const MAX_SERVERS = 200;
-const MAX_SAMPLES = 12;
 const MAX_GAINS = 40;
 
 const latest = new Map<number, PublicPageStats>();
@@ -104,13 +100,7 @@ export async function resolveGlobalStatistics(): Promise<GlobalStatisticsSnapsho
 
 	const stats = servers.map((s) => latest.get(s.id) ?? null);
 
-	const samples = servers
-		.map((s, i) => ({ name: s.name, xp: Number(stats[i]?.leveling_total_xp) || 0 }))
-		.filter((s) => s.xp > 0)
-		.sort((a, b) => b.xp - a.xp)
-		.slice(0, MAX_SAMPLES);
-
-	return { totals: aggregatePanelStatistics(stats), servers: samples, gains, updated_at: Date.now() };
+	return { totals: aggregatePanelStatistics(stats), gains, updated_at: Date.now() };
 }
 
 const listeners = new Set<Listener>();
@@ -134,7 +124,7 @@ async function poll() {
 	} catch (_) {
 		return;
 	}
-	const json = JSON.stringify({ totals: snapshot.totals, servers: snapshot.servers });
+	const json = JSON.stringify(snapshot.totals);
 	lastSnapshot = snapshot;
 	if (json === lastJson && snapshot.gains.length === 0) return;
 	lastJson = json;
@@ -152,7 +142,7 @@ export function subscribeGlobalStatistics(fn: Listener): () => void {
 		resolveGlobalStatistics()
 			.then((snapshot) => {
 				lastSnapshot = snapshot;
-				lastJson = JSON.stringify({ totals: snapshot.totals, servers: snapshot.servers });
+				lastJson = JSON.stringify(snapshot.totals);
 				emit(snapshot);
 			})
 			.catch(() => {});

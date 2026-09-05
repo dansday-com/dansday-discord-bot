@@ -491,7 +491,7 @@
 <PageShell>
 	<div class="@container">
 		<section class="relative isolate flex min-h-[calc(100dvh-6rem)] flex-col justify-between gap-6 pb-8 sm:gap-10">
-			<GlobeScene gains={feed.gains} servers={feed.servers} avoid={[heroText, heroFoot]} />
+			<GlobeScene gains={feed.gains} avoid={[heroText, heroFoot]} />
 
 			<div bind:this={heroText}>
 				<p class="display-line animate-rise text-primary block whitespace-nowrap uppercase" style="--ch: 9; --rise-delay: 80ms">One panel</p>

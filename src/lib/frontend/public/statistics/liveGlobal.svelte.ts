@@ -1,6 +1,5 @@
 import type { AggregatedPanelStats } from './aggregate.js';
 
-export type LiveServerSample = { name: string; xp: number };
 export type LiveGainBatch = { id: number; items: number[] };
 
 const ENDPOINT = '/api/statistics/global';
@@ -8,7 +7,6 @@ const RETRY_MS = 8000;
 
 export function createLiveGlobalStatistics(initial: AggregatedPanelStats) {
 	let totals = $state(initial);
-	let servers = $state<LiveServerSample[]>([]);
 	let live = $state(false);
 	let updatedAt = $state(0);
 	let gains = $state<LiveGainBatch | null>(null);
@@ -17,11 +15,10 @@ export function createLiveGlobalStatistics(initial: AggregatedPanelStats) {
 	let source: EventSource | null = null;
 	let retry: ReturnType<typeof setTimeout> | null = null;
 
-	function apply(payload: { totals?: AggregatedPanelStats; servers?: LiveServerSample[]; gains?: number[]; updated_at?: number }) {
+	function apply(payload: { totals?: AggregatedPanelStats; gains?: number[]; updated_at?: number }) {
 		if (!payload?.totals) return;
 
 		totals = payload.totals;
-		servers = Array.isArray(payload.servers) ? payload.servers : [];
 		updatedAt = Number(payload.updated_at) || Date.now();
 		live = true;
 
@@ -48,9 +45,6 @@ export function createLiveGlobalStatistics(initial: AggregatedPanelStats) {
 	return {
 		get totals() {
 			return totals;
-		},
-		get servers() {
-			return servers;
 		},
 		get live() {
 			return live;

@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { onDestroy, onMount, untrack } from 'svelte';
 	import { GLOBE_PLACES, type GlobePlace } from './countries.js';
-	import type { LiveGainBatch, LiveServerSample } from '$lib/frontend/public/statistics/liveGlobal.svelte.js';
+	import type { LiveGainBatch } from '$lib/frontend/public/statistics/liveGlobal.svelte.js';
 
-	type Props = { gains: LiveGainBatch | null; servers: LiveServerSample[]; avoid?: (HTMLElement | null)[] };
-	type Pulse = { id: number; place: GlobePlace; xp: number; kind: 'gain' | 'total'; born: number };
+	type Props = { gains: LiveGainBatch | null; avoid?: (HTMLElement | null)[] };
+	type Pulse = { id: number; place: GlobePlace; xp: number; born: number };
 
-	let { gains, servers, avoid = [] }: Props = $props();
+	let { gains, avoid = [] }: Props = $props();
 
 	let canvasHost: HTMLDivElement | null = $state(null);
 	let stage: HTMLDivElement | null = $state(null);
@@ -19,18 +19,14 @@
 
 	const compact = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 });
 	const fmt = (n: number) => compact.format(Math.max(0, Math.round(n || 0)));
-	const amount = (pulse: Pulse) => `${pulse.kind === 'gain' ? '+' : ''}${fmt(pulse.xp)} XP`;
+	const amount = (pulse: Pulse) => `+${fmt(pulse.xp)} XP`;
 
 	const PULSE_MS = 5600;
-	const AMBIENT_MS = 3200;
-	const AMBIENT_IDLE_MS = 12_000;
 	const MAX_RIGS = 8;
 	const MAX_PER_BATCH = 5;
 
 	let seq = 0;
 	const recent: string[] = [];
-	let lastSpawn = 0;
-	let lastGain = 0;
 	let dispose: (() => void) | null = null;
 	let requestFrame: (() => void) | null = null;
 
@@ -46,25 +42,17 @@
 		return GLOBE_PLACES[Math.floor(Math.random() * GLOBE_PLACES.length)];
 	}
 
-	function spawn(xp: number, kind: 'gain' | 'total', delay = 0) {
+	function spawn(xp: number, delay = 0) {
 		if (!(xp > 0)) return;
-		lastSpawn = performance.now();
-		pulses = [...pulses, { id: ++seq, place: pickPlace(), xp, kind, born: lastSpawn + delay }].slice(-MAX_RIGS);
+		pulses = [...pulses, { id: ++seq, place: pickPlace(), xp, born: performance.now() + delay }].slice(-MAX_RIGS);
 		requestFrame?.();
-	}
-
-	function ambient() {
-		if (!servers.length) return;
-		if (performance.now() - lastGain < AMBIENT_IDLE_MS) return;
-		spawn(servers[Math.floor(Math.random() * servers.length)].xp, 'total');
 	}
 
 	$effect(() => {
 		const batch = gains;
 		if (!batch?.items.length) return;
 		untrack(() => {
-			lastGain = performance.now();
-			batch.items.slice(-MAX_PER_BATCH).forEach((xp, index) => spawn(xp, 'gain', index * 260 + Math.random() * 180));
+			batch.items.slice(-MAX_PER_BATCH).forEach((xp, index) => spawn(xp, index * 260 + Math.random() * 180));
 		});
 	});
 
@@ -233,7 +221,7 @@
 			renderer.setSize(w, h, false);
 			camera.aspect = w / h;
 			const half = Math.tan((camera.fov * Math.PI) / 360);
-			const fit = 1.12;
+			const fit = 1.04;
 			camera.position.z = Math.max(fit / half, fit / (half * camera.aspect));
 			camera.updateProjectionMatrix();
 			requestFrame?.();
@@ -307,12 +295,11 @@
 				rig.group.visible = life >= 0;
 				if (life < 0) continue;
 				const fade = Math.pow(1 - life, 1.5);
-				const gainKind = pulse.kind === 'gain';
 				rig.ring.scale.setScalar(0.4 + life * 1.5);
-				rig.ringMat.opacity = fade * (gainKind ? 0.65 : 0.35);
-				rig.dotMat.opacity = gainKind ? 0.9 : 0.45;
-				rig.beam.scale.z = (gainKind ? 0.2 : 0.12) * Math.min(1, life * 4);
-				rig.beamMat.opacity = fade * (gainKind ? 0.5 : 0.28);
+				rig.ringMat.opacity = fade * 0.65;
+				rig.dotMat.opacity = 0.9;
+				rig.beam.scale.z = 0.2 * Math.min(1, life * 4);
+				rig.beamMat.opacity = fade * 0.5;
 			}
 
 			renderer.render(scene, camera);
@@ -388,7 +375,6 @@
 				for (const id of expired) labelSizes.delete(id);
 				pulses = pulses.filter((pulse) => !expired.includes(pulse.id));
 			}
-			if (!reduced && now - lastSpawn > AMBIENT_MS) ambient();
 		};
 
 		let raf = 0;
@@ -408,7 +394,6 @@
 				if (pulses.some((pulse) => now - pulse.born > PULSE_MS)) {
 					pulses = pulses.filter((pulse) => now - pulse.born <= PULSE_MS);
 				}
-				if (now - lastSpawn > AMBIENT_MS * 2) ambient();
 				requestFrame?.();
 			}, 1400);
 			requestFrame();
@@ -465,11 +450,8 @@
 </script>
 
 {#if webgl}
-	<div class="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden="true">
-		<div
-			bind:this={stage}
-			class="absolute top-1/2 left-1/2 aspect-square w-[min(160vw,560px)] -translate-x-1/2 -translate-y-1/2 sm:left-[58%] sm:w-[min(90vh,760px)] lg:left-[68%] lg:w-[min(94vh,900px)]"
-		>
+	<div class="pointer-events-none absolute inset-y-0 left-1/2 -z-10 w-screen -translate-x-1/2 overflow-hidden" aria-hidden="true">
+		<div bind:this={stage} class="absolute inset-0">
 			<div bind:this={canvasHost} class="absolute inset-0"></div>
 			{#each pulses as pulse (pulse.id)}
 				<div
@@ -480,11 +462,7 @@
 						<p class="text-base-content/55 text-[8.5px] leading-none font-bold tracking-[0.14em] whitespace-nowrap uppercase 2xl:text-[10px]">
 							{pulse.place.name}
 						</p>
-						<p
-							class="mt-1 text-[11.5px] leading-none font-black whitespace-nowrap tabular-nums 2xl:text-[14px] {pulse.kind === 'gain'
-								? 'text-primary'
-								: 'text-base-content/55'}"
-						>
+						<p class="text-primary mt-1 text-[11.5px] leading-none font-black whitespace-nowrap tabular-nums 2xl:text-[14px]">
 							{amount(pulse)}
 						</p>
 					</div>

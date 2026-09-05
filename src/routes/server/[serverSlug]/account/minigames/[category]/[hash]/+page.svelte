@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { lockScroll } from '$lib/frontend/scrollLock.js';
 	import { getContext } from 'svelte';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
@@ -62,8 +63,7 @@
 
 	$effect(() => {
 		if (playing === null) return;
-		document.body.style.overflow = 'hidden';
-		return () => (document.body.style.overflow = '');
+		return lockScroll();
 	});
 
 	let reel = $state<('win' | 'lose')[]>([]);

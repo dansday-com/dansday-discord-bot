@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { lockScroll } from '$lib/frontend/scrollLock.js';
 	import { getContext } from 'svelte';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
@@ -23,8 +24,7 @@
 	}
 	$effect(() => {
 		if (outcome === null) return;
-		document.body.style.overflow = 'hidden';
-		return () => (document.body.style.overflow = '');
+		return lockScroll();
 	});
 
 	function grp(n: number | null): string {
@@ -158,8 +158,7 @@
 
 	$effect(() => {
 		if (buyAsset === null) return;
-		document.body.style.overflow = 'hidden';
-		return () => (document.body.style.overflow = '');
+		return lockScroll();
 	});
 
 	async function confirmBuy() {
@@ -227,8 +226,7 @@
 
 	$effect(() => {
 		if (sellPos === null) return;
-		document.body.style.overflow = 'hidden';
-		return () => (document.body.style.overflow = '');
+		return lockScroll();
 	});
 
 	async function confirmSell() {

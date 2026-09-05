@@ -37,7 +37,7 @@
 
 	const ACTIVE = 'from-secondary to-primary bg-linear-to-br text-white shadow-[0_2px_12px_rgba(228,61,18,0.4)]';
 	const ARROW =
-		'border-base-300 bg-base-200 text-base-content absolute top-1/2 z-2 grid size-7.5 -translate-y-1/2 place-items-center rounded-full border shadow-md transition-opacity';
+		'border-base-300 bg-base-200 text-base-content absolute top-1/2 z-2 hidden size-7.5 -translate-y-1/2 place-items-center rounded-full border shadow-md transition-opacity sm:grid';
 </script>
 
 <div class="relative {arrows ? '' : 'contents'}">
@@ -58,7 +58,7 @@
 		onscroll={update}
 		class="flex overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden {variant === 'segment'
 			? 'border-base-300 bg-base-200 min-w-0 flex-auto gap-[3px] rounded-xl border p-[3px]'
-			: 'gap-2'}"
+			: '-my-2.5 gap-2 py-2.5'}"
 	>
 		{#each tabs as tab}
 			<a

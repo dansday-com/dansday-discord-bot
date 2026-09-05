@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
+	import { lockScroll } from '$lib/frontend/scrollLock.js';
 
 	type MemberRole = { name: string; color: string | null; position?: number };
 
@@ -33,6 +34,11 @@
 	const isAssets = $derived(mode === 'assets' && !!assets);
 
 	let visible = $state(false);
+
+	$effect(() => {
+		if (!visible) return;
+		return lockScroll();
+	});
 	let cardEl: HTMLDivElement | undefined = $state();
 	let downloading = $state(false);
 	function memberName(m: MemberData): string {
@@ -694,7 +700,7 @@
 			class="border-base-300 relative z-2 overflow-hidden rounded-[20px] border bg-linear-[165deg] from-white/97 to-[#ebe9e1]/95 shadow-[0_8px_40px_rgba(46,33,27,0.14)]"
 			bind:this={cardEl}
 		>
-			<div class="pointer-events-none absolute inset-0 overflow-hidden">
+			<div class="pointer-events-none absolute inset-0 overflow-hidden rounded-[20px]">
 				<div
 					class="absolute -top-[40%] -left-[20%] h-[80%] w-[140%] rounded-full opacity-8 blur-[40px]"
 					style="background: linear-gradient(135deg, {accentColor}, #e43d12);"

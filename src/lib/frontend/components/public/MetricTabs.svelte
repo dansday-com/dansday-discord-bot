@@ -23,7 +23,10 @@
 <div
 	role="tablist"
 	aria-label={label}
-	class="tabs tabs-box border-base-300 flex-nowrap overflow-x-auto border p-1.5 {DEPTH_BG[depth]} {size === 'sm' ? 'tabs-sm' : ''} {margin ? 'mb-3' : ''}"
+	class="tabs tabs-box border-base-300 flex-nowrap overflow-x-auto border p-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden {DEPTH_BG[depth]} {size ===
+	'sm'
+		? 'tabs-sm'
+		: ''} {margin ? 'mb-3' : ''}"
 >
 	{#each tabs as tab}
 		<button

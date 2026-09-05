@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { lockScroll } from '$lib/frontend/scrollLock.js';
 	import { getContext, onMount, onDestroy } from 'svelte';
 	import { showToast } from '$lib/frontend/toast.svelte';
 	import { effectIcon, effectAccentHex, effectLabel } from '$lib/items.js';
@@ -37,8 +38,7 @@
 
 	$effect(() => {
 		if (!itemRoll) return;
-		document.body.style.overflow = 'hidden';
-		return () => (document.body.style.overflow = '');
+		return lockScroll();
 	});
 
 	function decoyCells(n: number): ReelCell[] {
@@ -337,7 +337,7 @@
 							>
 								{@render dayFace(r, claimingLogin)}
 								<span
-									class="from-warning to-secondary absolute bottom-1.5 left-1/2 -translate-x-1/2 rounded-full bg-linear-to-br px-2.5 py-0.5 text-[9px] font-extrabold tracking-[0.5px] whitespace-nowrap text-white uppercase"
+									class="from-warning to-secondary absolute bottom-1.5 left-1/2 max-w-[calc(100%-2px)] -translate-x-1/2 rounded-full bg-linear-to-br px-1.5 py-0.5 text-[8px] font-extrabold tracking-normal whitespace-nowrap text-white uppercase sm:px-2.5 sm:text-[9px] sm:tracking-[0.5px]"
 								>
 									Claim
 								</span>

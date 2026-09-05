@@ -491,7 +491,7 @@
 
 <PageShell>
 	<div class="@container">
-		<section class="relative isolate flex min-h-[calc(100dvh-6rem)] flex-col justify-between gap-6 pb-8 sm:gap-10">
+		<section class="relative isolate flex min-h-[calc(100svh-6rem)] flex-col justify-between gap-6 pb-8 sm:gap-10">
 			<GlobeScene gains={feed.gains} avoid={[heroText, heroFoot]} />
 
 			<div bind:this={heroText}>
@@ -524,7 +524,9 @@
 							: 'opacity-100'}"
 					>
 						<span class="border-primary/45 grid size-10 shrink-0 place-items-center rounded-full border-2 motion-safe:animate-bounce 2xl:size-13">
-							<i class="fas fa-arrow-down block text-[13px] leading-none 2xl:text-[16px]"></i>
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="block size-[15px] 2xl:size-[19px]" aria-hidden="true">
+								<path d="M12 3v18M5 14l7 7 7-7" stroke-linecap="round" stroke-linejoin="round" />
+							</svg>
 						</span>
 						<span class="leading-[1.25]">Scroll<br />to explore</span>
 					</a>

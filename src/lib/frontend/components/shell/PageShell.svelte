@@ -2,6 +2,7 @@
 	import type { Snippet } from 'svelte';
 	import MainHeader from '../MainHeader.svelte';
 	import MainFooter from '../MainFooter.svelte';
+	import { registerScroller } from '../../scrollLock.js';
 
 	let {
 		trailing = 'login',
@@ -19,6 +20,7 @@
 		if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
 		let lenis: { destroy: () => void; raf: (t: number) => void; scrollTo: (t: unknown, o?: unknown) => void } | null = null;
+		let unregister: (() => void) | null = null;
 		let frame = 0;
 		let stopped = false;
 
@@ -34,6 +36,7 @@
 		import('lenis').then(({ default: Lenis }) => {
 			if (stopped) return;
 			lenis = new Lenis({ duration: 1.05, smoothWheel: true, touchMultiplier: 1.6, autoRaf: false });
+			unregister = registerScroller(lenis as unknown as { stop: () => void; start: () => void });
 			const tick = (time: number) => {
 				lenis?.raf(time);
 				frame = requestAnimationFrame(tick);
@@ -46,6 +49,8 @@
 			stopped = true;
 			if (frame) cancelAnimationFrame(frame);
 			document.removeEventListener('click', onAnchor);
+			unregister?.();
+			unregister = null;
 			lenis?.destroy();
 			lenis = null;
 		};

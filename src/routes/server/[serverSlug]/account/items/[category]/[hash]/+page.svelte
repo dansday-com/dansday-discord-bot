@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { lockScroll } from '$lib/frontend/scrollLock.js';
 	import { getContext } from 'svelte';
 	import type { Snippet } from 'svelte';
 	import { showToast } from '$lib/frontend/toast.svelte';
@@ -97,8 +98,7 @@
 
 	$effect(() => {
 		if (pickingTargetFor === null && outcome === null) return;
-		document.body.style.overflow = 'hidden';
-		return () => (document.body.style.overflow = '');
+		return lockScroll();
 	});
 
 	function showOutcome(effectType: string, result: any) {
@@ -180,7 +180,32 @@
 		pickingTargetFor = null;
 	}
 
-	async function discard(item: any) {
+	function poof(fromEl: HTMLElement | null, iconClass: string) {
+		if (!fromEl || typeof document === 'undefined') return;
+		if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+		const start = fromEl.getBoundingClientRect();
+		const clone = document.createElement('div');
+		clone.className = 'fixed z-9999 pointer-events-none text-[26px] leading-none text-base-content/45';
+		const ic = document.createElement('i');
+		ic.className = `fas ${iconClass || 'fa-cube'}`;
+		clone.appendChild(ic);
+		clone.style.left = `${start.left + start.width / 2}px`;
+		clone.style.top = `${start.top + start.height / 2}px`;
+		document.body.appendChild(clone);
+		const anim = clone.animate(
+			[
+				{ transform: 'translate(-50%, -50%) scale(1) rotate(0deg)', opacity: 0.85, offset: 0 },
+				{ transform: 'translate(-50%, calc(-50% + 12px)) scale(0.78) rotate(-10deg)', opacity: 0.5, offset: 0.45 },
+				{ transform: 'translate(-50%, calc(-50% + 40px)) scale(0.35) rotate(-22deg)', opacity: 0, offset: 1 }
+			],
+			{ duration: 460, easing: 'cubic-bezier(0.4, 0, 1, 1)' }
+		);
+		anim.onfinish = () => clone.remove();
+	}
+
+	async function discard(item: any, ev?: MouseEvent) {
+		const card = (ev?.currentTarget as HTMLElement | undefined)?.closest('[data-item-card]');
+		const medallion = card?.querySelector('[data-item-medallion]') as HTMLElement | null;
 		discardingId = item.member_item_id;
 		try {
 			const res = await fetch(`/api/items/${encodeURIComponent(ctx.serverSlug)}/discard`, {
@@ -189,8 +214,11 @@
 				body: JSON.stringify({ card: ctx.hash, member_item_id: item.member_item_id, quantity: 1 })
 			});
 			const d = await res.json();
-			if (d.success) await ctx.invalidateAll();
-			else showToast(d.error || 'Failed to remove item', 'error');
+			if (d.success) {
+				poof(medallion, effectIcon(item.effect_type));
+				showToast(`Removed one ${item.name}`, 'success');
+				await ctx.invalidateAll();
+			} else showToast(d.error || 'Failed to remove item', 'error');
 		} catch {
 			showToast('Failed to remove item', 'error');
 		} finally {
@@ -219,10 +247,11 @@
 	{@const buffActive = isBuffActive(item.effect_type)}
 	{@const notStarted = item._state === 'upcoming'}
 	{@const canBuy = item._buyable}
+	{@const blockedReason = ctx.bagFull ? `Items full (max ${ctx.bagCapacity})` : !affordable ? 'Not enough XP' : ''}
 	{@const canUse = item.usable !== false}
 	<article
 		data-item-card
-		class="card relative isolate flex flex-col gap-[7px] overflow-hidden border p-[13px] pb-3 transition-transform duration-200 min-[600px]:gap-[9px] min-[600px]:rounded-[18px] min-[600px]:p-4 min-[600px]:pb-3.5 {!ctx.readOnly &&
+		class="card relative isolate flex min-w-0 flex-col gap-[7px] overflow-hidden border p-[13px] pb-3 transition-transform duration-200 min-[600px]:gap-[9px] min-[600px]:rounded-[18px] min-[600px]:p-4 min-[600px]:pb-3.5 {!ctx.readOnly &&
 		!affordable &&
 		owned === 0
 			? 'opacity-75'
@@ -252,7 +281,7 @@
 					aria-label="Remove one"
 					title="Remove one"
 					disabled={discardingId === item.member_item_id || ctx.busy === item.member_item_id}
-					onclick={() => discard({ member_item_id: item.member_item_id })}
+					onclick={(e) => discard(item, e)}
 				>
 					{#if discardingId === item.member_item_id}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas fa-trash-can"></i>{/if}
 				</button>
@@ -302,22 +331,16 @@
 				{fmt(item.cost)}<span class="text-[10px] font-bold tracking-[0.03em] opacity-70">XP</span>
 			</span>
 
-			<div class="ml-auto flex flex-[1_1_100%] items-center justify-end gap-1.5">
+			<div class="ml-auto flex flex-[1_1_100%] flex-wrap items-center justify-end gap-1.5">
 				{#if ctx.readOnly}
 					<button class="btn btn-sm" disabled title="Open your card to buy"><i class="fas fa-cart-plus"></i>Buy</button>
 				{:else}
 					<button
-						class="btn btn-sm border-none bg-linear-to-br from-[rgba(214,83,109,0.94)] to-[rgba(228,61,18,0.96)] font-bold text-white"
-						disabled={ctx.busy === item.id || !canBuy || !affordable || ctx.bagFull}
-						title={notStarted
-							? 'Not available yet'
-							: item.enabled === false
-								? 'Buying is turned off'
-								: ctx.bagFull
-									? 'Items full'
-									: !affordable
-										? 'Not enough XP'
-										: 'Buy one'}
+						class="btn btn-sm border-none font-bold {blockedReason
+							? 'bg-base-300 text-base-content/55'
+							: 'bg-linear-to-br from-[rgba(214,83,109,0.94)] to-[rgba(228,61,18,0.96)] text-white'}"
+						disabled={ctx.busy === item.id || !canBuy}
+						title={notStarted ? 'Not available yet' : item.enabled === false ? 'Buying is turned off' : blockedReason || 'Buy one'}
 						onclick={(e) => buy(item, e)}
 					>
 						{#if ctx.busy === item.id}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas fa-cart-plus"></i>{/if}
@@ -363,7 +386,7 @@
 {#if shopItems.length === 0}
 	<EmptyState icon="fa-box-open" message="No items in this category." boxed />
 {:else if data.category !== 'all'}
-	<div class="grid grid-cols-2 gap-2.5 min-[600px]:grid-cols-[repeat(auto-fill,minmax(220px,1fr))] min-[600px]:gap-3.5">
+	<div class="grid grid-cols-1 gap-2.5 min-[400px]:grid-cols-2 min-[600px]:grid-cols-[repeat(auto-fill,minmax(220px,1fr))] min-[600px]:gap-3.5">
 		{#each shopItems.slice().sort(byCost) as item (item.id)}
 			{@render card(item)}
 		{/each}
@@ -379,7 +402,7 @@
 				<i class="fas {group.icon}"></i>{group.label}
 				<span class="bg-base-content/14 text-base-content/60 rounded-full px-[7px] py-px text-[10.5px] font-bold tabular-nums">{group.items.length}</span>
 			</h2>
-			<div class="grid grid-cols-2 gap-2.5 min-[600px]:grid-cols-[repeat(auto-fill,minmax(220px,1fr))] min-[600px]:gap-3.5">
+			<div class="grid grid-cols-1 gap-2.5 min-[400px]:grid-cols-2 min-[600px]:grid-cols-[repeat(auto-fill,minmax(220px,1fr))] min-[600px]:gap-3.5">
 				{#each group.items as item (item.id)}
 					{@render card(item)}
 				{/each}

@@ -487,12 +487,6 @@
 		<section class="relative isolate flex min-h-[calc(100dvh-6rem)] flex-col justify-between gap-10 pb-8">
 			<HeroScene />
 
-			<p class="bg-base-300 flex h-px items-center justify-between sm:grid sm:grid-cols-3 sm:justify-normal sm:gap-6" aria-hidden="true">
-				<span class="bg-primary size-2.5 shrink-0 rounded-full"></span>
-				<span class="bg-primary size-2.5 shrink-0 rounded-full"></span>
-				<span class="bg-primary size-2.5 shrink-0 rounded-full"></span>
-			</p>
-
 			<div>
 				<p class="display-line animate-rise text-primary block whitespace-nowrap uppercase" style="--ch: 9; --rise-delay: 80ms">One panel</p>
 				<p class="display-line animate-rise text-primary block whitespace-nowrap uppercase" style="--ch: 12; --rise-delay: 200ms">Every module</p>

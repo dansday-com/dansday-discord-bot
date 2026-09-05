@@ -495,7 +495,12 @@
 
 			<div bind:this={heroText}>
 				<p class="display-line animate-rise text-primary block whitespace-nowrap uppercase" style="--ch: 9; --rise-delay: 80ms">One panel</p>
-				<p class="display-line animate-rise text-primary block whitespace-nowrap uppercase" style="--ch: 12; --rise-delay: 200ms">Every module</p>
+				<p
+					class="display-line display-fill animate-rise text-primary block whitespace-nowrap uppercase"
+					style="--ch: 12; --rise-delay: 200ms; --sweep-delay: 720ms"
+				>
+					Every module
+				</p>
 				<h1 class="animate-rise text-base-content/70 mt-6 text-[14px] leading-[1.55] sm:max-w-[44ch] 2xl:text-[17px]" style="--rise-delay: 380ms">
 					Leveling, an XP economy, moderation, embeds, giveaways and live public pages — every module configured from one free web panel instead of slash
 					commands.

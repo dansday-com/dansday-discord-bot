@@ -343,6 +343,37 @@
 	letter-spacing: -0.045em;
 }
 
+@keyframes display-fill-sweep {
+	from {
+		background-size: 0% 100%;
+	}
+	to {
+		background-size: 100% 100%;
+	}
+}
+
+@supports (background-clip: text) or (-webkit-background-clip: text) {
+	.display-fill {
+		color: transparent;
+		-webkit-text-stroke: max(1px, 0.022em) var(--color-primary);
+		background-image: linear-gradient(var(--color-primary), var(--color-primary));
+		background-repeat: no-repeat;
+		background-position: left center;
+		background-size: 0% 100%;
+		-webkit-background-clip: text;
+		background-clip: text;
+		animation: display-fill-sweep 1.15s cubic-bezier(0.22, 1, 0.36, 1) both;
+		animation-delay: var(--sweep-delay, 0ms);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.display-fill {
+		animation: none;
+		background-size: 100% 100%;
+	}
+}
+
 @utility bleed {
 	width: 100vw;
 	margin-inline: calc(50% - 50vw);

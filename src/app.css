@@ -349,6 +349,15 @@
 	padding-inline: max(0.75rem, calc(50vw - 39.25rem));
 }
 
+@keyframes toast-progress {
+	from {
+		transform: scaleX(1);
+	}
+	to {
+		transform: scaleX(0);
+	}
+}
+
 @keyframes marquee-left {
 	from {
 		transform: translateX(0);

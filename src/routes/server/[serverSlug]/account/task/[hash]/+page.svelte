@@ -266,9 +266,10 @@
 	/>
 {:else}
 	{#snippet dayFace(r: any, busy: boolean)}
-		<span class="text-base-content/40 text-[8px] font-extrabold tracking-normal whitespace-nowrap uppercase sm:text-[9px] sm:tracking-[0.4px]">Day {r.day}</span
+		<span class="text-base-content/40 text-[9px] font-extrabold tracking-[0.4px] uppercase">Day {r.day}</span>
+		<span
+			class="leading-none {r.claimed && !r.jackpot ? 'text-success' : r.jackpot ? 'text-error' : 'text-warning'} {r.jackpot ? 'text-[18px]' : 'text-[15px]'}"
 		>
-		<span class="text-warning text-[15px] leading-none">
 			{#if busy}
 				<i class="fas fa-spinner fa-spin"></i>
 			{:else if r.claimed}
@@ -279,8 +280,8 @@
 				<i class="fas fa-gift"></i>
 			{/if}
 		</span>
-		<span class="text-base-content/55 text-[9px] font-bold whitespace-nowrap tabular-nums sm:text-[10px]">
-			{#if r.claimed}<span class="hidden sm:inline">Claimed</span>{:else}?{/if}
+		<span class="text-base-content/55 text-[10px] font-bold tabular-nums">
+			{#if r.claimed}Claimed{:else}?{/if}
 		</span>
 	{/snippet}
 
@@ -297,7 +298,7 @@
 
 	<div class="flex flex-col gap-4 sm:gap-[18px]">
 		<section class="card border-base-300 bg-base-100 border shadow-sm">
-			<div class="card-body gap-3 p-3 sm:p-4 sm:px-[18px]">
+			<div class="card-body gap-3 px-[18px] py-4">
 				<div class="flex flex-wrap items-center justify-between gap-3">
 					<div>
 						<h3 class="text-base-content flex items-center gap-2 text-[15px] font-extrabold">
@@ -320,31 +321,34 @@
 					{/if}
 				</div>
 
-				<div class="grid grid-cols-7 gap-1.5 sm:gap-2">
+				<div class="grid grid-cols-4 gap-2 min-[681px]:grid-cols-7">
 					{#each login.rewards as r (r.day)}
 						{@const claimable = r.current && login.canClaim && !ctx.readOnly}
 						{@const jackpot = r.jackpot
 							? 'border-error/45 bg-linear-to-br from-warning/12 to-error/14'
-							: r.claimed
-								? 'border-success/32 bg-success/10'
-								: 'border-base-300 bg-base-content/4'}
+							: r.current
+								? 'border-warning/50 bg-linear-to-br from-warning/16 to-error/12'
+								: r.claimed
+									? 'border-success/32 bg-success/10'
+									: 'border-base-300 bg-base-content/4'}
+						{@const lift = r.current ? '-translate-y-0.5 shadow-[0_0_0_2px_rgba(200,145,26,0.18)]' : ''}
 						{#if claimable}
 							<button
 								type="button"
-								class="animate-task-daypulse border-warning/50 from-warning/16 to-error/12 relative flex -translate-y-0.5 cursor-pointer flex-col items-center gap-1 rounded-xl border bg-linear-to-br px-0.5 pt-2.5 pb-6 text-center transition-all sm:px-1"
+								class="animate-task-daypulse border-warning/50 from-warning/16 to-error/12 relative flex -translate-y-0.5 cursor-pointer flex-col items-center gap-1 rounded-xl border bg-linear-to-br px-1 pt-2.5 pb-6 text-center transition-all"
 								disabled={claimingLogin}
 								aria-label={`Claim day ${r.day} reward`}
 								onclick={claimLogin}
 							>
 								{@render dayFace(r, claimingLogin)}
 								<span
-									class="from-warning to-secondary absolute bottom-1.5 left-1/2 max-w-[calc(100%-2px)] -translate-x-1/2 rounded-full bg-linear-to-br px-1.5 py-0.5 text-[8px] font-extrabold tracking-normal whitespace-nowrap text-white uppercase sm:px-2.5 sm:text-[9px] sm:tracking-[0.5px]"
+									class="from-warning to-secondary absolute bottom-1.5 left-1/2 -translate-x-1/2 rounded-full bg-linear-to-br px-2.5 py-0.5 text-[9px] font-extrabold tracking-[0.5px] whitespace-nowrap text-white uppercase"
 								>
 									Claim
 								</span>
 							</button>
 						{:else}
-							<div class="relative flex flex-col items-center gap-1 rounded-xl border px-0.5 py-2.5 text-center transition-all sm:px-1 {jackpot}">
+							<div class="relative flex flex-col items-center gap-1 rounded-xl border px-1 py-2.5 text-center transition-all {jackpot} {lift}">
 								{@render dayFace(r, false)}
 							</div>
 						{/if}

@@ -5,6 +5,12 @@
 
 	let { data }: PageProps = $props();
 
+	const watchSummary = $derived(
+		data.tracked > data.items.length
+			? `${data.tracked} items under watch, showing the ${data.items.length} most favourited`
+			: `${data.items.length} items under watch, ordered by favourites`
+	);
+
 	const compact = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 });
 	const fmt = (n: number) => compact.format(Math.max(0, Math.round(n || 0)));
 
@@ -51,7 +57,7 @@
 			<p class="text-primary mb-3.5 text-[10.5px] font-extrabold tracking-[0.2em] uppercase">Directory</p>
 			<h1 class="text-base-content mb-2.5 text-[clamp(21px,6.2cqw,58px)] leading-[0.98] font-black tracking-[-0.035em] uppercase">Roblox catalog</h1>
 			<p class="text-base-content/60 text-[13.5px] leading-[1.55] sm:max-w-[54ch]">
-				{data.items.length} items under watch, ordered by favourites. Prices and stock refresh as the notifier polls the catalog.
+				{watchSummary}. Prices and stock refresh as the notifier polls the catalog.
 			</p>
 		</section>
 

@@ -810,7 +810,7 @@
 						<p class={LEAD}>The most favourited of {data.robloxCount} catalog items the notifier tracks for price and stock changes.</p>
 					</div>
 					<a href="/roblox" class="{BTN} btn-outline btn-primary shrink-0">
-						All {data.robloxCount} items
+						Browse all
 						<i class="fas fa-arrow-right"></i>
 					</a>
 				</div>
@@ -860,7 +860,7 @@
 						<p class={EYEBROW}>07 — Wiki knowledge</p>
 						<h2 class={H2}>What it can look up</h2>
 						<p class={LEAD}>
-							{data.activeWikiCount} of {data.wikiCount} connected wikis answer questions right now. Each one is bound to the servers listed beside it.
+							{data.activeWikiCount} of {data.wikiCount} connected wikis answer questions right now. Every server the bot is in can ask about all of them.
 						</p>
 					</div>
 					<a href="/wikis" class="{BTN} btn-outline btn-primary shrink-0">
@@ -888,15 +888,10 @@
 								</span>
 							</dt>
 							<dd class="text-base-content/60 min-w-0 text-[12.5px] leading-[1.5]">
-								{#if wiki.servers.length > 0}
-									<span class="text-base-content/30 mr-1.5 text-[9.5px] font-bold tracking-[0.14em] uppercase">Answers in</span>
-									{#each wiki.servers as server, j (server.slug)}
-										{#if j > 0}<span class="text-base-content/20" aria-hidden="true">·</span>{/if}
-										<a href={publicServerPath(server.slug)} class="hover:text-primary font-bold underline underline-offset-4 transition-colors">{server.name}</a
-										>
-									{/each}
+								{#if wiki.description}
+									{wiki.description}
 								{:else}
-									<span class="text-base-content/35">No public server bound yet.</span>
+									<span class="text-base-content/35">No description yet.</span>
 								{/if}
 							</dd>
 						</div>

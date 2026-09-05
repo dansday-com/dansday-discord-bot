@@ -1,6 +1,5 @@
 import db from '../../../database.js';
 import { getRedisClient } from '../../../redis.js';
-import { listLivePublicServers } from '../server-slug/index.js';
 import { TASK_DEFINITIONS, type TaskRequirement } from '../../../tasks.js';
 
 const TTL_SECONDS = 300;
@@ -65,11 +64,6 @@ export type ItemEntry = {
 	config: Record<string, any>;
 };
 
-export type WikiServerLink = {
-	name: string;
-	slug: string;
-};
-
 export type WikiEntry = {
 	id: number;
 	name: string;
@@ -77,7 +71,6 @@ export type WikiEntry = {
 	site_url: string | null;
 	site_host: string | null;
 	active: boolean;
-	servers: WikiServerLink[];
 };
 
 export const EMPTY_QUESTS: QuestEntry[] = [];
@@ -206,6 +199,10 @@ export function resolveRobloxDirectory(): Promise<RobloxEntry[]> {
 	);
 }
 
+export function resolveRobloxTrackedCount(): Promise<number> {
+	return cached('dansday:roblox_tracked_count', async () => (await (db as any).countPublicRobloxItems()) as number, 0);
+}
+
 export function resolveTaskDirectory(): TaskEntry[] {
 	return TASK_DEFINITIONS.map((def) => {
 		const goal = SAMPLE_GOAL[def.unit] ?? 10;
@@ -252,16 +249,7 @@ export function resolveWikiDirectory(): Promise<WikiEntry[]> {
 	return cached(
 		'dansday:wiki_directory',
 		async () => {
-			const [rows, servers] = await Promise.all([(db as any).listPublicWikis(MAX_ROWS) as Promise<any[]>, listLivePublicServers()]);
-			const serversByBot = new Map<number, WikiServerLink[]>();
-			for (const row of servers) {
-				const botId = Number(row.item.bot_id);
-				if (!Number.isFinite(botId)) continue;
-				const list = serversByBot.get(botId) ?? [];
-				list.push({ name: row.item.name || row.slug, slug: row.slug });
-				serversByBot.set(botId, list);
-			}
-			for (const list of serversByBot.values()) list.sort((a, b) => a.name.localeCompare(b.name));
+			const rows: any[] = await (db as any).listPublicWikis(MAX_ROWS);
 
 			return rows.map((r) => {
 				const site = typeof r.site_url === 'string' && r.site_url.trim() ? r.site_url.trim() : null;
@@ -271,8 +259,7 @@ export function resolveWikiDirectory(): Promise<WikiEntry[]> {
 					description: r.description || null,
 					site_url: site,
 					site_host: hostOf(site),
-					active: r.enabled === true || r.enabled === 1,
-					servers: serversByBot.get(Number(r.bot_id)) ?? []
+					active: r.enabled === true || r.enabled === 1
 				};
 			});
 		},

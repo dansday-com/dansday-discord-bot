@@ -3423,6 +3423,13 @@ export async function listPublicRobloxItems(limit = 300) {
 	return (rows[0] as unknown as any[]) || [];
 }
 
+export async function countPublicRobloxItems(): Promise<number> {
+	await initializeDatabase();
+	const rows = await db.execute(sql`SELECT COUNT(DISTINCT asset_id) AS total FROM bot_roblox_items`);
+	const row = ((rows[0] as unknown as any[]) || [])[0];
+	return Number(row?.total) || 0;
+}
+
 export async function getServerFeatureStats(serverId: any) {
 	await initializeDatabase();
 	const sid = Number(serverId);
@@ -6641,6 +6648,7 @@ export default {
 	getServerFeatureStats,
 	listPublicDiscordQuests,
 	listPublicRobloxItems,
+	countPublicRobloxItems,
 	listPublicWikis,
 	getMemberDashboard,
 	getMemberInsights,

@@ -6,6 +6,7 @@ import {
 	resolveTaskDirectory,
 	resolveItemDirectory,
 	resolveWikiDirectory,
+	resolveRobloxTrackedCount,
 	EMPTY_QUESTS,
 	EMPTY_ROBLOX,
 	EMPTY_TASKS,
@@ -18,10 +19,11 @@ const GRID_PREVIEW = 6;
 const TASK_PREVIEW = 24;
 
 export const load: PageServerLoad = async () => {
-	const [directory, quests, roblox, items, wikis] = await Promise.all([
+	const [directory, quests, roblox, robloxTracked, items, wikis] = await Promise.all([
 		resolveServerDirectory().catch(() => EMPTY_DIRECTORY),
 		resolveQuestDirectory().catch(() => EMPTY_QUESTS),
 		resolveRobloxDirectory().catch(() => EMPTY_ROBLOX),
+		resolveRobloxTrackedCount().catch(() => 0),
 		resolveItemDirectory().catch(() => EMPTY_ITEMS),
 		resolveWikiDirectory().catch(() => EMPTY_WIKIS)
 	]);
@@ -44,7 +46,7 @@ export const load: PageServerLoad = async () => {
 		questCount: quests.length,
 		liveQuestCount: quests.filter((q) => q.live).length,
 		topRoblox: roblox.slice(0, GRID_PREVIEW),
-		robloxCount: roblox.length,
+		robloxCount: Math.max(robloxTracked, roblox.length),
 		topWikis: wikis.slice(0, ROW_PREVIEW),
 		wikiCount: wikis.length,
 		activeWikiCount: wikis.filter((w) => w.active).length

@@ -13,17 +13,16 @@
 			if (activeOnly && !w.active) return false;
 			const needle = query.trim().toLowerCase();
 			if (!needle) return true;
-			return `${w.name} ${w.description ?? ''} ${w.site_host ?? ''} ${w.servers.map((s) => s.name).join(' ')}`.toLowerCase().includes(needle);
+			return `${w.name} ${w.description ?? ''} ${w.site_host ?? ''}`.toLowerCase().includes(needle);
 		})
 	);
 	const activeCount = $derived(data.wikis.filter((w) => w.active).length);
-	const boundCount = $derived(new Set(data.wikis.flatMap((w) => w.servers.map((s) => s.slug))).size);
 	const index = (n: number) => String(n).padStart(2, '0');
 </script>
 
 <svelte:head>
 	<title>Wiki knowledge directory | {APP_NAME} Discord Bot</title>
-	<meta name="description" content="Every wiki {APP_NAME} Bot can look up, whether it is active or disabled, and the servers each one answers in." />
+	<meta name="description" content="Every wiki {APP_NAME} Bot can look up, and whether it is active or disabled." />
 	<meta name="theme-color" content="#e43d12" />
 </svelte:head>
 
@@ -33,11 +32,11 @@
 			<p class="text-primary mb-3.5 text-[10.5px] font-extrabold tracking-[0.2em] uppercase">Directory</p>
 			<h1 class="text-base-content mb-2.5 text-[clamp(21px,6.2cqw,58px)] leading-[0.98] font-black tracking-[-0.035em] uppercase">Wiki knowledge</h1>
 			<p class="text-base-content/60 text-[13.5px] leading-[1.55] sm:max-w-[54ch]">
-				Every wiki the bot can look up, and the servers each one answers in. Disabled entries stay listed so you can see what is wired but off.
+				Every wiki the bot can look up, in every server the bot is in. Disabled entries stay listed so you can see what is wired but off.
 			</p>
 
 			<div class="border-base-300 mt-6 grid grid-cols-3 gap-x-6 border-t pt-5">
-				{#each [{ label: 'Wikis', value: data.wikis.length }, { label: 'Active', value: activeCount }, { label: 'Servers bound', value: boundCount }] as stat, i (stat.label)}
+				{#each [{ label: 'Wikis', value: data.wikis.length }, { label: 'Active', value: activeCount }, { label: 'Disabled', value: data.wikis.length - activeCount }] as stat, i (stat.label)}
 					<div use:reveal class={REVEAL_CLASS} style="transition-delay: {i * 70}ms">
 						<p class="text-primary text-[clamp(20px,3.4cqw,34px)] leading-none font-black tabular-nums">{stat.value}</p>
 						<p class="text-base-content/45 mt-1.5 text-[10px] font-bold tracking-[0.14em] uppercase">{stat.label}</p>
@@ -93,23 +92,6 @@
 								{#if wiki.description}
 									<p class="text-base-content/60 mt-2.5 text-[12.5px] leading-[1.55] sm:max-w-[66ch]">{wiki.description}</p>
 								{/if}
-
-								<div class="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[12.5px]">
-									<span class="text-base-content/30 text-[9.5px] font-bold tracking-[0.14em] uppercase">Answers in</span>
-									{#if wiki.servers.length > 0}
-										{#each wiki.servers as server, j (server.slug)}
-											{#if j > 0}<span class="text-base-content/20" aria-hidden="true">·</span>{/if}
-											<a
-												href={`/server/${server.slug}`}
-												class="text-base-content/75 hover:text-primary font-bold underline underline-offset-4 transition-colors"
-											>
-												{server.name}
-											</a>
-										{/each}
-									{:else}
-										<span class="text-base-content/45">no public server</span>
-									{/if}
-								</div>
 							</div>
 
 							<span class="flex shrink-0 items-center gap-1.5 self-start sm:self-center">

@@ -210,13 +210,15 @@
 				offset={reelOffset}
 				animating={reelAnimating}
 				frameWidth={88}
+				frameWidthLg={96}
 				padLeft="92px"
-				cellClass="basis-21 h-[70px]"
+				padLeftLg="100px"
+				cellClass="basis-21 h-[70px] min-[600px]:basis-23 min-[600px]:h-[76px]"
 				tone={reelResult ?? 'idle'}
 			>
 				{#snippet cell(kind)}
 					<div
-						class="grid size-full place-items-center rounded-xl border text-[27px] {kind === 'win'
+						class="grid size-full place-items-center rounded-xl border text-[27px] min-[600px]:text-[30px] {kind === 'win'
 							? 'border-success/35 from-success/18 to-success/6 text-success'
 							: 'border-error/32 from-error/16 to-error/5 text-error'} bg-linear-[160deg]"
 					>

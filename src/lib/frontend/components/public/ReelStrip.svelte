@@ -7,7 +7,9 @@
 		animating,
 		cellClass,
 		frameWidth,
+		frameWidthLg,
 		padLeft = '50%',
+		padLeftLg,
 		tone = 'idle',
 		glow = false,
 		wrap = $bindable(),
@@ -19,7 +21,9 @@
 		animating: boolean;
 		cellClass: string;
 		frameWidth: number;
+		frameWidthLg?: number;
 		padLeft?: string;
+		padLeftLg?: string;
 		tone?: 'idle' | 'win' | 'lose';
 		glow?: boolean;
 		wrap?: HTMLDivElement;
@@ -37,16 +41,18 @@
 		: ''}"
 >
 	<div
-		class="pointer-events-none absolute top-1.5 bottom-1.5 left-1/2 z-3 -translate-x-1/2 rounded-[13px] border-2 border-[rgba(184,134,11,0.55)] shadow-[0_0_18px_2px_rgba(184,134,11,0.35)]"
-		style="width: {frameWidth}px"
+		class="pointer-events-none absolute top-1.5 bottom-1.5 left-1/2 z-3 w-(--fw) -translate-x-1/2 rounded-[13px] border-2 border-[rgba(184,134,11,0.55)] shadow-[0_0_18px_2px_rgba(184,134,11,0.35)] min-[600px]:w-(--fw-lg)"
+		style="--fw: {frameWidth}px; --fw-lg: {frameWidthLg ?? frameWidth}px"
 	></div>
 	<div
 		class="pointer-events-none absolute -top-0.5 left-1/2 z-4 size-0 -translate-x-1/2 border-x-[7px] border-t-[9px] border-x-transparent border-t-[#d9a528] drop-shadow-[0_0_6px_rgba(184,134,11,0.9)]"
 	></div>
 
 	<div
-		class="flex gap-2 will-change-transform"
-		style="padding-left: {padLeft}; transform: translateX({offset}px); transition: {animating ? 'transform 6.8s cubic-bezier(0.06, 0.72, 0.06, 1)' : 'none'};"
+		class="flex gap-2 pl-(--pl) will-change-transform min-[600px]:pl-(--pl-lg)"
+		style="--pl: {padLeft}; --pl-lg: {padLeftLg ?? padLeft}; transform: translateX({offset}px); transition: {animating
+			? 'transform 6.8s cubic-bezier(0.06, 0.72, 0.06, 1)'
+			: 'none'};"
 	>
 		{#each items as item, i (i)}
 			<div data-reel-cell class="shrink-0 {cellClass}">

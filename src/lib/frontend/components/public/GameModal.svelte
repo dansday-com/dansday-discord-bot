@@ -25,7 +25,7 @@
 </script>
 
 <div class="modal modal-open" role="dialog" aria-modal="true" aria-label={title}>
-	<div class="modal-box border-base-300 relative isolate max-w-[420px] overflow-hidden border {shake ? 'animate-game-shake' : ''}">
+	<div class="modal-box border-base-300 relative isolate max-w-[420px] overflow-hidden border p-4 min-[600px]:p-5 {shake ? 'animate-game-shake' : ''}">
 		<div class="pointer-events-none absolute -inset-[40%] -z-1 bg-radial-[circle_at_50%_0%] to-transparent to-55% opacity-50 {aura}"></div>
 
 		<div class="mb-3.5 flex items-center justify-between">

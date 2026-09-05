@@ -708,7 +708,10 @@ export const modules = [
 			{ label: 'Quest notifier module', desc: 'When off, quest polling and posts are disabled. Requires a running selfbot when enabled.' },
 			{ label: 'Notification channel', desc: 'Where the official bot posts quest embeds.' },
 			{ label: 'HTTP(S) proxy (optional)', desc: 'Used only for the quest list endpoint. Leave empty for a direct connection.' },
-			{ label: 'Auto quest enrollment', desc: 'When on, notifications include an Enroll button for quick enrollment with a user token.' }
+			{
+				label: 'Auto quest enrollment',
+				desc: 'When on, the bot menu shows Discord Quest with a Claim all button that enrolls every open quest with a user token.'
+			}
 		]
 	},
 	{

@@ -137,7 +137,7 @@
 
 		<ConfigToggleRow
 			label="Auto quest enrollment"
-			description="When on, quest notifications include an 'Enroll' button for quick enrollment with user token."
+			description="When on, the bot menu shows Discord Quest with a 'Claim all' button that enrolls every open quest with a user token."
 			labelIconClass="fas fa-bolt text-sky-400"
 			bind:enabled={autoQuest}
 			ariaLabel="Toggle auto quest enrollment"

@@ -424,6 +424,11 @@
 		}
 	},
 	"questEnroll": {
+		"menuButton": "🔮 Misiones de Discord",
+		"listTitle": "🔮 Misiones de Discord",
+		"listEmpty": "Ahora mismo no hay ninguna misión de Discord activa.",
+		"listClaimedTag": "reclamada",
+		"claimAllButton": "Reclamar todo",
 		"alreadyClaimed": "Ya reclamada",
 		"alreadyClaimedDescription": "Ya te inscribiste antes en **{questName}** y tu recompensa ya se reclamó. Cada misión solo puede reclamarse una vez por miembro.",
 		"pendingTitle": "⏳ Ejecutándose en segundo plano",
@@ -435,6 +440,12 @@
 		"precheckRewardClaimedTitle": "Recompensa ya reclamada",
 		"precheckRewardClaimedDescription": "La recompensa de esta misión ya se reclamó en esta **cuenta de Discord** (por ejemplo, al completarla en otro servidor o en el cliente de Discord). La inscripción automática no puede volver a reclamarla.",
 		"precheckCompletedTitle": "Misión ya completada",
-		"precheckCompletedDescription": "Los objetivos de la misión ya están completados en esta **cuenta de Discord**. Reclama cualquier recompensa pendiente en **Discord → Misiones** si aún no lo has hecho: la inscripción automática no puede añadir más progreso."
+		"precheckCompletedDescription": "Los objetivos de la misión ya están completados en esta **cuenta de Discord**. Reclama cualquier recompensa pendiente en **Discord → Misiones** si aún no lo has hecho: la inscripción automática no puede añadir más progreso.",
+		"claimAllPendingTitle": "⏳ Reclamando todas las misiones",
+		"claimAllPendingDescription": "Inscribiendo **{count}** misión(es) una por una. Cada resultado se publica en este canal.\n\nTu token **no** se guarda en nuestra base de datos.\n\n**Riesgo:** Discord puede restringir o suspender la **cuenta de usuario** vinculada a ese token; en algunos casos también podrían verse afectados el **bot o el servidor**. Este no es un comportamiento oficial de Discord: has elegido continuar.",
+		"claimAllNothingTitle": "Nada que reclamar",
+		"claimAllNothingDescription": "Ninguna misión activa se puede inscribir en esta cuenta de Discord ahora mismo.",
+		"autoQuestDisabled": "La inscripción automática de misiones está desactivada. Contacta con la administración del servidor.",
+		"alreadyRunning": "Ya tienes una misión automática en curso. Espera a que termine antes de iniciar otra."
 	}
 }

@@ -40,8 +40,6 @@ export const POST: RequestHandler = async ({ params }) => {
 		return json({ success: false, error: 'Could not resolve official bot for this server.' }, { status: 500 });
 	}
 
-	const autoQuestEnabled = s.auto_quest !== false;
-
 	const questSummaries = await db.listActiveBotDiscordQuests(officialBotId).catch(() => []);
 	if (questSummaries.length === 0) {
 		return json({ success: false, error: 'No Discord quests found yet. Nothing to test with until quests are picked up.' }, { status: 400 });
@@ -71,8 +69,7 @@ export const POST: RequestHandler = async ({ params }) => {
 		expires_at: latest.expiresAt,
 		thumbnail_url: latest.thumbnailUrl ?? undefined,
 		banner_url: latest.bannerUrl ?? undefined,
-		test: true,
-		auto_quest_enabled: autoQuestEnabled
+		test: true
 	});
 
 	const webhookResult = await new Promise<{ status: number; body: unknown }>((resolve) => {

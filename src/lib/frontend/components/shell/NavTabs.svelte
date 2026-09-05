@@ -58,7 +58,7 @@
 		onscroll={update}
 		class="flex overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden {variant === 'segment'
 			? 'border-base-300 bg-base-200 min-w-0 flex-auto gap-[3px] rounded-xl border p-[3px]'
-			: '-my-2.5 gap-2 py-2.5'}"
+			: '-my-4 gap-2 py-4'}"
 	>
 		{#each tabs as tab}
 			<a

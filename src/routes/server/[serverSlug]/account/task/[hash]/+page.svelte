@@ -266,7 +266,8 @@
 	/>
 {:else}
 	{#snippet dayFace(r: any, busy: boolean)}
-		<span class="text-base-content/40 text-[9px] font-extrabold tracking-[0.4px] uppercase">Day {r.day}</span>
+		<span class="text-base-content/40 text-[8px] font-extrabold tracking-normal whitespace-nowrap uppercase sm:text-[9px] sm:tracking-[0.4px]">Day {r.day}</span
+		>
 		<span class="text-warning text-[15px] leading-none">
 			{#if busy}
 				<i class="fas fa-spinner fa-spin"></i>
@@ -278,8 +279,8 @@
 				<i class="fas fa-gift"></i>
 			{/if}
 		</span>
-		<span class="text-base-content/55 text-[10px] font-bold tabular-nums">
-			{#if r.claimed}Claimed{:else}?{/if}
+		<span class="text-base-content/55 text-[9px] font-bold whitespace-nowrap tabular-nums sm:text-[10px]">
+			{#if r.claimed}<span class="hidden sm:inline">Claimed</span>{:else}?{/if}
 		</span>
 	{/snippet}
 
@@ -296,7 +297,7 @@
 
 	<div class="flex flex-col gap-4 sm:gap-[18px]">
 		<section class="card border-base-300 bg-base-100 border shadow-sm">
-			<div class="card-body gap-3 p-4 sm:px-[18px]">
+			<div class="card-body gap-3 p-3 sm:p-4 sm:px-[18px]">
 				<div class="flex flex-wrap items-center justify-between gap-3">
 					<div>
 						<h3 class="text-base-content flex items-center gap-2 text-[15px] font-extrabold">
@@ -330,7 +331,7 @@
 						{#if claimable}
 							<button
 								type="button"
-								class="animate-task-daypulse border-warning/50 from-warning/16 to-error/12 relative flex -translate-y-0.5 cursor-pointer flex-col items-center gap-1 rounded-xl border bg-linear-to-br px-1 pt-2.5 pb-6 text-center transition-all"
+								class="animate-task-daypulse border-warning/50 from-warning/16 to-error/12 relative flex -translate-y-0.5 cursor-pointer flex-col items-center gap-1 rounded-xl border bg-linear-to-br px-0.5 pt-2.5 pb-6 text-center transition-all sm:px-1"
 								disabled={claimingLogin}
 								aria-label={`Claim day ${r.day} reward`}
 								onclick={claimLogin}
@@ -343,7 +344,7 @@
 								</span>
 							</button>
 						{:else}
-							<div class="relative flex flex-col items-center gap-1 rounded-xl border px-1 py-2.5 text-center transition-all {jackpot}">
+							<div class="relative flex flex-col items-center gap-1 rounded-xl border px-0.5 py-2.5 text-center transition-all sm:px-1 {jackpot}">
 								{@render dayFace(r, false)}
 							</div>
 						{/if}

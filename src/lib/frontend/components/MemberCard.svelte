@@ -702,8 +702,8 @@
 		>
 			<div class="pointer-events-none absolute inset-0 overflow-hidden rounded-[20px]">
 				<div
-					class="absolute -top-[40%] -left-[20%] h-[80%] w-[140%] rounded-full opacity-8 blur-[40px]"
-					style="background: linear-gradient(135deg, {accentColor}, #e43d12);"
+					class="absolute -top-[40%] -left-[20%] h-[80%] w-[140%] opacity-10"
+					style="background: radial-gradient(closest-side at 42% 62%, {accentColor}, color-mix(in srgb, #e43d12 65%, transparent) 55%, transparent 78%);"
 				></div>
 			</div>
 

@@ -213,8 +213,6 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	let addressedUntil = 0;
 	let selfMuted = false;
 	let muteTimer: ReturnType<typeof setTimeout> | null = null;
-	let muteAnnounced = false;
-	let goodbyeAllowedUntil = 0;
 	let speakAllowedUntil = 0;
 	let bargeInDeafUntil = 0;
 	let offWakeDetected: (() => void) | null = null;
@@ -234,11 +232,6 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	function markAddressed({ verified = false } = {}) {
 		const wasAddressed = isAddressed();
 
-		if (muteAnnounced && !verified) {
-			logger.log('🚦 Voice AI ignoring un-named wake during mute announcement');
-			return wasAddressed;
-		}
-
 		const speaker = lastSpeakerId || loudestActiveSpeaker();
 		if (!lockedSpeakerId && speaker) {
 			lockedSpeakerId = speaker;
@@ -251,10 +244,9 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		}
 
 		addressedUntil = Date.now() + ADDRESSED_WINDOW_MS;
-		muteAnnounced = false;
 		setSelfMute(false);
 		if (muteTimer) clearTimeout(muteTimer);
-		muteTimer = setTimeout(announceMute, ADDRESSED_WINDOW_MS);
+		muteTimer = setTimeout(releaseAfterSilence, ADDRESSED_WINDOW_MS);
 		return wasAddressed;
 	}
 
@@ -268,11 +260,6 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		}
 
 		addressedUntil = 0;
-
-		if (muteAnnounced && Date.now() <= goodbyeAllowedUntil) {
-			logger.log('🔕 Voice AI already saying goodbye, letting it finish before muting');
-			return;
-		}
 
 		if (muteTimer) clearTimeout(muteTimer);
 		muteTimer = null;
@@ -308,21 +295,20 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	}
 
 	function keepAliveFromLockedSpeaker() {
-		if (!lockedSpeakerId || goodbyePending || muteAnnounced) return;
+		if (!lockedSpeakerId || goodbyePending) return;
 		if (!isAddressed()) logger.log(`🔁 Voice AI re-opening window, ${nameOf(lockedSpeakerId)} is still talking`);
 		extendAddressedWindow();
 	}
 
 	function extendWhileReplying() {
-		if (!isAddressed() || goodbyePending || muteAnnounced) return;
+		if (!isAddressed() || goodbyePending) return;
 		extendAddressedWindow();
 	}
 
 	function extendAddressedWindow() {
 		addressedUntil = Date.now() + ADDRESSED_WINDOW_MS;
-		muteAnnounced = false;
 		if (muteTimer) clearTimeout(muteTimer);
-		muteTimer = setTimeout(announceMute, ADDRESSED_WINDOW_MS);
+		muteTimer = setTimeout(releaseAfterSilence, ADDRESSED_WINDOW_MS);
 	}
 
 	function toolBusy() {
@@ -343,12 +329,12 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	function micIsOpenFor(userId) {
 		if (!lockedSpeakerId) return true;
 		if (userId === lockedSpeakerId) return true;
-		return !isAddressed() && !muteAnnounced;
+		return !isAddressed();
 	}
 
-	function announceMute() {
+	function releaseAfterSilence() {
 		muteTimer = null;
-		if (closed || goodbyePending || selfMuted || muteAnnounced) return;
+		if (closed || goodbyePending || selfMuted) return;
 
 		if (toolBusy()) {
 			logger.log('🔎 Voice AI staying awake, a lookup is still running');
@@ -362,47 +348,12 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 		}
 
 		if (isAddressed()) {
-			muteTimer = setTimeout(announceMute, Math.max(SPEAK_GUARD_MS, addressedUntil - Date.now()));
+			muteTimer = setTimeout(releaseAfterSilence, Math.max(SPEAK_GUARD_MS, addressedUntil - Date.now()));
 			return;
 		}
 
-		muteAnnounced = true;
-		const announcedAt = Date.now();
-		const chunksAtAnnounce = stats.chunksPlayed;
-		goodbyeAllowedUntil = announcedAt + MUTE_NOTICE_MAX_WAIT_MS;
-		logger.log('🔕 Voice AI announcing mute before going quiet');
-		sendSystemNote(
-			`Say one short sentence out loud now: it has gone quiet, so you are muting yourself, and they just need to say "hey stupid" whenever they want you again. One sentence, casual, no explanation.`
-		);
-		muteTimer = setTimeout(function settleMute() {
-			muteTimer = null;
-			if (closed || selfMuted) return;
-
-			if (toolBusy()) {
-				logger.log('🔎 Voice AI holding off the mute, a lookup started');
-				keepAwakeForTool();
-				return;
-			}
-
-			const spoke = stats.chunksPlayed > chunksAtAnnounce;
-			const waited = Date.now() - announcedAt;
-			const expired = waited >= MUTE_NOTICE_MAX_WAIT_MS;
-
-			if (!expired && (botIsSpeaking() || !spoke)) {
-				muteTimer = setTimeout(settleMute, SPEAK_GUARD_MS);
-				return;
-			}
-
-			if (expired && botIsSpeaking()) {
-				logger.log('⚠️ Voice AI cutting off playback to finish muting');
-				playbackQueue.length = 0;
-				pending = EMPTY;
-				pendingOffset = 0;
-			}
-
-			releaseSpeakerLock();
-			setSelfMute(true);
-		}, MUTE_NOTICE_GRACE_MS);
+		logger.log('🔓 Voice AI conversation went quiet, open to anyone again');
+		releaseSpeakerLock();
 	}
 
 	function announceWakePhrase() {
@@ -661,8 +612,8 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	}
 
 	function bargeInAllowed(userId) {
-		if (!isAddressed() || goodbyePending || muteAnnounced || selfMuted) return false;
-		if (Date.now() < speakAllowedUntil || Date.now() < goodbyeAllowedUntil) return false;
+		if (!isAddressed() || goodbyePending || selfMuted) return false;
+		if (Date.now() < speakAllowedUntil) return false;
 		return micIsOpenFor(userId);
 	}
 
@@ -1192,7 +1143,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 
 					if (sc.inputTranscription?.text) collectTranscript('user', sc.inputTranscription.text);
 
-					if (!isAddressed() && !toolBusy() && Date.now() > goodbyeAllowedUntil && Date.now() > speakAllowedUntil) {
+					if (!isAddressed() && !toolBusy() && Date.now() > speakAllowedUntil) {
 						if (sc.modelTurn?.parts?.some((p) => p.inlineData?.data)) {
 							stats.repliesSuppressed++;
 							if (stats.repliesSuppressed % 10 === 1) {
@@ -1542,8 +1493,6 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 	function setSelfMute(muted) {
 		if (closed || selfMuted === muted) return;
 		if (muted) {
-			muteAnnounced = false;
-			goodbyeAllowedUntil = 0;
 			playbackQueue.length = 0;
 			pending = EMPTY;
 			pendingOffset = 0;

@@ -6,6 +6,7 @@
 		size = 'md',
 		depth = 0,
 		margin = true,
+		fit = false,
 		label,
 		onselect
 	}: {
@@ -13,6 +14,7 @@
 		size?: 'md' | 'sm';
 		depth?: 0 | 1 | 2;
 		margin?: boolean;
+		fit?: boolean;
 		label: string;
 		onselect: (id: string) => void;
 	} = $props();
@@ -26,12 +28,12 @@
 	class="tabs tabs-box border-base-300 flex-nowrap overflow-x-auto border p-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden {DEPTH_BG[depth]} {size ===
 	'sm'
 		? 'tabs-sm'
-		: ''} {margin ? 'mb-3' : ''}"
+		: ''} {margin ? 'mb-3' : ''} {fit ? 'w-fit' : ''}"
 >
 	{#each tabs as tab}
 		<button
 			role="tab"
-			class="tab shrink-0 gap-1.5 font-semibold whitespace-nowrap {tab.active
+			class="tab flex-[1_0_auto] gap-1.5 font-semibold whitespace-nowrap {tab.active
 				? 'tab-active from-secondary to-primary text-primary-content bg-linear-to-br shadow-sm'
 				: 'text-base-content/45'}"
 			aria-selected={tab.active}

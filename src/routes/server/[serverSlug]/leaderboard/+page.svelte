@@ -345,7 +345,7 @@
 	</p>
 </div>
 
-<MetricTabs tabs={periodTabs} label="Time period" onselect={setPeriod} />
+<MetricTabs tabs={periodTabs} label="Time period" fit onselect={setPeriod} />
 <MetricTabs tabs={metricTabs} label="Metric" onselect={setMetric} />
 
 {#if isItemsGroup}

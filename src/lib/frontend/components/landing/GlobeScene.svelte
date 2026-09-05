@@ -309,9 +309,10 @@
 				rig.group.visible = life >= 0;
 				if (life < 0) continue;
 				const fade = Math.pow(1 - life, 1.5);
+				const exit = Math.min(1, (1 - life) / 0.25);
 				rig.ring.scale.setScalar(0.4 + life * 1.5);
 				rig.ringMat.opacity = fade * 0.65;
-				rig.dotMat.opacity = 0.9;
+				rig.dotMat.opacity = 0.9 * exit;
 				rig.beam.scale.z = 0.2 * Math.min(1, life * 4);
 				rig.beamMat.opacity = fade * 0.5;
 			}

@@ -6,7 +6,6 @@ import { accountOwnsBot } from '$lib/frontend/panelServer.js';
 const MAX_NAME_LENGTH = 64;
 const MAX_URL_LENGTH = 512;
 const MAX_DESCRIPTION_LENGTH = 255;
-const MAX_WIKIS_PER_BOT = 15;
 
 async function authorize(locals: App.Locals, params: Partial<Record<string, string>>) {
 	if (!locals.user.authenticated) {
@@ -88,9 +87,6 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 	if ('error' in parsed) return json({ success: false, error: parsed.error }, { status: 400 });
 
 	const existing = await db.getBotWikis(botId);
-	if (existing.length >= MAX_WIKIS_PER_BOT) {
-		return json({ success: false, error: `A bot can have at most ${MAX_WIKIS_PER_BOT} wikis` }, { status: 400 });
-	}
 	if (existing.some((wiki) => wiki.name.toLowerCase() === parsed.value.name.toLowerCase())) {
 		return json({ success: false, error: 'A wiki with that name already exists' }, { status: 400 });
 	}

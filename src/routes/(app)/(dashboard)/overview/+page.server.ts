@@ -12,14 +12,7 @@ export const load: PageServerLoad = async ({ parent, locals }) => {
 	let total_uptime_ms = 0;
 	let panel = {
 		total_members: 0,
-		total_boosters: 0,
-		total_channels: 0,
 		largest_server_members: 0,
-		tracked_members: 0,
-		total_xp: 0,
-		total_messages: 0,
-		total_voice_minutes: 0,
-		members_in_voice: 0,
 		total_panel_accounts: 0,
 		shop_items_total: 0,
 		shop_items_enabled: 0,
@@ -31,7 +24,6 @@ export const load: PageServerLoad = async ({ parent, locals }) => {
 	if (locals.user.authenticated && locals.user.account_source === 'accounts' && locals.user.panel_id) {
 		try {
 			const panelData = await db.getPanelOverview(locals.user.panel_id);
-			total_servers = panelData.total_servers;
 			total_selfbots = panelData.total_selfbots;
 			running_selfbots = panelData.running_selfbots;
 
@@ -48,7 +40,12 @@ export const load: PageServerLoad = async ({ parent, locals }) => {
 		try {
 			const serverIds = await db.getServerIdsForPanel(locals.user.panel_id);
 			const snapshots = await Promise.all(serverIds.map((id: number) => resolvePublicStatisticsSnapshot(id).catch(() => null)));
-			global = aggregatePanelStatistics(snapshots.map((s) => s?.stats ?? null));
+			const perServer = snapshots.map((s) => s?.stats ?? null);
+			global = aggregatePanelStatistics(perServer);
+
+			total_servers = Number(global.servers_counted) || 0;
+			panel.total_members = Number(global.members_total) || 0;
+			panel.largest_server_members = perServer.reduce((max, s) => Math.max(max, Number(s?.members_total) || 0), 0);
 		} catch (err) {
 			console.error('Failed to aggregate panel statistics', err);
 		}

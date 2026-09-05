@@ -117,7 +117,7 @@ export async function runServerStatsTool(botId, guildId) {
 		minigames: { plays: s.minigames_plays, wins: s.minigames_wins, wagered: s.minigames_wagered, biggest_win: s.minigames_biggest_win },
 		assets: { traders: s.assets_traders, open_positions: s.assets_open_positions, invested: s.assets_invested, market_value: s.assets_market_value },
 		giveaways: { total: s.giveaways_total, active: s.giveaways_active, entrants: s.giveaways_entrants },
-		quests: { enrolled: s.quests_enrolled, claimed: s.quests_claimed, participants: s.quests_participants },
+		quests: { claimed: s.quests_claimed, participants: s.quests_participants },
 		staff: { reviews: s.staff_reviews, average_rating: s.staff_avg_rating }
 	};
 }

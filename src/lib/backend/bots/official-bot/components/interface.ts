@@ -52,6 +52,7 @@ import {
 } from './interface/contentcreator.js';
 import { isQuestEnrollButtonId, isQuestEnrollModalId, handleQuestEnrollButton, handleQuestEnrollModalSubmit } from './questEnroll.js';
 import { translate } from '../i18n.js';
+import { getLevelRequirement } from './leveling.js';
 import { createHash } from 'crypto';
 import db from '../../../../database.js';
 import { computeCardToken } from '../../../../frontend/public/items/index.js';
@@ -257,8 +258,14 @@ async function handleMyAccountLinkButton(interaction) {
 	const embedConfig = await getEmbedConfig(guildId).catch(() => null);
 	const accountLabel = await translate('menu.account', guildId, userId).catch(() => '👤 Account');
 
-	const replyEmbed = async (description: string, components: ActionRowBuilder<ButtonBuilder>[] = []) => {
-		const embed = new EmbedBuilder().setTitle(accountLabel).setDescription(description).setTimestamp();
+	const replyEmbed = async (
+		description: string | null,
+		components: ActionRowBuilder<ButtonBuilder>[] = [],
+		fields: { name: string; value: string; inline?: boolean }[] = []
+	) => {
+		const embed = new EmbedBuilder().setTitle(accountLabel).setTimestamp();
+		if (description) embed.setDescription(description);
+		if (fields.length > 0) embed.addFields(fields);
 		if (embedConfig) embed.setColor(embedConfig.COLOR);
 		if (embedConfig?.FOOTER) embed.setFooter({ text: embedConfig.FOOTER });
 		const avatar = interaction.user.displayAvatarURL?.({ size: 128 });
@@ -288,7 +295,40 @@ async function handleMyAccountLinkButton(interaction) {
 	} catch (_) {}
 	const description = await translate('leveling.account.link', guildId, userId, { url: linkText });
 	const row = new ActionRowBuilder<ButtonBuilder>().addComponents(new ButtonBuilder().setLabel(accountLabel).setURL(url).setStyle(ButtonStyle.Link));
-	await replyEmbed(description, [row]);
+
+	const fields: { name: string; value: string; inline?: boolean }[] = [];
+	const stats = await db.getMemberLevelByDiscordId(server.id, userId).catch(() => null);
+	if (stats) {
+		const level = Number(stats.level) || 1;
+		const xp = Number(stats.xp) || 0;
+		const rank = Number(stats.rank) || 0;
+
+		fields.push({ name: '⭐ Level', value: level.toLocaleString(), inline: true });
+		fields.push({ name: '📊 Total XP', value: xp.toLocaleString(), inline: true });
+		fields.push({ name: '🏆 Rank', value: rank > 0 ? `#${rank}` : 'Unranked', inline: true });
+
+		try {
+			const floorXp = await getLevelRequirement(level, guildId);
+			const nextXp = await getLevelRequirement(level + 1, guildId);
+			const span = Math.max(1, nextXp - floorXp);
+			const ratio = Math.max(0, Math.min(1, (xp - floorXp) / span));
+			const filled = Math.round(ratio * 10);
+			fields.push({
+				name: `⚡ Progress to Level ${level + 1}`,
+				value: `${'▰'.repeat(filled)}${'▱'.repeat(10 - filled)} ${Math.round(ratio * 100)}%\n**${Math.max(0, nextXp - xp).toLocaleString()}** XP to go`,
+				inline: false
+			});
+		} catch (_) {}
+
+		const messages = Number(stats.chat_total) || 0;
+		const voiceHours = Math.round((Number(stats.voice_minutes_total) || 0) / 60);
+		const streamHours = Math.round((Number(stats.voice_minutes_streaming) || 0) / 60);
+		const activity = [`${messages.toLocaleString()} messages`, `${voiceHours.toLocaleString()}h voice`];
+		if (streamHours > 0) activity.push(`${streamHours.toLocaleString()}h streaming`);
+		fields.push({ name: '💬 Activity', value: activity.join(' · '), inline: false });
+	}
+
+	await replyEmbed(fields.length > 0 ? null : description, [row], fields);
 }
 
 export async function handleButtonInteraction(interaction) {

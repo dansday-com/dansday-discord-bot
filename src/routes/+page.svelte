@@ -369,7 +369,6 @@
 			stat: (s: Totals): Live[] => [
 				{ label: 'Live quests', value: fmt(s.quests_active), live: true },
 				{ label: 'Posted', value: fmt(s.quests_posted) },
-				{ label: 'Enrolled', value: fmt(s.quests_enrolled) },
 				{ label: 'Claimed', value: fmt(s.quests_claimed) },
 				{ label: 'Participants', value: fmt(s.quests_participants) }
 			]

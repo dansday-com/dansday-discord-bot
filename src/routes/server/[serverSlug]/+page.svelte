@@ -70,7 +70,6 @@
 	const marketUnrealized = $derived(Number(liveStats.assets_unrealized_net) || 0);
 
 	const giveawayClaimPct = $derived(pct(liveStats.giveaways_winners, liveStats.giveaways_entrants));
-	const questClaimPct = $derived(pct(liveStats.quests_claimed, liveStats.quests_enrolled));
 	const staffRatingPct = $derived(pct(liveStats.staff_avg_rating, 5));
 
 	const avgVoiceMinutes = $derived(
@@ -380,10 +379,8 @@
 	</StatCard>
 
 	<StatCard icon="fa-scroll" title="Quests" tone="sky">
-		<StatHero label="Quests enrolled" value={fmt(liveStats.quests_enrolled)} />
-		<MeterBar head="Rewards claimed" meta="{questClaimPct.toFixed(0)}%" pct={Math.max(4, questClaimPct)} {grow} />
-		<MiniGrid cols={2}>
-			<MiniStat icon="fa-award" value={fmt(liveStats.quests_claimed)} label="Rewards claimed" />
+		<StatHero label="Rewards claimed" value={fmt(liveStats.quests_claimed)} />
+		<MiniGrid cols={1}>
 			<MiniStat icon="fa-users" value={fmt(liveStats.quests_participants)} label="Participants" />
 		</MiniGrid>
 	</StatCard>

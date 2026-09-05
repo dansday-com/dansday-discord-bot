@@ -247,7 +247,15 @@
 	{@const buffActive = isBuffActive(item.effect_type)}
 	{@const notStarted = item._state === 'upcoming'}
 	{@const canBuy = item._buyable}
-	{@const blockedReason = ctx.bagFull ? `Items full (max ${ctx.bagCapacity})` : !affordable ? 'Not enough XP' : ''}
+	{@const blockedReason = !canBuy
+		? notStarted
+			? 'Not available yet'
+			: 'Buying is turned off'
+		: ctx.bagFull
+			? `Items full (max ${ctx.bagCapacity})`
+			: !affordable
+				? 'Not enough XP'
+				: ''}
 	{@const canUse = item.usable !== false}
 	<article
 		data-item-card
@@ -340,7 +348,7 @@
 							? 'bg-base-300 text-base-content/55'
 							: 'bg-linear-to-br from-[rgba(214,83,109,0.94)] to-[rgba(228,61,18,0.96)] text-white'}"
 						disabled={ctx.busy === item.id || !canBuy}
-						title={notStarted ? 'Not available yet' : item.enabled === false ? 'Buying is turned off' : blockedReason || 'Buy one'}
+						title={blockedReason || 'Buy one'}
 						onclick={(e) => buy(item, e)}
 					>
 						{#if ctx.busy === item.id}<i class="fas fa-spinner fa-spin"></i>{:else}<i class="fas fa-cart-plus"></i>{/if}

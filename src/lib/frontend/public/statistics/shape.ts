@@ -69,7 +69,6 @@ export type PublicPageStats = {
 	streams_follows: number;
 	streams_shares: number;
 	streams_unique_chatters: number;
-	quests_enrolled: number;
 	quests_claimed: number;
 	quests_participants: number;
 	quests_active: number;
@@ -165,7 +164,6 @@ export function shapePublicStatisticsFromOverview(overview: Record<string, unkno
 			streams_follows: Number(s.streams_follows ?? 0),
 			streams_shares: Number(s.streams_shares ?? 0),
 			streams_unique_chatters: Number(s.streams_unique_chatters ?? 0),
-			quests_enrolled: Number(s.quests_enrolled ?? 0),
 			quests_claimed: Number(s.quests_claimed ?? 0),
 			quests_participants: Number(s.quests_participants ?? 0),
 			quests_active: Number(s.quests_active ?? 0),

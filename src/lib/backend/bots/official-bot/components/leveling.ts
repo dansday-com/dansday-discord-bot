@@ -363,6 +363,26 @@ export async function sendLevelProgressNotification({
 		const slug = await computePublicServerSlugForServerId(Number(server.id));
 		const leaderboardUrl = slug ? publicServerUrl(slug, 'leaderboard') : null;
 
+		const totalXp = Number(levelStats.xp ?? 0) || 0;
+		const shownLevel = normalizeLevelValue(newLevel ?? memberWithRank.level ?? levelStats.level ?? 1);
+
+		let progressField = null;
+		try {
+			const floorXp = await getLevelRequirement(shownLevel, guildId);
+			const nextXp = await getLevelRequirement(shownLevel + 1, guildId);
+			const span = Math.max(1, nextXp - floorXp);
+			const ratio = Math.max(0, Math.min(1, (totalXp - floorXp) / span));
+			const filled = Math.round(ratio * 10);
+			progressField = {
+				name: `⚡ Progress to Level ${shownLevel + 1}`,
+				value: `${'▰'.repeat(filled)}${'▱'.repeat(10 - filled)} ${Math.round(ratio * 100)}%\n**${Math.max(0, nextXp - totalXp).toLocaleString()}** XP to go`,
+				inline: false
+			};
+		} catch (_) {}
+
+		const rankDelta = previousRankValue && currentRank && currentRank < previousRankValue ? previousRankValue - currentRank : 0;
+		const rankValue = currentRank ? `#${currentRank}${rankDelta > 0 ? ` (▲${rankDelta})` : ''}` : 'Unranked';
+
 		const embedConfig = await getEmbedConfig(guildId);
 		const embed = new EmbedBuilder()
 			.setColor(embedConfig.COLOR)
@@ -378,17 +398,16 @@ export async function sendLevelProgressNotification({
 				.setDescription(medal ? `${member} just secured a top spot!` : `${member} climbed the leaderboard!`)
 				.addFields(
 					{ name: 'Previous Rank', value: previousRankValue ? `#${previousRankValue}` : 'Unranked', inline: true },
-					{ name: 'New Rank', value: currentRank ? `#${currentRank}` : 'Unranked', inline: true }
+					{ name: 'New Rank', value: rankValue, inline: true },
+					{ name: '📊 Total XP', value: totalXp.toLocaleString(), inline: true }
 				);
+			if (progressField) embed.addFields(progressField);
 		} else {
-			const snapshotLevel = normalizeLevelValue(newLevel ?? memberWithRank.level ?? levelStats.level ?? 1);
 			embed
 				.setTitle('🎉 Level Up!')
-				.setDescription(`${member} has reached **Level ${snapshotLevel}**!`)
-				.addFields(
-					{ name: '📊 Total XP', value: `${(levelStats.xp ?? 0).toLocaleString()}`, inline: true },
-					{ name: '🏆 Rank', value: currentRank ? `#${currentRank}` : 'Unranked', inline: true }
-				);
+				.setDescription(`${member} has reached **Level ${shownLevel}**!`)
+				.addFields({ name: '📊 Total XP', value: totalXp.toLocaleString(), inline: true }, { name: '🏆 Rank', value: rankValue, inline: true });
+			if (progressField) embed.addFields(progressField);
 		}
 
 		const notificationMentions = await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(guildId, progressChannelId).catch(() => null);

@@ -167,7 +167,6 @@
 			icon: 'fa-scroll',
 			tone: 'sky',
 			rows: [
-				{ icon: 'fa-scroll', label: 'Enrolled', value: fmt(s.quests_enrolled) },
 				{ icon: 'fa-award', label: 'Rewards claimed', value: fmt(s.quests_claimed) },
 				{ icon: 'fa-users', label: 'Participants', value: fmt(s.quests_participants) }
 			]

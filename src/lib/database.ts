@@ -1548,7 +1548,7 @@ export async function searchServerMembers(serverId: any, queryText: string | nul
 				avatar: schema.serverMembers.avatar
 			})
 			.from(schema.serverMembers)
-			.where(eq(schema.serverMembers.server_id, Number(serverId)))
+			.where(and(eq(schema.serverMembers.server_id, Number(serverId)), isNull(schema.serverMembers.deleted_at)))
 			.orderBy(schema.serverMembers.updated_at)
 			.limit(safeLimit);
 	}
@@ -2426,7 +2426,7 @@ export async function getMembersWithInVoiceFlag(serverId: any) {
 		.select({ member_id: schema.serverMemberLevels.member_id, discord_member_id: schema.serverMembers.discord_member_id })
 		.from(schema.serverMemberLevels)
 		.innerJoin(schema.serverMembers, eq(schema.serverMembers.id, schema.serverMemberLevels.member_id))
-		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), eq(schema.serverMemberLevels.is_in_voice, true)));
+		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), isNull(schema.serverMembers.deleted_at), eq(schema.serverMemberLevels.is_in_voice, true)));
 }
 
 export async function listItems(panelId: any, options: any = {}) {
@@ -2974,7 +2974,7 @@ export async function getMinigamesLeaderboard(serverId: any, since: Date | null)
 			)
 		)
 		.leftJoin(schema.serverMemberLevels, eq(schema.serverMemberLevels.member_id, schema.serverMembers.id))
-		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), ...(hideDisguised ? [hideDisguised] : [])))
+		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), isNull(schema.serverMembers.deleted_at), ...(hideDisguised ? [hideDisguised] : [])))
 		.groupBy(
 			schema.serverMembers.id,
 			schema.serverMembers.discord_member_id,
@@ -3439,7 +3439,6 @@ export async function getServerFeatureStats(serverId: any) {
 		`),
 		db.execute(sql`
 			SELECT
-				COUNT(*) AS enrolled,
 				COALESCE(SUM(CASE WHEN q.reward_claimed = 1 THEN 1 ELSE 0 END), 0) AS claimed,
 				COUNT(DISTINCT q.member_id) AS participants
 			FROM server_member_discord_quests q INNER JOIN server_members sm ON sm.id = q.member_id
@@ -3513,7 +3512,6 @@ export async function getServerFeatureStats(serverId: any) {
 		streams_follows: Number(st.follows) || 0,
 		streams_shares: Number(st.shares) || 0,
 		streams_unique_chatters: Number(st.unique_chatters) || 0,
-		quests_enrolled: Number(qs.enrolled) || 0,
 		quests_claimed: Number(qs.claimed) || 0,
 		quests_participants: Number(qs.participants) || 0,
 		quests_active: Number(ct.quests_active) || 0,
@@ -3584,7 +3582,7 @@ export async function getMemberDashboard(memberId: any, priceMap: Record<string,
 					(SELECT COUNT(*) FROM server_member_giveaway_entries WHERE member_id = ${mid} AND is_winner = 1) AS won
 			`),
 		db.execute(sql`
-				SELECT COUNT(*) AS enrolled, COALESCE(SUM(CASE WHEN reward_claimed = 1 THEN 1 ELSE 0 END), 0) AS claimed
+				SELECT COALESCE(SUM(CASE WHEN reward_claimed = 1 THEN 1 ELSE 0 END), 0) AS claimed
 				FROM server_member_discord_quests WHERE member_id = ${mid}
 			`),
 		db.execute(sql`
@@ -3652,7 +3650,6 @@ export async function getMemberDashboard(memberId: any, priceMap: Record<string,
 		giveaways_hosted: Number(gv.hosted) || 0,
 		giveaways_entered: Number(gv.entered) || 0,
 		giveaways_won: Number(gv.won) || 0,
-		quests_enrolled: Number(qs.enrolled) || 0,
 		quests_claimed: Number(qs.claimed) || 0,
 		streams_total: Number(st.streams) || 0,
 		streams_peak_viewers: Number(st.peak_viewers) || 0,
@@ -4014,6 +4011,7 @@ export async function getServerLeaderboard(serverId: any, limit = 3, sortType = 
 
 	const whereClause = and(
 		eq(schema.serverMembers.server_id, Number(serverId)),
+		isNull(schema.serverMembers.deleted_at),
 		...(whereRange ? [whereRange as any] : []),
 		...(hideDisguised ? [hideDisguised] : [])
 	);
@@ -4070,7 +4068,7 @@ export async function getLeaderboardPeriodCounts(serverId: any, since: Date) {
 			and(eq(schema.serverMemberLevelLogs.member_id, schema.serverMembers.id), sql`${schema.serverMemberLevelLogs.created_at} >= ${toMySQLDateTime(since)}`)
 		)
 		.leftJoin(schema.serverMemberLevels, eq(schema.serverMemberLevels.member_id, schema.serverMembers.id))
-		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), ...(hideDisguised ? [hideDisguised] : [])))
+		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), isNull(schema.serverMembers.deleted_at), ...(hideDisguised ? [hideDisguised] : [])))
 		.groupBy(
 			schema.serverMembers.id,
 			schema.serverMembers.discord_member_id,
@@ -4114,7 +4112,7 @@ export async function getItemsAttackLeaderboard(serverId: any, action: 'steal' |
 			)
 		)
 		.leftJoin(schema.serverMemberLevels, eq(schema.serverMemberLevels.member_id, schema.serverMembers.id))
-		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), ...(hideDisguised ? [hideDisguised] : [])))
+		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), isNull(schema.serverMembers.deleted_at), ...(hideDisguised ? [hideDisguised] : [])))
 		.groupBy(
 			schema.serverMembers.id,
 			schema.serverMembers.discord_member_id,
@@ -4253,25 +4251,13 @@ export async function getServerMembersList(serverId: any) {
 
 export async function getPanelOverview(panelId: number) {
 	await initializeDatabase();
-	if (!panelId) return { total_servers: 0, total_selfbots: 0, running_selfbots: 0, selfbot_uptime_ms: 0 };
+	if (!panelId) return { total_selfbots: 0, running_selfbots: 0, selfbot_uptime_ms: 0 };
 
-	let total_servers = 0;
 	let total_selfbots = 0;
 	let running_selfbots = 0;
 	let selfbot_uptime_ms = 0;
 
 	try {
-		const serversResult = await db.execute(sql`
-            SELECT COUNT(*) as count
-            FROM servers s
-            JOIN bots b ON s.bot_id = b.id
-            WHERE b.panel_id = ${Number(panelId)} AND s.deleted_at IS NULL
-        `);
-		const sRows = serversResult[0] as any[];
-		if (sRows && sRows.length > 0) {
-			total_servers = Number(sRows[0].count) || 0;
-		}
-
 		const selfbotsResult = await db.execute(sql`
             SELECT 
                 COUNT(*) as count, 
@@ -4304,14 +4290,7 @@ export async function getPanelOverview(panelId: number) {
 
 	const community = {
 		total_members: 0,
-		total_boosters: 0,
-		total_channels: 0,
 		largest_server_members: 0,
-		tracked_members: 0,
-		total_xp: 0,
-		total_messages: 0,
-		total_voice_minutes: 0,
-		members_in_voice: 0,
 		total_panel_accounts: 0,
 		shop_items_total: 0,
 		shop_items_enabled: 0,
@@ -4320,46 +4299,6 @@ export async function getPanelOverview(panelId: number) {
 	};
 
 	try {
-		const guildRes = await db.execute(sql`
-            SELECT
-                COALESCE(SUM(s.total_members), 0) AS total_members,
-                COALESCE(SUM(s.total_boosters), 0) AS total_boosters,
-                COALESCE(SUM(s.total_channels), 0) AS total_channels,
-                COALESCE(MAX(s.total_members), 0) AS largest_server_members
-            FROM servers s
-            JOIN bots b ON s.bot_id = b.id
-            WHERE b.panel_id = ${Number(panelId)} AND s.deleted_at IS NULL
-        `);
-		const gRow = (guildRes[0] as any[])?.[0];
-		if (gRow) {
-			community.total_members = Number(gRow.total_members) || 0;
-			community.total_boosters = Number(gRow.total_boosters) || 0;
-			community.total_channels = Number(gRow.total_channels) || 0;
-			community.largest_server_members = Number(gRow.largest_server_members) || 0;
-		}
-
-		const engagementRes = await db.execute(sql`
-            SELECT
-                COUNT(sm.id) AS tracked_members,
-                COALESCE(SUM(sml.xp), 0) AS total_xp,
-                COALESCE(SUM(sml.chat_total), 0) AS total_messages,
-                COALESCE(SUM(sml.voice_minutes_total), 0) AS total_voice_minutes,
-                COALESCE(SUM(CASE WHEN sml.is_in_voice = 1 THEN 1 ELSE 0 END), 0) AS members_in_voice
-            FROM server_members sm
-            JOIN servers s ON sm.server_id = s.id
-            JOIN bots b ON s.bot_id = b.id
-            LEFT JOIN server_member_levels sml ON sml.member_id = sm.id
-            WHERE b.panel_id = ${Number(panelId)} AND s.deleted_at IS NULL AND sm.deleted_at IS NULL
-        `);
-		const eRow = (engagementRes[0] as any[])?.[0];
-		if (eRow) {
-			community.tracked_members = Number(eRow.tracked_members) || 0;
-			community.total_xp = Number(eRow.total_xp) || 0;
-			community.total_messages = Number(eRow.total_messages) || 0;
-			community.total_voice_minutes = Number(eRow.total_voice_minutes) || 0;
-			community.members_in_voice = Number(eRow.members_in_voice) || 0;
-		}
-
 		const accountsRes = await db.execute(sql`
             SELECT COUNT(*) AS count
             FROM server_accounts sa
@@ -4390,7 +4329,6 @@ export async function getPanelOverview(panelId: number) {
 	}
 
 	return {
-		total_servers,
 		total_selfbots,
 		running_selfbots,
 		selfbot_uptime_ms,
@@ -4494,13 +4432,13 @@ export async function getServerOverview(serverId: any, opts?: { forPublicPage?: 
 	const walletXp = Math.round(r(levelingStats).total_xp || 0);
 
 	const stats = {
-		members_total: r(memberCounts).total || 0,
+		members_total: Number(serverRow.total_members) || r(memberCounts).total || 0,
 		members_boosters: serverRow.total_boosters || 0,
 		members_unique_boosters: r(memberCounts).unique_boosters || 0,
 		members_with_levels: r(leveledCount).leveled || 0,
 		member_afk: r(afkCount).afk || 0,
 		members_with_custom_roles: r(customRolesCount).members_with_custom_roles || 0,
-		channels_total: r(channelCounts).total || 0,
+		channels_total: Number(serverRow.total_channels) || r(channelCounts).total || 0,
 		channels_text: r(channelCounts).text_count || 0,
 		channels_announcement: r(channelCounts).announcement_count || 0,
 		channels_voice: r(channelCounts).voice_count || 0,
@@ -5695,7 +5633,10 @@ export async function serversNeedSync(botId: number) {
 			db.select({ count: count() }).from(schema.serverCategories).where(eq(schema.serverCategories.server_id, server.id)),
 			db.select({ count: count() }).from(schema.serverChannels).where(eq(schema.serverChannels.server_id, server.id)),
 			db.select({ count: count() }).from(schema.serverRoles).where(eq(schema.serverRoles.server_id, server.id)),
-			db.select({ count: count() }).from(schema.serverMembers).where(eq(schema.serverMembers.server_id, server.id))
+			db
+				.select({ count: count() })
+				.from(schema.serverMembers)
+				.where(and(eq(schema.serverMembers.server_id, server.id), isNull(schema.serverMembers.deleted_at)))
 		]);
 		if (!cats[0].count || !chans[0].count || !roles[0].count || !members[0].count) return true;
 	}
@@ -6331,7 +6272,7 @@ export async function getFeedbackCount(serverId: any) {
 		.select({ count: count() })
 		.from(schema.serverFeedback)
 		.innerJoin(schema.serverMembers, eq(schema.serverFeedback.member_id, schema.serverMembers.id))
-		.where(eq(schema.serverMembers.server_id, Number(serverId)));
+		.where(and(eq(schema.serverMembers.server_id, Number(serverId)), isNull(schema.serverMembers.deleted_at)));
 	return rows[0]?.count || 0;
 }
 

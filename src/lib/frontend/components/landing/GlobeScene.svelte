@@ -29,15 +29,20 @@
 	const recent: string[] = [];
 	let dispose: (() => void) | null = null;
 	let requestFrame: (() => void) | null = null;
+	let pickFacing: ((exclude: string[]) => GlobePlace | null) | null = null;
+
+	function remember(place: GlobePlace): GlobePlace {
+		recent.push(place.name);
+		if (recent.length > 8) recent.shift();
+		return place;
+	}
 
 	function pickPlace(): GlobePlace {
+		const facing = pickFacing?.(recent);
+		if (facing) return remember(facing);
 		for (let i = 0; i < 12; i++) {
 			const place = GLOBE_PLACES[Math.floor(Math.random() * GLOBE_PLACES.length)];
-			if (!recent.includes(place.name)) {
-				recent.push(place.name);
-				if (recent.length > 8) recent.shift();
-				return place;
-			}
+			if (!recent.includes(place.name)) return remember(place);
 		}
 		return GLOBE_PLACES[Math.floor(Math.random() * GLOBE_PLACES.length)];
 	}
@@ -246,6 +251,20 @@
 		});
 		themeWatch.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] });
 
+		const facingPoint = new THREE.Vector3();
+		const facingToCamera = new THREE.Vector3();
+
+		pickFacing = (exclude: string[]) => {
+			const candidates: GlobePlace[] = [];
+			for (const place of GLOBE_PLACES) {
+				if (exclude.includes(place.name)) continue;
+				facingPoint.copy(toVec(place.lat, place.lon, 1)).applyQuaternion(globe.quaternion);
+				facingToCamera.copy(camera.position).sub(facingPoint).normalize();
+				if (facingPoint.normalize().dot(facingToCamera) > 0.38) candidates.push(place);
+			}
+			return candidates.length > 0 ? candidates[Math.floor(Math.random() * candidates.length)] : null;
+		};
+
 		const world = new THREE.Vector3();
 		const toCamera = new THREE.Vector3();
 		const normal = new THREE.Vector3();
@@ -440,6 +459,7 @@
 			renderer.dispose();
 			renderer.domElement.remove();
 			requestFrame = null;
+			pickFacing = null;
 		}
 	});
 

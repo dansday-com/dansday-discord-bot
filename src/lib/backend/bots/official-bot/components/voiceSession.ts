@@ -849,7 +849,7 @@ export function createVoiceSession({ client, config, botId, guildId, channelId, 
 				return posted ? { ...summary, posted_to_chat: true } : { ok: false, reason: 'could_not_post_image' };
 			});
 		}
-		return runWikiTool(wikis, call.args ?? {});
+		return runWikiTool(wikis, call.args ?? {}, { sessionKey: `${botId}:${guildId}:${channelId}` });
 	}
 
 	function lookupLabel(call) {

@@ -5,6 +5,32 @@ import { accountOwnsBot } from '$lib/frontend/panelServer.js';
 import { WIKI_USER_AGENT } from '$lib/backend/bots/official-bot/components/wiki.js';
 
 const TIMEOUT_MS = 12_000;
+const MAX_DESCRIPTION_LENGTH = 255;
+
+type AskWiki = (query: Record<string, string>) => Promise<Response>;
+
+async function summarizeWiki(askWiki: AskWiki, general: Record<string, any>): Promise<string | null> {
+	const mainpage = typeof general?.mainpage === 'string' ? general.mainpage.trim() : '';
+	if (!mainpage) return null;
+
+	try {
+		const res = await askWiki({ action: 'query', prop: 'extracts', exintro: '1', explaintext: '1', titles: mainpage });
+		if (!res.ok) return null;
+
+		const data = await res.json();
+		const extract = data?.query?.pages?.[0]?.extract;
+		if (typeof extract !== 'string') return null;
+
+		const summary = extract.replace(/\s+/g, ' ').trim();
+		if (summary.length <= MAX_DESCRIPTION_LENGTH) return summary || null;
+
+		const cut = summary.slice(0, MAX_DESCRIPTION_LENGTH);
+		const stop = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf(', '), cut.lastIndexOf(' '));
+		return (stop > MAX_DESCRIPTION_LENGTH * 0.5 ? cut.slice(0, stop) : cut).trim() || null;
+	} catch (_) {
+		return null;
+	}
+}
 
 export const POST: RequestHandler = async ({ locals, params, request }) => {
 	if (!locals.user.authenticated) {
@@ -31,21 +57,20 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		return json({ success: false, error: 'API URL must start with http:// or https://' }, { status: 400 });
 	}
 
-	const url = new URL(apiUrl);
-	url.searchParams.set('action', 'query');
-	url.searchParams.set('meta', 'siteinfo');
-	url.searchParams.set('format', 'json');
-	url.searchParams.set('formatversion', '2');
-
 	const relayUrl = String(body.relay_url ?? '').trim();
 	const relayKey = String(body.relay_key ?? '').trim();
 
 	const controller = new AbortController();
 	const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
-	try {
-		const res = relayUrl
-			? await fetch(relayUrl, {
+	const askWiki = (query: Record<string, string>) => {
+		const url = new URL(apiUrl);
+		for (const [key, value] of Object.entries({ ...query, format: 'json', formatversion: '2' })) {
+			url.searchParams.set(key, value);
+		}
+
+		return relayUrl
+			? fetch(relayUrl, {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json',
@@ -56,7 +81,11 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 					body: JSON.stringify({ url: url.toString() }),
 					signal: controller.signal
 				})
-			: await fetch(url, { headers: { 'User-Agent': WIKI_USER_AGENT, Accept: 'application/json' }, signal: controller.signal });
+			: fetch(url, { headers: { 'User-Agent': WIKI_USER_AGENT, Accept: 'application/json' }, signal: controller.signal });
+	};
+
+	try {
+		const res = await askWiki({ action: 'query', meta: 'siteinfo' });
 
 		if (!res.ok) {
 			const blocked = res.status === 403 || res.status === 429;
@@ -83,6 +112,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			sitename: general.sitename,
 			generator: general.generator ?? null,
 			site_url: general.base ?? null,
+			description: await summarizeWiki(askWiki, general),
 			via_relay: Boolean(relayUrl)
 		});
 	} catch (error: any) {

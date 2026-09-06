@@ -288,8 +288,8 @@ export const aiServerTopics = [
 
 export const aiWikiFields = [
 	{ label: 'API URL', req: 'required', desc: 'The wiki api.php endpoint, usually /w/api.php or /api.php. Press Test to check it and fill in the name.' },
-	{ label: 'Name', req: 'required', desc: 'What the AI calls this wiki when it picks one. Keep it short.' },
-	{ label: 'Description', req: 'optional', desc: 'What the wiki covers. This is how the AI chooses the right one when a bot has several.' },
+	{ label: 'Name', req: 'required', desc: 'What this wiki is called. Matched against questions, so name it after the game.' },
+	{ label: 'Description', req: 'optional', desc: 'What the wiki covers. This is how a question is matched to the right wiki. Test fills it in.' },
 	{ label: 'Site URL', req: 'optional', desc: 'The wiki home page, used when the bot links a page it read.' },
 	{
 		label: 'Relay URL',

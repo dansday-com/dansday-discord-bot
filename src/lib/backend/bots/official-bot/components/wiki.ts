@@ -450,8 +450,154 @@ export async function invalidateEnabledWikis(botId) {
 	await invalidateCached(`botai:wikis:${botId}`);
 }
 
-export function describeWikis(wikis) {
-	return wikis.map((wiki) => `- ${wiki.name}${wiki.description ? `: ${wiki.description}` : ''}`).join('\n');
+const ROUTER_STOPWORDS = new Set([
+	'the',
+	'and',
+	'for',
+	'wiki',
+	'wikia',
+	'fandom',
+	'game',
+	'games',
+	'about',
+	'what',
+	'which',
+	'with',
+	'from',
+	'how',
+	'why',
+	'who',
+	'when',
+	'where',
+	'this',
+	'that',
+	'best',
+	'get',
+	'got',
+	'has',
+	'have',
+	'are',
+	'was',
+	'were',
+	'can',
+	'all',
+	'any',
+	'its',
+	'you',
+	'your',
+	'our',
+	'their',
+	'info',
+	'page',
+	'pages'
+]);
+
+const NAME_WEIGHT = 4;
+const HOST_WEIGHT = 3;
+const DESCRIPTION_WEIGHT = 1;
+const HINT_MULTIPLIER = 3;
+const CLEAR_WINNER_RATIO = 1.5;
+const MAX_FAN_OUT = 2;
+const MAX_CANDIDATES = 4;
+const STICKY_TTL_MS = 15 * 60 * 1000;
+const STICKY_MAX_ENTRIES = 500;
+
+const routeIndexCache = new WeakMap();
+const stickyWiki = new Map();
+
+function routeTokens(text) {
+	return new Set(
+		String(text ?? '')
+			.toLowerCase()
+			.split(/[^a-z0-9]+/)
+			.filter((token) => token.length > 2 && !ROUTER_STOPWORDS.has(token))
+	);
+}
+
+function hostTokens(wiki) {
+	try {
+		return routeTokens(new URL(wiki.site_url || wiki.api_url).hostname.replace(/^www\./, '').replace(/\.[a-z.]+$/, ''));
+	} catch (_) {
+		return new Set();
+	}
+}
+
+function wikiRouteIndex(wikis) {
+	let index = routeIndexCache.get(wikis);
+	if (index) return index;
+
+	index = wikis.map((wiki) => ({
+		wiki,
+		name: routeTokens(wiki.name),
+		host: hostTokens(wiki),
+		description: routeTokens(wiki.description)
+	}));
+	routeIndexCache.set(wikis, index);
+	return index;
+}
+
+function scoreEntry(entry, hintTokens, queryTokens) {
+	let score = 0;
+	for (const [tokens, weight] of [
+		[entry.name, NAME_WEIGHT],
+		[entry.host, HOST_WEIGHT],
+		[entry.description, DESCRIPTION_WEIGHT]
+	]) {
+		for (const token of tokens) {
+			if (hintTokens.has(token)) score += weight * HINT_MULTIPLIER;
+			else if (queryTokens.has(token)) score += weight;
+		}
+	}
+	return score;
+}
+
+function rememberWiki(sessionKey, wikiId) {
+	if (!sessionKey || wikiId == null) return;
+	if (stickyWiki.size >= STICKY_MAX_ENTRIES) {
+		const oldest = stickyWiki.keys().next().value;
+		if (oldest !== undefined) stickyWiki.delete(oldest);
+	}
+	stickyWiki.delete(sessionKey);
+	stickyWiki.set(sessionKey, { wikiId, expires: Date.now() + STICKY_TTL_MS });
+}
+
+function recallWiki(sessionKey, wikis) {
+	if (!sessionKey) return null;
+	const hit = stickyWiki.get(sessionKey);
+	if (!hit) return null;
+	if (Date.now() > hit.expires) {
+		stickyWiki.delete(sessionKey);
+		return null;
+	}
+	return wikis.find((wiki) => wiki.id === hit.wikiId) ?? null;
+}
+
+export function routeWiki(wikis, args, sessionKey) {
+	if (wikis.length === 1) return { picks: [wikis[0]] };
+
+	const hint = String(args?.wiki ?? '').trim();
+	const exact = hint ? wikis.find((wiki) => wiki.name.toLowerCase() === hint.toLowerCase()) : null;
+	if (exact) return { picks: [exact] };
+
+	const hintTokens = routeTokens(hint);
+	const queryTokens = routeTokens(`${args?.query ?? ''} ${args?.page ?? ''}`);
+
+	const scored = wikis.length
+		? wikiRouteIndex(wikis)
+				.map((entry) => ({ wiki: entry.wiki, score: scoreEntry(entry, hintTokens, queryTokens) }))
+				.filter((row) => row.score > 0)
+				.sort((a, b) => b.score - a.score)
+		: [];
+
+	if (!scored.length) {
+		const remembered = recallWiki(sessionKey, wikis);
+		if (remembered) return { picks: [remembered] };
+		return { candidates: wikis.length <= MAX_CANDIDATES ? wikis : [] };
+	}
+
+	if (scored.length === 1 || scored[0].score >= scored[1].score * CLEAR_WINNER_RATIO) return { picks: [scored[0].wiki] };
+
+	return { picks: scored.slice(0, MAX_FAN_OUT).map((row) => row.wiki) };
 }
 
 export function buildWikiTool(wikis) {
@@ -461,7 +607,7 @@ export function buildWikiTool(wikis) {
 		type: 'function',
 		function: {
 			name: 'search_wiki',
-			description: `Read a page on a game wiki. This is a specialist source for the few games listed below — items, rods, fish, bait, NPCs, locations, quests, mechanics, prices, stats and patch notes. It is NOT your general search: search_web is, and you should use search_web for every other subject, and alongside this one for anything about these games that changes over time, because wiki pages go stale.
+			description: `Read a page on a game wiki. This is a specialist source for the games this server keeps wikis for — items, rods, fish, bait, NPCs, locations, quests, mechanics, prices, stats and patch notes. It is NOT your general search: search_web is, and you should use search_web for every other subject, and alongside this one for anything about these games that changes over time, because wiki pages go stale.
 
 Never answer a game question from memory and never guess numbers: look it up, then answer from what comes back.
 
@@ -471,14 +617,14 @@ Read the entire result before answering: the answer is usually under a heading s
 
 A weak result is not an answer. When a lookup comes back empty or bare, chain to search_web and then fetch_web_page before you reply, and never hand the question back to the user. Live values — countdowns, spawn timers, active events — are not on the wiki at all, so go straight to the web for those.
 
-The search itself is English-only, but always reply in the language the user wrote in. Available wikis:\n${describeWikis(wikis)}`,
+The search itself is English-only, but always reply in the language the user wrote in.`,
 			parameters: {
 				type: 'object',
 				properties: {
 					wiki: {
 						type: 'string',
-						enum: wikis.map((wiki) => wiki.name),
-						description: 'Which wiki to search. Pick the one whose game the user is asking about.'
+						description:
+							'Optional. The game this is about, in your own words — "Fisch", "the fishing game". Leave it out and the right wiki is picked from your query. Give it when the conversation switches games, or when a previous call could not tell which game you meant.'
 					},
 					query: {
 						type: 'string',
@@ -496,7 +642,7 @@ The search itself is English-only, but always reply in the language the user wro
 							'Set true to read the wiki\'s front page instead of searching. ALWAYS use this for anything current or newest — "latest version", "current update", "versi terbaru", "what patch is live", "active event", "what season is it". Searching for those words ranks by keyword match and returns an old page, so it gives the wrong answer; the front page states the live version and lists recent updates. Read the newest entry there, then optionally open that version page with "page" for detail. When you use this, ignore any version you remember and trust only the front page.'
 					}
 				},
-				required: ['wiki', 'query']
+				required: ['query']
 			}
 		}
 	};
@@ -526,6 +672,12 @@ const WIKI_OFF_TARGET_HINT =
 const WIKI_THIN_HINT =
 	'This page exists but carries almost no detail, so it is not an answer yet. Call search_web for the same thing before you reply, and use only what you actually read.';
 
+const WIKI_UNROUTED_HINT =
+	'It is not clear which game this is about. Call search_wiki again with the game named in "wiki" — for example wiki: "Fisch". Work it out from the conversation rather than asking the user which wiki to use.';
+
+const WIKI_MULTI_HINT =
+	'These results come from more than one wiki. Answer only from the one that actually matches what was asked, and name the game if it is not obvious. Ignore the rest.';
+
 const THIN_EXTRACT_CHARS = 400;
 
 function resultIsThin(result) {
@@ -535,23 +687,48 @@ function resultIsThin(result) {
 	return pages.reduce((sum, page) => sum + (page.extract?.length ?? 0), 0) < THIN_EXTRACT_CHARS;
 }
 
-export async function runWikiTool(wikis, args) {
-	const requested = String(args?.wiki ?? '')
-		.trim()
-		.toLowerCase();
-	const match = wikis.find((wiki) => wiki.name.toLowerCase() === requested) ?? (wikis.length === 1 ? wikis[0] : null);
+export async function runWikiTool(wikis, args, context = {}) {
+	const list = Array.isArray(wikis) ? wikis : [];
+	if (!list.length) return { ok: false, reason: 'no_wikis_configured', next_step: WIKI_MISS_HINT };
 
-	if (!match) {
-		return { ok: false, reason: 'unknown_wiki', available: wikis.map((wiki) => wiki.name), next_step: WIKI_MISS_HINT };
+	const sessionKey = context.sessionKey ?? null;
+	const routed = routeWiki(list, args, sessionKey);
+
+	if (routed.candidates) {
+		return {
+			ok: false,
+			reason: 'wiki_not_identified',
+			...(routed.candidates.length ? { available: routed.candidates.map((wiki) => wiki.name) } : {}),
+			next_step: WIKI_UNROUTED_HINT
+		};
 	}
 
-	const result = await searchWiki(match, args?.query, args?.page, args?.main_page === true || args?.main_page === 'true');
+	const mainPage = args?.main_page === true || args?.main_page === 'true';
+	const results = await Promise.all(routed.picks.map((wiki) => searchWiki(wiki, args?.query, args?.page, mainPage)));
+	const usable = results.filter((result) => result?.ok !== false && result?.pages?.length);
 
-	if (result?.ok === false || !result?.pages?.length) return { ...result, next_step: WIKI_MISS_HINT };
+	if (!usable.length) {
+		const fallback = results.find((result) => result?.ok === false) ?? results[0] ?? { ok: false, reason: 'empty_query' };
+		return { ...fallback, next_step: WIKI_MISS_HINT };
+	}
+
+	const chosen = routed.picks[results.indexOf(usable[0])];
+	if (chosen) rememberWiki(sessionKey, chosen.id);
+
+	if (usable.length > 1) {
+		return {
+			ok: true,
+			query: usable[0].query,
+			results: usable.map((result) => ({ wiki: result.wiki, pages: result.pages })),
+			next_step: WIKI_MULTI_HINT
+		};
+	}
+
+	const result = usable[0];
 	if (result.note) return { ...result, next_step: WIKI_OFF_TARGET_HINT };
 	if (resultIsThin(result)) return { ...result, next_step: WIKI_THIN_HINT };
 
 	return result;
 }
 
-export default { searchWiki, getEnabledWikis, buildWikiTool, buildWikiDeclaration, runWikiTool, describeWikis };
+export default { searchWiki, getEnabledWikis, buildWikiTool, buildWikiDeclaration, runWikiTool, routeWiki };

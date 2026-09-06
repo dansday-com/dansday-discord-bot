@@ -459,7 +459,8 @@ async function handleMessageCreate(message) {
 				if (SERVER_TOOL_NAMES.has(name)) return runServerTool(name, args, toolContext).then((result) => JSON.stringify(result));
 				if (ACCOUNT_TOOL_NAMES.has(name)) return runAccountTool(name, args, toolContext).then((result) => JSON.stringify(result));
 				if (KNOWLEDGE_TOOL_NAMES.has(name)) return runKnowledgeTool(name, args, toolContext).then((result) => JSON.stringify(result));
-				if (name === 'search_wiki') return runWikiTool(wikis, args).then((result) => JSON.stringify(result));
+				if (name === 'search_wiki')
+					return runWikiTool(wikis, args, { sessionKey: `${botConfig.id}:${message.guild.id}:${message.author.id}` }).then((result) => JSON.stringify(result));
 				if (name === 'search_web') return runSearchTool(config, args).then((result) => JSON.stringify(result));
 				if (name === 'fetch_web_page') return runFetchTool(config, args).then((result) => JSON.stringify(result));
 				if (name === 'generate_image') {

@@ -50,6 +50,7 @@
 			}
 			if (!draft.name.trim() && d.sitename) draft.name = String(d.sitename).slice(0, 64);
 			if (!draft.site_url.trim() && d.site_url) draft.site_url = new URL(d.site_url).origin;
+			if (!draft.description.trim() && d.description) draft.description = String(d.description).slice(0, 255);
 			showToast(d.via_relay ? `Connected to ${d.sitename} through the relay` : `Connected to ${d.sitename}`, 'success');
 		} finally {
 			testing = false;
@@ -233,7 +234,7 @@
 
 		<div class="sm:col-span-2">
 			<label for="wiki-description" class="text-ash-400 mb-1 block text-xs">Description</label>
-			<p class="text-ash-500 mb-1 text-xs">What this wiki covers, so the AI picks the right one when you add several.</p>
+			<p class="text-ash-500 mb-1 text-xs">What this wiki covers. This is how a question is matched to the right wiki — Test fills it in for you.</p>
 			<input
 				id="wiki-description"
 				type="text"

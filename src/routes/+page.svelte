@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import type { PageProps } from './$types';
-	import { publicServerPath, COMMUNITY_DISCORD_URL, OFFICIAL_BOT_INVITE_URL, SOURCE_REPO_URL } from '$lib/url.js';
+	import { publicServerPath, COMMUNITY_DISCORD_URL, DISCORD_APP_DIRECTORY_URL, OFFICIAL_BOT_INVITE_URL, SOURCE_REPO_URL } from '$lib/url.js';
 	import type { AggregatedPanelStats } from '$lib/frontend/public/statistics/aggregate.js';
 	import { PageShell, reveal, REVEAL_CLASS } from '$lib/frontend/components/shell';
 	import GlobeScene from '$lib/frontend/components/landing/GlobeScene.svelte';
@@ -554,6 +554,9 @@
 							<a href="/login" class="hover:text-accent underline underline-offset-[3px]">Open the panel</a>
 							<a href={SOURCE_REPO_URL} target="_blank" rel="noopener noreferrer" class="hover:text-accent underline underline-offset-[3px]">GitHub</a>
 							<a href="/docs" class="hover:text-accent underline underline-offset-[3px]">Docs</a>
+							<a href={DISCORD_APP_DIRECTORY_URL} target="_blank" rel="noopener noreferrer" class="hover:text-accent underline underline-offset-[3px]"
+								>App Directory</a
+							>
 						</p>
 					</div>
 				</div>

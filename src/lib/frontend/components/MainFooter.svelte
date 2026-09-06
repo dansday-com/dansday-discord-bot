@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { APP_DOMAIN, APP_URL } from '$lib/frontend/panelServer.js';
 	import { legalNav } from '$lib/legal.js';
+	import { DISCORD_APP_DIRECTORY_URL } from '$lib/url.js';
 	type Palette = 'light' | 'dark';
 
 	let { palette = 'light' as Palette }: { palette?: Palette } = $props();
@@ -22,7 +23,8 @@
 		</p>
 		<p class="text-base-content/45 text-xs leading-relaxed">
 			Free and open source on
-			<a class="link link-hover" href="https://github.com/dansday-com/dansday-discord-bot">GitHub</a>.
+			<a class="link link-hover" href="https://github.com/dansday-com/dansday-discord-bot">GitHub</a>, listed on the
+			<a class="link link-hover" href={DISCORD_APP_DIRECTORY_URL} target="_blank" rel="noopener noreferrer">Discord App Directory</a>.
 		</p>
 	</div>
 </footer>

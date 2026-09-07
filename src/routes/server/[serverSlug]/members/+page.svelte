@@ -58,7 +58,7 @@
 
 	function rolePillStyle(color: string | null | undefined): string {
 		const rgb = parseRoleColorRaw(color);
-		const fallback = `--role-fg: #2e211b; --role-bg: rgba(228, 61, 18, 0.1); --role-bd: rgba(228, 61, 18, 0.38); --role-dot: #e43d12;`;
+		const fallback = `--role-fg: #2e211b; --role-bg: color-mix(in srgb, var(--color-primary) 10%, transparent); --role-bd: color-mix(in srgb, var(--color-primary) 38%, transparent); --role-dot: var(--color-primary);`;
 		if (!rgb) return fallback;
 		const L = roleColorLuminance(rgb);
 		const nearWhite = L >= 0.78 || (rgb.r >= 248 && rgb.g >= 248 && rgb.b >= 248);
@@ -163,7 +163,6 @@
 <svelte:head>
 	<title>{data.server.name || data.server.slug} Members | {APP_NAME} Discord Bot</title>
 	<meta name="description" content="Members, ranks, XP, and voice stats for {data.server.name || data.server.slug}." />
-	<meta name="theme-color" content="#e43d12" />
 	<meta property="og:title" content="{data.server.name || data.server.slug} Members | {APP_NAME} Discord Bot" />
 	<meta property="og:description" content="Explore members, ranks, XP, and voice activity for this community." />
 </svelte:head>

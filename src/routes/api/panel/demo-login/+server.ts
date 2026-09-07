@@ -96,7 +96,7 @@ function verifyCaptchaToken(token: string, secret: string): { ok: boolean; answe
 }
 
 export const GET: RequestHandler = async () => {
-	const secret = process.env.CAPTCHA_SECRET;
+	const secret = process.env.SECRET;
 	if (!secret) return json({ error: 'Captcha is not configured.' }, { status: 500 });
 	const answer = generateCaptchaAnswer();
 	const token = makeCaptchaToken(answer, secret);
@@ -118,7 +118,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			captcha_token?: string;
 		};
 
-		const secret = process.env.CAPTCHA_SECRET;
+		const secret = process.env.SECRET;
 		if (!secret) {
 			return json({ success: false, error: 'Captcha is not configured.' }, { status: 500 });
 		}

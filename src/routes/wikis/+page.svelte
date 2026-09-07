@@ -23,7 +23,6 @@
 <svelte:head>
 	<title>Wiki knowledge directory | {APP_NAME} Discord Bot</title>
 	<meta name="description" content="Every wiki {APP_NAME} Bot can look up, and whether it is active or disabled." />
-	<meta name="theme-color" content="#e43d12" />
 </svelte:head>
 
 <PageShell trailing="home">

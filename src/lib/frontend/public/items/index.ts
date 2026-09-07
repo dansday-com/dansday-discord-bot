@@ -1,21 +1,22 @@
-import { createHash } from 'crypto';
+import { createHmac, timingSafeEqual } from 'crypto';
 import { request as httpRequest } from 'http';
 import db from '../../../database.js';
-import { parseMySQLDateTimeUtc } from '../../../utils/index.js';
 import { itemAvailability, effectiveBagStock, discountedItemCost, DISGUISED_MENTION, floatingWallClockMs } from '../../../items.js';
 
-export function computeCardToken(discordMemberId: string, memberSince: any): string {
-	const dt = parseMySQLDateTimeUtc(memberSince);
-	const joinedDate = dt ? dt.toISOString().split('T')[0] : '';
-	return createHash('sha256').update(`${discordMemberId}_${joinedDate}`).digest('hex').substring(0, 16);
+export function computeCardToken(discordMemberId: string): string {
+	const secret = process.env.SECRET;
+	if (!secret) throw new Error('SECRET is not configured; account card links cannot be signed.');
+	return createHmac('sha256', secret).update(`card:${discordMemberId}`).digest('hex');
 }
 
 export async function resolveMemberByCardToken(serverId: number, token: string): Promise<any | null> {
 	if (!token) return null;
+	const supplied = Buffer.from(String(token), 'utf8');
 	const members = await db.getServerMembersList(serverId).catch(() => []);
 	for (const m of members as any[]) {
 		if (!m.discord_member_id) continue;
-		if (computeCardToken(m.discord_member_id, m.member_since) === token) return m;
+		const expected = Buffer.from(computeCardToken(m.discord_member_id), 'utf8');
+		if (expected.length === supplied.length && timingSafeEqual(expected, supplied)) return m;
 	}
 	return null;
 }

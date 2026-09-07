@@ -346,7 +346,7 @@
 					<button
 						class="btn btn-sm border-none font-bold {blockedReason
 							? 'bg-base-300 text-base-content/55'
-							: 'bg-linear-to-br from-[rgba(214,83,109,0.94)] to-[rgba(228,61,18,0.96)] text-white'}"
+							: 'bg-linear-to-br from-[rgba(214,83,109,0.94)] to-[color-mix(in_srgb,var(--color-primary)_96%,transparent)] text-white'}"
 						disabled={ctx.busy === item.id || !canBuy}
 						title={blockedReason || 'Buy one'}
 						onclick={(e) => buy(item, e)}

@@ -42,7 +42,7 @@ export const load: PageServerLoad = async ({ parent, params }) => {
 		targets = (list as any[])
 			.filter((m) => m.discord_member_id && Number(m.id) !== Number(shared.member.id))
 			.map((m) => ({
-				hash: computeCardToken(m.discord_member_id, m.member_since),
+				hash: computeCardToken(m.discord_member_id),
 				name: m.server_display_name || m.display_name || m.username,
 				avatar: m.avatar ?? null,
 				discord_member_id: String(m.discord_member_id),

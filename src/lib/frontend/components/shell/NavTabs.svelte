@@ -35,7 +35,7 @@
 		requestAnimationFrame(update);
 	});
 
-	const ACTIVE = 'from-secondary to-primary bg-linear-to-br text-white shadow-[0_4px_14px_-4px_rgba(228,61,18,0.5)]';
+	const ACTIVE = 'from-secondary to-primary bg-linear-to-br text-white shadow-[0_4px_14px_-4px_color-mix(in_srgb,var(--color-primary)_50%,transparent)]';
 	const ARROW =
 		'border-base-300 bg-base-200 text-base-content absolute top-1/2 z-2 hidden size-7.5 -translate-y-1/2 place-items-center rounded-full border shadow-md transition-opacity sm:grid';
 </script>

@@ -474,7 +474,7 @@
 
 	const EYEBROW = 'text-primary mb-3.5 text-[10.5px] font-extrabold tracking-[0.2em] uppercase 2xl:text-[13px]';
 	const H2 = 'text-base-content mb-2.5 text-[clamp(21px,6.2cqw,58px)] leading-[0.98] font-black tracking-[-0.035em] uppercase';
-	const LEAD = 'text-base-content/60 text-[13.5px] leading-[1.55] sm:max-w-[54ch] 2xl:text-[16px]';
+	const LEAD = 'text-base-content/70 text-[13.5px] leading-[1.55] sm:max-w-[54ch] 2xl:text-[16px]';
 	const BTN = 'btn rounded-sm text-[11.5px] font-extrabold tracking-[0.1em] uppercase 2xl:btn-lg 2xl:text-[13px]';
 	const CARD = 'border-base-300 bg-base-100 w-[78vw] shrink-0 rounded-sm border p-4 sm:w-[330px] sm:p-5';
 	const FULLBLEED = 'w-screen ml-[calc(50%-50vw)]';
@@ -486,7 +486,6 @@
 		name="description"
 		content="Free and open source {APP_NAME} Discord Bot. Add our hosted bot to your server at no cost, or self host from GitHub. Free web panel for leveling, an XP economy, moderation, embed builder, giveaways, public stats, Discord Quest, TikTok tools, Roblox catalog watch, and more. Free ten minute demo on login."
 	/>
-	<meta name="theme-color" content="#e43d12" />
 </svelte:head>
 
 <PageShell>
@@ -514,7 +513,7 @@
 						{#each heroStats as stat, i}
 							<div use:reveal class={REVEAL_CLASS} style="transition-delay: {i * 70}ms">
 								<p use:countUp={stat.raw} class="text-primary text-[clamp(20px,3.4vw,34px)] leading-none font-black tabular-nums">{fmt(stat.raw)}</p>
-								<p class="text-base-content/45 mt-1.5 text-[10px] font-bold tracking-[0.14em] uppercase 2xl:text-[12.5px]">{stat.label}</p>
+								<p class="text-base-content/70 mt-1.5 text-[10px] font-bold tracking-[0.14em] uppercase 2xl:text-[12.5px]">{stat.label}</p>
 							</div>
 						{/each}
 					</div>
@@ -536,7 +535,7 @@
 						<span class="leading-[1.25]">Scroll<br />to explore</span>
 					</a>
 
-					<p class="text-base-content/45 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-bold tracking-[0.14em] uppercase 2xl:text-[12.5px]">
+					<p class="text-base-content/70 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-bold tracking-[0.14em] uppercase 2xl:text-[12.5px]">
 						{#each META as item, i}
 							{#if i > 0}
 								<span aria-hidden="true" class="opacity-50">·</span>
@@ -586,12 +585,12 @@
 					</div>
 					<h3 class="text-base-content mb-1.5 text-[13px] leading-[1.32] font-extrabold tracking-[0.02em] uppercase">{card.title}</h3>
 					<p class="text-base-content/70 text-[12.5px] leading-[1.5]">{card.desc}</p>
-					<p class="text-base-content/45 mt-1.5 hidden text-[12px] leading-[1.5] sm:block">{card.more}</p>
+					<p class="text-base-content/70 mt-1.5 hidden text-[12px] leading-[1.5] sm:block">{card.more}</p>
 					{#if card.live.length > 0}
 						<dl class="border-base-300 mt-4 flex flex-wrap gap-x-5 gap-y-2.5 border-t pt-3">
 							{#each card.live as stat}
 								<div>
-									<dt class="text-base-content/45 text-[9.5px] font-bold tracking-[0.12em] uppercase">{stat.label}</dt>
+									<dt class="text-base-content/70 text-[9.5px] font-bold tracking-[0.12em] uppercase">{stat.label}</dt>
 									<dd class="text-primary mt-1 flex items-center gap-1.5 text-[15px] leading-none font-black tabular-nums">
 										{#if stat.live}
 											<span class="bg-primary size-1.5 shrink-0 rounded-full motion-safe:animate-pulse"></span>
@@ -662,7 +661,7 @@
 								>
 									{server.name}
 								</span>
-								<span class="text-base-content/55 mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[12px] tabular-nums">
+								<span class="text-base-content/70 mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[12px] tabular-nums">
 									<span>{fmt(server.xp)} XP</span>
 									<span class="opacity-40" aria-hidden="true">·</span>
 									<span>{fmt(server.members)} members</span>
@@ -733,7 +732,7 @@
 									{/if}
 								</div>
 								<h3 class="text-base-content mb-1.5 text-[13px] leading-[1.32] font-extrabold tracking-[0.02em] uppercase">{item.name}</h3>
-								<p class="text-base-content/45 text-[10px] font-bold tracking-[0.14em] uppercase">{effectLabel(item.effect_type)}</p>
+								<p class="text-base-content/70 text-[10px] font-bold tracking-[0.14em] uppercase">{effectLabel(item.effect_type)}</p>
 								<p class="text-primary mt-4 text-[15px] leading-none font-black tabular-nums">{fmt(item.cost)} XP</p>
 							</a>
 						</div>
@@ -783,7 +782,7 @@
 								>
 									{quest.quest_name}
 								</span>
-								<span class="text-base-content/55 mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[12px]">
+								<span class="text-base-content/70 mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[12px]">
 									<span class="truncate">{quest.game_title}</span>
 									{#if quest.reward}
 										<span class="opacity-40" aria-hidden="true">·</span>
@@ -853,7 +852,7 @@
 											{item.price > 0 ? `${fmt(item.price)} R$` : 'Free'}
 										</span>
 										{#if item.notification_count > 0}
-											<span class="text-base-content/45 text-[10.5px] font-bold tabular-nums">
+											<span class="text-base-content/70 text-[10.5px] font-bold tabular-nums">
 												<i class="fas fa-bell text-[9px]"></i>
 												{fmt(item.notification_count)}
 											</span>
@@ -901,7 +900,7 @@
 									</span>
 								</span>
 							</dt>
-							<dd class="text-base-content/60 min-w-0 text-[12.5px] leading-[1.5]">
+							<dd class="text-base-content/70 min-w-0 text-[12.5px] leading-[1.5]">
 								{#if wiki.description}
 									{wiki.description}
 								{:else}
@@ -922,7 +921,7 @@
 			</div>
 			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
 				{#each panel as item, i}
-					<p use:reveal class="{REVEAL_CLASS} text-base-content/60 text-[12.5px] leading-[1.5] sm:max-w-[30ch]" style="transition-delay: {i * 70}ms">
+					<p use:reveal class="{REVEAL_CLASS} text-base-content/70 text-[12.5px] leading-[1.5] sm:max-w-[30ch]" style="transition-delay: {i * 70}ms">
 						<strong class="text-base-content mb-0.5 block text-[12px] font-extrabold tracking-[0.08em] uppercase">{item.title}</strong>
 						{item.desc}
 					</p>

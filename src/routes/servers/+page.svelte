@@ -22,7 +22,6 @@
 		name="description"
 		content="Every Discord server running {APP_NAME} Bot with public pages switched on, ranked by total XP earned. Browse member counts, messages and voice hours, then open any server's live public statistics."
 	/>
-	<meta name="theme-color" content="#e43d12" />
 </svelte:head>
 
 <PageShell trailing="home">

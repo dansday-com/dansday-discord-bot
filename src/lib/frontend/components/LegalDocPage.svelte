@@ -8,7 +8,6 @@
 <svelte:head>
 	<title>{doc.title}</title>
 	<meta name="description" content={doc.description} />
-	<meta name="theme-color" content="#e43d12" />
 </svelte:head>
 
 <PageShell width="flush">

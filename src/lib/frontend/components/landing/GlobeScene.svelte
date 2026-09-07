@@ -2,6 +2,7 @@
 	import { onDestroy, onMount, untrack } from 'svelte';
 	import { GLOBE_PLACES, type GlobePlace } from './countries.js';
 	import type { LiveGainBatch } from '$lib/frontend/public/statistics/liveGlobal.svelte.js';
+	import { BRAND_PRIMARY } from '$lib/brand.js';
 
 	type Props = { gains: LiveGainBatch | null; avoid?: (HTMLElement | null)[] };
 	type Pulse = { id: number; place: GlobePlace; xp: number; born: number };
@@ -175,9 +176,9 @@
 		const paint = () => {
 			bodyMat.color.set(read('--color-base-200', '#e3e0d6'));
 			gridMat.color.set(read('--color-base-content', '#2e211b'));
-			rimMat.color.set(read('--color-primary', '#e43d12'));
-			landMat.color.set(read('--color-primary', '#e43d12'));
-			const primary = read('--color-primary', '#e43d12');
+			rimMat.color.set(read('--color-primary', BRAND_PRIMARY));
+			landMat.color.set(read('--color-primary', BRAND_PRIMARY));
+			const primary = read('--color-primary', BRAND_PRIMARY);
 			const secondary = read('--color-secondary', '#d6536d');
 			for (const rig of rigs) {
 				rig.dotMat.color.set(primary);

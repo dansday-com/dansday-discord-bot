@@ -40,7 +40,6 @@
 		name="description"
 		content="Set up {APP_NAME} Bot from scratch: run /setup, register, invite staff, set permissions, and configure every module field by field."
 	/>
-	<meta name="theme-color" content="#e43d12" />
 </svelte:head>
 
 {#snippet subHead(text: string, lead?: string)}

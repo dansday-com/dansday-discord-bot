@@ -35,7 +35,6 @@
 		content="Every daily and weekly task {APP_NAME} Bot can hand out, with what each one asks for and the module it needs. {data.tasks
 			.length} tasks in the pool."
 	/>
-	<meta name="theme-color" content="#e43d12" />
 </svelte:head>
 
 <PageShell trailing="home">

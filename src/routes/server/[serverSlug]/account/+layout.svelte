@@ -380,7 +380,7 @@
 <div class="mt-4.5">
 	{#snippet walletHero()}
 		<div
-			class="relative isolate mb-4 flex h-35 items-center gap-3.5 overflow-hidden rounded-2xl bg-linear-to-br from-[#e43d12] to-[#7a1e06] px-4.5 py-3.5 shadow-[0_10px_26px_-16px_rgba(228,61,18,0.8)]"
+			class="from-primary relative isolate mb-4 flex h-35 items-center gap-3.5 overflow-hidden rounded-2xl bg-linear-to-br to-[#7a1e06] px-4.5 py-3.5 shadow-[0_10px_26px_-16px_color-mix(in_srgb,var(--color-primary)_80%,transparent)]"
 		>
 			<div
 				class="pointer-events-none absolute -top-[60%] -right-[10%] size-55 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.16),transparent_70%)]"

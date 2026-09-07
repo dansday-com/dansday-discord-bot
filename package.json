@@ -1,7 +1,7 @@
 {
 	"name": "dansday-discord-bot",
 	"private": true,
-	"version": "26.6.0",
+	"version": "26.6.1",
 	"license": "AGPL-3.0-only",
 	"type": "module",
 	"scripts": {

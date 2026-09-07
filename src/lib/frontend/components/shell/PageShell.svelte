@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { BRAND_PRIMARY } from '$lib/brand.js';
 	import MainHeader from '../MainHeader.svelte';
 	import MainFooter from '../MainFooter.svelte';
 	import { registerScroller } from '../../scrollLock.js';
@@ -56,6 +57,10 @@
 		};
 	});
 </script>
+
+<svelte:head>
+	<meta name="theme-color" content={BRAND_PRIMARY} />
+</svelte:head>
 
 <div class="bg-canvas text-base-content relative isolate flex min-h-dvh flex-col overflow-x-clip" data-theme="dansday">
 	<div

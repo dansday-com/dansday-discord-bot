@@ -72,7 +72,6 @@
 		name="description"
 		content="Every item in the {APP_NAME} Bot shop catalog — what each one does, what it costs in XP, when it is on sale, and whether it can be bought right now."
 	/>
-	<meta name="theme-color" content="#e43d12" />
 </svelte:head>
 
 <PageShell trailing="home">

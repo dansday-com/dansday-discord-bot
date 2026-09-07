@@ -308,7 +308,7 @@ async function handleMyAccountLinkButton(interaction) {
 		return;
 	}
 
-	const hash = computeCardToken(String(dbMember.discord_member_id), dbMember.member_since);
+	const hash = computeCardToken(String(dbMember.discord_member_id));
 	const url = `${base}/account/overview/${hash}`;
 	let linkText = url;
 	try {

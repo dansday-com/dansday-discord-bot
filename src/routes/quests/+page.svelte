@@ -29,7 +29,6 @@
 		name="description"
 		content="Every Discord Quest {APP_NAME} Bot has tracked, with the game, the task, the reward and when it runs. Filter to the quests live right now."
 	/>
-	<meta name="theme-color" content="#e43d12" />
 </svelte:head>
 
 <PageShell trailing="home">

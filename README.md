@@ -172,4 +172,4 @@ Found a vulnerability? Email **security@dansday.com** instead of opening an issu
 
 ---
 
-AGPL-3.0 · Author: Akbar Yudhanto · Version: 26.6.0
+AGPL-3.0 · Author: Akbar Yudhanto · Version: 26.6.1

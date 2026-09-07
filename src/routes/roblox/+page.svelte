@@ -81,7 +81,6 @@
 		name="description"
 		content="Every Roblox catalog item {APP_NAME} Bot watches, with price, lowest resale, favourites and remaining stock. Filter by category or narrow to limited items."
 	/>
-	<meta name="theme-color" content="#e43d12" />
 </svelte:head>
 
 <PageShell trailing="home">

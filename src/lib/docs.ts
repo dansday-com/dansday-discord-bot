@@ -352,7 +352,11 @@ export const envVars = [
 		req: 'required',
 		desc: 'SMTP for account notification emails. MAIL_PORT is optional (defaults to 587).'
 	},
-	{ label: 'SECRET', req: 'required', desc: 'A long random secret. Signs public account card links and keys the demo login captcha. Rotating it invalidates every issued account link.' },
+	{
+		label: 'SECRET',
+		req: 'required',
+		desc: 'A long random secret. Signs public account card links and keys the demo login captcha. Rotating it invalidates every issued account link.'
+	},
 	{ label: 'REDIS_URL', req: 'optional', desc: 'Redis for sessions and caching, e.g. redis://default:pass@localhost:6379/0.' },
 	{ label: 'BOT_ID', req: 'per bot process', desc: 'The database id of the bot this process runs. The token lives in the database, not in env.' },
 	{

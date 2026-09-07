@@ -65,7 +65,6 @@ import {
 import { handleRobloxItemNotificationButton, isRobloxItemNotificationButtonId } from './robloxCatalogNotifier.js';
 import { translate } from '../i18n.js';
 import { getLevelRequirement } from './leveling.js';
-import { createHash } from 'crypto';
 import db from '../../../../database.js';
 import { computeCardToken } from '../../../../frontend/public/items/index.js';
 
@@ -242,8 +241,7 @@ async function handleMenuButton(interaction) {
 			const statisticsLabel = await translate('menu.statistics', interaction.guild.id, interaction.user.id);
 			addLinkButton(new ButtonBuilder().setLabel(statisticsLabel).setURL(base).setStyle(ButtonStyle.Link));
 
-			const joinedDate = member.joinedAt ? member.joinedAt.toISOString().split('T')[0] : '';
-			const cardHash = createHash('sha256').update(`${interaction.user.id}_${joinedDate}`).digest('hex').substring(0, 16);
+			const cardHash = computeCardToken(String(interaction.user.id));
 			const accountLabel = await translate('menu.account', interaction.guild.id, interaction.user.id);
 			addLinkButton(new ButtonBuilder().setLabel(accountLabel).setURL(`${base}/account/overview/${cardHash}`).setStyle(ButtonStyle.Link));
 		}

@@ -625,6 +625,7 @@ export const serverMemberRobloxItemNotifications = mysqlTable(
 		item_id: int('item_id')
 			.notNull()
 			.references(() => botRobloxItems.id, { onDelete: 'cascade' }),
+		types: varchar('types', { length: 191 }).notNull().default('price,lowest_resale_price,units_available,total_quantity'),
 		created_at: datetime('created_at').notNull()
 	},
 	(t) => [

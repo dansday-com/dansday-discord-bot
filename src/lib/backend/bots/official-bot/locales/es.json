@@ -355,8 +355,18 @@
 		"updated": "✅ Se han actualizado tus preferencias de notificación.",
 		"errors": {
 			"notConfigured": "❌ Las notificaciones no están configuradas en este servidor.",
-			"noRoles": "❌ Todavía no hay canales de notificación configurados. Pide a un administrador que configure las notificaciones en el panel."
-		}
+			"noRoles": "❌ Todavía no hay canales de notificación configurados. Pide a un administrador que configure las notificaciones en el panel.",
+			"noneEnabled": "❌ No hay ninguna función de notificación activada en este servidor."
+		},
+		"hub": {
+			"title": "🔔 Preferencias de notificación",
+			"description": "Elige qué tipo de notificaciones quieres gestionar.",
+			"channels": "📢 Notificaciones de canal",
+			"roblox": "🛍️ Notificaciones de artículos de Roblox",
+			"back": "⬅️ Notificaciones"
+		},
+		"active": "**Activo:** {channels}",
+		"none": "**Activo:** todavía nada."
 	},
 	"customSupporterRole": {
 		"create": {
@@ -452,8 +462,42 @@
 	},
 	"robloxCatalog": {
 		"notifications": {
-			"added": "🔔 Se te mencionará en {channel} cada vez que **{item}** cambie. {count} lo siguen.",
 			"removed": "🔕 Ya no se te mencionará por **{item}**.",
+			"saved": "🔔 Guardado. Se te mencionará por **{item}** en: {types}. {count} lo siguen.",
+			"noTypes": "nada",
+			"types": {
+				"price": {
+					"label": "Precio",
+					"description": "Cambia el precio fijado por el vendedor."
+				},
+				"lowest_resale_price": {
+					"label": "Precio de reventa",
+					"description": "Cambia el precio de reventa más barato."
+				},
+				"units_available": {
+					"label": "Stock restante",
+					"description": "Cambian las unidades que aún se pueden comprar."
+				},
+				"total_quantity": {
+					"label": "Suministro total",
+					"description": "Cambia el número total de copias."
+				}
+			},
+			"item": {
+				"title": "🔔 Notificaciones del artículo",
+				"description": "Elige qué debe mencionarte en [{item}]({url}). Deselecciona todo para dejar de recibir notificaciones de este artículo.",
+				"active": "**Notificando por:** {types}",
+				"placeholder": "Selecciona de qué quieres enterarte..."
+			},
+			"menu": {
+				"title": "🛍️ Notificaciones de artículos de Roblox",
+				"description": "Estás siguiendo {count} artículo(s). Selecciona uno para cambiar sus tipos de notificación.",
+				"empty": "Todavía no sigues ningún artículo de Roblox. Pulsa 🔔 Notify me debajo de una publicación del catálogo para empezar.",
+				"placeholder": "Selecciona un artículo para editarlo...",
+				"disableAll": "🔕 Desactivar todo",
+				"disabledAll": "🔕 Notificaciones desactivadas para {count} artículo(s).",
+				"back": "⬅️ Atrás"
+			},
 			"errors": {
 				"invalidItem": "❌ No se pudo leer el artículo del catálogo de este botón.",
 				"memberNotFound": "❌ Tu perfil de miembro aún no está sincronizado. Inténtalo en un momento."

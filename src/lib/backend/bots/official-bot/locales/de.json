@@ -355,8 +355,18 @@
 		"updated": "✅ Deine Benachrichtigungseinstellungen wurden aktualisiert.",
 		"errors": {
 			"notConfigured": "❌ Benachrichtigungen sind für diesen Server nicht konfiguriert.",
-			"noRoles": "❌ Es sind noch keine Benachrichtigungskanäle eingerichtet. Bitte einen Admin, Benachrichtigungen im Dashboard zu konfigurieren."
-		}
+			"noRoles": "❌ Es sind noch keine Benachrichtigungskanäle eingerichtet. Bitte einen Admin, Benachrichtigungen im Dashboard zu konfigurieren.",
+			"noneEnabled": "❌ Auf diesem Server ist keine Benachrichtigungsfunktion aktiviert."
+		},
+		"hub": {
+			"title": "🔔 Benachrichtigungseinstellungen",
+			"description": "Wähle aus, welche Art von Benachrichtigungen du verwalten möchtest.",
+			"channels": "📢 Kanal-Benachrichtigungen",
+			"roblox": "🛍️ Roblox-Artikel-Benachrichtigungen",
+			"back": "⬅️ Benachrichtigungen"
+		},
+		"active": "**Aktiv:** {channels}",
+		"none": "**Aktiv:** noch nichts."
 	},
 	"customSupporterRole": {
 		"create": {
@@ -452,8 +462,42 @@
 	},
 	"robloxCatalog": {
 		"notifications": {
-			"added": "🔔 Du wirst in {channel} markiert, sobald sich **{item}** ändert. {count} beobachten es.",
 			"removed": "🔕 Du wirst für **{item}** nicht mehr markiert.",
+			"saved": "🔔 Gespeichert. Du wirst für **{item}** markiert bei: {types}. {count} beobachten es.",
+			"noTypes": "nichts",
+			"types": {
+				"price": {
+					"label": "Preis",
+					"description": "Der vom Verkäufer gesetzte Preis ändert sich."
+				},
+				"lowest_resale_price": {
+					"label": "Wiederverkaufspreis",
+					"description": "Der günstigste Wiederverkaufspreis ändert sich."
+				},
+				"units_available": {
+					"label": "Restbestand",
+					"description": "Die noch kaufbaren Einheiten ändern sich."
+				},
+				"total_quantity": {
+					"label": "Gesamtmenge",
+					"description": "Die Gesamtzahl der Exemplare ändert sich."
+				}
+			},
+			"item": {
+				"title": "🔔 Artikel-Benachrichtigungen",
+				"description": "Wähle aus, wofür du bei [{item}]({url}) markiert wirst. Wähle alles ab, um keine Benachrichtigungen mehr für diesen Artikel zu erhalten.",
+				"active": "**Benachrichtigung bei:** {types}",
+				"placeholder": "Wähle aus, worüber du informiert wirst..."
+			},
+			"menu": {
+				"title": "🛍️ Roblox-Artikel-Benachrichtigungen",
+				"description": "Du beobachtest {count} Artikel. Wähle einen aus, um seine Benachrichtigungsarten zu ändern.",
+				"empty": "Du beobachtest noch keinen Roblox-Artikel. Drücke 🔔 Notify me unter einem Katalogbeitrag, um zu starten.",
+				"placeholder": "Artikel zum Bearbeiten auswählen...",
+				"disableAll": "🔕 Alle deaktivieren",
+				"disabledAll": "🔕 Benachrichtigungen für {count} Artikel deaktiviert.",
+				"back": "⬅️ Zurück"
+			},
 			"errors": {
 				"invalidItem": "❌ Der Katalogartikel dieses Buttons konnte nicht gelesen werden.",
 				"memberNotFound": "❌ Dein Mitgliedsprofil ist noch nicht synchronisiert. Versuche es gleich erneut."

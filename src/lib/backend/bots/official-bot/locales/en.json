@@ -404,8 +404,18 @@
 		"updated": "✅ Your notification preferences have been updated.",
 		"errors": {
 			"notConfigured": "❌ Notifications are not configured for this server.",
-			"noRoles": "❌ No notification channels are set up yet. Ask an admin to configure notifications in the dashboard."
-		}
+			"noRoles": "❌ No notification channels are set up yet. Ask an admin to configure notifications in the dashboard.",
+			"noneEnabled": "❌ No notification feature is enabled in this server."
+		},
+		"hub": {
+			"title": "🔔 Notification Preferences",
+			"description": "Pick which kind of notifications you want to manage.",
+			"channels": "📢 Channel Notifications",
+			"roblox": "🛍️ Roblox Item Notifications",
+			"back": "⬅️ Notifications"
+		},
+		"active": "**Active:** {channels}",
+		"none": "**Active:** nothing yet."
 	},
 	"customSupporterRole": {
 		"create": {
@@ -501,8 +511,42 @@
 	},
 	"robloxCatalog": {
 		"notifications": {
-			"added": "🔔 You will be tagged in {channel} whenever **{item}** changes. {count} watching.",
 			"removed": "🔕 You will no longer be tagged for **{item}**.",
+			"saved": "🔔 Saved. You will be tagged for **{item}** on: {types}. {count} watching.",
+			"noTypes": "nothing",
+			"types": {
+				"price": {
+					"label": "Price",
+					"description": "The price set by the seller changes."
+				},
+				"lowest_resale_price": {
+					"label": "Resale price",
+					"description": "The cheapest reseller price changes."
+				},
+				"units_available": {
+					"label": "Stock left",
+					"description": "Units still available to buy changes."
+				},
+				"total_quantity": {
+					"label": "Total supply",
+					"description": "The total number of copies changes."
+				}
+			},
+			"item": {
+				"title": "🔔 Item Notifications",
+				"description": "Pick what should tag you for [{item}]({url}). Deselect everything to stop notifications for this item.",
+				"active": "**Notifying on:** {types}",
+				"placeholder": "Select what to be notified about..."
+			},
+			"menu": {
+				"title": "🛍️ Roblox Item Notifications",
+				"description": "You are watching {count} item(s). Select one to change what notifies you.",
+				"empty": "You are not watching any Roblox item yet. Press 🔔 Notify me under a catalog post to start.",
+				"placeholder": "Select an item to edit...",
+				"disableAll": "🔕 Disable all",
+				"disabledAll": "🔕 Disabled notifications for {count} item(s).",
+				"back": "⬅️ Back"
+			},
 			"errors": {
 				"invalidItem": "❌ That catalog item could not be read from this button.",
 				"memberNotFound": "❌ Your member profile is not synced yet. Try again in a moment."

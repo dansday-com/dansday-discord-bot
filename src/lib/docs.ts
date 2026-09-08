@@ -748,7 +748,11 @@ export const modules = [
 		what: 'Posts alerts when new free, limited or official Roblox catalog items appear.',
 		fields: [
 			{ label: 'Roblox catalog module', desc: 'When off, Roblox catalog polling and posts are disabled.' },
-			{ label: 'Notification channel', desc: 'Where the bot posts Roblox catalog embeds.' }
+			{ label: 'Notification channel', desc: 'Where the bot posts Roblox catalog embeds.' },
+			{
+				label: 'Per-item alerts',
+				desc: 'Members press Notify me under a post and pick what tags them: price, resale price, stock left or total supply. Only the changed field pings them.'
+			}
 		]
 	},
 	{
@@ -779,7 +783,10 @@ export const discordMenu = [
 	{ label: '💬 Submit Feedback', desc: 'Opens the feedback modal with a message field and an anonymous option.' },
 	{ label: '🛡️ Staff Rating', desc: 'Pick a staff member, choose a 1 to 5 score and category, and submit a rating.' },
 	{ label: '🎬 Content Creator', desc: 'Shows the creator list and an Apply button (TikTok username plus reason).' },
-	{ label: '🔔 Notifications', desc: 'Opens a selector to subscribe to the notification channels you enabled.' },
+	{
+		label: '🔔 Notifications',
+		desc: 'Opens two choices: channel notifications (subscribe to the channels you enabled) and Roblox item notifications (the items a member follows, what each one alerts on, and a disable-all).'
+	},
 	{ label: '🌐 Select Language', desc: 'Switches the Discord interface language (English, Indonesian, German or Spanish).' },
 	{ label: '🌐 Statistics', desc: 'Link to the public stats page.' },
 	{ label: '👤 Account', desc: 'Link to the member account (Overview, Task, Items, Minigames, Assets, History, Guide).' }

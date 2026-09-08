@@ -38,7 +38,7 @@ import {
 	handleStaffRatingReject,
 	handleStaffRatingDecisionModal
 } from './interface/staffrating.js';
-import { handleNotificationsButton, handleNotificationsSelect } from './interface/notifications.js';
+import { handleNotificationsButton, handleNotificationChannelsButton, handleNotificationsSelect } from './interface/notifications.js';
 import {
 	handleContentCreatorButton,
 	handleContentCreatorApplyButton,
@@ -62,7 +62,18 @@ import {
 	QUEST_CLAIM_ALL_BUTTON_ID,
 	QUEST_CLAIM_ALL_MODAL_ID
 } from './questEnroll.js';
-import { handleRobloxItemNotificationButton, isRobloxItemNotificationButtonId } from './robloxCatalogNotifier.js';
+import {
+	handleRobloxItemNotificationButton,
+	handleRobloxItemNotificationTypesSelect,
+	handleRobloxNotificationsDisableAll,
+	handleRobloxNotificationsMenuButton,
+	handleRobloxNotificationsSelect,
+	isRobloxItemNotificationButtonId,
+	isRobloxItemNotificationTypesSelectId,
+	ROBLOX_NOTIFICATIONS_DISABLE_ALL_BUTTON_ID,
+	ROBLOX_NOTIFICATIONS_MENU_BUTTON_ID,
+	ROBLOX_NOTIFICATIONS_SELECT_ID
+} from './robloxCatalogNotifier.js';
 import { translate } from '../i18n.js';
 import { getLevelRequirement } from './leveling.js';
 import db from '../../../../database.js';
@@ -386,8 +397,19 @@ export async function handleButtonInteraction(interaction) {
 			await handleStaffRatingButton(interaction);
 			break;
 		case 'bot_notifications':
-			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.notifications)) break;
 			await handleNotificationsButton(interaction);
+			break;
+		case 'notifications_channels':
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.notifications)) break;
+			await handleNotificationChannelsButton(interaction);
+			break;
+		case ROBLOX_NOTIFICATIONS_MENU_BUTTON_ID:
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.roblox_catalog_notifier)) break;
+			await handleRobloxNotificationsMenuButton(interaction);
+			break;
+		case ROBLOX_NOTIFICATIONS_DISABLE_ALL_BUTTON_ID:
+			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.roblox_catalog_notifier)) break;
+			await handleRobloxNotificationsDisableAll(interaction);
 			break;
 		case 'bot_content_creator':
 			if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.content_creator)) break;
@@ -665,6 +687,12 @@ function init(client) {
 					await handleLanguageSelect(interaction);
 				} else if (customId === 'notifications_select') {
 					await handleNotificationsSelect(interaction);
+				} else if (customId === ROBLOX_NOTIFICATIONS_SELECT_ID) {
+					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.roblox_catalog_notifier)) return;
+					await handleRobloxNotificationsSelect(interaction);
+				} else if (isRobloxItemNotificationTypesSelectId(customId)) {
+					if (await replyIfFeatureDisabled(interaction, serverSettingsComponent.roblox_catalog_notifier)) return;
+					await handleRobloxItemNotificationTypesSelect(interaction);
 				} else {
 					await logger.log(`⚠️ Unknown string select: "${customId}" by ${user.tag} (${user.id})`);
 				}

@@ -213,6 +213,11 @@ export const aiChatFields = [
 		label: 'Voice API URL, key and system prompt',
 		req: 'optional',
 		desc: 'Voice has its own Google AI key and personality, separate from chat. Both are required to turn voice on. Always Gemini Live, so no endpoint to set.'
+	},
+	{
+		label: 'Per-server override',
+		req: 'optional',
+		desc: 'Each server sets its own chat prompt, voice prompt and voice on Configuration → AI. Whatever it leaves blank falls back to what you set here.'
 	}
 ];
 

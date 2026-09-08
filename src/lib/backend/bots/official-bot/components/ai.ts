@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 import { AttachmentBuilder } from 'discord.js';
-import { getBotConfig } from '../../../config.js';
+import { getBotConfig, resolveGuildAiConfig } from '../../../config.js';
 import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 import { publishVoiceCommand, readVoiceState } from './voiceControl.js';
@@ -391,10 +391,12 @@ async function handleMessageCreate(message) {
 
 			const [configRow, replied] = await Promise.all([db.getBotAiByBotId(botConfig.id), fetchRepliedMessage(message)]);
 
-			const config = db.botAiFromDbRow(configRow);
-			if (!config.enabled || !config.api_url || !config.api_key || !config.model) return;
+			const botAi = db.botAiFromDbRow(configRow);
+			if (!botAi.enabled || !botAi.api_url || !botAi.api_key || !botAi.model) return;
 
 			if (!mentioned && replied?.author?.id !== botUserId) return;
+
+			const config = await resolveGuildAiConfig(message.guild.id, botAi);
 
 			const prompt = stripBotMention(message.content ?? '', botUserId);
 

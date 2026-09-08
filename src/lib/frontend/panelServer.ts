@@ -13,6 +13,14 @@ const REGISTRY = [
 		iconClass: 'text-blue-400'
 	},
 	{
+		id: 'ai',
+		label: 'AI',
+		featureSwitch: false,
+		hrefSuffix: '/ai',
+		icon: 'fa-robot',
+		iconClass: 'text-violet-400'
+	},
+	{
 		id: 'welcomer',
 		label: 'Welcomer',
 		featureSwitch: true,

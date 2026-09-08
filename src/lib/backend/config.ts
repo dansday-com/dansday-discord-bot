@@ -259,13 +259,13 @@ export const PERMISSIONS = {
 		if (!server) {
 			throw new Error(`Server not found for guild ${guildId}`);
 		}
-		const settings = await getServerSettingsRow(server.id, serverSettingsComponent.permissions);
-		if (!settings || !settings.settings) {
-			throw new Error(`Permissions not configured for guild ${guildId}`);
-		}
+		const [mainRow, creatorRow] = await Promise.all([
+			getServerSettingsRow(server.id, serverSettingsComponent.main),
+			getServerSettingsRow(server.id, serverSettingsComponent.content_creator)
+		]);
 		return {
-			STAFF_ROLES: settings.settings.staff_roles || [],
-			CONTENT_CREATOR_ROLES: settings.settings.content_creator_roles || []
+			STAFF_ROLES: mainRow?.settings?.staff_roles || [],
+			CONTENT_CREATOR_ROLES: creatorRow?.settings?.content_creator_roles || []
 		};
 	},
 

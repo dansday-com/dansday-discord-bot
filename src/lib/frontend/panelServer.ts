@@ -5,14 +5,6 @@ export const APP_URL = 'https://dansday.com';
 const REGISTRY = [
 	{ id: 'main', label: 'Main', featureSwitch: false, hrefSuffix: '', icon: 'fa-gear', iconClass: 'text-emerald-400' },
 	{
-		id: 'permissions',
-		label: 'Permissions',
-		featureSwitch: false,
-		hrefSuffix: '/permissions',
-		icon: 'fa-shield-halved',
-		iconClass: 'text-blue-400'
-	},
-	{
 		id: 'ai',
 		label: 'AI',
 		featureSwitch: false,

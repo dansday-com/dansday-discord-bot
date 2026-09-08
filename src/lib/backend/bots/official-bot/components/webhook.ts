@@ -52,10 +52,6 @@ function parseColor(colorInput) {
 	return null;
 }
 
-const PERMISSION_CATEGORY_KEYS: Record<string, string> = {
-	staff: 'staff_roles'
-};
-
 async function resolveCategoryRoleMentions(serverId: any, guild: any, categories: string[]): Promise<string> {
 	if (!Array.isArray(categories) || categories.length === 0) return '';
 	const mentions: string[] = [];
@@ -71,15 +67,11 @@ async function resolveCategoryRoleMentions(serverId: any, guild: any, categories
 		}
 	}
 
-	const permRow = await db.getServerSettings(serverId, 'permissions').catch(() => null);
-	const permSettings = permRow && Array.isArray(permRow) ? permRow[0]?.settings : permRow?.settings;
-	if (permSettings) {
-		for (const cat of categories) {
-			const key = PERMISSION_CATEGORY_KEYS[cat];
-			if (!key) continue;
-			for (const id of permSettings[key] || []) {
-				if (id) roleIds.add(String(id));
-			}
+	if (categories.includes('staff')) {
+		const mainRow = await db.getServerSettings(serverId, 'main').catch(() => null);
+		const mainSettings = mainRow && Array.isArray(mainRow) ? mainRow[0]?.settings : mainRow?.settings;
+		for (const id of mainSettings?.staff_roles || []) {
+			if (id) roleIds.add(String(id));
 		}
 	}
 

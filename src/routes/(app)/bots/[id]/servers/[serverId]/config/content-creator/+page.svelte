@@ -17,6 +17,7 @@
 	let targetChannel = $state<string>(data.settings?.target_channel_id ?? '');
 	let cooldownDays = $state<number>(data.settings?.cooldown_days ?? 1);
 	let pendingRole = $state<string>(data.settings?.pending_role ?? '');
+	let creatorRoles = $state<string[]>(data.settings?.content_creator_roles ?? []);
 
 	async function save() {
 		saving = true;
@@ -31,6 +32,7 @@
 					target_channel_id: targetChannel,
 					cooldown_days: cooldownDays,
 					pending_role: pendingRole,
+					content_creator_roles: creatorRoles,
 					enabled: featureEnabled
 				})
 			});
@@ -88,6 +90,12 @@
 			<label class="text-ash-300 mb-1.5 block text-xs font-medium"><i class="fas fa-user-shield mr-1 text-pink-400"></i>Pending Admission Role</label>
 			<p class="text-ash-500 mb-2 text-xs">Optional role to mention when a new application arrives.</p>
 			<RolePicker roles={data.roles} value={pendingRole} single placeholder="None" onchange={(v) => (pendingRole = v as string)} />
+		</div>
+
+		<div>
+			<label class="text-ash-300 mb-1.5 block text-xs font-medium"><i class="fas fa-video mr-1 text-pink-400"></i>Content Creator Roles</label>
+			<p class="text-ash-500 mb-2 text-xs">Roles treated as content creators across the bot, and used for creator member filtering.</p>
+			<RolePicker roles={data.roles} value={creatorRoles} onchange={(v) => (creatorRoles = v as string[])} />
 		</div>
 	</div>
 

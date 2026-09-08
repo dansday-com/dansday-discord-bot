@@ -950,10 +950,11 @@ export async function updateMemberNotificationChannels(serverId: any, discordMem
 
 export async function getContentCreatorRoleDbIds(serverId: any) {
 	await initializeDatabase();
-	const permissionsSettings = await getServerSettings(serverId, SERVER_SETTINGS.component.permissions).catch(() => null);
 	const contentCreatorSettings = await getServerSettings(serverId, SERVER_SETTINGS.component.content_creator).catch(() => null);
 	const roleIds = new Set<string>(
-		[...((permissionsSettings as any)?.settings?.content_creator_roles || []), (contentCreatorSettings as any)?.settings?.content_creator_role].filter(Boolean)
+		[...((contentCreatorSettings as any)?.settings?.content_creator_roles || []), (contentCreatorSettings as any)?.settings?.content_creator_role].filter(
+			Boolean
+		)
 	);
 	if (roleIds.size === 0) return new Set<number>();
 	const rows = await db
@@ -1232,8 +1233,6 @@ async function seedNewServerSettings(serverId: number) {
 		footer: DEFAULT_MAIN_EMBED_FOOTER,
 		bot_nickname: DEFAULT_BOT_NICKNAME
 	});
-
-	await upsertServerSettings(serverId, SERVER_SETTINGS.component.permissions, {});
 }
 
 export async function listPublicServers() {

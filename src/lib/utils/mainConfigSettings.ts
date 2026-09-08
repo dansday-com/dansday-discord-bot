@@ -24,16 +24,19 @@ export function normalizeMainConfigForPanel(raw: unknown): {
 	footer: string;
 	bot_updates_channel_id: string;
 	bot_nickname: string;
+	staff_roles: string[];
 } {
 	const { color, footer } = getEffectiveMainEmbedAppearance(raw);
 	const base = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
 	const updateCh = typeof base.bot_updates_channel_id === 'string' ? base.bot_updates_channel_id.trim() : '';
 	const nickname = typeof base.bot_nickname === 'string' ? base.bot_nickname.trim() : '';
+	const staffRoles = Array.isArray(base.staff_roles) ? base.staff_roles.map((id) => String(id)).filter(Boolean) : [];
 
 	return {
 		color,
 		footer,
 		bot_updates_channel_id: updateCh,
-		bot_nickname: nickname
+		bot_nickname: nickname,
+		staff_roles: staffRoles
 	};
 }

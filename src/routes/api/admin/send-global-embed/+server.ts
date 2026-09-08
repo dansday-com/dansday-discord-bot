@@ -2,11 +2,9 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { logger } from '$lib/utils/index.js';
-import { existsSync, readFileSync, unlinkSync } from 'fs';
-import { basename, join } from 'path';
+import { basename } from 'path';
 import { request as httpRequest } from 'http';
-
-const uploadsDir = join(process.cwd(), 'data', 'embed-images');
+import { readEmbedImage, removeEmbedImage } from '$lib/backend/storage/embedImages.js';
 
 export const POST: RequestHandler = async ({ locals, request }) => {
 	if (!locals.user.authenticated || locals.user.account_type !== 'superadmin') {
@@ -42,16 +40,11 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			if (!uploadedBasename.startsWith(prefix) || !/^[a-zA-Z0-9_.\-]+$/.test(uploadedBasename)) {
 				return json({ success: false, error: 'Invalid uploaded image filename' }, { status: 400 });
 			}
-			try {
-				const filePath = join(uploadsDir, uploadedBasename);
-				if (!filePath.startsWith(uploadsDir)) {
-					return json({ success: false, error: 'Invalid uploaded image path' }, { status: 400 });
-				}
-				if (existsSync(filePath)) {
-					imageBuffer = readFileSync(filePath);
-					imageFilename = uploadedBasename;
-				}
-			} catch (_) {}
+			const stored = await readEmbedImage(uploadedBasename);
+			if (stored) {
+				imageBuffer = stored;
+				imageFilename = uploadedBasename;
+			}
 		}
 
 		let finalImageUrl = image_url ? String(image_url).trim() : null;
@@ -59,12 +52,9 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			finalImageUrl = null;
 		}
 
-		function removeTempUpload() {
+		async function removeTempUpload() {
 			if (!uploadedBasename) return;
-			try {
-				const fp = join(uploadsDir, uploadedBasename);
-				if (existsSync(fp)) unlinkSync(fp);
-			} catch (_) {}
+			await removeEmbedImage(uploadedBasename);
 		}
 
 		const payload = JSON.stringify({
@@ -128,7 +118,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 			}
 		}
 
-		removeTempUpload();
+		await removeTempUpload();
 
 		return json({ success: true, successCount: totalSuccess, failCount: totalFail });
 	} catch (error: any) {

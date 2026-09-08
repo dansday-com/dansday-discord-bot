@@ -1,10 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import { existsSync, mkdirSync, writeFileSync } from 'fs';
-import { join } from 'path';
 import { logger } from '$lib/utils/index.js';
-
-const uploadsDir = join(process.cwd(), 'data', 'embed-images');
+import { saveEmbedImage } from '$lib/backend/storage/embedImages.js';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	if (!locals.user.authenticated || locals.user.account_type !== 'superadmin') {
@@ -44,10 +41,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		if (!imageData) return json({ success: false, error: 'No image file provided' }, { status: 400 });
 		if (imageData.length > 10 * 1024 * 1024) return json({ success: false, error: 'Image file is too large. Maximum size is 10MB' }, { status: 400 });
 
-		if (!existsSync(uploadsDir)) mkdirSync(uploadsDir, { recursive: true });
 		const prefix = locals.user.panel_id ? `global-${locals.user.panel_id}` : 'global';
 		const filename = `${prefix}-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
-		writeFileSync(join(uploadsDir, filename), imageData);
+		await saveEmbedImage(filename, imageData);
 
 		return json({ success: true, url: `/api/uploads/embed-images/${filename}`, path: filename });
 	} catch (error: any) {

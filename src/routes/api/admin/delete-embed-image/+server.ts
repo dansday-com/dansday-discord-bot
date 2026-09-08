@@ -1,10 +1,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import { existsSync, unlinkSync } from 'fs';
-import { basename, join } from 'path';
+import { basename } from 'path';
 import { logger } from '$lib/utils/index.js';
-
-const uploadsDir = join(process.cwd(), 'data', 'embed-images');
+import { removeEmbedImage } from '$lib/backend/storage/embedImages.js';
 
 function isGlobalEmbedFilename(filename: string, panelId?: number | null): boolean {
 	const safe = basename(filename);
@@ -30,10 +28,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return json({ success: false, error: 'Invalid or unsupported image path' }, { status: 400 });
 		}
 
-		const filePath = join(uploadsDir, basename(filename));
-		if (existsSync(filePath)) {
-			unlinkSync(filePath);
-		}
+		await removeEmbedImage(basename(filename));
 
 		return json({ success: true });
 	} catch (error: any) {

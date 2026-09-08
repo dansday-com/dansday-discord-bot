@@ -2,13 +2,11 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import db from '$lib/database.js';
 import { logger } from '$lib/utils/index.js';
-import { existsSync, readFileSync, unlinkSync } from 'fs';
-import { basename, join } from 'path';
+import { basename } from 'path';
 import { request as httpRequest } from 'http';
 import { canUseEmbedBuilder, SERVER_SETTINGS } from '$lib/frontend/panelServer.js';
 import { mainAppearanceBlockingMessage, messageFromBotWebhookPayload } from '$lib/utils/configPrerequisiteErrors.js';
-
-const uploadsDir = join(process.cwd(), 'data', 'embed-images');
+import { readEmbedImage, removeEmbedImage } from '$lib/backend/storage/embedImages.js';
 
 function embedFilenameBelongsToServer(filename: string, serverId: number): boolean {
 	const safe = basename(filename);
@@ -76,16 +74,11 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			if (!embedFilenameBelongsToServer(uploadedBasename, serverId)) {
 				return json({ success: false, error: 'Invalid or unsupported image path' }, { status: 400 });
 			}
-			try {
-				const filePath = join(uploadsDir, uploadedBasename);
-				if (!filePath.startsWith(uploadsDir)) {
-					return json({ success: false, error: 'Invalid uploaded image path' }, { status: 400 });
-				}
-				if (existsSync(filePath)) {
-					imageBuffer = readFileSync(filePath);
-					imageFilename = uploadedBasename;
-				}
-			} catch (_) {}
+			const stored = await readEmbedImage(uploadedBasename);
+			if (stored) {
+				imageBuffer = stored;
+				imageFilename = uploadedBasename;
+			}
 		}
 
 		let finalImageUrl = image_url ? String(image_url).trim() : null;
@@ -93,12 +86,9 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			finalImageUrl = null;
 		}
 
-		function removeTempUpload() {
+		async function removeTempUpload() {
 			if (!uploadedBasename) return;
-			try {
-				const fp = join(uploadsDir, uploadedBasename);
-				if (existsSync(fp)) unlinkSync(fp);
-			} catch (_) {}
+			await removeEmbedImage(uploadedBasename);
 		}
 
 		const payload = JSON.stringify({
@@ -149,19 +139,17 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 		});
 
 		if (result.status === 200 && result.body.success) {
-			removeTempUpload();
+			await removeTempUpload();
 			logger.log(`${locals.user.username} used embed builder on server "${server.name || serverId}"`);
 			return json({ success: true, message: 'Embed sent successfully' });
 		} else {
-			removeTempUpload();
+			await removeTempUpload();
 			const msg = messageFromBotWebhookPayload(result.body);
 			return json({ success: false, error: msg }, { status: result.status });
 		}
 	} catch (error: any) {
 		if (uploaded_image_path) {
-			try {
-				unlinkSync(join(uploadsDir, basename(uploaded_image_path)));
-			} catch (_) {}
+			await removeEmbedImage(basename(uploaded_image_path));
 		}
 		logger.log(`❌ Error sending embed: ${error.message}`);
 		return json({ success: false, error: error.message }, { status: 500 });

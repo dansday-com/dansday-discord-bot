@@ -161,6 +161,7 @@ Versions match `package.json` at release (caret ranges; run `npm ls` for the exa
 ## Configuration
 
 - Copy **`.env.example`** to **`.env`** and set the database, session, captcha, mail, Redis and bot token values.
+- **Uploads** are written to local disk by default. Set `S3_BUCKET` and both S3 keys to store them in an S3 or R2 bucket instead — add `S3_ENDPOINT` for R2, or set `S3_REGION` to the bucket's region on AWS. Images are still served through the app, so the bucket stays private.
 - Enable the **Server Members** and **Message Content** privileged intents in the Discord Developer Portal, or the bot will not start.
 - **AI, voice and the tools** are configured in the panel, not `.env`. Each needs its URL, model and key before it switches on, so a half-filled section is inactive rather than broken. Keys are stored per bot and never sent back to the browser. Restart the bot after changing them.
 - **Voice** needs AI chat enabled first, plus its own Google AI key and voice model, plus Redis.

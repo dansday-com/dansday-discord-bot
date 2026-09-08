@@ -363,6 +363,11 @@ export const envVars = [
 		desc: 'A long random secret. Signs public account card links and keys the demo login captcha. Rotating it invalidates every issued account link.'
 	},
 	{ label: 'REDIS_URL', req: 'optional', desc: 'Redis for sessions and caching, e.g. redis://default:pass@localhost:6379/0.' },
+	{
+		label: 'S3_BUCKET / S3_ACCESS_KEY_ID / S3_SECRET_ACCESS_KEY',
+		req: 'optional',
+		desc: 'Store uploads in an S3 or R2 bucket instead of local disk. All three must be set; add S3_ENDPOINT for R2, or S3_REGION for the bucket region on AWS.'
+	},
 	{ label: 'BOT_ID', req: 'per bot process', desc: 'The database id of the bot this process runs. The token lives in the database, not in env.' },
 	{
 		label: 'OTEL_EXPORTER_OTLP_ENDPOINT / OTEL_SERVICE_NAME',

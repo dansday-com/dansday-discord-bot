@@ -1,10 +1,67 @@
 import { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } from 'discord.js';
-import { getEmbedConfig, NOTIFICATIONS } from '../../../../config.js';
+import { getEmbedConfig, isComponentFeatureEnabled, NOTIFICATIONS, serverSettingsComponent } from '../../../../config.js';
 import { hasPermission, getPermissionDeniedMessage } from '../permissions.js';
 import { logger } from '../../../../../utils/index.js';
 import { translate } from '../../i18n.js';
 
 export async function handleNotificationsButton(interaction) {
+	try {
+		const guildId = interaction.guild.id;
+		const userId = interaction.user.id;
+
+		const channelsEnabled = await isComponentFeatureEnabled(guildId, serverSettingsComponent.notifications);
+		const robloxEnabled = await isComponentFeatureEnabled(guildId, serverSettingsComponent.roblox_catalog_notifier);
+
+		if (!channelsEnabled && !robloxEnabled) {
+			const errorMsg = await translate('notifications.errors.noneEnabled', guildId, userId);
+			await interaction.reply({ content: errorMsg, flags: 64 }).catch(() => null);
+			return;
+		}
+
+		const embedConfig = await getEmbedConfig(guildId);
+		const embed = new EmbedBuilder()
+			.setColor(embedConfig.COLOR)
+			.setTitle(await translate('notifications.hub.title', guildId, userId))
+			.setDescription(await translate('notifications.hub.description', guildId, userId))
+			.setFooter({ text: embedConfig.FOOTER })
+			.setTimestamp();
+
+		const buttons = [];
+		if (channelsEnabled) {
+			buttons.push(
+				new ButtonBuilder()
+					.setCustomId('notifications_channels')
+					.setLabel(await translate('notifications.hub.channels', guildId, userId))
+					.setStyle(ButtonStyle.Success)
+			);
+		}
+		if (robloxEnabled) {
+			buttons.push(
+				new ButtonBuilder()
+					.setCustomId('notifications_roblox')
+					.setLabel(await translate('notifications.hub.roblox', guildId, userId))
+					.setStyle(ButtonStyle.Success)
+			);
+		}
+
+		const rows = [
+			new ActionRowBuilder().addComponents(...buttons),
+			new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('bot_menu').setLabel('📋 Menu').setStyle(ButtonStyle.Secondary))
+		];
+
+		const payload = { embeds: [embed], components: rows };
+		if (interaction.replied || interaction.deferred) {
+			await interaction.editReply(payload).catch(() => null);
+		} else {
+			await interaction.update(payload).catch(() => interaction.reply({ ...payload, flags: 64 }).catch(() => null));
+		}
+	} catch (error) {
+		logger.log(`❌ Notifications hub error: ${error.message}`);
+		await interaction.reply({ content: `❌ ${error.message}`, flags: 64 }).catch(() => null);
+	}
+}
+
+export async function handleNotificationChannelsButton(interaction) {
 	try {
 		const member = interaction.member;
 
@@ -82,14 +139,23 @@ export async function handleNotificationsButton(interaction) {
 
 		const selectRow = new ActionRowBuilder().addComponents(selectMenu);
 
-		const backButton = new ButtonBuilder().setCustomId('bot_menu').setLabel('📋 Menu').setStyle(ButtonStyle.Secondary);
+		const backButton = new ButtonBuilder()
+			.setCustomId('bot_notifications')
+			.setLabel(await translate('notifications.hub.back', interaction.guild.id, interaction.user.id))
+			.setStyle(ButtonStyle.Secondary);
 
 		const backRow = new ActionRowBuilder().addComponents(backButton);
+
+		const activeMentions = validChannels.filter((channel) => memberCurrentNotificationChannelIds.includes(channel.id)).map((channel) => `<#${channel.id}>`);
+		const activeLine =
+			activeMentions.length > 0
+				? await translate('notifications.active', interaction.guild.id, interaction.user.id, { channels: activeMentions.join(', ') })
+				: await translate('notifications.none', interaction.guild.id, interaction.user.id);
 
 		const embed = new EmbedBuilder()
 			.setColor(embedConfig.COLOR)
 			.setTitle(title)
-			.setDescription(description)
+			.setDescription(`${description}\n\n${activeLine}`.slice(0, 4096))
 			.setFooter({ text: embedConfig.FOOTER })
 			.setTimestamp();
 
@@ -100,7 +166,7 @@ export async function handleNotificationsButton(interaction) {
 			await interaction.update(payload).catch(() => interaction.reply({ ...payload, flags: 64 }).catch(() => null));
 		}
 	} catch (error) {
-		logger.log(`❌ Notifications button error: ${error.message}`);
+		logger.log(`❌ Notification channels button error: ${error.message}`);
 		await interaction
 			.reply({
 				content: `❌ ${error.message}`,

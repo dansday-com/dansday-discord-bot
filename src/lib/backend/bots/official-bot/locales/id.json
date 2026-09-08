@@ -355,8 +355,18 @@
 		"updated": "✅ Preferensi notifikasi kamu telah diperbarui.",
 		"errors": {
 			"notConfigured": "❌ Notifikasi belum dikonfigurasi untuk server ini.",
-			"noRoles": "❌ Belum ada channel notifikasi. Minta admin untuk mengonfigurasi notifikasi di dashboard."
-		}
+			"noRoles": "❌ Belum ada channel notifikasi. Minta admin untuk mengonfigurasi notifikasi di dashboard.",
+			"noneEnabled": "❌ Tidak ada fitur notifikasi yang aktif di server ini."
+		},
+		"hub": {
+			"title": "🔔 Preferensi Notifikasi",
+			"description": "Pilih jenis notifikasi yang ingin kamu atur.",
+			"channels": "📢 Notifikasi Channel",
+			"roblox": "🛍️ Notifikasi Item Roblox",
+			"back": "⬅️ Notifikasi"
+		},
+		"active": "**Aktif:** {channels}",
+		"none": "**Aktif:** belum ada."
 	},
 	"customSupporterRole": {
 		"create": {
@@ -452,8 +462,42 @@
 	},
 	"robloxCatalog": {
 		"notifications": {
-			"added": "🔔 Kamu akan ditandai di {channel} setiap kali **{item}** berubah. {count} sedang memantau.",
 			"removed": "🔕 Kamu tidak akan ditandai lagi untuk **{item}**.",
+			"saved": "🔔 Tersimpan. Kamu akan ditandai untuk **{item}** pada: {types}. {count} sedang memantau.",
+			"noTypes": "tidak ada",
+			"types": {
+				"price": {
+					"label": "Harga",
+					"description": "Harga dari penjual berubah."
+				},
+				"lowest_resale_price": {
+					"label": "Harga jual ulang",
+					"description": "Harga reseller termurah berubah."
+				},
+				"units_available": {
+					"label": "Sisa stok",
+					"description": "Jumlah unit yang masih bisa dibeli berubah."
+				},
+				"total_quantity": {
+					"label": "Total suplai",
+					"description": "Total jumlah salinan berubah."
+				}
+			},
+			"item": {
+				"title": "🔔 Notifikasi Item",
+				"description": "Pilih perubahan apa yang menandai kamu untuk [{item}]({url}). Kosongkan semua pilihan untuk berhenti menerima notifikasi item ini.",
+				"active": "**Notifikasi untuk:** {types}",
+				"placeholder": "Pilih notifikasi yang kamu mau..."
+			},
+			"menu": {
+				"title": "🛍️ Notifikasi Item Roblox",
+				"description": "Kamu memantau {count} item. Pilih salah satu untuk mengubah jenis notifikasinya.",
+				"empty": "Kamu belum memantau item Roblox apa pun. Tekan 🔔 Notify me di bawah postingan katalog untuk mulai.",
+				"placeholder": "Pilih item untuk diubah...",
+				"disableAll": "🔕 Matikan semua",
+				"disabledAll": "🔕 Notifikasi untuk {count} item dimatikan.",
+				"back": "⬅️ Kembali"
+			},
 			"errors": {
 				"invalidItem": "❌ Item katalog dari tombol ini tidak bisa dibaca.",
 				"memberNotFound": "❌ Profil member kamu belum tersinkron. Coba lagi sebentar."

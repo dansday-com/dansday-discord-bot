@@ -5560,24 +5560,73 @@ async function updateBotRobloxItemLastValues(items: RobloxCatalogItemSnapshot[])
 	}
 }
 
-async function toggleServerMemberRobloxItemNotification(memberId: number, itemId: number): Promise<'added' | 'removed'> {
+async function getServerMemberRobloxItemNotificationTypes(memberId: number, itemId: number): Promise<string[]> {
 	await initializeDatabase();
 	const [existing] = await db
-		.select({ id: schema.serverMemberRobloxItemNotifications.id })
+		.select({ types: schema.serverMemberRobloxItemNotifications.types })
 		.from(schema.serverMemberRobloxItemNotifications)
 		.where(and(eq(schema.serverMemberRobloxItemNotifications.member_id, memberId), eq(schema.serverMemberRobloxItemNotifications.item_id, itemId)))
 		.limit(1);
+	if (!existing) return [];
+	return String(existing.types || '')
+		.split(',')
+		.map((x) => x.trim())
+		.filter(Boolean);
+}
 
-	if (existing) {
-		await db.delete(schema.serverMemberRobloxItemNotifications).where(eq(schema.serverMemberRobloxItemNotifications.id, existing.id));
+async function setServerMemberRobloxItemNotificationTypes(memberId: number, itemId: number, types: string[]): Promise<'saved' | 'removed'> {
+	await initializeDatabase();
+	const cleaned = Array.from(new Set(types.map((x) => x.trim()).filter(Boolean)));
+
+	if (cleaned.length === 0) {
+		await db
+			.delete(schema.serverMemberRobloxItemNotifications)
+			.where(and(eq(schema.serverMemberRobloxItemNotifications.member_id, memberId), eq(schema.serverMemberRobloxItemNotifications.item_id, itemId)));
 		return 'removed';
 	}
 
+	const joined = cleaned.join(',');
 	await db
 		.insert(schema.serverMemberRobloxItemNotifications)
-		.values({ member_id: memberId, item_id: itemId, created_at: toMySQLDateTime() as any })
-		.onDuplicateKeyUpdate({ set: { member_id: memberId } as any });
-	return 'added';
+		.values({ member_id: memberId, item_id: itemId, types: joined, created_at: toMySQLDateTime() as any })
+		.onDuplicateKeyUpdate({ set: { types: joined } as any });
+	return 'saved';
+}
+
+async function listServerMemberRobloxItemNotifications(memberId: number): Promise<{ itemId: number; assetId: bigint; name: string | null; types: string[] }[]> {
+	await initializeDatabase();
+	const rows = await db
+		.select({
+			itemId: schema.botRobloxItems.id,
+			assetId: schema.botRobloxItems.asset_id,
+			name: schema.botRobloxItems.name,
+			types: schema.serverMemberRobloxItemNotifications.types
+		})
+		.from(schema.serverMemberRobloxItemNotifications)
+		.innerJoin(schema.botRobloxItems, eq(schema.botRobloxItems.id, schema.serverMemberRobloxItemNotifications.item_id))
+		.where(eq(schema.serverMemberRobloxItemNotifications.member_id, memberId))
+		.orderBy(schema.serverMemberRobloxItemNotifications.id);
+
+	return rows.map((r) => ({
+		itemId: r.itemId,
+		assetId: r.assetId,
+		name: r.name,
+		types: String(r.types || '')
+			.split(',')
+			.map((x) => x.trim())
+			.filter(Boolean)
+	}));
+}
+
+async function clearServerMemberRobloxItemNotifications(memberId: number): Promise<number> {
+	await initializeDatabase();
+	const rows = await db
+		.select({ id: schema.serverMemberRobloxItemNotifications.id })
+		.from(schema.serverMemberRobloxItemNotifications)
+		.where(eq(schema.serverMemberRobloxItemNotifications.member_id, memberId));
+	if (rows.length === 0) return 0;
+	await db.delete(schema.serverMemberRobloxItemNotifications).where(eq(schema.serverMemberRobloxItemNotifications.member_id, memberId));
+	return rows.length;
 }
 
 async function countServerRobloxItemNotifications(serverId: number, itemId: number): Promise<number> {
@@ -5592,8 +5641,11 @@ async function countServerRobloxItemNotifications(serverId: number, itemId: numb
 	return Number(row?.total) || 0;
 }
 
-async function listServerRobloxItemNotificationDiscordIds(serverId: number, assetId: number | bigint): Promise<string[]> {
+async function listServerRobloxItemNotificationDiscordIds(serverId: number, assetId: number | bigint, types?: string[]): Promise<string[]> {
 	await initializeDatabase();
+	const typeFilter =
+		types && types.length > 0 ? or(...types.map((f) => sql`FIND_IN_SET(${f}, ${schema.serverMemberRobloxItemNotifications.types}) > 0`)) : undefined;
+
 	const rows = await db
 		.select({ discord_member_id: schema.serverMembers.discord_member_id })
 		.from(schema.serverMemberRobloxItemNotifications)
@@ -5603,7 +5655,8 @@ async function listServerRobloxItemNotificationDiscordIds(serverId: number, asse
 			and(
 				eq(schema.serverMembers.server_id, serverId),
 				isNull(schema.serverMembers.deleted_at),
-				eq(schema.botRobloxItems.asset_id, snapshotAssetIdBigInt(assetId))
+				eq(schema.botRobloxItems.asset_id, snapshotAssetIdBigInt(assetId)),
+				...(typeFilter ? [typeFilter] : [])
 			)
 		)
 		.orderBy(schema.serverMemberRobloxItemNotifications.id);
@@ -6705,7 +6758,10 @@ export default {
 	markServerRobloxItemMessagePosted,
 	detectAndUpdateServerRobloxItemChanges,
 	updateBotRobloxItemLastValues,
-	toggleServerMemberRobloxItemNotification,
+	getServerMemberRobloxItemNotificationTypes,
+	setServerMemberRobloxItemNotificationTypes,
+	listServerMemberRobloxItemNotifications,
+	clearServerMemberRobloxItemNotifications,
 	countServerRobloxItemNotifications,
 	listServerRobloxItemNotificationDiscordIds,
 	listNotifiedRobloxItemsForBot,

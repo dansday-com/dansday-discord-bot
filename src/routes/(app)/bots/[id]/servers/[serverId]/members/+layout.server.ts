@@ -23,10 +23,17 @@ export const load: LayoutServerLoad = async ({ locals, params }) => {
 		redirect(302, DASHBOARD_PATH);
 	}
 
-	const [members, permissions] = await Promise.all([
+	const [members, mainSettings, creatorSettings, adminRoleIds] = await Promise.all([
 		db.getServerMembersList(params.serverId),
-		db.getServerSettings(params.serverId, SERVER_SETTINGS.component.permissions).catch(() => null)
+		db.getServerSettings(params.serverId, SERVER_SETTINGS.component.main).catch(() => null),
+		db.getServerSettings(params.serverId, SERVER_SETTINGS.component.content_creator).catch(() => null),
+		db.getAdministratorRoleIds(params.serverId).catch(() => [])
 	]);
 
-	return { members: members ?? [], permissions: permissions ?? null };
+	return {
+		members: members ?? [],
+		staffRoleIds: (mainSettings?.settings?.staff_roles ?? []) as string[],
+		contentCreatorRoleIds: (creatorSettings?.settings?.content_creator_roles ?? []) as string[],
+		adminRoleIds: adminRoleIds ?? []
+	};
 };

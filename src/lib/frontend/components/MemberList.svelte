@@ -17,18 +17,25 @@
 		voice_minutes_active: number;
 		voice_minutes_afk: number;
 		is_afk: boolean;
+		is_booster: boolean;
 		member_since: string;
 		profile_created_at: string;
-		roles: { id: string; name: string; color: string }[];
+		roles: { id: string; name: string; color: string; position: number }[];
 	};
+
+	function rolesHighestFirst(m: Member) {
+		return [...(m.roles ?? [])].sort((a, b) => (b.position ?? 0) - (a.position ?? 0));
+	}
 
 	interface Props {
 		members: Member[];
 		filterRoleIds?: string[];
-		permissionsHref?: string;
+		configureHref?: string;
+		configureLabel?: string;
+		boostersOnly?: boolean;
 	}
 
-	let { members, filterRoleIds, permissionsHref }: Props = $props();
+	let { members, filterRoleIds, configureHref, configureLabel = 'Open configuration', boostersOnly = false }: Props = $props();
 
 	const MEMBER_SORT_OPTIONS: LabeledSelectOption[] = [
 		{ value: 'rank_asc', label: 'Rank (Low → High)' },
@@ -65,7 +72,7 @@
 		return member.roles?.some((r) => roleIds.includes(r.id)) ?? false;
 	}
 
-	const roleFilterUnset = $derived(filterRoleIds !== undefined && filterRoleIds.length === 0);
+	const roleFilterUnset = $derived(!boostersOnly && !!configureHref && filterRoleIds !== undefined && filterRoleIds.length === 0);
 
 	const filtered = $derived(
 		members.filter((m) => {
@@ -76,6 +83,7 @@
 				m.display_name?.toLowerCase().includes(q) ||
 				m.server_display_name?.toLowerCase().includes(q) ||
 				m.discord_member_id?.includes(q);
+			if (boostersOnly) return matchSearch && !!m.is_booster;
 			return matchSearch && matchesRoleFilter(m, filterRoleIds);
 		})
 	);
@@ -189,11 +197,11 @@
 
 {#if roleFilterUnset}
 	<div class="text-ash-400 border-ash-600 bg-ash-800/60 mb-4 rounded-lg border px-4 py-3 text-sm">
-		<p class="text-ash-300 mb-1">No roles are set for this category in Permissions yet.</p>
-		<p class="text-ash-500 text-xs">Choose Discord roles under Configuration → Permissions so this list can filter members.</p>
-		{#if permissionsHref}
-			<a href={permissionsHref} class="text-ash-300 hover:text-ash-100 mt-2 inline-flex items-center gap-1.5 text-xs font-medium underline">
-				<i class="fas fa-shield-halved text-blue-300"></i>Open Permissions
+		<p class="text-ash-300 mb-1">No roles are set for this category yet.</p>
+		<p class="text-ash-500 text-xs">Choose Discord roles in the module configuration so this list can filter members.</p>
+		{#if configureHref}
+			<a href={configureHref} class="text-ash-300 hover:text-ash-100 mt-2 inline-flex items-center gap-1.5 text-xs font-medium underline">
+				<i class="fas fa-sliders text-blue-300"></i>{configureLabel}
 			</a>
 		{/if}
 	</div>
@@ -311,7 +319,7 @@
 									<span class="text-ash-400 text-xs tracking-wide uppercase">Roles</span>
 								</div>
 								<div class="flex flex-wrap gap-1.5">
-									{#each member.roles as role}
+									{#each rolesHighestFirst(member) as role (role.id)}
 										{@const c = roleColor(role.color)}
 										<span
 											class="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium"

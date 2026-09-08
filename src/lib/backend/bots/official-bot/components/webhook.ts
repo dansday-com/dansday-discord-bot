@@ -1,6 +1,6 @@
 import { COMMUNICATION, NOTIFICATIONS, getEmbedConfig, isComponentFeatureEnabled, serverSettingsComponent } from '../../../config.js';
 import { resolveEmbedFooterPlaceholders } from '../../../../utils/embedFooter.js';
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, AttachmentBuilder } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, AttachmentBuilder, PermissionFlagsBits } from 'discord.js';
 import { logger } from '../../../../utils/index.js';
 import db from '../../../../database.js';
 import { resendJoinGreeting } from './sync.js';
@@ -52,30 +52,30 @@ function parseColor(colorInput) {
 	return null;
 }
 
-const PERMISSION_CATEGORY_KEYS: Record<string, string> = {
-	admin: 'admin_roles',
-	staff: 'staff_roles'
-};
-
-async function resolveCategoryRoleMentions(serverId: any, categories: string[]): Promise<string> {
+async function resolveCategoryRoleMentions(serverId: any, guild: any, categories: string[]): Promise<string> {
 	if (!Array.isArray(categories) || categories.length === 0) return '';
 	const mentions: string[] = [];
 	if (categories.includes('everyone')) mentions.push('@everyone');
 	if (categories.includes('here')) mentions.push('@here');
 
-	const permRow = await db.getServerSettings(serverId, 'permissions').catch(() => null);
-	const permSettings = permRow && Array.isArray(permRow) ? permRow[0]?.settings : permRow?.settings;
-	if (permSettings) {
-		const roleIds = new Set<string>();
-		for (const cat of categories) {
-			const key = PERMISSION_CATEGORY_KEYS[cat];
-			if (!key) continue;
-			for (const id of permSettings[key] || []) {
-				if (id) roleIds.add(String(id));
-			}
+	const roleIds = new Set<string>();
+
+	if (categories.includes('admin') && guild) {
+		for (const role of guild.roles.cache.values()) {
+			if (role.id === guild.id || role.managed) continue;
+			if (role.permissions?.has?.(PermissionFlagsBits.Administrator)) roleIds.add(String(role.id));
 		}
-		mentions.push(...[...roleIds].map((id) => `<@&${id}>`));
 	}
+
+	if (categories.includes('staff')) {
+		const mainRow = await db.getServerSettings(serverId, 'main').catch(() => null);
+		const mainSettings = mainRow && Array.isArray(mainRow) ? mainRow[0]?.settings : mainRow?.settings;
+		for (const id of mainSettings?.staff_roles || []) {
+			if (id) roleIds.add(String(id));
+		}
+	}
+
+	mentions.push(...[...roleIds].map((id) => `<@&${id}>`));
 	return mentions.join(' ');
 }
 
@@ -143,7 +143,7 @@ async function handleSendGlobalEmbed(payload) {
 				const messageOptions: any = { embeds: [embed] };
 				if (files.length > 0) messageOptions.files = files;
 
-				const roleMentions = await resolveCategoryRoleMentions(server.id, mention_categories).catch(() => '');
+				const roleMentions = await resolveCategoryRoleMentions(server.id, guild, mention_categories).catch(() => '');
 
 				const notificationMentions = await NOTIFICATIONS.getNotifiedMemberMentionsForChannel(guild_id, channel.id).catch(() => null);
 				const firstMentionChunk = notificationMentions ? notificationMentions[0] : null;

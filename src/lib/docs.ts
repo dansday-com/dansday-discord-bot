@@ -54,7 +54,7 @@ export const sections = [
 		label: 'Permissions',
 		heading: 'Permissions',
 		iconClass: 'fas fa-user-shield',
-		lead: 'Map Discord roles to what they unlock. Set these on the Permissions page.'
+		lead: 'Map Discord roles to what they unlock. Each group lives with the module it belongs to.'
 	},
 	{
 		id: 'modules',
@@ -529,11 +529,10 @@ export const tiers = [
 ];
 
 export const permissionRoles = [
-	{ label: 'Admin Roles', desc: 'Full access to all bot features and configuration.' },
-	{ label: 'Staff Roles', desc: 'Used for staff features and staff-related filtering.' },
-	{ label: 'Content Creator Roles', desc: 'Roles treated as content creators in permissions and member filtering.' },
-	{ label: 'Supporter Roles', desc: 'Marks members as supporters for supporter-only features.' },
-	{ label: 'Member Roles', desc: 'Required to apply as a content creator, and used for role mentions and member filtering.' }
+	{ label: 'Staff Roles', desc: 'Set on the Main page. Used for staff features and staff-related filtering.' },
+	{ label: 'Content Creator Roles', desc: 'Set on the Content Creator module. Used for creator permissions and member filtering.' },
+	{ label: 'Admin', desc: 'Not configured. Anyone with the Discord Administrator permission counts as a bot admin.' },
+	{ label: 'Supporter', desc: 'Not configured. Anyone boosting the server counts as a supporter.' }
 ];
 
 export const modules = [

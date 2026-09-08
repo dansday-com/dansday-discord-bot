@@ -1,3 +1,4 @@
+import { PermissionFlagsBits } from 'discord.js';
 import { PERMISSIONS, getServerForCurrentBot } from '../../../config.js';
 import { translate } from '../i18n.js';
 import db from '../../../../database.js';
@@ -8,13 +9,12 @@ async function getGuildPermissions(guildId: string) {
 	try {
 		return await PERMISSIONS.getPermissions(guildId);
 	} catch (_) {
-		return { ADMIN_ROLES: [], STAFF_ROLES: [], SUPPORTER_ROLES: [], MEMBER_ROLES: [], CONTENT_CREATOR_ROLES: [] };
+		return { STAFF_ROLES: [], CONTENT_CREATOR_ROLES: [] };
 	}
 }
 
 async function isAdmin(member: any) {
-	const perms = await getGuildPermissions(member.guild.id);
-	return await PERMISSIONS.hasAnyRole(member, perms.ADMIN_ROLES);
+	return member?.permissions?.has?.(PermissionFlagsBits.Administrator) === true;
 }
 
 async function isStaff(member: any) {
@@ -22,14 +22,8 @@ async function isStaff(member: any) {
 	return await PERMISSIONS.hasAnyRole(member, perms.STAFF_ROLES);
 }
 
-async function isMember(member: any) {
-	const perms = await getGuildPermissions(member.guild.id);
-	return await PERMISSIONS.hasAnyRole(member, perms.MEMBER_ROLES);
-}
-
 async function isSupporter(member: any) {
-	const perms = await getGuildPermissions(member.guild.id);
-	return await PERMISSIONS.hasAnyRole(member, perms.SUPPORTER_ROLES);
+	return (member?.premiumSince ?? null) !== null;
 }
 
 async function isContentCreator(member: any) {
@@ -44,7 +38,6 @@ export async function hasPermission(member: any, action: string) {
 	if (await isAdmin(member)) return true;
 	if (await isStaff(member)) return action !== 'setup';
 	if (action === 'custom_supporter_role') return (await isSupporter(member)) || (await isContentCreator(member));
-	if (action === 'content_creator_apply') return (await isMember(member)) || (await isSupporter(member)) || (await isContentCreator(member));
 	return false;
 }
 
@@ -60,34 +53,33 @@ export async function getRequiredRolesForAction(guild: any, action: string) {
 			});
 		};
 
+		const addAdminRoles = () => {
+			for (const role of guild.roles.cache.values()) {
+				if (role.id === guild.id || role.managed) continue;
+				if (role.permissions?.has?.(PermissionFlagsBits.Administrator)) roleNames.push(role.name);
+			}
+		};
+
 		if (action === 'setup') {
-			addRoles(perms.ADMIN_ROLES);
+			addAdminRoles();
 			return roleNames.length > 0 ? roleNames : ['Admin'];
 		}
 		if (action === 'staff_only') {
 			addRoles(perms.STAFF_ROLES);
-			addRoles(perms.ADMIN_ROLES);
+			addAdminRoles();
 			return roleNames.length > 0 ? roleNames : ['Staff or Admin'];
 		}
 		if (action === 'custom_supporter_role') {
 			addRoles(perms.CONTENT_CREATOR_ROLES);
-			addRoles(perms.SUPPORTER_ROLES);
 			addRoles(perms.STAFF_ROLES);
-			addRoles(perms.ADMIN_ROLES);
-			return roleNames.length > 0 ? roleNames : ['Content Creator, Supporter, Staff, or Admin'];
-		}
-		if (action === 'content_creator_apply') {
-			addRoles(perms.MEMBER_ROLES);
-			addRoles(perms.SUPPORTER_ROLES);
-			return roleNames.length > 0 ? roleNames : ['Member or Supporter'];
+			addAdminRoles();
+			return roleNames.length > 0 ? roleNames : ['Content Creator, Staff, or Admin'];
 		}
 		if (['feedback', 'afk', 'leveling', 'giveaway', 'settings', 'staff_rating', 'notifications', 'menu', 'content_creator', 'quest_enroll'].includes(action)) {
-			addRoles(perms.MEMBER_ROLES);
 			addRoles(perms.CONTENT_CREATOR_ROLES);
-			addRoles(perms.SUPPORTER_ROLES);
 			addRoles(perms.STAFF_ROLES);
-			addRoles(perms.ADMIN_ROLES);
-			return roleNames.length > 0 ? roleNames : ['Member, Content Creator, Supporter, Staff, or Admin'];
+			addAdminRoles();
+			return roleNames.length > 0 ? roleNames : ['Content Creator, Staff, or Admin'];
 		}
 		return ['Unknown'];
 	} catch (_) {
@@ -106,7 +98,6 @@ export async function getPermissionDeniedMessage(guild: any, action: string, use
 		settings: 'Settings',
 		staff_rating: 'Staff rating',
 		content_creator: 'Content Creator',
-		content_creator_apply: 'Content Creator Application',
 		notifications: 'Notifications',
 		menu: 'Menu',
 		setup: 'Setup',
@@ -127,7 +118,7 @@ export async function getPermissionDeniedMessage(guild: any, action: string, use
 		}
 
 		const perms = await getGuildPermissions(guild.id);
-		const allRoles = [...perms.ADMIN_ROLES, ...perms.STAFF_ROLES, ...perms.SUPPORTER_ROLES, ...perms.MEMBER_ROLES, ...perms.CONTENT_CREATOR_ROLES];
+		const allRoles = [...perms.STAFF_ROLES, ...perms.CONTENT_CREATOR_ROLES];
 		if (allRoles.length === 0) {
 			const title = await translate('permissions.notConfigured.title', guild.id, userId ?? '');
 			const desc = await translate('permissions.notConfigured.description', guild.id, userId ?? '', { action: actionName });
@@ -138,12 +129,7 @@ export async function getPermissionDeniedMessage(guild: any, action: string, use
 	const requiredRoles = await getRequiredRolesForAction(guild, action);
 	const roleList = requiredRoles.length > 0 ? requiredRoles.map((role) => `**${role}**`).join(', ') : 'the required role';
 
-	const scope =
-		action === 'content_creator_apply'
-			? 'permissions.creatorApplyDenied'
-			: action === 'custom_supporter_role'
-				? 'permissions.supporterRoleDenied'
-				: 'permissions.denied';
+	const scope = action === 'custom_supporter_role' ? 'permissions.supporterRoleDenied' : 'permissions.denied';
 	const title = await translate(`${scope}.title`, guild.id, userId ?? '');
 	const description = await translate(`${scope}.description`, guild.id, userId ?? '', { action: actionName, roles: roleList });
 	const footer = await translate(`${scope}.footer`, guild.id, userId ?? '');

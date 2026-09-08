@@ -54,13 +54,8 @@
 	"permissions": {
 		"supporterRoleDenied": {
 			"title": "🔒 **Supporter Perk**",
-			"description": "Your own custom role with a name and colour is a supporter perk. It needs one of these roles:\\n{roles}",
-			"footer": "Ask a server administrator how to become a supporter."
-		},
-		"creatorApplyDenied": {
-			"title": "🔒 **Application Not Open To You Yet**",
-			"description": "Applying to become a content creator needs one of these roles:\\n{roles}",
-			"footer": "You can still browse the creator list. Ask a server administrator how to get a member role."
+			"description": "Your own custom role with a name and colour is a supporter perk. Boost this server, or hold one of these roles:\\n{roles}",
+			"footer": "Boost the server to unlock it."
 		},
 		"denied": {
 			"title": "❌ **Permission Denied**",

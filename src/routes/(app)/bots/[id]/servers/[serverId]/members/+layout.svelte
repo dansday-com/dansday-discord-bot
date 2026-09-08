@@ -9,7 +9,6 @@
 
 	const tabs = [
 		{ label: 'All', href: '' },
-		{ label: 'Members', href: '/member' },
 		{ label: 'Supporter', href: '/supporter' },
 		{ label: 'Content Creator', href: '/content-creator' },
 		{ label: 'Staff', href: '/staff' },

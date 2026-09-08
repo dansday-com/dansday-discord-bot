@@ -101,7 +101,7 @@ async function syncGuildData(guild) {
 			}
 		} catch (error) {}
 
-		const members = Array.from(guild.members.cache.values()).filter((member) => !member.user.bot);
+		const members = Array.from(guild.members.cache.values());
 		if (membersFetched) {
 			await db.syncMembers(serverId, members);
 		} else {
@@ -422,7 +422,7 @@ async function init(discordClient, botToken) {
 				const serverData = await db.getServerByDiscordId(botId, member.guild.id);
 				if (serverData) {
 					const dbMember = await db.upsertMember(serverData.id, member);
-					if (dbMember) {
+					if (dbMember && !member.user?.bot) {
 						const memberRoles = member.roles ? Array.from(member.roles.cache.keys()).filter((roleId) => roleId !== member.guild.id) : [];
 						await db.syncMemberRoles(dbMember.id, memberRoles, serverData.id);
 					}

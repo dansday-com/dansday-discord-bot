@@ -1453,6 +1453,17 @@ export async function getRoles(serverId: any) {
 		.orderBy(desc(schema.serverRoles.position));
 }
 
+export async function getAdministratorRoleIds(serverId: any): Promise<string[]> {
+	await initializeDatabase();
+	if (serverId === undefined || serverId === null || serverId === '') return [];
+	const rows = await db.execute(sql`
+		SELECT discord_role_id
+		FROM server_roles
+		WHERE server_id = ${Number(serverId)} AND (CAST(permissions AS UNSIGNED) & 8) = 8
+	`);
+	return ((rows[0] as unknown as any[]) || []).map((r: any) => String(r.discord_role_id));
+}
+
 export async function upsertRole(serverId: any, roleData: any) {
 	const now = toMySQLDateTime();
 	await db.execute(sql`
@@ -6645,6 +6656,7 @@ export default {
 	upsertChannel,
 	syncChannels,
 	getRoles,
+	getAdministratorRoleIds,
 	upsertRole,
 	syncRoles,
 	upsertMember,

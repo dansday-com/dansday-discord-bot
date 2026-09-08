@@ -54,13 +54,8 @@
 	"permissions": {
 		"supporterRoleDenied": {
 			"title": "🔒 **Supporter-Vorteil**",
-			"description": "Eine eigene Rolle mit Namen und Farbe ist ein Supporter-Vorteil. Dafür wird eine dieser Rollen benötigt:\\n{roles}",
-			"footer": "Frage einen Serveradministrator, wie du Supporter werden kannst."
-		},
-		"creatorApplyDenied": {
-			"title": "🔒 **Bewerbung noch nicht für dich offen**",
-			"description": "Für eine Bewerbung als Content Creator wird eine dieser Rollen benötigt:\\n{roles}",
-			"footer": "Du kannst die Creator-Liste weiterhin ansehen. Frage einen Serveradministrator, wie du eine Mitgliedsrolle bekommst."
+			"description": "Eine eigene Rolle mit Namen und Farbe ist ein Supporter-Vorteil. Booste diesen Server oder habe eine dieser Rollen:\\n{roles}",
+			"footer": "Booste den Server, um das freizuschalten."
 		},
 		"denied": {
 			"title": "❌ **Zugriff verweigert**",

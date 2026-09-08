@@ -264,10 +264,7 @@ export const PERMISSIONS = {
 			throw new Error(`Permissions not configured for guild ${guildId}`);
 		}
 		return {
-			ADMIN_ROLES: settings.settings.admin_roles || [],
 			STAFF_ROLES: settings.settings.staff_roles || [],
-			SUPPORTER_ROLES: settings.settings.supporter_roles || [],
-			MEMBER_ROLES: settings.settings.member_roles || [],
 			CONTENT_CREATOR_ROLES: settings.settings.content_creator_roles || []
 		};
 	},

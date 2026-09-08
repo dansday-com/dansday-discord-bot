@@ -1013,8 +1013,10 @@ export function init(client) {
 		try {
 			const oldRoles = oldMember.roles.cache;
 			const newRoles = newMember.roles.cache;
+			const rolesUnchanged = oldRoles.size === newRoles.size && oldRoles.every((r) => newRoles.has(r.id));
+			const boostUnchanged = (oldMember.premiumSince?.getTime() ?? null) === (newMember.premiumSince?.getTime() ?? null);
 
-			if (oldRoles.size === newRoles.size && oldRoles.every((r) => newRoles.has(r.id))) {
+			if (rolesUnchanged && boostUnchanged) {
 				return;
 			}
 

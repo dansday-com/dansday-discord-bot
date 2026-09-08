@@ -54,13 +54,8 @@
 	"permissions": {
 		"supporterRoleDenied": {
 			"title": "🔒 **Ventaja para colaboradores**",
-			"description": "Tener tu propio rol personalizado con nombre y color es una ventaja para colaboradores. Necesita uno de estos roles:\\n{roles}",
-			"footer": "Pregunta a un administrador del servidor cómo convertirte en colaborador."
-		},
-		"creatorApplyDenied": {
-			"title": "🔒 **La solicitud aún no está abierta para ti**",
-			"description": "Para solicitar ser creador de contenido necesitas uno de estos roles:\\n{roles}",
-			"footer": "Aún puedes consultar la lista de creadores. Pregunta a un administrador del servidor cómo obtener un rol de miembro."
+			"description": "Tener tu propio rol personalizado con nombre y color es una ventaja para colaboradores. Mejora este servidor con boost o ten uno de estos roles:\\n{roles}",
+			"footer": "Mejora el servidor con un boost para desbloquearlo."
 		},
 		"denied": {
 			"title": "❌ **Permiso denegado**",

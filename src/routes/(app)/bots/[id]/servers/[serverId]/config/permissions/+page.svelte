@@ -8,10 +8,7 @@
 	let { data }: PageProps = $props();
 
 	let saving = $state(false);
-	let adminRoles = $state<string[]>(data.settings?.admin_roles ?? []);
 	let staffRoles = $state<string[]>(data.settings?.staff_roles ?? []);
-	let supporterRoles = $state<string[]>(data.settings?.supporter_roles ?? []);
-	let memberRoles = $state<string[]>(data.settings?.member_roles ?? []);
 	let contentCreatorRoles = $state<string[]>(data.settings?.content_creator_roles ?? []);
 
 	async function save() {
@@ -23,10 +20,7 @@
 				credentials: 'include',
 				body: JSON.stringify({
 					component: SERVER_SETTINGS.component.permissions,
-					admin_roles: adminRoles,
 					staff_roles: staffRoles,
-					supporter_roles: supporterRoles,
-					member_roles: memberRoles,
 					content_creator_roles: contentCreatorRoles
 				})
 			});
@@ -47,7 +41,7 @@
 	</h3>
 	<p class="text-ash-400 text-xs">Define role groups used for access control and member filtering.</p>
 
-	{#each [{ label: 'Admin Roles', icon: 'fa-shield-halved', help: 'Full access to all bot features and configuration.', value: adminRoles, onchange: (v: string | string[]) => (adminRoles = v as string[]) }, { label: 'Staff Roles', icon: 'fa-user-tie', help: 'Used for staff features and staff-related filtering (if enabled).', value: staffRoles, onchange: (v: string | string[]) => (staffRoles = v as string[]) }, { label: 'Content Creator Roles', icon: 'fa-video', help: 'Roles considered content creators in permissions and member filtering.', value: contentCreatorRoles, onchange: (v: string | string[]) => (contentCreatorRoles = v as string[]) }, { label: 'Supporter Roles', icon: 'fa-star', help: 'Marks members as supporters (for supporter-only features).', value: supporterRoles, onchange: (v: string | string[]) => (supporterRoles = v as string[]) }, { label: 'Member Roles', icon: 'fa-users', help: 'Only members with these roles are eligible for leveling XP.', value: memberRoles, onchange: (v: string | string[]) => (memberRoles = v as string[]) }] as group}
+	{#each [{ label: 'Staff Roles', icon: 'fa-user-tie', help: 'Used for staff features and staff-related filtering (if enabled).', value: staffRoles, onchange: (v: string | string[]) => (staffRoles = v as string[]) }, { label: 'Content Creator Roles', icon: 'fa-video', help: 'Roles considered content creators in permissions and member filtering.', value: contentCreatorRoles, onchange: (v: string | string[]) => (contentCreatorRoles = v as string[]) }] as group}
 		<div>
 			<label class="text-ash-300 mb-1.5 block text-xs font-medium">
 				<i class="fas {group.icon} mr-1 text-blue-400"></i>{group.label}

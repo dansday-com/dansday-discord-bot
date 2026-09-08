@@ -17,6 +17,7 @@
 		voice_minutes_active: number;
 		voice_minutes_afk: number;
 		is_afk: boolean;
+		is_booster: boolean;
 		member_since: string;
 		profile_created_at: string;
 		roles: { id: string; name: string; color: string; position: number }[];
@@ -30,9 +31,10 @@
 		members: Member[];
 		filterRoleIds?: string[];
 		permissionsHref?: string;
+		boostersOnly?: boolean;
 	}
 
-	let { members, filterRoleIds, permissionsHref }: Props = $props();
+	let { members, filterRoleIds, permissionsHref, boostersOnly = false }: Props = $props();
 
 	const MEMBER_SORT_OPTIONS: LabeledSelectOption[] = [
 		{ value: 'rank_asc', label: 'Rank (Low → High)' },
@@ -69,7 +71,7 @@
 		return member.roles?.some((r) => roleIds.includes(r.id)) ?? false;
 	}
 
-	const roleFilterUnset = $derived(filterRoleIds !== undefined && filterRoleIds.length === 0);
+	const roleFilterUnset = $derived(!boostersOnly && !!permissionsHref && filterRoleIds !== undefined && filterRoleIds.length === 0);
 
 	const filtered = $derived(
 		members.filter((m) => {
@@ -80,6 +82,7 @@
 				m.display_name?.toLowerCase().includes(q) ||
 				m.server_display_name?.toLowerCase().includes(q) ||
 				m.discord_member_id?.includes(q);
+			if (boostersOnly) return matchSearch && !!m.is_booster;
 			return matchSearch && matchesRoleFilter(m, filterRoleIds);
 		})
 	);

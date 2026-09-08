@@ -23,10 +23,11 @@ export const load: LayoutServerLoad = async ({ locals, params }) => {
 		redirect(302, DASHBOARD_PATH);
 	}
 
-	const [members, permissions] = await Promise.all([
+	const [members, permissions, adminRoleIds] = await Promise.all([
 		db.getServerMembersList(params.serverId),
-		db.getServerSettings(params.serverId, SERVER_SETTINGS.component.permissions).catch(() => null)
+		db.getServerSettings(params.serverId, SERVER_SETTINGS.component.permissions).catch(() => null),
+		db.getAdministratorRoleIds(params.serverId).catch(() => [])
 	]);
 
-	return { members: members ?? [], permissions: permissions ?? null };
+	return { members: members ?? [], permissions: permissions ?? null, adminRoleIds: adminRoleIds ?? [] };
 };

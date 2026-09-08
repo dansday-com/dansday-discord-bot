@@ -529,11 +529,8 @@ export const tiers = [
 ];
 
 export const permissionRoles = [
-	{ label: 'Admin Roles', desc: 'Full access to all bot features and configuration.' },
 	{ label: 'Staff Roles', desc: 'Used for staff features and staff-related filtering.' },
-	{ label: 'Content Creator Roles', desc: 'Roles treated as content creators in permissions and member filtering.' },
-	{ label: 'Supporter Roles', desc: 'Marks members as supporters for supporter-only features.' },
-	{ label: 'Member Roles', desc: 'Required to apply as a content creator, and used for role mentions and member filtering.' }
+	{ label: 'Content Creator Roles', desc: 'Roles treated as content creators in permissions and member filtering.' }
 ];
 
 export const modules = [

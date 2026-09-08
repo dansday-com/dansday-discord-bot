@@ -69,7 +69,7 @@ export const GLOBE_PLACES: GlobePlace[] = [
 	{ name: 'Zimbabwe', lat: -19, lon: 29 },
 	{ name: 'Mozambique', lat: -18, lon: 35 },
 	{ name: 'South Africa', lat: -29, lon: 24 },
-	{ name: 'Israel', lat: 31, lon: 35 },
+	{ name: 'Palestine', lat: 32, lon: 35 },
 	{ name: 'Jordan', lat: 31, lon: 36 },
 	{ name: 'Lebanon', lat: 34, lon: 36 },
 	{ name: 'Iraq', lat: 33, lon: 44 },

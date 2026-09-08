@@ -238,12 +238,14 @@ CREATE TABLE IF NOT EXISTS server_members (
     member_since DATETIME NULL,
     is_booster BOOLEAN DEFAULT FALSE,
     booster_since DATETIME NULL,
+    is_bot BOOLEAN NOT NULL DEFAULT FALSE,
     language VARCHAR(10) DEFAULT 'en',
     deleted_at DATETIME NULL DEFAULT NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
     UNIQUE KEY unique_server_member (server_id, discord_member_id),
     INDEX idx_server_members_deleted_at (deleted_at),
+    INDEX idx_server_members_is_bot (server_id, is_bot),
     FOREIGN KEY (server_id) REFERENCES servers(id) ON DELETE CASCADE
 );
 

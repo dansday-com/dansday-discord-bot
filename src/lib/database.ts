@@ -653,7 +653,9 @@ export async function getServerPanelId(serverId: number): Promise<number | null>
 
 export async function countServerMembers(serverId: any): Promise<number> {
 	await initializeDatabase();
-	const rows = (await db.execute(sql`SELECT COUNT(*) AS total FROM server_members WHERE server_id = ${Number(serverId)} AND deleted_at IS NULL`)) as any;
+	const rows = (await db.execute(
+		sql`SELECT COUNT(*) AS total FROM server_members WHERE server_id = ${Number(serverId)} AND deleted_at IS NULL AND is_bot = 0`
+	)) as any;
 	return Number((rows[0] as any[])?.[0]?.total) || 0;
 }
 
@@ -1493,10 +1495,11 @@ export async function upsertMember(serverId: any, memberData: any) {
 	const user = memberData.user || memberData;
 	const avatarUrl = user?.displayAvatarURL ? user.displayAvatarURL({ dynamic: true }) : null;
 	const now = toMySQLDateTime();
+	const isBot = typeof user?.bot === 'boolean' ? (user.bot ? 1 : 0) : null;
 
 	await db.execute(sql`
 		INSERT INTO server_members (server_id, discord_member_id, username, display_name, server_display_name, avatar,
-			profile_created_at, member_since, is_booster, booster_since, created_at, updated_at)
+			profile_created_at, member_since, is_booster, booster_since, is_bot, created_at, updated_at)
 		VALUES (
 			${Number(serverId)}, ${user?.id || memberData.id},
 			${user?.username || null}, ${user?.globalName || user?.displayName || null},
@@ -1505,6 +1508,7 @@ export async function upsertMember(serverId: any, memberData: any) {
 			${memberData.joinedAt ? toMySQLDateTime(memberData.joinedAt) : null},
 			${memberData.premiumSince != null ? 1 : 0},
 			${memberData.premiumSince ? toMySQLDateTime(memberData.premiumSince) : null},
+			${isBot ?? 0},
 			${now}, ${now}
 		)
 		ON DUPLICATE KEY UPDATE
@@ -1513,6 +1517,7 @@ export async function upsertMember(serverId: any, memberData: any) {
 			profile_created_at = COALESCE(VALUES(profile_created_at), profile_created_at),
 			member_since = COALESCE(VALUES(member_since), member_since),
 			is_booster = VALUES(is_booster), booster_since = VALUES(booster_since),
+			is_bot = ${isBot === null ? sql`is_bot` : sql`VALUES(is_bot)`},
 			deleted_at = NULL,
 			updated_at = VALUES(updated_at)
 	`);
@@ -1571,7 +1576,7 @@ export async function searchServerMembers(serverId: any, queryText: string | nul
 				avatar: schema.serverMembers.avatar
 			})
 			.from(schema.serverMembers)
-			.where(and(eq(schema.serverMembers.server_id, Number(serverId)), isNull(schema.serverMembers.deleted_at)))
+			.where(and(eq(schema.serverMembers.server_id, Number(serverId)), isNull(schema.serverMembers.deleted_at), eq(schema.serverMembers.is_bot, false)))
 			.orderBy(schema.serverMembers.updated_at)
 			.limit(safeLimit);
 	}
@@ -1589,6 +1594,8 @@ export async function searchServerMembers(serverId: any, queryText: string | nul
 		.where(
 			and(
 				eq(schema.serverMembers.server_id, Number(serverId)),
+				isNull(schema.serverMembers.deleted_at),
+				eq(schema.serverMembers.is_bot, false),
 				or(
 					like(schema.serverMembers.discord_member_id, likeValue),
 					like(schema.serverMembers.username, likeValue),
@@ -1638,7 +1645,7 @@ export async function searchPanelMembersForGift(panelId: any, queryText: string 
 			FROM server_member_items
 			GROUP BY member_id
 		) inv ON inv.member_id = m.id
-		WHERE 1=1 ${searchClause}
+		WHERE m.deleted_at IS NULL AND m.is_bot = 0 ${searchClause}
 		ORDER BY sv.name ASC, COALESCE(inv.total, 0) DESC, m.updated_at DESC
 		LIMIT ${safeLimit}
 	`);
@@ -1771,7 +1778,7 @@ export async function syncMembers(serverId: any, members: any[]) {
 	await Promise.all(
 		members.map(async (member) => {
 			const dbMember = await upsertMember(serverId, member).catch(() => null);
-			if (dbMember) {
+			if (dbMember && !(member.user || member)?.bot) {
 				const memberRoles = member.roles ? Array.from(member.roles.cache.keys()).filter((id: any) => id !== member.guild?.id) : [];
 				await syncMemberRoles(dbMember.id, memberRoles as string[], serverId);
 			}
@@ -4225,7 +4232,7 @@ export async function getItemsBountyLeaderboard(serverId: any, since: Date | nul
 			GROUP BY l.member_id
 		) agg ON agg.member_id = sm.id
 		LEFT JOIN server_member_levels sml ON sml.member_id = sm.id
-		WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL ${hideClause}
+		WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL AND sm.is_bot = 0 ${hideClause}
 		GROUP BY sm.id, sm.discord_member_id, sm.username, sm.display_name, sm.server_display_name, sm.avatar, sml.level
 	`);
 
@@ -4261,7 +4268,7 @@ export async function getItemsGiftLeaderboard(serverId: any, since: Date | null)
 			GROUP BY l.target_member_id
 		) agg ON agg.member_id = sm.id
 		LEFT JOIN server_member_levels sml ON sml.member_id = sm.id
-		WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL ${hideClause}
+		WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL AND sm.is_bot = 0 ${hideClause}
 		GROUP BY sm.id, sm.discord_member_id, sm.username, sm.display_name, sm.server_display_name, sm.avatar, sml.level
 	`);
 
@@ -4280,15 +4287,18 @@ export async function getServerMembersList(serverId: any) {
 			sml.voice_minutes_video, sml.voice_minutes_streaming, sml.rank,
 			sma.message as afk_message, sma.created_at as afk_since,
 			GROUP_CONCAT(
-				DISTINCT CONCAT(sr.discord_role_id, ':', sr.name, ':', sr.color, ':', sr.position)
-				ORDER BY sr.position DESC SEPARATOR ','
+				DISTINCT CASE
+					WHEN sr.id IS NULL THEN NULL
+					ELSE CONCAT_WS('\x1f', sr.discord_role_id, COALESCE(sr.position, 0), COALESCE(sr.color, ''), COALESCE(sr.name, ''))
+				END
+				ORDER BY sr.position DESC SEPARATOR '\x1e'
 			) as roles
 		FROM server_members sm
 		LEFT JOIN server_member_levels sml ON sm.id = sml.member_id
 		LEFT JOIN server_member_afks sma ON sm.id = sma.member_id
 		LEFT JOIN server_member_roles smr ON sm.id = smr.member_id
 		LEFT JOIN server_roles sr ON smr.role_id = sr.id
-		WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL
+		WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL AND sm.is_bot = 0
 		GROUP BY sm.id, sm.discord_member_id, sm.username, sm.display_name, sm.server_display_name,
 		         sm.avatar, sm.profile_created_at, sm.member_since, sm.is_booster, sm.booster_since,
 		         sml.level, sml.xp, sml.chat_total, sml.voice_minutes_total, sml.voice_minutes_active,
@@ -4300,12 +4310,13 @@ export async function getServerMembersList(serverId: any) {
 		...member,
 		roles: member.roles
 			? member.roles
-					.split(',')
+					.split('\x1e')
+					.filter((role: string) => role !== '')
 					.map((role: string) => {
-						const [roleId, roleName, roleColor, position] = role.split(':');
-						return { id: roleId, name: roleName, color: roleColor || null, position: position ? parseInt(position, 10) : 0 };
+						const [roleId, position, roleColor, ...rest] = role.split('\x1f');
+						return { id: roleId, name: rest.join('\x1f'), color: roleColor || null, position: Number.parseInt(position, 10) || 0 };
 					})
-					.sort((a: any, b: any) => (b.position || 0) - (a.position || 0))
+					.sort((a: any, b: any) => b.position - a.position)
 			: [],
 		is_afk: !!member.afk_message
 	}));
@@ -4413,13 +4424,13 @@ export async function getServerOverview(serverId: any, opts?: { forPublicPage?: 
 
 	const statsPromises = [
 		db.execute(
-			sql`SELECT COUNT(*) AS total, SUM(CASE WHEN is_booster = 1 THEN 1 ELSE 0 END) AS unique_boosters FROM server_members WHERE server_id = ${Number(serverId)} AND deleted_at IS NULL`
+			sql`SELECT COUNT(*) AS total, SUM(CASE WHEN is_booster = 1 THEN 1 ELSE 0 END) AS unique_boosters FROM server_members WHERE server_id = ${Number(serverId)} AND deleted_at IS NULL AND is_bot = 0`
 		),
 		db.execute(
-			sql`SELECT COUNT(*) AS leveled FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL`
+			sql`SELECT COUNT(*) AS leveled FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL AND sm.is_bot = 0`
 		),
 		db.execute(
-			sql`SELECT COUNT(*) AS afk FROM server_member_afks sma INNER JOIN server_members sm ON sm.id = sma.member_id WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL`
+			sql`SELECT COUNT(*) AS afk FROM server_member_afks sma INNER JOIN server_members sm ON sm.id = sma.member_id WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL AND sm.is_bot = 0`
 		),
 		db.execute(
 			sql`SELECT COUNT(*) AS total, SUM(CASE WHEN LOWER(COALESCE(type,'')) IN ('guild_text','text') THEN 1 ELSE 0 END) AS text_count, SUM(CASE WHEN LOWER(COALESCE(type,'')) IN ('guild_news','news','guild_announcement','announcement') THEN 1 ELSE 0 END) AS announcement_count, SUM(CASE WHEN LOWER(COALESCE(type,'')) IN ('guild_voice','voice') THEN 1 ELSE 0 END) AS voice_count, SUM(CASE WHEN LOWER(COALESCE(type,'')) IN ('guild_stage_voice','stage','stage_voice') THEN 1 ELSE 0 END) AS stage_count FROM server_channels WHERE server_id = ${Number(serverId)}`
@@ -4427,7 +4438,7 @@ export async function getServerOverview(serverId: any, opts?: { forPublicPage?: 
 		db.execute(sql`SELECT COUNT(*) AS count FROM server_categories WHERE server_id = ${Number(serverId)}`),
 		db.execute(sql`SELECT COUNT(*) AS count FROM server_roles WHERE server_id = ${Number(serverId)}`),
 		db.execute(
-			sql`SELECT COALESCE(SUM(xp),0) AS total_xp, COALESCE(AVG(level),0) AS avg_level, COALESCE(MAX(level),0) AS max_level, COALESCE(SUM(chat_total),0) AS total_chat, COALESCE(SUM(voice_minutes_total),0) AS total_voice_minutes, COALESCE(SUM(voice_minutes_active),0) AS total_voice_active, COALESCE(SUM(voice_minutes_afk),0) AS total_voice_afk, COALESCE(SUM(voice_minutes_video),0) AS total_voice_video, COALESCE(SUM(voice_minutes_streaming),0) AS total_voice_streaming FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL`
+			sql`SELECT COALESCE(SUM(xp),0) AS total_xp, COALESCE(AVG(level),0) AS avg_level, COALESCE(MAX(level),0) AS max_level, COALESCE(SUM(chat_total),0) AS total_chat, COALESCE(SUM(voice_minutes_total),0) AS total_voice_minutes, COALESCE(SUM(voice_minutes_active),0) AS total_voice_active, COALESCE(SUM(voice_minutes_afk),0) AS total_voice_afk, COALESCE(SUM(voice_minutes_video),0) AS total_voice_video, COALESCE(SUM(voice_minutes_streaming),0) AS total_voice_streaming FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL AND sm.is_bot = 0`
 		),
 		db.execute(
 			sql`SELECT COUNT(DISTINCT smcsr.member_id) AS members_with_custom_roles FROM server_member_custom_supporter_roles smcsr INNER JOIN server_members sm ON sm.id = smcsr.member_id WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL`
@@ -4469,12 +4480,12 @@ export async function getServerOverview(serverId: any, opts?: { forPublicPage?: 
 			settingsRows
 		] = await Promise.all([
 			...statsPromises,
-			db.execute(sql`SELECT MAX(updated_at) AS last_updated FROM server_members WHERE server_id = ${Number(serverId)} AND deleted_at IS NULL`),
+			db.execute(sql`SELECT MAX(updated_at) AS last_updated FROM server_members WHERE server_id = ${Number(serverId)} AND deleted_at IS NULL AND is_bot = 0`),
 			db.execute(sql`SELECT MAX(updated_at) AS last_updated FROM server_channels WHERE server_id = ${Number(serverId)}`),
 			db.execute(sql`SELECT MAX(updated_at) AS last_updated FROM server_categories WHERE server_id = ${Number(serverId)}`),
 			db.execute(sql`SELECT MAX(updated_at) AS last_updated FROM server_roles WHERE server_id = ${Number(serverId)}`),
 			db.execute(
-				sql`SELECT MAX(sml.updated_at) AS last_updated FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL`
+				sql`SELECT MAX(sml.updated_at) AS last_updated FROM server_member_levels sml INNER JOIN server_members sm ON sm.id = sml.member_id WHERE sm.server_id = ${Number(serverId)} AND sm.deleted_at IS NULL AND sm.is_bot = 0`
 			),
 			db
 				.select({ component_name: schema.serverSettings.component_name, updated_at: schema.serverSettings.updated_at })

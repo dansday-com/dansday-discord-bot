@@ -158,6 +158,10 @@
 	function avatarSrc(m: (typeof members)[number]): string {
 		return m.avatar ?? `https://cdn.discordapp.com/embed/avatars/${Number(m.discord_member_id) % 5 || 0}.png`;
 	}
+
+	function highestRole(m: (typeof members)[number]) {
+		return (m.roles ?? []).reduce((top: any, r: any) => (top == null || (r.position ?? 0) > (top.position ?? 0) ? r : top), null as any);
+	}
 </script>
 
 <svelte:head>
@@ -195,6 +199,7 @@
 	<ul class="grid list-none grid-cols-1 gap-3.5 p-0 min-[600px]:grid-cols-2 min-[600px]:gap-4">
 		{#each paged as member, i (member.discord_member_id)}
 			{@const rs = rankStyle(member.rank)}
+			{@const topRole = highestRole(member)}
 			<li
 				class="card border-base-300 bg-base-100 overflow-hidden border shadow-sm transition-all duration-500 ease-out {mounted
 					? 'translate-y-0 opacity-100'
@@ -257,14 +262,14 @@
 						<span class="text-base-content text-[17px] font-extrabold tracking-tight tabular-nums" title="XP">{fmtNum(member.xp ?? 0)}</span>
 					</div>
 
-					{#if member.roles?.[0]}
+					{#if topRole}
 						<div class="border-base-300 mt-3 flex flex-wrap gap-1.5 border-t pt-3">
 							<span
 								class="badge badge-sm h-auto max-w-full gap-1.5 px-2.5 py-[3px] text-[10px] font-semibold"
-								style="{rolePillStyle(member.roles[0].color)}; border-color: var(--role-bd); background: var(--role-bg); color: var(--role-fg);"
+								style="{rolePillStyle(topRole.color)}; border-color: var(--role-bd); background: var(--role-bg); color: var(--role-fg);"
 							>
 								<i class="fas fa-circle text-[5px]" style="color: var(--role-dot);" aria-hidden="true"></i>
-								{member.roles[0].name || 'Role'}
+								{topRole.name || 'Role'}
 							</span>
 						</div>
 					{/if}

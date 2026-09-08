@@ -141,6 +141,8 @@ async function welcomeUser(member, client) {
 
 function init(client) {
 	client.on('guildMemberAdd', async (member) => {
+		if (member.user?.bot) return;
+
 		const botConfig = getBotConfig();
 		if (botConfig && botConfig.id) {
 			try {

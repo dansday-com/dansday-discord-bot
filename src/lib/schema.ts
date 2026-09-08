@@ -381,6 +381,7 @@ export const serverMembers = mysqlTable(
 		member_since: datetime('member_since'),
 		is_booster: boolean('is_booster').default(false),
 		booster_since: datetime('booster_since'),
+		is_bot: boolean('is_bot').notNull().default(false),
 		language: varchar('language', { length: 10 }).default('en'),
 		deleted_at: datetime('deleted_at'),
 		created_at: datetime('created_at').notNull(),
@@ -391,7 +392,8 @@ export const serverMembers = mysqlTable(
 		uniqueIndex('unique_server_member').on(t.server_id, t.discord_member_id),
 		index('idx_server_members_server_id').on(t.server_id),
 		index('idx_server_members_discord_id').on(t.discord_member_id),
-		index('idx_server_members_language').on(t.language)
+		index('idx_server_members_language').on(t.language),
+		index('idx_server_members_is_bot').on(t.server_id, t.is_bot)
 	]
 );
 

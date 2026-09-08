@@ -19,8 +19,12 @@
 		is_afk: boolean;
 		member_since: string;
 		profile_created_at: string;
-		roles: { id: string; name: string; color: string }[];
+		roles: { id: string; name: string; color: string; position: number }[];
 	};
+
+	function rolesHighestFirst(m: Member) {
+		return [...(m.roles ?? [])].sort((a, b) => (b.position ?? 0) - (a.position ?? 0));
+	}
 
 	interface Props {
 		members: Member[];
@@ -311,7 +315,7 @@
 									<span class="text-ash-400 text-xs tracking-wide uppercase">Roles</span>
 								</div>
 								<div class="flex flex-wrap gap-1.5">
-									{#each member.roles as role}
+									{#each rolesHighestFirst(member) as role (role.id)}
 										{@const c = roleColor(role.color)}
 										<span
 											class="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium"

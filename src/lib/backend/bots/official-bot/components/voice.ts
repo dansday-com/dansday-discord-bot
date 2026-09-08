@@ -1,4 +1,4 @@
-import { getBotConfig } from '../../../config.js';
+import { getBotConfig, resolveGuildAiConfig } from '../../../config.js';
 import db from '../../../../database.js';
 import { logger } from '../../../../utils/index.js';
 import { subscribeVoiceCommands, clearVoiceState } from './voiceControl.js';
@@ -13,9 +13,11 @@ async function handleJoin(command) {
 	const botConfig = getBotConfig();
 	if (!botConfig?.id) return;
 
-	const config = db.botAiFromDbRow(await db.getBotAiByBotId(botConfig.id));
-	const endpoint = db.botAiVoiceEndpoint(config);
-	if (!config.enabled || !config.voice_enabled || !endpoint.api_key || !endpoint.model) return;
+	const botAi = db.botAiFromDbRow(await db.getBotAiByBotId(botConfig.id));
+	const endpoint = db.botAiVoiceEndpoint(botAi);
+	if (!botAi.enabled || !botAi.voice_enabled || !endpoint.api_key || !endpoint.model) return;
+
+	const config = await resolveGuildAiConfig(command.guildId, botAi);
 
 	const session = createVoiceSession({
 		client: clientInstance,

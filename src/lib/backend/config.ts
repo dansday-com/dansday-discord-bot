@@ -1,5 +1,6 @@
-import db from '../database.js';
+import db, { type BotAiInput } from '../database.js';
 import { SERVER_SETTINGS, type ServerSettingsComponentName } from '../frontend/panelServer.js';
+import { normalizeServerAiSettings, type ServerAiSettings } from '../server-ai-settings.js';
 
 const serverSettingsComponent = SERVER_SETTINGS.component;
 import { normalizeForwarderSettings } from '../forwarder-settings.js';
@@ -193,6 +194,27 @@ export async function isComponentFeatureEnabled(guildDiscordId: string, componen
 	} catch {
 		return SERVER_SETTINGS.withFeatureSwitch.includes(component as ServerSettingsComponentName) ? false : true;
 	}
+}
+
+export async function resolveGuildAiConfig<T extends BotAiInput>(guildDiscordId: string, config: T): Promise<T> {
+	if (!guildDiscordId) return config;
+
+	let overrides: ServerAiSettings;
+	try {
+		const serverId = await resolveServerIdForGuildSetting(guildDiscordId, serverSettingsComponent.ai);
+		if (serverId == null) return config;
+		const row = await getServerSettingsRow(serverId, serverSettingsComponent.ai);
+		overrides = normalizeServerAiSettings(row?.settings ?? null);
+	} catch {
+		return config;
+	}
+
+	return {
+		...config,
+		system_prompt: overrides.system_prompt ?? config.system_prompt,
+		voice_system_prompt: overrides.voice_system_prompt ?? config.voice_system_prompt,
+		voice_name: overrides.voice_name ?? config.voice_name
+	};
 }
 
 async function getServerSettingsForComponent(guildId: string, componentName: string) {

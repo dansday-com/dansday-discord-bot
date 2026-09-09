@@ -1,0 +1,87 @@
+name: Feature request
+description: Suggest a module, a panel change, or something new for members
+labels: ['enhancement']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Anything that adds a module, changes the database schema or reshapes a panel tab starts here rather than as a pull request — a short discussion beats a rejected branch.
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Before you file
+      options:
+        - label: I searched the existing issues and this is not a duplicate.
+          required: true
+        - label: No existing module already covers this.
+          required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do in your server, and why do the current modules not cover it? Describe the problem before the solution.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like
+      description: How you imagine it working.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part does it belong to?
+      multiple: true
+      options:
+        - Panel — login, accounts, bots, servers
+        - Panel — overview
+        - Panel — global embed
+        - Panel — greetings
+        - Panel — items
+        - Leveling and XP
+        - Moderation
+        - Welcomer, AFK, booster or supporter roles
+        - Notifications or forwarder
+        - Giveaways
+        - Discord Quest notifier
+        - Roblox catalog notifier
+        - Content creator tools
+        - Staff rating or feedback
+        - AI chat or voice
+        - Public server pages — statistics, leaderboard, members
+        - Member accounts — overview, history, guide
+        - Shop, items and PvP
+        - Tasks, streaks and check-in
+        - Assets market
+        - Minigames
+        - A new module
+        - Documentation
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: panel
+    attributes:
+      label: Where it appears
+      description: Which tab or page it lives on, and what a server owner or a member would see there.
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you tried instead
+      description: Other modules, another bot, or a manual workaround.
+
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Would you like to build it?
+      options:
+        - label: I am willing to open a pull request for this.
+          required: false

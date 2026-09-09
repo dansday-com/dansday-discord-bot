@@ -1,4 +1,4 @@
-import { deleteObject, getObject, listObjectKeys, putObject } from './index.js';
+import { deleteObject, getObject, listObjectKeys, publicUrl, putObject } from './index.js';
 
 const FOLDER = 'embed-images';
 const MAX_AGE_MS = 30 * 60 * 1000;
@@ -21,6 +21,10 @@ function embedImageKey(filename: string): string {
 		throw new Error(`Invalid embed image filename: ${filename}`);
 	}
 	return `${FOLDER}/${filename}`;
+}
+
+export function embedImageUrl(filename: string): string {
+	return publicUrl(embedImageKey(filename));
 }
 
 export async function saveEmbedImage(filename: string, data: Buffer): Promise<void> {

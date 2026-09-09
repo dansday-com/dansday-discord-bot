@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import { logger } from '$lib/utils/index.js';
-import { saveEmbedImage } from '$lib/backend/storage/embedImages.js';
+import { saveEmbedImage, embedImageUrl } from '$lib/backend/storage/embedImages.js';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	if (!locals.user.authenticated || locals.user.account_type !== 'superadmin') {
@@ -45,7 +45,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const filename = `${prefix}-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
 		await saveEmbedImage(filename, imageData);
 
-		return json({ success: true, url: `/api/uploads/embed-images/${filename}`, path: filename });
+		return json({ success: true, url: embedImageUrl(filename), path: filename });
 	} catch (error: any) {
 		logger.log(`❌ Error uploading embed image: ${error.message}`);
 		return json({ success: false, error: error.message }, { status: 500 });

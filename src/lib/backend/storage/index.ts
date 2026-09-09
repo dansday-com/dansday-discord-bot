@@ -12,6 +12,7 @@ type S3Settings = {
 	secretAccessKey: string;
 	forcePathStyle: boolean;
 	prefix: string;
+	publicUrl: string | null;
 };
 
 const localRoot = join(process.cwd(), 'data');
@@ -46,13 +47,20 @@ function s3Settings(): S3Settings | null {
 		accessKeyId,
 		secretAccessKey,
 		forcePathStyle: pathStyle ? pathStyle === 'true' : endpoint != null,
-		prefix: env('S3_PREFIX').replace(/^\/+|\/+$/g, '')
+		prefix: env('S3_PREFIX').replace(/^\/+|\/+$/g, ''),
+		publicUrl: env('S3_PUBLIC_URL').replace(/\/+$/, '') || null
 	};
 	return cachedSettings;
 }
 
 export function storageMode(): StorageMode {
 	return s3Settings() ? 's3' : 'local';
+}
+
+export function publicUrl(key: string): string {
+	const settings = s3Settings();
+	if (!settings?.publicUrl) return `/api/uploads/${safeKey(key)}`;
+	return `${settings.publicUrl}/${remoteKey(settings, key)}`;
 }
 
 async function s3(settings: S3Settings): Promise<S3Client> {

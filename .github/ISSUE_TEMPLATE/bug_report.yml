@@ -1,0 +1,120 @@
+name: Bug report
+description: Something in the panel, the public pages or a bot is not working
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Found a security problem? Close this and email **security@dansday.com** — see [SECURITY.md](https://github.com/dansday-com/dansday-discord-bot/blob/master/SECURITY.md). Do not post it here.
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Before you file
+      options:
+        - label: I searched the existing issues and this is not a duplicate.
+          required: true
+        - label: I am on the latest version, or I checked that the fix is not already on `master`.
+          required: true
+        - label: This is not a security vulnerability.
+          required: true
+
+  - type: dropdown
+    id: install
+    attributes:
+      label: How are you running it?
+      options:
+        - Hosted bot and panel at dansday.com
+        - Self-hosted from this repository
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Self-hosting — the `version` in `package.json`. Hosted — write `hosted`.
+      placeholder: 26.6.1
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where does it happen?
+      description: Pick every part that is involved.
+      multiple: true
+      options:
+        - Panel — login, accounts, bots, servers
+        - Panel — overview
+        - Panel — global embed
+        - Panel — greetings
+        - Panel — items
+        - Leveling and XP
+        - Moderation
+        - Welcomer, AFK, booster or supporter roles
+        - Notifications or forwarder
+        - Giveaways
+        - Discord Quest notifier
+        - Roblox catalog notifier
+        - Content creator tools
+        - Staff rating or feedback
+        - AI chat or voice
+        - Public server pages — statistics, leaderboard, members
+        - Member accounts — overview, history, guide
+        - Shop, items and PvP
+        - Tasks, streaks and check-in
+        - Assets market
+        - Minigames
+        - Bot process, gateway or startup
+        - Database, schema or migrations
+        - Translations — en.json / id.json
+        - Docker, deployment or self-hosting
+        - Documentation
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you saw, and what you expected instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the panel at ...
+        2. Go to ...
+        3. Click ...
+        4. See ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Panel or bot log output
+      description: Redact tokens, keys and database credentials before pasting.
+      render: shell
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Self-hosting only. Node version, MySQL, Redis, Docker or bare metal, reverse proxy. For panel bugs, add your browser and OS.
+      placeholder: |
+        Node 25.1.0, MySQL 8.4, Redis 7, docker compose, behind Caddy
+        Firefox 145 on Windows 11
+    validations:
+      required: false
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Screenshots, a short clip, or how often it happens.

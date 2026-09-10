@@ -211,6 +211,7 @@
 
 	const sectionTabs: NavTab[] = $derived([
 		{ label: 'Overview', icon: 'fa-gauge-high', href: `${accountBase}/overview/${navHash}`, active: isOverview },
+		{ label: 'Themes', icon: 'fa-palette', href: `${accountBase}/themes/${navHash}`, active: isThemes },
 		{ label: 'Task', icon: 'fa-list-check', href: `${accountBase}/task/${navHash}`, active: isTask },
 		{
 			id: 'items',
@@ -224,7 +225,6 @@
 		{ label: 'Minigames', icon: 'fa-dice', href: `${accountBase}/minigames/all/${navHash}`, active: isMinigames },
 		{ label: 'Assets', icon: 'fa-chart-line', href: `${accountBase}/assets/top/${navHash}`, active: isAssets },
 		{ label: 'History', icon: 'fa-clock-rotate-left', href: `${accountBase}/history/all/${navHash}`, active: isHistory },
-		{ label: 'Themes', icon: 'fa-palette', href: `${accountBase}/themes/${navHash}`, active: isThemes },
 		{ label: 'Guide', icon: 'fa-circle-question', href: `${accountBase}/guide/${navHash}`, active: isGuide }
 	]);
 

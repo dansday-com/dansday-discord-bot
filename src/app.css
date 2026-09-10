@@ -567,16 +567,16 @@ html.lenis body {
 		opacity: 1;
 	}
 	33% {
-		transform: translate3d(calc(var(--p-drift) * 0.42), 170%, 0);
+		transform: translate3d(calc(var(--p-drift) * 0.42), calc(var(--fx-h, 120px) * 0.38), 0);
 	}
 	58% {
-		transform: translate3d(calc(var(--p-drift) * 0.6), 330%, 0);
+		transform: translate3d(calc(var(--p-drift) * 0.6), calc(var(--fx-h, 120px) * 0.72), 0);
 	}
 	86% {
 		opacity: 1;
 	}
 	100% {
-		transform: translate3d(var(--p-drift), 560%, 0);
+		transform: translate3d(var(--p-drift), calc(var(--fx-h, 120px) * 1.2), 0);
 		opacity: 0;
 	}
 }
@@ -590,19 +590,19 @@ html.lenis body {
 		opacity: 1;
 	}
 	28% {
-		transform: translate3d(calc(var(--p-drift) * 0.55), 190%, 0) rotate(70deg) scale(1.05);
+		transform: translate3d(calc(var(--p-drift) * 0.55), calc(var(--fx-h, 120px) * 0.34), 0) rotate(70deg) scale(1.05);
 	}
 	48% {
-		transform: translate3d(calc(var(--p-drift) * -0.35), 390%, 0) rotate(150deg) scale(0.92);
+		transform: translate3d(calc(var(--p-drift) * -0.35), calc(var(--fx-h, 120px) * 0.6), 0) rotate(150deg) scale(0.92);
 	}
 	70% {
-		transform: translate3d(calc(var(--p-drift) * 0.8), 600%, 0) rotate(240deg) scale(1.08);
+		transform: translate3d(calc(var(--p-drift) * 0.8), calc(var(--fx-h, 120px) * 0.86), 0) rotate(240deg) scale(1.08);
 	}
 	88% {
 		opacity: 1;
 	}
 	100% {
-		transform: translate3d(var(--p-drift), 820%, 0) rotate(var(--p-spin)) scale(0.9);
+		transform: translate3d(var(--p-drift), calc(var(--fx-h, 120px) * 1.2), 0) rotate(var(--p-spin)) scale(0.9);
 		opacity: 0;
 	}
 }
@@ -641,29 +641,29 @@ html.lenis body {
 
 @keyframes fx-drip {
 	0% {
-		transform: translate3d(0, -40px, 0) scale(0.7);
+		transform: translate3d(0, calc(var(--fx-h, 120px) * -0.3), 0) scale(0.7);
 		opacity: 0;
 	}
 	12% {
 		opacity: 1;
 	}
 	26% {
-		transform: translate3d(0, 20px, 0) scale(1);
+		transform: translate3d(0, calc(var(--fx-h, 120px) * 0.16), 0) scale(1);
 	}
 	34% {
-		transform: translate3d(2px, 26px, 0) scale(0.96);
+		transform: translate3d(2px, calc(var(--fx-h, 120px) * 0.21), 0) scale(0.96);
 	}
 	58% {
-		transform: translate3d(-2px, 130px, 0) scale(1.08);
+		transform: translate3d(-2px, calc(var(--fx-h, 120px) * 0.66), 0) scale(1.08);
 	}
 	68% {
-		transform: translate3d(-2px, 142px, 0) scale(1.02);
+		transform: translate3d(-2px, calc(var(--fx-h, 120px) * 0.74), 0) scale(1.02);
 	}
 	85% {
 		opacity: 1;
 	}
 	100% {
-		transform: translate3d(1px, 320px, 0) scale(1.15);
+		transform: translate3d(1px, calc(var(--fx-h, 120px) * 1.22), 0) scale(1.15);
 		opacity: 0;
 	}
 }
@@ -715,8 +715,8 @@ html.lenis body {
 .fx-fire .fx-p {
 	bottom: -12%;
 	left: var(--p-x);
-	width: max(2px, calc(var(--p-w) * var(--fx-s, 1)));
-	height: calc(var(--p-h) * var(--fx-s, 1));
+	width: max(4px, calc(var(--p-w) * var(--fx-s, 1)));
+	height: max(14px, calc(var(--p-h) * var(--fx-s, 1) * 1.35));
 	border-radius: 50% 50% 46% 46% / 70% 70% 30% 30%;
 	background: radial-gradient(ellipse at 50% 88%, #fff4c6 0%, var(--p-hue) 45%, transparent 80%);
 	filter: blur(2px);
@@ -734,11 +734,11 @@ html.lenis body {
 		opacity: 0.5;
 	}
 	35% {
-		transform: translate3d(-3px, -16%, 0) scaleY(var(--p-scale)) scaleX(0.82);
+		transform: translate3d(-3px, calc(var(--fx-h, 120px) * -0.14), 0) scaleY(var(--p-scale)) scaleX(0.82);
 		opacity: 1;
 	}
 	70% {
-		transform: translate3d(3px, -7%, 0) scaleY(calc(var(--p-scale) * 0.88)) scaleX(1.1);
+		transform: translate3d(3px, calc(var(--fx-h, 120px) * -0.06), 0) scaleY(calc(var(--p-scale) * 0.88)) scaleX(1.1);
 		opacity: 0.85;
 	}
 }
@@ -767,17 +767,17 @@ html.lenis body {
 		opacity: 1;
 	}
 	30% {
-		transform: translate3d(calc(var(--p-drift) * 0.7), -160%, 0) scale(0.9);
+		transform: translate3d(calc(var(--p-drift) * 0.7), calc(var(--fx-h, 120px) * -0.3), 0) scale(0.9);
 	}
 	52% {
-		transform: translate3d(calc(var(--p-drift) * -0.4), -310%, 0) scale(0.75);
+		transform: translate3d(calc(var(--p-drift) * -0.4), calc(var(--fx-h, 120px) * -0.58), 0) scale(0.75);
 	}
 	74% {
-		transform: translate3d(calc(var(--p-drift) * 0.9), -450%, 0) scale(0.5);
+		transform: translate3d(calc(var(--p-drift) * 0.9), calc(var(--fx-h, 120px) * -0.84), 0) scale(0.5);
 		opacity: 0.85;
 	}
 	100% {
-		transform: translate3d(var(--p-drift), -600%, 0) scale(0.15);
+		transform: translate3d(var(--p-drift), calc(var(--fx-h, 120px) * -1.12), 0) scale(0.15);
 		opacity: 0;
 	}
 }
@@ -807,19 +807,19 @@ html.lenis body {
 		opacity: 1;
 	}
 	32% {
-		transform: translate3d(calc(var(--p-drift) * 0.8), -190%, 0) scale(0.8) scaleX(1.12);
+		transform: translate3d(calc(var(--p-drift) * 0.8), calc(var(--fx-h, 120px) * -0.32), 0) scale(0.8) scaleX(1.12);
 	}
 	54% {
-		transform: translate3d(calc(var(--p-drift) * -0.5), -380%, 0) scale(0.95) scaleY(1.12);
+		transform: translate3d(calc(var(--p-drift) * -0.5), calc(var(--fx-h, 120px) * -0.62), 0) scale(0.95) scaleY(1.12);
 	}
 	78% {
-		transform: translate3d(calc(var(--p-drift) * 0.85), -560%, 0) scale(1.05) scaleX(1.08);
+		transform: translate3d(calc(var(--p-drift) * 0.85), calc(var(--fx-h, 120px) * -0.9), 0) scale(1.05) scaleX(1.08);
 	}
 	84% {
 		opacity: 1;
 	}
 	100% {
-		transform: translate3d(var(--p-drift), -740%, 0) scale(1.15);
+		transform: translate3d(var(--p-drift), calc(var(--fx-h, 120px) * -1.18), 0) scale(1.15);
 		opacity: 0;
 	}
 }
@@ -853,52 +853,52 @@ html.lenis body {
 		opacity: 1;
 	}
 	30% {
-		transform: translate3d(22px, 180%, 0) rotate(calc(var(--p-spin) * 0.3)) scaleX(0.3);
+		transform: translate3d(22px, calc(var(--fx-h, 120px) * 0.33), 0) rotate(calc(var(--p-spin) * 0.3)) scaleX(0.3);
 	}
 	52% {
-		transform: translate3d(-14px, 360%, 0) rotate(calc(var(--p-spin) * 0.55)) scaleX(1);
+		transform: translate3d(-14px, calc(var(--fx-h, 120px) * 0.62), 0) rotate(calc(var(--p-spin) * 0.55)) scaleX(1);
 	}
 	74% {
-		transform: translate3d(26px, 530%, 0) rotate(calc(var(--p-spin) * 0.8)) scaleX(0.45);
+		transform: translate3d(26px, calc(var(--fx-h, 120px) * 0.88), 0) rotate(calc(var(--p-spin) * 0.8)) scaleX(0.45);
 	}
 	90% {
 		opacity: 1;
 	}
 	100% {
-		transform: translate3d(8px, 700%, 0) rotate(var(--p-spin)) scaleX(1);
+		transform: translate3d(8px, calc(var(--fx-h, 120px) * 1.18), 0) rotate(var(--p-spin)) scaleX(1);
 		opacity: 0;
 	}
 }
 
 /* --- meteor: individual streaks with bright heads --- */
 .fx-meteor .fx-p {
-	top: -20%;
+	top: 0;
 	left: var(--p-x);
-	width: max(110px, calc(var(--p-len) * max(0.75, var(--fx-s, 1))));
-	height: max(2.6px, calc(var(--p-thick) * max(0.8, var(--fx-s, 1))));
+	width: clamp(70px, calc(var(--p-len) * 0.5 + var(--fx-h, 120px) * 0.9), 680px);
+	height: max(2.2px, calc(var(--fx-h, 120px) * 0.022));
 	border-radius: 999px;
 	transform-origin: 100% 50%;
-	rotate: 122deg;
-	background: linear-gradient(90deg, transparent 0%, var(--p-hue) 70%, #fff 100%);
-	box-shadow: 0 0 12px 1px var(--p-hue);
+	rotate: 150deg;
+	background: linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--p-hue) 45%, transparent) 42%, var(--p-hue) 76%, #fff 100%);
+	box-shadow: 0 0 14px 2px var(--p-hue);
 	animation-name: fx-meteor-fall;
 	animation-duration: var(--p-dur);
-	animation-timing-function: cubic-bezier(0.4, 0, 0.9, 0.6);
+	animation-timing-function: linear;
 }
 
 @keyframes fx-meteor-fall {
 	0% {
-		transform: translate3d(0, -40%, 0);
+		transform: translate3d(calc(var(--fx-h, 120px) * 1), calc(var(--fx-h, 120px) * -0.58), 0);
 		opacity: 0;
 	}
-	8% {
+	9% {
 		opacity: 1;
 	}
-	78% {
+	82% {
 		opacity: 1;
 	}
 	100% {
-		transform: translate3d(calc(-320px * var(--fx-s, 1)), 420%, 0);
+		transform: translate3d(calc(var(--fx-h, 120px) * -2.8), calc(var(--fx-h, 120px) * 1.62), 0);
 		opacity: 0;
 	}
 }
@@ -926,13 +926,13 @@ html.lenis body {
 		opacity: 1;
 	}
 	68% {
-		transform: translate3d(calc(var(--p-drift) * 0.5), 90%, 0) rotate(calc(var(--p-spin) * 0.4));
+		transform: translate3d(calc(var(--p-drift) * 0.5), calc(var(--fx-h, 120px) * -0.16), 0) rotate(calc(var(--p-spin) * 0.4));
 	}
 	84% {
-		transform: translate3d(calc(var(--p-drift) * 0.8), 210%, 0) rotate(calc(var(--p-spin) * 0.75));
+		transform: translate3d(calc(var(--p-drift) * 0.8), calc(var(--fx-h, 120px) * 0.12), 0) rotate(calc(var(--p-spin) * 0.75));
 	}
 	100% {
-		transform: translate3d(var(--p-drift), 340%, 0) rotate(var(--p-spin));
+		transform: translate3d(var(--p-drift), calc(var(--fx-h, 120px) * 0.62), 0) rotate(var(--p-spin));
 		opacity: 0;
 	}
 }
@@ -940,31 +940,31 @@ html.lenis body {
 .fx-crack {
 	fill: none;
 	stroke: var(--fx-color);
-	stroke-width: 1.1;
+	stroke-width: 1.4;
 	stroke-linecap: round;
 	stroke-linejoin: round;
-	vector-effect: non-scaling-stroke;
 	filter: drop-shadow(0 0 3px var(--fx-color-2));
-	stroke-dasharray: 260;
-	stroke-dashoffset: 260;
+	stroke-dasharray: 100;
+	stroke-dashoffset: 100;
 	animation: fx-crack-draw var(--fx-speed) ease-out infinite paused;
 	animation-delay: calc(var(--fx-delay) + var(--c-i) * 0.09s);
 }
 
 @keyframes fx-crack-draw {
 	0%,
-	52% {
-		stroke-dashoffset: 260;
+	46% {
+		stroke-dashoffset: 100;
 		opacity: 0;
 	}
-	56% {
+	48% {
+		stroke-dashoffset: 100;
 		opacity: 1;
 	}
-	70% {
+	72% {
 		stroke-dashoffset: 0;
 		opacity: 1;
 	}
-	94% {
+	92% {
 		stroke-dashoffset: 0;
 		opacity: 1;
 	}
@@ -979,18 +979,6 @@ html.lenis body {
 	inset: 0;
 	width: 100%;
 	height: 100%;
-}
-
-.fx-cloud {
-	transform-origin: 50% 20%;
-	animation: fx-cloud-drift calc(var(--fx-speed) * 6) ease-in-out infinite alternate paused;
-	animation-delay: calc(var(--k-i) * -4s);
-	filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.55));
-	opacity: 0.94;
-}
-
-.fx-live .fx-cloud {
-	animation-play-state: running;
 }
 
 @keyframes fx-cloud-drift {
@@ -1074,10 +1062,22 @@ html.lenis body {
 	animation-delay: calc(var(--v-i) * -1.4s);
 }
 
+.fx-breaker-piece {
+	position: absolute;
+	bottom: 0;
+	left: var(--w-left, 0%);
+	height: calc(var(--w-h, 1) * 100%);
+	width: auto;
+	aspect-ratio: 1;
+	overflow: visible;
+	pointer-events: none;
+}
+
 .fx-breaker {
 	transform-origin: 30% 100%;
 	filter: drop-shadow(0 -4px 12px rgba(6, 40, 70, 0.55));
 	animation: fx-breaker-surge var(--fx-speed) ease-in-out infinite alternate paused;
+	animation-delay: calc(var(--w-i, 0) * -0.9s);
 }
 
 .fx-live .fx-swell,
@@ -1377,7 +1377,6 @@ html.lenis body {
 	}
 }
 
-/* --- name treatments: one per effect family --- */
 .fx-text {
 	position: relative;
 	display: inline-block;
@@ -1401,8 +1400,6 @@ html.lenis body {
 .fx-text[data-fx].fx-live::after {
 	animation-play-state: running;
 }
-
-/* glitch — chromatic halves torn apart on a stepped jitter */
 .fx-text[data-fx='glitch']::before {
 	color: var(--fx-color);
 	clip-path: inset(0 0 55% 0);
@@ -1416,15 +1413,14 @@ html.lenis body {
 	opacity: var(--fx-opacity, 0.9);
 	animation: fx-glitch-b var(--fx-speed-2) steps(2, end) infinite;
 }
-
-/* sparkle — gold leaf with a narrow specular glint running across */
 .fx-text[data-fx='sparkle']::before {
-	background: linear-gradient(180deg, #e8a417 0%, var(--fx-color-2) 40%, var(--fx-color) 58%, #a76c05 100%);
+	background-image: linear-gradient(180deg, #e8a417 0%, var(--fx-color-2) 40%, var(--fx-color) 58%, #a76c05 100%);
 	text-shadow: 0 1px 1px rgba(74, 46, 0, 0.4);
 }
 
 .fx-text[data-fx='sparkle']::after {
-	background: linear-gradient(100deg, transparent 0%, rgba(255, 255, 255, 0.15) 38%, #fff 50%, rgba(255, 255, 255, 0.15) 62%, transparent 100%) no-repeat;
+	background-image: linear-gradient(100deg, transparent 0%, rgba(255, 255, 255, 0.15) 38%, #fff 50%, rgba(255, 255, 255, 0.15) 62%, transparent 100%);
+	background-repeat: no-repeat;
 	background-size: 55% 100%;
 	background-position: -60% 0;
 	animation: fx-name-glint calc(var(--fx-speed) * 0.85) linear infinite;
@@ -1439,18 +1435,22 @@ html.lenis body {
 		background-position: 170% 0;
 	}
 }
-
-/* snow — powder settling on the glyph tops, flakes drifting straight down */
 .fx-text[data-fx='snow']::before {
-	background:
-		radial-gradient(circle at 30% 30%, var(--fx-color) 0 1.1px, transparent 1.7px) 0 0 / 9px 11px,
-		radial-gradient(circle at 70% 65%, var(--fx-color-2) 0 0.8px, transparent 1.4px) 4px 6px / 13px 15px;
+	background-image:
+		radial-gradient(circle at 30% 30%, var(--fx-color) 0 1.1px, transparent 1.7px),
+		radial-gradient(circle at 70% 65%, var(--fx-color-2) 0 0.8px, transparent 1.4px);
+	background-size:
+		9px 11px,
+		13px 15px;
+	background-position:
+		0 0,
+		4px 6px;
 	opacity: var(--fx-opacity, 0.9);
 	animation: fx-name-snowfall calc(var(--fx-speed) * 0.5) linear infinite;
 }
 
 .fx-text[data-fx='snow']::after {
-	background: linear-gradient(180deg, #fff 0%, rgba(255, 255, 255, 0.65) 22%, transparent 48%);
+	background-image: linear-gradient(180deg, #fff 0%, rgba(255, 255, 255, 0.65) 22%, transparent 48%);
 	text-shadow: 0 1px 1px rgba(30, 52, 74, 0.3);
 }
 
@@ -1466,10 +1466,10 @@ html.lenis body {
 			4px 21px;
 	}
 }
-
-/* rain — beaded streaks sliding down the letters */
 .fx-text[data-fx='rain']::before {
-	background: linear-gradient(180deg, transparent 0 18%, var(--fx-color-2) 40%, var(--fx-color) 56%, transparent 82% 100%) 0 0 / 4px 14px;
+	background-image: linear-gradient(180deg, transparent 0 18%, var(--fx-color-2) 40%, var(--fx-color) 56%, transparent 82% 100%);
+	background-size: 4px 14px;
+	background-position: 0 0;
 	opacity: var(--fx-opacity, 0.85);
 	animation: fx-name-rain calc(var(--fx-speed) * 0.55) linear infinite;
 }
@@ -1482,10 +1482,10 @@ html.lenis body {
 		background-position: 0 14px;
 	}
 }
-
-/* ember — coal glow breathing up from the baseline */
 .fx-text[data-fx='ember']::before {
-	background: linear-gradient(0deg, var(--fx-color) 0%, var(--fx-color-2) 34%, rgba(255, 179, 71, 0.25) 66%, transparent 92%) 0 0 / 100% 220%;
+	background-image: linear-gradient(0deg, var(--fx-color) 0%, var(--fx-color-2) 34%, rgba(255, 179, 71, 0.25) 66%, transparent 92%);
+	background-size: 100% 220%;
+	background-position: 0 100%;
 	opacity: var(--fx-opacity, 0.9);
 	animation: fx-name-ember calc(var(--fx-speed) * 0.8) ease-in-out infinite alternate;
 }
@@ -1498,13 +1498,18 @@ html.lenis body {
 		background-position: 0 32%;
 	}
 }
-
-/* confetti — three colours of paper flecks tumbling on the diagonal */
 .fx-text[data-fx='confetti']::before {
-	background:
-		linear-gradient(48deg, var(--fx-color) 0 2px, transparent 2px) 0 0 / 8px 9px,
-		linear-gradient(-42deg, var(--fx-color-2) 0 2px, transparent 2px) 4px 3px / 11px 13px,
-		linear-gradient(18deg, #ffd166 0 2px, transparent 2px) 2px 7px / 15px 17px;
+	background-image:
+		linear-gradient(48deg, var(--fx-color) 0 2px, transparent 2px), linear-gradient(-42deg, var(--fx-color-2) 0 2px, transparent 2px),
+		linear-gradient(18deg, #ffd166 0 2px, transparent 2px);
+	background-size:
+		8px 9px,
+		11px 13px,
+		15px 17px;
+	background-position:
+		0 0,
+		4px 3px,
+		2px 7px;
 	opacity: var(--fx-opacity, 0.9);
 	animation: fx-name-confetti calc(var(--fx-speed) * 0.7) linear infinite;
 }
@@ -1520,15 +1525,19 @@ html.lenis body {
 		background-position:
 			8px 9px,
 			-7px 16px,
-			15px 24px;
+			17px 24px;
 	}
 }
-
-/* bubbles — hollow rings floating up through the word */
 .fx-text[data-fx='bubbles']::before {
-	background:
-		radial-gradient(circle at 50% 50%, transparent 0 2px, var(--fx-color) 2px 2.7px, transparent 3.1px) 0 0 / 10px 13px,
-		radial-gradient(circle at 50% 50%, transparent 0 1.2px, var(--fx-color-2) 1.2px 1.7px, transparent 2.1px) 5px 7px / 15px 17px;
+	background-image:
+		radial-gradient(circle at 50% 50%, transparent 0 2px, var(--fx-color) 2px 2.7px, transparent 3.1px),
+		radial-gradient(circle at 50% 50%, transparent 0 1.2px, var(--fx-color-2) 1.2px 1.7px, transparent 2.1px);
+	background-size:
+		10px 13px,
+		15px 17px;
+	background-position:
+		0 0,
+		5px 7px;
 	opacity: var(--fx-opacity, 0.75);
 	animation: fx-name-bubble calc(var(--fx-speed) * 0.6) linear infinite;
 }
@@ -1545,16 +1554,14 @@ html.lenis body {
 			5px -10px;
 	}
 }
-
-/* scanlines — CRT phosphor with the raster rolling down over it */
 .fx-text[data-fx='scanlines']::before {
-	background: linear-gradient(180deg, var(--fx-color-2) 0%, var(--fx-color) 42%, #0e7a45 100%);
+	background-image: linear-gradient(180deg, var(--fx-color-2) 0%, var(--fx-color) 42%, #0e7a45 100%);
 	text-shadow: 0 0 4px rgba(45, 209, 122, 0.55);
 }
 
 .fx-text[data-fx='scanlines']::after {
 	content: '';
-	background: repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.5) 0 1px, transparent 1px 3px);
+	background-image: repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.5) 0 1px, transparent 1px 3px);
 	-webkit-background-clip: border-box;
 	background-clip: border-box;
 	animation: fx-name-roll calc(var(--fx-speed) * 0.3) linear infinite;
@@ -1568,8 +1575,6 @@ html.lenis body {
 		background-position: 0 3px;
 	}
 }
-
-/* grain — 16mm emulsion noise crawling over the glyphs */
 .fx-text[data-fx='grain']::before {
 	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='70' height='70'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.95' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 	opacity: var(--fx-opacity, 0.5);
@@ -1598,16 +1603,15 @@ html.lenis body {
 		opacity: calc(var(--fx-opacity, 0.5) * 1);
 	}
 }
-
-/* holo — foil that cycles its whole hue wheel, with a wide sheen */
 .fx-text[data-fx='holo']::before {
-	background: linear-gradient(115deg, #ff8ad4 0%, #8ad4ff 26%, #b6ffcd 48%, #ffe98a 72%, #ff8ad4 100%);
+	background-image: linear-gradient(115deg, #ff8ad4 0%, #8ad4ff 26%, #b6ffcd 48%, #ffe98a 72%, #ff8ad4 100%);
 	text-shadow: 0 1px 1px rgba(38, 20, 52, 0.3);
 	animation: fx-name-holo calc(var(--fx-speed) * 1.2) linear infinite;
 }
 
 .fx-text[data-fx='holo']::after {
-	background: linear-gradient(115deg, transparent 0%, rgba(255, 255, 255, 0.9) 50%, transparent 100%) no-repeat;
+	background-image: linear-gradient(115deg, transparent 0%, rgba(255, 255, 255, 0.9) 50%, transparent 100%);
+	background-repeat: no-repeat;
 	background-size: 80% 100%;
 	background-position: -90% 0;
 	animation: fx-name-sheen calc(var(--fx-speed) * 2.1) ease-in-out infinite;
@@ -1632,10 +1636,10 @@ html.lenis body {
 		background-position: 190% 0;
 	}
 }
-
-/* aurora — a slow curtain of light sliding down the letterforms */
 .fx-text[data-fx='aurora']::before {
-	background: linear-gradient(180deg, #7dd3fc 0%, var(--fx-color) 24%, #a78bfa 50%, var(--fx-color-2) 76%, #7dd3fc 100%) 0 0 / 100% 320%;
+	background-image: linear-gradient(180deg, #7dd3fc 0%, var(--fx-color) 24%, #a78bfa 50%, var(--fx-color-2) 76%, #7dd3fc 100%);
+	background-size: 100% 320%;
+	background-position: 0 4%;
 	opacity: var(--fx-opacity, 0.95);
 	text-shadow: 0 1px 1px rgba(12, 34, 48, 0.35);
 	animation: fx-name-curtain var(--fx-speed) ease-in-out infinite alternate;
@@ -1662,14 +1666,12 @@ html.lenis body {
 		filter: drop-shadow(0 0 7px rgba(56, 189, 248, 0.6));
 	}
 }
-
-/* pulse — the name flushes with colour on a double heartbeat */
 .fx-text.fx-live[data-fx='pulse'] {
 	animation: fx-name-beat var(--fx-speed) ease-in-out infinite;
 }
 
 .fx-text[data-fx='pulse']::before {
-	background: linear-gradient(180deg, var(--fx-color) 0%, var(--fx-color-2) 100%);
+	background-image: linear-gradient(180deg, var(--fx-color) 0%, var(--fx-color-2) 100%);
 	opacity: 0;
 	animation: fx-name-beat-ink var(--fx-speed) ease-in-out infinite;
 }
@@ -1713,20 +1715,19 @@ html.lenis body {
 		opacity: 0;
 	}
 }
-
-/* earthquake — the word trembles and a fissure snaps across it */
 .fx-text.fx-live[data-fx='earthquake'] {
 	animation: fx-name-quake calc(var(--fx-speed) * 0.11) steps(2, end) infinite;
 }
 
 .fx-text[data-fx='earthquake']::before {
-	background: linear-gradient(180deg, var(--fx-color) 0%, var(--fx-color-2) 100%);
+	background-image: linear-gradient(180deg, var(--fx-color) 0%, var(--fx-color-2) 100%);
 	opacity: var(--fx-opacity, 0.85);
 }
 
 .fx-text[data-fx='earthquake']::after {
 	content: '';
-	background: linear-gradient(148deg, transparent 0 46%, #2f2317 46% 54%, transparent 54% 100%) 0 0 / 7px 100%;
+	background-image: linear-gradient(148deg, transparent 0 46%, #2f2317 46% 54%, transparent 54% 100%);
+	background-size: 7px 100%;
 	-webkit-background-clip: border-box;
 	background-clip: border-box;
 	opacity: 0;
@@ -1747,7 +1748,7 @@ html.lenis body {
 		transform: translate3d(1px, 0.5px, 0);
 	}
 	100% {
-		transform: translate3d(-1px, 0, 0);
+		transform: translate3d(-1px, 0.5px, 0);
 	}
 }
 
@@ -1770,10 +1771,8 @@ html.lenis body {
 		opacity: 0;
 	}
 }
-
-/* thunder — dark until a double strike blows the name out white */
 .fx-text[data-fx='thunder']::before {
-	background: linear-gradient(180deg, var(--fx-color) 0%, var(--fx-color-2) 100%);
+	background-image: linear-gradient(180deg, var(--fx-color) 0%, var(--fx-color-2) 100%);
 	opacity: 0;
 	animation: fx-name-strobe var(--fx-speed) linear infinite;
 }
@@ -1816,11 +1815,10 @@ html.lenis body {
 		filter: none;
 	}
 }
-
-/* tsunami — a waterline that floods the letters and drags them with the swell */
 .fx-text[data-fx='tsunami']::before {
-	background: linear-gradient(180deg, transparent 0 44%, rgba(127, 230, 255, 0.85) 46%, var(--fx-color-2) 52%, var(--fx-color) 70%, #0b4a76 100%) 0 0 / 100%
-		200%;
+	background-image: linear-gradient(180deg, transparent 0 44%, rgba(127, 230, 255, 0.85) 46%, var(--fx-color-2) 52%, var(--fx-color) 70%, #0b4a76 100%);
+	background-size: 100% 200%;
+	background-position: 0 92%;
 	opacity: var(--fx-opacity, 0.9);
 	animation: fx-name-tide calc(var(--fx-speed) * 0.85) ease-in-out infinite alternate;
 }
@@ -1846,31 +1844,35 @@ html.lenis body {
 		transform: translate3d(1.5px, -0.5px, 0);
 	}
 }
-
-/* tornado — the word leans through the vortex, debris smearing across it */
 .fx-text.fx-live[data-fx='tornado'] {
 	transform-origin: 50% 100%;
 	animation: fx-name-twist calc(var(--fx-speed) * 0.75) ease-in-out infinite;
 }
 
 .fx-text[data-fx='tornado']::before {
-	background: linear-gradient(180deg, var(--fx-color) 0%, var(--fx-color-2) 100%);
+	background-image: linear-gradient(180deg, var(--fx-color) 0%, var(--fx-color-2) 100%);
 	opacity: var(--fx-opacity, 0.85);
 }
 
 .fx-text[data-fx='tornado']::after {
-	background: repeating-linear-gradient(96deg, transparent 0 3px, rgba(255, 255, 255, 0.55) 3px 4px, transparent 4px 9px);
+	background-image: repeating-linear-gradient(90deg, transparent 0 3px, rgba(255, 255, 255, 0.6) 3px 4.2px, transparent 4.2px 9px);
 	opacity: 0.5;
-	animation: fx-name-smear calc(var(--fx-speed) * 0.2) linear infinite;
+	animation: fx-name-smear calc(var(--fx-speed) * 0.18) linear infinite;
 }
 
 @keyframes fx-name-twist {
 	0%,
 	100% {
-		transform: skewX(-6deg) translate3d(-1px, 0, 0);
+		transform: skewX(-7deg) rotate(-1.2deg) translate3d(-1.5px, 0, 0);
+	}
+	25% {
+		transform: skewX(0deg) rotate(0deg) translate3d(0, -0.6px, 0);
 	}
 	50% {
-		transform: skewX(6deg) translate3d(1px, 0, 0);
+		transform: skewX(7deg) rotate(1.2deg) translate3d(1.5px, 0, 0);
+	}
+	75% {
+		transform: skewX(0deg) rotate(0deg) translate3d(0, 0.6px, 0);
 	}
 }
 
@@ -1879,28 +1881,26 @@ html.lenis body {
 		background-position: 0 0;
 	}
 	to {
-		background-position: 18px 0;
+		background-position: -9px 0;
 	}
 }
-
-/* meteor — mostly idle, then one blazing streak tears across the name */
 .fx-text[data-fx='meteor']::before {
-	background: linear-gradient(180deg, var(--fx-color-2) 0%, #c2510f 100%);
+	background-image: linear-gradient(180deg, var(--fx-color-2) 0%, #c2510f 100%);
 	opacity: calc(var(--fx-opacity, 0.95) * 0.85);
 	text-shadow: 0 1px 1px rgba(58, 22, 0, 0.35);
 }
 
 .fx-text[data-fx='meteor']::after {
-	background: linear-gradient(
-			112deg,
-			transparent 0 30%,
-			rgba(255, 154, 77, 0.35) 40%,
-			rgba(255, 243, 208, 0.85) 48%,
-			#fff 52%,
-			rgba(255, 154, 77, 0.4) 60%,
-			transparent 74%
-		)
-		no-repeat;
+	background-image: linear-gradient(
+		112deg,
+		transparent 0 30%,
+		rgba(255, 154, 77, 0.35) 40%,
+		rgba(255, 243, 208, 0.85) 48%,
+		#fff 52%,
+		rgba(255, 154, 77, 0.4) 60%,
+		transparent 74%
+	);
+	background-repeat: no-repeat;
 	background-size: 85% 100%;
 	background-position: -95% 0;
 	animation: fx-name-streak calc(var(--fx-speed) * 2.6) linear infinite;
@@ -1917,10 +1917,10 @@ html.lenis body {
 		background-position: 195% 0;
 	}
 }
-
-/* blizzard — whiteout: hard flat streaks tearing sideways, word shoved by the gust */
 .fx-text[data-fx='blizzard']::before {
-	background: linear-gradient(95deg, transparent 0 14%, var(--fx-color-2) 30%, var(--fx-color) 50%, transparent 86% 100%) 0 0 / 16px 4px;
+	background-image: linear-gradient(95deg, transparent 0 14%, var(--fx-color-2) 30%, var(--fx-color) 50%, transparent 86% 100%);
+	background-size: 16px 4px;
+	background-position: 0 0;
 	opacity: var(--fx-opacity, 0.95);
 	animation: fx-name-blow calc(var(--fx-speed) * 0.1) linear infinite;
 }
@@ -1946,10 +1946,10 @@ html.lenis body {
 		transform: translate3d(1.5px, 0, 0);
 	}
 }
-
-/* rainbow — the full spectrum scrolling straight through the glyphs */
 .fx-text[data-fx='rainbow']::before {
-	background: linear-gradient(92deg, #ff5f6d 0%, #ffb03a 16%, #ffe74a 32%, #4ade80 50%, #38bdf8 67%, #8b5cf6 84%, #ff5f6d 100%) 0 0 / 200% 100%;
+	background-image: linear-gradient(92deg, #ff5f6d 0%, #ffb03a 16%, #ffe74a 32%, #4ade80 50%, #38bdf8 67%, #8b5cf6 84%, #ff5f6d 100%);
+	background-size: 200% 100%;
+	background-position: 0 0;
 	opacity: var(--fx-opacity, 0.95);
 	text-shadow: 0 1px 1px rgba(40, 24, 12, 0.28);
 	animation: fx-name-spectrum var(--fx-speed) linear infinite;
@@ -1963,11 +1963,10 @@ html.lenis body {
 		background-position: 200% 0;
 	}
 }
-
-/* fire — a flame ramp licking up the letters, flickering as it goes */
 .fx-text[data-fx='fire']::before {
-	background: linear-gradient(0deg, #6b1400 0%, #c2340a 15%, var(--fx-color) 36%, var(--fx-color-2) 60%, #fff2b8 82%, rgba(255, 242, 184, 0.2) 100%) 0 0 / 100%
-		180%;
+	background-image: linear-gradient(0deg, #6b1400 0%, #c2340a 15%, var(--fx-color) 36%, var(--fx-color-2) 60%, #fff2b8 82%, rgba(255, 242, 184, 0.2) 100%);
+	background-size: 100% 180%;
+	background-position: 0 100%;
 	opacity: var(--fx-opacity, 0.95);
 	text-shadow: 0 1px 1px rgba(60, 16, 0, 0.4);
 	animation: fx-name-flame calc(var(--fx-speed) * 0.7) ease-in-out infinite alternate;
@@ -2162,21 +2161,6 @@ html.lenis body {
 	100% {
 		opacity: 0;
 	}
-}
-
-/* tsunami crest + spray */
-.fx-crest {
-	fill: none;
-	stroke: var(--fx-color-2);
-	stroke-width: 4;
-	stroke-linecap: round;
-	opacity: 0.5;
-	filter: blur(3px);
-	animation: fx-wave-roll calc(var(--fx-speed) * 0.85) linear infinite paused;
-}
-
-.fx-live .fx-crest {
-	animation-play-state: running;
 }
 
 /* tornado ground dust */
@@ -2455,11 +2439,12 @@ html.lenis body {
 /* clouds keep their shape at any container size */
 .fx-cloudlet {
 	position: absolute;
-	top: 2%;
+	top: 3%;
 	left: var(--c-left, 10%);
-	width: clamp(90px, 34%, 420px);
+	height: clamp(16px, 34%, 150px);
+	width: auto;
+	max-width: 46%;
 	aspect-ratio: 110 / 44;
-	height: auto;
 	overflow: visible;
 }
 
@@ -2467,6 +2452,22 @@ html.lenis body {
 .fx-blizzard .fx-cloudlet {
 	--fx-cloud-top: #f3f7fc;
 	--fx-cloud-bottom: #b9c9dc;
+}
+
+.fx-bolt-piece {
+	position: absolute;
+	top: 0;
+	left: var(--b-left, 10%);
+	height: 100%;
+	width: auto;
+	aspect-ratio: 45 / 100;
+	overflow: visible;
+	pointer-events: none;
+}
+
+.fx-cloud-low {
+	top: auto;
+	bottom: 6%;
 }
 
 .fx-rain .fx-cloudlet {
@@ -2490,10 +2491,23 @@ html.lenis body {
 	translate: -50% 0;
 }
 
-.fx-piece-wide {
-	width: 100%;
-	height: auto;
-	max-height: 100%;
-	top: 50%;
-	translate: 0 -50%;
+.fx-fissure,
+.fx-rift {
+	position: absolute;
+	bottom: 0;
+	height: clamp(18px, 44%, 210px);
+	width: auto;
+	overflow: visible;
+	pointer-events: none;
+}
+
+.fx-fissure {
+	left: var(--s-left, 10%);
+	aspect-ratio: 120 / 46;
+}
+
+.fx-rift {
+	left: 50%;
+	translate: -50% 0;
+	aspect-ratio: 40 / 46;
 }

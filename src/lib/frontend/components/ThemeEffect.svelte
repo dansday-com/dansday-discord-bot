@@ -11,6 +11,54 @@
 
 	let { effect: effectId = null, seed = 0, accent = null, always = false, frozen = false }: Props = $props();
 
+	const QUAKE_FISSURES = [
+		{ left: '1%', paths: ['M4 46 L16 30 L8 18 L20 6', 'M16 30 L38 25 L52 12', 'M38 25 L44 40'] },
+		{ left: '21%', paths: ['M110 46 L96 32 L104 20 L92 8', 'M96 32 L74 27 L60 14', 'M74 27 L68 41'] },
+		{ left: '41%', paths: ['M58 46 L52 28 L64 17 L56 3', 'M52 28 L28 24 L12 11', 'M64 17 L88 13 L104 4'] },
+		{ left: '60%', paths: ['M22 46 L30 33 L20 21 L32 9', 'M30 33 L56 31 L76 20 L96 26', 'M76 20 L84 6'] },
+		{ left: '79%', paths: ['M86 46 L78 31 L88 19 L80 5', 'M78 31 L52 29 L34 18', 'M52 29 L46 42'] }
+	];
+
+	const THUNDER_BOLTS = [
+		{
+			left: '11%',
+			paths: [
+				{ d: 'M22 26 L13 52 L23 52 L8 92 L17 58 L7 58 L18 26 Z' },
+				{ d: 'M29 28 L24 50 L31 50 L21 98', thin: true },
+				{ d: 'M38 24 L31 46 L39 46 L27 84 L34 52 L26 52 L35 24 Z' }
+			]
+		},
+		{
+			left: '57%',
+			paths: [
+				{ d: 'M20 24 L9 48 L19 48 L6 88 L14 54 L4 54 L16 24 Z' },
+				{ d: 'M33 30 L27 52 L35 52 L24 94', thin: true },
+				{ d: 'M40 27 L34 49 L42 49 L31 90 L37 55 L29 55 L37 27 Z' }
+			]
+		}
+	];
+
+	const RAINBOW_CLOUDS = [
+		{
+			left: '2%',
+			side: 'fx-cloud-left',
+			d: 'M3 34 Q0 21 13 20 Q18 8 33 11 Q46 2 58 12 Q74 10 78 21 Q92 21 91 30 Q92 37 80 37 L11 37 Q1 37 3 34 Z'
+		},
+		{
+			left: '72%',
+			side: 'fx-cloud-right',
+			d: 'M6 33 Q2 20 16 19 Q23 6 38 10 Q52 1 64 13 Q80 12 84 22 Q98 23 96 31 Q97 37 85 37 L14 37 Q4 37 6 33 Z'
+		}
+	];
+
+	const TSUNAMI_BREAKERS = [
+		{ left: '-6%', height: 1 },
+		{ left: '15%', height: 0.84 },
+		{ left: '35%', height: 0.97 },
+		{ left: '56%', height: 0.79 },
+		{ left: '76%', height: 0.92 }
+	];
+
 	const family = $derived(normalizeEffect(effectId));
 	const variant = $derived(effectVariant(family, seed, accent));
 	const dotted = $derived(effectMeta(family)?.particles === true);
@@ -19,13 +67,15 @@
 	let host = $state<HTMLDivElement | undefined>();
 	let live = $state(false);
 	let scale = $state(1);
+	let boxH = $state(0);
 
 	$effect(() => {
 		const node = host;
 		if (!node || typeof ResizeObserver === 'undefined') return;
 		const measure = () => {
 			const h = node.clientHeight || 0;
-			scale = Math.max(0.28, Math.min(1, h / 650));
+			boxH = h;
+			scale = Math.max(0.55, Math.min(2.4, h / 150));
 		};
 		measure();
 		const ro = new ResizeObserver(measure);
@@ -56,7 +106,7 @@
 	<div
 		bind:this={host}
 		class="fx fx-{family} {dotted ? 'fx-dots' : ''} {live && !frozen ? 'fx-live' : ''}"
-		style="{variant.style}; --fx-s: {scale}"
+		style="{variant.style}; --fx-s: {scale}; --fx-h: {boxH || 120}px"
 		aria-hidden="true"
 	>
 		{#each variant.particles as p}
@@ -65,15 +115,17 @@
 
 		{#if family === 'earthquake'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
-				<path class="fx-ground" d="M0 78 L18 74 L34 79 L52 73 L70 78 L86 74 L100 79 L100 100 L0 100 Z" />
+				<path class="fx-ground" d="M0 58 L17 53 L33 59 L51 51 L69 57 L85 52 L100 57 L100 100 L0 100 Z" />
 			</svg>
-			<svg class="fx-piece fx-piece-wide" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-				<path class="fx-chasm" d="M40 78 L46 88 L42 100 L58 100 L54 86 L60 78 Z" />
-				<path class="fx-crack" style="--c-i: 0" d="M2 34 L18 40 L26 31 L41 44 L55 36 L70 49 L84 41 L98 52" />
-				<path class="fx-crack" style="--c-i: 1" d="M26 31 L30 14 L22 6" />
-				<path class="fx-crack" style="--c-i: 2" d="M41 44 L46 66 L38 78" />
-				<path class="fx-crack" style="--c-i: 3" d="M70 49 L76 68 L88 78" />
-				<path class="fx-crack" style="--c-i: 4" d="M55 36 L58 20 L68 10" />
+			{#each QUAKE_FISSURES as fissure, f}
+				<svg class="fx-fissure" style="--s-left: {fissure.left}" viewBox="0 0 120 46" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
+					{#each fissure.paths as d, i}
+						<path class="fx-crack" pathLength="100" style="--c-i: {f * 3 + i}" {d} />
+					{/each}
+				</svg>
+			{/each}
+			<svg class="fx-rift" viewBox="0 0 40 46" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
+				<path class="fx-chasm" d="M14 1 L21 16 L16 46 L29 46 L24 15 L30 1 Z" />
 			</svg>
 		{:else if family === 'thunder'}
 			<svg
@@ -104,11 +156,13 @@
 				</defs>
 				<path fill="url(#fxGthunder1{uid})" d="M4 30 Q2 19 14 18 Q19 8 32 10 Q44 2 54 11 Q68 9 70 20 Q82 20 81 29 Q82 34 71 34 L10 34 Q3 34 4 30 Z" />
 			</svg>
-			<svg class="fx-piece fx-piece-tall" viewBox="0 0 45 100" preserveAspectRatio="xMidYMin meet" aria-hidden="true">
-				<path class="fx-strike" style="--s-i: 0" d="M22 26 L13 52 L23 52 L8 92 L17 58 L7 58 L18 26 Z" />
-				<path class="fx-strike fx-strike-thin" style="--s-i: 2" d="M29 28 L24 50 L31 50 L21 98" />
-				<path class="fx-strike" style="--s-i: 1" d="M38 24 L31 46 L39 46 L27 84 L34 52 L26 52 L35 24 Z" />
-			</svg>
+			{#each THUNDER_BOLTS as bolt, b}
+				<svg class="fx-bolt-piece" style="--b-left: {bolt.left}" viewBox="0 0 45 100" preserveAspectRatio="xMidYMin meet" aria-hidden="true">
+					{#each bolt.paths as strike, i}
+						<path class="fx-strike {strike.thin ? 'fx-strike-thin' : ''}" style="--s-i: {b * 3 + i}" d={strike.d} />
+					{/each}
+				</svg>
+			{/each}
 		{:else if family === 'rain'}
 			<div class="fx-skycloud" style="display: contents">
 				<svg
@@ -174,18 +228,26 @@
 				<path class="fx-swell" style="--v-i: 0" fill="url(#fxSeaBack{uid})" d="M0 100 L0 70 Q22 52 46 58 Q70 64 100 54 L100 100 Z" />
 				<path class="fx-swell" style="--v-i: 1" fill="url(#fxSeaBack{uid})" opacity="0.8" d="M0 100 L0 78 Q26 64 52 70 Q78 76 100 66 L100 100 Z" />
 			</svg>
-			<svg class="fx-piece fx-piece-tall" viewBox="0 0 100 100" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
-				<g class="fx-breaker">
-					<path
-						fill="url(#fxSea{uid})"
-						d="M0 100 L0 66 C 10 36, 32 22, 54 30 C 72 37, 78 56, 68 66 C 62 72, 52 70, 50 62 C 48 54, 56 50, 60 56 C 56 44, 40 42, 32 54 C 24 66, 30 82, 44 84 L100 84 L100 100 Z"
-					/>
-					<path class="fx-curl" d="M54 30 C 72 37, 78 56, 68 66 C 64 70, 57 69, 54 64 C 62 60, 64 48, 56 40 C 51 35, 46 33, 42 33 C 46 30, 50 29, 54 30 Z" />
-					<path class="fx-spray" d="M50 28 Q56 20 64 22 Q58 24 56 30 Z" />
-					<path class="fx-spray" style="--y-i: 1" d="M38 32 Q40 22 48 20 Q42 26 42 33 Z" />
-					<path class="fx-spray" style="--y-i: 2" d="M64 34 Q72 30 78 34 Q70 34 66 40 Z" />
-				</g>
-			</svg>
+			{#each TSUNAMI_BREAKERS as wave, w}
+				<svg
+					class="fx-breaker-piece"
+					style="--w-left: {wave.left}; --w-h: {wave.height}; --w-i: {w}"
+					viewBox="0 0 100 100"
+					preserveAspectRatio="xMidYMax meet"
+					aria-hidden="true"
+				>
+					<g class="fx-breaker">
+						<path
+							fill="url(#fxSea{uid})"
+							d="M0 100 L0 66 C 10 36, 32 22, 54 30 C 72 37, 78 56, 68 66 C 62 72, 52 70, 50 62 C 48 54, 56 50, 60 56 C 56 44, 40 42, 32 54 C 24 66, 30 82, 44 84 L100 84 L100 100 Z"
+						/>
+						<path class="fx-curl" d="M54 30 C 72 37, 78 56, 68 66 C 64 70, 57 69, 54 64 C 62 60, 64 48, 56 40 C 51 35, 46 33, 42 33 C 46 30, 50 29, 54 30 Z" />
+						<path class="fx-spray" d="M50 28 Q56 20 64 22 Q58 24 56 30 Z" />
+						<path class="fx-spray" style="--y-i: 1" d="M38 32 Q40 22 48 20 Q42 26 42 33 Z" />
+						<path class="fx-spray" style="--y-i: 2" d="M64 34 Q72 30 78 34 Q70 34 66 40 Z" />
+					</g>
+				</svg>
+			{/each}
 		{:else if family === 'tornado'}
 			<svg
 				class="fx-cloudlet fx-cloud fx-cloud-tornado"
@@ -250,12 +312,7 @@
 				<path class="fx-ridge" d="M0 84 L14 72 L26 80 L40 66 L55 79 L68 70 L82 81 L100 74 L100 100 L0 100 Z" />
 			</svg>
 		{:else if family === 'rainbow'}
-			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="xMidYMax meet">
-				<defs>
-					<linearGradient id="fxRainCloud{uid}" x1="0" y1="0" x2="0" y2="1">
-						<stop offset="0%" stop-color="#f2f6fb" /><stop offset="100%" stop-color="#b9c6d6" />
-					</linearGradient>
-				</defs>
+			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
 				<path class="fx-arc" style="--a-i: 0; --a-c: #ff5f6d" d="M 4 92 A 46 46 0 0 1 96 92" />
 				<path class="fx-arc" style="--a-i: 1; --a-c: #ff9f45" d="M 8 92 A 42 42 0 0 1 92 92" />
 				<path class="fx-arc" style="--a-i: 2; --a-c: #ffd93d" d="M 12 92 A 38 38 0 0 1 88 92" />
@@ -263,13 +320,23 @@
 				<path class="fx-arc" style="--a-i: 4; --a-c: #38bdf8" d="M 20 92 A 30 30 0 0 1 80 92" />
 				<path class="fx-arc" style="--a-i: 5; --a-c: #4f6ef7" d="M 24 92 A 26 26 0 0 1 76 92" />
 				<path class="fx-arc" style="--a-i: 6; --a-c: #a78bfa" d="M 28 92 A 22 22 0 0 1 72 92" />
-				<g class="fx-cloud fx-cloud-left" style="--k-i: 0">
-					<path fill="url(#fxRainCloud{uid})" d="M-8 84 Q-6 72 6 72 Q10 62 23 64 Q34 57 41 67 Q52 69 52 79 Q52 86 44 86 L2 86 Q-8 86 -8 84 Z" />
-				</g>
-				<g class="fx-cloud fx-cloud-right" style="--k-i: 1">
-					<path fill="url(#fxRainCloud{uid})" d="M56 84 Q58 72 70 72 Q74 62 87 64 Q98 57 105 67 Q116 69 116 79 Q116 86 108 86 L62 86 Q56 86 56 84 Z" />
-				</g>
 			</svg>
+			{#each RAINBOW_CLOUDS as puff, c}
+				<svg
+					class="fx-cloudlet fx-cloud fx-cloud-low {puff.side}"
+					style="--k-i: {c}; --c-left: {puff.left}"
+					viewBox="0 0 110 44"
+					preserveAspectRatio="xMidYMid meet"
+					aria-hidden="true"
+				>
+					<defs>
+						<linearGradient id="fxGbow{c}{uid}" x1="0" y1="0" x2="0" y2="1">
+							<stop offset="0%" stop-color="#f2f6fb" /><stop offset="100%" stop-color="#b9c6d6" />
+						</linearGradient>
+					</defs>
+					<path fill="url(#fxGbow{c}{uid})" d={puff.d} />
+				</svg>
+			{/each}
 		{:else if family === 'fire' || family === 'ember'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
 				<defs>

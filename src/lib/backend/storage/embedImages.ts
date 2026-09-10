@@ -1,19 +1,11 @@
 import { deleteObject, getObject, listObjectKeys, publicUrl, putObject } from './index.js';
+import { imageContentType } from '../../images.js';
 
 const FOLDER = 'embed-images';
 const MAX_AGE_MS = 30 * 60 * 1000;
 
-const CONTENT_TYPES: Record<string, string> = {
-	jpg: 'image/jpeg',
-	jpeg: 'image/jpeg',
-	png: 'image/png',
-	gif: 'image/gif',
-	webp: 'image/webp'
-};
-
 export function embedImageContentType(filename: string): string {
-	const ext = filename.split('.').pop()?.toLowerCase() ?? '';
-	return CONTENT_TYPES[ext] ?? 'application/octet-stream';
+	return imageContentType(filename);
 }
 
 function embedImageKey(filename: string): string {

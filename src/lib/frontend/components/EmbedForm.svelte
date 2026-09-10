@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { showToast } from '$lib/frontend/toast.svelte';
+	import { IMAGE_ACCEPT } from '$lib/images.js';
 	import type { Snippet } from 'svelte';
 
 	let {
@@ -230,7 +231,7 @@
 				{:else}
 					<input
 						type="file"
-						accept="image/*"
+						accept={IMAGE_ACCEPT}
 						onchange={handleImageUpload}
 						class="text-ash-300 file:bg-ash-600 file:text-ash-100 hover:file:bg-ash-500 w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:px-3 file:py-1.5 file:text-xs"
 					/>

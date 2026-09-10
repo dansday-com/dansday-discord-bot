@@ -55,6 +55,8 @@ export type LeaderboardRow = {
 	gift_given?: number | null;
 	gift_received?: number | null;
 	rank: number | null;
+	theme_image?: string | null;
+	theme_accent?: string | null;
 };
 
 export type LeaderboardSnapshot = {

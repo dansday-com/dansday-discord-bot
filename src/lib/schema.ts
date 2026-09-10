@@ -499,6 +499,23 @@ export const serverMemberAfks = mysqlTable(
 	(t) => [index('idx_server_member_afks_member_id').on(t.member_id)]
 );
 
+export const serverMemberThemes = mysqlTable(
+	'server_member_themes',
+	{
+		id: int('id').primaryKey().autoincrement(),
+		member_id: int('member_id')
+			.notNull()
+			.unique()
+			.references(() => serverMembers.id, { onDelete: 'cascade' }),
+		image: varchar('image', { length: 191 }),
+		accent_color: varchar('accent_color', { length: 7 }),
+		accent_auto: boolean('accent_auto').notNull().default(true),
+		created_at: datetime('created_at').notNull(),
+		updated_at: datetime('updated_at').notNull()
+	},
+	(t) => [index('idx_server_member_themes_member_id').on(t.member_id)]
+);
+
 export const serverSettings = mysqlTable(
 	'server_settings',
 	{

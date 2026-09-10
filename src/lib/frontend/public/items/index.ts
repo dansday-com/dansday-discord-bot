@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from 'crypto';
 import { request as httpRequest } from 'http';
 import db from '../../../database.js';
 import { itemAvailability, effectiveBagStock, discountedItemCost, DISGUISED_MENTION, floatingWallClockMs } from '../../../items.js';
+import { resolveMemberTheme } from '../../../themes.js';
 
 export function computeCardToken(discordMemberId: string): string {
 	const secret = process.env.SECRET;
@@ -205,6 +206,7 @@ export async function loadItemsShared(server: any, hash: string, subKey?: 'items
 	}
 
 	const bountyTotal = await db.getActiveBountyTotal(member.id).catch(() => 0);
+	const memberTheme = resolveMemberTheme(await db.getMemberTheme(member.id).catch(() => null));
 
 	return {
 		readOnly: false as const,
@@ -221,6 +223,7 @@ export async function loadItemsShared(server: any, hash: string, subKey?: 'items
 		memberName: member.server_display_name || member.display_name || member.username,
 		memberDiscordId: String(member.discord_member_id),
 		memberAvatar: member.avatar ?? null,
+		memberTheme,
 		memberCard: {
 			discord_member_id: String(member.discord_member_id),
 			username: member.username ?? null,

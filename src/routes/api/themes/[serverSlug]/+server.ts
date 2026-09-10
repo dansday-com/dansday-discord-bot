@@ -102,7 +102,8 @@ export const DELETE: RequestHandler = async ({ params, request }) => {
 		await db.clearMemberTheme(actor.member.id);
 		if (previous?.image) await removeMemberTheme(previous.image);
 
-		return json({ success: true, theme: null });
+		const remaining = await db.getMemberTheme(actor.member.id).catch(() => null);
+		return json({ success: true, theme: remaining ?? null });
 	} catch (error: any) {
 		logger.log(`❌ Error clearing member theme: ${error.message}`);
 		return json({ success: false, error: 'Could not reset your theme.' }, { status: 500 });

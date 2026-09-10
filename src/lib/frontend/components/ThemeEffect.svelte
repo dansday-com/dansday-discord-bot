@@ -50,6 +50,17 @@
 		}
 	];
 
+	const VOID_DRAWIN = [
+		'M4 6 C 24 20, 38 34, 47 47',
+		'M96 10 C 76 24, 62 36, 53 47',
+		'M2 92 C 22 76, 38 62, 47 53',
+		'M98 88 C 78 74, 62 62, 53 53',
+		'M50 -6 C 50 14, 50 30, 50 45',
+		'M50 106 C 50 86, 50 70, 50 55',
+		'M-8 50 C 14 50, 30 50, 45 50',
+		'M108 50 C 86 50, 70 50, 55 50'
+	];
+
 	const SAKURA_BOUGHS = [
 		'M0 4 Q22 10 38 8 Q56 6 70 14 Q86 22 104 20 Q114 19 120 24 L120 16 Q108 13 96 14 Q80 15 66 8 Q50 0 30 2 Q14 3 0 0 Z M38 8 L34 22 M70 14 L76 30 M96 14 L92 27',
 		'M0 10 Q18 4 34 6 Q52 8 66 18 Q82 28 100 24 Q112 21 120 14 L120 6 Q106 14 94 16 Q78 18 64 9 Q48 -1 28 0 Q12 1 0 2 Z M34 6 L30 21 M66 18 L70 34 M100 24 L104 38'
@@ -290,7 +301,7 @@
 
 			{#each spreadPieces(seed + 31, pieceCount(110 / 44, 0.34, 2, 14, 0.86), 0.3, 0.86, 1.2) as piece, i}
 				<svg
-					class="fx-cloudlet fx-cloud fx-cloud-thunder"
+					class="fx-cloudlet fx-cloud"
 					style="--k-i: {i}; --c-left: {piece.left}%; --c-scale: {piece.scale}"
 					viewBox="0 0 110 44"
 					preserveAspectRatio="xMidYMid meet"
@@ -324,7 +335,7 @@
 			<div class="fx-skycloud" style="display: contents">
 				{#each spreadPieces(seed + 202, pieceCount(110 / 44, 0.34, 2, 14, 0.84), 0.3, 0.86, 1.22) as piece, i}
 					<svg
-						class="fx-cloudlet fx-cloud fx-cloud-rain"
+						class="fx-cloudlet fx-cloud"
 						style="--k-i: {i}; --c-left: {piece.left}%; --c-scale: {piece.scale}"
 						viewBox="0 0 110 44"
 						preserveAspectRatio="xMidYMid meet"
@@ -343,7 +354,7 @@
 			<div class="fx-skycloud" style="display: contents">
 				{#each spreadPieces(seed + 214, pieceCount(110 / 44, 0.34, 2, 14, 0.84), 0.3, 0.86, 1.22) as piece, i}
 					<svg
-						class="fx-cloudlet fx-cloud fx-cloud-snow"
+						class="fx-cloudlet fx-cloud"
 						style="--k-i: {i}; --c-left: {piece.left}%; --c-scale: {piece.scale}"
 						viewBox="0 0 110 44"
 						preserveAspectRatio="xMidYMid meet"
@@ -362,7 +373,7 @@
 			<div class="fx-skycloud" style="display: contents">
 				{#each spreadPieces(seed + 226, pieceCount(110 / 44, 0.34, 2, 14, 0.84), 0.3, 0.86, 1.22) as piece, i}
 					<svg
-						class="fx-cloudlet fx-cloud fx-cloud-blizzard"
+						class="fx-cloudlet fx-cloud"
 						style="--k-i: {i}; --c-left: {piece.left}%; --c-scale: {piece.scale}"
 						viewBox="0 0 110 44"
 						preserveAspectRatio="xMidYMid meet"
@@ -392,10 +403,10 @@
 				<path class="fx-swell" style="--v-i: 1" fill="url(#fxSeaBack{uid})" opacity="0.8" d="M0 100 L0 78 Q26 64 52 70 Q78 76 100 66 L100 100 Z" />
 			</svg>
 
-			{#each spreadPieces(seed + 64, pieceCount(1, 0.98, 3, 16, 0.85), 0.3, 0.6, 0.98) as piece, w}
+			{#each spreadPieces(seed + 64, pieceCount(1.45, 0.92, 3, 7, 1.5), 0.18, 0.88, 0.92) as piece, w}
 				<svg
 					class="fx-breaker-piece"
-					style="--w-left: {piece.left}%; --w-h: {piece.scale}; --w-i: {w}"
+					style="--w-left: {piece.left}%; --w-h: {(0.24 + (piece.left / 100) * 0.68).toFixed(3)}; --w-i: {w}"
 					viewBox="0 0 100 100"
 					preserveAspectRatio="xMidYMax meet"
 					aria-hidden="true"
@@ -403,9 +414,9 @@
 					<g class="fx-breaker">
 						<path
 							fill="url(#fxSea{uid})"
-							d="M0 100 L0 66 C 10 36, 32 22, 54 30 C 72 37, 78 56, 68 66 C 62 72, 52 70, 50 62 C 48 54, 56 50, 60 56 C 56 44, 40 42, 32 54 C 24 66, 30 82, 44 84 L100 84 L100 100 Z"
+							d="M0 100 C 6 78, 12 52, 30 34 C 46 18, 74 20, 88 36 C 100 50, 98 70, 84 76 C 72 81, 60 74, 60 64 C 60 55, 70 51, 75 58 C 72 46, 56 40, 44 50 C 32 60, 30 80, 40 92 C 44 96, 48 98, 52 100 Z"
 						/>
-						<path class="fx-curl" d="M54 30 C 72 37, 78 56, 68 66 C 64 70, 57 69, 54 64 C 62 60, 64 48, 56 40 C 51 35, 46 33, 42 33 C 46 30, 50 29, 54 30 Z" />
+						<path class="fx-curl" d="M88 36 C 100 50, 98 70, 84 76 C 78 79, 71 77, 68 71 C 78 66, 82 54, 74 44 C 68 37, 60 34, 54 34 C 62 30, 78 28, 88 36 Z" />
 						<path class="fx-spray" d="M50 28 Q56 20 64 22 Q58 24 56 30 Z" />
 						<path class="fx-spray" style="--y-i: 1" d="M38 32 Q40 22 48 20 Q42 26 42 33 Z" />
 						<path class="fx-spray" style="--y-i: 2" d="M64 34 Q72 30 78 34 Q70 34 66 40 Z" />
@@ -431,7 +442,7 @@
 
 			{#each spreadPieces(seed + 18, pieceCount(110 / 44, 0.34, 2, 14, 0.88), 0.28, 0.88, 1.22) as piece, i}
 				<svg
-					class="fx-cloudlet fx-cloud fx-cloud-tornado"
+					class="fx-cloudlet fx-cloud"
 					style="--k-i: {i}; --c-left: {piece.left}%; --c-scale: {piece.scale}"
 					viewBox="0 0 110 44"
 					preserveAspectRatio="xMidYMid meet"
@@ -446,13 +457,13 @@
 				</svg>
 			{/each}
 
-			<svg class="fx-vortex" viewBox="0 0 120 100" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
-				<path class="fx-funnel" d="M6 14 Q60 30 114 14 Q96 44 82 62 Q70 78 64 100 L56 100 Q50 78 38 62 Q24 44 6 14 Z" />
-				<path class="fx-band" style="--v-j: 0" d="M14 22 Q60 34 106 22" />
-				<path class="fx-band" style="--v-j: 1" d="M26 40 Q60 50 94 40" />
-				<path class="fx-band" style="--v-j: 2" d="M36 58 Q60 66 84 58" />
-				<path class="fx-band" style="--v-j: 3" d="M46 78 Q60 84 74 78" />
-				<ellipse class="fx-dustring" cx="60" cy="97" rx="44" ry="6" />
+			<svg class="fx-vortex" viewBox="0 0 200 100" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
+				<path class="fx-funnel" d="M4 12 Q100 34 196 12 Q166 44 140 64 Q116 82 106 100 L94 100 Q84 82 60 64 Q34 44 4 12 Z" />
+				<path class="fx-band" style="--v-j: 0" d="M18 22 Q100 40 182 22" />
+				<path class="fx-band" style="--v-j: 1" d="M44 42 Q100 58 156 42" />
+				<path class="fx-band" style="--v-j: 2" d="M66 62 Q100 76 134 62" />
+				<path class="fx-band" style="--v-j: 3" d="M84 82 Q100 92 116 82" />
+				<ellipse class="fx-dustring" cx="100" cy="97" rx="82" ry="7" />
 			</svg>
 
 			{#each spreadPieces(seed + 55, pieceCount(1, 0.16, 5, 18, 0.5), 0.5, 0.6, 1.5) as piece, d}
@@ -539,7 +550,7 @@
 				<path class="fx-ridge" d="M0 84 L14 72 L26 80 L40 66 L55 79 L68 70 L82 81 L100 74 L100 100 L0 100 Z" />
 			</svg>
 		{:else if family === 'rainbow'}
-			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
+			<svg class="fx-bow" viewBox="0 0 100 100" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
 				<path class="fx-arc" pathLength="100" style="--a-i: 0; --a-c: #ff5f6d" d="M 4 92 A 46 46 0 0 1 96 92" />
 				<path class="fx-arc" pathLength="100" style="--a-i: 1; --a-c: #ff9f45" d="M 8 92 A 42 42 0 0 1 92 92" />
 				<path class="fx-arc" pathLength="100" style="--a-i: 2; --a-c: #ffd93d" d="M 12 92 A 38 38 0 0 1 88 92" />
@@ -743,18 +754,24 @@
 				<rect class="fx-starfield" width="100" height="100" />
 			</svg>
 
-			<svg class="fx-disc" viewBox="0 0 140 100" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+			<svg class="fx-maw" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
 				<defs>
-					<radialGradient id="fxDisc{uid}" cx="50%" cy="50%" r="50%">
-						<stop offset="42%" stop-color="transparent" stop-opacity="0" />
-						<stop offset="58%" stop-color="var(--fx-color)" stop-opacity="0.9" />
-						<stop offset="78%" stop-color="var(--fx-color-2)" stop-opacity="0.55" />
+					<radialGradient id="fxMaw{uid}" cx="50%" cy="50%" r="50%">
+						<stop offset="0%" stop-color="#02010a" stop-opacity="0.98" />
+						<stop offset="58%" stop-color="#05021a" stop-opacity="0.9" />
+						<stop offset="82%" stop-color="var(--fx-color)" stop-opacity="0.35" />
 						<stop offset="100%" stop-color="transparent" stop-opacity="0" />
 					</radialGradient>
 				</defs>
-				<ellipse class="fx-halo" cx="70" cy="50" rx="66" ry="24" fill="url(#fxDisc{uid})" />
-				<ellipse class="fx-lens" cx="70" cy="50" rx="26" ry="26" />
-				<circle class="fx-singularity" cx="70" cy="50" r="17" />
+				{#each VOID_DRAWIN as line, v}
+					<path class="fx-drawin" style="--n-j: {v}" pathLength="100" d={line} />
+				{/each}
+				<path
+					class="fx-mawcore"
+					fill="url(#fxMaw{uid})"
+					d="M50 8 C 68 10, 84 22, 88 40 C 92 58, 82 78, 64 88 C 48 96, 26 92, 15 78 C 5 64, 6 42, 18 28 C 28 15, 38 9, 50 8 Z"
+				/>
+				<path class="fx-mawrim" d="M50 8 C 68 10, 84 22, 88 40 C 92 58, 82 78, 64 88 C 48 96, 26 92, 15 78 C 5 64, 6 42, 18 28 C 28 15, 38 9, 50 8 Z" />
 			</svg>
 		{:else if family === 'eclipse'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -776,37 +793,26 @@
 		{:else if family === 'fallingstar'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
 				<rect class="fx-wishsky" width="100" height="100" />
+				<path class="fx-horizonridge" d="M0 100 L0 82 Q9 74 19 80 Q28 86 38 78 Q48 70 57 79 Q67 88 76 79 Q86 70 94 78 Q97 81 100 79 L100 100 Z" />
 			</svg>
-
-			{#each spreadPieces(seed + 47, pieceCount(120 / 34, 0.22, 3, 16, 1), 0.22, 0.88, 1.16) as piece, i}
-				<svg
-					class="fx-hill"
-					style="--y-left: {piece.left}%; --y-scale: {piece.scale}"
-					viewBox="0 0 120 34"
-					preserveAspectRatio="xMidYMax meet"
-					aria-hidden="true"
-				>
-					<path d={WISH_HILLS[i % WISH_HILLS.length]} />
-				</svg>
-			{/each}
 		{:else if family === 'milkyway'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
 				<defs>
-					<linearGradient id="fxGal{uid}" x1="0" y1="1" x2="1" y2="0">
+					<linearGradient id="fxGal{uid}" x1="0" y1="0.34" x2="1" y2="0.66">
 						<stop offset="0%" stop-color="transparent" stop-opacity="0" />
 						<stop offset="34%" stop-color="var(--fx-color)" stop-opacity="0.42" />
 						<stop offset="52%" stop-color="#ffffff" stop-opacity="0.55" />
 						<stop offset="70%" stop-color="var(--fx-color-2)" stop-opacity="0.4" />
 						<stop offset="100%" stop-color="transparent" stop-opacity="0" />
 					</linearGradient>
-					<linearGradient id="fxLane{uid}" x1="0" y1="1" x2="1" y2="0">
+					<linearGradient id="fxLane{uid}" x1="0" y1="0.38" x2="1" y2="0.62">
 						<stop offset="0%" stop-color="transparent" stop-opacity="0" />
 						<stop offset="50%" stop-color="#0a0714" stop-opacity="0.75" />
 						<stop offset="100%" stop-color="transparent" stop-opacity="0" />
 					</linearGradient>
 				</defs>
-				<path class="fx-galaxyband" fill="url(#fxGal{uid})" d="M-20 108 L18 -8 L62 -8 L24 108 Z" />
-				<path class="fx-dustlane" fill="url(#fxLane{uid})" d="M-6 108 L30 -8 L40 -8 L4 108 Z" />
+				<path class="fx-galaxyband" fill="url(#fxGal{uid})" d="M-34 112 L10 -12 L74 -12 L30 112 Z" />
+				<path class="fx-dustlane" fill="url(#fxLane{uid})" d="M-14 112 L26 -12 L44 -12 L4 112 Z" />
 				<rect class="fx-wispsky" width="100" height="100" />
 			</svg>
 		{:else if family === 'blackhole'}
@@ -908,7 +914,7 @@
 				<rect class="fx-caustic" style="--c-j: 1" x="-30" y="-25" width="160" height="150" />
 			</svg>
 
-			{#each spreadPieces(seed + 119, pieceCount(1, 0.22, 3, 12, 1.6), 0.44, 0.6, 1.4) as piece, i}
+			{#each spreadPieces(seed + 119, pieceCount(1, 0.3, 4, 14, 1.3), 0.44, 0.7, 1.35) as piece, i}
 				<svg
 					class="fx-lilypad"
 					style="--d-left: {piece.left}%; --d-top: {12 + ((i * 41) % 62)}%; --d-scale: {piece.scale}; --d-i: {i}"
@@ -920,7 +926,7 @@
 				</svg>
 			{/each}
 
-			{#each spreadPieces(seed + 131, pieceCount(48 / 22, 0.3, 4, 14, 0.9), 0.4, 0.7, 1.35) as piece, i}
+			{#each spreadPieces(seed + 131, pieceCount(48 / 22, 0.42, 6, 16, 0.75), 0.4, 0.8, 1.3) as piece, i}
 				<svg
 					class="fx-koi"
 					style="--k-left: {piece.left}%; --k-top: {16 + ((i * 53) % 58)}%; --k-scale: {piece.scale}; --k-i: {i}; --k-dir: {piece.flip ? 1 : -1}"

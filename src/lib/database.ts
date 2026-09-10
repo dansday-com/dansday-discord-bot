@@ -5911,7 +5911,17 @@ export async function setMemberTheme(
 
 export async function clearMemberTheme(memberId: any) {
 	await initializeDatabase();
-	await db.delete(schema.serverMemberThemes).where(eq(schema.serverMemberThemes.member_id, Number(memberId)));
+	const existing = await getMemberTheme(memberId).catch(() => null);
+
+	if (!existing || (existing.effect ?? 'none') === 'none') {
+		await db.delete(schema.serverMemberThemes).where(eq(schema.serverMemberThemes.member_id, Number(memberId)));
+		return true;
+	}
+
+	await db
+		.update(schema.serverMemberThemes)
+		.set({ image: null, accent_color: null, accent_auto: true, updated_at: toMySQLDateTime() as any })
+		.where(eq(schema.serverMemberThemes.member_id, Number(memberId)));
 	return true;
 }
 

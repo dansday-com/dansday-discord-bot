@@ -74,7 +74,7 @@
 			style="background-image: url('{themeBackdrop}')"
 			aria-hidden="true"
 		></div>
-		<div class="bg-canvas/82 pointer-events-none fixed inset-0 -z-10 backdrop-blur-[2px]" aria-hidden="true"></div>
+		<div class="bg-canvas/55 pointer-events-none fixed inset-0 -z-10 backdrop-blur-[2px]" aria-hidden="true"></div>
 	{:else}
 		<div
 			class="bg-primary animate-blob-drift pointer-events-none fixed -top-16 -left-16 -z-10 size-56 rounded-full opacity-10 blur-[60px] sm:-top-25 sm:-left-25 sm:size-80 sm:blur-[80px] lg:size-[420px]"

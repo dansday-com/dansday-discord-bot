@@ -8,7 +8,7 @@
 	import { publicServerPath } from '$lib/url.js';
 	import { ITEM_EFFECTS, effectLabel, effectIcon, effectAccentHex, actionVerb, BAG_CAPACITY, formatDuration } from '$lib/items.js';
 	import type { MemberTheme } from '$lib/themes.js';
-	import ThemeEffect from '$lib/frontend/components/ThemeEffect.svelte';
+	import ThemeEffect3D from '$lib/frontend/components/ThemeEffect3D.svelte';
 	import { effectVariant } from '$lib/effects.js';
 	import type { PublicMembersStreamPayload } from '$lib/frontend/public/members/index.js';
 	import type { LayoutProps } from './$types';
@@ -401,7 +401,7 @@
 				<div class="pointer-events-none absolute inset-0 -z-10 bg-linear-to-r from-black/55 via-black/30 to-transparent" aria-hidden="true"></div>
 			{/if}
 			{#if memberTheme}
-				<ThemeEffect effect={memberTheme.effect} seed={memberTheme.effectSeed} accent={memberTheme.accent} always />
+				<ThemeEffect3D effect={memberTheme.effect} seed={memberTheme.effectSeed} accent={memberTheme.accent} />
 			{/if}
 			<div
 				class="pointer-events-none absolute -top-[60%] -right-[10%] size-55 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.16),transparent_70%)]"

@@ -128,18 +128,25 @@
 				<path class="fx-ridge" d="M0 84 L14 72 L26 80 L40 66 L55 79 L68 70 L82 81 L100 74 L100 100 L0 100 Z" />
 			</svg>
 		{:else if family === 'rainbow'}
-			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
+			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="xMidYMax meet">
 				<defs>
 					<linearGradient id="fxRainCloud" x1="0" y1="0" x2="0" y2="1">
-						<stop offset="0%" stop-color="#e8edf4" /><stop offset="100%" stop-color="#b6c2d1" />
+						<stop offset="0%" stop-color="#f2f6fb" /><stop offset="100%" stop-color="#b9c6d6" />
 					</linearGradient>
 				</defs>
-				<g class="fx-cloud fx-cloud-left" style="--k-i: 0"
-					><path fill="url(#fxRainCloud)" d="M-6 66 Q-4 55 8 55 Q12 45 25 47 Q36 40 43 50 Q54 52 54 62 Q54 68 46 68 L2 68 Q-6 68 -6 66 Z" /></g
-				>
-				<g class="fx-cloud fx-cloud-right" style="--k-i: 1"
-					><path fill="url(#fxRainCloud)" d="M54 66 Q56 55 68 55 Q72 45 85 47 Q96 40 103 50 Q114 52 114 62 Q114 68 106 68 L62 68 Q54 68 54 66 Z" /></g
-				>
+				<path class="fx-arc" style="--a-i: 0; --a-c: #ff5f6d" d="M 4 92 A 46 46 0 0 1 96 92" />
+				<path class="fx-arc" style="--a-i: 1; --a-c: #ff9f45" d="M 8 92 A 42 42 0 0 1 92 92" />
+				<path class="fx-arc" style="--a-i: 2; --a-c: #ffd93d" d="M 12 92 A 38 38 0 0 1 88 92" />
+				<path class="fx-arc" style="--a-i: 3; --a-c: #4ade80" d="M 16 92 A 34 34 0 0 1 84 92" />
+				<path class="fx-arc" style="--a-i: 4; --a-c: #38bdf8" d="M 20 92 A 30 30 0 0 1 80 92" />
+				<path class="fx-arc" style="--a-i: 5; --a-c: #4f6ef7" d="M 24 92 A 26 26 0 0 1 76 92" />
+				<path class="fx-arc" style="--a-i: 6; --a-c: #a78bfa" d="M 28 92 A 22 22 0 0 1 72 92" />
+				<g class="fx-cloud fx-cloud-left" style="--k-i: 0">
+					<path fill="url(#fxRainCloud)" d="M-8 84 Q-6 72 6 72 Q10 62 23 64 Q34 57 41 67 Q52 69 52 79 Q52 86 44 86 L2 86 Q-8 86 -8 84 Z" />
+				</g>
+				<g class="fx-cloud fx-cloud-right" style="--k-i: 1">
+					<path fill="url(#fxRainCloud)" d="M56 84 Q58 72 70 72 Q74 62 87 64 Q98 57 105 67 Q116 69 116 79 Q116 86 108 86 L62 86 Q56 86 56 84 Z" />
+				</g>
 			</svg>
 		{:else if family === 'fire' || family === 'ember'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">

@@ -529,8 +529,7 @@ html.lenis body {
 }
 
 /* --- snow / blizzard: six-armed flakes --- */
-.fx-snow .fx-p,
-.fx-blizzard .fx-p {
+.fx-snow .fx-p {
 	top: -14%;
 	left: var(--p-x);
 	width: var(--p-w);
@@ -546,10 +545,34 @@ html.lenis body {
 }
 
 .fx-blizzard .fx-p {
-	background: var(--p-hue);
+	top: -12%;
+	left: var(--p-x);
+	width: calc(var(--p-w) * 2.8);
+	height: calc(var(--p-w) * 0.34);
 	border-radius: 999px;
-	width: calc(var(--p-w) * 2.2);
-	height: calc(var(--p-w) * 0.3);
+	background: linear-gradient(90deg, transparent 0%, var(--p-hue) 55%, #ffffff 100%);
+	filter: blur(var(--p-blur)) drop-shadow(0 0 3px var(--p-hue));
+	rotate: 68deg;
+	animation-name: fx-gale;
+	animation-duration: var(--p-dur);
+	animation-timing-function: linear;
+}
+
+@keyframes fx-gale {
+	0% {
+		transform: translate3d(0, -20%, 0);
+		opacity: 0;
+	}
+	7% {
+		opacity: 1;
+	}
+	86% {
+		opacity: 1;
+	}
+	100% {
+		transform: translate3d(var(--p-drift), 560%, 0);
+		opacity: 0;
+	}
 }
 
 @keyframes fx-flake {
@@ -1080,27 +1103,42 @@ html.lenis body {
 	}
 }
 
-/* --- rainbow --- */
-.fx-rainbow::before {
-	content: '';
-	position: absolute;
-	inset: -30% -10%;
-	background: conic-gradient(
-		from 210deg at 50% 120%,
-		transparent 0deg,
-		#ff5f6d 18deg,
-		#ffc371 32deg,
-		#f9f871 46deg,
-		#4ade80 60deg,
-		#38bdf8 74deg,
-		#a78bfa 88deg,
-		transparent 104deg
-	);
-	-webkit-mask-image: radial-gradient(ellipse 62% 62% at 50% 120%, transparent 62%, #000 66%, #000 84%, transparent 88%);
-	mask-image: radial-gradient(ellipse 62% 62% at 50% 120%, transparent 62%, #000 66%, #000 84%, transparent 88%);
-	opacity: var(--fx-opacity);
-	filter: blur(1.5px) saturate(1.3);
-	animation: fx-breathe var(--fx-speed) ease-in-out infinite;
+/* --- rainbow: arc over clouds --- */
+.fx-arc {
+	fill: none;
+	stroke: var(--a-c);
+	stroke-width: 4.5;
+	stroke-linecap: round;
+	vector-effect: non-scaling-stroke;
+	opacity: calc(var(--fx-opacity) * 0.85);
+	filter: drop-shadow(0 0 3px var(--a-c));
+	stroke-dasharray: 160;
+	stroke-dashoffset: 160;
+	animation: fx-arc-draw calc(var(--fx-speed) * 2.2) ease-in-out infinite paused;
+	animation-delay: calc(var(--a-i) * 0.12s);
+}
+
+.fx-live .fx-arc {
+	animation-play-state: running;
+}
+
+@keyframes fx-arc-draw {
+	0% {
+		stroke-dashoffset: 160;
+		opacity: 0;
+	}
+	22% {
+		opacity: calc(var(--fx-opacity) * 0.85);
+	}
+	48%,
+	82% {
+		stroke-dashoffset: 0;
+		opacity: calc(var(--fx-opacity) * 0.85);
+	}
+	100% {
+		stroke-dashoffset: 0;
+		opacity: 0;
+	}
 }
 
 /* --- scanlines --- */
@@ -1327,7 +1365,16 @@ html.lenis body {
 }
 
 .fx-blizzard .fx-cloud {
-	transform: skewX(-12deg);
+	animation-name: fx-cloud-gale;
+}
+
+@keyframes fx-cloud-gale {
+	0% {
+		transform: translate3d(-9%, 0, 0) skewX(-14deg) scale(1.02);
+	}
+	100% {
+		transform: translate3d(9%, 0, 0) skewX(-8deg) scale(1.08);
+	}
 }
 
 /* earthquake ground */

@@ -2,7 +2,6 @@
 	import { onDestroy, onMount, setContext } from 'svelte';
 	import { page } from '$app/state';
 	import { invalidateAll } from '$app/navigation';
-	import MemberCard from '$lib/frontend/components/MemberCard.svelte';
 	import FeatureDisabled from '$lib/frontend/components/FeatureDisabled.svelte';
 	import { NavTabs, type NavTab } from '$lib/frontend/components/shell';
 	import { publicServerPath } from '$lib/url.js';
@@ -271,8 +270,6 @@
 	});
 	onDestroy(() => es?.close());
 
-	let showCard = $state(false);
-
 	let bagPulse = $state(false);
 	let burstId = $state<number | null>(null);
 
@@ -402,23 +399,11 @@
 				<div class="pointer-events-none absolute inset-0 -z-10 bg-linear-to-r from-black/55 via-black/30 to-transparent" aria-hidden="true"></div>
 			{/if}
 			{#if memberTheme}
-				<ThemeEffect effect={memberTheme.effect} seed={memberTheme.effectSeed} accent={memberTheme.accent} always haptics />
+				<ThemeEffect effect={memberTheme.effect} seed={memberTheme.effectSeed} accent={memberTheme.accent} always />
 			{/if}
 			<div
 				class="pointer-events-none absolute -top-[60%] -right-[10%] size-55 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.16),transparent_70%)]"
 			></div>
-
-			{#if pd.memberCard && !(isAssets && assetSummary.count === 0)}
-				<button
-					class="absolute top-2.5 right-3 z-2 inline-flex h-8 items-center gap-1.5 rounded-lg border border-white/30 bg-white/15 px-2.75 text-[13px] font-bold text-white transition-colors hover:bg-white/25"
-					onclick={() => (showCard = true)}
-					aria-label="Share your card"
-					title="Share card"
-				>
-					<i class="fas fa-share-nodes"></i>
-					<span class="hidden sm:inline">Share</span>
-				</button>
-			{/if}
 
 			<div class="relative size-11.5 shrink-0 rounded-full bg-linear-to-br from-white/90 to-white/35 p-0.5 shadow-[0_4px_14px_-4px_rgba(0,0,0,0.4)]">
 				<img class="size-full rounded-full object-cover" src={memberAvatar} alt={pd.memberName ?? ''} loading="lazy" />
@@ -570,15 +555,3 @@
 		{@render children()}
 	{/if}
 </div>
-
-{#if showCard && pd.memberCard}
-	<MemberCard
-		member={{ ...pd.memberCard, level, xp: liveXp, rank }}
-		mode={isAssets ? 'assets' : 'level'}
-		assets={{ invested: assetSummary.invested, value: assetSummary.value, pnl: assetSummary.pnl, pnlPct: assetSummary.pnlPct, count: assetSummary.count }}
-		serverName={data.server.name || data.server.slug}
-		serverIcon={data.server.server_icon}
-		theme={memberTheme}
-		onclose={() => (showCard = false)}
-	/>
-{/if}

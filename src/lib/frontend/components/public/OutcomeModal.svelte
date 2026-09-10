@@ -1,6 +1,5 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { hapticForTone } from '$lib/frontend/haptics.js';
 
 	let {
 		tone = 'neutral',
@@ -29,10 +28,6 @@
 	} = $props();
 
 	const topBorder = $derived(tone === 'win' ? 'border-t-success' : tone === 'lose' ? 'border-t-error' : 'border-t-primary');
-
-	$effect(() => {
-		hapticForTone(tone);
-	});
 </script>
 
 <div class="modal modal-open" role="dialog" aria-modal="true" aria-label={title}>

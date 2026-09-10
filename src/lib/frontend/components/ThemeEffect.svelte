@@ -1,7 +1,5 @@
 <script lang="ts">
 	import { effectMeta, effectVariant, normalizeEffect, normalizeSeed, spreadPieces } from '$lib/effects.js';
-	import { EFFECT_BEATS, haptic } from '$lib/frontend/haptics.js';
-	import { startTilt } from '$lib/frontend/tilt.svelte.js';
 
 	type Props = {
 		effect?: string | null;
@@ -9,10 +7,9 @@
 		accent?: string | null;
 		always?: boolean;
 		frozen?: boolean;
-		haptics?: boolean;
 	};
 
-	let { effect: effectId = null, seed = 0, accent = null, always = false, frozen = false, haptics = false }: Props = $props();
+	let { effect: effectId = null, seed = 0, accent = null, always = false, frozen = false }: Props = $props();
 
 	const QUAKE_SLABS = [
 		'M0 40 L0 26 L18 12 L34 22 L36 40 Z M40 40 L44 18 L62 8 L70 24 L68 40 Z M74 40 L80 20 L96 14 L100 28 L100 40 Z',
@@ -112,6 +109,27 @@
 		'M0 34 L0 18 Q16 26 30 16 Q48 4 64 18 Q80 32 96 20 Q108 11 120 22 L120 34 Z'
 	];
 
+	const RAIN_CLOUDS = [
+		'fxGrain0{uid}',
+		'M2 26 Q5 14 18 15 Q24 5 38 7 Q51 1 60 9 Q74 5 81 16 Q95 15 97 25 Q99 33 88 33 L10 33 Q0 33 2 26 Z',
+		'M4 28 Q0 15 14 14 Q21 3 36 7 Q52 -1 64 9 Q80 7 85 19 Q97 21 95 29 Q95 36 83 35 L14 35 Q2 35 4 28 Z',
+		'M2 30 Q-1 17 12 16 Q19 4 34 8 Q49 0 62 10 Q78 8 84 20 Q96 22 94 30 Q94 37 81 36 L12 36 Q0 36 2 30 Z'
+	];
+
+	const SNOW_CLOUDS = [
+		'fxGsnow0{uid}',
+		'M6 29 Q1 18 12 15 Q13 4 26 6 Q33 -4 45 3 Q55 -5 65 4 Q77 1 80 13 Q93 14 92 25 Q94 34 82 34 L14 34 Q4 35 6 29 Z',
+		'M4 28 Q0 15 14 14 Q21 3 36 7 Q52 -1 64 9 Q80 7 85 19 Q97 21 95 29 Q95 36 83 35 L14 35 Q2 35 4 28 Z',
+		'M2 30 Q-1 17 12 16 Q19 4 34 8 Q49 0 62 10 Q78 8 84 20 Q96 22 94 30 Q94 37 81 36 L12 36 Q0 36 2 30 Z'
+	];
+
+	const BLIZZARD_CLOUDS = [
+		'fxGblizzard0{uid}',
+		'M0 27 Q4 14 20 14 Q29 1 47 6 Q64 -3 78 6 Q94 3 100 15 Q112 15 110 25 Q108 32 92 32 L20 32 Q2 33 0 27 Z',
+		'M4 28 Q0 15 14 14 Q21 3 36 7 Q52 -1 64 9 Q80 7 85 19 Q97 21 95 29 Q95 36 83 35 L14 35 Q2 35 4 28 Z',
+		'M2 30 Q-1 17 12 16 Q19 4 34 8 Q49 0 62 10 Q78 8 84 20 Q96 22 94 30 Q94 37 81 36 L12 36 Q0 36 2 30 Z'
+	];
+
 	const TORNADO_CLOUDS = [
 		'M4 26 Q1 14 16 13 Q22 2 38 6 Q55 -2 67 8 Q85 6 89 18 Q99 20 97 28 Q97 35 86 35 L63 35 Q59 42 50 42 Q41 42 37 35 L12 35 Q2 35 4 26 Z',
 		'M2 28 Q-1 15 13 14 Q20 3 35 7 Q50 -1 63 9 Q79 7 84 19 Q96 21 94 29 Q94 36 82 36 L14 36 Q0 36 2 28 Z',
@@ -176,36 +194,12 @@
 	});
 
 	$effect(() => {
-		if (family === 'none') return;
-		return startTilt();
-	});
-
-	$effect(() => {
 		const node = host;
 		if (!node || family === 'none' || frozen) return;
 		const parent = node.parentElement;
 		if (!parent) return;
 		parent.setAttribute('data-fx-host', family);
 		return () => parent.removeAttribute('data-fx-host');
-	});
-
-	$effect(() => {
-		if (!haptics || frozen || !live || family === 'none') return;
-		const beat = EFFECT_BEATS[family];
-		const node = host;
-		if (!beat || !node) return;
-		const target = node.querySelector(beat.selector);
-		if (!target) return;
-
-		let lastBeat = 0;
-		const onIteration = () => {
-			const now = Date.now();
-			if (now - lastBeat < beat.minGap) return;
-			lastBeat = now;
-			haptic(beat.pattern);
-		};
-		target.addEventListener('animationiteration', onIteration);
-		return () => target.removeEventListener('animationiteration', onIteration);
 	});
 
 	$effect(() => {
@@ -328,54 +322,60 @@
 			{/each}
 		{:else if family === 'rain'}
 			<div class="fx-skycloud" style="display: contents">
-				<svg
-					class="fx-cloudlet fx-cloud fx-cloud-rain"
-					style="--k-i: 0; --c-left: 18%"
-					viewBox="0 0 110 44"
-					preserveAspectRatio="xMidYMid meet"
-					aria-hidden="true"
-				>
-					<defs>
-						<linearGradient id="fxGrain0{uid}" x1="0" y1="0" x2="0" y2="1">
-							<stop offset="0%" stop-color="var(--fx-cloud-top)" /><stop offset="100%" stop-color="var(--fx-cloud-bottom)" />
-						</linearGradient>
-					</defs>
-					<path fill="url(#fxGrain0{uid})" d="M2 26 Q5 14 18 15 Q24 5 38 7 Q51 1 60 9 Q74 5 81 16 Q95 15 97 25 Q99 33 88 33 L10 33 Q0 33 2 26 Z" />
-				</svg>
+				{#each spreadPieces(seed + 202, pieceCount(110 / 44, 0.34, 2, 14, 0.84), 0.3, 0.86, 1.22) as piece, i}
+					<svg
+						class="fx-cloudlet fx-cloud fx-cloud-rain"
+						style="--k-i: {i}; --c-left: {piece.left}%; --c-scale: {piece.scale}"
+						viewBox="0 0 110 44"
+						preserveAspectRatio="xMidYMid meet"
+						aria-hidden="true"
+					>
+						<defs>
+							<linearGradient id="fxGrain{i}{uid}" x1="0" y1="0" x2="0" y2="1">
+								<stop offset="0%" stop-color="var(--fx-cloud-top)" /><stop offset="100%" stop-color="var(--fx-cloud-bottom)" />
+							</linearGradient>
+						</defs>
+						<path fill="url(#fxGrain{i}{uid})" d={RAIN_CLOUDS[i % RAIN_CLOUDS.length]} />
+					</svg>
+				{/each}
 			</div>
 		{:else if family === 'snow'}
 			<div class="fx-skycloud" style="display: contents">
-				<svg
-					class="fx-cloudlet fx-cloud fx-cloud-snow"
-					style="--k-i: 0; --c-left: 22%"
-					viewBox="0 0 110 44"
-					preserveAspectRatio="xMidYMid meet"
-					aria-hidden="true"
-				>
-					<defs>
-						<linearGradient id="fxGsnow0{uid}" x1="0" y1="0" x2="0" y2="1">
-							<stop offset="0%" stop-color="var(--fx-cloud-top)" /><stop offset="100%" stop-color="var(--fx-cloud-bottom)" />
-						</linearGradient>
-					</defs>
-					<path fill="url(#fxGsnow0{uid})" d="M6 29 Q1 18 12 15 Q13 4 26 6 Q33 -4 45 3 Q55 -5 65 4 Q77 1 80 13 Q93 14 92 25 Q94 34 82 34 L14 34 Q4 35 6 29 Z" />
-				</svg>
+				{#each spreadPieces(seed + 214, pieceCount(110 / 44, 0.34, 2, 14, 0.84), 0.3, 0.86, 1.22) as piece, i}
+					<svg
+						class="fx-cloudlet fx-cloud fx-cloud-snow"
+						style="--k-i: {i}; --c-left: {piece.left}%; --c-scale: {piece.scale}"
+						viewBox="0 0 110 44"
+						preserveAspectRatio="xMidYMid meet"
+						aria-hidden="true"
+					>
+						<defs>
+							<linearGradient id="fxGsnow{i}{uid}" x1="0" y1="0" x2="0" y2="1">
+								<stop offset="0%" stop-color="var(--fx-cloud-top)" /><stop offset="100%" stop-color="var(--fx-cloud-bottom)" />
+							</linearGradient>
+						</defs>
+						<path fill="url(#fxGsnow{i}{uid})" d={SNOW_CLOUDS[i % SNOW_CLOUDS.length]} />
+					</svg>
+				{/each}
 			</div>
 		{:else if family === 'blizzard'}
 			<div class="fx-skycloud" style="display: contents">
-				<svg
-					class="fx-cloudlet fx-cloud fx-cloud-blizzard"
-					style="--k-i: 0; --c-left: 10%"
-					viewBox="0 0 110 44"
-					preserveAspectRatio="xMidYMid meet"
-					aria-hidden="true"
-				>
-					<defs>
-						<linearGradient id="fxGblizzard0{uid}" x1="0" y1="0" x2="0" y2="1">
-							<stop offset="0%" stop-color="var(--fx-cloud-top)" /><stop offset="100%" stop-color="var(--fx-cloud-bottom)" />
-						</linearGradient>
-					</defs>
-					<path fill="url(#fxGblizzard0{uid})" d="M0 27 Q4 14 20 14 Q29 1 47 6 Q64 -3 78 6 Q94 3 100 15 Q112 15 110 25 Q108 32 92 32 L20 32 Q2 33 0 27 Z" />
-				</svg>
+				{#each spreadPieces(seed + 226, pieceCount(110 / 44, 0.34, 2, 14, 0.84), 0.3, 0.86, 1.22) as piece, i}
+					<svg
+						class="fx-cloudlet fx-cloud fx-cloud-blizzard"
+						style="--k-i: {i}; --c-left: {piece.left}%; --c-scale: {piece.scale}"
+						viewBox="0 0 110 44"
+						preserveAspectRatio="xMidYMid meet"
+						aria-hidden="true"
+					>
+						<defs>
+							<linearGradient id="fxGblizzard{i}{uid}" x1="0" y1="0" x2="0" y2="1">
+								<stop offset="0%" stop-color="var(--fx-cloud-top)" /><stop offset="100%" stop-color="var(--fx-cloud-bottom)" />
+							</linearGradient>
+						</defs>
+						<path fill="url(#fxGblizzard{i}{uid})" d={BLIZZARD_CLOUDS[i % BLIZZARD_CLOUDS.length]} />
+					</svg>
+				{/each}
 			</div>
 		{:else if family === 'tsunami'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -540,13 +540,13 @@
 			</svg>
 		{:else if family === 'rainbow'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
-				<path class="fx-arc" style="--a-i: 0; --a-c: #ff5f6d" d="M 4 92 A 46 46 0 0 1 96 92" />
-				<path class="fx-arc" style="--a-i: 1; --a-c: #ff9f45" d="M 8 92 A 42 42 0 0 1 92 92" />
-				<path class="fx-arc" style="--a-i: 2; --a-c: #ffd93d" d="M 12 92 A 38 38 0 0 1 88 92" />
-				<path class="fx-arc" style="--a-i: 3; --a-c: #4ade80" d="M 16 92 A 34 34 0 0 1 84 92" />
-				<path class="fx-arc" style="--a-i: 4; --a-c: #38bdf8" d="M 20 92 A 30 30 0 0 1 80 92" />
-				<path class="fx-arc" style="--a-i: 5; --a-c: #4f6ef7" d="M 24 92 A 26 26 0 0 1 76 92" />
-				<path class="fx-arc" style="--a-i: 6; --a-c: #a78bfa" d="M 28 92 A 22 22 0 0 1 72 92" />
+				<path class="fx-arc" pathLength="100" style="--a-i: 0; --a-c: #ff5f6d" d="M 4 92 A 46 46 0 0 1 96 92" />
+				<path class="fx-arc" pathLength="100" style="--a-i: 1; --a-c: #ff9f45" d="M 8 92 A 42 42 0 0 1 92 92" />
+				<path class="fx-arc" pathLength="100" style="--a-i: 2; --a-c: #ffd93d" d="M 12 92 A 38 38 0 0 1 88 92" />
+				<path class="fx-arc" pathLength="100" style="--a-i: 3; --a-c: #4ade80" d="M 16 92 A 34 34 0 0 1 84 92" />
+				<path class="fx-arc" pathLength="100" style="--a-i: 4; --a-c: #38bdf8" d="M 20 92 A 30 30 0 0 1 80 92" />
+				<path class="fx-arc" pathLength="100" style="--a-i: 5; --a-c: #4f6ef7" d="M 24 92 A 26 26 0 0 1 76 92" />
+				<path class="fx-arc" pathLength="100" style="--a-i: 6; --a-c: #a78bfa" d="M 28 92 A 22 22 0 0 1 72 92" />
 			</svg>
 			{#each RAINBOW_CLOUDS as puff, c}
 				<svg
@@ -596,7 +596,7 @@
 						<stop offset="88%" stop-color="#c08aff" /><stop offset="100%" stop-color="#ff8ad4" />
 					</linearGradient>
 				</defs>
-				<rect class="fx-foil" width="100" height="100" fill="url(#fxFoil{uid})" />
+				<rect class="fx-foil" x="-30" y="-25" width="160" height="150" fill="url(#fxFoil{uid})" />
 				<g class="fx-foilbands">
 					<rect x="-40" y="0" width="10" height="100" /><rect x="-14" y="0" width="5" height="100" />
 					<rect x="6" y="0" width="12" height="100" /><rect x="34" y="0" width="6" height="100" />
@@ -605,7 +605,7 @@
 			</svg>
 		{:else if family === 'pulse'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
-				<path class="fx-ecg" d="M0 50 L22 50 L26 34 L30 66 L34 42 L38 50 L58 50 L62 30 L66 70 L70 46 L74 50 L100 50" />
+				<path class="fx-ecg" pathLength="100" d="M0 50 L22 50 L26 34 L30 66 L34 42 L38 50 L58 50 L62 30 L66 70 L70 46 L74 50 L100 50" />
 			</svg>
 		{:else if family === 'glitch'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -626,7 +626,7 @@
 						<stop offset="100%" stop-color="transparent" stop-opacity="0" />
 					</radialGradient>
 				</defs>
-				<rect class="fx-lovebloom" width="100" height="100" fill="url(#fxLove{uid})" />
+				<rect class="fx-lovebloom" x="-30" y="-25" width="160" height="150" fill="url(#fxLove{uid})" />
 			</svg>
 
 			{#each spreadPieces(seed + 5, pieceCount(32 / 30, 0.3, 3, 12, 1.4), 0.46, 0.55, 1.3) as piece, i}
@@ -713,16 +713,16 @@
 			<svg class="fx-cone" viewBox="0 0 120 84" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
 				<path class="fx-conebody" d="M0 84 L34 22 Q46 12 60 14 Q74 12 86 22 L120 84 Z" />
 				<path class="fx-vent" d="M40 22 Q60 30 80 22 Q60 18 40 22 Z" />
-				<path class="fx-lavajet" style="--l-j: 0" d="M56 20 Q52 -2 44 -14" />
-				<path class="fx-lavajet" style="--l-j: 1" d="M60 19 Q61 -6 63 -20" />
-				<path class="fx-lavajet" style="--l-j: 2" d="M64 20 Q70 -1 79 -12" />
-				<path class="fx-lavarun" d="M58 24 L54 46 L60 62 L56 84" />
-				<path class="fx-lavarun" style="--l-j: 1" d="M66 25 L72 44 L68 60 L74 84" />
+				<path class="fx-lavajet" pathLength="100" style="--l-j: 0" d="M56 20 Q52 -2 44 -14" />
+				<path class="fx-lavajet" pathLength="100" style="--l-j: 1" d="M60 19 Q61 -6 63 -20" />
+				<path class="fx-lavajet" pathLength="100" style="--l-j: 2" d="M64 20 Q70 -1 79 -12" />
+				<path class="fx-lavarun" pathLength="100" d="M58 24 L54 46 L60 62 L56 84" />
+				<path class="fx-lavarun" pathLength="100" style="--l-j: 1" d="M66 25 L72 44 L68 60 L74 84" />
 			</svg>
 		{:else if family === 'sandstorm'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
-				<rect class="fx-haze" style="--z-j: 0" width="100" height="100" />
-				<rect class="fx-haze" style="--z-j: 1" width="100" height="100" />
+				<rect class="fx-haze" style="--z-j: 0" x="-30" y="-25" width="160" height="150" />
+				<rect class="fx-haze" style="--z-j: 1" x="-30" y="-25" width="160" height="150" />
 			</svg>
 
 			{#each spreadPieces(seed + 36, pieceCount(120 / 40, 0.26, 3, 16, 1), 0.24, 0.86, 1.2) as piece, i}
@@ -904,8 +904,8 @@
 			{/each}
 		{:else if family === 'koi'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
-				<rect class="fx-caustic" style="--c-j: 0" width="100" height="100" />
-				<rect class="fx-caustic" style="--c-j: 1" width="100" height="100" />
+				<rect class="fx-caustic" style="--c-j: 0" x="-30" y="-25" width="160" height="150" />
+				<rect class="fx-caustic" style="--c-j: 1" x="-30" y="-25" width="160" height="150" />
 			</svg>
 
 			{#each spreadPieces(seed + 119, pieceCount(1, 0.22, 3, 12, 1.6), 0.44, 0.6, 1.4) as piece, i}
@@ -920,7 +920,7 @@
 				</svg>
 			{/each}
 
-			{#each spreadPieces(seed + 131, pieceCount(48 / 22, 0.24, 2, 8, 1.7), 0.4, 0.7, 1.35) as piece, i}
+			{#each spreadPieces(seed + 131, pieceCount(48 / 22, 0.3, 4, 14, 0.9), 0.4, 0.7, 1.35) as piece, i}
 				<svg
 					class="fx-koi"
 					style="--k-left: {piece.left}%; --k-top: {16 + ((i * 53) % 58)}%; --k-scale: {piece.scale}; --k-i: {i}; --k-dir: {piece.flip ? 1 : -1}"
@@ -964,8 +964,8 @@
 			</svg>
 		{:else if family === 'crystal'}
 			<svg class="fx-svg fx-scene" viewBox="0 0 100 100" preserveAspectRatio="none">
-				<rect class="fx-facetlight" style="--f-j: 0" width="100" height="100" />
-				<rect class="fx-facetlight" style="--f-j: 1" width="100" height="100" />
+				<rect class="fx-facetlight" style="--f-j: 0" x="-30" y="-25" width="160" height="150" />
+				<rect class="fx-facetlight" style="--f-j: 1" x="-30" y="-25" width="160" height="150" />
 			</svg>
 
 			{#each spreadPieces(seed + 154, pieceCount(60 / 52, 0.4, 3, 14, 1.1), 0.3, 0.66, 1.34) as piece, i}
@@ -1008,9 +1008,12 @@
 			aria-hidden="true"
 		>
 			{#if family === 'fire' || family === 'volcano'}
-				{#each spreadPieces(seed + 177, pieceCount(1, 0.34, 5, 22, 0.42), 0.5, 0.6, 1.45) as piece, i}
-					<span class="fx-lick" style="--l-left: {piece.left}%; --l-scale: {piece.scale}; --l-delay: {piece.delay}s"></span>
-				{/each}
+				<span class="fx-blaze">
+					{#each spreadPieces(seed + 177, pieceCount(1, 0.34, 8, 34, 0.26), 0.7, 0.5, 1.6) as piece, i}
+						<span class="fx-lick" style="--l-left: {piece.left}%; --l-scale: {piece.scale}; --l-delay: {piece.delay}s; --l-i: {i}"></span>
+					{/each}
+				</span>
+				<span class="fx-blazeheat"></span>
 				<span class="fx-char"></span>
 			{:else if family === 'glass'}
 				{#each spreadPieces(seed + 8, pieceCount(1, 1, 2, 7, 1.15), 0.16, 1, 1) as piece, i}

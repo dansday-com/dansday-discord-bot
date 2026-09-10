@@ -6,9 +6,7 @@
 	import EffectName from '$lib/frontend/components/EffectName.svelte';
 	import { GameModal, ReelStrip } from '$lib/frontend/components/public';
 	import { lockScroll } from '$lib/frontend/scrollLock.js';
-	import { haptic, hapticTap, supportsHaptics } from '$lib/frontend/haptics.js';
 	import { showToast } from '$lib/frontend/toast.svelte';
-	import { requestTilt, tilt } from '$lib/frontend/tilt.svelte.js';
 	import { getContext } from 'svelte';
 	import { DEFAULT_ACCENT, type MemberTheme, accentInk, extractAccentFromFile, normalizeAccent, prepareThemeUpload } from '$lib/themes.js';
 	import type { PageProps } from './$types';
@@ -256,7 +254,6 @@
 
 	async function spin() {
 		if (spinning || busy || !canSpin) return;
-		haptic('select');
 		spinning = true;
 		reelResult = null;
 
@@ -291,7 +288,6 @@
 
 			setTimeout(async () => {
 				reelResult = won;
-				haptic('reveal');
 				ctx?.setLiveXp?.(Math.max(0, (ctx?.liveXp ?? 0) - EFFECT_SPIN_COST));
 				spinning = false;
 				await invalidateAll();
@@ -377,7 +373,7 @@
 					>
 						<i class="fas fa-pen"></i>
 					</span>
-					<input type="color" value={accent} class="absolute inset-0 cursor-pointer opacity-0" oninput={onColorInput} disabled={busy} use:hapticTap />
+					<input type="color" value={accent} class="absolute inset-0 cursor-pointer opacity-0" oninput={onColorInput} disabled={busy} />
 				</label>
 
 				<div class="min-w-0 flex-1">
@@ -424,7 +420,6 @@
 					class="btn btn-sm w-full border-none bg-linear-to-br from-[#e0a52a] to-[#b8860b] font-black whitespace-nowrap text-white sm:w-auto"
 					onclick={openSpin}
 					disabled={busy || !canSpin}
-					use:hapticTap
 				>
 					<i class="fas fa-dice"></i>Spin · {EFFECT_SPIN_COST.toLocaleString()} XP
 				</button>
@@ -433,17 +428,6 @@
 						<button class="btn btn-ghost btn-sm flex-1 whitespace-nowrap sm:flex-none" onclick={toggleEffect} disabled={busy}>
 							<i class="fas {effectOn ? 'fa-eye-slash' : 'fa-eye'}"></i>{effectOn ? 'Disable' : 'Enable'}
 						</button>
-						{#if effectOn}
-							<button
-								class="btn btn-ghost btn-sm flex-1 whitespace-nowrap sm:flex-none"
-								onclick={() => requestTilt()}
-								disabled={tilt.status === 'pending'}
-								title={tilt.status === 'granted' ? 'Motion depth is on' : 'Enable motion depth'}
-								use:hapticTap
-							>
-								<i class="fas fa-cube"></i>{tilt.status === 'granted' ? 'Depth on' : tilt.status === 'pending' ? 'Asking…' : 'Depth'}
-							</button>
-						{/if}
 					</div>
 				{/if}
 			</div>
@@ -451,21 +435,6 @@
 			<p class="text-base-content/45 m-0 text-[11px] font-medium">
 				{canSpin ? 'Every spin rolls a fresh effect and a one-of-a-kind variant.' : `You need ${EFFECT_SPIN_COST.toLocaleString()} XP to spin.`}
 			</p>
-
-			{#if owned !== 'none' && effectOn}
-				<p class="text-base-content/45 m-0 text-[11px] font-medium">
-					{tilt.status === 'granted'
-						? 'Tilt your phone — the scene moves in layers.'
-						: tilt.status === 'denied'
-							? 'Motion access was blocked. Allow Motion & Orientation for this site, then tap Enable depth again.'
-							: tilt.status === 'unsupported'
-								? 'This device has no motion sensor, so depth stays off.'
-								: 'Tap Enable depth, then tilt your phone.'}
-				</p>
-				<p class="text-base-content/45 m-0 text-[11px] font-medium">
-					{supportsHaptics() ? 'Taps buzz when your phone allows it.' : 'This browser has no haptics.'}
-				</p>
-			{/if}
 		</div>
 	</section>
 
@@ -515,13 +484,12 @@
 		</div>
 
 		{#if reelResult}
-			<button class="btn btn-sm w-full" onclick={() => (playing = false)} use:hapticTap>Done</button>
+			<button class="btn btn-sm w-full" onclick={() => (playing = false)}>Done</button>
 		{:else}
 			<button
 				class="btn animate-game-charge w-full border-none bg-linear-to-br from-[#e0a52a] to-[#b8860b] font-black text-white"
 				onclick={spin}
 				disabled={spinning || !canSpin}
-				use:hapticTap
 			>
 				{#if spinning}<span class="loading loading-spinner loading-xs"></span>{:else}<i class="fas fa-dice"></i>{/if}
 				Spin · {EFFECT_SPIN_COST.toLocaleString()} XP

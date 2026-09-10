@@ -164,47 +164,46 @@ type Tuning = {
 	speed: [number, number];
 	opacity: [number, number];
 	drift?: [number, number];
-	tilt: [number, number, number];
 };
 
 const TUNING: Record<string, Tuning> = {
-	sparkle: { tile: [13, 28], dot: [1.3, 2.8], speed: [2.2, 5], opacity: [0.75, 1], tilt: [3, 7, 0] },
-	snow: { tile: [17, 38], dot: [1.9, 3.8], speed: [7, 15], opacity: [0.7, 1], tilt: [2, 9, 11] },
-	rain: { tile: [7, 16], dot: [0.9, 1.8], speed: [0.8, 1.8], opacity: [0.6, 0.9], tilt: [1, 4, 8] },
-	ember: { tile: [15, 34], dot: [1.5, 3.2], speed: [3.5, 9], opacity: [0.8, 1], tilt: [2, 8, 0] },
-	confetti: { tile: [17, 36], dot: [2.2, 4.4], speed: [4, 10], opacity: [0.8, 1], tilt: [3, 11, 0] },
-	bubbles: { tile: [24, 56], dot: [2.6, 6], speed: [7, 18], opacity: [0.5, 0.8], tilt: [2, 6, 0] },
-	scanlines: { tile: [3, 6], dot: [0.5, 1], speed: [3, 8], opacity: [0.32, 0.6], tilt: [5, 0, 0] },
-	grain: { tile: [60, 140], dot: [0.5, 1], speed: [0.3, 0.9], opacity: [0.35, 0.6], tilt: [1, 2, 0] },
-	holo: { tile: [120, 320], dot: [0.5, 1], speed: [3.5, 9], opacity: [0.55, 0.9], tilt: [9, 0, 0] },
-	aurora: { tile: [160, 420], dot: [0.5, 1], speed: [10, 24], opacity: [0.6, 0.95], tilt: [12, 4, 0] },
-	pulse: { tile: [1, 1], dot: [0.5, 1], speed: [1.8, 4.2], opacity: [0.65, 1], tilt: [4, 3, 0] },
-	glitch: { tile: [1, 1], dot: [0.5, 1], speed: [1.8, 4.2], opacity: [0.8, 1], tilt: [7, 5, 0] },
-	earthquake: { tile: [20, 46], dot: [1.3, 2.8], speed: [1.8, 4], opacity: [0.55, 0.85], drift: [-9, 9], tilt: [2, 5, 10] },
-	thunder: { tile: [1, 1], dot: [0.5, 1], speed: [3, 7.5], opacity: [0.75, 1], tilt: [4, 3, 14] },
-	tsunami: { tile: [1, 1], dot: [0.5, 1], speed: [4, 10], opacity: [0.6, 0.9], tilt: [3, 6, 12] },
-	tornado: { tile: [1, 1], dot: [0.5, 1], speed: [2.4, 6], opacity: [0.55, 0.88], tilt: [3, 8, 16] },
-	meteor: { tile: [24, 56], dot: [1.1, 2.4], speed: [1.1, 2.8], opacity: [0.85, 1], drift: [-300, -150], tilt: [5, 13, 9] },
-	rainbow: { tile: [1, 1], dot: [0.5, 1], speed: [4, 10], opacity: [0.6, 0.95], tilt: [8, 0, 0] },
-	fire: { tile: [1, 1], dot: [0.5, 1], speed: [1.1, 2.4], opacity: [0.8, 1], tilt: [2, 7, 0] },
-	blizzard: { tile: [11, 26], dot: [1.5, 3.2], speed: [1.6, 3.8], opacity: [0.75, 1], drift: [120, 260], tilt: [2, 12, 15] },
-	love: { tile: [18, 40], dot: [2.4, 5.2], speed: [5, 11], opacity: [0.7, 1], drift: [-40, 40], tilt: [4, 10, 0] },
-	glass: { tile: [1, 1], dot: [0.5, 1], speed: [4.5, 9], opacity: [0.6, 0.95], tilt: [6, 2, 7] },
-	bullethole: { tile: [1, 1], dot: [0.5, 1], speed: [2.6, 5.4], opacity: [0.7, 1], tilt: [1, 3, 5] },
-	volcano: { tile: [14, 32], dot: [1.6, 3.4], speed: [2.8, 6], opacity: [0.8, 1], drift: [-70, 70], tilt: [3, 9, 13] },
-	sandstorm: { tile: [9, 21], dot: [1.1, 2.4], speed: [0.9, 2.1], opacity: [0.5, 0.85], drift: [220, 420], tilt: [10, 14, 6] },
-	void: { tile: [20, 46], dot: [1.2, 2.8], speed: [3.2, 7], opacity: [0.65, 1], tilt: [14, 6, 0] },
-	eclipse: { tile: [26, 60], dot: [0.9, 2], speed: [6, 13], opacity: [0.55, 0.95], tilt: [6, 1, 4] },
-	fallingstar: { tile: [30, 70], dot: [1.2, 2.6], speed: [2.4, 5.5], opacity: [0.8, 1], drift: [-220, -120], tilt: [7, 9, 0] },
-	milkyway: { tile: [22, 52], dot: [0.7, 1.8], speed: [7, 16], opacity: [0.5, 0.95], tilt: [11, 3, 0] },
-	blackhole: { tile: [24, 54], dot: [1, 2.2], speed: [3.6, 8], opacity: [0.7, 1], tilt: [13, 7, 4] },
-	autumn: { tile: [16, 36], dot: [2.2, 4.8], speed: [6, 13], opacity: [0.75, 1], drift: [-90, 90], tilt: [3, 10, 9] },
-	sakura: { tile: [15, 34], dot: [2, 4.4], speed: [7, 15], opacity: [0.7, 1], drift: [-70, 70], tilt: [2, 11, 12] },
-	fireflies: { tile: [22, 50], dot: [1.4, 3], speed: [4, 9], opacity: [0.6, 1], drift: [-50, 50], tilt: [5, 8, 3] },
-	koi: { tile: [28, 62], dot: [1.5, 3.2], speed: [6, 13], opacity: [0.55, 0.9], tilt: [4, 6, 2] },
-	silk: { tile: [1, 1], dot: [0.5, 1], speed: [5, 11], opacity: [0.65, 1], tilt: [9, 5, 0] },
-	crystal: { tile: [19, 44], dot: [1.2, 2.8], speed: [3.4, 7.5], opacity: [0.7, 1], tilt: [7, 2, 6] },
-	neon: { tile: [1, 1], dot: [0.5, 1], speed: [2.2, 5], opacity: [0.75, 1], tilt: [8, 4, 5] }
+	sparkle: { tile: [13, 28], dot: [1.3, 2.8], speed: [2.2, 5], opacity: [0.75, 1] },
+	snow: { tile: [17, 38], dot: [1.9, 3.8], speed: [7, 15], opacity: [0.7, 1] },
+	rain: { tile: [7, 16], dot: [0.9, 1.8], speed: [0.8, 1.8], opacity: [0.6, 0.9] },
+	ember: { tile: [15, 34], dot: [1.5, 3.2], speed: [3.5, 9], opacity: [0.8, 1] },
+	confetti: { tile: [17, 36], dot: [2.2, 4.4], speed: [4, 10], opacity: [0.8, 1] },
+	bubbles: { tile: [24, 56], dot: [2.6, 6], speed: [7, 18], opacity: [0.5, 0.8] },
+	scanlines: { tile: [3, 6], dot: [0.5, 1], speed: [3, 8], opacity: [0.32, 0.6] },
+	grain: { tile: [60, 140], dot: [0.5, 1], speed: [0.3, 0.9], opacity: [0.35, 0.6] },
+	holo: { tile: [120, 320], dot: [0.5, 1], speed: [3.5, 9], opacity: [0.55, 0.9] },
+	aurora: { tile: [160, 420], dot: [0.5, 1], speed: [10, 24], opacity: [0.6, 0.95] },
+	pulse: { tile: [1, 1], dot: [0.5, 1], speed: [1.8, 4.2], opacity: [0.65, 1] },
+	glitch: { tile: [1, 1], dot: [0.5, 1], speed: [1.8, 4.2], opacity: [0.8, 1] },
+	earthquake: { tile: [20, 46], dot: [1.3, 2.8], speed: [1.8, 4], opacity: [0.55, 0.85], drift: [-9, 9] },
+	thunder: { tile: [1, 1], dot: [0.5, 1], speed: [3, 7.5], opacity: [0.75, 1] },
+	tsunami: { tile: [1, 1], dot: [0.5, 1], speed: [4, 10], opacity: [0.6, 0.9] },
+	tornado: { tile: [1, 1], dot: [0.5, 1], speed: [2.4, 6], opacity: [0.55, 0.88] },
+	meteor: { tile: [24, 56], dot: [1.1, 2.4], speed: [1.1, 2.8], opacity: [0.85, 1], drift: [-300, -150] },
+	rainbow: { tile: [1, 1], dot: [0.5, 1], speed: [4, 10], opacity: [0.6, 0.95] },
+	fire: { tile: [1, 1], dot: [0.5, 1], speed: [1.1, 2.4], opacity: [0.8, 1] },
+	blizzard: { tile: [11, 26], dot: [1.5, 3.2], speed: [1.6, 3.8], opacity: [0.75, 1], drift: [120, 260] },
+	love: { tile: [18, 40], dot: [2.4, 5.2], speed: [5, 11], opacity: [0.7, 1], drift: [-40, 40] },
+	glass: { tile: [1, 1], dot: [0.5, 1], speed: [4.5, 9], opacity: [0.6, 0.95] },
+	bullethole: { tile: [1, 1], dot: [0.5, 1], speed: [2.6, 5.4], opacity: [0.7, 1] },
+	volcano: { tile: [14, 32], dot: [1.6, 3.4], speed: [2.8, 6], opacity: [0.8, 1], drift: [-70, 70] },
+	sandstorm: { tile: [9, 21], dot: [1.1, 2.4], speed: [0.9, 2.1], opacity: [0.5, 0.85], drift: [220, 420] },
+	void: { tile: [20, 46], dot: [1.2, 2.8], speed: [3.2, 7], opacity: [0.65, 1] },
+	eclipse: { tile: [26, 60], dot: [0.9, 2], speed: [6, 13], opacity: [0.55, 0.95] },
+	fallingstar: { tile: [30, 70], dot: [1.2, 2.6], speed: [2.4, 5.5], opacity: [0.8, 1], drift: [-220, -120] },
+	milkyway: { tile: [22, 52], dot: [0.7, 1.8], speed: [7, 16], opacity: [0.5, 0.95] },
+	blackhole: { tile: [24, 54], dot: [1, 2.2], speed: [3.6, 8], opacity: [0.7, 1] },
+	autumn: { tile: [16, 36], dot: [2.2, 4.8], speed: [6, 13], opacity: [0.75, 1], drift: [-90, 90] },
+	sakura: { tile: [15, 34], dot: [2, 4.4], speed: [7, 15], opacity: [0.7, 1], drift: [-70, 70] },
+	fireflies: { tile: [22, 50], dot: [1.4, 3], speed: [4, 9], opacity: [0.6, 1], drift: [-50, 50] },
+	koi: { tile: [28, 62], dot: [1.5, 3.2], speed: [6, 13], opacity: [0.55, 0.9] },
+	silk: { tile: [1, 1], dot: [0.5, 1], speed: [5, 11], opacity: [0.65, 1] },
+	crystal: { tile: [19, 44], dot: [1.2, 2.8], speed: [3.4, 7.5], opacity: [0.7, 1] },
+	neon: { tile: [1, 1], dot: [0.5, 1], speed: [2.2, 5], opacity: [0.75, 1] }
 };
 
 export const PARTICLE_COUNTS: Record<string, number> = {
@@ -686,10 +685,7 @@ export function effectVariant(family: any, seed: any, accent: any): EffectVarian
 		'--fx-angle': `${angle}deg`,
 		'--fx-sway': `${Math.round(8 + rand() * 26)}px`,
 		'--fx-color': hsla(c1[0] + jitter, c1[1], c1[2], 1),
-		'--fx-color-2': hsla(c2[0] + jitter, c2[1], c2[2], 1),
-		'--fx-tilt-far': `${tuning.tilt[0]}px`,
-		'--fx-tilt-mid': `${tuning.tilt[1]}px`,
-		'--fx-tilt-near': `${tuning.tilt[2]}px`
+		'--fx-color-2': hsla(c2[0] + jitter, c2[1], c2[2], 1)
 	};
 
 	return {

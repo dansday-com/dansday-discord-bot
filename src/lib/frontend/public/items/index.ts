@@ -224,20 +224,6 @@ export async function loadItemsShared(server: any, hash: string, subKey?: 'items
 		memberDiscordId: String(member.discord_member_id),
 		memberAvatar: member.avatar ?? null,
 		memberTheme,
-		memberCard: {
-			discord_member_id: String(member.discord_member_id),
-			username: member.username ?? null,
-			display_name: member.display_name ?? null,
-			server_display_name: member.server_display_name ?? null,
-			avatar: member.avatar ?? null,
-			level: Number(member.level ?? 0) || 0,
-			xp: Number(member.xp ?? 0) || 0,
-			rank: member.rank != null ? Number(member.rank) : null,
-			chat_total: Number(member.chat_total ?? 0) || 0,
-			voice_minutes_active: Number(member.voice_minutes_active ?? 0) || 0,
-			member_since: member.member_since ? new Date(member.member_since).toISOString() : null,
-			roles: (member.roles ?? []).map((r: any) => ({ name: r.name, color: r.color, position: r.position }))
-		},
 		balance: {
 			xp: Number(member.xp ?? 0) || 0,
 			level: Number(member.level ?? 1) || 1,

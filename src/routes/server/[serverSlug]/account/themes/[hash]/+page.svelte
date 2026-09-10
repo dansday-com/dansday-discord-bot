@@ -3,7 +3,8 @@
 	import { APP_NAME } from '$lib/frontend/panelServer.js';
 	import { IMAGE_ACCEPT, IMAGE_FORMATS_LABEL, MEMBER_THEME_MAX_BYTES, MEMBER_THEME_SOURCE_MAX_BYTES, imageSizeLabel } from '$lib/images.js';
 	import { EFFECT_SPIN_COST, SPINNABLE_EFFECTS, effectMeta, randomSeed } from '$lib/effects.js';
-	import { ReelStrip } from '$lib/frontend/components/public';
+	import { GameModal, ReelStrip } from '$lib/frontend/components/public';
+	import { lockScroll } from '$lib/frontend/scrollLock.js';
 	import { getContext } from 'svelte';
 	import ThemeEffect from '$lib/frontend/components/ThemeEffect.svelte';
 	import { DEFAULT_ACCENT, type MemberTheme, accentInk, extractAccentFromFile, normalizeAccent, prepareThemeUpload } from '$lib/themes.js';
@@ -30,6 +31,7 @@
 	let reelSeeds = $state<number[]>([]);
 	let spinning = $state(false);
 	let reelWrapEl = $state<HTMLDivElement | undefined>();
+	let playing = $state(false);
 	let error = $state<string | null>(null);
 	let fileInput = $state<HTMLInputElement | undefined>();
 
@@ -194,6 +196,16 @@
 		return `${pendingFile.name} · ${now}`;
 	});
 
+	function openSpin() {
+		playing = true;
+		initReel();
+	}
+
+	$effect(() => {
+		if (!playing) return;
+		return lockScroll();
+	});
+
 	function randomCells(n: number): string[] {
 		return Array.from({ length: n }, () => SPINNABLE_EFFECTS[Math.floor(Math.random() * SPINNABLE_EFFECTS.length)]);
 	}
@@ -262,10 +274,6 @@
 			spinning = false;
 		}
 	}
-
-	$effect(() => {
-		if (reel.length === 0) initReel();
-	});
 
 	function onColorInput(event: Event) {
 		colorDraft = normalizeAccent((event.currentTarget as HTMLInputElement).value);
@@ -369,47 +377,17 @@
 			</span>
 		</div>
 
-		<div class="flex flex-col gap-3.5 p-4 sm:p-5">
-			<ReelStrip
-				bind:wrap={reelWrapEl}
-				items={reel}
-				offset={reelOffset}
-				animating={reelAnimating}
-				frameWidth={88}
-				frameWidthLg={96}
-				padLeft="92px"
-				padLeftLg="100px"
-				cellClass="basis-21 h-[70px] min-[600px]:basis-23 min-[600px]:h-[76px]"
-				tone={reelResult ? 'win' : 'idle'}
-			>
-				{#snippet cell(kind: string, index: number)}
-					<div class="border-base-300 bg-base-200 relative isolate grid size-full place-items-center overflow-hidden rounded-xl border">
-						<ThemeEffect effect={kind} seed={reelSeeds[index] ?? 0} {accent} always />
-						<i class="fas {effectMeta(kind)?.icon} text-base-content/70 relative text-[22px]"></i>
-					</div>
-				{/snippet}
-
-				{#snippet overlay()}
-					{#if reelResult}
-						<div class="animate-game-verdict bg-base-200 pointer-events-none absolute inset-0 z-6 flex flex-col items-center justify-center gap-0.5">
-							<span class="text-success text-[13px] font-black tracking-[0.18em] uppercase">You got</span>
-							<span class="text-base-content text-[24px] font-black">{reelResult.label}</span>
-						</div>
-					{/if}
-				{/snippet}
-			</ReelStrip>
-
+		<div class="flex flex-col gap-3 p-4 sm:p-5">
 			<div class="flex flex-wrap items-center gap-2">
 				<button
 					class="btn btn-sm flex-1 border-none bg-linear-to-br from-[#e0a52a] to-[#b8860b] font-black text-white sm:flex-none"
-					onclick={spin}
-					disabled={spinning || busy || !canSpin}
+					onclick={openSpin}
+					disabled={busy || !canSpin}
 				>
-					{#if spinning}<span class="loading loading-spinner loading-xs"></span>{:else}<i class="fas fa-dice"></i>{/if}
-					Spin · {EFFECT_SPIN_COST.toLocaleString()} XP
+					<i class="fas fa-dice"></i>Spin · {EFFECT_SPIN_COST.toLocaleString()} XP
 				</button>
 				{#if owned !== 'none'}
-					<button class="btn btn-ghost btn-sm" onclick={toggleEffect} disabled={busy || spinning}>
+					<button class="btn btn-ghost btn-sm" onclick={toggleEffect} disabled={busy}>
 						<i class="fas {effectOn ? 'fa-eye-slash' : 'fa-eye'}"></i>{effectOn ? 'Disable' : 'Enable'}
 					</button>
 				{/if}
@@ -439,3 +417,51 @@
 		{/if}
 	</div>
 </div>
+
+{#if playing}
+	<GameModal icon="fa-wand-magic-sparkles" title="Effect spin" state={reelResult ? 'win' : 'idle'} closable={!spinning} onclose={() => (playing = false)}>
+		<div class="mb-3.5">
+			<ReelStrip
+				bind:wrap={reelWrapEl}
+				items={reel}
+				offset={reelOffset}
+				animating={reelAnimating}
+				frameWidth={88}
+				frameWidthLg={96}
+				padLeft="92px"
+				padLeftLg="100px"
+				cellClass="basis-21 h-[70px] min-[600px]:basis-23 min-[600px]:h-[76px]"
+				tone={reelResult ? 'win' : 'idle'}
+			>
+				{#snippet cell(kind: string, index: number)}
+					<div class="border-base-300 bg-base-200 relative isolate grid size-full place-items-center overflow-hidden rounded-xl border">
+						<ThemeEffect effect={kind} seed={reelSeeds[index] ?? 0} {accent} always />
+						<i class="fas {effectMeta(kind)?.icon} text-base-content/70 relative text-[22px]"></i>
+					</div>
+				{/snippet}
+
+				{#snippet overlay()}
+					{#if reelResult}
+						<div class="animate-game-verdict bg-base-200 pointer-events-none absolute inset-0 z-6 flex flex-col items-center justify-center gap-0.5">
+							<span class="text-success text-[12px] font-black tracking-[0.18em] uppercase">You got</span>
+							<span class="text-base-content text-[22px] font-black">{reelResult.label}</span>
+						</div>
+					{/if}
+				{/snippet}
+			</ReelStrip>
+		</div>
+
+		{#if reelResult}
+			<button class="btn btn-sm w-full" onclick={() => (playing = false)}>Done</button>
+		{:else}
+			<button
+				class="btn animate-game-charge w-full border-none bg-linear-to-br from-[#e0a52a] to-[#b8860b] font-black text-white"
+				onclick={spin}
+				disabled={spinning || !canSpin}
+			>
+				{#if spinning}<span class="loading loading-spinner loading-xs"></span>{:else}<i class="fas fa-dice"></i>{/if}
+				Spin · {EFFECT_SPIN_COST.toLocaleString()} XP
+			</button>
+		{/if}
+	</GameModal>
+{/if}

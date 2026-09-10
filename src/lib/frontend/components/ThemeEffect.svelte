@@ -8,9 +8,9 @@
 		always?: boolean;
 	};
 
-	let { effect = null, seed = 0, accent = null, always = false }: Props = $props();
+	let { effect: effectId = null, seed = 0, accent = null, always = false }: Props = $props();
 
-	const family = $derived(normalizeEffect(effect));
+	const family = $derived(normalizeEffect(effectId));
 	const variant = $derived(effectVariant(family, seed, accent));
 	const dotted = $derived(effectMeta(family)?.particles === true);
 

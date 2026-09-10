@@ -162,7 +162,7 @@
 			<span class="text-base-content flex items-center gap-2 text-[13px] font-bold">
 				<i class="fas fa-image text-base-content/45"></i>Background
 			</span>
-			<span class="text-base-content/45 text-[11px] font-medium">{IMAGE_FORMATS_LABEL} · optimised to WebP · max {imageSizeLabel(MEMBER_THEME_MAX_BYTES)}</span>
+			<span class="text-base-content/45 text-[11px] font-medium">{IMAGE_FORMATS_LABEL} · max {imageSizeLabel(MEMBER_THEME_MAX_BYTES)}</span>
 		</div>
 
 		<div class="flex flex-col gap-4 p-4 sm:p-5">
